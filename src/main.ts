@@ -9,6 +9,7 @@ import { inputManager } from "@input/InputManager";
 import { unitQueueUI } from "@view/ui/UnitQueueUI";
 import { fireballFX } from "@view/fx/FireballFX";
 import { lightningFX } from "@view/fx/LightningFX";
+import { summonFX } from "@view/fx/SummonFX";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
@@ -66,6 +67,7 @@ import { Direction } from "@/types";
   fireballFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => fireballFX.update(dt));
   lightningFX.init(viewManager);
+  summonFX.init(viewManager);
 
   // 11. Render loop
   viewManager.app.ticker.add((ticker) => {

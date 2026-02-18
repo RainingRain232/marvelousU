@@ -29,6 +29,16 @@ export const CombatSystem = {
         continue;
       }
 
+      // Tick lifespan for temporary units (lifespanTimer === -1 means immortal)
+      if (unit.lifespanTimer >= 0) {
+        unit.lifespanTimer -= dt;
+        if (unit.lifespanTimer <= 0) {
+          unit.lifespanTimer = 0;
+          killUnit(unit);
+          continue;
+        }
+      }
+
       // Skip units that can't participate in combat
       if (unit.state === UnitState.CAST) continue;
 
