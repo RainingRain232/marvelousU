@@ -1,31 +1,67 @@
 // Typed event emitter — bridge between sim and view
+// sim/ emits events; view/ listens. sim/ never imports from view/.
 import type { GamePhase, PlayerId, UnitState, Vec2 } from "@/types";
 
+// ---------------------------------------------------------------------------
+// Event map — every event the simulation can emit
+// ---------------------------------------------------------------------------
+
 export interface SimEvents {
+  // Unit lifecycle
   unitSpawned: { unitId: string; buildingId: string; position: Vec2 };
   unitDied: { unitId: string; killerUnitId?: string };
+  unitDamaged: { unitId: string; amount: number; attackerId: string };
   unitStateChanged: { unitId: string; from: UnitState; to: UnitState };
+  groupSpawned: { unitIds: string[]; buildingId: string };
+
+  // Building lifecycle
   buildingPlaced: { buildingId: string; position: Vec2; owner: PlayerId };
   buildingDestroyed: { buildingId: string };
+  buildingCaptured: { buildingId: string; newOwner: PlayerId };
+
+  // Abilities & projectiles
   abilityUsed: { casterId: string; abilityId: string; targets: Vec2[] };
   projectileCreated: { projectileId: string; origin: Vec2; target: Vec2 };
   projectileHit: { projectileId: string; targetId: string };
-  groupSpawned: { unitIds: string[]; buildingId: string };
+
+  // Economy
   goldChanged: { playerId: PlayerId; amount: number };
+
+  // Game flow
   phaseChanged: { phase: GamePhase };
 }
 
-type EventKey = keyof SimEvents;
-type Listener<K extends EventKey> = (payload: SimEvents[K]) => void;
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-class EventBusImpl {
+export type EventKey = keyof SimEvents;
+export type Listener<K extends EventKey> = (payload: SimEvents[K]) => void;
+
+// ---------------------------------------------------------------------------
+// Implementation
+// ---------------------------------------------------------------------------
+
+export class EventBusImpl {
   private listeners: { [K in EventKey]?: Listener<K>[] } = {};
 
-  on<K extends EventKey>(event: K, listener: Listener<K>): void {
+  /** Subscribe to an event. Returns an unsubscribe function for convenience. */
+  on<K extends EventKey>(event: K, listener: Listener<K>): () => void {
     if (!this.listeners[event]) this.listeners[event] = [];
     (this.listeners[event] as Listener<K>[]).push(listener);
+    return () => this.off(event, listener);
   }
 
+  /** Subscribe to an event for exactly one emission, then auto-unsubscribe. */
+  once<K extends EventKey>(event: K, listener: Listener<K>): void {
+    const wrapper = (payload: SimEvents[K]) => {
+      listener(payload);
+      this.off(event, wrapper as Listener<K>);
+    };
+    this.on(event, wrapper as Listener<K>);
+  }
+
+  /** Unsubscribe a specific listener from an event. */
   off<K extends EventKey>(event: K, listener: Listener<K>): void {
     const arr = this.listeners[event] as Listener<K>[] | undefined;
     if (!arr) return;
@@ -33,15 +69,27 @@ class EventBusImpl {
     (this.listeners as any)[event] = arr.filter((l) => l !== listener);
   }
 
+  /** Emit an event, calling all registered listeners synchronously. */
   emit<K extends EventKey>(event: K, payload: SimEvents[K]): void {
-    const arr = this.listeners[event] as Listener<K>[] | undefined;
+    // Snapshot listeners before iterating — a listener may call off() mid-loop
+    const arr = (this.listeners[event] as Listener<K>[] | undefined)?.slice();
     if (!arr) return;
     for (const l of arr) l(payload);
   }
 
+  /** Remove all listeners for all events. */
   clear(): void {
     this.listeners = {};
   }
+
+  /** Remove all listeners for a specific event. */
+  clearEvent<K extends EventKey>(event: K): void {
+    delete this.listeners[event];
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Global singleton — use this throughout the app
+// ---------------------------------------------------------------------------
 
 export const EventBus = new EventBusImpl();
