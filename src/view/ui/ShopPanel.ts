@@ -6,7 +6,7 @@ import { EventBus } from "@sim/core/EventBus";
 import { addToQueue } from "@sim/systems/SpawnSystem";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
-import { BuildingState, BuildingType, UnitType } from "@/types";
+import { BuildingType, UnitType } from "@/types";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
 
 // ---------------------------------------------------------------------------
@@ -122,8 +122,6 @@ export class ShopPanel {
   private _openBuildingId: string | null = null;
   private _rows: Container[] = [];
 
-  private _canvasListener: ((e: PointerEvent) => void) | null = null;
-
   // ---------------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------------
@@ -135,19 +133,9 @@ export class ShopPanel {
 
     this.container.visible = false;
     vm.addToLayer("ui", this.container);
-
-    // Listen for canvas clicks to detect building selection
-    const canvas = vm.app.canvas as HTMLCanvasElement;
-    this._canvasListener = (e: PointerEvent) => this._onCanvasClick(e);
-    canvas.addEventListener("pointerdown", this._canvasListener);
   }
 
   destroy(): void {
-    const canvas = this._vm.app.canvas as HTMLCanvasElement;
-    if (this._canvasListener) {
-      canvas.removeEventListener("pointerdown", this._canvasListener);
-      this._canvasListener = null;
-    }
     this.container.destroy({ children: true });
   }
 
@@ -172,60 +160,6 @@ export class ShopPanel {
     if (!this.container.visible || !this._openBuildingId) return;
     this._updateAffordability();
   };
-
-  // ---------------------------------------------------------------------------
-  // Canvas click → building hit-test
-  // ---------------------------------------------------------------------------
-
-  private _onCanvasClick(e: PointerEvent): void {
-    // Ignore right-click (used for camera pan)
-    if (e.button !== 0) return;
-
-    const canvas = this._vm.app.canvas as HTMLCanvasElement;
-    const rect = canvas.getBoundingClientRect();
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-
-    const world = this._vm.camera.screenToWorld(screenX, screenY);
-    const tx = Math.floor(world.x);
-    const ty = Math.floor(world.y);
-
-    // Check if the click is inside the open panel (if any) — swallow it
-    if (this.container.visible) {
-      const px = this.container.x;
-      const py = this.container.y;
-      const pw = PANEL_W;
-      const ph = (this.container.getChildAt(0) as Graphics).height;
-      if (
-        screenX >= px &&
-        screenX <= px + pw &&
-        screenY >= py &&
-        screenY <= py + ph
-      ) {
-        return; // click consumed by panel itself
-      }
-      // Click outside panel → close
-      this.close();
-      return;
-    }
-
-    // Hit-test buildings
-    for (const building of this._state.buildings.values()) {
-      if (building.owner !== this._localPlayerId) continue;
-      if (building.state === BuildingState.DESTROYED) continue;
-
-      const def = BUILDING_DEFINITIONS[building.type];
-      if (
-        tx >= building.position.x &&
-        tx < building.position.x + def.footprint.w &&
-        ty >= building.position.y &&
-        ty < building.position.y + def.footprint.h
-      ) {
-        this.open(building.id);
-        return;
-      }
-    }
-  }
 
   // ---------------------------------------------------------------------------
   // Panel construction
