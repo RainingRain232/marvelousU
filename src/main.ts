@@ -7,6 +7,7 @@ import { shopPanel } from "@view/ui/ShopPanel";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { inputManager } from "@input/InputManager";
 import { unitQueueUI } from "@view/ui/UnitQueueUI";
+import { fireballFX } from "@view/fx/FireballFX";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
@@ -60,7 +61,11 @@ import { Direction } from "@/types";
   buildingPlacer.init(viewManager, state, "p1");
   inputManager.init(viewManager, state, "p1");
 
-  // 10. Render loop
+  // 10. Fireball FX
+  fireballFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => fireballFX.update(dt));
+
+  // 11. Render loop
   viewManager.app.ticker.add((ticker) => {
     const dt = ticker.deltaMS / 1000;
     viewManager.update(state, dt);
