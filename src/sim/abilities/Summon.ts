@@ -8,11 +8,12 @@ import type { GameState } from "@sim/state/GameState";
 export function createSummon(id: string): Ability {
   return {
     id,
-    type:            AbilityType.SUMMON,
-    cooldown:        12,
+    type: AbilityType.SUMMON,
+    cooldown: 12,
     currentCooldown: 0,
-    range:           6,
-    castTime:        1.0,
+    range: 6,
+    castTime: 1.0,
+    targetPosition: null,
     execute(_caster: Unit, _target: Vec2 | Unit, _state: GameState): void {
       // TODO: spawn SUMMONED units at target position with limited lifespan
     },

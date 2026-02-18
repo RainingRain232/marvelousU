@@ -8,11 +8,12 @@ import type { GameState } from "@sim/state/GameState";
 export function createFireball(id: string): Ability {
   return {
     id,
-    type:            AbilityType.FIREBALL,
-    cooldown:        5,
+    type: AbilityType.FIREBALL,
+    cooldown: 5,
     currentCooldown: 0,
-    range:           6,
-    castTime:        0.5,
+    range: 6,
+    castTime: 0.5,
+    targetPosition: null,
     execute(_caster: Unit, _target: Vec2 | Unit, _state: GameState): void {
       // TODO: spawn projectile, on impact deal AoE damage
     },
