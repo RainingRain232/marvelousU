@@ -10,6 +10,7 @@ import { unitQueueUI } from "@view/ui/UnitQueueUI";
 import { fireballFX } from "@view/fx/FireballFX";
 import { lightningFX } from "@view/fx/LightningFX";
 import { summonFX } from "@view/fx/SummonFX";
+import { deathFX } from "@view/fx/DeathFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
@@ -75,7 +76,11 @@ import { Direction } from "@/types";
   summonFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => summonFX.update(dt));
 
-  // 12. Render loop
+  // 12. Death FX (must init after ViewManager so renderer is available)
+  deathFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => deathFX.update(dt));
+
+  // 13. Render loop
   viewManager.app.ticker.add((ticker) => {
     const dt = ticker.deltaMS / 1000;
     viewManager.update(state, dt);

@@ -2,7 +2,9 @@
 import { EventBus } from "@sim/core/EventBus";
 import type { GameState } from "@sim/state/GameState";
 import type { ViewManager } from "@view/ViewManager";
-import { UnitView } from "@view/entities/UnitView";
+import { UnitView, CORPSE_FADE_MS } from "@view/entities/UnitView";
+import { deathFX } from "@view/fx/DeathFX";
+import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 // ---------------------------------------------------------------------------
 // UnitLayer
@@ -53,9 +55,25 @@ export class UnitLayer {
         this._addUnit(unitId);
       }),
       EventBus.on("unitDied", ({ unitId }) => {
-        // Linger so the DIE animation can fully play before the view is removed.
-        // 7 frames @ 8fps ≈ 875ms + 500ms safety margin = 1375ms → use 1500ms.
-        setTimeout(() => this._removeUnit(unitId), 1500);
+        const view = this._unitViews.get(unitId);
+        if (!view) return;
+
+        const unit = this._state.units.get(unitId);
+
+        // 1. Emit per-type death particles at the unit's current screen position.
+        if (unit) {
+          const TS = BalanceConfig.TILE_SIZE;
+          const screenX = (unit.position.x + 0.5) * TS;
+          const screenY = (unit.position.y + 0.5) * TS;
+          deathFX.play(unit.type, screenX, screenY);
+
+          // 2. Start death sequence: plays DIE anim then fades corpse.
+          view.startDeathSequence(unit);
+        }
+
+        // 3. Remove after DIE anim (~900ms) + corpse fade (CORPSE_FADE_MS) + small buffer.
+        const lingerMs = 900 + CORPSE_FADE_MS + 200;
+        setTimeout(() => this._removeUnit(unitId), lingerMs);
       }),
     );
   }

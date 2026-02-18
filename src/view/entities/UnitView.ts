@@ -15,6 +15,7 @@
 // Fallback: when AnimationManager has no textures for a unit type (placeholder
 // mode), a colored circle is shown instead.
 import { Container, Graphics, AnimatedSprite } from "pixi.js";
+import { gsap } from "gsap";
 import type { Unit } from "@sim/entities/Unit";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { Direction, UnitState } from "@/types";
@@ -44,6 +45,12 @@ const HP_CRIT = 0xff4444;
 const ALPHA_ALIVE = 1.0;
 const ALPHA_DIE = 0.35;
 
+/**
+ * How long (ms) the corpse fade lasts after the DIE animation finishes.
+ * UnitLayer uses this to time the removal timeout.
+ */
+export const CORPSE_FADE_MS = 1000;
+
 // ---------------------------------------------------------------------------
 // UnitView
 // ---------------------------------------------------------------------------
@@ -68,6 +75,9 @@ export class UnitView {
    */
   private _playingState: UnitState = UnitState.IDLE;
 
+  /** True once the death sequence (anim + fade) has been started. */
+  private _deathStarted = false;
+
   constructor(unit: Unit) {
     this._buildPlaceholder(unit);
     this._buildHpBar();
@@ -81,6 +91,10 @@ export class UnitView {
 
   /** Called every render frame by UnitLayer. */
   update(unit: Unit): void {
+    // Once the death sequence has started, stop all further updates — gsap
+    // owns the container alpha from this point.
+    if (this._deathStarted) return;
+
     // Position
     this.container.position.set(
       (unit.position.x + 0.5) * TS,
@@ -90,9 +104,14 @@ export class UnitView {
     this.container.zIndex = unit.position.y;
     // Facing direction — flip horizontally for west-facing units
     this.container.scale.x = unit.facingDirection === Direction.WEST ? -1 : 1;
-    // Death fade
-    this.container.alpha =
-      unit.state === UnitState.DIE ? ALPHA_DIE : ALPHA_ALIVE;
+
+    // Initial death dimming — will be taken over by startDeathSequence() once
+    // UnitLayer calls it after receiving the unitDied event.
+    if (unit.state === UnitState.DIE) {
+      this.container.alpha = ALPHA_DIE;
+    } else {
+      this.container.alpha = ALPHA_ALIVE;
+    }
 
     // Lazy sprite attachment (AnimationManager may not have been ready at construction)
     if (!this._sprite) {
@@ -104,8 +123,49 @@ export class UnitView {
       this._syncAnimation(unit);
     }
 
-    // HP bar
-    this._updateHpBar(unit);
+    // HP bar — hidden when dying
+    if (unit.state === UnitState.DIE) {
+      this._hpBg.visible = false;
+      this._hpFill.visible = false;
+    } else {
+      this._updateHpBar(unit);
+    }
+  }
+
+  /**
+   * Kick off the full death sequence:
+   *   1. Play DIE animation (one-shot, freezes on last frame).
+   *   2. After animation completes, fade container alpha → 0 over CORPSE_FADE_MS.
+   *
+   * Called by UnitLayer immediately when `unitDied` fires.
+   * The unit's screen position should already be set by the last `update()` call.
+   */
+  startDeathSequence(unit: Unit): void {
+    if (this._deathStarted) return;
+    this._deathStarted = true;
+
+    // Hide HP bar immediately
+    this._hpBg.visible = false;
+    this._hpFill.visible = false;
+
+    // Dim to the die-alpha immediately (sim may not have ticked DIE yet)
+    this.container.alpha = ALPHA_DIE;
+
+    // Kick off the DIE animation if sprite is available
+    if (this._sprite && this._playingState !== UnitState.DIE) {
+      this._playState(unit, UnitState.DIE);
+    }
+
+    // Schedule corpse fade after the DIE animation plays.
+    // 7 frames at 8fps ≈ 875ms. Fade starts after that window.
+    const animDurationMs = 900;
+    setTimeout(() => {
+      gsap.to(this.container, {
+        alpha: 0,
+        duration: CORPSE_FADE_MS / 1000,
+        ease: "power1.in",
+      });
+    }, animDurationMs);
   }
 
   destroy(): void {
