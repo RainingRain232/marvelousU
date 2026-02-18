@@ -16,6 +16,7 @@ import { animationManager } from "@view/animation/AnimationManager";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
+import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
 import { Direction, GamePhase } from "@/types";
 
@@ -111,7 +112,11 @@ import { Direction, GamePhase } from "@/types";
   deathFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => deathFX.update(dt));
 
-  // 13. Render loop
+  // 13. Simulation loop (fixed timestep, drives all sim systems)
+  const simLoop = new SimLoop(state);
+  simLoop.start();
+
+  // 14. Render loop
   viewManager.app.ticker.add((ticker) => {
     const dt = ticker.deltaMS / 1000;
     viewManager.update(state, dt);
