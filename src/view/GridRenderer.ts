@@ -1,0 +1,145 @@
+// Background grid rendering — zone colors, walkability, grid lines
+import { Graphics } from "pixi.js";
+import type { BattlefieldState } from "@sim/state/BattlefieldState";
+import type { ViewManager } from "@view/ViewManager";
+import { BalanceConfig } from "@sim/config/BalanceConfig";
+
+// ---------------------------------------------------------------------------
+// Tile color palette (placeholder — real art replaces these later)
+// ---------------------------------------------------------------------------
+
+/** Fill colors per zone × walkability combination (0xRRGGBB). */
+const TILE_COLORS = {
+  west_walkable:     0x1a3a5c, // dark blue — west territory
+  west_unwalkable:   0x0d1e30, // very dark blue — impassable west
+  neutral_walkable:  0x2a2a3a, // dark grey — contested zone
+  neutral_unwalkable:0x14141e, // near-black — impassable neutral
+  east_walkable:     0x3a1a1a, // dark red — east territory
+  east_unwalkable:   0x1e0d0d, // very dark red — impassable east
+} as const;
+
+/** Tint applied over a tile occupied by a building (additive alpha blend). */
+const BUILDING_TINT_COLOR = 0x444400; // ochre hint
+const BUILDING_TINT_ALPHA = 0.25;
+
+/** Grid line color and alpha. */
+const GRID_LINE_COLOR = 0xffffff;
+const GRID_LINE_ALPHA = 0.06;
+
+// ---------------------------------------------------------------------------
+// GridRenderer
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders the tile grid as two stacked Graphics objects in the "background"
+ * layer:
+ *   1. `_tiles`  — solid colored rectangles per tile (zone + walkability)
+ *   2. `_lines`  — hairline grid overlay
+ *
+ * The grid is static — call `draw(battlefield)` once at startup and again
+ * whenever the battlefield state changes (e.g., a building is placed).
+ */
+export class GridRenderer {
+  private _tiles  = new Graphics();
+  private _lines  = new Graphics();
+  private _tints  = new Graphics(); // building footprint highlights
+
+  // ---------------------------------------------------------------------------
+  // Lifecycle
+  // ---------------------------------------------------------------------------
+
+  /** Add the grid graphics to the ViewManager background layer. */
+  init(vm: ViewManager): void {
+    vm.addToLayer("background", this._tiles);
+    vm.addToLayer("background", this._tints);
+    vm.addToLayer("background", this._lines);
+  }
+
+  /** Remove from the scene and free GPU resources. */
+  destroy(): void {
+    this._tiles.destroy();
+    this._tints.destroy();
+    this._lines.destroy();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Drawing
+  // ---------------------------------------------------------------------------
+
+  /**
+   * (Re-)draw the entire grid from the given battlefield state.
+   * Safe to call every time buildings change.
+   */
+  draw(battlefield: BattlefieldState): void {
+    this._drawTiles(battlefield);
+    this._drawBuildingTints(battlefield);
+    this._drawLines(battlefield);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
+  private _drawTiles(bf: BattlefieldState): void {
+    const g    = this._tiles;
+    const ts   = BalanceConfig.TILE_SIZE;
+    g.clear();
+
+    for (const row of bf.grid) {
+      for (const tile of row) {
+        const key = `${tile.zone}_${tile.walkable ? "walkable" : "unwalkable"}` as keyof typeof TILE_COLORS;
+        const color = TILE_COLORS[key];
+        g.rect(tile.x * ts, tile.y * ts, ts, ts).fill({ color });
+      }
+    }
+  }
+
+  private _drawBuildingTints(bf: BattlefieldState): void {
+    const g    = this._tints;
+    const ts   = BalanceConfig.TILE_SIZE;
+    g.clear();
+
+    for (const row of bf.grid) {
+      for (const tile of row) {
+        if (tile.buildingId !== null) {
+          g.rect(tile.x * ts, tile.y * ts, ts, ts)
+            .fill({ color: BUILDING_TINT_COLOR, alpha: BUILDING_TINT_ALPHA });
+        }
+      }
+    }
+  }
+
+  private _drawLines(bf: BattlefieldState): void {
+    const g    = this._lines;
+    const ts   = BalanceConfig.TILE_SIZE;
+    const w    = bf.width  * ts;
+    const h    = bf.height * ts;
+    g.clear();
+
+    // Vertical lines
+    for (let col = 0; col <= bf.width; col++) {
+      g.moveTo(col * ts, 0)
+       .lineTo(col * ts, h)
+       .stroke({ color: GRID_LINE_COLOR, alpha: GRID_LINE_ALPHA, width: 1 });
+    }
+
+    // Horizontal lines
+    for (let row = 0; row <= bf.height; row++) {
+      g.moveTo(0, row * ts)
+       .lineTo(w, row * ts)
+       .stroke({ color: GRID_LINE_COLOR, alpha: GRID_LINE_ALPHA, width: 1 });
+    }
+
+    // Bold zone boundary lines
+    const westEnd   = Math.floor(bf.width / 3);
+    const eastStart = Math.ceil((bf.width * 2) / 3);
+    for (const col of [westEnd, eastStart]) {
+      g.moveTo(col * ts, 0)
+       .lineTo(col * ts, h)
+       .stroke({ color: 0xffffff, alpha: 0.25, width: 2 });
+    }
+  }
+}
+
+/** Singleton — one GridRenderer per application. */
+export const gridRenderer = new GridRenderer();
