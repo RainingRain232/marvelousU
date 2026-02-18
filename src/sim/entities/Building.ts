@@ -6,6 +6,13 @@ import type {
   UnitType,
   Vec2,
 } from "@/types";
+import { BuildingState as BS } from "@/types";
+import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
+import { BalanceConfig } from "@sim/config/BalanceConfig";
+
+// ---------------------------------------------------------------------------
+// Interfaces
+// ---------------------------------------------------------------------------
 
 export interface SpawnEntry {
   unitType: UnitType;
@@ -37,4 +44,37 @@ export interface Building {
   // Economy / production
   shopInventory: UnitType[]; // Unit types this building can train
   spawnQueue: SpawnQueue;
+}
+
+// ---------------------------------------------------------------------------
+// Factory
+// ---------------------------------------------------------------------------
+
+export interface CreateBuildingOptions {
+  id: string;
+  type: BuildingType;
+  owner: PlayerId | null;
+  position: Vec2;
+  linkedBaseId?: string | null;
+}
+
+export function createBuilding(opts: CreateBuildingOptions): Building {
+  const def = BUILDING_DEFINITIONS[opts.type];
+  return {
+    id: opts.id,
+    type: opts.type,
+    owner: opts.owner,
+    position: { ...opts.position },
+    linkedBaseId: opts.linkedBaseId ?? null,
+    state: BS.ACTIVE,
+    health: def.hp,
+    maxHealth: def.hp,
+    shopInventory: [...def.shopInventory],
+    spawnQueue: {
+      buildingId: opts.id,
+      entries: [],
+      groupThreshold: BalanceConfig.DEFAULT_GROUP_THRESHOLD,
+      readyUnits: [],
+    },
+  };
 }
