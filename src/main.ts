@@ -4,6 +4,7 @@ import { buildingLayer } from "@view/BuildingLayer";
 import { unitLayer } from "@view/UnitLayer";
 import { hud } from "@view/ui/HUD";
 import { shopPanel } from "@view/ui/ShopPanel";
+import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
@@ -49,7 +50,10 @@ import { Direction } from "@/types";
   shopPanel.init(viewManager, state, "p1");
   viewManager.onUpdate((s) => shopPanel.update(s));
 
-  // 8. Render loop
+  // 8. Building placer (placement mode visual)
+  buildingPlacer.init(viewManager, state, "p1");
+
+  // 9. Render loop
   viewManager.app.ticker.add((ticker) => {
     const dt = ticker.deltaMS / 1000;
     viewManager.update(state, dt);

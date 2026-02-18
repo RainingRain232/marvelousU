@@ -7,6 +7,7 @@ import { addToQueue } from "@sim/systems/SpawnSystem";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { BuildingState, BuildingType, UnitType } from "@/types";
+import { buildingPlacer } from "@view/ui/BuildingPlacer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -489,15 +490,15 @@ export class ShopPanel {
     const cost = BUILDING_DEFINITIONS[bpType].cost;
     if (player.gold < cost) return;
 
-    // Deduct gold — placement happens in BuildingPlacer (Task 5.3)
+    // Deduct gold then hand off to BuildingPlacer for placement
     player.gold -= cost;
     EventBus.emit("goldChanged", {
       playerId: this._localPlayerId,
       amount: player.gold,
     });
 
-    // Close the shop; BuildingPlacer will open placement mode
     this.close();
+    buildingPlacer.activate(bpType);
   }
 
   // ---------------------------------------------------------------------------
