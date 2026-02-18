@@ -1,74 +1,219 @@
 // Tile grid: walkability, building slots, A* pathfinding
-import type { Vec2 } from "@/types";
+import type { PlayerId, Vec2 } from "@/types";
 import type { BattlefieldState, Tile } from "@sim/state/BattlefieldState";
 
-export function getTile(state: BattlefieldState, x: number, y: number): Tile | null {
+// ---------------------------------------------------------------------------
+// Tile accessors
+// ---------------------------------------------------------------------------
+
+export function getTile(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+): Tile | null {
   if (x < 0 || y < 0 || x >= state.width || y >= state.height) return null;
   return state.grid[y][x];
 }
 
-export function isWalkable(state: BattlefieldState, x: number, y: number): boolean {
+export function isWalkable(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+): boolean {
   const tile = getTile(state, x, y);
   return tile !== null && tile.walkable && tile.buildingId === null;
 }
 
-// A* pathfinding — returns tile path from start to goal, or null if unreachable
-export function findPath(state: BattlefieldState, start: Vec2, goal: Vec2): Vec2[] | null {
-  const key = (v: Vec2) => `${v.x},${v.y}`;
-  const heuristic = (a: Vec2, b: Vec2) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+// ---------------------------------------------------------------------------
+// Tile mutation
+// ---------------------------------------------------------------------------
 
-  const open  = new Map<string, { pos: Vec2; g: number; f: number; parent: string | null }>();
+export function setWalkable(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+  walkable: boolean,
+): void {
+  const tile = getTile(state, x, y);
+  if (tile) tile.walkable = walkable;
+}
+
+export function setBuilding(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+  buildingId: string | null,
+): void {
+  const tile = getTile(state, x, y);
+  if (tile) tile.buildingId = buildingId;
+}
+
+export function setOwner(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+  owner: PlayerId | null,
+): void {
+  const tile = getTile(state, x, y);
+  if (tile) tile.owner = owner;
+}
+
+// ---------------------------------------------------------------------------
+// Neighbors
+// ---------------------------------------------------------------------------
+
+const CARDINAL_DIRS: Vec2[] = [
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 0, y: 1 },
+  { x: 0, y: -1 },
+];
+
+/** Returns the 4 cardinal neighbors that exist within grid bounds (regardless of walkability). */
+export function getNeighbors(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+): Tile[] {
+  const result: Tile[] = [];
+  for (const dir of CARDINAL_DIRS) {
+    const tile = getTile(state, x + dir.x, y + dir.y);
+    if (tile) result.push(tile);
+  }
+  return result;
+}
+
+/** Returns walkable cardinal neighbors. */
+export function getWalkableNeighbors(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+): Tile[] {
+  return getNeighbors(state, x, y).filter(
+    (t) => t.walkable && t.buildingId === null,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// A* pathfinding
+// ---------------------------------------------------------------------------
+
+interface AStarNode {
+  x: number;
+  y: number;
+  g: number; // Cost from start
+  f: number; // g + heuristic
+  parent: string | null; // Key of parent node
+}
+
+function nodeKey(x: number, y: number): string {
+  return `${x},${y}`;
+}
+
+function heuristic(ax: number, ay: number, bx: number, by: number): number {
+  // Manhattan distance — admissible for 4-directional grid
+  return Math.abs(ax - bx) + Math.abs(ay - by);
+}
+
+/**
+ * A* pathfinding on a 4-directional tile grid.
+ *
+ * @param state  - The battlefield state containing the tile grid.
+ * @param start  - Start position (tile coords, will be floored).
+ * @param goal   - Goal position (tile coords, will be floored).
+ * @returns Ordered array of tile coords from start to goal (inclusive),
+ *          or `null` if no path exists.
+ */
+export function findPath(
+  state: BattlefieldState,
+  start: Vec2,
+  goal: Vec2,
+): Vec2[] | null {
+  const sx = Math.floor(start.x);
+  const sy = Math.floor(start.y);
+  const gx = Math.floor(goal.x);
+  const gy = Math.floor(goal.y);
+
+  // Trivial case
+  if (sx === gx && sy === gy) return [{ x: sx, y: sy }];
+
+  // Goal must be in bounds
+  if (getTile(state, gx, gy) === null) return null;
+
+  const open = new Map<string, AStarNode>(); // keyed by "x,y"
   const closed = new Set<string>();
+  const all = new Map<string, AStarNode>(); // for reconstruction
 
-  const startKey = key(start);
-  open.set(startKey, { pos: start, g: 0, f: heuristic(start, goal), parent: null });
-
-  const DIRS: Vec2[] = [{ x:1,y:0 },{ x:-1,y:0 },{ x:0,y:1 },{ x:0,y:-1 }];
+  const startKey = nodeKey(sx, sy);
+  const startNode: AStarNode = {
+    x: sx,
+    y: sy,
+    g: 0,
+    f: heuristic(sx, sy, gx, gy),
+    parent: null,
+  };
+  open.set(startKey, startNode);
+  all.set(startKey, startNode);
 
   while (open.size > 0) {
-    // Pick node with lowest f
+    // Pop node with lowest f score
     let bestKey = "";
-    let bestF   = Infinity;
+    let bestF = Infinity;
     for (const [k, node] of open) {
-      if (node.f < bestF) { bestF = node.f; bestKey = k; }
+      if (node.f < bestF) {
+        bestF = node.f;
+        bestKey = k;
+      }
     }
 
     const current = open.get(bestKey)!;
     open.delete(bestKey);
     closed.add(bestKey);
 
-    if (current.pos.x === goal.x && current.pos.y === goal.y) {
-      // Reconstruct path
-      const path: Vec2[] = [];
-      let   ck: string | null = bestKey;
-      const all = new Map<string, typeof current>();
-      all.set(bestKey, current);
-      // Re-collect parents (stored in open remnants + we need to track them)
-      // Simple reconstruction using the closed map we build inline:
-      const parents = new Map<string, string | null>();
-      parents.set(bestKey, current.parent);
-      while (ck !== null) {
-        const [cx, cy] = ck.split(",").map(Number);
-        path.unshift({ x: cx, y: cy });
-        ck = parents.get(ck) ?? null;
-      }
-      return path;
+    if (current.x === gx && current.y === gy) {
+      return reconstructPath(all, bestKey);
     }
 
-    for (const dir of DIRS) {
-      const nx = current.pos.x + dir.x;
-      const ny = current.pos.y + dir.y;
-      const nk = key({ x: nx, y: ny });
+    for (const dir of CARDINAL_DIRS) {
+      const nx = current.x + dir.x;
+      const ny = current.y + dir.y;
+      const nk = nodeKey(nx, ny);
+
       if (closed.has(nk)) continue;
-      if (!isWalkable(state, nx, ny) && !(nx === goal.x && ny === goal.y)) continue;
+
+      // Allow goal tile even if blocked by a building (units can attack into it)
+      const goalTile = nx === gx && ny === gy;
+      if (!goalTile && !isWalkable(state, nx, ny)) continue;
+      if (!goalTile && getTile(state, nx, ny) === null) continue;
+      if (getTile(state, nx, ny) === null) continue;
 
       const g = current.g + 1;
       const existing = open.get(nk);
+
       if (!existing || g < existing.g) {
-        open.set(nk, { pos: { x: nx, y: ny }, g, f: g + heuristic({ x:nx,y:ny }, goal), parent: bestKey });
+        const node: AStarNode = {
+          x: nx,
+          y: ny,
+          g,
+          f: g + heuristic(nx, ny, gx, gy),
+          parent: bestKey,
+        };
+        open.set(nk, node);
+        all.set(nk, node);
       }
     }
   }
 
-  return null;
+  return null; // No path
+}
+
+function reconstructPath(all: Map<string, AStarNode>, goalKey: string): Vec2[] {
+  const path: Vec2[] = [];
+  let key: string | null = goalKey;
+  while (key !== null) {
+    const node: AStarNode = all.get(key)!;
+    path.unshift({ x: node.x, y: node.y });
+    key = node.parent;
+  }
+  return path;
 }
