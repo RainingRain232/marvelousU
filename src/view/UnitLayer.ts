@@ -36,7 +36,7 @@ export class UnitLayer {
   // ---------------------------------------------------------------------------
 
   init(vm: ViewManager, state: GameState): void {
-    this._vm    = vm;
+    this._vm = vm;
     this._state = state;
 
     // Enable depth sorting on the units layer
@@ -53,8 +53,9 @@ export class UnitLayer {
         this._addUnit(unitId);
       }),
       EventBus.on("unitDied", ({ unitId }) => {
-        // Linger briefly so the die animation can play, then remove
-        setTimeout(() => this._removeUnit(unitId), 1000);
+        // Linger so the DIE animation can fully play before the view is removed.
+        // 7 frames @ 8fps ≈ 875ms + 500ms safety margin = 1375ms → use 1500ms.
+        setTimeout(() => this._removeUnit(unitId), 1500);
       }),
     );
   }

@@ -1,6 +1,19 @@
-// Animated sprite per unit — uses AnimatedSprite when textures are available,
-// falls back to the colored-circle placeholder when AnimationManager is not
-// yet loaded or has no real sheet for this unit type.
+// AnimatedSprite per unit — wired to unit state machine.
+//
+// Animation state machine (mirrors sim FSM):
+//
+//   IDLE  → looping idle breath/stand cycle
+//   MOVE  → looping walk cycle (direction flipped via container.scale.x)
+//   ATTACK→ one-shot swing; onComplete → return visual to IDLE
+//   CAST  → one-shot channel; onComplete → return visual to IDLE
+//   DIE   → one-shot collapse; onComplete → freeze on last frame
+//
+// Sprite attachment is deferred: if AnimationManager is not yet loaded when
+// the UnitView is first constructed, `update()` will attach the sprite on the
+// first frame after loading is complete.
+//
+// Fallback: when AnimationManager has no textures for a unit type (placeholder
+// mode), a colored circle is shown instead.
 import { Container, Graphics, AnimatedSprite } from "pixi.js";
 import type { Unit } from "@sim/entities/Unit";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
@@ -20,13 +33,13 @@ const COLOR_EAST = 0xff4444;
 const RADIUS = TS * 0.3;
 const BORDER_ALPHA = 0.7;
 
-// Health bar
+// Health bar — positioned above the sprite / circle
 const BAR_W = TS * 0.7;
 const BAR_H = 4;
-const BAR_Y_OFF = -(RADIUS + 8);
+const BAR_Y = -(TS * 0.55); // above sprite top edge (sprite is 0.8 × TS tall, pivot at 0.75)
 const HP_BG = 0x330000;
 const HP_FILL = 0x44ff44;
-const HP_DANGER = 0xff4444;
+const HP_CRIT = 0xff4444;
 
 const ALPHA_ALIVE = 1.0;
 const ALPHA_DIE = 0.35;
@@ -38,49 +51,61 @@ const ALPHA_DIE = 0.35;
 export class UnitView {
   readonly container = new Container();
 
-  // Placeholder graphics (shown when no real spritesheet is loaded)
+  // Placeholder graphics (visible only when no sprite sheet is available)
   private _body = new Graphics();
   private _direction = new Graphics();
+
+  // HP bar (always visible)
   private _hpBg = new Graphics();
   private _hpFill = new Graphics();
 
-  // Animated sprite (shown when AnimationManager has textures)
+  // Animated sprite — null until AnimationManager is ready
   private _sprite: AnimatedSprite | null = null;
-  private _currentAnimState: UnitState | null = null;
+
+  /**
+   * The animation state the sprite is currently playing.
+   * Separate from `unit.state` so we can detect transitions.
+   */
+  private _playingState: UnitState = UnitState.IDLE;
 
   constructor(unit: Unit) {
     this._buildPlaceholder(unit);
+    this._buildHpBar();
     this._tryAttachSprite(unit);
     this.update(unit);
   }
 
-  /** Sync position, animation state, flip, alpha, and HP bar each frame. */
+  // ---------------------------------------------------------------------------
+  // Per-frame sync
+  // ---------------------------------------------------------------------------
+
+  /** Called every render frame by UnitLayer. */
   update(unit: Unit): void {
-    // World-space tile-centre position
+    // Position
     this.container.position.set(
       (unit.position.x + 0.5) * TS,
       (unit.position.y + 0.5) * TS,
     );
+    // Depth sort
     this.container.zIndex = unit.position.y;
+    // Facing direction — flip horizontally for west-facing units
     this.container.scale.x = unit.facingDirection === Direction.WEST ? -1 : 1;
+    // Death fade
     this.container.alpha =
       unit.state === UnitState.DIE ? ALPHA_DIE : ALPHA_ALIVE;
 
-    // Switch animation when state changes
+    // Lazy sprite attachment (AnimationManager may not have been ready at construction)
+    if (!this._sprite) {
+      this._tryAttachSprite(unit);
+    }
+
+    // Drive animation transitions
     if (this._sprite) {
       this._syncAnimation(unit);
     }
 
     // HP bar
-    const pct = Math.max(0, unit.hp / unit.maxHp);
-    const fillW = BAR_W * pct;
-    const hpColor = pct < 0.3 ? HP_DANGER : HP_FILL;
-    this._hpFill.clear();
-    if (fillW > 0) {
-      this._hpFill
-        .rect(-BAR_W / 2, BAR_Y_OFF, fillW, BAR_H)
-        .fill({ color: hpColor });
-    }
+    this._updateHpBar(unit);
   }
 
   destroy(): void {
@@ -98,22 +123,40 @@ export class UnitView {
       .fill({ color })
       .circle(0, 0, RADIUS)
       .stroke({ color: 0x000000, alpha: BORDER_ALPHA, width: 1.5 });
+    this.container.addChild(this._body);
 
+    // Small forward-pointing line (flipped by container.scale.x)
     this._direction
       .moveTo(RADIUS - 2, 0)
       .lineTo(RADIUS + 6, 0)
       .stroke({ color: 0xffffff, alpha: 0.8, width: 2 });
-
-    this._hpBg.rect(-BAR_W / 2, BAR_Y_OFF, BAR_W, BAR_H).fill({ color: HP_BG });
-
-    this.container.addChild(this._body);
     this.container.addChild(this._direction);
+  }
+
+  // ---------------------------------------------------------------------------
+  // HP bar
+  // ---------------------------------------------------------------------------
+
+  private _buildHpBar(): void {
+    this._hpBg.rect(-BAR_W / 2, BAR_Y, BAR_W, BAR_H).fill({ color: HP_BG });
     this.container.addChild(this._hpBg);
     this.container.addChild(this._hpFill);
   }
 
+  private _updateHpBar(unit: Unit): void {
+    const pct = Math.max(0, unit.hp / unit.maxHp);
+    const fillW = BAR_W * pct;
+    const hpColor = pct < 0.3 ? HP_CRIT : HP_FILL;
+    this._hpFill.clear();
+    if (fillW > 0) {
+      this._hpFill
+        .rect(-BAR_W / 2, BAR_Y, fillW, BAR_H)
+        .fill({ color: hpColor });
+    }
+  }
+
   // ---------------------------------------------------------------------------
-  // Animated sprite
+  // Sprite attachment (deferred until AnimationManager is ready)
   // ---------------------------------------------------------------------------
 
   private _tryAttachSprite(unit: Unit): void {
@@ -123,42 +166,66 @@ export class UnitView {
     if (textures.length === 0) return;
 
     const sprite = new AnimatedSprite(textures);
-    sprite.anchor.set(0.5, 0.75); // pivot at feet
+    // Pivot at feet for correct depth sorting
+    sprite.anchor.set(0.5, 0.75);
     sprite.width = TS * 0.8;
     sprite.height = TS * 0.8;
+
+    // Configure speed for IDLE
+    const idleSet = animationManager.getFrameSet(unit.type, UnitState.IDLE);
+    sprite.animationSpeed = idleSet.fps / 60;
+    sprite.loop = true;
     sprite.play();
 
-    // Hide placeholder graphics
+    // Hide placeholder graphics — sprite replaces them
     this._body.visible = false;
     this._direction.visible = false;
 
+    // Insert sprite below HP bar (addChildAt index 0)
     this.container.addChildAt(sprite, 0);
     this._sprite = sprite;
-    this._currentAnimState = UnitState.IDLE;
+    this._playingState = UnitState.IDLE;
   }
 
+  // ---------------------------------------------------------------------------
+  // Animation state machine
+  // ---------------------------------------------------------------------------
+
   private _syncAnimation(unit: Unit): void {
-    if (!this._sprite) return;
-    if (unit.state === this._currentAnimState) return;
+    const desiredState = unit.state;
+    if (desiredState === this._playingState) return;
+    this._playState(unit, desiredState);
+  }
 
-    const frameSet = animationManager.getFrameSet(unit.type, unit.state);
-    const textures = animationManager.getFrames(unit.type, unit.state);
+  private _playState(unit: Unit, state: UnitState): void {
+    const sprite = this._sprite!;
 
-    this._sprite.textures = textures;
-    this._sprite.animationSpeed = frameSet.fps / 60; // PixiJS uses 60fps base
-    this._sprite.loop = frameSet.loop;
+    const frameSet = animationManager.getFrameSet(unit.type, state);
+    const textures = animationManager.getFrames(unit.type, state);
 
-    if (!frameSet.loop) {
-      // One-shot: play then freeze on last frame
-      this._sprite.onComplete = () => {
-        if (this._sprite)
-          this._sprite.gotoAndStop(this._sprite.totalFrames - 1);
+    sprite.textures = textures;
+    sprite.animationSpeed = frameSet.fps / 60;
+    sprite.loop = frameSet.loop;
+    this._playingState = state;
+
+    // Wire completion callbacks for one-shot animations
+    sprite.onComplete = undefined;
+
+    if (state === UnitState.ATTACK || state === UnitState.CAST) {
+      sprite.onComplete = () => {
+        // Visually return to IDLE after swing/cast finishes.
+        // The sim may have already transitioned to IDLE or MOVE — we follow
+        // whatever the sim says in the next update() call, but set playingState
+        // to something that forces a re-check.
+        this._playingState = null as unknown as UnitState;
       };
-    } else {
-      this._sprite.onComplete = undefined;
+    } else if (state === UnitState.DIE) {
+      sprite.onComplete = () => {
+        // Freeze on last frame of die animation
+        sprite.gotoAndStop(sprite.totalFrames - 1);
+      };
     }
 
-    this._sprite.gotoAndPlay(0);
-    this._currentAnimState = unit.state;
+    sprite.gotoAndPlay(0);
   }
 }
