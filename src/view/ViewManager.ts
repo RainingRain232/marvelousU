@@ -94,14 +94,19 @@ export class ViewManager {
     // Hook the render loop
     this.app.ticker.add(this._onTick);
 
-    // Sync camera transform on resize
-    this.app.renderer.on("resize", this._syncCamera);
+    // Sync camera transform on resize and set initial screen size
+    this.app.renderer.on("resize", this._onResize);
+    this.camera.setScreenSize(this.app.screen.width, this.app.screen.height);
+
+    // Attach camera input to the canvas
+    this.camera.attach(this.app.canvas as HTMLCanvasElement);
   }
 
   /** Remove the canvas and all listeners. */
   destroy(): void {
     this.app.ticker.remove(this._onTick);
-    this.app.renderer.off("resize", this._syncCamera);
+    this.app.renderer.off("resize", this._onResize);
+    this.camera.detach();
     this.app.destroy(true, { children: true });
     this._updateCallbacks = [];
   }
@@ -117,6 +122,12 @@ export class ViewManager {
       this.camera.x * this.camera.zoom,
       this.camera.y * this.camera.zoom,
     );
+  };
+
+  /** Called on renderer resize — updates camera bounds then syncs transform. */
+  private _onResize = (w: number, h: number): void => {
+    this.camera.setScreenSize(w, h);
+    this._syncCamera();
   };
 
   // ---------------------------------------------------------------------------
@@ -146,9 +157,9 @@ export class ViewManager {
     for (const cb of this._updateCallbacks) cb(state, dt);
   }
 
-  // Internal ticker callback — wraps update with the Pixi ticker delta.
-  // GameState is wired externally via main.ts; this hook only syncs the camera.
-  private _onTick = (_ticker: { deltaTime: number; deltaMS: number }): void => {
+  // Internal ticker callback — drives keyboard pan and syncs camera transform.
+  private _onTick = (ticker: { deltaTime: number; deltaMS: number }): void => {
+    this.camera.update(ticker.deltaMS / 1000);
     this._syncCamera();
   };
 
