@@ -2,6 +2,7 @@ import { viewManager } from "@view/ViewManager";
 import { gridRenderer } from "@view/GridRenderer";
 import { buildingLayer } from "@view/BuildingLayer";
 import { unitLayer } from "@view/UnitLayer";
+import { hud } from "@view/ui/HUD";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
@@ -39,7 +40,11 @@ import { Direction } from "@/types";
   unitLayer.init(viewManager, state);
   viewManager.onUpdate((s) => unitLayer.update(s));
 
-  // 6. Render loop
+  // 6. HUD
+  hud.init(viewManager, state, { westPlayerId: "p1", eastPlayerId: "p2" });
+  viewManager.onUpdate((s) => hud.update(s));
+
+  // 7. Render loop
   viewManager.app.ticker.add((ticker) => {
     const dt = ticker.deltaMS / 1000;
     viewManager.update(state, dt);
