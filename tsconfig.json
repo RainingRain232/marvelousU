@@ -14,12 +14,25 @@
     "moduleDetection": "force",
     "noEmit": true,
 
-    /* Linting */
+    /* Strict */
     "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@sim/*": ["src/sim/*"],
+      "@view/*": ["src/view/*"],
+      "@input/*": ["src/input/*"],
+      "@audio/*": ["src/audio/*"],
+      "@net/*": ["src/net/*"],
+      "@/*": ["src/*"],
+    },
   },
-  "include": ["src"]
+  "include": ["src", "tests"],
 }
