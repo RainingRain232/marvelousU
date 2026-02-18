@@ -24,6 +24,8 @@ export const BalanceConfig = {
   // Combat
   BASE_HEALTH: 1000,
   DEFAULT_ATTACK_SPEED: 1.0, // attacks per second
+  AGGRO_RANGE: 6, // tiles — how far a unit scans for enemies
+  UNIT_DEATH_LINGER: 1.0, // seconds a dead unit stays before removal
 
   // Simulation
   SIM_TICK_MS: 1000 / 60, // ~16.67 ms fixed timestep

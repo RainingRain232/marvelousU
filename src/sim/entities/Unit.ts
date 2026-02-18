@@ -29,6 +29,7 @@ export interface Unit {
   // Timers (seconds)
   attackTimer: number; // Countdown to next attack; 0 = can attack
   castTimer: number; // Countdown remaining on current cast
+  deathTimer: number; // Countdown after entering DIE state before removal; 0 = remove
 
   // Abilities
   abilityIds: string[]; // References into GameState.abilities
@@ -114,6 +115,7 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     targetId: null,
     attackTimer: 0,
     castTimer: 0,
+    deathTimer: 0,
     abilityIds: [],
     path: null,
     pathIndex: 0,
