@@ -1,59 +1,78 @@
 // Shared type aliases and enums used across sim/ and view/
 
-export type PlayerId = string;
+// ---------------------------------------------------------------------------
+// Primitives
+// ---------------------------------------------------------------------------
 
+/** Integer or fractional tile coordinate pair. */
 export interface Vec2 {
   x: number;
   y: number;
 }
 
+/** Strict integer tile coordinate (x, y must be whole numbers). */
+export interface TileCoord {
+  x: number;
+  y: number;
+}
+
+/** Opaque string identifying a player. */
+export type PlayerId = string;
+
+/** Sentinel used for neutral / unowned entities. */
+export const NEUTRAL_PLAYER: PlayerId = "__neutral__";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
 export enum Direction {
-  WEST  = "west",
-  EAST  = "east",
+  WEST = "west",
+  EAST = "east",
   NORTH = "north",
   SOUTH = "south",
 }
 
 export enum UnitType {
-  SWORDSMAN   = "swordsman",
-  ARCHER      = "archer",
-  KNIGHT      = "knight",
-  MAGE        = "mage",
-  PIKEMAN     = "pikeman",
-  SUMMONED    = "summoned",
+  SWORDSMAN = "swordsman",
+  ARCHER = "archer",
+  KNIGHT = "knight",
+  MAGE = "mage",
+  PIKEMAN = "pikeman",
+  SUMMONED = "summoned",
 }
 
 export enum BuildingType {
-  CASTLE        = "castle",
-  BARRACKS      = "barracks",
-  STABLES       = "stables",
-  MAGE_TOWER    = "mage_tower",
+  CASTLE = "castle",
+  BARRACKS = "barracks",
+  STABLES = "stables",
+  MAGE_TOWER = "mage_tower",
   ARCHERY_RANGE = "archery_range",
 }
 
 export enum AbilityType {
-  FIREBALL        = "fireball",
+  FIREBALL = "fireball",
   CHAIN_LIGHTNING = "chain_lightning",
-  WARP            = "warp",
-  SUMMON          = "summon",
+  WARP = "warp",
+  SUMMON = "summon",
 }
 
 export enum UnitState {
-  IDLE   = "idle",
-  MOVE   = "move",
+  IDLE = "idle",
+  MOVE = "move",
   ATTACK = "attack",
-  CAST   = "cast",
-  DIE    = "die",
+  CAST = "cast",
+  DIE = "die",
 }
 
 export enum BuildingState {
-  GHOST     = "ghost",
-  ACTIVE    = "active",
+  GHOST = "ghost",
+  ACTIVE = "active",
   DESTROYED = "destroyed",
 }
 
 export enum GamePhase {
-  PREP   = "prep",
+  PREP = "prep",
   BATTLE = "battle",
   RESULT = "result",
 }
