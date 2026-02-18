@@ -32,6 +32,12 @@ export interface Unit {
 
   // Abilities
   abilityIds: string[]; // References into GameState.abilities
+
+  // Movement (populated by MovementSystem)
+  path: Vec2[] | null; // Remaining waypoints (tile coords), index 0 is next target
+  pathIndex: number; // Current index into path
+  groupId: string | null; // Non-null when unit belongs to a spawn group
+  formationOffset: Vec2; // Perpendicular offset applied on top of the shared group path
 }
 
 // ---------------------------------------------------------------------------
@@ -109,5 +115,9 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     attackTimer: 0,
     castTimer: 0,
     abilityIds: [],
+    path: null,
+    pathIndex: 0,
+    groupId: null,
+    formationOffset: { x: 0, y: 0 },
   };
 }
