@@ -1,35 +1,23 @@
-import { Application, Assets, Sprite } from "pixi.js";
+import { viewManager } from "@view/ViewManager";
+import { createGameState } from "@sim/state/GameState";
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
 
 (async () => {
-  // Create a new application
-  const app = new Application();
+  const mountPoint = document.getElementById("pixi-container");
+  if (!mountPoint) throw new Error("Missing #pixi-container in HTML");
 
-  // Initialize the application
-  await app.init({ background: "#1099bb", resizeTo: window });
+  // 1. Create simulation state
+  const state = createGameState();
 
-  // Append the application canvas to the document body
-  document.getElementById("pixi-container")!.appendChild(app.canvas);
+  // 2. Boot the renderer
+  await viewManager.init(mountPoint);
 
-  // Load the bunny texture
-  const texture = await Assets.load("/assets/bunny.png");
-
-  // Create a bunny Sprite
-  const bunny = new Sprite(texture);
-
-  // Center the sprite's anchor point
-  bunny.anchor.set(0.5);
-
-  // Move the sprite to the center of the screen
-  bunny.position.set(app.screen.width / 2, app.screen.height / 2);
-
-  // Add the bunny to the stage
-  app.stage.addChild(bunny);
-
-  // Listen for animate update
-  app.ticker.add((time) => {
-    // Just for fun, let's rotate mr rabbit a little.
-    // * Delta is 1 if running at 100% performance *
-    // * Creates frame-independent transformation *
-    bunny.rotation += 0.1 * time.deltaTime;
+  // 3. Wire the render loop: drive viewManager.update every Pixi tick
+  viewManager.app.ticker.add((ticker) => {
+    const dt = ticker.deltaMS / 1000;
+    viewManager.update(state, dt);
   });
 })();

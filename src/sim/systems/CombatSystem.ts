@@ -62,7 +62,7 @@ export const CombatSystem = {
         }
 
         if (unit.attackTimer <= 0) {
-          applyDamage(state, unit, target, dt);
+          applyDamage(unit, target);
         }
       } else {
         // --- Out of range: ensure unit is moving toward target ---
@@ -145,12 +145,7 @@ function resolveTarget(state: GameState, unit: Unit): Unit | null {
 // Damage application
 // ---------------------------------------------------------------------------
 
-function applyDamage(
-  state: GameState,
-  attacker: Unit,
-  target: Unit,
-  _dt: number,
-): void {
+function applyDamage(attacker: Unit, target: Unit): void {
   const def = UNIT_DEFINITIONS[attacker.type];
   const attackInterval = 1 / def.attackSpeed;
 
@@ -168,7 +163,7 @@ function applyDamage(
   // Handle death
   if (target.hp <= 0) {
     target.hp = 0;
-    killUnit(state, target, attacker.id);
+    killUnit(target, attacker.id);
   }
 }
 
@@ -176,11 +171,7 @@ function applyDamage(
 // Kill resolution
 // ---------------------------------------------------------------------------
 
-export function killUnit(
-  state: GameState,
-  unit: Unit,
-  killerUnitId?: string,
-): void {
+export function killUnit(unit: Unit, killerUnitId?: string): void {
   if (unit.state === UnitState.DIE) return; // already dying
 
   const prev = unit.state;

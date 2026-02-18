@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { MovementSystem, startMoving, startGroupMoving } from "@sim/systems/MovementSystem";
+import {
+  MovementSystem,
+  startMoving,
+  startGroupMoving,
+} from "@sim/systems/MovementSystem";
 import { createGameState } from "@sim/state/GameState";
 import { createUnit, _resetUnitIdCounter } from "@sim/entities/Unit";
 import { initBases } from "@sim/systems/BaseSetup";
@@ -21,12 +25,15 @@ function makeState(): GameState {
   return state;
 }
 
-function addMovingUnit(state: GameState, opts: {
-  owner?: string;
-  position?: { x: number; y: number };
-  type?: UnitType;
-  id?: string;
-}): Unit {
+function addMovingUnit(
+  state: GameState,
+  opts: {
+    owner?: string;
+    position?: { x: number; y: number };
+    type?: UnitType;
+    id?: string;
+  },
+): Unit {
   const unit = createUnit({
     id: opts.id,
     type: opts.type ?? UnitType.SWORDSMAN,
@@ -52,7 +59,11 @@ beforeEach(() => {
 describe("startMoving", () => {
   it("transitions unit from IDLE to MOVE", () => {
     const state = makeState();
-    const unit = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const unit = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(unit.id, unit);
     startMoving(state, unit);
     expect(unit.state).toBe(UnitState.MOVE);
@@ -60,18 +71,29 @@ describe("startMoving", () => {
 
   it("emits unitStateChanged event", () => {
     const state = makeState();
-    const unit = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const unit = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(unit.id, unit);
     const events: unknown[] = [];
     EventBus.on("unitStateChanged", (e) => events.push(e));
     startMoving(state, unit);
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ from: UnitState.IDLE, to: UnitState.MOVE });
+    expect(events[0]).toMatchObject({
+      from: UnitState.IDLE,
+      to: UnitState.MOVE,
+    });
   });
 
   it("computes a path immediately when goal is provided", () => {
     const state = makeState();
-    const unit = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const unit = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(unit.id, unit);
     startMoving(state, unit, { x: 8, y: 10 });
     expect(unit.path).not.toBeNull();
@@ -80,7 +102,11 @@ describe("startMoving", () => {
 
   it("leaves path null when no goal is provided (deferred to MovementSystem)", () => {
     const state = makeState();
-    const unit = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const unit = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(unit.id, unit);
     startMoving(state, unit);
     expect(unit.path).toBeNull();
@@ -112,7 +138,12 @@ describe("MovementSystem — basic movement A→B", () => {
     const state = makeState();
     // speed = 2 tiles/s. distance = 3 tiles → should arrive in 1.5 s
     const unit = addMovingUnit(state, { position: { x: 5, y: 10 } });
-    unit.path = [{ x: 5, y: 10 }, { x: 6, y: 10 }, { x: 7, y: 10 }, { x: 8, y: 10 }];
+    unit.path = [
+      { x: 5, y: 10 },
+      { x: 6, y: 10 },
+      { x: 7, y: 10 },
+      { x: 8, y: 10 },
+    ];
     unit.pathIndex = 0;
 
     // Run 2 seconds of ticks
@@ -125,7 +156,10 @@ describe("MovementSystem — basic movement A→B", () => {
   it("unit transitions to IDLE when path is exhausted", () => {
     const state = makeState();
     const unit = addMovingUnit(state, { position: { x: 5, y: 10 } });
-    unit.path = [{ x: 5, y: 10 }, { x: 6, y: 10 }];
+    unit.path = [
+      { x: 5, y: 10 },
+      { x: 6, y: 10 },
+    ];
     unit.pathIndex = 0;
 
     for (let i = 0; i < 120; i++) MovementSystem.update(state, 1 / 60);
@@ -136,7 +170,10 @@ describe("MovementSystem — basic movement A→B", () => {
   it("emits unitStateChanged → IDLE when path is exhausted", () => {
     const state = makeState();
     const unit = addMovingUnit(state, { position: { x: 5, y: 10 } });
-    unit.path = [{ x: 5, y: 10 }, { x: 6, y: 10 }];
+    unit.path = [
+      { x: 5, y: 10 },
+      { x: 6, y: 10 },
+    ];
     unit.pathIndex = 0;
 
     const events: unknown[] = [];
@@ -150,7 +187,10 @@ describe("MovementSystem — basic movement A→B", () => {
     const state = makeState();
     const unit = addMovingUnit(state, { position: { x: 0, y: 10 } });
     // speed = 2 tiles/s
-    unit.path = [{ x: 0, y: 10 }, { x: 10, y: 10 }];
+    unit.path = [
+      { x: 0, y: 10 },
+      { x: 10, y: 10 },
+    ];
     unit.pathIndex = 0;
 
     MovementSystem.update(state, 1); // 1 second → should move 2 tiles
@@ -160,7 +200,10 @@ describe("MovementSystem — basic movement A→B", () => {
   it("clears path after exhaustion", () => {
     const state = makeState();
     const unit = addMovingUnit(state, { position: { x: 5, y: 10 } });
-    unit.path = [{ x: 5, y: 10 }, { x: 6, y: 10 }];
+    unit.path = [
+      { x: 5, y: 10 },
+      { x: 6, y: 10 },
+    ];
     unit.pathIndex = 0;
 
     for (let i = 0; i < 120; i++) MovementSystem.update(state, 1 / 60);
@@ -175,7 +218,10 @@ describe("MovementSystem — basic movement A→B", () => {
 describe("MovementSystem — default goal (opposite base)", () => {
   it("west-player unit moves eastward by default", () => {
     const state = makeState();
-    const unit = addMovingUnit(state, { owner: "p1", position: { x: 5, y: 10 } });
+    const unit = addMovingUnit(state, {
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     // No path set — MovementSystem must compute one toward east base
 
     const startX = unit.position.x;
@@ -186,7 +232,10 @@ describe("MovementSystem — default goal (opposite base)", () => {
 
   it("east-player unit moves westward by default", () => {
     const state = makeState();
-    const unit = addMovingUnit(state, { owner: "p2", position: { x: 24, y: 10 } });
+    const unit = addMovingUnit(state, {
+      owner: "p2",
+      position: { x: 24, y: 10 },
+    });
 
     const startX = unit.position.x;
     for (let i = 0; i < 60; i++) MovementSystem.update(state, 1 / 60);
@@ -196,14 +245,20 @@ describe("MovementSystem — default goal (opposite base)", () => {
 
   it("west unit has EAST facing direction while moving east", () => {
     const state = makeState();
-    const unit = addMovingUnit(state, { owner: "p1", position: { x: 5, y: 10 } });
+    const unit = addMovingUnit(state, {
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     for (let i = 0; i < 60; i++) MovementSystem.update(state, 1 / 60);
     expect(unit.facingDirection).toBe(Direction.EAST);
   });
 
   it("east unit has WEST facing direction while moving west", () => {
     const state = makeState();
-    const unit = addMovingUnit(state, { owner: "p2", position: { x: 24, y: 10 } });
+    const unit = addMovingUnit(state, {
+      owner: "p2",
+      position: { x: 24, y: 10 },
+    });
     for (let i = 0; i < 60; i++) MovementSystem.update(state, 1 / 60);
     expect(unit.facingDirection).toBe(Direction.WEST);
   });
@@ -216,7 +271,11 @@ describe("MovementSystem — default goal (opposite base)", () => {
 describe("MovementSystem — ignores non-MOVE units", () => {
   it("IDLE unit does not move", () => {
     const state = makeState();
-    const unit = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const unit = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     // stays IDLE (default)
     state.units.set(unit.id, unit);
     MovementSystem.update(state, 1);
@@ -225,7 +284,11 @@ describe("MovementSystem — ignores non-MOVE units", () => {
 
   it("DIE state unit does not move", () => {
     const state = makeState();
-    const unit = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const unit = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     unit.stateMachine.forceState(UnitState.DIE);
     unit.state = UnitState.DIE;
     state.units.set(unit.id, unit);
@@ -241,9 +304,21 @@ describe("MovementSystem — ignores non-MOVE units", () => {
 describe("startGroupMoving", () => {
   it("puts all units into MOVE state", () => {
     const state = makeState();
-    const u1 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
-    const u2 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
-    const u3 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const u1 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
+    const u2 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
+    const u3 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(u1.id, u1);
     state.units.set(u2.id, u2);
     state.units.set(u3.id, u3);
@@ -257,8 +332,16 @@ describe("startGroupMoving", () => {
 
   it("assigns the same groupId to all units", () => {
     const state = makeState();
-    const u1 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
-    const u2 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const u1 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
+    const u2 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(u1.id, u1);
     state.units.set(u2.id, u2);
 
@@ -270,8 +353,16 @@ describe("startGroupMoving", () => {
 
   it("units share the same path array contents", () => {
     const state = makeState();
-    const u1 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
-    const u2 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const u1 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
+    const u2 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(u1.id, u1);
     state.units.set(u2.id, u2);
 
@@ -280,13 +371,23 @@ describe("startGroupMoving", () => {
     // Both should have a path to the same goal
     expect(u1.path).not.toBeNull();
     expect(u2.path).not.toBeNull();
-    expect(u1.path!.at(-1)).toEqual(u2.path!.at(-1));
+    expect(u1.path![u1.path!.length - 1]).toEqual(
+      u2.path![u2.path!.length - 1],
+    );
   });
 
   it("first unit (slot 0) gets zero formation offset", () => {
     const state = makeState();
-    const u1 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
-    const u2 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const u1 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
+    const u2 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(u1.id, u1);
     state.units.set(u2.id, u2);
 
@@ -297,8 +398,16 @@ describe("startGroupMoving", () => {
 
   it("subsequent units get non-zero formation offsets", () => {
     const state = makeState();
-    const u1 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
-    const u2 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const u1 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
+    const u2 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(u1.id, u1);
     state.units.set(u2.id, u2);
 
@@ -311,8 +420,16 @@ describe("startGroupMoving", () => {
 
   it("emits unitStateChanged for each unit", () => {
     const state = makeState();
-    const u1 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
-    const u2 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const u1 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
+    const u2 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(u1.id, u1);
     state.units.set(u2.id, u2);
 
@@ -328,8 +445,16 @@ describe("startGroupMoving", () => {
 describe("MovementSystem — group movement ticking", () => {
   it("all group units advance toward goal", () => {
     const state = makeState();
-    const u1 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
-    const u2 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const u1 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
+    const u2 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(u1.id, u1);
     state.units.set(u2.id, u2);
 
@@ -347,8 +472,16 @@ describe("MovementSystem — group movement ticking", () => {
   it("group units maintain perpendicular separation while moving", () => {
     const state = makeState();
     // Moving east → perpendicular is Y axis
-    const u1 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
-    const u2 = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: { x: 5, y: 10 } });
+    const u1 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
+    const u2 = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: { x: 5, y: 10 },
+    });
     state.units.set(u1.id, u1);
     state.units.set(u2.id, u2);
 
@@ -371,9 +504,15 @@ describe("MovementSystem — multiple independent units", () => {
     const u1 = addMovingUnit(state, { id: "u1", position: { x: 5, y: 5 } });
     const u2 = addMovingUnit(state, { id: "u2", position: { x: 5, y: 15 } });
 
-    u1.path = [{ x: 5, y: 5 }, { x: 10, y: 5 }];
+    u1.path = [
+      { x: 5, y: 5 },
+      { x: 10, y: 5 },
+    ];
     u1.pathIndex = 0;
-    u2.path = [{ x: 5, y: 15 }, { x: 10, y: 15 }];
+    u2.path = [
+      { x: 5, y: 15 },
+      { x: 10, y: 15 },
+    ];
     u2.pathIndex = 0;
 
     MovementSystem.update(state, 1);

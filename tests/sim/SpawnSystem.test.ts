@@ -4,9 +4,8 @@ import { createGameState } from "@sim/state/GameState";
 import { createBuilding } from "@sim/entities/Building";
 import { _resetUnitIdCounter } from "@sim/entities/Unit";
 import { EventBus } from "@sim/core/EventBus";
-import { BuildingType, Direction, UnitType } from "@/types";
+import { BuildingType, UnitType } from "@/types";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
-import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,7 +47,9 @@ describe("addToQueue", () => {
     const state = makeState();
     addToQueue(state, "b-1", UnitType.SWORDSMAN);
     const entry = state.buildings.get("b-1")!.spawnQueue.entries[0];
-    expect(entry.remainingTime).toBe(UNIT_DEFINITIONS[UnitType.SWORDSMAN].spawnTime);
+    expect(entry.remainingTime).toBe(
+      UNIT_DEFINITIONS[UnitType.SWORDSMAN].spawnTime,
+    );
   });
 
   it("records the correct unitType", () => {
@@ -111,24 +112,28 @@ describe("SpawnSystem.update — timer ticking", () => {
   it("only ticks the front entry (sequential training)", () => {
     const state = makeState();
     addToQueue(state, "b-1", UnitType.SWORDSMAN); // 3s
-    addToQueue(state, "b-1", UnitType.ARCHER);    // 4s
+    addToQueue(state, "b-1", UnitType.ARCHER); // 4s
     SpawnSystem.update(state, 1);
     const entries = state.buildings.get("b-1")!.spawnQueue.entries;
     // Front decremented, second untouched
     expect(entries[0].remainingTime).toBeCloseTo(2);
-    expect(entries[1].remainingTime).toBe(UNIT_DEFINITIONS[UnitType.ARCHER].spawnTime);
+    expect(entries[1].remainingTime).toBe(
+      UNIT_DEFINITIONS[UnitType.ARCHER].spawnTime,
+    );
   });
 
   it("advances to the next entry after front completes", () => {
     const state = makeState();
     addToQueue(state, "b-1", UnitType.SWORDSMAN); // 3s
-    addToQueue(state, "b-1", UnitType.ARCHER);    // 4s
+    addToQueue(state, "b-1", UnitType.ARCHER); // 4s
     // Complete first entry
     SpawnSystem.update(state, 3);
     const entries = state.buildings.get("b-1")!.spawnQueue.entries;
     expect(entries).toHaveLength(1);
     expect(entries[0].unitType).toBe(UnitType.ARCHER);
-    expect(entries[0].remainingTime).toBe(UNIT_DEFINITIONS[UnitType.ARCHER].spawnTime);
+    expect(entries[0].remainingTime).toBe(
+      UNIT_DEFINITIONS[UnitType.ARCHER].spawnTime,
+    );
   });
 
   it("does nothing when queue is empty", () => {
@@ -210,7 +215,9 @@ describe("SpawnSystem.update — group threshold", () => {
     SpawnSystem.update(state, 4);
     SpawnSystem.update(state, 5);
     const types = [...state.units.values()].map((u) => u.type).sort();
-    expect(types).toEqual([UnitType.ARCHER, UnitType.KNIGHT, UnitType.SWORDSMAN].sort());
+    expect(types).toEqual(
+      [UnitType.ARCHER, UnitType.KNIGHT, UnitType.SWORDSMAN].sort(),
+    );
   });
 
   it("deploys with a custom groupThreshold", () => {
@@ -336,17 +343,31 @@ describe("SpawnSystem.update — events", () => {
 describe("SpawnSystem.update — multiple buildings", () => {
   it("ticks queues for all buildings independently", () => {
     const state = createGameState();
-    const b1 = createBuilding({ id: "b-1", type: BuildingType.BARRACKS, owner: "p1", position: { x: 3, y: 3 } });
-    const b2 = createBuilding({ id: "b-2", type: BuildingType.BARRACKS, owner: "p2", position: { x: 20, y: 3 } });
+    const b1 = createBuilding({
+      id: "b-1",
+      type: BuildingType.BARRACKS,
+      owner: "p1",
+      position: { x: 3, y: 3 },
+    });
+    const b2 = createBuilding({
+      id: "b-2",
+      type: BuildingType.BARRACKS,
+      owner: "p2",
+      position: { x: 20, y: 3 },
+    });
     state.buildings.set(b1.id, b1);
     state.buildings.set(b2.id, b2);
 
     addToQueue(state, "b-1", UnitType.SWORDSMAN); // 3s
-    addToQueue(state, "b-2", UnitType.ARCHER);    // 4s
+    addToQueue(state, "b-2", UnitType.ARCHER); // 4s
 
     SpawnSystem.update(state, 1);
 
-    expect(state.buildings.get("b-1")!.spawnQueue.entries[0].remainingTime).toBeCloseTo(2);
-    expect(state.buildings.get("b-2")!.spawnQueue.entries[0].remainingTime).toBeCloseTo(3);
+    expect(
+      state.buildings.get("b-1")!.spawnQueue.entries[0].remainingTime,
+    ).toBeCloseTo(2);
+    expect(
+      state.buildings.get("b-2")!.spawnQueue.entries[0].remainingTime,
+    ).toBeCloseTo(3);
   });
 });

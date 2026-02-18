@@ -3,7 +3,7 @@ import { CombatSystem, killUnit } from "@sim/systems/CombatSystem";
 import { createGameState } from "@sim/state/GameState";
 import { createUnit, _resetUnitIdCounter } from "@sim/entities/Unit";
 import { EventBus } from "@sim/core/EventBus";
-import { Direction, UnitState, UnitType } from "@/types";
+import { UnitState, UnitType } from "@/types";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import type { Unit } from "@sim/entities/Unit";
@@ -328,7 +328,7 @@ describe("CombatSystem — damage resolution", () => {
 
   it("deals damage again after cooldown expires", () => {
     const state = makeState();
-    const u1 = addUnit(state, {
+    addUnit(state, {
       id: "u1",
       owner: "p1",
       position: { x: 10, y: 10 },
@@ -426,7 +426,7 @@ describe("CombatSystem — unit death (two units fight, one dies)", () => {
       owner: "p1",
       position: { x: 10, y: 10 },
     });
-    const u2 = addUnit(state, {
+    addUnit(state, {
       id: "u2",
       owner: "p2",
       position: { x: 11, y: 10 },
@@ -468,7 +468,7 @@ describe("CombatSystem — unit death (two units fight, one dies)", () => {
   it("combat ends when one unit dies — winner stops attacking", () => {
     const state = makeState();
     addUnit(state, { id: "u1", owner: "p1", position: { x: 10, y: 10 } });
-    const u2 = addUnit(state, {
+    addUnit(state, {
       id: "u2",
       owner: "p2",
       position: { x: 11, y: 10 },
@@ -507,14 +507,14 @@ describe("killUnit", () => {
   it("forces unit into DIE state", () => {
     const state = makeState();
     const u = addUnit(state, { id: "u1", owner: "p1" });
-    killUnit(state, u);
+    killUnit(u);
     expect(u.state).toBe(UnitState.DIE);
   });
 
   it("sets deathTimer to UNIT_DEATH_LINGER", () => {
     const state = makeState();
     const u = addUnit(state, { id: "u1", owner: "p1" });
-    killUnit(state, u);
+    killUnit(u);
     expect(u.deathTimer).toBe(BalanceConfig.UNIT_DEATH_LINGER);
   });
 
@@ -523,7 +523,7 @@ describe("killUnit", () => {
     const u = addUnit(state, { id: "u1", owner: "p1" });
     const died: unknown[] = [];
     EventBus.on("unitDied", (e) => died.push(e));
-    killUnit(state, u, "killer-99");
+    killUnit(u, "killer-99");
     expect(died[0]).toMatchObject({ unitId: u.id, killerUnitId: "killer-99" });
   });
 
@@ -532,15 +532,15 @@ describe("killUnit", () => {
     const u = addUnit(state, { id: "u1", owner: "p1" });
     const died: unknown[] = [];
     EventBus.on("unitDied", (e) => died.push(e));
-    killUnit(state, u);
+    killUnit(u);
     expect(died[0]).toMatchObject({ unitId: u.id });
   });
 
   it("is idempotent — calling twice on DIE unit is safe", () => {
     const state = makeState();
     const u = addUnit(state, { id: "u1", owner: "p1" });
-    killUnit(state, u);
-    expect(() => killUnit(state, u)).not.toThrow();
+    killUnit(u);
+    expect(() => killUnit(u)).not.toThrow();
     expect(u.state).toBe(UnitState.DIE);
   });
 
@@ -549,7 +549,7 @@ describe("killUnit", () => {
     const u = addUnit(state, { id: "u1", owner: "p1" });
     u.targetId = "some-target";
     u.path = [{ x: 1, y: 1 }];
-    killUnit(state, u);
+    killUnit(u);
     expect(u.targetId).toBeNull();
     expect(u.path).toBeNull();
   });
