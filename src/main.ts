@@ -1,6 +1,7 @@
 import { viewManager } from "@view/ViewManager";
 import { gridRenderer } from "@view/GridRenderer";
 import { buildingLayer } from "@view/BuildingLayer";
+import { unitLayer } from "@view/UnitLayer";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
@@ -34,7 +35,11 @@ import { Direction } from "@/types";
   buildingLayer.init(viewManager, state);
   viewManager.onUpdate((s) => buildingLayer.update(s));
 
-  // 5. Render loop
+  // 5. Unit views
+  unitLayer.init(viewManager, state);
+  viewManager.onUpdate((s) => unitLayer.update(s));
+
+  // 6. Render loop
   viewManager.app.ticker.add((ticker) => {
     const dt = ticker.deltaMS / 1000;
     viewManager.update(state, dt);
