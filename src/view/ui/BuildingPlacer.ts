@@ -151,6 +151,10 @@ export class BuildingPlacer {
     window.addEventListener("keydown", this._onKeyDown);
   }
 
+  setPlayerId(playerId: PlayerId): void {
+    this._localPlayerId = playerId;
+  }
+
   destroy(): void {
     const canvas = this._vm.app.canvas as HTMLCanvasElement;
     canvas.removeEventListener("pointermove", this._onMouseMove);

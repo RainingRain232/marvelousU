@@ -96,6 +96,10 @@ export class InputManager {
     this._mode = mode;
   }
 
+  setPlayerId(playerId: PlayerId): void {
+    selectionMode.setPlayerId(playerId);
+  }
+
   // ---------------------------------------------------------------------------
   // Private: pointer events
   // ---------------------------------------------------------------------------

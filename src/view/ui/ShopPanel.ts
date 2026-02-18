@@ -135,6 +135,11 @@ export class ShopPanel {
     vm.addToLayer("ui", this.container);
   }
 
+  setPlayerId(playerId: string): void {
+    this._localPlayerId = playerId;
+    this.close();
+  }
+
   destroy(): void {
     this.container.destroy({ children: true });
   }

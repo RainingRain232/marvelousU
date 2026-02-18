@@ -39,6 +39,10 @@ export class SelectionMode {
     this._localPlayerId = localPlayerId;
   }
 
+  setPlayerId(playerId: PlayerId): void {
+    this._localPlayerId = playerId;
+  }
+
   // ---------------------------------------------------------------------------
   // Public: called by InputManager on left-click (non-drag)
   // ---------------------------------------------------------------------------

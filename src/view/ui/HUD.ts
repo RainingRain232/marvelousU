@@ -3,7 +3,8 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { EventBus } from "@sim/core/EventBus";
 import type { GameState } from "@sim/state/GameState";
 import type { ViewManager } from "@view/ViewManager";
-import type { GamePhase, PlayerId } from "@/types";
+import { GamePhase } from "@/types";
+import type { PlayerId } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Layout constants (all in screen pixels, anchored to top-left / top-right)
@@ -45,6 +46,15 @@ const PHASE_LABELS: Record<string, string> = {
   battle: "BATTLE",
   resolve: "RESOLVE",
 };
+
+// Button style shared by AI toggle and START BATTLE
+const STYLE_BTN = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 12,
+  fill: 0xffffff,
+  fontWeight: "bold",
+  letterSpacing: 1,
+});
 
 // ---------------------------------------------------------------------------
 // Small helper: builds a rounded-rect panel with border
@@ -91,11 +101,25 @@ export class HUD {
   private _phasePanel!: Graphics;
   private _phaseText!: Text;
 
+  // AI toggle button (below east panel)
+  private _aiToggleBtn!: Container;
+  private _aiToggleBg!: Graphics;
+  private _aiToggleLabel!: Text;
+  private _p2IsAI = true;
+
+  // START BATTLE button (below phase panel, visible only during PREP)
+  private _startBattleBtn!: Container;
+  private _currentPhase: GamePhase = GamePhase.PREP;
+
   private _westPlayerId: PlayerId = "";
   private _eastPlayerId: PlayerId = "";
   private _screenW = 800;
 
   private _unsubscribers: Array<() => void> = [];
+
+  // Callbacks set by main.ts
+  onAIToggle: ((isAI: boolean) => void) | null = null;
+  onStartBattle: (() => void) | null = null;
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -113,6 +137,8 @@ export class HUD {
     this._buildWestPanel();
     this._buildEastPanel();
     this._buildPhasePanel();
+    this._buildAIToggleBtn();
+    this._buildStartBattleBtn();
 
     vm.addToLayer("ui", this.container);
 
@@ -134,6 +160,8 @@ export class HUD {
       this._screenW = vm.screenWidth;
       this._repositionEastPanel();
       this._repositionPhasePanel();
+      this._repositionAIToggle();
+      this._repositionStartBattleBtn();
     };
     vm.app.renderer.on("resize", onResize);
     this._unsubscribers.push(() => vm.app.renderer.off("resize", onResize));
@@ -259,7 +287,11 @@ export class HUD {
   }
 
   private _setPhase(phase: GamePhase): void {
+    this._currentPhase = phase;
     this._phaseText.text = PHASE_LABELS[phase] ?? phase.toUpperCase();
+    if (this._startBattleBtn) {
+      this._startBattleBtn.visible = phase === GamePhase.PREP;
+    }
   }
 
   private _countUnits(state: GameState, playerId: PlayerId): number {
@@ -268,6 +300,115 @@ export class HUD {
       if (unit.owner === playerId) count++;
     }
     return count;
+  }
+
+  // ---------------------------------------------------------------------------
+  // AI toggle button — sits below the east (p2) panel
+  // ---------------------------------------------------------------------------
+
+  private _buildAIToggleBtn(): void {
+    const W = PANEL_W;
+    const H = 28;
+    const btn = new Container();
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const bg = new Graphics();
+    btn.addChild(bg);
+
+    const label = new Text({ text: "", style: STYLE_BTN });
+    label.anchor.set(0.5, 0.5);
+    label.position.set(W / 2, H / 2);
+    btn.addChild(label);
+
+    this._aiToggleBg = bg;
+    this._aiToggleLabel = label;
+    this._aiToggleBtn = btn;
+    this.container.addChild(btn);
+
+    this._refreshAIToggle();
+
+    btn.on("pointerdown", () => {
+      this._p2IsAI = !this._p2IsAI;
+      this._refreshAIToggle();
+      this.onAIToggle?.(this._p2IsAI);
+    });
+
+    // Position is set in _repositionEastPanel (called on init + resize)
+    this._repositionAIToggle();
+  }
+
+  private _refreshAIToggle(): void {
+    const W = PANEL_W;
+    const H = 28;
+    const active = this._p2IsAI;
+    this._aiToggleBg.clear();
+    this._aiToggleBg
+      .roundRect(0, 0, W, H, 4)
+      .fill({ color: active ? 0x1a3a1a : 0x2a1a1a })
+      .roundRect(0, 0, W, H, 4)
+      .stroke({ color: active ? 0x44aa66 : 0xaa4444, width: 1.5 });
+    this._aiToggleLabel.text = active
+      ? "P2: AI  [click to disable]"
+      : "P2: HUMAN  [click to enable AI]";
+    this._aiToggleLabel.style.fill = active ? 0x88ffaa : 0xff8888;
+  }
+
+  private _repositionAIToggle(): void {
+    if (!this._aiToggleBtn) return;
+    this._aiToggleBtn.position.set(
+      this._screenW - PANEL_W - PAD,
+      PAD + PANEL_H + 6,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // START BATTLE button — sits below the phase panel, PREP only
+  // ---------------------------------------------------------------------------
+
+  private _buildStartBattleBtn(): void {
+    const W = 140;
+    const H = 28;
+    const btn = new Container();
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const bg = new Graphics()
+      .roundRect(0, 0, W, H, 4)
+      .fill({ color: 0x1a2a3a })
+      .roundRect(0, 0, W, H, 4)
+      .stroke({ color: 0x4488cc, width: 1.5 });
+    btn.addChild(bg);
+
+    const label = new Text({ text: "START BATTLE", style: STYLE_BTN });
+    label.style.fill = 0x88ccff;
+    label.anchor.set(0.5, 0.5);
+    label.position.set(W / 2, H / 2);
+    btn.addChild(label);
+
+    btn.on("pointerover", () => {
+      bg.tint = 0xaaddff;
+    });
+    btn.on("pointerout", () => {
+      bg.tint = 0xffffff;
+    });
+    btn.on("pointerdown", () => {
+      this.onStartBattle?.();
+    });
+
+    this._startBattleBtn = btn;
+    this._startBattleBtn.visible = this._currentPhase === GamePhase.PREP;
+    this.container.addChild(btn);
+    this._repositionStartBattleBtn();
+  }
+
+  private _repositionStartBattleBtn(): void {
+    if (!this._startBattleBtn) return;
+    const W = 140;
+    this._startBattleBtn.position.set(
+      Math.floor((this._screenW - W) / 2),
+      PAD + 36 + 6,
+    );
   }
 }
 
