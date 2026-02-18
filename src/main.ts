@@ -45,7 +45,7 @@ import { Direction } from "@/types";
 
   // 5. Building & base views
   buildingLayer.init(viewManager, state);
-  viewManager.onUpdate((s) => buildingLayer.update(s));
+  viewManager.onUpdate((s, dt) => buildingLayer.update(s, dt));
 
   // 6. Unit views
   unitLayer.init(viewManager, state);
