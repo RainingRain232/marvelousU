@@ -3,6 +3,7 @@ import { gridRenderer } from "@view/GridRenderer";
 import { buildingLayer } from "@view/BuildingLayer";
 import { unitLayer } from "@view/UnitLayer";
 import { hud } from "@view/ui/HUD";
+import { shopPanel } from "@view/ui/ShopPanel";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
@@ -44,7 +45,11 @@ import { Direction } from "@/types";
   hud.init(viewManager, state, { westPlayerId: "p1", eastPlayerId: "p2" });
   viewManager.onUpdate((s) => hud.update(s));
 
-  // 7. Render loop
+  // 7. Shop panel (local player is p1 — west side)
+  shopPanel.init(viewManager, state, "p1");
+  viewManager.onUpdate((s) => shopPanel.update(s));
+
+  // 8. Render loop
   viewManager.app.ticker.add((ticker) => {
     const dt = ticker.deltaMS / 1000;
     viewManager.update(state, dt);
