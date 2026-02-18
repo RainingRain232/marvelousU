@@ -35,6 +35,10 @@ export interface Building {
   health: number;
   maxHealth: number;
 
+  // Capture state (neutral buildings only)
+  captureProgress: number; // 0.0 → 1.0; reaches 1.0 on capture
+  capturePlayerId: string | null; // which player is currently capping; null = nobody
+
   // Economy / production
   shopInventory: UnitType[]; // Unit types this building can train
   blueprints: BuildingType[]; // Building blueprints sold from this building's shop
@@ -64,6 +68,8 @@ export function createBuilding(opts: CreateBuildingOptions): Building {
     state: BuildingState.ACTIVE,
     health: def.hp,
     maxHealth: def.hp,
+    captureProgress: 0,
+    capturePlayerId: null,
     shopInventory: [...def.shopInventory],
     blueprints: [...def.blueprints],
     spawnQueue: {

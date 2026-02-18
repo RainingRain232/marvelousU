@@ -6,8 +6,16 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { createBuilding } from "@sim/entities/Building";
 import { EventBus } from "@sim/core/EventBus";
 import type { PlayerId, Vec2 } from "@/types";
-import { BuildingState, BuildingType, Direction } from "@/types";
+import {
+  BuildingState,
+  BuildingType,
+  Direction,
+  UnitState,
+  UnitType,
+} from "@/types";
 import type { TileZone } from "@sim/state/BattlefieldState";
+import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { distanceSq } from "@sim/utils/math";
 
 // ---------------------------------------------------------------------------
 // Placement result
@@ -181,10 +189,101 @@ export function destroyBuilding(state: GameState, buildingId: string): void {
 // ---------------------------------------------------------------------------
 
 export const BuildingSystem = {
-  update(_state: GameState, _dt: number): void {
-    // Placeholder — capture ticking goes here in a future task
+  update(state: GameState, dt: number): void {
+    const rangeSq = BalanceConfig.CAPTURE_RANGE * BalanceConfig.CAPTURE_RANGE;
+
+    for (const building of state.buildings.values()) {
+      if (building.state !== BuildingState.ACTIVE) continue;
+      if (building.owner !== null) continue; // only neutral buildings
+
+      // Collect occupying player IDs (units within capture range, alive)
+      const occupiers = new Set<string>();
+      for (const unit of state.units.values()) {
+        if (unit.state === UnitState.DIE) continue;
+        if (distanceSq(unit.position, building.position) <= rangeSq) {
+          occupiers.add(unit.owner);
+        }
+      }
+
+      const contested = occupiers.size > 1;
+
+      if (contested) {
+        // Both sides present — reset progress
+        building.captureProgress = 0;
+        building.capturePlayerId = null;
+        continue;
+      }
+
+      if (occupiers.size === 0) {
+        // Nobody here — progress decays back toward 0 if capturingPlayerId set
+        if (building.capturePlayerId !== null && building.captureProgress > 0) {
+          building.captureProgress = Math.max(
+            0,
+            building.captureProgress - dt / BalanceConfig.CAPTURE_TIME,
+          );
+          if (building.captureProgress === 0) {
+            building.capturePlayerId = null;
+          }
+        }
+        continue;
+      }
+
+      // Exactly one side occupying
+      const [occupierId] = [...occupiers];
+
+      // Switch of side resets progress
+      if (
+        building.capturePlayerId !== null &&
+        building.capturePlayerId !== occupierId
+      ) {
+        building.captureProgress = 0;
+      }
+      building.capturePlayerId = occupierId;
+      building.captureProgress = Math.min(
+        1,
+        building.captureProgress + dt / BalanceConfig.CAPTURE_TIME,
+      );
+
+      if (building.captureProgress >= 1) {
+        _captureBuilding(state, building.id, occupierId);
+      }
+    }
   },
 };
+
+// ---------------------------------------------------------------------------
+// captureBuilding — transfers ownership of a neutral building to a player
+// ---------------------------------------------------------------------------
+
+export function _captureBuilding(
+  state: GameState,
+  buildingId: string,
+  newOwner: string,
+): void {
+  const building = state.buildings.get(buildingId);
+  if (!building) return;
+
+  const player = state.players.get(newOwner);
+  if (!player) return;
+
+  building.owner = newOwner;
+  building.captureProgress = 1;
+  building.capturePlayerId = newOwner;
+
+  // Captured neutral buildings produce barracks-equivalent units
+  building.shopInventory = [
+    UnitType.SWORDSMAN,
+    UnitType.PIKEMAN,
+    UnitType.KNIGHT,
+  ];
+
+  // Register in player's building list
+  if (!player.ownedBuildings.includes(buildingId)) {
+    player.ownedBuildings.push(buildingId);
+  }
+
+  EventBus.emit("buildingCaptured", { buildingId, newOwner });
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
