@@ -16,7 +16,9 @@ export const BalanceConfig = {
 
   // Economy
   START_GOLD: 100,
-  GOLD_INCOME_RATE: 10, // gold per second during battle
+  GOLD_INCOME_RATE: 5, // base gold/sec (both phases)
+  GOLD_PER_BUILDING: 1, // additional gold/sec per owned or captured building
+  GOLD_INCOME_BATTLE_BONUS: 3, // extra flat gold/sec added during BATTLE phase
 
   // Spawning
   DEFAULT_GROUP_THRESHOLD: 3, // units ready before group deploys

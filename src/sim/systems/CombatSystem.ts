@@ -1,11 +1,13 @@
 // Damage calc, targeting priority, attack resolution
 import type { GameState } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
-import { UnitState } from "@/types";
+import type { Building } from "@sim/entities/Building";
+import { UnitState, BuildingState } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { EventBus } from "@sim/core/EventBus";
+import { destroyBuilding } from "@sim/systems/BuildingSystem";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -45,7 +47,22 @@ export const CombatSystem = {
       // Tick attack cooldown
       if (unit.attackTimer > 0) unit.attackTimer -= dt;
 
-      // --- Target selection ---
+      // --- Building target: if targetId points to a building, handle separately ---
+      if (unit.targetId && !state.units.has(unit.targetId)) {
+        const building = state.buildings.get(unit.targetId);
+        if (
+          building &&
+          building.state === BuildingState.ACTIVE &&
+          building.owner !== unit.owner
+        ) {
+          _attackBuilding(state, unit, building, dt);
+          continue;
+        }
+        // Building gone or invalid — clear targetId, let normal flow reassign
+        unit.targetId = null;
+      }
+
+      // --- Unit target selection ---
       const target = resolveTarget(state, unit);
 
       if (!target) {
@@ -109,6 +126,65 @@ export const CombatSystem = {
     }
   },
 };
+
+// ---------------------------------------------------------------------------
+// Building attack
+// ---------------------------------------------------------------------------
+
+/**
+ * Handle a unit attacking a building it is already pathing toward.
+ * Enters ATTACK state when in range, deals damage each attackTimer cycle,
+ * and calls destroyBuilding when hp reaches 0.
+ */
+function _attackBuilding(
+  state: GameState,
+  unit: Unit,
+  building: Building,
+  _dt: number,
+): void {
+  const dist = Math.sqrt(distanceSq(unit.position, building.position));
+
+  if (dist <= unit.range + 1) {
+    // In range — enter ATTACK state
+    if (unit.state !== UnitState.ATTACK) {
+      const prev = unit.state;
+      unit.stateMachine.forceState(UnitState.ATTACK);
+      unit.state = UnitState.ATTACK;
+      EventBus.emit("unitStateChanged", {
+        unitId: unit.id,
+        from: prev,
+        to: UnitState.ATTACK,
+      });
+    }
+
+    if (unit.attackTimer <= 0) {
+      const def = UNIT_DEFINITIONS[unit.type];
+      const attackInterval = 1 / def.attackSpeed;
+      building.health -= unit.atk;
+      unit.attackTimer = attackInterval;
+
+      if (building.health <= 0) {
+        building.health = 0;
+        destroyBuilding(state, building.id);
+        unit.targetId = null;
+      }
+    }
+  } else {
+    // Out of range — keep moving (path already set by AISystem)
+    if (unit.state === UnitState.ATTACK) {
+      unit.stateMachine.setState(UnitState.MOVE) ||
+        unit.stateMachine.forceState(UnitState.MOVE);
+      unit.state = UnitState.MOVE;
+      unit.path = null;
+      unit.pathIndex = 0;
+      EventBus.emit("unitStateChanged", {
+        unitId: unit.id,
+        from: UnitState.ATTACK,
+        to: UnitState.MOVE,
+      });
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Target selection

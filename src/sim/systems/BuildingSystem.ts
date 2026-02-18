@@ -5,9 +5,9 @@ import { getTile, setBuilding, setWalkable } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { createBuilding } from "@sim/entities/Building";
 import { EventBus } from "@sim/core/EventBus";
-import type { BuildingType, PlayerId, Vec2 } from "@/types";
+import type { PlayerId, Vec2 } from "@/types";
+import { BuildingState, BuildingType, Direction } from "@/types";
 import type { TileZone } from "@sim/state/BattlefieldState";
-import { Direction } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Placement result
@@ -126,12 +126,63 @@ export function placeBuilding(
 }
 
 // ---------------------------------------------------------------------------
-// Tick update (future: destruction timers, capture ticks, etc.)
+// ---------------------------------------------------------------------------
+// destroyBuilding — marks a building as DESTROYED, frees its tiles,
+// removes it from its owner's building list, and emits buildingDestroyed.
+// If the building is a Castle, zeroes out the linked base's health so
+// PhaseSystem registers the base as eliminated.
+// ---------------------------------------------------------------------------
+
+export function destroyBuilding(state: GameState, buildingId: string): void {
+  const building = state.buildings.get(buildingId);
+  if (!building) return;
+  if (building.state === BuildingState.DESTROYED) return;
+
+  building.state = BuildingState.DESTROYED;
+  building.health = 0;
+
+  // Free grid tiles
+  const def = BUILDING_DEFINITIONS[building.type];
+  const tiles = getFootprintTiles(
+    building.position,
+    def.footprint.w,
+    def.footprint.h,
+  );
+  for (const { x, y } of tiles) {
+    setBuilding(state.battlefield, x, y, null);
+    setWalkable(state.battlefield, x, y, true);
+  }
+
+  // Remove from owner's building list
+  if (building.owner) {
+    const player = state.players.get(building.owner);
+    if (player) {
+      player.ownedBuildings = player.ownedBuildings.filter(
+        (id) => id !== buildingId,
+      );
+    }
+  }
+
+  // Castle destroyed → zero out the linked base so PhaseSystem triggers elimination
+  if (building.type === BuildingType.CASTLE) {
+    for (const base of state.bases.values()) {
+      if (base.castleId === buildingId) {
+        base.health = 0;
+        break;
+      }
+    }
+  }
+
+  EventBus.emit("buildingDestroyed", { buildingId });
+}
+
+// ---------------------------------------------------------------------------
+// Tick update
 // ---------------------------------------------------------------------------
 
 export const BuildingSystem = {
   update(_state: GameState, _dt: number): void {
-    // TODO: building destruction timers, neutral capture ticking
+    // Placeholder — capture ticking goes here in a future task
   },
 };
 
