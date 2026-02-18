@@ -10,6 +10,7 @@ import { unitQueueUI } from "@view/ui/UnitQueueUI";
 import { fireballFX } from "@view/fx/FireballFX";
 import { lightningFX } from "@view/fx/LightningFX";
 import { summonFX } from "@view/fx/SummonFX";
+import { animationManager } from "@view/animation/AnimationManager";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
@@ -33,43 +34,46 @@ import { Direction } from "@/types";
   // 2. Boot renderer
   await viewManager.init(mountPoint);
 
-  // 3. Grid background
+  // 3. Load spritesheets (falls back to generated placeholders automatically)
+  await animationManager.load(viewManager.app.renderer);
+
+  // 4. Grid background
   gridRenderer.init(viewManager);
   gridRenderer.draw(state.battlefield);
   EventBus.on("buildingPlaced", () => gridRenderer.draw(state.battlefield));
   EventBus.on("buildingDestroyed", () => gridRenderer.draw(state.battlefield));
 
-  // 4. Building & base views
+  // 5. Building & base views
   buildingLayer.init(viewManager, state);
   viewManager.onUpdate((s) => buildingLayer.update(s));
 
-  // 5. Unit views
+  // 6. Unit views
   unitLayer.init(viewManager, state);
   viewManager.onUpdate((s) => unitLayer.update(s));
 
-  // 6. HUD
+  // 7. HUD
   hud.init(viewManager, state, { westPlayerId: "p1", eastPlayerId: "p2" });
   viewManager.onUpdate((s) => hud.update(s));
 
-  // 7. Shop panel (local player is p1 — west side)
+  // 8. Shop panel (local player is p1 — west side)
   shopPanel.init(viewManager, state, "p1");
   viewManager.onUpdate((s) => shopPanel.update(s));
 
-  // 8. Spawn queue UI
+  // 9. Spawn queue UI
   unitQueueUI.init(viewManager, state);
   viewManager.onUpdate((s) => unitQueueUI.update(s));
 
-  // 9. Input manager + building placer
+  // 10. Input manager + building placer
   buildingPlacer.init(viewManager, state, "p1");
   inputManager.init(viewManager, state, "p1");
 
-  // 10. Spell FX
+  // 11. Spell FX
   fireballFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => fireballFX.update(dt));
   lightningFX.init(viewManager);
   summonFX.init(viewManager);
 
-  // 11. Render loop
+  // 12. Render loop
   viewManager.app.ticker.add((ticker) => {
     const dt = ticker.deltaMS / 1000;
     viewManager.update(state, dt);
