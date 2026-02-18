@@ -1,12 +1,6 @@
 // Building data: type, owner, position, health, shop inventory, spawn queue
-import type {
-  BuildingState,
-  BuildingType,
-  PlayerId,
-  UnitType,
-  Vec2,
-} from "@/types";
-import { BuildingState as BS } from "@/types";
+import { BuildingState, BuildingType } from "@/types";
+import type { PlayerId, UnitType, Vec2 } from "@/types";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 
@@ -43,6 +37,7 @@ export interface Building {
 
   // Economy / production
   shopInventory: UnitType[]; // Unit types this building can train
+  blueprints: BuildingType[]; // Building blueprints sold from this building's shop
   spawnQueue: SpawnQueue;
 }
 
@@ -66,10 +61,11 @@ export function createBuilding(opts: CreateBuildingOptions): Building {
     owner: opts.owner,
     position: { ...opts.position },
     linkedBaseId: opts.linkedBaseId ?? null,
-    state: BS.ACTIVE,
+    state: BuildingState.ACTIVE,
     health: def.hp,
     maxHealth: def.hp,
     shopInventory: [...def.shopInventory],
+    blueprints: [...def.blueprints],
     spawnQueue: {
       buildingId: opts.id,
       entries: [],

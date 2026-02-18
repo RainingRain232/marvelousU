@@ -6,11 +6,12 @@ export type PlacementZone = "own" | "neutral" | "any";
 
 export interface BuildingDef {
   type: BuildingType;
-  cost: number; // gold cost (0 = starting building)
+  cost: number; // gold cost (0 = starting/Castle)
   hp: number;
-  shopInventory: UnitType[]; // unit types this building produces
-  footprint: { w: number; h: number }; // tiles
-  placementZone: PlacementZone; // where the player may place it
+  shopInventory: UnitType[]; // unit types this building can train
+  blueprints: BuildingType[]; // building blueprints sold from this building's shop
+  footprint: { w: number; h: number };
+  placementZone: PlacementZone;
 }
 
 export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
@@ -19,6 +20,12 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 0,
     hp: 500,
     shopInventory: [UnitType.SWORDSMAN, UnitType.ARCHER],
+    blueprints: [
+      BuildingType.BARRACKS,
+      BuildingType.STABLES,
+      BuildingType.MAGE_TOWER,
+      BuildingType.ARCHERY_RANGE,
+    ],
     footprint: { w: 3, h: 3 },
     placementZone: "own",
   },
@@ -27,6 +34,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 100,
     hp: 200,
     shopInventory: [UnitType.SWORDSMAN, UnitType.PIKEMAN, UnitType.KNIGHT],
+    blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
   },
@@ -35,6 +43,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 120,
     hp: 200,
     shopInventory: [UnitType.KNIGHT],
+    blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
   },
@@ -43,6 +52,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 150,
     hp: 150,
     shopInventory: [UnitType.MAGE],
+    blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
   },
@@ -51,6 +61,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 100,
     hp: 180,
     shopInventory: [UnitType.ARCHER],
+    blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
   },

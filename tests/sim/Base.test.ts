@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createBase } from "@sim/entities/Base";
-import { initBases, getBaseSpawnPosition, getPlayerBase } from "@sim/systems/BaseSetup";
+import {
+  initBases,
+  getBaseSpawnPosition,
+  getPlayerBase,
+} from "@sim/systems/BaseSetup";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
@@ -25,10 +29,10 @@ function makeStateWithPlayers(): GameState {
 describe("createBase", () => {
   it("sets all provided fields", () => {
     const base = createBase({
-      id:          "b1",
-      direction:   Direction.WEST,
-      owner:       "p1",
-      position:    { x: 1, y: 9 },
+      id: "b1",
+      direction: Direction.WEST,
+      owner: "p1",
+      position: { x: 1, y: 9 },
       spawnOffset: { x: 4, y: 1 },
     });
 
@@ -41,8 +45,11 @@ describe("createBase", () => {
 
   it("defaults health and maxHealth to BalanceConfig.BASE_HEALTH", () => {
     const base = createBase({
-      id: "b1", direction: Direction.WEST, owner: "p1",
-      position: { x: 0, y: 0 }, spawnOffset: { x: 1, y: 0 },
+      id: "b1",
+      direction: Direction.WEST,
+      owner: "p1",
+      position: { x: 0, y: 0 },
+      spawnOffset: { x: 1, y: 0 },
     });
     expect(base.health).toBe(BalanceConfig.BASE_HEALTH);
     expect(base.maxHealth).toBe(BalanceConfig.BASE_HEALTH);
@@ -50,8 +57,11 @@ describe("createBase", () => {
 
   it("accepts a custom maxHealth", () => {
     const base = createBase({
-      id: "b1", direction: Direction.EAST, owner: "p2",
-      position: { x: 0, y: 0 }, spawnOffset: { x: -1, y: 0 },
+      id: "b1",
+      direction: Direction.EAST,
+      owner: "p2",
+      position: { x: 0, y: 0 },
+      spawnOffset: { x: -1, y: 0 },
       maxHealth: 500,
     });
     expect(base.health).toBe(500);
@@ -60,18 +70,24 @@ describe("createBase", () => {
 
   it("starts with castleId null", () => {
     const base = createBase({
-      id: "b1", direction: Direction.WEST, owner: "p1",
-      position: { x: 0, y: 0 }, spawnOffset: { x: 1, y: 0 },
+      id: "b1",
+      direction: Direction.WEST,
+      owner: "p1",
+      position: { x: 0, y: 0 },
+      spawnOffset: { x: 1, y: 0 },
     });
     expect(base.castleId).toBeNull();
   });
 
   it("position and spawnOffset are independent copies (no reference sharing)", () => {
-    const pos    = { x: 1, y: 9 };
+    const pos = { x: 1, y: 9 };
     const offset = { x: 4, y: 1 };
-    const base   = createBase({
-      id: "b1", direction: Direction.WEST, owner: "p1",
-      position: pos, spawnOffset: offset,
+    const base = createBase({
+      id: "b1",
+      direction: Direction.WEST,
+      owner: "p1",
+      position: pos,
+      spawnOffset: offset,
     });
     pos.x = 99;
     offset.x = 99;
@@ -141,9 +157,9 @@ describe("initBases", () => {
     }
   });
 
-  it("both bases start with castleId null", () => {
+  it("both bases have castleId set after initBases (castles are auto-spawned)", () => {
     for (const base of state.bases.values()) {
-      expect(base.castleId).toBeNull();
+      expect(base.castleId).toBe(`castle-${base.id}`);
     }
   });
 
@@ -151,7 +167,7 @@ describe("initBases", () => {
     const fresh = createGameState(30, 20);
     // no players added
     expect(() =>
-      initBases(fresh, { westPlayerId: "ghost", eastPlayerId: "p2" })
+      initBases(fresh, { westPlayerId: "ghost", eastPlayerId: "p2" }),
     ).toThrow();
   });
 });
@@ -167,8 +183,12 @@ describe("getBaseSpawnPosition", () => {
 
     const spawn = getBaseSpawnPosition(state, "base-west");
     expect(spawn).toEqual({
-      x: BalanceConfig.BASE_WEST_POSITION.x + BalanceConfig.BASE_WEST_SPAWN_OFFSET.x,
-      y: BalanceConfig.BASE_WEST_POSITION.y + BalanceConfig.BASE_WEST_SPAWN_OFFSET.y,
+      x:
+        BalanceConfig.BASE_WEST_POSITION.x +
+        BalanceConfig.BASE_WEST_SPAWN_OFFSET.x,
+      y:
+        BalanceConfig.BASE_WEST_POSITION.y +
+        BalanceConfig.BASE_WEST_SPAWN_OFFSET.y,
     });
   });
 
@@ -178,15 +198,19 @@ describe("getBaseSpawnPosition", () => {
 
     const spawn = getBaseSpawnPosition(state, "base-east");
     expect(spawn).toEqual({
-      x: BalanceConfig.BASE_EAST_POSITION.x + BalanceConfig.BASE_EAST_SPAWN_OFFSET.x,
-      y: BalanceConfig.BASE_EAST_POSITION.y + BalanceConfig.BASE_EAST_SPAWN_OFFSET.y,
+      x:
+        BalanceConfig.BASE_EAST_POSITION.x +
+        BalanceConfig.BASE_EAST_SPAWN_OFFSET.x,
+      y:
+        BalanceConfig.BASE_EAST_POSITION.y +
+        BalanceConfig.BASE_EAST_SPAWN_OFFSET.y,
     });
   });
 
   it("throws for an unknown base id", () => {
-    expect(() =>
-      getBaseSpawnPosition(createGameState(), "ghost")
-    ).toThrow("Base not found: ghost");
+    expect(() => getBaseSpawnPosition(createGameState(), "ghost")).toThrow(
+      "Base not found: ghost",
+    );
   });
 });
 

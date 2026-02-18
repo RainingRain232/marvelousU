@@ -273,7 +273,7 @@ describe("placeBuilding — wrong territory", () => {
     const before = state.players.get("p1")!.gold;
     placeBuilding(state, "p1", BuildingType.BARRACKS, EAST_POS);
     expect(state.players.get("p1")!.gold).toBe(before);
-    expect(state.buildings.size).toBe(0);
+    expect(state.buildings.size).toBe(2); // only the 2 castles from initBases
   });
 });
 

@@ -9,6 +9,7 @@ import { createBase } from "@sim/entities/Base";
 import type { GameState } from "@sim/state/GameState";
 import { getPlayer } from "@sim/state/GameState";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { spawnCastle } from "@sim/systems/CastleInit";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -27,18 +28,18 @@ export interface BaseInitOptions {
  */
 export function initBases(state: GameState, opts: BaseInitOptions): void {
   const westBase = createBase({
-    id:          "base-west",
-    direction:   Direction.WEST,
-    owner:       opts.westPlayerId,
-    position:    { ...BalanceConfig.BASE_WEST_POSITION },
+    id: "base-west",
+    direction: Direction.WEST,
+    owner: opts.westPlayerId,
+    position: { ...BalanceConfig.BASE_WEST_POSITION },
     spawnOffset: { ...BalanceConfig.BASE_WEST_SPAWN_OFFSET },
   });
 
   const eastBase = createBase({
-    id:          "base-east",
-    direction:   Direction.EAST,
-    owner:       opts.eastPlayerId,
-    position:    { ...BalanceConfig.BASE_EAST_POSITION },
+    id: "base-east",
+    direction: Direction.EAST,
+    owner: opts.eastPlayerId,
+    position: { ...BalanceConfig.BASE_EAST_POSITION },
     spawnOffset: { ...BalanceConfig.BASE_EAST_SPAWN_OFFSET },
   });
 
@@ -51,6 +52,10 @@ export function initBases(state: GameState, opts: BaseInitOptions): void {
   const eastPlayer = getPlayer(state, opts.eastPlayerId);
   westPlayer.ownedBaseId = westBase.id;
   eastPlayer.ownedBaseId = eastBase.id;
+
+  // Auto-spawn castles at each base
+  spawnCastle(state, westBase);
+  spawnCastle(state, eastBase);
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +63,10 @@ export function initBases(state: GameState, opts: BaseInitOptions): void {
 // ---------------------------------------------------------------------------
 
 /** Return the spawn position (tile coords) for a base: position + spawnOffset. */
-export function getBaseSpawnPosition(state: GameState, baseId: string): { x: number; y: number } {
+export function getBaseSpawnPosition(
+  state: GameState,
+  baseId: string,
+): { x: number; y: number } {
   const base = state.bases.get(baseId);
   if (!base) throw new Error(`Base not found: ${baseId}`);
   return {
