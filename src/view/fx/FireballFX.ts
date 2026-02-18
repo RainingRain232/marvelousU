@@ -1,34 +1,50 @@
-// Fireball trail + explosion particles
-// Listens to projectileCreated / projectileHit events and drives a gsap tween
-// for the orb position, leaving behind fading trail circles and bursting into
-// explosion particles on impact.
-import { Container, Graphics } from "pixi.js";
+// Fireball FX — ParticleContainer trail + explosion burst.
+//
+// Trail:   ember particles emitted continuously while the orb is in flight.
+//          Orange/yellow tint, small scale, fade out over 0.4 s.
+// Orb:     single Graphics circle that moves via gsap tween (matches sim speed).
+// Impact:  ring of 20 spark particles + large flash circle on hit.
+//
+// All trail/spark particles share a single ParticlePool (512 particles).
+// The pool is created lazily on first `init()` call once the renderer is ready.
+
+import { Container, Graphics, type Renderer } from "pixi.js";
 import gsap from "gsap";
 import type { ViewManager } from "@view/ViewManager";
 import { EventBus } from "@sim/core/EventBus";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { ParticlePool } from "@view/fx/ParticlePool";
 
 const TS = BalanceConfig.TILE_SIZE;
 
+// Trail emit rate: one particle burst every TRAIL_INTERVAL seconds
+const TRAIL_INTERVAL = 0.04;
+// Number of particles per trail burst
+const TRAIL_PER_BURST = 3;
+// Explosion sparks on impact
+const IMPACT_SPARKS = 20;
+
+// Ember tints (randomly picked per particle)
+const EMBER_TINTS = [0xff4400, 0xff8800, 0xffcc00, 0xff2200];
+
 // ---------------------------------------------------------------------------
-// Per-projectile animation state
+// Per-projectile state
 // ---------------------------------------------------------------------------
 
 interface FireballEntry {
   orb: Graphics;
   tween: gsap.core.Tween;
-  /** Trail circles left behind (cleaned up after alpha → 0) */
-  trail: Graphics[];
-  trailTimer: number; // seconds since last trail dot
+  trailTimer: number;
 }
 
 // ---------------------------------------------------------------------------
-// FireballFX manager
+// FireballFX
 // ---------------------------------------------------------------------------
 
 export class FireballFX {
-  private _active = new Map<string, FireballEntry>();
   private _container!: Container;
+  private _pool!: ParticlePool;
+  private _active = new Map<string, FireballEntry>();
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -37,6 +53,13 @@ export class FireballFX {
   init(vm: ViewManager): void {
     this._container = new Container();
     vm.layers.fx.addChild(this._container);
+
+    // Create particle pool with a 6px circle texture
+    this._pool = new ParticlePool(
+      ParticlePool.createCircleTexture(vm.app.renderer as Renderer, 6),
+      512,
+    );
+    this._pool.mount(this._container);
 
     EventBus.on("projectileCreated", ({ projectileId, origin, target }) => {
       this._spawnFireball(projectileId, origin, target);
@@ -48,38 +71,26 @@ export class FireballFX {
   }
 
   // ---------------------------------------------------------------------------
-  // Per-frame update — tick trail fade, clean up finished entries
+  // Per-frame update
   // ---------------------------------------------------------------------------
 
-  readonly update = (_dt: number): void => {
+  readonly update = (dt: number): void => {
+    this._pool.update(dt);
+
     const toDelete: string[] = [];
 
     for (const [id, entry] of this._active) {
-      // Fade each trail dot
-      for (let i = entry.trail.length - 1; i >= 0; i--) {
-        const dot = entry.trail[i];
-        dot.alpha -= _dt * 3; // fade out over ~0.33 s
-        if (dot.alpha <= 0) {
-          this._container.removeChild(dot);
-          entry.trail.splice(i, 1);
+      // Emit trail particles while orb is still moving
+      if (entry.orb.parent) {
+        entry.trailTimer -= dt;
+        if (entry.trailTimer <= 0) {
+          entry.trailTimer = TRAIL_INTERVAL;
+          this._emitTrailBurst(entry.orb.x, entry.orb.y);
         }
       }
 
-      // Emit a new trail dot every 0.06 s while orb is alive
-      entry.trailTimer -= _dt;
-      if (entry.trailTimer <= 0 && entry.orb.parent) {
-        entry.trailTimer = 0.06;
-        const dot = new Graphics()
-          .circle(0, 0, 5)
-          .fill({ color: 0xff8800, alpha: 0.6 });
-        dot.position.copyFrom(entry.orb.position);
-        dot.alpha = 0.6;
-        this._container.addChildAt(dot, 0); // behind orb
-        entry.trail.push(dot);
-      }
-
-      // Remove entry once tween is done AND all trail dots have faded
-      if (!entry.tween.isActive() && entry.trail.length === 0) {
+      // Clean up once tween done and no remaining trail particles
+      if (!entry.tween.isActive() && !entry.orb.parent) {
         toDelete.push(id);
       }
     }
@@ -88,7 +99,7 @@ export class FireballFX {
   };
 
   // ---------------------------------------------------------------------------
-  // Spawn a fireball orb and tween it to target
+  // Spawn fireball orb + start tween
   // ---------------------------------------------------------------------------
 
   private _spawnFireball(
@@ -101,12 +112,17 @@ export class FireballFX {
     const tx = (target.x + 0.5) * TS;
     const ty = (target.y + 0.5) * TS;
 
-    const orb = new Graphics().circle(0, 0, 10).fill({ color: 0xff4400 });
+    // Orb: bright core circle
+    const orb = new Graphics()
+      .circle(0, 0, 10)
+      .fill({ color: 0xff4400 })
+      .circle(0, 0, 6)
+      .fill({ color: 0xffcc00 });
     orb.position.set(ox, oy);
     this._container.addChild(orb);
 
     const dist = Math.sqrt((tx - ox) ** 2 + (ty - oy) ** 2);
-    const duration = dist / (10 * TS); // 10 tiles/s
+    const duration = dist / (10 * TS);
 
     const tween = gsap.to(orb.position, {
       x: tx,
@@ -114,16 +130,40 @@ export class FireballFX {
       duration,
       ease: "none",
       onComplete: () => {
-        // Orb removed on hit; if no hit event fired, clean up here
         if (orb.parent) this._container.removeChild(orb);
       },
     });
 
-    this._active.set(id, { orb, tween, trail: [], trailTimer: 0 });
+    this._active.set(id, { orb, tween, trailTimer: 0 });
   }
 
   // ---------------------------------------------------------------------------
-  // Impact: kill orb tween, burst explosion particles
+  // Trail burst
+  // ---------------------------------------------------------------------------
+
+  private _emitTrailBurst(cx: number, cy: number): void {
+    for (let i = 0; i < TRAIL_PER_BURST; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 20 + Math.random() * 30;
+      const tint = EMBER_TINTS[Math.floor(Math.random() * EMBER_TINTS.length)];
+      this._pool.emit({
+        x: cx + (Math.random() - 0.5) * 6,
+        y: cy + (Math.random() - 0.5) * 6,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.35 + Math.random() * 0.15,
+        scaleStart: 0.8 + Math.random() * 0.4,
+        scaleEnd: 0.1,
+        alphaStart: 0.9,
+        alphaEnd: 0,
+        tint,
+        gravity: 40,
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Impact
   // ---------------------------------------------------------------------------
 
   private _onHit(id: string): void {
@@ -131,48 +171,48 @@ export class FireballFX {
     if (!entry) return;
 
     entry.tween.kill();
-    const cx = entry.orb.position.x;
-    const cy = entry.orb.position.y;
+    const cx = entry.orb.x;
+    const cy = entry.orb.y;
 
     if (entry.orb.parent) this._container.removeChild(entry.orb);
 
-    // Burst 12 spark particles outward
-    const SPARKS = 12;
-    for (let i = 0; i < SPARKS; i++) {
-      const angle = (i / SPARKS) * Math.PI * 2;
-      const spark = new Graphics().circle(0, 0, 4).fill({ color: 0xffcc00 });
-      spark.position.set(cx, cy);
-      this._container.addChild(spark);
-
-      const radius = 30 + Math.random() * 20;
-      gsap.to(spark.position, {
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
-        duration: 0.35,
-        ease: "power2.out",
-        onComplete: () => {
-          if (spark.parent) this._container.removeChild(spark);
-        },
+    // Ring of spark particles
+    for (let i = 0; i < IMPACT_SPARKS; i++) {
+      const angle = (i / IMPACT_SPARKS) * Math.PI * 2 + Math.random() * 0.3;
+      const speed = 80 + Math.random() * 60;
+      const tint = EMBER_TINTS[Math.floor(Math.random() * EMBER_TINTS.length)];
+      this._pool.emit({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.4 + Math.random() * 0.2,
+        scaleStart: 1.0 + Math.random() * 0.5,
+        scaleEnd: 0.1,
+        alphaStart: 1.0,
+        alphaEnd: 0,
+        tint,
+        gravity: 80,
       });
-      gsap.to(spark, { alpha: 0, duration: 0.35, ease: "power1.in" });
     }
 
-    // Large flash circle
-    const flash = new Graphics().circle(0, 0, 24).fill({ color: 0xff6600 });
+    // Flash circle (Graphics — single large burst, no pool needed)
+    const flash = new Graphics().circle(0, 0, 28).fill({ color: 0xff6600 });
     flash.position.set(cx, cy);
-    flash.alpha = 0.8;
+    flash.alpha = 0.85;
     this._container.addChild(flash);
     gsap.to(flash, {
       alpha: 0,
-      duration: 0.25,
+      scaleX: 2,
+      scaleY: 2,
+      duration: 0.3,
       ease: "power2.out",
       onComplete: () => {
         if (flash.parent) this._container.removeChild(flash);
       },
     });
 
-    // Remove entry (trail dots will fade out naturally in update())
-    entry.trail; // keep reference; update() handles fade
+    // Mark entry for cleanup (tween is dead, orb removed)
     this._active.set(id, { ...entry, tween: gsap.to({}, { duration: 0 }) });
   }
 }

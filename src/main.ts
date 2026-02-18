@@ -71,7 +71,9 @@ import { Direction } from "@/types";
   fireballFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => fireballFX.update(dt));
   lightningFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => lightningFX.update(dt));
   summonFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => summonFX.update(dt));
 
   // 12. Render loop
   viewManager.app.ticker.add((ticker) => {

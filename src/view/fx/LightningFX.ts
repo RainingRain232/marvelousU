@@ -1,22 +1,29 @@
-// Chain lightning bolt rendering between each target pair in the chain path.
-// Listens to abilityUsed (CHAIN_LIGHTNING) — receives the full ordered path of
-// Vec2 positions (caster + each hit unit). Draws jagged bolt segments between
-// consecutive pairs, then fades them out.
-import { Container, Graphics } from "pixi.js";
+// Chain lightning FX — jagged bolt segments + crackle sparks at each node.
+//
+// Bolts:   jagged Graphics lines between consecutive chain positions, fading 0.4s.
+// Crackle: 8 spark particles at each hit position, fanning outward.
+// All sparks share a ParticlePool (256 particles).
+
+import { Container, Graphics, type Renderer } from "pixi.js";
 import gsap from "gsap";
 import type { ViewManager } from "@view/ViewManager";
 import { EventBus } from "@sim/core/EventBus";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { ParticlePool } from "@view/fx/ParticlePool";
 
 const TS = BalanceConfig.TILE_SIZE;
 
-// Number of jag segments per bolt segment
+// Bolt jaggedness
 const JAGS = 6;
-// Max perpendicular offset for each jag (pixels)
 const JAG_AMPLITUDE = 10;
+
+// Crackle sparks per node
+const SPARKS_PER_NODE = 8;
+const SPARK_TINTS = [0xaaddff, 0xffffff, 0x66ccff, 0xeeeeff];
 
 export class LightningFX {
   private _container!: Container;
+  private _pool!: ParticlePool;
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -26,33 +33,33 @@ export class LightningFX {
     this._container = new Container();
     vm.layers.fx.addChild(this._container);
 
-    EventBus.on("abilityUsed", ({ abilityId, targets }) => {
-      // abilityId encodes the ability instance id; type not directly available
-      // here. We detect chain lightning by checking if it contains the string
-      // from the registry key — but the cleanest approach is to pass targets
-      // only when it's a chain lightning cast. The AbilitySystem emits
-      // abilityUsed for all abilities; we filter by abilityId prefix convention
-      // (chain lightning ability ids start with the unit id + "-ability-").
-      // Since we can't import AbilityType check without game state, we instead
-      // listen and check if targets.length >= 2 AND the abilityId was produced
-      // by a chain lightning ability. The simplest reliable filter: register a
-      // dedicated chain lightning event. However the EventBus doesn't have one,
-      // so we check targets.length >= 2 as a reasonable heuristic — fireballs
-      // only send 1 target position.
-      //
-      // Robust approach: check abilityId contains "chain" — but ids are opaque.
-      // Best approach without schema change: the chain lightning execute() sets
-      // a marker. We'll use a module-level set populated by ChainLightning.ts.
-      // For now, use targets.length >= 2 as the discriminator (fireballs always
-      // emit exactly 1 target; chain lightning emits caster + N hit positions).
-      void abilityId; // silence lint — used as discriminator above
+    this._pool = new ParticlePool(
+      ParticlePool.createCircleTexture(
+        vm.app.renderer as Renderer,
+        4,
+        0xaaddff,
+      ),
+      256,
+    );
+    this._pool.mount(this._container);
+
+    EventBus.on("abilityUsed", ({ targets }) => {
+      // Chain lightning emits targets.length >= 2 (caster + hit units)
       if (targets.length < 2) return;
       this._drawChain(targets);
     });
   }
 
   // ---------------------------------------------------------------------------
-  // Draw a full chain of bolt segments and fade them out
+  // Per-frame update — tick particle pool
+  // ---------------------------------------------------------------------------
+
+  readonly update = (dt: number): void => {
+    this._pool.update(dt);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Draw full chain
   // ---------------------------------------------------------------------------
 
   private _drawChain(path: { x: number; y: number }[]): void {
@@ -62,26 +69,29 @@ export class LightningFX {
       const bolt = this._drawBolt(path[i], path[i + 1]);
       this._container.addChild(bolt);
       bolts.push(bolt);
+
+      // Crackle at the destination node (not the caster origin)
+      const node = path[i + 1];
+      const nx = (node.x + 0.5) * TS;
+      const ny = (node.y + 0.5) * TS;
+      this._emitCrackle(nx, ny, i * 0.04); // stagger per hop
     }
 
-    // Fade all bolt segments together then remove
-    gsap.to(
-      bolts.map((b) => b),
-      {
-        alpha: 0,
-        duration: 0.4,
-        ease: "power2.in",
-        onComplete: () => {
-          for (const bolt of bolts) {
-            if (bolt.parent) this._container.removeChild(bolt);
-          }
-        },
+    // Fade all bolt Graphics together then remove
+    gsap.to(bolts, {
+      alpha: 0,
+      duration: 0.4,
+      ease: "power2.in",
+      onComplete: () => {
+        for (const bolt of bolts) {
+          if (bolt.parent) this._container.removeChild(bolt);
+        }
       },
-    );
+    });
   }
 
   // ---------------------------------------------------------------------------
-  // Draw a single jagged bolt between two tile positions
+  // Jagged bolt segment
   // ---------------------------------------------------------------------------
 
   private _drawBolt(
@@ -95,38 +105,67 @@ export class LightningFX {
 
     const dx = tx - fx;
     const dy = ty - fy;
-    // Perpendicular unit vector for jag offsets
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     const px = -dy / len;
     const py = dx / len;
 
     const g = new Graphics();
-
-    // Build jag points: start → N-1 intermediate → end
     const points: [number, number][] = [[fx, fy]];
+
     for (let j = 1; j < JAGS; j++) {
       const t = j / JAGS;
-      const mx = fx + dx * t;
-      const my = fy + dy * t;
       const offset = (Math.random() - 0.5) * 2 * JAG_AMPLITUDE;
-      points.push([mx + px * offset, my + py * offset]);
+      points.push([fx + dx * t + px * offset, fy + dy * t + py * offset]);
     }
     points.push([tx, ty]);
 
     g.moveTo(points[0][0], points[0][1]);
-    for (let k = 1; k < points.length; k++) {
+    for (let k = 1; k < points.length; k++)
       g.lineTo(points[k][0], points[k][1]);
-    }
-    g.stroke({ color: 0xaaddff, width: 2, alpha: 0.9 });
+    g.stroke({ color: 0xaaddff, width: 2.5, alpha: 0.95 });
 
-    // Bright inner core
+    // Bright white inner core
     const core = new Graphics();
-    core.moveTo(fx, fy);
-    core.lineTo(tx, ty);
-    core.stroke({ color: 0xffffff, width: 1, alpha: 0.7 });
+    core.moveTo(fx, fy).lineTo(tx, ty);
+    core.stroke({ color: 0xffffff, width: 1, alpha: 0.8 });
     g.addChild(core);
 
     return g;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Crackle sparks at a chain node
+  // ---------------------------------------------------------------------------
+
+  private _emitCrackle(cx: number, cy: number, delay: number): void {
+    // Use delay via setTimeout so staggered hops look right
+    const emit = () => {
+      for (let i = 0; i < SPARKS_PER_NODE; i++) {
+        const angle = (i / SPARKS_PER_NODE) * Math.PI * 2 + Math.random() * 0.5;
+        const speed = 50 + Math.random() * 50;
+        const tint =
+          SPARK_TINTS[Math.floor(Math.random() * SPARK_TINTS.length)];
+        this._pool.emit({
+          x: cx + (Math.random() - 0.5) * 6,
+          y: cy + (Math.random() - 0.5) * 6,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.25 + Math.random() * 0.15,
+          scaleStart: 0.6 + Math.random() * 0.4,
+          scaleEnd: 0.05,
+          alphaStart: 1.0,
+          alphaEnd: 0,
+          tint,
+          gravity: 0,
+        });
+      }
+    };
+
+    if (delay <= 0) {
+      emit();
+    } else {
+      setTimeout(emit, delay * 1000);
+    }
   }
 }
 
