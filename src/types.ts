@@ -74,5 +74,5 @@ export enum BuildingState {
 export enum GamePhase {
   PREP = "prep",
   BATTLE = "battle",
-  RESULT = "result",
+  RESOLVE = "resolve",
 }

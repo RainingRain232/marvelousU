@@ -27,6 +27,10 @@ export const BalanceConfig = {
   AGGRO_RANGE: 6, // tiles — how far a unit scans for enemies
   UNIT_DEATH_LINGER: 1.0, // seconds a dead unit stays before removal
 
+  // Phase durations (seconds)
+  PREP_DURATION: 30, // seconds players have to buy/build before battle starts
+  RESOLVE_DURATION: 5, // seconds the RESOLVE screen shows before cycling back to PREP
+
   // Simulation
   SIM_TICK_MS: 1000 / 60, // ~16.67 ms fixed timestep
 } as const;

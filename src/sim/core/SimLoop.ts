@@ -20,6 +20,7 @@ import { CombatSystem } from "@sim/systems/CombatSystem";
 import { ProjectileSystem } from "@sim/systems/ProjectileSystem";
 import { BuildingSystem } from "@sim/systems/BuildingSystem";
 import { AISystem } from "@sim/systems/AISystem";
+import { PhaseSystem } from "@sim/systems/PhaseSystem";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,6 +41,7 @@ const MAX_DELTA_MS = 200;
 const DT = BalanceConfig.SIM_TICK_MS / 1000;
 
 export function simTick(state: GameState): void {
+  PhaseSystem.update(state, DT);
   SpawnSystem.update(state, DT);
   AbilitySystem.update(state, DT);
   MovementSystem.update(state, DT);

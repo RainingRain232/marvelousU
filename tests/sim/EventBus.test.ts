@@ -41,7 +41,7 @@ describe("on / emit", () => {
 
   it("delivers the correct payload to the listener", () => {
     const received: { unitId: string; killerUnitId?: string }[] = [];
-    bus.on("unitDied", payload => received.push(payload));
+    bus.on("unitDied", (payload) => received.push(payload));
     bus.emit("unitDied", { unitId: "u1", killerUnitId: "u2" });
     bus.emit("unitDied", { unitId: "u3" });
     expect(received).toHaveLength(2);
@@ -60,7 +60,7 @@ describe("on / emit", () => {
 
   it("does not throw when emitting an event with no listeners", () => {
     expect(() =>
-      bus.emit("phaseChanged", { phase: GamePhase.RESULT })
+      bus.emit("phaseChanged", { phase: GamePhase.RESOLVE }),
     ).not.toThrow();
   });
 });
@@ -184,7 +184,7 @@ describe("emit snapshot safety", () => {
     expect(results).toContain("second");
 
     results.length = 0;
-    bus.emit("phaseChanged", { phase: GamePhase.RESULT });
+    bus.emit("phaseChanged", { phase: GamePhase.RESOLVE });
     // selfRemovingListener was removed; only second fires
     expect(results).toEqual(["second"]);
   });
@@ -199,39 +199,69 @@ describe("SimEvents coverage", () => {
     const results: string[] = [];
     const mark = (name: string) => () => results.push(name);
 
-    bus.on("unitSpawned",      mark("unitSpawned"));
-    bus.on("unitDied",         mark("unitDied"));
-    bus.on("unitDamaged",      mark("unitDamaged"));
+    bus.on("unitSpawned", mark("unitSpawned"));
+    bus.on("unitDied", mark("unitDied"));
+    bus.on("unitDamaged", mark("unitDamaged"));
     bus.on("unitStateChanged", mark("unitStateChanged"));
-    bus.on("groupSpawned",     mark("groupSpawned"));
-    bus.on("buildingPlaced",   mark("buildingPlaced"));
-    bus.on("buildingDestroyed",mark("buildingDestroyed"));
+    bus.on("groupSpawned", mark("groupSpawned"));
+    bus.on("buildingPlaced", mark("buildingPlaced"));
+    bus.on("buildingDestroyed", mark("buildingDestroyed"));
     bus.on("buildingCaptured", mark("buildingCaptured"));
-    bus.on("abilityUsed",      mark("abilityUsed"));
-    bus.on("projectileCreated",mark("projectileCreated"));
-    bus.on("projectileHit",    mark("projectileHit"));
-    bus.on("goldChanged",      mark("goldChanged"));
-    bus.on("phaseChanged",     mark("phaseChanged"));
+    bus.on("abilityUsed", mark("abilityUsed"));
+    bus.on("projectileCreated", mark("projectileCreated"));
+    bus.on("projectileHit", mark("projectileHit"));
+    bus.on("goldChanged", mark("goldChanged"));
+    bus.on("phaseChanged", mark("phaseChanged"));
 
-    bus.emit("unitSpawned",      { unitId: "u1", buildingId: "b1", position: { x: 0, y: 0 } });
-    bus.emit("unitDied",         { unitId: "u1" });
-    bus.emit("unitDamaged",      { unitId: "u1", amount: 10, attackerId: "u2" });
-    bus.emit("unitStateChanged", { unitId: "u1", from: UnitState.IDLE, to: UnitState.MOVE });
-    bus.emit("groupSpawned",     { unitIds: ["u1", "u2"], buildingId: "b1" });
-    bus.emit("buildingPlaced",   { buildingId: "b1", position: { x: 1, y: 1 }, owner: "p1" });
-    bus.emit("buildingDestroyed",{ buildingId: "b1" });
+    bus.emit("unitSpawned", {
+      unitId: "u1",
+      buildingId: "b1",
+      position: { x: 0, y: 0 },
+    });
+    bus.emit("unitDied", { unitId: "u1" });
+    bus.emit("unitDamaged", { unitId: "u1", amount: 10, attackerId: "u2" });
+    bus.emit("unitStateChanged", {
+      unitId: "u1",
+      from: UnitState.IDLE,
+      to: UnitState.MOVE,
+    });
+    bus.emit("groupSpawned", { unitIds: ["u1", "u2"], buildingId: "b1" });
+    bus.emit("buildingPlaced", {
+      buildingId: "b1",
+      position: { x: 1, y: 1 },
+      owner: "p1",
+    });
+    bus.emit("buildingDestroyed", { buildingId: "b1" });
     bus.emit("buildingCaptured", { buildingId: "b1", newOwner: "p2" });
-    bus.emit("abilityUsed",      { casterId: "u1", abilityId: "fireball", targets: [] });
-    bus.emit("projectileCreated",{ projectileId: "pr1", origin: { x: 0, y: 0 }, target: { x: 5, y: 5 } });
-    bus.emit("projectileHit",    { projectileId: "pr1", targetId: "u2" });
-    bus.emit("goldChanged",      { playerId: "p1", amount: 50 });
-    bus.emit("phaseChanged",     { phase: GamePhase.BATTLE });
+    bus.emit("abilityUsed", {
+      casterId: "u1",
+      abilityId: "fireball",
+      targets: [],
+    });
+    bus.emit("projectileCreated", {
+      projectileId: "pr1",
+      origin: { x: 0, y: 0 },
+      target: { x: 5, y: 5 },
+    });
+    bus.emit("projectileHit", { projectileId: "pr1", targetId: "u2" });
+    bus.emit("goldChanged", { playerId: "p1", amount: 50 });
+    bus.emit("phaseChanged", { phase: GamePhase.BATTLE });
 
     expect(results).toHaveLength(13);
     expect(results).toEqual([
-      "unitSpawned", "unitDied", "unitDamaged", "unitStateChanged",
-      "groupSpawned", "buildingPlaced", "buildingDestroyed", "buildingCaptured",
-      "abilityUsed", "projectileCreated", "projectileHit", "goldChanged", "phaseChanged",
+      "unitSpawned",
+      "unitDied",
+      "unitDamaged",
+      "unitStateChanged",
+      "groupSpawned",
+      "buildingPlaced",
+      "buildingDestroyed",
+      "buildingCaptured",
+      "abilityUsed",
+      "projectileCreated",
+      "projectileHit",
+      "goldChanged",
+      "phaseChanged",
     ]);
   });
 });

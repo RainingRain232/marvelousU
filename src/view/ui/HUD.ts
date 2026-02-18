@@ -43,7 +43,7 @@ const STYLE_PHASE = new TextStyle({
 const PHASE_LABELS: Record<string, string> = {
   prep: "PREP",
   battle: "BATTLE",
-  result: "RESULT",
+  resolve: "RESOLVE",
 };
 
 // ---------------------------------------------------------------------------

@@ -20,6 +20,8 @@ export interface GameState {
   phase: GamePhase;
   tick: number; // Incremented each simulation tick
   rngSeed: number; // Seed passed to SeededRandom for determinism
+  phaseTimer: number; // Countdown (seconds) until current phase ends; -1 = no timer
+  winnerId: string | null; // PlayerId of the winner set during RESOLVE, null otherwise
 
   // Entity maps — keyed by ID
   bases: Map<string, Base>;
@@ -55,6 +57,8 @@ export function createGameState(
     phase: GamePhase.PREP,
     tick: 0,
     rngSeed,
+    phaseTimer: BalanceConfig.PREP_DURATION,
+    winnerId: null,
     bases: new Map(),
     buildings: new Map(),
     units: new Map(),
