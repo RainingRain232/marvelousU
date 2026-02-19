@@ -111,8 +111,31 @@ function tickUnit(
   dt: number,
   groupSlots: Map<string, string[]>,
 ): void {
-  // 1. Ensure we have a path
+  // 1. Ensure we have a path.
+  //    If chasing a unit target, re-path toward it each tick so units chase
+  //    enemies rather than marching past them. Otherwise use the base goal.
+  if (unit.targetId && state.units.has(unit.targetId)) {
+    const targetUnit = state.units.get(unit.targetId)!;
+    if (targetUnit.state !== UnitState.DIE) {
+      const tx = Math.floor(targetUnit.position.x);
+      const ty = Math.floor(targetUnit.position.y);
+      // Re-path whenever the target tile changed or path is exhausted
+      const lastWp = unit.path ? unit.path[unit.path.length - 1] : null;
+      if (!unit.path || unit.pathIndex >= unit.path.length ||
+          !lastWp || lastWp.x !== tx || lastWp.y !== ty) {
+        unit.path = findPath(
+          state.battlefield,
+          { x: Math.floor(unit.position.x), y: Math.floor(unit.position.y) },
+          { x: tx, y: ty },
+        );
+        unit.pathIndex = 0;
+        unit.formationOffset = { x: 0, y: 0 };
+      }
+    }
+  }
+
   if (!unit.path || unit.pathIndex >= unit.path.length) {
+    // No unit target (or target is a building/base) — use default base goal
     const goal = defaultGoal(state, unit);
     if (!goal) return;
 

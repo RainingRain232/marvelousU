@@ -63,7 +63,23 @@ export const CombatSystem = {
       }
 
       // --- Unit target selection (skipped for siege-only units) ---
-      if (unit.siegeOnly) continue;
+      if (unit.siegeOnly) {
+        // If no building target remains, drop out of ATTACK state so AISystem
+        // can route to the next building/base.
+        if (!unit.targetId && unit.state === UnitState.ATTACK) {
+          unit.stateMachine.setState(UnitState.MOVE) ||
+            unit.stateMachine.forceState(UnitState.MOVE);
+          unit.state = UnitState.MOVE;
+          unit.path = null;
+          unit.pathIndex = 0;
+          EventBus.emit("unitStateChanged", {
+            unitId: unit.id,
+            from: UnitState.ATTACK,
+            to: UnitState.MOVE,
+          });
+        }
+        continue;
+      }
       const target = resolveTarget(state, unit);
 
       if (!target) {

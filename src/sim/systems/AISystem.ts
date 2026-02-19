@@ -1,4 +1,4 @@
-// Auto-battle unit AI — target selection, march-to-base, building diversion.
+// Auto-battle unit AI — march-to-base, building diversion.
 //
 // Runs AFTER CombatSystem in the tick order so it only acts on units that
 // combat did not already engage:
@@ -7,12 +7,8 @@
 //   2. MOVE + no combat target → if an enemy building is within
 //      BUILDING_AGGRO_RANGE, redirect toward it (record targetId = buildingId,
 //      re-path to building tile).
-//   3. ATTACK + targetId still set → replace CombatSystem's nearest-enemy
-//      selection with the highest-priority enemy in aggro range when the
-//      current target dies or is out of range.
-//
-// Priority order (highest first):
-//   MAGE → ARCHER → PIKEMAN → SWORDSMAN → KNIGHT → SUMMONED
+//   3. ATTACK — CombatSystem owns unit-vs-unit targeting (nearest enemy).
+//      AISystem only clears stale references so the unit can resume marching.
 //
 // Building diversion:
 //   Enemy *buildings* (not bases) within BUILDING_AGGRO_RANGE take precedence
@@ -23,7 +19,7 @@
 import type { GameState } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Building } from "@sim/entities/Building";
-import { UnitState, UnitType, Direction, BuildingState } from "@/types";
+import { UnitState, Direction, BuildingState } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { startMoving } from "@sim/systems/MovementSystem";
@@ -37,26 +33,8 @@ import { findPath } from "@sim/core/Grid";
 const BUILDING_AGGRO_RANGE = 5;
 const BUILDING_AGGRO_RANGE_SQ = BUILDING_AGGRO_RANGE * BUILDING_AGGRO_RANGE;
 
-/** Tiles — used to check CombatSystem's aggro range for priority targeting. */
+/** Tiles — used to validate unit targets in aggro range. */
 const AGGRO_RANGE_SQ = BalanceConfig.AGGRO_RANGE * BalanceConfig.AGGRO_RANGE;
-
-// ---------------------------------------------------------------------------
-// Priority table — lower index = higher priority target
-// ---------------------------------------------------------------------------
-
-const TARGET_PRIORITY: UnitType[] = [
-  UnitType.MAGE,
-  UnitType.ARCHER,
-  UnitType.PIKEMAN,
-  UnitType.SWORDSMAN,
-  UnitType.KNIGHT,
-  UnitType.SUMMONED,
-];
-
-function unitPriority(type: UnitType): number {
-  const idx = TARGET_PRIORITY.indexOf(type);
-  return idx === -1 ? TARGET_PRIORITY.length : idx;
-}
 
 // ---------------------------------------------------------------------------
 // Main system
@@ -105,9 +83,7 @@ function _handleIdle(state: GameState, unit: Unit): void {
 
 /**
  * MOVE units: check for nearby enemy buildings and divert if one is closer
- * than BUILDING_AGGRO_RANGE. Also upgrade to a priority target if a high-
- * value enemy unit enters aggro range (CombatSystem will take over once the
- * unit is in range).
+ * than BUILDING_AGGRO_RANGE. CombatSystem owns unit-vs-unit targeting.
  */
 function _handleMove(state: GameState, unit: Unit): void {
   if (unit.targetId) {
@@ -124,7 +100,7 @@ function _handleMove(state: GameState, unit: Unit): void {
     }
 
     if (!unit.siegeOnly) {
-      // Check if it's a valid unit target.
+      // Check if it's a valid unit target — if so, leave it for CombatSystem.
       const unitTarget = state.units.get(unit.targetId);
       if (
         unitTarget &&
@@ -132,13 +108,6 @@ function _handleMove(state: GameState, unit: Unit): void {
         unitTarget.owner !== unit.owner &&
         distanceSq(unit.position, unitTarget.position) <= AGGRO_RANGE_SQ
       ) {
-        // Current unit target is still valid — possibly upgrade to higher priority.
-        const better = _findPriorityTarget(state, unit);
-        if (better && unitPriority(better.type) < unitPriority(unitTarget.type)) {
-          unit.targetId = better.id;
-          unit.path = null;
-          unit.pathIndex = 0;
-        }
         return;
       }
     }
@@ -165,20 +134,12 @@ function _handleMove(state: GameState, unit: Unit): void {
 }
 
 /**
- * ATTACK units: if the current target died or left range, pick the highest-
- * priority enemy in aggro range. CombatSystem already handles damage; this
- * only upgrades the target selection.
+ * ATTACK units: CombatSystem owns damage and nearest-enemy selection.
+ * AISystem only clears stale building/unit references so the unit can
+ * resume marching when the target is gone.
  */
 function _handleAttack(state: GameState, unit: Unit): void {
-  if (!unit.targetId) {
-    if (!unit.siegeOnly) {
-      // No target (e.g. just killed one) — search for a new priority target.
-      // CombatSystem will handle the ATTACK→MOVE transition if none is found.
-      const best = _findPriorityTarget(state, unit);
-      if (best) unit.targetId = best.id;
-    }
-    return;
-  }
+  if (!unit.targetId) return; // CombatSystem will transition to MOVE if needed
 
   // If targeting a building, leave it alone — CombatSystem handles damage
   const buildingTarget = state.buildings.get(unit.targetId);
@@ -196,7 +157,7 @@ function _handleAttack(state: GameState, unit: Unit): void {
     return;
   }
 
-  // Check if current target is still valid
+  // Check if current unit target is still valid
   const currentTarget = state.units.get(unit.targetId);
   if (
     currentTarget &&
@@ -204,49 +165,16 @@ function _handleAttack(state: GameState, unit: Unit): void {
     currentTarget.owner !== unit.owner &&
     distanceSq(unit.position, currentTarget.position) <= AGGRO_RANGE_SQ
   ) {
-    // Target is valid — upgrade to higher priority if one is available
-    const better = _findPriorityTarget(state, unit);
-    if (
-      better &&
-      better.id !== unit.targetId &&
-      unitPriority(better.type) < unitPriority(currentTarget.type)
-    ) {
-      unit.targetId = better.id;
-    }
-    return;
+    return; // Target still valid — CombatSystem handles it
   }
 
-  // Target is gone — fall back to best available target. CombatSystem will
-  // pick it up on the next tick; we just clear the stale reference.
+  // Target is gone — clear so CombatSystem picks a new nearest on next tick
   unit.targetId = null;
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Find the highest-priority living enemy unit within aggro range.
- */
-function _findPriorityTarget(state: GameState, unit: Unit): Unit | null {
-  let best: Unit | null = null;
-  let bestPriority = Infinity;
-
-  for (const candidate of state.units.values()) {
-    if (candidate.owner === unit.owner) continue;
-    if (candidate.state === UnitState.DIE) continue;
-    if (distanceSq(unit.position, candidate.position) > AGGRO_RANGE_SQ)
-      continue;
-
-    const p = unitPriority(candidate.type);
-    if (p < bestPriority) {
-      best = candidate;
-      bestPriority = p;
-    }
-  }
-
-  return best;
-}
 
 /**
  * Find the nearest active enemy building within BUILDING_AGGRO_RANGE.
