@@ -176,8 +176,12 @@ export class BuildingPlacer {
    */
   activate(bpType: BuildingType): void {
     this._bpType = bpType;
-    this._active = true;
+    // Defer _active so the pointerdown that triggered the shop button purchase
+    // does not immediately confirm placement on the same event.
+    this._active = false;
+    setTimeout(() => { this._active = true; }, 0);
 
+    this._isValid = false;
     this._buildGhost();
     this._ghostContainer.visible = true;
 

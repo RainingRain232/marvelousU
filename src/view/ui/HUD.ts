@@ -278,6 +278,12 @@ export class HUD {
     this.update(state);
   }
 
+  /** Sync the AI toggle button to a known state (e.g. set from the menu). */
+  setP2AI(isAI: boolean): void {
+    this._p2IsAI = isAI;
+    this._refreshAIToggle();
+  }
+
   private _setGold(playerId: PlayerId, amount: number): void {
     if (playerId === this._westPlayerId) {
       this._westGoldVal.text = String(amount);
