@@ -15,6 +15,7 @@ import { deathFX } from "@view/fx/DeathFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
+import { victoryScreen } from "@view/ui/VictoryScreen";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
@@ -141,6 +142,9 @@ async function _bootGame(p2IsAI: boolean): Promise<void> {
   // Death FX
   deathFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => deathFX.update(dt));
+
+  // Victory screen (overlays game during RESOLVE)
+  victoryScreen.init(viewManager, state);
 
   // Render loop drives game state updates
   viewManager.app.ticker.add((ticker) => {
