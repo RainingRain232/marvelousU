@@ -168,7 +168,13 @@ function _handleMove(state: GameState, unit: Unit): void {
  * only upgrades the target selection.
  */
 function _handleAttack(state: GameState, unit: Unit): void {
-  if (!unit.targetId) return;
+  if (!unit.targetId) {
+    // No target (e.g. just killed one) — search for a new priority target.
+    // CombatSystem will handle the ATTACK→MOVE transition if none is found.
+    const best = _findPriorityTarget(state, unit);
+    if (best) unit.targetId = best.id;
+    return;
+  }
 
   // If targeting a building, leave it alone — CombatSystem handles damage
   const buildingTarget = state.buildings.get(unit.targetId);

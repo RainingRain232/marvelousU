@@ -66,8 +66,20 @@ export const CombatSystem = {
       const target = resolveTarget(state, unit);
 
       if (!target) {
-        // No enemy in aggro range — drop back to IDLE/MOVE (handled elsewhere)
+        // No enemy in aggro range — clear target and drop out of ATTACK state
         unit.targetId = null;
+        if (unit.state === UnitState.ATTACK) {
+          unit.stateMachine.setState(UnitState.MOVE) ||
+            unit.stateMachine.forceState(UnitState.MOVE);
+          unit.state = UnitState.MOVE;
+          unit.path = null;
+          unit.pathIndex = 0;
+          EventBus.emit("unitStateChanged", {
+            unitId: unit.id,
+            from: UnitState.ATTACK,
+            to: UnitState.MOVE,
+          });
+        }
         continue;
       }
 
