@@ -146,7 +146,7 @@ describe("march to base", () => {
     const state = makeState();
     const unit = addUnit(state, {
       owner: "p1",
-      type: UnitType.MAGE,
+      type: UnitType.FIRE_MAGE,
       position: { x: 10, y: 10 },
       startState: UnitState.CAST,
     });
@@ -173,7 +173,7 @@ describe("priority targeting", () => {
     // Mage (higher priority) nearby
     const mage = addUnit(state, {
       owner: "p2",
-      type: UnitType.MAGE,
+      type: UnitType.FIRE_MAGE,
       position: { x: 16, y: 10 },
     });
     // Swordsman (lower priority) also nearby
@@ -228,7 +228,7 @@ describe("priority targeting", () => {
 
     const mage = addUnit(state, {
       owner: "p2",
-      type: UnitType.MAGE,
+      type: UnitType.FIRE_MAGE,
       position: { x: 16, y: 10 },
     });
     // Lower priority unit also in range
@@ -255,7 +255,7 @@ describe("priority targeting", () => {
 
     const mage = addUnit(state, {
       owner: "p2",
-      type: UnitType.MAGE,
+      type: UnitType.FIRE_MAGE,
       position: { x: 16, y: 10 },
       startState: UnitState.DIE, // already dead
     });
@@ -285,7 +285,7 @@ describe("priority targeting", () => {
     // Friendly mage — should be ignored
     addUnit(state, {
       owner: "p1",
-      type: UnitType.MAGE,
+      type: UnitType.FIRE_MAGE,
       position: { x: 16, y: 10 },
     });
     const enemy = addUnit(state, {
@@ -317,7 +317,7 @@ describe("priority targeting", () => {
     // Mage far outside aggro range (AGGRO_RANGE = 6)
     addUnit(state, {
       owner: "p2",
-      type: UnitType.MAGE,
+      type: UnitType.FIRE_MAGE,
       position: { x: 15, y: 30 },
     });
 

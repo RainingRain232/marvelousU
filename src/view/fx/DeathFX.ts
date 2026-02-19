@@ -83,7 +83,9 @@ export class DeathFX {
    */
   play(unitType: UnitType, screenX: number, screenY: number): void {
     switch (unitType) {
-      case UnitType.MAGE:
+      case UnitType.FIRE_MAGE:
+      case UnitType.STORM_MAGE:
+      case UnitType.SUMMONER:
         this._playSoulWisps(screenX, screenY);
         break;
       case UnitType.SUMMONED:

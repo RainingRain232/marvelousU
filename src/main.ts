@@ -14,6 +14,7 @@ import { summonFX } from "@view/fx/SummonFX";
 import { deathFX } from "@view/fx/DeathFX";
 import { iceBallFX } from "@view/fx/IceBallFX";
 import { webFX } from "@view/fx/WebFX";
+import { turretArrowFX } from "@view/fx/TurretArrowFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
@@ -217,6 +218,10 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   webFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => webFX.update(dt));
 
+  // Building turret FX
+  turretArrowFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => turretArrowFX.update(dt));
+
   // Victory screen (overlays game during RESOLVE)
   victoryScreen.init(viewManager, state);
 
@@ -251,20 +256,16 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   });
   pauseLabel.anchor.set(0.5, 0.5);
   pauseLabel.position.set(viewManager.screenWidth / 2, viewManager.screenHeight / 2);
+  // Overlay must not block pointer events — UI buttons (shop, HUD) stay clickable while paused
+  pauseOverlay.eventMode = "none";
   pauseOverlay.addChild(pauseBg, pauseLabel);
   pauseOverlay.visible = false;
   viewManager.addToLayer("ui", pauseOverlay);
 
   const togglePause = () => {
     simLoop.togglePause();
-    const isPaused = simLoop.isPaused;
-    pauseOverlay.visible = isPaused;
-    // Freeze / resume Pixi ticker so GSAP tweens and view updates also pause
-    if (isPaused) {
-      viewManager.app.ticker.stop();
-    } else {
-      viewManager.app.ticker.start();
-    }
+    pauseOverlay.visible = simLoop.isPaused;
+    // Ticker keeps running so UI stays responsive; only the sim loop is frozen
   };
 
   window.addEventListener("keydown", (e) => {

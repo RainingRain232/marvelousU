@@ -37,6 +37,7 @@ function createWebAbility(type: AbilityType.WEB | AbilityType.GLADIATOR_NET, id:
         id: projectileId,
         abilityId: id,
         ownerId: caster.id,
+        ownerPlayerId: caster.owner,
         origin: { ...caster.position },
         target: targetPos,
         position: { ...caster.position },

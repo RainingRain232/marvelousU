@@ -115,7 +115,8 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.SWORDSMAN]: buildDef("swordsman"),
   [UnitType.ARCHER]: buildDef("archer", { attackFps: 10 }),
   [UnitType.KNIGHT]: buildDef("knight", { moveFps: 8, attackFps: 8 }),
-  [UnitType.MAGE]: buildDef("mage", { idleFps: 6, castFps: 8 }),
+  [UnitType.FIRE_MAGE]: buildDef("mage", { idleFps: 6, castFps: 8 }),
+  [UnitType.STORM_MAGE]: buildDef("mage", { idleFps: 6, castFps: 8 }),
   [UnitType.PIKEMAN]: buildDef("pikeman", { attackFps: 10 }),
   [UnitType.SUMMONED]: buildDef("summoned", {
     idleFps: 8,
@@ -127,6 +128,7 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.BATTERING_RAM]: buildDef("battering_ram", { moveFps: 6, attackFps: 5 }),
   [UnitType.MAGE_HUNTER]: buildDef("mage_hunter"),
   [UnitType.SIEGE_HUNTER]: buildDef("siege_hunter"),
+  [UnitType.SUMMONER]: buildDef("mage", { idleFps: 6, castFps: 8 }),
   [UnitType.COLD_MAGE]: buildDef("cold_mage", { idleFps: 6, castFps: 8 }),
   [UnitType.SPIDER]: buildDef("spider", { moveFps: 12, attackFps: 10, castFps: 10 }),
   [UnitType.GLADIATOR]: buildDef("gladiator", { attackFps: 9, castFps: 10 }),

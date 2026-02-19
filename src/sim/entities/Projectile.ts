@@ -5,7 +5,8 @@ export interface Projectile {
   // Identity
   id: string;
   abilityId: string; // Which ability spawned this
-  ownerId: string; // Caster unit ID
+  ownerId: string; // Caster unit or building ID
+  ownerPlayerId: string; // Player who owns the caster (for friendly-fire checks)
 
   // Position
   origin: Vec2;

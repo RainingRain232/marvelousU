@@ -1,5 +1,6 @@
 // Building types, costs, shop inventories, placement rules
 import { BuildingType, UnitType } from "@/types";
+import type { BuildingTurret } from "@sim/entities/Building";
 
 /** Which territory zone a building may be placed in. */
 export type PlacementZone = "own" | "neutral" | "any";
@@ -15,6 +16,8 @@ export interface BuildingDef {
   placementZone: PlacementZone;
   /** If true, enemy units can recapture this building even after it is owned. */
   capturable?: boolean;
+  /** Turrets the building starts with (omit attackTimer/targetId — set to 0/null at spawn). */
+  defaultTurrets?: Omit<BuildingTurret, "attackTimer" | "targetId">[];
 }
 
 export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
@@ -34,6 +37,9 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     ],
     footprint: { w: 3, h: 3 },
     placementZone: "own",
+    defaultTurrets: [
+      { projectileTag: "arrow", damage: 12, range: 6, attackSpeed: 1.0 },
+    ],
   },
   [BuildingType.BARRACKS]: {
     type: BuildingType.BARRACKS,
@@ -60,7 +66,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 150,
     hp: 150,
     goldIncome: 2,
-    shopInventory: [UnitType.MAGE, UnitType.COLD_MAGE],
+    shopInventory: [UnitType.FIRE_MAGE, UnitType.STORM_MAGE, UnitType.SUMMONER, UnitType.COLD_MAGE],
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",

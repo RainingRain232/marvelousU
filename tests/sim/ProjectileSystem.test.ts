@@ -46,6 +46,7 @@ function addProjectile(
     id: `proj-test-${state.projectiles.size}`,
     abilityId: "ab-1",
     ownerId: "caster-1",
+    ownerPlayerId: "p1",
     origin: { x: 0, y: 0 },
     target: { x: 5, y: 0 },
     position: { x: 0, y: 0 },

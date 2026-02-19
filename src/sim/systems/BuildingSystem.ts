@@ -17,6 +17,8 @@ import type { TileZone } from "@sim/state/BattlefieldState";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { distanceSq } from "@sim/utils/math";
 
+let _turretProjectileCounter = 0;
+
 // ---------------------------------------------------------------------------
 // Placement result
 // ---------------------------------------------------------------------------
@@ -195,6 +197,11 @@ export const BuildingSystem = {
     for (const building of state.buildings.values()) {
       if (building.state !== BuildingState.ACTIVE) continue;
 
+      // --- Turret update ---
+      if (building.owner !== null && building.turrets.length > 0) {
+        _updateTurrets(state, building, dt);
+      }
+
       const def = BUILDING_DEFINITIONS[building.type];
 
       // --- Owned capturable buildings (e.g. Town): enemy units can contest ---
@@ -354,4 +361,85 @@ function zoneAllowed(
   if (placementZone === "any") return true;
   if (placementZone === "neutral") return tileZone === "neutral";
   return tileZone === ownerZone; // "own"
+}
+
+// ---------------------------------------------------------------------------
+// Turret logic
+// ---------------------------------------------------------------------------
+
+function _updateTurrets(
+  state: GameState,
+  building: ReturnType<typeof import("@sim/entities/Building").createBuilding>,
+  dt: number,
+): void {
+  // Centre tile of the building footprint (for range checks and projectile origin)
+  const def = BUILDING_DEFINITIONS[building.type];
+  const cx = building.position.x + def.footprint.w / 2;
+  const cy = building.position.y + def.footprint.h / 2;
+
+  for (const turret of building.turrets) {
+    turret.attackTimer -= dt;
+
+    const rangeSq = turret.range * turret.range;
+
+    // Validate existing target
+    if (turret.targetId) {
+      const existing = state.units.get(turret.targetId);
+      if (
+        !existing ||
+        existing.state === UnitState.DIE ||
+        existing.owner === building.owner ||
+        distanceSq({ x: cx, y: cy }, existing.position) > rangeSq
+      ) {
+        turret.targetId = null;
+      }
+    }
+
+    // Acquire new target if none
+    if (!turret.targetId) {
+      let bestDsq = rangeSq + 1;
+      for (const unit of state.units.values()) {
+        if (unit.state === UnitState.DIE) continue;
+        if (unit.owner === building.owner) continue;
+        const dsq = distanceSq({ x: cx, y: cy }, unit.position);
+        if (dsq <= rangeSq && dsq < bestDsq) {
+          bestDsq = dsq;
+          turret.targetId = unit.id;
+        }
+      }
+    }
+
+    if (!turret.targetId || turret.attackTimer > 0) continue;
+
+    // Fire!
+    turret.attackTimer = 1 / turret.attackSpeed;
+    const target = state.units.get(turret.targetId)!;
+    const projectileId = `bturret-${turret.projectileTag}-${++_turretProjectileCounter}`;
+
+    state.projectiles.set(projectileId, {
+      id: projectileId,
+      abilityId: `${building.id}-turret`,
+      ownerId: building.id,
+      ownerPlayerId: building.owner!,
+      origin: { x: cx, y: cy },
+      target: { ...target.position },
+      position: { x: cx, y: cy },
+      speed: 14, // fast arrow
+      damage: turret.damage,
+      aoeRadius: 0,
+      bounceTargets: [],
+      maxBounces: 0,
+      bounceRange: 0,
+      targetId: turret.targetId,
+      hitIds: new Set(),
+      slowDuration: 0,
+      slowFactor: 1,
+    });
+
+    EventBus.emit("projectileCreated", {
+      projectileId,
+      origin: { x: cx, y: cy },
+      target: { ...target.position },
+    });
+  }
 }

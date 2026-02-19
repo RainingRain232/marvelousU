@@ -5,6 +5,21 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 // ---------------------------------------------------------------------------
+// Building turret
+// ---------------------------------------------------------------------------
+
+/** A projectile-firing attachment on a building. */
+export interface BuildingTurret {
+  /** Projectile type tag — used by FX to pick the right visual. e.g. "arrow", "fireball" */
+  projectileTag: string;
+  damage: number;
+  range: number; // tiles
+  attackSpeed: number; // shots per second
+  attackTimer: number; // seconds until next shot (counts down)
+  targetId: string | null; // current target unit ID
+}
+
+// ---------------------------------------------------------------------------
 // Interfaces
 // ---------------------------------------------------------------------------
 
@@ -44,6 +59,9 @@ export interface Building {
   shopInventory: UnitType[]; // Unit types this building can train
   blueprints: BuildingType[]; // Building blueprints sold from this building's shop
   spawnQueue: SpawnQueue;
+
+  // Combat
+  turrets: BuildingTurret[]; // Active weapon attachments (can be empty)
 }
 
 // ---------------------------------------------------------------------------
@@ -80,5 +98,10 @@ export function createBuilding(opts: CreateBuildingOptions): Building {
       readyUnits: [],
       queueEnabled: false,
     },
+    turrets: (def.defaultTurrets ?? []).map((t) => ({
+      ...t,
+      attackTimer: 0,
+      targetId: null,
+    })),
   };
 }

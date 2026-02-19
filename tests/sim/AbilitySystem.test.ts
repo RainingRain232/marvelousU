@@ -30,7 +30,7 @@ function addUnit(
 ): Unit {
   const unit = createUnit({
     id: opts.id,
-    type: opts.type ?? UnitType.MAGE,
+    type: opts.type ?? UnitType.FIRE_MAGE,
     owner: opts.owner ?? "p1",
     position: opts.position ?? { x: 10, y: 10 },
   });
@@ -363,7 +363,7 @@ describe("cast ticking", () => {
 describe("ensureAbilities (lazy init)", () => {
   it("creates abilities in state.abilities for mage unit on first update", () => {
     const state = makeState();
-    const mage = createUnit({ type: UnitType.MAGE, owner: "p1", position: { x: 10, y: 10 } });
+    const mage = createUnit({ type: UnitType.FIRE_MAGE, owner: "p1", position: { x: 10, y: 10 } });
     state.units.set(mage.id, mage);
 
     AbilitySystem.update(state, 0.016);
@@ -374,7 +374,7 @@ describe("ensureAbilities (lazy init)", () => {
 
   it("does not create duplicate abilities on subsequent updates", () => {
     const state = makeState();
-    const mage = createUnit({ type: UnitType.MAGE, owner: "p1", position: { x: 10, y: 10 } });
+    const mage = createUnit({ type: UnitType.FIRE_MAGE, owner: "p1", position: { x: 10, y: 10 } });
     state.units.set(mage.id, mage);
 
     AbilitySystem.update(state, 0.016);
@@ -387,7 +387,7 @@ describe("ensureAbilities (lazy init)", () => {
 
   it("attachAbilities pre-populates for a mage unit", () => {
     const state = makeState();
-    const mage = createUnit({ type: UnitType.MAGE, owner: "p1", position: { x: 10, y: 10 } });
+    const mage = createUnit({ type: UnitType.FIRE_MAGE, owner: "p1", position: { x: 10, y: 10 } });
     state.units.set(mage.id, mage);
 
     attachAbilities(state, mage);

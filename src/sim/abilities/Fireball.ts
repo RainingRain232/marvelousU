@@ -33,6 +33,7 @@ export function createFireball(id: string): Ability {
         id: projectileId,
         abilityId: id,
         ownerId: caster.id,
+        ownerPlayerId: caster.owner,
         origin: { ...caster.position },
         target: targetPos,
         position: { ...caster.position },

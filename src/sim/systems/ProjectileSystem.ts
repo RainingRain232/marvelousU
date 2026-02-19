@@ -105,8 +105,7 @@ function _applyAoE(state: GameState, proj: Projectile): void {
     if (proj.hitIds.has(unit.id)) continue;
 
     // Only damage enemies of the caster
-    const caster = state.units.get(proj.ownerId);
-    if (caster && unit.owner === caster.owner) continue;
+    if (unit.owner === proj.ownerPlayerId) continue;
 
     const dsq = distanceSq(proj.position, unit.position);
     if (dsq <= aoeRadiusSq) {

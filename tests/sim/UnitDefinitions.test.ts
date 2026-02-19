@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createUnit, _resetUnitIdCounter, UNIT_TRANSITIONS } from "@sim/entities/Unit";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
-import { Direction, UnitType, UnitState } from "@/types";
+import { AbilityType, Direction, UnitType, UnitState } from "@/types";
 
 beforeEach(() => {
   _resetUnitIdCounter();
@@ -58,8 +58,14 @@ describe("UNIT_DEFINITIONS", () => {
     expect(UNIT_DEFINITIONS[UnitType.ARCHER].range).toBeGreaterThan(1);
   });
 
-  it("Mage has ability types", () => {
-    expect(UNIT_DEFINITIONS[UnitType.MAGE].abilityTypes.length).toBeGreaterThan(0);
+  it("Fire Mage has only FIREBALL ability", () => {
+    expect(UNIT_DEFINITIONS[UnitType.FIRE_MAGE].abilityTypes).toContain(AbilityType.FIREBALL);
+    expect(UNIT_DEFINITIONS[UnitType.FIRE_MAGE].abilityTypes).toHaveLength(1);
+  });
+
+  it("Storm Mage has only CHAIN_LIGHTNING ability", () => {
+    expect(UNIT_DEFINITIONS[UnitType.STORM_MAGE].abilityTypes).toContain(AbilityType.CHAIN_LIGHTNING);
+    expect(UNIT_DEFINITIONS[UnitType.STORM_MAGE].abilityTypes).toHaveLength(1);
   });
 
   it("non-mage units have no ability types", () => {
@@ -93,7 +99,7 @@ describe("createUnit — identity & stats", () => {
   });
 
   it("sets owner from options", () => {
-    const u = createUnit({ type: UnitType.MAGE, owner: "player-west", position: { x: 0, y: 0 } });
+    const u = createUnit({ type: UnitType.FIRE_MAGE, owner: "player-west", position: { x: 0, y: 0 } });
     expect(u.owner).toBe("player-west");
   });
 
@@ -125,8 +131,8 @@ describe("createUnit — identity & stats", () => {
   });
 
   it("range matches definition", () => {
-    const def = UNIT_DEFINITIONS[UnitType.MAGE];
-    const u = createUnit({ type: UnitType.MAGE, owner: "p1", position: { x: 0, y: 0 } });
+    const def = UNIT_DEFINITIONS[UnitType.FIRE_MAGE];
+    const u = createUnit({ type: UnitType.FIRE_MAGE, owner: "p1", position: { x: 0, y: 0 } });
     expect(u.range).toBe(def.range);
   });
 });
@@ -167,12 +173,12 @@ describe("createUnit — initial state", () => {
   });
 
   it("castTimer starts at 0", () => {
-    const u = createUnit({ type: UnitType.MAGE, owner: "p1", position: { x: 0, y: 0 } });
+    const u = createUnit({ type: UnitType.FIRE_MAGE, owner: "p1", position: { x: 0, y: 0 } });
     expect(u.castTimer).toBe(0);
   });
 
   it("abilityIds starts empty", () => {
-    const u = createUnit({ type: UnitType.MAGE, owner: "p1", position: { x: 0, y: 0 } });
+    const u = createUnit({ type: UnitType.FIRE_MAGE, owner: "p1", position: { x: 0, y: 0 } });
     expect(u.abilityIds).toHaveLength(0);
   });
 });
@@ -206,14 +212,14 @@ describe("unit StateMachine transitions", () => {
   });
 
   it("ATTACK → CAST is allowed", () => {
-    const u = createUnit({ type: UnitType.MAGE, owner: "p1", position: { x: 0, y: 0 } });
+    const u = createUnit({ type: UnitType.FIRE_MAGE, owner: "p1", position: { x: 0, y: 0 } });
     u.stateMachine.setState(UnitState.MOVE);
     u.stateMachine.setState(UnitState.ATTACK);
     expect(u.stateMachine.canTransition(UnitState.CAST)).toBe(true);
   });
 
   it("CAST → IDLE is allowed", () => {
-    const u = createUnit({ type: UnitType.MAGE, owner: "p1", position: { x: 0, y: 0 } });
+    const u = createUnit({ type: UnitType.FIRE_MAGE, owner: "p1", position: { x: 0, y: 0 } });
     u.stateMachine.setState(UnitState.MOVE);
     u.stateMachine.setState(UnitState.ATTACK);
     u.stateMachine.setState(UnitState.CAST);
@@ -261,9 +267,14 @@ describe("createUnit covers all unit types", () => {
     expect(u.type).toBe(UnitType.KNIGHT);
   });
 
-  it("creates Mage", () => {
-    const u = createUnit({ type: UnitType.MAGE, owner: "p1", position: pos });
-    expect(u.type).toBe(UnitType.MAGE);
+  it("creates Fire Mage", () => {
+    const u = createUnit({ type: UnitType.FIRE_MAGE, owner: "p1", position: pos });
+    expect(u.type).toBe(UnitType.FIRE_MAGE);
+  });
+
+  it("creates Storm Mage", () => {
+    const u = createUnit({ type: UnitType.STORM_MAGE, owner: "p1", position: pos });
+    expect(u.type).toBe(UnitType.STORM_MAGE);
   });
 
   it("creates Pikeman", () => {
