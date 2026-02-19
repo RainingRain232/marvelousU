@@ -170,6 +170,16 @@ function _handleMove(state: GameState, unit: Unit): void {
 function _handleAttack(state: GameState, unit: Unit): void {
   if (!unit.targetId) return;
 
+  // If targeting a building, leave it alone — CombatSystem handles damage
+  const buildingTarget = state.buildings.get(unit.targetId);
+  if (
+    buildingTarget &&
+    buildingTarget.state === BuildingState.ACTIVE &&
+    buildingTarget.owner !== unit.owner
+  ) {
+    return;
+  }
+
   // Check if current target is still valid
   const currentTarget = state.units.get(unit.targetId);
   if (
