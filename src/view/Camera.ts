@@ -40,6 +40,10 @@ export class Camera {
   screenW = 800;
   screenH = 600;
 
+  // Map dimensions in tiles — updated when a new game starts
+  private _mapW: number = BalanceConfig.GRID_WIDTH;
+  private _mapH: number = BalanceConfig.GRID_HEIGHT;
+
   // ---------------------------------------------------------------------------
   // Keyboard pan state
   // ---------------------------------------------------------------------------
@@ -174,6 +178,37 @@ export class Camera {
     this._clamp();
   }
 
+  /**
+   * Set the map size used for clamping. Call whenever a new game starts.
+   */
+  setMapSize(widthTiles: number, heightTiles: number): void {
+    this._mapW = widthTiles;
+    this._mapH = heightTiles;
+    this._clamp();
+  }
+
+  /**
+   * Zoom out so the entire map fits in the viewport, then centre it.
+   * Respects ZOOM_MIN so the map can be larger than the screen.
+   */
+  fitMap(): void {
+    const ts = BalanceConfig.TILE_SIZE;
+    const mapPxW = this._mapW * ts;
+    const mapPxH = this._mapH * ts;
+
+    const zoomX = this.screenW / mapPxW;
+    const zoomY = this.screenH / mapPxH;
+    this.zoom = Math.max(ZOOM_MIN, Math.min(zoomX, zoomY));
+
+    // Centre the map in the viewport (pre-zoom offset)
+    const visW = this.screenW / this.zoom;
+    const visH = this.screenH / this.zoom;
+    this.x = (visW - mapPxW) / 2;
+    this.y = (visH - mapPxH) / 2;
+
+    this._clamp();
+  }
+
   // ---------------------------------------------------------------------------
   // Clamping
   // ---------------------------------------------------------------------------
@@ -195,8 +230,8 @@ export class Camera {
    */
   private _clamp(): void {
     const tileSize = BalanceConfig.TILE_SIZE;
-    const worldPxW = BalanceConfig.GRID_WIDTH * tileSize;
-    const worldPxH = BalanceConfig.GRID_HEIGHT * tileSize;
+    const worldPxW = this._mapW * tileSize;
+    const worldPxH = this._mapH * tileSize;
     const visW = this.screenW / this.zoom;
     const visH = this.screenH / this.zoom;
 

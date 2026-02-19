@@ -1,6 +1,7 @@
-// Menu screen: AI toggle + Start Game button (enters PREP phase)
+// Menu screen: AI toggle + map size selector + Start Game button
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 const STYLE_TITLE = new TextStyle({
   fontFamily: "monospace",
@@ -12,21 +13,52 @@ const STYLE_TITLE = new TextStyle({
 
 const STYLE_LABEL = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 14,
+  fontSize: 12,
   fill: 0x8899aa,
   letterSpacing: 1,
 });
 
 const STYLE_BTN = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 15,
+  fontSize: 14,
   fill: 0xffffff,
   fontWeight: "bold",
-  letterSpacing: 2,
+  letterSpacing: 1,
+});
+
+const STYLE_SIZE_ACTIVE = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 12,
+  fill: 0xffd700,
+  fontWeight: "bold",
+  letterSpacing: 1,
+});
+
+const STYLE_SIZE_INACTIVE = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 12,
+  fill: 0x8899aa,
+  letterSpacing: 1,
 });
 
 const BG_COLOR = 0x0a0a18;
 const BORDER_COLOR = 0xffd700;
+
+export interface MapSize {
+  label: string;
+  width: number;
+  height: number;
+}
+
+const BASE_W = BalanceConfig.GRID_WIDTH;
+const BASE_H = BalanceConfig.GRID_HEIGHT;
+
+export const MAP_SIZES: MapSize[] = [
+  { label: "STANDARD",  width: BASE_W,     height: BASE_H     },
+  { label: "DOUBLE",    width: BASE_W * 2, height: BASE_H * 2 },
+  { label: "TRIPLE",    width: BASE_W * 3, height: BASE_H * 3 },
+  { label: "QUADRUPLE", width: BASE_W * 4, height: BASE_H * 4 },
+];
 
 function makePanel(w: number, h: number): Graphics {
   return new Graphics()
@@ -47,8 +79,21 @@ export class MenuScreen {
   private _aiToggleBg!: Graphics;
   private _aiToggleLabel!: Text;
 
+  // Map size state
+  private _selectedSizeIndex = 0;
+  private _sizeBtns: Array<{ bg: Graphics; label: Text }> = [];
+
+  // card stored for layout
+  private _card!: Graphics;
+  private _cardW = 360;
+  private _cardH = 320;
+
   onAIToggle: ((isAI: boolean) => void) | null = null;
   onStartGame: (() => void) | null = null;
+
+  get selectedMapSize(): MapSize {
+    return MAP_SIZES[this._selectedSizeIndex];
+  }
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -62,35 +107,34 @@ export class MenuScreen {
     this.container.addChild(this._bg);
 
     // Card panel
-    const CARD_W = 320;
-    const CARD_H = 240;
-    const card = makePanel(CARD_W, CARD_H);
+    const CW = this._cardW;
+    const CH = this._cardH;
+    const card = makePanel(CW, CH);
     this.container.addChild(card);
+    this._card = card;
 
-    // "MENU" title inside card
+    // Title
     const title = new Text({ text: "MENU", style: STYLE_TITLE });
     title.anchor.set(0.5, 0);
-    title.position.set(CARD_W / 2, 20);
+    title.position.set(CW / 2, 18);
     card.addChild(title);
 
     // Divider
-    const divider = new Graphics()
-      .rect(20, 60, CARD_W - 40, 1)
-      .fill({ color: BORDER_COLOR, alpha: 0.2 });
-    card.addChild(divider);
+    card.addChild(
+      new Graphics().rect(20, 58, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
 
-    // AI toggle section label
-    const aiSectionLabel = new Text({ text: "P2 CONTROL", style: STYLE_LABEL });
-    aiSectionLabel.position.set(20, 76);
-    card.addChild(aiSectionLabel);
+    // --- AI toggle ---
+    const aiLabel = new Text({ text: "P2 CONTROL", style: STYLE_LABEL });
+    aiLabel.position.set(20, 70);
+    card.addChild(aiLabel);
 
-    // AI toggle button
-    const TW = CARD_W - 40;
-    const TH = 34;
+    const TW = CW - 40;
+    const TH = 32;
     const toggleBtn = new Container();
     toggleBtn.eventMode = "static";
     toggleBtn.cursor = "pointer";
-    toggleBtn.position.set(20, 100);
+    toggleBtn.position.set(20, 90);
 
     const toggleBg = new Graphics();
     toggleBtn.addChild(toggleBg);
@@ -112,13 +156,69 @@ export class MenuScreen {
     card.addChild(toggleBtn);
     this._refreshAIToggle(TW, TH);
 
-    // START GAME button
-    const BW = CARD_W - 40;
+    // Divider
+    card.addChild(
+      new Graphics().rect(20, 136, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
+    // --- Map size selector ---
+    const mapLabel = new Text({ text: "MAP SIZE", style: STYLE_LABEL });
+    mapLabel.position.set(20, 148);
+    card.addChild(mapLabel);
+
+    // 4 buttons in a row
+    const btnCount = MAP_SIZES.length;
+    const gap = 6;
+    const totalGap = gap * (btnCount - 1);
+    const sbW = Math.floor((CW - 40 - totalGap) / btnCount);
+    const sbH = 30;
+
+    this._sizeBtns = [];
+    for (let i = 0; i < btnCount; i++) {
+      const sizeBtn = new Container();
+      sizeBtn.eventMode = "static";
+      sizeBtn.cursor = "pointer";
+      sizeBtn.position.set(20 + i * (sbW + gap), 168);
+
+      const sizeBg = new Graphics();
+      sizeBtn.addChild(sizeBg);
+
+      const dims = `${MAP_SIZES[i].width}×${MAP_SIZES[i].height}`;
+      const topLabel = new Text({ text: MAP_SIZES[i].label, style: STYLE_SIZE_INACTIVE });
+      topLabel.anchor.set(0.5, 0);
+      topLabel.position.set(sbW / 2, 4);
+      sizeBtn.addChild(topLabel);
+
+      const dimLabel = new Text({ text: dims, style: STYLE_SIZE_INACTIVE });
+      dimLabel.anchor.set(0.5, 1);
+      dimLabel.position.set(sbW / 2, sbH - 3);
+      sizeBtn.addChild(dimLabel);
+
+      const idx = i;
+      sizeBtn.on("pointerdown", () => {
+        this._selectedSizeIndex = idx;
+        this._refreshSizeBtns(sbW, sbH);
+      });
+
+      card.addChild(sizeBtn);
+      this._sizeBtns.push({ bg: sizeBg, label: topLabel });
+      // store dim label too for style refresh
+      (this._sizeBtns[i] as typeof this._sizeBtns[0] & { dim: Text }).dim = dimLabel;
+    }
+    this._refreshSizeBtns(sbW, sbH);
+
+    // Divider
+    card.addChild(
+      new Graphics().rect(20, 212, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
+    // --- START GAME button ---
+    const BW = CW - 40;
     const BH = 42;
     const startBtn = new Container();
     startBtn.eventMode = "static";
     startBtn.cursor = "pointer";
-    startBtn.position.set(20, 170);
+    startBtn.position.set(20, 226);
 
     const startBg = new Graphics()
       .roundRect(0, 0, BW, BH, 6)
@@ -127,13 +227,16 @@ export class MenuScreen {
       .stroke({ color: 0x44aa66, width: 2 });
     startBtn.addChild(startBg);
 
-    const startLabel = new Text({ text: "START GAME", style: new TextStyle({
-      fontFamily: "monospace",
-      fontSize: 15,
-      fill: 0x88ffaa,
-      fontWeight: "bold",
-      letterSpacing: 2,
-    }) });
+    const startLabel = new Text({
+      text: "START GAME",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 15,
+        fill: 0x88ffaa,
+        fontWeight: "bold",
+        letterSpacing: 2,
+      }),
+    });
     startLabel.anchor.set(0.5, 0.5);
     startLabel.position.set(BW / 2, BH / 2);
     startBtn.addChild(startLabel);
@@ -144,21 +247,11 @@ export class MenuScreen {
 
     card.addChild(startBtn);
 
-    // Store card ref for layout
-    this._card = card;
-    this._cardW = CARD_W;
-    this._cardH = CARD_H;
-
     vm.addToLayer("ui", this.container);
     this._layout();
 
     vm.app.renderer.on("resize", () => this._layout());
   }
-
-  // card is stored for centering
-  private _card!: Graphics;
-  private _cardW = 320;
-  private _cardH = 240;
 
   show(): void {
     this.container.visible = true;
@@ -184,6 +277,24 @@ export class MenuScreen {
       ? "P2: AI  [click to disable]"
       : "P2: HUMAN  [click to enable AI]";
     this._aiToggleLabel.style.fill = active ? 0x88ffaa : 0xff8888;
+  }
+
+  private _refreshSizeBtns(w: number, h: number): void {
+    for (let i = 0; i < this._sizeBtns.length; i++) {
+      const entry = this._sizeBtns[i] as { bg: Graphics; label: Text; dim: Text };
+      const selected = i === this._selectedSizeIndex;
+
+      entry.bg.clear();
+      entry.bg
+        .roundRect(0, 0, w, h, 4)
+        .fill({ color: selected ? 0x1a2e1a : 0x12121e })
+        .roundRect(0, 0, w, h, 4)
+        .stroke({ color: selected ? 0xffd700 : 0x334455, width: selected ? 1.5 : 1 });
+
+      const style = selected ? STYLE_SIZE_ACTIVE : STYLE_SIZE_INACTIVE;
+      entry.label.style = style;
+      entry.dim.style = style;
+    }
   }
 
   private _layout(): void {

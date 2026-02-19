@@ -18,29 +18,38 @@ import { spawnCastle } from "@sim/systems/CastleInit";
 export interface BaseInitOptions {
   westPlayerId: PlayerId;
   eastPlayerId: PlayerId;
+  /** Override west base tile position. Defaults to BalanceConfig value. */
+  westPosition?: { x: number; y: number };
+  /** Override east base tile position. Defaults to BalanceConfig value. */
+  eastPosition?: { x: number; y: number };
+  /** Override west spawn offset. Defaults to BalanceConfig value. */
+  westSpawnOffset?: { x: number; y: number };
+  /** Override east spawn offset. Defaults to BalanceConfig value. */
+  eastSpawnOffset?: { x: number; y: number };
 }
 
 /**
  * Create WEST and EAST bases, register them on `state`, and link each base
  * to its owning player (sets `player.ownedBaseId`).
  *
- * Positions are read from `BalanceConfig` — change them there, not here.
+ * Positions default to BalanceConfig values but can be overridden via opts
+ * (e.g. when the map size differs from the standard 30×20 grid).
  */
 export function initBases(state: GameState, opts: BaseInitOptions): void {
   const westBase = createBase({
     id: "base-west",
     direction: Direction.WEST,
     owner: opts.westPlayerId,
-    position: { ...BalanceConfig.BASE_WEST_POSITION },
-    spawnOffset: { ...BalanceConfig.BASE_WEST_SPAWN_OFFSET },
+    position: opts.westPosition ?? { ...BalanceConfig.BASE_WEST_POSITION },
+    spawnOffset: opts.westSpawnOffset ?? { ...BalanceConfig.BASE_WEST_SPAWN_OFFSET },
   });
 
   const eastBase = createBase({
     id: "base-east",
     direction: Direction.EAST,
     owner: opts.eastPlayerId,
-    position: { ...BalanceConfig.BASE_EAST_POSITION },
-    spawnOffset: { ...BalanceConfig.BASE_EAST_SPAWN_OFFSET },
+    position: opts.eastPosition ?? { ...BalanceConfig.BASE_EAST_POSITION },
+    spawnOffset: opts.eastSpawnOffset ?? { ...BalanceConfig.BASE_EAST_SPAWN_OFFSET },
   });
 
   // Register on state

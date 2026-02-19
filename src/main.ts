@@ -15,10 +15,12 @@ import { deathFX } from "@view/fx/DeathFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
+import type { MapSize } from "@view/ui/MenuScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
 import { createGameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
+import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
 import { Direction, GamePhase } from "@/types";
@@ -62,19 +64,40 @@ import { Direction, GamePhase } from "@/types";
   // Game boot (deferred until "START GAME" is clicked)
   // ---------------------------------------------------------------------------
   menuScreen.onStartGame = async () => {
+    const mapSize = menuScreen.selectedMapSize;
     menuScreen.hide();
-    await _bootGame(p2IsAI);
+    await _bootGame(p2IsAI, mapSize);
   };
 })();
 
-async function _bootGame(p2IsAI: boolean): Promise<void> {
-  // 1. Simulation state
-  const state = createGameState();
+/**
+ * Compute scaled base positions for a given map size.
+ * Bases sit 1 tile from each side, vertically centred (accounting for 3-tile height).
+ * Spawn offsets mirror the standard values.
+ */
+function _computeBasePositions(w: number, h: number) {
+  const midY = Math.floor(h / 2) - 1; // centre the 3-tall castle
+  return {
+    westPosition:    { x: 1,     y: midY },
+    eastPosition:    { x: w - 4, y: midY }, // castle is 3 wide; x + 3 = w - 1
+    westSpawnOffset: { ...BalanceConfig.BASE_WEST_SPAWN_OFFSET },
+    eastSpawnOffset: { ...BalanceConfig.BASE_EAST_SPAWN_OFFSET },
+  };
+}
+
+async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
+  // 1. Simulation state — sized to the chosen map
+  const state = createGameState(mapSize.width, mapSize.height);
   state.players.set("p1", createPlayerState("p1", Direction.WEST));
   state.players.set("p2", createPlayerState("p2", Direction.EAST));
-  initBases(state, { westPlayerId: "p1", eastPlayerId: "p2" });
+  const basePos = _computeBasePositions(mapSize.width, mapSize.height);
+  initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
 
-  // 2. Grid background
+  // 2. Camera — fit the full map into the viewport
+  viewManager.camera.setMapSize(mapSize.width, mapSize.height);
+  viewManager.camera.fitMap();
+
+  // 3. Grid background
   gridRenderer.init(viewManager);
   gridRenderer.draw(state.battlefield);
   EventBus.on("buildingPlaced", () => gridRenderer.draw(state.battlefield));
