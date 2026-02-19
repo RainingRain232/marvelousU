@@ -11,6 +11,14 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BuildingType, BuildingState } from "@/types";
 
+// Capture progress bar (shown below capturable buildings)
+const CAP_BAR_H = 5;
+const CAP_BAR_Y_OFF = 4; // pixels below bottom of building
+const CAP_BAR_BG = 0x222222;
+const CAP_COLOR_P1 = 0x4488ff; // west / p1
+const CAP_COLOR_P2 = 0xff4444; // east / p2
+const CAP_COLOR_NEUTRAL = 0x888888;
+
 // ---------------------------------------------------------------------------
 // Per-type placeholder colors
 // ---------------------------------------------------------------------------
@@ -22,6 +30,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.MAGE_TOWER]: 0x6a1e8b,
   [BuildingType.ARCHERY_RANGE]: 0x2e6b2e,
   [BuildingType.SIEGE_WORKSHOP]: 0x7a5c2e,
+  [BuildingType.TOWN]: 0x6b8c3a,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -49,6 +58,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MAGE_TOWER]: "MAGE TWR",
   [BuildingType.ARCHERY_RANGE]: "ARCHERY",
   [BuildingType.SIEGE_WORKSHOP]: "SIEGE WRK",
+  [BuildingType.TOWN]: "TOWN",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -67,6 +77,8 @@ export class BuildingView {
   private _body = new Graphics();
   private _hpBg = new Graphics();
   private _hpFill = new Graphics();
+  private _captureBg = new Graphics();
+  private _captureFill = new Graphics();
   private _label = new Text({ text: "", style: LABEL_STYLE });
 
   // Idle FX children (smoke puffs are created/destroyed dynamically)
@@ -82,6 +94,7 @@ export class BuildingView {
   private _pw: number;
   private _ph: number;
   private _type: BuildingType;
+  private _capturable: boolean;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -89,6 +102,7 @@ export class BuildingView {
     this._pw = def.footprint.w * ts;
     this._ph = def.footprint.h * ts;
     this._type = building.type;
+    this._capturable = def.capturable ?? false;
 
     const pw = this._pw;
     const ph = this._ph;
@@ -107,6 +121,13 @@ export class BuildingView {
 
     // HP fill (updated each frame)
     this.container.addChild(this._hpFill);
+
+    // Capture progress bar (capturable buildings only)
+    if (this._capturable) {
+      this._captureBg.rect(0, ph + CAP_BAR_Y_OFF, pw, CAP_BAR_H).fill({ color: CAP_BAR_BG });
+      this.container.addChild(this._captureBg);
+      this.container.addChild(this._captureFill);
+    }
 
     // Label
     this._label.text = BUILDING_LABELS[building.type];
@@ -131,7 +152,7 @@ export class BuildingView {
   // Per-frame sync
   // ---------------------------------------------------------------------------
 
-  /** Sync health bar and idle FX. `dt` is seconds since last frame. */
+  /** Sync health bar, capture bar, and idle FX. `dt` is seconds since last frame. */
   update(building: Building, dt = 0): void {
     const pct = Math.max(0, building.health / building.maxHealth);
     const fillW = this._pw * pct;
@@ -140,6 +161,22 @@ export class BuildingView {
     this._hpFill.clear();
     if (fillW > 0) {
       this._hpFill.rect(0, BAR_Y_OFF, fillW, BAR_H).fill({ color: hpColor });
+    }
+
+    // Capture progress bar
+    if (this._capturable) {
+      this._captureFill.clear();
+      const capPct = building.captureProgress;
+      if (capPct > 0) {
+        const ownerOrCapper = building.owner ?? building.capturePlayerId;
+        const capColor =
+          ownerOrCapper === "p1" ? CAP_COLOR_P1
+          : ownerOrCapper === "p2" ? CAP_COLOR_P2
+          : CAP_COLOR_NEUTRAL;
+        this._captureFill
+          .rect(0, this._ph + CAP_BAR_Y_OFF, this._pw * capPct, CAP_BAR_H)
+          .fill({ color: capColor });
+      }
     }
 
     this._body.alpha = building.state === BuildingState.DESTROYED ? 0.35 : 1;

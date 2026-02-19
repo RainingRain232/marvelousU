@@ -52,6 +52,7 @@ export enum BuildingType {
   MAGE_TOWER = "mage_tower",
   ARCHERY_RANGE = "archery_range",
   SIEGE_WORKSHOP = "siege_workshop",
+  TOWN = "town",
 }
 
 export enum AbilityType {

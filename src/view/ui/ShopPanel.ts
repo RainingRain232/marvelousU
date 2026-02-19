@@ -79,6 +79,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MAGE_TOWER]: "Mage Tower",
   [BuildingType.ARCHERY_RANGE]: "Archery Range",
   [BuildingType.SIEGE_WORKSHOP]: "Siege Workshop",
+  [BuildingType.TOWN]: "Town",
 };
 
 // Unit display names

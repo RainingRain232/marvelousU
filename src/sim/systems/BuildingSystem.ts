@@ -194,9 +194,49 @@ export const BuildingSystem = {
 
     for (const building of state.buildings.values()) {
       if (building.state !== BuildingState.ACTIVE) continue;
-      if (building.owner !== null) continue; // only neutral buildings
 
-      // Collect occupying player IDs (units within capture range, alive)
+      const def = BUILDING_DEFINITIONS[building.type];
+
+      // --- Owned capturable buildings (e.g. Town): enemy units can contest ---
+      if (building.owner !== null && def.capturable) {
+        const occupiers = new Set<string>();
+        for (const unit of state.units.values()) {
+          if (unit.state === UnitState.DIE) continue;
+          if (distanceSq(unit.position, building.position) <= rangeSq) {
+            occupiers.add(unit.owner);
+          }
+        }
+
+        const hasEnemy = [...occupiers].some((id) => id !== building.owner);
+        const hasOwner = occupiers.has(building.owner!);
+
+        if (hasEnemy && !hasOwner) {
+          // Enemy contesting unopposed — decay ownership progress toward 0
+          building.captureProgress = Math.max(
+            0,
+            building.captureProgress - dt / BalanceConfig.CAPTURE_TIME,
+          );
+          if (building.captureProgress <= 0) {
+            // Strip ownership — building becomes neutral
+            const prevOwner = state.players.get(building.owner!);
+            if (prevOwner) {
+              prevOwner.ownedBuildings = prevOwner.ownedBuildings.filter(
+                (id) => id !== building.id,
+              );
+            }
+            building.owner = null;
+            building.captureProgress = 0;
+            building.capturePlayerId = null;
+            EventBus.emit("buildingCaptured", { buildingId: building.id, newOwner: null });
+          }
+        }
+        // Contested (both sides) or owner alone → no change to progress
+        continue;
+      }
+
+      if (building.owner !== null) continue; // non-capturable owned building
+
+      // --- Neutral buildings: standard capture logic ---
       const occupiers = new Set<string>();
       for (const unit of state.units.values()) {
         if (unit.state === UnitState.DIE) continue;
@@ -270,12 +310,16 @@ export function _captureBuilding(
   building.captureProgress = 1;
   building.capturePlayerId = newOwner;
 
-  // Captured neutral buildings produce barracks-equivalent units
-  building.shopInventory = [
-    UnitType.SWORDSMAN,
-    UnitType.PIKEMAN,
-    UnitType.KNIGHT,
-  ];
+  // Only non-capturable neutral buildings (generic outposts) get a shop on capture.
+  // Capturable buildings (e.g. Town) keep their own fixed shop inventory.
+  const def = BUILDING_DEFINITIONS[building.type];
+  if (!def.capturable && building.shopInventory.length === 0) {
+    building.shopInventory = [
+      UnitType.SWORDSMAN,
+      UnitType.PIKEMAN,
+      UnitType.KNIGHT,
+    ];
+  }
 
   // Register in player's building list
   if (!player.ownedBuildings.includes(buildingId)) {

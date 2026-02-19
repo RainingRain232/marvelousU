@@ -18,12 +18,16 @@ import { menuScreen } from "@view/ui/MenuScreen";
 import type { MapSize } from "@view/ui/MenuScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
 import { createGameState } from "@sim/state/GameState";
+import type { GameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases } from "@sim/systems/BaseSetup";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
-import { Direction, GamePhase } from "@/types";
+import { Direction, GamePhase, BuildingType } from "@/types";
+import { createBuilding } from "@sim/entities/Building";
+import { setBuilding, setWalkable } from "@sim/core/Grid";
+import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -71,6 +75,39 @@ import { Direction, GamePhase } from "@/types";
 })();
 
 /**
+ * Spawn 3 neutral Town buildings evenly spaced along the vertical centre of the map.
+ * Towns are placed at the horizontal midpoint, spread across the map height.
+ */
+let _nextTownId = 1;
+function _spawnTowns(state: GameState, mapW: number, mapH: number): void {
+  const def = BUILDING_DEFINITIONS[BuildingType.TOWN];
+  const midX = Math.floor(mapW / 2) - Math.floor(def.footprint.w / 2);
+  // 3 towns spaced at 25%, 50%, 75% of map height
+  const yPositions = [
+    Math.floor(mapH * 0.25) - Math.floor(def.footprint.h / 2),
+    Math.floor(mapH * 0.50) - Math.floor(def.footprint.h / 2),
+    Math.floor(mapH * 0.75) - Math.floor(def.footprint.h / 2),
+  ];
+
+  for (const y of yPositions) {
+    const id = `town-${_nextTownId++}`;
+    const pos = { x: midX, y };
+    const building = createBuilding({ id, type: BuildingType.TOWN, owner: null, position: pos });
+    state.buildings.set(id, building);
+
+    // Mark footprint tiles as occupied and unwalkable
+    for (let dy = 0; dy < def.footprint.h; dy++) {
+      for (let dx = 0; dx < def.footprint.w; dx++) {
+        setBuilding(state.battlefield, pos.x + dx, pos.y + dy, id);
+        setWalkable(state.battlefield, pos.x + dx, pos.y + dy, false);
+      }
+    }
+
+    EventBus.emit("buildingPlaced", { buildingId: id, position: { ...pos }, owner: null });
+  }
+}
+
+/**
  * Compute scaled base positions for a given map size.
  * Bases sit 1 tile from each side, vertically centred (accounting for 3-tile height).
  * Spawn offsets mirror the standard values.
@@ -92,6 +129,7 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   state.players.set("p2", createPlayerState("p2", Direction.EAST));
   const basePos = _computeBasePositions(mapSize.width, mapSize.height);
   initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
+  _spawnTowns(state, mapSize.width, mapSize.height);
 
   // 2. Camera — fit the full map into the viewport
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);

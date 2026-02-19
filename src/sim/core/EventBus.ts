@@ -15,9 +15,9 @@ export interface SimEvents {
   groupSpawned: { unitIds: string[]; buildingId: string };
 
   // Building lifecycle
-  buildingPlaced: { buildingId: string; position: Vec2; owner: PlayerId };
+  buildingPlaced: { buildingId: string; position: Vec2; owner: PlayerId | null };
   buildingDestroyed: { buildingId: string };
-  buildingCaptured: { buildingId: string; newOwner: PlayerId };
+  buildingCaptured: { buildingId: string; newOwner: PlayerId | null };
 
   // Abilities & projectiles
   abilityUsed: { casterId: string; abilityId: string; targets: Vec2[] };

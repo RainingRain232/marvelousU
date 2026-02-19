@@ -31,6 +31,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.MAGE_TOWER]: 0x6a1e8b,
   [BuildingType.ARCHERY_RANGE]: 0x2e6b2e,
   [BuildingType.SIEGE_WORKSHOP]: 0x7a5c2e,
+  [BuildingType.TOWN]: 0x6b8c3a,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -40,6 +41,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MAGE_TOWER]: "MAGE TWR",
   [BuildingType.ARCHERY_RANGE]: "ARCHERY",
   [BuildingType.SIEGE_WORKSHOP]: "SIEGE WRK",
+  [BuildingType.TOWN]: "TOWN",
 };
 
 const LABEL_STYLE = new TextStyle({

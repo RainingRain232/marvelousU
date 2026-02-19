@@ -13,6 +13,8 @@ export interface BuildingDef {
   blueprints: BuildingType[]; // building blueprints sold from this building's shop
   footprint: { w: number; h: number };
   placementZone: PlacementZone;
+  /** If true, enemy units can recapture this building even after it is owned. */
+  capturable?: boolean;
 }
 
 export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
@@ -81,5 +83,16 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 3 },
     placementZone: "own",
+  },
+  [BuildingType.TOWN]: {
+    type: BuildingType.TOWN,
+    cost: 0,
+    hp: 200,
+    goldIncome: 3,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 2, h: 2 },
+    placementZone: "neutral",
+    capturable: true,
   },
 };
