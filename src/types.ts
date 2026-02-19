@@ -41,6 +41,8 @@ export enum UnitType {
   PIKEMAN = "pikeman",
   SUMMONED = "summoned",
   BATTERING_RAM = "battering_ram",
+  MAGE_HUNTER = "mage_hunter",
+  SIEGE_HUNTER = "siege_hunter",
 }
 
 export enum BuildingType {

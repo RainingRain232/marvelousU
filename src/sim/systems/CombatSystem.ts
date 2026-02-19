@@ -220,11 +220,17 @@ function _attackBuilding(
 // ---------------------------------------------------------------------------
 
 /**
- * Find the nearest living enemy unit within aggro range.
- * Returns null if no valid target exists.
+ * Find the best living enemy unit within aggro range.
+ *
+ * If the unit has huntTargets, always prefer the nearest enemy of those types.
+ * If no hunt target is in range, fall back to the nearest enemy.
  */
 function resolveTarget(state: GameState, unit: Unit): Unit | null {
-  // Prefer existing target if still alive and in aggro range
+  const hasHunt = unit.huntTargets.length > 0;
+
+  // If we already have a valid target, only keep it if it's still the best choice.
+  // For hunters: if the current target is a hunt type and still valid, keep it.
+  // For normal units: keep the current target if still alive and in range.
   if (unit.targetId) {
     const existing = state.units.get(unit.targetId);
     if (
@@ -233,13 +239,20 @@ function resolveTarget(state: GameState, unit: Unit): Unit | null {
       existing.owner !== unit.owner &&
       distanceSq(unit.position, existing.position) <= AGGRO_RANGE_SQ
     ) {
-      return existing;
+      // For hunters: only keep current target if it is a hunt type, or if there
+      // are no hunt targets in range (will be determined below).
+      if (!hasHunt || unit.huntTargets.includes(existing.type)) {
+        return existing;
+      }
+      // Current target is not a hunt type — fall through to scan for a hunt target
     }
   }
 
-  // Scan for nearest enemy
+  // Scan all enemies in aggro range
+  let nearestHunt: Unit | null = null;
+  let nearestHuntDsq = AGGRO_RANGE_SQ + 1;
   let nearest: Unit | null = null;
-  let nearestDistSq = AGGRO_RANGE_SQ + 1; // just outside aggro range
+  let nearestDistSq = AGGRO_RANGE_SQ + 1;
 
   for (const candidate of state.units.values()) {
     if (candidate.id === unit.id) continue;
@@ -247,13 +260,22 @@ function resolveTarget(state: GameState, unit: Unit): Unit | null {
     if (candidate.state === UnitState.DIE) continue;
 
     const dsq = distanceSq(unit.position, candidate.position);
-    if (dsq <= AGGRO_RANGE_SQ && dsq < nearestDistSq) {
+    if (dsq > AGGRO_RANGE_SQ) continue;
+
+    if (hasHunt && unit.huntTargets.includes(candidate.type)) {
+      if (dsq < nearestHuntDsq) {
+        nearestHunt = candidate;
+        nearestHuntDsq = dsq;
+      }
+    }
+    if (dsq < nearestDistSq) {
       nearest = candidate;
       nearestDistSq = dsq;
     }
   }
 
-  return nearest;
+  // Prefer hunt target if one is in range, otherwise nearest
+  return nearestHunt ?? nearest;
 }
 
 // ---------------------------------------------------------------------------

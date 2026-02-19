@@ -14,6 +14,8 @@ export interface UnitDef {
   spriteKey: string;
   /** If true, unit ignores enemy units and only attacks buildings/bases. */
   siegeOnly?: boolean;
+  /** If set, unit always prefers the nearest enemy of these types over all others. */
+  huntTargets?: UnitType[];
 }
 
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
@@ -101,5 +103,31 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "battering_ram",
     siegeOnly: true,
+  },
+  [UnitType.MAGE_HUNTER]: {
+    type: UnitType.MAGE_HUNTER,
+    cost: 50,
+    hp: 80,
+    atk: 22,
+    attackSpeed: 1.1,
+    speed: 2.5,
+    range: 1,
+    spawnTime: 4,
+    abilityTypes: [],
+    spriteKey: "mage_hunter",
+    huntTargets: [UnitType.MAGE],
+  },
+  [UnitType.SIEGE_HUNTER]: {
+    type: UnitType.SIEGE_HUNTER,
+    cost: 60,
+    hp: 120,
+    atk: 35,
+    attackSpeed: 0.9,
+    speed: 3.0,
+    range: 1,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "siege_hunter",
+    huntTargets: [UnitType.BATTERING_RAM],
   },
 };

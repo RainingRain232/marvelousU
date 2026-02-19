@@ -34,6 +34,7 @@ export interface Unit {
 
   // Siege behaviour
   siegeOnly: boolean; // If true, ignores enemy units; only targets buildings/bases
+  huntTargets: UnitType[]; // If non-empty, prefer nearest enemy of these types
 
   // Abilities
   abilityIds: string[]; // References into GameState.abilities
@@ -117,6 +118,7 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     state: UnitState.IDLE,
     stateMachine,
     siegeOnly: def.siegeOnly ?? false,
+    huntTargets: def.huntTargets ?? [],
     targetId: null,
     attackTimer: 0,
     castTimer: 0,

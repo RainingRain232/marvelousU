@@ -125,4 +125,6 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     dieFps: 10,
   }),
   [UnitType.BATTERING_RAM]: buildDef("battering_ram", { moveFps: 6, attackFps: 5 }),
+  [UnitType.MAGE_HUNTER]: buildDef("mage_hunter"),
+  [UnitType.SIEGE_HUNTER]: buildDef("siege_hunter"),
 };
