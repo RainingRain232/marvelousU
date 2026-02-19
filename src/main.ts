@@ -19,6 +19,7 @@ import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
 import type { MapSize } from "@view/ui/MenuScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
+import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { createGameState } from "@sim/state/GameState";
 import type { GameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
@@ -177,15 +178,17 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   // HUD callbacks
   hud.onAIToggle = (isAI) => {
     p2AIBuyer.setEnabled(isAI);
-    if (!isAI) {
-      shopPanel.setPlayerId("p2");
-      buildingPlacer.setPlayerId("p2");
-      inputManager.setPlayerId("p2");
-    } else {
-      shopPanel.setPlayerId("p1");
-      buildingPlacer.setPlayerId("p1");
-      inputManager.setPlayerId("p1");
-    }
+    // When switching to human mode, reset active control to P1
+    // (hud.setP2AI already resets _activePlayer; just sync the sub-systems)
+    shopPanel.setPlayerId("p1");
+    buildingPlacer.setPlayerId("p1");
+    inputManager.setPlayerId("p1");
+  };
+
+  hud.onSwitchPlayer = (playerId) => {
+    shopPanel.setPlayerId(playerId);
+    buildingPlacer.setPlayerId(playerId);
+    inputManager.setPlayerId(playerId);
   };
 
   hud.onStartBattle = () => {
@@ -226,4 +229,51 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   // Simulation loop (fixed timestep, drives all sim systems)
   const simLoop = new SimLoop(state);
   simLoop.start();
+
+  // ---------------------------------------------------------------------------
+  // Pause overlay + Space-to-pause
+  // ---------------------------------------------------------------------------
+
+  // Build a simple "PAUSED" overlay in the UI layer
+  const pauseOverlay = new Container();
+  const pauseBg = new Graphics()
+    .rect(0, 0, viewManager.screenWidth, viewManager.screenHeight)
+    .fill({ color: 0x000000, alpha: 0.45 });
+  const pauseLabel = new Text({
+    text: "PAUSED",
+    style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: 48,
+      fill: 0xffffff,
+      fontWeight: "bold",
+      letterSpacing: 6,
+    }),
+  });
+  pauseLabel.anchor.set(0.5, 0.5);
+  pauseLabel.position.set(viewManager.screenWidth / 2, viewManager.screenHeight / 2);
+  pauseOverlay.addChild(pauseBg, pauseLabel);
+  pauseOverlay.visible = false;
+  viewManager.addToLayer("ui", pauseOverlay);
+
+  const togglePause = () => {
+    simLoop.togglePause();
+    const isPaused = simLoop.isPaused;
+    pauseOverlay.visible = isPaused;
+    // Freeze / resume Pixi ticker so GSAP tweens and view updates also pause
+    if (isPaused) {
+      viewManager.app.ticker.stop();
+    } else {
+      viewManager.app.ticker.start();
+    }
+  };
+
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space" && !e.repeat) {
+      // Don't pause if a text input or button is focused
+      const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "button") return;
+      e.preventDefault();
+      togglePause();
+    }
+  });
 }

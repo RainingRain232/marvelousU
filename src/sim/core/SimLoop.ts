@@ -61,6 +61,7 @@ export function simTick(state: GameState): void {
 export class SimLoop {
   private state: GameState;
   private running: boolean = false;
+  private paused: boolean = false;
   private accumulator: number = 0; // ms
   private lastTime: number = 0; // ms (from performance.now())
   private timerId: ReturnType<typeof setTimeout> | null = null;
@@ -77,6 +78,34 @@ export class SimLoop {
 
   get isRunning(): boolean {
     return this.running;
+  }
+
+  get isPaused(): boolean {
+    return this.paused;
+  }
+
+  /** Pause the simulation. No-op if already paused or not running. */
+  pause(): void {
+    if (!this.running || this.paused) return;
+    this.paused = true;
+    if (this.timerId !== null) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+  }
+
+  /** Resume after a pause. Resets lastTime so no time is counted while paused. */
+  resume(): void {
+    if (!this.running || !this.paused) return;
+    this.paused = false;
+    this.lastTime = performance.now(); // discard elapsed time during pause
+    this.accumulator = 0;
+    this.schedule();
+  }
+
+  /** Toggle between paused and running. */
+  togglePause(): void {
+    if (this.paused) this.resume(); else this.pause();
   }
 
   /** Start the loop. Safe to call multiple times — no-ops if already running. */

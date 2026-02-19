@@ -107,6 +107,12 @@ export class HUD {
   private _aiToggleLabel!: Text;
   private _p2IsAI = true;
 
+  // Player-switcher button (below west panel, visible only when P2 is human)
+  private _switchBtn!: Container;
+  private _switchBtnBg!: Graphics;
+  private _switchBtnLabel!: Text;
+  private _activePlayer: PlayerId = "p1";
+
   // START BATTLE button (below phase panel, visible only during PREP)
   private _startBattleBtn!: Container;
   private _currentPhase: GamePhase = GamePhase.PREP;
@@ -120,6 +126,7 @@ export class HUD {
   // Callbacks set by main.ts
   onAIToggle: ((isAI: boolean) => void) | null = null;
   onStartBattle: (() => void) | null = null;
+  onSwitchPlayer: ((playerId: PlayerId) => void) | null = null;
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -138,6 +145,7 @@ export class HUD {
     this._buildEastPanel();
     this._buildPhasePanel();
     this._buildAIToggleBtn();
+    this._buildSwitchBtn();
     this._buildStartBattleBtn();
 
     vm.addToLayer("ui", this.container);
@@ -161,6 +169,7 @@ export class HUD {
       this._repositionEastPanel();
       this._repositionPhasePanel();
       this._repositionAIToggle();
+      this._repositionSwitchBtn();
       this._repositionStartBattleBtn();
     };
     vm.app.renderer.on("resize", onResize);
@@ -282,6 +291,16 @@ export class HUD {
   setP2AI(isAI: boolean): void {
     this._p2IsAI = isAI;
     this._refreshAIToggle();
+    if (isAI) {
+      this._activePlayer = this._westPlayerId;
+    }
+    this._refreshSwitchBtn();
+  }
+
+  /** Sync the active player indicator (called from main.ts after a switch). */
+  setActivePlayer(playerId: PlayerId): void {
+    this._activePlayer = playerId;
+    this._refreshSwitchBtn();
   }
 
   private _setGold(playerId: PlayerId, amount: number): void {
@@ -366,6 +385,69 @@ export class HUD {
       this._screenW - PANEL_W - PAD,
       PAD + PANEL_H + 6,
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Player-switcher button — sits below the west (p1) panel, visible when P2 human
+  // ---------------------------------------------------------------------------
+
+  private _buildSwitchBtn(): void {
+    const W = PANEL_W;
+    const H = 28;
+    const btn = new Container();
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const bg = new Graphics();
+    btn.addChild(bg);
+
+    const label = new Text({ text: "", style: STYLE_BTN });
+    label.anchor.set(0.5, 0.5);
+    label.position.set(W / 2, H / 2);
+    btn.addChild(label);
+
+    this._switchBtnBg = bg;
+    this._switchBtnLabel = label;
+    this._switchBtn = btn;
+    this.container.addChild(btn);
+
+    this._refreshSwitchBtn();
+
+    btn.on("pointerdown", () => {
+      this._activePlayer =
+        this._activePlayer === this._westPlayerId
+          ? this._eastPlayerId
+          : this._westPlayerId;
+      this._refreshSwitchBtn();
+      this.onSwitchPlayer?.(this._activePlayer);
+    });
+
+    this._repositionSwitchBtn();
+  }
+
+  private _refreshSwitchBtn(): void {
+    if (!this._switchBtn) return;
+    const W = PANEL_W;
+    const H = 28;
+    const isP1Active = this._activePlayer === this._westPlayerId;
+    const visible = !this._p2IsAI;
+    this._switchBtn.visible = visible;
+    if (!visible) return;
+    this._switchBtnBg.clear();
+    this._switchBtnBg
+      .roundRect(0, 0, W, H, 4)
+      .fill({ color: isP1Active ? 0x1a2a3a : 0x2a1a2a })
+      .roundRect(0, 0, W, H, 4)
+      .stroke({ color: isP1Active ? 0x4488cc : 0xaa44cc, width: 1.5 });
+    this._switchBtnLabel.text = isP1Active
+      ? "CONTROLLING: P1  [click→P2]"
+      : "CONTROLLING: P2  [click→P1]";
+    this._switchBtnLabel.style.fill = isP1Active ? 0x88ccff : 0xee88ff;
+  }
+
+  private _repositionSwitchBtn(): void {
+    if (!this._switchBtn) return;
+    this._switchBtn.position.set(PAD, PAD + PANEL_H + 6);
   }
 
   // ---------------------------------------------------------------------------
