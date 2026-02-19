@@ -93,6 +93,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.BATTERING_RAM]: "Battering Ram",
   [UnitType.MAGE_HUNTER]: "Mage Hunter",
   [UnitType.SIEGE_HUNTER]: "Siege Hunter",
+  [UnitType.COLD_MAGE]: "Cold Mage",
 };
 
 // ---------------------------------------------------------------------------

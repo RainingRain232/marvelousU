@@ -130,4 +130,16 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "siege_hunter",
     huntTargets: [UnitType.BATTERING_RAM],
   },
+  [UnitType.COLD_MAGE]: {
+    type: UnitType.COLD_MAGE,
+    cost: 100,
+    hp: 55,
+    atk: 5,
+    attackSpeed: 0.4,
+    speed: 1.5,
+    range: 6,
+    spawnTime: 7,
+    abilityTypes: [AbilityType.ICE_BALL],
+    spriteKey: "cold_mage",
+  },
 };

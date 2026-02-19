@@ -137,6 +137,13 @@ function _damageUnit(
   proj.hitIds.add(unitId);
   unit.hp -= damage;
 
+  // Apply slow effect if the projectile carries one
+  if (proj.slowDuration > 0) {
+    unit.slowFactor = proj.slowFactor;
+    // Refresh: always keep the longer remaining duration
+    unit.slowTimer = Math.max(unit.slowTimer, proj.slowDuration);
+  }
+
   EventBus.emit("unitDamaged", {
     unitId: unit.id,
     amount: damage,

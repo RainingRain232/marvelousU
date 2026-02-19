@@ -95,6 +95,12 @@ export const MovementSystem = {
     }
 
     for (const unit of state.units.values()) {
+      // Tick slow timer on all living units regardless of move state
+      if (unit.state !== UnitState.DIE && unit.slowTimer > 0) {
+        unit.slowTimer = Math.max(0, unit.slowTimer - dt);
+        if (unit.slowTimer === 0) unit.slowFactor = 1;
+      }
+
       if (unit.state !== UnitState.MOVE) continue;
       tickUnit(state, unit, dt, groupSlots);
     }
@@ -179,7 +185,8 @@ function tickUnit(
   // starting position (applied once in startGroupMoving). While following the
   // path the unit targets the *centerline* waypoints — the offset is already
   // reflected in its current position relative to its group-mates.
-  let remaining = unit.speed * dt;
+  const effectiveSpeed = unit.speed * (unit.slowTimer > 0 ? unit.slowFactor : 1);
+  let remaining = effectiveSpeed * dt;
 
   while (remaining > 0 && unit.pathIndex < unit.path.length) {
     const waypoint = unit.path[unit.pathIndex];

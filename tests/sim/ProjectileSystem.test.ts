@@ -57,6 +57,8 @@ function addProjectile(
     bounceRange: 0,
     targetId: null,
     hitIds: new Set(),
+    slowDuration: 0,
+    slowFactor: 1,
     ...overrides,
   };
   state.projectiles.set(proj.id, proj);

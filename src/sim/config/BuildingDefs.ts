@@ -59,7 +59,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 150,
     hp: 150,
     goldIncome: 2,
-    shopInventory: [UnitType.MAGE],
+    shopInventory: [UnitType.MAGE, UnitType.COLD_MAGE],
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",

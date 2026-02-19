@@ -27,4 +27,10 @@ export interface Projectile {
   // Tracking
   targetId: string | null; // Unit/building being homed towards (null = location shot)
   hitIds: Set<string>; // All IDs already damaged (prevents double-hits in AoE)
+
+  // Slow on hit (0 = no slow)
+  /** Seconds of slow to apply to units hit. 0 = no slow effect. */
+  slowDuration: number;
+  /** Speed multiplier while slowed (e.g. 0.4 = 40% of normal speed). */
+  slowFactor: number;
 }

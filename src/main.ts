@@ -12,6 +12,7 @@ import { fireballFX } from "@view/fx/FireballFX";
 import { lightningFX } from "@view/fx/LightningFX";
 import { summonFX } from "@view/fx/SummonFX";
 import { deathFX } from "@view/fx/DeathFX";
+import { iceBallFX } from "@view/fx/IceBallFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
@@ -203,6 +204,10 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   // Death FX
   deathFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => deathFX.update(dt));
+
+  // IceBall FX
+  iceBallFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => iceBallFX.update(dt));
 
   // Victory screen (overlays game during RESOLVE)
   victoryScreen.init(viewManager, state);

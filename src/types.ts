@@ -43,6 +43,7 @@ export enum UnitType {
   BATTERING_RAM = "battering_ram",
   MAGE_HUNTER = "mage_hunter",
   SIEGE_HUNTER = "siege_hunter",
+  COLD_MAGE = "cold_mage",
 }
 
 export enum BuildingType {
@@ -60,6 +61,7 @@ export enum AbilityType {
   CHAIN_LIGHTNING = "chain_lightning",
   WARP = "warp",
   SUMMON = "summon",
+  ICE_BALL = "ice_ball",
 }
 
 export enum UnitState {

@@ -36,6 +36,12 @@ export interface Unit {
   siegeOnly: boolean; // If true, ignores enemy units; only targets buildings/bases
   huntTargets: UnitType[]; // If non-empty, prefer nearest enemy of these types
 
+  // Status effects
+  /** Speed multiplier applied while slowTimer > 0. 1 = normal, 0.4 = 40% speed. */
+  slowFactor: number;
+  /** Remaining seconds of slow effect. 0 = not slowed. */
+  slowTimer: number;
+
   // Abilities
   abilityIds: string[]; // References into GameState.abilities
 
@@ -119,6 +125,8 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     stateMachine,
     siegeOnly: def.siegeOnly ?? false,
     huntTargets: def.huntTargets ?? [],
+    slowFactor: 1,
+    slowTimer: 0,
     targetId: null,
     attackTimer: 0,
     castTimer: 0,

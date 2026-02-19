@@ -11,6 +11,10 @@ export interface AbilityDef {
   bounceRange?: number;
   aoeRadius?:  number;
   summonCount?: number;
+  /** Seconds of slow to apply on projectile hit (0 = no slow). */
+  slowDuration?: number;
+  /** Speed multiplier while slowed (e.g. 0.4 = 40% speed). */
+  slowFactor?: number;
 }
 
 export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
@@ -29,5 +33,9 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
   [AbilityType.SUMMON]: {
     type: AbilityType.SUMMON, cooldown: 12, range: 6, castTime: 1.0,
     damage: 0, summonCount: 3,
+  },
+  [AbilityType.ICE_BALL]: {
+    type: AbilityType.ICE_BALL, cooldown: 5, range: 6, castTime: 0.6,
+    damage: 25, aoeRadius: 2.5, slowDuration: 3, slowFactor: 0.4,
   },
 };

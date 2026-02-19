@@ -231,6 +231,6 @@ function _findUnitAt(
  * is optional but recommended for immediate availability.
  */
 export function attachAbilities(state: GameState, unit: Unit): void {
-  if (unit.type !== UnitType.MAGE) return;
+  if (unit.type !== UnitType.MAGE && unit.type !== UnitType.COLD_MAGE) return;
   ensureAbilities(state, unit);
 }
