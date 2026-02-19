@@ -32,6 +32,9 @@ export interface Unit {
   deathTimer: number; // Countdown after entering DIE state before removal; 0 = remove
   lifespanTimer: number; // Remaining lifespan; -1 = immortal; 0 = expire and die
 
+  // Siege behaviour
+  siegeOnly: boolean; // If true, ignores enemy units; only targets buildings/bases
+
   // Abilities
   abilityIds: string[]; // References into GameState.abilities
 
@@ -113,6 +116,7 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     range: def.range,
     state: UnitState.IDLE,
     stateMachine,
+    siegeOnly: def.siegeOnly ?? false,
     targetId: null,
     attackTimer: 0,
     castTimer: 0,

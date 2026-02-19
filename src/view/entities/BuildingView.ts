@@ -21,6 +21,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.STABLES]: 0x5c3a1e,
   [BuildingType.MAGE_TOWER]: 0x6a1e8b,
   [BuildingType.ARCHERY_RANGE]: 0x2e6b2e,
+  [BuildingType.SIEGE_WORKSHOP]: 0x7a5c2e,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -47,6 +48,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.STABLES]: "STABLES",
   [BuildingType.MAGE_TOWER]: "MAGE TWR",
   [BuildingType.ARCHERY_RANGE]: "ARCHERY",
+  [BuildingType.SIEGE_WORKSHOP]: "SIEGE WRK",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds

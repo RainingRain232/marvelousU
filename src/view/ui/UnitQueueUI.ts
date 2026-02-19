@@ -21,13 +21,24 @@ const TRAIN_BAR_Y = -18; // above building rect
 const TRAIN_BG = 0x222233;
 const TRAIN_FILL = 0x44aaff;
 
-// Ready-unit dots (units that have finished training, waiting for threshold)
-const DOT_R = 4; // dot radius
-const DOT_GAP = 3; // gap between dots
-const DOT_Y = -30; // above training bar
-const DOT_FULL = 0xffdd44; // all dots filled → threshold met
+// Ready-unit dots (queue mode only)
+const DOT_R = 4;
+const DOT_GAP = 3;
+const DOT_Y = -30;
+const DOT_FULL = 0xffdd44;
 
-// "DEPLOY!" label shown when group threshold is met
+// Toggle button (sits to the right of the training bar)
+const TOGGLE_W = 36;
+const TOGGLE_H = 14;
+const TOGGLE_Y = -18; // same row as training bar
+
+const STYLE_TOGGLE = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 8,
+  fill: 0xffffff,
+  fontWeight: "bold",
+});
+
 const DEPLOY_STYLE = new TextStyle({
   fontFamily: "monospace",
   fontSize: 10,
@@ -48,7 +59,17 @@ class BuildingQueueOverlay {
   private _dots = new Graphics();
   private _deployLbl = new Text({ text: "DEPLOY!", style: DEPLOY_STYLE });
 
+  // Toggle button
+  private _toggleBtn = new Container();
+  private _toggleBg = new Graphics();
+  private _toggleLabel = new Text({ text: "", style: STYLE_TOGGLE });
+
+  private _barW: number;
+
   constructor(building: Building) {
+    const def = BUILDING_DEFINITIONS[building.type];
+    this._barW = def.footprint.w * TS;
+
     this.container.addChild(this._trainBg);
     this.container.addChild(this._trainFill);
     this.container.addChild(this._dots);
@@ -57,23 +78,46 @@ class BuildingQueueOverlay {
     this._deployLbl.visible = false;
     this.container.addChild(this._deployLbl);
 
+    // Toggle button
+    this._toggleBtn.addChild(this._toggleBg);
+    this._toggleLabel.anchor.set(0.5, 0.5);
+    this._toggleLabel.position.set(TOGGLE_W / 2, TOGGLE_H / 2);
+    this._toggleBtn.addChild(this._toggleLabel);
+    this._toggleBtn.eventMode = "static";
+    this._toggleBtn.cursor = "pointer";
+    this._toggleBtn.position.set(this._barW + 3, TOGGLE_Y - 1);
+    this._toggleBtn.on("pointerdown", (e) => {
+      e.stopPropagation();
+      building.spawnQueue.queueEnabled = !building.spawnQueue.queueEnabled;
+      // When disabling queue, flush any accumulated readyUnits immediately:
+      // SpawnSystem will pick them up next tick; just clear them so they
+      // don't sit waiting. (They're already lost — no refund needed.)
+      if (!building.spawnQueue.queueEnabled) {
+        building.spawnQueue.readyUnits = [];
+      }
+      this._refreshToggle(building.spawnQueue.queueEnabled);
+    });
+    this.container.addChild(this._toggleBtn);
+
     // Position in world space at building top-left
     this.container.position.set(
       building.position.x * TS,
       building.position.y * TS,
     );
 
+    this._refreshToggle(building.spawnQueue.queueEnabled);
     this.update(building);
   }
 
   update(building: Building): void {
-    const def = BUILDING_DEFINITIONS[building.type];
-    const barW = def.footprint.w * TS;
     const queue = building.spawnQueue;
 
-    // ---- Training bar (front entry) ----
+    // ---- Training bar ----
     this._trainBg.clear();
     this._trainFill.clear();
+
+    // Narrow the bar slightly to leave room for the toggle button
+    const barW = this._barW;
 
     if (queue.entries.length > 0) {
       const entry = queue.entries[0];
@@ -95,41 +139,52 @@ class BuildingQueueOverlay {
       }
     }
 
-    // ---- Ready-unit dots ----
+    // ---- Ready-unit dots (queue mode only) ----
     this._dots.clear();
+    this._deployLbl.visible = false;
 
-    const threshold = queue.groupThreshold;
-    const ready = queue.readyUnits.length;
-    const atThreshold = ready >= threshold;
+    if (queue.queueEnabled) {
+      const threshold = queue.groupThreshold;
+      const ready = queue.readyUnits.length;
+      const atThreshold = ready >= threshold;
 
-    // Total dot slots = threshold; we show filled/empty
-    const totalW = threshold * (DOT_R * 2 + DOT_GAP) - DOT_GAP;
-    const startX = (barW - totalW) / 2 + DOT_R;
+      const totalW = threshold * (DOT_R * 2 + DOT_GAP) - DOT_GAP;
+      const startX = (barW - totalW) / 2 + DOT_R;
 
-    for (let i = 0; i < threshold; i++) {
-      const cx = startX + i * (DOT_R * 2 + DOT_GAP);
-      const cy = DOT_Y;
-      const filled = i < ready;
-      const color = atThreshold ? DOT_FULL : filled ? TRAIN_FILL : 0x334455;
+      for (let i = 0; i < threshold; i++) {
+        const cx = startX + i * (DOT_R * 2 + DOT_GAP);
+        const cy = DOT_Y;
+        const filled = i < ready;
+        const color = atThreshold ? DOT_FULL : filled ? TRAIN_FILL : 0x334455;
 
-      this._dots.circle(cx, cy, DOT_R).fill({ color });
+        this._dots.circle(cx, cy, DOT_R).fill({ color });
+        if (!filled) {
+          this._dots.circle(cx, cy, DOT_R).stroke({ color: 0x445566, width: 1 });
+        }
+      }
 
-      if (!filled) {
-        // Empty slot: draw ring
-        this._dots.circle(cx, cy, DOT_R).stroke({ color: 0x445566, width: 1 });
+      this._deployLbl.visible = atThreshold;
+      if (atThreshold) {
+        this._deployLbl.position.set(barW / 2, DOT_Y - DOT_R - 3);
       }
     }
 
-    // ---- "DEPLOY!" label ----
-    this._deployLbl.visible = atThreshold;
-    if (atThreshold) {
-      this._deployLbl.position.set(barW / 2, DOT_Y - DOT_R - 3);
-    }
-
-    // Hide entirely if queue is idle and no ready units
+    // Hide entirely if nothing is happening
     this.container.visible =
       building.state !== BuildingState.DESTROYED &&
-      (queue.entries.length > 0 || ready > 0);
+      (queue.entries.length > 0 || queue.readyUnits.length > 0 ||
+       building.shopInventory.length > 0);
+  }
+
+  private _refreshToggle(enabled: boolean): void {
+    this._toggleBg.clear();
+    this._toggleBg
+      .roundRect(0, 0, TOGGLE_W, TOGGLE_H, 3)
+      .fill({ color: enabled ? 0x1a3a1a : 0x2a1a1a })
+      .roundRect(0, 0, TOGGLE_W, TOGGLE_H, 3)
+      .stroke({ color: enabled ? 0x44aa66 : 0xaa4444, width: 1 });
+    this._toggleLabel.text = enabled ? "QUEUE" : "INST";
+    this._toggleLabel.style.fill = enabled ? 0x88ffaa : 0xff8888;
   }
 
   destroy(): void {
@@ -141,41 +196,24 @@ class BuildingQueueOverlay {
 // UnitQueueUI — manager
 // ---------------------------------------------------------------------------
 
-/**
- * Renders a small queue overlay (training bar + ready dots + deploy label)
- * above every building that has a non-empty spawn queue.
- *
- * Lives in the `buildings` layer (world space / camera-transformed).
- *
- * Usage:
- *   unitQueueUI.init(vm, state);
- *   vm.onUpdate((s) => unitQueueUI.update(s));
- */
 export class UnitQueueUI {
   private _vm!: ViewManager;
   private _overlays = new Map<string, BuildingQueueOverlay>();
   private _unsubscribers: Array<() => void> = [];
 
-  // ---------------------------------------------------------------------------
-  // Lifecycle
-  // ---------------------------------------------------------------------------
-
   init(vm: ViewManager, state: GameState): void {
     this._vm = vm;
 
-    // Render overlays for buildings that already exist
     for (const building of state.buildings.values()) {
       this._addOverlay(building);
     }
 
-    // Subscribe to new buildings being placed
     this._unsubscribers.push(
       EventBus.on("buildingPlaced", ({ buildingId }) => {
         const building = state.buildings.get(buildingId);
         if (building) this._addOverlay(building);
       }),
       EventBus.on("buildingDestroyed", ({ buildingId }) => {
-        // Let update() hide the overlay via BuildingState.DESTROYED check
         void buildingId;
       }),
     );
@@ -191,20 +229,12 @@ export class UnitQueueUI {
     this._overlays.clear();
   }
 
-  // ---------------------------------------------------------------------------
-  // Per-frame update
-  // ---------------------------------------------------------------------------
-
   readonly update = (state: GameState): void => {
     for (const [id, overlay] of this._overlays) {
       const building = state.buildings.get(id);
       if (building) overlay.update(building);
     }
   };
-
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
 
   private _addOverlay(building: Building): void {
     if (this._overlays.has(building.id)) return;

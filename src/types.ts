@@ -40,6 +40,7 @@ export enum UnitType {
   MAGE = "mage",
   PIKEMAN = "pikeman",
   SUMMONED = "summoned",
+  BATTERING_RAM = "battering_ram",
 }
 
 export enum BuildingType {
@@ -48,6 +49,7 @@ export enum BuildingType {
   STABLES = "stables",
   MAGE_TOWER = "mage_tower",
   ARCHERY_RANGE = "archery_range",
+  SIEGE_WORKSHOP = "siege_workshop",
 }
 
 export enum AbilityType {

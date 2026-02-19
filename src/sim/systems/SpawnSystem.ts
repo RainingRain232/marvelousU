@@ -1,6 +1,7 @@
 // Queue processing, group spawning thresholds
 import type { GameState } from "@sim/state/GameState";
 import type { UnitType } from "@/types";
+import type { Building } from "@sim/entities/Building";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { createUnit } from "@sim/entities/Unit";
 import { getBuilding } from "@sim/state/GameState";
@@ -50,41 +51,51 @@ export const SpawnSystem = {
 
         if (front.remainingTime <= 0) {
           queue.entries.shift();
-          queue.readyUnits.push(front.unitType);
+          if (queue.queueEnabled) {
+            // Queue mode: accumulate until group threshold
+            queue.readyUnits.push(front.unitType);
+          } else {
+            // Instant mode: spawn immediately
+            _spawnUnits(state, building, [front.unitType]);
+          }
         }
       }
 
-      // Deploy group when threshold is met
-      if (queue.readyUnits.length >= queue.groupThreshold) {
-        const spawnedIds: string[] = [];
-
-        // Determine spawn position from the building's owner
-        const owner = building.owner ?? "unknown";
-        const spawnPos = { ...building.position };
-
-        for (const unitType of queue.readyUnits) {
-          const unit = createUnit({
-            type: unitType,
-            owner,
-            position: spawnPos,
-          });
-          state.units.set(unit.id, unit);
-          spawnedIds.push(unit.id);
-
-          EventBus.emit("unitSpawned", {
-            unitId: unit.id,
-            buildingId: building.id,
-            position: { ...spawnPos },
-          });
-        }
-
-        EventBus.emit("groupSpawned", {
-          unitIds: spawnedIds,
-          buildingId: building.id,
-        });
-
+      // Queue mode: deploy group when threshold is met
+      if (queue.queueEnabled && queue.readyUnits.length >= queue.groupThreshold) {
+        _spawnUnits(state, building, queue.readyUnits);
         queue.readyUnits = [];
       }
     }
   },
 };
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function _spawnUnits(
+  state: GameState,
+  building: Building,
+  unitTypes: UnitType[],
+): void {
+  const owner = building.owner ?? "unknown";
+  const spawnPos = { ...building.position };
+  const spawnedIds: string[] = [];
+
+  for (const unitType of unitTypes) {
+    const unit = createUnit({ type: unitType, owner, position: spawnPos });
+    state.units.set(unit.id, unit);
+    spawnedIds.push(unit.id);
+    EventBus.emit("unitSpawned", {
+      unitId: unit.id,
+      buildingId: building.id,
+      position: { ...spawnPos },
+    });
+  }
+
+  EventBus.emit("groupSpawned", {
+    unitIds: spawnedIds,
+    buildingId: building.id,
+  });
+}

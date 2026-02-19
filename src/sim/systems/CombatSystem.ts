@@ -62,7 +62,8 @@ export const CombatSystem = {
         unit.targetId = null;
       }
 
-      // --- Unit target selection ---
+      // --- Unit target selection (skipped for siege-only units) ---
+      if (unit.siegeOnly) continue;
       const target = resolveTarget(state, unit);
 
       if (!target) {

@@ -78,6 +78,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.STABLES]: "Stables",
   [BuildingType.MAGE_TOWER]: "Mage Tower",
   [BuildingType.ARCHERY_RANGE]: "Archery Range",
+  [BuildingType.SIEGE_WORKSHOP]: "Siege Workshop",
 };
 
 // Unit display names
@@ -88,6 +89,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.MAGE]: "Mage",
   [UnitType.PIKEMAN]: "Pikeman",
   [UnitType.SUMMONED]: "Summoned",
+  [UnitType.BATTERING_RAM]: "Battering Ram",
 };
 
 // ---------------------------------------------------------------------------

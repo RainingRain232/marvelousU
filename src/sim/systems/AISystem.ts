@@ -123,22 +123,24 @@ function _handleMove(state: GameState, unit: Unit): void {
       return;
     }
 
-    // Check if it's a valid unit target.
-    const unitTarget = state.units.get(unit.targetId);
-    if (
-      unitTarget &&
-      unitTarget.state !== UnitState.DIE &&
-      unitTarget.owner !== unit.owner &&
-      distanceSq(unit.position, unitTarget.position) <= AGGRO_RANGE_SQ
-    ) {
-      // Current unit target is still valid — possibly upgrade to higher priority.
-      const better = _findPriorityTarget(state, unit);
-      if (better && unitPriority(better.type) < unitPriority(unitTarget.type)) {
-        unit.targetId = better.id;
-        unit.path = null;
-        unit.pathIndex = 0;
+    if (!unit.siegeOnly) {
+      // Check if it's a valid unit target.
+      const unitTarget = state.units.get(unit.targetId);
+      if (
+        unitTarget &&
+        unitTarget.state !== UnitState.DIE &&
+        unitTarget.owner !== unit.owner &&
+        distanceSq(unit.position, unitTarget.position) <= AGGRO_RANGE_SQ
+      ) {
+        // Current unit target is still valid — possibly upgrade to higher priority.
+        const better = _findPriorityTarget(state, unit);
+        if (better && unitPriority(better.type) < unitPriority(unitTarget.type)) {
+          unit.targetId = better.id;
+          unit.path = null;
+          unit.pathIndex = 0;
+        }
+        return;
       }
-      return;
     }
 
     // Target gone / dead / destroyed / out of range — clear it.
@@ -169,10 +171,12 @@ function _handleMove(state: GameState, unit: Unit): void {
  */
 function _handleAttack(state: GameState, unit: Unit): void {
   if (!unit.targetId) {
-    // No target (e.g. just killed one) — search for a new priority target.
-    // CombatSystem will handle the ATTACK→MOVE transition if none is found.
-    const best = _findPriorityTarget(state, unit);
-    if (best) unit.targetId = best.id;
+    if (!unit.siegeOnly) {
+      // No target (e.g. just killed one) — search for a new priority target.
+      // CombatSystem will handle the ATTACK→MOVE transition if none is found.
+      const best = _findPriorityTarget(state, unit);
+      if (best) unit.targetId = best.id;
+    }
     return;
   }
 
@@ -183,6 +187,12 @@ function _handleAttack(state: GameState, unit: Unit): void {
     buildingTarget.state === BuildingState.ACTIVE &&
     buildingTarget.owner !== unit.owner
   ) {
+    return;
+  }
+
+  if (unit.siegeOnly) {
+    // Siege units never target units — clear any stale unit target and re-march
+    unit.targetId = null;
     return;
   }
 

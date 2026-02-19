@@ -18,6 +18,7 @@ export interface SpawnQueue {
   entries: SpawnEntry[]; // Units currently being trained
   groupThreshold: number; // Deploy when readyUnits.length >= this
   readyUnits: UnitType[]; // Trained and waiting for group deployment
+  queueEnabled: boolean; // If false, spawn each unit immediately (no grouping)
 }
 
 export interface Building {
@@ -77,6 +78,7 @@ export function createBuilding(opts: CreateBuildingOptions): Building {
       entries: [],
       groupThreshold: BalanceConfig.DEFAULT_GROUP_THRESHOLD,
       readyUnits: [],
+      queueEnabled: false,
     },
   };
 }

@@ -12,6 +12,8 @@ export interface UnitDef {
   spawnTime: number; // seconds to train
   abilityTypes: AbilityType[];
   spriteKey: string;
+  /** If true, unit ignores enemy units and only attacks buildings/bases. */
+  siegeOnly?: boolean;
 }
 
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
@@ -86,5 +88,18 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 0,
     abilityTypes: [],
     spriteKey: "summoned",
+  },
+  [UnitType.BATTERING_RAM]: {
+    type: UnitType.BATTERING_RAM,
+    cost: 80,
+    hp: 300,
+    atk: 60,
+    attackSpeed: 0.4,
+    speed: 1.0,
+    range: 1,
+    spawnTime: 8,
+    abilityTypes: [],
+    spriteKey: "battering_ram",
+    siegeOnly: true,
   },
 };
