@@ -13,6 +13,7 @@ import { lightningFX } from "@view/fx/LightningFX";
 import { summonFX } from "@view/fx/SummonFX";
 import { deathFX } from "@view/fx/DeathFX";
 import { iceBallFX } from "@view/fx/IceBallFX";
+import { webFX } from "@view/fx/WebFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
@@ -208,6 +209,10 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   // IceBall FX
   iceBallFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => iceBallFX.update(dt));
+
+  // Web / Net FX
+  webFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => webFX.update(dt));
 
   // Victory screen (overlays game during RESOLVE)
   victoryScreen.init(viewManager, state);

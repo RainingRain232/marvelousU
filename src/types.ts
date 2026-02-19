@@ -44,6 +44,8 @@ export enum UnitType {
   MAGE_HUNTER = "mage_hunter",
   SIEGE_HUNTER = "siege_hunter",
   COLD_MAGE = "cold_mage",
+  SPIDER = "spider",
+  GLADIATOR = "gladiator",
 }
 
 export enum BuildingType {
@@ -54,6 +56,7 @@ export enum BuildingType {
   ARCHERY_RANGE = "archery_range",
   SIEGE_WORKSHOP = "siege_workshop",
   TOWN = "town",
+  CREATURE_DEN = "creature_den",
 }
 
 export enum AbilityType {
@@ -62,6 +65,8 @@ export enum AbilityType {
   WARP = "warp",
   SUMMON = "summon",
   ICE_BALL = "ice_ball",
+  WEB = "web",
+  GLADIATOR_NET = "gladiator_net",
 }
 
 export enum UnitState {

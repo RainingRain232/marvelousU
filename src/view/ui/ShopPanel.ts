@@ -80,6 +80,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.ARCHERY_RANGE]: "Archery Range",
   [BuildingType.SIEGE_WORKSHOP]: "Siege Workshop",
   [BuildingType.TOWN]: "Town",
+  [BuildingType.CREATURE_DEN]: "Creature Den",
 };
 
 // Unit display names
@@ -94,6 +95,8 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.MAGE_HUNTER]: "Mage Hunter",
   [UnitType.SIEGE_HUNTER]: "Siege Hunter",
   [UnitType.COLD_MAGE]: "Cold Mage",
+  [UnitType.SPIDER]: "Spider",
+  [UnitType.GLADIATOR]: "Gladiator",
 };
 
 // ---------------------------------------------------------------------------

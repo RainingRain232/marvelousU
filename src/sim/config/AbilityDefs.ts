@@ -38,4 +38,14 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
     type: AbilityType.ICE_BALL, cooldown: 5, range: 6, castTime: 0.6,
     damage: 25, aoeRadius: 2.5, slowDuration: 3, slowFactor: 0.4,
   },
+  // Spider web: wide-ish AoE, strong slow, low damage
+  [AbilityType.WEB]: {
+    type: AbilityType.WEB, cooldown: 4, range: 4, castTime: 0.4,
+    damage: 10, aoeRadius: 1.5, slowDuration: 4, slowFactor: 0.35,
+  },
+  // Gladiator net: near-single-target, same range, shorter slow
+  [AbilityType.GLADIATOR_NET]: {
+    type: AbilityType.GLADIATOR_NET, cooldown: 5, range: 4, castTime: 0.35,
+    damage: 15, aoeRadius: 0.8, slowDuration: 3, slowFactor: 0.35,
+  },
 };
