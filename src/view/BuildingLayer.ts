@@ -86,7 +86,7 @@ export class BuildingLayer {
   readonly update = (state: GameState, dt: number): void => {
     for (const [id, view] of this._buildingViews) {
       const building = state.buildings.get(id);
-      if (building) view.update(building, dt);
+      if (building) view.update(building, dt, state.phase);
     }
     for (const [id, view] of this._baseViews) {
       const base = state.bases.get(id);

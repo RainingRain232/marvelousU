@@ -43,7 +43,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.HAMLET,
       BuildingType.EMBASSY,
     ],
-    footprint: { w: 3, h: 3 },
+    footprint: { w: 4, h: 4 },
     placementZone: "own",
     defaultTurrets: [
       { projectileTag: "arrow", damage: 12, range: 6, attackSpeed: 1.0 },

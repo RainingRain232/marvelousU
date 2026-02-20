@@ -9,7 +9,8 @@ import gsap from "gsap";
 import type { Building } from "@sim/entities/Building";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
-import { BuildingType, BuildingState } from "@/types";
+import { BuildingType, BuildingState, GamePhase } from "@/types";
+import { CastleRenderer } from "@view/entities/CastleRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -106,6 +107,9 @@ export class BuildingView {
   private _type: BuildingType;
   private _capturable: boolean;
 
+  // Detailed castle renderer (only set for CASTLE type buildings)
+  private _castleRenderer: CastleRenderer | null = null;
+
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
     const ts = BalanceConfig.TILE_SIZE;
@@ -117,13 +121,32 @@ export class BuildingView {
     const pw = this._pw;
     const ph = this._ph;
 
-    // Body rect
-    this._body
-      .rect(0, 0, pw, ph)
-      .fill({ color: BUILDING_COLORS[building.type] })
-      .rect(0, 0, pw, ph)
-      .stroke({ color: BORDER_COLOR, alpha: BORDER_ALPHA, width: 2 });
-    this.container.addChild(this._body);
+    // --- Castle: use detailed procedural renderer ---
+    if (building.type === BuildingType.CASTLE) {
+      this._castleRenderer = new CastleRenderer(building.owner);
+      this.container.addChild(this._castleRenderer.container);
+      // Hide generic body/label — castle renderer handles everything visual
+      this._body.visible = false;
+      this._label.visible = false;
+    } else {
+      // Body rect (generic buildings)
+      this._body
+        .rect(0, 0, pw, ph)
+        .fill({ color: BUILDING_COLORS[building.type] })
+        .rect(0, 0, pw, ph)
+        .stroke({ color: BORDER_COLOR, alpha: BORDER_ALPHA, width: 2 });
+      this.container.addChild(this._body);
+
+      // Label
+      this._label.text = BUILDING_LABELS[building.type];
+      this._label.anchor.set(0.5, 0.5);
+      this._label.position.set(pw / 2, ph / 2);
+      this.container.addChild(this._label);
+
+      // Small flag graphic (top-right corner of building)
+      this._flag = this._buildFlag(building);
+      this.container.addChild(this._flag);
+    }
 
     // HP bar background
     this._hpBg.rect(0, BAR_Y_OFF, pw, BAR_H).fill({ color: HP_BG });
@@ -139,16 +162,6 @@ export class BuildingView {
       this.container.addChild(this._captureFill);
     }
 
-    // Label
-    this._label.text = BUILDING_LABELS[building.type];
-    this._label.anchor.set(0.5, 0.5);
-    this._label.position.set(pw / 2, ph / 2);
-    this.container.addChild(this._label);
-
-    // Small flag graphic (top-right corner of building)
-    this._flag = this._buildFlag(building);
-    this.container.addChild(this._flag);
-
     // World-space position
     this.container.position.set(
       building.position.x * ts,
@@ -162,8 +175,11 @@ export class BuildingView {
   // Per-frame sync
   // ---------------------------------------------------------------------------
 
-  /** Sync health bar, capture bar, and idle FX. `dt` is seconds since last frame. */
-  update(building: Building, dt = 0): void {
+  /**
+   * Sync health bar, capture bar, and idle FX. `dt` is seconds since last frame.
+   * `phase` is the current GamePhase (used by castle animations).
+   */
+  update(building: Building, dt = 0, phase: GamePhase = GamePhase.PREP): void {
     const pct = Math.max(0, building.health / building.maxHealth);
     const fillW = this._pw * pct;
     const hpColor = pct < 0.3 ? HP_DANGER : HP_FILL;
@@ -181,8 +197,8 @@ export class BuildingView {
         const ownerOrCapper = building.owner ?? building.capturePlayerId;
         const capColor =
           ownerOrCapper === "p1" ? CAP_COLOR_P1
-          : ownerOrCapper === "p2" ? CAP_COLOR_P2
-          : CAP_COLOR_NEUTRAL;
+            : ownerOrCapper === "p2" ? CAP_COLOR_P2
+              : CAP_COLOR_NEUTRAL;
         this._captureFill
           .rect(0, this._ph + CAP_BAR_Y_OFF, this._pw * capPct, CAP_BAR_H)
           .fill({ color: capColor });
@@ -193,6 +209,10 @@ export class BuildingView {
     this._label.alpha = this._body.alpha;
 
     if (building.state === BuildingState.ACTIVE && dt > 0) {
+      // Castle: tick the detailed renderer
+      if (this._castleRenderer) {
+        this._castleRenderer.tick(dt, phase);
+      }
       this._tickIdleEffects(dt);
     }
   }

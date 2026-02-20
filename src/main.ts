@@ -211,10 +211,10 @@ function _spawnNeutralExtras(
  * Spawn offsets mirror the standard values.
  */
 function _computeBasePositions(w: number, h: number) {
-  const midY = Math.floor(h / 2) - 1; // centre the 3-tall castle
+  const midY = Math.floor(h / 2) - 2; // centre the 4-tall castle
   return {
-    westPosition:    { x: 1,     y: midY },
-    eastPosition:    { x: w - 4, y: midY }, // castle is 3 wide; x + 3 = w - 1
+    westPosition: { x: 1, y: midY },
+    eastPosition: { x: w - 5, y: midY }, // castle is 4 wide; x + 4 = w - 1
     westSpawnOffset: { ...BalanceConfig.BASE_WEST_SPAWN_OFFSET },
     eastSpawnOffset: { ...BalanceConfig.BASE_EAST_SPAWN_OFFSET },
   };
