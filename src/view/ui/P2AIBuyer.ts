@@ -53,8 +53,11 @@ class P2AIBuyer {
     const player = state.players.get("p2");
     if (!player) return;
 
-    // Gather affordable actions
-    const actions: Array<() => void> = [];
+    // Gather affordable unit and building actions separately so we can
+    // weight them: prefer unit purchases over building purchases to ensure
+    // the AI keeps training troops throughout PREP.
+    const unitActions: Array<() => void> = [];
+    const buildingActions: Array<() => void> = [];
 
     // --- Unit purchases ---
     for (const building of state.buildings.values()) {
@@ -63,7 +66,7 @@ class P2AIBuyer {
       for (const unitType of building.shopInventory) {
         const cost = UNIT_DEFINITIONS[unitType].cost;
         if (player.gold >= cost) {
-          actions.push(() => {
+          unitActions.push(() => {
             if (player.gold < cost) return;
             player.gold -= cost;
             addToQueue(state, building.id, unitType);
@@ -104,17 +107,22 @@ class P2AIBuyer {
         );
         if (!pos) continue;
 
-        actions.push(() => {
+        buildingActions.push(() => {
           placeBuilding(state, "p2", bpType, pos);
           EventBus.emit("goldChanged", { playerId: "p2", amount: player.gold });
         });
       }
     }
 
-    if (actions.length === 0) return;
+    if (unitActions.length === 0 && buildingActions.length === 0) return;
 
-    // Pick a random action
-    const action = actions[Math.floor(Math.random() * actions.length)];
+    // Weight unit actions 3:1 over building actions so the AI reliably trains
+    // troops rather than spending all gold on infrastructure early.
+    const pool = [
+      ...unitActions, ...unitActions, ...unitActions,
+      ...buildingActions,
+    ];
+    const action = pool[Math.floor(Math.random() * pool.length)];
     action();
   }
 
