@@ -48,7 +48,7 @@ export class Camera {
   // Keyboard pan state
   // ---------------------------------------------------------------------------
 
-  private _keys = { left: false, right: false, up: false, down: false };
+  private _keys = { left: false, right: false, up: false, down: false, zoomIn: false, zoomOut: false };
 
   // ---------------------------------------------------------------------------
   // Drag pan state
@@ -66,7 +66,6 @@ export class Camera {
 
   private _canvas: HTMLCanvasElement | null = null;
 
-  private _onWheel = this._handleWheel.bind(this);
   private _onPointerDown = this._handlePointerDown.bind(this);
   private _onPointerMove = this._handlePointerMove.bind(this);
   private _onPointerUp = this._handlePointerUp.bind(this);
@@ -115,7 +114,6 @@ export class Camera {
     if (this._canvas) this.detach();
     this._canvas = canvas;
 
-    canvas.addEventListener("wheel", this._onWheel, { passive: false });
     canvas.addEventListener("pointerdown", this._onPointerDown);
     canvas.addEventListener("pointermove", this._onPointerMove);
     canvas.addEventListener("pointerup", this._onPointerUp);
@@ -131,7 +129,6 @@ export class Camera {
     if (!this._canvas) return;
     const c = this._canvas;
 
-    c.removeEventListener("wheel", this._onWheel);
     c.removeEventListener("pointerdown", this._onPointerDown);
     c.removeEventListener("pointermove", this._onPointerMove);
     c.removeEventListener("pointerup", this._onPointerUp);
@@ -166,6 +163,9 @@ export class Camera {
       this.y -= (dy / len) * speed * dt;
       this._clamp();
     }
+
+    if (this._keys.zoomIn) this._zoomAtCenter(ZOOM_STEP * dt * 5);
+    if (this._keys.zoomOut) this._zoomAtCenter(-ZOOM_STEP * dt * 5);
   }
 
   /**
@@ -243,25 +243,18 @@ export class Camera {
   }
 
   // ---------------------------------------------------------------------------
-  // Event handlers — wheel (zoom)
+  // Zoom helper
   // ---------------------------------------------------------------------------
 
-  private _handleWheel(e: WheelEvent): void {
-    e.preventDefault();
-
-    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+  private _zoomAtCenter(delta: number): void {
     const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, this.zoom + delta));
     if (newZoom === this.zoom) return;
 
-    // Zoom toward the cursor: keep the world point under the cursor fixed.
-    // world_px = screen_px / zoom - camera
-    // We want:  screen_px / newZoom - newCamera = screen_px / oldZoom - oldCamera
-    //           newCamera = screen_px / newZoom - (screen_px / oldZoom - oldCamera)
-    const cursorX = e.offsetX;
-    const cursorY = e.offsetY;
-
-    this.x = cursorX / newZoom - (cursorX / this.zoom - this.x);
-    this.y = cursorY / newZoom - (cursorY / this.zoom - this.y);
+    // Zoom toward the screen centre
+    const cx = this.screenW / 2;
+    const cy = this.screenH / 2;
+    this.x = cx / newZoom - (cx / this.zoom - this.x);
+    this.y = cy / newZoom - (cy / this.zoom - this.y);
     this.zoom = newZoom;
 
     this._clamp();
@@ -327,6 +320,14 @@ export class Camera {
       case "KeyS":
       case "ArrowDown":
         this._keys.down = down;
+        break;
+      case "Equal":       // + / = key
+      case "NumpadAdd":
+        this._keys.zoomIn = down;
+        break;
+      case "Minus":       // - key
+      case "NumpadSubtract":
+        this._keys.zoomOut = down;
         break;
     }
   }

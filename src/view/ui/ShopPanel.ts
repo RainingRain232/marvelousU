@@ -159,6 +159,9 @@ const UNIT_LABELS: Record<UnitType, string> = {
 export class ShopPanel {
   readonly container = new Container();
 
+  onOpen: (() => void) | null = null;
+  onClose: (() => void) | null = null;
+
   private _vm!: ViewManager;
   private _state!: GameState;
   private _localPlayerId = "";
@@ -200,7 +203,6 @@ export class ShopPanel {
     this.container.addChild(this._scrollbarTrack);
     this.container.addChild(this._scrollbarThumb);
 
-    // Scroll handlers
     this.container.eventMode = "static";
     this.container.on("wheel", (e) => {
       if (!this.container.visible || this._contentH <= this._viewH) return;
@@ -226,11 +228,14 @@ export class ShopPanel {
     this._openBuildingId = buildingId;
     this._rebuild();
     this.container.visible = true;
+    this.onOpen?.();
   }
 
   close(): void {
+    const wasOpen = this._openBuildingId !== null;
     this._openBuildingId = null;
     this.container.visible = false;
+    if (wasOpen) this.onClose?.();
   }
 
   /** Call from vm.onUpdate so gold-affordability tints stay current. */

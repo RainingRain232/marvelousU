@@ -22,6 +22,7 @@ import type { Building } from "@sim/entities/Building";
 import { UnitState, Direction, BuildingState } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { startMoving } from "@sim/systems/MovementSystem";
 import { findPath } from "@sim/core/Grid";
 
@@ -81,7 +82,8 @@ function _handleIdle(state: GameState, unit: Unit): void {
   // out of range. Only act if there's still no target.
   if (unit.targetId) return;
 
-  const goal = _enemyBaseGoal(state, unit);
+  const def = UNIT_DEFINITIONS[unit.type];
+  const goal = def.isHealer ? _healerGoal(state, unit) : _enemyBaseGoal(state, unit);
   if (!goal) return;
 
   startMoving(state, unit, goal);
@@ -92,29 +94,44 @@ function _handleIdle(state: GameState, unit: Unit): void {
  * than BUILDING_AGGRO_RANGE. CombatSystem owns unit-vs-unit targeting.
  */
 function _handleMove(state: GameState, unit: Unit): void {
-  if (unit.targetId) {
-    // Check if it's a valid building target first.
-    const buildingTarget = state.buildings.get(unit.targetId);
-    if (
-      buildingTarget &&
-      buildingTarget.state === BuildingState.ACTIVE &&
-      buildingTarget.owner !== unit.owner &&
-      buildingTarget.owner !== null
-    ) {
-      // Still heading toward a valid enemy building — leave path alone.
-      return;
-    }
+  const def = UNIT_DEFINITIONS[unit.type];
 
-    if (!unit.siegeOnly) {
-      // Check if it's a valid unit target — if so, leave it for CombatSystem.
+  if (unit.targetId) {
+    if (def.isHealer) {
+      // Healers target friendly units — check their target is still valid
       const unitTarget = state.units.get(unit.targetId);
       if (
         unitTarget &&
         unitTarget.state !== UnitState.DIE &&
-        unitTarget.owner !== unit.owner &&
+        unitTarget.owner === unit.owner &&
         distanceSq(unit.position, unitTarget.position) <= AGGRO_RANGE_SQ
       ) {
         return;
+      }
+    } else {
+      // Check if it's a valid building target first.
+      const buildingTarget = state.buildings.get(unit.targetId);
+      if (
+        buildingTarget &&
+        buildingTarget.state === BuildingState.ACTIVE &&
+        buildingTarget.owner !== unit.owner &&
+        buildingTarget.owner !== null
+      ) {
+        // Still heading toward a valid enemy building — leave path alone.
+        return;
+      }
+
+      if (!unit.siegeOnly) {
+        // Check if it's a valid unit target — if so, leave it for CombatSystem.
+        const unitTarget = state.units.get(unit.targetId);
+        if (
+          unitTarget &&
+          unitTarget.state !== UnitState.DIE &&
+          unitTarget.owner !== unit.owner &&
+          distanceSq(unit.position, unitTarget.position) <= AGGRO_RANGE_SQ
+        ) {
+          return;
+        }
       }
     }
 
@@ -122,6 +139,15 @@ function _handleMove(state: GameState, unit: Unit): void {
     unit.targetId = null;
     unit.path = null;
     unit.pathIndex = 0;
+  }
+
+  if (def.isHealer) {
+    // Healers never divert to buildings — always head toward friendlies or own castle.
+    if (!unit.path || unit.pathIndex >= unit.path.length) {
+      const goal = _healerGoal(state, unit);
+      if (goal) startMoving(state, unit, goal);
+    }
+    return;
   }
 
   // Try to divert toward a nearby enemy building.
@@ -146,6 +172,23 @@ function _handleMove(state: GameState, unit: Unit): void {
  */
 function _handleAttack(state: GameState, unit: Unit): void {
   if (!unit.targetId) return; // CombatSystem will transition to MOVE if needed
+
+  const def = UNIT_DEFINITIONS[unit.type];
+
+  if (def.isHealer) {
+    // Healers target friendly units — validate accordingly
+    const currentTarget = state.units.get(unit.targetId);
+    if (
+      currentTarget &&
+      currentTarget.state !== UnitState.DIE &&
+      currentTarget.owner === unit.owner &&
+      distanceSq(unit.position, currentTarget.position) <= AGGRO_RANGE_SQ
+    ) {
+      return;
+    }
+    unit.targetId = null;
+    return;
+  }
 
   // If targeting a building, leave it alone — CombatSystem handles damage
   const buildingTarget = state.buildings.get(unit.targetId);
@@ -288,6 +331,41 @@ function _findNearestNeutralBuilding(
   }
 
   return nearest;
+}
+
+/**
+ * Goal for healer units: position of the nearest friendly unit, or the
+ * healer's own castle spawn point as a fallback.
+ */
+function _healerGoal(
+  state: GameState,
+  unit: Unit,
+): { x: number; y: number } | null {
+  // Find nearest friendly unit (any alive friendly, not just injured)
+  let nearest: Unit | null = null;
+  let nearestDsq = Infinity;
+
+  for (const candidate of state.units.values()) {
+    if (candidate.id === unit.id) continue;
+    if (candidate.owner !== unit.owner) continue;
+    if (candidate.state === UnitState.DIE) continue;
+
+    const dsq = distanceSq(unit.position, candidate.position);
+    if (dsq < nearestDsq) {
+      nearest = candidate;
+      nearestDsq = dsq;
+    }
+  }
+
+  if (nearest) return { ...nearest.position };
+
+  // Fallback: own castle spawn point
+  const ownBase = [...state.bases.values()].find((b) => b.owner === unit.owner);
+  if (!ownBase) return null;
+  return {
+    x: ownBase.position.x + ownBase.spawnOffset.x,
+    y: ownBase.position.y + ownBase.spawnOffset.y,
+  };
 }
 
 /**

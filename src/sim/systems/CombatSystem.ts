@@ -124,15 +124,8 @@ export const CombatSystem = {
           });
         }
 
-        if (unit.attackTimer <= 0) {
-          if (!def.isHealer) {
-            applyDamage(unit, target);
-          } else {
-            // Healers rely on abilities (AbilitySystem) to apply healing.
-            // We still tick the attackTimer to simulate "attack speed" for casting.
-            const attackInterval = 1 / def.attackSpeed;
-            unit.attackTimer = attackInterval;
-          }
+        if (unit.attackTimer <= 0 && !def.isHealer) {
+          applyDamage(unit, target);
         }
       } else {
         // --- Out of range: ensure unit is moving toward target ---
@@ -312,6 +305,7 @@ function resolveFriendlyTarget(state: GameState, unit: Unit): Unit | null {
     if (candidate.hp >= candidate.maxHp) continue;
 
     const dsq = distanceSq(unit.position, candidate.position);
+    if (dsq > AGGRO_RANGE_SQ) continue;
     if (dsq < nearestDistSq) {
       nearest = candidate;
       nearestDistSq = dsq;

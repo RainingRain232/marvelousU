@@ -16,6 +16,7 @@ import { iceBallFX } from "@view/fx/IceBallFX";
 import { webFX } from "@view/fx/WebFX";
 import { turretArrowFX } from "@view/fx/TurretArrowFX";
 import { distortionFX } from "@view/fx/DistortionFX";
+import { healFX } from "@view/fx/HealFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { environmentLayer } from "@view/environment/EnvironmentLayer";
 import { startScreen } from "@view/ui/StartScreen";
@@ -325,6 +326,10 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   distortionFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => distortionFX.update(dt));
 
+  // Heal FX
+  healFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => healFX.update(dt));
+
   // Victory screen (overlays game during RESOLVE)
   victoryScreen.init(viewManager, state);
 
@@ -369,6 +374,19 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
     simLoop.togglePause();
     pauseOverlay.visible = simLoop.isPaused;
     // Ticker keeps running so UI stays responsive; only the sim loop is frozen
+  };
+
+  shopPanel.onOpen = () => {
+    if (!simLoop.isPaused) {
+      simLoop.pause();
+      pauseOverlay.visible = true;
+    }
+  };
+  shopPanel.onClose = () => {
+    if (simLoop.isPaused) {
+      simLoop.resume();
+      pauseOverlay.visible = false;
+    }
   };
 
   window.addEventListener("keydown", (e) => {
