@@ -8,7 +8,6 @@ import { addToQueue } from "@sim/systems/SpawnSystem";
 import { placeBuilding } from "@sim/systems/BuildingSystem";
 import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
-import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 // How many times per second the AI considers spending gold.
 const DECISION_RATE = 0.5; // decisions per second
@@ -146,8 +145,8 @@ class P2AIBuyer {
     w: number,
     h: number,
   ): { x: number; y: number } | null {
-    const cols = BalanceConfig.GRID_WIDTH;
-    const rows = BalanceConfig.GRID_HEIGHT;
+    const cols = state.battlefield.width;
+    const rows = state.battlefield.height;
 
     // Shuffle candidate top-left positions so placement looks less deterministic
     const candidates: Array<{ x: number; y: number }> = [];
