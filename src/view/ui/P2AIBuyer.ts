@@ -1,4 +1,4 @@
-// Dumb AI buyer for player 2 during PREP phase.
+// Dumb AI buyer for player 2 during PREP and BATTLE phases.
 // Each tick it randomly decides whether to spend gold on a unit or a building.
 import type { GameState } from "@sim/state/GameState";
 import { GamePhase, BuildingState, BuildingType } from "@/types";
@@ -30,16 +30,18 @@ class P2AIBuyer {
   update(state: GameState, dt: number): void {
     if (!this._enabled) return;
 
-    // Reset timer on every fresh entry into PREP so that time accumulated
-    // during BATTLE / RESOLVE doesn't cause a burst of back-to-back decisions.
-    if (state.phase !== GamePhase.PREP) {
+    // No buying during RESOLVE
+    if (state.phase === GamePhase.RESOLVE) {
       this._lastPhase = state.phase;
       return;
     }
-    if (this._lastPhase !== GamePhase.PREP) {
+
+    // Reset timer on fresh entry into PREP to avoid burst-spending caused by
+    // time accumulated during BATTLE / RESOLVE.
+    if (state.phase === GamePhase.PREP && this._lastPhase !== GamePhase.PREP) {
       this._timer = 0;
-      this._lastPhase = GamePhase.PREP;
     }
+    this._lastPhase = state.phase;
 
     this._timer += dt;
     const interval = 1 / DECISION_RATE;

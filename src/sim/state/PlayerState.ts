@@ -4,7 +4,8 @@ import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 export interface PlayerState {
   id: PlayerId;
-  gold: number;
+  gold: number; // Always a whole integer — spend/receive in whole gold only
+  goldAccum: number; // Sub-integer accumulator for income ticks (not displayed)
   direction: Direction; // Which side of the battlefield this player controls
   ownedBaseId: string | null; // The player's main Base ID
   ownedBuildings: string[]; // Building IDs this player owns
@@ -22,7 +23,8 @@ export function createPlayerState(
 ): PlayerState {
   return {
     id,
-    gold: startGold,
+    gold: Math.floor(startGold),
+    goldAccum: 0,
     direction,
     ownedBaseId: null,
     ownedBuildings: [],

@@ -116,6 +116,7 @@ function _enterPrep(state: GameState): void {
   // Replenish player gold to starting amount
   for (const player of state.players.values()) {
     player.gold = BalanceConfig.START_GOLD;
+    player.goldAccum = 0;
     EventBus.emit("goldChanged", { playerId: player.id, amount: player.gold });
   }
 

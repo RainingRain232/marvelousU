@@ -29,14 +29,14 @@ export const EconomySystem = {
       const rate = _incomeRate(state, player.id, isBattle);
       if (rate <= 0) continue;
 
-      const prev = player.gold;
-      player.gold += rate * dt;
-
-      // Only emit when gold visibly changes (avoid spamming sub-cent ticks)
-      if (Math.floor(player.gold) !== Math.floor(prev)) {
+      player.goldAccum += rate * dt;
+      const whole = Math.floor(player.goldAccum);
+      if (whole >= 1) {
+        player.gold += whole;
+        player.goldAccum -= whole;
         EventBus.emit("goldChanged", {
           playerId: player.id,
-          amount: Math.floor(player.gold),
+          amount: player.gold,
         });
       }
     }
