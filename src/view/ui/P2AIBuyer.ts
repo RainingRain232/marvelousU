@@ -1,7 +1,7 @@
 // Dumb AI buyer for player 2 during PREP phase.
 // Each tick it randomly decides whether to spend gold on a unit or a building.
 import type { GameState } from "@sim/state/GameState";
-import { GamePhase, BuildingState } from "@/types";
+import { GamePhase, BuildingState, BuildingType } from "@/types";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { addToQueue } from "@sim/systems/SpawnSystem";
@@ -72,6 +72,18 @@ class P2AIBuyer {
         const def = BUILDING_DEFINITIONS[bpType];
         if (player.gold < def.cost) continue;
 
+        // Skip if at max count for this type
+        if (def.maxCount !== undefined) {
+          const owned = this._countOwnedType(state, bpType);
+          if (owned >= def.maxCount) continue;
+        }
+
+        // Skip if prerequisite not met
+        if (def.prerequisite) {
+          const prereqOwned = this._countOwnedType(state, def.prerequisite.type);
+          if (prereqOwned < def.prerequisite.minCount) continue;
+        }
+
         // Find a valid tile to place it in p2's zone (east side)
         const pos = this._findPlacementTile(
           state,
@@ -82,6 +94,7 @@ class P2AIBuyer {
 
         actions.push(() => {
           placeBuilding(state, "p2", bpType, pos);
+          EventBus.emit("goldChanged", { playerId: "p2", amount: player.gold });
         });
       }
     }
@@ -91,6 +104,18 @@ class P2AIBuyer {
     // Pick a random action
     const action = actions[Math.floor(Math.random() * actions.length)];
     action();
+  }
+
+  /** Count how many active buildings of the given type p2 currently owns. */
+  private _countOwnedType(state: GameState, type: BuildingType): number {
+    const player = state.players.get("p2");
+    if (!player) return 0;
+    let count = 0;
+    for (const id of player.ownedBuildings) {
+      const b = state.buildings.get(id);
+      if (b && b.type === type && b.state === BuildingState.ACTIVE) count++;
+    }
+    return count;
   }
 
   /** Scan east-side tiles for a w×h gap the AI can legally place a building. */
