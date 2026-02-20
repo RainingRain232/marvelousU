@@ -9,12 +9,16 @@ import { placeBuilding } from "@sim/systems/BuildingSystem";
 import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
 
-// How many times per second the AI considers spending gold.
-const DECISION_RATE = 0.5; // decisions per second
+// Seconds between AI decisions when gold is plentiful vs scarce.
+const INTERVAL_MIN = 1.5; // shortest wait (flush with gold)
+const INTERVAL_MAX = 5.0; // longest wait (barely enough for cheapest unit)
+// Gold threshold below which the AI uses the longer end of the range.
+const LOW_GOLD_THRESHOLD = 80;
 
 class P2AIBuyer {
   private _enabled = false;
   private _timer = 0;
+  private _interval = INTERVAL_MIN;
   private _lastPhase: GamePhase | null = null;
 
   get enabled(): boolean {
@@ -39,13 +43,13 @@ class P2AIBuyer {
     // time accumulated during BATTLE / RESOLVE.
     if (state.phase === GamePhase.PREP && this._lastPhase !== GamePhase.PREP) {
       this._timer = 0;
+      this._interval = INTERVAL_MIN;
     }
     this._lastPhase = state.phase;
 
     this._timer += dt;
-    const interval = 1 / DECISION_RATE;
-    if (this._timer < interval) return;
-    this._timer -= interval;
+    if (this._timer < this._interval) return;
+    this._timer = 0;
 
     this._decide(state);
   }
@@ -115,7 +119,11 @@ class P2AIBuyer {
       }
     }
 
-    if (unitActions.length === 0 && buildingActions.length === 0) return;
+    if (unitActions.length === 0 && buildingActions.length === 0) {
+      // Nothing affordable — wait longer before checking again.
+      this._interval = INTERVAL_MAX;
+      return;
+    }
 
     // Weight unit actions 3:1 over building actions so the AI reliably trains
     // troops rather than spending all gold on infrastructure early.
@@ -125,6 +133,21 @@ class P2AIBuyer {
     ];
     const action = pool[Math.floor(Math.random() * pool.length)];
     action();
+
+    // Scale the next wait based on remaining gold: low gold → longer pause.
+    this._interval = this._nextInterval(player.gold);
+  }
+
+  /**
+   * Pick a random wait before the next decision.
+   * Scales between INTERVAL_MIN (flush) and INTERVAL_MAX (near-empty).
+   */
+  private _nextInterval(gold: number): number {
+    const t = Math.max(0, Math.min(1, 1 - gold / LOW_GOLD_THRESHOLD));
+    const base = INTERVAL_MIN + t * (INTERVAL_MAX - INTERVAL_MIN);
+    // Add ±30% jitter so decisions don't all land on the same beat.
+    const jitter = base * 0.3 * (Math.random() * 2 - 1);
+    return Math.max(INTERVAL_MIN, base + jitter);
   }
 
   /** Count how many active buildings of the given type p2 currently owns. */
