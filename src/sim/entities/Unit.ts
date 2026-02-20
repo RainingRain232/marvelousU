@@ -43,6 +43,12 @@ export interface Unit {
   /** Remaining seconds of slow effect. 0 = not slowed. */
   slowTimer: number;
 
+  // Interruption timers (seconds)
+  /** Current duration of an idle interruption. If > 0, unit stays in visual IDLE and skips systems. */
+  idleInterruptionTimer: number;
+  /** Countdown to the next idle interruption. */
+  nextIdleInterruptionTimer: number;
+
   // Abilities
   abilityIds: string[]; // References into GameState.abilities
 
@@ -135,6 +141,8 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     deathTimer: 0,
     lifespanTimer: -1,
     abilityIds: [],
+    idleInterruptionTimer: 0,
+    nextIdleInterruptionTimer: 4 + Math.random() * 3, // Randomized first pause (4-7s)
     path: null,
     pathIndex: 0,
     groupId: null,

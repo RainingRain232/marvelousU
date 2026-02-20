@@ -42,7 +42,7 @@ export const CombatSystem = {
       }
 
       // Skip units that can't participate in combat
-      if (unit.state === UnitState.CAST) continue;
+      if (unit.state === UnitState.CAST || unit.idleInterruptionTimer > 0) continue;
 
       // Tick attack cooldown
       if (unit.attackTimer > 0) unit.attackTimer -= dt;

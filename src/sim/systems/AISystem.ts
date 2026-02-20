@@ -43,9 +43,10 @@ const AGGRO_RANGE_SQ = BalanceConfig.AGGRO_RANGE * BalanceConfig.AGGRO_RANGE;
 export const AISystem = {
   update(state: GameState, _dt: number): void {
     for (const unit of state.units.values()) {
-      // Skip dead / casting units — nothing to decide
+      // Skip dead / casting / interrupted units — nothing to decide
       if (unit.state === UnitState.DIE) continue;
       if (unit.state === UnitState.CAST) continue;
+      if (unit.idleInterruptionTimer > 0) continue;
 
       if (unit.diplomatOnly) {
         _handleDiplomat(state, unit);

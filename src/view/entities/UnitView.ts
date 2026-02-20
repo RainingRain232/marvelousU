@@ -252,7 +252,7 @@ export class UnitView {
   // ---------------------------------------------------------------------------
 
   private _syncAnimation(unit: Unit): void {
-    const desiredState = unit.state;
+    const desiredState = unit.idleInterruptionTimer > 0 ? UnitState.IDLE : unit.state;
     if (desiredState === this._playingState) return;
     this._playState(unit, desiredState);
   }

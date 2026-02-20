@@ -101,7 +101,7 @@ export const MovementSystem = {
         if (unit.slowTimer === 0) unit.slowFactor = 1;
       }
 
-      if (unit.state !== UnitState.MOVE) continue;
+      if (unit.state !== UnitState.MOVE || unit.idleInterruptionTimer > 0) continue;
       tickUnit(state, unit, dt, groupSlots);
     }
   },
@@ -128,7 +128,7 @@ function tickUnit(
       // Re-path whenever the target tile changed or path is exhausted
       const lastWp = unit.path ? unit.path[unit.path.length - 1] : null;
       if (!unit.path || unit.pathIndex >= unit.path.length ||
-          !lastWp || lastWp.x !== tx || lastWp.y !== ty) {
+        !lastWp || lastWp.x !== tx || lastWp.y !== ty) {
         unit.path = findPath(
           state.battlefield,
           { x: Math.floor(unit.position.x), y: Math.floor(unit.position.y) },
