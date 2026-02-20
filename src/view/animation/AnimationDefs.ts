@@ -112,7 +112,7 @@ function buildDef(
 // ---------------------------------------------------------------------------
 
 export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
-  [UnitType.SWORDSMAN]: buildDef("swordsman"),
+  [UnitType.SWORDSMAN]: buildDef("swordsman", { idleFps: 6, moveFps: 10, attackFps: 14, dieFps: 8 }),
   [UnitType.ARCHER]: buildDef("archer", { attackFps: 10 }),
   [UnitType.KNIGHT]: buildDef("knight", { moveFps: 8, attackFps: 8 }),
   [UnitType.FIRE_MAGE]: buildDef("mage", { idleFps: 6, castFps: 8 }),

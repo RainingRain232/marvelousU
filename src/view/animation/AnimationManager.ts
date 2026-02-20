@@ -25,6 +25,7 @@ import {
   ANIMATION_DEFS,
   type AnimFrameSet,
 } from "@view/animation/AnimationDefs";
+import { generateSwordsmanFrames } from "@view/animation/SwordsmanSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -140,8 +141,13 @@ export class AnimationManager {
       this._extractFromSpritesheet(key, spritesheet);
       this._realSheets.add(key);
     } catch {
-      // Asset not found — generate procedural placeholders
-      this._generatePlaceholders(key, renderer);
+      // Asset not found — use detailed procedural generators where available,
+      // otherwise fall back to generic colored-square placeholders.
+      if (key === "swordsman") {
+        this._generateSwordsmanSprites(key, renderer);
+      } else {
+        this._generatePlaceholders(key, renderer);
+      }
     }
   }
 
@@ -215,6 +221,20 @@ export class AnimationManager {
       }
 
       this._cache.set(ck, textures);
+    }
+  }
+
+  /**
+   * Generate detailed procedural swordsman sprites using the dedicated
+   * SwordsmanSpriteGen module. Populates the cache for all states.
+   */
+  private _generateSwordsmanSprites(key: string, renderer: Renderer): void {
+    const stateTextures = generateSwordsmanFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
     }
   }
 
