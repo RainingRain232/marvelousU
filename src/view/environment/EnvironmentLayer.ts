@@ -3,11 +3,15 @@ import { ViewManager } from "@view/ViewManager";
 import { GameState } from "@sim/state/GameState";
 import { GrassRenderer } from "./GrassRenderer";
 import { TreeRenderer } from "./TreeRenderer";
+import { DeerRenderer } from "./DeerRenderer";
+import { RabbitRenderer } from "./RabbitRenderer";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 export class EnvironmentLayer {
     private _grass!: GrassRenderer;
     private _trees!: TreeRenderer;
+    private _deer: DeerRenderer[] = [];
+    private _rabbits: RabbitRenderer[] = [];
     private _container = new Container();
 
     init(_vm: ViewManager, state: GameState): void {
@@ -27,6 +31,26 @@ export class EnvironmentLayer {
         this._container.addChild(this._grass.container);
         this._container.addChild(this._trees.container);
 
+        // --- Animals ---
+        const totalTiles = state.battlefield.width * state.battlefield.height;
+        const animalDensityUnits = Math.max(1, Math.floor(totalTiles / 200));
+        const deerCount = animalDensityUnits;
+        const rabbitCount = animalDensityUnits * 3;
+
+        const bounds = { w: worldW, h: worldH };
+
+        for (let i = 0; i < deerCount; i++) {
+            const deer = new DeerRenderer(Math.random() * worldW, Math.random() * worldH, bounds, seed + 10 + i);
+            this._deer.push(deer);
+            this._container.addChild(deer.container);
+        }
+
+        for (let i = 0; i < rabbitCount; i++) {
+            const rabbit = new RabbitRenderer(Math.random() * worldW, Math.random() * worldH, bounds, seed + 100 + i);
+            this._rabbits.push(rabbit);
+            this._container.addChild(rabbit.container);
+        }
+
         // Add to background layer, but BEFORE the grid lines if we want them over top,
         // or AFTER if we want them to blend. 
         // GridRenderer adds _tiles, _tints, _lines. 
@@ -43,6 +67,8 @@ export class EnvironmentLayer {
     update(_state: GameState, dt: number): void {
         if (this._grass) this._grass.update(dt);
         if (this._trees) this._trees.update(dt);
+        for (const d of this._deer) d.update(dt);
+        for (const r of this._rabbits) r.update(dt);
     }
 
     destroy(): void {
