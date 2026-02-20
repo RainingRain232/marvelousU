@@ -2,13 +2,13 @@
 export const BalanceConfig = {
   // Grid
   TILE_SIZE: 64, // pixels per tile
-  GRID_WIDTH: 30, // tiles wide
-  GRID_HEIGHT: 20, // tiles tall
+  GRID_WIDTH: 44, // tiles wide
+  GRID_HEIGHT: 25, // tiles tall
 
   // Base positions (tile coords, top-left of 4×4 footprint)
   // West base sits near the left edge; east base mirrors it on the right.
-  BASE_WEST_POSITION: { x: 1, y: 8 } as { x: number; y: number },
-  BASE_EAST_POSITION: { x: 25, y: 8 } as { x: number; y: number },
+  BASE_WEST_POSITION: { x: 1, y: 10 } as { x: number; y: number },
+  BASE_EAST_POSITION: { x: 39, y: 10 } as { x: number; y: number },
 
   // Where units appear relative to the base top-left tile
   BASE_WEST_SPAWN_OFFSET: { x: 5, y: 1 } as { x: number; y: number },
