@@ -22,10 +22,6 @@ const TILE_COLORS = {
 const BUILDING_TINT_COLOR = 0x000000; // darker footprint
 const BUILDING_TINT_ALPHA = 0.15;
 
-/** Grid line color and alpha. */
-const GRID_LINE_COLOR = 0xffffff;
-const GRID_LINE_ALPHA = 0.04; // even softer grid lines
-
 // ---------------------------------------------------------------------------
 // GridRenderer
 // ---------------------------------------------------------------------------
@@ -109,35 +105,8 @@ export class GridRenderer {
     }
   }
 
-  private _drawLines(bf: BattlefieldState): void {
-    const g = this._lines;
-    const ts = BalanceConfig.TILE_SIZE;
-    const w = bf.width * ts;
-    const h = bf.height * ts;
-    g.clear();
-
-    // Vertical lines
-    for (let col = 0; col <= bf.width; col++) {
-      g.moveTo(col * ts, 0)
-        .lineTo(col * ts, h)
-        .stroke({ color: GRID_LINE_COLOR, alpha: GRID_LINE_ALPHA, width: 1 });
-    }
-
-    // Horizontal lines
-    for (let row = 0; row <= bf.height; row++) {
-      g.moveTo(0, row * ts)
-        .lineTo(w, row * ts)
-        .stroke({ color: GRID_LINE_COLOR, alpha: GRID_LINE_ALPHA, width: 1 });
-    }
-
-    // Bold zone boundary lines
-    const westEnd = Math.floor(bf.width / 3);
-    const eastStart = Math.ceil((bf.width * 2) / 3);
-    for (const col of [westEnd, eastStart]) {
-      g.moveTo(col * ts, 0)
-        .lineTo(col * ts, h)
-        .stroke({ color: 0xffffff, alpha: 0.25, width: 2 });
-    }
+  private _drawLines(_bf: BattlefieldState): void {
+    this._lines.clear();
   }
 }
 

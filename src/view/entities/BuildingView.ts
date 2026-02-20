@@ -16,7 +16,6 @@ import { TowerRenderer } from "@view/entities/TowerRenderer";
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
 const CAP_BAR_Y_OFF = 4; // pixels below bottom of building
-const CAP_BAR_BG = 0x222222;
 const CAP_COLOR_P1 = 0x4488ff; // west / p1
 const CAP_COLOR_P2 = 0xff4444; // east / p2
 const CAP_COLOR_NEUTRAL = 0x888888;
@@ -91,7 +90,6 @@ export class BuildingView {
   private _body = new Graphics();
   private _hpBg = new Graphics();
   private _hpFill = new Graphics();
-  private _captureBg = new Graphics();
   private _captureFill = new Graphics();
   private _label = new Text({ text: "", style: LABEL_STYLE });
 
@@ -165,10 +163,8 @@ export class BuildingView {
     // HP fill (updated each frame)
     this.container.addChild(this._hpFill);
 
-    // Capture progress bar (capturable buildings only)
+    // Capture progress bar fill (capturable buildings only, no background)
     if (this._capturable) {
-      this._captureBg.rect(0, ph + CAP_BAR_Y_OFF, pw, CAP_BAR_H).fill({ color: CAP_BAR_BG });
-      this.container.addChild(this._captureBg);
       this.container.addChild(this._captureFill);
     }
 
@@ -199,15 +195,14 @@ export class BuildingView {
       this._hpFill.rect(0, BAR_Y_OFF, fillW, BAR_H).fill({ color: hpColor });
     }
 
-    // Capture progress bar
+    // Capture progress bar — only shown while actively capturing (not fully owned)
     if (this._capturable) {
       this._captureFill.clear();
       const capPct = building.captureProgress;
-      if (capPct > 0) {
-        const ownerOrCapper = building.owner ?? building.capturePlayerId;
+      if (capPct > 0 && capPct < 1) {
         const capColor =
-          ownerOrCapper === "p1" ? CAP_COLOR_P1
-            : ownerOrCapper === "p2" ? CAP_COLOR_P2
+          building.capturePlayerId === "p1" ? CAP_COLOR_P1
+            : building.capturePlayerId === "p2" ? CAP_COLOR_P2
               : CAP_COLOR_NEUTRAL;
         this._captureFill
           .rect(0, this._ph + CAP_BAR_Y_OFF, this._pw * capPct, CAP_BAR_H)
