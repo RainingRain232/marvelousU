@@ -36,6 +36,8 @@ export enum Direction {
 export enum UnitType {
   SWORDSMAN = "swordsman",
   ARCHER = "archer",
+  LONGBOWMAN = "longbowman",
+  CROSSBOWMAN = "crossbowman",
   KNIGHT = "knight",
   FIRE_MAGE = "fire_mage",
   STORM_MAGE = "storm_mage",

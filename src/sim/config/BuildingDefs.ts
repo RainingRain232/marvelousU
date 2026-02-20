@@ -84,7 +84,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 100,
     hp: 180,
     goldIncome: 1,
-    shopInventory: [UnitType.ARCHER],
+    shopInventory: [UnitType.ARCHER, UnitType.LONGBOWMAN, UnitType.CROSSBOWMAN],
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
