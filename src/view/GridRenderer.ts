@@ -10,21 +10,21 @@ import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 /** Fill colors per zone × walkability combination (0xRRGGBB). */
 const TILE_COLORS = {
-  west_walkable:     0x1a3a5c, // dark blue — west territory
-  west_unwalkable:   0x0d1e30, // very dark blue — impassable west
-  neutral_walkable:  0x2a2a3a, // dark grey — contested zone
-  neutral_unwalkable:0x14141e, // near-black — impassable neutral
-  east_walkable:     0x3a1a1a, // dark red — east territory
-  east_unwalkable:   0x1e0d0d, // very dark red — impassable east
+  west_walkable: 0x2d4c2d, // muted green — west territory
+  west_unwalkable: 0x1e331e, // dark muted green — impassable west
+  neutral_walkable: 0x3a5a30, // vibrant green — contested zone
+  neutral_unwalkable: 0x203518, // dark green — impassable neutral
+  east_walkable: 0x5c4d2d, // brownish green — east territory
+  east_unwalkable: 0x3d331e, // dark brownish green — impassable east
 } as const;
 
 /** Tint applied over a tile occupied by a building (additive alpha blend). */
-const BUILDING_TINT_COLOR = 0x444400; // ochre hint
-const BUILDING_TINT_ALPHA = 0.25;
+const BUILDING_TINT_COLOR = 0x000000; // darker footprint
+const BUILDING_TINT_ALPHA = 0.15;
 
 /** Grid line color and alpha. */
 const GRID_LINE_COLOR = 0xffffff;
-const GRID_LINE_ALPHA = 0.06;
+const GRID_LINE_ALPHA = 0.04; // even softer grid lines
 
 // ---------------------------------------------------------------------------
 // GridRenderer
@@ -40,9 +40,9 @@ const GRID_LINE_ALPHA = 0.06;
  * whenever the battlefield state changes (e.g., a building is placed).
  */
 export class GridRenderer {
-  private _tiles  = new Graphics();
-  private _lines  = new Graphics();
-  private _tints  = new Graphics(); // building footprint highlights
+  private _tiles = new Graphics();
+  private _lines = new Graphics();
+  private _tints = new Graphics(); // building footprint highlights
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -81,8 +81,8 @@ export class GridRenderer {
   // ---------------------------------------------------------------------------
 
   private _drawTiles(bf: BattlefieldState): void {
-    const g    = this._tiles;
-    const ts   = BalanceConfig.TILE_SIZE;
+    const g = this._tiles;
+    const ts = BalanceConfig.TILE_SIZE;
     g.clear();
 
     for (const row of bf.grid) {
@@ -95,8 +95,8 @@ export class GridRenderer {
   }
 
   private _drawBuildingTints(bf: BattlefieldState): void {
-    const g    = this._tints;
-    const ts   = BalanceConfig.TILE_SIZE;
+    const g = this._tints;
+    const ts = BalanceConfig.TILE_SIZE;
     g.clear();
 
     for (const row of bf.grid) {
@@ -110,33 +110,33 @@ export class GridRenderer {
   }
 
   private _drawLines(bf: BattlefieldState): void {
-    const g    = this._lines;
-    const ts   = BalanceConfig.TILE_SIZE;
-    const w    = bf.width  * ts;
-    const h    = bf.height * ts;
+    const g = this._lines;
+    const ts = BalanceConfig.TILE_SIZE;
+    const w = bf.width * ts;
+    const h = bf.height * ts;
     g.clear();
 
     // Vertical lines
     for (let col = 0; col <= bf.width; col++) {
       g.moveTo(col * ts, 0)
-       .lineTo(col * ts, h)
-       .stroke({ color: GRID_LINE_COLOR, alpha: GRID_LINE_ALPHA, width: 1 });
+        .lineTo(col * ts, h)
+        .stroke({ color: GRID_LINE_COLOR, alpha: GRID_LINE_ALPHA, width: 1 });
     }
 
     // Horizontal lines
     for (let row = 0; row <= bf.height; row++) {
       g.moveTo(0, row * ts)
-       .lineTo(w, row * ts)
-       .stroke({ color: GRID_LINE_COLOR, alpha: GRID_LINE_ALPHA, width: 1 });
+        .lineTo(w, row * ts)
+        .stroke({ color: GRID_LINE_COLOR, alpha: GRID_LINE_ALPHA, width: 1 });
     }
 
     // Bold zone boundary lines
-    const westEnd   = Math.floor(bf.width / 3);
+    const westEnd = Math.floor(bf.width / 3);
     const eastStart = Math.ceil((bf.width * 2) / 3);
     for (const col of [westEnd, eastStart]) {
       g.moveTo(col * ts, 0)
-       .lineTo(col * ts, h)
-       .stroke({ color: 0xffffff, alpha: 0.25, width: 2 });
+        .lineTo(col * ts, h)
+        .stroke({ color: 0xffffff, alpha: 0.25, width: 2 });
     }
   }
 }

@@ -16,6 +16,7 @@ import { iceBallFX } from "@view/fx/IceBallFX";
 import { webFX } from "@view/fx/WebFX";
 import { turretArrowFX } from "@view/fx/TurretArrowFX";
 import { animationManager } from "@view/animation/AnimationManager";
+import { environmentLayer } from "@view/environment/EnvironmentLayer";
 import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
 import type { MapSize } from "@view/ui/MenuScreen";
@@ -234,9 +235,10 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);
   viewManager.camera.fitMap();
 
-  // 3. Grid background
+  // 3. Grid background & environment
   gridRenderer.init(viewManager);
   gridRenderer.draw(state.battlefield);
+  environmentLayer.init(viewManager, state);
   EventBus.on("buildingPlaced", () => gridRenderer.draw(state.battlefield));
   EventBus.on("buildingDestroyed", () => gridRenderer.draw(state.battlefield));
 
@@ -266,6 +268,7 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   // Wire per-frame updates now that game is live
   viewManager.onUpdate((s, dt) => buildingLayer.update(s, dt));
   viewManager.onUpdate((s) => unitLayer.update(s));
+  viewManager.onUpdate((s, dt) => environmentLayer.update(s, dt));
   viewManager.onUpdate((s) => hud.update(s));
   viewManager.onUpdate((s) => shopPanel.update(s));
   viewManager.onUpdate((s) => unitQueueUI.update(s));
