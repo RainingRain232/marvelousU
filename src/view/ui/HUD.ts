@@ -60,12 +60,16 @@ const STYLE_BTN = new TextStyle({
 // Small helper: builds a rounded-rect panel with border
 // ---------------------------------------------------------------------------
 
-function makePanel(w: number, h: number): Graphics {
-  return new Graphics()
-    .roundRect(0, 0, w, h, CORNER_R)
-    .fill({ color: BG_COLOR, alpha: BG_ALPHA })
-    .roundRect(0, 0, w, h, CORNER_R)
-    .stroke({ color: BORDER_COLOR, alpha: 0.5, width: BORDER_W });
+function makePanel(w: number, h: number): Container {
+  const c = new Container();
+  c.addChild(
+    new Graphics()
+      .roundRect(0, 0, w, h, CORNER_R)
+      .fill({ color: BG_COLOR, alpha: BG_ALPHA })
+      .roundRect(0, 0, w, h, CORNER_R)
+      .stroke({ color: BORDER_COLOR, alpha: 0.5, width: BORDER_W }),
+  );
+  return c;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,12 +92,12 @@ export class HUD {
   readonly container = new Container();
 
   // West panel
-  private _westPanel!: Graphics;
+  private _westPanel!: Container;
   private _westGoldVal!: Text;
   private _westUnitVal!: Text;
 
   // East panel
-  private _eastPanel!: Graphics;
+  private _eastPanel!: Container;
   private _eastGoldVal!: Text;
   private _eastUnitVal!: Text;
 

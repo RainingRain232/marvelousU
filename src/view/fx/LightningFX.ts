@@ -63,7 +63,7 @@ export class LightningFX {
   // ---------------------------------------------------------------------------
 
   private _drawChain(path: { x: number; y: number }[]): void {
-    const bolts: Graphics[] = [];
+    const bolts: Container[] = [];
 
     for (let i = 0; i < path.length - 1; i++) {
       const bolt = this._drawBolt(path[i], path[i + 1]);
@@ -97,7 +97,7 @@ export class LightningFX {
   private _drawBolt(
     from: { x: number; y: number },
     to: { x: number; y: number },
-  ): Graphics {
+  ): Container {
     const fx = (from.x + 0.5) * TS;
     const fy = (from.y + 0.5) * TS;
     const tx = (to.x + 0.5) * TS;
@@ -108,6 +108,8 @@ export class LightningFX {
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     const px = -dy / len;
     const py = dx / len;
+
+    const wrapper = new Container();
 
     const g = new Graphics();
     const points: [number, number][] = [[fx, fy]];
@@ -128,9 +130,9 @@ export class LightningFX {
     const core = new Graphics();
     core.moveTo(fx, fy).lineTo(tx, ty);
     core.stroke({ color: 0xffffff, width: 1, alpha: 0.8 });
-    g.addChild(core);
 
-    return g;
+    wrapper.addChild(g, core);
+    return wrapper;
   }
 
   // ---------------------------------------------------------------------------
