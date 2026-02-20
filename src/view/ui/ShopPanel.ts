@@ -481,7 +481,7 @@ export class ShopPanel {
 
     // Cost label (updated in _updateAffordability)
     const costText = new Text({ text: `${def.cost}g`, style: STYLE_COST });
-    costText.name = `cost_${unitType}`;
+    costText.label = `cost_${unitType}`;
     costText.position.set(PANEL_W - 90, 12);
     row.addChild(costText);
 
@@ -538,7 +538,7 @@ export class ShopPanel {
 
     // Cost label
     const costText = new Text({ text: `${def.cost}g`, style: STYLE_COST });
-    costText.name = `cost_bp_${bpType}`;
+    costText.label = `cost_bp_${bpType}`;
     costText.position.set(PANEL_W - 90, 12);
     row.addChild(costText);
 

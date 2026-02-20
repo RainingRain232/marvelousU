@@ -203,8 +203,8 @@ export class FireballFX {
     this._container.addChild(flash);
     gsap.to(flash, {
       alpha: 0,
-      scaleX: 2,
-      scaleY: 2,
+      "scale.x": 2,
+      "scale.y": 2,
       duration: 0.3,
       ease: "power2.out",
       onComplete: () => {

@@ -60,12 +60,16 @@ export const MAP_SIZES: MapSize[] = [
   { label: "QUADRUPLE", width: BASE_W * 4, height: BASE_H * 4 },
 ];
 
-function makePanel(w: number, h: number): Graphics {
-  return new Graphics()
-    .roundRect(0, 0, w, h, 8)
-    .fill({ color: 0x10102a, alpha: 0.95 })
-    .roundRect(0, 0, w, h, 8)
-    .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
+function makePanel(w: number, h: number): Container {
+  const c = new Container();
+  c.addChild(
+    new Graphics()
+      .roundRect(0, 0, w, h, 8)
+      .fill({ color: 0x10102a, alpha: 0.95 })
+      .roundRect(0, 0, w, h, 8)
+      .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 }),
+  );
+  return c;
 }
 
 export class MenuScreen {
@@ -84,7 +88,7 @@ export class MenuScreen {
   private _sizeBtns: Array<{ bg: Graphics; label: Text }> = [];
 
   // card stored for layout
-  private _card!: Graphics;
+  private _card!: Container;
   private _cardW = 360;
   private _cardH = 320;
 
