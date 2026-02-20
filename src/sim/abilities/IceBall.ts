@@ -25,6 +25,7 @@ export function createIceBall(id: string): Ability {
     range: def.range,
     castTime: def.castTime,
     targetPosition: null,
+    targetsFriendlies: false,
     execute(caster: Unit, target: Vec2 | Unit, state: GameState): void {
       const targetPos: Vec2 =
         "position" in target ? { ...target.position } : { ...target };
@@ -49,6 +50,7 @@ export function createIceBall(id: string): Ability {
         hitIds: new Set(),
         slowDuration: def.slowDuration ?? 3,
         slowFactor: def.slowFactor ?? 0.4,
+        teleportDistance: 0,
       });
 
       EventBus.emit("projectileCreated", {

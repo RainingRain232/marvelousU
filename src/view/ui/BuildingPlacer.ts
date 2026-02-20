@@ -37,6 +37,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.FARM]: 0x5a8a2e,
   [BuildingType.HAMLET]: 0x7aaa3e,
   [BuildingType.EMBASSY]: 0x3a6b8b,
+  [BuildingType.TEMPLE]: 0xd8bfd8,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -52,6 +53,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.FARM]: "FARM",
   [BuildingType.HAMLET]: "HAMLET",
   [BuildingType.EMBASSY]: "EMBASSY",
+  [BuildingType.TEMPLE]: "TEMPLE",
 };
 
 const LABEL_STYLE = new TextStyle({

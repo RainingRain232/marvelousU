@@ -19,6 +19,7 @@ export function createChainLightning(id: string): Ability {
     range: def.range,
     castTime: def.castTime,
     targetPosition: null,
+    targetsFriendlies: false,
     execute(caster: Unit, target: Vec2 | Unit, state: GameState): void {
       // Resolve primary target unit
       const primaryUnit: Unit | null =

@@ -27,6 +27,7 @@ function createWebAbility(type: AbilityType.WEB | AbilityType.GLADIATOR_NET, id:
     range: def.range,
     castTime: def.castTime,
     targetPosition: null,
+    targetsFriendlies: false,
     execute(caster: Unit, target: Vec2 | Unit, state: GameState): void {
       const targetPos: Vec2 =
         "position" in target ? { ...target.position } : { ...target };
@@ -51,6 +52,7 @@ function createWebAbility(type: AbilityType.WEB | AbilityType.GLADIATOR_NET, id:
         hitIds: new Set(),
         slowDuration: def.slowDuration ?? 4,
         slowFactor: def.slowFactor ?? 0.35,
+        teleportDistance: 0,
       });
 
       EventBus.emit("projectileCreated", {

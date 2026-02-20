@@ -18,6 +18,10 @@ export interface UnitDef {
   huntTargets?: UnitType[];
   /** If true, unit ignores all combat and only seeks neutral buildings to capture. */
   diplomatOnly?: boolean;
+  /** If true, the unit deals 5x damage on its first hit. */
+  isChargeUnit?: boolean;
+  /** If true, the unit targets and heals friendly units instead of attacking enemies. */
+  isHealer?: boolean;
 }
 
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
@@ -288,5 +292,144 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.DEVOUR_PULL],
     spriteKey: "swordsman", // placeholder (tanky humanoid)
+  },
+  [UnitType.HORSE_ARCHER]: {
+    type: UnitType.HORSE_ARCHER,
+    cost: 70,
+    hp: 100,
+    atk: 15,
+    attackSpeed: 0.8,
+    speed: 3.5,
+    range: 4,
+    spawnTime: 6,
+    abilityTypes: [],
+    spriteKey: "knight", // placeholder (mounted)
+  },
+  [UnitType.SHORTBOW]: {
+    type: UnitType.SHORTBOW,
+    cost: 30,
+    hp: 60,
+    atk: 10,
+    attackSpeed: 1.2,
+    speed: 2.2,
+    range: 3,
+    spawnTime: 3,
+    abilityTypes: [],
+    spriteKey: "archer", // placeholder
+  },
+  [UnitType.BALLISTA]: {
+    type: UnitType.BALLISTA,
+    cost: 100,
+    hp: 120,
+    atk: 50,
+    attackSpeed: 0.3,
+    speed: 1.0,
+    range: 5,
+    spawnTime: 8,
+    abilityTypes: [],
+    spriteKey: "battering_ram", // placeholder (siege)
+  },
+  [UnitType.BOLT_THROWER]: {
+    type: UnitType.BOLT_THROWER,
+    cost: 120,
+    hp: 100,
+    atk: 30,
+    attackSpeed: 0.2, // slow but long range
+    speed: 1.0,
+    range: 8,
+    spawnTime: 10,
+    abilityTypes: [],
+    spriteKey: "battering_ram", // placeholder (siege)
+  },
+  [UnitType.SCOUT_CAVALRY]: {
+    type: UnitType.SCOUT_CAVALRY,
+    cost: 40,
+    hp: 60,
+    atk: 10,
+    attackSpeed: 1.0,
+    speed: 3.2,
+    range: 1,
+    spawnTime: 3,
+    abilityTypes: [],
+    spriteKey: "knight",
+    isChargeUnit: true,
+  },
+  [UnitType.LANCER]: {
+    type: UnitType.LANCER,
+    cost: 70,
+    hp: 120,
+    atk: 20,
+    attackSpeed: 0.8,
+    speed: 3.0,
+    range: 1,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "knight",
+    isChargeUnit: true,
+  },
+  [UnitType.ELITE_LANCER]: {
+    type: UnitType.ELITE_LANCER,
+    cost: 100,
+    hp: 180,
+    atk: 25,
+    attackSpeed: 0.8,
+    speed: 2.8,
+    range: 1,
+    spawnTime: 7,
+    abilityTypes: [],
+    spriteKey: "knight",
+    isChargeUnit: true,
+  },
+  [UnitType.KNIGHT_LANCER]: {
+    type: UnitType.KNIGHT_LANCER,
+    cost: 130,
+    hp: 250,
+    atk: 30,
+    attackSpeed: 0.6,
+    speed: 2.2,
+    range: 1,
+    spawnTime: 8,
+    abilityTypes: [],
+    spriteKey: "knight",
+    isChargeUnit: true,
+  },
+  [UnitType.MONK]: {
+    type: UnitType.MONK,
+    cost: 50,
+    hp: 80,
+    atk: 0,
+    attackSpeed: 0.8,
+    speed: 2.0,
+    range: 1.5,
+    spawnTime: 4,
+    abilityTypes: [AbilityType.HEAL],
+    spriteKey: "diplomat", // placeholder (religious robes)
+    isHealer: true,
+  },
+  [UnitType.CLERIC]: {
+    type: UnitType.CLERIC,
+    cost: 90,
+    hp: 120,
+    atk: 0,
+    attackSpeed: 0.6,
+    speed: 1.8,
+    range: 3,
+    spawnTime: 7,
+    abilityTypes: [AbilityType.HEAL],
+    spriteKey: "mage", // placeholder
+    isHealer: true,
+  },
+  [UnitType.SAINT]: {
+    type: UnitType.SAINT,
+    cost: 150,
+    hp: 200,
+    atk: 0,
+    attackSpeed: 0.5,
+    speed: 1.5,
+    range: 5,
+    spawnTime: 10,
+    abilityTypes: [AbilityType.HEAL],
+    spriteKey: "faery_queen", // placeholder (ethereal/divine)
+    isHealer: true,
   },
 };

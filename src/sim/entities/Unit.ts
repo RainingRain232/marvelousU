@@ -57,6 +57,7 @@ export interface Unit {
   pathIndex: number; // Current index into path
   groupId: string | null; // Non-null when unit belongs to a spawn group
   formationOffset: Vec2; // Perpendicular offset applied on top of the shared group path
+  hasCharged: boolean; // True if the unit has already landed its high-damage first hit
 }
 
 // ---------------------------------------------------------------------------
@@ -147,5 +148,6 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     pathIndex: 0,
     groupId: null,
     formationOffset: { x: 0, y: 0 },
+    hasCharged: false,
   };
 }

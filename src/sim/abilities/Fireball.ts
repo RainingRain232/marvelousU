@@ -23,6 +23,7 @@ export function createFireball(id: string): Ability {
     range: def.range,
     castTime: def.castTime,
     targetPosition: null,
+    targetsFriendlies: false,
     execute(caster: Unit, target: Vec2 | Unit, state: GameState): void {
       const targetPos: Vec2 =
         "position" in target ? { ...target.position } : { ...target };
@@ -47,6 +48,7 @@ export function createFireball(id: string): Ability {
         hitIds: new Set(),
         slowDuration: 0,
         slowFactor: 1,
+        teleportDistance: 0,
       });
 
       EventBus.emit("projectileCreated", {

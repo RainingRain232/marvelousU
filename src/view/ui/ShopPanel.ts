@@ -28,6 +28,10 @@ const HEADER_H = 38; // building name area
 const SECTION_LABEL_H = 22; // section heading ("UNITS" / "BUILD")
 const CLOSE_SIZE = 20;
 
+const MAX_PANEL_H = 400; // maximum total height of the panel
+const SCROLL_WIDTH = 10;
+const SCROLL_MARGIN = 4;
+
 // Text styles
 const STYLE_TITLE = new TextStyle({
   fontFamily: "monospace",
@@ -90,6 +94,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.FARM]: "Farm",
   [BuildingType.HAMLET]: "Hamlet",
   [BuildingType.EMBASSY]: "Embassy",
+  [BuildingType.TEMPLE]: "Temple",
 };
 
 // Unit display names
@@ -113,7 +118,20 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.VOID_SNAIL]: "Void Snail",
   [UnitType.FAERY_QUEEN]: "Faery Queen",
   [UnitType.GIANT_FROG]: "Giant Frog",
+  [UnitType.LONGBOWMAN]: "Longbowman",
+  [UnitType.CROSSBOWMAN]: "Crossbowman",
   [UnitType.DEVOURER]: "Devourer",
+  [UnitType.HORSE_ARCHER]: "Horse Archer",
+  [UnitType.SHORTBOW]: "Shortbow",
+  [UnitType.BALLISTA]: "Ballista",
+  [UnitType.BOLT_THROWER]: "Bolt Thrower",
+  [UnitType.SCOUT_CAVALRY]: "Scout Cavalry",
+  [UnitType.LANCER]: "Lancer",
+  [UnitType.ELITE_LANCER]: "Elite Lancer",
+  [UnitType.KNIGHT_LANCER]: "Knight Lancer",
+  [UnitType.MONK]: "Monk",
+  [UnitType.CLERIC]: "Cleric",
+  [UnitType.SAINT]: "Saint",
 };
 
 // ---------------------------------------------------------------------------
@@ -148,6 +166,18 @@ export class ShopPanel {
   private _openBuildingId: string | null = null;
   private _rows: Container[] = [];
 
+  // Scrolling
+  private _scrollContainer = new Container();
+  private _mask = new Graphics();
+  private _scrollbarTrack = new Graphics();
+  private _scrollbarThumb = new Graphics();
+  private _scrollY = 0;
+  private _isDragging = false;
+  private _dragStartY = 0;
+  private _thumbStartY = 0;
+  private _contentH = 0;
+  private _viewH = 0;
+
   // ---------------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------------
@@ -159,6 +189,24 @@ export class ShopPanel {
 
     this.container.visible = false;
     vm.addToLayer("ui", this.container);
+
+    // Setup scroll components
+    this._scrollContainer.label = "scrollContent";
+    this._scrollContainer.mask = this._mask;
+    this.container.addChild(this._scrollContainer);
+    this.container.addChild(this._mask);
+
+    this._scrollbarTrack.label = "scrollTrack";
+    this.container.addChild(this._scrollbarTrack);
+    this.container.addChild(this._scrollbarThumb);
+
+    // Scroll handlers
+    this.container.eventMode = "static";
+    this.container.on("wheel", (e) => {
+      if (!this.container.visible || this._contentH <= this._viewH) return;
+      this._scrollY = Math.max(0, Math.min(this._contentH - this._viewH, this._scrollY + e.deltaY));
+      this._applyScroll();
+    });
   }
 
   setPlayerId(playerId: string): void {
@@ -197,30 +245,41 @@ export class ShopPanel {
   // ---------------------------------------------------------------------------
 
   private _rebuild(): void {
-    // Remove old children
-    this.container.removeChildren();
+    // Clear dynamic rows, but keep persistent scroll components
     this._rows = [];
+    this._scrollContainer.removeChildren();
+    this.container.removeChildren();
 
     const building = this._openBuildingId
       ? this._state.buildings.get(this._openBuildingId)
       : null;
     if (!building) return;
 
+    // Persistent components must be re-added because we called removeChildren() on container
+    this.container.addChild(this._scrollContainer);
+    this.container.addChild(this._mask);
+    this.container.addChild(this._scrollbarTrack);
+    this.container.addChild(this._scrollbarThumb);
+
     const unitRows = building.shopInventory.length;
     const bpRows = building.blueprints.length;
-    const unitSectionH =
-      unitRows > 0 ? SECTION_LABEL_H + unitRows * (ROW_H + ROW_GAP) : 0;
-    const bpSectionH =
-      bpRows > 0 ? SECTION_LABEL_H + bpRows * (ROW_H + ROW_GAP) : 0;
-    const totalH = HEADER_H + unitSectionH + bpSectionH + PANEL_PAD;
+    const unitSectionH = unitRows > 0 ? SECTION_LABEL_H + unitRows * (ROW_H + ROW_GAP) : 0;
+    const bpSectionH = bpRows > 0 ? SECTION_LABEL_H + bpRows * (ROW_H + ROW_GAP) : 0;
+
+    // contentH is the total height needed for the scrollable part
+    this._contentH = unitSectionH + bpSectionH + PANEL_PAD;
+    const totalH = HEADER_H + this._contentH;
+
+    this._viewH = Math.min(MAX_PANEL_H, totalH);
+    const scrollableH = this._viewH - HEADER_H;
 
     // Background + border
     const bg = new Graphics()
-      .roundRect(0, 0, PANEL_W, totalH, CORNER_R)
+      .roundRect(0, 0, PANEL_W, this._viewH, CORNER_R)
       .fill({ color: BG_COLOR, alpha: BG_ALPHA })
-      .roundRect(0, 0, PANEL_W, totalH, CORNER_R)
+      .roundRect(0, 0, PANEL_W, this._viewH, CORNER_R)
       .stroke({ color: BORDER_COLOR, alpha: 0.55, width: BORDER_W });
-    this.container.addChild(bg);
+    this.container.addChildAt(bg, 0);
 
     // Title
     const title = new Text({
@@ -241,24 +300,29 @@ export class ShopPanel {
     });
     this.container.addChild(closeBtn);
 
-    // Divider under header
+    // Divider under header (fixed)
     const divider = new Graphics()
       .rect(PANEL_PAD, HEADER_H - 4, PANEL_W - PANEL_PAD * 2, 1)
       .fill({ color: 0x334455 });
     this.container.addChild(divider);
 
-    let cursorY = HEADER_H;
+    // Mask setup
+    this._mask.clear()
+      .rect(0, HEADER_H, PANEL_W, scrollableH)
+      .fill({ color: 0x000000 });
+
+    let cursorY = 0;
 
     // ---- UNITS section ----
     if (unitRows > 0) {
       const label = new Text({ text: "TRAIN", style: STYLE_SECTION });
       label.position.set(PANEL_PAD, cursorY + 4);
-      this.container.addChild(label);
+      this._scrollContainer.addChild(label);
       cursorY += SECTION_LABEL_H;
 
       for (const unitType of building.shopInventory) {
         const row = this._makeUnitRow(building.id, unitType, cursorY);
-        this.container.addChild(row);
+        this._scrollContainer.addChild(row);
         this._rows.push(row);
         cursorY += ROW_H + ROW_GAP;
       }
@@ -268,22 +332,110 @@ export class ShopPanel {
     if (bpRows > 0) {
       const label = new Text({ text: "BUILD", style: STYLE_SECTION });
       label.position.set(PANEL_PAD, cursorY + 4);
-      this.container.addChild(label);
+      this._scrollContainer.addChild(label);
       cursorY += SECTION_LABEL_H;
 
       for (const bpType of building.blueprints) {
         const row = this._makeBlueprintRow(bpType, cursorY);
-        this.container.addChild(row);
+        this._scrollContainer.addChild(row);
         this._rows.push(row);
         cursorY += ROW_H + ROW_GAP;
       }
     }
 
+    this._scrollContainer.position.y = HEADER_H;
+
+    // Setup scrollbar
+    const hasScroll = this._contentH > scrollableH;
+    this._scrollbarTrack.visible = hasScroll;
+    this._scrollbarThumb.visible = hasScroll;
+
+    if (hasScroll) {
+      const trackX = PANEL_W - SCROLL_WIDTH - SCROLL_MARGIN;
+      const trackY = HEADER_H + SCROLL_MARGIN;
+      const trackH = scrollableH - SCROLL_MARGIN * 2;
+
+      this._scrollbarTrack.clear()
+        .roundRect(0, 0, SCROLL_WIDTH, trackH, SCROLL_WIDTH / 2)
+        .fill({ color: 0x000000, alpha: 0.3 });
+      this._scrollbarTrack.position.set(trackX, trackY);
+
+      const thumbH = Math.max(20, (scrollableH / this._contentH) * trackH);
+      this._scrollbarThumb.clear()
+        .roundRect(0, 0, SCROLL_WIDTH, thumbH, SCROLL_WIDTH / 2)
+        .fill({ color: 0x556677 });
+      this._scrollbarThumb.position.x = trackX;
+
+      this._scrollbarThumb.eventMode = "static";
+      this._scrollbarThumb.cursor = "pointer";
+      this._scrollbarThumb.removeAllListeners();
+      this._scrollbarThumb.on("pointerdown", (e) => this._onThumbDragStart(e));
+    }
+
+    // Reset scroll
+    this._scrollY = 0;
+    this._applyScroll();
+
     // Position panel: bottom-left of screen with padding
     const screenH = this._vm.screenHeight;
-    this.container.position.set(PANEL_PAD, screenH - totalH - PANEL_PAD);
+    this.container.position.set(PANEL_PAD, screenH - this._viewH - PANEL_PAD);
 
     this._updateAffordability();
+  }
+
+  private _applyScroll(): void {
+    const scrollableH = this._viewH - HEADER_H;
+    const maxScroll = Math.max(0, this._contentH - scrollableH);
+    this._scrollY = Math.max(0, Math.min(maxScroll, this._scrollY));
+
+    this._scrollContainer.position.y = HEADER_H - this._scrollY;
+
+    const trackH = scrollableH - SCROLL_MARGIN * 2;
+    const thumbH = this._scrollbarThumb.height;
+    const maxThumbY = trackH - thumbH;
+    const thumbY = maxScroll > 0
+      ? (this._scrollY / maxScroll) * maxThumbY
+      : 0;
+
+    this._scrollbarThumb.position.y = HEADER_H + SCROLL_MARGIN + thumbY;
+  }
+
+  private _onThumbDragStart(e: any): void {
+    e.stopPropagation();
+    this._isDragging = true;
+    this._dragStartY = e.global.y;
+    this._thumbStartY = this._scrollY;
+
+    // Use stage for global move/up
+    const stage = this._vm.app.stage;
+    stage.on("pointermove", (e) => this._onThumbDragMove(e));
+    stage.on("pointerup", () => this._onThumbDragEnd());
+    stage.on("pointerupoutside", () => this._onThumbDragEnd());
+  }
+
+  private _onThumbDragMove(e: any): void {
+    if (!this._isDragging) return;
+
+    const deltaY = e.global.y - this._dragStartY;
+    const scrollableH = this._viewH - HEADER_H;
+    const trackH = scrollableH - SCROLL_MARGIN * 2;
+    const thumbH = this._scrollbarThumb.height;
+    const maxThumbY = trackH - thumbH;
+    const maxScroll = Math.max(0, this._contentH - scrollableH);
+
+    if (maxThumbY > 0) {
+      const scrollDelta = (deltaY / maxThumbY) * maxScroll;
+      this._scrollY = this._thumbStartY + scrollDelta;
+      this._applyScroll();
+    }
+  }
+
+  private _onThumbDragEnd(): void {
+    this._isDragging = false;
+    const stage = this._vm.app.stage;
+    stage.off("pointermove");
+    stage.off("pointerup");
+    stage.off("pointerupoutside");
   }
 
   // ---------------------------------------------------------------------------

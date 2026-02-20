@@ -10,6 +10,7 @@ export interface Ability {
   currentCooldown: number; // Remaining cooldown; 0 = ready to use
   range: number; // Tile range for targeting
   castTime: number; // Seconds to channel before execute() fires
+  targetsFriendlies: boolean; // If true, ability resolves on allies instead of enemies
 
   /** Where the ability is aimed. Set by AbilitySystem before castTimer starts. */
   targetPosition: Vec2 | null;

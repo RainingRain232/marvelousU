@@ -211,7 +211,9 @@ function _findUnitAt(
   const SNAP = 1.5; // tiles — target may have moved slightly during cast
 
   for (const candidate of state.units.values()) {
-    if (candidate.owner === caster.owner) continue;
+    const isFriendly = candidate.owner === caster.owner;
+    if (ability.targetsFriendlies !== isFriendly) continue;
+
     if (candidate.state === UnitState.DIE) continue;
     const dx = candidate.position.x - tp.x;
     const dy = candidate.position.y - tp.y;
@@ -235,7 +237,10 @@ export function attachAbilities(state: GameState, unit: Unit): void {
     unit.type !== UnitType.FIRE_MAGE &&
     unit.type !== UnitType.STORM_MAGE &&
     unit.type !== UnitType.SUMMONER &&
-    unit.type !== UnitType.COLD_MAGE
+    unit.type !== UnitType.COLD_MAGE &&
+    unit.type !== UnitType.MONK &&
+    unit.type !== UnitType.CLERIC &&
+    unit.type !== UnitType.SAINT
   ) return;
   ensureAbilities(state, unit);
 }

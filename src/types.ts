@@ -56,6 +56,17 @@ export enum UnitType {
   FAERY_QUEEN = "faery_queen",
   GIANT_FROG = "giant_frog",
   DEVOURER = "devourer",
+  HORSE_ARCHER = "horse_archer",
+  SHORTBOW = "shortbow",
+  BALLISTA = "ballista",
+  BOLT_THROWER = "bolt_thrower",
+  SCOUT_CAVALRY = "scout_cavalry",
+  LANCER = "lancer",
+  ELITE_LANCER = "elite_lancer",
+  KNIGHT_LANCER = "knight_lancer",
+  MONK = "monk",
+  CLERIC = "cleric",
+  SAINT = "saint",
 }
 
 export enum BuildingType {
@@ -71,6 +82,7 @@ export enum BuildingType {
   FARM = "farm",
   HAMLET = "hamlet",
   EMBASSY = "embassy",
+  TEMPLE = "temple",
 }
 
 export enum AbilityType {
@@ -86,6 +98,7 @@ export enum AbilityType {
   FAERY_DISTORTION = "faery_distortion",
   FROG_TONGUE = "frog_tongue",
   DEVOUR_PULL = "devour_pull",
+  HEAL = "heal",
 }
 
 export enum UnitState {

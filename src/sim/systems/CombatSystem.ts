@@ -83,7 +83,11 @@ export const CombatSystem = {
         }
         continue;
       }
-      const target = resolveTarget(state, unit);
+
+      const def = UNIT_DEFINITIONS[unit.type];
+      const target = def.isHealer
+        ? resolveFriendlyTarget(state, unit)
+        : resolveTarget(state, unit);
 
       if (!target) {
         // No enemy in aggro range — clear target and drop out of ATTACK state
@@ -121,7 +125,14 @@ export const CombatSystem = {
         }
 
         if (unit.attackTimer <= 0) {
-          applyDamage(unit, target);
+          if (!def.isHealer) {
+            applyDamage(unit, target);
+          } else {
+            // Healers rely on abilities (AbilitySystem) to apply healing.
+            // We still tick the attackTimer to simulate "attack speed" for casting.
+            const attackInterval = 1 / def.attackSpeed;
+            unit.attackTimer = attackInterval;
+          }
         }
       } else {
         // --- Out of range: ensure unit is moving toward target ---
@@ -192,7 +203,14 @@ function _attackBuilding(
     if (unit.attackTimer <= 0) {
       const def = UNIT_DEFINITIONS[unit.type];
       const attackInterval = 1 / def.attackSpeed;
-      building.health -= unit.atk;
+
+      let damage = unit.atk;
+      if (def.isChargeUnit && !unit.hasCharged) {
+        damage *= 5;
+        unit.hasCharged = true;
+      }
+
+      building.health -= damage;
       unit.attackTimer = attackInterval;
 
       if (building.health <= 0) {
@@ -281,6 +299,28 @@ function resolveTarget(state: GameState, unit: Unit): Unit | null {
   return nearestHunt ?? nearest;
 }
 
+/**
+ * Find the nearest living friendly unit that is below its max HP.
+ */
+function resolveFriendlyTarget(state: GameState, unit: Unit): Unit | null {
+  let nearest: Unit | null = null;
+  let nearestDistSq = AGGRO_RANGE_SQ + 1;
+
+  for (const candidate of state.units.values()) {
+    if (candidate.owner !== unit.owner) continue;
+    if (candidate.state === UnitState.DIE) continue;
+    if (candidate.hp >= candidate.maxHp) continue;
+
+    const dsq = distanceSq(unit.position, candidate.position);
+    if (dsq < nearestDistSq) {
+      nearest = candidate;
+      nearestDistSq = dsq;
+    }
+  }
+
+  return nearest;
+}
+
 // ---------------------------------------------------------------------------
 // Damage application
 // ---------------------------------------------------------------------------
@@ -289,11 +329,17 @@ function applyDamage(attacker: Unit, target: Unit): void {
   const def = UNIT_DEFINITIONS[attacker.type];
   const attackInterval = 1 / def.attackSpeed;
 
-  target.hp -= attacker.atk;
+  let damage = attacker.atk;
+  if (def.isChargeUnit && !attacker.hasCharged) {
+    damage *= 5;
+    attacker.hasCharged = true;
+  }
+
+  target.hp -= damage;
 
   EventBus.emit("unitDamaged", {
     unitId: target.id,
-    amount: attacker.atk,
+    amount: damage,
     attackerId: attacker.id,
   });
 

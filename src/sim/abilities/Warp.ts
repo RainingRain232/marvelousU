@@ -14,6 +14,7 @@ export function createWarp(id: string): Ability {
     range: 8,
     castTime: 0.8,
     targetPosition: null,
+    targetsFriendlies: false,
     execute(_caster: Unit, _target: Vec2 | Unit, _state: GameState): void {
       // TODO: select friendly units in area, update simPosition, emit event
     },

@@ -30,6 +30,7 @@ export function createSummon(id: string): Ability {
     range: def.range,
     castTime: def.castTime,
     targetPosition: null,
+    targetsFriendlies: false,
     execute(caster: Unit, target: Vec2 | Unit, state: GameState): void {
       const targetPos: Vec2 =
         "position" in target ? { ...target.position } : { ...target };
