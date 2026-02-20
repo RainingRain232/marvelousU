@@ -27,17 +27,14 @@ const CH = 4 * TS; // castle height 256px
 const COL_STONE = 0x8b8878;
 const COL_STONE_LT = 0xa09d8f;
 const COL_STONE_DK = 0x6b6860;
-const COL_STONE_LINE = 0x5a5850;
 const COL_MORTAR = 0x9a9688;
 const COL_ROOF = 0x5a2d2d;
 const COL_ROOF_DK = 0x3d1515;
-const COL_WOOD = 0x5c3a1e;
 const COL_WOOD_DK = 0x3d2510;
 const COL_PORTCULLIS = 0x444444;
 const COL_WINDOW = 0x1a1a2e;
 const COL_WINDOW_FRAME = 0x555555;
 const COL_MOSS = 0x4a6b3a;
-const COL_SHADOW = 0x000000;
 
 // Princess palette
 const COL_SKIN = 0xf0c8a0;
@@ -147,10 +144,6 @@ export class CastleRenderer {
 
     private _drawStaticCastle(): void {
         const g = this._base;
-
-        // Shadow under castle
-        g.ellipse(CW / 2, CH - 4, CW * 0.45, 10)
-            .fill({ color: COL_SHADOW, alpha: 0.2 });
 
         // ── Main curtain wall ──
         const wallY = 60;
@@ -283,13 +276,7 @@ export class CastleRenderer {
         this._drawMoss(g, CW / 2 + 20, wallY + wallH - 8, 7);
 
         // ── Small windows on keep ──
-        this._drawSmallWindow(g, gateX + 8, wallY - 5);
         this._drawSmallWindow(g, gateX + gateW - 14, wallY - 5);
-
-        // ── Stone base / foundation ──
-        g.rect(4, CH - 22, CW - 8, 18)
-            .fill({ color: COL_STONE_DK })
-            .stroke({ color: COL_STONE_LINE, width: 0.5 });
     }
 
     // ---------------------------------------------------------------------------

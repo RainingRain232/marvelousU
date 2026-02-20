@@ -11,6 +11,7 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BuildingType, BuildingState, GamePhase } from "@/types";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
+import { TowerRenderer } from "@view/entities/TowerRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -111,6 +112,8 @@ export class BuildingView {
 
   // Detailed castle renderer (only set for CASTLE type buildings)
   private _castleRenderer: CastleRenderer | null = null;
+  // Detailed tower renderer (only set for TOWER type buildings)
+  private _towerRenderer: TowerRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -128,6 +131,11 @@ export class BuildingView {
       this._castleRenderer = new CastleRenderer(building.owner);
       this.container.addChild(this._castleRenderer.container);
       // Hide generic body/label — castle renderer handles everything visual
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.TOWER) {
+      this._towerRenderer = new TowerRenderer(building.owner);
+      this.container.addChild(this._towerRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -214,6 +222,9 @@ export class BuildingView {
       // Castle: tick the detailed renderer
       if (this._castleRenderer) {
         this._castleRenderer.tick(dt, phase);
+      }
+      if (this._towerRenderer) {
+        this._towerRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }
