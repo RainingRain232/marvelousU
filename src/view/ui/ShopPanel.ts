@@ -109,6 +109,9 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.SPIDER]: "Spider",
   [UnitType.GLADIATOR]: "Gladiator",
   [UnitType.DIPLOMAT]: "Diplomat",
+  [UnitType.DISTORTION_MAGE]: "Distortion Mage",
+  [UnitType.VOID_SNAIL]: "Void Snail",
+  [UnitType.FAERY_QUEEN]: "Faery Queen",
 };
 
 // ---------------------------------------------------------------------------
@@ -385,7 +388,7 @@ export class ShopPanel {
       atMax ? "MAX" : !prereqMet ? "LOCK" : "BUY",
       PANEL_W - 52,
       6,
-      locked ? () => {} : () => { this._buyBlueprint(bpType); },
+      locked ? () => { } : () => { this._buyBlueprint(bpType); },
     );
     if (locked) btn.alpha = 0.4;
     row.addChild(btn);

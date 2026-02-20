@@ -22,7 +22,8 @@ export interface SimEvents {
   // Abilities & projectiles
   abilityUsed: { casterId: string; abilityId: string; targets: Vec2[] };
   projectileCreated: { projectileId: string; origin: Vec2; target: Vec2 };
-  projectileHit: { projectileId: string; targetId: string };
+  projectileHit: { projectileId: string; targetId: string; teleportedIds?: string[] };
+  unitTeleported: { unitId: string; from: Vec2; to: Vec2 };
 
   // Economy
   goldChanged: { playerId: PlayerId; amount: number };

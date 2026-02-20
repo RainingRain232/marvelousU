@@ -4,6 +4,7 @@ import type { Projectile } from "@sim/entities/Projectile";
 import { UnitState } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { killUnit } from "@sim/systems/CombatSystem";
+import { findRandomWalkableNearby, findWalkableTowards } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
 
 // ---------------------------------------------------------------------------
@@ -86,19 +87,26 @@ function _applySingleHit(state: GameState, proj: Projectile): void {
       target.state !== UnitState.DIE &&
       !proj.hitIds.has(target.id)
     ) {
-      _damageUnit(state, proj, target.id, proj.damage);
+      const teleportedIds: string[] = [];
+      _damageUnit(state, proj, target.id, proj.damage, teleportedIds);
+      EventBus.emit("projectileHit", {
+        projectileId: proj.id,
+        targetId: proj.targetId ?? proj.id,
+        teleportedIds: teleportedIds.length > 0 ? teleportedIds : undefined,
+      });
+    } else {
+      EventBus.emit("projectileHit", {
+        projectileId: proj.id,
+        targetId: proj.targetId ?? proj.id,
+      });
     }
   }
-
-  EventBus.emit("projectileHit", {
-    projectileId: proj.id,
-    targetId: proj.targetId ?? proj.id,
-  });
 }
 
 function _applyAoE(state: GameState, proj: Projectile): void {
   const aoeRadiusSq = proj.aoeRadius * proj.aoeRadius;
   let primaryHitId = proj.targetId ?? proj.id;
+  const teleportedIds: string[] = [];
 
   for (const unit of state.units.values()) {
     if (unit.state === UnitState.DIE) continue;
@@ -109,7 +117,7 @@ function _applyAoE(state: GameState, proj: Projectile): void {
 
     const dsq = distanceSq(proj.position, unit.position);
     if (dsq <= aoeRadiusSq) {
-      _damageUnit(state, proj, unit.id, proj.damage);
+      _damageUnit(state, proj, unit.id, proj.damage, teleportedIds);
       if (unit.id === proj.targetId) primaryHitId = unit.id;
     }
   }
@@ -117,6 +125,7 @@ function _applyAoE(state: GameState, proj: Projectile): void {
   EventBus.emit("projectileHit", {
     projectileId: proj.id,
     targetId: primaryHitId,
+    teleportedIds: teleportedIds.length > 0 ? teleportedIds : undefined,
   });
 }
 
@@ -129,6 +138,7 @@ function _damageUnit(
   proj: Projectile,
   unitId: string,
   damage: number,
+  teleportedIds: string[],
 ): void {
   const unit = state.units.get(unitId);
   if (!unit || unit.state === UnitState.DIE) return;
@@ -141,6 +151,48 @@ function _damageUnit(
     unit.slowFactor = proj.slowFactor;
     // Refresh: always keep the longer remaining duration
     unit.slowTimer = Math.max(unit.slowTimer, proj.slowDuration);
+  }
+
+  // Apply teleport effect
+  if (proj.teleportDistance > 0 && damage > 0) {
+    const dest = findRandomWalkableNearby(
+      state.battlefield,
+      unit.position,
+      proj.teleportDistance,
+    );
+    if (dest) {
+      const from = { ...unit.position };
+      unit.position.x = dest.x;
+      unit.position.y = dest.y;
+      // Clear path so unit re-evaluates movement from new spot
+      unit.path = null;
+      unit.pathIndex = 0;
+      teleportedIds.push(unitId);
+      EventBus.emit("unitTeleported", { unitId, from, to: { ...dest } });
+    }
+  }
+
+  // Apply pull effect
+  if (proj.pullDistance && proj.pullDistance > 0 && damage > 0) {
+    const chance = proj.pullChance ?? 1.0;
+    if (Math.random() < chance) {
+      const dest = findWalkableTowards(
+        state.battlefield,
+        unit.position,
+        proj.origin,
+        proj.pullDistance,
+      );
+      if (dest) {
+        const from = { ...unit.position };
+        unit.position.x = dest.x;
+        unit.position.y = dest.y;
+        // Clear path so unit re-evaluates movement from new spot
+        unit.path = null;
+        unit.pathIndex = 0;
+        teleportedIds.push(unitId);
+        EventBus.emit("unitTeleported", { unitId, from, to: { ...dest } });
+      }
+    }
   }
 
   EventBus.emit("unitDamaged", {

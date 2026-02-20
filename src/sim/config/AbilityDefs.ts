@@ -2,19 +2,25 @@
 import { AbilityType } from "@/types";
 
 export interface AbilityDef {
-  type:        AbilityType;
-  cooldown:    number;
-  range:       number;
-  castTime:    number;
-  damage:      number;
+  type: AbilityType;
+  cooldown: number;
+  range: number;
+  castTime: number;
+  damage: number;
   maxBounces?: number;
   bounceRange?: number;
-  aoeRadius?:  number;
+  aoeRadius?: number;
   summonCount?: number;
   /** Seconds of slow to apply on projectile hit (0 = no slow). */
   slowDuration?: number;
   /** Speed multiplier while slowed (e.g. 0.4 = 40% speed). */
   slowFactor?: number;
+  /** Max distance for teleport-on-hit effect. 0 = no teleport. */
+  teleportDistance?: number;
+  /** Max distance for pull-towards-origin effect. 0 = no pull. */
+  pullDistance?: number;
+  /** Chance (0-1) to apply the pull effect. */
+  pullChance?: number;
 }
 
 export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
@@ -43,9 +49,22 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
     type: AbilityType.WEB, cooldown: 4, range: 4, castTime: 0.4,
     damage: 10, aoeRadius: 1.5, slowDuration: 4, slowFactor: 0.35,
   },
-  // Gladiator net: near-single-target, same range, shorter slow
+  // Gladiator net: pulling ranged attack, short slow
   [AbilityType.GLADIATOR_NET]: {
     type: AbilityType.GLADIATOR_NET, cooldown: 5, range: 4, castTime: 0.35,
-    damage: 15, aoeRadius: 0.8, slowDuration: 3, slowFactor: 0.35,
+    damage: 15, aoeRadius: 1.0, slowDuration: 2, slowFactor: 0.5,
+    pullDistance: 2, pullChance: 0.6,
+  },
+  [AbilityType.DISTORTION_BLAST]: {
+    type: AbilityType.DISTORTION_BLAST, cooldown: 4, range: 5, castTime: 0.4,
+    damage: 20, aoeRadius: 1.5, teleportDistance: 3,
+  },
+  [AbilityType.VOID_DISTORTION]: {
+    type: AbilityType.VOID_DISTORTION, cooldown: 5, range: 4, castTime: 0.6,
+    damage: 15, aoeRadius: 1.0, teleportDistance: 2,
+  },
+  [AbilityType.FAERY_DISTORTION]: {
+    type: AbilityType.FAERY_DISTORTION, cooldown: 6, range: 6, castTime: 0.5,
+    damage: 35, aoeRadius: 1.8, teleportDistance: 4,
   },
 };

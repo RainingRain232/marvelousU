@@ -49,6 +49,9 @@ export enum UnitType {
   SPIDER = "spider",
   GLADIATOR = "gladiator",
   DIPLOMAT = "diplomat",
+  DISTORTION_MAGE = "distortion_mage",
+  VOID_SNAIL = "void_snail",
+  FAERY_QUEEN = "faery_queen",
 }
 
 export enum BuildingType {
@@ -74,6 +77,9 @@ export enum AbilityType {
   ICE_BALL = "ice_ball",
   WEB = "web",
   GLADIATOR_NET = "gladiator_net",
+  DISTORTION_BLAST = "distortion_blast",
+  VOID_DISTORTION = "void_distortion",
+  FAERY_DISTORTION = "faery_distortion",
 }
 
 export enum UnitState {

@@ -34,4 +34,10 @@ export interface Projectile {
   slowDuration: number;
   /** Speed multiplier while slowed (e.g. 0.4 = 40% of normal speed). */
   slowFactor: number;
+  /** Max distance for teleport-on-hit effect. 0 = no teleport. */
+  teleportDistance: number;
+  /** Max distance for pull-towards-origin effect. 0 = no pull. */
+  pullDistance?: number;
+  /** Chance (0-1) to apply the pull effect. */
+  pullChance?: number;
 }

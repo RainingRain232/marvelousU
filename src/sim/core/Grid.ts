@@ -217,3 +217,73 @@ function reconstructPath(all: Map<string, AStarNode>, goalKey: string): Vec2[] {
   }
   return path;
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Finds the furthest walkable tile from 'from' on the line towards 'target', up to 'maxDist'.
+ */
+export function findWalkableTowards(
+  state: BattlefieldState,
+  from: Vec2,
+  target: Vec2,
+  maxDist: number,
+): Vec2 | null {
+  const dx = target.x - from.x;
+  const dy = target.y - from.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist === 0) return null;
+
+  const steps = Math.ceil(maxDist * 2); // Check every 0.5 tiles
+  let lastWalkable: Vec2 | null = null;
+
+  for (let i = 1; i <= steps; i++) {
+    const t = (i / steps) * (maxDist / dist);
+    if (t > 1) break;
+
+    const x = Math.floor(from.x + dx * t);
+    const y = Math.floor(from.y + dy * t);
+
+    if (isWalkable(state, x, y)) {
+      lastWalkable = { x, y };
+    } else {
+      // Hit a wall/building, stop here
+      break;
+    }
+  }
+
+  return lastWalkable;
+}
+
+/**
+ * Finds a random walkable tile within a certain distance of the center.
+ * Useful for "scatter" or teleport effects.
+ */
+export function findRandomWalkableNearby(
+  state: BattlefieldState,
+  center: Vec2,
+  maxDist: number,
+): Vec2 | null {
+  const cx = Math.floor(center.x);
+  const cy = Math.floor(center.y);
+  const d = Math.ceil(maxDist);
+
+  const candidates: Vec2[] = [];
+
+  for (let x = cx - d; x <= cx + d; x++) {
+    for (let y = cy - d; y <= cy + d; y++) {
+      if (x === cx && y === cy) continue;
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      if (dist <= maxDist && isWalkable(state, x, y)) {
+        candidates.push({ x, y });
+      }
+    }
+  }
+
+  if (candidates.length === 0) return null;
+
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
