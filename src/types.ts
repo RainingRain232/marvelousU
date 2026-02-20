@@ -52,6 +52,8 @@ export enum UnitType {
   DISTORTION_MAGE = "distortion_mage",
   VOID_SNAIL = "void_snail",
   FAERY_QUEEN = "faery_queen",
+  GIANT_FROG = "giant_frog",
+  DEVOURER = "devourer",
 }
 
 export enum BuildingType {
@@ -80,6 +82,8 @@ export enum AbilityType {
   DISTORTION_BLAST = "distortion_blast",
   VOID_DISTORTION = "void_distortion",
   FAERY_DISTORTION = "faery_distortion",
+  FROG_TONGUE = "frog_tongue",
+  DEVOUR_PULL = "devour_pull",
 }
 
 export enum UnitState {

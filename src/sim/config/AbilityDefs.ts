@@ -67,4 +67,12 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
     type: AbilityType.FAERY_DISTORTION, cooldown: 6, range: 6, castTime: 0.5,
     damage: 35, aoeRadius: 1.8, teleportDistance: 4,
   },
+  [AbilityType.FROG_TONGUE]: {
+    type: AbilityType.FROG_TONGUE, cooldown: 4, range: 7, castTime: 0.4,
+    damage: 25, aoeRadius: 0.8, pullDistance: 3, pullChance: 0.8,
+  },
+  [AbilityType.DEVOUR_PULL]: {
+    type: AbilityType.DEVOUR_PULL, cooldown: 5, range: 3, castTime: 0.6,
+    damage: 40, aoeRadius: 1.2, pullDistance: 2, pullChance: 0.9,
+  },
 };

@@ -112,6 +112,8 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.DISTORTION_MAGE]: "Distortion Mage",
   [UnitType.VOID_SNAIL]: "Void Snail",
   [UnitType.FAERY_QUEEN]: "Faery Queen",
+  [UnitType.GIANT_FROG]: "Giant Frog",
+  [UnitType.DEVOURER]: "Devourer",
 };
 
 // ---------------------------------------------------------------------------

@@ -241,4 +241,28 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.FAERY_DISTORTION],
     spriteKey: "cold_mage", // placeholder or fairy-like
   },
+  [UnitType.GIANT_FROG]: {
+    type: UnitType.GIANT_FROG,
+    cost: 100,
+    hp: 200,
+    atk: 10,
+    attackSpeed: 0.6,
+    speed: 1.8,
+    range: 7,
+    spawnTime: 6,
+    abilityTypes: [AbilityType.FROG_TONGUE],
+    spriteKey: "spider", // placeholder (spider-like legs/movement)
+  },
+  [UnitType.DEVOURER]: {
+    type: UnitType.DEVOURER,
+    cost: 130,
+    hp: 350,
+    atk: 15,
+    attackSpeed: 0.5,
+    speed: 1.2,
+    range: 3,
+    spawnTime: 8,
+    abilityTypes: [AbilityType.DEVOUR_PULL],
+    spriteKey: "swordsman", // placeholder (tanky humanoid)
+  },
 };

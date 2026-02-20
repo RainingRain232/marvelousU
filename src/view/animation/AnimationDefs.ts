@@ -135,5 +135,7 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.COLD_MAGE]: buildDef("cold_mage", { idleFps: 6, castFps: 8 }),
   [UnitType.SPIDER]: buildDef("spider", { moveFps: 12, attackFps: 10, castFps: 10 }),
   [UnitType.GLADIATOR]: buildDef("gladiator", { attackFps: 9, castFps: 10 }),
+  [UnitType.GIANT_FROG]: buildDef("spider", { moveFps: 7, attackFps: 5, castFps: 7 }),
+  [UnitType.DEVOURER]: buildDef("swordsman", { moveFps: 8, attackFps: 10, castFps: 8 }),
   [UnitType.DIPLOMAT]: buildDef("diplomat", { moveFps: 8 }),
 };

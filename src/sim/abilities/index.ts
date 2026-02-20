@@ -23,6 +23,8 @@ export const abilityRegistry: Record<AbilityType, AbilityFactory> = {
   [AbilityType.DISTORTION_BLAST]: createDistortionBlast,
   [AbilityType.VOID_DISTORTION]: (id) => createDistortionBlast(id, AbilityType.VOID_DISTORTION),
   [AbilityType.FAERY_DISTORTION]: (id) => createDistortionBlast(id, AbilityType.FAERY_DISTORTION),
+  [AbilityType.FROG_TONGUE]: (id) => createNetPull(id, AbilityType.FROG_TONGUE),
+  [AbilityType.DEVOUR_PULL]: (id) => createNetPull(id, AbilityType.DEVOUR_PULL),
 };
 
 export function createAbility(type: AbilityType, id: string): Ability {

@@ -115,7 +115,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 130,
     hp: 200,
     goldIncome: 1,
-    shopInventory: [UnitType.SPIDER, UnitType.VOID_SNAIL, UnitType.FAERY_QUEEN],
+    shopInventory: [UnitType.SPIDER, UnitType.VOID_SNAIL, UnitType.FAERY_QUEEN, UnitType.GIANT_FROG, UnitType.DEVOURER],
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",

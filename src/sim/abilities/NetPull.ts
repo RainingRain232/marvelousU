@@ -13,11 +13,11 @@ let _projectileCounter = 0;
  * Creates a "Pull" ability (e.g. Gladiator Net) that fires a projectile 
  * which pulls targets closer on hit.
  */
-export function createNetPull(id: string): Ability {
-    const def = ABILITY_DEFINITIONS[AbilityType.GLADIATOR_NET];
+export function createNetPull(id: string, type: AbilityType = AbilityType.GLADIATOR_NET): Ability {
+    const def = ABILITY_DEFINITIONS[type];
     return {
         id,
-        type: AbilityType.GLADIATOR_NET,
+        type,
         cooldown: def.cooldown,
         currentCooldown: 0,
         range: def.range,
