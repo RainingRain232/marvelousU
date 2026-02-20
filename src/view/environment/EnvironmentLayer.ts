@@ -5,16 +5,28 @@ import { GrassRenderer } from "./GrassRenderer";
 import { TreeRenderer } from "./TreeRenderer";
 import { DeerRenderer } from "./DeerRenderer";
 import { RabbitRenderer } from "./RabbitRenderer";
+import { DoveRenderer } from "./DoveRenderer";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { BuildingType } from "@/types";
 
 export class EnvironmentLayer {
     private _grass!: GrassRenderer;
     private _trees!: TreeRenderer;
     private _deer: DeerRenderer[] = [];
     private _rabbits: RabbitRenderer[] = [];
+    private _doves: DoveRenderer[] = [];
+
+    // Spawning timers
+    private _doveTimer = 0;
+    private _nextDoveSpawnTime = 5 + Math.random() * 15;
+
     private _container = new Container();
+    private _state!: GameState;
+    private _vm!: ViewManager;
 
     init(_vm: ViewManager, state: GameState): void {
+        this._vm = _vm;
+        this._state = state;
         const ts = BalanceConfig.TILE_SIZE;
         const worldW = state.battlefield.width * ts;
         const worldH = state.battlefield.height * ts;
@@ -69,11 +81,84 @@ export class EnvironmentLayer {
         if (this._trees) this._trees.update(dt);
         for (const d of this._deer) d.update(dt);
         for (const r of this._rabbits) r.update(dt);
+
+        this._updateDoves(dt);
+    }
+
+    private _updateDoves(dt: number): void {
+        // 1. Spawning
+        this._doveTimer += dt;
+        if (this._doveTimer >= this._nextDoveSpawnTime) {
+            this._doveTimer = 0;
+            this._nextDoveSpawnTime = 5 + Math.random() * 15;
+            this._spawnDoveBatch();
+        }
+
+        // 2. Update and Cleanup
+        const ts = BalanceConfig.TILE_SIZE;
+        const bounds = {
+            x: 0, y: 0,
+            w: this._state.battlefield.width * ts,
+            h: this._state.battlefield.height * ts
+        };
+
+        for (let i = this._doves.length - 1; i >= 0; i--) {
+            const dove = this._doves[i];
+            dove.update(dt);
+            if (dove.isOutOfBounds(bounds)) {
+                this._vm.removeFromLayer("fx", dove.container);
+                dove.destroy();
+                this._doves.splice(i, 1);
+            }
+        }
+    }
+
+    private _spawnDoveBatch(): void {
+        // Find castle positions
+        const castlePositions: Array<{ x: number, y: number }> = [];
+        for (const b of this._state.buildings.values()) {
+            if (b.type === BuildingType.CASTLE) {
+                const ts = BalanceConfig.TILE_SIZE;
+                castlePositions.push({
+                    x: b.position.x * ts + (2 * ts), // center of 4x4
+                    y: b.position.y * ts + (2 * ts)
+                });
+            }
+        }
+
+        if (castlePositions.length === 0) return;
+
+        const anchor = castlePositions[Math.floor(Math.random() * castlePositions.length)];
+        const count = 1 + Math.floor(Math.random() * 3);
+
+        for (let i = 0; i < count; i++) {
+            // Random direction: North, NE, NW
+            // N: [0,-1], NE: [1,-1], NW: [-1,-1]
+            const dirType = Math.floor(Math.random() * 3);
+            let dx = 0;
+            const dy = -1;
+            if (dirType === 1) dx = 1; // NE
+            if (dirType === 2) dx = -1; // NW
+
+            // Add some noise to direction
+            const finalDx = dx + (Math.random() - 0.5) * 0.4;
+            const finalDy = dy + (Math.random() - 0.5) * 0.2;
+            const speed = 80 + Math.random() * 40;
+
+            const dove = new DoveRenderer(
+                anchor.x + (Math.random() - 0.5) * 40,
+                anchor.y + (Math.random() - 0.5) * 40,
+                finalDx, finalDy, speed
+            );
+            this._doves.push(dove);
+            this._vm.addToLayer("fx", dove.container);
+        }
     }
 
     destroy(): void {
         if (this._grass) this._grass.container.destroy({ children: true });
         if (this._trees) this._trees.container.destroy({ children: true });
+        for (const d of this._doves) d.destroy();
         this._container.destroy({ children: true });
     }
 }
