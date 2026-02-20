@@ -16,6 +16,7 @@ const DECISION_RATE = 0.5; // decisions per second
 class P2AIBuyer {
   private _enabled = false;
   private _timer = 0;
+  private _lastPhase: GamePhase | null = null;
 
   get enabled(): boolean {
     return this._enabled;
@@ -23,11 +24,22 @@ class P2AIBuyer {
 
   setEnabled(v: boolean): void {
     this._enabled = v;
+    this._timer = 0; // prevent burst-spending on toggle
   }
 
   update(state: GameState, dt: number): void {
     if (!this._enabled) return;
-    if (state.phase !== GamePhase.PREP) return;
+
+    // Reset timer on every fresh entry into PREP so that time accumulated
+    // during BATTLE / RESOLVE doesn't cause a burst of back-to-back decisions.
+    if (state.phase !== GamePhase.PREP) {
+      this._lastPhase = state.phase;
+      return;
+    }
+    if (this._lastPhase !== GamePhase.PREP) {
+      this._timer = 0;
+      this._lastPhase = GamePhase.PREP;
+    }
 
     this._timer += dt;
     const interval = 1 / DECISION_RATE;
