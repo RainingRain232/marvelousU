@@ -219,10 +219,10 @@ export class IceBallFX {
     flash.position.set(cx, cy);
     flash.alpha = 0.6;
     this._container.addChild(flash);
-    gsap.to(flash, {
-      alpha: 0,
-      "scale.x": 2,
-      "scale.y": 2,
+    gsap.to(flash, { alpha: 0, duration: 0.25, ease: "power2.out" });
+    gsap.to(flash.scale, {
+      x: 2,
+      y: 2,
       duration: 0.25,
       ease: "power2.out",
       onComplete: () => {

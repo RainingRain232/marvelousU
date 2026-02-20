@@ -40,7 +40,8 @@ export class VictoryScreen {
 
   private _vm!: ViewManager;
   private _overlay!: Graphics;
-  private _card!: Graphics;
+  private _card!: Container;
+  private _cardBg!: Graphics;
   private _winnerText!: Text;
   private _subtitleText!: Text;
 
@@ -59,7 +60,9 @@ export class VictoryScreen {
     this.container.addChild(this._overlay);
 
     // Card
-    this._card = new Graphics();
+    this._card = new Container();
+    this._cardBg = new Graphics();
+    this._card.addChild(this._cardBg);
     this.container.addChild(this._card);
     this._drawCard();
 
@@ -135,8 +138,8 @@ export class VictoryScreen {
   }
 
   private _drawCard(): void {
-    this._card.clear();
-    this._card
+    this._cardBg.clear();
+    this._cardBg
       .roundRect(0, 0, this._CARD_W, this._CARD_H, 10)
       .fill({ color: 0x0a0a18, alpha: 0.96 })
       .roundRect(0, 0, this._CARD_W, this._CARD_H, 10)
