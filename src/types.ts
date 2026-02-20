@@ -48,6 +48,7 @@ export enum UnitType {
   COLD_MAGE = "cold_mage",
   SPIDER = "spider",
   GLADIATOR = "gladiator",
+  DIPLOMAT = "diplomat",
 }
 
 export enum BuildingType {
@@ -62,6 +63,7 @@ export enum BuildingType {
   TOWER = "tower",
   FARM = "farm",
   HAMLET = "hamlet",
+  EMBASSY = "embassy",
 }
 
 export enum AbilityType {

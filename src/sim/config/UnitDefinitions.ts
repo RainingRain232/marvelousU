@@ -16,6 +16,8 @@ export interface UnitDef {
   siegeOnly?: boolean;
   /** If set, unit always prefers the nearest enemy of these types over all others. */
   huntTargets?: UnitType[];
+  /** If true, unit ignores all combat and only seeks neutral buildings to capture. */
+  diplomatOnly?: boolean;
 }
 
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
@@ -189,5 +191,18 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 6,
     abilityTypes: [AbilityType.GLADIATOR_NET],
     spriteKey: "gladiator",
+  },
+  [UnitType.DIPLOMAT]: {
+    type: UnitType.DIPLOMAT,
+    cost: 60,
+    hp: 80,
+    atk: 0,
+    attackSpeed: 0,
+    speed: 2.5,
+    range: 0,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "diplomat",
+    diplomatOnly: true,
   },
 };

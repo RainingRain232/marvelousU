@@ -35,6 +35,7 @@ export interface Unit {
   // Siege behaviour
   siegeOnly: boolean; // If true, ignores enemy units; only targets buildings/bases
   huntTargets: UnitType[]; // If non-empty, prefer nearest enemy of these types
+  diplomatOnly: boolean; // If true, ignores all combat; seeks only neutral buildings to capture
 
   // Status effects
   /** Speed multiplier applied while slowTimer > 0. 1 = normal, 0.4 = 40% speed. */
@@ -125,6 +126,7 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     stateMachine,
     siegeOnly: def.siegeOnly ?? false,
     huntTargets: def.huntTargets ?? [],
+    diplomatOnly: def.diplomatOnly ?? false,
     slowFactor: 1,
     slowTimer: 0,
     targetId: null,

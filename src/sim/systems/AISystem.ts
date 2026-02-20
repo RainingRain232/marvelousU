@@ -47,6 +47,11 @@ export const AISystem = {
       if (unit.state === UnitState.DIE) continue;
       if (unit.state === UnitState.CAST) continue;
 
+      if (unit.diplomatOnly) {
+        _handleDiplomat(state, unit);
+        continue;
+      }
+
       switch (unit.state) {
         case UnitState.IDLE:
           _handleIdle(state, unit);
@@ -226,6 +231,62 @@ function _divertToBuilding(
     building.position,
   );
   unit.pathIndex = 0;
+}
+
+/**
+ * Diplomat units ignore all combat and seek the nearest neutral building to
+ * stand on and capture. Once a target is claimed, they hold position until it
+ * is captured or taken by someone else, then find the next neutral building.
+ */
+function _handleDiplomat(state: GameState, unit: Unit): void {
+  // If already heading to a valid neutral building target, leave path alone.
+  if (unit.targetId) {
+    const target = state.buildings.get(unit.targetId);
+    if (target && target.state === BuildingState.ACTIVE && target.owner === null) {
+      // Still valid — MovementSystem/BuildingSystem handle the rest.
+      return;
+    }
+    // Target gone or no longer neutral — clear and find another.
+    unit.targetId = null;
+    unit.path = null;
+    unit.pathIndex = 0;
+  }
+
+  const neutral = _findNearestNeutralBuilding(state, unit);
+  if (!neutral) return;
+
+  unit.targetId = neutral.id;
+  unit.path = findPath(
+    state.battlefield,
+    { x: Math.floor(unit.position.x), y: Math.floor(unit.position.y) },
+    neutral.position,
+  );
+  unit.pathIndex = 0;
+  if (unit.state === UnitState.IDLE) {
+    startMoving(state, unit, neutral.position);
+  }
+}
+
+/** Find the nearest active neutral building (owner === null). */
+function _findNearestNeutralBuilding(
+  state: GameState,
+  unit: Unit,
+): Building | null {
+  let nearest: Building | null = null;
+  let nearestDsq = Infinity;
+
+  for (const building of state.buildings.values()) {
+    if (building.owner !== null) continue;
+    if (building.state !== BuildingState.ACTIVE) continue;
+
+    const dsq = distanceSq(unit.position, building.position);
+    if (dsq < nearestDsq) {
+      nearest = building;
+      nearestDsq = dsq;
+    }
+  }
+
+  return nearest;
 }
 
 /**

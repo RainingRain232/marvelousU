@@ -62,6 +62,9 @@ export const CombatSystem = {
         unit.targetId = null;
       }
 
+      // --- Diplomat units never engage in combat ---
+      if (unit.diplomatOnly) continue;
+
       // --- Unit target selection (skipped for siege-only units) ---
       if (unit.siegeOnly) {
         // If no building target remains, drop out of ATTACK state so AISystem

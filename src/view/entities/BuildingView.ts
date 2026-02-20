@@ -35,6 +35,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.TOWER]: 0x8b8b6e,
   [BuildingType.FARM]: 0x5a8a2e,
   [BuildingType.HAMLET]: 0x7aaa3e,
+  [BuildingType.EMBASSY]: 0x3a6b8b,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -67,6 +68,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.TOWER]: "TOWER",
   [BuildingType.FARM]: "FARM",
   [BuildingType.HAMLET]: "HAMLET",
+  [BuildingType.EMBASSY]: "EMBASSY",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds

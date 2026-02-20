@@ -89,6 +89,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.TOWER]: "Tower",
   [BuildingType.FARM]: "Farm",
   [BuildingType.HAMLET]: "Hamlet",
+  [BuildingType.EMBASSY]: "Embassy",
 };
 
 // Unit display names
@@ -107,6 +108,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.COLD_MAGE]: "Cold Mage",
   [UnitType.SPIDER]: "Spider",
   [UnitType.GLADIATOR]: "Gladiator",
+  [UnitType.DIPLOMAT]: "Diplomat",
 };
 
 // ---------------------------------------------------------------------------
