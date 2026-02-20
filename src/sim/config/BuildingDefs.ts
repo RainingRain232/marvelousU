@@ -128,6 +128,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 1, h: 1 },
     placementZone: "own",
+    capturable: true,
     defaultTurrets: [
       { projectileTag: "arrow", damage: 9, range: 6, attackSpeed: 1.0 },
     ],
@@ -141,6 +142,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
+    capturable: true,
     maxCount: 5,
   },
   [BuildingType.HAMLET]: {

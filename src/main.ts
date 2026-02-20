@@ -30,8 +30,9 @@ import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
 import { Direction, GamePhase, BuildingType } from "@/types";
 import { createBuilding } from "@sim/entities/Building";
-import { setBuilding, setWalkable } from "@sim/core/Grid";
+import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
+import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -112,6 +113,99 @@ function _spawnTowns(state: GameState, mapW: number, mapH: number): void {
 }
 
 /**
+ * Spawn 2 neutral Towers and 4 neutral Farms in random positions near the towns.
+ * Buildings are spread across towns (not all clustered around one) and placed
+ * only on free, walkable neutral tiles.  Positions vary every game.
+ *
+ * Distribution: for each of the 6 extras, we pick a town to anchor to and
+ * attempt random offsets within SCATTER_RADIUS tiles until a free spot is found.
+ */
+let _nextNeutralId = 1;
+function _spawnNeutralExtras(
+  state: GameState,
+  mapW: number,
+  mapH: number,
+): void {
+  // Collect town positions from what was just placed
+  const townPositions: Array<{ x: number; y: number }> = [];
+  for (const b of state.buildings.values()) {
+    if (b.type === BuildingType.TOWN) townPositions.push({ ...b.position });
+  }
+  if (townPositions.length === 0) return;
+
+  const SCATTER_RADIUS = 5; // max tile offset from town anchor
+  const MAX_ATTEMPTS = 80;
+
+  // 2 towers + 4 farms; shuffle so placement order is random
+  const typesToPlace: BuildingType[] = [
+    BuildingType.TOWER, BuildingType.TOWER,
+    BuildingType.FARM, BuildingType.FARM, BuildingType.FARM, BuildingType.FARM,
+  ];
+  // Fisher-Yates shuffle
+  for (let i = typesToPlace.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [typesToPlace[i], typesToPlace[j]] = [typesToPlace[j], typesToPlace[i]];
+  }
+
+  // Round-robin across towns so extras are spread evenly
+  let townIdx = Math.floor(Math.random() * townPositions.length);
+
+  for (const bType of typesToPlace) {
+    const def = BUILDING_DEFINITIONS[bType];
+    const anchor = townPositions[townIdx % townPositions.length];
+    townIdx++;
+
+    let placed = false;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS && !placed; attempt++) {
+      const ox = Math.floor((Math.random() * 2 - 1) * SCATTER_RADIUS);
+      const oy = Math.floor((Math.random() * 2 - 1) * SCATTER_RADIUS);
+      const px = anchor.x + ox;
+      const py = anchor.y + oy;
+
+      // Check all footprint tiles are in bounds, walkable, neutral zone, and free;
+      // also enforce BUILDING_MIN_GAP halo around the footprint.
+      let ok = true;
+      const gap = BUILDING_MIN_GAP;
+      outer:
+      for (let dy = -gap; dy < def.footprint.h + gap && ok; dy++) {
+        for (let dx = -gap; dx < def.footprint.w + gap && ok; dx++) {
+          const tx = px + dx;
+          const ty = py + dy;
+          const isFootprint = dx >= 0 && dx < def.footprint.w && dy >= 0 && dy < def.footprint.h;
+          if (isFootprint) {
+            if (tx < 0 || ty < 0 || tx >= mapW || ty >= mapH) { ok = false; break outer; }
+            const tile = state.battlefield.grid[ty]?.[tx];
+            if (!tile || !tile.walkable || tile.buildingId !== null || tile.zone !== "neutral") {
+              ok = false;
+              break outer;
+            }
+          } else {
+            const tile = getTile(state.battlefield, tx, ty);
+            if (tile && tile.buildingId !== null) { ok = false; break outer; }
+          }
+        }
+      }
+      if (!ok) continue;
+
+      const id = `neutral-${bType}-${_nextNeutralId++}`;
+      const pos = { x: px, y: py };
+      const building = createBuilding({ id, type: bType, owner: null, position: pos });
+      state.buildings.set(id, building);
+
+      for (let dy = 0; dy < def.footprint.h; dy++) {
+        for (let dx = 0; dx < def.footprint.w; dx++) {
+          setBuilding(state.battlefield, pos.x + dx, pos.y + dy, id);
+          setWalkable(state.battlefield, pos.x + dx, pos.y + dy, false);
+        }
+      }
+
+      EventBus.emit("buildingPlaced", { buildingId: id, position: { ...pos }, owner: null });
+      placed = true;
+    }
+  }
+}
+
+/**
  * Compute scaled base positions for a given map size.
  * Bases sit 1 tile from each side, vertically centred (accounting for 3-tile height).
  * Spawn offsets mirror the standard values.
@@ -134,6 +228,7 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   const basePos = _computeBasePositions(mapSize.width, mapSize.height);
   initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
   _spawnTowns(state, mapSize.width, mapSize.height);
+  _spawnNeutralExtras(state, mapSize.width, mapSize.height);
 
   // 2. Camera — fit the full map into the viewport
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);

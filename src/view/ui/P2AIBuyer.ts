@@ -5,7 +5,7 @@ import { GamePhase, BuildingState, BuildingType } from "@/types";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { addToQueue } from "@sim/systems/SpawnSystem";
-import { placeBuilding } from "@sim/systems/BuildingSystem";
+import { placeBuilding, BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
 
@@ -186,16 +186,26 @@ class P2AIBuyer {
 
     for (const { x, y } of candidates) {
       // placeBuilding does all the real validation; do a lightweight pre-check
-      // to avoid flooding error results: all tiles must be walkable & in east zone.
+      // to avoid flooding error results: all tiles must be walkable, in east
+      // zone, and no existing building within BUILDING_MIN_GAP of the footprint.
       let ok = true;
-      for (let dy = 0; dy < h && ok; dy++) {
-        for (let dx = 0; dx < w && ok; dx++) {
+      outer:
+      for (let dy = -BUILDING_MIN_GAP; dy < h + BUILDING_MIN_GAP && ok; dy++) {
+        for (let dx = -BUILDING_MIN_GAP; dx < w + BUILDING_MIN_GAP && ok; dx++) {
           const tile = getTile(state.battlefield, x + dx, y + dy);
-          if (!tile || !tile.walkable || tile.buildingId !== null) {
-            ok = false;
-            break;
+          const isFootprint = dx >= 0 && dx < w && dy >= 0 && dy < h;
+          if (isFootprint) {
+            if (!tile || !tile.walkable || tile.buildingId !== null || tile.zone !== "east") {
+              ok = false;
+              break outer;
+            }
+          } else {
+            // Halo tile — just check for nearby buildings
+            if (tile && tile.buildingId !== null) {
+              ok = false;
+              break outer;
+            }
           }
-          if (tile.zone !== "east") ok = false;
         }
       }
       if (ok) return { x, y };

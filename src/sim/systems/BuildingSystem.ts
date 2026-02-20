@@ -30,7 +30,11 @@ export type PlacementFailReason =
   | "overlap"
   | "wrong_territory"
   | "max_count_reached"
-  | "prerequisite_not_met";
+  | "prerequisite_not_met"
+  | "too_close";
+
+/** Minimum gap (in tiles) required between any two buildings. */
+export const BUILDING_MIN_GAP = 1;
 
 export type PlacementResult =
   | { ok: true; buildingId: string }
@@ -58,6 +62,7 @@ export function _resetBuildingIdCounter(): void {
  *  2. All footprint tiles are in bounds
  *  3. All footprint tiles are walkable (no existing buildings)
  *  4. All footprint tiles are in the correct territory zone
+ *  5. No existing building within BUILDING_MIN_GAP tiles of the footprint
  *
  * On success:
  *  - Deducts gold from player
@@ -114,6 +119,20 @@ export function placeBuilding(
     // Territory check
     if (!zoneAllowed(tile.zone, allowedZone, def.placementZone)) {
       return { ok: false, reason: "wrong_territory" };
+    }
+  }
+
+  // 7. Minimum-gap check — no existing building tile may be within BUILDING_MIN_GAP
+  //    tiles of any footprint tile (Chebyshev distance).
+  const gap = BUILDING_MIN_GAP;
+  for (let dy = -gap; dy < def.footprint.h + gap; dy++) {
+    for (let dx = -gap; dx < def.footprint.w + gap; dx++) {
+      // Skip the footprint itself (already checked above)
+      if (dx >= 0 && dx < def.footprint.w && dy >= 0 && dy < def.footprint.h) continue;
+      const tile = getTile(state.battlefield, position.x + dx, position.y + dy);
+      if (tile && tile.buildingId !== null) {
+        return { ok: false, reason: "too_close" };
+      }
     }
   }
 

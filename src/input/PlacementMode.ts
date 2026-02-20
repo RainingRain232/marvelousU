@@ -2,6 +2,8 @@
 import type { GameState } from "@sim/state/GameState";
 import { createBuilding } from "@sim/entities/Building";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
+import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
+import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
 import { BuildingType } from "@/types";
 import type { PlayerId } from "@/types";
@@ -54,6 +56,16 @@ export function canPlace(
       if (def.placementZone === "own" && tile.zone !== playerZone) return false;
       if (def.placementZone === "neutral" && tile.zone !== "neutral")
         return false;
+    }
+  }
+
+  // Minimum-gap check: no existing building tile within BUILDING_MIN_GAP tiles
+  const gap = BUILDING_MIN_GAP;
+  for (let dy = -gap; dy < def.footprint.h + gap; dy++) {
+    for (let dx = -gap; dx < def.footprint.w + gap; dx++) {
+      if (dx >= 0 && dx < def.footprint.w && dy >= 0 && dy < def.footprint.h) continue;
+      const tile = getTile(state.battlefield, tx + dx, ty + dy);
+      if (tile && tile.buildingId !== null) return false;
     }
   }
 
