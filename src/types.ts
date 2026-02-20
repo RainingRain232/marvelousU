@@ -59,6 +59,9 @@ export enum BuildingType {
   SIEGE_WORKSHOP = "siege_workshop",
   TOWN = "town",
   CREATURE_DEN = "creature_den",
+  TOWER = "tower",
+  FARM = "farm",
+  HAMLET = "hamlet",
 }
 
 export enum AbilityType {

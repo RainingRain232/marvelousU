@@ -28,7 +28,9 @@ export type PlacementFailReason =
   | "out_of_bounds"
   | "tile_not_walkable"
   | "overlap"
-  | "wrong_territory";
+  | "wrong_territory"
+  | "max_count_reached"
+  | "prerequisite_not_met";
 
 export type PlacementResult =
   | { ok: true; buildingId: string }
@@ -77,7 +79,23 @@ export function placeBuilding(
     return { ok: false, reason: "insufficient_gold" };
   }
 
-  // 2 & 3 & 4. Footprint tile checks
+  // 2. Max-count check
+  if (def.maxCount !== undefined) {
+    const owned = _countOwnedType(state, playerId, type);
+    if (owned >= def.maxCount) {
+      return { ok: false, reason: "max_count_reached" };
+    }
+  }
+
+  // 3. Prerequisite check
+  if (def.prerequisite) {
+    const prereqCount = _countOwnedType(state, playerId, def.prerequisite.type);
+    if (prereqCount < def.prerequisite.minCount) {
+      return { ok: false, reason: "prerequisite_not_met" };
+    }
+  }
+
+  // 4 & 5 & 6. Footprint tile checks
   const tiles = getFootprintTiles(position, def.footprint.w, def.footprint.h);
   const allowedZone = playerZone(player.direction);
 
@@ -339,6 +357,20 @@ export function _captureBuilding(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Count how many active buildings of a given type a player currently owns. */
+function _countOwnedType(
+  state: GameState,
+  playerId: PlayerId,
+  type: BuildingType,
+): number {
+  let count = 0;
+  for (const id of state.players.get(playerId)?.ownedBuildings ?? []) {
+    const b = state.buildings.get(id);
+    if (b && b.type === type && b.state === BuildingState.ACTIVE) count++;
+  }
+  return count;
+}
 
 function getFootprintTiles(topLeft: Vec2, w: number, h: number): Vec2[] {
   const tiles: Vec2[] = [];

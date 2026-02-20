@@ -6,7 +6,7 @@ import { EventBus } from "@sim/core/EventBus";
 import { addToQueue } from "@sim/systems/SpawnSystem";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
-import { BuildingType, UnitType } from "@/types";
+import { BuildingType, BuildingState, UnitType } from "@/types";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
 
 // ---------------------------------------------------------------------------
@@ -70,6 +70,11 @@ const STYLE_CLOSE = new TextStyle({
   fill: 0xaaaaaa,
   fontWeight: "bold",
 });
+const STYLE_LOCKED = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 10,
+  fill: 0x886644,
+});
 
 // Building display names
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -81,6 +86,9 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.SIEGE_WORKSHOP]: "Siege Workshop",
   [BuildingType.TOWN]: "Town",
   [BuildingType.CREATURE_DEN]: "Creature Den",
+  [BuildingType.TOWER]: "Tower",
+  [BuildingType.FARM]: "Farm",
+  [BuildingType.HAMLET]: "Hamlet",
 };
 
 // Unit display names
@@ -337,16 +345,30 @@ export class ShopPanel {
 
     const def = BUILDING_DEFINITIONS[bpType];
 
-    // Building name
-    const name = new Text({ text: BUILDING_LABELS[bpType], style: STYLE_ITEM });
+    // Check build constraints for this player
+    const maxCount = def.maxCount;
+    const prereq = def.prerequisite;
+    const ownedCount = maxCount !== undefined
+      ? this._countOwnedType(bpType)
+      : 0;
+    const prereqCount = prereq ? this._countOwnedType(prereq.type) : 0;
+    const atMax = maxCount !== undefined && ownedCount >= maxCount;
+    const prereqMet = !prereq || prereqCount >= prereq.minCount;
+    const locked = atMax || !prereqMet;
+
+    // Building name (dim when locked)
+    const name = new Text({
+      text: BUILDING_LABELS[bpType],
+      style: locked ? new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0x667788 }) : STYLE_ITEM,
+    });
     name.position.set(PANEL_PAD, 4);
     row.addChild(name);
 
-    // Footprint info
-    const footprintInfo = new Text({
-      text: `${def.footprint.w}×${def.footprint.h}`,
-      style: STYLE_SPAWN,
-    });
+    // Sub-line: footprint + count/lock info
+    let subText = `${def.footprint.w}×${def.footprint.h}`;
+    if (maxCount !== undefined) subText += `  ${ownedCount}/${maxCount}`;
+    if (!prereqMet) subText += `  needs ${prereq!.minCount} ${BUILDING_LABELS[prereq!.type]}`;
+    const footprintInfo = new Text({ text: subText, style: locked ? STYLE_LOCKED : STYLE_SPAWN });
     footprintInfo.position.set(PANEL_PAD, 22);
     row.addChild(footprintInfo);
 
@@ -356,10 +378,14 @@ export class ShopPanel {
     costText.position.set(PANEL_W - 90, 12);
     row.addChild(costText);
 
-    // Buy button
-    const btn = this._makeButton("BUY", PANEL_W - 52, 6, () => {
-      this._buyBlueprint(bpType);
-    });
+    // Buy button — disabled when locked
+    const btn = this._makeButton(
+      atMax ? "MAX" : !prereqMet ? "LOCK" : "BUY",
+      PANEL_W - 52,
+      6,
+      locked ? () => {} : () => { this._buyBlueprint(bpType); },
+    );
+    if (locked) btn.alpha = 0.4;
     row.addChild(btn);
 
     return row;
@@ -411,6 +437,22 @@ export class ShopPanel {
     });
 
     return btn;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  /** Count active buildings of a given type owned by the local player. */
+  private _countOwnedType(type: BuildingType): number {
+    const player = this._state.players.get(this._localPlayerId);
+    if (!player) return 0;
+    let count = 0;
+    for (const id of player.ownedBuildings) {
+      const b = this._state.buildings.get(id);
+      if (b && b.type === type && b.state !== BuildingState.DESTROYED) count++;
+    }
+    return count;
   }
 
   // ---------------------------------------------------------------------------

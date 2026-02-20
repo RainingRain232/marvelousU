@@ -18,6 +18,10 @@ export interface BuildingDef {
   capturable?: boolean;
   /** Turrets the building starts with (omit attackTimer/targetId — set to 0/null at spawn). */
   defaultTurrets?: Omit<BuildingTurret, "attackTimer" | "targetId">[];
+  /** Maximum number of this building type a single player may own at once. */
+  maxCount?: number;
+  /** Blueprint is only purchasable once the player owns at least minCount of the given type. */
+  prerequisite?: { type: BuildingType; minCount: number };
 }
 
 export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
@@ -34,6 +38,9 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.ARCHERY_RANGE,
       BuildingType.SIEGE_WORKSHOP,
       BuildingType.CREATURE_DEN,
+      BuildingType.TOWER,
+      BuildingType.FARM,
+      BuildingType.HAMLET,
     ],
     footprint: { w: 3, h: 3 },
     placementZone: "own",
@@ -111,5 +118,41 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
+  },
+  [BuildingType.TOWER]: {
+    type: BuildingType.TOWER,
+    cost: 80,
+    hp: 250,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 1 },
+    placementZone: "own",
+    defaultTurrets: [
+      { projectileTag: "arrow", damage: 9, range: 6, attackSpeed: 1.0 },
+    ],
+  },
+  [BuildingType.FARM]: {
+    type: BuildingType.FARM,
+    cost: 120,
+    hp: 150,
+    goldIncome: 3,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 2, h: 2 },
+    placementZone: "own",
+    maxCount: 5,
+  },
+  [BuildingType.HAMLET]: {
+    type: BuildingType.HAMLET,
+    cost: 200,
+    hp: 200,
+    goldIncome: 5,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 2, h: 2 },
+    placementZone: "own",
+    maxCount: 1,
+    prerequisite: { type: BuildingType.FARM, minCount: 5 },
   },
 };

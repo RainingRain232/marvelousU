@@ -32,6 +32,9 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.SIEGE_WORKSHOP]: 0x7a5c2e,
   [BuildingType.TOWN]: 0x6b8c3a,
   [BuildingType.CREATURE_DEN]: 0x3d2b1f,
+  [BuildingType.TOWER]: 0x8b8b6e,
+  [BuildingType.FARM]: 0x5a8a2e,
+  [BuildingType.HAMLET]: 0x7aaa3e,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -61,6 +64,9 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.SIEGE_WORKSHOP]: "SIEGE WRK",
   [BuildingType.TOWN]: "TOWN",
   [BuildingType.CREATURE_DEN]: "CRTR DEN",
+  [BuildingType.TOWER]: "TOWER",
+  [BuildingType.FARM]: "FARM",
+  [BuildingType.HAMLET]: "HAMLET",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
