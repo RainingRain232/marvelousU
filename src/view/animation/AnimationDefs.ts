@@ -113,9 +113,9 @@ function buildDef(
 
 export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.SWORDSMAN]: buildDef("swordsman", { idleFps: 6, moveFps: 10, attackFps: 14, dieFps: 8 }),
-  [UnitType.ARCHER]: buildDef("archer", { attackFps: 10 }),
-  [UnitType.LONGBOWMAN]: buildDef("archer", { attackFps: 8 }),
-  [UnitType.CROSSBOWMAN]: buildDef("archer", { attackFps: 6 }),
+  [UnitType.ARCHER]: buildDef("archer", { attackFps: 10, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7), dieFrames: range(ROW_DIE, ROW_DIE + 7) }),
+  [UnitType.LONGBOWMAN]: buildDef("archer", { attackFps: 8, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7), dieFrames: range(ROW_DIE, ROW_DIE + 7) }),
+  [UnitType.CROSSBOWMAN]: buildDef("archer", { attackFps: 6, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7), dieFrames: range(ROW_DIE, ROW_DIE + 7) }),
   [UnitType.KNIGHT]: buildDef("knight", { moveFps: 8, attackFps: 8 }),
   [UnitType.FIRE_MAGE]: buildDef("mage", { idleFps: 6, castFps: 8 }),
   [UnitType.STORM_MAGE]: buildDef("mage", { idleFps: 6, castFps: 8 }),
@@ -140,7 +140,7 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.GIANT_FROG]: buildDef("spider", { moveFps: 7, attackFps: 5, castFps: 7 }),
   [UnitType.DEVOURER]: buildDef("swordsman", { moveFps: 8, attackFps: 10, castFps: 8 }),
   [UnitType.HORSE_ARCHER]: buildDef("knight", { moveFps: 10, attackFps: 12 }),
-  [UnitType.SHORTBOW]: buildDef("archer", { attackFps: 15 }),
+  [UnitType.SHORTBOW]: buildDef("archer", { attackFps: 15, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7), dieFrames: range(ROW_DIE, ROW_DIE + 7) }),
   [UnitType.BALLISTA]: buildDef("battering_ram", { attackFps: 6 }),
   [UnitType.BOLT_THROWER]: buildDef("battering_ram", { attackFps: 4 }),
   [UnitType.SCOUT_CAVALRY]: buildDef("knight", { moveFps: 12, attackFps: 10 }),

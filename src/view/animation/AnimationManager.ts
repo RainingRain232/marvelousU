@@ -26,6 +26,7 @@ import {
   type AnimFrameSet,
 } from "@view/animation/AnimationDefs";
 import { generateSwordsmanFrames } from "@view/animation/SwordsmanSpriteGen";
+import { generateArcherFrames } from "@view/animation/ArcherSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -145,6 +146,8 @@ export class AnimationManager {
       // otherwise fall back to generic colored-square placeholders.
       if (key === "swordsman") {
         this._generateSwordsmanSprites(key, renderer);
+      } else if (key === "archer") {
+        this._generateArcherSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -230,6 +233,20 @@ export class AnimationManager {
    */
   private _generateSwordsmanSprites(key: string, renderer: Renderer): void {
     const stateTextures = generateSwordsmanFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  /**
+   * Generate detailed procedural archer sprites using the dedicated
+   * ArcherSpriteGen module. Populates the cache for all states.
+   */
+  private _generateArcherSprites(key: string, renderer: Renderer): void {
+    const stateTextures = generateArcherFrames(renderer);
     for (const [state, textures] of stateTextures) {
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {
