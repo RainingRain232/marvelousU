@@ -37,6 +37,14 @@ export const BalanceConfig = {
   PREP_DURATION: 30, // seconds players have to buy/build before battle starts
   RESOLVE_DURATION: 5, // seconds the RESOLVE screen shows before cycling back to PREP
 
+  // Neutral placement
+  NEUTRAL_COUNTS: {
+    STANDARD: { towers: 1, farms: 2 },
+    DOUBLE: { towers: 2, farms: 4 },
+    TRIPLE: { towers: 2, farms: 4 },
+    QUADRUPLE: { towers: 2, farms: 4 },
+  } as Record<string, { towers: number; farms: number }>,
+
   // Simulation
   SIM_TICK_MS: 1000 / 60, // ~16.67 ms fixed timestep
 } as const;

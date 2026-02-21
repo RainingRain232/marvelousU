@@ -128,6 +128,7 @@ function _spawnNeutralExtras(
   state: GameState,
   mapW: number,
   mapH: number,
+  sizeLabel: string,
 ): void {
   // Collect town positions from what was just placed
   const townPositions: Array<{ x: number; y: number }> = [];
@@ -139,11 +140,12 @@ function _spawnNeutralExtras(
   const SCATTER_RADIUS = 5; // max tile offset from town anchor
   const MAX_ATTEMPTS = 80;
 
-  // 2 towers + 4 farms; shuffle so placement order is random
-  const typesToPlace: BuildingType[] = [
-    BuildingType.TOWER, BuildingType.TOWER,
-    BuildingType.FARM, BuildingType.FARM, BuildingType.FARM, BuildingType.FARM,
-  ];
+  // Get counts from config
+  const counts = BalanceConfig.NEUTRAL_COUNTS[sizeLabel] || BalanceConfig.NEUTRAL_COUNTS["DOUBLE"];
+
+  const typesToPlace: BuildingType[] = [];
+  for (let i = 0; i < counts.towers; i++) typesToPlace.push(BuildingType.TOWER);
+  for (let i = 0; i < counts.farms; i++) typesToPlace.push(BuildingType.FARM);
   // Fisher-Yates shuffle
   for (let i = typesToPlace.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -231,7 +233,7 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   const basePos = _computeBasePositions(mapSize.width, mapSize.height);
   initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
   _spawnTowns(state, mapSize.width, mapSize.height);
-  _spawnNeutralExtras(state, mapSize.width, mapSize.height);
+  _spawnNeutralExtras(state, mapSize.width, mapSize.height, mapSize.label);
 
   // 2. Camera — fit the full map into the viewport
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);

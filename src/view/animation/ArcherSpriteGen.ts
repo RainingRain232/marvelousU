@@ -83,18 +83,7 @@ function drawTorso(g: Graphics, cx: number, torsoTop: number, torsoH: number, ti
 }
 
 /** Quiver on back - slightly tilted. */
-function drawQuiver(g: Graphics, cx: number, cy: number, tilt = 0): void {
-    const angle = 0.3 + tilt;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-
-    const qw = 4, qh = 10;
-    const xOff = 10; // offset from center
-    const yOff = 2;
-
-    // Manual transform for the quiver rect
-    const p1 = { x: cx - (xOff * cos), y: cy - (yOff * sin) };
-
+function drawQuiver(g: Graphics, cx: number, cy: number): void {
     // Just simplified drawing without rotate() - drawing a tilted line-based rect
     const rx = cx - 10;
     const ry = cy - 2;

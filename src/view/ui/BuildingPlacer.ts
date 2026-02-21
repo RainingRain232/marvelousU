@@ -227,7 +227,7 @@ export class BuildingPlacer {
 
     this._ghostBody.clear();
     // Only draw generic background for non-procedural buildings
-    const isSpecial = this._bpType === BuildingType.TOWER || this._bpType === BuildingType.CASTLE || this._bpType === BuildingType.WALL;
+    const isSpecial = this._bpType === BuildingType.TOWER || this._bpType === BuildingType.CASTLE || this._bpType === BuildingType.WALL || this._bpType === BuildingType.FARM;
     if (!isSpecial) {
       this._ghostBody
         .rect(0, 0, pw, ph)
