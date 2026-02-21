@@ -20,7 +20,7 @@ const TILE_COLORS = {
 
 /** Tint applied over a tile occupied by a building (additive alpha blend). */
 const BUILDING_TINT_COLOR = 0x000000; // darker footprint
-const BUILDING_TINT_ALPHA = 0.15;
+const BUILDING_TINT_ALPHA = 0; // Set to 0 to keep background visible
 
 // ---------------------------------------------------------------------------
 // GridRenderer
@@ -83,7 +83,9 @@ export class GridRenderer {
 
     for (const row of bf.grid) {
       for (const tile of row) {
-        const key = `${tile.zone}_${tile.walkable ? "walkable" : "unwalkable"}` as keyof typeof TILE_COLORS;
+        // Use "walkable" color even for buildings so the terrain looks consistent
+        const isActuallyWalkable = tile.walkable || tile.buildingId !== null;
+        const key = `${tile.zone}_${isActuallyWalkable ? "walkable" : "unwalkable"}` as keyof typeof TILE_COLORS;
         const color = TILE_COLORS[key];
         g.rect(tile.x * ts, tile.y * ts, ts, ts).fill({ color });
       }

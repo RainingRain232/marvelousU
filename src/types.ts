@@ -83,6 +83,7 @@ export enum BuildingType {
   HAMLET = "hamlet",
   EMBASSY = "embassy",
   TEMPLE = "temple",
+  WALL = "wall",
 }
 
 export enum AbilityType {

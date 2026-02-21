@@ -95,6 +95,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HAMLET]: "Hamlet",
   [BuildingType.EMBASSY]: "Embassy",
   [BuildingType.TEMPLE]: "Temple",
+  [BuildingType.WALL]: "Wall",
 };
 
 // Unit display names

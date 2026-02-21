@@ -38,6 +38,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.HAMLET]: 0x7aaa3e,
   [BuildingType.EMBASSY]: 0x3a6b8b,
   [BuildingType.TEMPLE]: 0xd8bfd8,
+  [BuildingType.WALL]: 0x777777,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -54,6 +55,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HAMLET]: "HAMLET",
   [BuildingType.EMBASSY]: "EMBASSY",
   [BuildingType.TEMPLE]: "TEMPLE",
+  [BuildingType.WALL]: "WALL",
 };
 
 const LABEL_STYLE = new TextStyle({
@@ -224,11 +226,15 @@ export class BuildingPlacer {
     const color = BUILDING_COLORS[this._bpType];
 
     this._ghostBody.clear();
-    this._ghostBody
-      .rect(0, 0, pw, ph)
-      .fill({ color, alpha: GHOST_ALPHA })
-      .rect(0, 0, pw, ph)
-      .stroke({ color: 0xffffff, alpha: 0.5, width: 1.5 });
+    // Only draw generic background for non-procedural buildings
+    const isSpecial = this._bpType === BuildingType.TOWER || this._bpType === BuildingType.CASTLE || this._bpType === BuildingType.WALL;
+    if (!isSpecial) {
+      this._ghostBody
+        .rect(0, 0, pw, ph)
+        .fill({ color, alpha: GHOST_ALPHA })
+        .rect(0, 0, pw, ph)
+        .stroke({ color: 0xffffff, alpha: 0.5, width: 1.5 });
+    }
 
     this._ghostLabel.text = BUILDING_LABELS[this._bpType];
     this._ghostLabel.anchor.set(0.5, 0.5);

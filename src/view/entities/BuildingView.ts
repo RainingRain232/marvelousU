@@ -12,6 +12,7 @@ import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BuildingType, BuildingState, GamePhase } from "@/types";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
 import { TowerRenderer } from "@view/entities/TowerRenderer";
+import { WallRenderer } from "@view/entities/WallRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -38,6 +39,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.HAMLET]: 0x7aaa3e,
   [BuildingType.EMBASSY]: 0x3a6b8b,
   [BuildingType.TEMPLE]: 0xd8bfd8,
+  [BuildingType.WALL]: 0x777777,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -72,6 +74,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HAMLET]: "HAMLET",
   [BuildingType.EMBASSY]: "EMBASSY",
   [BuildingType.TEMPLE]: "TEMPLE",
+  [BuildingType.WALL]: "WALL",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -112,6 +115,8 @@ export class BuildingView {
   private _castleRenderer: CastleRenderer | null = null;
   // Detailed tower renderer (only set for TOWER type buildings)
   private _towerRenderer: TowerRenderer | null = null;
+  // Detailed wall renderer (only set for WALL type buildings)
+  private _wallRenderer: WallRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -136,8 +141,13 @@ export class BuildingView {
       this.container.addChild(this._towerRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
+    } else if (building.type === BuildingType.WALL) {
+      this._wallRenderer = new WallRenderer();
+      this.container.addChild(this._wallRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
     } else {
-      // Body rect (generic buildings)
+      // Body rect (generic buildings only)
       this._body
         .rect(0, 0, pw, ph)
         .fill({ color: BUILDING_COLORS[building.type] })
@@ -214,12 +224,15 @@ export class BuildingView {
     this._label.alpha = this._body.alpha;
 
     if (building.state === BuildingState.ACTIVE && dt > 0) {
-      // Castle: tick the detailed renderer
+      // Detailed renderers: tick them
       if (this._castleRenderer) {
         this._castleRenderer.tick(dt, phase);
       }
       if (this._towerRenderer) {
         this._towerRenderer.tick(dt, phase);
+      }
+      if (this._wallRenderer) {
+        this._wallRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }
