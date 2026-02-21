@@ -70,6 +70,8 @@ export class CastleRenderer {
     private _flagR = new Graphics();   // right tower flag
     private _princessGfx = new Graphics();
     private _kingGfx = new Graphics();
+    private _guardsGfx = new Graphics();
+    private _zzzGfx = new Graphics();
 
     // Timers
     private _flagTime = 0;
@@ -92,6 +94,8 @@ export class CastleRenderer {
         this.container.addChild(this._flagR);
         this.container.addChild(this._princessGfx);
         this.container.addChild(this._kingGfx);
+        this.container.addChild(this._guardsGfx);
+        this.container.addChild(this._zzzGfx);
 
         this._princessGfx.visible = false;
         this._kingGfx.visible = false;
@@ -136,6 +140,9 @@ export class CastleRenderer {
             }
             this._princessGfx.visible = false;
         }
+
+        // Guards animation
+        this._updateGuards(dt, phase);
     }
 
     // ---------------------------------------------------------------------------
@@ -195,6 +202,10 @@ export class CastleRenderer {
         this._drawArrowSlit(g, ltX + 12, towerY + 100);
         this._drawArrowSlit(g, ltX + towerW - 18, towerY + 100);
 
+        // EXTRA WINDOW (beneath slits - large arched style)
+        const lowerWinLY = towerY + 140;
+        this._drawWindow(g, ltX + towerW / 2 - 10, lowerWinLY, 20, 26);
+
         // ── Right tower ──
         const rtX = CW - towerW - 8;
 
@@ -226,6 +237,10 @@ export class CastleRenderer {
         // Arrow slits on right tower
         this._drawArrowSlit(g, rtX + 12, towerY + 100);
         this._drawArrowSlit(g, rtX + towerW - 18, towerY + 100);
+
+        // EXTRA WINDOW (beneath slits - large arched style)
+        const lowerWinRY = towerY + 140;
+        this._drawWindow(g, rtX + towerW / 2 - 10, lowerWinRY, 20, 26);
 
         // ── Central gatehouse ──
         const gateW = 50;
@@ -264,6 +279,11 @@ export class CastleRenderer {
                 .lineTo(px, archTop + archH - 3)
                 .stroke({ color: COL_PORTCULLIS, width: 1.5, alpha: 0.7 });
         }
+
+        // Gatehouse windows (smaller arched style) - refined spacing and height
+        const gateWinY = wallY + 14;
+        this._drawWindow(g, archCX - 48, gateWinY, 16, 22);
+        this._drawWindow(g, archCX + 32, gateWinY, 16, 22);
 
         // ── Wall-top walkway between towers ──
         const walkwayY = wallY - 2;
@@ -559,6 +579,72 @@ export class CastleRenderer {
             const cg2y = baseY - sin * 3;
             g.moveTo(cg1x, cg1y).lineTo(cg2x, cg2y)
                 .stroke({ color: 0x886633, width: 2 });
+        }
+    }
+
+    private _updateGuards(dt: number, phase: GamePhase): void {
+        const g = this._guardsGfx;
+        const z = this._zzzGfx;
+        g.clear();
+        z.clear();
+
+        const gateX = CW / 2;
+        const groundY = CH - 20;
+        const guardOffset = 35;
+        const isPanic = (phase !== GamePhase.PREP);
+
+        this._drawGuard(g, z, gateX - guardOffset, groundY, 0, isPanic);
+        this._drawGuard(g, z, gateX + guardOffset, groundY, 1, isPanic);
+    }
+
+    private _drawGuard(g: Graphics, z: Graphics, x: number, y: number, index: number, panic: boolean): void {
+        const time = this._flagTime / FLAG_SPEED;
+        const breathe = Math.sin(time * 2 + index) * 0.5;
+        const isSnoring = !panic && (Math.floor(time * 0.15 + index * 0.5) % 2 === 0);
+
+        let headY = y - 22 + (isSnoring ? 2 : breathe);
+        let armAngle = 0;
+
+        if (panic) {
+            // Panic animation: hands to helmet
+            const panicWobble = Math.sin(time * 15) * 0.1;
+            headY += panicWobble * 5;
+            armAngle = -Math.PI * 0.4 + panicWobble;
+        }
+
+        // ── Body ──
+        g.rect(x - 6, y - 16, 12, 16).fill({ color: 0x556677 }); // plate armor look
+
+        // ── Pikeman Helmet ──
+        g.circle(x, headY, 6).fill({ color: 0x9999aa }); // helmet
+        g.moveTo(x - 8, headY).lineTo(x + 8, headY).stroke({ color: 0x777788, width: 2 }); // brim
+
+        // ── Arms ──
+        if (panic) {
+            // Left arm to helmet
+            g.moveTo(x - 6, y - 12).lineTo(x - 8, headY).stroke({ color: 0x556677, width: 3 });
+            // Right arm to helmet
+            g.moveTo(x + 6, y - 12).lineTo(x + 8, headY).stroke({ color: 0x556677, width: 3 });
+        } else {
+            // Broad stance arms
+            g.moveTo(x - 6, y - 12).lineTo(x - 12, y - 8).stroke({ color: 0x556677, width: 3 });
+            g.moveTo(x + 6, y - 12).lineTo(x + 12, y - 8).stroke({ color: 0x556677, width: 3 });
+        }
+
+        // ── The Pike ──
+        const peakX = x + (index === 0 ? -12 : 12);
+        g.moveTo(peakX, y).lineTo(peakX, y - 45).stroke({ color: COL_WOOD_DK, width: 2 });
+        g.moveTo(peakX, y - 45).lineTo(peakX, y - 52).stroke({ color: 0xccddee, width: 3 }); // tip
+
+        // ── Snoring Zzz ──
+        if (isSnoring) {
+            const zLife = (time * 0.5 + index * 0.3) % 1.0;
+            const zy = headY - 5 - zLife * 20;
+            const zx = x + Math.sin(time * 2) * 4;
+            z.position.set(zx, zy);
+            z.scale.set(0.5 + zLife * 0.5);
+            z.alpha = 1.0 - zLife;
+            z.moveTo(0, 0).lineTo(6, 0).lineTo(0, 6).lineTo(6, 6).stroke({ color: 0xffffff, width: 1.5 });
         }
     }
 
