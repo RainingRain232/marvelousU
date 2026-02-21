@@ -192,4 +192,15 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     placementZone: "own",
     capturable: false,
   },
+  [BuildingType.FIREPIT]: {
+    type: BuildingType.FIREPIT,
+    cost: 0,
+    hp: 100,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 2, h: 1 },
+    placementZone: "any",
+    capturable: false,
+  },
 };

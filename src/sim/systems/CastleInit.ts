@@ -29,7 +29,7 @@ import type { Base } from "@sim/entities/Base";
  *  - Emits `buildingPlaced`
  */
 export function spawnCastle(state: GameState, base: Base): void {
-  const def      = BUILDING_DEFINITIONS[BuildingType.CASTLE];
+  const def = BUILDING_DEFINITIONS[BuildingType.CASTLE];
   const castleId = `castle-${base.id}`;
   const position = { ...base.position };
 
@@ -43,9 +43,9 @@ export function spawnCastle(state: GameState, base: Base): void {
 
   // Create and register building
   const castle = createBuilding({
-    id:          castleId,
-    type:        BuildingType.CASTLE,
-    owner:       base.owner,
+    id: castleId,
+    type: BuildingType.CASTLE,
+    owner: base.owner,
     position,
     linkedBaseId: base.id,
   });
@@ -65,5 +65,47 @@ export function spawnCastle(state: GameState, base: Base): void {
     buildingId: castleId,
     position,
     owner: base.owner,
+  });
+
+  // Spawn companion firepit
+  spawnFirepit(state, castle);
+}
+
+/**
+ * Spawn a decorative firepit near the castle.
+ * Positioned 2-3 tiles "inward" towards the map center.
+ */
+export function spawnFirepit(state: GameState, castle: any): void {
+  const def = BUILDING_DEFINITIONS[BuildingType.FIREPIT];
+  const isWest = castle.owner === "p1";
+
+  // Random position 2-3 tiles away towards the center
+  const dist = 2 + Math.floor(Math.random() * 2);
+  const px = isWest ? castle.position.x + 4 + dist : castle.position.x - def.footprint.w - dist;
+  const py = castle.position.y + 1 + Math.floor(Math.random() * 2);
+
+  const id = `firepit-${castle.id}`;
+  const pos = { x: px, y: py };
+
+  // Stamp footprint
+  for (let dy = 0; dy < def.footprint.h; dy++) {
+    for (let dx = 0; dx < def.footprint.w; dx++) {
+      setBuilding(state.battlefield, pos.x + dx, pos.y + dy, id);
+      setWalkable(state.battlefield, pos.x + dx, pos.y + dy, false);
+    }
+  }
+
+  const firepit = createBuilding({
+    id,
+    type: BuildingType.FIREPIT,
+    owner: castle.owner,
+    position: pos,
+  });
+  state.buildings.set(id, firepit);
+
+  EventBus.emit("buildingPlaced", {
+    buildingId: id,
+    position: pos,
+    owner: castle.owner,
   });
 }

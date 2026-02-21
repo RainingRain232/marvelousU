@@ -15,6 +15,7 @@ import { TowerRenderer } from "@view/entities/TowerRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { TownRenderer } from "@view/entities/TownRenderer";
+import { FirepitRenderer } from "@view/entities/FirepitRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -42,6 +43,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.EMBASSY]: 0x3a6b8b,
   [BuildingType.TEMPLE]: 0xd8bfd8,
   [BuildingType.WALL]: 0x777777,
+  [BuildingType.FIREPIT]: 0x333333,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -77,6 +79,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.EMBASSY]: "EMBASSY",
   [BuildingType.TEMPLE]: "TEMPLE",
   [BuildingType.WALL]: "WALL",
+  [BuildingType.FIREPIT]: "FIREPIT",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -123,6 +126,8 @@ export class BuildingView {
   private _farmRenderer: FarmRenderer | null = null;
   // Detailed town renderer (only set for TOWN type buildings)
   private _townRenderer: TownRenderer | null = null;
+  // Detailed firepit renderer (only set for FIREPIT type buildings)
+  private _firepitRenderer: FirepitRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -160,6 +165,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.TOWN) {
       this._townRenderer = new TownRenderer(building.owner);
       this.container.addChild(this._townRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.FIREPIT) {
+      this._firepitRenderer = new FirepitRenderer();
+      this.container.addChild(this._firepitRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -255,6 +265,9 @@ export class BuildingView {
       }
       if (this._townRenderer) {
         this._townRenderer.tick(dt, phase);
+      }
+      if (this._firepitRenderer) {
+        this._firepitRenderer.tick(dt);
       }
       this._tickIdleEffects(dt);
     }

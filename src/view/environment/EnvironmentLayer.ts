@@ -6,6 +6,7 @@ import { TreeRenderer } from "./TreeRenderer";
 import { DeerRenderer } from "./DeerRenderer";
 import { RabbitRenderer } from "./RabbitRenderer";
 import { DoveRenderer } from "./DoveRenderer";
+import { FarmerRenderer } from "./FarmerRenderer";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BuildingType } from "@/types";
 
@@ -15,10 +16,14 @@ export class EnvironmentLayer {
     private _deer: DeerRenderer[] = [];
     private _rabbits: RabbitRenderer[] = [];
     private _doves: DoveRenderer[] = [];
+    private _farmers: FarmerRenderer[] = [];
 
     // Spawning timers
     private _doveTimer = 0;
     private _nextDoveSpawnTime = 5 + Math.random() * 15;
+
+    private _farmerTimer = 0;
+    private _nextFarmerSpawnTime = 10 + Math.random() * 20;
 
     private _container = new Container();
     private _state!: GameState;
@@ -83,6 +88,7 @@ export class EnvironmentLayer {
         for (const r of this._rabbits) r.update(dt);
 
         this._updateDoves(dt);
+        this._updateFarmers(dt);
     }
 
     private _updateDoves(dt: number): void {
@@ -155,10 +161,74 @@ export class EnvironmentLayer {
         }
     }
 
+    private _updateFarmers(dt: number): void {
+        // 1. Spawning
+        this._farmerTimer += dt;
+        if (this._farmerTimer >= this._nextFarmerSpawnTime) {
+            this._farmerTimer = 0;
+            this._nextFarmerSpawnTime = 8 + Math.random() * 15; // Increased frequency
+            this._spawnFarmer();
+        }
+
+        // 2. Update and Cleanup
+        for (let i = this._farmers.length - 1; i >= 0; i--) {
+            const f = this._farmers[i];
+            f.update(dt);
+            if (f.isFinished()) {
+                f.container.parent?.removeChild(f.container);
+                f.destroy();
+                this._farmers.splice(i, 1);
+            }
+        }
+    }
+
+    private _spawnFarmer(): void {
+        const ts = BalanceConfig.TILE_SIZE;
+
+        // Find all farms
+        const farms = Array.from(this._state.buildings.values()).filter(b => b.type === BuildingType.FARM);
+        if (farms.length === 0) return;
+
+        // Find all towns/hamlets
+        const towns = Array.from(this._state.buildings.values()).filter(b => b.type === BuildingType.TOWN || b.type === BuildingType.HAMLET);
+        if (towns.length === 0) return;
+
+        // Pick a random farm
+        const farm = farms[Math.floor(Math.random() * farms.length)];
+        const startPos = {
+            x: farm.position.x * ts + ts, // approximate center
+            y: farm.position.y * ts + ts
+        };
+
+        // Find closest town
+        let closestTown = towns[0];
+        let minDist = Infinity;
+        for (const t of towns) {
+            const dx = t.position.x - farm.position.x;
+            const dy = t.position.y - farm.position.y;
+            const dist = dx * dx + dy * dy;
+            if (dist < minDist) {
+                minDist = dist;
+                closestTown = t;
+            }
+        }
+
+        const targetPos = {
+            x: closestTown.position.x * ts + ts,
+            y: closestTown.position.y * ts + ts
+        };
+
+        const farmer = new FarmerRenderer(startPos, targetPos);
+        this._farmers.push(farmer);
+        // Add to background layer above other decorations
+        this._container.addChild(farmer.container);
+    }
+
     destroy(): void {
         if (this._grass) this._grass.container.destroy({ children: true });
         if (this._trees) this._trees.container.destroy({ children: true });
         for (const d of this._doves) d.destroy();
+        for (const f of this._farmers) f.destroy();
         this._container.destroy({ children: true });
     }
 }
