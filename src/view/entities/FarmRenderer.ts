@@ -92,19 +92,23 @@ export class FarmRenderer {
 
     private _drawGround(): void {
         const g = this._ground;
-        // Golden field
-        g.rect(2, 2, FW - 4, FH - 4).fill({ color: COL_GRAIN });
+        // Central oval field (slightly oversized for organic feel)
+        g.ellipse(FW / 2, FH / 2, FW * 0.55, FH * 0.45).fill({ color: COL_GRAIN });
+        // Secondary overlapping ellipse for irregularity
+        g.ellipse(FW * 0.45, FH * 0.5, FW * 0.5, FH * 0.48).fill({ color: COL_GRAIN });
 
-        // Tufts of wheat
-        for (let i = 0; i < 40; i++) {
-            const tx = 10 + Math.random() * (FW - 20);
-            const ty = 10 + Math.random() * (FH - 20);
-            g.moveTo(tx, ty).lineTo(tx, ty - 4).stroke({ color: COL_GRAIN_LT, width: 1.5 });
+        // Tufts of wheat (distributed across the oval area)
+        for (let i = 0; i < 60; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * (FW * 0.4);
+            const tx = FW / 2 + Math.cos(angle) * dist * 1.2;
+            const ty = FH / 2 + Math.sin(angle) * dist;
+            g.moveTo(tx, ty).lineTo(tx + (Math.random() - 0.5) * 2, ty - 4 - Math.random() * 2).stroke({ color: COL_GRAIN_LT, width: 1.5 });
         }
 
         // Road from house entrance down
         g.moveTo(45, 65)
-            .bezierCurveTo(45, 90, 30, 100, 30, 128)
+            .bezierCurveTo(45, 90, 30, 100, 30, 140)
             .stroke({ color: COL_ROAD, width: 14 });
     }
 
@@ -135,7 +139,7 @@ export class FarmRenderer {
 
     private _drawTower(): void {
         const g = this._tower;
-        const tX = 80, tY = 15;
+        const tX = 82, tY = 10;
         const tW = 25, tH = 65;
 
         // Tower body

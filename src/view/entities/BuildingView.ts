@@ -14,6 +14,7 @@ import { CastleRenderer } from "@view/entities/CastleRenderer";
 import { TowerRenderer } from "@view/entities/TowerRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
+import { TownRenderer } from "@view/entities/TownRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -120,6 +121,8 @@ export class BuildingView {
   private _wallRenderer: WallRenderer | null = null;
   // Detailed farm renderer (only set for FARM type buildings)
   private _farmRenderer: FarmRenderer | null = null;
+  // Detailed town renderer (only set for TOWN type buildings)
+  private _townRenderer: TownRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -152,6 +155,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.FARM) {
       this._farmRenderer = new FarmRenderer(building.owner);
       this.container.addChild(this._farmRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.TOWN) {
+      this._townRenderer = new TownRenderer(building.owner);
+      this.container.addChild(this._townRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -244,6 +252,9 @@ export class BuildingView {
       }
       if (this._farmRenderer) {
         this._farmRenderer.tick(dt, phase);
+      }
+      if (this._townRenderer) {
+        this._townRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }
