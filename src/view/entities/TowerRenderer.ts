@@ -40,6 +40,16 @@ const FLAG_SPEED = 3.2; // radians/sec
 const FROG_HOP_INTERVAL = 4.0; // seconds between hops
 const FROG_HOP_DURATION = 0.6; // duration of a single hop
 
+// Guard animation states
+enum GuardState {
+    IDLE = "idle",
+    OPENING = "opening",
+    WALKING_OUT = "walking_out",
+    SITTING = "sitting",
+    WALKING_IN = "walking_in",
+    CLOSING = "closing"
+}
+
 // ---------------------------------------------------------------------------
 // TowerRenderer
 // ---------------------------------------------------------------------------
@@ -50,10 +60,16 @@ export class TowerRenderer {
     private _base = new Graphics();    // tower body, static details
     private _flag = new Graphics();    // waving flag at the top
     private _frog = new Graphics();    // hopping frog mascot
+    private _door = new Graphics();    // side door
+    private _guard = new Graphics();   // animated guard
 
     private _flagTime = 0;
     private _frogTimer = 0;
     private _frogY0 = 0; // base Y position of frog
+
+    private _guardState: GuardState = GuardState.IDLE;
+    private _guardTimer = 0;
+    private _nextGuardActionTime = 10 + Math.random() * 10;
 
     private _playerColor: number;
 
@@ -62,9 +78,15 @@ export class TowerRenderer {
 
         this._drawStaticTower();
         this._drawFlag();
+        this._frogY0 = TH - 6;
+        this._frog.position.set(TW / 2 - 4, this._frogY0);
         this._drawFrog();
+        this._drawDoorGraphics();
+        this._drawGuardGraphics(0, false);
 
         this.container.addChild(this._base);
+        this.container.addChild(this._door);
+        this.container.addChild(this._guard);
         this.container.addChild(this._flag);
         this.container.addChild(this._frog);
 
@@ -102,6 +124,82 @@ export class TowerRenderer {
                 this._frog.y = this._frogY0;
                 this._frog.scale.set(1);
             }
+        }
+
+        // Guard Animation State Machine
+        this._updateGuard(dt);
+    }
+
+    private _updateGuard(dt: number): void {
+        this._guardTimer += dt;
+
+        switch (this._guardState) {
+            case GuardState.IDLE:
+                if (this._guardTimer >= this._nextGuardActionTime) {
+                    this._guardState = GuardState.OPENING;
+                    this._guardTimer = 0;
+                    this._door.visible = true;
+                    this._door.scale.set(0, 1); // Start closed (thin)
+                    this._guard.visible = false; // Ensure guard stays hidden until door is open
+                }
+                break;
+
+            case GuardState.OPENING:
+                const openP = Math.min(1, this._guardTimer / 0.5);
+                this._door.scale.set(openP, 1);
+                if (openP >= 1) {
+                    this._guardState = GuardState.WALKING_OUT;
+                    this._guardTimer = 0;
+                    this._guard.visible = true;
+                    this._guard.alpha = 0;
+                }
+                break;
+
+            case GuardState.WALKING_OUT:
+                const walkOutP = Math.min(1, this._guardTimer / 1.0);
+                this._guard.alpha = Math.min(1, walkOutP * 2);
+                this._guard.x = (TW - 16) - walkOutP * 14; // Walk out from side
+                this._drawGuardGraphics(this._guardTimer, false);
+                if (walkOutP >= 1) {
+                    this._guardState = GuardState.SITTING;
+                    this._guardTimer = 0;
+                    this._nextGuardActionTime = 3 + Math.random() * 4;
+                    this._drawGuardGraphics(0, true);
+                }
+                break;
+
+            case GuardState.SITTING:
+                // Small breathing animation
+                const breathe = Math.sin(this._guardTimer * 2) * 0.5;
+                this._guard.scale.set(1, 1 + breathe * 0.1);
+                if (this._guardTimer >= this._nextGuardActionTime) {
+                    this._guardState = GuardState.WALKING_IN;
+                    this._guardTimer = 0;
+                }
+                break;
+
+            case GuardState.WALKING_IN:
+                const walkInP = Math.min(1, this._guardTimer / 1.0);
+                this._guard.alpha = Math.max(0, 1 - walkInP * 2);
+                this._guard.x = (TW - 30) + walkInP * 14;
+                this._drawGuardGraphics(this._guardTimer, false);
+                if (walkInP >= 1) {
+                    this._guardState = GuardState.CLOSING;
+                    this._guardTimer = 0;
+                    this._guard.visible = false;
+                }
+                break;
+
+            case GuardState.CLOSING:
+                const closeP = Math.min(1, this._guardTimer / 0.5);
+                this._door.scale.set(1 - closeP, 1);
+                if (closeP >= 1) {
+                    this._guardState = GuardState.IDLE;
+                    this._guardTimer = 0;
+                    this._nextGuardActionTime = 10 + Math.random() * 10;
+                    this._door.visible = false;
+                }
+                break;
         }
     }
 
@@ -236,6 +334,70 @@ export class TowerRenderer {
         g.moveTo(4, 0).bezierCurveTo(6, 2, 6, 4, 4, 4).stroke({ color: COL_FROG, width: 2 });
 
         g.pivot.set(0, 4); // pivot at feet for squash/stretch
+    }
+
+    private _drawDoorGraphics(): void {
+        // ── Door ── (Bigger: 14x22)
+        const dg = this._door;
+        dg.clear();
+        dg.rect(0, 0, 14, 22).fill({ color: 0x4d3319 }).stroke({ color: 0x2d1f0f, width: 2 });
+        // Door handle
+        dg.circle(3, 11, 1.5).fill({ color: 0xbbbbbb });
+        // Iron bands
+        dg.rect(0, 4, 14, 2).fill({ color: 0x333333, alpha: 0.5 });
+        dg.rect(0, 16, 14, 2).fill({ color: 0x333333, alpha: 0.5 });
+        // Arched top
+        dg.moveTo(0, 0).lineTo(7, -6).lineTo(14, 0).closePath().fill({ color: 0x4d3319 });
+
+        dg.position.set(TW - 16, TH - 20);
+        dg.visible = false;
+    }
+
+    private _drawGuardGraphics(walkTime: number, isSitting: boolean): void {
+        const COL_ARMOR = 0xa9a9a9; // Dark gray/silver for armor
+        const COL_METAL = 0xd3d3d3; // Light silver for highlights
+        const COL_SKIN = 0xffdbac;
+
+        const gg = this._guard;
+        gg.clear();
+
+        // Bobbing only when walking
+        const bob = walkTime > 0 ? Math.abs(Math.sin(walkTime * 10)) * 2 : 0;
+        const legSwing = walkTime > 0 ? Math.sin(walkTime * 10) * 3 : 0;
+
+        // Legs (move when walking)
+        if (!isSitting) {
+            gg.rect(-4 + legSwing, -2 - bob, 3, 3).fill({ color: 0x333333 }); // Left leg
+            gg.rect(1 - legSwing, -2 - bob, 3, 3).fill({ color: 0x333333 }); // Right leg
+        } else {
+            // Sitting legs
+            gg.rect(-5, -2, 5, 3).fill({ color: 0x333333 });
+            gg.rect(0, -2, 5, 3).fill({ color: 0x333333 });
+        }
+
+        // Body (Armor over Tunic)
+        gg.rect(-5, -10 - bob, 10, 10).fill({ color: this._playerColor }); // Tunic base
+        gg.rect(-4, -9 - bob, 8, 8).fill({ color: COL_ARMOR }); // Breastplate
+        // Armor Highlight
+        gg.rect(-2, -8 - bob, 2, 4).fill({ color: COL_METAL, alpha: 0.4 });
+
+        // Head
+        gg.circle(0, -14 - bob, 4.5).fill({ color: COL_SKIN });
+
+        // Helmet (More detailed)
+        gg.moveTo(-5, -15 - bob).lineTo(0, -21 - bob).lineTo(5, -15 - bob).closePath().fill({ color: 0x777777 });
+        gg.rect(-5, -15 - bob, 10, 2).fill({ color: 0x666666 }); // Brim
+
+        // Small spear/pole (Bigger)
+        gg.moveTo(6, -18 - bob).lineTo(6, 4 - bob).stroke({ color: 0x555555, width: 2 });
+        // Spear tip
+        gg.moveTo(5, -18 - bob).lineTo(6, -24 - bob).lineTo(7, -18 - bob).closePath().fill({ color: COL_METAL });
+
+        // Initial position only if not set elsewhere (though GG is positioned in updateGuard too)
+        if (this._guardState === GuardState.IDLE) {
+            gg.position.set(TW - 16, TH - 8);
+            gg.visible = false;
+        }
     }
 
     destroy(): void {

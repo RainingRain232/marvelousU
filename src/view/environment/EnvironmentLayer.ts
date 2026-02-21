@@ -23,7 +23,7 @@ export class EnvironmentLayer {
     private _nextDoveSpawnTime = 5 + Math.random() * 15;
 
     private _farmerTimer = 0;
-    private _nextFarmerSpawnTime = 10 + Math.random() * 20;
+    private _nextFarmerSpawnTime = 1.5 + Math.random() * 3;
 
     private _container = new Container();
     private _state!: GameState;
@@ -166,7 +166,7 @@ export class EnvironmentLayer {
         this._farmerTimer += dt;
         if (this._farmerTimer >= this._nextFarmerSpawnTime) {
             this._farmerTimer = 0;
-            this._nextFarmerSpawnTime = 8 + Math.random() * 15; // Increased frequency
+            this._nextFarmerSpawnTime = 1.5 + Math.random() * 3; // Even more frequent
             this._spawnFarmer();
         }
 
@@ -185,7 +185,34 @@ export class EnvironmentLayer {
     private _spawnFarmer(): void {
         const ts = BalanceConfig.TILE_SIZE;
 
-        // Find all farms
+        // 1. Randomly decide starting type: Farm or Firepit
+        const spawnFromFirepit = Math.random() < 0.5; // Increased to 50% chance
+
+        if (spawnFromFirepit) {
+            const firepits = Array.from(this._state.buildings.values()).filter(b => b.type === BuildingType.FIREPIT);
+            if (firepits.length > 0) {
+                const firepit = firepits[Math.floor(Math.random() * firepits.length)];
+                const startPos = {
+                    x: firepit.position.x * ts + ts,
+                    y: firepit.position.y * ts + (0.5 * ts) // center of 2x1
+                };
+
+                // Find corresponding castle (same owner)
+                const castle = Array.from(this._state.buildings.values()).find(b => b.type === BuildingType.CASTLE && b.owner === firepit.owner);
+                if (castle) {
+                    const targetPos = {
+                        x: castle.position.x * ts + (2 * ts), // center of 4x4
+                        y: castle.position.y * ts + (2 * ts)
+                    };
+                    const farmer = new FarmerRenderer(startPos, targetPos);
+                    this._farmers.push(farmer);
+                    this._container.addChild(farmer.container);
+                    return;
+                }
+            }
+        }
+
+        // 2. Default logic: Farm to closest Town/Hamlet
         const farms = Array.from(this._state.buildings.values()).filter(b => b.type === BuildingType.FARM);
         if (farms.length === 0) return;
 
