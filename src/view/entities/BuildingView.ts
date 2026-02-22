@@ -16,6 +16,7 @@ import { WallRenderer } from "@view/entities/WallRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { TownRenderer } from "@view/entities/TownRenderer";
 import { FirepitRenderer } from "@view/entities/FirepitRenderer";
+import { TempleRenderer } from "@view/entities/TempleRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -128,6 +129,8 @@ export class BuildingView {
   private _townRenderer: TownRenderer | null = null;
   // Detailed firepit renderer (only set for FIREPIT type buildings)
   private _firepitRenderer: FirepitRenderer | null = null;
+  // Detailed temple renderer (only set for TEMPLE type buildings)
+  private _templeRenderer: TempleRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -160,6 +163,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.FARM) {
       this._farmRenderer = new FarmRenderer(building.owner);
       this.container.addChild(this._farmRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.TEMPLE) {
+      this._templeRenderer = new TempleRenderer(building.owner);
+      this.container.addChild(this._templeRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.TOWN) {
@@ -265,6 +273,9 @@ export class BuildingView {
       }
       if (this._townRenderer) {
         this._townRenderer.tick(dt, phase);
+      }
+      if (this._templeRenderer) {
+        this._templeRenderer.tick(dt, phase);
       }
       if (this._firepitRenderer) {
         this._firepitRenderer.tick(dt);

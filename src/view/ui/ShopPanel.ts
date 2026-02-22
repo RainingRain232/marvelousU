@@ -12,6 +12,9 @@ import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { animationManager } from "@view/animation/AnimationManager";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
 import { TowerRenderer } from "@view/entities/TowerRenderer";
+import { FarmRenderer } from "@view/entities/FarmRenderer";
+import { WallRenderer } from "@view/entities/WallRenderer";
+import { TempleRenderer } from "@view/entities/TempleRenderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -540,6 +543,18 @@ export class ShopPanel {
       const tr = new TowerRenderer(null);
       buildingContainer = tr.container;
       texW = 64; texH = 64;
+    } else if (buildingType === BuildingType.FARM) {
+      const fr = new FarmRenderer(null);
+      buildingContainer = fr.container;
+      texW = 128; texH = 128;
+    } else if (buildingType === BuildingType.WALL) {
+      const wr = new WallRenderer();
+      buildingContainer = wr.container;
+      texW = 64; texH = 192;
+    } else if (buildingType === BuildingType.TEMPLE) {
+      const tr = new TempleRenderer(null);
+      buildingContainer = tr.container;
+      texW = 128; texH = 192;
     }
 
     if (!buildingContainer) return null;
