@@ -392,12 +392,19 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   };
 
   window.addEventListener("keydown", (e) => {
+    // Don't handle keys if a text input or button is focused
+    const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "button") return;
+
     if (e.code === "Space" && !e.repeat) {
-      // Don't pause if a text input or button is focused
-      const tag = (document.activeElement?.tagName ?? "").toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "button") return;
       e.preventDefault();
       togglePause();
+    } else if (e.code === "Digit9" && !e.repeat) {
+      simLoop.speedUp();
+      hud.showSpeedLabel(simLoop.timeScale);
+    } else if (e.code === "Digit0" && !e.repeat) {
+      simLoop.speedDown();
+      hud.showSpeedLabel(simLoop.timeScale);
     }
   });
 }

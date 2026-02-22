@@ -121,6 +121,10 @@ export class HUD {
   private _startBattleBtn!: Container;
   private _currentPhase: GamePhase = GamePhase.PREP;
 
+  // Speed label (shown briefly when game speed changes)
+  private _speedLabel!: Text;
+  private _speedLabelTimer = 0;
+
   private _westPlayerId: PlayerId = "";
   private _eastPlayerId: PlayerId = "";
   private _screenW = 800;
@@ -151,6 +155,7 @@ export class HUD {
     this._buildAIToggleBtn();
     this._buildSwitchBtn();
     this._buildStartBattleBtn();
+    this._buildSpeedLabel();
 
     vm.addToLayer("ui", this.container);
 
@@ -195,6 +200,16 @@ export class HUD {
     const eastUnits = this._countUnits(state, this._eastPlayerId);
     this._westUnitVal.text = String(westUnits);
     this._eastUnitVal.text = String(eastUnits);
+
+    // Fade out speed label
+    if (this._speedLabelTimer > 0) {
+      this._speedLabelTimer -= 1 / 60; // approximate per-frame
+      if (this._speedLabelTimer <= 0) {
+        this._speedLabel.visible = false;
+      } else if (this._speedLabelTimer < 0.5) {
+        this._speedLabel.alpha = this._speedLabelTimer / 0.5;
+      }
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -501,6 +516,37 @@ export class HUD {
       Math.floor((this._screenW - W) / 2),
       PAD + 36 + 6,
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Speed label
+  // ---------------------------------------------------------------------------
+
+  private _buildSpeedLabel(): void {
+    this._speedLabel = new Text({
+      text: "",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 16,
+        fill: 0xffd700,
+        fontWeight: "bold",
+        letterSpacing: 2,
+      }),
+    });
+    this._speedLabel.anchor.set(0.5, 0);
+    this._speedLabel.position.set(Math.floor(this._screenW / 2), PAD + 60);
+    this._speedLabel.visible = false;
+    this.container.addChild(this._speedLabel);
+  }
+
+  /** Flash the current game speed on screen. Called by main.ts on speed change. */
+  showSpeedLabel(scale: number): void {
+    const pct = Math.round(scale * 100);
+    this._speedLabel.text = `SPEED: ${pct}%`;
+    this._speedLabel.position.x = Math.floor(this._screenW / 2);
+    this._speedLabel.visible = true;
+    this._speedLabel.alpha = 1;
+    this._speedLabelTimer = 2; // visible for 2 seconds
   }
 }
 

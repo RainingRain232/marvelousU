@@ -69,6 +69,9 @@ export class SimLoop {
   private timerId: ReturnType<typeof setTimeout> | null = null;
   private onTick: TickCallback | null = null;
 
+  /** Game speed multiplier. 1.0 = normal, 1.1 = 10% faster, 0.9 = 10% slower. */
+  private _timeScale: number = 1.0;
+
   constructor(state: GameState, onTick?: TickCallback) {
     this.state = state;
     this.onTick = onTick ?? null;
@@ -84,6 +87,21 @@ export class SimLoop {
 
   get isPaused(): boolean {
     return this.paused;
+  }
+
+  /** Current game speed multiplier. */
+  get timeScale(): number {
+    return this._timeScale;
+  }
+
+  /** Increase game speed by 10%. */
+  speedUp(): void {
+    this._timeScale = Math.round((this._timeScale + 0.1) * 100) / 100;
+  }
+
+  /** Decrease game speed by 10% (minimum 0.1). */
+  speedDown(): void {
+    this._timeScale = Math.max(0.1, Math.round((this._timeScale - 0.1) * 100) / 100);
   }
 
   /** Pause the simulation. No-op if already paused or not running. */
@@ -143,7 +161,7 @@ export class SimLoop {
    */
   advance(elapsedMs: number): void {
     const clamped = Math.min(elapsedMs, MAX_DELTA_MS);
-    this.accumulator += clamped;
+    this.accumulator += clamped * this._timeScale;
 
     while (this.accumulator >= BalanceConfig.SIM_TICK_MS) {
       simTick(this.state);
