@@ -1,13 +1,15 @@
 // Shop overlay — opens when a player clicks an owned building
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+// Redesigned: preview area + stats + icon grid layout
+import { Container, Graphics, Text, TextStyle, AnimatedSprite, Texture } from "pixi.js";
 import type { GameState } from "@sim/state/GameState";
 import type { ViewManager } from "@view/ViewManager";
 import { EventBus } from "@sim/core/EventBus";
 import { addToQueue } from "@sim/systems/SpawnSystem";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
-import { BuildingType, BuildingState, UnitType } from "@/types";
+import { BuildingType, BuildingState, UnitType, UnitState } from "@/types";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
+import { animationManager } from "@view/animation/AnimationManager";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -22,13 +24,20 @@ const BG_ALPHA = 0.93;
 const BORDER_COLOR = 0xffd700;
 const BORDER_W = 1.5;
 
-const ROW_H = 40; // height of each item row
-const ROW_GAP = 6; // vertical gap between rows
-const HEADER_H = 38; // building name area
-const SECTION_LABEL_H = 22; // section heading ("UNITS" / "BUILD")
+const HEADER_H = 38;
+const PREVIEW_H = 80;
+const STATS_H = 70;
+const DESC_H = 24;
+const FIXED_TOP_H = HEADER_H + PREVIEW_H + STATS_H + DESC_H;
+
+const ICON_SIZE = 40;
+const ICON_GAP = 4;
+const ICONS_PER_ROW = Math.floor((PANEL_W - 2 * PANEL_PAD) / (ICON_SIZE + ICON_GAP));
+
+const SECTION_LABEL_H = 22;
 const CLOSE_SIZE = 20;
 
-const MAX_PANEL_H = 400; // maximum total height of the panel
+const MAX_PANEL_H = 400;
 const SCROLL_WIDTH = 10;
 const SCROLL_MARGIN = 4;
 
@@ -46,38 +55,45 @@ const STYLE_SECTION = new TextStyle({
   fill: 0x778899,
   letterSpacing: 2,
 });
-const STYLE_ITEM = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 12,
-  fill: 0xdddddd,
-});
-const STYLE_COST = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 12,
-  fill: 0xffd700,
-  fontWeight: "bold",
-});
-const STYLE_COST_UNAFFORDABLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 12,
-  fill: 0x885522,
-  fontWeight: "bold",
-});
-const STYLE_SPAWN = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 10,
-  fill: 0x668866,
-});
 const STYLE_CLOSE = new TextStyle({
   fontFamily: "monospace",
   fontSize: 14,
   fill: 0xaaaaaa,
   fontWeight: "bold",
 });
-const STYLE_LOCKED = new TextStyle({
+const STYLE_PREVIEW_NAME = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 12,
+  fill: 0xdddddd,
+  fontWeight: "bold",
+});
+const STYLE_STAT = new TextStyle({
   fontFamily: "monospace",
   fontSize: 10,
-  fill: 0x886644,
+  fill: 0xbbccdd,
+});
+const STYLE_SPAWN = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 10,
+  fill: 0x668866,
+});
+const STYLE_DESC = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 9,
+  fill: 0x556677,
+  fontStyle: "italic",
+});
+const STYLE_ICON_COST = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 8,
+  fill: 0xffd700,
+  fontWeight: "bold",
+});
+const STYLE_ICON_COST_UNAFFORDABLE = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 8,
+  fill: 0x885522,
+  fontWeight: "bold",
 });
 
 // Building display names
@@ -96,6 +112,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.EMBASSY]: "Embassy",
   [BuildingType.TEMPLE]: "Temple",
   [BuildingType.WALL]: "Wall",
+  [BuildingType.FIREPIT]: "Firepit",
 };
 
 // Unit display names
@@ -139,24 +156,6 @@ const UNIT_LABELS: Record<UnitType, string> = {
 // ShopPanel
 // ---------------------------------------------------------------------------
 
-/**
- * Overlay panel that opens when the player clicks an owned (non-destroyed)
- * building.  Displays:
- *   - Building name + close button
- *   - UNITS section: one row per trainable unit (name, spawn time, cost, buy btn)
- *   - BUILD section (Castle only): one row per blueprint (name, cost, buy btn)
- *
- * Click detection:
- *   The panel attaches a `pointerdown` listener to the canvas on `init`.
- *   It uses `camera.screenToWorld` to find which tile was clicked, then
- *   checks every building's footprint for a hit.
- *
- * Sim interaction:
- *   Buying a unit calls `addToQueue(state, buildingId, unitType)` and
- *   deducts gold from the owning player's `PlayerState`.
- *   Buying a blueprint emits a `buildingBlueprintSelected` notification
- *   (placement mode is handled by BuildingPlacer in a later task).
- */
 export class ShopPanel {
   readonly container = new Container();
 
@@ -168,7 +167,17 @@ export class ShopPanel {
   private _localPlayerId = "";
 
   private _openBuildingId: string | null = null;
-  private _rows: Container[] = [];
+
+  // Preview + stats (fixed area)
+  private _previewContainer = new Container();
+  private _previewSprite: AnimatedSprite | null = null;
+  private _statsContainer = new Container();
+  private _descContainer = new Container();
+  private _defaultBuildingType: BuildingType | null = null;
+
+  // Icon button refs for affordability
+  private _unitIcons: { type: UnitType; costText: Text; bg: Graphics }[] = [];
+  private _bpIcons: { type: BuildingType; costText: Text; bg: Graphics; locked: boolean }[] = [];
 
   // Scrolling
   private _scrollContainer = new Container();
@@ -194,7 +203,6 @@ export class ShopPanel {
     this.container.visible = false;
     vm.addToLayer("ui", this.container);
 
-    // Setup scroll components
     this._scrollContainer.label = "scrollContent";
     this._scrollContainer.mask = this._mask;
     this.container.addChild(this._scrollContainer);
@@ -206,8 +214,8 @@ export class ShopPanel {
 
     this.container.eventMode = "static";
     this.container.on("wheel", (e) => {
-      if (!this.container.visible || this._contentH <= this._viewH) return;
-      this._scrollY = Math.max(0, Math.min(this._contentH - this._viewH, this._scrollY + e.deltaY));
+      if (!this.container.visible || this._contentH <= this._scrollableH()) return;
+      this._scrollY = Math.max(0, Math.min(this._contentH - this._scrollableH(), this._scrollY + e.deltaY));
       this._applyScroll();
     });
   }
@@ -218,6 +226,7 @@ export class ShopPanel {
   }
 
   destroy(): void {
+    this._clearPreview();
     this.container.destroy({ children: true });
   }
 
@@ -235,49 +244,60 @@ export class ShopPanel {
   close(): void {
     const wasOpen = this._openBuildingId !== null;
     this._openBuildingId = null;
+    this._clearPreview();
     this.container.visible = false;
     if (wasOpen) this.onClose?.();
   }
 
-  /** Call from vm.onUpdate so gold-affordability tints stay current. */
   readonly update = (_state: GameState): void => {
-    // Refresh cost colors to reflect current gold; only when panel is open
     if (!this.container.visible || !this._openBuildingId) return;
     this._updateAffordability();
   };
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  private _scrollableH(): number {
+    return this._viewH - FIXED_TOP_H;
+  }
 
   // ---------------------------------------------------------------------------
   // Panel construction
   // ---------------------------------------------------------------------------
 
   private _rebuild(): void {
-    // Clear dynamic rows, but keep persistent scroll components
-    this._rows = [];
+    this._unitIcons = [];
+    this._bpIcons = [];
     this._scrollContainer.removeChildren();
     this.container.removeChildren();
+    this._clearPreview();
 
     const building = this._openBuildingId
       ? this._state.buildings.get(this._openBuildingId)
       : null;
     if (!building) return;
 
-    // Persistent components must be re-added because we called removeChildren() on container
+    this._defaultBuildingType = building.type;
+
+    // Re-add persistent scroll components
     this.container.addChild(this._scrollContainer);
     this.container.addChild(this._mask);
     this.container.addChild(this._scrollbarTrack);
     this.container.addChild(this._scrollbarThumb);
 
-    const unitRows = building.shopInventory.length;
-    const bpRows = building.blueprints.length;
-    const unitSectionH = unitRows > 0 ? SECTION_LABEL_H + unitRows * (ROW_H + ROW_GAP) : 0;
-    const bpSectionH = bpRows > 0 ? SECTION_LABEL_H + bpRows * (ROW_H + ROW_GAP) : 0;
+    // Calculate icon grid content height
+    const unitCount = building.shopInventory.length;
+    const bpCount = building.blueprints.length;
+    const unitRowCount = Math.ceil(unitCount / ICONS_PER_ROW);
+    const bpRowCount = Math.ceil(bpCount / ICONS_PER_ROW);
+    const unitSectionH = unitCount > 0 ? SECTION_LABEL_H + unitRowCount * (ICON_SIZE + ICON_GAP) : 0;
+    const bpSectionH = bpCount > 0 ? SECTION_LABEL_H + bpRowCount * (ICON_SIZE + ICON_GAP) : 0;
 
-    // contentH is the total height needed for the scrollable part
     this._contentH = unitSectionH + bpSectionH + PANEL_PAD;
-    const totalH = HEADER_H + this._contentH;
-
-    this._viewH = Math.min(MAX_PANEL_H, totalH);
-    const scrollableH = this._viewH - HEADER_H;
+    const maxScrollableH = MAX_PANEL_H - FIXED_TOP_H;
+    const scrollableH = Math.min(maxScrollableH, this._contentH);
+    this._viewH = FIXED_TOP_H + scrollableH;
 
     // Background + border
     const bg = new Graphics()
@@ -306,59 +326,93 @@ export class ShopPanel {
     });
     this.container.addChild(closeBtn);
 
-    // Divider under header (fixed)
-    const divider = new Graphics()
-      .rect(PANEL_PAD, HEADER_H - 4, PANEL_W - PANEL_PAD * 2, 1)
-      .fill({ color: 0x334455 });
-    this.container.addChild(divider);
+    // Divider under header
+    this.container.addChild(
+      new Graphics()
+        .rect(PANEL_PAD, HEADER_H - 4, PANEL_W - PANEL_PAD * 2, 1)
+        .fill({ color: 0x334455 }),
+    );
 
-    // Mask setup
+    // ---- Preview area ----
+    this._previewContainer = new Container();
+    this._previewContainer.position.set(0, HEADER_H);
+    this.container.addChild(this._previewContainer);
+    this._showBuildingPreview(building.type);
+
+    // ---- Stats area ----
+    this._statsContainer = new Container();
+    this._statsContainer.position.set(0, HEADER_H + PREVIEW_H);
+    this.container.addChild(this._statsContainer);
+    this._showBuildingStats(building.type);
+
+    // ---- Description area ----
+    this._descContainer = new Container();
+    this._descContainer.position.set(0, HEADER_H + PREVIEW_H + STATS_H);
+    this.container.addChild(this._descContainer);
+    const descText = new Text({ text: "  (description coming soon)", style: STYLE_DESC });
+    descText.position.set(PANEL_PAD, 2);
+    this._descContainer.addChild(descText);
+
+    // Divider above scroll area
+    this.container.addChild(
+      new Graphics()
+        .rect(PANEL_PAD, FIXED_TOP_H - 2, PANEL_W - PANEL_PAD * 2, 1)
+        .fill({ color: 0x334455 }),
+    );
+
+    // Mask for scroll area
     this._mask.clear()
-      .rect(0, HEADER_H, PANEL_W, scrollableH)
+      .rect(0, FIXED_TOP_H, PANEL_W, scrollableH)
       .fill({ color: 0x000000 });
 
+    // ---- Icon grid (scrollable) ----
     let cursorY = 0;
 
-    // ---- UNITS section ----
-    if (unitRows > 0) {
+    // TRAIN section
+    if (unitCount > 0) {
       const label = new Text({ text: "TRAIN", style: STYLE_SECTION });
       label.position.set(PANEL_PAD, cursorY + 4);
       this._scrollContainer.addChild(label);
       cursorY += SECTION_LABEL_H;
 
-      for (const unitType of building.shopInventory) {
-        const row = this._makeUnitRow(building.id, unitType, cursorY);
-        this._scrollContainer.addChild(row);
-        this._rows.push(row);
-        cursorY += ROW_H + ROW_GAP;
+      for (let i = 0; i < unitCount; i++) {
+        const col = i % ICONS_PER_ROW;
+        const row = Math.floor(i / ICONS_PER_ROW);
+        const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
+        const y = cursorY + row * (ICON_SIZE + ICON_GAP);
+        const icon = this._makeUnitIcon(building.id, building.shopInventory[i], x, y);
+        this._scrollContainer.addChild(icon);
       }
+      cursorY += unitRowCount * (ICON_SIZE + ICON_GAP);
     }
 
-    // ---- BUILD section (Castle only) ----
-    if (bpRows > 0) {
+    // BUILD section
+    if (bpCount > 0) {
       const label = new Text({ text: "BUILD", style: STYLE_SECTION });
       label.position.set(PANEL_PAD, cursorY + 4);
       this._scrollContainer.addChild(label);
       cursorY += SECTION_LABEL_H;
 
-      for (const bpType of building.blueprints) {
-        const row = this._makeBlueprintRow(bpType, cursorY);
-        this._scrollContainer.addChild(row);
-        this._rows.push(row);
-        cursorY += ROW_H + ROW_GAP;
+      for (let i = 0; i < bpCount; i++) {
+        const col = i % ICONS_PER_ROW;
+        const row = Math.floor(i / ICONS_PER_ROW);
+        const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
+        const y = cursorY + row * (ICON_SIZE + ICON_GAP);
+        const icon = this._makeBuildingIcon(building.blueprints[i], x, y);
+        this._scrollContainer.addChild(icon);
       }
     }
 
-    this._scrollContainer.position.y = HEADER_H;
+    this._scrollContainer.position.y = FIXED_TOP_H;
 
-    // Setup scrollbar
+    // Scrollbar
     const hasScroll = this._contentH > scrollableH;
     this._scrollbarTrack.visible = hasScroll;
     this._scrollbarThumb.visible = hasScroll;
 
     if (hasScroll) {
       const trackX = PANEL_W - SCROLL_WIDTH - SCROLL_MARGIN;
-      const trackY = HEADER_H + SCROLL_MARGIN;
+      const trackY = FIXED_TOP_H + SCROLL_MARGIN;
       const trackH = scrollableH - SCROLL_MARGIN * 2;
 
       this._scrollbarTrack.clear()
@@ -382,19 +436,291 @@ export class ShopPanel {
     this._scrollY = 0;
     this._applyScroll();
 
-    // Position panel: bottom-left of screen with padding
+    // Position panel: bottom-left of screen
     const screenH = this._vm.screenHeight;
     this.container.position.set(PANEL_PAD, screenH - this._viewH - PANEL_PAD);
 
     this._updateAffordability();
   }
 
+  // ---------------------------------------------------------------------------
+  // Preview
+  // ---------------------------------------------------------------------------
+
+  private _showUnitPreview(unitType: UnitType): void {
+    this._clearPreview();
+
+    const frames = animationManager.getFrames(unitType, UnitState.IDLE);
+    if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+      const sprite = new AnimatedSprite(frames);
+      sprite.anchor.set(0.5, 0.5);
+      sprite.width = 64;
+      sprite.height = 64;
+      sprite.position.set(PANEL_W / 2, PREVIEW_H / 2);
+      const frameSet = animationManager.getFrameSet(unitType, UnitState.IDLE);
+      sprite.animationSpeed = frameSet.fps / 60;
+      sprite.loop = true;
+      sprite.play();
+      this._previewSprite = sprite;
+      this._previewContainer.addChild(sprite);
+    } else {
+      // Fallback: colored circle with first letter
+      const g = new Graphics()
+        .circle(PANEL_W / 2, PREVIEW_H / 2, 24)
+        .fill({ color: 0x334466 })
+        .circle(PANEL_W / 2, PREVIEW_H / 2, 24)
+        .stroke({ color: 0x5588aa, width: 1 });
+      this._previewContainer.addChild(g);
+      const letter = new Text({
+        text: UNIT_LABELS[unitType].charAt(0),
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 20, fill: 0xdddddd, fontWeight: "bold" }),
+      });
+      letter.anchor.set(0.5, 0.5);
+      letter.position.set(PANEL_W / 2, PREVIEW_H / 2);
+      this._previewContainer.addChild(letter);
+    }
+  }
+
+  private _showBuildingPreview(buildingType: BuildingType): void {
+    this._clearPreview();
+
+    const g = new Graphics()
+      .roundRect(PANEL_W / 2 - 24, PREVIEW_H / 2 - 24, 48, 48, 6)
+      .fill({ color: 0x334466 })
+      .roundRect(PANEL_W / 2 - 24, PREVIEW_H / 2 - 24, 48, 48, 6)
+      .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1 });
+    this._previewContainer.addChild(g);
+
+    const letter = new Text({
+      text: BUILDING_LABELS[buildingType].charAt(0),
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 22, fill: 0xffd700, fontWeight: "bold" }),
+    });
+    letter.anchor.set(0.5, 0.5);
+    letter.position.set(PANEL_W / 2, PREVIEW_H / 2);
+    this._previewContainer.addChild(letter);
+  }
+
+  private _clearPreview(): void {
+    if (this._previewSprite) {
+      this._previewSprite.stop();
+      this._previewSprite.destroy();
+      this._previewSprite = null;
+    }
+    this._previewContainer.removeChildren();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stats
+  // ---------------------------------------------------------------------------
+
+  private _showUnitStats(unitType: UnitType): void {
+    this._statsContainer.removeChildren();
+    const def = UNIT_DEFINITIONS[unitType];
+
+    const name = new Text({ text: UNIT_LABELS[unitType], style: STYLE_PREVIEW_NAME });
+    name.position.set(PANEL_PAD, 0);
+    this._statsContainer.addChild(name);
+
+    const line1 = new Text({
+      text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
+      style: STYLE_STAT,
+    });
+    line1.position.set(PANEL_PAD, 16);
+    this._statsContainer.addChild(line1);
+
+    const line2 = new Text({
+      text: `RNG:${def.range}  AS:${def.attackSpeed}  COST:${def.cost}g`,
+      style: STYLE_STAT,
+    });
+    line2.position.set(PANEL_PAD, 28);
+    this._statsContainer.addChild(line2);
+
+    let extraLine = `Spawn: ${def.spawnTime}s`;
+    if (def.abilityTypes.length > 0) {
+      extraLine += `  ${def.abilityTypes.join(", ")}`;
+    }
+    const line3 = new Text({ text: extraLine, style: STYLE_SPAWN });
+    line3.position.set(PANEL_PAD, 40);
+    this._statsContainer.addChild(line3);
+  }
+
+  private _showBuildingStats(buildingType: BuildingType): void {
+    this._statsContainer.removeChildren();
+    const def = BUILDING_DEFINITIONS[buildingType];
+
+    const name = new Text({ text: BUILDING_LABELS[buildingType], style: STYLE_PREVIEW_NAME });
+    name.position.set(PANEL_PAD, 0);
+    this._statsContainer.addChild(name);
+
+    const line1 = new Text({
+      text: `HP:${def.hp}  COST:${def.cost}g  INCOME:${def.goldIncome}g/s`,
+      style: STYLE_STAT,
+    });
+    line1.position.set(PANEL_PAD, 16);
+    this._statsContainer.addChild(line1);
+
+    const line2 = new Text({
+      text: `Size: ${def.footprint.w}×${def.footprint.h}`,
+      style: STYLE_STAT,
+    });
+    line2.position.set(PANEL_PAD, 28);
+    this._statsContainer.addChild(line2);
+  }
+
+  private _showDefaultPreviewAndStats(): void {
+    if (this._defaultBuildingType !== null) {
+      this._showBuildingPreview(this._defaultBuildingType);
+      this._showBuildingStats(this._defaultBuildingType);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Icon button factories
+  // ---------------------------------------------------------------------------
+
+  private _makeUnitIcon(
+    buildingId: string,
+    unitType: UnitType,
+    x: number,
+    y: number,
+  ): Container {
+    const btn = new Container();
+    btn.position.set(x, y);
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const bg = new Graphics()
+      .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 4)
+      .fill({ color: 0x111122 })
+      .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 4)
+      .stroke({ color: 0x334455, width: 1 });
+    btn.addChild(bg);
+
+    // Unit sprite icon
+    if (animationManager.isLoaded) {
+      const frames = animationManager.getFrames(unitType, UnitState.IDLE);
+      if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+        const icon = new AnimatedSprite(frames);
+        icon.anchor.set(0.5, 0.5);
+        icon.width = ICON_SIZE - 8;
+        icon.height = ICON_SIZE - 8;
+        icon.position.set(ICON_SIZE / 2, ICON_SIZE / 2 - 4);
+        icon.animationSpeed = 0.1;
+        icon.loop = true;
+        icon.play();
+        btn.addChild(icon);
+      }
+    }
+
+    // Cost text at bottom
+    const def = UNIT_DEFINITIONS[unitType];
+    const costText = new Text({ text: `${def.cost}g`, style: STYLE_ICON_COST });
+    costText.anchor.set(0.5, 1);
+    costText.position.set(ICON_SIZE / 2, ICON_SIZE - 1);
+    btn.addChild(costText);
+
+    // Hover: show preview + stats
+    btn.on("pointerover", () => {
+      bg.tint = 0x334466;
+      this._showUnitPreview(unitType);
+      this._showUnitStats(unitType);
+    });
+    btn.on("pointerout", () => {
+      bg.tint = 0xffffff;
+      this._showDefaultPreviewAndStats();
+    });
+    btn.on("pointerdown", (e) => {
+      e.stopPropagation();
+      this._buyUnit(buildingId, unitType);
+    });
+
+    this._unitIcons.push({ type: unitType, costText, bg });
+    return btn;
+  }
+
+  private _makeBuildingIcon(
+    bpType: BuildingType,
+    x: number,
+    y: number,
+  ): Container {
+    const btn = new Container();
+    btn.position.set(x, y);
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const def = BUILDING_DEFINITIONS[bpType];
+
+    // Check build constraints
+    const maxCount = def.maxCount;
+    const prereq = def.prerequisite;
+    const ownedCount = maxCount !== undefined ? this._countOwnedType(bpType) : 0;
+    const prereqCount = prereq ? this._countOwnedType(prereq.type) : 0;
+    const atMax = maxCount !== undefined && ownedCount >= maxCount;
+    const prereqMet = !prereq || prereqCount >= prereq.minCount;
+    const locked = atMax || !prereqMet;
+
+    const bg = new Graphics()
+      .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 4)
+      .fill({ color: 0x111122 })
+      .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 4)
+      .stroke({ color: locked ? 0x443322 : 0x334455, width: 1 });
+    btn.addChild(bg);
+
+    // Building icon: colored rect with first letter
+    const iconG = new Graphics()
+      .roundRect(8, 4, ICON_SIZE - 16, ICON_SIZE - 16, 3)
+      .fill({ color: locked ? 0x222222 : 0x223344 });
+    btn.addChild(iconG);
+
+    const letter = new Text({
+      text: BUILDING_LABELS[bpType].charAt(0),
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 14,
+        fill: locked ? 0x667788 : 0xdddddd,
+        fontWeight: "bold",
+      }),
+    });
+    letter.anchor.set(0.5, 0.5);
+    letter.position.set(ICON_SIZE / 2, ICON_SIZE / 2 - 4);
+    btn.addChild(letter);
+
+    // Cost text
+    const costText = new Text({ text: `${def.cost}g`, style: locked ? STYLE_ICON_COST_UNAFFORDABLE : STYLE_ICON_COST });
+    costText.anchor.set(0.5, 1);
+    costText.position.set(ICON_SIZE / 2, ICON_SIZE - 1);
+    btn.addChild(costText);
+
+    if (locked) btn.alpha = 0.5;
+
+    btn.on("pointerover", () => {
+      bg.tint = 0x334466;
+      this._showBuildingPreview(bpType);
+      this._showBuildingStats(bpType);
+    });
+    btn.on("pointerout", () => {
+      bg.tint = 0xffffff;
+      this._showDefaultPreviewAndStats();
+    });
+    btn.on("pointerdown", (e) => {
+      e.stopPropagation();
+      if (!locked) this._buyBlueprint(bpType);
+    });
+
+    this._bpIcons.push({ type: bpType, costText, bg, locked });
+    return btn;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scroll
+  // ---------------------------------------------------------------------------
+
   private _applyScroll(): void {
-    const scrollableH = this._viewH - HEADER_H;
+    const scrollableH = this._scrollableH();
     const maxScroll = Math.max(0, this._contentH - scrollableH);
     this._scrollY = Math.max(0, Math.min(maxScroll, this._scrollY));
 
-    this._scrollContainer.position.y = HEADER_H - this._scrollY;
+    this._scrollContainer.position.y = FIXED_TOP_H - this._scrollY;
 
     const trackH = scrollableH - SCROLL_MARGIN * 2;
     const thumbH = this._scrollbarThumb.height;
@@ -403,7 +729,7 @@ export class ShopPanel {
       ? (this._scrollY / maxScroll) * maxThumbY
       : 0;
 
-    this._scrollbarThumb.position.y = HEADER_H + SCROLL_MARGIN + thumbY;
+    this._scrollbarThumb.position.y = FIXED_TOP_H + SCROLL_MARGIN + thumbY;
   }
 
   private _onThumbDragStart(e: any): void {
@@ -412,7 +738,6 @@ export class ShopPanel {
     this._dragStartY = e.global.y;
     this._thumbStartY = this._scrollY;
 
-    // Use stage for global move/up
     const stage = this._vm.app.stage;
     stage.on("pointermove", (e) => this._onThumbDragMove(e));
     stage.on("pointerup", () => this._onThumbDragEnd());
@@ -423,7 +748,7 @@ export class ShopPanel {
     if (!this._isDragging) return;
 
     const deltaY = e.global.y - this._dragStartY;
-    const scrollableH = this._viewH - HEADER_H;
+    const scrollableH = this._scrollableH();
     const trackH = scrollableH - SCROLL_MARGIN * 2;
     const thumbH = this._scrollbarThumb.height;
     const maxThumbY = trackH - thumbH;
@@ -445,170 +770,9 @@ export class ShopPanel {
   }
 
   // ---------------------------------------------------------------------------
-  // Row factories
-  // ---------------------------------------------------------------------------
-
-  private _makeUnitRow(
-    buildingId: string,
-    unitType: UnitType,
-    y: number,
-  ): Container {
-    const row = new Container();
-    row.position.y = y;
-
-    // Row background (highlight on hover)
-    const rowBg = new Graphics()
-      .rect(PANEL_PAD - 4, 0, PANEL_W - (PANEL_PAD - 4) * 2, ROW_H)
-      .fill({ color: 0x111122, alpha: 0 });
-    rowBg.eventMode = "static";
-    rowBg.on("pointerover", () => (rowBg.tint = 0x334466));
-    rowBg.on("pointerout", () => (rowBg.tint = 0xffffff));
-    row.addChild(rowBg);
-
-    const def = UNIT_DEFINITIONS[unitType];
-
-    // Unit name
-    const name = new Text({ text: UNIT_LABELS[unitType], style: STYLE_ITEM });
-    name.position.set(PANEL_PAD, 4);
-    row.addChild(name);
-
-    // Spawn time
-    const spawnInfo = new Text({
-      text: `${def.spawnTime}s`,
-      style: STYLE_SPAWN,
-    });
-    spawnInfo.position.set(PANEL_PAD, 22);
-    row.addChild(spawnInfo);
-
-    // Cost label (updated in _updateAffordability)
-    const costText = new Text({ text: `${def.cost}g`, style: STYLE_COST });
-    costText.label = `cost_${unitType}`;
-    costText.position.set(PANEL_W - 90, 12);
-    row.addChild(costText);
-
-    // Buy button
-    const btn = this._makeButton("BUY", PANEL_W - 52, 6, () => {
-      this._buyUnit(buildingId, unitType);
-    });
-    row.addChild(btn);
-
-    return row;
-  }
-
-  private _makeBlueprintRow(bpType: BuildingType, y: number): Container {
-    const row = new Container();
-    row.position.y = y;
-
-    // Row background
-    const rowBg = new Graphics()
-      .rect(PANEL_PAD - 4, 0, PANEL_W - (PANEL_PAD - 4) * 2, ROW_H)
-      .fill({ color: 0x111122, alpha: 0 });
-    rowBg.eventMode = "static";
-    rowBg.on("pointerover", () => (rowBg.tint = 0x334466));
-    rowBg.on("pointerout", () => (rowBg.tint = 0xffffff));
-    row.addChild(rowBg);
-
-    const def = BUILDING_DEFINITIONS[bpType];
-
-    // Check build constraints for this player
-    const maxCount = def.maxCount;
-    const prereq = def.prerequisite;
-    const ownedCount = maxCount !== undefined
-      ? this._countOwnedType(bpType)
-      : 0;
-    const prereqCount = prereq ? this._countOwnedType(prereq.type) : 0;
-    const atMax = maxCount !== undefined && ownedCount >= maxCount;
-    const prereqMet = !prereq || prereqCount >= prereq.minCount;
-    const locked = atMax || !prereqMet;
-
-    // Building name (dim when locked)
-    const name = new Text({
-      text: BUILDING_LABELS[bpType],
-      style: locked ? new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0x667788 }) : STYLE_ITEM,
-    });
-    name.position.set(PANEL_PAD, 4);
-    row.addChild(name);
-
-    // Sub-line: footprint + count/lock info
-    let subText = `${def.footprint.w}×${def.footprint.h}`;
-    if (maxCount !== undefined) subText += `  ${ownedCount}/${maxCount}`;
-    if (!prereqMet) subText += `  needs ${prereq!.minCount} ${BUILDING_LABELS[prereq!.type]}`;
-    const footprintInfo = new Text({ text: subText, style: locked ? STYLE_LOCKED : STYLE_SPAWN });
-    footprintInfo.position.set(PANEL_PAD, 22);
-    row.addChild(footprintInfo);
-
-    // Cost label
-    const costText = new Text({ text: `${def.cost}g`, style: STYLE_COST });
-    costText.label = `cost_bp_${bpType}`;
-    costText.position.set(PANEL_W - 90, 12);
-    row.addChild(costText);
-
-    // Buy button — disabled when locked
-    const btn = this._makeButton(
-      atMax ? "MAX" : !prereqMet ? "LOCK" : "BUY",
-      PANEL_W - 52,
-      6,
-      locked ? () => { } : () => { this._buyBlueprint(bpType); },
-    );
-    if (locked) btn.alpha = 0.4;
-    row.addChild(btn);
-
-    return row;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Button helper
-  // ---------------------------------------------------------------------------
-
-  private _makeButton(
-    label: string,
-    x: number,
-    y: number,
-    onClick: () => void,
-  ): Container {
-    const btn = new Container();
-    btn.position.set(x, y);
-    btn.eventMode = "static";
-    btn.cursor = "pointer";
-
-    const W = 42;
-    const H = ROW_H - 12;
-
-    const bg = new Graphics()
-      .roundRect(0, 0, W, H, 4)
-      .fill({ color: 0x225533 })
-      .roundRect(0, 0, W, H, 4)
-      .stroke({ color: 0x44aa66, width: 1 });
-    btn.addChild(bg);
-
-    const txt = new Text({
-      text: label,
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 11,
-        fill: 0xaaffbb,
-        fontWeight: "bold",
-      }),
-    });
-    txt.anchor.set(0.5, 0.5);
-    txt.position.set(W / 2, H / 2);
-    btn.addChild(txt);
-
-    btn.on("pointerover", () => (bg.tint = 0xbbffcc));
-    btn.on("pointerout", () => (bg.tint = 0xffffff));
-    btn.on("pointerdown", (e) => {
-      e.stopPropagation();
-      onClick();
-    });
-
-    return btn;
-  }
-
-  // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
 
-  /** Count active buildings of a given type owned by the local player. */
   private _countOwnedType(type: BuildingType): number {
     const player = this._state.players.get(this._localPlayerId);
     if (!player) return 0;
@@ -647,7 +811,6 @@ export class ShopPanel {
     const cost = BUILDING_DEFINITIONS[bpType].cost;
     if (player.gold < cost) return;
 
-    // Deduct gold then hand off to BuildingPlacer for placement
     player.gold -= cost;
     EventBus.emit("goldChanged", {
       playerId: this._localPlayerId,
@@ -665,31 +828,16 @@ export class ShopPanel {
   private _updateAffordability(): void {
     const player = this._state.players.get(this._localPlayerId);
     const gold = player?.gold ?? 0;
-    const building = this._openBuildingId
-      ? this._state.buildings.get(this._openBuildingId)
-      : null;
-    if (!building) return;
 
-    for (const unitType of building.shopInventory) {
-      const cost = UNIT_DEFINITIONS[unitType].cost;
-      const costNode = this.container.getChildByName(
-        `cost_${unitType}`,
-        true,
-      ) as Text | null;
-      if (costNode) {
-        costNode.style = cost <= gold ? STYLE_COST : STYLE_COST_UNAFFORDABLE;
-      }
+    for (const entry of this._unitIcons) {
+      const cost = UNIT_DEFINITIONS[entry.type].cost;
+      entry.costText.style = cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
     }
 
-    for (const bpType of building.blueprints) {
-      const cost = BUILDING_DEFINITIONS[bpType].cost;
-      const costNode = this.container.getChildByName(
-        `cost_bp_${bpType}`,
-        true,
-      ) as Text | null;
-      if (costNode) {
-        costNode.style = cost <= gold ? STYLE_COST : STYLE_COST_UNAFFORDABLE;
-      }
+    for (const entry of this._bpIcons) {
+      if (entry.locked) continue;
+      const cost = BUILDING_DEFINITIONS[entry.type].cost;
+      entry.costText.style = cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
     }
   }
 }
