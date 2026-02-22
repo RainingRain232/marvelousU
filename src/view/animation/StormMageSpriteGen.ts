@@ -111,6 +111,17 @@ export const PALETTE_DISTORTION_MAGE: MagePalette = {
   magicHi: 0xffddee,
 };
 
+export const PALETTE_CLERIC: MagePalette = {
+  robe:    0x228844,
+  robeDk:  0x186633,
+  robeHi:  0x44aa66,
+  hat:     0x1e6a38,
+  hatDk:   0x144e28,
+  hatBand: 0xaaffcc,
+  magic:   0x88ffaa,
+  magicHi: 0xeeffee,
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
