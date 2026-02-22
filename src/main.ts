@@ -383,14 +383,34 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
     // Ticker keeps running so UI stays responsive; only the sim loop is frozen
   };
 
+  // "PAUSED IN SHOP" label — no dark overlay, just a text indicator
+  const shopPauseLabel = new Text({
+    text: "PAUSED IN SHOP",
+    style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: 20,
+      fill: 0xffffff,
+      fontWeight: "bold",
+      letterSpacing: 3,
+      dropShadow: { color: 0x000000, blur: 4, distance: 2, alpha: 0.8 },
+    }),
+  });
+  shopPauseLabel.anchor.set(0.5, 0);
+  shopPauseLabel.position.set(viewManager.screenWidth / 2, 8);
+  shopPauseLabel.eventMode = "none";
+  shopPauseLabel.visible = false;
+  viewManager.addToLayer("ui", shopPauseLabel);
+
   shopPanel.onOpen = () => {
     if (!simLoop.isPaused) {
       simLoop.pause();
+      shopPauseLabel.visible = true;
     }
   };
   shopPanel.onClose = () => {
     if (simLoop.isPaused) {
       simLoop.resume();
+      shopPauseLabel.visible = false;
     }
   };
 
@@ -402,10 +422,10 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
     if (e.code === "Space" && !e.repeat) {
       e.preventDefault();
       togglePause();
-    } else if (e.code === "Digit9" && !e.repeat) {
+    } else if (e.code === "Digit0" && !e.repeat) {
       simLoop.speedUp();
       hud.showSpeedLabel(simLoop.timeScale);
-    } else if (e.code === "Digit0" && !e.repeat) {
+    } else if (e.code === "Digit9" && !e.repeat) {
       simLoop.speedDown();
       hud.showSpeedLabel(simLoop.timeScale);
     }

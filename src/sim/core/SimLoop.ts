@@ -94,14 +94,14 @@ export class SimLoop {
     return this._timeScale;
   }
 
-  /** Increase game speed by 10%. */
+  /** Increase game speed by 20%. */
   speedUp(): void {
-    this._timeScale = Math.round((this._timeScale + 0.1) * 100) / 100;
+    this._timeScale = Math.round((this._timeScale + 0.2) * 100) / 100;
   }
 
-  /** Decrease game speed by 10% (minimum 0.1). */
+  /** Decrease game speed by 20% (minimum 0.2). */
   speedDown(): void {
-    this._timeScale = Math.max(0.1, Math.round((this._timeScale - 0.1) * 100) / 100);
+    this._timeScale = Math.max(0.2, Math.round((this._timeScale - 0.2) * 100) / 100);
   }
 
   /** Pause the simulation. No-op if already paused or not running. */
