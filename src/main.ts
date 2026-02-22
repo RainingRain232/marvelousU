@@ -17,6 +17,7 @@ import { webFX } from "@view/fx/WebFX";
 import { turretArrowFX } from "@view/fx/TurretArrowFX";
 import { distortionFX } from "@view/fx/DistortionFX";
 import { healFX } from "@view/fx/HealFX";
+import { runeCircleFX } from "@view/fx/RuneCircleFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { environmentLayer } from "@view/environment/EnvironmentLayer";
 import { startScreen } from "@view/ui/StartScreen";
@@ -331,6 +332,10 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   // Heal FX
   healFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => healFX.update(dt));
+
+  // Rune circle FX (generic cast circle for all abilities)
+  runeCircleFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => runeCircleFX.update(dt));
 
   // Victory screen (overlays game during RESOLVE)
   victoryScreen.init(viewManager, state);

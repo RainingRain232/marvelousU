@@ -21,6 +21,7 @@ export interface SimEvents {
   buildingCaptured: { buildingId: string; newOwner: PlayerId | null };
 
   // Abilities & projectiles
+  castStarted: { casterId: string; abilityId: string; abilityType: string; position: Vec2; castTime: number };
   abilityUsed: { casterId: string; abilityId: string; targets: Vec2[] };
   projectileCreated: { projectileId: string; origin: Vec2; target: Vec2 };
   projectileHit: { projectileId: string; targetId: string; teleportedIds?: string[] };

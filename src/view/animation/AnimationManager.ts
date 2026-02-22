@@ -27,6 +27,7 @@ import {
 } from "@view/animation/AnimationDefs";
 import { generateSwordsmanFrames } from "@view/animation/SwordsmanSpriteGen";
 import { generateArcherFrames } from "@view/animation/ArcherSpriteGen";
+import { generateStormMageFrames } from "@view/animation/StormMageSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -148,6 +149,8 @@ export class AnimationManager {
         this._generateSwordsmanSprites(key, renderer);
       } else if (key === "archer") {
         this._generateArcherSprites(key, renderer);
+      } else if (key === "storm_mage") {
+        this._generateStormMageSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -247,6 +250,20 @@ export class AnimationManager {
    */
   private _generateArcherSprites(key: string, renderer: Renderer): void {
     const stateTextures = generateArcherFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  /**
+   * Generate detailed procedural storm mage sprites using the dedicated
+   * StormMageSpriteGen module. Populates the cache for all states.
+   */
+  private _generateStormMageSprites(key: string, renderer: Renderer): void {
+    const stateTextures = generateStormMageFrames(renderer);
     for (const [state, textures] of stateTextures) {
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {

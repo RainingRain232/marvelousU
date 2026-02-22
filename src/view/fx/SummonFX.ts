@@ -11,13 +11,15 @@ import gsap from "gsap";
 import type { ViewManager } from "@view/ViewManager";
 import { EventBus } from "@sim/core/EventBus";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
-import { SUMMON_LIFESPAN } from "@sim/abilities/Summon";
 import { ParticlePool } from "@view/fx/ParticlePool";
 
 const TS = BalanceConfig.TILE_SIZE;
 
 const SUMMON_COUNT = 3;
 const SPREAD_PX = TS; // 1 tile radius
+
+/** Visual lifespan of the summon magic circle in seconds. */
+const CIRCLE_LIFESPAN = 2;
 
 // Particle counts
 const RUNE_PARTICLES = 40; // shower at cast time around the circle
@@ -89,78 +91,276 @@ export class SummonFX {
   // ---------------------------------------------------------------------------
 
   private _drawMagicCircle(cx: number, cy: number): void {
-    // Outer ring
-    const outer = new Graphics()
-      .circle(0, 0, SPREAD_PX + 10)
-      .stroke({ color: 0x9966ff, width: 3 });
-    outer.position.set(cx, cy);
-    outer.alpha = 0;
-    this._container.addChild(outer);
+    const outerR = SPREAD_PX + 14;
+    const innerR = SPREAD_PX - 8;
+    const midR = (outerR + innerR) / 2; // rune band between rings
+    const fadeDelay = CIRCLE_LIFESPAN - 0.5;
 
-    // Inner ring (counter-rotating)
-    const inner = new Graphics()
-      .circle(0, 0, SPREAD_PX - 12)
-      .stroke({ color: 0xcc99ff, width: 1.5 });
-    inner.position.set(cx, cy);
-    inner.alpha = 0;
-    this._container.addChild(inner);
+    const group = new Container();
+    group.position.set(cx, cy);
+    group.alpha = 0;
+    this._container.addChild(group);
 
-    // Fade in
-    gsap.to([outer, inner], {
-      alpha: 0.85,
-      duration: 0.35,
-      ease: "power2.out",
-    });
+    // --- Ground glow ---
+    const glow = new Graphics()
+      .circle(0, 0, outerR + 10)
+      .fill({ color: 0x9966ff, alpha: 0.2 });
+    group.addChild(glow);
 
-    // Outer rotates clockwise, inner counter-clockwise
-    gsap.to(outer, {
-      rotation: Math.PI * 2,
-      duration: 3.5,
-      ease: "none",
-      repeat: Math.ceil(SUMMON_LIFESPAN / 3.5),
-    });
-    gsap.to(inner, {
-      rotation: -Math.PI * 2,
-      duration: 2.5,
-      ease: "none",
-      repeat: Math.ceil(SUMMON_LIFESPAN / 2.5),
-    });
+    // --- Outer ring (double stroke for thickness) ---
+    const outerRing = new Graphics()
+      .circle(0, 0, outerR)
+      .stroke({ color: 0x9966ff, width: 3, alpha: 0.95 })
+      .circle(0, 0, outerR + 4)
+      .stroke({ color: 0xddaaff, width: 1, alpha: 0.4 });
+    group.addChild(outerRing);
 
-    // Fade out near end of lifespan
-    const fadeDelay = SUMMON_LIFESPAN - 0.6;
-    gsap.to([outer, inner], {
-      alpha: 0,
-      duration: 0.6,
-      delay: fadeDelay,
-      ease: "power2.in",
-      onComplete: () => {
-        if (outer.parent) this._container.removeChild(outer);
-        if (inner.parent) this._container.removeChild(inner);
-      },
-    });
+    // --- Inner ring ---
+    const innerRing = new Graphics()
+      .circle(0, 0, innerR)
+      .stroke({ color: 0xcc99ff, width: 2, alpha: 0.85 });
+    group.addChild(innerRing);
 
-    // Four rune marks on outer ring at cardinal positions
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2;
-      const mark = new Graphics().rect(-4, -4, 8, 8).fill({ color: 0xcc99ff });
-      mark.rotation = Math.PI / 4;
-      mark.position.set(
-        cx + Math.cos(a) * (SPREAD_PX + 10),
-        cy + Math.sin(a) * (SPREAD_PX + 10),
-      );
-      mark.alpha = 0;
-      this._container.addChild(mark);
+    // --- Spokes connecting inner to outer ---
+    const spokeCount = 8;
+    const spokes = new Graphics();
+    for (let i = 0; i < spokeCount; i++) {
+      const a = (i / spokeCount) * Math.PI * 2;
+      const cos = Math.cos(a);
+      const sin = Math.sin(a);
+      spokes.setStrokeStyle({ width: 0.8, color: 0xcc99ff, alpha: 0.35 });
+      spokes.moveTo(cos * innerR, sin * innerR);
+      spokes.lineTo(cos * outerR, sin * outerR);
+      spokes.stroke();
+    }
+    group.addChild(spokes);
 
-      gsap.to(mark, { alpha: 1, duration: 0.25, delay: 0.1 + i * 0.05 });
-      gsap.to(mark, {
+    // --- Rune glyphs in the band between inner and outer rings ---
+    const runeCount = 6;
+    const runeContainer = new Container();
+    group.addChild(runeContainer);
+
+    for (let i = 0; i < runeCount; i++) {
+      const a = (i / runeCount) * Math.PI * 2;
+      const glyph = new Graphics();
+      glyph.position.set(Math.cos(a) * midR, Math.sin(a) * midR);
+      glyph.rotation = a + Math.PI / 2;
+      glyph.alpha = 0;
+      this._drawSummonRune(glyph, i);
+      runeContainer.addChild(glyph);
+
+      // Staggered fade in
+      gsap.to(glyph, {
+        alpha: 1,
+        duration: 0.3,
+        delay: 0.05 + i * 0.06,
+        ease: "power2.out",
+      });
+      // Pulse / flicker
+      gsap.to(glyph, {
+        alpha: 0.4,
+        duration: 0.2 + Math.random() * 0.15,
+        delay: 0.4,
+        ease: "power1.inOut",
+        yoyo: true,
+        repeat: Math.max(2, Math.floor(CIRCLE_LIFESPAN / 0.3)),
+      });
+      // Fade out
+      gsap.to(glyph, {
         alpha: 0,
         duration: 0.4,
         delay: fadeDelay,
-        onComplete: () => {
-          if (mark.parent) this._container.removeChild(mark);
-        },
       });
     }
+
+    // --- Diamond markers on outer ring ---
+    const markerCount = 12;
+    for (let i = 0; i < markerCount; i++) {
+      const a = (i / markerCount) * Math.PI * 2;
+      const marker = new Graphics()
+        .rect(-2, -2, 4, 4)
+        .fill({ color: 0xddaaff, alpha: 0.7 });
+      marker.rotation = Math.PI / 4;
+      marker.position.set(Math.cos(a) * outerR, Math.sin(a) * outerR);
+      outerRing.addChild(marker);
+    }
+
+    // --- Center star glyph ---
+    const center = new Graphics();
+    center.setStrokeStyle({ width: 1.5, color: 0xeeddff, alpha: 0.8 });
+    const starR = innerR * 0.5;
+    for (let i = 0; i < 5; i++) {
+      const a1 = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const a2 = ((i + 2) / 5) * Math.PI * 2 - Math.PI / 2;
+      center.moveTo(Math.cos(a1) * starR, Math.sin(a1) * starR);
+      center.lineTo(Math.cos(a2) * starR, Math.sin(a2) * starR);
+      center.stroke();
+    }
+    center.alpha = 0;
+    group.addChild(center);
+
+    // --- Bright flash at spawn moment ---
+    const flash = new Graphics()
+      .circle(0, 0, outerR + 8)
+      .fill({ color: 0xeeddff, alpha: 0.6 });
+    flash.alpha = 0;
+    group.addChild(flash);
+
+    gsap.to(flash, {
+      alpha: 1,
+      duration: 0.1,
+      ease: "power2.out",
+      onComplete: () => {
+        gsap.to(flash, {
+          alpha: 0,
+          duration: 0.3,
+          ease: "power2.in",
+        });
+      },
+    });
+
+    // --- Animations ---
+
+    // Group fade in
+    gsap.to(group, { alpha: 1, duration: 0.25, ease: "power2.out" });
+
+    // Glow pulse
+    gsap.to(glow, {
+      alpha: 0.5,
+      duration: 0.4,
+      delay: 0.2,
+      ease: "power1.inOut",
+      yoyo: true,
+      repeat: Math.max(1, Math.floor(CIRCLE_LIFESPAN / 0.4)),
+    });
+
+    // Center star fade in + rotate
+    gsap.to(center, { alpha: 0.9, duration: 0.3, delay: 0.15, ease: "power2.out" });
+    gsap.to(center, { rotation: -Math.PI * 0.6, duration: CIRCLE_LIFESPAN, ease: "none" });
+
+    // Outer ring rotates clockwise
+    gsap.to(outerRing, { rotation: Math.PI * 0.8, duration: CIRCLE_LIFESPAN, ease: "none" });
+
+    // Inner ring counter-rotates
+    gsap.to(innerRing, { rotation: -Math.PI * 1.0, duration: CIRCLE_LIFESPAN, ease: "none" });
+
+    // Spokes rotate with outer
+    gsap.to(spokes, { rotation: Math.PI * 0.8, duration: CIRCLE_LIFESPAN, ease: "none" });
+
+    // Rune container slow rotation
+    gsap.to(runeContainer, { rotation: Math.PI * 0.4, duration: CIRCLE_LIFESPAN, ease: "none" });
+
+    // Scale pop on spawn
+    group.scale.set(0.7);
+    gsap.to(group.scale, { x: 1.05, y: 1.05, duration: 0.3, ease: "back.out(2)" });
+    gsap.to(group.scale, {
+      x: 1.0, y: 1.0, duration: 0.2, delay: 0.3, ease: "power1.out",
+    });
+
+    // Fade out
+    gsap.to(group, {
+      alpha: 0,
+      duration: 0.5,
+      delay: fadeDelay,
+      ease: "power2.in",
+      onComplete: () => {
+        if (group.parent) this._container.removeChild(group);
+        group.destroy({ children: true });
+      },
+    });
+
+    // Scale down during fade
+    gsap.to(group.scale, {
+      x: 0.85, y: 0.85, duration: 0.5, delay: fadeDelay, ease: "power2.in",
+    });
+
+    // --- Continuous particles floating up from circle and runes ---
+    this._emitCircleParticles(cx, cy, outerR, midR, runeCount);
+  }
+
+  /** Draw one of 6 unique summon rune glyphs. */
+  private _drawSummonRune(g: Graphics, index: number): void {
+    const s = 8;
+    g.setStrokeStyle({ width: 1.2, color: 0xddaaff });
+    switch (index % 6) {
+      case 0: // vertical with diamond
+        g.moveTo(0, -s).lineTo(0, s).stroke();
+        g.moveTo(0, -s * 0.3).lineTo(s * 0.3, 0).lineTo(0, s * 0.3).lineTo(-s * 0.3, 0).closePath().stroke();
+        break;
+      case 1: // zigzag
+        g.moveTo(-s * 0.4, -s).lineTo(s * 0.4, -s * 0.3).lineTo(-s * 0.4, s * 0.3).lineTo(s * 0.4, s).stroke();
+        break;
+      case 2: // triangle
+        g.moveTo(0, -s * 0.6).lineTo(s * 0.5, s * 0.4).lineTo(-s * 0.5, s * 0.4).closePath().stroke();
+        break;
+      case 3: // Y fork
+        g.moveTo(0, s).lineTo(0, 0).stroke();
+        g.moveTo(0, 0).lineTo(-s * 0.4, -s * 0.6).stroke();
+        g.moveTo(0, 0).lineTo(s * 0.4, -s * 0.6).stroke();
+        break;
+      case 4: // hourglass
+        g.moveTo(-s * 0.3, -s * 0.5).lineTo(s * 0.3, -s * 0.5).lineTo(-s * 0.3, s * 0.5).lineTo(s * 0.3, s * 0.5).closePath().stroke();
+        break;
+      case 5: // cross with dot
+        g.moveTo(-s * 0.5, 0).lineTo(s * 0.5, 0).stroke();
+        g.moveTo(0, -s * 0.5).lineTo(0, s * 0.5).stroke();
+        g.circle(0, 0, s * 0.2).stroke();
+        break;
+    }
+  }
+
+  /** Emit particles rising from the circle edge and rune positions over the circle's lifetime. */
+  private _emitCircleParticles(
+    cx: number, cy: number, outerR: number, midR: number, runeCount: number,
+  ): void {
+    const interval = 60; // ms between bursts
+    const totalBursts = Math.floor((CIRCLE_LIFESPAN * 1000) / interval);
+    let burst = 0;
+
+    const timer = setInterval(() => {
+      burst++;
+      if (burst >= totalBursts) {
+        clearInterval(timer);
+        return;
+      }
+
+      // 2 particles from random spot on outer ring
+      for (let i = 0; i < 2; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const tint = RUNE_TINTS[Math.floor(Math.random() * RUNE_TINTS.length)];
+        this._pool.emit({
+          x: cx + Math.cos(a) * outerR,
+          y: cy + Math.sin(a) * outerR,
+          vx: (Math.random() - 0.5) * 12,
+          vy: -(20 + Math.random() * 30),
+          life: 0.5 + Math.random() * 0.4,
+          scaleStart: 0.4 + Math.random() * 0.3,
+          scaleEnd: 0.05,
+          alphaStart: 0.8,
+          alphaEnd: 0,
+          tint,
+          gravity: 10,
+        });
+      }
+
+      // 1 particle from a random rune position
+      const ri = Math.floor(Math.random() * runeCount);
+      const ra = (ri / runeCount) * Math.PI * 2;
+      const tint = RUNE_TINTS[Math.floor(Math.random() * RUNE_TINTS.length)];
+      this._pool.emit({
+        x: cx + Math.cos(ra) * midR,
+        y: cy + Math.sin(ra) * midR,
+        vx: (Math.random() - 0.5) * 15,
+        vy: -(25 + Math.random() * 35),
+        life: 0.6 + Math.random() * 0.3,
+        scaleStart: 0.5 + Math.random() * 0.4,
+        scaleEnd: 0.05,
+        alphaStart: 0.9,
+        alphaEnd: 0,
+        tint,
+        gravity: 15,
+      });
+    }, interval);
   }
 
   // ---------------------------------------------------------------------------

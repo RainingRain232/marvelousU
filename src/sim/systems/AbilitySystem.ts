@@ -144,6 +144,14 @@ function _tryInitiateCast(state: GameState, unit: Unit): void {
       to: UnitState.CAST,
     });
 
+    EventBus.emit("castStarted", {
+      casterId: unit.id,
+      abilityId: ability.id,
+      abilityType: ability.type,
+      position: { ...unit.position },
+      castTime: ability.castTime,
+    });
+
     return; // only initiate one cast per frame
   }
 }

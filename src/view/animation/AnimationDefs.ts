@@ -118,7 +118,7 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.CROSSBOWMAN]: buildDef("archer", { attackFps: 6, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7), dieFrames: range(ROW_DIE, ROW_DIE + 7) }),
   [UnitType.KNIGHT]: buildDef("knight", { moveFps: 8, attackFps: 8 }),
   [UnitType.FIRE_MAGE]: buildDef("mage", { idleFps: 6, castFps: 8 }),
-  [UnitType.STORM_MAGE]: buildDef("mage", { idleFps: 6, castFps: 8 }),
+  [UnitType.STORM_MAGE]: buildDef("storm_mage", { idleFps: 6, moveFps: 8, attackFps: 10, castFps: 8, dieFps: 8 }),
   [UnitType.PIKEMAN]: buildDef("pikeman", { attackFps: 10 }),
   [UnitType.SUMMONED]: buildDef("summoned", {
     idleFps: 8,
