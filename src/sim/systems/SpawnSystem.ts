@@ -1,6 +1,7 @@
 // Queue processing, group spawning thresholds
 import type { GameState } from "@sim/state/GameState";
 import type { UnitType } from "@/types";
+import { BuildingType } from "@/types";
 import type { Building } from "@sim/entities/Building";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { createUnit } from "@sim/entities/Unit";
@@ -83,8 +84,17 @@ function _spawnUnits(
   const spawnPos = { ...building.position };
   const spawnedIds: string[] = [];
 
+  const isCastle = building.type === BuildingType.CASTLE;
+
   for (const unitType of unitTypes) {
     const unit = createUnit({ type: unitType, owner, position: spawnPos });
+
+    // Castle-spawned units become homeguard — they patrol near home
+    if (isCastle) {
+      unit.homeguard = true;
+      unit.homeguardOrigin = { ...building.position };
+    }
+
     state.units.set(unit.id, unit);
     spawnedIds.push(unit.id);
     EventBus.emit("unitSpawned", {

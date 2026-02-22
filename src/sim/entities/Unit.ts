@@ -37,6 +37,10 @@ export interface Unit {
   huntTargets: UnitType[]; // If non-empty, prefer nearest enemy of these types
   diplomatOnly: boolean; // If true, ignores all combat; seeks only neutral buildings to capture
 
+  // Homeguard — castle-spawned units patrol near home instead of marching to enemy base
+  homeguard: boolean;
+  homeguardOrigin: Vec2 | null; // Castle position to patrol around
+
   // Status effects
   /** Speed multiplier applied while slowTimer > 0. 1 = normal, 0.4 = 40% speed. */
   slowFactor: number;
@@ -134,6 +138,8 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     siegeOnly: def.siegeOnly ?? false,
     huntTargets: def.huntTargets ?? [],
     diplomatOnly: def.diplomatOnly ?? false,
+    homeguard: false,
+    homeguardOrigin: null,
     slowFactor: 1,
     slowTimer: 0,
     targetId: null,

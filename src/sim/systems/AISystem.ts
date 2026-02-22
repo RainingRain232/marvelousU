@@ -37,6 +37,10 @@ const BUILDING_AGGRO_RANGE_SQ = BUILDING_AGGRO_RANGE * BUILDING_AGGRO_RANGE;
 /** Tiles — used to validate unit targets in aggro range. */
 const AGGRO_RANGE_SQ = BalanceConfig.AGGRO_RANGE * BalanceConfig.AGGRO_RANGE;
 
+/** Tiles — how far homeguard units patrol from their origin. */
+const HOMEGUARD_PATROL_RANGE = 8;
+const HOMEGUARD_PATROL_RANGE_SQ = HOMEGUARD_PATROL_RANGE * HOMEGUARD_PATROL_RANGE;
+
 // ---------------------------------------------------------------------------
 // Main system
 // ---------------------------------------------------------------------------
@@ -83,7 +87,15 @@ function _handleIdle(state: GameState, unit: Unit): void {
   if (unit.targetId) return;
 
   const def = UNIT_DEFINITIONS[unit.type];
-  const goal = def.isHealer ? _healerGoal(state, unit) : _enemyBaseGoal(state, unit);
+  let goal: { x: number; y: number } | null;
+
+  if (def.isHealer) {
+    goal = _healerGoal(state, unit);
+  } else if (unit.homeguard) {
+    goal = _homeguardGoal(state, unit);
+  } else {
+    goal = _enemyBaseGoal(state, unit);
+  }
   if (!goal) return;
 
   startMoving(state, unit, goal);
@@ -157,10 +169,12 @@ function _handleMove(state: GameState, unit: Unit): void {
     return;
   }
 
-  // Otherwise ensure we're still heading toward the enemy base. If path is
+  // Otherwise ensure we're still heading somewhere. If path is
   // already set and leading somewhere, leave it alone — MovementSystem owns it.
   if (!unit.path || unit.pathIndex >= unit.path.length) {
-    const goal = _enemyBaseGoal(state, unit);
+    const goal = unit.homeguard
+      ? _homeguardGoal(state, unit)
+      : _enemyBaseGoal(state, unit);
     if (goal) startMoving(state, unit, goal);
   }
 }
@@ -365,6 +379,47 @@ function _healerGoal(
   return {
     x: ownBase.position.x + ownBase.spawnOffset.x,
     y: ownBase.position.y + ownBase.spawnOffset.y,
+  };
+}
+
+/**
+ * Patrol goal for homeguard units: pick a random friendly building within
+ * HOMEGUARD_PATROL_RANGE of the unit's origin, with a small random offset
+ * for natural-looking movement. Falls back to the origin itself.
+ */
+function _homeguardGoal(
+  state: GameState,
+  unit: Unit,
+): { x: number; y: number } | null {
+  const origin = unit.homeguardOrigin;
+  if (!origin) return null;
+
+  // Collect friendly buildings within patrol range of origin
+  const nearby: Building[] = [];
+  for (const building of state.buildings.values()) {
+    if (building.owner !== unit.owner) continue;
+    if (building.state !== BuildingState.ACTIVE) continue;
+    if (distanceSq(origin, building.position) <= HOMEGUARD_PATROL_RANGE_SQ) {
+      nearby.push(building);
+    }
+  }
+
+  // Random offset for natural patrol (±2 tiles)
+  const offsetX = (Math.random() - 0.5) * 4;
+  const offsetY = (Math.random() - 0.5) * 4;
+
+  if (nearby.length > 0) {
+    const target = nearby[Math.floor(Math.random() * nearby.length)];
+    return {
+      x: target.position.x + offsetX,
+      y: target.position.y + offsetY,
+    };
+  }
+
+  // Fallback: wander around origin
+  return {
+    x: origin.x + offsetX,
+    y: origin.y + offsetY,
   };
 }
 

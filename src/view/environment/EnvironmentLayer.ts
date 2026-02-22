@@ -7,6 +7,7 @@ import { DeerRenderer } from "./DeerRenderer";
 import { RabbitRenderer } from "./RabbitRenderer";
 import { DoveRenderer } from "./DoveRenderer";
 import { FarmerRenderer } from "./FarmerRenderer";
+import { PrincessRenderer } from "./PrincessRenderer";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BuildingType } from "@/types";
 
@@ -17,6 +18,7 @@ export class EnvironmentLayer {
     private _rabbits: RabbitRenderer[] = [];
     private _doves: DoveRenderer[] = [];
     private _farmers: FarmerRenderer[] = [];
+    private _princesses: PrincessRenderer[] = [];
 
     // Spawning timers
     private _doveTimer = 0;
@@ -68,6 +70,22 @@ export class EnvironmentLayer {
             this._container.addChild(rabbit.container);
         }
 
+        // --- Princesses (scale with map size) ---
+        // Standard map (~20x20=400 tiles) → 2 princesses
+        // Quadruple (~40x40=1600 tiles) → 8 princesses
+        const princessCount = Math.max(1, Math.floor(totalTiles / 200));
+        for (let i = 0; i < princessCount; i++) {
+            const princess = new PrincessRenderer(
+                Math.random() * worldW,
+                Math.random() * worldH,
+                bounds,
+                this._rabbits,
+                seed + 500 + i,
+            );
+            this._princesses.push(princess);
+            this._container.addChild(princess.container);
+        }
+
         // Add to background layer, but BEFORE the grid lines if we want them over top,
         // or AFTER if we want them to blend. 
         // GridRenderer adds _tiles, _tints, _lines. 
@@ -86,6 +104,7 @@ export class EnvironmentLayer {
         if (this._trees) this._trees.update(dt);
         for (const d of this._deer) d.update(dt);
         for (const r of this._rabbits) r.update(dt);
+        for (const p of this._princesses) p.update(dt);
 
         this._updateDoves(dt);
         this._updateFarmers(dt);
