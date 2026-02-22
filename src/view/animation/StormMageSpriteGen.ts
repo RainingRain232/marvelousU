@@ -122,6 +122,28 @@ export const PALETTE_CLERIC: MagePalette = {
   magicHi: 0xeeffee,
 };
 
+export const PALETTE_SAINT: MagePalette = {
+  robe:    0xddaa22,
+  robeDk:  0xbb8811,
+  robeHi:  0xeecc55,
+  hat:     0xbb9011,
+  hatDk:   0x997008,
+  hatBand: 0xffeebb,
+  magic:   0xffee88,
+  magicHi: 0xfffff0,
+};
+
+export const PALETTE_MONK: MagePalette = {
+  robe:    0xdddddd,
+  robeDk:  0xaaaaaa,
+  robeHi:  0xf5f5f5,
+  hat:     0xbbbbbb,
+  hatDk:   0x999999,
+  hatBand: 0xcc9966,
+  magic:   0xffffff,
+  magicHi: 0xeeeeff,
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

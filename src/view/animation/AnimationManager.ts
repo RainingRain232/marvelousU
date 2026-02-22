@@ -36,6 +36,8 @@ import {
   PALETTE_COLD_MAGE,
   PALETTE_DISTORTION_MAGE,
   PALETTE_CLERIC,
+  PALETTE_SAINT,
+  PALETTE_MONK,
 } from "@view/animation/StormMageSpriteGen";
 
 // ---------------------------------------------------------------------------
@@ -170,6 +172,10 @@ export class AnimationManager {
         this._generateMageSprites(key, renderer, PALETTE_DISTORTION_MAGE);
       } else if (key === "cleric") {
         this._generateMageSprites(key, renderer, PALETTE_CLERIC);
+      } else if (key === "saint") {
+        this._generateMageSprites(key, renderer, PALETTE_SAINT);
+      } else if (key === "monk") {
+        this._generateMageSprites(key, renderer, PALETTE_MONK);
       } else {
         this._generatePlaceholders(key, renderer);
       }
