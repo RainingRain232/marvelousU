@@ -1,6 +1,6 @@
 // Shop overlay — opens when a player clicks an owned building
 // Redesigned: preview area + stats + icon grid layout
-import { Container, Graphics, Text, TextStyle, AnimatedSprite, Texture } from "pixi.js";
+import { Container, Graphics, Text, TextStyle, AnimatedSprite, Texture, RenderTexture, Sprite, type Renderer } from "pixi.js";
 import type { GameState } from "@sim/state/GameState";
 import type { ViewManager } from "@view/ViewManager";
 import { EventBus } from "@sim/core/EventBus";
@@ -10,6 +10,8 @@ import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { BuildingType, BuildingState, UnitType, UnitState } from "@/types";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { animationManager } from "@view/animation/AnimationManager";
+import { CastleRenderer } from "@view/entities/CastleRenderer";
+import { TowerRenderer } from "@view/entities/TowerRenderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -175,6 +177,9 @@ export class ShopPanel {
   private _descContainer = new Container();
   private _defaultBuildingType: BuildingType | null = null;
 
+  // Cache of rendered building textures (castle, tower) keyed by BuildingType
+  private _buildingTextureCache = new Map<BuildingType, RenderTexture>();
+
   // Icon button refs for affordability
   private _unitIcons: { type: UnitType; costText: Text; bg: Graphics }[] = [];
   private _bpIcons: { type: BuildingType; costText: Text; bg: Graphics; locked: boolean }[] = [];
@@ -227,6 +232,8 @@ export class ShopPanel {
 
   destroy(): void {
     this._clearPreview();
+    for (const rt of this._buildingTextureCache.values()) rt.destroy();
+    this._buildingTextureCache.clear();
     this.container.destroy({ children: true });
   }
 
@@ -484,6 +491,20 @@ export class ShopPanel {
   private _showBuildingPreview(buildingType: BuildingType): void {
     this._clearPreview();
 
+    const tex = this._getBuildingTexture(buildingType);
+    if (tex) {
+      const sprite = new Sprite(tex);
+      // Scale to fit within PREVIEW_H - 8px padding, keep aspect ratio
+      const maxSize = PREVIEW_H - 8;
+      const scale = Math.min(maxSize / tex.width, maxSize / tex.height);
+      sprite.scale.set(scale);
+      sprite.anchor.set(0.5, 0.5);
+      sprite.position.set(PANEL_W / 2, PREVIEW_H / 2);
+      this._previewContainer.addChild(sprite);
+      return;
+    }
+
+    // Fallback: letter placeholder for buildings without a renderer
     const g = new Graphics()
       .roundRect(PANEL_W / 2 - 24, PREVIEW_H / 2 - 24, 48, 48, 6)
       .fill({ color: 0x334466 })
@@ -498,6 +519,37 @@ export class ShopPanel {
     letter.anchor.set(0.5, 0.5);
     letter.position.set(PANEL_W / 2, PREVIEW_H / 2);
     this._previewContainer.addChild(letter);
+  }
+
+  /** Render a building container to a cached RenderTexture for preview use. */
+  private _getBuildingTexture(buildingType: BuildingType): RenderTexture | null {
+    if (this._buildingTextureCache.has(buildingType)) {
+      return this._buildingTextureCache.get(buildingType)!;
+    }
+
+    const renderer = this._vm.app.renderer as Renderer;
+    let buildingContainer: Container | null = null;
+    let texW = 64;
+    let texH = 64;
+
+    if (buildingType === BuildingType.CASTLE) {
+      const cr = new CastleRenderer(null);
+      buildingContainer = cr.container;
+      texW = 256; texH = 256;
+    } else if (buildingType === BuildingType.TOWER) {
+      const tr = new TowerRenderer(null);
+      buildingContainer = tr.container;
+      texW = 64; texH = 64;
+    }
+
+    if (!buildingContainer) return null;
+
+    const rt = RenderTexture.create({ width: texW, height: texH });
+    renderer.render({ container: buildingContainer, target: rt });
+    buildingContainer.destroy({ children: true });
+
+    this._buildingTextureCache.set(buildingType, rt);
+    return rt;
   }
 
   private _clearPreview(): void {
@@ -666,24 +718,36 @@ export class ShopPanel {
       .stroke({ color: locked ? 0x443322 : 0x334455, width: 1 });
     btn.addChild(bg);
 
-    // Building icon: colored rect with first letter
-    const iconG = new Graphics()
-      .roundRect(8, 4, ICON_SIZE - 16, ICON_SIZE - 16, 3)
-      .fill({ color: locked ? 0x222222 : 0x223344 });
-    btn.addChild(iconG);
+    // Building icon: use rendered texture if available, else letter placeholder
+    const tex = this._getBuildingTexture(bpType);
+    if (tex) {
+      const iconSprite = new Sprite(tex);
+      const iconArea = ICON_SIZE - 10;
+      const scale = Math.min(iconArea / tex.width, iconArea / tex.height);
+      iconSprite.scale.set(scale);
+      iconSprite.anchor.set(0.5, 0.5);
+      iconSprite.position.set(ICON_SIZE / 2, ICON_SIZE / 2 - 4);
+      if (locked) iconSprite.alpha = 0.5;
+      btn.addChild(iconSprite);
+    } else {
+      const iconG = new Graphics()
+        .roundRect(8, 4, ICON_SIZE - 16, ICON_SIZE - 16, 3)
+        .fill({ color: locked ? 0x222222 : 0x223344 });
+      btn.addChild(iconG);
 
-    const letter = new Text({
-      text: BUILDING_LABELS[bpType].charAt(0),
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 14,
-        fill: locked ? 0x667788 : 0xdddddd,
-        fontWeight: "bold",
-      }),
-    });
-    letter.anchor.set(0.5, 0.5);
-    letter.position.set(ICON_SIZE / 2, ICON_SIZE / 2 - 4);
-    btn.addChild(letter);
+      const letter = new Text({
+        text: BUILDING_LABELS[bpType].charAt(0),
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 14,
+          fill: locked ? 0x667788 : 0xdddddd,
+          fontWeight: "bold",
+        }),
+      });
+      letter.anchor.set(0.5, 0.5);
+      letter.position.set(ICON_SIZE / 2, ICON_SIZE / 2 - 4);
+      btn.addChild(letter);
+    }
 
     // Cost text
     const costText = new Text({ text: `${def.cost}g`, style: locked ? STYLE_ICON_COST_UNAFFORDABLE : STYLE_ICON_COST });
