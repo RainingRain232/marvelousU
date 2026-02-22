@@ -1,17 +1,10 @@
-// Procedural sprite generator for the Storm Mage (lightning mage) unit type.
+// Procedural sprite generator for mage unit types.
 //
-// Draws a detailed medieval fantasy storm mage at 48×48 pixels per frame
-// using PixiJS Graphics → RenderTexture. Produces textures for every
-// animation state (IDLE 8, MOVE 8, ATTACK 7, CAST 6, DIE 7).
+// Generic: all drawing functions accept a MagePalette so the same animations
+// can be recoloured for each mage variant (storm, fire, summoner, cold, distortion).
 //
-// Visual features:
-//   • Blue wizard robe with hem detail
-//   • Tall pointed blue wizard hat with brim
-//   • Long grey beard
-//   • Wooden crooked staff
-//   • Leather pointy shoes
-//   • Lightning FX on eyes and hands during attack/cast
-//   • Shadow ellipse at feet
+// Draws at 48×48 pixels per frame using PixiJS Graphics → RenderTexture.
+// States: IDLE 8 frames, MOVE 8, ATTACK 7, CAST 6, DIE 7.
 
 import { Graphics, RenderTexture, type Renderer, Texture } from "pixi.js";
 import { UnitState } from "@/types";
@@ -24,13 +17,7 @@ const F = 48;          // frame size (px)
 const CX = F / 2;      // center X
 const GY = F - 4;      // ground Y (feet line)
 
-// Palette
-const COL_ROBE       = 0x2244aa;
-const COL_ROBE_DK    = 0x1a3388;
-const COL_ROBE_HI    = 0x3366cc;
-const COL_HAT        = 0x1e3a8a;
-const COL_HAT_DK     = 0x142866;
-const COL_HAT_BAND   = 0xffd700;
+// Shared non-palette colors
 const COL_SKIN       = 0xd4a574;
 const COL_SKIN_DK    = 0xb8875a;
 const COL_BEARD      = 0xaaaaaa;
@@ -39,10 +26,90 @@ const COL_STAFF_WOOD = 0x8b5a2b;
 const COL_STAFF_DK   = 0x5d3d1d;
 const COL_SHOE       = 0x6b4226;
 const COL_SHOE_DK    = 0x4a2e1a;
-const COL_LIGHTNING   = 0x88ccff;
-const COL_LIGHTNING_HI= 0xeeffff;
 const COL_EYE        = 0x222244;
 const COL_SHADOW     = 0x000000;
+
+// ---------------------------------------------------------------------------
+// MagePalette — colours that vary per mage type
+// ---------------------------------------------------------------------------
+
+export interface MagePalette {
+  /** Main robe color */
+  robe: number;
+  /** Darker robe shade (outlines, shadows) */
+  robeDk: number;
+  /** Lighter robe highlight */
+  robeHi: number;
+  /** Hat main color */
+  hat: number;
+  /** Darker hat shade */
+  hatDk: number;
+  /** Hat band / belt color */
+  hatBand: number;
+  /** Spell FX primary color (hand glow, eye flash, bolt glow) */
+  magic: number;
+  /** Spell FX bright/white highlight */
+  magicHi: number;
+}
+
+// ---------------------------------------------------------------------------
+// Built-in palettes
+// ---------------------------------------------------------------------------
+
+export const PALETTE_STORM_MAGE: MagePalette = {
+  robe:    0x2244aa,
+  robeDk:  0x1a3388,
+  robeHi:  0x3366cc,
+  hat:     0x1e3a8a,
+  hatDk:   0x142866,
+  hatBand: 0xffd700,
+  magic:   0x88ccff,
+  magicHi: 0xeeffff,
+};
+
+export const PALETTE_FIRE_MAGE: MagePalette = {
+  robe:    0xaa2222,
+  robeDk:  0x881a1a,
+  robeHi:  0xcc4444,
+  hat:     0x8a1e1e,
+  hatDk:   0x661414,
+  hatBand: 0xffaa00,
+  magic:   0xff8844,
+  magicHi: 0xffeecc,
+};
+
+export const PALETTE_SUMMONER: MagePalette = {
+  robe:    0x7722aa,
+  robeDk:  0x551888,
+  robeHi:  0x9944cc,
+  hat:     0x5e1a8a,
+  hatDk:   0x421266,
+  hatBand: 0xddaaff,
+  magic:   0xcc99ff,
+  magicHi: 0xeeddff,
+};
+
+export const PALETTE_COLD_MAGE: MagePalette = {
+  robe:    0x2288aa,
+  robeDk:  0x186688,
+  robeHi:  0x44aacc,
+  hat:     0x1e6a8a,
+  hatDk:   0x144e66,
+  hatBand: 0xaaddff,
+  magic:   0x88ddff,
+  magicHi: 0xeeffff,
+};
+
+export const PALETTE_DISTORTION_MAGE: MagePalette = {
+  robe:    0x8822aa,
+  robeDk:  0x661888,
+  robeHi:  0xaa44cc,
+  hat:     0x6e1a8a,
+  hatDk:   0x4e1266,
+  hatBand: 0xff88dd,
+  magic:   0xff66cc,
+  magicHi: 0xffddee,
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -57,29 +124,26 @@ function sin01(frame: number, total: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Drawing sub-routines
+// Drawing sub-routines (palette-aware)
 // ---------------------------------------------------------------------------
 
 function drawShadow(g: Graphics, cx: number, gy: number, w = 12, h = 3.5): void {
   g.ellipse(cx, gy + 1, w, h).fill({ color: COL_SHADOW, alpha: 0.25 });
 }
 
-/** Pointy leather shoes. */
 function drawShoes(
   g: Graphics, cx: number, gy: number,
   stanceL: number, stanceR: number, squash = 0,
 ): void {
   const bh = 4 - squash;
-  // Left shoe — pointy toe
   g.moveTo(cx - 7 + stanceL, gy)
     .lineTo(cx - 7 + stanceL, gy - bh)
     .lineTo(cx - 2 + stanceL, gy - bh)
-    .lineTo(cx + 0 + stanceL, gy - bh - 2) // pointy tip
+    .lineTo(cx + 0 + stanceL, gy - bh - 2)
     .lineTo(cx + 0 + stanceL, gy)
     .closePath()
     .fill({ color: COL_SHOE })
     .stroke({ color: COL_SHOE_DK, width: 0.5 });
-  // Right shoe
   g.moveTo(cx + 1 + stanceR, gy)
     .lineTo(cx + 1 + stanceR, gy - bh)
     .lineTo(cx + 6 + stanceR, gy - bh)
@@ -90,120 +154,92 @@ function drawShoes(
     .stroke({ color: COL_SHOE_DK, width: 0.5 });
 }
 
-/** Robe — long trapezoid from torso to feet. */
 function drawRobe(
-  g: Graphics, cx: number,
+  g: Graphics, p: MagePalette, cx: number,
   robeTop: number, robeH: number,
   tilt = 0, wave = 0,
 ): void {
   const topW = 12;
   const botW = 18 + wave;
   const x = cx + tilt;
-  // Main robe body
   g.moveTo(x - topW / 2, robeTop)
     .lineTo(x + topW / 2, robeTop)
     .lineTo(x + botW / 2 + wave * 0.5, robeTop + robeH)
     .lineTo(x - botW / 2 + wave * 0.3, robeTop + robeH)
     .closePath()
-    .fill({ color: COL_ROBE })
-    .stroke({ color: COL_ROBE_DK, width: 0.7 });
-
-  // Robe hem detail (lighter stripe)
+    .fill({ color: p.robe })
+    .stroke({ color: p.robeDk, width: 0.7 });
   g.moveTo(x - botW / 2 + wave * 0.3, robeTop + robeH - 2)
     .lineTo(x + botW / 2 + wave * 0.5, robeTop + robeH - 2)
-    .stroke({ color: COL_ROBE_HI, width: 1, alpha: 0.5 });
-
-  // Belt / sash
+    .stroke({ color: p.robeHi, width: 1, alpha: 0.5 });
   g.rect(x - topW / 2 + 1, robeTop + 7, topW - 2, 2)
-    .fill({ color: COL_HAT_BAND, alpha: 0.7 });
+    .fill({ color: p.hatBand, alpha: 0.7 });
 }
 
-/** Upper torso/shoulders — visible above robe. */
 function drawTorso(
-  g: Graphics, cx: number,
+  g: Graphics, p: MagePalette, cx: number,
   torsoTop: number, torsoH: number,
   tilt = 0,
 ): void {
   const tw = 12;
   const x = cx - tw / 2 + tilt;
   g.roundRect(x, torsoTop, tw, torsoH, 2)
-    .fill({ color: COL_ROBE })
-    .stroke({ color: COL_ROBE_DK, width: 0.5 });
+    .fill({ color: p.robe })
+    .stroke({ color: p.robeDk, width: 0.5 });
 }
 
-/** Wizard hat — tall pointed cone with brim. */
 function drawHat(
-  g: Graphics, cx: number, hatBase: number,
+  g: Graphics, p: MagePalette, cx: number, hatBase: number,
   tilt = 0, droop = 0,
 ): void {
   const x = cx + tilt;
   const brimW = 14;
   const hatH = 14;
-
-  // Brim (ellipse)
   g.ellipse(x, hatBase, brimW / 2, 2.5)
-    .fill({ color: COL_HAT })
-    .stroke({ color: COL_HAT_DK, width: 0.5 });
-
-  // Cone
+    .fill({ color: p.hat })
+    .stroke({ color: p.hatDk, width: 0.5 });
   g.moveTo(x - 5, hatBase - 1)
     .lineTo(x + 5, hatBase - 1)
     .lineTo(x + 3 + droop, hatBase - hatH)
     .lineTo(x - 1, hatBase - 1)
     .closePath()
-    .fill({ color: COL_HAT })
-    .stroke({ color: COL_HAT_DK, width: 0.5 });
-
-  // Hat band
-  g.rect(x - 5, hatBase - 3, 10, 2).fill({ color: COL_HAT_BAND });
-
-  // Highlight on hat
+    .fill({ color: p.hat })
+    .stroke({ color: p.hatDk, width: 0.5 });
+  g.rect(x - 5, hatBase - 3, 10, 2).fill({ color: p.hatBand });
   g.moveTo(x - 1, hatBase - 2)
     .lineTo(x + 2 + droop * 0.5, hatBase - hatH + 2)
-    .stroke({ color: COL_ROBE_HI, width: 0.8, alpha: 0.4 });
+    .stroke({ color: p.robeHi, width: 0.8, alpha: 0.4 });
 }
 
-/** Face — skin circle with eyes. */
 function drawFace(
-  g: Graphics, cx: number, faceY: number,
-  tilt = 0, lightningEyes = false,
+  g: Graphics, p: MagePalette, cx: number, faceY: number,
+  tilt = 0, glowEyes = false,
 ): void {
   const x = cx + tilt;
-  // Face
   g.circle(x, faceY, 5).fill({ color: COL_SKIN });
-
-  // Eyes
-  const eyeCol = lightningEyes ? COL_LIGHTNING_HI : COL_EYE;
+  const eyeCol = glowEyes ? p.magicHi : COL_EYE;
   g.circle(x - 2, faceY - 1, 0.8).fill({ color: eyeCol });
   g.circle(x + 2, faceY - 1, 0.8).fill({ color: eyeCol });
-
-  // Lightning eye glow
-  if (lightningEyes) {
-    g.circle(x - 2, faceY - 1, 2).fill({ color: COL_LIGHTNING, alpha: 0.3 });
-    g.circle(x + 2, faceY - 1, 2).fill({ color: COL_LIGHTNING, alpha: 0.3 });
+  if (glowEyes) {
+    g.circle(x - 2, faceY - 1, 2).fill({ color: p.magic, alpha: 0.3 });
+    g.circle(x + 2, faceY - 1, 2).fill({ color: p.magic, alpha: 0.3 });
   }
-
-  // Nose
   g.circle(x, faceY + 0.5, 0.5).fill({ color: COL_SKIN_DK });
 }
 
-/** Long grey beard. */
 function drawBeard(
   g: Graphics, cx: number, beardTop: number,
   beardLen: number, tilt = 0, wave = 0,
 ): void {
   const x = cx + tilt;
-  // Main beard shape
   g.moveTo(x - 3, beardTop)
     .lineTo(x + 3, beardTop)
     .lineTo(x + 2 + wave, beardTop + beardLen)
-    .lineTo(x + wave * 0.5, beardTop + beardLen + 2)  // pointed tip
+    .lineTo(x + wave * 0.5, beardTop + beardLen + 2)
     .lineTo(x - 2 + wave * 0.3, beardTop + beardLen)
     .closePath()
     .fill({ color: COL_BEARD })
     .stroke({ color: COL_BEARD_DK, width: 0.4 });
-
-  // Beard texture lines
   for (let i = 2; i < beardLen; i += 3) {
     g.moveTo(x - 2, beardTop + i)
       .lineTo(x + 2, beardTop + i)
@@ -211,37 +247,21 @@ function drawBeard(
   }
 }
 
-/** Crooked wooden staff. */
 function drawStaff(
   g: Graphics,
   baseX: number, baseY: number,
   topX: number, topY: number,
-  crookDir = 1, // 1 = right, -1 = left
+  crookDir = 1,
 ): void {
-  // Main shaft
-  g.moveTo(baseX, baseY)
-    .lineTo(topX, topY)
-    .stroke({ color: COL_STAFF_WOOD, width: 2.5 });
-  // Dark edge
-  g.moveTo(baseX + 0.5, baseY)
-    .lineTo(topX + 0.5, topY)
-    .stroke({ color: COL_STAFF_DK, width: 0.5, alpha: 0.5 });
-
-  // Crooked top hook
+  g.moveTo(baseX, baseY).lineTo(topX, topY).stroke({ color: COL_STAFF_WOOD, width: 2.5 });
+  g.moveTo(baseX + 0.5, baseY).lineTo(topX + 0.5, topY).stroke({ color: COL_STAFF_DK, width: 0.5, alpha: 0.5 });
   const hookLen = 5;
   g.moveTo(topX, topY)
-    .quadraticCurveTo(
-      topX + crookDir * 4, topY - 3,
-      topX + crookDir * hookLen, topY + 1,
-    )
+    .quadraticCurveTo(topX + crookDir * 4, topY - 3, topX + crookDir * hookLen, topY + 1)
     .stroke({ color: COL_STAFF_WOOD, width: 2 });
-
-  // Knob at hook end
-  g.circle(topX + crookDir * hookLen, topY + 1, 1.5)
-    .fill({ color: COL_STAFF_DK });
+  g.circle(topX + crookDir * hookLen, topY + 1, 1.5).fill({ color: COL_STAFF_DK });
 }
 
-/** Arm — simple thick line. */
 function drawArm(
   g: Graphics,
   sx: number, sy: number,
@@ -252,9 +272,8 @@ function drawArm(
   g.circle(ex, ey, 1.8).fill({ color: COL_SKIN_DK });
 }
 
-/** Lightning bolt FX between two points. */
-function drawLightningBolt(
-  g: Graphics,
+function drawSpellBolt(
+  g: Graphics, p: MagePalette,
   x1: number, y1: number,
   x2: number, y2: number,
   segments = 4,
@@ -262,54 +281,40 @@ function drawLightningBolt(
 ): void {
   const dx = (x2 - x1) / segments;
   const dy = (y2 - y1) / segments;
-  let px = x1, py = y1;
-
-  g.moveTo(px, py);
-  for (let i = 1; i < segments; i++) {
-    const nx = x1 + dx * i + (Math.random() - 0.5) * 6;
-    const ny = y1 + dy * i + (Math.random() - 0.5) * 4;
-    g.lineTo(nx, ny);
-    px = nx; py = ny;
-  }
-  g.lineTo(x2, y2);
-  g.stroke({ color: COL_LIGHTNING_HI, width: 1.5, alpha });
-
-  // Glow pass
   g.moveTo(x1, y1);
-  px = x1; py = y1;
   for (let i = 1; i < segments; i++) {
-    const nx = x1 + dx * i + (Math.random() - 0.5) * 8;
-    const ny = y1 + dy * i + (Math.random() - 0.5) * 5;
-    g.lineTo(nx, ny);
+    g.lineTo(x1 + dx * i + (Math.random() - 0.5) * 6, y1 + dy * i + (Math.random() - 0.5) * 4);
   }
   g.lineTo(x2, y2);
-  g.stroke({ color: COL_LIGHTNING, width: 3, alpha: alpha * 0.3 });
+  g.stroke({ color: p.magicHi, width: 1.5, alpha });
+  g.moveTo(x1, y1);
+  for (let i = 1; i < segments; i++) {
+    g.lineTo(x1 + dx * i + (Math.random() - 0.5) * 8, y1 + dy * i + (Math.random() - 0.5) * 5);
+  }
+  g.lineTo(x2, y2);
+  g.stroke({ color: p.magic, width: 3, alpha: alpha * 0.3 });
 }
 
-/** Hand glow effect (lightning sparks around hand). */
-function drawHandGlow(g: Graphics, hx: number, hy: number, intensity = 1): void {
-  g.circle(hx, hy, 3 * intensity).fill({ color: COL_LIGHTNING, alpha: 0.25 });
-  g.circle(hx, hy, 1.5 * intensity).fill({ color: COL_LIGHTNING_HI, alpha: 0.4 });
-  // Small sparks
+function drawHandGlow(g: Graphics, p: MagePalette, hx: number, hy: number, intensity = 1): void {
+  g.circle(hx, hy, 3 * intensity).fill({ color: p.magic, alpha: 0.25 });
+  g.circle(hx, hy, 1.5 * intensity).fill({ color: p.magicHi, alpha: 0.4 });
   for (let i = 0; i < 3; i++) {
     const angle = Math.random() * Math.PI * 2;
     const r = 3 + Math.random() * 3;
     g.moveTo(hx, hy)
       .lineTo(hx + Math.cos(angle) * r, hy + Math.sin(angle) * r)
-      .stroke({ color: COL_LIGHTNING_HI, width: 0.6, alpha: 0.5 });
+      .stroke({ color: p.magicHi, width: 0.6, alpha: 0.5 });
   }
 }
 
 // ---------------------------------------------------------------------------
-// Frame generators per state
+// Frame generators per state (palette-aware)
 // ---------------------------------------------------------------------------
 
-function generateIdleFrames(g: Graphics, frame: number): void {
+function generateIdleFrames(g: Graphics, p: MagePalette, frame: number): void {
   const t = sin01(frame, 8);
   const bob = Math.round(t * 1.5 - 0.75);
-
-  // Slumped over, leaning on staff — exhausted pose
-  const slump = 2; // forward lean
+  const slump = 2;
   const robeH = 18;
   const robeTop = GY - robeH - 2 + bob;
   const torsoTop = robeTop - 4 + bob;
@@ -317,39 +322,29 @@ function generateIdleFrames(g: Graphics, frame: number): void {
   const hatBase = faceY - 4 + bob;
 
   drawShadow(g, CX, GY);
-  drawRobe(g, CX, robeTop, robeH, slump, t * 0.5 - 0.25);
+  drawRobe(g, p, CX, robeTop, robeH, slump, t * 0.5 - 0.25);
   drawShoes(g, CX, GY, 0, 0);
-  drawTorso(g, CX, torsoTop, 6, slump);
+  drawTorso(g, p, CX, torsoTop, 6, slump);
 
-  // Staff (leaning on it, slightly to the right)
   const staffBaseX = CX + 8;
   const staffBaseY = GY;
   const staffTopX = CX + 6 + slump;
   const staffTopY = torsoTop - 12;
   drawStaff(g, staffBaseX, staffBaseY, staffTopX, staffTopY, 1);
 
-  // Right arm — resting on staff
   drawArm(g, CX + 5 + slump, torsoTop + 3, staffTopX + 1, staffTopY + 6);
-
-  // Left arm — hanging down (tired)
   const armDangle = Math.sin(t * Math.PI * 2) * 0.5;
   drawArm(g, CX - 5 + slump, torsoTop + 3, CX - 8 + slump, torsoTop + 10 + armDangle);
 
-  // Face (slightly tilted down from exhaustion)
-  drawFace(g, CX, faceY, slump);
-
-  // Beard (long, hanging)
+  drawFace(g, p, CX, faceY, slump);
   drawBeard(g, CX, faceY + 3, 8, slump, t * 0.3 - 0.15);
-
-  // Hat
-  drawHat(g, CX, hatBase, slump, 2 + t); // slightly drooping hat tip
+  drawHat(g, p, CX, hatBase, slump, 2 + t);
 }
 
-function generateMoveFrames(g: Graphics, frame: number): void {
+function generateMoveFrames(g: Graphics, p: MagePalette, frame: number): void {
   const t = frame / 8;
   const walk = Math.sin(t * Math.PI * 2);
   const bob = Math.abs(walk) * 1.5;
-
   const stanceL = Math.round(walk * 2.5);
   const stanceR = Math.round(-walk * 2.5);
   const robeH = 18;
@@ -359,109 +354,77 @@ function generateMoveFrames(g: Graphics, frame: number): void {
   const hatBase = faceY - 4;
 
   drawShadow(g, CX, GY, 12 + Math.abs(walk) * 2);
-  drawRobe(g, CX, robeTop, robeH, walk * 0.5, walk * 1.5);
+  drawRobe(g, p, CX, robeTop, robeH, walk * 0.5, walk * 1.5);
   drawShoes(g, CX, GY, stanceL, stanceR);
-  drawTorso(g, CX, torsoTop, 6, walk * 0.3);
+  drawTorso(g, p, CX, torsoTop, 6, walk * 0.3);
 
-  // Staff held in right hand while walking
   const staffBaseX = CX + 10 + walk;
   const staffBaseY = GY - 2;
   const staffTopX = CX + 8 + walk * 0.5;
   const staffTopY = torsoTop - 14;
   drawStaff(g, staffBaseX, staffBaseY, staffTopX, staffTopY, 1);
-
-  // Right arm holding staff
   drawArm(g, CX + 5 + walk * 0.3, torsoTop + 3, staffTopX + 1, staffTopY + 8);
 
-  // Left arm swinging
   const lArmSwing = walk * 3;
   drawArm(g, CX - 5 + walk * 0.3, torsoTop + 3,
     CX - 7 + lArmSwing, torsoTop + 8 - Math.abs(walk));
 
-  // Face
-  drawFace(g, CX, faceY, walk * 0.3);
-
-  // Beard swaying
+  drawFace(g, p, CX, faceY, walk * 0.3);
   drawBeard(g, CX, faceY + 3, 8, walk * 0.3, -walk * 0.6);
-
-  // Hat
-  drawHat(g, CX, hatBase, walk * 0.3, 1 - walk * 0.5);
+  drawHat(g, p, CX, hatBase, walk * 0.3, 1 - walk * 0.5);
 }
 
-function generateAttackFrames(g: Graphics, frame: number): void {
-  // 7 frames: 0=prepare, 1-2=arms rising, 3=peak (calling thunder),
-  // 4-5=lightning strike, 6=recovery
+function generateAttackFrames(g: Graphics, p: MagePalette, frame: number): void {
   const phases = [0, 0.15, 0.35, 0.55, 0.75, 0.9, 1.0];
   const t = phases[Math.min(frame, 6)];
-
   const robeH = 18;
   const robeTop = GY - robeH - 2;
   const torsoTop = robeTop - 4;
   const faceY = torsoTop - 3;
   const hatBase = faceY - 4;
-
-  // At peak, body lifts slightly
   const lift = t > 0.3 && t < 0.8 ? 2 : 0;
 
   drawShadow(g, CX, GY);
-  drawRobe(g, CX, robeTop - lift, robeH + lift, 0, 0);
+  drawRobe(g, p, CX, robeTop - lift, robeH + lift, 0, 0);
   drawShoes(g, CX, GY, -1, 1);
-  drawTorso(g, CX, torsoTop - lift, 6);
+  drawTorso(g, p, CX, torsoTop - lift, 6);
 
-  // Arms spread to sides, rising with t
-  // Right arm: raises staff to the right side
   const rArmRaise = t < 0.55 ? t / 0.55 : 1 - (t - 0.55) / 0.45;
   const rHandX = CX + 8 + rArmRaise * 6;
   const rHandY = torsoTop + 2 - lift - rArmRaise * 12;
-
-  // Staff follows right hand up and out
-  const staffTopX = rHandX + 2;
-  const staffTopY = rHandY - 10;
-  const staffBaseX = rHandX;
-  const staffBaseY = rHandY + 4;
-  drawStaff(g, staffBaseX, staffBaseY, staffTopX, staffTopY, 1);
+  drawStaff(g, rHandX, rHandY + 4, rHandX + 2, rHandY - 10, 1);
   drawArm(g, CX + 5, torsoTop + 3 - lift, rHandX, rHandY);
 
-  // Left arm: rises to the left side (no staff)
   const lArmRaise = t < 0.55 ? t / 0.55 : 1 - (t - 0.55) / 0.45;
   const lHandX = CX - 8 - lArmRaise * 6;
   const lHandY = torsoTop + 2 - lift - lArmRaise * 12;
   drawArm(g, CX - 5, torsoTop + 3 - lift, lHandX, lHandY);
 
-  // Lightning eyes during peak
-  const isLightning = t >= 0.3 && t <= 0.85;
-  drawFace(g, CX, faceY - lift, 0, isLightning);
+  const isGlow = t >= 0.3 && t <= 0.85;
+  drawFace(g, p, CX, faceY - lift, 0, isGlow);
   drawBeard(g, CX, faceY + 3 - lift, 8, 0, 0);
-  drawHat(g, CX, hatBase - lift, 0, 1);
+  drawHat(g, p, CX, hatBase - lift, 0, 1);
 
-  // Hand glow during charge-up and strike
   if (t >= 0.2) {
     const intensity = t < 0.55 ? (t - 0.2) / 0.35 : 1 - (t - 0.55) / 0.45;
-    drawHandGlow(g, rHandX, rHandY, intensity);
-    drawHandGlow(g, lHandX, lHandY, intensity);
+    drawHandGlow(g, p, rHandX, rHandY, intensity);
+    drawHandGlow(g, p, lHandX, lHandY, intensity);
   }
 
-  // Lightning bolts at peak (frames 3-5)
   if (t >= 0.4 && t <= 0.85) {
     const boltAlpha = t < 0.55 ? 0.9 : lerp(0.9, 0.2, (t - 0.55) / 0.3);
-    // Right hand lightning — arcs upward
-    drawLightningBolt(g, rHandX, rHandY, rHandX + 4, rHandY - 16, 4, boltAlpha);
-    // Left hand lightning — arcs upward
-    drawLightningBolt(g, lHandX, lHandY, lHandX - 4, lHandY - 16, 4, boltAlpha);
-
-    // Central lightning strike from above
+    drawSpellBolt(g, p, rHandX, rHandY, rHandX + 4, rHandY - 16, 4, boltAlpha);
+    drawSpellBolt(g, p, lHandX, lHandY, lHandX - 4, lHandY - 16, 4, boltAlpha);
     if (t >= 0.5 && t <= 0.8) {
       const strikeAlpha = 1 - Math.abs(t - 0.65) / 0.15;
-      drawLightningBolt(g, CX, 0, CX + 3, GY - 5, 6, strikeAlpha * 0.7);
+      drawSpellBolt(g, p, CX, 0, CX + 3, GY - 5, 6, strikeAlpha * 0.7);
     }
   }
 }
 
-function generateCastFrames(g: Graphics, frame: number): void {
-  // 6 frames: channeling pose with both arms out, staff raised, eyes glowing
+function generateCastFrames(g: Graphics, p: MagePalette, frame: number): void {
   const t = frame / 5;
   const pulse = Math.sin(t * Math.PI * 2) * 0.5 + 0.5;
-
   const robeH = 18;
   const lift = 1 + pulse;
   const robeTop = GY - robeH - 2 - lift;
@@ -470,48 +433,37 @@ function generateCastFrames(g: Graphics, frame: number): void {
   const hatBase = faceY - 4;
 
   drawShadow(g, CX, GY);
-  drawRobe(g, CX, robeTop, robeH + lift, 0, pulse);
+  drawRobe(g, p, CX, robeTop, robeH + lift, 0, pulse);
   drawShoes(g, CX, GY, -1, 1);
-  drawTorso(g, CX, torsoTop, 6);
+  drawTorso(g, p, CX, torsoTop, 6);
 
-  // Both arms raised with staff held overhead
-  // Right hand with staff
   const rHandX = CX + 6;
   const rHandY = torsoTop - 6 - pulse * 2;
   drawStaff(g, rHandX, rHandY + 3, rHandX + 2, rHandY - 10, 1);
   drawArm(g, CX + 5, torsoTop + 3, rHandX, rHandY);
 
-  // Left hand raised
   const lHandX = CX - 6;
   const lHandY = torsoTop - 4 - pulse * 2;
   drawArm(g, CX - 5, torsoTop + 3, lHandX, lHandY);
 
-  // Face with lightning eyes
-  drawFace(g, CX, faceY, 0, true);
+  drawFace(g, p, CX, faceY, 0, true);
   drawBeard(g, CX, faceY + 3, 8, 0, pulse * 0.3);
-  drawHat(g, CX, hatBase, 0, 1 + pulse * 0.5);
+  drawHat(g, p, CX, hatBase, 0, 1 + pulse * 0.5);
 
-  // Glow on hands
-  drawHandGlow(g, rHandX, rHandY, 0.6 + pulse * 0.4);
-  drawHandGlow(g, lHandX, lHandY, 0.6 + pulse * 0.4);
+  drawHandGlow(g, p, rHandX, rHandY, 0.6 + pulse * 0.4);
+  drawHandGlow(g, p, lHandX, lHandY, 0.6 + pulse * 0.4);
 
-  // Swirling lightning around staff top
   const crookX = rHandX + 7;
   const crookY = rHandY - 9;
-  g.circle(crookX, crookY, 4 + pulse * 3)
-    .fill({ color: COL_LIGHTNING, alpha: 0.15 + pulse * 0.15 });
-  g.circle(crookX, crookY, 2 + pulse * 2)
-    .fill({ color: COL_LIGHTNING_HI, alpha: 0.2 + pulse * 0.1 });
+  g.circle(crookX, crookY, 4 + pulse * 3).fill({ color: p.magic, alpha: 0.15 + pulse * 0.15 });
+  g.circle(crookX, crookY, 2 + pulse * 2).fill({ color: p.magicHi, alpha: 0.2 + pulse * 0.1 });
 }
 
-function generateDieFrames(g: Graphics, frame: number): void {
-  // 7 frames: 0=hit stagger, 1-2=knees buckle, 3-4=fall, 5-6=collapse
+function generateDieFrames(g: Graphics, p: MagePalette, frame: number): void {
   const t = frame / 6;
-
   const robeH = 18;
   const fallX = t * 8;
   const dropY = t * t * 10;
-
   const robeTop = GY - robeH - 2 + dropY;
   const torsoTop = robeTop - 4;
   const faceY = torsoTop - 3;
@@ -519,56 +471,43 @@ function generateDieFrames(g: Graphics, frame: number): void {
 
   drawShadow(g, CX + fallX * 0.5, GY, 12 + t * 6);
 
-  // Robe crumples
   if (t < 0.8) {
-    drawRobe(g, CX + fallX * 0.4, robeTop, robeH * (1 - t * 0.3), t * 2, t * 2);
+    drawRobe(g, p, CX + fallX * 0.4, robeTop, robeH * (1 - t * 0.3), t * 2, t * 2);
   }
 
-  // Shoes spread
   const squash = Math.round(t * 3);
   drawShoes(g, CX + fallX * 0.3, GY, t * 3, -t * 2, squash);
 
-  // Torso tilts
   if (t < 0.7) {
-    drawTorso(g, CX + fallX * 0.5, torsoTop, 6 * (1 - t * 0.3), t * 3);
+    drawTorso(g, p, CX + fallX * 0.5, torsoTop, 6 * (1 - t * 0.3), t * 3);
   }
 
-  // Face
   if (t < 0.8) {
-    drawFace(g, CX + fallX * 0.5, faceY + dropY * 0.3, t * 3);
+    drawFace(g, p, CX + fallX * 0.5, faceY + dropY * 0.3, t * 3);
     drawBeard(g, CX + fallX * 0.5, faceY + 3 + dropY * 0.3, 8 * (1 - t * 0.3), t * 3, t * 2);
   }
 
-  // Hat falls off
   if (t < 0.5) {
-    drawHat(g, CX + fallX * 0.5, hatBase + dropY * 0.2, t * 4, 2 + t * 4);
+    drawHat(g, p, CX + fallX * 0.5, hatBase + dropY * 0.2, t * 4, 2 + t * 4);
   } else if (t < 0.9) {
-    // Hat on ground
     const hatGroundX = CX + 14;
     const hatGroundY = GY - 3;
-    g.ellipse(hatGroundX, hatGroundY, 5, 2).fill({ color: COL_HAT });
+    g.ellipse(hatGroundX, hatGroundY, 5, 2).fill({ color: p.hat });
     g.moveTo(hatGroundX - 3, hatGroundY)
       .lineTo(hatGroundX + 2, hatGroundY - 6)
       .lineTo(hatGroundX + 3, hatGroundY)
-      .fill({ color: COL_HAT });
+      .fill({ color: p.hat });
   }
 
-  // Staff falls away
   if (t < 0.7) {
     const sDropX = CX + 12 + t * 10;
     const sDropY = torsoTop - 2 + dropY;
     const angle = t * 2;
-    drawStaff(g,
-      sDropX, sDropY + 10,
-      sDropX + Math.sin(angle) * 8, sDropY - Math.cos(angle) * 10,
-      1,
-    );
+    drawStaff(g, sDropX, sDropY + 10, sDropX + Math.sin(angle) * 8, sDropY - Math.cos(angle) * 10, 1);
   }
 
-  // Arm on ground in late frames
   if (t > 0.5) {
-    drawArm(g, CX + fallX * 0.5 + 4, torsoTop + 3,
-      CX + fallX * 0.5 + 10, torsoTop + 6, COL_ROBE);
+    drawArm(g, CX + fallX * 0.5 + 4, torsoTop + 3, CX + fallX * 0.5 + 10, torsoTop + 6, p.robe);
   }
 }
 
@@ -576,39 +515,34 @@ function generateDieFrames(g: Graphics, frame: number): void {
 // Public API
 // ---------------------------------------------------------------------------
 
-type StateFrameGenerator = (g: Graphics, frame: number) => void;
-
-const STATE_GENERATORS: Record<UnitState, { gen: StateFrameGenerator; count: number }> = {
-  [UnitState.IDLE]:   { gen: generateIdleFrames,   count: 8 },
-  [UnitState.MOVE]:   { gen: generateMoveFrames,   count: 8 },
-  [UnitState.ATTACK]: { gen: generateAttackFrames,  count: 7 },
-  [UnitState.CAST]:   { gen: generateCastFrames,    count: 6 },
-  [UnitState.DIE]:    { gen: generateDieFrames,     count: 7 },
-};
-
 /**
- * Generate all storm mage sprite frames procedurally.
- *
- * Returns a map from `UnitState` → ordered `Texture[]`, ready to be
- * injected into the AnimationManager cache.
+ * Generate mage sprite frames for any palette.
+ * Returns a map from UnitState → ordered Texture[], ready for AnimationManager.
  */
-export function generateStormMageFrames(
+export function generateMageFrames(
   renderer: Renderer,
+  palette: MagePalette,
 ): Map<UnitState, Texture[]> {
+  const generators: Record<UnitState, { fn: (g: Graphics, p: MagePalette, f: number) => void; count: number }> = {
+    [UnitState.IDLE]:   { fn: generateIdleFrames,   count: 8 },
+    [UnitState.MOVE]:   { fn: generateMoveFrames,   count: 8 },
+    [UnitState.ATTACK]: { fn: generateAttackFrames, count: 7 },
+    [UnitState.CAST]:   { fn: generateCastFrames,   count: 6 },
+    [UnitState.DIE]:    { fn: generateDieFrames,    count: 7 },
+  };
+
   const result = new Map<UnitState, Texture[]>();
 
   for (const state of Object.values(UnitState)) {
-    const { gen, count } = STATE_GENERATORS[state];
+    const { fn, count } = generators[state];
     const textures: Texture[] = [];
 
     for (let i = 0; i < count; i++) {
       const g = new Graphics();
-      gen(g, i);
-
+      fn(g, palette, i);
       const rt = RenderTexture.create({ width: F, height: F });
       renderer.render({ container: g, target: rt });
       textures.push(rt);
-
       g.destroy();
     }
 
@@ -616,4 +550,9 @@ export function generateStormMageFrames(
   }
 
   return result;
+}
+
+/** Convenience wrapper — storm mage uses the blue lightning palette. */
+export function generateStormMageFrames(renderer: Renderer): Map<UnitState, Texture[]> {
+  return generateMageFrames(renderer, PALETTE_STORM_MAGE);
 }

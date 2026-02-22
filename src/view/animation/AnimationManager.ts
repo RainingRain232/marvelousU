@@ -27,7 +27,15 @@ import {
 } from "@view/animation/AnimationDefs";
 import { generateSwordsmanFrames } from "@view/animation/SwordsmanSpriteGen";
 import { generateArcherFrames } from "@view/animation/ArcherSpriteGen";
-import { generateStormMageFrames } from "@view/animation/StormMageSpriteGen";
+import {
+  generateStormMageFrames,
+  generateMageFrames,
+  type MagePalette,
+  PALETTE_FIRE_MAGE,
+  PALETTE_SUMMONER,
+  PALETTE_COLD_MAGE,
+  PALETTE_DISTORTION_MAGE,
+} from "@view/animation/StormMageSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -151,6 +159,14 @@ export class AnimationManager {
         this._generateArcherSprites(key, renderer);
       } else if (key === "storm_mage") {
         this._generateStormMageSprites(key, renderer);
+      } else if (key === "fire_mage") {
+        this._generateMageSprites(key, renderer, PALETTE_FIRE_MAGE);
+      } else if (key === "summoner") {
+        this._generateMageSprites(key, renderer, PALETTE_SUMMONER);
+      } else if (key === "cold_mage") {
+        this._generateMageSprites(key, renderer, PALETTE_COLD_MAGE);
+      } else if (key === "distortion_mage") {
+        this._generateMageSprites(key, renderer, PALETTE_DISTORTION_MAGE);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -264,6 +280,20 @@ export class AnimationManager {
    */
   private _generateStormMageSprites(key: string, renderer: Renderer): void {
     const stateTextures = generateStormMageFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  /**
+   * Generate procedural mage sprites for a palette-recoloured mage variant.
+   * Used for fire_mage, summoner, cold_mage, and distortion_mage.
+   */
+  private _generateMageSprites(key: string, renderer: Renderer, palette: MagePalette): void {
+    const stateTextures = generateMageFrames(renderer, palette);
     for (const [state, textures] of stateTextures) {
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {
