@@ -145,6 +145,19 @@ export class FarmRenderer {
         // Tower body
         g.rect(tX, tY, tW, tH).fill({ color: COL_STONE }).stroke({ color: COL_STONE_DK, width: 2.5 });
 
+        // Door (at base)
+        g.rect(tX + tW / 2 - 4, tY + tH - 12, 8, 12).fill({ color: COL_WOOD });
+
+        // Window (arched, similar to main tower)
+        const wX = tX + tW / 2 - 4;
+        const wY = tY + 18;
+        const wW = 8;
+        const wH = 12;
+        const winCol = 0x1a1a2e;
+        g.rect(wX, wY, wW, wH).fill({ color: winCol });
+        g.ellipse(wX + wW / 2, wY, wW / 2, 3).fill({ color: winCol }); // Arched top
+        g.rect(wX - 1, wY + wH, wW + 2, 2).fill({ color: COL_STONE_DK }); // Ledge
+
         // Crenellations
         for (let i = 0; i < 3; i++) {
             g.rect(tX + i * 9, tY - 6, 6, 6).fill({ color: COL_STONE });
@@ -185,12 +198,14 @@ export class FarmRenderer {
     private _drawCart(): void {
         const g = this._cart;
         const cX = 45, cY = 110;
+        const COL_CART_BODY = 0x7a4d2e; // Warmer wood
+        const COL_WHEEL = 0x3d2b1f;    // Darker wood/iron
 
         // Wheels
-        g.circle(cX - 12, cY + 6, 8).stroke({ color: COL_WOOD, width: 3 });
-        g.circle(cX + 12, cY + 6, 8).stroke({ color: COL_WOOD, width: 3 });
+        g.circle(cX - 12, cY + 6, 8).stroke({ color: COL_WHEEL, width: 3 });
+        g.circle(cX + 12, cY + 6, 8).stroke({ color: COL_WHEEL, width: 3 });
         // Cart body
-        g.rect(cX - 18, cY - 12, 36, 16).fill({ color: COL_WOOD }).stroke({ color: COL_WOOD, width: 1.5 });
+        g.rect(cX - 18, cY - 12, 36, 16).fill({ color: COL_CART_BODY }).stroke({ color: COL_WOOD, width: 1.5 });
         // Hay in cart
         g.roundRect(cX - 16, cY - 18, 32, 10, 4).fill({ color: COL_GRAIN });
     }

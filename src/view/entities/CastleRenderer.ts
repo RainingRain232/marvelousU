@@ -320,8 +320,24 @@ export class CastleRenderer {
         let hY = y - 22 + (snoring ? 2 : breathe);
         if (panic) hY += Math.sin(time * 15) * 0.5;
 
-        g.rect(x - 6, y - 16, 12, 16).fill({ color: 0x556677 });
+        // Feet / Boots
+        g.rect(x - 5, y - 4, 4, 4).fill({ color: 0x332211 }); // Left
+        g.rect(x + 1, y - 4, 4, 4).fill({ color: 0x332211 }); // Right
+
+        // Body (tunic)
+        g.rect(x - 6, y - 16, 12, 12).fill({ color: 0x556677 });
+        // Armor / Belt Detail
+        g.rect(x - 6, y - 10, 12, 2).fill({ color: 0x333333, alpha: 0.4 }); // Belt
+        g.rect(x - 2, y - 15, 4, 5).fill({ color: 0x8899aa, alpha: 0.3 }); // Chest piece
+
+        // Head
         g.circle(x, hY, 6).fill({ color: 0x9999aa });
+        // Eyes
+        g.circle(x - 2, hY, 0.8).fill({ color: 0x000000, alpha: 0.6 });
+        g.circle(x + 2, hY, 0.8).fill({ color: 0x000000, alpha: 0.6 });
+
+        // Helmet Brim
+        g.rect(x - 7, hY, 14, 2).fill({ color: 0x777788 });
         g.moveTo(x - 8, hY).lineTo(x + 8, hY).stroke({ color: 0x777788, width: 2 });
 
         if (panic) {
@@ -333,8 +349,12 @@ export class CastleRenderer {
         }
 
         const pX = x + (id === 0 ? -12 : 12);
+        // Pole
         g.moveTo(pX, y).lineTo(pX, y - 45).stroke({ color: COL_WOOD_DK, width: 2 });
+        // Spearhead Base
         g.moveTo(pX, y - 45).lineTo(pX, y - 52).stroke({ color: 0xccddee, width: 3 });
+        // Sharp Tip
+        g.moveTo(pX - 3, y - 52).lineTo(pX, y - 60).lineTo(pX + 3, y - 52).closePath().fill({ color: 0xccddee });
 
         if (snoring) {
             const life = (time * 0.5 + id * 0.3) % 1.0;
