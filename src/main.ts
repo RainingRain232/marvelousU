@@ -386,13 +386,11 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   shopPanel.onOpen = () => {
     if (!simLoop.isPaused) {
       simLoop.pause();
-      pauseOverlay.visible = true;
     }
   };
   shopPanel.onClose = () => {
     if (simLoop.isPaused) {
       simLoop.resume();
-      pauseOverlay.visible = false;
     }
   };
 
