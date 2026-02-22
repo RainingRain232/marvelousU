@@ -17,8 +17,8 @@ import { TowerRenderer } from "@view/entities/TowerRenderer";
 // Layout
 // ---------------------------------------------------------------------------
 
-const PANEL_W = 260;
-const PANEL_PAD = 14;
+const PANEL_W = 286;
+const PANEL_PAD = 15;
 const CORNER_R = 8;
 
 const BG_COLOR = 0x0d0d1e;
@@ -26,74 +26,74 @@ const BG_ALPHA = 0.93;
 const BORDER_COLOR = 0xffd700;
 const BORDER_W = 1.5;
 
-const HEADER_H = 38;
-const PREVIEW_H = 80;
-const STATS_H = 70;
-const DESC_H = 24;
+const HEADER_H = 42;
+const PREVIEW_H = 88;
+const STATS_H = 77;
+const DESC_H = 26;
 const FIXED_TOP_H = HEADER_H + PREVIEW_H + STATS_H + DESC_H;
 
-const ICON_SIZE = 40;
-const ICON_GAP = 4;
-const ICONS_PER_ROW = Math.floor((PANEL_W - 2 * PANEL_PAD) / (ICON_SIZE + ICON_GAP));
+const ICONS_PER_ROW = 4;
+const ICON_GAP = 5;
+const ICON_SIZE = Math.floor((PANEL_W - 2 * PANEL_PAD - ICON_GAP * (ICONS_PER_ROW - 1)) / ICONS_PER_ROW);
 
-const SECTION_LABEL_H = 22;
+const SECTION_LABEL_H = 24;
 const CLOSE_SIZE = 20;
 
-const MAX_PANEL_H = 400;
+const MAX_PANEL_H = 440;
 const SCROLL_WIDTH = 10;
 const SCROLL_MARGIN = 4;
 
 // Text styles
 const STYLE_TITLE = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 13,
+  fontSize: 14,
   fill: 0xffd700,
   fontWeight: "bold",
   letterSpacing: 1,
 });
 const STYLE_SECTION = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 10,
+  fontSize: 11,
   fill: 0x778899,
   letterSpacing: 2,
 });
 const STYLE_CLOSE = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 14,
+  fontSize: 15,
   fill: 0xaaaaaa,
   fontWeight: "bold",
 });
 const STYLE_PREVIEW_NAME = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 12,
+  fontSize: 13,
   fill: 0xdddddd,
   fontWeight: "bold",
 });
 const STYLE_STAT = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 10,
+  fontSize: 11,
   fill: 0xbbccdd,
 });
 const STYLE_SPAWN = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 10,
+  fontSize: 11,
   fill: 0x668866,
 });
 const STYLE_DESC = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 9,
+  fontSize: 10,
   fill: 0x556677,
   fontStyle: "italic",
 });
 const STYLE_ICON_COST = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 8,
+  fontSize: 9,
   fill: 0xffd700,
   fontWeight: "bold",
 });
 const STYLE_ICON_COST_UNAFFORDABLE = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 8,
+  fontSize: 9,
   fill: 0x885522,
   fontWeight: "bold",
 });
