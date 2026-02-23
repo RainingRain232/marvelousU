@@ -17,6 +17,7 @@ import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { TownRenderer } from "@view/entities/TownRenderer";
 import { FirepitRenderer } from "@view/entities/FirepitRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
+import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -131,6 +132,8 @@ export class BuildingView {
   private _firepitRenderer: FirepitRenderer | null = null;
   // Detailed temple renderer (only set for TEMPLE type buildings)
   private _templeRenderer: TempleRenderer | null = null;
+  // Detailed mage tower renderer (only set for MAGE_TOWER type buildings)
+  private _mageTowerRenderer: MageTowerRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -178,6 +181,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.FIREPIT) {
       this._firepitRenderer = new FirepitRenderer();
       this.container.addChild(this._firepitRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.MAGE_TOWER) {
+      this._mageTowerRenderer = new MageTowerRenderer(building.owner);
+      this.container.addChild(this._mageTowerRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -279,6 +287,9 @@ export class BuildingView {
       }
       if (this._firepitRenderer) {
         this._firepitRenderer.tick(dt);
+      }
+      if (this._mageTowerRenderer) {
+        this._mageTowerRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }
