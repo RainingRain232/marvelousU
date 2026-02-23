@@ -53,6 +53,10 @@ export interface Unit {
   /** Countdown to the next idle interruption. */
   nextIdleInterruptionTimer: number;
 
+  // Experience & levelling
+  xp: number;    // Current accumulated experience points
+  level: number; // Current level (0 = no level yet)
+
   // Abilities
   abilityIds: string[]; // References into GameState.abilities
 
@@ -147,6 +151,8 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     castTimer: 0,
     deathTimer: 0,
     lifespanTimer: -1,
+    xp: 0,
+    level: 0,
     abilityIds: [],
     idleInterruptionTimer: 0,
     nextIdleInterruptionTimer: 4 + Math.random() * 3, // Randomized first pause (4-7s)

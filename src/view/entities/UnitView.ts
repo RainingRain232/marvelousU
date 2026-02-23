@@ -14,7 +14,7 @@
 //
 // Fallback: when AnimationManager has no textures for a unit type (placeholder
 // mode), a colored circle is shown instead.
-import { Container, Graphics, AnimatedSprite } from "pixi.js";
+import { Container, Graphics, AnimatedSprite, Text, TextStyle } from "pixi.js";
 import { gsap } from "gsap";
 import type { Unit } from "@sim/entities/Unit";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
@@ -42,6 +42,16 @@ const HP_BG = 0x330000;
 const HP_FILL = 0x44ff44;
 const HP_CRIT = 0xff4444;
 
+// Level star — shown next to the HP bar at level 1+
+const STAR_RADIUS_OUTER = 10;
+const STAR_RADIUS_INNER = 4;
+const STAR_POINTS = 5;
+const STAR_COLOR = 0xffdd00;
+const STAR_STROKE = 0xaa8800;
+// Positioned to the right of the HP bar, vertically aligned with it
+const STAR_X = BAR_W / 2 + STAR_RADIUS_OUTER + 3;
+const STAR_Y = BAR_Y + BAR_H / 2;
+
 const ALPHA_ALIVE = 1.0;
 const ALPHA_DIE = 0.35;
 
@@ -66,6 +76,14 @@ export class UnitView {
   private _hpBg = new Graphics();
   private _hpFill = new Graphics();
 
+  // Level star (visible at level >= 1)
+  // Wrapped in a sub-container so we can counter-scale it against the
+  // parent container's horizontal flip (west-facing units get scale.x = -1).
+  private _levelStarContainer = new Container();
+  private _levelStar = new Graphics();
+  private _levelText = new Text({ text: "", style: new TextStyle({ fontSize: 10, fill: 0x000000, fontWeight: "bold", align: "center", stroke: { color: 0xffffff, width: 2 } }) });
+  private _displayedLevel = 0;
+
   // Animated sprite — null until AnimationManager is ready
   private _sprite: AnimatedSprite | null = null;
 
@@ -81,6 +99,7 @@ export class UnitView {
   constructor(unit: Unit) {
     this._buildPlaceholder(unit);
     this._buildHpBar();
+    this._buildLevelStar();
     this._tryAttachSprite(unit);
     this.update(unit);
   }
@@ -123,12 +142,14 @@ export class UnitView {
       this._syncAnimation(unit);
     }
 
-    // HP bar — hidden when dying
+    // HP bar & level star — hidden when dying
     if (unit.state === UnitState.DIE) {
       this._hpBg.visible = false;
       this._hpFill.visible = false;
+      this._levelStarContainer.visible = false;
     } else {
       this._updateHpBar(unit);
+      this._updateLevelStar(unit);
     }
   }
 
@@ -144,9 +165,10 @@ export class UnitView {
     if (this._deathStarted) return;
     this._deathStarted = true;
 
-    // Hide HP bar immediately
+    // Hide HP bar and level star immediately
     this._hpBg.visible = false;
     this._hpFill.visible = false;
+    this._levelStarContainer.visible = false;
 
     // Dim to the die-alpha immediately (sim may not have ticked DIE yet)
     this.container.alpha = ALPHA_DIE;
@@ -201,6 +223,51 @@ export class UnitView {
     this._hpBg.rect(-BAR_W / 2, BAR_Y, BAR_W, BAR_H).fill({ color: HP_BG });
     this.container.addChild(this._hpBg);
     this.container.addChild(this._hpFill);
+  }
+
+  private _buildLevelStar(): void {
+    // Star graphic and text start hidden; shown only when level >= 1
+    this._levelStarContainer.visible = false;
+
+    // Center the text label on the star
+    this._levelText.anchor.set(0.5, 0.5);
+    this._levelText.position.set(STAR_X, STAR_Y);
+
+    this._levelStarContainer.addChild(this._levelStar);
+    this._levelStarContainer.addChild(this._levelText);
+    this.container.addChild(this._levelStarContainer);
+  }
+
+  private _updateLevelStar(unit: Unit): void {
+    if (unit.level < 1) {
+      this._levelStarContainer.visible = false;
+      return;
+    }
+
+    this._levelStarContainer.visible = true;
+
+    // Counter-scale so the star is never mirrored regardless of facing direction
+    this._levelStarContainer.scale.x = this.container.scale.x;
+
+    // Only redraw when level changes
+    if (unit.level !== this._displayedLevel) {
+      this._displayedLevel = unit.level;
+
+      // Draw the 5-pointed star
+      this._levelStar.clear();
+      const points: number[] = [];
+      for (let i = 0; i < STAR_POINTS * 2; i++) {
+        const angle = (i * Math.PI) / STAR_POINTS - Math.PI / 2;
+        const r = i % 2 === 0 ? STAR_RADIUS_OUTER : STAR_RADIUS_INNER;
+        points.push(STAR_X + Math.cos(angle) * r, STAR_Y + Math.sin(angle) * r);
+      }
+      this._levelStar
+        .poly(points)
+        .fill({ color: STAR_COLOR })
+        .stroke({ color: STAR_STROKE, width: 1 });
+
+      this._levelText.text = String(unit.level);
+    }
   }
 
   private _updateHpBar(unit: Unit): void {

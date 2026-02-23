@@ -12,6 +12,7 @@ export interface SimEvents {
   unitDied: { unitId: string; killerUnitId?: string };
   unitDamaged: { unitId: string; amount: number; attackerId: string };
   unitHealed: { unitId: string; amount: number; position: Vec2 };
+  unitLevelUp: { unitId: string; newLevel: number };
   unitStateChanged: { unitId: string; from: UnitState; to: UnitState };
   groupSpawned: { unitIds: string[]; buildingId: string };
 
