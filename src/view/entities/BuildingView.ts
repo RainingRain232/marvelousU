@@ -11,6 +11,7 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BuildingType, BuildingState, GamePhase } from "@/types";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
+import { FrontViewStablesRenderer } from "@view/entities/FrontViewStablesRenderer";
 import { TowerRenderer } from "@view/entities/TowerRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
@@ -132,6 +133,7 @@ export class BuildingView {
   private _firepitRenderer: FirepitRenderer | null = null;
   // Detailed temple renderer (only set for TEMPLE type buildings)
   private _templeRenderer: TempleRenderer | null = null;
+  private _frontStablesRenderer: FrontViewStablesRenderer | null = null;
   // Detailed mage tower renderer (only set for MAGE_TOWER type buildings)
   private _mageTowerRenderer: MageTowerRenderer | null = null;
 
@@ -186,6 +188,12 @@ export class BuildingView {
     } else if (building.type === BuildingType.MAGE_TOWER) {
       this._mageTowerRenderer = new MageTowerRenderer(building.owner);
       this.container.addChild(this._mageTowerRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.STABLES) {
+      // Front-view phase 1 renderer for royal stables
+      this._frontStablesRenderer = new FrontViewStablesRenderer(building.owner);
+      this.container.addChild(this._frontStablesRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -253,8 +261,10 @@ export class BuildingView {
       const capPct = building.captureProgress;
       if (capPct > 0 && capPct < 1) {
         const capColor =
-          building.capturePlayerId === "p1" ? CAP_COLOR_P1
-            : building.capturePlayerId === "p2" ? CAP_COLOR_P2
+          building.capturePlayerId === "p1"
+            ? CAP_COLOR_P1
+            : building.capturePlayerId === "p2"
+              ? CAP_COLOR_P2
               : CAP_COLOR_NEUTRAL;
         this._captureFill
           .rect(0, this._ph + CAP_BAR_Y_OFF, this._pw * capPct, CAP_BAR_H)
@@ -278,6 +288,9 @@ export class BuildingView {
       }
       if (this._farmRenderer) {
         this._farmRenderer.tick(dt, phase);
+      }
+      if (this._frontStablesRenderer) {
+        this._frontStablesRenderer.tick(dt, phase);
       }
       if (this._townRenderer) {
         this._townRenderer.tick(dt, phase);
