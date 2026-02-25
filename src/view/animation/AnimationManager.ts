@@ -50,6 +50,9 @@ import {
   PALETTE_CYCLOPS,
   type CyclopsPalette,
 } from "@view/animation/CyclopsSpriteGen";
+import { generatePikemanFrames } from "@view/animation/PikemanSpriteGen";
+import { generateMageHunterFrames } from "@view/animation/MageHunterSpriteGen";
+import { generateGladiatorFrames } from "@view/animation/GladiatorSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -193,6 +196,12 @@ export class AnimationManager {
         this._generateDragonSprites(key, renderer, PALETTE_FROST_DRAGON, true);
       } else if (key === "cyclops") {
         this._generateCyclopsSprites(key, renderer, PALETTE_CYCLOPS);
+      } else if (key === "pikeman") {
+        this._generatePikemanSprites(key, renderer);
+      } else if (key === "mage_hunter") {
+        this._generateMageHunterSprites(key, renderer);
+      } else if (key === "gladiator") {
+        this._generateGladiatorSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -364,6 +373,63 @@ export class AnimationManager {
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {
         this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  /**
+   * Generate procedural pikeman sprites.
+   * Used for pikeman.
+   */
+  private _generatePikemanSprites(key: string, renderer: Renderer): void {
+    const textures = generatePikemanFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate procedural mage hunter sprites.
+   * Used for mage_hunter.
+   */
+  private _generateMageHunterSprites(key: string, renderer: Renderer): void {
+    const textures = generateMageHunterFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate procedural gladiator sprites.
+   * Used for gladiator.
+   */
+  private _generateGladiatorSprites(key: string, renderer: Renderer): void {
+    const textures = generateGladiatorFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
       }
     }
   }
