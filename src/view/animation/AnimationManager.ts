@@ -53,6 +53,12 @@ import {
 import { generatePikemanFrames } from "@view/animation/PikemanSpriteGen";
 import { generateMageHunterFrames } from "@view/animation/MageHunterSpriteGen";
 import { generateGladiatorFrames } from "@view/animation/GladiatorSpriteGen";
+import { generateSiegeHunterFrames } from "@view/animation/SiegeHunterSpriteGen";
+import { generateHorseArcherFrames } from "@view/animation/HorseArcherSpriteGen";
+import { generateScoutCavalryFrames } from "@view/animation/ScoutCavalrySpriteGen";
+import { generateLancerFrames } from "@view/animation/LancerSpriteGen";
+import { generateEliteLancerFrames } from "@view/animation/EliteLancerSpriteGen";
+import { generateKnightLancerFrames } from "@view/animation/KnightLancerSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -202,6 +208,18 @@ export class AnimationManager {
         this._generateMageHunterSprites(key, renderer);
       } else if (key === "gladiator") {
         this._generateGladiatorSprites(key, renderer);
+      } else if (key === "siege_hunter") {
+        this._generateSiegeHunterSprites(key, renderer);
+      } else if (key === "horse_archer") {
+        this._generateHorseArcherSprites(key, renderer);
+      } else if (key === "scout_cavalry") {
+        this._generateScoutCavalrySprites(key, renderer);
+      } else if (key === "lancer") {
+        this._generateLancerSprites(key, renderer);
+      } else if (key === "elite_lancer") {
+        this._generateEliteLancerSprites(key, renderer);
+      } else if (key === "knight_lancer") {
+        this._generateKnightLancerSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -421,6 +439,120 @@ export class AnimationManager {
    */
   private _generateGladiatorSprites(key: string, renderer: Renderer): void {
     const textures = generateGladiatorFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate procedural siege hunter sprites.
+   * Used for siege_hunter.
+   */
+  private _generateSiegeHunterSprites(key: string, renderer: Renderer): void {
+    const textures = generateSiegeHunterFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate procedural horse archer sprites.
+   * Used for horse_archer.
+   */
+  private _generateHorseArcherSprites(key: string, renderer: Renderer): void {
+    const textures = generateHorseArcherFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate procedural scout cavalry sprites.
+   * Used for scout_cavalry.
+   */
+  private _generateScoutCavalrySprites(key: string, renderer: Renderer): void {
+    const textures = generateScoutCavalryFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate procedural lancer sprites.
+   * Used for lancer.
+   */
+  private _generateLancerSprites(key: string, renderer: Renderer): void {
+    const textures = generateLancerFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate procedural elite lancer sprites.
+   * Used for elite_lancer.
+   */
+  private _generateEliteLancerSprites(key: string, renderer: Renderer): void {
+    const textures = generateEliteLancerFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate procedural knight lancer sprites.
+   * Used for knight_lancer.
+   */
+  private _generateKnightLancerSprites(key: string, renderer: Renderer): void {
+    const textures = generateKnightLancerFrames(renderer);
     
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {

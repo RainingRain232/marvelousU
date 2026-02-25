@@ -366,7 +366,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 3,
     abilityTypes: [],
-    spriteKey: "knight",
+    spriteKey: "scout_cavalry",
     isChargeUnit: true,
   },
   [UnitType.LANCER]: {
@@ -379,7 +379,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 5,
     abilityTypes: [],
-    spriteKey: "knight",
+    spriteKey: "lancer",
     isChargeUnit: true,
   },
   [UnitType.ELITE_LANCER]: {
@@ -392,7 +392,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 7,
     abilityTypes: [],
-    spriteKey: "knight",
+    spriteKey: "elite_lancer",
     isChargeUnit: true,
   },
   [UnitType.KNIGHT_LANCER]: {
@@ -405,7 +405,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 8,
     abilityTypes: [],
-    spriteKey: "knight",
+    spriteKey: "knight_lancer",
     isChargeUnit: true,
   },
   [UnitType.MONK]: {
