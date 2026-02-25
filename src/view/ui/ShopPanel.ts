@@ -814,19 +814,77 @@ export class ShopPanel {
     name.position.set(PANEL_PAD, 0);
     this._statsContainer.addChild(name);
 
-    const line1 = new Text({
-      text: `HP:${def.hp}  COST:${def.cost}g  INCOME:${def.goldIncome}g/s`,
-      style: STYLE_STAT,
-    });
-    line1.position.set(PANEL_PAD, 16);
-    this._statsContainer.addChild(line1);
+    // Flavor text if available
+    if (def.description) {
+      const maxLineLength = 35; // Maximum characters per line
+      const words = def.description.split(' ');
+      let currentLine = '';
+      let yOffset = 16;
+      let actualLineCount = 0;
+      
+      for (const word of words) {
+        if ((currentLine + word).length > maxLineLength && currentLine.length > 0) {
+          // Create text for current line
+          const flavorText = new Text({
+            text: currentLine.trim(),
+            style: { ...STYLE_STAT, fontSize: 10, fill: 0xaaaadd },
+          });
+          flavorText.position.set(PANEL_PAD, yOffset);
+          this._statsContainer.addChild(flavorText);
+          
+          // Start new line
+          currentLine = word + ' ';
+          yOffset += 12;
+          actualLineCount++;
+        } else {
+          currentLine += word + ' ';
+        }
+      }
+      
+      // Add the last line
+      if (currentLine.trim().length > 0) {
+        const flavorText = new Text({
+          text: currentLine.trim(),
+          style: { ...STYLE_STAT, fontSize: 10, fill: 0xaaaadd },
+        });
+        flavorText.position.set(PANEL_PAD, yOffset);
+        this._statsContainer.addChild(flavorText);
+        yOffset += 12;
+        actualLineCount++;
+      }
+      
+      // Adjust subsequent lines based on actual flavor lines used
+      const baseY = 16 + (actualLineCount * 12);
+      
+      const line1 = new Text({
+        text: `HP:${def.hp}  COST:${def.cost}g  INCOME:${def.goldIncome}g/s`,
+        style: STYLE_STAT,
+      });
+      line1.position.set(PANEL_PAD, baseY + 8);
+      this._statsContainer.addChild(line1);
 
-    const line2 = new Text({
-      text: `Size: ${def.footprint.w}×${def.footprint.h}`,
-      style: STYLE_STAT,
-    });
-    line2.position.set(PANEL_PAD, 28);
-    this._statsContainer.addChild(line2);
+      const line2 = new Text({
+        text: `Size: ${def.footprint.w}×${def.footprint.h}`,
+        style: STYLE_STAT,
+      });
+      line2.position.set(PANEL_PAD, baseY + 20);
+      this._statsContainer.addChild(line2);
+    } else {
+      // No description - use original layout
+      const line1 = new Text({
+        text: `HP:${def.hp}  COST:${def.cost}g  INCOME:${def.goldIncome}g/s`,
+        style: STYLE_STAT,
+      });
+      line1.position.set(PANEL_PAD, 16);
+      this._statsContainer.addChild(line1);
+
+      const line2 = new Text({
+        text: `Size: ${def.footprint.w}×${def.footprint.h}`,
+        style: STYLE_STAT,
+      });
+      line2.position.set(PANEL_PAD, 28);
+      this._statsContainer.addChild(line2);
+    }
   }
 
   private _showDefaultPreviewAndStats(): void {
