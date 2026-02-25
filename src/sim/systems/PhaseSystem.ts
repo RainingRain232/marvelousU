@@ -123,6 +123,9 @@ function _enterPrep(state: GameState): void {
   // Clear winner from previous round
   state.winnerId = null;
 
+  // Reset event timer so the first event fires after a full interval next battle
+  state.eventTimer = BalanceConfig.RANDOM_EVENT_INTERVAL;
+
   state.phase = GamePhase.PREP;
   state.phaseTimer = BalanceConfig.PREP_DURATION;
   EventBus.emit("phaseChanged", { phase: GamePhase.PREP });
