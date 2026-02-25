@@ -16,6 +16,7 @@ import { iceBallFX } from "@view/fx/IceBallFX";
 import { webFX } from "@view/fx/WebFX";
 import { turretArrowFX } from "@view/fx/TurretArrowFX";
 import { arrowFX } from "@view/fx/ArrowFX";
+import { eventBanner } from "@view/ui/EventBanner";
 import { distortionFX } from "@view/fx/DistortionFX";
 import { healFX } from "@view/fx/HealFX";
 import { runeCircleFX } from "@view/fx/RuneCircleFX";
@@ -341,6 +342,9 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   // Rune circle FX (generic cast circle for all abilities)
   runeCircleFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => runeCircleFX.update(dt));
+
+  // Random event banner (center screen notification)
+  eventBanner.init(viewManager);
 
   // Victory screen (overlays game during RESOLVE)
   victoryScreen.init(viewManager, state);

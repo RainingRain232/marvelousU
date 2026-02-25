@@ -23,6 +23,7 @@ import { AISystem } from "@sim/systems/AISystem";
 import { PhaseSystem } from "@sim/systems/PhaseSystem";
 import { EconomySystem } from "@sim/systems/EconomySystem";
 import { UnitBehaviorSystem } from "@sim/systems/UnitBehaviorSystem";
+import { RandomEventSystem } from "@sim/systems/RandomEventSystem";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +45,7 @@ const DT = BalanceConfig.SIM_TICK_MS / 1000;
 
 export function simTick(state: GameState): void {
   PhaseSystem.update(state, DT);
+  RandomEventSystem.update(state, DT);
   EconomySystem.update(state, DT);
   UnitBehaviorSystem.update(state, DT);
   SpawnSystem.update(state, DT);

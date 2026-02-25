@@ -29,6 +29,9 @@ export interface SimEvents {
   projectileHit: { projectileId: string; targetId: string; teleportedIds?: string[] };
   unitTeleported: { unitId: string; from: Vec2; to: Vec2 };
 
+  // Random events
+  randomEvent: { eventType: string; title: string; description: string };
+
   // Economy
   goldChanged: { playerId: PlayerId; amount: number };
 
