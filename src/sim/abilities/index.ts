@@ -9,6 +9,8 @@ import { createWeb } from "@sim/abilities/Web";
 import { createNetPull } from "@sim/abilities/NetPull";
 import { createDistortionBlast } from "@sim/abilities/DistortionBlast";
 import { createHeal } from "@sim/abilities/Heal";
+import { createFireBreath } from "@sim/abilities/FireBreath";
+import { createFrostBreath } from "@sim/abilities/FrostBreath";
 import type { Ability } from "@sim/abilities/Ability";
 
 type AbilityFactory = (id: string) => Ability;
@@ -27,6 +29,8 @@ export const abilityRegistry: Record<AbilityType, AbilityFactory> = {
   [AbilityType.FROG_TONGUE]: (id) => createNetPull(id, AbilityType.FROG_TONGUE),
   [AbilityType.DEVOUR_PULL]: (id) => createNetPull(id, AbilityType.DEVOUR_PULL),
   [AbilityType.HEAL]: createHeal,
+  [AbilityType.FIRE_BREATH]: createFireBreath,
+  [AbilityType.FROST_BREATH]: createFrostBreath,
 };
 
 export function createAbility(type: AbilityType, id: string): Ability {

@@ -75,4 +75,16 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
     type: AbilityType.DEVOUR_PULL, cooldown: 5, range: 3, castTime: 0.6,
     damage: 40, aoeRadius: 1.2, pullDistance: 2, pullChance: 0.9,
   },
+  [AbilityType.FIRE_BREATH]: {
+    type: AbilityType.FIRE_BREATH, cooldown: 8, range: 5, castTime: 1.0,
+    damage: 80, aoeRadius: 3.5,
+  },
+  [AbilityType.FROST_BREATH]: {
+    type: AbilityType.FROST_BREATH, cooldown: 8, range: 5, castTime: 1.0,
+    damage: 60, aoeRadius: 3.5, slowDuration: 4, slowFactor: 0.3,
+  },
+  [AbilityType.HEAL]: {
+    type: AbilityType.HEAL, cooldown: 4, range: 3, castTime: 0.8,
+    damage: -50, // negative damage = healing
+  },
 };

@@ -67,6 +67,8 @@ export enum UnitType {
   MONK = "monk",
   CLERIC = "cleric",
   SAINT = "saint",
+  RED_DRAGON = "red_dragon",
+  FROST_DRAGON = "frost_dragon",
 }
 
 export enum BuildingType {
@@ -105,6 +107,8 @@ export enum AbilityType {
   FROG_TONGUE = "frog_tongue",
   DEVOUR_PULL = "devour_pull",
   HEAL = "heal",
+  FIRE_BREATH = "fire_breath",
+  FROST_BREATH = "frost_breath",
 }
 
 export enum UnitState {

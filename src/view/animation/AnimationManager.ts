@@ -39,6 +39,12 @@ import {
   PALETTE_SAINT,
   PALETTE_MONK,
 } from "@view/animation/StormMageSpriteGen";
+import {
+  generateDragonFrames,
+  PALETTE_RED_DRAGON,
+  PALETTE_FROST_DRAGON,
+  type DragonPalette,
+} from "@view/animation/DragonSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -176,6 +182,10 @@ export class AnimationManager {
         this._generateMageSprites(key, renderer, PALETTE_SAINT);
       } else if (key === "monk") {
         this._generateMageSprites(key, renderer, PALETTE_MONK);
+      } else if (key === "red_dragon") {
+        this._generateDragonSprites(key, renderer, PALETTE_RED_DRAGON, false);
+      } else if (key === "frost_dragon") {
+        this._generateDragonSprites(key, renderer, PALETTE_FROST_DRAGON, true);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -307,6 +317,26 @@ export class AnimationManager {
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {
         this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  /**
+   * Generate procedural dragon sprites for red or frost dragons.
+   * Used for red_dragon and frost_dragon.
+   */
+  private _generateDragonSprites(key: string, renderer: Renderer, palette: DragonPalette, isFrost: boolean): void {
+    const textures = generateDragonFrames(renderer, palette, isFrost);
+    
+    // Map the 40 frames to animation states (8 frames per state)
+    const states = [UnitState.IDLE, UnitState.MOVE, UnitState.ATTACK, UnitState.CAST, UnitState.DIE];
+    
+    for (let stateIndex = 0; stateIndex < states.length; stateIndex++) {
+      const state = states[stateIndex];
+      const stateTextures = textures.slice(stateIndex * 8, (stateIndex + 1) * 8);
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, stateTextures);
       }
     }
   }

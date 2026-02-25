@@ -432,4 +432,28 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "faery_queen", // placeholder (ethereal/divine)
     isHealer: true,
   },
+  [UnitType.RED_DRAGON]: {
+    type: UnitType.RED_DRAGON,
+    cost: 250,
+    hp: 500,
+    atk: 35,
+    attackSpeed: 0.8,
+    speed: 1.2,
+    range: 2,
+    spawnTime: 15,
+    abilityTypes: [AbilityType.FIRE_BREATH],
+    spriteKey: "red_dragon",
+  },
+  [UnitType.FROST_DRAGON]: {
+    type: UnitType.FROST_DRAGON,
+    cost: 240,
+    hp: 480,
+    atk: 30,
+    attackSpeed: 0.8,
+    speed: 1.2,
+    range: 2,
+    spawnTime: 15,
+    abilityTypes: [AbilityType.FROST_BREATH],
+    spriteKey: "frost_dragon",
+  },
 };

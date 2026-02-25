@@ -183,6 +183,8 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.MONK]: "Monk",
   [UnitType.CLERIC]: "Cleric",
   [UnitType.SAINT]: "Saint",
+  [UnitType.RED_DRAGON]: "Red Dragon",
+  [UnitType.FROST_DRAGON]: "Frost Dragon",
 };
 
 // ---------------------------------------------------------------------------

@@ -60,6 +60,9 @@ function addProjectile(
     hitIds: new Set(),
     slowDuration: 0,
     slowFactor: 1,
+    teleportDistance: 0,
+    pullDistance: 0,
+    pullChance: 0,
     ...overrides,
   };
   state.projectiles.set(proj.id, proj);

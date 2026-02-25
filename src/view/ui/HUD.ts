@@ -102,7 +102,7 @@ export class HUD {
   private _eastUnitVal!: Text;
 
   // Phase panel
-  private _phasePanel!: Graphics;
+  private _phasePanel!: Container;
   private _phaseText!: Text;
 
   // AI toggle button (below east panel)
