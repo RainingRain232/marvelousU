@@ -2,7 +2,7 @@
 import type { GameState } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Building } from "@sim/entities/Building";
-import { UnitState, BuildingState } from "@/types";
+import { UnitState, BuildingState, UnitType } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
@@ -14,6 +14,15 @@ import { destroyBuilding } from "@sim/systems/BuildingSystem";
 // ---------------------------------------------------------------------------
 
 const AGGRO_RANGE_SQ = BalanceConfig.AGGRO_RANGE * BalanceConfig.AGGRO_RANGE;
+
+/** Unit types that fire arrow projectiles (visual only). */
+const ARROW_UNIT_TYPES: ReadonlySet<UnitType> = new Set([
+  UnitType.ARCHER,
+  UnitType.LONGBOWMAN,
+  UnitType.CROSSBOWMAN,
+  UnitType.HORSE_ARCHER,
+  UnitType.SHORTBOW,
+]);
 
 // ---------------------------------------------------------------------------
 // Main system
@@ -336,6 +345,16 @@ function applyDamage(attacker: Unit, target: Unit, state: GameState): void {
     amount: damage,
     attackerId: attacker.id,
   });
+
+  // Emit arrow projectile event for archer-type units (visual only)
+  if (ARROW_UNIT_TYPES.has(attacker.type)) {
+    EventBus.emit("unitAttacked", {
+      attackerId: attacker.id,
+      targetId: target.id,
+      attackerPos: { x: attacker.position.x, y: attacker.position.y },
+      targetPos: { x: target.position.x, y: target.position.y },
+    });
+  }
 
   // Reset cooldown
   attacker.attackTimer = attackInterval;

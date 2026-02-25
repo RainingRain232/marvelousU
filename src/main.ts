@@ -15,6 +15,7 @@ import { deathFX } from "@view/fx/DeathFX";
 import { iceBallFX } from "@view/fx/IceBallFX";
 import { webFX } from "@view/fx/WebFX";
 import { turretArrowFX } from "@view/fx/TurretArrowFX";
+import { arrowFX } from "@view/fx/ArrowFX";
 import { distortionFX } from "@view/fx/DistortionFX";
 import { healFX } from "@view/fx/HealFX";
 import { runeCircleFX } from "@view/fx/RuneCircleFX";
@@ -324,6 +325,10 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
   // Building turret FX
   turretArrowFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => turretArrowFX.update(dt));
+
+  // Ranged unit arrow FX
+  arrowFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => arrowFX.update(dt));
 
   // Distortion FX
   distortionFX.init(viewManager);
