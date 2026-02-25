@@ -106,12 +106,6 @@ const STYLE_SPAWN = new TextStyle({
   fontSize: 11,
   fill: 0x668866,
 });
-const STYLE_DESC = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 10,
-  fill: 0x556677,
-  fontStyle: "italic",
-});
 const STYLE_ICON_COST = new TextStyle({
   fontFamily: "monospace",
   fontSize: 9,
@@ -406,12 +400,6 @@ export class ShopPanel {
     this._descContainer = new Container();
     this._descContainer.position.set(0, HEADER_H + PREVIEW_H + STATS_H);
     this.container.addChild(this._descContainer);
-    const descText = new Text({
-      text: "  (description coming soon)",
-      style: STYLE_DESC,
-    });
-    descText.position.set(PANEL_PAD, 2);
-    this._descContainer.addChild(descText);
 
     // Divider above scroll area
     this.container.addChild(
@@ -726,27 +714,93 @@ export class ShopPanel {
     name.position.set(PANEL_PAD, 0);
     this._statsContainer.addChild(name);
 
-    const line1 = new Text({
-      text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
-      style: STYLE_STAT,
-    });
-    line1.position.set(PANEL_PAD, 16);
-    this._statsContainer.addChild(line1);
+    // Flavor text if available
+    if (def.description) {
+      const maxLineLength = 35; // Maximum characters per line
+      const words = def.description.split(' ');
+      let currentLine = '';
+      let yOffset = 16;
+      let actualLineCount = 0;
+      
+      for (const word of words) {
+        if ((currentLine + word).length > maxLineLength && currentLine.length > 0) {
+          // Create text for current line
+          const flavorText = new Text({
+            text: currentLine.trim(),
+            style: { ...STYLE_STAT, fontSize: 10, fill: 0xaaaadd },
+          });
+          flavorText.position.set(PANEL_PAD, yOffset);
+          this._statsContainer.addChild(flavorText);
+          
+          // Start new line
+          currentLine = word + ' ';
+          yOffset += 12;
+          actualLineCount++;
+        } else {
+          currentLine += word + ' ';
+        }
+      }
+      
+      // Add the last line
+      if (currentLine.trim().length > 0) {
+        const flavorText = new Text({
+          text: currentLine.trim(),
+          style: { ...STYLE_STAT, fontSize: 10, fill: 0xaaaadd },
+        });
+        flavorText.position.set(PANEL_PAD, yOffset);
+        this._statsContainer.addChild(flavorText);
+        yOffset += 12;
+        actualLineCount++;
+      }
+      
+      // Adjust subsequent lines based on actual flavor lines used
+      const baseY = 16 + (actualLineCount * 12);
+      
+      const line1 = new Text({
+        text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
+        style: STYLE_STAT,
+      });
+      line1.position.set(PANEL_PAD, baseY + 8);
+      this._statsContainer.addChild(line1);
 
-    const line2 = new Text({
-      text: `RNG:${def.range}  AS:${def.attackSpeed}  COST:${def.cost}g`,
-      style: STYLE_STAT,
-    });
-    line2.position.set(PANEL_PAD, 28);
-    this._statsContainer.addChild(line2);
+      const line2 = new Text({
+        text: `RNG:${def.range}  AS:${def.attackSpeed}  COST:${def.cost}g`,
+        style: STYLE_STAT,
+      });
+      line2.position.set(PANEL_PAD, baseY + 20);
+      this._statsContainer.addChild(line2);
 
-    let extraLine = `Spawn: ${def.spawnTime}s`;
-    if (def.abilityTypes.length > 0) {
-      extraLine += `  ${def.abilityTypes.join(", ")}`;
+      let extraLine = `Spawn: ${def.spawnTime}s`;
+      if (def.abilityTypes.length > 0) {
+        extraLine += `  ${def.abilityTypes.join(", ")}`;
+      }
+      const line3 = new Text({ text: extraLine, style: STYLE_SPAWN });
+      line3.position.set(PANEL_PAD, baseY + 32);
+      this._statsContainer.addChild(line3);
+    } else {
+      // No description - use original layout
+      const line1 = new Text({
+        text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
+        style: STYLE_STAT,
+      });
+      line1.position.set(PANEL_PAD, 16);
+      this._statsContainer.addChild(line1);
+
+      const line2 = new Text({
+        text: `RNG:${def.range}  AS:${def.attackSpeed}  COST:${def.cost}g`,
+        style: STYLE_STAT,
+      });
+      line2.position.set(PANEL_PAD, 28);
+      this._statsContainer.addChild(line2);
+
+      let extraLine = `Spawn: ${def.spawnTime}s`;
+      if (def.abilityTypes.length > 0) {
+        extraLine += `  ${def.abilityTypes.join(", ")}`;
+      }
+      const line3 = new Text({ text: extraLine, style: STYLE_SPAWN });
+      line3.position.set(PANEL_PAD, 40);
+      this._statsContainer.addChild(line3);
     }
-    const line3 = new Text({ text: extraLine, style: STYLE_SPAWN });
-    line3.position.set(PANEL_PAD, 40);
-    this._statsContainer.addChild(line3);
   }
 
   private _showBuildingStats(buildingType: BuildingType): void {
