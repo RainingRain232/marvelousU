@@ -27,6 +27,8 @@ import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
 import { CreatureDenRenderer } from "@view/entities/CreatureDenRenderer";
 import { MillRenderer } from "@view/entities/MillRenderer";
 import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
+import { HamletRenderer } from "@view/entities/HamletRenderer";
+import { MarketRenderer } from "@view/entities/MarketRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -58,6 +60,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.FIREPIT]: 0x333333,
   [BuildingType.MILL]: 0x8b7355,
   [BuildingType.ELITE_HALL]: 0xaa8844,
+  [BuildingType.MARKET]: 0xaa7733,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -97,6 +100,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.FIREPIT]: "FIREPIT",
   [BuildingType.MILL]: "MILL",
   [BuildingType.ELITE_HALL]: "ELITE HALL",
+  [BuildingType.MARKET]: "MARKET",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -161,6 +165,8 @@ export class BuildingView {
   private _creatureDenRenderer: CreatureDenRenderer | null = null;
   private _millRenderer: MillRenderer | null = null;
   private _eliteHallRenderer: EliteHallRenderer | null = null;
+  private _hamletRenderer: HamletRenderer | null = null;
+  private _marketRenderer: MarketRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -203,6 +209,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.TOWN) {
       this._townRenderer = new TownRenderer(building.owner);
       this.container.addChild(this._townRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.HAMLET) {
+      this._hamletRenderer = new HamletRenderer(building.owner);
+      this.container.addChild(this._hamletRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.FIREPIT) {
@@ -248,6 +259,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.ELITE_HALL) {
       this._eliteHallRenderer = new EliteHallRenderer(building.owner);
       this.container.addChild(this._eliteHallRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.MARKET) {
+      this._marketRenderer = new MarketRenderer(building.owner);
+      this.container.addChild(this._marketRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.STABLES) {
@@ -360,6 +376,9 @@ export class BuildingView {
       if (this._townRenderer) {
         this._townRenderer.tick(dt, phase);
       }
+      if (this._hamletRenderer) {
+        this._hamletRenderer.tick(dt, phase);
+      }
       if (this._templeRenderer) {
         this._templeRenderer.tick(dt, phase);
       }
@@ -392,6 +411,9 @@ export class BuildingView {
       }
       if (this._eliteHallRenderer) {
         this._eliteHallRenderer.tick(dt, phase);
+      }
+      if (this._marketRenderer) {
+        this._marketRenderer.tick(dt, phase);
       }
       if (this._archeryRangeRenderer) {
         this._archeryRangeRenderer.tick(dt, phase);

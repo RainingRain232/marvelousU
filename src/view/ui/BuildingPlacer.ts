@@ -43,6 +43,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.FIREPIT]: 0x333333,
   [BuildingType.MILL]: 0x8b7355,
   [BuildingType.ELITE_HALL]: 0xaa8844,
+  [BuildingType.MARKET]: 0xaa7733,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -64,6 +65,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.FIREPIT]: "FIREPIT",
   [BuildingType.MILL]: "MILL",
   [BuildingType.ELITE_HALL]: "ELITE HALL",
+  [BuildingType.MARKET]: "MARKET",
 };
 
 const LABEL_STYLE = new TextStyle({

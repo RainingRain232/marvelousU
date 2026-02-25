@@ -34,7 +34,9 @@ import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
 import { CreatureDenRenderer } from "@view/entities/CreatureDenRenderer";
 import { MillRenderer } from "@view/entities/MillRenderer";
+import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
+import { MarketRenderer } from "@view/entities/MarketRenderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -143,6 +145,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.FIREPIT]: "Firepit",
   [BuildingType.MILL]: "Mill",
   [BuildingType.ELITE_HALL]: "Elite Hall",
+  [BuildingType.MARKET]: "Market",
 };
 
 // Unit display names
@@ -614,6 +617,11 @@ export class ShopPanel {
       buildingContainer = fr.container;
       texW = 128;
       texH = 128;
+    } else if (buildingType === BuildingType.HAMLET) {
+      const hr = new HamletRenderer(null);
+      buildingContainer = hr.container;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.WALL) {
       const wr = new WallRenderer();
       buildingContainer = wr.container;
@@ -672,6 +680,11 @@ export class ShopPanel {
     } else if (buildingType === BuildingType.BARRACKS) {
       const br = new BarracksRenderer(null);
       buildingContainer = br.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.MARKET) {
+      const mr = new MarketRenderer(null);
+      buildingContainer = mr.container;
       texW = 128;
       texH = 128;
     }
