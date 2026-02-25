@@ -59,6 +59,7 @@ import { generateScoutCavalryFrames } from "@view/animation/ScoutCavalrySpriteGe
 import { generateLancerFrames } from "@view/animation/LancerSpriteGen";
 import { generateEliteLancerFrames } from "@view/animation/EliteLancerSpriteGen";
 import { generateKnightLancerFrames } from "@view/animation/KnightLancerSpriteGen";
+import { generateKnightFrames } from "@view/animation/KnightSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -220,6 +221,8 @@ export class AnimationManager {
         this._generateEliteLancerSprites(key, renderer);
       } else if (key === "knight_lancer") {
         this._generateKnightLancerSprites(key, renderer);
+      } else if (key === "knight") {
+        this._generateKnightSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -553,6 +556,25 @@ export class AnimationManager {
    */
   private _generateKnightLancerSprites(key: string, renderer: Renderer): void {
     const textures = generateKnightLancerFrames(renderer);
+    
+    // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate procedural knight sprites.
+   * Used for knight.
+   */
+  private _generateKnightSprites(key: string, renderer: Renderer): void {
+    const textures = generateKnightFrames(renderer);
     
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
