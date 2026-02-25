@@ -1,6 +1,16 @@
 // Shop overlay — opens when a player clicks an owned building
 // Redesigned: preview area + stats + icon grid layout
-import { Container, Graphics, Text, TextStyle, AnimatedSprite, Texture, RenderTexture, Sprite, type Renderer } from "pixi.js";
+import {
+  Container,
+  Graphics,
+  Text,
+  TextStyle,
+  AnimatedSprite,
+  Texture,
+  RenderTexture,
+  Sprite,
+  type Renderer,
+} from "pixi.js";
 import type { GameState } from "@sim/state/GameState";
 import type { ViewManager } from "@view/ViewManager";
 import { EventBus } from "@sim/core/EventBus";
@@ -15,6 +25,13 @@ import { TowerRenderer } from "@view/entities/TowerRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
+// import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
+// import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
+// import { BarracksRenderer } from "@view/entities/BarracksRenderer";
+// import { FrontViewStablesRenderer } from "@view/entities/FrontViewStablesRenderer";
+// import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
+// import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
+import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -37,7 +54,9 @@ const FIXED_TOP_H = HEADER_H + PREVIEW_H + STATS_H + DESC_H;
 
 const ICONS_PER_ROW = 4;
 const ICON_GAP = 5;
-const ICON_SIZE = Math.floor((PANEL_W - 2 * PANEL_PAD - ICON_GAP * (ICONS_PER_ROW - 1)) / ICONS_PER_ROW);
+const ICON_SIZE = Math.floor(
+  (PANEL_W - 2 * PANEL_PAD - ICON_GAP * (ICONS_PER_ROW - 1)) / ICONS_PER_ROW,
+);
 
 const SECTION_LABEL_H = 24;
 const CLOSE_SIZE = 20;
@@ -109,6 +128,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MAGE_TOWER]: "Mage Tower",
   [BuildingType.ARCHERY_RANGE]: "Archery Range",
   [BuildingType.SIEGE_WORKSHOP]: "Siege Workshop",
+  [BuildingType.BLACKSMITH]: "Blacksmith",
   [BuildingType.TOWN]: "Town",
   [BuildingType.CREATURE_DEN]: "Creature Den",
   [BuildingType.TOWER]: "Tower",
@@ -185,7 +205,12 @@ export class ShopPanel {
 
   // Icon button refs for affordability
   private _unitIcons: { type: UnitType; costText: Text; bg: Graphics }[] = [];
-  private _bpIcons: { type: BuildingType; costText: Text; bg: Graphics; locked: boolean }[] = [];
+  private _bpIcons: {
+    type: BuildingType;
+    costText: Text;
+    bg: Graphics;
+    locked: boolean;
+  }[] = [];
 
   // Scrolling
   private _scrollContainer = new Container();
@@ -222,8 +247,15 @@ export class ShopPanel {
 
     this.container.eventMode = "static";
     this.container.on("wheel", (e) => {
-      if (!this.container.visible || this._contentH <= this._scrollableH()) return;
-      this._scrollY = Math.max(0, Math.min(this._contentH - this._scrollableH(), this._scrollY + e.deltaY));
+      if (!this.container.visible || this._contentH <= this._scrollableH())
+        return;
+      this._scrollY = Math.max(
+        0,
+        Math.min(
+          this._contentH - this._scrollableH(),
+          this._scrollY + e.deltaY,
+        ),
+      );
       this._applyScroll();
     });
   }
@@ -301,8 +333,12 @@ export class ShopPanel {
     const bpCount = building.blueprints.length;
     const unitRowCount = Math.ceil(unitCount / ICONS_PER_ROW);
     const bpRowCount = Math.ceil(bpCount / ICONS_PER_ROW);
-    const unitSectionH = unitCount > 0 ? SECTION_LABEL_H + unitRowCount * (ICON_SIZE + ICON_GAP) : 0;
-    const bpSectionH = bpCount > 0 ? SECTION_LABEL_H + bpRowCount * (ICON_SIZE + ICON_GAP) : 0;
+    const unitSectionH =
+      unitCount > 0
+        ? SECTION_LABEL_H + unitRowCount * (ICON_SIZE + ICON_GAP)
+        : 0;
+    const bpSectionH =
+      bpCount > 0 ? SECTION_LABEL_H + bpRowCount * (ICON_SIZE + ICON_GAP) : 0;
 
     this._contentH = unitSectionH + bpSectionH + PANEL_PAD;
     const maxScrollableH = MAX_PANEL_H - FIXED_TOP_H;
@@ -359,7 +395,10 @@ export class ShopPanel {
     this._descContainer = new Container();
     this._descContainer.position.set(0, HEADER_H + PREVIEW_H + STATS_H);
     this.container.addChild(this._descContainer);
-    const descText = new Text({ text: "  (description coming soon)", style: STYLE_DESC });
+    const descText = new Text({
+      text: "  (description coming soon)",
+      style: STYLE_DESC,
+    });
     descText.position.set(PANEL_PAD, 2);
     this._descContainer.addChild(descText);
 
@@ -371,7 +410,8 @@ export class ShopPanel {
     );
 
     // Mask for scroll area
-    this._mask.clear()
+    this._mask
+      .clear()
       .rect(0, FIXED_TOP_H, PANEL_W, scrollableH)
       .fill({ color: 0x000000 });
 
@@ -390,7 +430,12 @@ export class ShopPanel {
         const row = Math.floor(i / ICONS_PER_ROW);
         const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
         const y = cursorY + row * (ICON_SIZE + ICON_GAP);
-        const icon = this._makeUnitIcon(building.id, building.shopInventory[i], x, y);
+        const icon = this._makeUnitIcon(
+          building.id,
+          building.shopInventory[i],
+          x,
+          y,
+        );
         this._scrollContainer.addChild(icon);
       }
       cursorY += unitRowCount * (ICON_SIZE + ICON_GAP);
@@ -425,13 +470,15 @@ export class ShopPanel {
       const trackY = FIXED_TOP_H + SCROLL_MARGIN;
       const trackH = scrollableH - SCROLL_MARGIN * 2;
 
-      this._scrollbarTrack.clear()
+      this._scrollbarTrack
+        .clear()
         .roundRect(0, 0, SCROLL_WIDTH, trackH, SCROLL_WIDTH / 2)
         .fill({ color: 0x000000, alpha: 0.3 });
       this._scrollbarTrack.position.set(trackX, trackY);
 
       const thumbH = Math.max(20, (scrollableH / this._contentH) * trackH);
-      this._scrollbarThumb.clear()
+      this._scrollbarThumb
+        .clear()
         .roundRect(0, 0, SCROLL_WIDTH, thumbH, SCROLL_WIDTH / 2)
         .fill({ color: 0x556677 });
       this._scrollbarThumb.position.x = trackX;
@@ -483,7 +530,12 @@ export class ShopPanel {
       this._previewContainer.addChild(g);
       const letter = new Text({
         text: UNIT_LABELS[unitType].charAt(0),
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 20, fill: 0xdddddd, fontWeight: "bold" }),
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 20,
+          fill: 0xdddddd,
+          fontWeight: "bold",
+        }),
       });
       letter.anchor.set(0.5, 0.5);
       letter.position.set(PANEL_W / 2, PREVIEW_H / 2);
@@ -517,7 +569,12 @@ export class ShopPanel {
 
     const letter = new Text({
       text: BUILDING_LABELS[buildingType].charAt(0),
-      style: new TextStyle({ fontFamily: "monospace", fontSize: 22, fill: 0xffd700, fontWeight: "bold" }),
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 22,
+        fill: 0xffd700,
+        fontWeight: "bold",
+      }),
     });
     letter.anchor.set(0.5, 0.5);
     letter.position.set(PANEL_W / 2, PREVIEW_H / 2);
@@ -525,7 +582,9 @@ export class ShopPanel {
   }
 
   /** Render a building container to a cached RenderTexture for preview use. */
-  private _getBuildingTexture(buildingType: BuildingType): RenderTexture | null {
+  private _getBuildingTexture(
+    buildingType: BuildingType,
+  ): RenderTexture | null {
     if (this._buildingTextureCache.has(buildingType)) {
       return this._buildingTextureCache.get(buildingType)!;
     }
@@ -538,24 +597,65 @@ export class ShopPanel {
     if (buildingType === BuildingType.CASTLE) {
       const cr = new CastleRenderer(null);
       buildingContainer = cr.container;
-      texW = 256; texH = 256;
+      texW = 256;
+      texH = 256;
     } else if (buildingType === BuildingType.TOWER) {
       const tr = new TowerRenderer(null);
       buildingContainer = tr.container;
-      texW = 64; texH = 64;
+      texW = 64;
+      texH = 64;
     } else if (buildingType === BuildingType.FARM) {
       const fr = new FarmRenderer(null);
       buildingContainer = fr.container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.WALL) {
       const wr = new WallRenderer();
       buildingContainer = wr.container;
-      texW = 64; texH = 192;
+      texW = 64;
+      texH = 192;
     } else if (buildingType === BuildingType.TEMPLE) {
       const tr = new TempleRenderer(null);
       buildingContainer = tr.container;
-      texW = 128; texH = 192;
+      texW = 128;
+      texH = 192;
+    } else if (buildingType === BuildingType.EMBASSY) {
+      const er = new EmbassyRenderer(null);
+      buildingContainer = er.container;
+      texW = 128;
+      texH = 128;
     }
+    // } else if (buildingType === BuildingType.BARRACKS) {
+    //   const br = new BarracksRenderer(null);
+    //   buildingContainer = br.container;
+    //   texW = 128;
+    //   texH = 128;
+    // } else if (buildingType === BuildingType.STABLES) {
+    //   const sr = new FrontViewStablesRenderer(null);
+    //   buildingContainer = sr.container;
+    //   texW = 128;
+    //   texH = 128;
+    // } else if (buildingType === BuildingType.SIEGE_WORKSHOP) {
+    //   const swr = new SiegeWorkshopRenderer(null);
+    //   buildingContainer = swr.container;
+    //   texW = 128;
+    //   texH = 128;
+    // } else if (buildingType === BuildingType.BLACKSMITH) {
+    //   const bsr = new BlacksmithRenderer(null);
+    //   buildingContainer = bsr.container;
+    //   texW = 128;
+    //   texH = 128;
+    // } else if (buildingType === BuildingType.MAGE_TOWER) {
+    //   const mtr = new MageTowerRenderer(null);
+    //   buildingContainer = mtr.container;
+    //   texW = 128;
+    //   texH = 128;
+    // } else if (buildingType === BuildingType.ARCHERY_RANGE) {
+    //   const arr = new ArcheryRangeRenderer(null);
+    //   buildingContainer = arr.container;
+    //   texW = 128;
+    //   texH = 128;
+    // }
 
     if (!buildingContainer) return null;
 
@@ -584,7 +684,10 @@ export class ShopPanel {
     this._statsContainer.removeChildren();
     const def = UNIT_DEFINITIONS[unitType];
 
-    const name = new Text({ text: UNIT_LABELS[unitType], style: STYLE_PREVIEW_NAME });
+    const name = new Text({
+      text: UNIT_LABELS[unitType],
+      style: STYLE_PREVIEW_NAME,
+    });
     name.position.set(PANEL_PAD, 0);
     this._statsContainer.addChild(name);
 
@@ -615,7 +718,10 @@ export class ShopPanel {
     this._statsContainer.removeChildren();
     const def = BUILDING_DEFINITIONS[buildingType];
 
-    const name = new Text({ text: BUILDING_LABELS[buildingType], style: STYLE_PREVIEW_NAME });
+    const name = new Text({
+      text: BUILDING_LABELS[buildingType],
+      style: STYLE_PREVIEW_NAME,
+    });
     name.position.set(PANEL_PAD, 0);
     this._statsContainer.addChild(name);
 
@@ -720,7 +826,8 @@ export class ShopPanel {
     // Check build constraints
     const maxCount = def.maxCount;
     const prereq = def.prerequisite;
-    const ownedCount = maxCount !== undefined ? this._countOwnedType(bpType) : 0;
+    const ownedCount =
+      maxCount !== undefined ? this._countOwnedType(bpType) : 0;
     const prereqCount = prereq ? this._countOwnedType(prereq.type) : 0;
     const atMax = maxCount !== undefined && ownedCount >= maxCount;
     const prereqMet = !prereq || prereqCount >= prereq.minCount;
@@ -765,7 +872,10 @@ export class ShopPanel {
     }
 
     // Cost text
-    const costText = new Text({ text: `${def.cost}g`, style: locked ? STYLE_ICON_COST_UNAFFORDABLE : STYLE_ICON_COST });
+    const costText = new Text({
+      text: `${def.cost}g`,
+      style: locked ? STYLE_ICON_COST_UNAFFORDABLE : STYLE_ICON_COST,
+    });
     costText.anchor.set(0.5, 1);
     costText.position.set(ICON_SIZE / 2, ICON_SIZE - 1);
     btn.addChild(costText);
@@ -804,9 +914,7 @@ export class ShopPanel {
     const trackH = scrollableH - SCROLL_MARGIN * 2;
     const thumbH = this._scrollbarThumb.height;
     const maxThumbY = trackH - thumbH;
-    const thumbY = maxScroll > 0
-      ? (this._scrollY / maxScroll) * maxThumbY
-      : 0;
+    const thumbY = maxScroll > 0 ? (this._scrollY / maxScroll) * maxThumbY : 0;
 
     this._scrollbarThumb.position.y = FIXED_TOP_H + SCROLL_MARGIN + thumbY;
   }
@@ -910,13 +1018,15 @@ export class ShopPanel {
 
     for (const entry of this._unitIcons) {
       const cost = UNIT_DEFINITIONS[entry.type].cost;
-      entry.costText.style = cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
+      entry.costText.style =
+        cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
     }
 
     for (const entry of this._bpIcons) {
       if (entry.locked) continue;
       const cost = BUILDING_DEFINITIONS[entry.type].cost;
-      entry.costText.style = cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
+      entry.costText.style =
+        cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
     }
   }
 }

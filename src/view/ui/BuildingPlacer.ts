@@ -31,6 +31,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.MAGE_TOWER]: 0x6a1e8b,
   [BuildingType.ARCHERY_RANGE]: 0x2e6b2e,
   [BuildingType.SIEGE_WORKSHOP]: 0x7a5c2e,
+  [BuildingType.BLACKSMITH]: 0x6b4a3a,
   [BuildingType.TOWN]: 0x6b8c3a,
   [BuildingType.CREATURE_DEN]: 0x3d2b1f,
   [BuildingType.TOWER]: 0x8b8b6e,
@@ -39,6 +40,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.EMBASSY]: 0x3a6b8b,
   [BuildingType.TEMPLE]: 0xd8bfd8,
   [BuildingType.WALL]: 0x777777,
+  [BuildingType.FIREPIT]: 0x333333,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -48,6 +50,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MAGE_TOWER]: "MAGE TWR",
   [BuildingType.ARCHERY_RANGE]: "ARCHERY",
   [BuildingType.SIEGE_WORKSHOP]: "SIEGE WRK",
+  [BuildingType.BLACKSMITH]: "BLACKSMITH",
   [BuildingType.TOWN]: "TOWN",
   [BuildingType.CREATURE_DEN]: "CRTR DEN",
   [BuildingType.TOWER]: "TOWER",
@@ -56,6 +59,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.EMBASSY]: "EMBASSY",
   [BuildingType.TEMPLE]: "TEMPLE",
   [BuildingType.WALL]: "WALL",
+  [BuildingType.FIREPIT]: "FIREPIT",
 };
 
 const LABEL_STYLE = new TextStyle({
@@ -197,7 +201,9 @@ export class BuildingPlacer {
     // Defer _active so the pointerdown that triggered the shop button purchase
     // does not immediately confirm placement on the same event.
     this._active = false;
-    setTimeout(() => { this._active = true; }, 0);
+    setTimeout(() => {
+      this._active = true;
+    }, 0);
 
     this._isValid = false;
     this._buildGhost();

@@ -76,6 +76,7 @@ export enum BuildingType {
   MAGE_TOWER = "mage_tower",
   ARCHERY_RANGE = "archery_range",
   SIEGE_WORKSHOP = "siege_workshop",
+  BLACKSMITH = "blacksmith",
   TOWN = "town",
   CREATURE_DEN = "creature_den",
   TOWER = "tower",
