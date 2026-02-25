@@ -25,12 +25,12 @@ import { TowerRenderer } from "@view/entities/TowerRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
-// import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
+import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
 // import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
 // import { BarracksRenderer } from "@view/entities/BarracksRenderer";
 // import { FrontViewStablesRenderer } from "@view/entities/FrontViewStablesRenderer";
 // import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
-// import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
+import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
 
 // ---------------------------------------------------------------------------
@@ -641,15 +641,18 @@ export class ShopPanel {
     //   texW = 128;
     //   texH = 128;
     // } else if (buildingType === BuildingType.BLACKSMITH) {
-    //   const bsr = new BlacksmithRenderer(null);
-    //   buildingContainer = bsr.container;
-    //   texW = 128;
-    //   texH = 128;
-    // } else if (buildingType === BuildingType.MAGE_TOWER) {
-    //   const mtr = new MageTowerRenderer(null);
-    //   buildingContainer = mtr.container;
-    //   texW = 128;
-    //   texH = 128;
+    if (buildingType === BuildingType.BLACKSMITH) {
+      const bsr = new BlacksmithRenderer(null);
+      buildingContainer = bsr.container;
+      texW = 128;
+      texH = 128;
+      // } else if (buildingType === BuildingType.MAGE_TOWER) {
+    } else if (buildingType === BuildingType.MAGE_TOWER) {
+      const mtr = new MageTowerRenderer(null);
+      buildingContainer = mtr.container;
+      texW = 128;
+      texH = 128;
+    }
     // } else if (buildingType === BuildingType.ARCHERY_RANGE) {
     //   const arr = new ArcheryRangeRenderer(null);
     //   buildingContainer = arr.container;
