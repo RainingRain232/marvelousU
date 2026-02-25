@@ -20,6 +20,7 @@ import type { Unit } from "@sim/entities/Unit";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { Direction, UnitState } from "@/types";
 import { animationManager } from "@view/animation/AnimationManager";
+import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 
 // ---------------------------------------------------------------------------
 // Visual constants
@@ -37,7 +38,6 @@ const BORDER_ALPHA = 0.7;
 // Health bar — positioned above the sprite / circle
 const BAR_W = TS * 0.7;
 const BAR_H = 4;
-const BAR_Y = -(TS * 0.55); // above sprite top edge (sprite is 0.8 × TS tall, pivot at 0.75)
 const HP_BG = 0x330000;
 const HP_FILL = 0x44ff44;
 const HP_CRIT = 0xff4444;
@@ -48,9 +48,27 @@ const STAR_RADIUS_INNER = 4;
 const STAR_POINTS = 5;
 const STAR_COLOR = 0xffdd00;
 const STAR_STROKE = 0xaa8800;
-// Positioned to the right of the HP bar, vertically aligned with it
-const STAR_X = BAR_W / 2 + STAR_RADIUS_OUTER + 3;
-const STAR_Y = BAR_Y + BAR_H / 2;
+
+// Helper functions to get size-based positioning
+function getUnitSize(unit: Unit) {
+  const def = UNIT_DEFINITIONS[unit.type];
+  return def.size || { width: 1.0, height: 1.0 }; // Default to normal size
+}
+
+function getHealthBarY(unit: Unit) {
+  const size = getUnitSize(unit);
+  const baseOffset = -(TS * 0.55); // Base position for normal units
+  const customOffset = size.healthBarOffset ? size.healthBarOffset * TS : 0;
+  return baseOffset + customOffset;
+}
+
+function getStarPosition(unit: Unit) {
+  const barY = getHealthBarY(unit);
+  return {
+    x: BAR_W / 2 + STAR_RADIUS_OUTER + 3,
+    y: barY + BAR_H / 2,
+  };
+}
 
 const ALPHA_ALIVE = 1.0;
 const ALPHA_DIE = 0.35;
@@ -98,8 +116,8 @@ export class UnitView {
 
   constructor(unit: Unit) {
     this._buildPlaceholder(unit);
-    this._buildHpBar();
-    this._buildLevelStar();
+    this._buildHpBar(unit);
+    this._buildLevelStar(unit);
     this._tryAttachSprite(unit);
     this.update(unit);
   }
@@ -219,19 +237,23 @@ export class UnitView {
   // HP bar
   // ---------------------------------------------------------------------------
 
-  private _buildHpBar(): void {
-    this._hpBg.rect(-BAR_W / 2, BAR_Y, BAR_W, BAR_H).fill({ color: HP_BG });
+  private _buildHpBar(unit: Unit): void {
+    const barY = getHealthBarY(unit);
+    this._hpBg.rect(-BAR_W / 2, barY, BAR_W, BAR_H).fill({ color: HP_BG });
     this.container.addChild(this._hpBg);
     this.container.addChild(this._hpFill);
   }
 
-  private _buildLevelStar(): void {
+  private _buildLevelStar(unit: Unit): void {
     // Star graphic and text start hidden; shown only when level >= 1
     this._levelStarContainer.visible = false;
 
     // Center the text label on the star
     this._levelText.anchor.set(0.5, 0.5);
-    this._levelText.position.set(STAR_X, STAR_Y);
+    
+    // Set position using generic system
+    const starPos = getStarPosition(unit);
+    this._levelText.position.set(starPos.x, starPos.y);
 
     this._levelStarContainer.addChild(this._levelStar);
     this._levelStarContainer.addChild(this._levelText);
@@ -247,11 +269,14 @@ export class UnitView {
     this._levelStarContainer.visible = true;
 
     // Counter-scale so the star is never mirrored regardless of facing direction
-    this._levelStarContainer.scale.x = this.container.scale.x;
+    this._levelStarContainer.scale.x = this.container.scale.x === -1 ? -1 : 1;
 
     // Only redraw when level changes
     if (unit.level !== this._displayedLevel) {
       this._displayedLevel = unit.level;
+
+      // Get star position using generic system
+      const starPos = getStarPosition(unit);
 
       // Draw the 5-pointed star
       this._levelStar.clear();
@@ -259,7 +284,7 @@ export class UnitView {
       for (let i = 0; i < STAR_POINTS * 2; i++) {
         const angle = (i * Math.PI) / STAR_POINTS - Math.PI / 2;
         const r = i % 2 === 0 ? STAR_RADIUS_OUTER : STAR_RADIUS_INNER;
-        points.push(STAR_X + Math.cos(angle) * r, STAR_Y + Math.sin(angle) * r);
+        points.push(starPos.x + Math.cos(angle) * r, starPos.y + Math.sin(angle) * r);
       }
       this._levelStar
         .poly(points)
@@ -274,10 +299,11 @@ export class UnitView {
     const pct = Math.max(0, unit.hp / unit.maxHp);
     const fillW = BAR_W * pct;
     const hpColor = pct < 0.3 ? HP_CRIT : HP_FILL;
+    const barY = getHealthBarY(unit);
     this._hpFill.clear();
     if (fillW > 0) {
       this._hpFill
-        .rect(-BAR_W / 2, BAR_Y, fillW, BAR_H)
+        .rect(-BAR_W / 2, barY, fillW, BAR_H)
         .fill({ color: hpColor });
     }
   }
@@ -295,8 +321,11 @@ export class UnitView {
     const sprite = new AnimatedSprite(textures);
     // Pivot at feet for correct depth sorting
     sprite.anchor.set(0.5, 0.75);
-    sprite.width = TS * 0.8;
-    sprite.height = TS * 0.8;
+    
+    // Use generic size system from unit definition
+    const size = getUnitSize(unit);
+    sprite.width = TS * 0.8 * size.width;
+    sprite.height = TS * 0.8 * size.height;
 
     // Configure speed for IDLE
     const idleSet = animationManager.getFrameSet(unit.type, UnitState.IDLE);

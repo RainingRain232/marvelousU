@@ -6,7 +6,8 @@ import {
 } from "pixi.js";
 import { UnitState } from "@/types";
 
-const FRAME_SIZE = 48;
+const DRAGON_FRAME_WIDTH = 48; // 1 tile wide
+const DRAGON_FRAME_HEIGHT = 96; // 2 tiles tall
 
 // Dragon color palettes
 export interface DragonPalette {
@@ -91,10 +92,10 @@ function createDragonFrame(
       break;
   }
 
-  // Create render texture
+  // Create render texture with dragon dimensions
   const texture = RenderTexture.create({
-    width: FRAME_SIZE,
-    height: FRAME_SIZE,
+    width: DRAGON_FRAME_WIDTH,
+    height: DRAGON_FRAME_HEIGHT,
   });
   renderer.render({ target: texture, container: g });
   g.destroy();
@@ -109,51 +110,51 @@ function drawIdleDragon(g: Graphics, palette: DragonPalette, frame: number, isFr
   // Add frost effect for frost dragon
   const frostEffect = isFrost ? 0x88ccff : 0x000000;
   
-  // Body
+  // Body - centered in 48x96 frame, taking up vertical space
   g.fill(palette.body);
+  g.circle(24, 48 + breathe, 16);
+  g.fill();
+  
+  // Head - positioned at top
   g.circle(24, 20 + breathe, 12);
   g.fill();
   
-  // Head
-  g.circle(24, 8 + breathe, 8);
-  g.fill();
-  
-  // Wings
+  // Wings - spread vertically
   g.fill(palette.wings);
-  g.moveTo(12, 15 + breathe);
-  g.lineTo(4, 10 + breathe);
-  g.lineTo(6, 25 + breathe);
-  g.lineTo(15, 22 + breathe);
+  g.moveTo(15, 35 + breathe);
+  g.lineTo(5, 25 + breathe);
+  g.lineTo(10, 60 + breathe);
+  g.lineTo(20, 55 + breathe);
   g.closePath();
   g.fill();
   
-  g.moveTo(36, 15 + breathe);
-  g.lineTo(44, 10 + breathe);
-  g.lineTo(42, 25 + breathe);
-  g.lineTo(33, 22 + breathe);
+  g.moveTo(33, 35 + breathe);
+  g.lineTo(43, 25 + breathe);
+  g.lineTo(38, 60 + breathe);
+  g.lineTo(28, 55 + breathe);
   g.closePath();
   g.fill();
   
   // Belly
   g.fill(palette.belly);
-  g.circle(24, 22 + breathe, 6);
+  g.circle(24, 52 + breathe, 10);
   g.fill();
   
   // Eyes
   g.fill(0xffffff);
-  g.circle(20, 6 + breathe, 2);
-  g.circle(28, 6 + breathe, 2);
+  g.circle(20, 18 + breathe, 2);
+  g.circle(28, 18 + breathe, 2);
   g.fill();
   
   g.fill(0x000000);
-  g.circle(20, 6 + breathe, 1);
-  g.circle(28, 6 + breathe, 1);
+  g.circle(20, 18 + breathe, 1);
+  g.circle(28, 18 + breathe, 1);
   g.fill();
   
   // Frost breath particles for frost dragon
   if (isFrost && frame % 4 === 0) {
     g.fill(frostEffect);
-    g.circle(32, 8 + breathe, 1);
+    g.circle(32, 20 + breathe, 1);
     g.fill();
   }
 }
@@ -166,91 +167,91 @@ function drawWalkingDragon(g: Graphics, palette: DragonPalette, frame: number, i
   // Add frost trail for frost dragon
   if (isFrost && frame % 3 === 0) {
     g.fill(palette.ice);
-    g.circle(20 - walkCycle * 8, 32 + bodyBob, 1);
+    g.circle(24, 70 + bodyBob, 1);
     g.fill();
   }
   
   // Body
   g.fill(palette.body);
-  g.circle(24, 20 + bodyBob, 12);
+  g.circle(24, 48 + bodyBob, 16);
   g.fill();
   
   // Head
-  g.circle(24, 8 + bodyBob, 8);
+  g.circle(24, 20 + bodyBob, 12);
   g.fill();
   
-  // Wings (animated)
+  // Wings (animated) - vertical layout
   g.fill(palette.wings);
-  g.moveTo(12, 15 + bodyBob - wingFlap);
-  g.lineTo(4, 8 + bodyBob - wingFlap * 2);
-  g.lineTo(6, 25 + bodyBob);
-  g.lineTo(15, 22 + bodyBob);
+  g.moveTo(15, 35 + bodyBob - wingFlap);
+  g.lineTo(5, 25 + bodyBob - wingFlap * 2);
+  g.lineTo(10, 60 + bodyBob);
+  g.lineTo(20, 55 + bodyBob);
   g.closePath();
   g.fill();
   
-  g.moveTo(36, 15 + bodyBob - wingFlap);
-  g.lineTo(44, 8 + bodyBob - wingFlap * 2);
-  g.lineTo(42, 25 + bodyBob);
-  g.lineTo(33, 22 + bodyBob);
+  g.moveTo(33, 35 + bodyBob - wingFlap);
+  g.lineTo(43, 25 + bodyBob - wingFlap * 2);
+  g.lineTo(38, 60 + bodyBob);
+  g.lineTo(28, 55 + bodyBob);
   g.closePath();
   g.fill();
   
-  // Legs (walking animation)
+  // Legs (walking animation) - positioned at bottom
   const legOffset = Math.sin(walkCycle * Math.PI * 2) * 4;
   g.fill(palette.body);
-  g.rect(18, 28 + bodyBob, 3, 8 + legOffset);
-  g.rect(27, 28 + bodyBob, 3, 8 - legOffset);
+  g.rect(18, 68 + bodyBob, 3, 8 + legOffset);
+  g.rect(27, 68 + bodyBob, 3, 8 - legOffset);
   g.fill();
   
   // Belly
   g.fill(palette.belly);
-  g.circle(24, 22 + bodyBob, 6);
+  g.circle(24, 52 + bodyBob, 10);
   g.fill();
 }
 
 function drawAttackingDragon(g: Graphics, palette: DragonPalette, frame: number, isFrost: boolean) {
   const attackProgress = frame / 7;
-  const lunge = attackProgress * 8;
+  const lunge = attackProgress * 8; // Vertical lunge
   
   // Add ice particles for frost dragon attack
   if (isFrost) {
     g.fill(palette.ice);
     for (let i = 0; i < 3; i++) {
-      g.circle(30 + lunge + i * 4, 10 + Math.sin(i) * 5, 1);
+      g.circle(32 + i * 4, 20 - lunge + Math.sin(i) * 5, 1);
     }
     g.fill();
   }
   
-  // Body (lunging forward)
+  // Body (lunging forward/upward)
   g.fill(palette.body);
-  g.circle(24 + lunge * 0.3, 20, 12);
+  g.circle(24, 48 - lunge * 0.3, 16);
   g.fill();
   
-  // Head (biting motion)
-  g.circle(24 + lunge, 8, 9);
+  // Head (biting motion) - lunging upward
+  g.circle(24, 20 - lunge, 14);
   g.fill();
   
-  // Wings (spread for attack)
+  // Wings (spread for attack) - vertical layout
   g.fill(palette.wings);
-  g.moveTo(12, 15);
-  g.lineTo(2, 5);
-  g.lineTo(4, 25);
-  g.lineTo(15, 22);
+  g.moveTo(15, 35);
+  g.lineTo(5, 25);
+  g.lineTo(10, 60);
+  g.lineTo(20, 55);
   g.closePath();
   g.fill();
   
-  g.moveTo(36, 15);
-  g.lineTo(46, 5);
-  g.lineTo(44, 25);
-  g.lineTo(33, 22);
+  g.moveTo(33, 35);
+  g.lineTo(43, 25);
+  g.lineTo(38, 60);
+  g.lineTo(28, 55);
   g.closePath();
   g.fill();
   
   // Teeth
   g.fill(0xffffff);
-  for (let i = 0; i < 3; i++) {
-    const x = 30 + lunge + i * 2;
-    const y = 8;
+  for (let i = 0; i < 4; i++) {
+    const x = 20 + i * 3;
+    const y = 15 - lunge;
     g.moveTo(x, y);
     g.lineTo(x + 2, y + 2);
     g.lineTo(x, y + 4);
@@ -262,113 +263,113 @@ function drawAttackingDragon(g: Graphics, palette: DragonPalette, frame: number,
 
 function drawBreathingDragon(g: Graphics, palette: DragonPalette, frame: number, isFrost: boolean) {
   const breathProgress = frame / 5;
-  const breathSize = 10 + breathProgress * 15;
+  const breathSize = 15 + breathProgress * 20;
   
   // Body
   g.fill(palette.body);
-  g.circle(24, 20, 12);
+  g.circle(24, 48, 16);
   g.fill();
   
   // Head (mouth open)
-  g.circle(24, 8, 8);
+  g.circle(24, 20, 12);
   g.fill();
   
   // Mouth
   g.fill(0x000000);
-  g.arc(24, 10, 6, 0, Math.PI);
+  g.arc(24, 22, 10, 0, Math.PI);
   g.fill();
   
-  // Breath effect
+  // Breath effect - shooting upward from vertical dragon
   const breathColor = isFrost ? palette.ice : palette.fire;
   g.fill(breathColor);
   
   if (isFrost) {
-    // Ice crystals
-    for (let i = 0; i < 5; i++) {
-      const x = 32 + breathProgress * 10 + i * 3;
-      const y = 8 + Math.sin(i) * 3;
+    // Ice crystals shooting upward
+    for (let i = 0; i < 8; i++) {
+      const x = 24 + Math.sin(i) * 8;
+      const y = 15 - breathProgress * 20 - i * 4;
       g.drawPolygon([
-        x, y - 2,
-        x + 2, y,
-        x, y + 2,
-        x - 2, y,
+        x, y - 3,
+        x + 3, y,
+        x, y + 3,
+        x - 3, y,
       ]);
     }
   } else {
-    // Fire cone
-    g.moveTo(30, 8);
-    g.lineTo(30 + breathSize, 4);
-    g.lineTo(30 + breathSize, 12);
+    // Fire cone shooting upward
+    g.moveTo(20, 15);
+    g.lineTo(20 - breathSize/2, 5 - breathProgress * 25);
+    g.lineTo(28 + breathSize/2, 5 - breathProgress * 25);
     g.closePath();
     g.fill();
   }
   
-  // Wings
+  // Wings - spread wide for breath attack
   g.fill(palette.wings);
-  g.moveTo(12, 15);
-  g.lineTo(4, 10);
-  g.lineTo(6, 25);
-  g.lineTo(15, 22);
+  g.moveTo(15, 35);
+  g.lineTo(5, 25);
+  g.lineTo(10, 60);
+  g.lineTo(20, 55);
   g.closePath();
   g.fill();
   
-  g.moveTo(36, 15);
-  g.lineTo(44, 10);
-  g.lineTo(42, 25);
-  g.lineTo(33, 22);
+  g.moveTo(33, 35);
+  g.lineTo(43, 25);
+  g.lineTo(38, 60);
+  g.lineTo(28, 55);
   g.closePath();
   g.fill();
 }
 
 function drawDyingDragon(g: Graphics, palette: DragonPalette, frame: number, isFrost: boolean) {
   const deathProgress = frame / 6;
-  const bodyY = 20 + deathProgress * 8;
+  const bodyY = 48 + deathProgress * 20; // Falling downward in tall frame
   
   // Add frost particles dissipating for frost dragon
   if (isFrost && deathProgress < 0.5) {
     g.fill(palette.ice);
-    for (let i = 0; i < 2; i++) {
-      g.circle(24 + Math.random() * 10 - 5, bodyY - 20 + i * 5, 1);
+    for (let i = 0; i < 3; i++) {
+      g.circle(24 + Math.random() * 10 - 5, 30 - deathProgress * 15 + i * 5, 1);
     }
     g.fill();
   }
   
-  // Body (falling)
+  // Body (falling) - larger
   g.fill(palette.body);
-  g.circle(24, bodyY, 12 - deathProgress * 2);
+  g.circle(24, bodyY, 16 - deathProgress * 3);
   g.fill();
   
-  // Head (drooping)
-  g.circle(24 - deathProgress * 4, bodyY - 12 + deathProgress * 8, 8 - deathProgress);
+  // Head (drooping) - positioned for vertical sprite
+  g.circle(24, bodyY - 28 + deathProgress * 10, 12 - deathProgress);
   g.fill();
   
-  // Wings (limp)
+  // Wings (limp) - vertical layout
   g.fill(palette.wings);
-  g.moveTo(12, bodyY - 5);
-  g.lineTo(4, bodyY - 10);
-  g.lineTo(6, bodyY + 5);
-  g.lineTo(15, bodyY + 2);
+  g.moveTo(15, bodyY - 13);
+  g.lineTo(5, bodyY - 23);
+  g.lineTo(10, bodyY + 7);
+  g.lineTo(20, bodyY + 2);
   g.closePath();
   g.fill();
   
-  g.moveTo(36, bodyY - 5);
-  g.lineTo(44, bodyY - 10);
-  g.lineTo(42, bodyY + 5);
-  g.lineTo(33, bodyY + 2);
+  g.moveTo(33, bodyY - 13);
+  g.lineTo(43, bodyY - 23);
+  g.lineTo(38, bodyY + 7);
+  g.lineTo(28, bodyY + 2);
   g.closePath();
   g.fill();
   
   // X eyes for death
   if (deathProgress > 0.3) {
     g.stroke({ width: 1, color: 0x000000 });
-    g.moveTo(18, bodyY - 14);
-    g.lineTo(22, bodyY - 10);
-    g.moveTo(22, bodyY - 14);
-    g.lineTo(18, bodyY - 10);
-    g.moveTo(26, bodyY - 14);
-    g.lineTo(30, bodyY - 10);
-    g.moveTo(30, bodyY - 14);
-    g.lineTo(26, bodyY - 10);
+    g.moveTo(20, bodyY - 30);
+    g.lineTo(28, bodyY - 22);
+    g.moveTo(28, bodyY - 30);
+    g.lineTo(20, bodyY - 22);
+    g.moveTo(20, bodyY - 26);
+    g.lineTo(28, bodyY - 18);
+    g.moveTo(28, bodyY - 26);
+    g.lineTo(20, bodyY - 18);
     g.stroke();
   }
 }

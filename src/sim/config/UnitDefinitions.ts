@@ -18,6 +18,12 @@ export interface UnitDef {
   huntTargets?: UnitType[];
   /** If true, unit ignores all combat and only seeks neutral buildings to capture. */
   diplomatOnly?: boolean;
+  /** Visual size properties for rendering */
+  size?: {
+    width: number; // multiplier for sprite width (1.0 = normal)
+    height: number; // multiplier for sprite height (1.0 = normal)
+    healthBarOffset?: number; // Y offset for health bar (negative = higher)
+  };
   /** If true, the unit deals 5x damage on its first hit. */
   isChargeUnit?: boolean;
   /** If true, the unit targets and heals friendly units instead of attacking enemies. */
@@ -443,6 +449,11 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 15,
     abilityTypes: [AbilityType.FIRE_BREATH],
     spriteKey: "red_dragon",
+    size: {
+      width: 1.0, // normal width
+      height: 2.0, // 2x taller than normal
+      healthBarOffset: -0.8, // health bar positioned higher
+    },
   },
   [UnitType.FROST_DRAGON]: {
     type: UnitType.FROST_DRAGON,
@@ -455,5 +466,10 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 15,
     abilityTypes: [AbilityType.FROST_BREATH],
     spriteKey: "frost_dragon",
+    size: {
+      width: 1.0, // normal width
+      height: 2.0, // 2x taller than normal
+      healthBarOffset: -0.8, // health bar positioned higher
+    },
   },
 };
