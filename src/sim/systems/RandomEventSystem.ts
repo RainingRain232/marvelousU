@@ -120,6 +120,31 @@ const RANDOM_EVENTS: RandomEventDef[] = [
     },
   },
   {
+    type: "red_dragon_wanderer",
+    title: "RED DRAGON ATTACK",
+    description: "A fearsome red dragon descends from the skies! A neutral beast rains fire upon all units!",
+    apply(state) {
+      const anchor = _pickNeutralBuilding(state);
+      // Fall back to map centre if no neutral building exists
+      const base = anchor ?? {
+        x: Math.floor(state.battlefield.width / 2),
+        y: Math.floor(state.battlefield.height / 2),
+      };
+
+      const unit = createUnit({
+        type: UnitType.RED_DRAGON,
+        owner: NEUTRAL_PLAYER,
+        position: { x: base.x, y: base.y },
+      });
+      state.units.set(unit.id, unit);
+      EventBus.emit("unitSpawned", {
+        unitId: unit.id,
+        buildingId: "",
+        position: { ...unit.position },
+      });
+    },
+  },
+  {
     type: "divine_blessing",
     title: "DIVINE BLESSING",
     description: "A miracle occurs! Both players receive a cleric and two monks to aid their cause!",
