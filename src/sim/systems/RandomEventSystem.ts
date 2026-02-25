@@ -94,6 +94,81 @@ const RANDOM_EVENTS: RandomEventDef[] = [
       }
     },
   },
+  {
+    type: "cyclops_wanderer",
+    title: "CYCLOPS WANDERER",
+    description: "A massive cyclops wanders into the battlefield! A neutral giant threatens all units!",
+    apply(state) {
+      const anchor = _pickNeutralBuilding(state);
+      // Fall back to map centre if no neutral building exists
+      const base = anchor ?? {
+        x: Math.floor(state.battlefield.width / 2),
+        y: Math.floor(state.battlefield.height / 2),
+      };
+
+      const unit = createUnit({
+        type: UnitType.CYCLOPS,
+        owner: NEUTRAL_PLAYER,
+        position: { x: base.x, y: base.y },
+      });
+      state.units.set(unit.id, unit);
+      EventBus.emit("unitSpawned", {
+        unitId: unit.id,
+        buildingId: "",
+        position: { ...unit.position },
+      });
+    },
+  },
+  {
+    type: "divine_blessing",
+    title: "DIVINE BLESSING",
+    description: "A miracle occurs! Both players receive a cleric and two monks to aid their cause!",
+    apply(state) {
+      // Summon units for both players at their castles
+      for (const playerId of ["p1", "p2"]) {
+        const player = state.players.get(playerId);
+        if (!player) continue;
+
+        // Find player's castle
+        const castle = [...state.buildings.values()].find(
+          b => b.owner === playerId && b.type === "castle"
+        );
+        if (!castle) continue;
+
+        // Spawn cleric near castle (outside)
+        const clericOffsetX = Math.random() > 0.5 ? 3 : -3;
+        const clericOffsetY = Math.random() > 0.5 ? 3 : -3;
+        const cleric = createUnit({
+          type: UnitType.CLERIC,
+          owner: playerId,
+          position: { x: castle.position.x + 1 + clericOffsetX, y: castle.position.y + 1 + clericOffsetY },
+        });
+        state.units.set(cleric.id, cleric);
+        EventBus.emit("unitSpawned", {
+          unitId: cleric.id,
+          buildingId: castle.id,
+          position: { ...cleric.position },
+        });
+
+        // Spawn two monks near castle (outside)
+        for (let i = 0; i < 2; i++) {
+          const monkOffsetX = Math.random() > 0.5 ? 2 + i : -2 - i;
+          const monkOffsetY = Math.random() > 0.5 ? 2 + i : -2 - i;
+          const monk = createUnit({
+            type: UnitType.MONK,
+            owner: playerId,
+            position: { x: castle.position.x + 1 + monkOffsetX, y: castle.position.y + 2 + monkOffsetY },
+          });
+          state.units.set(monk.id, monk);
+          EventBus.emit("unitSpawned", {
+            unitId: monk.id,
+            buildingId: castle.id,
+            position: { ...monk.position },
+          });
+        }
+      }
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
