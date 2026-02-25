@@ -18,10 +18,10 @@ import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { TownRenderer } from "@view/entities/TownRenderer";
 import { FirepitRenderer } from "@view/entities/FirepitRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
-// import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
+import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
 import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
 // import { BarracksRenderer } from "@view/entities/BarracksRenderer";
-// import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
+import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
 import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
 
@@ -142,12 +142,12 @@ export class BuildingView {
   private _templeRenderer: TempleRenderer | null = null;
   private _frontStablesRenderer: FrontViewStablesRenderer | null = null;
   // Detailed archery range renderer (only set for ARCHERY_RANGE type buildings)
-  // private _archeryRangeRenderer: ArcheryRangeRenderer | null = null;
+  private _archeryRangeRenderer: ArcheryRangeRenderer | null = null;
   private _mageTowerRenderer: MageTowerRenderer | null = null;
   // Detailed barracks renderer (only set for BARRACKS type buildings)
   // private _barracksRenderer: BarracksRenderer | null = null;
   // Detailed siege workshop renderer (only set for SIEGE_WORKSHOP type buildings)
-  // private _siegeWorkshopRenderer: SiegeWorkshopRenderer | null = null;
+  private _siegeWorkshopRenderer: SiegeWorkshopRenderer | null = null;
   // Detailed blacksmith renderer (only set for BLACKSMITH type buildings)
   private _blacksmithRenderer: BlacksmithRenderer | null = null;
   private _embassyRenderer: EmbassyRenderer | null = null;
@@ -211,8 +211,8 @@ export class BuildingView {
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.SIEGE_WORKSHOP) {
-      // this._siegeWorkshopRenderer = new SiegeWorkshopRenderer(building.owner);
-      // this.container.addChild(this._siegeWorkshopRenderer.container);
+      this._siegeWorkshopRenderer = new SiegeWorkshopRenderer(building.owner);
+      this.container.addChild(this._siegeWorkshopRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.BLACKSMITH) {
@@ -232,8 +232,8 @@ export class BuildingView {
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.ARCHERY_RANGE) {
-      // this._archeryRangeRenderer = new ArcheryRangeRenderer(building.owner);
-      // this.container.addChild(this._archeryRangeRenderer.container);
+      this._archeryRangeRenderer = new ArcheryRangeRenderer(building.owner);
+      this.container.addChild(this._archeryRangeRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -347,18 +347,18 @@ export class BuildingView {
       // if (this._barracksRenderer) {
       //   this._barracksRenderer.tick();
       // }
-      // if (this._siegeWorkshopRenderer) {
-      //   this._siegeWorkshopRenderer.tick(dt, phase);
-      // }
+      if (this._siegeWorkshopRenderer) {
+        this._siegeWorkshopRenderer.tick(dt, phase);
+      }
       if (this._blacksmithRenderer) {
         this._blacksmithRenderer.tick(dt, phase);
       }
       if (this._embassyRenderer) {
         this._embassyRenderer.tick(dt, phase);
       }
-      // if (this._archeryRangeRenderer) {
-      //   this._archeryRangeRenderer.tick(dt, phase);
-      // }
+      if (this._archeryRangeRenderer) {
+        this._archeryRangeRenderer.tick(dt, phase);
+      }
       this._tickIdleEffects(dt);
     }
   }

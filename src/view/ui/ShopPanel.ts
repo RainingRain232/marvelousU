@@ -26,10 +26,10 @@ import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
 import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
-// import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
+import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
 // import { BarracksRenderer } from "@view/entities/BarracksRenderer";
-// import { FrontViewStablesRenderer } from "@view/entities/FrontViewStablesRenderer";
-// import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
+import { FrontViewStablesRenderer } from "@view/entities/FrontViewStablesRenderer";
+import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
 import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
 
@@ -624,41 +624,32 @@ export class ShopPanel {
       buildingContainer = er.container;
       texW = 128;
       texH = 128;
-    }
-    // } else if (buildingType === BuildingType.BARRACKS) {
-    //   const br = new BarracksRenderer(null);
-    //   buildingContainer = br.container;
-    //   texW = 128;
-    //   texH = 128;
-    // } else if (buildingType === BuildingType.STABLES) {
-    //   const sr = new FrontViewStablesRenderer(null);
-    //   buildingContainer = sr.container;
-    //   texW = 128;
-    //   texH = 128;
-    // } else if (buildingType === BuildingType.SIEGE_WORKSHOP) {
-    //   const swr = new SiegeWorkshopRenderer(null);
-    //   buildingContainer = swr.container;
-    //   texW = 128;
-    //   texH = 128;
-    // } else if (buildingType === BuildingType.BLACKSMITH) {
-    if (buildingType === BuildingType.BLACKSMITH) {
+    } else if (buildingType === BuildingType.BLACKSMITH) {
       const bsr = new BlacksmithRenderer(null);
       buildingContainer = bsr.container;
       texW = 128;
       texH = 128;
-      // } else if (buildingType === BuildingType.MAGE_TOWER) {
     } else if (buildingType === BuildingType.MAGE_TOWER) {
       const mtr = new MageTowerRenderer(null);
       buildingContainer = mtr.container;
       texW = 128;
       texH = 128;
+    } else if (buildingType === BuildingType.SIEGE_WORKSHOP) {
+      const swr = new SiegeWorkshopRenderer(null);
+      buildingContainer = swr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.ARCHERY_RANGE) {
+      const arr = new ArcheryRangeRenderer(null);
+      buildingContainer = arr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.STABLES) {
+      const sr = new FrontViewStablesRenderer(null);
+      buildingContainer = sr.container;
+      texW = 128;
+      texH = 128;
     }
-    // } else if (buildingType === BuildingType.ARCHERY_RANGE) {
-    //   const arr = new ArcheryRangeRenderer(null);
-    //   buildingContainer = arr.container;
-    //   texW = 128;
-    //   texH = 128;
-    // }
 
     if (!buildingContainer) return null;
 
