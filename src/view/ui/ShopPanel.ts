@@ -27,11 +27,12 @@ import { WallRenderer } from "@view/entities/WallRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
 import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
 import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
-// import { BarracksRenderer } from "@view/entities/BarracksRenderer";
+import { BarracksRenderer } from "@view/entities/BarracksRenderer";
 import { FrontViewStablesRenderer } from "@view/entities/FrontViewStablesRenderer";
 import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
 import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
+import { CreatureDenRenderer } from "@view/entities/CreatureDenRenderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -629,6 +630,11 @@ export class ShopPanel {
       buildingContainer = bsr.container;
       texW = 128;
       texH = 128;
+    } else if (buildingType === BuildingType.CREATURE_DEN) {
+      const cdr = new CreatureDenRenderer(null);
+      buildingContainer = cdr.container;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.MAGE_TOWER) {
       const mtr = new MageTowerRenderer(null);
       buildingContainer = mtr.container;
@@ -647,6 +653,11 @@ export class ShopPanel {
     } else if (buildingType === BuildingType.STABLES) {
       const sr = new FrontViewStablesRenderer(null);
       buildingContainer = sr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.BARRACKS) {
+      const br = new BarracksRenderer(null);
+      buildingContainer = br.container;
       texW = 128;
       texH = 128;
     }

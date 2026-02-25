@@ -20,10 +20,11 @@ import { FirepitRenderer } from "@view/entities/FirepitRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
 import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
 import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
-// import { BarracksRenderer } from "@view/entities/BarracksRenderer";
+import { BarracksRenderer } from "@view/entities/BarracksRenderer";
 import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
 import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
+import { CreatureDenRenderer } from "@view/entities/CreatureDenRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -145,12 +146,13 @@ export class BuildingView {
   private _archeryRangeRenderer: ArcheryRangeRenderer | null = null;
   private _mageTowerRenderer: MageTowerRenderer | null = null;
   // Detailed barracks renderer (only set for BARRACKS type buildings)
-  // private _barracksRenderer: BarracksRenderer | null = null;
+  private _barracksRenderer: BarracksRenderer | null = null;
   // Detailed siege workshop renderer (only set for SIEGE_WORKSHOP type buildings)
   private _siegeWorkshopRenderer: SiegeWorkshopRenderer | null = null;
   // Detailed blacksmith renderer (only set for BLACKSMITH type buildings)
   private _blacksmithRenderer: BlacksmithRenderer | null = null;
   private _embassyRenderer: EmbassyRenderer | null = null;
+  private _creatureDenRenderer: CreatureDenRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -206,8 +208,8 @@ export class BuildingView {
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.BARRACKS) {
-      // this._barracksRenderer = new BarracksRenderer(building.owner);
-      // this.container.addChild(this._barracksRenderer.container);
+      this._barracksRenderer = new BarracksRenderer(building.owner);
+      this.container.addChild(this._barracksRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.SIEGE_WORKSHOP) {
@@ -223,6 +225,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.EMBASSY) {
       this._embassyRenderer = new EmbassyRenderer(building.owner);
       this.container.addChild(this._embassyRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.CREATURE_DEN) {
+      this._creatureDenRenderer = new CreatureDenRenderer(building.owner);
+      this.container.addChild(this._creatureDenRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.STABLES) {
@@ -350,11 +357,17 @@ export class BuildingView {
       if (this._siegeWorkshopRenderer) {
         this._siegeWorkshopRenderer.tick(dt, phase);
       }
+      if (this._barracksRenderer) {
+        this._barracksRenderer.tick(dt, phase);
+      }
       if (this._blacksmithRenderer) {
         this._blacksmithRenderer.tick(dt, phase);
       }
       if (this._embassyRenderer) {
         this._embassyRenderer.tick(dt, phase);
+      }
+      if (this._creatureDenRenderer) {
+        this._creatureDenRenderer.tick(dt, phase);
       }
       if (this._archeryRangeRenderer) {
         this._archeryRangeRenderer.tick(dt, phase);
