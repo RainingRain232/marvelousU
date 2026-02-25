@@ -20,8 +20,8 @@ export interface BuildingDef {
   defaultTurrets?: Omit<BuildingTurret, "attackTimer" | "targetId">[];
   /** Maximum number of this building type a single player may own at once. */
   maxCount?: number;
-  /** Blueprint is only purchasable once the player owns at least minCount of the given type. */
-  prerequisite?: { type: BuildingType; minCount: number };
+  /** Blueprint is only purchasable once the player owns at least minCount of the given type(s). */
+  prerequisite?: { types: BuildingType[]; minCount: number };
 }
 
 export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
@@ -45,6 +45,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.EMBASSY,
       BuildingType.TEMPLE,
       BuildingType.WALL,
+      BuildingType.MILL,
+      BuildingType.ELITE_HALL,
     ],
     footprint: { w: 4, h: 4 },
     placementZone: "own",
@@ -85,18 +87,17 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
+    prerequisite: { types: [BuildingType.BARRACKS], minCount: 1 },
   },
   [BuildingType.MAGE_TOWER]: {
     type: BuildingType.MAGE_TOWER,
     cost: 150,
-    hp: 150,
+    hp: 180,
     goldIncome: 2,
     shopInventory: [
       UnitType.FIRE_MAGE,
       UnitType.STORM_MAGE,
-      UnitType.SUMMONER,
       UnitType.COLD_MAGE,
-      UnitType.DISTORTION_MAGE,
     ],
     blueprints: [],
     footprint: { w: 2, h: 2 },
@@ -105,30 +106,21 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   [BuildingType.ARCHERY_RANGE]: {
     type: BuildingType.ARCHERY_RANGE,
     cost: 100,
-    hp: 180,
+    hp: 150,
     goldIncome: 1,
-    shopInventory: [
-      UnitType.ARCHER,
-      UnitType.LONGBOWMAN,
-      UnitType.CROSSBOWMAN,
-      UnitType.SHORTBOW,
-    ],
+    shopInventory: [UnitType.ARCHER, UnitType.CROSSBOWMAN, UnitType.LONGBOWMAN],
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
   },
   [BuildingType.SIEGE_WORKSHOP]: {
     type: BuildingType.SIEGE_WORKSHOP,
-    cost: 150,
-    hp: 200,
+    cost: 120,
+    hp: 180,
     goldIncome: 1,
-    shopInventory: [
-      UnitType.BATTERING_RAM,
-      UnitType.BALLISTA,
-      UnitType.BOLT_THROWER,
-    ],
+    shopInventory: [UnitType.BALLISTA, UnitType.BATTERING_RAM],
     blueprints: [],
-    footprint: { w: 2, h: 3 },
+    footprint: { w: 2, h: 2 },
     placementZone: "own",
   },
   [BuildingType.BLACKSMITH]: {
@@ -140,6 +132,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
+    prerequisite: { types: [BuildingType.BARRACKS], minCount: 1 },
   },
   [BuildingType.TOWN]: {
     type: BuildingType.TOWN,
@@ -204,7 +197,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     maxCount: 1,
-    prerequisite: { type: BuildingType.FARM, minCount: 5 },
+    prerequisite: { types: [BuildingType.FARM], minCount: 5 },
   },
   [BuildingType.EMBASSY]: {
     type: BuildingType.EMBASSY,
@@ -248,5 +241,31 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 1 },
     placementZone: "any",
     capturable: false,
+  },
+  [BuildingType.MILL]: {
+    type: BuildingType.MILL,
+    cost: 200,
+    hp: 300,
+    goldIncome: 5,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 2 },
+    placementZone: "own",
+    capturable: false,
+  },
+  [BuildingType.ELITE_HALL]: {
+    type: BuildingType.ELITE_HALL,
+    cost: 300,
+    hp: 400,
+    goldIncome: 8,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 2, h: 2 },
+    placementZone: "own",
+    capturable: false,
+    prerequisite: {
+      types: [BuildingType.MAGE_TOWER, BuildingType.BLACKSMITH],
+      minCount: 1,
+    },
   },
 };

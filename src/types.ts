@@ -86,6 +86,8 @@ export enum BuildingType {
   TEMPLE = "temple",
   WALL = "wall",
   FIREPIT = "firepit",
+  MILL = "mill",
+  ELITE_HALL = "elite_hall",
 }
 
 export enum AbilityType {

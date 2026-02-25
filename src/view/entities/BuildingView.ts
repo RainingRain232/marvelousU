@@ -25,6 +25,8 @@ import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
 import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
 import { CreatureDenRenderer } from "@view/entities/CreatureDenRenderer";
+import { MillRenderer } from "@view/entities/MillRenderer";
+import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -54,6 +56,8 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.TEMPLE]: 0xd8bfd8,
   [BuildingType.WALL]: 0x777777,
   [BuildingType.FIREPIT]: 0x333333,
+  [BuildingType.MILL]: 0x8b7355,
+  [BuildingType.ELITE_HALL]: 0xaa8844,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -91,6 +95,8 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.TEMPLE]: "TEMPLE",
   [BuildingType.WALL]: "WALL",
   [BuildingType.FIREPIT]: "FIREPIT",
+  [BuildingType.MILL]: "MILL",
+  [BuildingType.ELITE_HALL]: "ELITE HALL",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -153,6 +159,8 @@ export class BuildingView {
   private _blacksmithRenderer: BlacksmithRenderer | null = null;
   private _embassyRenderer: EmbassyRenderer | null = null;
   private _creatureDenRenderer: CreatureDenRenderer | null = null;
+  private _millRenderer: MillRenderer | null = null;
+  private _eliteHallRenderer: EliteHallRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -230,6 +238,16 @@ export class BuildingView {
     } else if (building.type === BuildingType.CREATURE_DEN) {
       this._creatureDenRenderer = new CreatureDenRenderer(building.owner);
       this.container.addChild(this._creatureDenRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.MILL) {
+      this._millRenderer = new MillRenderer(building.owner);
+      this.container.addChild(this._millRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.ELITE_HALL) {
+      this._eliteHallRenderer = new EliteHallRenderer(building.owner);
+      this.container.addChild(this._eliteHallRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.STABLES) {
@@ -368,6 +386,12 @@ export class BuildingView {
       }
       if (this._creatureDenRenderer) {
         this._creatureDenRenderer.tick(dt, phase);
+      }
+      if (this._millRenderer) {
+        this._millRenderer.tick(dt, phase);
+      }
+      if (this._eliteHallRenderer) {
+        this._eliteHallRenderer.tick(dt, phase);
       }
       if (this._archeryRangeRenderer) {
         this._archeryRangeRenderer.tick(dt, phase);

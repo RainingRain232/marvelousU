@@ -33,6 +33,8 @@ import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
 import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
 import { CreatureDenRenderer } from "@view/entities/CreatureDenRenderer";
+import { MillRenderer } from "@view/entities/MillRenderer";
+import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -139,6 +141,8 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.TEMPLE]: "Temple",
   [BuildingType.WALL]: "Wall",
   [BuildingType.FIREPIT]: "Firepit",
+  [BuildingType.MILL]: "Mill",
+  [BuildingType.ELITE_HALL]: "Elite Hall",
 };
 
 // Unit display names
@@ -635,6 +639,16 @@ export class ShopPanel {
       buildingContainer = cdr.container;
       texW = 128;
       texH = 128;
+    } else if (buildingType === BuildingType.MILL) {
+      const mr = new MillRenderer(null);
+      buildingContainer = mr.container;
+      texW = 64;
+      texH = 128;
+    } else if (buildingType === BuildingType.ELITE_HALL) {
+      const ehr = new EliteHallRenderer(null);
+      buildingContainer = ehr.container;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.MAGE_TOWER) {
       const mtr = new MageTowerRenderer(null);
       buildingContainer = mtr.container;
@@ -833,9 +847,12 @@ export class ShopPanel {
     const prereq = def.prerequisite;
     const ownedCount =
       maxCount !== undefined ? this._countOwnedType(bpType) : 0;
-    const prereqCount = prereq ? this._countOwnedType(prereq.type) : 0;
+    const prereqMet =
+      !prereq ||
+      prereq.types.every(
+        (type) => this._countOwnedType(type) >= prereq.minCount,
+      );
     const atMax = maxCount !== undefined && ownedCount >= maxCount;
-    const prereqMet = !prereq || prereqCount >= prereq.minCount;
     const locked = atMax || !prereqMet;
 
     const bg = new Graphics()

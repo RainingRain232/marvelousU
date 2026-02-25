@@ -100,8 +100,11 @@ class P2AIBuyer {
 
         // Skip if prerequisite not met
         if (def.prerequisite) {
-          const prereqOwned = this._countOwnedType(state, def.prerequisite.type);
-          if (prereqOwned < def.prerequisite.minCount) continue;
+          const prereqMet = def.prerequisite.types.every(
+            (type) =>
+              this._countOwnedType(state, type) >= def.prerequisite!.minCount,
+          );
+          if (!prereqMet) continue;
         }
 
         // Find a valid tile to place it in p2's zone (east side)
@@ -128,7 +131,9 @@ class P2AIBuyer {
     // Weight unit actions 3:1 over building actions so the AI reliably trains
     // troops rather than spending all gold on infrastructure early.
     const pool = [
-      ...unitActions, ...unitActions, ...unitActions,
+      ...unitActions,
+      ...unitActions,
+      ...unitActions,
       ...buildingActions,
     ];
     const action = pool[Math.floor(Math.random() * pool.length)];
@@ -189,13 +194,25 @@ class P2AIBuyer {
       // to avoid flooding error results: all tiles must be walkable, in east
       // zone, and no existing building within BUILDING_MIN_GAP of the footprint.
       let ok = true;
-      outer:
-      for (let dy = -BUILDING_MIN_GAP; dy < h + BUILDING_MIN_GAP && ok; dy++) {
-        for (let dx = -BUILDING_MIN_GAP; dx < w + BUILDING_MIN_GAP && ok; dx++) {
+      outer: for (
+        let dy = -BUILDING_MIN_GAP;
+        dy < h + BUILDING_MIN_GAP && ok;
+        dy++
+      ) {
+        for (
+          let dx = -BUILDING_MIN_GAP;
+          dx < w + BUILDING_MIN_GAP && ok;
+          dx++
+        ) {
           const tile = getTile(state.battlefield, x + dx, y + dy);
           const isFootprint = dx >= 0 && dx < w && dy >= 0 && dy < h;
           if (isFootprint) {
-            if (!tile || !tile.walkable || tile.buildingId !== null || tile.zone !== "east") {
+            if (
+              !tile ||
+              !tile.walkable ||
+              tile.buildingId !== null ||
+              tile.zone !== "east"
+            ) {
               ok = false;
               break outer;
             }

@@ -94,8 +94,11 @@ export function placeBuilding(
 
   // 3. Prerequisite check
   if (def.prerequisite) {
-    const prereqCount = _countOwnedType(state, playerId, def.prerequisite.type);
-    if (prereqCount < def.prerequisite.minCount) {
+    const prereqMet = def.prerequisite.types.every(
+      (type) =>
+        _countOwnedType(state, playerId, type) >= def.prerequisite!.minCount,
+    );
+    if (!prereqMet) {
       return { ok: false, reason: "prerequisite_not_met" };
     }
   }
@@ -128,7 +131,8 @@ export function placeBuilding(
   for (let dy = -gap; dy < def.footprint.h + gap; dy++) {
     for (let dx = -gap; dx < def.footprint.w + gap; dx++) {
       // Skip the footprint itself (already checked above)
-      if (dx >= 0 && dx < def.footprint.w && dy >= 0 && dy < def.footprint.h) continue;
+      if (dx >= 0 && dx < def.footprint.w && dy >= 0 && dy < def.footprint.h)
+        continue;
       const tile = getTile(state.battlefield, position.x + dx, position.y + dy);
       if (tile && tile.buildingId !== null) {
         return { ok: false, reason: "too_close" };
@@ -271,7 +275,10 @@ export const BuildingSystem = {
             building.owner = null;
             building.captureProgress = 0;
             building.capturePlayerId = null;
-            EventBus.emit("buildingCaptured", { buildingId: building.id, newOwner: null });
+            EventBus.emit("buildingCaptured", {
+              buildingId: building.id,
+              newOwner: null,
+            });
           }
         }
         // Contested (both sides) or owner alone → no change to progress
