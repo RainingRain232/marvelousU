@@ -45,6 +45,11 @@ import {
   PALETTE_FROST_DRAGON,
   type DragonPalette,
 } from "@view/animation/DragonSpriteGen";
+import {
+  generateCyclopsFrames,
+  PALETTE_CYCLOPS,
+  type CyclopsPalette,
+} from "@view/animation/CyclopsSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -186,6 +191,8 @@ export class AnimationManager {
         this._generateDragonSprites(key, renderer, PALETTE_RED_DRAGON, false);
       } else if (key === "frost_dragon") {
         this._generateDragonSprites(key, renderer, PALETTE_FROST_DRAGON, true);
+      } else if (key === "cyclops") {
+        this._generateCyclopsSprites(key, renderer, PALETTE_CYCLOPS);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -327,6 +334,26 @@ export class AnimationManager {
    */
   private _generateDragonSprites(key: string, renderer: Renderer, palette: DragonPalette, isFrost: boolean): void {
     const textures = generateDragonFrames(renderer, palette, isFrost);
+    
+    // Map the 40 frames to animation states (8 frames per state)
+    const states = [UnitState.IDLE, UnitState.MOVE, UnitState.ATTACK, UnitState.CAST, UnitState.DIE];
+    
+    for (let stateIndex = 0; stateIndex < states.length; stateIndex++) {
+      const state = states[stateIndex];
+      const stateTextures = textures.slice(stateIndex * 8, (stateIndex + 1) * 8);
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  /**
+   * Generate procedural cyclops sprites.
+   * Used for cyclops.
+   */
+  private _generateCyclopsSprites(key: string, renderer: Renderer, palette: CyclopsPalette): void {
+    const textures = generateCyclopsFrames(renderer, palette);
     
     // Map the 40 frames to animation states (8 frames per state)
     const states = [UnitState.IDLE, UnitState.MOVE, UnitState.ATTACK, UnitState.CAST, UnitState.DIE];

@@ -472,4 +472,21 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       healthBarOffset: -0.8, // health bar positioned higher
     },
   },
+  [UnitType.CYCLOPS]: {
+    type: UnitType.CYCLOPS,
+    cost: 350, // Very expensive
+    hp: 800, // Very high hitpoints
+    atk: 60, // Very high attack
+    attackSpeed: 0.6, // Slow but devastating attacks
+    speed: 0.8, // Slow movement
+    range: 1.5, // Melee with slightly extended reach due to club
+    spawnTime: 20, // Long training time
+    abilityTypes: [], // Basic melee attacks only
+    spriteKey: "cyclops",
+    size: {
+      width: 2.0, // 2 tiles wide
+      height: 3.0, // 3 tiles tall
+      healthBarOffset: -2.0, // Health bar positioned very high
+    },
+  },
 };

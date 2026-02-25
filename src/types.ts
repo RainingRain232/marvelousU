@@ -69,6 +69,7 @@ export enum UnitType {
   SAINT = "saint",
   RED_DRAGON = "red_dragon",
   FROST_DRAGON = "frost_dragon",
+  CYCLOPS = "cyclops",
 }
 
 export enum BuildingType {

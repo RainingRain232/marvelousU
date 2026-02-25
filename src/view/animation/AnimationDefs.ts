@@ -165,4 +165,11 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 8,
     dieFps: 6 
   }),
+  [UnitType.CYCLOPS]: buildDef("cyclops", { 
+    idleFps: 3, 
+    moveFps: 6, 
+    attackFps: 8, 
+    castFps: 6,
+    dieFps: 5 
+  }),
 };
