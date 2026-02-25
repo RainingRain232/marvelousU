@@ -18,7 +18,10 @@ import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { TownRenderer } from "@view/entities/TownRenderer";
 import { FirepitRenderer } from "@view/entities/FirepitRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
+import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
 import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
+import { BarracksRenderer } from "@view/entities/BarracksRenderer";
+import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -134,8 +137,13 @@ export class BuildingView {
   // Detailed temple renderer (only set for TEMPLE type buildings)
   private _templeRenderer: TempleRenderer | null = null;
   private _frontStablesRenderer: FrontViewStablesRenderer | null = null;
-  // Detailed mage tower renderer (only set for MAGE_TOWER type buildings)
+  // Detailed archery range renderer (only set for ARCHERY_RANGE type buildings)
+  private _archeryRangeRenderer: ArcheryRangeRenderer | null = null;
   private _mageTowerRenderer: MageTowerRenderer | null = null;
+  // Detailed barracks renderer (only set for BARRACKS type buildings)
+  private _barracksRenderer: BarracksRenderer | null = null;
+  // Detailed siege workshop renderer (only set for SIEGE_WORKSHOP type buildings)
+  private _siegeWorkshopRenderer: SiegeWorkshopRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -190,10 +198,25 @@ export class BuildingView {
       this.container.addChild(this._mageTowerRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
+    } else if (building.type === BuildingType.BARRACKS) {
+      this._barracksRenderer = new BarracksRenderer(building.owner);
+      this.container.addChild(this._barracksRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.SIEGE_WORKSHOP) {
+      this._siegeWorkshopRenderer = new SiegeWorkshopRenderer(building.owner);
+      this.container.addChild(this._siegeWorkshopRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
     } else if (building.type === BuildingType.STABLES) {
       // Front-view phase 1 renderer for royal stables
       this._frontStablesRenderer = new FrontViewStablesRenderer(building.owner);
       this.container.addChild(this._frontStablesRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.ARCHERY_RANGE) {
+      this._archeryRangeRenderer = new ArcheryRangeRenderer(building.owner);
+      this.container.addChild(this._archeryRangeRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -303,6 +326,15 @@ export class BuildingView {
       }
       if (this._mageTowerRenderer) {
         this._mageTowerRenderer.tick(dt, phase);
+      }
+      if (this._barracksRenderer) {
+        this._barracksRenderer.tick();
+      }
+      if (this._siegeWorkshopRenderer) {
+        this._siegeWorkshopRenderer.tick(dt, phase);
+      }
+      if (this._archeryRangeRenderer) {
+        this._archeryRangeRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }
