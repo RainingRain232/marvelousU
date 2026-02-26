@@ -808,6 +808,13 @@ async function _bootGame(
   const simLoop = new SimLoop(state);
   simLoop.start();
 
+  // Start cinematic speed ramp for scenario 1 (First Blood)
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 1) {
+    console.log("Scenario 1 detected - starting cinematic speed ramp");
+    // Start the speed ramp immediately when the game starts
+    simLoop.startCinematicSpeed();
+  }
+
   // ---------------------------------------------------------------------------
   // Pause overlay + Space-to-pause
   // ---------------------------------------------------------------------------

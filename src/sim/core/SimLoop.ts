@@ -74,6 +74,14 @@ export class SimLoop {
   /** Game speed multiplier. 1.0 = normal, 1.1 = 10% faster, 0.9 = 10% slower. */
   private _timeScale: number = 1.0;
 
+  // ---------------------------------------------------------------------------
+  // Cinematic speed ramp system for scenario 1
+  // ---------------------------------------------------------------------------
+
+  private _cinematicSpeedActive = false;
+  private _startTime = 0; // When the cinematic speed started
+  private _originalTimeScale = 1.0;
+
   constructor(state: GameState, onTick?: TickCallback) {
     this.state = state;
     this.onTick = onTick ?? null;
@@ -93,16 +101,91 @@ export class SimLoop {
 
   /** Current game speed multiplier. */
   get timeScale(): number {
+    if (this._cinematicSpeedActive) {
+      const speed = this._getCinematicSpeed();
+      console.log(`Cinematic speed active: ${speed}`);
+      return speed;
+    }
+    console.log(`Normal speed: ${this._timeScale}`);
     return this._timeScale;
+  }
+
+  /**
+   * Start cinematic speed ramp for scenario 1 - gradually increase from 20% to 100% over 5 seconds
+   */
+  startCinematicSpeed(): void {
+    if (this._cinematicSpeedActive) return;
+    
+    console.log("Starting cinematic speed ramp");
+    this._cinematicSpeedActive = true;
+    this._startTime = performance.now();
+    this._originalTimeScale = this._timeScale;
+    console.log(`Original time scale: ${this._originalTimeScale}`);
+  }
+
+  /**
+   * Stop cinematic speed ramp and return to normal speed control
+   */
+  stopCinematicSpeed(): void {
+    this._cinematicSpeedActive = false;
+    this._timeScale = this._originalTimeScale;
+  }
+
+  /**
+   * Check if cinematic speed ramp is currently active
+   */
+  get isCinematicSpeedActive(): boolean {
+    return this._cinematicSpeedActive;
+  }
+
+  /**
+   * Calculate the current cinematic speed based on progress
+   * 0-5s: 20%, 5-10s: 40%, 10-15s: 60%, 15-20s: 80%, 20s+: 100%
+   */
+  private _getCinematicSpeed(): number {
+    const elapsed = (performance.now() - this._startTime) / 1000; // Convert to seconds
+    
+    // Debug logging
+    if (elapsed % 2 < 0.1) { // Log every ~2 seconds
+      console.log(`Cinematic speed: ${elapsed.toFixed(1)}s elapsed`);
+    }
+    
+    if (elapsed < 5) {
+      console.log(`Setting speed to 20% (elapsed: ${elapsed.toFixed(1)}s)`);
+      return 0.2; // 20% for first 5 seconds
+    } else if (elapsed < 10) {
+      console.log(`Setting speed to 40% (elapsed: ${elapsed.toFixed(1)}s)`);
+      return 0.4; // 40% for next 5 seconds
+    } else if (elapsed < 15) {
+      console.log(`Setting speed to 60% (elapsed: ${elapsed.toFixed(1)}s)`);
+      return 0.6; // 60% for next 5 seconds
+    } else if (elapsed < 20) {
+      console.log(`Setting speed to 80% (elapsed: ${elapsed.toFixed(1)}s)`);
+      return 0.8; // 80% for next 5 seconds
+    } else {
+      // After 20 seconds, return to normal speed
+      console.log(`Cinematic speed complete, returning to normal speed`);
+      this._cinematicSpeedActive = false;
+      this._timeScale = this._originalTimeScale;
+      return this._timeScale;
+    }
   }
 
   /** Increase game speed by 20%. */
   speedUp(): void {
+    if (this._cinematicSpeedActive) {
+      console.log("Speed up blocked - cinematic speed active");
+      return; // Don't allow speed changes during cinematic
+    }
     this._timeScale = Math.round((this._timeScale + 0.2) * 100) / 100;
   }
 
   /** Decrease game speed by 20% (minimum 0.2). */
   speedDown(): void {
+    if (this._cinematicSpeedActive) {
+      console.log("Speed down blocked - cinematic speed active");
+      return; // Don't allow speed changes during cinematic
+    }
     this._timeScale = Math.max(0.2, Math.round((this._timeScale - 0.2) * 100) / 100);
   }
 
