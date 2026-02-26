@@ -35,7 +35,7 @@ export interface UnitDef {
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   [UnitType.SWORDSMAN]: {
     type: UnitType.SWORDSMAN,
-    cost: 30,
+    cost: 150,
     hp: 100,
     atk: 15,
     attackSpeed: 1.0,
@@ -48,7 +48,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.ARCHER]: {
     type: UnitType.ARCHER,
-    cost: 40,
+    cost: 200,
     hp: 70,
     atk: 20,
     attackSpeed: 0.8,
@@ -61,7 +61,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.LONGBOWMAN]: {
     type: UnitType.LONGBOWMAN,
-    cost: 55,
+    cost: 275,
     hp: 65,
     atk: 14,
     attackSpeed: 0.7,
@@ -74,7 +74,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.CROSSBOWMAN]: {
     type: UnitType.CROSSBOWMAN,
-    cost: 60,
+    cost: 300,
     hp: 75,
     atk: 30,
     attackSpeed: 0.5,
@@ -87,7 +87,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.KNIGHT]: {
     type: UnitType.KNIGHT,
-    cost: 60,
+    cost: 300,
     hp: 180,
     atk: 25,
     attackSpeed: 0.7,
@@ -100,7 +100,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.FIRE_MAGE]: {
     type: UnitType.FIRE_MAGE,
-    cost: 80,
+    cost: 400,
     hp: 60,
     atk: 10,
     attackSpeed: 0.5,
@@ -113,7 +113,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.STORM_MAGE]: {
     type: UnitType.STORM_MAGE,
-    cost: 80,
+    cost: 400,
     hp: 60,
     atk: 10,
     attackSpeed: 0.5,
@@ -126,7 +126,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.PIKEMAN]: {
     type: UnitType.PIKEMAN,
-    cost: 35,
+    cost: 175,
     hp: 90,
     atk: 18,
     attackSpeed: 0.9,
@@ -150,7 +150,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.BATTERING_RAM]: {
     type: UnitType.BATTERING_RAM,
-    cost: 80,
+    cost: 400,
     hp: 300,
     atk: 60,
     attackSpeed: 0.4,
@@ -163,7 +163,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.MAGE_HUNTER]: {
     type: UnitType.MAGE_HUNTER,
-    cost: 50,
+    cost: 250,
     hp: 80,
     atk: 22,
     attackSpeed: 1.1,
@@ -176,7 +176,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.SIEGE_HUNTER]: {
     type: UnitType.SIEGE_HUNTER,
-    cost: 60,
+    cost: 300,
     hp: 120,
     atk: 35,
     attackSpeed: 0.9,
@@ -189,7 +189,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.SUMMONER]: {
     type: UnitType.SUMMONER,
-    cost: 120,
+    cost: 600,
     hp: 55,
     atk: 5,
     attackSpeed: 0.4,
@@ -201,7 +201,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.COLD_MAGE]: {
     type: UnitType.COLD_MAGE,
-    cost: 100,
+    cost: 500,
     hp: 55,
     atk: 5,
     attackSpeed: 0.4,
@@ -213,7 +213,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.SPIDER]: {
     type: UnitType.SPIDER,
-    cost: 60,
+    cost: 300,
     hp: 65,
     atk: 8,
     attackSpeed: 0.7,
@@ -225,7 +225,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.GLADIATOR]: {
     type: UnitType.GLADIATOR,
-    cost: 70,
+    cost: 350,
     hp: 140,
     atk: 20,
     attackSpeed: 0.8,
@@ -237,7 +237,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.DIPLOMAT]: {
     type: UnitType.DIPLOMAT,
-    cost: 60,
+    cost: 300,
     hp: 80,
     atk: 0,
     attackSpeed: 0,
@@ -250,7 +250,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.DISTORTION_MAGE]: {
     type: UnitType.DISTORTION_MAGE,
-    cost: 90,
+    cost: 450,
     hp: 65,
     atk: 10,
     attackSpeed: 0.6,
@@ -262,7 +262,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.VOID_SNAIL]: {
     type: UnitType.VOID_SNAIL,
-    cost: 50,
+    cost: 250,
     hp: 120,
     atk: 5,
     attackSpeed: 0.4,
@@ -274,7 +274,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.FAERY_QUEEN]: {
     type: UnitType.FAERY_QUEEN,
-    cost: 150,
+    cost: 750,
     hp: 80,
     atk: 15,
     attackSpeed: 0.7,
@@ -286,7 +286,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.GIANT_FROG]: {
     type: UnitType.GIANT_FROG,
-    cost: 100,
+    cost: 500,
     hp: 200,
     atk: 10,
     attackSpeed: 0.6,
@@ -298,7 +298,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.DEVOURER]: {
     type: UnitType.DEVOURER,
-    cost: 130,
+    cost: 650,
     hp: 350,
     atk: 15,
     attackSpeed: 0.5,
@@ -310,7 +310,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.HORSE_ARCHER]: {
     type: UnitType.HORSE_ARCHER,
-    cost: 70,
+    cost: 350,
     hp: 100,
     atk: 15,
     attackSpeed: 0.8,
@@ -322,7 +322,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.SHORTBOW]: {
     type: UnitType.SHORTBOW,
-    cost: 30,
+    cost: 150,
     hp: 60,
     atk: 10,
     attackSpeed: 1.2,
@@ -334,7 +334,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.BALLISTA]: {
     type: UnitType.BALLISTA,
-    cost: 100,
+    cost: 500,
     hp: 120,
     atk: 50,
     attackSpeed: 0.3,
@@ -346,7 +346,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.BOLT_THROWER]: {
     type: UnitType.BOLT_THROWER,
-    cost: 120,
+    cost: 600,
     hp: 100,
     atk: 30,
     attackSpeed: 0.2, // slow but long range
@@ -358,7 +358,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.SCOUT_CAVALRY]: {
     type: UnitType.SCOUT_CAVALRY,
-    cost: 40,
+    cost: 200,
     hp: 60,
     atk: 10,
     attackSpeed: 1.0,
@@ -371,7 +371,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.LANCER]: {
     type: UnitType.LANCER,
-    cost: 70,
+    cost: 350,
     hp: 120,
     atk: 20,
     attackSpeed: 0.8,
@@ -384,7 +384,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.ELITE_LANCER]: {
     type: UnitType.ELITE_LANCER,
-    cost: 100,
+    cost: 500,
     hp: 180,
     atk: 25,
     attackSpeed: 0.8,
@@ -397,7 +397,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.KNIGHT_LANCER]: {
     type: UnitType.KNIGHT_LANCER,
-    cost: 130,
+    cost: 650,
     hp: 250,
     atk: 30,
     attackSpeed: 0.6,
@@ -410,7 +410,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.MONK]: {
     type: UnitType.MONK,
-    cost: 50,
+    cost: 250,
     hp: 80,
     atk: 0,
     attackSpeed: 0.8,
@@ -423,7 +423,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.CLERIC]: {
     type: UnitType.CLERIC,
-    cost: 90,
+    cost: 450,
     hp: 120,
     atk: 0,
     attackSpeed: 0.6,
@@ -436,7 +436,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.SAINT]: {
     type: UnitType.SAINT,
-    cost: 150,
+    cost: 750,
     hp: 200,
     atk: 0,
     attackSpeed: 0.5,
@@ -449,7 +449,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.RED_DRAGON]: {
     type: UnitType.RED_DRAGON,
-    cost: 250,
+    cost: 1250,
     hp: 500,
     atk: 35,
     attackSpeed: 0.8,
@@ -467,7 +467,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.FROST_DRAGON]: {
     type: UnitType.FROST_DRAGON,
-    cost: 240,
+    cost: 1200,
     hp: 480,
     atk: 30,
     attackSpeed: 0.8,
@@ -485,7 +485,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.CYCLOPS]: {
     type: UnitType.CYCLOPS,
-    cost: 350, // Very expensive
+    cost: 1750, // Very expensive
     hp: 800, // Very high hitpoints
     atk: 60, // Very high attack
     attackSpeed: 0.6, // Slow but devastating attacks
@@ -503,7 +503,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.HALBERDIER]: {
     type: UnitType.HALBERDIER,
-    cost: 40,
+    cost: 200,
     hp: 105,
     atk: 22,
     attackSpeed: 1.0,
@@ -516,7 +516,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.ELVEN_ARCHER]: {
     type: UnitType.ELVEN_ARCHER,
-    cost: 60,
+    cost: 300,
     hp: 70,
     atk: 17,
     attackSpeed: 0.75,

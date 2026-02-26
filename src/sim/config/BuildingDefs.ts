@@ -61,7 +61,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.BARRACKS]: {
     type: BuildingType.BARRACKS,
-    cost: 100,
+    cost: 500,
     hp: 200,
     goldIncome: 1,
     shopInventory: [
