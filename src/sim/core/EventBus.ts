@@ -37,6 +37,7 @@ export interface SimEvents {
 
   // Game flow
   phaseChanged: { phase: GamePhase };
+  roguelikeDisabledBuildingsChanged: { disabled: string[] };
 }
 
 // ---------------------------------------------------------------------------

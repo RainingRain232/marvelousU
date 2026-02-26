@@ -34,8 +34,9 @@ import { initBases } from "@sim/systems/BaseSetup";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
-import { Direction, GamePhase, BuildingType } from "@/types";
+import { Direction, GamePhase, GameMode, BuildingType, UnitType } from "@/types";
 import { createBuilding } from "@sim/entities/Building";
+import { createUnit } from "@sim/entities/Unit";
 import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
@@ -80,8 +81,9 @@ import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
   // ---------------------------------------------------------------------------
   menuScreen.onStartGame = async () => {
     const mapSize = menuScreen.selectedMapSize;
+    const gameMode = menuScreen.selectedGameMode;
     menuScreen.hide();
-    await _bootGame(p2IsAI, mapSize);
+    await _bootGame(p2IsAI, mapSize, gameMode);
   };
 })();
 
@@ -228,15 +230,110 @@ function _computeBasePositions(w: number, h: number) {
   };
 }
 
-async function _bootGame(p2IsAI: boolean, mapSize: MapSize): Promise<void> {
+/**
+ * BATTLEFIELD mode: remove all player-owned buildings (castles etc.)
+ * so players start on a clean field.
+ */
+function _removeCastlesAndBuildings(state: GameState): void {
+  for (const [id, building] of state.buildings) {
+    if (building.owner === "p1" || building.owner === "p2") {
+      // Clear footprint tiles
+      const def = BUILDING_DEFINITIONS[building.type];
+      for (let dy = 0; dy < def.footprint.h; dy++) {
+        for (let dx = 0; dx < def.footprint.w; dx++) {
+          setBuilding(state.battlefield, building.position.x + dx, building.position.y + dy, null);
+          setWalkable(state.battlefield, building.position.x + dx, building.position.y + dy, true);
+        }
+      }
+      state.buildings.delete(id);
+    }
+  }
+  // Remove ownedBuildings lists and base castleId references
+  for (const player of state.players.values()) {
+    player.ownedBuildings = [];
+  }
+  for (const base of state.bases.values()) {
+    base.castleId = null;
+  }
+}
+
+/**
+ * BATTLEFIELD mode: spawn one Swordsman per player near their base.
+ */
+function _spawnBattlefieldStartUnits(state: GameState, mapW: number, _mapH: number): void {
+  const midY = Math.floor(_mapH / 2);
+  const p1Unit = createUnit({
+    type: UnitType.SWORDSMAN,
+    owner: "p1",
+    position: { x: Math.floor(mapW * 0.15), y: midY },
+  });
+  const p2Unit = createUnit({
+    type: UnitType.SWORDSMAN,
+    owner: "p2",
+    position: { x: Math.floor(mapW * 0.85), y: midY },
+  });
+  state.units.set(p1Unit.id, p1Unit);
+  state.units.set(p2Unit.id, p2Unit);
+}
+
+/**
+ * ROGUELIKE mode: randomly disable 50% of non-castle building types.
+ * Mirrors PhaseSystem logic but runs at boot for the first round.
+ */
+function _rollRoguelikeDisabledBuildings(state: GameState): void {
+  const allTypes = Object.values(BuildingType).filter(
+    (t) => t !== BuildingType.CASTLE && t !== BuildingType.FIREPIT,
+  );
+  const shuffled = [...allTypes];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const half = Math.floor(shuffled.length / 2);
+  state.roguelikeDisabledBuildings = shuffled.slice(0, half);
+
+  // Apply the filter to castle buildings immediately
+  const disabledSet = new Set(state.roguelikeDisabledBuildings);
+  for (const building of state.buildings.values()) {
+    if (building.type === BuildingType.CASTLE) {
+      const fullBlueprints = [...BUILDING_DEFINITIONS[BuildingType.CASTLE].blueprints];
+      building.blueprints = fullBlueprints.filter((t) => !disabledSet.has(t));
+    }
+  }
+}
+
+async function _bootGame(p2IsAI: boolean, mapSize: MapSize, gameMode: GameMode = GameMode.STANDARD): Promise<void> {
   // 1. Simulation state — sized to the chosen map
-  const state = createGameState(mapSize.width, mapSize.height);
-  state.players.set("p1", createPlayerState("p1", Direction.WEST));
-  state.players.set("p2", createPlayerState("p2", Direction.EAST));
+  const startGold = gameMode === GameMode.DEATHMATCH ? 10000
+    : gameMode === GameMode.BATTLEFIELD ? 30000
+    : BalanceConfig.START_GOLD;
+
+  const state = createGameState(mapSize.width, mapSize.height, 0, gameMode);
+  state.players.set("p1", createPlayerState("p1", Direction.WEST, startGold));
+  state.players.set("p2", createPlayerState("p2", Direction.EAST, startGold));
   const basePos = _computeBasePositions(mapSize.width, mapSize.height);
   initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
-  _spawnTowns(state, mapSize.width, mapSize.height);
-  _spawnNeutralExtras(state, mapSize.width, mapSize.height, mapSize.label);
+
+  if (gameMode !== GameMode.BATTLEFIELD) {
+    // Standard, deathmatch, roguelike, campaign all have towns/neutral buildings
+    _spawnTowns(state, mapSize.width, mapSize.height);
+    _spawnNeutralExtras(state, mapSize.width, mapSize.height, mapSize.label);
+  }
+
+  if (gameMode === GameMode.BATTLEFIELD) {
+    // Remove castles and all other player buildings — battlefield starts with no structures
+    _removeCastlesAndBuildings(state);
+    // Give each player a starting swordsman in BATTLE-ready position
+    _spawnBattlefieldStartUnits(state, mapSize.width, mapSize.height);
+    // Battlefield starts directly in BATTLE phase (no PREP)
+    state.phase = GamePhase.BATTLE;
+    state.phaseTimer = -1;
+  }
+
+  if (gameMode === GameMode.ROGUELIKE) {
+    // Roll initial disabled buildings
+    _rollRoguelikeDisabledBuildings(state);
+  }
 
   // 2. Camera — fit the full map into the viewport
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);

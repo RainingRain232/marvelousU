@@ -23,9 +23,10 @@
 // Each transition emits "phaseChanged" on the EventBus so the view can react.
 
 import type { GameState } from "@sim/state/GameState";
-import { GamePhase } from "@/types";
+import { GamePhase, GameMode, BuildingType } from "@/types";
 import { BuildingState, UnitState } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { EventBus } from "@sim/core/EventBus";
 
 // ---------------------------------------------------------------------------
@@ -113,9 +114,10 @@ function _enterPrep(state: GameState): void {
     base.health = base.maxHealth;
   }
 
-  // Replenish player gold to starting amount
+  // Replenish player gold to starting amount (mode-dependent)
+  const startGold = _startGoldForMode(state.gameMode);
   for (const player of state.players.values()) {
-    player.gold = BalanceConfig.START_GOLD;
+    player.gold = startGold;
     player.goldAccum = 0;
     EventBus.emit("goldChanged", { playerId: player.id, amount: player.gold });
   }
@@ -126,9 +128,54 @@ function _enterPrep(state: GameState): void {
   // Reset event timer so the first event fires after a full interval next battle
   state.eventTimer = BalanceConfig.RANDOM_EVENT_INTERVAL;
 
+  // Roguelike: re-randomize disabled buildings each round
+  if (state.gameMode === GameMode.ROGUELIKE) {
+    _rollRoguelikeDisabledBuildings(state);
+  }
+
   state.phase = GamePhase.PREP;
   state.phaseTimer = BalanceConfig.PREP_DURATION;
   EventBus.emit("phaseChanged", { phase: GamePhase.PREP });
+}
+
+/** Returns the starting gold for a given game mode. */
+function _startGoldForMode(mode: GameMode): number {
+  switch (mode) {
+    case GameMode.DEATHMATCH: return 10000;
+    case GameMode.BATTLEFIELD: return 30000;
+    default: return BalanceConfig.START_GOLD;
+  }
+}
+
+/**
+ * For ROGUELIKE: randomly disable 50% of non-castle building types each round.
+ * The castle is always available.
+ */
+function _rollRoguelikeDisabledBuildings(state: GameState): void {
+  const allTypes = Object.values(BuildingType).filter(
+    (t) => t !== BuildingType.CASTLE && t !== BuildingType.FIREPIT,
+  );
+  // Fisher-Yates shuffle then take first half
+  const shuffled = [...allTypes];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const half = Math.floor(shuffled.length / 2);
+  state.roguelikeDisabledBuildings = shuffled.slice(0, half);
+
+  // Apply the filter to all castle buildings so the shop reflects the new set
+  const disabledSet = new Set(state.roguelikeDisabledBuildings);
+  for (const building of state.buildings.values()) {
+    if (building.type === BuildingType.CASTLE) {
+      const fullBlueprints = [...BUILDING_DEFINITIONS[BuildingType.CASTLE].blueprints];
+      building.blueprints = fullBlueprints.filter((t) => !disabledSet.has(t));
+    }
+  }
+
+  EventBus.emit("roguelikeDisabledBuildingsChanged", {
+    disabled: state.roguelikeDisabledBuildings,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -148,6 +195,11 @@ function _enterPrep(state: GameState): void {
  *      an instant win-on-empty-battlefield at the start of the BATTLE phase.
  */
 function _checkWinCondition(state: GameState): string | null | undefined {
+  // BATTLEFIELD mode: bases don't matter — losing last unit means defeat.
+  if (state.gameMode === GameMode.BATTLEFIELD) {
+    return _checkBattlefieldWin(state);
+  }
+
   // 1. Base health — collect all eliminated player IDs
   const eliminated = new Set<string>();
   for (const base of state.bases.values()) {
@@ -184,6 +236,34 @@ function _checkWinCondition(state: GameState): string | null | undefined {
   }
 
   return undefined; // ongoing
+}
+
+/**
+ * BATTLEFIELD win condition: the player who loses all living units loses.
+ * No buildings are involved.  Guard against instant win on empty field start.
+ */
+function _checkBattlefieldWin(state: GameState): string | null | undefined {
+  // Wait until at least one unit is on the field
+  let anyUnits = false;
+  for (const unit of state.units.values()) {
+    if (unit.state !== UnitState.DIE) { anyUnits = true; break; }
+  }
+  if (!anyUnits) return undefined;
+
+  const eliminated = new Set<string>();
+  for (const [playerId] of state.players) {
+    if (!_hasLivingUnits(state, playerId)) {
+      eliminated.add(playerId);
+    }
+  }
+
+  if (eliminated.size === 0) return undefined; // both sides still have units
+
+  const allPlayers = [...state.players.keys()];
+  const survivors = allPlayers.filter((id) => !eliminated.has(id));
+  if (survivors.length === 0) return null; // simultaneous last-unit death — draw
+  if (survivors.length === 1) return survivors[0];
+  return undefined;
 }
 
 /**

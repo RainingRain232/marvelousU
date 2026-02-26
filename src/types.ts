@@ -131,3 +131,11 @@ export enum GamePhase {
   BATTLE = "battle",
   RESOLVE = "resolve",
 }
+
+export enum GameMode {
+  STANDARD = "standard",
+  DEATHMATCH = "deathmatch",
+  BATTLEFIELD = "battlefield",
+  CAMPAIGN = "campaign",
+  ROGUELIKE = "roguelike",
+}

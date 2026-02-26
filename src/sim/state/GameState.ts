@@ -1,5 +1,5 @@
 // Central simulation state — single source of truth
-import { GamePhase } from "@/types";
+import { GamePhase, GameMode } from "@/types";
 import type { PlayerId } from "@/types";
 import type { Base } from "@sim/entities/Base";
 import type { Building } from "@sim/entities/Building";
@@ -18,11 +18,14 @@ import { BalanceConfig } from "@sim/config/BalanceConfig";
 export interface GameState {
   // Game flow
   phase: GamePhase;
+  gameMode: GameMode; // Active game mode for this session
   tick: number; // Incremented each simulation tick
   rngSeed: number; // Seed passed to SeededRandom for determinism
   phaseTimer: number; // Countdown (seconds) until current phase ends; -1 = no timer
   eventTimer: number; // Countdown (seconds) until the next random event fires during BATTLE
   winnerId: string | null; // PlayerId of the winner set during RESOLVE, null otherwise
+  /** For ROGUELIKE: building type IDs that are disabled this round (50% random subset). */
+  roguelikeDisabledBuildings: string[];
 
   // Entity maps — keyed by ID
   bases: Map<string, Base>;
@@ -53,14 +56,17 @@ export function createGameState(
   width: number = BalanceConfig.GRID_WIDTH,
   height: number = BalanceConfig.GRID_HEIGHT,
   rngSeed: number = 0,
+  gameMode: GameMode = GameMode.STANDARD,
 ): GameState {
   return {
     phase: GamePhase.PREP,
+    gameMode,
     tick: 0,
     rngSeed,
     phaseTimer: BalanceConfig.PREP_DURATION,
     eventTimer: BalanceConfig.RANDOM_EVENT_INTERVAL,
     winnerId: null,
+    roguelikeDisabledBuildings: [],
     bases: new Map(),
     buildings: new Map(),
     units: new Map(),
