@@ -116,6 +116,9 @@ export class UnitView {
   // Owner shield (always visible while alive)
   private _shieldContainer = new Container();
   private _shield = new Graphics();
+  private _shieldBlink = new Graphics();
+  private _blinkTimer = 0;
+  private _nextBlinkTime = 0;
 
   // Level star (visible at level >= 1)
   // Wrapped in a sub-container so we can counter-scale it against the
@@ -143,6 +146,10 @@ export class UnitView {
     this._buildShield(unit);
     this._buildLevelStar(unit);
     this._tryAttachSprite(unit);
+    
+    // Initialize random blink timer (every 3-8 seconds at 60fps = 180-480 frames)
+    this._nextBlinkTime = Math.random() * 300 + 180;
+    
     this.update(unit);
   }
 
@@ -155,6 +162,14 @@ export class UnitView {
     // Once the death sequence has started, stop all further updates — gsap
     // owns the container alpha from this point.
     if (this._deathStarted) return;
+
+    // Update blink timer (using frame counting since no deltaTime provided)
+    this._blinkTimer++;
+    if (this._blinkTimer >= this._nextBlinkTime) {
+      this._triggerShieldBlink();
+      this._blinkTimer = 0;
+      this._nextBlinkTime = Math.random() * 180 + 180; // 3-8 seconds at 60fps (180-480 frames)
+    }
 
     // Position
     this.container.position.set(
@@ -314,7 +329,53 @@ export class UnitView {
       .fill({ color: hi, alpha: 0.5 });
 
     this._shieldContainer.addChild(this._shield);
+    this._shieldContainer.addChild(this._shieldBlink);
     this.container.addChild(this._shieldContainer);
+  }
+
+  private _triggerShieldBlink(): void {
+    // Calculate shield position using the same logic as in getShieldPosition
+    const cx = BAR_W / 2 + SHIELD_W / 2 + 2; // BAR_W/2 + SHIELD_W/2 + 2
+    const cy = -(TS * 0.55) + BAR_H / 2 - 1; // Base health bar Y + BAR_H/2 - 1
+    
+    // Clear previous blink
+    this._shieldBlink.clear();
+    
+    // Create brighter cross-shaped sun rays
+    const rayLength = 7;
+    const rayWidth = 2;
+    const centerSize = 3;
+    
+    // Draw cross rays with brighter appearance
+    this._shieldBlink
+      // Horizontal ray - brighter and thicker
+      .moveTo(cx - rayLength, cy)
+      .lineTo(cx + rayLength, cy)
+      .stroke({ color: 0xffffff, width: rayWidth, alpha: 0.9 })
+      
+      // Vertical ray - brighter and thicker
+      .moveTo(cx, cy - rayLength)
+      .lineTo(cx, cy + rayLength)
+      .stroke({ color: 0xffffff, width: rayWidth, alpha: 0.9 })
+      
+      // Center bright spot - more prominent glow
+      .circle(cx, cy, centerSize)
+      .fill({ color: 0xffffee, alpha: 0.8 });
+    
+    // Animate the blink effect - brighter and more noticeable
+    this._shieldBlink.alpha = 0;
+    gsap.to(this._shieldBlink, {
+      alpha: 0.8,
+      duration: 0.2,
+      ease: "power1.out",
+      onComplete: () => {
+        gsap.to(this._shieldBlink, {
+          alpha: 0,
+          duration: 0.3,
+          ease: "power1.in",
+        });
+      },
+    });
   }
 
   private _buildLevelStar(unit: Unit): void {

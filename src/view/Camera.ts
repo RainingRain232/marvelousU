@@ -45,6 +45,20 @@ export class Camera {
   private _mapH: number = BalanceConfig.GRID_HEIGHT;
 
   // ---------------------------------------------------------------------------
+  // Cinematic zoom system for scenario 1
+  // ---------------------------------------------------------------------------
+
+  private _cinematicZoomActive = false;
+  private _cinematicZoomProgress = 0;
+  private _cinematicZoomDuration = 8; // 8 seconds to zoom in
+  private _targetZoom = 2.5; // Target zoom level
+  private _startZoom = 1;
+  private _startX = 0;
+  private _startY = 0;
+  private _targetX = 0;
+  private _targetY = 0;
+
+  // ---------------------------------------------------------------------------
   // Keyboard pan state
   // ---------------------------------------------------------------------------
 
@@ -143,10 +157,71 @@ export class Camera {
   }
 
   /**
-   * Per-frame update — drives keyboard panning.
+   * Start cinematic zoom for scenario 1 - slowly zoom in on center swordsman
+   */
+  startCinematicZoom(): void {
+    if (this._cinematicZoomActive) return;
+    
+    this._cinematicZoomActive = true;
+    this._cinematicZoomProgress = 0;
+    this._startZoom = this.zoom;
+    this._startX = this.x;
+    this._startY = this.y;
+    
+    // Calculate target position - center of the map where swordsman spawn
+    const mapCenterX = (this._mapW * BalanceConfig.TILE_SIZE) / 2;
+    const mapCenterY = (this._mapH * BalanceConfig.TILE_SIZE) / 2;
+    
+    // Position camera to center on the middle of the battlefield
+    // Offset slightly to show both squads of swordsman
+    this._targetX = -mapCenterX + this.screenW / (2 * this._targetZoom);
+    this._targetY = -mapCenterY + this.screenH / (2 * this._targetZoom);
+  }
+
+  /**
+   * Stop cinematic zoom and return to normal camera control
+   */
+  stopCinematicZoom(): void {
+    this._cinematicZoomActive = false;
+  }
+
+  /**
+   * Check if cinematic zoom is currently active
+   */
+  get isCinematicZoomActive(): boolean {
+    return this._cinematicZoomActive;
+  }
+
+  /**
+   * Per-frame update — drives keyboard panning and cinematic zoom.
    * Call from the render loop with the elapsed time in seconds.
    */
   update(dt: number): void {
+    // Handle cinematic zoom animation
+    if (this._cinematicZoomActive) {
+      this._cinematicZoomProgress += dt;
+      const progress = Math.min(this._cinematicZoomProgress / this._cinematicZoomDuration, 1);
+      
+      // Smooth easing function (ease-in-out)
+      const easedProgress = progress < 0.5 
+        ? 2 * progress * progress 
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      
+      // Interpolate zoom and position
+      this.zoom = this._startZoom + (this._targetZoom - this._startZoom) * easedProgress;
+      this.x = this._startX + (this._targetX - this._startX) * easedProgress;
+      this.y = this._startY + (this._targetY - this._startY) * easedProgress;
+      
+      // Stop cinematic zoom when complete
+      if (progress >= 1) {
+        this._cinematicZoomActive = false;
+      }
+      
+      // Skip normal camera controls during cinematic zoom
+      this._clamp();
+      return;
+    }
+
     let dx = 0;
     let dy = 0;
 

@@ -670,6 +670,14 @@ async function _bootGame(
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);
   viewManager.camera.fitMap();
 
+  // Start cinematic zoom for scenario 1 (First Blood)
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 1) {
+    // Start the cinematic zoom after a short delay to let the game settle
+    setTimeout(() => {
+      viewManager.camera.startCinematicZoom();
+    }, 1000);
+  }
+
   // 3. Grid background & environment
   gridRenderer.init(viewManager);
   gridRenderer.draw(state.battlefield);
