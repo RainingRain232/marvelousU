@@ -15,7 +15,7 @@ export const BalanceConfig = {
   BASE_EAST_SPAWN_OFFSET: { x: -1, y: 1 } as { x: number; y: number },
 
   // Economy
-  START_GOLD: 300,
+  START_GOLD: 1500,
   GOLD_INCOME_RATE: 5, // base gold/sec (both phases)
   GOLD_PER_BUILDING: 1, // additional gold/sec per owned or captured building
   GOLD_INCOME_BATTLE_BONUS: 3, // extra flat gold/sec added during BATTLE phase

@@ -78,7 +78,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.STABLES]: {
     type: BuildingType.STABLES,
-    cost: 120,
+    cost: 600,
     hp: 200,
     goldIncome: 1,
     shopInventory: [
@@ -98,7 +98,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.MAGE_TOWER]: {
     type: BuildingType.MAGE_TOWER,
-    cost: 150,
+    cost: 750,
     hp: 180,
     goldIncome: 2,
     shopInventory: [
@@ -115,7 +115,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.ARCHERY_RANGE]: {
     type: BuildingType.ARCHERY_RANGE,
-    cost: 100,
+    cost: 500,
     hp: 150,
     goldIncome: 1,
     shopInventory: [UnitType.ARCHER, UnitType.CROSSBOWMAN, UnitType.LONGBOWMAN],
@@ -126,7 +126,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.SIEGE_WORKSHOP]: {
     type: BuildingType.SIEGE_WORKSHOP,
-    cost: 120,
+    cost: 600,
     hp: 180,
     goldIncome: 1,
     shopInventory: [UnitType.BALLISTA, UnitType.BATTERING_RAM],
@@ -137,7 +137,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.BLACKSMITH]: {
     type: BuildingType.BLACKSMITH,
-    cost: 100,
+    cost: 500,
     hp: 150,
     goldIncome: 2,
     shopInventory: [],
@@ -160,7 +160,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.CREATURE_DEN]: {
     type: BuildingType.CREATURE_DEN,
-    cost: 130,
+    cost: 650,
     hp: 200,
     goldIncome: 1,
     shopInventory: [
@@ -180,7 +180,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.TOWER]: {
     type: BuildingType.TOWER,
-    cost: 80,
+    cost: 400,
     hp: 250,
     goldIncome: 0,
     shopInventory: [],
@@ -195,7 +195,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.FARM]: {
     type: BuildingType.FARM,
-    cost: 120,
+    cost: 300,
     hp: 150,
     goldIncome: 3,
     shopInventory: [],
@@ -208,7 +208,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.HAMLET]: {
     type: BuildingType.HAMLET,
-    cost: 200,
+    cost: 1000,
     hp: 200,
     goldIncome: 5,
     shopInventory: [],
@@ -221,7 +221,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.EMBASSY]: {
     type: BuildingType.EMBASSY,
-    cost: 120,
+    cost: 600,
     hp: 200,
     goldIncome: 1,
     shopInventory: [UnitType.DIPLOMAT],
@@ -233,7 +233,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.TEMPLE]: {
     type: BuildingType.TEMPLE,
-    cost: 150,
+    cost: 750,
     hp: 200,
     goldIncome: 1,
     shopInventory: [UnitType.MONK, UnitType.CLERIC, UnitType.SAINT],
@@ -244,7 +244,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.WALL]: {
     type: BuildingType.WALL,
-    cost: 50,
+    cost: 250,
     hp: 500,
     goldIncome: 0,
     shopInventory: [],
@@ -268,7 +268,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.MILL]: {
     type: BuildingType.MILL,
-    cost: 200,
+    cost: 1000,
     hp: 300,
     goldIncome: 5,
     shopInventory: [],
@@ -280,7 +280,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.ELITE_HALL]: {
     type: BuildingType.ELITE_HALL,
-    cost: 300,
+    cost: 1500,
     hp: 400,
     goldIncome: 8,
     shopInventory: [],
@@ -296,7 +296,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.MARKET]: {
     type: BuildingType.MARKET,
-    cost: 250,
+    cost: 1250,
     hp: 250,
     goldIncome: 10,
     shopInventory: [],
@@ -308,7 +308,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.FACTION_HALL]: {
     type: BuildingType.FACTION_HALL,
-    cost: 200,
+    cost: 1000,
     hp: 300,
     goldIncome: 2,
     shopInventory: [],  // populated at runtime based on player race
