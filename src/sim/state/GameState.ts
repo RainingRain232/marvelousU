@@ -1,6 +1,7 @@
 // Central simulation state — single source of truth
 import { GamePhase, GameMode } from "@/types";
 import type { PlayerId } from "@/types";
+import type { LeaderId } from "@sim/config/LeaderDefs";
 import type { Base } from "@sim/entities/Base";
 import type { Building } from "@sim/entities/Building";
 import type { Unit } from "@sim/entities/Unit";
@@ -26,6 +27,8 @@ export interface GameState {
   winnerId: string | null; // PlayerId of the winner set during RESOLVE, null otherwise
   /** For ROGUELIKE: building type IDs that are disabled this round (50% random subset). */
   roguelikeDisabledBuildings: string[];
+  /** The leader chosen by P1 for this session. null = no leader. */
+  p1LeaderId: LeaderId | null;
 
   // Entity maps — keyed by ID
   bases: Map<string, Base>;
@@ -67,6 +70,7 @@ export function createGameState(
     eventTimer: BalanceConfig.RANDOM_EVENT_INTERVAL,
     winnerId: null,
     roguelikeDisabledBuildings: [],
+    p1LeaderId: null,
     bases: new Map(),
     buildings: new Map(),
     units: new Map(),

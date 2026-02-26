@@ -25,6 +25,9 @@ import { environmentLayer } from "@view/environment/EnvironmentLayer";
 import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
 import type { MapSize } from "@view/ui/MenuScreen";
+import { leaderSelectScreen } from "@view/ui/LeaderSelectScreen";
+import { raceSelectScreen } from "@view/ui/RaceSelectScreen";
+import { armoryScreen } from "@view/ui/ArmoryScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { createGameState } from "@sim/state/GameState";
@@ -40,6 +43,8 @@ import { createUnit } from "@sim/entities/Unit";
 import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
+import { LEADER_DEFINITIONS } from "@sim/config/LeaderDefs";
+import type { LeaderId, LeaderBonus } from "@sim/config/LeaderDefs";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -77,13 +82,62 @@ import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
   };
 
   // ---------------------------------------------------------------------------
-  // Game boot (deferred until "START GAME" is clicked)
+  // Leader selection screen
   // ---------------------------------------------------------------------------
-  menuScreen.onStartGame = async () => {
+  leaderSelectScreen.init(viewManager);
+  leaderSelectScreen.hide();
+
+  menuScreen.onContinue = () => {
+    menuScreen.hide();
+    leaderSelectScreen.show();
+  };
+
+  leaderSelectScreen.onBack = () => {
+    leaderSelectScreen.hide();
+    menuScreen.show();
+  };
+
+  // ---------------------------------------------------------------------------
+  // Race selection screen
+  // ---------------------------------------------------------------------------
+  raceSelectScreen.init(viewManager);
+  raceSelectScreen.hide();
+
+  leaderSelectScreen.onNext = () => {
+    leaderSelectScreen.hide();
+    raceSelectScreen.show();
+  };
+
+  raceSelectScreen.onBack = () => {
+    raceSelectScreen.hide();
+    leaderSelectScreen.show();
+  };
+
+  // ---------------------------------------------------------------------------
+  // Armory screen
+  // ---------------------------------------------------------------------------
+  armoryScreen.init(viewManager);
+  armoryScreen.hide();
+
+  raceSelectScreen.onNext = () => {
+    raceSelectScreen.hide();
+    armoryScreen.show();
+  };
+
+  armoryScreen.onBack = () => {
+    armoryScreen.hide();
+    raceSelectScreen.show();
+  };
+
+  // ---------------------------------------------------------------------------
+  // Game boot — triggered from the Armory's START GAME button
+  // ---------------------------------------------------------------------------
+  armoryScreen.onStartGame = async () => {
     const mapSize = menuScreen.selectedMapSize;
     const gameMode = menuScreen.selectedGameMode;
-    menuScreen.hide();
-    await _bootGame(p2IsAI, mapSize, gameMode);
+    const leaderId = leaderSelectScreen.selectedLeaderId;
+    armoryScreen.hide();
+    await _bootGame(p2IsAI, mapSize, gameMode, leaderId);
   };
 })();
 
@@ -302,7 +356,113 @@ function _rollRoguelikeDisabledBuildings(state: GameState): void {
   }
 }
 
-async function _bootGame(p2IsAI: boolean, mapSize: MapSize, gameMode: GameMode = GameMode.STANDARD): Promise<void> {
+/**
+ * Apply the P1 leader's passive bonus to the game state at boot.
+ * Boot-time bonuses (gold, base health, Merlin's Storm Mage) are applied here.
+ * Per-spawn bonuses (starting levels) are handled in SpawnSystem via state.p1LeaderId.
+ */
+function _applyLeaderBonus(
+  state: GameState,
+  playerId: string,
+  leaderId: LeaderId,
+  mapSize: MapSize,
+): void {
+  const leader = LEADER_DEFINITIONS.find((l) => l.id === leaderId);
+  if (!leader) return;
+
+  // Store the leader ID on state so sim systems can reference it
+  state.p1LeaderId = leaderId;
+
+  const bonus: LeaderBonus = leader.bonus;
+
+  switch (bonus.type) {
+    case "gold_bonus": {
+      const player = state.players.get(playerId);
+      if (player) {
+        player.gold += bonus.amount;
+        EventBus.emit("goldChanged", { playerId, amount: player.gold });
+      }
+      break;
+    }
+
+    case "base_health_bonus": {
+      for (const base of state.bases.values()) {
+        if (base.owner === playerId) {
+          base.maxHealth += bonus.amount;
+          base.health += bonus.amount;
+        }
+      }
+      break;
+    }
+
+    case "spawn_unit_near_castle": {
+      // Find the P1 castle and spawn the unit nearby
+      for (const building of state.buildings.values()) {
+        if (building.owner === playerId && building.type === BuildingType.CASTLE) {
+          const isWest = playerId === "p1";
+          const spawnX = isWest
+            ? building.position.x + 5
+            : building.position.x - 2;
+          const spawnY = building.position.y + 2;
+          const unit = createUnit({
+            type: bonus.unitType,
+            owner: playerId,
+            position: { x: Math.max(0, Math.min(mapSize.width - 1, spawnX)), y: spawnY },
+          });
+          if (bonus.bonusLevel !== undefined) {
+            unit.level = bonus.bonusLevel;
+          }
+          state.units.set(unit.id, unit);
+          EventBus.emit("unitSpawned", {
+            unitId: unit.id,
+            buildingId: building.id,
+            position: { ...unit.position },
+          });
+          break;
+        }
+      }
+      break;
+    }
+
+    // Runtime bonuses (income_multiplier, unit_atk/hp multipliers, etc.) are
+    // handled by the respective systems checking state.p1LeaderId at tick time.
+    default:
+      break;
+  }
+
+  // Merlin gets an extra spawn_unit_near_castle on top of the mage level bonus
+  if (leaderId === "merlin") {
+    for (const building of state.buildings.values()) {
+      if (building.owner === playerId && building.type === BuildingType.CASTLE) {
+        const isWest = playerId === "p1";
+        const spawnX = isWest
+          ? building.position.x + 5
+          : building.position.x - 2;
+        const spawnY = building.position.y + 2;
+        const unit = createUnit({
+          type: UnitType.STORM_MAGE,
+          owner: playerId,
+          position: { x: Math.max(0, Math.min(mapSize.width - 1, spawnX)), y: spawnY },
+        });
+        unit.level = 1;
+        state.units.set(unit.id, unit);
+        EventBus.emit("unitSpawned", {
+          unitId: unit.id,
+          buildingId: building.id,
+          position: { ...unit.position },
+        });
+        break;
+      }
+    }
+  }
+}
+
+async function _bootGame(
+  p2IsAI: boolean,
+  mapSize: MapSize,
+  gameMode: GameMode = GameMode.STANDARD,
+  leaderId: LeaderId = "arthur",
+): Promise<void> {
   // 1. Simulation state — sized to the chosen map
   const startGold = gameMode === GameMode.DEATHMATCH ? 10000
     : gameMode === GameMode.BATTLEFIELD ? 30000
@@ -334,6 +494,9 @@ async function _bootGame(p2IsAI: boolean, mapSize: MapSize, gameMode: GameMode =
     // Roll initial disabled buildings
     _rollRoguelikeDisabledBuildings(state);
   }
+
+  // Apply the chosen leader's passive bonus to P1
+  _applyLeaderBonus(state, "p1", leaderId, mapSize);
 
   // 2. Camera — fit the full map into the viewport
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);

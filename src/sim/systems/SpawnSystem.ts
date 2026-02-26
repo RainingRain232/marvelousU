@@ -7,6 +7,7 @@ import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { createUnit } from "@sim/entities/Unit";
 import { getBuilding } from "@sim/state/GameState";
 import { EventBus } from "@sim/core/EventBus";
+import { getLeader } from "@sim/config/LeaderDefs";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -86,6 +87,9 @@ function _spawnUnits(
 
   const isCastle = building.type === BuildingType.CASTLE;
 
+  // Determine if this owner has a leader bonus that grants starting levels
+  const startingLevel = _leaderStartingLevel(state, owner, building.type);
+
   for (const unitType of unitTypes) {
     const unit = createUnit({ type: unitType, owner, position: spawnPos });
 
@@ -93,6 +97,11 @@ function _spawnUnits(
     if (isCastle) {
       unit.homeguard = true;
       unit.homeguardOrigin = { ...building.position };
+    }
+
+    // Apply leader starting-level bonus
+    if (startingLevel > 0) {
+      unit.level = startingLevel;
     }
 
     state.units.set(unit.id, unit);
@@ -108,4 +117,29 @@ function _spawnUnits(
     unitIds: spawnedIds,
     buildingId: building.id,
   });
+}
+
+/**
+ * Returns the starting level that a leader grants for units spawned from
+ * the given building by the given owner. Returns 0 if no bonus applies.
+ */
+function _leaderStartingLevel(
+  state: GameState,
+  owner: string,
+  buildingType: BuildingType,
+): number {
+  // Only P1 has a leader for now
+  if (owner !== "p1" || !state.p1LeaderId) return 0;
+
+  const leader = getLeader(state.p1LeaderId);
+  if (!leader) return 0;
+
+  const bonus = leader.bonus;
+  if (bonus.type === "unit_start_level" && bonus.unitSource === "stables") {
+    if (buildingType === BuildingType.STABLES) return bonus.level;
+  }
+  if (bonus.type === "unit_start_level_building") {
+    if (buildingType === bonus.building) return bonus.level;
+  }
+  return 0;
 }

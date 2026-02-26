@@ -137,7 +137,8 @@ export class MenuScreen {
   private _cardH = 480;
 
   onAIToggle: ((isAI: boolean) => void) | null = null;
-  onStartGame: (() => void) | null = null;
+  /** Called when the player clicks the "SELECT LEADER" button (proceeds to leader select). */
+  onContinue: (() => void) | null = null;
 
   get selectedMapSize(): MapSize {
     return MAP_SIZES[this._selectedSizeIndex];
@@ -326,7 +327,7 @@ export class MenuScreen {
       new Graphics().rect(20, modeSectionH + 8, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
-    // --- START GAME button ---
+    // --- SELECT LEADER button (proceeds to leader selection, not yet starting the game) ---
     const BW = CW - 40;
     const BH = 42;
     const startBtn = new Container();
@@ -342,7 +343,7 @@ export class MenuScreen {
     startBtn.addChild(startBg);
 
     const startLabel = new Text({
-      text: "START GAME",
+      text: "SELECT LEADER  >",
       style: new TextStyle({
         fontFamily: "monospace",
         fontSize: 15,
@@ -357,7 +358,7 @@ export class MenuScreen {
 
     startBtn.on("pointerover", () => { startBg.tint = 0xaaffcc; });
     startBtn.on("pointerout", () => { startBg.tint = 0xffffff; });
-    startBtn.on("pointerdown", () => { this.onStartGame?.(); });
+    startBtn.on("pointerdown", () => { this.onContinue?.(); });
 
     card.addChild(startBtn);
 
