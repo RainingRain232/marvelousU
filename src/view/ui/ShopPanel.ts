@@ -125,6 +125,12 @@ const STYLE_REQUIREMENTS = new TextStyle({
   fill: 0xffd700,
   fontWeight: "bold",
 });
+const STYLE_MAX_COUNT = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 11,
+  fill: 0xff4444,
+  fontWeight: "bold",
+});
 
 // Building display names
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -190,6 +196,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.CYCLOPS]: "Cyclops",
   [UnitType.HALBERDIER]: "Halberdier",
   [UnitType.ELVEN_ARCHER]: "Elven Archer",
+  [UnitType.HERO]: "Hero",
 };
 
 // ---------------------------------------------------------------------------
@@ -967,17 +974,37 @@ export class ShopPanel {
       line2.position.set(PANEL_PAD, baseY + 20);
       this._statsContainer.addChild(line2);
 
-      // Add requirements line if building has prerequisites
-      if (def.prerequisite) {
-        const reqText = def.prerequisite.minCount > 1 
-          ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`
-          : `Requires: ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`;
-        const requirementsLine = new Text({
-          text: reqText,
-          style: STYLE_REQUIREMENTS,
-        });
-        requirementsLine.position.set(PANEL_PAD, baseY + 32);
-        this._statsContainer.addChild(requirementsLine);
+      // Add requirements line if building has prerequisites or max count
+      if (def.prerequisite || def.maxCount) {
+        let xPos = PANEL_PAD;
+        
+        // Add requirements in gold if present
+        if (def.prerequisite) {
+          const reqText = def.prerequisite.minCount > 1 
+            ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`
+            : `Requires: ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`;
+          
+          const requirementsLine = new Text({
+            text: reqText,
+            style: STYLE_REQUIREMENTS,
+          });
+          requirementsLine.position.set(xPos, baseY + 32);
+          this._statsContainer.addChild(requirementsLine);
+          
+          // Measure text width to position max count after it
+          xPos += requirementsLine.width + 5;
+        }
+        
+        // Add max count in red if present
+        if (def.maxCount) {
+          const maxText = `(Max: ${def.maxCount})`;
+          const maxLine = new Text({
+            text: maxText,
+            style: STYLE_MAX_COUNT,
+          });
+          maxLine.position.set(xPos, baseY + 32);
+          this._statsContainer.addChild(maxLine);
+        }
       }
     } else {
       // No description - use original layout
@@ -995,17 +1022,37 @@ export class ShopPanel {
       line2.position.set(PANEL_PAD, 28);
       this._statsContainer.addChild(line2);
 
-      // Add requirements line if building has prerequisites
-      if (def.prerequisite) {
-        const reqText = def.prerequisite.minCount > 1 
-          ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`
-          : `Requires: ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`;
-        const requirementsLine = new Text({
-          text: reqText,
-          style: STYLE_REQUIREMENTS,
-        });
-        requirementsLine.position.set(PANEL_PAD, 40);
-        this._statsContainer.addChild(requirementsLine);
+      // Add requirements line if building has prerequisites or max count
+      if (def.prerequisite || def.maxCount) {
+        let xPos = PANEL_PAD;
+        
+        // Add requirements in gold if present
+        if (def.prerequisite) {
+          const reqText = def.prerequisite.minCount > 1 
+            ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`
+            : `Requires: ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`;
+          
+          const requirementsLine = new Text({
+            text: reqText,
+            style: STYLE_REQUIREMENTS,
+          });
+          requirementsLine.position.set(xPos, 40);
+          this._statsContainer.addChild(requirementsLine);
+          
+          // Measure text width to position max count after it
+          xPos += requirementsLine.width + 5;
+        }
+        
+        // Add max count in red if present
+        if (def.maxCount) {
+          const maxText = `(Max: ${def.maxCount})`;
+          const maxLine = new Text({
+            text: maxText,
+            style: STYLE_MAX_COUNT,
+          });
+          maxLine.position.set(xPos, 40);
+          this._statsContainer.addChild(maxLine);
+        }
       }
     }
   }

@@ -72,6 +72,7 @@ export enum UnitType {
   CYCLOPS = "cyclops",
   HALBERDIER = "halberdier",
   ELVEN_ARCHER = "elven_archer",
+  HERO = "hero",
 }
 
 export enum BuildingType {

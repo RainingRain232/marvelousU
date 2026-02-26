@@ -1,7 +1,7 @@
 // Queue processing, group spawning thresholds
 import type { GameState } from "@sim/state/GameState";
 import type { UnitType } from "@/types";
-import { BuildingType } from "@/types";
+import { UnitState, BuildingType } from "@/types";
 import type { Building } from "@sim/entities/Building";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { createUnit } from "@sim/entities/Unit";
@@ -24,6 +24,15 @@ export function addToQueue(
 ): void {
   const building = getBuilding(state, buildingId);
   const def = UNIT_DEFINITIONS[unitType];
+  
+  // Check unit max count limit
+  if (def.maxCount !== undefined && building.owner) {
+    const owned = _countOwnedUnits(state, building.owner, unitType);
+    if (owned >= def.maxCount) {
+      return; // Silently fail if max count reached
+    }
+  }
+  
   building.spawnQueue.entries.push({
     unitType,
     remainingTime: def.spawnTime,
@@ -142,4 +151,21 @@ function _leaderStartingLevel(
     if (buildingType === bonus.building) return bonus.level;
   }
   return 0;
+}
+
+/**
+ * Count how many living units of a specific type a player currently owns.
+ */
+function _countOwnedUnits(
+  state: GameState,
+  owner: string,
+  unitType: UnitType,
+): number {
+  let count = 0;
+  for (const unit of state.units.values()) {
+    if (unit.owner === owner && unit.type === unitType && unit.state !== UnitState.DIE) {
+      count++;
+    }
+  }
+  return count;
 }

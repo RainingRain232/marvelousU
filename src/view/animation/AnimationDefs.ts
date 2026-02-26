@@ -174,4 +174,5 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   }),
   [UnitType.HALBERDIER]: buildDef("halberdier", { attackFps: 11 }),
   [UnitType.ELVEN_ARCHER]: buildDef("elven_archer", { attackFps: 9, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 6) }),
+  [UnitType.HERO]: buildDef("hero", { idleFps: 6, moveFps: 10, attackFps: 14, dieFps: 8 }),
 };

@@ -30,6 +30,8 @@ export interface UnitDef {
   isChargeUnit?: boolean;
   /** If true, the unit targets and heals friendly units instead of attacking enemies. */
   isHealer?: boolean;
+  /** Maximum number of this unit type a single player may own at once. */
+  maxCount?: number;
 }
 
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
@@ -526,5 +528,19 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "elven_archer",
     description: "Graceful elven marksman with unparalleled range and precision, striking from positions others cannot reach.",
+  },
+  [UnitType.HERO]: {
+    type: UnitType.HERO,
+    cost: 250,
+    hp: 120,
+    atk: 18,
+    attackSpeed: 1.1,
+    speed: 1.2,
+    range: 1,
+    spawnTime: 4,
+    abilityTypes: [],
+    spriteKey: "hero",
+    maxCount: 4,
+    description: "Legendary warrior whose prowess inspires allies and terrifies foes. Max: 4",
   },
 };

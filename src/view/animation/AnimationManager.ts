@@ -18,6 +18,8 @@ import {
   Texture,
   RenderTexture,
   Graphics,
+  Container,
+  Rectangle,
   type Renderer,
 } from "pixi.js";
 import { UnitType, UnitState } from "@/types";
@@ -62,6 +64,7 @@ import { generateKnightLancerFrames } from "@view/animation/KnightLancerSpriteGe
 import { generateKnightFrames } from "@view/animation/KnightSpriteGen";
 import { generateHalberdierFrames } from "@view/animation/HalberdierSpriteGen";
 import { generateElvenArcherFrames } from "@view/animation/ElvenArcherSpriteGen";
+import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -229,6 +232,8 @@ export class AnimationManager {
         this._generateHalberdierSprites(key, renderer);
       } else if (key === "elven_archer") {
         this._generateElvenArcherSprites(key, renderer);
+      } else if (key === "hero") {
+        this._generateHeroSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -612,6 +617,41 @@ export class AnimationManager {
       if (stateTextures) {
         const ck = cacheKey(key, state);
         if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateHeroSprites(key: string, renderer: Renderer): void {
+    const rt = HeroSpriteGen.generateSprites(renderer);
+    
+    // Simple state mapping for animation rows
+    const rowToState: UnitState[] = [
+      UnitState.IDLE,    // Row 0
+      UnitState.MOVE,    // Row 1
+      UnitState.ATTACK,  // Row 2
+      UnitState.CAST,    // Row 3
+      UnitState.DIE      // Row 4
+    ];
+    
+    // Extract frames from the render texture
+    for (let row = 0; row < 5; row++) {
+      const state = rowToState[row];
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, []);
+      }
+      
+      for (let col = 0; col < 8; col++) {
+        const frameTexture = new Texture({
+          source: rt.baseTexture,
+          frame: new Rectangle(
+            col * HeroSpriteGen.FRAME_SIZE,
+            row * HeroSpriteGen.FRAME_SIZE,
+            HeroSpriteGen.FRAME_SIZE,
+            HeroSpriteGen.FRAME_SIZE
+          )
+        });
+        this._cache.get(ck)!.push(frameTexture);
       }
     }
   }
