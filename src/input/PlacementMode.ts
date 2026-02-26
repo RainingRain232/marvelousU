@@ -7,6 +7,7 @@ import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
 import { BuildingType } from "@/types";
 import type { PlayerId } from "@/types";
+import { getRace } from "@sim/config/RaceDefs";
 
 // ---------------------------------------------------------------------------
 // Placement validation
@@ -115,6 +116,17 @@ export function confirmPlacement(
   // Register on player
   const player = state.players.get(playerId);
   if (player) player.ownedBuildings.push(buildingId);
+
+  // Faction Hall: populate shopInventory based on the player's chosen race
+  if (bpType === BuildingType.FACTION_HALL) {
+    const raceId = playerId === "p1" ? state.p1RaceId : null;
+    if (raceId) {
+      const race = getRace(raceId);
+      if (race?.implemented) {
+        building.shopInventory = [race.factionUnit];
+      }
+    }
+  }
 
   EventBus.emit("buildingPlaced", {
     buildingId,
