@@ -98,7 +98,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.MAGE_TOWER]: {
     type: BuildingType.MAGE_TOWER,
-    cost: 750,
+    cost: 1000,
     hp: 180,
     goldIncome: 2,
     shopInventory: [
@@ -111,6 +111,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
+    prerequisite: { types: [BuildingType.ARCHERY_RANGE], minCount: 1 },
     description: "Arcane academy where powerful spellcasters master the elements of destruction.",
   },
   [BuildingType.ARCHERY_RANGE]: {
@@ -133,6 +134,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
+    prerequisite: { types: [BuildingType.ARCHERY_RANGE], minCount: 1 },
     description: "Forge where devastating siege weapons are crafted for destroying fortifications.",
   },
   [BuildingType.BLACKSMITH]: {
@@ -176,6 +178,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
+    prerequisite: { types: [BuildingType.MARKET], minCount: 1 },
     description: "Mystical habitat where legendary creatures are tamed for battle.",
   },
   [BuildingType.TOWER]: {
@@ -188,6 +191,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 1, h: 1 },
     placementZone: "own",
     capturable: true,
+    prerequisite: { types: [BuildingType.BLACKSMITH], minCount: 1 },
     defaultTurrets: [
       { projectileTag: "arrow", damage: 9, range: 6, attackSpeed: 1.0 },
     ],
@@ -210,7 +214,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     type: BuildingType.HAMLET,
     cost: 1000,
     hp: 200,
-    goldIncome: 5,
+    goldIncome: 15,
     shopInventory: [],
     blueprints: [],
     footprint: { w: 2, h: 2 },
@@ -270,19 +274,20 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     type: BuildingType.MILL,
     cost: 1000,
     hp: 300,
-    goldIncome: 5,
+    goldIncome: 8,
     shopInventory: [],
     blueprints: [],
     footprint: { w: 1, h: 2 },
     placementZone: "own",
     capturable: false,
+    prerequisite: { types: [BuildingType.FARM], minCount: 3 },
     description: "Industrial facility that processes resources into substantial gold income.",
   },
   [BuildingType.ELITE_HALL]: {
     type: BuildingType.ELITE_HALL,
     cost: 1500,
     hp: 400,
-    goldIncome: 8,
+    goldIncome: 5,
     shopInventory: [],
     blueprints: [],
     footprint: { w: 2, h: 2 },
@@ -304,6 +309,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     capturable: false,
+    prerequisite: { types: [BuildingType.FARM], minCount: 1 },
     description: "Grand trading hub that generates the highest gold income through commerce.",
   },
   [BuildingType.FACTION_HALL]: {
@@ -316,6 +322,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     capturable: false,
+    prerequisite: { types: [BuildingType.TEMPLE], minCount: 1 },
     description: "The hall of your people. Trains powerful faction-exclusive units unavailable to other races.",
   },
 };

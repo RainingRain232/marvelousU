@@ -119,6 +119,12 @@ const STYLE_ICON_COST_UNAFFORDABLE = new TextStyle({
   fill: 0x885522,
   fontWeight: "bold",
 });
+const STYLE_REQUIREMENTS = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 11,
+  fill: 0xffd700,
+  fontWeight: "bold",
+});
 
 // Building display names
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -339,17 +345,76 @@ export class ShopPanel {
 
     // Calculate icon grid content height
     const unitCount = building.shopInventory.length;
-    const bpCount = building.blueprints.length;
     const unitRowCount = Math.ceil(unitCount / ICONS_PER_ROW);
-    const bpRowCount = Math.ceil(bpCount / ICONS_PER_ROW);
     const unitSectionH =
       unitCount > 0
         ? SECTION_LABEL_H + unitRowCount * (ICON_SIZE + ICON_GAP)
         : 0;
-    const bpSectionH =
-      bpCount > 0 ? SECTION_LABEL_H + bpRowCount * (ICON_SIZE + ICON_GAP) : 0;
+    
+    // Calculate economic and other building counts for height calculation
+    const economicTypes = new Set([
+      BuildingType.FARM,
+      BuildingType.EMBASSY,
+      BuildingType.MARKET,
+      BuildingType.MILL,
+      BuildingType.HAMLET,
+    ]);
+    
+    const economicBuildings = building.blueprints.filter(bp => economicTypes.has(bp));
+    const otherBuildings = building.blueprints.filter(bp => !economicTypes.has(bp));
+    
+    // Define the specific order for ECONOMY section
+    const economyOrder = [
+      BuildingType.FARM,
+      BuildingType.EMBASSY,
+      BuildingType.MARKET,
+      BuildingType.MILL,
+      BuildingType.HAMLET,
+    ];
+    
+    // Sort economicBuildings according to the defined order
+    const orderedEconomyBuildings = economicBuildings.sort((a, b) => {
+      const indexA = economyOrder.indexOf(a);
+      const indexB = economyOrder.indexOf(b);
+      return indexA - indexB;
+    });
+    
+    // Define the specific order for BUILD section
+    const buildOrder = [
+      BuildingType.BARRACKS,
+      BuildingType.ARCHERY_RANGE,
+      BuildingType.TEMPLE,
+      BuildingType.WALL,
+      BuildingType.STABLES,
+      BuildingType.BLACKSMITH,
+      BuildingType.MAGE_TOWER,
+      BuildingType.SIEGE_WORKSHOP,
+      BuildingType.TOWER,
+      BuildingType.CREATURE_DEN,
+      BuildingType.FACTION_HALL,
+      BuildingType.ELITE_HALL,
+    ];
+    
+    // Sort otherBuildings according to the defined order
+    const orderedBuildings = otherBuildings.sort((a, b) => {
+      const indexA = buildOrder.indexOf(a);
+      const indexB = buildOrder.indexOf(b);
+      return indexA - indexB;
+    });
+    
+    const econRowCount = Math.ceil(orderedEconomyBuildings.length / ICONS_PER_ROW);
+    const otherRowCount = Math.ceil(orderedBuildings.length / ICONS_PER_ROW);
+    
+    const econSectionH =
+      orderedEconomyBuildings.length > 0
+        ? SECTION_LABEL_H + econRowCount * (ICON_SIZE + ICON_GAP)
+        : 0;
+    const otherSectionH =
+      otherBuildings.length > 0
+        ? SECTION_LABEL_H + otherRowCount * (ICON_SIZE + ICON_GAP)
+        : 0;
 
-    this._contentH = unitSectionH + bpSectionH + PANEL_PAD;
+    this._contentH = unitSectionH + econSectionH + otherSectionH + PANEL_PAD;
     const maxScrollableH = MAX_PANEL_H - FIXED_TOP_H;
     const scrollableH = Math.min(maxScrollableH, this._contentH);
     this._viewH = FIXED_TOP_H + scrollableH;
@@ -444,21 +509,44 @@ export class ShopPanel {
       cursorY += unitRowCount * (ICON_SIZE + ICON_GAP);
     }
 
-    // BUILD section
-    if (bpCount > 0) {
+    // BUILD section (non-economic buildings)
+    if (orderedBuildings.length > 0) {
       const label = new Text({ text: "BUILD", style: STYLE_SECTION });
       label.position.set(PANEL_PAD, cursorY + 4);
       this._scrollContainer.addChild(label);
       cursorY += SECTION_LABEL_H;
 
-      for (let i = 0; i < bpCount; i++) {
+      for (let i = 0; i < orderedBuildings.length; i++) {
         const col = i % ICONS_PER_ROW;
         const row = Math.floor(i / ICONS_PER_ROW);
         const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
         const y = cursorY + row * (ICON_SIZE + ICON_GAP);
-        const icon = this._makeBuildingIcon(building.blueprints[i], x, y);
+        const icon = this._makeBuildingIcon(orderedBuildings[i], x, y);
         this._scrollContainer.addChild(icon);
       }
+      cursorY += otherRowCount * (ICON_SIZE + ICON_GAP);
+    }
+
+    // ECONOMY section - separate economic buildings
+    // orderedEconomyBuildings already calculated above
+    
+    // ECONOMY section
+    if (orderedEconomyBuildings.length > 0) {
+      const econRowCount = Math.ceil(orderedEconomyBuildings.length / ICONS_PER_ROW);
+      const label = new Text({ text: "ECONOMY", style: STYLE_SECTION });
+      label.position.set(PANEL_PAD, cursorY + 4);
+      this._scrollContainer.addChild(label);
+      cursorY += SECTION_LABEL_H;
+
+      for (let i = 0; i < orderedEconomyBuildings.length; i++) {
+        const col = i % ICONS_PER_ROW;
+        const row = Math.floor(i / ICONS_PER_ROW);
+        const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
+        const y = cursorY + row * (ICON_SIZE + ICON_GAP);
+        const icon = this._makeBuildingIcon(orderedEconomyBuildings[i], x, y);
+        this._scrollContainer.addChild(icon);
+      }
+      cursorY += econRowCount * (ICON_SIZE + ICON_GAP);
     }
 
     this._scrollContainer.position.y = FIXED_TOP_H;
@@ -878,6 +966,19 @@ export class ShopPanel {
       });
       line2.position.set(PANEL_PAD, baseY + 20);
       this._statsContainer.addChild(line2);
+
+      // Add requirements line if building has prerequisites
+      if (def.prerequisite) {
+        const reqText = def.prerequisite.minCount > 1 
+          ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`
+          : `Requires: ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`;
+        const requirementsLine = new Text({
+          text: reqText,
+          style: STYLE_REQUIREMENTS,
+        });
+        requirementsLine.position.set(PANEL_PAD, baseY + 32);
+        this._statsContainer.addChild(requirementsLine);
+      }
     } else {
       // No description - use original layout
       const line1 = new Text({
@@ -893,6 +994,19 @@ export class ShopPanel {
       });
       line2.position.set(PANEL_PAD, 28);
       this._statsContainer.addChild(line2);
+
+      // Add requirements line if building has prerequisites
+      if (def.prerequisite) {
+        const reqText = def.prerequisite.minCount > 1 
+          ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`
+          : `Requires: ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`;
+        const requirementsLine = new Text({
+          text: reqText,
+          style: STYLE_REQUIREMENTS,
+        });
+        requirementsLine.position.set(PANEL_PAD, 40);
+        this._statsContainer.addChild(requirementsLine);
+      }
     }
   }
 
