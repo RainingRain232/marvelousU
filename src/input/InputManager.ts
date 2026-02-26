@@ -4,6 +4,7 @@ import type { PlayerId } from "@/types";
 import type { GameState } from "@sim/state/GameState";
 import { selectionMode } from "@input/SelectionMode";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
+import { hoverTooltip } from "@view/ui/HoverTooltip";
 
 // ---------------------------------------------------------------------------
 // Input modes
@@ -171,6 +172,7 @@ export class InputManager {
 
   enterPlacementMode(): void {
     this._mode = "placement";
+    hoverTooltip.hide();
   }
 
   exitPlacementMode(): void {

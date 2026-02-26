@@ -50,6 +50,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.MILL,
       BuildingType.ELITE_HALL,
       BuildingType.MARKET,
+      BuildingType.FACTION_HALL,
     ],
     footprint: { w: 4, h: 4 },
     placementZone: "own",
@@ -304,5 +305,17 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     placementZone: "own",
     capturable: false,
     description: "Grand trading hub that generates the highest gold income through commerce.",
+  },
+  [BuildingType.FACTION_HALL]: {
+    type: BuildingType.FACTION_HALL,
+    cost: 200,
+    hp: 300,
+    goldIncome: 2,
+    shopInventory: [],  // populated at runtime based on player race
+    blueprints: [],
+    footprint: { w: 2, h: 2 },
+    placementZone: "own",
+    capturable: false,
+    description: "The hall of your people. Trains powerful faction-exclusive units unavailable to other races.",
   },
 };

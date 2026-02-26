@@ -165,11 +165,13 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 8,
     dieFps: 6 
   }),
-  [UnitType.CYCLOPS]: buildDef("cyclops", { 
-    idleFps: 3, 
-    moveFps: 6, 
-    attackFps: 8, 
+  [UnitType.CYCLOPS]: buildDef("cyclops", {
+    idleFps: 3,
+    moveFps: 6,
+    attackFps: 8,
     castFps: 6,
-    dieFps: 5 
+    dieFps: 5,
   }),
+  [UnitType.HALBERDIER]: buildDef("halberdier", { attackFps: 11 }),
+  [UnitType.ELVEN_ARCHER]: buildDef("elven_archer", { attackFps: 9, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 6) }),
 };

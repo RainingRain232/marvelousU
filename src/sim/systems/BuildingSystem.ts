@@ -16,6 +16,7 @@ import {
 import type { TileZone } from "@sim/state/BattlefieldState";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { distanceSq } from "@sim/utils/math";
+import { getRace } from "@sim/config/RaceDefs";
 
 let _turretProjectileCounter = 0;
 
@@ -165,6 +166,14 @@ export function placeBuilding(
 
   // Link to player's owned list
   player.ownedBuildings.push(id);
+
+  // Faction Hall: populate shopInventory based on player's selected race
+  if (type === BuildingType.FACTION_HALL && playerId === "p1" && state.p1RaceId) {
+    const race = getRace(state.p1RaceId);
+    if (race?.implemented) {
+      building.shopInventory = [race.factionUnit];
+    }
+  }
 
   // Emit event
   EventBus.emit("buildingPlaced", {

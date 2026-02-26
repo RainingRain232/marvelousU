@@ -37,6 +37,7 @@ import { MillRenderer } from "@view/entities/MillRenderer";
 import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 import { MarketRenderer } from "@view/entities/MarketRenderer";
+import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -140,6 +141,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MILL]: "Mill",
   [BuildingType.ELITE_HALL]: "Elite Hall",
   [BuildingType.MARKET]: "Market",
+  [BuildingType.FACTION_HALL]: "Faction Hall",
 };
 
 // Unit display names
@@ -180,6 +182,8 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.RED_DRAGON]: "Red Dragon",
   [UnitType.FROST_DRAGON]: "Frost Dragon",
   [UnitType.CYCLOPS]: "Cyclops",
+  [UnitType.HALBERDIER]: "Halberdier",
+  [UnitType.ELVEN_ARCHER]: "Elven Archer",
 };
 
 // ---------------------------------------------------------------------------
@@ -676,6 +680,11 @@ export class ShopPanel {
     } else if (buildingType === BuildingType.MARKET) {
       const mr = new MarketRenderer(null);
       buildingContainer = mr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.FACTION_HALL) {
+      const fhr = new FactionHallRenderer(null);
+      buildingContainer = fhr.container;
       texW = 128;
       texH = 128;
     }

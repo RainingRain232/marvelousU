@@ -29,6 +29,7 @@ import { leaderSelectScreen } from "@view/ui/LeaderSelectScreen";
 import { raceSelectScreen } from "@view/ui/RaceSelectScreen";
 import { armoryScreen } from "@view/ui/ArmoryScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
+import { hoverTooltip } from "@view/ui/HoverTooltip";
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { createGameState } from "@sim/state/GameState";
 import type { GameState } from "@sim/state/GameState";
@@ -45,6 +46,8 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 import { LEADER_DEFINITIONS } from "@sim/config/LeaderDefs";
 import type { LeaderId, LeaderBonus } from "@sim/config/LeaderDefs";
+import { getRace } from "@sim/config/RaceDefs";
+import type { RaceId } from "@sim/config/RaceDefs";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -133,11 +136,12 @@ import type { LeaderId, LeaderBonus } from "@sim/config/LeaderDefs";
   // Game boot — triggered from the Armory's START GAME button
   // ---------------------------------------------------------------------------
   armoryScreen.onStartGame = async () => {
-    const mapSize = menuScreen.selectedMapSize;
+    const mapSize  = menuScreen.selectedMapSize;
     const gameMode = menuScreen.selectedGameMode;
     const leaderId = leaderSelectScreen.selectedLeaderId;
+    const raceId   = raceSelectScreen.selectedRaceId;
     armoryScreen.hide();
-    await _bootGame(p2IsAI, mapSize, gameMode, leaderId);
+    await _bootGame(p2IsAI, mapSize, gameMode, leaderId, raceId);
   };
 })();
 
@@ -457,11 +461,37 @@ function _applyLeaderBonus(
   }
 }
 
+/**
+ * Apply the P1 race selection:
+ *   - Stores raceId on state
+ *   - Sets the Faction Hall's shopInventory to include the race's faction unit
+ *     for any Faction Hall buildings already placed (e.g., via debug).
+ *   - The actual Faction Hall building is built by the player; when placed,
+ *     SpawnSystem reads state.p1RaceId to populate its inventory at runtime.
+ */
+function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
+  const race = getRace(raceId);
+  if (!race || !race.implemented) return;
+
+  if (playerId === "p1") {
+    state.p1RaceId = raceId;
+  }
+
+  // If any Faction Halls already exist for this player (unusual at boot,
+  // but handle gracefully), wire their shopInventory now.
+  for (const building of state.buildings.values()) {
+    if (building.type === BuildingType.FACTION_HALL && building.owner === playerId) {
+      building.shopInventory = [race.factionUnit];
+    }
+  }
+}
+
 async function _bootGame(
   p2IsAI: boolean,
   mapSize: MapSize,
   gameMode: GameMode = GameMode.STANDARD,
   leaderId: LeaderId = "arthur",
+  raceId: RaceId = "man",
 ): Promise<void> {
   // 1. Simulation state — sized to the chosen map
   const startGold = gameMode === GameMode.DEATHMATCH ? 10000
@@ -498,6 +528,9 @@ async function _bootGame(
   // Apply the chosen leader's passive bonus to P1
   _applyLeaderBonus(state, "p1", leaderId, mapSize);
 
+  // Apply the chosen race to P1 (sets p1RaceId and wires faction hall inventory)
+  _applyRace(state, "p1", raceId);
+
   // 2. Camera — fit the full map into the viewport
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);
   viewManager.camera.fitMap();
@@ -520,6 +553,10 @@ async function _bootGame(
 
   // 6. Shop panel (local player starts as p1 — west side)
   shopPanel.init(viewManager, state, "p1");
+  shopPanel.onOpen = () => hoverTooltip.hide();
+
+  // 6b. Hover tooltip
+  hoverTooltip.init(viewManager, state, viewManager.camera);
 
   // 7. Spawn queue UI
   unitQueueUI.init(viewManager, state);

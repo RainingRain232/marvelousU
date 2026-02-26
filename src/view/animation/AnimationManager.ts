@@ -60,6 +60,8 @@ import { generateLancerFrames } from "@view/animation/LancerSpriteGen";
 import { generateEliteLancerFrames } from "@view/animation/EliteLancerSpriteGen";
 import { generateKnightLancerFrames } from "@view/animation/KnightLancerSpriteGen";
 import { generateKnightFrames } from "@view/animation/KnightSpriteGen";
+import { generateHalberdierFrames } from "@view/animation/HalberdierSpriteGen";
+import { generateElvenArcherFrames } from "@view/animation/ElvenArcherSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -223,6 +225,10 @@ export class AnimationManager {
         this._generateKnightLancerSprites(key, renderer);
       } else if (key === "knight") {
         this._generateKnightSprites(key, renderer);
+      } else if (key === "halberdier") {
+        this._generateHalberdierSprites(key, renderer);
+      } else if (key === "elven_archer") {
+        this._generateElvenArcherSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -584,6 +590,28 @@ export class AnimationManager {
         if (!this._cache.has(ck)) {
           this._cache.set(ck, stateTextures);
         }
+      }
+    }
+  }
+
+  private _generateHalberdierSprites(key: string, renderer: Renderer): void {
+    const textures = generateHalberdierFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateElvenArcherSprites(key: string, renderer: Renderer): void {
+    const textures = generateElvenArcherFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
       }
     }
   }

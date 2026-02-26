@@ -2,6 +2,7 @@
 import { GamePhase, GameMode } from "@/types";
 import type { PlayerId } from "@/types";
 import type { LeaderId } from "@sim/config/LeaderDefs";
+import type { RaceId } from "@sim/config/RaceDefs";
 import type { Base } from "@sim/entities/Base";
 import type { Building } from "@sim/entities/Building";
 import type { Unit } from "@sim/entities/Unit";
@@ -29,6 +30,8 @@ export interface GameState {
   roguelikeDisabledBuildings: string[];
   /** The leader chosen by P1 for this session. null = no leader. */
   p1LeaderId: LeaderId | null;
+  /** The race chosen by P1 for this session. null = no race (uses generic units). */
+  p1RaceId: RaceId | null;
 
   // Entity maps — keyed by ID
   bases: Map<string, Base>;
@@ -71,6 +74,7 @@ export function createGameState(
     winnerId: null,
     roguelikeDisabledBuildings: [],
     p1LeaderId: null,
+    p1RaceId: null,
     bases: new Map(),
     buildings: new Map(),
     units: new Map(),

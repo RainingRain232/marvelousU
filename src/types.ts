@@ -70,6 +70,8 @@ export enum UnitType {
   RED_DRAGON = "red_dragon",
   FROST_DRAGON = "frost_dragon",
   CYCLOPS = "cyclops",
+  HALBERDIER = "halberdier",
+  ELVEN_ARCHER = "elven_archer",
 }
 
 export enum BuildingType {
@@ -92,6 +94,7 @@ export enum BuildingType {
   MILL = "mill",
   ELITE_HALL = "elite_hall",
   MARKET = "market",
+  FACTION_HALL = "faction_hall",
 }
 
 export enum AbilityType {

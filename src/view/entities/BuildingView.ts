@@ -29,6 +29,7 @@ import { MillRenderer } from "@view/entities/MillRenderer";
 import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { MarketRenderer } from "@view/entities/MarketRenderer";
+import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -61,6 +62,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.MILL]: 0x8b7355,
   [BuildingType.ELITE_HALL]: 0xaa8844,
   [BuildingType.MARKET]: 0xaa7733,
+  [BuildingType.FACTION_HALL]: 0x6655aa,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -101,6 +103,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MILL]: "MILL",
   [BuildingType.ELITE_HALL]: "ELITE HALL",
   [BuildingType.MARKET]: "MARKET",
+  [BuildingType.FACTION_HALL]: "FACTION HALL",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -167,6 +170,7 @@ export class BuildingView {
   private _eliteHallRenderer: EliteHallRenderer | null = null;
   private _hamletRenderer: HamletRenderer | null = null;
   private _marketRenderer: MarketRenderer | null = null;
+  private _factionHallRenderer: FactionHallRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -275,6 +279,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.ARCHERY_RANGE) {
       this._archeryRangeRenderer = new ArcheryRangeRenderer(building.owner);
       this.container.addChild(this._archeryRangeRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.FACTION_HALL) {
+      this._factionHallRenderer = new FactionHallRenderer(building.owner);
+      this.container.addChild(this._factionHallRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -417,6 +426,9 @@ export class BuildingView {
       }
       if (this._archeryRangeRenderer) {
         this._archeryRangeRenderer.tick(dt, phase);
+      }
+      if (this._factionHallRenderer) {
+        this._factionHallRenderer.tick(dt);
       }
       this._tickIdleEffects(dt);
     }
