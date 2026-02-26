@@ -3,7 +3,7 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { GameState } from "@sim/state/GameState";
 import { EventBus } from "@sim/core/EventBus";
-import { GamePhase } from "@/types";
+import { GamePhase, GameMode } from "@/types";
 
 const STYLE_WINNER = new TextStyle({
   fontFamily: "monospace",
@@ -114,9 +114,9 @@ export class VictoryScreen {
     // React to phase changes
     EventBus.on("phaseChanged", ({ phase }) => {
       if (phase === GamePhase.RESOLVE) {
+        // Campaign mode P1 victory is handled by CampaignVictoryScreen instead
+        if (state.gameMode === GameMode.CAMPAIGN && state.winnerId === "p1") return;
         this._show(state);
-      } else {
-        this.container.visible = false;
       }
     });
   }

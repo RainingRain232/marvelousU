@@ -97,7 +97,7 @@ const GAME_MODES: GameModeEntry[] = [
   { mode: GameMode.DEATHMATCH,  label: "DEATHMATCH",  desc: "10000 gold start" },
   { mode: GameMode.BATTLEFIELD, label: "BATTLEFIELD", desc: "No buildings, last unit wins" },
   { mode: GameMode.ROGUELIKE,   label: "ROGUELIKE",   desc: "50% buildings disabled" },
-  { mode: GameMode.CAMPAIGN,    label: "CAMPAIGN",    desc: "Coming soon", disabled: true },
+  { mode: GameMode.CAMPAIGN,    label: "CAMPAIGN",    desc: "Story progression" },
 ];
 
 function makePanel(w: number, h: number): Container {

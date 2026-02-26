@@ -42,6 +42,16 @@ const HP_BG = 0x330000;
 const HP_FILL = 0x44ff44;
 const HP_CRIT = 0xff4444;
 
+// Owner shield — right of the HP bar, always visible
+const SHIELD_W = 12;
+const SHIELD_H = 14;
+const SHIELD_P1_FILL   = 0x3366cc;
+const SHIELD_P1_STROKE = 0x2244aa;
+const SHIELD_P1_HI     = 0x5588ee;
+const SHIELD_P2_FILL   = 0xcc3333;
+const SHIELD_P2_STROKE = 0xaa2222;
+const SHIELD_P2_HI     = 0xee5555;
+
 // Level star — shown next to the HP bar at level 1+
 const STAR_RADIUS_OUTER = 10;
 const STAR_RADIUS_INNER = 4;
@@ -62,10 +72,19 @@ function getHealthBarY(unit: Unit) {
   return baseOffset + customOffset;
 }
 
-function getStarPosition(unit: Unit) {
+function getShieldPosition(unit: Unit) {
   const barY = getHealthBarY(unit);
   return {
-    x: BAR_W / 2 + STAR_RADIUS_OUTER + 3,
+    x: BAR_W / 2 + SHIELD_W / 2 + 2,
+    y: barY + BAR_H / 2 - 1,
+  };
+}
+
+function getStarPosition(unit: Unit) {
+  const barY = getHealthBarY(unit);
+  // Shift star further right to make room for the shield
+  return {
+    x: BAR_W / 2 + SHIELD_W + STAR_RADIUS_OUTER + 4,
     y: barY + BAR_H / 2,
   };
 }
@@ -94,6 +113,10 @@ export class UnitView {
   private _hpBg = new Graphics();
   private _hpFill = new Graphics();
 
+  // Owner shield (always visible while alive)
+  private _shieldContainer = new Container();
+  private _shield = new Graphics();
+
   // Level star (visible at level >= 1)
   // Wrapped in a sub-container so we can counter-scale it against the
   // parent container's horizontal flip (west-facing units get scale.x = -1).
@@ -117,6 +140,7 @@ export class UnitView {
   constructor(unit: Unit) {
     this._buildPlaceholder(unit);
     this._buildHpBar(unit);
+    this._buildShield(unit);
     this._buildLevelStar(unit);
     this._tryAttachSprite(unit);
     this.update(unit);
@@ -160,13 +184,16 @@ export class UnitView {
       this._syncAnimation(unit);
     }
 
-    // HP bar & level star — hidden when dying
+    // HP bar, shield & level star — hidden when dying
     if (unit.state === UnitState.DIE) {
       this._hpBg.visible = false;
       this._hpFill.visible = false;
+      this._shieldContainer.visible = false;
       this._levelStarContainer.visible = false;
     } else {
       this._updateHpBar(unit);
+      // Counter-scale shield so it's never mirrored
+      this._shieldContainer.scale.x = this.container.scale.x === -1 ? -1 : 1;
       this._updateLevelStar(unit);
     }
   }
@@ -242,6 +269,52 @@ export class UnitView {
     this._hpBg.rect(-BAR_W / 2, barY, BAR_W, BAR_H).fill({ color: HP_BG });
     this.container.addChild(this._hpBg);
     this.container.addChild(this._hpFill);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Owner shield
+  // ---------------------------------------------------------------------------
+
+  private _buildShield(unit: Unit): void {
+    const isP1 = unit.owner === "p1";
+    const fill   = isP1 ? SHIELD_P1_FILL   : SHIELD_P2_FILL;
+    const stroke = isP1 ? SHIELD_P1_STROKE : SHIELD_P2_STROKE;
+    const hi     = isP1 ? SHIELD_P1_HI     : SHIELD_P2_HI;
+
+    const pos = getShieldPosition(unit);
+    const cx = pos.x;
+    const cy = pos.y;
+    const hw = SHIELD_W / 2;  // half width
+    const hh = SHIELD_H / 2;  // half height
+
+    // Classic kite-shield shape: flat top, tapers to a point at the bottom
+    this._shield
+      .moveTo(cx - hw, cy - hh)          // top-left
+      .lineTo(cx + hw, cy - hh)          // top-right
+      .lineTo(cx + hw, cy + hh * 0.3)    // right shoulder
+      .lineTo(cx,      cy + hh)          // bottom point
+      .lineTo(cx - hw, cy + hh * 0.3)    // left shoulder
+      .closePath()
+      .fill({ color: fill })
+      .moveTo(cx - hw, cy - hh)
+      .lineTo(cx + hw, cy - hh)
+      .lineTo(cx + hw, cy + hh * 0.3)
+      .lineTo(cx,      cy + hh)
+      .lineTo(cx - hw, cy + hh * 0.3)
+      .closePath()
+      .stroke({ color: stroke, width: 1.5 });
+
+    // Subtle highlight on top-left for depth
+    this._shield
+      .moveTo(cx - hw + 2, cy - hh + 2)
+      .lineTo(cx + hw - 2, cy - hh + 2)
+      .lineTo(cx + hw - 3, cy - hh + 5)
+      .lineTo(cx - hw + 2, cy - hh + 5)
+      .closePath()
+      .fill({ color: hi, alpha: 0.5 });
+
+    this._shieldContainer.addChild(this._shield);
+    this.container.addChild(this._shieldContainer);
   }
 
   private _buildLevelStar(unit: Unit): void {

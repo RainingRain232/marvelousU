@@ -125,8 +125,10 @@ function _enterPrep(state: GameState): void {
   // Clear winner from previous round
   state.winnerId = null;
 
-  // Reset event timer so the first event fires after a full interval next battle
-  state.eventTimer = BalanceConfig.RANDOM_EVENT_INTERVAL;
+  // Reset event timer — keep Infinity for modes that disable random events
+  if (state.eventTimer !== Infinity) {
+    state.eventTimer = BalanceConfig.RANDOM_EVENT_INTERVAL;
+  }
 
   // Roguelike: re-randomize disabled buildings each round
   if (state.gameMode === GameMode.ROGUELIKE) {

@@ -131,6 +131,10 @@ export class BuildingLayer {
     const base = this._state.bases.get(baseId);
     if (!base) return;
 
+    // In battlefield mode the castle is removed but the base entity stays.
+    // Skip the HP bar overlay when there is no castle to attach it to.
+    if (base.castleId === null) return;
+
     const view = new BaseView(base);
     this._baseViews.set(baseId, view);
     this._vm.addToLayer("buildings", view.container);

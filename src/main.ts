@@ -28,8 +28,12 @@ import type { MapSize } from "@view/ui/MenuScreen";
 import { leaderSelectScreen } from "@view/ui/LeaderSelectScreen";
 import { raceSelectScreen } from "@view/ui/RaceSelectScreen";
 import { armoryScreen } from "@view/ui/ArmoryScreen";
+import { scenarioSelectScreen } from "@view/ui/ScenarioSelectScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
+import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
+import { campaignState } from "@sim/config/CampaignState";
+import { getScenario } from "@sim/config/CampaignDefs";
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { createGameState } from "@sim/state/GameState";
 import type { GameState } from "@sim/state/GameState";
@@ -67,7 +71,6 @@ import type { RaceId } from "@sim/config/RaceDefs";
   // Start screen
   // ---------------------------------------------------------------------------
   startScreen.init(viewManager);
-  startScreen.show();
 
   // ---------------------------------------------------------------------------
   // Menu screen
@@ -78,6 +81,15 @@ import type { RaceId } from "@sim/config/RaceDefs";
   // p2IsAI preference stored here so it is applied when the game boots
   let p2IsAI = true;
   menuScreen.onAIToggle = (isAI) => { p2IsAI = isAI; };
+
+  // Check if we were returned from a campaign game via "Return to Campaign"
+  const _returnToCampaign = sessionStorage.getItem("returnToCampaign") === "1";
+  if (_returnToCampaign) {
+    sessionStorage.removeItem("returnToCampaign");
+    startScreen.hide();
+  } else {
+    startScreen.show();
+  }
 
   startScreen.onStart = () => {
     startScreen.hide();
@@ -141,8 +153,38 @@ import type { RaceId } from "@sim/config/RaceDefs";
     const leaderId = leaderSelectScreen.selectedLeaderId;
     const raceId   = raceSelectScreen.selectedRaceId;
     armoryScreen.hide();
-    await _bootGame(p2IsAI, mapSize, gameMode, leaderId, raceId);
+    if (gameMode === GameMode.CAMPAIGN) {
+      // Campaign: go to scenario select instead of booting directly
+      scenarioSelectScreen.show();
+    } else {
+      await _bootGame(p2IsAI, mapSize, gameMode, leaderId, raceId);
+    }
   };
+
+  // ---------------------------------------------------------------------------
+  // Scenario select screen (campaign mode only)
+  // ---------------------------------------------------------------------------
+  scenarioSelectScreen.init(viewManager);
+  scenarioSelectScreen.hide();
+
+  scenarioSelectScreen.onBack = () => {
+    scenarioSelectScreen.hide();
+    armoryScreen.show();
+  };
+
+  scenarioSelectScreen.onNext = async () => {
+    const mapSize  = menuScreen.selectedMapSize;
+    const leaderId = leaderSelectScreen.selectedLeaderId;
+    const raceId   = raceSelectScreen.selectedRaceId;
+    const scenarioNum = scenarioSelectScreen.selectedScenario;
+    scenarioSelectScreen.hide();
+    await _bootCampaign(p2IsAI, mapSize, scenarioNum, leaderId, raceId);
+  };
+
+  // If returning from a campaign game, jump straight to the scenario picker
+  if (_returnToCampaign) {
+    scenarioSelectScreen.show();
+  }
 })();
 
 /**
@@ -335,6 +377,40 @@ function _spawnBattlefieldStartUnits(state: GameState, mapW: number, _mapH: numb
 }
 
 /**
+ * Campaign battlefield scenario: spawn 4 Swordsmen per player.
+ * P1's squad spawns just left of centre, P2's just right, so both sides
+ * face each other in the middle of the map (where the castles would be).
+ */
+function _spawnScenarioBattlefieldUnits(state: GameState, mapW: number, mapH: number): void {
+  const midX = Math.floor(mapW / 2);
+  const midY = Math.floor(mapH / 2);
+
+  // P1: 4 units in a 2×2 cluster slightly left of centre
+  const p1Positions = [
+    { x: midX - 4, y: midY - 1 },
+    { x: midX - 4, y: midY + 1 },
+    { x: midX - 3, y: midY - 1 },
+    { x: midX - 3, y: midY + 1 },
+  ];
+  // P2: mirror on the right
+  const p2Positions = [
+    { x: midX + 3, y: midY - 1 },
+    { x: midX + 3, y: midY + 1 },
+    { x: midX + 4, y: midY - 1 },
+    { x: midX + 4, y: midY + 1 },
+  ];
+
+  for (const pos of p1Positions) {
+    const u = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: pos });
+    state.units.set(u.id, u);
+  }
+  for (const pos of p2Positions) {
+    const u = createUnit({ type: UnitType.SWORDSMAN, owner: "p2", position: pos });
+    state.units.set(u.id, u);
+  }
+}
+
+/**
  * ROGUELIKE mode: randomly disable 50% of non-castle building types.
  * Mirrors PhaseSystem logic but runs at boot for the first round.
  */
@@ -486,12 +562,47 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
   }
 }
 
+/**
+ * Restrict the castle's shopInventory and blueprints to only what the
+ * player has unlocked in the campaign.  Called once after initBases().
+ */
+function _applyCampaignRestrictions(state: GameState): void {
+  const unlockedUnits = new Set(campaignState.unlockedUnits);
+  const unlockedBuildings = new Set(campaignState.unlockedBuildings);
+
+  for (const building of state.buildings.values()) {
+    if (building.owner !== "p1") continue;
+
+    // Filter shop units
+    building.shopInventory = building.shopInventory.filter((u) => unlockedUnits.has(u));
+
+    // Filter blueprints
+    building.blueprints = building.blueprints.filter((b) => unlockedBuildings.has(b));
+  }
+}
+
+/**
+ * Boot a campaign scenario game.
+ * Applies campaign unlocks: filters castle shop and blueprints to only
+ * what the player has unlocked so far, then calls _bootGame in campaign mode.
+ */
+async function _bootCampaign(
+  p2IsAI: boolean,
+  mapSize: MapSize,
+  scenarioNum: number,
+  leaderId: LeaderId,
+  raceId: RaceId,
+): Promise<void> {
+  await _bootGame(p2IsAI, mapSize, GameMode.CAMPAIGN, leaderId, raceId, scenarioNum);
+}
+
 async function _bootGame(
   p2IsAI: boolean,
   mapSize: MapSize,
   gameMode: GameMode = GameMode.STANDARD,
   leaderId: LeaderId = "arthur",
   raceId: RaceId = "man",
+  scenarioNum?: number,
 ): Promise<void> {
   // 1. Simulation state — sized to the chosen map
   const startGold = gameMode === GameMode.DEATHMATCH ? 10000
@@ -504,25 +615,49 @@ async function _bootGame(
   const basePos = _computeBasePositions(mapSize.width, mapSize.height);
   initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
 
-  if (gameMode !== GameMode.BATTLEFIELD) {
-    // Standard, deathmatch, roguelike, campaign all have towns/neutral buildings
+  // Resolve the scenario type for campaign games
+  const scenarioDef = gameMode === GameMode.CAMPAIGN && scenarioNum !== undefined
+    ? getScenario(scenarioNum)
+    : undefined;
+  const scenarioType = scenarioDef?.type ?? "standard";
+
+  const isBattlefieldSetup = gameMode === GameMode.BATTLEFIELD
+    || (gameMode === GameMode.CAMPAIGN && scenarioType === "battlefield");
+
+  if (!isBattlefieldSetup) {
+    // Standard, deathmatch, roguelike, standard-campaign all have towns/neutral buildings
     _spawnTowns(state, mapSize.width, mapSize.height);
     _spawnNeutralExtras(state, mapSize.width, mapSize.height, mapSize.label);
   }
 
-  if (gameMode === GameMode.BATTLEFIELD) {
-    // Remove castles and all other player buildings — battlefield starts with no structures
+  if (isBattlefieldSetup) {
+    // Remove castles and all other player buildings — no structures on the field
     _removeCastlesAndBuildings(state);
-    // Give each player a starting swordsman in BATTLE-ready position
-    _spawnBattlefieldStartUnits(state, mapSize.width, mapSize.height);
-    // Battlefield starts directly in BATTLE phase (no PREP)
+    // Spawn starting units
+    if (gameMode === GameMode.CAMPAIGN) {
+      _spawnScenarioBattlefieldUnits(state, mapSize.width, mapSize.height);
+    } else {
+      _spawnBattlefieldStartUnits(state, mapSize.width, mapSize.height);
+    }
+    // Skip PREP — start directly in BATTLE
     state.phase = GamePhase.BATTLE;
     state.phaseTimer = -1;
+    // Disable random events for battlefield-type scenarios
+    state.eventTimer = Infinity;
   }
 
   if (gameMode === GameMode.ROGUELIKE) {
     // Roll initial disabled buildings
     _rollRoguelikeDisabledBuildings(state);
+  }
+
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum !== undefined) {
+    // Store the scenario number on state so CampaignVictoryScreen can read it
+    state.campaignScenario = scenarioNum;
+    // Restrict castle shop and blueprints to unlocked content (for standard-type scenarios)
+    if (scenarioType === "standard") {
+      _applyCampaignRestrictions(state);
+    }
   }
 
   // Apply the chosen leader's passive bonus to P1
@@ -645,6 +780,15 @@ async function _bootGame(
 
   // Victory screen (overlays game during RESOLVE)
   victoryScreen.init(viewManager, state);
+
+  // Campaign victory screen (overlays game during RESOLVE in campaign mode)
+  campaignVictoryScreen.init(viewManager, state);
+  campaignVictoryScreen.onReturnToCampaign = () => {
+    // Reload the page but return to campaign — simplest approach to reset sim state
+    // We store a flag so the page knows to go straight to scenario select
+    sessionStorage.setItem("returnToCampaign", "1");
+    window.location.reload();
+  };
 
   // Render loop drives game state updates
   viewManager.app.ticker.add((ticker) => {

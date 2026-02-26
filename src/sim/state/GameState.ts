@@ -32,6 +32,8 @@ export interface GameState {
   p1LeaderId: LeaderId | null;
   /** The race chosen by P1 for this session. null = no race (uses generic units). */
   p1RaceId: RaceId | null;
+  /** For CAMPAIGN mode: which scenario number is being played. null = not a campaign game. */
+  campaignScenario: number | null;
 
   // Entity maps — keyed by ID
   bases: Map<string, Base>;
@@ -75,6 +77,7 @@ export function createGameState(
     roguelikeDisabledBuildings: [],
     p1LeaderId: null,
     p1RaceId: null,
+    campaignScenario: null,
     bases: new Map(),
     buildings: new Map(),
     units: new Map(),
