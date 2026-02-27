@@ -80,13 +80,16 @@ export class TreeRenderer {
     update(dt: number): void {
         this._time += dt;
         for (const tree of this._trees) {
-            // Very subtle swaying for trees
-            const angle = Math.sin(this._time * tree.speed + tree.phase) * 0.03;
+            // Primary sway + slower secondary wave for organic wind feel
+            const primary = Math.sin(this._time * tree.speed + tree.phase) * 0.12;
+            const secondary = Math.sin(this._time * tree.speed * 0.4 + tree.phase * 1.7) * 0.06;
+            const angle = primary + secondary;
+
             tree.canopy.rotation = angle;
             tree.canopy.skew.x = angle * 0.5;
 
-            // Trunk doesn't move much at base, but can skew slightly
-            tree.trunk.skew.x = angle * 0.2;
+            // Trunk sways less — anchored at base
+            tree.trunk.skew.x = angle * 0.25;
         }
     }
 }
