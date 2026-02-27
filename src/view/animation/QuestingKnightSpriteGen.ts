@@ -19,53 +19,74 @@ import { UnitState } from "@/types";
 // Constants
 // ---------------------------------------------------------------------------
 
-const F = 72;          // frame size (px)
-const CX = F / 2;      // center X
-const GY = F - 6;      // ground Y (feet line)
+const F = 72; // frame size (px)
+const CX = F / 2; // center X
+const GY = F - 6; // ground Y (feet line)
 
 // Palette — templar knight
-const COL_CHAIN     = 0x999999; // chainmail
-const COL_CHAIN_DK  = 0x777777;
-const COL_SURCOAT   = 0xeeeeee; // white surcoat
-const COL_SURCOAT_DK= 0xcccccc;
-const COL_CROSS     = 0xcc0000; // red templar cross
-const COL_HELM      = 0xaabbcc; // great helm
-const COL_HELM_DK   = 0x889aaa;
-const COL_HELM_HI   = 0xccddee;
-const COL_HORSE     = 0x3b3025; // dark armored horse
-const COL_HORSE_DK  = 0x251a15;
-const COL_HORSE_HI  = 0x5b5045;
-const COL_BARDING   = 0x888888; // horse armor (barding)
-const COL_BARDING_HI= 0xaaaaaa;
-const COL_MANE      = 0x1a1510;
-const COL_SADDLE    = 0x664422;
+const COL_CHAIN = 0x999999; // chainmail
+const COL_CHAIN_DK = 0x777777;
+const COL_SURCOAT = 0xeeeeee; // white surcoat
+const COL_SURCOAT_DK = 0xcccccc;
+const COL_CROSS = 0xcc0000; // red templar cross
+const COL_HELM = 0xaabbcc; // great helm
+const COL_HELM_DK = 0x889aaa;
+const COL_HELM_HI = 0xccddee;
+const COL_HORSE = 0x3b3025; // dark armored horse
+const COL_HORSE_DK = 0x251a15;
+const COL_HORSE_HI = 0x5b5045;
+const COL_BARDING = 0x888888; // horse armor (barding)
+const COL_BARDING_HI = 0xaaaaaa;
+const COL_MANE = 0x1a1510;
+const COL_SADDLE = 0x664422;
 const COL_SADDLE_DK = 0x443322;
-const COL_SWORD     = 0xd0d8e0;
-const COL_SWORD_HI  = 0xf0f4f8;
+const COL_SWORD = 0xd0d8e0;
+const COL_SWORD_HI = 0xf0f4f8;
 const COL_SWORD_GRD = 0xaa8844;
 const COL_SWORD_POM = 0x664422;
-const COL_SHIELD    = 0xdddddd;
-const COL_SHIELD_RIM= 0xaa8844;
-const COL_BOOT      = 0x443322;
-const COL_SHADOW    = 0x000000;
-const COL_HEART     = 0xff3366;
-const COL_HEART_HI  = 0xff6699;
+const COL_SHIELD = 0xdddddd;
+const COL_SHIELD_RIM = 0xaa8844;
+const COL_BOOT = 0x443322;
+const COL_SHADOW = 0x000000;
+const COL_HEART = 0xff3366;
+const COL_HEART_HI = 0xff6699;
 
 // ---------------------------------------------------------------------------
 // Tiny helpers
 // ---------------------------------------------------------------------------
 
-function drawEllipse(g: Graphics, x: number, y: number, w: number, h: number, color: number): void {
+function drawEllipse(
+  g: Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: number,
+): void {
   g.fill({ color });
   g.ellipse(x, y, w, h);
 }
 
-function drawCircle(g: Graphics, x: number, y: number, r: number, color: number): void {
+function drawCircle(
+  g: Graphics,
+  x: number,
+  y: number,
+  r: number,
+  color: number,
+): void {
   g.fill({ color });
   g.circle(x, y, r);
 }
 
-function drawLine(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, width: number = 1): void {
+function drawLine(
+  g: Graphics,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  color: number,
+  width: number = 1,
+): void {
   g.stroke({ color, width });
   g.moveTo(x1, y1).lineTo(x2, y2);
 }
@@ -97,7 +118,13 @@ function drawGreatHelm(g: Graphics, x: number, y: number): void {
   g.rect(x - 6, y + 5, 12, 2);
 }
 
-function drawSurcoatBody(g: Graphics, x: number, y: number, w: number, h: number): void {
+function drawSurcoatBody(
+  g: Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
   // Chainmail underneath (visible at edges)
   g.fill({ color: COL_CHAIN });
   g.rect(x - w / 2 - 1, y, w + 2, h);
@@ -120,7 +147,12 @@ function drawSurcoatBody(g: Graphics, x: number, y: number, w: number, h: number
   g.rect(crossCx - 4, crossCy - 2, 8, 3);
 }
 
-function drawArmoredHorse(g: Graphics, x: number, y: number, walkCycle: number): void {
+function drawArmoredHorse(
+  g: Graphics,
+  x: number,
+  y: number,
+  walkCycle: number,
+): void {
   const bob = Math.sin(walkCycle * Math.PI * 2) * 1.5;
 
   // Horse body (larger than standard knight horse)
@@ -217,7 +249,12 @@ function drawSword(g: Graphics, x: number, y: number, angle: number = 0): void {
   drawCircle(g, swordEndX, swordEndY, 2.5, COL_SWORD_POM);
 }
 
-function drawShield(g: Graphics, x: number, y: number, scale: number = 1): void {
+function drawShield(
+  g: Graphics,
+  x: number,
+  y: number,
+  scale: number = 1,
+): void {
   const w = 13 * scale;
   const h = 15 * scale;
 
@@ -250,7 +287,12 @@ function drawShield(g: Graphics, x: number, y: number, scale: number = 1): void 
   drawCircle(g, x, y, 2 * scale, COL_HELM);
 }
 
-function drawRider(g: Graphics, x: number, y: number, breathe: number = 0): void {
+function drawRider(
+  g: Graphics,
+  x: number,
+  y: number,
+  breathe: number = 0,
+): void {
   // Surcoat body over chainmail
   drawSurcoatBody(g, x, y - 10 + breathe, 12, 14);
   // Great helm
@@ -270,7 +312,13 @@ function drawRider(g: Graphics, x: number, y: number, breathe: number = 0): void
   g.rect(x + 2, y + 5, 3, 3);
 }
 
-function drawHeart(g: Graphics, x: number, y: number, size: number, alpha: number): void {
+function drawHeart(
+  g: Graphics,
+  x: number,
+  y: number,
+  size: number,
+  alpha: number,
+): void {
   // Simple heart shape from two circles and a triangle
   const s = size;
   g.fill({ color: COL_HEART, alpha });
@@ -317,7 +365,8 @@ function generateIdleFrames(g: Graphics, frame: number): void {
   // Love heart floating to the right of helmet (outside helmet)
   // Cycle: appears every 8 frames, rises and fades
   const heartPhase = (frame % 12) / 12; // 0 → 1 (slower cycle over 12 frames)
-  if (heartPhase < 0.9) { // appears for longer duration
+  if (heartPhase < 0.9) {
+    // appears for longer duration
     const heartY = 15 + breathe - heartPhase * 12; // moves upward more (greater range)
     const heartAlpha = 1 - heartPhase * 1.1; // fades more slowly
     const heartSize = 3 + heartPhase * 2; // grows more as it rises
@@ -367,7 +416,7 @@ function generateAttackFrames(g: Graphics, frame: number): void {
   drawRider(g, CX, 37, 0);
 
   // Sword swing attack
-  const swordAngle = -Math.PI / 4 - lean * Math.PI / 3;
+  const swordAngle = -Math.PI / 4 - (lean * Math.PI) / 3;
   drawSword(g, CX + 9, 22, swordAngle);
 
   // Shield held ready during attack
@@ -383,7 +432,6 @@ function generateDieFrames(g: Graphics, frame: number): void {
   const t = frame / 6;
   const fallX = t * 8;
   const fallY = t * t * 6;
-  const rot = t * Math.PI / 2;
 
   // Shadow
   drawEllipse(g, CX, GY, 24, 9, COL_SHADOW);
@@ -410,12 +458,15 @@ function generateDieFrames(g: Graphics, frame: number): void {
 
 type StateFrameGenerator = (g: Graphics, frame: number) => void;
 
-const STATE_GENERATORS: Record<UnitState, { gen: StateFrameGenerator; count: number }> = {
-  [UnitState.IDLE]:   { gen: generateIdleFrames,   count: 8 },
-  [UnitState.MOVE]:   { gen: generateMoveFrames,   count: 8 },
-  [UnitState.ATTACK]: { gen: generateAttackFrames,  count: 7 },
-  [UnitState.CAST]:   { gen: generateCastFrames,    count: 6 },
-  [UnitState.DIE]:    { gen: generateDieFrames,     count: 7 },
+const STATE_GENERATORS: Record<
+  UnitState,
+  { gen: StateFrameGenerator; count: number }
+> = {
+  [UnitState.IDLE]: { gen: generateIdleFrames, count: 8 },
+  [UnitState.MOVE]: { gen: generateMoveFrames, count: 8 },
+  [UnitState.ATTACK]: { gen: generateAttackFrames, count: 7 },
+  [UnitState.CAST]: { gen: generateCastFrames, count: 6 },
+  [UnitState.DIE]: { gen: generateDieFrames, count: 7 },
 };
 
 /**
@@ -424,7 +475,9 @@ const STATE_GENERATORS: Record<UnitState, { gen: StateFrameGenerator; count: num
  * Returns a map from `UnitState` → ordered `Texture[]`, ready to be
  * injected into the AnimationManager cache.
  */
-export function generateQuestingKnightFrames(renderer: Renderer): Map<UnitState, Texture[]> {
+export function generateQuestingKnightFrames(
+  renderer: Renderer,
+): Map<UnitState, Texture[]> {
   const result = new Map<UnitState, Texture[]>();
 
   for (const state of Object.values(UnitState)) {
