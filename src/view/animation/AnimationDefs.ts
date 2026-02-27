@@ -118,6 +118,12 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 14,
     dieFps: 8,
   }),
+  [UnitType.TEMPLAR]: buildDef("templar", {
+    idleFps: 6,
+    moveFps: 10,
+    attackFps: 14,
+    dieFps: 8,
+  }),
   [UnitType.ASSASSIN]: buildDef("assassin", {
     idleFps: 8,
     moveFps: 12,

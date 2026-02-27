@@ -169,6 +169,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
 // Unit display names
 const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.SWORDSMAN]: "Swordsman",
+  [UnitType.TEMPLAR]: "Templar",
   [UnitType.ASSASSIN]: "Assassin",
   [UnitType.ARCHER]: "Archer",
   [UnitType.KNIGHT]: "Knight",

@@ -49,6 +49,20 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "A sturdy frontline warrior with reliable steel and unwavering courage.",
   },
+  [UnitType.TEMPLAR]: {
+    type: UnitType.TEMPLAR,
+    cost: 350,
+    hp: 150,
+    atk: 20,
+    attackSpeed: 1.0,
+    speed: 1,
+    range: 1,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "templar",
+    description:
+      "Holy warrior in shining armor. Better protected than swordsmen with divine blessing.",
+  },
   [UnitType.ASSASSIN]: {
     type: UnitType.ASSASSIN,
     cost: 800,
