@@ -19,7 +19,13 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
 import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
-import { BuildingType, BuildingState, UnitType, UnitState, UpgradeType } from "@/types";
+import {
+  BuildingType,
+  BuildingState,
+  UnitType,
+  UnitState,
+  UpgradeType,
+} from "@/types";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { animationManager } from "@view/animation/AnimationManager";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
@@ -30,7 +36,7 @@ import { TempleRenderer } from "@view/entities/TempleRenderer";
 import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
 import { ArcheryRangeRenderer } from "@view/entities/ArcheryRangeRenderer";
 import { BarracksRenderer } from "@view/entities/BarracksRenderer";
-import { FrontViewStablesRenderer } from "@view/entities/FrontViewStablesRenderer";
+import { StableRenderer } from "@view/entities/StableRenderer";
 import { SiegeWorkshopRenderer } from "@view/entities/SiegeWorkshopRenderer";
 import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
@@ -208,7 +214,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
 
 const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.MELEE_DAMAGE]: "Melee",
-  [UpgradeType.MELEE_HEALTH]: "Defence", 
+  [UpgradeType.MELEE_HEALTH]: "Defence",
   [UpgradeType.RANGED_DAMAGE]: "Ranged",
   [UpgradeType.RANGED_HEALTH]: "Resilience",
   [UpgradeType.SIEGE_DAMAGE]: "Siege",
@@ -378,13 +384,17 @@ export class ShopPanel {
         : 0;
 
     // Calculate upgrade section height
-    const hasUpgrades = building.type === BuildingType.BLACKSMITH || (building.upgradeInventory && building.upgradeInventory.length > 0);
-    const upgradeCount = hasUpgrades ? 9 : (building.upgradeInventory?.length || 0);
+    const hasUpgrades =
+      building.type === BuildingType.BLACKSMITH ||
+      (building.upgradeInventory && building.upgradeInventory.length > 0);
+    const upgradeCount = hasUpgrades
+      ? 9
+      : building.upgradeInventory?.length || 0;
     const upgradeRowCount = Math.ceil(upgradeCount / ICONS_PER_ROW);
-    const upgradeSectionH = hasUpgrades 
+    const upgradeSectionH = hasUpgrades
       ? SECTION_LABEL_H + upgradeRowCount * (ICON_SIZE + ICON_GAP)
       : 0;
-    
+
     // Calculate economic and other building counts for height calculation
     const economicTypes = new Set([
       BuildingType.FARM,
@@ -393,10 +403,14 @@ export class ShopPanel {
       BuildingType.MILL,
       BuildingType.HAMLET,
     ]);
-    
-    const economicBuildings = building.blueprints.filter(bp => economicTypes.has(bp));
-    const otherBuildings = building.blueprints.filter(bp => !economicTypes.has(bp));
-    
+
+    const economicBuildings = building.blueprints.filter((bp) =>
+      economicTypes.has(bp),
+    );
+    const otherBuildings = building.blueprints.filter(
+      (bp) => !economicTypes.has(bp),
+    );
+
     // Define the specific order for ECONOMY section
     const economyOrder = [
       BuildingType.FARM,
@@ -405,14 +419,14 @@ export class ShopPanel {
       BuildingType.MILL,
       BuildingType.HAMLET,
     ];
-    
+
     // Sort economicBuildings according to the defined order
     const orderedEconomyBuildings = economicBuildings.sort((a, b) => {
       const indexA = economyOrder.indexOf(a);
       const indexB = economyOrder.indexOf(b);
       return indexA - indexB;
     });
-    
+
     // Define the specific order for BUILD section
     const buildOrder = [
       BuildingType.BARRACKS,
@@ -428,17 +442,19 @@ export class ShopPanel {
       BuildingType.FACTION_HALL,
       BuildingType.ELITE_HALL,
     ];
-    
+
     // Sort otherBuildings according to the defined order
     const orderedBuildings = otherBuildings.sort((a, b) => {
       const indexA = buildOrder.indexOf(a);
       const indexB = buildOrder.indexOf(b);
       return indexA - indexB;
     });
-    
-    const econRowCount = Math.ceil(orderedEconomyBuildings.length / ICONS_PER_ROW);
+
+    const econRowCount = Math.ceil(
+      orderedEconomyBuildings.length / ICONS_PER_ROW,
+    );
     const otherRowCount = Math.ceil(orderedBuildings.length / ICONS_PER_ROW);
-    
+
     const econSectionH =
       orderedEconomyBuildings.length > 0
         ? SECTION_LABEL_H + econRowCount * (ICON_SIZE + ICON_GAP)
@@ -448,7 +464,8 @@ export class ShopPanel {
         ? SECTION_LABEL_H + otherRowCount * (ICON_SIZE + ICON_GAP)
         : 0;
 
-    this._contentH = unitSectionH + upgradeSectionH + econSectionH + otherSectionH + PANEL_PAD;
+    this._contentH =
+      unitSectionH + upgradeSectionH + econSectionH + otherSectionH + PANEL_PAD;
     const maxScrollableH = MAX_PANEL_H - FIXED_TOP_H;
     const scrollableH = Math.min(maxScrollableH, this._contentH);
     this._viewH = FIXED_TOP_H + scrollableH;
@@ -544,41 +561,41 @@ export class ShopPanel {
     }
 
     // UPGRADES section (if blacksmith)
-    if (building.type === BuildingType.BLACKSMITH || (building.upgradeInventory && building.upgradeInventory.length > 0)) {
+    if (
+      building.type === BuildingType.BLACKSMITH ||
+      (building.upgradeInventory && building.upgradeInventory.length > 0)
+    ) {
       const label = new Text({ text: "UPGRADES", style: STYLE_SECTION });
       label.position.set(PANEL_PAD, cursorY + 4);
       this._scrollContainer.addChild(label);
       cursorY += SECTION_LABEL_H;
 
       // Get upgrades from building inventory or use blacksmith defaults
-      const upgrades = building.upgradeInventory && building.upgradeInventory.length > 0 
-        ? building.upgradeInventory 
-        : [
-            UpgradeType.MELEE_DAMAGE,
-            UpgradeType.MELEE_HEALTH,
-            UpgradeType.RANGED_DAMAGE,
-            UpgradeType.RANGED_HEALTH,
-            UpgradeType.SIEGE_DAMAGE,
-            UpgradeType.SIEGE_HEALTH,
-            UpgradeType.CREATURE_DAMAGE,
-            UpgradeType.CREATURE_HEALTH,
-            UpgradeType.MAGE_RANGE,
-          ];
+      const upgrades =
+        building.upgradeInventory && building.upgradeInventory.length > 0
+          ? building.upgradeInventory
+          : [
+              UpgradeType.MELEE_DAMAGE,
+              UpgradeType.MELEE_HEALTH,
+              UpgradeType.RANGED_DAMAGE,
+              UpgradeType.RANGED_HEALTH,
+              UpgradeType.SIEGE_DAMAGE,
+              UpgradeType.SIEGE_HEALTH,
+              UpgradeType.CREATURE_DAMAGE,
+              UpgradeType.CREATURE_HEALTH,
+              UpgradeType.MAGE_RANGE,
+            ];
 
       for (let i = 0; i < upgrades.length; i++) {
         const col = i % ICONS_PER_ROW;
         const row = Math.floor(i / ICONS_PER_ROW);
         const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
         const y = cursorY + row * (ICON_SIZE + ICON_GAP);
-        const icon = this._makeUpgradeIcon(
-          building.id,
-          upgrades[i],
-          x,
-          y,
-        );
+        const icon = this._makeUpgradeIcon(building.id, upgrades[i], x, y);
         this._scrollContainer.addChild(icon);
       }
-      cursorY += Math.ceil(upgrades.length / ICONS_PER_ROW) * (ICON_SIZE + ICON_GAP);
+      cursorY +=
+        Math.ceil(upgrades.length / ICONS_PER_ROW) * (ICON_SIZE + ICON_GAP);
     }
 
     // BUILD section (non-economic buildings)
@@ -601,10 +618,12 @@ export class ShopPanel {
 
     // ECONOMY section - separate economic buildings
     // orderedEconomyBuildings already calculated above
-    
+
     // ECONOMY section
     if (orderedEconomyBuildings.length > 0) {
-      const econRowCount = Math.ceil(orderedEconomyBuildings.length / ICONS_PER_ROW);
+      const econRowCount = Math.ceil(
+        orderedEconomyBuildings.length / ICONS_PER_ROW,
+      );
       const label = new Text({ text: "ECONOMY", style: STYLE_SECTION });
       label.position.set(PANEL_PAD, cursorY + 4);
       this._scrollContainer.addChild(label);
@@ -828,9 +847,9 @@ export class ShopPanel {
       texW = 128;
       texH = 128;
     } else if (buildingType === BuildingType.STABLES) {
-      const sr = new FrontViewStablesRenderer(null);
+      const sr = new StableRenderer(null);
       buildingContainer = sr.container;
-      texW = 128;
+      texW = 192;
       texH = 128;
     } else if (buildingType === BuildingType.BARRACKS) {
       const br = new BarracksRenderer(null);
@@ -886,13 +905,16 @@ export class ShopPanel {
     // Flavor text if available
     if (def.description) {
       const maxLineLength = 35; // Maximum characters per line
-      const words = def.description.split(' ');
-      let currentLine = '';
+      const words = def.description.split(" ");
+      let currentLine = "";
       let yOffset = 16;
       let actualLineCount = 0;
-      
+
       for (const word of words) {
-        if ((currentLine + word).length > maxLineLength && currentLine.length > 0) {
+        if (
+          (currentLine + word).length > maxLineLength &&
+          currentLine.length > 0
+        ) {
           // Create text for current line
           const flavorText = new Text({
             text: currentLine.trim(),
@@ -900,16 +922,16 @@ export class ShopPanel {
           });
           flavorText.position.set(PANEL_PAD, yOffset);
           this._statsContainer.addChild(flavorText);
-          
+
           // Start new line
-          currentLine = word + ' ';
+          currentLine = word + " ";
           yOffset += 12;
           actualLineCount++;
         } else {
-          currentLine += word + ' ';
+          currentLine += word + " ";
         }
       }
-      
+
       // Add the last line
       if (currentLine.trim().length > 0) {
         const flavorText = new Text({
@@ -921,10 +943,10 @@ export class ShopPanel {
         yOffset += 12;
         actualLineCount++;
       }
-      
+
       // Adjust subsequent lines based on actual flavor lines used
-      const baseY = 16 + (actualLineCount * 12);
-      
+      const baseY = 16 + actualLineCount * 12;
+
       const line1 = new Text({
         text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
         style: STYLE_STAT,
@@ -986,13 +1008,16 @@ export class ShopPanel {
     // Flavor text if available
     if (def.description) {
       const maxLineLength = 35; // Maximum characters per line
-      const words = def.description.split(' ');
-      let currentLine = '';
+      const words = def.description.split(" ");
+      let currentLine = "";
       let yOffset = 16;
       let actualLineCount = 0;
-      
+
       for (const word of words) {
-        if ((currentLine + word).length > maxLineLength && currentLine.length > 0) {
+        if (
+          (currentLine + word).length > maxLineLength &&
+          currentLine.length > 0
+        ) {
           // Create text for current line
           const flavorText = new Text({
             text: currentLine.trim(),
@@ -1000,16 +1025,16 @@ export class ShopPanel {
           });
           flavorText.position.set(PANEL_PAD, yOffset);
           this._statsContainer.addChild(flavorText);
-          
+
           // Start new line
-          currentLine = word + ' ';
+          currentLine = word + " ";
           yOffset += 12;
           actualLineCount++;
         } else {
-          currentLine += word + ' ';
+          currentLine += word + " ";
         }
       }
-      
+
       // Add the last line
       if (currentLine.trim().length > 0) {
         const flavorText = new Text({
@@ -1021,10 +1046,10 @@ export class ShopPanel {
         yOffset += 12;
         actualLineCount++;
       }
-      
+
       // Adjust subsequent lines based on actual flavor lines used
-      const baseY = 16 + (actualLineCount * 12);
-      
+      const baseY = 16 + actualLineCount * 12;
+
       const line1 = new Text({
         text: `HP:${def.hp}  COST:${def.cost}g  INCOME:${def.goldIncome}g/s`,
         style: STYLE_STAT,
@@ -1042,24 +1067,25 @@ export class ShopPanel {
       // Add requirements line if building has prerequisites or max count
       if (def.prerequisite || def.maxCount) {
         let xPos = PANEL_PAD;
-        
+
         // Add requirements in gold if present
         if (def.prerequisite) {
-          const reqText = def.prerequisite.minCount > 1 
-            ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`
-            : `Requires: ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`;
-          
+          const reqText =
+            def.prerequisite.minCount > 1
+              ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map((type) => BUILDING_LABELS[type]).join(", ")}`
+              : `Requires: ${def.prerequisite.types.map((type) => BUILDING_LABELS[type]).join(", ")}`;
+
           const requirementsLine = new Text({
             text: reqText,
             style: STYLE_REQUIREMENTS,
           });
           requirementsLine.position.set(xPos, baseY + 32);
           this._statsContainer.addChild(requirementsLine);
-          
+
           // Measure text width to position max count after it
           xPos += requirementsLine.width + 5;
         }
-        
+
         // Add max count in red if present
         if (def.maxCount) {
           const maxText = `(Max: ${def.maxCount})`;
@@ -1090,24 +1116,25 @@ export class ShopPanel {
       // Add requirements line if building has prerequisites or max count
       if (def.prerequisite || def.maxCount) {
         let xPos = PANEL_PAD;
-        
+
         // Add requirements in gold if present
         if (def.prerequisite) {
-          const reqText = def.prerequisite.minCount > 1 
-            ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`
-            : `Requires: ${def.prerequisite.types.map(type => BUILDING_LABELS[type]).join(', ')}`;
-          
+          const reqText =
+            def.prerequisite.minCount > 1
+              ? `Requires: ${def.prerequisite.minCount} ${def.prerequisite.types.map((type) => BUILDING_LABELS[type]).join(", ")}`
+              : `Requires: ${def.prerequisite.types.map((type) => BUILDING_LABELS[type]).join(", ")}`;
+
           const requirementsLine = new Text({
             text: reqText,
             style: STYLE_REQUIREMENTS,
           });
           requirementsLine.position.set(xPos, 40);
           this._statsContainer.addChild(requirementsLine);
-          
+
           // Measure text width to position max count after it
           xPos += requirementsLine.width + 5;
         }
-        
+
         // Add max count in red if present
         if (def.maxCount) {
           const maxText = `(Max: ${def.maxCount})`;
@@ -1229,15 +1256,15 @@ export class ShopPanel {
     btn.addChild(arrow);
 
     // Upgrade label
-    const label = new Text({ 
-      text: UPGRADE_LABELS[upgradeType], 
+    const label = new Text({
+      text: UPGRADE_LABELS[upgradeType],
       style: new TextStyle({
         fontFamily: "monospace",
         fontSize: 7,
         fill: 0xffffff,
         align: "center",
         fontWeight: "bold",
-      })
+      }),
     });
     label.anchor.set(0.5, 0.5);
     label.position.set(ICON_SIZE / 2, ICON_SIZE / 2 + 6);
@@ -1245,12 +1272,15 @@ export class ShopPanel {
 
     // Cost and level info
     const def = UPGRADE_DEFINITIONS[upgradeType];
-    const currentLevel = UpgradeSystem.getUpgradeLevel(this._localPlayerId, upgradeType);
+    const currentLevel = UpgradeSystem.getUpgradeLevel(
+      this._localPlayerId,
+      upgradeType,
+    );
     const cost = currentLevel < def.maxLevel ? def.cost : 0;
-    
-    const costText = new Text({ 
-      text: currentLevel >= def.maxLevel ? "MAX" : `${cost}g`, 
-      style: STYLE_ICON_COST 
+
+    const costText = new Text({
+      text: currentLevel >= def.maxLevel ? "MAX" : `${cost}g`,
+      style: STYLE_ICON_COST,
     });
     costText.anchor.set(0.5, 1);
     costText.position.set(ICON_SIZE / 2, ICON_SIZE - 1);
@@ -1258,15 +1288,15 @@ export class ShopPanel {
 
     // Level indicator
     if (currentLevel > 0) {
-      const levelText = new Text({ 
-        text: `${currentLevel}/${def.maxLevel}`, 
+      const levelText = new Text({
+        text: `${currentLevel}/${def.maxLevel}`,
         style: new TextStyle({
           fontFamily: "monospace",
           fontSize: 6,
           fill: 0x88ff88,
           align: "center",
           fontWeight: "bold",
-        })
+        }),
       });
       levelText.anchor.set(1, 0);
       levelText.position.set(ICON_SIZE - 2, 2);
@@ -1519,9 +1549,9 @@ export class ShopPanel {
 
   private _showUpgradePreview(upgradeType: UpgradeType): void {
     this._previewContainer.removeChildren();
-    
+
     const def = UPGRADE_DEFINITIONS[upgradeType];
-    
+
     // Show upgrade icon
     const preview = new Graphics()
       .circle(PANEL_W / 2, PREVIEW_H / 2 - 10, 25)
@@ -1531,23 +1561,23 @@ export class ShopPanel {
     this._previewContainer.addChild(preview);
 
     // Upgrade label
-    const label = new Text({ 
-      text: UPGRADE_LABELS[upgradeType], 
+    const label = new Text({
+      text: UPGRADE_LABELS[upgradeType],
       style: new TextStyle({
         fontFamily: "monospace",
         fontSize: 14,
         fill: 0xffffff,
         align: "center",
         fontWeight: "bold",
-      })
+      }),
     });
     label.anchor.set(0.5, 0.5);
     label.position.set(PANEL_W / 2, PREVIEW_H / 2 - 10);
     this._previewContainer.addChild(label);
 
     // Description text below the icon
-    const descText = new Text({ 
-      text: def.description, 
+    const descText = new Text({
+      text: def.description,
       style: new TextStyle({
         fontFamily: "monospace",
         fontSize: 9,
@@ -1555,7 +1585,7 @@ export class ShopPanel {
         align: "center",
         wordWrap: true,
         wordWrapWidth: PANEL_W - 30,
-      })
+      }),
     });
     descText.anchor.set(0.5, 0);
     descText.position.set(PANEL_W / 2, PREVIEW_H / 2 + 20);
@@ -1564,14 +1594,17 @@ export class ShopPanel {
 
   private _showUpgradeStats(upgradeType: UpgradeType): void {
     this._statsContainer.removeChildren();
-    
+
     const def = UPGRADE_DEFINITIONS[upgradeType];
-    const currentLevel = UpgradeSystem.getUpgradeLevel(this._localPlayerId, upgradeType);
+    const currentLevel = UpgradeSystem.getUpgradeLevel(
+      this._localPlayerId,
+      upgradeType,
+    );
     const statsW = PANEL_W - 2 * PANEL_PAD;
-    
+
     // Description
-    const desc = new Text({ 
-      text: def.description, 
+    const desc = new Text({
+      text: def.description,
       style: new TextStyle({
         fontFamily: "monospace",
         fontSize: 10,
@@ -1579,45 +1612,45 @@ export class ShopPanel {
         align: "center",
         wordWrap: true,
         wordWrapWidth: statsW - 20,
-      })
+      }),
     });
     desc.position.set(10, 16);
     this._statsContainer.addChild(desc);
 
     // Level and cost info
-    const levelText = new Text({ 
-      text: `Level: ${currentLevel}/${def.maxLevel}`, 
+    const levelText = new Text({
+      text: `Level: ${currentLevel}/${def.maxLevel}`,
       style: new TextStyle({
         fontFamily: "monospace",
         fontSize: 10,
         fill: 0xffffff,
         align: "left",
-      })
+      }),
     });
     levelText.position.set(10, 40);
     this._statsContainer.addChild(levelText);
 
     if (currentLevel < def.maxLevel) {
-      const costText = new Text({ 
-        text: `Next upgrade: ${def.cost}g`, 
+      const costText = new Text({
+        text: `Next upgrade: ${def.cost}g`,
         style: new TextStyle({
           fontFamily: "monospace",
           fontSize: 10,
           fill: 0xffd700,
           align: "left",
-        })
+        }),
       });
       costText.position.set(10, 55);
       this._statsContainer.addChild(costText);
     } else {
-      const maxText = new Text({ 
-        text: "MAX LEVEL", 
+      const maxText = new Text({
+        text: "MAX LEVEL",
         style: new TextStyle({
           fontFamily: "monospace",
           fontSize: 10,
           fill: 0x88ff88,
           align: "left",
-        })
+        }),
       });
       maxText.position.set(10, 55);
       this._statsContainer.addChild(maxText);
@@ -1625,12 +1658,16 @@ export class ShopPanel {
   }
 
   private _buyUpgrade(buildingId: string, upgradeType: UpgradeType): void {
-    const success = UpgradeSystem.purchaseUpgrade(this._state, this._localPlayerId, upgradeType);
-    
+    const success = UpgradeSystem.purchaseUpgrade(
+      this._state,
+      this._localPlayerId,
+      upgradeType,
+    );
+
     if (success) {
       // Refresh the shop panel to show new level
       this._rebuild();
-      
+
       // Update affordability
       this._updateAffordability();
     }
