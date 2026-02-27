@@ -376,6 +376,34 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.DEVOUR_PULL],
     spriteKey: "swordsman", // placeholder (tanky humanoid)
   },
+  [UnitType.TROLL]: {
+    type: UnitType.TROLL,
+    cost: 700,
+    hp: 400,
+    atk: 25,
+    attackSpeed: 0.6,
+    speed: 0.5,
+    range: 1,
+    spawnTime: 8,
+    abilityTypes: [],
+    spriteKey: "troll",
+    description:
+      "Massive troll with immense health. Slow but devastating in melee.",
+  },
+  [UnitType.BAT]: {
+    type: UnitType.BAT,
+    cost: 150,
+    hp: 30,
+    atk: 10,
+    attackSpeed: 1.2,
+    speed: 2.0,
+    range: 1,
+    spawnTime: 2,
+    abilityTypes: [],
+    spriteKey: "bat",
+    description:
+      "Swarm of tiny bats. Very fast but fragile. Overwhelms enemies with numbers.",
+  },
   [UnitType.HORSE_ARCHER]: {
     type: UnitType.HORSE_ARCHER,
     cost: 350,

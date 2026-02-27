@@ -204,6 +204,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.RED_DRAGON,
       UnitType.FROST_DRAGON,
       UnitType.CYCLOPS,
+      UnitType.TROLL,
+      UnitType.BAT,
     ],
     blueprints: [],
     footprint: { w: 2, h: 2 },

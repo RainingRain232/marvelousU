@@ -127,6 +127,8 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.CROSSBOWMAN]: "Crossbowman",
   [UnitType.REPEATER]: "Repeater",
   [UnitType.DEVOURER]: "Devourer",
+  [UnitType.TROLL]: "Troll",
+  [UnitType.BAT]: "Bat",
   [UnitType.HORSE_ARCHER]: "Horse Archer",
   [UnitType.SHORTBOW]: "Shortbow",
   [UnitType.BALLISTA]: "Ballista",

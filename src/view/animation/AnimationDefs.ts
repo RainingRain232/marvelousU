@@ -200,6 +200,18 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 10,
     castFps: 8,
   }),
+  [UnitType.TROLL]: buildDef("troll", {
+    idleFps: 6,
+    moveFps: 6,
+    attackFps: 8,
+    dieFps: 6,
+  }),
+  [UnitType.BAT]: buildDef("bat", {
+    idleFps: 8,
+    moveFps: 12,
+    attackFps: 12,
+    dieFps: 6,
+  }),
   [UnitType.HORSE_ARCHER]: buildDef("knight", { moveFps: 10, attackFps: 12 }),
   [UnitType.SHORTBOW]: buildDef("archer", {
     attackFps: 15,

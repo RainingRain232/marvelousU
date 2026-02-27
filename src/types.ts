@@ -59,6 +59,8 @@ export enum UnitType {
   FAERY_QUEEN = "faery_queen",
   GIANT_FROG = "giant_frog",
   DEVOURER = "devourer",
+  TROLL = "troll",
+  BAT = "bat",
   HORSE_ARCHER = "horse_archer",
   SHORTBOW = "shortbow",
   BALLISTA = "ballista",
