@@ -6,6 +6,7 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
 import { EventBus } from "@sim/core/EventBus";
+import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 import type { PlayerId, Vec2 } from "@/types";
 import {
   BuildingState,
@@ -183,6 +184,14 @@ export function placeBuilding(
       owner: playerId,
       position: { x: position.x, y: position.y + def.footprint.h },
     });
+    // Make the Questing Knight patrol near the player's castle
+    for (const b of state.buildings.values()) {
+      if (b.owner === playerId && b.type === BuildingType.CASTLE) {
+        qk.homeguard = true;
+        qk.homeguardOrigin = { ...b.position };
+        break;
+      }
+    }
     state.units.set(qk.id, qk);
     EventBus.emit("unitSpawned", {
       unitId: qk.id,

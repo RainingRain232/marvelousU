@@ -84,7 +84,6 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     goldIncome: 1,
     shopInventory: [
       UnitType.KNIGHT,
-      UnitType.QUESTING_KNIGHT,
       UnitType.SIEGE_HUNTER,
       UnitType.HORSE_ARCHER,
       UnitType.SCOUT_CAVALRY,

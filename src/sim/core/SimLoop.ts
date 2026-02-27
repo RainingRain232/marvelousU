@@ -13,6 +13,7 @@
 
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import type { GameState } from "@sim/state/GameState";
+import { UnitType, BuildingType, UnitState } from "@/types";
 import { SpawnSystem } from "@sim/systems/SpawnSystem";
 import { AbilitySystem } from "@sim/systems/AbilitySystem";
 import { MovementSystem } from "@sim/systems/MovementSystem";
@@ -55,6 +56,54 @@ export function simTick(state: GameState): void {
   ProjectileSystem.update(state, DT);
   BuildingSystem.update(state, DT);
   AISystem.update(state, DT);
+  
+  // Questing Knight special behavior - run last to override other systems
+  for (const unit of state.units.values()) {
+    if (unit.type === UnitType.QUESTING_KNIGHT && unit.questingKnightTimer && unit.questingKnightTimer > 0) {
+      // Check if Questing Knight is actually near the friendly castle (4 tiles away)
+      let isNearFriendlyCastle = false;
+      let friendlyCastlePos = null;
+      
+      for (const building of state.buildings.values()) {
+        if (building.owner === unit.owner && building.type === BuildingType.CASTLE) {
+          friendlyCastlePos = building.position;
+          // Check distance (4 tiles away means distance <= 4.5)
+          const dx = Math.abs(unit.position.x - friendlyCastlePos.x);
+          const dy = Math.abs(unit.position.y - friendlyCastlePos.y);
+          if (dx <= 4.5 && dy <= 4.5) {
+            isNearFriendlyCastle = true;
+          }
+          break;
+        }
+      }
+      
+      if (isNearFriendlyCastle) {
+        // Force unit to stay in IDLE state and count down
+        unit.state = UnitState.IDLE;
+        unit.questingKnightTimer -= DT;
+        
+        if (unit.questingKnightTimer <= 0) {
+          unit.questingKnightTimer = undefined;
+          unit.targetId = null; // Clear friendly castle target, now it can behave normally
+          // Unit can now move normally - continue to regular behavior
+        }
+      } else {
+        // Not near friendly castle yet, force it to move there
+        // Force direct path to friendly castle instead of just targetId
+        for (const building of state.buildings.values()) {
+          if (building.owner === unit.owner && building.type === BuildingType.CASTLE) {
+            // Set direct path to castle position (4 tiles away)
+            unit.path = [{ x: building.position.x + 4, y: building.position.y + 4 }];
+            unit.pathIndex = 0;
+            unit.targetId = building.id;
+            unit.state = UnitState.MOVE;
+            break;
+          }
+        }
+      }
+    }
+  }
+  
   state.tick++;
 }
 

@@ -38,7 +38,7 @@ const BUILDING_AGGRO_RANGE_SQ = BUILDING_AGGRO_RANGE * BUILDING_AGGRO_RANGE;
 const AGGRO_RANGE_SQ = BalanceConfig.AGGRO_RANGE * BalanceConfig.AGGRO_RANGE;
 
 /** Tiles — how far homeguard units patrol from their origin. */
-const HOMEGUARD_PATROL_RANGE = 8;
+const HOMEGUARD_PATROL_RANGE = 5;
 const HOMEGUARD_PATROL_RANGE_SQ = HOMEGUARD_PATROL_RANGE * HOMEGUARD_PATROL_RANGE;
 
 // ---------------------------------------------------------------------------

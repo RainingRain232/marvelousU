@@ -1,7 +1,7 @@
 // Queue processing, group spawning thresholds
 import type { GameState } from "@sim/state/GameState";
-import type { UnitType } from "@/types";
-import { UnitState, BuildingType } from "@/types";
+import { BuildingType } from "@/types";
+import type { Unit } from "@sim/entities/Unit";
 import type { Building } from "@sim/entities/Building";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { createUnit } from "@sim/entities/Unit";

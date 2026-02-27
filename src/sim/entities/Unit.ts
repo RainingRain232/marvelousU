@@ -57,6 +57,9 @@ export interface Unit {
   xp: number;    // Current accumulated experience points
   level: number; // Current level (0 = no level yet)
 
+  // Questing Knight intro: seconds to idle at castle before normal behaviour
+  questingKnightTimer?: number;
+
   // Abilities
   abilityIds: string[]; // References into GameState.abilities
 

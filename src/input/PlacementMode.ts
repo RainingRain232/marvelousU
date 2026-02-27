@@ -6,9 +6,10 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
-import { BuildingType, UnitType } from "@/types";
+import { BuildingType, UnitType, UnitState } from "@/types";
 import type { PlayerId } from "@/types";
 import { getRace } from "@sim/config/RaceDefs";
+import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 
 // ---------------------------------------------------------------------------
 // Placement validation
@@ -136,6 +137,27 @@ export function confirmPlacement(
       owner: playerId,
       position: { x: tx, y: ty + def.footprint.h },
     });
+    
+    // Apply all purchased upgrades to the new unit
+    UpgradeSystem.applyAllUpgradesToUnit(qk);
+    
+    // Find the player's castle and set it as movement target
+    let playerCastle = null;
+    for (const building of state.buildings.values()) {
+      if (building.owner === playerId && building.type === BuildingType.CASTLE) {
+        playerCastle = building;
+        break;
+      }
+    }
+    
+    if (playerCastle) {
+      qk.targetId = playerCastle.id;
+    }
+    
+    // Set special timer to idle at castle for 5 seconds when it arrives
+    qk.questingKnightTimer = 5;
+    qk.state = UnitState.MOVE;
+    
     state.units.set(qk.id, qk);
     EventBus.emit("unitSpawned", {
       unitId: qk.id,
