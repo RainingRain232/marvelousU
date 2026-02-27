@@ -332,22 +332,21 @@ function generateMoveFrames(g: Graphics, frame: number): void {
   // Shadow
   drawEllipse(g, CX, GY, 24, 9, COL_SHADOW);
 
-  // Armored warhorse (galloping)
+  // Armored warhorse
   drawArmoredHorse(g, CX, 42, walkCycle);
 
   // Saddle
   drawSaddle(g, CX, 37);
 
-  // Rider (bobbing with horse)
-  const riderBob = Math.sin(walkCycle * Math.PI * 2) * 2.5;
-  drawRider(g, CX, 37 + riderBob, breathe);
+  // Rider
+  drawRider(g, CX, 37, breathe);
 
-  // Sword (swaying with movement)
-  const swordAngle = -Math.PI / 6 + Math.sin(walkCycle * Math.PI * 2) * 0.25;
-  drawSword(g, CX + 9, 24 + riderBob + breathe, swordAngle);
+  // Sword held ready while moving
+  const swordSway = Math.sin(frame * 0.5) * 0.1;
+  drawSword(g, CX + 9, 22 + breathe, -Math.PI / 4 + swordSway);
 
-  // Shield
-  drawShield(g, CX - 12, 34 + riderBob + breathe, 0.9);
+  // Shield held ready while moving
+  drawShield(g, CX - 12, 34 + breathe, 0.9);
 }
 
 function generateAttackFrames(g: Graphics, frame: number): void {
@@ -358,22 +357,21 @@ function generateAttackFrames(g: Graphics, frame: number): void {
   // Shadow
   drawEllipse(g, CX, GY, 24, 9, COL_SHADOW);
 
-  // Warhorse (charging)
-  const horseBob = Math.sin(t * Math.PI * 4) * 2.5;
-  drawArmoredHorse(g, CX, 42 + horseBob, 0);
+  // Armored warhorse
+  drawArmoredHorse(g, CX, 42, 0);
 
   // Saddle
-  drawSaddle(g, CX, 37 + horseBob);
+  drawSaddle(g, CX, 37);
 
-  // Rider (leaning forward into strike)
-  drawRider(g, CX + lean * 5, 37 + horseBob - lean * 4);
+  // Rider
+  drawRider(g, CX, 37, 0);
 
-  // Sword (powerful downward strike arc)
-  const swordAngle = -Math.PI / 3 + strike * Math.PI * 0.6;
-  drawSword(g, CX + 9 + lean * 5, 22 + horseBob - lean * 4, swordAngle);
+  // Sword swing attack
+  const swordAngle = -Math.PI / 4 - lean * Math.PI / 3;
+  drawSword(g, CX + 9, 22, swordAngle);
 
-  // Shield (held back during strike)
-  drawShield(g, CX - 16, 34 + horseBob - lean * 3, 0.7);
+  // Shield held ready during attack
+  drawShield(g, CX - 12, 34, 0.9);
 }
 
 function generateCastFrames(g: Graphics, frame: number): void {
@@ -384,35 +382,26 @@ function generateCastFrames(g: Graphics, frame: number): void {
 function generateDieFrames(g: Graphics, frame: number): void {
   const t = frame / 6;
   const fallX = t * 8;
-  const dropY = t * 20;
+  const fallY = t * t * 6;
+  const rot = t * Math.PI / 2;
 
-  // Shadow (shrinking)
-  drawEllipse(g, CX, GY, 24 * (1 - t), 9 * (1 - t), COL_SHADOW);
+  // Shadow
+  drawEllipse(g, CX, GY, 24, 9, COL_SHADOW);
 
-  // Warhorse (falling)
-  if (t < 0.7) {
-    drawArmoredHorse(g, CX + fallX, 42 + dropY, 0);
-  }
+  // Armored warhorse
+  drawArmoredHorse(g, CX + fallX, 42 + fallY, 0);
 
   // Saddle
-  if (t < 0.6) {
-    drawSaddle(g, CX + fallX, 37 + dropY);
-  }
+  drawSaddle(g, CX + fallX, 37 + fallY);
 
-  // Rider (falling off)
-  if (t < 0.5) {
-    drawRider(g, CX + fallX, 37 + dropY);
-  }
+  // Rider
+  drawRider(g, CX + fallX, 37 + fallY, 0);
 
-  // Sword (falling separately)
-  if (t > 0.2) {
-    drawSword(g, CX + fallX + 9, 22 + dropY, Math.PI / 2);
-  }
+  // Sword dropped
+  drawSword(g, CX + fallX + 10, 46 + fallY, Math.PI / 4);
 
-  // Shield (dropping)
-  if (t < 0.6) {
-    drawShield(g, CX + fallX - 12, 34 + dropY, 0.9 * (1 - t));
-  }
+  // Shield dropped
+  drawShield(g, CX + fallX - 8, 44 + fallY, 0.9);
 }
 
 // ---------------------------------------------------------------------------

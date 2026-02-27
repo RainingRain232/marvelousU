@@ -112,7 +112,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "questing_knight",
     size: {
-      width: 2.0,
+      width: 1.5,
       height: 1.5,
       healthBarOffset: -0.8,
     },
