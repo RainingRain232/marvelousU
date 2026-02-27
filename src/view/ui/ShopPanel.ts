@@ -1694,7 +1694,7 @@ export class ShopPanel {
     }
   }
 
-  private _buyUpgrade(buildingId: string, upgradeType: UpgradeType): void {
+  private _buyUpgrade(_buildingId: string, upgradeType: UpgradeType): void {
     const success = UpgradeSystem.purchaseUpgrade(
       this._state,
       this._localPlayerId,
