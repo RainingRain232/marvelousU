@@ -81,6 +81,8 @@ export enum UnitType {
   ELVEN_ARCHER = "elven_archer",
   HERO = "hero",
   QUESTING_KNIGHT = "questing_knight",
+  ANGEL = "angel",
+  DARK_SAVANT = "dark_savant",
 }
 
 export enum BuildingType {

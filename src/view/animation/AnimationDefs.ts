@@ -277,4 +277,18 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     moveFps: 8,
     attackFps: 8,
   }),
+  [UnitType.ANGEL]: buildDef("angel", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 8,
+  }),
+  [UnitType.DARK_SAVANT]: buildDef("dark_savant", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 8,
+    castFps: 8,
+    dieFps: 8,
+  }),
 };

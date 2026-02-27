@@ -82,6 +82,7 @@ import { generateRoyalLancerFrames } from "@view/animation/RoyalLancerSpriteGen"
 import { generateTrollFrames } from "@view/animation/TrollSpriteGen";
 import { generateBatFrames } from "@view/animation/BatSpriteGen";
 import { generateTemplarFrames } from "@view/animation/TemplarSpriteGen";
+import { generateAngelFrames } from "@view/animation/AngelSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
 
 // ---------------------------------------------------------------------------
@@ -290,6 +291,10 @@ export class AnimationManager {
         this._generateBatSprites(key, renderer);
       } else if (key === "templar") {
         this._generateTemplarSprites(key, renderer);
+      } else if (key === "angel") {
+        this._generateAngelSprites(key, renderer);
+      } else if (key === "dark_savant") {
+        this._generateMageSprites(key, renderer, PALETTE_FIRE_MAGE);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -981,6 +986,19 @@ export class AnimationManager {
 
   private _generateTemplarSprites(key: string, renderer: Renderer): void {
     const textures = generateTemplarFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateAngelSprites(key: string, renderer: Renderer): void {
+    const textures = generateAngelFrames(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];

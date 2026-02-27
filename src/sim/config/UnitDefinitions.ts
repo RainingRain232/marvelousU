@@ -627,6 +627,39 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Massive one-eyed giant wielding a tree trunk, crushing enemies with earth-shattering blows.",
   },
+  [UnitType.ANGEL]: {
+    type: UnitType.ANGEL,
+    cost: 4000,
+    hp: 1500,
+    atk: 90,
+    attackSpeed: 0.7,
+    speed: 1.2,
+    range: 1,
+    spawnTime: 25,
+    abilityTypes: [],
+    spriteKey: "angel",
+    size: {
+      width: 2.0,
+      height: 3.0,
+      healthBarOffset: -2.0,
+    },
+    description:
+      "Divine celestial warrior of the heavens, wielding a blazing sword and radiating holy light.",
+  },
+  [UnitType.DARK_SAVANT]: {
+    type: UnitType.DARK_SAVANT,
+    cost: 3300,
+    hp: 200,
+    atk: 35,
+    attackSpeed: 0.5,
+    speed: 0.75,
+    range: 5,
+    spawnTime: 15,
+    abilityTypes: [AbilityType.FIREBALL],
+    spriteKey: "fire_mage",
+    description:
+      "Master of dark pyromancy who hurls devastating fireballs with increased destructive power.",
+  },
   [UnitType.HALBERDIER]: {
     type: UnitType.HALBERDIER,
     cost: 200,

@@ -215,6 +215,8 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.ELVEN_ARCHER]: "Elven Archer",
   [UnitType.HERO]: "Hero",
   [UnitType.QUESTING_KNIGHT]: "Questing Knight",
+  [UnitType.ANGEL]: "Angel",
+  [UnitType.DARK_SAVANT]: "Dark Savant",
 };
 
 // ---------------------------------------------------------------------------
