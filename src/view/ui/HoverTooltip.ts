@@ -140,6 +140,7 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.CYCLOPS]: "Cyclops",
   [UnitType.HALBERDIER]: "Halberdier",
   [UnitType.ELVEN_ARCHER]: "Elven Archer",
+  [UnitType.HERO]: "Hero",
 };
 
 // ---------------------------------------------------------------------------
