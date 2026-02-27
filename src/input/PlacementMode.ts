@@ -1,11 +1,12 @@
 // Building placement input handler — validates tile, confirms/cancels placement
 import type { GameState } from "@sim/state/GameState";
 import { createBuilding } from "@sim/entities/Building";
+import { createUnit } from "@sim/entities/Unit";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
-import { BuildingType } from "@/types";
+import { BuildingType, UnitType } from "@/types";
 import type { PlayerId } from "@/types";
 import { getRace } from "@sim/config/RaceDefs";
 
@@ -126,6 +127,21 @@ export function confirmPlacement(
         building.shopInventory = [race.factionUnit];
       }
     }
+  }
+
+  // Stables: spawn a free Questing Knight when built
+  if (bpType === BuildingType.STABLES) {
+    const qk = createUnit({
+      type: UnitType.QUESTING_KNIGHT,
+      owner: playerId,
+      position: { x: tx, y: ty + def.footprint.h },
+    });
+    state.units.set(qk.id, qk);
+    EventBus.emit("unitSpawned", {
+      unitId: qk.id,
+      buildingId,
+      position: { ...qk.position },
+    });
   }
 
   EventBus.emit("buildingPlaced", {
