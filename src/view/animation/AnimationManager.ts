@@ -73,6 +73,8 @@ import { generateVoidSnailFrames } from "@view/animation/VoidSnailSpriteGen";
 import { generateSpiderFrames } from "@view/animation/SpiderSpriteGen";
 import { generateDevourerFrames } from "@view/animation/DevourerSpriteGen";
 import { generateDiplomatFrames } from "@view/animation/DiplomatSpriteGen";
+import { generateGolemFrames } from "@view/animation/GolemSpriteGen";
+import { generateSummonedFrames } from "@view/animation/SummonedSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
 
 // ---------------------------------------------------------------------------
@@ -263,6 +265,10 @@ export class AnimationManager {
         this._generateDevourerSprites(key, renderer);
       } else if (key === "diplomat") {
         this._generateDiplomatSprites(key, renderer);
+      } else if (key === "summoner") {
+        this._generateGolemSprites(key, renderer);
+      } else if (key === "summoned") {
+        this._generateSummonedSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -834,6 +840,32 @@ export class AnimationManager {
   }
 
   /** Find the largest frame count for a given (sheet, state) pair. */
+  private _generateGolemSprites(key: string, renderer: Renderer): void {
+    const textures = generateGolemFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateSummonedSprites(key: string, renderer: Renderer): void {
+    const textures = generateSummonedFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
   private _getMaxFrameCount(sheet: string, state: UnitState): number {
     let max = 1;
     for (const unitType of Object.values(UnitType)) {

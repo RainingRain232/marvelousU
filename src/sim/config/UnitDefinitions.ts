@@ -46,7 +46,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 3,
     abilityTypes: [],
     spriteKey: "swordsman",
-    description: "A sturdy frontline warrior with reliable steel and unwavering courage.",
+    description:
+      "A sturdy frontline warrior with reliable steel and unwavering courage.",
   },
   [UnitType.ARCHER]: {
     type: UnitType.ARCHER,
@@ -59,7 +60,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 4,
     abilityTypes: [],
     spriteKey: "archer",
-    description: "Deadly marksman who rains arrows from afar, picking off enemies before they can strike.",
+    description:
+      "Deadly marksman who rains arrows from afar, picking off enemies before they can strike.",
   },
   [UnitType.LONGBOWMAN]: {
     type: UnitType.LONGBOWMAN,
@@ -72,7 +74,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [],
     spriteKey: "longbowman",
-    description: "Elite archer with unmatched range, capable of striking enemies from across the battlefield.",
+    description:
+      "Elite archer with unmatched range, capable of striking enemies from across the battlefield.",
   },
   [UnitType.CROSSBOWMAN]: {
     type: UnitType.CROSSBOWMAN,
@@ -85,7 +88,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [],
     spriteKey: "crossbowman",
-    description: "Heavy crossbowman who delivers devastating bolts at the cost of slower reload speed.",
+    description:
+      "Heavy crossbowman who delivers devastating bolts at the cost of slower reload speed.",
   },
   [UnitType.KNIGHT]: {
     type: UnitType.KNIGHT,
@@ -98,7 +102,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [],
     spriteKey: "knight",
-    description: "Armored cavalry unit that charges into battle with devastating force and speed.",
+    description:
+      "Armored cavalry unit that charges into battle with devastating force and speed.",
   },
   [UnitType.QUESTING_KNIGHT]: {
     type: UnitType.QUESTING_KNIGHT,
@@ -116,7 +121,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       height: 1.5,
       healthBarOffset: -0.8,
     },
-    description: "He does not actually do alot of questing, except for the Queen's favor.",
+    description:
+      "He does not actually do alot of questing, except for the Queen's favor.",
   },
   [UnitType.FIRE_MAGE]: {
     type: UnitType.FIRE_MAGE,
@@ -129,7 +135,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 6,
     abilityTypes: [AbilityType.FIREBALL],
     spriteKey: "mage",
-    description: "Pyromancer who hurls explosive fireballs, engulfing enemies in flames.",
+    description:
+      "Pyromancer who hurls explosive fireballs, engulfing enemies in flames.",
   },
   [UnitType.STORM_MAGE]: {
     type: UnitType.STORM_MAGE,
@@ -142,7 +149,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 6,
     abilityTypes: [AbilityType.CHAIN_LIGHTNING],
     spriteKey: "mage",
-    description: "Storm caller who unleashes devastating lightning bolts from the heavens.",
+    description:
+      "Storm caller who unleashes devastating lightning bolts from the heavens.",
   },
   [UnitType.PIKEMAN]: {
     type: UnitType.PIKEMAN,
@@ -158,7 +166,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.SUMMONED]: {
     type: UnitType.SUMMONED,
-    cost: 0,
+    cost: 100,
     hp: 40,
     atk: 10,
     attackSpeed: 1.2,
@@ -209,7 +217,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.SUMMONER]: {
     type: UnitType.SUMMONER,
-    cost: 600,
+    cost: 750,
     hp: 55,
     atk: 5,
     attackSpeed: 0.4,
@@ -217,7 +225,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 6,
     spawnTime: 8,
     abilityTypes: [AbilityType.SUMMON],
-    spriteKey: "mage",
+    spriteKey: "golem",
   },
   [UnitType.COLD_MAGE]: {
     type: UnitType.COLD_MAGE,
@@ -483,7 +491,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       height: 2.0, // 2x taller than normal
       healthBarOffset: -0.8, // health bar positioned higher
     },
-    description: "Ancient red dragon that breathes devastating fire, scorching all who dare oppose it.",
+    description:
+      "Ancient red dragon that breathes devastating fire, scorching all who dare oppose it.",
   },
   [UnitType.FROST_DRAGON]: {
     type: UnitType.FROST_DRAGON,
@@ -501,7 +510,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       height: 2.0, // 2x taller than normal
       healthBarOffset: -0.8, // health bar positioned higher
     },
-    description: "Mighty ice dragon whose freezing breath slows enemies to a crawl before shattering them.",
+    description:
+      "Mighty ice dragon whose freezing breath slows enemies to a crawl before shattering them.",
   },
   [UnitType.CYCLOPS]: {
     type: UnitType.CYCLOPS,
@@ -519,7 +529,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       height: 3.0, // 3 tiles tall
       healthBarOffset: -2.0, // Health bar positioned very high
     },
-    description: "Massive one-eyed giant wielding a tree trunk, crushing enemies with earth-shattering blows.",
+    description:
+      "Massive one-eyed giant wielding a tree trunk, crushing enemies with earth-shattering blows.",
   },
   [UnitType.HALBERDIER]: {
     type: UnitType.HALBERDIER,
@@ -532,7 +543,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 3,
     abilityTypes: [],
     spriteKey: "halberdier",
-    description: "Elite human infantry wielding a halberd. Tougher and harder-hitting than the common pikeman.",
+    description:
+      "Elite human infantry wielding a halberd. Tougher and harder-hitting than the common pikeman.",
   },
   [UnitType.ELVEN_ARCHER]: {
     type: UnitType.ELVEN_ARCHER,
@@ -545,7 +557,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [],
     spriteKey: "elven_archer",
-    description: "Graceful elven marksman with unparalleled range and precision, striking from positions others cannot reach.",
+    description:
+      "Graceful elven marksman with unparalleled range and precision, striking from positions others cannot reach.",
   },
   [UnitType.HERO]: {
     type: UnitType.HERO,
@@ -559,6 +572,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "hero",
     maxCount: 4,
-    description: "Legendary warrior whose prowess inspires allies and terrifies foes. Max: 4",
+    description:
+      "Legendary warrior whose prowess inspires allies and terrifies foes. Max: 4",
   },
 };
