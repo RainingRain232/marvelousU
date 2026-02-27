@@ -11,7 +11,6 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BuildingType, BuildingState, GamePhase } from "@/types";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
-import { FrontViewStablesRenderer } from "@view/entities/FrontViewStablesRenderer";
 import { TowerRenderer } from "@view/entities/TowerRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
@@ -29,6 +28,7 @@ import { MillRenderer } from "@view/entities/MillRenderer";
 import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { MarketRenderer } from "@view/entities/MarketRenderer";
+import { StableRenderer } from "@view/entities/StableRenderer";
 import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
 
 // Capture progress bar (shown below capturable buildings)
@@ -154,7 +154,6 @@ export class BuildingView {
   private _firepitRenderer: FirepitRenderer | null = null;
   // Detailed temple renderer (only set for TEMPLE type buildings)
   private _templeRenderer: TempleRenderer | null = null;
-  private _frontStablesRenderer: FrontViewStablesRenderer | null = null;
   // Detailed archery range renderer (only set for ARCHERY_RANGE type buildings)
   private _archeryRangeRenderer: ArcheryRangeRenderer | null = null;
   private _mageTowerRenderer: MageTowerRenderer | null = null;
@@ -170,6 +169,7 @@ export class BuildingView {
   private _eliteHallRenderer: EliteHallRenderer | null = null;
   private _hamletRenderer: HamletRenderer | null = null;
   private _marketRenderer: MarketRenderer | null = null;
+  private _stableRenderer: StableRenderer | null = null;
   private _factionHallRenderer: FactionHallRenderer | null = null;
 
   constructor(building: Building) {
@@ -271,9 +271,8 @@ export class BuildingView {
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.STABLES) {
-      // Front-view phase 1 renderer for royal stables
-      this._frontStablesRenderer = new FrontViewStablesRenderer(building.owner);
-      this.container.addChild(this._frontStablesRenderer.container);
+      this._stableRenderer = new StableRenderer(building.owner);
+      this.container.addChild(this._stableRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else if (building.type === BuildingType.ARCHERY_RANGE) {
@@ -379,8 +378,8 @@ export class BuildingView {
       if (this._farmRenderer) {
         this._farmRenderer.tick(dt, phase);
       }
-      if (this._frontStablesRenderer) {
-        this._frontStablesRenderer.tick(dt, phase);
+      if (this._stableRenderer) {
+        this._stableRenderer.tick(dt, phase);
       }
       if (this._townRenderer) {
         this._townRenderer.tick(dt, phase);
