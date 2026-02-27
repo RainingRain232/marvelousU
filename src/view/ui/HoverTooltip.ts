@@ -103,6 +103,7 @@ export const BUILDING_LABELS: Record<BuildingType, string> = {
 
 export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.SWORDSMAN]: "Swordsman",
+  [UnitType.ASSASSIN]: "Assassin",
   [UnitType.ARCHER]: "Archer",
   [UnitType.KNIGHT]: "Knight",
   [UnitType.FIRE_MAGE]: "Fire Mage",
@@ -124,6 +125,7 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.GIANT_FROG]: "Giant Frog",
   [UnitType.LONGBOWMAN]: "Longbowman",
   [UnitType.CROSSBOWMAN]: "Crossbowman",
+  [UnitType.REPEATER]: "Repeater",
   [UnitType.DEVOURER]: "Devourer",
   [UnitType.HORSE_ARCHER]: "Horse Archer",
   [UnitType.SHORTBOW]: "Shortbow",

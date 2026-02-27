@@ -118,6 +118,12 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 14,
     dieFps: 8,
   }),
+  [UnitType.ASSASSIN]: buildDef("assassin", {
+    idleFps: 8,
+    moveFps: 12,
+    attackFps: 16,
+    dieFps: 8,
+  }),
   [UnitType.ARCHER]: buildDef("archer", {
     attackFps: 10,
     attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7),
@@ -132,6 +138,12 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 6,
     attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7),
     dieFrames: range(ROW_DIE, ROW_DIE + 7),
+  }),
+  [UnitType.REPEATER]: buildDef("repeater", {
+    idleFps: 8,
+    moveFps: 10,
+    attackFps: 20,
+    dieFps: 8,
   }),
   [UnitType.KNIGHT]: buildDef("knight", { moveFps: 8, attackFps: 8 }),
   [UnitType.FIRE_MAGE]: buildDef("fire_mage", { idleFps: 6, castFps: 8 }),

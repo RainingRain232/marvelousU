@@ -49,6 +49,34 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "A sturdy frontline warrior with reliable steel and unwavering courage.",
   },
+  [UnitType.ASSASSIN]: {
+    type: UnitType.ASSASSIN,
+    cost: 800,
+    hp: 65,
+    atk: 40,
+    attackSpeed: 1.3,
+    speed: 1.5,
+    range: 1,
+    spawnTime: 6,
+    abilityTypes: [],
+    spriteKey: "assassin",
+    description:
+      "Deadly melee striker in black garb with sword and dagger. Fast and lethal but fragile.",
+  },
+  [UnitType.REPEATER]: {
+    type: UnitType.REPEATER,
+    cost: 820,
+    hp: 80,
+    atk: 15,
+    attackSpeed: 2.0,
+    speed: 1,
+    range: 3,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "repeater",
+    description:
+      "Rapid-fire crossbow. Low range but shoots very fast in close quarters.",
+  },
   [UnitType.ARCHER]: {
     type: UnitType.ARCHER,
     cost: 200,
