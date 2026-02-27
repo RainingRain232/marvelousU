@@ -3,6 +3,7 @@ import { GamePhase, GameMode } from "@/types";
 import type { PlayerId, Vec2 } from "@/types";
 import type { LeaderId } from "@sim/config/LeaderDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
+import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
 import type { Base } from "@sim/entities/Base";
 import type { Building } from "@sim/entities/Building";
 import type { Unit } from "@sim/entities/Unit";
@@ -34,6 +35,8 @@ export interface GameState {
   p1RaceId: RaceId | null;
   /** For CAMPAIGN mode: which scenario number is being played. null = not a campaign game. */
   campaignScenario: number | null;
+  /** Armory items equipped by P1 for this session (hero stat bonuses). */
+  p1ArmoryItems: ArmoryItemId[];
 
   // Entity maps — keyed by ID
   bases: Map<string, Base>;
@@ -81,6 +84,7 @@ export function createGameState(
     p1LeaderId: null,
     p1RaceId: null,
     campaignScenario: null,
+    p1ArmoryItems: [],
     bases: new Map(),
     buildings: new Map(),
     units: new Map(),

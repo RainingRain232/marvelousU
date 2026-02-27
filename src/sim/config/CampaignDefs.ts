@@ -9,6 +9,7 @@
 import { UnitType, BuildingType } from "@/types";
 import type { RaceId } from "@sim/config/RaceDefs";
 import type { LeaderId } from "@sim/config/LeaderDefs";
+import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,6 +29,7 @@ export interface ScenarioUnlocks {
   buildings?: BuildingType[];
   races?: RaceId[];
   leaders?: LeaderId[];
+  items?: ArmoryItemId[];
 }
 
 export interface ScenarioDef {
@@ -78,6 +80,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.ARCHER],
       buildings: [BuildingType.BARRACKS],
+      items: ["longsword", "spear"],
     },
   },
   {
@@ -89,6 +92,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.PIKEMAN],
       buildings: [BuildingType.ARCHERY_RANGE],
+      items: ["leather_armor", "leather_sandals"],
     },
     disableEvents: true,
     aiBlueprints: [BuildingType.TOWER, BuildingType.WALL],
@@ -103,6 +107,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.LONGBOWMAN, UnitType.CROSSBOWMAN, UnitType.QUESTING_KNIGHT],
       buildings: [BuildingType.STABLES],
+      items: ["steel_shield"],
     },
   },
   {
@@ -114,6 +119,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.KNIGHT],
       buildings: [BuildingType.TOWER],
+      items: ["war_axe"],
     },
   },
   {
@@ -126,6 +132,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       units: [UnitType.SHORTBOW],
       buildings: [BuildingType.FARM],
       leaders: ["arthur"],
+      items: ["chainmail"],
     },
   },
   {
@@ -137,6 +144,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.SCOUT_CAVALRY, UnitType.HORSE_ARCHER],
       buildings: [BuildingType.MARKET],
+      items: ["iron_boots"],
     },
   },
   {
@@ -148,6 +156,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.MAGE_HUNTER],
       buildings: [BuildingType.MAGE_TOWER],
+      items: ["flaming_sword"],
     },
   },
   {
@@ -159,6 +168,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.FIRE_MAGE],
       buildings: [BuildingType.BLACKSMITH],
+      items: ["elven_bow"],
     },
   },
   {
@@ -170,6 +180,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.GLADIATOR, UnitType.HALBERDIER],
       leaders: ["joan"],
+      items: ["plate_armor"],
     },
   },
   {
@@ -182,6 +193,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       units: [UnitType.STORM_MAGE],
       buildings: [BuildingType.SIEGE_WORKSHOP],
       races: ["man"],
+      items: ["winged_boots"],
     },
   },
   {
@@ -193,6 +205,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.BATTERING_RAM, UnitType.BALLISTA],
       buildings: [BuildingType.CREATURE_DEN],
+      items: ["mace_of_might"],
     },
   },
   {
@@ -204,6 +217,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.SPIDER, UnitType.GIANT_FROG, UnitType.SUMMONER],
       buildings: [BuildingType.ELITE_HALL],
+      items: ["halberd"],
     },
   },
   {
@@ -216,6 +230,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       units: [UnitType.LANCER, UnitType.ELITE_LANCER, UnitType.KNIGHT_LANCER],
       buildings: [BuildingType.TEMPLE],
       races: ["elf"],
+      items: ["enchanted_cloak"],
     },
   },
   {
@@ -227,6 +242,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.MONK, UnitType.CLERIC],
       buildings: [BuildingType.EMBASSY],
+      items: ["giants_belt"],
     },
   },
   {
@@ -239,6 +255,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       units: [UnitType.DIPLOMAT, UnitType.SAINT],
       buildings: [BuildingType.HAMLET],
       leaders: ["merlin"],
+      items: ["dragonscale_mail"],
     },
   },
   {
@@ -250,6 +267,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.COLD_MAGE, UnitType.DISTORTION_MAGE],
       buildings: [BuildingType.MILL],
+      items: ["storm_lance"],
     },
   },
   {
@@ -261,6 +279,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.VOID_SNAIL, UnitType.DEVOURER, UnitType.FAERY_QUEEN],
       buildings: [BuildingType.WALL],
+      items: ["crown_of_valor"],
     },
   },
   {
@@ -272,6 +291,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.RED_DRAGON, UnitType.BOLT_THROWER, UnitType.SIEGE_HUNTER],
       buildings: [BuildingType.FIREPIT],
+      items: ["shadow_dagger"],
     },
   },
   {

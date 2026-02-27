@@ -138,6 +138,13 @@ import type { RaceId } from "@sim/config/RaceDefs";
 
   raceSelectScreen.onNext = () => {
     raceSelectScreen.hide();
+    // Set unlocked items based on game mode
+    const gameMode = menuScreen.selectedGameMode;
+    if (gameMode === GameMode.CAMPAIGN) {
+      armoryScreen.setUnlockedItems(campaignState.unlockedItems);
+    } else {
+      armoryScreen.setUnlockedItems(null); // all unlocked
+    }
     armoryScreen.show();
   };
 
@@ -677,6 +684,9 @@ async function _bootGame(
       if (p2) p2.gold += scenarioDef.aiExtraGold;
     }
   }
+
+  // Apply P1's equipped armory items (hero stat bonuses)
+  state.p1ArmoryItems = armoryScreen.selectedItems;
 
   // Apply the chosen leader's passive bonus to P1
   _applyLeaderBonus(state, "p1", leaderId, mapSize);

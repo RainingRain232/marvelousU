@@ -12,6 +12,7 @@ import type { ScenarioDef } from "@sim/config/CampaignDefs";
 import { UnitType, BuildingType } from "@/types";
 import type { RaceId } from "@sim/config/RaceDefs";
 import type { LeaderId } from "@sim/config/LeaderDefs";
+import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
 
 const STORAGE_KEY = "campaign_progress_v1";
 
@@ -30,6 +31,8 @@ export interface CampaignProgress {
   unlockedRaces: RaceId[];
   /** Set of leader IDs available on the leader select screen. */
   unlockedLeaders: LeaderId[];
+  /** Set of armory item IDs the player may equip. */
+  unlockedItems: ArmoryItemId[];
   /** Last selected scenario number (for "Return to Campaign" UX). */
   lastScenario: number;
 }
@@ -45,6 +48,7 @@ function _defaultProgress(): CampaignProgress {
     unlockedBuildings: [],
     unlockedRaces: [],
     unlockedLeaders: [],
+    unlockedItems: [],
     lastScenario: 1,
   };
 }
@@ -62,6 +66,8 @@ function _load(): CampaignProgress {
       if (!parsed.unlockedScenarios.includes(1)) parsed.unlockedScenarios.push(1);
       if (!parsed.unlockedUnits.includes(UnitType.SWORDSMAN))
         parsed.unlockedUnits.push(UnitType.SWORDSMAN);
+      // Migration: ensure unlockedItems exists for saves before this field was added
+      if (!parsed.unlockedItems) parsed.unlockedItems = [];
       return parsed;
     }
   } catch {
@@ -113,6 +119,10 @@ export class CampaignState {
     return [...this._progress.unlockedLeaders];
   }
 
+  get unlockedItems(): ArmoryItemId[] {
+    return [...this._progress.unlockedItems];
+  }
+
   get lastScenario(): number {
     return this._progress.lastScenario;
   }
@@ -135,6 +145,10 @@ export class CampaignState {
 
   isLeaderUnlocked(id: LeaderId): boolean {
     return this._progress.unlockedLeaders.includes(id);
+  }
+
+  isItemUnlocked(id: ArmoryItemId): boolean {
+    return this._progress.unlockedItems.includes(id);
   }
 
   /** Return the scenario def for the given number, or undefined. */
@@ -220,6 +234,14 @@ export class CampaignState {
         }
       }
     }
+    if (u.items) {
+      for (const i of u.items) {
+        if (!this._progress.unlockedItems.includes(i)) {
+          this._progress.unlockedItems.push(i);
+          changed = true;
+        }
+      }
+    }
 
     // Unlock the source scenario itself (so the player can replay it)
     if (!this._progress.unlockedScenarios.includes(sourceScenario.number)) {
@@ -264,6 +286,10 @@ export class CampaignState {
     for (const l of unlocks.leaders ?? []) {
       if (!this._progress.unlockedLeaders.includes(l))
         this._progress.unlockedLeaders.push(l);
+    }
+    for (const i of unlocks.items ?? []) {
+      if (!this._progress.unlockedItems.includes(i))
+        this._progress.unlockedItems.push(i);
     }
   }
 }

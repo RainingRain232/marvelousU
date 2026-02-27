@@ -3,11 +3,12 @@ import type { GameState } from "@sim/state/GameState";
 import { BuildingType, UnitState, UnitType } from "@/types";
 import type { Building } from "@sim/entities/Building";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
-import { createUnit } from "@sim/entities/Unit";
+import { createUnit, type Unit } from "@sim/entities/Unit";
 import { getBuilding } from "@sim/state/GameState";
 import { EventBus } from "@sim/core/EventBus";
 import { getLeader } from "@sim/config/LeaderDefs";
 import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
+import { getArmoryItem } from "@sim/config/ArmoryItemDefs";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -108,6 +109,11 @@ function _spawnUnits(
     // Apply all purchased upgrades to the new unit
     UpgradeSystem.applyAllUpgradesToUnit(unit);
 
+    // Apply armory item bonuses to hero units (P1 only)
+    if (unitType === UnitType.HERO && owner === "p1") {
+      _applyArmoryBonuses(state, unit);
+    }
+
     // Castle-spawned units become homeguard — they patrol near home
     if (isCastle) {
       unit.homeguard = true;
@@ -157,6 +163,26 @@ function _leaderStartingLevel(
     if (buildingType === bonus.building) return bonus.level;
   }
   return 0;
+}
+
+/**
+ * Apply armory item stat bonuses to a hero unit.
+ */
+function _applyArmoryBonuses(state: GameState, unit: Unit): void {
+  for (const itemId of state.p1ArmoryItems) {
+    const item = getArmoryItem(itemId);
+    if (!item) continue;
+    unit.atk += item.atkBonus;
+    unit.hp += item.hpBonus;
+    unit.maxHp += item.hpBonus;
+    unit.speed += item.speedBonus;
+    unit.range += item.rangeBonus;
+  }
+  // Clamp to minimums
+  if (unit.hp < 1) unit.hp = 1;
+  if (unit.maxHp < 1) unit.maxHp = 1;
+  if (unit.speed < 0.1) unit.speed = 0.1;
+  if (unit.range < 1) unit.range = 1;
 }
 
 /**
