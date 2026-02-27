@@ -67,6 +67,8 @@ const DESC_H = 26;
 const FIXED_TOP_H = HEADER_H + PREVIEW_H + STATS_H + DESC_H;
 
 const ICONS_PER_ROW = 4;
+/** Units costing this much or more require an Elite Hall to purchase. */
+const ELITE_HALL_COST_THRESHOLD = 800;
 const ICON_GAP = 5;
 const ICON_SIZE = Math.floor(
   (PANEL_W - 2 * PANEL_PAD - ICON_GAP * (ICONS_PER_ROW - 1)) / ICONS_PER_ROW,
@@ -252,7 +254,7 @@ export class ShopPanel {
   private _buildingTextureCache = new Map<BuildingType, RenderTexture>();
 
   // Icon button refs for affordability
-  private _unitIcons: { type: UnitType; costText: Text; bg: Graphics }[] = [];
+  private _unitIcons: { type: UnitType; costText: Text; bg: Graphics; btn: Container; locked: boolean }[] = [];
   private _bpIcons: {
     type: BuildingType;
     costText: Text;
@@ -1172,11 +1174,16 @@ export class ShopPanel {
     btn.eventMode = "static";
     btn.cursor = "pointer";
 
+    const def = UNIT_DEFINITIONS[unitType];
+    const needsEliteHall = def.cost >= ELITE_HALL_COST_THRESHOLD;
+    const hasEliteHall = this._countOwnedType(BuildingType.ELITE_HALL) > 0;
+    const locked = needsEliteHall && !hasEliteHall;
+
     const bg = new Graphics()
       .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 4)
       .fill({ color: 0x111122 })
       .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 4)
-      .stroke({ color: 0x334455, width: 1 });
+      .stroke({ color: locked ? 0x443322 : 0x334455, width: 1 });
     btn.addChild(bg);
 
     // Unit sprite icon
@@ -1191,20 +1198,22 @@ export class ShopPanel {
         icon.animationSpeed = 0.1;
         icon.loop = true;
         icon.play();
+        if (locked) icon.alpha = 0.35;
         btn.addChild(icon);
       }
     }
 
-    // Cost text at bottom
-    const def = UNIT_DEFINITIONS[unitType];
-    const costText = new Text({ text: `${def.cost}g`, style: STYLE_ICON_COST });
+    // Cost text at bottom (or lock indicator)
+    const costText = locked
+      ? new Text({ text: "🔒", style: STYLE_ICON_COST })
+      : new Text({ text: `${def.cost}g`, style: STYLE_ICON_COST });
     costText.anchor.set(0.5, 1);
     costText.position.set(ICON_SIZE / 2, ICON_SIZE - 1);
     btn.addChild(costText);
 
     // Hover: show preview + stats
     btn.on("pointerover", () => {
-      bg.tint = 0x334466;
+      if (!entry.locked) bg.tint = 0x334466;
       this._showUnitPreview(unitType);
       this._showUnitStats(unitType);
     });
@@ -1214,10 +1223,11 @@ export class ShopPanel {
     });
     btn.on("pointerdown", (e) => {
       e.stopPropagation();
-      this._buyUnit(buildingId, unitType);
+      if (!entry.locked) this._buyUnit(buildingId, unitType);
     });
 
-    this._unitIcons.push({ type: unitType, costText, bg });
+    const entry = { type: unitType, costText, bg, btn, locked };
+    this._unitIcons.push(entry);
     return btn;
   }
 
@@ -1494,6 +1504,8 @@ export class ShopPanel {
     if (!player) return;
     const cost = UNIT_DEFINITIONS[unitType].cost;
     if (player.gold < cost) return;
+    // Require Elite Hall for high-cost units
+    if (cost >= ELITE_HALL_COST_THRESHOLD && this._countOwnedType(BuildingType.ELITE_HALL) === 0) return;
 
     player.gold -= cost;
     addToQueue(this._state, buildingId, unitType);
@@ -1529,9 +1541,22 @@ export class ShopPanel {
   private _updateAffordability(): void {
     const player = this._state.players.get(this._localPlayerId);
     const gold = player?.gold ?? 0;
+    const hasEliteHall = this._countOwnedType(BuildingType.ELITE_HALL) > 0;
 
     for (const entry of this._unitIcons) {
-      const cost = UNIT_DEFINITIONS[entry.type].cost;
+      const def = UNIT_DEFINITIONS[entry.type];
+      const nowLocked = def.cost >= ELITE_HALL_COST_THRESHOLD && !hasEliteHall;
+
+      if (nowLocked !== entry.locked) {
+        // Lock state changed — rebuild the panel to reflect it
+        entry.locked = nowLocked;
+        this._rebuild();
+        return; // _rebuild calls _updateAffordability again
+      }
+
+      if (entry.locked) continue;
+
+      const cost = def.cost;
       entry.costText.style =
         cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
     }
