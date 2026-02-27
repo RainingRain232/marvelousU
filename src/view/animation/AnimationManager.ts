@@ -62,6 +62,7 @@ import { generateLancerFrames } from "@view/animation/LancerSpriteGen";
 import { generateEliteLancerFrames } from "@view/animation/EliteLancerSpriteGen";
 import { generateKnightLancerFrames } from "@view/animation/KnightLancerSpriteGen";
 import { generateKnightFrames } from "@view/animation/KnightSpriteGen";
+import { generateQuestingKnightFrames } from "@view/animation/QuestingKnightSpriteGen";
 import { generateHalberdierFrames } from "@view/animation/HalberdierSpriteGen";
 import { generateElvenArcherFrames } from "@view/animation/ElvenArcherSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
@@ -228,6 +229,8 @@ export class AnimationManager {
         this._generateKnightLancerSprites(key, renderer);
       } else if (key === "knight") {
         this._generateKnightSprites(key, renderer);
+      } else if (key === "questing_knight") {
+        this._generateQuestingKnightSprites(key, renderer);
       } else if (key === "halberdier") {
         this._generateHalberdierSprites(key, renderer);
       } else if (key === "elven_archer") {
@@ -588,6 +591,19 @@ export class AnimationManager {
     const textures = generateKnightFrames(renderer);
     
     // Map the frames to animation states
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) {
+          this._cache.set(ck, stateTextures);
+        }
+      }
+    }
+  }
+
+  private _generateQuestingKnightSprites(key: string, renderer: Renderer): void {
+    const textures = generateQuestingKnightFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

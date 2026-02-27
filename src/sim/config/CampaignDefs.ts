@@ -101,7 +101,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       "The enemy has fortified their position with towers and a ring of pikemen. Break through their lines. Your archery range will let you mass ranged units for the first time.",
     victoryCode: "7193",
     unlocks: {
-      units: [UnitType.LONGBOWMAN, UnitType.CROSSBOWMAN],
+      units: [UnitType.LONGBOWMAN, UnitType.CROSSBOWMAN, UnitType.QUESTING_KNIGHT],
       buildings: [BuildingType.STABLES],
     },
   },

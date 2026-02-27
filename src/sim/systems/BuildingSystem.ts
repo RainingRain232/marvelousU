@@ -4,6 +4,7 @@ import { getPlayer } from "@sim/state/GameState";
 import { getTile, setBuilding, setWalkable } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { createBuilding } from "@sim/entities/Building";
+import { createUnit } from "@sim/entities/Unit";
 import { EventBus } from "@sim/core/EventBus";
 import type { PlayerId, Vec2 } from "@/types";
 import {
@@ -173,6 +174,21 @@ export function placeBuilding(
     if (race?.implemented) {
       building.shopInventory = [race.factionUnit];
     }
+  }
+
+  // Stables: spawn a free Questing Knight when built
+  if (type === BuildingType.STABLES && playerId) {
+    const qk = createUnit({
+      type: UnitType.QUESTING_KNIGHT,
+      owner: playerId,
+      position: { x: position.x, y: position.y + def.footprint.h },
+    });
+    state.units.set(qk.id, qk);
+    EventBus.emit("unitSpawned", {
+      unitId: qk.id,
+      buildingId: id,
+      position: { ...qk.position },
+    });
   }
 
   // Emit event
