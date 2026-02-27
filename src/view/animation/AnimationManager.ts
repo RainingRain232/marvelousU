@@ -78,6 +78,7 @@ import { generateSummonedFrames } from "@view/animation/SummonedSpriteGen";
 import { generateConstructionistFrames } from "@view/animation/ConstructionistSpriteGen";
 import { generateAssassinFrames } from "@view/animation/AssassinSpriteGen";
 import { generateRepeaterFrames } from "@view/animation/RepeaterSpriteGen";
+import { generateRoyalLancerFrames } from "@view/animation/RoyalLancerSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
 
 // ---------------------------------------------------------------------------
@@ -278,6 +279,8 @@ export class AnimationManager {
         this._generateAssassinSprites(key, renderer);
       } else if (key === "repeater") {
         this._generateRepeaterSprites(key, renderer);
+      } else if (key === "royal_lancer") {
+        this._generateRoyalLancerSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -917,6 +920,19 @@ export class AnimationManager {
 
   private _generateRepeaterSprites(key: string, renderer: Renderer): void {
     const textures = generateRepeaterFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateRoyalLancerSprites(key: string, renderer: Renderer): void {
+    const textures = generateRoyalLancerFrames(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];

@@ -66,6 +66,7 @@ export enum UnitType {
   SCOUT_CAVALRY = "scout_cavalry",
   LANCER = "lancer",
   ELITE_LANCER = "elite_lancer",
+  ROYAL_LANCER = "royal_lancer",
   KNIGHT_LANCER = "knight_lancer",
   MONK = "monk",
   CLERIC = "cleric",

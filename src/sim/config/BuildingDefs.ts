@@ -93,6 +93,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.LANCER,
       UnitType.ELITE_LANCER,
       UnitType.KNIGHT_LANCER,
+      UnitType.ROYAL_LANCER,
     ],
     blueprints: [],
     footprint: { w: 2, h: 2 },

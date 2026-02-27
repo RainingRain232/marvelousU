@@ -135,6 +135,7 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.LANCER]: "Lancer",
   [UnitType.ELITE_LANCER]: "Elite Lancer",
   [UnitType.KNIGHT_LANCER]: "Knight Lancer",
+  [UnitType.ROYAL_LANCER]: "Royal Lancer",
   [UnitType.MONK]: "Monk",
   [UnitType.CLERIC]: "Cleric",
   [UnitType.SAINT]: "Saint",

@@ -212,6 +212,12 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.LANCER]: buildDef("knight", { moveFps: 10, attackFps: 8 }),
   [UnitType.ELITE_LANCER]: buildDef("knight", { moveFps: 10, attackFps: 8 }),
   [UnitType.KNIGHT_LANCER]: buildDef("knight", { moveFps: 8, attackFps: 6 }),
+  [UnitType.ROYAL_LANCER]: buildDef("royal_lancer", {
+    idleFps: 8,
+    moveFps: 12,
+    attackFps: 10,
+    dieFps: 8,
+  }),
   [UnitType.MONK]: buildDef("monk", { moveFps: 8, attackFps: 10 }),
   [UnitType.CLERIC]: buildDef("cleric", { moveFps: 8, attackFps: 10 }),
   [UnitType.SAINT]: buildDef("saint", { moveFps: 6, attackFps: 8 }),
