@@ -72,6 +72,7 @@ import { generateGiantFrogFrames } from "@view/animation/GiantFrogSpriteGen";
 import { generateVoidSnailFrames } from "@view/animation/VoidSnailSpriteGen";
 import { generateSpiderFrames } from "@view/animation/SpiderSpriteGen";
 import { generateDevourerFrames } from "@view/animation/DevourerSpriteGen";
+import { generateDiplomatFrames } from "@view/animation/DiplomatSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
 
 // ---------------------------------------------------------------------------
@@ -260,6 +261,8 @@ export class AnimationManager {
         this._generateSpiderSprites(key, renderer);
       } else if (key === "devourer") {
         this._generateDevourerSprites(key, renderer);
+      } else if (key === "diplomat") {
+        this._generateDiplomatSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -814,6 +817,19 @@ export class AnimationManager {
         const ck = cacheKey(key, state);
         if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
       }
+    }
+  }
+
+  private _generateDiplomatSprites(key: string, renderer: Renderer): void {
+    const textures = generateDiplomatFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
     }
   }
 
