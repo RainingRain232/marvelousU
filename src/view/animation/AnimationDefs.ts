@@ -112,13 +112,36 @@ function buildDef(
 // ---------------------------------------------------------------------------
 
 export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
-  [UnitType.SWORDSMAN]: buildDef("swordsman", { idleFps: 6, moveFps: 10, attackFps: 14, dieFps: 8 }),
-  [UnitType.ARCHER]: buildDef("archer", { attackFps: 10, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7), dieFrames: range(ROW_DIE, ROW_DIE + 7) }),
-  [UnitType.LONGBOWMAN]: buildDef("archer", { attackFps: 8, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7), dieFrames: range(ROW_DIE, ROW_DIE + 7) }),
-  [UnitType.CROSSBOWMAN]: buildDef("archer", { attackFps: 6, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7), dieFrames: range(ROW_DIE, ROW_DIE + 7) }),
+  [UnitType.SWORDSMAN]: buildDef("swordsman", {
+    idleFps: 6,
+    moveFps: 10,
+    attackFps: 14,
+    dieFps: 8,
+  }),
+  [UnitType.ARCHER]: buildDef("archer", {
+    attackFps: 10,
+    attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7),
+    dieFrames: range(ROW_DIE, ROW_DIE + 7),
+  }),
+  [UnitType.LONGBOWMAN]: buildDef("longbowman", {
+    attackFps: 8,
+    attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7),
+    dieFrames: range(ROW_DIE, ROW_DIE + 7),
+  }),
+  [UnitType.CROSSBOWMAN]: buildDef("crossbowman", {
+    attackFps: 6,
+    attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7),
+    dieFrames: range(ROW_DIE, ROW_DIE + 7),
+  }),
   [UnitType.KNIGHT]: buildDef("knight", { moveFps: 8, attackFps: 8 }),
   [UnitType.FIRE_MAGE]: buildDef("fire_mage", { idleFps: 6, castFps: 8 }),
-  [UnitType.STORM_MAGE]: buildDef("storm_mage", { idleFps: 6, moveFps: 8, attackFps: 10, castFps: 8, dieFps: 8 }),
+  [UnitType.STORM_MAGE]: buildDef("storm_mage", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 8,
+  }),
   [UnitType.PIKEMAN]: buildDef("pikeman", { attackFps: 10 }),
   [UnitType.SUMMONED]: buildDef("summoned", {
     idleFps: 8,
@@ -127,22 +150,48 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 10,
     dieFps: 10,
   }),
-  [UnitType.BATTERING_RAM]: buildDef("battering_ram", { moveFps: 6, attackFps: 5 }),
+  [UnitType.BATTERING_RAM]: buildDef("battering_ram", {
+    moveFps: 6,
+    attackFps: 5,
+  }),
   [UnitType.MAGE_HUNTER]: buildDef("mage_hunter"),
   [UnitType.SIEGE_HUNTER]: buildDef("siege_hunter"),
   [UnitType.SUMMONER]: buildDef("summoner", { idleFps: 6, castFps: 8 }),
-  [UnitType.DISTORTION_MAGE]: buildDef("distortion_mage", { idleFps: 6, castFps: 10 }),
-  [UnitType.VOID_SNAIL]: buildDef("spider", { moveFps: 8, attackFps: 6, castFps: 6 }),
+  [UnitType.DISTORTION_MAGE]: buildDef("distortion_mage", {
+    idleFps: 6,
+    castFps: 10,
+  }),
+  [UnitType.VOID_SNAIL]: buildDef("spider", {
+    moveFps: 8,
+    attackFps: 6,
+    castFps: 6,
+  }),
   [UnitType.FAERY_QUEEN]: buildDef("cold_mage", { idleFps: 7, castFps: 9 }),
   [UnitType.COLD_MAGE]: buildDef("cold_mage", { idleFps: 6, castFps: 8 }),
-  [UnitType.SPIDER]: buildDef("spider", { moveFps: 12, attackFps: 10, castFps: 10 }),
+  [UnitType.SPIDER]: buildDef("spider", {
+    moveFps: 12,
+    attackFps: 10,
+    castFps: 10,
+  }),
   [UnitType.GLADIATOR]: buildDef("gladiator", { attackFps: 9, castFps: 10 }),
-  [UnitType.GIANT_FROG]: buildDef("spider", { moveFps: 7, attackFps: 5, castFps: 7 }),
-  [UnitType.DEVOURER]: buildDef("swordsman", { moveFps: 8, attackFps: 10, castFps: 8 }),
+  [UnitType.GIANT_FROG]: buildDef("spider", {
+    moveFps: 7,
+    attackFps: 5,
+    castFps: 7,
+  }),
+  [UnitType.DEVOURER]: buildDef("swordsman", {
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+  }),
   [UnitType.HORSE_ARCHER]: buildDef("knight", { moveFps: 10, attackFps: 12 }),
-  [UnitType.SHORTBOW]: buildDef("archer", { attackFps: 15, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7), dieFrames: range(ROW_DIE, ROW_DIE + 7) }),
-  [UnitType.BALLISTA]: buildDef("battering_ram", { attackFps: 6 }),
-  [UnitType.BOLT_THROWER]: buildDef("battering_ram", { attackFps: 4 }),
+  [UnitType.SHORTBOW]: buildDef("archer", {
+    attackFps: 15,
+    attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7),
+    dieFrames: range(ROW_DIE, ROW_DIE + 7),
+  }),
+  [UnitType.BALLISTA]: buildDef("ballista", { attackFps: 6 }),
+  [UnitType.BOLT_THROWER]: buildDef("ballista", { attackFps: 4 }),
   [UnitType.SCOUT_CAVALRY]: buildDef("knight", { moveFps: 12, attackFps: 10 }),
   [UnitType.LANCER]: buildDef("knight", { moveFps: 10, attackFps: 8 }),
   [UnitType.ELITE_LANCER]: buildDef("knight", { moveFps: 10, attackFps: 8 }),
@@ -151,19 +200,19 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.CLERIC]: buildDef("cleric", { moveFps: 8, attackFps: 10 }),
   [UnitType.SAINT]: buildDef("saint", { moveFps: 6, attackFps: 8 }),
   [UnitType.DIPLOMAT]: buildDef("diplomat", { moveFps: 8 }),
-  [UnitType.RED_DRAGON]: buildDef("red_dragon", { 
-    idleFps: 4, 
-    moveFps: 8, 
-    attackFps: 10, 
+  [UnitType.RED_DRAGON]: buildDef("red_dragon", {
+    idleFps: 4,
+    moveFps: 8,
+    attackFps: 10,
     castFps: 8,
-    dieFps: 6 
+    dieFps: 6,
   }),
-  [UnitType.FROST_DRAGON]: buildDef("frost_dragon", { 
-    idleFps: 4, 
-    moveFps: 8, 
-    attackFps: 10, 
+  [UnitType.FROST_DRAGON]: buildDef("frost_dragon", {
+    idleFps: 4,
+    moveFps: 8,
+    attackFps: 10,
     castFps: 8,
-    dieFps: 6 
+    dieFps: 6,
   }),
   [UnitType.CYCLOPS]: buildDef("cyclops", {
     idleFps: 3,
@@ -173,7 +222,19 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     dieFps: 5,
   }),
   [UnitType.HALBERDIER]: buildDef("halberdier", { attackFps: 11 }),
-  [UnitType.ELVEN_ARCHER]: buildDef("elven_archer", { attackFps: 9, attackFrames: range(ROW_ATTACK, ROW_ATTACK + 6) }),
-  [UnitType.HERO]: buildDef("hero", { idleFps: 6, moveFps: 10, attackFps: 14, dieFps: 8 }),
-  [UnitType.QUESTING_KNIGHT]: buildDef("questing_knight", { idleFps: 6, moveFps: 8, attackFps: 8 }),
+  [UnitType.ELVEN_ARCHER]: buildDef("elven_archer", {
+    attackFps: 9,
+    attackFrames: range(ROW_ATTACK, ROW_ATTACK + 6),
+  }),
+  [UnitType.HERO]: buildDef("hero", {
+    idleFps: 6,
+    moveFps: 10,
+    attackFps: 14,
+    dieFps: 8,
+  }),
+  [UnitType.QUESTING_KNIGHT]: buildDef("questing_knight", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 8,
+  }),
 };

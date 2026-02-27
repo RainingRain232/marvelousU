@@ -18,7 +18,6 @@ import {
   Texture,
   RenderTexture,
   Graphics,
-  Container,
   Rectangle,
   type Renderer,
 } from "pixi.js";
@@ -65,6 +64,10 @@ import { generateKnightFrames } from "@view/animation/KnightSpriteGen";
 import { generateQuestingKnightFrames } from "@view/animation/QuestingKnightSpriteGen";
 import { generateHalberdierFrames } from "@view/animation/HalberdierSpriteGen";
 import { generateElvenArcherFrames } from "@view/animation/ElvenArcherSpriteGen";
+import { generateBatteringRamFrames } from "@view/animation/BatteringRamSpriteGen";
+import { generateBallistaFrames } from "@view/animation/BallistaSpriteGen";
+import { generateLongbowmanFrames } from "@view/animation/LongbowmanSpriteGen";
+import { generateCrossbowmanFrames } from "@view/animation/CrossbowmanSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
 
 // ---------------------------------------------------------------------------
@@ -237,6 +240,14 @@ export class AnimationManager {
         this._generateElvenArcherSprites(key, renderer);
       } else if (key === "hero") {
         this._generateHeroSprites(key, renderer);
+      } else if (key === "battering_ram") {
+        this._generateBatteringRamSprites(key, renderer);
+      } else if (key === "ballista") {
+        this._generateBallistaSprites(key, renderer);
+      } else if (key === "longbowman") {
+        this._generateLongbowmanSprites(key, renderer);
+      } else if (key === "crossbowman") {
+        this._generateCrossbowmanSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -362,7 +373,11 @@ export class AnimationManager {
    * Generate procedural mage sprites for a palette-recoloured mage variant.
    * Used for fire_mage, summoner, cold_mage, and distortion_mage.
    */
-  private _generateMageSprites(key: string, renderer: Renderer, palette: MagePalette): void {
+  private _generateMageSprites(
+    key: string,
+    renderer: Renderer,
+    palette: MagePalette,
+  ): void {
     const stateTextures = generateMageFrames(renderer, palette);
     for (const [state, textures] of stateTextures) {
       const ck = cacheKey(key, state);
@@ -376,15 +391,29 @@ export class AnimationManager {
    * Generate procedural dragon sprites for red or frost dragons.
    * Used for red_dragon and frost_dragon.
    */
-  private _generateDragonSprites(key: string, renderer: Renderer, palette: DragonPalette, isFrost: boolean): void {
+  private _generateDragonSprites(
+    key: string,
+    renderer: Renderer,
+    palette: DragonPalette,
+    isFrost: boolean,
+  ): void {
     const textures = generateDragonFrames(renderer, palette, isFrost);
-    
+
     // Map the 40 frames to animation states (8 frames per state)
-    const states = [UnitState.IDLE, UnitState.MOVE, UnitState.ATTACK, UnitState.CAST, UnitState.DIE];
-    
+    const states = [
+      UnitState.IDLE,
+      UnitState.MOVE,
+      UnitState.ATTACK,
+      UnitState.CAST,
+      UnitState.DIE,
+    ];
+
     for (let stateIndex = 0; stateIndex < states.length; stateIndex++) {
       const state = states[stateIndex];
-      const stateTextures = textures.slice(stateIndex * 8, (stateIndex + 1) * 8);
+      const stateTextures = textures.slice(
+        stateIndex * 8,
+        (stateIndex + 1) * 8,
+      );
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {
         this._cache.set(ck, stateTextures);
@@ -396,15 +425,28 @@ export class AnimationManager {
    * Generate procedural cyclops sprites.
    * Used for cyclops.
    */
-  private _generateCyclopsSprites(key: string, renderer: Renderer, palette: CyclopsPalette): void {
+  private _generateCyclopsSprites(
+    key: string,
+    renderer: Renderer,
+    palette: CyclopsPalette,
+  ): void {
     const textures = generateCyclopsFrames(renderer, palette);
-    
+
     // Map the 40 frames to animation states (8 frames per state)
-    const states = [UnitState.IDLE, UnitState.MOVE, UnitState.ATTACK, UnitState.CAST, UnitState.DIE];
-    
+    const states = [
+      UnitState.IDLE,
+      UnitState.MOVE,
+      UnitState.ATTACK,
+      UnitState.CAST,
+      UnitState.DIE,
+    ];
+
     for (let stateIndex = 0; stateIndex < states.length; stateIndex++) {
       const state = states[stateIndex];
-      const stateTextures = textures.slice(stateIndex * 8, (stateIndex + 1) * 8);
+      const stateTextures = textures.slice(
+        stateIndex * 8,
+        (stateIndex + 1) * 8,
+      );
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {
         this._cache.set(ck, stateTextures);
@@ -418,7 +460,7 @@ export class AnimationManager {
    */
   private _generatePikemanSprites(key: string, renderer: Renderer): void {
     const textures = generatePikemanFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -437,7 +479,7 @@ export class AnimationManager {
    */
   private _generateMageHunterSprites(key: string, renderer: Renderer): void {
     const textures = generateMageHunterFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -456,7 +498,7 @@ export class AnimationManager {
    */
   private _generateGladiatorSprites(key: string, renderer: Renderer): void {
     const textures = generateGladiatorFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -475,7 +517,7 @@ export class AnimationManager {
    */
   private _generateSiegeHunterSprites(key: string, renderer: Renderer): void {
     const textures = generateSiegeHunterFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -494,7 +536,7 @@ export class AnimationManager {
    */
   private _generateHorseArcherSprites(key: string, renderer: Renderer): void {
     const textures = generateHorseArcherFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -513,7 +555,7 @@ export class AnimationManager {
    */
   private _generateScoutCavalrySprites(key: string, renderer: Renderer): void {
     const textures = generateScoutCavalryFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -532,7 +574,7 @@ export class AnimationManager {
    */
   private _generateLancerSprites(key: string, renderer: Renderer): void {
     const textures = generateLancerFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -551,7 +593,7 @@ export class AnimationManager {
    */
   private _generateEliteLancerSprites(key: string, renderer: Renderer): void {
     const textures = generateEliteLancerFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -570,7 +612,7 @@ export class AnimationManager {
    */
   private _generateKnightLancerSprites(key: string, renderer: Renderer): void {
     const textures = generateKnightLancerFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -589,7 +631,7 @@ export class AnimationManager {
    */
   private _generateKnightSprites(key: string, renderer: Renderer): void {
     const textures = generateKnightFrames(renderer);
-    
+
     // Map the frames to animation states
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -602,7 +644,10 @@ export class AnimationManager {
     }
   }
 
-  private _generateQuestingKnightSprites(key: string, renderer: Renderer): void {
+  private _generateQuestingKnightSprites(
+    key: string,
+    renderer: Renderer,
+  ): void {
     const textures = generateQuestingKnightFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
@@ -639,16 +684,16 @@ export class AnimationManager {
 
   private _generateHeroSprites(key: string, renderer: Renderer): void {
     const rt = HeroSpriteGen.generateSprites(renderer);
-    
+
     // Simple state mapping for animation rows
     const rowToState: UnitState[] = [
-      UnitState.IDLE,    // Row 0
-      UnitState.MOVE,    // Row 1
-      UnitState.ATTACK,  // Row 2
-      UnitState.CAST,    // Row 3
-      UnitState.DIE      // Row 4
+      UnitState.IDLE, // Row 0
+      UnitState.MOVE, // Row 1
+      UnitState.ATTACK, // Row 2
+      UnitState.CAST, // Row 3
+      UnitState.DIE, // Row 4
     ];
-    
+
     // Extract frames from the render texture
     for (let row = 0; row < 5; row++) {
       const state = rowToState[row];
@@ -656,7 +701,7 @@ export class AnimationManager {
       if (!this._cache.has(ck)) {
         this._cache.set(ck, []);
       }
-      
+
       for (let col = 0; col < 8; col++) {
         const frameTexture = new Texture({
           source: rt.baseTexture,
@@ -664,10 +709,54 @@ export class AnimationManager {
             col * HeroSpriteGen.FRAME_SIZE,
             row * HeroSpriteGen.FRAME_SIZE,
             HeroSpriteGen.FRAME_SIZE,
-            HeroSpriteGen.FRAME_SIZE
-          )
+            HeroSpriteGen.FRAME_SIZE,
+          ),
         });
         this._cache.get(ck)!.push(frameTexture);
+      }
+    }
+  }
+
+  private _generateBatteringRamSprites(key: string, renderer: Renderer): void {
+    const textures = generateBatteringRamFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateBallistaSprites(key: string, renderer: Renderer): void {
+    const textures = generateBallistaFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateLongbowmanSprites(key: string, renderer: Renderer): void {
+    const textures = generateLongbowmanFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateCrossbowmanSprites(key: string, renderer: Renderer): void {
+    const textures = generateCrossbowmanFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
       }
     }
   }

@@ -58,7 +58,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     defaultTurrets: [
       { projectileTag: "arrow", damage: 12, range: 6, attackSpeed: 1.0 },
     ],
-    description: "The heart of your kingdom. Trains basic units and provides defensive turrets.",
+    description:
+      "The heart of your kingdom. Trains basic units and provides defensive turrets.",
   },
   [BuildingType.BARRACKS]: {
     type: BuildingType.BARRACKS,
@@ -75,7 +76,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
-    description: "Military training grounds for infantry and specialized warriors.",
+    description:
+      "Military training grounds for infantry and specialized warriors.",
   },
   [BuildingType.STABLES]: {
     type: BuildingType.STABLES,
@@ -95,7 +97,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     prerequisite: { types: [BuildingType.BARRACKS], minCount: 1 },
-    description: "Houses and trains mounted cavalry units for swift battlefield mobility.",
+    description:
+      "Houses and trains mounted cavalry units for swift battlefield mobility.",
   },
   [BuildingType.MAGE_TOWER]: {
     type: BuildingType.MAGE_TOWER,
@@ -116,7 +119,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     defaultTurrets: [
       { projectileTag: "lightning", damage: 40, range: 5, attackSpeed: 0.5 },
     ],
-    description: "Arcane academy that defends with chain lightning that strikes any who dare approach.",
+    description:
+      "Arcane academy that defends with chain lightning that strikes any who dare approach.",
   },
   [BuildingType.ARCHERY_RANGE]: {
     type: BuildingType.ARCHERY_RANGE,
@@ -125,9 +129,10 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     goldIncome: 1,
     shopInventory: [UnitType.ARCHER, UnitType.CROSSBOWMAN, UnitType.LONGBOWMAN],
     blueprints: [],
-    footprint: { w: 2, h: 2 },
+    footprint: { w: 4, h: 2 },
     placementZone: "own",
-    description: "Training grounds for marksmen who strike from distance with deadly precision.",
+    description:
+      "Training grounds for marksmen who strike from distance with deadly precision.",
   },
   [BuildingType.SIEGE_WORKSHOP]: {
     type: BuildingType.SIEGE_WORKSHOP,
@@ -139,7 +144,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     prerequisite: { types: [BuildingType.ARCHERY_RANGE], minCount: 1 },
-    description: "Forge where devastating siege weapons are crafted for destroying fortifications.",
+    description:
+      "Forge where devastating siege weapons are crafted for destroying fortifications.",
   },
   [BuildingType.BLACKSMITH]: {
     type: BuildingType.BLACKSMITH,
@@ -162,7 +168,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     prerequisite: { types: [BuildingType.BARRACKS], minCount: 1 },
-    description: "Enhances unit equipment and provides additional gold income through metalworking.",
+    description:
+      "Enhances unit equipment and provides additional gold income through metalworking.",
   },
   [BuildingType.TOWN]: {
     type: BuildingType.TOWN,
@@ -194,7 +201,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     prerequisite: { types: [BuildingType.MARKET], minCount: 1 },
-    description: "Mystical habitat where legendary creatures are tamed for battle.",
+    description:
+      "Mystical habitat where legendary creatures are tamed for battle.",
   },
   [BuildingType.TOWER]: {
     type: BuildingType.TOWER,
@@ -210,7 +218,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     defaultTurrets: [
       { projectileTag: "arrow", damage: 9, range: 6, attackSpeed: 1.0 },
     ],
-    description: "Defensive structure with arrow turrets that can be captured by enemies.",
+    description:
+      "Defensive structure with arrow turrets that can be captured by enemies.",
   },
   [BuildingType.FARM]: {
     type: BuildingType.FARM,
@@ -223,7 +232,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     placementZone: "own",
     capturable: true,
     maxCount: 5,
-    description: "Agricultural center that provides steady gold income through food production.",
+    description:
+      "Agricultural center that provides steady gold income through food production.",
   },
   [BuildingType.HAMLET]: {
     type: BuildingType.HAMLET,
@@ -236,7 +246,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     placementZone: "own",
     maxCount: 1,
     prerequisite: { types: [BuildingType.FARM], minCount: 5 },
-    description: "Upgraded settlement that provides substantial gold income once farms are established.",
+    description:
+      "Upgraded settlement that provides substantial gold income once farms are established.",
   },
   [BuildingType.EMBASSY]: {
     type: BuildingType.EMBASSY,
@@ -248,7 +259,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     maxCount: 2,
-    description: "Diplomatic center that trains units to capture neutral buildings peacefully.",
+    description:
+      "Diplomatic center that trains units to capture neutral buildings peacefully.",
   },
   [BuildingType.TEMPLE]: {
     type: BuildingType.TEMPLE,
@@ -259,7 +271,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     blueprints: [],
     footprint: { w: 2, h: 3 },
     placementZone: "own",
-    description: "Sacred sanctuary where healers and holy warriors are trained to support allies.",
+    description:
+      "Sacred sanctuary where healers and holy warriors are trained to support allies.",
   },
   [BuildingType.WALL]: {
     type: BuildingType.WALL,
@@ -271,7 +284,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 1, h: 3 },
     placementZone: "own",
     capturable: false,
-    description: "Impenetrable barrier that blocks enemy movement and cannot be captured.",
+    description:
+      "Impenetrable barrier that blocks enemy movement and cannot be captured.",
   },
   [BuildingType.FIREPIT]: {
     type: BuildingType.FIREPIT,
@@ -283,7 +297,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 1 },
     placementZone: "any",
     capturable: false,
-    description: "Neutral bonfire that provides light and warmth to the battlefield.",
+    description:
+      "Neutral bonfire that provides light and warmth to the battlefield.",
   },
   [BuildingType.MILL]: {
     type: BuildingType.MILL,
@@ -297,7 +312,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     capturable: false,
     maxCount: 2,
     prerequisite: { types: [BuildingType.FARM], minCount: 3 },
-    description: "Industrial facility that processes resources into substantial gold income.",
+    description:
+      "Industrial facility that processes resources into substantial gold income.",
   },
   [BuildingType.ELITE_HALL]: {
     type: BuildingType.ELITE_HALL,
@@ -314,7 +330,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       types: [BuildingType.MAGE_TOWER, BuildingType.BLACKSMITH],
       minCount: 1,
     },
-    description: "Prestigious center that provides massive gold income through advanced commerce.",
+    description:
+      "Prestigious center that provides massive gold income through advanced commerce.",
   },
   [BuildingType.MARKET]: {
     type: BuildingType.MARKET,
@@ -328,19 +345,21 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     capturable: false,
     maxCount: 1,
     prerequisite: { types: [BuildingType.FARM], minCount: 1 },
-    description: "Grand trading hub that generates the highest gold income through commerce.",
+    description:
+      "Grand trading hub that generates the highest gold income through commerce.",
   },
   [BuildingType.FACTION_HALL]: {
     type: BuildingType.FACTION_HALL,
     cost: 1000,
     hp: 300,
     goldIncome: 2,
-    shopInventory: [],  // populated at runtime based on player race
+    shopInventory: [], // populated at runtime based on player race
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     capturable: false,
     prerequisite: { types: [BuildingType.TEMPLE], minCount: 1 },
-    description: "The hall of your people. Trains powerful faction-exclusive units unavailable to other races.",
+    description:
+      "The hall of your people. Trains powerful faction-exclusive units unavailable to other races.",
   },
 };
