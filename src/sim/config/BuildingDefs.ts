@@ -69,7 +69,6 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     shopInventory: [
       UnitType.SWORDSMAN,
       UnitType.PIKEMAN,
-      UnitType.KNIGHT,
       UnitType.MAGE_HUNTER,
       UnitType.GLADIATOR,
     ],
