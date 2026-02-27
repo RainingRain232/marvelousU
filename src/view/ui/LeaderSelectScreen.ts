@@ -325,6 +325,28 @@ export class LeaderSelectScreen {
         portraitSprite = sprite;
         portrait.visible = false;
       }
+    } else if (leader.id === "merlin") {
+      const frames = animationManager.getFrames(
+        UnitType.STORM_MAGE,
+        UnitState.IDLE,
+      );
+      if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+        const sprite = new AnimatedSprite(frames);
+        sprite.anchor.set(0.5, 1);
+        sprite.width = portraitW - 4;
+        sprite.height = portraitH - 4;
+        sprite.position.set(CARD_W / 2, portraitH + 2);
+        const fs = animationManager.getFrameSet(
+          UnitType.STORM_MAGE,
+          UnitState.IDLE,
+        );
+        sprite.animationSpeed = fs.fps / 60;
+        sprite.loop = true;
+        sprite.play();
+        c.addChild(sprite);
+        portraitSprite = sprite;
+        portrait.visible = false;
+      }
     }
 
     if (!portraitSprite) {
@@ -472,7 +494,7 @@ export class LeaderSelectScreen {
       this._detailPortraitSprite = undefined;
     }
 
-    // Show swordsman sprite for Arthur, initial for others
+    // Show swordsman sprite for Arthur, storm mage for Merlin, initial for others
     if (leader.id === "arthur") {
       this._portraitInitial.visible = false;
       this._detailPortrait.visible = false;
@@ -488,6 +510,29 @@ export class LeaderSelectScreen {
         sprite.position.set((DETAIL_W - DETAIL_PAD) / 2, 96);
         const fs = animationManager.getFrameSet(
           UnitType.SWORDSMAN,
+          UnitState.IDLE,
+        );
+        sprite.animationSpeed = fs.fps / 60;
+        sprite.loop = true;
+        sprite.play();
+        this._detailPanel.addChild(sprite);
+        this._detailPortraitSprite = sprite;
+      }
+    } else if (leader.id === "merlin") {
+      this._portraitInitial.visible = false;
+      this._detailPortrait.visible = false;
+      const frames = animationManager.getFrames(
+        UnitType.STORM_MAGE,
+        UnitState.IDLE,
+      );
+      if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+        const sprite = new AnimatedSprite(frames);
+        sprite.anchor.set(0.5, 1);
+        sprite.width = 70;
+        sprite.height = 70;
+        sprite.position.set((DETAIL_W - DETAIL_PAD) / 2, 96);
+        const fs = animationManager.getFrameSet(
+          UnitType.STORM_MAGE,
           UnitState.IDLE,
         );
         sprite.animationSpeed = fs.fps / 60;
