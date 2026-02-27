@@ -1,9 +1,18 @@
 // Leader selection screen — choose a leader before the game starts.
 // Layout: left scrollable grid of leader cards + right detail panel.
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import {
+  Container,
+  Graphics,
+  Text,
+  TextStyle,
+  AnimatedSprite,
+  Texture,
+} from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { LEADER_DEFINITIONS } from "@sim/config/LeaderDefs";
 import type { LeaderDef, LeaderId } from "@sim/config/LeaderDefs";
+import { animationManager } from "@view/animation/AnimationManager";
+import { UnitState, UnitType } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -108,6 +117,7 @@ export class LeaderSelectScreen {
     id: LeaderId;
     bg: Graphics;
     container: Container;
+    portraitSprite?: AnimatedSprite;
   }> = [];
 
   // Detail panel elements
@@ -168,7 +178,8 @@ export class LeaderSelectScreen {
   // ---------------------------------------------------------------------------
 
   private _buildUI(): void {
-    const gridW = GRID_COLS * CARD_W + (GRID_COLS - 1) * CARD_GAP + GRID_PAD * 2;
+    const gridW =
+      GRID_COLS * CARD_W + (GRID_COLS - 1) * CARD_GAP + GRID_PAD * 2;
     const totalW = gridW + DETAIL_W + 24; // 24 = gap between grid and detail
 
     // We'll calculate height properly during layout, use a placeholder
@@ -185,14 +196,19 @@ export class LeaderSelectScreen {
     this.container.addChild(mainCard);
 
     // Screen title
-    const title = new Text({ text: "CHOOSE YOUR LEADER", style: STYLE_SCREEN_TITLE });
+    const title = new Text({
+      text: "CHOOSE YOUR LEADER",
+      style: STYLE_SCREEN_TITLE,
+    });
     title.anchor.set(0.5, 0);
     title.position.set(totalW / 2, 14);
     mainCard.addChild(title);
 
     // Divider
     mainCard.addChild(
-      new Graphics().rect(16, 48, totalW - 32, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+      new Graphics()
+        .rect(16, 48, totalW - 32, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
     // Back button (top-left)
@@ -263,7 +279,12 @@ export class LeaderSelectScreen {
     leader: LeaderDef,
     x: number,
     y: number,
-  ): { id: LeaderId; bg: Graphics; container: Container } {
+  ): {
+    id: LeaderId;
+    bg: Graphics;
+    container: Container;
+    portraitSprite?: AnimatedSprite;
+  } {
     const c = new Container();
     c.position.set(x, y);
     c.eventMode = "static";
@@ -278,25 +299,61 @@ export class LeaderSelectScreen {
       .fill({ color: 0x1a1e2e });
     c.addChild(portrait);
 
-    const initial = new Text({
-      text: leader.name.charAt(0),
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 22,
-        fill: 0xffd700,
-        fontWeight: "bold",
-      }),
-    });
-    initial.anchor.set(0.5, 0.5);
-    initial.position.set(CARD_W / 2, (CARD_H - 30) / 2 + 6);
-    c.addChild(initial);
+    let portraitSprite: AnimatedSprite | undefined;
+    const portraitW = CARD_W - 12;
+    const portraitH = CARD_H - 36;
 
-    const nameText = new Text({ text: leader.name.toUpperCase(), style: STYLE_LEADER_NAME });
+    if (leader.id === "arthur") {
+      const frames = animationManager.getFrames(
+        UnitType.SWORDSMAN,
+        UnitState.IDLE,
+      );
+      if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+        const sprite = new AnimatedSprite(frames);
+        sprite.anchor.set(0.5, 1);
+        sprite.width = portraitW - 4;
+        sprite.height = portraitH - 4;
+        sprite.position.set(CARD_W / 2, portraitH + 2);
+        const fs = animationManager.getFrameSet(
+          UnitType.SWORDSMAN,
+          UnitState.IDLE,
+        );
+        sprite.animationSpeed = fs.fps / 60;
+        sprite.loop = true;
+        sprite.play();
+        c.addChild(sprite);
+        portraitSprite = sprite;
+        portrait.visible = false;
+      }
+    }
+
+    if (!portraitSprite) {
+      const initial = new Text({
+        text: leader.name.charAt(0),
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 22,
+          fill: 0xffd700,
+          fontWeight: "bold",
+        }),
+      });
+      initial.anchor.set(0.5, 0.5);
+      initial.position.set(CARD_W / 2, (CARD_H - 30) / 2 + 6);
+      c.addChild(initial);
+    }
+
+    const nameText = new Text({
+      text: leader.name.toUpperCase(),
+      style: STYLE_LEADER_NAME,
+    });
     nameText.anchor.set(0.5, 0);
     nameText.position.set(CARD_W / 2, CARD_H - 30);
     c.addChild(nameText);
 
-    const titleText = new Text({ text: leader.title, style: STYLE_LEADER_TITLE });
+    const titleText = new Text({
+      text: leader.title,
+      style: STYLE_LEADER_TITLE,
+    });
     titleText.anchor.set(0.5, 0);
     titleText.position.set(CARD_W / 2, CARD_H - 17);
     c.addChild(titleText);
@@ -305,7 +362,7 @@ export class LeaderSelectScreen {
 
     this._refreshCard(bg, false);
 
-    return { id: leader.id, bg, container: c };
+    return { id: leader.id, bg, container: c, portraitSprite };
   }
 
   private _buildDetailPanel(): void {
@@ -326,9 +383,15 @@ export class LeaderSelectScreen {
     dp.addChild(this._detailPortrait);
 
     // Portrait initial text (updated on select)
-    const portraitInitial = new Text({ text: "", style: new TextStyle({
-      fontFamily: "monospace", fontSize: 48, fill: 0xffd700, fontWeight: "bold",
-    })});
+    const portraitInitial = new Text({
+      text: "",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 48,
+        fill: 0xffd700,
+        fontWeight: "bold",
+      }),
+    });
     portraitInitial.anchor.set(0.5, 0.5);
     portraitInitial.position.set((DETAIL_W - DETAIL_PAD) / 2, 53);
     dp.addChild(portraitInitial);
@@ -348,13 +411,21 @@ export class LeaderSelectScreen {
 
     // Divider
     dp.addChild(
-      new Graphics().rect(8, 146, DETAIL_W - DETAIL_PAD - 16, 1).fill({ color: 0x334466 }),
+      new Graphics()
+        .rect(8, 146, DETAIL_W - DETAIL_PAD - 16, 1)
+        .fill({ color: 0x334466 }),
     );
 
     // Flavor
-    const flavorLabel = new Text({ text: "LORE", style: new TextStyle({
-      fontFamily: "monospace", fontSize: 9, fill: 0x556677, letterSpacing: 2,
-    })});
+    const flavorLabel = new Text({
+      text: "LORE",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 9,
+        fill: 0x556677,
+        letterSpacing: 2,
+      }),
+    });
     flavorLabel.position.set(10, 154);
     dp.addChild(flavorLabel);
 
@@ -364,7 +435,9 @@ export class LeaderSelectScreen {
 
     // Divider
     dp.addChild(
-      new Graphics().rect(8, 224, DETAIL_W - DETAIL_PAD - 16, 1).fill({ color: 0x334466 }),
+      new Graphics()
+        .rect(8, 224, DETAIL_W - DETAIL_PAD - 16, 1)
+        .fill({ color: 0x334466 }),
     );
 
     // Bonus
@@ -378,6 +451,7 @@ export class LeaderSelectScreen {
   }
 
   private _portraitInitial!: Text;
+  private _detailPortraitSprite?: AnimatedSprite;
 
   private _selectLeader(id: LeaderId): void {
     this._selectedId = id;
@@ -391,7 +465,42 @@ export class LeaderSelectScreen {
     const leader = LEADER_DEFINITIONS.find((l) => l.id === id);
     if (!leader) return;
 
-    this._portraitInitial.text = leader.name.charAt(0);
+    // Clean up previous portrait sprite
+    if (this._detailPortraitSprite) {
+      this._detailPortraitSprite.stop();
+      this._detailPortraitSprite.destroy();
+      this._detailPortraitSprite = undefined;
+    }
+
+    // Show swordsman sprite for Arthur, initial for others
+    if (leader.id === "arthur") {
+      this._portraitInitial.visible = false;
+      this._detailPortrait.visible = false;
+      const frames = animationManager.getFrames(
+        UnitType.SWORDSMAN,
+        UnitState.IDLE,
+      );
+      if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+        const sprite = new AnimatedSprite(frames);
+        sprite.anchor.set(0.5, 1);
+        sprite.width = 70;
+        sprite.height = 70;
+        sprite.position.set((DETAIL_W - DETAIL_PAD) / 2, 96);
+        const fs = animationManager.getFrameSet(
+          UnitType.SWORDSMAN,
+          UnitState.IDLE,
+        );
+        sprite.animationSpeed = fs.fps / 60;
+        sprite.loop = true;
+        sprite.play();
+        this._detailPanel.addChild(sprite);
+        this._detailPortraitSprite = sprite;
+      }
+    } else {
+      this._portraitInitial.visible = true;
+      this._portraitInitial.text = leader.name.charAt(0);
+    }
+
     this._detailName.text = leader.name.toUpperCase();
     this._detailTitle.text = leader.title;
     this._detailFlavor.text = leader.flavor;
@@ -400,8 +509,7 @@ export class LeaderSelectScreen {
 
   private _refreshCard(bg: Graphics, selected: boolean): void {
     bg.clear();
-    bg
-      .roundRect(0, 0, CARD_W, CARD_H, 6)
+    bg.roundRect(0, 0, CARD_W, CARD_H, 6)
       .fill({ color: selected ? 0x1a1e32 : 0x10101e })
       .roundRect(0, 0, CARD_W, CARD_H, 6)
       .stroke({
@@ -410,7 +518,12 @@ export class LeaderSelectScreen {
       });
   }
 
-  private _makeNavBtn(label: string, w: number, h: number, primary = false): Container {
+  private _makeNavBtn(
+    label: string,
+    w: number,
+    h: number,
+    primary = false,
+  ): Container {
     const btn = new Container();
     btn.eventMode = "static";
     btn.cursor = "pointer";
@@ -422,26 +535,36 @@ export class LeaderSelectScreen {
       .stroke({ color: primary ? 0x44aa66 : 0x4488cc, width: 1.5 });
     btn.addChild(bg);
 
-    const txt = new Text({ text: label, style: new TextStyle({
-      fontFamily: "monospace",
-      fontSize: primary ? 13 : 11,
-      fill: primary ? 0x88ffaa : 0x88bbff,
-      fontWeight: "bold",
-      letterSpacing: 1,
-    })});
+    const txt = new Text({
+      text: label,
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: primary ? 13 : 11,
+        fill: primary ? 0x88ffaa : 0x88bbff,
+        fontWeight: "bold",
+        letterSpacing: 1,
+      }),
+    });
     txt.anchor.set(0.5, 0.5);
     txt.position.set(w / 2, h / 2);
     btn.addChild(txt);
 
-    btn.on("pointerover", () => { bg.tint = primary ? 0xaaffcc : 0xaaddff; });
-    btn.on("pointerout", () => { bg.tint = 0xffffff; });
+    btn.on("pointerover", () => {
+      bg.tint = primary ? 0xaaffcc : 0xaaddff;
+    });
+    btn.on("pointerout", () => {
+      bg.tint = 0xffffff;
+    });
 
     return btn;
   }
 
   private _onGridWheel(e: any): void {
     const maxScroll = Math.max(0, this._gridContentH - this._gridViewH);
-    this._gridScrollY = Math.max(0, Math.min(maxScroll, this._gridScrollY + e.deltaY * 0.5));
+    this._gridScrollY = Math.max(
+      0,
+      Math.min(maxScroll, this._gridScrollY + e.deltaY * 0.5),
+    );
     this._gridScroll.position.y = 60 - this._gridScrollY;
   }
 
@@ -464,8 +587,7 @@ export class LeaderSelectScreen {
     const mc = this._mainCard;
     const bg = mc.children[0] as Graphics;
     bg.clear();
-    bg
-      .roundRect(0, 0, this._mainCardW, cardH, 8)
+    bg.roundRect(0, 0, this._mainCardW, cardH, 8)
       .fill({ color: 0x10102a, alpha: 0.97 })
       .roundRect(0, 0, this._mainCardW, cardH, 8)
       .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
@@ -480,10 +602,7 @@ export class LeaderSelectScreen {
 
     // Position "Next" button at the bottom-right
     const nextBtn = this._nextBtn;
-    nextBtn.position.set(
-      this._mainCardW - 176,
-      cardH - 50,
-    );
+    nextBtn.position.set(this._mainCardW - 176, cardH - 50);
 
     // Center card on screen
     mc.position.set(
