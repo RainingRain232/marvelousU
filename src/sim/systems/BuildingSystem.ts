@@ -6,7 +6,6 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
 import { EventBus } from "@sim/core/EventBus";
-import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 import type { PlayerId, Vec2 } from "@/types";
 import {
   BuildingState,
@@ -170,7 +169,11 @@ export function placeBuilding(
   player.ownedBuildings.push(id);
 
   // Faction Hall: populate shopInventory based on player's selected race
-  if (type === BuildingType.FACTION_HALL && playerId === "p1" && state.p1RaceId) {
+  if (
+    type === BuildingType.FACTION_HALL &&
+    playerId === "p1" &&
+    state.p1RaceId
+  ) {
     const race = getRace(state.p1RaceId);
     if (race?.implemented) {
       building.shopInventory = [race.factionUnit];
@@ -510,7 +513,7 @@ function _updateTurrets(
 
     // Special handling for lightning projectiles (chain lightning)
     const isLightning = turret.projectileTag === "lightning";
-    
+
     state.projectiles.set(projectileId, {
       id: projectileId,
       abilityId: `${building.id}-turret`,
