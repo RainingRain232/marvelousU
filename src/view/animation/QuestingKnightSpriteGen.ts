@@ -314,14 +314,14 @@ function generateIdleFrames(g: Graphics, frame: number): void {
   // Shield at rest
   drawShield(g, CX - 12, 34 + breathe, 0.9);
 
-  // Love heart floating from mouth area
+  // Love heart floating to the right of helmet (outside helmet)
   // Cycle: appears every 8 frames, rises and fades
-  const heartPhase = (frame % 8) / 8; // 0 → 1
-  if (heartPhase < 0.8) {
-    const heartY = 18 + breathe - heartPhase * 18; // rises upward
-    const heartAlpha = 1 - heartPhase * 1.25;
-    const heartSize = 3 + heartPhase * 1.5;
-    drawHeart(g, CX + 2, heartY, heartSize, Math.max(0, heartAlpha));
+  const heartPhase = (frame % 12) / 12; // 0 → 1 (slower cycle over 12 frames)
+  if (heartPhase < 0.9) { // appears for longer duration
+    const heartY = 15 + breathe - heartPhase * 12; // moves upward more (greater range)
+    const heartAlpha = 1 - heartPhase * 1.1; // fades more slowly
+    const heartSize = 3 + heartPhase * 2; // grows more as it rises
+    drawHeart(g, CX + 18, heartY, heartSize, Math.max(0, heartAlpha)); // positioned just outside helmet to the right
   }
 }
 

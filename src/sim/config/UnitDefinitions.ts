@@ -116,7 +116,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       height: 1.5,
       healthBarOffset: -0.8,
     },
-    description: "A templar knight on an armored warhorse, sworn to quest in the name of his queen.",
+    description: "He does not actually do alot of questing, except for the Queen's favor.",
   },
   [UnitType.FIRE_MAGE]: {
     type: UnitType.FIRE_MAGE,
