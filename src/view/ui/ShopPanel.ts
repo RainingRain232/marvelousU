@@ -179,6 +179,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.MAGE_HUNTER]: "Mage Hunter",
   [UnitType.SIEGE_HUNTER]: "Siege Hunter",
   [UnitType.SUMMONER]: "Summoner",
+  [UnitType.CONSTRUCTIONIST]: "Constructionist",
   [UnitType.COLD_MAGE]: "Cold Mage",
   [UnitType.SPIDER]: "Spider",
   [UnitType.GLADIATOR]: "Gladiator",
@@ -254,7 +255,13 @@ export class ShopPanel {
   private _buildingTextureCache = new Map<BuildingType, RenderTexture>();
 
   // Icon button refs for affordability
-  private _unitIcons: { type: UnitType; costText: Text; bg: Graphics; btn: Container; locked: boolean }[] = [];
+  private _unitIcons: {
+    type: UnitType;
+    costText: Text;
+    bg: Graphics;
+    btn: Container;
+    locked: boolean;
+  }[] = [];
   private _bpIcons: {
     type: BuildingType;
     costText: Text;
@@ -1505,7 +1512,11 @@ export class ShopPanel {
     const cost = UNIT_DEFINITIONS[unitType].cost;
     if (player.gold < cost) return;
     // Require Elite Hall for high-cost units
-    if (cost >= ELITE_HALL_COST_THRESHOLD && this._countOwnedType(BuildingType.ELITE_HALL) === 0) return;
+    if (
+      cost >= ELITE_HALL_COST_THRESHOLD &&
+      this._countOwnedType(BuildingType.ELITE_HALL) === 0
+    )
+      return;
 
     player.gold -= cost;
     addToQueue(this._state, buildingId, unitType);

@@ -157,6 +157,10 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.MAGE_HUNTER]: buildDef("mage_hunter"),
   [UnitType.SIEGE_HUNTER]: buildDef("siege_hunter"),
   [UnitType.SUMMONER]: buildDef("summoner", { idleFps: 6, castFps: 8 }),
+  [UnitType.CONSTRUCTIONIST]: buildDef("constructionist", {
+    idleFps: 6,
+    castFps: 8,
+  }),
   [UnitType.DISTORTION_MAGE]: buildDef("distortion_mage", {
     idleFps: 6,
     castFps: 10,

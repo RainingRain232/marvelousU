@@ -111,6 +111,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.COLD_MAGE,
       UnitType.DISTORTION_MAGE,
       UnitType.SUMMONER,
+      UnitType.CONSTRUCTIONIST,
     ],
     blueprints: [],
     footprint: { w: 2, h: 2 },

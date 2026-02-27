@@ -75,6 +75,7 @@ import { generateDevourerFrames } from "@view/animation/DevourerSpriteGen";
 import { generateDiplomatFrames } from "@view/animation/DiplomatSpriteGen";
 import { generateGolemFrames } from "@view/animation/GolemSpriteGen";
 import { generateSummonedFrames } from "@view/animation/SummonedSpriteGen";
+import { generateConstructionistFrames } from "@view/animation/ConstructionistSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
 
 // ---------------------------------------------------------------------------
@@ -269,6 +270,8 @@ export class AnimationManager {
         this._generateGolemSprites(key, renderer);
       } else if (key === "summoned") {
         this._generateSummonedSprites(key, renderer);
+      } else if (key === "constructionist") {
+        this._generateConstructionistSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -855,6 +858,22 @@ export class AnimationManager {
 
   private _generateSummonedSprites(key: string, renderer: Renderer): void {
     const textures = generateSummonedFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateConstructionistSprites(
+    key: string,
+    renderer: Renderer,
+  ): void {
+    const textures = generateConstructionistFrames(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];

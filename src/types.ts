@@ -47,6 +47,7 @@ export enum UnitType {
   MAGE_HUNTER = "mage_hunter",
   SIEGE_HUNTER = "siege_hunter",
   SUMMONER = "summoner",
+  CONSTRUCTIONIST = "constructionist",
   COLD_MAGE = "cold_mage",
   SPIDER = "spider",
   GLADIATOR = "gladiator",

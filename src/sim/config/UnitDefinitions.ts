@@ -227,6 +227,18 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.SUMMON],
     spriteKey: "golem",
   },
+  [UnitType.CONSTRUCTIONIST]: {
+    type: UnitType.CONSTRUCTIONIST,
+    cost: 1200,
+    hp: 55,
+    atk: 5,
+    attackSpeed: 0.4,
+    speed: 0.75,
+    range: 6,
+    spawnTime: 8,
+    abilityTypes: [AbilityType.SUMMON],
+    spriteKey: "constructionist",
+  },
   [UnitType.COLD_MAGE]: {
     type: UnitType.COLD_MAGE,
     cost: 500,

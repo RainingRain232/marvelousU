@@ -113,6 +113,7 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.MAGE_HUNTER]: "Mage Hunter",
   [UnitType.SIEGE_HUNTER]: "Siege Hunter",
   [UnitType.SUMMONER]: "Summoner",
+  [UnitType.CONSTRUCTIONIST]: "Constructionist",
   [UnitType.COLD_MAGE]: "Cold Mage",
   [UnitType.SPIDER]: "Spider",
   [UnitType.GLADIATOR]: "Gladiator",
@@ -412,9 +413,10 @@ export class HoverTooltip {
     }
 
     // Show current/max HP so damage is visible; use live atk/speed
-    const hpText = unit.hp < unit.maxHp
-      ? `HP:${Math.ceil(unit.hp)}/${unit.maxHp}`
-      : `HP:${unit.maxHp}`;
+    const hpText =
+      unit.hp < unit.maxHp
+        ? `HP:${Math.ceil(unit.hp)}/${unit.maxHp}`
+        : `HP:${unit.maxHp}`;
     const line1 = new Text({
       text: `${hpText}  ATK:${unit.atk}  SPD:${unit.speed.toFixed(1)}`,
       style: STYLE_STAT,
@@ -432,7 +434,8 @@ export class HoverTooltip {
     y += 12;
 
     let extraLine = `Spawn: ${def.spawnTime}s`;
-    if (def.abilityTypes.length > 0) extraLine += `  ${def.abilityTypes.join(", ")}`;
+    if (def.abilityTypes.length > 0)
+      extraLine += `  ${def.abilityTypes.join(", ")}`;
     const line3 = new Text({ text: extraLine, style: STYLE_SPAWN });
     line3.position.set(PANEL_PAD, y);
     this._statsContainer.addChild(line3);
@@ -445,7 +448,10 @@ export class HoverTooltip {
     const def = BUILDING_DEFINITIONS[buildingType];
     let y = 4;
 
-    const name = new Text({ text: BUILDING_LABELS[buildingType], style: STYLE_PREVIEW_NAME });
+    const name = new Text({
+      text: BUILDING_LABELS[buildingType],
+      style: STYLE_PREVIEW_NAME,
+    });
     name.position.set(PANEL_PAD, y);
     this._statsContainer.addChild(name);
     y += 16;
@@ -482,7 +488,10 @@ export class HoverTooltip {
     let y = startY;
 
     for (const word of words) {
-      if ((currentLine + word).length > maxLineLength && currentLine.length > 0) {
+      if (
+        (currentLine + word).length > maxLineLength &&
+        currentLine.length > 0
+      ) {
         const t = new Text({
           text: currentLine.trim(),
           style: { ...STYLE_STAT, fontSize: 10, fill: 0xaaaadd },
@@ -551,7 +560,9 @@ export class HoverTooltip {
   // Building texture cache (same logic as ShopPanel)
   // ---------------------------------------------------------------------------
 
-  private _getBuildingTexture(buildingType: BuildingType): RenderTexture | null {
+  private _getBuildingTexture(
+    buildingType: BuildingType,
+  ): RenderTexture | null {
     if (this._buildingTextureCache.has(buildingType)) {
       return this._buildingTextureCache.get(buildingType)!;
     }
@@ -563,58 +574,76 @@ export class HoverTooltip {
 
     if (buildingType === BuildingType.CASTLE) {
       buildingContainer = new CastleRenderer(null).container;
-      texW = 256; texH = 256;
+      texW = 256;
+      texH = 256;
     } else if (buildingType === BuildingType.TOWER) {
       buildingContainer = new TowerRenderer(null).container;
-      texW = 64; texH = 64;
+      texW = 64;
+      texH = 64;
     } else if (buildingType === BuildingType.FARM) {
       buildingContainer = new FarmRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.HAMLET) {
       buildingContainer = new HamletRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.WALL) {
       buildingContainer = new WallRenderer().container;
-      texW = 64; texH = 192;
+      texW = 64;
+      texH = 192;
     } else if (buildingType === BuildingType.TEMPLE) {
       buildingContainer = new TempleRenderer(null).container;
-      texW = 128; texH = 192;
+      texW = 128;
+      texH = 192;
     } else if (buildingType === BuildingType.EMBASSY) {
       buildingContainer = new EmbassyRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.BLACKSMITH) {
       buildingContainer = new BlacksmithRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.CREATURE_DEN) {
       buildingContainer = new CreatureDenRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.MILL) {
       buildingContainer = new MillRenderer(null).container;
-      texW = 64; texH = 128;
+      texW = 64;
+      texH = 128;
     } else if (buildingType === BuildingType.ELITE_HALL) {
       buildingContainer = new EliteHallRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.MAGE_TOWER) {
       buildingContainer = new MageTowerRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.SIEGE_WORKSHOP) {
       buildingContainer = new SiegeWorkshopRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.ARCHERY_RANGE) {
       buildingContainer = new ArcheryRangeRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.STABLES) {
       buildingContainer = new FrontViewStablesRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.BARRACKS) {
       buildingContainer = new BarracksRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.MARKET) {
       buildingContainer = new MarketRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     } else if (buildingType === BuildingType.FACTION_HALL) {
       buildingContainer = new FactionHallRenderer(null).container;
-      texW = 128; texH = 128;
+      texW = 128;
+      texH = 128;
     }
 
     if (!buildingContainer) return null;
