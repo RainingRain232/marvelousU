@@ -36,7 +36,7 @@ export const BalanceConfig = {
   // Phase durations (seconds)
   PREP_DURATION: 30, // seconds players have to buy/build before battle starts
   RESOLVE_DURATION: 5, // seconds the RESOLVE screen shows before cycling back to PREP
-  RANDOM_EVENT_INTERVAL: 20, // seconds between random events during BATTLE
+  RANDOM_EVENT_INTERVAL: 30, // seconds between random events during BATTLE
 
   // Neutral placement
   NEUTRAL_COUNTS: {

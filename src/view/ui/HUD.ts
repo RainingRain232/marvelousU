@@ -152,7 +152,7 @@ export class HUD {
     this._buildWestPanel();
     this._buildEastPanel();
     this._buildPhasePanel();
-    this._buildAIToggleBtn();
+    // this._buildAIToggleBtn(); // Removed - AI toggle no longer appears in game
     this._buildSwitchBtn();
     this._buildStartBattleBtn();
     this._buildSpeedLabel();
@@ -177,7 +177,7 @@ export class HUD {
       this._screenW = vm.screenWidth;
       this._repositionEastPanel();
       this._repositionPhasePanel();
-      this._repositionAIToggle();
+      // this._repositionAIToggle(); // Removed - AI toggle no longer appears
       this._repositionSwitchBtn();
       this._repositionStartBattleBtn();
     };
@@ -355,7 +355,7 @@ export class HUD {
     const H = 28;
     const btn = new Container();
     btn.eventMode = "static";
-    btn.cursor = "pointer";
+    // btn.cursor = "pointer"; // Removed - button is no longer clickable
 
     const bg = new Graphics();
     btn.addChild(bg);
@@ -372,20 +372,25 @@ export class HUD {
 
     this._refreshAIToggle();
 
-    btn.on("pointerdown", () => {
-      this._p2IsAI = !this._p2IsAI;
-      this._refreshAIToggle();
-      this.onAIToggle?.(this._p2IsAI);
-    });
+    // Remove click handler to disable AI toggle functionality
+    // btn.on("pointerdown", () => {
+    //   this._p2IsAI = !this._p2IsAI;
+    //   this._refreshAIToggle();
+    //   this.onAIToggle?.(this._p2IsAI);
+    // });
 
     // Position is set in _repositionEastPanel (called on init + resize)
-    this._repositionAIToggle();
+    // this._repositionAIToggle(); // Removed - AI toggle no longer appears
   }
 
   private _refreshAIToggle(): void {
     const W = PANEL_W;
     const H = 28;
     const active = this._p2IsAI;
+    
+    // Only refresh if AI toggle button exists (it doesn't when removed from game)
+    if (!this._aiToggleBg) return;
+    
     this._aiToggleBg.clear();
     this._aiToggleBg
       .roundRect(0, 0, W, H, 4)
