@@ -68,6 +68,10 @@ import { generateBatteringRamFrames } from "@view/animation/BatteringRamSpriteGe
 import { generateBallistaFrames } from "@view/animation/BallistaSpriteGen";
 import { generateLongbowmanFrames } from "@view/animation/LongbowmanSpriteGen";
 import { generateCrossbowmanFrames } from "@view/animation/CrossbowmanSpriteGen";
+import { generateGiantFrogFrames } from "@view/animation/GiantFrogSpriteGen";
+import { generateVoidSnailFrames } from "@view/animation/VoidSnailSpriteGen";
+import { generateSpiderFrames } from "@view/animation/SpiderSpriteGen";
+import { generateDevourerFrames } from "@view/animation/DevourerSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
 
 // ---------------------------------------------------------------------------
@@ -248,6 +252,14 @@ export class AnimationManager {
         this._generateLongbowmanSprites(key, renderer);
       } else if (key === "crossbowman") {
         this._generateCrossbowmanSprites(key, renderer);
+      } else if (key === "giant_frog") {
+        this._generateGiantFrogSprites(key, renderer);
+      } else if (key === "void_snail") {
+        this._generateVoidSnailSprites(key, renderer);
+      } else if (key === "spider") {
+        this._generateSpiderSprites(key, renderer);
+      } else if (key === "devourer") {
+        this._generateDevourerSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -752,6 +764,50 @@ export class AnimationManager {
 
   private _generateCrossbowmanSprites(key: string, renderer: Renderer): void {
     const textures = generateCrossbowmanFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateGiantFrogSprites(key: string, renderer: Renderer): void {
+    const textures = generateGiantFrogFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateVoidSnailSprites(key: string, renderer: Renderer): void {
+    const textures = generateVoidSnailFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateSpiderSprites(key: string, renderer: Renderer): void {
+    const textures = generateSpiderFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateDevourerSprites(key: string, renderer: Renderer): void {
+    const textures = generateDevourerFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

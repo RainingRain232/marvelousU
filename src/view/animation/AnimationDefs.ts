@@ -161,7 +161,7 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     idleFps: 6,
     castFps: 10,
   }),
-  [UnitType.VOID_SNAIL]: buildDef("spider", {
+  [UnitType.VOID_SNAIL]: buildDef("void_snail", {
     moveFps: 8,
     attackFps: 6,
     castFps: 6,
@@ -174,12 +174,12 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 10,
   }),
   [UnitType.GLADIATOR]: buildDef("gladiator", { attackFps: 9, castFps: 10 }),
-  [UnitType.GIANT_FROG]: buildDef("spider", {
+  [UnitType.GIANT_FROG]: buildDef("giant_frog", {
     moveFps: 7,
     attackFps: 5,
     castFps: 7,
   }),
-  [UnitType.DEVOURER]: buildDef("swordsman", {
+  [UnitType.DEVOURER]: buildDef("devourer", {
     moveFps: 8,
     attackFps: 10,
     castFps: 8,
