@@ -105,17 +105,12 @@ export class HUD {
   private _phasePanel!: Container;
   private _phaseText!: Text;
 
-  // AI toggle button (below east panel)
-  private _aiToggleBtn!: Container;
-  private _aiToggleBg!: Graphics;
-  private _aiToggleLabel!: Text;
-  private _p2IsAI = true;
-
   // Player-switcher button (below west panel, visible only when P2 is human)
   private _switchBtn!: Container;
   private _switchBtnBg!: Graphics;
   private _switchBtnLabel!: Text;
   private _activePlayer: PlayerId = "p1";
+  private _p2IsAI = true;
 
   // START BATTLE button (below phase panel, visible only during PREP)
   private _startBattleBtn!: Container;
@@ -309,7 +304,6 @@ export class HUD {
   /** Sync the AI toggle button to a known state (e.g. set from the menu). */
   setP2AI(isAI: boolean): void {
     this._p2IsAI = isAI;
-    this._refreshAIToggle();
     if (isAI) {
       this._activePlayer = this._westPlayerId;
     }
@@ -344,71 +338,6 @@ export class HUD {
       if (unit.owner === playerId) count++;
     }
     return count;
-  }
-
-  // ---------------------------------------------------------------------------
-  // AI toggle button — sits below the east (p2) panel
-  // ---------------------------------------------------------------------------
-
-  private _buildAIToggleBtn(): void {
-    const W = PANEL_W;
-    const H = 28;
-    const btn = new Container();
-    btn.eventMode = "static";
-    // btn.cursor = "pointer"; // Removed - button is no longer clickable
-
-    const bg = new Graphics();
-    btn.addChild(bg);
-
-    const label = new Text({ text: "", style: STYLE_BTN });
-    label.anchor.set(0.5, 0.5);
-    label.position.set(W / 2, H / 2);
-    btn.addChild(label);
-
-    this._aiToggleBg = bg;
-    this._aiToggleLabel = label;
-    this._aiToggleBtn = btn;
-    this.container.addChild(btn);
-
-    this._refreshAIToggle();
-
-    // Remove click handler to disable AI toggle functionality
-    // btn.on("pointerdown", () => {
-    //   this._p2IsAI = !this._p2IsAI;
-    //   this._refreshAIToggle();
-    //   this.onAIToggle?.(this._p2IsAI);
-    // });
-
-    // Position is set in _repositionEastPanel (called on init + resize)
-    // this._repositionAIToggle(); // Removed - AI toggle no longer appears
-  }
-
-  private _refreshAIToggle(): void {
-    const W = PANEL_W;
-    const H = 28;
-    const active = this._p2IsAI;
-    
-    // Only refresh if AI toggle button exists (it doesn't when removed from game)
-    if (!this._aiToggleBg) return;
-    
-    this._aiToggleBg.clear();
-    this._aiToggleBg
-      .roundRect(0, 0, W, H, 4)
-      .fill({ color: active ? 0x1a3a1a : 0x2a1a1a })
-      .roundRect(0, 0, W, H, 4)
-      .stroke({ color: active ? 0x44aa66 : 0xaa4444, width: 1.5 });
-    this._aiToggleLabel.text = active
-      ? "P2: AI  [click to disable]"
-      : "P2: HUMAN  [click to enable AI]";
-    this._aiToggleLabel.style.fill = active ? 0x88ffaa : 0xff8888;
-  }
-
-  private _repositionAIToggle(): void {
-    if (!this._aiToggleBtn) return;
-    this._aiToggleBtn.position.set(
-      this._screenW - PANEL_W - PAD,
-      PAD + PANEL_H + 6,
-    );
   }
 
   // ---------------------------------------------------------------------------
@@ -454,7 +383,7 @@ export class HUD {
     const W = PANEL_W;
     const H = 28;
     const isP1Active = this._activePlayer === this._westPlayerId;
-    const visible = !this._p2IsAI;
+    const visible = !this._p2IsAI; // Only show when P2 is human (both players human)
     this._switchBtn.visible = visible;
     if (!visible) return;
     this._switchBtnBg.clear();
