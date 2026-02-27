@@ -1,7 +1,6 @@
 // Queue processing, group spawning thresholds
 import type { GameState } from "@sim/state/GameState";
-import { BuildingType } from "@/types";
-import type { Unit } from "@sim/entities/Unit";
+import { BuildingType, UnitState, UnitType } from "@/types";
 import type { Building } from "@sim/entities/Building";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { createUnit } from "@sim/entities/Unit";
@@ -25,7 +24,7 @@ export function addToQueue(
 ): void {
   const building = getBuilding(state, buildingId);
   const def = UNIT_DEFINITIONS[unitType];
-  
+
   // Check unit max count limit
   if (def.maxCount !== undefined && building.owner) {
     const owned = _countOwnedUnits(state, building.owner, unitType);
@@ -33,7 +32,7 @@ export function addToQueue(
       return; // Silently fail if max count reached
     }
   }
-  
+
   building.spawnQueue.entries.push({
     unitType,
     remainingTime: def.spawnTime,
@@ -74,7 +73,10 @@ export const SpawnSystem = {
       }
 
       // Queue mode: deploy group when threshold is met
-      if (queue.queueEnabled && queue.readyUnits.length >= queue.groupThreshold) {
+      if (
+        queue.queueEnabled &&
+        queue.readyUnits.length >= queue.groupThreshold
+      ) {
         _spawnUnits(state, building, queue.readyUnits);
         queue.readyUnits = [];
       }
@@ -167,7 +169,11 @@ function _countOwnedUnits(
 ): number {
   let count = 0;
   for (const unit of state.units.values()) {
-    if (unit.owner === owner && unit.type === unitType && unit.state !== UnitState.DIE) {
+    if (
+      unit.owner === owner &&
+      unit.type === unitType &&
+      unit.state !== UnitState.DIE
+    ) {
       count++;
     }
   }
