@@ -1,6 +1,6 @@
 // Central simulation state — single source of truth
 import { GamePhase, GameMode } from "@/types";
-import type { PlayerId } from "@/types";
+import type { PlayerId, Vec2 } from "@/types";
 import type { LeaderId } from "@sim/config/LeaderDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
 import type { Base } from "@sim/entities/Base";
@@ -45,6 +45,9 @@ export interface GameState {
   // Players
   players: Map<PlayerId, PlayerState>;
 
+  // Rally flags — per-player flag position set via the Flag upgrade ability
+  rallyFlags: Map<PlayerId, Vec2>;
+
   // World
   battlefield: BattlefieldState;
 }
@@ -84,6 +87,7 @@ export function createGameState(
     projectiles: new Map(),
     abilities: new Map(),
     players: new Map(),
+    rallyFlags: new Map(),
     battlefield: createBattlefieldState(width, height),
   };
 }

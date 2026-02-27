@@ -131,4 +131,12 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
       UnitType.SUMMONER,
     ],
   },
+  [UpgradeType.FLAG]: {
+    type: UpgradeType.FLAG,
+    cost: 500,
+    maxLevel: 1,
+    effect: 0,
+    description: "Unlock rally flag (F key, 100g per use).",
+    appliesTo: [],
+  },
 };

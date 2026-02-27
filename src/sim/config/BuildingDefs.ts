@@ -55,6 +55,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     ],
     footprint: { w: 4, h: 4 },
     placementZone: "own",
+    upgradeInventory: [UpgradeType.FLAG],
     defaultTurrets: [
       { projectileTag: "arrow", damage: 12, range: 6, attackSpeed: 1.0 },
     ],

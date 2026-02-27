@@ -222,6 +222,7 @@ const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.CREATURE_DAMAGE]: "Creature",
   [UpgradeType.CREATURE_HEALTH]: "Creature",
   [UpgradeType.MAGE_RANGE]: "Range",
+  [UpgradeType.FLAG]: "Flag",
 };
 
 // ---------------------------------------------------------------------------

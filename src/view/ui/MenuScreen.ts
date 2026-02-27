@@ -123,6 +123,11 @@ export class MenuScreen {
   private _aiToggleBg!: Graphics;
   private _aiToggleLabel!: Text;
 
+  // Damage numbers toggle state
+  private _damageNumbers = true;
+  private _dmgToggleBg!: Graphics;
+  private _dmgToggleLabel!: Text;
+
   // Map size state
   private _selectedSizeIndex = 0;
   private _sizeBtns: Array<{ bg: Graphics; label: Text }> = [];
@@ -146,6 +151,10 @@ export class MenuScreen {
 
   get selectedGameMode(): GameMode {
     return GAME_MODES[this._selectedModeIndex].mode;
+  }
+
+  get damageNumbersEnabled(): boolean {
+    return this._damageNumbers;
   }
 
   // ---------------------------------------------------------------------------
@@ -214,9 +223,43 @@ export class MenuScreen {
       new Graphics().rect(20, 136, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
+    // --- Damage numbers toggle ---
+    const dmgLabel = new Text({ text: "DAMAGE NUMBERS", style: STYLE_LABEL });
+    dmgLabel.position.set(20, 148);
+    card.addChild(dmgLabel);
+
+    const dmgBtn = new Container();
+    dmgBtn.eventMode = "static";
+    dmgBtn.cursor = "pointer";
+    dmgBtn.position.set(20, 168);
+
+    const dmgBg = new Graphics();
+    dmgBtn.addChild(dmgBg);
+
+    const dmgToggleLabel = new Text({ text: "", style: STYLE_BTN });
+    dmgToggleLabel.anchor.set(0.5, 0.5);
+    dmgToggleLabel.position.set(TW / 2, TH / 2);
+    dmgBtn.addChild(dmgToggleLabel);
+
+    this._dmgToggleBg = dmgBg;
+    this._dmgToggleLabel = dmgToggleLabel;
+
+    dmgBtn.on("pointerdown", () => {
+      this._damageNumbers = !this._damageNumbers;
+      this._refreshDmgToggle(TW, TH);
+    });
+
+    card.addChild(dmgBtn);
+    this._refreshDmgToggle(TW, TH);
+
+    // Divider
+    card.addChild(
+      new Graphics().rect(20, 214, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
     // --- Map size selector ---
     const mapLabel = new Text({ text: "MAP SIZE", style: STYLE_LABEL });
-    mapLabel.position.set(20, 148);
+    mapLabel.position.set(20, 226);
     card.addChild(mapLabel);
 
     // 4 buttons in a row
@@ -231,7 +274,7 @@ export class MenuScreen {
       const sizeBtn = new Container();
       sizeBtn.eventMode = "static";
       sizeBtn.cursor = "pointer";
-      sizeBtn.position.set(20 + i * (sbW + gap), 168);
+      sizeBtn.position.set(20 + i * (sbW + gap), 246);
 
       const sizeBg = new Graphics();
       sizeBtn.addChild(sizeBg);
@@ -262,12 +305,12 @@ export class MenuScreen {
 
     // Divider
     card.addChild(
-      new Graphics().rect(20, 212, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+      new Graphics().rect(20, 290, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
     // --- Game mode selector ---
     const modeLabel = new Text({ text: "GAME MODE", style: STYLE_LABEL });
-    modeLabel.position.set(20, 224);
+    modeLabel.position.set(20, 302);
     card.addChild(modeLabel);
 
     // 5 buttons — 3 on the first row, 2 on the second (or all in a responsive grid)
@@ -286,7 +329,7 @@ export class MenuScreen {
       modeBtn.cursor = GAME_MODES[i].disabled ? "default" : "pointer";
       modeBtn.position.set(
         20 + col * (mbW + modeGap),
-        244 + row * (mbH + modeGap),
+        322 + row * (mbH + modeGap),
       );
 
       const modeBg = new Graphics();
@@ -322,7 +365,7 @@ export class MenuScreen {
 
     // Divider — placed after 3 rows of mode buttons
     const modeRowCount = Math.ceil(GAME_MODES.length / colCount);
-    const modeSectionH = 244 + modeRowCount * (mbH + modeGap) - modeGap;
+    const modeSectionH = 322 + modeRowCount * (mbH + modeGap) - modeGap;
     card.addChild(
       new Graphics().rect(20, modeSectionH + 8, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
@@ -395,6 +438,20 @@ export class MenuScreen {
       ? "P2: AI  [click to disable]"
       : "P2: HUMAN  [click to enable AI]";
     this._aiToggleLabel.style.fill = active ? 0x88ffaa : 0xff8888;
+  }
+
+  private _refreshDmgToggle(w: number, h: number): void {
+    const active = this._damageNumbers;
+    this._dmgToggleBg.clear();
+    this._dmgToggleBg
+      .roundRect(0, 0, w, h, 4)
+      .fill({ color: active ? 0x1a3a1a : 0x2a1a1a })
+      .roundRect(0, 0, w, h, 4)
+      .stroke({ color: active ? 0x44aa66 : 0xaa4444, width: 1.5 });
+    this._dmgToggleLabel.text = active
+      ? "ON  [click to disable]"
+      : "OFF  [click to enable]";
+    this._dmgToggleLabel.style.fill = active ? 0x88ffaa : 0xff8888;
   }
 
   private _refreshSizeBtns(w: number, h: number): void {

@@ -127,6 +127,7 @@ export enum UpgradeType {
   CREATURE_DAMAGE = "creature_damage",
   CREATURE_HEALTH = "creature_health",
   MAGE_RANGE = "mage_range",
+  FLAG = "flag",
 }
 
 export enum UnitState {

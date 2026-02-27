@@ -36,6 +36,9 @@ export interface SimEvents {
   goldChanged: { playerId: PlayerId; amount: number };
   upgradePurchased: { playerId: PlayerId; upgradeType: string; newLevel: number };
 
+  // Rally flag
+  flagPlaced: { playerId: PlayerId; position: Vec2 };
+
   // Game flow
   phaseChanged: { phase: GamePhase };
   roguelikeDisabledBuildingsChanged: { disabled: string[] };

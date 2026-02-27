@@ -19,6 +19,8 @@ import { arrowFX } from "@view/fx/ArrowFX";
 import { eventBanner } from "@view/ui/EventBanner";
 import { distortionFX } from "@view/fx/DistortionFX";
 import { healFX } from "@view/fx/HealFX";
+import { damageNumberFX } from "@view/fx/DamageNumberFX";
+import { flagFX } from "@view/fx/FlagFX";
 import { runeCircleFX } from "@view/fx/RuneCircleFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { environmentLayer } from "@view/environment/EnvironmentLayer";
@@ -794,6 +796,15 @@ async function _bootGame(
   // Heal FX
   healFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => healFX.update(dt));
+
+  // Floating damage / healing numbers
+  damageNumberFX.init(viewManager, state);
+  damageNumberFX.enabled = menuScreen.damageNumbersEnabled;
+  viewManager.onUpdate((_s, dt) => damageNumberFX.update(dt));
+
+  // Rally flag FX (persistent flag marker with wind sway)
+  flagFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => flagFX.update(dt));
 
   // Rune circle FX (generic cast circle for all abilities)
   runeCircleFX.init(viewManager);

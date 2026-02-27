@@ -94,7 +94,7 @@ function _handleIdle(state: GameState, unit: Unit): void {
   } else if (unit.homeguard) {
     goal = _homeguardGoal(state, unit);
   } else {
-    goal = _enemyBaseGoal(state, unit);
+    goal = _rallyFlagGoal(state, unit) ?? _enemyBaseGoal(state, unit);
   }
   if (!goal) return;
 
@@ -172,9 +172,12 @@ function _handleMove(state: GameState, unit: Unit): void {
   // Otherwise ensure we're still heading somewhere. If path is
   // already set and leading somewhere, leave it alone — MovementSystem owns it.
   if (!unit.path || unit.pathIndex >= unit.path.length) {
-    const goal = unit.homeguard
-      ? _homeguardGoal(state, unit)
-      : _enemyBaseGoal(state, unit);
+    let goal: { x: number; y: number } | null;
+    if (unit.homeguard) {
+      goal = _homeguardGoal(state, unit);
+    } else {
+      goal = _rallyFlagGoal(state, unit) ?? _enemyBaseGoal(state, unit);
+    }
     if (goal) startMoving(state, unit, goal);
   }
 }
@@ -421,6 +424,20 @@ function _homeguardGoal(
     x: origin.x + offsetX,
     y: origin.y + offsetY,
   };
+}
+
+/**
+ * Returns the player's rally flag position, or null if no flag is set.
+ * Siege-only units ignore the flag (they always target buildings/bases).
+ */
+function _rallyFlagGoal(
+  state: GameState,
+  unit: Unit,
+): { x: number; y: number } | null {
+  if (unit.siegeOnly) return null;
+  const flag = state.rallyFlags.get(unit.owner);
+  if (!flag) return null;
+  return { x: flag.x, y: flag.y };
 }
 
 /**
