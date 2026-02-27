@@ -1,5 +1,5 @@
 // Building types, costs, shop inventories, placement rules
-import { BuildingType, UnitType } from "@/types";
+import { BuildingType, UnitType, UpgradeType } from "@/types";
 import type { BuildingTurret } from "@sim/entities/Building";
 
 /** Which territory zone a building may be placed in. */
@@ -12,6 +12,7 @@ export interface BuildingDef {
   goldIncome: number; // additional gold/sec this building contributes when owned/captured
   shopInventory: UnitType[]; // unit types this building can train
   blueprints: BuildingType[]; // building blueprints sold from this building's shop
+  upgradeInventory?: UpgradeType[]; // upgrade types this building can sell
   footprint: { w: number; h: number };
   placementZone: PlacementZone;
   /** If true, enemy units can recapture this building even after it is owned. */
@@ -98,7 +99,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
   },
   [BuildingType.MAGE_TOWER]: {
     type: BuildingType.MAGE_TOWER,
-    cost: 1000,
+    cost: 1200,
     hp: 180,
     goldIncome: 2,
     shopInventory: [
@@ -112,7 +113,10 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     prerequisite: { types: [BuildingType.ARCHERY_RANGE], minCount: 1 },
-    description: "Arcane academy where powerful spellcasters master the elements of destruction.",
+    defaultTurrets: [
+      { projectileTag: "lightning", damage: 40, range: 5, attackSpeed: 0.5 },
+    ],
+    description: "Arcane academy that defends with chain lightning that strikes any who dare approach.",
   },
   [BuildingType.ARCHERY_RANGE]: {
     type: BuildingType.ARCHERY_RANGE,
@@ -144,6 +148,17 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     goldIncome: 2,
     shopInventory: [],
     blueprints: [],
+    upgradeInventory: [
+      UpgradeType.MELEE_DAMAGE,
+      UpgradeType.MELEE_HEALTH,
+      UpgradeType.RANGED_DAMAGE,
+      UpgradeType.RANGED_HEALTH,
+      UpgradeType.SIEGE_DAMAGE,
+      UpgradeType.SIEGE_HEALTH,
+      UpgradeType.CREATURE_DAMAGE,
+      UpgradeType.CREATURE_HEALTH,
+      UpgradeType.MAGE_RANGE,
+    ],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     prerequisite: { types: [BuildingType.BARRACKS], minCount: 1 },

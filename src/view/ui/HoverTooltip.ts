@@ -12,6 +12,7 @@ import {
   type Renderer,
 } from "pixi.js";
 import type { GameState } from "@sim/state/GameState";
+import type { Unit } from "@sim/entities/Unit";
 import type { ViewManager } from "@view/ViewManager";
 import type { Camera } from "@view/Camera";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
@@ -161,7 +162,6 @@ export class HoverTooltip {
   private _buildingTextureCache = new Map<BuildingType, RenderTexture>();
 
   // What is currently shown (null = hidden)
-  private _shownUnitId: string | null = null;
   private _shownBuildingId: string | null = null;
 
   // Bound event handler
@@ -207,7 +207,6 @@ export class HoverTooltip {
   }
 
   hide(): void {
-    this._shownUnitId = null;
     this._shownBuildingId = null;
     this._clearPreview();
     this.container.visible = false;
@@ -242,12 +241,10 @@ export class HoverTooltip {
     }
 
     if (hitUnitId) {
-      if (hitUnitId !== this._shownUnitId) {
-        this._shownUnitId = hitUnitId;
-        this._shownBuildingId = null;
-        const unit = this._state.units.get(hitUnitId)!;
-        this._showUnit(unit.type);
-      }
+      // Always refresh so live stats (hp, atk, level) stay current
+      this._shownBuildingId = null;
+      const unit = this._state.units.get(hitUnitId)!;
+      this._showUnit(unit);
       this._positionNear(sx, sy);
       return;
     }
@@ -273,7 +270,6 @@ export class HoverTooltip {
     if (hitBuildingId) {
       if (hitBuildingId !== this._shownBuildingId) {
         this._shownBuildingId = hitBuildingId;
-        this._shownUnitId = null;
         const building = this._state.buildings.get(hitBuildingId)!;
         this._showBuilding(building.type);
       }
@@ -289,12 +285,12 @@ export class HoverTooltip {
   // Show helpers
   // ---------------------------------------------------------------------------
 
-  private _showUnit(unitType: UnitType): void {
+  private _showUnit(unit: Unit): void {
     this._clearPreview();
     this._statsContainer.removeChildren();
 
-    this._showUnitPreview(unitType);
-    this._showUnitStats(unitType);
+    this._showUnitPreview(unit.type);
+    this._showUnitStats(unit);
 
     this.container.visible = true;
   }
@@ -396,11 +392,14 @@ export class HoverTooltip {
   // Stats renderers (mirrors ShopPanel)
   // ---------------------------------------------------------------------------
 
-  private _showUnitStats(unitType: UnitType): void {
-    const def = UNIT_DEFINITIONS[unitType];
+  private _showUnitStats(unit: Unit): void {
+    const def = UNIT_DEFINITIONS[unit.type];
     let y = 4;
 
-    const name = new Text({ text: UNIT_LABELS[unitType], style: STYLE_PREVIEW_NAME });
+    // Name + level badge if levelled up
+    let nameText = UNIT_LABELS[unit.type];
+    if (unit.level > 0) nameText += `  [Lv ${unit.level}]`;
+    const name = new Text({ text: nameText, style: STYLE_PREVIEW_NAME });
     name.position.set(PANEL_PAD, y);
     this._statsContainer.addChild(name);
     y += 16;
@@ -410,8 +409,12 @@ export class HoverTooltip {
       y += 4;
     }
 
+    // Show current/max HP so damage is visible; use live atk/speed
+    const hpText = unit.hp < unit.maxHp
+      ? `HP:${Math.ceil(unit.hp)}/${unit.maxHp}`
+      : `HP:${unit.maxHp}`;
     const line1 = new Text({
-      text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
+      text: `${hpText}  ATK:${unit.atk}  SPD:${unit.speed.toFixed(1)}`,
       style: STYLE_STAT,
     });
     line1.position.set(PANEL_PAD, y);
@@ -419,7 +422,7 @@ export class HoverTooltip {
     y += 12;
 
     const line2 = new Text({
-      text: `RNG:${def.range}  AS:${def.attackSpeed}  COST:${def.cost}g`,
+      text: `RNG:${unit.range}  AS:${def.attackSpeed}  COST:${def.cost}g`,
       style: STYLE_STAT,
     });
     line2.position.set(PANEL_PAD, y);

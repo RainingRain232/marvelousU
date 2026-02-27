@@ -8,6 +8,7 @@ import { createUnit } from "@sim/entities/Unit";
 import { getBuilding } from "@sim/state/GameState";
 import { EventBus } from "@sim/core/EventBus";
 import { getLeader } from "@sim/config/LeaderDefs";
+import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -101,6 +102,9 @@ function _spawnUnits(
 
   for (const unitType of unitTypes) {
     const unit = createUnit({ type: unitType, owner, position: spawnPos });
+
+    // Apply all purchased upgrades to the new unit
+    UpgradeSystem.applyAllUpgradesToUnit(unit);
 
     // Castle-spawned units become homeguard — they patrol near home
     if (isCastle) {

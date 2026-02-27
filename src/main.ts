@@ -658,6 +658,22 @@ async function _bootGame(
     if (scenarioType === "standard") {
       _applyCampaignRestrictions(state);
     }
+    // Apply per-scenario overrides
+    if (scenarioDef?.disableEvents) {
+      state.eventTimer = Infinity;
+    }
+    if (scenarioDef?.aiBlueprints) {
+      const allowed = new Set(scenarioDef.aiBlueprints);
+      for (const building of state.buildings.values()) {
+        if (building.owner === "p2" && building.type === BuildingType.CASTLE) {
+          building.blueprints = building.blueprints.filter((b) => allowed.has(b));
+        }
+      }
+    }
+    if (scenarioDef?.aiExtraGold) {
+      const p2 = state.players.get("p2");
+      if (p2) p2.gold += scenarioDef.aiExtraGold;
+    }
   }
 
   // Apply the chosen leader's passive bonus to P1

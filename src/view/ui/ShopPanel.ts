@@ -17,7 +17,9 @@ import { EventBus } from "@sim/core/EventBus";
 import { addToQueue } from "@sim/systems/SpawnSystem";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
-import { BuildingType, BuildingState, UnitType, UnitState } from "@/types";
+import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
+import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
+import { BuildingType, BuildingState, UnitType, UnitState, UpgradeType } from "@/types";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { animationManager } from "@view/animation/AnimationManager";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
@@ -200,6 +202,22 @@ const UNIT_LABELS: Record<UnitType, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Upgrade Labels
+// ---------------------------------------------------------------------------
+
+const UPGRADE_LABELS: Record<UpgradeType, string> = {
+  [UpgradeType.MELEE_DAMAGE]: "Melee",
+  [UpgradeType.MELEE_HEALTH]: "Defence", 
+  [UpgradeType.RANGED_DAMAGE]: "Ranged",
+  [UpgradeType.RANGED_HEALTH]: "Resilience",
+  [UpgradeType.SIEGE_DAMAGE]: "Siege",
+  [UpgradeType.SIEGE_HEALTH]: "Siege",
+  [UpgradeType.CREATURE_DAMAGE]: "Creature",
+  [UpgradeType.CREATURE_HEALTH]: "Creature",
+  [UpgradeType.MAGE_RANGE]: "Range",
+};
+
+// ---------------------------------------------------------------------------
 // ShopPanel
 // ---------------------------------------------------------------------------
 
@@ -357,6 +375,14 @@ export class ShopPanel {
       unitCount > 0
         ? SECTION_LABEL_H + unitRowCount * (ICON_SIZE + ICON_GAP)
         : 0;
+
+    // Calculate upgrade section height
+    const hasUpgrades = building.type === BuildingType.BLACKSMITH || (building.upgradeInventory && building.upgradeInventory.length > 0);
+    const upgradeCount = hasUpgrades ? 9 : (building.upgradeInventory?.length || 0);
+    const upgradeRowCount = Math.ceil(upgradeCount / ICONS_PER_ROW);
+    const upgradeSectionH = hasUpgrades 
+      ? SECTION_LABEL_H + upgradeRowCount * (ICON_SIZE + ICON_GAP)
+      : 0;
     
     // Calculate economic and other building counts for height calculation
     const economicTypes = new Set([
@@ -421,7 +447,7 @@ export class ShopPanel {
         ? SECTION_LABEL_H + otherRowCount * (ICON_SIZE + ICON_GAP)
         : 0;
 
-    this._contentH = unitSectionH + econSectionH + otherSectionH + PANEL_PAD;
+    this._contentH = unitSectionH + upgradeSectionH + econSectionH + otherSectionH + PANEL_PAD;
     const maxScrollableH = MAX_PANEL_H - FIXED_TOP_H;
     const scrollableH = Math.min(maxScrollableH, this._contentH);
     this._viewH = FIXED_TOP_H + scrollableH;
@@ -514,6 +540,44 @@ export class ShopPanel {
         this._scrollContainer.addChild(icon);
       }
       cursorY += unitRowCount * (ICON_SIZE + ICON_GAP);
+    }
+
+    // UPGRADES section (if blacksmith)
+    if (building.type === BuildingType.BLACKSMITH || (building.upgradeInventory && building.upgradeInventory.length > 0)) {
+      const label = new Text({ text: "UPGRADES", style: STYLE_SECTION });
+      label.position.set(PANEL_PAD, cursorY + 4);
+      this._scrollContainer.addChild(label);
+      cursorY += SECTION_LABEL_H;
+
+      // Get upgrades from building inventory or use blacksmith defaults
+      const upgrades = building.upgradeInventory && building.upgradeInventory.length > 0 
+        ? building.upgradeInventory 
+        : [
+            UpgradeType.MELEE_DAMAGE,
+            UpgradeType.MELEE_HEALTH,
+            UpgradeType.RANGED_DAMAGE,
+            UpgradeType.RANGED_HEALTH,
+            UpgradeType.SIEGE_DAMAGE,
+            UpgradeType.SIEGE_HEALTH,
+            UpgradeType.CREATURE_DAMAGE,
+            UpgradeType.CREATURE_HEALTH,
+            UpgradeType.MAGE_RANGE,
+          ];
+
+      for (let i = 0; i < upgrades.length; i++) {
+        const col = i % ICONS_PER_ROW;
+        const row = Math.floor(i / ICONS_PER_ROW);
+        const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
+        const y = cursorY + row * (ICON_SIZE + ICON_GAP);
+        const icon = this._makeUpgradeIcon(
+          building.id,
+          upgrades[i],
+          x,
+          y,
+        );
+        this._scrollContainer.addChild(icon);
+      }
+      cursorY += Math.ceil(upgrades.length / ICONS_PER_ROW) * (ICON_SIZE + ICON_GAP);
     }
 
     // BUILD section (non-economic buildings)
@@ -1128,6 +1192,104 @@ export class ShopPanel {
     return btn;
   }
 
+  private _makeUpgradeIcon(
+    buildingId: string,
+    upgradeType: UpgradeType,
+    x: number,
+    y: number,
+  ): Container {
+    const btn = new Container();
+    btn.position.set(x, y);
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const bg = new Graphics()
+      .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 4)
+      .fill({ color: 0x334455 })
+      .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 4)
+      .stroke({ color: 0x667788, width: 2 });
+    btn.addChild(bg);
+
+    // Upgrade icon (more prominent)
+    const upgradeIcon = new Graphics()
+      .circle(ICON_SIZE / 2, ICON_SIZE / 2 - 6, (ICON_SIZE - 14) / 2)
+      .fill({ color: 0x778899 })
+      .circle(ICON_SIZE / 2, ICON_SIZE / 2 - 6, (ICON_SIZE - 18) / 2)
+      .fill({ color: 0x556677 });
+    btn.addChild(upgradeIcon);
+
+    // Upgrade symbol (up arrow)
+    const arrow = new Graphics()
+      .moveTo(ICON_SIZE / 2, ICON_SIZE / 2 - 12)
+      .lineTo(ICON_SIZE / 2 - 4, ICON_SIZE / 2 - 4)
+      .moveTo(ICON_SIZE / 2, ICON_SIZE / 2 - 12)
+      .lineTo(ICON_SIZE / 2 + 4, ICON_SIZE / 2 - 4)
+      .stroke({ color: 0xffffff, width: 2 });
+    btn.addChild(arrow);
+
+    // Upgrade label
+    const label = new Text({ 
+      text: UPGRADE_LABELS[upgradeType], 
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 7,
+        fill: 0xffffff,
+        align: "center",
+        fontWeight: "bold",
+      })
+    });
+    label.anchor.set(0.5, 0.5);
+    label.position.set(ICON_SIZE / 2, ICON_SIZE / 2 + 6);
+    btn.addChild(label);
+
+    // Cost and level info
+    const def = UPGRADE_DEFINITIONS[upgradeType];
+    const currentLevel = UpgradeSystem.getUpgradeLevel(this._localPlayerId, upgradeType);
+    const cost = currentLevel < def.maxLevel ? def.cost : 0;
+    
+    const costText = new Text({ 
+      text: currentLevel >= def.maxLevel ? "MAX" : `${cost}g`, 
+      style: STYLE_ICON_COST 
+    });
+    costText.anchor.set(0.5, 1);
+    costText.position.set(ICON_SIZE / 2, ICON_SIZE - 1);
+    btn.addChild(costText);
+
+    // Level indicator
+    if (currentLevel > 0) {
+      const levelText = new Text({ 
+        text: `${currentLevel}/${def.maxLevel}`, 
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 6,
+          fill: 0x88ff88,
+          align: "center",
+          fontWeight: "bold",
+        })
+      });
+      levelText.anchor.set(1, 0);
+      levelText.position.set(ICON_SIZE - 2, 2);
+      btn.addChild(levelText);
+    }
+
+    // Hover: show upgrade info
+    btn.on("pointerover", () => {
+      bg.tint = 0x556677;
+      this._showUpgradePreview(upgradeType);
+      this._showUpgradeStats(upgradeType);
+    });
+    btn.on("pointerout", () => {
+      bg.tint = 0xffffff;
+      this._showDefaultPreviewAndStats();
+    });
+    btn.on("pointerdown", (e) => {
+      e.stopPropagation();
+      this._buyUpgrade(buildingId, upgradeType);
+    });
+
+    return btn;
+  }
+
   private _makeBuildingIcon(
     bpType: BuildingType,
     x: number,
@@ -1347,6 +1509,129 @@ export class ShopPanel {
       const cost = BUILDING_DEFINITIONS[entry.type].cost;
       entry.costText.style =
         cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Upgrade methods
+  // ---------------------------------------------------------------------------
+
+  private _showUpgradePreview(upgradeType: UpgradeType): void {
+    this._previewContainer.removeChildren();
+    
+    const def = UPGRADE_DEFINITIONS[upgradeType];
+    
+    // Show upgrade icon
+    const preview = new Graphics()
+      .circle(PANEL_W / 2, PREVIEW_H / 2 - 10, 25)
+      .fill({ color: 0x445566 })
+      .circle(PANEL_W / 2, PREVIEW_H / 2 - 10, 20)
+      .fill({ color: 0x667788 });
+    this._previewContainer.addChild(preview);
+
+    // Upgrade label
+    const label = new Text({ 
+      text: UPGRADE_LABELS[upgradeType], 
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 14,
+        fill: 0xffffff,
+        align: "center",
+        fontWeight: "bold",
+      })
+    });
+    label.anchor.set(0.5, 0.5);
+    label.position.set(PANEL_W / 2, PREVIEW_H / 2 - 10);
+    this._previewContainer.addChild(label);
+
+    // Description text below the icon
+    const descText = new Text({ 
+      text: def.description, 
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 9,
+        fill: 0xaaaadd,
+        align: "center",
+        wordWrap: true,
+        wordWrapWidth: PANEL_W - 30,
+      })
+    });
+    descText.anchor.set(0.5, 0);
+    descText.position.set(PANEL_W / 2, PREVIEW_H / 2 + 20);
+    this._previewContainer.addChild(descText);
+  }
+
+  private _showUpgradeStats(upgradeType: UpgradeType): void {
+    this._statsContainer.removeChildren();
+    
+    const def = UPGRADE_DEFINITIONS[upgradeType];
+    const currentLevel = UpgradeSystem.getUpgradeLevel(this._localPlayerId, upgradeType);
+    const statsW = PANEL_W - 2 * PANEL_PAD;
+    
+    // Description
+    const desc = new Text({ 
+      text: def.description, 
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 10,
+        fill: 0xaaaadd,
+        align: "center",
+        wordWrap: true,
+        wordWrapWidth: statsW - 20,
+      })
+    });
+    desc.position.set(10, 16);
+    this._statsContainer.addChild(desc);
+
+    // Level and cost info
+    const levelText = new Text({ 
+      text: `Level: ${currentLevel}/${def.maxLevel}`, 
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 10,
+        fill: 0xffffff,
+        align: "left",
+      })
+    });
+    levelText.position.set(10, 40);
+    this._statsContainer.addChild(levelText);
+
+    if (currentLevel < def.maxLevel) {
+      const costText = new Text({ 
+        text: `Next upgrade: ${def.cost}g`, 
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 10,
+          fill: 0xffd700,
+          align: "left",
+        })
+      });
+      costText.position.set(10, 55);
+      this._statsContainer.addChild(costText);
+    } else {
+      const maxText = new Text({ 
+        text: "MAX LEVEL", 
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 10,
+          fill: 0x88ff88,
+          align: "left",
+        })
+      });
+      maxText.position.set(10, 55);
+      this._statsContainer.addChild(maxText);
+    }
+  }
+
+  private _buyUpgrade(buildingId: string, upgradeType: UpgradeType): void {
+    const success = UpgradeSystem.purchaseUpgrade(this._state, this._localPlayerId, upgradeType);
+    
+    if (success) {
+      // Refresh the shop panel to show new level
+      this._rebuild();
+      
+      // Update affordability
+      this._updateAffordability();
     }
   }
 }

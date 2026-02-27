@@ -34,6 +34,7 @@ export interface SimEvents {
 
   // Economy
   goldChanged: { playerId: PlayerId; amount: number };
+  upgradePurchased: { playerId: PlayerId; upgradeType: string; newLevel: number };
 
   // Game flow
   phaseChanged: { phase: GamePhase };

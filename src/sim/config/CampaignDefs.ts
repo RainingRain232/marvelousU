@@ -46,6 +46,21 @@ export interface ScenarioDef {
    * Defaults to "standard" if omitted.
    */
   type?: ScenarioType;
+  /**
+   * If true, random events are disabled for this scenario (eventTimer = Infinity).
+   * Neutral units from events will never appear.
+   */
+  disableEvents?: boolean;
+  /**
+   * Restricts the AI (p2) castle blueprints to only these building types.
+   * If omitted, the AI has access to all blueprints as normal.
+   */
+  aiBlueprints?: BuildingType[];
+  /**
+   * Extra gold granted to the AI (p2) at the start of this scenario,
+   * on top of the normal starting gold.
+   */
+  aiExtraGold?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +90,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       units: [UnitType.PIKEMAN],
       buildings: [BuildingType.ARCHERY_RANGE],
     },
+    disableEvents: true,
+    aiBlueprints: [BuildingType.TOWER, BuildingType.WALL],
+    aiExtraGold: 4000,
   },
   {
     number: 3,

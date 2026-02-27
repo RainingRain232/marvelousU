@@ -89,6 +89,49 @@ function _applySingleHit(state: GameState, proj: Projectile): void {
     ) {
       const teleportedIds: string[] = [];
       _damageUnit(state, proj, target.id, proj.damage, teleportedIds);
+      
+      // Handle chain lightning bounces
+      if (proj.maxBounces > 0 && proj.bounceTargets.length > 0) {
+        const chainPath: { x: number; y: number }[] = [
+          { ...proj.origin }, // Building position
+          { ...target.position } // First hit
+        ];
+
+        // Process bounces
+        let remainingBounces = proj.maxBounces;
+        let lastHitUnit = target;
+        const hitIds = new Set([target.id]);
+
+        while (remainingBounces > 0) {
+          const nextTarget = _findNextBounceTarget(
+            state,
+            proj.ownerPlayerId,
+            lastHitUnit,
+            hitIds,
+            proj.bounceRange
+          );
+
+          if (!nextTarget) break;
+
+          // Damage the bounce target
+          _damageUnit(state, proj, nextTarget.id, proj.damage, teleportedIds);
+          hitIds.add(nextTarget.id);
+          chainPath.push({ ...nextTarget.position });
+          
+          lastHitUnit = nextTarget;
+          remainingBounces--;
+        }
+
+        // Emit abilityUsed to trigger chain lightning visual
+        if (chainPath.length >= 2) {
+          EventBus.emit("abilityUsed", {
+            casterId: proj.ownerId,
+            abilityId: proj.abilityId,
+            targets: chainPath,
+          });
+        }
+      }
+
       EventBus.emit("projectileHit", {
         projectileId: proj.id,
         targetId: proj.targetId ?? proj.id,
@@ -205,4 +248,34 @@ function _damageUnit(
     unit.hp = 0;
     killUnit(unit, proj.ownerId);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Chain lightning helper
+// ---------------------------------------------------------------------------
+
+/** Find nearest living enemy to `from` within `range` tiles (excluding hitIds). */
+function _findNextBounceTarget(
+  state: GameState,
+  ownerPlayerId: string,
+  from: any,
+  hitIds: Set<string>,
+  range: number,
+): any {
+  let best: any = null;
+  let bestDsq = range * range + 1;
+
+  for (const unit of state.units.values()) {
+    if (unit.state === UnitState.DIE) continue;
+    if (unit.owner === ownerPlayerId) continue; // Skip friendlies
+    if (hitIds.has(unit.id)) continue; // Skip already hit
+
+    const dsq = distanceSq(from.position, unit.position);
+    if (dsq <= range * range && dsq < bestDsq) {
+      best = unit;
+      bestDsq = dsq;
+    }
+  }
+
+  return best;
 }

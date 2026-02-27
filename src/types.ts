@@ -116,6 +116,18 @@ export enum AbilityType {
   FROST_BREATH = "frost_breath",
 }
 
+export enum UpgradeType {
+  MELEE_DAMAGE = "melee_damage",
+  MELEE_HEALTH = "melee_health",
+  RANGED_DAMAGE = "ranged_damage",
+  RANGED_HEALTH = "ranged_health",
+  SIEGE_DAMAGE = "siege_damage",
+  SIEGE_HEALTH = "siege_health",
+  CREATURE_DAMAGE = "creature_damage",
+  CREATURE_HEALTH = "creature_health",
+  MAGE_RANGE = "mage_range",
+}
+
 export enum UnitState {
   IDLE = "idle",
   MOVE = "move",

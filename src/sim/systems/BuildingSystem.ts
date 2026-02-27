@@ -483,6 +483,9 @@ function _updateTurrets(
     const target = state.units.get(turret.targetId)!;
     const projectileId = `bturret-${turret.projectileTag}-${++_turretProjectileCounter}`;
 
+    // Special handling for lightning projectiles (chain lightning)
+    const isLightning = turret.projectileTag === "lightning";
+    
     state.projectiles.set(projectileId, {
       id: projectileId,
       abilityId: `${building.id}-turret`,
@@ -491,12 +494,12 @@ function _updateTurrets(
       origin: { x: cx, y: cy },
       target: { ...target.position },
       position: { x: cx, y: cy },
-      speed: 14, // fast arrow
+      speed: isLightning ? 20 : 14, // lightning is instant
       damage: turret.damage,
       aoeRadius: 0,
-      bounceTargets: [],
-      maxBounces: 0,
-      bounceRange: 0,
+      bounceTargets: isLightning ? [target.id] : [],
+      maxBounces: isLightning ? 4 : 0,
+      bounceRange: isLightning ? 3 : 0,
       targetId: turret.targetId,
       hitIds: new Set(),
       slowDuration: 0,
@@ -511,5 +514,11 @@ function _updateTurrets(
       origin: { x: cx, y: cy },
       target: { ...target.position },
     });
+
+    // For lightning projectiles, also emit abilityUsed to trigger chain lightning visual
+    if (isLightning) {
+      // The chain lightning visual will be triggered when the projectile hits
+      // We'll handle this in the projectile hit system
+    }
   }
 }
