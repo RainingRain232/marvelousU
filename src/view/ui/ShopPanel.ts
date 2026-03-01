@@ -35,6 +35,8 @@ import { IceTowerRenderer } from "@view/entities/IceTowerRenderer";
 import { FireTowerRenderer } from "@view/entities/FireTowerRenderer";
 import { WarpTowerRenderer } from "@view/entities/WarpTowerRenderer";
 import { HealingTowerRenderer } from "@view/entities/HealingTowerRenderer";
+import { BallistaTowerRenderer } from "@view/entities/BallistaTowerRenderer";
+import { RepeaterTowerRenderer } from "@view/entities/RepeaterTowerRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
@@ -174,6 +176,8 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HEALING_TOWER]: "Healing Tower",
   [BuildingType.FIRE_TOWER]: "Fire Tower",
   [BuildingType.WARP_TOWER]: "Warp Tower",
+  [BuildingType.BALLISTA_TOWER]: "Ballista Tower",
+  [BuildingType.REPEATER_TOWER]: "Repeater Tower",
 };
 
 // Unit display names
@@ -917,6 +921,16 @@ export class ShopPanel {
     } else if (buildingType === BuildingType.HEALING_TOWER) {
       const htr = new HealingTowerRenderer(null);
       buildingContainer = htr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.BALLISTA_TOWER) {
+      const btr = new BallistaTowerRenderer(null);
+      buildingContainer = btr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.REPEATER_TOWER) {
+      const rtr = new RepeaterTowerRenderer(null);
+      buildingContainer = rtr.container;
       texW = 128;
       texH = 128;
     }

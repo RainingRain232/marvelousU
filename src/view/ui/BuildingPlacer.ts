@@ -50,6 +50,8 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.FIRE_TOWER]: 0xff6622,
   [BuildingType.WARP_TOWER]: 0x9966cc,
   [BuildingType.HEALING_TOWER]: 0x2ecc71,
+  [BuildingType.BALLISTA_TOWER]: 0x8b6339,
+  [BuildingType.REPEATER_TOWER]: 0x996633,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -74,10 +76,12 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MARKET]: "MARKET",
   [BuildingType.FACTION_HALL]: "FACTION HALL",
   [BuildingType.LIGHTNING_TOWER]: "LIGHTNING",
-  [BuildingType.ICE_TOWER]: "ICE TOWER",
-  [BuildingType.FIRE_TOWER]: "FIRE TOWER",
-  [BuildingType.WARP_TOWER]: "WARP TOWER",
-  [BuildingType.HEALING_TOWER]: "HEAL TOWER",
+  [BuildingType.ICE_TOWER]: "ICE",
+  [BuildingType.FIRE_TOWER]: "FIRE",
+  [BuildingType.WARP_TOWER]: "WARP",
+  [BuildingType.HEALING_TOWER]: "HEALING",
+  [BuildingType.BALLISTA_TOWER]: "BALLISTA",
+  [BuildingType.REPEATER_TOWER]: "REPEATER",
 };
 
 const LABEL_STYLE = new TextStyle({

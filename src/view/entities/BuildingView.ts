@@ -12,6 +12,13 @@ import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BuildingType, BuildingState, GamePhase } from "@/types";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
 import { TowerRenderer } from "@view/entities/TowerRenderer";
+import { LightningTowerRenderer } from "@view/entities/LightningTowerRenderer";
+import { IceTowerRenderer } from "@view/entities/IceTowerRenderer";
+import { FireTowerRenderer } from "@view/entities/FireTowerRenderer";
+import { WarpTowerRenderer } from "@view/entities/WarpTowerRenderer";
+import { HealingTowerRenderer } from "@view/entities/HealingTowerRenderer";
+import { BallistaTowerRenderer } from "@view/entities/BallistaTowerRenderer";
+import { RepeaterTowerRenderer } from "@view/entities/RepeaterTowerRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { TownRenderer } from "@view/entities/TownRenderer";
@@ -73,6 +80,8 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.ICE_TOWER]: 0xaaddff,
   [BuildingType.FIRE_TOWER]: 0xff6622,
   [BuildingType.WARP_TOWER]: 0x9966cc,
+  [BuildingType.BALLISTA_TOWER]: 0x8b6339,
+  [BuildingType.REPEATER_TOWER]: 0x996633,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -191,6 +200,8 @@ export class BuildingView {
   private _iceTowerRenderer: IceTowerRenderer | null = null;
   private _fireTowerRenderer: FireTowerRenderer | null = null;
   private _warpTowerRenderer: WarpTowerRenderer | null = null;
+  private _ballistaTowerRenderer: BallistaTowerRenderer | null = null;
+  private _repeaterTowerRenderer: RepeaterTowerRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -328,6 +339,16 @@ export class BuildingView {
     } else if (building.type === BuildingType.HEALING_TOWER) {
       this._healingTowerRenderer = new HealingTowerRenderer(building.owner);
       this.container.addChild(this._healingTowerRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.BALLISTA_TOWER) {
+      this._ballistaTowerRenderer = new BallistaTowerRenderer(building.owner);
+      this.container.addChild(this._ballistaTowerRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.REPEATER_TOWER) {
+      this._repeaterTowerRenderer = new RepeaterTowerRenderer(building.owner);
+      this.container.addChild(this._repeaterTowerRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {

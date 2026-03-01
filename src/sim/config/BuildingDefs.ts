@@ -227,6 +227,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.FIRE_TOWER,
       BuildingType.WARP_TOWER,
       BuildingType.HEALING_TOWER,
+      BuildingType.BALLISTA_TOWER,
+      BuildingType.REPEATER_TOWER,
     ],
     footprint: { w: 1, h: 1 },
     placementZone: "own",
@@ -463,5 +465,39 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     ],
     description:
       "A blessed tower that channels healing energy to restore friendly units.",
+  },
+  [BuildingType.BALLISTA_TOWER]: {
+    type: BuildingType.BALLISTA_TOWER,
+    cost: 400,
+    hp: 250,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 1 },
+    placementZone: "own",
+    capturable: true,
+    prerequisite: { types: [BuildingType.BLACKSMITH], minCount: 1 },
+    defaultTurrets: [
+      { projectileTag: "arrow", damage: 14, range: 9, attackSpeed: 1.0 },
+    ],
+    description:
+      "Defensive structure with ballista that fires giant bolts for extended range.",
+  },
+  [BuildingType.REPEATER_TOWER]: {
+    type: BuildingType.REPEATER_TOWER,
+    cost: 400,
+    hp: 250,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 1 },
+    placementZone: "own",
+    capturable: true,
+    prerequisite: { types: [BuildingType.BLACKSMITH], minCount: 1 },
+    defaultTurrets: [
+      { projectileTag: "arrow", damage: 9, range: 6, attackSpeed: 1.5 },
+    ],
+    description:
+      "Defensive structure with rapid-fire repeater for high attack speed.",
   },
 };

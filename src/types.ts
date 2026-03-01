@@ -111,6 +111,8 @@ export enum BuildingType {
   FIRE_TOWER = "fire_tower",
   WARP_TOWER = "warp_tower",
   HEALING_TOWER = "healing_tower",
+  BALLISTA_TOWER = "ballista_tower",
+  REPEATER_TOWER = "repeater_tower",
 }
 
 export enum AbilityType {
