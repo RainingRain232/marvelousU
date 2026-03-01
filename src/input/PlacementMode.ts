@@ -9,7 +9,7 @@ import { EventBus } from "@sim/core/EventBus";
 import { BuildingType, UnitType, UnitState } from "@/types";
 import type { PlayerId } from "@/types";
 import { getRace } from "@sim/config/RaceDefs";
-import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
+import { UpgradeSystem, TOWER_BUILDING_TYPES } from "@sim/systems/UpgradeSystem";
 
 // ---------------------------------------------------------------------------
 // Placement validation
@@ -166,6 +166,11 @@ export function confirmPlacement(
     });
   }
 
+  // Apply all current tower upgrades to the newly placed building
+  if (TOWER_BUILDING_TYPES.has(bpType)) {
+    UpgradeSystem.applyTowerUpgradesToBuilding(building, playerId);
+  }
+
   EventBus.emit("buildingPlaced", {
     buildingId,
     position: { x: tx, y: ty },
@@ -183,7 +188,7 @@ export function cancelPlacement(
   bpType: BuildingType,
   playerId: PlayerId,
 ): void {
-  const cost = BUILDING_DEFINITIONS[bpType].cost;
+  const cost = UpgradeSystem.getTowerBuildingCost(bpType, playerId);
   const player = state.players.get(playerId);
   if (!player) return;
 

@@ -144,6 +144,10 @@ export enum UpgradeType {
   CREATURE_HEALTH = "creature_health",
   MAGE_RANGE = "mage_range",
   FLAG = "flag",
+  TOWER_RANGE = "tower_range",
+  TOWER_DAMAGE = "tower_damage",
+  TOWER_HEALTH = "tower_health",
+  TOWER_COST = "tower_cost",
 }
 
 export enum UnitState {

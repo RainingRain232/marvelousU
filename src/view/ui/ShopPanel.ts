@@ -248,6 +248,10 @@ const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.CREATURE_HEALTH]: "Creature",
   [UpgradeType.MAGE_RANGE]: "Range",
   [UpgradeType.FLAG]: "Flag",
+  [UpgradeType.TOWER_RANGE]: "Twr Range",
+  [UpgradeType.TOWER_DAMAGE]: "Twr Dmg",
+  [UpgradeType.TOWER_HEALTH]: "Twr HP",
+  [UpgradeType.TOWER_COST]: "Twr Cost",
 };
 
 // ---------------------------------------------------------------------------
@@ -1462,9 +1466,10 @@ export class ShopPanel {
       btn.addChild(letter);
     }
 
-    // Cost text
+    // Cost text (use discounted cost for tower building types)
+    const displayCost = UpgradeSystem.getTowerBuildingCost(bpType, this._localPlayerId);
     const costText = new Text({
-      text: `${def.cost}g`,
+      text: `${displayCost}g`,
       style: locked ? STYLE_ICON_COST_UNAFFORDABLE : STYLE_ICON_COST,
     });
     costText.anchor.set(0.5, 1);
@@ -1592,7 +1597,7 @@ export class ShopPanel {
   private _buyBlueprint(bpType: BuildingType): void {
     const player = this._state.players.get(this._localPlayerId);
     if (!player) return;
-    const cost = BUILDING_DEFINITIONS[bpType].cost;
+    const cost = UpgradeSystem.getTowerBuildingCost(bpType, this._localPlayerId);
     if (player.gold < cost) return;
 
     player.gold -= cost;
@@ -1634,9 +1639,9 @@ export class ShopPanel {
 
     for (const entry of this._bpIcons) {
       if (entry.locked) continue;
-      const cost = BUILDING_DEFINITIONS[entry.type].cost;
-      entry.costText.style =
-        cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
+      const cost = UpgradeSystem.getTowerBuildingCost(entry.type, this._localPlayerId);
+      entry.costText.text  = `${cost}g`;
+      entry.costText.style = cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
     }
   }
 

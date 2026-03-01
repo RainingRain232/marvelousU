@@ -372,7 +372,7 @@ export class CastleRenderer {
     this._drawCrenellations(g, x, y, w);
 
     // Stained glass dragon window — just under the roof, above first stone band
-    this._drawDragonWindow(g, x + w / 2 - 12, y + 6, 24, 30);
+    this._drawDragonWindow(g, x + w / 2 - 20, y + 6, 40, 30);
     // Decorative stone band
     g.rect(x - 1, y + 40, w + 2, 3).fill({ color: COL_STONE_DK });
     // Regular windows below
@@ -560,7 +560,6 @@ export class CastleRenderer {
     const cx = x + w / 2;
     const cy = y + h / 2;
     const LEAD = 0x222222;
-    const LEAD_W = 0.8;
 
     // ── Window frame — pointed arch shape ──
     const archTop = y + 4;
@@ -570,6 +569,59 @@ export class CastleRenderer {
       .bezierCurveTo(x, archTop - 2, cx, y - 2, cx, y)
       .bezierCurveTo(cx, y - 2, x + w, archTop - 2, x + w, y + h * 0.35)
       .fill({ color: COL_WINDOW });
+
+    // ── Sunburst rays — alternating yellow and blue, radiating from dragon center ──
+    const numRays = 16;
+    const RAY_COLORS = [0xffdd00, 0x2266ff]; // yellow, blue
+
+    // Window corners and their angles from (cx,cy), for proper polygon clipping
+    const wCorners = [
+      { px: x,     py: y,     ca: Math.atan2(y - cy,     x - cx) },
+      { px: x + w, py: y,     ca: Math.atan2(y - cy,     x + w - cx) },
+      { px: x + w, py: y + h, ca: Math.atan2(y + h - cy, x + w - cx) },
+      { px: x,     py: y + h, ca: Math.atan2(y + h - cy, x - cx) },
+    ];
+
+    // Point where a ray at `angle` intersects the bounding box edge
+    const getRayEdge = (angle: number): [number, number] => {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      let t = Infinity;
+      if (cos > 1e-9)       t = Math.min(t, (x + w - cx) / cos);
+      else if (cos < -1e-9) t = Math.min(t, (x - cx) / cos);
+      if (sin > 1e-9)       t = Math.min(t, (y + h - cy) / sin);
+      else if (sin < -1e-9) t = Math.min(t, (y - cy) / sin);
+      return [cx + t * cos, cy + t * sin];
+    };
+
+    for (let i = 0; i < numRays; i++) {
+      const a1 = (i / numRays) * Math.PI * 2 - Math.PI / 2;
+      const a2 = a1 + (Math.PI * 2) / numRays;
+      const [ex1, ey1] = getRayEdge(a1);
+      const [ex2, ey2] = getRayEdge(a2);
+
+      // Polygon: center → edge(a1) → [any window corners between a1 and a2] → edge(a2)
+      const poly: [number, number][] = [[cx, cy], [ex1, ey1]];
+      for (const { px, py, ca } of wCorners) {
+        let na = ca;
+        while (na < a1) na += Math.PI * 2;
+        if (na > a1 && na < a2) poly.push([px, py]);
+      }
+      poly.push([ex2, ey2]);
+
+      g.moveTo(poly[0][0], poly[0][1]);
+      for (let k = 1; k < poly.length; k++) g.lineTo(poly[k][0], poly[k][1]);
+      g.closePath().fill({ color: RAY_COLORS[i % 2], alpha: 0.88 });
+    }
+
+    // ── Lead caming ray lines — drawn before dragon so dragon covers them ──
+    for (let i = 0; i < numRays; i++) {
+      const angle = (i / numRays) * Math.PI * 2 - Math.PI / 2;
+      const [ex, ey] = getRayEdge(angle);
+      g.moveTo(cx, cy)
+        .lineTo(ex, ey)
+        .stroke({ color: LEAD, width: 0.6 });
+    }
 
     // ── Background glow — warm amber behind fire area, dark blue behind body ──
     g.ellipse(cx + 4, cy - 4, 8, 6).fill({ color: 0x553300, alpha: 0.5 });
@@ -591,27 +643,33 @@ export class CastleRenderer {
       .fill({ color: 0xffcc00, alpha: 0.7 });
 
     // ── Dragon silhouette (left-center) — deep red stained glass ──
+    const DRAGON_OUTLINE = 0x220000;
     // Body — curved belly
     g.moveTo(cx - 6, cy + 8)
       .bezierCurveTo(cx - 8, cy + 2, cx - 6, cy - 4, cx - 2, cy - 2)
       .lineTo(cx + 1, cy)
       .bezierCurveTo(cx - 2, cy + 4, cx - 4, cy + 6, cx - 6, cy + 8)
-      .fill({ color: 0x991111, alpha: 0.9 });
+      .fill({ color: 0x991111, alpha: 0.9 })
+      .stroke({ color: DRAGON_OUTLINE, width: 0.8 });
     // Neck stretching toward fire
     g.moveTo(cx - 2, cy - 2)
       .bezierCurveTo(cx, cy - 6, cx + 1, cy - 4, cx + 2, cy - 2)
       .lineTo(cx + 1, cy)
       .lineTo(cx - 2, cy - 2)
-      .fill({ color: 0xbb2222, alpha: 0.85 });
+      .fill({ color: 0xbb2222, alpha: 0.85 })
+      .stroke({ color: DRAGON_OUTLINE, width: 0.6 });
     // Head — snout pointing right toward flames
-    g.ellipse(cx + 2, cy - 3, 3, 2).fill({ color: 0xaa1818, alpha: 0.9 });
+    g.ellipse(cx + 2, cy - 3, 3, 2)
+      .fill({ color: 0xaa1818, alpha: 0.9 })
+      .stroke({ color: DRAGON_OUTLINE, width: 0.7 });
     // Eye
     g.circle(cx + 1.5, cy - 3.5, 0.7).fill({ color: 0xffcc00, alpha: 0.9 });
     // Wing — triangular, sweeping up-left
     g.moveTo(cx - 4, cy)
       .lineTo(cx - 10, cy - 8)
       .lineTo(cx - 3, cy - 4)
-      .fill({ color: 0x881111, alpha: 0.75 });
+      .fill({ color: 0x881111, alpha: 0.75 })
+      .stroke({ color: DRAGON_OUTLINE, width: 0.6 });
     // Wing membrane lines
     g.moveTo(cx - 4, cy)
       .lineTo(cx - 8, cy - 6)
@@ -629,38 +687,11 @@ export class CastleRenderer {
       .lineTo(cx - 1, cy + 11)
       .fill({ color: 0x991111, alpha: 0.8 });
 
-    // ── Lead caming — the dark divider lines ──
-    // Outer arch frame
+    // ── Lead caming — outer arch frame only (marks the window boundary) ──
     g.moveTo(x, y + h * 0.35)
       .bezierCurveTo(x, archTop - 2, cx, y - 2, cx, y)
       .bezierCurveTo(cx, y - 2, x + w, archTop - 2, x + w, y + h * 0.35)
       .stroke({ color: LEAD, width: 1.2 });
-    g.rect(x, y + h * 0.25, w, h * 0.75).stroke({ color: LEAD, width: 1.2 });
-    // Vertical center line
-    g.moveTo(cx, y)
-      .lineTo(cx, y + h)
-      .stroke({ color: LEAD, width: LEAD_W });
-    // Horizontal bands
-    g.moveTo(x, cy - 4)
-      .lineTo(x + w, cy - 4)
-      .stroke({ color: LEAD, width: LEAD_W });
-    g.moveTo(x, cy + 4)
-      .lineTo(x + w, cy + 4)
-      .stroke({ color: LEAD, width: LEAD_W });
-    // Diagonal accent lines radiating from center
-    g.moveTo(cx, cy)
-      .lineTo(x + 2, y + h * 0.3)
-      .stroke({ color: LEAD, width: 0.5 });
-    g.moveTo(cx, cy)
-      .lineTo(x + w - 2, y + h * 0.3)
-      .stroke({ color: LEAD, width: 0.5 });
-    // Small diamond accent in lower section
-    g.moveTo(cx, cy + 8)
-      .lineTo(cx - 4, cy + 12)
-      .lineTo(cx, cy + 16)
-      .lineTo(cx + 4, cy + 12)
-      .lineTo(cx, cy + 8)
-      .stroke({ color: LEAD, width: 0.5 });
 
     // ── Stone surround / frame ──
     g.rect(x - 1.5, y - 1, w + 3, h + 2).stroke({
@@ -676,6 +707,13 @@ export class CastleRenderer {
       .lineTo(cx, y - 3)
       .lineTo(cx + 3, y - 1)
       .stroke({ color: COL_STONE_DK, width: 0.5 });
+
+    // ── Rectangular glass section border — drawn last to sit on top ──
+    // Left side, right side, and top horizontal of the lower glass pane
+    const rTop = y + h * 0.25;
+    g.moveTo(x, rTop).lineTo(x, y + h).stroke({ color: LEAD, width: 1.2 });
+    g.moveTo(x + w, rTop).lineTo(x + w, y + h).stroke({ color: LEAD, width: 1.2 });
+    g.moveTo(x, rTop).lineTo(x + w, rTop).stroke({ color: LEAD, width: 1.2 });
   }
 
   // ── Decorative elements ──────────────────────────────────────────────────

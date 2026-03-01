@@ -139,4 +139,36 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Unlock rally flag (F key, 100g per use).",
     appliesTo: [],
   },
+  [UpgradeType.TOWER_RANGE]: {
+    type: UpgradeType.TOWER_RANGE,
+    cost: 500,
+    maxLevel: 3,
+    effect: 1, // +1 tile range per level (additive)
+    description: "Increases all tower turret range by 1 tile.",
+    appliesTo: [],
+  },
+  [UpgradeType.TOWER_DAMAGE]: {
+    type: UpgradeType.TOWER_DAMAGE,
+    cost: 500,
+    maxLevel: 3,
+    effect: 0.2, // 20% damage increase per level
+    description: "Increases all tower turret damage by 20%.",
+    appliesTo: [],
+  },
+  [UpgradeType.TOWER_HEALTH]: {
+    type: UpgradeType.TOWER_HEALTH,
+    cost: 500,
+    maxLevel: 3,
+    effect: 0.3, // 30% health increase per level
+    description: "Increases all tower building health by 30%.",
+    appliesTo: [],
+  },
+  [UpgradeType.TOWER_COST]: {
+    type: UpgradeType.TOWER_COST,
+    cost: 500,
+    maxLevel: 3,
+    effect: 0.15, // 15% cost reduction per level
+    description: "Reduces the gold cost of all tower buildings by 15%.",
+    appliesTo: [],
+  },
 };

@@ -1,8 +1,22 @@
 // Upgrade system for tracking and applying unit upgrades
 import type { GameState } from "@sim/state/GameState";
-import { UpgradeType } from "@/types";
+import { BuildingType, UpgradeType } from "@/types";
 import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
+import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { EventBus } from "@sim/core/EventBus";
+import type { Building } from "@sim/entities/Building";
+
+/** Tower building types that benefit from tower upgrades (excludes MAGE_TOWER). */
+export const TOWER_BUILDING_TYPES = new Set<BuildingType>([
+  BuildingType.TOWER,
+  BuildingType.LIGHTNING_TOWER,
+  BuildingType.ICE_TOWER,
+  BuildingType.FIRE_TOWER,
+  BuildingType.WARP_TOWER,
+  BuildingType.HEALING_TOWER,
+  BuildingType.BALLISTA_TOWER,
+  BuildingType.REPEATER_TOWER,
+]);
 
 export interface PlayerUpgrade {
   type: UpgradeType;
@@ -65,8 +79,16 @@ export const UpgradeSystem = {
       upgrades.push({ type: upgradeType, level: 1 });
     }
 
-    // Apply upgrade effects to existing units
-    this.applyUpgradesToExistingUnits(state, playerId, upgradeType);
+    // Apply upgrade effects to existing units or towers
+    if (
+      upgradeType === UpgradeType.TOWER_RANGE ||
+      upgradeType === UpgradeType.TOWER_DAMAGE ||
+      upgradeType === UpgradeType.TOWER_HEALTH
+    ) {
+      this.applyTowerUpgradeToExistingBuildings(state, playerId);
+    } else {
+      this.applyUpgradesToExistingUnits(state, playerId, upgradeType);
+    }
 
     // Emit event for UI
     EventBus.emit("upgradePurchased", {
@@ -153,5 +175,64 @@ export const UpgradeSystem = {
   /** Reset all upgrades (for new game) */
   resetUpgrades(): void {
     playerUpgrades = {};
+  },
+
+  /**
+   * Apply all current tower upgrades to a single building, recomputing turret
+   * stats from the base definition to avoid compounding across levels.
+   */
+  applyTowerUpgradesToBuilding(building: Building, playerId: string): void {
+    if (!TOWER_BUILDING_TYPES.has(building.type)) return;
+    const def = BUILDING_DEFINITIONS[building.type];
+    if (!def.defaultTurrets?.length) return;
+
+    const rangeLevel  = this.getUpgradeLevel(playerId, UpgradeType.TOWER_RANGE);
+    const damageLevel = this.getUpgradeLevel(playerId, UpgradeType.TOWER_DAMAGE);
+    const healthLevel = this.getUpgradeLevel(playerId, UpgradeType.TOWER_HEALTH);
+
+    // Recompute turret stats from base definition
+    building.turrets = def.defaultTurrets.map((base, i) => {
+      const existing = building.turrets[i];
+      return {
+        ...base,
+        range:  base.range + rangeLevel,
+        damage: base.damage < 0
+          // Healing towers: scale the magnitude (more negative = more healing)
+          ? -Math.floor(-base.damage * (1 + 0.2 * damageLevel))
+          : Math.floor(base.damage * (1 + 0.2 * damageLevel)),
+        attackTimer: existing?.attackTimer ?? 0,
+        targetId:    existing?.targetId    ?? null,
+      };
+    });
+
+    // Health upgrade: add the delta HP so current health scales proportionally
+    if (healthLevel > 0) {
+      const newMaxHp = Math.floor(def.hp * (1 + 0.3 * healthLevel));
+      const hpDelta  = newMaxHp - building.maxHealth;
+      if (hpDelta > 0) {
+        building.maxHealth = newMaxHp;
+        building.health    = Math.min(building.health + hpDelta, newMaxHp);
+      }
+    }
+  },
+
+  /** Apply all tower upgrades to every tower building owned by a player. */
+  applyTowerUpgradeToExistingBuildings(state: GameState, playerId: string): void {
+    for (const building of state.buildings.values()) {
+      if (building.owner === playerId && TOWER_BUILDING_TYPES.has(building.type)) {
+        this.applyTowerUpgradesToBuilding(building, playerId);
+      }
+    }
+  },
+
+  /**
+   * Return the discounted gold cost for a tower building type.
+   * Non-tower types (or if TOWER_COST is at level 0) return the base cost.
+   */
+  getTowerBuildingCost(type: BuildingType, playerId: string): number {
+    if (!TOWER_BUILDING_TYPES.has(type)) return BUILDING_DEFINITIONS[type].cost;
+    const level = this.getUpgradeLevel(playerId, UpgradeType.TOWER_COST);
+    const base  = BUILDING_DEFINITIONS[type].cost;
+    return Math.floor(base * (1 - 0.15 * level));
   },
 };
