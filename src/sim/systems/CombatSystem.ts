@@ -22,6 +22,8 @@ const ARROW_UNIT_TYPES: ReadonlySet<UnitType> = new Set([
   UnitType.CROSSBOWMAN,
   UnitType.HORSE_ARCHER,
   UnitType.SHORTBOW,
+  UnitType.BALLISTA,
+  UnitType.BOLT_THROWER,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -353,6 +355,7 @@ function applyDamage(attacker: Unit, target: Unit, state: GameState): void {
       targetId: target.id,
       attackerPos: { x: attacker.position.x, y: attacker.position.y },
       targetPos: { x: target.position.x, y: target.position.y },
+      attackerType: attacker.type,
     });
   }
 

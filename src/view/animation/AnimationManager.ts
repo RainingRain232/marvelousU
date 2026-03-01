@@ -66,6 +66,7 @@ import { generateHalberdierFrames } from "@view/animation/HalberdierSpriteGen";
 import { generateElvenArcherFrames } from "@view/animation/ElvenArcherSpriteGen";
 import { generateBatteringRamFrames } from "@view/animation/BatteringRamSpriteGen";
 import { generateBallistaFrames } from "@view/animation/BallistaSpriteGen";
+import { generateBoltThrowerFrames } from "@view/animation/BoltThrowerSpriteGen";
 import { generateLongbowmanFrames } from "@view/animation/LongbowmanSpriteGen";
 import { generateCrossbowmanFrames } from "@view/animation/CrossbowmanSpriteGen";
 import { generateGiantFrogFrames } from "@view/animation/GiantFrogSpriteGen";
@@ -259,6 +260,8 @@ export class AnimationManager {
         this._generateBatteringRamSprites(key, renderer);
       } else if (key === "ballista") {
         this._generateBallistaSprites(key, renderer);
+      } else if (key === "bolt_thrower") {
+        this._generateBoltThrowerSprites(key, renderer);
       } else if (key === "longbowman") {
         this._generateLongbowmanSprites(key, renderer);
       } else if (key === "crossbowman") {
@@ -777,6 +780,17 @@ export class AnimationManager {
 
   private _generateBallistaSprites(key: string, renderer: Renderer): void {
     const textures = generateBallistaFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateBoltThrowerSprites(key: string, renderer: Renderer): void {
+    const textures = generateBoltThrowerFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

@@ -11,6 +11,7 @@ import type { ViewManager } from "@view/ViewManager";
 import { EventBus } from "@sim/core/EventBus";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { ParticlePool } from "@view/fx/ParticlePool";
+import { UnitType } from "@/types";
 
 const TS = BalanceConfig.TILE_SIZE;
 
@@ -24,6 +25,8 @@ const SPLINTER_TINTS = [0xddbb77, 0xffeeaa, 0xbbaa66];
 interface ArrowEntry {
   arrow: Graphics;
   tween: gsap.core.Tween;
+  tx: number;
+  ty: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,6 +60,12 @@ export class TurretArrowFX {
     EventBus.on("projectileHit", ({ projectileId }) => {
       if (!projectileId.startsWith("bturret-arrow-")) return;
       this._onHit(projectileId);
+    });
+
+    // Ballista & bolt thrower units use the same straight-line arrow as turrets
+    EventBus.on("unitAttacked", ({ attackerPos, targetPos, attackerType }) => {
+      if (attackerType !== UnitType.BALLISTA && attackerType !== UnitType.BOLT_THROWER) return;
+      this._spawnBallistaArrow(attackerPos, targetPos);
     });
   }
 
@@ -113,7 +122,62 @@ export class TurretArrowFX {
       },
     });
 
-    this._active.set(id, { arrow, tween });
+    this._active.set(id, { arrow, tween, tx, ty });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ballista unit arrow (straight-line, impact on complete)
+  // ---------------------------------------------------------------------------
+
+  private _spawnBallistaArrow(
+    origin: { x: number; y: number },
+    target: { x: number; y: number },
+  ): void {
+    const ox = (origin.x + 0.5) * TS;
+    const oy = (origin.y + 0.5) * TS;
+    const tx = (target.x + 0.5) * TS;
+    const ty = (target.y + 0.5) * TS;
+
+    const angle = Math.atan2(ty - oy, tx - ox);
+
+    const arrow = new Graphics()
+      .rect(-10, -1, 10, 2)
+      .fill({ color: 0xddbb77 });
+    arrow.position.set(ox, oy);
+    arrow.rotation = angle;
+    this._container.addChild(arrow);
+
+    const dist = Math.sqrt((tx - ox) ** 2 + (ty - oy) ** 2);
+    const duration = dist / (14 * TS);
+
+    gsap.to(arrow.position, {
+      x: tx,
+      y: ty,
+      duration,
+      ease: "none",
+      onComplete: () => {
+        if (arrow.parent) this._container.removeChild(arrow);
+
+        for (let i = 0; i < IMPACT_SPLINTERS; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const speed = 20 + Math.random() * 30;
+          const tint = SPLINTER_TINTS[Math.floor(Math.random() * SPLINTER_TINTS.length)];
+          this._pool.emit({
+            x: tx + (Math.random() - 0.5) * 4,
+            y: ty + (Math.random() - 0.5) * 4,
+            vx: Math.cos(a) * speed,
+            vy: Math.sin(a) * speed,
+            life: 0.18 + Math.random() * 0.1,
+            scaleStart: 0.5 + Math.random() * 0.3,
+            scaleEnd: 0.05,
+            alphaStart: 0.9,
+            alphaEnd: 0,
+            tint,
+            gravity: 60,
+          });
+        }
+      },
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -125,8 +189,8 @@ export class TurretArrowFX {
     if (!entry) return;
 
     entry.tween.kill();
-    const cx = entry.arrow.x;
-    const cy = entry.arrow.y;
+    const cx = entry.tx;
+    const cy = entry.ty;
 
     if (entry.arrow.parent) this._container.removeChild(entry.arrow);
 
@@ -149,7 +213,7 @@ export class TurretArrowFX {
       });
     }
 
-    this._active.set(id, { ...entry, tween: gsap.to({}, { duration: 0 }) });
+    this._active.set(id, { ...entry, tween: gsap.to({}, { duration: 0 }), tx: cx, ty: cy });
   }
 }
 

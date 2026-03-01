@@ -1,6 +1,6 @@
 // Typed event emitter — bridge between sim and view
 // sim/ emits events; view/ listens. sim/ never imports from view/.
-import type { GamePhase, PlayerId, UnitState, Vec2 } from "@/types";
+import type { GamePhase, PlayerId, UnitState, UnitType, Vec2 } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Event map — every event the simulation can emit
@@ -11,7 +11,7 @@ export interface SimEvents {
   unitSpawned: { unitId: string; buildingId: string; position: Vec2 };
   unitDied: { unitId: string; killerUnitId?: string };
   unitDamaged: { unitId: string; amount: number; attackerId: string };
-  unitAttacked: { attackerId: string; targetId: string; attackerPos: Vec2; targetPos: Vec2 };
+  unitAttacked: { attackerId: string; targetId: string; attackerPos: Vec2; targetPos: Vec2; attackerType: UnitType };
   unitHealed: { unitId: string; amount: number; position: Vec2 };
   unitLevelUp: { unitId: string; newLevel: number };
   unitStateChanged: { unitId: string; from: UnitState; to: UnitState };

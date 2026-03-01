@@ -11,6 +11,7 @@ import type { ViewManager } from "@view/ViewManager";
 import { EventBus } from "@sim/core/EventBus";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { ParticlePool } from "@view/fx/ParticlePool";
+import { UnitType } from "@/types";
 
 const TS = BalanceConfig.TILE_SIZE;
 
@@ -56,7 +57,8 @@ export class ArrowFX {
     );
     this._pool.mount(this._container);
 
-    EventBus.on("unitAttacked", ({ attackerPos, targetPos }) => {
+    EventBus.on("unitAttacked", ({ attackerPos, targetPos, attackerType }) => {
+      if (attackerType === UnitType.BALLISTA || attackerType === UnitType.BOLT_THROWER) return;
       this._spawnArrow(attackerPos, targetPos);
     });
   }

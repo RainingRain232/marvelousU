@@ -461,10 +461,10 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     atk: 30,
     attackSpeed: 0.2, // slow but long range
     speed: 0.5,
-    range: 8,
+    range: 7,
     spawnTime: 10,
     abilityTypes: [],
-    spriteKey: "battering_ram", // placeholder (siege)
+    spriteKey: "bolt_thrower",
   },
   [UnitType.SCOUT_CAVALRY]: {
     type: UnitType.SCOUT_CAVALRY,

@@ -225,7 +225,7 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     dieFrames: range(ROW_DIE, ROW_DIE + 7),
   }),
   [UnitType.BALLISTA]: buildDef("ballista", { attackFps: 6 }),
-  [UnitType.BOLT_THROWER]: buildDef("ballista", { attackFps: 4 }),
+  [UnitType.BOLT_THROWER]: buildDef("bolt_thrower", { attackFps: 4 }),
   [UnitType.SCOUT_CAVALRY]: buildDef("knight", { moveFps: 12, attackFps: 10 }),
   [UnitType.LANCER]: buildDef("knight", { moveFps: 10, attackFps: 8 }),
   [UnitType.ELITE_LANCER]: buildDef("knight", { moveFps: 10, attackFps: 8 }),
