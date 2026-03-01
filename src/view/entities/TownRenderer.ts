@@ -1,13 +1,14 @@
 // Procedural town renderer for BuildingView.
 //
-// Draws a detailed 2x2 medieval fantasy town inspired by old Italian settlements:
+// Draws a detailed 3x3 medieval fantasy town inspired by old Italian settlements:
 //   • Clusters of orange-roofed houses with stucco/stone walls
 //   • Small church with bell tower
-//   • Stone-paved piazza (square)
+//   • Stone-paved piazza (square) with fountain
 //   • Defensive towers with player-colored waving flags
 //   • Gateway with stone walls and a snoring guard
 //   • Merchant with a cart
 //   • Two children playing with a hoop in the square
+//   • Additional houses, tavern, and market stalls
 //
 // Animations:
 //   - Hoop rotation and figure movement
@@ -22,8 +23,8 @@ import { GamePhase } from "@/types";
 // ---------------------------------------------------------------------------
 
 const TS = 64;
-const TW = 2 * TS;
-const TH = 2 * TS;
+const TW = 3 * TS; // 192px
+const TH = 3 * TS; // 192px
 
 // Palette
 const COL_STUCCO = 0xe8e2d0;
@@ -112,45 +113,91 @@ export class TownRenderer {
     this._updateChildren(this._time);
   }
 
+  // -------------------------------------------------------------------------
+  // Static drawing
+  // -------------------------------------------------------------------------
+
   private _drawStaticPavement(): void {
     const g = this._piazza;
-    // Central square background
-    g.rect(40, 40, 48, 48).fill({ color: COL_PAVEMENT });
+    // Central piazza — larger area in the middle of the 3x3 grid
+    const pxX = 50;
+    const pxY = 55;
+    const pxW = 90;
+    const pxH = 80;
+    g.rect(pxX, pxY, pxW, pxH).fill({ color: COL_PAVEMENT });
 
-    // Pavement pattern — cobblestone grid with offset rows
-    for (let row = 0; row < 4; row++) {
-      const offsetX = row % 2 === 0 ? 0 : 6;
-      for (let col = 0; col < 4; col++) {
-        const px = 42 + col * 12 + offsetX;
-        const py = 42 + row * 12;
-        g.rect(px, py, 10, 10)
-          .fill({ color: 0x8b8678, alpha: 0.3 })
-          .stroke({ color: 0x777766, width: 0.5, alpha: 0.2 });
+    // Cobblestone pattern with offset rows
+    for (let row = 0; row < 6; row++) {
+      const offsetX = row % 2 === 0 ? 0 : 7;
+      for (let col = 0; col < 6; col++) {
+        const px = pxX + 4 + col * 14 + offsetX;
+        const py = pxY + 4 + row * 13;
+        if (px + 12 < pxX + pxW && py + 11 < pxY + pxH) {
+          g.rect(px, py, 12, 11)
+            .fill({ color: 0x8b8678, alpha: 0.3 })
+            .stroke({ color: 0x777766, width: 0.5, alpha: 0.2 });
+        }
       }
     }
 
-    // Small well / fountain in the corner of piazza
-    g.circle(50, 50, 4)
+    // Fountain in center of piazza
+    const fX = pxX + pxW / 2;
+    const fY = pxY + pxH / 2;
+    // Basin
+    g.circle(fX, fY, 10)
       .fill({ color: COL_STONE })
-      .stroke({ color: COL_STONE_DK, width: 1 });
-    g.circle(50, 50, 2).fill({ color: 0x4488aa });
+      .stroke({ color: COL_STONE_DK, width: 1.5 });
+    g.circle(fX, fY, 8).fill({ color: 0x4488aa });
+    // Central pillar
+    g.rect(fX - 2, fY - 8, 4, 10).fill({ color: COL_STONE });
+    // Water spout bowl
+    g.circle(fX, fY - 8, 4)
+      .fill({ color: COL_STONE })
+      .stroke({ color: COL_STONE_DK, width: 0.8 });
+    g.circle(fX, fY - 8, 2.5).fill({ color: 0x4488aa });
+
+    // Road from gate to piazza
+    g.rect(TW / 2 - 12, pxY + pxH, 24, TH - pxY - pxH).fill({
+      color: COL_PAVEMENT,
+    });
+    // Road cobbles
+    for (let ry = pxY + pxH + 3; ry < TH - 30; ry += 10) {
+      g.rect(TW / 2 - 10, ry, 8, 8).fill({ color: 0x8b8678, alpha: 0.2 });
+      g.rect(TW / 2 + 2, ry, 8, 8).fill({ color: 0x8b8678, alpha: 0.2 });
+    }
   }
 
   private _drawArchitecture(): void {
     const g = this._houses;
 
-    // --- 1. Church ---
-    this._drawHouse(g, 70, 20, 35, 40, true); // church body
-    this._drawBellTower(g, 105, 10);
+    // --- 1. Church (top-right area) ---
+    this._drawHouse(g, 110, 25, 45, 55, true);
+    this._drawBellTower(g, 155, 10);
 
-    // --- 2. Piazza Houses ---
-    this._drawHouse(g, 30, 15, 25, 30);
-    this._drawHouse(g, 15, 45, 22, 28);
-    this._drawHouse(g, 15, 75, 28, 30);
+    // --- 2. Houses around the piazza ---
+    // Left side houses (stacked)
+    this._drawHouse(g, 8, 20, 35, 40);
+    this._drawHouse(g, 5, 65, 40, 35);
+    this._drawHouse(g, 8, 108, 35, 38);
 
-    // --- 3. Gateway Walls ---
-    const gateX = TW / 2 - 20;
-    const gateY = TH - 25;
+    // Top houses
+    this._drawHouse(g, 50, 10, 30, 38);
+    this._drawHouse(g, 82, 5, 25, 30);
+
+    // Right side houses
+    this._drawHouse(g, 148, 75, 35, 40);
+    this._drawHouse(g, 150, 120, 32, 35);
+
+    // --- 3. Tavern (bottom-left, with sign) ---
+    this._drawTavern(g, 10, 152, 42, 35);
+
+    // --- 4. Market stalls (right of piazza) ---
+    this._drawMarketStall(g, 145, 58, 0xcc4444);
+    this._drawMarketStall(g, 145, 48, 0x4488cc);
+
+    // --- 5. Gateway (bottom-center) ---
+    const gateX = TW / 2 - 22;
+    const gateY = TH - 30;
     this._drawGate(g, gateX, gateY);
   }
 
@@ -163,9 +210,9 @@ export class TownRenderer {
     isChurch = false,
   ): void {
     // Shadow under the roof overhang
-    g.rect(x - 1, y, w + 2, 3).fill({ color: 0x00000, alpha: 0.1 });
+    g.rect(x - 1, y, w + 2, 3).fill({ color: 0x000000, alpha: 0.1 });
 
-    // Walls with subtle shading (lighter top, darker bottom)
+    // Walls with subtle shading
     g.rect(x, y, w, h)
       .fill({ color: COL_STUCCO })
       .stroke({ color: 0xaaaaaa, width: 1 });
@@ -175,98 +222,119 @@ export class TownRenderer {
       alpha: 0.4,
     });
 
-    // Roof
     if (isChurch) {
       // Church: steeper slate roof with ridge line
-      g.moveTo(x - 4, y + 2)
-        .lineTo(x + w / 2, y - 15)
-        .lineTo(x + w + 4, y + 2)
+      g.moveTo(x - 5, y + 2)
+        .lineTo(x + w / 2, y - 20)
+        .lineTo(x + w + 5, y + 2)
         .closePath()
         .fill({ color: 0x444444 });
       // Ridge highlight
-      g.moveTo(x + w / 2, y - 15)
-        .lineTo(x + w / 2 + 1, y - 14)
-        .lineTo(x + w + 4, y + 2)
+      g.moveTo(x + w / 2, y - 20)
+        .lineTo(x + w / 2 + 1, y - 19)
+        .lineTo(x + w + 5, y + 2)
         .closePath()
         .fill({ color: 0x555555 });
       // Cross on top
-      g.moveTo(x + w / 2, y - 20)
-        .lineTo(x + w / 2, y - 14)
+      g.moveTo(x + w / 2, y - 26)
+        .lineTo(x + w / 2, y - 19)
         .stroke({ color: 0xccaa00, width: 1.5 });
-      g.moveTo(x + w / 2 - 3, y - 18)
-        .lineTo(x + w / 2 + 3, y - 18)
+      g.moveTo(x + w / 2 - 4, y - 24)
+        .lineTo(x + w / 2 + 4, y - 24)
         .stroke({ color: 0xccaa00, width: 1.5 });
       // Rose window (circular stained glass)
       const rwX = x + w / 2;
-      const rwY = y + 8;
-      g.circle(rwX, rwY, 5)
+      const rwY = y + 12;
+      g.circle(rwX, rwY, 7)
         .fill({ color: 0x334466 })
-        .stroke({ color: COL_STONE, width: 1 });
-      // Stained glass cross pattern
-      g.moveTo(rwX - 4, rwY)
-        .lineTo(rwX + 4, rwY)
+        .stroke({ color: COL_STONE, width: 1.2 });
+      // Stained glass pattern
+      g.moveTo(rwX - 5, rwY)
+        .lineTo(rwX + 5, rwY)
         .stroke({ color: 0xccaa44, width: 0.5 });
-      g.moveTo(rwX, rwY - 4)
-        .lineTo(rwX, rwY + 4)
+      g.moveTo(rwX, rwY - 5)
+        .lineTo(rwX, rwY + 5)
         .stroke({ color: 0xccaa44, width: 0.5 });
+      // Smaller stained glass panes
+      g.circle(rwX - 3, rwY - 3, 1.5).fill({ color: 0x884422, alpha: 0.5 });
+      g.circle(rwX + 3, rwY - 3, 1.5).fill({ color: 0x224488, alpha: 0.5 });
+      g.circle(rwX - 3, rwY + 3, 1.5).fill({ color: 0x224488, alpha: 0.5 });
+      g.circle(rwX + 3, rwY + 3, 1.5).fill({ color: 0x884422, alpha: 0.5 });
+      // Side windows
+      this._drawWindow(g, x + 5, y + 15, false);
+      this._drawWindow(g, x + w - 12, y + 15, false);
       // Arched church door
-      const dX = x + w / 2 - 5;
-      const dY = y + h - 14;
-      g.rect(dX, dY + 4, 10, 10).fill({ color: COL_WOOD });
-      g.moveTo(dX, dY + 4)
-        .bezierCurveTo(dX, dY - 2, dX + 10, dY - 2, dX + 10, dY + 4)
+      const dX = x + w / 2 - 7;
+      const dY = y + h - 20;
+      g.rect(dX, dY + 6, 14, 14).fill({ color: COL_WOOD });
+      g.moveTo(dX, dY + 6)
+        .bezierCurveTo(dX, dY - 3, dX + 14, dY - 3, dX + 14, dY + 6)
         .fill({ color: COL_WOOD });
       g.stroke({ color: COL_WOOD_LT, width: 0.5 });
-      // Door handle
-      g.circle(dX + 7, dY + 9, 0.8).fill({ color: 0xccaa44 });
+      // Door divider
+      g.moveTo(dX + 7, dY)
+        .lineTo(dX + 7, dY + 20)
+        .stroke({ color: 0x4a2a10, width: 0.8 });
+      // Door handles
+      g.circle(dX + 5, dY + 12, 0.8).fill({ color: 0xccaa44 });
+      g.circle(dX + 9, dY + 12, 0.8).fill({ color: 0xccaa44 });
+      // Steps
+      g.rect(dX - 3, dY + 20, 20, 2).fill({ color: COL_STONE });
+      g.rect(dX - 5, dY + 22, 24, 2).fill({ color: COL_STONE });
     } else {
       // Residential roof with tiles texture
-      g.moveTo(x - 2, y + 2)
-        .lineTo(x + w / 2, y - 8)
-        .lineTo(x + w + 2, y + 2)
+      const roofH = Math.min(12, h * 0.25);
+      g.moveTo(x - 3, y + 2)
+        .lineTo(x + w / 2, y - roofH)
+        .lineTo(x + w + 3, y + 2)
         .closePath()
         .fill({ color: COL_ROOF });
       // Roof shading (darker right side)
-      g.moveTo(x + w / 2, y - 8)
-        .lineTo(x + w + 2, y + 2)
-        .lineTo(x + w / 2 + 1, y - 7)
+      g.moveTo(x + w / 2, y - roofH)
+        .lineTo(x + w + 3, y + 2)
+        .lineTo(x + w / 2 + 1, y - roofH + 1)
         .closePath()
         .fill({ color: COL_ROOF_SHADE, alpha: 0.4 });
       // Tile lines on roof
-      for (let i = 1; i <= 2; i++) {
-        const ly = y - 8 + i * 3.5;
-        const lx1 = x - 2 + i * 2;
-        const lx2 = x + w + 2 - i * 2;
+      for (let i = 1; i <= 3; i++) {
+        const ly = y - roofH + i * (roofH / 3.5);
+        const frac = i / 4;
+        const lx1 = x - 3 + frac * (w / 2 + 3);
+        const lx2 = x + w + 3 - frac * (w / 2 + 3);
         g.moveTo(lx1, ly)
           .lineTo(lx2, ly)
           .stroke({ color: COL_ROOF_SHADE, width: 0.5, alpha: 0.5 });
       }
 
       // Chimney on one side
-      g.rect(x + w - 7, y - 6, 4, 8).fill({ color: COL_CHIMNEY });
-      g.rect(x + w - 8, y - 7, 6, 2).fill({ color: COL_CHIMNEY });
+      g.rect(x + w - 9, y - roofH + 2, 5, roofH).fill({ color: COL_CHIMNEY });
+      g.rect(x + w - 10, y - roofH + 1, 7, 2).fill({ color: COL_CHIMNEY });
 
       // Door with frame
-      const doorX = x + w / 2 - 4;
-      const doorY = y + h - 10;
-      g.rect(doorX - 1, doorY - 1, 10, 12).fill({ color: COL_WOOD_LT });
-      g.rect(doorX, doorY, 8, 10).fill({ color: COL_WOOD });
+      const doorX = x + w / 2 - 5;
+      const doorY = y + h - 14;
+      g.rect(doorX - 1, doorY - 1, 12, 16).fill({ color: COL_WOOD_LT });
+      g.rect(doorX, doorY, 10, 14).fill({ color: COL_WOOD });
       // Door planks
-      g.moveTo(doorX + 4, doorY)
-        .lineTo(doorX + 4, doorY + 10)
+      g.moveTo(doorX + 5, doorY)
+        .lineTo(doorX + 5, doorY + 14)
         .stroke({ color: 0x4a2a10, width: 0.5 });
       // Door handle
-      g.circle(doorX + 6, doorY + 5, 0.7).fill({ color: 0xccaa44 });
+      g.circle(doorX + 7, doorY + 7, 0.8).fill({ color: 0xccaa44 });
       // Step
-      g.rect(doorX - 1, doorY + 10, 10, 2).fill({ color: COL_STONE });
+      g.rect(doorX - 1, doorY + 14, 12, 2).fill({ color: COL_STONE });
 
-      // Windows with shutters and sills
-      this._drawWindow(g, x + 3, y + 5, w > 24);
-      this._drawWindow(g, x + w - 10, y + 5, w > 24);
+      // Windows — two rows if house is tall enough
+      this._drawWindow(g, x + 4, y + 6, w > 28);
+      this._drawWindow(g, x + w - 12, y + 6, w > 28);
+      if (h > 34) {
+        this._drawWindow(g, x + 4, y + h / 2 - 2, w > 28);
+        this._drawWindow(g, x + w - 12, y + h / 2 - 2, w > 28);
+      }
 
-      // Flower box under one window (only on bigger houses)
-      if (w > 24) {
-        this._drawFlowerBox(g, x + 3, y + 12);
+      // Flower box under one window (on bigger houses)
+      if (w > 28) {
+        this._drawFlowerBox(g, x + 4, y + 14);
       }
     }
   }
@@ -279,34 +347,33 @@ export class TownRenderer {
     hasShutters: boolean,
   ): void {
     // Window opening
-    g.rect(x, y, 6, 6)
+    g.rect(x, y, 7, 7)
       .fill({ color: COL_WINDOW_DK })
       .stroke({ color: COL_STONE, width: 0.5 });
     // Glass panes (cross pattern)
-    g.rect(x + 0.5, y + 0.5, 2.5, 2.5).fill({ color: COL_WINDOW, alpha: 0.6 });
-    g.rect(x + 3, y + 0.5, 2.5, 2.5).fill({ color: COL_WINDOW, alpha: 0.5 });
-    g.rect(x + 0.5, y + 3, 2.5, 2.5).fill({ color: COL_WINDOW, alpha: 0.5 });
-    g.rect(x + 3, y + 3, 2.5, 2.5).fill({ color: COL_WINDOW, alpha: 0.4 });
+    g.rect(x + 0.5, y + 0.5, 3, 3).fill({ color: COL_WINDOW, alpha: 0.6 });
+    g.rect(x + 3.5, y + 0.5, 3, 3).fill({ color: COL_WINDOW, alpha: 0.5 });
+    g.rect(x + 0.5, y + 3.5, 3, 3).fill({ color: COL_WINDOW, alpha: 0.5 });
+    g.rect(x + 3.5, y + 3.5, 3, 3).fill({ color: COL_WINDOW, alpha: 0.4 });
     // Mullion (cross)
-    g.moveTo(x + 3, y)
-      .lineTo(x + 3, y + 6)
+    g.moveTo(x + 3.5, y)
+      .lineTo(x + 3.5, y + 7)
       .stroke({ color: COL_WOOD, width: 0.5 });
-    g.moveTo(x, y + 3)
-      .lineTo(x + 6, y + 3)
+    g.moveTo(x, y + 3.5)
+      .lineTo(x + 7, y + 3.5)
       .stroke({ color: COL_WOOD, width: 0.5 });
     // Sill
-    g.rect(x - 1, y + 6, 8, 1.5).fill({ color: COL_STONE });
+    g.rect(x - 1, y + 7, 9, 1.5).fill({ color: COL_STONE });
     // Shutters
     if (hasShutters) {
-      g.rect(x - 3, y, 3, 6).fill({ color: COL_SHUTTER });
-      g.rect(x + 6, y, 3, 6).fill({ color: COL_SHUTTER });
-      // Shutter slats
-      for (let sy = 1; sy < 6; sy += 2) {
+      g.rect(x - 3, y, 3, 7).fill({ color: COL_SHUTTER });
+      g.rect(x + 7, y, 3, 7).fill({ color: COL_SHUTTER });
+      for (let sy = 1; sy < 7; sy += 2) {
         g.moveTo(x - 3, y + sy)
           .lineTo(x, y + sy)
           .stroke({ color: 0x335533, width: 0.3 });
-        g.moveTo(x + 6, y + sy)
-          .lineTo(x + 9, y + sy)
+        g.moveTo(x + 7, y + sy)
+          .lineTo(x + 10, y + sy)
           .stroke({ color: 0x335533, width: 0.3 });
       }
     }
@@ -314,99 +381,211 @@ export class TownRenderer {
 
   /** Draws a small flower box under a window */
   private _drawFlowerBox(g: Graphics, x: number, y: number): void {
-    g.rect(x - 1, y, 8, 3).fill({ color: COL_WOOD_LT });
-    // Flowers (small dots)
+    g.rect(x - 1, y, 9, 3).fill({ color: COL_WOOD_LT });
     g.circle(x + 1, y - 1, 1).fill({ color: COL_FLOWER });
-    g.circle(x + 3.5, y - 1.5, 1).fill({ color: COL_FLOWER2 });
-    g.circle(x + 6, y - 1, 1).fill({ color: COL_FLOWER });
-    // Leaves
-    g.circle(x + 2.2, y - 0.5, 0.8).fill({ color: COL_LEAF });
-    g.circle(x + 4.8, y - 0.5, 0.8).fill({ color: COL_LEAF });
+    g.circle(x + 4, y - 1.5, 1).fill({ color: COL_FLOWER2 });
+    g.circle(x + 7, y - 1, 1).fill({ color: COL_FLOWER });
+    g.circle(x + 2.5, y - 0.5, 0.8).fill({ color: COL_LEAF });
+    g.circle(x + 5.5, y - 0.5, 0.8).fill({ color: COL_LEAF });
+  }
+
+  /** Draws a tavern with a hanging sign */
+  private _drawTavern(
+    g: Graphics,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void {
+    // Main building
+    g.rect(x, y, w, h)
+      .fill({ color: 0xd8ceb0 })
+      .stroke({ color: 0xaaaaaa, width: 1 });
+    // Lower wall
+    g.rect(x + 1, y + h * 0.5, w - 2, h * 0.5 - 1).fill({
+      color: COL_STUCCO_SHADE,
+      alpha: 0.4,
+    });
+    // Roof
+    g.moveTo(x - 3, y + 2)
+      .lineTo(x + w / 2, y - 10)
+      .lineTo(x + w + 3, y + 2)
+      .closePath()
+      .fill({ color: COL_ROOF });
+    g.moveTo(x + w / 2, y - 10)
+      .lineTo(x + w + 3, y + 2)
+      .lineTo(x + w / 2 + 1, y - 9)
+      .closePath()
+      .fill({ color: COL_ROOF_SHADE, alpha: 0.4 });
+    // Chimney (with smoke area — animated separately if desired)
+    g.rect(x + w - 10, y - 8, 6, 10).fill({ color: COL_CHIMNEY });
+    g.rect(x + w - 11, y - 9, 8, 2).fill({ color: COL_CHIMNEY });
+
+    // Wide door
+    g.rect(x + w / 2 - 7, y + h - 16, 14, 16).fill({ color: COL_WOOD });
+    g.moveTo(x + w / 2, y + h - 16)
+      .lineTo(x + w / 2, y + h)
+      .stroke({ color: 0x4a2a10, width: 0.8 });
+    g.circle(x + w / 2 - 2, y + h - 8, 0.8).fill({ color: 0xccaa44 });
+    g.circle(x + w / 2 + 2, y + h - 8, 0.8).fill({ color: 0xccaa44 });
+
+    // Windows
+    this._drawWindow(g, x + 3, y + 6, true);
+    this._drawWindow(g, x + w - 11, y + 6, true);
+
+    // Hanging sign bracket
+    const signX = x + w + 2;
+    const signY = y + 8;
+    g.moveTo(signX - 4, signY - 2)
+      .lineTo(signX + 8, signY - 2)
+      .stroke({ color: 0x444444, width: 1.5 });
+    // Sign board
+    g.rect(signX, signY, 12, 10)
+      .fill({ color: COL_WOOD_LT })
+      .stroke({ color: COL_WOOD, width: 1 });
+    // Mug icon on sign
+    g.rect(signX + 3, signY + 2, 5, 5).fill({ color: 0xccaa44 });
+    g.rect(signX + 8, signY + 3, 2, 3)
+      .stroke({ color: 0xccaa44, width: 0.8 });
+    // Chain links
+    g.moveTo(signX + 2, signY - 2)
+      .lineTo(signX + 2, signY)
+      .stroke({ color: 0x444444, width: 0.8 });
+    g.moveTo(signX + 10, signY - 2)
+      .lineTo(signX + 10, signY)
+      .stroke({ color: 0x444444, width: 0.8 });
+  }
+
+  /** Draws a small market stall with awning */
+  private _drawMarketStall(
+    g: Graphics,
+    x: number,
+    y: number,
+    awningColor: number,
+  ): void {
+    // Counter
+    g.rect(x, y + 6, 18, 6)
+      .fill({ color: COL_WOOD })
+      .stroke({ color: 0x3d2510, width: 0.5 });
+    // Goods on counter
+    g.circle(x + 4, y + 4, 2).fill({ color: 0xcc9944 });
+    g.circle(x + 9, y + 3, 2.5).fill({ color: 0x88aa44 });
+    g.circle(x + 14, y + 4, 2).fill({ color: 0xaa6633 });
+    // Support poles
+    g.rect(x, y - 2, 2, 14).fill({ color: COL_WOOD });
+    g.rect(x + 16, y - 2, 2, 14).fill({ color: COL_WOOD });
+    // Awning (striped)
+    g.rect(x - 2, y - 4, 22, 4).fill({ color: awningColor });
+    for (let sx = x; sx < x + 18; sx += 6) {
+      g.rect(sx, y - 4, 3, 4).fill({ color: 0xffffff, alpha: 0.3 });
+    }
   }
 
   private _drawBellTower(g: Graphics, x: number, y: number): void {
-    const w = 15,
-      h = 50;
+    const w = 18;
+    const h = 65;
     g.rect(x, y, w, h)
       .fill({ color: COL_STONE })
       .stroke({ color: COL_STONE_DK, width: 1.5 });
 
     // Vertical mortar lines
-    g.moveTo(x + w / 2, y + 10)
+    g.moveTo(x + w / 2, y + 12)
       .lineTo(x + w / 2, y + h)
       .stroke({ color: COL_STONE_DK, width: 0.3, alpha: 0.3 });
 
     // Horizontal course lines
-    for (let ly = y + 8; ly < y + h; ly += 6) {
+    for (let ly = y + 10; ly < y + h; ly += 7) {
       g.moveTo(x + 1, ly)
         .lineTo(x + w - 1, ly)
         .stroke({ color: COL_STONE_DK, width: 0.3, alpha: 0.3 });
     }
 
     // Bell opening (arched window near top)
-    const bx = x + w / 2 - 3;
-    const by = y + 6;
-    g.rect(bx, by + 3, 6, 6).fill({ color: 0x222222 });
-    g.moveTo(bx, by + 3)
-      .bezierCurveTo(bx, by - 1, bx + 6, by - 1, bx + 6, by + 3)
+    const bx = x + w / 2 - 4;
+    const by = y + 8;
+    g.rect(bx, by + 4, 8, 8).fill({ color: 0x222222 });
+    g.moveTo(bx, by + 4)
+      .bezierCurveTo(bx, by - 2, bx + 8, by - 2, bx + 8, by + 4)
       .fill({ color: 0x222222 });
     // Bell inside
-    g.moveTo(x + w / 2 - 2, by + 4)
+    g.moveTo(x + w / 2 - 3, by + 5)
       .bezierCurveTo(
-        x + w / 2 - 2,
-        by + 2,
-        x + w / 2 + 2,
-        by + 2,
-        x + w / 2 + 2,
-        by + 4,
+        x + w / 2 - 3,
+        by + 3,
+        x + w / 2 + 3,
+        by + 3,
+        x + w / 2 + 3,
+        by + 5,
       )
-      .lineTo(x + w / 2 + 2.5, by + 5)
-      .lineTo(x + w / 2 - 2.5, by + 5)
+      .lineTo(x + w / 2 + 3.5, by + 6.5)
+      .lineTo(x + w / 2 - 3.5, by + 6.5)
       .closePath()
       .fill({ color: 0xccaa44 });
     // Bell clapper
-    g.circle(x + w / 2, by + 5.5, 0.5).fill({ color: 0x886622 });
+    g.circle(x + w / 2, by + 7, 0.7).fill({ color: 0x886622 });
 
     // Clock face
-    const clockY = y + 20;
-    g.circle(x + w / 2, clockY, 4)
+    const clockY = y + 28;
+    g.circle(x + w / 2, clockY, 5)
       .fill({ color: 0xeeeedd })
-      .stroke({ color: COL_STONE_DK, width: 0.8 });
+      .stroke({ color: COL_STONE_DK, width: 1 });
+    // Clock numerals (dots at 12, 3, 6, 9)
+    for (let n = 0; n < 4; n++) {
+      const na = (n * Math.PI) / 2 - Math.PI / 2;
+      g.circle(x + w / 2 + Math.cos(na) * 3.5, clockY + Math.sin(na) * 3.5, 0.5).fill({
+        color: 0x222222,
+      });
+    }
     // Clock hands
     g.moveTo(x + w / 2, clockY)
-      .lineTo(x + w / 2, clockY - 3)
-      .stroke({ color: 0x222222, width: 0.8 });
+      .lineTo(x + w / 2, clockY - 4)
+      .stroke({ color: 0x222222, width: 1 });
     g.moveTo(x + w / 2, clockY)
-      .lineTo(x + w / 2 + 2, clockY + 1)
-      .stroke({ color: 0x222222, width: 0.6 });
+      .lineTo(x + w / 2 + 2.5, clockY + 1)
+      .stroke({ color: 0x222222, width: 0.7 });
+
+    // Small window below clock
+    g.rect(x + w / 2 - 3, y + 40, 6, 8).fill({ color: 0x222222 });
+    g.rect(x + w / 2 - 3, y + 40, 6, 8).stroke({
+      color: COL_STONE_DK,
+      width: 0.5,
+    });
 
     // Domed top with finial
     g.moveTo(x - 2, y + 2)
-      .bezierCurveTo(x + w / 2, y - 15, x + w / 2, y - 15, x + w + 2, y + 2)
+      .bezierCurveTo(x + w / 2, y - 18, x + w / 2, y - 18, x + w + 2, y + 2)
       .fill({ color: 0x1a1a2e });
     // Finial (small ball on top)
-    g.circle(x + w / 2, y - 12, 1.5).fill({ color: 0xccaa44 });
+    g.circle(x + w / 2, y - 15, 2).fill({ color: 0xccaa44 });
   }
 
   private _drawGate(g: Graphics, x: number, y: number): void {
-    const w = 40,
-      h = 25;
+    const w = 44;
+    const h = 30;
     // Side walls with stone texture
-    g.rect(x - 30, y + 5, 30, 15)
+    g.rect(x - 40, y + 5, 40, 20)
       .fill({ color: COL_STONE })
       .stroke({ color: COL_STONE_DK, width: 2 });
-    g.rect(x + w, y + 5, 30, 15)
+    g.rect(x + w, y + 5, 40, 20)
       .fill({ color: COL_STONE })
       .stroke({ color: COL_STONE_DK, width: 2 });
 
     // Wall stone courses
-    for (let wy = y + 8; wy < y + 18; wy += 4) {
-      g.moveTo(x - 28, wy)
+    for (let wy = y + 8; wy < y + 23; wy += 5) {
+      g.moveTo(x - 38, wy)
         .lineTo(x - 2, wy)
         .stroke({ color: COL_STONE_DK, width: 0.3, alpha: 0.4 });
       g.moveTo(x + w + 2, wy)
-        .lineTo(x + w + 28, wy)
+        .lineTo(x + w + 38, wy)
         .stroke({ color: COL_STONE_DK, width: 0.3, alpha: 0.4 });
+    }
+
+    // Wall crenellations
+    for (let cx = x - 38; cx < x - 2; cx += 7) {
+      g.rect(cx, y + 2, 4, 4).fill({ color: COL_STONE });
+    }
+    for (let cx = x + w + 2; cx < x + w + 38; cx += 7) {
+      g.rect(cx, y + 2, 4, 4).fill({ color: COL_STONE });
     }
 
     // Archway
@@ -415,23 +594,21 @@ export class TownRenderer {
       .stroke({ color: COL_STONE_DK, width: 2.5 });
 
     // Wooden gate doors (two panels)
-    const doorX = x + 3;
-    const doorW = w / 2 - 5;
-    const doorY = y + 5;
-    const doorH = h - 5;
+    const doorX = x + 4;
+    const doorW = w / 2 - 6;
+    const doorY = y + 6;
+    const doorH = h - 6;
 
     // Left door
     g.rect(doorX, doorY, doorW, doorH)
       .fill({ color: COL_WOOD })
       .stroke({ color: COL_STONE_DK, width: 1 });
-    // Left door cross-bracing
     g.moveTo(doorX, doorY)
       .lineTo(doorX + doorW, doorY + doorH)
       .stroke({ color: 0x3d2510, width: 1.5 });
     g.moveTo(doorX + doorW, doorY)
       .lineTo(doorX, doorY + doorH)
       .stroke({ color: 0x3d2510, width: 1.5 });
-    // Left door iron bands
     g.rect(doorX + 1, doorY + doorH / 3, doorW - 2, 2).fill({
       color: 0x444444,
     });
@@ -440,18 +617,16 @@ export class TownRenderer {
     });
 
     // Right door
-    const rightDoorX = x + w - doorW - 3;
+    const rightDoorX = x + w - doorW - 4;
     g.rect(rightDoorX, doorY, doorW, doorH)
       .fill({ color: COL_WOOD })
       .stroke({ color: COL_STONE_DK, width: 1 });
-    // Right door cross-bracing
     g.moveTo(rightDoorX, doorY)
       .lineTo(rightDoorX + doorW, doorY + doorH)
       .stroke({ color: 0x3d2510, width: 1.5 });
     g.moveTo(rightDoorX + doorW, doorY)
       .lineTo(rightDoorX, doorY + doorH)
       .stroke({ color: 0x3d2510, width: 1.5 });
-    // Right door iron bands
     g.rect(rightDoorX + 1, doorY + doorH / 3, doorW - 2, 2).fill({
       color: 0x444444,
     });
@@ -460,28 +635,28 @@ export class TownRenderer {
     });
 
     // Decorative towers with crenellations
-    this._drawSmallTower(g, x - 5, y - 20);
-    this._drawSmallTower(g, x + w - 10, y - 20);
+    this._drawSmallTower(g, x - 6, y - 28);
+    this._drawSmallTower(g, x + w - 12, y - 28);
   }
 
   private _drawSmallTower(g: Graphics, x: number, y: number): void {
-    g.rect(x, y, 15, 30)
+    g.rect(x, y, 18, 38)
       .fill({ color: COL_STONE })
       .stroke({ color: COL_STONE_DK, width: 2 });
 
     // Crenellations (battlements)
-    for (let cx = 0; cx < 15; cx += 5) {
-      g.rect(x + cx, y - 4, 3, 4).fill({ color: COL_STONE });
+    for (let cx = 0; cx < 18; cx += 6) {
+      g.rect(x + cx, y - 5, 4, 5).fill({ color: COL_STONE });
     }
 
     // Arrow slit
-    g.rect(x + 6, y + 10, 2, 8).fill({ color: 0x222222 });
-    g.rect(x + 4, y + 14, 6, 2).fill({ color: 0x222222 });
+    g.rect(x + 7, y + 12, 3, 10).fill({ color: 0x222222 });
+    g.rect(x + 5, y + 17, 7, 2).fill({ color: 0x222222 });
 
     // Stone course lines
-    for (let ly = y + 6; ly < y + 28; ly += 6) {
+    for (let ly = y + 7; ly < y + 36; ly += 7) {
       g.moveTo(x + 1, ly)
-        .lineTo(x + 14, ly)
+        .lineTo(x + 17, ly)
         .stroke({ color: COL_STONE_DK, width: 0.3, alpha: 0.3 });
     }
   }
@@ -490,145 +665,157 @@ export class TownRenderer {
     // Static chars are redrawn in _updateChildren, this is just first frame
   }
 
+  // -------------------------------------------------------------------------
+  // Character drawing helpers
+  // -------------------------------------------------------------------------
+
   /** Draws a detailed merchant with cart */
   private _drawMerchant(g: Graphics): void {
-    const cX = 95,
-      cY = 105;
+    const cX = 62;
+    const cY = 145;
 
     // Cart body with planks
-    g.rect(cX, cY, 20, 12)
+    g.rect(cX, cY, 24, 14)
       .fill({ color: COL_WOOD })
       .stroke({ color: 0x3d2510, width: 0.5 });
     // Plank lines
-    g.moveTo(cX, cY + 4)
-      .lineTo(cX + 20, cY + 4)
+    g.moveTo(cX, cY + 5)
+      .lineTo(cX + 24, cY + 5)
       .stroke({ color: 0x4a2a10, width: 0.3 });
-    g.moveTo(cX, cY + 8)
-      .lineTo(cX + 20, cY + 8)
+    g.moveTo(cX, cY + 10)
+      .lineTo(cX + 24, cY + 10)
       .stroke({ color: 0x4a2a10, width: 0.3 });
-    // Goods in cart (colorful sacks/bundles)
-    g.rect(cX + 2, cY - 3, 5, 5).fill({ color: 0xcc9944 }); // sack
-    g.rect(cX + 8, cY - 4, 6, 6).fill({ color: 0x884422 }); // barrel
-    g.rect(cX + 15, cY - 2, 4, 4).fill({ color: 0x88aa44 }); // bundle
+    // Goods in cart
+    g.rect(cX + 2, cY - 4, 6, 6).fill({ color: 0xcc9944 });
+    g.rect(cX + 9, cY - 5, 7, 7).fill({ color: 0x884422 });
+    g.rect(cX + 17, cY - 3, 5, 5).fill({ color: 0x88aa44 });
 
     // Wheels with spokes
-    for (const wx of [cX + 4, cX + 16]) {
-      g.circle(wx, cY + 12, 4)
+    for (const wx of [cX + 5, cX + 19]) {
+      g.circle(wx, cY + 14, 5)
         .fill({ color: COL_WOOD_LT })
         .stroke({ color: 0x444444, width: 1.5 });
-      // Hub
-      g.circle(wx, cY + 12, 1).fill({ color: 0x444444 });
-      // Spokes
+      g.circle(wx, cY + 14, 1.2).fill({ color: 0x444444 });
       for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
-        g.moveTo(wx + Math.cos(a) * 1, cY + 12 + Math.sin(a) * 1)
-          .lineTo(wx + Math.cos(a) * 3.5, cY + 12 + Math.sin(a) * 3.5)
+        g.moveTo(wx + Math.cos(a) * 1.2, cY + 14 + Math.sin(a) * 1.2)
+          .lineTo(wx + Math.cos(a) * 4, cY + 14 + Math.sin(a) * 4)
           .stroke({ color: 0x444444, width: 0.5 });
       }
     }
 
     // Cart handle
-    g.moveTo(cX - 2, cY + 6)
-      .lineTo(cX - 10, cY + 10)
+    g.moveTo(cX - 2, cY + 8)
+      .lineTo(cX - 12, cY + 12)
       .stroke({ color: COL_WOOD, width: 1.5 });
 
-    // Merchant figure — detailed
-    const mx = cX - 10;
+    // Merchant figure
+    const mx = cX - 12;
     const my = cY + 2;
     // Legs
-    g.rect(mx - 1, my + 8, 3, 6).fill({ color: 0x554433 }); // left leg
-    g.rect(mx + 3, my + 8, 3, 6).fill({ color: 0x554433 }); // right leg
+    g.rect(mx - 1, my + 10, 3, 7).fill({ color: 0x554433 });
+    g.rect(mx + 3, my + 10, 3, 7).fill({ color: 0x554433 });
     // Boots
-    g.rect(mx - 1, my + 13, 4, 2).fill({ color: 0x332211 });
-    g.rect(mx + 3, my + 13, 4, 2).fill({ color: 0x332211 });
+    g.rect(mx - 1, my + 16, 4, 2).fill({ color: 0x332211 });
+    g.rect(mx + 3, my + 16, 4, 2).fill({ color: 0x332211 });
     // Body (tunic)
-    g.rect(mx - 1, my, 8, 9).fill({ color: COL_CLOTH1 });
+    g.rect(mx - 1, my, 8, 11).fill({ color: COL_CLOTH1 });
     // Belt
-    g.rect(mx - 1, my + 6, 8, 1.5).fill({ color: 0x664422 });
-    g.circle(mx + 3, my + 6.5, 0.8).fill({ color: 0xccaa44 }); // buckle
+    g.rect(mx - 1, my + 7, 8, 2).fill({ color: 0x664422 });
+    g.circle(mx + 3, my + 8, 0.8).fill({ color: 0xccaa44 });
     // Arms
-    g.rect(mx - 3, my + 1, 3, 7).fill({ color: COL_CLOTH1 }); // left arm
-    g.rect(mx + 6, my + 1, 3, 7).fill({ color: COL_CLOTH1 }); // right arm
+    g.rect(mx - 3, my + 1, 3, 8).fill({ color: COL_CLOTH1 });
+    g.rect(mx + 6, my + 1, 3, 8).fill({ color: COL_CLOTH1 });
     // Hands
-    g.circle(mx - 2, my + 8, 1.2).fill({ color: COL_SKIN });
-    g.circle(mx + 8, my + 8, 1.2).fill({ color: COL_SKIN });
+    g.circle(mx - 2, my + 9, 1.2).fill({ color: COL_SKIN });
+    g.circle(mx + 8, my + 9, 1.2).fill({ color: COL_SKIN });
     // Head
-    g.circle(mx + 3, my - 2, 3.5).fill({ color: COL_SKIN });
+    g.circle(mx + 3, my - 3, 3.5).fill({ color: COL_SKIN });
     // Eyes
-    g.circle(mx + 1.5, my - 2.5, 0.5).fill({ color: 0x222222 });
-    g.circle(mx + 4.5, my - 2.5, 0.5).fill({ color: 0x222222 });
+    g.circle(mx + 1.5, my - 3.5, 0.5).fill({ color: 0x222222 });
+    g.circle(mx + 4.5, my - 3.5, 0.5).fill({ color: 0x222222 });
     // Beard
-    g.moveTo(mx + 1, my)
-      .bezierCurveTo(mx + 1, my + 2, mx + 5, my + 2, mx + 5, my)
+    g.moveTo(mx + 1, my - 1)
+      .bezierCurveTo(mx + 1, my + 1.5, mx + 5, my + 1.5, mx + 5, my - 1)
       .fill({ color: COL_HAIR_DK });
-    // Hat (wide brim merchant cap)
-    g.rect(mx, my - 5, 6, 2).fill({ color: COL_CLOTH3 });
-    g.rect(mx + 1, my - 7, 4, 3).fill({ color: COL_CLOTH3 });
+    // Hat
+    g.rect(mx, my - 6, 6, 2).fill({ color: COL_CLOTH3 });
+    g.rect(mx + 1, my - 8, 4, 3).fill({ color: COL_CLOTH3 });
   }
 
   /** Draws the sleeping guard with detail */
   private _drawGuard(g: Graphics, time: number): void {
-    const sX = TW / 2 - 35;
-    const sY = TH - 12;
+    const sX = TW / 2 - 45;
+    const sY = TH - 15;
     const breathe = Math.sin(time * 1.5) * 0.8;
 
     // Legs stretched out
-    g.rect(sX - 2, sY + 1, 10, 3).fill({ color: 0x334455 });
+    g.rect(sX - 2, sY + 1, 12, 3).fill({ color: 0x334455 });
     // Boots
-    g.rect(sX + 7, sY, 4, 4).fill({ color: 0x332211 });
+    g.rect(sX + 9, sY, 5, 4).fill({ color: 0x332211 });
 
     // Body (seated, leaning against wall)
-    g.rect(sX, sY - 8 - breathe, 7, 9 + breathe).fill({ color: 0x334455 });
-    // Chainmail pattern on torso
-    for (let cy = sY - 6; cy < sY; cy += 2) {
+    g.rect(sX, sY - 9 - breathe, 8, 10 + breathe).fill({ color: 0x334455 });
+    // Chainmail pattern
+    for (let cy = sY - 7; cy < sY; cy += 2) {
       g.moveTo(sX + 1, cy)
-        .lineTo(sX + 6, cy)
+        .lineTo(sX + 7, cy)
         .stroke({ color: 0x556677, width: 0.3 });
     }
     // Belt
-    g.rect(sX, sY - 2, 7, 1.5).fill({ color: 0x664422 });
+    g.rect(sX, sY - 2, 8, 1.5).fill({ color: 0x664422 });
 
     // Arms (folded across body)
-    g.rect(sX - 1, sY - 5 - breathe, 3, 6).fill({ color: 0x334455 });
-    g.rect(sX + 5, sY - 5 - breathe, 3, 6).fill({ color: 0x334455 });
+    g.rect(sX - 1, sY - 6 - breathe, 3, 7).fill({ color: 0x334455 });
+    g.rect(sX + 6, sY - 6 - breathe, 3, 7).fill({ color: 0x334455 });
     // Hands
-    g.circle(sX + 0.5, sY, 1).fill({ color: COL_SKIN });
-    g.circle(sX + 6.5, sY, 1).fill({ color: COL_SKIN });
+    g.circle(sX + 0.5, sY, 1.2).fill({ color: COL_SKIN });
+    g.circle(sX + 7.5, sY, 1.2).fill({ color: COL_SKIN });
 
-    // Head (tilted to one side)
-    g.circle(sX + 3.5, sY - 10 - breathe, 3.5).fill({ color: COL_SKIN });
-    // Closed eyes (lines instead of dots)
-    g.moveTo(sX + 1.5, sY - 10.5 - breathe)
-      .lineTo(sX + 3, sY - 10.5 - breathe)
+    // Head (tilted)
+    g.circle(sX + 4, sY - 11 - breathe, 4).fill({ color: COL_SKIN });
+    // Closed eyes
+    g.moveTo(sX + 1.5, sY - 11.5 - breathe)
+      .lineTo(sX + 3.5, sY - 11.5 - breathe)
       .stroke({ color: 0x222222, width: 0.7 });
-    g.moveTo(sX + 4, sY - 10.5 - breathe)
-      .lineTo(sX + 5.5, sY - 10.5 - breathe)
+    g.moveTo(sX + 4.5, sY - 11.5 - breathe)
+      .lineTo(sX + 6.5, sY - 11.5 - breathe)
       .stroke({ color: 0x222222, width: 0.7 });
-    // Open mouth (snoring)
-    g.circle(sX + 3.5, sY - 8.5 - breathe, 1).fill({ color: 0x442222 });
+    // Snoring mouth
+    g.circle(sX + 4, sY - 9 - breathe, 1.2).fill({ color: 0x442222 });
     // Helmet
-    g.moveTo(sX, sY - 12 - breathe)
+    g.moveTo(sX, sY - 13.5 - breathe)
       .bezierCurveTo(
         sX,
-        sY - 16 - breathe,
-        sX + 7,
-        sY - 16 - breathe,
-        sX + 7,
-        sY - 12 - breathe,
+        sY - 18 - breathe,
+        sX + 8,
+        sY - 18 - breathe,
+        sX + 8,
+        sY - 13.5 - breathe,
       )
       .fill({ color: 0x888888 });
-    // Nose guard on helmet
-    g.rect(sX + 3, sY - 12 - breathe, 1, 3).fill({ color: 0x888888 });
+    // Nose guard
+    g.rect(sX + 3.5, sY - 13.5 - breathe, 1.5, 3.5).fill({ color: 0x888888 });
 
-    // Spear leaning against wall next to him
-    g.moveTo(sX + 10, sY + 3)
-      .lineTo(sX + 12, sY - 18)
+    // Spear leaning against wall
+    g.moveTo(sX + 12, sY + 3)
+      .lineTo(sX + 14, sY - 22)
       .stroke({ color: COL_WOOD, width: 1.5 });
     // Spear tip
-    g.moveTo(sX + 11, sY - 18)
-      .lineTo(sX + 12, sY - 22)
-      .lineTo(sX + 13, sY - 18)
+    g.moveTo(sX + 13, sY - 22)
+      .lineTo(sX + 14, sY - 27)
+      .lineTo(sX + 15, sY - 22)
       .closePath()
       .fill({ color: 0xaaaaaa });
+
+    // Shield leaning on the other side
+    g.moveTo(sX - 5, sY - 4)
+      .bezierCurveTo(sX - 10, sY - 4, sX - 10, sY + 5, sX - 5, sY + 5)
+      .lineTo(sX - 7, sY + 8)
+      .closePath()
+      .fill({ color: 0x554433 })
+      .stroke({ color: 0x444444, width: 0.8 });
+    // Shield boss
+    g.circle(sX - 7, sY + 1, 1.5).fill({ color: 0x888888 });
   }
 
   /** Draws a child figure with body, limbs, and running pose */
@@ -641,10 +828,7 @@ export class TownRenderer {
     angle: number,
     hasStick: boolean,
   ): void {
-    // Running leg animation based on angle
     const legSwing = Math.sin(angle * 4) * 3;
-
-    // Direction the child faces (based on movement angle)
     const facingRight = Math.cos(angle) > 0;
     const fDir = facingRight ? 1 : -1;
 
@@ -664,27 +848,22 @@ export class TownRenderer {
 
     // Arms
     const armSwing = Math.sin(angle * 4 + Math.PI) * 2;
-    // Back arm
     g.moveTo(cx - 2 * fDir, cy - 1)
       .lineTo(cx - 2 * fDir - armSwing * 0.4, cy + 2)
       .stroke({ color, width: 1.5 });
-    // Front arm (possibly holding stick)
     if (hasStick) {
       g.moveTo(cx + 2 * fDir, cy - 1)
         .lineTo(cx + 3 * fDir, cy + 1)
         .stroke({ color, width: 1.5 });
-      // Hand
       g.circle(cx + 3 * fDir, cy + 1, 0.8).fill({ color: COL_SKIN });
     } else {
       g.moveTo(cx + 2 * fDir, cy - 1)
         .lineTo(cx + 2 * fDir + armSwing * 0.4, cy + 2)
         .stroke({ color, width: 1.5 });
-      // Hand
       g.circle(cx + 2 * fDir + armSwing * 0.4, cy + 2, 0.8).fill({
         color: COL_SKIN,
       });
     }
-    // Back hand
     g.circle(cx - 2 * fDir - armSwing * 0.4, cy + 2, 0.8).fill({
       color: COL_SKIN,
     });
@@ -695,7 +874,7 @@ export class TownRenderer {
     g.moveTo(cx - 2, cy - 5)
       .bezierCurveTo(cx - 2, cy - 7, cx + 2, cy - 7, cx + 2, cy - 5)
       .fill({ color: hairColor });
-    // Eye (on facing side)
+    // Eye
     g.circle(cx + fDir * 0.8, cy - 4.5, 0.5).fill({ color: 0x222222 });
     // Smile
     g.moveTo(cx + fDir * 0.3, cy - 3)
@@ -703,13 +882,17 @@ export class TownRenderer {
       .stroke({ color: 0x884444, width: 0.4 });
   }
 
+  // -------------------------------------------------------------------------
+  // Animated updates
+  // -------------------------------------------------------------------------
+
   private _updateFlags(time: number): void {
-    const gateX = TW / 2 - 20;
-    const gateY = TH - 25;
+    const gateX = TW / 2 - 22;
+    const gateY = TH - 30;
 
     const pos = [
-      { x: gateX + 2, y: gateY - 20 },
-      { x: gateX + 40 - 2, y: gateY - 20 },
+      { x: gateX, y: gateY - 28 },
+      { x: gateX + 44 - 4, y: gateY - 28 },
     ];
 
     for (let i = 0; i < 2; i++) {
@@ -718,21 +901,21 @@ export class TownRenderer {
       f.position.set(pos[i].x, pos[i].y);
 
       // Flag pole
-      f.moveTo(0, 0).lineTo(0, -12).stroke({ color: 0x888888, width: 1.2 });
+      f.moveTo(0, 0).lineTo(0, -14).stroke({ color: 0x888888, width: 1.2 });
       // Pole cap
-      f.circle(0, -12, 1).fill({ color: 0xccaa44 });
+      f.circle(0, -14, 1.2).fill({ color: 0xccaa44 });
 
-      // Waving flag with more segments for cloth-like effect
+      // Waving flag
       const wave1 = Math.sin(time * 3 + i) * 2;
       const wave2 = Math.sin(time * 3.5 + i + 1) * 1.5;
-      f.moveTo(0, -12)
-        .bezierCurveTo(4, -11 + wave1, 7, -10 + wave2, 12, -10 + wave1)
-        .lineTo(12, -6 + wave1)
-        .bezierCurveTo(7, -6 + wave2, 4, -7 + wave1, 0, -7)
+      f.moveTo(0, -14)
+        .bezierCurveTo(4, -13 + wave1, 8, -12 + wave2, 14, -12 + wave1)
+        .lineTo(14, -7 + wave1)
+        .bezierCurveTo(8, -7 + wave2, 4, -8 + wave1, 0, -8)
         .closePath()
         .fill({ color: this._playerColor });
-      // Flag emblem (small dot/stripe)
-      f.circle(6, -8.5 + (wave1 + wave2) / 2, 1).fill({
+      // Flag emblem
+      f.circle(7, -9.5 + (wave1 + wave2) / 2, 1.2).fill({
         color: 0xffffff,
         alpha: 0.6,
       });
@@ -740,15 +923,15 @@ export class TownRenderer {
   }
 
   private _updateSnoring(time: number, _dt: number): void {
-    const sX = TW / 2 - 35,
-      sY = TH - 12;
+    const sX = TW / 2 - 45;
+    const sY = TH - 15;
 
     for (let i = 0; i < 3; i++) {
       const z = this._zzz[i];
       z.clear();
       const zLife = (time * 0.5 + i * 0.3) % 1.0;
-      const zY = sY - 10 - zLife * 25;
-      const zX = sX + Math.sin(time * 2 + i) * 5;
+      const zY = sY - 12 - zLife * 30;
+      const zX = sX + Math.sin(time * 2 + i) * 6;
       z.position.set(zX, zY);
 
       const scale = 0.5 + zLife * 0.5;
@@ -766,12 +949,12 @@ export class TownRenderer {
 
   private _updateChildren(time: number): void {
     const g = this._chars;
-    // Children playing in the piazza (40, 40, 48, 48)
-    const pX = 64,
-      pY = 64;
+    // Children playing in the piazza center
+    const pX = 95;
+    const pY = 95;
 
     // Children move in a circle
-    const r = 15;
+    const r = 18;
     const angle1 = time * 0.8;
     const angle2 = time * 0.8 + Math.PI;
 
@@ -797,17 +980,17 @@ export class TownRenderer {
 
     // The Hoop (rolling ahead of child 1)
     const hAngle = time * 0.8 + 0.4;
-    const hX = pX + Math.cos(hAngle) * (r + 2);
-    const hY = pY + Math.sin(hAngle) * (r + 2);
+    const hX = pX + Math.cos(hAngle) * (r + 3);
+    const hY = pY + Math.sin(hAngle) * (r + 3);
     // Outer ring
-    g.circle(hX, hY, 5).stroke({ color: 0xccaa44, width: 1.5 });
+    g.circle(hX, hY, 6).stroke({ color: 0xccaa44, width: 1.5 });
     // Inner ring for depth
-    g.circle(hX, hY, 3.5).stroke({ color: 0xbbaa55, width: 0.5 });
-    // Rotation marks on hoop (spins as it rolls)
+    g.circle(hX, hY, 4).stroke({ color: 0xbbaa55, width: 0.5 });
+    // Rotation marks on hoop
     const hoopRot = time * 3;
     for (let s = 0; s < 4; s++) {
       const a = hoopRot + (s * Math.PI) / 2;
-      g.circle(hX + Math.cos(a) * 4, hY + Math.sin(a) * 4, 0.6).fill({
+      g.circle(hX + Math.cos(a) * 5, hY + Math.sin(a) * 5, 0.7).fill({
         color: 0xddbb44,
       });
     }
@@ -816,7 +999,7 @@ export class TownRenderer {
     const stickEndX = c1X + (Math.cos(angle1) > 0 ? 3 : -3);
     const stickEndY = c1Y + 1;
     g.moveTo(stickEndX, stickEndY)
-      .lineTo(hX, hY + 3)
+      .lineTo(hX, hY + 4)
       .stroke({ color: COL_WOOD, width: 1 });
   }
 

@@ -187,7 +187,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     goldIncome: 3,
     shopInventory: [],
     blueprints: [],
-    footprint: { w: 2, h: 2 },
+    footprint: { w: 3, h: 3 },
     placementZone: "neutral",
     capturable: true,
   },
