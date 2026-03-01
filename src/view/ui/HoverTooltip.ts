@@ -103,6 +103,7 @@ export const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.ICE_TOWER]: "Ice Tower",
   [BuildingType.FIRE_TOWER]: "Fire Tower",
   [BuildingType.WARP_TOWER]: "Warp Tower",
+  [BuildingType.HEALING_TOWER]: "Healing Tower",
 };
 
 export const UNIT_LABELS: Record<UnitType, string> = {

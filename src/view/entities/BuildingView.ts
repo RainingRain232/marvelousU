@@ -29,6 +29,7 @@ import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { MarketRenderer } from "@view/entities/MarketRenderer";
 import { LightningTowerRenderer } from "@view/entities/LightningTowerRenderer";
+import { HealingTowerRenderer } from "@view/entities/HealingTowerRenderer";
 import { IceTowerRenderer } from "@view/entities/IceTowerRenderer";
 import { FireTowerRenderer } from "@view/entities/FireTowerRenderer";
 import { WarpTowerRenderer } from "@view/entities/WarpTowerRenderer";
@@ -68,6 +69,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.MARKET]: 0xaa7733,
   [BuildingType.FACTION_HALL]: 0x6655aa,
   [BuildingType.LIGHTNING_TOWER]: 0x4488ff,
+  [BuildingType.HEALING_TOWER]: 0x2ecc71,
   [BuildingType.ICE_TOWER]: 0xaaddff,
   [BuildingType.FIRE_TOWER]: 0xff6622,
   [BuildingType.WARP_TOWER]: 0x9966cc,
@@ -116,6 +118,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.ICE_TOWER]: "ICE TOWER",
   [BuildingType.FIRE_TOWER]: "FIRE TOWER",
   [BuildingType.WARP_TOWER]: "WARP TOWER",
+  [BuildingType.HEALING_TOWER]: "HEAL TOWER",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -169,6 +172,7 @@ export class BuildingView {
   // Detailed archery range renderer (only set for ARCHERY_RANGE type buildings)
   private _archeryRangeRenderer: ArcheryRangeRenderer | null = null;
   private _mageTowerRenderer: MageTowerRenderer | null = null;
+  private _healingTowerRenderer: HealingTowerRenderer | null = null;
   // Detailed barracks renderer (only set for BARRACKS type buildings)
   private _barracksRenderer: BarracksRenderer | null = null;
   // Detailed siege workshop renderer (only set for SIEGE_WORKSHOP type buildings)
@@ -319,6 +323,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.WARP_TOWER) {
       this._warpTowerRenderer = new WarpTowerRenderer(building.owner);
       this.container.addChild(this._warpTowerRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.HEALING_TOWER) {
+      this._healingTowerRenderer = new HealingTowerRenderer(building.owner);
+      this.container.addChild(this._healingTowerRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -476,6 +485,9 @@ export class BuildingView {
       }
       if (this._warpTowerRenderer) {
         this._warpTowerRenderer.tick(dt, phase);
+      }
+      if (this._healingTowerRenderer) {
+        this._healingTowerRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }

@@ -12,6 +12,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import { GamePhase } from "@/types";
+import { TowerMage, MAGE_COLORS_FIRE } from "./TowerMage";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -57,12 +58,16 @@ export class FireTowerRenderer {
   private _core = new Graphics(); // glowing ember core
   private _magma = new Graphics(); // magma veins
   private _flames = new Graphics(); // rising flames
+  private _mage: TowerMage;
+  private _mageContainer = new Container();
 
   private _time = 0;
+  private _castTimer = 0;
   private _playerColor: number;
 
   constructor(owner: string | null) {
     this._playerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._mage = new TowerMage(MAGE_COLORS_FIRE);
 
     this._drawStaticTower();
 
@@ -71,6 +76,9 @@ export class FireTowerRenderer {
     this.container.addChild(this._flames);
     this.container.addChild(this._torch);
     this.container.addChild(this._core);
+    this._mageContainer.addChild(this._mage.graphics);
+    this._mageContainer.position.set(-10, -15);
+    this.container.addChild(this._mageContainer);
   }
 
   private _drawStaticTower(): void {
@@ -142,6 +150,20 @@ export class FireTowerRenderer {
       alpha: 0.5,
     });
 
+    // Mage window - larger window for the attacking mage
+    const mageWinX = TW / 2 - 10;
+    const mageWinY = TH - 95;
+    g.rect(mageWinX - 2, mageWinY - 2, 24, 26).fill({ color: COL_STONE_DK });
+    g.rect(mageWinX, mageWinY, 20, 22).fill({ color: COL_WINDOW });
+    g.rect(mageWinX - 1, mageWinY - 1, 22, 24).stroke({
+      color: COL_WINDOW_FRAME,
+      width: 1.5,
+    });
+    g.rect(mageWinX + 2, mageWinY + 4, 6, 10).fill({
+      color: COL_MAGMA_GLOW,
+      alpha: 0.6,
+    });
+
     // Windows - middle section
     g.rect(winX - 2, TH - 85, 12, 14).fill({ color: COL_STONE_DK });
     g.rect(winX, TH - 83, 8, 10).fill({ color: COL_WINDOW });
@@ -183,6 +205,17 @@ export class FireTowerRenderer {
     this._updateFlames();
     this._updateCore();
     this._updateMagma();
+    this._updateMage(dt);
+  }
+
+  private _updateMage(dt: number): void {
+    this._castTimer += dt;
+    if (this._castTimer > 2.5) {
+      this._castTimer = 0;
+      this._mage.setCasting(true);
+      setTimeout(() => this._mage.setCasting(false), 400);
+    }
+    this._mage.tick(dt);
   }
 
   private _updateFlames(): void {
@@ -305,6 +338,7 @@ export class FireTowerRenderer {
   }
 
   destroy(): void {
+    this._mage.destroy();
     this.container.destroy({ children: true });
   }
 }

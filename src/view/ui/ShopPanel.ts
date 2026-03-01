@@ -166,6 +166,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.FACTION_HALL]: "Faction Hall",
   [BuildingType.LIGHTNING_TOWER]: "Lightning Tower",
   [BuildingType.ICE_TOWER]: "Ice Tower",
+  [BuildingType.HEALING_TOWER]: "Healing Tower",
   [BuildingType.FIRE_TOWER]: "Fire Tower",
   [BuildingType.WARP_TOWER]: "Warp Tower",
 };
@@ -1400,8 +1401,11 @@ export class ShopPanel {
         .fill({ color: locked ? 0x222222 : 0x223344 });
       btn.addChild(iconG);
 
+      const displayLabel = BUILDING_LABELS[bpType] ?? String(bpType);
+      const firstChar =
+        typeof displayLabel === "string" ? displayLabel.charAt(0) : "?";
       const letter = new Text({
-        text: BUILDING_LABELS[bpType].charAt(0),
+        text: firstChar,
         style: new TextStyle({
           fontFamily: "monospace",
           fontSize: 14,

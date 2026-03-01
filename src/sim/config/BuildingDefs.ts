@@ -56,6 +56,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.ICE_TOWER,
       BuildingType.FIRE_TOWER,
       BuildingType.WARP_TOWER,
+      BuildingType.HEALING_TOWER,
     ],
     footprint: { w: 4, h: 4 },
     placementZone: "own",
@@ -445,5 +446,21 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     ],
     description:
       "An ethereal tower that warps enemies away with reality-bending magic.",
+  },
+  [BuildingType.HEALING_TOWER]: {
+    type: BuildingType.HEALING_TOWER,
+    cost: 800,
+    hp: 150,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 1 },
+    placementZone: "own",
+    capturable: true,
+    defaultTurrets: [
+      { projectileTag: "heal", damage: -30, range: 4, attackSpeed: 1.0 },
+    ],
+    description:
+      "A blessed tower that channels healing energy to restore friendly units.",
   },
 };
