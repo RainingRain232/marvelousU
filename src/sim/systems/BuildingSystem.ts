@@ -515,6 +515,8 @@ function _updateTurrets(
     const isLightning = turret.projectileTag === "lightning";
     // Ice projectiles slow enemies
     const isIce = turret.projectileTag === "ice";
+    // Warp projectiles teleport enemies
+    const isWarp = turret.projectileTag === "warp";
 
     state.projectiles.set(projectileId, {
       id: projectileId,
@@ -534,7 +536,7 @@ function _updateTurrets(
       hitIds: new Set(),
       slowDuration: isIce ? 3 : 0,
       slowFactor: isIce ? 0.4 : 1,
-      teleportDistance: 0,
+      teleportDistance: isWarp ? 3 : 0,
       pullDistance: 0,
       pullChance: 0,
     });

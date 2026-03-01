@@ -109,6 +109,7 @@ export enum BuildingType {
   LIGHTNING_TOWER = "lightning_tower",
   ICE_TOWER = "ice_tower",
   FIRE_TOWER = "fire_tower",
+  WARP_TOWER = "warp_tower",
 }
 
 export enum AbilityType {

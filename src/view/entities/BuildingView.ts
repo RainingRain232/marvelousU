@@ -31,6 +31,7 @@ import { MarketRenderer } from "@view/entities/MarketRenderer";
 import { LightningTowerRenderer } from "@view/entities/LightningTowerRenderer";
 import { IceTowerRenderer } from "@view/entities/IceTowerRenderer";
 import { FireTowerRenderer } from "@view/entities/FireTowerRenderer";
+import { WarpTowerRenderer } from "@view/entities/WarpTowerRenderer";
 import { StableRenderer } from "@view/entities/StableRenderer";
 import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
 
@@ -69,6 +70,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.LIGHTNING_TOWER]: 0x4488ff,
   [BuildingType.ICE_TOWER]: 0xaaddff,
   [BuildingType.FIRE_TOWER]: 0xff6622,
+  [BuildingType.WARP_TOWER]: 0x9966cc,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -113,6 +115,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.LIGHTNING_TOWER]: "LIGHTNING",
   [BuildingType.ICE_TOWER]: "ICE TOWER",
   [BuildingType.FIRE_TOWER]: "FIRE TOWER",
+  [BuildingType.WARP_TOWER]: "WARP TOWER",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -183,6 +186,7 @@ export class BuildingView {
   private _lightningTowerRenderer: LightningTowerRenderer | null = null;
   private _iceTowerRenderer: IceTowerRenderer | null = null;
   private _fireTowerRenderer: FireTowerRenderer | null = null;
+  private _warpTowerRenderer: WarpTowerRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -310,6 +314,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.FIRE_TOWER) {
       this._fireTowerRenderer = new FireTowerRenderer(building.owner);
       this.container.addChild(this._fireTowerRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.WARP_TOWER) {
+      this._warpTowerRenderer = new WarpTowerRenderer(building.owner);
+      this.container.addChild(this._warpTowerRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -464,6 +473,9 @@ export class BuildingView {
       }
       if (this._fireTowerRenderer) {
         this._fireTowerRenderer.tick(dt, phase);
+      }
+      if (this._warpTowerRenderer) {
+        this._warpTowerRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }

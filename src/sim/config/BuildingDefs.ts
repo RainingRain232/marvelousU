@@ -55,6 +55,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.LIGHTNING_TOWER,
       BuildingType.ICE_TOWER,
       BuildingType.FIRE_TOWER,
+      BuildingType.WARP_TOWER,
     ],
     footprint: { w: 4, h: 4 },
     placementZone: "own",
@@ -428,5 +429,21 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       { projectileTag: "fireball", damage: 25, range: 4, attackSpeed: 1.0 },
     ],
     description: "A blazing tower that hurls fireballs to incinerate enemies.",
+  },
+  [BuildingType.WARP_TOWER]: {
+    type: BuildingType.WARP_TOWER,
+    cost: 800,
+    hp: 150,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 1 },
+    placementZone: "own",
+    capturable: true,
+    defaultTurrets: [
+      { projectileTag: "warp", damage: 20, range: 4, attackSpeed: 1.0 },
+    ],
+    description:
+      "An ethereal tower that warps enemies away with reality-bending magic.",
   },
 };

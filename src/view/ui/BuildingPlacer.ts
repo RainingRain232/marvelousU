@@ -48,6 +48,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.LIGHTNING_TOWER]: 0x4488ff,
   [BuildingType.ICE_TOWER]: 0xaaddff,
   [BuildingType.FIRE_TOWER]: 0xff6622,
+  [BuildingType.WARP_TOWER]: 0x9966cc,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -74,6 +75,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.LIGHTNING_TOWER]: "LIGHTNING",
   [BuildingType.ICE_TOWER]: "ICE TOWER",
   [BuildingType.FIRE_TOWER]: "FIRE TOWER",
+  [BuildingType.WARP_TOWER]: "WARP TOWER",
 };
 
 const LABEL_STYLE = new TextStyle({
