@@ -30,6 +30,11 @@ import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { animationManager } from "@view/animation/AnimationManager";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
 import { TowerRenderer } from "@view/entities/TowerRenderer";
+import { LightningTowerRenderer } from "@view/entities/LightningTowerRenderer";
+import { IceTowerRenderer } from "@view/entities/IceTowerRenderer";
+import { FireTowerRenderer } from "@view/entities/FireTowerRenderer";
+import { WarpTowerRenderer } from "@view/entities/WarpTowerRenderer";
+import { HealingTowerRenderer } from "@view/entities/HealingTowerRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
@@ -887,6 +892,31 @@ export class ShopPanel {
     } else if (buildingType === BuildingType.FACTION_HALL) {
       const fhr = new FactionHallRenderer(null);
       buildingContainer = fhr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.LIGHTNING_TOWER) {
+      const ltr = new LightningTowerRenderer(null);
+      buildingContainer = ltr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.ICE_TOWER) {
+      const itr = new IceTowerRenderer(null);
+      buildingContainer = itr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.FIRE_TOWER) {
+      const ftr = new FireTowerRenderer(null);
+      buildingContainer = ftr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.WARP_TOWER) {
+      const wtr = new WarpTowerRenderer(null);
+      buildingContainer = wtr.container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.HEALING_TOWER) {
+      const htr = new HealingTowerRenderer(null);
+      buildingContainer = htr.container;
       texW = 128;
       texH = 128;
     }
