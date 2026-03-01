@@ -4,7 +4,12 @@ import { GameState } from "@sim/state/GameState";
 import { GrassRenderer } from "./GrassRenderer";
 import { PlainsGrassRenderer } from "./PlainsGrassRenderer";
 import { TreeRenderer } from "./TreeRenderer";
+import { ForestTreeRenderer } from "./ForestTreeRenderer";
 import { FlowerRenderer } from "./FlowerRenderer";
+import { FernRenderer } from "./FernRenderer";
+import { MushroomRenderer } from "./MushroomRenderer";
+import { FireflyRenderer } from "./FireflyRenderer";
+import { ForestFogRenderer } from "./ForestFogRenderer";
 import { TumbleweedRenderer } from "./TumbleweedRenderer";
 import { DustRenderer } from "./DustRenderer";
 import { DeerRenderer } from "./DeerRenderer";
@@ -19,7 +24,12 @@ export class EnvironmentLayer {
     private _grass: GrassRenderer | null = null;
     private _plainsGrass: PlainsGrassRenderer | null = null;
     private _trees: TreeRenderer | null = null;
+    private _forestTrees: ForestTreeRenderer | null = null;
     private _flowers: FlowerRenderer | null = null;
+    private _ferns: FernRenderer | null = null;
+    private _mushrooms: MushroomRenderer | null = null;
+    private _fireflies: FireflyRenderer | null = null;
+    private _forestFog: ForestFogRenderer | null = null;
     private _tumbleweeds: TumbleweedRenderer | null = null;
     private _dust: DustRenderer | null = null;
     private _deer: DeerRenderer[] = [];
@@ -52,8 +62,25 @@ export class EnvironmentLayer {
         // Density and features per map type
         const isGrass = mapType === MapType.GRASS;
         const isPlains = mapType === MapType.PLAINS;
+        const isForest = mapType === MapType.FOREST;
 
-        if (isPlains) {
+        if (isForest) {
+            // Forest: ancient gnarled trees, ferns, glowing mushrooms, fireflies, fog
+            this._forestTrees = new ForestTreeRenderer(35, worldW, worldH, seed);
+            this._container.addChild(this._forestTrees.container);
+
+            this._ferns = new FernRenderer(120, worldW, worldH, seed + 2);
+            this._container.addChild(this._ferns.container);
+
+            this._mushrooms = new MushroomRenderer(40, worldW, worldH, seed + 3);
+            this._container.addChild(this._mushrooms.container);
+
+            this._forestFog = new ForestFogRenderer(worldW, worldH, seed + 4);
+            this._container.addChild(this._forestFog.container);
+
+            this._fireflies = new FireflyRenderer(60, worldW, worldH, seed + 5);
+            this._container.addChild(this._fireflies.container);
+        } else if (isPlains) {
             // Plains: tall dry grass, sparse scrub trees, tumbleweeds, dust
             this._plainsGrass = new PlainsGrassRenderer(400, worldW, worldH, seed);
             this._container.addChild(this._plainsGrass.container);
@@ -143,7 +170,12 @@ export class EnvironmentLayer {
         if (this._grass) this._grass.update(dt);
         if (this._plainsGrass) this._plainsGrass.update(dt);
         if (this._trees) this._trees.update(dt);
+        if (this._forestTrees) this._forestTrees.update(dt);
         if (this._flowers) this._flowers.update(dt);
+        if (this._ferns) this._ferns.update(dt);
+        if (this._mushrooms) this._mushrooms.update(dt);
+        if (this._fireflies) this._fireflies.update(dt);
+        if (this._forestFog) this._forestFog.update(dt);
         if (this._tumbleweeds) this._tumbleweeds.update(dt);
         if (this._dust) this._dust.update(dt);
         for (const d of this._deer) d.update(dt);
@@ -318,7 +350,12 @@ export class EnvironmentLayer {
         if (this._grass) this._grass.container.destroy({ children: true });
         if (this._plainsGrass) this._plainsGrass.container.destroy({ children: true });
         if (this._trees) this._trees.container.destroy({ children: true });
+        if (this._forestTrees) this._forestTrees.container.destroy({ children: true });
         if (this._flowers) this._flowers.container.destroy({ children: true });
+        if (this._ferns) this._ferns.container.destroy({ children: true });
+        if (this._mushrooms) this._mushrooms.destroy();
+        if (this._fireflies) this._fireflies.destroy();
+        if (this._forestFog) this._forestFog.destroy();
         if (this._tumbleweeds) this._tumbleweeds.destroy();
         if (this._dust) this._dust.destroy();
         for (const d of this._doves) d.destroy();

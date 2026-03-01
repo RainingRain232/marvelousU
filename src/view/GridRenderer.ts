@@ -46,10 +46,20 @@ const TILE_COLORS_PLAINS: TileColorSet = {
   east_unwalkable: 0x5e5430,  // deep straw — impassable east
 };
 
+const TILE_COLORS_FOREST: TileColorSet = {
+  west_walkable: 0x1a3318,    // deep shadowed moss
+  west_unwalkable: 0x0f1f0e,  // near-black undergrowth
+  neutral_walkable: 0x1e3a1a,  // dark emerald floor
+  neutral_unwalkable: 0x122210, // pitch-dark thicket
+  east_walkable: 0x1d3520,    // twilight green
+  east_unwalkable: 0x112015,  // deep shadow
+};
+
 const TILE_COLORS: Record<string, TileColorSet> = {
   [MapType.MEADOW]: TILE_COLORS_MEADOW,
   [MapType.GRASS]: TILE_COLORS_GRASS,
   [MapType.PLAINS]: TILE_COLORS_PLAINS,
+  [MapType.FOREST]: TILE_COLORS_FOREST,
 };
 
 const TILE_COLORS_DEFAULT = TILE_COLORS_MEADOW;

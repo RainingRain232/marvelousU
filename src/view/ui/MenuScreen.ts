@@ -94,7 +94,7 @@ const MAP_TYPES: MapTypeEntry[] = [
   { type: MapType.MEADOW,   label: "MEADOW" },
   { type: MapType.GRASS,    label: "GRASS" },
   { type: MapType.PLAINS,   label: "PLAINS" },
-  { type: MapType.FOREST,   label: "FOREST",   locked: true },
+  { type: MapType.FOREST,   label: "FOREST" },
   { type: MapType.TUNDRA,   label: "TUNDRA",   locked: true },
   { type: MapType.SWAMP,    label: "SWAMP",     locked: true },
   { type: MapType.VOLCANIC, label: "VOLCANIC", locked: true },
