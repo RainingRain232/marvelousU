@@ -7,8 +7,9 @@
 //   • Player-colored flags on each tower (waving in the wind)
 //   • Princess animation in left tower (PREP phase) — peeks out, waves handkerchief
 //   • King animation in right tower (BATTLE phase) — peeks out, waves sword
-//   • Stone texture, arrow slits, moss details
+//   • Stone texture, arrow slits, moss & ivy details
 //   • Court Jester (PREP phase) — peeks out from gate, throws ball at guard
+//   • Gargoyle statues flanking the gate top
 //
 // All drawing uses PixiJS Graphics. The castle container is 4×TILE_SIZE wide
 // and 4×TILE_SIZE tall. Animations are driven by `tick(dt, phase)`.
@@ -31,31 +32,41 @@ const COL_STONE_DK = 0x6b6860;
 const COL_MORTAR = 0x9a9688;
 const COL_ROOF = 0x5a2d2d;
 const COL_ROOF_DK = 0x3d1515;
+const COL_ROOF_LT = 0x6e3838;
 const COL_WOOD_DK = 0x3d2510;
 const COL_PORTCULLIS = 0x444444;
 const COL_WINDOW = 0x1a1a2e;
+const COL_WINDOW_GLOW = 0x334466;
 const COL_WINDOW_FRAME = 0x555555;
 const COL_MOSS = 0x4a6b3a;
+const COL_IVY = 0x3a5a2e;
+const COL_IVY_LT = 0x5a7a4a;
+const COL_GARGOYLE = 0x6a6a60;
+const COL_GARGOYLE_DK = 0x4a4a42;
 
 // Character palettes
 const COL_SKIN = 0xf0c8a0;
 const COL_HAIR = 0xf0d060;
 const COL_DRESS = 0xcc4488;
+const COL_DRESS_DK = 0x993366;
 const COL_HANKY = 0xffffff;
 const COL_KING_SKIN = 0xd4a574;
 const COL_CROWN = 0xffd700;
 const COL_CROWN_GEM = 0xff2200;
+const COL_CROWN_GEM2 = 0x2266ff;
 const COL_KING_ARMOR = 0x8899aa;
+const COL_KING_CAPE = 0x882244;
 const COL_KING_SWORD = 0xc0c8d0;
 const COL_JESTER1 = 0xff3344;
 const COL_JESTER2 = 0xaa00cc;
+const COL_JESTER_BELL = 0xffd700;
 
 // Animation timing
 const PRINCESS_CYCLE = 8.0;
 const PRINCESS_APPEAR = 2.5;
 const KING_CYCLE = 6.0;
 const KING_APPEAR = 2.0;
-const FLAG_SPEED = 3.0; // radians/sec
+const FLAG_SPEED = 3.0;
 const JESTER_CYCLE = 25.0;
 const JESTER_APPEAR = 6.0;
 
@@ -149,7 +160,8 @@ export class CastleRenderer {
     // 4. Jester (PREP only)
     if (phase === GamePhase.PREP) {
       this._jesterTimer += dt;
-      if (this._jesterTimer > JESTER_CYCLE) this._jesterTimer -= JESTER_CYCLE;
+      if (this._jesterTimer > JESTER_CYCLE)
+        this._jesterTimer -= JESTER_CYCLE;
       this._updateJester(this._jesterTimer);
     } else {
       this._jesterGfx.visible = false;
@@ -158,7 +170,7 @@ export class CastleRenderer {
     }
   }
 
-  // ── Internal Helpers ────────────────────────────────────────────────────────
+  // ── Static Drawing ────────────────────────────────────────────────────────
 
   private _drawStaticCastle(): void {
     const g = this._base;
@@ -171,7 +183,14 @@ export class CastleRenderer {
     g.rect(40, wallY, CW - 80, wallH)
       .fill({ color: COL_STONE })
       .stroke({ color: COL_STONE_DK, width: 1 });
+    // Wall shadow (left side)
+    g.rect(41, wallY + 1, 6, wallH - 2).fill({
+      color: COL_STONE_DK,
+      alpha: 0.15,
+    });
     this._drawBrickPattern(g, 42, wallY + 2, CW - 84, wallH - 4);
+    // Stone highlights and shadows on wall
+    this._drawStoneVariation(g, 50, wallY + 10, CW - 100, wallH - 20);
 
     // Towers
     const towerW = 60,
@@ -187,7 +206,14 @@ export class CastleRenderer {
     g.rect(gateX, wallY - 15, gateW, gateH + 35)
       .fill({ color: COL_STONE })
       .stroke({ color: COL_STONE_DK, width: 1 });
-    this._drawBrickPattern(g, gateX + 2, wallY - 13, gateW - 4, gateH + 30);
+    this._drawBrickPattern(
+      g,
+      gateX + 2,
+      wallY - 13,
+      gateW - 4,
+      gateH + 30,
+    );
+    this._drawStoneVariation(g, gateX + 4, wallY - 8, gateW - 8, gateH + 20);
     this._drawCrenellations(g, gateX, wallY - 15, gateW);
 
     // Gate Arch (Background)
@@ -195,24 +221,65 @@ export class CastleRenderer {
       archTop = wallY + 20 + 15,
       archW = 28,
       archH = gateH - 20;
-    g.rect(archCX - archW / 2, archTop + archH * 0.3, archW, archH * 0.7).fill({
-      color: COL_WOOD_DK,
-    });
+    g.rect(
+      archCX - archW / 2,
+      archTop + archH * 0.3,
+      archW,
+      archH * 0.7,
+    ).fill({ color: COL_WOOD_DK });
     g.ellipse(archCX, archTop + archH * 0.3, archW / 2, archH * 0.3).fill({
       color: COL_WOOD_DK,
     });
+    // Arch stone voussoirs
+    for (let va = -0.8; va <= 0.8; va += 0.35) {
+      const vx = archCX + Math.sin(va) * (archW / 2 + 2);
+      const vy = archTop + archH * 0.3 - Math.cos(va) * (archH * 0.3 + 2);
+      g.circle(vx, vy, 2).fill({ color: COL_STONE_LT, alpha: 0.4 });
+    }
+    // Keystone
+    g.moveTo(archCX - 4, archTop + 2)
+      .lineTo(archCX, archTop - 4)
+      .lineTo(archCX + 4, archTop + 2)
+      .closePath()
+      .fill({ color: COL_STONE_LT });
 
-    // Decorative windows
+    // ── Gargoyles flanking the gate ──
+    this._drawGargoyle(g, gateX - 4, wallY - 8, false); // left, facing left
+    this._drawGargoyle(g, gateX + gateW + 4, wallY - 8, true); // right, facing right
+
+    // Decorative windows on gatehouse
     const gateWinY = wallY + 14;
     this._drawWindow(g, archCX - 48, gateWinY, 16, 22);
     this._drawWindow(g, archCX + 32, gateWinY, 16, 22);
 
-    // Walkway & Moss
+    // Walkway crenellations & Moss
     this._drawCrenellations(g, 40, wallY - 2, CW - 80);
-    this._drawMoss(g, 13, towerY + towerH - 15, 12);
-    this._drawMoss(g, CW - 20, towerY + towerH - 10, 10);
-    this._drawMoss(g, gateX + 3, wallY + gateH + 5, 8);
+
+    // Moss patches
+    this._drawMoss(g, 13, towerY + towerH - 15, 14);
+    this._drawMoss(g, CW - 22, towerY + towerH - 10, 12);
+    this._drawMoss(g, gateX + 3, wallY + gateH + 5, 10);
+    this._drawMoss(g, 45, wallY + wallH - 5, 10);
+    this._drawMoss(g, CW - 55, wallY + wallH - 8, 8);
+    this._drawMoss(g, gateX + gateW - 12, wallY + gateH + 12, 8);
+    // Moss on crenellations
+    this._drawMoss(g, 55, wallY - 6, 6);
+    this._drawMoss(g, CW - 70, wallY - 5, 5);
+
+    // Ivy / climbing vines
+    this._drawIvy(g, 42, wallY + 15, wallH - 25);
+    this._drawIvy(g, CW - 44, wallY + 20, wallH - 30);
+    this._drawIvy(g, gateX + 2, wallY + 5, gateH + 15);
+    this._drawIvy(g, gateX + gateW - 4, wallY + 10, gateH + 10);
+    // Ivy on towers
+    this._drawIvy(g, 12, towerY + 80, 60);
+    this._drawIvy(g, CW - 14, towerY + 90, 50);
+
     this._drawSmallWindow(g, gateX + gateW - 14, wallY - 5);
+
+    // Banner/shield emblems on wall
+    this._drawWallBanner(g, 60, wallY + 25);
+    this._drawWallBanner(g, CW - 72, wallY + 25);
   }
 
   private _drawTower(
@@ -225,19 +292,58 @@ export class CastleRenderer {
     g.rect(x, y, w, h)
       .fill({ color: COL_STONE_LT })
       .stroke({ color: COL_STONE_DK, width: 1.5 });
+    // Left wall shadow
+    g.rect(x + 1, y + 1, 5, h - 2).fill({
+      color: COL_STONE_DK,
+      alpha: 0.15,
+    });
     this._drawBrickPattern(g, x + 2, y + 2, w - 4, h - 4);
+    this._drawStoneVariation(g, x + 4, y + 10, w - 8, h - 20);
+
+    // Roof with tile lines
     g.moveTo(x - 4, y)
       .lineTo(x + w / 2, y - 28)
       .lineTo(x + w + 4, y)
       .closePath()
       .fill({ color: COL_ROOF })
       .stroke({ color: COL_ROOF_DK, width: 1 });
+    // Roof highlight
+    g.moveTo(x + w / 2, y - 28)
+      .lineTo(x + w + 4, y)
+      .lineTo(x + w / 2 + 1, y - 27)
+      .closePath()
+      .fill({ color: COL_ROOF_LT, alpha: 0.3 });
+    // Roof tile lines
+    for (let i = 1; i <= 3; i++) {
+      const frac = i / 4;
+      const ly = y - 28 + frac * 28;
+      const halfW = (w / 2 + 4) * frac;
+      g.moveTo(x + w / 2 - halfW, ly)
+        .lineTo(x + w / 2 + halfW, ly)
+        .stroke({ color: COL_ROOF_DK, width: 0.5, alpha: 0.5 });
+    }
+    // Finial
+    g.circle(x + w / 2, y - 28, 2).fill({ color: 0xccaa44 });
+
     this._drawCrenellations(g, x, y, w);
+
+    // Stained glass dragon window — just under the roof, above first stone band
+    this._drawDragonWindow(g, x + w / 2 - 12, y + 6, 24, 30);
+    // Decorative stone band
+    g.rect(x - 1, y + 40, w + 2, 3).fill({ color: COL_STONE_DK });
+    // Regular windows below
     this._drawWindow(g, x + w / 2 - 10, y + 50, 20, 26);
     this._drawArrowSlit(g, x + 12, y + 100);
     this._drawArrowSlit(g, x + w - 18, y + 100);
+    g.rect(x - 1, y + 125, w + 2, 3).fill({ color: COL_STONE_DK });
     this._drawWindow(g, x + w / 2 - 10, y + 140, 20, 26);
+
+    // Moss on tower base
+    this._drawMoss(g, x + 5, y + h - 8, 12);
+    this._drawMoss(g, x + w - 15, y + h - 5, 10);
   }
+
+  // ── Stone texture helpers ─────────────────────────────────────────────────
 
   private _drawBrickPattern(
     g: Graphics,
@@ -248,14 +354,79 @@ export class CastleRenderer {
   ): void {
     for (let row = 0; row < h; row += 10) {
       const offset = (Math.floor(row / 10) % 2) * 15;
+      // Horizontal mortar line
       g.moveTo(x, y + row)
         .lineTo(x + w, y + row)
-        .stroke({ color: COL_MORTAR, width: 0.4, alpha: 0.3 });
+        .stroke({ color: COL_MORTAR, width: 0.6, alpha: 0.45 });
+      // Vertical mortar joints
       for (let col = offset; col < w; col += 30) {
         g.moveTo(x + col, y + row)
           .lineTo(x + col, y + row + 10)
-          .stroke({ color: COL_MORTAR, width: 0.3, alpha: 0.25 });
+          .stroke({ color: COL_MORTAR, width: 0.5, alpha: 0.4 });
       }
+      // Stone face shading — alternate stones get a lighter top edge
+      for (let col = offset; col < w - 10; col += 30) {
+        // Top highlight on each stone block
+        g.moveTo(x + col + 1, y + row + 1)
+          .lineTo(x + col + 28, y + row + 1)
+          .stroke({ color: COL_STONE_LT, width: 0.5, alpha: 0.2 });
+        // Bottom shadow on each stone block
+        g.moveTo(x + col + 1, y + row + 9)
+          .lineTo(x + col + 28, y + row + 9)
+          .stroke({ color: COL_STONE_DK, width: 0.5, alpha: 0.2 });
+      }
+    }
+  }
+
+  /** Adds lighter and darker stone patches for variation */
+  private _drawStoneVariation(
+    g: Graphics,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void {
+    // Light stones — more of them and more visible
+    const lightStones = [
+      [0.1, 0.15],
+      [0.6, 0.3],
+      [0.25, 0.55],
+      [0.8, 0.7],
+      [0.4, 0.85],
+      [0.15, 0.75],
+      [0.7, 0.1],
+      [0.5, 0.45],
+      [0.35, 0.35],
+      [0.9, 0.55],
+      [0.05, 0.9],
+      [0.65, 0.8],
+    ];
+    for (const [fx, fy] of lightStones) {
+      const sx = x + fx * w;
+      const sy = y + fy * h;
+      g.rect(sx, sy, 12, 8)
+        .fill({ color: COL_STONE_LT, alpha: 0.3 })
+        .stroke({ color: COL_STONE_LT, width: 0.3, alpha: 0.15 });
+    }
+    // Dark stones — more visible
+    const darkStones = [
+      [0.3, 0.1],
+      [0.75, 0.5],
+      [0.1, 0.4],
+      [0.55, 0.65],
+      [0.85, 0.25],
+      [0.45, 0.2],
+      [0.2, 0.85],
+      [0.7, 0.4],
+      [0.5, 0.1],
+      [0.15, 0.6],
+    ];
+    for (const [fx, fy] of darkStones) {
+      const sx = x + fx * w;
+      const sy = y + fy * h;
+      g.rect(sx, sy, 12, 8)
+        .fill({ color: COL_STONE_DK, alpha: 0.2 })
+        .stroke({ color: COL_STONE_DK, width: 0.3, alpha: 0.1 });
     }
   }
 
@@ -273,6 +444,10 @@ export class CastleRenderer {
       g.rect(mx, y - merlonH, merlonW, merlonH)
         .fill({ color: COL_STONE_LT })
         .stroke({ color: COL_STONE_DK, width: 0.5 });
+      // Cap stone
+      g.rect(mx - 0.5, y - merlonH - 1.5, merlonW + 1, 2).fill({
+        color: COL_STONE_DK,
+      });
     }
   }
 
@@ -283,33 +458,359 @@ export class CastleRenderer {
     w: number,
     h: number,
   ): void {
+    // Deep recess
+    g.rect(x - 3, y - 3, w + 6, h + 6).fill({ color: COL_STONE_DK });
     g.rect(x - 2, y - 2, w + 4, h + 4).fill({ color: COL_WINDOW_FRAME });
     g.rect(x, y, w, h).fill({ color: COL_WINDOW });
+    // Arched top
     g.ellipse(x + w / 2, y + 2, w / 2, 5).fill({ color: COL_WINDOW_FRAME });
+    g.ellipse(x + w / 2, y + 2, w / 2 - 1.5, 3.5).fill({
+      color: COL_WINDOW,
+    });
+    // Mullions
     g.moveTo(x + w / 2, y + 3)
       .lineTo(x + w / 2, y + h)
       .stroke({ color: COL_WINDOW_FRAME, width: 1.5 });
     g.moveTo(x, y + h * 0.45)
       .lineTo(x + w, y + h * 0.45)
       .stroke({ color: COL_WINDOW_FRAME, width: 1.5 });
+    // Warm interior glow
+    g.rect(x + 1, y + 4, w / 2 - 1, h * 0.4 - 2).fill({
+      color: COL_WINDOW_GLOW,
+      alpha: 0.3,
+    });
+    g.rect(x + w / 2 + 1, y + h * 0.45 + 1, w / 2 - 2, h * 0.5 - 2).fill({
+      color: COL_WINDOW_GLOW,
+      alpha: 0.2,
+    });
+    // Sill
+    g.rect(x - 3, y + h + 1, w + 6, 3).fill({ color: COL_STONE_LT });
   }
 
   private _drawSmallWindow(g: Graphics, x: number, y: number): void {
+    g.rect(x - 1, y - 1, 8, 10).fill({ color: COL_STONE_DK });
     g.rect(x, y, 6, 8)
       .fill({ color: COL_WINDOW })
       .stroke({ color: COL_WINDOW_FRAME, width: 0.5 });
+    g.moveTo(x + 3, y)
+      .lineTo(x + 3, y + 8)
+      .stroke({ color: COL_WINDOW_FRAME, width: 0.5 });
+    g.rect(x - 1, y + 8, 8, 1.5).fill({ color: COL_STONE_LT });
   }
 
   private _drawArrowSlit(g: Graphics, x: number, y: number): void {
+    g.rect(x + 1, y - 1, 4, 16).fill({ color: COL_STONE_DK });
     g.rect(x + 2, y, 2, 14).fill({ color: COL_WINDOW });
     g.rect(x, y + 5, 6, 2).fill({ color: COL_WINDOW });
+    g.rect(x + 1, y - 1, 4, 16).stroke({ color: COL_STONE_DK, width: 0.5 });
   }
+
+  /** Stained glass window depicting a red dragon breathing fire, with lead caming. */
+  private _drawDragonWindow(
+    g: Graphics,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void {
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const LEAD = 0x222222;
+    const LEAD_W = 0.8;
+
+    // ── Window frame — pointed arch shape ──
+    const archTop = y + 4;
+    g.roundRect(x, y + h * 0.25, w, h * 0.75, 2).fill({ color: COL_WINDOW });
+    // Pointed arch top
+    g.moveTo(x, y + h * 0.35)
+      .bezierCurveTo(x, archTop - 2, cx, y - 2, cx, y)
+      .bezierCurveTo(cx, y - 2, x + w, archTop - 2, x + w, y + h * 0.35)
+      .fill({ color: COL_WINDOW });
+
+    // ── Background glow — warm amber behind fire area, dark blue behind body ──
+    g.ellipse(cx + 4, cy - 4, 8, 6).fill({ color: 0x553300, alpha: 0.5 });
+    g.ellipse(cx - 3, cy + 4, 6, 8).fill({ color: 0x1a1a3e, alpha: 0.4 });
+
+    // ── Fire / flame area (right-upper) — oranges and yellows ──
+    // Large flame plume
+    g.moveTo(cx + 2, cy - 2)
+      .bezierCurveTo(cx + 6, cy - 10, cx + 10, cy - 8, cx + 9, cy - 2)
+      .bezierCurveTo(cx + 11, cy - 6, cx + 8, cy - 12, cx + 5, cy - 4)
+      .fill({ color: 0xcc4400, alpha: 0.85 });
+    // Inner bright flame
+    g.moveTo(cx + 3, cy - 2)
+      .bezierCurveTo(cx + 5, cy - 8, cx + 8, cy - 6, cx + 7, cy - 2)
+      .fill({ color: 0xff8800, alpha: 0.8 });
+    // Hot core
+    g.moveTo(cx + 4, cy - 2)
+      .bezierCurveTo(cx + 5, cy - 5, cx + 6, cy - 4, cx + 6, cy - 2)
+      .fill({ color: 0xffcc00, alpha: 0.7 });
+
+    // ── Dragon silhouette (left-center) — deep red stained glass ──
+    // Body — curved belly
+    g.moveTo(cx - 6, cy + 8)
+      .bezierCurveTo(cx - 8, cy + 2, cx - 6, cy - 4, cx - 2, cy - 2)
+      .lineTo(cx + 1, cy)
+      .bezierCurveTo(cx - 2, cy + 4, cx - 4, cy + 6, cx - 6, cy + 8)
+      .fill({ color: 0x991111, alpha: 0.9 });
+    // Neck stretching toward fire
+    g.moveTo(cx - 2, cy - 2)
+      .bezierCurveTo(cx, cy - 6, cx + 1, cy - 4, cx + 2, cy - 2)
+      .lineTo(cx + 1, cy)
+      .lineTo(cx - 2, cy - 2)
+      .fill({ color: 0xbb2222, alpha: 0.85 });
+    // Head — snout pointing right toward flames
+    g.ellipse(cx + 2, cy - 3, 3, 2).fill({ color: 0xaa1818, alpha: 0.9 });
+    // Eye
+    g.circle(cx + 1.5, cy - 3.5, 0.7).fill({ color: 0xffcc00, alpha: 0.9 });
+    // Wing — triangular, sweeping up-left
+    g.moveTo(cx - 4, cy)
+      .lineTo(cx - 10, cy - 8)
+      .lineTo(cx - 3, cy - 4)
+      .fill({ color: 0x881111, alpha: 0.75 });
+    // Wing membrane lines
+    g.moveTo(cx - 4, cy).lineTo(cx - 8, cy - 6)
+      .stroke({ color: LEAD, width: 0.4, alpha: 0.6 });
+    g.moveTo(cx - 4, cy - 1).lineTo(cx - 9, cy - 7)
+      .stroke({ color: LEAD, width: 0.4, alpha: 0.5 });
+    // Tail — curling down
+    g.moveTo(cx - 6, cy + 8)
+      .bezierCurveTo(cx - 5, cy + 11, cx - 2, cy + 12, cx, cy + 10)
+      .stroke({ color: 0x991111, width: 1.5 });
+    // Tail tip — pointed
+    g.moveTo(cx, cy + 10)
+      .lineTo(cx + 1, cy + 8)
+      .lineTo(cx - 1, cy + 11)
+      .fill({ color: 0x991111, alpha: 0.8 });
+
+    // ── Lead caming — the dark divider lines ──
+    // Outer arch frame
+    g.moveTo(x, y + h * 0.35)
+      .bezierCurveTo(x, archTop - 2, cx, y - 2, cx, y)
+      .bezierCurveTo(cx, y - 2, x + w, archTop - 2, x + w, y + h * 0.35)
+      .stroke({ color: LEAD, width: 1.2 });
+    g.rect(x, y + h * 0.25, w, h * 0.75)
+      .stroke({ color: LEAD, width: 1.2 });
+    // Vertical center line
+    g.moveTo(cx, y).lineTo(cx, y + h).stroke({ color: LEAD, width: LEAD_W });
+    // Horizontal bands
+    g.moveTo(x, cy - 4).lineTo(x + w, cy - 4).stroke({ color: LEAD, width: LEAD_W });
+    g.moveTo(x, cy + 4).lineTo(x + w, cy + 4).stroke({ color: LEAD, width: LEAD_W });
+    // Diagonal accent lines radiating from center
+    g.moveTo(cx, cy).lineTo(x + 2, y + h * 0.3).stroke({ color: LEAD, width: 0.5 });
+    g.moveTo(cx, cy).lineTo(x + w - 2, y + h * 0.3).stroke({ color: LEAD, width: 0.5 });
+    // Small diamond accent in lower section
+    g.moveTo(cx, cy + 8).lineTo(cx - 4, cy + 12).lineTo(cx, cy + 16)
+      .lineTo(cx + 4, cy + 12).lineTo(cx, cy + 8)
+      .stroke({ color: LEAD, width: 0.5 });
+
+    // ── Stone surround / frame ──
+    g.rect(x - 1.5, y - 1, w + 3, h + 2)
+      .stroke({ color: COL_STONE_DK, width: 1.5 });
+    // Keystone at top of arch
+    g.moveTo(cx - 3, y - 1).lineTo(cx, y - 3).lineTo(cx + 3, y - 1)
+      .fill({ color: COL_STONE_LT });
+    g.moveTo(cx - 3, y - 1).lineTo(cx, y - 3).lineTo(cx + 3, y - 1)
+      .stroke({ color: COL_STONE_DK, width: 0.5 });
+  }
+
+  // ── Decorative elements ──────────────────────────────────────────────────
 
   private _drawMoss(g: Graphics, x: number, y: number, w: number): void {
     g.ellipse(x + w / 2, y, w / 2, 3).fill({ color: COL_MOSS, alpha: 0.5 });
+    // Small satellite patches
+    g.circle(x + 2, y - 1, 2).fill({ color: COL_MOSS, alpha: 0.3 });
+    g.circle(x + w - 2, y - 0.5, 1.5).fill({ color: COL_MOSS, alpha: 0.35 });
   }
 
-  // ── Flags ───────────────────────────────────────────────────────────────────
+  private _drawIvy(g: Graphics, x: number, y: number, h: number): void {
+    // Main vine stem
+    for (let iy = 0; iy < h; iy += 4) {
+      const wobble = Math.sin(iy * 0.6) * 2;
+      g.circle(x + wobble, y + iy, 1.2).fill({ color: COL_IVY });
+    }
+    // Leaves branching off
+    for (let iy = 3; iy < h; iy += 7) {
+      const wobble = Math.sin(iy * 0.6) * 2;
+      const dir = iy % 14 < 7 ? -1 : 1;
+      g.circle(x + wobble + dir * 3.5, y + iy, 2.5).fill({
+        color: COL_IVY_LT,
+        alpha: 0.75,
+      });
+      g.circle(x + wobble + dir * 2.5, y + iy + 1, 1.8).fill({
+        color: COL_IVY,
+        alpha: 0.6,
+      });
+    }
+  }
+
+  /** Draws a gargoyle statue jutting out from the wall */
+  private _drawGargoyle(
+    g: Graphics,
+    x: number,
+    y: number,
+    facingRight: boolean,
+  ): void {
+    const dir = facingRight ? 1 : -1;
+
+    // Mounting block (where gargoyle sits on the wall)
+    g.rect(x - 5, y + 2, 10, 8)
+      .fill({ color: COL_GARGOYLE })
+      .stroke({ color: COL_GARGOYLE_DK, width: 1 });
+
+    // Body (hunched forward, jutting out from wall)
+    g.moveTo(x, y + 8)
+      .lineTo(x + dir * 6, y + 6)
+      .lineTo(x + dir * 12, y + 4)
+      .lineTo(x + dir * 14, y + 2)
+      .lineTo(x + dir * 14, y + 8)
+      .lineTo(x + dir * 8, y + 10)
+      .lineTo(x, y + 10)
+      .closePath()
+      .fill({ color: COL_GARGOYLE })
+      .stroke({ color: COL_GARGOYLE_DK, width: 0.8 });
+
+    // Haunches / legs tucked under
+    g.moveTo(x + dir * 2, y + 10)
+      .lineTo(x + dir * 4, y + 14)
+      .lineTo(x + dir * 8, y + 14)
+      .lineTo(x + dir * 6, y + 10)
+      .closePath()
+      .fill({ color: COL_GARGOYLE });
+    // Claws gripping the edge
+    g.moveTo(x + dir * 4, y + 14)
+      .lineTo(x + dir * 3, y + 16)
+      .stroke({ color: COL_GARGOYLE_DK, width: 1 });
+    g.moveTo(x + dir * 6, y + 14)
+      .lineTo(x + dir * 5, y + 16)
+      .stroke({ color: COL_GARGOYLE_DK, width: 1 });
+    g.moveTo(x + dir * 8, y + 14)
+      .lineTo(x + dir * 7, y + 16)
+      .stroke({ color: COL_GARGOYLE_DK, width: 1 });
+
+    // Head (beast-like, facing outward)
+    const hx = x + dir * 16;
+    const hy = y + 1;
+    // Skull shape
+    g.circle(hx, hy + 2, 5)
+      .fill({ color: COL_GARGOYLE })
+      .stroke({ color: COL_GARGOYLE_DK, width: 0.8 });
+    // Snout/muzzle
+    g.moveTo(hx + dir * 4, hy)
+      .lineTo(hx + dir * 9, hy + 1)
+      .lineTo(hx + dir * 9, hy + 4)
+      .lineTo(hx + dir * 4, hy + 4)
+      .closePath()
+      .fill({ color: COL_GARGOYLE })
+      .stroke({ color: COL_GARGOYLE_DK, width: 0.6 });
+    // Open mouth (water spout)
+    g.rect(hx + dir * 7, hy + 2, dir * 4, 2).fill({ color: 0x333333 });
+    // Fangs
+    g.moveTo(hx + dir * 6, hy + 1)
+      .lineTo(hx + dir * 7, hy + 2.5)
+      .lineTo(hx + dir * 5, hy + 1)
+      .closePath()
+      .fill({ color: COL_STONE_LT });
+    g.moveTo(hx + dir * 6, hy + 4)
+      .lineTo(hx + dir * 7, hy + 2.5)
+      .lineTo(hx + dir * 5, hy + 4)
+      .closePath()
+      .fill({ color: COL_STONE_LT });
+    // Eyes (menacing hollow sockets)
+    g.circle(hx + dir * 1, hy, 1.5).fill({ color: 0x222222 });
+    g.circle(hx + dir * 1, hy, 0.5).fill({ color: 0x444444 });
+    // Brow ridge
+    g.moveTo(hx - dir * 1, hy - 2)
+      .lineTo(hx + dir * 4, hy - 3)
+      .stroke({ color: COL_GARGOYLE_DK, width: 1.5 });
+    // Horns
+    g.moveTo(hx - dir * 2, hy - 2)
+      .bezierCurveTo(
+        hx - dir * 4,
+        hy - 6,
+        hx - dir * 1,
+        hy - 8,
+        hx + dir * 1,
+        hy - 6,
+      )
+      .stroke({ color: COL_GARGOYLE_DK, width: 1.5 });
+    // Ears (pointed)
+    g.moveTo(hx - dir * 3, hy)
+      .lineTo(hx - dir * 5, hy - 4)
+      .lineTo(hx - dir * 2, hy - 1)
+      .closePath()
+      .fill({ color: COL_GARGOYLE });
+
+    // Wings (folded along the back)
+    g.moveTo(x + dir * 2, y + 4)
+      .bezierCurveTo(
+        x - dir * 2,
+        y - 4,
+        x + dir * 6,
+        y - 8,
+        x + dir * 10,
+        y - 2,
+      )
+      .stroke({ color: COL_GARGOYLE_DK, width: 1.2 });
+    // Wing membrane lines
+    g.moveTo(x + dir * 2, y + 2)
+      .lineTo(x + dir * 4, y - 4)
+      .stroke({ color: COL_GARGOYLE_DK, width: 0.5, alpha: 0.5 });
+    g.moveTo(x + dir * 4, y + 2)
+      .lineTo(x + dir * 6, y - 5)
+      .stroke({ color: COL_GARGOYLE_DK, width: 0.5, alpha: 0.5 });
+    g.moveTo(x + dir * 6, y + 1)
+      .lineTo(x + dir * 8, y - 4)
+      .stroke({ color: COL_GARGOYLE_DK, width: 0.5, alpha: 0.5 });
+
+    // Tail curling upward
+    g.moveTo(x - dir * 2, y + 6)
+      .bezierCurveTo(
+        x - dir * 6,
+        y + 4,
+        x - dir * 8,
+        y,
+        x - dir * 6,
+        y - 3,
+      )
+      .stroke({ color: COL_GARGOYLE_DK, width: 1.5 });
+    // Tail tip (pointed)
+    g.moveTo(x - dir * 6, y - 3)
+      .lineTo(x - dir * 7, y - 5)
+      .lineTo(x - dir * 5, y - 4)
+      .closePath()
+      .fill({ color: COL_GARGOYLE_DK });
+
+    // Weathering/moss on gargoyle
+    g.circle(hx - dir * 2, hy + 3, 1.5).fill({
+      color: COL_MOSS,
+      alpha: 0.3,
+    });
+    g.circle(x + dir * 8, y + 8, 1).fill({ color: COL_MOSS, alpha: 0.25 });
+  }
+
+  /** Draws a decorative wall banner/shield */
+  private _drawWallBanner(g: Graphics, x: number, y: number): void {
+    // Shield shape
+    g.moveTo(x, y)
+      .lineTo(x + 12, y)
+      .lineTo(x + 12, y + 10)
+      .lineTo(x + 6, y + 16)
+      .lineTo(x, y + 10)
+      .closePath()
+      .fill({ color: this._playerColor })
+      .stroke({ color: 0x444444, width: 1 });
+    // Shield boss
+    g.circle(x + 6, y + 7, 2)
+      .fill({ color: 0xccaa44 })
+      .stroke({ color: 0x886622, width: 0.5 });
+    // Diagonal stripe
+    g.moveTo(x + 2, y + 2)
+      .lineTo(x + 10, y + 12)
+      .stroke({ color: 0xffffff, width: 2, alpha: 0.3 });
+  }
+
+  // ── Flags ─────────────────────────────────────────────────────────────────
 
   private _drawFlags(): void {
     this._flagL.position.set(8 + 30 + 2, 15 - 28 - 2);
@@ -323,38 +824,51 @@ export class CastleRenderer {
 
   private _drawFlagShape(g: Graphics, time: number): void {
     g.clear();
-    g.moveTo(0, 0).lineTo(0, -20).stroke({ color: 0x888888, width: 2 });
+    // Pole
+    g.moveTo(0, 0).lineTo(0, -22).stroke({ color: 0x888888, width: 2 });
+    // Pole cap
+    g.circle(0, -22, 1.5).fill({ color: 0xccaa44 });
+
     const w1 = Math.sin(time) * 3,
       w2 = Math.sin(time * 1.3 + 1) * 4,
       w3 = Math.sin(time * 0.9 + 2) * 3;
     const fW = 18,
       fH = 12;
-    g.moveTo(0, -20)
-      .bezierCurveTo(fW * 0.3, -20 + w1, fW * 0.6, -20 + w2, fW, -20 + w3)
-      .lineTo(fW, -20 + fH + w3)
+    g.moveTo(0, -22)
+      .bezierCurveTo(
+        fW * 0.3,
+        -22 + w1,
+        fW * 0.6,
+        -22 + w2,
+        fW,
+        -22 + w3,
+      )
+      .lineTo(fW, -22 + fH + w3)
       .bezierCurveTo(
         fW * 0.6,
-        -20 + fH + w2,
+        -22 + fH + w2,
         fW * 0.3,
-        -20 + fH + w1,
+        -22 + fH + w1,
         0,
-        -20 + fH,
+        -22 + fH,
       )
       .closePath()
       .fill({ color: this._playerColor })
       .stroke({ color: this._playerColor, width: 0.5 });
-    g.moveTo(fW / 2 - 3, -14)
-      .lineTo(fW / 2 + 3, -14)
-      .stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
+    // Emblem on flag
+    g.circle(fW / 2, -16 + (w1 + w2) / 3, 2).fill({
+      color: 0xffffff,
+      alpha: 0.4,
+    });
   }
 
-  // ── Characters ──────────────────────────────────────────────────────────────
+  // ── Characters ────────────────────────────────────────────────────────────
 
   private _drawPrincess(t: number): void {
     const g = this._princessGfx;
     g.clear();
     const wx = 38,
-      wy = 15 + 50 + 6; // ltCenter
+      wy = 15 + 50 + 6;
     let hY =
       t < 0.2
         ? wy + 18 * (1 - t / 0.2)
@@ -362,13 +876,69 @@ export class CastleRenderer {
           ? wy + 18 * ((t - 0.8) / 0.2)
           : wy;
     if (hY > wy + 18) return;
-    g.rect(wx - 6, hY + 4, 12, 10).fill({ color: COL_DRESS });
-    g.circle(wx, hY, 5).fill({ color: COL_SKIN });
+
+    // Dress / bodice with detail
+    g.rect(wx - 7, hY + 5, 14, 12).fill({ color: COL_DRESS });
+    // Dress neckline
+    g.moveTo(wx - 5, hY + 5)
+      .bezierCurveTo(wx - 3, hY + 8, wx + 3, hY + 8, wx + 5, hY + 5)
+      .stroke({ color: COL_DRESS_DK, width: 0.8 });
+    // Corset lacing
+    for (let ly = hY + 7; ly < hY + 15; ly += 3) {
+      g.moveTo(wx - 1, ly)
+        .lineTo(wx + 1, ly + 1.5)
+        .stroke({ color: COL_DRESS_DK, width: 0.5 });
+      g.moveTo(wx + 1, ly)
+        .lineTo(wx - 1, ly + 1.5)
+        .stroke({ color: COL_DRESS_DK, width: 0.5 });
+    }
+    // Puffy sleeves
+    g.circle(wx - 7, hY + 7, 3).fill({ color: COL_DRESS });
+    g.circle(wx + 7, hY + 7, 3).fill({ color: COL_DRESS });
+    // Necklace
+    g.moveTo(wx - 4, hY + 5)
+      .bezierCurveTo(wx - 2, hY + 7, wx + 2, hY + 7, wx + 4, hY + 5)
+      .stroke({ color: 0xccaa44, width: 0.8 });
+    g.circle(wx, hY + 6.5, 1).fill({ color: COL_CROWN_GEM });
+
+    // Neck
+    g.rect(wx - 2, hY + 2, 4, 4).fill({ color: COL_SKIN });
+
+    // Head
+    g.circle(wx, hY, 6).fill({ color: COL_SKIN });
+    // Eyes
+    g.circle(wx - 2, hY - 1, 1).fill({ color: 0x334466 });
+    g.circle(wx + 2, hY - 1, 1).fill({ color: 0x334466 });
+    g.circle(wx - 2, hY - 1.2, 0.4).fill({ color: 0xffffff }); // glint
+    g.circle(wx + 2, hY - 1.2, 0.4).fill({ color: 0xffffff });
+    // Eyelashes
+    g.moveTo(wx - 3.5, hY - 1.5)
+      .lineTo(wx - 1, hY - 2)
+      .stroke({ color: 0x333333, width: 0.4 });
+    g.moveTo(wx + 3.5, hY - 1.5)
+      .lineTo(wx + 1, hY - 2)
+      .stroke({ color: 0x333333, width: 0.4 });
+    // Nose
+    g.moveTo(wx, hY)
+      .lineTo(wx + 0.5, hY + 1.5)
+      .lineTo(wx - 0.5, hY + 1.5)
+      .stroke({ color: 0xd0a880, width: 0.5 });
+    // Mouth (small smile)
+    g.moveTo(wx - 1.5, hY + 2.5)
+      .bezierCurveTo(wx - 0.5, hY + 3.5, wx + 0.5, hY + 3.5, wx + 1.5, hY + 2.5)
+      .stroke({ color: 0xcc6666, width: 0.6 });
+    // Blush
+    g.circle(wx - 3.5, hY + 1, 1.5).fill({ color: 0xff8888, alpha: 0.2 });
+    g.circle(wx + 3.5, hY + 1, 1.5).fill({ color: 0xff8888, alpha: 0.2 });
+
+    // Hair (flowing)
     const windTime = this._flagTime;
     const wave1 = Math.sin(windTime * 2) * 2;
     const wave2 = Math.sin(windTime * 2.5 + 1) * 3;
     const wave3 = Math.sin(windTime * 1.8 + 2) * 2;
-    g.ellipse(wx, hY - 1, 6, 6).fill({ color: COL_HAIR });
+    // Hair top/crown
+    g.ellipse(wx, hY - 2, 7, 5).fill({ color: COL_HAIR });
+    // Flowing hair down the side
     g.moveTo(wx + 5, hY)
       .bezierCurveTo(
         wx + 8 + wave1,
@@ -376,9 +946,9 @@ export class CastleRenderer {
         wx + 6 + wave2,
         hY + 10,
         wx + 4 + wave3,
-        hY + 14,
+        hY + 16,
       )
-      .lineTo(wx + 7 + wave3, hY + 14)
+      .lineTo(wx + 7 + wave3, hY + 16)
       .bezierCurveTo(
         wx + 9 + wave2,
         hY + 10,
@@ -389,12 +959,76 @@ export class CastleRenderer {
       )
       .closePath()
       .fill({ color: COL_HAIR });
+    // Other side of hair
+    g.moveTo(wx - 5, hY)
+      .bezierCurveTo(
+        wx - 7 - wave1 * 0.5,
+        hY + 4,
+        wx - 6 - wave2 * 0.3,
+        hY + 8,
+        wx - 5 - wave3 * 0.3,
+        hY + 12,
+      )
+      .lineTo(wx - 7 - wave3 * 0.3, hY + 12)
+      .bezierCurveTo(
+        wx - 8 - wave2 * 0.3,
+        hY + 8,
+        wx - 9 - wave1 * 0.5,
+        hY + 4,
+        wx - 6,
+        hY,
+      )
+      .closePath()
+      .fill({ color: COL_HAIR });
+
+    // Tiara/small crown
+    g.moveTo(wx - 4, hY - 5)
+      .lineTo(wx - 3, hY - 8)
+      .lineTo(wx - 1, hY - 6)
+      .lineTo(wx, hY - 9)
+      .lineTo(wx + 1, hY - 6)
+      .lineTo(wx + 3, hY - 8)
+      .lineTo(wx + 4, hY - 5)
+      .closePath()
+      .fill({ color: COL_CROWN });
+    g.circle(wx, hY - 7.5, 0.8).fill({ color: COL_CROWN_GEM2 });
+
+    // Waving handkerchief
     if (t > 0.2 && t < 0.8) {
       const wave = Math.sin(((t - 0.2) / 0.6) * Math.PI * 6) * 6;
-      g.moveTo(wx + 5, hY + 5)
-        .lineTo(wx + 8 + wave, hY + 2)
-        .stroke({ color: COL_SKIN, width: 2 });
-      g.rect(wx + 8 + wave, hY - 2, 6, 4).fill({ color: COL_HANKY });
+      // Arm
+      g.moveTo(wx + 6, hY + 6)
+        .lineTo(wx + 9 + wave * 0.3, hY + 2)
+        .stroke({ color: COL_SKIN, width: 2.5 });
+      // Hand
+      g.circle(wx + 9 + wave * 0.3, hY + 2, 1.5).fill({ color: COL_SKIN });
+      // Handkerchief (cloth-like)
+      const hkX = wx + 9 + wave * 0.3;
+      const hkY = hY - 1;
+      g.moveTo(hkX, hkY + 3)
+        .bezierCurveTo(
+          hkX + 3,
+          hkY + wave * 0.2,
+          hkX + 5,
+          hkY - 1 + wave * 0.15,
+          hkX + 7,
+          hkY + wave * 0.1,
+        )
+        .lineTo(hkX + 6, hkY + 4 + wave * 0.1)
+        .bezierCurveTo(
+          hkX + 4,
+          hkY + 5 + wave * 0.15,
+          hkX + 2,
+          hkY + 4 + wave * 0.2,
+          hkX,
+          hkY + 3,
+        )
+        .closePath()
+        .fill({ color: COL_HANKY });
+      // Lace edge
+      g.moveTo(hkX + 1, hkY + 4 + wave * 0.2)
+        .lineTo(hkX + 6, hkY + 4 + wave * 0.1)
+        .stroke({ color: 0xdddddd, width: 0.5 });
     }
   }
 
@@ -410,24 +1044,135 @@ export class CastleRenderer {
           ? wy + 18 * ((t - 0.8) / 0.2)
           : wy;
     if (hY > wy + 18) return;
-    g.rect(wx - 6, hY + 4, 12, 10).fill({ color: COL_KING_ARMOR });
-    g.circle(wx, hY, 5).fill({ color: COL_KING_SKIN });
-    g.moveTo(wx - 4, hY - 4)
-      .lineTo(wx, hY - 8)
-      .lineTo(wx + 4, hY - 4)
+
+    // Cape (behind body)
+    g.moveTo(wx - 7, hY + 5)
+      .lineTo(wx - 10, hY + 18)
+      .lineTo(wx + 10, hY + 18)
+      .lineTo(wx + 7, hY + 5)
       .closePath()
-      .fill({ color: COL_CROWN });
-    g.circle(wx, hY - 5, 1.5).fill({ color: COL_CROWN_GEM });
+      .fill({ color: COL_KING_CAPE });
+    // Cape fur trim
+    g.moveTo(wx - 7, hY + 5)
+      .lineTo(wx + 7, hY + 5)
+      .stroke({ color: 0xddccaa, width: 2 });
+    // Ermine dots on cape
+    for (let ey = hY + 10; ey < hY + 17; ey += 4) {
+      g.circle(wx - 4, ey, 0.6).fill({ color: 0x111111 });
+      g.circle(wx + 4, ey, 0.6).fill({ color: 0x111111 });
+    }
+
+    // Armor body with detail
+    g.rect(wx - 6, hY + 5, 12, 12).fill({ color: COL_KING_ARMOR });
+    // Chainmail texture
+    for (let cy = hY + 7; cy < hY + 15; cy += 2.5) {
+      g.moveTo(wx - 5, cy)
+        .lineTo(wx + 5, cy)
+        .stroke({ color: 0x99aabb, width: 0.3, alpha: 0.5 });
+    }
+    // Belt with buckle
+    g.rect(wx - 6, hY + 12, 12, 2.5).fill({ color: 0x664422 });
+    g.rect(wx - 1, hY + 12, 3, 2.5).fill({ color: 0xccaa44 });
+    // Royal tabard
+    g.rect(wx - 3, hY + 6, 6, 8).fill({
+      color: this._playerColor,
+      alpha: 0.5,
+    });
+
+    // Shoulders / pauldrons
+    g.circle(wx - 7, hY + 6, 3).fill({ color: COL_KING_ARMOR });
+    g.circle(wx + 7, hY + 6, 3).fill({ color: COL_KING_ARMOR });
+    g.circle(wx - 7, hY + 6, 1.5).fill({ color: 0x99aabb, alpha: 0.3 });
+    g.circle(wx + 7, hY + 6, 1.5).fill({ color: 0x99aabb, alpha: 0.3 });
+
+    // Neck
+    g.rect(wx - 2, hY + 2, 4, 4).fill({ color: COL_KING_SKIN });
+
+    // Head
+    g.circle(wx, hY, 6).fill({ color: COL_KING_SKIN });
+    // Beard
+    g.moveTo(wx - 4, hY + 2)
+      .bezierCurveTo(wx - 5, hY + 6, wx - 2, hY + 9, wx, hY + 8)
+      .bezierCurveTo(wx + 2, hY + 9, wx + 5, hY + 6, wx + 4, hY + 2)
+      .fill({ color: 0x664422 });
+    // Mustache
+    g.moveTo(wx - 3, hY + 2)
+      .bezierCurveTo(wx - 4, hY + 3, wx - 2, hY + 3.5, wx, hY + 3)
+      .bezierCurveTo(wx + 2, hY + 3.5, wx + 4, hY + 3, wx + 3, hY + 2)
+      .fill({ color: 0x553311 });
+    // Eyes — stern
+    g.circle(wx - 2, hY - 1, 1).fill({ color: 0x334422 });
+    g.circle(wx + 2, hY - 1, 1).fill({ color: 0x334422 });
+    g.circle(wx - 2, hY - 1.2, 0.3).fill({ color: 0xffffff });
+    g.circle(wx + 2, hY - 1.2, 0.3).fill({ color: 0xffffff });
+    // Thick brows
+    g.moveTo(wx - 4, hY - 3)
+      .lineTo(wx - 1, hY - 2.5)
+      .stroke({ color: 0x553311, width: 1 });
+    g.moveTo(wx + 4, hY - 3)
+      .lineTo(wx + 1, hY - 2.5)
+      .stroke({ color: 0x553311, width: 1 });
+    // Nose
+    g.moveTo(wx, hY)
+      .lineTo(wx + 1, hY + 1.5)
+      .lineTo(wx - 1, hY + 1.5)
+      .stroke({ color: 0xb8915e, width: 0.6 });
+
+    // Crown (more detailed)
+    g.moveTo(wx - 5, hY - 4)
+      .lineTo(wx - 5, hY - 8)
+      .lineTo(wx - 3, hY - 6)
+      .lineTo(wx - 1, hY - 10)
+      .lineTo(wx, hY - 7)
+      .lineTo(wx + 1, hY - 10)
+      .lineTo(wx + 3, hY - 6)
+      .lineTo(wx + 5, hY - 8)
+      .lineTo(wx + 5, hY - 4)
+      .closePath()
+      .fill({ color: COL_CROWN })
+      .stroke({ color: 0xbb9900, width: 0.5 });
+    // Crown band
+    g.rect(wx - 5, hY - 5, 10, 2).fill({ color: 0xbb9900 });
+    // Gems
+    g.circle(wx, hY - 8.5, 1.2).fill({ color: COL_CROWN_GEM });
+    g.circle(wx - 3, hY - 5.5, 0.8).fill({ color: COL_CROWN_GEM2 });
+    g.circle(wx + 3, hY - 5.5, 0.8).fill({ color: COL_CROWN_GEM2 });
+    // Gem sparkle
+    g.circle(wx + 0.3, hY - 9, 0.3).fill({ color: 0xffffff });
+
+    // Sword-waving arm
     if (t > 0.2 && t < 0.8) {
       const ang = Math.sin(((t - 0.2) / 0.6) * Math.PI * 4) * 0.8;
-      g.moveTo(wx + 5, hY + 5)
-        .lineTo(wx + 8, hY + 2)
-        .stroke({ color: COL_KING_SKIN, width: 2 });
-      g.moveTo(wx + 8, hY + 2)
-        .lineTo(wx + 8 + Math.sin(ang) * 15, hY + 2 - Math.cos(ang) * 15)
-        .stroke({ color: COL_KING_SWORD, width: 2 });
+      // Arm
+      g.moveTo(wx + 6, hY + 6)
+        .lineTo(wx + 9, hY + 3)
+        .stroke({ color: COL_KING_SKIN, width: 2.5 });
+      // Gauntlet
+      g.circle(wx + 9, hY + 3, 1.5).fill({ color: COL_KING_ARMOR });
+      // Sword blade
+      const sEndX = wx + 9 + Math.sin(ang) * 18;
+      const sEndY = hY + 3 - Math.cos(ang) * 18;
+      g.moveTo(wx + 9, hY + 3)
+        .lineTo(sEndX, sEndY)
+        .stroke({ color: COL_KING_SWORD, width: 2.5 });
+      // Sword edge highlight
+      g.moveTo(wx + 9, hY + 3)
+        .lineTo(sEndX, sEndY)
+        .stroke({ color: 0xeeeeff, width: 0.8, alpha: 0.5 });
+      // Crossguard
+      const cgX = wx + 9 + Math.sin(ang) * 3;
+      const cgY = hY + 3 - Math.cos(ang) * 3;
+      g.moveTo(cgX - Math.cos(ang) * 4, cgY - Math.sin(ang) * 4)
+        .lineTo(cgX + Math.cos(ang) * 4, cgY + Math.sin(ang) * 4)
+        .stroke({ color: 0xccaa44, width: 2 });
+      // Pommel
+      g.circle(wx + 9 - Math.sin(ang) * 2, hY + 3 + Math.cos(ang) * 2, 1.5).fill({
+        color: 0xccaa44,
+      });
     }
   }
+
+  // ── Guards ────────────────────────────────────────────────────────────────
 
   private _updateGuards(phase: GamePhase): void {
     const g = this._guardsGfx;
@@ -456,60 +1201,153 @@ export class CastleRenderer {
     let hY = y - 22 + (snoring ? 2 : breathe);
     if (panic) hY += Math.sin(time * 15) * 0.5;
 
-    // Feet / Boots
-    g.rect(x - 5, y - 4, 4, 4).fill({ color: 0x332211 }); // Left
-    g.rect(x + 1, y - 4, 4, 4).fill({ color: 0x332211 }); // Right
+    const facingIn = id === 0 ? 1 : -1; // left guard faces right, right faces left
 
-    // Body (tunic)
-    g.rect(x - 6, y - 16, 12, 12).fill({ color: 0x556677 });
-    // Armor / Belt Detail
-    g.rect(x - 6, y - 10, 12, 2).fill({ color: 0x333333, alpha: 0.4 }); // Belt
-    g.rect(x - 2, y - 15, 4, 5).fill({ color: 0x8899aa, alpha: 0.3 }); // Chest piece
+    // Shadow
+    g.ellipse(x, y, 7, 2).fill({ color: 0x000000, alpha: 0.12 });
 
-    // Head
-    g.circle(x, hY, 6).fill({ color: 0x9999aa });
-    // Eyes
-    g.circle(x - 2, hY, 0.8).fill({ color: 0x000000, alpha: 0.6 });
-    g.circle(x + 2, hY, 0.8).fill({ color: 0x000000, alpha: 0.6 });
+    // Feet / Boots with detail
+    g.rect(x - 5, y - 5, 5, 5).fill({ color: 0x332211 });
+    g.rect(x + 1, y - 5, 5, 5).fill({ color: 0x332211 });
+    // Boot straps
+    g.moveTo(x - 5, y - 3)
+      .lineTo(x, y - 3)
+      .stroke({ color: 0x221100, width: 0.5 });
+    g.moveTo(x + 1, y - 3)
+      .lineTo(x + 6, y - 3)
+      .stroke({ color: 0x221100, width: 0.5 });
 
-    // Helmet Brim
-    g.rect(x - 7, hY, 14, 2).fill({ color: 0x777788 });
-    g.moveTo(x - 8, hY)
-      .lineTo(x + 8, hY)
-      .stroke({ color: 0x777788, width: 2 });
+    // Legs
+    g.rect(x - 4, y - 9, 4, 5).fill({ color: 0x445566 });
+    g.rect(x + 1, y - 9, 4, 5).fill({ color: 0x445566 });
 
+    // Body (tunic + armor)
+    g.rect(x - 7, y - 18, 14, 10).fill({ color: 0x556677 });
+    // Chainmail texture
+    for (let cy = y - 16; cy < y - 10; cy += 2) {
+      g.moveTo(x - 6, cy)
+        .lineTo(x + 6, cy)
+        .stroke({ color: 0x667788, width: 0.3, alpha: 0.5 });
+    }
+    // Belt
+    g.rect(x - 7, y - 10, 14, 2.5).fill({ color: 0x443322 });
+    g.circle(x, y - 8.5, 1).fill({ color: 0xccaa44 }); // buckle
+    // Chest plate
+    g.rect(x - 3, y - 17, 6, 6).fill({ color: 0x8899aa, alpha: 0.4 });
+    // Armor highlight
+    g.rect(x - 1, y - 16, 2, 4).fill({ color: 0xaabbcc, alpha: 0.25 });
+
+    // Arms
     if (panic) {
-      g.moveTo(x - 6, y - 12)
-        .lineTo(x - 8, hY)
-        .stroke({ color: 0x556677, width: 2 });
-      g.moveTo(x + 6, y - 12)
-        .lineTo(x + 8, hY)
-        .stroke({ color: 0x556677, width: 2 });
+      // Arms raised in alarm
+      g.moveTo(x - 7, y - 14)
+        .lineTo(x - 9, hY + 2)
+        .stroke({ color: 0x556677, width: 3 });
+      g.moveTo(x + 7, y - 14)
+        .lineTo(x + 9, hY + 2)
+        .stroke({ color: 0x556677, width: 3 });
+      // Hands
+      g.circle(x - 9, hY + 2, 1.5).fill({ color: COL_SKIN });
+      g.circle(x + 9, hY + 2, 1.5).fill({ color: COL_SKIN });
     } else {
-      g.moveTo(x - 6, y - 12)
+      // Arms relaxed at sides
+      g.moveTo(x - 7, y - 14)
         .lineTo(x - 12, y - 8)
         .stroke({ color: 0x556677, width: 3 });
-      g.moveTo(x + 6, y - 12)
+      g.moveTo(x + 7, y - 14)
         .lineTo(x + 12, y - 8)
         .stroke({ color: 0x556677, width: 3 });
+      // Gauntlets
+      g.circle(x - 12, y - 8, 2).fill({ color: 0x8899aa });
+      g.circle(x + 12, y - 8, 2).fill({ color: 0x8899aa });
     }
 
+    // Head
+    g.circle(x, hY, 6).fill({ color: 0xbbbbcc });
+    // Face (visible through helmet opening)
+    g.rect(x - 3, hY - 1, 6, 5).fill({ color: COL_SKIN });
+    // Eyes
+    if (snoring) {
+      // Closed eyes (lines)
+      g.moveTo(x - 2.5, hY + 0.5)
+        .lineTo(x - 0.5, hY + 0.5)
+        .stroke({ color: 0x222222, width: 0.6 });
+      g.moveTo(x + 0.5, hY + 0.5)
+        .lineTo(x + 2.5, hY + 0.5)
+        .stroke({ color: 0x222222, width: 0.6 });
+    } else if (panic) {
+      // Wide eyes
+      g.circle(x - 1.5, hY + 0.5, 1.2).fill({ color: 0xffffff });
+      g.circle(x + 1.5, hY + 0.5, 1.2).fill({ color: 0xffffff });
+      g.circle(x - 1.5, hY + 0.5, 0.6).fill({ color: 0x222222 });
+      g.circle(x + 1.5, hY + 0.5, 0.6).fill({ color: 0x222222 });
+    } else {
+      g.circle(x - 1.5, hY + 0.5, 0.8).fill({ color: 0x222222 });
+      g.circle(x + 1.5, hY + 0.5, 0.8).fill({ color: 0x222222 });
+    }
+    // Nose
+    g.moveTo(x, hY + 1.5)
+      .lineTo(x + 0.5, hY + 3)
+      .stroke({ color: 0xd0a880, width: 0.5 });
+    // Mouth
+    if (panic) {
+      // Open mouth (shock)
+      g.circle(x, hY + 3.5, 1).fill({ color: 0x442222 });
+    }
+
+    // Helmet
+    g.moveTo(x - 7, hY + 1)
+      .lineTo(x, hY - 8)
+      .lineTo(x + 7, hY + 1)
+      .closePath()
+      .fill({ color: 0x777788 });
+    // Helmet rim
+    g.rect(x - 7, hY, 14, 2).fill({ color: 0x666677 });
+    // Nose guard
+    g.rect(x - 1, hY, 2, 3).fill({ color: 0x777788 });
+    // Helmet crest
+    g.moveTo(x, hY - 8)
+      .bezierCurveTo(
+        x + facingIn * 3,
+        hY - 12,
+        x + facingIn * 6,
+        hY - 10,
+        x + facingIn * 4,
+        hY - 6,
+      )
+      .stroke({ color: this._playerColor, width: 2 });
+
+    // Spear
     const pX = x + (id === 0 ? -12 : 12);
-    // Pole
     g.moveTo(pX, y)
-      .lineTo(pX, y - 45)
+      .lineTo(pX, y - 48)
       .stroke({ color: COL_WOOD_DK, width: 2 });
-    // Spearhead Base
-    g.moveTo(pX, y - 45)
-      .lineTo(pX, y - 52)
-      .stroke({ color: 0xccddee, width: 3 });
-    // Sharp Tip
-    g.moveTo(pX - 3, y - 52)
+    // Spear crossguard
+    g.rect(pX - 2, y - 48, 4, 2).fill({ color: 0x555555 });
+    // Spearhead
+    g.moveTo(pX - 3, y - 50)
       .lineTo(pX, y - 60)
-      .lineTo(pX + 3, y - 52)
+      .lineTo(pX + 3, y - 50)
       .closePath()
       .fill({ color: 0xccddee });
+    // Spear blade highlight
+    g.moveTo(pX, y - 60)
+      .lineTo(pX + 1, y - 52)
+      .stroke({ color: 0xeeeeff, width: 0.5, alpha: 0.5 });
 
+    // Shield on arm (non-spear side)
+    const shX = x + (id === 0 ? 8 : -8);
+    g.moveTo(shX - 4, y - 18)
+      .lineTo(shX + 4, y - 18)
+      .lineTo(shX + 4, y - 10)
+      .lineTo(shX, y - 6)
+      .lineTo(shX - 4, y - 10)
+      .closePath()
+      .fill({ color: this._playerColor })
+      .stroke({ color: 0x444444, width: 1 });
+    g.circle(shX, y - 13, 1.5).fill({ color: 0xccaa44 });
+
+    // Zzz when snoring
     if (snoring) {
       const life = (time * 0.5 + id * 0.3) % 1.0;
       const zx = x + Math.sin(time * 2) * 4,
@@ -524,6 +1362,8 @@ export class CastleRenderer {
         .stroke({ color: 0xffffff, width: 1 });
     }
   }
+
+  // ── Gate / Portcullis ─────────────────────────────────────────────────────
 
   private _updateGate(open: number): void {
     const g = this._gateDoorGfx;
@@ -550,6 +1390,8 @@ export class CastleRenderer {
     }
   }
 
+  // ── Jester ────────────────────────────────────────────────────────────────
+
   private _updateJester(t: number): void {
     const j = this._jesterGfx,
       b = this._ballGfx;
@@ -570,10 +1412,10 @@ export class CastleRenderer {
 
     if (st < 0.2) {
       jX = gX - 5 + st * 50;
-      this._drawJester(j, jX, gY);
+      this._drawJester(j, jX, gY, st * 50);
     } else if (st < 0.7) {
       jX = gX + 5;
-      this._drawJester(j, jX, gY);
+      this._drawJester(j, jX, gY, 0);
       if (st > 0.4 && st < 0.6) {
         b.visible = true;
         const bT = (st - 0.4) / 0.2,
@@ -588,27 +1430,169 @@ export class CastleRenderer {
       }
     } else {
       jX = gX + 5 - (st - 0.7) * 33;
-      this._drawJester(j, jX, gY);
+      this._drawJester(j, jX, gY, (st - 0.7) * 33);
       if (st > 0.9) this._updateGate(1.0 - (st - 0.9) * 10);
     }
   }
 
-  private _drawJester(g: Graphics, x: number, y: number): void {
-    g.circle(x, y - 18, 4).fill({ color: COL_SKIN });
+  private _drawJester(
+    g: Graphics,
+    x: number,
+    y: number,
+    walkTime: number,
+  ): void {
+    const legSwing = walkTime > 0 ? Math.sin(walkTime * 0.8) * 2 : 0;
+    const bobble = Math.sin(this._flagTime * 4) * 1.5;
+
+    // Legs (two-toned like body)
+    g.rect(x - 3 + legSwing, y - 5, 3, 6).fill({ color: COL_JESTER1 });
+    g.rect(x + 1 - legSwing, y - 5, 3, 6).fill({ color: COL_JESTER2 });
+    // Pointed shoes with curled toes
+    g.moveTo(x - 3 + legSwing, y)
+      .lineTo(x - 7 + legSwing, y + 1)
+      .bezierCurveTo(
+        x - 8 + legSwing,
+        y - 1,
+        x - 6 + legSwing,
+        y - 2,
+        x - 3 + legSwing,
+        y - 1,
+      )
+      .fill({ color: COL_JESTER1 });
+    g.moveTo(x + 4 - legSwing, y)
+      .lineTo(x + 8 - legSwing, y + 1)
+      .bezierCurveTo(
+        x + 9 - legSwing,
+        y - 1,
+        x + 7 - legSwing,
+        y - 2,
+        x + 4 - legSwing,
+        y - 1,
+      )
+      .fill({ color: COL_JESTER2 });
+    // Tiny bells on shoe tips
+    g.circle(x - 7 + legSwing, y + 1, 1).fill({ color: COL_JESTER_BELL });
+    g.circle(x + 8 - legSwing, y + 1, 1).fill({ color: COL_JESTER_BELL });
+
+    // Body (split two-tone)
     g.rect(x - 4, y - 14, 4, 10).fill({ color: COL_JESTER1 });
     g.rect(x, y - 14, 4, 10).fill({ color: COL_JESTER2 });
-    g.moveTo(x - 4, y - 20)
-      .lineTo(x - 8, y - 24)
-      .stroke({ color: COL_JESTER1, width: 2 });
-    g.moveTo(x + 4, y - 20)
-      .lineTo(x + 8, y - 24)
-      .stroke({ color: COL_JESTER2, width: 2 });
+    // Diamond pattern on tunic
+    g.moveTo(x - 2, y - 12)
+      .lineTo(x, y - 14)
+      .lineTo(x + 2, y - 12)
+      .lineTo(x, y - 10)
+      .closePath()
+      .fill({ color: COL_JESTER_BELL, alpha: 0.5 });
+    // Collar ruff (zigzag)
+    for (let cx = x - 5; cx < x + 5; cx += 2.5) {
+      g.moveTo(cx, y - 14)
+        .lineTo(cx + 1.25, y - 16)
+        .lineTo(cx + 2.5, y - 14)
+        .fill({ color: 0xffffff });
+    }
+    // Belt with bells
+    g.rect(x - 4, y - 6, 8, 1.5).fill({ color: COL_JESTER_BELL });
+    g.circle(x - 2, y - 5, 0.8).fill({ color: COL_JESTER_BELL });
+    g.circle(x + 2, y - 5, 0.8).fill({ color: COL_JESTER_BELL });
+
+    // Arms (animated, gesturing)
+    const armWave = Math.sin(this._flagTime * 3) * 3;
+    g.moveTo(x - 4, y - 12)
+      .lineTo(x - 8, y - 8 + armWave)
+      .stroke({ color: COL_JESTER1, width: 2.5 });
+    g.moveTo(x + 4, y - 12)
+      .lineTo(x + 8, y - 8 - armWave)
+      .stroke({ color: COL_JESTER2, width: 2.5 });
+    // Hands
+    g.circle(x - 8, y - 8 + armWave, 1.2).fill({ color: COL_SKIN });
+    g.circle(x + 8, y - 8 - armWave, 1.2).fill({ color: COL_SKIN });
+
+    // Neck
+    g.rect(x - 1.5, y - 16.5, 3, 3).fill({ color: COL_SKIN });
+
+    // Head
+    g.circle(x, y - 19, 5).fill({ color: COL_SKIN });
+    // Eyes (mischievous)
+    g.circle(x - 1.5, y - 19.5, 1).fill({ color: 0x222222 });
+    g.circle(x + 1.5, y - 19.5, 1).fill({ color: 0x222222 });
+    g.circle(x - 1.5, y - 19.8, 0.3).fill({ color: 0xffffff }); // glint
+    g.circle(x + 1.5, y - 19.8, 0.3).fill({ color: 0xffffff });
+    // Raised eyebrows
+    g.moveTo(x - 3, y - 21.5)
+      .bezierCurveTo(x - 2, y - 22.5, x - 1, y - 22, x - 0.5, y - 21)
+      .stroke({ color: 0x664422, width: 0.6 });
+    g.moveTo(x + 3, y - 21.5)
+      .bezierCurveTo(x + 2, y - 22.5, x + 1, y - 22, x + 0.5, y - 21)
+      .stroke({ color: 0x664422, width: 0.6 });
+    // Wide grin
+    g.moveTo(x - 2.5, y - 17.5)
+      .bezierCurveTo(x - 1, y - 16, x + 1, y - 16, x + 2.5, y - 17.5)
+      .stroke({ color: 0x884444, width: 0.7 });
+    // Rosy cheeks
+    g.circle(x - 3.5, y - 18, 1.5).fill({ color: 0xff6666, alpha: 0.25 });
+    g.circle(x + 3.5, y - 18, 1.5).fill({ color: 0xff6666, alpha: 0.25 });
+    // Nose (red clown nose)
+    g.circle(x, y - 18.5, 1.2).fill({ color: 0xcc3333 });
+
+    // Jester hat (three-pronged with bells)
+    // Left prong
+    g.moveTo(x - 4, y - 23)
+      .bezierCurveTo(
+        x - 8,
+        y - 26 + bobble,
+        x - 10,
+        y - 24 + bobble,
+        x - 9,
+        y - 22 + bobble,
+      )
+      .lineTo(x - 3, y - 22)
+      .closePath()
+      .fill({ color: COL_JESTER1 });
+    g.circle(x - 9, y - 22 + bobble, 1.5).fill({ color: COL_JESTER_BELL });
+    // Center prong
+    g.moveTo(x - 1, y - 23)
+      .bezierCurveTo(
+        x,
+        y - 30 + bobble * 0.5,
+        x + 1,
+        y - 30 + bobble * 0.5,
+        x + 1,
+        y - 23,
+      )
+      .closePath()
+      .fill({ color: COL_JESTER2 });
+    g.circle(x, y - 30 + bobble * 0.5, 1.5).fill({ color: COL_JESTER_BELL });
+    // Right prong
+    g.moveTo(x + 4, y - 23)
+      .bezierCurveTo(
+        x + 8,
+        y - 26 - bobble,
+        x + 10,
+        y - 24 - bobble,
+        x + 9,
+        y - 22 - bobble,
+      )
+      .lineTo(x + 3, y - 22)
+      .closePath()
+      .fill({ color: COL_JESTER1 });
+    g.circle(x + 9, y - 22 - bobble, 1.5).fill({ color: COL_JESTER_BELL });
+    // Hat band
+    g.moveTo(x - 5, y - 23)
+      .lineTo(x + 5, y - 23)
+      .stroke({ color: COL_JESTER_BELL, width: 1 });
   }
 
   private _drawBall(g: Graphics, x: number, y: number): void {
-    g.circle(x, y, 3)
+    g.circle(x, y, 4)
       .fill({ color: 0xffaa00 })
-      .stroke({ color: 0x000000, width: 0.5 });
+      .stroke({ color: 0xcc8800, width: 1 });
+    // Stripe
+    g.moveTo(x - 3, y)
+      .bezierCurveTo(x - 2, y - 3, x + 2, y - 3, x + 3, y)
+      .stroke({ color: 0xff4400, width: 1 });
+    // Highlight
+    g.circle(x - 1, y - 1.5, 1).fill({ color: 0xffffff, alpha: 0.4 });
   }
 
   destroy(): void {
