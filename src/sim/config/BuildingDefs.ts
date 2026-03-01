@@ -53,6 +53,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.MARKET,
       BuildingType.FACTION_HALL,
       BuildingType.LIGHTNING_TOWER,
+      BuildingType.ICE_TOWER,
+      BuildingType.FIRE_TOWER,
     ],
     footprint: { w: 4, h: 4 },
     placementZone: "own",
@@ -395,5 +397,36 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     ],
     description:
       "A mystical tower that channels powerful lightning bolts to strike enemies from afar.",
+  },
+  [BuildingType.ICE_TOWER]: {
+    type: BuildingType.ICE_TOWER,
+    cost: 600,
+    hp: 150,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 1 },
+    placementZone: "own",
+    capturable: true,
+    defaultTurrets: [
+      { projectileTag: "ice", damage: 20, range: 4, attackSpeed: 1.0 },
+    ],
+    description:
+      "A frozen tower that launches ice shards to slow and damage enemies.",
+  },
+  [BuildingType.FIRE_TOWER]: {
+    type: BuildingType.FIRE_TOWER,
+    cost: 700,
+    hp: 150,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 1 },
+    placementZone: "own",
+    capturable: true,
+    defaultTurrets: [
+      { projectileTag: "fireball", damage: 25, range: 4, attackSpeed: 1.0 },
+    ],
+    description: "A blazing tower that hurls fireballs to incinerate enemies.",
   },
 };

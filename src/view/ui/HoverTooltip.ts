@@ -100,6 +100,8 @@ export const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MARKET]: "Market",
   [BuildingType.FACTION_HALL]: "Faction Hall",
   [BuildingType.LIGHTNING_TOWER]: "Lightning Tower",
+  [BuildingType.ICE_TOWER]: "Ice Tower",
+  [BuildingType.FIRE_TOWER]: "Fire Tower",
 };
 
 export const UNIT_LABELS: Record<UnitType, string> = {

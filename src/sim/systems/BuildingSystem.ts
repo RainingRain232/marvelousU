@@ -513,6 +513,8 @@ function _updateTurrets(
 
     // Special handling for lightning projectiles (chain lightning)
     const isLightning = turret.projectileTag === "lightning";
+    // Ice projectiles slow enemies
+    const isIce = turret.projectileTag === "ice";
 
     state.projectiles.set(projectileId, {
       id: projectileId,
@@ -530,8 +532,8 @@ function _updateTurrets(
       bounceRange: isLightning ? 3 : 0,
       targetId: turret.targetId,
       hitIds: new Set(),
-      slowDuration: 0,
-      slowFactor: 1,
+      slowDuration: isIce ? 3 : 0,
+      slowFactor: isIce ? 0.4 : 1,
       teleportDistance: 0,
       pullDistance: 0,
       pullChance: 0,

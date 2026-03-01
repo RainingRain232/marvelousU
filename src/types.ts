@@ -107,6 +107,8 @@ export enum BuildingType {
   MARKET = "market",
   FACTION_HALL = "faction_hall",
   LIGHTNING_TOWER = "lightning_tower",
+  ICE_TOWER = "ice_tower",
+  FIRE_TOWER = "fire_tower",
 }
 
 export enum AbilityType {

@@ -29,6 +29,8 @@ import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { MarketRenderer } from "@view/entities/MarketRenderer";
 import { LightningTowerRenderer } from "@view/entities/LightningTowerRenderer";
+import { IceTowerRenderer } from "@view/entities/IceTowerRenderer";
+import { FireTowerRenderer } from "@view/entities/FireTowerRenderer";
 import { StableRenderer } from "@view/entities/StableRenderer";
 import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
 
@@ -65,6 +67,8 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.MARKET]: 0xaa7733,
   [BuildingType.FACTION_HALL]: 0x6655aa,
   [BuildingType.LIGHTNING_TOWER]: 0x4488ff,
+  [BuildingType.ICE_TOWER]: 0xaaddff,
+  [BuildingType.FIRE_TOWER]: 0xff6622,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -107,6 +111,8 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MARKET]: "MARKET",
   [BuildingType.FACTION_HALL]: "FACTION HALL",
   [BuildingType.LIGHTNING_TOWER]: "LIGHTNING",
+  [BuildingType.ICE_TOWER]: "ICE TOWER",
+  [BuildingType.FIRE_TOWER]: "FIRE TOWER",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -175,6 +181,8 @@ export class BuildingView {
   private _stableRenderer: StableRenderer | null = null;
   private _factionHallRenderer: FactionHallRenderer | null = null;
   private _lightningTowerRenderer: LightningTowerRenderer | null = null;
+  private _iceTowerRenderer: IceTowerRenderer | null = null;
+  private _fireTowerRenderer: FireTowerRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -292,6 +300,16 @@ export class BuildingView {
     } else if (building.type === BuildingType.LIGHTNING_TOWER) {
       this._lightningTowerRenderer = new LightningTowerRenderer(building.owner);
       this.container.addChild(this._lightningTowerRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.ICE_TOWER) {
+      this._iceTowerRenderer = new IceTowerRenderer(building.owner);
+      this.container.addChild(this._iceTowerRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.FIRE_TOWER) {
+      this._fireTowerRenderer = new FireTowerRenderer(building.owner);
+      this.container.addChild(this._fireTowerRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -440,6 +458,12 @@ export class BuildingView {
       }
       if (this._lightningTowerRenderer) {
         this._lightningTowerRenderer.tick(dt, phase);
+      }
+      if (this._iceTowerRenderer) {
+        this._iceTowerRenderer.tick(dt, phase);
+      }
+      if (this._fireTowerRenderer) {
+        this._fireTowerRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }

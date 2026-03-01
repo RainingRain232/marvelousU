@@ -46,6 +46,8 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.MARKET]: 0xaa7733,
   [BuildingType.FACTION_HALL]: 0x6655aa,
   [BuildingType.LIGHTNING_TOWER]: 0x4488ff,
+  [BuildingType.ICE_TOWER]: 0xaaddff,
+  [BuildingType.FIRE_TOWER]: 0xff6622,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -70,6 +72,8 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.MARKET]: "MARKET",
   [BuildingType.FACTION_HALL]: "FACTION HALL",
   [BuildingType.LIGHTNING_TOWER]: "LIGHTNING",
+  [BuildingType.ICE_TOWER]: "ICE TOWER",
+  [BuildingType.FIRE_TOWER]: "FIRE TOWER",
 };
 
 const LABEL_STYLE = new TextStyle({

@@ -15,6 +15,7 @@ import { deathFX } from "@view/fx/DeathFX";
 import { iceBallFX } from "@view/fx/IceBallFX";
 import { webFX } from "@view/fx/WebFX";
 import { turretArrowFX } from "@view/fx/TurretArrowFX";
+import { turretLightningFX } from "@view/fx/TurretLightningFX";
 import { arrowFX } from "@view/fx/ArrowFX";
 import { eventBanner } from "@view/ui/EventBanner";
 import { distortionFX } from "@view/fx/DistortionFX";
@@ -44,7 +45,14 @@ import { initBases } from "@sim/systems/BaseSetup";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
-import { Direction, GamePhase, GameMode, MapType, BuildingType, UnitType } from "@/types";
+import {
+  Direction,
+  GamePhase,
+  GameMode,
+  MapType,
+  BuildingType,
+  UnitType,
+} from "@/types";
 import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
 import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
@@ -82,7 +90,9 @@ import type { RaceId } from "@sim/config/RaceDefs";
 
   // p2IsAI preference stored here so it is applied when the game boots
   let p2IsAI = true;
-  menuScreen.onAIToggle = (isAI) => { p2IsAI = isAI; };
+  menuScreen.onAIToggle = (isAI) => {
+    p2IsAI = isAI;
+  };
 
   // Check if we were returned from a campaign game via "Return to Campaign"
   const _returnToCampaign = sessionStorage.getItem("returnToCampaign") === "1";
@@ -157,17 +167,25 @@ import type { RaceId } from "@sim/config/RaceDefs";
   // Game boot — triggered from the Armory's START GAME button
   // ---------------------------------------------------------------------------
   armoryScreen.onStartGame = async () => {
-    const mapSize  = menuScreen.selectedMapSize;
+    const mapSize = menuScreen.selectedMapSize;
     const gameMode = menuScreen.selectedGameMode;
-    const mapType  = menuScreen.selectedMapType;
+    const mapType = menuScreen.selectedMapType;
     const leaderId = leaderSelectScreen.selectedLeaderId;
-    const raceId   = raceSelectScreen.selectedRaceId;
+    const raceId = raceSelectScreen.selectedRaceId;
     armoryScreen.hide();
     if (gameMode === GameMode.CAMPAIGN) {
       // Campaign: go to scenario select instead of booting directly
       scenarioSelectScreen.show();
     } else {
-      await _bootGame(p2IsAI, mapSize, gameMode, leaderId, raceId, undefined, mapType);
+      await _bootGame(
+        p2IsAI,
+        mapSize,
+        gameMode,
+        leaderId,
+        raceId,
+        undefined,
+        mapType,
+      );
     }
   };
 
@@ -183,9 +201,9 @@ import type { RaceId } from "@sim/config/RaceDefs";
   };
 
   scenarioSelectScreen.onNext = async () => {
-    const mapSize  = menuScreen.selectedMapSize;
+    const mapSize = menuScreen.selectedMapSize;
     const leaderId = leaderSelectScreen.selectedLeaderId;
-    const raceId   = raceSelectScreen.selectedRaceId;
+    const raceId = raceSelectScreen.selectedRaceId;
     const scenarioNum = scenarioSelectScreen.selectedScenario;
     scenarioSelectScreen.hide();
     await _bootCampaign(p2IsAI, mapSize, scenarioNum, leaderId, raceId);
@@ -208,14 +226,19 @@ function _spawnTowns(state: GameState, mapW: number, mapH: number): void {
   // 3 towns spaced at 25%, 50%, 75% of map height
   const yPositions = [
     Math.floor(mapH * 0.25) - Math.floor(def.footprint.h / 2),
-    Math.floor(mapH * 0.50) - Math.floor(def.footprint.h / 2),
+    Math.floor(mapH * 0.5) - Math.floor(def.footprint.h / 2),
     Math.floor(mapH * 0.75) - Math.floor(def.footprint.h / 2),
   ];
 
   for (const y of yPositions) {
     const id = `town-${_nextTownId++}`;
     const pos = { x: midX, y };
-    const building = createBuilding({ id, type: BuildingType.TOWN, owner: null, position: pos });
+    const building = createBuilding({
+      id,
+      type: BuildingType.TOWN,
+      owner: null,
+      position: pos,
+    });
     state.buildings.set(id, building);
 
     // Mark footprint tiles as occupied and unwalkable
@@ -226,7 +249,11 @@ function _spawnTowns(state: GameState, mapW: number, mapH: number): void {
       }
     }
 
-    EventBus.emit("buildingPlaced", { buildingId: id, position: { ...pos }, owner: null });
+    EventBus.emit("buildingPlaced", {
+      buildingId: id,
+      position: { ...pos },
+      owner: null,
+    });
   }
 }
 
@@ -256,7 +283,9 @@ function _spawnNeutralExtras(
   const MAX_ATTEMPTS = 80;
 
   // Get counts from config
-  const counts = BalanceConfig.NEUTRAL_COUNTS[sizeLabel] || BalanceConfig.NEUTRAL_COUNTS["DOUBLE"];
+  const counts =
+    BalanceConfig.NEUTRAL_COUNTS[sizeLabel] ||
+    BalanceConfig.NEUTRAL_COUNTS["DOUBLE"];
 
   const typesToPlace: BuildingType[] = [];
   for (let i = 0; i < counts.towers; i++) typesToPlace.push(BuildingType.TOWER);
@@ -286,22 +315,33 @@ function _spawnNeutralExtras(
       // also enforce BUILDING_MIN_GAP halo around the footprint.
       let ok = true;
       const gap = BUILDING_MIN_GAP;
-      outer:
-      for (let dy = -gap; dy < def.footprint.h + gap && ok; dy++) {
+      outer: for (let dy = -gap; dy < def.footprint.h + gap && ok; dy++) {
         for (let dx = -gap; dx < def.footprint.w + gap && ok; dx++) {
           const tx = px + dx;
           const ty = py + dy;
-          const isFootprint = dx >= 0 && dx < def.footprint.w && dy >= 0 && dy < def.footprint.h;
+          const isFootprint =
+            dx >= 0 && dx < def.footprint.w && dy >= 0 && dy < def.footprint.h;
           if (isFootprint) {
-            if (tx < 0 || ty < 0 || tx >= mapW || ty >= mapH) { ok = false; break outer; }
+            if (tx < 0 || ty < 0 || tx >= mapW || ty >= mapH) {
+              ok = false;
+              break outer;
+            }
             const tile = state.battlefield.grid[ty]?.[tx];
-            if (!tile || !tile.walkable || tile.buildingId !== null || tile.zone !== "neutral") {
+            if (
+              !tile ||
+              !tile.walkable ||
+              tile.buildingId !== null ||
+              tile.zone !== "neutral"
+            ) {
               ok = false;
               break outer;
             }
           } else {
             const tile = getTile(state.battlefield, tx, ty);
-            if (tile && tile.buildingId !== null) { ok = false; break outer; }
+            if (tile && tile.buildingId !== null) {
+              ok = false;
+              break outer;
+            }
           }
         }
       }
@@ -309,7 +349,12 @@ function _spawnNeutralExtras(
 
       const id = `neutral-${bType}-${_nextNeutralId++}`;
       const pos = { x: px, y: py };
-      const building = createBuilding({ id, type: bType, owner: null, position: pos });
+      const building = createBuilding({
+        id,
+        type: bType,
+        owner: null,
+        position: pos,
+      });
       state.buildings.set(id, building);
 
       for (let dy = 0; dy < def.footprint.h; dy++) {
@@ -319,7 +364,11 @@ function _spawnNeutralExtras(
         }
       }
 
-      EventBus.emit("buildingPlaced", { buildingId: id, position: { ...pos }, owner: null });
+      EventBus.emit("buildingPlaced", {
+        buildingId: id,
+        position: { ...pos },
+        owner: null,
+      });
       placed = true;
     }
   }
@@ -351,8 +400,18 @@ function _removeCastlesAndBuildings(state: GameState): void {
       const def = BUILDING_DEFINITIONS[building.type];
       for (let dy = 0; dy < def.footprint.h; dy++) {
         for (let dx = 0; dx < def.footprint.w; dx++) {
-          setBuilding(state.battlefield, building.position.x + dx, building.position.y + dy, null);
-          setWalkable(state.battlefield, building.position.x + dx, building.position.y + dy, true);
+          setBuilding(
+            state.battlefield,
+            building.position.x + dx,
+            building.position.y + dy,
+            null,
+          );
+          setWalkable(
+            state.battlefield,
+            building.position.x + dx,
+            building.position.y + dy,
+            true,
+          );
         }
       }
       state.buildings.delete(id);
@@ -370,7 +429,11 @@ function _removeCastlesAndBuildings(state: GameState): void {
 /**
  * BATTLEFIELD mode: spawn one Swordsman per player near their base.
  */
-function _spawnBattlefieldStartUnits(state: GameState, mapW: number, _mapH: number): void {
+function _spawnBattlefieldStartUnits(
+  state: GameState,
+  mapW: number,
+  _mapH: number,
+): void {
   const midY = Math.floor(_mapH / 2);
   const p1Unit = createUnit({
     type: UnitType.SWORDSMAN,
@@ -391,7 +454,11 @@ function _spawnBattlefieldStartUnits(state: GameState, mapW: number, _mapH: numb
  * P1's squad spawns just left of centre, P2's just right, so both sides
  * face each other in the middle of the map (where the castles would be).
  */
-function _spawnScenarioBattlefieldUnits(state: GameState, mapW: number, mapH: number): void {
+function _spawnScenarioBattlefieldUnits(
+  state: GameState,
+  mapW: number,
+  mapH: number,
+): void {
   const midX = Math.floor(mapW / 2);
   const midY = Math.floor(mapH / 2);
 
@@ -411,11 +478,19 @@ function _spawnScenarioBattlefieldUnits(state: GameState, mapW: number, mapH: nu
   ];
 
   for (const pos of p1Positions) {
-    const u = createUnit({ type: UnitType.SWORDSMAN, owner: "p1", position: pos });
+    const u = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p1",
+      position: pos,
+    });
     state.units.set(u.id, u);
   }
   for (const pos of p2Positions) {
-    const u = createUnit({ type: UnitType.SWORDSMAN, owner: "p2", position: pos });
+    const u = createUnit({
+      type: UnitType.SWORDSMAN,
+      owner: "p2",
+      position: pos,
+    });
     state.units.set(u.id, u);
   }
 }
@@ -440,7 +515,9 @@ function _rollRoguelikeDisabledBuildings(state: GameState): void {
   const disabledSet = new Set(state.roguelikeDisabledBuildings);
   for (const building of state.buildings.values()) {
     if (building.type === BuildingType.CASTLE) {
-      const fullBlueprints = [...BUILDING_DEFINITIONS[BuildingType.CASTLE].blueprints];
+      const fullBlueprints = [
+        ...BUILDING_DEFINITIONS[BuildingType.CASTLE].blueprints,
+      ];
       building.blueprints = fullBlueprints.filter((t) => !disabledSet.has(t));
     }
   }
@@ -488,7 +565,10 @@ function _applyLeaderBonus(
     case "spawn_unit_near_castle": {
       // Find the P1 castle and spawn the unit nearby
       for (const building of state.buildings.values()) {
-        if (building.owner === playerId && building.type === BuildingType.CASTLE) {
+        if (
+          building.owner === playerId &&
+          building.type === BuildingType.CASTLE
+        ) {
           const isWest = playerId === "p1";
           const spawnX = isWest
             ? building.position.x + 5
@@ -497,7 +577,10 @@ function _applyLeaderBonus(
           const unit = createUnit({
             type: bonus.unitType,
             owner: playerId,
-            position: { x: Math.max(0, Math.min(mapSize.width - 1, spawnX)), y: spawnY },
+            position: {
+              x: Math.max(0, Math.min(mapSize.width - 1, spawnX)),
+              y: spawnY,
+            },
           });
           if (bonus.bonusLevel !== undefined) {
             unit.level = bonus.bonusLevel;
@@ -523,7 +606,10 @@ function _applyLeaderBonus(
   // Merlin gets an extra spawn_unit_near_castle on top of the mage level bonus
   if (leaderId === "merlin") {
     for (const building of state.buildings.values()) {
-      if (building.owner === playerId && building.type === BuildingType.CASTLE) {
+      if (
+        building.owner === playerId &&
+        building.type === BuildingType.CASTLE
+      ) {
         const isWest = playerId === "p1";
         const spawnX = isWest
           ? building.position.x + 5
@@ -532,7 +618,10 @@ function _applyLeaderBonus(
         const unit = createUnit({
           type: UnitType.STORM_MAGE,
           owner: playerId,
-          position: { x: Math.max(0, Math.min(mapSize.width - 1, spawnX)), y: spawnY },
+          position: {
+            x: Math.max(0, Math.min(mapSize.width - 1, spawnX)),
+            y: spawnY,
+          },
         });
         unit.level = 1;
         state.units.set(unit.id, unit);
@@ -566,7 +655,10 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
   // If any Faction Halls already exist for this player (unusual at boot,
   // but handle gracefully), wire their shopInventory now.
   for (const building of state.buildings.values()) {
-    if (building.type === BuildingType.FACTION_HALL && building.owner === playerId) {
+    if (
+      building.type === BuildingType.FACTION_HALL &&
+      building.owner === playerId
+    ) {
       building.shopInventory = [race.factionUnit];
     }
   }
@@ -584,10 +676,14 @@ function _applyCampaignRestrictions(state: GameState): void {
     if (building.owner !== "p1") continue;
 
     // Filter shop units
-    building.shopInventory = building.shopInventory.filter((u) => unlockedUnits.has(u));
+    building.shopInventory = building.shopInventory.filter((u) =>
+      unlockedUnits.has(u),
+    );
 
     // Filter blueprints
-    building.blueprints = building.blueprints.filter((b) => unlockedBuildings.has(b));
+    building.blueprints = building.blueprints.filter((b) =>
+      unlockedBuildings.has(b),
+    );
   }
 }
 
@@ -603,7 +699,14 @@ async function _bootCampaign(
   leaderId: LeaderId,
   raceId: RaceId,
 ): Promise<void> {
-  await _bootGame(p2IsAI, mapSize, GameMode.CAMPAIGN, leaderId, raceId, scenarioNum);
+  await _bootGame(
+    p2IsAI,
+    mapSize,
+    GameMode.CAMPAIGN,
+    leaderId,
+    raceId,
+    scenarioNum,
+  );
 }
 
 async function _bootGame(
@@ -616,9 +719,12 @@ async function _bootGame(
   mapType: MapType = MapType.MEADOW,
 ): Promise<void> {
   // 1. Simulation state — sized to the chosen map
-  const startGold = gameMode === GameMode.DEATHMATCH ? 10000
-    : gameMode === GameMode.BATTLEFIELD ? 30000
-    : BalanceConfig.START_GOLD;
+  const startGold =
+    gameMode === GameMode.DEATHMATCH
+      ? 10000
+      : gameMode === GameMode.BATTLEFIELD
+        ? 30000
+        : BalanceConfig.START_GOLD;
 
   const state = createGameState(mapSize.width, mapSize.height, 0, gameMode);
   state.players.set("p1", createPlayerState("p1", Direction.WEST, startGold));
@@ -627,13 +733,15 @@ async function _bootGame(
   initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
 
   // Resolve the scenario type for campaign games
-  const scenarioDef = gameMode === GameMode.CAMPAIGN && scenarioNum !== undefined
-    ? getScenario(scenarioNum)
-    : undefined;
+  const scenarioDef =
+    gameMode === GameMode.CAMPAIGN && scenarioNum !== undefined
+      ? getScenario(scenarioNum)
+      : undefined;
   const scenarioType = scenarioDef?.type ?? "standard";
 
-  const isBattlefieldSetup = gameMode === GameMode.BATTLEFIELD
-    || (gameMode === GameMode.CAMPAIGN && scenarioType === "battlefield");
+  const isBattlefieldSetup =
+    gameMode === GameMode.BATTLEFIELD ||
+    (gameMode === GameMode.CAMPAIGN && scenarioType === "battlefield");
 
   if (!isBattlefieldSetup) {
     // Standard, deathmatch, roguelike, standard-campaign all have towns/neutral buildings
@@ -677,7 +785,9 @@ async function _bootGame(
       const allowed = new Set(scenarioDef.aiBlueprints);
       for (const building of state.buildings.values()) {
         if (building.owner === "p2" && building.type === BuildingType.CASTLE) {
-          building.blueprints = building.blueprints.filter((b) => allowed.has(b));
+          building.blueprints = building.blueprints.filter((b) =>
+            allowed.has(b),
+          );
         }
       }
     }
@@ -712,8 +822,12 @@ async function _bootGame(
   gridRenderer.init(viewManager);
   gridRenderer.draw(state.battlefield, mapType);
   environmentLayer.init(viewManager, state, mapType);
-  EventBus.on("buildingPlaced", () => gridRenderer.draw(state.battlefield, mapType));
-  EventBus.on("buildingDestroyed", () => gridRenderer.draw(state.battlefield, mapType));
+  EventBus.on("buildingPlaced", () =>
+    gridRenderer.draw(state.battlefield, mapType),
+  );
+  EventBus.on("buildingDestroyed", () =>
+    gridRenderer.draw(state.battlefield, mapType),
+  );
 
   // 3. Building & base views
   buildingLayer.init(viewManager, state);
@@ -797,6 +911,10 @@ async function _bootGame(
   turretArrowFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => turretArrowFX.update(dt));
 
+  // Building lightning tower FX
+  turretLightningFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => turretLightningFX.update(dt));
+
   // Ranged unit arrow FX
   arrowFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => arrowFX.update(dt));
@@ -874,7 +992,10 @@ async function _bootGame(
     }),
   });
   pauseLabel.anchor.set(0.5, 0.5);
-  pauseLabel.position.set(viewManager.screenWidth / 2, viewManager.screenHeight / 2);
+  pauseLabel.position.set(
+    viewManager.screenWidth / 2,
+    viewManager.screenHeight / 2,
+  );
   // Overlay must not block pointer events — UI buttons (shop, HUD) stay clickable while paused
   pauseOverlay.eventMode = "none";
   pauseOverlay.addChild(pauseBg, pauseLabel);
