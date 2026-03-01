@@ -52,6 +52,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.ELITE_HALL,
       BuildingType.MARKET,
       BuildingType.FACTION_HALL,
+      BuildingType.LIGHTNING_TOWER,
     ],
     footprint: { w: 4, h: 4 },
     placementZone: "own",
@@ -378,5 +379,21 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     prerequisite: { types: [BuildingType.TEMPLE], minCount: 1 },
     description:
       "The hall of your people. Trains powerful faction-exclusive units unavailable to other races.",
+  },
+  [BuildingType.LIGHTNING_TOWER]: {
+    type: BuildingType.LIGHTNING_TOWER,
+    cost: 500,
+    hp: 150,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 1 },
+    placementZone: "own",
+    capturable: true,
+    defaultTurrets: [
+      { projectileTag: "lightning", damage: 25, range: 4, attackSpeed: 1.2 },
+    ],
+    description:
+      "A mystical tower that channels powerful lightning bolts to strike enemies from afar.",
   },
 };

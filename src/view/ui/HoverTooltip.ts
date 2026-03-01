@@ -99,6 +99,7 @@ export const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.ELITE_HALL]: "Elite Hall",
   [BuildingType.MARKET]: "Market",
   [BuildingType.FACTION_HALL]: "Faction Hall",
+  [BuildingType.LIGHTNING_TOWER]: "Lightning Tower",
 };
 
 export const UNIT_LABELS: Record<UnitType, string> = {

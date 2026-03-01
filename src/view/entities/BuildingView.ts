@@ -28,6 +28,7 @@ import { MillRenderer } from "@view/entities/MillRenderer";
 import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { MarketRenderer } from "@view/entities/MarketRenderer";
+import { LightningTowerRenderer } from "@view/entities/LightningTowerRenderer";
 import { StableRenderer } from "@view/entities/StableRenderer";
 import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
 
@@ -63,6 +64,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.ELITE_HALL]: 0xaa8844,
   [BuildingType.MARKET]: 0xaa7733,
   [BuildingType.FACTION_HALL]: 0x6655aa,
+  [BuildingType.LIGHTNING_TOWER]: 0x4488ff,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -104,6 +106,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.ELITE_HALL]: "ELITE HALL",
   [BuildingType.MARKET]: "MARKET",
   [BuildingType.FACTION_HALL]: "FACTION HALL",
+  [BuildingType.LIGHTNING_TOWER]: "LIGHTNING",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -171,6 +174,7 @@ export class BuildingView {
   private _marketRenderer: MarketRenderer | null = null;
   private _stableRenderer: StableRenderer | null = null;
   private _factionHallRenderer: FactionHallRenderer | null = null;
+  private _lightningTowerRenderer: LightningTowerRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -283,6 +287,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.FACTION_HALL) {
       this._factionHallRenderer = new FactionHallRenderer(building.owner);
       this.container.addChild(this._factionHallRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.LIGHTNING_TOWER) {
+      this._lightningTowerRenderer = new LightningTowerRenderer(building.owner);
+      this.container.addChild(this._lightningTowerRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -428,6 +437,9 @@ export class BuildingView {
       }
       if (this._factionHallRenderer) {
         this._factionHallRenderer.tick(dt);
+      }
+      if (this._lightningTowerRenderer) {
+        this._lightningTowerRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }
