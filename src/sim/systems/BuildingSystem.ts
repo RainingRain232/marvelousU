@@ -480,10 +480,14 @@ function _updateTurrets(
     // Validate existing target
     if (turret.targetId) {
       const existing = state.units.get(turret.targetId);
+      const isHealing = turret.damage < 0;
+      
       if (
         !existing ||
         existing.state === UnitState.DIE ||
-        existing.owner === building.owner ||
+        (isHealing && existing.owner !== building.owner) || // Healing: must be friendly
+        (isHealing && existing.hp >= existing.maxHp) || // Healing: must be injured
+        (!isHealing && existing.owner === building.owner) || // Damage: must be enemy
         distanceSq({ x: cx, y: cy }, existing.position) > rangeSq
       ) {
         turret.targetId = null;
@@ -495,7 +499,16 @@ function _updateTurrets(
       let bestDsq = rangeSq + 1;
       for (const unit of state.units.values()) {
         if (unit.state === UnitState.DIE) continue;
-        if (unit.owner === building.owner) continue;
+        
+        // Healing projectiles target friendly units, others target enemies
+        const isHealing = turret.damage < 0;
+        if (isHealing) {
+          if (unit.owner !== building.owner) continue; // Healing: only friendly units
+          if (unit.hp >= unit.maxHp) continue; // Only target injured units
+        } else {
+          if (unit.owner === building.owner) continue; // Damage: only enemy units
+        }
+        
         const dsq = distanceSq({ x: cx, y: cy }, unit.position);
         if (dsq <= rangeSq && dsq < bestDsq) {
           bestDsq = dsq;
