@@ -5,7 +5,12 @@ export class TreeRenderer {
     private _trees: Array<{ trunk: Graphics; canopy: Graphics; phase: number; speed: number }> = [];
     private _time = 0;
 
-    constructor(count: number, width: number, height: number, seed: number) {
+    private _foliageColors: number[];
+    private _trunkColor: number;
+
+    constructor(count: number, width: number, height: number, seed: number, foliageColors?: number[], trunkColor?: number) {
+        this._foliageColors = foliageColors ?? [0x2d5a27, 0x3a7c33, 0x1e4d1a];
+        this._trunkColor = trunkColor ?? 0x4d3319;
         let s = seed;
         const next = () => {
             s = (s * 1103515245 + 12345) & 0x7fffffff;
@@ -41,7 +46,7 @@ export class TreeRenderer {
 
         const trunkW = 8 + next() * 6;
         const trunkH = 20 + next() * 15;
-        const trunkColor = 0x4d3319;
+        const trunkColor = this._trunkColor;
 
         // Trunk
         trunk.rect(-trunkW / 2, -trunkH, trunkW, trunkH)
@@ -57,7 +62,7 @@ export class TreeRenderer {
 
         // Canopy (detailed clouds of green)
         const canopySize = 25 + next() * 20;
-        const foliageColors = [0x2d5a27, 0x3a7c33, 0x1e4d1a];
+        const foliageColors = this._foliageColors;
 
         const circleCount = 5 + Math.floor(next() * 5);
         for (let i = 0; i < circleCount; i++) {

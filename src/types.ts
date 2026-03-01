@@ -166,3 +166,14 @@ export enum GameMode {
   CAMPAIGN = "campaign",
   ROGUELIKE = "roguelike",
 }
+
+export enum MapType {
+  MEADOW = "meadow",
+  GRASS = "grass",
+  PLAINS = "plains",
+  FOREST = "forest",
+  TUNDRA = "tundra",
+  SWAMP = "swamp",
+  VOLCANIC = "volcanic",
+  OCEAN = "ocean",
+}

@@ -60,6 +60,10 @@ const COL_KING_SWORD = 0xc0c8d0;
 const COL_JESTER1 = 0xff3344;
 const COL_JESTER2 = 0xaa00cc;
 const COL_JESTER_BELL = 0xffd700;
+const COL_PIGEON = 0xdddddd;
+const COL_PIGEON_DK = 0xbbbbbb;
+const COL_PIGEON_BEAK = 0xffaa00;
+const COL_PIGEON_LEG = 0xcc8800;
 
 // Animation timing
 const PRINCESS_CYCLE = 8.0;
@@ -69,6 +73,7 @@ const KING_APPEAR = 2.0;
 const FLAG_SPEED = 3.0;
 const JESTER_CYCLE = 25.0;
 const JESTER_APPEAR = 6.0;
+const PIGEON_CYCLE = 4.0;
 
 // ---------------------------------------------------------------------------
 // CastleRenderer
@@ -88,12 +93,15 @@ export class CastleRenderer {
   private _jesterGfx = new Graphics();
   private _ballGfx = new Graphics();
   private _gateDoorGfx = new Graphics();
+  private _pigeon1Gfx = new Graphics();
+  private _pigeon2Gfx = new Graphics();
 
   // Timers
   private _flagTime = 0;
   private _princessTimer = 0;
   private _kingTimer = 0;
   private _jesterTimer = 0;
+  private _pigeonTimer = 0;
 
   // State
   private _playerColor: number;
@@ -116,6 +124,8 @@ export class CastleRenderer {
     this.container.addChild(this._jesterGfx);
     this.container.addChild(this._ballGfx);
     this.container.addChild(this._gateDoorGfx);
+    this.container.addChild(this._pigeon1Gfx);
+    this.container.addChild(this._pigeon2Gfx);
 
     this._princessGfx.visible = false;
     this._kingGfx.visible = false;
@@ -160,14 +170,18 @@ export class CastleRenderer {
     // 4. Jester (PREP only)
     if (phase === GamePhase.PREP) {
       this._jesterTimer += dt;
-      if (this._jesterTimer > JESTER_CYCLE)
-        this._jesterTimer -= JESTER_CYCLE;
+      if (this._jesterTimer > JESTER_CYCLE) this._jesterTimer -= JESTER_CYCLE;
       this._updateJester(this._jesterTimer);
     } else {
       this._jesterGfx.visible = false;
       this._ballGfx.visible = false;
       this._updateGate(0);
     }
+
+    // 5. Pigeons on gatehouse
+    this._pigeonTimer += dt;
+    if (this._pigeonTimer > PIGEON_CYCLE) this._pigeonTimer -= PIGEON_CYCLE;
+    this._updatePigeons(this._pigeonTimer);
   }
 
   // ── Static Drawing ────────────────────────────────────────────────────────
@@ -206,27 +220,57 @@ export class CastleRenderer {
     g.rect(gateX, wallY - 15, gateW, gateH + 35)
       .fill({ color: COL_STONE })
       .stroke({ color: COL_STONE_DK, width: 1 });
-    this._drawBrickPattern(
-      g,
-      gateX + 2,
-      wallY - 13,
-      gateW - 4,
-      gateH + 30,
-    );
+    this._drawBrickPattern(g, gateX + 2, wallY - 13, gateW - 4, gateH + 30);
     this._drawStoneVariation(g, gateX + 4, wallY - 8, gateW - 8, gateH + 20);
     this._drawCrenellations(g, gateX, wallY - 15, gateW);
+
+    // Decorative stones on gatehouse top (above crenellations)
+    const stoneY = wallY - 28; // above the crenellations (wallY - 15 - 7 - some gap)
+    const stoneW = 6;
+    const stoneH = 14; // around window glass height (22)
+    // 3 stones on left side
+    g.rect(gateX + 4, stoneY, stoneW, stoneH).fill({ color: COL_STONE_DK });
+    g.rect(gateX + 5, stoneY + 1, stoneW - 2, stoneH - 2).fill({
+      color: COL_STONE_LT,
+    });
+    g.rect(gateX + 14, stoneY - 2, stoneW, stoneH + 2).fill({
+      color: COL_STONE_DK,
+    });
+    g.rect(gateX + 15, stoneY - 1, stoneW - 2, stoneH).fill({
+      color: COL_STONE_LT,
+    });
+    g.rect(gateX + 24, stoneY, stoneW, stoneH).fill({ color: COL_STONE_DK });
+    g.rect(gateX + 25, stoneY + 1, stoneW - 2, stoneH - 2).fill({
+      color: COL_STONE_LT,
+    });
+    // 3 stones on right side
+    g.rect(gateX + gateW - 10, stoneY, stoneW, stoneH).fill({
+      color: COL_STONE_DK,
+    });
+    g.rect(gateX + gateW - 9, stoneY + 1, stoneW - 2, stoneH - 2).fill({
+      color: COL_STONE_LT,
+    });
+    g.rect(gateX + gateW - 20, stoneY - 2, stoneW, stoneH + 2).fill({
+      color: COL_STONE_DK,
+    });
+    g.rect(gateX + gateW - 19, stoneY - 1, stoneW - 2, stoneH).fill({
+      color: COL_STONE_LT,
+    });
+    g.rect(gateX + gateW - 30, stoneY, stoneW, stoneH).fill({
+      color: COL_STONE_DK,
+    });
+    g.rect(gateX + gateW - 29, stoneY + 1, stoneW - 2, stoneH - 2).fill({
+      color: COL_STONE_LT,
+    });
 
     // Gate Arch (Background)
     const archCX = CW / 2,
       archTop = wallY + 20 + 15,
       archW = 28,
       archH = gateH - 20;
-    g.rect(
-      archCX - archW / 2,
-      archTop + archH * 0.3,
-      archW,
-      archH * 0.7,
-    ).fill({ color: COL_WOOD_DK });
+    g.rect(archCX - archW / 2, archTop + archH * 0.3, archW, archH * 0.7).fill({
+      color: COL_WOOD_DK,
+    });
     g.ellipse(archCX, archTop + archH * 0.3, archW / 2, archH * 0.3).fill({
       color: COL_WOOD_DK,
     });
@@ -569,9 +613,11 @@ export class CastleRenderer {
       .lineTo(cx - 3, cy - 4)
       .fill({ color: 0x881111, alpha: 0.75 });
     // Wing membrane lines
-    g.moveTo(cx - 4, cy).lineTo(cx - 8, cy - 6)
+    g.moveTo(cx - 4, cy)
+      .lineTo(cx - 8, cy - 6)
       .stroke({ color: LEAD, width: 0.4, alpha: 0.6 });
-    g.moveTo(cx - 4, cy - 1).lineTo(cx - 9, cy - 7)
+    g.moveTo(cx - 4, cy - 1)
+      .lineTo(cx - 9, cy - 7)
       .stroke({ color: LEAD, width: 0.4, alpha: 0.5 });
     // Tail — curling down
     g.moveTo(cx - 6, cy + 8)
@@ -589,28 +635,46 @@ export class CastleRenderer {
       .bezierCurveTo(x, archTop - 2, cx, y - 2, cx, y)
       .bezierCurveTo(cx, y - 2, x + w, archTop - 2, x + w, y + h * 0.35)
       .stroke({ color: LEAD, width: 1.2 });
-    g.rect(x, y + h * 0.25, w, h * 0.75)
-      .stroke({ color: LEAD, width: 1.2 });
+    g.rect(x, y + h * 0.25, w, h * 0.75).stroke({ color: LEAD, width: 1.2 });
     // Vertical center line
-    g.moveTo(cx, y).lineTo(cx, y + h).stroke({ color: LEAD, width: LEAD_W });
+    g.moveTo(cx, y)
+      .lineTo(cx, y + h)
+      .stroke({ color: LEAD, width: LEAD_W });
     // Horizontal bands
-    g.moveTo(x, cy - 4).lineTo(x + w, cy - 4).stroke({ color: LEAD, width: LEAD_W });
-    g.moveTo(x, cy + 4).lineTo(x + w, cy + 4).stroke({ color: LEAD, width: LEAD_W });
+    g.moveTo(x, cy - 4)
+      .lineTo(x + w, cy - 4)
+      .stroke({ color: LEAD, width: LEAD_W });
+    g.moveTo(x, cy + 4)
+      .lineTo(x + w, cy + 4)
+      .stroke({ color: LEAD, width: LEAD_W });
     // Diagonal accent lines radiating from center
-    g.moveTo(cx, cy).lineTo(x + 2, y + h * 0.3).stroke({ color: LEAD, width: 0.5 });
-    g.moveTo(cx, cy).lineTo(x + w - 2, y + h * 0.3).stroke({ color: LEAD, width: 0.5 });
+    g.moveTo(cx, cy)
+      .lineTo(x + 2, y + h * 0.3)
+      .stroke({ color: LEAD, width: 0.5 });
+    g.moveTo(cx, cy)
+      .lineTo(x + w - 2, y + h * 0.3)
+      .stroke({ color: LEAD, width: 0.5 });
     // Small diamond accent in lower section
-    g.moveTo(cx, cy + 8).lineTo(cx - 4, cy + 12).lineTo(cx, cy + 16)
-      .lineTo(cx + 4, cy + 12).lineTo(cx, cy + 8)
+    g.moveTo(cx, cy + 8)
+      .lineTo(cx - 4, cy + 12)
+      .lineTo(cx, cy + 16)
+      .lineTo(cx + 4, cy + 12)
+      .lineTo(cx, cy + 8)
       .stroke({ color: LEAD, width: 0.5 });
 
     // ── Stone surround / frame ──
-    g.rect(x - 1.5, y - 1, w + 3, h + 2)
-      .stroke({ color: COL_STONE_DK, width: 1.5 });
+    g.rect(x - 1.5, y - 1, w + 3, h + 2).stroke({
+      color: COL_STONE_DK,
+      width: 1.5,
+    });
     // Keystone at top of arch
-    g.moveTo(cx - 3, y - 1).lineTo(cx, y - 3).lineTo(cx + 3, y - 1)
+    g.moveTo(cx - 3, y - 1)
+      .lineTo(cx, y - 3)
+      .lineTo(cx + 3, y - 1)
       .fill({ color: COL_STONE_LT });
-    g.moveTo(cx - 3, y - 1).lineTo(cx, y - 3).lineTo(cx + 3, y - 1)
+    g.moveTo(cx - 3, y - 1)
+      .lineTo(cx, y - 3)
+      .lineTo(cx + 3, y - 1)
       .stroke({ color: COL_STONE_DK, width: 0.5 });
   }
 
@@ -765,14 +829,7 @@ export class CastleRenderer {
 
     // Tail curling upward
     g.moveTo(x - dir * 2, y + 6)
-      .bezierCurveTo(
-        x - dir * 6,
-        y + 4,
-        x - dir * 8,
-        y,
-        x - dir * 6,
-        y - 3,
-      )
+      .bezierCurveTo(x - dir * 6, y + 4, x - dir * 8, y, x - dir * 6, y - 3)
       .stroke({ color: COL_GARGOYLE_DK, width: 1.5 });
     // Tail tip (pointed)
     g.moveTo(x - dir * 6, y - 3)
@@ -835,14 +892,7 @@ export class CastleRenderer {
     const fW = 18,
       fH = 12;
     g.moveTo(0, -22)
-      .bezierCurveTo(
-        fW * 0.3,
-        -22 + w1,
-        fW * 0.6,
-        -22 + w2,
-        fW,
-        -22 + w3,
-      )
+      .bezierCurveTo(fW * 0.3, -22 + w1, fW * 0.6, -22 + w2, fW, -22 + w3)
       .lineTo(fW, -22 + fH + w3)
       .bezierCurveTo(
         fW * 0.6,
@@ -1166,7 +1216,11 @@ export class CastleRenderer {
         .lineTo(cgX + Math.cos(ang) * 4, cgY + Math.sin(ang) * 4)
         .stroke({ color: 0xccaa44, width: 2 });
       // Pommel
-      g.circle(wx + 9 - Math.sin(ang) * 2, hY + 3 + Math.cos(ang) * 2, 1.5).fill({
+      g.circle(
+        wx + 9 - Math.sin(ang) * 2,
+        hY + 3 + Math.cos(ang) * 2,
+        1.5,
+      ).fill({
         color: 0xccaa44,
       });
     }
@@ -1593,6 +1647,196 @@ export class CastleRenderer {
       .stroke({ color: 0xff4400, width: 1 });
     // Highlight
     g.circle(x - 1, y - 1.5, 1).fill({ color: 0xffffff, alpha: 0.4 });
+  }
+
+  // ── Pigeons ────────────────────────────────────────────────────────────────
+
+  private _updatePigeons(t: number): void {
+    const p1 = this._pigeon1Gfx;
+    const p2 = this._pigeon2Gfx;
+    p1.clear();
+    p2.clear();
+
+    // Pigeons sit on the third stone from left (gateX + 24)
+    const wallY = 60;
+    const stoneY = wallY - 28;
+    const pigeon1BaseX = 132;
+    const pigeon1BaseY = stoneY - 2;
+    const pigeon2BaseX = 140;
+    const pigeon2BaseY = stoneY + 2;
+
+    // Pigeon 1: mostly sits, occasionally flaps wings or turns head
+    const p1State = Math.floor(t * 0.8) % 5;
+    // Sometimes face center (left towards center at x=128)
+    const p1FaceCenter = Math.sin(t * 0.5) > 0.3;
+    if (p1State === 0) {
+      // Sitting still
+      this._drawPigeon(
+        p1,
+        pigeon1BaseX,
+        pigeon1BaseY,
+        0,
+        0,
+        false,
+        p1FaceCenter,
+      );
+    } else if (p1State === 1) {
+      // Slight movement
+      const hop = Math.sin(t * 8) * 0.5;
+      this._drawPigeon(
+        p1,
+        pigeon1BaseX,
+        pigeon1BaseY - hop,
+        0,
+        0,
+        false,
+        p1FaceCenter,
+      );
+    } else if (p1State === 2) {
+      // Flapping wings
+      const flap = Math.sin(t * 20) * 2;
+      this._drawPigeon(
+        p1,
+        pigeon1BaseX,
+        pigeon1BaseY,
+        flap,
+        0,
+        true,
+        p1FaceCenter,
+      );
+    } else if (p1State === 3) {
+      // Turning head
+      const headTurn = Math.sin(t * 3) * 0.3;
+      this._drawPigeon(
+        p1,
+        pigeon1BaseX,
+        pigeon1BaseY,
+        0,
+        headTurn,
+        false,
+        p1FaceCenter,
+      );
+    } else {
+      // Facing center
+      this._drawPigeon(p1, pigeon1BaseX, pigeon1BaseY, 0, 0, false, true);
+    }
+
+    // Pigeon 2: slightly offset timing
+    const p2State = Math.floor((t + 1.5) * 0.7) % 5;
+    const p2FaceCenter = Math.sin(t * 0.4 + 1) > 0.3;
+    if (p2State === 0) {
+      this._drawPigeon(
+        p2,
+        pigeon2BaseX,
+        pigeon2BaseY,
+        0,
+        0,
+        false,
+        p2FaceCenter,
+        true,
+      );
+    } else if (p2State === 1) {
+      const hop = Math.sin((t + 1.5) * 7) * 0.5;
+      this._drawPigeon(
+        p2,
+        pigeon2BaseX,
+        pigeon2BaseY - hop,
+        0,
+        0,
+        false,
+        p2FaceCenter,
+        true,
+      );
+    } else if (p2State === 2) {
+      const flap = Math.sin((t + 1.5) * 18) * 2;
+      this._drawPigeon(
+        p2,
+        pigeon2BaseX,
+        pigeon2BaseY,
+        flap,
+        0,
+        true,
+        p2FaceCenter,
+        true,
+      );
+    } else if (p2State === 3) {
+      const headTurn = Math.sin((t + 1.5) * 2.5) * 0.3;
+      this._drawPigeon(
+        p2,
+        pigeon2BaseX,
+        pigeon2BaseY,
+        0,
+        headTurn,
+        false,
+        p2FaceCenter,
+        true,
+      );
+    } else {
+      // Facing center (right side pigeon faces center = left)
+      this._drawPigeon(p2, pigeon2BaseX, pigeon2BaseY, 0, 0, false, true, true);
+    }
+  }
+
+  private _drawPigeon(
+    g: Graphics,
+    x: number,
+    y: number,
+    wingFlap: number,
+    headTurn: number,
+    isFlapping: boolean,
+    faceCenter: boolean = false,
+    isRightSide: boolean = false,
+  ): void {
+    // Determine direction: faceCenter means pigeon faces toward center (x=128)
+    // For left side pigeon (x > 128), faceCenter = face left
+    // For right side pigeon (x > 128), faceCenter = face left (toward center)
+    const facingLeft = isRightSide ? faceCenter : faceCenter;
+
+    // Body (oval)
+    const bodyOffsetX = facingLeft ? -1 : 1;
+    g.ellipse(x + bodyOffsetX, y - 3, 5, 4).fill({ color: COL_PIGEON });
+    g.ellipse(x + bodyOffsetX, y - 3, 4, 3).fill({ color: COL_PIGEON_DK });
+
+    // Head - position based on facing direction
+    const headX = facingLeft ? x - 2 + headTurn * 2 : x + 2 + headTurn * 2;
+    g.circle(headX, y - 7, 2.5).fill({ color: COL_PIGEON });
+
+    // Eye - position based on facing direction
+    const eyeOffsetX = facingLeft ? -0.8 : 0.8;
+    g.circle(headX + eyeOffsetX, y - 7.5, 0.6).fill({ color: 0x000000 });
+    g.circle(headX + eyeOffsetX + 0.1, y - 7.6, 0.2).fill({ color: 0xffffff });
+
+    // Beak - position based on facing direction
+    const beakDir = facingLeft ? 1 : -1;
+    g.moveTo(headX + beakDir * 1.5, y - 7)
+      .lineTo(headX + beakDir * 3, y - 6.5)
+      .lineTo(headX + beakDir * 1.5, y - 6)
+      .closePath()
+      .fill({ color: COL_PIGEON_BEAK });
+
+    // Wing (or flapping wing)
+    const wingOffsetX = facingLeft ? 2 : -2;
+    if (isFlapping && wingFlap !== 0) {
+      // Wing raised up
+      g.ellipse(x + wingOffsetX, y - 5 + wingFlap, 4, 2).fill({
+        color: COL_PIGEON_DK,
+      });
+    } else {
+      // Wing folded
+      g.ellipse(x + wingOffsetX, y - 4, 4, 2.5).fill({ color: COL_PIGEON_DK });
+    }
+
+    // Tail - opposite to facing direction
+    const tailOffsetX = facingLeft ? 4 : -4;
+    g.ellipse(x - tailOffsetX, y - 2, 2.5, 1.5).fill({ color: COL_PIGEON_DK });
+
+    // Legs (tiny)
+    g.moveTo(x - 1, y)
+      .lineTo(x - 1, y + 2)
+      .stroke({ color: COL_PIGEON_LEG, width: 0.5 });
+    g.moveTo(x + 1, y)
+      .lineTo(x + 1, y + 2)
+      .stroke({ color: COL_PIGEON_LEG, width: 0.5 });
   }
 
   destroy(): void {

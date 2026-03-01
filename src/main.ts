@@ -44,7 +44,7 @@ import { initBases } from "@sim/systems/BaseSetup";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
-import { Direction, GamePhase, GameMode, BuildingType, UnitType } from "@/types";
+import { Direction, GamePhase, GameMode, MapType, BuildingType, UnitType } from "@/types";
 import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
 import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
@@ -159,6 +159,7 @@ import type { RaceId } from "@sim/config/RaceDefs";
   armoryScreen.onStartGame = async () => {
     const mapSize  = menuScreen.selectedMapSize;
     const gameMode = menuScreen.selectedGameMode;
+    const mapType  = menuScreen.selectedMapType;
     const leaderId = leaderSelectScreen.selectedLeaderId;
     const raceId   = raceSelectScreen.selectedRaceId;
     armoryScreen.hide();
@@ -166,7 +167,7 @@ import type { RaceId } from "@sim/config/RaceDefs";
       // Campaign: go to scenario select instead of booting directly
       scenarioSelectScreen.show();
     } else {
-      await _bootGame(p2IsAI, mapSize, gameMode, leaderId, raceId);
+      await _bootGame(p2IsAI, mapSize, gameMode, leaderId, raceId, undefined, mapType);
     }
   };
 
@@ -612,6 +613,7 @@ async function _bootGame(
   leaderId: LeaderId = "arthur",
   raceId: RaceId = "man",
   scenarioNum?: number,
+  mapType: MapType = MapType.MEADOW,
 ): Promise<void> {
   // 1. Simulation state — sized to the chosen map
   const startGold = gameMode === GameMode.DEATHMATCH ? 10000
@@ -708,10 +710,10 @@ async function _bootGame(
 
   // 3. Grid background & environment
   gridRenderer.init(viewManager);
-  gridRenderer.draw(state.battlefield);
-  environmentLayer.init(viewManager, state);
-  EventBus.on("buildingPlaced", () => gridRenderer.draw(state.battlefield));
-  EventBus.on("buildingDestroyed", () => gridRenderer.draw(state.battlefield));
+  gridRenderer.draw(state.battlefield, mapType);
+  environmentLayer.init(viewManager, state, mapType);
+  EventBus.on("buildingPlaced", () => gridRenderer.draw(state.battlefield, mapType));
+  EventBus.on("buildingDestroyed", () => gridRenderer.draw(state.battlefield, mapType));
 
   // 3. Building & base views
   buildingLayer.init(viewManager, state);

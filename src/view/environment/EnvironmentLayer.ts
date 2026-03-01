@@ -2,18 +2,26 @@ import { Container } from "pixi.js";
 import { ViewManager } from "@view/ViewManager";
 import { GameState } from "@sim/state/GameState";
 import { GrassRenderer } from "./GrassRenderer";
+import { PlainsGrassRenderer } from "./PlainsGrassRenderer";
 import { TreeRenderer } from "./TreeRenderer";
+import { FlowerRenderer } from "./FlowerRenderer";
+import { TumbleweedRenderer } from "./TumbleweedRenderer";
+import { DustRenderer } from "./DustRenderer";
 import { DeerRenderer } from "./DeerRenderer";
 import { RabbitRenderer } from "./RabbitRenderer";
 import { DoveRenderer } from "./DoveRenderer";
 import { FarmerRenderer } from "./FarmerRenderer";
 import { PrincessRenderer } from "./PrincessRenderer";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
-import { BuildingType } from "@/types";
+import { BuildingType, MapType } from "@/types";
 
 export class EnvironmentLayer {
-    private _grass!: GrassRenderer;
-    private _trees!: TreeRenderer;
+    private _grass: GrassRenderer | null = null;
+    private _plainsGrass: PlainsGrassRenderer | null = null;
+    private _trees: TreeRenderer | null = null;
+    private _flowers: FlowerRenderer | null = null;
+    private _tumbleweeds: TumbleweedRenderer | null = null;
+    private _dust: DustRenderer | null = null;
     private _deer: DeerRenderer[] = [];
     private _rabbits: RabbitRenderer[] = [];
     private _doves: DoveRenderer[] = [];
@@ -31,7 +39,7 @@ export class EnvironmentLayer {
     private _state!: GameState;
     private _vm!: ViewManager;
 
-    init(_vm: ViewManager, state: GameState): void {
+    init(_vm: ViewManager, state: GameState, mapType: MapType = MapType.MEADOW): void {
         this._vm = _vm;
         this._state = state;
         const ts = BalanceConfig.TILE_SIZE;
@@ -41,14 +49,46 @@ export class EnvironmentLayer {
         // Deterministic seed based on game state if possible, or just a constant
         const seed = state.rngSeed || 42;
 
-        // Create grass tufts (plenty)
-        this._grass = new GrassRenderer(250, worldW, worldH, seed);
+        // Density and features per map type
+        const isGrass = mapType === MapType.GRASS;
+        const isPlains = mapType === MapType.PLAINS;
 
-        // Create trees (occasional)
-        this._trees = new TreeRenderer(25, worldW, worldH, seed + 1);
+        if (isPlains) {
+            // Plains: tall dry grass, sparse scrub trees, tumbleweeds, dust
+            this._plainsGrass = new PlainsGrassRenderer(400, worldW, worldH, seed);
+            this._container.addChild(this._plainsGrass.container);
 
-        this._container.addChild(this._grass.container);
-        this._container.addChild(this._trees.container);
+            // Very few scraggly trees — dry yellowish foliage, sun-bleached trunks
+            const plainsFoliage = [0x8a7a30, 0x9c8c3a, 0x7a6a28, 0xa09040];
+            const plainsTrunk = 0x6b5530;
+            this._trees = new TreeRenderer(8, worldW, worldH, seed + 1, plainsFoliage, plainsTrunk);
+            this._container.addChild(this._trees.container);
+
+            // Tumbleweeds rolling across
+            this._tumbleweeds = new TumbleweedRenderer(worldW, worldH, seed + 3);
+            this._container.addChild(this._tumbleweeds.container);
+
+            // Atmospheric dust
+            this._dust = new DustRenderer(worldW, worldH, seed + 4);
+            this._container.addChild(this._dust.container);
+        } else {
+            const grassCount = isGrass ? 600 : 250;
+            const treeCount = isGrass ? 70 : 25;
+
+            // Create grass tufts
+            this._grass = new GrassRenderer(grassCount, worldW, worldH, seed);
+            this._container.addChild(this._grass.container);
+
+            // Create trees
+            this._trees = new TreeRenderer(treeCount, worldW, worldH, seed + 1);
+            this._container.addChild(this._trees.container);
+
+            // Flowers for grass map type
+            if (isGrass) {
+                this._flowers = new FlowerRenderer(180, worldW, worldH, seed + 2);
+                this._container.addChild(this._flowers.container);
+            }
+        }
 
         // --- Animals ---
         const totalTiles = state.battlefield.width * state.battlefield.height;
@@ -101,7 +141,11 @@ export class EnvironmentLayer {
 
     update(_state: GameState, dt: number): void {
         if (this._grass) this._grass.update(dt);
+        if (this._plainsGrass) this._plainsGrass.update(dt);
         if (this._trees) this._trees.update(dt);
+        if (this._flowers) this._flowers.update(dt);
+        if (this._tumbleweeds) this._tumbleweeds.update(dt);
+        if (this._dust) this._dust.update(dt);
         for (const d of this._deer) d.update(dt);
         for (const r of this._rabbits) r.update(dt);
         for (const p of this._princesses) p.update(dt);
@@ -272,7 +316,11 @@ export class EnvironmentLayer {
 
     destroy(): void {
         if (this._grass) this._grass.container.destroy({ children: true });
+        if (this._plainsGrass) this._plainsGrass.container.destroy({ children: true });
         if (this._trees) this._trees.container.destroy({ children: true });
+        if (this._flowers) this._flowers.container.destroy({ children: true });
+        if (this._tumbleweeds) this._tumbleweeds.destroy();
+        if (this._dust) this._dust.destroy();
         for (const d of this._doves) d.destroy();
         for (const f of this._farmers) f.destroy();
         this._container.destroy({ children: true });

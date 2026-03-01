@@ -3,20 +3,56 @@ import { Graphics } from "pixi.js";
 import type { BattlefieldState } from "@sim/state/BattlefieldState";
 import type { ViewManager } from "@view/ViewManager";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { MapType } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Tile color palette (placeholder — real art replaces these later)
 // ---------------------------------------------------------------------------
 
+type TileColorSet = {
+  west_walkable: number;
+  west_unwalkable: number;
+  neutral_walkable: number;
+  neutral_unwalkable: number;
+  east_walkable: number;
+  east_unwalkable: number;
+};
+
 /** Fill colors per zone × walkability combination (0xRRGGBB). */
-const TILE_COLORS = {
+const TILE_COLORS_MEADOW: TileColorSet = {
   west_walkable: 0x2d4c2d, // muted green — west territory
   west_unwalkable: 0x1e331e, // dark muted green — impassable west
   neutral_walkable: 0x3a5a30, // vibrant green — contested zone
   neutral_unwalkable: 0x203518, // dark green — impassable neutral
   east_walkable: 0x5c4d2d, // brownish green — east territory
   east_unwalkable: 0x3d331e, // dark brownish green — impassable east
-} as const;
+};
+
+const TILE_COLORS_GRASS: TileColorSet = {
+  west_walkable: 0x3a6b2a,    // lush green — west territory
+  west_unwalkable: 0x2a5020,  // deep green — impassable west
+  neutral_walkable: 0x4a8035,  // bright verdant — contested zone
+  neutral_unwalkable: 0x2d5a1e, // deep verdant — impassable neutral
+  east_walkable: 0x3d7030,    // rich green — east territory
+  east_unwalkable: 0x2c5522,  // dark rich green — impassable east
+};
+
+const TILE_COLORS_PLAINS: TileColorSet = {
+  west_walkable: 0x8a7d48,    // warm golden tan — west territory
+  west_unwalkable: 0x6b5f38,  // darker tan — impassable west
+  neutral_walkable: 0x9c8e52,  // sun-bleached gold — contested zone
+  neutral_unwalkable: 0x746840, // dusty brown — impassable neutral
+  east_walkable: 0x7d7040,    // dry straw — east territory
+  east_unwalkable: 0x5e5430,  // deep straw — impassable east
+};
+
+const TILE_COLORS: Record<string, TileColorSet> = {
+  [MapType.MEADOW]: TILE_COLORS_MEADOW,
+  [MapType.GRASS]: TILE_COLORS_GRASS,
+  [MapType.PLAINS]: TILE_COLORS_PLAINS,
+};
+
+const TILE_COLORS_DEFAULT = TILE_COLORS_MEADOW;
 
 /** Tint applied over a tile occupied by a building (additive alpha blend). */
 const BUILDING_TINT_COLOR = 0x000000; // darker footprint
@@ -66,8 +102,8 @@ export class GridRenderer {
    * (Re-)draw the entire grid from the given battlefield state.
    * Safe to call every time buildings change.
    */
-  draw(battlefield: BattlefieldState): void {
-    this._drawTiles(battlefield);
+  draw(battlefield: BattlefieldState, mapType: MapType = MapType.MEADOW): void {
+    this._drawTiles(battlefield, mapType);
     this._drawBuildingTints(battlefield);
     this._drawLines(battlefield);
   }
@@ -76,17 +112,18 @@ export class GridRenderer {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private _drawTiles(bf: BattlefieldState): void {
+  private _drawTiles(bf: BattlefieldState, mapType: MapType): void {
     const g = this._tiles;
     const ts = BalanceConfig.TILE_SIZE;
+    const palette = TILE_COLORS[mapType] ?? TILE_COLORS_DEFAULT;
     g.clear();
 
     for (const row of bf.grid) {
       for (const tile of row) {
         // Use "walkable" color even for buildings so the terrain looks consistent
         const isActuallyWalkable = tile.walkable || tile.buildingId !== null;
-        const key = `${tile.zone}_${isActuallyWalkable ? "walkable" : "unwalkable"}` as keyof typeof TILE_COLORS;
-        const color = TILE_COLORS[key];
+        const key = `${tile.zone}_${isActuallyWalkable ? "walkable" : "unwalkable"}` as keyof TileColorSet;
+        const color = palette[key];
         g.rect(tile.x * ts, tile.y * ts, ts, ts).fill({ color });
       }
     }

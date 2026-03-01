@@ -2,7 +2,7 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
-import { GameMode } from "@/types";
+import { GameMode, MapType } from "@/types";
 
 const STYLE_TITLE = new TextStyle({
   fontFamily: "monospace",
@@ -83,6 +83,24 @@ export const MAP_SIZES: MapSize[] = [
   { label: "QUADRUPLE", width: BASE_W * 4, height: BASE_H * 4 },
 ];
 
+interface MapTypeEntry {
+  type: MapType;
+  label: string;
+  /** If true, the button is greyed out and unselectable. */
+  locked?: boolean;
+}
+
+const MAP_TYPES: MapTypeEntry[] = [
+  { type: MapType.MEADOW,   label: "MEADOW" },
+  { type: MapType.GRASS,    label: "GRASS" },
+  { type: MapType.PLAINS,   label: "PLAINS" },
+  { type: MapType.FOREST,   label: "FOREST",   locked: true },
+  { type: MapType.TUNDRA,   label: "TUNDRA",   locked: true },
+  { type: MapType.SWAMP,    label: "SWAMP",     locked: true },
+  { type: MapType.VOLCANIC, label: "VOLCANIC", locked: true },
+  { type: MapType.OCEAN,    label: "OCEAN",     locked: true },
+];
+
 interface GameModeEntry {
   mode: GameMode;
   label: string;
@@ -128,6 +146,10 @@ export class MenuScreen {
   private _dmgToggleBg!: Graphics;
   private _dmgToggleLabel!: Text;
 
+  // Map type state
+  private _selectedTypeIndex = 0;
+  private _typeBtns: Array<{ bg: Graphics; label: Text; locked: boolean }> = [];
+
   // Map size state
   private _selectedSizeIndex = 0;
   private _sizeBtns: Array<{ bg: Graphics; label: Text }> = [];
@@ -139,7 +161,7 @@ export class MenuScreen {
   // card stored for layout
   private _card!: Container;
   private _cardW = 400;
-  private _cardH = 480;
+  private _cardH = 580;
 
   onAIToggle: ((isAI: boolean) => void) | null = null;
   /** Called when the player clicks the "SELECT LEADER" button (proceeds to leader select). */
@@ -147,6 +169,10 @@ export class MenuScreen {
 
   get selectedMapSize(): MapSize {
     return MAP_SIZES[this._selectedSizeIndex];
+  }
+
+  get selectedMapType(): MapType {
+    return MAP_TYPES[this._selectedTypeIndex].type;
   }
 
   get selectedGameMode(): GameMode {
@@ -257,9 +283,60 @@ export class MenuScreen {
       new Graphics().rect(20, 214, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
+    // --- Map type selector ---
+    const typeLabel = new Text({ text: "MAP TYPE", style: STYLE_LABEL });
+    typeLabel.position.set(20, 226);
+    card.addChild(typeLabel);
+
+    // 8 buttons in 2 rows of 4
+    const typeColCount = 4;
+    const typeGap = 6;
+    const tbW = Math.floor((CW - 40 - typeGap * (typeColCount - 1)) / typeColCount);
+    const tbH = 26;
+
+    this._typeBtns = [];
+    for (let i = 0; i < MAP_TYPES.length; i++) {
+      const col = i % typeColCount;
+      const row = Math.floor(i / typeColCount);
+      const typeBtn = new Container();
+      typeBtn.eventMode = "static";
+      typeBtn.cursor = MAP_TYPES[i].locked ? "default" : "pointer";
+      typeBtn.position.set(
+        20 + col * (tbW + typeGap),
+        246 + row * (tbH + typeGap),
+      );
+
+      const typeBg = new Graphics();
+      typeBtn.addChild(typeBg);
+
+      const tLabel = new Text({ text: MAP_TYPES[i].label, style: STYLE_MODE_INACTIVE });
+      tLabel.anchor.set(0.5, 0.5);
+      tLabel.position.set(tbW / 2, tbH / 2);
+      typeBtn.addChild(tLabel);
+
+      const idx = i;
+      if (!MAP_TYPES[i].locked) {
+        typeBtn.on("pointerdown", () => {
+          this._selectedTypeIndex = idx;
+          this._refreshTypeBtns(tbW, tbH);
+        });
+      }
+
+      card.addChild(typeBtn);
+      this._typeBtns.push({ bg: typeBg, label: tLabel, locked: MAP_TYPES[i].locked ?? false });
+    }
+    this._refreshTypeBtns(tbW, tbH);
+
+    // Divider
+    const typeEndY = 246 + 2 * (tbH + typeGap) - typeGap;
+    card.addChild(
+      new Graphics().rect(20, typeEndY + 10, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
     // --- Map size selector ---
+    const mapSizeStartY = typeEndY + 22;
     const mapLabel = new Text({ text: "MAP SIZE", style: STYLE_LABEL });
-    mapLabel.position.set(20, 226);
+    mapLabel.position.set(20, mapSizeStartY);
     card.addChild(mapLabel);
 
     // 4 buttons in a row
@@ -274,7 +351,7 @@ export class MenuScreen {
       const sizeBtn = new Container();
       sizeBtn.eventMode = "static";
       sizeBtn.cursor = "pointer";
-      sizeBtn.position.set(20 + i * (sbW + gap), 246);
+      sizeBtn.position.set(20 + i * (sbW + gap), mapSizeStartY + 20);
 
       const sizeBg = new Graphics();
       sizeBtn.addChild(sizeBg);
@@ -304,13 +381,15 @@ export class MenuScreen {
     this._refreshSizeBtns(sbW, sbH);
 
     // Divider
+    const sizeEndY = mapSizeStartY + 20 + sbH;
     card.addChild(
-      new Graphics().rect(20, 290, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+      new Graphics().rect(20, sizeEndY + 10, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
     // --- Game mode selector ---
+    const modeStartY = sizeEndY + 22;
     const modeLabel = new Text({ text: "GAME MODE", style: STYLE_LABEL });
-    modeLabel.position.set(20, 302);
+    modeLabel.position.set(20, modeStartY);
     card.addChild(modeLabel);
 
     // 5 buttons — 3 on the first row, 2 on the second (or all in a responsive grid)
@@ -329,7 +408,7 @@ export class MenuScreen {
       modeBtn.cursor = GAME_MODES[i].disabled ? "default" : "pointer";
       modeBtn.position.set(
         20 + col * (mbW + modeGap),
-        322 + row * (mbH + modeGap),
+        modeStartY + 20 + row * (mbH + modeGap),
       );
 
       const modeBg = new Graphics();
@@ -365,7 +444,7 @@ export class MenuScreen {
 
     // Divider — placed after 3 rows of mode buttons
     const modeRowCount = Math.ceil(GAME_MODES.length / colCount);
-    const modeSectionH = 322 + modeRowCount * (mbH + modeGap) - modeGap;
+    const modeSectionH = modeStartY + 20 + modeRowCount * (mbH + modeGap) - modeGap;
     card.addChild(
       new Graphics().rect(20, modeSectionH + 8, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
@@ -452,6 +531,38 @@ export class MenuScreen {
       ? "ON  [click to disable]"
       : "OFF  [click to enable]";
     this._dmgToggleLabel.style.fill = active ? 0x88ffaa : 0xff8888;
+  }
+
+  private _refreshTypeBtns(w: number, h: number): void {
+    for (let i = 0; i < this._typeBtns.length; i++) {
+      const entry = this._typeBtns[i];
+      const selected = i === this._selectedTypeIndex;
+      const locked = entry.locked;
+
+      entry.bg.clear();
+      if (locked) {
+        entry.bg
+          .roundRect(0, 0, w, h, 4)
+          .fill({ color: 0x0d0d1a })
+          .roundRect(0, 0, w, h, 4)
+          .stroke({ color: 0x223333, width: 1 });
+        entry.label.style = STYLE_MODE_DISABLED;
+      } else if (selected) {
+        entry.bg
+          .roundRect(0, 0, w, h, 4)
+          .fill({ color: 0x1a2e1a })
+          .roundRect(0, 0, w, h, 4)
+          .stroke({ color: 0xffd700, width: 1.5 });
+        entry.label.style = STYLE_SIZE_ACTIVE;
+      } else {
+        entry.bg
+          .roundRect(0, 0, w, h, 4)
+          .fill({ color: 0x12121e })
+          .roundRect(0, 0, w, h, 4)
+          .stroke({ color: 0x334455, width: 1 });
+        entry.label.style = STYLE_SIZE_INACTIVE;
+      }
+    }
   }
 
   private _refreshSizeBtns(w: number, h: number): void {
