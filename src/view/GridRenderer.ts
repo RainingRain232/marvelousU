@@ -29,30 +29,39 @@ const TILE_COLORS_MEADOW: TileColorSet = {
 };
 
 const TILE_COLORS_GRASS: TileColorSet = {
-  west_walkable: 0x3a6b2a,    // lush green — west territory
-  west_unwalkable: 0x2a5020,  // deep green — impassable west
-  neutral_walkable: 0x4a8035,  // bright verdant — contested zone
+  west_walkable: 0x3a6b2a, // lush green — west territory
+  west_unwalkable: 0x2a5020, // deep green — impassable west
+  neutral_walkable: 0x4a8035, // bright verdant — contested zone
   neutral_unwalkable: 0x2d5a1e, // deep verdant — impassable neutral
-  east_walkable: 0x3d7030,    // rich green — east territory
-  east_unwalkable: 0x2c5522,  // dark rich green — impassable east
+  east_walkable: 0x3d7030, // rich green — east territory
+  east_unwalkable: 0x2c5522, // dark rich green — impassable east
 };
 
 const TILE_COLORS_PLAINS: TileColorSet = {
-  west_walkable: 0x8a7d48,    // warm golden tan — west territory
-  west_unwalkable: 0x6b5f38,  // darker tan — impassable west
-  neutral_walkable: 0x9c8e52,  // sun-bleached gold — contested zone
+  west_walkable: 0x8a7d48, // warm golden tan — west territory
+  west_unwalkable: 0x6b5f38, // darker tan — impassable west
+  neutral_walkable: 0x9c8e52, // sun-bleached gold — contested zone
   neutral_unwalkable: 0x746840, // dusty brown — impassable neutral
-  east_walkable: 0x7d7040,    // dry straw — east territory
-  east_unwalkable: 0x5e5430,  // deep straw — impassable east
+  east_walkable: 0x7d7040, // dry straw — east territory
+  east_unwalkable: 0x5e5430, // deep straw — impassable east
 };
 
 const TILE_COLORS_FOREST: TileColorSet = {
-  west_walkable: 0x1a3318,    // deep shadowed moss
-  west_unwalkable: 0x0f1f0e,  // near-black undergrowth
-  neutral_walkable: 0x1e3a1a,  // dark emerald floor
+  west_walkable: 0x1a3318, // deep shadowed moss
+  west_unwalkable: 0x0f1f0e, // near-black undergrowth
+  neutral_walkable: 0x1e3a1a, // dark emerald floor
   neutral_unwalkable: 0x122210, // pitch-dark thicket
-  east_walkable: 0x1d3520,    // twilight green
-  east_unwalkable: 0x112015,  // deep shadow
+  east_walkable: 0x1d3520, // twilight green
+  east_unwalkable: 0x112015, // deep shadow
+};
+
+const TILE_COLORS_FANTASIA: TileColorSet = {
+  west_walkable: 0x3a6a35, // enchanted forest green
+  west_unwalkable: 0x2a4a28, // mystical woodland
+  neutral_walkable: 0x4a7a45, // glowing emerald floor
+  neutral_unwalkable: 0x2a4a28, // enchanted thicket
+  east_walkable: 0x4a6a40, // magical twilight green
+  east_unwalkable: 0x2a4a30, // ethereal shadow
 };
 
 const TILE_COLORS: Record<string, TileColorSet> = {
@@ -60,6 +69,7 @@ const TILE_COLORS: Record<string, TileColorSet> = {
   [MapType.GRASS]: TILE_COLORS_GRASS,
   [MapType.PLAINS]: TILE_COLORS_PLAINS,
   [MapType.FOREST]: TILE_COLORS_FOREST,
+  [MapType.FANTASIA]: TILE_COLORS_FANTASIA,
 };
 
 const TILE_COLORS_DEFAULT = TILE_COLORS_MEADOW;
@@ -132,7 +142,8 @@ export class GridRenderer {
       for (const tile of row) {
         // Use "walkable" color even for buildings so the terrain looks consistent
         const isActuallyWalkable = tile.walkable || tile.buildingId !== null;
-        const key = `${tile.zone}_${isActuallyWalkable ? "walkable" : "unwalkable"}` as keyof TileColorSet;
+        const key =
+          `${tile.zone}_${isActuallyWalkable ? "walkable" : "unwalkable"}` as keyof TileColorSet;
         const color = palette[key];
         g.rect(tile.x * ts, tile.y * ts, ts, ts).fill({ color });
       }
@@ -147,8 +158,10 @@ export class GridRenderer {
     for (const row of bf.grid) {
       for (const tile of row) {
         if (tile.buildingId !== null) {
-          g.rect(tile.x * ts, tile.y * ts, ts, ts)
-            .fill({ color: BUILDING_TINT_COLOR, alpha: BUILDING_TINT_ALPHA });
+          g.rect(tile.x * ts, tile.y * ts, ts, ts).fill({
+            color: BUILDING_TINT_COLOR,
+            alpha: BUILDING_TINT_ALPHA,
+          });
         }
       }
     }

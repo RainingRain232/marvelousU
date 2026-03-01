@@ -172,6 +172,7 @@ export enum MapType {
   GRASS = "grass",
   PLAINS = "plains",
   FOREST = "forest",
+  FANTASIA = "fantasia",
   TUNDRA = "tundra",
   SWAMP = "swamp",
   VOLCANIC = "volcanic",

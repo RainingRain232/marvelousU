@@ -77,9 +77,9 @@ const BASE_W = BalanceConfig.GRID_WIDTH;
 const BASE_H = BalanceConfig.GRID_HEIGHT;
 
 export const MAP_SIZES: MapSize[] = [
-  { label: "STANDARD",  width: BASE_W,     height: BASE_H     },
-  { label: "DOUBLE",    width: BASE_W * 2, height: BASE_H * 2 },
-  { label: "TRIPLE",    width: BASE_W * 3, height: BASE_H * 3 },
+  { label: "STANDARD", width: BASE_W, height: BASE_H },
+  { label: "DOUBLE", width: BASE_W * 2, height: BASE_H * 2 },
+  { label: "TRIPLE", width: BASE_W * 3, height: BASE_H * 3 },
   { label: "QUADRUPLE", width: BASE_W * 4, height: BASE_H * 4 },
 ];
 
@@ -91,14 +91,15 @@ interface MapTypeEntry {
 }
 
 const MAP_TYPES: MapTypeEntry[] = [
-  { type: MapType.MEADOW,   label: "MEADOW" },
-  { type: MapType.GRASS,    label: "GRASS" },
-  { type: MapType.PLAINS,   label: "PLAINS" },
-  { type: MapType.FOREST,   label: "FOREST" },
-  { type: MapType.TUNDRA,   label: "TUNDRA",   locked: true },
-  { type: MapType.SWAMP,    label: "SWAMP",     locked: true },
+  { type: MapType.MEADOW, label: "MEADOW" },
+  { type: MapType.GRASS, label: "GRASS" },
+  { type: MapType.PLAINS, label: "PLAINS" },
+  { type: MapType.FOREST, label: "FOREST" },
+  { type: MapType.FANTASIA, label: "FANTASIA" },
+  { type: MapType.TUNDRA, label: "TUNDRA", locked: true },
+  { type: MapType.SWAMP, label: "SWAMP", locked: true },
   { type: MapType.VOLCANIC, label: "VOLCANIC", locked: true },
-  { type: MapType.OCEAN,    label: "OCEAN",     locked: true },
+  { type: MapType.OCEAN, label: "OCEAN", locked: true },
 ];
 
 interface GameModeEntry {
@@ -111,11 +112,19 @@ interface GameModeEntry {
 }
 
 const GAME_MODES: GameModeEntry[] = [
-  { mode: GameMode.STANDARD,    label: "STANDARD",    desc: "Classic mode" },
-  { mode: GameMode.DEATHMATCH,  label: "DEATHMATCH",  desc: "10000 gold start" },
-  { mode: GameMode.BATTLEFIELD, label: "BATTLEFIELD", desc: "No buildings, last unit wins" },
-  { mode: GameMode.ROGUELIKE,   label: "ROGUELIKE",   desc: "50% buildings disabled" },
-  { mode: GameMode.CAMPAIGN,    label: "CAMPAIGN",    desc: "Story progression" },
+  { mode: GameMode.STANDARD, label: "STANDARD", desc: "Classic mode" },
+  { mode: GameMode.DEATHMATCH, label: "DEATHMATCH", desc: "10000 gold start" },
+  {
+    mode: GameMode.BATTLEFIELD,
+    label: "BATTLEFIELD",
+    desc: "No buildings, last unit wins",
+  },
+  {
+    mode: GameMode.ROGUELIKE,
+    label: "ROGUELIKE",
+    desc: "50% buildings disabled",
+  },
+  { mode: GameMode.CAMPAIGN, label: "CAMPAIGN", desc: "Story progression" },
 ];
 
 function makePanel(w: number, h: number): Container {
@@ -156,7 +165,12 @@ export class MenuScreen {
 
   // Game mode state
   private _selectedModeIndex = 0;
-  private _modeBtns: Array<{ bg: Graphics; label: Text; desc: Text; disabled: boolean }> = [];
+  private _modeBtns: Array<{
+    bg: Graphics;
+    label: Text;
+    desc: Text;
+    disabled: boolean;
+  }> = [];
 
   // card stored for layout
   private _card!: Container;
@@ -209,7 +223,9 @@ export class MenuScreen {
 
     // Divider
     card.addChild(
-      new Graphics().rect(20, 58, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+      new Graphics()
+        .rect(20, 58, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
     // --- AI toggle ---
@@ -246,7 +262,9 @@ export class MenuScreen {
 
     // Divider
     card.addChild(
-      new Graphics().rect(20, 136, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+      new Graphics()
+        .rect(20, 136, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
     // --- Damage numbers toggle ---
@@ -280,7 +298,9 @@ export class MenuScreen {
 
     // Divider
     card.addChild(
-      new Graphics().rect(20, 214, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+      new Graphics()
+        .rect(20, 214, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
     // --- Map type selector ---
@@ -291,7 +311,9 @@ export class MenuScreen {
     // 8 buttons in 2 rows of 4
     const typeColCount = 4;
     const typeGap = 6;
-    const tbW = Math.floor((CW - 40 - typeGap * (typeColCount - 1)) / typeColCount);
+    const tbW = Math.floor(
+      (CW - 40 - typeGap * (typeColCount - 1)) / typeColCount,
+    );
     const tbH = 26;
 
     this._typeBtns = [];
@@ -309,7 +331,10 @@ export class MenuScreen {
       const typeBg = new Graphics();
       typeBtn.addChild(typeBg);
 
-      const tLabel = new Text({ text: MAP_TYPES[i].label, style: STYLE_MODE_INACTIVE });
+      const tLabel = new Text({
+        text: MAP_TYPES[i].label,
+        style: STYLE_MODE_INACTIVE,
+      });
       tLabel.anchor.set(0.5, 0.5);
       tLabel.position.set(tbW / 2, tbH / 2);
       typeBtn.addChild(tLabel);
@@ -323,14 +348,20 @@ export class MenuScreen {
       }
 
       card.addChild(typeBtn);
-      this._typeBtns.push({ bg: typeBg, label: tLabel, locked: MAP_TYPES[i].locked ?? false });
+      this._typeBtns.push({
+        bg: typeBg,
+        label: tLabel,
+        locked: MAP_TYPES[i].locked ?? false,
+      });
     }
     this._refreshTypeBtns(tbW, tbH);
 
     // Divider
     const typeEndY = 246 + 2 * (tbH + typeGap) - typeGap;
     card.addChild(
-      new Graphics().rect(20, typeEndY + 10, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+      new Graphics()
+        .rect(20, typeEndY + 10, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
     // --- Map size selector ---
@@ -357,7 +388,10 @@ export class MenuScreen {
       sizeBtn.addChild(sizeBg);
 
       const dims = `${MAP_SIZES[i].width}×${MAP_SIZES[i].height}`;
-      const topLabel = new Text({ text: MAP_SIZES[i].label, style: STYLE_SIZE_INACTIVE });
+      const topLabel = new Text({
+        text: MAP_SIZES[i].label,
+        style: STYLE_SIZE_INACTIVE,
+      });
       topLabel.anchor.set(0.5, 0);
       topLabel.position.set(sbW / 2, 4);
       sizeBtn.addChild(topLabel);
@@ -376,14 +410,17 @@ export class MenuScreen {
       card.addChild(sizeBtn);
       this._sizeBtns.push({ bg: sizeBg, label: topLabel });
       // store dim label too for style refresh
-      (this._sizeBtns[i] as typeof this._sizeBtns[0] & { dim: Text }).dim = dimLabel;
+      (this._sizeBtns[i] as (typeof this._sizeBtns)[0] & { dim: Text }).dim =
+        dimLabel;
     }
     this._refreshSizeBtns(sbW, sbH);
 
     // Divider
     const sizeEndY = mapSizeStartY + 20 + sbH;
     card.addChild(
-      new Graphics().rect(20, sizeEndY + 10, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+      new Graphics()
+        .rect(20, sizeEndY + 10, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
     // --- Game mode selector ---
@@ -414,12 +451,18 @@ export class MenuScreen {
       const modeBg = new Graphics();
       modeBtn.addChild(modeBg);
 
-      const mLabel = new Text({ text: GAME_MODES[i].label, style: STYLE_MODE_INACTIVE });
+      const mLabel = new Text({
+        text: GAME_MODES[i].label,
+        style: STYLE_MODE_INACTIVE,
+      });
       mLabel.anchor.set(0.5, 0);
       mLabel.position.set(mbW / 2, 5);
       modeBtn.addChild(mLabel);
 
-      const dLabel = new Text({ text: GAME_MODES[i].desc, style: STYLE_MODE_INACTIVE });
+      const dLabel = new Text({
+        text: GAME_MODES[i].desc,
+        style: STYLE_MODE_INACTIVE,
+      });
       dLabel.anchor.set(0.5, 1);
       dLabel.position.set(mbW / 2, mbH - 4);
       modeBtn.addChild(dLabel);
@@ -444,9 +487,12 @@ export class MenuScreen {
 
     // Divider — placed after 3 rows of mode buttons
     const modeRowCount = Math.ceil(GAME_MODES.length / colCount);
-    const modeSectionH = modeStartY + 20 + modeRowCount * (mbH + modeGap) - modeGap;
+    const modeSectionH =
+      modeStartY + 20 + modeRowCount * (mbH + modeGap) - modeGap;
     card.addChild(
-      new Graphics().rect(20, modeSectionH + 8, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+      new Graphics()
+        .rect(20, modeSectionH + 8, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
     // --- SELECT LEADER button (proceeds to leader selection, not yet starting the game) ---
@@ -478,9 +524,15 @@ export class MenuScreen {
     startLabel.position.set(BW / 2, BH / 2);
     startBtn.addChild(startLabel);
 
-    startBtn.on("pointerover", () => { startBg.tint = 0xaaffcc; });
-    startBtn.on("pointerout", () => { startBg.tint = 0xffffff; });
-    startBtn.on("pointerdown", () => { this.onContinue?.(); });
+    startBtn.on("pointerover", () => {
+      startBg.tint = 0xaaffcc;
+    });
+    startBtn.on("pointerout", () => {
+      startBg.tint = 0xffffff;
+    });
+    startBtn.on("pointerdown", () => {
+      this.onContinue?.();
+    });
 
     card.addChild(startBtn);
 
@@ -567,7 +619,11 @@ export class MenuScreen {
 
   private _refreshSizeBtns(w: number, h: number): void {
     for (let i = 0; i < this._sizeBtns.length; i++) {
-      const entry = this._sizeBtns[i] as { bg: Graphics; label: Text; dim: Text };
+      const entry = this._sizeBtns[i] as {
+        bg: Graphics;
+        label: Text;
+        dim: Text;
+      };
       const selected = i === this._selectedSizeIndex;
 
       entry.bg.clear();
@@ -575,7 +631,10 @@ export class MenuScreen {
         .roundRect(0, 0, w, h, 4)
         .fill({ color: selected ? 0x1a2e1a : 0x12121e })
         .roundRect(0, 0, w, h, 4)
-        .stroke({ color: selected ? 0xffd700 : 0x334455, width: selected ? 1.5 : 1 });
+        .stroke({
+          color: selected ? 0xffd700 : 0x334455,
+          width: selected ? 1.5 : 1,
+        });
 
       const style = selected ? STYLE_SIZE_ACTIVE : STYLE_SIZE_INACTIVE;
       entry.label.style = style;
