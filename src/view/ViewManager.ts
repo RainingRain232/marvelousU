@@ -7,11 +7,12 @@ import { Camera } from "@view/Camera";
 // Layer names (z-order, bottom to top)
 // ---------------------------------------------------------------------------
 
-export type LayerName = "background" | "buildings" | "units" | "fx" | "ui";
+export type LayerName = "background" | "buildings" | "groundfx" | "units" | "fx" | "ui";
 
 const LAYER_ORDER: LayerName[] = [
   "background",
   "buildings",
+  "groundfx",
   "units",
   "fx",
   "ui",
@@ -44,6 +45,7 @@ export class ViewManager {
   readonly layers: Record<LayerName, Container> = {
     background: new Container(),
     buildings: new Container(),
+    groundfx: new Container(),
     units: new Container(),
     fx: new Container(),
     ui: new Container(),

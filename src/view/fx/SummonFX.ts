@@ -40,7 +40,7 @@ export class SummonFX {
 
   init(vm: ViewManager): void {
     this._container = new Container();
-    vm.layers.fx.addChild(this._container);
+    vm.layers.groundfx.addChild(this._container);
 
     this._pool = new ParticlePool(
       ParticlePool.createCircleTexture(

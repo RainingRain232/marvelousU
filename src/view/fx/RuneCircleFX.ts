@@ -100,7 +100,7 @@ export class RuneCircleFX {
 
   init(vm: ViewManager): void {
     this._container = new Container();
-    vm.layers.fx.addChild(this._container);
+    vm.layers.groundfx.addChild(this._container);
 
     EventBus.on("castStarted", ({ position, castTime, abilityType }) => {
       const key = themeKeyForAbilityType(abilityType);
