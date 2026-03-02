@@ -291,7 +291,7 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 12,
     dieFps: 6,
   }),
-  [UnitType.HORSE_ARCHER]: buildDef("knight", { moveFps: 10, attackFps: 12 }),
+  [UnitType.HORSE_ARCHER]: buildDef("horse_archer", { moveFps: 10, attackFps: 12 }),
   [UnitType.SHORTBOW]: buildDef("archer", {
     attackFps: 15,
     attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7),
@@ -305,10 +305,10 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     moveFps: 5,
   }),
   [UnitType.TREBUCHET]: buildDef("trebuchet", { attackFps: 2, moveFps: 4 }),
-  [UnitType.SCOUT_CAVALRY]: buildDef("knight", { moveFps: 12, attackFps: 10 }),
-  [UnitType.LANCER]: buildDef("knight", { moveFps: 10, attackFps: 8 }),
-  [UnitType.ELITE_LANCER]: buildDef("knight", { moveFps: 10, attackFps: 8 }),
-  [UnitType.KNIGHT_LANCER]: buildDef("knight", { moveFps: 8, attackFps: 6 }),
+  [UnitType.SCOUT_CAVALRY]: buildDef("scout_cavalry", { moveFps: 12, attackFps: 10 }),
+  [UnitType.LANCER]: buildDef("lancer", { moveFps: 10, attackFps: 8 }),
+  [UnitType.ELITE_LANCER]: buildDef("elite_lancer", { moveFps: 10, attackFps: 8 }),
+  [UnitType.KNIGHT_LANCER]: buildDef("knight_lancer", { moveFps: 8, attackFps: 6 }),
   [UnitType.ROYAL_LANCER]: buildDef("royal_lancer", {
     idleFps: 8,
     moveFps: 12,

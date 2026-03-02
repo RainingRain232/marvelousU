@@ -654,7 +654,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 4,
     spawnTime: 6,
     abilityTypes: [],
-    spriteKey: "knight", // placeholder (mounted)
+    spriteKey: "horse_archer",
   },
   [UnitType.SHORTBOW]: {
     type: UnitType.SHORTBOW,
@@ -809,6 +809,11 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "knight_lancer",
     isChargeUnit: true,
+    size: {
+      width: 2.0,
+      height: 2.0,
+      healthBarOffset: -1.0,
+    },
   },
   [UnitType.MONK]: {
     type: UnitType.MONK,

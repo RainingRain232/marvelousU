@@ -1,17 +1,17 @@
 // Procedural sprite generator for the Knight Lancer unit type.
 //
-// Draws a detailed medieval fantasy knight lancer at 48×48 pixels per frame
-// using PixiJS Graphics → RenderTexture.  Produces textures for every
-// animation state (IDLE 8, MOVE 8, ATTACK 7, CAST 6, DIE 7).
+// Draws a detailed side-view armored lancer on a massive destrier at
+// 96×96 pixels per frame using PixiJS Graphics → RenderTexture.
+// Produces textures for every animation state (IDLE 8, MOVE 8, ATTACK 7,
+// CAST 6, DIE 7).
 //
 // Visual features:
-//   • Full plate armor with knight insignia
-//   • Massive warhorse for maximum impact
-//   • Enchanted lance with glowing tip
-//   • Tower shield with knight crest
-//   • Ornate helmet with crown plume
-//   • Royal heraldic colors
-//   • Shadow ellipse at feet
+//   • Side-view heavy destrier with plate barding & caparison
+//   • Full plate armor with pauldrons, gauntlets, greaves
+//   • Great helm with crown-shaped crest and flowing pennant
+//   • Long couched lance with vamplate and pennon
+//   • Tower shield with heraldic crest on left arm
+//   • Shadow ellipse at hooves
 
 import { Graphics, RenderTexture, type Renderer, Texture } from "pixi.js";
 import { UnitState } from "@/types";
@@ -20,269 +20,384 @@ import { UnitState } from "@/types";
 // Constants
 // ---------------------------------------------------------------------------
 
-const F = 48;          // frame size (px)
-const CX = F / 2;      // center X
-const GY = F - 4;      // ground Y (feet line)
+const FW = 96;          // frame width  (px) – 2 tiles wide
+const FH = 96;          // frame height (px) – 2 tiles high
+const OY = 30;          // vertical offset to center art in frame
+const GY = FH - 4;      // ground line Y
 
-// Palette ─ royal knight lancer
-const COL_SKIN      = 0xd4a574;
-const COL_ARMOR     = 0x8899aa;
-const COL_ARMOR_HI  = 0xaabbcc;
-const COL_ARMOR_DK  = 0x667788;
-const COL_HORSE     = 0x332211;
-const COL_HORSE_DK  = 0x231101;
-const COL_HORSE_HI  = 0x433321;
-const COL_MANE      = 0x1a1a1a;
-const COL_SADDLE    = 0x886633;
-const COL_SADDLE_DK = 0x664422;
-const COL_LANCE     = 0xaaaadd;
-const COL_LANCE_HI = 0xccddff;
-const COL_LANCE_GLOW = 0xffffff;
-const COL_SHIELD    = 0x4455aa;
-const COL_SHIELD_RIM= 0x886633;
-const COL_PLUME     = 0xffd700;
-const COL_CREST     = 0xff0000;
-const COL_BOOT      = 0x443322;
-const COL_BANNER    = 0x000080;
-const COL_SHADOW    = 0x000000;
+// Palette ─ lancer cavalry (darker, heavier horse than knight)
+const COL_PLATE       = 0x7788aa;
+const COL_PLATE_HI    = 0x99aacc;
+const COL_PLATE_DK    = 0x556678;
+const COL_PLATE_EDGE  = 0x445566;
+const COL_CHAINMAIL   = 0x6b7b8b;
+
+const COL_HORSE       = 0x2a1e14;
+const COL_HORSE_HI    = 0x4a3e34;
+const COL_HORSE_DK    = 0x1a1008;
+const COL_HORSE_BELLY = 0x3a2e24;
+const COL_MANE        = 0x0e0a06;
+const COL_HOOF        = 0x1a1610;
+
+const COL_BARDING     = 0x556688;
+const COL_BARDING_TRIM = 0xccaa44;
+
+const COL_CAPARISON   = 0x1a3388;
+const COL_CAPARISON_TRIM = 0xddaa33;
+
+const COL_SADDLE      = 0x6a3a18;
+const COL_SADDLE_DK   = 0x3a2210;
+const COL_REINS       = 0x3a2a1a;
+
+const COL_LANCE       = 0x8b7355;
+const COL_LANCE_HI    = 0xab9375;
+const COL_VAMPLATE    = 0x667799;
+const COL_LANCE_TIP   = 0xb0b8c0;
+const COL_LANCE_TIP_HI = 0xd0d8e0;
+
+const COL_PENNON      = 0xcc2222;
+const COL_PENNON_TRIM = 0xddaa33;
+
+const COL_SHIELD      = 0x1a3388;
+const COL_SHIELD_RIM  = 0x997744;
+const COL_SHIELD_BOSS = 0xbbaa77;
+const COL_CREST       = 0xddaa33;
+
+const COL_CROWN       = 0xddaa33;
+const COL_CROWN_GEM   = 0xcc2222;
+
+const COL_SHADOW      = 0x000000;
 
 // ---------------------------------------------------------------------------
 // Tiny helpers
 // ---------------------------------------------------------------------------
 
-function drawEllipse(g: Graphics, x: number, y: number, w: number, h: number, color: number): void {
-  g.fill({ color });
-  g.ellipse(x, y, w, h);
+function ellipse(g: Graphics, x: number, y: number, rx: number, ry: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.ellipse(x, y, rx, ry);
 }
 
-function drawCircle(g: Graphics, x: number, y: number, r: number, color: number): void {
-  g.fill({ color });
+function circle(g: Graphics, x: number, y: number, r: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
   g.circle(x, y, r);
 }
 
-function drawLine(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, width: number = 1): void {
-  g.stroke({ color, width });
+function rect(g: Graphics, x: number, y: number, w: number, h: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.rect(x, y, w, h);
+}
+
+function line(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, w = 1): void {
+  g.stroke({ color, width: w });
   g.moveTo(x1, y1).lineTo(x2, y2);
 }
 
-// ---------------------------------------------------------------------------
-// Component drawing functions
-// ---------------------------------------------------------------------------
-
-function drawHead(g: Graphics, x: number, y: number): void {
-  // Head
-  drawCircle(g, x, y, 5, COL_SKIN);
-  
-  // Full plate helmet
-  drawCircle(g, x, y, 6, COL_ARMOR);
-  drawCircle(g, x, y, 5, COL_ARMOR_HI);
-  
-  // Visor opening
-  g.fill({ color: COL_SKIN });
-  g.ellipse(x, y + 1, 3, 2.5);
-  
-  // Crown plume
-  g.fill({ color: COL_PLUME });
-  g.moveTo(x, y - 7)
-    .lineTo(x - 3, y - 11)
-    .lineTo(x + 3, y - 11)
-    .lineTo(x, y - 7)
-    .fill();
-  
-  // Crown points
-  g.fill({ color: COL_CREST });
-  g.moveTo(x - 2, y - 9)
-    .lineTo(x - 1, y - 12)
-    .lineTo(x, y - 9)
-    .lineTo(x + 1, y - 12)
-    .lineTo(x + 2, y - 9)
-    .lineTo(x, y - 7)
-    .fill();
+function poly(g: Graphics, pts: number[], color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.poly(pts);
+  g.fill();
 }
 
-function drawBody(g: Graphics, x: number, y: number, w: number, h: number): void {
-  // Full plate armor torso
-  g.fill({ color: COL_ARMOR });
-  g.rect(x - w/2, y, w, h);
-  
-  // Armor highlights
-  g.fill({ color: COL_ARMOR_HI });
-  g.rect(x - w/2 + 1, y + 1, w - 2, 2);
-  
-  // Knight crest on chest
-  g.fill({ color: COL_CREST });
-  g.moveTo(x - 3, y + 3)
-    .lineTo(x + 3, y + 3)
-    .lineTo(x + 3, y + 7)
-    .lineTo(x, y + 9)
-    .lineTo(x - 3, y + 7)
-    .lineTo(x - 3, y + 3)
-    .fill();
-  
-  // Armor shadows
-  g.fill({ color: COL_ARMOR_DK });
-  g.rect(x - w/2 + 2, y + 3, w - 4, 2);
-}
+// ---------------------------------------------------------------------------
+// Horse (side-view, facing left – heavier destrier than knight)
+// ---------------------------------------------------------------------------
 
-function drawMassiveHorse(g: Graphics, x: number, y: number, walkCycle: number): void {
-  const bob = Math.sin(walkCycle * Math.PI * 2) * 0.5;
-  
-  // Massive horse body
-  g.fill({ color: COL_HORSE });
-  g.ellipse(x, y + bob, 17, 9);
-  
-  // Horse highlights
-  g.fill({ color: COL_HORSE_HI });
-  g.ellipse(x, y + bob - 1, 15, 7);
-  
-  // Horse legs (4 legs)
-  const legOffset = Math.sin(walkCycle * Math.PI * 2) * 2;
-  
+function drawHorse(g: Graphics, ox: number, oy: number, gait: number, tilt: number): void {
+  const bob = Math.sin(gait * Math.PI * 2) * 1.2;
+  const by = oy + bob;
+
+  // ── Legs ──────────────────────────────────────────────────────────────
+  const legLen = 15;
+  const legW = 3.5;
+  const kneeOff = Math.sin(gait * Math.PI * 2) * 4;
+  const kneeOff2 = Math.sin(gait * Math.PI * 2 + Math.PI) * 4;
+
+  // Back legs (behind barrel)
+  const blx = ox + 11;
+  rect(g, blx - 1, by + 7, legW, legLen + kneeOff2, COL_HORSE_DK);
+  rect(g, blx - 1, by + 7 + legLen + kneeOff2, legW + 1, 3, COL_HOOF);
+  rect(g, blx + 4, by + 7, legW, legLen + kneeOff, COL_HORSE);
+  rect(g, blx + 4, by + 7 + legLen + kneeOff, legW + 1, 3, COL_HOOF);
+
   // Front legs
-  g.fill({ color: COL_HORSE_DK });
-  g.rect(x - 9, y + 5 + bob, 3, 7);
-  g.rect(x - 3, y + 5 + bob - legOffset, 3, 7 + legOffset);
-  
-  // Back legs
-  g.fill({ color: COL_HORSE_DK });
-  g.rect(x + 0, y + 5 + bob - legOffset, 3, 7 + legOffset);
-  g.rect(x + 6, y + 5 + bob, 3, 7);
-  
-  // Black mane
-  g.fill({ color: COL_MANE });
-  g.rect(x - 13, y - 2 + bob, 6, 7);
-  
-  // Black tail
-  const tailSway = Math.sin(walkCycle * Math.PI * 2 + Math.PI) * 2;
-  g.fill({ color: COL_MANE });
-  g.rect(x + 13, y + tailSway, 7, 3);
-}
+  const flx = ox - 15;
+  rect(g, flx - 1, by + 6, legW, legLen + kneeOff, COL_HORSE_DK);
+  rect(g, flx - 1, by + 6 + legLen + kneeOff, legW + 1, 3, COL_HOOF);
+  rect(g, flx + 4, by + 6, legW, legLen + kneeOff2, COL_HORSE);
+  rect(g, flx + 4, by + 6 + legLen + kneeOff2, legW + 1, 3, COL_HOOF);
 
-function drawSaddle(g: Graphics, x: number, y: number): void {
-  // Royal saddle
-  g.fill({ color: COL_SADDLE });
-  g.ellipse(x, y, 9, 4.5);
-  
-  // Saddle details
-  g.fill({ color: COL_SADDLE_DK });
-  g.ellipse(x, y + 1, 7, 3);
-  
-  // Saddle straps
-  drawLine(g, x - 7, y, x - 7, y + 4.5, COL_SADDLE_DK, 1);
-  drawLine(g, x + 7, y, x + 7, y + 4.5, COL_SADDLE_DK, 1);
-  
-  // Banner attachment
-  drawLine(g, x, y, x, y - 7, COL_SADDLE, 2);
-}
+  // ── Barrel (body) – bigger than knight's horse ───────────────────────
+  ellipse(g, ox, by, 22, 11, COL_HORSE);
+  ellipse(g, ox, by + 3, 19, 7, COL_HORSE_BELLY);
+  ellipse(g, ox, by - 4, 18, 5, COL_HORSE_HI);
 
-function drawEnchantedLance(g: Graphics, x: number, y: number, angle: number = 0): void {
-  // Enchanted lance shaft
-  const lanceLength = 22;
-  const lanceEndX = x + Math.cos(angle) * lanceLength;
-  const lanceEndY = y + Math.sin(angle) * lanceLength;
-  
-  drawLine(g, x, y, lanceEndX, lanceEndY, COL_LANCE, 6);
-  drawLine(g, x, y - 1, lanceEndX, lanceEndY - 1, COL_LANCE_HI, 3);
-  
-  // Enchanted lance tip
-  const tipLength = 10;
-  const tipX = lanceEndX + Math.cos(angle) * tipLength;
-  const tipY = lanceEndY + Math.sin(angle) * tipLength;
-  
-  // Glowing tip
-  g.fill({ color: COL_LANCE_GLOW });
-  g.moveTo(tipX - Math.cos(angle) * 4, tipY - Math.sin(angle) * 4)
-    .lineTo(tipX, tipY)
-    .lineTo(tipX - Math.cos(angle) * 2, tipY - Math.sin(angle) * 2)
-    .fill();
-  
-  g.fill({ color: COL_LANCE });
-  g.moveTo(tipX - Math.cos(angle) * 3, tipY - Math.sin(angle) * 3)
-    .lineTo(tipX, tipY)
-    .lineTo(tipX - Math.cos(angle) * 1.5, tipY - Math.sin(angle) * 1.5)
-    .fill();
-  
-  // Royal lance banner
-  if (angle === 0) {
-    g.fill({ color: COL_BANNER });
-    g.rect(lanceEndX - 2, lanceEndY - 12, 4, 10);
-    g.fill({ color: COL_PLUME });
-    g.rect(lanceEndX - 1.5, lanceEndY - 11, 3, 8);
-    
-    // Royal cross on banner
-    g.fill({ color: COL_CREST });
-    g.moveTo(lanceEndX - 0.5, lanceEndY - 8)
-      .lineTo(lanceEndX + 0.5, lanceEndY - 8)
-      .lineTo(lanceEndX + 0.5, lanceEndY - 6)
-      .lineTo(lanceEndX + 1, lanceEndY - 6)
-      .lineTo(lanceEndX + 1, lanceEndY - 8)
-      .lineTo(lanceEndX + 0.5, lanceEndY - 8)
-      .lineTo(lanceEndX + 0.5, lanceEndY - 10)
-      .lineTo(lanceEndX - 0.5, lanceEndY - 10)
-      .lineTo(lanceEndX - 0.5, lanceEndY - 8)
-      .lineTo(lanceEndX - 1, lanceEndY - 8)
-      .lineTo(lanceEndX - 1, lanceEndY - 6)
-      .lineTo(lanceEndX - 0.5, lanceEndY - 6)
-      .lineTo(lanceEndX - 0.5, lanceEndY - 8)
-      .fill();
+  // ── Plate barding (horse armor) ──────────────────────────────────────
+  // Crupper (hindquarters armor)
+  poly(g, [
+    ox + 8, by - 10,
+    ox + 20, by - 4,
+    ox + 20, by + 6,
+    ox + 12, by + 10,
+    ox + 6, by + 6,
+  ], COL_BARDING, 0.8);
+  line(g, ox + 8, by - 10, ox + 20, by - 4, COL_BARDING_TRIM, 1.5);
+
+  // Peytral (chest armor)
+  poly(g, [
+    ox - 16, by - 6,
+    ox - 8, by - 10,
+    ox - 4, by - 4,
+    ox - 8, by + 6,
+    ox - 18, by + 2,
+  ], COL_BARDING, 0.8);
+  line(g, ox - 16, by - 6, ox - 8, by - 10, COL_BARDING_TRIM, 1.5);
+
+  // ── Caparison (cloth over barding) ───────────────────────────────────
+  poly(g, [
+    ox - 2, by - 10,
+    ox + 8, by - 10,
+    ox + 10, by + 8,
+    ox - 4, by + 8,
+  ], COL_CAPARISON, 0.7);
+  line(g, ox - 4, by + 8, ox + 10, by + 8, COL_CAPARISON_TRIM, 1.5);
+
+  // ── Tail ─────────────────────────────────────────────────────────────
+  const tailSway = Math.sin(gait * Math.PI * 2 + 1) * 3;
+  const tx = ox + 22;
+  const ty = by - 2;
+  g.stroke({ color: COL_MANE, width: 3.5 });
+  g.moveTo(tx, ty).bezierCurveTo(tx + 7, ty + tailSway, tx + 11, ty + 7 + tailSway, tx + 9, ty + 14);
+  g.stroke({ color: COL_MANE, width: 2 });
+  g.moveTo(tx, ty + 1).bezierCurveTo(tx + 5, ty + tailSway + 2, tx + 9, ty + 9 + tailSway, tx + 7, ty + 16);
+
+  // ── Neck ─────────────────────────────────────────────────────────────
+  const nx = ox - 20;
+  const ny = by - 8 + tilt * 2;
+  poly(g, [
+    ox - 16, by - 9,
+    nx, ny - 10,
+    nx + 7, ny - 13,
+    ox - 10, by - 11,
+  ], COL_HORSE);
+  // Neck barding plate
+  poly(g, [
+    nx + 2, ny - 11,
+    ox - 12, by - 10,
+    ox - 14, by - 7,
+    nx, ny - 8,
+  ], COL_BARDING, 0.7);
+  line(g, nx + 2, ny - 11, ox - 12, by - 10, COL_BARDING_TRIM, 1);
+
+  // ── Head ─────────────────────────────────────────────────────────────
+  const hx = nx - 4;
+  const hy = ny - 13 + tilt * 2;
+  // Chanfron (head armor)
+  ellipse(g, hx, hy, 8, 5.5, COL_BARDING);
+  // Skull underneath
+  ellipse(g, hx - 4, hy + 2, 4, 3, COL_HORSE_HI);
+  // Nostril
+  circle(g, hx - 7, hy + 2, 1, COL_HORSE_DK);
+  // Eye
+  circle(g, hx - 1, hy - 2, 1.5, 0x111111);
+  circle(g, hx - 1.5, hy - 2.5, 0.5, 0xffffff);
+  // Ear
+  poly(g, [hx + 3, hy - 5, hx + 2, hy - 10, hx + 5, hy - 6], COL_HORSE_DK);
+  // Chanfron spike
+  line(g, hx, hy - 5, hx, hy - 9, COL_BARDING_TRIM, 1.5);
+
+  // ── Mane ─────────────────────────────────────────────────────────────
+  for (let i = 0; i < 7; i++) {
+    const mx = nx + 1 + i * 2.5;
+    const my = ny - 13 + i * 1.5;
+    const maneWave = Math.sin(gait * Math.PI * 2 + i * 0.7) * 2;
+    line(g, mx, my, mx + maneWave - 2, my + 6, COL_MANE, 2.5);
   }
+
+  // ── Bridle / Reins ───────────────────────────────────────────────────
+  line(g, hx - 4, hy + 3, hx + 4, hy - 1, COL_REINS, 1);
+  g.stroke({ color: COL_REINS, width: 1 });
+  g.moveTo(hx + 4, hy - 1).bezierCurveTo(nx + 8, ny - 4, ox - 14, by - 4, ox - 12, by - 2);
+
+  // ── Saddle (war saddle with high cantle) ─────────────────────────────
+  ellipse(g, ox - 2, by - 11, 9, 3.5, COL_SADDLE);
+  rect(g, ox - 12, by - 14, 4, 6, COL_SADDLE_DK); // high pommel
+  rect(g, ox + 4, by - 13, 4, 5, COL_SADDLE_DK);  // high cantle
+  // Stirrup strap
+  line(g, ox - 4, by - 9, ox - 6, by + 5, COL_SADDLE_DK, 1);
+  // Stirrup
+  rect(g, ox - 8, by + 4, 5, 2, COL_PLATE_DK);
 }
 
-function drawTowerShield(g: Graphics, x: number, y: number, scale: number = 1): void {
-  const w = 14 * scale;
-  const h = 16 * scale;
-  
-  // Tower shield
-  g.fill({ color: COL_SHIELD });
-  g.moveTo(x, y - h/2)
-    .lineTo(x + w/2, y - h/3)
-    .lineTo(x + w/2, y + h/3)
-    .lineTo(x, y + h/2)
-    .lineTo(x - w/2, y + h/3)
-    .lineTo(x - w/2, y - h/3)
-    .fill();
-  
-  // Shield rim
-  g.fill({ color: COL_SHIELD_RIM });
-  g.moveTo(x, y - h/2 + 1)
-    .lineTo(x + w/2 - 1, y - h/3 + 1)
-    .lineTo(x + w/2 - 1, y + h/3 - 1)
-    .lineTo(x, y + h/2 - 1)
-    .lineTo(x - w/2 + 1, y + h/3 - 1)
-    .lineTo(x - w/2 + 1, y - h/3 + 1)
-    .fill();
-  
-  // Shield boss
-  drawCircle(g, x, y, 3 * scale, COL_ARMOR);
-  
-  // Knight crest on shield
-  g.fill({ color: COL_CREST });
-  g.moveTo(x - 3, y - 3)
-    .lineTo(x + 3, y - 3)
-    .lineTo(x + 3, y + 3)
-    .lineTo(x, y + 5)
-    .lineTo(x - 3, y + 3)
-    .lineTo(x - 3, y - 3)
-    .fill();
-}
+// ---------------------------------------------------------------------------
+// Rider (armored lancer, side-view, facing left)
+// ---------------------------------------------------------------------------
 
-function drawRider(g: Graphics, x: number, y: number, breathe: number = 0): void {
-  // Rider sits on massive horse
-  drawBody(g, x, y - 9 + breathe, 11, 12);
-  drawHead(g, x, y - 17 + breathe);
-  
-  // Arms holding enchanted lance
-  drawLine(g, x - 3, y - 3 + breathe, x + 8, y - 5 + breathe, COL_ARMOR, 3);
-  drawLine(g, x - 3, y - 5 + breathe, x + 8, y - 7 + breathe, COL_ARMOR, 3);
-  
-  // Legs in stirrups
-  g.fill({ color: COL_ARMOR });
-  g.rect(x - 4, y + 1, 3, 4);
-  g.rect(x + 1, y + 1, 3, 4);
-  
-  g.fill({ color: COL_BOOT });
-  g.rect(x - 4, y + 3, 3, 2);
-  g.rect(x + 1, y + 3, 3, 2);
+function drawRider(g: Graphics, ox: number, oy: number, breathe: number, lanceAngle: number, lanceExt: number): void {
+  const rb = breathe;
+
+  // ── Legs (in stirrups) ───────────────────────────────────────────────
+  rect(g, ox - 8, oy + 2, 4, 11, COL_PLATE);
+  rect(g, ox - 8, oy + 2, 4, 2, COL_PLATE_HI);
+  rect(g, ox - 9, oy + 12, 5, 3, COL_PLATE_DK);
+
+  // ── Torso ────────────────────────────────────────────────────────────
+  const tx = ox - 2;
+  const ty = oy - 11 + rb;
+
+  // Chainmail undercoat
+  rect(g, tx - 5, ty + 9, 12, 3, COL_CHAINMAIL);
+
+  // Breastplate (heavier than knight)
+  rect(g, tx - 6, ty, 14, 14, COL_PLATE);
+  line(g, tx + 1, ty, tx + 1, ty + 14, COL_PLATE_HI, 1.5);
+  rect(g, tx - 5, ty + 1, 12, 2, COL_PLATE_HI);
+  rect(g, tx - 5, ty + 10, 12, 2, COL_PLATE_DK);
+  // Fauld (wider for lance stance)
+  for (let i = 0; i < 4; i++) {
+    rect(g, tx - 6 + i * 3.5, ty + 14, 3.5, 3, i % 2 === 0 ? COL_PLATE : COL_PLATE_DK);
+  }
+
+  // ── Pauldrons (large, lancer needs shoulder protection) ──────────────
+  ellipse(g, tx - 6, ty + 1, 5, 4, COL_PLATE_HI);
+  ellipse(g, tx - 6, ty + 1, 4, 3, COL_PLATE);
+  // Pauldron ridge
+  line(g, tx - 10, ty + 1, tx - 2, ty + 1, COL_PLATE_EDGE, 1);
+
+  ellipse(g, tx + 8, ty + 1, 5, 4, COL_PLATE);
+  ellipse(g, tx + 8, ty + 1, 4, 3, COL_PLATE_DK);
+  line(g, tx + 4, ty + 1, tx + 12, ty + 1, COL_PLATE_EDGE, 1);
+
+  // ── Shield arm (left) ────────────────────────────────────────────────
+  rect(g, tx - 9, ty + 3, 4, 8, COL_PLATE);
+  rect(g, tx - 9, ty + 10, 4, 3, COL_PLATE_DK);
+
+  // ── Tower shield ─────────────────────────────────────────────────────
+  const sx = tx - 12;
+  const sy = ty + 4;
+  // Tower shield body (taller than knight's kite shield)
+  poly(g, [
+    sx, sy - 8,
+    sx + 7, sy - 5,
+    sx + 7, sy + 7,
+    sx, sy + 12,
+    sx - 7, sy + 7,
+    sx - 7, sy - 5,
+  ], COL_SHIELD);
+  g.stroke({ color: COL_SHIELD_RIM, width: 1.5 });
+  g.poly([sx, sy - 8, sx + 7, sy - 5, sx + 7, sy + 7, sx, sy + 12, sx - 7, sy + 7, sx - 7, sy - 5]);
+  g.stroke();
+  // Boss
+  circle(g, sx, sy + 1, 2.5, COL_SHIELD_BOSS);
+  // Heraldic lion rampant (simplified)
+  poly(g, [
+    sx - 2, sy + 5,
+    sx, sy - 3,
+    sx + 2, sy + 5,
+    sx, sy + 3,
+  ], COL_CREST);
+  // Crown on crest
+  rect(g, sx - 2, sy - 4, 4, 1.5, COL_CREST);
+
+  // ── Lance arm (right – couched under arm) ────────────────────────────
+  const armX = tx + 9;
+  const armY = ty + 5;
+  rect(g, armX - 1, ty + 3, 4, 7, COL_PLATE);
+  // Forearm following lance angle
+  const faDist = 5;
+  const faX = armX + Math.cos(lanceAngle) * faDist;
+  const faY = armY + Math.sin(lanceAngle) * faDist;
+  line(g, armX + 1, armY, faX, faY, COL_PLATE, 3.5);
+  circle(g, faX, faY, 2.5, COL_PLATE_DK);
+
+  // ── Lance ────────────────────────────────────────────────────────────
+  // Lance extends forward (left, the direction the horse faces)
+  const lLen = 30 + lanceExt;
+  const lEndX = faX + Math.cos(lanceAngle) * lLen;
+  const lEndY = faY + Math.sin(lanceAngle) * lLen;
+
+  // Shaft (thick wooden lance)
+  line(g, faX, faY, lEndX, lEndY, COL_LANCE, 3.5);
+  line(g, faX, faY - 0.5, lEndX, lEndY - 0.5, COL_LANCE_HI, 1.5);
+
+  // Vamplate (hand guard cone)
+  const vpDist = 4;
+  const vpX = faX + Math.cos(lanceAngle) * vpDist;
+  const vpY = faY + Math.sin(lanceAngle) * vpDist;
+  const vpAngle = lanceAngle + Math.PI / 2;
+  poly(g, [
+    vpX + Math.cos(vpAngle) * 4, vpY + Math.sin(vpAngle) * 4,
+    vpX - Math.cos(vpAngle) * 4, vpY - Math.sin(vpAngle) * 4,
+    vpX + Math.cos(lanceAngle) * 3 - Math.cos(vpAngle) * 2, vpY + Math.sin(lanceAngle) * 3 - Math.sin(vpAngle) * 2,
+    vpX + Math.cos(lanceAngle) * 3 + Math.cos(vpAngle) * 2, vpY + Math.sin(lanceAngle) * 3 + Math.sin(vpAngle) * 2,
+  ], COL_VAMPLATE);
+
+  // Lance tip (steel head)
+  const tipStart = lLen - 6;
+  const tsX = faX + Math.cos(lanceAngle) * tipStart;
+  const tsY = faY + Math.sin(lanceAngle) * tipStart;
+  line(g, tsX, tsY, lEndX, lEndY, COL_LANCE_TIP, 3);
+  line(g, tsX, tsY - 0.5, lEndX, lEndY - 0.5, COL_LANCE_TIP_HI, 1);
+  // Sharp point
+  const pointLen = 4;
+  const pX = lEndX + Math.cos(lanceAngle) * pointLen;
+  const pY = lEndY + Math.sin(lanceAngle) * pointLen;
+  line(g, lEndX, lEndY, pX, pY, COL_LANCE_TIP_HI, 2);
+
+  // ── Pennon (small flag near tip) ─────────────────────────────────────
+  const penX = tsX;
+  const penY = tsY;
+  const penWave = Math.sin(breathe * 4 + 2) * 2;
+  poly(g, [
+    penX, penY,
+    penX + Math.sin(lanceAngle) * 6 + penWave, penY - Math.cos(lanceAngle) * 6,
+    penX + Math.cos(lanceAngle) * 5 + Math.sin(lanceAngle) * 3 + penWave, penY + Math.sin(lanceAngle) * 5 - Math.cos(lanceAngle) * 3,
+  ], COL_PENNON, 0.9);
+  line(g, penX, penY,
+    penX + Math.sin(lanceAngle) * 6 + penWave, penY - Math.cos(lanceAngle) * 6,
+    COL_PENNON_TRIM, 1);
+
+  // ── Butt end (behind rider) ──────────────────────────────────────────
+  const buttLen = 10;
+  const bX = faX - Math.cos(lanceAngle) * buttLen;
+  const bY = faY - Math.sin(lanceAngle) * buttLen;
+  line(g, faX, faY, bX, bY, COL_LANCE, 3);
+  circle(g, bX, bY, 2, COL_LANCE_HI);
+
+  // ── Head (great helm with crown crest) ───────────────────────────────
+  const headX = tx + 1;
+  const headY = ty - 8 + rb;
+
+  // Helm body
+  ellipse(g, headX, headY, 5.5, 6.5, COL_PLATE);
+  // Flat front face
+  rect(g, headX - 6, headY - 4, 4, 9, COL_PLATE_DK);
+  // Visor slit
+  rect(g, headX - 6, headY - 1, 5, 1.5, 0x111111);
+  // Breathing holes
+  for (let i = 0; i < 3; i++) {
+    circle(g, headX - 5, headY + 2 + i * 1.5, 0.4, 0x111111);
+  }
+  // Helm top ridge
+  line(g, headX - 4, headY - 7, headX + 4, headY - 7, COL_PLATE_HI, 1.5);
+  // Edge trim
+  line(g, headX - 6, headY + 5, headX + 5, headY + 5, COL_PLATE_EDGE, 1);
+
+  // ── Crown crest ──────────────────────────────────────────────────────
+  // Gold crown sitting atop the helm
+  rect(g, headX - 4, headY - 10, 8, 3, COL_CROWN);
+  // Crown points
+  for (let i = 0; i < 4; i++) {
+    const cx = headX - 3 + i * 2;
+    poly(g, [
+      cx, headY - 10,
+      cx + 1, headY - 14,
+      cx + 2, headY - 10,
+    ], COL_CROWN);
+  }
+  // Gem on center point
+  circle(g, headX, headY - 13, 1, COL_CROWN_GEM);
+  // Crown band detail
+  line(g, headX - 4, headY - 9, headX + 4, headY - 9, COL_CROWN_GEM, 0.8);
 }
 
 // ---------------------------------------------------------------------------
@@ -290,115 +405,98 @@ function drawRider(g: Graphics, x: number, y: number, breathe: number = 0): void
 // ---------------------------------------------------------------------------
 
 function generateIdleFrames(g: Graphics, frame: number): void {
-  const breathe = Math.sin(frame * 0.3) * 1;
-  const walkCycle = frame * 0.1;
-  
+  const breathe = Math.sin(frame * 0.35) * 0.7;
+  const gait = frame * 0.04;
+
   // Shadow
-  drawEllipse(g, CX, GY, 17, 8, COL_SHADOW);
-  
-  // Massive horse
-  drawMassiveHorse(g, CX, 28, walkCycle);
-  
-  // Saddle
-  drawSaddle(g, CX, 24);
-  
-  // Rider
-  drawRider(g, CX, 24, breathe);
-  
-  // Enchanted lance (ready position)
-  drawEnchantedLance(g, CX + 8, 18 + breathe, -Math.PI / 10);
-  
-  // Tower shield
-  drawTowerShield(g, CX - 10, 22 + breathe, 1);
+  ellipse(g, 44, GY, 24, 5, COL_SHADOW, 0.3);
+
+  // Horse
+  drawHorse(g, 48, OY + 24, gait, 0);
+
+  // Rider (lance held upright-ish at rest)
+  drawRider(g, 44, OY + 13 + Math.sin(gait * Math.PI * 2) * 0.4, breathe, -Math.PI * 0.42, 0);
 }
 
 function generateMoveFrames(g: Graphics, frame: number): void {
-  const walkCycle = frame / 8;
-  const breathe = Math.sin(frame * 0.3) * 1;
-  
+  const gait = frame / 8;
+  const breathe = Math.sin(frame * 0.5) * 0.5;
+  const horseBob = Math.sin(gait * Math.PI * 2) * 2;
+
   // Shadow
-  drawEllipse(g, CX, GY, 17, 8, COL_SHADOW);
-  
-  // Massive horse (walking)
-  drawMassiveHorse(g, CX, 28, walkCycle);
-  
-  // Saddle
-  drawSaddle(g, CX, 24);
-  
-  // Rider (bobbing with horse)
-  const riderBob = Math.sin(walkCycle * Math.PI * 2) * 2;
-  drawRider(g, CX, 24 + riderBob, breathe);
-  
-  // Enchanted lance (angled for movement)
-  const lanceAngle = -Math.PI / 10 + Math.sin(walkCycle * Math.PI * 2) * 0.1;
-  drawEnchantedLance(g, CX + 8, 18 + riderBob + breathe, lanceAngle);
-  
-  // Tower shield
-  drawTowerShield(g, CX - 10, 22 + riderBob + breathe, 1);
+  ellipse(g, 44, GY, 24, 5, COL_SHADOW, 0.3);
+
+  // Horse (heavy trot)
+  drawHorse(g, 48, OY + 24, gait, Math.sin(gait * Math.PI * 2) * 0.25);
+
+  // Rider (lance leveling slightly with movement)
+  const lAngle = -Math.PI * 0.42 + Math.sin(gait * Math.PI * 2) * 0.05;
+  drawRider(g, 44, OY + 13 + horseBob, breathe, lAngle, 0);
 }
 
 function generateAttackFrames(g: Graphics, frame: number): void {
-  const t = frame / 6; // 0 to 1
-  const charge = t < 0.6 ? t / 0.6 : (1 - t) / 0.4; // Devastating charge
-  const lean = charge * 0.6; // Lean heavily into charge
-  
+  const t = frame / 6;
+  // Couch lance (0-0.3), charge (0.3-0.7), impact & follow through (0.7-1)
+  let lanceAngle: number;
+  let lanceExt: number;
+  let lean: number;
+
+  if (t < 0.3) {
+    // Lower lance from rest to couched position
+    const p = t / 0.3;
+    lanceAngle = -Math.PI * 0.42 + p * (Math.PI * 0.42 - Math.PI * 0.08);
+    lanceExt = 0;
+    lean = 0;
+  } else if (t < 0.7) {
+    // Charge with lance couched horizontal
+    const p = (t - 0.3) / 0.4;
+    lanceAngle = -Math.PI * 0.08 - p * 0.02;
+    lanceExt = p * 6;
+    lean = p * 4;
+  } else {
+    // Impact and pull back
+    const p = (t - 0.7) / 0.3;
+    lanceAngle = -Math.PI * 0.1 + p * (-Math.PI * 0.15);
+    lanceExt = 6 - p * 4;
+    lean = 4 - p * 3;
+  }
+
+  const horseSurge = Math.sin(t * Math.PI) * 2.5;
+
   // Shadow
-  drawEllipse(g, CX, GY, 17, 8, COL_SHADOW);
-  
-  // Massive horse (charging)
-  const horseBob = Math.sin(t * Math.PI * 4) * 3;
-  drawMassiveHorse(g, CX, 28 + horseBob, 0);
-  
-  // Saddle
-  drawSaddle(g, CX, 24 + horseBob);
-  
-  // Rider (leaning forward)
-  drawRider(g, CX + lean * 6, 24 + horseBob - lean * 4);
-  
-  // Enchanted lance (devastating charge)
-  const lanceAngle = -Math.PI / 8 + charge * Math.PI / 2;
-  drawEnchantedLance(g, CX + 8 + lean * 6, 18 + horseBob - lean * 4, lanceAngle);
-  
-  // Tower shield (held back during charge)
-  drawTowerShield(g, CX - 16, 22 + horseBob - lean * 4, 0.8);
+  ellipse(g, 44, GY, 24, 5, COL_SHADOW, 0.3);
+
+  // Horse (charging hard)
+  drawHorse(g, 48 - lean, OY + 24, t * 3, -0.4);
+
+  // Rider
+  drawRider(g, 44 - lean, OY + 13 + horseSurge * 0.4, 0, lanceAngle, lanceExt);
 }
 
 function generateCastFrames(g: Graphics, frame: number): void {
-  // Knight Lancer doesn't cast, but reuse attack animation
   generateAttackFrames(g, frame);
 }
 
 function generateDieFrames(g: Graphics, frame: number): void {
   const t = frame / 6;
-  const fallX = t * 6;
-  const dropY = t * 16;
-  
+
+  const fallAngle = t * 0.5;
+  const slideX = t * 9;
+  const dropY = t * t * 16;
+  const fade = Math.max(0, 1 - t * 0.7);
+
   // Shadow (shrinking)
-  drawEllipse(g, CX, GY, 17 * (1 - t), 8 * (1 - t), COL_SHADOW);
-  
-  // Massive horse (falling)
-  if (t < 0.7) {
-    drawMassiveHorse(g, CX + fallX, 28 + dropY, 0);
+  ellipse(g, 44, GY, 24 * (1 - t * 0.5), 5 * (1 - t * 0.5), COL_SHADOW, 0.3 * fade);
+
+  // Horse (stumbling)
+  if (t < 0.85) {
+    const stumble = t * 3;
+    drawHorse(g, 48 + slideX * 0.3, OY + 24 + dropY * 0.4, stumble, fallAngle * 2.5);
   }
-  
-  // Saddle
-  if (t < 0.6) {
-    drawSaddle(g, CX + fallX, 24 + dropY);
-  }
-  
-  // Rider (falling)
-  if (t < 0.5) {
-    drawRider(g, CX + fallX, 24 + dropY);
-  }
-  
-  // Enchanted lance (falling separately)
-  if (t > 0.2) {
-    drawEnchantedLance(g, CX + fallX + 8, 18 + dropY, Math.PI / 2);
-  }
-  
-  // Tower shield (dropping)
-  if (t < 0.6) {
-    drawTowerShield(g, CX + fallX - 10, 22 + dropY, 1 * (1 - t));
+
+  // Rider (falling off)
+  if (t < 0.95) {
+    drawRider(g, 44 + slideX, OY + 13 + dropY, 0, -Math.PI * 0.5 - fallAngle, 0);
   }
 }
 
@@ -433,7 +531,7 @@ export function generateKnightLancerFrames(renderer: Renderer): Map<UnitState, T
       const g = new Graphics();
       gen(g, i);
 
-      const rt = RenderTexture.create({ width: F, height: F });
+      const rt = RenderTexture.create({ width: FW, height: FH });
       renderer.render({ container: g, target: rt });
       textures.push(rt);
 
