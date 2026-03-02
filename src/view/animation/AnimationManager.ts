@@ -84,6 +84,8 @@ import { generateDefenderFrames } from "@view/animation/DefenderSpriteGen";
 import { generatePhalanxFrames } from "@view/animation/PhalanxSpriteGen";
 import { generateRoyalPhalanxFrames } from "@view/animation/RoyalPhalanxSpriteGen";
 import { generateRoyalDefenderFrames } from "@view/animation/RoyalDefenderSpriteGen";
+import { generateAxemanFrames } from "@view/animation/AxemanSpriteGen";
+import { generateBerserkerFrames } from "@view/animation/BerserkerSpriteGen";
 import { generateLongbowmanFrames } from "@view/animation/LongbowmanSpriteGen";
 import { generateCrossbowmanFrames } from "@view/animation/CrossbowmanSpriteGen";
 import { generateGiantFrogFrames } from "@view/animation/GiantFrogSpriteGen";
@@ -365,6 +367,10 @@ export class AnimationManager {
         this._generateRoyalPhalanxSprites(key, renderer);
       } else if (key === "royal_defender") {
         this._generateRoyalDefenderSprites(key, renderer);
+      } else if (key === "axeman") {
+        this._generateAxemanSprites(key, renderer);
+      } else if (key === "berserker") {
+        this._generateBerserkerSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1359,6 +1365,28 @@ export class AnimationManager {
 
   private _generateRoyalDefenderSprites(key: string, renderer: Renderer): void {
     const textures = generateRoyalDefenderFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateAxemanSprites(key: string, renderer: Renderer): void {
+    const textures = generateAxemanFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateBerserkerSprites(key: string, renderer: Renderer): void {
+    const textures = generateBerserkerFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

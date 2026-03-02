@@ -394,4 +394,22 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 12,
     dieFps: 8,
   }),
+  [UnitType.AXEMAN]: buildDef("axeman", {
+    idleFps: 6,
+    moveFps: 10,
+    attackFps: 14,
+    dieFps: 8,
+  }),
+  [UnitType.BERSERKER]: buildDef("berserker", {
+    idleFps: 6,
+    moveFps: 10,
+    attackFps: 14,
+    dieFps: 8,
+  }),
+  [UnitType.JAVELINEER]: buildDef("javelin", {
+    idleFps: 6,
+    moveFps: 10,
+    attackFps: 8,
+    dieFps: 8,
+  }),
 };

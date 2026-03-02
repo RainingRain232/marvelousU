@@ -214,6 +214,11 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.PHALANX]: "Phalanx",
   [UnitType.ROYAL_PHALANX]: "Royal Phalanx",
   [UnitType.ROYAL_DEFENDER]: "Royal Defender",
+  [UnitType.AXEMAN]: "Axeman",
+  [UnitType.BERSERKER]: "Berserker",
+  [UnitType.CATAPULT]: "Catapult",
+  [UnitType.SIEGE_CATAPULT]: "Siege Catapult",
+  [UnitType.TREBUCHET]: "Trebuchet",
 };
 
 // ---------------------------------------------------------------------------

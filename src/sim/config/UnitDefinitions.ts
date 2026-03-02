@@ -1025,4 +1025,46 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Heavily armored royal guard with massive shield. Blocks attacks and strikes with devastating melee blows.",
   },
+  [UnitType.AXEMAN]: {
+    type: UnitType.AXEMAN,
+    cost: 400,
+    hp: 350,
+    atk: 28,
+    attackSpeed: 0.9,
+    speed: 0.9,
+    range: 1,
+    spawnTime: 6,
+    abilityTypes: [],
+    spriteKey: "axeman",
+    description:
+      "Fierce warrior wielding a mighty battle axe. Strikes with devastating power but lacks defensive gear.",
+  },
+  [UnitType.BERSERKER]: {
+    type: UnitType.BERSERKER,
+    cost: 600,
+    hp: 250,
+    atk: 35,
+    attackSpeed: 1.1,
+    speed: 1.0,
+    range: 1,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "berserker",
+    description:
+      "Naked fury with a two-handed axe. High attack but low defense. Terrifying in combat.",
+  },
+  [UnitType.JAVELINEER]: {
+    type: UnitType.JAVELINEER,
+    cost: 400,
+    hp: 100,
+    atk: 35,
+    attackSpeed: 0.5,
+    speed: 1,
+    range: 3,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "javelin",
+    description:
+      "Light infantry armed with javelins and a buckler. High damage but slow attack and short range.",
+  },
 };

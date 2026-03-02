@@ -104,6 +104,9 @@ export enum UnitType {
   PHALANX = "phalanx",
   ROYAL_PHALANX = "royal_phalanx",
   ROYAL_DEFENDER = "royal_defender",
+  AXEMAN = "axeman",
+  BERSERKER = "berserker",
+  JAVELINEER = "javelin",
 }
 
 export enum BuildingType {
