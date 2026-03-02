@@ -35,11 +35,6 @@ import { MillRenderer } from "@view/entities/MillRenderer";
 import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { MarketRenderer } from "@view/entities/MarketRenderer";
-import { LightningTowerRenderer } from "@view/entities/LightningTowerRenderer";
-import { HealingTowerRenderer } from "@view/entities/HealingTowerRenderer";
-import { IceTowerRenderer } from "@view/entities/IceTowerRenderer";
-import { FireTowerRenderer } from "@view/entities/FireTowerRenderer";
-import { WarpTowerRenderer } from "@view/entities/WarpTowerRenderer";
 import { StableRenderer } from "@view/entities/StableRenderer";
 import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
 
@@ -128,6 +123,8 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.FIRE_TOWER]: "FIRE TOWER",
   [BuildingType.WARP_TOWER]: "WARP TOWER",
   [BuildingType.HEALING_TOWER]: "HEAL TOWER",
+  [BuildingType.BALLISTA_TOWER]: "BALLISTA TWR",
+  [BuildingType.REPEATER_TOWER]: "REPEATER TWR",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds

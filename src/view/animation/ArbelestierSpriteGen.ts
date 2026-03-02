@@ -201,7 +201,6 @@ function generateMoveFrames(g: Graphics, frame: number): void {
 function generateAttackFrames(g: Graphics, frame: number): void {
     // 8 frames: aim -> fire -> reload -> recover
     let pull = 0;
-    let angle = 0;
     let recoil = 0;
     let bolts = 1;
     let reloading = false;
@@ -209,24 +208,20 @@ function generateAttackFrames(g: Graphics, frame: number): void {
     if (frame <= 2) {
         // Aiming phase
         pull = frame / 2;
-        angle = -0.1;
     } else if (frame === 3) {
         // Fire!
         pull = 0;
-        angle = 0.2;
         recoil = 2;
         bolts = 0;
     } else if (frame <= 5) {
         // Reloading phase - lower crossbow
         pull = 0;
-        angle = 0.3;
         recoil = 1;
         reloading = true;
         bolts = 0;
     } else {
         // Recovery phase - raise crossbow back up
         pull = 0;
-        angle = 0.1;
         recoil = 0;
         reloading = false;
         bolts = 1;

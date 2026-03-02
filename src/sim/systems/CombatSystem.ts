@@ -24,6 +24,7 @@ const ARROW_UNIT_TYPES: ReadonlySet<UnitType> = new Set([
   UnitType.SHORTBOW,
   UnitType.JAVELINEER,
   UnitType.ARBALESTIER,
+  UnitType.ROYAL_ARBALESTIER,
   UnitType.BALLISTA,
   UnitType.BOLT_THROWER,
   UnitType.CATAPULT,

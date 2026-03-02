@@ -660,7 +660,12 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
       building.type === BuildingType.FACTION_HALL &&
       building.owner === playerId
     ) {
-      building.shopInventory = [race.factionUnit];
+      // Humans get both their faction unit and the Royal Arbelestier
+      if (playerId === "p1" && state.p1RaceId === "man") {
+        building.shopInventory = [race.factionUnit, UnitType.ROYAL_ARBALESTIER];
+      } else {
+        building.shopInventory = [race.factionUnit];
+      }
     }
   }
 }

@@ -195,6 +195,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.BATTERING_RAM]: "Battering Ram",
   [UnitType.JAVELINEER]: "Javelineer",
   [UnitType.ARBALESTIER]: "Arbelestier",
+  [UnitType.ROYAL_ARBALESTIER]: "Royal Arbelestier",
   [UnitType.SIEGE_HUNTER]: "Siege Hunter",
   [UnitType.SUMMONER]: "Summoner",
   [UnitType.CONSTRUCTIONIST]: "Constructionist",

@@ -160,7 +160,7 @@ export function placeBuilding(
     id,
     type,
     owner: playerId,
-    position: { ...position },
+    position,
     linkedBaseId: player.ownedBaseId,
   });
   state.buildings.set(id, building);
@@ -176,7 +176,12 @@ export function placeBuilding(
   ) {
     const race = getRace(state.p1RaceId);
     if (race?.implemented) {
-      building.shopInventory = [race.factionUnit];
+      // Humans get both their faction unit and the Royal Arbelestier
+      if (state.p1RaceId === "man") {
+        building.shopInventory = [race.factionUnit, UnitType.ROYAL_ARBALESTIER];
+      } else {
+        building.shopInventory = [race.factionUnit];
+      }
     }
   }
 

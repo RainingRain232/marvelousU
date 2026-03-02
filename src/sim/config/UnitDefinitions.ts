@@ -1081,4 +1081,18 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Heavy crossbowman with plate armor. Devastating damage but very slow reload time.",
   },
+  [UnitType.ROYAL_ARBALESTIER]: {
+    type: UnitType.ROYAL_ARBALESTIER,
+    cost: 800,
+    hp: 140,
+    atk: 55,
+    attackSpeed: 0.35,
+    speed: 0.9,
+    range: 7,
+    spawnTime: 8,
+    abilityTypes: [],
+    spriteKey: "arbelestier",
+    description:
+      "Elite royal crossbowman with enhanced armor and precision. Superior range and damage.",
+  },
 };
