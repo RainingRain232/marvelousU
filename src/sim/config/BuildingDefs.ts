@@ -76,6 +76,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.DEFENDER,
       UnitType.PHALANX,
       UnitType.ROYAL_PHALANX,
+      UnitType.ROYAL_DEFENDER,
     ],
     blueprints: [],
     footprint: { w: 2, h: 2 },

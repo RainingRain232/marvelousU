@@ -210,6 +210,10 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.QUESTING_KNIGHT]: "Questing Knight",
   [UnitType.ANGEL]: "Angel",
   [UnitType.DARK_SAVANT]: "Dark Savant",
+  [UnitType.DEFENDER]: "Defender",
+  [UnitType.PHALANX]: "Phalanx",
+  [UnitType.ROYAL_PHALANX]: "Royal Phalanx",
+  [UnitType.ROYAL_DEFENDER]: "Royal Defender",
 };
 
 // ---------------------------------------------------------------------------

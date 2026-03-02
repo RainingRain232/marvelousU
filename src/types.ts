@@ -103,6 +103,7 @@ export enum UnitType {
   DEFENDER = "defender",
   PHALANX = "phalanx",
   ROYAL_PHALANX = "royal_phalanx",
+  ROYAL_DEFENDER = "royal_defender",
 }
 
 export enum BuildingType {

@@ -1011,4 +1011,18 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Elite pikeman in gilded armor wielding an enormous pike, impaling foes long before they can strike.",
   },
+  [UnitType.ROYAL_DEFENDER]: {
+    type: UnitType.ROYAL_DEFENDER,
+    cost: 700,
+    hp: 450,
+    atk: 20,
+    attackSpeed: 0.7,
+    speed: 0.6,
+    range: 1,
+    spawnTime: 8,
+    abilityTypes: [],
+    spriteKey: "royal_phalanx",
+    description:
+      "Heavily armored royal guard with massive shield. Blocks attacks and strikes with devastating melee blows.",
+  },
 };
