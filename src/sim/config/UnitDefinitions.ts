@@ -655,6 +655,11 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 6,
     abilityTypes: [],
     spriteKey: "horse_archer",
+    size: {
+      width: 2.0,
+      height: 2.0,
+      healthBarOffset: -1.0,
+    },
   },
   [UnitType.SHORTBOW]: {
     type: UnitType.SHORTBOW,

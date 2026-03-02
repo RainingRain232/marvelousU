@@ -1,17 +1,18 @@
 // Procedural sprite generator for the Horse Archer unit type.
 //
-// Draws a detailed medieval fantasy horse archer at 48×48 pixels per frame
-// using PixiJS Graphics → RenderTexture.  Produces textures for every
-// animation state (IDLE 8, MOVE 8, ATTACK 7, CAST 6, DIE 7).
+// Draws a detailed side-view mounted archer on a swift steppe pony at
+// 96×96 pixels per frame using PixiJS Graphics → RenderTexture.
+// Produces textures for every animation state (IDLE 8, MOVE 8, ATTACK 7,
+// CAST 6, DIE 7).
 //
 // Visual features:
-//   • Mounted on horse with detailed saddle
-//   • Light armor for mobility
-//   • Bow with arrows
-//   • Quiver on back
-//   • Horse with mane and tail
-//   • Riding boots
-//   • Shadow ellipse at feet
+//   • Side-view swift steppe pony with braided mane & tail
+//   • Lamellar leather armor with fur trim
+//   • Leather cap with ear flaps and feather
+//   • Composite recurve bow with visible limb curvature
+//   • Quiver with fletched arrows on back
+//   • Leather bracers and riding boots
+//   • Shadow ellipse at hooves
 
 import { Graphics, RenderTexture, type Renderer, Texture } from "pixi.js";
 import { UnitState } from "@/types";
@@ -20,173 +21,438 @@ import { UnitState } from "@/types";
 // Constants
 // ---------------------------------------------------------------------------
 
-const F = 48;          // frame size (px)
-const CX = F / 2;      // center X
-const GY = F - 4;      // ground Y (feet line)
+const FW = 96;          // frame width  (px) – 2 tiles wide
+const FH = 96;          // frame height (px) – 2 tiles high
+const OY = 30;          // vertical offset to center art in frame
+const GY = FH - 4;      // ground line Y
 
-// Palette ─ mobile mounted archer
-const COL_SKIN      = 0xd4a574;
-const COL_ARMOR     = 0x99aabb;
-const COL_ARMOR_HI  = 0xbbccdd;
-const COL_ARMOR_DK  = 0x667788;
-const COL_HORSE     = 0x8b6f47;
-const COL_HORSE_DK  = 0x6b5737;
-const COL_HORSE_HI  = 0x9b8567;
-const COL_MANE      = 0x4a3c28;
-const COL_SADDLE    = 0x664422;
-const COL_SADDLE_DK = 0x443322;
-const COL_BOW       = 0x886633;
-const COL_BOW_HI    = 0xaaa855;
-const COL_ARROW     = 0xc0c8d0;
-const COL_ARROW_HI  = 0xe0e8f0;
-const COL_QUIVER    = 0x4a3c28;
-const COL_BOOT      = 0x443322;
-const COL_SHADOW    = 0x000000;
+// Palette ─ steppe horse archer
+const COL_SKIN        = 0xc49464;
+const COL_LEATHER     = 0x7a5a38;
+const COL_LEATHER_HI  = 0x9a7a58;
+const COL_LEATHER_DK  = 0x5a3a1e;
+const COL_LAMELLAR    = 0x8a7a5a;
+const COL_LAMELLAR_HI = 0xaa9a7a;
+const COL_LAMELLAR_DK = 0x6a5a3a;
+const COL_FUR         = 0x6a5540;
+const COL_FUR_HI      = 0x8a7560;
+
+const COL_HORSE       = 0x9a7a50;
+const COL_HORSE_HI    = 0xba9a70;
+const COL_HORSE_DK    = 0x7a5a30;
+const COL_HORSE_BELLY = 0x8a7a5a;
+const COL_MANE        = 0x3a2a18;
+const COL_HOOF        = 0x2a2218;
+
+const COL_SADDLE      = 0x6a3a1a;
+const COL_SADDLE_DK   = 0x4a2a10;
+const COL_SADDLECLOTH = 0x884422;
+const COL_SADDLECLOTH_TRIM = 0xccaa44;
+const COL_REINS       = 0x4a3a28;
+
+const COL_BOW         = 0x7a5530;
+const COL_BOW_HI      = 0x9a7550;
+const COL_BOW_HORN    = 0xccbb99;
+const COL_STRING      = 0xccccaa;
+
+const COL_ARROW_SHAFT = 0x8a7a5a;
+const COL_ARROW_TIP   = 0xb0b8c0;
+const COL_ARROW_FLETCH = 0xcc3333;
+
+const COL_QUIVER      = 0x5a3a1e;
+const COL_QUIVER_TRIM = 0xccaa44;
+
+const COL_FEATHER     = 0xcc3333;
+const COL_FEATHER2    = 0xeeeedd;
+
+const COL_SHADOW      = 0x000000;
 
 // ---------------------------------------------------------------------------
 // Tiny helpers
 // ---------------------------------------------------------------------------
 
-function drawEllipse(g: Graphics, x: number, y: number, w: number, h: number, color: number): void {
-  g.fill({ color });
-  g.ellipse(x, y, w, h);
+function ellipse(g: Graphics, x: number, y: number, rx: number, ry: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.ellipse(x, y, rx, ry);
 }
 
-function drawCircle(g: Graphics, x: number, y: number, r: number, color: number): void {
-  g.fill({ color });
+function circle(g: Graphics, x: number, y: number, r: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
   g.circle(x, y, r);
 }
 
-function drawLine(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, width: number = 1): void {
-  g.stroke({ color, width });
+function rect(g: Graphics, x: number, y: number, w: number, h: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.rect(x, y, w, h);
+}
+
+function line(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, w = 1): void {
+  g.stroke({ color, width: w });
   g.moveTo(x1, y1).lineTo(x2, y2);
 }
 
-// ---------------------------------------------------------------------------
-// Component drawing functions
-// ---------------------------------------------------------------------------
-
-function drawHead(g: Graphics, x: number, y: number): void {
-  // Head
-  drawCircle(g, x, y, 5, COL_SKIN);
-  
-  // Light helmet
-  drawCircle(g, x, y, 6, COL_ARMOR);
-  drawCircle(g, x, y, 5, COL_ARMOR_HI);
-  
-  // Visor opening
-  g.fill({ color: COL_SKIN });
-  g.ellipse(x, y + 1, 4, 3);
+function poly(g: Graphics, pts: number[], color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.poly(pts);
+  g.fill();
 }
 
-function drawBody(g: Graphics, x: number, y: number, w: number, h: number): void {
-  // Light armor torso
-  g.fill({ color: COL_ARMOR });
-  g.rect(x - w/2, y, w, h);
-  
-  // Armor highlights
-  g.fill({ color: COL_ARMOR_HI });
-  g.rect(x - w/2 + 1, y + 1, w - 2, 2);
-  
-  // Quiver on back
-  g.fill({ color: COL_QUIVER });
-  g.rect(x + w/2 - 2, y + 2, 3, h - 2);
-  g.fill({ color: COL_ARMOR_DK });
-  g.rect(x + w/2 - 1, y + 3, 1, h - 4);
-}
+// ---------------------------------------------------------------------------
+// Horse (side-view, facing left – swift steppe pony)
+// ---------------------------------------------------------------------------
 
-function drawHorse(g: Graphics, x: number, y: number, walkCycle: number): void {
-  const bob = Math.sin(walkCycle * Math.PI * 2) * 1;
-  
-  // Horse body
-  g.fill({ color: COL_HORSE });
-  g.ellipse(x, y + bob, 14, 8);
-  
-  // Horse highlights
-  g.fill({ color: COL_HORSE_HI });
-  g.ellipse(x, y + bob - 1, 12, 6);
-  
-  // Horse legs (4 legs)
-  const legOffset = Math.sin(walkCycle * Math.PI * 2) * 2;
-  
-  // Front legs
-  g.fill({ color: COL_HORSE_DK });
-  g.rect(x - 8, y + 4 + bob, 2, 6);
-  g.rect(x - 4, y + 4 + bob - legOffset, 2, 6 + legOffset);
-  
+function drawHorse(g: Graphics, ox: number, oy: number, gait: number, tilt: number): void {
+  const bob = Math.sin(gait * Math.PI * 2) * 1.5;
+  const by = oy + bob;
+
+  // ── Legs (slender, fast) ─────────────────────────────────────────────
+  const legLen = 13;
+  const legW = 2.5;
+  const kneeOff = Math.sin(gait * Math.PI * 2) * 5;
+  const kneeOff2 = Math.sin(gait * Math.PI * 2 + Math.PI) * 5;
+
   // Back legs
-  g.fill({ color: COL_HORSE_DK });
-  g.rect(x + 2, y + 4 + bob - legOffset, 2, 6 + legOffset);
-  g.rect(x + 6, y + 4 + bob, 2, 6);
-  
-  // Mane
-  g.fill({ color: COL_MANE });
-  g.rect(x - 12, y - 2 + bob, 4, 6);
-  
-  // Tail
-  const tailSway = Math.sin(walkCycle * Math.PI * 2 + Math.PI) * 2;
-  g.fill({ color: COL_MANE });
-  g.rect(x + 10, y + tailSway, 6, 2);
-}
+  const blx = ox + 9;
+  rect(g, blx - 1, by + 6, legW, legLen + kneeOff2, COL_HORSE_DK);
+  rect(g, blx - 1, by + 6 + legLen + kneeOff2, legW + 0.5, 2, COL_HOOF);
+  rect(g, blx + 3, by + 6, legW, legLen + kneeOff, COL_HORSE);
+  rect(g, blx + 3, by + 6 + legLen + kneeOff, legW + 0.5, 2, COL_HOOF);
 
-function drawSaddle(g: Graphics, x: number, y: number): void {
-  // Saddle
-  g.fill({ color: COL_SADDLE });
-  g.ellipse(x, y, 8, 4);
-  
-  // Saddle details
-  g.fill({ color: COL_SADDLE_DK });
-  g.ellipse(x, y + 1, 6, 2);
-  
-  // Saddle straps
-  drawLine(g, x - 6, y, x - 6, y + 4, COL_SADDLE_DK, 1);
-  drawLine(g, x + 6, y, x + 6, y + 4, COL_SADDLE_DK, 1);
-}
+  // Front legs
+  const flx = ox - 13;
+  rect(g, flx - 1, by + 5, legW, legLen + kneeOff, COL_HORSE_DK);
+  rect(g, flx - 1, by + 5 + legLen + kneeOff, legW + 0.5, 2, COL_HOOF);
+  rect(g, flx + 3, by + 5, legW, legLen + kneeOff2, COL_HORSE);
+  rect(g, flx + 3, by + 5 + legLen + kneeOff2, legW + 0.5, 2, COL_HOOF);
 
-function drawBow(g: Graphics, x: number, y: number, angle: number = 0): void {
-  // Bow body
-  const bowLength = 10;
-  const bowEndX = x + Math.cos(angle) * bowLength;
-  const bowEndY = y + Math.sin(angle) * bowLength;
-  
-  drawLine(g, x, y, bowEndX, bowEndY, COL_BOW, 3);
-  drawLine(g, x, y - 1, bowEndX, bowEndY - 1, COL_BOW_HI, 1);
-  
-  // Bow string
-  const stringAngle = angle + Math.PI / 6;
-  const stringEndX = x + Math.cos(stringAngle) * bowLength;
-  const stringEndY = y + Math.sin(stringAngle) * bowLength;
-  
-  drawLine(g, x - 2, y, stringEndX, stringEndY, COL_ARMOR_DK, 1);
-  drawLine(g, x + 2, y, stringEndX, stringEndY, COL_ARMOR_DK, 1);
-  
-  // Arrow (when ready to fire)
-  if (angle === 0) {
-    drawLine(g, x + 8, y, x + 15, y, COL_ARROW, 2);
-    drawLine(g, x + 8, y - 1, x + 15, y - 1, COL_ARROW_HI, 1);
-    
-    // Arrow head
-    drawCircle(g, x + 15, y, 1.5, COL_ARROW);
+  // ── Barrel (body – compact pony) ─────────────────────────────────────
+  ellipse(g, ox, by, 18, 9, COL_HORSE);
+  ellipse(g, ox, by + 3, 15, 5, COL_HORSE_BELLY);
+  ellipse(g, ox, by - 3, 14, 4, COL_HORSE_HI);
+
+  // ── Saddle cloth ─────────────────────────────────────────────────────
+  poly(g, [
+    ox - 6, by - 8,
+    ox + 10, by - 7,
+    ox + 12, by + 6,
+    ox - 4, by + 6,
+  ], COL_SADDLECLOTH, 0.8);
+  line(g, ox - 4, by + 6, ox + 12, by + 6, COL_SADDLECLOTH_TRIM, 1.5);
+  // Decorative diamond
+  poly(g, [ox + 3, by - 4, ox + 5, by - 1, ox + 3, by + 2, ox + 1, by - 1], COL_SADDLECLOTH_TRIM, 0.6);
+
+  // ── Tail (braided) ───────────────────────────────────────────────────
+  const tailSway = Math.sin(gait * Math.PI * 2 + 1) * 3;
+  const tx = ox + 18;
+  const ty = by - 1;
+  g.stroke({ color: COL_MANE, width: 3 });
+  g.moveTo(tx, ty).bezierCurveTo(tx + 5, ty + tailSway, tx + 8, ty + 6 + tailSway, tx + 6, ty + 12);
+  // Braid wraps
+  for (let i = 0; i < 3; i++) {
+    const bx = tx + 2 + i * 2;
+    const bby = ty + 3 + i * 3 + tailSway * (i / 3);
+    line(g, bx - 1, bby, bx + 2, bby + 1, COL_SADDLECLOTH_TRIM, 0.8);
   }
+  // Tail tuft
+  circle(g, tx + 6, ty + 13 + tailSway * 0.5, 2, COL_MANE);
+
+  // ── Neck ─────────────────────────────────────────────────────────────
+  const nx = ox - 16;
+  const ny = by - 5 + tilt * 2;
+  poly(g, [
+    ox - 12, by - 7,
+    nx, ny - 8,
+    nx + 6, ny - 11,
+    ox - 7, by - 9,
+  ], COL_HORSE);
+  line(g, nx + 2, ny - 10, ox - 8, by - 8, COL_HORSE_HI, 1.5);
+
+  // ── Head ─────────────────────────────────────────────────────────────
+  const hx = nx - 3;
+  const hy = ny - 10 + tilt * 2;
+  // Skull
+  ellipse(g, hx, hy, 7, 4.5, COL_HORSE);
+  // Muzzle
+  ellipse(g, hx - 5, hy + 1.5, 3.5, 2.5, COL_HORSE_HI);
+  // Nostril
+  circle(g, hx - 7, hy + 2, 0.8, COL_HORSE_DK);
+  // Eye
+  circle(g, hx - 1, hy - 2, 1.5, 0x221100);
+  circle(g, hx - 1.5, hy - 2.5, 0.5, 0xffffff);
+  // Ears (alert, forward-pricked)
+  poly(g, [hx + 2, hy - 4, hx + 1, hy - 9, hx + 4, hy - 5], COL_HORSE_DK);
+  poly(g, [hx - 1, hy - 4, hx - 2, hy - 9, hx + 1, hy - 5], COL_HORSE_DK);
+
+  // ── Braided mane ─────────────────────────────────────────────────────
+  for (let i = 0; i < 5; i++) {
+    const mx = nx + 1 + i * 2.5;
+    const my = ny - 10 + i * 1.5;
+    const maneWave = Math.sin(gait * Math.PI * 2 + i * 0.8) * 2;
+    // Braided sections
+    line(g, mx, my, mx + maneWave - 1.5, my + 4, COL_MANE, 2);
+    if (i % 2 === 0) {
+      circle(g, mx + maneWave * 0.5 - 0.5, my + 2, 0.6, COL_SADDLECLOTH_TRIM);
+    }
+  }
+
+  // ── Bridle (simple leather) ──────────────────────────────────────────
+  line(g, hx - 4, hy + 2, hx + 3, hy - 1, COL_REINS, 1);
+  g.stroke({ color: COL_REINS, width: 1 });
+  g.moveTo(hx + 3, hy - 1).bezierCurveTo(nx + 6, ny - 3, ox - 12, by - 3, ox - 10, by - 1);
+
+  // ── Saddle ───────────────────────────────────────────────────────────
+  ellipse(g, ox - 1, by - 9, 7, 3, COL_SADDLE);
+  rect(g, ox - 8, by - 11, 3, 4, COL_SADDLE_DK);
+  rect(g, ox + 3, by - 10, 3, 3, COL_SADDLE_DK);
+  // Stirrup strap
+  line(g, ox - 3, by - 7, ox - 5, by + 4, COL_SADDLE_DK, 1);
+  rect(g, ox - 7, by + 3, 4, 2, COL_LEATHER_DK);
 }
 
-function drawRider(g: Graphics, x: number, y: number, breathe: number = 0): void {
-  // Rider sits on horse
-  drawBody(g, x, y - 8 + breathe, 8, 10);
-  drawHead(g, x, y - 16 + breathe);
-  
-  // Arms holding bow
-  drawLine(g, x - 4, y - 4 + breathe, x + 6, y - 6 + breathe, COL_ARMOR, 2);
-  drawLine(g, x - 4, y - 6 + breathe, x + 6, y - 8 + breathe, COL_ARMOR, 2);
-  
-  // Legs in stirrups
-  g.fill({ color: COL_ARMOR });
-  g.rect(x - 3, y + 2, 2, 4);
-  g.rect(x + 1, y + 2, 2, 4);
-  
-  g.fill({ color: COL_BOOT });
-  g.rect(x - 3, y + 4, 2, 2);
-  g.rect(x + 1, y + 4, 2, 2);
+// ---------------------------------------------------------------------------
+// Rider (horse archer, side-view, facing left)
+// ---------------------------------------------------------------------------
+
+function drawRider(g: Graphics, ox: number, oy: number, breathe: number, bowDraw: number, bowAngle: number): void {
+  const rb = breathe;
+
+  // ── Legs (in stirrups, riding boots) ─────────────────────────────────
+  rect(g, ox - 7, oy + 2, 3.5, 10, COL_LEATHER);
+  rect(g, ox - 7, oy + 2, 3.5, 2, COL_LEATHER_HI);
+  rect(g, ox - 8, oy + 11, 4, 3, COL_LEATHER_DK); // boot
+
+  // ── Torso ────────────────────────────────────────────────────────────
+  const tx = ox - 2;
+  const ty = oy - 10 + rb;
+
+  // Lamellar armor (layered plates)
+  rect(g, tx - 5, ty, 12, 13, COL_LAMELLAR);
+  // Lamellar plate rows
+  for (let row = 0; row < 5; row++) {
+    const ry = ty + 1 + row * 2.5;
+    for (let col = 0; col < 3; col++) {
+      const rx = tx - 4 + col * 3.5;
+      rect(g, rx, ry, 3, 2, row % 2 === col % 2 ? COL_LAMELLAR_HI : COL_LAMELLAR_DK);
+    }
+  }
+  // Center line
+  line(g, tx + 1, ty, tx + 1, ty + 13, COL_LAMELLAR_HI, 1);
+
+  // Fur collar
+  ellipse(g, tx + 1, ty, 7, 2.5, COL_FUR);
+  // Fur texture
+  for (let i = 0; i < 5; i++) {
+    line(g, tx - 4 + i * 2, ty - 1, tx - 4 + i * 2 + 1, ty + 1, COL_FUR_HI, 0.8);
+  }
+
+  // Belt
+  rect(g, tx - 5, ty + 13, 12, 2, COL_LEATHER_DK);
+  // Belt buckle
+  rect(g, tx, ty + 13, 2, 2, COL_SADDLECLOTH_TRIM);
+
+  // ── Quiver (on back, visible from side) ──────────────────────────────
+  const qx = tx + 8;
+  const qy = ty + 1;
+  // Quiver body
+  poly(g, [
+    qx, qy,
+    qx + 3, qy + 1,
+    qx + 3, qy + 14,
+    qx, qy + 13,
+  ], COL_QUIVER);
+  // Quiver opening
+  rect(g, qx, qy, 3, 1.5, COL_QUIVER_TRIM);
+  // Arrow fletching poking out
+  for (let i = 0; i < 3; i++) {
+    const ay = qy - 2 - i * 1.5;
+    line(g, qx + 1, qy, qx + 1 + i * 0.5, ay, COL_ARROW_SHAFT, 1);
+    // Fletching
+    poly(g, [
+      qx + 1 + i * 0.5, ay,
+      qx + 2 + i * 0.5, ay - 1.5,
+      qx + i * 0.5, ay - 1.5,
+    ], COL_ARROW_FLETCH, 0.8);
+  }
+  // Quiver strap
+  line(g, qx + 1, qy + 2, tx - 3, ty + 3, COL_LEATHER_DK, 1);
+
+  // ── Shoulders (leather with fur trim) ────────────────────────────────
+  ellipse(g, tx - 5, ty + 2, 4, 3, COL_LEATHER);
+  ellipse(g, tx + 7, ty + 2, 4, 3, COL_LEATHER);
+  // Fur trim on shoulders
+  line(g, tx - 8, ty + 2, tx - 2, ty + 2, COL_FUR, 2);
+  line(g, tx + 4, ty + 2, tx + 10, ty + 2, COL_FUR, 2);
+
+  // ── Bow arm (left – holds bow) ───────────────────────────────────────
+  const bowArmX = tx - 7;
+  const bowArmY = ty + 5;
+  rect(g, bowArmX, ty + 4, 3, 7, COL_LEATHER);
+  // Leather bracer
+  rect(g, bowArmX, ty + 8, 3, 3, COL_LEATHER_HI);
+  line(g, bowArmX, ty + 9, bowArmX + 3, ty + 9, COL_LEATHER_DK, 0.8);
+
+  // ── Composite recurve bow ────────────────────────────────────────────
+  const bx = bowArmX - 2;
+  const bby = bowArmY + 4;
+  // Bow drawn at bowAngle, curving
+  const bowR = 14;
+  const topAngle = bowAngle - Math.PI * 0.4;
+  const botAngle = bowAngle + Math.PI * 0.4;
+  const tipTopX = bx + Math.cos(topAngle) * bowR;
+  const tipTopY = bby + Math.sin(topAngle) * bowR;
+  const tipBotX = bx + Math.cos(botAngle) * bowR;
+  const tipBotY = bby + Math.sin(botAngle) * bowR;
+
+  // Upper limb (with recurve tip)
+  g.stroke({ color: COL_BOW, width: 2.5 });
+  g.moveTo(bx, bby).bezierCurveTo(
+    bx + Math.cos(topAngle) * 5, bby + Math.sin(topAngle) * 5,
+    bx + Math.cos(topAngle) * 10, bby + Math.sin(topAngle) * 10,
+    tipTopX, tipTopY
+  );
+  // Recurve tip (horn nock)
+  g.stroke({ color: COL_BOW_HORN, width: 1.5 });
+  g.moveTo(tipTopX, tipTopY).lineTo(
+    tipTopX + Math.cos(topAngle + 0.8) * 3,
+    tipTopY + Math.sin(topAngle + 0.8) * 3
+  );
+
+  // Lower limb
+  g.stroke({ color: COL_BOW, width: 2.5 });
+  g.moveTo(bx, bby).bezierCurveTo(
+    bx + Math.cos(botAngle) * 5, bby + Math.sin(botAngle) * 5,
+    bx + Math.cos(botAngle) * 10, bby + Math.sin(botAngle) * 10,
+    tipBotX, tipBotY
+  );
+  // Recurve tip
+  g.stroke({ color: COL_BOW_HORN, width: 1.5 });
+  g.moveTo(tipBotX, tipBotY).lineTo(
+    tipBotX + Math.cos(botAngle - 0.8) * 3,
+    tipBotY + Math.sin(botAngle - 0.8) * 3
+  );
+
+  // Bow grip (leather wrapped)
+  circle(g, bx, bby, 2, COL_BOW_HI);
+
+  // Bowstring
+  const stringPull = bowDraw * 5;
+  const midX = bx + Math.cos(bowAngle + Math.PI) * stringPull;
+  const midY = bby + Math.sin(bowAngle + Math.PI) * stringPull;
+  g.stroke({ color: COL_STRING, width: 0.8 });
+  g.moveTo(tipTopX, tipTopY).bezierCurveTo(
+    midX, midY - 2, midX, midY + 2,
+    tipBotX, tipBotY
+  );
+
+  // ── Arrow (nocked when drawing) ──────────────────────────────────────
+  if (bowDraw > 0.1) {
+    const arrAngle = bowAngle;
+    const arrLen = 16;
+    const ax1 = midX;
+    const ay1 = midY;
+    const ax2 = ax1 + Math.cos(arrAngle) * arrLen;
+    const ay2 = ay1 + Math.sin(arrAngle) * arrLen;
+    // Shaft
+    line(g, ax1, ay1, ax2, ay2, COL_ARROW_SHAFT, 1.5);
+    // Tip
+    const tipDx = Math.cos(arrAngle) * 3;
+    const tipDy = Math.sin(arrAngle) * 3;
+    poly(g, [
+      ax2, ay2,
+      ax2 + tipDx, ay2 + tipDy,
+      ax2 + tipDy * 0.5, ay2 - tipDx * 0.5,
+      ax2 - tipDy * 0.5, ay2 + tipDx * 0.5,
+    ], COL_ARROW_TIP);
+    // Fletching
+    const fDist = 3;
+    const fx = ax1 + Math.cos(arrAngle) * fDist;
+    const fy = ay1 + Math.sin(arrAngle) * fDist;
+    const perpX = Math.sin(arrAngle) * 2;
+    const perpY = -Math.cos(arrAngle) * 2;
+    poly(g, [fx, fy, fx + perpX, fy + perpY, fx + Math.cos(arrAngle) * 2, fy + Math.sin(arrAngle) * 2], COL_ARROW_FLETCH, 0.8);
+    poly(g, [fx, fy, fx - perpX, fy - perpY, fx + Math.cos(arrAngle) * 2, fy + Math.sin(arrAngle) * 2], COL_ARROW_FLETCH, 0.8);
+  }
+
+  // ── Draw arm (right – pulls string) ──────────────────────────────────
+  const drawArmX = tx + 8;
+  rect(g, drawArmX, ty + 4, 3, 6, COL_LEATHER);
+  // Forearm reaching to string
+  const faX = midX + 2;
+  const faY = midY;
+  line(g, drawArmX + 1, ty + 7, faX, faY, COL_LEATHER, 2.5);
+  // Hand/finger tab
+  circle(g, faX, faY, 1.5, COL_SKIN);
+
+  // ── Head (leather cap with ear flaps) ────────────────────────────────
+  const headX = tx + 1;
+  const headY = ty - 6 + rb;
+
+  // Face
+  circle(g, headX, headY, 4.5, COL_SKIN);
+  // Eye
+  circle(g, headX - 3, headY - 1, 1, 0x221100);
+  circle(g, headX - 3.3, headY - 1.3, 0.3, 0xffffff);
+
+  // Leather cap
+  ellipse(g, headX, headY - 2, 5.5, 4, COL_LEATHER);
+  ellipse(g, headX, headY - 2, 4.5, 3, COL_LEATHER_HI);
+  // Cap seam
+  line(g, headX - 1, headY - 6, headX + 1, headY - 6, COL_LEATHER_DK, 1);
+  line(g, headX, headY - 6, headX, headY - 2, COL_LEATHER_DK, 0.8);
+  // Ear flaps
+  poly(g, [
+    headX - 5, headY - 1,
+    headX - 5, headY + 4,
+    headX - 3, headY + 5,
+    headX - 3, headY,
+  ], COL_LEATHER);
+  // Fur trim on ear flap
+  line(g, headX - 5, headY + 4, headX - 3, headY + 5, COL_FUR, 1.5);
+
+  poly(g, [
+    headX + 4, headY - 1,
+    headX + 4, headY + 3,
+    headX + 2, headY + 4,
+    headX + 2, headY,
+  ], COL_LEATHER);
+  line(g, headX + 4, headY + 3, headX + 2, headY + 4, COL_FUR, 1.5);
+
+  // ── Feather (decorative, sticking up from cap) ───────────────────────
+  const featherWave = Math.sin(breathe * 3 + 1) * 1.5;
+  g.stroke({ color: COL_FEATHER, width: 2 });
+  g.moveTo(headX + 1, headY - 6).bezierCurveTo(
+    headX + 4, headY - 12,
+    headX + 6 + featherWave, headY - 16,
+    headX + 8 + featherWave, headY - 14
+  );
+  g.stroke({ color: COL_FEATHER2, width: 1 });
+  g.moveTo(headX + 1, headY - 6).bezierCurveTo(
+    headX + 3, headY - 10,
+    headX + 5 + featherWave, headY - 14,
+    headX + 7 + featherWave, headY - 12
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Flying arrow helper
+// ---------------------------------------------------------------------------
+
+function drawFlyingArrow(g: Graphics, x: number, y: number, angle: number): void {
+  const len = 12;
+  const ex = x + Math.cos(angle) * len;
+  const ey = y + Math.sin(angle) * len;
+  line(g, x, y, ex, ey, COL_ARROW_SHAFT, 1.5);
+  // Tip
+  const tipDx = Math.cos(angle) * 3;
+  const tipDy = Math.sin(angle) * 3;
+  line(g, ex, ey, ex + tipDx, ey + tipDy, COL_ARROW_TIP, 2);
+  // Fletching
+  const fx = x + Math.cos(angle) * 2;
+  const fy = y + Math.sin(angle) * 2;
+  const perpX = Math.sin(angle) * 2;
+  const perpY = -Math.cos(angle) * 2;
+  line(g, fx, fy, fx + perpX, fy + perpY, COL_ARROW_FLETCH, 1.5);
+  line(g, fx, fy, fx - perpX, fy - perpY, COL_ARROW_FLETCH, 1.5);
 }
 
 // ---------------------------------------------------------------------------
@@ -194,107 +460,81 @@ function drawRider(g: Graphics, x: number, y: number, breathe: number = 0): void
 // ---------------------------------------------------------------------------
 
 function generateIdleFrames(g: Graphics, frame: number): void {
-  const breathe = Math.sin(frame * 0.3) * 1;
-  const walkCycle = frame * 0.1;
-  
-  // Shadow
-  drawEllipse(g, CX, GY, 16, 6, COL_SHADOW);
-  
-  // Horse
-  drawHorse(g, CX, 28, walkCycle);
-  
-  // Saddle
-  drawSaddle(g, CX, 24);
-  
-  // Rider
-  drawRider(g, CX, 24, breathe);
-  
-  // Bow (ready position)
-  drawBow(g, CX + 6, 18 + breathe, 0);
+  const breathe = Math.sin(frame * 0.4) * 0.7;
+  const gait = frame * 0.04;
+
+  ellipse(g, 44, GY, 22, 5, COL_SHADOW, 0.3);
+  drawHorse(g, 48, OY + 24, gait, 0);
+  drawRider(g, 44, OY + 14 + Math.sin(gait * Math.PI * 2) * 0.4, breathe, 0.15, -Math.PI * 0.5);
 }
 
 function generateMoveFrames(g: Graphics, frame: number): void {
-  const walkCycle = frame / 8;
-  const breathe = Math.sin(frame * 0.3) * 1;
-  
-  // Shadow
-  drawEllipse(g, CX, GY, 16, 6, COL_SHADOW);
-  
-  // Horse (walking)
-  drawHorse(g, CX, 28, walkCycle);
-  
-  // Saddle
-  drawSaddle(g, CX, 24);
-  
-  // Rider (bobbing with horse)
-  const riderBob = Math.sin(walkCycle * Math.PI * 2) * 2;
-  drawRider(g, CX, 24 + riderBob, breathe);
-  
-  // Bow (angled for movement)
-  const bowAngle = Math.sin(walkCycle * Math.PI * 2) * 0.2;
-  drawBow(g, CX + 6, 18 + riderBob + breathe, bowAngle);
+  const gait = frame / 8;
+  const breathe = Math.sin(frame * 0.5) * 0.5;
+  const horseBob = Math.sin(gait * Math.PI * 2) * 2;
+
+  ellipse(g, 44, GY, 22, 5, COL_SHADOW, 0.3);
+  drawHorse(g, 48, OY + 24, gait, Math.sin(gait * Math.PI * 2) * 0.3);
+  drawRider(g, 44, OY + 14 + horseBob, breathe, 0.1, -Math.PI * 0.5 + Math.sin(gait * Math.PI * 2) * 0.08);
 }
 
 function generateAttackFrames(g: Graphics, frame: number): void {
-  const t = frame / 6; // 0 to 1
-  const draw = t < 0.6 ? t / 0.6 : (1 - t) / 0.4; // Draw then release
-  
-  // Shadow
-  drawEllipse(g, CX, GY, 16, 6, COL_SHADOW);
-  
-  // Horse (stationary during attack)
-  drawHorse(g, CX, 28, 0);
-  
-  // Saddle
-  drawSaddle(g, CX, 24);
-  
-  // Rider (leaning forward)
-  const lean = draw * 0.3;
-  drawRider(g, CX + lean * 2, 24 - lean * 2);
-  
-  // Bow (drawing and firing)
-  const bowAngle = -Math.PI / 6 * draw;
-  drawBow(g, CX + 6 + lean * 2, 18 - lean * 2, bowAngle);
-  
-  // Flying arrow (released at frame 4-5)
-  if (t > 0.5 && t < 0.8) {
-    const arrowDist = (t - 0.5) * 40;
-    drawLine(g, CX + 20 + arrowDist, 12, CX + 25 + arrowDist, 12, COL_ARROW, 2);
-    drawLine(g, CX + 20 + arrowDist, 11, CX + 25 + arrowDist, 11, COL_ARROW_HI, 1);
+  const t = frame / 6;
+  // Draw (0-0.5), hold (0.5-0.6), release (0.6-0.7), follow through (0.7-1)
+  let bowDraw: number;
+  let bowAngle: number;
+
+  if (t < 0.5) {
+    // Drawing the bow
+    const p = t / 0.5;
+    bowDraw = p;
+    bowAngle = -Math.PI * 0.5 + p * 0.15;
+  } else if (t < 0.6) {
+    // Hold at full draw
+    bowDraw = 1;
+    bowAngle = -Math.PI * 0.35;
+  } else if (t < 0.7) {
+    // Release
+    bowDraw = 1 - (t - 0.6) / 0.1;
+    bowAngle = -Math.PI * 0.35;
+  } else {
+    // Follow through
+    const p = (t - 0.7) / 0.3;
+    bowDraw = 0;
+    bowAngle = -Math.PI * 0.5 + (1 - p) * 0.1;
+  }
+
+  ellipse(g, 44, GY, 22, 5, COL_SHADOW, 0.3);
+  drawHorse(g, 48, OY + 24, t * 0.5, 0);
+  drawRider(g, 44, OY + 14, 0, bowDraw, bowAngle);
+
+  // Flying arrow after release
+  if (t > 0.6) {
+    const arrowDist = (t - 0.6) * 80;
+    drawFlyingArrow(g, 20 - arrowDist, OY + 10, -Math.PI * 0.98);
   }
 }
 
 function generateCastFrames(g: Graphics, frame: number): void {
-  // Horse Archer doesn't cast, but reuse attack animation
   generateAttackFrames(g, frame);
 }
 
 function generateDieFrames(g: Graphics, frame: number): void {
   const t = frame / 6;
-  const fallX = t * 8;
-  const dropY = t * 16;
-  
-  // Shadow (shrinking)
-  drawEllipse(g, CX, GY, 16 * (1 - t), 6 * (1 - t), COL_SHADOW);
-  
-  // Horse (falling)
-  if (t < 0.7) {
-    drawHorse(g, CX + fallX, 28 + dropY, 0);
+  const fallAngle = t * 0.4;
+  const slideX = t * 8;
+  const dropY = t * t * 14;
+  const fade = Math.max(0, 1 - t * 0.7);
+
+  ellipse(g, 44, GY, 22 * (1 - t * 0.5), 5 * (1 - t * 0.5), COL_SHADOW, 0.3 * fade);
+
+  if (t < 0.85) {
+    const stumble = t * 3;
+    drawHorse(g, 48 + slideX * 0.3, OY + 24 + dropY * 0.4, stumble, fallAngle * 2);
   }
-  
-  // Saddle
-  if (t < 0.6) {
-    drawSaddle(g, CX + fallX, 24 + dropY);
-  }
-  
-  // Rider (falling)
-  if (t < 0.5) {
-    drawRider(g, CX + fallX, 24 + dropY);
-  }
-  
-  // Bow (dropping)
-  if (t < 0.4) {
-    drawBow(g, CX + fallX + 6, 18 + dropY, Math.PI / 4);
+
+  if (t < 0.95) {
+    drawRider(g, 44 + slideX, OY + 14 + dropY, 0, 0, -Math.PI * 0.5 - fallAngle);
   }
 }
 
@@ -329,7 +569,7 @@ export function generateHorseArcherFrames(renderer: Renderer): Map<UnitState, Te
       const g = new Graphics();
       gen(g, i);
 
-      const rt = RenderTexture.create({ width: F, height: F });
+      const rt = RenderTexture.create({ width: FW, height: FH });
       renderer.render({ container: g, target: rt });
       textures.push(rt);
 
