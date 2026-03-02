@@ -412,4 +412,10 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 8,
     dieFps: 8,
   }),
+  [UnitType.ARBALESTIER]: buildDef("arbelestier", {
+    idleFps: 6,
+    moveFps: 10,
+    attackFps: 8,
+    dieFps: 8,
+  }),
 };

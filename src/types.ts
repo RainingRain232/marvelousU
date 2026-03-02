@@ -107,6 +107,7 @@ export enum UnitType {
   AXEMAN = "axeman",
   BERSERKER = "berserker",
   JAVELINEER = "javelin",
+  ARBALESTIER = "arbelestier",
 }
 
 export enum BuildingType {

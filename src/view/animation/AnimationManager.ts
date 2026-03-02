@@ -87,6 +87,7 @@ import { generateRoyalDefenderFrames } from "@view/animation/RoyalDefenderSprite
 import { generateAxemanFrames } from "@view/animation/AxemanSpriteGen";
 import { generateBerserkerFrames } from "@view/animation/BerserkerSpriteGen";
 import { generateJavelineerFrames } from "@view/animation/JavelineerSpriteGen";
+import { generateArbelestierFrames } from "@view/animation/ArbelestierSpriteGen";
 import { generateLongbowmanFrames } from "@view/animation/LongbowmanSpriteGen";
 import { generateCrossbowmanFrames } from "@view/animation/CrossbowmanSpriteGen";
 import { generateGiantFrogFrames } from "@view/animation/GiantFrogSpriteGen";
@@ -374,6 +375,8 @@ export class AnimationManager {
         this._generateBerserkerSprites(key, renderer);
       } else if (key === "javelin") {
         this._generateJavelineerSprites(key, renderer);
+      } else if (key === "arbelestier") {
+        this._generateArbelestierSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1405,6 +1408,20 @@ export class AnimationManager {
    */
   private _generateJavelineerSprites(key: string, renderer: Renderer): void {
     const stateTextures = generateJavelineerFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  /**
+   * Generate detailed procedural arbelestier sprites using dedicated
+   * ArbelestierSpriteGen module. Populates cache for all states.
+   */
+  private _generateArbelestierSprites(key: string, renderer: Renderer): void {
+    const stateTextures = generateArbelestierFrames(renderer);
     for (const [state, textures] of stateTextures) {
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {

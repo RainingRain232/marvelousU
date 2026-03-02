@@ -1067,4 +1067,18 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Light infantry armed with javelins and a buckler. High damage but slow attack and short range.",
   },
+  [UnitType.ARBALESTIER]: {
+    type: UnitType.ARBALESTIER,
+    cost: 700,
+    hp: 120,
+    atk: 50,
+    attackSpeed: 0.3,
+    speed: 0.8,
+    range: 6,
+    spawnTime: 8,
+    abilityTypes: [],
+    spriteKey: "arbelestier",
+    description:
+      "Heavy crossbowman with plate armor. Devastating damage but very slow reload time.",
+  },
 };

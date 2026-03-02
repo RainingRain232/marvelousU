@@ -151,6 +151,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.LONGBOWMAN,
       UnitType.REPEATER,
       UnitType.JAVELINEER,
+      UnitType.ARBALESTIER,
     ],
     blueprints: [],
     footprint: { w: 4, h: 2 },
