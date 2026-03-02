@@ -147,6 +147,11 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [],
     spriteKey: "knight",
+    size: {
+      width: 2.0,
+      height: 2.0,
+      healthBarOffset: -1.0,
+    },
     description:
       "Armored cavalry unit that charges into battle with devastating force and speed.",
   },
