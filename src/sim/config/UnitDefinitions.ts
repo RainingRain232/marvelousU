@@ -263,6 +263,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [],
     spriteKey: "siege_hunter",
+    size: { width: 2.0, height: 2.0, healthBarOffset: -1.0 },
     huntTargets: [
       UnitType.BATTERING_RAM,
       UnitType.CATAPULT,
