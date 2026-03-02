@@ -45,6 +45,10 @@ import {
   generateColdAdeptMageFrames,
   generateLightningAdeptMageFrames,
   generateDistortionAdeptMageFrames,
+  generateFireMasterMageFrames,
+  generateColdMasterMageFrames,
+  generateLightningMasterMageFrames,
+  generateDistortionMasterMageFrames,
 } from "@view/animation/AdeptMageSpriteGen";
 import {
   generateDragonFrames,
@@ -76,6 +80,9 @@ import { generateBoltThrowerFrames } from "@view/animation/BoltThrowerSpriteGen"
 import { generateCatapultFrames } from "@view/animation/CatapultSpriteGen";
 import { generateSiegeCatapultFrames } from "@view/animation/SiegeCatapultSpriteGen";
 import { generateTrebuchetFrames } from "@view/animation/TrebuchetSpriteGen";
+import { generateDefenderFrames } from "@view/animation/DefenderSpriteGen";
+import { generatePhalanxFrames } from "@view/animation/PhalanxSpriteGen";
+import { generateRoyalPhalanxFrames } from "@view/animation/RoyalPhalanxSpriteGen";
 import { generateLongbowmanFrames } from "@view/animation/LongbowmanSpriteGen";
 import { generateCrossbowmanFrames } from "@view/animation/CrossbowmanSpriteGen";
 import { generateGiantFrogFrames } from "@view/animation/GiantFrogSpriteGen";
@@ -247,6 +254,14 @@ export class AnimationManager {
         this._generateLightningAdeptMageSprites(key, renderer);
       } else if (key === "distortion_adept_mage") {
         this._generateDistortionAdeptMageSprites(key, renderer);
+      } else if (key === "fire_master_mage") {
+        this._generateFireMasterMageSprites(key, renderer);
+      } else if (key === "cold_master_mage") {
+        this._generateColdMasterMageSprites(key, renderer);
+      } else if (key === "lightning_master_mage") {
+        this._generateLightningMasterMageSprites(key, renderer);
+      } else if (key === "distortion_master_mage") {
+        this._generateDistortionMasterMageSprites(key, renderer);
       } else if (key === "red_dragon") {
         this._generateDragonSprites(key, renderer, PALETTE_RED_DRAGON, false);
       } else if (key === "frost_dragon") {
@@ -341,6 +356,12 @@ export class AnimationManager {
         this._generateAngelSprites(key, renderer);
       } else if (key === "dark_savant") {
         this._generateMageSprites(key, renderer, PALETTE_FIRE_MAGE);
+      } else if (key === "defender") {
+        this._generateDefenderSprites(key, renderer);
+      } else if (key === "phalanx") {
+        this._generatePhalanxSprites(key, renderer);
+      } else if (key === "royal_phalanx") {
+        this._generateRoyalPhalanxSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -527,6 +548,70 @@ export class AnimationManager {
     renderer: Renderer,
   ): void {
     const textures = generateDistortionAdeptMageFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateFireMasterMageSprites(
+    key: string,
+    renderer: Renderer,
+  ): void {
+    const textures = generateFireMasterMageFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateColdMasterMageSprites(
+    key: string,
+    renderer: Renderer,
+  ): void {
+    const textures = generateColdMasterMageFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateLightningMasterMageSprites(
+    key: string,
+    renderer: Renderer,
+  ): void {
+    const textures = generateLightningMasterMageFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateDistortionMasterMageSprites(
+    key: string,
+    renderer: Renderer,
+  ): void {
+    const textures = generateDistortionMasterMageFrames(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];
@@ -1233,6 +1318,39 @@ export class AnimationManager {
       }
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateDefenderSprites(key: string, renderer: Renderer): void {
+    const textures = generateDefenderFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generatePhalanxSprites(key: string, renderer: Renderer): void {
+    const textures = generatePhalanxFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateRoyalPhalanxSprites(key: string, renderer: Renderer): void {
+    const textures = generateRoyalPhalanxFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
     }
   }
 }

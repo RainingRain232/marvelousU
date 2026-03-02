@@ -4,6 +4,7 @@ import { createFireball } from "@sim/abilities/Fireball";
 import { createChainLightning } from "@sim/abilities/ChainLightning";
 import { createWarp } from "@sim/abilities/Warp";
 import { createSummon } from "@sim/abilities/Summon";
+import { createImpSummon } from "@sim/abilities/ImpSummon";
 import { createIceBall } from "@sim/abilities/IceBall";
 import { createWeb } from "@sim/abilities/Web";
 import { createNetPull } from "@sim/abilities/NetPull";
@@ -12,6 +13,7 @@ import { createHeal } from "@sim/abilities/Heal";
 import { createFireBreath } from "@sim/abilities/FireBreath";
 import { createFrostBreath } from "@sim/abilities/FrostBreath";
 import type { Ability } from "@sim/abilities/Ability";
+import { UnitType } from "@/types";
 
 type AbilityFactory = (id: string) => Ability;
 
@@ -20,12 +22,46 @@ export const abilityRegistry: Record<AbilityType, AbilityFactory> = {
   [AbilityType.CHAIN_LIGHTNING]: createChainLightning,
   [AbilityType.WARP]: createWarp,
   [AbilityType.SUMMON]: createSummon,
+  [AbilityType.FIRE_IMP_SUMMON]: (id: string) =>
+    createImpSummon(id, UnitType.FIRE_IMP, AbilityType.FIRE_IMP_SUMMON),
+  [AbilityType.ICE_IMP_SUMMON]: (id: string) =>
+    createImpSummon(id, UnitType.ICE_IMP, AbilityType.ICE_IMP_SUMMON),
+  [AbilityType.LIGHTNING_IMP_SUMMON]: (id: string) =>
+    createImpSummon(
+      id,
+      UnitType.LIGHTNING_IMP,
+      AbilityType.LIGHTNING_IMP_SUMMON,
+    ),
+  [AbilityType.DISTORTION_IMP_SUMMON]: (id: string) =>
+    createImpSummon(
+      id,
+      UnitType.DISTORTION_IMP,
+      AbilityType.DISTORTION_IMP_SUMMON,
+    ),
+  [AbilityType.FIRE_MASTER_IMP_SUMMON]: (id: string) =>
+    createImpSummon(id, UnitType.FIRE_IMP, AbilityType.FIRE_MASTER_IMP_SUMMON),
+  [AbilityType.ICE_MASTER_IMP_SUMMON]: (id: string) =>
+    createImpSummon(id, UnitType.ICE_IMP, AbilityType.ICE_MASTER_IMP_SUMMON),
+  [AbilityType.LIGHTNING_MASTER_IMP_SUMMON]: (id: string) =>
+    createImpSummon(
+      id,
+      UnitType.LIGHTNING_IMP,
+      AbilityType.LIGHTNING_MASTER_IMP_SUMMON,
+    ),
+  [AbilityType.DISTORTION_MASTER_IMP_SUMMON]: (id: string) =>
+    createImpSummon(
+      id,
+      UnitType.DISTORTION_IMP,
+      AbilityType.DISTORTION_MASTER_IMP_SUMMON,
+    ),
   [AbilityType.ICE_BALL]: createIceBall,
   [AbilityType.WEB]: createWeb,
   [AbilityType.GLADIATOR_NET]: createNetPull,
   [AbilityType.DISTORTION_BLAST]: createDistortionBlast,
-  [AbilityType.VOID_DISTORTION]: (id) => createDistortionBlast(id, AbilityType.VOID_DISTORTION),
-  [AbilityType.FAERY_DISTORTION]: (id) => createDistortionBlast(id, AbilityType.FAERY_DISTORTION),
+  [AbilityType.VOID_DISTORTION]: (id) =>
+    createDistortionBlast(id, AbilityType.VOID_DISTORTION),
+  [AbilityType.FAERY_DISTORTION]: (id) =>
+    createDistortionBlast(id, AbilityType.FAERY_DISTORTION),
   [AbilityType.FROG_TONGUE]: (id) => createNetPull(id, AbilityType.FROG_TONGUE),
   [AbilityType.DEVOUR_PULL]: (id) => createNetPull(id, AbilityType.DEVOUR_PULL),
   [AbilityType.HEAL]: createHeal,

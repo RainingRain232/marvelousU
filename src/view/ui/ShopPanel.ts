@@ -205,6 +205,10 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.COLD_ADEPT_MAGE]: "Cold Adept Mage",
   [UnitType.LIGHTNING_ADEPT_MAGE]: "Lightning Adept Mage",
   [UnitType.DISTORTION_ADEPT_MAGE]: "Distortion Adept Mage",
+  [UnitType.FIRE_MASTER_MAGE]: "Fire Master Mage",
+  [UnitType.COLD_MASTER_MAGE]: "Cold Master Mage",
+  [UnitType.LIGHTNING_MASTER_MAGE]: "Lightning Master Mage",
+  [UnitType.DISTORTION_MASTER_MAGE]: "Distortion Master Mage",
   [UnitType.VOID_SNAIL]: "Void Snail",
   [UnitType.FAERY_QUEEN]: "Faery Queen",
   [UnitType.GIANT_FROG]: "Giant Frog",
@@ -244,6 +248,9 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.QUESTING_KNIGHT]: "Questing Knight",
   [UnitType.ANGEL]: "Angel",
   [UnitType.DARK_SAVANT]: "Dark Savant",
+  [UnitType.DEFENDER]: "Defender",
+  [UnitType.PHALANX]: "Phalanx",
+  [UnitType.ROYAL_PHALANX]: "Royal Phalanx",
 };
 
 // ---------------------------------------------------------------------------

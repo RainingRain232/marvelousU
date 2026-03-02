@@ -199,6 +199,22 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     idleFps: 6,
     castFps: 10,
   }),
+  [UnitType.FIRE_MASTER_MAGE]: buildDef("fire_master_mage", {
+    idleFps: 6,
+    castFps: 8,
+  }),
+  [UnitType.COLD_MASTER_MAGE]: buildDef("cold_master_mage", {
+    idleFps: 6,
+    castFps: 8,
+  }),
+  [UnitType.LIGHTNING_MASTER_MAGE]: buildDef("lightning_master_mage", {
+    idleFps: 6,
+    castFps: 8,
+  }),
+  [UnitType.DISTORTION_MASTER_MAGE]: buildDef("distortion_master_mage", {
+    idleFps: 6,
+    castFps: 10,
+  }),
   [UnitType.VOID_SNAIL]: buildDef("void_snail", {
     moveFps: 8,
     attackFps: 6,
@@ -352,6 +368,24 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     moveFps: 8,
     attackFps: 8,
     castFps: 8,
+    dieFps: 8,
+  }),
+  [UnitType.DEFENDER]: buildDef("defender", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 12,
+    dieFps: 8,
+  }),
+  [UnitType.PHALANX]: buildDef("phalanx", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 12,
+    dieFps: 8,
+  }),
+  [UnitType.ROYAL_PHALANX]: buildDef("royal_phalanx", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 12,
     dieFps: 8,
   }),
 };

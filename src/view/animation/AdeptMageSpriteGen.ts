@@ -77,6 +77,54 @@ export const PALETTE_DISTORTION_ADEPT_MAGE: AdeptMagePalette = {
   eye: 0x222222,
 };
 
+export const PALETTE_FIRE_MASTER_MAGE: AdeptMagePalette = {
+  robe: 0xaa2211,
+  robeDark: 0x771100,
+  robeLight: 0xcc4433,
+  trim: 0xffdd44,
+  hat: 0xaa2211,
+  hatTrim: 0xffdd44,
+  skin: 0xe8b89d,
+  beard: 0xffffff,
+  eye: 0x222222,
+};
+
+export const PALETTE_COLD_MASTER_MAGE: AdeptMagePalette = {
+  robe: 0x2266aa,
+  robeDark: 0x113366,
+  robeLight: 0x4488cc,
+  trim: 0xaaddff,
+  hat: 0x2266aa,
+  hatTrim: 0xaaddff,
+  skin: 0xe8b89d,
+  beard: 0xffffff,
+  eye: 0x222222,
+};
+
+export const PALETTE_LIGHTNING_MASTER_MAGE: AdeptMagePalette = {
+  robe: 0xaa8811,
+  robeDark: 0x775500,
+  robeLight: 0xccaa33,
+  trim: 0xffff88,
+  hat: 0xaa8811,
+  hatTrim: 0xffff88,
+  skin: 0xe8b89d,
+  beard: 0xffffff,
+  eye: 0x222222,
+};
+
+export const PALETTE_DISTORTION_MASTER_MAGE: AdeptMagePalette = {
+  robe: 0x662288,
+  robeDark: 0x441166,
+  robeLight: 0x8844aa,
+  trim: 0xdd66ff,
+  hat: 0x662288,
+  hatTrim: 0xdd66ff,
+  skin: 0xe8b89d,
+  beard: 0xffffff,
+  eye: 0x222222,
+};
+
 export function generateFireAdeptMageFrames(
   renderer: Renderer,
 ): RenderTexture[] {
@@ -99,6 +147,30 @@ export function generateDistortionAdeptMageFrames(
   renderer: Renderer,
 ): RenderTexture[] {
   return generateAdeptMageFrames(renderer, PALETTE_DISTORTION_ADEPT_MAGE);
+}
+
+export function generateFireMasterMageFrames(
+  renderer: Renderer,
+): RenderTexture[] {
+  return generateAdeptMageFrames(renderer, PALETTE_FIRE_MASTER_MAGE);
+}
+
+export function generateColdMasterMageFrames(
+  renderer: Renderer,
+): RenderTexture[] {
+  return generateAdeptMageFrames(renderer, PALETTE_COLD_MASTER_MAGE);
+}
+
+export function generateLightningMasterMageFrames(
+  renderer: Renderer,
+): RenderTexture[] {
+  return generateAdeptMageFrames(renderer, PALETTE_LIGHTNING_MASTER_MAGE);
+}
+
+export function generateDistortionMasterMageFrames(
+  renderer: Renderer,
+): RenderTexture[] {
+  return generateAdeptMageFrames(renderer, PALETTE_DISTORTION_MASTER_MAGE);
 }
 
 function generateAdeptMageFrames(
