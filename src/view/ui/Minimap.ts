@@ -1,6 +1,7 @@
 // Minimap — zoomed-out overview of the entire battlefield.
 // Shows tile zones, buildings, units, and the camera viewport rectangle.
 // Clicking on the minimap pans the camera to that position.
+// Fixed display size regardless of map dimensions.
 
 import { Container, Graphics } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
@@ -18,8 +19,9 @@ const PAD = 12;
 const HUD_PANEL_W = 220;
 const GAP = 8; // gap between HUD panel and minimap
 
-// Each tile maps to TILE_PX pixels on the minimap
-const TILE_PX = 5;
+// Fixed minimap display size (pixels) — same on all map sizes
+const MM_DISPLAY_W = 264;
+const MM_DISPLAY_H = 150;
 
 // Minimap border
 const BORDER_COLOR = 0xffd700;
@@ -112,23 +114,26 @@ export class Minimap {
   private _camera!: Camera;
   private _mapW = 0;
   private _mapH = 0;
-  private _mmW = 0; // minimap pixel width
-  private _mmH = 0; // minimap pixel height
+  private _scaleX = 1; // pixels per tile (horizontal)
+  private _scaleY = 1; // pixels per tile (vertical)
   private _colors: MinimapColors = DEFAULT_COLORS;
 
   init(vm: ViewManager, state: GameState, camera: Camera, mapType: MapType): void {
     this._camera = camera;
     this._mapW = state.battlefield.width;
     this._mapH = state.battlefield.height;
-    this._mmW = this._mapW * TILE_PX;
-    this._mmH = this._mapH * TILE_PX;
+
+    // Compute scale so the entire map fits in the fixed display size
+    this._scaleX = MM_DISPLAY_W / this._mapW;
+    this._scaleY = MM_DISPLAY_H / this._mapH;
+
     this._colors = MAP_COLORS[mapType] ?? DEFAULT_COLORS;
 
     // Background panel
     this._bg
-      .roundRect(0, 0, this._mmW + 4, this._mmH + 4, 3)
+      .roundRect(0, 0, MM_DISPLAY_W + 4, MM_DISPLAY_H + 4, 3)
       .fill({ color: BG_COLOR, alpha: BG_ALPHA })
-      .roundRect(0, 0, this._mmW + 4, this._mmH + 4, 3)
+      .roundRect(0, 0, MM_DISPLAY_W + 4, MM_DISPLAY_H + 4, 3)
       .stroke({ color: BORDER_COLOR, alpha: BORDER_ALPHA, width: BORDER_W });
 
     this.container.addChild(this._bg);
@@ -157,8 +162,8 @@ export class Minimap {
     this.container.on("pointerdown", (e) => {
       const local = this.container.toLocal(e.global);
       // Convert minimap pixel to tile coords (accounting for 2px border offset)
-      const tileX = (local.x - 2) / TILE_PX;
-      const tileY = (local.y - 2) / TILE_PX;
+      const tileX = (local.x - 2) / this._scaleX;
+      const tileY = (local.y - 2) / this._scaleY;
       this._panCameraTo(tileX, tileY);
     });
 
@@ -180,6 +185,8 @@ export class Minimap {
 
     const bf = state.battlefield;
     const c = this._colors;
+    const sx = this._scaleX;
+    const sy = this._scaleY;
 
     for (let y = 0; y < bf.height; y++) {
       const row = bf.grid[y];
@@ -201,9 +208,7 @@ export class Minimap {
                 ? c.eastUnwalkable
                 : c.neutralUnwalkable;
         }
-        g.rect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX).fill({
-          color,
-        });
+        g.rect(x * sx, y * sy, Math.ceil(sx), Math.ceil(sy)).fill({ color });
       }
     }
   }
@@ -211,6 +216,9 @@ export class Minimap {
   private _drawEntities(state: GameState): void {
     const g = this._entities;
     g.clear();
+
+    const sx = this._scaleX;
+    const sy = this._scaleY;
 
     // Buildings — draw as small rectangles
     for (const b of state.buildings.values()) {
@@ -221,23 +229,22 @@ export class Minimap {
           : b.owner === "p2"
             ? BUILDING_P2
             : BUILDING_NEUTRAL;
-      const def = { w: 1, h: 1 }; // Use 1x1 dot for simplicity on minimap
       g.rect(
-        b.position.x * TILE_PX,
-        b.position.y * TILE_PX,
-        Math.max(2, def.w * TILE_PX * 0.6),
-        Math.max(2, def.h * TILE_PX * 0.6),
+        b.position.x * sx,
+        b.position.y * sy,
+        Math.max(2, sx * 0.8),
+        Math.max(2, sy * 0.8),
       ).fill({ color });
     }
 
-    // Units — draw as single-pixel dots
+    // Units — draw as small dots
     for (const u of state.units.values()) {
       const color = u.owner === "p1" ? UNIT_P1 : UNIT_P2;
       g.rect(
-        u.position.x * TILE_PX - 0.5,
-        u.position.y * TILE_PX - 0.5,
-        1.5,
-        1.5,
+        u.position.x * sx - 0.5,
+        u.position.y * sy - 0.5,
+        Math.max(1.5, sx * 0.4),
+        Math.max(1.5, sy * 0.4),
       ).fill({ color });
     }
   }
@@ -248,6 +255,8 @@ export class Minimap {
 
     const cam = this._camera;
     const ts = BalanceConfig.TILE_SIZE;
+    const sx = this._scaleX;
+    const sy = this._scaleY;
 
     // Visible area in world pixels
     const visW = cam.screenW / cam.zoom;
@@ -261,11 +270,11 @@ export class Minimap {
     const wTiles = visW / ts;
     const hTiles = visH / ts;
 
-    // Clamp to map bounds
-    const x = Math.max(0, leftTile * TILE_PX);
-    const y = Math.max(0, topTile * TILE_PX);
-    const w = Math.min(this._mmW - x, wTiles * TILE_PX);
-    const h = Math.min(this._mmH - y, hTiles * TILE_PX);
+    // Clamp to minimap bounds
+    const x = Math.max(0, leftTile * sx);
+    const y = Math.max(0, topTile * sy);
+    const w = Math.min(MM_DISPLAY_W - x, wTiles * sx);
+    const h = Math.min(MM_DISPLAY_H - y, hTiles * sy);
 
     g.rect(x, y, w, h).stroke({ color: VP_COLOR, alpha: VP_ALPHA, width: 1.5 });
   }
