@@ -42,7 +42,6 @@ const COL_ROOF_DK = 0x2a1a0f;
 const COL_ROOF_LT = 0x553828;
 const COL_IRON = 0x555555;
 const COL_IRON_DK = 0x333333;
-const COL_IRON_HOT = 0xff6622;
 const COL_FIRE = 0xff4400;
 const COL_FIRE_MID = 0xff8800;
 const COL_FIRE_CORE = 0xffff44;
