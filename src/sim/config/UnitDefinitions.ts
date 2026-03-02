@@ -796,6 +796,11 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "elite_lancer",
     isChargeUnit: true,
+    size: {
+      width: 2.0,
+      height: 2.0,
+      healthBarOffset: -1.0,
+    },
   },
   [UnitType.KNIGHT_LANCER]: {
     type: UnitType.KNIGHT_LANCER,
