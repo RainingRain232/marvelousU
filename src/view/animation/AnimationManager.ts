@@ -86,6 +86,12 @@ import { generateRoyalLancerFrames } from "@view/animation/RoyalLancerSpriteGen"
 import { generateTrollFrames } from "@view/animation/TrollSpriteGen";
 import { generateRhinoFrames } from "@view/animation/RhinoSpriteGen";
 import { generatePixieFrames } from "@view/animation/PixieSpriteGen";
+import {
+  generateFireImpFrames,
+  generateIceImpFrames,
+  generateLightningImpFrames,
+  generateDistortionImpFrames,
+} from "@view/animation/ImpSpriteGen";
 import { generateBatFrames } from "@view/animation/BatSpriteGen";
 import { generateTemplarFrames } from "@view/animation/TemplarSpriteGen";
 import { generateAngelFrames } from "@view/animation/AngelSpriteGen";
@@ -305,6 +311,14 @@ export class AnimationManager {
         this._generateRhinoSprites(key, renderer);
       } else if (key === "pixie") {
         this._generatePixieSprites(key, renderer);
+      } else if (key === "fire_imp") {
+        this._generateFireImpSprites(key, renderer);
+      } else if (key === "ice_imp") {
+        this._generateIceImpSprites(key, renderer);
+      } else if (key === "lightning_imp") {
+        this._generateLightningImpSprites(key, renderer);
+      } else if (key === "distortion_imp") {
+        this._generateDistortionImpSprites(key, renderer);
       } else if (key === "bat") {
         this._generateBatSprites(key, renderer);
       } else if (key === "templar") {
@@ -1048,6 +1062,58 @@ export class AnimationManager {
 
   private _generatePixieSprites(key: string, renderer: Renderer): void {
     const textures = generatePixieFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateFireImpSprites(key: string, renderer: Renderer): void {
+    const textures = generateFireImpFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateIceImpSprites(key: string, renderer: Renderer): void {
+    const textures = generateIceImpFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateLightningImpSprites(key: string, renderer: Renderer): void {
+    const textures = generateLightningImpFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateDistortionImpSprites(key: string, renderer: Renderer): void {
+    const textures = generateDistortionImpFrames(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];
