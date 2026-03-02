@@ -32,6 +32,8 @@ export interface UnitDef {
   isHealer?: boolean;
   /** Maximum number of this unit type a single player may own at once. */
   maxCount?: number;
+  /** Passive HP regeneration per second. 0 = no regen (default). */
+  regenRate?: number;
 }
 
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
@@ -60,6 +62,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [],
     spriteKey: "templar",
+    regenRate: 5,
     description:
       "Holy warrior in shining armor. Better protected than swordsmen with divine blessing.",
   },
@@ -419,6 +422,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.FIREBALL, AbilityType.FIRE_MASTER_IMP_SUMMON],
     spriteKey: "fire_master_mage",
+    regenRate: 5,
     description:
       "Grandmaster of fire magic. Throws devastating fireballs at enemies.",
   },
@@ -433,6 +437,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.ICE_BALL, AbilityType.ICE_MASTER_IMP_SUMMON],
     spriteKey: "cold_master_mage",
+    regenRate: 5,
     description:
       "Grandmaster of ice magic. Casts devastating ice storms that slow enemies.",
   },
@@ -450,6 +455,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       AbilityType.LIGHTNING_MASTER_IMP_SUMMON,
     ],
     spriteKey: "lightning_master_mage",
+    regenRate: 5,
     description:
       "Grandmaster of lightning magic. Calls down devastating chain lightning on enemies.",
   },
@@ -467,6 +473,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       AbilityType.DISTORTION_MASTER_IMP_SUMMON,
     ],
     spriteKey: "distortion_master_mage",
+    regenRate: 5,
     description:
       "Grandmaster of distortion magic. Warps space to devastatingly damage and confuse enemies.",
   },
@@ -529,6 +536,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [],
     spriteKey: "troll",
+    regenRate: 5,
     description:
       "Massive troll with immense health. Slow but devastating in melee.",
   },
@@ -904,6 +912,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 25,
     abilityTypes: [],
     spriteKey: "angel",
+    regenRate: 5,
     size: {
       width: 2.0,
       height: 3.0,
@@ -923,6 +932,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 15,
     abilityTypes: [AbilityType.FIREBALL],
     spriteKey: "fire_mage",
+    regenRate: 5,
     description:
       "Master of dark pyromancy who hurls devastating fireballs with increased destructive power.",
   },

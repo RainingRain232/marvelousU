@@ -25,6 +25,7 @@ import { PhaseSystem } from "@sim/systems/PhaseSystem";
 import { EconomySystem } from "@sim/systems/EconomySystem";
 import { UnitBehaviorSystem } from "@sim/systems/UnitBehaviorSystem";
 import { RandomEventSystem } from "@sim/systems/RandomEventSystem";
+import { RegenSystem } from "@sim/systems/RegenSystem";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,6 +50,7 @@ export function simTick(state: GameState): void {
   RandomEventSystem.update(state, DT);
   EconomySystem.update(state, DT);
   UnitBehaviorSystem.update(state, DT);
+  RegenSystem.update(state, DT);
   SpawnSystem.update(state, DT);
   AbilitySystem.update(state, DT);
   MovementSystem.update(state, DT);

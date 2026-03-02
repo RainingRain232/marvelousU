@@ -15,7 +15,8 @@ export class HealFX {
         this._container = new Container();
         vm.layers.fx.addChild(this._container);
 
-        EventBus.on("unitHealed", ({ position }) => {
+        EventBus.on("unitHealed", ({ position, isRegen }) => {
+            if (isRegen) return; // Regen only shows the number, not the green circle
             this._spawnHealEffect(position.x, position.y);
         });
     }

@@ -69,6 +69,10 @@ export interface Unit {
   groupId: string | null; // Non-null when unit belongs to a spawn group
   formationOffset: Vec2; // Perpendicular offset applied on top of the shared group path
   hasCharged: boolean; // True if the unit has already landed its high-damage first hit
+
+  // Passive regeneration
+  regenRate: number; // HP restored per second (0 = no regen)
+  regenAccumulator: number; // Fractional HP accumulator for sub-1 healing ticks
 }
 
 // ---------------------------------------------------------------------------
@@ -164,5 +168,7 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     groupId: null,
     formationOffset: { x: 0, y: 0 },
     hasCharged: false,
+    regenRate: def.regenRate ?? 0,
+    regenAccumulator: 0,
   };
 }
