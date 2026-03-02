@@ -3,7 +3,7 @@ import type { GameState } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Ability } from "@sim/abilities/Ability";
 import { createAbility } from "@sim/abilities/index";
-import { UnitState, UnitType } from "@/types";
+import { BuildingState, UnitState, UnitType } from "@/types";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { inRange } from "@sim/utils/math";
 import { EventBus } from "@sim/core/EventBus";
@@ -120,17 +120,30 @@ function _tickCast(state: GameState, unit: Unit, dt: number): void {
 function _tryInitiateCast(state: GameState, unit: Unit): void {
   if (!unit.targetId) return;
 
-  const target = state.units.get(unit.targetId);
-  if (!target || target.state === UnitState.DIE) return;
+  // Resolve target position — could be a unit or a building
+  let targetPos: { x: number; y: number } | null = null;
+
+  const targetUnit = state.units.get(unit.targetId);
+  if (targetUnit && targetUnit.state !== UnitState.DIE) {
+    targetPos = targetUnit.position;
+  } else {
+    const targetBuilding = state.buildings.get(unit.targetId);
+    if (targetBuilding && targetBuilding.state === BuildingState.ACTIVE) {
+      targetPos = targetBuilding.position;
+    }
+  }
+
+  if (!targetPos) return;
 
   for (const abilityId of unit.abilityIds) {
     const ability = state.abilities.get(abilityId);
     if (!ability) continue;
     if (ability.currentCooldown > 0) continue;
-    if (!inRange(unit.position, target.position, ability.range)) continue;
+    if (ability.targetsFriendlies) continue; // Skip heal/buff abilities when attacking buildings
+    if (!inRange(unit.position, targetPos, ability.range)) continue;
 
     // Initiate cast
-    ability.targetPosition = { ...target.position };
+    ability.targetPosition = { ...targetPos };
     unit.castTimer = ability.castTime;
 
     const prev = unit.state;
