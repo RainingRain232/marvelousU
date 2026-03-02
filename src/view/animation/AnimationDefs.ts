@@ -388,7 +388,7 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 12,
     dieFps: 8,
   }),
-  [UnitType.ROYAL_DEFENDER]: buildDef("royal_phalanx", {
+  [UnitType.ROYAL_DEFENDER]: buildDef("royal_defender", {
     idleFps: 6,
     moveFps: 8,
     attackFps: 12,

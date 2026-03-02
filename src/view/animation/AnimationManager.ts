@@ -83,6 +83,7 @@ import { generateTrebuchetFrames } from "@view/animation/TrebuchetSpriteGen";
 import { generateDefenderFrames } from "@view/animation/DefenderSpriteGen";
 import { generatePhalanxFrames } from "@view/animation/PhalanxSpriteGen";
 import { generateRoyalPhalanxFrames } from "@view/animation/RoyalPhalanxSpriteGen";
+import { generateRoyalDefenderFrames } from "@view/animation/RoyalDefenderSpriteGen";
 import { generateLongbowmanFrames } from "@view/animation/LongbowmanSpriteGen";
 import { generateCrossbowmanFrames } from "@view/animation/CrossbowmanSpriteGen";
 import { generateGiantFrogFrames } from "@view/animation/GiantFrogSpriteGen";
@@ -362,6 +363,8 @@ export class AnimationManager {
         this._generatePhalanxSprites(key, renderer);
       } else if (key === "royal_phalanx") {
         this._generateRoyalPhalanxSprites(key, renderer);
+      } else if (key === "royal_defender") {
+        this._generateRoyalDefenderSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1345,6 +1348,17 @@ export class AnimationManager {
 
   private _generateRoyalPhalanxSprites(key: string, renderer: Renderer): void {
     const textures = generateRoyalPhalanxFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateRoyalDefenderSprites(key: string, renderer: Renderer): void {
+    const textures = generateRoyalDefenderFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

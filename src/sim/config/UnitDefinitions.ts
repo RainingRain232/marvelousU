@@ -1021,7 +1021,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 8,
     abilityTypes: [],
-    spriteKey: "royal_phalanx",
+    spriteKey: "royal_defender",
     description:
       "Heavily armored royal guard with massive shield. Blocks attacks and strikes with devastating melee blows.",
   },
