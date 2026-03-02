@@ -47,7 +47,6 @@ const COL_MANE        = 0x1a1510;
 const COL_HOOF        = 0x1a1610;
 
 const COL_BARDING     = 0x888899;
-const COL_BARDING_HI  = 0xaaaabb;
 const COL_BARDING_TRIM = 0xaa8844;
 
 const COL_CAPARISON   = 0xddddcc;
