@@ -183,6 +183,22 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     idleFps: 6,
     castFps: 10,
   }),
+  [UnitType.FIRE_ADEPT_MAGE]: buildDef("fire_adept_mage", {
+    idleFps: 6,
+    castFps: 8,
+  }),
+  [UnitType.COLD_ADEPT_MAGE]: buildDef("cold_adept_mage", {
+    idleFps: 6,
+    castFps: 8,
+  }),
+  [UnitType.LIGHTNING_ADEPT_MAGE]: buildDef("lightning_adept_mage", {
+    idleFps: 6,
+    castFps: 8,
+  }),
+  [UnitType.DISTORTION_ADEPT_MAGE]: buildDef("distortion_adept_mage", {
+    idleFps: 6,
+    castFps: 10,
+  }),
   [UnitType.VOID_SNAIL]: buildDef("void_snail", {
     moveFps: 8,
     attackFps: 6,

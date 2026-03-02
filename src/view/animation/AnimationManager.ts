@@ -41,6 +41,12 @@ import {
   PALETTE_MONK,
 } from "@view/animation/StormMageSpriteGen";
 import {
+  generateFireAdeptMageFrames,
+  generateColdAdeptMageFrames,
+  generateLightningAdeptMageFrames,
+  generateDistortionAdeptMageFrames,
+} from "@view/animation/AdeptMageSpriteGen";
+import {
   generateDragonFrames,
   PALETTE_RED_DRAGON,
   PALETTE_FROST_DRAGON,
@@ -233,6 +239,14 @@ export class AnimationManager {
         this._generateMageSprites(key, renderer, PALETTE_SAINT);
       } else if (key === "monk") {
         this._generateMageSprites(key, renderer, PALETTE_MONK);
+      } else if (key === "fire_adept_mage") {
+        this._generateFireAdeptMageSprites(key, renderer);
+      } else if (key === "cold_adept_mage") {
+        this._generateColdAdeptMageSprites(key, renderer);
+      } else if (key === "lightning_adept_mage") {
+        this._generateLightningAdeptMageSprites(key, renderer);
+      } else if (key === "distortion_adept_mage") {
+        this._generateDistortionAdeptMageSprites(key, renderer);
       } else if (key === "red_dragon") {
         this._generateDragonSprites(key, renderer, PALETTE_RED_DRAGON, false);
       } else if (key === "frost_dragon") {
@@ -463,6 +477,64 @@ export class AnimationManager {
       if (!this._cache.has(ck)) {
         this._cache.set(ck, textures);
       }
+    }
+  }
+
+  private _generateFireAdeptMageSprites(key: string, renderer: Renderer): void {
+    const textures = generateFireAdeptMageFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateColdAdeptMageSprites(key: string, renderer: Renderer): void {
+    const textures = generateColdAdeptMageFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateLightningAdeptMageSprites(
+    key: string,
+    renderer: Renderer,
+  ): void {
+    const textures = generateLightningAdeptMageFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateDistortionAdeptMageSprites(
+    key: string,
+    renderer: Renderer,
+  ): void {
+    const textures = generateDistortionAdeptMageFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
     }
   }
 
