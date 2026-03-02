@@ -212,6 +212,12 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 8,
     dieFps: 6,
   }),
+  [UnitType.RHINO]: buildDef("rhino", {
+    idleFps: 6,
+    moveFps: 6,
+    attackFps: 6,
+    dieFps: 5,
+  }),
   [UnitType.BAT]: buildDef("bat", {
     idleFps: 8,
     moveFps: 12,
@@ -227,7 +233,10 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.BALLISTA]: buildDef("ballista", { attackFps: 6 }),
   [UnitType.BOLT_THROWER]: buildDef("bolt_thrower", { attackFps: 4 }),
   [UnitType.CATAPULT]: buildDef("catapult", { attackFps: 3, moveFps: 6 }),
-  [UnitType.SIEGE_CATAPULT]: buildDef("siege_catapult", { attackFps: 2, moveFps: 5 }),
+  [UnitType.SIEGE_CATAPULT]: buildDef("siege_catapult", {
+    attackFps: 2,
+    moveFps: 5,
+  }),
   [UnitType.TREBUCHET]: buildDef("trebuchet", { attackFps: 2, moveFps: 4 }),
   [UnitType.SCOUT_CAVALRY]: buildDef("knight", { moveFps: 12, attackFps: 10 }),
   [UnitType.LANCER]: buildDef("knight", { moveFps: 10, attackFps: 8 }),

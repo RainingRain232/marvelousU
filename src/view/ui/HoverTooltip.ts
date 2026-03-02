@@ -174,6 +174,7 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.REPEATER]: "Repeater",
   [UnitType.DEVOURER]: "Devourer",
   [UnitType.TROLL]: "Troll",
+  [UnitType.RHINO]: "Rhino",
   [UnitType.BAT]: "Bat",
   [UnitType.HORSE_ARCHER]: "Horse Archer",
   [UnitType.SHORTBOW]: "Shortbow",

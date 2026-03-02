@@ -61,6 +61,7 @@ export enum UnitType {
   GIANT_FROG = "giant_frog",
   DEVOURER = "devourer",
   TROLL = "troll",
+  RHINO = "rhino",
   BAT = "bat",
   HORSE_ARCHER = "horse_archer",
   SHORTBOW = "shortbow",

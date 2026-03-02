@@ -255,7 +255,12 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [],
     spriteKey: "siege_hunter",
-    huntTargets: [UnitType.BATTERING_RAM, UnitType.CATAPULT, UnitType.SIEGE_CATAPULT, UnitType.TREBUCHET],
+    huntTargets: [
+      UnitType.BATTERING_RAM,
+      UnitType.CATAPULT,
+      UnitType.SIEGE_CATAPULT,
+      UnitType.TREBUCHET,
+    ],
   },
   [UnitType.SUMMONER]: {
     type: UnitType.SUMMONER,
@@ -403,6 +408,21 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "troll",
     description:
       "Massive troll with immense health. Slow but devastating in melee.",
+  },
+  [UnitType.RHINO]: {
+    type: UnitType.RHINO,
+    cost: 500,
+    hp: 350,
+    atk: 15,
+    attackSpeed: 0.5,
+    speed: 0.6,
+    range: 1,
+    spawnTime: 7,
+    abilityTypes: [],
+    spriteKey: "rhino",
+    size: { width: 2.0, height: 1.0 },
+    description:
+      "Armored rhino with thick skin. Slow but tanky, charges at enemies with its horn.",
   },
   [UnitType.BAT]: {
     type: UnitType.BAT,

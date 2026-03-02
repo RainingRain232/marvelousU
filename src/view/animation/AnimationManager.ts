@@ -84,6 +84,7 @@ import { generateAssassinFrames } from "@view/animation/AssassinSpriteGen";
 import { generateRepeaterFrames } from "@view/animation/RepeaterSpriteGen";
 import { generateRoyalLancerFrames } from "@view/animation/RoyalLancerSpriteGen";
 import { generateTrollFrames } from "@view/animation/TrollSpriteGen";
+import { generateRhinoFrames } from "@view/animation/RhinoSpriteGen";
 import { generateBatFrames } from "@view/animation/BatSpriteGen";
 import { generateTemplarFrames } from "@view/animation/TemplarSpriteGen";
 import { generateAngelFrames } from "@view/animation/AngelSpriteGen";
@@ -299,6 +300,8 @@ export class AnimationManager {
         this._generateRoyalLancerSprites(key, renderer);
       } else if (key === "troll") {
         this._generateTrollSprites(key, renderer);
+      } else if (key === "rhino") {
+        this._generateRhinoSprites(key, renderer);
       } else if (key === "bat") {
         this._generateBatSprites(key, renderer);
       } else if (key === "templar") {
@@ -1016,6 +1019,19 @@ export class AnimationManager {
 
   private _generateTrollSprites(key: string, renderer: Renderer): void {
     const textures = generateTrollFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateRhinoSprites(key: string, renderer: Renderer): void {
+    const textures = generateRhinoFrames(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];

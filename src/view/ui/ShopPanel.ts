@@ -209,6 +209,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.REPEATER]: "Repeater",
   [UnitType.DEVOURER]: "Devourer",
   [UnitType.TROLL]: "Troll",
+  [UnitType.RHINO]: "Rhino",
   [UnitType.BAT]: "Bat",
   [UnitType.HORSE_ARCHER]: "Horse Archer",
   [UnitType.SHORTBOW]: "Shortbow",
@@ -1470,7 +1471,10 @@ export class ShopPanel {
     }
 
     // Cost text (use discounted cost for tower building types)
-    const displayCost = UpgradeSystem.getTowerBuildingCost(bpType, this._localPlayerId);
+    const displayCost = UpgradeSystem.getTowerBuildingCost(
+      bpType,
+      this._localPlayerId,
+    );
     const costText = new Text({
       text: `${displayCost}g`,
       style: locked ? STYLE_ICON_COST_UNAFFORDABLE : STYLE_ICON_COST,
@@ -1600,7 +1604,10 @@ export class ShopPanel {
   private _buyBlueprint(bpType: BuildingType): void {
     const player = this._state.players.get(this._localPlayerId);
     if (!player) return;
-    const cost = UpgradeSystem.getTowerBuildingCost(bpType, this._localPlayerId);
+    const cost = UpgradeSystem.getTowerBuildingCost(
+      bpType,
+      this._localPlayerId,
+    );
     if (player.gold < cost) return;
 
     player.gold -= cost;
@@ -1642,9 +1649,13 @@ export class ShopPanel {
 
     for (const entry of this._bpIcons) {
       if (entry.locked) continue;
-      const cost = UpgradeSystem.getTowerBuildingCost(entry.type, this._localPlayerId);
-      entry.costText.text  = `${cost}g`;
-      entry.costText.style = cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
+      const cost = UpgradeSystem.getTowerBuildingCost(
+        entry.type,
+        this._localPlayerId,
+      );
+      entry.costText.text = `${cost}g`;
+      entry.costText.style =
+        cost <= gold ? STYLE_ICON_COST : STYLE_ICON_COST_UNAFFORDABLE;
     }
   }
 
