@@ -210,6 +210,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.DEVOURER]: "Devourer",
   [UnitType.TROLL]: "Troll",
   [UnitType.RHINO]: "Rhino",
+  [UnitType.PIXIE]: "Pixie",
   [UnitType.BAT]: "Bat",
   [UnitType.HORSE_ARCHER]: "Horse Archer",
   [UnitType.SHORTBOW]: "Shortbow",

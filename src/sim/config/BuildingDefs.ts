@@ -215,6 +215,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.TROLL,
       UnitType.BAT,
       UnitType.RHINO,
+      UnitType.PIXIE,
     ],
     blueprints: [],
     footprint: { w: 2, h: 2 },

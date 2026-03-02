@@ -218,6 +218,13 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 6,
     dieFps: 5,
   }),
+  [UnitType.PIXIE]: buildDef("pixie", {
+    idleFps: 8,
+    moveFps: 10,
+    attackFps: 10,
+    attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7),
+    dieFps: 6,
+  }),
   [UnitType.BAT]: buildDef("bat", {
     idleFps: 8,
     moveFps: 12,

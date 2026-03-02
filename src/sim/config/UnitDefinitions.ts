@@ -424,6 +424,20 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Armored rhino with thick skin. Slow but tanky, charges at enemies with its horn.",
   },
+  [UnitType.PIXIE]: {
+    type: UnitType.PIXIE,
+    cost: 150,
+    hp: 40,
+    atk: 8,
+    attackSpeed: 0.8,
+    speed: 1.8,
+    range: 5,
+    spawnTime: 4,
+    abilityTypes: [],
+    spriteKey: "pixie",
+    description:
+      "Small ethereal pixie with magic attacks. Flies quickly and casts spells with its outstretched arms.",
+  },
   [UnitType.BAT]: {
     type: UnitType.BAT,
     cost: 150,
