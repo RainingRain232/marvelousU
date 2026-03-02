@@ -28,6 +28,7 @@ import { WarpTowerRenderer } from "@view/entities/WarpTowerRenderer";
 import { HealingTowerRenderer } from "@view/entities/HealingTowerRenderer";
 import { BallistaTowerRenderer } from "@view/entities/BallistaTowerRenderer";
 import { RepeaterTowerRenderer } from "@view/entities/RepeaterTowerRenderer";
+import { ArchitectsGuildRenderer } from "@view/entities/ArchitectsGuildRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
@@ -113,6 +114,7 @@ export const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HEALING_TOWER]: "Healing Tower",
   [BuildingType.BALLISTA_TOWER]: "Ballista Tower",
   [BuildingType.REPEATER_TOWER]: "Repeater Tower",
+  [BuildingType.ARCHITECTS_GUILD]: "Architects Guild",
 };
 
 export const UNIT_LABELS: Record<UnitType, string> = {
@@ -719,6 +721,10 @@ export class HoverTooltip {
     } else if (buildingType === BuildingType.REPEATER_TOWER) {
       buildingContainer = new RepeaterTowerRenderer(null).container;
       texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.ARCHITECTS_GUILD) {
+      buildingContainer = new ArchitectsGuildRenderer(null).container;
+      texW = 192;
       texH = 128;
     }
 

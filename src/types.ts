@@ -139,6 +139,7 @@ export enum BuildingType {
   HEALING_TOWER = "healing_tower",
   BALLISTA_TOWER = "ballista_tower",
   REPEATER_TOWER = "repeater_tower",
+  ARCHITECTS_GUILD = "architects_guild",
 }
 
 export enum AbilityType {

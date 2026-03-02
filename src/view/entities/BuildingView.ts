@@ -37,6 +37,7 @@ import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { MarketRenderer } from "@view/entities/MarketRenderer";
 import { StableRenderer } from "@view/entities/StableRenderer";
 import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
+import { ArchitectsGuildRenderer } from "@view/entities/ArchitectsGuildRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -77,6 +78,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.WARP_TOWER]: 0x9966cc,
   [BuildingType.BALLISTA_TOWER]: 0x8b6339,
   [BuildingType.REPEATER_TOWER]: 0x996633,
+  [BuildingType.ARCHITECTS_GUILD]: 0x8b8878,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -125,6 +127,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HEALING_TOWER]: "HEAL TOWER",
   [BuildingType.BALLISTA_TOWER]: "BALLISTA TWR",
   [BuildingType.REPEATER_TOWER]: "REPEATER TWR",
+  [BuildingType.ARCHITECTS_GUILD]: "ARCHITECTS",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -199,6 +202,7 @@ export class BuildingView {
   private _warpTowerRenderer: WarpTowerRenderer | null = null;
   private _ballistaTowerRenderer: BallistaTowerRenderer | null = null;
   private _repeaterTowerRenderer: RepeaterTowerRenderer | null = null;
+  private _architectsGuildRenderer: ArchitectsGuildRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -346,6 +350,11 @@ export class BuildingView {
     } else if (building.type === BuildingType.REPEATER_TOWER) {
       this._repeaterTowerRenderer = new RepeaterTowerRenderer(building.owner);
       this.container.addChild(this._repeaterTowerRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.ARCHITECTS_GUILD) {
+      this._architectsGuildRenderer = new ArchitectsGuildRenderer(building.owner);
+      this.container.addChild(this._architectsGuildRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -506,6 +515,9 @@ export class BuildingView {
       }
       if (this._healingTowerRenderer) {
         this._healingTowerRenderer.tick(dt, phase);
+      }
+      if (this._architectsGuildRenderer) {
+        this._architectsGuildRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }

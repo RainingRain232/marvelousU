@@ -52,6 +52,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.ELITE_HALL,
       BuildingType.MARKET,
       BuildingType.FACTION_HALL,
+      BuildingType.ARCHITECTS_GUILD,
     ],
     footprint: { w: 4, h: 4 },
     placementZone: "own",
@@ -576,5 +577,19 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     ],
     description:
       "Defensive structure with rapid-fire repeater for high attack speed.",
+  },
+  [BuildingType.ARCHITECTS_GUILD]: {
+    type: BuildingType.ARCHITECTS_GUILD,
+    cost: 800,
+    hp: 250,
+    goldIncome: 2,
+    shopInventory: [UnitType.CONSTRUCTIONIST],
+    blueprints: [],
+    footprint: { w: 3, h: 2 },
+    placementZone: "own",
+    maxCount: 1,
+    prerequisite: { types: [BuildingType.BLACKSMITH], minCount: 1 },
+    description:
+      "A grand guild hall where master architects draft blueprints and plan fortifications.",
   },
 };

@@ -37,6 +37,7 @@ import { WarpTowerRenderer } from "@view/entities/WarpTowerRenderer";
 import { HealingTowerRenderer } from "@view/entities/HealingTowerRenderer";
 import { BallistaTowerRenderer } from "@view/entities/BallistaTowerRenderer";
 import { RepeaterTowerRenderer } from "@view/entities/RepeaterTowerRenderer";
+import { ArchitectsGuildRenderer } from "@view/entities/ArchitectsGuildRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { WallRenderer } from "@view/entities/WallRenderer";
 import { TempleRenderer } from "@view/entities/TempleRenderer";
@@ -178,6 +179,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.WARP_TOWER]: "Warp Tower",
   [BuildingType.BALLISTA_TOWER]: "Ballista Tower",
   [BuildingType.REPEATER_TOWER]: "Repeater Tower",
+  [BuildingType.ARCHITECTS_GUILD]: "Architects Guild",
 };
 
 // Unit display names
@@ -962,6 +964,10 @@ export class ShopPanel {
       const rtr = new RepeaterTowerRenderer(null);
       buildingContainer = rtr.container;
       texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.ARCHITECTS_GUILD) {
+      buildingContainer = new ArchitectsGuildRenderer(null).container;
+      texW = 192;
       texH = 128;
     }
 

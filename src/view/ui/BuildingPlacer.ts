@@ -52,6 +52,7 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.HEALING_TOWER]: 0x2ecc71,
   [BuildingType.BALLISTA_TOWER]: 0x8b6339,
   [BuildingType.REPEATER_TOWER]: 0x996633,
+  [BuildingType.ARCHITECTS_GUILD]: 0x8b8878,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -82,6 +83,7 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HEALING_TOWER]: "HEALING",
   [BuildingType.BALLISTA_TOWER]: "BALLISTA",
   [BuildingType.REPEATER_TOWER]: "REPEATER",
+  [BuildingType.ARCHITECTS_GUILD]: "ARCHITECTS",
 };
 
 const LABEL_STYLE = new TextStyle({
