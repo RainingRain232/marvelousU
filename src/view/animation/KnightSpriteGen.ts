@@ -22,6 +22,7 @@ import { UnitState } from "@/types";
 
 const FW = 96;          // frame width  (px) – 2 tiles wide
 const FH = 96;          // frame height (px) – 2 tiles high
+const OY = 30;           // vertical offset to center art in taller frame
 const GY = FH - 4;      // ground line Y
 
 // Palette ─ royal knight cavalry
@@ -362,10 +363,10 @@ function generateIdleFrames(g: Graphics, frame: number): void {
   ellipse(g, 44, GY, 22, 5, COL_SHADOW, 0.3);
 
   // Horse
-  drawHorse(g, 48, 24, gait, 0);
+  drawHorse(g, 48, OY + 24, gait, 0);
 
   // Rider
-  drawRider(g, 44, 14 + Math.sin(gait * Math.PI * 2) * 0.5, breathe, -Math.PI * 0.35, 0);
+  drawRider(g, 44, OY + 14 + Math.sin(gait * Math.PI * 2) * 0.5, breathe, -Math.PI * 0.35, 0);
 }
 
 function generateMoveFrames(g: Graphics, frame: number): void {
@@ -377,10 +378,10 @@ function generateMoveFrames(g: Graphics, frame: number): void {
   ellipse(g, 44, GY, 22, 5, COL_SHADOW, 0.3);
 
   // Horse (trotting)
-  drawHorse(g, 48, 24, gait, Math.sin(gait * Math.PI * 2) * 0.3);
+  drawHorse(g, 48, OY + 24, gait, Math.sin(gait * Math.PI * 2) * 0.3);
 
   // Rider (bobbing with horse)
-  drawRider(g, 44, 14 + horseBob, breathe, -Math.PI * 0.35 + Math.sin(gait * Math.PI * 2) * 0.1, 0);
+  drawRider(g, 44, OY + 14 + horseBob, breathe, -Math.PI * 0.35 + Math.sin(gait * Math.PI * 2) * 0.1, 0);
 }
 
 function generateAttackFrames(g: Graphics, frame: number): void {
@@ -416,10 +417,10 @@ function generateAttackFrames(g: Graphics, frame: number): void {
   ellipse(g, 44, GY, 22, 5, COL_SHADOW, 0.3);
 
   // Horse (charging)
-  drawHorse(g, 48 - lean, 24, t * 2, -0.3);
+  drawHorse(g, 48 - lean, OY + 24, t * 2, -0.3);
 
   // Rider
-  drawRider(g, 44 - lean, 14 + horseSurge * 0.5, 0, swordAngle, swordExt);
+  drawRider(g, 44 - lean, OY + 14 + horseSurge * 0.5, 0, swordAngle, swordExt);
 }
 
 function generateCastFrames(g: Graphics, frame: number): void {
@@ -442,12 +443,12 @@ function generateDieFrames(g: Graphics, frame: number): void {
   // Horse (stumbling)
   if (t < 0.85) {
     const stumble = t * 3;
-    drawHorse(g, 48 + slideX * 0.3, 24 + dropY * 0.5, stumble, fallAngle * 2);
+    drawHorse(g, 48 + slideX * 0.3, OY + 24 + dropY * 0.5, stumble, fallAngle * 2);
   }
 
   // Rider (falling off)
   if (t < 0.95) {
-    drawRider(g, 44 + slideX, 14 + dropY, 0, -Math.PI * 0.5 - fallAngle, 0);
+    drawRider(g, 44 + slideX, OY + 14 + dropY, 0, -Math.PI * 0.5 - fallAngle, 0);
   }
 }
 
