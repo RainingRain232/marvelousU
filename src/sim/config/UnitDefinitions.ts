@@ -762,6 +762,11 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "scout_cavalry",
     isChargeUnit: true,
+    size: {
+      width: 2.0,
+      height: 2.0,
+      healthBarOffset: -1.0,
+    },
   },
   [UnitType.LANCER]: {
     type: UnitType.LANCER,
