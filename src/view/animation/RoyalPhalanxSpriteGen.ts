@@ -23,7 +23,6 @@ const COL_HELM = 0xccbb55;
 const COL_HELM_HI = 0xeedd88;
 const COL_VISOR = 0x1a1a2e;
 const COL_PLUME = 0xcc2222;
-const COL_PLUME_DK = 0x991111;
 const COL_PLUME_HI = 0xee4444;
 const COL_SHIELD = 0x3355aa;
 const COL_SHIELD_HI = 0x4466bb;

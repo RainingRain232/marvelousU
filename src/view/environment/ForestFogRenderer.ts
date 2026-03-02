@@ -20,10 +20,8 @@ export class ForestFogRenderer {
     private _gfx = new Graphics();
     private _banks: FogBank[] = [];
     private _time = 0;
-    private _worldW: number;
 
     constructor(worldW: number, worldH: number, seed: number) {
-        this._worldW = worldW;
         this.container.addChild(this._gfx);
 
         let s = seed;

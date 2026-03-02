@@ -7,7 +7,6 @@ const F = 48;
 const CX = F / 2;
 const GY = F - 4;
 
-const COL_SKIN = 0xd4a574;
 const COL_SKIN_DK = 0xb8875a;
 const COL_TUNIC = 0x2e7a3f;
 const COL_TUNIC_DK = 0x1f5e30;
@@ -101,7 +100,7 @@ function drawJavelin(
 // Frame generators
 // ---------------------------------------------------------------------------
 
-function generateIdleFrames(g: Graphics, frame: number): void {
+function generateIdleFrames(g: Graphics, _frame: number): void {
   const gy2 = GY;
   const legH = 8;
   const torsoH = 12;
@@ -119,7 +118,6 @@ function generateIdleFrames(g: Graphics, frame: number): void {
 
 function generateMoveFrames(g: Graphics, frame: number): void {
   const walk = Math.sin((frame / 8) * Math.PI * 2);
-  const walk = Math.sin(t * Math.PI * 2);
   const gy2 = GY;
   const legH = 8;
   const torsoH = 12;
@@ -136,9 +134,8 @@ function generateMoveFrames(g: Graphics, frame: number): void {
   drawJavelin(g, CX + 6, torsoTop + 6, -0.2 + walk * 0.2, 22);
 }
 
-function generateAttackFrames(g: Graphics, frame: number): void {
+function generateAttackFrames(g: Graphics, _frame: number): void {
   // Simple thrust forward with javelin
-  const t = frame / 7;
   const gy2 = GY;
   const legTop = gy2 - 5 - 8;
   const torsoTop = legTop - 12;

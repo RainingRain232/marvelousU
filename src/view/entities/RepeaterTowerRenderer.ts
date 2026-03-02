@@ -9,27 +9,22 @@ import { GamePhase } from "@/types";
 
 const TS = 64; // tile size
 const TW = 1 * TS; // tower width
-const TH = 1 * TS; // tower height
 
 // Palette - similar to TowerRenderer but with repeater mechanism colors
 const COL_STONE = 0x8b8878;
 const COL_STONE_LT = 0xa09d8f;
 const COL_STONE_DK = 0x6b6860;
-const COL_MORTAR = 0x9a9688;
 const COL_ROOF = 0x5a2d2d;
 const COL_ROOF_DK = 0x3d1515;
 const COL_ROOF_LT = 0x6e3838;
 const COL_WINDOW = 0x1a1a2e;
 const COL_WINDOW_GLOW = 0x334466;
-const COL_WINDOW_FRAME = 0x555555;
 const COL_MOSS = 0x4a6b3a;
 const COL_IVY = 0x3a5a2e;
-const COL_IVY_LT = 0x5a7a4a;
 const COL_WOOD = 0x8b6339; // Repeater wood color
 const COL_WOOD_DK = 0x6b4226; // Dark wood for repeater frame
 const COL_METAL = 0xaaaaaa; // Metal for repeater mechanism
 const COL_METAL_DK = 0x666666; // Dark metal for barrels
-const COL_TORCH = 0xffaa33;
 
 // Animation timing
 const FLAG_SPEED = 3.2;
@@ -72,7 +67,7 @@ export class RepeaterTowerRenderer {
   // Public API
   // ---------------------------------------------------------------------------
 
-  tick(dt: number, phase: GamePhase): void {
+  tick(dt: number, _phase: GamePhase): void {
     this._time += dt;
     this._flagTime += dt;
     this._updateFlag();

@@ -475,7 +475,6 @@ export class FirepitRenderer {
         g.circle(x, bodyY - 2, 1).fill({ color: 0xccaa44 });
 
         // --- Lute (held at angle, strumming arm animates) ---
-        const strumAngle = Math.sin(t * 8) * 0.15; // lute rocks with strumming
         const strumOff = Math.sin(t * 8) * 1.5;
 
         // Left arm — holds neck of lute

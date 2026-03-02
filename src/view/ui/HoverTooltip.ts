@@ -83,37 +83,6 @@ const STYLE_SPAWN = new TextStyle({
   fill: 0x668866,
 });
 
-// Building body colors (same palette as BuildingView)
-const BUILDING_COLORS: Record<BuildingType, number> = {
-  [BuildingType.CASTLE]: 0x8b6914,
-  [BuildingType.BARRACKS]: 0x3a5c8b,
-  [BuildingType.STABLES]: 0x5c3a1e,
-  [BuildingType.MAGE_TOWER]: 0x6a1e8b,
-  [BuildingType.ARCHERY_RANGE]: 0x2e6b2e,
-  [BuildingType.SIEGE_WORKSHOP]: 0x7a5c2e,
-  [BuildingType.BLACKSMITH]: 0x6b4a3a,
-  [BuildingType.TOWN]: 0x6b8c3a,
-  [BuildingType.CREATURE_DEN]: 0x3d2b1f,
-  [BuildingType.TOWER]: 0x8b8b6e,
-  [BuildingType.FARM]: 0x5a8a2e,
-  [BuildingType.HAMLET]: 0x7aaa3e,
-  [BuildingType.EMBASSY]: 0x3a6b8b,
-  [BuildingType.TEMPLE]: 0xd8bfd8,
-  [BuildingType.WALL]: 0x777777,
-  [BuildingType.FIREPIT]: 0x333333,
-  [BuildingType.MILL]: 0x8b7355,
-  [BuildingType.ELITE_HALL]: 0xaa8844,
-  [BuildingType.MARKET]: 0xaa7733,
-  [BuildingType.FACTION_HALL]: 0x6655aa,
-  [BuildingType.LIGHTNING_TOWER]: 0x4488ff,
-  [BuildingType.ICE_TOWER]: 0xaaddff,
-  [BuildingType.FIRE_TOWER]: 0xff6622,
-  [BuildingType.WARP_TOWER]: 0x9966cc,
-  [BuildingType.HEALING_TOWER]: 0x2ecc71,
-  [BuildingType.BALLISTA_TOWER]: 0x8b6339,
-  [BuildingType.REPEATER_TOWER]: 0x996633,
-};
-
 // Building / unit display names (duplicated from ShopPanel which keeps them private)
 // Note: BUILDING_LABELS and UNIT_LABELS are exported so RaceSelectScreen can import them
 export const BUILDING_LABELS: Record<BuildingType, string> = {
