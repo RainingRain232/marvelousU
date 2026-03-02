@@ -1,16 +1,18 @@
 // Procedural sprite generator for the Questing Knight unit type.
 //
-// Draws a detailed templar knight on an armored warhorse at 72×72 pixels per
-// frame using PixiJS Graphics → RenderTexture.  Produces textures for every
-// animation state (IDLE 8, MOVE 8, ATTACK 7, CAST 6, DIE 7).
+// Draws a detailed side-view templar knight on an armored warhorse at
+// 96×96 pixels per frame using PixiJS Graphics → RenderTexture.
+// Produces textures for every animation state (IDLE 8, MOVE 8, ATTACK 7,
+// CAST 6, DIE 7).
 //
 // Visual features:
-//   - White surcoat with red templar cross over chainmail
-//   - Ornate great helm
-//   - Kite shield with cross emblem
-//   - Raised sword in idle (love-heart floats from mouth)
-//   - Armored warhorse (larger than normal cavalry)
-//   - Shadow ellipse at feet
+//   • Side-view heavy armored warhorse with plate barding & white caparison
+//   • White surcoat with red templar cross over chainmail hauberk
+//   • Great helm with flat top, visor slit, and red plume
+//   • Longsword (raised skyward in idle pose)
+//   • White kite shield with red templar cross
+//   • Floating love-heart (signature idle quirk)
+//   • Shadow ellipse at hooves
 
 import { Graphics, RenderTexture, type Renderer, Texture } from "pixi.js";
 import { UnitState } from "@/types";
@@ -19,307 +21,375 @@ import { UnitState } from "@/types";
 // Constants
 // ---------------------------------------------------------------------------
 
-const F = 72; // frame size (px)
-const CX = F / 2; // center X
-const GY = F - 6; // ground Y (feet line)
+const FW = 96;          // frame width  (px) – 2 tiles wide
+const FH = 96;          // frame height (px) – 2 tiles high
+const OY = 30;          // vertical offset to center art in frame
+const GY = FH - 4;      // ground line Y
 
-// Palette — templar knight
-const COL_CHAIN = 0x999999; // chainmail
-const COL_CHAIN_DK = 0x777777;
-const COL_SURCOAT = 0xeeeeee; // white surcoat
-const COL_SURCOAT_DK = 0xcccccc;
-const COL_CROSS = 0xcc0000; // red templar cross
-const COL_HELM = 0xaabbcc; // great helm
-const COL_HELM_DK = 0x889aaa;
-const COL_HELM_HI = 0xccddee;
-const COL_HORSE = 0x3b3025; // dark armored horse
-const COL_HORSE_DK = 0x251a15;
-const COL_HORSE_HI = 0x5b5045;
-const COL_BARDING = 0x888888; // horse armor (barding)
-const COL_BARDING_HI = 0xaaaaaa;
-const COL_MANE = 0x1a1510;
-const COL_SADDLE = 0x664422;
-const COL_SADDLE_DK = 0x443322;
-const COL_SWORD = 0xd0d8e0;
-const COL_SWORD_HI = 0xf0f4f8;
-const COL_SWORD_GRD = 0xaa8844;
-const COL_SWORD_POM = 0x664422;
-const COL_SHIELD = 0xdddddd;
-const COL_SHIELD_RIM = 0xaa8844;
-const COL_BOOT = 0x443322;
-const COL_SHADOW = 0x000000;
-const COL_HEART = 0xff3366;
-const COL_HEART_HI = 0xff6699;
+// Palette ─ templar questing knight
+const COL_CHAIN       = 0x999999;
+const COL_CHAIN_DK    = 0x777777;
+const COL_SURCOAT     = 0xeeeedd;
+const COL_SURCOAT_DK  = 0xccccbb;
+const COL_SURCOAT_HI  = 0xffffee;
+const COL_CROSS       = 0xcc0000;
+const COL_CROSS_DK    = 0x990000;
+
+const COL_HELM        = 0x99aabb;
+const COL_HELM_HI     = 0xbbccdd;
+const COL_HELM_DK     = 0x778899;
+
+const COL_HORSE       = 0x3a2c1e;
+const COL_HORSE_HI    = 0x5a4c3e;
+const COL_HORSE_DK    = 0x221a10;
+const COL_HORSE_BELLY = 0x4a3c2e;
+const COL_MANE        = 0x1a1510;
+const COL_HOOF        = 0x1a1610;
+
+const COL_BARDING     = 0x888899;
+const COL_BARDING_HI  = 0xaaaabb;
+const COL_BARDING_TRIM = 0xaa8844;
+
+const COL_CAPARISON   = 0xddddcc;
+const COL_CAPARISON_TRIM = 0xcc0000;
+
+const COL_SADDLE      = 0x664422;
+const COL_SADDLE_DK   = 0x443322;
+const COL_REINS       = 0x3a2a1a;
+
+const COL_SWORD       = 0xd0d8e0;
+const COL_SWORD_HI    = 0xf0f4f8;
+const COL_GUARD       = 0xaa8844;
+const COL_GRIP        = 0x553322;
+const COL_POMMEL      = 0x664422;
+
+const COL_SHIELD      = 0xddddcc;
+const COL_SHIELD_RIM  = 0xaa8844;
+const COL_SHIELD_BOSS = 0xbbaa77;
+
+const COL_PLUME       = 0xcc0000;
+const COL_PLUME_TIP   = 0xff3333;
+
+const COL_BOOT        = 0x443322;
+const COL_HEART       = 0xff3366;
+const COL_HEART_HI    = 0xff6699;
+const COL_SHADOW      = 0x000000;
 
 // ---------------------------------------------------------------------------
 // Tiny helpers
 // ---------------------------------------------------------------------------
 
-function drawEllipse(
-  g: Graphics,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  color: number,
-): void {
-  g.fill({ color });
-  g.ellipse(x, y, w, h);
+function ellipse(g: Graphics, x: number, y: number, rx: number, ry: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.ellipse(x, y, rx, ry);
 }
 
-function drawCircle(
-  g: Graphics,
-  x: number,
-  y: number,
-  r: number,
-  color: number,
-): void {
-  g.fill({ color });
+function circle(g: Graphics, x: number, y: number, r: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
   g.circle(x, y, r);
 }
 
-function drawLine(
-  g: Graphics,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  color: number,
-  width: number = 1,
-): void {
-  g.stroke({ color, width });
+function rect(g: Graphics, x: number, y: number, w: number, h: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.rect(x, y, w, h);
+}
+
+function line(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, w = 1): void {
+  g.stroke({ color, width: w });
   g.moveTo(x1, y1).lineTo(x2, y2);
 }
 
-// ---------------------------------------------------------------------------
-// Component drawing functions
-// ---------------------------------------------------------------------------
-
-function drawGreatHelm(g: Graphics, x: number, y: number): void {
-  // Great helm — flat-topped with visor slit
-  g.fill({ color: COL_HELM });
-  g.roundRect(x - 6, y - 7, 12, 14, 3);
-
-  // Highlight
-  g.fill({ color: COL_HELM_HI });
-  g.roundRect(x - 5, y - 6, 10, 4, 2);
-
-  // Visor slit
-  g.fill({ color: 0x222222 });
-  g.rect(x - 4, y, 8, 2);
-
-  // Breathing holes (dots)
-  drawCircle(g, x - 3, y + 4, 0.8, 0x222222);
-  drawCircle(g, x, y + 4, 0.8, 0x222222);
-  drawCircle(g, x + 3, y + 4, 0.8, 0x222222);
-
-  // Darker edges
-  g.fill({ color: COL_HELM_DK });
-  g.rect(x - 6, y + 5, 12, 2);
+function poly(g: Graphics, pts: number[], color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.poly(pts);
+  g.fill();
 }
 
-function drawSurcoatBody(
-  g: Graphics,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-): void {
-  // Chainmail underneath (visible at edges)
-  g.fill({ color: COL_CHAIN });
-  g.rect(x - w / 2 - 1, y, w + 2, h);
+// ---------------------------------------------------------------------------
+// Horse (side-view, facing left – heavy armored templar warhorse)
+// ---------------------------------------------------------------------------
+
+function drawHorse(g: Graphics, ox: number, oy: number, gait: number, tilt: number): void {
+  const bob = Math.sin(gait * Math.PI * 2) * 1.3;
+  const by = oy + bob;
+
+  // ── Legs ──────────────────────────────────────────────────────────────
+  const legLen = 14;
+  const legW = 3;
+  const kneeOff = Math.sin(gait * Math.PI * 2) * 4;
+  const kneeOff2 = Math.sin(gait * Math.PI * 2 + Math.PI) * 4;
+
+  // Back legs
+  const blx = ox + 10;
+  rect(g, blx - 1, by + 7, legW, legLen + kneeOff2, COL_HORSE_DK);
+  rect(g, blx - 1, by + 7 + legLen + kneeOff2, legW + 1, 2.5, COL_HOOF);
+  rect(g, blx + 3, by + 7, legW, legLen + kneeOff, COL_HORSE);
+  rect(g, blx + 3, by + 7 + legLen + kneeOff, legW + 1, 2.5, COL_HOOF);
+  // Leg barding
+  rect(g, blx + 2.5, by + 7, legW + 1, 5, COL_BARDING, 0.7);
+
+  // Front legs
+  const flx = ox - 14;
+  rect(g, flx - 1, by + 6, legW, legLen + kneeOff, COL_HORSE_DK);
+  rect(g, flx - 1, by + 6 + legLen + kneeOff, legW + 1, 2.5, COL_HOOF);
+  rect(g, flx + 3, by + 6, legW, legLen + kneeOff2, COL_HORSE);
+  rect(g, flx + 3, by + 6 + legLen + kneeOff2, legW + 1, 2.5, COL_HOOF);
+  rect(g, flx + 2.5, by + 6, legW + 1, 5, COL_BARDING, 0.7);
+
+  // ── Barrel (body) ────────────────────────────────────────────────────
+  ellipse(g, ox, by, 21, 10, COL_HORSE);
+  ellipse(g, ox, by + 3, 18, 6, COL_HORSE_BELLY);
+  ellipse(g, ox, by - 4, 17, 4, COL_HORSE_HI);
+
+  // ── Plate barding ────────────────────────────────────────────────────
+  // Crupper
+  poly(g, [
+    ox + 7, by - 9,
+    ox + 19, by - 4,
+    ox + 19, by + 5,
+    ox + 12, by + 9,
+    ox + 5, by + 5,
+  ], COL_BARDING, 0.8);
+  line(g, ox + 7, by - 9, ox + 19, by - 4, COL_BARDING_TRIM, 1.5);
+
+  // Peytral
+  poly(g, [
+    ox - 15, by - 7,
+    ox - 7, by - 10,
+    ox - 3, by - 4,
+    ox - 7, by + 6,
+    ox - 17, by + 2,
+  ], COL_BARDING, 0.8);
+  line(g, ox - 15, by - 7, ox - 7, by - 10, COL_BARDING_TRIM, 1.5);
+
+  // ── White caparison with red cross ───────────────────────────────────
+  const capWave = Math.sin(gait * Math.PI * 2 + 0.5) * 1;
+  poly(g, [
+    ox - 2, by - 9,
+    ox + 7, by - 9,
+    ox + 9, by + 8 + capWave,
+    ox - 4, by + 8 + capWave,
+  ], COL_CAPARISON, 0.8);
+  // Red cross on caparison
+  rect(g, ox + 1, by - 6, 2, 12 + capWave, COL_CAPARISON_TRIM, 0.7);
+  rect(g, ox - 2, by - 1, 8, 2, COL_CAPARISON_TRIM, 0.7);
+  // Trim
+  line(g, ox - 4, by + 8 + capWave, ox + 9, by + 8 + capWave, COL_CAPARISON_TRIM, 1.5);
+
+  // ── Tail ─────────────────────────────────────────────────────────────
+  const tailSway = Math.sin(gait * Math.PI * 2 + 1) * 3;
+  const tx = ox + 21;
+  const ty = by - 2;
+  g.stroke({ color: COL_MANE, width: 3 });
+  g.moveTo(tx, ty).bezierCurveTo(tx + 6, ty + tailSway, tx + 10, ty + 7 + tailSway, tx + 8, ty + 14);
+
+  // ── Neck ─────────────────────────────────────────────────────────────
+  const nx = ox - 18;
+  const ny = by - 7 + tilt * 2;
+  poly(g, [
+    ox - 14, by - 9,
+    nx, ny - 10,
+    nx + 7, ny - 13,
+    ox - 8, by - 11,
+  ], COL_HORSE);
+  // Crinet barding
+  poly(g, [
+    nx + 2, ny - 11,
+    ox - 10, by - 10,
+    ox - 12, by - 7,
+    nx, ny - 8,
+  ], COL_BARDING, 0.7);
+  line(g, nx + 2, ny - 11, ox - 10, by - 10, COL_BARDING_TRIM, 1);
+
+  // ── Head ─────────────────────────────────────────────────────────────
+  const hx = nx - 4;
+  const hy = ny - 12 + tilt * 2;
+  // Chanfron
+  ellipse(g, hx, hy, 8, 5.5, COL_BARDING);
+  // Skull/muzzle
+  ellipse(g, hx - 5, hy + 2, 4, 3, COL_HORSE_HI);
+  circle(g, hx - 7, hy + 2, 1, COL_HORSE_DK);
+  // Eye
+  circle(g, hx - 1, hy - 2, 1.5, 0x111111);
+  circle(g, hx - 1.5, hy - 2.5, 0.5, 0xffffff);
+  // Ear
+  poly(g, [hx + 3, hy - 5, hx + 2, hy - 10, hx + 5, hy - 6], COL_HORSE_DK);
+
+  // ── Mane ─────────────────────────────────────────────────────────────
+  for (let i = 0; i < 6; i++) {
+    const mx = nx + 1 + i * 2.5;
+    const my = ny - 12 + i * 1.5;
+    const maneWave = Math.sin(gait * Math.PI * 2 + i * 0.7) * 2;
+    line(g, mx, my, mx + maneWave - 2, my + 5, COL_MANE, 2);
+  }
+
+  // ── Bridle ───────────────────────────────────────────────────────────
+  line(g, hx - 4, hy + 3, hx + 4, hy - 1, COL_REINS, 1);
+  g.stroke({ color: COL_REINS, width: 1 });
+  g.moveTo(hx + 4, hy - 1).bezierCurveTo(nx + 8, ny - 4, ox - 14, by - 4, ox - 12, by - 2);
+
+  // ── Saddle ───────────────────────────────────────────────────────────
+  ellipse(g, ox - 2, by - 11, 9, 3.5, COL_SADDLE);
+  rect(g, ox - 12, by - 14, 4, 6, COL_SADDLE_DK);
+  rect(g, ox + 4, by - 13, 4, 5, COL_SADDLE_DK);
+  line(g, ox - 4, by - 9, ox - 6, by + 5, COL_SADDLE_DK, 1);
+  rect(g, ox - 8, by + 4, 5, 2, COL_HELM_DK);
+}
+
+// ---------------------------------------------------------------------------
+// Rider (templar questing knight, side-view, facing left)
+// ---------------------------------------------------------------------------
+
+function drawRider(g: Graphics, ox: number, oy: number, breathe: number, swordAngle: number, swordExt: number): void {
+  const rb = breathe;
+
+  // ── Legs ─────────────────────────────────────────────────────────────
+  rect(g, ox - 8, oy + 2, 4, 10, COL_CHAIN);
+  rect(g, ox - 8, oy + 2, 4, 2, COL_CHAIN_DK);
+  rect(g, ox - 9, oy + 11, 5, 3, COL_BOOT);
+
+  // ── Torso ────────────────────────────────────────────────────────────
+  const tx = ox - 2;
+  const ty = oy - 11 + rb;
+
+  // Chainmail hauberk (visible at edges)
+  rect(g, tx - 6, ty - 1, 14, 16, COL_CHAIN);
+  // Chain texture
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 4; col++) {
+      circle(g, tx - 4 + col * 3, ty + 1 + row * 3, 0.4, COL_CHAIN_DK, 0.5);
+    }
+  }
 
   // White surcoat over chainmail
-  g.fill({ color: COL_SURCOAT });
-  g.rect(x - w / 2, y + 1, w, h - 2);
-
+  rect(g, tx - 5, ty, 12, 15, COL_SURCOAT);
+  // Surcoat highlight
+  rect(g, tx - 4, ty + 1, 10, 2, COL_SURCOAT_HI);
   // Surcoat shadow fold
-  g.fill({ color: COL_SURCOAT_DK });
-  g.rect(x - w / 2 + 1, y + h - 4, w - 2, 2);
+  rect(g, tx - 4, ty + 12, 10, 2, COL_SURCOAT_DK);
+  // Center seam
+  line(g, tx + 1, ty, tx + 1, ty + 15, COL_SURCOAT_DK, 0.8);
 
   // Red templar cross on chest
-  const crossCx = x;
-  const crossCy = y + h / 2;
-  g.fill({ color: COL_CROSS });
-  // Vertical bar
-  g.rect(crossCx - 1.5, crossCy - 5, 3, 10);
-  // Horizontal bar
-  g.rect(crossCx - 4, crossCy - 2, 8, 3);
-}
+  rect(g, tx - 1, ty + 2, 3, 10, COL_CROSS);
+  rect(g, tx - 4, ty + 5, 9, 3, COL_CROSS);
+  // Cross shadow
+  rect(g, tx - 1, ty + 2, 1, 10, COL_CROSS_DK, 0.3);
 
-function drawArmoredHorse(
-  g: Graphics,
-  x: number,
-  y: number,
-  walkCycle: number,
-): void {
-  const bob = Math.sin(walkCycle * Math.PI * 2) * 1.5;
+  // Surcoat skirt (below belt)
+  for (let i = 0; i < 3; i++) {
+    rect(g, tx - 5 + i * 4, ty + 15, 4, 3, i % 2 === 0 ? COL_SURCOAT : COL_SURCOAT_DK);
+  }
 
-  // Horse body (larger than standard knight horse)
-  g.fill({ color: COL_HORSE });
-  g.ellipse(x, y + bob, 22, 11);
+  // ── Pauldrons (chainmail covered) ────────────────────────────────────
+  ellipse(g, tx - 6, ty + 1, 4, 3.5, COL_CHAIN);
+  ellipse(g, tx + 8, ty + 1, 4, 3.5, COL_CHAIN);
 
-  // Highlights
-  g.fill({ color: COL_HORSE_HI });
-  g.ellipse(x, y + bob - 1, 19, 8);
+  // ── Shield arm (left) ────────────────────────────────────────────────
+  rect(g, tx - 9, ty + 3, 3, 8, COL_CHAIN);
+  rect(g, tx - 9, ty + 10, 3, 2, COL_CHAIN_DK);
 
-  // Barding (horse armor plates)
-  g.fill({ color: COL_BARDING });
-  g.ellipse(x - 6, y + bob - 2, 8, 6);
-  g.ellipse(x + 6, y + bob - 2, 8, 6);
-
-  // Barding highlights
-  g.fill({ color: COL_BARDING_HI });
-  g.ellipse(x - 6, y + bob - 3, 6, 4);
-  g.ellipse(x + 6, y + bob - 3, 6, 4);
-
-  // Horse legs (4 legs, armored)
-  const legOffset = Math.sin(walkCycle * Math.PI * 2) * 3;
-
-  g.fill({ color: COL_HORSE_DK });
-  // Front legs
-  g.rect(x - 12, y + 8 + bob, 3, 9);
-  g.rect(x - 5, y + 8 + bob - legOffset, 3, 9 + legOffset);
-  // Back legs
-  g.rect(x + 2, y + 8 + bob - legOffset, 3, 9 + legOffset);
-  g.rect(x + 9, y + 8 + bob, 3, 9);
-
-  // Leg armor plates
-  g.fill({ color: COL_BARDING });
-  g.rect(x - 12, y + 8 + bob, 3, 4);
-  g.rect(x - 5, y + 8 + bob - legOffset, 3, 4);
-  g.rect(x + 2, y + 8 + bob - legOffset, 3, 4);
-  g.rect(x + 9, y + 8 + bob, 3, 4);
-
-  // Horse head (armored)
-  g.fill({ color: COL_HORSE });
-  g.ellipse(x - 18, y - 4 + bob, 6, 5);
-
-  // Chanfron (head armor plate)
-  g.fill({ color: COL_BARDING });
-  g.ellipse(x - 18, y - 5 + bob, 4, 4);
-  drawCircle(g, x - 20, y - 3 + bob, 1, 0x222222); // Eye
-
-  // Mane
-  g.fill({ color: COL_MANE });
-  g.rect(x - 15, y - 8 + bob, 8, 4);
-
-  // Tail
-  const tailSway = Math.sin(walkCycle * Math.PI * 2 + Math.PI) * 3;
-  g.fill({ color: COL_MANE });
-  g.rect(x + 18, y + tailSway, 8, 3);
-}
-
-function drawSaddle(g: Graphics, x: number, y: number): void {
-  g.fill({ color: COL_SADDLE });
-  g.ellipse(x, y, 10, 5);
-
-  g.fill({ color: COL_SADDLE_DK });
-  g.ellipse(x, y + 1, 8, 3);
-
-  // Saddle straps
-  drawLine(g, x - 8, y, x - 8, y + 5, COL_SADDLE_DK, 1);
-  drawLine(g, x + 8, y, x + 8, y + 5, COL_SADDLE_DK, 1);
-}
-
-function drawSword(g: Graphics, x: number, y: number, angle: number = 0): void {
-  const swordLength = 16;
-  const swordEndX = x + Math.cos(angle) * swordLength;
-  const swordEndY = y + Math.sin(angle) * swordLength;
-
-  drawLine(g, x, y, swordEndX, swordEndY, COL_SWORD, 3.5);
-  drawLine(g, x, y - 1, swordEndX, swordEndY - 1, COL_SWORD_HI, 1.5);
-
-  // Crossguard
-  const crossAngle = angle + Math.PI / 2;
-  const crossW = 6;
-  const cx1 = x + Math.cos(crossAngle) * crossW;
-  const cy1 = y + Math.sin(crossAngle) * crossW;
-  const cx2 = x - Math.cos(crossAngle) * crossW;
-  const cy2 = y - Math.sin(crossAngle) * crossW;
-
-  g.fill({ color: COL_SWORD_GRD });
-  g.moveTo(cx1, cy1)
-    .lineTo(cx2, cy2)
-    .lineTo(cx2 + Math.cos(angle) * 1.5, cy2 + Math.sin(angle) * 1.5)
-    .lineTo(cx1 + Math.cos(angle) * 1.5, cy1 + Math.sin(angle) * 1.5)
-    .fill();
-
-  // Pommel
-  drawCircle(g, swordEndX, swordEndY, 2.5, COL_SWORD_POM);
-}
-
-function drawShield(
-  g: Graphics,
-  x: number,
-  y: number,
-  scale: number = 1,
-): void {
-  const w = 13 * scale;
-  const h = 15 * scale;
-
-  // Kite shield — white with red cross
-  g.fill({ color: COL_SHIELD });
-  g.moveTo(x, y - h / 2)
-    .lineTo(x + w / 2, y - h / 3)
-    .lineTo(x + w / 2, y + h / 3)
-    .lineTo(x, y + h / 2)
-    .lineTo(x - w / 2, y + h / 3)
-    .lineTo(x - w / 2, y - h / 3)
-    .fill();
-
-  // Shield rim
-  g.fill({ color: COL_SHIELD_RIM });
-  g.moveTo(x, y - h / 2 + 1)
-    .lineTo(x + w / 2 - 1, y - h / 3 + 1)
-    .lineTo(x + w / 2 - 1, y + h / 3 - 1)
-    .lineTo(x, y + h / 2 - 1)
-    .lineTo(x - w / 2 + 1, y + h / 3 - 1)
-    .lineTo(x - w / 2 + 1, y - h / 3 + 1)
-    .fill();
-
+  // ── Kite shield (white with red templar cross) ───────────────────────
+  const sx = tx - 11;
+  const sy = ty + 4;
+  poly(g, [
+    sx, sy - 7,
+    sx + 7, sy - 4,
+    sx + 7, sy + 6,
+    sx, sy + 11,
+    sx - 7, sy + 6,
+    sx - 7, sy - 4,
+  ], COL_SHIELD);
+  // Rim
+  g.stroke({ color: COL_SHIELD_RIM, width: 1.5 });
+  g.poly([sx, sy - 7, sx + 7, sy - 4, sx + 7, sy + 6, sx, sy + 11, sx - 7, sy + 6, sx - 7, sy - 4]);
+  g.stroke();
+  // Boss
+  circle(g, sx, sy + 1, 2, COL_SHIELD_BOSS);
   // Red templar cross on shield
-  g.fill({ color: COL_CROSS });
-  g.rect(x - 1.5, y - 4 * scale, 3, 8 * scale); // vertical
-  g.rect(x - 3.5 * scale, y - 1.5, 7 * scale, 3); // horizontal
+  rect(g, sx - 1, sy - 4, 2, 12, COL_CROSS);
+  rect(g, sx - 4, sy - 1, 8, 2, COL_CROSS);
 
-  // Shield boss
-  drawCircle(g, x, y, 2 * scale, COL_HELM);
+  // ── Sword arm (right) ────────────────────────────────────────────────
+  const armX = tx + 9;
+  const armY = ty + 5;
+  rect(g, armX - 1, ty + 3, 3, 7, COL_CHAIN);
+  // Forearm
+  const faDist = 6;
+  const faX = armX + Math.cos(swordAngle) * faDist;
+  const faY = armY + Math.sin(swordAngle) * faDist;
+  line(g, armX + 1, armY, faX, faY, COL_CHAIN, 3);
+  circle(g, faX, faY, 2, COL_CHAIN_DK);
+
+  // ── Longsword ────────────────────────────────────────────────────────
+  const sLen = 16 + swordExt;
+  const sEndX = faX + Math.cos(swordAngle) * sLen;
+  const sEndY = faY + Math.sin(swordAngle) * sLen;
+
+  // Blade
+  line(g, faX, faY, sEndX, sEndY, COL_SWORD, 2.5);
+  line(g, faX, faY - 0.5, sEndX, sEndY - 0.5, COL_SWORD_HI, 1);
+
+  // Crossguard (gold)
+  const cgAngle = swordAngle + Math.PI / 2;
+  const cgLen = 5;
+  line(g,
+    faX + Math.cos(cgAngle) * cgLen, faY + Math.sin(cgAngle) * cgLen,
+    faX - Math.cos(cgAngle) * cgLen, faY - Math.sin(cgAngle) * cgLen,
+    COL_GUARD, 2.5
+  );
+
+  // Grip
+  const gripLen = 5;
+  const gEndX = faX - Math.cos(swordAngle) * gripLen;
+  const gEndY = faY - Math.sin(swordAngle) * gripLen;
+  line(g, faX, faY, gEndX, gEndY, COL_GRIP, 2);
+  // Pommel
+  circle(g, gEndX, gEndY, 2, COL_POMMEL);
+
+  // ── Head (flat-topped great helm) ────────────────────────────────────
+  const headX = tx + 1;
+  const headY = ty - 8 + rb;
+
+  // Helm body (flat-topped barrel helm)
+  g.fill({ color: COL_HELM });
+  g.roundRect(headX - 6, headY - 6, 12, 14, 2);
+  // Flat top
+  rect(g, headX - 6, headY - 6, 12, 3, COL_HELM_HI);
+  // Front face
+  rect(g, headX - 6, headY - 3, 4, 10, COL_HELM_DK);
+  // Visor slit (horizontal)
+  rect(g, headX - 6, headY, 5, 1.5, 0x111111);
+  // Breathing holes
+  for (let i = 0; i < 3; i++) {
+    circle(g, headX - 5, headY + 3 + i * 1.5, 0.5, 0x111111);
+  }
+  // Helm bottom edge
+  line(g, headX - 6, headY + 6, headX + 6, headY + 6, COL_HELM_DK, 1.5);
+  // Gold band
+  line(g, headX - 6, headY - 3, headX + 6, headY - 3, COL_GUARD, 1);
+
+  // ── Red plume ────────────────────────────────────────────────────────
+  const plumeWave = Math.sin(breathe * 3 + 1) * 2;
+  g.stroke({ color: COL_PLUME, width: 3 });
+  g.moveTo(headX + 1, headY - 6).bezierCurveTo(
+    headX + 6, headY - 14,
+    headX + 12 + plumeWave, headY - 16,
+    headX + 16 + plumeWave, headY - 12
+  );
+  g.stroke({ color: COL_PLUME_TIP, width: 2 });
+  g.moveTo(headX + 1, headY - 6).bezierCurveTo(
+    headX + 5, headY - 12,
+    headX + 10 + plumeWave, headY - 14,
+    headX + 14 + plumeWave, headY - 10
+  );
 }
 
-function drawRider(
-  g: Graphics,
-  x: number,
-  y: number,
-  breathe: number = 0,
-): void {
-  // Surcoat body over chainmail
-  drawSurcoatBody(g, x, y - 10 + breathe, 12, 14);
-  // Great helm
-  drawGreatHelm(g, x, y - 20 + breathe);
+// ---------------------------------------------------------------------------
+// Love heart helper
+// ---------------------------------------------------------------------------
 
-  // Arms (chainmail visible)
-  drawLine(g, x - 4, y - 4 + breathe, x + 9, y - 6 + breathe, COL_CHAIN, 3);
-  drawLine(g, x - 4, y - 6 + breathe, x + 9, y - 8 + breathe, COL_CHAIN_DK, 3);
-
-  // Legs in stirrups
-  g.fill({ color: COL_CHAIN });
-  g.rect(x - 5, y + 2, 3, 5);
-  g.rect(x + 2, y + 2, 3, 5);
-
-  g.fill({ color: COL_BOOT });
-  g.rect(x - 5, y + 5, 3, 3);
-  g.rect(x + 2, y + 5, 3, 3);
-}
-
-function drawHeart(
-  g: Graphics,
-  x: number,
-  y: number,
-  size: number,
-  alpha: number,
-): void {
-  // Simple heart shape from two circles and a triangle
+function drawHeart(g: Graphics, x: number, y: number, size: number, alpha: number): void {
   const s = size;
   g.fill({ color: COL_HEART, alpha });
   g.circle(x - s * 0.3, y - s * 0.15, s * 0.4);
@@ -329,8 +399,7 @@ function drawHeart(
     .lineTo(x + s * 0.6, y)
     .lineTo(x, y + s * 0.7)
     .fill();
-
-  // Heart highlight
+  // Highlight
   g.fill({ color: COL_HEART_HI, alpha: alpha * 0.6 });
   g.circle(x - s * 0.2, y - s * 0.25, s * 0.2);
 }
@@ -340,116 +409,93 @@ function drawHeart(
 // ---------------------------------------------------------------------------
 
 function generateIdleFrames(g: Graphics, frame: number): void {
-  const breathe = Math.sin(frame * 0.3) * 1;
-  const walkCycle = frame * 0.08;
+  const breathe = Math.sin(frame * 0.35) * 0.7;
+  const gait = frame * 0.04;
 
-  // Shadow
-  drawEllipse(g, CX, GY, 24, 9, COL_SHADOW);
+  ellipse(g, 44, GY, 24, 5, COL_SHADOW, 0.3);
+  drawHorse(g, 48, OY + 24, gait, 0);
 
-  // Armored warhorse
-  drawArmoredHorse(g, CX, 42, walkCycle);
+  // Sword raised skyward (signature idle pose)
+  const swordRaise = Math.sin(frame * 0.4) * 0.1;
+  drawRider(g, 44, OY + 14 + Math.sin(gait * Math.PI * 2) * 0.4, breathe, -Math.PI * 0.65 + swordRaise, 0);
 
-  // Saddle
-  drawSaddle(g, CX, 37);
-
-  // Rider
-  drawRider(g, CX, 37, breathe);
-
-  // Sword raised upward (signature idle pose)
-  const swordRaise = Math.sin(frame * 0.4) * 0.15;
-  drawSword(g, CX + 9, 22 + breathe, -Math.PI / 2 + swordRaise);
-
-  // Shield at rest
-  drawShield(g, CX - 12, 34 + breathe, 0.9);
-
-  // Love heart floating to the right of helmet (outside helmet)
-  // Cycle: appears every 8 frames, rises and fades
-  const heartPhase = (frame % 12) / 12; // 0 → 1 (slower cycle over 12 frames)
+  // Floating love heart
+  const heartPhase = (frame % 12) / 12;
   if (heartPhase < 0.9) {
-    // appears for longer duration
-    const heartY = 15 + breathe - heartPhase * 12; // moves upward more (greater range)
-    const heartAlpha = 1 - heartPhase * 1.1; // fades more slowly
-    const heartSize = 3 + heartPhase * 2; // grows more as it rises
-    drawHeart(g, CX + 18, heartY, heartSize, Math.max(0, heartAlpha)); // positioned just outside helmet to the right
+    const heartY = OY + 2 - heartPhase * 14;
+    const heartAlpha = 1 - heartPhase * 1.1;
+    const heartSize = 3 + heartPhase * 2;
+    drawHeart(g, 60, heartY, heartSize, Math.max(0, heartAlpha));
   }
 }
 
 function generateMoveFrames(g: Graphics, frame: number): void {
-  const walkCycle = frame / 8;
-  const breathe = Math.sin(frame * 0.3) * 1;
+  const gait = frame / 8;
+  const breathe = Math.sin(frame * 0.5) * 0.5;
+  const horseBob = Math.sin(gait * Math.PI * 2) * 2;
 
-  // Shadow
-  drawEllipse(g, CX, GY, 24, 9, COL_SHADOW);
+  ellipse(g, 44, GY, 24, 5, COL_SHADOW, 0.3);
+  drawHorse(g, 48, OY + 24, gait, Math.sin(gait * Math.PI * 2) * 0.25);
 
-  // Armored warhorse
-  drawArmoredHorse(g, CX, 42, walkCycle);
-
-  // Saddle
-  drawSaddle(g, CX, 37);
-
-  // Rider
-  drawRider(g, CX, 37, breathe);
-
-  // Sword held ready while moving
-  const swordSway = Math.sin(frame * 0.5) * 0.1;
-  drawSword(g, CX + 9, 22 + breathe, -Math.PI / 4 + swordSway);
-
-  // Shield held ready while moving
-  drawShield(g, CX - 12, 34 + breathe, 0.9);
+  // Sword held ready (angled)
+  const swordSway = Math.sin(gait * Math.PI * 2) * 0.08;
+  drawRider(g, 44, OY + 14 + horseBob, breathe, -Math.PI * 0.35 + swordSway, 0);
 }
 
 function generateAttackFrames(g: Graphics, frame: number): void {
-  const t = frame / 6; // 0 to 1
-  const strike = t < 0.6 ? t / 0.6 : (1 - t) / 0.4;
-  const lean = strike * 0.5;
+  const t = frame / 6;
+  let swordAngle: number;
+  let swordExt: number;
+  let lean: number;
 
-  // Shadow
-  drawEllipse(g, CX, GY, 24, 9, COL_SHADOW);
+  if (t < 0.4) {
+    // Wind up – raise sword overhead
+    const p = t / 0.4;
+    swordAngle = -Math.PI * 0.35 + p * (-Math.PI * 0.55);
+    swordExt = p * 2;
+    lean = 0;
+  } else if (t < 0.7) {
+    // Strike down
+    const p = (t - 0.4) / 0.3;
+    swordAngle = -Math.PI * 0.9 + p * Math.PI * 0.85;
+    swordExt = 2 + p * 4;
+    lean = p * 3;
+  } else {
+    // Follow through
+    const p = (t - 0.7) / 0.3;
+    swordAngle = -Math.PI * 0.05 - p * 0.3;
+    swordExt = 6 - p * 4;
+    lean = 3 - p * 3;
+  }
 
-  // Armored warhorse
-  drawArmoredHorse(g, CX, 42, 0);
+  const horseSurge = Math.sin(t * Math.PI) * 2;
 
-  // Saddle
-  drawSaddle(g, CX, 37);
-
-  // Rider
-  drawRider(g, CX, 37, 0);
-
-  // Sword swing attack
-  const swordAngle = -Math.PI / 4 - (lean * Math.PI) / 3;
-  drawSword(g, CX + 9, 22, swordAngle);
-
-  // Shield held ready during attack
-  drawShield(g, CX - 12, 34, 0.9);
+  ellipse(g, 44, GY, 24, 5, COL_SHADOW, 0.3);
+  drawHorse(g, 48 - lean, OY + 24, t * 2, -0.3);
+  drawRider(g, 44 - lean, OY + 14 + horseSurge * 0.5, 0, swordAngle, swordExt);
 }
 
 function generateCastFrames(g: Graphics, frame: number): void {
-  // Reuse attack animation for cast
   generateAttackFrames(g, frame);
 }
 
 function generateDieFrames(g: Graphics, frame: number): void {
   const t = frame / 6;
-  const fallX = t * 8;
-  const fallY = t * t * 6;
+  const fallAngle = t * 0.4;
+  const slideX = t * 8;
+  const dropY = t * t * 14;
+  const fade = Math.max(0, 1 - t * 0.7);
 
-  // Shadow
-  drawEllipse(g, CX, GY, 24, 9, COL_SHADOW);
+  ellipse(g, 44, GY, 24 * (1 - t * 0.5), 5 * (1 - t * 0.5), COL_SHADOW, 0.3 * fade);
 
-  // Armored warhorse
-  drawArmoredHorse(g, CX + fallX, 42 + fallY, 0);
+  if (t < 0.85) {
+    const stumble = t * 3;
+    drawHorse(g, 48 + slideX * 0.3, OY + 24 + dropY * 0.5, stumble, fallAngle * 2);
+  }
 
-  // Saddle
-  drawSaddle(g, CX + fallX, 37 + fallY);
-
-  // Rider
-  drawRider(g, CX + fallX, 37 + fallY, 0);
-
-  // Sword dropped
-  drawSword(g, CX + fallX + 10, 46 + fallY, Math.PI / 4);
-
-  // Shield dropped
-  drawShield(g, CX + fallX - 8, 44 + fallY, 0.9);
+  if (t < 0.95) {
+    drawRider(g, 44 + slideX, OY + 14 + dropY, 0, -Math.PI * 0.5 - fallAngle, 0);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -458,15 +504,12 @@ function generateDieFrames(g: Graphics, frame: number): void {
 
 type StateFrameGenerator = (g: Graphics, frame: number) => void;
 
-const STATE_GENERATORS: Record<
-  UnitState,
-  { gen: StateFrameGenerator; count: number }
-> = {
-  [UnitState.IDLE]: { gen: generateIdleFrames, count: 8 },
-  [UnitState.MOVE]: { gen: generateMoveFrames, count: 8 },
-  [UnitState.ATTACK]: { gen: generateAttackFrames, count: 7 },
-  [UnitState.CAST]: { gen: generateCastFrames, count: 6 },
-  [UnitState.DIE]: { gen: generateDieFrames, count: 7 },
+const STATE_GENERATORS: Record<UnitState, { gen: StateFrameGenerator; count: number }> = {
+  [UnitState.IDLE]:   { gen: generateIdleFrames,   count: 8 },
+  [UnitState.MOVE]:   { gen: generateMoveFrames,   count: 8 },
+  [UnitState.ATTACK]: { gen: generateAttackFrames,  count: 7 },
+  [UnitState.CAST]:   { gen: generateCastFrames,    count: 6 },
+  [UnitState.DIE]:    { gen: generateDieFrames,     count: 7 },
 };
 
 /**
@@ -475,9 +518,7 @@ const STATE_GENERATORS: Record<
  * Returns a map from `UnitState` → ordered `Texture[]`, ready to be
  * injected into the AnimationManager cache.
  */
-export function generateQuestingKnightFrames(
-  renderer: Renderer,
-): Map<UnitState, Texture[]> {
+export function generateQuestingKnightFrames(renderer: Renderer): Map<UnitState, Texture[]> {
   const result = new Map<UnitState, Texture[]>();
 
   for (const state of Object.values(UnitState)) {
@@ -488,7 +529,7 @@ export function generateQuestingKnightFrames(
       const g = new Graphics();
       gen(g, i);
 
-      const rt = RenderTexture.create({ width: F, height: F });
+      const rt = RenderTexture.create({ width: FW, height: FH });
       renderer.render({ container: g, target: rt });
       textures.push(rt);
 

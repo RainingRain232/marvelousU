@@ -167,9 +167,9 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "questing_knight",
     size: {
-      width: 1.5,
-      height: 1.5,
-      healthBarOffset: -0.8,
+      width: 2.0,
+      height: 2.0,
+      healthBarOffset: -1.0,
     },
     description:
       "He does not actually do alot of questing, except for the Queen's favor.",
