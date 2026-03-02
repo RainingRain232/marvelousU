@@ -86,6 +86,7 @@ import { generateRoyalPhalanxFrames } from "@view/animation/RoyalPhalanxSpriteGe
 import { generateRoyalDefenderFrames } from "@view/animation/RoyalDefenderSpriteGen";
 import { generateAxemanFrames } from "@view/animation/AxemanSpriteGen";
 import { generateBerserkerFrames } from "@view/animation/BerserkerSpriteGen";
+import { generateJavelineerFrames } from "@view/animation/JavelineerSpriteGen";
 import { generateLongbowmanFrames } from "@view/animation/LongbowmanSpriteGen";
 import { generateCrossbowmanFrames } from "@view/animation/CrossbowmanSpriteGen";
 import { generateGiantFrogFrames } from "@view/animation/GiantFrogSpriteGen";
@@ -371,6 +372,8 @@ export class AnimationManager {
         this._generateAxemanSprites(key, renderer);
       } else if (key === "berserker") {
         this._generateBerserkerSprites(key, renderer);
+      } else if (key === "javelin") {
+        this._generateJavelineerSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1392,6 +1395,20 @@ export class AnimationManager {
       if (stateTextures) {
         const ck = cacheKey(key, state);
         if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  /**
+   * Generate detailed procedural javelineer sprites using dedicated
+   * JavelineerSpriteGen module. Populates cache for all states.
+   */
+  private _generateJavelineerSprites(key: string, renderer: Renderer): void {
+    const stateTextures = generateJavelineerFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
       }
     }
   }
