@@ -1,16 +1,16 @@
 // Procedural sprite generator for the Pikeman unit type.
 //
-// Draws a detailed medieval fantasy pikeman at 48×48 pixels per frame
+// Draws a detailed side-view pikeman at 48×48 pixels per frame
 // using PixiJS Graphics → RenderTexture.  Produces textures for every
 // animation state (IDLE 8, MOVE 8, ATTACK 7, CAST 6, DIE 7).
 //
 // Visual features:
-//   • Light chainmail with leather accents
-//   • Open-face helmet with cheek guards
-//   • Long pike (polearm) with spear tip
-//   • Small round shield
-//   • Leather boots and leggings
-//   • Two-handed grip on pike
+//   • Half-plate over chainmail — breastplate, pauldrons, vambraces
+//   • Open-face bascinet helm with aventail
+//   • Long pike held two-handed (extends beyond frame)
+//   • Leaf-shaped pike head with lugs
+//   • Leather belt with tassets
+//   • Leather boots
 //   • Shadow ellipse at feet
 
 import { Graphics, RenderTexture, type Renderer, Texture } from "pixi.js";
@@ -20,231 +20,326 @@ import { UnitState } from "@/types";
 // Constants
 // ---------------------------------------------------------------------------
 
-const F = 48;          // frame size (px)
-const CX = F / 2;      // center X
-const GY = F - 4;      // ground Y (feet line)
+const F  = 48;          // frame size (px)
+const CX = F / 2;       // center X
+const GY = F - 4;       // ground Y (feet line)
 
-// Palette ─ light infantry with polearm
-const COL_SKIN      = 0xd4a574;
-const COL_ARMOR     = 0x99aabb;
-const COL_ARMOR_HI  = 0xbbccdd;
-const COL_LEATHER   = 0x8b6f47;
-const COL_HELM      = 0x8899aa;
-const COL_HELM_HI   = 0xaabbcc;
-const COL_PIKE_SHAFT = 0x8b6f47;
-const COL_PIKE_TIP  = 0xc0c8d0;
-const COL_PIKE_TIP_HI = 0xe0e8f0;
-const COL_SHIELD    = 0x558833;
-const COL_SHIELD_RIM= 0x886633;
-const COL_BOOT      = 0x443322;
-const COL_SHADOW    = 0x000000;
+// Palette
+const COL_SKIN       = 0xd4a574;
+const COL_SKIN_DK    = 0xb8875a;
+
+const COL_CHAIN      = 0x8899aa;
+const COL_CHAIN_HI   = 0xa0b0c0;
+const COL_PLATE      = 0x99aabb;
+const COL_PLATE_HI   = 0xbbccdd;
+const COL_PLATE_DK   = 0x6a7a8a;
+
+const COL_HELM       = 0x8a9aaa;
+const COL_HELM_HI    = 0xaabbcc;
+const COL_HELM_DK    = 0x5a6a7a;
+const COL_AVENTAIL   = 0x778899;
+
+const COL_SHAFT      = 0x7a5e38;
+const COL_SHAFT_HI   = 0x9a7e58;
+const COL_PIKE_HEAD  = 0xc0c8d0;
+const COL_PIKE_HI    = 0xe0e8f0;
+
+const COL_BELT       = 0x6a5030;
+const COL_BELT_DK    = 0x4a3820;
+const COL_BOOT       = 0x443322;
+const COL_BOOT_HI    = 0x5a4432;
+
+const COL_SHADOW     = 0x000000;
 
 // ---------------------------------------------------------------------------
 // Tiny helpers
 // ---------------------------------------------------------------------------
 
-function drawEllipse(g: Graphics, x: number, y: number, w: number, h: number, color: number): void {
-  g.fill({ color });
-  g.ellipse(x, y, w, h);
+function ellipse(g: Graphics, x: number, y: number, rx: number, ry: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.ellipse(x, y, rx, ry);
 }
 
-function drawCircle(g: Graphics, x: number, y: number, r: number, color: number): void {
-  g.fill({ color });
+function circle(g: Graphics, x: number, y: number, r: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
   g.circle(x, y, r);
 }
 
-function drawLine(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, width: number = 1): void {
-  g.stroke({ color, width });
+function rect(g: Graphics, x: number, y: number, w: number, h: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.rect(x, y, w, h);
+}
+
+function line(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, w = 1): void {
+  g.stroke({ color, width: w });
   g.moveTo(x1, y1).lineTo(x2, y2);
 }
 
+function poly(g: Graphics, pts: number[], color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.poly(pts);
+  g.fill();
+}
+
 // ---------------------------------------------------------------------------
-// Component drawing functions
+// Component drawing
 // ---------------------------------------------------------------------------
 
-function drawHead(g: Graphics, x: number, y: number): void {
-  // Head
-  drawCircle(g, x, y, 6, COL_SKIN);
-  
-  // Open-face helmet
-  drawCircle(g, x, y, 7, COL_HELM);
-  drawCircle(g, x, y, 6, COL_HELM_HI);
-  
-  // Cheek guards
-  drawLine(g, x - 7, y, x - 9, y + 3, COL_HELM, 2);
-  drawLine(g, x + 7, y, x + 9, y + 3, COL_HELM, 2);
+function drawHelm(g: Graphics, x: number, y: number, seed: number): void {
+  // Face
+  circle(g, x, y + 1, 4, COL_SKIN);
+  // Eye
+  circle(g, x - 3, y, 0.8, 0x222222);
+
+  // Bascinet helm (pointed top, open face)
+  // Bowl
+  ellipse(g, x + 1, y - 1, 5.5, 5, COL_HELM);
+  ellipse(g, x + 1.5, y - 2, 5, 4, COL_HELM_HI);
+  // Pointed apex
+  const apexSway = Math.sin(seed * Math.PI * 2) * 0.3;
+  poly(g, [x - 1, y - 5.5, x + 1 + apexSway, y - 8, x + 3, y - 5.5], COL_HELM_HI);
+  // Brow ridge
+  line(g, x - 4, y - 1, x - 1, y - 1, COL_HELM_DK, 1.5);
+  // Aventail (chainmail neck guard)
+  rect(g, x + 1, y + 3, 6, 3, COL_AVENTAIL);
+  line(g, x + 1, y + 4, x + 7, y + 4, COL_CHAIN_HI, 0.7);
+  // Chin strap
+  line(g, x - 3, y + 2, x - 2, y + 4, COL_BELT_DK, 0.8);
 }
 
-function drawBody(g: Graphics, x: number, y: number, w: number, h: number): void {
-  // Chainmail torso
-  g.fill({ color: COL_ARMOR });
-  g.rect(x - w/2, y, w, h);
-  
-  // Armor highlights
-  g.fill({ color: COL_ARMOR_HI });
-  g.rect(x - w/2 + 1, y + 1, w - 2, 2);
-  g.rect(x - w/2 + 1, y + h - 3, w - 2, 2);
-  
-  // Leather accents
-  g.fill({ color: COL_LEATHER });
-  g.rect(x - w/2, y + h/2, w, 3);
+function drawBody(g: Graphics, x: number, y: number, breathe: number): void {
+  // Chainmail hauberk base
+  rect(g, x - 6, y, 12, 12, COL_CHAIN);
+  rect(g, x - 5, y + 1, 10, 1, COL_CHAIN_HI);
+  // Chain texture lines
+  line(g, x - 4, y + 4, x + 4, y + 4, COL_CHAIN_HI, 0.5);
+  line(g, x - 4, y + 7, x + 4, y + 7, COL_CHAIN_HI, 0.5);
+
+  // Breastplate over chainmail
+  rect(g, x - 5, y + 1, 10, 8, COL_PLATE);
+  rect(g, x - 4, y + 2, 8, 2, COL_PLATE_HI); // upper highlight
+  line(g, x, y + 1, x, y + 9, COL_PLATE_HI, 1); // center ridge
+  rect(g, x - 4, y + 7, 8, 1, COL_PLATE_DK); // lower shadow
+
+  // Pauldrons (shoulder plates)
+  ellipse(g, x - 6, y + 1 + breathe * 0.2, 3.5, 3, COL_PLATE);
+  ellipse(g, x - 6, y + 0.5 + breathe * 0.2, 3, 2.5, COL_PLATE_HI);
+  ellipse(g, x + 6, y + 1 + breathe * 0.2, 3.5, 3, COL_PLATE);
+  ellipse(g, x + 6, y + 0.5 + breathe * 0.2, 3, 2.5, COL_PLATE_HI);
+
+  // Belt with tassets
+  rect(g, x - 6, y + 10, 12, 2, COL_BELT);
+  rect(g, x - 5, y + 10.5, 10, 1, COL_BELT_DK);
+  // Tassets (hanging plates)
+  rect(g, x - 5, y + 12, 3, 3, COL_PLATE_DK);
+  rect(g, x - 1, y + 12, 3, 3, COL_PLATE_DK);
+  rect(g, x + 3, y + 12, 3, 3, COL_PLATE_DK);
+  rect(g, x - 4, y + 12, 2, 2, COL_PLATE);
+  rect(g, x, y + 12, 2, 2, COL_PLATE);
+  rect(g, x + 4, y + 12, 2, 2, COL_PLATE);
 }
 
-function drawPike(g: Graphics, x1: number, y1: number, x2: number, y2: number, tipDir: number = 1): void {
-  // Pike shaft
-  drawLine(g, x1, y1, x2, y2, COL_PIKE_SHAFT, 3);
-  drawLine(g, x1, y1 - 1, x2, y2 - 1, COL_PIKE_SHAFT, 1);
-  
-  // Spear tip
-  const tipX = x2 + tipDir * 4;
-  const tipY = y2;
-  g.fill({ color: COL_PIKE_TIP });
-  g.moveTo(tipX - tipDir * 3, tipY - 3)
-    .lineTo(tipX, tipY)
-    .lineTo(tipX - tipDir * 3, tipY + 3)
-    .lineTo(tipX - tipDir * 2, tipY)
-    .fill();
-  
-  g.fill({ color: COL_PIKE_TIP_HI });
-  g.moveTo(tipX - tipDir * 2, tipY - 1)
-    .lineTo(tipX - tipDir * 1, tipY)
-    .lineTo(tipX - tipDir * 2, tipY + 1)
-    .fill();
+function drawArms(g: Graphics, x: number, y: number, breathe: number, pikeGrip: number): void {
+  // Arms — vambraces (forearm armor) over chainmail sleeves
+  // Right arm (rear hand on pike)
+  const rax = x + 7;
+  const ray = y + 3 + breathe * 0.3;
+  rect(g, rax, ray, 3, 5, COL_CHAIN); // sleeve
+  rect(g, rax, ray + 3, 3, 4, COL_PLATE_DK); // vambrace
+  rect(g, rax + 0.5, ray + 3.5, 2, 1, COL_PLATE); // vambrace highlight
+  circle(g, rax + 1, ray + 8, 1.5, COL_SKIN_DK); // hand
+
+  // Left arm (front hand on pike — shifted by grip)
+  const lax = x - 8 + pikeGrip * 0.3;
+  const lay = y + 3 + breathe * 0.3;
+  rect(g, lax, lay, 3, 5, COL_CHAIN);
+  rect(g, lax, lay + 3, 3, 4, COL_PLATE_DK);
+  rect(g, lax + 0.5, lay + 3.5, 2, 1, COL_PLATE);
+  circle(g, lax + 1, lay + 8, 1.5, COL_SKIN_DK);
 }
 
-function drawShield(g: Graphics, x: number, y: number, scale: number = 1): void {
-  const r = 6 * scale;
-  // Round shield
-  drawCircle(g, x, y, r, COL_SHIELD);
-  drawCircle(g, x, y, r - 1, COL_SHIELD_RIM);
-  
-  // Shield boss
-  drawCircle(g, x, y, 2 * scale, COL_SHIELD_RIM);
+function drawPike(g: Graphics, x: number, y: number, angle: number, ext: number): void {
+  const ca = Math.cos(angle);
+  const sa = Math.sin(angle);
+  const shaftLen = 22 + ext;
+  const tipX = x + ca * shaftLen;
+  const tipY = y + sa * shaftLen;
+  const buttX = x - ca * 8;
+  const buttY = y - sa * 8;
+
+  // Shaft
+  line(g, buttX, buttY, tipX, tipY, COL_SHAFT, 2.5);
+  line(g, buttX + 0.5, buttY - 0.5, tipX + 0.5, tipY - 0.5, COL_SHAFT_HI, 0.8);
+
+  // Pike head — leaf-shaped with lugs
+  const headLen = 5;
+  const htx = tipX + ca * headLen;
+  const hty = tipY + sa * headLen;
+  const pa = angle + Math.PI / 2;
+  // Blade
+  poly(g, [
+    tipX + Math.cos(pa) * 2, tipY + Math.sin(pa) * 2,
+    htx, hty,
+    tipX - Math.cos(pa) * 2, tipY - Math.sin(pa) * 2,
+  ], COL_PIKE_HEAD);
+  // Highlight
+  line(g, tipX, tipY, htx, hty, COL_PIKE_HI, 1);
+  // Lugs (cross-pieces at base of head)
+  line(g,
+    tipX + Math.cos(pa) * 3, tipY + Math.sin(pa) * 3,
+    tipX - Math.cos(pa) * 3, tipY - Math.sin(pa) * 3,
+    COL_PIKE_HEAD, 1.5,
+  );
+
+  // Butt cap
+  circle(g, buttX, buttY, 1.5, COL_PLATE_DK);
 }
 
-function drawLegs(g: Graphics, x: number, y: number, walkCycle: number): void {
-  const offset = Math.sin(walkCycle * Math.PI * 2) * 2;
-  
-  // Left leg
-  g.fill({ color: COL_LEATHER });
-  g.rect(x - 4, y, 3, 8);
-  g.fill({ color: COL_BOOT });
-  g.rect(x - 4, y + 6, 3, 4);
-  
-  // Right leg (opposite phase)
-  g.fill({ color: COL_LEATHER });
-  g.rect(x + 1, y - offset, 3, 8 + offset);
-  g.fill({ color: COL_BOOT });
-  g.rect(x + 1, y + 6 - offset, 3, 4);
+function drawLegs(g: Graphics, x: number, y: number, step: number): void {
+  const stride = Math.sin(step * Math.PI * 2) * 2.5;
+
+  // Front leg
+  rect(g, x - 4, y, 4, 8, COL_CHAIN); // chainmail legging
+  rect(g, x - 3, y + 1, 2, 2, COL_PLATE_DK); // knee cop
+  rect(g, x - 5, y + 7 + stride * 0.2, 5, 3, COL_BOOT);
+  rect(g, x - 4, y + 7.5 + stride * 0.2, 3, 1, COL_BOOT_HI);
+
+  // Back leg
+  rect(g, x + 1, y - stride * 0.3, 4, 8 + stride * 0.3, COL_CHAIN);
+  rect(g, x + 2, y + 1 - stride * 0.3, 2, 2, COL_PLATE_DK);
+  rect(g, x, y + 7, 5, 3, COL_BOOT);
+  rect(g, x + 1, y + 7.5, 3, 1, COL_BOOT_HI);
 }
 
 // ---------------------------------------------------------------------------
 // Animation state generators
 // ---------------------------------------------------------------------------
 
-function generateIdleFrames(g: Graphics, frame: number): void {
-  const breathe = Math.sin(frame * 0.3) * 1;
-  
+function generateIdle(g: Graphics, frame: number): void {
+  const t = frame / 8;
+  const breathe = Math.sin(t * Math.PI * 2) * 0.8;
+
   // Shadow
-  drawEllipse(g, CX, GY, 12, 4, COL_SHADOW);
-  
-  // Body
-  drawBody(g, CX, 20 + breathe, 10, 12);
-  
-  // Head
-  drawHead(g, CX, 14 + breathe);
-  
-  // Pike (resting on shoulder)
-  drawPike(g, CX - 8, 18 + breathe, CX + 12, 8 + breathe, -1);
-  
-  // Shield
-  drawShield(g, CX + 8, 22 + breathe, 0.8);
-  
+  ellipse(g, CX, GY, 10, 3.5, COL_SHADOW, 0.3);
+
   // Legs
-  drawLegs(g, CX, 32, 0);
-}
+  drawLegs(g, CX, 30, 0);
 
-function generateMoveFrames(g: Graphics, frame: number): void {
-  const walkCycle = frame / 8;
-  const bob = Math.abs(Math.sin(walkCycle * Math.PI * 2)) * 2;
-  const sway = Math.sin(walkCycle * Math.PI * 2) * 1;
-  
-  // Shadow
-  drawEllipse(g, CX, GY, 12, 4, COL_SHADOW);
-  
   // Body
-  drawBody(g, CX + sway, 20 + bob, 10, 12);
-  
-  // Head
-  drawHead(g, CX + sway, 14 + bob);
-  
-  // Pike (angled for movement)
-  const pikeAngle = Math.sin(walkCycle * Math.PI * 2) * 0.3;
-  drawPike(g, CX - 8 + sway, 18 + bob, CX + 10 + sway + pikeAngle * 8, 10 + bob + pikeAngle * 4, -1);
-  
-  // Shield
-  drawShield(g, CX + 8 + sway, 22 + bob, 0.8);
-  
-  // Legs (walking)
-  drawLegs(g, CX + sway, 32, walkCycle);
+  drawBody(g, CX, 16 + breathe, breathe);
+
+  // Arms
+  drawArms(g, CX, 16 + breathe, breathe, 0);
+
+  // Pike (held upright, angled slightly back)
+  drawPike(g, CX + 6, 24 + breathe, -Math.PI * 0.42, 0);
+
+  // Helm
+  drawHelm(g, CX, 10 + breathe, t);
 }
 
-function generateAttackFrames(g: Graphics, frame: number): void {
-  const t = frame / 6; // 0 to 1
-  const lunge = t < 0.5 ? t * 2 : (1 - t) * 2; // Forward then back
-  
+function generateMove(g: Graphics, frame: number): void {
+  const t = frame / 8;
+  const bob = Math.abs(Math.sin(t * Math.PI * 2)) * 1.5;
+  const sway = Math.sin(t * Math.PI * 2) * 0.8;
+
   // Shadow
-  drawEllipse(g, CX, GY, 12, 4, COL_SHADOW);
-  
-  // Body (leaning forward)
-  drawBody(g, CX + lunge * 4, 20 - lunge * 2, 10, 12);
-  
-  // Head
-  drawHead(g, CX + lunge * 4, 14 - lunge * 2);
-  
-  // Pike (thrusting motion)
-  const thrust = t < 0.5 ? t * 20 : (1 - t) * 20 + 10;
-  drawPike(g, CX - 8 + lunge * 4, 18 - lunge * 2, CX + thrust, 10 - lunge * 2, 1);
-  
-  // Shield (held back during thrust)
-  drawShield(g, CX - 8, 22 - lunge * 2, 0.6);
-  
-  // Legs (planted stance)
-  drawLegs(g, CX + lunge * 2, 32, 0);
+  ellipse(g, CX, GY, 10, 3.5, COL_SHADOW, 0.3);
+
+  // Legs
+  drawLegs(g, CX + sway, 30, t);
+
+  // Body
+  drawBody(g, CX + sway, 16 + bob, bob);
+
+  // Arms
+  drawArms(g, CX + sway, 16 + bob, bob, sway);
+
+  // Pike (angled forward for marching, slight sway)
+  drawPike(g, CX + 6 + sway, 24 + bob,
+    -Math.PI * 0.38 + sway * 0.04, 0);
+
+  // Helm
+  drawHelm(g, CX + sway, 10 + bob, t);
 }
 
-function generateCastFrames(g: Graphics, frame: number): void {
-  // Pikeman doesn't cast, but reuse attack animation
-  generateAttackFrames(g, frame);
-}
-
-function generateDieFrames(g: Graphics, frame: number): void {
+function generateAttack(g: Graphics, frame: number): void {
   const t = frame / 6;
-  const fallX = t * 8;
-  const dropY = t * 16;
-  
+
+  // Pike thrust: pull back → thrust → retract
+  let pikeAngle: number;
+  let pikeExt: number;
+  let lean: number;
+
+  if (t < 0.3) {
+    // Pull back
+    const p = t / 0.3;
+    pikeAngle = -Math.PI * 0.42 + p * 0.15;
+    pikeExt = -p * 4;
+    lean = -p * 2;
+  } else if (t < 0.6) {
+    // Thrust forward
+    const p = (t - 0.3) / 0.3;
+    pikeAngle = -Math.PI * 0.27 - p * Math.PI * 0.08;
+    pikeExt = -4 + p * 14;
+    lean = -2 + p * 5;
+  } else {
+    // Retract
+    const p = (t - 0.6) / 0.4;
+    pikeAngle = -Math.PI * 0.35 - p * 0.07;
+    pikeExt = 10 - p * 10;
+    lean = 3 - p * 3;
+  }
+
+  // Shadow
+  ellipse(g, CX, GY, 10, 3.5, COL_SHADOW, 0.3);
+
+  // Legs (planted wide)
+  drawLegs(g, CX, 30, 0);
+
+  // Body (leaning)
+  drawBody(g, CX + lean, 16, 0);
+
+  // Arms (grip shifts with thrust)
+  drawArms(g, CX + lean, 16, 0, lean);
+
+  // Pike (thrusting)
+  drawPike(g, CX + 6 + lean, 22, pikeAngle, pikeExt);
+
+  // Helm
+  drawHelm(g, CX + lean, 10, 0);
+}
+
+function generateCast(g: Graphics, frame: number): void {
+  // Pikeman cast = same as attack (pike thrust)
+  generateAttack(g, frame);
+}
+
+function generateDie(g: Graphics, frame: number): void {
+  const t = frame / 6;
+  const fall = t * 7;
+  const drop = t * 14;
+  const fade = 1 - t;
+
   // Shadow (shrinking)
-  drawEllipse(g, CX, GY, 12 * (1 - t), 4 * (1 - t), COL_SHADOW);
-  
-  // Body (falling)
+  ellipse(g, CX, GY, 10 * fade, 3.5 * fade, COL_SHADOW, 0.3 * fade);
+
+  if (t < 0.85) {
+    drawLegs(g, CX + fall * 0.4, 30 + drop * 0.2, 0);
+  }
+
+  if (t < 0.75) {
+    drawBody(g, CX + fall, 16 + drop, 0);
+  }
+
+  if (t < 0.65) {
+    drawHelm(g, CX + fall * 1.2, 10 + drop * 0.7, 0);
+  }
+
+  // Pike falls & rotates
   if (t < 0.8) {
-    drawBody(g, CX + fallX, 20 + dropY, 10, 12);
-  }
-  
-  // Head
-  if (t < 0.6) {
-    drawHead(g, CX + fallX, 14 + dropY);
-  }
-  
-  // Pike (falling separately)
-  if (t > 0.2) {
-    const pikeFall = (t - 0.2) * 20;
-    drawPike(g, CX + fallX + pikeFall, 18 + dropY, CX + fallX + pikeFall + 15, 10 + dropY, 0.5);
-  }
-  
-  // Shield (dropping)
-  if (t < 0.7) {
-    drawShield(g, CX + fallX, 22 + dropY, 0.8 * (1 - t));
+    const pa = -Math.PI * 0.42 + t * 1.5;
+    drawPike(g, CX + 6 + fall * 0.5, 24 + drop * 0.4, pa, 0);
   }
 }
 
@@ -255,11 +350,11 @@ function generateDieFrames(g: Graphics, frame: number): void {
 type StateFrameGenerator = (g: Graphics, frame: number) => void;
 
 const STATE_GENERATORS: Record<UnitState, { gen: StateFrameGenerator; count: number }> = {
-  [UnitState.IDLE]:   { gen: generateIdleFrames,   count: 8 },
-  [UnitState.MOVE]:   { gen: generateMoveFrames,   count: 8 },
-  [UnitState.ATTACK]: { gen: generateAttackFrames,  count: 7 },
-  [UnitState.CAST]:   { gen: generateCastFrames,    count: 6 },
-  [UnitState.DIE]:    { gen: generateDieFrames,     count: 7 },
+  [UnitState.IDLE]:   { gen: generateIdle,   count: 8 },
+  [UnitState.MOVE]:   { gen: generateMove,   count: 8 },
+  [UnitState.ATTACK]: { gen: generateAttack, count: 7 },
+  [UnitState.CAST]:   { gen: generateCast,   count: 6 },
+  [UnitState.DIE]:    { gen: generateDie,    count: 7 },
 };
 
 /**

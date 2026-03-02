@@ -125,10 +125,10 @@ function drawBody(g: Graphics, x: number, y: number, breathe: number): void {
   // Base skin
   rect(g, x - 6, y, 12, 11, COL_SKIN);
   // Pec / ab definition
-  line(g, x, y + 1, x, y + 9, COL_SKIN_DK, 0.8); // center line
-  rect(g, x - 5, y + 1, 4, 2, COL_SKIN_HI, 0.5); // left pec highlight
-  rect(g, x - 4, y + 5, 3, 1, COL_SKIN_DK, 0.4); // left ab line
-  rect(g, x - 4, y + 7, 3, 1, COL_SKIN_DK, 0.4);
+  line(g, x, y + 1, x, y + 9, COL_SKIN_DK, 1); // center line
+  rect(g, x - 5, y + 1, 4, 2, COL_SKIN_HI); // left pec highlight
+  rect(g, x - 4, y + 5, 3, 1, COL_SKIN_DK); // left ab line
+  rect(g, x - 4, y + 7, 3, 1, COL_SKIN_DK);
 
   // Right chest/shoulder plate (asymmetric armor)
   rect(g, x + 1, y, 6, 8, COL_ARMOR);
@@ -175,7 +175,7 @@ function drawArms(
   const lay = y + 3 + breathe * 0.3;
   // Bare upper arm
   rect(g, lax - 1, lay, 3, 6, COL_SKIN);
-  rect(g, lax, lay + 1, 1, 3, COL_SKIN_HI, 0.5);
+  rect(g, lax, lay + 1, 1, 3, COL_SKIN_HI);
   // Leather bracer
   rect(g, lax - 1.5, lay + 4, 4, 3, COL_BRACER);
   line(g, lax - 1, lay + 5, lax + 2, lay + 5, COL_SANDAL_DK, 0.7);
@@ -252,7 +252,7 @@ function drawLegs(g: Graphics, x: number, y: number, step: number): void {
 
   // Front leg
   rect(g, x - 4, y, 4, 9, COL_SKIN);
-  rect(g, x - 3, y + 1, 2, 3, COL_SKIN_HI, 0.4); // quad highlight
+  rect(g, x - 3, y + 1, 2, 3, COL_SKIN_HI); // quad highlight
   // Sandal
   rect(g, x - 5, y + 8 + stride * 0.2, 5, 2.5, COL_SANDAL);
   rect(g, x - 4, y + 9 + stride * 0.2, 3, 1.5, COL_SANDAL_DK);
@@ -262,7 +262,7 @@ function drawLegs(g: Graphics, x: number, y: number, step: number): void {
 
   // Back leg
   rect(g, x + 1, y - stride * 0.3, 4, 9 + stride * 0.3, COL_SKIN);
-  rect(g, x + 2, y + 1 - stride * 0.3, 2, 3, COL_SKIN_DK, 0.3);
+  rect(g, x + 2, y + 1 - stride * 0.3, 2, 3, COL_SKIN_DK);
   // Sandal
   rect(g, x, y + 8, 5, 2.5, COL_SANDAL);
   rect(g, x + 1, y + 9, 3, 1.5, COL_SANDAL_DK);
