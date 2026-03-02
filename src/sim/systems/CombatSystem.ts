@@ -24,6 +24,9 @@ const ARROW_UNIT_TYPES: ReadonlySet<UnitType> = new Set([
   UnitType.SHORTBOW,
   UnitType.BALLISTA,
   UnitType.BOLT_THROWER,
+  UnitType.CATAPULT,
+  UnitType.SIEGE_CATAPULT,
+  UnitType.TREBUCHET,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -216,6 +219,17 @@ function _attackBuilding(
 
       building.health -= damage;
       unit.attackTimer = attackInterval;
+
+      // Emit visual projectile event for ranged siege units attacking buildings
+      if (ARROW_UNIT_TYPES.has(unit.type)) {
+        EventBus.emit("unitAttacked", {
+          attackerId: unit.id,
+          targetId: building.id,
+          attackerPos: { x: unit.position.x, y: unit.position.y },
+          targetPos: { x: building.position.x, y: building.position.y },
+          attackerType: unit.type,
+        });
+      }
 
       if (building.health <= 0) {
         building.health = 0;

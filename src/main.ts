@@ -17,6 +17,7 @@ import { webFX } from "@view/fx/WebFX";
 import { turretArrowFX } from "@view/fx/TurretArrowFX";
 import { turretLightningFX } from "@view/fx/TurretLightningFX";
 import { arrowFX } from "@view/fx/ArrowFX";
+import { catapultBoulderFX } from "@view/fx/CatapultBoulderFX";
 import { eventBanner } from "@view/ui/EventBanner";
 import { distortionFX } from "@view/fx/DistortionFX";
 import { healFX } from "@view/fx/HealFX";
@@ -918,6 +919,10 @@ async function _bootGame(
   // Ranged unit arrow FX
   arrowFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => arrowFX.update(dt));
+
+  // Catapult boulder FX
+  catapultBoulderFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => catapultBoulderFX.update(dt));
 
   // Distortion FX
   distortionFX.init(viewManager);

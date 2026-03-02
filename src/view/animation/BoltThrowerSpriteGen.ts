@@ -5,7 +5,8 @@
 // animation state (IDLE 8, MOVE 8, ATTACK 6, DIE 7).
 //
 // Visual: heavy wooden crossbow mounted on a sturdy A-frame tripod with
-// a windlass crank at the rear. No operator — the machine itself is the unit.
+// a windlass crank at the rear. An operator (soldier) stands behind the
+// machine, cranking the windlass and aiming the weapon.
 
 import { Graphics, RenderTexture, type Renderer, Texture } from "pixi.js";
 import { UnitState } from "@/types";
@@ -15,28 +16,52 @@ const CX = F / 2;
 const GY = F - 4; // ground line
 
 // Palette
-const COL_WOOD      = 0x7a5c3a;
-const COL_WOOD_DK   = 0x4e3622;
-const COL_WOOD_LT   = 0x9e7e56;
-const COL_IRON      = 0x707070;
-const COL_IRON_DK   = 0x4a4a4a;
-const COL_IRON_HI   = 0x999999;
-const COL_STRING     = 0xc8c098;
+const COL_WOOD = 0x7a5c3a;
+const COL_WOOD_DK = 0x4e3622;
+const COL_WOOD_LT = 0x9e7e56;
+const COL_IRON = 0x707070;
+const COL_IRON_DK = 0x4a4a4a;
+const COL_IRON_HI = 0x999999;
+const COL_STRING = 0xc8c098;
 const COL_BOLT_SHAFT = 0xb89060;
-const COL_BOLT_TIP   = 0x555555;
+const COL_BOLT_TIP = 0x555555;
 const COL_BOLT_FLETCH = 0x993333;
-const COL_SHADOW     = 0x000000;
+const COL_SHADOW = 0x000000;
+
+// Operator palette
+const COL_SKIN = 0xe8b89d;
+const COL_HAIR = 0x4a3728;
+const COL_TUNIC = 0x8b4513;
+const COL_TUNIC_DK = 0x6b3410;
+const COL_PANTS = 0x5c4033;
+const COL_BOOTS = 0x3d2914;
+const COL_BELT = 0x2a1a0a;
 
 // ---------------------------------------------------------------------------
 // Drawing helpers
 // ---------------------------------------------------------------------------
 
-function line(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, w = 1) {
+function line(
+  g: Graphics,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  color: number,
+  w = 1,
+) {
   g.stroke({ color, width: w });
   g.moveTo(x1, y1).lineTo(x2, y2);
 }
 
-function rect(g: Graphics, x: number, y: number, w: number, h: number, color: number) {
+function rect(
+  g: Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: number,
+) {
   g.fill({ color });
   g.rect(x, y, w, h);
 }
@@ -46,9 +71,80 @@ function circ(g: Graphics, x: number, y: number, r: number, color: number) {
   g.circle(x, y, r);
 }
 
-function ellipse(g: Graphics, x: number, y: number, rx: number, ry: number, color: number) {
+function ellipse(
+  g: Graphics,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  color: number,
+) {
   g.fill({ color });
   g.ellipse(x, y, rx, ry);
+}
+
+// ---------------------------------------------------------------------------
+// Operator (soldier)
+// ---------------------------------------------------------------------------
+
+function drawOperator(g: Graphics, crankAngle: number, tilt = 0) {
+  const opX = CX + 14;
+  const opBaseY = GY - 2;
+
+  const bodyTilt = tilt * 0.5;
+
+  const legY = opBaseY - 8;
+  line(g, opX - 3, opBaseY - 2, opX - 4 + bodyTilt, legY, COL_PANTS, 3);
+  line(g, opX + 3, opBaseY - 2, opX + 4 + bodyTilt, legY, COL_PANTS, 3);
+
+  rect(g, opX - 5 + bodyTilt, opBaseY - 3, 4, 3, COL_BOOTS);
+  rect(g, opX + 1 + bodyTilt, opBaseY - 3, 4, 3, COL_BOOTS);
+
+  const tunicY = legY - 10;
+  rect(g, opX - 5 + bodyTilt, tunicY, 10, 10, COL_TUNIC);
+  rect(g, opX - 4 + bodyTilt, tunicY, 8, 10, COL_TUNIC_DK);
+
+  rect(g, opX - 5 + bodyTilt, tunicY + 7, 10, 2, COL_BELT);
+
+  const shoulderY = tunicY + 2;
+  const handX = CX + 8 + Math.cos(crankAngle) * 4;
+  const handY = GY - 18 + tilt + Math.sin(crankAngle) * 4;
+
+  line(g, opX - 4 + bodyTilt, shoulderY, handX - 1, handY, COL_TUNIC, 2.5);
+  line(g, opX - 4 + bodyTilt, shoulderY + 3, handX - 1, handY + 1, COL_SKIN, 2);
+
+  const crankLen = 5;
+  const crankHandX = CX + 11 + Math.cos(crankAngle) * crankLen;
+  const crankHandY = GY - 16 + tilt + Math.sin(crankAngle) * crankLen;
+  line(
+    g,
+    opX + 4 + bodyTilt,
+    shoulderY,
+    crankHandX,
+    crankHandY,
+    COL_TUNIC,
+    2.5,
+  );
+  line(
+    g,
+    opX + 4 + bodyTilt,
+    shoulderY + 3,
+    crankHandX,
+    crankHandY + 1,
+    COL_SKIN,
+    2,
+  );
+
+  const headY = tunicY - 6;
+  circ(g, opX + bodyTilt, headY, 4, COL_SKIN);
+
+  ellipse(g, opX + bodyTilt, headY - 2, 4, 3, COL_HAIR);
+
+  if (bodyTilt < 3) {
+    g.fill({ color: 0x222222 });
+    g.circle(opX - 1 + bodyTilt * 0.3, headY, 0.5);
+    g.circle(opX + 1 + bodyTilt * 0.3, headY, 0.5);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -163,10 +259,10 @@ function generateIdleFrames(g: Graphics, frame: number): void {
   drawShadow(g);
 
   const cycle = frame / 8;
-  // Gentle sway — windlass crank rotates slowly
   const crankAngle = cycle * Math.PI * 2;
   const drawPct = 0.3 + Math.sin(cycle * Math.PI * 2) * 0.05;
 
+  drawOperator(g, crankAngle);
   drawTripod(g);
   drawStock(g);
   drawProd(g, drawPct);
@@ -178,10 +274,10 @@ function generateMoveFrames(g: Graphics, frame: number): void {
   drawShadow(g);
 
   const cycle = frame / 8;
-  // Bounce as it's carried/pushed forward
   const bounce = Math.abs(Math.sin(cycle * Math.PI * 2)) * 2;
   const tilt = Math.sin(cycle * Math.PI * 2) * 1;
 
+  drawOperator(g, cycle * Math.PI * 4, tilt + bounce);
   drawTripod(g, tilt + bounce);
   drawStock(g, tilt + bounce);
   drawProd(g, 0.3, tilt + bounce);
@@ -196,21 +292,18 @@ function generateAttackFrames(g: Graphics, frame: number): void {
   let boltVisible = true;
 
   if (frame < 2) {
-    // Winding — string pulls back
     drawPct = 0.3 + ((frame + 1) / 2) * 0.5;
   } else if (frame < 4) {
-    // Fully drawn, about to fire
     drawPct = 0.8;
   } else {
-    // Release — string snaps forward
     drawPct = 0.8 - (frame - 3) * 0.4;
     if (drawPct < 0) drawPct = 0;
     boltVisible = false;
   }
 
-  // Recoil tilt on release
   const recoilTilt = frame >= 4 ? (frame - 3) * 1.5 : 0;
 
+  drawOperator(g, frame * 0.8, recoilTilt);
   drawTripod(g, recoilTilt);
   drawStock(g, recoilTilt);
   drawProd(g, drawPct, recoilTilt);
@@ -228,7 +321,6 @@ function generateDieFrames(g: Graphics, frame: number): void {
 
   g.alpha = fade;
 
-  // Topple sideways
   const topple = progress * 25;
   const rad = (topple * Math.PI) / 180;
   const offsetY = progress * 12;
@@ -237,12 +329,12 @@ function generateDieFrames(g: Graphics, frame: number): void {
   drawShadow(g);
 
   g.setTransform(1, 0, 0, 1, shatter, offsetY);
+  drawOperator(g, 0);
   drawTripod(g);
   drawStock(g);
   drawProd(g, 0);
   drawWindlass(g, 0);
 
-  // Bolt falls loose
   if (progress < 0.5) {
     const boltDrop = progress * 6;
     drawBolt(g, 0, boltDrop, true);
@@ -255,12 +347,15 @@ function generateDieFrames(g: Graphics, frame: number): void {
 
 type StateFrameGenerator = (g: Graphics, frame: number) => void;
 
-const STATE_GENERATORS: Record<UnitState, { gen: StateFrameGenerator; count: number }> = {
-  [UnitState.IDLE]:   { gen: generateIdleFrames,   count: 8 },
-  [UnitState.MOVE]:   { gen: generateMoveFrames,   count: 8 },
+const STATE_GENERATORS: Record<
+  UnitState,
+  { gen: StateFrameGenerator; count: number }
+> = {
+  [UnitState.IDLE]: { gen: generateIdleFrames, count: 8 },
+  [UnitState.MOVE]: { gen: generateMoveFrames, count: 8 },
   [UnitState.ATTACK]: { gen: generateAttackFrames, count: 6 },
-  [UnitState.CAST]:   { gen: generateCastFrames,   count: 6 },
-  [UnitState.DIE]:    { gen: generateDieFrames,    count: 7 },
+  [UnitState.CAST]: { gen: generateCastFrames, count: 6 },
+  [UnitState.DIE]: { gen: generateDieFrames, count: 7 },
 };
 
 export function generateBoltThrowerFrames(

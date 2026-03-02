@@ -58,7 +58,7 @@ export class ArrowFX {
     this._pool.mount(this._container);
 
     EventBus.on("unitAttacked", ({ attackerPos, targetPos, attackerType }) => {
-      if (attackerType === UnitType.BALLISTA || attackerType === UnitType.BOLT_THROWER) return;
+      if (attackerType === UnitType.BALLISTA || attackerType === UnitType.BOLT_THROWER || attackerType === UnitType.CATAPULT || attackerType === UnitType.SIEGE_CATAPULT || attackerType === UnitType.TREBUCHET) return;
       this._spawnArrow(attackerPos, targetPos);
     });
   }

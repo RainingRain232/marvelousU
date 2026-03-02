@@ -67,6 +67,9 @@ import { generateElvenArcherFrames } from "@view/animation/ElvenArcherSpriteGen"
 import { generateBatteringRamFrames } from "@view/animation/BatteringRamSpriteGen";
 import { generateBallistaFrames } from "@view/animation/BallistaSpriteGen";
 import { generateBoltThrowerFrames } from "@view/animation/BoltThrowerSpriteGen";
+import { generateCatapultFrames } from "@view/animation/CatapultSpriteGen";
+import { generateSiegeCatapultFrames } from "@view/animation/SiegeCatapultSpriteGen";
+import { generateTrebuchetFrames } from "@view/animation/TrebuchetSpriteGen";
 import { generateLongbowmanFrames } from "@view/animation/LongbowmanSpriteGen";
 import { generateCrossbowmanFrames } from "@view/animation/CrossbowmanSpriteGen";
 import { generateGiantFrogFrames } from "@view/animation/GiantFrogSpriteGen";
@@ -262,6 +265,12 @@ export class AnimationManager {
         this._generateBallistaSprites(key, renderer);
       } else if (key === "bolt_thrower") {
         this._generateBoltThrowerSprites(key, renderer);
+      } else if (key === "catapult") {
+        this._generateCatapultSprites(key, renderer);
+      } else if (key === "siege_catapult") {
+        this._generateSiegeCatapultSprites(key, renderer);
+      } else if (key === "trebuchet") {
+        this._generateTrebuchetSprites(key, renderer);
       } else if (key === "longbowman") {
         this._generateLongbowmanSprites(key, renderer);
       } else if (key === "crossbowman") {
@@ -791,6 +800,39 @@ export class AnimationManager {
 
   private _generateBoltThrowerSprites(key: string, renderer: Renderer): void {
     const textures = generateBoltThrowerFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateCatapultSprites(key: string, renderer: Renderer): void {
+    const textures = generateCatapultFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateSiegeCatapultSprites(key: string, renderer: Renderer): void {
+    const textures = generateSiegeCatapultFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateTrebuchetSprites(key: string, renderer: Renderer): void {
+    const textures = generateTrebuchetFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

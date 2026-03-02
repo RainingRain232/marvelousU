@@ -148,7 +148,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 600,
     hp: 180,
     goldIncome: 1,
-    shopInventory: [UnitType.BALLISTA, UnitType.BATTERING_RAM, UnitType.BOLT_THROWER],
+    shopInventory: [UnitType.BALLISTA, UnitType.BATTERING_RAM, UnitType.BOLT_THROWER, UnitType.CATAPULT, UnitType.SIEGE_CATAPULT, UnitType.TREBUCHET],
     blueprints: [],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
