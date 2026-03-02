@@ -1,16 +1,15 @@
 // Procedural sprite generator for the Mage Hunter unit type.
 //
-// Draws a detailed medieval fantasy mage hunter at 48×48 pixels per frame
+// Draws a detailed side-view mage hunter at 48×48 pixels per frame
 // using PixiJS Graphics → RenderTexture.  Produces textures for every
 // animation state (IDLE 8, MOVE 8, ATTACK 7, CAST 6, DIE 7).
 //
 // Visual features:
-//   • Dark leather armor with metal plates
-//   • Hooded cloak with anti-mage symbols
-//   • Crossbow with magical bolts
-//   • Dagger for close combat
-//   • Anti-magic talismans
-//   • Light boots for mobility
+//   • Chainmail hauberk with leather over-vest
+//   • Flowing dark cape billowing behind
+//   • Two shortswords — one in each hand
+//   • Open-face leather hood over mail coif
+//   • Leather boots and bracers
 //   • Shadow ellipse at feet
 
 import { Graphics, RenderTexture, type Renderer, Texture } from "pixi.js";
@@ -20,307 +19,370 @@ import { UnitState } from "@/types";
 // Constants
 // ---------------------------------------------------------------------------
 
-const F = 48;          // frame size (px)
-const CX = F / 2;      // center X
-const GY = F - 4;      // ground Y (feet line)
+const F  = 48;          // frame size (px)
+const CX = F / 2;       // center X
+const GY = F - 4;       // ground Y (feet line)
 
-// Palette ─ dark hunter with anti-magic theme
-const COL_SKIN      = 0xd4a574;
-const COL_LEATHER   = 0x4a3c28;
-const COL_LEATHER_HI = 0x6a5c48;
-const COL_METAL     = 0x8899aa;
-const COL_METAL_HI  = 0xaabbcc;
-const COL_CLOAK     = 0x2a2a3a;
-const COL_CLOAK_DK  = 0x1a1a2a;
-const COL_SYMBOL    = 0x8b2222;
-const COL_CROSSBOW  = 0x664422;
-const COL_CROSSBOW_HI = 0x886644;
-const COL_BOLT      = 0xaa4488;
-const COL_BOLT_HI   = 0xcc66aa;
-const COL_DAGGER    = 0x8899aa;
-const COL_DAGGER_HI = 0xaabbcc;
-const COL_BOOT      = 0x332211;
-const COL_SHADOW    = 0x000000;
+// Palette
+const COL_SKIN       = 0xd4a574;
+const COL_SKIN_DK    = 0xb8875a;
+
+const COL_CHAIN      = 0x7a8a9a;
+const COL_CHAIN_HI   = 0x9aaaba;
+const COL_CHAIN_DK   = 0x5a6a7a;
+
+const COL_VEST       = 0x3a3028;
+const COL_VEST_HI    = 0x5a4e40;
+
+const COL_CAPE       = 0x2a2a3a;
+const COL_CAPE_DK    = 0x1a1a28;
+const COL_CAPE_HI    = 0x3a3a4a;
+
+const COL_HOOD       = 0x3a3028;
+const COL_HOOD_HI    = 0x4a4038;
+const COL_COIF       = 0x6a7a8a;
+
+const COL_BLADE      = 0xb8c0c8;
+const COL_BLADE_HI   = 0xd8e0e8;
+const COL_GUARD      = 0x886633;
+const COL_GRIP       = 0x443322;
+const COL_POMMEL     = 0x664422;
+
+const COL_BRACER     = 0x5a4430;
+const COL_BOOT       = 0x3a2a1a;
+const COL_BOOT_HI    = 0x4a3a2a;
+
+const COL_SHADOW     = 0x000000;
 
 // ---------------------------------------------------------------------------
 // Tiny helpers
 // ---------------------------------------------------------------------------
 
-function drawEllipse(g: Graphics, x: number, y: number, w: number, h: number, color: number): void {
-  g.fill({ color });
-  g.ellipse(x, y, w, h);
+function ellipse(g: Graphics, x: number, y: number, rx: number, ry: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.ellipse(x, y, rx, ry);
 }
 
-function drawCircle(g: Graphics, x: number, y: number, r: number, color: number): void {
-  g.fill({ color });
+function circle(g: Graphics, x: number, y: number, r: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
   g.circle(x, y, r);
 }
 
-function drawLine(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, width: number = 1): void {
-  g.stroke({ color, width });
+function rect(g: Graphics, x: number, y: number, w: number, h: number, color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.rect(x, y, w, h);
+}
+
+function line(g: Graphics, x1: number, y1: number, x2: number, y2: number, color: number, w = 1): void {
+  g.stroke({ color, width: w });
   g.moveTo(x1, y1).lineTo(x2, y2);
 }
 
+function poly(g: Graphics, pts: number[], color: number, alpha = 1): void {
+  g.fill({ color, alpha });
+  g.poly(pts);
+  g.fill();
+}
+
 // ---------------------------------------------------------------------------
-// Component drawing functions
+// Component drawing
 // ---------------------------------------------------------------------------
+
+function drawCape(g: Graphics, x: number, y: number, sway: number): void {
+  // Cape billowing behind (drawn first, behind body)
+  const sw = sway * 2;
+  poly(g, [
+    x + 4, y,
+    x + 6, y,
+    x + 14 + sw, y + 8 + sw * 0.3,
+    x + 16 + sw * 1.2, y + 18 + sw * 0.2,
+    x + 10 + sw * 0.8, y + 22,
+    x + 4, y + 16,
+  ], COL_CAPE);
+  // Cape fold highlight
+  poly(g, [
+    x + 5, y + 2,
+    x + 6, y + 1,
+    x + 12 + sw * 0.8, y + 10 + sw * 0.2,
+    x + 8 + sw * 0.5, y + 18,
+    x + 5, y + 14,
+  ], COL_CAPE_HI);
+  // Dark inner fold
+  line(g, x + 5, y + 4, x + 9 + sw * 0.6, y + 16, COL_CAPE_DK, 1.5);
+}
 
 function drawHead(g: Graphics, x: number, y: number): void {
-  // Head
-  drawCircle(g, x, y, 6, COL_SKIN);
-  
-  // Hood
-  g.fill({ color: COL_CLOAK });
-  g.moveTo(x - 8, y - 6)
-    .lineTo(x + 8, y - 6)
-    .lineTo(x + 6, y + 2)
-    .lineTo(x, y + 4)
-    .lineTo(x - 6, y + 2)
-    .fill();
-  
-  // Hood shadow
-  g.fill({ color: COL_CLOAK_DK });
-  g.moveTo(x - 6, y - 4)
-    .lineTo(x + 6, y - 4)
-    .lineTo(x + 4, y + 1)
-    .lineTo(x, y + 2)
-    .lineTo(x - 4, y + 1)
-    .fill();
-  
-  // Anti-mage symbol on hood
-  drawCircle(g, x, y - 2, 2, COL_SYMBOL);
+  // Mail coif (under hood)
+  circle(g, x, y, 5.5, COL_COIF);
+  // Face
+  circle(g, x - 1, y + 1, 4, COL_SKIN);
+  // Eye
+  circle(g, x - 3, y, 0.8, 0x222222);
+
+  // Leather hood (open-face)
+  ellipse(g, x + 1, y - 2, 5.5, 4, COL_HOOD);
+  ellipse(g, x + 1.5, y - 2.5, 5, 3.5, COL_HOOD_HI);
+  // Hood sides draping down
+  rect(g, x + 3, y, 3, 4, COL_HOOD);
+  // Coif edge visible at chin
+  line(g, x - 4, y + 3, x + 2, y + 4, COL_COIF, 0.8);
 }
 
-function drawBody(g: Graphics, x: number, y: number, w: number, h: number): void {
-  // Leather armor
-  g.fill({ color: COL_LEATHER });
-  g.rect(x - w/2, y, w, h);
-  
-  // Metal plates
-  g.fill({ color: COL_METAL });
-  g.rect(x - w/2 + 1, y + 2, w - 2, 3);
-  g.rect(x - w/2 + 1, y + h - 4, w - 2, 2);
-  
-  // Armor highlights
-  g.fill({ color: COL_LEATHER_HI });
-  g.rect(x - w/2 + 1, y + 1, w - 2, 1);
-  g.fill({ color: COL_METAL_HI });
-  g.rect(x - w/2 + 2, y + 3, w - 4, 1);
+function drawBody(g: Graphics, x: number, y: number, breathe: number): void {
+  // Chainmail hauberk
+  rect(g, x - 6, y, 12, 12 + breathe * 0.3, COL_CHAIN);
+  rect(g, x - 5, y + 1, 10, 1, COL_CHAIN_HI);
+  // Chain texture
+  line(g, x - 4, y + 4, x + 4, y + 4, COL_CHAIN_HI, 0.5);
+  line(g, x - 4, y + 7, x + 4, y + 7, COL_CHAIN_HI, 0.5);
+  line(g, x - 4, y + 10, x + 4, y + 10, COL_CHAIN_DK, 0.5);
+
+  // Leather over-vest (sleeveless, open front)
+  rect(g, x - 5, y + 1, 3, 10, COL_VEST); // left panel
+  rect(g, x + 2, y + 1, 3, 10, COL_VEST); // right panel
+  rect(g, x - 4, y + 2, 2, 3, COL_VEST_HI); // left highlight
+  rect(g, x + 3, y + 2, 2, 3, COL_VEST_HI); // right highlight
+  // Vest bottom trim
+  line(g, x - 5, y + 11, x - 2, y + 11, COL_VEST_HI, 0.8);
+  line(g, x + 2, y + 11, x + 5, y + 11, COL_VEST_HI, 0.8);
+
+  // Belt
+  rect(g, x - 6, y + 11, 12, 2, COL_BRACER);
+  line(g, x - 5, y + 11.5, x + 5, y + 11.5, COL_BOOT, 0.8);
+  // Belt buckle
+  rect(g, x - 1, y + 11, 2, 2, COL_GUARD);
 }
 
-function drawCrossbow(g: Graphics, x: number, y: number, angle: number = 0): void {
-  // Crossbow stock
-  g.fill({ color: COL_CROSSBOW });
-  g.rect(x - 8, y - 2, 16, 4);
-  
-  // Crossbow details
-  g.fill({ color: COL_CROSSBOW_HI });
-  g.rect(x - 7, y - 1, 14, 1);
-  
-  // Bow arms
-  drawLine(g, x - 8, y, x - 12, y - 6, COL_CROSSBOW, 3);
-  drawLine(g, x + 8, y, x + 12, y - 6, COL_CROSSBOW, 3);
-  drawLine(g, x - 8, y, x - 12, y + 6, COL_CROSSBOW, 3);
-  drawLine(g, x + 8, y, x + 12, y + 6, COL_CROSSBOW, 3);
-  
-  // String
-  drawLine(g, x - 12, y - 6, x + 12, y - 6, COL_METAL, 1);
-  drawLine(g, x - 12, y + 6, x + 12, y + 6, COL_METAL, 1);
-  
-  // Magical bolt
-  if (angle === 0) {
-    drawLine(g, x + 12, y, x + 18, y, COL_BOLT, 2);
-    drawLine(g, x + 12, y - 1, x + 18, y - 1, COL_BOLT_HI, 1);
-  }
+function drawSword(g: Graphics, x: number, y: number, angle: number): void {
+  const ca = Math.cos(angle);
+  const sa = Math.sin(angle);
+  const bladeLen = 11;
+  const tipX = x + ca * bladeLen;
+  const tipY = y + sa * bladeLen;
+
+  // Grip
+  const gx = x - ca * 3;
+  const gy = y - sa * 3;
+  line(g, gx, gy, x, y, COL_GRIP, 2);
+  // Pommel
+  circle(g, gx, gy, 1.2, COL_POMMEL);
+  // Cross-guard
+  const pa = angle + Math.PI / 2;
+  line(g, x + Math.cos(pa) * 2.5, y + Math.sin(pa) * 2.5,
+       x - Math.cos(pa) * 2.5, y - Math.sin(pa) * 2.5, COL_GUARD, 1.5);
+  // Blade
+  line(g, x, y, tipX, tipY, COL_BLADE, 2);
+  line(g, x + 0.3, y - 0.3, tipX + 0.3, tipY - 0.3, COL_BLADE_HI, 0.8);
 }
 
-function drawDagger(g: Graphics, x: number, y: number, scale: number = 1): void {
-  // Dagger blade
-  g.fill({ color: COL_DAGGER });
-  g.moveTo(x, y - 4 * scale)
-    .lineTo(x + 1, y - 2 * scale)
-    .lineTo(x + 1, y + 2 * scale)
-    .lineTo(x, y + 4 * scale)
-    .lineTo(x - 1, y + 2 * scale)
-    .lineTo(x - 1, y - 2 * scale)
-    .fill();
-  
-  // Dagger hilt
-  g.fill({ color: COL_METAL });
-  g.rect(x - 1, y + 2 * scale, 2, 3 * scale);
-  
-  // Dagger guard
-  g.fill({ color: COL_DAGGER_HI });
-  g.rect(x - 2, y + 2 * scale, 4, 1);
+function drawArms(
+  g: Graphics, x: number, y: number, breathe: number,
+  rightAngle: number, leftAngle: number,
+): void {
+  // Right arm (chainmail sleeve + bracer)
+  const rax = x + 7;
+  const ray = y + 3 + breathe * 0.3;
+  rect(g, rax, ray, 3, 5, COL_CHAIN);
+  rect(g, rax, ray + 4, 3, 3, COL_BRACER); // bracer
+  rect(g, rax + 0.5, ray + 4.5, 2, 1, COL_VEST_HI);
+  // Hand
+  const rfDist = 6;
+  const rfX = rax + Math.cos(rightAngle) * rfDist;
+  const rfY = ray + 5 + Math.sin(rightAngle) * rfDist;
+  line(g, rax + 1, ray + 7, rfX, rfY, COL_CHAIN, 2.5);
+  circle(g, rfX, rfY, 1.5, COL_SKIN_DK);
+
+  // Left arm
+  const lax = x - 8;
+  const lay = y + 3 + breathe * 0.3;
+  rect(g, lax, lay, 3, 5, COL_CHAIN);
+  rect(g, lax, lay + 4, 3, 3, COL_BRACER);
+  rect(g, lax + 0.5, lay + 4.5, 2, 1, COL_VEST_HI);
+  // Hand
+  const lfX = lax + Math.cos(leftAngle) * rfDist;
+  const lfY = lay + 5 + Math.sin(leftAngle) * rfDist;
+  line(g, lax + 1, lay + 7, lfX, lfY, COL_CHAIN, 2.5);
+  circle(g, lfX, lfY, 1.5, COL_SKIN_DK);
 }
 
-function drawCloak(g: Graphics, x: number, y: number, sway: number = 0): void {
-  // Cloak
-  g.fill({ color: COL_CLOAK });
-  g.moveTo(x - 10 + sway, y)
-    .lineTo(x + 10 + sway, y)
-    .lineTo(x + 8 + sway, y + 20)
-    .lineTo(x - 8 + sway, y + 20)
-    .fill();
-  
-  // Cloak shadow
-  g.fill({ color: COL_CLOAK_DK });
-  g.moveTo(x - 8 + sway, y + 2)
-    .lineTo(x + 8 + sway, y + 2)
-    .lineTo(x + 6 + sway, y + 18)
-    .lineTo(x - 6 + sway, y + 18)
-    .fill();
-  
-  // Anti-mage symbols on cloak
-  drawCircle(g, x - 4 + sway, y + 8, 1, COL_SYMBOL);
-  drawCircle(g, x + 4 + sway, y + 12, 1, COL_SYMBOL);
-}
+function drawLegs(g: Graphics, x: number, y: number, step: number): void {
+  const stride = Math.sin(step * Math.PI * 2) * 2.5;
 
-function drawLegs(g: Graphics, x: number, y: number, walkCycle: number): void {
-  const offset = Math.sin(walkCycle * Math.PI * 2) * 2;
-  
-  // Left leg
-  g.fill({ color: COL_LEATHER });
-  g.rect(x - 4, y, 3, 8);
-  g.fill({ color: COL_BOOT });
-  g.rect(x - 4, y + 6, 3, 4);
-  
-  // Right leg (opposite phase)
-  g.fill({ color: COL_LEATHER });
-  g.rect(x + 1, y - offset, 3, 8 + offset);
-  g.fill({ color: COL_BOOT });
-  g.rect(x + 1, y + 6 - offset, 3, 4);
+  // Front leg
+  rect(g, x - 4, y, 4, 8, COL_CHAIN);
+  rect(g, x - 5, y + 7 + stride * 0.2, 5, 3, COL_BOOT);
+  rect(g, x - 4, y + 7.5 + stride * 0.2, 3, 1, COL_BOOT_HI);
+
+  // Back leg
+  rect(g, x + 1, y - stride * 0.3, 4, 8 + stride * 0.3, COL_CHAIN);
+  rect(g, x, y + 7, 5, 3, COL_BOOT);
+  rect(g, x + 1, y + 7.5, 3, 1, COL_BOOT_HI);
 }
 
 // ---------------------------------------------------------------------------
 // Animation state generators
 // ---------------------------------------------------------------------------
 
-function generateIdleFrames(g: Graphics, frame: number): void {
-  const breathe = Math.sin(frame * 0.3) * 1;
-  const cloakSway = Math.sin(frame * 0.2) * 1;
-  
+function generateIdle(g: Graphics, frame: number): void {
+  const t = frame / 8;
+  const breathe = Math.sin(t * Math.PI * 2) * 0.8;
+  const capeSway = Math.sin(t * Math.PI * 2 + 0.5) * 0.6;
+
   // Shadow
-  drawEllipse(g, CX, GY, 12, 4, COL_SHADOW);
-  
-  // Cloak
-  drawCloak(g, CX, 24 + breathe, cloakSway);
-  
-  // Body
-  drawBody(g, CX, 20 + breathe, 10, 12);
-  
-  // Head
-  drawHead(g, CX, 14 + breathe);
-  
-  // Crossbow
-  drawCrossbow(g, CX + 8, 18 + breathe);
-  
-  // Dagger
-  drawDagger(g, CX - 8, 22 + breathe, 0.8);
-  
+  ellipse(g, CX, GY, 10, 3.5, COL_SHADOW, 0.3);
+
+  // Cape (behind everything)
+  drawCape(g, CX, 14 + breathe, capeSway);
+
   // Legs
-  drawLegs(g, CX, 32, 0);
-}
+  drawLegs(g, CX, 30, 0);
 
-function generateMoveFrames(g: Graphics, frame: number): void {
-  const walkCycle = frame / 8;
-  const bob = Math.abs(Math.sin(walkCycle * Math.PI * 2)) * 2;
-  const sway = Math.sin(walkCycle * Math.PI * 2) * 1;
-  const cloakSway = Math.sin(walkCycle * Math.PI * 4) * 2;
-  
-  // Shadow
-  drawEllipse(g, CX, GY, 12, 4, COL_SHADOW);
-  
-  // Cloak
-  drawCloak(g, CX + sway, 24 + bob, cloakSway);
-  
   // Body
-  drawBody(g, CX + sway, 20 + bob, 10, 12);
-  
+  drawBody(g, CX, 16 + breathe, breathe);
+
+  // Arms
+  drawArms(g, CX, 16 + breathe, breathe, -Math.PI * 0.3, -Math.PI * 0.6);
+
+  // Right shortsword (held down at side)
+  drawSword(g, CX + 10, 26 + breathe, -Math.PI * 0.25);
+
+  // Left shortsword (reverse grip, angled back)
+  drawSword(g, CX - 10, 26 + breathe, -Math.PI * 0.7);
+
   // Head
-  drawHead(g, CX + sway, 14 + bob);
-  
-  // Crossbow (angled for movement)
-  const bowAngle = Math.sin(walkCycle * Math.PI * 2) * 0.2;
-  drawCrossbow(g, CX + 8 + sway, 18 + bob, bowAngle);
-  
-  // Dagger
-  drawDagger(g, CX - 8 + sway, 22 + bob, 0.8);
-  
-  // Legs (walking)
-  drawLegs(g, CX + sway, 32, walkCycle);
+  drawHead(g, CX, 10 + breathe);
 }
 
-function generateAttackFrames(g: Graphics, frame: number): void {
-  const t = frame / 6; // 0 to 1
-  const aim = t < 0.3 ? t * 3 : 1; // Quick aim, then hold
-  const recoil = t > 0.3 && t < 0.5 ? (t - 0.3) * 5 : 0; // Recoil at 0.3-0.5
-  
+function generateMove(g: Graphics, frame: number): void {
+  const t = frame / 8;
+  const bob = Math.abs(Math.sin(t * Math.PI * 2)) * 1.5;
+  const sway = Math.sin(t * Math.PI * 2) * 0.8;
+  const capeSway = Math.sin(t * Math.PI * 2 + 1) * 1.5;
+
   // Shadow
-  drawEllipse(g, CX, GY, 12, 4, COL_SHADOW);
-  
-  // Cloak
-  drawCloak(g, CX, 24, 0);
-  
-  // Body (leaning back slightly)
-  drawBody(g, CX - recoil * 2, 20, 10, 12);
-  
+  ellipse(g, CX, GY, 10, 3.5, COL_SHADOW, 0.3);
+
+  // Cape (billowing more during movement)
+  drawCape(g, CX + sway, 14 + bob, capeSway);
+
+  // Legs
+  drawLegs(g, CX + sway, 30, t);
+
+  // Body
+  drawBody(g, CX + sway, 16 + bob, bob);
+
+  // Arms (swinging with stride)
+  drawArms(g, CX + sway, 16 + bob, bob,
+    -Math.PI * 0.3 + sway * 0.08, -Math.PI * 0.6 - sway * 0.08);
+
+  // Swords swaying with run
+  drawSword(g, CX + 10 + sway, 26 + bob, -Math.PI * 0.25 + sway * 0.06);
+  drawSword(g, CX - 10 + sway, 26 + bob, -Math.PI * 0.7 - sway * 0.06);
+
   // Head
-  drawHead(g, CX - recoil * 2, 14);
-  
-  // Crossbow (aiming and firing)
-  drawCrossbow(g, CX + 8 - recoil * 3, 18, aim * 0.1);
-  
-  // Magical bolt (fired at frame 3-4)
-  if (t > 0.3 && t < 0.6) {
-    const boltDist = (t - 0.3) * 40;
-    drawLine(g, CX + 20 + boltDist, 18, CX + 25 + boltDist, 18, COL_BOLT, 2);
-    drawLine(g, CX + 20 + boltDist, 17, CX + 25 + boltDist, 17, COL_BOLT_HI, 1);
-  }
-  
-  // Dagger
-  drawDagger(g, CX - 8, 22, 0.8);
-  
-  // Legs (planted stance)
-  drawLegs(g, CX, 32, 0);
+  drawHead(g, CX + sway, 10 + bob);
 }
 
-function generateCastFrames(g: Graphics, frame: number): void {
-  // Mage Hunter doesn't cast, but reuse attack animation
-  generateAttackFrames(g, frame);
-}
-
-function generateDieFrames(g: Graphics, frame: number): void {
+function generateAttack(g: Graphics, frame: number): void {
   const t = frame / 6;
-  const fallX = t * 6;
-  const dropY = t * 16;
-  
-  // Shadow (shrinking)
-  drawEllipse(g, CX, GY, 12 * (1 - t), 4 * (1 - t), COL_SHADOW);
-  
-  // Cloak (falling)
-  if (t < 0.8) {
-    drawCloak(g, CX + fallX, 24 + dropY, 0);
+
+  // Dual slash: right slash first, left follows
+  let rAngle: number;
+  let lAngle: number;
+  let lean: number;
+
+  if (t < 0.3) {
+    // Wind-up: both swords pull back
+    const p = t / 0.3;
+    rAngle = -Math.PI * 0.25 - p * Math.PI * 0.45;
+    lAngle = -Math.PI * 0.7 - p * 0.3;
+    lean = -p * 1.5;
+  } else if (t < 0.55) {
+    // Right sword slashes forward
+    const p = (t - 0.3) / 0.25;
+    rAngle = -Math.PI * 0.7 + p * Math.PI * 0.75;
+    lAngle = -Math.PI * 1.0 + p * 0.2;
+    lean = -1.5 + p * 4;
+  } else if (t < 0.8) {
+    // Left sword follows through
+    const p = (t - 0.55) / 0.25;
+    rAngle = Math.PI * 0.05 - p * 0.15;
+    lAngle = -Math.PI * 0.8 + p * Math.PI * 0.65;
+    lean = 2.5 - p * 0.5;
+  } else {
+    // Recovery
+    const p = (t - 0.8) / 0.2;
+    rAngle = -Math.PI * 0.1 - p * 0.15;
+    lAngle = -Math.PI * 0.15 - p * 0.55;
+    lean = 2.0 - p * 2.0;
   }
-  
-  // Body (falling)
-  if (t < 0.7) {
-    drawBody(g, CX + fallX, 20 + dropY, 10, 12);
-  }
-  
+
+  const capeSway = Math.sin(t * Math.PI * 3) * 1.5;
+
+  // Shadow
+  ellipse(g, CX, GY, 10, 3.5, COL_SHADOW, 0.3);
+
+  // Cape
+  drawCape(g, CX + lean * 0.3, 14, capeSway);
+
+  // Legs
+  drawLegs(g, CX, 30, 0);
+
+  // Body
+  drawBody(g, CX + lean, 16, 0);
+
+  // Arms
+  drawArms(g, CX + lean, 16, 0, rAngle, lAngle);
+
+  // Swords
+  drawSword(g, CX + 10 + lean, 24, rAngle);
+  drawSword(g, CX - 10 + lean * 0.5, 24, lAngle);
+
   // Head
-  if (t < 0.5) {
-    drawHead(g, CX + fallX, 14 + dropY);
+  drawHead(g, CX + lean, 10);
+}
+
+function generateCast(g: Graphics, frame: number): void {
+  // Mage Hunter cast = same as attack (dual slash)
+  generateAttack(g, frame);
+}
+
+function generateDie(g: Graphics, frame: number): void {
+  const t = frame / 6;
+  const fall = t * 7;
+  const drop = t * 14;
+  const fade = 1 - t;
+
+  // Shadow (shrinking)
+  ellipse(g, CX, GY, 10 * fade, 3.5 * fade, COL_SHADOW, 0.3 * fade);
+
+  // Cape (crumpling)
+  if (t < 0.9) {
+    drawCape(g, CX + fall * 0.5, 14 + drop * 0.5, t * 2);
   }
-  
-  // Crossbow (falling separately)
-  if (t > 0.2) {
-    drawCrossbow(g, CX + fallX + 8, 18 + dropY, 0.5);
+
+  if (t < 0.85) {
+    drawLegs(g, CX + fall * 0.4, 30 + drop * 0.2, 0);
   }
-  
-  // Dagger (dropping)
+
+  if (t < 0.75) {
+    drawBody(g, CX + fall, 16 + drop, 0);
+  }
+
+  if (t < 0.65) {
+    drawHead(g, CX + fall * 1.2, 10 + drop * 0.7);
+  }
+
+  // Right sword drops
+  if (t < 0.7) {
+    drawSword(g, CX + 10 + fall * 0.8, 26 + drop * 0.4,
+      -Math.PI * 0.25 + t * 1.5);
+  }
+
+  // Left sword drops
   if (t < 0.6) {
-    drawDagger(g, CX + fallX, 22 + dropY, 0.8 * (1 - t));
+    drawSword(g, CX - 8 + fall * 0.6, 26 + drop * 0.5,
+      -Math.PI * 0.7 - t * 0.8);
   }
 }
 
@@ -331,11 +393,11 @@ function generateDieFrames(g: Graphics, frame: number): void {
 type StateFrameGenerator = (g: Graphics, frame: number) => void;
 
 const STATE_GENERATORS: Record<UnitState, { gen: StateFrameGenerator; count: number }> = {
-  [UnitState.IDLE]:   { gen: generateIdleFrames,   count: 8 },
-  [UnitState.MOVE]:   { gen: generateMoveFrames,   count: 8 },
-  [UnitState.ATTACK]: { gen: generateAttackFrames,  count: 7 },
-  [UnitState.CAST]:   { gen: generateCastFrames,    count: 6 },
-  [UnitState.DIE]:    { gen: generateDieFrames,     count: 7 },
+  [UnitState.IDLE]:   { gen: generateIdle,   count: 8 },
+  [UnitState.MOVE]:   { gen: generateMove,   count: 8 },
+  [UnitState.ATTACK]: { gen: generateAttack, count: 7 },
+  [UnitState.CAST]:   { gen: generateCast,   count: 6 },
+  [UnitState.DIE]:    { gen: generateDie,    count: 7 },
 };
 
 /**
