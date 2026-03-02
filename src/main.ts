@@ -28,6 +28,7 @@ import { animationManager } from "@view/animation/AnimationManager";
 import { environmentLayer } from "@view/environment/EnvironmentLayer";
 import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
+import { MAP_SIZES } from "@view/ui/MenuScreen";
 import type { MapSize } from "@view/ui/MenuScreen";
 import { leaderSelectScreen } from "@view/ui/LeaderSelectScreen";
 import { raceSelectScreen } from "@view/ui/RaceSelectScreen";
@@ -36,6 +37,7 @@ import { scenarioSelectScreen } from "@view/ui/ScenarioSelectScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
 import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
+import { minimap } from "@view/ui/Minimap";
 import { campaignState } from "@sim/config/CampaignState";
 import { getScenario } from "@sim/config/CampaignDefs";
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
@@ -118,6 +120,20 @@ import type { RaceId } from "@sim/config/RaceDefs";
   menuScreen.onContinue = () => {
     menuScreen.hide();
     leaderSelectScreen.show();
+  };
+
+  menuScreen.onQuickPlay = async () => {
+    menuScreen.hide();
+    await _bootGame(
+      true, // p2 is AI
+      MAP_SIZES[0], // standard map size
+      GameMode.DEATHMATCH,
+      "arthur",
+      "man",
+      undefined,
+      MapType.FANTASIA,
+      ["longsword"], // armory weapon
+    );
   };
 
   leaderSelectScreen.onBack = () => {
@@ -723,6 +739,7 @@ async function _bootGame(
   raceId: RaceId = "man",
   scenarioNum?: number,
   mapType: MapType = MapType.MEADOW,
+  armoryOverride?: string[],
 ): Promise<void> {
   // 1. Simulation state — sized to the chosen map
   const startGold =
@@ -804,7 +821,7 @@ async function _bootGame(
   }
 
   // Apply P1's equipped armory items (hero stat bonuses)
-  state.p1ArmoryItems = armoryScreen.selectedItems;
+  state.p1ArmoryItems = armoryOverride ?? armoryScreen.selectedItems;
 
   // Apply the chosen leader's passive bonus to P1
   _applyLeaderBonus(state, "p1", leaderId, mapSize);
@@ -851,6 +868,11 @@ async function _bootGame(
   // 6b. Hover tooltip
   hoverTooltip.init(viewManager, state, viewManager.camera);
 
+  // 6c. Minimap
+  minimap.init(viewManager, state, viewManager.camera, mapType);
+  EventBus.on("buildingPlaced", () => minimap.redrawTerrain(state));
+  EventBus.on("buildingDestroyed", () => minimap.redrawTerrain(state));
+
   // 7. Spawn queue UI
   unitQueueUI.init(viewManager, state);
 
@@ -870,6 +892,7 @@ async function _bootGame(
   viewManager.onUpdate((s) => shopPanel.update(s));
   viewManager.onUpdate((s) => unitQueueUI.update(s));
   viewManager.onUpdate((s, dt) => p2AIBuyer.update(s, dt));
+  viewManager.onUpdate((s) => minimap.update(s));
 
   // HUD callbacks
   hud.onAIToggle = (isAI) => {

@@ -180,6 +180,8 @@ export class MenuScreen {
   onAIToggle: ((isAI: boolean) => void) | null = null;
   /** Called when the player clicks the "SELECT LEADER" button (proceeds to leader select). */
   onContinue: (() => void) | null = null;
+  /** Called when the player clicks "QUICKPLAY" — skips all selection screens. */
+  onQuickPlay: (() => void) | null = null;
 
   get selectedMapSize(): MapSize {
     return MAP_SIZES[this._selectedSizeIndex];
@@ -536,8 +538,47 @@ export class MenuScreen {
 
     card.addChild(startBtn);
 
+    // --- QUICKPLAY button ---
+    const qpBtn = new Container();
+    qpBtn.eventMode = "static";
+    qpBtn.cursor = "pointer";
+    qpBtn.position.set(20, modeSectionH + 22 + BH + 8);
+
+    const qpBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 6)
+      .fill({ color: 0x2a1a0a })
+      .roundRect(0, 0, BW, BH, 6)
+      .stroke({ color: 0xcc8833, width: 2 });
+    qpBtn.addChild(qpBg);
+
+    const qpLabel = new Text({
+      text: "QUICKPLAY  >>",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 15,
+        fill: 0xffcc66,
+        fontWeight: "bold",
+        letterSpacing: 2,
+      }),
+    });
+    qpLabel.anchor.set(0.5, 0.5);
+    qpLabel.position.set(BW / 2, BH / 2);
+    qpBtn.addChild(qpLabel);
+
+    qpBtn.on("pointerover", () => {
+      qpBg.tint = 0xffddaa;
+    });
+    qpBtn.on("pointerout", () => {
+      qpBg.tint = 0xffffff;
+    });
+    qpBtn.on("pointerdown", () => {
+      this.onQuickPlay?.();
+    });
+
+    card.addChild(qpBtn);
+
     // Adjust card height dynamically
-    this._cardH = modeSectionH + 22 + BH + 18;
+    this._cardH = modeSectionH + 22 + BH + 8 + BH + 18;
 
     vm.addToLayer("ui", this.container);
     this._layout();
