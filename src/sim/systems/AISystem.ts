@@ -250,8 +250,10 @@ function _findNearbyEnemyBuilding(
   state: GameState,
   unit: Unit,
 ): Building | null {
+  // Long-range siege units can spot buildings at their full attack range.
+  const rangeSq = Math.max(BUILDING_AGGRO_RANGE_SQ, unit.range * unit.range);
   let nearest: Building | null = null;
-  let nearestDsq = BUILDING_AGGRO_RANGE_SQ + 1;
+  let nearestDsq = rangeSq + 1;
 
   for (const building of state.buildings.values()) {
     if (building.owner === unit.owner) continue;
@@ -259,7 +261,7 @@ function _findNearbyEnemyBuilding(
     if (building.state !== BuildingState.ACTIVE) continue;
 
     const dsq = distanceSq(unit.position, building.position);
-    if (dsq <= BUILDING_AGGRO_RANGE_SQ && dsq < nearestDsq) {
+    if (dsq <= rangeSq && dsq < nearestDsq) {
       nearest = building;
       nearestDsq = dsq;
     }
