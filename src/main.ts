@@ -25,6 +25,7 @@ import { damageNumberFX } from "@view/fx/DamageNumberFX";
 import { flagFX } from "@view/fx/FlagFX";
 import { runeCircleFX } from "@view/fx/RuneCircleFX";
 import { animationManager } from "@view/animation/AnimationManager";
+import { audioManager } from "@audio/AudioManager";
 import { environmentLayer } from "@view/environment/EnvironmentLayer";
 import { startScreen } from "@view/ui/StartScreen";
 import { menuScreen } from "@view/ui/MenuScreen";
@@ -105,6 +106,9 @@ import type { RaceId } from "@sim/config/RaceDefs";
   } else {
     startScreen.show();
   }
+
+  // Start menu music as soon as the app is interactive
+  audioManager.playMenuMusic();
 
   startScreen.onStart = () => {
     startScreen.hide();
@@ -741,6 +745,9 @@ async function _bootGame(
   mapType: MapType = MapType.MEADOW,
   armoryOverride?: string[],
 ): Promise<void> {
+  // Switch to in-game music
+  audioManager.playGameMusic();
+
   // 1. Simulation state — sized to the chosen map
   const startGold =
     gameMode === GameMode.DEATHMATCH
