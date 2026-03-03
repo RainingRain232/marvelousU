@@ -36,6 +36,7 @@ import { raceSelectScreen } from "@view/ui/RaceSelectScreen";
 import { raceDetailScreen } from "@view/ui/RaceDetailScreen";
 import { armoryScreen } from "@view/ui/ArmoryScreen";
 import { scenarioSelectScreen } from "@view/ui/ScenarioSelectScreen";
+import { campaignIntroScreen } from "@view/ui/CampaignIntroScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
 import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
@@ -267,12 +268,22 @@ import type { RaceId } from "@sim/config/RaceDefs";
     armoryScreen.show();
   };
 
-  scenarioSelectScreen.onNext = async () => {
+  scenarioSelectScreen.onNext = () => {
+    const scenarioNum = scenarioSelectScreen.selectedScenario;
+    scenarioSelectScreen.hide();
+    campaignIntroScreen.open(scenarioNum);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Campaign intro screen
+  // ---------------------------------------------------------------------------
+  campaignIntroScreen.init(viewManager);
+
+  campaignIntroScreen.onStart = async () => {
     const mapSize = menuScreen.selectedMapSize;
     const leaderId = leaderSelectScreen.selectedLeaderId;
     const raceId = raceSelectScreen.selectedRaceId;
     const scenarioNum = scenarioSelectScreen.selectedScenario;
-    scenarioSelectScreen.hide();
     await _bootCampaign(p2IsAI, mapSize, scenarioNum, leaderId, raceId);
   };
 
