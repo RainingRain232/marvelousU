@@ -1248,14 +1248,12 @@ export class AnimationManager {
 
   private _generateTrollSprites(key: string, renderer: Renderer): void {
     const textures = generateTrollFrames(renderer);
-    for (let row = 0; row < 5; row++) {
-      const state = Object.values(UnitState)[row];
-      const stateTextures: Texture[] = [];
-      for (let col = 0; col < 8; col++) {
-        stateTextures.push(textures[row * 8 + col]);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
       }
-      const ck = cacheKey(key, state);
-      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
     }
   }
 

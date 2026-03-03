@@ -606,6 +606,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "troll",
     regenRate: 5,
+    size: { width: 2.0, height: 2.0, healthBarOffset: -1.0 },
     description:
       "Massive troll with immense health. Slow but devastating in melee.",
     tier: 3,
