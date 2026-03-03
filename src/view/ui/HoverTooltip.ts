@@ -205,6 +205,8 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.TROUBADOUR]: "Troubadour",
   [UnitType.GIANT_COURT_JESTER]: "Giant Court Jester",
   [UnitType.FISHERMAN]: "Fisherman",
+  [UnitType.FIRE_ELEMENTAL]: "Fire Elemental",
+  [UnitType.ICE_ELEMENTAL]: "Ice Elemental",
 };
 
 // ---------------------------------------------------------------------------

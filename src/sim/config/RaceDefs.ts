@@ -118,6 +118,24 @@ export const RACE_DEFINITIONS: RaceDef[] = [
     },
   },
   {
+    id: "elements",
+    name: "The Elements",
+    title: "Wrath of the Primordials",
+    flavor: "Born from the raw forces that shaped the world, the Elements command fire, ice, storm, and void alike. They field no mortal soldiers — only creatures and pure elemental magic channelled through ancient conduits.",
+    factionUnit: UnitType.HALBERDIER, // placeholder until faction unit is implemented
+    factionUnits: [UnitType.HALBERDIER],
+    factionUnitLabel: "Coming soon...",
+    implemented: true,
+    accentColor: 0xcc6622,
+    tiers: {
+      melee: 0, ranged: 0, siege: 0,
+      creature: 5, magic: 5,
+      fire: 5, cold: 5, lightning: 5,
+      distortion: 5, summon: 5, nature: 5,
+      heal: 0,
+    },
+  },
+  {
     id: "dwarf",
     name: "Dwarves",
     title: "Forge-Lords of the Deep",

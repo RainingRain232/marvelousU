@@ -120,6 +120,8 @@ import { generateRufusFrames } from "@view/animation/RufusSpriteGen";
 import { generateTroubadourFrames } from "@view/animation/TroubadourSpriteGen";
 import { generateGiantCourtJesterFrames } from "@view/animation/GiantCourtJesterSpriteGen";
 import { generateFishermanFrames } from "@view/animation/FishermanSpriteGen";
+import { generateFireElementalFrames } from "@view/animation/FireElementalSpriteGen";
+import { generateIceElementalFrames } from "@view/animation/IceElementalSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -395,6 +397,10 @@ export class AnimationManager {
         this._generateGiantCourtJesterSprites(key, renderer);
       } else if (key === "fisherman") {
         this._generateFishermanSprites(key, renderer);
+      } else if (key === "fire_elemental") {
+        this._generateFireElementalSprites(key, renderer);
+      } else if (key === "ice_elemental") {
+        this._generateIceElementalSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1504,6 +1510,28 @@ export class AnimationManager {
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {
         this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  private _generateFireElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateFireElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateIceElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateIceElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
       }
     }
   }

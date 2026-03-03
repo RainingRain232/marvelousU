@@ -115,6 +115,8 @@ export enum UnitType {
   TROUBADOUR = "troubadour",
   GIANT_COURT_JESTER = "giant_court_jester",
   FISHERMAN = "fisherman",
+  FIRE_ELEMENTAL = "fire_elemental",
+  ICE_ELEMENTAL = "ice_elemental",
 }
 
 export enum BuildingType {

@@ -26,6 +26,7 @@ const RACE_IMAGES: Record<string, string> = {
   man: manImgUrl,
   horde: hordeImgUrl,
   adept: adeptImgUrl,
+  elements: manImgUrl,
 };
 
 // ---------------------------------------------------------------------------

@@ -240,6 +240,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.ICE_IMP,
       UnitType.LIGHTNING_IMP,
       UnitType.DISTORTION_IMP,
+      UnitType.FIRE_ELEMENTAL,
+      UnitType.ICE_ELEMENTAL,
     ],
     blueprints: [],
     footprint: { w: 2, h: 2 },
