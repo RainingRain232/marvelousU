@@ -528,46 +528,80 @@ function _spawnBattlefieldStartUnits(
 }
 
 /**
- * Campaign battlefield scenario: spawn 4 Swordsmen per player.
- * P1's squad spawns just left of centre, P2's just right, so both sides
- * face each other in the middle of the map (where the castles would be).
+ * Campaign battlefield scenario: spawn units per scenario.
+ * P1's squad spawns on the left, P2's on the right.
  */
 function _spawnScenarioBattlefieldUnits(
   state: GameState,
   mapW: number,
   mapH: number,
+  scenarioNum: number,
 ): void {
-  const midX = Math.floor(mapW / 2);
   const midY = Math.floor(mapH / 2);
 
-  // P1: 4 units in a 2×2 cluster slightly left of centre
-  const p1Positions = [
-    { x: midX - 4, y: midY - 1 },
-    { x: midX - 4, y: midY + 1 },
-    { x: midX - 3, y: midY - 1 },
-    { x: midX - 3, y: midY + 1 },
-  ];
-  // P2: mirror on the right
-  const p2Positions = [
-    { x: midX + 3, y: midY - 1 },
-    { x: midX + 3, y: midY + 1 },
-    { x: midX + 4, y: midY - 1 },
-    { x: midX + 4, y: midY + 1 },
-  ];
+  // Per-scenario unit rosters
+  type UnitRoster = Array<{ type: UnitType; count: number }>;
+  let p1Roster: UnitRoster;
+  let p2Roster: UnitRoster;
 
-  for (const pos of p1Positions) {
-    const u = createUnit({
-      type: UnitType.SWORDSMAN,
-      owner: "p1",
-      position: pos,
-    });
-    state.units.set(u.id, u);
+  if (scenarioNum === 2) {
+    // Firepit Frenzy — player gets a mixed army, AI gets 20 of each firepit unit
+    p1Roster = [
+      { type: UnitType.SWORDSMAN, count: 20 },
+      { type: UnitType.DEFENDER, count: 20 },
+      { type: UnitType.ROYAL_PHALANX, count: 20 },
+      { type: UnitType.LONGBOWMAN, count: 20 },
+      { type: UnitType.CLERIC, count: 5 },
+      { type: UnitType.LIGHTNING_ADEPT_MAGE, count: 5 },
+    ];
+    p2Roster = [
+      { type: UnitType.RUFUS, count: 20 },
+      { type: UnitType.TROUBADOUR, count: 20 },
+      { type: UnitType.GIANT_COURT_JESTER, count: 20 },
+      { type: UnitType.FISHERMAN, count: 20 },
+    ];
+  } else {
+    // Default battlefield — 4 swordsmen each
+    p1Roster = [{ type: UnitType.SWORDSMAN, count: 4 }];
+    p2Roster = [{ type: UnitType.SWORDSMAN, count: 4 }];
   }
-  for (const pos of p2Positions) {
+
+  _spawnRoster(state, p1Roster, "p1", Math.floor(mapW * 0.2), midY, mapH);
+  _spawnRoster(state, p2Roster, "p2", Math.floor(mapW * 0.8), midY, mapH);
+}
+
+/**
+ * Spawn a roster of units for a player, spreading them vertically around
+ * the given centre position.
+ */
+function _spawnRoster(
+  state: GameState,
+  roster: Array<{ type: UnitType; count: number }>,
+  owner: string,
+  baseX: number,
+  midY: number,
+  mapH: number,
+): void {
+  // Flatten the roster into a list of unit types
+  const units: UnitType[] = [];
+  for (const entry of roster) {
+    for (let i = 0; i < entry.count; i++) units.push(entry.type);
+  }
+
+  // Spread units in a grid pattern around baseX, midY
+  const cols = Math.ceil(Math.sqrt(units.length));
+  const rows = Math.ceil(units.length / cols);
+  const startY = Math.max(1, midY - Math.floor(rows / 2));
+
+  for (let i = 0; i < units.length; i++) {
+    const col = Math.floor(i / rows);
+    const row = i % rows;
+    const x = Math.max(0, Math.min(baseX + col - Math.floor(cols / 2), state.battlefield.width - 1));
+    const y = Math.max(1, Math.min(startY + row, mapH - 2));
     const u = createUnit({
-      type: UnitType.SWORDSMAN,
-      owner: "p2",
-      position: pos,
+      type: units[i],
+      owner,
+      position: { x, y },
     });
     state.units.set(u.id, u);
   }
@@ -841,7 +875,7 @@ async function _bootGame(
     _removeCastlesAndBuildings(state);
     // Spawn starting units
     if (gameMode === GameMode.CAMPAIGN) {
-      _spawnScenarioBattlefieldUnits(state, mapSize.width, mapSize.height);
+      _spawnScenarioBattlefieldUnits(state, mapSize.width, mapSize.height, scenarioNum ?? 1);
     } else {
       _spawnBattlefieldStartUnits(state, mapSize.width, mapSize.height);
     }

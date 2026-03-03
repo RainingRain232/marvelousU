@@ -13,6 +13,8 @@ import type { ViewManager } from "@view/ViewManager";
 
 import throneImgUrl from "@/img/throne.png";
 import arthurImgUrl from "@/img/arthur.png";
+import merlinImgUrl from "@/img/merlin.png";
+import hordeImgUrl from "@/img/horde.png";
 
 // ---------------------------------------------------------------------------
 // Intro page data — keyed by scenario number
@@ -32,6 +34,16 @@ const SCENARIO_INTROS: Record<number, IntroPage[]> = {
     {
       imageUrl: arthurImgUrl,
       text: "Your first task is to quell the resistance in your local realm, a unit of swordsmen has risen against your rule. Most castle units would only defend their castle and not move out, but these castle trained units have betrayed their oath to defend your lands!",
+    },
+  ],
+  2: [
+    {
+      imageUrl: merlinImgUrl,
+      text: "Oof now that that is over we can go back to the order of the day. However, I heard you did not click on the firepit building near the castle in your previous campaign!",
+    },
+    {
+      imageUrl: hordeImgUrl,
+      text: "What do you mean, you have never seen the castle and the firepit to even click it? Oh well, for now all the firepits units from the land have gathered to address this insult. We will have to calm them down a little. And click that firepit in the next mission!",
     },
   ],
 };

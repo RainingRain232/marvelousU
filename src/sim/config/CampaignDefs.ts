@@ -66,7 +66,7 @@ export interface ScenarioDef {
 }
 
 // ---------------------------------------------------------------------------
-// Definitions — 20 scenarios
+// Definitions — 21 scenarios
 // ---------------------------------------------------------------------------
 
 export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
@@ -85,6 +85,17 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 2,
+    title: "Firepit Frenzy",
+    briefing:
+      "The firepit units of the land have gathered in protest. Calm them down with a show of force — swords, shields, bows and a little holy magic should do the trick.",
+    victoryCode: "4591",
+    type: "battlefield",
+    unlocks: {
+      buildings: [BuildingType.FIREPIT],
+    },
+  },
+  {
+    number: 3,
     title: "The Barracks",
     briefing:
       "With your first victory secured, you've earned enough gold to erect proper barracks. Train more soldiers and push back the enemy's advance. Your archers can rain death from a distance now — use them wisely.",
@@ -99,7 +110,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     aiExtraGold: 4000,
   },
   {
-    number: 3,
+    number: 4,
     title: "The Long Road",
     briefing:
       "The enemy has fortified their position with towers and a ring of pikemen. Break through their lines. Your archery range will let you mass ranged units for the first time.",
@@ -111,7 +122,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 4,
+    number: 5,
     title: "Steel and Saddle",
     briefing:
       "A mounted enemy force has been spotted moving through the hills. Speed and reach will be your greatest weapons. Build a stable and field cavalry before they outmanoeuvre you.",
@@ -123,7 +134,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 5,
+    number: 6,
     title: "The Watchtower",
     briefing:
       "Intelligence reports show the enemy massing troops near neutral towns. Control the high ground. Towers will give you a defensive advantage — station your archers and hold every neutral building you can reach.",
@@ -136,7 +147,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 6,
+    number: 7,
     title: "Fields of Plenty",
     briefing:
       "A prolonged campaign drains gold fast. Farms boost your income and sustain larger armies. The enemy has learned from their defeats and brings a mixed force. Do not underestimate them.",
@@ -148,7 +159,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 7,
+    number: 8,
     title: "The Merchant War",
     briefing:
       "A rival merchant guild has hired sellswords to protect their trade routes — which run straight through your territory. Markets generate gold fast, but they also make tempting targets. Protect your economy while destroying theirs.",
@@ -160,7 +171,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 8,
+    number: 9,
     title: "Arcane Uprising",
     briefing:
       "Mages have taken sides in this war. Your enemies now field fire mages who can burn entire formations. A mage tower will let you study their arts — and counter them. Do not let them roam unchecked.",
@@ -172,7 +183,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 9,
+    number: 10,
     title: "Iron Forged",
     briefing:
       "Your blacksmith lets you upgrade the quality of your forces. Better-equipped soldiers mean fewer losses. The enemy has hired a knight commander who drives their cavalry relentlessly. Break the charge and hold your ground.",
@@ -184,7 +195,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 10,
+    number: 11,
     title: "The Gladiator's Oath",
     briefing:
       "Freed gladiators and veteran halberdiers have sworn service to your banner. A new challenger has risen — a warlord who has conquered three kingdoms. This is the midpoint of the campaign. Prove you can face a true opponent.",
@@ -197,7 +208,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 11,
+    number: 12,
     title: "The Storm Rises",
     briefing:
       "Storms now answer your call. Siege workshops let you deploy battering rams and bolt throwers to smash enemy fortifications. The warlord's castle walls will not stand forever.",
@@ -209,7 +220,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 12,
+    number: 13,
     title: "Creatures of the Dark",
     briefing:
       "Strange allies emerge from the wild — spiders, giant frogs, and other creatures. A creature den lets you harness their power. The enemy fields summoners who call forth minions from thin air. Meet dark with dark.",
@@ -221,7 +232,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 13,
+    number: 14,
     title: "Hall of Champions",
     briefing:
       "The Elite Hall unlocks the finest warriors your realm can produce. Lancers, elite infantry, and veteran champions stand ready. But the enemy has done the same — expect to face elite forces of their own.",
@@ -234,7 +245,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 14,
+    number: 15,
     title: "The Sacred Order",
     briefing:
       "Monks and clerics have joined your army after you liberated their temple. Healing in the field can turn the tide of a long battle. The elven forests have also sent emissaries — a new race fights beside you.",
@@ -246,7 +257,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 15,
+    number: 16,
     title: "The Diplomat",
     briefing:
       "Diplomats can change allegiances on the battlefield — turning enemy units to your cause without a fight. But the enemy has discovered this too. Guard your ranks and exploit every opening. The war reaches its penultimate act.",
@@ -259,7 +270,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 16,
+    number: 17,
     title: "The Hidden Village",
     briefing:
       "Hamlets cluster around the map, generating steady income for whoever controls them. A cold mage has emerged from the northern glaciers and offered their services. Use their frost abilities to slow enemy advances.",
@@ -271,7 +282,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 17,
+    number: 18,
     title: "The Grinding Mills",
     briefing:
       "Mills accelerate your gold income from farms and hamlets. Distortion mages can warp space itself — teleporting friendlies or displacing enemies. The enemy commander has unlocked dragons. This will be a hard fight.",
@@ -283,19 +294,18 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 18,
+    number: 19,
     title: "Walls of Stone",
     briefing:
       "Walls now let you fortify your territory and channel enemy movement. Exotic creatures join your ranks. A giant cyclops has been sighted among the enemy forces — bring heavy armour and siege weapons.",
     victoryCode: "4417",
     unlocks: {
       units: [UnitType.RED_DRAGON, UnitType.BOLT_THROWER, UnitType.SIEGE_HUNTER],
-      buildings: [BuildingType.FIREPIT],
       items: ["shadow_dagger"],
     },
   },
   {
-    number: 19,
+    number: 20,
     title: "The Dragon's Roar",
     briefing:
       "Dragons soar above the battlefield, breathing fire and frost. Firepits power your creatures and boost their morale. Only one final barrier remains between you and total victory — the enemy's mightiest champion and their full army.",
@@ -307,7 +317,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     },
   },
   {
-    number: 20,
+    number: 21,
     title: "The Final War",
     briefing:
       "Every unit. Every building. Every hero. All of it comes down to this last engagement. The enemy commander has had as long as you to prepare. There will be no second chance. Win — and the realm is yours forever.",
