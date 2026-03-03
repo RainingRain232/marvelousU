@@ -1,51 +1,64 @@
 // Procedural sprite generator for the Angel unit type.
 //
-// Draws a divine celestial warrior at 96×144 pixels per frame
-// using PixiJS Graphics → RenderTexture.
-//
-// Visual features:
-//   • Radiant golden armor with white robes
-//   • Large feathery wings with gentle flap animation
-//   • Glowing golden halo above head
-//   • Blazing sword with flame effect
-//   • Holy light aura
+// 144×144 px per frame (3×3 tiles). Divine winged warrior with:
+//   • Large layered feathered wings with gentle flap
+//   • Flowing white-gold robes
+//   • Golden plate armor with holy engravings
+//   • Radiant halo with glow
+//   • Blazing holy sword
+//   • Divine aura / light particles
 
 import { Graphics, RenderTexture, type Renderer } from "pixi.js";
 import { UnitState } from "@/types";
 
-const F_W = 96;
+// ---------------------------------------------------------------------------
+// Frame dimensions
+// ---------------------------------------------------------------------------
+
+const F_W = 144;
 const F_H = 144;
 const CX = F_W / 2;
-const GROUND_Y = F_H - 10;
+const GY = F_H - 10; // ground reference
 
-const COL_GOLD = 0xffd700;
-const COL_GOLD_LT = 0xfff8dc;
+// ---------------------------------------------------------------------------
+// Palette
+// ---------------------------------------------------------------------------
 
-const COL_ARMOR = 0xfaf0e6;
-const COL_ARMOR_DK = 0xd4c4b0;
-const COL_ARMOR_LT = 0xffffff;
+const COL_WING       = 0xf8f4f0;
+const COL_WING_MID   = 0xe8e4e0;
+const COL_WING_EDGE  = 0xd0cce8;
+const COL_WING_BONE  = 0xeee8dd;
+const COL_WING_SHAD  = 0xc8c0b8;
 
-const COL_WINGS = 0xffffff;
-const COL_WINGS_DK = 0xe8e8e8;
-const COL_WINGS_EDGE = 0xccccee;
+const COL_ROBE       = 0xfaf6f0;
+const COL_ROBE_FOLD  = 0xe0dcd6;
+const COL_ROBE_HI    = 0xffffff;
 
-const COL_ROBE = 0xfffaf0;
-const COL_ROBE_DK = 0xe8e0d8;
+const COL_ARMOR      = 0xffd740;
+const COL_ARMOR_LT   = 0xffe880;
+const COL_ARMOR_DK   = 0xc8a020;
 
-const COL_SKIN = 0xffe4c4;
+const COL_SKIN       = 0xffe0c0;
+const COL_SKIN_DK    = 0xe8c8a0;
+const COL_HAIR       = 0xfff0b0;
+const COL_HAIR_DK    = 0xe0d090;
+const COL_EYE        = 0x4488ff;
 
-const COL_HALO = 0xfffacd;
-const COL_HALO_GLOW = 0xffffe0;
+const COL_HALO       = 0xfffacd;
+const COL_HALO_GLOW  = 0xfff8b0;
 
-const COL_SWORD = 0xfff8dc;
-const COL_SWORD_BLADE = 0xffffff;
-const COL_SWORD_FLAME = 0xff8c00;
-const COL_SWORD_FLAME_LT = 0xffff00;
+const COL_BLADE      = 0xffffff;
+const COL_BLADE_EDGE = 0xe8eeff;
+const COL_BLADE_FIRE = 0xff9900;
+const COL_BLADE_CORE = 0xffff66;
+const COL_GUARD      = 0xffd700;
 
-const COL_EYE = 0x4169e1;
-const COL_AURA = 0xfff8dc;
+const COL_AURA       = 0xfffce0;
+const COL_SHADOW     = 0x000000;
 
-const COL_SHADOW = 0x000000;
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export function generateAngelFrames(renderer: Renderer): RenderTexture[] {
   const frames: RenderTexture[] = [];
@@ -53,7 +66,19 @@ export function generateAngelFrames(renderer: Renderer): RenderTexture[] {
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 8; col++) {
       const state = Object.values(UnitState)[row];
-      const texture = createAngelFrame(renderer, state, col);
+      const g = new Graphics();
+
+      switch (state) {
+        case UnitState.IDLE:    drawIdle(g, col);   break;
+        case UnitState.MOVE:    drawFly(g, col);    break;
+        case UnitState.ATTACK:  drawAttack(g, col); break;
+        case UnitState.CAST:    drawCast(g, col);   break;
+        case UnitState.DIE:     drawDie(g, col);    break;
+      }
+
+      const texture = RenderTexture.create({ width: F_W, height: F_H });
+      renderer.render({ target: texture, container: g });
+      g.destroy();
       frames.push(texture);
     }
   }
@@ -61,480 +86,569 @@ export function generateAngelFrames(renderer: Renderer): RenderTexture[] {
   return frames;
 }
 
-function createAngelFrame(
-  renderer: Renderer,
-  state: UnitState,
-  column: number,
-): RenderTexture {
-  const g = new Graphics();
-  g.clear();
+// ---------------------------------------------------------------------------
+// State drawings
+// ---------------------------------------------------------------------------
 
-  switch (state) {
-    case UnitState.IDLE:
-      drawIdleAngel(g, column);
-      break;
-    case UnitState.MOVE:
-      drawFlyingAngel(g, column);
-      break;
-    case UnitState.ATTACK:
-      drawAttackingAngel(g, column);
-      break;
-    case UnitState.CAST:
-      drawCastingAngel(g, column);
-      break;
-    case UnitState.DIE:
-      drawDyingAngel(g, column);
-      break;
-  }
+function drawIdle(g: Graphics, frame: number): void {
+  const t = frame / 8 * Math.PI * 2;
+  const breathe = Math.sin(t) * 1.5;
+  const hover   = Math.sin(t * 0.5) * 2;
+  const wingAng = Math.sin(t * 0.6) * 0.08;
 
-  const texture = RenderTexture.create({
-    width: F_W,
-    height: F_H,
-  });
-  renderer.render({ target: texture, container: g });
-  g.destroy();
+  const bodyY = GY - 60 + hover;
 
-  return texture;
+  drawShadow(g, CX, GY + 2, 22, 5, 0.25);
+  drawAura(g, CX, bodyY - 10, 0.12);
+  drawWings(g, CX, bodyY - 24, wingAng, 0.9);
+  drawRobe(g, CX, bodyY, breathe, 0);
+  drawTorso(g, CX, bodyY - 20 + breathe);
+  drawArms(g, CX, bodyY - 22 + breathe, 0, 0);
+  drawHead(g, CX, bodyY - 40 + breathe);
+  drawHalo(g, CX, bodyY - 56 + breathe, 0.5 + Math.sin(t * 1.5) * 0.15);
+  drawSword(g, CX + 16, bodyY - 14 + breathe, 0);
 }
 
-function drawIdleAngel(g: Graphics, frame: number): void {
-  const breathe = Math.sin(frame * 0.3) * 1;
-  const wingFlap = Math.sin(frame * 0.25) * 3;
+function drawFly(g: Graphics, frame: number): void {
+  const t = frame / 8 * Math.PI * 2;
+  const bob     = Math.sin(t) * 3;
+  const wingAng = Math.sin(t) * 0.25;
+  const lean    = 0.05;
 
-  g.fill({ color: COL_SHADOW });
-  g.ellipse(CX, GROUND_Y + 2, 20, 5);
+  const bodyY = GY - 65 + bob;
 
-  g.fill({ color: COL_WINGS_DK, alpha: 0.6 });
-  g.ellipse(CX - 30, GROUND_Y - 50 + wingFlap, 25, 15);
-  g.ellipse(CX + 30, GROUND_Y - 50 + wingFlap, 25, 15);
+  drawShadow(g, CX, GY + 2, 16 - Math.abs(bob), 3, 0.15);
+  drawAura(g, CX, bodyY - 10, 0.18);
+  drawWings(g, CX, bodyY - 24, wingAng, 1.1);
+  drawRobe(g, CX, bodyY, 0, lean);
+  drawTorso(g, CX, bodyY - 20);
+  drawArms(g, CX, bodyY - 22, 0, 0);
+  drawHead(g, CX, bodyY - 40);
+  drawHalo(g, CX, bodyY - 56, 0.6);
+  drawSword(g, CX + 16, bodyY - 14, 0);
+}
 
-  g.fill({ color: COL_WINGS, alpha: 0.8 });
-  g.ellipse(CX - 28, GROUND_Y - 52 + wingFlap, 22, 12);
-  g.ellipse(CX + 28, GROUND_Y - 52 + wingFlap, 22, 12);
+function drawAttack(g: Graphics, frame: number): void {
+  const p = frame / 7;       // 0→1
+  // Wind-up then strike
+  const windUp  = p < 0.4 ? p / 0.4 : 1;
+  const strike  = p < 0.4 ? 0 : (p - 0.4) / 0.6;
+  const swordAngle = -windUp * 1.2 + strike * 2.0;
+  const lunge   = strike * 6;
+  const wingFlare = 0.15 + strike * 0.2;
 
-  g.fill({ color: COL_WINGS_EDGE, alpha: 0.5 });
-  g.ellipse(CX - 26, GROUND_Y - 54 + wingFlap, 18, 8);
-  g.ellipse(CX + 26, GROUND_Y - 54 + wingFlap, 18, 8);
+  const bodyY = GY - 60;
 
+  drawShadow(g, CX, GY + 2, 22, 5, 0.25);
+  drawAura(g, CX, bodyY - 10, 0.1 + strike * 0.2);
+  drawWings(g, CX, bodyY - 24, wingFlare, 1.0 + strike * 0.15);
+
+  // Slash arc effect
+  if (strike > 0.2) {
+    const alpha = (strike - 0.2) * 0.5;
+    g.moveTo(CX + 22 + lunge, bodyY - 40)
+      .quadraticCurveTo(CX + 40 + lunge, bodyY - 20, CX + 30 + lunge, bodyY + 5)
+      .stroke({ color: COL_BLADE, alpha, width: 3 });
+    g.moveTo(CX + 22 + lunge, bodyY - 40)
+      .quadraticCurveTo(CX + 40 + lunge, bodyY - 20, CX + 30 + lunge, bodyY + 5)
+      .stroke({ color: COL_BLADE_FIRE, alpha: alpha * 0.6, width: 6 });
+  }
+
+  drawRobe(g, CX, bodyY, 0, 0);
+  drawTorso(g, CX, bodyY - 20);
+
+  // Attack arm pose: right arm swings with sword
+  drawArmLeft(g, CX, bodyY - 22, 0);
+  // Right arm follows sword
+  const armEndX = CX + 14 + Math.sin(swordAngle + 0.5) * 8 + lunge;
+  const armEndY = bodyY - 28 + Math.cos(swordAngle + 0.5) * 8;
+  g.moveTo(CX + 8, bodyY - 22)
+    .lineTo(armEndX, armEndY)
+    .stroke({ color: COL_SKIN, width: 4 });
+  g.moveTo(CX + 8, bodyY - 22)
+    .lineTo(armEndX, armEndY)
+    .stroke({ color: COL_ARMOR, width: 2.5 });
+
+  drawHead(g, CX, bodyY - 40);
+  drawHalo(g, CX, bodyY - 56, 0.7 + strike * 0.3);
+  drawSword(g, armEndX, armEndY, swordAngle);
+
+  // Impact flash
+  if (strike > 0.7) {
+    const flash = (strike - 0.7) / 0.3;
+    g.circle(CX + 30 + lunge, bodyY - 10, 8 + flash * 12)
+      .fill({ color: 0xffffff, alpha: 0.4 * (1 - flash) });
+  }
+}
+
+function drawCast(g: Graphics, frame: number): void {
+  const p = frame / 7;
+  const rise = p * 8;
+  const glow = 0.3 + p * 0.7;
+  const wingSpread = 0.1 + p * 0.15;
+  const t = frame * 0.5;
+
+  const bodyY = GY - 60 - rise;
+
+  drawShadow(g, CX, GY + 2, 18 - rise * 0.3, 4, 0.15);
+
+  // Intensified aura
+  drawAura(g, CX, bodyY - 10, glow * 0.35);
+  g.circle(CX, bodyY - 10, 30 + glow * 20)
+    .fill({ color: COL_HALO_GLOW, alpha: glow * 0.12 });
+
+  // Holy particles orbiting
+  for (let i = 0; i < 8; i++) {
+    const angle = t + i * Math.PI / 4;
+    const dist = 20 + p * 25 + i * 3;
+    const px = CX + Math.cos(angle) * dist;
+    const py = bodyY - 10 + Math.sin(angle) * dist * 0.5;
+    const r = 2.5 - i * 0.2;
+    const a = (0.7 - i * 0.06) * glow;
+    g.circle(px, py, r).fill({ color: COL_HALO_GLOW, alpha: a });
+    g.circle(px, py, r * 0.5).fill({ color: 0xffffff, alpha: a * 0.8 });
+  }
+
+  drawWings(g, CX, bodyY - 24, wingSpread, 1.0 + p * 0.1);
+  drawRobe(g, CX, bodyY, 0, 0);
+  drawTorso(g, CX, bodyY - 20);
+
+  // Arms raised outward for cast
+  const armLift = p * 12;
+  g.moveTo(CX - 8, bodyY - 22)
+    .quadraticCurveTo(CX - 18, bodyY - 28 - armLift, CX - 24, bodyY - 32 - armLift)
+    .stroke({ color: COL_SKIN, width: 4 });
+  g.moveTo(CX - 8, bodyY - 22)
+    .quadraticCurveTo(CX - 18, bodyY - 28 - armLift, CX - 24, bodyY - 32 - armLift)
+    .stroke({ color: COL_ARMOR, width: 2.5 });
+  g.moveTo(CX + 8, bodyY - 22)
+    .quadraticCurveTo(CX + 18, bodyY - 28 - armLift, CX + 24, bodyY - 32 - armLift)
+    .stroke({ color: COL_SKIN, width: 4 });
+  g.moveTo(CX + 8, bodyY - 22)
+    .quadraticCurveTo(CX + 18, bodyY - 28 - armLift, CX + 24, bodyY - 32 - armLift)
+    .stroke({ color: COL_ARMOR, width: 2.5 });
+
+  // Glowing palms
+  g.circle(CX - 24, bodyY - 32 - armLift, 4 + glow * 3)
+    .fill({ color: COL_HALO_GLOW, alpha: 0.4 + glow * 0.3 });
+  g.circle(CX + 24, bodyY - 32 - armLift, 4 + glow * 3)
+    .fill({ color: COL_HALO_GLOW, alpha: 0.4 + glow * 0.3 });
+
+  drawHead(g, CX, bodyY - 40);
+  drawHalo(g, CX, bodyY - 56, glow);
+
+  // Ground heal circle
+  g.circle(CX, GY - 2, 15 + glow * 12)
+    .fill({ color: COL_HALO_GLOW, alpha: glow * 0.15 });
+  g.circle(CX, GY - 2, 15 + glow * 12)
+    .stroke({ color: COL_ARMOR, alpha: glow * 0.3, width: 1 });
+}
+
+function drawDie(g: Graphics, frame: number): void {
+  const p = frame / 7; // 0→1
+  const alpha = 1 - p * 0.6;
+  const fall = p * 20;
+  const tilt = p * 0.3;
+  const wingDroop = -p * 0.3;
+
+  const bodyY = GY - 60 + fall;
+
+  drawShadow(g, CX, GY + 2, 22 - p * 8, 5 - p * 2, 0.25 * (1 - p));
+
+  // Dissolving light particles rising
+  for (let i = 0; i < 6; i++) {
+    const px = CX - 15 + i * 6 + Math.sin(frame * 0.5 + i) * 4;
+    const py = bodyY - 20 - p * 30 - i * 8;
+    const r = 2 - p * 0.5;
+    const a = p * 0.5 * (1 - i / 6);
+    if (a > 0) {
+      g.circle(px, py, r).fill({ color: COL_HALO_GLOW, alpha: a });
+    }
+  }
+
+  // Tilted body
+  const ox = Math.sin(tilt) * 15;
+
+  drawWings(g, CX + ox * 0.3, bodyY - 24, wingDroop, 0.8 - p * 0.3, alpha);
+  drawRobe(g, CX + ox * 0.5, bodyY, 0, tilt, alpha);
+  drawTorso(g, CX + ox * 0.5, bodyY - 20, alpha);
+  drawArms(g, CX + ox * 0.5, bodyY - 22, 0, 0, alpha);
+  drawHead(g, CX + ox * 0.5, bodyY - 40, alpha);
+  drawHalo(g, CX + ox * 0.3, bodyY - 56, 0.5 * (1 - p), alpha);
+  drawSword(g, CX + 16 + ox, bodyY - 14 + fall * 0.5, tilt * 2, alpha);
+}
+
+// ---------------------------------------------------------------------------
+// Shared drawing helpers
+// ---------------------------------------------------------------------------
+
+function drawShadow(g: Graphics, cx: number, y: number, rx: number, ry: number, alpha: number): void {
+  g.ellipse(cx, y, rx, ry).fill({ color: COL_SHADOW, alpha });
+}
+
+function drawAura(g: Graphics, cx: number, cy: number, intensity: number): void {
+  if (intensity <= 0) return;
+  g.ellipse(cx, cy, 32, 48).fill({ color: COL_AURA, alpha: intensity * 0.5 });
+  g.ellipse(cx, cy, 22, 36).fill({ color: COL_AURA, alpha: intensity * 0.3 });
+}
+
+// ---------------------------------------------------------------------------
+// Wings
+// ---------------------------------------------------------------------------
+
+function drawWings(g: Graphics, cx: number, shoulderY: number, flapAngle: number, spread: number, alpha = 1): void {
+  drawOneWing(g, cx, shoulderY, -1, flapAngle, spread, alpha);
+  drawOneWing(g, cx, shoulderY,  1, flapAngle, spread, alpha);
+}
+
+function drawOneWing(g: Graphics, cx: number, sy: number, side: number, flapAngle: number, spread: number, alpha: number): void {
+  const s = side;
+  const flapY = flapAngle * 40;  // vertical displacement from flap
+  const sp = spread;
+
+  // Wing bone anchor
+  const ax = cx + s * 8;
+  const ay = sy;
+
+  // Wing elbow (mid joint)
+  const ex = cx + s * 35 * sp;
+  const ey = sy - 20 + flapY;
+
+  // Wing tip
+  const tx = cx + s * 58 * sp;
+  const ty = sy - 8 + flapY * 0.6;
+
+  // Trailing edge control points
+  const trailMidX = cx + s * 30 * sp;
+  const trailMidY = sy + 15 + flapY * 0.3;
+  const trailTipX = cx + s * 50 * sp;
+  const trailTipY = sy + 10 + flapY * 0.4;
+
+  // Wing membrane (filled shape)
+  g.moveTo(ax, ay)
+    .quadraticCurveTo(cx + s * 20 * sp, sy - 18 + flapY * 0.8, ex, ey)
+    .lineTo(tx, ty)
+    .quadraticCurveTo(trailTipX, trailTipY, trailMidX, trailMidY)
+    .quadraticCurveTo(cx + s * 15 * sp, sy + 8, ax, ay + 4)
+    .closePath()
+    .fill({ color: COL_WING_MID, alpha: alpha * 0.85 });
+
+  // Inner membrane highlight
+  g.moveTo(ax + s * 4, ay + 2)
+    .quadraticCurveTo(cx + s * 22 * sp, sy - 12 + flapY * 0.7, ex - s * 4, ey + 4)
+    .lineTo(trailMidX + s * 4, trailMidY - 4)
+    .quadraticCurveTo(cx + s * 16 * sp, sy + 4, ax + s * 4, ay + 4)
+    .closePath()
+    .fill({ color: COL_WING, alpha: alpha * 0.6 });
+
+  // Wing bone / leading edge
+  g.moveTo(ax, ay)
+    .quadraticCurveTo(cx + s * 20 * sp, sy - 18 + flapY * 0.8, ex, ey)
+    .lineTo(tx, ty)
+    .stroke({ color: COL_WING_BONE, alpha, width: 2.5 });
+
+  // Feather veins (3 lines from bone to trailing edge)
+  for (let i = 0; i < 3; i++) {
+    const t = 0.3 + i * 0.25;
+    const boneX = ax + (tx - ax) * t;
+    const boneY = ay + (ey - ay) * t + (ty - ey) * Math.max(0, t - 0.5) * 2;
+    const edgeX = ax + (trailTipX - ax) * t;
+    const edgeY = ay + 4 + (trailMidY - ay) * t;
+    g.moveTo(boneX, boneY)
+      .lineTo(edgeX, edgeY)
+      .stroke({ color: COL_WING_SHAD, alpha: alpha * 0.35, width: 0.8 });
+  }
+
+  // Primary feathers at wing tip (5 long feathers)
   for (let i = 0; i < 5; i++) {
-    const featherX = CX - 35 + i * 3;
-    g.fill({ color: COL_WINGS });
-    g.ellipse(featherX, GROUND_Y - 45 + wingFlap + i * 2, 3, 8);
-    g.fill({ color: COL_WINGS });
-    g.ellipse(CX + 35 - i * 3, GROUND_Y - 45 + wingFlap + i * 2, 3, 8);
+    const baseT = 0.6 + i * 0.1;
+    const bx = ax + (tx - ax) * baseT;
+    const by = ay + (ty - ay) * baseT + (ey - ay) * (1 - baseT) * 0.5;
+
+    const featherLen = 18 - i * 2;
+    const featherAngle = Math.PI * 0.55 + s * 0.1 + i * 0.12 * s;
+    const ftx = bx + Math.cos(featherAngle) * featherLen;
+    const fty = by + Math.sin(featherAngle) * featherLen;
+
+    // Feather shape (elongated leaf)
+    const perpX = -Math.sin(featherAngle) * 2.5;
+    const perpY =  Math.cos(featherAngle) * 2.5;
+    g.moveTo(bx, by)
+      .quadraticCurveTo(bx + (ftx - bx) * 0.5 + perpX, by + (fty - by) * 0.5 + perpY, ftx, fty)
+      .quadraticCurveTo(bx + (ftx - bx) * 0.5 - perpX, by + (fty - by) * 0.5 - perpY, bx, by)
+      .fill({ color: i % 2 === 0 ? COL_WING : COL_WING_EDGE, alpha: alpha * 0.9 });
+
+    // Feather spine
+    g.moveTo(bx, by)
+      .lineTo(ftx, fty)
+      .stroke({ color: COL_WING_SHAD, alpha: alpha * 0.3, width: 0.5 });
   }
 
-  g.fill({ color: COL_AURA, alpha: 0.15 });
-  g.ellipse(CX, GROUND_Y - 60, 35, 50);
+  // Secondary feathers along trailing edge (shorter)
+  for (let i = 0; i < 4; i++) {
+    const t = 0.2 + i * 0.12;
+    const bx = ax + (trailMidX - ax) * t + s * 3;
+    const by = ay + (trailMidY - ay) * t;
+    const len = 10 - i;
+    const ang = Math.PI * 0.5 + i * 0.08;
+    const ftx = bx + Math.cos(ang) * len;
+    const fty = by + Math.sin(ang) * len;
 
-  g.fill({ color: COL_ROBE_DK });
-  g.rect(CX - 12, GROUND_Y - 40 + breathe, 24, 35);
-
-  g.fill({ color: COL_ROBE });
-  g.rect(CX - 10, GROUND_Y - 38 + breathe, 20, 32);
-
-  g.fill({ color: COL_ARMOR_DK });
-  g.rect(CX - 8, GROUND_Y - 70 + breathe, 16, 32);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 6, GROUND_Y - 68 + breathe, 12, 28);
-
-  g.fill({ color: COL_GOLD });
-  g.rect(CX - 6, GROUND_Y - 70 + breathe, 12, 3);
-  g.rect(CX - 6, GROUND_Y - 40 + breathe, 12, 3);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 12, GROUND_Y - 80 + breathe, 6, 14);
-  g.rect(CX + 6, GROUND_Y - 80 + breathe, 6, 14);
-
-  g.fill({ color: COL_SKIN });
-  g.rect(CX - 14, GROUND_Y - 78 + breathe, 4, 10);
-  g.rect(CX + 10, GROUND_Y - 78 + breathe, 4, 10);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 14, GROUND_Y - 95 + breathe, 8, 18);
-
-  g.fill({ color: COL_ARMOR_LT ?? COL_GOLD_LT });
-  g.rect(CX - 12, GROUND_Y - 92 + breathe, 4, 12);
-
-  g.fill({ color: COL_HALO_GLOW, alpha: 0.5 });
-  g.ellipse(CX, GROUND_Y - 110 + breathe, 12, 4);
-
-  g.fill({ color: COL_HALO });
-  g.ellipse(CX, GROUND_Y - 108 + breathe, 10, 3);
-
-  g.fill({ color: COL_EYE });
-  g.circle(CX - 3, GROUND_Y - 95 + breathe, 2);
-  g.circle(CX + 3, GROUND_Y - 95 + breathe, 2);
-
-  g.fill({ color: COL_SWORD });
-  g.rect(CX + 14, GROUND_Y - 65 + breathe, 3, 20);
-
-  g.fill({ color: COL_SWORD_BLADE });
-  g.rect(CX + 15, GROUND_Y - 90 + breathe, 1, 30);
-
-  for (let i = 0; i < 6; i++) {
-    g.fill({ color: COL_SWORD_FLAME, alpha: 0.7 - i * 0.1 });
-    g.ellipse(CX + 15, GROUND_Y - 95 - i * 4 + breathe, 2 + i * 0.5, 3);
-  }
-  g.fill({ color: COL_SWORD_FLAME_LT, alpha: 0.8 });
-  g.ellipse(CX + 15, GROUND_Y - 95 + breathe, 1.5, 4);
-}
-
-function drawFlyingAngel(g: Graphics, frame: number): void {
-  const flyCycle = (frame % 8) / 8;
-  const bob = Math.sin(flyCycle * Math.PI * 2) * 2;
-  const wingFlap = Math.sin(flyCycle * Math.PI * 2) * 8;
-  const hover = Math.sin(flyCycle * Math.PI * 2) * 3;
-
-  g.fill({ color: COL_SHADOW });
-  g.ellipse(CX, GROUND_Y + 2, 18 - flyCycle * 4, 4 - flyCycle);
-
-  g.fill({ color: COL_WINGS_DK, alpha: 0.6 });
-  g.ellipse(CX - 35, GROUND_Y - 45 + wingFlap, 28 + flyCycle * 5, 18);
-  g.ellipse(CX + 35, GROUND_Y - 45 + wingFlap, 28 + flyCycle * 5, 18);
-
-  g.fill({ color: COL_WINGS, alpha: 0.8 });
-  g.ellipse(CX - 32, GROUND_Y - 48 + wingFlap, 24 + flyCycle * 4, 14);
-  g.ellipse(CX + 32, GROUND_Y - 48 + wingFlap, 24 + flyCycle * 4, 14);
-
-  for (let i = 0; i < 6; i++) {
-    g.fill({ color: COL_WINGS });
-    g.ellipse(
-      CX - 38 + i * 4,
-      GROUND_Y - 40 + wingFlap + i * 3,
-      4 - i * 0.3,
-      10 - i,
-    );
-    g.ellipse(
-      CX + 38 - i * 4,
-      GROUND_Y - 40 + wingFlap + i * 3,
-      4 - i * 0.3,
-      10 - i,
-    );
-  }
-
-  g.fill({ color: COL_AURA, alpha: 0.2 });
-  g.ellipse(CX, GROUND_Y - 55 + hover, 38, 55);
-
-  g.fill({ color: COL_ROBE_DK });
-  g.rect(CX - 12, GROUND_Y - 35 + bob, 24, 30);
-
-  g.fill({ color: COL_ROBE });
-  g.rect(CX - 10, GROUND_Y - 33 + bob, 20, 26);
-
-  g.fill({ color: COL_ARMOR_DK });
-  g.rect(CX - 8, GROUND_Y - 65 + bob, 16, 32);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 6, GROUND_Y - 63 + bob, 12, 28);
-
-  g.fill({ color: COL_GOLD });
-  g.rect(CX - 6, GROUND_Y - 65 + bob, 12, 3);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 12, GROUND_Y - 75 + bob, 6, 14);
-  g.rect(CX + 6, GROUND_Y - 75 + bob, 6, 14);
-
-  g.fill({ color: COL_SKIN });
-  g.rect(CX - 14, GROUND_Y - 73 + bob, 4, 10);
-  g.rect(CX + 10, GROUND_Y - 73 + bob, 4, 10);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 14, GROUND_Y - 90 + bob, 8, 18);
-
-  g.fill({ color: COL_HALO_GLOW, alpha: 0.6 });
-  g.ellipse(CX, GROUND_Y - 105 + bob, 14, 5);
-
-  g.fill({ color: COL_HALO });
-  g.ellipse(CX, GROUND_Y - 103 + bob, 11, 4);
-
-  g.fill({ color: COL_EYE });
-  g.circle(CX - 3, GROUND_Y - 88 + bob, 2);
-  g.circle(CX + 3, GROUND_Y - 88 + bob, 2);
-
-  g.fill({ color: COL_SWORD });
-  g.rect(CX + 14, GROUND_Y - 60 + bob, 3, 20);
-
-  g.fill({ color: COL_SWORD_BLADE });
-  g.rect(CX + 15, GROUND_Y - 85 + bob, 1, 35);
-
-  for (let i = 0; i < 7; i++) {
-    g.fill({ color: COL_SWORD_FLAME, alpha: 0.7 - i * 0.08 });
-    g.ellipse(CX + 15, GROUND_Y - 90 - i * 4 + bob, 2 + i * 0.5, 3 + i * 0.3);
+    g.moveTo(bx, by)
+      .quadraticCurveTo((bx + ftx) / 2 + s * 1.5, (by + fty) / 2, ftx, fty)
+      .quadraticCurveTo((bx + ftx) / 2 - s * 1.5, (by + fty) / 2, bx, by)
+      .fill({ color: COL_WING_MID, alpha: alpha * 0.7 });
   }
 }
 
-function drawAttackingAngel(g: Graphics, frame: number): void {
-  const attackProgress = frame / 7;
-  const windUp = Math.sin(attackProgress * Math.PI) * 8;
-  const slash = attackProgress * 15;
+// ---------------------------------------------------------------------------
+// Robe
+// ---------------------------------------------------------------------------
 
-  g.fill({ color: COL_SHADOW });
-  g.ellipse(CX, GROUND_Y + 1, 18, 4);
+function drawRobe(g: Graphics, cx: number, baseY: number, breathe: number, lean: number, alpha = 1): void {
+  const topW = 14;
+  const botW = 22;
+  const robeH = 32;
+  const topY = baseY + breathe;
+  const botY = topY + robeH;
+  const lx = lean * 8;
 
-  const wingFlap = Math.sin(frame * 0.3) * 4;
-  g.fill({ color: COL_WINGS_DK, alpha: 0.6 });
-  g.ellipse(CX - 30, GROUND_Y - 50 + wingFlap, 25, 15);
-  g.ellipse(CX + 30, GROUND_Y - 50 + wingFlap, 25, 15);
+  // Main robe shape (flowing trapezoid with curves)
+  g.moveTo(cx - topW / 2, topY)
+    .quadraticCurveTo(cx - topW / 2 - 3, topY + robeH * 0.5, cx - botW / 2 + lx, botY)
+    .quadraticCurveTo(cx + lx, botY + 3, cx + botW / 2 + lx, botY)
+    .quadraticCurveTo(cx + topW / 2 + 3, topY + robeH * 0.5, cx + topW / 2, topY)
+    .closePath()
+    .fill({ color: COL_ROBE, alpha });
 
-  g.fill({ color: COL_WINGS });
-  g.ellipse(CX - 28, GROUND_Y - 52 + wingFlap, 22, 12);
-  g.ellipse(CX + 28, GROUND_Y - 52 + wingFlap, 22, 12);
+  // Centre fold
+  g.moveTo(cx, topY + 2)
+    .quadraticCurveTo(cx + lx * 0.5 - 1, topY + robeH * 0.6, cx + lx - 1, botY)
+    .stroke({ color: COL_ROBE_FOLD, alpha: alpha * 0.5, width: 1 });
+  g.moveTo(cx + 1, topY + 2)
+    .quadraticCurveTo(cx + lx * 0.5 + 2, topY + robeH * 0.6, cx + lx + 2, botY)
+    .stroke({ color: COL_ROBE_FOLD, alpha: alpha * 0.3, width: 0.8 });
 
-  g.fill({ color: COL_AURA, alpha: 0.2 });
-  g.ellipse(CX, GROUND_Y - 60, 35, 50);
+  // Side folds
+  g.moveTo(cx - topW / 2 + 3, topY + 4)
+    .quadraticCurveTo(cx - topW / 2, topY + robeH * 0.5, cx - botW / 2 + 4 + lx, botY - 2)
+    .stroke({ color: COL_ROBE_FOLD, alpha: alpha * 0.35, width: 0.8 });
+  g.moveTo(cx + topW / 2 - 3, topY + 4)
+    .quadraticCurveTo(cx + topW / 2, topY + robeH * 0.5, cx + botW / 2 - 4 + lx, botY - 2)
+    .stroke({ color: COL_ROBE_FOLD, alpha: alpha * 0.35, width: 0.8 });
 
-  g.fill({ color: COL_ROBE_DK });
-  g.rect(CX - 12, GROUND_Y - 40, 24, 35);
+  // Bottom hem highlight
+  g.moveTo(cx - botW / 2 + lx, botY)
+    .quadraticCurveTo(cx + lx, botY + 3, cx + botW / 2 + lx, botY)
+    .stroke({ color: COL_ROBE_HI, alpha: alpha * 0.3, width: 1.5 });
 
-  g.fill({ color: COL_ROBE });
-  g.rect(CX - 10, GROUND_Y - 38, 20, 32);
-
-  g.fill({ color: COL_ARMOR_DK });
-  g.rect(CX - 8, GROUND_Y - 70, 16, 32);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 6, GROUND_Y - 68, 12, 28);
-
-  g.fill({ color: COL_GOLD });
-  g.rect(CX - 6, GROUND_Y - 70, 12, 3);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 12, GROUND_Y - 80, 6, 14);
-  g.rect(CX + 6, GROUND_Y - 80, 6, 14);
-
-  g.fill({ color: COL_SKIN });
-  g.rect(CX - 14, GROUND_Y - 78, 4, 10);
-  g.rect(CX + 10, GROUND_Y - 78, 4, 10);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 14, GROUND_Y - 95, 8, 18);
-
-  g.fill({ color: COL_HALO_GLOW, alpha: 0.6 });
-  g.ellipse(CX, GROUND_Y - 110, 14, 5);
-
-  g.fill({ color: COL_HALO });
-  g.ellipse(CX, GROUND_Y - 108, 11, 4);
-
-  g.fill({ color: COL_EYE });
-  g.circle(CX - 3, GROUND_Y - 93, 2);
-  g.circle(CX + 3, GROUND_Y - 93, 2);
-
-  const swordX = CX + 16 + slash;
-  const swordY = GROUND_Y - 65 + windUp;
-
-  g.fill({ color: COL_SWORD });
-  g.rect(swordX, swordY, 3, 20);
-
-  g.fill({ color: COL_SWORD_BLADE });
-  g.rect(swordX + 1, swordY - 25, 1, 35);
-
-  for (let i = 0; i < 8; i++) {
-    g.fill({ color: COL_SWORD_FLAME, alpha: 0.7 - i * 0.08 });
-    g.ellipse(swordX + 1, swordY - 30 - i * 4, 2 + i * 0.5, 3 + i * 0.4);
-  }
-
-  g.fill({ color: 0xffffff, alpha: 0.3 });
-  g.circle(swordX + 1, swordY - 10, 8 + attackProgress * 5);
+  // Gold trim at waist
+  g.rect(cx - topW / 2 + 1, topY, topW - 2, 2.5)
+    .fill({ color: COL_ARMOR, alpha });
 }
 
-function drawCastingAngel(g: Graphics, frame: number): void {
-  const castProgress = frame / 5;
-  const rise = castProgress * 8;
-  const glow = (Math.sin(frame * 0.5) + 1) * 0.5;
+// ---------------------------------------------------------------------------
+// Torso / armor
+// ---------------------------------------------------------------------------
 
-  g.fill({ color: COL_SHADOW });
-  g.ellipse(CX, GROUND_Y + 1, 16, 4);
+function drawTorso(g: Graphics, cx: number, topY: number, alpha = 1): void {
+  const w = 16;
+  const h = 22;
 
-  const wingFlap = Math.sin(frame * 0.3) * 5;
-  g.fill({ color: COL_WINGS_DK, alpha: 0.6 });
-  g.ellipse(CX - 30, GROUND_Y - 50 + wingFlap, 25, 15);
-  g.ellipse(CX + 30, GROUND_Y - 50 + wingFlap, 25, 15);
+  // Breastplate shape (tapered, curved)
+  g.moveTo(cx - w / 2, topY)
+    .lineTo(cx - w / 2 - 2, topY + h * 0.3)
+    .quadraticCurveTo(cx - w / 2 + 2, topY + h, cx, topY + h + 2)
+    .quadraticCurveTo(cx + w / 2 - 2, topY + h, cx + w / 2 + 2, topY + h * 0.3)
+    .lineTo(cx + w / 2, topY)
+    .closePath()
+    .fill({ color: COL_ARMOR, alpha });
 
-  g.fill({ color: COL_WINGS });
-  g.ellipse(CX - 28, GROUND_Y - 52 + wingFlap, 22, 12);
-  g.ellipse(CX + 28, GROUND_Y - 52 + wingFlap, 22, 12);
+  // Inner plate highlight
+  g.moveTo(cx - w / 2 + 3, topY + 2)
+    .lineTo(cx - w / 2 + 1, topY + h * 0.3)
+    .quadraticCurveTo(cx - w / 2 + 4, topY + h - 3, cx, topY + h)
+    .quadraticCurveTo(cx + w / 2 - 4, topY + h - 3, cx + w / 2 - 1, topY + h * 0.3)
+    .lineTo(cx + w / 2 - 3, topY + 2)
+    .closePath()
+    .fill({ color: COL_ARMOR_LT, alpha: alpha * 0.6 });
 
-  g.fill({ color: COL_AURA, alpha: 0.25 + glow * 0.15 });
-  g.ellipse(CX, GROUND_Y - 60 - rise, 40 + glow * 10, 55 + glow * 15);
+  // Holy cross engraving on chest
+  g.rect(cx - 1, topY + 5, 2, 10).fill({ color: COL_ARMOR_DK, alpha: alpha * 0.6 });
+  g.rect(cx - 4, topY + 8, 8, 2).fill({ color: COL_ARMOR_DK, alpha: alpha * 0.6 });
 
-  for (let i = 0; i < 8; i++) {
-    const angle = frame * 0.2 + i * 0.8;
-    const dist = 15 + castProgress * 20 + i * 5;
-    const alpha = (0.6 - i * 0.06) * (0.4 + glow * 0.3);
-    g.fill({ color: COL_HALO_GLOW, alpha });
-    g.circle(
-      CX + Math.cos(angle) * dist,
-      GROUND_Y - 40 + Math.sin(angle) * dist * 0.6 - rise,
-      4 - i * 0.3,
-    );
+  // Shoulder pauldrons
+  for (const s of [-1, 1]) {
+    const sx = cx + s * (w / 2 + 1);
+    g.moveTo(sx, topY + 1)
+      .quadraticCurveTo(sx + s * 6, topY - 2, sx + s * 5, topY + 8)
+      .quadraticCurveTo(sx + s * 2, topY + 10, sx, topY + 6)
+      .closePath()
+      .fill({ color: COL_ARMOR, alpha });
+    // Pauldron edge highlight
+    g.moveTo(sx, topY + 1)
+      .quadraticCurveTo(sx + s * 6, topY - 2, sx + s * 5, topY + 8)
+      .stroke({ color: COL_ARMOR_LT, alpha: alpha * 0.5, width: 1 });
   }
 
-  g.fill({ color: COL_ROBE_DK });
-  g.rect(CX - 12, GROUND_Y - 40 - rise, 24, 35);
-
-  g.fill({ color: COL_ROBE });
-  g.rect(CX - 10, GROUND_Y - 38 - rise, 20, 32);
-
-  g.fill({ color: COL_ARMOR_DK });
-  g.rect(CX - 8, GROUND_Y - 70 - rise, 16, 32);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 6, GROUND_Y - 68 - rise, 12, 28);
-
-  g.fill({ color: COL_GOLD });
-  g.rect(CX - 6, GROUND_Y - 70 - rise, 12, 3);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 12, GROUND_Y - 80 - rise, 6, 14);
-  g.rect(CX + 6, GROUND_Y - 80 - rise, 6, 14);
-
-  g.fill({ color: COL_SKIN });
-  g.rect(CX - 14, GROUND_Y - 78 - rise, 4, 10);
-  g.rect(CX + 10, GROUND_Y - 78 - rise, 4, 10);
-
-  g.fill({ color: COL_ARMOR });
-  g.rect(CX - 14, GROUND_Y - 95 - rise, 8, 18);
-
-  g.fill({ color: COL_HALO_GLOW, alpha: 0.7 + glow * 0.3 });
-  g.ellipse(CX, GROUND_Y - 110 - rise, 16 + glow * 4, 5 + glow);
-
-  g.fill({ color: COL_HALO });
-  g.ellipse(CX, GROUND_Y - 108 - rise, 13 + glow * 3, 4 + glow * 0.8);
-
-  g.fill({ color: COL_EYE });
-  g.circle(CX - 3, GROUND_Y - 93 - rise, 2);
-  g.circle(CX + 3, GROUND_Y - 93 - rise, 2);
-
-  g.fill({ color: COL_SWORD });
-  g.rect(CX + 14, GROUND_Y - 60 - rise, 3, 20);
-
-  g.fill({ color: COL_SWORD_BLADE });
-  g.rect(CX + 15, GROUND_Y - 85 - rise, 1, 30);
-
-  for (let i = 0; i < 6; i++) {
-    g.fill({ color: COL_SWORD_FLAME, alpha: 0.7 - i * 0.1 });
-    g.ellipse(CX + 15, GROUND_Y - 90 - i * 4 - rise, 2 + i * 0.5, 3);
-  }
-
-  g.fill({ color: COL_HALO_GLOW, alpha: 0.4 + glow * 0.4 });
-  g.circle(CX, GROUND_Y - 15 - rise, 15 + glow * 10);
+  // Neckline / gorget
+  g.moveTo(cx - 5, topY)
+    .quadraticCurveTo(cx, topY - 3, cx + 5, topY)
+    .stroke({ color: COL_ARMOR_DK, alpha: alpha * 0.7, width: 1.5 });
 }
 
-function drawDyingAngel(g: Graphics, frame: number): void {
-  const deathProgress = frame / 6;
-  const fall = deathProgress * 25;
-  const rotation = deathProgress * 0.3;
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
+// ---------------------------------------------------------------------------
+// Arms (default idle pose)
+// ---------------------------------------------------------------------------
 
-  const wingFall = Math.sin(frame * 0.3) * 10;
+function drawArms(g: Graphics, cx: number, shoulderY: number, _leftAngle: number, _rightAngle: number, alpha = 1): void {
+  drawArmLeft(g, cx, shoulderY, 0, alpha);
+  drawArmRight(g, cx, shoulderY, 0, alpha);
+}
 
-  const rotX = (x: number, y: number): number => {
-    const dx = x - CX;
-    const dy = y - (GROUND_Y - 40);
-    return CX + dx * cos - dy * sin;
-  };
-  const rotY = (x: number, y: number): number => {
-    const dx = x - CX;
-    const dy = y - (GROUND_Y - 40);
-    return GROUND_Y - 40 + dx * sin + dy * cos;
-  };
+function drawArmLeft(g: Graphics, cx: number, sy: number, _angle: number, alpha = 1): void {
+  // Left arm hanging, slightly bent at elbow
+  g.moveTo(cx - 10, sy)
+    .quadraticCurveTo(cx - 14, sy + 8, cx - 12, sy + 16)
+    .stroke({ color: COL_SKIN, alpha, width: 4 });
+  // Armor on upper arm
+  g.moveTo(cx - 10, sy)
+    .quadraticCurveTo(cx - 14, sy + 8, cx - 12, sy + 10)
+    .stroke({ color: COL_ARMOR, alpha, width: 3 });
+  // Hand
+  g.circle(cx - 12, sy + 16, 2.5).fill({ color: COL_SKIN, alpha });
+}
 
-  g.fill({ color: COL_SHADOW, alpha: 1 - deathProgress });
-  g.ellipse(
-    rotX(CX, GROUND_Y + 1),
-    rotY(CX, GROUND_Y + 1),
-    18 - deathProgress * 6,
-    4 - deathProgress,
-  );
+function drawArmRight(g: Graphics, cx: number, sy: number, _angle: number, alpha = 1): void {
+  // Right arm at side, holding sword position
+  g.moveTo(cx + 10, sy)
+    .quadraticCurveTo(cx + 14, sy + 8, cx + 14, sy + 14)
+    .stroke({ color: COL_SKIN, alpha, width: 4 });
+  g.moveTo(cx + 10, sy)
+    .quadraticCurveTo(cx + 14, sy + 8, cx + 14, sy + 10)
+    .stroke({ color: COL_ARMOR, alpha, width: 3 });
+  g.circle(cx + 14, sy + 14, 2.5).fill({ color: COL_SKIN, alpha });
+}
 
-  g.fill({ color: COL_WINGS_DK, alpha: 0.5 * (1 - deathProgress) });
-  g.ellipse(
-    rotX(CX - 30, GROUND_Y - 50 + wingFall + fall),
-    rotY(CX - 30, GROUND_Y - 50 + wingFall + fall),
-    25,
-    15,
-  );
-  g.ellipse(
-    rotX(CX + 30, GROUND_Y - 50 + wingFall + fall),
-    rotY(CX + 30, GROUND_Y - 50 + wingFall + fall),
-    25,
-    15,
-  );
+// ---------------------------------------------------------------------------
+// Head
+// ---------------------------------------------------------------------------
 
-  g.fill({ color: COL_ROBE, alpha: 1 - deathProgress });
-  g.rect(
-    rotX(CX - 10, GROUND_Y - 38 + fall),
-    rotY(CX - 10, GROUND_Y - 38 + fall),
-    20,
-    32,
-  );
+function drawHead(g: Graphics, cx: number, topY: number, alpha = 1): void {
+  // Hair (behind head)
+  g.ellipse(cx, topY + 6, 9, 10).fill({ color: COL_HAIR, alpha });
+  g.ellipse(cx, topY + 4, 8, 8).fill({ color: COL_HAIR_DK, alpha: alpha * 0.4 });
 
-  g.fill({ color: COL_ARMOR, alpha: 1 - deathProgress });
-  g.rect(
-    rotX(CX - 6, GROUND_Y - 68 + fall),
-    rotY(CX - 6, GROUND_Y - 68 + fall),
-    12,
-    28,
-  );
+  // Face
+  g.ellipse(cx, topY + 6, 7, 8).fill({ color: COL_SKIN, alpha });
 
-  g.fill({ color: COL_GOLD, alpha: 1 - deathProgress });
-  g.rect(
-    rotX(CX - 6, GROUND_Y - 70 + fall),
-    rotY(CX - 6, GROUND_Y - 70 + fall),
-    12,
-    3,
-  );
+  // Slight jaw shading
+  g.ellipse(cx, topY + 10, 5, 4).fill({ color: COL_SKIN_DK, alpha: alpha * 0.3 });
 
-  g.fill({ color: COL_ARMOR, alpha: 1 - deathProgress });
-  g.rect(
-    rotX(CX - 14, GROUND_Y - 95 + fall),
-    rotY(CX - 14, GROUND_Y - 95 + fall),
-    8,
-    18,
-  );
+  // Eyes
+  g.ellipse(cx - 3, topY + 5, 1.8, 1.2).fill({ color: 0xffffff, alpha });
+  g.ellipse(cx + 3, topY + 5, 1.8, 1.2).fill({ color: 0xffffff, alpha });
+  g.circle(cx - 3, topY + 5, 1).fill({ color: COL_EYE, alpha });
+  g.circle(cx + 3, topY + 5, 1).fill({ color: COL_EYE, alpha });
+  // Eye glint
+  g.circle(cx - 2.5, topY + 4.5, 0.4).fill({ color: 0xffffff, alpha });
+  g.circle(cx + 3.5, topY + 4.5, 0.4).fill({ color: 0xffffff, alpha });
 
-  g.fill({ color: COL_HALO_GLOW, alpha: 0.5 * (1 - deathProgress) });
-  g.ellipse(
-    rotX(CX, GROUND_Y - 108 + fall),
-    rotY(CX, GROUND_Y - 108 + fall),
-    14,
-    5,
-  );
+  // Nose hint
+  g.moveTo(cx, topY + 6)
+    .lineTo(cx - 0.5, topY + 8)
+    .stroke({ color: COL_SKIN_DK, alpha: alpha * 0.4, width: 0.6 });
 
-  if (deathProgress > 0.5) {
-    g.fill({ color: 0x333333, alpha: 1 - deathProgress });
-    g.circle(
-      rotX(CX - 3, GROUND_Y - 93 + fall),
-      rotY(CX - 3, GROUND_Y - 93 + fall),
-      2,
-    );
-    g.circle(
-      rotX(CX + 3, GROUND_Y - 93 + fall),
-      rotY(CX + 3, GROUND_Y - 93 + fall),
-      2,
-    );
-  } else {
-    g.fill({ color: COL_EYE });
-    g.circle(
-      rotX(CX - 3, GROUND_Y - 93 + fall),
-      rotY(CX - 3, GROUND_Y - 93 + fall),
-      2,
-    );
-    g.circle(
-      rotX(CX + 3, GROUND_Y - 93 + fall),
-      rotY(CX + 3, GROUND_Y - 93 + fall),
-      2,
-    );
+  // Mouth
+  g.moveTo(cx - 2, topY + 9.5)
+    .quadraticCurveTo(cx, topY + 10.5, cx + 2, topY + 9.5)
+    .stroke({ color: COL_SKIN_DK, alpha: alpha * 0.4, width: 0.6 });
+
+  // Hair strands on top
+  for (let i = -2; i <= 2; i++) {
+    g.moveTo(cx + i * 3, topY + 2)
+      .quadraticCurveTo(cx + i * 4, topY - 3, cx + i * 3.5, topY - 4)
+      .stroke({ color: COL_HAIR, alpha: alpha * 0.8, width: 1.5 });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Halo
+// ---------------------------------------------------------------------------
+
+function drawHalo(g: Graphics, cx: number, y: number, intensity: number, alpha = 1): void {
+  // Outer glow
+  g.ellipse(cx, y, 14, 4.5).fill({ color: COL_HALO_GLOW, alpha: alpha * intensity * 0.4 });
+  // Main ring
+  g.ellipse(cx, y, 11, 3.5)
+    .stroke({ color: COL_HALO, alpha: alpha * (0.6 + intensity * 0.4), width: 2.5 });
+  // Inner bright line
+  g.ellipse(cx, y, 10, 3)
+    .stroke({ color: 0xffffff, alpha: alpha * intensity * 0.4, width: 1 });
+  // Top glow dot
+  g.circle(cx, y - 3, 2).fill({ color: COL_HALO_GLOW, alpha: alpha * intensity * 0.3 });
+}
+
+// ---------------------------------------------------------------------------
+// Sword
+// ---------------------------------------------------------------------------
+
+function drawSword(g: Graphics, hx: number, hy: number, angle: number, alpha = 1): void {
+  const cos = Math.cos(angle - Math.PI / 2);
+  const sin = Math.sin(angle - Math.PI / 2);
+  const bladeLen = 28;
+
+  // Blade direction
+  const tipX = hx + cos * bladeLen;
+  const tipY = hy + sin * bladeLen;
+  const midX = hx + cos * bladeLen * 0.5;
+  const midY = hy + sin * bladeLen * 0.5;
+
+  // Perpendicular for blade width
+  const pw = 2;
+  const px = -sin * pw;
+  const py =  cos * pw;
+
+  // Flame glow along blade
+  for (let i = 0; i < 5; i++) {
+    const t = 0.3 + i * 0.15;
+    const fx = hx + cos * bladeLen * t;
+    const fy = hy + sin * bladeLen * t;
+    const r = 4 - i * 0.3;
+    g.circle(fx, fy, r).fill({ color: COL_BLADE_FIRE, alpha: alpha * (0.2 - i * 0.03) });
   }
 
-  g.fill({ color: COL_SWORD, alpha: 1 - deathProgress });
-  g.rect(
-    rotX(CX + 14, GROUND_Y - 65 + fall),
-    rotY(CX + 14, GROUND_Y - 65 + fall),
-    3,
-    20,
-  );
+  // Blade
+  g.moveTo(hx + px, hy + py)
+    .lineTo(midX + px * 0.8, midY + py * 0.8)
+    .lineTo(tipX, tipY)
+    .lineTo(midX - px * 0.8, midY - py * 0.8)
+    .lineTo(hx - px, hy - py)
+    .closePath()
+    .fill({ color: COL_BLADE, alpha });
+
+  // Blade edge highlight
+  g.moveTo(hx, hy)
+    .lineTo(tipX, tipY)
+    .stroke({ color: COL_BLADE_EDGE, alpha: alpha * 0.7, width: 1 });
+
+  // Flame wisps at blade tip
+  for (let i = 0; i < 3; i++) {
+    const fx = tipX + cos * (3 + i * 3) + Math.sin(angle + i) * 2;
+    const fy = tipY + sin * (3 + i * 3) + Math.cos(angle + i) * 2;
+    g.circle(fx, fy, 2 - i * 0.5)
+      .fill({ color: i === 0 ? COL_BLADE_CORE : COL_BLADE_FIRE, alpha: alpha * (0.6 - i * 0.15) });
+  }
+
+  // Cross guard
+  const gpx = -sin * 5;
+  const gpy =  cos * 5;
+  g.moveTo(hx + gpx, hy + gpy)
+    .lineTo(hx - gpx, hy - gpy)
+    .stroke({ color: COL_GUARD, alpha, width: 3 });
+
+  // Pommel
+  const pmX = hx - cos * 4;
+  const pmY = hy - sin * 4;
+  g.circle(pmX, pmY, 2).fill({ color: COL_GUARD, alpha });
 }

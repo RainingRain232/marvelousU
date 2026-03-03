@@ -1032,7 +1032,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "angel",
     regenRate: 5,
     size: {
-      width: 2.0,
+      width: 3.0,
       height: 3.0,
       healthBarOffset: -2.0,
     },
