@@ -430,6 +430,24 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 14,
     dieFps: 8,
   }),
+  [UnitType.ANCIENT_ARCHER]: buildDef("ancient_archer", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    dieFps: 8,
+  }),
+  [UnitType.ANCIENT_LONGBOWMAN]: buildDef("ancient_longbowman", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 8,
+    dieFps: 8,
+  }),
+  [UnitType.ANCIENT_CROSSBOWMAN]: buildDef("ancient_crossbowman", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 6,
+    dieFps: 8,
+  }),
   [UnitType.ELDER_DEFENDER]: buildDef("elder_defender", {
     idleFps: 6,
     moveFps: 8,

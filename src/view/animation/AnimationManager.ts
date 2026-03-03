@@ -133,6 +133,9 @@ import { generateMinorEarthElementalFrames } from "@view/animation/MinorEarthEle
 import { generateAncientDefenderFrames } from "@view/animation/AncientDefenderSpriteGen";
 import { generateAncientPhalanxFrames } from "@view/animation/AncientPhalanxSpriteGen";
 import { generateAncientAxemanFrames } from "@view/animation/AncientAxemanSpriteGen";
+import { generateAncientArcherFrames } from "@view/animation/AncientArcherSpriteGen";
+import { generateAncientLongbowmanFrames } from "@view/animation/AncientLongbowmanSpriteGen";
+import { generateAncientCrossbowmanFrames } from "@view/animation/AncientCrossbowmanSpriteGen";
 import { generateElderDefenderFrames } from "@view/animation/ElderDefenderSpriteGen";
 import { generateElderPhalanxFrames } from "@view/animation/ElderPhalanxSpriteGen";
 import { generateElderAxemanFrames } from "@view/animation/ElderAxemanSpriteGen";
@@ -405,6 +408,12 @@ export class AnimationManager {
         this._generateAncientPhalanxSprites(key, renderer);
       } else if (key === "ancient_axeman") {
         this._generateAncientAxemanSprites(key, renderer);
+      } else if (key === "ancient_archer") {
+        this._generateAncientArcherSprites(key, renderer);
+      } else if (key === "ancient_longbowman") {
+        this._generateAncientLongbowmanSprites(key, renderer);
+      } else if (key === "ancient_crossbowman") {
+        this._generateAncientCrossbowmanSprites(key, renderer);
       } else if (key === "elder_defender") {
         this._generateElderDefenderSprites(key, renderer);
       } else if (key === "elder_phalanx") {
@@ -1490,6 +1499,39 @@ export class AnimationManager {
 
   private _generateAncientAxemanSprites(key: string, renderer: Renderer): void {
     const textures = generateAncientAxemanFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateAncientArcherSprites(key: string, renderer: Renderer): void {
+    const textures = generateAncientArcherFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateAncientLongbowmanSprites(key: string, renderer: Renderer): void {
+    const textures = generateAncientLongbowmanFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateAncientCrossbowmanSprites(key: string, renderer: Renderer): void {
+    const textures = generateAncientCrossbowmanFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {
