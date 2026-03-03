@@ -361,7 +361,7 @@ export class HamletRenderer {
     const dy = y + h - dh;
     // Frame
     g.rect(dx - 2, dy - 2, dw + 4, dh + 2).fill({ color: COL_WOOD });
-    g.arc(dx + dw / 2, dy, dw / 2 + 1, Math.PI, 0).fill({ color: COL_WOOD });
+    g.moveTo(dx - 1, dy).arc(dx + dw / 2, dy, dw / 2 + 1, Math.PI, 0).fill({ color: COL_WOOD });
     // Door recess
     g.rect(dx, dy, dw, dh).fill({ color: 0x1a1208 });
     // Left door half
@@ -490,7 +490,7 @@ export class HamletRenderer {
       .fill({ color: COL_WOOD });
     g.rect(wx - 3, wy - 7, 6, 0.8).fill({ color: COL_IRON });
     // Bucket handle
-    g.arc(wx, wy - 10, 2, Math.PI, 0).stroke({ color: COL_IRON_DK, width: 0.5 });
+    g.moveTo(wx - 2, wy - 10).arc(wx, wy - 10, 2, Math.PI, 0).stroke({ color: COL_IRON_DK, width: 0.5 });
 
     // ── Moss on well stones ──
     this._drawMoss(g, wx - 10, wy + 2, 5);
@@ -529,7 +529,7 @@ export class HamletRenderer {
     }
     // Awning scallop edge
     for (let i = 0; i < 7; i++) {
-      g.arc(mx + 2 + i * 4, my - 2, 2, 0, Math.PI).fill({ color: COL_CLOTH_R });
+      g.moveTo(mx + 4 + i * 4, my - 2).arc(mx + 2 + i * 4, my - 2, 2, 0, Math.PI).fill({ color: COL_CLOTH_R });
     }
 
     // ── Produce display ──
@@ -618,7 +618,7 @@ export class HamletRenderer {
     // Mug body
     g.rect(mux, muy, 5, 5).fill({ color: COL_SIGN_GOLD });
     // Handle
-    g.arc(mux + 5, muy + 2.5, 2, -Math.PI / 2, Math.PI / 2).stroke({ color: COL_SIGN_GOLD, width: 0.6 });
+    g.moveTo(mux + 5, muy + 0.5).arc(mux + 5, muy + 2.5, 2, -Math.PI / 2, Math.PI / 2).stroke({ color: COL_SIGN_GOLD, width: 0.6 });
     // Foam
     g.ellipse(mux + 2.5, muy, 3, 1).fill({ color: COL_APRON });
 
@@ -789,7 +789,7 @@ export class HamletRenderer {
     g.circle(x - 1, y - 12.5, 0.4).fill({ color: 0x222222 });
     g.circle(x + 1, y - 12.5, 0.4).fill({ color: 0x222222 });
     // Hair (long, braided)
-    g.arc(x, y - 12, 4, Math.PI + 0.3, -0.3).stroke({ color: COL_HAIR_BLD, width: 1.5 });
+    g.moveTo(x + 4 * Math.cos(Math.PI + 0.3), y - 12 + 4 * Math.sin(Math.PI + 0.3)).arc(x, y - 12, 4, Math.PI + 0.3, -0.3).stroke({ color: COL_HAIR_BLD, width: 1.5 });
     g.moveTo(x + 3, y - 10).lineTo(x + 3, y - 4).stroke({ color: COL_HAIR_BLD, width: 1 });
     // Headband
     g.rect(x - 3.5, y - 14, 7, 1).fill({ color: COL_CLOTH_R });
@@ -832,7 +832,7 @@ export class HamletRenderer {
       .closePath()
       .fill({ color: COL_HAIR_BRN });
     // Hair
-    g.arc(x + 0.5, y - 14, 4, Math.PI + 0.3, -0.3).stroke({ color: COL_HAIR_BRN, width: 1.2 });
+    g.moveTo(x + 0.5 + 4 * Math.cos(Math.PI + 0.3), y - 14 + 4 * Math.sin(Math.PI + 0.3)).arc(x + 0.5, y - 14, 4, Math.PI + 0.3, -0.3).stroke({ color: COL_HAIR_BRN, width: 1.2 });
     // Hat
     g.rect(x - 3.5, y - 18.5, 8, 2).fill({ color: COL_WOOD_LT });
     g.rect(x - 2, y - 21, 5, 3.5).fill({ color: COL_WOOD_LT });

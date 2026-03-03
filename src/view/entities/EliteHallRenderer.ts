@@ -649,7 +649,7 @@ export class EliteHallRenderer {
     // ── Helmet (great helm with visor) ──
     g.rect(x - 6, y - 30 + breathe, 12, 8).fill({ color: COL_ARMOR_DK });
     // Helmet top (domed)
-    g.arc(x, y - 30 + breathe, 6, Math.PI, 0).fill({ color: COL_ARMOR });
+    g.moveTo(x - 6, y - 30 + breathe).arc(x, y - 30 + breathe, 6, Math.PI, 0).fill({ color: COL_ARMOR });
     // Visor slit
     g.rect(x - 4, y - 27 + breathe, 8, 1.5).fill({ color: 0x1a1a1a });
     // Nose guard

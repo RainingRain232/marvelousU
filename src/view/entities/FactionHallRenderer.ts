@@ -426,10 +426,10 @@ export class FactionHallRenderer {
     // Window recess
     g.circle(rx, ry, rr + 1).fill({ color: COL_WINDOW });
     // Colored panes (quadrants)
-    g.arc(rx, ry, rr, 0, Math.PI / 2).lineTo(rx, ry).closePath().fill({ color: COL_GLASS_R, alpha: 0.7 });
-    g.arc(rx, ry, rr, Math.PI / 2, Math.PI).lineTo(rx, ry).closePath().fill({ color: COL_GLASS_B, alpha: 0.7 });
-    g.arc(rx, ry, rr, Math.PI, Math.PI * 1.5).lineTo(rx, ry).closePath().fill({ color: COL_GLASS_G, alpha: 0.7 });
-    g.arc(rx, ry, rr, Math.PI * 1.5, Math.PI * 2).lineTo(rx, ry).closePath().fill({ color: COL_GLASS_Y, alpha: 0.7 });
+    g.moveTo(rx + rr, ry).arc(rx, ry, rr, 0, Math.PI / 2).lineTo(rx, ry).closePath().fill({ color: COL_GLASS_R, alpha: 0.7 });
+    g.moveTo(rx, ry + rr).arc(rx, ry, rr, Math.PI / 2, Math.PI).lineTo(rx, ry).closePath().fill({ color: COL_GLASS_B, alpha: 0.7 });
+    g.moveTo(rx - rr, ry).arc(rx, ry, rr, Math.PI, Math.PI * 1.5).lineTo(rx, ry).closePath().fill({ color: COL_GLASS_G, alpha: 0.7 });
+    g.moveTo(rx, ry - rr).arc(rx, ry, rr, Math.PI * 1.5, Math.PI * 2).lineTo(rx, ry).closePath().fill({ color: COL_GLASS_Y, alpha: 0.7 });
     // Lead caming
     g.moveTo(rx - rr, ry).lineTo(rx + rr, ry).stroke({ color: COL_IRON_DK, width: 0.6 });
     g.moveTo(rx, ry - rr).lineTo(rx, ry + rr).stroke({ color: COL_IRON_DK, width: 0.6 });
@@ -447,7 +447,7 @@ export class FactionHallRenderer {
   ): void {
     // Frame
     g.rect(x, y, w, h).fill({ color: COL_WINDOW });
-    g.arc(x + w / 2, y, w / 2, Math.PI, 0).fill({ color: COL_WINDOW });
+    g.moveTo(x, y).arc(x + w / 2, y, w / 2, Math.PI, 0).fill({ color: COL_WINDOW });
 
     // Colored panes
     const pw = w - 2;
@@ -526,7 +526,8 @@ export class FactionHallRenderer {
     g.rect(ex + 1.5 + sway * 0.3, ey - 12.5, 2.5, 0.8).fill({ color: COL_HAIR_GRAY });
 
     // Hair (receding, gray)
-    g.arc(ex + 1 + sway * 0.3, ey - 10, 4.5, Math.PI + 0.3, -0.3)
+    g.moveTo(ex + 1 + sway * 0.3 + 4.5 * Math.cos(Math.PI + 0.3), ey - 10 + 4.5 * Math.sin(Math.PI + 0.3))
+      .arc(ex + 1 + sway * 0.3, ey - 10, 4.5, Math.PI + 0.3, -0.3)
       .stroke({ color: COL_HAIR_GRAY, width: 1.2 });
 
     // Hand holding staff

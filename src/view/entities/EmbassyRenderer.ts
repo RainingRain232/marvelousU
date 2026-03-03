@@ -330,7 +330,7 @@ export class EmbassyRenderer {
       .closePath()
       .fill({ color: COL_GOLD_DK });
     // Tiny laurel on keystone
-    g.arc(doorCx, doorY - archR, 2, Math.PI + 0.5, -0.5).stroke({ color: 0x558833, width: 0.6 });
+    g.moveTo(doorCx + 2 * Math.cos(Math.PI + 0.5), doorY - archR + 2 * Math.sin(Math.PI + 0.5)).arc(doorCx, doorY - archR, 2, Math.PI + 0.5, -0.5).stroke({ color: 0x558833, width: 0.6 });
 
     // Door recess
     g.rect(doorX - 1, doorY, doorW + 2, doorH + 1).fill({ color: 0x1a1208 });
@@ -373,7 +373,7 @@ export class EmbassyRenderer {
       g.circle(kx - 1, doorY + doorH / 2 - 1, 0.4).fill({ color: COL_IRON_DK });
       g.circle(kx + 1, doorY + doorH / 2 - 1, 0.4).fill({ color: COL_IRON_DK });
       // Ring
-      g.arc(kx, doorY + doorH / 2 + 2, 2, 0, Math.PI).stroke({ color: COL_GOLD, width: 0.8 });
+      g.moveTo(kx + 2, doorY + doorH / 2 + 2).arc(kx, doorY + doorH / 2 + 2, 2, 0, Math.PI).stroke({ color: COL_GOLD, width: 0.8 });
     }
 
     // ── Diplomatic crest above door ──
@@ -499,7 +499,7 @@ export class EmbassyRenderer {
       // Window recess
       g.rect(wx - ww / 2, wy, ww, wh).fill({ color: COL_WINDOW });
       // Arched top
-      g.arc(wx, wy, ww / 2, Math.PI, 0).fill({ color: COL_WINDOW });
+      g.moveTo(wx - ww / 2, wy).arc(wx, wy, ww / 2, Math.PI, 0).fill({ color: COL_WINDOW });
 
       // Stained-glass panes (3 rows)
       const pw = ww - 2;
@@ -519,7 +519,7 @@ export class EmbassyRenderer {
       // Frame
       g.rect(wx - ww / 2, wy, ww, wh).stroke({ color: COL_BRASS, width: 1 });
       // Arch frame
-      g.arc(wx, wy, ww / 2, Math.PI, 0).stroke({ color: COL_BRASS, width: 1 });
+      g.moveTo(wx - ww / 2, wy).arc(wx, wy, ww / 2, Math.PI, 0).stroke({ color: COL_BRASS, width: 1 });
 
       // Sill
       g.rect(wx - ww / 2 - 2, wy + wh, ww + 4, 2).fill({ color: COL_MARBLE });
@@ -587,7 +587,8 @@ export class EmbassyRenderer {
       .closePath()
       .fill({ color: 0x3a2a1a });
     // Hair (dark, neat)
-    g.arc(dx + sway * 0.2, dy - 12, 4.5, Math.PI + 0.4, -0.4)
+    g.moveTo(dx + sway * 0.2 + 4.5 * Math.cos(Math.PI + 0.4), dy - 12 + 4.5 * Math.sin(Math.PI + 0.4))
+      .arc(dx + sway * 0.2, dy - 12, 4.5, Math.PI + 0.4, -0.4)
       .stroke({ color: 0x3a2a1a, width: 1.2 });
 
     // ── Diplomat hat (flat beret) ──
