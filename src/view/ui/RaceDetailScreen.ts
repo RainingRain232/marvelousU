@@ -4,7 +4,7 @@
 
 import {
   Container, Graphics, Text, TextStyle, Sprite, Texture,
-  AnimatedSprite, Assets,
+  AnimatedSprite, Assets, Rectangle,
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { RACE_DEFINITIONS, getRace } from "@sim/config/RaceDefs";
@@ -57,12 +57,30 @@ const STYLE_TIER_VALUE = new TextStyle({
 const STYLE_UNIT_NAME = new TextStyle({
   fontFamily: "monospace", fontSize: 10, fill: 0xccddee,
 });
+const STYLE_UNIT_NAME_HOVER = new TextStyle({
+  fontFamily: "monospace", fontSize: 10, fill: 0xffffff,
+});
 const STYLE_UNIT_TIER = new TextStyle({
   fontFamily: "monospace", fontSize: 10, fill: 0xffd700, fontWeight: "bold",
 });
 const STYLE_COL_HEADER = new TextStyle({
   fontFamily: "monospace", fontSize: 13, fill: 0x88aacc,
   fontWeight: "bold", letterSpacing: 1,
+});
+
+// Tooltip styles
+const STYLE_TT_NAME = new TextStyle({
+  fontFamily: "monospace", fontSize: 13, fill: 0xffd700, fontWeight: "bold",
+});
+const STYLE_TT_STAT = new TextStyle({
+  fontFamily: "monospace", fontSize: 11, fill: 0xbbccdd,
+});
+const STYLE_TT_SPAWN = new TextStyle({
+  fontFamily: "monospace", fontSize: 11, fill: 0x668866,
+});
+const STYLE_TT_DESC = new TextStyle({
+  fontFamily: "monospace", fontSize: 10, fill: 0xaaaadd,
+  wordWrap: true, wordWrapWidth: 210,
 });
 
 // ---------------------------------------------------------------------------
@@ -75,6 +93,14 @@ const CARD_W = 1248;
 const CARD_H = 754;
 const PORTRAIT_SIZE = 234;
 const CORNER_R = 10;
+
+// Scrollbar
+const SCROLLBAR_W = 8;
+const SCROLLBAR_PAD = 4;
+
+// Tooltip
+const TT_W = 240;
+const TT_PAD = 10;
 
 // ---------------------------------------------------------------------------
 // Unit category helpers
@@ -177,6 +203,16 @@ export class RaceDetailScreen {
   private _rosterBaseY = 0;
   private _scrollY = 0;
   private _maxScroll = 0;
+  private _rosterH = 0;
+  private _rosterContentH = 0;
+
+  // Scrollbar visuals
+  private _scrollTrack!: Graphics;
+  private _scrollThumb!: Graphics;
+
+  // Tooltip
+  private _tooltip!: Container;
+  private _tooltipSprite: AnimatedSprite | null = null;
 
   onNext: (() => void) | null = null;
   onBack: (() => void) | null = null;
@@ -208,6 +244,7 @@ export class RaceDetailScreen {
 
   hide(): void {
     this.container.visible = false;
+    this._hideTooltip();
   }
 
   // ---------------------------------------------------------------------------
@@ -269,8 +306,8 @@ export class RaceDetailScreen {
     const FACTION_Y = TOP_Y + PORTRAIT_SIZE + 16;
     this._buildFactionRow(card, race, FACTION_Y);
 
-    // ---- Available units roster ----
-    const ROSTER_Y = FACTION_Y + 94;
+    // ---- Available units roster (extra space for faction unit names) ----
+    const ROSTER_Y = FACTION_Y + 120;
     this._buildUnitRoster(card, race, ROSTER_Y);
 
     // Divider above footer
@@ -283,6 +320,9 @@ export class RaceDetailScreen {
     nextBtn.position.set(CARD_W - 221, CARD_H - 57);
     nextBtn.on("pointerdown", () => this.onNext?.());
     card.addChild(nextBtn);
+
+    // Tooltip (added last so it renders on top)
+    this._buildTooltip(card);
 
     // Wheel scroll for roster
     card.eventMode = "static";
@@ -484,7 +524,7 @@ export class RaceDetailScreen {
 
       // Name below icon
       const nameT = new Text({
-        text: def.spriteKey.replace(/_/g, " "),
+        text: this._formatUnitName(def.type),
         style: STYLE_UNIT_NAME,
       });
       nameT.anchor.set(0.5, 0);
@@ -509,6 +549,7 @@ export class RaceDetailScreen {
 
     const ROSTER_TOP = y + 26;
     const ROSTER_H = CARD_H - 68 - ROSTER_TOP - 5;
+    this._rosterH = ROSTER_H;
 
     // Mask
     this._rosterMask = new Graphics()
@@ -526,7 +567,7 @@ export class RaceDetailScreen {
     const units = getGeneralUnits(race.factionUnits);
     const categories: UnitCategory[] = ["melee", "ranged", "magic", "siege", "creature", "heal"];
 
-    const COL_W = Math.floor((CARD_W - 78) / categories.length);
+    const COL_W = Math.floor((CARD_W - 78 - SCROLLBAR_W - SCROLLBAR_PAD) / categories.length);
     const ROW_H = 18;
 
     let maxContentH = 0;
@@ -549,21 +590,35 @@ export class RaceDetailScreen {
       ry += 5;
 
       for (const def of units[cat]) {
+        // Interactive row container
+        const rowCont = new Container();
+        rowCont.position.set(colX, ry);
+        rowCont.eventMode = "static";
+        rowCont.cursor = "pointer";
+        rowCont.hitArea = new Rectangle(0, 0, COL_W - 10, ROW_H);
+        this._rosterContainer.addChild(rowCont);
+
+        // Hover background
+        const hoverBg = new Graphics()
+          .rect(0, 0, COL_W - 10, ROW_H)
+          .fill({ color: 0x223344, alpha: 0 });
+        rowCont.addChild(hoverBg);
+
         // Unit name
         const nameT = new Text({
           text: this._formatUnitName(def.type),
           style: STYLE_UNIT_NAME,
         });
-        nameT.position.set(colX, ry);
-        this._rosterContainer.addChild(nameT);
+        nameT.position.set(0, 2);
+        rowCont.addChild(nameT);
 
         // Tier badge
         const tierT = new Text({
           text: `T${def.tier ?? 1}`,
           style: STYLE_UNIT_TIER,
         });
-        tierT.position.set(colX + COL_W - 36, ry);
-        this._rosterContainer.addChild(tierT);
+        tierT.position.set(COL_W - 36, 2);
+        rowCont.addChild(tierT);
 
         // Element tag for magic units
         if (def.element && cat === "magic") {
@@ -574,9 +629,24 @@ export class RaceDetailScreen {
               fill: this._getElementColor(def.element), letterSpacing: 0,
             }),
           });
-          elemT.position.set(colX + COL_W - 62, ry + 1);
-          this._rosterContainer.addChild(elemT);
+          elemT.position.set(COL_W - 62, 3);
+          rowCont.addChild(elemT);
         }
+
+        // Hover handlers
+        rowCont.on("pointerover", () => {
+          hoverBg.clear().rect(0, 0, COL_W - 10, ROW_H).fill({ color: 0x223344, alpha: 0.6 });
+          nameT.style = STYLE_UNIT_NAME_HOVER;
+          // Compute card-local position for tooltip
+          const cardX = 26 + colX + COL_W - 10;
+          const cardY = this._rosterContainer.position.y + ry;
+          this._showTooltip(def, cardX, cardY);
+        });
+        rowCont.on("pointerout", () => {
+          hoverBg.clear().rect(0, 0, COL_W - 10, ROW_H).fill({ color: 0x223344, alpha: 0 });
+          nameT.style = STYLE_UNIT_NAME;
+          this._hideTooltip();
+        });
 
         ry += ROW_H;
       }
@@ -584,7 +654,182 @@ export class RaceDetailScreen {
       if (ry > maxContentH) maxContentH = ry;
     }
 
+    this._rosterContentH = maxContentH;
     this._maxScroll = Math.max(0, maxContentH - ROSTER_H);
+
+    // Scrollbar
+    this._buildScrollbar(parent, ROSTER_TOP, ROSTER_H);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scrollbar
+  // ---------------------------------------------------------------------------
+
+  private _buildScrollbar(parent: Container, top: number, height: number): void {
+    const trackX = CARD_W - 26 - SCROLLBAR_W;
+
+    // Track
+    this._scrollTrack = new Graphics()
+      .roundRect(trackX, top, SCROLLBAR_W, height, 4)
+      .fill({ color: 0x1a1a2a, alpha: 0.6 })
+      .roundRect(trackX, top, SCROLLBAR_W, height, 4)
+      .stroke({ color: 0x334455, alpha: 0.4, width: 0.5 });
+    parent.addChild(this._scrollTrack);
+
+    // Thumb
+    this._scrollThumb = new Graphics();
+    parent.addChild(this._scrollThumb);
+
+    // Hide scrollbar if content fits
+    const visible = this._maxScroll > 0;
+    this._scrollTrack.visible = visible;
+    this._scrollThumb.visible = visible;
+
+    if (visible) {
+      this._updateScrollThumb();
+    }
+  }
+
+  private _updateScrollThumb(): void {
+    if (this._maxScroll <= 0) return;
+    const trackX = CARD_W - 26 - SCROLLBAR_W;
+    const thumbFrac = this._rosterH / this._rosterContentH;
+    const thumbH = Math.max(20, this._rosterH * thumbFrac);
+    const scrollFrac = this._scrollY / this._maxScroll;
+    const thumbY = this._rosterBaseY + scrollFrac * (this._rosterH - thumbH);
+
+    this._scrollThumb.clear()
+      .roundRect(trackX + 1, thumbY, SCROLLBAR_W - 2, thumbH, 3)
+      .fill({ color: 0x667788, alpha: 0.7 });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tooltip
+  // ---------------------------------------------------------------------------
+
+  private _buildTooltip(parent: Container): void {
+    this._tooltip = new Container();
+    this._tooltip.visible = false;
+    parent.addChild(this._tooltip);
+  }
+
+  private _showTooltip(def: UnitDef, cardX: number, cardY: number): void {
+    const tt = this._tooltip;
+    tt.removeChildren();
+    this._tooltipSprite = null;
+
+    let cy = TT_PAD;
+
+    // Animated sprite preview
+    const SPRITE_SIZE = 48;
+    const frames = animationManager.getFrames(def.type, UnitState.IDLE);
+    if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+      const sprite = new AnimatedSprite(frames);
+      sprite.anchor.set(0.5, 0.5);
+      sprite.width = SPRITE_SIZE - 8;
+      sprite.height = SPRITE_SIZE - 8;
+      sprite.position.set(TT_W / 2, cy + SPRITE_SIZE / 2);
+      const fs = animationManager.getFrameSet(def.type, UnitState.IDLE);
+      sprite.animationSpeed = fs.fps / 60;
+      sprite.loop = true;
+      sprite.play();
+      tt.addChild(sprite);
+      this._tooltipSprite = sprite;
+      cy += SPRITE_SIZE + 4;
+    }
+
+    // Name
+    const nameT = new Text({ text: this._formatUnitLabel(def.type), style: STYLE_TT_NAME });
+    nameT.position.set(TT_PAD, cy);
+    tt.addChild(nameT);
+    cy += 18;
+
+    // Description
+    if (def.description) {
+      const descT = new Text({ text: def.description, style: STYLE_TT_DESC });
+      descT.position.set(TT_PAD, cy);
+      tt.addChild(descT);
+      cy += descT.height + 6;
+    }
+
+    // Divider
+    tt.addChild(new Graphics().rect(TT_PAD, cy, TT_W - TT_PAD * 2, 1).fill({ color: 0x334455 }));
+    cy += 5;
+
+    // Stats line 1: HP ATK SPD
+    const line1 = new Text({
+      text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
+      style: STYLE_TT_STAT,
+    });
+    line1.position.set(TT_PAD, cy);
+    tt.addChild(line1);
+    cy += 14;
+
+    // Stats line 2: RNG AS COST
+    const line2 = new Text({
+      text: `RNG:${def.range}  AS:${def.attackSpeed}  COST:${def.cost}g`,
+      style: STYLE_TT_STAT,
+    });
+    line2.position.set(TT_PAD, cy);
+    tt.addChild(line2);
+    cy += 14;
+
+    // Stats line 3: Spawn + abilities
+    let extraLine = `Spawn: ${def.spawnTime}s`;
+    if (def.abilityTypes.length > 0) {
+      extraLine += `  ${def.abilityTypes.join(", ")}`;
+    }
+    const line3 = new Text({ text: extraLine, style: STYLE_TT_SPAWN });
+    line3.position.set(TT_PAD, cy);
+    tt.addChild(line3);
+    cy += 14;
+
+    // Element badge for magic units
+    if (def.element) {
+      const elemT = new Text({
+        text: def.element.charAt(0).toUpperCase() + def.element.slice(1),
+        style: new TextStyle({
+          fontFamily: "monospace", fontSize: 10,
+          fill: this._getElementColor(def.element), fontWeight: "bold",
+        }),
+      });
+      elemT.position.set(TT_PAD, cy);
+      tt.addChild(elemT);
+      cy += 14;
+    }
+
+    const TT_H = cy + TT_PAD;
+
+    // Background (drawn behind content via addChildAt)
+    const bg = new Graphics()
+      .roundRect(0, 0, TT_W, TT_H, 6)
+      .fill({ color: 0x0d0d1e, alpha: 0.95 })
+      .roundRect(0, 0, TT_W, TT_H, 6)
+      .stroke({ color: 0xffd700, alpha: 0.5, width: 1 });
+    tt.addChildAt(bg, 0);
+
+    // Position: try to place to the right of the hovered item
+    let tx = cardX + 6;
+    let ty = cardY - TT_H / 2;
+
+    // Clamp to stay within card bounds
+    if (tx + TT_W > CARD_W - 10) {
+      tx = cardX - TT_W - 16;
+    }
+    if (ty < 10) ty = 10;
+    if (ty + TT_H > CARD_H - 10) ty = CARD_H - TT_H - 10;
+
+    tt.position.set(tx, ty);
+    tt.visible = true;
+  }
+
+  private _hideTooltip(): void {
+    if (!this._tooltip) return;
+    this._tooltip.visible = false;
+    if (this._tooltipSprite) {
+      this._tooltipSprite.stop();
+      this._tooltipSprite = null;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -595,6 +840,7 @@ export class RaceDetailScreen {
     if (this._maxScroll <= 0) return;
     this._scrollY = Math.max(0, Math.min(this._maxScroll, this._scrollY + e.deltaY));
     this._rosterContainer.position.y = this._rosterBaseY - this._scrollY;
+    this._updateScrollThumb();
   }
 
   // ---------------------------------------------------------------------------
@@ -606,6 +852,13 @@ export class RaceDetailScreen {
       .replace(/_/g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase())
       .substring(0, 16);
+  }
+
+  /** Full unit label for tooltip (no character limit). */
+  private _formatUnitLabel(ut: UnitType): string {
+    return (ut as string)
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   private _getElementColor(element: string): number {
