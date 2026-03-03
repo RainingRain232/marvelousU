@@ -111,6 +111,10 @@ export enum UnitType {
   ROYAL_ARBALESTIER = "royal_arbelestier",
   WARCHIEF = "warchief",
   ARCHMAGE = "archmage",
+  RUFUS = "rufus",
+  TROUBADOUR = "troubadour",
+  GIANT_COURT_JESTER = "giant_court_jester",
+  FISHERMAN = "fisherman",
 }
 
 export enum BuildingType {
@@ -171,6 +175,7 @@ export enum AbilityType {
   HEAL = "heal",
   FIRE_BREATH = "fire_breath",
   FROST_BREATH = "frost_breath",
+  FISHERMAN_NET = "fisherman_net",
 }
 
 export enum UpgradeType {

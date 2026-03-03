@@ -226,4 +226,17 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
     castTime: 0.8,
     damage: -50, // negative damage = healing
   },
+  // Fisherman net: like gladiator net but weaker damage
+  [AbilityType.FISHERMAN_NET]: {
+    type: AbilityType.FISHERMAN_NET,
+    cooldown: 5,
+    range: 4,
+    castTime: 0.35,
+    damage: 5,
+    aoeRadius: 1.0,
+    slowDuration: 2,
+    slowFactor: 0.5,
+    pullDistance: 2,
+    pullChance: 0.6,
+  },
 };

@@ -356,7 +356,12 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     cost: 0,
     hp: 100,
     goldIncome: 0,
-    shopInventory: [],
+    shopInventory: [
+      UnitType.RUFUS,
+      UnitType.TROUBADOUR,
+      UnitType.GIANT_COURT_JESTER,
+      UnitType.FISHERMAN,
+    ],
     blueprints: [],
     footprint: { w: 2, h: 1 },
     placementZone: "any",

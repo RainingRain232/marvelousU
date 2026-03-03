@@ -267,6 +267,10 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.BERSERKER]: "Berserker",
   [UnitType.WARCHIEF]: "Warchief",
   [UnitType.ARCHMAGE]: "Archmage",
+  [UnitType.RUFUS]: "Rufus",
+  [UnitType.TROUBADOUR]: "Troubadour",
+  [UnitType.GIANT_COURT_JESTER]: "Giant Court Jester",
+  [UnitType.FISHERMAN]: "Fisherman",
 };
 
 // ---------------------------------------------------------------------------

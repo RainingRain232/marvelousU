@@ -99,6 +99,7 @@ function _spawnUnits(
   const spawnedIds: string[] = [];
 
   const isCastle = building.type === BuildingType.CASTLE;
+  const isFirepit = building.type === BuildingType.FIREPIT;
 
   // Determine if this owner has a leader bonus that grants starting levels
   const startingLevel = _leaderStartingLevel(state, owner, building.type);
@@ -114,8 +115,8 @@ function _spawnUnits(
       _applyArmoryBonuses(state, unit);
     }
 
-    // Castle-spawned units become homeguard — they patrol near home
-    if (isCastle) {
+    // Castle/firepit-spawned units become homeguard — they patrol near home
+    if (isCastle || isFirepit) {
       unit.homeguard = true;
       unit.homeguardOrigin = { ...building.position };
     }

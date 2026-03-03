@@ -64,6 +64,7 @@ export const abilityRegistry: Record<AbilityType, AbilityFactory> = {
     createDistortionBlast(id, AbilityType.FAERY_DISTORTION),
   [AbilityType.FROG_TONGUE]: (id) => createNetPull(id, AbilityType.FROG_TONGUE),
   [AbilityType.DEVOUR_PULL]: (id) => createNetPull(id, AbilityType.DEVOUR_PULL),
+  [AbilityType.FISHERMAN_NET]: (id) => createNetPull(id, AbilityType.FISHERMAN_NET),
   [AbilityType.HEAL]: createHeal,
   [AbilityType.FIRE_BREATH]: createFireBreath,
   [AbilityType.FROST_BREATH]: createFrostBreath,
