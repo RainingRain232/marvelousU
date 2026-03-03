@@ -53,7 +53,7 @@ const STYLE_SECTION = new TextStyle({
   fontWeight: "bold", letterSpacing: 2,
 });
 const STYLE_TIER_LABEL = new TextStyle({
-  fontFamily: "monospace", fontSize: 12, fill: 0x99aabb, letterSpacing: 1,
+  fontFamily: "monospace", fontSize: 11, fill: 0x99aabb, letterSpacing: 0,
 });
 const STYLE_TIER_VALUE = new TextStyle({
   fontFamily: "monospace", fontSize: 12, fill: 0xffd700,
@@ -126,6 +126,7 @@ function getUnitCategory(ut: UnitType): UnitCategory | null {
   const siege = BUILDING_DEFINITIONS[BuildingType.SIEGE_WORKSHOP].shopInventory;
   const creature = BUILDING_DEFINITIONS[BuildingType.CREATURE_DEN].shopInventory;
   const temple = BUILDING_DEFINITIONS[BuildingType.TEMPLE].shopInventory;
+  const firepit = BUILDING_DEFINITIONS[BuildingType.FIREPIT].shopInventory;
   if (temple.includes(ut)) return "heal";
   if (mage.includes(ut)) return "magic";
   if (siege.includes(ut)) return "siege";
@@ -135,6 +136,7 @@ function getUnitCategory(ut: UnitType): UnitCategory | null {
   if (ut === UnitType.HORSE_ARCHER) return "ranged";
   if (stables.includes(ut)) return "melee";
   if (barracks.includes(ut)) return "melee";
+  if (firepit.includes(ut)) return "melee";
   if (ut === UnitType.SWORDSMAN || ut === UnitType.ARCHER) {
     // Castle units
     return ut === UnitType.ARCHER ? "ranged" : "melee";
