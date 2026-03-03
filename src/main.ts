@@ -33,6 +33,7 @@ import { MAP_SIZES } from "@view/ui/MenuScreen";
 import type { MapSize } from "@view/ui/MenuScreen";
 import { leaderSelectScreen } from "@view/ui/LeaderSelectScreen";
 import { raceSelectScreen } from "@view/ui/RaceSelectScreen";
+import { raceDetailScreen } from "@view/ui/RaceDetailScreen";
 import { armoryScreen } from "@view/ui/ArmoryScreen";
 import { scenarioSelectScreen } from "@view/ui/ScenarioSelectScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
@@ -162,13 +163,29 @@ import type { RaceId } from "@sim/config/RaceDefs";
   };
 
   // ---------------------------------------------------------------------------
+  // Race detail screen (informational, between race select and armory)
+  // ---------------------------------------------------------------------------
+  raceDetailScreen.init(viewManager);
+  raceDetailScreen.hide();
+
+  raceSelectScreen.onNext = () => {
+    raceSelectScreen.hide();
+    raceDetailScreen.show(raceSelectScreen.selectedRaceId);
+  };
+
+  raceDetailScreen.onBack = () => {
+    raceDetailScreen.hide();
+    raceSelectScreen.show();
+  };
+
+  // ---------------------------------------------------------------------------
   // Armory screen
   // ---------------------------------------------------------------------------
   armoryScreen.init(viewManager);
   armoryScreen.hide();
 
-  raceSelectScreen.onNext = () => {
-    raceSelectScreen.hide();
+  raceDetailScreen.onNext = () => {
+    raceDetailScreen.hide();
     // Set unlocked items based on game mode
     const gameMode = menuScreen.selectedGameMode;
     if (gameMode === GameMode.CAMPAIGN) {
@@ -181,7 +198,7 @@ import type { RaceId } from "@sim/config/RaceDefs";
 
   armoryScreen.onBack = () => {
     armoryScreen.hide();
-    raceSelectScreen.show();
+    raceDetailScreen.show(raceSelectScreen.selectedRaceId);
   };
 
   // ---------------------------------------------------------------------------

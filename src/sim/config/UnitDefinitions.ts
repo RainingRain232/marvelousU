@@ -34,6 +34,19 @@ export interface UnitDef {
   maxCount?: number;
   /** Passive HP regeneration per second. 0 = no regen (default). */
   regenRate?: number;
+  /** Power tier (1–5) derived from gold cost. */
+  tier?: number;
+  /** Magic element for mage / healer units. */
+  element?: "fire" | "cold" | "lightning" | "distortion" | "summon" | "nature" | "heal";
+}
+
+/** Compute tier from gold cost. Same thresholds for all categories. */
+export function computeTier(cost: number): number {
+  if (cost < 400) return 1;
+  if (cost < 600) return 2;
+  if (cost < 900) return 3;
+  if (cost < 1300) return 4;
+  return 5;
 }
 
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
@@ -50,6 +63,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "swordsman",
     description:
       "A sturdy frontline warrior with reliable steel and unwavering courage.",
+    tier: 1,
   },
   [UnitType.TEMPLAR]: {
     type: UnitType.TEMPLAR,
@@ -65,6 +79,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Holy warrior in shining armor. Better protected than swordsmen with divine blessing.",
+    tier: 1,
+    element: "heal",
   },
   [UnitType.ASSASSIN]: {
     type: UnitType.ASSASSIN,
@@ -79,6 +95,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "assassin",
     description:
       "Deadly melee striker in black garb with sword and dagger. Fast and lethal but fragile.",
+    tier: 3,
   },
   [UnitType.REPEATER]: {
     type: UnitType.REPEATER,
@@ -93,6 +110,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "repeater",
     description:
       "Rapid-fire crossbow. Low range but shoots very fast in close quarters.",
+    tier: 3,
   },
   [UnitType.ARCHER]: {
     type: UnitType.ARCHER,
@@ -107,6 +125,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "archer",
     description:
       "Deadly marksman who rains arrows from afar, picking off enemies before they can strike.",
+    tier: 1,
   },
   [UnitType.LONGBOWMAN]: {
     type: UnitType.LONGBOWMAN,
@@ -121,6 +140,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "longbowman",
     description:
       "Elite archer with unmatched range, capable of striking enemies from across the battlefield.",
+    tier: 1,
   },
   [UnitType.CROSSBOWMAN]: {
     type: UnitType.CROSSBOWMAN,
@@ -135,6 +155,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "crossbowman",
     description:
       "Heavy crossbowman who delivers devastating bolts at the cost of slower reload speed.",
+    tier: 1,
   },
   [UnitType.KNIGHT]: {
     type: UnitType.KNIGHT,
@@ -154,6 +175,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "Armored cavalry unit that charges into battle with devastating force and speed.",
+    tier: 1,
   },
   [UnitType.QUESTING_KNIGHT]: {
     type: UnitType.QUESTING_KNIGHT,
@@ -173,6 +195,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "He does not actually do alot of questing, except for the Queen's favor.",
+    tier: 1,
   },
   [UnitType.FIRE_MAGE]: {
     type: UnitType.FIRE_MAGE,
@@ -187,6 +210,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "mage",
     description:
       "Pyromancer who hurls explosive fireballs, engulfing enemies in flames.",
+    tier: 2,
+    element: "fire",
   },
   [UnitType.STORM_MAGE]: {
     type: UnitType.STORM_MAGE,
@@ -201,6 +226,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "mage",
     description:
       "Storm caller who unleashes devastating lightning bolts from the heavens.",
+    tier: 2,
+    element: "lightning",
   },
   [UnitType.PIKEMAN]: {
     type: UnitType.PIKEMAN,
@@ -213,6 +240,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 3,
     abilityTypes: [],
     spriteKey: "pikeman",
+    tier: 1,
   },
   [UnitType.SUMMONED]: {
     type: UnitType.SUMMONED,
@@ -225,6 +253,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 0,
     abilityTypes: [],
     spriteKey: "summoned",
+    tier: 1,
   },
   [UnitType.BATTERING_RAM]: {
     type: UnitType.BATTERING_RAM,
@@ -238,6 +267,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "battering_ram",
     siegeOnly: true,
+    tier: 2,
   },
   [UnitType.MAGE_HUNTER]: {
     type: UnitType.MAGE_HUNTER,
@@ -251,6 +281,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "mage_hunter",
     huntTargets: [UnitType.FIRE_MAGE, UnitType.STORM_MAGE],
+    tier: 1,
   },
   [UnitType.SIEGE_HUNTER]: {
     type: UnitType.SIEGE_HUNTER,
@@ -270,6 +301,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       UnitType.SIEGE_CATAPULT,
       UnitType.TREBUCHET,
     ],
+    tier: 1,
   },
   [UnitType.SUMMONER]: {
     type: UnitType.SUMMONER,
@@ -282,6 +314,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.SUMMON],
     spriteKey: "golem",
+    tier: 3,
+    element: "summon",
   },
   [UnitType.CONSTRUCTIONIST]: {
     type: UnitType.CONSTRUCTIONIST,
@@ -294,6 +328,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.SUMMON],
     spriteKey: "constructionist",
+    tier: 4,
+    element: "summon",
   },
   [UnitType.COLD_MAGE]: {
     type: UnitType.COLD_MAGE,
@@ -306,6 +342,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 7,
     abilityTypes: [AbilityType.ICE_BALL],
     spriteKey: "cold_mage",
+    tier: 2,
+    element: "cold",
   },
   [UnitType.SPIDER]: {
     type: UnitType.SPIDER,
@@ -318,6 +356,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [AbilityType.WEB],
     spriteKey: "spider",
+    tier: 1,
   },
   [UnitType.GLADIATOR]: {
     type: UnitType.GLADIATOR,
@@ -330,6 +369,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 6,
     abilityTypes: [AbilityType.GLADIATOR_NET],
     spriteKey: "gladiator",
+    tier: 1,
   },
   [UnitType.DIPLOMAT]: {
     type: UnitType.DIPLOMAT,
@@ -343,6 +383,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "diplomat",
     diplomatOnly: true,
+    tier: 1,
   },
   [UnitType.DISTORTION_MAGE]: {
     type: UnitType.DISTORTION_MAGE,
@@ -355,6 +396,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 6,
     abilityTypes: [AbilityType.DISTORTION_BLAST],
     spriteKey: "mage",
+    tier: 2,
+    element: "distortion",
   },
   [UnitType.FIRE_ADEPT_MAGE]: {
     type: UnitType.FIRE_ADEPT_MAGE,
@@ -369,6 +412,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "fire_adept_mage",
     description:
       "Master of fire magic. Throws devastating fireballs at enemies.",
+    tier: 1,
+    element: "fire",
   },
   [UnitType.COLD_ADEPT_MAGE]: {
     type: UnitType.COLD_ADEPT_MAGE,
@@ -382,6 +427,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.ICE_BALL, AbilityType.ICE_IMP_SUMMON],
     spriteKey: "cold_adept_mage",
     description: "Master of ice magic. Casts ice storms that slow enemies.",
+    tier: 1,
+    element: "cold",
   },
   [UnitType.LIGHTNING_ADEPT_MAGE]: {
     type: UnitType.LIGHTNING_ADEPT_MAGE,
@@ -399,6 +446,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "lightning_adept_mage",
     description:
       "Master of lightning magic. Calls down chain lightning on enemies.",
+    tier: 1,
+    element: "lightning",
   },
   [UnitType.DISTORTION_ADEPT_MAGE]: {
     type: UnitType.DISTORTION_ADEPT_MAGE,
@@ -416,6 +465,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "distortion_adept_mage",
     description:
       "Master of distortion magic. Warps space to damage and confuse enemies.",
+    tier: 1,
+    element: "distortion",
   },
   [UnitType.FIRE_MASTER_MAGE]: {
     type: UnitType.FIRE_MASTER_MAGE,
@@ -431,6 +482,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Grandmaster of fire magic. Throws devastating fireballs at enemies.",
+    tier: 2,
+    element: "fire",
   },
   [UnitType.COLD_MASTER_MAGE]: {
     type: UnitType.COLD_MASTER_MAGE,
@@ -446,6 +499,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Grandmaster of ice magic. Casts devastating ice storms that slow enemies.",
+    tier: 2,
+    element: "cold",
   },
   [UnitType.LIGHTNING_MASTER_MAGE]: {
     type: UnitType.LIGHTNING_MASTER_MAGE,
@@ -464,6 +519,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Grandmaster of lightning magic. Calls down devastating chain lightning on enemies.",
+    tier: 2,
+    element: "lightning",
   },
   [UnitType.DISTORTION_MASTER_MAGE]: {
     type: UnitType.DISTORTION_MASTER_MAGE,
@@ -482,6 +539,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Grandmaster of distortion magic. Warps space to devastatingly damage and confuse enemies.",
+    tier: 2,
+    element: "distortion",
   },
   [UnitType.VOID_SNAIL]: {
     type: UnitType.VOID_SNAIL,
@@ -494,6 +553,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [AbilityType.VOID_DISTORTION],
     spriteKey: "spider", // placeholder or snail-like
+    tier: 1,
   },
   [UnitType.FAERY_QUEEN]: {
     type: UnitType.FAERY_QUEEN,
@@ -506,6 +566,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 10,
     abilityTypes: [AbilityType.FAERY_DISTORTION],
     spriteKey: "cold_mage", // placeholder or fairy-like
+    tier: 3,
   },
   [UnitType.GIANT_FROG]: {
     type: UnitType.GIANT_FROG,
@@ -518,6 +579,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 6,
     abilityTypes: [AbilityType.FROG_TONGUE],
     spriteKey: "spider", // placeholder (spider-like legs/movement)
+    tier: 2,
   },
   [UnitType.DEVOURER]: {
     type: UnitType.DEVOURER,
@@ -530,6 +592,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.DEVOUR_PULL],
     spriteKey: "swordsman", // placeholder (tanky humanoid)
+    tier: 3,
   },
   [UnitType.TROLL]: {
     type: UnitType.TROLL,
@@ -545,6 +608,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Massive troll with immense health. Slow but devastating in melee.",
+    tier: 3,
   },
   [UnitType.RHINO]: {
     type: UnitType.RHINO,
@@ -560,6 +624,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     size: { width: 2.0, height: 1.0 },
     description:
       "Armored rhino with thick skin. Slow but tanky, charges at enemies with its horn.",
+    tier: 2,
   },
   [UnitType.PIXIE]: {
     type: UnitType.PIXIE,
@@ -574,6 +639,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "pixie",
     description:
       "Small ethereal pixie with magic attacks. Flies quickly and casts spells with its outstretched arms.",
+    tier: 1,
   },
   [UnitType.FIRE_IMP]: {
     type: UnitType.FIRE_IMP,
@@ -588,6 +654,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "fire_imp",
     description:
       "Small fire imp with flame attacks. Flies quickly and shoots fireballs with its outstretched arms.",
+    tier: 1,
   },
   [UnitType.ICE_IMP]: {
     type: UnitType.ICE_IMP,
@@ -602,6 +669,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "ice_imp",
     description:
       "Small ice imp with frost attacks. Flies quickly and shoots ice shards with its outstretched arms.",
+    tier: 1,
   },
   [UnitType.LIGHTNING_IMP]: {
     type: UnitType.LIGHTNING_IMP,
@@ -616,6 +684,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "lightning_imp",
     description:
       "Small lightning imp with shock attacks. Flies quickly and shoots lightning bolts with its outstretched arms.",
+    tier: 1,
   },
   [UnitType.DISTORTION_IMP]: {
     type: UnitType.DISTORTION_IMP,
@@ -630,6 +699,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "distortion_imp",
     description:
       "Small distortion imp with warp attacks. Flies quickly and shoots distortion bolts with its outstretched arms.",
+    tier: 1,
   },
   [UnitType.BAT]: {
     type: UnitType.BAT,
@@ -644,6 +714,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "bat",
     description:
       "Swarm of tiny bats. Very fast but fragile. Overwhelms enemies with numbers.",
+    tier: 1,
   },
   [UnitType.HORSE_ARCHER]: {
     type: UnitType.HORSE_ARCHER,
@@ -661,6 +732,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       height: 2.0,
       healthBarOffset: -1.0,
     },
+    tier: 1,
   },
   [UnitType.SHORTBOW]: {
     type: UnitType.SHORTBOW,
@@ -673,6 +745,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 3,
     abilityTypes: [],
     spriteKey: "archer", // placeholder
+    tier: 1,
   },
   [UnitType.BALLISTA]: {
     type: UnitType.BALLISTA,
@@ -685,6 +758,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [],
     spriteKey: "battering_ram", // placeholder (siege)
+    tier: 2,
   },
   [UnitType.BOLT_THROWER]: {
     type: UnitType.BOLT_THROWER,
@@ -697,6 +771,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 10,
     abilityTypes: [],
     spriteKey: "bolt_thrower",
+    tier: 3,
   },
   [UnitType.CATAPULT]: {
     type: UnitType.CATAPULT,
@@ -711,6 +786,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "catapult",
     description:
       "Heavy catapult that launches boulders in a high arc, devastating buildings from extreme range.",
+    tier: 4,
   },
   [UnitType.SIEGE_CATAPULT]: {
     type: UnitType.SIEGE_CATAPULT,
@@ -730,6 +806,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "Massive siege catapult with extreme range, hurling enormous boulders that crush anything in their path.",
+    tier: 2,
   },
   [UnitType.TREBUCHET]: {
     type: UnitType.TREBUCHET,
@@ -750,6 +827,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "Colossal trebuchet capable of bombarding fortifications from incredible distance.",
+    tier: 1,
   },
   [UnitType.SCOUT_CAVALRY]: {
     type: UnitType.SCOUT_CAVALRY,
@@ -768,6 +846,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       height: 2.0,
       healthBarOffset: -1.0,
     },
+    tier: 1,
   },
   [UnitType.LANCER]: {
     type: UnitType.LANCER,
@@ -781,6 +860,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "lancer",
     isChargeUnit: true,
+    tier: 1,
   },
   [UnitType.ROYAL_LANCER]: {
     type: UnitType.ROYAL_LANCER,
@@ -794,6 +874,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "royal_lancer",
     isChargeUnit: true,
+    tier: 4,
   },
   [UnitType.ELITE_LANCER]: {
     type: UnitType.ELITE_LANCER,
@@ -812,6 +893,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       height: 2.0,
       healthBarOffset: -1.0,
     },
+    tier: 2,
   },
   [UnitType.KNIGHT_LANCER]: {
     type: UnitType.KNIGHT_LANCER,
@@ -830,6 +912,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       height: 2.0,
       healthBarOffset: -1.0,
     },
+    tier: 3,
   },
   [UnitType.MONK]: {
     type: UnitType.MONK,
@@ -843,6 +926,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.HEAL],
     spriteKey: "diplomat", // placeholder (religious robes)
     isHealer: true,
+    tier: 1,
+    element: "heal",
   },
   [UnitType.CLERIC]: {
     type: UnitType.CLERIC,
@@ -856,6 +941,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.HEAL],
     spriteKey: "mage", // placeholder
     isHealer: true,
+    tier: 2,
+    element: "heal",
   },
   [UnitType.SAINT]: {
     type: UnitType.SAINT,
@@ -869,6 +956,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.HEAL],
     spriteKey: "faery_queen", // placeholder (ethereal/divine)
     isHealer: true,
+    tier: 3,
+    element: "heal",
   },
   [UnitType.RED_DRAGON]: {
     type: UnitType.RED_DRAGON,
@@ -888,6 +977,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "Ancient red dragon that breathes devastating fire, scorching all who dare oppose it.",
+    tier: 4,
   },
   [UnitType.FROST_DRAGON]: {
     type: UnitType.FROST_DRAGON,
@@ -907,6 +997,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "Mighty ice dragon whose freezing breath slows enemies to a crawl before shattering them.",
+    tier: 4,
   },
   [UnitType.CYCLOPS]: {
     type: UnitType.CYCLOPS,
@@ -926,6 +1017,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "Massive one-eyed giant wielding a tree trunk, crushing enemies with earth-shattering blows.",
+    tier: 5,
   },
   [UnitType.ANGEL]: {
     type: UnitType.ANGEL,
@@ -946,6 +1038,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "Divine celestial warrior of the heavens, wielding a blazing sword and radiating holy light.",
+    tier: 5,
+    element: "heal",
   },
   [UnitType.DARK_SAVANT]: {
     type: UnitType.DARK_SAVANT,
@@ -961,6 +1055,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Master of dark pyromancy who hurls devastating fireballs with increased destructive power.",
+    tier: 5,
+    element: "fire",
   },
   [UnitType.HALBERDIER]: {
     type: UnitType.HALBERDIER,
@@ -975,6 +1071,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "halberdier",
     description:
       "Elite human infantry wielding a halberd. Tougher and harder-hitting than the common pikeman.",
+    tier: 1,
   },
   [UnitType.ELVEN_ARCHER]: {
     type: UnitType.ELVEN_ARCHER,
@@ -989,6 +1086,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "elven_archer",
     description:
       "Graceful elven marksman with unparalleled range and precision, striking from positions others cannot reach.",
+    tier: 1,
   },
   [UnitType.HERO]: {
     type: UnitType.HERO,
@@ -1004,6 +1102,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     maxCount: 4,
     description:
       "Legendary warrior whose prowess inspires allies and terrifies foes. Max: 4",
+    tier: 1,
   },
   [UnitType.DEFENDER]: {
     type: UnitType.DEFENDER,
@@ -1018,6 +1117,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "defender",
     description:
       "Heavily armored soldier with a massive tower shield, nearly immovable on the front line.",
+    tier: 2,
   },
   [UnitType.PHALANX]: {
     type: UnitType.PHALANX,
@@ -1032,6 +1132,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "phalanx",
     description:
       "Armored spearman with a long spear and tower shield, holding enemies at bay from behind a wall of steel.",
+    tier: 2,
   },
   [UnitType.ROYAL_PHALANX]: {
     type: UnitType.ROYAL_PHALANX,
@@ -1046,6 +1147,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "royal_phalanx",
     description:
       "Elite pikeman in gilded armor wielding an enormous pike, impaling foes long before they can strike.",
+    tier: 3,
   },
   [UnitType.ROYAL_DEFENDER]: {
     type: UnitType.ROYAL_DEFENDER,
@@ -1060,6 +1162,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "royal_defender",
     description:
       "Heavily armored royal guard with massive shield. Blocks attacks and strikes with devastating melee blows.",
+    tier: 3,
   },
   [UnitType.AXEMAN]: {
     type: UnitType.AXEMAN,
@@ -1074,6 +1177,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "axeman",
     description:
       "Fierce warrior wielding a mighty battle axe. Strikes with devastating power but lacks defensive gear.",
+    tier: 2,
   },
   [UnitType.BERSERKER]: {
     type: UnitType.BERSERKER,
@@ -1088,6 +1192,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "berserker",
     description:
       "Naked fury with a two-handed axe. High attack but low defense. Terrifying in combat.",
+    tier: 3,
   },
   [UnitType.JAVELINEER]: {
     type: UnitType.JAVELINEER,
@@ -1102,6 +1207,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "javelin",
     description:
       "Light infantry armed with javelins and a buckler. High damage but slow attack and short range.",
+    tier: 2,
   },
   [UnitType.ARBALESTIER]: {
     type: UnitType.ARBALESTIER,
@@ -1116,6 +1222,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "arbelestier",
     description:
       "Heavy crossbowman with plate armor. Devastating damage but very slow reload time.",
+    tier: 3,
   },
   [UnitType.ROYAL_ARBALESTIER]: {
     type: UnitType.ROYAL_ARBALESTIER,
@@ -1130,5 +1237,6 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "arbelestier",
     description:
       "Elite royal crossbowman with enhanced armor and precision. Superior range and damage.",
+    tier: 3,
   },
 };
