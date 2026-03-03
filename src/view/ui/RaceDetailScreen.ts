@@ -19,11 +19,13 @@ import { animationManager } from "@view/animation/AnimationManager";
 import elfImgUrl from "@/img/elf.png";
 import manImgUrl from "@/img/man.png";
 import hordeImgUrl from "@/img/horde.png";
+import adeptImgUrl from "@/img/adept.png";
 
 const RACE_IMAGES: Record<string, string> = {
   elf: elfImgUrl,
   man: manImgUrl,
   horde: hordeImgUrl,
+  adept: adeptImgUrl,
 };
 
 // ---------------------------------------------------------------------------

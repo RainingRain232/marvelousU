@@ -430,4 +430,10 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 12,
     dieFps: 8,
   }),
+  [UnitType.ARCHMAGE]: buildDef("archmage", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    dieFps: 8,
+  }),
 };

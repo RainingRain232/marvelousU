@@ -266,6 +266,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.AXEMAN]: "Axeman",
   [UnitType.BERSERKER]: "Berserker",
   [UnitType.WARCHIEF]: "Warchief",
+  [UnitType.ARCHMAGE]: "Archmage",
 };
 
 // ---------------------------------------------------------------------------

@@ -1254,4 +1254,21 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       "Brutal horde warchief wielding a massive cleaver. Inspires nearby warriors with savage fury.",
     tier: 1,
   },
+  [UnitType.ARCHMAGE]: {
+    type: UnitType.ARCHMAGE,
+    cost: 400,
+    hp: 80,
+    atk: 25,
+    attackSpeed: 0.6,
+    speed: 0.85,
+    range: 6,
+    spawnTime: 6,
+    abilityTypes: [AbilityType.FIREBALL],
+    spriteKey: "archmage",
+    regenRate: 3,
+    description:
+      "Supreme arcanist channelling raw magical energy. Devastating at range with arcane bolts.",
+    tier: 1,
+    element: "fire",
+  },
 };
