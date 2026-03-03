@@ -1,6 +1,6 @@
 // Typed event emitter — bridge between sim and view
 // sim/ emits events; view/ listens. sim/ never imports from view/.
-import type { GamePhase, PlayerId, UnitState, UnitType, Vec2 } from "@/types";
+import type { AbilityType, GamePhase, PlayerId, UnitState, UnitType, Vec2 } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Event map — every event the simulation can emit
@@ -28,6 +28,9 @@ export interface SimEvents {
   projectileCreated: { projectileId: string; origin: Vec2; target: Vec2 };
   projectileHit: { projectileId: string; targetId: string; teleportedIds?: string[] };
   unitTeleported: { unitId: string; from: Vec2; to: Vec2 };
+
+  // Aura pulses
+  auraPulse: { casterId: string; abilityType: AbilityType; position: Vec2; radius: number };
 
   // Random events
   randomEvent: { eventType: string; title: string; description: string };

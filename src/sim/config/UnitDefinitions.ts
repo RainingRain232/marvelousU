@@ -1051,7 +1051,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     speed: 0.75,
     range: 5,
     spawnTime: 15,
-    abilityTypes: [AbilityType.FIREBALL],
+    abilityTypes: [AbilityType.FIREBALL, AbilityType.FIRE_AURA],
     spriteKey: "fire_mage",
     regenRate: 5,
     description:
@@ -1350,7 +1350,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     speed: 0.9,
     range: 1.5,
     spawnTime: 22,
-    abilityTypes: [],
+    abilityTypes: [AbilityType.FIRE_AURA],
     spriteKey: "fire_elemental",
     size: {
       width: 3.0,
@@ -1371,7 +1371,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     speed: 0.8,
     range: 2,
     spawnTime: 22,
-    abilityTypes: [],
+    abilityTypes: [AbilityType.ICE_AURA],
     spriteKey: "ice_elemental",
     size: {
       width: 3.0,

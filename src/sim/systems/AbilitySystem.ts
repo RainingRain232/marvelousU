@@ -5,6 +5,7 @@ import type { Ability } from "@sim/abilities/Ability";
 import { createAbility } from "@sim/abilities/index";
 import { BuildingState, UnitState, UnitType } from "@/types";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import { ABILITY_DEFINITIONS } from "@sim/config/AbilityDefs";
 import { inRange } from "@sim/utils/math";
 import { EventBus } from "@sim/core/EventBus";
 
@@ -50,6 +51,9 @@ export const AbilitySystem = {
       }
 
       if (unit.abilityIds.length === 0) continue;
+
+      // Auto-trigger aura abilities (range=0, castTime=0) passively
+      _tryTriggerAuras(state, unit);
 
       if (unit.state === UnitState.CAST) {
         _tickCast(state, unit, dt);
@@ -166,6 +170,48 @@ function _tryInitiateCast(state: GameState, unit: Unit): void {
     });
 
     return; // only initiate one cast per frame
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Aura auto-trigger
+// ---------------------------------------------------------------------------
+
+/**
+ * Check all aura abilities (range=0, castTime=0) on a unit.
+ * When the cooldown reaches 0 and at least one enemy is within the aura's
+ * AoE radius, execute the ability instantly without a state transition.
+ */
+function _tryTriggerAuras(state: GameState, unit: Unit): void {
+  for (const abilityId of unit.abilityIds) {
+    const ability = state.abilities.get(abilityId);
+    if (!ability) continue;
+    if (ability.currentCooldown > 0) continue;
+
+    // Only auto-trigger auras: range=0 and castTime=0
+    const def = ABILITY_DEFINITIONS[ability.type];
+    if (def.range !== 0 || def.castTime !== 0) continue;
+
+    const radius = def.aoeRadius ?? 2.5;
+    const radiusSq = radius * radius;
+
+    // Check if any enemy is within radius
+    let hasEnemy = false;
+    for (const other of state.units.values()) {
+      if (other.state === UnitState.DIE) continue;
+      if (other.owner === unit.owner) continue;
+      const dx = other.position.x - unit.position.x;
+      const dy = other.position.y - unit.position.y;
+      if (dx * dx + dy * dy <= radiusSq) {
+        hasEnemy = true;
+        break;
+      }
+    }
+    if (!hasEnemy) continue;
+
+    // Execute the aura instantly
+    ability.execute(unit, unit.position, state);
+    ability.currentCooldown = ability.cooldown;
   }
 }
 

@@ -24,6 +24,7 @@ import { healFX } from "@view/fx/HealFX";
 import { damageNumberFX } from "@view/fx/DamageNumberFX";
 import { flagFX } from "@view/fx/FlagFX";
 import { runeCircleFX } from "@view/fx/RuneCircleFX";
+import { auraFX } from "@view/fx/AuraFX";
 import { animationManager } from "@view/animation/AnimationManager";
 import { audioManager } from "@audio/AudioManager";
 import { environmentLayer } from "@view/environment/EnvironmentLayer";
@@ -1083,6 +1084,10 @@ async function _bootGame(
   // Rune circle FX (generic cast circle for all abilities)
   runeCircleFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => runeCircleFX.update(dt));
+
+  // Aura pulse FX (expanding rune blast for fire/ice auras)
+  auraFX.init(viewManager);
+  viewManager.onUpdate((_s, dt) => auraFX.update(dt));
 
   // Random event banner (center screen notification)
   eventBanner.init(viewManager);

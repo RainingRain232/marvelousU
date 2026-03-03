@@ -226,6 +226,26 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
     castTime: 0.8,
     damage: -50, // negative damage = healing
   },
+  // Fire Aura: periodic AoE pulse centred on caster
+  [AbilityType.FIRE_AURA]: {
+    type: AbilityType.FIRE_AURA,
+    cooldown: 5,
+    range: 0, // self-centred
+    castTime: 0, // instant
+    damage: 10,
+    aoeRadius: 2.5,
+  },
+  // Ice Aura: periodic AoE pulse centred on caster with slow
+  [AbilityType.ICE_AURA]: {
+    type: AbilityType.ICE_AURA,
+    cooldown: 5,
+    range: 0,
+    castTime: 0,
+    damage: 10,
+    aoeRadius: 2.5,
+    slowDuration: 2,
+    slowFactor: 0.4,
+  },
   // Fisherman net: like gladiator net but weaker damage
   [AbilityType.FISHERMAN_NET]: {
     type: AbilityType.FISHERMAN_NET,

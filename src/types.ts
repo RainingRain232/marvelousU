@@ -178,6 +178,8 @@ export enum AbilityType {
   FIRE_BREATH = "fire_breath",
   FROST_BREATH = "frost_breath",
   FISHERMAN_NET = "fisherman_net",
+  FIRE_AURA = "fire_aura",
+  ICE_AURA = "ice_aura",
 }
 
 export enum UpgradeType {

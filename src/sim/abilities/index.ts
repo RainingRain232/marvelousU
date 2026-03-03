@@ -12,6 +12,7 @@ import { createDistortionBlast } from "@sim/abilities/DistortionBlast";
 import { createHeal } from "@sim/abilities/Heal";
 import { createFireBreath } from "@sim/abilities/FireBreath";
 import { createFrostBreath } from "@sim/abilities/FrostBreath";
+import { createAura } from "@sim/abilities/Aura";
 import type { Ability } from "@sim/abilities/Ability";
 import { UnitType } from "@/types";
 
@@ -68,6 +69,8 @@ export const abilityRegistry: Record<AbilityType, AbilityFactory> = {
   [AbilityType.HEAL]: createHeal,
   [AbilityType.FIRE_BREATH]: createFireBreath,
   [AbilityType.FROST_BREATH]: createFrostBreath,
+  [AbilityType.FIRE_AURA]: (id) => createAura(id, AbilityType.FIRE_AURA),
+  [AbilityType.ICE_AURA]: (id) => createAura(id, AbilityType.ICE_AURA),
 };
 
 export function createAbility(type: AbilityType, id: string): Ability {
