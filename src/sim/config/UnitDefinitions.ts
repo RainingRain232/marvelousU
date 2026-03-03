@@ -210,7 +210,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "mage",
     description:
       "Pyromancer who hurls explosive fireballs, engulfing enemies in flames.",
-    tier: 2,
+    tier: 1,
     element: "fire",
   },
   [UnitType.STORM_MAGE]: {
@@ -226,7 +226,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "mage",
     description:
       "Storm caller who unleashes devastating lightning bolts from the heavens.",
-    tier: 2,
+    tier: 1,
     element: "lightning",
   },
   [UnitType.PIKEMAN]: {
@@ -314,7 +314,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.SUMMON],
     spriteKey: "golem",
-    tier: 3,
+    tier: 1,
     element: "summon",
   },
   [UnitType.CONSTRUCTIONIST]: {
@@ -328,7 +328,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.SUMMON],
     spriteKey: "constructionist",
-    tier: 4,
+    tier: 2,
     element: "summon",
   },
   [UnitType.COLD_MAGE]: {
@@ -342,7 +342,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 7,
     abilityTypes: [AbilityType.ICE_BALL],
     spriteKey: "cold_mage",
-    tier: 2,
+    tier: 1,
     element: "cold",
   },
   [UnitType.SPIDER]: {
@@ -396,7 +396,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 6,
     abilityTypes: [AbilityType.DISTORTION_BLAST],
     spriteKey: "mage",
-    tier: 2,
+    tier: 1,
     element: "distortion",
   },
   [UnitType.FIRE_ADEPT_MAGE]: {
@@ -412,7 +412,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "fire_adept_mage",
     description:
       "Master of fire magic. Throws devastating fireballs at enemies.",
-    tier: 1,
+    tier: 2,
     element: "fire",
   },
   [UnitType.COLD_ADEPT_MAGE]: {
@@ -427,7 +427,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.ICE_BALL, AbilityType.ICE_IMP_SUMMON],
     spriteKey: "cold_adept_mage",
     description: "Master of ice magic. Casts ice storms that slow enemies.",
-    tier: 1,
+    tier: 2,
     element: "cold",
   },
   [UnitType.LIGHTNING_ADEPT_MAGE]: {
@@ -446,7 +446,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "lightning_adept_mage",
     description:
       "Master of lightning magic. Calls down chain lightning on enemies.",
-    tier: 1,
+    tier: 2,
     element: "lightning",
   },
   [UnitType.DISTORTION_ADEPT_MAGE]: {
@@ -465,7 +465,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "distortion_adept_mage",
     description:
       "Master of distortion magic. Warps space to damage and confuse enemies.",
-    tier: 1,
+    tier: 2,
     element: "distortion",
   },
   [UnitType.FIRE_MASTER_MAGE]: {
@@ -482,7 +482,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Grandmaster of fire magic. Throws devastating fireballs at enemies.",
-    tier: 2,
+    tier: 3,
     element: "fire",
   },
   [UnitType.COLD_MASTER_MAGE]: {
@@ -499,7 +499,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Grandmaster of ice magic. Casts devastating ice storms that slow enemies.",
-    tier: 2,
+    tier: 3,
     element: "cold",
   },
   [UnitType.LIGHTNING_MASTER_MAGE]: {
@@ -519,7 +519,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Grandmaster of lightning magic. Calls down devastating chain lightning on enemies.",
-    tier: 2,
+    tier: 3,
     element: "lightning",
   },
   [UnitType.DISTORTION_MASTER_MAGE]: {
@@ -539,7 +539,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Grandmaster of distortion magic. Warps space to devastatingly damage and confuse enemies.",
-    tier: 2,
+    tier: 3,
     element: "distortion",
   },
   [UnitType.VOID_SNAIL]: {
@@ -926,7 +926,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.HEAL],
     spriteKey: "diplomat", // placeholder (religious robes)
     isHealer: true,
-    tier: 1,
+    tier: 2,
     element: "heal",
   },
   [UnitType.CLERIC]: {
@@ -941,7 +941,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.HEAL],
     spriteKey: "mage", // placeholder
     isHealer: true,
-    tier: 2,
+    tier: 3,
     element: "heal",
   },
   [UnitType.SAINT]: {
@@ -956,7 +956,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [AbilityType.HEAL],
     spriteKey: "faery_queen", // placeholder (ethereal/divine)
     isHealer: true,
-    tier: 3,
+    tier: 4,
     element: "heal",
   },
   [UnitType.RED_DRAGON]: {
@@ -1055,7 +1055,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Master of dark pyromancy who hurls devastating fireballs with increased destructive power.",
-    tier: 5,
+    tier: 4,
     element: "fire",
   },
   [UnitType.HALBERDIER]: {

@@ -141,13 +141,20 @@ function getUnitCategory(ut: UnitType): UnitCategory | null {
   return null;
 }
 
-/** Get all general (non-faction) units organised by category, sorted by tier then cost. */
-function getGeneralUnits(factionUnits: UnitType[]): Record<UnitCategory, UnitDef[]> {
+/** Map from UnitCategory to the default RaceTiers key (for non-element units). */
+const CATEGORY_TIER_KEY: Record<UnitCategory, keyof RaceTiers> = {
+  melee: "melee", ranged: "ranged", siege: "siege",
+  creature: "creature", magic: "magic", heal: "heal",
+};
+
+/** Get all general (non-faction) units organised by category, filtered by race tiers. */
+function getGeneralUnits(factionUnits: UnitType[], race: RaceDef): Record<UnitCategory, UnitDef[]> {
   const result: Record<UnitCategory, UnitDef[]> = {
     melee: [], ranged: [], magic: [], siege: [], creature: [], heal: [],
   };
   const factionSet = new Set(factionUnits);
   const seen = new Set<UnitType>();
+  const tiers = race.tiers;
 
   for (const [key, def] of Object.entries(UNIT_DEFINITIONS)) {
     const ut = key as UnitType;
@@ -156,6 +163,16 @@ function getGeneralUnits(factionUnits: UnitType[]): Record<UnitCategory, UnitDef
     seen.add(ut);
     const cat = getUnitCategory(ut);
     if (!cat) continue;
+
+    // Race-tier filtering: element units use their element tier, others use category tier
+    if (tiers) {
+      const tierKey: keyof RaceTiers = def.element
+        ? (def.element as keyof RaceTiers)
+        : CATEGORY_TIER_KEY[cat];
+      const unitTier = def.tier ?? 1;
+      if (unitTier > tiers[tierKey]) continue;
+    }
+
     result[cat].push(def);
   }
 
@@ -584,7 +601,7 @@ export class RaceDetailScreen {
     this._rosterContainer.mask = this._rosterMask;
     parent.addChild(this._rosterContainer);
 
-    const units = getGeneralUnits(race.factionUnits);
+    const units = getGeneralUnits(race.factionUnits, race);
     const categories: UnitCategory[] = ["melee", "ranged", "magic", "siege", "creature", "heal"];
 
     const COL_W = Math.floor((CARD_W - 78 - SCROLLBAR_W - SCROLLBAR_PAD) / categories.length);
@@ -776,9 +793,9 @@ export class RaceDetailScreen {
     tt.addChild(new Graphics().rect(TT_PAD, cy, TT_W - TT_PAD * 2, 1).fill({ color: 0x334455 }));
     cy += 5;
 
-    // Stats line 1: HP ATK SPD
+    // Stats line 1: HP ATK SPD TIER
     const line1 = new Text({
-      text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
+      text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}${def.tier ? `  T${def.tier}` : ""}`,
       style: STYLE_TT_STAT,
     });
     line1.position.set(TT_PAD, cy);

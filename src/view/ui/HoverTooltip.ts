@@ -474,7 +474,7 @@ export class HoverTooltip {
         ? `HP:${Math.ceil(unit.hp)}/${unit.maxHp}`
         : `HP:${unit.maxHp}`;
     const line1 = new Text({
-      text: `${hpText}  ATK:${unit.atk}  SPD:${unit.speed.toFixed(1)}`,
+      text: `${hpText}  ATK:${unit.atk}  SPD:${unit.speed.toFixed(1)}${def.tier ? `  T${def.tier}` : ""}`,
       style: STYLE_STAT,
     });
     line1.position.set(PANEL_PAD, y);

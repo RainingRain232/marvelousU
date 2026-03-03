@@ -65,7 +65,7 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 import { LEADER_DEFINITIONS } from "@sim/config/LeaderDefs";
 import type { LeaderId, LeaderBonus } from "@sim/config/LeaderDefs";
-import { getRace } from "@sim/config/RaceDefs";
+import { getRace, filterInventoryByRace } from "@sim/config/RaceDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
 
 // ---------------------------------------------------------------------------
@@ -690,19 +690,23 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
     state.p1RaceId = raceId;
   }
 
-  // If any Faction Halls already exist for this player (unusual at boot,
-  // but handle gracefully), wire their shopInventory now.
   for (const building of state.buildings.values()) {
-    if (
-      building.type === BuildingType.FACTION_HALL &&
-      building.owner === playerId
-    ) {
-      // Humans get both their faction unit and the Royal Arbelestier
+    if (building.owner !== playerId) continue;
+
+    if (building.type === BuildingType.FACTION_HALL) {
+      // Faction Hall: populate with race-specific units
       if (playerId === "p1" && state.p1RaceId === "man") {
         building.shopInventory = [race.factionUnit, UnitType.ROYAL_ARBALESTIER];
       } else {
         building.shopInventory = [race.factionUnit];
       }
+    } else {
+      // All other buildings: filter inventory by race tier limits
+      building.shopInventory = filterInventoryByRace(
+        building.shopInventory,
+        building.type,
+        raceId,
+      );
     }
   }
 }

@@ -17,7 +17,7 @@ import {
 import type { TileZone } from "@sim/state/BattlefieldState";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { distanceSq } from "@sim/utils/math";
-import { getRace } from "@sim/config/RaceDefs";
+import { getRace, filterInventoryByRace } from "@sim/config/RaceDefs";
 
 let _turretProjectileCounter = 0;
 
@@ -183,6 +183,13 @@ export function placeBuilding(
         building.shopInventory = [race.factionUnit];
       }
     }
+  }
+
+  // Race-based filtering for non-faction buildings
+  if (type !== BuildingType.FACTION_HALL && playerId === "p1" && state.p1RaceId) {
+    building.shopInventory = filterInventoryByRace(
+      building.shopInventory, type, state.p1RaceId,
+    );
   }
 
   // Stables: spawn a free Questing Knight when built

@@ -1068,8 +1068,9 @@ export class ShopPanel {
       // Adjust subsequent lines based on actual flavor lines used
       const baseY = 16 + actualLineCount * 12;
 
+      const tierTag = def.tier ? `  T${def.tier}` : "";
       const line1 = new Text({
-        text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
+        text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}${tierTag}`,
         style: STYLE_STAT,
       });
       line1.position.set(PANEL_PAD, baseY + 8);
@@ -1091,8 +1092,9 @@ export class ShopPanel {
       this._statsContainer.addChild(line3);
     } else {
       // No description - use original layout
+      const tierTag2 = def.tier ? `  T${def.tier}` : "";
       const line1 = new Text({
-        text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}`,
+        text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}${tierTag2}`,
         style: STYLE_STAT,
       });
       line1.position.set(PANEL_PAD, 16);

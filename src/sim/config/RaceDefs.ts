@@ -178,3 +178,77 @@ export const RACE_DEFINITIONS: RaceDef[] = [
 export function getRace(id: RaceId): RaceDef | undefined {
   return RACE_DEFINITIONS.find((r) => r.id === id);
 }
+
+// ---------------------------------------------------------------------------
+// Race-based unit filtering
+// ---------------------------------------------------------------------------
+
+import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import { BuildingType } from "@/types";
+
+/** Map from building type to the race tier category used for filtering. */
+const BUILDING_TIER_CATEGORY: Partial<Record<BuildingType, keyof RaceTiers>> = {
+  [BuildingType.BARRACKS]: "melee",
+  [BuildingType.STABLES]: "melee",
+  [BuildingType.ARCHERY_RANGE]: "ranged",
+  [BuildingType.SIEGE_WORKSHOP]: "siege",
+  [BuildingType.CREATURE_DEN]: "creature",
+  [BuildingType.TEMPLE]: "heal",
+  // Mage Tower uses per-element tiers — handled specially below.
+  // Castle has mixed categories — handled specially below.
+  // Faction Hall is never filtered.
+};
+
+/**
+ * Return the race-tier key that should gate a given unit.
+ * For mage/temple units with an `element` field the element tier is used;
+ * otherwise the building's broad category tier is used.
+ */
+function getTierKey(ut: UnitType, buildingType: BuildingType): keyof RaceTiers | null {
+  const def = UNIT_DEFINITIONS[ut];
+  if (!def) return null;
+
+  // Units with an element use that element's tier (mage tower + temple)
+  if (def.element) return def.element as keyof RaceTiers;
+
+  // Castle has mixed unit types
+  if (buildingType === BuildingType.CASTLE) {
+    // Archer → ranged, Swordsman → melee
+    if (ut === UnitType.ARCHER) return "ranged";
+    return "melee";
+  }
+
+  // Horse archer is in stables but counts as ranged
+  if (ut === UnitType.HORSE_ARCHER) return "ranged";
+
+  return BUILDING_TIER_CATEGORY[buildingType] ?? null;
+}
+
+/**
+ * Filter a building's shop inventory to only include units the race can field.
+ * Units whose tier exceeds the race's tier rating for the relevant category
+ * are removed. Returns a new array.
+ *
+ * Buildings without a tier mapping (Faction Hall, Blacksmith, etc.) are
+ * returned unfiltered.
+ */
+export function filterInventoryByRace(
+  inventory: UnitType[],
+  buildingType: BuildingType,
+  raceId: RaceId,
+): UnitType[] {
+  const race = getRace(raceId);
+  if (!race?.tiers) return inventory; // unimplemented races → no filtering
+
+  return inventory.filter((ut) => {
+    const tierKey = getTierKey(ut, buildingType);
+    if (!tierKey) return true; // no category → keep
+
+    const unitDef = UNIT_DEFINITIONS[ut];
+    if (!unitDef) return true;
+
+    const unitTier = unitDef.tier ?? 1;
+    const raceTierLimit = race.tiers![tierKey];
+    return unitTier <= raceTierLimit;
+  });
+}
