@@ -953,9 +953,12 @@ async function _bootGame(
   // Apply the chosen race to P1 (sets p1RaceId and wires faction hall inventory)
   _applyRace(state, "p1", raceId);
 
-  // 2. Camera — fit the full map into the viewport
+  // 2. Camera — zoom in on the friendly castle at standard-map zoom level
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);
-  viewManager.camera.fitMap();
+  // Centre on the west (P1) castle; castle is at (1, midY) with a 4×4 footprint
+  const castleCenterX = basePos.westPosition.x + 2;
+  const castleCenterY = basePos.westPosition.y + 2;
+  viewManager.camera.focusOnTile(castleCenterX, castleCenterY);
 
   // Start cinematic zoom for battlefield campaign scenarios
   if (gameMode === GameMode.CAMPAIGN && (scenarioNum === 1 || scenarioNum === 2)) {

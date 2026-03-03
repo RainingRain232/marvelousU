@@ -81,6 +81,7 @@ export const MAP_SIZES: MapSize[] = [
   { label: "DOUBLE", width: BASE_W * 2, height: BASE_H * 2 },
   { label: "TRIPLE", width: BASE_W * 3, height: BASE_H * 3 },
   { label: "QUADRUPLE", width: BASE_W * 4, height: BASE_H * 4 },
+  { label: "QUINTUPLE", width: BASE_W * 5, height: BASE_H * 5 },
 ];
 
 interface MapTypeEntry {

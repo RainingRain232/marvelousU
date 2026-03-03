@@ -286,6 +286,32 @@ export class Camera {
     this._clamp();
   }
 
+  /**
+   * Centre the camera on a tile position at the zoom level that would fit
+   * the standard (base) map size in the viewport. This keeps the castle
+   * looking the same size regardless of which map size is selected.
+   */
+  focusOnTile(tileX: number, tileY: number): void {
+    const ts = BalanceConfig.TILE_SIZE;
+    const basePxW = BalanceConfig.GRID_WIDTH * ts;
+    const basePxH = BalanceConfig.GRID_HEIGHT * ts;
+
+    // Compute the zoom that would fit the standard map
+    const zoomX = this.screenW / basePxW;
+    const zoomY = this.screenH / basePxH;
+    this.zoom = Math.max(ZOOM_MIN, Math.min(zoomX, zoomY));
+
+    // Centre the viewport on the given tile
+    const worldPxX = tileX * ts;
+    const worldPxY = tileY * ts;
+    const visW = this.screenW / this.zoom;
+    const visH = this.screenH / this.zoom;
+    this.x = -worldPxX + visW / 2;
+    this.y = -worldPxY + visH / 2;
+
+    this._clamp();
+  }
+
   // ---------------------------------------------------------------------------
   // Clamping
   // ---------------------------------------------------------------------------
