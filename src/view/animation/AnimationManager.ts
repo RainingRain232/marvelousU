@@ -122,6 +122,8 @@ import { generateFishermanFrames } from "@view/animation/FishermanSpriteGen";
 import { generateFireElementalFrames } from "@view/animation/FireElementalSpriteGen";
 import { generateIceElementalFrames } from "@view/animation/IceElementalSpriteGen";
 import { generateVampireBatFrames } from "@view/animation/VampireBatSpriteGen";
+import { generateMinorFireElementalFrames } from "@view/animation/MinorFireElementalSpriteGen";
+import { generateMinorIceElementalFrames } from "@view/animation/MinorIceElementalSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -403,6 +405,10 @@ export class AnimationManager {
         this._generateIceElementalSprites(key, renderer);
       } else if (key === "vampire_bat") {
         this._generateVampireBatSprites(key, renderer);
+      } else if (key === "minor_fire_elemental") {
+        this._generateMinorFireElementalSprites(key, renderer);
+      } else if (key === "minor_ice_elemental") {
+        this._generateMinorIceElementalSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1516,6 +1522,28 @@ export class AnimationManager {
 
   private _generateVampireBatSprites(key: string, renderer: Renderer): void {
     const textures = generateVampireBatFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateMinorFireElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateMinorFireElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateMinorIceElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateMinorIceElementalFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

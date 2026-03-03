@@ -246,6 +246,26 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
     slowDuration: 2,
     slowFactor: 0.4,
   },
+  // Minor Fire Aura: weaker AoE pulse for T3 minor fire elemental
+  [AbilityType.MINOR_FIRE_AURA]: {
+    type: AbilityType.MINOR_FIRE_AURA,
+    cooldown: 5,
+    range: 0,
+    castTime: 0,
+    damage: 5,
+    aoeRadius: 1.5,
+  },
+  // Minor Ice Aura: weaker AoE pulse with light slow for T3 minor ice elemental
+  [AbilityType.MINOR_ICE_AURA]: {
+    type: AbilityType.MINOR_ICE_AURA,
+    cooldown: 5,
+    range: 0,
+    castTime: 0,
+    damage: 5,
+    aoeRadius: 1.5,
+    slowDuration: 1.5,
+    slowFactor: 0.3,
+  },
   // Fisherman net: like gladiator net but weaker damage
   [AbilityType.FISHERMAN_NET]: {
     type: AbilityType.FISHERMAN_NET,

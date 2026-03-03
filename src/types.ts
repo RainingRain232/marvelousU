@@ -118,6 +118,8 @@ export enum UnitType {
   FISHERMAN = "fisherman",
   FIRE_ELEMENTAL = "fire_elemental",
   ICE_ELEMENTAL = "ice_elemental",
+  MINOR_FIRE_ELEMENTAL = "minor_fire_elemental",
+  MINOR_ICE_ELEMENTAL = "minor_ice_elemental",
 }
 
 export enum BuildingType {
@@ -181,6 +183,8 @@ export enum AbilityType {
   FISHERMAN_NET = "fisherman_net",
   FIRE_AURA = "fire_aura",
   ICE_AURA = "ice_aura",
+  MINOR_FIRE_AURA = "minor_fire_aura",
+  MINOR_ICE_AURA = "minor_ice_aura",
 }
 
 export enum UpgradeType {

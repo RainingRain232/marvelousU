@@ -41,7 +41,7 @@ const ICE_THEME: AuraTheme = {
 };
 
 function getTheme(abilityType: string): AuraTheme {
-  if (abilityType === AbilityType.ICE_AURA) return ICE_THEME;
+  if (abilityType === AbilityType.ICE_AURA || abilityType === AbilityType.MINOR_ICE_AURA) return ICE_THEME;
   return FIRE_THEME;
 }
 
