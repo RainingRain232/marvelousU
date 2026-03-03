@@ -424,4 +424,10 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 8,
     dieFps: 8,
   }),
+  [UnitType.WARCHIEF]: buildDef("warchief", {
+    idleFps: 6,
+    moveFps: 10,
+    attackFps: 12,
+    dieFps: 8,
+  }),
 };

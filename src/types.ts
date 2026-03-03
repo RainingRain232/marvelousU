@@ -109,6 +109,7 @@ export enum UnitType {
   JAVELINEER = "javelin",
   ARBALESTIER = "arbelestier",
   ROYAL_ARBALESTIER = "royal_arbelestier",
+  WARCHIEF = "warchief",
 }
 
 export enum BuildingType {

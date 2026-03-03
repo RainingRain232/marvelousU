@@ -18,10 +18,12 @@ import { animationManager } from "@view/animation/AnimationManager";
 // Vite static image imports
 import elfImgUrl from "@/img/elf.png";
 import manImgUrl from "@/img/man.png";
+import hordeImgUrl from "@/img/horde.png";
 
 const RACE_IMAGES: Record<string, string> = {
   elf: elfImgUrl,
   man: manImgUrl,
+  horde: hordeImgUrl,
 };
 
 // ---------------------------------------------------------------------------

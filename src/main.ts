@@ -695,11 +695,7 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
 
     if (building.type === BuildingType.FACTION_HALL) {
       // Faction Hall: populate with race-specific units
-      if (playerId === "p1" && state.p1RaceId === "man") {
-        building.shopInventory = [race.factionUnit, UnitType.ROYAL_ARBALESTIER];
-      } else {
-        building.shopInventory = [race.factionUnit];
-      }
+      building.shopInventory = [...race.factionUnits];
     } else {
       // All other buildings: filter inventory by race tier limits
       building.shopInventory = filterInventoryByRace(

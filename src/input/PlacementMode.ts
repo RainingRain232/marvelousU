@@ -8,7 +8,7 @@ import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
 import { BuildingType, UnitType, UnitState } from "@/types";
 import type { PlayerId } from "@/types";
-import { getRace } from "@sim/config/RaceDefs";
+import { getRace, filterInventoryByRace } from "@sim/config/RaceDefs";
 import { UpgradeSystem, TOWER_BUILDING_TYPES } from "@sim/systems/UpgradeSystem";
 
 // ---------------------------------------------------------------------------
@@ -125,9 +125,16 @@ export function confirmPlacement(
     if (raceId) {
       const race = getRace(raceId);
       if (race?.implemented) {
-        building.shopInventory = [race.factionUnit];
+        building.shopInventory = [...race.factionUnits];
       }
     }
+  }
+
+  // Race-based filtering for non-faction buildings
+  if (bpType !== BuildingType.FACTION_HALL && playerId === "p1" && state.p1RaceId) {
+    building.shopInventory = filterInventoryByRace(
+      building.shopInventory, bpType, state.p1RaceId,
+    );
   }
 
   // Stables: spawn a free Questing Knight when built

@@ -1239,4 +1239,19 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       "Elite royal crossbowman with enhanced armor and precision. Superior range and damage.",
     tier: 3,
   },
+  [UnitType.WARCHIEF]: {
+    type: UnitType.WARCHIEF,
+    cost: 350,
+    hp: 160,
+    atk: 28,
+    attackSpeed: 0.9,
+    speed: 1.1,
+    range: 1.5,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "warchief",
+    description:
+      "Brutal horde warchief wielding a massive cleaver. Inspires nearby warriors with savage fury.",
+    tier: 1,
+  },
 };

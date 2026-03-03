@@ -114,6 +114,7 @@ import { generateBatFrames } from "@view/animation/BatSpriteGen";
 import { generateTemplarFrames } from "@view/animation/TemplarSpriteGen";
 import { generateAngelFrames } from "@view/animation/AngelSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
+import { generateWarchiefFrames } from "@view/animation/WarchiefSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -301,6 +302,8 @@ export class AnimationManager {
         this._generateElvenArcherSprites(key, renderer);
       } else if (key === "hero") {
         this._generateHeroSprites(key, renderer);
+      } else if (key === "warchief") {
+        this._generateWarchiefSprites(key, renderer);
       } else if (key === "battering_ram") {
         this._generateBatteringRamSprites(key, renderer);
       } else if (key === "ballista") {
@@ -924,6 +927,17 @@ export class AnimationManager {
 
   private _generateElvenArcherSprites(key: string, renderer: Renderer): void {
     const textures = generateElvenArcherFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateWarchiefSprites(key: string, renderer: Renderer): void {
+    const textures = generateWarchiefFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

@@ -176,12 +176,7 @@ export function placeBuilding(
   ) {
     const race = getRace(state.p1RaceId);
     if (race?.implemented) {
-      // Humans get both their faction unit and the Royal Arbelestier
-      if (state.p1RaceId === "man") {
-        building.shopInventory = [race.factionUnit, UnitType.ROYAL_ARBALESTIER];
-      } else {
-        building.shopInventory = [race.factionUnit];
-      }
+      building.shopInventory = [...race.factionUnits];
     }
   }
 

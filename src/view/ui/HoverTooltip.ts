@@ -199,6 +199,7 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.CATAPULT]: "Catapult",
   [UnitType.SIEGE_CATAPULT]: "Siege Catapult",
   [UnitType.TREBUCHET]: "Trebuchet",
+  [UnitType.WARCHIEF]: "Warchief",
 };
 
 // ---------------------------------------------------------------------------
