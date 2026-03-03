@@ -291,6 +291,12 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 12,
     dieFps: 6,
   }),
+  [UnitType.VAMPIRE_BAT]: buildDef("vampire_bat", {
+    idleFps: 8,
+    moveFps: 10,
+    attackFps: 12,
+    dieFps: 6,
+  }),
   [UnitType.HORSE_ARCHER]: buildDef("horse_archer", { moveFps: 10, attackFps: 12 }),
   [UnitType.SHORTBOW]: buildDef("archer", {
     attackFps: 15,

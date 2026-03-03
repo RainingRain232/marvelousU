@@ -717,6 +717,23 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       "Swarm of tiny bats. Very fast but fragile. Overwhelms enemies with numbers.",
     tier: 1,
   },
+  [UnitType.VAMPIRE_BAT]: {
+    type: UnitType.VAMPIRE_BAT,
+    cost: 1200,
+    hp: 350,
+    atk: 35,
+    attackSpeed: 1.0,
+    speed: 1.5,
+    range: 1,
+    spawnTime: 12,
+    abilityTypes: [],
+    spriteKey: "vampire_bat",
+    regenRate: 8,
+    size: { width: 2.0, height: 2.0, healthBarOffset: -1.0 },
+    description:
+      "Half-man, half-bat abomination with preternatural speed and vampiric regeneration. Fragile but deadly.",
+    tier: 4,
+  },
   [UnitType.HORSE_ARCHER]: {
     type: UnitType.HORSE_ARCHER,
     cost: 350,

@@ -122,6 +122,7 @@ import { generateGiantCourtJesterFrames } from "@view/animation/GiantCourtJester
 import { generateFishermanFrames } from "@view/animation/FishermanSpriteGen";
 import { generateFireElementalFrames } from "@view/animation/FireElementalSpriteGen";
 import { generateIceElementalFrames } from "@view/animation/IceElementalSpriteGen";
+import { generateVampireBatFrames } from "@view/animation/VampireBatSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -401,6 +402,8 @@ export class AnimationManager {
         this._generateFireElementalSprites(key, renderer);
       } else if (key === "ice_elemental") {
         this._generateIceElementalSprites(key, renderer);
+      } else if (key === "vampire_bat") {
+        this._generateVampireBatSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1527,6 +1530,17 @@ export class AnimationManager {
 
   private _generateIceElementalSprites(key: string, renderer: Renderer): void {
     const textures = generateIceElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateVampireBatSprites(key: string, renderer: Renderer): void {
+    const textures = generateVampireBatFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

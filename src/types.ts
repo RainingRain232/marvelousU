@@ -76,6 +76,7 @@ export enum UnitType {
   LIGHTNING_IMP = "lightning_imp",
   DISTORTION_IMP = "distortion_imp",
   BAT = "bat",
+  VAMPIRE_BAT = "vampire_bat",
   HORSE_ARCHER = "horse_archer",
   SHORTBOW = "shortbow",
   BALLISTA = "ballista",

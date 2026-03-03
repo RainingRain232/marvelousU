@@ -235,6 +235,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.LIGHTNING_IMP]: "Lightning Imp",
   [UnitType.DISTORTION_IMP]: "Distortion Imp",
   [UnitType.BAT]: "Bat",
+    [UnitType.VAMPIRE_BAT]: "Vampire Bat",
   [UnitType.HORSE_ARCHER]: "Horse Archer",
   [UnitType.SHORTBOW]: "Shortbow",
   [UnitType.BALLISTA]: "Ballista",

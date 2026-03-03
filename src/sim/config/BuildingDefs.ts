@@ -234,6 +234,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.CYCLOPS,
       UnitType.TROLL,
       UnitType.BAT,
+      UnitType.VAMPIRE_BAT,
       UnitType.RHINO,
       UnitType.PIXIE,
       UnitType.FIRE_IMP,
