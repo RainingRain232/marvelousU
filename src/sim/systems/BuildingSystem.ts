@@ -94,8 +94,9 @@ export function placeBuilding(
     }
   }
 
-  // 3. Prerequisite check
-  if (def.prerequisite) {
+  // 3. Prerequisite check (OP race skips all prerequisites)
+  const playerRaceId = playerId === "p1" ? state.p1RaceId : null;
+  if (def.prerequisite && playerRaceId !== "op") {
     const prereqMet = def.prerequisite.types.every(
       (type) =>
         _countOwnedType(state, playerId, type) >= def.prerequisite!.minCount,

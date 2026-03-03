@@ -1489,7 +1489,9 @@ export class ShopPanel {
     const prereq = def.prerequisite;
     const ownedCount =
       maxCount !== undefined ? this._countOwnedType(bpType) : 0;
+    const isOp = this._state.p1RaceId === "op";
     const prereqMet =
+      isOp ||
       !prereq ||
       prereq.types.every(
         (type) => this._countOwnedType(type) >= prereq.minCount,
