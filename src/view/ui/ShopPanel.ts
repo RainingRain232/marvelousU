@@ -1633,6 +1633,7 @@ export class ShopPanel {
 
   private _countOwnedUnits(unitType: UnitType): number {
     let count = 0;
+    // Count living units on the field
     for (const unit of this._state.units.values()) {
       if (
         unit.owner === this._localPlayerId &&
@@ -1640,6 +1641,16 @@ export class ShopPanel {
         unit.state !== UnitState.DIE
       ) {
         count++;
+      }
+    }
+    // Count units still in spawn queues
+    for (const b of this._state.buildings.values()) {
+      if (b.owner !== this._localPlayerId) continue;
+      for (const entry of b.spawnQueue.entries) {
+        if (entry.unitType === unitType) count++;
+      }
+      for (const ready of b.spawnQueue.readyUnits) {
+        if (ready === unitType) count++;
       }
     }
     return count;

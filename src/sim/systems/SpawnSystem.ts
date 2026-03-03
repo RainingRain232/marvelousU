@@ -187,7 +187,8 @@ function _applyArmoryBonuses(state: GameState, unit: Unit): void {
 }
 
 /**
- * Count how many living units of a specific type a player currently owns.
+ * Count how many living units of a specific type a player currently owns,
+ * including units still in spawn queues at buildings owned by that player.
  */
 function _countOwnedUnits(
   state: GameState,
@@ -195,6 +196,7 @@ function _countOwnedUnits(
   unitType: UnitType,
 ): number {
   let count = 0;
+  // Count living units on the field
   for (const unit of state.units.values()) {
     if (
       unit.owner === owner &&
@@ -202,6 +204,16 @@ function _countOwnedUnits(
       unit.state !== UnitState.DIE
     ) {
       count++;
+    }
+  }
+  // Count units still in spawn queues
+  for (const building of state.buildings.values()) {
+    if (building.owner !== owner) continue;
+    for (const entry of building.spawnQueue.entries) {
+      if (entry.unitType === unitType) count++;
+    }
+    for (const ready of building.spawnQueue.readyUnits) {
+      if (ready === unitType) count++;
     }
   }
   return count;

@@ -1,7 +1,7 @@
 // Dumb AI buyer for player 2 during PREP and BATTLE phases.
 // Each tick it randomly decides whether to spend gold on a unit or a building.
 import type { GameState } from "@sim/state/GameState";
-import { GamePhase, BuildingState, BuildingType } from "@/types";
+import { GamePhase, BuildingState, BuildingType, UnitState } from "@/types";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { addToQueue } from "@sim/systems/SpawnSystem";
@@ -69,8 +69,26 @@ class P2AIBuyer {
       if (building.owner !== "p2") continue;
       if (building.state !== BuildingState.ACTIVE) continue;
       for (const unitType of building.shopInventory) {
-        const cost = UNIT_DEFINITIONS[unitType].cost;
+        const def = UNIT_DEFINITIONS[unitType];
+        const cost = def.cost;
         if (player.gold >= cost) {
+          // Skip if at max count for this unit type (count living + queued)
+          if (def.maxCount !== undefined) {
+            let owned = 0;
+            for (const u of state.units.values()) {
+              if (u.owner === "p2" && u.type === unitType && u.state !== UnitState.DIE) owned++;
+            }
+            for (const b of state.buildings.values()) {
+              if (b.owner !== "p2") continue;
+              for (const entry of b.spawnQueue.entries) {
+                if (entry.unitType === unitType) owned++;
+              }
+              for (const ready of b.spawnQueue.readyUnits) {
+                if (ready === unitType) owned++;
+              }
+            }
+            if (owned >= def.maxCount) continue;
+          }
           unitActions.push(() => {
             if (player.gold < cost) return;
             player.gold -= cost;
