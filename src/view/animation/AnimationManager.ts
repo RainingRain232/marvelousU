@@ -143,6 +143,10 @@ import { generateElderArcherFrames } from "@view/animation/ElderArcherSpriteGen"
 import { generateElderRepeaterFrames } from "@view/animation/ElderRepeaterSpriteGen";
 import { generateElderJavelineerFrames } from "@view/animation/ElderJavelineerSpriteGen";
 import { generateElderHorseArcherFrames } from "@view/animation/ElderHorseArcherSpriteGen";
+import { generateWarWagonFrames } from "@view/animation/WarWagonSpriteGen";
+import { generateBombardFrames } from "@view/animation/BombardSpriteGen";
+import { generateSiegeTowerFrames } from "@view/animation/SiegeTowerSpriteGen";
+import { generateHellfireMortarFrames } from "@view/animation/HellfireMortarSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -346,6 +350,14 @@ export class AnimationManager {
         this._generateSiegeCatapultSprites(key, renderer);
       } else if (key === "trebuchet") {
         this._generateTrebuchetSprites(key, renderer);
+      } else if (key === "war_wagon") {
+        this._generateWarWagonSprites(key, renderer);
+      } else if (key === "bombard") {
+        this._generateBombardSprites(key, renderer);
+      } else if (key === "siege_tower") {
+        this._generateSiegeTowerSprites(key, renderer);
+      } else if (key === "hellfire_mortar") {
+        this._generateHellfireMortarSprites(key, renderer);
       } else if (key === "longbowman") {
         this._generateLongbowmanSprites(key, renderer);
       } else if (key === "crossbowman") {
@@ -1810,6 +1822,50 @@ export class AnimationManager {
 
   private _generateMinorEarthElementalSprites(key: string, renderer: Renderer): void {
     const textures = generateMinorEarthElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateWarWagonSprites(key: string, renderer: Renderer): void {
+    const textures = generateWarWagonFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateBombardSprites(key: string, renderer: Renderer): void {
+    const textures = generateBombardFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateSiegeTowerSprites(key: string, renderer: Renderer): void {
+    const textures = generateSiegeTowerFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateHellfireMortarSprites(key: string, renderer: Renderer): void {
+    const textures = generateHellfireMortarFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

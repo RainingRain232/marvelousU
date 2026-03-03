@@ -63,6 +63,12 @@ export class EnvironmentLayer {
     // Deterministic seed based on game state if possible, or just a constant
     const seed = state.rngSeed || 42;
 
+    // Scale decoration counts proportionally to map area
+    // Base counts are tuned for STANDARD (44×25 = 1100 tiles)
+    const totalTiles = state.battlefield.width * state.battlefield.height;
+    const areaScale = totalTiles / (44 * 25);
+    const s = (base: number) => Math.round(base * areaScale);
+
     // Density and features per map type
     const isGrass = mapType === MapType.GRASS;
     const isPlains = mapType === MapType.PLAINS;
@@ -71,32 +77,32 @@ export class EnvironmentLayer {
 
     if (isForest) {
       // Forest: ancient gnarled trees, ferns, glowing mushrooms, fireflies, fog
-      this._forestTrees = new ForestTreeRenderer(35, worldW, worldH, seed);
+      this._forestTrees = new ForestTreeRenderer(s(35), worldW, worldH, seed);
       this._container.addChild(this._forestTrees.container);
 
-      this._ferns = new FernRenderer(120, worldW, worldH, seed + 2);
+      this._ferns = new FernRenderer(s(120), worldW, worldH, seed + 2);
       this._container.addChild(this._ferns.container);
 
-      this._mushrooms = new MushroomRenderer(40, worldW, worldH, seed + 3);
+      this._mushrooms = new MushroomRenderer(s(40), worldW, worldH, seed + 3);
       this._container.addChild(this._mushrooms.container);
 
       this._forestFog = new ForestFogRenderer(worldW, worldH, seed + 4);
       this._container.addChild(this._forestFog.container);
 
-      this._fireflies = new FireflyRenderer(60, worldW, worldH, seed + 5);
+      this._fireflies = new FireflyRenderer(s(60), worldW, worldH, seed + 5);
       this._container.addChild(this._fireflies.container);
     } else if (isFantasia) {
       // Fantasia: enchanted mystical forest - lighter colors, magical elements
       // Mystical trees - use the beautiful forest trees
-      this._forestTrees = new ForestTreeRenderer(30, worldW, worldH, seed);
+      this._forestTrees = new ForestTreeRenderer(s(30), worldW, worldH, seed);
       this._container.addChild(this._forestTrees.container);
 
       // Lighter ferns
-      this._ferns = new FernRenderer(100, worldW, worldH, seed + 2);
+      this._ferns = new FernRenderer(s(100), worldW, worldH, seed + 2);
       this._container.addChild(this._ferns.container);
 
       // Glowing mushrooms with brighter colors
-      this._mushrooms = new MushroomRenderer(50, worldW, worldH, seed + 3);
+      this._mushrooms = new MushroomRenderer(s(50), worldW, worldH, seed + 3);
       this._container.addChild(this._mushrooms.container);
 
       // Lighter magical fog
@@ -104,18 +110,18 @@ export class EnvironmentLayer {
       this._container.addChild(this._forestFog.container);
 
       // More magical fireflies with varied colors
-      this._fireflies = new FireflyRenderer(100, worldW, worldH, seed + 5);
+      this._fireflies = new FireflyRenderer(s(100), worldW, worldH, seed + 5);
       this._container.addChild(this._fireflies.container);
     } else if (isPlains) {
       // Plains: tall dry grass, sparse scrub trees, tumbleweeds, dust
-      this._plainsGrass = new PlainsGrassRenderer(400, worldW, worldH, seed);
+      this._plainsGrass = new PlainsGrassRenderer(s(400), worldW, worldH, seed);
       this._container.addChild(this._plainsGrass.container);
 
       // Very few scraggly trees — dry yellowish foliage, sun-bleached trunks
       const plainsFoliage = [0x8a7a30, 0x9c8c3a, 0x7a6a28, 0xa09040];
       const plainsTrunk = 0x6b5530;
       this._trees = new TreeRenderer(
-        8,
+        s(8),
         worldW,
         worldH,
         seed + 1,
@@ -132,8 +138,8 @@ export class EnvironmentLayer {
       this._dust = new DustRenderer(worldW, worldH, seed + 4);
       this._container.addChild(this._dust.container);
     } else {
-      const grassCount = isGrass ? 600 : 250;
-      const treeCount = isGrass ? 70 : 25;
+      const grassCount = isGrass ? s(600) : s(250);
+      const treeCount = isGrass ? s(70) : s(25);
 
       // Create grass tufts
       this._grass = new GrassRenderer(grassCount, worldW, worldH, seed);
@@ -145,13 +151,12 @@ export class EnvironmentLayer {
 
       // Flowers for grass map type
       if (isGrass) {
-        this._flowers = new FlowerRenderer(180, worldW, worldH, seed + 2);
+        this._flowers = new FlowerRenderer(s(180), worldW, worldH, seed + 2);
         this._container.addChild(this._flowers.container);
       }
     }
 
     // --- Animals ---
-    const totalTiles = state.battlefield.width * state.battlefield.height;
     const animalDensityUnits = Math.max(1, Math.floor(totalTiles / 200));
     const deerCount = animalDensityUnits;
     const rabbitCount = animalDensityUnits * 3;
