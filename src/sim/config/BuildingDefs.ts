@@ -105,6 +105,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.KNIGHT,
       UnitType.SIEGE_HUNTER,
       UnitType.HORSE_ARCHER,
+      UnitType.ELDER_HORSE_ARCHER,
       UnitType.SCOUT_CAVALRY,
       UnitType.LANCER,
       UnitType.ELITE_LANCER,

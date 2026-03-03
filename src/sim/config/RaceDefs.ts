@@ -293,8 +293,8 @@ function getTierKey(ut: UnitType, buildingType: BuildingType): keyof RaceTiers |
     return "melee";
   }
 
-  // Horse archer is in stables but counts as ranged
-  if (ut === UnitType.HORSE_ARCHER) return "ranged";
+  // Horse archers are in stables but count as ranged
+  if (ut === UnitType.HORSE_ARCHER || ut === UnitType.ELDER_HORSE_ARCHER) return "ranged";
 
   return BUILDING_TIER_CATEGORY[buildingType] ?? null;
 }

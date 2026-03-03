@@ -1358,6 +1358,26 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       "A colossal horror hurling javelins of black iron that impale entire formations. Each throw carries the weight of a fallen age.",
     tier: 6,
   },
+  [UnitType.ELDER_HORSE_ARCHER]: {
+    type: UnitType.ELDER_HORSE_ARCHER,
+    cost: 2800,
+    hp: 800,
+    atk: 70,
+    attackSpeed: 0.7,
+    speed: 1.4,
+    range: 5,
+    spawnTime: 22,
+    abilityTypes: [],
+    spriteKey: "elder_horse_archer",
+    size: {
+      width: 3.0,
+      height: 3.0,
+      healthBarOffset: -2.0,
+    },
+    description:
+      "A nightmare warhorse of impossible scale, its void-black rider loosing spectral arrows from a bow that hums with forgotten dread.",
+    tier: 6,
+  },
   [UnitType.ELDER_DEFENDER]: {
     type: UnitType.ELDER_DEFENDER,
     cost: 2200,

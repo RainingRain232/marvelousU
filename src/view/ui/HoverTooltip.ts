@@ -203,6 +203,7 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.ELDER_ARCHER]: "Elder Archer",
   [UnitType.ELDER_REPEATER]: "Elder Repeater",
   [UnitType.ELDER_JAVELINEER]: "Elder Javelineer",
+  [UnitType.ELDER_HORSE_ARCHER]: "Elder Horse Archer",
   [UnitType.ELDER_DEFENDER]: "Elder Defender",
   [UnitType.ELDER_PHALANX]: "Elder Phalanx",
   [UnitType.ELDER_AXEMAN]: "Elder Axeman",

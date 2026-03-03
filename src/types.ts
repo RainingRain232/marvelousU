@@ -119,6 +119,7 @@ export enum UnitType {
   ELDER_ARCHER = "elder_archer",
   ELDER_REPEATER = "elder_repeater",
   ELDER_JAVELINEER = "elder_javelineer",
+  ELDER_HORSE_ARCHER = "elder_horse_archer",
   JAVELINEER = "javelin",
   ARBALESTIER = "arbelestier",
   ROYAL_ARBALESTIER = "royal_arbelestier",

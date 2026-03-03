@@ -298,6 +298,12 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     dieFps: 6,
   }),
   [UnitType.HORSE_ARCHER]: buildDef("horse_archer", { moveFps: 10, attackFps: 12 }),
+  [UnitType.ELDER_HORSE_ARCHER]: buildDef("elder_horse_archer", {
+    idleFps: 5,
+    moveFps: 8,
+    attackFps: 10,
+    dieFps: 6,
+  }),
   [UnitType.SHORTBOW]: buildDef("archer", {
     attackFps: 15,
     attackFrames: range(ROW_ATTACK, ROW_ATTACK + 7),
