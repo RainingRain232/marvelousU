@@ -1,7 +1,9 @@
 // Armory screen — equip items that boost hero unit stats before game start.
-// Layout: left scrollable grid of item cards + right detail panel (like LeaderSelectScreen).
-// Contains the final "START GAME" button that actually boots the simulation.
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+// Layout: 1248×754 card (matching RaceDetailScreen) with item grid,
+// weapon image display, and detail panel.
+import {
+  Container, Graphics, Text, TextStyle, Sprite, Texture, Assets,
+} from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import {
   ARMORY_ITEMS,
@@ -10,81 +12,115 @@ import {
   type ArmoryItemId,
 } from "@sim/config/ArmoryItemDefs";
 
+// Vite static image imports
+import longswordImgUrl from "@/img/longsword.png";
+import spearImgUrl from "@/img/spear.png";
+import displaycaseImgUrl from "@/img/displaycase.png";
+import armoryImgUrl from "@/img/armory.png";
+
+/** Map of item IDs that have dedicated weapon images. */
+const ITEM_IMAGES: Record<string, string> = {
+  longsword: longswordImgUrl,
+  spear: spearImgUrl,
+};
+
+// ---------------------------------------------------------------------------
+// Icon drawing helpers
+// ---------------------------------------------------------------------------
+
+function drawLongswordIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Blade
+  g.roundRect(cx - 2 * s, cy - 12 * s, 4 * s, 18 * s, 0.5 * s).fill({ color: 0xc0c8d8 });
+  // Blade highlight
+  g.rect(cx - 0.5 * s, cy - 11 * s, 1 * s, 16 * s).fill({ color: 0xe8eef8, alpha: 0.4 });
+  // Crossguard
+  g.roundRect(cx - 7 * s, cy + 5 * s, 14 * s, 2.5 * s, 0.5 * s).fill({ color: 0xaa8844 });
+  // Handle
+  g.roundRect(cx - 1.5 * s, cy + 7.5 * s, 3 * s, 5 * s, 0.5 * s).fill({ color: 0x664422 });
+  // Pommel
+  g.circle(cx, cy + 13.5 * s, 2 * s).fill({ color: 0xaa8844 });
+}
+
+function drawSpearIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Shaft
+  g.roundRect(cx - 1.2 * s, cy - 4 * s, 2.4 * s, 22 * s, 0.5 * s).fill({ color: 0x886644 });
+  // Spearhead (triangle)
+  g.poly([
+    cx, cy - 14 * s,
+    cx + 4 * s, cy - 4 * s,
+    cx - 4 * s, cy - 4 * s,
+  ]).fill({ color: 0xaabbcc });
+  // Spearhead highlight
+  g.poly([
+    cx - 0.5 * s, cy - 13 * s,
+    cx + 1.5 * s, cy - 5 * s,
+    cx - 1.5 * s, cy - 5 * s,
+  ]).fill({ color: 0xc8d4e0, alpha: 0.4 });
+}
+
+function hasCustomIcon(id: ArmoryItemId): boolean {
+  return id === "longsword" || id === "spear";
+}
+
+function drawItemIcon(g: Graphics, id: ArmoryItemId, cx: number, cy: number, size: number): void {
+  if (id === "longsword") drawLongswordIcon(g, cx, cy, size);
+  else if (id === "spear") drawSpearIcon(g, cx, cy, size);
+}
+
 // ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
 
 const STYLE_SCREEN_TITLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 22,
-  fill: 0xffd700,
-  fontWeight: "bold",
-  letterSpacing: 3,
+  fontFamily: "monospace", fontSize: 29, fill: 0xffd700,
+  fontWeight: "bold", letterSpacing: 3,
 });
 
 const STYLE_ITEM_NAME = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 11,
-  fill: 0xeeeeff,
-  fontWeight: "bold",
-  letterSpacing: 1,
+  fontFamily: "monospace", fontSize: 11, fill: 0xeeeeff,
+  fontWeight: "bold", letterSpacing: 1,
 });
 
 const STYLE_ITEM_SYMBOL = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 22,
-  fill: 0xffffff,
-  fontWeight: "bold",
+  fontFamily: "monospace", fontSize: 24, fill: 0xffffff, fontWeight: "bold",
 });
 
 const STYLE_DETAIL_NAME = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 18,
-  fill: 0xffd700,
-  fontWeight: "bold",
-  letterSpacing: 2,
+  fontFamily: "monospace", fontSize: 20, fill: 0xffd700,
+  fontWeight: "bold", letterSpacing: 2,
 });
 
 const STYLE_DETAIL_DESC = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 11,
-  fill: 0xaabbcc,
-  letterSpacing: 0,
-  wordWrap: true,
-  wordWrapWidth: 220,
+  fontFamily: "monospace", fontSize: 12, fill: 0xaabbcc,
+  wordWrap: true, wordWrapWidth: 250,
 });
 
 const STYLE_STAT_LABEL = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 10,
-  fill: 0x88ff88,
-  letterSpacing: 1,
-  fontWeight: "bold",
+  fontFamily: "monospace", fontSize: 11, fill: 0x88ff88,
+  letterSpacing: 1, fontWeight: "bold",
 });
 
 const STYLE_STAT_TEXT = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 11,
-  fill: 0x88ffaa,
-  letterSpacing: 0,
-  wordWrap: true,
-  wordWrapWidth: 220,
+  fontFamily: "monospace", fontSize: 12, fill: 0x88ffaa,
+  wordWrap: true, wordWrapWidth: 250,
 });
 
 const STYLE_SLOTS = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 10,
-  fill: 0x8899bb,
-  letterSpacing: 1,
+  fontFamily: "monospace", fontSize: 12, fill: 0x8899bb, letterSpacing: 1,
 });
 
 const STYLE_LOCKED = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 9,
-  fill: 0x556677,
-  letterSpacing: 1,
+  fontFamily: "monospace", fontSize: 9, fill: 0x556677, letterSpacing: 1,
 });
 
+const STYLE_SECTION = new TextStyle({
+  fontFamily: "monospace", fontSize: 14, fill: 0xffd700,
+  fontWeight: "bold", letterSpacing: 2,
+});
+
+// Colors
 const BG_COLOR = 0x0a0a18;
 const BORDER_COLOR = 0xffd700;
 const CARD_SELECTED_BORDER = 0xffd700;
@@ -95,14 +131,34 @@ const CARD_LOCKED_BORDER = 0x222233;
 // Layout constants
 // ---------------------------------------------------------------------------
 
-const CARD_W = 100;
-const CARD_H = 72;
-const CARD_GAP = 8;
-const GRID_COLS = 4;
-const GRID_PAD = 16;
+const MAIN_W = 1248;
+const MAIN_H = 754;
+const CORNER_R = 10;
 
-const DETAIL_W = 260;
-const DETAIL_PAD = 16;
+// Item card grid
+const ITEM_W = 110;
+const ITEM_H = 80;
+const ITEM_GAP = 10;
+const GRID_COLS = 5;
+
+// Horizontal sections
+const CONTENT_Y = 75;
+const FOOTER_Y = MAIN_H - 68;            // 686
+const CONTENT_H = FOOTER_Y - CONTENT_Y;  // 611
+
+const GRID_X = 26;
+const GRID_W_TOTAL = GRID_COLS * ITEM_W + (GRID_COLS - 1) * ITEM_GAP; // 590
+
+const IMG_X = GRID_X + GRID_W_TOTAL + 20;  // 636
+const IMG_W = 280;
+const IMG_H = 310;
+
+const DETAIL_X = IMG_X + IMG_W + 16;       // 932
+const DETAIL_W = MAIN_W - DETAIL_X - 26;   // 290
+
+// Armory decorative image (below weapon image)
+const ARMORY_IMG_Y = CONTENT_Y + IMG_H + 16; // 401
+const ARMORY_IMG_H = FOOTER_Y - ARMORY_IMG_Y; // 285
 
 // ---------------------------------------------------------------------------
 // Class
@@ -113,15 +169,16 @@ export class ArmoryScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _mainCard!: Container;
 
   /** Currently selected items (max MAX_EQUIPPED_ITEMS). */
   private _selectedIds: ArmoryItemId[] = [];
 
-  /** Set of item IDs that are available (unlocked). null = all unlocked (non-campaign). */
+  /** Set of item IDs that are available (unlocked). null = all unlocked. */
   private _unlockedIds: Set<ArmoryItemId> | null = null;
 
-  /** Currently highlighted card (for detail panel). */
-  private _focusedId: ArmoryItemId = ARMORY_ITEMS[0].id;
+  /** Currently highlighted card (for detail panel). null = nothing clicked yet. */
+  private _focusedId: ArmoryItemId | null = null;
 
   // Card entries
   private _cards: Array<{
@@ -136,28 +193,28 @@ export class ArmoryScreen {
   private _detailName!: Text;
   private _detailDesc!: Text;
   private _detailStats!: Text;
-  private _detailIcon!: Graphics;
+  private _detailIconBg!: Graphics;
   private _detailIconSymbol!: Text;
+  private _detailIconDraw!: Graphics;
+
+  // Image display
+  private _weaponImgContainer!: Container;
+  private _weaponSprite: Sprite | null = null;
+  private _currentImgUrl = "";
 
   // Slots label
   private _slotsLabel!: Text;
-
-  // Main layout container
-  private _mainCard!: Container;
-  private _mainCardW = 0;
 
   // Scrollable grid
   private _gridScroll!: Container;
   private _gridMask!: Graphics;
   private _gridScrollY = 0;
   private _gridContentH = 0;
-  private _gridViewH = 0;
 
-  // Callbacks
+  // Navigation
+  private _nextBtn!: Container;
   onStartGame: (() => void) | null = null;
   onBack: (() => void) | null = null;
-
-  private _nextBtn!: Container;
 
   /** Returns the currently equipped item IDs. */
   get selectedItems(): ArmoryItemId[] {
@@ -173,6 +230,12 @@ export class ArmoryScreen {
 
     this._bg = new Graphics();
     this.container.addChild(this._bg);
+
+    this._mainCard = new Container();
+    this.container.addChild(this._mainCard);
+
+    // Preload all images
+    void Assets.load([displaycaseImgUrl, longswordImgUrl, spearImgUrl, armoryImgUrl]);
 
     this._buildUI();
 
@@ -191,11 +254,9 @@ export class ArmoryScreen {
 
   /**
    * Set which items are available. Pass null to unlock all (standard/roguelike mode).
-   * Also clears any selections that are no longer valid.
    */
   setUnlockedItems(ids: ArmoryItemId[] | null): void {
     this._unlockedIds = ids ? new Set(ids) : null;
-    // Clear any selections that are now locked
     this._selectedIds = this._selectedIds.filter(
       (id) => !this._unlockedIds || this._unlockedIds.has(id),
     );
@@ -209,79 +270,84 @@ export class ArmoryScreen {
   // ---------------------------------------------------------------------------
 
   private _buildUI(): void {
-    const gridW = GRID_COLS * CARD_W + (GRID_COLS - 1) * CARD_GAP + GRID_PAD * 2;
-    const totalW = gridW + DETAIL_W + 24;
+    const card = this._mainCard;
 
-    const mainCard = new Container();
-    mainCard.addChild(
+    // Card background
+    card.addChild(
       new Graphics()
-        .roundRect(0, 0, totalW, 500, 8)
+        .roundRect(0, 0, MAIN_W, MAIN_H, CORNER_R)
         .fill({ color: 0x10102a, alpha: 0.97 })
-        .roundRect(0, 0, totalW, 500, 8)
+        .roundRect(0, 0, MAIN_W, MAIN_H, CORNER_R)
         .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 }),
     );
-    this._mainCard = mainCard;
-    this._mainCardW = totalW;
-    this.container.addChild(mainCard);
 
     // Title
     const title = new Text({ text: "ARMORY", style: STYLE_SCREEN_TITLE });
     title.anchor.set(0.5, 0);
-    title.position.set(totalW / 2, 14);
-    mainCard.addChild(title);
-
-    // Divider
-    mainCard.addChild(
-      new Graphics().rect(16, 48, totalW - 32, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
-    );
+    title.position.set(MAIN_W / 2, 18);
+    card.addChild(title);
 
     // Back button
-    const backBtn = this._makeNavBtn("< BACK", 80, 28);
-    backBtn.position.set(16, 14);
+    const backBtn = this._makeNavBtn("< BACK", 104, 36, false);
+    backBtn.position.set(21, 18);
     backBtn.on("pointerdown", () => this.onBack?.());
-    mainCard.addChild(backBtn);
+    card.addChild(backBtn);
 
     // Slots label (top-right)
     this._slotsLabel = new Text({ text: "", style: STYLE_SLOTS });
     this._slotsLabel.anchor.set(1, 0.5);
-    this._slotsLabel.position.set(totalW - 20, 28);
-    mainCard.addChild(this._slotsLabel);
+    this._slotsLabel.position.set(MAIN_W - 26, 35);
+    card.addChild(this._slotsLabel);
     this._updateSlotsLabel();
+
+    // Header divider
+    card.addChild(
+      new Graphics().rect(21, 65, MAIN_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
 
     // --- Grid area (left) ---
     this._gridScroll = new Container();
-    this._gridScroll.position.set(GRID_PAD, 60);
-
+    this._gridScroll.position.set(GRID_X, CONTENT_Y);
     this._buildCards();
+    card.addChild(this._gridScroll);
 
-    mainCard.addChild(this._gridScroll);
-
-    // Mask for scroll
-    this._gridMask = new Graphics();
-    mainCard.addChild(this._gridMask);
+    this._gridMask = new Graphics()
+      .rect(GRID_X, CONTENT_Y, GRID_W_TOTAL, CONTENT_H)
+      .fill({ color: 0xffffff });
+    card.addChild(this._gridMask);
     this._gridScroll.mask = this._gridMask;
 
-    // Wheel scroll
     this._gridScroll.eventMode = "static";
-    this._gridScroll.on("wheel", (e) => this._onGridWheel(e));
+    this._gridScroll.on("wheel", (e: any) => this._onGridWheel(e));
+
+    // --- Weapon image display + armory image (center) ---
+    this._buildImageDisplay(card);
 
     // --- Detail panel (right) ---
-    const detailX = gridW + 8;
     this._detailPanel = new Container();
-    this._detailPanel.position.set(detailX, 60);
-    mainCard.addChild(this._detailPanel);
-
+    this._detailPanel.position.set(DETAIL_X, CONTENT_Y);
+    card.addChild(this._detailPanel);
     this._buildDetailPanel();
 
-    // --- Start game button ---
-    const nextBtn = this._makeNavBtn("START GAME", 160, 34, true);
-    nextBtn.on("pointerdown", () => this.onStartGame?.());
-    this._nextBtn = nextBtn;
-    mainCard.addChild(nextBtn);
+    // Footer divider
+    card.addChild(
+      new Graphics().rect(21, FOOTER_Y, MAIN_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.15 }),
+    );
 
-    // Focus first item
-    this._focusItem(ARMORY_ITEMS[0].id);
+    // Start game button
+    this._nextBtn = this._makeNavBtn("START GAME", 195, 44, true);
+    this._nextBtn.position.set(MAIN_W - 221, MAIN_H - 57);
+    this._nextBtn.on("pointerdown", () => this.onStartGame?.());
+    card.addChild(this._nextBtn);
+
+    // Initial state: no item focused, show displaycase
+    this._updateDetail();
+    this._updateItemImage();
   }
+
+  // ---------------------------------------------------------------------------
+  // Grid
+  // ---------------------------------------------------------------------------
 
   private _buildCards(): void {
     this._gridScroll.removeChildren();
@@ -291,22 +357,21 @@ export class ArmoryScreen {
       const item = ARMORY_ITEMS[i];
       const col = i % GRID_COLS;
       const row = Math.floor(i / GRID_COLS);
-      const cx = col * (CARD_W + CARD_GAP);
-      const cy = row * (CARD_H + CARD_GAP);
+      const cx = col * (ITEM_W + ITEM_GAP);
+      const cy = row * (ITEM_H + ITEM_GAP);
 
       const locked = this._isLocked(item.id);
-      const card = this._makeItemCard(item, cx, cy, locked);
-      this._gridScroll.addChild(card.container);
-      this._cards.push(card);
+      const cardEntry = this._makeItemCard(item, cx, cy, locked);
+      this._gridScroll.addChild(cardEntry.container);
+      this._cards.push(cardEntry);
     }
 
     const rows = Math.ceil(ARMORY_ITEMS.length / GRID_COLS);
-    this._gridContentH = rows * (CARD_H + CARD_GAP) - CARD_GAP + 8;
+    this._gridContentH = rows * (ITEM_H + ITEM_GAP) - ITEM_GAP + 8;
   }
 
   private _rebuildCards(): void {
     this._buildCards();
-    // Re-apply selection highlights
     for (const card of this._cards) {
       const selected = this._selectedIds.includes(card.id);
       const focused = card.id === this._focusedId;
@@ -315,10 +380,7 @@ export class ArmoryScreen {
   }
 
   private _makeItemCard(
-    item: ArmoryItemDef,
-    x: number,
-    y: number,
-    locked: boolean,
+    item: ArmoryItemDef, x: number, y: number, locked: boolean,
   ): { id: ArmoryItemId; bg: Graphics; container: Container; locked: boolean } {
     const c = new Container();
     c.position.set(x, y);
@@ -328,31 +390,40 @@ export class ArmoryScreen {
     const bg = new Graphics();
     c.addChild(bg);
 
-    // Icon area
+    // Icon background area
     const iconBg = new Graphics()
-      .roundRect(6, 6, CARD_W - 12, CARD_H - 28, 3)
+      .roundRect(6, 6, ITEM_W - 12, ITEM_H - 28, 3)
       .fill({ color: locked ? 0x111118 : item.iconColor, alpha: locked ? 0.5 : 0.3 });
     c.addChild(iconBg);
 
-    const symbol = new Text({
-      text: locked ? "?" : item.iconSymbol,
-      style: new TextStyle({
-        ...STYLE_ITEM_SYMBOL,
-        fill: locked ? 0x334455 : 0xffffff,
-      }),
-    });
-    symbol.anchor.set(0.5, 0.5);
-    symbol.position.set(CARD_W / 2, (CARD_H - 22) / 2 + 6);
-    c.addChild(symbol);
+    // Icon: drawn weapon icon for longsword/spear, text symbol for others
+    const iconCX = ITEM_W / 2;
+    const iconCY = (ITEM_H - 22) / 2 + 6;
 
+    if (!locked && hasCustomIcon(item.id)) {
+      const iconGfx = new Graphics();
+      drawItemIcon(iconGfx, item.id, iconCX, iconCY, 30);
+      c.addChild(iconGfx);
+    } else {
+      const symbol = new Text({
+        text: locked ? "?" : item.iconSymbol,
+        style: new TextStyle({
+          ...STYLE_ITEM_SYMBOL,
+          fill: locked ? 0x334455 : 0xffffff,
+        }),
+      });
+      symbol.anchor.set(0.5, 0.5);
+      symbol.position.set(iconCX, iconCY);
+      c.addChild(symbol);
+    }
+
+    // Item name below icon
     const nameText = new Text({
       text: locked ? "LOCKED" : item.name.toUpperCase(),
-      style: locked
-        ? STYLE_LOCKED
-        : STYLE_ITEM_NAME,
+      style: locked ? STYLE_LOCKED : STYLE_ITEM_NAME,
     });
     nameText.anchor.set(0.5, 0);
-    nameText.position.set(CARD_W / 2, CARD_H - 20);
+    nameText.position.set(ITEM_W / 2, ITEM_H - 20);
     c.addChild(nameText);
 
     this._refreshCard(bg, false, false, locked);
@@ -366,78 +437,138 @@ export class ArmoryScreen {
     return { id: item.id, bg, container: c, locked };
   }
 
+  // ---------------------------------------------------------------------------
+  // Image display (weapon image + armory decorative)
+  // ---------------------------------------------------------------------------
+
+  private _buildImageDisplay(parent: Container): void {
+    // --- Weapon image box ---
+    this._weaponImgContainer = new Container();
+    this._weaponImgContainer.position.set(IMG_X, CONTENT_Y);
+    parent.addChild(this._weaponImgContainer);
+
+    this._weaponImgContainer.addChild(
+      new Graphics()
+        .roundRect(0, 0, IMG_W, IMG_H, 6)
+        .fill({ color: 0x080818 })
+        .roundRect(0, 0, IMG_W, IMG_H, 6)
+        .stroke({ color: 0x334466, alpha: 0.6, width: 1 }),
+    );
+
+    // --- Armory decorative image box ---
+    const armContainer = new Container();
+    armContainer.position.set(IMG_X, ARMORY_IMG_Y);
+    parent.addChild(armContainer);
+
+    // Section label above frame
+    const armLabel = new Text({ text: "THE ARMORY", style: STYLE_SECTION });
+    armLabel.position.set(0, -20);
+    armContainer.addChild(armLabel);
+
+    // Frame
+    armContainer.addChild(
+      new Graphics()
+        .roundRect(0, 0, IMG_W, ARMORY_IMG_H, 6)
+        .fill({ color: 0x080818 })
+        .roundRect(0, 0, IMG_W, ARMORY_IMG_H, 6)
+        .stroke({ color: 0x334466, alpha: 0.6, width: 1 }),
+    );
+
+    // Load armory image
+    void Assets.load(armoryImgUrl).then((tex: Texture) => {
+      const sprite = new Sprite(tex);
+      const maxW = IMG_W - 12;
+      const maxH = ARMORY_IMG_H - 12;
+      const scale = Math.min(maxW / tex.width, maxH / tex.height);
+      sprite.scale.set(scale);
+      sprite.position.set(
+        6 + (maxW - tex.width * scale) / 2,
+        6 + (maxH - tex.height * scale) / 2,
+      );
+      armContainer.addChild(sprite);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Detail panel
+  // ---------------------------------------------------------------------------
+
   private _buildDetailPanel(): void {
     const dp = this._detailPanel;
     dp.removeChildren();
 
-    const pw = DETAIL_W - DETAIL_PAD;
+    const pw = DETAIL_W;
+    const ph = CONTENT_H;
 
-    const panelBg = new Graphics()
-      .roundRect(0, 0, pw, 380, 6)
-      .fill({ color: 0x0d0d1e, alpha: 0.8 })
-      .roundRect(0, 0, pw, 380, 6)
-      .stroke({ color: 0x334466, width: 1 });
-    dp.addChild(panelBg);
+    // Panel background
+    dp.addChild(
+      new Graphics()
+        .roundRect(0, 0, pw, ph, 6)
+        .fill({ color: 0x0d0d1e, alpha: 0.8 })
+        .roundRect(0, 0, pw, ph, 6)
+        .stroke({ color: 0x334466, width: 1 }),
+    );
 
-    // Icon area
-    this._detailIcon = new Graphics()
-      .roundRect(8, 8, pw - 16, 80, 4)
+    // Icon area background
+    this._detailIconBg = new Graphics()
+      .roundRect(8, 8, pw - 16, 90, 4)
       .fill({ color: 0x151525 });
-    dp.addChild(this._detailIcon);
+    dp.addChild(this._detailIconBg);
 
+    // Text symbol (for non-custom-icon items)
     this._detailIconSymbol = new Text({
       text: "",
       style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 40,
-        fill: 0xffd700,
-        fontWeight: "bold",
+        fontFamily: "monospace", fontSize: 44, fill: 0xffd700, fontWeight: "bold",
       }),
     });
     this._detailIconSymbol.anchor.set(0.5, 0.5);
-    this._detailIconSymbol.position.set(pw / 2, 48);
+    this._detailIconSymbol.position.set(pw / 2, 53);
     dp.addChild(this._detailIconSymbol);
+
+    // Drawn icon graphics (for longsword/spear)
+    this._detailIconDraw = new Graphics();
+    dp.addChild(this._detailIconDraw);
 
     // Name
     this._detailName = new Text({ text: "", style: STYLE_DETAIL_NAME });
     this._detailName.anchor.set(0.5, 0);
-    this._detailName.position.set(pw / 2, 96);
+    this._detailName.position.set(pw / 2, 106);
     dp.addChild(this._detailName);
 
     // Divider
     dp.addChild(
-      new Graphics().rect(8, 120, pw - 16, 1).fill({ color: 0x334466 }),
+      new Graphics().rect(8, 135, pw - 16, 1).fill({ color: 0x334466 }),
     );
 
     // Description label
     const descLabel = new Text({
       text: "DESCRIPTION",
       style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 9,
-        fill: 0x556677,
-        letterSpacing: 2,
+        fontFamily: "monospace", fontSize: 10, fill: 0x556677, letterSpacing: 2,
       }),
     });
-    descLabel.position.set(10, 128);
+    descLabel.position.set(10, 143);
     dp.addChild(descLabel);
 
+    // Description text
     this._detailDesc = new Text({ text: "", style: STYLE_DETAIL_DESC });
-    this._detailDesc.position.set(10, 142);
+    this._detailDesc.position.set(10, 160);
     dp.addChild(this._detailDesc);
 
     // Divider
     dp.addChild(
-      new Graphics().rect(8, 200, pw - 16, 1).fill({ color: 0x334466 }),
+      new Graphics().rect(8, 235, pw - 16, 1).fill({ color: 0x334466 }),
     );
 
-    // Stats
+    // Stats label
     const statsLabel = new Text({ text: "BONUSES", style: STYLE_STAT_LABEL });
-    statsLabel.position.set(10, 208);
+    statsLabel.position.set(10, 243);
     dp.addChild(statsLabel);
 
+    // Stats text
     this._detailStats = new Text({ text: "", style: STYLE_STAT_TEXT });
-    this._detailStats.position.set(10, 224);
+    this._detailStats.position.set(10, 263);
     dp.addChild(this._detailStats);
   }
 
@@ -454,7 +585,6 @@ export class ArmoryScreen {
     const prev = this._focusedId;
     this._focusedId = id;
 
-    // Refresh previous and new focus card borders
     for (const card of this._cards) {
       if (card.id === prev || card.id === id) {
         const selected = this._selectedIds.includes(card.id);
@@ -464,23 +594,20 @@ export class ArmoryScreen {
     }
 
     this._updateDetail();
+    this._updateItemImage();
   }
 
   private _toggleSelect(id: ArmoryItemId): void {
     const idx = this._selectedIds.indexOf(id);
     if (idx >= 0) {
-      // Deselect
       this._selectedIds.splice(idx, 1);
     } else if (this._selectedIds.length < MAX_EQUIPPED_ITEMS) {
-      // Select
       this._selectedIds.push(id);
     } else {
-      // At max — replace the oldest selection
       this._selectedIds.shift();
       this._selectedIds.push(id);
     }
 
-    // Refresh all cards for selection state
     for (const card of this._cards) {
       const selected = this._selectedIds.includes(card.id);
       const focused = card.id === this._focusedId;
@@ -508,26 +635,64 @@ export class ArmoryScreen {
       borderWidth = 1.5;
     }
 
-    bg
-      .roundRect(0, 0, CARD_W, CARD_H, 6)
+    bg.roundRect(0, 0, ITEM_W, ITEM_H, 6)
       .fill({ color: fillColor })
-      .roundRect(0, 0, CARD_W, CARD_H, 6)
+      .roundRect(0, 0, ITEM_W, ITEM_H, 6)
       .stroke({ color: borderColor, width: borderWidth });
   }
 
+  // ---------------------------------------------------------------------------
+  // Update display
+  // ---------------------------------------------------------------------------
+
   private _updateDetail(): void {
-    const item = ARMORY_ITEMS.find((i) => i.id === this._focusedId);
-    if (!item) return;
+    const item = this._focusedId
+      ? ARMORY_ITEMS.find((i) => i.id === this._focusedId) ?? null
+      : null;
+
+    const pw = DETAIL_W;
+
+    if (!item) {
+      // No selection — placeholder
+      this._detailIconSymbol.text = "?";
+      this._detailIconSymbol.visible = true;
+      this._detailIconDraw.clear();
+      this._detailName.text = "SELECT AN ITEM";
+      this._detailDesc.text = "Click on a weapon or armor\npiece to view its details.";
+      this._detailStats.text = "";
+      this._detailIconBg.clear()
+        .roundRect(8, 8, pw - 16, 90, 4)
+        .fill({ color: 0x151525 });
+      return;
+    }
 
     const locked = this._isLocked(item.id);
 
-    this._detailIconSymbol.text = locked ? "?" : item.iconSymbol;
+    // Update icon background color
+    this._detailIconBg.clear()
+      .roundRect(8, 8, pw - 16, 90, 4)
+      .fill({ color: locked ? 0x111118 : item.iconColor, alpha: locked ? 0.5 : 0.2 });
+
+    // Update icon
+    if (!locked && hasCustomIcon(item.id)) {
+      this._detailIconSymbol.visible = false;
+      this._detailIconDraw.clear();
+      drawItemIcon(this._detailIconDraw, item.id, pw / 2, 53, 50);
+    } else {
+      this._detailIconSymbol.visible = true;
+      this._detailIconSymbol.text = locked ? "?" : item.iconSymbol;
+      this._detailIconDraw.clear();
+    }
+
+    // Name
     this._detailName.text = locked ? "LOCKED" : item.name.toUpperCase();
+
+    // Description
     this._detailDesc.text = locked
-      ? "This item has not been unlocked yet. Complete more campaign scenarios to unlock it."
+      ? "This item has not been unlocked yet.\nComplete more campaign scenarios\nto unlock it."
       : item.description;
 
-    // Build stat lines
+    // Stats
     if (locked) {
       this._detailStats.text = "???";
     } else {
@@ -542,13 +707,35 @@ export class ArmoryScreen {
       if (item.rangeBonus < 0) lines.push(`${item.rangeBonus} Range`);
       this._detailStats.text = lines.length > 0 ? lines.join("\n") : "No bonuses";
     }
+  }
 
-    // Update icon bg color
-    const pw = DETAIL_W - DETAIL_PAD;
-    this._detailIcon.clear();
-    this._detailIcon
-      .roundRect(8, 8, pw - 16, 80, 4)
-      .fill({ color: locked ? 0x111118 : item.iconColor, alpha: locked ? 0.5 : 0.2 });
+  private _updateItemImage(): void {
+    const imgUrl = (this._focusedId && ITEM_IMAGES[this._focusedId])
+      ? ITEM_IMAGES[this._focusedId]
+      : displaycaseImgUrl;
+
+    this._currentImgUrl = imgUrl;
+
+    void Assets.load(imgUrl).then((tex: Texture) => {
+      // Guard against stale loads from rapid clicks
+      if (this._currentImgUrl !== imgUrl) return;
+
+      if (this._weaponSprite) {
+        this._weaponSprite.texture = tex;
+      } else {
+        this._weaponSprite = new Sprite(tex);
+        this._weaponImgContainer.addChild(this._weaponSprite);
+      }
+
+      const maxW = IMG_W - 16;
+      const maxH = IMG_H - 16;
+      const scale = Math.min(maxW / tex.width, maxH / tex.height);
+      this._weaponSprite.scale.set(scale);
+      this._weaponSprite.position.set(
+        8 + (maxW - tex.width * scale) / 2,
+        8 + (maxH - tex.height * scale) / 2,
+      );
+    });
   }
 
   private _updateSlotsLabel(): void {
@@ -560,9 +747,9 @@ export class ArmoryScreen {
   // ---------------------------------------------------------------------------
 
   private _onGridWheel(e: any): void {
-    const maxScroll = Math.max(0, this._gridContentH - this._gridViewH);
+    const maxScroll = Math.max(0, this._gridContentH - CONTENT_H);
     this._gridScrollY = Math.max(0, Math.min(maxScroll, this._gridScrollY + e.deltaY * 0.5));
-    this._gridScroll.position.y = 60 - this._gridScrollY;
+    this._gridScroll.position.y = CONTENT_Y - this._gridScrollY;
   }
 
   // ---------------------------------------------------------------------------
@@ -575,9 +762,9 @@ export class ArmoryScreen {
     btn.cursor = "pointer";
 
     const bg = new Graphics()
-      .roundRect(0, 0, w, h, 6)
+      .roundRect(0, 0, w, h, 8)
       .fill({ color: primary ? 0x1a3a1a : 0x1a2a3a })
-      .roundRect(0, 0, w, h, 6)
+      .roundRect(0, 0, w, h, 8)
       .stroke({ color: primary ? 0x44aa66 : 0x4488cc, width: 1.5 });
     btn.addChild(bg);
 
@@ -585,10 +772,9 @@ export class ArmoryScreen {
       text: label,
       style: new TextStyle({
         fontFamily: "monospace",
-        fontSize: primary ? 13 : 11,
+        fontSize: primary ? 17 : 14,
         fill: primary ? 0x88ffaa : 0x88bbff,
-        fontWeight: "bold",
-        letterSpacing: 1,
+        fontWeight: "bold", letterSpacing: 1,
       }),
     });
     txt.anchor.set(0.5, 0.5);
@@ -609,36 +795,11 @@ export class ArmoryScreen {
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
 
-    this._bg.clear();
-    this._bg.rect(0, 0, sw, sh).fill({ color: BG_COLOR });
+    this._bg.clear().rect(0, 0, sw, sh).fill({ color: BG_COLOR });
 
-    const cardH = Math.min(540, sh - 60);
-    const gridViewH = cardH - 60 - 60;
-    this._gridViewH = gridViewH;
-
-    // Rebuild main card background
-    const mc = this._mainCard;
-    const bg = mc.children[0] as Graphics;
-    bg.clear();
-    bg
-      .roundRect(0, 0, this._mainCardW, cardH, 8)
-      .fill({ color: 0x10102a, alpha: 0.97 })
-      .roundRect(0, 0, this._mainCardW, cardH, 8)
-      .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
-
-    // Update grid mask
-    this._gridMask.clear();
-    this._gridMask
-      .rect(GRID_PAD, 60, GRID_COLS * (CARD_W + CARD_GAP), gridViewH)
-      .fill({ color: 0xffffff });
-
-    // Position start button
-    this._nextBtn.position.set(this._mainCardW - 176, cardH - 50);
-
-    // Center card on screen
-    mc.position.set(
-      Math.floor((sw - this._mainCardW) / 2),
-      Math.floor((sh - cardH) / 2),
+    this._mainCard.position.set(
+      Math.floor((sw - MAIN_W) / 2),
+      Math.floor((sh - MAIN_H) / 2),
     );
   }
 }
