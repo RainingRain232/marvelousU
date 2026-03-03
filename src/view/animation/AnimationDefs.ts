@@ -523,4 +523,18 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 8,
     dieFps: 6,
   }),
+  [UnitType.EARTH_ELEMENTAL]: buildDef("earth_elemental", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 6,
+  }),
+  [UnitType.MINOR_EARTH_ELEMENTAL]: buildDef("minor_earth_elemental", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 6,
+  }),
 };

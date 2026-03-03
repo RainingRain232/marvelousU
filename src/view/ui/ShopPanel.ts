@@ -280,6 +280,8 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.DISTORTION_ELEMENTAL]: "Distortion Elemental",
   [UnitType.MINOR_LIGHTNING_ELEMENTAL]: "Minor Lightning Elemental",
   [UnitType.MINOR_DISTORTION_ELEMENTAL]: "Minor Distortion Elemental",
+  [UnitType.EARTH_ELEMENTAL]: "Earth Elemental",
+  [UnitType.MINOR_EARTH_ELEMENTAL]: "Minor Earth Elemental",
 };
 
 // ---------------------------------------------------------------------------

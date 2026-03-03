@@ -128,6 +128,8 @@ import { generateLightningElementalFrames } from "@view/animation/LightningEleme
 import { generateDistortionElementalFrames } from "@view/animation/DistortionElementalSpriteGen";
 import { generateMinorLightningElementalFrames } from "@view/animation/MinorLightningElementalSpriteGen";
 import { generateMinorDistortionElementalFrames } from "@view/animation/MinorDistortionElementalSpriteGen";
+import { generateEarthElementalFrames } from "@view/animation/EarthElementalSpriteGen";
+import { generateMinorEarthElementalFrames } from "@view/animation/MinorEarthElementalSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -421,6 +423,10 @@ export class AnimationManager {
         this._generateMinorLightningElementalSprites(key, renderer);
       } else if (key === "minor_distortion_elemental") {
         this._generateMinorDistortionElementalSprites(key, renderer);
+      } else if (key === "earth_elemental") {
+        this._generateEarthElementalSprites(key, renderer);
+      } else if (key === "minor_earth_elemental") {
+        this._generateMinorEarthElementalSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1600,6 +1606,28 @@ export class AnimationManager {
 
   private _generateMinorDistortionElementalSprites(key: string, renderer: Renderer): void {
     const textures = generateMinorDistortionElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateEarthElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateEarthElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateMinorEarthElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateMinorEarthElementalFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

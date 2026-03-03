@@ -124,6 +124,8 @@ export enum UnitType {
   DISTORTION_ELEMENTAL = "distortion_elemental",
   MINOR_LIGHTNING_ELEMENTAL = "minor_lightning_elemental",
   MINOR_DISTORTION_ELEMENTAL = "minor_distortion_elemental",
+  EARTH_ELEMENTAL = "earth_elemental",
+  MINOR_EARTH_ELEMENTAL = "minor_earth_elemental",
 }
 
 export enum BuildingType {

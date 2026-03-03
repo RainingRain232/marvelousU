@@ -249,6 +249,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UnitType.ICE_ELEMENTAL,
       UnitType.LIGHTNING_ELEMENTAL,
       UnitType.DISTORTION_ELEMENTAL,
+      UnitType.MINOR_EARTH_ELEMENTAL,
+      UnitType.EARTH_ELEMENTAL,
     ],
     blueprints: [],
     footprint: { w: 2, h: 2 },
