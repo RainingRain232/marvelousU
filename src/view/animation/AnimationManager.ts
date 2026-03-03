@@ -130,6 +130,9 @@ import { generateMinorLightningElementalFrames } from "@view/animation/MinorLigh
 import { generateMinorDistortionElementalFrames } from "@view/animation/MinorDistortionElementalSpriteGen";
 import { generateEarthElementalFrames } from "@view/animation/EarthElementalSpriteGen";
 import { generateMinorEarthElementalFrames } from "@view/animation/MinorEarthElementalSpriteGen";
+import { generateAncientDefenderFrames } from "@view/animation/AncientDefenderSpriteGen";
+import { generateAncientPhalanxFrames } from "@view/animation/AncientPhalanxSpriteGen";
+import { generateAncientAxemanFrames } from "@view/animation/AncientAxemanSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -393,6 +396,12 @@ export class AnimationManager {
         this._generateAxemanSprites(key, renderer);
       } else if (key === "berserker") {
         this._generateBerserkerSprites(key, renderer);
+      } else if (key === "ancient_defender") {
+        this._generateAncientDefenderSprites(key, renderer);
+      } else if (key === "ancient_phalanx") {
+        this._generateAncientPhalanxSprites(key, renderer);
+      } else if (key === "ancient_axeman") {
+        this._generateAncientAxemanSprites(key, renderer);
       } else if (key === "javelin") {
         this._generateJavelineerSprites(key, renderer);
       } else if (key === "arbelestier") {
@@ -1439,6 +1448,39 @@ export class AnimationManager {
 
   private _generateBerserkerSprites(key: string, renderer: Renderer): void {
     const textures = generateBerserkerFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateAncientDefenderSprites(key: string, renderer: Renderer): void {
+    const textures = generateAncientDefenderFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateAncientPhalanxSprites(key: string, renderer: Renderer): void {
+    const textures = generateAncientPhalanxFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateAncientAxemanSprites(key: string, renderer: Renderer): void {
+    const textures = generateAncientAxemanFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {
