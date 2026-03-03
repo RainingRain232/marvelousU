@@ -158,6 +158,15 @@ function tickUnit(
       const sharedPath = _groupPathCache.get(unit.groupId)!;
       unit.path = sharedPath ? [...sharedPath] : null;
 
+      // If the group path failed, try from this unit's own position
+      if (!unit.path) {
+        unit.path = findPath(
+          state.battlefield,
+          { x: Math.floor(unit.position.x), y: Math.floor(unit.position.y) },
+          goal,
+        );
+      }
+
       // Assign formation offset based on slot index
       const slots = groupSlots.get(unit.groupId) ?? [];
       const slotIdx = slots.indexOf(unit.id);
@@ -177,7 +186,16 @@ function tickUnit(
     }
 
     unit.pathIndex = 0;
-    if (!unit.path) return; // No path found — stay put
+    if (!unit.path) {
+      // No path found — track consecutive failures and break out of group
+      // after too many so the unit can re-path independently.
+      unit.pathFailCount = (unit.pathFailCount ?? 0) + 1;
+      if (unit.pathFailCount > 3 && unit.groupId) {
+        unit.groupId = null;
+      }
+      return;
+    }
+    unit.pathFailCount = 0;
   }
 
   // 2. Walk along path
@@ -211,7 +229,7 @@ function tickUnit(
   }
 
   // 3. Update facing direction
-  if (unit.path.length > 0) {
+  if (unit.path && unit.path.length > 0) {
     const goal = defaultGoal(state, unit);
     if (goal) {
       unit.facingDirection =
@@ -220,7 +238,7 @@ function tickUnit(
   }
 
   // 4. Transition to IDLE when path is exhausted
-  if (unit.pathIndex >= unit.path.length) {
+  if (!unit.path || unit.pathIndex >= unit.path.length) {
     const prev = unit.state;
     if (unit.stateMachine.canTransition(UnitState.IDLE)) {
       unit.stateMachine.setState(UnitState.IDLE);
