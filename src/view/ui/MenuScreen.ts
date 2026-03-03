@@ -182,6 +182,10 @@ export class MenuScreen {
   onContinue: (() => void) | null = null;
   /** Called when the player clicks "QUICKPLAY" — skips all selection screens. */
   onQuickPlay: (() => void) | null = null;
+  /** Called when the player clicks "UNIT WIKI" — opens the unit wiki. */
+  onUnitWiki: (() => void) | null = null;
+  /** Called when the player clicks "BUILDING WIKI" — opens the building wiki. */
+  onBuildingWiki: (() => void) | null = null;
 
   get selectedMapSize(): MapSize {
     return MAP_SIZES[this._selectedSizeIndex];
@@ -577,8 +581,86 @@ export class MenuScreen {
 
     card.addChild(qpBtn);
 
+    // --- UNIT WIKI button ---
+    const wikiBtn = new Container();
+    wikiBtn.eventMode = "static";
+    wikiBtn.cursor = "pointer";
+    wikiBtn.position.set(20, modeSectionH + 22 + BH + 8 + BH + 8);
+
+    const wikiBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 6)
+      .fill({ color: 0x1a1a3a })
+      .roundRect(0, 0, BW, BH, 6)
+      .stroke({ color: 0x4488cc, width: 2 });
+    wikiBtn.addChild(wikiBg);
+
+    const wikiLabel = new Text({
+      text: "UNIT WIKI",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 15,
+        fill: 0x88bbff,
+        fontWeight: "bold",
+        letterSpacing: 2,
+      }),
+    });
+    wikiLabel.anchor.set(0.5, 0.5);
+    wikiLabel.position.set(BW / 2, BH / 2);
+    wikiBtn.addChild(wikiLabel);
+
+    wikiBtn.on("pointerover", () => {
+      wikiBg.tint = 0xaaddff;
+    });
+    wikiBtn.on("pointerout", () => {
+      wikiBg.tint = 0xffffff;
+    });
+    wikiBtn.on("pointerdown", () => {
+      this.onUnitWiki?.();
+    });
+
+    card.addChild(wikiBtn);
+
+    // --- BUILDING WIKI button ---
+    const bwBtn = new Container();
+    bwBtn.eventMode = "static";
+    bwBtn.cursor = "pointer";
+    bwBtn.position.set(20, modeSectionH + 22 + BH + 8 + BH + 8 + BH + 8);
+
+    const bwBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 6)
+      .fill({ color: 0x1a2a1a })
+      .roundRect(0, 0, BW, BH, 6)
+      .stroke({ color: 0x66aa55, width: 2 });
+    bwBtn.addChild(bwBg);
+
+    const bwLabel = new Text({
+      text: "BUILDING WIKI",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 15,
+        fill: 0x99dd88,
+        fontWeight: "bold",
+        letterSpacing: 2,
+      }),
+    });
+    bwLabel.anchor.set(0.5, 0.5);
+    bwLabel.position.set(BW / 2, BH / 2);
+    bwBtn.addChild(bwLabel);
+
+    bwBtn.on("pointerover", () => {
+      bwBg.tint = 0xbbffaa;
+    });
+    bwBtn.on("pointerout", () => {
+      bwBg.tint = 0xffffff;
+    });
+    bwBtn.on("pointerdown", () => {
+      this.onBuildingWiki?.();
+    });
+
+    card.addChild(bwBtn);
+
     // Adjust card height dynamically
-    this._cardH = modeSectionH + 22 + BH + 8 + BH + 18;
+    this._cardH = modeSectionH + 22 + BH + 8 + BH + 8 + BH + 8 + BH + 18;
 
     vm.addToLayer("ui", this.container);
     this._layout();

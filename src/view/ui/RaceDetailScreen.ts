@@ -187,6 +187,37 @@ function getGeneralUnits(factionUnits: UnitType[], race: RaceDef): Record<UnitCa
   return result;
 }
 
+/** All tiers maxed — used in wiki mode. */
+const WIKI_TIERS: RaceTiers = {
+  melee: 5, ranged: 5, siege: 5,
+  creature: 5, magic: 5,
+  fire: 5, cold: 5, lightning: 5,
+  distortion: 5, summon: 5, nature: 5,
+  heal: 5,
+};
+
+/** Get ALL units (no tier filtering, no faction exclusion) organised by category. */
+function getAllUnits(): Record<UnitCategory, UnitDef[]> {
+  const result: Record<UnitCategory, UnitDef[]> = {
+    melee: [], ranged: [], magic: [], siege: [], creature: [], heal: [],
+  };
+  const seen = new Set<UnitType>();
+
+  for (const [key, def] of Object.entries(UNIT_DEFINITIONS)) {
+    const ut = key as UnitType;
+    if (seen.has(ut)) continue;
+    seen.add(ut);
+    const cat = getUnitCategory(ut);
+    if (!cat) continue;
+    result[cat].push(def);
+  }
+
+  for (const cat of Object.keys(result) as UnitCategory[]) {
+    result[cat].sort((a, b) => (a.tier ?? 1) - (b.tier ?? 1) || a.cost - b.cost);
+  }
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Tier pip icons
 // ---------------------------------------------------------------------------
@@ -207,6 +238,240 @@ const TIER_ICON_INFO: { key: keyof RaceTiers; label: string; color: number }[] =
 ];
 
 // ---------------------------------------------------------------------------
+// Tier tooltip data — flavor text + abilities per tier for each category
+// ---------------------------------------------------------------------------
+
+interface TierAbility {
+  name: string;
+  desc: string;
+}
+
+interface TierEntry {
+  tier: number;
+  abilities: TierAbility[];
+}
+
+interface TierTooltipInfo {
+  flavor: string;
+  entries: TierEntry[];
+}
+
+const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
+  melee: {
+    flavor: "The backbone of any army. Swords, axes, and lances forge the front line, holding ground where others cannot.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Swordsman", desc: "Sturdy frontline warrior with reliable steel." },
+        { name: "Pikeman", desc: "Extended reach keeps enemies at bay." },
+        { name: "Knight", desc: "Armored cavalry with devastating charge." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Defender", desc: "Tower shield tank, nearly immovable." },
+        { name: "Axeman", desc: "Fierce warrior with devastating cleave." },
+        { name: "Phalanx", desc: "Long spear + tower shield wall." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Assassin", desc: "Deadly striker, fast and lethal but fragile." },
+        { name: "Berserker", desc: "Naked fury with a two-handed axe." },
+        { name: "Royal Defender", desc: "Elite royal guard, HP 450." },
+      ] },
+      { tier: 4, abilities: [
+        { name: "Royal Lancer", desc: "Elite mounted lancer with devastating charge." },
+      ] },
+    ],
+  },
+  ranged: {
+    flavor: "Death from a distance. Archers and crossbowmen thin enemy ranks long before the melee begins.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Archer", desc: "Deadly marksman, range 4." },
+        { name: "Longbowman", desc: "Extreme range 6, picks off enemies from afar." },
+        { name: "Crossbowman", desc: "Devastating bolts, ATK 30 but slow reload." },
+        { name: "Horse Archer", desc: "Mounted archer, fast and mobile." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Javelineer", desc: "High damage javelins, ATK 35." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Repeater", desc: "Rapid-fire crossbow, attack speed 2.0." },
+        { name: "Arbalestier", desc: "Plate-armored crossbowman, ATK 50." },
+      ] },
+    ],
+  },
+  siege: {
+    flavor: "Massive engines of war that reduce walls to rubble and castles to ash. Slow but devastating against fortifications.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Trebuchet", desc: "Bombards from extreme range, ATK 70." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Battering Ram", desc: "HP 300, smashes structures in melee." },
+        { name: "Ballista", desc: "Long-range bolt launcher, ATK 50." },
+        { name: "Siege Catapult", desc: "Enormous boulders at range 11." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Bolt Thrower", desc: "Rapid siege bolt launcher, range 7." },
+      ] },
+      { tier: 4, abilities: [
+        { name: "Catapult", desc: "Heavy catapult, devastating arc fire." },
+      ] },
+    ],
+  },
+  magic: {
+    flavor: "Arcane mastery over the elements. Higher tiers unlock more powerful mages across all schools of magic.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Apprentice Mages", desc: "Basic elemental mages — fire, storm, cold, distortion." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Adept Mages", desc: "Stronger casters who also summon elemental imps." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Master Mages", desc: "Grandmasters with HP regen and double imp summons." },
+      ] },
+      { tier: 4, abilities: [
+        { name: "Dark Savant", desc: "Master of dark pyromancy with enhanced destruction." },
+      ] },
+    ],
+  },
+  creature: {
+    flavor: "Beasts and monsters tamed for war. From agile pixies to fearsome dragons, creatures bring chaos to the battlefield.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Pixie / Imps", desc: "Fast flying creatures with magical attacks." },
+        { name: "Spider", desc: "Web — slows enemies for 4s at 35% speed." },
+        { name: "Bat", desc: "Swarm of tiny bats, very fast but fragile." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Giant Frog", desc: "Frog Tongue — pulls enemies from range 7." },
+        { name: "Rhino", desc: "Armored tank, HP 350, slow but devastating." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Troll", desc: "Massive HP 400 with natural regen." },
+        { name: "Devourer", desc: "Devour Pull — drags enemies in for 40 dmg." },
+        { name: "Faery Queen", desc: "Faery Distortion — teleports foes 4 tiles." },
+      ] },
+      { tier: 4, abilities: [
+        { name: "Red Dragon", desc: "Fire Breath — 80 dmg in AoE 3.5." },
+        { name: "Frost Dragon", desc: "Frost Breath — 60 dmg + 4s slow." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "Cyclops", desc: "HP 800, earth-shattering melee blows." },
+        { name: "Angel", desc: "Divine warrior, HP 1500, ATK 90." },
+      ] },
+    ],
+  },
+  heal: {
+    flavor: "Divine light that mends wounds and restores the fallen. Healers sustain armies through the darkest battles.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Templar", desc: "Holy warrior with divine blessing and regen." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Monk", desc: "Heal — restores 50 HP to allies, range 1.5." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Cleric", desc: "Heal — restores 50 HP, range 3." },
+      ] },
+      { tier: 4, abilities: [
+        { name: "Saint", desc: "Heal — restores 50 HP, range 5." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "Angel", desc: "Divine celestial warrior, HP 1500, regen 5." },
+      ] },
+    ],
+  },
+  fire: {
+    flavor: "Pyromancy — the ancient art of bending flame. Fire mages rain destruction upon their enemies, engulfing entire battalions in hellfire.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Fire Mage", desc: "Fireball — 60 dmg, AoE radius 2." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Fire Adept Mage", desc: "Fireball + Fire Imp Summon." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Fire Master Mage", desc: "Fireball + summons 2 Fire Imps. HP regen." },
+      ] },
+      { tier: 4, abilities: [
+        { name: "Dark Savant", desc: "Master of dark pyromancy, enhanced fireballs." },
+      ] },
+    ],
+  },
+  cold: {
+    flavor: "Cryomancy — wielders of frost command the bitter cold, freezing enemies in their tracks before shattering them to pieces.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Cold Mage", desc: "Ice Ball — 25 dmg, AoE 2.5, slows 3s at 40% speed." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Cold Adept Mage", desc: "Ice Ball + Ice Imp Summon." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Cold Master Mage", desc: "Ice Ball + summons 2 Ice Imps. HP regen." },
+      ] },
+    ],
+  },
+  lightning: {
+    flavor: "Destructive energies from the heavens. Users channel this power and manipulate it to strike their foes with devastating precision.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Storm Mage", desc: "Chain Lightning — 40 dmg, bounces to 4 foes." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Lightning Adept Mage", desc: "Chain Lightning + Lightning Imp Summon." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Lightning Master Mage", desc: "Chain Lightning + summons 2 Lightning Imps. HP regen." },
+      ] },
+    ],
+  },
+  distortion: {
+    flavor: "Space-warping magic that tears the fabric of reality. Distortion mages teleport enemies into disarray and shatter their formations.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Distortion Mage", desc: "Distortion Blast — 20 dmg, teleports foes 3 tiles." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Distortion Adept Mage", desc: "Distortion Blast + Distortion Imp Summon." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Distortion Master Mage", desc: "Distortion Blast + summons 2 Distortion Imps. HP regen." },
+      ] },
+    ],
+  },
+  summon: {
+    flavor: "The art of calling forth creatures from beyond to fight at your command. Summoners turn empty space into an army.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Summoner", desc: "Summon — conjures 3 creatures to fight for you." },
+      ] },
+      { tier: 2, abilities: [
+        { name: "Constructionist", desc: "Summon — conjures 3 creatures, more durable." },
+      ] },
+    ],
+  },
+  nature: {
+    flavor: "The living world fights alongside those who listen. Nature magic channels the raw power of forests, beasts, and the earth itself.",
+    entries: [
+      { tier: 1, abilities: [
+        { name: "Nature Affinity", desc: "Creatures and forest units gain minor bonuses." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "Deep Nature", desc: "Stronger bond with living creatures and terrain." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "Primal Force", desc: "The full fury of nature unleashed upon your enemies." },
+      ] },
+    ],
+  },
+};
+
+// Tier tooltip dimensions
+const TIER_TT_W = 340;
+const TIER_TT_PAD = 10;
+
+// ---------------------------------------------------------------------------
 // RaceDetailScreen
 // ---------------------------------------------------------------------------
 
@@ -217,6 +482,7 @@ export class RaceDetailScreen {
   private _bg!: Graphics;
   private _mainCard!: Container;
   private _raceId: RaceId = "man";
+  private _wikiMode = false;
 
   // Scroll state for unit roster
   private _rosterContainer!: Container;
@@ -231,9 +497,12 @@ export class RaceDetailScreen {
   private _scrollTrack!: Graphics;
   private _scrollThumb!: Graphics;
 
-  // Tooltip
+  // Tooltip (unit hover)
   private _tooltip!: Container;
   private _tooltipSprite: AnimatedSprite | null = null;
+
+  // Tier tooltip (tier row hover)
+  private _tierTooltip!: Container;
 
   onNext: (() => void) | null = null;
   onBack: (() => void) | null = null;
@@ -258,6 +527,15 @@ export class RaceDetailScreen {
 
   show(raceId: RaceId): void {
     this._raceId = raceId;
+    this._wikiMode = false;
+    this.container.visible = true;
+    this._buildUI();
+    this._layout();
+  }
+
+  showWiki(): void {
+    this._raceId = "man"; // unused in wiki mode, just a fallback
+    this._wikiMode = true;
     this.container.visible = true;
     this._buildUI();
     this._layout();
@@ -266,6 +544,7 @@ export class RaceDetailScreen {
   hide(): void {
     this.container.visible = false;
     this._hideTooltip();
+    this._hideTierTooltip();
   }
 
   // ---------------------------------------------------------------------------
@@ -292,6 +571,7 @@ export class RaceDetailScreen {
     this._scrollY = 0;
 
     const race = getRace(this._raceId) ?? RACE_DEFINITIONS[0];
+    const wiki = this._wikiMode;
 
     // Card background
     card.addChild(
@@ -308,7 +588,10 @@ export class RaceDetailScreen {
     backBtn.on("pointerdown", () => this.onBack?.());
     card.addChild(backBtn);
 
-    const title = new Text({ text: "RACE OVERVIEW", style: STYLE_SCREEN_TITLE });
+    const title = new Text({
+      text: wiki ? "UNIT WIKI" : "RACE OVERVIEW",
+      style: STYLE_SCREEN_TITLE,
+    });
     title.anchor.set(0.5, 0);
     title.position.set(CARD_W / 2, 18);
     card.addChild(title);
@@ -318,32 +601,45 @@ export class RaceDetailScreen {
       new Graphics().rect(21, 65, CARD_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
-    // ---- Top section: portrait + info ----
     const TOP_Y = 75;
-    this._buildPortrait(card, race, 26, TOP_Y);
-    this._buildRaceInfo(card, race, 26 + PORTRAIT_SIZE + 21, TOP_Y);
 
-    // ---- Faction units row ----
-    const FACTION_Y = TOP_Y + PORTRAIT_SIZE + 16;
-    this._buildFactionRow(card, race, FACTION_Y);
+    if (wiki) {
+      // ---- Wiki mode: info header + tier grid, no portrait or faction row ----
+      this._buildWikiInfo(card, TOP_Y);
 
-    // ---- Available units roster (extra space for faction unit names) ----
-    const ROSTER_Y = FACTION_Y + 120;
-    this._buildUnitRoster(card, race, ROSTER_Y);
+      // Unit roster starts after wiki header (name 31 + sub 23 + div 8 + label 21 + grid 84 + gap 10)
+      const ROSTER_Y = TOP_Y + 177;
+      this._buildUnitRoster(card, race, ROSTER_Y, true);
+    } else {
+      // ---- Normal mode: portrait + info ----
+      this._buildPortrait(card, race, 26, TOP_Y);
+      this._buildRaceInfo(card, race, 26 + PORTRAIT_SIZE + 21, TOP_Y);
+
+      // Faction units row
+      const FACTION_Y = TOP_Y + PORTRAIT_SIZE + 16;
+      this._buildFactionRow(card, race, FACTION_Y);
+
+      // Available units roster
+      const ROSTER_Y = FACTION_Y + 120;
+      this._buildUnitRoster(card, race, ROSTER_Y, false);
+    }
 
     // Divider above footer
     card.addChild(
       new Graphics().rect(21, CARD_H - 68, CARD_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.15 }),
     );
 
-    // Continue button
-    const nextBtn = this._makeNavBtn("CONTINUE  >", 195, 44, true);
-    nextBtn.position.set(CARD_W - 221, CARD_H - 57);
-    nextBtn.on("pointerdown", () => this.onNext?.());
-    card.addChild(nextBtn);
+    if (!wiki) {
+      // Continue button (only in normal mode)
+      const nextBtn = this._makeNavBtn("CONTINUE  >", 195, 44, true);
+      nextBtn.position.set(CARD_W - 221, CARD_H - 57);
+      nextBtn.on("pointerdown", () => this.onNext?.());
+      card.addChild(nextBtn);
+    }
 
-    // Tooltip (added last so it renders on top)
+    // Tooltips (added last so they render on top)
     this._buildTooltip(card);
+    this._buildTierTooltip(card);
 
     // Wheel scroll for roster
     card.eventMode = "static";
@@ -436,15 +732,58 @@ export class RaceDetailScreen {
       cont.addChild(tierLabel);
       cy += 21;
 
-      this._buildTierGrid(cont, race.tiers, 0, cy, race.accentColor);
+      this._buildTierGrid(cont, race.tiers, 0, cy, race.accentColor, x, y + cy);
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Tier rating grid
+  // Wiki info header (replaces portrait + race info in wiki mode)
   // ---------------------------------------------------------------------------
 
-  private _buildTierGrid(parent: Container, tiers: RaceTiers, x: number, y: number, _accent: number): void {
+  private _buildWikiInfo(parent: Container, y: number): void {
+    const cont = new Container();
+    cont.position.set(26, y);
+    parent.addChild(cont);
+
+    let cy = 0;
+
+    // Name
+    const nameT = new Text({ text: "Complete Overview of Units", style: STYLE_RACE_NAME });
+    nameT.position.set(0, cy);
+    cont.addChild(nameT);
+    cy += 31;
+
+    // Subtitle
+    const subtitleT = new Text({
+      text: "Hover over units and tier ratings to see extra info.",
+      style: STYLE_RACE_TITLE,
+    });
+    subtitleT.position.set(0, cy);
+    cont.addChild(subtitleT);
+    cy += 23;
+
+    // Divider
+    cont.addChild(new Graphics().rect(0, cy, 572, 1).fill({ color: 0x334455 }));
+    cy += 8;
+
+    // Tier grid (all maxed)
+    const tierLabel = new Text({ text: "TIER RATINGS (ALL UNLOCKED)", style: STYLE_SECTION });
+    tierLabel.position.set(0, cy);
+    cont.addChild(tierLabel);
+    cy += 21;
+
+    this._buildTierGrid(cont, WIKI_TIERS, 0, cy, BORDER_COLOR, 26, y + cy);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tier rating grid (with hover tooltips)
+  // ---------------------------------------------------------------------------
+
+  private _buildTierGrid(
+    parent: Container, tiers: RaceTiers,
+    x: number, y: number, _accent: number,
+    cardOffsetX: number, cardOffsetY: number,
+  ): void {
     const COLS = 3;
     const COL_W = 192;
     const ROW_H = 21;
@@ -456,16 +795,30 @@ export class RaceDetailScreen {
       const px = x + col * COL_W;
       const py = y + row * ROW_H;
 
+      // Interactive row wrapper
+      const rowCont = new Container();
+      rowCont.position.set(px, py);
+      rowCont.eventMode = "static";
+      rowCont.cursor = "pointer";
+      rowCont.hitArea = new Rectangle(0, 0, COL_W - 4, ROW_H);
+      parent.addChild(rowCont);
+
+      // Hover background (invisible by default)
+      const hoverBg = new Graphics()
+        .rect(0, 0, COL_W - 4, ROW_H)
+        .fill({ color: 0x223344, alpha: 0 });
+      rowCont.addChild(hoverBg);
+
       const label = new Text({ text: info.label, style: STYLE_TIER_LABEL });
-      label.position.set(px, py);
-      parent.addChild(label);
+      label.position.set(0, 0);
+      rowCont.addChild(label);
 
       // Draw pips
       const val = tiers[info.key];
       const g = new Graphics();
       for (let p = 0; p < 5; p++) {
-        const pipX = px + 81 + p * 16;
-        const pipY = py + 5;
+        const pipX = 81 + p * 16;
+        const pipY = 5;
         if (p < val) {
           g.circle(pipX, pipY, 4.5).fill({ color: info.color, alpha: 0.9 });
         } else {
@@ -475,13 +828,27 @@ export class RaceDetailScreen {
             .stroke({ color: info.color, alpha: 0.3, width: 0.5 });
         }
       }
+      rowCont.addChild(g);
 
       // Numeric value
       const numT = new Text({ text: `${val}`, style: STYLE_TIER_VALUE });
-      numT.position.set(px + 81 + 5 * 16 + 5, py);
-      parent.addChild(numT);
+      numT.position.set(81 + 5 * 16 + 5, 0);
+      rowCont.addChild(numT);
 
-      parent.addChild(g);
+      // Hover: show tier tooltip
+      const tierKey = info.key;
+      const tierColor = info.color;
+      const cardX = cardOffsetX + px + COL_W;
+      const cardY = cardOffsetY + row * ROW_H;
+
+      rowCont.on("pointerover", () => {
+        hoverBg.clear().rect(0, 0, COL_W - 4, ROW_H).fill({ color: 0x223344, alpha: 0.5 });
+        this._showTierTooltip(tierKey, tierColor, val, cardX, cardY);
+      });
+      rowCont.on("pointerout", () => {
+        hoverBg.clear().rect(0, 0, COL_W - 4, ROW_H).fill({ color: 0x223344, alpha: 0 });
+        this._hideTierTooltip();
+      });
     }
   }
 
@@ -578,9 +945,12 @@ export class RaceDetailScreen {
   // Unit roster (available units by category)
   // ---------------------------------------------------------------------------
 
-  private _buildUnitRoster(parent: Container, race: RaceDef, y: number): void {
+  private _buildUnitRoster(parent: Container, race: RaceDef, y: number, wiki = false): void {
     // Section label
-    const label = new Text({ text: "AVAILABLE UNITS", style: STYLE_SECTION });
+    const label = new Text({
+      text: wiki ? "ALL UNITS" : "AVAILABLE UNITS",
+      style: STYLE_SECTION,
+    });
     label.position.set(26, y);
     parent.addChild(label);
 
@@ -588,8 +958,11 @@ export class RaceDetailScreen {
       new Graphics().rect(26, y + 21, CARD_W - 52, 1).fill({ color: BORDER_COLOR, alpha: 0.15 }),
     );
 
+    // In wiki mode with no footer button, use more vertical space
     const ROSTER_TOP = y + 26;
-    const ROSTER_H = CARD_H - 68 - ROSTER_TOP - 5;
+    const ROSTER_H = wiki
+      ? CARD_H - ROSTER_TOP - 10
+      : CARD_H - 68 - ROSTER_TOP - 5;
     this._rosterH = ROSTER_H;
 
     // Mask
@@ -605,7 +978,7 @@ export class RaceDetailScreen {
     this._rosterContainer.mask = this._rosterMask;
     parent.addChild(this._rosterContainer);
 
-    const units = getGeneralUnits(race.factionUnits, race);
+    const units = wiki ? getAllUnits() : getGeneralUnits(race.factionUnits, race);
     const categories: UnitCategory[] = ["melee", "ranged", "magic", "siege", "creature", "heal"];
 
     const COL_W = Math.floor((CARD_W - 78 - SCROLLBAR_W - SCROLLBAR_PAD) / categories.length);
@@ -871,6 +1244,161 @@ export class RaceDetailScreen {
       this._tooltipSprite.stop();
       this._tooltipSprite = null;
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tier tooltip
+  // ---------------------------------------------------------------------------
+
+  private _buildTierTooltip(parent: Container): void {
+    this._tierTooltip = new Container();
+    this._tierTooltip.visible = false;
+    parent.addChild(this._tierTooltip);
+  }
+
+  private _showTierTooltip(
+    tierKey: keyof RaceTiers, color: number, raceVal: number,
+    cardX: number, cardY: number,
+  ): void {
+    const tt = this._tierTooltip;
+    tt.removeChildren();
+
+    const data = TIER_TOOLTIP_DATA[tierKey];
+    if (!data) return;
+
+    let cy = TIER_TT_PAD;
+
+    // Category title in its colour
+    const titleT = new Text({
+      text: tierKey.toUpperCase(),
+      style: new TextStyle({
+        fontFamily: "monospace", fontSize: 14, fill: color,
+        fontWeight: "bold", letterSpacing: 2,
+      }),
+    });
+    titleT.position.set(TIER_TT_PAD, cy);
+    tt.addChild(titleT);
+    cy += 18;
+
+    // Race tier value
+    const valT = new Text({
+      text: `Your tier: ${raceVal} / 5`,
+      style: new TextStyle({
+        fontFamily: "monospace", fontSize: 10, fill: 0xffd700,
+      }),
+    });
+    valT.position.set(TIER_TT_PAD, cy);
+    tt.addChild(valT);
+    cy += 14;
+
+    // Flavor text
+    const flavorT = new Text({
+      text: data.flavor,
+      style: new TextStyle({
+        fontFamily: "monospace", fontSize: 10, fill: 0x99aabb,
+        wordWrap: true, wordWrapWidth: TIER_TT_W - TIER_TT_PAD * 2,
+      }),
+    });
+    flavorT.position.set(TIER_TT_PAD, cy);
+    tt.addChild(flavorT);
+    cy += flavorT.height + 8;
+
+    // Divider
+    tt.addChild(
+      new Graphics()
+        .rect(TIER_TT_PAD, cy, TIER_TT_W - TIER_TT_PAD * 2, 1)
+        .fill({ color: 0x334455 }),
+    );
+    cy += 6;
+
+    // Abilities by tier
+    for (const entry of data.entries) {
+      const unlocked = entry.tier <= raceVal;
+
+      // Tier header
+      const tierHdr = new Text({
+        text: `TIER ${entry.tier}`,
+        style: new TextStyle({
+          fontFamily: "monospace", fontSize: 10,
+          fill: unlocked ? color : 0x445566,
+          fontWeight: "bold", letterSpacing: 1,
+        }),
+      });
+      tierHdr.position.set(TIER_TT_PAD, cy);
+      tt.addChild(tierHdr);
+
+      // Locked indicator
+      if (!unlocked) {
+        const lockT = new Text({
+          text: " (locked)",
+          style: new TextStyle({
+            fontFamily: "monospace", fontSize: 9, fill: 0x664444,
+          }),
+        });
+        lockT.position.set(TIER_TT_PAD + 48, cy + 1);
+        tt.addChild(lockT);
+      }
+      cy += 14;
+
+      for (const ab of entry.abilities) {
+        // Ability name in category colour (dimmed if locked)
+        const nameT = new Text({
+          text: ab.name,
+          style: new TextStyle({
+            fontFamily: "monospace", fontSize: 11,
+            fill: unlocked ? color : 0x445566,
+            fontWeight: "bold",
+          }),
+        });
+        nameT.position.set(TIER_TT_PAD + 6, cy);
+        tt.addChild(nameT);
+        cy += 13;
+
+        // Ability description
+        const descT = new Text({
+          text: ab.desc,
+          style: new TextStyle({
+            fontFamily: "monospace", fontSize: 9,
+            fill: unlocked ? 0x99aabb : 0x3a3a4a,
+            wordWrap: true, wordWrapWidth: TIER_TT_W - TIER_TT_PAD * 2 - 6,
+          }),
+        });
+        descT.position.set(TIER_TT_PAD + 6, cy);
+        tt.addChild(descT);
+        cy += descT.height + 4;
+      }
+
+      cy += 2;
+    }
+
+    const TT_H = cy + TIER_TT_PAD;
+
+    // Background
+    const bg = new Graphics()
+      .roundRect(0, 0, TIER_TT_W, TT_H, 6)
+      .fill({ color: 0x0d0d1e, alpha: 0.95 })
+      .roundRect(0, 0, TIER_TT_W, TT_H, 6)
+      .stroke({ color, alpha: 0.5, width: 1 });
+    tt.addChildAt(bg, 0);
+
+    // Position: to the right of the hovered row
+    let tx = cardX + 6;
+    let ty = cardY - TT_H / 2;
+
+    // Clamp within card bounds
+    if (tx + TIER_TT_W > CARD_W - 10) {
+      tx = cardX - TIER_TT_W - 16;
+    }
+    if (ty < 10) ty = 10;
+    if (ty + TT_H > CARD_H - 10) ty = CARD_H - TT_H - 10;
+
+    tt.position.set(tx, ty);
+    tt.visible = true;
+  }
+
+  private _hideTierTooltip(): void {
+    if (!this._tierTooltip) return;
+    this._tierTooltip.visible = false;
   }
 
   // ---------------------------------------------------------------------------

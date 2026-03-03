@@ -1,12 +1,9 @@
 // Leader selection screen — choose a leader before the game starts.
-// Layout: left scrollable grid of leader cards + right detail panel.
+// Layout: 1248×754 card (matching other screens) with throne.png banner
+// (image left, text right), leader grid, and detail panel with leader portraits.
 import {
-  Container,
-  Graphics,
-  Text,
-  TextStyle,
-  AnimatedSprite,
-  Texture,
+  Container, Graphics, Text, TextStyle, AnimatedSprite, Texture,
+  Sprite, Assets,
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { LEADER_DEFINITIONS } from "@sim/config/LeaderDefs";
@@ -14,74 +11,72 @@ import type { LeaderDef, LeaderId } from "@sim/config/LeaderDefs";
 import { animationManager } from "@view/animation/AnimationManager";
 import { UnitState, UnitType } from "@/types";
 
+// Vite static image imports
+import throneImgUrl from "@/img/throne.png";
+import arthurImgUrl from "@/img/arthur.png";
+import merlinImgUrl from "@/img/merlin.png";
+
+const LEADER_IMAGES: Record<string, string> = {
+  arthur: arthurImgUrl,
+  merlin: merlinImgUrl,
+};
+
+/** Map leader IDs to unit types for animated sprite previews. */
+const LEADER_UNIT_MAP: Record<string, UnitType> = {
+  arthur: UnitType.SWORDSMAN,
+  merlin: UnitType.STORM_MAGE,
+};
+
 // ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
 
 const STYLE_SCREEN_TITLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 22,
-  fill: 0xffd700,
-  fontWeight: "bold",
-  letterSpacing: 3,
+  fontFamily: "monospace", fontSize: 29, fill: 0xffd700,
+  fontWeight: "bold", letterSpacing: 3,
 });
 
 const STYLE_LEADER_NAME = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 13,
-  fill: 0xeeeeff,
-  fontWeight: "bold",
-  letterSpacing: 1,
+  fontFamily: "monospace", fontSize: 11, fill: 0xeeeeff,
+  fontWeight: "bold", letterSpacing: 1,
 });
 
 const STYLE_LEADER_TITLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 10,
-  fill: 0x8899bb,
+  fontFamily: "monospace", fontSize: 9, fill: 0x8899bb,
   letterSpacing: 1,
 });
 
 const STYLE_DETAIL_NAME = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 18,
-  fill: 0xffd700,
-  fontWeight: "bold",
-  letterSpacing: 2,
+  fontFamily: "monospace", fontSize: 22, fill: 0xffd700,
+  fontWeight: "bold", letterSpacing: 2,
 });
 
 const STYLE_DETAIL_TITLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 12,
-  fill: 0x99aabb,
+  fontFamily: "monospace", fontSize: 14, fill: 0x99aabb,
   letterSpacing: 1,
 });
 
 const STYLE_DETAIL_FLAVOR = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 11,
-  fill: 0xaabbcc,
-  letterSpacing: 0,
-  wordWrap: true,
-  wordWrapWidth: 220,
+  fontFamily: "monospace", fontSize: 12, fill: 0xaabbcc,
+  wordWrap: true, wordWrapWidth: 420,
 });
 
 const STYLE_BONUS_LABEL = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 10,
-  fill: 0x88ff88,
-  letterSpacing: 1,
-  fontWeight: "bold",
+  fontFamily: "monospace", fontSize: 11, fill: 0x88ff88,
+  letterSpacing: 1, fontWeight: "bold",
 });
 
 const STYLE_BONUS_TEXT = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 11,
-  fill: 0x88ffaa,
-  letterSpacing: 0,
-  wordWrap: true,
-  wordWrapWidth: 220,
+  fontFamily: "monospace", fontSize: 12, fill: 0x88ffaa,
+  wordWrap: true, wordWrapWidth: 420,
 });
 
+const STYLE_BANNER_TITLE = new TextStyle({
+  fontFamily: "monospace", fontSize: 16, fill: 0xffd700,
+  fontWeight: "bold", letterSpacing: 2,
+});
+
+// Colors
 const BG_COLOR = 0x0a0a18;
 const BORDER_COLOR = 0xffd700;
 const CARD_SELECTED_BORDER = 0xffd700;
@@ -91,14 +86,37 @@ const CARD_NORMAL_BORDER = 0x334455;
 // Layout constants
 // ---------------------------------------------------------------------------
 
-const CARD_W = 110;
-const CARD_H = 80;
-const CARD_GAP = 8;
-const GRID_COLS = 4;
-const GRID_PAD = 16;
+const MAIN_W = 1248;
+const MAIN_H = 754;
+const CORNER_R = 10;
 
-const DETAIL_W = 260;
-const DETAIL_PAD = 16;
+// Banner (throne.png — image left, text right)
+const BANNER_Y = 75;
+const BANNER_IMG_W = MAIN_W - 52;   // 1196
+const BANNER_IMG_H = 273;
+
+// Content (below banner)
+const CONTENT_Y = BANNER_Y + BANNER_IMG_H + 12;  // 347
+const FOOTER_Y = MAIN_H - 68;                     // 686
+const CONTENT_H = FOOTER_Y - CONTENT_Y;           // 339
+
+// Leader card grid (left side) — compact 4-col grid to give portrait more room
+const GRID_X = 26;
+const GRID_COLS = 4;
+const LEADER_CARD_W = 100;
+const LEADER_CARD_H = 74;
+const LEADER_CARD_GAP = 8;
+const GRID_W = GRID_COLS * LEADER_CARD_W + (GRID_COLS - 1) * LEADER_CARD_GAP; // 424
+
+// Detail panel (right side)
+const DETAIL_X = GRID_X + GRID_W + 20;    // 470
+const DETAIL_W = MAIN_W - DETAIL_X - 26;  // 752
+
+// Portrait within detail
+const PORTRAIT_W = 280;
+const PORTRAIT_H = 310;
+const TEXT_IN_DETAIL_X = PORTRAIT_W + 16;  // 296
+const TEXT_IN_DETAIL_W = DETAIL_W - TEXT_IN_DETAIL_X - 10; // 446
 
 // ---------------------------------------------------------------------------
 // Class
@@ -109,35 +127,24 @@ export class LeaderSelectScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _mainCard!: Container;
 
-  private _selectedId: LeaderId = LEADER_DEFINITIONS[0].id; // Arthur by default
+  private _selectedId: LeaderId = LEADER_DEFINITIONS[0].id;
 
-  // Card button entries
+  // Card entries
   private _cards: Array<{
     id: LeaderId;
     bg: Graphics;
     container: Container;
-    portraitSprite?: AnimatedSprite;
   }> = [];
 
-  // Detail panel elements
-  private _detailPanel!: Container;
-  private _detailName!: Text;
-  private _detailTitle!: Text;
-  private _detailFlavor!: Text;
-  private _detailBonus!: Text;
-  private _detailPortrait!: Graphics;
-
-  // Main layout container (card + detail side by side)
-  private _mainCard!: Container;
-  private _mainCardW = 0;
+  // Detail panel
+  private _detailContainer!: Container;
 
   // Scrollable grid
-  private _gridScroll!: Container;
+  private _gridContainer!: Container;
   private _gridMask!: Graphics;
-  private _gridScrollY = 0;
-  private _gridContentH = 0;
-  private _gridViewH = 0;
+  private _scrollY = 0;
 
   // Callbacks
   onNext: (() => void) | null = null;
@@ -154,9 +161,14 @@ export class LeaderSelectScreen {
   init(vm: ViewManager): void {
     this._vm = vm;
 
-    // Full-screen background
     this._bg = new Graphics();
     this.container.addChild(this._bg);
+
+    this._mainCard = new Container();
+    this.container.addChild(this._mainCard);
+
+    // Preload images
+    void Assets.load([throneImgUrl, arthurImgUrl, merlinImgUrl]);
 
     this._buildUI();
 
@@ -178,113 +190,167 @@ export class LeaderSelectScreen {
   // ---------------------------------------------------------------------------
 
   private _buildUI(): void {
-    const gridW =
-      GRID_COLS * CARD_W + (GRID_COLS - 1) * CARD_GAP + GRID_PAD * 2;
-    const totalW = gridW + DETAIL_W + 24; // 24 = gap between grid and detail
+    const card = this._mainCard;
 
-    // We'll calculate height properly during layout, use a placeholder
-    const mainCard = new Container();
-    mainCard.addChild(
+    // Card background
+    card.addChild(
       new Graphics()
-        .roundRect(0, 0, totalW, 500, 8)
+        .roundRect(0, 0, MAIN_W, MAIN_H, CORNER_R)
         .fill({ color: 0x10102a, alpha: 0.97 })
-        .roundRect(0, 0, totalW, 500, 8)
+        .roundRect(0, 0, MAIN_W, MAIN_H, CORNER_R)
         .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 }),
     );
-    this._mainCard = mainCard;
-    this._mainCardW = totalW;
-    this.container.addChild(mainCard);
 
-    // Screen title
-    const title = new Text({
-      text: "CHOOSE YOUR LEADER",
-      style: STYLE_SCREEN_TITLE,
-    });
+    // Back button
+    const backBtn = this._makeNavBtn("< BACK", 104, 36, false);
+    backBtn.position.set(21, 18);
+    backBtn.on("pointerdown", () => this.onBack?.());
+    card.addChild(backBtn);
+
+    // Title
+    const title = new Text({ text: "CHOOSE YOUR LEADER", style: STYLE_SCREEN_TITLE });
     title.anchor.set(0.5, 0);
-    title.position.set(totalW / 2, 14);
-    mainCard.addChild(title);
+    title.position.set(MAIN_W / 2, 18);
+    card.addChild(title);
 
-    // Divider
-    mainCard.addChild(
-      new Graphics()
-        .rect(16, 48, totalW - 32, 1)
-        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    // Header divider
+    card.addChild(
+      new Graphics().rect(21, 65, MAIN_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
-    // Back button (top-left)
-    const backBtn = this._makeNavBtn("< BACK", 80, 28);
-    backBtn.position.set(16, 14);
-    backBtn.on("pointerdown", () => this.onBack?.());
-    mainCard.addChild(backBtn);
+    // --- Banner: throne.png (left) + flavor text (right) ---
+    this._buildBanner(card);
+
+    // Banner divider
+    card.addChild(
+      new Graphics().rect(21, CONTENT_Y - 8, MAIN_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.15 }),
+    );
 
     // --- Grid area (left) ---
-    const gridAreaX = GRID_PAD;
-    const gridAreaY = 60;
+    this._gridContainer = new Container();
+    this._gridContainer.position.set(GRID_X, CONTENT_Y);
+    card.addChild(this._gridContainer);
 
-    // Scrollable container for the grid
-    this._gridScroll = new Container();
-    this._gridScroll.position.set(gridAreaX, gridAreaY);
+    this._gridMask = new Graphics()
+      .rect(GRID_X, CONTENT_Y, GRID_W, CONTENT_H)
+      .fill({ color: 0xffffff });
+    card.addChild(this._gridMask);
+    this._gridContainer.mask = this._gridMask;
 
     // Build leader cards
     this._cards = [];
     for (let i = 0; i < LEADER_DEFINITIONS.length; i++) {
-      const leader = LEADER_DEFINITIONS[i];
       const col = i % GRID_COLS;
       const row = Math.floor(i / GRID_COLS);
-      const cx = col * (CARD_W + CARD_GAP);
-      const cy = row * (CARD_H + CARD_GAP);
-
-      const card = this._makeLeaderCard(leader, cx, cy);
-      this._gridScroll.addChild(card.container);
-      this._cards.push(card);
+      const x = col * (LEADER_CARD_W + LEADER_CARD_GAP);
+      const y = row * (LEADER_CARD_H + LEADER_CARD_GAP);
+      this._makeLeaderCard(LEADER_DEFINITIONS[i], x, y);
     }
 
-    const rows = Math.ceil(LEADER_DEFINITIONS.length / GRID_COLS);
-    this._gridContentH = rows * (CARD_H + CARD_GAP) - CARD_GAP + 8;
+    // Wheel scroll
+    card.eventMode = "static";
+    card.on("wheel", (e) => this._onGridWheel(e));
 
-    mainCard.addChild(this._gridScroll);
-
-    // Mask for grid scroll area (height set in layout)
-    this._gridMask = new Graphics();
-    mainCard.addChild(this._gridMask);
-    this._gridScroll.mask = this._gridMask;
-
-    // Wheel scroll on grid
-    this._gridScroll.eventMode = "static";
-    this._gridScroll.on("wheel", (e) => this._onGridWheel(e));
+    // Vertical separator
+    card.addChild(
+      new Graphics()
+        .rect(DETAIL_X - 10, CONTENT_Y, 1, CONTENT_H)
+        .fill({ color: BORDER_COLOR, alpha: 0.15 }),
+    );
 
     // --- Detail panel (right) ---
-    const detailX = gridW + 8;
-    const detailY = 60;
-    this._detailPanel = new Container();
-    this._detailPanel.position.set(detailX, detailY);
-    mainCard.addChild(this._detailPanel);
+    this._detailContainer = new Container();
+    this._detailContainer.position.set(DETAIL_X, CONTENT_Y);
+    card.addChild(this._detailContainer);
 
-    // Build detail panel structure
-    this._buildDetailPanel();
+    // Footer divider
+    card.addChild(
+      new Graphics().rect(21, FOOTER_Y, MAIN_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.15 }),
+    );
 
-    // --- Bottom navigation ---
-    const nextBtn = this._makeNavBtn("SELECT RACE  >", 160, 34, true);
+    // Next button
+    const nextBtn = this._makeNavBtn("SELECT RACE  >", 195, 44, true);
+    nextBtn.position.set(MAIN_W - 221, MAIN_H - 57);
     nextBtn.on("pointerdown", () => this.onNext?.());
-    this._nextBtn = nextBtn;
-    mainCard.addChild(nextBtn);
+    card.addChild(nextBtn);
 
-    // Select first leader (Arthur)
+    // Select default leader
     this._selectLeader(this._selectedId);
   }
 
-  private _nextBtn!: Container;
+  // ---------------------------------------------------------------------------
+  // Banner (throne.png left, flavor text right — matching race select pattern)
+  // ---------------------------------------------------------------------------
 
-  private _makeLeaderCard(
-    leader: LeaderDef,
-    x: number,
-    y: number,
-  ): {
-    id: LeaderId;
-    bg: Graphics;
-    container: Container;
-    portraitSprite?: AnimatedSprite;
-  } {
+  private _buildBanner(parent: Container): void {
+    const bannerBox = new Container();
+    bannerBox.position.set(26, BANNER_Y);
+    parent.addChild(bannerBox);
+
+    // Outer box background
+    bannerBox.addChild(
+      new Graphics()
+        .roundRect(0, 0, BANNER_IMG_W, BANNER_IMG_H, 6)
+        .fill({ color: 0x080818 })
+        .roundRect(0, 0, BANNER_IMG_W, BANNER_IMG_H, 6)
+        .stroke({ color: 0x334466, alpha: 0.6, width: 1 }),
+    );
+
+    // Image frame on the left with gold outline
+    const imgFrameX = 10;
+    const imgFrameY = 10;
+    const imgFrameW = 780;
+    const imgFrameH = BANNER_IMG_H - 20;
+
+    bannerBox.addChild(
+      new Graphics()
+        .roundRect(imgFrameX, imgFrameY, imgFrameW, imgFrameH, 6)
+        .fill({ color: 0x060612 })
+        .roundRect(imgFrameX, imgFrameY, imgFrameW, imgFrameH, 6)
+        .stroke({ color: BORDER_COLOR, alpha: 0.5, width: 1.5 }),
+    );
+
+    void Assets.load(throneImgUrl).then((tex: Texture) => {
+      const sprite = new Sprite(tex);
+      const maxW = imgFrameW - 10;
+      const maxH = imgFrameH - 10;
+      const scale = Math.min(maxW / tex.width, maxH / tex.height);
+      sprite.scale.set(scale);
+      sprite.position.set(
+        imgFrameX + 5 + (maxW - tex.width * scale) / 2,
+        imgFrameY + 5 + (maxH - tex.height * scale) / 2,
+      );
+      bannerBox.addChild(sprite);
+    });
+
+    // Text area on the right of the image
+    const textX = imgFrameX + imgFrameW + 16;
+    const textW = BANNER_IMG_W - textX - 10;
+
+    const bannerTitle = new Text({ text: "THE THRONE ROOM", style: STYLE_BANNER_TITLE });
+    bannerTitle.position.set(textX, 20);
+    bannerBox.addChild(bannerTitle);
+
+    bannerBox.addChild(
+      new Graphics().rect(textX, 42, textW, 1).fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
+    const flavorText = new Text({
+      text: "Every leader brings a unique bonus to your campaign. Choose wisely — the right commander can turn the tide of battle before a single sword is drawn.\n\nStudy their strengths and pick the one that best complements your strategy.",
+      style: new TextStyle({
+        fontFamily: "monospace", fontSize: 11, fill: 0x99aabb,
+        wordWrap: true, wordWrapWidth: textW,
+      }),
+    });
+    flavorText.position.set(textX, 52);
+    bannerBox.addChild(flavorText);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Leader card
+  // ---------------------------------------------------------------------------
+
+  private _makeLeaderCard(leader: LeaderDef, x: number, y: number): void {
     const c = new Container();
     c.position.set(x, y);
     c.eventMode = "static";
@@ -293,324 +359,247 @@ export class LeaderSelectScreen {
     const bg = new Graphics();
     c.addChild(bg);
 
-    // Portrait placeholder (coloured square with initial)
-    const portrait = new Graphics()
-      .roundRect(6, 6, CARD_W - 12, CARD_H - 36, 3)
-      .fill({ color: 0x1a1e2e });
-    c.addChild(portrait);
+    // Portrait area
+    const portraitW = LEADER_CARD_W - 12;
+    const portraitH = LEADER_CARD_H - 30;
 
-    let portraitSprite: AnimatedSprite | undefined;
-    const portraitW = CARD_W - 12;
-    const portraitH = CARD_H - 36;
+    c.addChild(
+      new Graphics()
+        .roundRect(6, 6, portraitW, portraitH, 3)
+        .fill({ color: 0x1a1e2e }),
+    );
 
-    if (leader.id === "arthur") {
-      const frames = animationManager.getFrames(
-        UnitType.SWORDSMAN,
-        UnitState.IDLE,
-      );
+    // Try animated sprite for known leaders
+    const unitType = LEADER_UNIT_MAP[leader.id];
+    if (unitType) {
+      const frames = animationManager.getFrames(unitType, UnitState.IDLE);
       if (frames.length > 0 && frames[0] !== Texture.WHITE) {
         const sprite = new AnimatedSprite(frames);
-        sprite.anchor.set(0.5, 1);
-        sprite.width = portraitW - 4;
-        sprite.height = portraitH - 4;
-        sprite.position.set(CARD_W / 2, portraitH + 2);
-        const fs = animationManager.getFrameSet(
-          UnitType.SWORDSMAN,
-          UnitState.IDLE,
-        );
+        sprite.anchor.set(0.5, 0.5);
+        sprite.width = portraitW - 8;
+        sprite.height = portraitH - 8;
+        sprite.position.set(LEADER_CARD_W / 2, 6 + portraitH / 2);
+        const fs = animationManager.getFrameSet(unitType, UnitState.IDLE);
         sprite.animationSpeed = fs.fps / 60;
         sprite.loop = true;
         sprite.play();
         c.addChild(sprite);
-        portraitSprite = sprite;
-        portrait.visible = false;
       }
-    } else if (leader.id === "merlin") {
-      const frames = animationManager.getFrames(
-        UnitType.STORM_MAGE,
-        UnitState.IDLE,
-      );
-      if (frames.length > 0 && frames[0] !== Texture.WHITE) {
-        const sprite = new AnimatedSprite(frames);
-        sprite.anchor.set(0.5, 1);
-        sprite.width = portraitW - 4;
-        sprite.height = portraitH - 4;
-        sprite.position.set(CARD_W / 2, portraitH + 2);
-        const fs = animationManager.getFrameSet(
-          UnitType.STORM_MAGE,
-          UnitState.IDLE,
-        );
-        sprite.animationSpeed = fs.fps / 60;
-        sprite.loop = true;
-        sprite.play();
-        c.addChild(sprite);
-        portraitSprite = sprite;
-        portrait.visible = false;
-      }
-    }
-
-    if (!portraitSprite) {
+    } else {
+      // Fallback: letter initial
       const initial = new Text({
         text: leader.name.charAt(0),
         style: new TextStyle({
-          fontFamily: "monospace",
-          fontSize: 22,
-          fill: 0xffd700,
-          fontWeight: "bold",
+          fontFamily: "monospace", fontSize: 20, fill: 0xffd700, fontWeight: "bold",
         }),
       });
       initial.anchor.set(0.5, 0.5);
-      initial.position.set(CARD_W / 2, (CARD_H - 30) / 2 + 6);
+      initial.position.set(LEADER_CARD_W / 2, 6 + portraitH / 2);
       c.addChild(initial);
     }
 
-    const nameText = new Text({
-      text: leader.name.toUpperCase(),
-      style: STYLE_LEADER_NAME,
-    });
+    // Name
+    const nameText = new Text({ text: leader.name.toUpperCase(), style: STYLE_LEADER_NAME });
     nameText.anchor.set(0.5, 0);
-    nameText.position.set(CARD_W / 2, CARD_H - 30);
+    nameText.position.set(LEADER_CARD_W / 2, LEADER_CARD_H - 26);
     c.addChild(nameText);
 
-    const titleText = new Text({
-      text: leader.title,
-      style: STYLE_LEADER_TITLE,
-    });
+    // Title
+    const titleText = new Text({ text: leader.title, style: STYLE_LEADER_TITLE });
     titleText.anchor.set(0.5, 0);
-    titleText.position.set(CARD_W / 2, CARD_H - 17);
+    titleText.position.set(LEADER_CARD_W / 2, LEADER_CARD_H - 14);
     c.addChild(titleText);
+
+    this._refreshCard(bg, leader.id === this._selectedId);
 
     c.on("pointerdown", () => this._selectLeader(leader.id));
 
-    this._refreshCard(bg, false);
-
-    return { id: leader.id, bg, container: c, portraitSprite };
+    this._gridContainer.addChild(c);
+    this._cards.push({ id: leader.id, bg, container: c });
   }
 
-  private _buildDetailPanel(): void {
-    const dp = this._detailPanel;
-    dp.removeChildren();
+  // ---------------------------------------------------------------------------
+  // Detail panel (rebuilt on each selection)
+  // ---------------------------------------------------------------------------
 
-    const panelBg = new Graphics()
-      .roundRect(0, 0, DETAIL_W - DETAIL_PAD, 380, 6)
-      .fill({ color: 0x0d0d1e, alpha: 0.8 })
-      .roundRect(0, 0, DETAIL_W - DETAIL_PAD, 380, 6)
-      .stroke({ color: 0x334466, width: 1 });
-    dp.addChild(panelBg);
+  private _buildDetailPanel(leader: LeaderDef): void {
+    const d = this._detailContainer;
+    d.removeChildren();
 
-    // Portrait area
-    this._detailPortrait = new Graphics()
-      .roundRect(8, 8, DETAIL_W - DETAIL_PAD - 16, 90, 4)
-      .fill({ color: 0x151525 });
-    dp.addChild(this._detailPortrait);
+    // Panel background
+    d.addChild(
+      new Graphics()
+        .roundRect(0, 0, DETAIL_W, CONTENT_H, 6)
+        .fill({ color: 0x0d0d1e, alpha: 0.6 })
+        .roundRect(0, 0, DETAIL_W, CONTENT_H, 6)
+        .stroke({ color: 0x334466, width: 1 }),
+    );
 
-    // Portrait initial text (updated on select)
-    const portraitInitial = new Text({
-      text: "",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 48,
-        fill: 0xffd700,
-        fontWeight: "bold",
-      }),
-    });
-    portraitInitial.anchor.set(0.5, 0.5);
-    portraitInitial.position.set((DETAIL_W - DETAIL_PAD) / 2, 53);
-    dp.addChild(portraitInitial);
-    this._portraitInitial = portraitInitial;
+    // --- Portrait image (left side) ---
+    const portraitContainer = new Container();
+    portraitContainer.position.set(10, 10);
+    d.addChild(portraitContainer);
+
+    // Portrait frame with gold outline
+    portraitContainer.addChild(
+      new Graphics()
+        .roundRect(0, 0, PORTRAIT_W, PORTRAIT_H, 6)
+        .fill({ color: 0x080818 })
+        .roundRect(0, 0, PORTRAIT_W, PORTRAIT_H, 6)
+        .stroke({ color: BORDER_COLOR, alpha: 0.5, width: 1.5 }),
+    );
+
+    // Load leader image or show placeholder
+    const imgUrl = LEADER_IMAGES[leader.id];
+    if (imgUrl) {
+      void Assets.load(imgUrl).then((tex: Texture) => {
+        if (!this.container.visible) return;
+        const sprite = new Sprite(tex);
+        const maxW = PORTRAIT_W - 10;
+        const maxH = PORTRAIT_H - 10;
+        const scale = Math.min(maxW / tex.width, maxH / tex.height);
+        sprite.scale.set(scale);
+        sprite.position.set(
+          5 + (maxW - tex.width * scale) / 2,
+          5 + (maxH - tex.height * scale) / 2,
+        );
+        portraitContainer.addChild(sprite);
+      });
+    } else {
+      // Throne room placeholder for leaders without a portrait
+      void Assets.load(throneImgUrl).then((tex: Texture) => {
+        if (!this.container.visible) return;
+        const sprite = new Sprite(tex);
+        const maxW = PORTRAIT_W - 10;
+        const maxH = PORTRAIT_H - 10;
+        const scale = Math.min(maxW / tex.width, maxH / tex.height);
+        sprite.scale.set(scale);
+        sprite.position.set(
+          5 + (maxW - tex.width * scale) / 2,
+          5 + (maxH - tex.height * scale) / 2,
+        );
+        portraitContainer.addChild(sprite);
+      });
+    }
+
+    // --- Text info (right of portrait) ---
+    const tx = TEXT_IN_DETAIL_X;
+    let ty = 14;
 
     // Name
-    this._detailName = new Text({ text: "", style: STYLE_DETAIL_NAME });
-    this._detailName.anchor.set(0.5, 0);
-    this._detailName.position.set((DETAIL_W - DETAIL_PAD) / 2, 106);
-    dp.addChild(this._detailName);
+    const nameT = new Text({ text: leader.name.toUpperCase(), style: STYLE_DETAIL_NAME });
+    nameT.position.set(tx, ty);
+    d.addChild(nameT);
+    ty += 28;
 
     // Title
-    this._detailTitle = new Text({ text: "", style: STYLE_DETAIL_TITLE });
-    this._detailTitle.anchor.set(0.5, 0);
-    this._detailTitle.position.set((DETAIL_W - DETAIL_PAD) / 2, 126);
-    dp.addChild(this._detailTitle);
+    const titleT = new Text({ text: leader.title, style: STYLE_DETAIL_TITLE });
+    titleT.position.set(tx, ty);
+    d.addChild(titleT);
+    ty += 22;
 
     // Divider
-    dp.addChild(
-      new Graphics()
-        .rect(8, 146, DETAIL_W - DETAIL_PAD - 16, 1)
-        .fill({ color: 0x334466 }),
-    );
+    d.addChild(new Graphics().rect(tx, ty, TEXT_IN_DETAIL_W, 1).fill({ color: 0x334455 }));
+    ty += 10;
 
-    // Flavor
-    const flavorLabel = new Text({
+    // Lore label
+    const loreLabel = new Text({
       text: "LORE",
       style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 9,
-        fill: 0x556677,
-        letterSpacing: 2,
+        fontFamily: "monospace", fontSize: 10, fill: 0x556677, letterSpacing: 2,
       }),
     });
-    flavorLabel.position.set(10, 154);
-    dp.addChild(flavorLabel);
+    loreLabel.position.set(tx, ty);
+    d.addChild(loreLabel);
+    ty += 16;
 
-    this._detailFlavor = new Text({ text: "", style: STYLE_DETAIL_FLAVOR });
-    this._detailFlavor.position.set(10, 166);
-    dp.addChild(this._detailFlavor);
+    // Flavor text
+    const flavorT = new Text({ text: leader.flavor, style: STYLE_DETAIL_FLAVOR });
+    flavorT.position.set(tx, ty);
+    d.addChild(flavorT);
+    ty += flavorT.height + 14;
 
     // Divider
-    dp.addChild(
-      new Graphics()
-        .rect(8, 224, DETAIL_W - DETAIL_PAD - 16, 1)
-        .fill({ color: 0x334466 }),
-    );
+    d.addChild(new Graphics().rect(tx, ty, TEXT_IN_DETAIL_W, 1).fill({ color: 0x334455 }));
+    ty += 10;
 
-    // Bonus
+    // Bonus label
     const bonusLabel = new Text({ text: "BONUS", style: STYLE_BONUS_LABEL });
-    bonusLabel.position.set(10, 232);
-    dp.addChild(bonusLabel);
+    bonusLabel.position.set(tx, ty);
+    d.addChild(bonusLabel);
+    ty += 16;
 
-    this._detailBonus = new Text({ text: "", style: STYLE_BONUS_TEXT });
-    this._detailBonus.position.set(10, 248);
-    dp.addChild(this._detailBonus);
+    // Bonus text
+    const bonusT = new Text({ text: leader.bonusLabel, style: STYLE_BONUS_TEXT });
+    bonusT.position.set(tx, ty);
+    d.addChild(bonusT);
   }
 
-  private _portraitInitial!: Text;
-  private _detailPortraitSprite?: AnimatedSprite;
+  // ---------------------------------------------------------------------------
+  // Selection
+  // ---------------------------------------------------------------------------
 
   private _selectLeader(id: LeaderId): void {
     this._selectedId = id;
 
-    // Refresh card borders
     for (const card of this._cards) {
       this._refreshCard(card.bg, card.id === id);
     }
 
-    // Update detail panel
     const leader = LEADER_DEFINITIONS.find((l) => l.id === id);
-    if (!leader) return;
-
-    // Clean up previous portrait sprite
-    if (this._detailPortraitSprite) {
-      this._detailPortraitSprite.stop();
-      this._detailPortraitSprite.destroy();
-      this._detailPortraitSprite = undefined;
-    }
-
-    // Show swordsman sprite for Arthur, storm mage for Merlin, initial for others
-    if (leader.id === "arthur") {
-      this._portraitInitial.visible = false;
-      this._detailPortrait.visible = false;
-      const frames = animationManager.getFrames(
-        UnitType.SWORDSMAN,
-        UnitState.IDLE,
-      );
-      if (frames.length > 0 && frames[0] !== Texture.WHITE) {
-        const sprite = new AnimatedSprite(frames);
-        sprite.anchor.set(0.5, 1);
-        sprite.width = 70;
-        sprite.height = 70;
-        sprite.position.set((DETAIL_W - DETAIL_PAD) / 2, 96);
-        const fs = animationManager.getFrameSet(
-          UnitType.SWORDSMAN,
-          UnitState.IDLE,
-        );
-        sprite.animationSpeed = fs.fps / 60;
-        sprite.loop = true;
-        sprite.play();
-        this._detailPanel.addChild(sprite);
-        this._detailPortraitSprite = sprite;
-      }
-    } else if (leader.id === "merlin") {
-      this._portraitInitial.visible = false;
-      this._detailPortrait.visible = false;
-      const frames = animationManager.getFrames(
-        UnitType.STORM_MAGE,
-        UnitState.IDLE,
-      );
-      if (frames.length > 0 && frames[0] !== Texture.WHITE) {
-        const sprite = new AnimatedSprite(frames);
-        sprite.anchor.set(0.5, 1);
-        sprite.width = 70;
-        sprite.height = 70;
-        sprite.position.set((DETAIL_W - DETAIL_PAD) / 2, 96);
-        const fs = animationManager.getFrameSet(
-          UnitType.STORM_MAGE,
-          UnitState.IDLE,
-        );
-        sprite.animationSpeed = fs.fps / 60;
-        sprite.loop = true;
-        sprite.play();
-        this._detailPanel.addChild(sprite);
-        this._detailPortraitSprite = sprite;
-      }
-    } else {
-      this._portraitInitial.visible = true;
-      this._portraitInitial.text = leader.name.charAt(0);
-    }
-
-    this._detailName.text = leader.name.toUpperCase();
-    this._detailTitle.text = leader.title;
-    this._detailFlavor.text = leader.flavor;
-    this._detailBonus.text = leader.bonusLabel;
+    if (leader) this._buildDetailPanel(leader);
   }
 
   private _refreshCard(bg: Graphics, selected: boolean): void {
     bg.clear();
-    bg.roundRect(0, 0, CARD_W, CARD_H, 6)
+    bg.roundRect(0, 0, LEADER_CARD_W, LEADER_CARD_H, 6)
       .fill({ color: selected ? 0x1a1e32 : 0x10101e })
-      .roundRect(0, 0, CARD_W, CARD_H, 6)
+      .roundRect(0, 0, LEADER_CARD_W, LEADER_CARD_H, 6)
       .stroke({
         color: selected ? CARD_SELECTED_BORDER : CARD_NORMAL_BORDER,
         width: selected ? 2 : 1,
       });
   }
 
-  private _makeNavBtn(
-    label: string,
-    w: number,
-    h: number,
-    primary = false,
-  ): Container {
+  // ---------------------------------------------------------------------------
+  // Scroll
+  // ---------------------------------------------------------------------------
+
+  private _onGridWheel(e: WheelEvent): void {
+    const maxRows = Math.ceil(LEADER_DEFINITIONS.length / GRID_COLS);
+    const totalH = maxRows * (LEADER_CARD_H + LEADER_CARD_GAP);
+    if (totalH <= CONTENT_H) return;
+    const maxScroll = totalH - CONTENT_H;
+    this._scrollY = Math.max(0, Math.min(maxScroll, this._scrollY + e.deltaY));
+    this._gridContainer.position.y = CONTENT_Y - this._scrollY;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Nav button
+  // ---------------------------------------------------------------------------
+
+  private _makeNavBtn(label: string, w: number, h: number, primary = false): Container {
     const btn = new Container();
     btn.eventMode = "static";
     btn.cursor = "pointer";
-
     const bg = new Graphics()
-      .roundRect(0, 0, w, h, 6)
+      .roundRect(0, 0, w, h, 8)
       .fill({ color: primary ? 0x1a3a1a : 0x1a2a3a })
-      .roundRect(0, 0, w, h, 6)
+      .roundRect(0, 0, w, h, 8)
       .stroke({ color: primary ? 0x44aa66 : 0x4488cc, width: 1.5 });
     btn.addChild(bg);
-
-    const txt = new Text({
-      text: label,
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: primary ? 13 : 11,
-        fill: primary ? 0x88ffaa : 0x88bbff,
-        fontWeight: "bold",
-        letterSpacing: 1,
-      }),
-    });
+    const txt = new Text({ text: label, style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: primary ? 17 : 14,
+      fill: primary ? 0x88ffaa : 0x88bbff,
+      fontWeight: "bold", letterSpacing: 1,
+    }) });
     txt.anchor.set(0.5, 0.5);
     txt.position.set(w / 2, h / 2);
     btn.addChild(txt);
-
-    btn.on("pointerover", () => {
-      bg.tint = primary ? 0xaaffcc : 0xaaddff;
-    });
-    btn.on("pointerout", () => {
-      bg.tint = 0xffffff;
-    });
-
+    btn.on("pointerover", () => { bg.tint = primary ? 0xaaffcc : 0xaaddff; });
+    btn.on("pointerout", () => { bg.tint = 0xffffff; });
     return btn;
-  }
-
-  private _onGridWheel(e: any): void {
-    const maxScroll = Math.max(0, this._gridContentH - this._gridViewH);
-    this._gridScrollY = Math.max(
-      0,
-      Math.min(maxScroll, this._gridScrollY + e.deltaY * 0.5),
-    );
-    this._gridScroll.position.y = 60 - this._gridScrollY;
   }
 
   // ---------------------------------------------------------------------------
@@ -620,39 +609,10 @@ export class LeaderSelectScreen {
   private _layout(): void {
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
-
-    this._bg.clear();
-    this._bg.rect(0, 0, sw, sh).fill({ color: BG_COLOR });
-
-    // Dynamic card height: use most of screen height with padding
-    const cardH = Math.min(540, sh - 60);
-    const gridViewH = cardH - 60 - 60; // top header + bottom buttons
-    this._gridViewH = gridViewH;
-    // Rebuild background rect
-    const mc = this._mainCard;
-    const bg = mc.children[0] as Graphics;
-    bg.clear();
-    bg.roundRect(0, 0, this._mainCardW, cardH, 8)
-      .fill({ color: 0x10102a, alpha: 0.97 })
-      .roundRect(0, 0, this._mainCardW, cardH, 8)
-      .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
-
-    // Update grid mask to match view area
-    const gridAreaX = GRID_PAD;
-    const gridAreaY = 60;
-    this._gridMask.clear();
-    this._gridMask
-      .rect(gridAreaX, gridAreaY, GRID_COLS * (CARD_W + CARD_GAP), gridViewH)
-      .fill({ color: 0xffffff });
-
-    // Position "Next" button at the bottom-right
-    const nextBtn = this._nextBtn;
-    nextBtn.position.set(this._mainCardW - 176, cardH - 50);
-
-    // Center card on screen
-    mc.position.set(
-      Math.floor((sw - this._mainCardW) / 2),
-      Math.floor((sh - cardH) / 2),
+    this._bg.clear().rect(0, 0, sw, sh).fill({ color: BG_COLOR });
+    this._mainCard.position.set(
+      Math.floor((sw - MAIN_W) / 2),
+      Math.floor((sh - MAIN_H) / 2),
     );
   }
 }

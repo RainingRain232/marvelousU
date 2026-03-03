@@ -39,6 +39,7 @@ import { scenarioSelectScreen } from "@view/ui/ScenarioSelectScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
 import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
+import { buildingWikiScreen } from "@view/ui/BuildingWikiScreen";
 import { minimap } from "@view/ui/Minimap";
 import { campaignState } from "@sim/config/CampaignState";
 import { getScenario } from "@sim/config/CampaignDefs";
@@ -141,6 +142,31 @@ import type { RaceId } from "@sim/config/RaceDefs";
     );
   };
 
+  menuScreen.onUnitWiki = () => {
+    menuScreen.hide();
+    raceDetailScreen.onBack = () => {
+      raceDetailScreen.hide();
+      menuScreen.show();
+    };
+    raceDetailScreen.showWiki();
+  };
+
+  // ---------------------------------------------------------------------------
+  // Building wiki screen
+  // ---------------------------------------------------------------------------
+  buildingWikiScreen.init(viewManager);
+  buildingWikiScreen.hide();
+
+  buildingWikiScreen.onBack = () => {
+    buildingWikiScreen.hide();
+    menuScreen.show();
+  };
+
+  menuScreen.onBuildingWiki = () => {
+    menuScreen.hide();
+    buildingWikiScreen.show();
+  };
+
   leaderSelectScreen.onBack = () => {
     leaderSelectScreen.hide();
     menuScreen.show();
@@ -170,12 +196,11 @@ import type { RaceId } from "@sim/config/RaceDefs";
 
   raceSelectScreen.onNext = () => {
     raceSelectScreen.hide();
+    raceDetailScreen.onBack = () => {
+      raceDetailScreen.hide();
+      raceSelectScreen.show();
+    };
     raceDetailScreen.show(raceSelectScreen.selectedRaceId);
-  };
-
-  raceDetailScreen.onBack = () => {
-    raceDetailScreen.hide();
-    raceSelectScreen.show();
   };
 
   // ---------------------------------------------------------------------------
@@ -198,6 +223,10 @@ import type { RaceId } from "@sim/config/RaceDefs";
 
   armoryScreen.onBack = () => {
     armoryScreen.hide();
+    raceDetailScreen.onBack = () => {
+      raceDetailScreen.hide();
+      raceSelectScreen.show();
+    };
     raceDetailScreen.show(raceSelectScreen.selectedRaceId);
   };
 
