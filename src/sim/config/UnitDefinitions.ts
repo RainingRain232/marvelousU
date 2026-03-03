@@ -34,7 +34,7 @@ export interface UnitDef {
   maxCount?: number;
   /** Passive HP regeneration per second. 0 = no regen (default). */
   regenRate?: number;
-  /** Power tier (1–5) derived from gold cost. */
+  /** Power tier (1–7) derived from gold cost. */
   tier?: number;
   /** Magic element for mage / healer units. */
   element?: "fire" | "cold" | "lightning" | "distortion" | "summon" | "nature" | "heal";
@@ -46,7 +46,9 @@ export function computeTier(cost: number): number {
   if (cost < 600) return 2;
   if (cost < 900) return 3;
   if (cost < 1300) return 4;
-  return 5;
+  if (cost < 1900) return 5;
+  if (cost < 2800) return 6;
+  return 7;
 }
 
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {

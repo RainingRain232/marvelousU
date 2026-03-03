@@ -36,7 +36,7 @@ export interface RaceDef {
   implemented: boolean;
   /** Accent colour used for the race card border / detail highlight (hex). */
   accentColor: number;
-  /** Race tier ratings (1–5) indicating max unit tier the race can field per category. */
+  /** Race tier ratings (1–7) indicating max unit tier the race can field per category. */
   tiers?: RaceTiers;
   /** Override starting gold for this race (defaults to BalanceConfig.START_GOLD). */
   startingGold?: number;
@@ -149,11 +149,11 @@ export const RACE_DEFINITIONS: RaceDef[] = [
     accentColor: 0xffdd00,
     startingGold: 50000,
     tiers: {
-      melee: 5, ranged: 5, siege: 5,
-      creature: 5, magic: 5,
-      fire: 5, cold: 5, lightning: 5,
-      distortion: 5, summon: 5, nature: 5,
-      heal: 5,
+      melee: 7, ranged: 7, siege: 7,
+      creature: 7, magic: 7,
+      fire: 7, cold: 7, lightning: 7,
+      distortion: 7, summon: 7, nature: 7,
+      heal: 7,
     },
   },
   {

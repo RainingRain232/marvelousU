@@ -190,11 +190,11 @@ function getGeneralUnits(factionUnits: UnitType[], race: RaceDef): Record<UnitCa
 
 /** All tiers maxed — used in wiki mode. */
 const WIKI_TIERS: RaceTiers = {
-  melee: 5, ranged: 5, siege: 5,
-  creature: 5, magic: 5,
-  fire: 5, cold: 5, lightning: 5,
-  distortion: 5, summon: 5, nature: 5,
-  heal: 5,
+  melee: 7, ranged: 7, siege: 7,
+  creature: 7, magic: 7,
+  fire: 7, cold: 7, lightning: 7,
+  distortion: 7, summon: 7, nature: 7,
+  heal: 7,
 };
 
 /** Get ALL units (no tier filtering, no faction exclusion) organised by category. */
@@ -277,7 +277,17 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
         { name: "Royal Defender", desc: "Elite royal guard, HP 450." },
       ] },
       { tier: 4, abilities: [
+        { name: "Ancient Warriors", desc: "Blackened armor, grey skin. Relics of a forgotten age." },
         { name: "Royal Lancer", desc: "Elite mounted lancer with devastating charge." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "Elder Warriors", desc: "Inhuman sentinels of void-black steel, towering over mortal men." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Legends whisper of warriors beyond the Elder rank..." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "The pinnacle of martial might. None have witnessed their power and lived." },
       ] },
     ],
   },
@@ -296,6 +306,18 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       { tier: 3, abilities: [
         { name: "Repeater", desc: "Rapid-fire crossbow, attack speed 2.0." },
         { name: "Arbalestier", desc: "Plate-armored crossbowman, ATK 50." },
+      ] },
+      { tier: 4, abilities: [
+        { name: "Royal Arbalestier", desc: "Elite crossbowman with royal-forged bolts." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "???", desc: "Marksmen of legendary precision." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Arrows that bend fate itself." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "A single shot to end a war." },
       ] },
     ],
   },
@@ -316,6 +338,15 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       { tier: 4, abilities: [
         { name: "Catapult", desc: "Heavy catapult, devastating arc fire." },
       ] },
+      { tier: 5, abilities: [
+        { name: "???", desc: "War machines of apocalyptic scale." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Engines that crack the earth itself." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "Siege beyond comprehension. Fortresses fall in moments." },
+      ] },
     ],
   },
   magic: {
@@ -332,6 +363,15 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       ] },
       { tier: 4, abilities: [
         { name: "Dark Savant", desc: "Master of dark pyromancy with enhanced destruction." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "???", desc: "Arcane power that warps the laws of nature." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Magic that unravels reality at its seams." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "Godlike mastery over all schools of the arcane." },
       ] },
     ],
   },
@@ -360,6 +400,12 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
         { name: "Cyclops", desc: "HP 800, earth-shattering melee blows." },
         { name: "Angel", desc: "Divine warrior, HP 1500, ATK 90." },
       ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Primordial beasts from the world's dawn." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "Creatures of myth that reshape the battlefield by their mere presence." },
+      ] },
     ],
   },
   heal: {
@@ -380,6 +426,12 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       { tier: 5, abilities: [
         { name: "Angel", desc: "Divine celestial warrior, HP 1500, regen 5." },
       ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Healing that transcends mortal limits." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "Divine restoration — the boundary between life and death dissolves." },
+      ] },
     ],
   },
   fire: {
@@ -397,6 +449,15 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       { tier: 4, abilities: [
         { name: "Dark Savant", desc: "Master of dark pyromancy, enhanced fireballs." },
       ] },
+      { tier: 5, abilities: [
+        { name: "???", desc: "Flames that burn even in the void." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Infernos that consume all — stone, steel, and soul." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "Hellfire incarnate. The very air ignites." },
+      ] },
     ],
   },
   cold: {
@@ -410,6 +471,18 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       ] },
       { tier: 3, abilities: [
         { name: "Cold Master Mage", desc: "Ice Ball + summons 2 Ice Imps. HP regen." },
+      ] },
+      { tier: 4, abilities: [
+        { name: "???", desc: "Frost that shatters steel and bone alike." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "???", desc: "Absolute zero — all motion ceases." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Ice that devours warmth from the world itself." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "Eternal winter made manifest. Nothing thaws." },
       ] },
     ],
   },
@@ -425,6 +498,18 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       { tier: 3, abilities: [
         { name: "Lightning Master Mage", desc: "Chain Lightning + summons 2 Lightning Imps. HP regen." },
       ] },
+      { tier: 4, abilities: [
+        { name: "???", desc: "Bolts that arc through entire armies." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "???", desc: "Storm incarnate — lightning without end." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Thunder that shatters mountains." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "The wrath of the heavens, unbridled and absolute." },
+      ] },
     ],
   },
   distortion: {
@@ -439,6 +524,18 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       { tier: 3, abilities: [
         { name: "Distortion Master Mage", desc: "Distortion Blast + summons 2 Distortion Imps. HP regen." },
       ] },
+      { tier: 4, abilities: [
+        { name: "???", desc: "Space bends to obey without question." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "???", desc: "Dimensional rifts that swallow battalions whole." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Reality fractures — cause and effect unravel." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "The veil between worlds is torn asunder." },
+      ] },
     ],
   },
   summon: {
@@ -449,6 +546,21 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       ] },
       { tier: 2, abilities: [
         { name: "Constructionist", desc: "Summon — conjures 3 creatures, more durable." },
+      ] },
+      { tier: 3, abilities: [
+        { name: "???", desc: "Summons that persist and fight with purpose." },
+      ] },
+      { tier: 4, abilities: [
+        { name: "???", desc: "Conjured armies that rival mortal legions." },
+      ] },
+      { tier: 5, abilities: [
+        { name: "???", desc: "Beings pulled from the fabric of other worlds." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "Summoned titans that dwarf castle walls." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "The boundary between summoner and god blurs." },
       ] },
     ],
   },
@@ -463,6 +575,12 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       ] },
       { tier: 5, abilities: [
         { name: "Primal Force", desc: "The full fury of nature unleashed upon your enemies." },
+      ] },
+      { tier: 6, abilities: [
+        { name: "???", desc: "The earth, sky, and sea fight as one." },
+      ] },
+      { tier: 7, abilities: [
+        { name: "???", desc: "Nature itself rises — continents shift at your command." },
       ] },
     ],
   },
@@ -817,15 +935,15 @@ export class RaceDetailScreen {
       // Draw pips
       const val = tiers[info.key];
       const g = new Graphics();
-      for (let p = 0; p < 5; p++) {
-        const pipX = 81 + p * 16;
+      for (let p = 0; p < 7; p++) {
+        const pipX = 81 + p * 12;
         const pipY = 5;
         if (p < val) {
-          g.circle(pipX, pipY, 4.5).fill({ color: info.color, alpha: 0.9 });
+          g.circle(pipX, pipY, 4).fill({ color: info.color, alpha: 0.9 });
         } else {
-          g.circle(pipX, pipY, 4.5)
+          g.circle(pipX, pipY, 4)
             .fill({ color: 0x1a1a2a })
-            .circle(pipX, pipY, 4.5)
+            .circle(pipX, pipY, 4)
             .stroke({ color: info.color, alpha: 0.3, width: 0.5 });
         }
       }
@@ -833,7 +951,7 @@ export class RaceDetailScreen {
 
       // Numeric value
       const numT = new Text({ text: `${val}`, style: STYLE_TIER_VALUE });
-      numT.position.set(81 + 5 * 16 + 5, 0);
+      numT.position.set(81 + 7 * 12 + 5, 0);
       rowCont.addChild(numT);
 
       // Hover: show tier tooltip
@@ -1283,7 +1401,7 @@ export class RaceDetailScreen {
 
     // Race tier value
     const valT = new Text({
-      text: `Your tier: ${raceVal} / 5`,
+      text: `Your tier: ${raceVal} / 7`,
       style: new TextStyle({
         fontFamily: "monospace", fontSize: 10, fill: 0xffd700,
       }),
