@@ -54,6 +54,9 @@ import { HamletRenderer } from "@view/entities/HamletRenderer";
 import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 import { MarketRenderer } from "@view/entities/MarketRenderer";
 import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
+import { House1Renderer } from "@view/entities/House1Renderer";
+import { House2Renderer } from "@view/entities/House2Renderer";
+import { House3Renderer } from "@view/entities/House3Renderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -180,6 +183,9 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.BALLISTA_TOWER]: "Ballista Tower",
   [BuildingType.REPEATER_TOWER]: "Repeater Tower",
   [BuildingType.ARCHITECTS_GUILD]: "Architects Guild",
+  [BuildingType.HOUSE1]: "House I",
+  [BuildingType.HOUSE2]: "House II",
+  [BuildingType.HOUSE3]: "House III",
 };
 
 // Unit display names
@@ -968,6 +974,18 @@ export class ShopPanel {
     } else if (buildingType === BuildingType.ARCHITECTS_GUILD) {
       buildingContainer = new ArchitectsGuildRenderer(null).container;
       texW = 192;
+      texH = 128;
+    } else if (buildingType === BuildingType.HOUSE1) {
+      buildingContainer = new House1Renderer(null).container;
+      texW = 64;
+      texH = 128;
+    } else if (buildingType === BuildingType.HOUSE2) {
+      buildingContainer = new House2Renderer(null).container;
+      texW = 64;
+      texH = 128;
+    } else if (buildingType === BuildingType.HOUSE3) {
+      buildingContainer = new House3Renderer(null).container;
+      texW = 64;
       texH = 128;
     }
 

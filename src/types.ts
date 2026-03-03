@@ -140,6 +140,9 @@ export enum BuildingType {
   BALLISTA_TOWER = "ballista_tower",
   REPEATER_TOWER = "repeater_tower",
   ARCHITECTS_GUILD = "architects_guild",
+  HOUSE1 = "house1",
+  HOUSE2 = "house2",
+  HOUSE3 = "house3",
 }
 
 export enum AbilityType {

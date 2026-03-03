@@ -38,6 +38,9 @@ import { MarketRenderer } from "@view/entities/MarketRenderer";
 import { StableRenderer } from "@view/entities/StableRenderer";
 import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
 import { ArchitectsGuildRenderer } from "@view/entities/ArchitectsGuildRenderer";
+import { House1Renderer } from "@view/entities/House1Renderer";
+import { House2Renderer } from "@view/entities/House2Renderer";
+import { House3Renderer } from "@view/entities/House3Renderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -79,6 +82,9 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.BALLISTA_TOWER]: 0x8b6339,
   [BuildingType.REPEATER_TOWER]: 0x996633,
   [BuildingType.ARCHITECTS_GUILD]: 0x8b8878,
+  [BuildingType.HOUSE1]: 0x8b7855,
+  [BuildingType.HOUSE2]: 0x8b7855,
+  [BuildingType.HOUSE3]: 0x8b7855,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -128,6 +134,9 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.BALLISTA_TOWER]: "BALLISTA TWR",
   [BuildingType.REPEATER_TOWER]: "REPEATER TWR",
   [BuildingType.ARCHITECTS_GUILD]: "ARCHITECTS",
+  [BuildingType.HOUSE1]: "HOUSE",
+  [BuildingType.HOUSE2]: "HOUSE",
+  [BuildingType.HOUSE3]: "HOUSE",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -203,6 +212,9 @@ export class BuildingView {
   private _ballistaTowerRenderer: BallistaTowerRenderer | null = null;
   private _repeaterTowerRenderer: RepeaterTowerRenderer | null = null;
   private _architectsGuildRenderer: ArchitectsGuildRenderer | null = null;
+  private _house1Renderer: House1Renderer | null = null;
+  private _house2Renderer: House2Renderer | null = null;
+  private _house3Renderer: House3Renderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -355,6 +367,21 @@ export class BuildingView {
     } else if (building.type === BuildingType.ARCHITECTS_GUILD) {
       this._architectsGuildRenderer = new ArchitectsGuildRenderer(building.owner);
       this.container.addChild(this._architectsGuildRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.HOUSE1) {
+      this._house1Renderer = new House1Renderer(building.owner);
+      this.container.addChild(this._house1Renderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.HOUSE2) {
+      this._house2Renderer = new House2Renderer(building.owner);
+      this.container.addChild(this._house2Renderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.HOUSE3) {
+      this._house3Renderer = new House3Renderer(building.owner);
+      this.container.addChild(this._house3Renderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -518,6 +545,15 @@ export class BuildingView {
       }
       if (this._architectsGuildRenderer) {
         this._architectsGuildRenderer.tick(dt, phase);
+      }
+      if (this._house1Renderer) {
+        this._house1Renderer.tick(dt, phase);
+      }
+      if (this._house2Renderer) {
+        this._house2Renderer.tick(dt, phase);
+      }
+      if (this._house3Renderer) {
+        this._house3Renderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }
