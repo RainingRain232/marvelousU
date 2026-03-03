@@ -139,6 +139,9 @@ import { generateAncientCrossbowmanFrames } from "@view/animation/AncientCrossbo
 import { generateElderDefenderFrames } from "@view/animation/ElderDefenderSpriteGen";
 import { generateElderPhalanxFrames } from "@view/animation/ElderPhalanxSpriteGen";
 import { generateElderAxemanFrames } from "@view/animation/ElderAxemanSpriteGen";
+import { generateElderArcherFrames } from "@view/animation/ElderArcherSpriteGen";
+import { generateElderRepeaterFrames } from "@view/animation/ElderRepeaterSpriteGen";
+import { generateElderJavelineerFrames } from "@view/animation/ElderJavelineerSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -420,6 +423,12 @@ export class AnimationManager {
         this._generateElderPhalanxSprites(key, renderer);
       } else if (key === "elder_axeman") {
         this._generateElderAxemanSprites(key, renderer);
+      } else if (key === "elder_archer") {
+        this._generateElderArcherSprites(key, renderer);
+      } else if (key === "elder_repeater") {
+        this._generateElderRepeaterSprites(key, renderer);
+      } else if (key === "elder_javelineer") {
+        this._generateElderJavelineerSprites(key, renderer);
       } else if (key === "javelin") {
         this._generateJavelineerSprites(key, renderer);
       } else if (key === "arbelestier") {
@@ -1565,6 +1574,39 @@ export class AnimationManager {
 
   private _generateElderAxemanSprites(key: string, renderer: Renderer): void {
     const textures = generateElderAxemanFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateElderArcherSprites(key: string, renderer: Renderer): void {
+    const textures = generateElderArcherFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateElderRepeaterSprites(key: string, renderer: Renderer): void {
+    const textures = generateElderRepeaterFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateElderJavelineerSprites(key: string, renderer: Renderer): void {
+    const textures = generateElderJavelineerFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

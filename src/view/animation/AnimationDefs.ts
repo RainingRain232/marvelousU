@@ -448,6 +448,24 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 6,
     dieFps: 8,
   }),
+  [UnitType.ELDER_ARCHER]: buildDef("elder_archer", {
+    idleFps: 5,
+    moveFps: 7,
+    attackFps: 10,
+    dieFps: 7,
+  }),
+  [UnitType.ELDER_REPEATER]: buildDef("elder_repeater", {
+    idleFps: 5,
+    moveFps: 7,
+    attackFps: 14,
+    dieFps: 7,
+  }),
+  [UnitType.ELDER_JAVELINEER]: buildDef("elder_javelineer", {
+    idleFps: 5,
+    moveFps: 7,
+    attackFps: 10,
+    dieFps: 7,
+  }),
   [UnitType.ELDER_DEFENDER]: buildDef("elder_defender", {
     idleFps: 6,
     moveFps: 8,
