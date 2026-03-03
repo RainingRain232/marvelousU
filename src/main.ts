@@ -29,6 +29,7 @@ import { animationManager } from "@view/animation/AnimationManager";
 import { audioManager } from "@audio/AudioManager";
 import { environmentLayer } from "@view/environment/EnvironmentLayer";
 import { startScreen } from "@view/ui/StartScreen";
+import { introPlayer } from "@view/ui/IntroPlayer";
 import { menuScreen } from "@view/ui/MenuScreen";
 import { MAP_SIZES } from "@view/ui/MenuScreen";
 import type { MapSize } from "@view/ui/MenuScreen";
@@ -116,7 +117,10 @@ import type { RaceId } from "@sim/config/RaceDefs";
 
   startScreen.onStart = () => {
     startScreen.hide();
-    menuScreen.show();
+    introPlayer.onDone = () => {
+      menuScreen.show();
+    };
+    introPlayer.play();
   };
 
   // ---------------------------------------------------------------------------
