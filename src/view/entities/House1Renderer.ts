@@ -209,7 +209,7 @@ export class House1Renderer {
     // Window recess
     g.rect(winX, winY, winW, winH).fill({ color: COL_WINDOW });
     // Arch top
-    g.arc(winX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
+    g.moveTo(winX, winY).arc(winX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
     // Frame
     g.rect(winX, winY, winW, winH).stroke({ color: COL_STONE_DK, width: 0.6 });
     // Mullion cross
@@ -322,7 +322,7 @@ export class House1Renderer {
       .fill({ color: COL_STONE_LT })
       .stroke({ color: COL_MORTAR, width: 0.3 });
     // Arch
-    g.arc(DOOR_X + DOOR_W / 2, doorY, DOOR_W / 2 + 1, Math.PI, 0)
+    g.moveTo(DOOR_X - 1, doorY).arc(DOOR_X + DOOR_W / 2, doorY, DOOR_W / 2 + 1, Math.PI, 0)
       .fill({ color: COL_STONE_LT });
 
     // Door interior (dark when closed, visible when open)
@@ -450,10 +450,12 @@ export class House1Renderer {
           .lineTo(px + 2, py - 22 + breathe)
           .stroke({ color: 0x222222, width: 0.5 });
         // Content smile
-        pg.arc(px, py - 20.5 + breathe, 1.5, 0.2, Math.PI - 0.2)
+        pg.moveTo(px + 1.5 * Math.cos(0.2), py - 20.5 + breathe + 1.5 * Math.sin(0.2))
+          .arc(px, py - 20.5 + breathe, 1.5, 0.2, Math.PI - 0.2)
           .stroke({ color: COL_SKIN_DK, width: 0.4 });
         // Hair
-        pg.arc(px, py - 22 + breathe, 5, Math.PI + 0.3, -0.3)
+        pg.moveTo(px + 5 * Math.cos(Math.PI + 0.3), py - 22 + breathe + 5 * Math.sin(Math.PI + 0.3))
+          .arc(px, py - 22 + breathe, 5, Math.PI + 0.3, -0.3)
           .stroke({ color: COL_HAIR, width: 1.5 });
         // Cap
         pg.rect(px - 5, py - 27 + breathe, 10, 2).fill({ color: COL_PANTS });
@@ -488,7 +490,8 @@ export class House1Renderer {
         pg.circle(px - 1.5, py - 22.5 + walkBob, 0.6).fill({ color: 0x222222 });
         pg.circle(px + 1.5, py - 22.5 + walkBob, 0.6).fill({ color: 0x222222 });
         // Hair
-        pg.arc(px, py - 22 + walkBob, 5, Math.PI + 0.3, -0.3)
+        pg.moveTo(px + 5 * Math.cos(Math.PI + 0.3), py - 22 + walkBob + 5 * Math.sin(Math.PI + 0.3))
+          .arc(px, py - 22 + walkBob, 5, Math.PI + 0.3, -0.3)
           .stroke({ color: COL_HAIR, width: 1.5 });
         // Cap
         pg.rect(px - 5, py - 27 + walkBob, 10, 2).fill({ color: COL_PANTS });

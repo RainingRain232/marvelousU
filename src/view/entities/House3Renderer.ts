@@ -224,7 +224,7 @@ export class House3Renderer {
     const winH = 10;
 
     g.rect(winLX, winY, winW, winH).fill({ color: COL_WINDOW });
-    g.arc(winLX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
+    g.moveTo(winLX, winY).arc(winLX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
     g.rect(winLX, winY, winW, winH).stroke({ color: COL_STONE_DK, width: 0.5 });
     g.moveTo(winLX + winW / 2, winY - 1)
       .lineTo(winLX + winW / 2, winY + winH)
@@ -233,7 +233,7 @@ export class House3Renderer {
     // Right window
     const winRX = WALL_R - 11;
     g.rect(winRX, winY, winW, winH).fill({ color: COL_WINDOW });
-    g.arc(winRX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
+    g.moveTo(winRX, winY).arc(winRX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
     g.rect(winRX, winY, winW, winH).stroke({ color: COL_STONE_DK, width: 0.5 });
     g.moveTo(winRX + winW / 2, winY - 1)
       .lineTo(winRX + winW / 2, winY + winH)
@@ -245,7 +245,7 @@ export class House3Renderer {
     g.rect(DOOR_X - 2, doorY - 2, DOOR_W + 4, DOOR_H + 4)
       .fill({ color: COL_STONE_LT })
       .stroke({ color: COL_MORTAR, width: 0.3 });
-    g.arc(DOOR_X + DOOR_W / 2, doorY, DOOR_W / 2 + 1, Math.PI, 0)
+    g.moveTo(DOOR_X - 1, doorY).arc(DOOR_X + DOOR_W / 2, doorY, DOOR_W / 2 + 1, Math.PI, 0)
       .fill({ color: COL_STONE_LT });
     // Door recess
     g.rect(DOOR_X, doorY, DOOR_W, DOOR_H).fill({ color: COL_DOOR_INSIDE });
@@ -384,7 +384,7 @@ export class House3Renderer {
       .lineTo(canX + 12, canY - 8)
       .stroke({ color: COL_CAN, width: 1.2 });
     // Handle
-    g.arc(canX + 4, canY - 8, 3, Math.PI, 0).stroke({ color: COL_CAN_DK, width: 0.8 });
+    g.moveTo(canX + 1, canY - 8).arc(canX + 4, canY - 8, 3, Math.PI, 0).stroke({ color: COL_CAN_DK, width: 0.8 });
   }
 
   // =========================================================================
@@ -537,11 +537,13 @@ export class House3Renderer {
       .stroke({ color: COL_SKIN_DK, width: 0.5 });
     // Smile
     if (!isBending) {
-      g.arc(px, py - 20 + headBob, 1.2, 0.2, Math.PI - 0.2)
+      g.moveTo(px + 1.2 * Math.cos(0.2), py - 20 + headBob + 1.2 * Math.sin(0.2))
+        .arc(px, py - 20 + headBob, 1.2, 0.2, Math.PI - 0.2)
         .stroke({ color: COL_SKIN_DK, width: 0.4 });
     }
     // Hair
-    g.arc(px, py - 22 + headBob, 5, Math.PI + 0.3, -0.3)
+    g.moveTo(px + 5 * Math.cos(Math.PI + 0.3), py - 22 + headBob + 5 * Math.sin(Math.PI + 0.3))
+      .arc(px, py - 22 + headBob, 5, Math.PI + 0.3, -0.3)
       .stroke({ color: COL_HAIR, width: 1.5 });
 
     // Straw hat (wide brim)

@@ -226,7 +226,7 @@ export class House2Renderer {
     const winH = 12;
 
     g.rect(winX, winY, winW, winH).fill({ color: COL_WINDOW });
-    g.arc(winX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
+    g.moveTo(winX, winY).arc(winX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
     g.rect(winX, winY, winW, winH).stroke({ color: COL_STONE_DK, width: 0.6 });
     // Mullion
     g.moveTo(winX + winW / 2, winY - 2)
@@ -249,7 +249,7 @@ export class House2Renderer {
     g.rect(DOOR_X - 2, doorY - 2, DOOR_W + 4, DOOR_H + 4)
       .fill({ color: COL_STONE_LT })
       .stroke({ color: COL_MORTAR, width: 0.3 });
-    g.arc(DOOR_X + DOOR_W / 2, doorY, DOOR_W / 2 + 1, Math.PI, 0)
+    g.moveTo(DOOR_X - 1, doorY).arc(DOOR_X + DOOR_W / 2, doorY, DOOR_W / 2 + 1, Math.PI, 0)
       .fill({ color: COL_STONE_LT });
     // Door interior
     g.rect(DOOR_X, doorY, DOOR_W, DOOR_H).fill({ color: COL_DOOR_INSIDE });
@@ -523,10 +523,12 @@ export class House2Renderer {
     g.circle(wx - 1.5, wy - 22.5 + walkBob + bend, 0.5).fill({ color: 0x222222 });
     g.circle(wx + 1.5, wy - 22.5 + walkBob + bend, 0.5).fill({ color: 0x222222 });
     // Smile
-    g.arc(wx, wy - 20.5 + walkBob + bend, 1.2, 0.2, Math.PI - 0.2)
+    g.moveTo(wx + 1.2 * Math.cos(0.2), wy - 20.5 + walkBob + bend + 1.2 * Math.sin(0.2))
+      .arc(wx, wy - 20.5 + walkBob + bend, 1.2, 0.2, Math.PI - 0.2)
       .stroke({ color: COL_SKIN_DK, width: 0.4 });
     // Hair (bun)
-    g.arc(wx, wy - 22 + walkBob + bend, 5, Math.PI + 0.2, -0.2)
+    g.moveTo(wx + 5 * Math.cos(Math.PI + 0.2), wy - 22 + walkBob + bend + 5 * Math.sin(Math.PI + 0.2))
+      .arc(wx, wy - 22 + walkBob + bend, 5, Math.PI + 0.2, -0.2)
       .stroke({ color: COL_HAIR_W, width: 1.8 });
     // Hair bun on top
     g.circle(wx, wy - 27 + walkBob + bend, 2.5).fill({ color: COL_HAIR_W });
@@ -584,10 +586,12 @@ export class House2Renderer {
     g.circle(cx - 1.5, cy - 16.5 + bounce, 0.6).fill({ color: 0x222222 });
     g.circle(cx + 1.5, cy - 16.5 + bounce, 0.6).fill({ color: 0x222222 });
     // Happy mouth
-    g.arc(cx, cy - 14.5 + bounce, 1.5, 0, Math.PI)
+    g.moveTo(cx + 1.5, cy - 14.5 + bounce)
+      .arc(cx, cy - 14.5 + bounce, 1.5, 0, Math.PI)
       .stroke({ color: COL_SKIN_DK, width: 0.4 });
     // Hair (messy, child)
-    g.arc(cx, cy - 16 + bounce, 4.5, Math.PI + 0.3, -0.3)
+    g.moveTo(cx + 4.5 * Math.cos(Math.PI + 0.3), cy - 16 + bounce + 4.5 * Math.sin(Math.PI + 0.3))
+      .arc(cx, cy - 16 + bounce, 4.5, Math.PI + 0.3, -0.3)
       .stroke({ color: COL_CHILD_HAIR, width: 1.5 });
     // Cowlick
     g.moveTo(cx + 1, cy - 20 + bounce)
