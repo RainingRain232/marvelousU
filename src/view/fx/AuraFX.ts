@@ -40,9 +40,36 @@ const ICE_THEME: AuraTheme = {
   particle: 0xaaddff,
 };
 
+const LIGHTNING_THEME: AuraTheme = {
+  primary: 0xcccc22,
+  secondary: 0xffff66,
+  rune: 0xffffaa,
+  glow: 0xaaaa00,
+  particle: 0xeeee44,
+};
+
+const DISTORTION_THEME: AuraTheme = {
+  primary: 0x9944cc,
+  secondary: 0xbb66ee,
+  rune: 0xddaaff,
+  glow: 0x7722aa,
+  particle: 0xcc88ff,
+};
+
+/** Map each aura ability type to its VFX color theme. */
+const AURA_THEME_MAP: Partial<Record<string, AuraTheme>> = {
+  [AbilityType.FIRE_AURA]: FIRE_THEME,
+  [AbilityType.MINOR_FIRE_AURA]: FIRE_THEME,
+  [AbilityType.ICE_AURA]: ICE_THEME,
+  [AbilityType.MINOR_ICE_AURA]: ICE_THEME,
+  [AbilityType.LIGHTNING_AURA]: LIGHTNING_THEME,
+  [AbilityType.MINOR_LIGHTNING_AURA]: LIGHTNING_THEME,
+  [AbilityType.DISTORTION_AURA]: DISTORTION_THEME,
+  [AbilityType.MINOR_DISTORTION_AURA]: DISTORTION_THEME,
+};
+
 function getTheme(abilityType: string): AuraTheme {
-  if (abilityType === AbilityType.ICE_AURA || abilityType === AbilityType.MINOR_ICE_AURA) return ICE_THEME;
-  return FIRE_THEME;
+  return AURA_THEME_MAP[abilityType] ?? FIRE_THEME;
 }
 
 // ---------------------------------------------------------------------------

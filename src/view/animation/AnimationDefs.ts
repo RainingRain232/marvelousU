@@ -495,4 +495,32 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 8,
     dieFps: 6,
   }),
+  [UnitType.LIGHTNING_ELEMENTAL]: buildDef("lightning_elemental", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 6,
+  }),
+  [UnitType.DISTORTION_ELEMENTAL]: buildDef("distortion_elemental", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 6,
+  }),
+  [UnitType.MINOR_LIGHTNING_ELEMENTAL]: buildDef("minor_lightning_elemental", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 6,
+  }),
+  [UnitType.MINOR_DISTORTION_ELEMENTAL]: buildDef("minor_distortion_elemental", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 6,
+  }),
 };

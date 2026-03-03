@@ -120,6 +120,10 @@ export enum UnitType {
   ICE_ELEMENTAL = "ice_elemental",
   MINOR_FIRE_ELEMENTAL = "minor_fire_elemental",
   MINOR_ICE_ELEMENTAL = "minor_ice_elemental",
+  LIGHTNING_ELEMENTAL = "lightning_elemental",
+  DISTORTION_ELEMENTAL = "distortion_elemental",
+  MINOR_LIGHTNING_ELEMENTAL = "minor_lightning_elemental",
+  MINOR_DISTORTION_ELEMENTAL = "minor_distortion_elemental",
 }
 
 export enum BuildingType {
@@ -185,6 +189,10 @@ export enum AbilityType {
   ICE_AURA = "ice_aura",
   MINOR_FIRE_AURA = "minor_fire_aura",
   MINOR_ICE_AURA = "minor_ice_aura",
+  LIGHTNING_AURA = "lightning_aura",
+  DISTORTION_AURA = "distortion_aura",
+  MINOR_LIGHTNING_AURA = "minor_lightning_aura",
+  MINOR_DISTORTION_AURA = "minor_distortion_aura",
 }
 
 export enum UpgradeType {

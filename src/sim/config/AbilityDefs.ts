@@ -266,6 +266,42 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
     slowDuration: 1.5,
     slowFactor: 0.3,
   },
+  // Lightning Aura: periodic AoE pulse centred on caster
+  [AbilityType.LIGHTNING_AURA]: {
+    type: AbilityType.LIGHTNING_AURA,
+    cooldown: 5,
+    range: 0,
+    castTime: 0,
+    damage: 10,
+    aoeRadius: 2.5,
+  },
+  // Distortion Aura: periodic AoE pulse centred on caster
+  [AbilityType.DISTORTION_AURA]: {
+    type: AbilityType.DISTORTION_AURA,
+    cooldown: 5,
+    range: 0,
+    castTime: 0,
+    damage: 10,
+    aoeRadius: 2.5,
+  },
+  // Minor Lightning Aura: weaker AoE pulse for T3 minor lightning elemental
+  [AbilityType.MINOR_LIGHTNING_AURA]: {
+    type: AbilityType.MINOR_LIGHTNING_AURA,
+    cooldown: 5,
+    range: 0,
+    castTime: 0,
+    damage: 5,
+    aoeRadius: 1.5,
+  },
+  // Minor Distortion Aura: weaker AoE pulse for T3 minor distortion elemental
+  [AbilityType.MINOR_DISTORTION_AURA]: {
+    type: AbilityType.MINOR_DISTORTION_AURA,
+    cooldown: 5,
+    range: 0,
+    castTime: 0,
+    damage: 5,
+    aoeRadius: 1.5,
+  },
   // Fisherman net: like gladiator net but weaker damage
   [AbilityType.FISHERMAN_NET]: {
     type: AbilityType.FISHERMAN_NET,

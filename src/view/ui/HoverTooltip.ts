@@ -210,6 +210,10 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.ICE_ELEMENTAL]: "Ice Elemental",
   [UnitType.MINOR_FIRE_ELEMENTAL]: "Minor Fire Elemental",
   [UnitType.MINOR_ICE_ELEMENTAL]: "Minor Ice Elemental",
+  [UnitType.LIGHTNING_ELEMENTAL]: "Lightning Elemental",
+  [UnitType.DISTORTION_ELEMENTAL]: "Distortion Elemental",
+  [UnitType.MINOR_LIGHTNING_ELEMENTAL]: "Minor Lightning Elemental",
+  [UnitType.MINOR_DISTORTION_ELEMENTAL]: "Minor Distortion Elemental",
 };
 
 // ---------------------------------------------------------------------------

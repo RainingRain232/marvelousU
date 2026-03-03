@@ -124,6 +124,10 @@ import { generateIceElementalFrames } from "@view/animation/IceElementalSpriteGe
 import { generateVampireBatFrames } from "@view/animation/VampireBatSpriteGen";
 import { generateMinorFireElementalFrames } from "@view/animation/MinorFireElementalSpriteGen";
 import { generateMinorIceElementalFrames } from "@view/animation/MinorIceElementalSpriteGen";
+import { generateLightningElementalFrames } from "@view/animation/LightningElementalSpriteGen";
+import { generateDistortionElementalFrames } from "@view/animation/DistortionElementalSpriteGen";
+import { generateMinorLightningElementalFrames } from "@view/animation/MinorLightningElementalSpriteGen";
+import { generateMinorDistortionElementalFrames } from "@view/animation/MinorDistortionElementalSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -409,6 +413,14 @@ export class AnimationManager {
         this._generateMinorFireElementalSprites(key, renderer);
       } else if (key === "minor_ice_elemental") {
         this._generateMinorIceElementalSprites(key, renderer);
+      } else if (key === "lightning_elemental") {
+        this._generateLightningElementalSprites(key, renderer);
+      } else if (key === "distortion_elemental") {
+        this._generateDistortionElementalSprites(key, renderer);
+      } else if (key === "minor_lightning_elemental") {
+        this._generateMinorLightningElementalSprites(key, renderer);
+      } else if (key === "minor_distortion_elemental") {
+        this._generateMinorDistortionElementalSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1544,6 +1556,50 @@ export class AnimationManager {
 
   private _generateMinorIceElementalSprites(key: string, renderer: Renderer): void {
     const textures = generateMinorIceElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateLightningElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateLightningElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateDistortionElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateDistortionElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateMinorLightningElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateMinorLightningElementalFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateMinorDistortionElementalSprites(key: string, renderer: Renderer): void {
+    const textures = generateMinorDistortionElementalFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

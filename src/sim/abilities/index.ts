@@ -73,6 +73,10 @@ export const abilityRegistry: Record<AbilityType, AbilityFactory> = {
   [AbilityType.ICE_AURA]: (id) => createAura(id, AbilityType.ICE_AURA),
   [AbilityType.MINOR_FIRE_AURA]: (id) => createAura(id, AbilityType.MINOR_FIRE_AURA),
   [AbilityType.MINOR_ICE_AURA]: (id) => createAura(id, AbilityType.MINOR_ICE_AURA),
+  [AbilityType.LIGHTNING_AURA]: (id) => createAura(id, AbilityType.LIGHTNING_AURA),
+  [AbilityType.DISTORTION_AURA]: (id) => createAura(id, AbilityType.DISTORTION_AURA),
+  [AbilityType.MINOR_LIGHTNING_AURA]: (id) => createAura(id, AbilityType.MINOR_LIGHTNING_AURA),
+  [AbilityType.MINOR_DISTORTION_AURA]: (id) => createAura(id, AbilityType.MINOR_DISTORTION_AURA),
 };
 
 export function createAbility(type: AbilityType, id: string): Ability {
