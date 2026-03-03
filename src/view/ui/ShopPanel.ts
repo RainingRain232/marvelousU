@@ -1303,7 +1303,10 @@ export class ShopPanel {
     const def = UNIT_DEFINITIONS[unitType];
     const needsEliteHall = def.cost >= ELITE_HALL_COST_THRESHOLD;
     const hasEliteHall = this._countOwnedType(BuildingType.ELITE_HALL) > 0;
-    const locked = needsEliteHall && !hasEliteHall;
+    const atMaxCount =
+      def.maxCount !== undefined &&
+      this._countOwnedUnits(unitType) >= def.maxCount;
+    const locked = (needsEliteHall && !hasEliteHall) || atMaxCount;
 
     const bg = new Graphics()
       .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 4)
@@ -1628,6 +1631,20 @@ export class ShopPanel {
     return count;
   }
 
+  private _countOwnedUnits(unitType: UnitType): number {
+    let count = 0;
+    for (const unit of this._state.units.values()) {
+      if (
+        unit.owner === this._localPlayerId &&
+        unit.type === unitType &&
+        unit.state !== UnitState.DIE
+      ) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   // ---------------------------------------------------------------------------
   // Sim commands
   // ---------------------------------------------------------------------------
@@ -1635,12 +1652,19 @@ export class ShopPanel {
   private _buyUnit(buildingId: string, unitType: UnitType): void {
     const player = this._state.players.get(this._localPlayerId);
     if (!player) return;
-    const cost = UNIT_DEFINITIONS[unitType].cost;
+    const def = UNIT_DEFINITIONS[unitType];
+    const cost = def.cost;
     if (player.gold < cost) return;
     // Require Elite Hall for high-cost units
     if (
       cost >= ELITE_HALL_COST_THRESHOLD &&
       this._countOwnedType(BuildingType.ELITE_HALL) === 0
+    )
+      return;
+    // Enforce unit max count
+    if (
+      def.maxCount !== undefined &&
+      this._countOwnedUnits(unitType) >= def.maxCount
     )
       return;
 
@@ -1685,7 +1709,11 @@ export class ShopPanel {
 
     for (const entry of this._unitIcons) {
       const def = UNIT_DEFINITIONS[entry.type];
-      const nowLocked = def.cost >= ELITE_HALL_COST_THRESHOLD && !hasEliteHall;
+      const atMaxCount =
+        def.maxCount !== undefined &&
+        this._countOwnedUnits(entry.type) >= def.maxCount;
+      const nowLocked =
+        (def.cost >= ELITE_HALL_COST_THRESHOLD && !hasEliteHall) || atMaxCount;
 
       if (nowLocked !== entry.locked) {
         // Lock state changed — rebuild the panel to reflect it

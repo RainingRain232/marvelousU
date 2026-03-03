@@ -116,6 +116,10 @@ import { generateAngelFrames } from "@view/animation/AngelSpriteGen";
 import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
 import { generateWarchiefFrames } from "@view/animation/WarchiefSpriteGen";
 import { generateArchmageFrames } from "@view/animation/ArchmageSpriteGen";
+import { generateRufusFrames } from "@view/animation/RufusSpriteGen";
+import { generateTroubadourFrames } from "@view/animation/TroubadourSpriteGen";
+import { generateGiantCourtJesterFrames } from "@view/animation/GiantCourtJesterSpriteGen";
+import { generateFishermanFrames } from "@view/animation/FishermanSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -383,6 +387,14 @@ export class AnimationManager {
         this._generateJavelineerSprites(key, renderer);
       } else if (key === "arbelestier") {
         this._generateArbelestierSprites(key, renderer);
+      } else if (key === "rufus") {
+        this._generateRufusSprites(key, renderer);
+      } else if (key === "troubadour") {
+        this._generateTroubadourSprites(key, renderer);
+      } else if (key === "giant_court_jester") {
+        this._generateGiantCourtJesterSprites(key, renderer);
+      } else if (key === "fisherman") {
+        this._generateFishermanSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1450,6 +1462,46 @@ export class AnimationManager {
    */
   private _generateArbelestierSprites(key: string, renderer: Renderer): void {
     const stateTextures = generateArbelestierFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  private _generateRufusSprites(key: string, renderer: Renderer): void {
+    const stateTextures = generateRufusFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  private _generateTroubadourSprites(key: string, renderer: Renderer): void {
+    const stateTextures = generateTroubadourFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  private _generateGiantCourtJesterSprites(key: string, renderer: Renderer): void {
+    const stateTextures = generateGiantCourtJesterFrames(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
+    }
+  }
+
+  private _generateFishermanSprites(key: string, renderer: Renderer): void {
+    const stateTextures = generateFishermanFrames(renderer);
     for (const [state, textures] of stateTextures) {
       const ck = cacheKey(key, state);
       if (!this._cache.has(ck)) {

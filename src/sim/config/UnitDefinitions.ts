@@ -1281,7 +1281,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 2,
     abilityTypes: [],
-    spriteKey: "swordsman",
+    spriteKey: "rufus",
     maxCount: 1,
     description:
       "The loyal dog of the king. Weak but fast, Rufus patrols the hearth with unwavering devotion.",
@@ -1297,7 +1297,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 3,
     abilityTypes: [],
-    spriteKey: "diplomat",
+    spriteKey: "troubadour",
     maxCount: 1,
     description:
       "A wandering troubadour who sings ballads of glory. Weak in combat but steadfast in spirit.",
@@ -1313,7 +1313,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 6,
     abilityTypes: [],
-    spriteKey: "swordsman",
+    spriteKey: "giant_court_jester",
     size: {
       width: 2.0,
       height: 3.0,
@@ -1334,7 +1334,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 4,
     spawnTime: 4,
     abilityTypes: [AbilityType.FISHERMAN_NET],
-    spriteKey: "gladiator",
+    spriteKey: "fisherman",
     maxCount: 1,
     description:
       "A humble fisherman who casts his net with surprising skill, hauling enemies in like the catch of the day.",

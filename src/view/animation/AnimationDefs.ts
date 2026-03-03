@@ -436,28 +436,29 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 10,
     dieFps: 8,
   }),
-  [UnitType.RUFUS]: buildDef("swordsman", {
+  [UnitType.RUFUS]: buildDef("rufus", {
     idleFps: 6,
     moveFps: 12,
     attackFps: 14,
     dieFps: 8,
   }),
-  [UnitType.TROUBADOUR]: buildDef("diplomat", {
+  [UnitType.TROUBADOUR]: buildDef("troubadour", {
     idleFps: 6,
     moveFps: 8,
     attackFps: 10,
     dieFps: 8,
   }),
-  [UnitType.GIANT_COURT_JESTER]: buildDef("swordsman", {
+  [UnitType.GIANT_COURT_JESTER]: buildDef("giant_court_jester", {
     idleFps: 6,
     moveFps: 8,
     attackFps: 10,
     dieFps: 8,
   }),
-  [UnitType.FISHERMAN]: buildDef("gladiator", {
+  [UnitType.FISHERMAN]: buildDef("fisherman", {
     idleFps: 6,
     moveFps: 8,
     attackFps: 12,
+    castFps: 10,
     dieFps: 8,
   }),
 };
