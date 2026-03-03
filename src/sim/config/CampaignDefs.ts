@@ -91,7 +91,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     victoryCode: "4591",
     type: "battlefield",
     unlocks: {
-      buildings: [BuildingType.FIREPIT],
+      buildings: [BuildingType.FIREPIT, BuildingType.FARM],
     },
   },
   {

@@ -43,7 +43,7 @@ import { hoverTooltip } from "@view/ui/HoverTooltip";
 import { buildingWikiScreen } from "@view/ui/BuildingWikiScreen";
 import { minimap } from "@view/ui/Minimap";
 import { campaignState } from "@sim/config/CampaignState";
-import { getScenario } from "@sim/config/CampaignDefs";
+import { getScenario, SCENARIO_DEFINITIONS } from "@sim/config/CampaignDefs";
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { createGameState } from "@sim/state/GameState";
 import type { GameState } from "@sim/state/GameState";
@@ -784,10 +784,22 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
 /**
  * Restrict the castle's shopInventory and blueprints to only what the
  * player has unlocked in the campaign.  Called once after initBases().
+ *
+ * In addition to the player's earned unlocks, all unlocks from scenarios
+ * prior to the selected one are automatically included. This guarantees
+ * that skipping ahead via code still gives a coherent set of units and
+ * buildings.
  */
-function _applyCampaignRestrictions(state: GameState): void {
+function _applyCampaignRestrictions(state: GameState, scenarioNum: number): void {
   const unlockedUnits = new Set(campaignState.unlockedUnits);
   const unlockedBuildings = new Set(campaignState.unlockedBuildings);
+
+  // Include cumulative unlocks from all scenarios before the current one
+  for (const def of SCENARIO_DEFINITIONS) {
+    if (def.number >= scenarioNum) continue;
+    for (const u of def.unlocks.units ?? []) unlockedUnits.add(u);
+    for (const b of def.unlocks.buildings ?? []) unlockedBuildings.add(b);
+  }
 
   for (const building of state.buildings.values()) {
     if (building.owner !== "p1") continue;
@@ -896,7 +908,7 @@ async function _bootGame(
     state.campaignScenario = scenarioNum;
     // Restrict castle shop and blueprints to unlocked content (for standard-type scenarios)
     if (scenarioType === "standard") {
-      _applyCampaignRestrictions(state);
+      _applyCampaignRestrictions(state, scenarioNum);
     }
     // Apply per-scenario overrides
     if (scenarioDef?.disableEvents) {
@@ -931,11 +943,12 @@ async function _bootGame(
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);
   viewManager.camera.fitMap();
 
-  // Start cinematic zoom for scenario 1 (First Blood)
-  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 1) {
+  // Start cinematic zoom for battlefield campaign scenarios
+  if (gameMode === GameMode.CAMPAIGN && (scenarioNum === 1 || scenarioNum === 2)) {
     // Start the cinematic zoom after a short delay to let the game settle
+    const zoomLevel = scenarioNum === 2 ? 1.25 : undefined; // half zoom for scenario 2
     setTimeout(() => {
-      viewManager.camera.startCinematicZoom();
+      viewManager.camera.startCinematicZoom(zoomLevel);
     }, 1000);
   }
 
@@ -1096,9 +1109,8 @@ async function _bootGame(
   const simLoop = new SimLoop(state);
   simLoop.start();
 
-  // Start cinematic speed ramp for scenario 1 (First Blood)
-  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 1) {
-    console.log("Scenario 1 detected - starting cinematic speed ramp");
+  // Start cinematic speed ramp for battlefield campaign scenarios
+  if (gameMode === GameMode.CAMPAIGN && (scenarioNum === 1 || scenarioNum === 2)) {
     // Start the speed ramp immediately when the game starts
     simLoop.startCinematicSpeed();
   }

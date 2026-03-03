@@ -159,19 +159,21 @@ export class Camera {
   /**
    * Start cinematic zoom for scenario 1 - slowly zoom in on center swordsman
    */
-  startCinematicZoom(): void {
+  startCinematicZoom(targetZoom?: number): void {
     if (this._cinematicZoomActive) return;
-    
+
+    if (targetZoom !== undefined) this._targetZoom = targetZoom;
+
     this._cinematicZoomActive = true;
     this._cinematicZoomProgress = 0;
     this._startZoom = this.zoom;
     this._startX = this.x;
     this._startY = this.y;
-    
+
     // Calculate target position - center of the map where swordsman spawn
     const mapCenterX = (this._mapW * BalanceConfig.TILE_SIZE) / 2;
     const mapCenterY = (this._mapH * BalanceConfig.TILE_SIZE) / 2;
-    
+
     // Position camera to center on the middle of the battlefield
     // Offset slightly to show both squads of swordsman
     this._targetX = -mapCenterX + this.screenW / (2 * this._targetZoom);

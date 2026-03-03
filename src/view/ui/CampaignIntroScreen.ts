@@ -15,6 +15,8 @@ import throneImgUrl from "@/img/throne.png";
 import arthurImgUrl from "@/img/arthur.png";
 import merlinImgUrl from "@/img/merlin.png";
 import hordeImgUrl from "@/img/horde.png";
+import manImgUrl from "@/img/man.png";
+import manPImgUrl from "@/img/manP.png";
 
 // ---------------------------------------------------------------------------
 // Intro page data — keyed by scenario number
@@ -44,6 +46,16 @@ const SCENARIO_INTROS: Record<number, IntroPage[]> = {
     {
       imageUrl: hordeImgUrl,
       text: "What do you mean, you have never seen the castle and the firepit to even click it? Oh well, for now all the firepits units from the land have gathered to address this insult. We will have to calm them down a little. And click that firepit in the next mission!",
+    },
+  ],
+  3: [
+    {
+      imageUrl: manPImgUrl,
+      text: "Well done sire! That should ensure some peace at the firepits. For our next mission, we need to capture an enemy castle. We only recently came to these lands, so funds are tight!",
+    },
+    {
+      imageUrl: manImgUrl,
+      text: "Fortunately the lord of this castle is mismanaging his forces greatly, he only builds towers and walls and some defensive units that guard the castle. Few will move against us. Remember that units trained at the castle usually stay close to the castle and other friendly buildings to defend it, and only rarely move out. Use your farms to build up wealth and to a lesser extent your barracks. Then move out with our superior barracks units and secure the victory! Oh and remember that firepit sire, it gives us a quick and cheap defense to start with.",
     },
   ],
 };
