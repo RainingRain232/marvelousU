@@ -491,13 +491,21 @@ export class RaceDetailScreen {
       const def = UNIT_DEFINITIONS[ut];
       const ix = i * (ICON_SIZE + GAP);
 
+      // Interactive wrapper
+      const btn = new Container();
+      btn.position.set(ix, 0);
+      btn.eventMode = "static";
+      btn.cursor = "pointer";
+      btn.hitArea = new Rectangle(0, 0, ICON_SIZE, ICON_SIZE + 16);
+      row.addChild(btn);
+
       // Icon background
       const bg = new Graphics()
-        .roundRect(ix, 0, ICON_SIZE, ICON_SIZE, 5)
+        .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 5)
         .fill({ color: 0x1a2a3a })
-        .roundRect(ix, 0, ICON_SIZE, ICON_SIZE, 5)
+        .roundRect(0, 0, ICON_SIZE, ICON_SIZE, 5)
         .stroke({ color: race.accentColor, alpha: 0.6, width: 1 });
-      row.addChild(bg);
+      btn.addChild(bg);
 
       // Try animated sprite
       const frames = animationManager.getFrames(ut, UnitState.IDLE);
@@ -506,20 +514,20 @@ export class RaceDetailScreen {
         sprite.anchor.set(0.5, 0.5);
         sprite.width = ICON_SIZE - 10;
         sprite.height = ICON_SIZE - 10;
-        sprite.position.set(ix + ICON_SIZE / 2, ICON_SIZE / 2);
+        sprite.position.set(ICON_SIZE / 2, ICON_SIZE / 2);
         const fs = animationManager.getFrameSet(ut, UnitState.IDLE);
         sprite.animationSpeed = fs.fps / 60;
         sprite.loop = true;
         sprite.play();
-        row.addChild(sprite);
+        btn.addChild(sprite);
       } else {
         // Fallback letter
         const ltr = new Text({ text: def.spriteKey.charAt(0).toUpperCase(), style: new TextStyle({
           fontFamily: "monospace", fontSize: 21, fill: 0xccddee, fontWeight: "bold",
         }) });
         ltr.anchor.set(0.5, 0.5);
-        ltr.position.set(ix + ICON_SIZE / 2, ICON_SIZE / 2);
-        row.addChild(ltr);
+        ltr.position.set(ICON_SIZE / 2, ICON_SIZE / 2);
+        btn.addChild(ltr);
       }
 
       // Name below icon
@@ -528,8 +536,20 @@ export class RaceDetailScreen {
         style: STYLE_UNIT_NAME,
       });
       nameT.anchor.set(0.5, 0);
-      nameT.position.set(ix + ICON_SIZE / 2, ICON_SIZE + 3);
-      row.addChild(nameT);
+      nameT.position.set(ICON_SIZE / 2, ICON_SIZE + 3);
+      btn.addChild(nameT);
+
+      // Hover: show tooltip
+      btn.on("pointerover", () => {
+        bg.tint = 0x334466;
+        const cardX = 26 + ix + ICON_SIZE + 4;
+        const cardY = y + 26;
+        this._showTooltip(def, cardX, cardY);
+      });
+      btn.on("pointerout", () => {
+        bg.tint = 0xffffff;
+        this._hideTooltip();
+      });
     }
   }
 
