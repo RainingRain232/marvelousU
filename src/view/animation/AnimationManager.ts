@@ -18,7 +18,6 @@ import {
   Texture,
   RenderTexture,
   Graphics,
-  Rectangle,
   type Renderer,
 } from "pixi.js";
 import { UnitType, UnitState } from "@/types";
@@ -113,7 +112,7 @@ import {
 import { generateBatFrames } from "@view/animation/BatSpriteGen";
 import { generateTemplarFrames } from "@view/animation/TemplarSpriteGen";
 import { generateAngelFrames } from "@view/animation/AngelSpriteGen";
-import { HeroSpriteGen } from "@view/animation/HeroSpriteGen";
+import { generateHeroFrames } from "@view/animation/HeroSpriteGen";
 import { generateWarchiefFrames } from "@view/animation/WarchiefSpriteGen";
 import { generateArchmageFrames } from "@view/animation/ArchmageSpriteGen";
 import { generateRufusFrames } from "@view/animation/RufusSpriteGen";
@@ -983,36 +982,12 @@ export class AnimationManager {
   }
 
   private _generateHeroSprites(key: string, renderer: Renderer): void {
-    const rt = HeroSpriteGen.generateSprites(renderer);
-
-    // Simple state mapping for animation rows
-    const rowToState: UnitState[] = [
-      UnitState.IDLE, // Row 0
-      UnitState.MOVE, // Row 1
-      UnitState.ATTACK, // Row 2
-      UnitState.CAST, // Row 3
-      UnitState.DIE, // Row 4
-    ];
-
-    // Extract frames from the render texture
-    for (let row = 0; row < 5; row++) {
-      const state = rowToState[row];
-      const ck = cacheKey(key, state);
-      if (!this._cache.has(ck)) {
-        this._cache.set(ck, []);
-      }
-
-      for (let col = 0; col < 8; col++) {
-        const frameTexture = new Texture({
-          source: rt.baseTexture,
-          frame: new Rectangle(
-            col * HeroSpriteGen.FRAME_SIZE,
-            row * HeroSpriteGen.FRAME_SIZE,
-            HeroSpriteGen.FRAME_SIZE,
-            HeroSpriteGen.FRAME_SIZE,
-          ),
-        });
-        this._cache.get(ck)!.push(frameTexture);
+    const textures = generateHeroFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
       }
     }
   }
