@@ -171,7 +171,7 @@ export class MillRenderer {
     g.moveTo(48, MH - 18).lineTo(56, MH - 18).stroke({ color: COL_WOOD_DK, width: 0.5 });
     g.rect(48, MH - 14, 8, 1).fill({ color: COL_IRON });
     // Bucket handle
-    g.arc(52, MH - 18, 3, Math.PI, 0).stroke({ color: COL_IRON_DK, width: 0.6 });
+    g.moveTo(49, MH - 18).arc(52, MH - 18, 3, Math.PI, 0).stroke({ color: COL_IRON_DK, width: 0.6 });
   }
 
   // =========================================================================
@@ -281,8 +281,8 @@ export class MillRenderer {
       .fill({ color: COL_STONE_LT })
       .stroke({ color: COL_MORTAR, width: 0.3 });
     // Arch top
-    g.arc(doorX + doorW / 2, doorY, doorW / 2 + 1, Math.PI, 0).fill({ color: COL_STONE_LT });
-    g.arc(doorX + doorW / 2, doorY, doorW / 2 + 1, Math.PI, 0).stroke({ color: COL_MORTAR, width: 0.3 });
+    g.moveTo(doorX - 1, doorY).arc(doorX + doorW / 2, doorY, doorW / 2 + 1, Math.PI, 0).fill({ color: COL_STONE_LT });
+    g.moveTo(doorX - 1, doorY).arc(doorX + doorW / 2, doorY, doorW / 2 + 1, Math.PI, 0).stroke({ color: COL_MORTAR, width: 0.3 });
 
     // Door recess
     g.rect(doorX, doorY, doorW, doorH).fill({ color: 0x1a1208 });
@@ -305,7 +305,7 @@ export class MillRenderer {
     const winH = 10;
 
     g.rect(winX, winY, winW, winH).fill({ color: COL_WINDOW });
-    g.arc(winX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
+    g.moveTo(winX, winY).arc(winX + winW / 2, winY, winW / 2, Math.PI, 0).fill({ color: COL_WINDOW });
     g.rect(winX, winY, winW, winH).stroke({ color: COL_STONE_DK, width: 0.5 });
     // Mullion
     g.moveTo(winX + winW / 2, winY - 2).lineTo(winX + winW / 2, winY + winH)
@@ -515,7 +515,8 @@ export class MillRenderer {
     }
 
     // Hair
-    g.arc(fx, fy - 22 + bend, 5.5, Math.PI + 0.3, -0.3).stroke({ color: COL_HAIR, width: 1.5 });
+    g.moveTo(fx + 5.5 * Math.cos(Math.PI + 0.3), fy - 22 + bend + 5.5 * Math.sin(Math.PI + 0.3))
+      .arc(fx, fy - 22 + bend, 5.5, Math.PI + 0.3, -0.3).stroke({ color: COL_HAIR, width: 1.5 });
 
     // Straw hat (wide-brim)
     g.rect(fx - 8, fy - 28 + bend, 16, 2).fill({ color: COL_HAY });
@@ -572,10 +573,11 @@ export class MillRenderer {
     g.circle(sx - 1.5, sy - 17.5 + bend, 0.5).fill({ color: 0x222222 });
     g.circle(sx + 1.5, sy - 17.5 + bend, 0.5).fill({ color: 0x222222 });
     // Smile
-    g.arc(sx, sy - 15.5 + bend, 1.5, 0, Math.PI).stroke({ color: COL_SKIN_DK, width: 0.4 });
+    g.moveTo(sx + 1.5, sy - 15.5 + bend).arc(sx, sy - 15.5 + bend, 1.5, 0, Math.PI).stroke({ color: COL_SKIN_DK, width: 0.4 });
 
     // Hair (lighter, child)
-    g.arc(sx, sy - 17 + bend, 5, Math.PI + 0.4, -0.4).stroke({ color: COL_HAIR_LT, width: 1.2 });
+    g.moveTo(sx + 5 * Math.cos(Math.PI + 0.4), sy - 17 + bend + 5 * Math.sin(Math.PI + 0.4))
+      .arc(sx, sy - 17 + bend, 5, Math.PI + 0.4, -0.4).stroke({ color: COL_HAIR_LT, width: 1.2 });
 
     // Small cap
     g.rect(sx - 5, sy - 22 + bend, 10, 2).fill({ color: COL_HAIR_LT });
