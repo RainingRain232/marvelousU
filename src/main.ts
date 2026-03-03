@@ -135,9 +135,9 @@ import type { RaceId } from "@sim/config/RaceDefs";
     await _bootGame(
       true, // p2 is AI
       MAP_SIZES[0], // standard map size
-      GameMode.DEATHMATCH,
+      GameMode.STANDARD,
       "arthur",
-      "man",
+      "op",
       undefined,
       MapType.FANTASIA,
       ["longsword"], // armory weapon
@@ -763,6 +763,15 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
 
   if (playerId === "p1") {
     state.p1RaceId = raceId;
+  }
+
+  // Override starting gold if the race specifies one
+  if (race.startingGold != null) {
+    const player = state.players.get(playerId);
+    if (player) {
+      player.gold = race.startingGold;
+      EventBus.emit("goldChanged", { playerId, amount: player.gold });
+    }
   }
 
   for (const building of state.buildings.values()) {

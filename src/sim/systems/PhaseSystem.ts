@@ -28,6 +28,7 @@ import { BuildingState, UnitState } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { EventBus } from "@sim/core/EventBus";
+import { getRace } from "@sim/config/RaceDefs";
 
 // ---------------------------------------------------------------------------
 // Public system
@@ -114,10 +115,14 @@ function _enterPrep(state: GameState): void {
     base.health = base.maxHealth;
   }
 
-  // Replenish player gold to starting amount (mode-dependent)
+  // Replenish player gold to starting amount (mode-dependent, race-overridable)
   const startGold = _startGoldForMode(state.gameMode);
+  const p1Race = state.p1RaceId ? getRace(state.p1RaceId) : undefined;
   for (const player of state.players.values()) {
-    player.gold = startGold;
+    const raceGold = player.id === "p1" && p1Race?.startingGold != null
+      ? p1Race.startingGold
+      : undefined;
+    player.gold = raceGold ?? startGold;
     player.goldAccum = 0;
     EventBus.emit("goldChanged", { playerId: player.id, amount: player.gold });
   }

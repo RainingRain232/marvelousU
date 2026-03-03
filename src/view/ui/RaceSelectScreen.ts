@@ -25,6 +25,7 @@ const RACE_PORTRAITS: Record<string, string> = {
   horde: hordePImgUrl,
   adept: adeptPImgUrl,
   elements: manPImgUrl,
+  op: manPImgUrl,
 };
 
 // ---------------------------------------------------------------------------

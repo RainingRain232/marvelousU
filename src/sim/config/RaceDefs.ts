@@ -38,6 +38,8 @@ export interface RaceDef {
   accentColor: number;
   /** Race tier ratings (1–5) indicating max unit tier the race can field per category. */
   tiers?: RaceTiers;
+  /** Override starting gold for this race (defaults to BalanceConfig.START_GOLD). */
+  startingGold?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +135,25 @@ export const RACE_DEFINITIONS: RaceDef[] = [
       fire: 5, cold: 5, lightning: 5,
       distortion: 5, summon: 5, nature: 5,
       heal: 0,
+    },
+  },
+  {
+    id: "op",
+    name: "The OP",
+    title: "Beyond All Limits",
+    flavor: "Some call it cheating. Others call it destiny. The OP know no boundaries — every unit, every tier, unlimited gold. Why struggle when you can simply overwhelm?",
+    factionUnit: UnitType.HALBERDIER, // placeholder — no faction unit
+    factionUnits: [],
+    factionUnitLabel: "None — The OP need no exclusive units.",
+    implemented: true,
+    accentColor: 0xffdd00,
+    startingGold: 50000,
+    tiers: {
+      melee: 5, ranged: 5, siege: 5,
+      creature: 5, magic: 5,
+      fire: 5, cold: 5, lightning: 5,
+      distortion: 5, summon: 5, nature: 5,
+      heal: 5,
     },
   },
   {
