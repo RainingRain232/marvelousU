@@ -8,6 +8,7 @@ import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { inputManager } from "@input/InputManager";
 import { unitQueueUI } from "@view/ui/UnitQueueUI";
 import { p2AIBuyer } from "@view/ui/P2AIBuyer";
+import { AIBuyer } from "@view/ui/AIBuyer";
 import { fireballFX } from "@view/fx/FireballFX";
 import { lightningFX } from "@view/fx/LightningFX";
 import { summonFX } from "@view/fx/SummonFX";
@@ -50,7 +51,9 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { createGameState } from "@sim/state/GameState";
 import type { GameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
-import { initBases } from "@sim/systems/BaseSetup";
+import { initBases, initBasesMulti } from "@sim/systems/BaseSetup";
+import type { PlayerBaseConfig } from "@sim/systems/BaseSetup";
+import { setAlliance } from "@sim/state/GameState";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
@@ -258,6 +261,9 @@ import type { RaceId } from "@sim/config/RaceDefs";
         raceId,
         undefined,
         mapType,
+        undefined,
+        menuScreen.selectedPlayerCount,
+        menuScreen.alliedPlayerIds,
       );
     }
   };
@@ -473,12 +479,66 @@ function _computeBasePositions(w: number, h: number) {
 }
 
 /**
+ * Compute base positions for 3-4 players on larger maps.
+ * Bases are placed at corners: NW, SE, NE, SW.
+ */
+function _computeMultiBasePositions(
+  w: number,
+  h: number,
+  playerCount: number,
+): PlayerBaseConfig[] {
+  const configs: PlayerBaseConfig[] = [];
+
+  // NW — p1 (always human)
+  configs.push({
+    playerId: "p1",
+    slot: "nw",
+    direction: Direction.EAST,
+    position: { x: 1, y: 1 },
+    spawnOffset: { x: 5, y: 2 },
+  });
+
+  // SE — p2 (main rival)
+  configs.push({
+    playerId: "p2",
+    slot: "se",
+    direction: Direction.WEST,
+    position: { x: w - 5, y: h - 5 },
+    spawnOffset: { x: -1, y: -1 },
+  });
+
+  if (playerCount >= 3) {
+    // NE — p3
+    configs.push({
+      playerId: "p3",
+      slot: "ne",
+      direction: Direction.WEST,
+      position: { x: w - 5, y: 1 },
+      spawnOffset: { x: -1, y: 2 },
+    });
+  }
+
+  if (playerCount >= 4) {
+    // SW — p4
+    configs.push({
+      playerId: "p4",
+      slot: "sw",
+      direction: Direction.EAST,
+      position: { x: 1, y: h - 5 },
+      spawnOffset: { x: 5, y: -1 },
+    });
+  }
+
+  return configs;
+}
+
+/**
  * BATTLEFIELD mode: remove all player-owned buildings (castles etc.)
  * so players start on a clean field.
  */
 function _removeCastlesAndBuildings(state: GameState): void {
   for (const [id, building] of state.buildings) {
-    if (building.owner === "p1" || building.owner === "p2") {
+    if (building.owner !== null && state.players.has(building.owner)) {
       // Clear footprint tiles
       const def = BUILDING_DEFINITIONS[building.type];
       for (let dy = 0; dy < def.footprint.h; dy++) {
@@ -686,8 +746,9 @@ function _applyLeaderBonus(
           building.owner === playerId &&
           building.type === BuildingType.CASTLE
         ) {
-          const isWest = playerId === "p1";
-          const spawnX = isWest
+          const player = state.players.get(playerId);
+          const isLeftSide = !player || player.slot === "nw" || player.slot === "sw";
+          const spawnX = isLeftSide
             ? building.position.x + 5
             : building.position.x - 2;
           const spawnY = building.position.y + 2;
@@ -727,8 +788,9 @@ function _applyLeaderBonus(
         building.owner === playerId &&
         building.type === BuildingType.CASTLE
       ) {
-        const isWest = playerId === "p1";
-        const spawnX = isWest
+        const player = state.players.get(playerId);
+        const isLeftSide = !player || player.slot === "nw" || player.slot === "sw";
+        const spawnX = isLeftSide
           ? building.position.x + 5
           : building.position.x - 2;
         const spawnY = building.position.y + 2;
@@ -861,9 +923,14 @@ async function _bootGame(
   scenarioNum?: number,
   mapType: MapType = MapType.MEADOW,
   armoryOverride?: string[],
+  playerCount: number = 2,
+  alliedPlayerIds: string[] = [],
 ): Promise<void> {
   // Switch to in-game music
   audioManager.playGameMusic();
+
+  // Clamp playerCount: standard maps only support 2
+  const effectivePlayerCount = mapSize.label === "STANDARD" ? 2 : Math.max(2, Math.min(4, playerCount));
 
   // 1. Simulation state — sized to the chosen map
   const startGold =
@@ -873,11 +940,37 @@ async function _bootGame(
         ? 30000
         : BalanceConfig.START_GOLD;
 
-  const state = createGameState(mapSize.width, mapSize.height, 0, gameMode);
-  state.players.set("p1", createPlayerState("p1", Direction.WEST, startGold));
-  state.players.set("p2", createPlayerState("p2", Direction.EAST, startGold));
-  const basePos = _computeBasePositions(mapSize.width, mapSize.height);
-  initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
+  const state = createGameState(mapSize.width, mapSize.height, 0, gameMode, effectivePlayerCount);
+
+  if (effectivePlayerCount <= 2) {
+    // Classic 2-player layout
+    state.players.set("p1", createPlayerState("p1", Direction.WEST, startGold, "nw", false));
+    state.players.set("p2", createPlayerState("p2", Direction.EAST, startGold, "se", p2IsAI));
+    const basePos = _computeBasePositions(mapSize.width, mapSize.height);
+    initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
+  } else {
+    // Multi-player layout (3-4 players at corners)
+    state.players.set("p1", createPlayerState("p1", Direction.EAST, startGold, "nw", false));
+    state.players.set("p2", createPlayerState("p2", Direction.WEST, startGold, "se", true));
+    if (effectivePlayerCount >= 3) {
+      state.players.set("p3", createPlayerState("p3", Direction.WEST, startGold, "ne", true));
+    }
+    if (effectivePlayerCount >= 4) {
+      state.players.set("p4", createPlayerState("p4", Direction.EAST, startGold, "sw", true));
+    }
+    const configs = _computeMultiBasePositions(mapSize.width, mapSize.height, effectivePlayerCount);
+    initBasesMulti(state, configs);
+
+    // Set up alliances
+    for (const allyId of alliedPlayerIds) {
+      setAlliance(state, "p1", allyId);
+    }
+
+    // Default priority targets: each AI targets p2 (main enemy) first
+    state.priorityTargets.set("p2", "p1");
+    if (effectivePlayerCount >= 3) state.priorityTargets.set("p3", "p2");
+    if (effectivePlayerCount >= 4) state.priorityTargets.set("p4", "p2");
+  }
 
   // Resolve the scenario type for campaign games
   const scenarioDef =
@@ -955,9 +1048,10 @@ async function _bootGame(
 
   // 2. Camera — zoom in on the friendly castle at standard-map zoom level
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);
-  // Centre on the west (P1) castle; castle is at (1, midY) with a 4×4 footprint
-  const castleCenterX = basePos.westPosition.x + 2;
-  const castleCenterY = basePos.westPosition.y + 2;
+  // Centre on P1's castle (4×4 footprint → offset by 2 to centre)
+  const p1Base = [...state.bases.values()].find((b) => b.owner === "p1");
+  const castleCenterX = (p1Base?.position.x ?? 1) + 2;
+  const castleCenterY = (p1Base?.position.y ?? 1) + 2;
   viewManager.camera.focusOnTile(castleCenterX, castleCenterY);
 
   // Start cinematic zoom for battlefield campaign scenarios
@@ -1008,9 +1102,21 @@ async function _bootGame(
   buildingPlacer.init(viewManager, state, "p1");
   inputManager.init(viewManager, state, "p1");
 
-  // P2 AI buyer — state driven by menu choice
+  // AI buyers — p2 uses legacy singleton, p3/p4 use new AIBuyer instances
   p2AIBuyer.setEnabled(p2IsAI);
   hud.setP2AI(p2IsAI);
+
+  const aiBuyers: AIBuyer[] = [];
+  if (effectivePlayerCount >= 3) {
+    const p3Buyer = new AIBuyer("p3");
+    p3Buyer.setEnabled(true);
+    aiBuyers.push(p3Buyer);
+  }
+  if (effectivePlayerCount >= 4) {
+    const p4Buyer = new AIBuyer("p4");
+    p4Buyer.setEnabled(true);
+    aiBuyers.push(p4Buyer);
+  }
 
   // Wire per-frame updates now that game is live
   viewManager.onUpdate((s, dt) => buildingLayer.update(s, dt));
@@ -1020,6 +1126,9 @@ async function _bootGame(
   viewManager.onUpdate((s) => shopPanel.update(s));
   viewManager.onUpdate((s) => unitQueueUI.update(s));
   viewManager.onUpdate((s, dt) => p2AIBuyer.update(s, dt));
+  viewManager.onUpdate((s, dt) => {
+    for (const buyer of aiBuyers) buyer.update(s, dt);
+  });
   viewManager.onUpdate((s) => minimap.update(s));
 
   // HUD callbacks

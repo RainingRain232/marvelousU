@@ -17,6 +17,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import { GamePhase } from "@/types";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 
 const TS = 64;
 const PW = 3 * TS; // 192px wide
@@ -59,7 +60,7 @@ export class ArchitectsGuildRenderer {
   private _ownerColor: number;
 
   constructor(owner: string | null) {
-    this._ownerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._ownerColor = getPlayerColor(owner);
 
     this._drawBuilding();
     this._drawDetails();

@@ -1,5 +1,6 @@
 // Building placement input handler — validates tile, confirms/cancels placement
 import type { GameState } from "@sim/state/GameState";
+import { getPlayerZone } from "@sim/state/GameState";
 import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
@@ -40,7 +41,7 @@ export function canPlace(
   // Determine which zone the player "owns"
   const player = state.players.get(playerId);
   if (!player) return false;
-  const playerZone = player.direction; // "west" | "east"
+  const playerZone = getPlayerZone(state, playerId);
 
   for (let dy = 0; dy < def.footprint.h; dy++) {
     for (let dx = 0; dx < def.footprint.w; dx++) {

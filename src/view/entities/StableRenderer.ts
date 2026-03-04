@@ -18,6 +18,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import { GamePhase } from "@/types";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -100,7 +101,7 @@ export class StableRenderer {
   private _ownerColor: number;
 
   constructor(owner: string | null) {
-    this._ownerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._ownerColor = getPlayerColor(owner);
 
     this._drawBase();
     this._drawStalls();

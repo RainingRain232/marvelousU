@@ -1,6 +1,6 @@
 // Building system: placement validation, tick updates, destruction, capture.
 import type { GameState } from "@sim/state/GameState";
-import { getPlayer } from "@sim/state/GameState";
+import { getPlayer, getPlayerZone } from "@sim/state/GameState";
 import { getTile, setBuilding, setWalkable } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { createBuilding } from "@sim/entities/Building";
@@ -108,7 +108,7 @@ export function placeBuilding(
 
   // 4 & 5 & 6. Footprint tile checks
   const tiles = getFootprintTiles(position, def.footprint.w, def.footprint.h);
-  const allowedZone = playerZone(player.direction);
+  const allowedZone = getPlayerZone(state, playerId);
 
   for (const { x, y } of tiles) {
     const tile = getTile(state.battlefield, x, y);

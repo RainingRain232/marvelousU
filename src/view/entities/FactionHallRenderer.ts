@@ -21,6 +21,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import type { PlayerId } from "@/types";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -100,8 +101,7 @@ export class FactionHallRenderer {
   private _playerColor: number;
 
   constructor(owner: PlayerId | null) {
-    this._playerColor =
-      owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
 
     this._drawBase();
     this._drawBuilding();
@@ -118,7 +118,7 @@ export class FactionHallRenderer {
   }
 
   setOwner(owner: string | null): void {
-    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
   }
 
   tick(dt: number): void {

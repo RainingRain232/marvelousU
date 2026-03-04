@@ -21,6 +21,7 @@ import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { Direction, UnitState } from "@/types";
 import { animationManager } from "@view/animation/AnimationManager";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 
 // ---------------------------------------------------------------------------
 // Visual constants
@@ -54,6 +55,20 @@ const SHIELD_P2_HI     = 0xee5555;
 const SHIELD_NEU_FILL   = 0xcccccc;
 const SHIELD_NEU_STROKE = 0xaaaaaa;
 const SHIELD_NEU_HI     = 0xeeeeee;
+
+// Color helpers for shield derivation
+function _darken(color: number, factor: number): number {
+  const r = Math.floor(((color >> 16) & 0xff) * factor);
+  const g = Math.floor(((color >> 8) & 0xff) * factor);
+  const b = Math.floor((color & 0xff) * factor);
+  return (r << 16) | (g << 8) | b;
+}
+function _lighten(color: number, amount: number): number {
+  const r = Math.min(255, ((color >> 16) & 0xff) + Math.floor(255 * amount));
+  const g = Math.min(255, ((color >> 8) & 0xff) + Math.floor(255 * amount));
+  const b = Math.min(255, (color & 0xff) + Math.floor(255 * amount));
+  return (r << 16) | (g << 8) | b;
+}
 
 // Level star — shown next to the HP bar at level 1+
 const STAR_RADIUS_OUTER = 10;
@@ -262,7 +277,7 @@ export class UnitView {
   // ---------------------------------------------------------------------------
 
   private _buildPlaceholder(unit: Unit): void {
-    const color = unit.owner === "p1" ? COLOR_WEST : unit.owner === "p2" ? COLOR_EAST : 0xcccccc;
+    const color = getPlayerColor(unit.owner);
     this._body
       .circle(0, 0, RADIUS)
       .fill({ color })
@@ -294,9 +309,11 @@ export class UnitView {
   // ---------------------------------------------------------------------------
 
   private _buildShield(unit: Unit): void {
-    const fill   = unit.owner === "p1" ? SHIELD_P1_FILL   : unit.owner === "p2" ? SHIELD_P2_FILL   : SHIELD_NEU_FILL;
-    const stroke = unit.owner === "p1" ? SHIELD_P1_STROKE : unit.owner === "p2" ? SHIELD_P2_STROKE : SHIELD_NEU_STROKE;
-    const hi     = unit.owner === "p1" ? SHIELD_P1_HI     : unit.owner === "p2" ? SHIELD_P2_HI     : SHIELD_NEU_HI;
+    const baseColor = getPlayerColor(unit.owner);
+    // Derive fill/stroke/highlight from the base player color
+    const fill   = baseColor;
+    const stroke = _darken(baseColor, 0.7);
+    const hi     = _lighten(baseColor, 0.3);
 
     const pos = getShieldPosition(unit);
     const cx = pos.x;

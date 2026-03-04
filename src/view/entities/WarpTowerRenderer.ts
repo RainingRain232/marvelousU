@@ -12,6 +12,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import { GamePhase } from "@/types";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 import { TowerMage, MAGE_COLORS_WARP } from "./TowerMage";
 
 // ---------------------------------------------------------------------------
@@ -63,7 +64,7 @@ export class WarpTowerRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
     this._mage = new TowerMage(MAGE_COLORS_WARP);
 
     this._drawStaticTower();
@@ -204,7 +205,7 @@ export class WarpTowerRenderer {
   }
 
   setOwner(owner: string | null): void {
-    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
   }
 
   tick(dt: number, _phase: GamePhase): void {

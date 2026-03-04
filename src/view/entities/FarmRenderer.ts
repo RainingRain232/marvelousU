@@ -14,6 +14,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import { GamePhase } from "@/types";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -69,7 +70,7 @@ export class FarmRenderer {
     private _playerColor: number;
 
     constructor(owner: string | null) {
-        this._playerColor = owner === "p1" ? COL_FLAG_P1 : owner === "p2" ? COL_FLAG_P2 : COL_FLAG_NEUTRAL;
+        this._playerColor = getPlayerColor(owner);
 
         this._drawGround();
         this._drawHouse();
@@ -90,7 +91,7 @@ export class FarmRenderer {
     }
 
     setOwner(owner: string | null): void {
-        this._playerColor = owner === "p1" ? COL_FLAG_P1 : owner === "p2" ? COL_FLAG_P2 : COL_FLAG_NEUTRAL;
+        this._playerColor = getPlayerColor(owner);
     }
 
     tick(dt: number, _phase: GamePhase): void {

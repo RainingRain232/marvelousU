@@ -77,11 +77,14 @@ export function spawnCastle(state: GameState, base: Base): void {
  */
 export function spawnFirepit(state: GameState, castle: any): void {
   const def = BUILDING_DEFINITIONS[BuildingType.FIREPIT];
-  const isWest = castle.owner === "p1";
+  // Determine which side the castle is on by checking the player's slot
+  const player = state.players.get(castle.owner);
+  const slot = player?.slot ?? "nw";
+  const isLeftSide = slot === "nw" || slot === "sw";
 
   // Random position 2-3 tiles away towards the center
   const dist = 2 + Math.floor(Math.random() * 2);
-  const px = isWest ? castle.position.x + 4 + dist : castle.position.x - def.footprint.w - dist;
+  const px = isLeftSide ? castle.position.x + 4 + dist : castle.position.x - def.footprint.w - dist;
   const py = castle.position.y + 1 + Math.floor(Math.random() * 2);
 
   const id = `firepit-${castle.id}`;

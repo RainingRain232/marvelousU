@@ -1,5 +1,6 @@
 // Cooldowns, casting, ability resolution — delegates execute() to abilities/
 import type { GameState } from "@sim/state/GameState";
+import { isAlly } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Ability } from "@sim/abilities/Ability";
 import { createAbility } from "@sim/abilities/index";
@@ -199,7 +200,7 @@ function _tryTriggerAuras(state: GameState, unit: Unit): void {
     let hasEnemy = false;
     for (const other of state.units.values()) {
       if (other.state === UnitState.DIE) continue;
-      if (other.owner === unit.owner) continue;
+      if (isAlly(state, other.owner, unit.owner)) continue;
       const dx = other.position.x - unit.position.x;
       const dy = other.position.y - unit.position.y;
       if (dx * dx + dy * dy <= radiusSq) {

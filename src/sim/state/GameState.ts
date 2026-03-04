@@ -12,6 +12,7 @@ import type { Ability } from "@sim/abilities/Ability";
 import type { PlayerState } from "@sim/state/PlayerState";
 import { createBattlefieldState } from "@sim/state/BattlefieldState";
 import type { BattlefieldState } from "@sim/state/BattlefieldState";
+import type { TileZone } from "@sim/state/BattlefieldState";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,13 @@ export interface GameState {
 
   // Players
   players: Map<PlayerId, PlayerState>;
+  playerCount: number; // Number of active players (2, 3, or 4)
+
+  // Alliances — set of sorted "pA:pB" pairs (bidirectional)
+  alliances: Set<string>;
+
+  // AI priority targets — AI player → preferred enemy to march toward
+  priorityTargets: Map<PlayerId, PlayerId>;
 
   // Rally flags — per-player flag position set via the Flag upgrade ability
   rallyFlags: Map<PlayerId, Vec2>;
@@ -71,6 +79,7 @@ export function createGameState(
   height: number = BalanceConfig.GRID_HEIGHT,
   rngSeed: number = 0,
   gameMode: GameMode = GameMode.STANDARD,
+  playerCount: number = 2,
 ): GameState {
   return {
     phase: GamePhase.PREP,
@@ -91,8 +100,11 @@ export function createGameState(
     projectiles: new Map(),
     abilities: new Map(),
     players: new Map(),
+    playerCount,
+    alliances: new Set(),
+    priorityTargets: new Map(),
     rallyFlags: new Map(),
-    battlefield: createBattlefieldState(width, height),
+    battlefield: createBattlefieldState(width, height, playerCount),
   };
 }
 
@@ -122,4 +134,50 @@ export function getPlayer(state: GameState, id: PlayerId): PlayerState {
   const p = state.players.get(id);
   if (!p) throw new Error(`Player not found: ${id}`);
   return p;
+}
+
+// ---------------------------------------------------------------------------
+// Alliance helpers
+// ---------------------------------------------------------------------------
+
+function allianceKey(a: PlayerId, b: PlayerId): string {
+  return a < b ? `${a}:${b}` : `${b}:${a}`;
+}
+
+/** Returns true if players a and b are enemies (not allied and not the same). */
+export function isEnemy(state: GameState, a: PlayerId, b: PlayerId): boolean {
+  if (a === b) return false;
+  return !state.alliances.has(allianceKey(a, b));
+}
+
+/** Returns true if players a and b are allied (or the same player). */
+export function isAlly(state: GameState, a: PlayerId, b: PlayerId): boolean {
+  if (a === b) return true;
+  return state.alliances.has(allianceKey(a, b));
+}
+
+/** Set two players as allied. */
+export function setAlliance(state: GameState, a: PlayerId, b: PlayerId): void {
+  if (a !== b) state.alliances.add(allianceKey(a, b));
+}
+
+/** Remove an alliance between two players. */
+export function removeAlliance(state: GameState, a: PlayerId, b: PlayerId): void {
+  state.alliances.delete(allianceKey(a, b));
+}
+
+// ---------------------------------------------------------------------------
+// Zone helpers
+// ---------------------------------------------------------------------------
+
+/** Returns the tile zone owned by a given player (based on slot and player count). */
+export function getPlayerZone(state: GameState, playerId: PlayerId): TileZone {
+  const player = state.players.get(playerId);
+  if (!player) return "neutral";
+  if (state.playerCount <= 2) {
+    // 2-player: direction maps directly to zone ("west" | "east")
+    return player.direction as unknown as TileZone;
+  }
+  // 3-4 player: slot maps to zone ("nw" | "ne" | "sw" | "se")
+  return player.slot as TileZone;
 }

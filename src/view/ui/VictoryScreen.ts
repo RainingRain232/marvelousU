@@ -130,7 +130,13 @@ export class VictoryScreen {
       this._winnerText.text = "DRAW";
       this._subtitleText.text = "MUTUAL DESTRUCTION";
     } else {
-      const label = state.winnerId === "p1" ? "PLAYER 1" : "PLAYER 2";
+      const playerLabels: Record<string, string> = {
+        p1: "PLAYER 1",
+        p2: "PLAYER 2",
+        p3: "PLAYER 3",
+        p4: "PLAYER 4",
+      };
+      const label = playerLabels[state.winnerId] ?? state.winnerId.toUpperCase();
       this._winnerText.text = label;
       this._subtitleText.text = "WINS THE ROUND";
     }

@@ -23,6 +23,7 @@
 // Each transition emits "phaseChanged" on the EventBus so the view can react.
 
 import type { GameState } from "@sim/state/GameState";
+import { isAlly } from "@sim/state/GameState";
 import { GamePhase, GameMode, BuildingType } from "@/types";
 import { BuildingState, UnitState } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
@@ -221,7 +222,9 @@ function _checkWinCondition(state: GameState): string | null | undefined {
     const survivors = allPlayers.filter((id) => !eliminated.has(id));
     if (survivors.length === 0) return null; // mutual destruction — draw
     if (survivors.length === 1) return survivors[0];
-    // survivors.length >= 2: multiple players still standing — keep fighting
+    // Check if all survivors are allied — if so, they win together
+    if (_allAllied(state, survivors)) return survivors[0];
+    // Multiple non-allied players still standing — keep fighting
   }
 
   // 2. Total wipe: a player has no living units and no active buildings.
@@ -233,12 +236,19 @@ function _checkWinCondition(state: GameState): string | null | undefined {
     const hasUnits = _hasLivingUnits(state, playerId);
     const hasBuildings = _hasActiveBuildings(state, playerId);
     if (!hasUnits && !hasBuildings) {
-      // This player is totally wiped — opponents win
+      // This player is totally wiped — check remaining opponents
       const opponents = [...state.players.keys()].filter(
         (id) => id !== playerId,
       );
       if (opponents.length === 1) return opponents[0];
-      // Multiple opponents — declare no single winner (keep fighting)
+      // Check if all remaining opponents (excluding this wiped player)
+      // are allied — if so, they win together
+      const survivors = opponents.filter(
+        (id) => _hasLivingUnits(state, id) || _hasActiveBuildings(state, id),
+      );
+      if (survivors.length >= 1 && _allAllied(state, survivors)) {
+        return survivors[0];
+      }
     }
   }
 
@@ -264,12 +274,14 @@ function _checkBattlefieldWin(state: GameState): string | null | undefined {
     }
   }
 
-  if (eliminated.size === 0) return undefined; // both sides still have units
+  if (eliminated.size === 0) return undefined; // all sides still have units
 
   const allPlayers = [...state.players.keys()];
   const survivors = allPlayers.filter((id) => !eliminated.has(id));
   if (survivors.length === 0) return null; // simultaneous last-unit death — draw
   if (survivors.length === 1) return survivors[0];
+  // All survivors allied = win
+  if (_allAllied(state, survivors)) return survivors[0];
   return undefined;
 }
 
@@ -304,4 +316,14 @@ function _hasActiveBuildings(state: GameState, playerId: string): boolean {
     }
   }
   return false;
+}
+
+/** Returns true if all players in the list are allied with each other. */
+function _allAllied(state: GameState, playerIds: string[]): boolean {
+  for (let i = 0; i < playerIds.length; i++) {
+    for (let j = i + 1; j < playerIds.length; j++) {
+      if (!isAlly(state, playerIds[i], playerIds[j])) return false;
+    }
+  }
+  return true;
 }

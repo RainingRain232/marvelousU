@@ -22,6 +22,9 @@ export type PlayerId = string;
 /** Sentinel used for neutral / unowned entities. */
 export const NEUTRAL_PLAYER: PlayerId = "__neutral__";
 
+/** Map corner slot for a player's base in multi-player games. */
+export type PlayerSlot = "nw" | "ne" | "sw" | "se";
+
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------

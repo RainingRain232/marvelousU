@@ -17,6 +17,7 @@
 //   sets the targetId and re-paths the unit.
 
 import type { GameState } from "@sim/state/GameState";
+import { isEnemy, isAlly } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Building } from "@sim/entities/Building";
 import { UnitState, Direction, BuildingState } from "@/types";
@@ -115,7 +116,7 @@ function _handleMove(state: GameState, unit: Unit): void {
       if (
         unitTarget &&
         unitTarget.state !== UnitState.DIE &&
-        unitTarget.owner === unit.owner &&
+        isAlly(state, unitTarget.owner, unit.owner) &&
         distanceSq(unit.position, unitTarget.position) <= AGGRO_RANGE_SQ
       ) {
         return;
@@ -126,8 +127,8 @@ function _handleMove(state: GameState, unit: Unit): void {
       if (
         buildingTarget &&
         buildingTarget.state === BuildingState.ACTIVE &&
-        buildingTarget.owner !== unit.owner &&
-        buildingTarget.owner !== null
+        buildingTarget.owner !== null &&
+        isEnemy(state, unit.owner, buildingTarget.owner)
       ) {
         // Still heading toward a valid enemy building — leave path alone.
         return;
@@ -139,7 +140,7 @@ function _handleMove(state: GameState, unit: Unit): void {
         if (
           unitTarget &&
           unitTarget.state !== UnitState.DIE &&
-          unitTarget.owner !== unit.owner &&
+          isEnemy(state, unit.owner, unitTarget.owner) &&
           distanceSq(unit.position, unitTarget.position) <= AGGRO_RANGE_SQ
         ) {
           return;
@@ -198,7 +199,7 @@ function _handleAttack(state: GameState, unit: Unit): void {
     if (
       currentTarget &&
       currentTarget.state !== UnitState.DIE &&
-      currentTarget.owner === unit.owner &&
+      isAlly(state, currentTarget.owner, unit.owner) &&
       distanceSq(unit.position, currentTarget.position) <= AGGRO_RANGE_SQ
     ) {
       return;
@@ -212,7 +213,8 @@ function _handleAttack(state: GameState, unit: Unit): void {
   if (
     buildingTarget &&
     buildingTarget.state === BuildingState.ACTIVE &&
-    buildingTarget.owner !== unit.owner
+    buildingTarget.owner !== null &&
+    isEnemy(state, unit.owner, buildingTarget.owner)
   ) {
     return;
   }
@@ -228,7 +230,7 @@ function _handleAttack(state: GameState, unit: Unit): void {
   if (
     currentTarget &&
     currentTarget.state !== UnitState.DIE &&
-    currentTarget.owner !== unit.owner &&
+    isEnemy(state, unit.owner, currentTarget.owner) &&
     distanceSq(unit.position, currentTarget.position) <= AGGRO_RANGE_SQ
   ) {
     return; // Target still valid — CombatSystem handles it
@@ -256,8 +258,8 @@ function _findNearbyEnemyBuilding(
   let nearestDsq = rangeSq + 1;
 
   for (const building of state.buildings.values()) {
-    if (building.owner === unit.owner) continue;
     if (building.owner === null) continue; // neutral — ignore
+    if (!isEnemy(state, unit.owner, building.owner)) continue;
     if (building.state !== BuildingState.ACTIVE) continue;
 
     const dsq = distanceSq(unit.position, building.position);
@@ -444,26 +446,49 @@ function _rallyFlagGoal(
 
 /**
  * Returns the enemy base's spawn-point tile — the default march destination.
+ *
+ * Priority targeting (3-4 player): if the unit's owner has a priority target
+ * set, head toward that player's base. Otherwise pick the nearest enemy base.
+ *
+ * 2-player fallback: opposite direction (west↔east) as before.
  */
 function _enemyBaseGoal(
   state: GameState,
   unit: Unit,
 ): { x: number; y: number } | null {
-  // Find the base owned by this unit's player
-  const ownerBase = [...state.bases.values()].find(
-    (b) => b.owner === unit.owner,
-  );
-  if (!ownerBase) return null;
+  // Check priority target first
+  const priorityTarget = state.priorityTargets.get(unit.owner);
+  if (priorityTarget) {
+    const priorityBase = [...state.bases.values()].find(
+      (b) => b.owner === priorityTarget,
+    );
+    // Only use priority target if that player's base still exists
+    if (priorityBase) {
+      return {
+        x: priorityBase.position.x + priorityBase.spawnOffset.x,
+        y: priorityBase.position.y + priorityBase.spawnOffset.y,
+      };
+    }
+  }
 
-  const oppositeDir =
-    ownerBase.direction === Direction.WEST ? Direction.EAST : Direction.WEST;
-  const enemyBase = [...state.bases.values()].find(
-    (b) => b.direction === oppositeDir,
-  );
-  if (!enemyBase) return null;
+  // Find nearest enemy base
+  let nearestBase: { x: number; y: number } | null = null;
+  let nearestDsq = Infinity;
 
-  return {
-    x: enemyBase.position.x + enemyBase.spawnOffset.x,
-    y: enemyBase.position.y + enemyBase.spawnOffset.y,
-  };
+  for (const base of state.bases.values()) {
+    if (base.owner === unit.owner) continue;
+    if (!isEnemy(state, unit.owner, base.owner)) continue;
+
+    const spawnPos = {
+      x: base.position.x + base.spawnOffset.x,
+      y: base.position.y + base.spawnOffset.y,
+    };
+    const dsq = distanceSq(unit.position, spawnPos);
+    if (dsq < nearestDsq) {
+      nearestBase = spawnPos;
+      nearestDsq = dsq;
+    }
+  }
+
+  return nearestBase;
 }

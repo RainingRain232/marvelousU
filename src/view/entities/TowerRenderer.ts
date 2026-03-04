@@ -16,6 +16,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import { GamePhase } from "@/types";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -87,7 +88,7 @@ export class TowerRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
 
     this._drawStaticTower();
     this._drawFlag();
@@ -109,7 +110,7 @@ export class TowerRenderer {
   }
 
   setOwner(owner: string | null): void {
-    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
   }
 
   tick(dt: number, _phase: GamePhase): void {

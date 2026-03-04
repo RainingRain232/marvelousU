@@ -7,6 +7,7 @@
 import { Container, Graphics } from "pixi.js";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { GamePhase } from "@/types";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 
 // Ornate color accents for front view
 const COL_WALL_DK = 0xb0894a;
@@ -39,7 +40,7 @@ export class FrontViewStablesRenderer {
     const tile = BalanceConfig.TILE_SIZE;
     this._PW = 2 * tile;
     this._PH = 2 * tile;
-    this._ownerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._ownerColor = getPlayerColor(owner);
 
     // Build components (front elevation)
     this._drawWallBase();

@@ -46,12 +46,11 @@ import { EliteArcheryRangeRenderer } from "@view/entities/EliteArcheryRangeRende
 import { EliteSiegeWorkshopRenderer } from "@view/entities/EliteSiegeWorkshopRenderer";
 import { EliteMageTowerRenderer } from "@view/entities/EliteMageTowerRenderer";
 import { EliteStableRenderer } from "@view/entities/EliteStableRenderer";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
 const CAP_BAR_Y_OFF = 4; // pixels below bottom of building
-const CAP_COLOR_P1 = 0x4488ff; // west / p1
-const CAP_COLOR_P2 = 0xff4444; // east / p2
 const CAP_COLOR_NEUTRAL = 0x888888;
 
 // ---------------------------------------------------------------------------
@@ -493,12 +492,9 @@ export class BuildingView {
       this._captureFill.clear();
       const capPct = building.captureProgress;
       if (capPct > 0 && capPct < 1) {
-        const capColor =
-          building.capturePlayerId === "p1"
-            ? CAP_COLOR_P1
-            : building.capturePlayerId === "p2"
-              ? CAP_COLOR_P2
-              : CAP_COLOR_NEUTRAL;
+        const capColor = building.capturePlayerId
+          ? getPlayerColor(building.capturePlayerId)
+          : CAP_COLOR_NEUTRAL;
         this._captureFill
           .rect(0, this._ph + CAP_BAR_Y_OFF, this._pw * capPct, CAP_BAR_H)
           .fill({ color: capColor });
@@ -835,7 +831,7 @@ export class BuildingView {
 
   private _buildFlag(building: Building): Graphics {
     // Small triangle flag at top-right, colored by owner
-    const flagColor = building.owner === "p1" ? 0x4488ff : building.owner === "p2" ? 0xff4444 : 0xeeeeee;
+    const flagColor = getPlayerColor(building.owner);
     const g = new Graphics();
     // Pole
     g.moveTo(0, 0).lineTo(0, -14).stroke({ color: 0x888888, width: 1.5 });

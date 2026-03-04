@@ -142,8 +142,12 @@ export class GridRenderer {
       for (const tile of row) {
         // Use "walkable" color even for buildings so the terrain looks consistent
         const isActuallyWalkable = tile.walkable || tile.buildingId !== null;
+        // Map multi-player zones to the west/east/neutral palette keys
+        const zoneKey = tile.zone === "nw" || tile.zone === "sw" ? "west"
+          : tile.zone === "ne" || tile.zone === "se" ? "east"
+          : tile.zone;
         const key =
-          `${tile.zone}_${isActuallyWalkable ? "walkable" : "unwalkable"}` as keyof TileColorSet;
+          `${zoneKey}_${isActuallyWalkable ? "walkable" : "unwalkable"}` as keyof TileColorSet;
         const color = palette[key];
         g.rect(tile.x * ts, tile.y * ts, ts, ts).fill({ color });
       }

@@ -92,12 +92,9 @@ const MAP_COLORS: Record<string, MinimapColors> = {
 
 const DEFAULT_COLORS = MAP_COLORS.meadow;
 
-// Building / unit dot colors
-const BUILDING_P1 = 0x4488ff;
-const BUILDING_P2 = 0xff4444;
+// Building / unit dot colors (centralized via getPlayerColor)
+import { getPlayerColor } from "@sim/config/PlayerColors";
 const BUILDING_NEUTRAL = 0xcccc88;
-const UNIT_P1 = 0x66aaff;
-const UNIT_P2 = 0xff6666;
 
 // ---------------------------------------------------------------------------
 // Minimap
@@ -192,21 +189,15 @@ export class Minimap {
       const row = bf.grid[y];
       for (let x = 0; x < bf.width; x++) {
         const tile = row[x];
+        const zone = tile.zone;
+        // Map multi-player zones to existing color palette
+        const isWestSide = zone === "west" || zone === "nw" || zone === "sw";
+        const isEastSide = zone === "east" || zone === "ne" || zone === "se";
         let color: number;
         if (tile.walkable) {
-          color =
-            tile.zone === "west"
-              ? c.west
-              : tile.zone === "east"
-                ? c.east
-                : c.neutral;
+          color = isWestSide ? c.west : isEastSide ? c.east : c.neutral;
         } else {
-          color =
-            tile.zone === "west"
-              ? c.westUnwalkable
-              : tile.zone === "east"
-                ? c.eastUnwalkable
-                : c.neutralUnwalkable;
+          color = isWestSide ? c.westUnwalkable : isEastSide ? c.eastUnwalkable : c.neutralUnwalkable;
         }
         g.rect(x * sx, y * sy, Math.ceil(sx), Math.ceil(sy)).fill({ color });
       }
@@ -223,12 +214,7 @@ export class Minimap {
     // Buildings — draw as small rectangles
     for (const b of state.buildings.values()) {
       if (b.state === BuildingState.DESTROYED) continue;
-      const color =
-        b.owner === "p1"
-          ? BUILDING_P1
-          : b.owner === "p2"
-            ? BUILDING_P2
-            : BUILDING_NEUTRAL;
+      const color = b.owner ? getPlayerColor(b.owner) : BUILDING_NEUTRAL;
       g.rect(
         b.position.x * sx,
         b.position.y * sy,
@@ -239,7 +225,7 @@ export class Minimap {
 
     // Units — draw as small dots
     for (const u of state.units.values()) {
-      const color = u.owner === "p1" ? UNIT_P1 : UNIT_P2;
+      const color = getPlayerColor(u.owner);
       g.rect(
         u.position.x * sx - 0.5,
         u.position.y * sy - 0.5,

@@ -1,5 +1,6 @@
 // Damage calc, targeting priority, attack resolution
 import type { GameState } from "@sim/state/GameState";
+import { isEnemy, isAlly } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Building } from "@sim/entities/Building";
 import { UnitState, BuildingState, UnitType } from "@/types";
@@ -70,7 +71,8 @@ export const CombatSystem = {
         if (
           building &&
           building.state === BuildingState.ACTIVE &&
-          building.owner !== unit.owner
+          building.owner !== null &&
+          isEnemy(state, unit.owner, building.owner)
         ) {
           _attackBuilding(state, unit, building, dt);
           continue;
@@ -278,7 +280,7 @@ function resolveTarget(state: GameState, unit: Unit): Unit | null {
     if (
       existing &&
       existing.state !== UnitState.DIE &&
-      existing.owner !== unit.owner &&
+      isEnemy(state, unit.owner, existing.owner) &&
       distanceSq(unit.position, existing.position) <= AGGRO_RANGE_SQ
     ) {
       // For hunters: only keep current target if it is a hunt type, or if there
@@ -298,7 +300,7 @@ function resolveTarget(state: GameState, unit: Unit): Unit | null {
 
   for (const candidate of state.units.values()) {
     if (candidate.id === unit.id) continue;
-    if (candidate.owner === unit.owner) continue;
+    if (!isEnemy(state, unit.owner, candidate.owner)) continue;
     if (candidate.state === UnitState.DIE) continue;
 
     const dsq = distanceSq(unit.position, candidate.position);
@@ -328,7 +330,7 @@ function resolveFriendlyTarget(state: GameState, unit: Unit): Unit | null {
   let nearestDistSq = AGGRO_RANGE_SQ + 1;
 
   for (const candidate of state.units.values()) {
-    if (candidate.owner !== unit.owner) continue;
+    if (!isAlly(state, unit.owner, candidate.owner)) continue;
     if (candidate.state === UnitState.DIE) continue;
     if (candidate.hp >= candidate.maxHp) continue;
 

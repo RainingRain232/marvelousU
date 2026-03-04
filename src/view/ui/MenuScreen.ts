@@ -151,6 +151,19 @@ export class MenuScreen {
   private _aiToggleBg!: Graphics;
   private _aiToggleLabel!: Text;
 
+  // Player count & alliance state
+  private _playerCount = 2;
+  private _p3Allied = false;
+  private _p4Allied = false;
+  private _playerCountBtns: Array<{ bg: Graphics; label: Text }> = [];
+  private _p3AllyContainer!: Container;
+  private _p3AllyBg!: Graphics;
+  private _p3AllyLabel!: Text;
+  private _p4AllyContainer!: Container;
+  private _p4AllyBg!: Graphics;
+  private _p4AllyLabel!: Text;
+  private _playerSection!: Container;
+
   // Damage numbers toggle state
   private _damageNumbers = true;
   private _dmgToggleBg!: Graphics;
@@ -202,6 +215,17 @@ export class MenuScreen {
 
   get damageNumbersEnabled(): boolean {
     return this._damageNumbers;
+  }
+
+  get selectedPlayerCount(): number {
+    return this._playerCount;
+  }
+
+  get alliedPlayerIds(): string[] {
+    const allies: string[] = [];
+    if (this._playerCount >= 3 && this._p3Allied) allies.push("p3");
+    if (this._playerCount >= 4 && this._p4Allied) allies.push("p4");
+    return allies;
   }
 
   // ---------------------------------------------------------------------------
@@ -412,6 +436,12 @@ export class MenuScreen {
       sizeBtn.on("pointerdown", () => {
         this._selectedSizeIndex = idx;
         this._refreshSizeBtns(sbW, sbH);
+        // Reset player count to 2 if STANDARD (only supports 2 players)
+        if (idx === 0 && this._playerCount > 2) {
+          this._playerCount = 2;
+        }
+        this._refreshPlayerCountBtns(50, 26);
+        this._refreshAllianceToggles();
       });
 
       card.addChild(sizeBtn);
@@ -502,13 +532,119 @@ export class MenuScreen {
         .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
+    // --- Player count + alliance section ---
+    const playerStartY = modeSectionH + 22;
+    const playerSection = new Container();
+    playerSection.position.set(0, 0);
+    this._playerSection = playerSection;
+    card.addChild(playerSection);
+
+    const playersLabel = new Text({ text: "PLAYERS", style: STYLE_LABEL });
+    playersLabel.position.set(20, playerStartY);
+    playerSection.addChild(playersLabel);
+
+    // 3 buttons: 2, 3, 4
+    const pcBtnW = 50;
+    const pcBtnH = 26;
+    const pcGap = 8;
+    this._playerCountBtns = [];
+    for (let i = 0; i < 3; i++) {
+      const count = i + 2; // 2, 3, 4
+      const btn = new Container();
+      btn.eventMode = "static";
+      btn.cursor = "pointer";
+      btn.position.set(20 + i * (pcBtnW + pcGap), playerStartY + 20);
+
+      const bg = new Graphics();
+      btn.addChild(bg);
+
+      const lbl = new Text({
+        text: String(count),
+        style: STYLE_SIZE_INACTIVE,
+      });
+      lbl.anchor.set(0.5, 0.5);
+      lbl.position.set(pcBtnW / 2, pcBtnH / 2);
+      btn.addChild(lbl);
+
+      btn.on("pointerdown", () => {
+        // Only allow 3/4 on DOUBLE+
+        if (count > 2 && this._selectedSizeIndex === 0) return;
+        this._playerCount = count;
+        this._refreshPlayerCountBtns(pcBtnW, pcBtnH);
+        this._refreshAllianceToggles();
+      });
+
+      playerSection.addChild(btn);
+      this._playerCountBtns.push({ bg, label: lbl });
+    }
+    this._refreshPlayerCountBtns(pcBtnW, pcBtnH);
+
+    // Alliance toggles
+    const allyY = playerStartY + 52;
+    const allyW = (CW - 40 - 8) / 2;
+    const allyH = 24;
+
+    // P3 ALLIED
+    const p3Ally = new Container();
+    p3Ally.eventMode = "static";
+    p3Ally.cursor = "pointer";
+    p3Ally.position.set(20, allyY);
+    const p3Bg = new Graphics();
+    p3Ally.addChild(p3Bg);
+    const p3Lbl = new Text({ text: "P3 ALLIED", style: STYLE_SIZE_INACTIVE });
+    p3Lbl.anchor.set(0.5, 0.5);
+    p3Lbl.position.set(allyW / 2, allyH / 2);
+    p3Ally.addChild(p3Lbl);
+    p3Ally.on("pointerdown", () => {
+      if (this._playerCount < 3) return;
+      this._p3Allied = !this._p3Allied;
+      this._refreshAllianceToggles();
+    });
+    playerSection.addChild(p3Ally);
+    this._p3AllyContainer = p3Ally;
+    this._p3AllyBg = p3Bg;
+    this._p3AllyLabel = p3Lbl;
+
+    // P4 ALLIED
+    const p4Ally = new Container();
+    p4Ally.eventMode = "static";
+    p4Ally.cursor = "pointer";
+    p4Ally.position.set(20 + allyW + 8, allyY);
+    const p4Bg = new Graphics();
+    p4Ally.addChild(p4Bg);
+    const p4Lbl = new Text({ text: "P4 ALLIED", style: STYLE_SIZE_INACTIVE });
+    p4Lbl.anchor.set(0.5, 0.5);
+    p4Lbl.position.set(allyW / 2, allyH / 2);
+    p4Ally.addChild(p4Lbl);
+    p4Ally.on("pointerdown", () => {
+      if (this._playerCount < 4) return;
+      this._p4Allied = !this._p4Allied;
+      this._refreshAllianceToggles();
+    });
+    playerSection.addChild(p4Ally);
+    this._p4AllyContainer = p4Ally;
+    this._p4AllyBg = p4Bg;
+    this._p4AllyLabel = p4Lbl;
+
+    this._refreshAllianceToggles();
+
+    // Divider after player section
+    const playerSectionH = allyY + allyH + 10;
+    playerSection.addChild(
+      new Graphics()
+        .rect(20, playerSectionH, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
+    const actionStartY = playerSectionH + 14;
+
     // --- SELECT LEADER button (proceeds to leader selection, not yet starting the game) ---
     const BW = CW - 40;
     const BH = 42;
     const startBtn = new Container();
     startBtn.eventMode = "static";
     startBtn.cursor = "pointer";
-    startBtn.position.set(20, modeSectionH + 22);
+    startBtn.position.set(20, actionStartY);
 
     const startBg = new Graphics()
       .roundRect(0, 0, BW, BH, 6)
@@ -547,7 +683,7 @@ export class MenuScreen {
     const qpBtn = new Container();
     qpBtn.eventMode = "static";
     qpBtn.cursor = "pointer";
-    qpBtn.position.set(20, modeSectionH + 22 + BH + 8);
+    qpBtn.position.set(20, actionStartY + BH + 8);
 
     const qpBg = new Graphics()
       .roundRect(0, 0, BW, BH, 6)
@@ -586,7 +722,7 @@ export class MenuScreen {
     const wikiBtn = new Container();
     wikiBtn.eventMode = "static";
     wikiBtn.cursor = "pointer";
-    wikiBtn.position.set(20, modeSectionH + 22 + BH + 8 + BH + 8);
+    wikiBtn.position.set(20, actionStartY + BH + 8 + BH + 8);
 
     const wikiBg = new Graphics()
       .roundRect(0, 0, BW, BH, 6)
@@ -625,7 +761,7 @@ export class MenuScreen {
     const bwBtn = new Container();
     bwBtn.eventMode = "static";
     bwBtn.cursor = "pointer";
-    bwBtn.position.set(20, modeSectionH + 22 + BH + 8 + BH + 8 + BH + 8);
+    bwBtn.position.set(20, actionStartY + BH + 8 + BH + 8 + BH + 8);
 
     const bwBg = new Graphics()
       .roundRect(0, 0, BW, BH, 6)
@@ -661,7 +797,7 @@ export class MenuScreen {
     card.addChild(bwBtn);
 
     // Adjust card height dynamically
-    this._cardH = modeSectionH + 22 + BH + 8 + BH + 8 + BH + 8 + BH + 18;
+    this._cardH = actionStartY + BH + 8 + BH + 8 + BH + 8 + BH + 18;
 
     vm.addToLayer("ui", this.container);
     this._layout();
@@ -799,6 +935,71 @@ export class MenuScreen {
         entry.desc.style = STYLE_MODE_INACTIVE;
       }
     }
+  }
+
+  private _refreshPlayerCountBtns(w: number, h: number): void {
+    for (let i = 0; i < this._playerCountBtns.length; i++) {
+      const entry = this._playerCountBtns[i];
+      const count = i + 2;
+      const selected = count === this._playerCount;
+      // Only allow 3/4 on DOUBLE+ maps (size index > 0)
+      const disabled = count > 2 && this._selectedSizeIndex === 0;
+
+      entry.bg.clear();
+      if (disabled) {
+        entry.bg
+          .roundRect(0, 0, w, h, 4)
+          .fill({ color: 0x0d0d1a })
+          .roundRect(0, 0, w, h, 4)
+          .stroke({ color: 0x223333, width: 1 });
+        entry.label.style = STYLE_MODE_DISABLED;
+      } else if (selected) {
+        entry.bg
+          .roundRect(0, 0, w, h, 4)
+          .fill({ color: 0x1a2e1a })
+          .roundRect(0, 0, w, h, 4)
+          .stroke({ color: 0xffd700, width: 1.5 });
+        entry.label.style = STYLE_SIZE_ACTIVE;
+      } else {
+        entry.bg
+          .roundRect(0, 0, w, h, 4)
+          .fill({ color: 0x12121e })
+          .roundRect(0, 0, w, h, 4)
+          .stroke({ color: 0x334455, width: 1 });
+        entry.label.style = STYLE_SIZE_INACTIVE;
+      }
+    }
+  }
+
+  private _refreshAllianceToggles(): void {
+    const allyW = (this._cardW - 40 - 8) / 2;
+    const allyH = 24;
+
+    // P3 toggle
+    const p3Active = this._playerCount >= 3;
+    const p3Allied = this._p3Allied && p3Active;
+    this._p3AllyBg.clear();
+    this._p3AllyBg
+      .roundRect(0, 0, allyW, allyH, 4)
+      .fill({ color: !p3Active ? 0x0d0d1a : p3Allied ? 0x1a3a1a : 0x2a1a1a })
+      .roundRect(0, 0, allyW, allyH, 4)
+      .stroke({ color: !p3Active ? 0x223333 : p3Allied ? 0x44aa66 : 0xaa4444, width: 1 });
+    this._p3AllyLabel.text = p3Active ? (p3Allied ? "P3 ALLIED" : "P3 ENEMY") : "P3 ---";
+    this._p3AllyLabel.style = !p3Active ? STYLE_MODE_DISABLED : p3Allied ? STYLE_SIZE_ACTIVE : STYLE_SIZE_INACTIVE;
+    this._p3AllyContainer.cursor = p3Active ? "pointer" : "default";
+
+    // P4 toggle
+    const p4Active = this._playerCount >= 4;
+    const p4Allied = this._p4Allied && p4Active;
+    this._p4AllyBg.clear();
+    this._p4AllyBg
+      .roundRect(0, 0, allyW, allyH, 4)
+      .fill({ color: !p4Active ? 0x0d0d1a : p4Allied ? 0x1a3a1a : 0x2a1a1a })
+      .roundRect(0, 0, allyW, allyH, 4)
+      .stroke({ color: !p4Active ? 0x223333 : p4Allied ? 0x44aa66 : 0xaa4444, width: 1 });
+    this._p4AllyLabel.text = p4Active ? (p4Allied ? "P4 ALLIED" : "P4 ENEMY") : "P4 ---";
+    this._p4AllyLabel.style = !p4Active ? STYLE_MODE_DISABLED : p4Allied ? STYLE_SIZE_ACTIVE : STYLE_SIZE_INACTIVE;
+    this._p4AllyContainer.cursor = p4Active ? "pointer" : "default";
   }
 
   private _layout(): void {

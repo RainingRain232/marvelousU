@@ -4,6 +4,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import { GamePhase } from "@/types";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 import { TowerMage, MAGE_COLORS_HEAL } from "./TowerMage";
 
 const TS = 64;
@@ -21,7 +22,7 @@ export class HealingTowerRenderer {
   private _casting = false;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x2ecc71 : owner === "p2" ? 0x2e8f55 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
     this._mage = new TowerMage(MAGE_COLORS_HEAL);
 
     this._drawStaticTower();
@@ -78,7 +79,7 @@ export class HealingTowerRenderer {
   }
 
   setOwner(owner: string | null): void {
-    this._playerColor = owner === "p1" ? 0x2ecc71 : owner === "p2" ? 0x2e8f55 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
   }
 
   tick(dt: number, _phase: GamePhase): void {

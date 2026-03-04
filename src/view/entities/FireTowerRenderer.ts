@@ -12,6 +12,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import { GamePhase } from "@/types";
+import { getPlayerColor } from "@sim/config/PlayerColors";
 import { TowerMage, MAGE_COLORS_FIRE } from "./TowerMage";
 
 // ---------------------------------------------------------------------------
@@ -66,7 +67,7 @@ export class FireTowerRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
     this._mage = new TowerMage(MAGE_COLORS_FIRE);
 
     this._drawStaticTower();
@@ -201,7 +202,7 @@ export class FireTowerRenderer {
   }
 
   setOwner(owner: string | null): void {
-    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
+    this._playerColor = getPlayerColor(owner);
   }
 
   tick(dt: number, _phase: GamePhase): void {
