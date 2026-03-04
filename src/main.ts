@@ -45,6 +45,8 @@ import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
 import { buildingWikiScreen } from "@view/ui/BuildingWikiScreen";
 import { minimap } from "@view/ui/Minimap";
+import { lobbyScreen } from "@view/ui/LobbyScreen";
+import { RoomManager } from "@net/RoomManager";
 import { campaignState } from "@sim/config/CampaignState";
 import { getScenario, SCENARIO_DEFINITIONS } from "@sim/config/CampaignDefs";
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
@@ -175,6 +177,239 @@ import type { RaceId } from "@sim/config/RaceDefs";
     menuScreen.hide();
     buildingWikiScreen.show();
   };
+
+  // ---------------------------------------------------------------------------
+  // Online multiplayer lobby
+  // ---------------------------------------------------------------------------
+  lobbyScreen.init(viewManager);
+
+  menuScreen.onMultiplayer = () => {
+    menuScreen.hide();
+    _showMultiplayerPrompt();
+  };
+
+  const _roomManager = new RoomManager();
+
+  function _showMultiplayerPrompt(): void {
+    // Simple HTML prompt for create vs join
+    const choice = window.prompt(
+      "ONLINE MULTIPLAYER\n\n" +
+      "Type a 4-letter room code to join, or leave empty to create a new room.\n\n" +
+      "Room code (or empty to create):",
+      "",
+    );
+
+    if (choice === null) {
+      // User cancelled
+      menuScreen.show();
+      return;
+    }
+
+    const serverUrl = window.prompt(
+      "Server address:",
+      `ws://${window.location.hostname}:3001`,
+    );
+
+    if (!serverUrl) {
+      menuScreen.show();
+      return;
+    }
+
+    // Set up room manager callbacks
+    _roomManager.on({
+      onRoomUpdate: (players) => {
+        lobbyScreen.updatePlayers(players);
+      },
+      onStatusChange: (status) => {
+        if (status === "lobby" && _roomManager.roomId && _roomManager.localPlayerId) {
+          lobbyScreen.show(_roomManager.roomId, _roomManager.localPlayerId);
+        } else if (status === "disconnected") {
+          lobbyScreen.setStatus("Disconnected from server");
+        }
+      },
+      onPhaseChange: (phase) => {
+        if (phase === GamePhase.PREP || phase === GamePhase.BATTLE) {
+          lobbyScreen.hide();
+          _bootOnlineGame();
+        }
+      },
+      onGameOver: (winnerId) => {
+        lobbyScreen.setStatus(winnerId ? `Player ${winnerId} wins!` : "Draw!");
+      },
+      onError: (msg) => {
+        lobbyScreen.setStatus(`Error: ${msg}`);
+      },
+    });
+
+    lobbyScreen.onReady = () => {
+      _roomManager.setReady();
+      lobbyScreen.setStatus("Ready! Waiting for others...");
+    };
+
+    lobbyScreen.onBack = () => {
+      lobbyScreen.hide();
+      _roomManager.disconnect();
+      menuScreen.show();
+    };
+
+    // Connect
+    if (choice.trim().length > 0) {
+      // Join existing room
+      lobbyScreen.setStatus("Joining room...");
+      _roomManager.joinRoom(serverUrl, choice.trim().toUpperCase());
+    } else {
+      // Create new room
+      lobbyScreen.setStatus("Creating room...");
+      _roomManager.createRoom(serverUrl, 2);
+    }
+  }
+
+  async function _bootOnlineGame(): Promise<void> {
+    if (!_roomManager.localPlayerId) return;
+
+    // Use standard map size for online games
+    const mapSize = MAP_SIZES[0];
+
+    // Create a local game state that the server snapshots will be applied to
+    const state = createGameState(mapSize.width, mapSize.height, 0, GameMode.STANDARD, 2);
+
+    // Create player states — will be overwritten by server snapshots
+    state.players.set("p1", createPlayerState("p1", Direction.WEST, BalanceConfig.START_GOLD, "nw", false));
+    state.players.set("p2", createPlayerState("p2", Direction.EAST, BalanceConfig.START_GOLD, "se", false));
+
+    const basePos = _computeBasePositions(mapSize.width, mapSize.height);
+    initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
+
+    _spawnTowns(state, mapSize.width, mapSize.height);
+
+    // Bind the state so RoomManager can apply snapshots
+    _roomManager.bindState(state);
+
+    // Switch to in-game music
+    audioManager.playGameMusic();
+
+    // Camera
+    viewManager.camera.setMapSize(mapSize.width, mapSize.height);
+    const p1Base = [...state.bases.values()].find((b) => b.owner === "p1");
+    const castleCenterX = (p1Base?.position.x ?? 1) + 2;
+    const castleCenterY = (p1Base?.position.y ?? 1) + 2;
+    viewManager.camera.focusOnTile(castleCenterX, castleCenterY);
+
+    // Grid & environment
+    gridRenderer.init(viewManager);
+    gridRenderer.draw(state.battlefield, MapType.MEADOW);
+    environmentLayer.init(viewManager, state, MapType.MEADOW);
+    EventBus.on("buildingPlaced", () => gridRenderer.draw(state.battlefield, MapType.MEADOW));
+    EventBus.on("buildingDestroyed", () => gridRenderer.draw(state.battlefield, MapType.MEADOW));
+
+    // Building & unit views
+    buildingLayer.init(viewManager, state);
+    unitLayer.init(viewManager, state);
+
+    // HUD
+    hud.init(viewManager, state, { westPlayerId: "p1", eastPlayerId: "p2" });
+
+    // Shop panel — uses the local player's ID
+    const localPlayerId = _roomManager.localPlayerId;
+    shopPanel.init(viewManager, state, localPlayerId);
+
+    // Hover tooltip & minimap
+    hoverTooltip.init(viewManager, state, viewManager.camera);
+    minimap.init(viewManager, state, viewManager.camera, MapType.MEADOW);
+    EventBus.on("buildingPlaced", () => minimap.redrawTerrain(state));
+    EventBus.on("buildingDestroyed", () => minimap.redrawTerrain(state));
+
+    // Spawn queue UI
+    unitQueueUI.init(viewManager, state);
+
+    // Input manager + building placer — route through network
+    buildingPlacer.init(viewManager, state, localPlayerId);
+    inputManager.init(viewManager, state, localPlayerId);
+
+    // No AI buyers in online mode — server handles both sides
+    p2AIBuyer.setEnabled(false);
+    hud.setP2AI(false);
+
+    // Per-frame view updates
+    viewManager.onUpdate((s, dt) => buildingLayer.update(s, dt));
+    viewManager.onUpdate((s) => unitLayer.update(s));
+    viewManager.onUpdate((s, dt) => environmentLayer.update(s, dt));
+    viewManager.onUpdate((s) => hud.update(s));
+    viewManager.onUpdate((s) => shopPanel.update(s));
+    viewManager.onUpdate((s) => unitQueueUI.update(s));
+    viewManager.onUpdate((s) => minimap.update(s));
+
+    // FX systems
+    fireballFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => fireballFX.update(dt));
+    lightningFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => lightningFX.update(dt));
+    summonFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => summonFX.update(dt));
+    deathFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => deathFX.update(dt));
+    iceBallFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => iceBallFX.update(dt));
+    webFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => webFX.update(dt));
+    turretArrowFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => turretArrowFX.update(dt));
+    turretLightningFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => turretLightningFX.update(dt));
+    arrowFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => arrowFX.update(dt));
+    catapultBoulderFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => catapultBoulderFX.update(dt));
+    distortionFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => distortionFX.update(dt));
+    healFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => healFX.update(dt));
+    damageNumberFX.init(viewManager, state);
+    viewManager.onUpdate((_s, dt) => damageNumberFX.update(dt));
+    flagFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => flagFX.update(dt));
+    runeCircleFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => runeCircleFX.update(dt));
+    auraFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => auraFX.update(dt));
+    eventBanner.init(viewManager);
+
+    // Victory screen
+    victoryScreen.init(viewManager, state);
+
+    // Render loop
+    viewManager.app.ticker.add((ticker) => {
+      const dt = ticker.deltaMS / 1000;
+      viewManager.update(state, dt);
+    });
+
+    // Sim loop in remote mode — no local sim ticks, just view rendering
+    const simLoop = new SimLoop(state);
+    simLoop.remoteMode = true;
+    simLoop.start();
+
+    // Route RoomManager snapshot callbacks to redraw the grid when needed
+    _roomManager.on({
+      onSnapshot: () => {
+        gridRenderer.draw(state.battlefield, MapType.MEADOW);
+      },
+    });
+
+    // HUD "start battle" button sends skip_prep to server
+    hud.onStartBattle = () => {
+      _roomManager.skipPrep();
+    };
+
+    // Space to pause (local pause only)
+    window.addEventListener("keydown", (e) => {
+      const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "button") return;
+      if (e.code === "Space" && !e.repeat) {
+        e.preventDefault();
+        simLoop.togglePause();
+      }
+    });
+  }
 
   leaderSelectScreen.onBack = () => {
     leaderSelectScreen.hide();

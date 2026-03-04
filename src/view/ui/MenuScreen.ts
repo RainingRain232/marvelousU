@@ -200,6 +200,8 @@ export class MenuScreen {
   onUnitWiki: (() => void) | null = null;
   /** Called when the player clicks "BUILDING WIKI" — opens the building wiki. */
   onBuildingWiki: (() => void) | null = null;
+  /** Called when the player clicks "ONLINE MULTIPLAYER". */
+  onMultiplayer: (() => void) | null = null;
 
   get selectedMapSize(): MapSize {
     return MAP_SIZES[this._selectedSizeIndex];
@@ -796,8 +798,41 @@ export class MenuScreen {
 
     card.addChild(bwBtn);
 
+    // --- ONLINE MULTIPLAYER button ---
+    const mpBtn = new Container();
+    mpBtn.eventMode = "static";
+    mpBtn.cursor = "pointer";
+    mpBtn.position.set(20, actionStartY + BH + 8 + BH + 8 + BH + 8 + BH + 8);
+
+    const mpBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 6)
+      .fill({ color: 0x1a1a3a })
+      .roundRect(0, 0, BW, BH, 6)
+      .stroke({ color: 0x6666cc, width: 2 });
+    mpBtn.addChild(mpBg);
+
+    const mpLabel = new Text({
+      text: "ONLINE MULTIPLAYER",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 15,
+        fill: 0x9999ff,
+        fontWeight: "bold",
+        letterSpacing: 2,
+      }),
+    });
+    mpLabel.anchor.set(0.5, 0.5);
+    mpLabel.position.set(BW / 2, BH / 2);
+    mpBtn.addChild(mpLabel);
+
+    mpBtn.on("pointerover", () => { mpBg.tint = 0xccccff; });
+    mpBtn.on("pointerout", () => { mpBg.tint = 0xffffff; });
+    mpBtn.on("pointerdown", () => { this.onMultiplayer?.(); });
+
+    card.addChild(mpBtn);
+
     // Adjust card height dynamically
-    this._cardH = actionStartY + BH + 8 + BH + 8 + BH + 8 + BH + 18;
+    this._cardH = actionStartY + (BH + 8) * 5 + 18;
 
     vm.addToLayer("ui", this.container);
     this._layout();

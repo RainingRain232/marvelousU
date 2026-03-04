@@ -125,6 +125,13 @@ export class SimLoop {
   /** Game speed multiplier. 1.0 = normal, 1.1 = 10% faster, 0.9 = 10% slower. */
   private _timeScale: number = 1.0;
 
+  /**
+   * Remote mode: when true, the loop still runs for view rendering (onTick)
+   * but skips simTick() — the authoritative server owns the simulation.
+   * State is updated externally via applySnapshot().
+   */
+  private _remoteMode: boolean = false;
+
   // ---------------------------------------------------------------------------
   // Cinematic speed ramp system for scenario 1
   // ---------------------------------------------------------------------------
@@ -148,6 +155,15 @@ export class SimLoop {
 
   get isPaused(): boolean {
     return this.paused;
+  }
+
+  /** Enable remote mode: loop runs for view rendering but skips simTick(). */
+  set remoteMode(value: boolean) {
+    this._remoteMode = value;
+  }
+
+  get remoteMode(): boolean {
+    return this._remoteMode;
   }
 
   /** Current game speed multiplier. */
@@ -296,6 +312,13 @@ export class SimLoop {
    * Exposed for testing without needing real timers.
    */
   advance(elapsedMs: number): void {
+    if (this._remoteMode) {
+      // In remote mode: no sim ticks, just call the view callback for rendering.
+      // State is updated externally by applySnapshot().
+      this.onTick?.(this.state, 0);
+      return;
+    }
+
     const clamped = Math.min(elapsedMs, MAX_DELTA_MS);
     this.accumulator += clamped * this._timeScale;
 

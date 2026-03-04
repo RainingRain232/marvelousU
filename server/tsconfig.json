@@ -17,6 +17,7 @@
     "paths": {
       "@sim/*": ["src/sim/*"],
       "@net/*": ["src/net/*"],
+      "@input/*": ["src/input/*"],
       "@/*": ["src/*"]
     }
   },
