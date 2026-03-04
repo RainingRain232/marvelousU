@@ -100,7 +100,7 @@ import { worldMapRenderer } from "@view/world/WorldMapRenderer";
 import { worldHUD } from "@view/world/ui/WorldHUD";
 import { beginTurn, endTurn, onBattlesResolved } from "@world/systems/TurnSystem";
 import { WorldBalance } from "@world/config/WorldConfig";
-import { hexSpiral } from "@world/hex/HexCoord";
+import { hexSpiral, hexNeighbors } from "@world/hex/HexCoord";
 import { hexKey } from "@world/hex/HexCoord";
 import { cityView } from "@view/world/CityView";
 import { cityPanel } from "@view/world/ui/CityPanel";
@@ -1403,15 +1403,33 @@ async function _bootWorldGame(
 
     // Starting garrison army
     const garrisonId = nextId(state, "army");
-    const startUnits: ArmyUnit[] = [
-      { unitType: UnitType.SWORDSMAN, count: 5, hpPerUnit: 100 },
-      { unitType: UnitType.ARCHER, count: 3, hpPerUnit: 100 },
+    const garrisonUnits: ArmyUnit[] = [
+      { unitType: UnitType.SWORDSMAN, count: 3, hpPerUnit: 100 },
+      { unitType: UnitType.ARCHER, count: 2, hpPerUnit: 100 },
     ];
-    const garrison = createWorldArmy(garrisonId, pid, pos, startUnits, true);
+    const garrison = createWorldArmy(garrisonId, pid, pos, garrisonUnits, true);
     city.garrisonArmyId = garrisonId;
 
     state.cities.set(cityId, city);
     state.armies.set(garrisonId, garrison);
+
+    // Starting field army for exploration — placed on a neighboring hex
+    const neighbors = hexNeighbors(pos);
+    const fieldHex = neighbors.find((h) => {
+      const t = grid.getTile(h.q, h.r);
+      return t && !t.cityId && !t.armyId;
+    });
+    if (fieldHex) {
+      const fieldId = nextId(state, "army");
+      const fieldUnits: ArmyUnit[] = [
+        { unitType: UnitType.SWORDSMAN, count: 4, hpPerUnit: 100 },
+        { unitType: UnitType.ARCHER, count: 2, hpPerUnit: 100 },
+      ];
+      const fieldArmy = createWorldArmy(fieldId, pid, fieldHex, fieldUnits, false);
+      state.armies.set(fieldId, fieldArmy);
+      const fieldTile = grid.getTile(fieldHex.q, fieldHex.r);
+      if (fieldTile) fieldTile.armyId = fieldId;
+    }
   }
 
   _activeWorldState = state;

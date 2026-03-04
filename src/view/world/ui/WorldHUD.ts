@@ -226,10 +226,10 @@ export class WorldHUD {
   }
 
   private _layout(): void {
-    // End Turn button → bottom right
+    // End Turn button → bottom right, above the minimap (150 + 14 padding + 10 gap)
     if (this._endTurnBtn) {
       this._endTurnBtn.x = this._screenW - 140;
-      this._endTurnBtn.y = this._screenH - 56;
+      this._endTurnBtn.y = this._screenH - 150 - 14 - 36 - 10;
     }
   }
 }

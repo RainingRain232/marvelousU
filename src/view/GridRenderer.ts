@@ -1,4 +1,4 @@
-// Background grid rendering — zone colors, walkability, grid lines
+// Background grid rendering — zone colors, walkability, terrain details
 import { Graphics } from "pixi.js";
 import type { BattlefieldState } from "@sim/state/BattlefieldState";
 import type { ViewManager } from "@view/ViewManager";
@@ -6,7 +6,40 @@ import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { MapType } from "@/types";
 
 // ---------------------------------------------------------------------------
-// Tile color palette (placeholder — real art replaces these later)
+// Deterministic hash for procedural placement
+// ---------------------------------------------------------------------------
+
+function tileHash(x: number, y: number, seed: number): number {
+  let h = (x * 374761393 + y * 668265263 + seed * 1274126177) | 0;
+  h = ((h ^ (h >> 13)) * 1103515245) | 0;
+  return ((h ^ (h >> 16)) >>> 0) / 0x100000000; // 0..1
+}
+
+function colorShift(base: number, amount: number, hash: number): number {
+  const r = (base >> 16) & 0xff;
+  const g = (base >> 8) & 0xff;
+  const b = base & 0xff;
+  const offset = Math.round((hash - 0.5) * 2 * amount);
+  const clamp = (v: number) => Math.max(0, Math.min(255, v + offset));
+  return (clamp(r) << 16) | (clamp(g) << 8) | clamp(b);
+}
+
+function colorDarken(base: number, factor: number): number {
+  const r = Math.round(((base >> 16) & 0xff) * factor);
+  const g = Math.round(((base >> 8) & 0xff) * factor);
+  const b = Math.round((base & 0xff) * factor);
+  return (r << 16) | (g << 8) | b;
+}
+
+function colorLighten(base: number, factor: number): number {
+  const r = Math.min(255, Math.round(((base >> 16) & 0xff) * factor));
+  const g = Math.min(255, Math.round(((base >> 8) & 0xff) * factor));
+  const b = Math.min(255, Math.round((base & 0xff) * factor));
+  return (r << 16) | (g << 8) | b;
+}
+
+// ---------------------------------------------------------------------------
+// Tile color palette
 // ---------------------------------------------------------------------------
 
 type TileColorSet = {
@@ -79,20 +112,141 @@ const BUILDING_TINT_COLOR = 0x000000; // darker footprint
 const BUILDING_TINT_ALPHA = 0; // Set to 0 to keep background visible
 
 // ---------------------------------------------------------------------------
+// Terrain detail configuration per map type
+// ---------------------------------------------------------------------------
+
+interface TerrainDetailConfig {
+  // Grass tufts / vegetation
+  grassCount: number;        // how many grass tufts per tile
+  grassColor: number;        // base color for grass blades
+  grassHeight: [number, number]; // min/max height of grass blades
+
+  // Small rocks / pebbles
+  rockCount: number;
+  rockColor: number;
+  rockSize: [number, number]; // min/max radius
+
+  // Decorative accents (flowers for meadow, mushrooms for forest, etc.)
+  accentCount: number;
+  accentColors: number[];
+  accentSize: [number, number];
+
+  // Dirt / soil patches
+  patchCount: number;
+  patchColor: number;
+  patchSize: [number, number]; // min/max radius
+
+  // Color variation per tile
+  tileColorVariation: number; // how much to shift the base tile color (0-30)
+}
+
+const DETAIL_MEADOW: TerrainDetailConfig = {
+  grassCount: 8,
+  grassColor: 0x3d6630,
+  grassHeight: [4, 10],
+  rockCount: 2,
+  rockColor: 0x6b6b60,
+  rockSize: [1.5, 3],
+  accentCount: 3,
+  accentColors: [0xdddd44, 0xee8833, 0xcc55aa, 0xeeeedd],
+  accentSize: [1.5, 3],
+  patchCount: 2,
+  patchColor: 0x4a3a20,
+  patchSize: [4, 8],
+  tileColorVariation: 12,
+};
+
+const DETAIL_GRASS: TerrainDetailConfig = {
+  grassCount: 12,
+  grassColor: 0x4a8530,
+  grassHeight: [5, 14],
+  rockCount: 1,
+  rockColor: 0x5a5a50,
+  rockSize: [1.5, 2.5],
+  accentCount: 2,
+  accentColors: [0xccdd33, 0x88cc44],
+  accentSize: [1, 2.5],
+  patchCount: 1,
+  patchColor: 0x2a4a18,
+  patchSize: [5, 10],
+  tileColorVariation: 15,
+};
+
+const DETAIL_PLAINS: TerrainDetailConfig = {
+  grassCount: 6,
+  grassColor: 0xa09050,
+  grassHeight: [3, 8],
+  rockCount: 3,
+  rockColor: 0x8a8070,
+  rockSize: [2, 4],
+  accentCount: 1,
+  accentColors: [0xbbaa55, 0xccbb66],
+  accentSize: [1.5, 3],
+  patchCount: 3,
+  patchColor: 0x6a5a30,
+  patchSize: [5, 12],
+  tileColorVariation: 10,
+};
+
+const DETAIL_FOREST: TerrainDetailConfig = {
+  grassCount: 5,
+  grassColor: 0x1a4418,
+  grassHeight: [3, 8],
+  rockCount: 2,
+  rockColor: 0x3a3a30,
+  rockSize: [2, 4],
+  accentCount: 3,
+  accentColors: [0x884422, 0xcc4433, 0xddaa33], // mushrooms and fallen leaves
+  accentSize: [2, 4],
+  patchCount: 3,
+  patchColor: 0x0e1e0c,
+  patchSize: [6, 14],
+  tileColorVariation: 8,
+};
+
+const DETAIL_FANTASIA: TerrainDetailConfig = {
+  grassCount: 7,
+  grassColor: 0x44aa55,
+  grassHeight: [4, 11],
+  rockCount: 2,
+  rockColor: 0x6655aa,
+  rockSize: [2, 3.5],
+  accentCount: 4,
+  accentColors: [0xaa44ff, 0x44ddff, 0xff44aa, 0xffdd44], // magical glowing bits
+  accentSize: [1.5, 3.5],
+  patchCount: 2,
+  patchColor: 0x224422,
+  patchSize: [5, 10],
+  tileColorVariation: 18,
+};
+
+const DETAIL_CONFIGS: Record<string, TerrainDetailConfig> = {
+  [MapType.MEADOW]: DETAIL_MEADOW,
+  [MapType.GRASS]: DETAIL_GRASS,
+  [MapType.PLAINS]: DETAIL_PLAINS,
+  [MapType.FOREST]: DETAIL_FOREST,
+  [MapType.FANTASIA]: DETAIL_FANTASIA,
+};
+
+const DETAIL_DEFAULT = DETAIL_MEADOW;
+
+// ---------------------------------------------------------------------------
 // GridRenderer
 // ---------------------------------------------------------------------------
 
 /**
- * Renders the tile grid as two stacked Graphics objects in the "background"
- * layer:
- *   1. `_tiles`  — solid colored rectangles per tile (zone + walkability)
- *   2. `_lines`  — hairline grid overlay
+ * Renders the tile grid as stacked Graphics objects in the "background" layer:
+ *   1. `_tiles`   — solid colored rectangles per tile (zone + walkability)
+ *   2. `_details` — procedural terrain details (grass, rocks, flowers, etc.)
+ *   3. `_tints`   — building footprint highlights
+ *   4. `_lines`   — hairline grid overlay
  *
  * The grid is static — call `draw(battlefield)` once at startup and again
  * whenever the battlefield state changes (e.g., a building is placed).
  */
 export class GridRenderer {
   private _tiles = new Graphics();
+  private _details = new Graphics();
   private _lines = new Graphics();
   private _tints = new Graphics(); // building footprint highlights
 
@@ -103,6 +257,7 @@ export class GridRenderer {
   /** Add the grid graphics to the ViewManager background layer. */
   init(vm: ViewManager): void {
     vm.addToLayer("background", this._tiles);
+    vm.addToLayer("background", this._details);
     vm.addToLayer("background", this._tints);
     vm.addToLayer("background", this._lines);
   }
@@ -110,6 +265,7 @@ export class GridRenderer {
   /** Remove from the scene and free GPU resources. */
   destroy(): void {
     this._tiles.destroy();
+    this._details.destroy();
     this._tints.destroy();
     this._lines.destroy();
   }
@@ -124,6 +280,7 @@ export class GridRenderer {
    */
   draw(battlefield: BattlefieldState, mapType: MapType = MapType.MEADOW): void {
     this._drawTiles(battlefield, mapType);
+    this._drawDetails(battlefield, mapType);
     this._drawBuildingTints(battlefield);
     this._drawLines(battlefield);
   }
@@ -136,20 +293,137 @@ export class GridRenderer {
     const g = this._tiles;
     const ts = BalanceConfig.TILE_SIZE;
     const palette = TILE_COLORS[mapType] ?? TILE_COLORS_DEFAULT;
+    const detail = DETAIL_CONFIGS[mapType] ?? DETAIL_DEFAULT;
     g.clear();
 
     for (const row of bf.grid) {
       for (const tile of row) {
-        // Use "walkable" color even for buildings so the terrain looks consistent
         const isActuallyWalkable = tile.walkable || tile.buildingId !== null;
-        // Map multi-player zones to the west/east/neutral palette keys
         const zoneKey = tile.zone === "nw" || tile.zone === "sw" ? "west"
           : tile.zone === "ne" || tile.zone === "se" ? "east"
           : tile.zone;
         const key =
           `${zoneKey}_${isActuallyWalkable ? "walkable" : "unwalkable"}` as keyof TileColorSet;
-        const color = palette[key];
+        const baseColor = palette[key];
+
+        // Vary the base tile color slightly per tile for natural look
+        const h = tileHash(tile.x, tile.y, 0);
+        const color = colorShift(baseColor, detail.tileColorVariation, h);
         g.rect(tile.x * ts, tile.y * ts, ts, ts).fill({ color });
+      }
+    }
+  }
+
+  private _drawDetails(bf: BattlefieldState, mapType: MapType): void {
+    const g = this._details;
+    const ts = BalanceConfig.TILE_SIZE;
+    const detail = DETAIL_CONFIGS[mapType] ?? DETAIL_DEFAULT;
+    g.clear();
+
+    for (const row of bf.grid) {
+      for (const tile of row) {
+        const ox = tile.x * ts;
+        const oy = tile.y * ts;
+        const tx = tile.x;
+        const ty = tile.y;
+
+        // --- Dirt / soil patches (drawn first, behind everything) ---
+        for (let i = 0; i < detail.patchCount; i++) {
+          const h1 = tileHash(tx, ty, 100 + i * 3);
+          const h2 = tileHash(tx, ty, 101 + i * 3);
+          const h3 = tileHash(tx, ty, 102 + i * 3);
+          if (h1 > 0.5) continue; // only ~50% of patches appear
+          const px = ox + h2 * (ts - 8) + 4;
+          const py = oy + h3 * (ts - 8) + 4;
+          const [minR, maxR] = detail.patchSize;
+          const r = minR + h1 * 2 * (maxR - minR);
+          g.circle(px, py, r).fill({ color: detail.patchColor, alpha: 0.3 });
+        }
+
+        // --- Small rocks / pebbles ---
+        for (let i = 0; i < detail.rockCount; i++) {
+          const h1 = tileHash(tx, ty, 200 + i * 4);
+          const h2 = tileHash(tx, ty, 201 + i * 4);
+          const h3 = tileHash(tx, ty, 202 + i * 4);
+          const h4 = tileHash(tx, ty, 203 + i * 4);
+          if (h1 > 0.45) continue; // ~45% chance per rock
+          const px = ox + 4 + h2 * (ts - 8);
+          const py = oy + 4 + h3 * (ts - 8);
+          const [minR, maxR] = detail.rockSize;
+          const r = minR + h4 * (maxR - minR);
+          const rockCol = colorShift(detail.rockColor, 20, h1);
+          // Slightly elliptical rock
+          g.ellipse(px, py, r * 1.3, r * 0.8).fill({ color: rockCol, alpha: 0.7 });
+          // Highlight on top-left
+          g.ellipse(px - r * 0.3, py - r * 0.2, r * 0.5, r * 0.3)
+            .fill({ color: colorLighten(rockCol, 1.4), alpha: 0.3 });
+        }
+
+        // --- Grass tufts / vegetation ---
+        for (let i = 0; i < detail.grassCount; i++) {
+          const h1 = tileHash(tx, ty, 300 + i * 5);
+          const h2 = tileHash(tx, ty, 301 + i * 5);
+          const h3 = tileHash(tx, ty, 302 + i * 5);
+          const h4 = tileHash(tx, ty, 303 + i * 5);
+          const h5 = tileHash(tx, ty, 304 + i * 5);
+          if (h1 > 0.7) continue; // ~70% appear
+          const px = ox + 3 + h2 * (ts - 6);
+          const py = oy + 6 + h3 * (ts - 8);
+          const [minH, maxH] = detail.grassHeight;
+          const bladeH = minH + h4 * (maxH - minH);
+          const lean = (h5 - 0.5) * 6; // slight lean left or right
+          const grassCol = colorShift(detail.grassColor, 15, h1);
+
+          // Draw 2-3 blades per tuft
+          const bladeCount = h5 > 0.5 ? 3 : 2;
+          for (let b = 0; b < bladeCount; b++) {
+            const spread = (b - (bladeCount - 1) / 2) * 2.5;
+            const bx = px + spread;
+            // A blade is a thin triangle
+            g.moveTo(bx - 0.6, py)
+              .lineTo(bx + lean, py - bladeH)
+              .lineTo(bx + 0.6, py)
+              .fill({ color: grassCol, alpha: 0.75 });
+          }
+        }
+
+        // --- Decorative accents (flowers, mushrooms, sparkles) ---
+        for (let i = 0; i < detail.accentCount; i++) {
+          const h1 = tileHash(tx, ty, 400 + i * 4);
+          const h2 = tileHash(tx, ty, 401 + i * 4);
+          const h3 = tileHash(tx, ty, 402 + i * 4);
+          const h4 = tileHash(tx, ty, 403 + i * 4);
+          if (h1 > 0.35) continue; // ~35% chance — sparse accents
+          const px = ox + 5 + h2 * (ts - 10);
+          const py = oy + 5 + h3 * (ts - 10);
+          const [minS, maxS] = detail.accentSize;
+          const s = minS + h4 * (maxS - minS);
+          const accentCol = detail.accentColors[
+            Math.floor(h1 * detail.accentColors.length * 2.8) % detail.accentColors.length
+          ];
+
+          if (mapType === MapType.FANTASIA) {
+            // Glowing dots for fantasia
+            g.circle(px, py, s).fill({ color: accentCol, alpha: 0.6 });
+            g.circle(px, py, s * 0.5).fill({ color: 0xffffff, alpha: 0.3 });
+          } else if (mapType === MapType.FOREST) {
+            // Mushroom shapes for forest — cap + stem
+            g.rect(px - 0.5, py - s * 0.5, 1, s * 0.6)
+              .fill({ color: colorDarken(accentCol, 0.7), alpha: 0.7 });
+            g.ellipse(px, py - s * 0.5, s * 1.0, s * 0.5)
+              .fill({ color: accentCol, alpha: 0.65 });
+          } else {
+            // Flower dots for meadow/grass/plains — petal ring
+            const petalR = s * 0.5;
+            for (let p = 0; p < 4; p++) {
+              const angle = (p / 4) * Math.PI * 2 + h2 * 1.5;
+              const cx = px + Math.cos(angle) * petalR;
+              const cy = py + Math.sin(angle) * petalR;
+              g.circle(cx, cy, s * 0.4).fill({ color: accentCol, alpha: 0.6 });
+            }
+            g.circle(px, py, s * 0.3).fill({ color: 0xeeee55, alpha: 0.7 });
+          }
+        }
       }
     }
   }

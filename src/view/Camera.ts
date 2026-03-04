@@ -241,7 +241,6 @@ export class Camera {
       const speed = PAN_SPEED_PX / this.zoom;
       this.x -= (dx / len) * speed * dt;
       this.y -= (dy / len) * speed * dt;
-      this._clamp();
     }
 
     if (this._keys.zoomIn) this._zoomAtCenter(ZOOM_STEP * dt * 5);
@@ -398,7 +397,6 @@ export class Camera {
     const dy = (e.clientY - this._dragStartY) / this.zoom;
     this.x = this._camStartX + dx;
     this.y = this._camStartY + dy;
-    this._clamp();
   }
 
   private _handlePointerUp(e: PointerEvent): void {

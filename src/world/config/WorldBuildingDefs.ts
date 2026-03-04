@@ -58,7 +58,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "+3 food/turn",
     unlocksUnits: [],
-    researchRequired: "agriculture",
+    researchRequired: null,
   },
   [WorldBuildingType.LIBRARY]: {
     type: WorldBuildingType.LIBRARY,
@@ -80,7 +80,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "+5 gold/turn",
     unlocksUnits: [],
-    researchRequired: "trade",
+    researchRequired: null,
   },
   [WorldBuildingType.CITY_WALLS]: {
     type: WorldBuildingType.CITY_WALLS,
@@ -91,7 +91,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "+50% city defense in sieges",
     unlocksUnits: [],
-    researchRequired: "masonry",
+    researchRequired: null,
   },
   [WorldBuildingType.WORKSHOP]: {
     type: WorldBuildingType.WORKSHOP,
@@ -102,7 +102,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 3,
     effect: "+3 production/turn",
     unlocksUnits: [],
-    researchRequired: "banking",
+    researchRequired: null,
   },
   [WorldBuildingType.AQUEDUCT]: {
     type: WorldBuildingType.AQUEDUCT,
@@ -143,7 +143,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Train melee units",
     unlocksUnits: [UnitType.SWORDSMAN, UnitType.SHIELD_BEARER, UnitType.PIKEMAN],
-    researchRequired: "bronze_working",
+    researchRequired: null,
   },
   [BuildingType.ARCHERY_RANGE]: {
     type: BuildingType.ARCHERY_RANGE,
@@ -154,7 +154,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Train ranged units",
     unlocksUnits: [UnitType.ARCHER, UnitType.CROSSBOWMAN],
-    researchRequired: "bronze_working",
+    researchRequired: null,
   },
   [BuildingType.STABLES]: {
     type: BuildingType.STABLES,
