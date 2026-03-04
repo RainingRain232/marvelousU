@@ -132,21 +132,40 @@ const HINT_STYLE = new TextStyle({
 
 // Spell key lookup for FX dispatch (each spell gets its own unique animation)
 const SPELL_KEY: Partial<Record<UpgradeType, string>> = {
-  // Elemental
-  [UpgradeType.SPELL_FROST_NOVA]: "frost_nova",
-  [UpgradeType.SPELL_LIGHTNING_STRIKE]: "lightning",
+  // Elemental — fire
+  [UpgradeType.SPELL_FLAME_SPARK]: "flame_spark",
   [UpgradeType.SPELL_FIREBALL]: "fireball",
-  [UpgradeType.SPELL_CHAIN_LIGHTNING]: "chain_lightning",
-  [UpgradeType.SPELL_BLIZZARD]: "blizzard",
-  [UpgradeType.SPELL_EARTHQUAKE]: "earthquake",
   [UpgradeType.SPELL_METEOR_STRIKE]: "meteor",
   [UpgradeType.SPELL_INFERNO]: "inferno",
+  [UpgradeType.SPELL_PYROCLASM]: "pyroclasm",
+  // Elemental — ice
+  [UpgradeType.SPELL_FROST_NOVA]: "frost_nova",
+  [UpgradeType.SPELL_BLIZZARD]: "blizzard",
+  [UpgradeType.SPELL_GLACIAL_CRUSH]: "glacial_crush",
+  [UpgradeType.SPELL_ABSOLUTE_ZERO]: "absolute_zero",
+  // Elemental — lightning
+  [UpgradeType.SPELL_SPARK]: "spark",
+  [UpgradeType.SPELL_LIGHTNING_STRIKE]: "lightning",
+  [UpgradeType.SPELL_CHAIN_LIGHTNING]: "chain_lightning",
+  [UpgradeType.SPELL_THUNDERSTORM]: "thunderstorm",
+  [UpgradeType.SPELL_BALL_LIGHTNING]: "ball_lightning",
+  [UpgradeType.SPELL_MJOLNIR_STRIKE]: "mjolnir_strike",
+  // Elemental — earth
+  [UpgradeType.SPELL_STONE_SHARD]: "stone_shard",
+  [UpgradeType.SPELL_EARTHQUAKE]: "earthquake",
+  [UpgradeType.SPELL_LANDSLIDE]: "landslide",
+  [UpgradeType.SPELL_TECTONIC_RUIN]: "tectonic_ruin",
+  // Elemental — nature
+  [UpgradeType.SPELL_THORN_BARRAGE]: "thorn_barrage",
+  [UpgradeType.SPELL_NATURES_WRATH]: "natures_wrath",
+  [UpgradeType.SPELL_PRIMAL_STORM]: "primal_storm",
   // Arcane
   [UpgradeType.SPELL_ARCANE_MISSILE]: "arcane_missile",
   [UpgradeType.SPELL_MANA_SURGE]: "mana_surge",
   [UpgradeType.SPELL_ARCANE_BARRAGE]: "arcane_barrage",
   [UpgradeType.SPELL_ARCANE_STORM]: "arcane_storm",
   [UpgradeType.SPELL_TEMPORAL_BLAST]: "temporal_blast",
+  [UpgradeType.SPELL_ARCANE_CATACLYSM]: "arcane_cataclysm",
   // Divine
   [UpgradeType.SPELL_BLESSING_OF_LIGHT]: "blessing_of_light",
   [UpgradeType.SPELL_HEALING_WAVE]: "healing_wave",
@@ -155,14 +174,30 @@ const SPELL_KEY: Partial<Record<UpgradeType, string>> = {
   [UpgradeType.SPELL_DIVINE_RESTORATION]: "divine_restoration",
   [UpgradeType.SPELL_RADIANT_NOVA]: "radiant_nova",
   [UpgradeType.SPELL_CELESTIAL_WRATH]: "celestial_wrath",
-  // Shadow
+  [UpgradeType.SPELL_DIVINE_MIRACLE]: "divine_miracle",
+  // Shadow — shadow
   [UpgradeType.SPELL_SHADOW_BOLT]: "shadow_bolt",
-  [UpgradeType.SPELL_POISON_CLOUD]: "poison_cloud",
   [UpgradeType.SPELL_CURSE_OF_DARKNESS]: "curse_of_darkness",
-  [UpgradeType.SPELL_DEATH_COIL]: "death_coil",
-  [UpgradeType.SPELL_SIPHON_SOUL]: "siphon_soul",
+  [UpgradeType.SPELL_SHADOW_PLAGUE]: "shadow_plague",
+  [UpgradeType.SPELL_OBLIVION]: "oblivion",
+  // Shadow — poison
+  [UpgradeType.SPELL_POISON_CLOUD]: "poison_cloud",
+  [UpgradeType.SPELL_VENOMOUS_SPRAY]: "venomous_spray",
+  [UpgradeType.SPELL_PLAGUE_SWARM]: "plague_swarm",
+  [UpgradeType.SPELL_TOXIC_MIASMA]: "toxic_miasma",
+  [UpgradeType.SPELL_PANDEMIC]: "pandemic",
+  // Shadow — void
+  [UpgradeType.SPELL_VOID_SPARK]: "void_spark",
+  [UpgradeType.SPELL_DIMENSIONAL_TEAR]: "dimensional_tear",
   [UpgradeType.SPELL_VOID_RIFT]: "void_rift",
   [UpgradeType.SPELL_NETHER_STORM]: "nether_storm",
+  [UpgradeType.SPELL_SINGULARITY]: "singularity",
+  // Shadow — death
+  [UpgradeType.SPELL_NECROTIC_TOUCH]: "necrotic_touch",
+  [UpgradeType.SPELL_DEATH_COIL]: "death_coil",
+  [UpgradeType.SPELL_SIPHON_SOUL]: "siphon_soul",
+  [UpgradeType.SPELL_SOUL_REND]: "soul_rend",
+  [UpgradeType.SPELL_APOCALYPSE]: "apocalypse",
 };
 
 // ---------------------------------------------------------------------------

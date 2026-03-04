@@ -70,6 +70,34 @@ export class SpellFX {
       case "death_coil":      return this._deathCoil(worldX, worldY, r);
       case "nether_storm":    return this._netherStorm(worldX, worldY, r);
       case "siphon_soul":     return this._siphonSoul(worldX, worldY, r);
+      // Gap-fill spells
+      case "flame_spark":     return this._flameSpark(worldX, worldY, r);
+      case "pyroclasm":       return this._pyroclasm(worldX, worldY, r);
+      case "glacial_crush":   return this._glacialCrush(worldX, worldY, r);
+      case "absolute_zero":   return this._absoluteZero(worldX, worldY, r);
+      case "spark":           return this._spark(worldX, worldY, r);
+      case "thunderstorm":    return this._thunderstorm(worldX, worldY, r);
+      case "ball_lightning":  return this._ballLightning(worldX, worldY, r);
+      case "mjolnir_strike":  return this._mjolnirStrike(worldX, worldY, r);
+      case "stone_shard":     return this._stoneShard(worldX, worldY, r);
+      case "landslide":       return this._landslide(worldX, worldY, r);
+      case "tectonic_ruin":   return this._tectonicRuin(worldX, worldY, r);
+      case "arcane_cataclysm": return this._arcaneCataclysm(worldX, worldY, r);
+      case "shadow_plague":   return this._shadowPlague(worldX, worldY, r);
+      case "oblivion":        return this._oblivion(worldX, worldY, r);
+      case "venomous_spray":  return this._venomousSpray(worldX, worldY, r);
+      case "plague_swarm":    return this._plagueSwarm(worldX, worldY, r);
+      case "toxic_miasma":    return this._toxicMiasma(worldX, worldY, r);
+      case "pandemic":        return this._pandemic(worldX, worldY, r);
+      case "void_spark":      return this._voidSpark(worldX, worldY, r);
+      case "dimensional_tear": return this._dimensionalTear(worldX, worldY, r);
+      case "singularity":     return this._singularity(worldX, worldY, r);
+      case "necrotic_touch":  return this._necroticTouch(worldX, worldY, r);
+      case "soul_rend":       return this._soulRend(worldX, worldY, r);
+      case "apocalypse":      return this._apocalypse(worldX, worldY, r);
+      case "thorn_barrage":   return this._thornBarrage(worldX, worldY, r);
+      case "natures_wrath":   return this._naturesWrath(worldX, worldY, r);
+      case "primal_storm":    return this._primalStorm(worldX, worldY, r);
       default:                return this._genericDamage(worldX, worldY, r);
     }
   }
@@ -88,6 +116,9 @@ export class SpellFX {
     }
     if (spell === "radiant_nova") {
       return this._radiantNova(worldX, worldY, r);
+    }
+    if (spell === "divine_miracle") {
+      return this._divineMiracle(worldX, worldY, r);
     }
     return this._healingWave(worldX, worldY, r);
   }
@@ -2746,6 +2777,602 @@ export class SpellFX {
     }
 
     autoCleanup(this._vm, c, 1.2);
+  }
+  // ═══════════════════════════════════════════════════════════════════════
+  // Gap-fill spell FX methods (28 new)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── FIRE ─────────────────────────────────────────────────────────────
+  private _flameSpark(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    const flash = new Graphics().circle(0, 0, r * 0.4).fill({ color: 0xff6622, alpha: 0.7 });
+    const core = new Graphics().circle(0, 0, r * 0.15).fill({ color: 0xffffaa, alpha: 0.9 });
+    c.addChild(flash, core);
+    gsap.to(flash, { alpha: 0, scale: { x: 2, y: 2 }, duration: 0.4, ease: "power1.out" });
+    gsap.to(core, { alpha: 0, scale: { x: 1.5, y: 1.5 }, duration: 0.3 });
+    for (let i = 0; i < 6; i++) {
+      const sp = new Graphics().circle(0, 0, 1.5).fill({ color: 0xffaa44, alpha: 0.8 });
+      c.addChild(sp);
+      const a = Math.random() * TAU;
+      gsap.to(sp, { x: Math.cos(a) * r * 0.5, y: Math.sin(a) * r * 0.5, alpha: 0, duration: 0.4, ease: "power1.out" });
+    }
+    autoCleanup(this._vm, c, 0.6);
+  }
+
+  private _pyroclasm(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Volcanic pillar
+    const pillar = new Graphics().rect(-r * 0.3, -r * 1.2, r * 0.6, r * 1.5).fill({ color: 0xff4400, alpha: 0.6 });
+    pillar.alpha = 0;
+    c.addChild(pillar);
+    gsap.to(pillar, { alpha: 0.6, duration: 0.15 });
+    gsap.to(pillar, { alpha: 0, scale: { x: 2, y: 1.3 }, duration: 0.8, delay: 0.2 });
+    // Lava waves
+    for (let i = 0; i < 3; i++) {
+      const ring = new Graphics().circle(0, 0, r * 0.3).stroke({ color: 0xff2200, width: 3, alpha: 0.6 });
+      c.addChild(ring);
+      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.8 + i * 0.2, delay: i * 0.1 });
+    }
+    // Ember rain
+    for (let i = 0; i < 20; i++) {
+      const ember = new Graphics().circle(0, 0, 1.5 + Math.random()).fill({ color: 0xff6633, alpha: 0.8 });
+      ember.position.set((Math.random() - 0.5) * r * 1.5, -r * 0.8);
+      c.addChild(ember);
+      gsap.to(ember, { y: r * 0.5, alpha: 0, duration: 0.6 + Math.random() * 0.4, delay: Math.random() * 0.3 });
+    }
+    autoCleanup(this._vm, c, 1.4);
+  }
+
+  // ── ICE ──────────────────────────────────────────────────────────────
+  private _glacialCrush(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      const shard = new Graphics();
+      shard.moveTo(0, -r * 0.15).lineTo(r * 0.05, r * 0.1).lineTo(-r * 0.05, r * 0.1).closePath()
+        .fill({ color: 0x88ccff, alpha: 0.8 });
+      shard.position.set(Math.cos(a) * r, Math.sin(a) * r);
+      shard.rotation = a + Math.PI;
+      c.addChild(shard);
+      gsap.to(shard, { x: Math.cos(a) * r * 0.1, y: Math.sin(a) * r * 0.1, duration: 0.4, ease: "power2.in" });
+      gsap.to(shard, { alpha: 0, duration: 0.3, delay: 0.4 });
+    }
+    const crush = new Graphics().circle(0, 0, r * 0.3).fill({ color: 0xcceeFF, alpha: 0.5 });
+    crush.alpha = 0;
+    c.addChild(crush);
+    gsap.to(crush, { alpha: 0.6, duration: 0.1, delay: 0.35 });
+    gsap.to(crush, { alpha: 0, scale: { x: 2, y: 2 }, duration: 0.4, delay: 0.45 });
+    autoCleanup(this._vm, c, 1.0);
+  }
+
+  private _absoluteZero(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Expanding ice lattice
+    const field = new Graphics().circle(0, 0, r * 0.1).fill({ color: 0xcceeFF, alpha: 0.8 });
+    c.addChild(field);
+    gsap.to(field, { scale: { x: r / 5, y: r / 5 }, alpha: 0.15, duration: 0.6, ease: "power2.out" });
+    // Crystal formations
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU;
+      const crystal = new Graphics();
+      crystal.moveTo(0, -r * 0.12).lineTo(r * 0.03, 0).lineTo(0, r * 0.04).lineTo(-r * 0.03, 0).closePath()
+        .fill({ color: 0xffffff, alpha: 0.7 });
+      crystal.position.set(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5);
+      crystal.rotation = a;
+      crystal.alpha = 0;
+      c.addChild(crystal);
+      gsap.to(crystal, { alpha: 0.7, duration: 0.2, delay: 0.1 + i * 0.03 });
+      gsap.to(crystal, { alpha: 0, duration: 0.5, delay: 0.6 });
+    }
+    // Frost ring
+    const ring = new Graphics().circle(0, 0, r * 0.8).stroke({ color: 0x66bbff, width: 2, alpha: 0.5 });
+    ring.alpha = 0;
+    c.addChild(ring);
+    gsap.to(ring, { alpha: 0.5, scale: { x: 1.3, y: 1.3 }, duration: 0.4, delay: 0.2 });
+    gsap.to(ring, { alpha: 0, duration: 0.5, delay: 0.7 });
+    autoCleanup(this._vm, c, 1.4);
+  }
+
+  // ── LIGHTNING ────────────────────────────────────────────────────────
+  private _spark(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    const bolt = new Graphics();
+    bolt.moveTo(0, -r * 0.6).lineTo(r * 0.08, -r * 0.15).lineTo(-r * 0.05, -r * 0.05).lineTo(0, r * 0.4);
+    bolt.stroke({ color: 0xffff44, width: 2.5 });
+    c.addChild(bolt);
+    const flash = new Graphics().circle(0, 0, r * 0.2).fill({ color: 0xffffaa, alpha: 0.6 });
+    c.addChild(flash);
+    gsap.to(bolt, { alpha: 0, duration: 0.25 });
+    gsap.to(flash, { alpha: 0, scale: { x: 2, y: 2 }, duration: 0.3 });
+    autoCleanup(this._vm, c, 0.5);
+  }
+
+  private _thunderstorm(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Dark cloud
+    const cloud = new Graphics().ellipse(0, -r * 0.5, r * 0.8, r * 0.25).fill({ color: 0x223344, alpha: 0.5 });
+    c.addChild(cloud);
+    gsap.to(cloud, { alpha: 0, duration: 1.0, delay: 0.3 });
+    // Multiple bolts with delays
+    for (let i = 0; i < 5; i++) {
+      const bx = (Math.random() - 0.5) * r * 1.5;
+      const bolt = new Graphics();
+      bolt.moveTo(bx, -r * 0.4);
+      let cy = -r * 0.4;
+      for (let s = 0; s < 3; s++) {
+        cy += r * 0.25;
+        bolt.lineTo(bx + (Math.random() - 0.5) * r * 0.2, cy);
+      }
+      bolt.stroke({ color: 0xffff44, width: 2, alpha: 0.9 });
+      bolt.alpha = 0;
+      c.addChild(bolt);
+      const d = i * 0.15;
+      gsap.to(bolt, { alpha: 0.9, duration: 0.05, delay: d });
+      gsap.to(bolt, { alpha: 0, duration: 0.15, delay: d + 0.08 });
+    }
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  private _ballLightning(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    const orb = new Graphics().circle(0, 0, r * 0.35).fill({ color: 0xaaddff, alpha: 0.5 });
+    const core = new Graphics().circle(0, 0, r * 0.15).fill({ color: 0xffffff, alpha: 0.8 });
+    c.addChild(orb, core);
+    gsap.to(orb, { scale: { x: 2.5, y: 2.5 }, alpha: 0, duration: 0.7 });
+    gsap.to(core, { alpha: 0, duration: 0.5 });
+    // Arcing bolts
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      const arc = new Graphics();
+      arc.moveTo(0, 0).lineTo(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6);
+      arc.stroke({ color: 0xffff88, width: 1.5, alpha: 0.7 });
+      c.addChild(arc);
+      gsap.to(arc, { alpha: 0, duration: 0.3, delay: 0.1 + i * 0.05 });
+    }
+    autoCleanup(this._vm, c, 0.9);
+  }
+
+  private _mjolnirStrike(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Massive bolt from sky
+    const mainBolt = new Graphics();
+    mainBolt.moveTo(0, -r * 2).lineTo(r * 0.1, -r * 0.8).lineTo(-r * 0.08, -r * 0.4).lineTo(r * 0.05, 0);
+    mainBolt.stroke({ color: 0xffff44, width: 4 });
+    c.addChild(mainBolt);
+    gsap.to(mainBolt, { alpha: 0, duration: 0.4, delay: 0.1 });
+    // Impact flash
+    const impact = new Graphics().circle(0, 0, r * 0.3).fill({ color: 0xffffaa, alpha: 0.9 });
+    c.addChild(impact);
+    gsap.to(impact, { scale: { x: 4, y: 4 }, alpha: 0, duration: 0.6 });
+    // Shockwave rings
+    for (let i = 0; i < 3; i++) {
+      const ring = new Graphics().circle(0, 0, r * 0.2).stroke({ color: 0xffff66, width: 2, alpha: 0.6 });
+      c.addChild(ring);
+      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.6 + i * 0.15, delay: i * 0.08 });
+    }
+    // Branch lightning
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      const branch = new Graphics();
+      branch.moveTo(0, 0).lineTo(Math.cos(a) * r * 0.8, Math.sin(a) * r * 0.8);
+      branch.stroke({ color: 0xffffaa, width: 1.5, alpha: 0.5 });
+      c.addChild(branch);
+      gsap.to(branch, { alpha: 0, duration: 0.2, delay: 0.1 });
+    }
+    autoCleanup(this._vm, c, 1.0);
+  }
+
+  // ── EARTH ────────────────────────────────────────────────────────────
+  private _stoneShard(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    const dust = new Graphics().circle(0, 0, r * 0.4).fill({ color: 0xaa9977, alpha: 0.3 });
+    c.addChild(dust);
+    gsap.to(dust, { scale: { x: 2, y: 2 }, alpha: 0, duration: 0.5 });
+    for (let i = 0; i < 6; i++) {
+      const rock = new Graphics();
+      rock.moveTo(0, -3).lineTo(2, 0).lineTo(0, 2).lineTo(-2, 0).closePath().fill({ color: 0x887766, alpha: 0.9 });
+      c.addChild(rock);
+      const a = Math.random() * TAU;
+      gsap.to(rock, { x: Math.cos(a) * r * 0.5, y: Math.sin(a) * r * 0.5, alpha: 0, rotation: Math.random() * 3, duration: 0.4 });
+    }
+    autoCleanup(this._vm, c, 0.6);
+  }
+
+  private _landslide(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Wave of boulders
+    for (let i = 0; i < 12; i++) {
+      const sz = 3 + Math.random() * 5;
+      const boulder = new Graphics().circle(0, 0, sz).fill({ color: 0x776655 - Math.floor(Math.random() * 0x222222), alpha: 0.8 });
+      boulder.position.set(-r + Math.random() * r * 0.5, (Math.random() - 0.5) * r * 0.6);
+      c.addChild(boulder);
+      gsap.to(boulder, { x: boulder.position.x + r * 1.5, y: boulder.position.y + Math.random() * r * 0.3, alpha: 0, rotation: Math.random() * 4, duration: 0.6 + Math.random() * 0.3 });
+    }
+    const earthWave = new Graphics().ellipse(0, 0, r * 0.8, r * 0.3).fill({ color: 0x998866, alpha: 0.3 });
+    c.addChild(earthWave);
+    gsap.to(earthWave, { scale: { x: 1.5, y: 1.5 }, alpha: 0, duration: 0.8 });
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  private _tectonicRuin(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Ground cracks radiating outward
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      const crack = new Graphics();
+      crack.moveTo(0, 0);
+      let cx2 = 0, cy2 = 0;
+      for (let s = 0; s < 4; s++) {
+        cx2 += Math.cos(a + (Math.random() - 0.5) * 0.5) * r * 0.2;
+        cy2 += Math.sin(a + (Math.random() - 0.5) * 0.5) * r * 0.2;
+        crack.lineTo(cx2, cy2);
+      }
+      crack.stroke({ color: 0xff4400, width: 2, alpha: 0.7 });
+      crack.alpha = 0;
+      c.addChild(crack);
+      gsap.to(crack, { alpha: 0.7, duration: 0.15, delay: i * 0.04 });
+      gsap.to(crack, { alpha: 0, duration: 0.6, delay: 0.4 });
+    }
+    // Debris eruption
+    for (let i = 0; i < 15; i++) {
+      const debris = new Graphics().rect(0, 0, 2 + Math.random() * 3, 2 + Math.random() * 3).fill({ color: 0x887766, alpha: 0.8 });
+      c.addChild(debris);
+      const a = Math.random() * TAU;
+      gsap.to(debris, { x: Math.cos(a) * r * 0.8, y: Math.sin(a) * r * 0.8 - r * 0.3, alpha: 0, rotation: Math.random() * 5, duration: 0.7, ease: "power1.out" });
+    }
+    // Shockwave
+    const quakeRing = new Graphics().circle(0, 0, r * 0.2).stroke({ color: 0xaa6622, width: 3, alpha: 0.5 });
+    c.addChild(quakeRing);
+    gsap.to(quakeRing, { scale: { x: 4, y: 4 }, alpha: 0, duration: 0.8 });
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── ARCANE ───────────────────────────────────────────────────────────
+  private _arcaneCataclysm(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Layered expanding rings
+    for (let i = 0; i < 4; i++) {
+      const ring = new Graphics().circle(0, 0, r * 0.2).stroke({ color: 0x9966ff, width: 2.5, alpha: 0.6 });
+      c.addChild(ring);
+      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.7 + i * 0.15, delay: i * 0.08 });
+    }
+    // Central detonation
+    const coreFlash = new Graphics().circle(0, 0, r * 0.25).fill({ color: 0xffffff, alpha: 0.8 });
+    c.addChild(coreFlash);
+    gsap.to(coreFlash, { scale: { x: 3, y: 3 }, alpha: 0, duration: 0.5 });
+    // Arcane bolts
+    for (let i = 0; i < 10; i++) {
+      const bolt = new Graphics();
+      const a = Math.random() * TAU;
+      bolt.moveTo(0, 0).lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      bolt.stroke({ color: 0xaa77ff, width: 1.5, alpha: 0.6 });
+      c.addChild(bolt);
+      gsap.to(bolt, { alpha: 0, duration: 0.3, delay: Math.random() * 0.2 });
+    }
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── HOLY ─────────────────────────────────────────────────────────────
+  private _divineMiracle(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Massive golden pillar
+    const beam = new Graphics().rect(-r * 0.4, -r * 2, r * 0.8, r * 2.5).fill({ color: 0xffdd44, alpha: 0.3 });
+    beam.alpha = 0;
+    c.addChild(beam);
+    gsap.to(beam, { alpha: 0.3, duration: 0.2 });
+    gsap.to(beam, { alpha: 0, duration: 0.8, delay: 0.3 });
+    // Expanding golden ring
+    for (let i = 0; i < 3; i++) {
+      const ring = new Graphics().circle(0, 0, r * 0.3).stroke({ color: 0xffee66, width: 2, alpha: 0.5 });
+      c.addChild(ring);
+      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.8 + i * 0.15, delay: i * 0.1 });
+    }
+    // Healing sparkles rising
+    for (let i = 0; i < 20; i++) {
+      const sparkle = new Graphics().circle(0, 0, 1.5 + Math.random()).fill({ color: 0xffffcc, alpha: 0.8 });
+      sparkle.position.set((Math.random() - 0.5) * r * 1.5, (Math.random() - 0.5) * r);
+      c.addChild(sparkle);
+      gsap.to(sparkle, { y: sparkle.position.y - r * 0.6, alpha: 0, duration: 0.8 + Math.random() * 0.4, delay: Math.random() * 0.3 });
+    }
+    autoCleanup(this._vm, c, 1.4);
+  }
+
+  // ── SHADOW ───────────────────────────────────────────────────────────
+  private _shadowPlague(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Creeping dark tendrils
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      const tendril = new Graphics();
+      tendril.moveTo(0, 0);
+      tendril.quadraticCurveTo(Math.cos(a + 0.3) * r * 0.4, Math.sin(a + 0.3) * r * 0.4,
+        Math.cos(a) * r * 0.8, Math.sin(a) * r * 0.8);
+      tendril.stroke({ color: 0x663399, width: 2, alpha: 0.6 });
+      tendril.alpha = 0;
+      c.addChild(tendril);
+      gsap.to(tendril, { alpha: 0.6, duration: 0.3, delay: i * 0.06 });
+      gsap.to(tendril, { alpha: 0, duration: 0.5, delay: 0.5 });
+    }
+    const darkCloud = new Graphics().circle(0, 0, r * 0.5).fill({ color: 0x331155, alpha: 0.3 });
+    c.addChild(darkCloud);
+    gsap.to(darkCloud, { scale: { x: 2, y: 2 }, alpha: 0, duration: 0.9 });
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  private _oblivion(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Darkness vortex
+    const voidField = new Graphics().circle(0, 0, r * 0.8).fill({ color: 0x110022, alpha: 0.6 });
+    c.addChild(voidField);
+    gsap.to(voidField, { scale: { x: 0.1, y: 0.1 }, alpha: 0.9, duration: 0.5 });
+    gsap.to(voidField, { scale: { x: 3, y: 3 }, alpha: 0, duration: 0.5, delay: 0.5 });
+    // Spiral rings
+    for (let i = 0; i < 3; i++) {
+      const ring = new Graphics().circle(0, 0, r * (0.3 + i * 0.2)).stroke({ color: 0x8833cc, width: 1.5, alpha: 0.4 });
+      c.addChild(ring);
+      gsap.to(ring, { rotation: Math.PI * 2, scale: { x: 0.1, y: 0.1 }, alpha: 0, duration: 0.8, delay: i * 0.1, ease: "power2.in" });
+    }
+    // Particles sucked in
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * TAU;
+      const p = new Graphics().circle(0, 0, 1.5).fill({ color: 0xaa66ff, alpha: 0.6 });
+      p.position.set(Math.cos(a) * r, Math.sin(a) * r);
+      c.addChild(p);
+      gsap.to(p, { x: 0, y: 0, alpha: 0, duration: 0.5, delay: Math.random() * 0.3, ease: "power2.in" });
+    }
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── POISON ───────────────────────────────────────────────────────────
+  private _venomousSpray(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    for (let i = 0; i < 12; i++) {
+      const drop = new Graphics().circle(0, 0, 1.5 + Math.random() * 2).fill({ color: 0x66cc44, alpha: 0.7 });
+      c.addChild(drop);
+      const a = -Math.PI / 4 + Math.random() * Math.PI / 2; // Fan spread
+      const dist = r * 0.3 + Math.random() * r * 0.7;
+      gsap.to(drop, { x: Math.cos(a) * dist, y: Math.sin(a) * dist, alpha: 0, duration: 0.4 + Math.random() * 0.2 });
+    }
+    autoCleanup(this._vm, c, 0.8);
+  }
+
+  private _plagueSwarm(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    const haze = new Graphics().circle(0, 0, r * 0.6).fill({ color: 0x448822, alpha: 0.2 });
+    c.addChild(haze);
+    gsap.to(haze, { scale: { x: 1.5, y: 1.5 }, alpha: 0, duration: 1.0 });
+    // Buzzing insects
+    for (let i = 0; i < 15; i++) {
+      const bug = new Graphics().circle(0, 0, 1).fill({ color: 0x334411, alpha: 0.8 });
+      const bx = (Math.random() - 0.5) * r;
+      const by = (Math.random() - 0.5) * r;
+      bug.position.set(bx, by);
+      c.addChild(bug);
+      gsap.to(bug, { x: bx + (Math.random() - 0.5) * r * 0.5, y: by + (Math.random() - 0.5) * r * 0.5, alpha: 0, duration: 0.6 + Math.random() * 0.4 });
+    }
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  private _toxicMiasma(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Dense fog clouds
+    for (let i = 0; i < 4; i++) {
+      const fog = new Graphics().ellipse((Math.random() - 0.5) * r * 0.5, (Math.random() - 0.5) * r * 0.3, r * 0.4 + Math.random() * r * 0.2, r * 0.25 + Math.random() * r * 0.15)
+        .fill({ color: 0x44aa22, alpha: 0.2 });
+      fog.alpha = 0;
+      c.addChild(fog);
+      gsap.to(fog, { alpha: 0.2, duration: 0.3, delay: i * 0.1 });
+      gsap.to(fog, { alpha: 0, scale: { x: 1.5, y: 1.5 }, duration: 0.8, delay: 0.3 + i * 0.1 });
+    }
+    // Bubbling
+    for (let i = 0; i < 8; i++) {
+      const bubble = new Graphics().circle(0, 0, 2).stroke({ color: 0x66cc33, width: 0.8, alpha: 0.5 });
+      bubble.position.set((Math.random() - 0.5) * r, r * 0.1);
+      c.addChild(bubble);
+      gsap.to(bubble, { y: -r * 0.4, alpha: 0, scale: { x: 2, y: 2 }, duration: 0.6, delay: Math.random() * 0.5 });
+    }
+    autoCleanup(this._vm, c, 1.4);
+  }
+
+  private _pandemic(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Central toxic burst
+    const toxicCore = new Graphics().circle(0, 0, r * 0.2).fill({ color: 0x66ff33, alpha: 0.7 });
+    c.addChild(toxicCore);
+    gsap.to(toxicCore, { scale: { x: 3, y: 3 }, alpha: 0, duration: 0.5 });
+    // Spreading poison waves
+    for (let i = 0; i < 4; i++) {
+      const wave = new Graphics().circle(0, 0, r * 0.3).stroke({ color: 0x44aa22, width: 2, alpha: 0.5 });
+      c.addChild(wave);
+      gsap.to(wave, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.7 + i * 0.15, delay: i * 0.1 });
+    }
+    // Poison motes
+    for (let i = 0; i < 15; i++) {
+      const mote = new Graphics().circle(0, 0, 1.5).fill({ color: 0x88ff44, alpha: 0.6 });
+      c.addChild(mote);
+      const a = Math.random() * TAU;
+      gsap.to(mote, { x: Math.cos(a) * r, y: Math.sin(a) * r, alpha: 0, duration: 0.6 + Math.random() * 0.3 });
+    }
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── VOID ─────────────────────────────────────────────────────────────
+  private _voidSpark(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    const pop = new Graphics().circle(0, 0, r * 0.3).fill({ color: 0x6622aa, alpha: 0.6 });
+    const core = new Graphics().circle(0, 0, r * 0.1).fill({ color: 0x220044, alpha: 0.9 });
+    c.addChild(pop, core);
+    gsap.to(pop, { scale: { x: 2, y: 2 }, alpha: 0, duration: 0.35 });
+    gsap.to(core, { alpha: 0, duration: 0.3 });
+    autoCleanup(this._vm, c, 0.5);
+  }
+
+  private _dimensionalTear(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Space rip
+    const tear = new Graphics();
+    tear.moveTo(0, -r * 0.6).quadraticCurveTo(r * 0.2, 0, 0, r * 0.6);
+    tear.stroke({ color: 0xaa44ff, width: 3, alpha: 0.8 });
+    const tearGlow = new Graphics();
+    tearGlow.moveTo(0, -r * 0.6).quadraticCurveTo(r * 0.2, 0, 0, r * 0.6);
+    tearGlow.stroke({ color: 0xcc66ff, width: 6, alpha: 0.2 });
+    c.addChild(tearGlow, tear);
+    gsap.to(tear, { alpha: 0, duration: 0.8, delay: 0.2 });
+    gsap.to(tearGlow, { alpha: 0, scale: { x: 1.3, y: 1.1 }, duration: 0.9 });
+    // Distortion particles
+    for (let i = 0; i < 8; i++) {
+      const p = new Graphics().circle(0, 0, 1.5).fill({ color: 0xbb66ff, alpha: 0.6 });
+      p.position.set(r * 0.15, (Math.random() - 0.5) * r);
+      c.addChild(p);
+      gsap.to(p, { x: -r * 0.15, alpha: 0, duration: 0.5, delay: i * 0.06 });
+    }
+    autoCleanup(this._vm, c, 1.0);
+  }
+
+  private _singularity(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Event horizon
+    const horizon = new Graphics().circle(0, 0, r * 0.7).fill({ color: 0x110022, alpha: 0.5 });
+    c.addChild(horizon);
+    gsap.to(horizon, { scale: { x: 0.05, y: 0.05 }, alpha: 1, duration: 0.6, ease: "power3.in" });
+    gsap.to(horizon, { scale: { x: 4, y: 4 }, alpha: 0, duration: 0.4, delay: 0.6 });
+    // Accretion disk
+    const disk = new Graphics().circle(0, 0, r * 0.5).stroke({ color: 0xaa44ff, width: 2, alpha: 0.5 });
+    c.addChild(disk);
+    gsap.to(disk, { rotation: Math.PI * 3, scale: { x: 0.1, y: 0.1 }, alpha: 0, duration: 0.6, ease: "power3.in" });
+    // Everything pulled in
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * TAU;
+      const p = new Graphics().circle(0, 0, 1.5 + Math.random()).fill({ color: 0xcc88ff, alpha: 0.6 });
+      p.position.set(Math.cos(a) * r, Math.sin(a) * r);
+      c.addChild(p);
+      gsap.to(p, { x: 0, y: 0, alpha: 0, duration: 0.6, delay: Math.random() * 0.2, ease: "power3.in" });
+    }
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── DEATH ────────────────────────────────────────────────────────────
+  private _necroticTouch(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    const burst = new Graphics().circle(0, 0, r * 0.35).fill({ color: 0x44aa66, alpha: 0.5 });
+    c.addChild(burst);
+    gsap.to(burst, { scale: { x: 2, y: 2 }, alpha: 0, duration: 0.4 });
+    for (let i = 0; i < 5; i++) {
+      const wisp = new Graphics().circle(0, 0, 1.5).fill({ color: 0x226633, alpha: 0.7 });
+      c.addChild(wisp);
+      const a = Math.random() * TAU;
+      gsap.to(wisp, { x: Math.cos(a) * r * 0.4, y: Math.sin(a) * r * 0.4, alpha: 0, duration: 0.4 });
+    }
+    autoCleanup(this._vm, c, 0.6);
+  }
+
+  private _soulRend(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Ghostly wisps torn outward
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      const wisp = new Graphics().ellipse(0, 0, r * 0.06, r * 0.2).fill({ color: 0x88ffaa, alpha: 0.5 });
+      wisp.rotation = a;
+      c.addChild(wisp);
+      gsap.to(wisp, { x: Math.cos(a) * r * 0.7, y: Math.sin(a) * r * 0.7, alpha: 0, duration: 0.6, ease: "power1.out" });
+    }
+    // Dark pulse
+    const pulse = new Graphics().circle(0, 0, r * 0.2).fill({ color: 0x336644, alpha: 0.6 });
+    c.addChild(pulse);
+    gsap.to(pulse, { scale: { x: 2.5, y: 2.5 }, alpha: 0, duration: 0.5 });
+    autoCleanup(this._vm, c, 0.8);
+  }
+
+  private _apocalypse(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Death wave
+    const deathField = new Graphics().circle(0, 0, r * 0.3).fill({ color: 0x112211, alpha: 0.7 });
+    c.addChild(deathField);
+    gsap.to(deathField, { scale: { x: 4, y: 4 }, alpha: 0, duration: 0.8 });
+    // Expanding death rings
+    for (let i = 0; i < 3; i++) {
+      const ring = new Graphics().circle(0, 0, r * 0.3).stroke({ color: 0x44aa66, width: 2.5, alpha: 0.5 });
+      c.addChild(ring);
+      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.7 + i * 0.15, delay: i * 0.1 });
+    }
+    // Skeletal shapes
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      const skull = new Graphics().circle(0, 0, 3).fill({ color: 0xddddcc, alpha: 0.5 });
+      skull.circle(-1, -0.5, 0.8).fill({ color: 0x44ff66, alpha: 0.7 });
+      skull.circle(1, -0.5, 0.8).fill({ color: 0x44ff66, alpha: 0.7 });
+      skull.position.set(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3);
+      c.addChild(skull);
+      gsap.to(skull, { x: Math.cos(a) * r * 0.9, y: Math.sin(a) * r * 0.9, alpha: 0, duration: 0.7, ease: "power1.out" });
+    }
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── NATURE ───────────────────────────────────────────────────────────
+  private _thornBarrage(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    for (let i = 0; i < 15; i++) {
+      const thorn = new Graphics();
+      thorn.moveTo(0, -4).lineTo(1.5, 2).lineTo(-1.5, 2).closePath().fill({ color: 0x44aa33, alpha: 0.8 });
+      thorn.position.set((Math.random() - 0.5) * r * 1.5, -r * 0.8);
+      c.addChild(thorn);
+      gsap.to(thorn, { y: (Math.random() - 0.5) * r * 0.5, alpha: 0, duration: 0.3 + Math.random() * 0.2, delay: Math.random() * 0.3 });
+    }
+    autoCleanup(this._vm, c, 0.8);
+  }
+
+  private _naturesWrath(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Erupting roots
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      const vine = new Graphics();
+      vine.moveTo(0, 0);
+      vine.quadraticCurveTo(Math.cos(a + 0.5) * r * 0.4, Math.sin(a + 0.5) * r * 0.4,
+        Math.cos(a) * r * 0.7, Math.sin(a) * r * 0.7);
+      vine.stroke({ color: 0x338822, width: 2, alpha: 0.7 });
+      vine.alpha = 0;
+      c.addChild(vine);
+      gsap.to(vine, { alpha: 0.7, duration: 0.2, delay: i * 0.06 });
+      gsap.to(vine, { alpha: 0, duration: 0.5, delay: 0.5 });
+    }
+    // Swirling leaves
+    for (let i = 0; i < 10; i++) {
+      const leaf = new Graphics().ellipse(0, 0, 2, 1).fill({ color: 0x66cc44, alpha: 0.7 });
+      c.addChild(leaf);
+      const a = Math.random() * TAU;
+      gsap.to(leaf, { x: Math.cos(a) * r * 0.8, y: Math.sin(a) * r * 0.8, rotation: Math.random() * 6, alpha: 0, duration: 0.6 + Math.random() * 0.3 });
+    }
+    autoCleanup(this._vm, c, 1.0);
+  }
+
+  private _primalStorm(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+    // Wind ring
+    const windRing = new Graphics().circle(0, 0, r * 0.5).stroke({ color: 0x88ff88, width: 2, alpha: 0.4 });
+    c.addChild(windRing);
+    gsap.to(windRing, { rotation: Math.PI * 2, scale: { x: 2, y: 2 }, alpha: 0, duration: 0.8 });
+    // Thorns
+    for (let i = 0; i < 8; i++) {
+      const thorn = new Graphics();
+      thorn.moveTo(0, -3).lineTo(1, 1).lineTo(-1, 1).closePath().fill({ color: 0x44aa33, alpha: 0.8 });
+      const a = (i / 8) * TAU;
+      thorn.position.set(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3);
+      c.addChild(thorn);
+      gsap.to(thorn, { x: Math.cos(a) * r, y: Math.sin(a) * r, alpha: 0, rotation: Math.random() * 5, duration: 0.5 });
+    }
+    // Earth + lightning
+    for (let i = 0; i < 4; i++) {
+      const bolt = new Graphics();
+      const bx = (Math.random() - 0.5) * r;
+      bolt.moveTo(bx, -r * 0.4).lineTo(bx + (Math.random() - 0.5) * r * 0.3, r * 0.2);
+      bolt.stroke({ color: 0xaaff44, width: 1.5, alpha: 0.6 });
+      bolt.alpha = 0;
+      c.addChild(bolt);
+      gsap.to(bolt, { alpha: 0.6, duration: 0.05, delay: 0.2 + i * 0.1 });
+      gsap.to(bolt, { alpha: 0, duration: 0.15, delay: 0.3 + i * 0.1 });
+    }
+    autoCleanup(this._vm, c, 1.0);
   }
 }
 

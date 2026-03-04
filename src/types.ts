@@ -298,6 +298,45 @@ export enum UpgradeType {
   SPELL_DEATH_COIL = "spell_death_coil",
   SPELL_NETHER_STORM = "spell_nether_storm",
   SPELL_SIPHON_SOUL = "spell_siphon_soul",
+  // Fire gap-fill
+  SPELL_FLAME_SPARK = "spell_flame_spark",
+  SPELL_PYROCLASM = "spell_pyroclasm",
+  // Ice gap-fill
+  SPELL_GLACIAL_CRUSH = "spell_glacial_crush",
+  SPELL_ABSOLUTE_ZERO = "spell_absolute_zero",
+  // Lightning gap-fill
+  SPELL_SPARK = "spell_spark",
+  SPELL_THUNDERSTORM = "spell_thunderstorm",
+  SPELL_BALL_LIGHTNING = "spell_ball_lightning",
+  SPELL_MJOLNIR_STRIKE = "spell_mjolnir_strike",
+  // Earth gap-fill
+  SPELL_STONE_SHARD = "spell_stone_shard",
+  SPELL_LANDSLIDE = "spell_landslide",
+  SPELL_TECTONIC_RUIN = "spell_tectonic_ruin",
+  // Arcane gap-fill
+  SPELL_ARCANE_CATACLYSM = "spell_arcane_cataclysm",
+  // Holy gap-fill
+  SPELL_DIVINE_MIRACLE = "spell_divine_miracle",
+  // Shadow gap-fill
+  SPELL_SHADOW_PLAGUE = "spell_shadow_plague",
+  SPELL_OBLIVION = "spell_oblivion",
+  // Poison gap-fill
+  SPELL_VENOMOUS_SPRAY = "spell_venomous_spray",
+  SPELL_PLAGUE_SWARM = "spell_plague_swarm",
+  SPELL_TOXIC_MIASMA = "spell_toxic_miasma",
+  SPELL_PANDEMIC = "spell_pandemic",
+  // Void gap-fill
+  SPELL_VOID_SPARK = "spell_void_spark",
+  SPELL_DIMENSIONAL_TEAR = "spell_dimensional_tear",
+  SPELL_SINGULARITY = "spell_singularity",
+  // Death gap-fill
+  SPELL_NECROTIC_TOUCH = "spell_necrotic_touch",
+  SPELL_SOUL_REND = "spell_soul_rend",
+  SPELL_APOCALYPSE = "spell_apocalypse",
+  // Nature gap-fill
+  SPELL_THORN_BARRAGE = "spell_thorn_barrage",
+  SPELL_NATURES_WRATH = "spell_natures_wrath",
+  SPELL_PRIMAL_STORM = "spell_primal_storm",
 }
 
 export enum UnitState {

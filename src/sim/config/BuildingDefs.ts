@@ -793,25 +793,47 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     shopInventory: [],
     blueprints: [],
     upgradeInventory: [
-      // Elemental
-      UpgradeType.SPELL_FROST_NOVA, UpgradeType.SPELL_LIGHTNING_STRIKE,
-      UpgradeType.SPELL_FIREBALL, UpgradeType.SPELL_CHAIN_LIGHTNING,
-      UpgradeType.SPELL_BLIZZARD, UpgradeType.SPELL_EARTHQUAKE,
+      // Elemental — fire
+      UpgradeType.SPELL_FLAME_SPARK, UpgradeType.SPELL_FIREBALL,
       UpgradeType.SPELL_METEOR_STRIKE, UpgradeType.SPELL_INFERNO,
+      UpgradeType.SPELL_PYROCLASM,
+      // Elemental — ice
+      UpgradeType.SPELL_FROST_NOVA, UpgradeType.SPELL_BLIZZARD,
+      UpgradeType.SPELL_GLACIAL_CRUSH, UpgradeType.SPELL_ABSOLUTE_ZERO,
+      // Elemental — lightning
+      UpgradeType.SPELL_SPARK, UpgradeType.SPELL_LIGHTNING_STRIKE,
+      UpgradeType.SPELL_CHAIN_LIGHTNING, UpgradeType.SPELL_THUNDERSTORM,
+      UpgradeType.SPELL_BALL_LIGHTNING, UpgradeType.SPELL_MJOLNIR_STRIKE,
+      // Elemental — earth
+      UpgradeType.SPELL_STONE_SHARD, UpgradeType.SPELL_EARTHQUAKE,
+      UpgradeType.SPELL_LANDSLIDE, UpgradeType.SPELL_TECTONIC_RUIN,
+      // Elemental — nature
+      UpgradeType.SPELL_THORN_BARRAGE, UpgradeType.SPELL_NATURES_WRATH,
+      UpgradeType.SPELL_PRIMAL_STORM,
       // Arcane
       UpgradeType.SPELL_ARCANE_MISSILE, UpgradeType.SPELL_MANA_SURGE,
       UpgradeType.SPELL_ARCANE_BARRAGE, UpgradeType.SPELL_ARCANE_STORM,
-      UpgradeType.SPELL_TEMPORAL_BLAST,
+      UpgradeType.SPELL_TEMPORAL_BLAST, UpgradeType.SPELL_ARCANE_CATACLYSM,
       // Divine
       UpgradeType.SPELL_BLESSING_OF_LIGHT, UpgradeType.SPELL_HEALING_WAVE,
       UpgradeType.SPELL_HOLY_SMITE, UpgradeType.SPELL_PURIFYING_FLAME,
       UpgradeType.SPELL_DIVINE_RESTORATION, UpgradeType.SPELL_RADIANT_NOVA,
-      UpgradeType.SPELL_CELESTIAL_WRATH,
-      // Shadow
-      UpgradeType.SPELL_SHADOW_BOLT, UpgradeType.SPELL_POISON_CLOUD,
-      UpgradeType.SPELL_CURSE_OF_DARKNESS, UpgradeType.SPELL_DEATH_COIL,
-      UpgradeType.SPELL_SIPHON_SOUL, UpgradeType.SPELL_VOID_RIFT,
-      UpgradeType.SPELL_NETHER_STORM,
+      UpgradeType.SPELL_CELESTIAL_WRATH, UpgradeType.SPELL_DIVINE_MIRACLE,
+      // Shadow — shadow
+      UpgradeType.SPELL_SHADOW_BOLT, UpgradeType.SPELL_CURSE_OF_DARKNESS,
+      UpgradeType.SPELL_SHADOW_PLAGUE, UpgradeType.SPELL_OBLIVION,
+      // Shadow — poison
+      UpgradeType.SPELL_POISON_CLOUD, UpgradeType.SPELL_VENOMOUS_SPRAY,
+      UpgradeType.SPELL_PLAGUE_SWARM, UpgradeType.SPELL_TOXIC_MIASMA,
+      UpgradeType.SPELL_PANDEMIC,
+      // Shadow — void
+      UpgradeType.SPELL_VOID_SPARK, UpgradeType.SPELL_DIMENSIONAL_TEAR,
+      UpgradeType.SPELL_VOID_RIFT, UpgradeType.SPELL_NETHER_STORM,
+      UpgradeType.SPELL_SINGULARITY,
+      // Shadow — death
+      UpgradeType.SPELL_NECROTIC_TOUCH, UpgradeType.SPELL_DEATH_COIL,
+      UpgradeType.SPELL_SIPHON_SOUL, UpgradeType.SPELL_SOUL_REND,
+      UpgradeType.SPELL_APOCALYPSE,
       // Conjuration
       UpgradeType.SUMMON_BAT_SWARM, UpgradeType.SUMMON_SPIDER_BROOD,
       UpgradeType.SUMMON_PIXIE, UpgradeType.SUMMON_UNICORN,
