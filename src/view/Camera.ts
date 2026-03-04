@@ -44,6 +44,9 @@ export class Camera {
   private _mapW: number = BalanceConfig.GRID_WIDTH;
   private _mapH: number = BalanceConfig.GRID_HEIGHT;
 
+  // Extra padding (in world pixels) beyond map edges for panning
+  private _padPx = 0;
+
   // ---------------------------------------------------------------------------
   // Cinematic zoom system for scenario 1
   // ---------------------------------------------------------------------------
@@ -265,6 +268,15 @@ export class Camera {
   }
 
   /**
+   * Set extra padding (in world pixels) beyond the map edges.
+   * Allows panning past the grid so edge tiles are easier to interact with.
+   */
+  setPadding(px: number): void {
+    this._padPx = px;
+    this._clamp();
+  }
+
+  /**
    * Zoom out so the entire map fits in the viewport, then centre it.
    * Respects ZOOM_MIN so the map can be larger than the screen.
    */
@@ -337,12 +349,13 @@ export class Camera {
     const worldPxH = this._mapH * tileSize;
     const visW = this.screenW / this.zoom;
     const visH = this.screenH / this.zoom;
+    const pad = this._padPx;
 
-    const minX = -(worldPxW - Math.min(visW, worldPxW));
-    const minY = -(worldPxH - Math.min(visH, worldPxH));
+    const minX = -(worldPxW + pad - Math.min(visW, worldPxW + 2 * pad));
+    const minY = -(worldPxH + pad - Math.min(visH, worldPxH + 2 * pad));
 
-    this.x = Math.min(0, Math.max(minX, this.x));
-    this.y = Math.min(0, Math.max(minY, this.y));
+    this.x = Math.min(pad, Math.max(minX, this.x));
+    this.y = Math.min(pad, Math.max(minY, this.y));
   }
 
   // ---------------------------------------------------------------------------

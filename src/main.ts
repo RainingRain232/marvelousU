@@ -1416,6 +1416,19 @@ async function _bootWorldGame(
 
   _activeWorldState = state;
 
+  // Configure camera for hex world — the hex grid is centered at (0,0) and
+  // extends roughly radius * HEX_SIZE * 2 in each direction.  We also add
+  // generous padding so the player can pan edge tiles to the centre of the
+  // screen, making them easy to click.
+  {
+    const hexSize = WorldBalance.HEX_SIZE;
+    const extent = settings.mapRadius * hexSize * 2;      // rough pixel span
+    const tileSize = BalanceConfig.TILE_SIZE;              // camera unit
+    const mapTiles = Math.ceil((extent * 2) / tileSize);   // map "tiles" in cam units
+    viewManager.camera.setMapSize(mapTiles, mapTiles);
+    viewManager.camera.setPadding(extent * 0.6);           // ~60 % of map as padding
+  }
+
   // Initialize renderer
   worldMapRenderer.init(viewManager);
   worldMapRenderer.drawMap(grid);
