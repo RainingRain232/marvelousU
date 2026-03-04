@@ -130,18 +130,20 @@ const HINT_STYLE = new TextStyle({
   align: "center",
 });
 
-// Element lookup for damage spell FX colors
-const SPELL_ELEMENT: Partial<Record<UpgradeType, string>> = {
-  [UpgradeType.SPELL_ARCANE_MISSILE]: "arcane",
-  [UpgradeType.SPELL_FIREBALL]: "fire",
-  [UpgradeType.SPELL_BLIZZARD]: "ice",
+// Spell key lookup for FX dispatch (each spell gets its own unique animation)
+const SPELL_KEY: Partial<Record<UpgradeType, string>> = {
+  [UpgradeType.SPELL_ARCANE_MISSILE]: "arcane_missile",
+  [UpgradeType.SPELL_FIREBALL]: "fireball",
+  [UpgradeType.SPELL_BLIZZARD]: "blizzard",
   [UpgradeType.SPELL_LIGHTNING_STRIKE]: "lightning",
-  [UpgradeType.SPELL_EARTHQUAKE]: "earth",
-  [UpgradeType.SPELL_METEOR_STRIKE]: "fire",
-  [UpgradeType.SPELL_VOID_RIFT]: "void",
-  [UpgradeType.SPELL_HOLY_SMITE]: "holy",
-  [UpgradeType.SPELL_POISON_CLOUD]: "poison",
-  [UpgradeType.SPELL_ARCANE_STORM]: "arcane",
+  [UpgradeType.SPELL_EARTHQUAKE]: "earthquake",
+  [UpgradeType.SPELL_METEOR_STRIKE]: "meteor",
+  [UpgradeType.SPELL_VOID_RIFT]: "void_rift",
+  [UpgradeType.SPELL_HOLY_SMITE]: "holy_smite",
+  [UpgradeType.SPELL_POISON_CLOUD]: "poison_cloud",
+  [UpgradeType.SPELL_ARCANE_STORM]: "arcane_storm",
+  [UpgradeType.SPELL_HEALING_WAVE]: "healing_wave",
+  [UpgradeType.SPELL_DIVINE_RESTORATION]: "divine_restoration",
 };
 
 // ---------------------------------------------------------------------------
@@ -543,8 +545,8 @@ export class BuildingPlacer {
             }
           }
         }
-        const element = SPELL_ELEMENT[this._aoeUpgradeType] ?? "default";
-        spellFX.playDamage(worldX, worldY, radiusTiles, element);
+        const spellKey = SPELL_KEY[this._aoeUpgradeType] ?? "default";
+        spellFX.playDamage(worldX, worldY, radiusTiles, spellKey);
       } else if (def.spellType === "heal" && def.spellHeal) {
         // Heal all friendly units within radius
         const centerTx = worldX / TS;
@@ -559,7 +561,8 @@ export class BuildingPlacer {
             EventBus.emit("unitHealed", { unitId: unit.id, amount: def.spellHeal, position: { x: unit.position.x, y: unit.position.y } });
           }
         }
-        spellFX.playHeal(worldX, worldY, radiusTiles);
+        const healKey = SPELL_KEY[this._aoeUpgradeType] ?? "healing_wave";
+        spellFX.playHeal(worldX, worldY, radiusTiles, healKey);
       }
 
       this._deactivate();
