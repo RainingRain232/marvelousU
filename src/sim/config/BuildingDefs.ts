@@ -10,6 +10,7 @@ export interface BuildingDef {
   cost: number; // gold cost (0 = starting/Castle)
   hp: number;
   goldIncome: number; // additional gold/sec this building contributes when owned/captured
+  manaIncome?: number; // mana/sec this building contributes when owned (Archive)
   shopInventory: UnitType[]; // unit types this building can train
   blueprints: BuildingType[]; // building blueprints sold from this building's shop
   upgradeInventory?: UpgradeType[]; // upgrade types this building can sell
@@ -61,6 +62,7 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       BuildingType.ELITE_SIEGE_WORKSHOP,
       BuildingType.ELITE_MAGE_TOWER,
       BuildingType.ELITE_STABLES,
+      BuildingType.ARCHIVE,
     ],
     footprint: { w: 4, h: 4 },
     placementZone: "own",
@@ -341,11 +343,12 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     goldIncome: 3,
     shopInventory: [UnitType.DIPLOMAT],
     blueprints: [],
+    upgradeInventory: [UpgradeType.SETTLER, UpgradeType.ENGINEER],
     footprint: { w: 2, h: 2 },
     placementZone: "own",
     maxCount: 2,
     description:
-      "Diplomatic center that trains units to capture neutral buildings peacefully.",
+      "Diplomatic center that trains diplomats and deploys settlers and engineers.",
   },
   [BuildingType.TEMPLE]: {
     type: BuildingType.TEMPLE,
@@ -750,5 +753,51 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     prerequisite: { types: [BuildingType.STABLES, BuildingType.ELITE_HALL], minCount: 1 },
     description:
       "A fortified war stable where elite mounted warriors and colossal warhorses are bred for battle.",
+  },
+  [BuildingType.FORWARD_CASTLE]: {
+    type: BuildingType.FORWARD_CASTLE,
+    cost: 0,
+    hp: 350,
+    goldIncome: 1,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 3, h: 3 },
+    placementZone: "neutral",
+    defaultTurrets: [
+      { projectileTag: "arrow", damage: 10, range: 5, attackSpeed: 1.0 },
+    ],
+    description:
+      "A forward outpost with defensive turrets, established on neutral ground by a settler.",
+  },
+  [BuildingType.FORWARD_TOWER]: {
+    type: BuildingType.FORWARD_TOWER,
+    cost: 0,
+    hp: 200,
+    goldIncome: 0,
+    shopInventory: [],
+    blueprints: [],
+    footprint: { w: 1, h: 1 },
+    placementZone: "neutral",
+    defaultTurrets: [
+      { projectileTag: "arrow", damage: 9, range: 6, attackSpeed: 1.0 },
+    ],
+    description:
+      "A forward watchtower with arrow turrets, constructed on neutral ground by an engineer.",
+  },
+  [BuildingType.ARCHIVE]: {
+    type: BuildingType.ARCHIVE,
+    cost: 800,
+    hp: 200,
+    goldIncome: 1,
+    manaIncome: 1,
+    shopInventory: [],
+    blueprints: [],
+    upgradeInventory: [UpgradeType.SUMMON_UNICORN, UpgradeType.SUMMON_PIXIE],
+    footprint: { w: 2, h: 2 },
+    placementZone: "own",
+    maxCount: 1,
+    prerequisite: { types: [BuildingType.MAGE_TOWER], minCount: 1 },
+    description:
+      "Arcane archive where national spells are studied. Generates mana over time.",
   },
 };

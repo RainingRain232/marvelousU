@@ -4,13 +4,18 @@ import type { GameState } from "@sim/state/GameState";
 import type { ViewManager } from "@view/ViewManager";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
-import { BuildingType } from "@/types";
+import { BuildingType, Direction, UnitType, UpgradeType } from "@/types";
 import type { PlayerId } from "@/types";
 import {
   canPlace,
   confirmPlacement,
   cancelPlacement,
+  confirmGhostPlacement,
 } from "@input/PlacementMode";
+import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
+import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
+import { EventBus } from "@sim/core/EventBus";
+import { createUnit } from "@sim/entities/Unit";
 
 // ---------------------------------------------------------------------------
 // Visual constants
@@ -61,6 +66,9 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.ELITE_SIEGE_WORKSHOP]: 0x5a3c1e,
   [BuildingType.ELITE_MAGE_TOWER]: 0x4a1e6b,
   [BuildingType.ELITE_STABLES]: 0x3c2a0e,
+  [BuildingType.FORWARD_CASTLE]: 0x7b5914,
+  [BuildingType.FORWARD_TOWER]: 0x7b7b5e,
+  [BuildingType.ARCHIVE]: 0x5533aa,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -100,6 +108,9 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.ELITE_SIEGE_WORKSHOP]: "ELITE SIEGE",
   [BuildingType.ELITE_MAGE_TOWER]: "ELITE MAGE",
   [BuildingType.ELITE_STABLES]: "ELITE STBL",
+  [BuildingType.FORWARD_CASTLE]: "FWD CASTLE",
+  [BuildingType.FORWARD_TOWER]: "FWD TOWER",
+  [BuildingType.ARCHIVE]: "ARCHIVE",
 };
 
 const LABEL_STYLE = new TextStyle({
@@ -149,6 +160,18 @@ export class BuildingPlacer {
   private _cursorTx = 0;
   private _cursorTy = 0;
   private _isValid = false;
+
+  // Construction mode state (settler/engineer)
+  private _isConstruction = false;
+  private _constructionUpgradeType: UpgradeType | null = null;
+  private _constructionUnitType: UnitType | null = null;
+  private _constructionPlayerId: PlayerId = "";
+
+  // Spell placement mode state (summon unicorn/pixie)
+  private _isSpellPlacement = false;
+  private _spellUpgradeType: UpgradeType | null = null;
+  private _spellUnitType: UnitType | null = null;
+  private _spellPlayerId: PlayerId = "";
 
   // Ghost graphics (rebuilt once per activate)
   private _ghostBody = new Graphics();
@@ -257,6 +280,65 @@ export class BuildingPlacer {
     this._positionHintBar();
   }
 
+  /**
+   * Enter construction placement mode for settler/engineer upgrades.
+   * Gold and upgrade level have already been handled by ShopPanel.
+   */
+  activateConstruction(
+    bpType: BuildingType,
+    upgradeType: UpgradeType,
+    unitType: UnitType,
+    playerId: PlayerId,
+  ): void {
+    this._isConstruction = true;
+    this._constructionUpgradeType = upgradeType;
+    this._constructionUnitType = unitType;
+    this._constructionPlayerId = playerId;
+    this.activate(bpType);
+  }
+
+  /**
+   * Enter spell placement mode for summoning a unit.
+   * Mana has already been deducted by ShopPanel._buySpellUpgrade.
+   */
+  activateSpellPlacement(
+    upgradeType: UpgradeType,
+    unitType: UnitType,
+    playerId: PlayerId,
+  ): void {
+    this._isSpellPlacement = true;
+    this._spellUpgradeType = upgradeType;
+    this._spellUnitType = unitType;
+    this._spellPlayerId = playerId;
+
+    // Defer _active so the pointerdown that triggered the shop button purchase
+    // does not immediately confirm placement on the same event.
+    this._active = false;
+    setTimeout(() => {
+      this._active = true;
+    }, 0);
+
+    this._isValid = true;
+    this._ghostContainer.visible = true;
+
+    // Build a simple glowing circle as ghost
+    this._ghostBody.clear();
+    this._ghostBody
+      .circle(TS / 2, TS / 2, TS / 2 - 4)
+      .fill({ color: 0x4488ff, alpha: 0.3 })
+      .circle(TS / 2, TS / 2, TS / 2 - 4)
+      .stroke({ color: 0x4488ff, alpha: 0.7, width: 2 });
+    this._ghostLabel.text = unitType === UnitType.UNICORN ? "UNICORN" : "PIXIE";
+    this._ghostLabel.anchor.set(0.5, 0.5);
+    this._ghostLabel.position.set(TS / 2, TS / 2);
+
+    // Hint bar
+    this._hintText.text = `Summoning ${unitType === UnitType.UNICORN ? "Unicorn" : "Pixie"}  ·  Left-click to place  ·  ESC / Right-click to cancel`;
+    this._hintText.anchor.set(0.5, 1);
+    this._hintContainer.visible = true;
+    this._positionHintBar();
+  }
+
   get isActive(): boolean {
     return this._active;
   }
@@ -306,6 +388,15 @@ export class BuildingPlacer {
     this._cursorTx = Math.floor(world.x);
     this._cursorTy = Math.floor(world.y);
 
+    if (this._isSpellPlacement) {
+      // Spell placement: allow anywhere on the map
+      this._isValid = this._cursorTx >= 0 && this._cursorTx < BalanceConfig.GRID_WIDTH
+        && this._cursorTy >= 0 && this._cursorTy < BalanceConfig.GRID_HEIGHT;
+      this._ghostContainer.position.set(this._cursorTx * TS, this._cursorTy * TS);
+      this._ghostBody.tint = this._isValid ? 0xffffff : 0xff8888;
+      return;
+    }
+
     this._isValid = canPlace(
       this._state,
       this._bpType,
@@ -337,23 +428,76 @@ export class BuildingPlacer {
 
   private _tryConfirm(): void {
     if (!this._isValid) return;
-    confirmPlacement(
-      this._state,
-      this._bpType,
-      this._cursorTx,
-      this._cursorTy,
-      this._localPlayerId,
-    );
+
+    if (this._isSpellPlacement && this._spellUnitType) {
+      // Summon the unit at cursor position
+      const player = this._state.players.get(this._spellPlayerId);
+      const unit = createUnit({
+        type: this._spellUnitType,
+        owner: this._spellPlayerId as PlayerId,
+        position: { x: this._cursorTx + 0.5, y: this._cursorTy + 0.5 },
+        facingDirection: player?.direction === Direction.WEST ? Direction.EAST : Direction.WEST,
+      });
+      this._state.units.set(unit.id, unit);
+      UpgradeSystem.applyAllUpgradesToUnit(unit);
+      this._deactivate();
+      return;
+    }
+
+    if (this._isConstruction && this._constructionUnitType) {
+      confirmGhostPlacement(
+        this._state,
+        this._bpType,
+        this._cursorTx,
+        this._cursorTy,
+        this._constructionPlayerId as PlayerId,
+        this._constructionUnitType,
+      );
+    } else {
+      confirmPlacement(
+        this._state,
+        this._bpType,
+        this._cursorTx,
+        this._cursorTy,
+        this._localPlayerId,
+      );
+    }
     this._deactivate();
   }
 
   private _cancel(): void {
-    cancelPlacement(this._state, this._bpType, this._localPlayerId);
+    if (this._isSpellPlacement && this._spellUpgradeType) {
+      // Refund the mana cost and decrement level
+      const upgradeDef = UPGRADE_DEFINITIONS[this._spellUpgradeType];
+      const player = this._state.players.get(this._spellPlayerId);
+      if (player && upgradeDef.manaCost && upgradeDef.manaCost > 0) {
+        player.mana += upgradeDef.manaCost;
+        EventBus.emit("manaChanged", { playerId: this._spellPlayerId, amount: player.mana });
+      }
+      UpgradeSystem.decrementUpgrade(this._spellPlayerId, this._spellUpgradeType);
+    } else if (this._isConstruction && this._constructionUpgradeType) {
+      // Refund the upgrade cost and decrement level
+      const upgradeDef = UPGRADE_DEFINITIONS[this._constructionUpgradeType];
+      const player = this._state.players.get(this._constructionPlayerId);
+      if (player) {
+        player.gold += upgradeDef.cost;
+        EventBus.emit("goldChanged", { playerId: this._constructionPlayerId, amount: player.gold });
+      }
+      UpgradeSystem.decrementUpgrade(this._constructionPlayerId, this._constructionUpgradeType);
+    } else {
+      cancelPlacement(this._state, this._bpType, this._localPlayerId);
+    }
     this._deactivate();
   }
 
   private _deactivate(): void {
     this._active = false;
+    this._isConstruction = false;
+    this._constructionUpgradeType = null;
+    this._constructionUnitType = null;
+    this._isSpellPlacement = false;
+    this._spellUpgradeType = null;
+    this._spellUnitType = null;
     this._ghostContainer.visible = false;
     this._hintContainer.visible = false;
   }

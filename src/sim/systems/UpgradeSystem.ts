@@ -60,14 +60,18 @@ export const UpgradeSystem = {
       return false; // Already at max level
     }
 
-    // Check if player has enough gold
+    // Check if player can afford the upgrade (mana or gold)
     const player = state.players.get(playerId);
-    if (!player || player.gold < def.cost) {
-      return false; // Not enough gold
-    }
+    if (!player) return false;
 
-    // Purchase upgrade
-    player.gold -= def.cost;
+    if (def.manaCost && def.manaCost > 0) {
+      if (player.mana < def.manaCost) return false;
+      player.mana -= def.manaCost;
+      EventBus.emit("manaChanged", { playerId, amount: player.mana });
+    } else {
+      if (player.gold < def.cost) return false;
+      player.gold -= def.cost;
+    }
     
     // Update upgrade level
     const upgrades = this.getPlayerUpgrades(playerId);
@@ -166,10 +170,12 @@ export const UpgradeSystem = {
     const def = UPGRADE_DEFINITIONS[upgradeType];
     const currentLevel = this.getUpgradeLevel(playerId, upgradeType);
     const player = state.players.get(playerId);
-    
-    return currentLevel < def.maxLevel && 
-           player !== undefined && 
-           player.gold >= def.cost;
+    if (!player || currentLevel >= def.maxLevel) return false;
+
+    if (def.manaCost && def.manaCost > 0) {
+      return player.mana >= def.manaCost;
+    }
+    return player.gold >= def.cost;
   },
 
   /** Reset all upgrades (for new game) */
@@ -234,5 +240,17 @@ export const UpgradeSystem = {
     const level = this.getUpgradeLevel(playerId, UpgradeType.TOWER_COST);
     const base  = BUILDING_DEFINITIONS[type].cost;
     return Math.floor(base * (1 - 0.15 * level));
+  },
+
+  /** Decrement an upgrade level (used when cancelling settler/engineer placement). */
+  decrementUpgrade(playerId: string, upgradeType: UpgradeType): void {
+    const upgrades = playerUpgrades[playerId];
+    if (!upgrades) return;
+    const existing = upgrades.find((u) => u.type === upgradeType);
+    if (!existing || existing.level <= 0) return;
+    existing.level--;
+    if (existing.level === 0) {
+      playerUpgrades[playerId] = upgrades.filter((u) => u.type !== upgradeType);
+    }
   },
 };

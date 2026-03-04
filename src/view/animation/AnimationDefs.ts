@@ -335,6 +335,8 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.CLERIC]: buildDef("cleric", { moveFps: 8, attackFps: 10 }),
   [UnitType.SAINT]: buildDef("saint", { moveFps: 6, attackFps: 8 }),
   [UnitType.DIPLOMAT]: buildDef("diplomat", { moveFps: 8 }),
+  [UnitType.SETTLER]: buildDef("settler", { moveFps: 8 }),
+  [UnitType.ENGINEER]: buildDef("engineer", { moveFps: 8 }),
   [UnitType.RED_DRAGON]: buildDef("red_dragon", {
     idleFps: 4,
     moveFps: 8,
@@ -688,5 +690,26 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 8,
     castFps: 6,
     dieFps: 6,
+  }),
+  [UnitType.SETTLER]: buildDef("settler", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 8,
+    castFps: 6,
+    dieFps: 6,
+  }),
+  [UnitType.ENGINEER]: buildDef("engineer", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 8,
+    castFps: 6,
+    dieFps: 6,
+  }),
+  [UnitType.UNICORN]: buildDef("unicorn", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 6,
+    dieFps: 7,
   }),
 };

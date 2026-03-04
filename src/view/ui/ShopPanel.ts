@@ -196,6 +196,9 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.ELITE_SIEGE_WORKSHOP]: "Elite Siege Workshop",
   [BuildingType.ELITE_MAGE_TOWER]: "Elite Mage Tower",
   [BuildingType.ELITE_STABLES]: "Elite Stables",
+  [BuildingType.FORWARD_CASTLE]: "Forward Castle",
+  [BuildingType.FORWARD_TOWER]: "Forward Tower",
+  [BuildingType.ARCHIVE]: "Archive",
 };
 
 // Unit display names
@@ -319,6 +322,9 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.CANNON]: "Cannon",
   [UnitType.BATTLEMAGE]: "Battlemage",
   [UnitType.CATAPHRACT]: "Cataphract",
+  [UnitType.SETTLER]: "Settler",
+  [UnitType.ENGINEER]: "Engineer",
+  [UnitType.UNICORN]: "Unicorn",
 };
 
 // ---------------------------------------------------------------------------
@@ -340,6 +346,10 @@ const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.TOWER_DAMAGE]: "Twr Dmg",
   [UpgradeType.TOWER_HEALTH]: "Twr HP",
   [UpgradeType.TOWER_COST]: "Twr Cost",
+  [UpgradeType.SETTLER]: "Settler",
+  [UpgradeType.ENGINEER]: "Engineer",
+  [UpgradeType.SUMMON_UNICORN]: "Unicorn",
+  [UpgradeType.SUMMON_PIXIE]: "Pixie",
 };
 
 // ---------------------------------------------------------------------------
@@ -1489,10 +1499,12 @@ export class ShopPanel {
       this._localPlayerId,
       upgradeType,
     );
-    const cost = currentLevel < def.maxLevel ? def.cost : 0;
+    const isSpell = !!(def as any).isSpell;
+    const manaCost = (def as any).manaCost as number | undefined;
+    const cost = currentLevel < def.maxLevel ? (manaCost && manaCost > 0 ? manaCost : def.cost) : 0;
 
     const costText = new Text({
-      text: currentLevel >= def.maxLevel ? "MAX" : `${cost}g`,
+      text: currentLevel >= def.maxLevel ? "MAX" : (manaCost && manaCost > 0 ? `${cost}m` : `${cost}g`),
       style: STYLE_ICON_COST,
     });
     costText.anchor.set(0.5, 1);
@@ -1915,12 +1927,16 @@ export class ShopPanel {
     this._statsContainer.addChild(levelText);
 
     if (currentLevel < def.maxLevel) {
+      const manaCost = (def as any).manaCost as number | undefined;
+      const costLabel = manaCost && manaCost > 0
+        ? `Cost: ${manaCost}m`
+        : `Next upgrade: ${def.cost}g`;
       const costText = new Text({
-        text: `Next upgrade: ${def.cost}g`,
+        text: costLabel,
         style: new TextStyle({
           fontFamily: "monospace",
           fontSize: 10,
-          fill: 0xffd700,
+          fill: manaCost && manaCost > 0 ? 0x4488ff : 0xffd700,
           align: "left",
         }),
       });
@@ -1942,6 +1958,18 @@ export class ShopPanel {
   }
 
   private _buyUpgrade(_buildingId: string, upgradeType: UpgradeType): void {
+    // Special handling for construction upgrades (settler/engineer)
+    if (upgradeType === UpgradeType.SETTLER || upgradeType === UpgradeType.ENGINEER) {
+      this._buyConstructionUpgrade(upgradeType);
+      return;
+    }
+
+    // Special handling for spell upgrades (summon unicorn/pixie)
+    if (upgradeType === UpgradeType.SUMMON_UNICORN || upgradeType === UpgradeType.SUMMON_PIXIE) {
+      this._buySpellUpgrade(upgradeType);
+      return;
+    }
+
     const success = UpgradeSystem.purchaseUpgrade(
       this._state,
       this._localPlayerId,
@@ -1955,6 +1983,44 @@ export class ShopPanel {
       // Update affordability
       this._updateAffordability();
     }
+  }
+
+  private _buyConstructionUpgrade(upgradeType: UpgradeType): void {
+    const success = UpgradeSystem.purchaseUpgrade(
+      this._state,
+      this._localPlayerId,
+      upgradeType,
+    );
+    if (!success) return;
+
+    this.close();
+
+    const bpType = upgradeType === UpgradeType.SETTLER
+      ? BuildingType.FORWARD_CASTLE
+      : BuildingType.FORWARD_TOWER;
+
+    const unitType = upgradeType === UpgradeType.SETTLER
+      ? UnitType.SETTLER
+      : UnitType.ENGINEER;
+
+    buildingPlacer.activateConstruction(bpType, upgradeType, unitType, this._localPlayerId);
+  }
+
+  private _buySpellUpgrade(upgradeType: UpgradeType): void {
+    const success = UpgradeSystem.purchaseUpgrade(
+      this._state,
+      this._localPlayerId,
+      upgradeType,
+    );
+    if (!success) return;
+
+    this.close();
+
+    const unitType = upgradeType === UpgradeType.SUMMON_UNICORN
+      ? UnitType.UNICORN
+      : UnitType.PIXIE;
+
+    buildingPlacer.activateSpellPlacement(upgradeType, unitType, this._localPlayerId);
   }
 }
 

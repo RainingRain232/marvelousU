@@ -55,6 +55,9 @@ export interface Building {
   captureProgress: number; // 0.0 → 1.0; reaches 1.0 on capture
   capturePlayerId: string | null; // which player is currently capping; null = nobody
 
+  // Settler/Engineer construction: ID of the unit building this structure
+  constructionUnitId: string | null;
+
   // Economy / production
   shopInventory: UnitType[]; // Unit types this building can train
   blueprints: BuildingType[]; // Building blueprints sold from this building's shop
@@ -90,6 +93,7 @@ export function createBuilding(opts: CreateBuildingOptions): Building {
     maxHealth: def.hp,
     captureProgress: 0,
     capturePlayerId: null,
+    constructionUnitId: null,
     shopInventory: [...def.shopInventory],
     blueprints: [...def.blueprints],
     upgradeInventory: [...(def.upgradeInventory ?? [])],

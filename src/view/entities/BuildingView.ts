@@ -94,6 +94,9 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.ELITE_SIEGE_WORKSHOP]: 0x5a3c1e,
   [BuildingType.ELITE_MAGE_TOWER]: 0x4a1e6b,
   [BuildingType.ELITE_STABLES]: 0x3c2a0e,
+  [BuildingType.FORWARD_CASTLE]: 0x8b6914,
+  [BuildingType.FORWARD_TOWER]: 0x8b8b6e,
+  [BuildingType.ARCHIVE]: 0x5533aa,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -151,6 +154,9 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.ELITE_SIEGE_WORKSHOP]: "ELITE SIEGE",
   [BuildingType.ELITE_MAGE_TOWER]: "ELITE MAGE",
   [BuildingType.ELITE_STABLES]: "ELITE STBL",
+  [BuildingType.FORWARD_CASTLE]: "FWD CASTLE",
+  [BuildingType.FORWARD_TOWER]: "FWD TOWER",
+  [BuildingType.ARCHIVE]: "ARCHIVE",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -247,13 +253,13 @@ export class BuildingView {
     const ph = this._ph;
 
     // --- Castle: use detailed procedural renderer ---
-    if (building.type === BuildingType.CASTLE) {
+    if (building.type === BuildingType.CASTLE || building.type === BuildingType.FORWARD_CASTLE) {
       this._castleRenderer = new CastleRenderer(building.owner);
       this.container.addChild(this._castleRenderer.container);
       // Hide generic body/label — castle renderer handles everything visual
       this._body.visible = false;
       this._label.visible = false;
-    } else if (building.type === BuildingType.TOWER) {
+    } else if (building.type === BuildingType.TOWER || building.type === BuildingType.FORWARD_TOWER) {
       this._towerRenderer = new TowerRenderer(building.owner);
       this.container.addChild(this._towerRenderer.container);
       this._body.visible = false;
@@ -501,8 +507,11 @@ export class BuildingView {
       }
     }
 
-    this._body.alpha = building.state === BuildingState.DESTROYED ? 0.35 : 1;
-    this._label.alpha = this._body.alpha;
+    const ghostAlpha = building.state === BuildingState.GHOST ? 0.4
+      : building.state === BuildingState.DESTROYED ? 0.35 : 1;
+    this._body.alpha = ghostAlpha;
+    this._label.alpha = ghostAlpha;
+    this.container.alpha = ghostAlpha;
 
     if (building.state === BuildingState.ACTIVE && dt > 0) {
       // Detailed renderers: tick them

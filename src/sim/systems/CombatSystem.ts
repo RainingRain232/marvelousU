@@ -70,7 +70,7 @@ export const CombatSystem = {
         const building = state.buildings.get(unit.targetId);
         if (
           building &&
-          building.state === BuildingState.ACTIVE &&
+          (building.state === BuildingState.ACTIVE || building.state === BuildingState.GHOST) &&
           building.owner !== null &&
           isEnemy(state, unit.owner, building.owner)
         ) {
@@ -401,6 +401,13 @@ export function killUnit(unit: Unit, killerUnitId?: string, state?: GameState): 
   unit.deathTimer = BalanceConfig.UNIT_DEATH_LINGER;
   unit.targetId = null;
   unit.path = null;
+
+  // Settler/Engineer death → destroy linked ghost building
+  if (unit.constructionTargetId && state) {
+    const ghostId = unit.constructionTargetId;
+    unit.constructionTargetId = null;
+    destroyBuilding(state, ghostId);
+  }
 
   EventBus.emit("unitStateChanged", {
     unitId: unit.id,

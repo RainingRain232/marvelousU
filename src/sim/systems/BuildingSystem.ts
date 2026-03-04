@@ -5,6 +5,7 @@ import { getTile, setBuilding, setWalkable } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
+import { killUnit } from "@sim/systems/CombatSystem";
 import { EventBus } from "@sim/core/EventBus";
 import type { PlayerId, Vec2 } from "@/types";
 import {
@@ -257,6 +258,16 @@ export function destroyBuilding(state: GameState, buildingId: string): void {
         (id) => id !== buildingId,
       );
     }
+  }
+
+  // Ghost building destroyed → kill linked settler/engineer
+  if (building.constructionUnitId) {
+    const linkedUnit = state.units.get(building.constructionUnitId);
+    if (linkedUnit && linkedUnit.state !== UnitState.DIE) {
+      linkedUnit.constructionTargetId = null; // prevent circular call
+      killUnit(linkedUnit, undefined, state);
+    }
+    building.constructionUnitId = null;
   }
 
   // Castle destroyed → zero out the linked base so PhaseSystem triggers elimination

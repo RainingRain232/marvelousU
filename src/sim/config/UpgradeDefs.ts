@@ -4,10 +4,12 @@ import { UpgradeType } from "@/types";
 export interface UpgradeDef {
   type: UpgradeType;
   cost: number;
+  manaCost?: number; // If set, deducts mana instead of gold
   maxLevel: number;
   effect: number; // percentage multiplier (e.g., 0.2 for 20%)
   description: string;
   appliesTo: UnitType[];
+  isSpell?: boolean; // If true, this is a repeatable spell summon (no permanent level)
 }
 
 import { UnitType } from "@/types";
@@ -170,5 +172,41 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     effect: 0.15, // 15% cost reduction per level
     description: "Reduces the gold cost of all tower buildings by 15%.",
     appliesTo: [],
+  },
+  [UpgradeType.SETTLER]: {
+    type: UpgradeType.SETTLER,
+    cost: 600,
+    maxLevel: 5,
+    effect: 0,
+    description: "Deploy a settler to construct a forward castle on neutral land.",
+    appliesTo: [],
+  },
+  [UpgradeType.ENGINEER]: {
+    type: UpgradeType.ENGINEER,
+    cost: 350,
+    maxLevel: 5,
+    effect: 0,
+    description: "Deploy an engineer to construct a forward tower on neutral land.",
+    appliesTo: [],
+  },
+  [UpgradeType.SUMMON_UNICORN]: {
+    type: UpgradeType.SUMMON_UNICORN,
+    cost: 0,
+    manaCost: 100,
+    maxLevel: 99,
+    effect: 0,
+    description: "Summon a majestic unicorn at the target location. Costs 100 mana.",
+    appliesTo: [],
+    isSpell: true,
+  },
+  [UpgradeType.SUMMON_PIXIE]: {
+    type: UpgradeType.SUMMON_PIXIE,
+    cost: 0,
+    manaCost: 50,
+    maxLevel: 99,
+    effect: 0,
+    description: "Summon a pixie at the target location. Costs 50 mana.",
+    appliesTo: [],
+    isSpell: true,
   },
 };

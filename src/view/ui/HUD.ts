@@ -32,6 +32,18 @@ const STYLE_VALUE = new TextStyle({
   fill: 0xffffff,
   fontWeight: "bold",
 });
+const STYLE_MANA_LABEL = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 11,
+  fill: 0x5588cc,
+  letterSpacing: 1,
+});
+const STYLE_MANA_VALUE = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 15,
+  fill: 0x4488ff,
+  fontWeight: "bold",
+});
 const STYLE_PHASE = new TextStyle({
   fontFamily: "monospace",
   fontSize: 13,
@@ -94,11 +106,13 @@ export class HUD {
   // West panel
   private _westPanel!: Container;
   private _westGoldVal!: Text;
+  private _westManaVal!: Text;
   private _westUnitVal!: Text;
 
   // East panel
   private _eastPanel!: Container;
   private _eastGoldVal!: Text;
+  private _eastManaVal!: Text;
   private _eastUnitVal!: Text;
 
   // Phase panel
@@ -158,6 +172,9 @@ export class HUD {
     this._unsubscribers.push(
       EventBus.on("goldChanged", ({ playerId, amount }) => {
         this._setGold(playerId, amount);
+      }),
+      EventBus.on("manaChanged", ({ playerId, amount }) => {
+        this._setMana(playerId, amount);
       }),
       EventBus.on("phaseChanged", ({ phase }) => {
         this._setPhase(phase);
@@ -221,14 +238,22 @@ export class HUD {
     this._westGoldVal = new Text({ text: "0", style: STYLE_VALUE });
     this._westGoldVal.position.set(10, 24);
 
+    const manaLabel = new Text({ text: "MANA", style: STYLE_MANA_LABEL });
+    manaLabel.position.set(60, 8);
+
+    this._westManaVal = new Text({ text: "0", style: STYLE_MANA_VALUE });
+    this._westManaVal.position.set(60, 24);
+
     const unitLabel = new Text({ text: "UNITS", style: STYLE_LABEL });
-    unitLabel.position.set(110, 8);
+    unitLabel.position.set(130, 8);
 
     this._westUnitVal = new Text({ text: "0", style: STYLE_VALUE });
-    this._westUnitVal.position.set(110, 24);
+    this._westUnitVal.position.set(130, 24);
 
     this._westPanel.addChild(goldLabel);
     this._westPanel.addChild(this._westGoldVal);
+    this._westPanel.addChild(manaLabel);
+    this._westPanel.addChild(this._westManaVal);
     this._westPanel.addChild(unitLabel);
     this._westPanel.addChild(this._westUnitVal);
     this.container.addChild(this._westPanel);
@@ -245,14 +270,22 @@ export class HUD {
     this._eastGoldVal = new Text({ text: "0", style: STYLE_VALUE });
     this._eastGoldVal.position.set(10, 24);
 
+    const eastManaLabel = new Text({ text: "MANA", style: STYLE_MANA_LABEL });
+    eastManaLabel.position.set(60, 8);
+
+    this._eastManaVal = new Text({ text: "0", style: STYLE_MANA_VALUE });
+    this._eastManaVal.position.set(60, 24);
+
     const unitLabel = new Text({ text: "UNITS", style: STYLE_LABEL });
-    unitLabel.position.set(110, 8);
+    unitLabel.position.set(130, 8);
 
     this._eastUnitVal = new Text({ text: "0", style: STYLE_VALUE });
-    this._eastUnitVal.position.set(110, 24);
+    this._eastUnitVal.position.set(130, 24);
 
     this._eastPanel.addChild(goldLabel);
     this._eastPanel.addChild(this._eastGoldVal);
+    this._eastPanel.addChild(eastManaLabel);
+    this._eastPanel.addChild(this._eastManaVal);
     this._eastPanel.addChild(unitLabel);
     this._eastPanel.addChild(this._eastUnitVal);
     this.container.addChild(this._eastPanel);
@@ -295,8 +328,14 @@ export class HUD {
   private _syncFromState(state: GameState): void {
     const west = state.players.get(this._westPlayerId);
     const east = state.players.get(this._eastPlayerId);
-    if (west) this._westGoldVal.text = String(west.gold);
-    if (east) this._eastGoldVal.text = String(east.gold);
+    if (west) {
+      this._westGoldVal.text = String(west.gold);
+      this._westManaVal.text = String(west.mana);
+    }
+    if (east) {
+      this._eastGoldVal.text = String(east.gold);
+      this._eastManaVal.text = String(east.mana);
+    }
     this._setPhase(state.phase);
     this.update(state);
   }
@@ -321,6 +360,14 @@ export class HUD {
       this._westGoldVal.text = String(amount);
     } else if (playerId === this._eastPlayerId) {
       this._eastGoldVal.text = String(amount);
+    }
+  }
+
+  private _setMana(playerId: PlayerId, amount: number): void {
+    if (playerId === this._westPlayerId) {
+      this._westManaVal.text = String(amount);
+    } else if (playerId === this._eastPlayerId) {
+      this._eastManaVal.text = String(amount);
     }
   }
 

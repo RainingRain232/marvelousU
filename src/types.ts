@@ -58,6 +58,9 @@ export enum UnitType {
   SPIDER = "spider",
   GLADIATOR = "gladiator",
   DIPLOMAT = "diplomat",
+  SETTLER = "settler",
+  ENGINEER = "engineer",
+  UNICORN = "unicorn",
   DISTORTION_MAGE = "distortion_mage",
   FIRE_ADEPT_MAGE = "fire_adept_mage",
   COLD_ADEPT_MAGE = "cold_adept_mage",
@@ -172,6 +175,9 @@ export enum BuildingType {
   FARM = "farm",
   HAMLET = "hamlet",
   EMBASSY = "embassy",
+  FORWARD_CASTLE = "forward_castle",
+  FORWARD_TOWER = "forward_tower",
+  ARCHIVE = "archive",
   TEMPLE = "temple",
   WALL = "wall",
   FIREPIT = "firepit",
@@ -247,6 +253,10 @@ export enum UpgradeType {
   TOWER_DAMAGE = "tower_damage",
   TOWER_HEALTH = "tower_health",
   TOWER_COST = "tower_cost",
+  SETTLER = "settler",
+  ENGINEER = "engineer",
+  SUMMON_UNICORN = "summon_unicorn",
+  SUMMON_PIXIE = "summon_pixie",
 }
 
 export enum UnitState {

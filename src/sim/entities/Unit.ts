@@ -60,6 +60,9 @@ export interface Unit {
   // Questing Knight intro: seconds to idle at castle before normal behaviour
   questingKnightTimer?: number;
 
+  // Settler/Engineer: ID of the ghost building this unit is constructing
+  constructionTargetId?: string | null;
+
   // Abilities
   abilityIds: string[]; // References into GameState.abilities
 

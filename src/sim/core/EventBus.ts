@@ -37,6 +37,7 @@ export interface SimEvents {
 
   // Economy
   goldChanged: { playerId: PlayerId; amount: number };
+  manaChanged: { playerId: PlayerId; amount: number };
   upgradePurchased: { playerId: PlayerId; upgradeType: string; newLevel: number };
 
   // Rally flag

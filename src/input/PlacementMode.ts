@@ -7,7 +7,7 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
-import { BuildingType, UnitType, UnitState } from "@/types";
+import { BuildingType, BuildingState, UnitType, UnitState } from "@/types";
 import type { PlayerId } from "@/types";
 import { getRace, filterInventoryByRace } from "@sim/config/RaceDefs";
 import { UpgradeSystem, TOWER_BUILDING_TYPES } from "@sim/systems/UpgradeSystem";
@@ -202,4 +202,94 @@ export function cancelPlacement(
 
   player.gold += cost;
   EventBus.emit("goldChanged", { playerId, amount: player.gold });
+}
+
+/**
+ * Place a ghost building for settler/engineer construction.
+ * The building starts in GHOST state with very low HP and no turrets.
+ * A settler/engineer unit is spawned at the player's castle to walk there.
+ */
+export function confirmGhostPlacement(
+  state: GameState,
+  bpType: BuildingType,
+  tx: number,
+  ty: number,
+  playerId: PlayerId,
+  unitType: UnitType,
+): string {
+  const def = BUILDING_DEFINITIONS[bpType];
+  const buildingId = `building-placed-${++_buildingCounter}`;
+
+  const building = createBuilding({
+    id: buildingId,
+    type: bpType,
+    owner: playerId,
+    position: { x: tx, y: ty },
+  });
+
+  // Set to GHOST state with very low HP
+  building.state = BuildingState.GHOST;
+  building.health = 50;
+  building.maxHealth = 50;
+  building.turrets = []; // No turrets while ghost
+
+  state.buildings.set(buildingId, building);
+
+  // Mark footprint tiles as occupied
+  for (let dy = 0; dy < def.footprint.h; dy++) {
+    for (let dx = 0; dx < def.footprint.w; dx++) {
+      const tile = state.battlefield.grid[ty + dy][tx + dx];
+      tile.walkable = false;
+      tile.buildingId = buildingId;
+    }
+  }
+
+  // Register on player
+  const player = state.players.get(playerId);
+  if (player) player.ownedBuildings.push(buildingId);
+
+  // Spawn settler/engineer at the player's castle
+  let castlePos: { x: number; y: number } | null = null;
+  for (const b of state.buildings.values()) {
+    if (b.owner === playerId && b.type === BuildingType.CASTLE) {
+      castlePos = b.position;
+      break;
+    }
+  }
+
+  if (castlePos) {
+    const unit = createUnit({
+      type: unitType,
+      owner: playerId,
+      position: { x: castlePos.x + 2, y: castlePos.y + 4 },
+    });
+
+    // Bidirectional link
+    unit.constructionTargetId = buildingId;
+    building.constructionUnitId = unit.id;
+
+    // Set movement toward the ghost building
+    unit.path = [{
+      x: tx + Math.floor(def.footprint.w / 2),
+      y: ty + def.footprint.h,
+    }];
+    unit.pathIndex = 0;
+    unit.targetId = buildingId;
+    unit.state = UnitState.MOVE;
+
+    state.units.set(unit.id, unit);
+    EventBus.emit("unitSpawned", {
+      unitId: unit.id,
+      buildingId,
+      position: { ...unit.position },
+    });
+  }
+
+  EventBus.emit("buildingPlaced", {
+    buildingId,
+    position: { x: tx, y: ty },
+    owner: playerId,
+  });
+
+  return buildingId;
 }

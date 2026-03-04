@@ -103,6 +103,7 @@ export interface SerializedUnit {
   pathIndex: number;
   groupId: string | null;
   formationOffset: { x: number; y: number };
+  constructionTargetId: string | null;
 }
 
 export interface SerializedBuilding {
@@ -134,6 +135,7 @@ export interface SerializedBuilding {
     attackTimer: number;
     targetId: string | null;
   }[];
+  constructionUnitId: string | null;
 }
 
 export interface SerializedBase {
@@ -168,6 +170,8 @@ export interface SerializedPlayer {
   id: string;
   gold: number;
   goldAccum: number;
+  mana: number;
+  manaAccum: number;
   direction: Direction;
   slot: PlayerSlot;
   isAI: boolean;

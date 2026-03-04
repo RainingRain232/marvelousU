@@ -126,6 +126,9 @@ export const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.ELITE_SIEGE_WORKSHOP]: "Elite Siege Workshop",
   [BuildingType.ELITE_MAGE_TOWER]: "Elite Mage Tower",
   [BuildingType.ELITE_STABLES]: "Elite Stables",
+  [BuildingType.FORWARD_CASTLE]: "Forward Castle",
+  [BuildingType.FORWARD_TOWER]: "Forward Tower",
+  [BuildingType.ARCHIVE]: "Archive",
 };
 
 export const UNIT_LABELS: Record<UnitType, string> = {
@@ -248,6 +251,9 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.CANNON]: "Cannon",
   [UnitType.BATTLEMAGE]: "Battlemage",
   [UnitType.CATAPHRACT]: "Cataphract",
+  [UnitType.SETTLER]: "Settler",
+  [UnitType.ENGINEER]: "Engineer",
+  [UnitType.UNICORN]: "Unicorn",
 };
 
 // ---------------------------------------------------------------------------

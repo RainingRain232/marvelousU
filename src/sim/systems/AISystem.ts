@@ -20,7 +20,7 @@ import type { GameState } from "@sim/state/GameState";
 import { isEnemy, isAlly } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Building } from "@sim/entities/Building";
-import { UnitState, Direction, BuildingState } from "@/types";
+import { UnitState, UnitType, Direction, BuildingState } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
@@ -55,6 +55,8 @@ export const AISystem = {
       if (unit.idleInterruptionTimer > 0) continue;
 
       if (unit.diplomatOnly) {
+        // Settler/Engineer movement is handled by SimLoop override, not AI
+        if (unit.type === UnitType.SETTLER || unit.type === UnitType.ENGINEER) continue;
         _handleDiplomat(state, unit);
         continue;
       }

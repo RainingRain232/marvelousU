@@ -27,17 +27,32 @@ export const EconomySystem = {
 
     for (const player of state.players.values()) {
       const rate = _incomeRate(state, player.id, isBattle);
-      if (rate <= 0) continue;
+      if (rate > 0) {
+        player.goldAccum += rate * dt;
+        const whole = Math.floor(player.goldAccum);
+        if (whole >= 1) {
+          player.gold += whole;
+          player.goldAccum -= whole;
+          EventBus.emit("goldChanged", {
+            playerId: player.id,
+            amount: player.gold,
+          });
+        }
+      }
 
-      player.goldAccum += rate * dt;
-      const whole = Math.floor(player.goldAccum);
-      if (whole >= 1) {
-        player.gold += whole;
-        player.goldAccum -= whole;
-        EventBus.emit("goldChanged", {
-          playerId: player.id,
-          amount: player.gold,
-        });
+      // Mana income (from Archive buildings)
+      const manaRate = _manaIncomeRate(state, player.id);
+      if (manaRate > 0) {
+        player.manaAccum += manaRate * dt;
+        const manaWhole = Math.floor(player.manaAccum);
+        if (manaWhole >= 1) {
+          player.mana += manaWhole;
+          player.manaAccum -= manaWhole;
+          EventBus.emit("manaChanged", {
+            playerId: player.id,
+            amount: player.mana,
+          });
+        }
       }
     }
   },
@@ -70,6 +85,25 @@ export function _incomeRate(
     if (building.state !== BuildingState.ACTIVE) continue;
     const def = BUILDING_DEFINITIONS[building.type];
     rate += def.goldIncome;
+  }
+
+  return rate;
+}
+
+/**
+ * Calculate the total mana/sec for a player from owned active buildings.
+ */
+export function _manaIncomeRate(
+  state: GameState,
+  playerId: string,
+): number {
+  let rate = BalanceConfig.MANA_INCOME_RATE;
+
+  for (const building of state.buildings.values()) {
+    if (building.owner !== playerId) continue;
+    if (building.state !== BuildingState.ACTIVE) continue;
+    const def = BUILDING_DEFINITIONS[building.type];
+    rate += def.manaIncome ?? 0;
   }
 
   return rate;

@@ -157,6 +157,9 @@ import { generateMarksmanFrames } from "@view/animation/MarksmanSpriteGen";
 import { generateCannonFrames } from "@view/animation/CannonSpriteGen";
 import { generateBattlemageFrames } from "@view/animation/BattlemageSpriteGen";
 import { generateCataphractFrames } from "@view/animation/CataphractSpriteGen";
+import { generateSettlerFrames } from "@view/animation/SettlerSpriteGen";
+import { generateEngineerFrames } from "@view/animation/EngineerSpriteGen";
+import { generateUnicornFrames } from "@view/animation/UnicornSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -402,6 +405,10 @@ export class AnimationManager {
         this._generateDevourerSprites(key, renderer);
       } else if (key === "diplomat") {
         this._generateDiplomatSprites(key, renderer);
+      } else if (key === "settler") {
+        this._generateSettlerSprites(key, renderer);
+      } else if (key === "engineer") {
+        this._generateEngineerSprites(key, renderer);
       } else if (key === "summoner") {
         this._generateGolemSprites(key, renderer);
       } else if (key === "summoned") {
@@ -508,6 +515,8 @@ export class AnimationManager {
         this._generateEarthElementalSprites(key, renderer);
       } else if (key === "minor_earth_elemental") {
         this._generateMinorEarthElementalSprites(key, renderer);
+      } else if (key === "unicorn") {
+        this._generateUnicornSprites(key, renderer);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1231,6 +1240,32 @@ export class AnimationManager {
 
   private _generateDiplomatSprites(key: string, renderer: Renderer): void {
     const textures = generateDiplomatFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateSettlerSprites(key: string, renderer: Renderer): void {
+    const textures = generateSettlerFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateEngineerSprites(key: string, renderer: Renderer): void {
+    const textures = generateEngineerFrames(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];
@@ -2014,6 +2049,19 @@ export class AnimationManager {
 
   private _generateCataphractSprites(key: string, renderer: Renderer): void {
     const textures = generateCataphractFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateUnicornSprites(key: string, renderer: Renderer): void {
+    const textures = generateUnicornFrames(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];

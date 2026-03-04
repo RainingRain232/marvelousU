@@ -109,6 +109,7 @@ function serializeUnit(u: Unit): SerializedUnit {
     pathIndex: u.pathIndex,
     groupId: u.groupId,
     formationOffset: { x: u.formationOffset.x, y: u.formationOffset.y },
+    constructionTargetId: u.constructionTargetId ?? null,
   };
 }
 
@@ -145,6 +146,7 @@ function serializeBuilding(b: Building): SerializedBuilding {
       attackTimer: t.attackTimer,
       targetId: t.targetId,
     })),
+    constructionUnitId: b.constructionUnitId,
   };
 }
 
@@ -185,6 +187,8 @@ function serializePlayer(p: PlayerState): SerializedPlayer {
     id: p.id,
     gold: p.gold,
     goldAccum: p.goldAccum,
+    mana: p.mana,
+    manaAccum: p.manaAccum,
     direction: p.direction,
     slot: p.slot,
     isAI: p.isAI,
@@ -237,6 +241,8 @@ export function applySnapshot(
     if (existing) {
       existing.gold = sp.gold;
       existing.goldAccum = sp.goldAccum;
+      existing.mana = sp.mana;
+      existing.manaAccum = sp.manaAccum;
       existing.ownedBaseId = sp.ownedBaseId;
       existing.ownedBuildings = [...sp.ownedBuildings];
     }
@@ -322,6 +328,7 @@ function _patchUnit(unit: Unit, su: SerializedUnit): void {
   unit.groupId = su.groupId;
   unit.formationOffset.x = su.formationOffset.x;
   unit.formationOffset.y = su.formationOffset.y;
+  unit.constructionTargetId = su.constructionTargetId;
 }
 
 function _patchBuilding(b: Building, sb: SerializedBuilding): void {
@@ -345,6 +352,7 @@ function _patchBuilding(b: Building, sb: SerializedBuilding): void {
     b.turrets[i].attackTimer = sb.turrets[i].attackTimer;
     b.turrets[i].targetId = sb.turrets[i].targetId;
   }
+  b.constructionUnitId = sb.constructionUnitId;
 }
 
 // ---------------------------------------------------------------------------
@@ -396,6 +404,7 @@ function _deserializeUnit(su: SerializedUnit): Unit {
     pathFailCount: 0,
     regenRate: def?.regenRate ?? 0,
     regenAccumulator: 0,
+    constructionTargetId: su.constructionTargetId,
   };
 }
 
@@ -432,6 +441,7 @@ function _deserializeBuilding(sb: SerializedBuilding): Building {
       attackTimer: t.attackTimer,
       targetId: t.targetId,
     })),
+    constructionUnitId: sb.constructionUnitId,
   };
 }
 

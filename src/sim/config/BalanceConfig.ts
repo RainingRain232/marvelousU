@@ -19,6 +19,7 @@ export const BalanceConfig = {
   GOLD_INCOME_RATE: 5, // base gold/sec (both phases)
   GOLD_PER_BUILDING: 1, // additional gold/sec per owned or captured building
   GOLD_INCOME_BATTLE_BONUS: 3, // extra flat gold/sec added during BATTLE phase
+  MANA_INCOME_RATE: 0, // base mana/sec (only Archive buildings generate mana)
 
   // Spawning
   DEFAULT_GROUP_THRESHOLD: 3, // units ready before group deploys

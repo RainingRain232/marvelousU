@@ -13,7 +13,7 @@
 
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import type { GameState } from "@sim/state/GameState";
-import { UnitType, BuildingType, UnitState } from "@/types";
+import { UnitType, BuildingType, BuildingState, UnitState } from "@/types";
 import { SpawnSystem } from "@sim/systems/SpawnSystem";
 import { AbilitySystem } from "@sim/systems/AbilitySystem";
 import { MovementSystem } from "@sim/systems/MovementSystem";
@@ -59,6 +59,43 @@ export function simTick(state: GameState): void {
   BuildingSystem.update(state, DT);
   AISystem.update(state, DT);
   
+  // Settler / Engineer construction behavior — override movement toward ghost building
+  for (const unit of state.units.values()) {
+    if (
+      (unit.type === UnitType.SETTLER || unit.type === UnitType.ENGINEER) &&
+      unit.constructionTargetId &&
+      unit.state !== UnitState.DIE
+    ) {
+      const ghost = state.buildings.get(unit.constructionTargetId);
+      // Ghost building destroyed → kill the unit
+      if (!ghost || ghost.state === BuildingState.DESTROYED) {
+        unit.constructionTargetId = null;
+        unit.state = UnitState.DIE;
+        unit.deathTimer = 0.6;
+        continue;
+      }
+      // Check if unit arrived at building (within footprint + 1 tile)
+      const dx = Math.abs(unit.position.x - ghost.position.x);
+      const dy = Math.abs(unit.position.y - ghost.position.y);
+      if (dx <= 4 && dy <= 4) {
+        // Activate the building
+        ghost.state = BuildingState.ACTIVE;
+        ghost.health = ghost.maxHealth;
+        ghost.constructionUnitId = null;
+        // Remove the unit (consumed by construction)
+        unit.constructionTargetId = null;
+        unit.state = UnitState.DIE;
+        unit.deathTimer = 0;
+        continue;
+      }
+      // Force path to ghost building position
+      unit.path = [{ x: ghost.position.x + 1, y: ghost.position.y + 1 }];
+      unit.pathIndex = 0;
+      unit.state = UnitState.MOVE;
+      unit.targetId = null;
+    }
+  }
+
   // Questing Knight special behavior - run last to override other systems
   for (const unit of state.units.values()) {
     if (unit.type === UnitType.QUESTING_KNIGHT && unit.questingKnightTimer && unit.questingKnightTimer > 0) {
