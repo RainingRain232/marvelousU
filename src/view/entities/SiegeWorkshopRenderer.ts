@@ -101,7 +101,7 @@ export class SiegeWorkshopRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
 
     this._drawBase();
     this._drawMachines();
@@ -116,6 +116,10 @@ export class SiegeWorkshopRenderer {
     this.container.addChild(this._smoke);
     this.container.addChild(this._raven);
     this.container.addChild(this._banner);
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
   }
 
   tick(dt: number, _phase: GamePhase): void {

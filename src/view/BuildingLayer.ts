@@ -65,6 +65,10 @@ export class BuildingLayer {
         // Remove after destruction animation (~800ms)
         setTimeout(() => this._removeBuilding(buildingId), 800);
       }),
+      EventBus.on("buildingCaptured", ({ buildingId, newOwner }) => {
+        const view = this._buildingViews.get(buildingId);
+        if (view) view.updateOwner(newOwner);
+      }),
     );
   }
 

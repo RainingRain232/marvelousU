@@ -41,6 +41,7 @@ const COL_ROOF = 0x4a3728;
 const COL_ROOF_LT = 0x5a4738;
 const COL_FLAG_P1 = 0x4488ff;
 const COL_FLAG_P2 = 0xff4444;
+const COL_FLAG_NEUTRAL = 0xeeeeee;
 const COL_PUMPKIN = 0xe87820;
 const COL_PUMPKIN_DK = 0xc06018;
 const COL_PUMPKIN_EYE = 0x221100;
@@ -68,7 +69,7 @@ export class FarmRenderer {
     private _playerColor: number;
 
     constructor(owner: string | null) {
-        this._playerColor = owner === "p1" ? COL_FLAG_P1 : COL_FLAG_P2;
+        this._playerColor = owner === "p1" ? COL_FLAG_P1 : owner === "p2" ? COL_FLAG_P2 : COL_FLAG_NEUTRAL;
 
         this._drawGround();
         this._drawHouse();
@@ -86,6 +87,10 @@ export class FarmRenderer {
 
         // Add flag as child of tower
         this._tower.addChild(this._flag);
+    }
+
+    setOwner(owner: string | null): void {
+        this._playerColor = owner === "p1" ? COL_FLAG_P1 : owner === "p2" ? COL_FLAG_P2 : COL_FLAG_NEUTRAL;
     }
 
     tick(dt: number, _phase: GamePhase): void {

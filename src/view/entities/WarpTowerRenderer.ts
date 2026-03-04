@@ -63,7 +63,7 @@ export class WarpTowerRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
     this._mage = new TowerMage(MAGE_COLORS_WARP);
 
     this._drawStaticTower();
@@ -201,6 +201,10 @@ export class WarpTowerRenderer {
       width: 1,
       alpha: 0.8,
     });
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
   }
 
   tick(dt: number, _phase: GamePhase): void {

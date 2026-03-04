@@ -87,7 +87,7 @@ export class TowerRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
 
     this._drawStaticTower();
     this._drawFlag();
@@ -106,6 +106,10 @@ export class TowerRenderer {
 
     this._frogY0 = TH - 6;
     this._frog.position.set(TW / 2 - 4, this._frogY0);
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
   }
 
   tick(dt: number, _phase: GamePhase): void {

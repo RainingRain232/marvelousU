@@ -21,7 +21,7 @@ export class HealingTowerRenderer {
   private _casting = false;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x2ecc71 : 0x2e8f55;
+    this._playerColor = owner === "p1" ? 0x2ecc71 : owner === "p2" ? 0x2e8f55 : 0xeeeeee;
     this._mage = new TowerMage(MAGE_COLORS_HEAL);
 
     this._drawStaticTower();
@@ -75,6 +75,10 @@ export class HealingTowerRenderer {
     g.rect(x - 2, y - 2, 24, 28).fill({ color: 0x0b5e3a });
     g.rect(x, y, 20, 22).fill({ color: 0x0a3d2f });
     g.rect(x - 1, y - 1, 22, 24).stroke({ color: 0x1e7e3a, width: 1.5 });
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? 0x2ecc71 : owner === "p2" ? 0x2e8f55 : 0xeeeeee;
   }
 
   tick(dt: number, _phase: GamePhase): void {

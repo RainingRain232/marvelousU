@@ -38,6 +38,7 @@ const COL_WOOD_LT = 0x7a5030;
 const COL_PAVEMENT = 0x9a9688;
 const COL_FLAG_P1 = 0x4488ff;
 const COL_FLAG_P2 = 0xff4444;
+const COL_FLAG_NEUTRAL = 0xeeeeee;
 const COL_SKIN = 0xffdbac;
 const COL_HAIR_DK = 0x3a2510;
 const COL_HAIR_LT = 0x8b6530;
@@ -72,7 +73,7 @@ export class TownRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? COL_FLAG_P1 : COL_FLAG_P2;
+    this._playerColor = owner === "p1" ? COL_FLAG_P1 : owner === "p2" ? COL_FLAG_P2 : COL_FLAG_NEUTRAL;
 
     this._drawStaticPavement();
     this._drawArchitecture();
@@ -98,6 +99,10 @@ export class TownRenderer {
       this._zzz.push(z);
       this.container.addChild(z);
     }
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? COL_FLAG_P1 : owner === "p2" ? COL_FLAG_P2 : COL_FLAG_NEUTRAL;
   }
 
   tick(dt: number, _phase: GamePhase): void {

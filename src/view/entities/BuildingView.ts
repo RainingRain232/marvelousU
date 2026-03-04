@@ -619,6 +619,35 @@ export class BuildingView {
     }
   }
 
+  /** Update the ownership color on the renderer (called when building is captured). */
+  updateOwner(owner: string | null): void {
+    if (this._townRenderer) this._townRenderer.setOwner(owner);
+    else if (this._farmRenderer) this._farmRenderer.setOwner(owner);
+    else if (this._templeRenderer) this._templeRenderer.setOwner(owner);
+    else if (this._towerRenderer) this._towerRenderer.setOwner(owner);
+    else if (this._castleRenderer) this._castleRenderer.setOwner(owner);
+    else if (this._barracksRenderer) this._barracksRenderer.setOwner(owner);
+    else if (this._archeryRangeRenderer) this._archeryRangeRenderer.setOwner(owner);
+    else if (this._siegeWorkshopRenderer) this._siegeWorkshopRenderer.setOwner(owner);
+    else if (this._mageTowerRenderer) this._mageTowerRenderer.setOwner(owner);
+    else if (this._blacksmithRenderer) this._blacksmithRenderer.setOwner(owner);
+    else if (this._embassyRenderer) this._embassyRenderer.setOwner(owner);
+    else if (this._creatureDenRenderer) this._creatureDenRenderer.setOwner(owner);
+    else if (this._eliteHallRenderer) this._eliteHallRenderer.setOwner(owner);
+    else if (this._factionHallRenderer) this._factionHallRenderer.setOwner(owner);
+    else if (this._lightningTowerRenderer) this._lightningTowerRenderer.setOwner(owner);
+    else if (this._iceTowerRenderer) this._iceTowerRenderer.setOwner(owner);
+    else if (this._fireTowerRenderer) this._fireTowerRenderer.setOwner(owner);
+    else if (this._warpTowerRenderer) this._warpTowerRenderer.setOwner(owner);
+    else if (this._healingTowerRenderer) this._healingTowerRenderer.setOwner(owner);
+    else if (this._ballistaTowerRenderer) this._ballistaTowerRenderer.setOwner(owner);
+    else if (this._repeaterTowerRenderer) this._repeaterTowerRenderer.setOwner(owner);
+    else if (this._eliteBarracksRenderer) this._eliteBarracksRenderer.setOwner(owner);
+    else if (this._eliteArcheryRangeRenderer) this._eliteArcheryRangeRenderer.setOwner(owner);
+    else if (this._eliteSiegeWorkshopRenderer) this._eliteSiegeWorkshopRenderer.setOwner(owner);
+    else if (this._eliteMageTowerRenderer) this._eliteMageTowerRenderer.setOwner(owner);
+  }
+
   destroy(): void {
     // Clean up any lingering smoke particles from the fx layer
     for (const p of this._smokeParticles) {
@@ -806,7 +835,7 @@ export class BuildingView {
 
   private _buildFlag(building: Building): Graphics {
     // Small triangle flag at top-right, colored by owner
-    const isWest = building.owner === "p1";
+    const flagColor = building.owner === "p1" ? 0x4488ff : building.owner === "p2" ? 0xff4444 : 0xeeeeee;
     const g = new Graphics();
     // Pole
     g.moveTo(0, 0).lineTo(0, -14).stroke({ color: 0x888888, width: 1.5 });
@@ -814,7 +843,7 @@ export class BuildingView {
     g.moveTo(0, -14)
       .lineTo(10, -10)
       .lineTo(0, -6)
-      .fill({ color: isWest ? 0x4488ff : 0xff4444 });
+      .fill({ color: flagColor });
     g.position.set(this._pw - 6, 0);
     return g;
   }

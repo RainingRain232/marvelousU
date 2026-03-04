@@ -109,7 +109,7 @@ export class CastleRenderer {
 
   constructor(owner: string | null) {
     this._isWest = owner === "p1";
-    this._playerColor = this._isWest ? 0x4488ff : 0xff4444;
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
 
     this._drawStaticCastle();
     this._drawFlags();
@@ -131,6 +131,10 @@ export class CastleRenderer {
     this._kingGfx.visible = false;
     this._jesterGfx.visible = false;
     this._ballGfx.visible = false;
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
   }
 
   tick(dt: number, phase: GamePhase): void {

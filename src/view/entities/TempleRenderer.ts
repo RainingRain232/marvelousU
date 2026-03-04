@@ -83,7 +83,7 @@ export class TempleRenderer {
     private _playerColor: number;
 
     constructor(owner: string | null) {
-        this._playerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+        this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
 
         this._drawFacade();
         this._drawStainedGlass();
@@ -99,6 +99,10 @@ export class TempleRenderer {
         this.container.addChild(this._dove);
 
         this._dove.visible = false;
+    }
+
+    setOwner(owner: string | null): void {
+        this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
     }
 
     tick(dt: number, _phase: GamePhase): void {

@@ -51,6 +51,9 @@ const SHIELD_P1_HI     = 0x5588ee;
 const SHIELD_P2_FILL   = 0xcc3333;
 const SHIELD_P2_STROKE = 0xaa2222;
 const SHIELD_P2_HI     = 0xee5555;
+const SHIELD_NEU_FILL   = 0xcccccc;
+const SHIELD_NEU_STROKE = 0xaaaaaa;
+const SHIELD_NEU_HI     = 0xeeeeee;
 
 // Level star — shown next to the HP bar at level 1+
 const STAR_RADIUS_OUTER = 10;
@@ -259,7 +262,7 @@ export class UnitView {
   // ---------------------------------------------------------------------------
 
   private _buildPlaceholder(unit: Unit): void {
-    const color = unit.owner === "p1" ? COLOR_WEST : COLOR_EAST;
+    const color = unit.owner === "p1" ? COLOR_WEST : unit.owner === "p2" ? COLOR_EAST : 0xcccccc;
     this._body
       .circle(0, 0, RADIUS)
       .fill({ color })
@@ -291,10 +294,9 @@ export class UnitView {
   // ---------------------------------------------------------------------------
 
   private _buildShield(unit: Unit): void {
-    const isP1 = unit.owner === "p1";
-    const fill   = isP1 ? SHIELD_P1_FILL   : SHIELD_P2_FILL;
-    const stroke = isP1 ? SHIELD_P1_STROKE : SHIELD_P2_STROKE;
-    const hi     = isP1 ? SHIELD_P1_HI     : SHIELD_P2_HI;
+    const fill   = unit.owner === "p1" ? SHIELD_P1_FILL   : unit.owner === "p2" ? SHIELD_P2_FILL   : SHIELD_NEU_FILL;
+    const stroke = unit.owner === "p1" ? SHIELD_P1_STROKE : unit.owner === "p2" ? SHIELD_P2_STROKE : SHIELD_NEU_STROKE;
+    const hi     = unit.owner === "p1" ? SHIELD_P1_HI     : unit.owner === "p2" ? SHIELD_P2_HI     : SHIELD_NEU_HI;
 
     const pos = getShieldPosition(unit);
     const cx = pos.x;

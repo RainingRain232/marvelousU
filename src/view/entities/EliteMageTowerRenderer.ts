@@ -129,7 +129,7 @@ export class EliteMageTowerRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
 
     this._drawBase();
     this._drawWindows();
@@ -151,6 +151,10 @@ export class EliteMageTowerRenderer {
     this.container.addChild(this._crystal);
     this.container.addChild(this._owl);
     this.container.addChild(this._clouds);
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
   }
 
   tick(dt: number, _phase: GamePhase): void {

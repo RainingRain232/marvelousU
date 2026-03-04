@@ -101,7 +101,7 @@ export class FactionHallRenderer {
 
   constructor(owner: PlayerId | null) {
     this._playerColor =
-      owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : COL_BANNER_NEU;
+      owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
 
     this._drawBase();
     this._drawBuilding();
@@ -115,6 +115,10 @@ export class FactionHallRenderer {
     this.container.addChild(this._effects);
     this.container.addChild(this._pigeons);
     this.container.addChild(this._banner);
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
   }
 
   tick(dt: number): void {

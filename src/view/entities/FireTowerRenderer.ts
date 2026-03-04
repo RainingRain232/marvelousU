@@ -66,7 +66,7 @@ export class FireTowerRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
     this._mage = new TowerMage(MAGE_COLORS_FIRE);
 
     this._drawStaticTower();
@@ -198,6 +198,10 @@ export class FireTowerRenderer {
 
     // Inner glow from flame
     g.circle(cx, TH - 138, 6).fill({ color: COL_MAGMA_GLOW, alpha: 0.3 });
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
   }
 
   tick(dt: number, _phase: GamePhase): void {

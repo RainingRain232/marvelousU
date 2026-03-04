@@ -65,7 +65,7 @@ export class LightningTowerRenderer {
   private _playerColor: number;
 
   constructor(owner: string | null) {
-    this._playerColor = owner === "p1" ? 0x4488ff : 0xff4444;
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
     this._mage = new TowerMage(MAGE_COLORS_LIGHTNING);
 
     this._drawStaticTower();
@@ -181,6 +181,10 @@ export class LightningTowerRenderer {
       width: 1,
     });
     g.rect(winX + 1, TH - 80, 3, 6).fill({ color: COL_RUNE_GLOW, alpha: 0.3 });
+  }
+
+  setOwner(owner: string | null): void {
+    this._playerColor = owner === "p1" ? 0x4488ff : owner === "p2" ? 0xff4444 : 0xeeeeee;
   }
 
   tick(dt: number, _phase: GamePhase): void {
