@@ -1550,6 +1550,9 @@ export class ShopPanel {
       .stroke({ color: 0x667788, width: 2 });
     btn.addChild(bg);
 
+    // Cost and level info
+    const def = UPGRADE_DEFINITIONS[upgradeType];
+
     // Spell-specific animated icon or generic upgrade icon
     const spellDef = def as any;
     if (spellDef.isSpell && spellDef.spellSchool !== "conjuration") {
@@ -1585,9 +1588,6 @@ export class ShopPanel {
       label.position.set(ICON_SIZE / 2, ICON_SIZE / 2 + 6);
       btn.addChild(label);
     }
-
-    // Cost and level info
-    const def = UPGRADE_DEFINITIONS[upgradeType];
     const currentLevel = UpgradeSystem.getUpgradeLevel(
       this._localPlayerId,
       upgradeType,
