@@ -179,9 +179,16 @@ export function detectCollisions(state: WorldState): PendingBattle[] {
     // Check if there's a city on this hex
     const tile = state.grid.getTile(army.position.q, army.position.r);
     const cityId = tile?.cityId ?? null;
+    const isSiege = !!cityId;
+
+    // Set siege flag on city
+    if (isSiege && cityId) {
+      const city = state.cities.get(cityId);
+      if (city) city.isUnderSiege = true;
+    }
 
     battles.push({
-      type: cityId ? "siege" : "field",
+      type: isSiege ? "siege" : "field",
       attackerArmyId: attacker.id,
       defenderArmyId: defender.id,
       defenderCityId: cityId,

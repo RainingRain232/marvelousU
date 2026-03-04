@@ -61,9 +61,11 @@ export const WorldBalance = {
 
   // -- Economy --
   /** Starting gold for each player. */
-  STARTING_GOLD: 500,
+  STARTING_GOLD: 1000,
   /** Starting food for each player. */
   STARTING_FOOD: 20,
+  /** Gold maintenance cost per unit per turn. */
+  ARMY_MAINTENANCE_PER_UNIT: 1,
 
   // -- Map generation --
   /** Terrain weight distribution for procedural generation. */

@@ -145,9 +145,19 @@ function _manageCityRecruitment(
 
   if (!bestType) return;
 
-  // Recruit as many as we can afford, up to 5
-  const maxCount = Math.min(5, Math.floor(player.gold / bestCost));
-  if (maxCount >= 2) {
+  // Recruit more aggressively if enemy army is nearby
+  let threatened = false;
+  for (const army of state.armies.values()) {
+    if (army.owner === city.owner || army.isGarrison) continue;
+    if (hexDistance(army.position, city.position) <= 5) {
+      threatened = true;
+      break;
+    }
+  }
+
+  const maxBatch = threatened ? 8 : 5;
+  const maxCount = Math.min(maxBatch, Math.floor(player.gold / bestCost));
+  if (maxCount >= 1) {
     queueRecruitment(city, state, bestType, maxCount);
   }
 }
@@ -166,6 +176,12 @@ function _tryDeployGarrison(city: WorldCity, state: WorldState): void {
   for (const u of garrison.units) total += u.count;
   if (total < 8) return;
 
+  // Don't deploy if city is threatened (enemy army within 3 hexes)
+  for (const army of state.armies.values()) {
+    if (army.owner === city.owner || army.isGarrison) continue;
+    if (hexDistance(army.position, city.position) <= 3) return;
+  }
+
   // Deploy all units
   deployArmy(city, state, garrison.units.map((u) => ({ ...u })));
 }
@@ -177,30 +193,41 @@ function _tryDeployGarrison(city: WorldCity, state: WorldState): void {
 function _moveArmyAI(army: WorldArmy, state: WorldState): void {
   if (army.movementPoints <= 0) return;
 
-  // Find nearest enemy city
-  let nearestTarget: HexCoord | null = null;
-  let nearestDist = Infinity;
+  // Prefer attacking enemy cities over chasing armies
+  let nearestCityTarget: HexCoord | null = null;
+  let nearestCityDist = Infinity;
+  let nearestArmyTarget: HexCoord | null = null;
+  let nearestArmyDist = Infinity;
 
   for (const city of state.cities.values()) {
     if (city.owner === army.owner) continue;
     const dist = hexDistance(army.position, city.position);
-    if (dist < nearestDist) {
-      nearestDist = dist;
-      nearestTarget = city.position;
+    if (dist < nearestCityDist) {
+      nearestCityDist = dist;
+      nearestCityTarget = city.position;
     }
   }
 
-  // Also consider enemy armies
   for (const other of state.armies.values()) {
     if (other.owner === army.owner || other.isGarrison) continue;
     const dist = hexDistance(army.position, other.position);
-    if (dist < nearestDist) {
-      nearestDist = dist;
-      nearestTarget = other.position;
+    if (dist < nearestArmyDist) {
+      nearestArmyDist = dist;
+      nearestArmyTarget = other.position;
     }
   }
 
-  if (nearestTarget) {
-    moveArmy(army, nearestTarget, state);
+  // Prioritize: attack nearby enemy armies (within 4 hexes), otherwise go for cities
+  let target: HexCoord | null = null;
+  if (nearestArmyTarget && nearestArmyDist <= 4) {
+    target = nearestArmyTarget;
+  } else if (nearestCityTarget) {
+    target = nearestCityTarget;
+  } else if (nearestArmyTarget) {
+    target = nearestArmyTarget;
+  }
+
+  if (target) {
+    moveArmy(army, target, state);
   }
 }

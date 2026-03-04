@@ -48,6 +48,15 @@ export function processEconomy(state: WorldState, playerId: string): void {
       city.population++;
     }
   }
+
+  // Army maintenance — deduct gold per unit across all armies
+  let totalUnits = 0;
+  for (const army of state.armies.values()) {
+    if (army.owner !== playerId) continue;
+    for (const u of army.units) totalUnits += u.count;
+  }
+  player.gold -= totalUnits * WorldBalance.ARMY_MAINTENANCE_PER_UNIT;
+  if (player.gold < 0) player.gold = 0;
 }
 
 // ---------------------------------------------------------------------------

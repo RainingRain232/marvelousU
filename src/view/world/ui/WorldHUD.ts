@@ -6,6 +6,8 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import { currentPlayer, WorldPhase } from "@world/state/WorldState";
+import { calculateCityYields } from "@world/systems/WorldEconomySystem";
+import { WorldBalance } from "@world/config/WorldConfig";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -88,8 +90,28 @@ export class WorldHUD {
 
     this._turnText.text = `Turn ${state.turn}`;
     this._phaseText.text = _phaseLabel(state.phase);
-    this._goldText.text = `Gold: ${player.gold}`;
-    this._foodText.text = `Food: ${Math.floor(player.food)}`;
+
+    // Calculate income per turn
+    let goldIncome = 0;
+    let foodIncome = 0;
+    for (const city of state.cities.values()) {
+      if (city.owner !== player.id) continue;
+      const yields = calculateCityYields(city, state);
+      goldIncome += yields.gold;
+      foodIncome += yields.food - city.population * WorldBalance.FOOD_PER_POPULATION;
+    }
+    // Deduct army maintenance
+    let totalUnits = 0;
+    for (const army of state.armies.values()) {
+      if (army.owner !== player.id) continue;
+      for (const u of army.units) totalUnits += u.count;
+    }
+    goldIncome -= totalUnits * WorldBalance.ARMY_MAINTENANCE_PER_UNIT;
+
+    const goldSign = goldIncome >= 0 ? "+" : "";
+    const foodSign = foodIncome >= 0 ? "+" : "";
+    this._goldText.text = `Gold: ${player.gold} (${goldSign}${goldIncome})`;
+    this._foodText.text = `Food: ${Math.floor(player.food)} (${foodSign}${Math.floor(foodIncome)})`;
 
     // Only show End Turn button during player turn
     this._endTurnBtn.visible = state.phase === WorldPhase.PLAYER_TURN;

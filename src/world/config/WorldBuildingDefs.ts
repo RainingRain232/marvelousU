@@ -58,7 +58,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "+3 food/turn",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "agriculture",
   },
   [WorldBuildingType.LIBRARY]: {
     type: WorldBuildingType.LIBRARY,
@@ -69,7 +69,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "-1 turn from research",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "scholarship",
   },
   [WorldBuildingType.MARKETPLACE]: {
     type: WorldBuildingType.MARKETPLACE,
@@ -80,7 +80,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "+5 gold/turn",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "trade",
   },
   [WorldBuildingType.CITY_WALLS]: {
     type: WorldBuildingType.CITY_WALLS,
@@ -91,7 +91,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "+50% city defense in sieges",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "masonry",
   },
   [WorldBuildingType.WORKSHOP]: {
     type: WorldBuildingType.WORKSHOP,
@@ -102,7 +102,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 3,
     effect: "+3 production/turn",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "banking",
   },
   [WorldBuildingType.AQUEDUCT]: {
     type: WorldBuildingType.AQUEDUCT,
@@ -113,7 +113,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "+50% population growth speed",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "industrialization",
   },
   [WorldBuildingType.MILITARY_ACADEMY]: {
     type: WorldBuildingType.MILITARY_ACADEMY,
@@ -124,7 +124,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Recruited units start veteran",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "industrialization",
   },
 };
 
@@ -143,7 +143,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Train melee units",
     unlocksUnits: [UnitType.SWORDSMAN, UnitType.SHIELD_BEARER, UnitType.PIKEMAN],
-    researchRequired: null,
+    researchRequired: "bronze_working",
   },
   [BuildingType.ARCHERY_RANGE]: {
     type: BuildingType.ARCHERY_RANGE,
@@ -154,7 +154,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Train ranged units",
     unlocksUnits: [UnitType.ARCHER, UnitType.CROSSBOWMAN],
-    researchRequired: null,
+    researchRequired: "bronze_working",
   },
   [BuildingType.STABLES]: {
     type: BuildingType.STABLES,
@@ -165,7 +165,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Train cavalry units",
     unlocksUnits: [UnitType.KNIGHT, UnitType.QUESTING_KNIGHT],
-    researchRequired: null,
+    researchRequired: "horsemanship",
   },
   [BuildingType.SIEGE_WORKSHOP]: {
     type: BuildingType.SIEGE_WORKSHOP,
@@ -176,7 +176,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Train siege units",
     unlocksUnits: [UnitType.CATAPULT],
-    researchRequired: null,
+    researchRequired: "engineering",
   },
   [BuildingType.MAGE_TOWER]: {
     type: BuildingType.MAGE_TOWER,
@@ -187,7 +187,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Train mage units",
     unlocksUnits: [UnitType.STORM_MAGE],
-    researchRequired: null,
+    researchRequired: "arcane_study",
   },
   [BuildingType.CREATURE_DEN]: {
     type: BuildingType.CREATURE_DEN,
@@ -198,7 +198,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Train creature units",
     unlocksUnits: [UnitType.WOLF],
-    researchRequired: null,
+    researchRequired: "conjuration",
   },
   [BuildingType.TEMPLE]: {
     type: BuildingType.TEMPLE,
@@ -209,7 +209,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     productionBonus: 0,
     effect: "Train holy units",
     unlocksUnits: [UnitType.PRIEST],
-    researchRequired: null,
+    researchRequired: "divine_blessing",
   },
 };
 

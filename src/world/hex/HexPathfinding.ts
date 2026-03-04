@@ -14,6 +14,8 @@ export interface HexPathResult {
   path: HexCoord[];
   /** Total movement cost of the path. */
   totalCost: number;
+  /** Movement points remaining after traversing the path. */
+  remainingMP: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +62,7 @@ export function findHexPath(
 
     if (current.key === goalKey) {
       // Reconstruct path
-      return _reconstructPath(cameFrom, goalKey, gScore.get(goalKey)!);
+      return _reconstructPath(cameFrom, goalKey, gScore.get(goalKey)!, movementBudget);
     }
 
     const currentCoord = _parseKey(current.key);
@@ -159,18 +161,15 @@ function _reconstructPath(
   cameFrom: Map<string, string>,
   goalKey: string,
   totalCost: number,
+  movementBudget: number,
 ): HexPathResult {
   const path: HexCoord[] = [];
-  let current = goalKey;
+  let current: string | undefined = goalKey;
 
   while (current !== undefined) {
     path.unshift(_parseKey(current));
-    current = cameFrom.get(current)!;
-    if (!cameFrom.has(current)) {
-      path.unshift(_parseKey(current));
-      break;
-    }
+    current = cameFrom.get(current);
   }
 
-  return { path, totalCost };
+  return { path, totalCost, remainingMP: movementBudget - totalCost };
 }

@@ -14,9 +14,8 @@ import {
   type HexCoord,
   type HexPixel,
 } from "@world/hex/HexCoord";
-import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
+import { TERRAIN_DEFINITIONS, TerrainType } from "@world/config/TerrainDefs";
 import { WorldBalance } from "@world/config/WorldConfig";
-import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -181,6 +180,9 @@ export class WorldMapRenderer {
       g.fill({ color: ownerColor, alpha: 0.15 });
     }
 
+    // Terrain decorations
+    _drawTerrainDecoration(g, tile.terrain, center);
+
     return g;
   }
 
@@ -252,6 +254,83 @@ export class WorldMapRenderer {
       this.onHexClick?.(hex);
     }
   };
+}
+
+// ---------------------------------------------------------------------------
+// Terrain decorations
+// ---------------------------------------------------------------------------
+
+function _drawTerrainDecoration(
+  g: Graphics,
+  terrain: TerrainType,
+  center: HexPixel,
+): void {
+  const cx = center.x;
+  const cy = center.y;
+  const s = HEX_SIZE * 0.3; // decoration scale
+
+  switch (terrain) {
+    case TerrainType.FOREST: {
+      // Small triangle trees
+      for (const [ox, oy] of [[-4, 2], [3, -2], [0, 5]] as const) {
+        g.moveTo(cx + ox, cy + oy - s * 0.6);
+        g.lineTo(cx + ox - s * 0.35, cy + oy + s * 0.3);
+        g.lineTo(cx + ox + s * 0.35, cy + oy + s * 0.3);
+        g.closePath();
+        g.fill({ color: 0x1a5c1a, alpha: 0.7 });
+      }
+      break;
+    }
+    case TerrainType.MOUNTAINS: {
+      // Triangle peaks
+      g.moveTo(cx - s * 0.5, cy + s * 0.4);
+      g.lineTo(cx, cy - s * 0.6);
+      g.lineTo(cx + s * 0.5, cy + s * 0.4);
+      g.closePath();
+      g.fill({ color: 0x888888, alpha: 0.6 });
+      // Snow cap
+      g.moveTo(cx - s * 0.15, cy - s * 0.2);
+      g.lineTo(cx, cy - s * 0.6);
+      g.lineTo(cx + s * 0.15, cy - s * 0.2);
+      g.closePath();
+      g.fill({ color: 0xeeeeee, alpha: 0.6 });
+      break;
+    }
+    case TerrainType.WATER: {
+      // Wavy lines
+      for (let i = -1; i <= 1; i++) {
+        const wy = cy + i * s * 0.4;
+        g.moveTo(cx - s * 0.6, wy);
+        g.bezierCurveTo(cx - s * 0.2, wy - s * 0.2, cx + s * 0.2, wy + s * 0.2, cx + s * 0.6, wy);
+        g.stroke({ color: 0x2244aa, width: 1, alpha: 0.5 });
+      }
+      break;
+    }
+    case TerrainType.HILLS: {
+      // Small bumps
+      g.moveTo(cx - s * 0.5, cy + s * 0.2);
+      g.bezierCurveTo(cx - s * 0.25, cy - s * 0.3, cx + s * 0.25, cy - s * 0.3, cx + s * 0.5, cy + s * 0.2);
+      g.stroke({ color: 0x886633, width: 1.5, alpha: 0.5 });
+      break;
+    }
+    case TerrainType.SWAMP: {
+      // Small dots for swamp
+      for (const [ox, oy] of [[-3, -2], [4, 1], [-1, 4], [2, -3]] as const) {
+        g.circle(cx + ox, cy + oy, 1.5);
+        g.fill({ color: 0x446622, alpha: 0.6 });
+      }
+      break;
+    }
+    case TerrainType.DESERT: {
+      // Small dots for sand dunes
+      g.moveTo(cx - s * 0.4, cy + s * 0.1);
+      g.bezierCurveTo(cx - s * 0.1, cy - s * 0.15, cx + s * 0.1, cy + s * 0.15, cx + s * 0.4, cy);
+      g.stroke({ color: 0xcc9944, width: 1, alpha: 0.4 });
+      break;
+    }
+    default:
+      break;
+  }
 }
 
 /** Singleton instance. */

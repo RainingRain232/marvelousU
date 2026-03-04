@@ -17,6 +17,7 @@ import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 import { WorldBalance } from "@world/config/WorldConfig";
 import { hexSpiral, type HexCoord } from "@world/hex/HexCoord";
 import { calculateCityYields } from "@world/systems/WorldEconomySystem";
+import { hasResearch } from "@world/systems/ResearchSystem";
 
 // ---------------------------------------------------------------------------
 // Building
@@ -29,14 +30,15 @@ export function getAvailableBuildings(
 ): WorldBuildingDef[] {
   const built = new Set(city.buildings.map((b) => b.type));
   const underConstruction = city.constructionQueue?.buildingType;
+  const player = state.players.get(city.owner);
 
   return getAllWorldBuildingDefs().filter((def) => {
     // Already built
     if (built.has(def.type)) return false;
     // Currently building
     if (underConstruction === def.type) return false;
-    // Research check (skip for now — will be enforced in Phase 6)
-    // if (def.researchRequired && !player.completedResearch.has(def.researchRequired)) return false;
+    // Research prerequisite check
+    if (def.researchRequired && player && !hasResearch(player, def.researchRequired)) return false;
     return true;
   });
 }

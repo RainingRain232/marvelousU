@@ -8,6 +8,7 @@ import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldArmy } from "@world/state/WorldArmy";
 import { armyUnitCount } from "@world/state/WorldArmy";
+import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -142,7 +143,12 @@ export class ArmyPanel {
     y += 20;
 
     // Unit stacks
+    let power = 0;
     for (const u of army.units) {
+      const def = UNIT_DEFINITIONS[u.unitType as keyof typeof UNIT_DEFINITIONS];
+      const unitCost = def?.cost ?? 100;
+      power += u.count * unitCost;
+
       const uText = new Text({
         text: `  ${u.unitType} x${u.count}`,
         style: INFO_STYLE,
@@ -153,7 +159,20 @@ export class ArmyPanel {
       y += 16;
     }
 
-    y += 10;
+    // Power score
+    const powerText = new Text({
+      text: `Power: ${power}`,
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 12,
+        fontWeight: "bold",
+        fill: 0xffaa44,
+      }),
+    });
+    powerText.x = 12;
+    powerText.y = y;
+    this._contentContainer.addChild(powerText);
+    y += 22;
 
     // Move button (only for non-garrison armies with MP remaining)
     if (!army.isGarrison && army.movementPoints > 0) {

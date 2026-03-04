@@ -187,9 +187,22 @@ export function findStartPositions(
   }
 
   if (candidates.length < numPlayers) {
-    // Fallback: relax constraints and just pick any buildable
+    // Fallback: relax constraints and just pick any buildable tile
+    const existing = new Set(candidates.map((c) => hexKey(c.q, c.r)));
     for (const tile of grid.allTiles()) {
+      if (existing.has(hexKey(tile.q, tile.r))) continue;
       if (TERRAIN_DEFINITIONS[tile.terrain].buildable) {
+        candidates.push({ q: tile.q, r: tile.r });
+      }
+    }
+  }
+
+  // Last resort: if still not enough, add any passable tile
+  if (candidates.length < numPlayers) {
+    const existing = new Set(candidates.map((c) => hexKey(c.q, c.r)));
+    for (const tile of grid.allTiles()) {
+      if (existing.has(hexKey(tile.q, tile.r))) continue;
+      if (isFinite(TERRAIN_DEFINITIONS[tile.terrain].movementCost)) {
         candidates.push({ q: tile.q, r: tile.r });
       }
     }

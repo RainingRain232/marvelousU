@@ -98,7 +98,7 @@ import { createWorldArmy } from "@world/state/WorldArmy";
 import type { ArmyUnit } from "@world/state/WorldArmy";
 import { worldMapRenderer } from "@view/world/WorldMapRenderer";
 import { worldHUD } from "@view/world/ui/WorldHUD";
-import { beginTurn, endTurn } from "@world/systems/TurnSystem";
+import { beginTurn, endTurn, onBattlesResolved } from "@world/systems/TurnSystem";
 import { WorldBalance } from "@world/config/WorldConfig";
 import { hexSpiral } from "@world/hex/HexCoord";
 import { hexKey } from "@world/hex/HexCoord";
@@ -111,6 +111,17 @@ import { moveArmy, getArmyReachableHexes, detectCollisions } from "@world/system
 import { researchScreen } from "@view/world/ui/ResearchScreen";
 import { setActiveResearch, advanceResearch } from "@world/systems/ResearchSystem";
 import { executeAITurn } from "@world/systems/WorldAI";
+import {
+  buildFieldBattleState,
+  buildSiegeBattleState,
+  extractBattleResults,
+  applyBattleResults,
+} from "@world/systems/BattleResolver";
+import { simTick } from "@sim/core/SimLoop";
+import { worldEventLog } from "@view/world/ui/WorldEventLog";
+import { worldVictoryScreen } from "@view/world/ui/WorldVictoryScreen";
+import { worldHexTooltip } from "@view/world/ui/WorldHexTooltip";
+import { worldMinimap } from "@view/world/ui/WorldMinimap";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -1371,7 +1382,7 @@ async function _bootWorldGame(
   // Create starting cities and garrisons
   for (let i = 0; i < settings.numPlayers; i++) {
     const pid = `p${i + 1}`;
-    const pos = startPositions[i];
+    const pos = startPositions[i] ?? { q: i * 5, r: 0 }; // fallback if not enough positions
 
     // City
     const cityId = nextId(state, "city");
@@ -1420,8 +1431,9 @@ async function _bootWorldGame(
     if (armyPanel.isVisible) {
       if (sx <= 260 && sy >= 64) return true;
     }
-    // Check if research screen is open (fullscreen)
+    // Check if research screen or victory screen is open (fullscreen)
     if (researchScreen.isVisible) return true;
+    if (worldVictoryScreen.isVisible) return true;
     return false;
   };
 
@@ -1505,6 +1517,28 @@ async function _bootWorldGame(
     }
   };
 
+  // Initialize event log
+  worldEventLog.init(viewManager);
+  worldEventLog.setTurn(state.turn);
+
+  // Initialize victory screen
+  worldVictoryScreen.init(viewManager);
+  worldVictoryScreen.onReturnToMenu = () => {
+    // Reload the page to return to menu
+    window.location.reload();
+  };
+
+  // Initialize hex tooltip
+  worldHexTooltip.init(viewManager);
+  worldHexTooltip.setState(state);
+  worldMapRenderer.onHexHover = (hex) => {
+    worldHexTooltip.showForHex(hex);
+  };
+
+  // Initialize minimap
+  worldMinimap.init(viewManager);
+  worldMinimap.drawMap(state.grid);
+
   // Track movement mode
   let _moveModeArmyId: string | null = null;
 
@@ -1514,6 +1548,60 @@ async function _bootWorldGame(
     worldMapRenderer.drawMap(state.grid);
     cityView.drawCities(state);
     armyView.drawArmies(state);
+    worldEventLog.setTurn(state.turn);
+    worldMinimap.drawMap(state.grid);
+    worldHexTooltip.setState(state);
+
+    // Check for game over
+    if (state.phase === WorldPhase.GAME_OVER) {
+      worldVictoryScreen.show(state);
+    }
+  };
+
+  // Resolve all pending battles by running the sim for each
+  const resolveWorldBattles = () => {
+    for (const battle of state.pendingBattles) {
+      const attacker = state.armies.get(battle.attackerArmyId);
+      const defender = battle.defenderArmyId ? state.armies.get(battle.defenderArmyId) : null;
+      if (!attacker) continue;
+
+      const battleLabel = battle.type === "siege"
+        ? `Siege at (${battle.hex.q},${battle.hex.r})`
+        : `Battle at (${battle.hex.q},${battle.hex.r})`;
+      worldEventLog.addEvent(`${battleLabel}: ${attacker.owner} vs ${defender?.owner ?? "garrison"}`, 0xff6644);
+
+      // Build battle GameState
+      let battleState: GameState;
+      if (battle.type === "siege" && battle.defenderCityId) {
+        const city = state.cities.get(battle.defenderCityId);
+        battleState = buildSiegeBattleState(attacker, defender ?? null, city!);
+      } else {
+        if (!defender) continue;
+        battleState = buildFieldBattleState(attacker, defender);
+      }
+
+      // Run simulation to completion (max 5000 ticks = ~83 seconds of game time)
+      const MAX_TICKS = 5000;
+      for (let i = 0; i < MAX_TICKS; i++) {
+        simTick(battleState);
+        if (battleState.winnerId) break;
+      }
+
+      // Extract and apply results
+      const result = extractBattleResults(battleState, attacker.owner, defender?.owner ?? attacker.owner);
+      applyBattleResults(state, battle, result);
+
+      // Log result
+      if (result.winnerId) {
+        const survivors = result.winnerId === attacker.owner ? result.attackerSurvivors : result.defenderSurvivors;
+        const totalSurvivors = survivors.reduce((sum, u) => sum + u.count, 0);
+        worldEventLog.addEvent(`${result.winnerId} won! ${totalSurvivors} units survived.`, 0x44ff44);
+      } else {
+        worldEventLog.addEvent("Battle ended in a draw.", 0xaaaaaa);
+      }
+    }
+
+    onBattlesResolved(state);
   };
 
   // End Turn button
@@ -1528,11 +1616,27 @@ async function _bootWorldGame(
 
     endTurn(state);
 
+    // Resolve any pending battles
+    if (state.phase === WorldPhase.BATTLE) {
+      resolveWorldBattles();
+    }
+
     // If AI turn, execute AI logic then end their turns
     while (state.phase === WorldPhase.AI_TURN) {
       const aiPid = state.playerOrder[state.currentPlayerIndex];
       executeAITurn(state, aiPid);
+
+      // Detect AI collisions
+      const aiBattles = detectCollisions(state);
+      if (aiBattles.length > 0) {
+        state.pendingBattles = aiBattles;
+      }
+
       endTurn(state);
+
+      if (state.phase === WorldPhase.BATTLE) {
+        resolveWorldBattles();
+      }
     }
 
     refreshWorld();
@@ -1560,6 +1664,8 @@ async function _bootWorldGame(
           const battles = detectCollisions(state);
           if (battles.length > 0) {
             state.pendingBattles = battles;
+            state.phase = WorldPhase.BATTLE;
+            resolveWorldBattles();
           }
         }
       }

@@ -149,6 +149,9 @@ export class ResearchScreen {
     const colW = Math.floor((screenW - 60) / branches.length);
     let colX = 30;
 
+    // Track node positions for prerequisite lines
+    const nodePositions = new Map<string, { x: number; y: number; w: number }>();
+
     for (const branch of branches) {
       const branchDefs = allResearchDefs().filter((d) => d.branch === branch);
       const color = BRANCH_COLORS[branch] ?? 0x888888;
@@ -168,12 +171,14 @@ export class ResearchScreen {
       this._contentContainer.addChild(header);
 
       let y = 105;
+      const nodeW = colW - 10;
       for (const def of branchDefs) {
+        nodePositions.set(def.id, { x: colX, y, w: nodeW });
         const node = this._createTechNode(
           def,
           colX,
           y,
-          colW - 10,
+          nodeW,
           player,
           available.has(def.id),
         );
@@ -183,6 +188,31 @@ export class ResearchScreen {
 
       colX += colW;
     }
+
+    // Draw prerequisite lines
+    const lines = new Graphics();
+    for (const def of allResearchDefs()) {
+      const toPos = nodePositions.get(def.id);
+      if (!toPos) continue;
+
+      for (const prereqId of def.prerequisites) {
+        const fromPos = nodePositions.get(prereqId);
+        if (!fromPos) continue;
+
+        const completed = player.completedResearch.has(prereqId);
+        const lineColor = completed ? 0x44aa44 : 0x444466;
+
+        const fromX = fromPos.x + fromPos.w / 2;
+        const fromY = fromPos.y + 60; // bottom of node
+        const toX = toPos.x + toPos.w / 2;
+        const toY = toPos.y; // top of node
+
+        lines.moveTo(fromX, fromY);
+        lines.lineTo(toX, toY);
+        lines.stroke({ color: lineColor, width: completed ? 2 : 1, alpha: 0.7 });
+      }
+    }
+    this._contentContainer.addChildAt(lines, 1); // behind nodes but above bg
 
     this.container.addChild(this._contentContainer);
   }
