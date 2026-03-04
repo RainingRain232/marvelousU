@@ -1196,7 +1196,7 @@ function _configureNationalMageAbilities(): void {
 }
 
 /** Map an UpgradeDef spell to an AbilityDef, overwriting ABILITY_DEFINITIONS. */
-function _mapSpellToAbilityDef(spell: { spellTier?: number; spellDamage?: number; spellHeal?: number; spellRadius?: number }, abilityType: AbilityType): void {
+function _mapSpellToAbilityDef(spell: { spellTier?: number; spellDamage?: number; spellHeal?: number; spellRadius?: number; spellSlowDuration?: number; spellSlowFactor?: number; spellTeleportDistance?: number }, abilityType: AbilityType): void {
   const tier = spell.spellTier ?? 1;
   const def = ABILITY_DEFINITIONS[abilityType];
   def.cooldown = 3 + tier;
@@ -1204,6 +1204,9 @@ function _mapSpellToAbilityDef(spell: { spellTier?: number; spellDamage?: number
   def.castTime = 0.3 + tier * 0.1;
   def.damage = spell.spellDamage ?? -(spell.spellHeal ?? 0);
   def.aoeRadius = spell.spellRadius ?? 2;
+  def.slowDuration = spell.spellSlowDuration ?? 0;
+  def.slowFactor = spell.spellSlowFactor ?? 1;
+  def.teleportDistance = spell.spellTeleportDistance ?? 0;
 }
 
 /**

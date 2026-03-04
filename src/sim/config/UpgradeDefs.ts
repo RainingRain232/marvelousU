@@ -18,6 +18,10 @@ export interface UpgradeDef {
   spellSchool?: "elemental" | "arcane" | "divine" | "shadow" | "conjuration";
   spellTier?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   spellMagicType?: "fire" | "ice" | "lightning" | "earth" | "arcane" | "holy" | "shadow" | "poison" | "void" | "death" | "nature";
+  // Debuff effects applied by the spell projectile
+  spellSlowDuration?: number;   // Seconds of slow to apply on hit
+  spellSlowFactor?: number;     // Speed multiplier while slowed (e.g. 0.5 = 50%)
+  spellTeleportDistance?: number; // Random displacement on hit (tiles)
 }
 
 import { UnitType } from "@/types";
@@ -283,6 +287,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Freezing burst that radiates outward.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 18, spellRadius: 2,
     spellSchool: "elemental", spellTier: 1, spellMagicType: "ice",
+    spellSlowDuration: 1.5, spellSlowFactor: 0.6,
   },
   [UpgradeType.SPELL_LIGHTNING_STRIKE]: {
     type: UpgradeType.SPELL_LIGHTNING_STRIKE, cost: 0, manaCost: 50, maxLevel: 99, effect: 0,
@@ -307,6 +312,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Unleash a freezing blizzard across a wide area.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 25, spellRadius: 3,
     spellSchool: "elemental", spellTier: 2, spellMagicType: "ice",
+    spellSlowDuration: 2.0, spellSlowFactor: 0.5,
   },
   [UpgradeType.SPELL_EARTHQUAKE]: {
     type: UpgradeType.SPELL_EARTHQUAKE, cost: 0, manaCost: 120, maxLevel: 99, effect: 0,
@@ -424,6 +430,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Release a noxious cloud that weakens enemies in a wide area.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 15, spellRadius: 3,
     spellSchool: "shadow", spellTier: 1, spellMagicType: "poison",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.7,
   },
   [UpgradeType.SPELL_CURSE_OF_DARKNESS]: {
     type: UpgradeType.SPELL_CURSE_OF_DARKNESS, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
@@ -448,12 +455,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Tear a rift in reality that damages all caught within.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 50, spellRadius: 2,
     spellSchool: "shadow", spellTier: 3, spellMagicType: "void",
+    spellTeleportDistance: 3.0,
   },
   [UpgradeType.SPELL_NETHER_STORM]: {
     type: UpgradeType.SPELL_NETHER_STORM, cost: 0, manaCost: 380, maxLevel: 99, effect: 0,
     description: "Massive shadow tempest of void energy.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 60, spellRadius: 3.5,
     spellSchool: "shadow", spellTier: 4, spellMagicType: "void",
+    spellTeleportDistance: 3.5,
   },
   // ═══════════════════════════════════════════════════════════════════════════
   // Gap-fill spells — ensuring every magic type has tiers 1-5
@@ -477,12 +486,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Massive ice shards slam inward, crushing all within.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 40, spellRadius: 2.5,
     spellSchool: "elemental", spellTier: 3, spellMagicType: "ice",
+    spellSlowDuration: 2.0, spellSlowFactor: 0.4,
   },
   [UpgradeType.SPELL_ABSOLUTE_ZERO]: {
     type: UpgradeType.SPELL_ABSOLUTE_ZERO, cost: 0, manaCost: 600, maxLevel: 99, effect: 0,
     description: "All warmth is extinguished in an instant freeze.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 85, spellRadius: 3.5,
     spellSchool: "elemental", spellTier: 5, spellMagicType: "ice",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.3,
   },
   // ── LIGHTNING ───────────────────────────────────────────────────────────────
   [UpgradeType.SPELL_SPARK]: {
@@ -496,18 +507,21 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A raging thunderstorm rains lightning across the area.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 42, spellRadius: 3,
     spellSchool: "elemental", spellTier: 3, spellMagicType: "lightning",
+    spellTeleportDistance: 2.0,
   },
   [UpgradeType.SPELL_BALL_LIGHTNING]: {
     type: UpgradeType.SPELL_BALL_LIGHTNING, cost: 0, manaCost: 350, maxLevel: 99, effect: 0,
     description: "A devastating sphere of plasma arcs electricity to all nearby.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 62, spellRadius: 3,
     spellSchool: "elemental", spellTier: 4, spellMagicType: "lightning",
+    spellTeleportDistance: 2.5,
   },
   [UpgradeType.SPELL_MJOLNIR_STRIKE]: {
     type: UpgradeType.SPELL_MJOLNIR_STRIKE, cost: 0, manaCost: 650, maxLevel: 99, effect: 0,
     description: "A divine hammer of lightning crashes down from the heavens.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 95, spellRadius: 4,
     spellSchool: "elemental", spellTier: 5, spellMagicType: "lightning",
+    spellTeleportDistance: 3.0,
   },
   // ── EARTH ───────────────────────────────────────────────────────────────────
   [UpgradeType.SPELL_STONE_SHARD]: {
@@ -561,24 +575,28 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A fan of toxic venom sprays across nearby foes.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 22, spellRadius: 2,
     spellSchool: "shadow", spellTier: 2, spellMagicType: "poison",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.6,
   },
   [UpgradeType.SPELL_PLAGUE_SWARM]: {
     type: UpgradeType.SPELL_PLAGUE_SWARM, cost: 0, manaCost: 130, maxLevel: 99, effect: 0,
     description: "A cloud of diseased insects devours the living.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 35, spellRadius: 3,
     spellSchool: "shadow", spellTier: 3, spellMagicType: "poison",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.5,
   },
   [UpgradeType.SPELL_TOXIC_MIASMA]: {
     type: UpgradeType.SPELL_TOXIC_MIASMA, cost: 0, manaCost: 300, maxLevel: 99, effect: 0,
     description: "A dense cloud of lethal poison fills the area.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 52, spellRadius: 3.5,
     spellSchool: "shadow", spellTier: 4, spellMagicType: "poison",
+    spellSlowDuration: 3.5, spellSlowFactor: 0.45,
   },
   [UpgradeType.SPELL_PANDEMIC]: {
     type: UpgradeType.SPELL_PANDEMIC, cost: 0, manaCost: 600, maxLevel: 99, effect: 0,
     description: "An unstoppable wave of pestilence sweeps across the land.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 80, spellRadius: 4,
     spellSchool: "shadow", spellTier: 5, spellMagicType: "poison",
+    spellSlowDuration: 4.0, spellSlowFactor: 0.4,
   },
   // ── VOID ────────────────────────────────────────────────────────────────────
   [UpgradeType.SPELL_VOID_SPARK]: {
@@ -586,18 +604,21 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A small burst of void energy distorts the space around it.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 18, spellRadius: 1,
     spellSchool: "shadow", spellTier: 1, spellMagicType: "void",
+    spellTeleportDistance: 1.5,
   },
   [UpgradeType.SPELL_DIMENSIONAL_TEAR]: {
     type: UpgradeType.SPELL_DIMENSIONAL_TEAR, cost: 0, manaCost: 70, maxLevel: 99, effect: 0,
     description: "A crackling rip in the fabric of space damages all nearby.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 26, spellRadius: 2,
     spellSchool: "shadow", spellTier: 2, spellMagicType: "void",
+    spellTeleportDistance: 2.0,
   },
   [UpgradeType.SPELL_SINGULARITY]: {
     type: UpgradeType.SPELL_SINGULARITY, cost: 0, manaCost: 700, maxLevel: 99, effect: 0,
     description: "A collapsing black hole pulls everything inward and destroys it.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 100, spellRadius: 3,
     spellSchool: "shadow", spellTier: 5, spellMagicType: "void",
+    spellTeleportDistance: 4.0,
   },
   // ── DEATH ───────────────────────────────────────────────────────────────────
   [UpgradeType.SPELL_NECROTIC_TOUCH]: {
@@ -624,18 +645,21 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A volley of razor-sharp thorns rains down on enemies.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 38, spellRadius: 2.5,
     spellSchool: "elemental", spellTier: 3, spellMagicType: "nature",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.4,
   },
   [UpgradeType.SPELL_NATURES_WRATH]: {
     type: UpgradeType.SPELL_NATURES_WRATH, cost: 0, manaCost: 320, maxLevel: 99, effect: 0,
     description: "Roots erupt and vines lash out with primal fury.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 55, spellRadius: 3.5,
     spellSchool: "elemental", spellTier: 4, spellMagicType: "nature",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.35,
   },
   [UpgradeType.SPELL_PRIMAL_STORM]: {
     type: UpgradeType.SPELL_PRIMAL_STORM, cost: 0, manaCost: 600, maxLevel: 99, effect: 0,
     description: "Nature unleashes its full wrath — wind, thorns, and raw power.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 85, spellRadius: 4,
     spellSchool: "elemental", spellTier: 5, spellMagicType: "nature",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.35,
   },
   // ═══════════════════════════════════════════════════════════════════════════
   // Round 2 — 1 extra spell per tier per magic type (55 new)
@@ -677,30 +701,35 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A sharp shard of ice pierces enemies.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 16, spellRadius: 1,
     spellSchool: "elemental", spellTier: 1, spellMagicType: "ice",
+    spellSlowDuration: 1.0, spellSlowFactor: 0.7,
   },
   [UpgradeType.SPELL_FROSTBITE]: {
     type: UpgradeType.SPELL_FROSTBITE, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
     description: "Bitter cold bites at all nearby foes.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 24, spellRadius: 2,
     spellSchool: "elemental", spellTier: 2, spellMagicType: "ice",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.5,
   },
   [UpgradeType.SPELL_ICE_STORM]: {
     type: UpgradeType.SPELL_ICE_STORM, cost: 0, manaCost: 150, maxLevel: 99, effect: 0,
     description: "A howling storm of ice and hail.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 42, spellRadius: 3,
     spellSchool: "elemental", spellTier: 3, spellMagicType: "ice",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.4,
   },
   [UpgradeType.SPELL_FROZEN_TOMB]: {
     type: UpgradeType.SPELL_FROZEN_TOMB, cost: 0, manaCost: 340, maxLevel: 99, effect: 0,
     description: "Encases the area in a tomb of solid ice.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 60, spellRadius: 3,
     spellSchool: "elemental", spellTier: 4, spellMagicType: "ice",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.35,
   },
   [UpgradeType.SPELL_PERMAFROST]: {
     type: UpgradeType.SPELL_PERMAFROST, cost: 0, manaCost: 650, maxLevel: 99, effect: 0,
     description: "Eternal ice spreads across the land, freezing all.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 88, spellRadius: 3.5,
     spellSchool: "elemental", spellTier: 5, spellMagicType: "ice",
+    spellSlowDuration: 3.5, spellSlowFactor: 0.3,
   },
   // ── LIGHTNING ───────────────────────────────────────────────────────────────
   [UpgradeType.SPELL_STATIC_SHOCK]: {
@@ -708,30 +737,35 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A sudden jolt of static electricity.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 15, spellRadius: 1,
     spellSchool: "elemental", spellTier: 1, spellMagicType: "lightning",
+    spellTeleportDistance: 1.5,
   },
   [UpgradeType.SPELL_ARC_BOLT]: {
     type: UpgradeType.SPELL_ARC_BOLT, cost: 0, manaCost: 70, maxLevel: 99, effect: 0,
     description: "An arcing bolt of electricity leaps between targets.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 26, spellRadius: 1.5,
     spellSchool: "elemental", spellTier: 2, spellMagicType: "lightning",
+    spellSlowDuration: 1.0, spellSlowFactor: 0.6,
   },
   [UpgradeType.SPELL_STORM_SURGE]: {
     type: UpgradeType.SPELL_STORM_SURGE, cost: 0, manaCost: 160, maxLevel: 99, effect: 0,
     description: "A surging wave of electrical energy.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 44, spellRadius: 2.5,
     spellSchool: "elemental", spellTier: 3, spellMagicType: "lightning",
+    spellSlowDuration: 1.5, spellSlowFactor: 0.5,
   },
   [UpgradeType.SPELL_THUNDER_CLAP]: {
     type: UpgradeType.SPELL_THUNDER_CLAP, cost: 0, manaCost: 360, maxLevel: 99, effect: 0,
     description: "A deafening clap of thunder shatters the air.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 64, spellRadius: 3.5,
     spellSchool: "elemental", spellTier: 4, spellMagicType: "lightning",
+    spellSlowDuration: 1.5, spellSlowFactor: 0.5,
   },
   [UpgradeType.SPELL_ZEUS_WRATH]: {
     type: UpgradeType.SPELL_ZEUS_WRATH, cost: 0, manaCost: 700, maxLevel: 99, effect: 0,
     description: "The wrath of the storm god strikes the earth.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 98, spellRadius: 4,
     spellSchool: "elemental", spellTier: 5, spellMagicType: "lightning",
+    spellSlowDuration: 2.0, spellSlowFactor: 0.4,
   },
   // ── EARTH ───────────────────────────────────────────────────────────────────
   [UpgradeType.SPELL_MUD_SPLASH]: {
@@ -863,30 +897,35 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A small poisoned dart strikes a target.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 13, spellRadius: 1,
     spellSchool: "shadow", spellTier: 1, spellMagicType: "poison",
+    spellSlowDuration: 2.0, spellSlowFactor: 0.6,
   },
   [UpgradeType.SPELL_ACID_SPLASH]: {
     type: UpgradeType.SPELL_ACID_SPLASH, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
     description: "Splashes corrosive acid across the area.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 24, spellRadius: 2,
     spellSchool: "shadow", spellTier: 2, spellMagicType: "poison",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.6,
   },
   [UpgradeType.SPELL_BLIGHT]: {
     type: UpgradeType.SPELL_BLIGHT, cost: 0, manaCost: 145, maxLevel: 99, effect: 0,
     description: "A creeping blight withers everything it touches.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 36, spellRadius: 3,
     spellSchool: "shadow", spellTier: 3, spellMagicType: "poison",
+    spellSlowDuration: 3.5, spellSlowFactor: 0.5,
   },
   [UpgradeType.SPELL_CORROSION]: {
     type: UpgradeType.SPELL_CORROSION, cost: 0, manaCost: 320, maxLevel: 99, effect: 0,
     description: "Powerful acid corrodes armor and flesh alike.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 54, spellRadius: 3,
     spellSchool: "shadow", spellTier: 4, spellMagicType: "poison",
+    spellSlowDuration: 3.5, spellSlowFactor: 0.45,
   },
   [UpgradeType.SPELL_PLAGUE_WIND]: {
     type: UpgradeType.SPELL_PLAGUE_WIND, cost: 0, manaCost: 650, maxLevel: 99, effect: 0,
     description: "A wind carrying death spreads across the land.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 82, spellRadius: 4,
     spellSchool: "shadow", spellTier: 5, spellMagicType: "poison",
+    spellSlowDuration: 4.0, spellSlowFactor: 0.4,
   },
   // ── VOID ────────────────────────────────────────────────────────────────────
   [UpgradeType.SPELL_PHASE_SHIFT]: {
@@ -894,30 +933,35 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Shifts the phase of space, damaging all within.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 16, spellRadius: 1,
     spellSchool: "shadow", spellTier: 1, spellMagicType: "void",
+    spellTeleportDistance: 1.5,
   },
   [UpgradeType.SPELL_WARP_BOLT]: {
     type: UpgradeType.SPELL_WARP_BOLT, cost: 0, manaCost: 75, maxLevel: 99, effect: 0,
     description: "A bolt of warped space-time distortion.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 28, spellRadius: 2,
     spellSchool: "shadow", spellTier: 2, spellMagicType: "void",
+    spellTeleportDistance: 2.5,
   },
   [UpgradeType.SPELL_RIFT_STORM]: {
     type: UpgradeType.SPELL_RIFT_STORM, cost: 0, manaCost: 160, maxLevel: 99, effect: 0,
     description: "Multiple rifts tear through the area.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 44, spellRadius: 2.5,
     spellSchool: "shadow", spellTier: 3, spellMagicType: "void",
+    spellTeleportDistance: 3.0,
   },
   [UpgradeType.SPELL_VOID_CRUSH]: {
     type: UpgradeType.SPELL_VOID_CRUSH, cost: 0, manaCost: 350, maxLevel: 99, effect: 0,
     description: "The void crushes inward, annihilating all.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 58, spellRadius: 3,
     spellSchool: "shadow", spellTier: 4, spellMagicType: "void",
+    spellTeleportDistance: 3.5,
   },
   [UpgradeType.SPELL_EVENT_HORIZON]: {
     type: UpgradeType.SPELL_EVENT_HORIZON, cost: 0, manaCost: 720, maxLevel: 99, effect: 0,
     description: "The boundary beyond which nothing escapes.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 98, spellRadius: 3.5,
     spellSchool: "shadow", spellTier: 5, spellMagicType: "void",
+    spellTeleportDistance: 4.0,
   },
   // ── DEATH ───────────────────────────────────────────────────────────────────
   [UpgradeType.SPELL_GRAVE_CHILL]: {
@@ -956,30 +1000,35 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A lashing vine strikes nearby enemies.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1.5,
     spellSchool: "elemental", spellTier: 1, spellMagicType: "nature",
+    spellSlowDuration: 2.0, spellSlowFactor: 0.5,
   },
   [UpgradeType.SPELL_BRAMBLE_BURST]: {
     type: UpgradeType.SPELL_BRAMBLE_BURST, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
     description: "Thorny brambles burst from the ground.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 22, spellRadius: 2,
     spellSchool: "elemental", spellTier: 2, spellMagicType: "nature",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.5,
   },
   [UpgradeType.SPELL_ENTANGLE]: {
     type: UpgradeType.SPELL_ENTANGLE, cost: 0, manaCost: 140, maxLevel: 99, effect: 0,
     description: "Grasping roots entangle and crush enemies.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 36, spellRadius: 2.5,
     spellSchool: "elemental", spellTier: 3, spellMagicType: "nature",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.3,
   },
   [UpgradeType.SPELL_OVERGROWTH]: {
     type: UpgradeType.SPELL_OVERGROWTH, cost: 0, manaCost: 320, maxLevel: 99, effect: 0,
     description: "Explosive plant growth overwhelms the area.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 52, spellRadius: 3.5,
     spellSchool: "elemental", spellTier: 4, spellMagicType: "nature",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.4,
   },
   [UpgradeType.SPELL_GAIAS_FURY]: {
     type: UpgradeType.SPELL_GAIAS_FURY, cost: 0, manaCost: 650, maxLevel: 99, effect: 0,
     description: "The earth mother unleashes her primal fury.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 86, spellRadius: 4,
     spellSchool: "elemental", spellTier: 5, spellMagicType: "nature",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.35,
   },
 
   // ─── Tier 6 (Epic) & Tier 7 (Mythic) ───────────────────────────
@@ -1017,12 +1066,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "An abyssal cold freezes enemies to their core.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 118, spellRadius: 4,
     spellSchool: "elemental", spellTier: 6, spellMagicType: "ice",
+    spellSlowDuration: 3.5, spellSlowFactor: 0.25,
   },
   [UpgradeType.SPELL_ARCTIC_DEVASTATION]: {
     type: UpgradeType.SPELL_ARCTIC_DEVASTATION, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
     description: "Arctic winds tear across the land with devastating force.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 128, spellRadius: 4.5,
     spellSchool: "elemental", spellTier: 6, spellMagicType: "ice",
+    spellSlowDuration: 3.5, spellSlowFactor: 0.25,
   },
   // Ice T7
   [UpgradeType.SPELL_ETERNAL_WINTER]: {
@@ -1030,12 +1081,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "An endless winter descends, freezing time itself.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 165, spellRadius: 5,
     spellSchool: "elemental", spellTier: 7, spellMagicType: "ice",
+    spellSlowDuration: 4.0, spellSlowFactor: 0.2,
   },
   [UpgradeType.SPELL_ICE_AGE]: {
     type: UpgradeType.SPELL_ICE_AGE, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
     description: "A new ice age begins, nothing survives the cold.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 195, spellRadius: 5.5,
     spellSchool: "elemental", spellTier: 7, spellMagicType: "ice",
+    spellSlowDuration: 4.0, spellSlowFactor: 0.2,
   },
 
   // Lightning T6
@@ -1044,12 +1097,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Thunder from the heavens strikes with divine wrath.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 125, spellRadius: 4,
     spellSchool: "elemental", spellTier: 6, spellMagicType: "lightning",
+    spellTeleportDistance: 3.0,
   },
   [UpgradeType.SPELL_TEMPEST_FURY]: {
     type: UpgradeType.SPELL_TEMPEST_FURY, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
     description: "The fury of a thousand tempests unleashed at once.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 135, spellRadius: 4.5,
     spellSchool: "elemental", spellTier: 6, spellMagicType: "lightning",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.35,
   },
   // Lightning T7
   [UpgradeType.SPELL_RAGNAROK_BOLT]: {
@@ -1057,12 +1112,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "The final lightning bolt that heralds the end of days.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 175, spellRadius: 5,
     spellSchool: "elemental", spellTier: 7, spellMagicType: "lightning",
+    spellTeleportDistance: 3.5,
   },
   [UpgradeType.SPELL_COSMIC_STORM]: {
     type: UpgradeType.SPELL_COSMIC_STORM, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
     description: "A storm of cosmic energy tears reality apart.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 205, spellRadius: 5.5,
     spellSchool: "elemental", spellTier: 7, spellMagicType: "lightning",
+    spellSlowDuration: 3.0, spellSlowFactor: 0.3,
   },
 
   // Earth T6
@@ -1179,12 +1236,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A toxic cloud so deadly it causes mass extinction.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 110, spellRadius: 4.5,
     spellSchool: "shadow", spellTier: 6, spellMagicType: "poison",
+    spellSlowDuration: 4.0, spellSlowFactor: 0.35,
   },
   [UpgradeType.SPELL_PLAGUE_OF_AGES]: {
     type: UpgradeType.SPELL_PLAGUE_OF_AGES, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
     description: "An ancient plague resurfaces, devouring all life.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 120, spellRadius: 4.5,
     spellSchool: "shadow", spellTier: 6, spellMagicType: "poison",
+    spellSlowDuration: 4.0, spellSlowFactor: 0.35,
   },
   // Poison T7
   [UpgradeType.SPELL_DEATH_BLOSSOM]: {
@@ -1192,12 +1251,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Flowers of death bloom, releasing lethal spores.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 155, spellRadius: 5.5,
     spellSchool: "shadow", spellTier: 7, spellMagicType: "poison",
+    spellSlowDuration: 4.5, spellSlowFactor: 0.3,
   },
   [UpgradeType.SPELL_TOXIC_APOCALYPSE]: {
     type: UpgradeType.SPELL_TOXIC_APOCALYPSE, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
     description: "A toxic apocalypse poisons the world beyond salvation.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 185, spellRadius: 5.5,
     spellSchool: "shadow", spellTier: 7, spellMagicType: "poison",
+    spellSlowDuration: 4.5, spellSlowFactor: 0.3,
   },
 
   // Void T6
@@ -1206,12 +1267,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Reality itself collapses inward, erasing what was.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 125, spellRadius: 4,
     spellSchool: "shadow", spellTier: 6, spellMagicType: "void",
+    spellTeleportDistance: 4.5,
   },
   [UpgradeType.SPELL_DIMENSIONAL_IMPLOSION]: {
     type: UpgradeType.SPELL_DIMENSIONAL_IMPLOSION, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
     description: "Dimensions fold in on themselves in a violent implosion.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 135, spellRadius: 4.5,
     spellSchool: "shadow", spellTier: 6, spellMagicType: "void",
+    spellTeleportDistance: 4.5,
   },
   // Void T7
   [UpgradeType.SPELL_ENTROPY]: {
@@ -1219,12 +1282,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Entropy accelerates — order dissolves into nothing.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 175, spellRadius: 5,
     spellSchool: "shadow", spellTier: 7, spellMagicType: "void",
+    spellTeleportDistance: 5.0,
   },
   [UpgradeType.SPELL_END_OF_ALL]: {
     type: UpgradeType.SPELL_END_OF_ALL, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
     description: "The final void spell — existence itself ceases.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 210, spellRadius: 5,
     spellSchool: "shadow", spellTier: 7, spellMagicType: "void",
+    spellTeleportDistance: 5.0,
   },
 
   // Death T6
@@ -1260,12 +1325,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "The world tree unleashes its ancient fury.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 115, spellRadius: 4.5,
     spellSchool: "elemental", spellTier: 6, spellMagicType: "nature",
+    spellSlowDuration: 3.5, spellSlowFactor: 0.3,
   },
   [UpgradeType.SPELL_ELEMENTAL_CHAOS]: {
     type: UpgradeType.SPELL_ELEMENTAL_CHAOS, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
     description: "All elements of nature combine in chaotic fury.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 125, spellRadius: 4.5,
     spellSchool: "elemental", spellTier: 6, spellMagicType: "nature",
+    spellSlowDuration: 3.5, spellSlowFactor: 0.3,
   },
   // Nature T7
   [UpgradeType.SPELL_GENESIS_STORM]: {
@@ -1273,12 +1340,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A primordial storm of creation remakes the world.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 160, spellRadius: 5.5,
     spellSchool: "elemental", spellTier: 7, spellMagicType: "nature",
+    spellSlowDuration: 4.0, spellSlowFactor: 0.25,
   },
   [UpgradeType.SPELL_WRATH_OF_GAIA]: {
     type: UpgradeType.SPELL_WRATH_OF_GAIA, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
     description: "Mother Earth rises in wrath, reshaping all existence.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 195, spellRadius: 5.5,
     spellSchool: "elemental", spellTier: 7, spellMagicType: "nature",
+    spellSlowDuration: 4.0, spellSlowFactor: 0.25,
   },
 
   // ─── Extra T1 & T2 spells ──────────────────────────────────────
@@ -1429,18 +1498,21 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A venomous sting pricks the target.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 11, spellRadius: 1,
     spellSchool: "shadow", spellTier: 1, spellMagicType: "poison",
+    spellSlowDuration: 2.0, spellSlowFactor: 0.7,
   },
   [UpgradeType.SPELL_NOXIOUS_PUFF]: {
     type: UpgradeType.SPELL_NOXIOUS_PUFF, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
     description: "A small puff of noxious gas.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 13, spellRadius: 1.5,
     spellSchool: "shadow", spellTier: 1, spellMagicType: "poison",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.7,
   },
   [UpgradeType.SPELL_VENOM_STRIKE]: {
     type: UpgradeType.SPELL_VENOM_STRIKE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
     description: "A strike laced with potent venom.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 19, spellRadius: 2,
     spellSchool: "shadow", spellTier: 2, spellMagicType: "poison",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.6,
   },
 
   // Void T1 ×2, T2 ×1
@@ -1449,18 +1521,21 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "A bolt of null energy erases matter.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1,
     spellSchool: "shadow", spellTier: 1, spellMagicType: "void",
+    spellTeleportDistance: 1.5,
   },
   [UpgradeType.SPELL_VOID_TOUCH]: {
     type: UpgradeType.SPELL_VOID_TOUCH, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
     description: "The void reaches out and touches the target.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 16, spellRadius: 1,
     spellSchool: "shadow", spellTier: 1, spellMagicType: "void",
+    spellTeleportDistance: 1.5,
   },
   [UpgradeType.SPELL_RIFT_PULSE]: {
     type: UpgradeType.SPELL_RIFT_PULSE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
     description: "A pulse of rift energy distorts the area.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 22, spellRadius: 2,
     spellSchool: "shadow", spellTier: 2, spellMagicType: "void",
+    spellTeleportDistance: 2.0,
   },
 
   // Death T1 ×2, T2 ×1
@@ -1489,17 +1564,20 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Razor-sharp leaves slice through the air.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 12, spellRadius: 1,
     spellSchool: "elemental", spellTier: 1, spellMagicType: "nature",
+    spellSlowDuration: 1.5, spellSlowFactor: 0.6,
   },
   [UpgradeType.SPELL_THORN_PRICK]: {
     type: UpgradeType.SPELL_THORN_PRICK, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
     description: "Thorny vines prick and scratch enemies.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1,
     spellSchool: "elemental", spellTier: 1, spellMagicType: "nature",
+    spellSlowDuration: 1.5, spellSlowFactor: 0.6,
   },
   [UpgradeType.SPELL_ROOT_SNARE]: {
     type: UpgradeType.SPELL_ROOT_SNARE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
     description: "Roots burst from the ground, snaring and crushing.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 19, spellRadius: 2,
     spellSchool: "elemental", spellTier: 2, spellMagicType: "nature",
+    spellSlowDuration: 2.5, spellSlowFactor: 0.45,
   },
 };
