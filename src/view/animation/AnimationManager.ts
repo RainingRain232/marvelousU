@@ -152,6 +152,11 @@ import { generateGiantArcherFrames } from "@view/animation/GiantArcherSpriteGen"
 import { generateGiantSiegeFrames } from "@view/animation/GiantSiegeSpriteGen";
 import { generateGiantMageFrames } from "@view/animation/GiantMageSpriteGen";
 import { generateGiantCavalryFrames } from "@view/animation/GiantCavalrySpriteGen";
+import { generateRoyalGuardFrames } from "@view/animation/RoyalGuardSpriteGen";
+import { generateMarksmanFrames } from "@view/animation/MarksmanSpriteGen";
+import { generateCannonFrames } from "@view/animation/CannonSpriteGen";
+import { generateBattlemageFrames } from "@view/animation/BattlemageSpriteGen";
+import { generateCataphractFrames } from "@view/animation/CataphractSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -373,6 +378,16 @@ export class AnimationManager {
         this._generateGiantMageSprites(key, renderer);
       } else if (key === "giant_cavalry") {
         this._generateGiantCavalrySprites(key, renderer);
+      } else if (key === "royal_guard") {
+        this._generateRoyalGuardSprites(key, renderer);
+      } else if (key === "marksman") {
+        this._generateMarksmanSprites(key, renderer);
+      } else if (key === "cannon") {
+        this._generateCannonSprites(key, renderer);
+      } else if (key === "battlemage") {
+        this._generateBattlemageSprites(key, renderer);
+      } else if (key === "cataphract") {
+        this._generateCataphractSprites(key, renderer);
       } else if (key === "longbowman") {
         this._generateLongbowmanSprites(key, renderer);
       } else if (key === "crossbowman") {
@@ -1942,6 +1957,71 @@ export class AnimationManager {
         const ck = cacheKey(key, state);
         if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
       }
+    }
+  }
+
+  private _generateRoyalGuardSprites(key: string, renderer: Renderer): void {
+    const textures = generateRoyalGuardFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateMarksmanSprites(key: string, renderer: Renderer): void {
+    const textures = generateMarksmanFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateCannonSprites(key: string, renderer: Renderer): void {
+    const textures = generateCannonFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateBattlemageSprites(key: string, renderer: Renderer): void {
+    const textures = generateBattlemageFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateCataphractSprites(key: string, renderer: Renderer): void {
+    const textures = generateCataphractFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
     }
   }
 }

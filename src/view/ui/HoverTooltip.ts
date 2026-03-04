@@ -243,6 +243,11 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.GIANT_SIEGE]: "Giant Siege",
   [UnitType.GIANT_MAGE]: "Giant Mage",
   [UnitType.GIANT_CAVALRY]: "Giant Cavalry",
+  [UnitType.ROYAL_GUARD]: "Royal Guard",
+  [UnitType.MARKSMAN]: "Marksman",
+  [UnitType.CANNON]: "Cannon",
+  [UnitType.BATTLEMAGE]: "Battlemage",
+  [UnitType.CATAPHRACT]: "Cataphract",
 };
 
 // ---------------------------------------------------------------------------

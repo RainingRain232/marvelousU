@@ -148,6 +148,11 @@ export enum UnitType {
   GIANT_SIEGE = "giant_siege",
   GIANT_MAGE = "giant_mage",
   GIANT_CAVALRY = "giant_cavalry",
+  ROYAL_GUARD = "royal_guard",
+  MARKSMAN = "marksman",
+  CANNON = "cannon",
+  BATTLEMAGE = "battlemage",
+  CATAPHRACT = "cataphract",
 }
 
 export enum BuildingType {
