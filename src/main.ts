@@ -1066,12 +1066,18 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
     state.p1RaceId = raceId;
   }
 
-  // Override starting gold if the race specifies one
-  if (race.startingGold != null) {
+  // Override starting gold/mana if the race specifies one
+  if (race.startingGold != null || race.startingMana != null) {
     const player = state.players.get(playerId);
     if (player) {
-      player.gold = race.startingGold;
-      EventBus.emit("goldChanged", { playerId, amount: player.gold });
+      if (race.startingGold != null) {
+        player.gold = race.startingGold;
+        EventBus.emit("goldChanged", { playerId, amount: player.gold });
+      }
+      if (race.startingMana != null) {
+        player.mana = race.startingMana;
+        EventBus.emit("manaChanged", { playerId, amount: player.mana });
+      }
     }
   }
 

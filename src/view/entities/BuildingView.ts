@@ -46,6 +46,7 @@ import { EliteArcheryRangeRenderer } from "@view/entities/EliteArcheryRangeRende
 import { EliteSiegeWorkshopRenderer } from "@view/entities/EliteSiegeWorkshopRenderer";
 import { EliteMageTowerRenderer } from "@view/entities/EliteMageTowerRenderer";
 import { EliteStableRenderer } from "@view/entities/EliteStableRenderer";
+import { ArchiveRenderer } from "@view/entities/ArchiveRenderer";
 import { getPlayerColor } from "@sim/config/PlayerColors";
 
 // Capture progress bar (shown below capturable buildings)
@@ -240,6 +241,7 @@ export class BuildingView {
   private _eliteSiegeWorkshopRenderer: EliteSiegeWorkshopRenderer | null = null;
   private _eliteMageTowerRenderer: EliteMageTowerRenderer | null = null;
   private _eliteStableRenderer: EliteStableRenderer | null = null;
+  private _archiveRenderer: ArchiveRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -434,6 +436,11 @@ export class BuildingView {
       this.container.addChild(this._eliteStableRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
+    } else if (building.type === BuildingType.ARCHIVE) {
+      this._archiveRenderer = new ArchiveRenderer(building.owner);
+      this.container.addChild(this._archiveRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
     } else {
       // Body rect (generic buildings only)
       this._body
@@ -620,6 +627,9 @@ export class BuildingView {
       if (this._eliteStableRenderer) {
         this._eliteStableRenderer.tick(dt, phase);
       }
+      if (this._archiveRenderer) {
+        this._archiveRenderer.tick(dt, phase);
+      }
       this._tickIdleEffects(dt);
     }
   }
@@ -651,6 +661,7 @@ export class BuildingView {
     else if (this._eliteArcheryRangeRenderer) this._eliteArcheryRangeRenderer.setOwner(owner);
     else if (this._eliteSiegeWorkshopRenderer) this._eliteSiegeWorkshopRenderer.setOwner(owner);
     else if (this._eliteMageTowerRenderer) this._eliteMageTowerRenderer.setOwner(owner);
+    else if (this._archiveRenderer) this._archiveRenderer.setOwner(owner);
   }
 
   destroy(): void {

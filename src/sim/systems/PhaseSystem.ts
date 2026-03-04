@@ -126,6 +126,13 @@ function _enterPrep(state: GameState): void {
     player.gold = raceGold ?? startGold;
     player.goldAccum = 0;
     EventBus.emit("goldChanged", { playerId: player.id, amount: player.gold });
+
+    const raceMana = player.id === "p1" && p1Race?.startingMana != null
+      ? p1Race.startingMana
+      : 0;
+    player.mana = raceMana;
+    player.manaAccum = 0;
+    EventBus.emit("manaChanged", { playerId: player.id, amount: player.mana });
   }
 
   // Clear winner from previous round

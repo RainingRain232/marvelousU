@@ -40,6 +40,8 @@ export interface RaceDef {
   tiers?: RaceTiers;
   /** Override starting gold for this race (defaults to BalanceConfig.START_GOLD). */
   startingGold?: number;
+  /** Override starting mana for this race (defaults to 0). */
+  startingMana?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -148,6 +150,7 @@ export const RACE_DEFINITIONS: RaceDef[] = [
     implemented: true,
     accentColor: 0xffdd00,
     startingGold: 50000,
+    startingMana: 50000,
     tiers: {
       melee: 7, ranged: 7, siege: 7,
       creature: 7, magic: 7,
