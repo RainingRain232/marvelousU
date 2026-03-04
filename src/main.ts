@@ -38,6 +38,7 @@ import type { MapSize } from "@view/ui/MenuScreen";
 import { leaderSelectScreen } from "@view/ui/LeaderSelectScreen";
 import { raceSelectScreen } from "@view/ui/RaceSelectScreen";
 import { raceDetailScreen } from "@view/ui/RaceDetailScreen";
+import { magicScreen } from "@view/ui/MagicScreen";
 import { armoryScreen } from "@view/ui/ArmoryScreen";
 import { scenarioSelectScreen } from "@view/ui/ScenarioSelectScreen";
 import { campaignIntroScreen } from "@view/ui/CampaignIntroScreen";
@@ -450,13 +451,33 @@ import type { RaceId } from "@sim/config/RaceDefs";
   };
 
   // ---------------------------------------------------------------------------
+  // Magic overview screen (between race detail and armory)
+  // ---------------------------------------------------------------------------
+  magicScreen.init(viewManager);
+  magicScreen.hide();
+
+  raceDetailScreen.onNext = () => {
+    raceDetailScreen.hide();
+    magicScreen.show(raceSelectScreen.selectedRaceId);
+  };
+
+  magicScreen.onBack = () => {
+    magicScreen.hide();
+    raceDetailScreen.onBack = () => {
+      raceDetailScreen.hide();
+      raceSelectScreen.show();
+    };
+    raceDetailScreen.show(raceSelectScreen.selectedRaceId);
+  };
+
+  // ---------------------------------------------------------------------------
   // Armory screen
   // ---------------------------------------------------------------------------
   armoryScreen.init(viewManager);
   armoryScreen.hide();
 
-  raceDetailScreen.onNext = () => {
-    raceDetailScreen.hide();
+  magicScreen.onNext = () => {
+    magicScreen.hide();
     // Set unlocked items based on game mode
     const gameMode = menuScreen.selectedGameMode;
     if (gameMode === GameMode.CAMPAIGN) {
@@ -469,11 +490,7 @@ import type { RaceId } from "@sim/config/RaceDefs";
 
   armoryScreen.onBack = () => {
     armoryScreen.hide();
-    raceDetailScreen.onBack = () => {
-      raceDetailScreen.hide();
-      raceSelectScreen.show();
-    };
-    raceDetailScreen.show(raceSelectScreen.selectedRaceId);
+    magicScreen.show(raceSelectScreen.selectedRaceId);
   };
 
   // ---------------------------------------------------------------------------

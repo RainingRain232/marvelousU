@@ -19,7 +19,18 @@ export interface RaceTiers {
   fire: number; cold: number; lightning: number;
   distortion: number; summon: number; nature: number;
   heal: number;
+  // Spell school tiers (gate Archive spells by magic type)
+  earth: number; arcane: number; shadow: number;
+  poison: number; void: number; death: number;
 }
+
+/** Maps spellMagicType values to the RaceTiers key that gates them. */
+export const SPELL_MAGIC_TO_TIER: Record<string, keyof RaceTiers> = {
+  fire: "fire", ice: "cold", lightning: "lightning",
+  earth: "earth", arcane: "arcane", holy: "heal",
+  shadow: "shadow", poison: "poison", void: "void",
+  death: "death", nature: "nature",
+};
 
 export interface RaceDef {
   id: RaceId;
@@ -65,6 +76,7 @@ export const RACE_DEFINITIONS: RaceDef[] = [
       fire: 3, cold: 3, lightning: 3,
       distortion: 3, summon: 3, nature: 3,
       heal: 5,
+      earth: 2, arcane: 2, shadow: 1, poison: 0, void: 0, death: 0,
     },
   },
   {
@@ -83,6 +95,7 @@ export const RACE_DEFINITIONS: RaceDef[] = [
       fire: 3, cold: 4, lightning: 5,
       distortion: 2, summon: 3, nature: 5,
       heal: 4,
+      earth: 3, arcane: 4, shadow: 1, poison: 0, void: 1, death: 0,
     },
   },
   {
@@ -101,6 +114,7 @@ export const RACE_DEFINITIONS: RaceDef[] = [
       fire: 0, cold: 0, lightning: 0,
       distortion: 0, summon: 0, nature: 0,
       heal: 1,
+      earth: 0, arcane: 0, shadow: 0, poison: 0, void: 0, death: 0,
     },
   },
   {
@@ -119,6 +133,7 @@ export const RACE_DEFINITIONS: RaceDef[] = [
       fire: 5, cold: 5, lightning: 5,
       distortion: 5, summon: 5, nature: 5,
       heal: 4,
+      earth: 4, arcane: 5, shadow: 4, poison: 3, void: 4, death: 3,
     },
   },
   {
@@ -137,6 +152,7 @@ export const RACE_DEFINITIONS: RaceDef[] = [
       fire: 5, cold: 5, lightning: 5,
       distortion: 5, summon: 5, nature: 5,
       heal: 0,
+      earth: 5, arcane: 3, shadow: 2, poison: 2, void: 3, death: 2,
     },
   },
   {
@@ -157,6 +173,7 @@ export const RACE_DEFINITIONS: RaceDef[] = [
       fire: 7, cold: 7, lightning: 7,
       distortion: 7, summon: 7, nature: 7,
       heal: 7,
+      earth: 7, arcane: 7, shadow: 7, poison: 7, void: 7, death: 7,
     },
   },
   {

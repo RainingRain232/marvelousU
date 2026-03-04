@@ -460,6 +460,51 @@ export enum UpgradeType {
   SPELL_ELEMENTAL_CHAOS = "spell_elemental_chaos",
   SPELL_GENESIS_STORM = "spell_genesis_storm",
   SPELL_WRATH_OF_GAIA = "spell_wrath_of_gaia",
+  // Extra T1 & T2 spells
+  // Fire
+  SPELL_CANDLE_FLAME = "spell_candle_flame",
+  SPELL_HEAT_WAVE = "spell_heat_wave",
+  SPELL_SCORCH = "spell_scorch",
+  // Ice
+  SPELL_CHILL_TOUCH = "spell_chill_touch",
+  SPELL_ICICLE = "spell_icicle",
+  SPELL_COLD_SNAP = "spell_cold_snap",
+  // Lightning
+  SPELL_JOLT = "spell_jolt",
+  SPELL_ZAP = "spell_zap",
+  SPELL_SHOCK_WAVE = "spell_shock_wave",
+  // Earth
+  SPELL_PEBBLE_TOSS = "spell_pebble_toss",
+  SPELL_DUST_DEVIL = "spell_dust_devil",
+  SPELL_TREMOR = "spell_tremor",
+  // Arcane
+  SPELL_MAGIC_DART = "spell_magic_dart",
+  SPELL_SPARKLE_BURST = "spell_sparkle_burst",
+  SPELL_ARCANE_BOLT = "spell_arcane_bolt",
+  // Holy
+  SPELL_HOLY_TOUCH = "spell_holy_touch",
+  SPELL_SMITE = "spell_smite",
+  SPELL_CONSECRATE = "spell_consecrate",
+  // Shadow
+  SPELL_DARK_WHISPER = "spell_dark_whisper",
+  SPELL_SHADOW_FLICKER = "spell_shadow_flicker",
+  SPELL_NIGHT_SHADE = "spell_night_shade",
+  // Poison
+  SPELL_STING = "spell_sting",
+  SPELL_NOXIOUS_PUFF = "spell_noxious_puff",
+  SPELL_VENOM_STRIKE = "spell_venom_strike",
+  // Void
+  SPELL_NULL_BOLT = "spell_null_bolt",
+  SPELL_VOID_TOUCH = "spell_void_touch",
+  SPELL_RIFT_PULSE = "spell_rift_pulse",
+  // Death
+  SPELL_DEATHS_GRASP = "spell_deaths_grasp",
+  SPELL_BONE_CHILL = "spell_bone_chill",
+  SPELL_DRAIN_LIFE = "spell_drain_life",
+  // Nature
+  SPELL_LEAF_BLADE = "spell_leaf_blade",
+  SPELL_THORN_PRICK = "spell_thorn_prick",
+  SPELL_ROOT_SNARE = "spell_root_snare",
 }
 
 export enum UnitState {

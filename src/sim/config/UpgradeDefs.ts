@@ -1280,4 +1280,226 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     isSpell: true, spellType: "damage", spellDamage: 195, spellRadius: 5.5,
     spellSchool: "elemental", spellTier: 7, spellMagicType: "nature",
   },
+
+  // ─── Extra T1 & T2 spells ──────────────────────────────────────
+
+  // Fire T1 ×2, T2 ×1
+  [UpgradeType.SPELL_CANDLE_FLAME]: {
+    type: UpgradeType.SPELL_CANDLE_FLAME, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "A small candle flame flickers to life and burns.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 12, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "fire",
+  },
+  [UpgradeType.SPELL_HEAT_WAVE]: {
+    type: UpgradeType.SPELL_HEAT_WAVE, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "A wave of scorching heat washes over enemies.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1.5,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "fire",
+  },
+  [UpgradeType.SPELL_SCORCH]: {
+    type: UpgradeType.SPELL_SCORCH, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "Scorching flames sear enemies in the area.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 20, spellRadius: 2,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "fire",
+  },
+
+  // Ice T1 ×2, T2 ×1
+  [UpgradeType.SPELL_CHILL_TOUCH]: {
+    type: UpgradeType.SPELL_CHILL_TOUCH, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "An icy touch chills enemies to the bone.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 12, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "ice",
+  },
+  [UpgradeType.SPELL_ICICLE]: {
+    type: UpgradeType.SPELL_ICICLE, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "A sharp icicle launches at the target.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "ice",
+  },
+  [UpgradeType.SPELL_COLD_SNAP]: {
+    type: UpgradeType.SPELL_COLD_SNAP, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "A sudden cold snap freezes nearby enemies.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 20, spellRadius: 2,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "ice",
+  },
+
+  // Lightning T1 ×2, T2 ×1
+  [UpgradeType.SPELL_JOLT]: {
+    type: UpgradeType.SPELL_JOLT, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "A quick jolt of electricity zaps the target.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 13, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "lightning",
+  },
+  [UpgradeType.SPELL_ZAP]: {
+    type: UpgradeType.SPELL_ZAP, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "Zap! A small bolt of lightning strikes.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 15, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "lightning",
+  },
+  [UpgradeType.SPELL_SHOCK_WAVE]: {
+    type: UpgradeType.SPELL_SHOCK_WAVE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "An electric shockwave ripples outward.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 21, spellRadius: 2,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "lightning",
+  },
+
+  // Earth T1 ×2, T2 ×1
+  [UpgradeType.SPELL_PEBBLE_TOSS]: {
+    type: UpgradeType.SPELL_PEBBLE_TOSS, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "A handful of pebbles flung with magical force.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 13, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "earth",
+  },
+  [UpgradeType.SPELL_DUST_DEVIL]: {
+    type: UpgradeType.SPELL_DUST_DEVIL, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "A small whirlwind of dust and debris.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 15, spellRadius: 1.5,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "earth",
+  },
+  [UpgradeType.SPELL_TREMOR]: {
+    type: UpgradeType.SPELL_TREMOR, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "The ground trembles, shaking enemies off balance.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 20, spellRadius: 2,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "earth",
+  },
+
+  // Arcane T1 ×2, T2 ×1
+  [UpgradeType.SPELL_MAGIC_DART]: {
+    type: UpgradeType.SPELL_MAGIC_DART, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "A small dart of pure magical energy.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 12, spellRadius: 1,
+    spellSchool: "arcane", spellTier: 1, spellMagicType: "arcane",
+  },
+  [UpgradeType.SPELL_SPARKLE_BURST]: {
+    type: UpgradeType.SPELL_SPARKLE_BURST, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "A burst of glittering arcane sparkles.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1.5,
+    spellSchool: "arcane", spellTier: 1, spellMagicType: "arcane",
+  },
+  [UpgradeType.SPELL_ARCANE_BOLT]: {
+    type: UpgradeType.SPELL_ARCANE_BOLT, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "A bolt of concentrated arcane energy.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 21, spellRadius: 2,
+    spellSchool: "arcane", spellTier: 2, spellMagicType: "arcane",
+  },
+
+  // Holy T1 ×2, T2 ×1
+  [UpgradeType.SPELL_HOLY_TOUCH]: {
+    type: UpgradeType.SPELL_HOLY_TOUCH, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "A gentle holy touch mends minor wounds.", appliesTo: [],
+    isSpell: true, spellType: "heal", spellHeal: 12, spellRadius: 1,
+    spellSchool: "divine", spellTier: 1, spellMagicType: "holy",
+  },
+  [UpgradeType.SPELL_SMITE]: {
+    type: UpgradeType.SPELL_SMITE, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "Divine light smites an enemy.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1,
+    spellSchool: "divine", spellTier: 1, spellMagicType: "holy",
+  },
+  [UpgradeType.SPELL_CONSECRATE]: {
+    type: UpgradeType.SPELL_CONSECRATE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "Consecrate the ground, healing allies who stand upon it.", appliesTo: [],
+    isSpell: true, spellType: "heal", spellHeal: 25, spellRadius: 2,
+    spellSchool: "divine", spellTier: 2, spellMagicType: "holy",
+  },
+
+  // Shadow T1 ×2, T2 ×1
+  [UpgradeType.SPELL_DARK_WHISPER]: {
+    type: UpgradeType.SPELL_DARK_WHISPER, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "A dark whisper saps the life from enemies.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 13, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "shadow",
+  },
+  [UpgradeType.SPELL_SHADOW_FLICKER]: {
+    type: UpgradeType.SPELL_SHADOW_FLICKER, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "Shadows flicker and strike at the unwary.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 15, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "shadow",
+  },
+  [UpgradeType.SPELL_NIGHT_SHADE]: {
+    type: UpgradeType.SPELL_NIGHT_SHADE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "Nightshade venom seeps from the shadows.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 21, spellRadius: 2,
+    spellSchool: "shadow", spellTier: 2, spellMagicType: "shadow",
+  },
+
+  // Poison T1 ×2, T2 ×1
+  [UpgradeType.SPELL_STING]: {
+    type: UpgradeType.SPELL_STING, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "A venomous sting pricks the target.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 11, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "poison",
+  },
+  [UpgradeType.SPELL_NOXIOUS_PUFF]: {
+    type: UpgradeType.SPELL_NOXIOUS_PUFF, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "A small puff of noxious gas.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 13, spellRadius: 1.5,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "poison",
+  },
+  [UpgradeType.SPELL_VENOM_STRIKE]: {
+    type: UpgradeType.SPELL_VENOM_STRIKE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "A strike laced with potent venom.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 19, spellRadius: 2,
+    spellSchool: "shadow", spellTier: 2, spellMagicType: "poison",
+  },
+
+  // Void T1 ×2, T2 ×1
+  [UpgradeType.SPELL_NULL_BOLT]: {
+    type: UpgradeType.SPELL_NULL_BOLT, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "A bolt of null energy erases matter.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "void",
+  },
+  [UpgradeType.SPELL_VOID_TOUCH]: {
+    type: UpgradeType.SPELL_VOID_TOUCH, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "The void reaches out and touches the target.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 16, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "void",
+  },
+  [UpgradeType.SPELL_RIFT_PULSE]: {
+    type: UpgradeType.SPELL_RIFT_PULSE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "A pulse of rift energy distorts the area.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 22, spellRadius: 2,
+    spellSchool: "shadow", spellTier: 2, spellMagicType: "void",
+  },
+
+  // Death T1 ×2, T2 ×1
+  [UpgradeType.SPELL_DEATHS_GRASP]: {
+    type: UpgradeType.SPELL_DEATHS_GRASP, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "Death's cold grasp reaches for the living.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 13, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "death",
+  },
+  [UpgradeType.SPELL_BONE_CHILL]: {
+    type: UpgradeType.SPELL_BONE_CHILL, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "A chill that seeps into the bones of the living.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 15, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "death",
+  },
+  [UpgradeType.SPELL_DRAIN_LIFE]: {
+    type: UpgradeType.SPELL_DRAIN_LIFE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "Drains the life force from nearby enemies.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 20, spellRadius: 2,
+    spellSchool: "shadow", spellTier: 2, spellMagicType: "death",
+  },
+
+  // Nature T1 ×2, T2 ×1
+  [UpgradeType.SPELL_LEAF_BLADE]: {
+    type: UpgradeType.SPELL_LEAF_BLADE, cost: 0, manaCost: 20, maxLevel: 99, effect: 0,
+    description: "Razor-sharp leaves slice through the air.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 12, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "nature",
+  },
+  [UpgradeType.SPELL_THORN_PRICK]: {
+    type: UpgradeType.SPELL_THORN_PRICK, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "Thorny vines prick and scratch enemies.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "nature",
+  },
+  [UpgradeType.SPELL_ROOT_SNARE]: {
+    type: UpgradeType.SPELL_ROOT_SNARE, cost: 0, manaCost: 55, maxLevel: 99, effect: 0,
+    description: "Roots burst from the ground, snaring and crushing.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 19, spellRadius: 2,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "nature",
+  },
 };

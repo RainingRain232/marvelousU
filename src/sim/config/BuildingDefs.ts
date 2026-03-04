@@ -795,7 +795,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     upgradeInventory: [
       // Elemental — fire
       UpgradeType.SPELL_FLAME_SPARK, UpgradeType.SPELL_EMBER_BOLT,
-      UpgradeType.SPELL_FIREBALL, UpgradeType.SPELL_FLAME_WAVE,
+      UpgradeType.SPELL_CANDLE_FLAME, UpgradeType.SPELL_HEAT_WAVE,
+      UpgradeType.SPELL_FIREBALL, UpgradeType.SPELL_FLAME_WAVE, UpgradeType.SPELL_SCORCH,
       UpgradeType.SPELL_METEOR_STRIKE, UpgradeType.SPELL_MAGMA_BURST,
       UpgradeType.SPELL_INFERNO, UpgradeType.SPELL_FIRE_STORM,
       UpgradeType.SPELL_PYROCLASM, UpgradeType.SPELL_DRAGONS_BREATH,
@@ -803,7 +804,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UpgradeType.SPELL_SUPERNOVA, UpgradeType.SPELL_WORLD_BLAZE,
       // Elemental — ice
       UpgradeType.SPELL_FROST_NOVA, UpgradeType.SPELL_ICE_SHARD,
-      UpgradeType.SPELL_BLIZZARD, UpgradeType.SPELL_FROSTBITE,
+      UpgradeType.SPELL_CHILL_TOUCH, UpgradeType.SPELL_ICICLE,
+      UpgradeType.SPELL_BLIZZARD, UpgradeType.SPELL_FROSTBITE, UpgradeType.SPELL_COLD_SNAP,
       UpgradeType.SPELL_GLACIAL_CRUSH, UpgradeType.SPELL_ICE_STORM,
       UpgradeType.SPELL_FROZEN_TOMB,
       UpgradeType.SPELL_ABSOLUTE_ZERO, UpgradeType.SPELL_PERMAFROST,
@@ -811,7 +813,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UpgradeType.SPELL_ETERNAL_WINTER, UpgradeType.SPELL_ICE_AGE,
       // Elemental — lightning
       UpgradeType.SPELL_SPARK, UpgradeType.SPELL_STATIC_SHOCK,
-      UpgradeType.SPELL_LIGHTNING_STRIKE, UpgradeType.SPELL_CHAIN_LIGHTNING, UpgradeType.SPELL_ARC_BOLT,
+      UpgradeType.SPELL_JOLT, UpgradeType.SPELL_ZAP,
+      UpgradeType.SPELL_LIGHTNING_STRIKE, UpgradeType.SPELL_CHAIN_LIGHTNING, UpgradeType.SPELL_ARC_BOLT, UpgradeType.SPELL_SHOCK_WAVE,
       UpgradeType.SPELL_THUNDERSTORM, UpgradeType.SPELL_STORM_SURGE,
       UpgradeType.SPELL_BALL_LIGHTNING, UpgradeType.SPELL_THUNDER_CLAP,
       UpgradeType.SPELL_MJOLNIR_STRIKE, UpgradeType.SPELL_ZEUS_WRATH,
@@ -819,7 +822,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UpgradeType.SPELL_RAGNAROK_BOLT, UpgradeType.SPELL_COSMIC_STORM,
       // Elemental — earth
       UpgradeType.SPELL_STONE_SHARD, UpgradeType.SPELL_MUD_SPLASH,
-      UpgradeType.SPELL_ROCK_THROW,
+      UpgradeType.SPELL_PEBBLE_TOSS, UpgradeType.SPELL_DUST_DEVIL,
+      UpgradeType.SPELL_ROCK_THROW, UpgradeType.SPELL_TREMOR,
       UpgradeType.SPELL_EARTHQUAKE, UpgradeType.SPELL_AVALANCHE,
       UpgradeType.SPELL_LANDSLIDE, UpgradeType.SPELL_SEISMIC_SLAM,
       UpgradeType.SPELL_TECTONIC_RUIN, UpgradeType.SPELL_WORLD_BREAKER,
@@ -827,14 +831,16 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UpgradeType.SPELL_CATACLYSM, UpgradeType.SPELL_PLANET_SHATTER,
       // Elemental — nature
       UpgradeType.SPELL_VINE_WHIP, UpgradeType.SPELL_BRAMBLE_BURST,
-      UpgradeType.SPELL_THORN_BARRAGE, UpgradeType.SPELL_ENTANGLE,
+      UpgradeType.SPELL_LEAF_BLADE, UpgradeType.SPELL_THORN_PRICK,
+      UpgradeType.SPELL_THORN_BARRAGE, UpgradeType.SPELL_ENTANGLE, UpgradeType.SPELL_ROOT_SNARE,
       UpgradeType.SPELL_NATURES_WRATH, UpgradeType.SPELL_OVERGROWTH,
       UpgradeType.SPELL_PRIMAL_STORM, UpgradeType.SPELL_GAIAS_FURY,
       UpgradeType.SPELL_WORLD_TREES_FURY, UpgradeType.SPELL_ELEMENTAL_CHAOS,
       UpgradeType.SPELL_GENESIS_STORM, UpgradeType.SPELL_WRATH_OF_GAIA,
       // Arcane
       UpgradeType.SPELL_ARCANE_MISSILE, UpgradeType.SPELL_MANA_BOLT,
-      UpgradeType.SPELL_MANA_SURGE, UpgradeType.SPELL_ARCANE_PULSE,
+      UpgradeType.SPELL_MAGIC_DART, UpgradeType.SPELL_SPARKLE_BURST,
+      UpgradeType.SPELL_MANA_SURGE, UpgradeType.SPELL_ARCANE_PULSE, UpgradeType.SPELL_ARCANE_BOLT,
       UpgradeType.SPELL_ARCANE_BARRAGE, UpgradeType.SPELL_ARCANE_STORM, UpgradeType.SPELL_ETHER_BLAST,
       UpgradeType.SPELL_TEMPORAL_BLAST, UpgradeType.SPELL_ARCANE_TORRENT,
       UpgradeType.SPELL_ARCANE_CATACLYSM, UpgradeType.SPELL_ASTRAL_RIFT,
@@ -842,7 +848,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UpgradeType.SPELL_COSMIC_RIFT, UpgradeType.SPELL_OMNISCIENCE,
       // Divine
       UpgradeType.SPELL_BLESSING_OF_LIGHT, UpgradeType.SPELL_HEALING_WAVE, UpgradeType.SPELL_SACRED_STRIKE,
-      UpgradeType.SPELL_HOLY_SMITE, UpgradeType.SPELL_PURIFYING_FLAME, UpgradeType.SPELL_HOLY_LIGHT,
+      UpgradeType.SPELL_HOLY_TOUCH, UpgradeType.SPELL_SMITE,
+      UpgradeType.SPELL_HOLY_SMITE, UpgradeType.SPELL_PURIFYING_FLAME, UpgradeType.SPELL_HOLY_LIGHT, UpgradeType.SPELL_CONSECRATE,
       UpgradeType.SPELL_DIVINE_RESTORATION, UpgradeType.SPELL_RADIANT_NOVA, UpgradeType.SPELL_JUDGMENT,
       UpgradeType.SPELL_CELESTIAL_WRATH, UpgradeType.SPELL_DIVINE_SHIELD,
       UpgradeType.SPELL_DIVINE_MIRACLE, UpgradeType.SPELL_HEAVENS_GATE,
@@ -850,7 +857,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UpgradeType.SPELL_ASCENSION, UpgradeType.SPELL_DIVINE_JUDGMENT,
       // Shadow — shadow
       UpgradeType.SPELL_SHADOW_BOLT, UpgradeType.SPELL_DARK_PULSE,
-      UpgradeType.SPELL_CURSE_OF_DARKNESS, UpgradeType.SPELL_SHADOW_STRIKE,
+      UpgradeType.SPELL_DARK_WHISPER, UpgradeType.SPELL_SHADOW_FLICKER,
+      UpgradeType.SPELL_CURSE_OF_DARKNESS, UpgradeType.SPELL_SHADOW_STRIKE, UpgradeType.SPELL_NIGHT_SHADE,
       UpgradeType.SPELL_NIGHTMARE,
       UpgradeType.SPELL_SHADOW_PLAGUE, UpgradeType.SPELL_DARK_VOID,
       UpgradeType.SPELL_OBLIVION, UpgradeType.SPELL_ECLIPSE,
@@ -858,7 +866,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UpgradeType.SPELL_ABYSSAL_DOOM, UpgradeType.SPELL_SHADOW_ANNIHILATION,
       // Shadow — poison
       UpgradeType.SPELL_POISON_CLOUD, UpgradeType.SPELL_TOXIC_DART,
-      UpgradeType.SPELL_VENOMOUS_SPRAY, UpgradeType.SPELL_ACID_SPLASH,
+      UpgradeType.SPELL_STING, UpgradeType.SPELL_NOXIOUS_PUFF,
+      UpgradeType.SPELL_VENOMOUS_SPRAY, UpgradeType.SPELL_ACID_SPLASH, UpgradeType.SPELL_VENOM_STRIKE,
       UpgradeType.SPELL_PLAGUE_SWARM, UpgradeType.SPELL_BLIGHT,
       UpgradeType.SPELL_TOXIC_MIASMA, UpgradeType.SPELL_CORROSION,
       UpgradeType.SPELL_PANDEMIC, UpgradeType.SPELL_PLAGUE_WIND,
@@ -866,7 +875,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UpgradeType.SPELL_DEATH_BLOSSOM, UpgradeType.SPELL_TOXIC_APOCALYPSE,
       // Shadow — void
       UpgradeType.SPELL_VOID_SPARK, UpgradeType.SPELL_PHASE_SHIFT,
-      UpgradeType.SPELL_DIMENSIONAL_TEAR, UpgradeType.SPELL_WARP_BOLT,
+      UpgradeType.SPELL_NULL_BOLT, UpgradeType.SPELL_VOID_TOUCH,
+      UpgradeType.SPELL_DIMENSIONAL_TEAR, UpgradeType.SPELL_WARP_BOLT, UpgradeType.SPELL_RIFT_PULSE,
       UpgradeType.SPELL_VOID_RIFT, UpgradeType.SPELL_RIFT_STORM,
       UpgradeType.SPELL_NETHER_STORM, UpgradeType.SPELL_VOID_CRUSH,
       UpgradeType.SPELL_SINGULARITY, UpgradeType.SPELL_EVENT_HORIZON,
@@ -874,7 +884,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
       UpgradeType.SPELL_ENTROPY, UpgradeType.SPELL_END_OF_ALL,
       // Shadow — death
       UpgradeType.SPELL_NECROTIC_TOUCH, UpgradeType.SPELL_GRAVE_CHILL,
-      UpgradeType.SPELL_DEATH_COIL, UpgradeType.SPELL_WITHER,
+      UpgradeType.SPELL_DEATHS_GRASP, UpgradeType.SPELL_BONE_CHILL,
+      UpgradeType.SPELL_DEATH_COIL, UpgradeType.SPELL_WITHER, UpgradeType.SPELL_DRAIN_LIFE,
       UpgradeType.SPELL_SIPHON_SOUL, UpgradeType.SPELL_CORPSE_EXPLOSION,
       UpgradeType.SPELL_SOUL_REND, UpgradeType.SPELL_DOOM,
       UpgradeType.SPELL_APOCALYPSE, UpgradeType.SPELL_REQUIEM,

@@ -197,6 +197,8 @@ const WIKI_TIERS: RaceTiers = {
   fire: 7, cold: 7, lightning: 7,
   distortion: 7, summon: 7, nature: 7,
   heal: 7,
+  earth: 7, arcane: 7, shadow: 7,
+  poison: 7, void: 7, death: 7,
 };
 
 /** Get ALL units (no tier filtering, no faction exclusion) organised by category. */
@@ -225,19 +227,30 @@ function getAllUnits(): Record<UnitCategory, UnitDef[]> {
 // Tier pip icons
 // ---------------------------------------------------------------------------
 
-const TIER_ICON_INFO: { key: keyof RaceTiers; label: string; color: number }[] = [
+type TierIconEntry = { key: keyof RaceTiers; label: string; color: number };
+
+const UNIT_TIER_INFO: TierIconEntry[] = [
   { key: "melee", label: "Melee", color: 0xcc8844 },
   { key: "ranged", label: "Ranged", color: 0x44aa66 },
   { key: "siege", label: "Siege", color: 0x888888 },
   { key: "magic", label: "Magic", color: 0x8866cc },
   { key: "creature", label: "Creature", color: 0xaa4444 },
   { key: "heal", label: "Heal", color: 0x44ccaa },
+];
+
+const MAGIC_TIER_INFO: TierIconEntry[] = [
   { key: "fire", label: "Fire", color: 0xff6622 },
   { key: "cold", label: "Cold", color: 0x4488ff },
   { key: "lightning", label: "Lightning", color: 0xffdd22 },
   { key: "distortion", label: "Distortion", color: 0xaa44cc },
   { key: "summon", label: "Summon", color: 0x66aa44 },
   { key: "nature", label: "Nature", color: 0x22cc44 },
+  { key: "earth", label: "Earth", color: 0xaa8844 },
+  { key: "arcane", label: "Arcane", color: 0x9966ff },
+  { key: "shadow", label: "Shadow", color: 0xaa66cc },
+  { key: "poison", label: "Poison", color: 0x66cc44 },
+  { key: "void", label: "Void", color: 0x8833cc },
+  { key: "death", label: "Death", color: 0x44aa88 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -586,6 +599,60 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
       ] },
     ],
   },
+  earth: {
+    flavor: "The strength of the earth itself — stone, sand, and the deep rumble of tectonic forces unleashed upon the battlefield.",
+    entries: [
+      { tier: 1, abilities: [{ name: "Stone Shard", desc: "A sharp rock projectile." }] },
+      { tier: 3, abilities: [{ name: "Earthquake", desc: "The ground shakes violently." }] },
+      { tier: 5, abilities: [{ name: "Tectonic Ruin", desc: "The earth splits apart." }] },
+      { tier: 7, abilities: [{ name: "Planet Shatter", desc: "The planet itself cracks." }] },
+    ],
+  },
+  arcane: {
+    flavor: "Pure magical energy distilled from the fabric of reality. Arcane mastery transcends the elements, bending raw mana into devastating force.",
+    entries: [
+      { tier: 1, abilities: [{ name: "Arcane Missile", desc: "A bolt of raw mana." }] },
+      { tier: 3, abilities: [{ name: "Arcane Barrage", desc: "A volley of arcane projectiles." }] },
+      { tier: 5, abilities: [{ name: "Arcane Cataclysm", desc: "Overwhelming arcane explosion." }] },
+      { tier: 7, abilities: [{ name: "Omniscience", desc: "All-knowing power unmakes enemies." }] },
+    ],
+  },
+  shadow: {
+    flavor: "Darkness made manifest — shadow magic drains, corrupts, and consumes. Those who wield it walk a razor's edge between power and oblivion.",
+    entries: [
+      { tier: 1, abilities: [{ name: "Shadow Bolt", desc: "A bolt of dark energy." }] },
+      { tier: 3, abilities: [{ name: "Nightmare", desc: "Enemies are trapped in darkness." }] },
+      { tier: 5, abilities: [{ name: "Oblivion", desc: "Total darkness consumes all." }] },
+      { tier: 7, abilities: [{ name: "Shadow Annihilation", desc: "Shadow erases reality." }] },
+    ],
+  },
+  poison: {
+    flavor: "Slow, insidious, and utterly lethal. Poison magic corrodes flesh, blights the land, and leaves nothing but decay in its wake.",
+    entries: [
+      { tier: 1, abilities: [{ name: "Poison Cloud", desc: "A noxious toxic cloud." }] },
+      { tier: 3, abilities: [{ name: "Plague Swarm", desc: "Dark insects carry disease." }] },
+      { tier: 5, abilities: [{ name: "Pandemic", desc: "Massive poison explosion." }] },
+      { tier: 7, abilities: [{ name: "Toxic Apocalypse", desc: "The world dies of poison." }] },
+    ],
+  },
+  void: {
+    flavor: "The void is the absence of everything — matter, energy, even thought. Void mages tear holes in reality, unmaking what should not be unmade.",
+    entries: [
+      { tier: 1, abilities: [{ name: "Void Spark", desc: "A small dark energy pop." }] },
+      { tier: 3, abilities: [{ name: "Void Rift", desc: "A tear in space itself." }] },
+      { tier: 5, abilities: [{ name: "Singularity", desc: "A black hole consumes all." }] },
+      { tier: 7, abilities: [{ name: "End of All", desc: "Existence itself ceases." }] },
+    ],
+  },
+  death: {
+    flavor: "Where other schools destroy the body, death magic attacks the soul. Its practitioners command the boundary between life and death with terrifying precision.",
+    entries: [
+      { tier: 1, abilities: [{ name: "Necrotic Touch", desc: "Dark decay on contact." }] },
+      { tier: 3, abilities: [{ name: "Siphon Soul", desc: "Drains life from the target." }] },
+      { tier: 5, abilities: [{ name: "Apocalypse", desc: "Death energy consumes all." }] },
+      { tier: 7, abilities: [{ name: "Death Incarnate", desc: "Death takes physical form." }] },
+    ],
+  },
 };
 
 // Tier tooltip dimensions
@@ -843,17 +910,25 @@ export class RaceDetailScreen {
     cont.addChild(flavorT);
     cy += flavorT.height + 10;
 
-    // Tier ratings
+    // Tier ratings — unit tiers then magic tiers
     if (race.tiers) {
       cont.addChild(new Graphics().rect(0, cy, 572, 1).fill({ color: 0x334455 }));
       cy += 8;
 
-      const tierLabel = new Text({ text: "TIER RATINGS", style: STYLE_SECTION });
-      tierLabel.position.set(0, cy);
-      cont.addChild(tierLabel);
+      const unitLabel = new Text({ text: "UNIT TIERS", style: STYLE_SECTION });
+      unitLabel.position.set(0, cy);
+      cont.addChild(unitLabel);
       cy += 21;
 
-      this._buildTierGrid(cont, race.tiers, 0, cy, race.accentColor, x, y + cy);
+      this._buildTierPipGroup(cont, UNIT_TIER_INFO, race.tiers, 0, cy, x, y + cy);
+      cy += Math.ceil(UNIT_TIER_INFO.length / 3) * 21 + 6;
+
+      const magicLabel = new Text({ text: "MAGIC SCHOOLS", style: STYLE_SECTION });
+      magicLabel.position.set(0, cy);
+      cont.addChild(magicLabel);
+      cy += 21;
+
+      this._buildTierPipGroup(cont, MAGIC_TIER_INFO, race.tiers, 0, cy, x, y + cy);
     }
   }
 
@@ -887,30 +962,38 @@ export class RaceDetailScreen {
     cont.addChild(new Graphics().rect(0, cy, 572, 1).fill({ color: 0x334455 }));
     cy += 8;
 
-    // Tier grid (all maxed)
-    const tierLabel = new Text({ text: "TIER RATINGS (ALL UNLOCKED)", style: STYLE_SECTION });
-    tierLabel.position.set(0, cy);
-    cont.addChild(tierLabel);
+    // Tier grid (all maxed) — unit tiers then magic tiers
+    const unitLabel = new Text({ text: "UNIT TIERS (ALL UNLOCKED)", style: STYLE_SECTION });
+    unitLabel.position.set(0, cy);
+    cont.addChild(unitLabel);
     cy += 21;
 
-    this._buildTierGrid(cont, WIKI_TIERS, 0, cy, BORDER_COLOR, 26, y + cy);
+    this._buildTierPipGroup(cont, UNIT_TIER_INFO, WIKI_TIERS, 0, cy, 26, y + cy);
+    cy += Math.ceil(UNIT_TIER_INFO.length / 3) * 21 + 6;
+
+    const magicLabel = new Text({ text: "MAGIC SCHOOLS (ALL UNLOCKED)", style: STYLE_SECTION });
+    magicLabel.position.set(0, cy);
+    cont.addChild(magicLabel);
+    cy += 21;
+
+    this._buildTierPipGroup(cont, MAGIC_TIER_INFO, WIKI_TIERS, 0, cy, 26, y + cy);
   }
 
   // ---------------------------------------------------------------------------
   // Tier rating grid (with hover tooltips)
   // ---------------------------------------------------------------------------
 
-  private _buildTierGrid(
-    parent: Container, tiers: RaceTiers,
-    x: number, y: number, _accent: number,
+  private _buildTierPipGroup(
+    parent: Container, entries: TierIconEntry[], tiers: RaceTiers,
+    x: number, y: number,
     cardOffsetX: number, cardOffsetY: number,
   ): void {
     const COLS = 3;
     const COL_W = 192;
     const ROW_H = 21;
 
-    for (let i = 0; i < TIER_ICON_INFO.length; i++) {
-      const info = TIER_ICON_INFO[i];
+    for (let i = 0; i < entries.length; i++) {
+      const info = entries[i];
       const col = i % COLS;
       const row = Math.floor(i / COLS);
       const px = x + col * COL_W;

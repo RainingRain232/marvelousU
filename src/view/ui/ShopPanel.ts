@@ -540,6 +540,50 @@ const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.SPELL_ELEMENTAL_CHAOS]: "Elemental Chaos",
   [UpgradeType.SPELL_GENESIS_STORM]: "Genesis Storm",
   [UpgradeType.SPELL_WRATH_OF_GAIA]: "Wrath of Gaia",
+  // Extra T1 & T2 — fire
+  [UpgradeType.SPELL_CANDLE_FLAME]: "Candle Flame",
+  [UpgradeType.SPELL_HEAT_WAVE]: "Heat Wave",
+  [UpgradeType.SPELL_SCORCH]: "Scorch",
+  // Extra T1 & T2 — ice
+  [UpgradeType.SPELL_CHILL_TOUCH]: "Chill Touch",
+  [UpgradeType.SPELL_ICICLE]: "Icicle",
+  [UpgradeType.SPELL_COLD_SNAP]: "Cold Snap",
+  // Extra T1 & T2 — lightning
+  [UpgradeType.SPELL_JOLT]: "Jolt",
+  [UpgradeType.SPELL_ZAP]: "Zap",
+  [UpgradeType.SPELL_SHOCK_WAVE]: "Shock Wave",
+  // Extra T1 & T2 — earth
+  [UpgradeType.SPELL_PEBBLE_TOSS]: "Pebble Toss",
+  [UpgradeType.SPELL_DUST_DEVIL]: "Dust Devil",
+  [UpgradeType.SPELL_TREMOR]: "Tremor",
+  // Extra T1 & T2 — arcane
+  [UpgradeType.SPELL_MAGIC_DART]: "Magic Dart",
+  [UpgradeType.SPELL_SPARKLE_BURST]: "Sparkle Burst",
+  [UpgradeType.SPELL_ARCANE_BOLT]: "Arcane Bolt",
+  // Extra T1 & T2 — holy
+  [UpgradeType.SPELL_HOLY_TOUCH]: "Holy Touch",
+  [UpgradeType.SPELL_SMITE]: "Smite",
+  [UpgradeType.SPELL_CONSECRATE]: "Consecrate",
+  // Extra T1 & T2 — shadow
+  [UpgradeType.SPELL_DARK_WHISPER]: "Dark Whisper",
+  [UpgradeType.SPELL_SHADOW_FLICKER]: "Shadow Flicker",
+  [UpgradeType.SPELL_NIGHT_SHADE]: "Night Shade",
+  // Extra T1 & T2 — poison
+  [UpgradeType.SPELL_STING]: "Sting",
+  [UpgradeType.SPELL_NOXIOUS_PUFF]: "Noxious Puff",
+  [UpgradeType.SPELL_VENOM_STRIKE]: "Venom Strike",
+  // Extra T1 & T2 — void
+  [UpgradeType.SPELL_NULL_BOLT]: "Null Bolt",
+  [UpgradeType.SPELL_VOID_TOUCH]: "Void Touch",
+  [UpgradeType.SPELL_RIFT_PULSE]: "Rift Pulse",
+  // Extra T1 & T2 — death
+  [UpgradeType.SPELL_DEATHS_GRASP]: "Death's Grasp",
+  [UpgradeType.SPELL_BONE_CHILL]: "Bone Chill",
+  [UpgradeType.SPELL_DRAIN_LIFE]: "Drain Life",
+  // Extra T1 & T2 — nature
+  [UpgradeType.SPELL_LEAF_BLADE]: "Leaf Blade",
+  [UpgradeType.SPELL_THORN_PRICK]: "Thorn Prick",
+  [UpgradeType.SPELL_ROOT_SNARE]: "Root Snare",
 };
 
 // ---------------------------------------------------------------------------

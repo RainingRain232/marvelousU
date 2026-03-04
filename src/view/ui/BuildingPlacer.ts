@@ -319,6 +319,50 @@ const SPELL_KEY: Partial<Record<UpgradeType, string>> = {
   [UpgradeType.SPELL_ELEMENTAL_CHAOS]: "elemental_chaos",
   [UpgradeType.SPELL_GENESIS_STORM]: "genesis_storm",
   [UpgradeType.SPELL_WRATH_OF_GAIA]: "wrath_of_gaia",
+  // Extra T1 & T2 — fire
+  [UpgradeType.SPELL_CANDLE_FLAME]: "candle_flame",
+  [UpgradeType.SPELL_HEAT_WAVE]: "heat_wave",
+  [UpgradeType.SPELL_SCORCH]: "scorch",
+  // Extra T1 & T2 — ice
+  [UpgradeType.SPELL_CHILL_TOUCH]: "chill_touch",
+  [UpgradeType.SPELL_ICICLE]: "icicle",
+  [UpgradeType.SPELL_COLD_SNAP]: "cold_snap",
+  // Extra T1 & T2 — lightning
+  [UpgradeType.SPELL_JOLT]: "jolt",
+  [UpgradeType.SPELL_ZAP]: "zap",
+  [UpgradeType.SPELL_SHOCK_WAVE]: "shock_wave",
+  // Extra T1 & T2 — earth
+  [UpgradeType.SPELL_PEBBLE_TOSS]: "pebble_toss",
+  [UpgradeType.SPELL_DUST_DEVIL]: "dust_devil",
+  [UpgradeType.SPELL_TREMOR]: "tremor",
+  // Extra T1 & T2 — arcane
+  [UpgradeType.SPELL_MAGIC_DART]: "magic_dart",
+  [UpgradeType.SPELL_SPARKLE_BURST]: "sparkle_burst",
+  [UpgradeType.SPELL_ARCANE_BOLT]: "arcane_bolt",
+  // Extra T1 & T2 — holy
+  [UpgradeType.SPELL_HOLY_TOUCH]: "holy_touch",
+  [UpgradeType.SPELL_SMITE]: "smite",
+  [UpgradeType.SPELL_CONSECRATE]: "consecrate",
+  // Extra T1 & T2 — shadow
+  [UpgradeType.SPELL_DARK_WHISPER]: "dark_whisper",
+  [UpgradeType.SPELL_SHADOW_FLICKER]: "shadow_flicker",
+  [UpgradeType.SPELL_NIGHT_SHADE]: "night_shade",
+  // Extra T1 & T2 — poison
+  [UpgradeType.SPELL_STING]: "sting",
+  [UpgradeType.SPELL_NOXIOUS_PUFF]: "noxious_puff",
+  [UpgradeType.SPELL_VENOM_STRIKE]: "venom_strike",
+  // Extra T1 & T2 — void
+  [UpgradeType.SPELL_NULL_BOLT]: "null_bolt",
+  [UpgradeType.SPELL_VOID_TOUCH]: "void_touch",
+  [UpgradeType.SPELL_RIFT_PULSE]: "rift_pulse",
+  // Extra T1 & T2 — death
+  [UpgradeType.SPELL_DEATHS_GRASP]: "deaths_grasp",
+  [UpgradeType.SPELL_BONE_CHILL]: "bone_chill",
+  [UpgradeType.SPELL_DRAIN_LIFE]: "drain_life",
+  // Extra T1 & T2 — nature
+  [UpgradeType.SPELL_LEAF_BLADE]: "leaf_blade",
+  [UpgradeType.SPELL_THORN_PRICK]: "thorn_prick",
+  [UpgradeType.SPELL_ROOT_SNARE]: "root_snare",
 };
 
 // ---------------------------------------------------------------------------

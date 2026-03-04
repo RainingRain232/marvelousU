@@ -195,6 +195,38 @@ export class SpellFX {
       case "elemental_chaos": return this._primalStorm(worldX, worldY, r);
       case "genesis_storm": return this._primalStorm(worldX, worldY, r);
       case "wrath_of_gaia": return this._primalStorm(worldX, worldY, r);
+      // Extra T1 & T2 spells
+      case "candle_flame": return this._flameSpark(worldX, worldY, r);
+      case "heat_wave": return this._flameSpark(worldX, worldY, r);
+      case "scorch": return this._fireball(worldX, worldY, r);
+      case "chill_touch": return this._frostNova(worldX, worldY, r);
+      case "icicle": return this._frostNova(worldX, worldY, r);
+      case "cold_snap": return this._blizzard(worldX, worldY, r);
+      case "jolt": return this._spark(worldX, worldY, r);
+      case "zap": return this._spark(worldX, worldY, r);
+      case "shock_wave": return this._lightningStrike(worldX, worldY, r);
+      case "pebble_toss": return this._stoneShard(worldX, worldY, r);
+      case "dust_devil": return this._stoneShard(worldX, worldY, r);
+      case "tremor": return this._earthquake(worldX, worldY, r);
+      case "magic_dart": return this._arcaneMissile(worldX, worldY, r);
+      case "sparkle_burst": return this._arcaneMissile(worldX, worldY, r);
+      case "arcane_bolt": return this._manaSurge(worldX, worldY, r);
+      case "smite": return this._holySmite(worldX, worldY, r);
+      case "dark_whisper": return this._shadowBolt(worldX, worldY, r);
+      case "shadow_flicker": return this._shadowBolt(worldX, worldY, r);
+      case "night_shade": return this._curseOfDarkness(worldX, worldY, r);
+      case "sting": return this._poisonCloud(worldX, worldY, r);
+      case "noxious_puff": return this._poisonCloud(worldX, worldY, r);
+      case "venom_strike": return this._venomousSpray(worldX, worldY, r);
+      case "null_bolt": return this._voidSpark(worldX, worldY, r);
+      case "void_touch": return this._voidSpark(worldX, worldY, r);
+      case "rift_pulse": return this._dimensionalTear(worldX, worldY, r);
+      case "deaths_grasp": return this._necroticTouch(worldX, worldY, r);
+      case "bone_chill": return this._necroticTouch(worldX, worldY, r);
+      case "drain_life": return this._deathCoil(worldX, worldY, r);
+      case "leaf_blade": return this._thornBarrage(worldX, worldY, r);
+      case "thorn_prick": return this._thornBarrage(worldX, worldY, r);
+      case "root_snare": return this._thornBarrage(worldX, worldY, r);
       default:                return this._genericDamage(worldX, worldY, r);
     }
   }
@@ -225,6 +257,8 @@ export class SpellFX {
     }
     if (spell === "seraphims_light") return this._divineMiracle(worldX, worldY, r);
     if (spell === "ascension") return this._divineMiracle(worldX, worldY, r);
+    if (spell === "holy_touch") return this._blessingOfLight(worldX, worldY, r);
+    if (spell === "consecrate") return this._blessingOfLight(worldX, worldY, r);
     return this._healingWave(worldX, worldY, r);
   }
 
