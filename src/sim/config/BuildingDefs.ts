@@ -793,10 +793,25 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     shopInventory: [],
     blueprints: [],
     upgradeInventory: [
-      UpgradeType.SUMMON_UNICORN,
-      UpgradeType.SUMMON_PIXIE,
+      // Damage spells
+      UpgradeType.SPELL_ARCANE_MISSILE,
+      UpgradeType.SPELL_POISON_CLOUD,
+      UpgradeType.SPELL_LIGHTNING_STRIKE,
+      UpgradeType.SPELL_FIREBALL,
+      UpgradeType.SPELL_HOLY_SMITE,
+      UpgradeType.SPELL_BLIZZARD,
+      UpgradeType.SPELL_EARTHQUAKE,
+      UpgradeType.SPELL_VOID_RIFT,
+      UpgradeType.SPELL_METEOR_STRIKE,
+      UpgradeType.SPELL_ARCANE_STORM,
+      // Healing spells
+      UpgradeType.SPELL_HEALING_WAVE,
+      UpgradeType.SPELL_DIVINE_RESTORATION,
+      // Summon spells
       UpgradeType.SUMMON_BAT_SWARM,
       UpgradeType.SUMMON_SPIDER_BROOD,
+      UpgradeType.SUMMON_PIXIE,
+      UpgradeType.SUMMON_UNICORN,
       UpgradeType.SUMMON_TROLL,
       UpgradeType.SUMMON_FIRE_ELEMENTAL,
       UpgradeType.SUMMON_ICE_ELEMENTAL,

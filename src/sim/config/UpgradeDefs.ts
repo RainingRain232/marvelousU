@@ -9,8 +9,12 @@ export interface UpgradeDef {
   effect: number; // percentage multiplier (e.g., 0.2 for 20%)
   description: string;
   appliesTo: UnitType[];
-  isSpell?: boolean; // If true, this is a repeatable spell summon (no permanent level)
+  isSpell?: boolean; // If true, this is a repeatable spell (no permanent level)
   summonUnit?: UnitType; // Unit type summoned by spell placement
+  spellType?: "summon" | "damage" | "heal"; // Type of spell effect
+  spellDamage?: number; // Damage dealt to enemies in radius
+  spellHeal?: number; // HP restored to friendlies in radius
+  spellRadius?: number; // Area of effect radius in tiles
 }
 
 import { UnitType } from "@/types";
@@ -199,6 +203,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Summon a majestic unicorn at the target location. Costs 100 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.UNICORN,
   },
   [UpgradeType.SUMMON_PIXIE]: {
@@ -210,6 +215,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Summon a pixie at the target location. Costs 50 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.PIXIE,
   },
   [UpgradeType.SUMMON_FIRE_ELEMENTAL]: {
@@ -221,6 +227,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Conjure a fire elemental from the arcane flames. Costs 150 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.FIRE_ELEMENTAL,
   },
   [UpgradeType.SUMMON_ICE_ELEMENTAL]: {
@@ -232,6 +239,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Crystallize an ice elemental from frozen mana. Costs 150 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.ICE_ELEMENTAL,
   },
   [UpgradeType.SUMMON_RED_DRAGON]: {
@@ -243,6 +251,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Call forth a fearsome red dragon from the arcane depths. Costs 500 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.RED_DRAGON,
   },
   [UpgradeType.SUMMON_FROST_DRAGON]: {
@@ -254,6 +263,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Summon an ancient frost dragon wreathed in blizzard. Costs 500 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.FROST_DRAGON,
   },
   [UpgradeType.SUMMON_SPIDER_BROOD]: {
@@ -265,6 +275,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Spawn a venomous spider from shadow webs. Costs 30 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.SPIDER,
   },
   [UpgradeType.SUMMON_TROLL]: {
@@ -276,6 +287,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Summon a regenerating troll warrior. Costs 120 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.TROLL,
   },
   [UpgradeType.SUMMON_ANGEL]: {
@@ -287,6 +299,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Call down a divine angel from the heavens. Costs 300 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.ANGEL,
   },
   [UpgradeType.SUMMON_CYCLOPS]: {
@@ -298,6 +311,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Awaken a mighty cyclops from its ancient slumber. Costs 400 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.CYCLOPS,
   },
   [UpgradeType.SUMMON_BAT_SWARM]: {
@@ -309,6 +323,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Release a bat from the archive belfry. Costs 25 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.BAT,
   },
   [UpgradeType.SUMMON_DARK_SAVANT]: {
@@ -320,6 +335,167 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Bind a dark savant from the forbidden tomes. Costs 250 mana.",
     appliesTo: [],
     isSpell: true,
+    spellType: "summon",
     summonUnit: UnitType.DARK_SAVANT,
+  },
+
+  // ── Damage Spells ───────────────────────────────────────────────
+  [UpgradeType.SPELL_ARCANE_MISSILE]: {
+    type: UpgradeType.SPELL_ARCANE_MISSILE,
+    cost: 0,
+    manaCost: 30,
+    maxLevel: 99,
+    effect: 0,
+    description: "Launch an arcane bolt that damages enemies in a small area.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 20,
+    spellRadius: 1.5,
+  },
+  [UpgradeType.SPELL_FIREBALL]: {
+    type: UpgradeType.SPELL_FIREBALL,
+    cost: 0,
+    manaCost: 60,
+    maxLevel: 99,
+    effect: 0,
+    description: "Hurl a blazing fireball that explodes on impact.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 35,
+    spellRadius: 2,
+  },
+  [UpgradeType.SPELL_BLIZZARD]: {
+    type: UpgradeType.SPELL_BLIZZARD,
+    cost: 0,
+    manaCost: 80,
+    maxLevel: 99,
+    effect: 0,
+    description: "Unleash a freezing blizzard across a wide area.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 25,
+    spellRadius: 3,
+  },
+  [UpgradeType.SPELL_LIGHTNING_STRIKE]: {
+    type: UpgradeType.SPELL_LIGHTNING_STRIKE,
+    cost: 0,
+    manaCost: 50,
+    maxLevel: 99,
+    effect: 0,
+    description: "Call down a focused lightning bolt on a single point.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 45,
+    spellRadius: 1,
+  },
+  [UpgradeType.SPELL_EARTHQUAKE]: {
+    type: UpgradeType.SPELL_EARTHQUAKE,
+    cost: 0,
+    manaCost: 120,
+    maxLevel: 99,
+    effect: 0,
+    description: "Shake the earth beneath your foes across a vast area.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 30,
+    spellRadius: 4,
+  },
+  [UpgradeType.SPELL_METEOR_STRIKE]: {
+    type: UpgradeType.SPELL_METEOR_STRIKE,
+    cost: 0,
+    manaCost: 200,
+    maxLevel: 99,
+    effect: 0,
+    description: "Summon a devastating meteor from the heavens.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 60,
+    spellRadius: 2.5,
+  },
+  [UpgradeType.SPELL_VOID_RIFT]: {
+    type: UpgradeType.SPELL_VOID_RIFT,
+    cost: 0,
+    manaCost: 150,
+    maxLevel: 99,
+    effect: 0,
+    description: "Tear a rift in reality that damages all caught within.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 50,
+    spellRadius: 2,
+  },
+  [UpgradeType.SPELL_HOLY_SMITE]: {
+    type: UpgradeType.SPELL_HOLY_SMITE,
+    cost: 0,
+    manaCost: 70,
+    maxLevel: 99,
+    effect: 0,
+    description: "Strike enemies with divine radiance.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 30,
+    spellRadius: 1.5,
+  },
+  [UpgradeType.SPELL_POISON_CLOUD]: {
+    type: UpgradeType.SPELL_POISON_CLOUD,
+    cost: 0,
+    manaCost: 40,
+    maxLevel: 99,
+    effect: 0,
+    description: "Release a noxious cloud that weakens enemies in a wide area.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 15,
+    spellRadius: 3,
+  },
+  [UpgradeType.SPELL_ARCANE_STORM]: {
+    type: UpgradeType.SPELL_ARCANE_STORM,
+    cost: 0,
+    manaCost: 250,
+    maxLevel: 99,
+    effect: 0,
+    description: "Conjure a massive arcane tempest that ravages a huge area.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "damage",
+    spellDamage: 40,
+    spellRadius: 3.5,
+  },
+
+  // ── Healing Spells ──────────────────────────────────────────────
+  [UpgradeType.SPELL_HEALING_WAVE]: {
+    type: UpgradeType.SPELL_HEALING_WAVE,
+    cost: 0,
+    manaCost: 50,
+    maxLevel: 99,
+    effect: 0,
+    description: "Send a wave of restorative energy to heal nearby allies.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "heal",
+    spellHeal: 30,
+    spellRadius: 2,
+  },
+  [UpgradeType.SPELL_DIVINE_RESTORATION]: {
+    type: UpgradeType.SPELL_DIVINE_RESTORATION,
+    cost: 0,
+    manaCost: 120,
+    maxLevel: 99,
+    effect: 0,
+    description: "Call upon divine power to restore health to all allies in a large area.",
+    appliesTo: [],
+    isSpell: true,
+    spellType: "heal",
+    spellHeal: 60,
+    spellRadius: 3,
   },
 };

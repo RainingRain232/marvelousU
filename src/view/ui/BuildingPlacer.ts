@@ -4,7 +4,7 @@ import type { GameState } from "@sim/state/GameState";
 import type { ViewManager } from "@view/ViewManager";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
-import { BuildingType, Direction, UnitType, UpgradeType } from "@/types";
+import { BuildingType, Direction, UnitType, UnitState, UpgradeType } from "@/types";
 import type { PlayerId } from "@/types";
 import {
   canPlace,
@@ -16,6 +16,9 @@ import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
 import { EventBus } from "@sim/core/EventBus";
 import { createUnit } from "@sim/entities/Unit";
+import { killUnit } from "@sim/systems/CombatSystem";
+import { isEnemy, isAlly } from "@sim/state/GameState";
+import { spellFX } from "@view/fx/SpellFX";
 
 // ---------------------------------------------------------------------------
 // Visual constants
@@ -127,6 +130,20 @@ const HINT_STYLE = new TextStyle({
   align: "center",
 });
 
+// Element lookup for damage spell FX colors
+const SPELL_ELEMENT: Partial<Record<UpgradeType, string>> = {
+  [UpgradeType.SPELL_ARCANE_MISSILE]: "arcane",
+  [UpgradeType.SPELL_FIREBALL]: "fire",
+  [UpgradeType.SPELL_BLIZZARD]: "ice",
+  [UpgradeType.SPELL_LIGHTNING_STRIKE]: "lightning",
+  [UpgradeType.SPELL_EARTHQUAKE]: "earth",
+  [UpgradeType.SPELL_METEOR_STRIKE]: "fire",
+  [UpgradeType.SPELL_VOID_RIFT]: "void",
+  [UpgradeType.SPELL_HOLY_SMITE]: "holy",
+  [UpgradeType.SPELL_POISON_CLOUD]: "poison",
+  [UpgradeType.SPELL_ARCANE_STORM]: "arcane",
+};
+
 // ---------------------------------------------------------------------------
 // BuildingPlacer
 // ---------------------------------------------------------------------------
@@ -167,11 +184,16 @@ export class BuildingPlacer {
   private _constructionUnitType: UnitType | null = null;
   private _constructionPlayerId: PlayerId = "";
 
-  // Spell placement mode state (summon unicorn/pixie)
+  // Spell placement mode state (summon spells)
   private _isSpellPlacement = false;
   private _spellUpgradeType: UpgradeType | null = null;
   private _spellUnitType: UnitType | null = null;
   private _spellPlayerId: PlayerId = "";
+
+  // AoE spell mode state (damage/heal spells)
+  private _isAoeSpell = false;
+  private _aoeUpgradeType: UpgradeType | null = null;
+  private _aoePlayerId: PlayerId = "";
 
   // Ghost graphics (rebuilt once per activate)
   private _ghostBody = new Graphics();
@@ -341,6 +363,58 @@ export class BuildingPlacer {
     this._positionHintBar();
   }
 
+  /**
+   * Enter AoE spell placement mode for damage/heal spells.
+   * Mana has already been deducted by ShopPanel._buySpellUpgrade.
+   */
+  activateAoeSpell(
+    upgradeType: UpgradeType,
+    playerId: PlayerId,
+  ): void {
+    this._isAoeSpell = true;
+    this._aoeUpgradeType = upgradeType;
+    this._aoePlayerId = playerId;
+
+    const def = UPGRADE_DEFINITIONS[upgradeType];
+    const radiusPx = (def.spellRadius ?? 2) * TS;
+    const isDamage = def.spellType === "damage";
+    const color = isDamage ? 0xff4444 : 0x22cc44;
+
+    // Defer _active
+    this._active = false;
+    setTimeout(() => {
+      this._active = true;
+    }, 0);
+
+    this._isValid = true;
+    this._ghostContainer.visible = true;
+
+    // Build AoE circle ghost showing spell radius
+    this._ghostBody.clear();
+    this._ghostHint.clear();
+    this._ghostBody
+      .circle(0, 0, radiusPx)
+      .fill({ color, alpha: 0.15 })
+      .circle(0, 0, radiusPx)
+      .stroke({ color, alpha: 0.6, width: 2 });
+    // Center crosshair
+    this._ghostBody
+      .circle(0, 0, 3)
+      .fill({ color: 0xffffff, alpha: 0.8 });
+
+    const spellName = upgradeType.replace(/^spell_/, "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    this._ghostLabel.text = spellName;
+    this._ghostLabel.anchor.set(0.5, 0.5);
+    this._ghostLabel.position.set(0, -radiusPx - 10);
+
+    // Hint bar
+    const verb = isDamage ? "Targeting" : "Healing";
+    this._hintText.text = `${verb}: ${spellName}  ·  Left-click to cast  ·  ESC / Right-click to cancel`;
+    this._hintText.anchor.set(0.5, 1);
+    this._hintContainer.visible = true;
+    this._positionHintBar();
+  }
+
   get isActive(): boolean {
     return this._active;
   }
@@ -390,6 +464,18 @@ export class BuildingPlacer {
     this._cursorTx = Math.floor(world.x);
     this._cursorTy = Math.floor(world.y);
 
+    if (this._isAoeSpell) {
+      // AoE spell: follow world pixel position (not tile-snapped)
+      const cam = this._vm.camera;
+      const wpx = screenX / cam.zoom - cam.x;
+      const wpy = screenY / cam.zoom - cam.y;
+      this._isValid = this._cursorTx >= 0 && this._cursorTx < BalanceConfig.GRID_WIDTH
+        && this._cursorTy >= 0 && this._cursorTy < BalanceConfig.GRID_HEIGHT;
+      this._ghostContainer.position.set(wpx, wpy);
+      this._ghostBody.tint = this._isValid ? 0xffffff : 0xff8888;
+      return;
+    }
+
     if (this._isSpellPlacement) {
       // Spell placement: allow anywhere on the map
       this._isValid = this._cursorTx >= 0 && this._cursorTx < BalanceConfig.GRID_WIDTH
@@ -431,6 +517,56 @@ export class BuildingPlacer {
   private _tryConfirm(): void {
     if (!this._isValid) return;
 
+    // ── AoE damage/heal spell ──
+    if (this._isAoeSpell && this._aoeUpgradeType) {
+      const def = UPGRADE_DEFINITIONS[this._aoeUpgradeType];
+      const worldX = this._ghostContainer.position.x;
+      const worldY = this._ghostContainer.position.y;
+      const radiusTiles = def.spellRadius ?? 2;
+      const radiusPx = radiusTiles * TS;
+
+      if (def.spellType === "damage" && def.spellDamage) {
+        // Damage all enemy units within radius
+        const centerTx = worldX / TS;
+        const centerTy = worldY / TS;
+        for (const unit of this._state.units.values()) {
+          if (unit.state === UnitState.DIE) continue;
+          if (!isEnemy(this._state, this._aoePlayerId, unit.owner)) continue;
+          const dx = unit.position.x - centerTx;
+          const dy = unit.position.y - centerTy;
+          if (dx * dx + dy * dy <= radiusTiles * radiusTiles) {
+            unit.hp -= def.spellDamage;
+            EventBus.emit("unitDamaged", { unitId: unit.id, amount: def.spellDamage, attackerId: "" });
+            if (unit.hp <= 0) {
+              unit.hp = 0;
+              killUnit(unit);
+            }
+          }
+        }
+        const element = SPELL_ELEMENT[this._aoeUpgradeType] ?? "default";
+        spellFX.playDamage(worldX, worldY, radiusTiles, element);
+      } else if (def.spellType === "heal" && def.spellHeal) {
+        // Heal all friendly units within radius
+        const centerTx = worldX / TS;
+        const centerTy = worldY / TS;
+        for (const unit of this._state.units.values()) {
+          if (unit.state === UnitState.DIE) continue;
+          if (!isAlly(this._state, this._aoePlayerId, unit.owner)) continue;
+          const dx = unit.position.x - centerTx;
+          const dy = unit.position.y - centerTy;
+          if (dx * dx + dy * dy <= radiusTiles * radiusTiles) {
+            unit.hp = Math.min(unit.hp + def.spellHeal, unit.maxHp);
+            EventBus.emit("unitHealed", { unitId: unit.id, amount: def.spellHeal, position: { x: unit.position.x, y: unit.position.y } });
+          }
+        }
+        spellFX.playHeal(worldX, worldY, radiusTiles);
+      }
+
+      this._deactivate();
+      return;
+    }
+
+    // ── Summon spell ──
     if (this._isSpellPlacement && this._spellUnitType) {
       // Summon the unit at cursor position
       const player = this._state.players.get(this._spellPlayerId);
@@ -443,6 +579,10 @@ export class BuildingPlacer {
       this._state.units.set(unit.id, unit);
       UpgradeSystem.applyAllUpgradesToUnit(unit);
       EventBus.emit("unitSpawned", { unitId: unit.id });
+      // Play summon rune visual effect
+      const wx = (this._cursorTx + 0.5) * TS;
+      const wy = (this._cursorTy + 0.5) * TS;
+      spellFX.playSummonRune(wx, wy);
       this._deactivate();
       return;
     }
@@ -469,7 +609,16 @@ export class BuildingPlacer {
   }
 
   private _cancel(): void {
-    if (this._isSpellPlacement && this._spellUpgradeType) {
+    if (this._isAoeSpell && this._aoeUpgradeType) {
+      // Refund the mana cost and decrement level
+      const upgradeDef = UPGRADE_DEFINITIONS[this._aoeUpgradeType];
+      const player = this._state.players.get(this._aoePlayerId);
+      if (player && upgradeDef.manaCost && upgradeDef.manaCost > 0) {
+        player.mana += upgradeDef.manaCost;
+        EventBus.emit("manaChanged", { playerId: this._aoePlayerId, amount: player.mana });
+      }
+      UpgradeSystem.decrementUpgrade(this._aoePlayerId, this._aoeUpgradeType);
+    } else if (this._isSpellPlacement && this._spellUpgradeType) {
       // Refund the mana cost and decrement level
       const upgradeDef = UPGRADE_DEFINITIONS[this._spellUpgradeType];
       const player = this._state.players.get(this._spellPlayerId);
@@ -501,6 +650,8 @@ export class BuildingPlacer {
     this._isSpellPlacement = false;
     this._spellUpgradeType = null;
     this._spellUnitType = null;
+    this._isAoeSpell = false;
+    this._aoeUpgradeType = null;
     this._ghostContainer.visible = false;
     this._hintContainer.visible = false;
   }

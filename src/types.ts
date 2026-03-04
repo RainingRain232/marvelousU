@@ -267,6 +267,18 @@ export enum UpgradeType {
   SUMMON_CYCLOPS = "summon_cyclops",
   SUMMON_BAT_SWARM = "summon_bat_swarm",
   SUMMON_DARK_SAVANT = "summon_dark_savant",
+  SPELL_ARCANE_MISSILE = "spell_arcane_missile",
+  SPELL_FIREBALL = "spell_fireball",
+  SPELL_BLIZZARD = "spell_blizzard",
+  SPELL_LIGHTNING_STRIKE = "spell_lightning_strike",
+  SPELL_EARTHQUAKE = "spell_earthquake",
+  SPELL_METEOR_STRIKE = "spell_meteor_strike",
+  SPELL_VOID_RIFT = "spell_void_rift",
+  SPELL_HOLY_SMITE = "spell_holy_smite",
+  SPELL_POISON_CLOUD = "spell_poison_cloud",
+  SPELL_ARCANE_STORM = "spell_arcane_storm",
+  SPELL_HEALING_WAVE = "spell_healing_wave",
+  SPELL_DIVINE_RESTORATION = "spell_divine_restoration",
 }
 
 export enum UnitState {

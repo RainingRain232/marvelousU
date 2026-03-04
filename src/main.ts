@@ -13,6 +13,7 @@ import { fireballFX } from "@view/fx/FireballFX";
 import { lightningFX } from "@view/fx/LightningFX";
 import { summonFX } from "@view/fx/SummonFX";
 import { deathFX } from "@view/fx/DeathFX";
+import { spellFX } from "@view/fx/SpellFX";
 import { iceBallFX } from "@view/fx/IceBallFX";
 import { webFX } from "@view/fx/WebFX";
 import { turretArrowFX } from "@view/fx/TurretArrowFX";
@@ -348,6 +349,7 @@ import type { RaceId } from "@sim/config/RaceDefs";
     viewManager.onUpdate((_s, dt) => summonFX.update(dt));
     deathFX.init(viewManager);
     viewManager.onUpdate((_s, dt) => deathFX.update(dt));
+    spellFX.init(viewManager);
     iceBallFX.init(viewManager);
     viewManager.onUpdate((_s, dt) => iceBallFX.update(dt));
     webFX.init(viewManager);
@@ -1405,6 +1407,7 @@ async function _bootGame(
   // Death FX
   deathFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => deathFX.update(dt));
+  spellFX.init(viewManager);
 
   // IceBall FX
   iceBallFX.init(viewManager);

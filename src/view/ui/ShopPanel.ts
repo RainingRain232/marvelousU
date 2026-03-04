@@ -361,6 +361,18 @@ const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.SUMMON_CYCLOPS]: "Cyclops",
   [UpgradeType.SUMMON_BAT_SWARM]: "Bat",
   [UpgradeType.SUMMON_DARK_SAVANT]: "Savant",
+  [UpgradeType.SPELL_ARCANE_MISSILE]: "Arcane",
+  [UpgradeType.SPELL_FIREBALL]: "Fireball",
+  [UpgradeType.SPELL_BLIZZARD]: "Blizzard",
+  [UpgradeType.SPELL_LIGHTNING_STRIKE]: "Lightning",
+  [UpgradeType.SPELL_EARTHQUAKE]: "Quake",
+  [UpgradeType.SPELL_METEOR_STRIKE]: "Meteor",
+  [UpgradeType.SPELL_VOID_RIFT]: "Void Rift",
+  [UpgradeType.SPELL_HOLY_SMITE]: "Smite",
+  [UpgradeType.SPELL_POISON_CLOUD]: "Poison",
+  [UpgradeType.SPELL_ARCANE_STORM]: "Storm",
+  [UpgradeType.SPELL_HEALING_WAVE]: "Heal",
+  [UpgradeType.SPELL_DIVINE_RESTORATION]: "Restore",
 };
 
 // ---------------------------------------------------------------------------
@@ -1979,9 +1991,9 @@ export class ShopPanel {
       return;
     }
 
-    // Special handling for spell upgrades (summon spells)
+    // Special handling for spell upgrades (summon, damage, heal)
     const upgDef = UPGRADE_DEFINITIONS[upgradeType];
-    if (upgDef.isSpell && upgDef.summonUnit) {
+    if (upgDef.isSpell && upgDef.spellType) {
       this._buySpellUpgrade(upgradeType);
       return;
     }
@@ -2033,9 +2045,11 @@ export class ShopPanel {
     this.close();
 
     const def = UPGRADE_DEFINITIONS[upgradeType];
-    const unitType = def.summonUnit!;
-
-    buildingPlacer.activateSpellPlacement(upgradeType, unitType, this._localPlayerId);
+    if (def.summonUnit) {
+      buildingPlacer.activateSpellPlacement(upgradeType, def.summonUnit, this._localPlayerId);
+    } else {
+      buildingPlacer.activateAoeSpell(upgradeType, this._localPlayerId);
+    }
   }
 }
 
