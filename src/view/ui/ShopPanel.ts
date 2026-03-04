@@ -28,6 +28,7 @@ import {
 } from "@/types";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { animationManager } from "@view/animation/AnimationManager";
+import gsap from "gsap";
 import { CastleRenderer } from "@view/entities/CastleRenderer";
 import { TowerRenderer } from "@view/entities/TowerRenderer";
 import { LightningTowerRenderer } from "@view/entities/LightningTowerRenderer";
@@ -1549,37 +1550,41 @@ export class ShopPanel {
       .stroke({ color: 0x667788, width: 2 });
     btn.addChild(bg);
 
-    // Upgrade icon (more prominent)
-    const upgradeIcon = new Graphics()
-      .circle(ICON_SIZE / 2, ICON_SIZE / 2 - 6, (ICON_SIZE - 14) / 2)
-      .fill({ color: 0x778899 })
-      .circle(ICON_SIZE / 2, ICON_SIZE / 2 - 6, (ICON_SIZE - 18) / 2)
-      .fill({ color: 0x556677 });
-    btn.addChild(upgradeIcon);
+    // Spell-specific animated icon or generic upgrade icon
+    const spellDef = def as any;
+    if (spellDef.isSpell && spellDef.spellSchool !== "conjuration") {
+      this._addSpellIcon(btn, upgradeType, spellDef);
+    } else {
+      // Generic upgrade icon (circle + arrow + label)
+      const upgradeIcon = new Graphics()
+        .circle(ICON_SIZE / 2, ICON_SIZE / 2 - 6, (ICON_SIZE - 14) / 2)
+        .fill({ color: 0x778899 })
+        .circle(ICON_SIZE / 2, ICON_SIZE / 2 - 6, (ICON_SIZE - 18) / 2)
+        .fill({ color: 0x556677 });
+      btn.addChild(upgradeIcon);
 
-    // Upgrade symbol (up arrow)
-    const arrow = new Graphics()
-      .moveTo(ICON_SIZE / 2, ICON_SIZE / 2 - 12)
-      .lineTo(ICON_SIZE / 2 - 4, ICON_SIZE / 2 - 4)
-      .moveTo(ICON_SIZE / 2, ICON_SIZE / 2 - 12)
-      .lineTo(ICON_SIZE / 2 + 4, ICON_SIZE / 2 - 4)
-      .stroke({ color: 0xffffff, width: 2 });
-    btn.addChild(arrow);
+      const arrow = new Graphics()
+        .moveTo(ICON_SIZE / 2, ICON_SIZE / 2 - 12)
+        .lineTo(ICON_SIZE / 2 - 4, ICON_SIZE / 2 - 4)
+        .moveTo(ICON_SIZE / 2, ICON_SIZE / 2 - 12)
+        .lineTo(ICON_SIZE / 2 + 4, ICON_SIZE / 2 - 4)
+        .stroke({ color: 0xffffff, width: 2 });
+      btn.addChild(arrow);
 
-    // Upgrade label
-    const label = new Text({
-      text: UPGRADE_LABELS[upgradeType],
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 7,
-        fill: 0xffffff,
-        align: "center",
-        fontWeight: "bold",
-      }),
-    });
-    label.anchor.set(0.5, 0.5);
-    label.position.set(ICON_SIZE / 2, ICON_SIZE / 2 + 6);
-    btn.addChild(label);
+      const label = new Text({
+        text: UPGRADE_LABELS[upgradeType],
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 7,
+          fill: 0xffffff,
+          align: "center",
+          fontWeight: "bold",
+        }),
+      });
+      label.anchor.set(0.5, 0.5);
+      label.position.set(ICON_SIZE / 2, ICON_SIZE / 2 + 6);
+      btn.addChild(label);
+    }
 
     // Cost and level info
     const def = UPGRADE_DEFINITIONS[upgradeType];
@@ -1651,6 +1656,463 @@ export class ShopPanel {
     });
 
     return btn;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Spell icon mini-animations — each spell draws a unique looping graphic
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private _addSpellIcon(btn: Container, upgradeType: UpgradeType, spellDef: any): void {
+    const cx = ICON_SIZE / 2;
+    const cy = ICON_SIZE / 2 - 4;
+    const S = ICON_SIZE * 0.32; // base scale for icon art
+    const TAU = Math.PI * 2;
+    const iconC = new Container();
+    iconC.position.set(cx, cy);
+    btn.addChild(iconC);
+
+    // Spell label at bottom of icon area
+    const label = new Text({
+      text: UPGRADE_LABELS[upgradeType],
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 6,
+        fill: 0xdddddd,
+        align: "center",
+        fontWeight: "bold",
+      }),
+    });
+    label.anchor.set(0.5, 0.5);
+    label.position.set(cx, ICON_SIZE / 2 + 10);
+    btn.addChild(label);
+
+    const school = spellDef.spellSchool as string;
+
+    switch (upgradeType) {
+      // ── ELEMENTAL ───────────────────────────────────────────────────────
+      case UpgradeType.SPELL_FIREBALL: {
+        // Flickering fireball orb
+        const glow = new Graphics().circle(0, 0, S * 0.9).fill({ color: 0xff6622, alpha: 0.3 });
+        const core = new Graphics().circle(0, 0, S * 0.55).fill({ color: 0xff4400, alpha: 0.8 });
+        const hot = new Graphics().circle(0, 0, S * 0.25).fill({ color: 0xffffaa, alpha: 0.9 });
+        iconC.addChild(glow, core, hot);
+        gsap.to(glow, { pixi: { scaleX: 1.3, scaleY: 1.3 }, alpha: 0.15, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(core, { pixi: { scaleX: 1.1, scaleY: 1.1 }, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        // Tiny ember particles rising
+        for (let i = 0; i < 3; i++) {
+          const ember = new Graphics().circle(0, 0, 1.2).fill({ color: 0xffaa44, alpha: 0.7 });
+          ember.position.set((Math.random() - 0.5) * S * 0.6, S * 0.2);
+          iconC.addChild(ember);
+          gsap.to(ember, { y: -S * 0.9, alpha: 0, duration: 0.8 + i * 0.2, repeat: -1, delay: i * 0.25, ease: "power1.out" });
+        }
+        break;
+      }
+      case UpgradeType.SPELL_METEOR_STRIKE: {
+        // Meteor body with trail
+        const trail = new Graphics().moveTo(S * 0.5, -S * 0.8).lineTo(-S * 0.2, S * 0.1).lineTo(S * 0.8, -S * 0.6).closePath().fill({ color: 0xff6622, alpha: 0.25 });
+        const meteorG = new Graphics().circle(0, 0, S * 0.4).fill({ color: 0xffaa22, alpha: 0.9 }).circle(0, 0, S * 0.2).fill({ color: 0xffffcc, alpha: 0.8 });
+        iconC.addChild(trail, meteorG);
+        gsap.to(meteorG, { pixi: { scaleX: 1.15, scaleY: 1.15 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(trail, { alpha: 0.1, duration: 0.6, yoyo: true, repeat: -1 });
+        break;
+      }
+      case UpgradeType.SPELL_BLIZZARD: {
+        // Swirling snowflakes
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * TAU;
+          const flake = new Graphics();
+          const sz = 1.5 + Math.random();
+          flake.moveTo(0, -sz).lineTo(sz * 0.4, 0).lineTo(0, sz).lineTo(-sz * 0.4, 0).closePath().fill({ color: [0xaaddff, 0xcceeff, 0xddeeff][i % 3], alpha: 0.8 });
+          flake.position.set(Math.cos(a) * S * 0.5, Math.sin(a) * S * 0.5);
+          iconC.addChild(flake);
+          gsap.to(flake, { rotation: TAU, duration: 2.5 + i * 0.3, repeat: -1, ease: "none" });
+        }
+        const wind = new Graphics().circle(0, 0, S * 0.7).stroke({ color: 0x88bbdd, width: 1, alpha: 0.3 });
+        iconC.addChild(wind);
+        gsap.to(wind, { rotation: TAU, duration: 3, repeat: -1, ease: "none" });
+        break;
+      }
+      case UpgradeType.SPELL_LIGHTNING_STRIKE: {
+        // Jagged bolt
+        const bolt = new Graphics();
+        bolt.moveTo(0, -S).lineTo(S * 0.25, -S * 0.35).lineTo(-S * 0.1, -S * 0.2).lineTo(S * 0.15, S * 0.4).lineTo(-S * 0.05, S * 0.2).lineTo(0, S);
+        bolt.stroke({ color: 0xffffff, width: 2, alpha: 0.9 });
+        const boltGlow = new Graphics();
+        boltGlow.moveTo(0, -S).lineTo(S * 0.25, -S * 0.35).lineTo(-S * 0.1, -S * 0.2).lineTo(S * 0.15, S * 0.4).lineTo(-S * 0.05, S * 0.2).lineTo(0, S);
+        boltGlow.stroke({ color: 0x4488ff, width: 4, alpha: 0.3 });
+        iconC.addChild(boltGlow, bolt);
+        gsap.to(bolt, { alpha: 0.4, duration: 0.08, yoyo: true, repeat: -1, repeatDelay: 0.8 });
+        gsap.to(boltGlow, { alpha: 0.1, duration: 0.08, yoyo: true, repeat: -1, repeatDelay: 0.8 });
+        break;
+      }
+      case UpgradeType.SPELL_EARTHQUAKE: {
+        // Cracked ground with rocks
+        const crack1 = new Graphics().moveTo(-S * 0.8, 0).lineTo(-S * 0.2, -S * 0.15).lineTo(S * 0.1, S * 0.1).lineTo(S * 0.8, -S * 0.05);
+        crack1.stroke({ color: 0x886633, width: 1.5, alpha: 0.7 });
+        const crack2 = new Graphics().moveTo(0, -S * 0.6).lineTo(S * 0.15, -S * 0.1).lineTo(-S * 0.1, S * 0.2).lineTo(S * 0.05, S * 0.6);
+        crack2.stroke({ color: 0x775533, width: 1.5, alpha: 0.6 });
+        iconC.addChild(crack1, crack2);
+        for (let i = 0; i < 3; i++) {
+          const rock = new Graphics();
+          const rs = 2 + Math.random() * 2;
+          rock.moveTo(-rs, 0).lineTo(0, -rs).lineTo(rs, 0).lineTo(0, rs * 0.6).closePath().fill({ color: [0x886633, 0xaa8855, 0x664422][i], alpha: 0.8 });
+          rock.position.set((Math.random() - 0.5) * S, (Math.random() - 0.5) * S * 0.6);
+          iconC.addChild(rock);
+          gsap.to(rock, { y: rock.position.y - 3, duration: 0.3, yoyo: true, repeat: -1, delay: i * 0.15, ease: "power1.out" });
+        }
+        // Shake
+        gsap.to(iconC, { x: cx + 1, duration: 0.05, yoyo: true, repeat: -1, repeatDelay: 1.5 });
+        break;
+      }
+      case UpgradeType.SPELL_FROST_NOVA: {
+        // Ice ring expanding/contracting
+        const ring = new Graphics().circle(0, 0, S * 0.7).stroke({ color: 0x88ddff, width: 1.5, alpha: 0.6 });
+        const core = new Graphics().circle(0, 0, S * 0.25).fill({ color: 0xeeffff, alpha: 0.7 });
+        iconC.addChild(ring, core);
+        gsap.to(ring, { pixi: { scaleX: 1.2, scaleY: 1.2 }, alpha: 0.2, duration: 1, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * TAU;
+          const shard = new Graphics();
+          shard.moveTo(0, -2.5).lineTo(1.2, 0).lineTo(0, 1.5).lineTo(-1.2, 0).closePath().fill({ color: 0xaaddff, alpha: 0.7 });
+          shard.position.set(Math.cos(a) * S * 0.55, Math.sin(a) * S * 0.55);
+          shard.rotation = a;
+          iconC.addChild(shard);
+        }
+        break;
+      }
+      case UpgradeType.SPELL_CHAIN_LIGHTNING: {
+        // Multiple small bolts connecting dots
+        const pts = [{ x: -S * 0.6, y: -S * 0.4 }, { x: S * 0.2, y: -S * 0.6 }, { x: S * 0.5, y: S * 0.1 }, { x: -S * 0.3, y: S * 0.5 }];
+        for (const p of pts) {
+          const dot = new Graphics().circle(0, 0, 2).fill({ color: 0x4488ff, alpha: 0.7 });
+          dot.position.set(p.x, p.y);
+          iconC.addChild(dot);
+        }
+        for (let i = 0; i < pts.length - 1; i++) {
+          const line = new Graphics();
+          const f = pts[i]; const t = pts[i + 1];
+          const mx = (f.x + t.x) / 2 + (Math.random() - 0.5) * 5;
+          const my = (f.y + t.y) / 2 + (Math.random() - 0.5) * 5;
+          line.moveTo(f.x, f.y).lineTo(mx, my).lineTo(t.x, t.y).stroke({ color: 0xccddff, width: 1.5, alpha: 0.8 });
+          iconC.addChild(line);
+          gsap.to(line, { alpha: 0.2, duration: 0.1, yoyo: true, repeat: -1, repeatDelay: 0.6 + i * 0.15 });
+        }
+        break;
+      }
+      case UpgradeType.SPELL_INFERNO: {
+        // Towering flame pillar
+        const flame1 = new Graphics().rect(-S * 0.3, -S * 0.9, S * 0.6, S * 1.4).fill({ color: 0xff4400, alpha: 0.35 });
+        const flame2 = new Graphics().rect(-S * 0.12, -S * 0.9, S * 0.24, S * 1.4).fill({ color: 0xffdd00, alpha: 0.5 });
+        iconC.addChild(flame1, flame2);
+        gsap.to(flame1, { pixi: { scaleX: 1.2, scaleY: 1.05 }, alpha: 0.2, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(flame2, { pixi: { scaleX: 0.8, scaleY: 1.05 }, alpha: 0.3, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        for (let i = 0; i < 4; i++) {
+          const ember = new Graphics().circle(0, 0, 1).fill({ color: [0xffaa44, 0xff6622][i % 2], alpha: 0.8 });
+          ember.position.set((Math.random() - 0.5) * S * 0.5, S * 0.3);
+          iconC.addChild(ember);
+          gsap.to(ember, { y: -S, x: (Math.random() - 0.5) * S * 0.8, alpha: 0, duration: 0.9 + i * 0.15, repeat: -1, delay: i * 0.2, ease: "power1.out" });
+        }
+        break;
+      }
+
+      // ── ARCANE ──────────────────────────────────────────────────────────
+      case UpgradeType.SPELL_ARCANE_MISSILE: {
+        // Arcane bolt with trail
+        const trail = new Graphics().moveTo(S * 0.6, -S * 0.5).lineTo(-S * 0.2, S * 0.1).lineTo(S * 0.7, -S * 0.4).closePath().fill({ color: 0x9966ff, alpha: 0.2 });
+        const orb = new Graphics().circle(0, 0, S * 0.35).fill({ color: 0x9966ff, alpha: 0.7 }).circle(0, 0, S * 0.15).fill({ color: 0xddaaff, alpha: 0.9 });
+        iconC.addChild(trail, orb);
+        gsap.to(orb, { pixi: { scaleX: 1.2, scaleY: 1.2 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(trail, { alpha: 0.08, duration: 0.5, yoyo: true, repeat: -1 });
+        break;
+      }
+      case UpgradeType.SPELL_MANA_SURGE: {
+        // Spiraling mana particles around a core
+        const core = new Graphics().circle(0, 0, S * 0.3).fill({ color: 0x6644cc, alpha: 0.6 }).circle(0, 0, S * 0.15).fill({ color: 0xeeddff, alpha: 0.8 });
+        iconC.addChild(core);
+        gsap.to(core, { pixi: { scaleX: 1.3, scaleY: 1.3 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        for (let i = 0; i < 4; i++) {
+          const p = new Graphics().circle(0, 0, 1.5).fill({ color: [0x9966ff, 0xddaaff][i % 2], alpha: 0.7 });
+          const a = (i / 4) * TAU;
+          p.position.set(Math.cos(a) * S * 0.55, Math.sin(a) * S * 0.55);
+          iconC.addChild(p);
+          gsap.to(p, { rotation: 0, duration: 0 }); // just to init
+        }
+        // Rotate the whole icon container for spiral effect
+        gsap.to(iconC, { rotation: TAU, duration: 3, repeat: -1, ease: "none" });
+        break;
+      }
+      case UpgradeType.SPELL_ARCANE_BARRAGE: {
+        // Multiple small arcane dots raining
+        for (let i = 0; i < 5; i++) {
+          const dot = new Graphics().circle(0, 0, 1.5).fill({ color: [0x9966ff, 0xddaaff][i % 2], alpha: 0.8 });
+          dot.position.set((i - 2) * S * 0.3, -S * 0.8);
+          iconC.addChild(dot);
+          gsap.to(dot, { y: S * 0.5, alpha: 0, duration: 0.6, repeat: -1, delay: i * 0.12, ease: "power1.in" });
+        }
+        break;
+      }
+      case UpgradeType.SPELL_ARCANE_STORM: {
+        // Vortex with bolts
+        const vortex = new Graphics().circle(0, 0, S * 0.6).stroke({ color: 0x9966ff, width: 1.5, alpha: 0.4 });
+        const inner = new Graphics().circle(0, 0, S * 0.3).stroke({ color: 0xddaaff, width: 1, alpha: 0.3 });
+        iconC.addChild(vortex, inner);
+        gsap.to(vortex, { rotation: TAU, duration: 2, repeat: -1, ease: "none" });
+        gsap.to(inner, { rotation: -TAU, duration: 1.5, repeat: -1, ease: "none" });
+        // Small bolts
+        for (let i = 0; i < 2; i++) {
+          const bolt = new Graphics().moveTo(0, -S * 0.4).lineTo(S * 0.1, 0).lineTo(-S * 0.05, S * 0.1).lineTo(0, S * 0.4);
+          bolt.stroke({ color: 0xddaaff, width: 1, alpha: 0.6 });
+          bolt.rotation = (i / 2) * Math.PI;
+          iconC.addChild(bolt);
+          gsap.to(bolt, { alpha: 0.15, duration: 0.12, yoyo: true, repeat: -1, repeatDelay: 0.5 + i * 0.3 });
+        }
+        break;
+      }
+      case UpgradeType.SPELL_TEMPORAL_BLAST: {
+        // Clock-like rune with golden rings
+        const rune = new Graphics();
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * TAU;
+          const len = i % 3 === 0 ? S * 0.7 : S * 0.45;
+          rune.moveTo(Math.cos(a) * S * 0.3, Math.sin(a) * S * 0.3).lineTo(Math.cos(a) * len, Math.sin(a) * len);
+        }
+        rune.stroke({ color: 0xffeeaa, width: 1, alpha: 0.6 });
+        const ring = new Graphics().circle(0, 0, S * 0.7).stroke({ color: 0xeeddff, width: 1.5, alpha: 0.5 });
+        iconC.addChild(ring, rune);
+        gsap.to(rune, { rotation: TAU, duration: 4, repeat: -1, ease: "none" });
+        gsap.to(ring, { pixi: { scaleX: 1.15, scaleY: 1.15 }, alpha: 0.2, duration: 1, yoyo: true, repeat: -1 });
+        break;
+      }
+
+      // ── DIVINE ──────────────────────────────────────────────────────────
+      case UpgradeType.SPELL_HEALING_WAVE: {
+        // Green ripple rings
+        const ring1 = new Graphics().circle(0, 0, S * 0.4).stroke({ color: 0x22cc44, width: 1.5, alpha: 0.5 });
+        const ring2 = new Graphics().circle(0, 0, S * 0.65).stroke({ color: 0x33dd55, width: 1, alpha: 0.35 });
+        const core = new Graphics().circle(0, 0, S * 0.2).fill({ color: 0x88ff99, alpha: 0.5 });
+        iconC.addChild(ring2, ring1, core);
+        gsap.to(ring1, { pixi: { scaleX: 1.4, scaleY: 1.4 }, alpha: 0.1, duration: 1, repeat: -1, ease: "power1.out" });
+        gsap.to(ring2, { pixi: { scaleX: 1.3, scaleY: 1.3 }, alpha: 0.05, duration: 1.2, repeat: -1, delay: 0.3, ease: "power1.out" });
+        gsap.to(core, { pixi: { scaleX: 1.3, scaleY: 1.3 }, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        break;
+      }
+      case UpgradeType.SPELL_HOLY_SMITE: {
+        // Golden beam from above with cross
+        const beam = new Graphics().rect(-2, -S, 4, S * 1.5).fill({ color: 0xffdd44, alpha: 0.35 });
+        iconC.addChild(beam);
+        gsap.to(beam, { alpha: 0.1, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        // Cross
+        for (let i = 0; i < 4; i++) {
+          const ray = new Graphics().rect(-0.8, 0, 1.6, S * 0.5).fill({ color: 0xffdd44, alpha: 0.4 });
+          ray.rotation = (i / 4) * TAU;
+          iconC.addChild(ray);
+        }
+        const flash = new Graphics().circle(0, 0, S * 0.15).fill({ color: 0xffffff, alpha: 0.6 });
+        iconC.addChild(flash);
+        gsap.to(flash, { pixi: { scaleX: 1.5, scaleY: 1.5 }, alpha: 0.2, duration: 0.6, yoyo: true, repeat: -1 });
+        break;
+      }
+      case UpgradeType.SPELL_DIVINE_RESTORATION: {
+        // Golden pillar with ascending motes
+        const pillar = new Graphics().rect(-S * 0.15, -S, S * 0.3, S * 1.6).fill({ color: 0xffdd44, alpha: 0.3 });
+        const pillarOut = new Graphics().rect(-S * 0.35, -S, S * 0.7, S * 1.6).fill({ color: 0xffdd44, alpha: 0.12 });
+        iconC.addChild(pillarOut, pillar);
+        gsap.to(pillar, { alpha: 0.15, duration: 0.8, yoyo: true, repeat: -1 });
+        for (let i = 0; i < 3; i++) {
+          const mote = new Graphics().circle(0, 0, 1.2).fill({ color: [0xffffaa, 0xffee88, 0xffffff][i], alpha: 0.7 });
+          mote.position.set((Math.random() - 0.5) * S * 0.5, S * 0.4);
+          iconC.addChild(mote);
+          gsap.to(mote, { y: -S * 0.8, alpha: 0, duration: 1 + i * 0.2, repeat: -1, delay: i * 0.3, ease: "power1.out" });
+        }
+        break;
+      }
+      case UpgradeType.SPELL_BLESSING_OF_LIGHT: {
+        // Soft golden glow pulsing down
+        const glow = new Graphics().circle(0, 0, S * 0.5).fill({ color: 0xffee88, alpha: 0.25 });
+        iconC.addChild(glow);
+        gsap.to(glow, { pixi: { scaleX: 1.4, scaleY: 1.4 }, alpha: 0.08, duration: 1, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        // Downward sparkles
+        for (let i = 0; i < 3; i++) {
+          const sp = new Graphics().circle(0, 0, 1).fill({ color: 0xffffcc, alpha: 0.8 });
+          sp.position.set((i - 1) * S * 0.35, -S * 0.6);
+          iconC.addChild(sp);
+          gsap.to(sp, { y: S * 0.4, alpha: 0, duration: 0.9, repeat: -1, delay: i * 0.25, ease: "power1.out" });
+        }
+        break;
+      }
+      case UpgradeType.SPELL_PURIFYING_FLAME: {
+        // White-gold fire
+        const f1 = new Graphics().circle(0, S * 0.1, S * 0.4).fill({ color: 0xffee88, alpha: 0.5 });
+        const f2 = new Graphics().circle(0, -S * 0.1, S * 0.25).fill({ color: 0xffffff, alpha: 0.5 });
+        iconC.addChild(f1, f2);
+        gsap.to(f1, { pixi: { scaleX: 1.2, scaleY: 0.85 }, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(f2, { pixi: { scaleX: 0.85, scaleY: 1.2 }, duration: 0.35, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        // Cross overlay
+        const cross = new Graphics();
+        cross.rect(-0.6, -S * 0.5, 1.2, S).fill({ color: 0xffdd44, alpha: 0.3 });
+        cross.rect(-S * 0.35, -0.6, S * 0.7, 1.2).fill({ color: 0xffdd44, alpha: 0.3 });
+        iconC.addChild(cross);
+        break;
+      }
+      case UpgradeType.SPELL_RADIANT_NOVA: {
+        // Expanding golden ring with sparkles
+        const ring = new Graphics().circle(0, 0, S * 0.4).stroke({ color: 0xffdd44, width: 2, alpha: 0.6 });
+        iconC.addChild(ring);
+        gsap.to(ring, { pixi: { scaleX: 1.6, scaleY: 1.6 }, alpha: 0.1, duration: 1.2, repeat: -1, ease: "power1.out" });
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * TAU;
+          const sp = new Graphics().circle(0, 0, 1.2).fill({ color: 0xffffaa, alpha: 0.7 });
+          sp.position.set(Math.cos(a) * S * 0.5, Math.sin(a) * S * 0.5);
+          iconC.addChild(sp);
+          gsap.to(sp, { alpha: 0.2, duration: 0.6, yoyo: true, repeat: -1, delay: i * 0.1 });
+        }
+        break;
+      }
+      case UpgradeType.SPELL_CELESTIAL_WRATH: {
+        // Multiple beams + star
+        for (let i = 0; i < 3; i++) {
+          const beam = new Graphics().rect(-1.5 + (i - 1) * S * 0.35, -S, 3, S * 1.5).fill({ color: 0xffdd44, alpha: 0.3 });
+          iconC.addChild(beam);
+          gsap.to(beam, { alpha: 0.08, duration: 0.3, yoyo: true, repeat: -1, delay: i * 0.15 });
+        }
+        // 8-pointed star
+        const star = new Graphics();
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * TAU;
+          star.moveTo(0, 0).lineTo(Math.cos(a) * S * 0.4, Math.sin(a) * S * 0.4);
+        }
+        star.stroke({ color: 0xffee88, width: 1, alpha: 0.5 });
+        iconC.addChild(star);
+        gsap.to(star, { rotation: TAU / 8, duration: 2, repeat: -1, ease: "none" });
+        break;
+      }
+
+      // ── SHADOW ──────────────────────────────────────────────────────────
+      case UpgradeType.SPELL_POISON_CLOUD: {
+        // Green toxic clouds
+        for (let i = 0; i < 3; i++) {
+          const cloud = new Graphics().circle(0, 0, S * (0.3 + i * 0.1)).fill({ color: [0x44aa33, 0x338822, 0x55bb44][i], alpha: 0.25 });
+          cloud.position.set((i - 1) * S * 0.25, (Math.random() - 0.5) * S * 0.3);
+          iconC.addChild(cloud);
+          gsap.to(cloud, { pixi: { scaleX: 1.3, scaleY: 1.2 }, alpha: 0.08, x: cloud.position.x + (Math.random() - 0.5) * 4, duration: 1 + i * 0.2, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        }
+        // Bubbles
+        for (let i = 0; i < 2; i++) {
+          const b = new Graphics().circle(0, 0, 1.5).stroke({ color: 0x88dd66, width: 0.8, alpha: 0.5 });
+          b.position.set((i - 0.5) * S * 0.5, S * 0.3);
+          iconC.addChild(b);
+          gsap.to(b, { y: -S * 0.5, alpha: 0, pixi: { scaleX: 1.5, scaleY: 1.5 }, duration: 0.8, repeat: -1, delay: i * 0.4, ease: "power1.out" });
+        }
+        break;
+      }
+      case UpgradeType.SPELL_VOID_RIFT: {
+        // Dark portal with swirling arcs
+        const core = new Graphics().circle(0, 0, S * 0.3).fill({ color: 0x110022, alpha: 0.8 });
+        const arc1 = new Graphics().arc(0, 0, S * 0.55, 0, Math.PI).stroke({ color: 0x9933cc, width: 2, alpha: 0.6 });
+        const arc2 = new Graphics().arc(0, 0, S * 0.55, Math.PI, TAU).stroke({ color: 0x6633aa, width: 2, alpha: 0.6 });
+        iconC.addChild(core, arc1, arc2);
+        gsap.to(arc1, { rotation: TAU, duration: 2, repeat: -1, ease: "none" });
+        gsap.to(arc2, { rotation: -TAU, duration: 2, repeat: -1, ease: "none" });
+        gsap.to(core, { pixi: { scaleX: 1.3, scaleY: 1.3 }, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        break;
+      }
+      case UpgradeType.SPELL_SHADOW_BOLT: {
+        // Dark bolt with trail
+        const trail = new Graphics().moveTo(S * 0.5, S * 0.4).lineTo(-S * 0.15, 0).lineTo(S * 0.6, S * 0.3).closePath().fill({ color: 0x663399, alpha: 0.2 });
+        const orb = new Graphics().circle(0, 0, S * 0.35).fill({ color: 0x220033, alpha: 0.8 }).circle(0, 0, S * 0.15).fill({ color: 0x9966cc, alpha: 0.8 });
+        iconC.addChild(trail, orb);
+        gsap.to(orb, { pixi: { scaleX: 1.15, scaleY: 1.15 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(trail, { alpha: 0.08, duration: 0.5, yoyo: true, repeat: -1 });
+        break;
+      }
+      case UpgradeType.SPELL_CURSE_OF_DARKNESS: {
+        // Dark fog swirling inward
+        for (let i = 0; i < 4; i++) {
+          const fog = new Graphics().circle(0, 0, S * 0.35).fill({ color: [0x220033, 0x330044, 0x110022, 0x2a0040][i], alpha: 0.2 });
+          const a = (i / 4) * TAU;
+          fog.position.set(Math.cos(a) * S * 0.4, Math.sin(a) * S * 0.4);
+          iconC.addChild(fog);
+          gsap.to(fog, { x: 0, y: 0, pixi: { scaleX: 0.5, scaleY: 0.5 }, duration: 1.2, yoyo: true, repeat: -1, delay: i * 0.15, ease: "sine.inOut" });
+        }
+        break;
+      }
+      case UpgradeType.SPELL_DEATH_COIL: {
+        // Spiraling green/purple coil
+        const coilC = new Container();
+        iconC.addChild(coilC);
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * TAU;
+          const r = S * 0.5;
+          const dot = new Graphics().circle(0, 0, 1.5 + (i % 2)).fill({ color: [0x44aa44, 0x663399][i % 2], alpha: 0.7 });
+          dot.position.set(Math.cos(a) * r, Math.sin(a) * r);
+          coilC.addChild(dot);
+        }
+        gsap.to(coilC, { rotation: TAU, duration: 1.5, repeat: -1, ease: "none" });
+        const core = new Graphics().circle(0, 0, S * 0.2).fill({ color: 0xaaffaa, alpha: 0.5 });
+        iconC.addChild(core);
+        gsap.to(core, { pixi: { scaleX: 1.3, scaleY: 1.3 }, duration: 0.5, yoyo: true, repeat: -1 });
+        break;
+      }
+      case UpgradeType.SPELL_SIPHON_SOUL: {
+        // Wisps pulled inward
+        const center = new Graphics().circle(0, 0, S * 0.2).fill({ color: 0x220033, alpha: 0.7 });
+        iconC.addChild(center);
+        gsap.to(center, { pixi: { scaleX: 1.4, scaleY: 1.4 }, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * TAU;
+          const wisp = new Graphics().circle(0, 0, 1.5).fill({ color: [0xaa88cc, 0xddbbff][i % 2], alpha: 0.6 });
+          wisp.position.set(Math.cos(a) * S * 0.7, Math.sin(a) * S * 0.7);
+          iconC.addChild(wisp);
+          gsap.to(wisp, { x: 0, y: 0, alpha: 0.1, duration: 1, repeat: -1, delay: i * 0.15, ease: "power2.in" });
+        }
+        // Boundary ring
+        const bound = new Graphics().circle(0, 0, S * 0.7).stroke({ color: 0x663399, width: 1, alpha: 0.3 });
+        iconC.addChild(bound);
+        break;
+      }
+      case UpgradeType.SPELL_NETHER_STORM: {
+        // Dark vortex with void bolts
+        const vortex = new Graphics().circle(0, 0, S * 0.6).stroke({ color: 0x663399, width: 1.5, alpha: 0.4 });
+        const inner = new Graphics().circle(0, 0, S * 0.35).stroke({ color: 0x442266, width: 1, alpha: 0.35 });
+        iconC.addChild(vortex, inner);
+        gsap.to(vortex, { rotation: TAU, duration: 2.5, repeat: -1, ease: "none" });
+        gsap.to(inner, { rotation: -TAU, duration: 1.8, repeat: -1, ease: "none" });
+        // Void bolt flashes
+        for (let i = 0; i < 3; i++) {
+          const bolt = new Graphics();
+          bolt.moveTo((Math.random() - 0.5) * S, -S * 0.7).lineTo((Math.random() - 0.5) * 3, (Math.random() - 0.5) * S * 0.4);
+          bolt.stroke({ color: 0x9966ff, width: 1.5, alpha: 0.6 });
+          iconC.addChild(bolt);
+          gsap.to(bolt, { alpha: 0.05, duration: 0.1, yoyo: true, repeat: -1, repeatDelay: 0.7 + i * 0.25 });
+        }
+        break;
+      }
+
+      // ── FALLBACK (conjuration summons + any unknown) ────────────────────
+      default: {
+        // Default: school-colored orb
+        const schoolColors: Record<string, number> = {
+          elemental: 0xff6622,
+          arcane: 0x9966ff,
+          divine: 0xffdd44,
+          shadow: 0x663399,
+          conjuration: 0x4488ff,
+        };
+        const color = schoolColors[school] ?? 0x778899;
+        const orb = new Graphics().circle(0, 0, S * 0.5).fill({ color, alpha: 0.5 }).circle(0, 0, S * 0.25).fill({ color: 0xffffff, alpha: 0.3 });
+        iconC.addChild(orb);
+        gsap.to(orb, { pixi: { scaleX: 1.2, scaleY: 1.2 }, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
+
+        const labelFallback = new Text({
+          text: UPGRADE_LABELS[upgradeType],
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 6, fill: 0xffffff, align: "center", fontWeight: "bold" }),
+        });
+        labelFallback.anchor.set(0.5, 0.5);
+        labelFallback.position.set(0, S * 0.6);
+        iconC.addChild(labelFallback);
+        break;
+      }
+    }
   }
 
   private _makeBuildingIcon(
