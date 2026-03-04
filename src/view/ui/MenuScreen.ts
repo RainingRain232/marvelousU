@@ -200,6 +200,8 @@ export class MenuScreen {
   onUnitWiki: (() => void) | null = null;
   /** Called when the player clicks "BUILDING WIKI" — opens the building wiki. */
   onBuildingWiki: (() => void) | null = null;
+  /** Called when the player clicks "SPELL WIKI" — opens the spell wiki. */
+  onSpellWiki: (() => void) | null = null;
   /** Called when the player clicks "ONLINE MULTIPLAYER". */
   onMultiplayer: (() => void) | null = null;
 
@@ -798,11 +800,44 @@ export class MenuScreen {
 
     card.addChild(bwBtn);
 
+    // --- SPELL WIKI button ---
+    const swBtn = new Container();
+    swBtn.eventMode = "static";
+    swBtn.cursor = "pointer";
+    swBtn.position.set(20, actionStartY + (BH + 8) * 4);
+
+    const swBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 6)
+      .fill({ color: 0x1a1a2a })
+      .roundRect(0, 0, BW, BH, 6)
+      .stroke({ color: 0x9966ff, width: 2 });
+    swBtn.addChild(swBg);
+
+    const swLabel = new Text({
+      text: "SPELL WIKI",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 15,
+        fill: 0xbb88ff,
+        fontWeight: "bold",
+        letterSpacing: 2,
+      }),
+    });
+    swLabel.anchor.set(0.5, 0.5);
+    swLabel.position.set(BW / 2, BH / 2);
+    swBtn.addChild(swLabel);
+
+    swBtn.on("pointerover", () => { swBg.tint = 0xddbbff; });
+    swBtn.on("pointerout", () => { swBg.tint = 0xffffff; });
+    swBtn.on("pointerdown", () => { this.onSpellWiki?.(); });
+
+    card.addChild(swBtn);
+
     // --- ONLINE MULTIPLAYER button ---
     const mpBtn = new Container();
     mpBtn.eventMode = "static";
     mpBtn.cursor = "pointer";
-    mpBtn.position.set(20, actionStartY + BH + 8 + BH + 8 + BH + 8 + BH + 8);
+    mpBtn.position.set(20, actionStartY + (BH + 8) * 5);
 
     const mpBg = new Graphics()
       .roundRect(0, 0, BW, BH, 6)
@@ -832,7 +867,7 @@ export class MenuScreen {
     card.addChild(mpBtn);
 
     // Adjust card height dynamically
-    this._cardH = actionStartY + (BH + 8) * 5 + 18;
+    this._cardH = actionStartY + (BH + 8) * 6 + 18;
 
     vm.addToLayer("ui", this.container);
     this._layout();

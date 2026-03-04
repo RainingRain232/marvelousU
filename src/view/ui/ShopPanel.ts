@@ -327,6 +327,13 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.SETTLER]: "Settler",
   [UnitType.ENGINEER]: "Engineer",
   [UnitType.UNICORN]: "Unicorn",
+  [UnitType.NATIONAL_MAGE_T1]: "National Mage I",
+  [UnitType.NATIONAL_MAGE_T2]: "National Mage II",
+  [UnitType.NATIONAL_MAGE_T3]: "National Mage III",
+  [UnitType.NATIONAL_MAGE_T4]: "National Mage IV",
+  [UnitType.NATIONAL_MAGE_T5]: "National Mage V",
+  [UnitType.NATIONAL_MAGE_T6]: "National Mage VI",
+  [UnitType.NATIONAL_MAGE_T7]: "National Mage VII",
 };
 
 // ---------------------------------------------------------------------------

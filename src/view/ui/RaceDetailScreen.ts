@@ -94,9 +94,9 @@ const STYLE_TT_DESC = new TextStyle({
 
 const BG_COLOR = 0x0a0a18;
 const BORDER_COLOR = 0xffd700;
-const CARD_W = 1248;
-const CARD_H = 754;
-const PORTRAIT_SIZE = 234;
+const CARD_W = 1622;
+const CARD_H = 980;
+const PORTRAIT_SIZE = 304;
 const CORNER_R = 10;
 
 // Scrollbar
@@ -901,7 +901,7 @@ export class RaceDetailScreen {
     cy += 23;
 
     // Divider
-    cont.addChild(new Graphics().rect(0, cy, 572, 1).fill({ color: 0x334455 }));
+    cont.addChild(new Graphics().rect(0, cy, 744, 1).fill({ color: 0x334455 }));
     cy += 8;
 
     // Flavor
@@ -912,7 +912,7 @@ export class RaceDetailScreen {
 
     // Tier ratings — unit tiers then magic tiers
     if (race.tiers) {
-      cont.addChild(new Graphics().rect(0, cy, 572, 1).fill({ color: 0x334455 }));
+      cont.addChild(new Graphics().rect(0, cy, 744, 1).fill({ color: 0x334455 }));
       cy += 8;
 
       const unitLabel = new Text({ text: "UNIT TIERS", style: STYLE_SECTION });
@@ -959,7 +959,7 @@ export class RaceDetailScreen {
     cy += 23;
 
     // Divider
-    cont.addChild(new Graphics().rect(0, cy, 572, 1).fill({ color: 0x334455 }));
+    cont.addChild(new Graphics().rect(0, cy, 744, 1).fill({ color: 0x334455 }));
     cy += 8;
 
     // Tier grid (all maxed) — unit tiers then magic tiers
@@ -989,7 +989,7 @@ export class RaceDetailScreen {
     cardOffsetX: number, cardOffsetY: number,
   ): void {
     const COLS = 3;
-    const COL_W = 192;
+    const COL_W = 250;
     const ROW_H = 21;
 
     for (let i = 0; i < entries.length; i++) {

@@ -691,20 +691,6 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 6,
     dieFps: 6,
   }),
-  [UnitType.SETTLER]: buildDef("settler", {
-    idleFps: 6,
-    moveFps: 8,
-    attackFps: 8,
-    castFps: 6,
-    dieFps: 6,
-  }),
-  [UnitType.ENGINEER]: buildDef("engineer", {
-    idleFps: 6,
-    moveFps: 8,
-    attackFps: 8,
-    castFps: 6,
-    dieFps: 6,
-  }),
   [UnitType.UNICORN]: buildDef("unicorn", {
     idleFps: 6,
     moveFps: 8,
@@ -712,4 +698,12 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 6,
     dieFps: 7,
   }),
+  // National mages (reuse mage sprite)
+  [UnitType.NATIONAL_MAGE_T1]: buildDef("mage", { idleFps: 6, castFps: 8 }),
+  [UnitType.NATIONAL_MAGE_T2]: buildDef("mage", { idleFps: 6, castFps: 8 }),
+  [UnitType.NATIONAL_MAGE_T3]: buildDef("mage", { idleFps: 6, castFps: 8 }),
+  [UnitType.NATIONAL_MAGE_T4]: buildDef("mage", { idleFps: 6, castFps: 8 }),
+  [UnitType.NATIONAL_MAGE_T5]: buildDef("mage", { idleFps: 6, castFps: 8 }),
+  [UnitType.NATIONAL_MAGE_T6]: buildDef("mage", { idleFps: 6, castFps: 8 }),
+  [UnitType.NATIONAL_MAGE_T7]: buildDef("mage", { idleFps: 6, castFps: 8 }),
 };

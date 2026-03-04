@@ -38,7 +38,7 @@ import type { MapSize } from "@view/ui/MenuScreen";
 import { leaderSelectScreen } from "@view/ui/LeaderSelectScreen";
 import { raceSelectScreen } from "@view/ui/RaceSelectScreen";
 import { raceDetailScreen } from "@view/ui/RaceDetailScreen";
-import { magicScreen } from "@view/ui/MagicScreen";
+import { magicScreen, nationalMageSpells } from "@view/ui/MagicScreen";
 import { armoryScreen } from "@view/ui/ArmoryScreen";
 import { scenarioSelectScreen } from "@view/ui/ScenarioSelectScreen";
 import { campaignIntroScreen } from "@view/ui/CampaignIntroScreen";
@@ -68,7 +68,10 @@ import {
   MapType,
   BuildingType,
   UnitType,
+  AbilityType,
 } from "@/types";
+import { ABILITY_DEFINITIONS } from "@sim/config/AbilityDefs";
+import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
 import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
 import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
@@ -178,6 +181,18 @@ import type { RaceId } from "@sim/config/RaceDefs";
   menuScreen.onBuildingWiki = () => {
     menuScreen.hide();
     buildingWikiScreen.show();
+  };
+
+  // ---------------------------------------------------------------------------
+  // Spell wiki
+  // ---------------------------------------------------------------------------
+  menuScreen.onSpellWiki = () => {
+    menuScreen.hide();
+    magicScreen.onBack = () => {
+      magicScreen.hide();
+      menuScreen.show();
+    };
+    magicScreen.showWiki();
   };
 
   // ---------------------------------------------------------------------------
@@ -458,16 +473,15 @@ import type { RaceId } from "@sim/config/RaceDefs";
 
   raceDetailScreen.onNext = () => {
     raceDetailScreen.hide();
-    magicScreen.show(raceSelectScreen.selectedRaceId);
-  };
-
-  magicScreen.onBack = () => {
-    magicScreen.hide();
-    raceDetailScreen.onBack = () => {
-      raceDetailScreen.hide();
-      raceSelectScreen.show();
+    magicScreen.onBack = () => {
+      magicScreen.hide();
+      raceDetailScreen.onBack = () => {
+        raceDetailScreen.hide();
+        raceSelectScreen.show();
+      };
+      raceDetailScreen.show(raceSelectScreen.selectedRaceId);
     };
-    raceDetailScreen.show(raceSelectScreen.selectedRaceId);
+    magicScreen.show(raceSelectScreen.selectedRaceId);
   };
 
   // ---------------------------------------------------------------------------
@@ -1100,6 +1114,13 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
     }
   }
 
+  // Configure national mage abilities from MagicScreen selections (P1 only)
+  if (playerId === "p1") {
+    _configureNationalMageAbilities();
+  }
+
+  const magicLevel = race.tiers?.magic ?? 0;
+
   for (const building of state.buildings.values()) {
     if (building.owner !== playerId) continue;
 
@@ -1113,8 +1134,76 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
         building.type,
         raceId,
       );
+
+      // Add national mages to the mage tower
+      if (building.type === BuildingType.MAGE_TOWER && magicLevel > 0) {
+        const nationalMageTypes: UnitType[] = [
+          UnitType.NATIONAL_MAGE_T1, UnitType.NATIONAL_MAGE_T2,
+          UnitType.NATIONAL_MAGE_T3, UnitType.NATIONAL_MAGE_T4,
+          UnitType.NATIONAL_MAGE_T5, UnitType.NATIONAL_MAGE_T6,
+          UnitType.NATIONAL_MAGE_T7,
+        ];
+        for (let t = 0; t < magicLevel; t++) {
+          building.shopInventory.push(nationalMageTypes[t]);
+        }
+      }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// National mage ability configuration
+// ---------------------------------------------------------------------------
+
+/** AbilityType slots ordered: T1a, T1b, T2a, T2b, T3, T4, T5, T6, T7 */
+const NATIONAL_ABILITY_SLOTS: AbilityType[] = [
+  AbilityType.NATIONAL_T1_SPELL_A, AbilityType.NATIONAL_T1_SPELL_B,
+  AbilityType.NATIONAL_T2_SPELL_A, AbilityType.NATIONAL_T2_SPELL_B,
+  AbilityType.NATIONAL_T3_SPELL, AbilityType.NATIONAL_T4_SPELL,
+  AbilityType.NATIONAL_T5_SPELL, AbilityType.NATIONAL_T6_SPELL,
+  AbilityType.NATIONAL_T7_SPELL,
+];
+
+/**
+ * Read `nationalMageSpells` from MagicScreen and overwrite the placeholder
+ * ABILITY_DEFINITIONS for each national spell slot with values derived from
+ * the selected player spell (UpgradeDef).
+ */
+function _configureNationalMageAbilities(): void {
+  let slotIdx = 0;
+  // Iterate tiers in order (nationalMageSpells keys: 1..7)
+  for (let tier = 1; tier <= 7; tier++) {
+    const spells = nationalMageSpells.get(tier);
+    if (!spells) {
+      // Skip slots for this tier (T1/T2 have 2, T3+ have 1)
+      slotIdx += tier <= 2 ? 2 : 1;
+      continue;
+    }
+    for (const spellType of spells) {
+      if (slotIdx >= NATIONAL_ABILITY_SLOTS.length) break;
+      const abilityType = NATIONAL_ABILITY_SLOTS[slotIdx];
+      const spell = UPGRADE_DEFINITIONS[spellType];
+      if (spell) {
+        _mapSpellToAbilityDef(spell, abilityType);
+      }
+      slotIdx++;
+    }
+    // Fill remaining slots for this tier if fewer spells than slots
+    const slotsForTier = tier <= 2 ? 2 : 1;
+    const usedSlots = spells.length;
+    slotIdx += Math.max(0, slotsForTier - usedSlots);
+  }
+}
+
+/** Map an UpgradeDef spell to an AbilityDef, overwriting ABILITY_DEFINITIONS. */
+function _mapSpellToAbilityDef(spell: { spellTier?: number; spellDamage?: number; spellHeal?: number; spellRadius?: number }, abilityType: AbilityType): void {
+  const tier = spell.spellTier ?? 1;
+  const def = ABILITY_DEFINITIONS[abilityType];
+  def.cooldown = 3 + tier;
+  def.range = 4 + Math.floor(tier / 2);
+  def.castTime = 0.3 + tier * 0.1;
+  def.damage = spell.spellDamage ?? -(spell.spellHeal ?? 0);
+  def.aoeRadius = spell.spellRadius ?? 2;
 }
 
 /**

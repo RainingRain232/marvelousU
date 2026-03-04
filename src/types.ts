@@ -159,6 +159,13 @@ export enum UnitType {
   CANNON = "cannon",
   BATTLEMAGE = "battlemage",
   CATAPHRACT = "cataphract",
+  NATIONAL_MAGE_T1 = "national_mage_t1",
+  NATIONAL_MAGE_T2 = "national_mage_t2",
+  NATIONAL_MAGE_T3 = "national_mage_t3",
+  NATIONAL_MAGE_T4 = "national_mage_t4",
+  NATIONAL_MAGE_T5 = "national_mage_t5",
+  NATIONAL_MAGE_T6 = "national_mage_t6",
+  NATIONAL_MAGE_T7 = "national_mage_t7",
 }
 
 export enum BuildingType {
@@ -236,6 +243,15 @@ export enum AbilityType {
   DISTORTION_AURA = "distortion_aura",
   MINOR_LIGHTNING_AURA = "minor_lightning_aura",
   MINOR_DISTORTION_AURA = "minor_distortion_aura",
+  NATIONAL_T1_SPELL_A = "national_t1_spell_a",
+  NATIONAL_T1_SPELL_B = "national_t1_spell_b",
+  NATIONAL_T2_SPELL_A = "national_t2_spell_a",
+  NATIONAL_T2_SPELL_B = "national_t2_spell_b",
+  NATIONAL_T3_SPELL = "national_t3_spell",
+  NATIONAL_T4_SPELL = "national_t4_spell",
+  NATIONAL_T5_SPELL = "national_t5_spell",
+  NATIONAL_T6_SPELL = "national_t6_spell",
+  NATIONAL_T7_SPELL = "national_t7_spell",
 }
 
 export enum UpgradeType {

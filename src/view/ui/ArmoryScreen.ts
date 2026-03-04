@@ -1,5 +1,5 @@
 // Armory screen — equip items that boost hero unit stats before game start.
-// Layout: 1248×754 card (matching RaceDetailScreen) with item grid,
+// Layout: 1622×980 card (matching RaceDetailScreen) with item grid,
 // weapon image display, and detail panel.
 import {
   Container, Graphics, Text, TextStyle, Sprite, Texture, Assets,
@@ -131,30 +131,30 @@ const CARD_LOCKED_BORDER = 0x222233;
 // Layout constants
 // ---------------------------------------------------------------------------
 
-const MAIN_W = 1248;
-const MAIN_H = 754;
+const MAIN_W = 1622;
+const MAIN_H = 980;
 const CORNER_R = 10;
 
 // Item card grid
-const ITEM_W = 110;
-const ITEM_H = 80;
-const ITEM_GAP = 10;
+const ITEM_W = 143;
+const ITEM_H = 104;
+const ITEM_GAP = 13;
 const GRID_COLS = 5;
 
 // Horizontal sections
 const CONTENT_Y = 75;
-const FOOTER_Y = MAIN_H - 68;            // 686
-const CONTENT_H = FOOTER_Y - CONTENT_Y;  // 611
+const FOOTER_Y = MAIN_H - 68;
+const CONTENT_H = FOOTER_Y - CONTENT_Y;
 
 const GRID_X = 26;
-const GRID_W_TOTAL = GRID_COLS * ITEM_W + (GRID_COLS - 1) * ITEM_GAP; // 590
+const GRID_W_TOTAL = GRID_COLS * ITEM_W + (GRID_COLS - 1) * ITEM_GAP;
 
-const IMG_X = GRID_X + GRID_W_TOTAL + 20;  // 636
-const IMG_W = 280;
-const IMG_H = 310;
+const IMG_X = GRID_X + GRID_W_TOTAL + 20;
+const IMG_W = 364;
+const IMG_H = 403;
 
-const DETAIL_X = IMG_X + IMG_W + 16;       // 932
-const DETAIL_W = MAIN_W - DETAIL_X - 26;   // 290
+const DETAIL_X = IMG_X + IMG_W + 16;
+const DETAIL_W = MAIN_W - DETAIL_X - 26;
 
 // Armory decorative image (below weapon image)
 const ARMORY_IMG_Y = CONTENT_Y + IMG_H + 16; // 401

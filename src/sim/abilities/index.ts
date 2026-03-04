@@ -13,6 +13,7 @@ import { createHeal } from "@sim/abilities/Heal";
 import { createFireBreath } from "@sim/abilities/FireBreath";
 import { createFrostBreath } from "@sim/abilities/FrostBreath";
 import { createAura } from "@sim/abilities/Aura";
+import { createNationalSpell } from "@sim/abilities/NationalSpell";
 import type { Ability } from "@sim/abilities/Ability";
 import { UnitType } from "@/types";
 
@@ -77,6 +78,16 @@ export const abilityRegistry: Record<AbilityType, AbilityFactory> = {
   [AbilityType.DISTORTION_AURA]: (id) => createAura(id, AbilityType.DISTORTION_AURA),
   [AbilityType.MINOR_LIGHTNING_AURA]: (id) => createAura(id, AbilityType.MINOR_LIGHTNING_AURA),
   [AbilityType.MINOR_DISTORTION_AURA]: (id) => createAura(id, AbilityType.MINOR_DISTORTION_AURA),
+  // National mage spell slots
+  [AbilityType.NATIONAL_T1_SPELL_A]: (id) => createNationalSpell(id, AbilityType.NATIONAL_T1_SPELL_A),
+  [AbilityType.NATIONAL_T1_SPELL_B]: (id) => createNationalSpell(id, AbilityType.NATIONAL_T1_SPELL_B),
+  [AbilityType.NATIONAL_T2_SPELL_A]: (id) => createNationalSpell(id, AbilityType.NATIONAL_T2_SPELL_A),
+  [AbilityType.NATIONAL_T2_SPELL_B]: (id) => createNationalSpell(id, AbilityType.NATIONAL_T2_SPELL_B),
+  [AbilityType.NATIONAL_T3_SPELL]: (id) => createNationalSpell(id, AbilityType.NATIONAL_T3_SPELL),
+  [AbilityType.NATIONAL_T4_SPELL]: (id) => createNationalSpell(id, AbilityType.NATIONAL_T4_SPELL),
+  [AbilityType.NATIONAL_T5_SPELL]: (id) => createNationalSpell(id, AbilityType.NATIONAL_T5_SPELL),
+  [AbilityType.NATIONAL_T6_SPELL]: (id) => createNationalSpell(id, AbilityType.NATIONAL_T6_SPELL),
+  [AbilityType.NATIONAL_T7_SPELL]: (id) => createNationalSpell(id, AbilityType.NATIONAL_T7_SPELL),
 };
 
 export function createAbility(type: AbilityType, id: string): Ability {

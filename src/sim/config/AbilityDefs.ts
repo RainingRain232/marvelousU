@@ -315,4 +315,41 @@ export const ABILITY_DEFINITIONS: Record<AbilityType, AbilityDef> = {
     pullDistance: 2,
     pullChance: 0.6,
   },
+  // National mage spell slots (placeholder values, overwritten at runtime)
+  [AbilityType.NATIONAL_T1_SPELL_A]: {
+    type: AbilityType.NATIONAL_T1_SPELL_A,
+    cooldown: 5, range: 5, castTime: 0.5, damage: 30, aoeRadius: 2,
+  },
+  [AbilityType.NATIONAL_T1_SPELL_B]: {
+    type: AbilityType.NATIONAL_T1_SPELL_B,
+    cooldown: 5, range: 5, castTime: 0.5, damage: 30, aoeRadius: 2,
+  },
+  [AbilityType.NATIONAL_T2_SPELL_A]: {
+    type: AbilityType.NATIONAL_T2_SPELL_A,
+    cooldown: 5, range: 5, castTime: 0.5, damage: 30, aoeRadius: 2,
+  },
+  [AbilityType.NATIONAL_T2_SPELL_B]: {
+    type: AbilityType.NATIONAL_T2_SPELL_B,
+    cooldown: 5, range: 5, castTime: 0.5, damage: 30, aoeRadius: 2,
+  },
+  [AbilityType.NATIONAL_T3_SPELL]: {
+    type: AbilityType.NATIONAL_T3_SPELL,
+    cooldown: 6, range: 5, castTime: 0.6, damage: 40, aoeRadius: 2,
+  },
+  [AbilityType.NATIONAL_T4_SPELL]: {
+    type: AbilityType.NATIONAL_T4_SPELL,
+    cooldown: 6, range: 5, castTime: 0.6, damage: 50, aoeRadius: 2,
+  },
+  [AbilityType.NATIONAL_T5_SPELL]: {
+    type: AbilityType.NATIONAL_T5_SPELL,
+    cooldown: 7, range: 6, castTime: 0.7, damage: 60, aoeRadius: 2,
+  },
+  [AbilityType.NATIONAL_T6_SPELL]: {
+    type: AbilityType.NATIONAL_T6_SPELL,
+    cooldown: 7, range: 6, castTime: 0.7, damage: 70, aoeRadius: 2.5,
+  },
+  [AbilityType.NATIONAL_T7_SPELL]: {
+    type: AbilityType.NATIONAL_T7_SPELL,
+    cooldown: 8, range: 6, castTime: 0.8, damage: 80, aoeRadius: 2.5,
+  },
 };

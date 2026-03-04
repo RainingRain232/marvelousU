@@ -1,5 +1,5 @@
 // Leader selection screen — choose a leader before the game starts.
-// Layout: 1248×754 card (matching other screens) with throne.png banner
+// Layout: 1622×980 card (matching other screens) with throne.png banner
 // (image left, text right), leader grid, and detail panel with leader portraits.
 import {
   Container, Graphics, Text, TextStyle, AnimatedSprite, Texture,
@@ -86,37 +86,37 @@ const CARD_NORMAL_BORDER = 0x334455;
 // Layout constants
 // ---------------------------------------------------------------------------
 
-const MAIN_W = 1248;
-const MAIN_H = 754;
+const MAIN_W = 1622;
+const MAIN_H = 980;
 const CORNER_R = 10;
 
 // Banner (throne.png — image left, text right)
 const BANNER_Y = 75;
-const BANNER_IMG_W = MAIN_W - 52;   // 1196
-const BANNER_IMG_H = 273;
+const BANNER_IMG_W = MAIN_W - 52;   // full width minus padding
+const BANNER_IMG_H = 355;
 
 // Content (below banner)
-const CONTENT_Y = BANNER_Y + BANNER_IMG_H + 12;  // 347
-const FOOTER_Y = MAIN_H - 68;                     // 686
-const CONTENT_H = FOOTER_Y - CONTENT_Y;           // 339
+const CONTENT_Y = BANNER_Y + BANNER_IMG_H + 12;
+const FOOTER_Y = MAIN_H - 68;
+const CONTENT_H = FOOTER_Y - CONTENT_Y;
 
 // Leader card grid (left side) — compact 4-col grid to give portrait more room
 const GRID_X = 26;
 const GRID_COLS = 4;
-const LEADER_CARD_W = 100;
-const LEADER_CARD_H = 74;
-const LEADER_CARD_GAP = 8;
-const GRID_W = GRID_COLS * LEADER_CARD_W + (GRID_COLS - 1) * LEADER_CARD_GAP; // 424
+const LEADER_CARD_W = 130;
+const LEADER_CARD_H = 96;
+const LEADER_CARD_GAP = 10;
+const GRID_W = GRID_COLS * LEADER_CARD_W + (GRID_COLS - 1) * LEADER_CARD_GAP;
 
 // Detail panel (right side)
-const DETAIL_X = GRID_X + GRID_W + 20;    // 470
-const DETAIL_W = MAIN_W - DETAIL_X - 26;  // 752
+const DETAIL_X = GRID_X + GRID_W + 20;
+const DETAIL_W = MAIN_W - DETAIL_X - 26;
 
 // Portrait within detail
-const PORTRAIT_W = 280;
-const PORTRAIT_H = 310;
-const TEXT_IN_DETAIL_X = PORTRAIT_W + 16;  // 296
-const TEXT_IN_DETAIL_W = DETAIL_W - TEXT_IN_DETAIL_X - 10; // 446
+const PORTRAIT_W = 364;
+const PORTRAIT_H = 403;
+const TEXT_IN_DETAIL_X = PORTRAIT_W + 16;
+const TEXT_IN_DETAIL_W = DETAIL_W - TEXT_IN_DETAIL_X - 10;
 
 // ---------------------------------------------------------------------------
 // Class

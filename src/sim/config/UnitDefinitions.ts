@@ -2079,4 +2079,63 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       "A fully armored knight on a barded warhorse. Slower than light cavalry but far tougher — their charge is devastating.",
     tier: 6,
   },
+  // ---------------------------------------------------------------------------
+  // National Mages (T1–T7) — spell abilities configured at runtime
+  // ---------------------------------------------------------------------------
+  [UnitType.NATIONAL_MAGE_T1]: {
+    type: UnitType.NATIONAL_MAGE_T1,
+    cost: 300, hp: 70, atk: 10, attackSpeed: 0.5,
+    speed: 0.75, range: 5, spawnTime: 6,
+    abilityTypes: [AbilityType.NATIONAL_T1_SPELL_A, AbilityType.NATIONAL_T1_SPELL_B],
+    spriteKey: "mage", tier: 1, element: "fire",
+    description: "A national mage wielding two chosen spells.",
+  },
+  [UnitType.NATIONAL_MAGE_T2]: {
+    type: UnitType.NATIONAL_MAGE_T2,
+    cost: 500, hp: 110, atk: 12, attackSpeed: 0.5,
+    speed: 0.75, range: 5, spawnTime: 7,
+    abilityTypes: [AbilityType.NATIONAL_T2_SPELL_A, AbilityType.NATIONAL_T2_SPELL_B],
+    spriteKey: "mage", tier: 2, element: "fire",
+    description: "An experienced national mage with two chosen spells.",
+  },
+  [UnitType.NATIONAL_MAGE_T3]: {
+    type: UnitType.NATIONAL_MAGE_T3,
+    cost: 800, hp: 160, atk: 14, attackSpeed: 0.5,
+    speed: 0.75, range: 5, spawnTime: 8, regenRate: 5,
+    abilityTypes: [AbilityType.NATIONAL_T3_SPELL],
+    spriteKey: "mage", tier: 3, element: "fire",
+    description: "A veteran national mage with a powerful chosen spell.",
+  },
+  [UnitType.NATIONAL_MAGE_T4]: {
+    type: UnitType.NATIONAL_MAGE_T4,
+    cost: 1200, hp: 220, atk: 16, attackSpeed: 0.5,
+    speed: 0.75, range: 5, spawnTime: 9, regenRate: 5,
+    abilityTypes: [AbilityType.NATIONAL_T4_SPELL],
+    spriteKey: "mage", tier: 4, element: "fire",
+    description: "A masterful national mage commanding devastating magic.",
+  },
+  [UnitType.NATIONAL_MAGE_T5]: {
+    type: UnitType.NATIONAL_MAGE_T5,
+    cost: 1800, hp: 280, atk: 18, attackSpeed: 0.5,
+    speed: 0.75, range: 5, spawnTime: 10, regenRate: 5,
+    abilityTypes: [AbilityType.NATIONAL_T5_SPELL],
+    spriteKey: "mage", tier: 5, element: "fire",
+    description: "An archmage of the nation, wielding immense magical power.",
+  },
+  [UnitType.NATIONAL_MAGE_T6]: {
+    type: UnitType.NATIONAL_MAGE_T6,
+    cost: 2600, hp: 350, atk: 20, attackSpeed: 0.5,
+    speed: 0.75, range: 5, spawnTime: 11, regenRate: 5,
+    abilityTypes: [AbilityType.NATIONAL_T6_SPELL],
+    spriteKey: "mage", tier: 6, element: "fire",
+    description: "A legendary national mage of terrifying magical might.",
+  },
+  [UnitType.NATIONAL_MAGE_T7]: {
+    type: UnitType.NATIONAL_MAGE_T7,
+    cost: 3500, hp: 430, atk: 22, attackSpeed: 0.5,
+    speed: 0.75, range: 5, spawnTime: 12, regenRate: 5,
+    abilityTypes: [AbilityType.NATIONAL_T7_SPELL],
+    spriteKey: "mage", tier: 7, element: "fire",
+    description: "The supreme national mage — a living conduit of arcane devastation.",
+  },
 };

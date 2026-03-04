@@ -308,7 +308,14 @@ export function attachAbilities(state: GameState, unit: Unit): void {
     unit.type !== UnitType.COLD_MAGE &&
     unit.type !== UnitType.MONK &&
     unit.type !== UnitType.CLERIC &&
-    unit.type !== UnitType.SAINT
+    unit.type !== UnitType.SAINT &&
+    unit.type !== UnitType.NATIONAL_MAGE_T1 &&
+    unit.type !== UnitType.NATIONAL_MAGE_T2 &&
+    unit.type !== UnitType.NATIONAL_MAGE_T3 &&
+    unit.type !== UnitType.NATIONAL_MAGE_T4 &&
+    unit.type !== UnitType.NATIONAL_MAGE_T5 &&
+    unit.type !== UnitType.NATIONAL_MAGE_T6 &&
+    unit.type !== UnitType.NATIONAL_MAGE_T7
   ) return;
   ensureAbilities(state, unit);
 }

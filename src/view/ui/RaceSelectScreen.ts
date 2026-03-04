@@ -1,5 +1,5 @@
 // Race selection screen — choose a race/faction before the game starts.
-// Layout: 1248×754 card (matching RaceDetailScreen / ArmoryScreen) with a
+// Layout: 1622×980 card (matching RaceDetailScreen / ArmoryScreen) with a
 // banner showing the races.png image and flavor text, a left race grid,
 // and a right detail panel with per-race portrait images.
 import {
@@ -93,37 +93,37 @@ const CARD_DISABLED_BORDER = 0x1a2a3a;
 // Layout constants
 // ---------------------------------------------------------------------------
 
-const MAIN_W = 1248;
-const MAIN_H = 754;
+const MAIN_W = 1622;
+const MAIN_H = 980;
 const CORNER_R = 10;
 
 // Banner (top area with races.png — full width)
 const BANNER_Y = 75;
-const BANNER_IMG_W = MAIN_W - 52;   // 1196 (full width minus padding)
-const BANNER_IMG_H = 290;
+const BANNER_IMG_W = MAIN_W - 52;   // full width minus padding
+const BANNER_IMG_H = 377;
 
 // Content (below banner)
-const CONTENT_Y = BANNER_Y + BANNER_IMG_H + 12;  // 377
-const FOOTER_Y = MAIN_H - 68;                     // 686
-const CONTENT_H = FOOTER_Y - CONTENT_Y;           // 309
+const CONTENT_Y = BANNER_Y + BANNER_IMG_H + 12;
+const FOOTER_Y = MAIN_H - 68;
+const CONTENT_H = FOOTER_Y - CONTENT_Y;
 
 // Grid (left side)
 const GRID_X = 26;
 const GRID_COLS = 4;
-const RACE_CARD_W = 140;
-const RACE_CARD_H = 80;
-const RACE_CARD_GAP = 10;
-const GRID_W = GRID_COLS * RACE_CARD_W + (GRID_COLS - 1) * RACE_CARD_GAP; // 590
+const RACE_CARD_W = 182;
+const RACE_CARD_H = 104;
+const RACE_CARD_GAP = 13;
+const GRID_W = GRID_COLS * RACE_CARD_W + (GRID_COLS - 1) * RACE_CARD_GAP;
 
 // Detail panel (right side)
-const DETAIL_X = GRID_X + GRID_W + 20;    // 636
-const DETAIL_W = MAIN_W - DETAIL_X - 26;  // 586
+const DETAIL_X = GRID_X + GRID_W + 20;
+const DETAIL_W = MAIN_W - DETAIL_X - 26;
 
 // Portrait within detail
-const PORTRAIT_W = 210;
-const PORTRAIT_H = 240;
-const TEXT_IN_DETAIL_X = PORTRAIT_W + 16;  // 226
-const TEXT_IN_DETAIL_W = DETAIL_W - TEXT_IN_DETAIL_X - 10; // 350
+const PORTRAIT_W = 273;
+const PORTRAIT_H = 312;
+const TEXT_IN_DETAIL_X = PORTRAIT_W + 16;
+const TEXT_IN_DETAIL_W = DETAIL_W - TEXT_IN_DETAIL_X - 10;
 
 // ---------------------------------------------------------------------------
 // RaceSelectScreen
