@@ -337,6 +337,129 @@ export enum UpgradeType {
   SPELL_THORN_BARRAGE = "spell_thorn_barrage",
   SPELL_NATURES_WRATH = "spell_natures_wrath",
   SPELL_PRIMAL_STORM = "spell_primal_storm",
+  // Round 2 — 1 extra spell per tier per magic type
+  // Fire
+  SPELL_EMBER_BOLT = "spell_ember_bolt",
+  SPELL_FLAME_WAVE = "spell_flame_wave",
+  SPELL_MAGMA_BURST = "spell_magma_burst",
+  SPELL_FIRE_STORM = "spell_fire_storm",
+  SPELL_DRAGONS_BREATH = "spell_dragons_breath",
+  // Ice
+  SPELL_ICE_SHARD = "spell_ice_shard",
+  SPELL_FROSTBITE = "spell_frostbite",
+  SPELL_ICE_STORM = "spell_ice_storm",
+  SPELL_FROZEN_TOMB = "spell_frozen_tomb",
+  SPELL_PERMAFROST = "spell_permafrost",
+  // Lightning
+  SPELL_STATIC_SHOCK = "spell_static_shock",
+  SPELL_ARC_BOLT = "spell_arc_bolt",
+  SPELL_STORM_SURGE = "spell_storm_surge",
+  SPELL_THUNDER_CLAP = "spell_thunder_clap",
+  SPELL_ZEUS_WRATH = "spell_zeus_wrath",
+  // Earth
+  SPELL_MUD_SPLASH = "spell_mud_splash",
+  SPELL_ROCK_THROW = "spell_rock_throw",
+  SPELL_AVALANCHE = "spell_avalanche",
+  SPELL_SEISMIC_SLAM = "spell_seismic_slam",
+  SPELL_WORLD_BREAKER = "spell_world_breaker",
+  // Arcane
+  SPELL_MANA_BOLT = "spell_mana_bolt",
+  SPELL_ARCANE_PULSE = "spell_arcane_pulse",
+  SPELL_ETHER_BLAST = "spell_ether_blast",
+  SPELL_ARCANE_TORRENT = "spell_arcane_torrent",
+  SPELL_ASTRAL_RIFT = "spell_astral_rift",
+  // Holy
+  SPELL_SACRED_STRIKE = "spell_sacred_strike",
+  SPELL_HOLY_LIGHT = "spell_holy_light",
+  SPELL_JUDGMENT = "spell_judgment",
+  SPELL_DIVINE_SHIELD = "spell_divine_shield",
+  SPELL_HEAVENS_GATE = "spell_heavens_gate",
+  // Shadow
+  SPELL_DARK_PULSE = "spell_dark_pulse",
+  SPELL_SHADOW_STRIKE = "spell_shadow_strike",
+  SPELL_NIGHTMARE = "spell_nightmare",
+  SPELL_DARK_VOID = "spell_dark_void",
+  SPELL_ECLIPSE = "spell_eclipse",
+  // Poison
+  SPELL_TOXIC_DART = "spell_toxic_dart",
+  SPELL_ACID_SPLASH = "spell_acid_splash",
+  SPELL_BLIGHT = "spell_blight",
+  SPELL_CORROSION = "spell_corrosion",
+  SPELL_PLAGUE_WIND = "spell_plague_wind",
+  // Void
+  SPELL_PHASE_SHIFT = "spell_phase_shift",
+  SPELL_WARP_BOLT = "spell_warp_bolt",
+  SPELL_RIFT_STORM = "spell_rift_storm",
+  SPELL_VOID_CRUSH = "spell_void_crush",
+  SPELL_EVENT_HORIZON = "spell_event_horizon",
+  // Death
+  SPELL_GRAVE_CHILL = "spell_grave_chill",
+  SPELL_WITHER = "spell_wither",
+  SPELL_CORPSE_EXPLOSION = "spell_corpse_explosion",
+  SPELL_DOOM = "spell_doom",
+  SPELL_REQUIEM = "spell_requiem",
+  // Nature
+  SPELL_VINE_WHIP = "spell_vine_whip",
+  SPELL_BRAMBLE_BURST = "spell_bramble_burst",
+  SPELL_ENTANGLE = "spell_entangle",
+  SPELL_OVERGROWTH = "spell_overgrowth",
+  SPELL_GAIAS_FURY = "spell_gaias_fury",
+  // Tier 6 & 7 — Epic & Mythic spells
+  // Fire
+  SPELL_HELLFIRE_ERUPTION = "spell_hellfire_eruption",
+  SPELL_SOLAR_FURY = "spell_solar_fury",
+  SPELL_SUPERNOVA = "spell_supernova",
+  SPELL_WORLD_BLAZE = "spell_world_blaze",
+  // Ice
+  SPELL_FROZEN_ABYSS = "spell_frozen_abyss",
+  SPELL_ARCTIC_DEVASTATION = "spell_arctic_devastation",
+  SPELL_ETERNAL_WINTER = "spell_eternal_winter",
+  SPELL_ICE_AGE = "spell_ice_age",
+  // Lightning
+  SPELL_DIVINE_THUNDER = "spell_divine_thunder",
+  SPELL_TEMPEST_FURY = "spell_tempest_fury",
+  SPELL_RAGNAROK_BOLT = "spell_ragnarok_bolt",
+  SPELL_COSMIC_STORM = "spell_cosmic_storm",
+  // Earth
+  SPELL_CONTINENTAL_CRUSH = "spell_continental_crush",
+  SPELL_MAGMA_CORE = "spell_magma_core",
+  SPELL_CATACLYSM = "spell_cataclysm",
+  SPELL_PLANET_SHATTER = "spell_planet_shatter",
+  // Arcane
+  SPELL_ARCANE_ANNIHILATION = "spell_arcane_annihilation",
+  SPELL_REALITY_WARP = "spell_reality_warp",
+  SPELL_COSMIC_RIFT = "spell_cosmic_rift",
+  SPELL_OMNISCIENCE = "spell_omniscience",
+  // Holy
+  SPELL_SERAPHIMS_LIGHT = "spell_seraphims_light",
+  SPELL_WRATH_OF_GOD = "spell_wrath_of_god",
+  SPELL_ASCENSION = "spell_ascension",
+  SPELL_DIVINE_JUDGMENT = "spell_divine_judgment",
+  // Shadow
+  SPELL_ETERNAL_DARKNESS = "spell_eternal_darkness",
+  SPELL_VOID_CORRUPTION = "spell_void_corruption",
+  SPELL_ABYSSAL_DOOM = "spell_abyssal_doom",
+  SPELL_SHADOW_ANNIHILATION = "spell_shadow_annihilation",
+  // Poison
+  SPELL_EXTINCTION_CLOUD = "spell_extinction_cloud",
+  SPELL_PLAGUE_OF_AGES = "spell_plague_of_ages",
+  SPELL_DEATH_BLOSSOM = "spell_death_blossom",
+  SPELL_TOXIC_APOCALYPSE = "spell_toxic_apocalypse",
+  // Void
+  SPELL_REALITY_COLLAPSE = "spell_reality_collapse",
+  SPELL_DIMENSIONAL_IMPLOSION = "spell_dimensional_implosion",
+  SPELL_ENTROPY = "spell_entropy",
+  SPELL_END_OF_ALL = "spell_end_of_all",
+  // Death
+  SPELL_MASS_EXTINCTION = "spell_mass_extinction",
+  SPELL_GRIM_HARVEST = "spell_grim_harvest",
+  SPELL_ARMAGEDDON = "spell_armageddon",
+  SPELL_DEATH_INCARNATE = "spell_death_incarnate",
+  // Nature
+  SPELL_WORLD_TREES_FURY = "spell_world_trees_fury",
+  SPELL_ELEMENTAL_CHAOS = "spell_elemental_chaos",
+  SPELL_GENESIS_STORM = "spell_genesis_storm",
+  SPELL_WRATH_OF_GAIA = "spell_wrath_of_gaia",
 }
 
 export enum UnitState {

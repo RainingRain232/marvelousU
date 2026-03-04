@@ -98,6 +98,103 @@ export class SpellFX {
       case "thorn_barrage":   return this._thornBarrage(worldX, worldY, r);
       case "natures_wrath":   return this._naturesWrath(worldX, worldY, r);
       case "primal_storm":    return this._primalStorm(worldX, worldY, r);
+      // Round 2 spells
+      case "ember_bolt":      return this._genericDamage(worldX, worldY, r);
+      case "flame_wave":      return this._fireball(worldX, worldY, r);
+      case "magma_burst":     return this._meteor(worldX, worldY, r);
+      case "fire_storm":      return this._inferno(worldX, worldY, r);
+      case "dragons_breath":  return this._pyroclasm(worldX, worldY, r);
+      case "ice_shard":       return this._frostNova(worldX, worldY, r);
+      case "frostbite":       return this._blizzard(worldX, worldY, r);
+      case "ice_storm":       return this._glacialCrush(worldX, worldY, r);
+      case "frozen_tomb":     return this._absoluteZero(worldX, worldY, r);
+      case "permafrost":      return this._absoluteZero(worldX, worldY, r);
+      case "static_shock":    return this._spark(worldX, worldY, r);
+      case "arc_bolt":        return this._lightning(worldX, worldY, r);
+      case "storm_surge":     return this._chainLightning(worldX, worldY, r);
+      case "thunder_clap":    return this._ballLightning(worldX, worldY, r);
+      case "zeus_wrath":      return this._mjolnirStrike(worldX, worldY, r);
+      case "mud_splash":      return this._stoneShard(worldX, worldY, r);
+      case "rock_throw":      return this._stoneShard(worldX, worldY, r);
+      case "avalanche":       return this._landslide(worldX, worldY, r);
+      case "seismic_slam":    return this._earthquake(worldX, worldY, r);
+      case "world_breaker":   return this._tectonicRuin(worldX, worldY, r);
+      case "mana_bolt":       return this._arcaneMissile(worldX, worldY, r);
+      case "arcane_pulse":    return this._manaSurge(worldX, worldY, r);
+      case "ether_blast":     return this._arcaneBarrage(worldX, worldY, r);
+      case "arcane_torrent":  return this._temporalBlast(worldX, worldY, r);
+      case "astral_rift":     return this._arcaneCataclysm(worldX, worldY, r);
+      case "sacred_strike":   return this._holySmite(worldX, worldY, r);
+      case "judgment":        return this._celestialWrath(worldX, worldY, r);
+      case "heavens_gate":    return this._celestialWrath(worldX, worldY, r);
+      case "dark_pulse":      return this._shadowBolt(worldX, worldY, r);
+      case "shadow_strike":   return this._curseOfDarkness(worldX, worldY, r);
+      case "nightmare":       return this._shadowPlague(worldX, worldY, r);
+      case "dark_void":       return this._oblivion(worldX, worldY, r);
+      case "eclipse":         return this._oblivion(worldX, worldY, r);
+      case "toxic_dart":      return this._genericDamage(worldX, worldY, r);
+      case "acid_splash":     return this._venomousSpray(worldX, worldY, r);
+      case "blight":          return this._plagueSwarm(worldX, worldY, r);
+      case "corrosion":       return this._toxicMiasma(worldX, worldY, r);
+      case "plague_wind":     return this._pandemic(worldX, worldY, r);
+      case "phase_shift":     return this._voidSpark(worldX, worldY, r);
+      case "warp_bolt":       return this._dimensionalTear(worldX, worldY, r);
+      case "rift_storm":      return this._dimensionalTear(worldX, worldY, r);
+      case "void_crush":      return this._singularity(worldX, worldY, r);
+      case "event_horizon":   return this._singularity(worldX, worldY, r);
+      case "grave_chill":     return this._necroticTouch(worldX, worldY, r);
+      case "wither":          return this._deathCoil(worldX, worldY, r);
+      case "corpse_explosion": return this._siphonSoul(worldX, worldY, r);
+      case "doom":            return this._soulRend(worldX, worldY, r);
+      case "requiem":         return this._apocalypse(worldX, worldY, r);
+      case "vine_whip":       return this._genericDamage(worldX, worldY, r);
+      case "bramble_burst":   return this._thornBarrage(worldX, worldY, r);
+      case "entangle":        return this._naturesWrath(worldX, worldY, r);
+      case "overgrowth":      return this._naturesWrath(worldX, worldY, r);
+      case "gaias_fury":      return this._primalStorm(worldX, worldY, r);
+      // Tier 6 & 7 spells
+      case "hellfire_eruption": return this._inferno(worldX, worldY, r);
+      case "solar_fury": return this._pyroclasm(worldX, worldY, r);
+      case "supernova": return this._pyroclasm(worldX, worldY, r);
+      case "world_blaze": return this._pyroclasm(worldX, worldY, r);
+      case "frozen_abyss": return this._absoluteZero(worldX, worldY, r);
+      case "arctic_devastation": return this._absoluteZero(worldX, worldY, r);
+      case "eternal_winter": return this._absoluteZero(worldX, worldY, r);
+      case "ice_age": return this._absoluteZero(worldX, worldY, r);
+      case "divine_thunder": return this._mjolnirStrike(worldX, worldY, r);
+      case "tempest_fury": return this._mjolnirStrike(worldX, worldY, r);
+      case "ragnarok_bolt": return this._mjolnirStrike(worldX, worldY, r);
+      case "cosmic_storm": return this._mjolnirStrike(worldX, worldY, r);
+      case "continental_crush": return this._tectonicRuin(worldX, worldY, r);
+      case "magma_core": return this._tectonicRuin(worldX, worldY, r);
+      case "cataclysm": return this._tectonicRuin(worldX, worldY, r);
+      case "planet_shatter": return this._tectonicRuin(worldX, worldY, r);
+      case "arcane_annihilation": return this._arcaneCataclysm(worldX, worldY, r);
+      case "reality_warp": return this._arcaneCataclysm(worldX, worldY, r);
+      case "cosmic_rift": return this._arcaneCataclysm(worldX, worldY, r);
+      case "omniscience": return this._arcaneCataclysm(worldX, worldY, r);
+      case "wrath_of_god": return this._celestialWrath(worldX, worldY, r);
+      case "divine_judgment": return this._celestialWrath(worldX, worldY, r);
+      case "eternal_darkness": return this._oblivion(worldX, worldY, r);
+      case "void_corruption": return this._oblivion(worldX, worldY, r);
+      case "abyssal_doom": return this._oblivion(worldX, worldY, r);
+      case "shadow_annihilation": return this._oblivion(worldX, worldY, r);
+      case "extinction_cloud": return this._pandemic(worldX, worldY, r);
+      case "plague_of_ages": return this._pandemic(worldX, worldY, r);
+      case "death_blossom": return this._pandemic(worldX, worldY, r);
+      case "toxic_apocalypse": return this._pandemic(worldX, worldY, r);
+      case "reality_collapse": return this._singularity(worldX, worldY, r);
+      case "dimensional_implosion": return this._singularity(worldX, worldY, r);
+      case "entropy": return this._singularity(worldX, worldY, r);
+      case "end_of_all": return this._singularity(worldX, worldY, r);
+      case "mass_extinction": return this._apocalypse(worldX, worldY, r);
+      case "grim_harvest": return this._apocalypse(worldX, worldY, r);
+      case "armageddon": return this._apocalypse(worldX, worldY, r);
+      case "death_incarnate": return this._apocalypse(worldX, worldY, r);
+      case "world_trees_fury": return this._primalStorm(worldX, worldY, r);
+      case "elemental_chaos": return this._primalStorm(worldX, worldY, r);
+      case "genesis_storm": return this._primalStorm(worldX, worldY, r);
+      case "wrath_of_gaia": return this._primalStorm(worldX, worldY, r);
       default:                return this._genericDamage(worldX, worldY, r);
     }
   }
@@ -120,6 +217,14 @@ export class SpellFX {
     if (spell === "divine_miracle") {
       return this._divineMiracle(worldX, worldY, r);
     }
+    if (spell === "holy_light") {
+      return this._blessingOfLight(worldX, worldY, r);
+    }
+    if (spell === "divine_shield") {
+      return this._divineMiracle(worldX, worldY, r);
+    }
+    if (spell === "seraphims_light") return this._divineMiracle(worldX, worldY, r);
+    if (spell === "ascension") return this._divineMiracle(worldX, worldY, r);
     return this._healingWave(worldX, worldY, r);
   }
 

@@ -198,6 +198,127 @@ const SPELL_KEY: Partial<Record<UpgradeType, string>> = {
   [UpgradeType.SPELL_SIPHON_SOUL]: "siphon_soul",
   [UpgradeType.SPELL_SOUL_REND]: "soul_rend",
   [UpgradeType.SPELL_APOCALYPSE]: "apocalypse",
+  // Round 2 — fire
+  [UpgradeType.SPELL_EMBER_BOLT]: "ember_bolt",
+  [UpgradeType.SPELL_FLAME_WAVE]: "flame_wave",
+  [UpgradeType.SPELL_MAGMA_BURST]: "magma_burst",
+  [UpgradeType.SPELL_FIRE_STORM]: "fire_storm",
+  [UpgradeType.SPELL_DRAGONS_BREATH]: "dragons_breath",
+  // Round 2 — ice
+  [UpgradeType.SPELL_ICE_SHARD]: "ice_shard",
+  [UpgradeType.SPELL_FROSTBITE]: "frostbite",
+  [UpgradeType.SPELL_ICE_STORM]: "ice_storm",
+  [UpgradeType.SPELL_FROZEN_TOMB]: "frozen_tomb",
+  [UpgradeType.SPELL_PERMAFROST]: "permafrost",
+  // Round 2 — lightning
+  [UpgradeType.SPELL_STATIC_SHOCK]: "static_shock",
+  [UpgradeType.SPELL_ARC_BOLT]: "arc_bolt",
+  [UpgradeType.SPELL_STORM_SURGE]: "storm_surge",
+  [UpgradeType.SPELL_THUNDER_CLAP]: "thunder_clap",
+  [UpgradeType.SPELL_ZEUS_WRATH]: "zeus_wrath",
+  // Round 2 — earth
+  [UpgradeType.SPELL_MUD_SPLASH]: "mud_splash",
+  [UpgradeType.SPELL_ROCK_THROW]: "rock_throw",
+  [UpgradeType.SPELL_AVALANCHE]: "avalanche",
+  [UpgradeType.SPELL_SEISMIC_SLAM]: "seismic_slam",
+  [UpgradeType.SPELL_WORLD_BREAKER]: "world_breaker",
+  // Round 2 — arcane
+  [UpgradeType.SPELL_MANA_BOLT]: "mana_bolt",
+  [UpgradeType.SPELL_ARCANE_PULSE]: "arcane_pulse",
+  [UpgradeType.SPELL_ETHER_BLAST]: "ether_blast",
+  [UpgradeType.SPELL_ARCANE_TORRENT]: "arcane_torrent",
+  [UpgradeType.SPELL_ASTRAL_RIFT]: "astral_rift",
+  // Round 2 — holy
+  [UpgradeType.SPELL_SACRED_STRIKE]: "sacred_strike",
+  [UpgradeType.SPELL_HOLY_LIGHT]: "holy_light",
+  [UpgradeType.SPELL_JUDGMENT]: "judgment",
+  [UpgradeType.SPELL_DIVINE_SHIELD]: "divine_shield",
+  [UpgradeType.SPELL_HEAVENS_GATE]: "heavens_gate",
+  // Round 2 — shadow
+  [UpgradeType.SPELL_DARK_PULSE]: "dark_pulse",
+  [UpgradeType.SPELL_SHADOW_STRIKE]: "shadow_strike",
+  [UpgradeType.SPELL_NIGHTMARE]: "nightmare",
+  [UpgradeType.SPELL_DARK_VOID]: "dark_void",
+  [UpgradeType.SPELL_ECLIPSE]: "eclipse",
+  // Round 2 — poison
+  [UpgradeType.SPELL_TOXIC_DART]: "toxic_dart",
+  [UpgradeType.SPELL_ACID_SPLASH]: "acid_splash",
+  [UpgradeType.SPELL_BLIGHT]: "blight",
+  [UpgradeType.SPELL_CORROSION]: "corrosion",
+  [UpgradeType.SPELL_PLAGUE_WIND]: "plague_wind",
+  // Round 2 — void
+  [UpgradeType.SPELL_PHASE_SHIFT]: "phase_shift",
+  [UpgradeType.SPELL_WARP_BOLT]: "warp_bolt",
+  [UpgradeType.SPELL_RIFT_STORM]: "rift_storm",
+  [UpgradeType.SPELL_VOID_CRUSH]: "void_crush",
+  [UpgradeType.SPELL_EVENT_HORIZON]: "event_horizon",
+  // Round 2 — death
+  [UpgradeType.SPELL_GRAVE_CHILL]: "grave_chill",
+  [UpgradeType.SPELL_WITHER]: "wither",
+  [UpgradeType.SPELL_CORPSE_EXPLOSION]: "corpse_explosion",
+  [UpgradeType.SPELL_DOOM]: "doom",
+  [UpgradeType.SPELL_REQUIEM]: "requiem",
+  // Round 2 — nature
+  [UpgradeType.SPELL_VINE_WHIP]: "vine_whip",
+  [UpgradeType.SPELL_BRAMBLE_BURST]: "bramble_burst",
+  [UpgradeType.SPELL_ENTANGLE]: "entangle",
+  [UpgradeType.SPELL_OVERGROWTH]: "overgrowth",
+  [UpgradeType.SPELL_GAIAS_FURY]: "gaias_fury",
+  // Tier 6 & 7 — fire
+  [UpgradeType.SPELL_HELLFIRE_ERUPTION]: "hellfire_eruption",
+  [UpgradeType.SPELL_SOLAR_FURY]: "solar_fury",
+  [UpgradeType.SPELL_SUPERNOVA]: "supernova",
+  [UpgradeType.SPELL_WORLD_BLAZE]: "world_blaze",
+  // Tier 6 & 7 — ice
+  [UpgradeType.SPELL_FROZEN_ABYSS]: "frozen_abyss",
+  [UpgradeType.SPELL_ARCTIC_DEVASTATION]: "arctic_devastation",
+  [UpgradeType.SPELL_ETERNAL_WINTER]: "eternal_winter",
+  [UpgradeType.SPELL_ICE_AGE]: "ice_age",
+  // Tier 6 & 7 — lightning
+  [UpgradeType.SPELL_DIVINE_THUNDER]: "divine_thunder",
+  [UpgradeType.SPELL_TEMPEST_FURY]: "tempest_fury",
+  [UpgradeType.SPELL_RAGNAROK_BOLT]: "ragnarok_bolt",
+  [UpgradeType.SPELL_COSMIC_STORM]: "cosmic_storm",
+  // Tier 6 & 7 — earth
+  [UpgradeType.SPELL_CONTINENTAL_CRUSH]: "continental_crush",
+  [UpgradeType.SPELL_MAGMA_CORE]: "magma_core",
+  [UpgradeType.SPELL_CATACLYSM]: "cataclysm",
+  [UpgradeType.SPELL_PLANET_SHATTER]: "planet_shatter",
+  // Tier 6 & 7 — arcane
+  [UpgradeType.SPELL_ARCANE_ANNIHILATION]: "arcane_annihilation",
+  [UpgradeType.SPELL_REALITY_WARP]: "reality_warp",
+  [UpgradeType.SPELL_COSMIC_RIFT]: "cosmic_rift",
+  [UpgradeType.SPELL_OMNISCIENCE]: "omniscience",
+  // Tier 6 & 7 — holy
+  [UpgradeType.SPELL_SERAPHIMS_LIGHT]: "seraphims_light",
+  [UpgradeType.SPELL_WRATH_OF_GOD]: "wrath_of_god",
+  [UpgradeType.SPELL_ASCENSION]: "ascension",
+  [UpgradeType.SPELL_DIVINE_JUDGMENT]: "divine_judgment",
+  // Tier 6 & 7 — shadow
+  [UpgradeType.SPELL_ETERNAL_DARKNESS]: "eternal_darkness",
+  [UpgradeType.SPELL_VOID_CORRUPTION]: "void_corruption",
+  [UpgradeType.SPELL_ABYSSAL_DOOM]: "abyssal_doom",
+  [UpgradeType.SPELL_SHADOW_ANNIHILATION]: "shadow_annihilation",
+  // Tier 6 & 7 — poison
+  [UpgradeType.SPELL_EXTINCTION_CLOUD]: "extinction_cloud",
+  [UpgradeType.SPELL_PLAGUE_OF_AGES]: "plague_of_ages",
+  [UpgradeType.SPELL_DEATH_BLOSSOM]: "death_blossom",
+  [UpgradeType.SPELL_TOXIC_APOCALYPSE]: "toxic_apocalypse",
+  // Tier 6 & 7 — void
+  [UpgradeType.SPELL_REALITY_COLLAPSE]: "reality_collapse",
+  [UpgradeType.SPELL_DIMENSIONAL_IMPLOSION]: "dimensional_implosion",
+  [UpgradeType.SPELL_ENTROPY]: "entropy",
+  [UpgradeType.SPELL_END_OF_ALL]: "end_of_all",
+  // Tier 6 & 7 — death
+  [UpgradeType.SPELL_MASS_EXTINCTION]: "mass_extinction",
+  [UpgradeType.SPELL_GRIM_HARVEST]: "grim_harvest",
+  [UpgradeType.SPELL_ARMAGEDDON]: "armageddon",
+  [UpgradeType.SPELL_DEATH_INCARNATE]: "death_incarnate",
+  // Tier 6 & 7 — nature
+  [UpgradeType.SPELL_WORLD_TREES_FURY]: "world_trees_fury",
+  [UpgradeType.SPELL_ELEMENTAL_CHAOS]: "elemental_chaos",
+  [UpgradeType.SPELL_GENESIS_STORM]: "genesis_storm",
+  [UpgradeType.SPELL_WRATH_OF_GAIA]: "wrath_of_gaia",
 };
 
 // ---------------------------------------------------------------------------

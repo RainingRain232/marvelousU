@@ -419,6 +419,127 @@ const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.SPELL_THORN_BARRAGE]: "Thorns",
   [UpgradeType.SPELL_NATURES_WRATH]: "Nat Wrath",
   [UpgradeType.SPELL_PRIMAL_STORM]: "Primal",
+  // Round 2 — fire
+  [UpgradeType.SPELL_EMBER_BOLT]: "Ember",
+  [UpgradeType.SPELL_FLAME_WAVE]: "Flm Wave",
+  [UpgradeType.SPELL_MAGMA_BURST]: "Magma",
+  [UpgradeType.SPELL_FIRE_STORM]: "Firestorm",
+  [UpgradeType.SPELL_DRAGONS_BREATH]: "Drg Brth",
+  // Round 2 — ice
+  [UpgradeType.SPELL_ICE_SHARD]: "Ice Shard",
+  [UpgradeType.SPELL_FROSTBITE]: "Frostbite",
+  [UpgradeType.SPELL_ICE_STORM]: "Ice Storm",
+  [UpgradeType.SPELL_FROZEN_TOMB]: "Frz Tomb",
+  [UpgradeType.SPELL_PERMAFROST]: "Permafrst",
+  // Round 2 — lightning
+  [UpgradeType.SPELL_STATIC_SHOCK]: "Static",
+  [UpgradeType.SPELL_ARC_BOLT]: "Arc Bolt",
+  [UpgradeType.SPELL_STORM_SURGE]: "Stm Surge",
+  [UpgradeType.SPELL_THUNDER_CLAP]: "Thndr Clp",
+  [UpgradeType.SPELL_ZEUS_WRATH]: "Zeus",
+  // Round 2 — earth
+  [UpgradeType.SPELL_MUD_SPLASH]: "Mud",
+  [UpgradeType.SPELL_ROCK_THROW]: "Rock",
+  [UpgradeType.SPELL_AVALANCHE]: "Avalanche",
+  [UpgradeType.SPELL_SEISMIC_SLAM]: "Seismic",
+  [UpgradeType.SPELL_WORLD_BREAKER]: "Wld Brkr",
+  // Round 2 — arcane
+  [UpgradeType.SPELL_MANA_BOLT]: "Mana Bolt",
+  [UpgradeType.SPELL_ARCANE_PULSE]: "Arc Pulse",
+  [UpgradeType.SPELL_ETHER_BLAST]: "Ether",
+  [UpgradeType.SPELL_ARCANE_TORRENT]: "Torrent",
+  [UpgradeType.SPELL_ASTRAL_RIFT]: "Astral",
+  // Round 2 — holy
+  [UpgradeType.SPELL_SACRED_STRIKE]: "Sacred",
+  [UpgradeType.SPELL_HOLY_LIGHT]: "Holy Lght",
+  [UpgradeType.SPELL_JUDGMENT]: "Judgment",
+  [UpgradeType.SPELL_DIVINE_SHIELD]: "Div Shld",
+  [UpgradeType.SPELL_HEAVENS_GATE]: "Hvn Gate",
+  // Round 2 — shadow
+  [UpgradeType.SPELL_DARK_PULSE]: "Drk Pulse",
+  [UpgradeType.SPELL_SHADOW_STRIKE]: "Shd Strk",
+  [UpgradeType.SPELL_NIGHTMARE]: "Nightmre",
+  [UpgradeType.SPELL_DARK_VOID]: "Drk Void",
+  [UpgradeType.SPELL_ECLIPSE]: "Eclipse",
+  // Round 2 — poison
+  [UpgradeType.SPELL_TOXIC_DART]: "Tox Dart",
+  [UpgradeType.SPELL_ACID_SPLASH]: "Acid",
+  [UpgradeType.SPELL_BLIGHT]: "Blight",
+  [UpgradeType.SPELL_CORROSION]: "Corrode",
+  [UpgradeType.SPELL_PLAGUE_WIND]: "Plg Wind",
+  // Round 2 — void
+  [UpgradeType.SPELL_PHASE_SHIFT]: "Phase",
+  [UpgradeType.SPELL_WARP_BOLT]: "Warp",
+  [UpgradeType.SPELL_RIFT_STORM]: "Rft Storm",
+  [UpgradeType.SPELL_VOID_CRUSH]: "Vd Crush",
+  [UpgradeType.SPELL_EVENT_HORIZON]: "Evt Hrzn",
+  // Round 2 — death
+  [UpgradeType.SPELL_GRAVE_CHILL]: "Grave",
+  [UpgradeType.SPELL_WITHER]: "Wither",
+  [UpgradeType.SPELL_CORPSE_EXPLOSION]: "Corpse Ex",
+  [UpgradeType.SPELL_DOOM]: "Doom",
+  [UpgradeType.SPELL_REQUIEM]: "Requiem",
+  // Round 2 — nature
+  [UpgradeType.SPELL_VINE_WHIP]: "Vine",
+  [UpgradeType.SPELL_BRAMBLE_BURST]: "Bramble",
+  [UpgradeType.SPELL_ENTANGLE]: "Entangle",
+  [UpgradeType.SPELL_OVERGROWTH]: "Ovrgrowth",
+  [UpgradeType.SPELL_GAIAS_FURY]: "Gaia",
+  // Tier 6 & 7 — fire
+  [UpgradeType.SPELL_HELLFIRE_ERUPTION]: "Hellfire Eruption",
+  [UpgradeType.SPELL_SOLAR_FURY]: "Solar Fury",
+  [UpgradeType.SPELL_SUPERNOVA]: "Supernova",
+  [UpgradeType.SPELL_WORLD_BLAZE]: "World Blaze",
+  // Tier 6 & 7 — ice
+  [UpgradeType.SPELL_FROZEN_ABYSS]: "Frozen Abyss",
+  [UpgradeType.SPELL_ARCTIC_DEVASTATION]: "Arctic Devastation",
+  [UpgradeType.SPELL_ETERNAL_WINTER]: "Eternal Winter",
+  [UpgradeType.SPELL_ICE_AGE]: "Ice Age",
+  // Tier 6 & 7 — lightning
+  [UpgradeType.SPELL_DIVINE_THUNDER]: "Divine Thunder",
+  [UpgradeType.SPELL_TEMPEST_FURY]: "Tempest Fury",
+  [UpgradeType.SPELL_RAGNAROK_BOLT]: "Ragnarok Bolt",
+  [UpgradeType.SPELL_COSMIC_STORM]: "Cosmic Storm",
+  // Tier 6 & 7 — earth
+  [UpgradeType.SPELL_CONTINENTAL_CRUSH]: "Continental Crush",
+  [UpgradeType.SPELL_MAGMA_CORE]: "Magma Core",
+  [UpgradeType.SPELL_CATACLYSM]: "Cataclysm",
+  [UpgradeType.SPELL_PLANET_SHATTER]: "Planet Shatter",
+  // Tier 6 & 7 — arcane
+  [UpgradeType.SPELL_ARCANE_ANNIHILATION]: "Arcane Annihilation",
+  [UpgradeType.SPELL_REALITY_WARP]: "Reality Warp",
+  [UpgradeType.SPELL_COSMIC_RIFT]: "Cosmic Rift",
+  [UpgradeType.SPELL_OMNISCIENCE]: "Omniscience",
+  // Tier 6 & 7 — holy
+  [UpgradeType.SPELL_SERAPHIMS_LIGHT]: "Seraphim's Light",
+  [UpgradeType.SPELL_WRATH_OF_GOD]: "Wrath of God",
+  [UpgradeType.SPELL_ASCENSION]: "Ascension",
+  [UpgradeType.SPELL_DIVINE_JUDGMENT]: "Divine Judgment",
+  // Tier 6 & 7 — shadow
+  [UpgradeType.SPELL_ETERNAL_DARKNESS]: "Eternal Darkness",
+  [UpgradeType.SPELL_VOID_CORRUPTION]: "Void Corruption",
+  [UpgradeType.SPELL_ABYSSAL_DOOM]: "Abyssal Doom",
+  [UpgradeType.SPELL_SHADOW_ANNIHILATION]: "Shadow Annihilation",
+  // Tier 6 & 7 — poison
+  [UpgradeType.SPELL_EXTINCTION_CLOUD]: "Extinction Cloud",
+  [UpgradeType.SPELL_PLAGUE_OF_AGES]: "Plague of Ages",
+  [UpgradeType.SPELL_DEATH_BLOSSOM]: "Death Blossom",
+  [UpgradeType.SPELL_TOXIC_APOCALYPSE]: "Toxic Apocalypse",
+  // Tier 6 & 7 — void
+  [UpgradeType.SPELL_REALITY_COLLAPSE]: "Reality Collapse",
+  [UpgradeType.SPELL_DIMENSIONAL_IMPLOSION]: "Dimensional Implosion",
+  [UpgradeType.SPELL_ENTROPY]: "Entropy",
+  [UpgradeType.SPELL_END_OF_ALL]: "End of All",
+  // Tier 6 & 7 — death
+  [UpgradeType.SPELL_MASS_EXTINCTION]: "Mass Extinction",
+  [UpgradeType.SPELL_GRIM_HARVEST]: "Grim Harvest",
+  [UpgradeType.SPELL_ARMAGEDDON]: "Armageddon",
+  [UpgradeType.SPELL_DEATH_INCARNATE]: "Death Incarnate",
+  // Tier 6 & 7 — nature
+  [UpgradeType.SPELL_WORLD_TREES_FURY]: "World Tree's Fury",
+  [UpgradeType.SPELL_ELEMENTAL_CHAOS]: "Elemental Chaos",
+  [UpgradeType.SPELL_GENESIS_STORM]: "Genesis Storm",
+  [UpgradeType.SPELL_WRATH_OF_GAIA]: "Wrath of Gaia",
 };
 
 // ---------------------------------------------------------------------------
@@ -1670,7 +1791,7 @@ export class ShopPanel {
     const tierNum = (def as any).spellTier as number | undefined;
     const magicType = (def as any).spellMagicType as string | undefined;
     if (tierNum && spellSchool) {
-      const tierNumerals = ["", "I", "II", "III", "IV", "V"];
+      const tierNumerals = ["", "I", "II", "III", "IV", "V", "VI", "VII"];
       const magicTypeColors: Record<string, number> = {
         fire: 0xff4422, ice: 0x66ccff, lightning: 0xffff44,
         earth: 0xaa8844, arcane: 0x9966ff, holy: 0xffdd44,
@@ -3179,7 +3300,7 @@ export class ShopPanel {
     const spellDef = def as any;
     let yPos = 8;
     if (spellDef.spellSchool) {
-      const tierNumerals = ["", "I", "II", "III", "IV", "V"];
+      const tierNumerals = ["", "I", "II", "III", "IV", "V", "VI", "VII"];
       const schoolName = (spellDef.spellSchool as string).charAt(0).toUpperCase() + (spellDef.spellSchool as string).slice(1);
       const magicType = spellDef.spellMagicType as string | undefined;
       const tierNum = spellDef.spellTier as number | undefined;

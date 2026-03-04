@@ -16,7 +16,7 @@ export interface UpgradeDef {
   spellHeal?: number; // HP restored to friendlies in radius
   spellRadius?: number; // Area of effect radius in tiles
   spellSchool?: "elemental" | "arcane" | "divine" | "shadow" | "conjuration";
-  spellTier?: 1 | 2 | 3 | 4 | 5;
+  spellTier?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   spellMagicType?: "fire" | "ice" | "lightning" | "earth" | "arcane" | "holy" | "shadow" | "poison" | "void" | "death" | "nature";
 }
 
@@ -636,5 +636,648 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
     description: "Nature unleashes its full wrath — wind, thorns, and raw power.", appliesTo: [],
     isSpell: true, spellType: "damage", spellDamage: 85, spellRadius: 4,
     spellSchool: "elemental", spellTier: 5, spellMagicType: "nature",
+  },
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Round 2 — 1 extra spell per tier per magic type (55 new)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ── FIRE ────────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_EMBER_BOLT]: {
+    type: UpgradeType.SPELL_EMBER_BOLT, cost: 0, manaCost: 30, maxLevel: 99, effect: 0,
+    description: "A quick bolt of burning embers.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 16, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "fire",
+  },
+  [UpgradeType.SPELL_FLAME_WAVE]: {
+    type: UpgradeType.SPELL_FLAME_WAVE, cost: 0, manaCost: 70, maxLevel: 99, effect: 0,
+    description: "A rolling wave of fire sweeps through enemies.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 28, spellRadius: 2,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "fire",
+  },
+  [UpgradeType.SPELL_MAGMA_BURST]: {
+    type: UpgradeType.SPELL_MAGMA_BURST, cost: 0, manaCost: 160, maxLevel: 99, effect: 0,
+    description: "Molten magma erupts from the ground.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 44, spellRadius: 2.5,
+    spellSchool: "elemental", spellTier: 3, spellMagicType: "fire",
+  },
+  [UpgradeType.SPELL_FIRE_STORM]: {
+    type: UpgradeType.SPELL_FIRE_STORM, cost: 0, manaCost: 380, maxLevel: 99, effect: 0,
+    description: "A raging storm of fire engulfs the area.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 65, spellRadius: 3.5,
+    spellSchool: "elemental", spellTier: 4, spellMagicType: "fire",
+  },
+  [UpgradeType.SPELL_DRAGONS_BREATH]: {
+    type: UpgradeType.SPELL_DRAGONS_BREATH, cost: 0, manaCost: 700, maxLevel: 99, effect: 0,
+    description: "Unleash the breath of an ancient dragon.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 92, spellRadius: 4,
+    spellSchool: "elemental", spellTier: 5, spellMagicType: "fire",
+  },
+  // ── ICE ─────────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_ICE_SHARD]: {
+    type: UpgradeType.SPELL_ICE_SHARD, cost: 0, manaCost: 30, maxLevel: 99, effect: 0,
+    description: "A sharp shard of ice pierces enemies.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 16, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "ice",
+  },
+  [UpgradeType.SPELL_FROSTBITE]: {
+    type: UpgradeType.SPELL_FROSTBITE, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
+    description: "Bitter cold bites at all nearby foes.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 24, spellRadius: 2,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "ice",
+  },
+  [UpgradeType.SPELL_ICE_STORM]: {
+    type: UpgradeType.SPELL_ICE_STORM, cost: 0, manaCost: 150, maxLevel: 99, effect: 0,
+    description: "A howling storm of ice and hail.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 42, spellRadius: 3,
+    spellSchool: "elemental", spellTier: 3, spellMagicType: "ice",
+  },
+  [UpgradeType.SPELL_FROZEN_TOMB]: {
+    type: UpgradeType.SPELL_FROZEN_TOMB, cost: 0, manaCost: 340, maxLevel: 99, effect: 0,
+    description: "Encases the area in a tomb of solid ice.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 60, spellRadius: 3,
+    spellSchool: "elemental", spellTier: 4, spellMagicType: "ice",
+  },
+  [UpgradeType.SPELL_PERMAFROST]: {
+    type: UpgradeType.SPELL_PERMAFROST, cost: 0, manaCost: 650, maxLevel: 99, effect: 0,
+    description: "Eternal ice spreads across the land, freezing all.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 88, spellRadius: 3.5,
+    spellSchool: "elemental", spellTier: 5, spellMagicType: "ice",
+  },
+  // ── LIGHTNING ───────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_STATIC_SHOCK]: {
+    type: UpgradeType.SPELL_STATIC_SHOCK, cost: 0, manaCost: 30, maxLevel: 99, effect: 0,
+    description: "A sudden jolt of static electricity.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 15, spellRadius: 1,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "lightning",
+  },
+  [UpgradeType.SPELL_ARC_BOLT]: {
+    type: UpgradeType.SPELL_ARC_BOLT, cost: 0, manaCost: 70, maxLevel: 99, effect: 0,
+    description: "An arcing bolt of electricity leaps between targets.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 26, spellRadius: 1.5,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "lightning",
+  },
+  [UpgradeType.SPELL_STORM_SURGE]: {
+    type: UpgradeType.SPELL_STORM_SURGE, cost: 0, manaCost: 160, maxLevel: 99, effect: 0,
+    description: "A surging wave of electrical energy.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 44, spellRadius: 2.5,
+    spellSchool: "elemental", spellTier: 3, spellMagicType: "lightning",
+  },
+  [UpgradeType.SPELL_THUNDER_CLAP]: {
+    type: UpgradeType.SPELL_THUNDER_CLAP, cost: 0, manaCost: 360, maxLevel: 99, effect: 0,
+    description: "A deafening clap of thunder shatters the air.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 64, spellRadius: 3.5,
+    spellSchool: "elemental", spellTier: 4, spellMagicType: "lightning",
+  },
+  [UpgradeType.SPELL_ZEUS_WRATH]: {
+    type: UpgradeType.SPELL_ZEUS_WRATH, cost: 0, manaCost: 700, maxLevel: 99, effect: 0,
+    description: "The wrath of the storm god strikes the earth.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 98, spellRadius: 4,
+    spellSchool: "elemental", spellTier: 5, spellMagicType: "lightning",
+  },
+  // ── EARTH ───────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_MUD_SPLASH]: {
+    type: UpgradeType.SPELL_MUD_SPLASH, cost: 0, manaCost: 28, maxLevel: 99, effect: 0,
+    description: "A splash of heavy mud slows and damages.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1.5,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "earth",
+  },
+  [UpgradeType.SPELL_ROCK_THROW]: {
+    type: UpgradeType.SPELL_ROCK_THROW, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
+    description: "Hurls a massive boulder at the enemy.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 24, spellRadius: 2,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "earth",
+  },
+  [UpgradeType.SPELL_AVALANCHE]: {
+    type: UpgradeType.SPELL_AVALANCHE, cost: 0, manaCost: 155, maxLevel: 99, effect: 0,
+    description: "An avalanche of rocks and debris.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 40, spellRadius: 3,
+    spellSchool: "elemental", spellTier: 3, spellMagicType: "earth",
+  },
+  [UpgradeType.SPELL_SEISMIC_SLAM]: {
+    type: UpgradeType.SPELL_SEISMIC_SLAM, cost: 0, manaCost: 340, maxLevel: 99, effect: 0,
+    description: "A devastating slam that cracks the earth.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 56, spellRadius: 3,
+    spellSchool: "elemental", spellTier: 4, spellMagicType: "earth",
+  },
+  [UpgradeType.SPELL_WORLD_BREAKER]: {
+    type: UpgradeType.SPELL_WORLD_BREAKER, cost: 0, manaCost: 650, maxLevel: 99, effect: 0,
+    description: "Shatters the very foundations of the world.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 90, spellRadius: 4,
+    spellSchool: "elemental", spellTier: 5, spellMagicType: "earth",
+  },
+  // ── ARCANE ──────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_MANA_BOLT]: {
+    type: UpgradeType.SPELL_MANA_BOLT, cost: 0, manaCost: 28, maxLevel: 99, effect: 0,
+    description: "A focused bolt of raw mana.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1,
+    spellSchool: "arcane", spellTier: 1, spellMagicType: "arcane",
+  },
+  [UpgradeType.SPELL_ARCANE_PULSE]: {
+    type: UpgradeType.SPELL_ARCANE_PULSE, cost: 0, manaCost: 75, maxLevel: 99, effect: 0,
+    description: "A pulsing wave of arcane energy.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 28, spellRadius: 2,
+    spellSchool: "arcane", spellTier: 2, spellMagicType: "arcane",
+  },
+  [UpgradeType.SPELL_ETHER_BLAST]: {
+    type: UpgradeType.SPELL_ETHER_BLAST, cost: 0, manaCost: 165, maxLevel: 99, effect: 0,
+    description: "A blast from the ethereal plane.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 43, spellRadius: 2.5,
+    spellSchool: "arcane", spellTier: 3, spellMagicType: "arcane",
+  },
+  [UpgradeType.SPELL_ARCANE_TORRENT]: {
+    type: UpgradeType.SPELL_ARCANE_TORRENT, cost: 0, manaCost: 380, maxLevel: 99, effect: 0,
+    description: "A torrential flood of arcane power.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 68, spellRadius: 3,
+    spellSchool: "arcane", spellTier: 4, spellMagicType: "arcane",
+  },
+  [UpgradeType.SPELL_ASTRAL_RIFT]: {
+    type: UpgradeType.SPELL_ASTRAL_RIFT, cost: 0, manaCost: 680, maxLevel: 99, effect: 0,
+    description: "Opens a rift to the astral plane, unraveling reality.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 96, spellRadius: 3.5,
+    spellSchool: "arcane", spellTier: 5, spellMagicType: "arcane",
+  },
+  // ── HOLY ────────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_SACRED_STRIKE]: {
+    type: UpgradeType.SPELL_SACRED_STRIKE, cost: 0, manaCost: 35, maxLevel: 99, effect: 0,
+    description: "A strike of sacred energy smites the unholy.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 18, spellRadius: 1.5,
+    spellSchool: "divine", spellTier: 1, spellMagicType: "holy",
+  },
+  [UpgradeType.SPELL_HOLY_LIGHT]: {
+    type: UpgradeType.SPELL_HOLY_LIGHT, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
+    description: "A warm beam of holy light mends wounds.", appliesTo: [],
+    isSpell: true, spellType: "heal", spellHeal: 35, spellRadius: 2,
+    spellSchool: "divine", spellTier: 2, spellMagicType: "holy",
+  },
+  [UpgradeType.SPELL_JUDGMENT]: {
+    type: UpgradeType.SPELL_JUDGMENT, cost: 0, manaCost: 155, maxLevel: 99, effect: 0,
+    description: "Divine judgment falls upon the wicked.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 42, spellRadius: 2.5,
+    spellSchool: "divine", spellTier: 3, spellMagicType: "holy",
+  },
+  [UpgradeType.SPELL_DIVINE_SHIELD]: {
+    type: UpgradeType.SPELL_DIVINE_SHIELD, cost: 0, manaCost: 340, maxLevel: 99, effect: 0,
+    description: "A divine barrier heals and protects allies.", appliesTo: [],
+    isSpell: true, spellType: "heal", spellHeal: 70, spellRadius: 3.5,
+    spellSchool: "divine", spellTier: 4, spellMagicType: "holy",
+  },
+  [UpgradeType.SPELL_HEAVENS_GATE]: {
+    type: UpgradeType.SPELL_HEAVENS_GATE, cost: 0, manaCost: 680, maxLevel: 99, effect: 0,
+    description: "The gates of heaven open, raining divine fury.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 98, spellRadius: 4,
+    spellSchool: "divine", spellTier: 5, spellMagicType: "holy",
+  },
+  // ── SHADOW ──────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_DARK_PULSE]: {
+    type: UpgradeType.SPELL_DARK_PULSE, cost: 0, manaCost: 28, maxLevel: 99, effect: 0,
+    description: "A pulse of dark energy radiates outward.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 15, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "shadow",
+  },
+  [UpgradeType.SPELL_SHADOW_STRIKE]: {
+    type: UpgradeType.SPELL_SHADOW_STRIKE, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
+    description: "A swift strike from the shadows.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 24, spellRadius: 2,
+    spellSchool: "shadow", spellTier: 2, spellMagicType: "shadow",
+  },
+  [UpgradeType.SPELL_NIGHTMARE]: {
+    type: UpgradeType.SPELL_NIGHTMARE, cost: 0, manaCost: 155, maxLevel: 99, effect: 0,
+    description: "Inflicts living nightmares upon all in the area.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 40, spellRadius: 2.5,
+    spellSchool: "shadow", spellTier: 3, spellMagicType: "shadow",
+  },
+  [UpgradeType.SPELL_DARK_VOID]: {
+    type: UpgradeType.SPELL_DARK_VOID, cost: 0, manaCost: 360, maxLevel: 99, effect: 0,
+    description: "Opens a void of pure darkness.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 60, spellRadius: 3.5,
+    spellSchool: "shadow", spellTier: 4, spellMagicType: "shadow",
+  },
+  [UpgradeType.SPELL_ECLIPSE]: {
+    type: UpgradeType.SPELL_ECLIPSE, cost: 0, manaCost: 680, maxLevel: 99, effect: 0,
+    description: "Blots out the sun, engulfing all in shadow.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 94, spellRadius: 4,
+    spellSchool: "shadow", spellTier: 5, spellMagicType: "shadow",
+  },
+  // ── POISON ──────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_TOXIC_DART]: {
+    type: UpgradeType.SPELL_TOXIC_DART, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "A small poisoned dart strikes a target.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 13, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "poison",
+  },
+  [UpgradeType.SPELL_ACID_SPLASH]: {
+    type: UpgradeType.SPELL_ACID_SPLASH, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
+    description: "Splashes corrosive acid across the area.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 24, spellRadius: 2,
+    spellSchool: "shadow", spellTier: 2, spellMagicType: "poison",
+  },
+  [UpgradeType.SPELL_BLIGHT]: {
+    type: UpgradeType.SPELL_BLIGHT, cost: 0, manaCost: 145, maxLevel: 99, effect: 0,
+    description: "A creeping blight withers everything it touches.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 36, spellRadius: 3,
+    spellSchool: "shadow", spellTier: 3, spellMagicType: "poison",
+  },
+  [UpgradeType.SPELL_CORROSION]: {
+    type: UpgradeType.SPELL_CORROSION, cost: 0, manaCost: 320, maxLevel: 99, effect: 0,
+    description: "Powerful acid corrodes armor and flesh alike.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 54, spellRadius: 3,
+    spellSchool: "shadow", spellTier: 4, spellMagicType: "poison",
+  },
+  [UpgradeType.SPELL_PLAGUE_WIND]: {
+    type: UpgradeType.SPELL_PLAGUE_WIND, cost: 0, manaCost: 650, maxLevel: 99, effect: 0,
+    description: "A wind carrying death spreads across the land.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 82, spellRadius: 4,
+    spellSchool: "shadow", spellTier: 5, spellMagicType: "poison",
+  },
+  // ── VOID ────────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_PHASE_SHIFT]: {
+    type: UpgradeType.SPELL_PHASE_SHIFT, cost: 0, manaCost: 28, maxLevel: 99, effect: 0,
+    description: "Shifts the phase of space, damaging all within.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 16, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "void",
+  },
+  [UpgradeType.SPELL_WARP_BOLT]: {
+    type: UpgradeType.SPELL_WARP_BOLT, cost: 0, manaCost: 75, maxLevel: 99, effect: 0,
+    description: "A bolt of warped space-time distortion.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 28, spellRadius: 2,
+    spellSchool: "shadow", spellTier: 2, spellMagicType: "void",
+  },
+  [UpgradeType.SPELL_RIFT_STORM]: {
+    type: UpgradeType.SPELL_RIFT_STORM, cost: 0, manaCost: 160, maxLevel: 99, effect: 0,
+    description: "Multiple rifts tear through the area.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 44, spellRadius: 2.5,
+    spellSchool: "shadow", spellTier: 3, spellMagicType: "void",
+  },
+  [UpgradeType.SPELL_VOID_CRUSH]: {
+    type: UpgradeType.SPELL_VOID_CRUSH, cost: 0, manaCost: 350, maxLevel: 99, effect: 0,
+    description: "The void crushes inward, annihilating all.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 58, spellRadius: 3,
+    spellSchool: "shadow", spellTier: 4, spellMagicType: "void",
+  },
+  [UpgradeType.SPELL_EVENT_HORIZON]: {
+    type: UpgradeType.SPELL_EVENT_HORIZON, cost: 0, manaCost: 720, maxLevel: 99, effect: 0,
+    description: "The boundary beyond which nothing escapes.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 98, spellRadius: 3.5,
+    spellSchool: "shadow", spellTier: 5, spellMagicType: "void",
+  },
+  // ── DEATH ───────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_GRAVE_CHILL]: {
+    type: UpgradeType.SPELL_GRAVE_CHILL, cost: 0, manaCost: 28, maxLevel: 99, effect: 0,
+    description: "The cold of the grave seeps into the living.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 15, spellRadius: 1,
+    spellSchool: "shadow", spellTier: 1, spellMagicType: "death",
+  },
+  [UpgradeType.SPELL_WITHER]: {
+    type: UpgradeType.SPELL_WITHER, cost: 0, manaCost: 70, maxLevel: 99, effect: 0,
+    description: "Life force withers and decays rapidly.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 25, spellRadius: 2,
+    spellSchool: "shadow", spellTier: 2, spellMagicType: "death",
+  },
+  [UpgradeType.SPELL_CORPSE_EXPLOSION]: {
+    type: UpgradeType.SPELL_CORPSE_EXPLOSION, cost: 0, manaCost: 150, maxLevel: 99, effect: 0,
+    description: "The dead erupt in a shower of necrotic energy.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 40, spellRadius: 3,
+    spellSchool: "shadow", spellTier: 3, spellMagicType: "death",
+  },
+  [UpgradeType.SPELL_DOOM]: {
+    type: UpgradeType.SPELL_DOOM, cost: 0, manaCost: 340, maxLevel: 99, effect: 0,
+    description: "Marks all in the area for certain death.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 56, spellRadius: 3,
+    spellSchool: "shadow", spellTier: 4, spellMagicType: "death",
+  },
+  [UpgradeType.SPELL_REQUIEM]: {
+    type: UpgradeType.SPELL_REQUIEM, cost: 0, manaCost: 680, maxLevel: 99, effect: 0,
+    description: "A final song of death echoes across the battlefield.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 92, spellRadius: 4,
+    spellSchool: "shadow", spellTier: 5, spellMagicType: "death",
+  },
+  // ── NATURE ──────────────────────────────────────────────────────────────────
+  [UpgradeType.SPELL_VINE_WHIP]: {
+    type: UpgradeType.SPELL_VINE_WHIP, cost: 0, manaCost: 25, maxLevel: 99, effect: 0,
+    description: "A lashing vine strikes nearby enemies.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 14, spellRadius: 1.5,
+    spellSchool: "elemental", spellTier: 1, spellMagicType: "nature",
+  },
+  [UpgradeType.SPELL_BRAMBLE_BURST]: {
+    type: UpgradeType.SPELL_BRAMBLE_BURST, cost: 0, manaCost: 65, maxLevel: 99, effect: 0,
+    description: "Thorny brambles burst from the ground.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 22, spellRadius: 2,
+    spellSchool: "elemental", spellTier: 2, spellMagicType: "nature",
+  },
+  [UpgradeType.SPELL_ENTANGLE]: {
+    type: UpgradeType.SPELL_ENTANGLE, cost: 0, manaCost: 140, maxLevel: 99, effect: 0,
+    description: "Grasping roots entangle and crush enemies.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 36, spellRadius: 2.5,
+    spellSchool: "elemental", spellTier: 3, spellMagicType: "nature",
+  },
+  [UpgradeType.SPELL_OVERGROWTH]: {
+    type: UpgradeType.SPELL_OVERGROWTH, cost: 0, manaCost: 320, maxLevel: 99, effect: 0,
+    description: "Explosive plant growth overwhelms the area.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 52, spellRadius: 3.5,
+    spellSchool: "elemental", spellTier: 4, spellMagicType: "nature",
+  },
+  [UpgradeType.SPELL_GAIAS_FURY]: {
+    type: UpgradeType.SPELL_GAIAS_FURY, cost: 0, manaCost: 650, maxLevel: 99, effect: 0,
+    description: "The earth mother unleashes her primal fury.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 86, spellRadius: 4,
+    spellSchool: "elemental", spellTier: 5, spellMagicType: "nature",
+  },
+
+  // ─── Tier 6 (Epic) & Tier 7 (Mythic) ───────────────────────────
+
+  // Fire T6
+  [UpgradeType.SPELL_HELLFIRE_ERUPTION]: {
+    type: UpgradeType.SPELL_HELLFIRE_ERUPTION, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "Hellfire erupts from the depths, consuming everything.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 120, spellRadius: 4,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "fire",
+  },
+  [UpgradeType.SPELL_SOLAR_FURY]: {
+    type: UpgradeType.SPELL_SOLAR_FURY, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "The fury of the sun scorches the battlefield.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 130, spellRadius: 4.5,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "fire",
+  },
+  // Fire T7
+  [UpgradeType.SPELL_SUPERNOVA]: {
+    type: UpgradeType.SPELL_SUPERNOVA, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "A dying star explodes with cataclysmic force.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 170, spellRadius: 5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "fire",
+  },
+  [UpgradeType.SPELL_WORLD_BLAZE]: {
+    type: UpgradeType.SPELL_WORLD_BLAZE, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "The entire world is engulfed in primordial flame.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 200, spellRadius: 5.5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "fire",
+  },
+
+  // Ice T6
+  [UpgradeType.SPELL_FROZEN_ABYSS]: {
+    type: UpgradeType.SPELL_FROZEN_ABYSS, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "An abyssal cold freezes enemies to their core.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 118, spellRadius: 4,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "ice",
+  },
+  [UpgradeType.SPELL_ARCTIC_DEVASTATION]: {
+    type: UpgradeType.SPELL_ARCTIC_DEVASTATION, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "Arctic winds tear across the land with devastating force.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 128, spellRadius: 4.5,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "ice",
+  },
+  // Ice T7
+  [UpgradeType.SPELL_ETERNAL_WINTER]: {
+    type: UpgradeType.SPELL_ETERNAL_WINTER, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "An endless winter descends, freezing time itself.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 165, spellRadius: 5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "ice",
+  },
+  [UpgradeType.SPELL_ICE_AGE]: {
+    type: UpgradeType.SPELL_ICE_AGE, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "A new ice age begins, nothing survives the cold.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 195, spellRadius: 5.5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "ice",
+  },
+
+  // Lightning T6
+  [UpgradeType.SPELL_DIVINE_THUNDER]: {
+    type: UpgradeType.SPELL_DIVINE_THUNDER, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "Thunder from the heavens strikes with divine wrath.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 125, spellRadius: 4,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "lightning",
+  },
+  [UpgradeType.SPELL_TEMPEST_FURY]: {
+    type: UpgradeType.SPELL_TEMPEST_FURY, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "The fury of a thousand tempests unleashed at once.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 135, spellRadius: 4.5,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "lightning",
+  },
+  // Lightning T7
+  [UpgradeType.SPELL_RAGNAROK_BOLT]: {
+    type: UpgradeType.SPELL_RAGNAROK_BOLT, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "The final lightning bolt that heralds the end of days.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 175, spellRadius: 5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "lightning",
+  },
+  [UpgradeType.SPELL_COSMIC_STORM]: {
+    type: UpgradeType.SPELL_COSMIC_STORM, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "A storm of cosmic energy tears reality apart.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 205, spellRadius: 5.5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "lightning",
+  },
+
+  // Earth T6
+  [UpgradeType.SPELL_CONTINENTAL_CRUSH]: {
+    type: UpgradeType.SPELL_CONTINENTAL_CRUSH, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "Continents collide with earth-shattering force.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 115, spellRadius: 4.5,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "earth",
+  },
+  [UpgradeType.SPELL_MAGMA_CORE]: {
+    type: UpgradeType.SPELL_MAGMA_CORE, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "The planet's molten core erupts through the surface.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 125, spellRadius: 4.5,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "earth",
+  },
+  // Earth T7
+  [UpgradeType.SPELL_CATACLYSM]: {
+    type: UpgradeType.SPELL_CATACLYSM, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "A world-ending cataclysm reshapes the very land.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 160, spellRadius: 5.5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "earth",
+  },
+  [UpgradeType.SPELL_PLANET_SHATTER]: {
+    type: UpgradeType.SPELL_PLANET_SHATTER, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "The planet itself cracks apart under impossible force.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 190, spellRadius: 5.5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "earth",
+  },
+
+  // Arcane T6
+  [UpgradeType.SPELL_ARCANE_ANNIHILATION]: {
+    type: UpgradeType.SPELL_ARCANE_ANNIHILATION, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "Pure arcane energy annihilates all it touches.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 125, spellRadius: 4,
+    spellSchool: "arcane", spellTier: 6, spellMagicType: "arcane",
+  },
+  [UpgradeType.SPELL_REALITY_WARP]: {
+    type: UpgradeType.SPELL_REALITY_WARP, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "Reality bends and warps, unmaking everything within.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 135, spellRadius: 4,
+    spellSchool: "arcane", spellTier: 6, spellMagicType: "arcane",
+  },
+  // Arcane T7
+  [UpgradeType.SPELL_COSMIC_RIFT]: {
+    type: UpgradeType.SPELL_COSMIC_RIFT, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "A rift in the cosmos tears through the battlefield.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 175, spellRadius: 5,
+    spellSchool: "arcane", spellTier: 7, spellMagicType: "arcane",
+  },
+  [UpgradeType.SPELL_OMNISCIENCE]: {
+    type: UpgradeType.SPELL_OMNISCIENCE, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "All-knowing power unmakes enemies from existence.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 210, spellRadius: 5,
+    spellSchool: "arcane", spellTier: 7, spellMagicType: "arcane",
+  },
+
+  // Holy T6
+  [UpgradeType.SPELL_SERAPHIMS_LIGHT]: {
+    type: UpgradeType.SPELL_SERAPHIMS_LIGHT, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "The light of the seraphim restores all wounds.", appliesTo: [],
+    isSpell: true, spellType: "heal", spellHeal: 120, spellRadius: 4.5,
+    spellSchool: "divine", spellTier: 6, spellMagicType: "holy",
+  },
+  [UpgradeType.SPELL_WRATH_OF_GOD]: {
+    type: UpgradeType.SPELL_WRATH_OF_GOD, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "Divine wrath smites the unholy with blinding fury.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 130, spellRadius: 4.5,
+    spellSchool: "divine", spellTier: 6, spellMagicType: "holy",
+  },
+  // Holy T7
+  [UpgradeType.SPELL_ASCENSION]: {
+    type: UpgradeType.SPELL_ASCENSION, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "Allies ascend beyond mortal limits, fully restored.", appliesTo: [],
+    isSpell: true, spellType: "heal", spellHeal: 180, spellRadius: 5.5,
+    spellSchool: "divine", spellTier: 7, spellMagicType: "holy",
+  },
+  [UpgradeType.SPELL_DIVINE_JUDGMENT]: {
+    type: UpgradeType.SPELL_DIVINE_JUDGMENT, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "The ultimate divine judgment erases all evil.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 200, spellRadius: 5.5,
+    spellSchool: "divine", spellTier: 7, spellMagicType: "holy",
+  },
+
+  // Shadow T6
+  [UpgradeType.SPELL_ETERNAL_DARKNESS]: {
+    type: UpgradeType.SPELL_ETERNAL_DARKNESS, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "Eternal darkness engulfs the world, snuffing out all light.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 120, spellRadius: 4,
+    spellSchool: "shadow", spellTier: 6, spellMagicType: "shadow",
+  },
+  [UpgradeType.SPELL_VOID_CORRUPTION]: {
+    type: UpgradeType.SPELL_VOID_CORRUPTION, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "Void energy corrupts flesh, bone, and soul.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 130, spellRadius: 4.5,
+    spellSchool: "shadow", spellTier: 6, spellMagicType: "shadow",
+  },
+  // Shadow T7
+  [UpgradeType.SPELL_ABYSSAL_DOOM]: {
+    type: UpgradeType.SPELL_ABYSSAL_DOOM, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "The abyss itself rises to consume all living things.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 168, spellRadius: 5,
+    spellSchool: "shadow", spellTier: 7, spellMagicType: "shadow",
+  },
+  [UpgradeType.SPELL_SHADOW_ANNIHILATION]: {
+    type: UpgradeType.SPELL_SHADOW_ANNIHILATION, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "Shadow consumes reality, leaving only the void.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 198, spellRadius: 5.5,
+    spellSchool: "shadow", spellTier: 7, spellMagicType: "shadow",
+  },
+
+  // Poison T6
+  [UpgradeType.SPELL_EXTINCTION_CLOUD]: {
+    type: UpgradeType.SPELL_EXTINCTION_CLOUD, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "A toxic cloud so deadly it causes mass extinction.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 110, spellRadius: 4.5,
+    spellSchool: "shadow", spellTier: 6, spellMagicType: "poison",
+  },
+  [UpgradeType.SPELL_PLAGUE_OF_AGES]: {
+    type: UpgradeType.SPELL_PLAGUE_OF_AGES, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "An ancient plague resurfaces, devouring all life.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 120, spellRadius: 4.5,
+    spellSchool: "shadow", spellTier: 6, spellMagicType: "poison",
+  },
+  // Poison T7
+  [UpgradeType.SPELL_DEATH_BLOSSOM]: {
+    type: UpgradeType.SPELL_DEATH_BLOSSOM, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "Flowers of death bloom, releasing lethal spores.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 155, spellRadius: 5.5,
+    spellSchool: "shadow", spellTier: 7, spellMagicType: "poison",
+  },
+  [UpgradeType.SPELL_TOXIC_APOCALYPSE]: {
+    type: UpgradeType.SPELL_TOXIC_APOCALYPSE, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "A toxic apocalypse poisons the world beyond salvation.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 185, spellRadius: 5.5,
+    spellSchool: "shadow", spellTier: 7, spellMagicType: "poison",
+  },
+
+  // Void T6
+  [UpgradeType.SPELL_REALITY_COLLAPSE]: {
+    type: UpgradeType.SPELL_REALITY_COLLAPSE, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "Reality itself collapses inward, erasing what was.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 125, spellRadius: 4,
+    spellSchool: "shadow", spellTier: 6, spellMagicType: "void",
+  },
+  [UpgradeType.SPELL_DIMENSIONAL_IMPLOSION]: {
+    type: UpgradeType.SPELL_DIMENSIONAL_IMPLOSION, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "Dimensions fold in on themselves in a violent implosion.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 135, spellRadius: 4.5,
+    spellSchool: "shadow", spellTier: 6, spellMagicType: "void",
+  },
+  // Void T7
+  [UpgradeType.SPELL_ENTROPY]: {
+    type: UpgradeType.SPELL_ENTROPY, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "Entropy accelerates — order dissolves into nothing.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 175, spellRadius: 5,
+    spellSchool: "shadow", spellTier: 7, spellMagicType: "void",
+  },
+  [UpgradeType.SPELL_END_OF_ALL]: {
+    type: UpgradeType.SPELL_END_OF_ALL, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "The final void spell — existence itself ceases.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 210, spellRadius: 5,
+    spellSchool: "shadow", spellTier: 7, spellMagicType: "void",
+  },
+
+  // Death T6
+  [UpgradeType.SPELL_MASS_EXTINCTION]: {
+    type: UpgradeType.SPELL_MASS_EXTINCTION, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "Death magic triggers mass extinction across the field.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 118, spellRadius: 4.5,
+    spellSchool: "shadow", spellTier: 6, spellMagicType: "death",
+  },
+  [UpgradeType.SPELL_GRIM_HARVEST]: {
+    type: UpgradeType.SPELL_GRIM_HARVEST, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "The reaper harvests souls by the thousands.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 128, spellRadius: 4.5,
+    spellSchool: "shadow", spellTier: 6, spellMagicType: "death",
+  },
+  // Death T7
+  [UpgradeType.SPELL_ARMAGEDDON]: {
+    type: UpgradeType.SPELL_ARMAGEDDON, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "The final battle between life and death begins.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 168, spellRadius: 5.5,
+    spellSchool: "shadow", spellTier: 7, spellMagicType: "death",
+  },
+  [UpgradeType.SPELL_DEATH_INCARNATE]: {
+    type: UpgradeType.SPELL_DEATH_INCARNATE, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "Death itself takes physical form and walks the earth.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 200, spellRadius: 5.5,
+    spellSchool: "shadow", spellTier: 7, spellMagicType: "death",
+  },
+
+  // Nature T6
+  [UpgradeType.SPELL_WORLD_TREES_FURY]: {
+    type: UpgradeType.SPELL_WORLD_TREES_FURY, cost: 0, manaCost: 850, maxLevel: 99, effect: 0,
+    description: "The world tree unleashes its ancient fury.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 115, spellRadius: 4.5,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "nature",
+  },
+  [UpgradeType.SPELL_ELEMENTAL_CHAOS]: {
+    type: UpgradeType.SPELL_ELEMENTAL_CHAOS, cost: 0, manaCost: 900, maxLevel: 99, effect: 0,
+    description: "All elements of nature combine in chaotic fury.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 125, spellRadius: 4.5,
+    spellSchool: "elemental", spellTier: 6, spellMagicType: "nature",
+  },
+  // Nature T7
+  [UpgradeType.SPELL_GENESIS_STORM]: {
+    type: UpgradeType.SPELL_GENESIS_STORM, cost: 0, manaCost: 1200, maxLevel: 99, effect: 0,
+    description: "A primordial storm of creation remakes the world.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 160, spellRadius: 5.5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "nature",
+  },
+  [UpgradeType.SPELL_WRATH_OF_GAIA]: {
+    type: UpgradeType.SPELL_WRATH_OF_GAIA, cost: 0, manaCost: 1400, maxLevel: 99, effect: 0,
+    description: "Mother Earth rises in wrath, reshaping all existence.", appliesTo: [],
+    isSpell: true, spellType: "damage", spellDamage: 195, spellRadius: 5.5,
+    spellSchool: "elemental", spellTier: 7, spellMagicType: "nature",
   },
 };
