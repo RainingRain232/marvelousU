@@ -86,6 +86,32 @@ import type { LeaderId, LeaderBonus } from "@sim/config/LeaderDefs";
 import { getRace, filterInventoryByRace } from "@sim/config/RaceDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
 
+// World mode imports
+import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
+import type { WorldGameSettings } from "@world/config/WorldConfig";
+import { generateWorldMap, findStartPositions } from "@world/gen/WorldMapGen";
+import { createWorldState, nextId, WorldPhase } from "@world/state/WorldState";
+import type { WorldState } from "@world/state/WorldState";
+import { createWorldPlayer } from "@world/state/WorldPlayer";
+import { createWorldCity } from "@world/state/WorldCity";
+import { createWorldArmy } from "@world/state/WorldArmy";
+import type { ArmyUnit } from "@world/state/WorldArmy";
+import { worldMapRenderer } from "@view/world/WorldMapRenderer";
+import { worldHUD } from "@view/world/ui/WorldHUD";
+import { beginTurn, endTurn } from "@world/systems/TurnSystem";
+import { WorldBalance } from "@world/config/WorldConfig";
+import { hexSpiral } from "@world/hex/HexCoord";
+import { hexKey } from "@world/hex/HexCoord";
+import { cityView } from "@view/world/CityView";
+import { cityPanel } from "@view/world/ui/CityPanel";
+import { startConstruction, queueRecruitment, deployArmy } from "@world/systems/CitySystem";
+import { armyView } from "@view/world/ArmyView";
+import { armyPanel } from "@view/world/ui/ArmyPanel";
+import { moveArmy, getArmyReachableHexes, detectCollisions } from "@world/systems/ArmySystem";
+import { researchScreen } from "@view/world/ui/ResearchScreen";
+import { setActiveResearch, advanceResearch } from "@world/systems/ResearchSystem";
+import { executeAITurn } from "@world/systems/WorldAI";
+
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
@@ -143,7 +169,23 @@ import type { RaceId } from "@sim/config/RaceDefs";
   leaderSelectScreen.init(viewManager);
   leaderSelectScreen.hide();
 
+  // World setup screen
+  const worldSetupScreen = new WorldSetupScreen();
+
   menuScreen.onContinue = () => {
+    if (menuScreen.selectedGameMode === GameMode.WORLD) {
+      menuScreen.hide();
+      worldSetupScreen.init(viewManager);
+      worldSetupScreen.onStart = async (settings) => {
+        worldSetupScreen.destroy();
+        await _bootWorldGame(settings, raceSelectScreen?.selectedRaceId ?? "man");
+      };
+      worldSetupScreen.onBack = () => {
+        worldSetupScreen.destroy();
+        menuScreen.show();
+      };
+      return;
+    }
     menuScreen.hide();
     leaderSelectScreen.show();
   };
@@ -1287,6 +1329,287 @@ async function _bootCampaign(
     scenarioNum,
   );
 }
+
+// ---------------------------------------------------------------------------
+// World mode boot
+// ---------------------------------------------------------------------------
+
+let _activeWorldState: WorldState | null = null;
+
+async function _bootWorldGame(
+  settings: WorldGameSettings,
+  raceId: RaceId = "man",
+): Promise<void> {
+  // Generate map
+  const grid = generateWorldMap(settings);
+  const startPositions = findStartPositions(grid, settings.numPlayers);
+
+  // Player IDs
+  const playerOrder: string[] = [];
+  for (let i = 0; i < settings.numPlayers; i++) {
+    playerOrder.push(`p${i + 1}`);
+  }
+
+  // Create world state
+  const state = createWorldState(grid, playerOrder);
+
+  // Create players
+  const humanCount = settings.numPlayers - settings.numAIPlayers;
+  for (let i = 0; i < settings.numPlayers; i++) {
+    const pid = `p${i + 1}`;
+    const isAI = i >= humanCount;
+    const player = createWorldPlayer(
+      pid,
+      i === 0 ? raceId : "man", // AI players default to "man" for now
+      isAI,
+      WorldBalance.STARTING_GOLD,
+      WorldBalance.STARTING_FOOD,
+    );
+    state.players.set(pid, player);
+  }
+
+  // Create starting cities and garrisons
+  for (let i = 0; i < settings.numPlayers; i++) {
+    const pid = `p${i + 1}`;
+    const pos = startPositions[i];
+
+    // City
+    const cityId = nextId(state, "city");
+    const city = createWorldCity(cityId, pid, pos, true);
+
+    // Assign territory (radius 2 around city)
+    const territoryHexes = hexSpiral(pos, WorldBalance.BASE_CITY_TERRITORY_RADIUS);
+    city.territory = territoryHexes.filter((h) => grid.hasTile(h.q, h.r));
+    city.workedTiles = city.territory.slice(0, city.population + 1);
+
+    // Mark tiles as owned
+    for (const hex of city.territory) {
+      const tile = grid.getTile(hex.q, hex.r);
+      if (tile) tile.owner = pid;
+    }
+    const cityTile = grid.getTile(pos.q, pos.r);
+    if (cityTile) cityTile.cityId = cityId;
+
+    // Starting garrison army
+    const garrisonId = nextId(state, "army");
+    const startUnits: ArmyUnit[] = [
+      { unitType: UnitType.SWORDSMAN, count: 5, hpPerUnit: 100 },
+      { unitType: UnitType.ARCHER, count: 3, hpPerUnit: 100 },
+    ];
+    const garrison = createWorldArmy(garrisonId, pid, pos, startUnits, true);
+    city.garrisonArmyId = garrisonId;
+
+    state.cities.set(cityId, city);
+    state.armies.set(garrisonId, garrison);
+  }
+
+  _activeWorldState = state;
+
+  // Initialize renderer
+  worldMapRenderer.init(viewManager);
+  worldMapRenderer.drawMap(grid);
+
+  // Block hex clicks when they land on a UI panel
+  worldMapRenderer.shouldBlockClick = (sx, sy) => {
+    // Check if click is inside the city panel area (right side)
+    if (cityPanel.isVisible) {
+      const panelX = viewManager.screenWidth - 290;
+      if (sx >= panelX) return true;
+    }
+    // Check if click is inside the army panel area (left side)
+    if (armyPanel.isVisible) {
+      if (sx <= 260 && sy >= 64) return true;
+    }
+    // Check if research screen is open (fullscreen)
+    if (researchScreen.isVisible) return true;
+    return false;
+  };
+
+  // Initialize city view
+  cityView.init(viewManager);
+  cityView.drawCities(state);
+
+  // Initialize city panel
+  cityPanel.init(viewManager);
+  cityPanel.onClose = () => cityPanel.hide();
+  cityPanel.onBuild = (cityId, buildingType) => {
+    const city = state.cities.get(cityId);
+    if (city) {
+      startConstruction(city, buildingType);
+      cityPanel.show(city, state);
+      cityView.updateCity(city);
+    }
+  };
+  cityPanel.onRecruit = (cityId, unitType, count) => {
+    const city = state.cities.get(cityId);
+    if (city) {
+      queueRecruitment(city, state, unitType, count);
+      cityPanel.show(city, state); // refresh
+      worldHUD.update(state); // refresh gold
+    }
+  };
+
+  // Initialize army view
+  armyView.init(viewManager);
+  armyView.drawArmies(state);
+
+  // Initialize army panel
+  armyPanel.init(viewManager);
+  armyPanel.onClose = () => {
+    armyPanel.hide();
+    worldMapRenderer.clearHighlights();
+  };
+  armyPanel.onDeploy = (garrisonId) => {
+    // Deploy garrison from city as a field army
+    const garrison = state.armies.get(garrisonId);
+    if (!garrison) return;
+    // Find the city this garrison belongs to
+    for (const city of state.cities.values()) {
+      if (city.garrisonArmyId === garrisonId) {
+        deployArmy(city, state, [...garrison.units.map((u) => ({ ...u }))]);
+        armyPanel.hide();
+        refreshWorld();
+        break;
+      }
+    }
+  };
+  armyPanel.onMove = (armyId) => {
+    // Show movement range and wait for hex click
+    const army = state.armies.get(armyId);
+    if (!army) return;
+    const reachable = getArmyReachableHexes(army, state);
+    worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.2);
+    _moveModeArmyId = armyId;
+  };
+
+  // Initialize research screen
+  researchScreen.init(viewManager);
+  researchScreen.onClose = () => researchScreen.hide();
+  researchScreen.onResearchSelected = (researchId) => {
+    const player = state.players.get(state.playerOrder[state.currentPlayerIndex])!;
+    setActiveResearch(player, researchId);
+    researchScreen.show(state); // refresh
+    worldHUD.update(state);
+  };
+
+  // Initialize HUD
+  worldHUD.init(viewManager);
+  worldHUD.update(state);
+
+  // Research button handler
+  worldHUD.onResearch = () => {
+    if (researchScreen.isVisible) {
+      researchScreen.hide();
+    } else {
+      researchScreen.show(state);
+    }
+  };
+
+  // Track movement mode
+  let _moveModeArmyId: string | null = null;
+
+  // Helper to refresh all visuals
+  const refreshWorld = () => {
+    worldHUD.update(state);
+    worldMapRenderer.drawMap(state.grid);
+    cityView.drawCities(state);
+    armyView.drawArmies(state);
+  };
+
+  // End Turn button
+  worldHUD.onEndTurn = () => {
+    if (state.phase !== WorldPhase.PLAYER_TURN) return;
+
+    // Detect collisions before ending turn
+    const battles = detectCollisions(state);
+    if (battles.length > 0) {
+      state.pendingBattles = battles;
+    }
+
+    endTurn(state);
+
+    // If AI turn, execute AI logic then end their turns
+    while (state.phase === WorldPhase.AI_TURN) {
+      const aiPid = state.playerOrder[state.currentPlayerIndex];
+      executeAITurn(state, aiPid);
+      endTurn(state);
+    }
+
+    refreshWorld();
+    if (cityPanel.isVisible) cityPanel.hide();
+    if (armyPanel.isVisible) {
+      armyPanel.hide();
+      worldMapRenderer.clearHighlights();
+    }
+    _moveModeArmyId = null;
+  };
+
+  // Hex click handler — handle city, army, and movement clicks
+  worldMapRenderer.onHexClick = (hex) => {
+    const tile = state.grid.getTile(hex.q, hex.r);
+    if (!tile) return;
+    const currentPid = state.playerOrder[state.currentPlayerIndex];
+
+    // If in movement mode, try to move the army
+    if (_moveModeArmyId) {
+      const army = state.armies.get(_moveModeArmyId);
+      if (army) {
+        const moved = moveArmy(army, hex, state);
+        if (moved) {
+          // Check for collisions at destination
+          const battles = detectCollisions(state);
+          if (battles.length > 0) {
+            state.pendingBattles = battles;
+          }
+        }
+      }
+      _moveModeArmyId = null;
+      worldMapRenderer.clearHighlights();
+      armyPanel.hide();
+      refreshWorld();
+      return;
+    }
+
+    // Click on a city hex
+    if (tile.cityId) {
+      const city = state.cities.get(tile.cityId);
+      if (city && city.owner === currentPid) {
+        armyPanel.hide();
+        worldMapRenderer.clearHighlights();
+        cityPanel.show(city, state);
+        return;
+      }
+    }
+
+    // Click on a hex with a field army
+    if (tile.armyId) {
+      const army = state.armies.get(tile.armyId);
+      if (army && army.owner === currentPid && !army.isGarrison) {
+        cityPanel.hide();
+        armyPanel.show(army, state);
+        // Show movement range
+        const reachable = getArmyReachableHexes(army, state);
+        worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.2);
+        return;
+      }
+    }
+
+    // Clicked empty hex — close panels
+    if (cityPanel.isVisible) cityPanel.hide();
+    if (armyPanel.isVisible) {
+      armyPanel.hide();
+      worldMapRenderer.clearHighlights();
+    }
+  };
+
+  // Start first turn
+  beginTurn(state);
+  refreshWorld();
+}
+
+// ---------------------------------------------------------------------------
+// Standard mode boot
+// ---------------------------------------------------------------------------
 
 async function _bootGame(
   p2IsAI: boolean,

@@ -163,6 +163,7 @@ import { generateUnicornFrames } from "@view/animation/UnicornSpriteGen";
 import {
   ALL_NATIONAL_MAGE_KEYS,
   NATIONAL_MAGE_PALETTES,
+  PALETTE_NATIONAL_MAN,
 } from "@view/animation/NationalMageSpriteGen";
 
 // ---------------------------------------------------------------------------

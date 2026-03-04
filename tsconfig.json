@@ -28,6 +28,7 @@
     "paths": {
       "@sim/*": ["src/sim/*"],
       "@view/*": ["src/view/*"],
+      "@world/*": ["src/world/*"],
       "@input/*": ["src/input/*"],
       "@audio/*": ["src/audio/*"],
       "@net/*": ["src/net/*"],

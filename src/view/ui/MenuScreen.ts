@@ -126,6 +126,7 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "50% buildings disabled",
   },
   { mode: GameMode.CAMPAIGN, label: "CAMPAIGN", desc: "Story progression" },
+  { mode: GameMode.WORLD, label: "WORLD", desc: "Hex-based strategy" },
 ];
 
 function makePanel(w: number, h: number): Container {

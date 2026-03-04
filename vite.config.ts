@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       "@sim": resolve(__dirname, "src/sim"),
       "@view": resolve(__dirname, "src/view"),
+      "@world": resolve(__dirname, "src/world"),
       "@input": resolve(__dirname, "src/input"),
       "@audio": resolve(__dirname, "src/audio"),
       "@net": resolve(__dirname, "src/net"),

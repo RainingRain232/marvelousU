@@ -549,6 +549,7 @@ export enum GameMode {
   BATTLEFIELD = "battlefield",
   CAMPAIGN = "campaign",
   ROGUELIKE = "roguelike",
+  WORLD = "world",
 }
 
 export enum MapType {
