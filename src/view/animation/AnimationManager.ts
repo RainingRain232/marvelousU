@@ -160,6 +160,10 @@ import { generateCataphractFrames } from "@view/animation/CataphractSpriteGen";
 import { generateSettlerFrames } from "@view/animation/SettlerSpriteGen";
 import { generateEngineerFrames } from "@view/animation/EngineerSpriteGen";
 import { generateUnicornFrames } from "@view/animation/UnicornSpriteGen";
+import {
+  ALL_NATIONAL_MAGE_KEYS,
+  NATIONAL_MAGE_PALETTES,
+} from "@view/animation/NationalMageSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -259,6 +263,8 @@ export class AnimationManager {
         seen.add(frameSet.sheet);
       }
     }
+    // Always include national mage race variants so they're pre-generated
+    for (const k of ALL_NATIONAL_MAGE_KEYS) seen.add(k);
     return [...seen];
   }
 
@@ -517,6 +523,12 @@ export class AnimationManager {
         this._generateMinorEarthElementalSprites(key, renderer);
       } else if (key === "unicorn") {
         this._generateUnicornSprites(key, renderer);
+      } else if (key === "mage") {
+        // Fallback generic mage (used before race is applied)
+        this._generateMageSprites(key, renderer, PALETTE_NATIONAL_MAN);
+      } else if (NATIONAL_MAGE_PALETTES[key]) {
+        // Race-specific national mage sprites
+        this._generateMageSprites(key, renderer, NATIONAL_MAGE_PALETTES[key]);
       } else {
         this._generatePlaceholders(key, renderer);
       }
@@ -1359,14 +1371,12 @@ export class AnimationManager {
 
   private _generateRoyalLancerSprites(key: string, renderer: Renderer): void {
     const textures = generateRoyalLancerFrames(renderer);
-    for (let row = 0; row < 5; row++) {
-      const state = Object.values(UnitState)[row];
-      const stateTextures: Texture[] = [];
-      for (let col = 0; col < 8; col++) {
-        stateTextures.push(textures[row * 8 + col]);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
       }
-      const ck = cacheKey(key, state);
-      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
     }
   }
 

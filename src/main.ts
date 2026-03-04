@@ -68,10 +68,14 @@ import {
   MapType,
   BuildingType,
   UnitType,
+  UnitState,
   AbilityType,
 } from "@/types";
 import { ABILITY_DEFINITIONS } from "@sim/config/AbilityDefs";
 import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
+import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import { ANIMATION_DEFS } from "@view/animation/AnimationDefs";
+import { RACE_NATIONAL_MAGE_KEY } from "@view/animation/NationalMageSpriteGen";
 import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
 import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
@@ -1117,6 +1121,24 @@ function _applyRace(state: GameState, playerId: string, raceId: RaceId): void {
   // Configure national mage abilities from MagicScreen selections (P1 only)
   if (playerId === "p1") {
     _configureNationalMageAbilities();
+  }
+
+  // Set national mage sprites to race-specific visuals
+  const raceMageKey = RACE_NATIONAL_MAGE_KEY[raceId];
+  if (raceMageKey) {
+    const nationalMageAll: UnitType[] = [
+      UnitType.NATIONAL_MAGE_T1, UnitType.NATIONAL_MAGE_T2,
+      UnitType.NATIONAL_MAGE_T3, UnitType.NATIONAL_MAGE_T4,
+      UnitType.NATIONAL_MAGE_T5, UnitType.NATIONAL_MAGE_T6,
+      UnitType.NATIONAL_MAGE_T7,
+    ];
+    for (const mt of nationalMageAll) {
+      UNIT_DEFINITIONS[mt].spriteKey = raceMageKey;
+      const animDef = ANIMATION_DEFS[mt];
+      for (const st of Object.values(UnitState)) {
+        animDef[st].sheet = raceMageKey;
+      }
+    }
   }
 
   const magicLevel = race.tiers?.magic ?? 0;

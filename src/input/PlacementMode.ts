@@ -136,6 +136,23 @@ export function confirmPlacement(
     building.shopInventory = filterInventoryByRace(
       building.shopInventory, bpType, state.p1RaceId,
     );
+
+    // Add national mages to newly-placed mage towers
+    if (bpType === BuildingType.MAGE_TOWER) {
+      const race = getRace(state.p1RaceId);
+      const magicLevel = race?.tiers?.magic ?? 0;
+      if (magicLevel > 0) {
+        const nationalMageTypes: UnitType[] = [
+          UnitType.NATIONAL_MAGE_T1, UnitType.NATIONAL_MAGE_T2,
+          UnitType.NATIONAL_MAGE_T3, UnitType.NATIONAL_MAGE_T4,
+          UnitType.NATIONAL_MAGE_T5, UnitType.NATIONAL_MAGE_T6,
+          UnitType.NATIONAL_MAGE_T7,
+        ];
+        for (let t = 0; t < magicLevel; t++) {
+          building.shopInventory.push(nationalMageTypes[t]);
+        }
+      }
+    }
   }
 
   // Stables: spawn a free Questing Knight when built

@@ -902,6 +902,28 @@ class MagicScreen {
       yPos += 20;
     }
 
+    // Debuff / effect line
+    const effects: string[] = [];
+    if (spell.spellSlowDuration && spell.spellSlowFactor) {
+      const pct = Math.round((1 - spell.spellSlowFactor) * 100);
+      effects.push(`Slows ${pct}% for ${spell.spellSlowDuration}s`);
+    }
+    if (spell.spellTeleportDistance) {
+      effects.push(`Displaces ${spell.spellTeleportDistance} tiles`);
+    }
+    if (effects.length > 0) {
+      const fxT = new Text({
+        text: effects.join("   "),
+        style: new TextStyle({
+          fontFamily: "monospace", fontSize: 12, fill: 0xddaa44,
+          fontStyle: "italic",
+        }),
+      });
+      fxT.position.set(PAD, yPos);
+      this._tooltip.addChild(fxT);
+      yPos += 18;
+    }
+
     const TT_H = yPos + PAD;
 
     // Background (drawn behind everything)
