@@ -132,18 +132,37 @@ const HINT_STYLE = new TextStyle({
 
 // Spell key lookup for FX dispatch (each spell gets its own unique animation)
 const SPELL_KEY: Partial<Record<UpgradeType, string>> = {
-  [UpgradeType.SPELL_ARCANE_MISSILE]: "arcane_missile",
-  [UpgradeType.SPELL_FIREBALL]: "fireball",
-  [UpgradeType.SPELL_BLIZZARD]: "blizzard",
+  // Elemental
+  [UpgradeType.SPELL_FROST_NOVA]: "frost_nova",
   [UpgradeType.SPELL_LIGHTNING_STRIKE]: "lightning",
+  [UpgradeType.SPELL_FIREBALL]: "fireball",
+  [UpgradeType.SPELL_CHAIN_LIGHTNING]: "chain_lightning",
+  [UpgradeType.SPELL_BLIZZARD]: "blizzard",
   [UpgradeType.SPELL_EARTHQUAKE]: "earthquake",
   [UpgradeType.SPELL_METEOR_STRIKE]: "meteor",
-  [UpgradeType.SPELL_VOID_RIFT]: "void_rift",
-  [UpgradeType.SPELL_HOLY_SMITE]: "holy_smite",
-  [UpgradeType.SPELL_POISON_CLOUD]: "poison_cloud",
+  [UpgradeType.SPELL_INFERNO]: "inferno",
+  // Arcane
+  [UpgradeType.SPELL_ARCANE_MISSILE]: "arcane_missile",
+  [UpgradeType.SPELL_MANA_SURGE]: "mana_surge",
+  [UpgradeType.SPELL_ARCANE_BARRAGE]: "arcane_barrage",
   [UpgradeType.SPELL_ARCANE_STORM]: "arcane_storm",
+  [UpgradeType.SPELL_TEMPORAL_BLAST]: "temporal_blast",
+  // Divine
+  [UpgradeType.SPELL_BLESSING_OF_LIGHT]: "blessing_of_light",
   [UpgradeType.SPELL_HEALING_WAVE]: "healing_wave",
+  [UpgradeType.SPELL_HOLY_SMITE]: "holy_smite",
+  [UpgradeType.SPELL_PURIFYING_FLAME]: "purifying_flame",
   [UpgradeType.SPELL_DIVINE_RESTORATION]: "divine_restoration",
+  [UpgradeType.SPELL_RADIANT_NOVA]: "radiant_nova",
+  [UpgradeType.SPELL_CELESTIAL_WRATH]: "celestial_wrath",
+  // Shadow
+  [UpgradeType.SPELL_SHADOW_BOLT]: "shadow_bolt",
+  [UpgradeType.SPELL_POISON_CLOUD]: "poison_cloud",
+  [UpgradeType.SPELL_CURSE_OF_DARKNESS]: "curse_of_darkness",
+  [UpgradeType.SPELL_DEATH_COIL]: "death_coil",
+  [UpgradeType.SPELL_SIPHON_SOUL]: "siphon_soul",
+  [UpgradeType.SPELL_VOID_RIFT]: "void_rift",
+  [UpgradeType.SPELL_NETHER_STORM]: "nether_storm",
 };
 
 // ---------------------------------------------------------------------------

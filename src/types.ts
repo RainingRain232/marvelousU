@@ -279,6 +279,25 @@ export enum UpgradeType {
   SPELL_ARCANE_STORM = "spell_arcane_storm",
   SPELL_HEALING_WAVE = "spell_healing_wave",
   SPELL_DIVINE_RESTORATION = "spell_divine_restoration",
+  // Elemental
+  SPELL_FROST_NOVA = "spell_frost_nova",
+  SPELL_CHAIN_LIGHTNING = "spell_chain_lightning",
+  SPELL_INFERNO = "spell_inferno",
+  // Arcane
+  SPELL_MANA_SURGE = "spell_mana_surge",
+  SPELL_ARCANE_BARRAGE = "spell_arcane_barrage",
+  SPELL_TEMPORAL_BLAST = "spell_temporal_blast",
+  // Divine
+  SPELL_BLESSING_OF_LIGHT = "spell_blessing_of_light",
+  SPELL_PURIFYING_FLAME = "spell_purifying_flame",
+  SPELL_RADIANT_NOVA = "spell_radiant_nova",
+  SPELL_CELESTIAL_WRATH = "spell_celestial_wrath",
+  // Shadow
+  SPELL_SHADOW_BOLT = "spell_shadow_bolt",
+  SPELL_CURSE_OF_DARKNESS = "spell_curse_of_darkness",
+  SPELL_DEATH_COIL = "spell_death_coil",
+  SPELL_NETHER_STORM = "spell_nether_storm",
+  SPELL_SIPHON_SOUL = "spell_siphon_soul",
 }
 
 export enum UnitState {

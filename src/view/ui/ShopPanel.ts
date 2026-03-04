@@ -373,6 +373,22 @@ const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.SPELL_ARCANE_STORM]: "Storm",
   [UpgradeType.SPELL_HEALING_WAVE]: "Heal",
   [UpgradeType.SPELL_DIVINE_RESTORATION]: "Restore",
+  // New spells
+  [UpgradeType.SPELL_FROST_NOVA]: "Frost Nova",
+  [UpgradeType.SPELL_CHAIN_LIGHTNING]: "Chain Ltn",
+  [UpgradeType.SPELL_INFERNO]: "Inferno",
+  [UpgradeType.SPELL_MANA_SURGE]: "Mana Surg",
+  [UpgradeType.SPELL_ARCANE_BARRAGE]: "Barrage",
+  [UpgradeType.SPELL_TEMPORAL_BLAST]: "Temporal",
+  [UpgradeType.SPELL_BLESSING_OF_LIGHT]: "Blessing",
+  [UpgradeType.SPELL_PURIFYING_FLAME]: "Purify",
+  [UpgradeType.SPELL_RADIANT_NOVA]: "Radiance",
+  [UpgradeType.SPELL_CELESTIAL_WRATH]: "Celestial",
+  [UpgradeType.SPELL_SHADOW_BOLT]: "Shd Bolt",
+  [UpgradeType.SPELL_CURSE_OF_DARKNESS]: "Curse",
+  [UpgradeType.SPELL_DEATH_COIL]: "Death Coil",
+  [UpgradeType.SPELL_NETHER_STORM]: "Nether",
+  [UpgradeType.SPELL_SIPHON_SOUL]: "Siphon",
 };
 
 // ---------------------------------------------------------------------------
@@ -727,11 +743,6 @@ export class ShopPanel {
       building.type === BuildingType.BLACKSMITH ||
       (building.upgradeInventory && building.upgradeInventory.length > 0)
     ) {
-      const label = new Text({ text: "UPGRADES", style: STYLE_SECTION });
-      label.position.set(PANEL_PAD, cursorY + 4);
-      this._scrollContainer.addChild(label);
-      cursorY += SECTION_LABEL_H;
-
       // Get upgrades from building inventory or use blacksmith defaults
       const upgrades =
         building.upgradeInventory && building.upgradeInventory.length > 0
@@ -748,16 +759,66 @@ export class ShopPanel {
               UpgradeType.MAGE_RANGE,
             ];
 
-      for (let i = 0; i < upgrades.length; i++) {
-        const col = i % ICONS_PER_ROW;
-        const row = Math.floor(i / ICONS_PER_ROW);
-        const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
-        const y = cursorY + row * (ICON_SIZE + ICON_GAP);
-        const icon = this._makeUpgradeIcon(building.id, upgrades[i], x, y);
-        this._scrollContainer.addChild(icon);
+      // Archive: group spells by school with colored section headers
+      if (building.type === BuildingType.ARCHIVE) {
+        const schoolOrder: Array<{ key: string; label: string; color: number }> = [
+          { key: "elemental", label: "ELEMENTAL", color: 0xff6622 },
+          { key: "arcane", label: "ARCANE", color: 0x9966ff },
+          { key: "divine", label: "DIVINE", color: 0xffdd44 },
+          { key: "shadow", label: "SHADOW", color: 0x663399 },
+          { key: "conjuration", label: "CONJURATION", color: 0x4488ff },
+        ];
+
+        for (const school of schoolOrder) {
+          const schoolUpgrades = upgrades.filter((u) => {
+            const def = UPGRADE_DEFINITIONS[u];
+            return (def as any).spellSchool === school.key;
+          });
+          if (schoolUpgrades.length === 0) continue;
+
+          // School section header
+          const sLabel = new Text({
+            text: school.label,
+            style: new TextStyle({
+              fontFamily: "monospace",
+              fontSize: 10,
+              fill: school.color,
+              letterSpacing: 2,
+              fontWeight: "bold",
+            }),
+          });
+          sLabel.position.set(PANEL_PAD, cursorY + 4);
+          this._scrollContainer.addChild(sLabel);
+          cursorY += SECTION_LABEL_H;
+
+          for (let i = 0; i < schoolUpgrades.length; i++) {
+            const col = i % ICONS_PER_ROW;
+            const row = Math.floor(i / ICONS_PER_ROW);
+            const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
+            const y = cursorY + row * (ICON_SIZE + ICON_GAP);
+            const icon = this._makeUpgradeIcon(building.id, schoolUpgrades[i], x, y);
+            this._scrollContainer.addChild(icon);
+          }
+          cursorY +=
+            Math.ceil(schoolUpgrades.length / ICONS_PER_ROW) * (ICON_SIZE + ICON_GAP);
+        }
+      } else {
+        const label = new Text({ text: "UPGRADES", style: STYLE_SECTION });
+        label.position.set(PANEL_PAD, cursorY + 4);
+        this._scrollContainer.addChild(label);
+        cursorY += SECTION_LABEL_H;
+
+        for (let i = 0; i < upgrades.length; i++) {
+          const col = i % ICONS_PER_ROW;
+          const row = Math.floor(i / ICONS_PER_ROW);
+          const x = PANEL_PAD + col * (ICON_SIZE + ICON_GAP);
+          const y = cursorY + row * (ICON_SIZE + ICON_GAP);
+          const icon = this._makeUpgradeIcon(building.id, upgrades[i], x, y);
+          this._scrollContainer.addChild(icon);
+        }
+        cursorY +=
+          Math.ceil(upgrades.length / ICONS_PER_ROW) * (ICON_SIZE + ICON_GAP);
       }
-      cursorY +=
-        Math.ceil(upgrades.length / ICONS_PER_ROW) * (ICON_SIZE + ICON_GAP);
     }
 
     // BUILD section (non-economic buildings)
@@ -1553,6 +1614,25 @@ export class ShopPanel {
       levelText.anchor.set(1, 0);
       levelText.position.set(ICON_SIZE - 2, 2);
       btn.addChild(levelText);
+    }
+
+    // Spell tier badge (roman numeral in top-left)
+    const tierNum = (def as any).spellTier as number | undefined;
+    if (tierNum) {
+      const tierNumerals = ["", "I", "II", "III", "IV"];
+      const tierColors = [0, 0xaaaaaa, 0x44cc44, 0x4488ff, 0xffaa22];
+      const tierBadge = new Text({
+        text: tierNumerals[tierNum] || "",
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 7,
+          fill: tierColors[tierNum] || 0xffffff,
+          fontWeight: "bold",
+        }),
+      });
+      tierBadge.anchor.set(0, 0);
+      tierBadge.position.set(2, 1);
+      btn.addChild(tierBadge);
     }
 
     // Hover: show upgrade info

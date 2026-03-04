@@ -57,6 +57,19 @@ export class SpellFX {
       case "poison_cloud":    return this._poisonCloud(worldX, worldY, r);
       case "arcane_missile":  return this._arcaneMissile(worldX, worldY, r);
       case "arcane_storm":    return this._arcaneStorm(worldX, worldY, r);
+      case "frost_nova":      return this._frostNova(worldX, worldY, r);
+      case "chain_lightning":  return this._chainLightning(worldX, worldY, r);
+      case "inferno":         return this._inferno(worldX, worldY, r);
+      case "mana_surge":      return this._manaSurge(worldX, worldY, r);
+      case "arcane_barrage":  return this._arcaneBarrage(worldX, worldY, r);
+      case "temporal_blast":  return this._temporalBlast(worldX, worldY, r);
+      case "purifying_flame": return this._purifyingFlame(worldX, worldY, r);
+      case "celestial_wrath": return this._celestialWrath(worldX, worldY, r);
+      case "shadow_bolt":     return this._shadowBolt(worldX, worldY, r);
+      case "curse_of_darkness": return this._curseOfDarkness(worldX, worldY, r);
+      case "death_coil":      return this._deathCoil(worldX, worldY, r);
+      case "nether_storm":    return this._netherStorm(worldX, worldY, r);
+      case "siphon_soul":     return this._siphonSoul(worldX, worldY, r);
       default:                return this._genericDamage(worldX, worldY, r);
     }
   }
@@ -69,6 +82,12 @@ export class SpellFX {
     const r = radius * TS;
     if (spell === "divine_restoration") {
       return this._divineRestoration(worldX, worldY, r);
+    }
+    if (spell === "blessing_of_light") {
+      return this._blessingOfLight(worldX, worldY, r);
+    }
+    if (spell === "radiant_nova") {
+      return this._radiantNova(worldX, worldY, r);
     }
     return this._healingWave(worldX, worldY, r);
   }
@@ -1380,6 +1399,1301 @@ export class SpellFX {
         duration: 0.8 + Math.random() * 0.4,
         delay,
         ease: "power1.out",
+      });
+    }
+
+    autoCleanup(this._vm, c, 2.2);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW ELEMENTAL SPELLS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Frost Nova ──────────────────────────────────────────────────────────
+  // Ice ring blasting outward from center, frost crystal shards, frozen shimmer
+  private _frostNova(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Central ice flash
+    const flash = new Graphics()
+      .circle(0, 0, r * 0.15)
+      .fill({ color: 0xeeffff, alpha: 0.95 });
+    c.addChild(flash);
+    gsap.to(flash, {
+      pixi: { scaleX: 2, scaleY: 2 },
+      alpha: 0,
+      duration: 0.2,
+    });
+
+    // Expanding ice ring
+    const ring = new Graphics()
+      .circle(0, 0, r * 0.15)
+      .stroke({ color: 0x88ddff, width: 3, alpha: 0.9 });
+    c.addChild(ring);
+    gsap.to(ring, {
+      pixi: { scaleX: r / (r * 0.15), scaleY: r / (r * 0.15) },
+      alpha: 0,
+      duration: 0.45,
+      ease: "power2.out",
+    });
+
+    // Secondary thinner ring
+    const ring2 = new Graphics()
+      .circle(0, 0, r * 0.12)
+      .stroke({ color: 0xaaeeff, width: 1.5, alpha: 0.6 });
+    c.addChild(ring2);
+    gsap.to(ring2, {
+      pixi: { scaleX: r / (r * 0.12) * 0.7, scaleY: r / (r * 0.12) * 0.7 },
+      alpha: 0,
+      duration: 0.4,
+      delay: 0.06,
+      ease: "power2.out",
+    });
+
+    // Frost ground fill
+    const frostFill = new Graphics()
+      .circle(0, 0, r * 0.8)
+      .fill({ color: 0x88ccee, alpha: 0.15 });
+    c.addChild(frostFill);
+    gsap.to(frostFill, { alpha: 0, duration: 0.7, delay: 0.2 });
+
+    // Ice crystal shards radiating outward
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * TAU + (Math.random() - 0.5) * 0.2;
+      const dist = r * (0.5 + Math.random() * 0.5);
+      const size = 2 + Math.random() * 3;
+      const colors = [0xaaddff, 0xcceeff, 0xddeeff, 0x88ccff];
+      const shard = new Graphics();
+      shard
+        .moveTo(0, -size * 1.3)
+        .lineTo(size * 0.4, 0)
+        .lineTo(0, size * 0.6)
+        .lineTo(-size * 0.4, 0)
+        .closePath()
+        .fill({ color: colors[i % 4], alpha: 0.85 });
+      c.addChild(shard);
+      gsap.to(shard, {
+        x: Math.cos(a) * dist,
+        y: Math.sin(a) * dist,
+        rotation: Math.random() * TAU,
+        alpha: 0,
+        duration: 0.4 + Math.random() * 0.2,
+        ease: "power2.out",
+      });
+    }
+
+    // Tiny frost sparkle particles
+    for (let i = 0; i < 12; i++) {
+      const dot = new Graphics()
+        .circle(0, 0, 1 + Math.random())
+        .fill({ color: 0xeeffff, alpha: 0.8 });
+      dot.position.set(
+        (Math.random() - 0.5) * r * 1.2,
+        (Math.random() - 0.5) * r * 1.2,
+      );
+      dot.alpha = 0;
+      c.addChild(dot);
+      const d = Math.random() * 0.3;
+      gsap.to(dot, { alpha: 0.9, duration: 0.06, delay: d });
+      gsap.to(dot, { alpha: 0, duration: 0.4, delay: d + 0.2 });
+    }
+
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── Chain Lightning ─────────────────────────────────────────────────────
+  // Multiple zigzag bolt segments arcing between random positions
+  private _chainLightning(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Generate chain target points
+    const points: { x: number; y: number }[] = [{ x: 0, y: 0 }];
+    for (let i = 0; i < 5; i++) {
+      points.push({
+        x: (Math.random() - 0.5) * r * 1.8,
+        y: (Math.random() - 0.5) * r * 1.4,
+      });
+    }
+
+    // Draw zigzag bolt chains between consecutive points
+    for (let i = 0; i < points.length - 1; i++) {
+      const from = points[i];
+      const to = points[i + 1];
+      const delay = i * 0.06;
+
+      gsap.delayedCall(delay, () => {
+        const bolt = new Graphics();
+        const segs = 5;
+        bolt.moveTo(from.x, from.y);
+        for (let s = 1; s <= segs; s++) {
+          const t = s / (segs + 1);
+          const mx = from.x + (to.x - from.x) * t + (Math.random() - 0.5) * 10;
+          const my = from.y + (to.y - from.y) * t + (Math.random() - 0.5) * 10;
+          bolt.lineTo(mx, my);
+        }
+        bolt.lineTo(to.x, to.y);
+        bolt.stroke({ color: 0xccddff, width: 2.5, alpha: 0.9 });
+        c.addChild(bolt);
+        gsap.to(bolt, { alpha: 0, duration: 0.2 });
+
+        // Glow at each node
+        const glow = new Graphics()
+          .circle(to.x, to.y, 4)
+          .fill({ color: 0x4488ff, alpha: 0.6 });
+        c.addChild(glow);
+        gsap.to(glow, {
+          alpha: 0,
+          pixi: { scaleX: 2, scaleY: 2 },
+          duration: 0.25,
+        });
+
+        // Small spark burst at impact point
+        for (let j = 0; j < 4; j++) {
+          const a = Math.random() * TAU;
+          const spark = new Graphics()
+            .circle(0, 0, 1)
+            .fill({ color: 0xeeffff, alpha: 0.9 });
+          spark.position.set(to.x, to.y);
+          c.addChild(spark);
+          gsap.to(spark, {
+            x: to.x + Math.cos(a) * 8,
+            y: to.y + Math.sin(a) * 8,
+            alpha: 0,
+            duration: 0.15,
+          });
+        }
+      });
+    }
+
+    // Initial central flash
+    const flash = new Graphics()
+      .circle(0, 0, r * 0.2)
+      .fill({ color: 0xffffff, alpha: 0.8 });
+    c.addChild(flash);
+    gsap.to(flash, { alpha: 0, duration: 0.12 });
+
+    // Ground scorch ring
+    const ring = new Graphics()
+      .circle(0, 0, r * 0.3)
+      .stroke({ color: 0x4488ff, width: 1.5, alpha: 0.4 });
+    c.addChild(ring);
+    gsap.to(ring, {
+      pixi: { scaleX: r / (r * 0.3), scaleY: r / (r * 0.3) },
+      alpha: 0,
+      duration: 0.5,
+      ease: "power2.out",
+    });
+
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── Inferno ─────────────────────────────────────────────────────────────
+  // Towering flame pillar, expanding fire waves, intense heat haze, ember rain
+  private _inferno(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Massive fire pillar rising
+    const pillar = new Graphics()
+      .rect(-r * 0.3, 0, r * 0.6, -r * 4)
+      .fill({ color: 0xff4400, alpha: 0.4 });
+    pillar.alpha = 0;
+    c.addChild(pillar);
+    gsap.to(pillar, { alpha: 0.6, duration: 0.15 });
+    gsap.to(pillar, { alpha: 0, duration: 0.6, delay: 0.6 });
+
+    // Inner bright core pillar
+    const pillarCore = new Graphics()
+      .rect(-r * 0.1, 0, r * 0.2, -r * 4)
+      .fill({ color: 0xffdd00, alpha: 0.7 });
+    pillarCore.alpha = 0;
+    c.addChild(pillarCore);
+    gsap.to(pillarCore, { alpha: 0.8, duration: 0.12 });
+    gsap.to(pillarCore, { alpha: 0, duration: 0.5, delay: 0.5 });
+
+    // Three expanding fire wave rings
+    for (let i = 0; i < 3; i++) {
+      const ring = new Graphics()
+        .circle(0, 0, r * 0.15)
+        .stroke({ color: [0xff6622, 0xff4400, 0xffaa22][i], width: 3, alpha: 0.8 });
+      c.addChild(ring);
+      gsap.to(ring, {
+        pixi: { scaleX: r / (r * 0.15), scaleY: r / (r * 0.15) },
+        alpha: 0,
+        duration: 0.6 + i * 0.15,
+        delay: i * 0.1,
+        ease: "power2.out",
+      });
+    }
+
+    // Intense central flash
+    const flash = new Graphics()
+      .circle(0, 0, r * 0.4)
+      .fill({ color: 0xffffff, alpha: 0.9 });
+    c.addChild(flash);
+    gsap.to(flash, {
+      pixi: { scaleX: 2.5, scaleY: 2.5 },
+      alpha: 0,
+      duration: 0.3,
+    });
+
+    // Massive ember rain
+    for (let i = 0; i < 30; i++) {
+      const a = Math.random() * TAU;
+      const dist = r * (0.3 + Math.random() * 0.8);
+      const size = 1.5 + Math.random() * 2.5;
+      const colors = [0xffaa44, 0xff6622, 0xffdd00, 0xff4400];
+      const ember = new Graphics()
+        .circle(0, 0, size)
+        .fill({ color: colors[i % 4], alpha: 0.85 });
+      c.addChild(ember);
+      gsap.to(ember, {
+        x: Math.cos(a) * dist,
+        y: Math.sin(a) * dist + 10 + Math.random() * 15,
+        alpha: 0,
+        duration: 0.6 + Math.random() * 0.5,
+        delay: Math.random() * 0.3,
+        ease: "power1.out",
+      });
+    }
+
+    // Heat haze shimmer (wobbly transparent circles)
+    for (let i = 0; i < 5; i++) {
+      const haze = new Graphics()
+        .circle(0, 0, r * (0.4 + i * 0.15))
+        .fill({ color: 0xff6600, alpha: 0.04 });
+      c.addChild(haze);
+      gsap.to(haze, {
+        y: -10 - i * 8,
+        pixi: { scaleX: 1.3, scaleY: 0.8 },
+        alpha: 0,
+        duration: 1.0,
+        delay: i * 0.08,
+        ease: "power1.out",
+      });
+    }
+
+    // Smoke columns
+    for (let i = 0; i < 8; i++) {
+      const smoke = new Graphics()
+        .circle(0, 0, 4 + Math.random() * 5)
+        .fill({ color: 0x333333, alpha: 0.2 });
+      smoke.position.set(
+        (Math.random() - 0.5) * r,
+        (Math.random() - 0.5) * r * 0.5,
+      );
+      c.addChild(smoke);
+      gsap.to(smoke, {
+        y: smoke.position.y - 35 - Math.random() * 25,
+        alpha: 0,
+        pixi: { scaleX: 3, scaleY: 3 },
+        duration: 1.0 + Math.random() * 0.5,
+        delay: 0.2 + Math.random() * 0.3,
+        ease: "power1.out",
+      });
+    }
+
+    autoCleanup(this._vm, c, 2.0);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW ARCANE SPELLS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Mana Surge ──────────────────────────────────────────────────────────
+  // Blue/purple mana explosion, spiraling energy particles, detonation flash
+  private _manaSurge(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Central mana detonation flash
+    const flash = new Graphics()
+      .circle(0, 0, r * 0.2)
+      .fill({ color: 0xeeddff, alpha: 0.95 });
+    c.addChild(flash);
+    gsap.to(flash, {
+      pixi: { scaleX: 3, scaleY: 3 },
+      alpha: 0,
+      duration: 0.25,
+    });
+
+    // Mana explosion fill
+    const fill = new Graphics()
+      .circle(0, 0, r * 0.5)
+      .fill({ color: 0x6644cc, alpha: 0.35 });
+    c.addChild(fill);
+    gsap.to(fill, {
+      pixi: { scaleX: 1.8, scaleY: 1.8 },
+      alpha: 0,
+      duration: 0.5,
+    });
+
+    // Expanding ring
+    const ring = new Graphics()
+      .circle(0, 0, r * 0.2)
+      .stroke({ color: 0x9966ff, width: 3, alpha: 0.8 });
+    c.addChild(ring);
+    gsap.to(ring, {
+      pixi: { scaleX: r / (r * 0.2), scaleY: r / (r * 0.2) },
+      alpha: 0,
+      duration: 0.5,
+      ease: "power2.out",
+    });
+
+    // Spiraling energy particles (two spiral arms)
+    for (let arm = 0; arm < 2; arm++) {
+      for (let i = 0; i < 10; i++) {
+        const a = arm * Math.PI + (i / 10) * TAU * 1.5;
+        const dist = (i / 10) * r;
+        const p = new Graphics()
+          .circle(0, 0, 1.5 + Math.random())
+          .fill({ color: [0x9966ff, 0xddaaff][arm], alpha: 0.8 });
+        c.addChild(p);
+        gsap.to(p, {
+          x: Math.cos(a) * dist,
+          y: Math.sin(a) * dist,
+          alpha: 0,
+          duration: 0.4 + i * 0.03,
+          delay: i * 0.02,
+          ease: "power1.out",
+        });
+      }
+    }
+
+    // Mana shards
+    for (let i = 0; i < 8; i++) {
+      const a = Math.random() * TAU;
+      const dist = r * (0.4 + Math.random() * 0.5);
+      const shard = new Graphics()
+        .moveTo(0, -3)
+        .lineTo(2, 0)
+        .lineTo(0, 3)
+        .lineTo(-2, 0)
+        .closePath()
+        .fill({ color: 0xccaaff, alpha: 0.7 });
+      c.addChild(shard);
+      gsap.to(shard, {
+        x: Math.cos(a) * dist,
+        y: Math.sin(a) * dist,
+        rotation: Math.random() * TAU,
+        alpha: 0,
+        duration: 0.45,
+        ease: "power1.out",
+      });
+    }
+
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── Arcane Barrage ──────────────────────────────────────────────────────
+  // Many small rapid arcane bolts raining from above at staggered intervals
+  private _arcaneBarrage(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    const boltCount = 12;
+    for (let i = 0; i < boltCount; i++) {
+      const tx = (Math.random() - 0.5) * r * 1.6;
+      const ty = (Math.random() - 0.5) * r * 1.2;
+      const delay = i * 0.07;
+
+      gsap.delayedCall(delay, () => {
+        // Small arcane bolt falling from above
+        const bolt = new Container();
+        const boltGlow = new Graphics()
+          .circle(0, 0, 3)
+          .fill({ color: 0x9966ff, alpha: 0.4 });
+        const boltCore = new Graphics()
+          .circle(0, 0, 1.5)
+          .fill({ color: 0xddaaff, alpha: 0.9 });
+        bolt.addChild(boltGlow, boltCore);
+        bolt.position.set(tx + (Math.random() - 0.5) * 10, -r * 2);
+        c.addChild(bolt);
+
+        gsap.to(bolt, {
+          x: tx,
+          y: ty,
+          duration: 0.12,
+          ease: "power2.in",
+          onComplete: () => {
+            bolt.visible = false;
+            // Impact flash
+            const impFlash = new Graphics()
+              .circle(tx, ty, 3)
+              .fill({ color: 0xddaaff, alpha: 0.8 });
+            c.addChild(impFlash);
+            gsap.to(impFlash, {
+              alpha: 0,
+              pixi: { scaleX: 2.5, scaleY: 2.5 },
+              duration: 0.2,
+            });
+            // Small ring
+            const impRing = new Graphics()
+              .circle(tx, ty, 2)
+              .stroke({ color: 0x9966ff, width: 1.5, alpha: 0.6 });
+            c.addChild(impRing);
+            gsap.to(impRing, {
+              pixi: { scaleX: 3, scaleY: 3 },
+              alpha: 0,
+              duration: 0.25,
+              ease: "power2.out",
+            });
+          },
+        });
+      });
+    }
+
+    // Ambient arcane shimmer on ground
+    const shimmer = new Graphics()
+      .circle(0, 0, r * 0.7)
+      .fill({ color: 0x6644aa, alpha: 0.1 });
+    c.addChild(shimmer);
+    gsap.to(shimmer, { alpha: 0, duration: 0.8, delay: 0.5 });
+
+    autoCleanup(this._vm, c, 2.0);
+  }
+
+  // ── Temporal Blast ──────────────────────────────────────────────────────
+  // Concentric golden/white distortion rings, time-warp shimmer particles
+  private _temporalBlast(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Bright white-gold central flash
+    const flash = new Graphics()
+      .circle(0, 0, r * 0.15)
+      .fill({ color: 0xffffff, alpha: 1 });
+    c.addChild(flash);
+    gsap.to(flash, {
+      pixi: { scaleX: 4, scaleY: 4 },
+      alpha: 0,
+      duration: 0.3,
+    });
+
+    // 5 concentric distortion rings expanding at staggered speeds
+    const ringColors = [0xffeeaa, 0xeeddff, 0xffffff, 0xddccff, 0xffddaa];
+    for (let i = 0; i < 5; i++) {
+      const ring = new Graphics()
+        .circle(0, 0, r * 0.1)
+        .stroke({ color: ringColors[i], width: 2.5 - i * 0.3, alpha: 0.7 });
+      c.addChild(ring);
+      gsap.to(ring, {
+        pixi: { scaleX: r / (r * 0.1) * (0.6 + i * 0.15), scaleY: r / (r * 0.1) * (0.6 + i * 0.15) },
+        alpha: 0,
+        duration: 0.5 + i * 0.1,
+        delay: i * 0.06,
+        ease: "power2.out",
+      });
+    }
+
+    // Time-warp shimmer particles (golden motes that freeze then scatter)
+    for (let i = 0; i < 20; i++) {
+      const a = Math.random() * TAU;
+      const startDist = r * (0.2 + Math.random() * 0.3);
+      const endDist = r * (0.5 + Math.random() * 0.6);
+      const colors = [0xffeeaa, 0xeeddff, 0xffffff, 0xddbbff];
+      const mote = new Graphics()
+        .circle(0, 0, 1.5 + Math.random())
+        .fill({ color: colors[i % 4], alpha: 0.85 });
+      mote.position.set(Math.cos(a) * startDist, Math.sin(a) * startDist);
+      c.addChild(mote);
+      // Brief freeze then scatter
+      gsap.to(mote, {
+        x: Math.cos(a) * endDist,
+        y: Math.sin(a) * endDist,
+        alpha: 0,
+        duration: 0.5,
+        delay: 0.15 + Math.random() * 0.1,
+        ease: "power2.out",
+      });
+    }
+
+    // Central rune star (clock-like pattern)
+    const rune = new Graphics();
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU;
+      const len = i % 3 === 0 ? r * 0.35 : r * 0.2;
+      rune.moveTo(0, 0).lineTo(Math.cos(a) * len, Math.sin(a) * len);
+    }
+    rune.stroke({ color: 0xffeeaa, width: 1, alpha: 0.5 });
+    c.addChild(rune);
+    gsap.to(rune, { rotation: Math.PI / 6, alpha: 0, duration: 0.6 });
+
+    autoCleanup(this._vm, c, 1.5);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW DIVINE SPELLS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Blessing of Light ───────────────────────────────────────────────────
+  // Soft golden downward glow, gentle sparkle particles, warm pulse
+  private _blessingOfLight(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Soft downward golden beam
+    const beam = new Graphics()
+      .rect(-r * 0.4, -r * 2.5, r * 0.8, r * 2.5)
+      .fill({ color: 0xffdd44, alpha: 0.2 });
+    beam.alpha = 0;
+    c.addChild(beam);
+    gsap.to(beam, { alpha: 0.4, duration: 0.2 });
+    gsap.to(beam, { alpha: 0, duration: 0.6, delay: 0.5 });
+
+    // Warm golden pulse at center
+    const pulse = new Graphics()
+      .circle(0, 0, r * 0.3)
+      .fill({ color: 0xffee88, alpha: 0.3 });
+    c.addChild(pulse);
+    gsap.to(pulse, {
+      pixi: { scaleX: 2, scaleY: 2 },
+      alpha: 0,
+      duration: 0.6,
+    });
+
+    // Expanding gentle ring
+    const ring = new Graphics()
+      .circle(0, 0, r * 0.2)
+      .stroke({ color: 0xffdd44, width: 1.5, alpha: 0.5 });
+    c.addChild(ring);
+    gsap.to(ring, {
+      pixi: { scaleX: r / (r * 0.2), scaleY: r / (r * 0.2) },
+      alpha: 0,
+      duration: 0.5,
+      ease: "power1.out",
+    });
+
+    // Gentle golden sparkles floating down then up
+    for (let i = 0; i < 14; i++) {
+      const px = (Math.random() - 0.5) * r * 1.4;
+      const py = -r * 0.5 - Math.random() * r;
+      const colors = [0xffffcc, 0xffee88, 0xffffff];
+      const spark = new Graphics()
+        .circle(0, 0, 1 + Math.random())
+        .fill({ color: colors[i % 3], alpha: 0.7 });
+      spark.position.set(px, py);
+      spark.alpha = 0;
+      c.addChild(spark);
+      const d = Math.random() * 0.4;
+      gsap.to(spark, { alpha: 0.8, duration: 0.1, delay: d });
+      gsap.to(spark, {
+        y: py + r + Math.random() * r * 0.5,
+        alpha: 0,
+        duration: 0.7 + Math.random() * 0.3,
+        delay: d,
+        ease: "power1.out",
+      });
+    }
+
+    autoCleanup(this._vm, c, 1.3);
+  }
+
+  // ── Purifying Flame ─────────────────────────────────────────────────────
+  // White-gold fire eruption, clean white particles ascending, holy ring
+  private _purifyingFlame(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // White-hot core flash
+    const core = new Graphics()
+      .circle(0, 0, r * 0.15)
+      .fill({ color: 0xffffff, alpha: 1 });
+    c.addChild(core);
+    gsap.to(core, {
+      pixi: { scaleX: 2.5, scaleY: 2.5 },
+      alpha: 0,
+      duration: 0.2,
+    });
+
+    // Golden fire ring expanding
+    const ring = new Graphics()
+      .circle(0, 0, r * 0.2)
+      .stroke({ color: 0xffdd44, width: 3, alpha: 0.9 });
+    c.addChild(ring);
+    gsap.to(ring, {
+      pixi: { scaleX: r / (r * 0.2), scaleY: r / (r * 0.2) },
+      alpha: 0,
+      duration: 0.5,
+      ease: "power2.out",
+    });
+
+    // White-gold fire fill
+    const fill = new Graphics()
+      .circle(0, 0, r * 0.6)
+      .fill({ color: 0xffee88, alpha: 0.3 });
+    c.addChild(fill);
+    gsap.to(fill, {
+      pixi: { scaleX: 1.5, scaleY: 1.5 },
+      alpha: 0,
+      duration: 0.45,
+    });
+
+    // Clean white particles ascending (purification)
+    for (let i = 0; i < 18; i++) {
+      const px = (Math.random() - 0.5) * r * 1.2;
+      const py = (Math.random() - 0.5) * r * 0.8;
+      const colors = [0xffffff, 0xffffcc, 0xffee88, 0xffdd44];
+      const p = new Graphics()
+        .circle(0, 0, 1.5 + Math.random())
+        .fill({ color: colors[i % 4], alpha: 0.85 });
+      p.position.set(px, py);
+      c.addChild(p);
+      gsap.to(p, {
+        y: py - 22 - Math.random() * 18,
+        alpha: 0,
+        duration: 0.6 + Math.random() * 0.3,
+        delay: Math.random() * 0.15,
+        ease: "power1.out",
+      });
+    }
+
+    // Holy cross pattern (subtle)
+    for (let i = 0; i < 4; i++) {
+      const ray = new Graphics()
+        .rect(-1, 0, 2, r * 0.5)
+        .fill({ color: 0xffdd44, alpha: 0.3 });
+      ray.rotation = (i / 4) * TAU;
+      c.addChild(ray);
+      gsap.to(ray, { alpha: 0, duration: 0.5, delay: 0.15 });
+    }
+
+    autoCleanup(this._vm, c, 1.3);
+  }
+
+  // ── Radiant Nova ────────────────────────────────────────────────────────
+  // Expanding golden light ring with sparkle trail, ascending golden motes
+  private _radiantNova(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Central golden flash
+    const flash = new Graphics()
+      .circle(0, 0, r * 0.2)
+      .fill({ color: 0xffffff, alpha: 0.9 });
+    c.addChild(flash);
+    gsap.to(flash, {
+      pixi: { scaleX: 2.5, scaleY: 2.5 },
+      alpha: 0,
+      duration: 0.3,
+    });
+
+    // Two expanding golden healing rings
+    for (let i = 0; i < 2; i++) {
+      const ring = new Graphics()
+        .circle(0, 0, r * 0.12)
+        .stroke({ color: [0xffdd44, 0xffee88][i], width: 2.5, alpha: 0.8 });
+      c.addChild(ring);
+      gsap.to(ring, {
+        pixi: { scaleX: r / (r * 0.12), scaleY: r / (r * 0.12) },
+        alpha: 0,
+        duration: 0.55 + i * 0.1,
+        delay: i * 0.08,
+        ease: "power2.out",
+      });
+    }
+
+    // Sparkle trail behind expanding ring
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * TAU;
+      const dist = r * (0.6 + Math.random() * 0.4);
+      const colors = [0xffffaa, 0xffdd44, 0xffffff, 0xffee88];
+      const spark = new Graphics()
+        .circle(0, 0, 1.5 + Math.random())
+        .fill({ color: colors[i % 4], alpha: 0.8 });
+      c.addChild(spark);
+      gsap.to(spark, {
+        x: Math.cos(a) * dist,
+        y: Math.sin(a) * dist,
+        alpha: 0,
+        duration: 0.5 + Math.random() * 0.2,
+        delay: 0.05,
+        ease: "power2.out",
+      });
+    }
+
+    // Golden motes ascending (healing visualization)
+    for (let i = 0; i < 16; i++) {
+      const mx = (Math.random() - 0.5) * r * 1.4;
+      const my = (Math.random() - 0.5) * r;
+      const mote = new Graphics()
+        .circle(0, 0, 1.5 + Math.random())
+        .fill({ color: 0xffee88, alpha: 0.7 });
+      mote.position.set(mx, my);
+      mote.alpha = 0;
+      c.addChild(mote);
+      const d = 0.1 + Math.random() * 0.3;
+      gsap.to(mote, { alpha: 0.8, duration: 0.1, delay: d });
+      gsap.to(mote, {
+        y: my - 25 - Math.random() * 20,
+        alpha: 0,
+        duration: 0.7 + Math.random() * 0.3,
+        delay: d,
+        ease: "power1.out",
+      });
+    }
+
+    // Golden ground glow
+    const glow = new Graphics()
+      .circle(0, 0, r)
+      .fill({ color: 0xffdd44, alpha: 0.1 });
+    c.addChild(glow);
+    gsap.to(glow, { alpha: 0, duration: 0.8, delay: 0.3 });
+
+    autoCleanup(this._vm, c, 1.5);
+  }
+
+  // ── Celestial Wrath ─────────────────────────────────────────────────────
+  // Multiple golden beams descending, massive expanding divine rings, bright flash
+  private _celestialWrath(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Multiple golden beams descending at different positions
+    for (let i = 0; i < 5; i++) {
+      const bx = (Math.random() - 0.5) * r * 1.2;
+      const by = (Math.random() - 0.5) * r * 0.6;
+      const delay = i * 0.1;
+
+      gsap.delayedCall(delay, () => {
+        // Outer beam
+        const beam = new Graphics()
+          .rect(bx - 6, -r * 4, 12, r * 4 + by)
+          .fill({ color: 0xffdd44, alpha: 0.35 });
+        beam.alpha = 0;
+        c.addChild(beam);
+        gsap.to(beam, { alpha: 0.5, duration: 0.06 });
+        gsap.to(beam, { alpha: 0, duration: 0.4, delay: 0.2 });
+
+        // Inner beam core
+        const beamCore = new Graphics()
+          .rect(bx - 2, -r * 4, 4, r * 4 + by)
+          .fill({ color: 0xffffff, alpha: 0.6 });
+        beamCore.alpha = 0;
+        c.addChild(beamCore);
+        gsap.to(beamCore, { alpha: 0.8, duration: 0.06 });
+        gsap.to(beamCore, { alpha: 0, duration: 0.3, delay: 0.15 });
+
+        // Impact flash at beam base
+        const impFlash = new Graphics()
+          .circle(bx, by, 5)
+          .fill({ color: 0xffffff, alpha: 0.9 });
+        c.addChild(impFlash);
+        gsap.to(impFlash, {
+          alpha: 0,
+          pixi: { scaleX: 2.5, scaleY: 2.5 },
+          duration: 0.25,
+        });
+      });
+    }
+
+    // Massive expanding divine rings
+    for (let i = 0; i < 3; i++) {
+      const ring = new Graphics()
+        .circle(0, 0, r * 0.15)
+        .stroke({ color: [0xffdd44, 0xffee88, 0xffffff][i], width: 3, alpha: 0.7 });
+      c.addChild(ring);
+      gsap.to(ring, {
+        pixi: { scaleX: r / (r * 0.15), scaleY: r / (r * 0.15) },
+        alpha: 0,
+        duration: 0.6 + i * 0.12,
+        delay: 0.2 + i * 0.1,
+        ease: "power2.out",
+      });
+    }
+
+    // Star burst (8-pointed)
+    const star = new Graphics();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      star.moveTo(0, 0).lineTo(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6);
+    }
+    star.stroke({ color: 0xffdd44, width: 1.5, alpha: 0.5 });
+    c.addChild(star);
+    gsap.to(star, { alpha: 0, rotation: Math.PI / 8, duration: 0.6, delay: 0.2 });
+
+    // Golden particle shower
+    for (let i = 0; i < 22; i++) {
+      const a = Math.random() * TAU;
+      const dist = r * (0.3 + Math.random() * 0.7);
+      const colors = [0xffffaa, 0xffdd44, 0xffffff];
+      const p = new Graphics()
+        .circle(0, 0, 1.5 + Math.random())
+        .fill({ color: colors[i % 3], alpha: 0.85 });
+      c.addChild(p);
+      gsap.to(p, {
+        x: Math.cos(a) * dist,
+        y: Math.sin(a) * dist - 10 - Math.random() * 15,
+        alpha: 0,
+        duration: 0.6 + Math.random() * 0.3,
+        delay: 0.15 + Math.random() * 0.2,
+        ease: "power1.out",
+      });
+    }
+
+    autoCleanup(this._vm, c, 2.0);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW SHADOW SPELLS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Shadow Bolt ─────────────────────────────────────────────────────────
+  // Dark projectile streaking from side, dark impact burst, shadow tendrils
+  private _shadowBolt(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Dark bolt projectile
+    const bolt = new Container();
+    const boltGlow = new Graphics()
+      .circle(0, 0, 5)
+      .fill({ color: 0x663399, alpha: 0.5 });
+    const boltCore = new Graphics()
+      .circle(0, 0, 3)
+      .fill({ color: 0x220033, alpha: 0.9 })
+      .circle(0, 0, 1.5)
+      .fill({ color: 0x9966cc, alpha: 0.8 });
+    bolt.addChild(boltGlow, boltCore);
+    bolt.position.set(-r * 2, -r * 1.5);
+    c.addChild(bolt);
+
+    // Trail
+    const trailC = new Container();
+    c.addChild(trailC);
+
+    gsap.to(bolt, {
+      x: 0,
+      y: 0,
+      duration: 0.2,
+      ease: "power2.in",
+      onUpdate: () => {
+        const tp = new Graphics()
+          .circle(0, 0, 1.5 + Math.random())
+          .fill({ color: 0x663399, alpha: 0.4 });
+        tp.position.set(
+          bolt.x + (Math.random() - 0.5) * 4,
+          bolt.y + (Math.random() - 0.5) * 4,
+        );
+        trailC.addChild(tp);
+        gsap.to(tp, { alpha: 0, duration: 0.2 });
+      },
+      onComplete: () => {
+        bolt.visible = false;
+
+        // Dark impact burst
+        const burst = new Graphics()
+          .circle(0, 0, r * 0.3)
+          .fill({ color: 0x330055, alpha: 0.5 });
+        c.addChild(burst);
+        gsap.to(burst, {
+          pixi: { scaleX: 2, scaleY: 2 },
+          alpha: 0,
+          duration: 0.35,
+        });
+
+        // Impact ring
+        const ring = new Graphics()
+          .circle(0, 0, r * 0.15)
+          .stroke({ color: 0x9966cc, width: 2, alpha: 0.7 });
+        c.addChild(ring);
+        gsap.to(ring, {
+          pixi: { scaleX: r / (r * 0.15), scaleY: r / (r * 0.15) },
+          alpha: 0,
+          duration: 0.4,
+          ease: "power2.out",
+        });
+
+        // Shadow tendrils radiating outward
+        for (let i = 0; i < 6; i++) {
+          const tendril = new Graphics();
+          const baseA = (i / 6) * TAU;
+          tendril.moveTo(0, 0);
+          for (let t = 1; t <= 4; t++) {
+            const a = baseA + Math.sin(t * 1.5) * 0.4;
+            const d = (t / 4) * r * 0.7;
+            tendril.lineTo(Math.cos(a) * d, Math.sin(a) * d);
+          }
+          tendril.stroke({ color: 0x663399, width: 1.5, alpha: 0.5 });
+          c.addChild(tendril);
+          gsap.to(tendril, { alpha: 0, duration: 0.4, delay: 0.1 });
+        }
+
+        // Dark particles
+        for (let i = 0; i < 8; i++) {
+          const a = Math.random() * TAU;
+          const dist = r * (0.3 + Math.random() * 0.4);
+          const p = new Graphics()
+            .circle(0, 0, 1.5)
+            .fill({ color: 0x9933cc, alpha: 0.7 });
+          c.addChild(p);
+          gsap.to(p, {
+            x: Math.cos(a) * dist,
+            y: Math.sin(a) * dist,
+            alpha: 0,
+            duration: 0.3,
+            ease: "power1.out",
+          });
+        }
+      },
+    });
+
+    autoCleanup(this._vm, c, 1.2);
+  }
+
+  // ── Curse of Darkness ───────────────────────────────────────────────────
+  // Dark fog expanding, swirling shadow wisps, draining particles pulled inward
+  private _curseOfDarkness(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Dark fog clouds expanding
+    for (let i = 0; i < 8; i++) {
+      const tx = (Math.random() - 0.5) * r * 1.2;
+      const ty = (Math.random() - 0.5) * r * 1.2;
+      const cloudSize = 6 + Math.random() * 8;
+      const colors = [0x220033, 0x330044, 0x110022, 0x2a0040];
+      const cloud = new Graphics()
+        .circle(0, 0, cloudSize)
+        .fill({ color: colors[i % 4], alpha: 0.25 });
+      cloud.position.set(tx * 0.3, ty * 0.3);
+      cloud.alpha = 0;
+      c.addChild(cloud);
+
+      const delay = i * 0.06;
+      gsap.to(cloud, { alpha: 0.35, duration: 0.2, delay });
+      gsap.to(cloud, {
+        x: tx,
+        y: ty,
+        pixi: { scaleX: 1.8, scaleY: 1.5 },
+        duration: 0.8,
+        delay,
+        ease: "power1.out",
+      });
+      gsap.to(cloud, { alpha: 0, duration: 0.5, delay: 0.9 });
+    }
+
+    // Swirling shadow wisps (curved lines rotating)
+    for (let i = 0; i < 3; i++) {
+      const wisp = new Graphics();
+      const startA = (i / 3) * TAU;
+      wisp.moveTo(
+        Math.cos(startA) * r * 0.2,
+        Math.sin(startA) * r * 0.2,
+      );
+      for (let t = 1; t <= 8; t++) {
+        const a = startA + (t / 8) * Math.PI;
+        const rd = r * (0.2 + (t / 8) * 0.5);
+        wisp.lineTo(Math.cos(a) * rd, Math.sin(a) * rd);
+      }
+      wisp.stroke({ color: 0x9966cc, width: 1.5, alpha: 0.3 });
+      wisp.alpha = 0;
+      c.addChild(wisp);
+      gsap.to(wisp, { alpha: 0.5, duration: 0.15, delay: i * 0.1 });
+      gsap.to(wisp, {
+        rotation: Math.PI * 0.5,
+        duration: 1.0,
+        delay: i * 0.1,
+        ease: "power1.inOut",
+      });
+      gsap.to(wisp, { alpha: 0, duration: 0.3, delay: 0.8 });
+    }
+
+    // Draining particles pulled inward toward center
+    for (let i = 0; i < 14; i++) {
+      const a = Math.random() * TAU;
+      const startDist = r * (0.7 + Math.random() * 0.5);
+      const p = new Graphics()
+        .circle(0, 0, 1 + Math.random())
+        .fill({ color: 0xaa88cc, alpha: 0.7 });
+      p.position.set(Math.cos(a) * startDist, Math.sin(a) * startDist);
+      p.alpha = 0;
+      c.addChild(p);
+      const d = Math.random() * 0.4;
+      gsap.to(p, { alpha: 0.8, duration: 0.08, delay: d });
+      gsap.to(p, {
+        x: 0,
+        y: 0,
+        alpha: 0,
+        duration: 0.5,
+        delay: d + 0.1,
+        ease: "power2.in",
+      });
+    }
+
+    // Dark ground stain
+    const stain = new Graphics()
+      .circle(0, 0, r * 0.7)
+      .fill({ color: 0x110022, alpha: 0.12 });
+    c.addChild(stain);
+    gsap.to(stain, { alpha: 0, duration: 0.6, delay: 0.8 });
+
+    autoCleanup(this._vm, c, 1.8);
+  }
+
+  // ── Death Coil ──────────────────────────────────────────────────────────
+  // Spiraling dark green/purple energy projectile, necrotic burst at impact
+  private _deathCoil(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Spiraling projectile coil (moves to center from above-left)
+    const coil = new Container();
+    const coilGlow = new Graphics()
+      .circle(0, 0, 6)
+      .fill({ color: 0x336633, alpha: 0.4 });
+    const coilCore = new Graphics()
+      .circle(0, 0, 3)
+      .fill({ color: 0x44aa44, alpha: 0.9 })
+      .circle(0, 0, 1.5)
+      .fill({ color: 0xaaffaa, alpha: 0.7 });
+    coil.addChild(coilGlow, coilCore);
+    coil.position.set(-r * 1.8, -r * 2.5);
+    c.addChild(coil);
+
+    const trailC = new Container();
+    c.addChild(trailC);
+
+    // Spiral trajectory
+    const tl = gsap.timeline();
+    const spiralDur = 0.35;
+    tl.to(coil, {
+      x: 0,
+      y: 0,
+      duration: spiralDur,
+      ease: "power2.in",
+      onUpdate: () => {
+        // Spiral trail particles
+        const tp = new Graphics()
+          .circle(0, 0, 1.5 + Math.random())
+          .fill({ color: [0x44aa44, 0x663399][Math.random() > 0.5 ? 1 : 0], alpha: 0.5 });
+        tp.position.set(
+          coil.x + (Math.random() - 0.5) * 6,
+          coil.y + (Math.random() - 0.5) * 6,
+        );
+        trailC.addChild(tp);
+        gsap.to(tp, { alpha: 0, duration: 0.3 });
+      },
+    });
+
+    tl.call(() => {
+      coil.visible = false;
+
+      // Necrotic burst
+      const burst = new Graphics()
+        .circle(0, 0, r * 0.35)
+        .fill({ color: 0x336633, alpha: 0.45 });
+      c.addChild(burst);
+      gsap.to(burst, {
+        pixi: { scaleX: 2.5, scaleY: 2.5 },
+        alpha: 0,
+        duration: 0.4,
+      });
+
+      // Green/purple ring
+      const ring = new Graphics()
+        .circle(0, 0, r * 0.2)
+        .stroke({ color: 0x44aa44, width: 2.5, alpha: 0.8 });
+      c.addChild(ring);
+      gsap.to(ring, {
+        pixi: { scaleX: r / (r * 0.2), scaleY: r / (r * 0.2) },
+        alpha: 0,
+        duration: 0.45,
+        ease: "power2.out",
+      });
+
+      // Necrotic particles
+      for (let i = 0; i < 14; i++) {
+        const a = Math.random() * TAU;
+        const dist = r * (0.3 + Math.random() * 0.5);
+        const colors = [0x44aa44, 0x663399, 0xaaffaa, 0x886699];
+        const p = new Graphics()
+          .circle(0, 0, 1.5 + Math.random())
+          .fill({ color: colors[i % 4], alpha: 0.8 });
+        c.addChild(p);
+        gsap.to(p, {
+          x: Math.cos(a) * dist,
+          y: Math.sin(a) * dist,
+          alpha: 0,
+          duration: 0.4,
+          ease: "power1.out",
+        });
+      }
+    });
+
+    autoCleanup(this._vm, c, 1.5);
+  }
+
+  // ── Siphon Soul ─────────────────────────────────────────────────────────
+  // Ghostly wisps pulled from edges to center, dark pulse, soul-drain effect
+  private _siphonSoul(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Outer boundary ring that pulses inward
+    const boundary = new Graphics()
+      .circle(0, 0, r)
+      .stroke({ color: 0x663399, width: 1.5, alpha: 0.4 });
+    c.addChild(boundary);
+    gsap.to(boundary, {
+      pixi: { scaleX: 0.3, scaleY: 0.3 },
+      alpha: 0,
+      duration: 0.8,
+      ease: "power2.in",
+    });
+
+    // Dark pulse at center (grows as energy is absorbed)
+    const pulse = new Graphics()
+      .circle(0, 0, 3)
+      .fill({ color: 0x220033, alpha: 0.6 });
+    c.addChild(pulse);
+    gsap.to(pulse, {
+      pixi: { scaleX: r / 8, scaleY: r / 8 },
+      alpha: 0.8,
+      duration: 0.6,
+      delay: 0.2,
+      ease: "power2.in",
+    });
+    gsap.to(pulse, {
+      alpha: 0,
+      pixi: { scaleX: 0, scaleY: 0 },
+      duration: 0.25,
+      delay: 0.8,
+      ease: "power2.in",
+    });
+
+    // Ghostly wisps pulled from radius edges to center
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * TAU + (Math.random() - 0.5) * 0.3;
+      const startDist = r * (0.8 + Math.random() * 0.3);
+      const colors = [0xaa88cc, 0x9966bb, 0xddbbff, 0x7744aa];
+      const wisp = new Graphics()
+        .circle(0, 0, 2 + Math.random() * 1.5)
+        .fill({ color: colors[i % 4], alpha: 0.6 });
+      wisp.position.set(Math.cos(a) * startDist, Math.sin(a) * startDist);
+      wisp.alpha = 0;
+      c.addChild(wisp);
+
+      const d = i * 0.03;
+      gsap.to(wisp, { alpha: 0.8, duration: 0.1, delay: d });
+      gsap.to(wisp, {
+        x: (Math.random() - 0.5) * 4,
+        y: (Math.random() - 0.5) * 4,
+        alpha: 0.3,
+        duration: 0.5,
+        delay: d + 0.1,
+        ease: "power2.in",
+      });
+      gsap.to(wisp, {
+        alpha: 0,
+        duration: 0.15,
+        delay: d + 0.55,
+      });
+    }
+
+    // Soul-drain connecting lines (thin lines from edge to center)
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      const line = new Graphics();
+      line.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      line.lineTo(0, 0);
+      line.stroke({ color: 0x9966cc, width: 1, alpha: 0.25 });
+      line.alpha = 0;
+      c.addChild(line);
+      gsap.to(line, { alpha: 0.4, duration: 0.15, delay: i * 0.05 });
+      gsap.to(line, { alpha: 0, duration: 0.3, delay: 0.6 });
+    }
+
+    // Final release burst
+    gsap.delayedCall(0.8, () => {
+      const releaseBurst = new Graphics()
+        .circle(0, 0, r * 0.15)
+        .fill({ color: 0xddaaff, alpha: 0.6 });
+      c.addChild(releaseBurst);
+      gsap.to(releaseBurst, {
+        pixi: { scaleX: 3, scaleY: 3 },
+        alpha: 0,
+        duration: 0.3,
+      });
+    });
+
+    autoCleanup(this._vm, c, 1.5);
+  }
+
+  // ── Nether Storm ────────────────────────────────────────────────────────
+  // Massive dark tempest with void lightning arcing, shadow vortex, dark particles
+  private _netherStorm(wx: number, wy: number, r: number): void {
+    const c = makeContainer(this._vm, wx, wy);
+
+    // Shadow vortex rings rotating (two counter-rotating)
+    for (let i = 0; i < 2; i++) {
+      const vortex = new Graphics()
+        .circle(0, 0, r * (0.5 + i * 0.15))
+        .stroke({ color: [0x663399, 0x442266][i], width: 2, alpha: 0.4 });
+      vortex.alpha = 0;
+      c.addChild(vortex);
+      gsap.to(vortex, { alpha: 0.6, duration: 0.2 });
+      gsap.to(vortex, {
+        rotation: (i === 0 ? 1 : -1) * TAU,
+        duration: 1.5,
+        ease: "none",
+      });
+      gsap.to(vortex, { alpha: 0, duration: 0.3, delay: 1.3 });
+    }
+
+    // Dark ground fill
+    const darkFill = new Graphics()
+      .circle(0, 0, r * 0.8)
+      .fill({ color: 0x110022, alpha: 0.2 });
+    c.addChild(darkFill);
+    gsap.to(darkFill, { alpha: 0, duration: 0.5, delay: 1.2 });
+
+    // Void lightning arcs striking at random positions
+    for (let i = 0; i < 6; i++) {
+      const tx = (Math.random() - 0.5) * r * 1.6;
+      const ty = (Math.random() - 0.5) * r * 1.2;
+      const delay = 0.1 + i * 0.15;
+
+      gsap.delayedCall(delay, () => {
+        // Dark lightning bolt
+        const bolt = new Graphics();
+        let bx = tx + (Math.random() - 0.5) * 8;
+        let by = -r * 2;
+        bolt.moveTo(bx, by);
+        for (let s = 0; s < 5; s++) {
+          bx += (Math.random() - 0.5) * 10;
+          by += (r * 2 + ty) / 5;
+          bolt.lineTo(bx, by);
+        }
+        bolt.lineTo(tx, ty);
+        bolt.stroke({ color: 0x9966ff, width: 2, alpha: 0.7 });
+        c.addChild(bolt);
+        gsap.to(bolt, { alpha: 0, duration: 0.2 });
+
+        // Dark flash at impact
+        const flash = new Graphics()
+          .circle(tx, ty, 4)
+          .fill({ color: 0x9933cc, alpha: 0.6 });
+        c.addChild(flash);
+        gsap.to(flash, {
+          pixi: { scaleX: 2, scaleY: 2 },
+          alpha: 0,
+          duration: 0.2,
+        });
+      });
+    }
+
+    // Shadow particles swirling
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * TAU;
+      const startDist = r * (0.3 + Math.random() * 0.5);
+      const colors = [0x663399, 0x442266, 0x9966cc, 0x330055];
+      const p = new Graphics()
+        .circle(0, 0, 1.5 + Math.random())
+        .fill({ color: colors[i % 4], alpha: 0.6 });
+      p.position.set(Math.cos(a) * startDist, Math.sin(a) * startDist);
+      p.alpha = 0;
+      c.addChild(p);
+      const d = Math.random() * 0.6;
+      gsap.to(p, { alpha: 0.7, duration: 0.1, delay: d });
+      // Spiral inward slightly
+      const endA = a + Math.PI * 0.7;
+      const endDist = startDist * 0.4;
+      gsap.to(p, {
+        x: Math.cos(endA) * endDist,
+        y: Math.sin(endA) * endDist,
+        alpha: 0,
+        duration: 0.7,
+        delay: d + 0.15,
+        ease: "power1.inOut",
       });
     }
 
