@@ -269,6 +269,11 @@ const BUILDING_TIER_CATEGORY: Partial<Record<BuildingType, keyof RaceTiers>> = {
   [BuildingType.SIEGE_WORKSHOP]: "siege",
   [BuildingType.CREATURE_DEN]: "creature",
   [BuildingType.TEMPLE]: "heal",
+  [BuildingType.ELITE_BARRACKS]: "melee",
+  [BuildingType.ELITE_ARCHERY_RANGE]: "ranged",
+  [BuildingType.ELITE_SIEGE_WORKSHOP]: "siege",
+  [BuildingType.ELITE_MAGE_TOWER]: "magic",
+  [BuildingType.ELITE_STABLES]: "melee",
   // Mage Tower uses per-element tiers — handled specially below.
   // Castle has mixed categories — handled specially below.
   // Faction Hall is never filtered.

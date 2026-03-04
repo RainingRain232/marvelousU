@@ -147,6 +147,11 @@ import { generateWarWagonFrames } from "@view/animation/WarWagonSpriteGen";
 import { generateBombardFrames } from "@view/animation/BombardSpriteGen";
 import { generateSiegeTowerFrames } from "@view/animation/SiegeTowerSpriteGen";
 import { generateHellfireMortarFrames } from "@view/animation/HellfireMortarSpriteGen";
+import { generateGiantWarriorFrames } from "@view/animation/GiantWarriorSpriteGen";
+import { generateGiantArcherFrames } from "@view/animation/GiantArcherSpriteGen";
+import { generateGiantSiegeFrames } from "@view/animation/GiantSiegeSpriteGen";
+import { generateGiantMageFrames } from "@view/animation/GiantMageSpriteGen";
+import { generateGiantCavalryFrames } from "@view/animation/GiantCavalrySpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -358,6 +363,16 @@ export class AnimationManager {
         this._generateSiegeTowerSprites(key, renderer);
       } else if (key === "hellfire_mortar") {
         this._generateHellfireMortarSprites(key, renderer);
+      } else if (key === "giant_warrior") {
+        this._generateGiantWarriorSprites(key, renderer);
+      } else if (key === "giant_archer") {
+        this._generateGiantArcherSprites(key, renderer);
+      } else if (key === "giant_siege") {
+        this._generateGiantSiegeSprites(key, renderer);
+      } else if (key === "giant_mage") {
+        this._generateGiantMageSprites(key, renderer);
+      } else if (key === "giant_cavalry") {
+        this._generateGiantCavalrySprites(key, renderer);
       } else if (key === "longbowman") {
         this._generateLongbowmanSprites(key, renderer);
       } else if (key === "crossbowman") {
@@ -1866,6 +1881,61 @@ export class AnimationManager {
 
   private _generateHellfireMortarSprites(key: string, renderer: Renderer): void {
     const textures = generateHellfireMortarFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateGiantWarriorSprites(key: string, renderer: Renderer): void {
+    const textures = generateGiantWarriorFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateGiantArcherSprites(key: string, renderer: Renderer): void {
+    const textures = generateGiantArcherFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateGiantSiegeSprites(key: string, renderer: Renderer): void {
+    const textures = generateGiantSiegeFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateGiantMageSprites(key: string, renderer: Renderer): void {
+    const textures = generateGiantMageFrames(renderer);
+    for (const state of Object.values(UnitState)) {
+      const stateTextures = textures.get(state);
+      if (stateTextures) {
+        const ck = cacheKey(key, state);
+        if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  private _generateGiantCavalrySprites(key: string, renderer: Renderer): void {
+    const textures = generateGiantCavalryFrames(renderer);
     for (const state of Object.values(UnitState)) {
       const stateTextures = textures.get(state);
       if (stateTextures) {

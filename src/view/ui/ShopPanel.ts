@@ -57,6 +57,11 @@ import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
 import { House1Renderer } from "@view/entities/House1Renderer";
 import { House2Renderer } from "@view/entities/House2Renderer";
 import { House3Renderer } from "@view/entities/House3Renderer";
+import { EliteBarracksRenderer } from "@view/entities/EliteBarracksRenderer";
+import { EliteArcheryRangeRenderer } from "@view/entities/EliteArcheryRangeRenderer";
+import { EliteSiegeWorkshopRenderer } from "@view/entities/EliteSiegeWorkshopRenderer";
+import { EliteMageTowerRenderer } from "@view/entities/EliteMageTowerRenderer";
+import { EliteStableRenderer } from "@view/entities/EliteStableRenderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -186,6 +191,11 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HOUSE1]: "House I",
   [BuildingType.HOUSE2]: "House II",
   [BuildingType.HOUSE3]: "House III",
+  [BuildingType.ELITE_BARRACKS]: "Elite Barracks",
+  [BuildingType.ELITE_ARCHERY_RANGE]: "Elite Archery Range",
+  [BuildingType.ELITE_SIEGE_WORKSHOP]: "Elite Siege Workshop",
+  [BuildingType.ELITE_MAGE_TOWER]: "Elite Mage Tower",
+  [BuildingType.ELITE_STABLES]: "Elite Stables",
 };
 
 // Unit display names
@@ -299,6 +309,11 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.MINOR_DISTORTION_ELEMENTAL]: "Minor Distortion Elemental",
   [UnitType.EARTH_ELEMENTAL]: "Earth Elemental",
   [UnitType.MINOR_EARTH_ELEMENTAL]: "Minor Earth Elemental",
+  [UnitType.GIANT_WARRIOR]: "Giant Warrior",
+  [UnitType.GIANT_ARCHER]: "Giant Archer",
+  [UnitType.GIANT_SIEGE]: "Giant Siege",
+  [UnitType.GIANT_MAGE]: "Giant Mage",
+  [UnitType.GIANT_CAVALRY]: "Giant Cavalry",
 };
 
 // ---------------------------------------------------------------------------
@@ -545,6 +560,11 @@ export class ShopPanel {
       BuildingType.CREATURE_DEN,
       BuildingType.FACTION_HALL,
       BuildingType.ELITE_HALL,
+      BuildingType.ELITE_BARRACKS,
+      BuildingType.ELITE_ARCHERY_RANGE,
+      BuildingType.ELITE_SIEGE_WORKSHOP,
+      BuildingType.ELITE_MAGE_TOWER,
+      BuildingType.ELITE_STABLES,
     ];
 
     // Sort otherBuildings according to the defined order
@@ -1020,6 +1040,26 @@ export class ShopPanel {
     } else if (buildingType === BuildingType.HOUSE3) {
       buildingContainer = new House3Renderer(null).container;
       texW = 64;
+      texH = 128;
+    } else if (buildingType === BuildingType.ELITE_BARRACKS) {
+      buildingContainer = new EliteBarracksRenderer(null).container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.ELITE_ARCHERY_RANGE) {
+      buildingContainer = new EliteArcheryRangeRenderer(null).container;
+      texW = 256;
+      texH = 128;
+    } else if (buildingType === BuildingType.ELITE_SIEGE_WORKSHOP) {
+      buildingContainer = new EliteSiegeWorkshopRenderer(null).container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.ELITE_MAGE_TOWER) {
+      buildingContainer = new EliteMageTowerRenderer(null).container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.ELITE_STABLES) {
+      buildingContainer = new EliteStableRenderer(null).container;
+      texW = 128;
       texH = 128;
     }
 

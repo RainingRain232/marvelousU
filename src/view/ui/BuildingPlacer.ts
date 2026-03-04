@@ -56,6 +56,11 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.HOUSE1]: 0x8b7855,
   [BuildingType.HOUSE2]: 0x8b7855,
   [BuildingType.HOUSE3]: 0x8b7855,
+  [BuildingType.ELITE_BARRACKS]: 0x2a3c6b,
+  [BuildingType.ELITE_ARCHERY_RANGE]: 0x1e4b1e,
+  [BuildingType.ELITE_SIEGE_WORKSHOP]: 0x5a3c1e,
+  [BuildingType.ELITE_MAGE_TOWER]: 0x4a1e6b,
+  [BuildingType.ELITE_STABLES]: 0x3c2a0e,
 };
 
 const BUILDING_LABELS: Record<BuildingType, string> = {
@@ -90,6 +95,11 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HOUSE1]: "HOUSE",
   [BuildingType.HOUSE2]: "HOUSE",
   [BuildingType.HOUSE3]: "HOUSE",
+  [BuildingType.ELITE_BARRACKS]: "ELITE BRK",
+  [BuildingType.ELITE_ARCHERY_RANGE]: "ELITE ARCH",
+  [BuildingType.ELITE_SIEGE_WORKSHOP]: "ELITE SIEGE",
+  [BuildingType.ELITE_MAGE_TOWER]: "ELITE MAGE",
+  [BuildingType.ELITE_STABLES]: "ELITE STBL",
 };
 
 const LABEL_STYLE = new TextStyle({

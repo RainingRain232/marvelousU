@@ -121,6 +121,11 @@ export const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HOUSE1]: "House I",
   [BuildingType.HOUSE2]: "House II",
   [BuildingType.HOUSE3]: "House III",
+  [BuildingType.ELITE_BARRACKS]: "Elite Barracks",
+  [BuildingType.ELITE_ARCHERY_RANGE]: "Elite Archery Range",
+  [BuildingType.ELITE_SIEGE_WORKSHOP]: "Elite Siege Workshop",
+  [BuildingType.ELITE_MAGE_TOWER]: "Elite Mage Tower",
+  [BuildingType.ELITE_STABLES]: "Elite Stables",
 };
 
 export const UNIT_LABELS: Record<UnitType, string> = {
@@ -233,6 +238,11 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.MINOR_DISTORTION_ELEMENTAL]: "Minor Distortion Elemental",
   [UnitType.EARTH_ELEMENTAL]: "Earth Elemental",
   [UnitType.MINOR_EARTH_ELEMENTAL]: "Minor Earth Elemental",
+  [UnitType.GIANT_WARRIOR]: "Giant Warrior",
+  [UnitType.GIANT_ARCHER]: "Giant Archer",
+  [UnitType.GIANT_SIEGE]: "Giant Siege",
+  [UnitType.GIANT_MAGE]: "Giant Mage",
+  [UnitType.GIANT_CAVALRY]: "Giant Cavalry",
 };
 
 // ---------------------------------------------------------------------------

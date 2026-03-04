@@ -143,6 +143,11 @@ export enum UnitType {
   MINOR_DISTORTION_ELEMENTAL = "minor_distortion_elemental",
   EARTH_ELEMENTAL = "earth_elemental",
   MINOR_EARTH_ELEMENTAL = "minor_earth_elemental",
+  GIANT_WARRIOR = "giant_warrior",
+  GIANT_ARCHER = "giant_archer",
+  GIANT_SIEGE = "giant_siege",
+  GIANT_MAGE = "giant_mage",
+  GIANT_CAVALRY = "giant_cavalry",
 }
 
 export enum BuildingType {
@@ -177,6 +182,11 @@ export enum BuildingType {
   HOUSE1 = "house1",
   HOUSE2 = "house2",
   HOUSE3 = "house3",
+  ELITE_BARRACKS = "elite_barracks",
+  ELITE_ARCHERY_RANGE = "elite_archery_range",
+  ELITE_SIEGE_WORKSHOP = "elite_siege_workshop",
+  ELITE_MAGE_TOWER = "elite_mage_tower",
+  ELITE_STABLES = "elite_stables",
 }
 
 export enum AbilityType {

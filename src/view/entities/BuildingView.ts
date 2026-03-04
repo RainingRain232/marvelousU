@@ -41,6 +41,11 @@ import { ArchitectsGuildRenderer } from "@view/entities/ArchitectsGuildRenderer"
 import { House1Renderer } from "@view/entities/House1Renderer";
 import { House2Renderer } from "@view/entities/House2Renderer";
 import { House3Renderer } from "@view/entities/House3Renderer";
+import { EliteBarracksRenderer } from "@view/entities/EliteBarracksRenderer";
+import { EliteArcheryRangeRenderer } from "@view/entities/EliteArcheryRangeRenderer";
+import { EliteSiegeWorkshopRenderer } from "@view/entities/EliteSiegeWorkshopRenderer";
+import { EliteMageTowerRenderer } from "@view/entities/EliteMageTowerRenderer";
+import { EliteStableRenderer } from "@view/entities/EliteStableRenderer";
 
 // Capture progress bar (shown below capturable buildings)
 const CAP_BAR_H = 5;
@@ -85,6 +90,11 @@ const BUILDING_COLORS: Record<BuildingType, number> = {
   [BuildingType.HOUSE1]: 0x8b7855,
   [BuildingType.HOUSE2]: 0x8b7855,
   [BuildingType.HOUSE3]: 0x8b7855,
+  [BuildingType.ELITE_BARRACKS]: 0x2a3c6b,
+  [BuildingType.ELITE_ARCHERY_RANGE]: 0x1e4b1e,
+  [BuildingType.ELITE_SIEGE_WORKSHOP]: 0x5a3c1e,
+  [BuildingType.ELITE_MAGE_TOWER]: 0x4a1e6b,
+  [BuildingType.ELITE_STABLES]: 0x3c2a0e,
 };
 
 const BORDER_COLOR = 0x000000;
@@ -137,6 +147,11 @@ const BUILDING_LABELS: Record<BuildingType, string> = {
   [BuildingType.HOUSE1]: "HOUSE",
   [BuildingType.HOUSE2]: "HOUSE",
   [BuildingType.HOUSE3]: "HOUSE",
+  [BuildingType.ELITE_BARRACKS]: "ELITE BRK",
+  [BuildingType.ELITE_ARCHERY_RANGE]: "ELITE ARCH",
+  [BuildingType.ELITE_SIEGE_WORKSHOP]: "ELITE SIEGE",
+  [BuildingType.ELITE_MAGE_TOWER]: "ELITE MAGE",
+  [BuildingType.ELITE_STABLES]: "ELITE STBL",
 };
 
 // Idle smoke: emit one puff every SMOKE_INTERVAL seconds
@@ -215,6 +230,11 @@ export class BuildingView {
   private _house1Renderer: House1Renderer | null = null;
   private _house2Renderer: House2Renderer | null = null;
   private _house3Renderer: House3Renderer | null = null;
+  private _eliteBarracksRenderer: EliteBarracksRenderer | null = null;
+  private _eliteArcheryRangeRenderer: EliteArcheryRangeRenderer | null = null;
+  private _eliteSiegeWorkshopRenderer: EliteSiegeWorkshopRenderer | null = null;
+  private _eliteMageTowerRenderer: EliteMageTowerRenderer | null = null;
+  private _eliteStableRenderer: EliteStableRenderer | null = null;
 
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
@@ -382,6 +402,31 @@ export class BuildingView {
     } else if (building.type === BuildingType.HOUSE3) {
       this._house3Renderer = new House3Renderer(building.owner);
       this.container.addChild(this._house3Renderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.ELITE_BARRACKS) {
+      this._eliteBarracksRenderer = new EliteBarracksRenderer(building.owner);
+      this.container.addChild(this._eliteBarracksRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.ELITE_ARCHERY_RANGE) {
+      this._eliteArcheryRangeRenderer = new EliteArcheryRangeRenderer(building.owner);
+      this.container.addChild(this._eliteArcheryRangeRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.ELITE_SIEGE_WORKSHOP) {
+      this._eliteSiegeWorkshopRenderer = new EliteSiegeWorkshopRenderer(building.owner);
+      this.container.addChild(this._eliteSiegeWorkshopRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.ELITE_MAGE_TOWER) {
+      this._eliteMageTowerRenderer = new EliteMageTowerRenderer(building.owner);
+      this.container.addChild(this._eliteMageTowerRenderer.container);
+      this._body.visible = false;
+      this._label.visible = false;
+    } else if (building.type === BuildingType.ELITE_STABLES) {
+      this._eliteStableRenderer = new EliteStableRenderer(building.owner);
+      this.container.addChild(this._eliteStableRenderer.container);
       this._body.visible = false;
       this._label.visible = false;
     } else {
@@ -554,6 +599,21 @@ export class BuildingView {
       }
       if (this._house3Renderer) {
         this._house3Renderer.tick(dt, phase);
+      }
+      if (this._eliteBarracksRenderer) {
+        this._eliteBarracksRenderer.tick(dt, phase);
+      }
+      if (this._eliteArcheryRangeRenderer) {
+        this._eliteArcheryRangeRenderer.tick(dt, phase);
+      }
+      if (this._eliteSiegeWorkshopRenderer) {
+        this._eliteSiegeWorkshopRenderer.tick(dt, phase);
+      }
+      if (this._eliteMageTowerRenderer) {
+        this._eliteMageTowerRenderer.tick(dt, phase);
+      }
+      if (this._eliteStableRenderer) {
+        this._eliteStableRenderer.tick(dt, phase);
       }
       this._tickIdleEffects(dt);
     }
