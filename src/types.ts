@@ -257,6 +257,16 @@ export enum UpgradeType {
   ENGINEER = "engineer",
   SUMMON_UNICORN = "summon_unicorn",
   SUMMON_PIXIE = "summon_pixie",
+  SUMMON_FIRE_ELEMENTAL = "summon_fire_elemental",
+  SUMMON_ICE_ELEMENTAL = "summon_ice_elemental",
+  SUMMON_RED_DRAGON = "summon_red_dragon",
+  SUMMON_FROST_DRAGON = "summon_frost_dragon",
+  SUMMON_SPIDER_BROOD = "summon_spider_brood",
+  SUMMON_TROLL = "summon_troll",
+  SUMMON_ANGEL = "summon_angel",
+  SUMMON_CYCLOPS = "summon_cyclops",
+  SUMMON_BAT_SWARM = "summon_bat_swarm",
+  SUMMON_DARK_SAVANT = "summon_dark_savant",
 }
 
 export enum UnitState {

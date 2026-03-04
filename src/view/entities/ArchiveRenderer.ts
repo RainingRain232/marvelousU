@@ -76,6 +76,7 @@ export class ArchiveRenderer {
   readonly container = new Container();
 
   private _base = new Graphics(); // static stone body, pillars, foundation
+  private _studyHall = new Graphics(); // study hall opening above door (mages + bookshelves)
   private _windows = new Graphics(); // stained glass windows with bookshelves
   private _roof = new Graphics(); // peaked roof + dome (semi-static)
   private _doorway = new Graphics(); // arched doorway with owner-colored glow
@@ -106,11 +107,13 @@ export class ArchiveRenderer {
     }
 
     this._drawBase();
+    this._drawStudyHall();
     this._drawRoof();
     this._drawWindowsStatic();
     this._drawAntenna();
 
     this.container.addChild(this._base);
+    this.container.addChild(this._studyHall);
     this.container.addChild(this._windows);
     this.container.addChild(this._roof);
     this.container.addChild(this._doorway);
@@ -145,6 +148,9 @@ export class ArchiveRenderer {
 
     // 6. Doorway glow pulse
     this._updateDoorway(this._time);
+
+    // 7. Study hall candle flicker
+    this._updateStudyHallGlow(this._time);
   }
 
   // == Base Structure =======================================================
@@ -282,6 +288,99 @@ export class ArchiveRenderer {
           .stroke({ color: COL_MORTAR, width: 0.3, alpha: 0.2 });
       }
     }
+  }
+
+  // == Study Hall (opening above door, 2nd floor) ===========================
+
+  private _drawStudyHall(): void {
+    const g = this._studyHall;
+    const cx = TW / 2;
+
+    // The study hall opening sits on the second floor, centered above the doorway
+    const openL = cx - 24;
+    const openR = cx + 24;
+    const openW = openR - openL;
+    const openTop = 42;
+    const openBot = 60;
+    const openH = openBot - openTop;
+
+    // Dark interior background
+    g.rect(openL, openTop, openW, openH).fill({ color: 0x1a1020 });
+
+    // Bookshelves along the back wall (3 tall shelves)
+    const shelfColors = [COL_SHELF, 0x4d2e15, 0x6b4422];
+    for (let s = 0; s < 3; s++) {
+      const shelfX = openL + 2 + s * 16;
+      const shelfW = 14;
+      // Shelf frame
+      g.rect(shelfX, openTop + 1, shelfW, openH - 2).fill({
+        color: shelfColors[s % 3],
+        alpha: 0.9,
+      });
+      // Individual shelf planks (4 rows)
+      for (let row = 0; row < 4; row++) {
+        const rowY = openTop + 2 + row * ((openH - 4) / 4);
+        const rowH = (openH - 4) / 4;
+        // Shelf plank
+        g.rect(shelfX + 1, rowY + rowH - 1.5, shelfW - 2, 1.5).fill({
+          color: 0x3d2010,
+        });
+        // Book spines
+        const bookPalette = [COL_BOOK_RED, COL_BOOK_BLUE, COL_BOOK_GREEN, COL_BOOK_GOLD, COL_BOOK_PURPLE, 0x884422, 0x228844];
+        let bx = shelfX + 2;
+        for (let b = 0; b < 6 && bx < shelfX + shelfW - 2; b++) {
+          const bw = 1.0 + Math.random() * 0.5;
+          const bh = rowH - 3.5 + Math.random() * 1.5;
+          g.rect(bx, rowY + rowH - 1.5 - bh, bw, bh).fill({
+            color: bookPalette[(s * 4 + row + b) % bookPalette.length],
+            alpha: 0.8,
+          });
+          bx += bw + 0.2;
+        }
+      }
+    }
+
+    // Two mages studying at desks (small seated figures in front of bookshelves)
+    this._drawStudyMage(g, cx - 14, openBot - 4, 0x3344aa); // left mage (blue robe)
+    this._drawStudyMage(g, cx + 8, openBot - 4, 0x882244); // right mage (red robe)
+
+    // Desk/table between the mages
+    g.rect(cx - 6, openBot - 5, 12, 2).fill({ color: COL_SHELF });
+    // Open book on desk
+    g.rect(cx - 3, openBot - 7, 6, 2).fill({ color: 0xddcc99, alpha: 0.7 });
+    // Candle on desk
+    g.rect(cx + 5, openBot - 9, 1, 4).fill({ color: 0xccaa44 });
+    g.circle(cx + 5.5, openBot - 9.5, 1.2).fill({ color: 0xffdd44, alpha: 0.8 });
+
+    // Stone frame around the opening (arch top)
+    g.moveTo(openL - 2, openBot)
+      .lineTo(openL - 2, openTop + 4)
+      .quadraticCurveTo(cx, openTop - 4, openR + 2, openTop + 4)
+      .lineTo(openR + 2, openBot)
+      .stroke({ color: COL_STONE_LT, width: 2 });
+
+    // Stone sill at bottom
+    g.rect(openL - 3, openBot, openW + 6, 2).fill({ color: COL_STONE_DK });
+
+    // Warm interior glow
+    g.rect(openL + 1, openTop + 1, openW - 2, openH - 2).fill({
+      color: 0xffcc66,
+      alpha: 0.06,
+    });
+  }
+
+  private _drawStudyMage(g: Graphics, x: number, baseY: number, robeColor: number): void {
+    // Seated mage silhouette (simplified)
+    // Body/robe
+    g.rect(x - 2, baseY - 6, 5, 6).fill({ color: robeColor, alpha: 0.85 });
+    // Head
+    g.circle(x + 0.5, baseY - 7.5, 2).fill({ color: 0xddbb88 });
+    // Hood/hat
+    g.moveTo(x - 1.5, baseY - 8)
+      .lineTo(x + 0.5, baseY - 11)
+      .lineTo(x + 2.5, baseY - 8)
+      .closePath()
+      .fill({ color: robeColor, alpha: 0.9 });
   }
 
   // == Roof ==================================================================
@@ -738,6 +837,35 @@ export class ArchiveRenderer {
       color: 0xaaccee,
       alpha: 0.3 + (Math.sin(time * 3) + 1) / 2 * 0.2,
     });
+  }
+
+  // == Study Hall candle flicker =============================================
+
+  private _updateStudyHallGlow(time: number): void {
+    // Subtle warm glow flicker overlay on the study hall opening
+    const cx = TW / 2;
+    const openL = cx - 24;
+    const openTop = 42;
+    const openW = 48;
+    const openH = 18;
+
+    const flicker = (Math.sin(time * 5.3) + Math.sin(time * 7.1 + 1.2) + 2) / 4;
+    const alpha = 0.03 + flicker * 0.05;
+
+    // Redraw candle flame (animated)
+    const candleX = cx + 5.5;
+    const candleY = openTop + openH - 9.5;
+    const flameSize = 1.0 + flicker * 0.5;
+
+    // We can't clear _studyHall each frame without redrawing everything,
+    // so we use a separate overlay on the sparkles layer (which clears each frame)
+    this._sparkles
+      .circle(candleX, candleY, flameSize)
+      .fill({ color: 0xffdd44, alpha: 0.4 + flicker * 0.3 });
+    // Warm ambient glow in the opening
+    this._sparkles
+      .rect(openL + 1, openTop + 1, openW - 2, openH - 2)
+      .fill({ color: 0xffcc66, alpha });
   }
 
   destroy(): void {

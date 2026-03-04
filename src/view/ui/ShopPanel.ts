@@ -62,6 +62,7 @@ import { EliteArcheryRangeRenderer } from "@view/entities/EliteArcheryRangeRende
 import { EliteSiegeWorkshopRenderer } from "@view/entities/EliteSiegeWorkshopRenderer";
 import { EliteMageTowerRenderer } from "@view/entities/EliteMageTowerRenderer";
 import { EliteStableRenderer } from "@view/entities/EliteStableRenderer";
+import { ArchiveRenderer } from "@view/entities/ArchiveRenderer";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -350,6 +351,16 @@ const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.ENGINEER]: "Engineer",
   [UpgradeType.SUMMON_UNICORN]: "Unicorn",
   [UpgradeType.SUMMON_PIXIE]: "Pixie",
+  [UpgradeType.SUMMON_FIRE_ELEMENTAL]: "Fire Elem",
+  [UpgradeType.SUMMON_ICE_ELEMENTAL]: "Ice Elem",
+  [UpgradeType.SUMMON_RED_DRAGON]: "Dragon",
+  [UpgradeType.SUMMON_FROST_DRAGON]: "Frost Drg",
+  [UpgradeType.SUMMON_SPIDER_BROOD]: "Spider",
+  [UpgradeType.SUMMON_TROLL]: "Troll",
+  [UpgradeType.SUMMON_ANGEL]: "Angel",
+  [UpgradeType.SUMMON_CYCLOPS]: "Cyclops",
+  [UpgradeType.SUMMON_BAT_SWARM]: "Bat",
+  [UpgradeType.SUMMON_DARK_SAVANT]: "Savant",
 };
 
 // ---------------------------------------------------------------------------
@@ -1074,6 +1085,10 @@ export class ShopPanel {
       texH = 128;
     } else if (buildingType === BuildingType.ELITE_STABLES) {
       buildingContainer = new EliteStableRenderer(null).container;
+      texW = 128;
+      texH = 128;
+    } else if (buildingType === BuildingType.ARCHIVE) {
+      buildingContainer = new ArchiveRenderer(null).container;
       texW = 128;
       texH = 128;
     }
@@ -1964,8 +1979,9 @@ export class ShopPanel {
       return;
     }
 
-    // Special handling for spell upgrades (summon unicorn/pixie)
-    if (upgradeType === UpgradeType.SUMMON_UNICORN || upgradeType === UpgradeType.SUMMON_PIXIE) {
+    // Special handling for spell upgrades (summon spells)
+    const upgDef = UPGRADE_DEFINITIONS[upgradeType];
+    if (upgDef.isSpell && upgDef.summonUnit) {
       this._buySpellUpgrade(upgradeType);
       return;
     }
@@ -2016,9 +2032,8 @@ export class ShopPanel {
 
     this.close();
 
-    const unitType = upgradeType === UpgradeType.SUMMON_UNICORN
-      ? UnitType.UNICORN
-      : UnitType.PIXIE;
+    const def = UPGRADE_DEFINITIONS[upgradeType];
+    const unitType = def.summonUnit!;
 
     buildingPlacer.activateSpellPlacement(upgradeType, unitType, this._localPlayerId);
   }

@@ -328,12 +328,14 @@ export class BuildingPlacer {
       .fill({ color: 0x4488ff, alpha: 0.3 })
       .circle(TS / 2, TS / 2, TS / 2 - 4)
       .stroke({ color: 0x4488ff, alpha: 0.7, width: 2 });
-    this._ghostLabel.text = unitType === UnitType.UNICORN ? "UNICORN" : "PIXIE";
+    const label = unitType.replace(/_/g, " ").toUpperCase();
+    this._ghostLabel.text = label;
     this._ghostLabel.anchor.set(0.5, 0.5);
     this._ghostLabel.position.set(TS / 2, TS / 2);
 
     // Hint bar
-    this._hintText.text = `Summoning ${unitType === UnitType.UNICORN ? "Unicorn" : "Pixie"}  ·  Left-click to place  ·  ESC / Right-click to cancel`;
+    const displayName = unitType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    this._hintText.text = `Summoning ${displayName}  ·  Left-click to place  ·  ESC / Right-click to cancel`;
     this._hintText.anchor.set(0.5, 1);
     this._hintContainer.visible = true;
     this._positionHintBar();
@@ -440,6 +442,7 @@ export class BuildingPlacer {
       });
       this._state.units.set(unit.id, unit);
       UpgradeSystem.applyAllUpgradesToUnit(unit);
+      EventBus.emit("unitSpawned", { unitId: unit.id });
       this._deactivate();
       return;
     }
