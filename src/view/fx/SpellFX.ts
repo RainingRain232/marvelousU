@@ -204,7 +204,7 @@ export class SpellFX {
       case "cold_snap": return this._blizzard(worldX, worldY, r);
       case "jolt": return this._spark(worldX, worldY, r);
       case "zap": return this._spark(worldX, worldY, r);
-      case "shock_wave": return this._lightningStrike(worldX, worldY, r);
+      case "shock_wave": return this._lightning(worldX, worldY, r);
       case "pebble_toss": return this._stoneShard(worldX, worldY, r);
       case "dust_devil": return this._stoneShard(worldX, worldY, r);
       case "tremor": return this._earthquake(worldX, worldY, r);
@@ -2927,8 +2927,8 @@ export class SpellFX {
     const flash = new Graphics().circle(0, 0, r * 0.4).fill({ color: 0xff6622, alpha: 0.7 });
     const core = new Graphics().circle(0, 0, r * 0.15).fill({ color: 0xffffaa, alpha: 0.9 });
     c.addChild(flash, core);
-    gsap.to(flash, { alpha: 0, scale: { x: 2, y: 2 }, duration: 0.4, ease: "power1.out" });
-    gsap.to(core, { alpha: 0, scale: { x: 1.5, y: 1.5 }, duration: 0.3 });
+    gsap.to(flash, { alpha: 0, scale: 2, duration: 0.4, ease: "power1.out" });
+    gsap.to(core, { alpha: 0, scale: 1.5, duration: 0.3 });
     for (let i = 0; i < 6; i++) {
       const sp = new Graphics().circle(0, 0, 1.5).fill({ color: 0xffaa44, alpha: 0.8 });
       c.addChild(sp);
@@ -2945,12 +2945,13 @@ export class SpellFX {
     pillar.alpha = 0;
     c.addChild(pillar);
     gsap.to(pillar, { alpha: 0.6, duration: 0.15 });
-    gsap.to(pillar, { alpha: 0, scale: { x: 2, y: 1.3 }, duration: 0.8, delay: 0.2 });
+    gsap.to(pillar.scale, { x: 2, y: 1.3, duration: 0.8, delay: 0.2 });
+    gsap.to(pillar, { alpha: 0, duration: 0.8, delay: 0.2 });
     // Lava waves
     for (let i = 0; i < 3; i++) {
       const ring = new Graphics().circle(0, 0, r * 0.3).stroke({ color: 0xff2200, width: 3, alpha: 0.6 });
       c.addChild(ring);
-      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.8 + i * 0.2, delay: i * 0.1 });
+      gsap.to(ring, { scale: 3 + i, alpha: 0, duration: 0.8 + i * 0.2, delay: i * 0.1 });
     }
     // Ember rain
     for (let i = 0; i < 20; i++) {
@@ -2980,7 +2981,7 @@ export class SpellFX {
     crush.alpha = 0;
     c.addChild(crush);
     gsap.to(crush, { alpha: 0.6, duration: 0.1, delay: 0.35 });
-    gsap.to(crush, { alpha: 0, scale: { x: 2, y: 2 }, duration: 0.4, delay: 0.45 });
+    gsap.to(crush, { alpha: 0, scale: 2, duration: 0.4, delay: 0.45 });
     autoCleanup(this._vm, c, 1.0);
   }
 
@@ -2989,7 +2990,7 @@ export class SpellFX {
     // Expanding ice lattice
     const field = new Graphics().circle(0, 0, r * 0.1).fill({ color: 0xcceeFF, alpha: 0.8 });
     c.addChild(field);
-    gsap.to(field, { scale: { x: r / 5, y: r / 5 }, alpha: 0.15, duration: 0.6, ease: "power2.out" });
+    gsap.to(field, { scale: r / 5, alpha: 0.15, duration: 0.6, ease: "power2.out" });
     // Crystal formations
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * TAU;
@@ -3007,7 +3008,7 @@ export class SpellFX {
     const ring = new Graphics().circle(0, 0, r * 0.8).stroke({ color: 0x66bbff, width: 2, alpha: 0.5 });
     ring.alpha = 0;
     c.addChild(ring);
-    gsap.to(ring, { alpha: 0.5, scale: { x: 1.3, y: 1.3 }, duration: 0.4, delay: 0.2 });
+    gsap.to(ring, { alpha: 0.5, scale: 1.3, duration: 0.4, delay: 0.2 });
     gsap.to(ring, { alpha: 0, duration: 0.5, delay: 0.7 });
     autoCleanup(this._vm, c, 1.4);
   }
@@ -3022,7 +3023,7 @@ export class SpellFX {
     const flash = new Graphics().circle(0, 0, r * 0.2).fill({ color: 0xffffaa, alpha: 0.6 });
     c.addChild(flash);
     gsap.to(bolt, { alpha: 0, duration: 0.25 });
-    gsap.to(flash, { alpha: 0, scale: { x: 2, y: 2 }, duration: 0.3 });
+    gsap.to(flash, { alpha: 0, scale: 2, duration: 0.3 });
     autoCleanup(this._vm, c, 0.5);
   }
 
@@ -3057,7 +3058,7 @@ export class SpellFX {
     const orb = new Graphics().circle(0, 0, r * 0.35).fill({ color: 0xaaddff, alpha: 0.5 });
     const core = new Graphics().circle(0, 0, r * 0.15).fill({ color: 0xffffff, alpha: 0.8 });
     c.addChild(orb, core);
-    gsap.to(orb, { scale: { x: 2.5, y: 2.5 }, alpha: 0, duration: 0.7 });
+    gsap.to(orb, { scale: 2.5, alpha: 0, duration: 0.7 });
     gsap.to(core, { alpha: 0, duration: 0.5 });
     // Arcing bolts
     for (let i = 0; i < 8; i++) {
@@ -3082,12 +3083,12 @@ export class SpellFX {
     // Impact flash
     const impact = new Graphics().circle(0, 0, r * 0.3).fill({ color: 0xffffaa, alpha: 0.9 });
     c.addChild(impact);
-    gsap.to(impact, { scale: { x: 4, y: 4 }, alpha: 0, duration: 0.6 });
+    gsap.to(impact, { scale: 4, alpha: 0, duration: 0.6 });
     // Shockwave rings
     for (let i = 0; i < 3; i++) {
       const ring = new Graphics().circle(0, 0, r * 0.2).stroke({ color: 0xffff66, width: 2, alpha: 0.6 });
       c.addChild(ring);
-      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.6 + i * 0.15, delay: i * 0.08 });
+      gsap.to(ring, { scale: 3 + i, alpha: 0, duration: 0.6 + i * 0.15, delay: i * 0.08 });
     }
     // Branch lightning
     for (let i = 0; i < 6; i++) {
@@ -3106,7 +3107,7 @@ export class SpellFX {
     const c = makeContainer(this._vm, wx, wy);
     const dust = new Graphics().circle(0, 0, r * 0.4).fill({ color: 0xaa9977, alpha: 0.3 });
     c.addChild(dust);
-    gsap.to(dust, { scale: { x: 2, y: 2 }, alpha: 0, duration: 0.5 });
+    gsap.to(dust, { scale: 2, alpha: 0, duration: 0.5 });
     for (let i = 0; i < 6; i++) {
       const rock = new Graphics();
       rock.moveTo(0, -3).lineTo(2, 0).lineTo(0, 2).lineTo(-2, 0).closePath().fill({ color: 0x887766, alpha: 0.9 });
@@ -3129,7 +3130,7 @@ export class SpellFX {
     }
     const earthWave = new Graphics().ellipse(0, 0, r * 0.8, r * 0.3).fill({ color: 0x998866, alpha: 0.3 });
     c.addChild(earthWave);
-    gsap.to(earthWave, { scale: { x: 1.5, y: 1.5 }, alpha: 0, duration: 0.8 });
+    gsap.to(earthWave, { scale: 1.5, alpha: 0, duration: 0.8 });
     autoCleanup(this._vm, c, 1.2);
   }
 
@@ -3162,7 +3163,7 @@ export class SpellFX {
     // Shockwave
     const quakeRing = new Graphics().circle(0, 0, r * 0.2).stroke({ color: 0xaa6622, width: 3, alpha: 0.5 });
     c.addChild(quakeRing);
-    gsap.to(quakeRing, { scale: { x: 4, y: 4 }, alpha: 0, duration: 0.8 });
+    gsap.to(quakeRing, { scale: 4, alpha: 0, duration: 0.8 });
     autoCleanup(this._vm, c, 1.2);
   }
 
@@ -3173,12 +3174,12 @@ export class SpellFX {
     for (let i = 0; i < 4; i++) {
       const ring = new Graphics().circle(0, 0, r * 0.2).stroke({ color: 0x9966ff, width: 2.5, alpha: 0.6 });
       c.addChild(ring);
-      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.7 + i * 0.15, delay: i * 0.08 });
+      gsap.to(ring, { scale: 3 + i, alpha: 0, duration: 0.7 + i * 0.15, delay: i * 0.08 });
     }
     // Central detonation
     const coreFlash = new Graphics().circle(0, 0, r * 0.25).fill({ color: 0xffffff, alpha: 0.8 });
     c.addChild(coreFlash);
-    gsap.to(coreFlash, { scale: { x: 3, y: 3 }, alpha: 0, duration: 0.5 });
+    gsap.to(coreFlash, { scale: 3, alpha: 0, duration: 0.5 });
     // Arcane bolts
     for (let i = 0; i < 10; i++) {
       const bolt = new Graphics();
@@ -3204,7 +3205,7 @@ export class SpellFX {
     for (let i = 0; i < 3; i++) {
       const ring = new Graphics().circle(0, 0, r * 0.3).stroke({ color: 0xffee66, width: 2, alpha: 0.5 });
       c.addChild(ring);
-      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.8 + i * 0.15, delay: i * 0.1 });
+      gsap.to(ring, { scale: 3 + i, alpha: 0, duration: 0.8 + i * 0.15, delay: i * 0.1 });
     }
     // Healing sparkles rising
     for (let i = 0; i < 20; i++) {
@@ -3234,7 +3235,7 @@ export class SpellFX {
     }
     const darkCloud = new Graphics().circle(0, 0, r * 0.5).fill({ color: 0x331155, alpha: 0.3 });
     c.addChild(darkCloud);
-    gsap.to(darkCloud, { scale: { x: 2, y: 2 }, alpha: 0, duration: 0.9 });
+    gsap.to(darkCloud, { scale: 2, alpha: 0, duration: 0.9 });
     autoCleanup(this._vm, c, 1.2);
   }
 
@@ -3243,13 +3244,13 @@ export class SpellFX {
     // Darkness vortex
     const voidField = new Graphics().circle(0, 0, r * 0.8).fill({ color: 0x110022, alpha: 0.6 });
     c.addChild(voidField);
-    gsap.to(voidField, { scale: { x: 0.1, y: 0.1 }, alpha: 0.9, duration: 0.5 });
-    gsap.to(voidField, { scale: { x: 3, y: 3 }, alpha: 0, duration: 0.5, delay: 0.5 });
+    gsap.to(voidField, { scale: 0.1, alpha: 0.9, duration: 0.5 });
+    gsap.to(voidField, { scale: 3, alpha: 0, duration: 0.5, delay: 0.5 });
     // Spiral rings
     for (let i = 0; i < 3; i++) {
       const ring = new Graphics().circle(0, 0, r * (0.3 + i * 0.2)).stroke({ color: 0x8833cc, width: 1.5, alpha: 0.4 });
       c.addChild(ring);
-      gsap.to(ring, { rotation: Math.PI * 2, scale: { x: 0.1, y: 0.1 }, alpha: 0, duration: 0.8, delay: i * 0.1, ease: "power2.in" });
+      gsap.to(ring, { rotation: Math.PI * 2, scale: 0.1, alpha: 0, duration: 0.8, delay: i * 0.1, ease: "power2.in" });
     }
     // Particles sucked in
     for (let i = 0; i < 12; i++) {
@@ -3279,7 +3280,7 @@ export class SpellFX {
     const c = makeContainer(this._vm, wx, wy);
     const haze = new Graphics().circle(0, 0, r * 0.6).fill({ color: 0x448822, alpha: 0.2 });
     c.addChild(haze);
-    gsap.to(haze, { scale: { x: 1.5, y: 1.5 }, alpha: 0, duration: 1.0 });
+    gsap.to(haze, { scale: 1.5, alpha: 0, duration: 1.0 });
     // Buzzing insects
     for (let i = 0; i < 15; i++) {
       const bug = new Graphics().circle(0, 0, 1).fill({ color: 0x334411, alpha: 0.8 });
@@ -3301,14 +3302,14 @@ export class SpellFX {
       fog.alpha = 0;
       c.addChild(fog);
       gsap.to(fog, { alpha: 0.2, duration: 0.3, delay: i * 0.1 });
-      gsap.to(fog, { alpha: 0, scale: { x: 1.5, y: 1.5 }, duration: 0.8, delay: 0.3 + i * 0.1 });
+      gsap.to(fog, { alpha: 0, scale: 1.5, duration: 0.8, delay: 0.3 + i * 0.1 });
     }
     // Bubbling
     for (let i = 0; i < 8; i++) {
       const bubble = new Graphics().circle(0, 0, 2).stroke({ color: 0x66cc33, width: 0.8, alpha: 0.5 });
       bubble.position.set((Math.random() - 0.5) * r, r * 0.1);
       c.addChild(bubble);
-      gsap.to(bubble, { y: -r * 0.4, alpha: 0, scale: { x: 2, y: 2 }, duration: 0.6, delay: Math.random() * 0.5 });
+      gsap.to(bubble, { y: -r * 0.4, alpha: 0, scale: 2, duration: 0.6, delay: Math.random() * 0.5 });
     }
     autoCleanup(this._vm, c, 1.4);
   }
@@ -3318,12 +3319,12 @@ export class SpellFX {
     // Central toxic burst
     const toxicCore = new Graphics().circle(0, 0, r * 0.2).fill({ color: 0x66ff33, alpha: 0.7 });
     c.addChild(toxicCore);
-    gsap.to(toxicCore, { scale: { x: 3, y: 3 }, alpha: 0, duration: 0.5 });
+    gsap.to(toxicCore, { scale: 3, alpha: 0, duration: 0.5 });
     // Spreading poison waves
     for (let i = 0; i < 4; i++) {
       const wave = new Graphics().circle(0, 0, r * 0.3).stroke({ color: 0x44aa22, width: 2, alpha: 0.5 });
       c.addChild(wave);
-      gsap.to(wave, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.7 + i * 0.15, delay: i * 0.1 });
+      gsap.to(wave, { scale: 3 + i, alpha: 0, duration: 0.7 + i * 0.15, delay: i * 0.1 });
     }
     // Poison motes
     for (let i = 0; i < 15; i++) {
@@ -3341,7 +3342,7 @@ export class SpellFX {
     const pop = new Graphics().circle(0, 0, r * 0.3).fill({ color: 0x6622aa, alpha: 0.6 });
     const core = new Graphics().circle(0, 0, r * 0.1).fill({ color: 0x220044, alpha: 0.9 });
     c.addChild(pop, core);
-    gsap.to(pop, { scale: { x: 2, y: 2 }, alpha: 0, duration: 0.35 });
+    gsap.to(pop, { scale: 2, alpha: 0, duration: 0.35 });
     gsap.to(core, { alpha: 0, duration: 0.3 });
     autoCleanup(this._vm, c, 0.5);
   }
@@ -3357,7 +3358,8 @@ export class SpellFX {
     tearGlow.stroke({ color: 0xcc66ff, width: 6, alpha: 0.2 });
     c.addChild(tearGlow, tear);
     gsap.to(tear, { alpha: 0, duration: 0.8, delay: 0.2 });
-    gsap.to(tearGlow, { alpha: 0, scale: { x: 1.3, y: 1.1 }, duration: 0.9 });
+    gsap.to(tearGlow.scale, { x: 1.3, y: 1.1, duration: 0.9 });
+    gsap.to(tearGlow, { alpha: 0, duration: 0.9 });
     // Distortion particles
     for (let i = 0; i < 8; i++) {
       const p = new Graphics().circle(0, 0, 1.5).fill({ color: 0xbb66ff, alpha: 0.6 });
@@ -3373,12 +3375,12 @@ export class SpellFX {
     // Event horizon
     const horizon = new Graphics().circle(0, 0, r * 0.7).fill({ color: 0x110022, alpha: 0.5 });
     c.addChild(horizon);
-    gsap.to(horizon, { scale: { x: 0.05, y: 0.05 }, alpha: 1, duration: 0.6, ease: "power3.in" });
-    gsap.to(horizon, { scale: { x: 4, y: 4 }, alpha: 0, duration: 0.4, delay: 0.6 });
+    gsap.to(horizon, { scale: 0.05, alpha: 1, duration: 0.6, ease: "power3.in" });
+    gsap.to(horizon, { scale: 4, alpha: 0, duration: 0.4, delay: 0.6 });
     // Accretion disk
     const disk = new Graphics().circle(0, 0, r * 0.5).stroke({ color: 0xaa44ff, width: 2, alpha: 0.5 });
     c.addChild(disk);
-    gsap.to(disk, { rotation: Math.PI * 3, scale: { x: 0.1, y: 0.1 }, alpha: 0, duration: 0.6, ease: "power3.in" });
+    gsap.to(disk, { rotation: Math.PI * 3, scale: 0.1, alpha: 0, duration: 0.6, ease: "power3.in" });
     // Everything pulled in
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * TAU;
@@ -3395,7 +3397,7 @@ export class SpellFX {
     const c = makeContainer(this._vm, wx, wy);
     const burst = new Graphics().circle(0, 0, r * 0.35).fill({ color: 0x44aa66, alpha: 0.5 });
     c.addChild(burst);
-    gsap.to(burst, { scale: { x: 2, y: 2 }, alpha: 0, duration: 0.4 });
+    gsap.to(burst, { scale: 2, alpha: 0, duration: 0.4 });
     for (let i = 0; i < 5; i++) {
       const wisp = new Graphics().circle(0, 0, 1.5).fill({ color: 0x226633, alpha: 0.7 });
       c.addChild(wisp);
@@ -3418,7 +3420,7 @@ export class SpellFX {
     // Dark pulse
     const pulse = new Graphics().circle(0, 0, r * 0.2).fill({ color: 0x336644, alpha: 0.6 });
     c.addChild(pulse);
-    gsap.to(pulse, { scale: { x: 2.5, y: 2.5 }, alpha: 0, duration: 0.5 });
+    gsap.to(pulse, { scale: 2.5, alpha: 0, duration: 0.5 });
     autoCleanup(this._vm, c, 0.8);
   }
 
@@ -3427,12 +3429,12 @@ export class SpellFX {
     // Death wave
     const deathField = new Graphics().circle(0, 0, r * 0.3).fill({ color: 0x112211, alpha: 0.7 });
     c.addChild(deathField);
-    gsap.to(deathField, { scale: { x: 4, y: 4 }, alpha: 0, duration: 0.8 });
+    gsap.to(deathField, { scale: 4, alpha: 0, duration: 0.8 });
     // Expanding death rings
     for (let i = 0; i < 3; i++) {
       const ring = new Graphics().circle(0, 0, r * 0.3).stroke({ color: 0x44aa66, width: 2.5, alpha: 0.5 });
       c.addChild(ring);
-      gsap.to(ring, { scale: { x: 3 + i, y: 3 + i }, alpha: 0, duration: 0.7 + i * 0.15, delay: i * 0.1 });
+      gsap.to(ring, { scale: 3 + i, alpha: 0, duration: 0.7 + i * 0.15, delay: i * 0.1 });
     }
     // Skeletal shapes
     for (let i = 0; i < 6; i++) {
@@ -3490,7 +3492,7 @@ export class SpellFX {
     // Wind ring
     const windRing = new Graphics().circle(0, 0, r * 0.5).stroke({ color: 0x88ff88, width: 2, alpha: 0.4 });
     c.addChild(windRing);
-    gsap.to(windRing, { rotation: Math.PI * 2, scale: { x: 2, y: 2 }, alpha: 0, duration: 0.8 });
+    gsap.to(windRing, { rotation: Math.PI * 2, scale: 2, alpha: 0, duration: 0.8 });
     // Thorns
     for (let i = 0; i < 8; i++) {
       const thorn = new Graphics();

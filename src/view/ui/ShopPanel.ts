@@ -1808,7 +1808,6 @@ export class ShopPanel {
       this._localPlayerId,
       upgradeType,
     );
-    const isSpell = !!(def as any).isSpell;
     const manaCost = (def as any).manaCost as number | undefined;
     const cost = currentLevel < def.maxLevel ? (manaCost && manaCost > 0 ? manaCost : def.cost) : 0;
 
@@ -1924,8 +1923,8 @@ export class ShopPanel {
         const core = new Graphics().circle(0, 0, S * 0.55).fill({ color: 0xff4400, alpha: 0.8 });
         const hot = new Graphics().circle(0, 0, S * 0.25).fill({ color: 0xffffaa, alpha: 0.9 });
         iconC.addChild(glow, core, hot);
-        gsap.to(glow, { scale: { x: 1.3, y: 1.3 }, alpha: 0.15, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(core, { scale: { x: 1.1, y: 1.1 }, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(glow, { scale: 1.3, alpha: 0.15, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(core, { scale: 1.1, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
         // Tiny ember particles rising
         for (let i = 0; i < 3; i++) {
           const ember = new Graphics().circle(0, 0, 1.2).fill({ color: 0xffaa44, alpha: 0.7 });
@@ -1940,7 +1939,7 @@ export class ShopPanel {
         const trail = new Graphics().moveTo(S * 0.5, -S * 0.8).lineTo(-S * 0.2, S * 0.1).lineTo(S * 0.8, -S * 0.6).closePath().fill({ color: 0xff6622, alpha: 0.25 });
         const meteorG = new Graphics().circle(0, 0, S * 0.4).fill({ color: 0xffaa22, alpha: 0.9 }).circle(0, 0, S * 0.2).fill({ color: 0xffffcc, alpha: 0.8 });
         iconC.addChild(trail, meteorG);
-        gsap.to(meteorG, { scale: { x: 1.15, y: 1.15 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(meteorG, { scale: 1.15, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(trail, { alpha: 0.1, duration: 0.6, yoyo: true, repeat: -1 });
         break;
       }
@@ -1997,7 +1996,7 @@ export class ShopPanel {
         const ring = new Graphics().circle(0, 0, S * 0.7).stroke({ color: 0x88ddff, width: 1.5, alpha: 0.6 });
         const core = new Graphics().circle(0, 0, S * 0.25).fill({ color: 0xeeffff, alpha: 0.7 });
         iconC.addChild(ring, core);
-        gsap.to(ring, { scale: { x: 1.2, y: 1.2 }, alpha: 0.2, duration: 1, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(ring, { scale: 1.2, alpha: 0.2, duration: 1, yoyo: true, repeat: -1, ease: "sine.inOut" });
         for (let i = 0; i < 4; i++) {
           const a = (i / 4) * TAU;
           const shard = new Graphics();
@@ -2032,8 +2031,8 @@ export class ShopPanel {
         const flame1 = new Graphics().rect(-S * 0.3, -S * 0.9, S * 0.6, S * 1.4).fill({ color: 0xff4400, alpha: 0.35 });
         const flame2 = new Graphics().rect(-S * 0.12, -S * 0.9, S * 0.24, S * 1.4).fill({ color: 0xffdd00, alpha: 0.5 });
         iconC.addChild(flame1, flame2);
-        gsap.to(flame1, { scale: { x: 1.2, y: 1.05 }, alpha: 0.2, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(flame2, { scale: { x: 0.8, y: 1.05 }, alpha: 0.3, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(flame1, { scaleX: 1.2, scaleY: 1.05, alpha: 0.2, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(flame2, { scaleX: 0.8, scaleY: 1.05, alpha: 0.3, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
         for (let i = 0; i < 4; i++) {
           const ember = new Graphics().circle(0, 0, 1).fill({ color: [0xffaa44, 0xff6622][i % 2], alpha: 0.8 });
           ember.position.set((Math.random() - 0.5) * S * 0.5, S * 0.3);
@@ -2049,7 +2048,7 @@ export class ShopPanel {
         const trail = new Graphics().moveTo(S * 0.6, -S * 0.5).lineTo(-S * 0.2, S * 0.1).lineTo(S * 0.7, -S * 0.4).closePath().fill({ color: 0x9966ff, alpha: 0.2 });
         const orb = new Graphics().circle(0, 0, S * 0.35).fill({ color: 0x9966ff, alpha: 0.7 }).circle(0, 0, S * 0.15).fill({ color: 0xddaaff, alpha: 0.9 });
         iconC.addChild(trail, orb);
-        gsap.to(orb, { scale: { x: 1.2, y: 1.2 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(orb, { scale: 1.2, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(trail, { alpha: 0.08, duration: 0.5, yoyo: true, repeat: -1 });
         break;
       }
@@ -2057,7 +2056,7 @@ export class ShopPanel {
         // Spiraling mana particles around a core
         const core = new Graphics().circle(0, 0, S * 0.3).fill({ color: 0x6644cc, alpha: 0.6 }).circle(0, 0, S * 0.15).fill({ color: 0xeeddff, alpha: 0.8 });
         iconC.addChild(core);
-        gsap.to(core, { scale: { x: 1.3, y: 1.3 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(core, { scale: 1.3, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
         for (let i = 0; i < 4; i++) {
           const p = new Graphics().circle(0, 0, 1.5).fill({ color: [0x9966ff, 0xddaaff][i % 2], alpha: 0.7 });
           const a = (i / 4) * TAU;
@@ -2108,7 +2107,7 @@ export class ShopPanel {
         const ring = new Graphics().circle(0, 0, S * 0.7).stroke({ color: 0xeeddff, width: 1.5, alpha: 0.5 });
         iconC.addChild(ring, rune);
         gsap.to(rune, { rotation: TAU, duration: 4, repeat: -1, ease: "none" });
-        gsap.to(ring, { scale: { x: 1.15, y: 1.15 }, alpha: 0.2, duration: 1, yoyo: true, repeat: -1 });
+        gsap.to(ring, { scale: 1.15, alpha: 0.2, duration: 1, yoyo: true, repeat: -1 });
         break;
       }
 
@@ -2119,9 +2118,9 @@ export class ShopPanel {
         const ring2 = new Graphics().circle(0, 0, S * 0.65).stroke({ color: 0x33dd55, width: 1, alpha: 0.35 });
         const core = new Graphics().circle(0, 0, S * 0.2).fill({ color: 0x88ff99, alpha: 0.5 });
         iconC.addChild(ring2, ring1, core);
-        gsap.to(ring1, { scale: { x: 1.4, y: 1.4 }, alpha: 0.1, duration: 1, repeat: -1, ease: "power1.out" });
-        gsap.to(ring2, { scale: { x: 1.3, y: 1.3 }, alpha: 0.05, duration: 1.2, repeat: -1, delay: 0.3, ease: "power1.out" });
-        gsap.to(core, { scale: { x: 1.3, y: 1.3 }, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(ring1, { scale: 1.4, alpha: 0.1, duration: 1, repeat: -1, ease: "power1.out" });
+        gsap.to(ring2, { scale: 1.3, alpha: 0.05, duration: 1.2, repeat: -1, delay: 0.3, ease: "power1.out" });
+        gsap.to(core, { scale: 1.3, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
       case UpgradeType.SPELL_HOLY_SMITE: {
@@ -2137,7 +2136,7 @@ export class ShopPanel {
         }
         const flash = new Graphics().circle(0, 0, S * 0.15).fill({ color: 0xffffff, alpha: 0.6 });
         iconC.addChild(flash);
-        gsap.to(flash, { scale: { x: 1.5, y: 1.5 }, alpha: 0.2, duration: 0.6, yoyo: true, repeat: -1 });
+        gsap.to(flash, { scale: 1.5, alpha: 0.2, duration: 0.6, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_DIVINE_RESTORATION: {
@@ -2158,7 +2157,7 @@ export class ShopPanel {
         // Soft golden glow pulsing down
         const glow = new Graphics().circle(0, 0, S * 0.5).fill({ color: 0xffee88, alpha: 0.25 });
         iconC.addChild(glow);
-        gsap.to(glow, { scale: { x: 1.4, y: 1.4 }, alpha: 0.08, duration: 1, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(glow, { scale: 1.4, alpha: 0.08, duration: 1, yoyo: true, repeat: -1, ease: "sine.inOut" });
         // Downward sparkles
         for (let i = 0; i < 3; i++) {
           const sp = new Graphics().circle(0, 0, 1).fill({ color: 0xffffcc, alpha: 0.8 });
@@ -2173,8 +2172,8 @@ export class ShopPanel {
         const f1 = new Graphics().circle(0, S * 0.1, S * 0.4).fill({ color: 0xffee88, alpha: 0.5 });
         const f2 = new Graphics().circle(0, -S * 0.1, S * 0.25).fill({ color: 0xffffff, alpha: 0.5 });
         iconC.addChild(f1, f2);
-        gsap.to(f1, { scale: { x: 1.2, y: 0.85 }, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(f2, { scale: { x: 0.85, y: 1.2 }, duration: 0.35, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(f1, { scaleX: 1.2, scaleY: 0.85, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(f2, { scaleX: 0.85, scaleY: 1.2, duration: 0.35, yoyo: true, repeat: -1, ease: "sine.inOut" });
         // Cross overlay
         const cross = new Graphics();
         cross.rect(-0.6, -S * 0.5, 1.2, S).fill({ color: 0xffdd44, alpha: 0.3 });
@@ -2186,7 +2185,7 @@ export class ShopPanel {
         // Expanding golden ring with sparkles
         const ring = new Graphics().circle(0, 0, S * 0.4).stroke({ color: 0xffdd44, width: 2, alpha: 0.6 });
         iconC.addChild(ring);
-        gsap.to(ring, { scale: { x: 1.6, y: 1.6 }, alpha: 0.1, duration: 1.2, repeat: -1, ease: "power1.out" });
+        gsap.to(ring, { scale: 1.6, alpha: 0.1, duration: 1.2, repeat: -1, ease: "power1.out" });
         for (let i = 0; i < 6; i++) {
           const a = (i / 6) * TAU;
           const sp = new Graphics().circle(0, 0, 1.2).fill({ color: 0xffffaa, alpha: 0.7 });
@@ -2222,14 +2221,14 @@ export class ShopPanel {
           const cloud = new Graphics().circle(0, 0, S * (0.3 + i * 0.1)).fill({ color: [0x44aa33, 0x338822, 0x55bb44][i], alpha: 0.25 });
           cloud.position.set((i - 1) * S * 0.25, (Math.random() - 0.5) * S * 0.3);
           iconC.addChild(cloud);
-          gsap.to(cloud, { scale: { x: 1.3, y: 1.2 }, alpha: 0.08, x: cloud.position.x + (Math.random() - 0.5) * 4, duration: 1 + i * 0.2, yoyo: true, repeat: -1, ease: "sine.inOut" });
+          gsap.to(cloud, { scaleX: 1.3, scaleY: 1.2, alpha: 0.08, x: cloud.position.x + (Math.random() - 0.5) * 4, duration: 1 + i * 0.2, yoyo: true, repeat: -1, ease: "sine.inOut" });
         }
         // Bubbles
         for (let i = 0; i < 2; i++) {
           const b = new Graphics().circle(0, 0, 1.5).stroke({ color: 0x88dd66, width: 0.8, alpha: 0.5 });
           b.position.set((i - 0.5) * S * 0.5, S * 0.3);
           iconC.addChild(b);
-          gsap.to(b, { y: -S * 0.5, alpha: 0, scale: { x: 1.5, y: 1.5 }, duration: 0.8, repeat: -1, delay: i * 0.4, ease: "power1.out" });
+          gsap.to(b, { y: -S * 0.5, alpha: 0, scale: 1.5, duration: 0.8, repeat: -1, delay: i * 0.4, ease: "power1.out" });
         }
         break;
       }
@@ -2241,7 +2240,7 @@ export class ShopPanel {
         iconC.addChild(core, arc1, arc2);
         gsap.to(arc1, { rotation: TAU, duration: 2, repeat: -1, ease: "none" });
         gsap.to(arc2, { rotation: -TAU, duration: 2, repeat: -1, ease: "none" });
-        gsap.to(core, { scale: { x: 1.3, y: 1.3 }, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(core, { scale: 1.3, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
       case UpgradeType.SPELL_SHADOW_BOLT: {
@@ -2249,7 +2248,7 @@ export class ShopPanel {
         const trail = new Graphics().moveTo(S * 0.5, S * 0.4).lineTo(-S * 0.15, 0).lineTo(S * 0.6, S * 0.3).closePath().fill({ color: 0x663399, alpha: 0.2 });
         const orb = new Graphics().circle(0, 0, S * 0.35).fill({ color: 0x220033, alpha: 0.8 }).circle(0, 0, S * 0.15).fill({ color: 0x9966cc, alpha: 0.8 });
         iconC.addChild(trail, orb);
-        gsap.to(orb, { scale: { x: 1.15, y: 1.15 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(orb, { scale: 1.15, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(trail, { alpha: 0.08, duration: 0.5, yoyo: true, repeat: -1 });
         break;
       }
@@ -2260,7 +2259,7 @@ export class ShopPanel {
           const a = (i / 4) * TAU;
           fog.position.set(Math.cos(a) * S * 0.4, Math.sin(a) * S * 0.4);
           iconC.addChild(fog);
-          gsap.to(fog, { x: 0, y: 0, scale: { x: 0.5, y: 0.5 }, duration: 1.2, yoyo: true, repeat: -1, delay: i * 0.15, ease: "sine.inOut" });
+          gsap.to(fog, { x: 0, y: 0, scale: 0.5, duration: 1.2, yoyo: true, repeat: -1, delay: i * 0.15, ease: "sine.inOut" });
         }
         break;
       }
@@ -2278,14 +2277,14 @@ export class ShopPanel {
         gsap.to(coilC, { rotation: TAU, duration: 1.5, repeat: -1, ease: "none" });
         const core = new Graphics().circle(0, 0, S * 0.2).fill({ color: 0xaaffaa, alpha: 0.5 });
         iconC.addChild(core);
-        gsap.to(core, { scale: { x: 1.3, y: 1.3 }, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(core, { scale: 1.3, duration: 0.5, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_SIPHON_SOUL: {
         // Wisps pulled inward
         const center = new Graphics().circle(0, 0, S * 0.2).fill({ color: 0x220033, alpha: 0.7 });
         iconC.addChild(center);
-        gsap.to(center, { scale: { x: 1.4, y: 1.4 }, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(center, { scale: 1.4, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
         for (let i = 0; i < 6; i++) {
           const a = (i / 6) * TAU;
           const wisp = new Graphics().circle(0, 0, 1.5).fill({ color: [0xaa88cc, 0xddbbff][i % 2], alpha: 0.6 });
@@ -2321,8 +2320,8 @@ export class ShopPanel {
         const sparkCore = new Graphics().circle(0, 0, S * 0.3).fill({ color: 0xff6622, alpha: 0.8 });
         const sparkGlow = new Graphics().circle(0, 0, S * 0.5).fill({ color: 0xff4400, alpha: 0.2 });
         iconC.addChild(sparkGlow, sparkCore);
-        gsap.to(sparkCore, { scale: { x: 1.3, y: 1.3 }, alpha: 0.5, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(sparkGlow, { scale: { x: 1.4, y: 1.4 }, alpha: 0.05, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(sparkCore, { scale: 1.3, alpha: 0.5, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(sparkGlow, { scale: 1.4, alpha: 0.05, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
         for (let i = 0; i < 2; i++) {
           const sp = new Graphics().circle(0, 0, 0.8).fill({ color: 0xffaa44, alpha: 0.7 });
           sp.position.set((Math.random() - 0.5) * S * 0.3, 0);
@@ -2337,8 +2336,8 @@ export class ShopPanel {
         const pillar = new Graphics().rect(-S * 0.3, -S * 0.8, S * 0.6, S * 0.9).fill({ color: 0xff4400, alpha: 0.5 });
         const hotTop = new Graphics().circle(0, -S * 0.7, S * 0.25).fill({ color: 0xffffaa, alpha: 0.6 });
         iconC.addChild(lavaBase, pillar, hotTop);
-        gsap.to(pillar, { scale: { x: 1.2, y: 1.1 }, duration: 0.3, yoyo: true, repeat: -1 });
-        gsap.to(hotTop, { scale: { x: 1.4, y: 1.4 }, alpha: 0.2, duration: 0.4, yoyo: true, repeat: -1 });
+        gsap.to(pillar, { scaleX: 1.2, scaleY: 1.1, duration: 0.3, yoyo: true, repeat: -1 });
+        gsap.to(hotTop, { scale: 1.4, alpha: 0.2, duration: 0.4, yoyo: true, repeat: -1 });
         for (let i = 0; i < 5; i++) {
           const ash = new Graphics().circle(0, 0, 1).fill({ color: 0xff6633, alpha: 0.6 });
           ash.position.set((Math.random() - 0.5) * S, 0);
@@ -2361,7 +2360,7 @@ export class ShopPanel {
         }
         const iceCenter = new Graphics().circle(0, 0, S * 0.15).fill({ color: 0xcceeFF, alpha: 0.5 });
         iconC.addChild(iceCenter);
-        gsap.to(iceCenter, { scale: { x: 1.3, y: 1.3 }, alpha: 0.2, duration: 0.6, yoyo: true, repeat: -1 });
+        gsap.to(iceCenter, { scale: 1.3, alpha: 0.2, duration: 0.6, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_ABSOLUTE_ZERO: {
@@ -2378,7 +2377,7 @@ export class ShopPanel {
         }
         const frozenCore = new Graphics().circle(0, 0, S * 0.12).fill({ color: 0xffffff, alpha: 0.8 });
         iconC.addChild(frozenCore);
-        gsap.to(frostField, { scale: { x: 1.2, y: 1.2 }, alpha: 0.04, duration: 1, yoyo: true, repeat: -1 });
+        gsap.to(frostField, { scale: 1.2, alpha: 0.04, duration: 1, yoyo: true, repeat: -1 });
         break;
       }
       // ── GAP-FILL: LIGHTNING ─────────────────────────────────────────────
@@ -2387,7 +2386,7 @@ export class ShopPanel {
         const sparkBolt = new Graphics().moveTo(0, -S * 0.4).lineTo(S * 0.08, -S * 0.1).lineTo(-S * 0.05, -S * 0.05).lineTo(0, S * 0.3)
           .stroke({ color: 0xffff44, width: 1.5 });
         iconC.addChild(sparkBolt, sparkFlash);
-        gsap.to(sparkFlash, { alpha: 0.2, scale: { x: 1.3, y: 1.3 }, duration: 0.2, yoyo: true, repeat: -1 });
+        gsap.to(sparkFlash, { alpha: 0.2, scale: 1.3, duration: 0.2, yoyo: true, repeat: -1 });
         gsap.to(sparkBolt, { alpha: 0.3, duration: 0.15, yoyo: true, repeat: -1 });
         break;
       }
@@ -2410,7 +2409,7 @@ export class ShopPanel {
         const plasma = new Graphics().circle(0, 0, S * 0.35).fill({ color: 0xaaddff, alpha: 0.4 });
         const plasmaCore = new Graphics().circle(0, 0, S * 0.18).fill({ color: 0xffffff, alpha: 0.7 });
         iconC.addChild(plasma, plasmaCore);
-        gsap.to(plasma, { scale: { x: 1.2, y: 1.2 }, alpha: 0.15, duration: 0.4, yoyo: true, repeat: -1 });
+        gsap.to(plasma, { scale: 1.2, alpha: 0.15, duration: 0.4, yoyo: true, repeat: -1 });
         for (let i = 0; i < 4; i++) {
           const arc = new Graphics();
           const a = (i / 4) * Math.PI * 2;
@@ -2435,7 +2434,7 @@ export class ShopPanel {
           iconC.addChild(arc);
           gsap.to(arc, { alpha: 0.05, duration: 0.1, yoyo: true, repeat: -1, repeatDelay: 0.4 + i * 0.2 });
         }
-        gsap.to(mjolGlow, { scale: { x: 1.3, y: 1.3 }, alpha: 0.03, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(mjolGlow, { scale: 1.3, alpha: 0.03, duration: 0.5, yoyo: true, repeat: -1 });
         gsap.to(hammerHead, { y: -2, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
@@ -2446,7 +2445,7 @@ export class ShopPanel {
         const dust = new Graphics().circle(0, S * 0.15, S * 0.3).fill({ color: 0xaa9977, alpha: 0.15 });
         iconC.addChild(dust, rock);
         gsap.to(rock, { y: -2, rotation: 0.1, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(dust, { scale: { x: 1.3, y: 1.3 }, alpha: 0.05, duration: 0.6, yoyo: true, repeat: -1 });
+        gsap.to(dust, { scale: 1.3, alpha: 0.05, duration: 0.6, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_LANDSLIDE: {
@@ -2459,7 +2458,7 @@ export class ShopPanel {
         }
         const dirtWave = new Graphics().ellipse(0, S * 0.2, S * 0.6, S * 0.15).fill({ color: 0x998866, alpha: 0.3 });
         iconC.addChild(dirtWave);
-        gsap.to(dirtWave, { scale: { x: 1.1, y: 1.1 }, alpha: 0.1, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(dirtWave, { scale: 1.1, alpha: 0.1, duration: 0.5, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_TECTONIC_RUIN: {
@@ -2471,7 +2470,7 @@ export class ShopPanel {
         const earthGlow = new Graphics().circle(0, 0, S * 0.6).fill({ color: 0xff4400, alpha: 0.08 });
         iconC.addChild(earthGlow, crack1, crack2);
         gsap.to(crack1, { alpha: 0.3, duration: 0.4, yoyo: true, repeat: -1 });
-        gsap.to(earthGlow, { scale: { x: 1.3, y: 1.3 }, alpha: 0.02, duration: 0.6, yoyo: true, repeat: -1 });
+        gsap.to(earthGlow, { scale: 1.3, alpha: 0.02, duration: 0.6, yoyo: true, repeat: -1 });
         for (let i = 0; i < 3; i++) {
           const debris = new Graphics().rect(0, 0, 2, 2).fill({ color: 0x887766 });
           debris.position.set((Math.random() - 0.5) * S * 0.4, S * 0.1);
@@ -2499,11 +2498,11 @@ export class ShopPanel {
             Math.cos(angle) * S * 0.55, Math.sin(angle) * S * 0.55);
           vine.stroke({ color: 0x338822, width: 1.5, alpha: 0.7 });
           iconC.addChild(vine);
-          gsap.to(vine, { scale: { x: 1.15, y: 1.15 }, alpha: 0.3, duration: 0.5 + i * 0.1, yoyo: true, repeat: -1, ease: "sine.inOut" });
+          gsap.to(vine, { scale: 1.15, alpha: 0.3, duration: 0.5 + i * 0.1, yoyo: true, repeat: -1, ease: "sine.inOut" });
         }
         const leafGlow = new Graphics().circle(0, 0, S * 0.15).fill({ color: 0x66cc44, alpha: 0.4 });
         iconC.addChild(leafGlow);
-        gsap.to(leafGlow, { scale: { x: 1.3, y: 1.3 }, alpha: 0.1, duration: 0.6, yoyo: true, repeat: -1 });
+        gsap.to(leafGlow, { scale: 1.3, alpha: 0.1, duration: 0.6, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_PRIMAL_STORM: {
@@ -2521,7 +2520,7 @@ export class ShopPanel {
         }
         const centerFlash = new Graphics().circle(0, 0, S * 0.12).fill({ color: 0xaaff66, alpha: 0.5 });
         iconC.addChild(centerFlash);
-        gsap.to(centerFlash, { scale: { x: 1.5, y: 1.5 }, alpha: 0.1, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(centerFlash, { scale: 1.5, alpha: 0.1, duration: 0.5, yoyo: true, repeat: -1 });
         break;
       }
       // ── GAP-FILL: ARCANE ────────────────────────────────────────────────
@@ -2530,9 +2529,9 @@ export class ShopPanel {
         const arcRing2 = new Graphics().circle(0, 0, S * 0.35).stroke({ color: 0xbb88ff, width: 1.5, alpha: 0.4 });
         const arcCore = new Graphics().circle(0, 0, S * 0.15).fill({ color: 0xffffff, alpha: 0.7 });
         iconC.addChild(arcRing1, arcRing2, arcCore);
-        gsap.to(arcRing1, { scale: { x: 1.3, y: 1.3 }, alpha: 0.1, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(arcRing1, { scale: 1.3, alpha: 0.1, duration: 0.5, yoyo: true, repeat: -1 });
         gsap.to(arcRing2, { rotation: Math.PI * 2, duration: 2, repeat: -1, ease: "none" });
-        gsap.to(arcCore, { scale: { x: 1.5, y: 1.5 }, alpha: 0.3, duration: 0.3, yoyo: true, repeat: -1 });
+        gsap.to(arcCore, { scale: 1.5, alpha: 0.3, duration: 0.3, yoyo: true, repeat: -1 });
         for (let i = 0; i < 4; i++) {
           const bolt = new Graphics().moveTo((Math.random() - 0.5) * S, -S * 0.6).lineTo((Math.random() - 0.5) * S * 0.3, (Math.random() - 0.5) * S * 0.3);
           bolt.stroke({ color: 0xaa77ff, width: 1, alpha: 0.5 });
@@ -2547,9 +2546,9 @@ export class ShopPanel {
         const miracleBeam = new Graphics().rect(-S * 0.12, -S * 0.7, S * 0.24, S * 1.4).fill({ color: 0xffdd44, alpha: 0.25 });
         const miracleCore = new Graphics().circle(0, 0, S * 0.2).fill({ color: 0xffffff, alpha: 0.7 });
         iconC.addChild(miracleGlow, miracleBeam, miracleCore);
-        gsap.to(miracleGlow, { scale: { x: 1.3, y: 1.3 }, alpha: 0.03, duration: 0.7, yoyo: true, repeat: -1 });
+        gsap.to(miracleGlow, { scale: 1.3, alpha: 0.03, duration: 0.7, yoyo: true, repeat: -1 });
         gsap.to(miracleBeam, { alpha: 0.08, duration: 0.5, yoyo: true, repeat: -1 });
-        gsap.to(miracleCore, { scale: { x: 1.3, y: 1.3 }, alpha: 0.4, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(miracleCore, { scale: 1.3, alpha: 0.4, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
         for (let i = 0; i < 5; i++) {
           const sparkle = new Graphics().circle(0, 0, 0.8).fill({ color: 0xffffcc, alpha: 0.8 });
           sparkle.position.set((Math.random() - 0.5) * S, (Math.random() - 0.5) * S);
@@ -2569,9 +2568,9 @@ export class ShopPanel {
             Math.cos(angle) * S * 0.6, Math.sin(angle) * S * 0.6);
           tendril.stroke({ color: 0x663399, width: 1.5, alpha: 0.5 });
           iconC.addChild(tendril);
-          gsap.to(tendril, { alpha: 0.1, scale: { x: 1.1, y: 1.1 }, duration: 0.6 + i * 0.1, yoyo: true, repeat: -1, ease: "sine.inOut" });
+          gsap.to(tendril, { alpha: 0.1, scale: 1.1, duration: 0.6 + i * 0.1, yoyo: true, repeat: -1, ease: "sine.inOut" });
         }
-        gsap.to(plagueCloud, { scale: { x: 1.2, y: 1.2 }, alpha: 0.1, duration: 0.8, yoyo: true, repeat: -1 });
+        gsap.to(plagueCloud, { scale: 1.2, alpha: 0.1, duration: 0.8, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_OBLIVION: {
@@ -2583,7 +2582,7 @@ export class ShopPanel {
         iconC.addChild(voidBg, vortex1, vortex2, darkCore);
         gsap.to(vortex1, { rotation: Math.PI * 2, duration: 2, repeat: -1, ease: "none" });
         gsap.to(vortex2, { rotation: -Math.PI * 2, duration: 1.5, repeat: -1, ease: "none" });
-        gsap.to(voidBg, { scale: { x: 1.15, y: 1.15 }, alpha: 0.3, duration: 0.8, yoyo: true, repeat: -1 });
+        gsap.to(voidBg, { scale: 1.15, alpha: 0.3, duration: 0.8, yoyo: true, repeat: -1 });
         break;
       }
       // ── GAP-FILL: POISON ────────────────────────────────────────────────
@@ -2607,20 +2606,20 @@ export class ShopPanel {
         }
         const haze = new Graphics().circle(0, 0, S * 0.45).fill({ color: 0x448822, alpha: 0.1 });
         iconC.addChild(haze);
-        gsap.to(haze, { scale: { x: 1.2, y: 1.2 }, alpha: 0.03, duration: 0.7, yoyo: true, repeat: -1 });
+        gsap.to(haze, { scale: 1.2, alpha: 0.03, duration: 0.7, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_TOXIC_MIASMA: {
         const fog1 = new Graphics().ellipse(-S * 0.15, 0, S * 0.35, S * 0.25).fill({ color: 0x44aa22, alpha: 0.2 });
         const fog2 = new Graphics().ellipse(S * 0.15, -S * 0.1, S * 0.3, S * 0.3).fill({ color: 0x338811, alpha: 0.15 });
         iconC.addChild(fog1, fog2);
-        gsap.to(fog1, { x: -S * 0.15 + 3, scale: { x: 1.2, y: 1.1 }, alpha: 0.08, duration: 0.9, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(fog2, { x: S * 0.15 - 3, scale: { x: 1.1, y: 1.2 }, alpha: 0.06, duration: 1.1, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(fog1, { x: -S * 0.15 + 3, scaleX: 1.2, scaleY: 1.1, alpha: 0.08, duration: 0.9, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(fog2, { x: S * 0.15 - 3, scaleX: 1.1, scaleY: 1.2, alpha: 0.06, duration: 1.1, yoyo: true, repeat: -1, ease: "sine.inOut" });
         for (let i = 0; i < 3; i++) {
           const bubble = new Graphics().circle(0, 0, 1.5).stroke({ color: 0x66cc33, width: 0.8, alpha: 0.5 });
           bubble.position.set((Math.random() - 0.5) * S * 0.4, S * 0.15);
           iconC.addChild(bubble);
-          gsap.to(bubble, { y: -S * 0.3, alpha: 0, scale: { x: 1.5, y: 1.5 }, duration: 0.8, repeat: -1, delay: i * 0.3 });
+          gsap.to(bubble, { y: -S * 0.3, alpha: 0, scale: 1.5, duration: 0.8, repeat: -1, delay: i * 0.3 });
         }
         break;
       }
@@ -2629,9 +2628,9 @@ export class ShopPanel {
         const toxicWave2 = new Graphics().circle(0, 0, S * 0.35).fill({ color: 0x338811, alpha: 0.2 });
         const toxicCore = new Graphics().circle(0, 0, S * 0.15).fill({ color: 0x66ff33, alpha: 0.5 });
         iconC.addChild(toxicWave, toxicWave2, toxicCore);
-        gsap.to(toxicWave, { scale: { x: 1.4, y: 1.4 }, alpha: 0.03, duration: 0.6, yoyo: true, repeat: -1 });
-        gsap.to(toxicWave2, { scale: { x: 1.3, y: 1.3 }, alpha: 0.05, duration: 0.5, yoyo: true, repeat: -1 });
-        gsap.to(toxicCore, { scale: { x: 1.5, y: 1.5 }, alpha: 0.2, duration: 0.4, yoyo: true, repeat: -1 });
+        gsap.to(toxicWave, { scale: 1.4, alpha: 0.03, duration: 0.6, yoyo: true, repeat: -1 });
+        gsap.to(toxicWave2, { scale: 1.3, alpha: 0.05, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(toxicCore, { scale: 1.5, alpha: 0.2, duration: 0.4, yoyo: true, repeat: -1 });
         for (let i = 0; i < 4; i++) {
           const spl = new Graphics().circle(0, 0, 1).fill({ color: 0x88ff44, alpha: 0.6 });
           spl.position.set((Math.random() - 0.5) * S * 0.5, 0);
@@ -2645,8 +2644,8 @@ export class ShopPanel {
         const vsPop = new Graphics().circle(0, 0, S * 0.25).fill({ color: 0x6622aa, alpha: 0.6 });
         const vsCore = new Graphics().circle(0, 0, S * 0.1).fill({ color: 0x220044, alpha: 0.9 });
         iconC.addChild(vsPop, vsCore);
-        gsap.to(vsPop, { scale: { x: 1.4, y: 1.4 }, alpha: 0.1, duration: 0.3, yoyo: true, repeat: -1 });
-        gsap.to(vsCore, { scale: { x: 1.2, y: 1.2 }, duration: 0.25, yoyo: true, repeat: -1 });
+        gsap.to(vsPop, { scale: 1.4, alpha: 0.1, duration: 0.3, yoyo: true, repeat: -1 });
+        gsap.to(vsCore, { scale: 1.2, duration: 0.25, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_DIMENSIONAL_TEAR: {
@@ -2656,7 +2655,7 @@ export class ShopPanel {
         tearGlow.stroke({ color: 0xcc66ff, width: 4, alpha: 0.15 });
         iconC.addChild(tearGlow, tear);
         gsap.to(tear, { alpha: 0.3, duration: 0.4, yoyo: true, repeat: -1 });
-        gsap.to(tearGlow, { scale: { x: 1.2, y: 1.1 }, alpha: 0.05, duration: 0.6, yoyo: true, repeat: -1 });
+        gsap.to(tearGlow, { scaleX: 1.2, scaleY: 1.1, alpha: 0.05, duration: 0.6, yoyo: true, repeat: -1 });
         // Distortion particles
         for (let i = 0; i < 3; i++) {
           const p = new Graphics().circle(0, 0, 0.8).fill({ color: 0xbb66ff, alpha: 0.6 });
@@ -2673,7 +2672,7 @@ export class ShopPanel {
         const accDisk = new Graphics().circle(0, 0, S * 0.4).stroke({ color: 0xaa44ff, width: 1.5, alpha: 0.4 });
         iconC.addChild(eventHorizon, accDisk, blackHole);
         gsap.to(accDisk, { rotation: Math.PI * 2, duration: 1.5, repeat: -1, ease: "none" });
-        gsap.to(eventHorizon, { scale: { x: 0.85, y: 0.85 }, alpha: 0.7, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(eventHorizon, { scale: 0.85, alpha: 0.7, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
         // Particles being sucked in
         for (let i = 0; i < 5; i++) {
           const angle = (i / 5) * Math.PI * 2;
@@ -2689,8 +2688,8 @@ export class ShopPanel {
         const necBurst = new Graphics().circle(0, 0, S * 0.3).fill({ color: 0x44aa66, alpha: 0.4 });
         const necCore = new Graphics().circle(0, 0, S * 0.12).fill({ color: 0x226633, alpha: 0.8 });
         iconC.addChild(necBurst, necCore);
-        gsap.to(necBurst, { scale: { x: 1.4, y: 1.4 }, alpha: 0.08, duration: 0.35, yoyo: true, repeat: -1 });
-        gsap.to(necCore, { scale: { x: 1.2, y: 1.2 }, duration: 0.3, yoyo: true, repeat: -1 });
+        gsap.to(necBurst, { scale: 1.4, alpha: 0.08, duration: 0.35, yoyo: true, repeat: -1 });
+        gsap.to(necCore, { scale: 1.2, duration: 0.3, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_SOUL_REND: {
@@ -2705,7 +2704,7 @@ export class ShopPanel {
         }
         const rendCore = new Graphics().circle(0, 0, S * 0.15).fill({ color: 0x336644, alpha: 0.5 });
         iconC.addChild(rendCore);
-        gsap.to(rendCore, { scale: { x: 1.3, y: 1.3 }, alpha: 0.2, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(rendCore, { scale: 1.3, alpha: 0.2, duration: 0.5, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SPELL_APOCALYPSE: {
@@ -2717,8 +2716,8 @@ export class ShopPanel {
         skullG.circle(-S * 0.05, -S * 0.08, 1.5).fill({ color: 0x44ff66, alpha: 0.8 });
         skullG.circle(S * 0.05, -S * 0.08, 1.5).fill({ color: 0x44ff66, alpha: 0.8 });
         iconC.addChild(deathField, deathRing, skullG);
-        gsap.to(deathField, { scale: { x: 1.2, y: 1.2 }, alpha: 0.15, duration: 0.7, yoyo: true, repeat: -1 });
-        gsap.to(deathRing, { scale: { x: 1.3, y: 1.3 }, alpha: 0.1, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(deathField, { scale: 1.2, alpha: 0.15, duration: 0.7, yoyo: true, repeat: -1 });
+        gsap.to(deathRing, { scale: 1.3, alpha: 0.1, duration: 0.5, yoyo: true, repeat: -1 });
         gsap.to(skullG, { y: -S * 0.05 - 1, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
@@ -2737,7 +2736,7 @@ export class ShopPanel {
           bat.position.set(bx, by);
           iconC.addChild(bat);
           gsap.to(bat, { y: by - 3, x: bx + (Math.random() - 0.5) * 4, duration: 0.4 + Math.random() * 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
-          gsap.to(bat, { scale: { x: 1, y: 0.6 }, duration: 0.15 + Math.random() * 0.1, yoyo: true, repeat: -1 });
+          gsap.to(bat, { scaleX: 1, scaleY: 0.6, duration: 0.15 + Math.random() * 0.1, yoyo: true, repeat: -1 });
         }
         break;
       }
@@ -2772,7 +2771,7 @@ export class ShopPanel {
         for (let side = -1; side <= 1; side += 2) {
           const wing = new Graphics().ellipse(side * S * 0.25, -S * 0.05, S * 0.18, S * 0.3).fill({ color: 0xffccff, alpha: 0.4 });
           iconC.addChild(wing);
-          gsap.to(wing, { scale: { x: 0.7, y: 1 }, duration: 0.2, yoyo: true, repeat: -1 });
+          gsap.to(wing, { scaleX: 0.7, scaleY: 1, duration: 0.2, yoyo: true, repeat: -1 });
         }
         // Sparkles
         for (let i = 0; i < 4; i++) {
@@ -2782,7 +2781,7 @@ export class ShopPanel {
           gsap.to(spark, { alpha: 0, duration: 0.5, yoyo: true, repeat: -1, delay: i * 0.15 });
         }
         gsap.to(pixieBody, { y: -2, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(glow, { scale: { x: 1.3, y: 1.3 }, alpha: 0.05, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(glow, { scale: 1.3, alpha: 0.05, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
       case UpgradeType.SUMMON_UNICORN: {
@@ -2797,7 +2796,7 @@ export class ShopPanel {
         legs.rect(-S * 0.2, S * 0.2, 2, S * 0.3).fill({ color: 0xddddee });
         legs.rect(S * 0.1, S * 0.2, 2, S * 0.3).fill({ color: 0xddddee });
         iconC.addChild(legs, bodyU, headU, horn, hornGlow);
-        gsap.to(hornGlow, { scale: { x: 1.5, y: 1.5 }, alpha: 0.1, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(hornGlow, { scale: 1.5, alpha: 0.1, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(bodyU, { y: S * 0.05 - 1, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
@@ -2812,7 +2811,7 @@ export class ShopPanel {
         const armL = new Graphics().moveTo(-S * 0.3, -S * 0.1).lineTo(-S * 0.5, S * 0.25).stroke({ color: 0x556633, width: 3 });
         const armR = new Graphics().moveTo(S * 0.3, -S * 0.1).lineTo(S * 0.5, S * 0.25).stroke({ color: 0x556633, width: 3 });
         iconC.addChild(trollBody, trollHead, armL, armR);
-        gsap.to(trollBody, { scale: { x: 1.05, y: 0.95 }, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(trollBody, { scaleX: 1.05, scaleY: 0.95, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(trollHead, { y: -S * 0.45 - 1, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
@@ -2826,8 +2825,8 @@ export class ShopPanel {
         fireCore.circle(-S * 0.08, -S * 0.15, 1.2).fill({ color: 0xffffff, alpha: 0.9 });
         fireCore.circle(S * 0.08, -S * 0.15, 1.2).fill({ color: 0xffffff, alpha: 0.9 });
         iconC.addChild(fireBase, fireCore, fireTop, hotCore);
-        gsap.to(fireTop, { y: -2, scale: { x: 1.2, y: 1.3 }, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(fireCore, { scale: { x: 1.05, y: 1.1 }, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(fireTop, { y: -2, scaleX: 1.2, scaleY: 1.3, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(fireCore, { scaleX: 1.05, scaleY: 1.1, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
         for (let i = 0; i < 3; i++) {
           const spark = new Graphics().circle(0, 0, 1).fill({ color: 0xffcc44, alpha: 0.7 });
           spark.position.set((Math.random() - 0.5) * S * 0.4, 0);
@@ -2851,14 +2850,14 @@ export class ShopPanel {
         iceBody.circle(S * 0.08, -S * 0.15, 1).fill({ color: 0xffffff, alpha: 0.9 });
         const iceGlow = new Graphics().circle(0, 0, S * 0.55).fill({ color: 0x66bbff, alpha: 0.1 });
         iconC.addChild(iceGlow, iceBody, iceCoreG);
-        gsap.to(iceGlow, { scale: { x: 1.3, y: 1.3 }, alpha: 0.02, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(iceGlow, { scale: 1.3, alpha: 0.02, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(iceCoreG, { alpha: 0.3, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
         // Frost particles
         for (let i = 0; i < 3; i++) {
           const frost = new Graphics().circle(0, 0, 0.7).fill({ color: 0xffffff, alpha: 0.6 });
           frost.position.set((Math.random() - 0.5) * S * 0.8, (Math.random() - 0.5) * S * 0.6);
           iconC.addChild(frost);
-          gsap.to(frost, { alpha: 0, scale: { x: 0.3, y: 0.3 }, duration: 0.7, yoyo: true, repeat: -1, delay: i * 0.2 });
+          gsap.to(frost, { alpha: 0, scale: 0.3, duration: 0.7, yoyo: true, repeat: -1, delay: i * 0.2 });
         }
         break;
       }
@@ -2875,12 +2874,12 @@ export class ShopPanel {
         const staffOrb = new Graphics().circle(S * 0.3, -S * 0.5, S * 0.08).fill({ color: 0xbb66ff, alpha: 0.8 });
         const staffGlow = new Graphics().circle(S * 0.3, -S * 0.5, S * 0.15).fill({ color: 0x9944ff, alpha: 0.2 });
         iconC.addChild(robe, hood, staff, staffGlow, staffOrb);
-        gsap.to(staffGlow, { scale: { x: 1.5, y: 1.5 }, alpha: 0.05, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(staffOrb, { scale: { x: 1.2, y: 1.2 }, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(staffGlow, { scale: 1.5, alpha: 0.05, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(staffOrb, { scale: 1.2, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
         // Dark aura
         const aura = new Graphics().circle(0, 0, S * 0.55).fill({ color: 0x6622aa, alpha: 0.08 });
         iconC.addChild(aura);
-        gsap.to(aura, { scale: { x: 1.3, y: 1.3 }, alpha: 0.02, duration: 0.9, yoyo: true, repeat: -1 });
+        gsap.to(aura, { scale: 1.3, alpha: 0.02, duration: 0.9, yoyo: true, repeat: -1 });
         break;
       }
       case UpgradeType.SUMMON_ANGEL: {
@@ -2895,9 +2894,9 @@ export class ShopPanel {
         // Divine glow
         const divGlow = new Graphics().circle(0, -S * 0.1, S * 0.6).fill({ color: 0xffee88, alpha: 0.1 });
         iconC.addChild(divGlow, wingL, wingR, angelBody, angelHead, halo);
-        gsap.to(wingL, { scale: { x: 0.8, y: 1 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(wingR, { scale: { x: 0.8, y: 1 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(divGlow, { scale: { x: 1.2, y: 1.2 }, alpha: 0.04, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(wingL, { scaleX: 0.8, scaleY: 1, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(wingR, { scaleX: 0.8, scaleY: 1, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(divGlow, { scale: 1.2, alpha: 0.04, duration: 0.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(halo, { alpha: 0.4, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(angelBody, { y: -1, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
@@ -2913,7 +2912,7 @@ export class ShopPanel {
         const cArmL = new Graphics().moveTo(-S * 0.35, -S * 0.05).lineTo(-S * 0.55, S * 0.3).stroke({ color: 0x887766, width: 3 });
         const cArmR = new Graphics().moveTo(S * 0.35, -S * 0.05).lineTo(S * 0.55, S * 0.3).stroke({ color: 0x887766, width: 3 });
         iconC.addChild(cycBody, cycHead, eyeWhite, eyePupil, cArmL, cArmR);
-        gsap.to(cycBody, { scale: { x: 1.03, y: 0.97 }, duration: 0.9, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(cycBody, { scaleX: 1.03, scaleY: 0.97, duration: 0.9, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(eyePupil, { x: 1.5, duration: 1.2, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
@@ -2937,7 +2936,7 @@ export class ShopPanel {
         iconC.addChild(dTail, dBody, dWingL, dWingR, dHead, breath);
         gsap.to(dWingL, { y: 3, rotation: 0.15, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(dWingR, { y: 3, rotation: -0.15, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(breath, { alpha: 0.1, scale: { x: 1.3, y: 1.3 }, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(breath, { alpha: 0.1, scale: 1.3, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(dBody, { y: -1, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
@@ -2962,8 +2961,8 @@ export class ShopPanel {
         iconC.addChild(fdTail, fdBody, fdWingL, fdWingR, fdHead, frostBreath, frostGlow);
         gsap.to(fdWingL, { y: 3, rotation: 0.15, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(fdWingR, { y: 3, rotation: -0.15, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(frostBreath, { alpha: 0.1, scale: { x: 1.2, y: 1.2 }, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
-        gsap.to(frostGlow, { scale: { x: 1.4, y: 1.4 }, alpha: 0.04, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(frostBreath, { alpha: 0.1, scale: 1.2, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(frostGlow, { scale: 1.4, alpha: 0.04, duration: 0.5, yoyo: true, repeat: -1 });
         gsap.to(fdBody, { y: -1, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
@@ -2981,7 +2980,7 @@ export class ShopPanel {
         const color = schoolColors[school] ?? 0x778899;
         const orb = new Graphics().circle(0, 0, S * 0.5).fill({ color, alpha: 0.5 }).circle(0, 0, S * 0.25).fill({ color: 0xffffff, alpha: 0.3 });
         iconC.addChild(orb);
-        gsap.to(orb, { scale: { x: 1.2, y: 1.2 }, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(orb, { scale: 1.2, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
 
         const labelFallback = new Text({
           text: UPGRADE_LABELS[upgradeType],

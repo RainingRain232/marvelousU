@@ -85,7 +85,6 @@ export class LobbyScreen {
   private _backBtn!: Container;
 
   // State
-  private _roomId: string | null = null;
   private _localPlayerId: string | null = null;
 
   // Callbacks
@@ -166,7 +165,6 @@ export class LobbyScreen {
   // ---------------------------------------------------------------------------
 
   show(roomId: string, localPlayerId: string): void {
-    this._roomId = roomId;
     this._localPlayerId = localPlayerId;
     this._roomCodeText.text = roomId;
     this._statusText.text = "Waiting for players...";

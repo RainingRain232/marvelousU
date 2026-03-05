@@ -7,7 +7,7 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldCity } from "@world/state/WorldCity";
-import { hexToPixel, hexKey, type HexPixel } from "@world/hex/HexCoord";
+import { hexToPixel, hexKey } from "@world/hex/HexCoord";
 import { WorldBalance } from "@world/config/WorldConfig";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
 

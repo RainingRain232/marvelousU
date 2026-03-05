@@ -28,7 +28,6 @@ const COL_MANE        = 0x1a1008; // black mane/tail
 const COL_HOOF        = 0x1a1610; // dark hoof
 
 const COL_BARDING     = 0x505058; // dark steel barding
-const COL_BARDING_DK  = 0x3a3a42; // barding shadow
 const COL_BARDING_HI  = 0x686870; // barding highlight
 const COL_BARDING_EDGE = 0x2a2a32; // barding trim edge
 

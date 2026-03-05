@@ -51,7 +51,7 @@ export function advanceResearch(
   let libraryBonus = 0;
   for (const city of state.cities.values()) {
     if (city.owner !== player.id) continue;
-    if (city.buildings.some((b) => b.type === "library")) {
+    if (city.buildings.some((b) => (b.type as string) === "library")) {
       libraryBonus = 1;
       break;
     }

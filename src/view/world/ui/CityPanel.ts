@@ -10,8 +10,6 @@ import type { WorldCity } from "@world/state/WorldCity";
 import {
   getAvailableBuildings,
   getRecruitableUnits,
-  startConstruction,
-  queueRecruitment,
 } from "@world/systems/CitySystem";
 import { getWorldBuildingDef } from "@world/config/WorldBuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";

@@ -5,7 +5,6 @@
 
 import { Container, Graphics } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
-import type { WorldState } from "@world/state/WorldState";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
 import type { HexGrid } from "@world/hex/HexGrid";
 import { hexKey } from "@world/hex/HexCoord";

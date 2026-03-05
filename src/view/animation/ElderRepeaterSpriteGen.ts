@@ -14,8 +14,6 @@ const FH = 96;
 const CX = FW / 2;
 const GY = FH - 6;
 
-const COL_SKIN = 0x6a6a70;
-
 const COL_PLATE = 0x181820;
 const COL_PLATE_HI = 0x2a2a34;
 const COL_PLATE_DK = 0x0e0e14;
@@ -56,10 +54,6 @@ const COL_RIVET = 0x484850;
 const COL_SHADOW = 0x000000;
 
 /* ── helpers ──────────────────────────────────────────────────────────── */
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
 
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;

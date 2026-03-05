@@ -59,7 +59,6 @@ const COL_ROPE_DK = 0x6a5030;
 const COL_PAPER = 0xb0a480;
 const COL_SKIN = 0xc09060;
 const COL_SKIN_DK = 0x906840;
-const _COL_CLOTH = 0x3a3a48;
 const COL_CLOTH_DK = 0x222232;
 const COL_PITCH = 0x121008;
 const COL_MOSS = 0x3a5a2a;
@@ -90,8 +89,6 @@ const EMBER_PULSE = 1.4;
 const RAVEN_LOOK_SPEED = 1.5;
 const FLAG_SPEED = 3.0;
 const SMOKE_SPEED = 0.4;
-const _GEAR_SPEED = 0.6;
-const _CHAIN_SWAY = 1.2;
 
 // ---------------------------------------------------------------------------
 // EliteSiegeWorkshopRenderer

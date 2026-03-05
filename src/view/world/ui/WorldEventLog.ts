@@ -15,12 +15,6 @@ const ENTRY_HEIGHT = 16;
 const LOG_W = 350;
 const LOG_H = MAX_ENTRIES * ENTRY_HEIGHT + 8;
 
-const DEFAULT_STYLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 11,
-  fill: 0xcccccc,
-});
-
 // ---------------------------------------------------------------------------
 // WorldEventLog
 // ---------------------------------------------------------------------------
@@ -34,7 +28,6 @@ interface LogEntry {
 export class WorldEventLog {
   readonly container = new Container();
 
-  private _vm!: ViewManager;
   private _entries: LogEntry[] = [];
   private _currentTurn = 1;
   private _textContainer = new Container();
@@ -45,8 +38,6 @@ export class WorldEventLog {
   // -----------------------------------------------------------------------
 
   init(vm: ViewManager): void {
-    this._vm = vm;
-
     this._bg = new Graphics();
     this._bg.roundRect(0, 0, LOG_W, LOG_H, 4);
     this._bg.fill({ color: 0x000000, alpha: 0.5 });

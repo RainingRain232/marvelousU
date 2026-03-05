@@ -337,7 +337,7 @@ function _tryDeployGarrison(
 function _moveArmyAI(
   army: WorldArmy,
   state: WorldState,
-  player: WorldPlayer,
+  _player: WorldPlayer,
   strategy: AIStrategy,
 ): void {
   if (army.movementPoints <= 0) return;

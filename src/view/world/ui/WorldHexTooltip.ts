@@ -37,7 +37,6 @@ const TOOLTIP_W = 160;
 export class WorldHexTooltip {
   readonly container = new Container();
 
-  private _vm!: ViewManager;
   private _state: WorldState | null = null;
   private _localPlayer: WorldPlayer | null = null;
   private _bg = new Graphics();
@@ -48,7 +47,6 @@ export class WorldHexTooltip {
   // -----------------------------------------------------------------------
 
   init(vm: ViewManager): void {
-    this._vm = vm;
     this.container.addChild(this._bg);
     this.container.addChild(this._textContainer);
     this.container.visible = false;
@@ -103,8 +101,9 @@ export class WorldHexTooltip {
     let y = 6;
 
     // Terrain name
+    const terrainName = terrain.type.charAt(0).toUpperCase() + terrain.type.slice(1);
     const name = new Text({
-      text: terrain.name,
+      text: terrainName,
       style: TITLE_STYLE,
     });
     name.x = 8;

@@ -101,7 +101,6 @@ import { worldHUD } from "@view/world/ui/WorldHUD";
 import { beginTurn, endTurn, onBattlesResolved } from "@world/systems/TurnSystem";
 import { WorldBalance } from "@world/config/WorldConfig";
 import { hexSpiral, hexNeighbors } from "@world/hex/HexCoord";
-import { hexKey } from "@world/hex/HexCoord";
 import { cityView } from "@view/world/CityView";
 import { cityPanel } from "@view/world/ui/CityPanel";
 import { startConstruction, queueRecruitment, deployArmy, foundCity, canFoundCity } from "@world/systems/CitySystem";
@@ -109,7 +108,7 @@ import { armyView } from "@view/world/ArmyView";
 import { armyPanel } from "@view/world/ui/ArmyPanel";
 import { moveArmy, getArmyReachableHexes, detectCollisions } from "@world/systems/ArmySystem";
 import { researchScreen } from "@view/world/ui/ResearchScreen";
-import { setActiveResearch, advanceResearch } from "@world/systems/ResearchSystem";
+import { setActiveResearch } from "@world/systems/ResearchSystem";
 import { executeAITurn } from "@world/systems/WorldAI";
 import { updateVisibility } from "@world/systems/FogOfWarSystem";
 import {
@@ -1368,8 +1367,6 @@ async function _bootCampaign(
 // World mode boot
 // ---------------------------------------------------------------------------
 
-let _activeWorldState: WorldState | null = null;
-
 /** Show in-game info menu overlay with Leader Info / Race Info options. */
 function _showWorldInfoMenu(state: WorldState): void {
   const player = state.players.get("p1");
@@ -1598,7 +1595,7 @@ async function _bootWorldGame(
     if (campTile) campTile.campId = camp.id;
   }
 
-  _activeWorldState = state;
+
 
   // Configure camera for hex world — the hex grid is centered at (0,0) and
   // extends roughly radius * HEX_SIZE * 2 in each direction.  We also add
@@ -1891,12 +1888,12 @@ async function _bootWorldGame(
     endTurn(state);
 
     // Resolve any pending battles
-    if (state.phase === WorldPhase.BATTLE) {
+    if ((state.phase as WorldPhase) === WorldPhase.BATTLE) {
       resolveWorldBattles();
     }
 
     // If AI turn, execute AI logic then end their turns
-    while (state.phase === WorldPhase.AI_TURN) {
+    while ((state.phase as WorldPhase) === WorldPhase.AI_TURN) {
       const aiPid = state.playerOrder[state.currentPlayerIndex];
       executeAITurn(state, aiPid);
 
@@ -1908,7 +1905,7 @@ async function _bootWorldGame(
 
       endTurn(state);
 
-      if (state.phase === WorldPhase.BATTLE) {
+      if ((state.phase as WorldPhase) === WorldPhase.BATTLE) {
         resolveWorldBattles();
       }
     }

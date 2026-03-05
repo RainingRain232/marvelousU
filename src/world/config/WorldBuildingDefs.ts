@@ -142,7 +142,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     foodBonus: 0,
     productionBonus: 0,
     effect: "Train melee units",
-    unlocksUnits: [UnitType.SWORDSMAN, UnitType.SHIELD_BEARER, UnitType.PIKEMAN],
+    unlocksUnits: [UnitType.SWORDSMAN, UnitType.DEFENDER, UnitType.PIKEMAN],
     researchRequired: null,
   },
   [BuildingType.ARCHERY_RANGE]: {
@@ -197,7 +197,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     foodBonus: 0,
     productionBonus: 0,
     effect: "Train creature units",
-    unlocksUnits: [UnitType.WOLF],
+    unlocksUnits: [UnitType.TROLL],
     researchRequired: "conjuration",
   },
   [BuildingType.TEMPLE]: {
@@ -208,7 +208,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     foodBonus: 0,
     productionBonus: 0,
     effect: "Train holy units",
-    unlocksUnits: [UnitType.PRIEST],
+    unlocksUnits: [UnitType.MONK],
     researchRequired: "divine_blessing",
   },
 };

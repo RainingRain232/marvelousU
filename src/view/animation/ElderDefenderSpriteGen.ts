@@ -15,7 +15,6 @@ const GY = FH - 6;
 
 // Palette — void-black iron + dead grey flesh
 const COL_SKIN = 0x6a6a70;
-const COL_SKIN_DK = 0x4a4a50;
 const COL_PLATE = 0x181820;
 const COL_PLATE_HI = 0x2a2a34;
 const COL_PLATE_DK = 0x0e0e14;

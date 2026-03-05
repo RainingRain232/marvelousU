@@ -17,7 +17,6 @@ import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 import { WorldBalance } from "@world/config/WorldConfig";
 import { hexSpiral, hexDistance, type HexCoord } from "@world/hex/HexCoord";
 import { createWorldCity } from "@world/state/WorldCity";
-import { calculateCityYields } from "@world/systems/WorldEconomySystem";
 import { hasResearch } from "@world/systems/ResearchSystem";
 import { getLeader } from "@sim/config/LeaderDefs";
 
@@ -30,7 +29,7 @@ export function getAvailableBuildings(
   city: WorldCity,
   state: WorldState,
 ): WorldBuildingDef[] {
-  const built = new Set(city.buildings.map((b) => b.type));
+  const built = new Set<string>(city.buildings.map((b) => b.type));
   const underConstruction = city.constructionQueue?.buildingType;
   const player = state.players.get(city.owner);
 

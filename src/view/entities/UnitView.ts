@@ -29,10 +29,6 @@ import { getPlayerColor } from "@sim/config/PlayerColors";
 
 const TS = BalanceConfig.TILE_SIZE;
 
-// Team colors (placeholder / fallback)
-const COLOR_WEST = 0x4488ff;
-const COLOR_EAST = 0xff4444;
-
 const RADIUS = TS * 0.3;
 const BORDER_ALPHA = 0.7;
 
@@ -46,15 +42,6 @@ const HP_CRIT = 0xff4444;
 // Owner shield — right of the HP bar, always visible
 const SHIELD_W = 12;
 const SHIELD_H = 14;
-const SHIELD_P1_FILL   = 0x3366cc;
-const SHIELD_P1_STROKE = 0x2244aa;
-const SHIELD_P1_HI     = 0x5588ee;
-const SHIELD_P2_FILL   = 0xcc3333;
-const SHIELD_P2_STROKE = 0xaa2222;
-const SHIELD_P2_HI     = 0xee5555;
-const SHIELD_NEU_FILL   = 0xcccccc;
-const SHIELD_NEU_STROKE = 0xaaaaaa;
-const SHIELD_NEU_HI     = 0xeeeeee;
 
 // Color helpers for shield derivation
 function _darken(color: number, factor: number): number {

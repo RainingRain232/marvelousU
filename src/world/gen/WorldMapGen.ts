@@ -7,9 +7,9 @@ import type { HexCoord } from "@world/hex/HexCoord";
 import { hexDistance, hexKey, hexSpiral } from "@world/hex/HexCoord";
 import { HexGrid, type HexTile } from "@world/hex/HexGrid";
 import { TerrainType, TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
-import { WorldBalance, type WorldGameSettings } from "@world/config/WorldConfig";
+import type { WorldGameSettings } from "@world/config/WorldConfig";
 import { createWorldCamp, type WorldCamp } from "@world/state/WorldCamp";
-import { RESOURCE_DEFINITIONS, type ResourceType } from "@world/config/ResourceDefs";
+import { RESOURCE_DEFINITIONS } from "@world/config/ResourceDefs";
 
 // ---------------------------------------------------------------------------
 // Seeded PRNG (mulberry32)

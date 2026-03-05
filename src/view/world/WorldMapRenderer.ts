@@ -3,7 +3,7 @@
 // Draws terrain-colored hexagons into the ViewManager's background layer.
 // Handles hover highlighting and click-to-select.
 
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Container, Graphics } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { HexGrid, type HexTile } from "@world/hex/HexGrid";
 import {

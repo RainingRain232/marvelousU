@@ -16,7 +16,6 @@ const COL_ROBE = 0x2e1a47;
 const COL_ROBE_LT = 0x4a2d6a;
 const COL_RUNE = 0x44bbff;
 const COL_RUNE_HI = 0x88ddff;
-const COL_RUNE_DK = 0x2288cc;
 const COL_SWORD = 0xaabbdd;
 const COL_SWORD_HI = 0xccddff;
 const COL_SWORD_GLOW = 0x44bbff;

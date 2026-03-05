@@ -42,7 +42,6 @@ const COL_MORTAR = 0x302840;
 const COL_MORTAR_GLOW = 0x5533aa;
 const COL_WINDOW = 0x0e0a20;
 const COL_PORTAL_PURPLE = 0x8844ff;
-const _COL_IRON = 0x444455;
 const COL_IRON_DK = 0x222233;
 const COL_GOLD = 0xffd700;
 const COL_GOLD_DK = 0xc8a600;
@@ -1099,7 +1098,6 @@ export class EliteMageTowerRenderer {
     g.clear();
 
     const cx = TW / 2;
-    const _bodyTop = 24;
     const bodyBot = TH - 12;
 
     // Rising wisps from different points on the tower

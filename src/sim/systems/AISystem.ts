@@ -20,7 +20,7 @@ import type { GameState } from "@sim/state/GameState";
 import { isEnemy, isAlly } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Building } from "@sim/entities/Building";
-import { UnitState, UnitType, Direction, BuildingState } from "@/types";
+import { UnitState, UnitType, BuildingState } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";

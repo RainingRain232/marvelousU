@@ -15,8 +15,6 @@ const CX = FW / 2;
 const GY = FH - 6;
 
 // Palette — blackened ancient steel + grey skin
-const COL_SKIN = 0x8a8a8a;
-
 const COL_PLATE = 0x2e2e38;
 const COL_PLATE_HI = 0x44444e;
 const COL_PLATE_DK = 0x1a1a22;

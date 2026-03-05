@@ -36,33 +36,12 @@ const STYLE_FLAVOR = new TextStyle({
   fontFamily: "monospace", fontSize: 16, fill: 0xaabbcc,
   wordWrap: true, wordWrapWidth: 1050,
 });
-const STYLE_SCHOOL_NAME = new TextStyle({
-  fontFamily: "monospace", fontSize: 17, fill: 0xffd700,
-  fontWeight: "bold", letterSpacing: 1,
-});
-const STYLE_SCHOOL_DESC = new TextStyle({
-  fontFamily: "monospace", fontSize: 13, fill: 0x8899aa,
-  wordWrap: true, wordWrapWidth: 260,
-});
-const STYLE_TIER_LABEL = new TextStyle({
-  fontFamily: "monospace", fontSize: 14, fill: 0x99aabb,
-});
 const STYLE_TIER_VALUE = new TextStyle({
   fontFamily: "monospace", fontSize: 16, fill: 0xffd700, fontWeight: "bold",
 });
 const STYLE_SECTION = new TextStyle({
   fontFamily: "monospace", fontSize: 18, fill: 0xffd700,
   fontWeight: "bold", letterSpacing: 2,
-});
-const STYLE_COL_HEADER = new TextStyle({
-  fontFamily: "monospace", fontSize: 14, fill: 0xffd700,
-  fontWeight: "bold", letterSpacing: 1,
-});
-const STYLE_SPELL_NAME = new TextStyle({
-  fontFamily: "monospace", fontSize: 13, fill: 0xccddee,
-});
-const STYLE_SPELL_TIER = new TextStyle({
-  fontFamily: "monospace", fontSize: 12, fill: 0xffd700, fontWeight: "bold",
 });
 const STYLE_NO_ACCESS = new TextStyle({
   fontFamily: "monospace", fontSize: 13, fill: 0x445566, fontStyle: "italic",

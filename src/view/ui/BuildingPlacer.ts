@@ -744,7 +744,6 @@ export class BuildingPlacer {
       const worldX = this._ghostContainer.position.x;
       const worldY = this._ghostContainer.position.y;
       const radiusTiles = def.spellRadius ?? 2;
-      const radiusPx = radiusTiles * TS;
 
       if (def.spellType === "damage" && def.spellDamage) {
         // Damage all enemy units within radius
@@ -800,7 +799,7 @@ export class BuildingPlacer {
       });
       this._state.units.set(unit.id, unit);
       UpgradeSystem.applyAllUpgradesToUnit(unit);
-      EventBus.emit("unitSpawned", { unitId: unit.id });
+      EventBus.emit("unitSpawned", { unitId: unit.id, buildingId: "", position: unit.position });
       // Play summon rune visual effect
       const wx = (this._cursorTx + 0.5) * TS;
       const wy = (this._cursorTy + 0.5) * TS;

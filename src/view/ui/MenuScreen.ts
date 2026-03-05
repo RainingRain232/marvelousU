@@ -163,8 +163,6 @@ export class MenuScreen {
   private _p4AllyContainer!: Container;
   private _p4AllyBg!: Graphics;
   private _p4AllyLabel!: Text;
-  private _playerSection!: Container;
-
   // Damage numbers toggle state
   private _damageNumbers = true;
   private _dmgToggleBg!: Graphics;
@@ -541,7 +539,6 @@ export class MenuScreen {
     const playerStartY = modeSectionH + 22;
     const playerSection = new Container();
     playerSection.position.set(0, 0);
-    this._playerSection = playerSection;
     card.addChild(playerSection);
 
     const playersLabel = new Text({ text: "PLAYERS", style: STYLE_LABEL });

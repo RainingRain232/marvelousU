@@ -28,7 +28,6 @@ const COL_GRANITE_DK    = 0x3a3430;
 const COL_BOULDER       = 0x6b6358;
 const COL_STONE_EDGE    = 0x484038;
 const COL_MOSS          = 0x4a6630;
-const COL_MOSS_LT       = 0x6a8a48;
 const COL_CRYSTAL       = 0x88cc44;
 const COL_CRYSTAL_BRIGHT= 0xbbee66;
 const COL_CRYSTAL_DK    = 0x558822;

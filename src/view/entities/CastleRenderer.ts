@@ -106,10 +106,8 @@ export class CastleRenderer {
 
   // State
   private _playerColor: number;
-  private _isWest: boolean;
 
   constructor(owner: string | null) {
-    this._isWest = owner === "p1";
     this._playerColor = getPlayerColor(owner);
 
     this._drawStaticCastle();

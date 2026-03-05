@@ -27,7 +27,6 @@ const GY = FH - 6;      // ground line Y
 
 // Palette ─ elder void nightmare
 const COL_FLESH       = 0x6a6a70;   // dead grey flesh
-const COL_FLESH_HI    = 0x7a7a80;
 const COL_ARMOR       = 0x181820;   // void-black iron
 const COL_ARMOR_HI    = 0x2a2a35;
 const COL_ARMOR_DK    = 0x0e0e14;

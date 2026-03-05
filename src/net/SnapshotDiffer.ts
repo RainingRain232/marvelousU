@@ -5,7 +5,7 @@
 // the most important events so the view layer (animations, sounds) still works.
 
 import { EventBus } from "@sim/core/EventBus";
-import { UnitState, GamePhase } from "@/types";
+import { UnitState } from "@/types";
 import type { SerializedGameState } from "@net/protocol";
 
 /**

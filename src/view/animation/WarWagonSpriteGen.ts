@@ -31,7 +31,6 @@ const COL_BOLT       = 0x8a7a5a;
 const COL_BOLT_TIP   = 0xb0b8c0;
 const COL_BANNER     = 0x882222;
 const COL_BANNER_DK  = 0x661818;
-const COL_ROPE       = 0xb8a880;
 const COL_SHADOW     = 0x000000;
 const COL_SKIN       = 0xe8b89d;
 

@@ -13,7 +13,6 @@ import {
   type ResearchDef,
 } from "@world/config/ResearchDefs";
 import {
-  setActiveResearch,
   getPlayerAvailableResearch,
 } from "@world/systems/ResearchSystem";
 

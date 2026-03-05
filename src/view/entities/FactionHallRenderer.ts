@@ -71,7 +71,6 @@ const COL_PIGEON_DK = 0x5a5a66;
 const COL_PIGEON_NECK = 0x66aa77;
 const COL_COBBLE = 0x6a6a5a;
 const COL_COBBLE_DK = 0x4a4a3a;
-const COL_BANNER_NEU = 0x888844;
 
 // Animation timing
 const FLAG_SPEED = 3.0;

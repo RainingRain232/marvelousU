@@ -13,7 +13,6 @@ const COL_PLATE = 0xbbbbcc;
 const COL_PLATE_HI = 0xddddee;
 const COL_PLATE_DK = 0x888899;
 const COL_GOLD = 0xd4af37;
-const COL_GOLD_HI = 0xf5d76e;
 const COL_HORSE = 0x4a3020;
 const COL_HORSE_HI = 0x6a4a30;
 const COL_HORSE_DK = 0x2a1a10;
@@ -30,7 +29,6 @@ const COL_CREST = 0xcc2222;
 const COL_PLUME = 0xcc2222;
 const COL_CLOAK = 0x1a3366;
 const COL_CLOAK_LT = 0x2a4488;
-const COL_SKIN = 0xf5d0b0;
 const COL_BOOT = 0x555566;
 const COL_SHADOW = 0x000000;
 const COL_HOOF = 0x333333;
@@ -134,7 +132,7 @@ function drawTail(g: Graphics, bob: number, swing = 0): void {
   g.fill({ color: COL_TAIL });
 }
 
-function drawRider(g: Graphics, bob: number, leanAngle = 0): void {
+function drawRider(g: Graphics, bob: number): void {
   const ry = GY - 36 + bob;
   // Cloak
   g.beginPath();

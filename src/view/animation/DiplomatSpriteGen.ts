@@ -29,7 +29,6 @@ const COL_SKIN_SH = 0xd4a880;
 // Doublet — deep royal purple
 const COL_DOUBLET = 0x2e1a47;
 const COL_DOUBLET_LT = 0x4a2d6a;
-const COL_DOUBLET_DK = 0x1a0e2e;
 
 // Gold trim / embroidery
 const COL_TRIM = 0xd4af37;

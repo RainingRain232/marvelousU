@@ -44,7 +44,6 @@ const PANEL_W = 240;
 export class ArmyPanel {
   readonly container = new Container();
 
-  private _vm!: ViewManager;
   private _army: WorldArmy | null = null;
   private _state: WorldState | null = null;
   private _contentContainer = new Container();
@@ -70,7 +69,6 @@ export class ArmyPanel {
   // -----------------------------------------------------------------------
 
   init(vm: ViewManager): void {
-    this._vm = vm;
     vm.addToLayer("ui", this.container);
     this.container.visible = false;
   }

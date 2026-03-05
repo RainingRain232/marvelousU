@@ -25,14 +25,12 @@ const COL_BRONZE_DK  = 0x6a5030;
 const COL_BRONZE_HI  = 0xaa9060;
 const COL_IRON       = 0x606068;
 const COL_IRON_DK    = 0x404048;
-const COL_IRON_HI    = 0x8a8a90;
 const COL_WOOD       = 0x6a4e32;
 const COL_WOOD_DK    = 0x4a3220;
 const COL_WOOD_LT    = 0x8a6e4a;
 const COL_ROPE       = 0xb8a880;
 const COL_BALL       = 0x555555;
 const COL_BALL_HI    = 0x777777;
-const COL_POWDER     = 0x2a2a2a;
 const COL_POWDER_BRL = 0x5a3a1e;
 const COL_SMOKE      = 0xaaaaaa;
 const COL_FLASH      = 0xffcc44;
@@ -67,11 +65,6 @@ function line(g: Graphics, x1: number, y1: number, x2: number, y2: number, color
   g.moveTo(x1, y1).lineTo(x2, y2);
 }
 
-function poly(g: Graphics, pts: number[], color: number, alpha = 1): void {
-  g.fill({ color, alpha });
-  g.poly(pts);
-  g.fill();
-}
 
 // ---------------------------------------------------------------------------
 // Carriage & wheels

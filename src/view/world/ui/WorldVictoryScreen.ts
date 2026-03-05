@@ -11,13 +11,6 @@ import type { WorldState } from "@world/state/WorldState";
 // Styles
 // ---------------------------------------------------------------------------
 
-const TITLE_STYLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 32,
-  fontWeight: "bold",
-  fill: 0xffcc44,
-});
-
 const INFO_STYLE = new TextStyle({
   fontFamily: "monospace",
   fontSize: 16,

@@ -27,9 +27,6 @@ const COL_IRON       = 0x555555; // iron fittings / helmet
 const COL_IRON_DK    = 0x3a3a3a;
 const COL_IRON_HI    = 0x777777;
 
-const _COL_SKIN       = 0xc8a882; // exposed skin (arms, face slit glow)
-const _COL_SKIN_DK    = 0xa08060;
-
 const COL_EYE_SLIT   = 0xffcc44; // glowing eyes behind helmet
 const COL_EYE_GLOW   = 0xffdd88;
 

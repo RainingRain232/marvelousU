@@ -11,7 +11,6 @@ import type { PlayerId, Vec2 } from "@/types";
 import {
   BuildingState,
   BuildingType,
-  Direction,
   UnitState,
   UnitType,
 } from "@/types";
@@ -477,11 +476,6 @@ function getFootprintTiles(topLeft: Vec2, w: number, h: number): Vec2[] {
     for (let dx = 0; dx < w; dx++)
       tiles.push({ x: topLeft.x + dx, y: topLeft.y + dy });
   return tiles;
-}
-
-/** Maps a player's direction to their expected territory zone. */
-function playerZone(direction: Direction): TileZone {
-  return direction === Direction.WEST ? "west" : "east";
 }
 
 function zoneAllowed(

@@ -53,10 +53,6 @@ export class WorldHUD {
   private _foodText!: Text;
   private _endTurnBtn!: Container;
   private _endTurnBg!: Graphics;
-  private _researchBtn!: Container;
-
-  private _menuBtn!: Container;
-
   private _screenW = 800;
   private _screenH = 600;
 
@@ -187,7 +183,6 @@ export class WorldHUD {
 
     btn.on("pointerdown", () => this.onResearch?.());
 
-    this._researchBtn = btn;
     btn.x = 340;
     btn.y = 14;
     this.container.addChild(btn);
@@ -211,7 +206,6 @@ export class WorldHUD {
 
     btn.on("pointerdown", () => this.onMenu?.());
 
-    this._menuBtn = btn;
     btn.x = 450;
     btn.y = 14;
     this.container.addChild(btn);
