@@ -3239,7 +3239,13 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           if (battles.length > 0) {
             state.pendingBattles = battles;
             state.phase = WorldPhase.BATTLE;
+            const savedIdx = state.currentPlayerIndex;
             await resolveWorldBattlesVisual();
+            // Restore player turn — mid-turn battles shouldn't end the turn
+            if ((state.phase as WorldPhase) !== WorldPhase.GAME_OVER) {
+              state.currentPlayerIndex = savedIdx;
+              state.phase = WorldPhase.PLAYER_TURN;
+            }
           }
 
           await _checkMorgaineProximity(army);
@@ -3308,7 +3314,13 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             if (battles.length > 0) {
               state.pendingBattles = battles;
               state.phase = WorldPhase.BATTLE;
+              const savedIdx = state.currentPlayerIndex;
               await resolveWorldBattlesVisual();
+              // Restore player turn — mid-turn battles shouldn't end the turn
+              if ((state.phase as WorldPhase) !== WorldPhase.GAME_OVER) {
+                state.currentPlayerIndex = savedIdx;
+                state.phase = WorldPhase.PLAYER_TURN;
+              }
             }
 
             await _checkMorgaineProximity(army);
@@ -3437,7 +3449,13 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         if (battles.length > 0) {
           state.pendingBattles = battles;
           state.phase = WorldPhase.BATTLE;
+          const savedIdx = state.currentPlayerIndex;
           await resolveWorldBattlesVisual();
+          // Restore player turn — mid-turn battles shouldn't end the turn
+          if ((state.phase as WorldPhase) !== WorldPhase.GAME_OVER) {
+            state.currentPlayerIndex = savedIdx;
+            state.phase = WorldPhase.PLAYER_TURN;
+          }
         }
 
         await _checkMorgaineProximity(army);
