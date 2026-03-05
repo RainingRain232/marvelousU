@@ -1653,6 +1653,13 @@ async function _bootWorldGame(
     state.players.set(pid, player);
   }
 
+  // Initialize diplomacy: all players at war with each other
+  for (const [pidA, pA] of state.players) {
+    for (const [pidB] of state.players) {
+      if (pidA !== pidB) pA.diplomacy.set(pidB, "war");
+    }
+  }
+
   // Configure national mage abilities from MagicScreen selections
   _configureNationalMageAbilities();
 

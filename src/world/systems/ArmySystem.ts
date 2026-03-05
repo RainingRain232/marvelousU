@@ -171,10 +171,26 @@ export function detectCollisions(state: WorldState): PendingBattle[] {
 
     if (byOwner.size < 2) continue; // all friendly
 
-    // Create battle between first two hostile groups
+    // Create battle between first two hostile groups (respecting diplomacy)
     const owners = [...byOwner.keys()];
-    const attacker = byOwner.get(owners[0])![0];
-    const defender = byOwner.get(owners[1])![0];
+    let attacker: WorldArmy | null = null;
+    let defender: WorldArmy | null = null;
+
+    outer:
+    for (let i = 0; i < owners.length; i++) {
+      for (let j = i + 1; j < owners.length; j++) {
+        const pA = state.players.get(owners[i]);
+        // At war? (default to war if diplomacy not set)
+        const relation = pA?.diplomacy.get(owners[j]) ?? "war";
+        if (relation === "war") {
+          attacker = byOwner.get(owners[i])![0];
+          defender = byOwner.get(owners[j])![0];
+          break outer;
+        }
+      }
+    }
+
+    if (!attacker || !defender) continue; // all at peace
 
     // Check if there's a city on this hex
     const tile = state.grid.getTile(army.position.q, army.position.r);

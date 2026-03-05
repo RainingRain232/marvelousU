@@ -58,10 +58,12 @@ function _evaluateStrategy(
     }
   }
 
-  // Check threats: enemy armies within 5 hexes of any city
+  // Check threats: enemy armies within 5 hexes of any city (only count enemies at war)
   for (const city of ownCities) {
     for (const army of state.armies.values()) {
       if (army.owner === playerId || army.isGarrison) continue;
+      const relation = player.diplomacy.get(army.owner) ?? "war";
+      if (relation !== "war") continue;
       if (hexDistance(army.position, city.position) <= 5) {
         enemyUnitsNearby += armyUnitCount(army);
       }
@@ -365,9 +367,11 @@ function _moveArmyAI(
     }
   }
 
-  // Enemy cities
+  // Enemy cities (only those we are at war with)
   for (const city of state.cities.values()) {
     if (city.owner === army.owner) continue;
+    const relation = _player.diplomacy.get(city.owner) ?? "war";
+    if (relation !== "war") continue;
     const dist = hexDistance(army.position, city.position);
     if (dist < nearestCityDist) {
       nearestCityDist = dist;
@@ -375,9 +379,11 @@ function _moveArmyAI(
     }
   }
 
-  // Enemy armies
+  // Enemy armies (only those we are at war with)
   for (const other of state.armies.values()) {
     if (other.owner === army.owner || other.isGarrison) continue;
+    const relation = _player.diplomacy.get(other.owner) ?? "war";
+    if (relation !== "war") continue;
     const dist = hexDistance(army.position, other.position);
     if (dist < nearestEnemyDist) {
       nearestEnemyDist = dist;

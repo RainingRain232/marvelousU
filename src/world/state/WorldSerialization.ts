@@ -40,6 +40,7 @@ interface SerializedWorldPlayer {
   magicResearchProgress: number;
   completedMagicResearch: Record<string, number>;
   magicResearchRatio: number;
+  diplomacy: Record<string, string>;
   exploredTiles: string[];
 }
 
@@ -90,6 +91,7 @@ function serializeWorldState(state: WorldState): SerializedWorldState {
       magicResearchProgress: p.magicResearchProgress,
       completedMagicResearch: Object.fromEntries(p.completedMagicResearch),
       magicResearchRatio: p.magicResearchRatio,
+      diplomacy: Object.fromEntries(p.diplomacy),
       exploredTiles: [...p.exploredTiles],
     };
   }
@@ -151,6 +153,7 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
       magicResearchProgress: sp.magicResearchProgress ?? 0,
       completedMagicResearch: new Map(Object.entries(sp.completedMagicResearch ?? {})),
       magicResearchRatio: sp.magicResearchRatio ?? 0.5,
+      diplomacy: new Map(Object.entries(sp.diplomacy ?? {})) as Map<string, "war" | "peace">,
       exploredTiles: new Set(sp.exploredTiles),
       visibleTiles: new Set(), // recalculated on load
     });

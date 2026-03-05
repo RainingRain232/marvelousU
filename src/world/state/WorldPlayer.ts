@@ -39,6 +39,9 @@ export interface WorldPlayer {
   /** Equipped armory items (hero stat bonuses). */
   armoryItems: ArmoryItemId[];
 
+  /** Diplomatic relations: playerId → "war" | "peace". All start at war. */
+  diplomacy: Map<string, "war" | "peace">;
+
   /** Hex keys ("q,r") the player has ever seen. Persists across turns. */
   exploredTiles: Set<string>;
   /** Hex keys ("q,r") currently in sight range. Recalculated each turn. */
@@ -76,6 +79,7 @@ export function createWorldPlayer(
     magicResearchProgress: 0,
     completedMagicResearch: new Map(),
     magicResearchRatio: 0.5,
+    diplomacy: new Map(),
     exploredTiles: new Set(),
     visibleTiles: new Set(),
   };

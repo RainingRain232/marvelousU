@@ -198,6 +198,82 @@ export class WorldNationalScreen {
       this._content.addChild(sep);
     }
 
+    // -----------------------------------------------------------------------
+    // Diplomacy section
+    // -----------------------------------------------------------------------
+
+    const diploY = tableY + 26 + cities.length * rowH + 30;
+    const diploTitle = new Text({ text: "DIPLOMACY", style: TITLE_STYLE });
+    diploTitle.x = (sw - diploTitle.width) / 2;
+    diploTitle.y = diploY;
+    this._content.addChild(diploTitle);
+
+    const localPlayer = state.players.get("p1");
+    let dipRow = 0;
+    for (const [pid, player] of state.players) {
+      if (pid === "p1" || !player.isAlive) continue;
+
+      const y = diploY + 36 + dipRow * 32;
+      const relation = localPlayer?.diplomacy.get(pid) ?? "war";
+      const raceName = player.raceId.charAt(0).toUpperCase() + player.raceId.slice(1);
+
+      // Player label
+      const pLabel = new Text({
+        text: `${pid.toUpperCase()} (${raceName})`,
+        style: CELL_STYLE,
+      });
+      pLabel.x = tableX;
+      pLabel.y = y;
+      this._content.addChild(pLabel);
+
+      // Relation label
+      const relColor = relation === "war" ? 0xff4444 : 0x44cc44;
+      const relLabel = new Text({
+        text: relation === "war" ? "AT WAR" : "PEACE",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fontWeight: "bold", fill: relColor }),
+      });
+      relLabel.x = tableX + 200;
+      relLabel.y = y;
+      this._content.addChild(relLabel);
+
+      // Toggle button
+      const toggleLabel = relation === "war" ? "Offer Peace" : "Declare War";
+      const toggleColor = relation === "war" ? 0x336633 : 0x663333;
+      const toggleBtn = new Container();
+      toggleBtn.eventMode = "static";
+      toggleBtn.cursor = "pointer";
+      const tbg = new Graphics();
+      tbg.roundRect(0, 0, 110, 22, 4);
+      tbg.fill({ color: toggleColor });
+      tbg.stroke({ color: relation === "war" ? 0x55aa55 : 0xaa5555, width: 1 });
+      toggleBtn.addChild(tbg);
+      const tTxt = new Text({
+        text: toggleLabel,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fontWeight: "bold", fill: 0xffffff }),
+      });
+      tTxt.x = 8;
+      tTxt.y = 3;
+      toggleBtn.addChild(tTxt);
+      toggleBtn.x = tableX + 320;
+      toggleBtn.y = y;
+
+      const targetPid = pid;
+      toggleBtn.on("pointerdown", () => {
+        if (!localPlayer) return;
+        const currentRel = localPlayer.diplomacy.get(targetPid) ?? "war";
+        const newRel = currentRel === "war" ? "peace" : "war";
+        localPlayer.diplomacy.set(targetPid, newRel);
+        // Mirror the relation
+        const other = state.players.get(targetPid);
+        if (other) other.diplomacy.set("p1", newRel);
+        // Rebuild
+        this._rebuild(state);
+      });
+
+      this._content.addChild(toggleBtn);
+      dipRow++;
+    }
+
     this.container.addChild(this._content);
   }
 
