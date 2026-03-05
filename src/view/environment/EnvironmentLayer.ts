@@ -74,6 +74,13 @@ export class EnvironmentLayer {
     const isPlains = mapType === MapType.PLAINS;
     const isForest = mapType === MapType.FOREST;
     const isFantasia = mapType === MapType.FANTASIA;
+    const isTundra = mapType === MapType.TUNDRA;
+    const isSwamp = mapType === MapType.SWAMP;
+    const isVolcanic = mapType === MapType.VOLCANIC;
+    const isOcean = mapType === MapType.OCEAN;
+    const isHills = mapType === MapType.HILLS;
+    const isMountains = mapType === MapType.MOUNTAINS;
+    const isDesert = mapType === MapType.DESERT;
 
     if (isForest) {
       // Forest: ancient gnarled trees, ferns, glowing mushrooms, fireflies, fog
@@ -135,6 +142,63 @@ export class EnvironmentLayer {
       this._container.addChild(this._tumbleweeds.container);
 
       // Atmospheric dust
+      this._dust = new DustRenderer(worldW, worldH, seed + 4);
+      this._container.addChild(this._dust.container);
+    } else if (isTundra) {
+      // Tundra: sparse frozen grass, lots of rocks, frost fog
+      this._grass = new GrassRenderer(s(80), worldW, worldH, seed);
+      this._container.addChild(this._grass.container);
+
+      this._forestFog = new ForestFogRenderer(worldW, worldH, seed + 4);
+      this._container.addChild(this._forestFog.container);
+    } else if (isSwamp) {
+      // Swamp: dense murky vegetation, ferns, mushrooms, fog
+      this._grass = new GrassRenderer(s(300), worldW, worldH, seed);
+      this._container.addChild(this._grass.container);
+
+      this._ferns = new FernRenderer(s(100), worldW, worldH, seed + 2);
+      this._container.addChild(this._ferns.container);
+
+      this._mushrooms = new MushroomRenderer(s(30), worldW, worldH, seed + 3);
+      this._container.addChild(this._mushrooms.container);
+
+      this._forestFog = new ForestFogRenderer(worldW, worldH, seed + 4);
+      this._container.addChild(this._forestFog.container);
+
+      this._fireflies = new FireflyRenderer(s(30), worldW, worldH, seed + 5);
+      this._container.addChild(this._fireflies.container);
+    } else if (isVolcanic) {
+      // Volcanic: barren, dust, no vegetation
+      this._dust = new DustRenderer(worldW, worldH, seed + 4);
+      this._container.addChild(this._dust.container);
+    } else if (isOcean) {
+      // Ocean: minimal — just fog/mist effect
+      this._forestFog = new ForestFogRenderer(worldW, worldH, seed + 4);
+      this._container.addChild(this._forestFog.container);
+    } else if (isHills) {
+      // Hills: moderate grass, scattered scrub trees, rocks
+      this._grass = new GrassRenderer(s(200), worldW, worldH, seed);
+      this._container.addChild(this._grass.container);
+
+      const hillFoliage = [0x7a7a30, 0x8a8a3a, 0x6a6a28, 0x909040];
+      const hillTrunk = 0x5a4a28;
+      this._trees = new TreeRenderer(s(12), worldW, worldH, seed + 1, hillFoliage, hillTrunk);
+      this._container.addChild(this._trees.container);
+    } else if (isMountains) {
+      // Mountains: very sparse vegetation, fog
+      this._grass = new GrassRenderer(s(50), worldW, worldH, seed);
+      this._container.addChild(this._grass.container);
+
+      this._forestFog = new ForestFogRenderer(worldW, worldH, seed + 4);
+      this._container.addChild(this._forestFog.container);
+    } else if (isDesert) {
+      // Desert: dry grass, tumbleweeds, dust, no trees
+      this._plainsGrass = new PlainsGrassRenderer(s(150), worldW, worldH, seed);
+      this._container.addChild(this._plainsGrass.container);
+
+      this._tumbleweeds = new TumbleweedRenderer(worldW, worldH, seed + 3);
+      this._container.addChild(this._tumbleweeds.container);
+
       this._dust = new DustRenderer(worldW, worldH, seed + 4);
       this._container.addChild(this._dust.container);
     } else {

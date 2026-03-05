@@ -95,7 +95,7 @@ const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) =>
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
 import type { WorldGameSettings } from "@world/config/WorldConfig";
 import { generateWorldMap, findStartPositions, placeCamps, findNeutralCityPositions } from "@world/gen/WorldMapGen";
-import { TERRAIN_DEFINITIONS, TerrainType } from "@world/config/TerrainDefs";
+import { TERRAIN_DEFINITIONS, TERRAIN_TO_MAP_TYPE, TerrainType } from "@world/config/TerrainDefs";
 import { createWorldState, nextId, WorldPhase } from "@world/state/WorldState";
 import type { WorldState } from "@world/state/WorldState";
 import { createWorldPlayer } from "@world/state/WorldPlayer";
@@ -1521,6 +1521,11 @@ async function _bootWorldBattle(): Promise<void> {
   const player = worldState.players.get("p1");
   audioManager.playGameMusic();
 
+  // Determine battle map type from world terrain
+  const battleMapType = meta.terrain
+    ? TERRAIN_TO_MAP_TYPE[meta.terrain as TerrainType] ?? MapType.MEADOW
+    : MapType.MEADOW;
+
   await _bootGame(
     true,
     MAP_SIZES[0],
@@ -1528,7 +1533,7 @@ async function _bootWorldBattle(): Promise<void> {
     (player?.leaderId as LeaderId) ?? "arthur",
     (player?.raceId as RaceId) ?? "man",
     undefined,
-    MapType.MEADOW,
+    battleMapType,
     player?.armoryItems ?? [],
   );
 }
@@ -3001,6 +3006,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           // Restore phase to PLAYER_TURN before saving — battle didn't end the turn
           state.phase = WorldPhase.PLAYER_TURN;
           saveWorldGame(state);
+          const battleTile = state.grid.getTile(battle.hex.q, battle.hex.r);
           sessionStorage.setItem("worldBattleMeta", JSON.stringify({
             attackerArmyId: battle.attackerArmyId,
             defenderArmyId: battle.defenderArmyId,
@@ -3008,6 +3014,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             battleType: battle.type,
             hex: { q: battle.hex.q, r: battle.hex.r },
             battleIndex: state.pendingBattles.indexOf(battle),
+            terrain: battleTile?.terrain ?? "grassland",
           }));
           sessionStorage.setItem("worldBattlePlayMode", "1");
           window.location.reload();
@@ -3080,11 +3087,13 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
       if (worldBattleViewer.playBattleRequested) {
         saveWorldGame(ws);
+        const campTile = ws.grid.getTile(camp.position.q, camp.position.r);
         sessionStorage.setItem("worldBattleMeta", JSON.stringify({
           campId: camp.id,
           armyId: army.id,
           battleType: "camp",
           hex: { q: camp.position.q, r: camp.position.r },
+          terrain: campTile?.terrain ?? "grassland",
         }));
         sessionStorage.setItem("worldBattlePlayMode", "1");
         window.location.reload();

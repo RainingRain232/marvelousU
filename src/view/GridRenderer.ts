@@ -97,12 +97,82 @@ const TILE_COLORS_FANTASIA: TileColorSet = {
   east_unwalkable: 0x2a4a30, // ethereal shadow
 };
 
+const TILE_COLORS_TUNDRA: TileColorSet = {
+  west_walkable: 0x8899aa,   // cold grey-blue
+  west_unwalkable: 0x667788, // dark frozen
+  neutral_walkable: 0x99aabb, // icy blue
+  neutral_unwalkable: 0x778899, // frozen shadow
+  east_walkable: 0x8a9aaa,   // frosty grey
+  east_unwalkable: 0x6a7a8a, // deep frost
+};
+
+const TILE_COLORS_SWAMP: TileColorSet = {
+  west_walkable: 0x3a5a2a,   // murky green
+  west_unwalkable: 0x2a3a1a, // dark bog
+  neutral_walkable: 0x4a6a35, // sickly green
+  neutral_unwalkable: 0x2a4a20, // deep mire
+  east_walkable: 0x3d5a30,   // mossy brown-green
+  east_unwalkable: 0x2a3d20, // dark swamp
+};
+
+const TILE_COLORS_VOLCANIC: TileColorSet = {
+  west_walkable: 0x4a3a3a,   // dark ashen
+  west_unwalkable: 0x2a1a1a, // charred black
+  neutral_walkable: 0x5a4040, // warm ash
+  neutral_unwalkable: 0x3a2020, // dark cinder
+  east_walkable: 0x4a3535,   // scorched earth
+  east_unwalkable: 0x2a1515, // blackened rock
+};
+
+const TILE_COLORS_OCEAN: TileColorSet = {
+  west_walkable: 0x2a5588,   // deep sea blue
+  west_unwalkable: 0x1a3a66, // abyss
+  neutral_walkable: 0x336699, // ocean blue
+  neutral_unwalkable: 0x224477, // deep water
+  east_walkable: 0x2a5a8a,   // coastal blue
+  east_unwalkable: 0x1a3a6a, // dark depths
+};
+
+const TILE_COLORS_HILLS: TileColorSet = {
+  west_walkable: 0x7a6a3a,   // brown hillside
+  west_unwalkable: 0x5a4a2a, // rocky shadow
+  neutral_walkable: 0x8a7a48, // sunlit ridge
+  neutral_unwalkable: 0x6a5a38, // shaded slope
+  east_walkable: 0x7d6d40,   // dry ridge
+  east_unwalkable: 0x5d4d30, // dark ravine
+};
+
+const TILE_COLORS_MOUNTAINS: TileColorSet = {
+  west_walkable: 0x707070,   // grey stone
+  west_unwalkable: 0x505050, // dark rock
+  neutral_walkable: 0x808080, // granite
+  neutral_unwalkable: 0x5a5a5a, // deep stone
+  east_walkable: 0x757575,   // weathered rock
+  east_unwalkable: 0x555555, // mountain shadow
+};
+
+const TILE_COLORS_DESERT: TileColorSet = {
+  west_walkable: 0xc4a850,   // warm sand
+  west_unwalkable: 0xa48838, // dark dune shadow
+  neutral_walkable: 0xd4b860, // bright sand
+  neutral_unwalkable: 0xb49840, // shaded sand
+  east_walkable: 0xbca048,   // dry sand
+  east_unwalkable: 0x9c8038, // deep shade
+};
+
 const TILE_COLORS: Record<string, TileColorSet> = {
   [MapType.MEADOW]: TILE_COLORS_MEADOW,
   [MapType.GRASS]: TILE_COLORS_GRASS,
   [MapType.PLAINS]: TILE_COLORS_PLAINS,
   [MapType.FOREST]: TILE_COLORS_FOREST,
   [MapType.FANTASIA]: TILE_COLORS_FANTASIA,
+  [MapType.TUNDRA]: TILE_COLORS_TUNDRA,
+  [MapType.SWAMP]: TILE_COLORS_SWAMP,
+  [MapType.VOLCANIC]: TILE_COLORS_VOLCANIC,
+  [MapType.OCEAN]: TILE_COLORS_OCEAN,
+  [MapType.HILLS]: TILE_COLORS_HILLS,
+  [MapType.MOUNTAINS]: TILE_COLORS_MOUNTAINS,
+  [MapType.DESERT]: TILE_COLORS_DESERT,
 };
 
 const TILE_COLORS_DEFAULT = TILE_COLORS_MEADOW;
@@ -220,12 +290,131 @@ const DETAIL_FANTASIA: TerrainDetailConfig = {
   tileColorVariation: 18,
 };
 
+const DETAIL_TUNDRA: TerrainDetailConfig = {
+  grassCount: 4,
+  grassColor: 0x88aaaa,
+  grassHeight: [2, 6],
+  rockCount: 4,
+  rockColor: 0x8899aa,
+  rockSize: [2, 5],
+  accentCount: 2,
+  accentColors: [0xccddee, 0xaabbdd, 0xeeeeff], // ice crystals, frost
+  accentSize: [1.5, 3],
+  patchCount: 3,
+  patchColor: 0x99aabb,
+  patchSize: [5, 12],
+  tileColorVariation: 8,
+};
+
+const DETAIL_SWAMP: TerrainDetailConfig = {
+  grassCount: 10,
+  grassColor: 0x3a6a28,
+  grassHeight: [4, 12],
+  rockCount: 1,
+  rockColor: 0x4a4a38,
+  rockSize: [2, 4],
+  accentCount: 4,
+  accentColors: [0x556b2f, 0x8fbc8f, 0x6b8e23, 0x9acd32], // mosses, algae
+  accentSize: [2, 4],
+  patchCount: 4,
+  patchColor: 0x2a3a18,
+  patchSize: [6, 14],
+  tileColorVariation: 10,
+};
+
+const DETAIL_VOLCANIC: TerrainDetailConfig = {
+  grassCount: 2,
+  grassColor: 0x3a2a1a,
+  grassHeight: [2, 5],
+  rockCount: 5,
+  rockColor: 0x3a2a2a,
+  rockSize: [2, 5],
+  accentCount: 3,
+  accentColors: [0xcc4400, 0xff6600, 0xffaa00], // lava glow, embers
+  accentSize: [1.5, 3.5],
+  patchCount: 3,
+  patchColor: 0x1a1010,
+  patchSize: [5, 12],
+  tileColorVariation: 6,
+};
+
+const DETAIL_OCEAN: TerrainDetailConfig = {
+  grassCount: 0,
+  grassColor: 0x336699,
+  grassHeight: [2, 4],
+  rockCount: 0,
+  rockColor: 0x445566,
+  rockSize: [1, 3],
+  accentCount: 3,
+  accentColors: [0x66aadd, 0x88ccee, 0xaaddff], // foam, whitecaps
+  accentSize: [2, 5],
+  patchCount: 4,
+  patchColor: 0x224466,
+  patchSize: [8, 16],
+  tileColorVariation: 12,
+};
+
+const DETAIL_HILLS: TerrainDetailConfig = {
+  grassCount: 6,
+  grassColor: 0x7a8a40,
+  grassHeight: [3, 8],
+  rockCount: 4,
+  rockColor: 0x8a7a60,
+  rockSize: [2.5, 5],
+  accentCount: 2,
+  accentColors: [0xbbaa55, 0x998844, 0xaa9955],
+  accentSize: [1.5, 3],
+  patchCount: 3,
+  patchColor: 0x5a4a28,
+  patchSize: [5, 12],
+  tileColorVariation: 12,
+};
+
+const DETAIL_MOUNTAINS: TerrainDetailConfig = {
+  grassCount: 2,
+  grassColor: 0x556655,
+  grassHeight: [2, 5],
+  rockCount: 6,
+  rockColor: 0x777777,
+  rockSize: [3, 6],
+  accentCount: 2,
+  accentColors: [0xcccccc, 0xdddddd, 0xbbbbbb], // snow patches
+  accentSize: [2, 4],
+  patchCount: 2,
+  patchColor: 0x555555,
+  patchSize: [5, 10],
+  tileColorVariation: 8,
+};
+
+const DETAIL_DESERT: TerrainDetailConfig = {
+  grassCount: 2,
+  grassColor: 0xb0a050,
+  grassHeight: [2, 5],
+  rockCount: 3,
+  rockColor: 0xaa9060,
+  rockSize: [2, 4],
+  accentCount: 1,
+  accentColors: [0xccaa55, 0xddbb66],
+  accentSize: [1, 2.5],
+  patchCount: 3,
+  patchColor: 0xb09040,
+  patchSize: [6, 14],
+  tileColorVariation: 8,
+};
+
 const DETAIL_CONFIGS: Record<string, TerrainDetailConfig> = {
   [MapType.MEADOW]: DETAIL_MEADOW,
   [MapType.GRASS]: DETAIL_GRASS,
   [MapType.PLAINS]: DETAIL_PLAINS,
   [MapType.FOREST]: DETAIL_FOREST,
   [MapType.FANTASIA]: DETAIL_FANTASIA,
+  [MapType.TUNDRA]: DETAIL_TUNDRA,
+  [MapType.SWAMP]: DETAIL_SWAMP,
+  [MapType.VOLCANIC]: DETAIL_VOLCANIC,
+  [MapType.OCEAN]: DETAIL_OCEAN,
+  [MapType.HILLS]: DETAIL_HILLS,
+  [MapType.MOUNTAINS]: DETAIL_MOUNTAINS,
+  [MapType.DESERT]: DETAIL_DESERT,
 };
 
 const DETAIL_DEFAULT = DETAIL_MEADOW;
@@ -406,12 +595,29 @@ export class GridRenderer {
             // Glowing dots for fantasia
             g.circle(px, py, s).fill({ color: accentCol, alpha: 0.6 });
             g.circle(px, py, s * 0.5).fill({ color: 0xffffff, alpha: 0.3 });
-          } else if (mapType === MapType.FOREST) {
-            // Mushroom shapes for forest — cap + stem
+          } else if (mapType === MapType.FOREST || mapType === MapType.SWAMP) {
+            // Mushroom shapes for forest/swamp — cap + stem
             g.rect(px - 0.5, py - s * 0.5, 1, s * 0.6)
               .fill({ color: colorDarken(accentCol, 0.7), alpha: 0.7 });
             g.ellipse(px, py - s * 0.5, s * 1.0, s * 0.5)
               .fill({ color: accentCol, alpha: 0.65 });
+          } else if (mapType === MapType.VOLCANIC) {
+            // Glowing ember dots for volcanic
+            g.circle(px, py, s).fill({ color: accentCol, alpha: 0.5 });
+            g.circle(px, py, s * 0.4).fill({ color: 0xffcc00, alpha: 0.4 });
+          } else if (mapType === MapType.TUNDRA) {
+            // Ice crystal shapes — diamond
+            g.moveTo(px, py - s).lineTo(px + s * 0.6, py)
+              .lineTo(px, py + s).lineTo(px - s * 0.6, py)
+              .fill({ color: accentCol, alpha: 0.4 });
+          } else if (mapType === MapType.MOUNTAINS) {
+            // Snow patches — irregular blobs
+            g.ellipse(px, py, s * 1.2, s * 0.7)
+              .fill({ color: accentCol, alpha: 0.35 });
+          } else if (mapType === MapType.OCEAN) {
+            // Foam / wave crests
+            g.ellipse(px, py, s * 1.5, s * 0.4)
+              .fill({ color: accentCol, alpha: 0.3 });
           } else {
             // Flower dots for meadow/grass/plains — petal ring
             const petalR = s * 0.5;

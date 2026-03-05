@@ -98,10 +98,13 @@ const MAP_TYPES: MapTypeEntry[] = [
   { type: MapType.PLAINS, label: "PLAINS" },
   { type: MapType.FOREST, label: "FOREST" },
   { type: MapType.FANTASIA, label: "FANTASIA" },
-  { type: MapType.TUNDRA, label: "TUNDRA", locked: true },
-  { type: MapType.SWAMP, label: "SWAMP", locked: true },
-  { type: MapType.VOLCANIC, label: "VOLCANIC", locked: true },
-  { type: MapType.OCEAN, label: "OCEAN", locked: true },
+  { type: MapType.TUNDRA, label: "TUNDRA" },
+  { type: MapType.SWAMP, label: "SWAMP" },
+  { type: MapType.VOLCANIC, label: "VOLCANIC" },
+  { type: MapType.OCEAN, label: "OCEAN" },
+  { type: MapType.HILLS, label: "HILLS" },
+  { type: MapType.MOUNTAINS, label: "MOUNTAINS" },
+  { type: MapType.DESERT, label: "DESERT" },
 ];
 
 interface GameModeEntry {

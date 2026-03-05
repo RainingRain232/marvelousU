@@ -562,4 +562,7 @@ export enum MapType {
   SWAMP = "swamp",
   VOLCANIC = "volcanic",
   OCEAN = "ocean",
+  HILLS = "hills",
+  MOUNTAINS = "mountains",
+  DESERT = "desert",
 }

@@ -3,6 +3,8 @@
 // Each terrain type has movement costs, resource yields, and rendering colors.
 // Yields are per-tile-per-turn when a city is working the tile.
 
+import { MapType } from "@/types";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -143,4 +145,21 @@ export const TERRAIN_DEFINITIONS: Record<TerrainType, TerrainDef> = {
     color: 0x5a7a4a,
     borderColor: 0x3a5a2a,
   },
+};
+
+// ---------------------------------------------------------------------------
+// Terrain → Battle MapType mapping
+// ---------------------------------------------------------------------------
+
+/** Maps world terrain types to battle map visual themes. */
+export const TERRAIN_TO_MAP_TYPE: Record<TerrainType, MapType> = {
+  [TerrainType.PLAINS]:    MapType.PLAINS,
+  [TerrainType.GRASSLAND]: MapType.GRASS,
+  [TerrainType.FOREST]:    MapType.FOREST,
+  [TerrainType.HILLS]:     MapType.HILLS,
+  [TerrainType.MOUNTAINS]: MapType.MOUNTAINS,
+  [TerrainType.WATER]:     MapType.OCEAN,
+  [TerrainType.DESERT]:    MapType.DESERT,
+  [TerrainType.TUNDRA]:    MapType.TUNDRA,
+  [TerrainType.SWAMP]:     MapType.SWAMP,
 };
