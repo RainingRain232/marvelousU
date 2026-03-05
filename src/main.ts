@@ -2210,8 +2210,11 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     if (_moveModeArmyId) {
       const army = state.armies.get(_moveModeArmyId);
       if (army) {
+        const oldQ = army.position.q;
+        const oldR = army.position.r;
         const moved = moveArmy(army, hex, state);
         if (moved) {
+          armyView.animateMove(army, oldQ, oldR);
           updateVisibility(state, army.owner);
 
           const destTile = state.grid.getTile(hex.q, hex.r);
@@ -2268,8 +2271,11 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       if (_selectedArmyReachable.has(clickedKey)) {
         const army = state.armies.get(_selectedArmyId);
         if (army) {
+          const oldQ = army.position.q;
+          const oldR = army.position.r;
           const moved = moveArmy(army, hex, state);
           if (moved) {
+            armyView.animateMove(army, oldQ, oldR);
             updateVisibility(state, army.owner);
 
             const destTile = state.grid.getTile(hex.q, hex.r);
@@ -2346,8 +2352,11 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       const targetKey = hexKey(target.q, target.r);
       if (!_selectedArmyReachable.has(targetKey)) return;
 
+      const oldQ = army.position.q;
+      const oldR = army.position.r;
       const moved = moveArmy(army, target, state);
       if (moved) {
+        armyView.animateMove(army, oldQ, oldR);
         updateVisibility(state, army.owner);
 
         const destTile = state.grid.getTile(target.q, target.r);
