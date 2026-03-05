@@ -123,10 +123,10 @@ export class WorldHUD {
     const goldSign = goldIncome >= 0 ? "+" : "";
     const foodSign = foodIncome >= 0 ? "+" : "";
     const manaSign = manaIncome >= 0 ? "+" : "";
-    this._goldText.text = `Gold: ${player.gold} (${goldSign}${goldIncome})`;
-    this._foodText.text = `Food: ${Math.floor(player.food)} (${foodSign}${Math.floor(foodIncome)})`;
-    this._manaText.text = `Mana: ${player.mana} (${manaSign}${manaIncome})`;
-    this._scienceText.text = `Research: +${scienceIncome}`;
+    this._goldText.text = `${player.gold} (${goldSign}${goldIncome})`;
+    this._foodText.text = `${Math.floor(player.food)} (${foodSign}${Math.floor(foodIncome)})`;
+    this._manaText.text = `${player.mana} (${manaSign}${manaIncome})`;
+    this._scienceText.text = `+${scienceIncome}`;
 
     // Only show End Turn button during player turn
     this._endTurnBtn.visible = state.phase === WorldPhase.PLAYER_TURN;
@@ -162,31 +162,60 @@ export class WorldHUD {
     this._phaseText.y = 24;
     bar.addChild(this._phaseText);
 
-    // Gold
-    this._goldText = new Text({ text: "Gold: 0", style: VALUE_STYLE });
-    this._goldText.x = 140;
+    // Gold icon + text
+    const goldIcon = new Graphics();
+    goldIcon.circle(0, 0, 6);
+    goldIcon.fill({ color: 0xffcc44 });
+    goldIcon.stroke({ color: 0xaa8800, width: 1 });
+    goldIcon.moveTo(-2, -3).lineTo(-2, 3);
+    goldIcon.stroke({ color: 0xaa8800, width: 1.5 });
+    goldIcon.position.set(150, 12);
+    bar.addChild(goldIcon);
+    this._goldText = new Text({ text: "0", style: VALUE_STYLE });
+    this._goldText.x = 162;
     this._goldText.y = 4;
     bar.addChild(this._goldText);
 
-    // Food
-    this._foodText = new Text({ text: "Food: 0", style: VALUE_STYLE });
-    this._foodText.x = 140;
+    // Food icon + text
+    const foodIcon = new Graphics();
+    foodIcon.moveTo(0, -6).lineTo(-3, 0).lineTo(0, -2).lineTo(3, 0).closePath();
+    foodIcon.fill({ color: 0x88cc44 });
+    foodIcon.moveTo(0, -2).lineTo(0, 6);
+    foodIcon.stroke({ color: 0x88aa33, width: 1.5 });
+    foodIcon.position.set(150, 32);
+    bar.addChild(foodIcon);
+    this._foodText = new Text({ text: "0", style: VALUE_STYLE });
+    this._foodText.x = 162;
     this._foodText.y = 24;
     bar.addChild(this._foodText);
 
-    // Mana
-    this._manaText = new Text({ text: "Mana: 0", style: new TextStyle({
+    // Mana icon + text
+    const manaIcon = new Graphics();
+    manaIcon.moveTo(0, -6).lineTo(5, 2).lineTo(0, 6).lineTo(-5, 2).closePath();
+    manaIcon.fill({ color: 0x6666ff, alpha: 0.8 });
+    manaIcon.stroke({ color: 0x9999ff, width: 1 });
+    manaIcon.position.set(150, 52);
+    bar.addChild(manaIcon);
+    this._manaText = new Text({ text: "0", style: new TextStyle({
       fontFamily: "monospace", fontSize: 15, fontWeight: "bold", fill: 0x8888ff,
     }) });
-    this._manaText.x = 140;
+    this._manaText.x = 162;
     this._manaText.y = 44;
     bar.addChild(this._manaText);
 
-    // Research/Science
-    this._scienceText = new Text({ text: "Research: +0", style: new TextStyle({
+    // Research icon + text
+    const sciIcon = new Graphics();
+    sciIcon.roundRect(-3, -5, 6, 8, 2);
+    sciIcon.fill({ color: 0x33aa55 });
+    sciIcon.stroke({ color: 0x55cc77, width: 0.8 });
+    sciIcon.rect(-5, 3, 10, 2);
+    sciIcon.fill({ color: 0x33aa55 });
+    sciIcon.position.set(150, 72);
+    bar.addChild(sciIcon);
+    this._scienceText = new Text({ text: "+0", style: new TextStyle({
       fontFamily: "monospace", fontSize: 15, fontWeight: "bold", fill: 0x44aa44,
     }) });
-    this._scienceText.x = 140;
+    this._scienceText.x = 162;
     this._scienceText.y = 64;
     bar.addChild(this._scienceText);
 
