@@ -270,20 +270,13 @@ export class WorldMapRenderer {
     // Terrain decorations
     _drawTerrainDecoration(g, tile.terrain, center);
 
-    // Resource icon (small diamond in bottom-right area of hex)
+    // Resource icon (bottom-right area of hex, unique shape per type)
     if (tile.resource) {
       const resDef = RESOURCE_DEFINITIONS[tile.resource];
       if (resDef) {
         const rx = center.x + HEX_SIZE * 0.25;
         const ry = center.y + HEX_SIZE * 0.2;
-        const rs = 4;
-        g.moveTo(rx, ry - rs);
-        g.lineTo(rx + rs, ry);
-        g.lineTo(rx, ry + rs);
-        g.lineTo(rx - rs, ry);
-        g.closePath();
-        g.fill({ color: resDef.color, alpha: 0.9 });
-        g.stroke({ color: 0x000000, width: 0.5, alpha: 0.5 });
+        _drawResourceIcon(g, tile.resource, rx, ry, resDef.color);
       }
     }
 
@@ -718,6 +711,186 @@ function _drawTerrainDecoration(
     }
     default:
       break;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Resource icons — unique shape per resource type
+// ---------------------------------------------------------------------------
+
+function _drawResourceIcon(
+  g: Graphics,
+  resource: string,
+  cx: number,
+  cy: number,
+  color: number,
+): void {
+  switch (resource) {
+    case "gems": {
+      // Multi-faceted gem with glow
+      // Outer glow
+      g.circle(cx, cy, 7);
+      g.fill({ color, alpha: 0.15 });
+      g.circle(cx, cy, 5);
+      g.fill({ color, alpha: 0.12 });
+      // Gem body — hexagonal cut
+      const r = 4.5;
+      for (let layer = 0; layer < 2; layer++) {
+        const lr = layer === 0 ? r : r * 0.6;
+        const lc = layer === 0 ? color : 0xeeffff;
+        const la = layer === 0 ? 0.9 : 0.4;
+        g.moveTo(cx, cy - lr);
+        g.lineTo(cx + lr * 0.87, cy - lr * 0.5);
+        g.lineTo(cx + lr * 0.87, cy + lr * 0.5);
+        g.lineTo(cx, cy + lr);
+        g.lineTo(cx - lr * 0.87, cy + lr * 0.5);
+        g.lineTo(cx - lr * 0.87, cy - lr * 0.5);
+        g.closePath();
+        g.fill({ color: lc, alpha: la });
+      }
+      // Facet lines
+      g.moveTo(cx, cy - r);
+      g.lineTo(cx, cy + r);
+      g.stroke({ color: 0xffffff, width: 0.4, alpha: 0.3 });
+      g.moveTo(cx - r * 0.87, cy - r * 0.5);
+      g.lineTo(cx + r * 0.87, cy + r * 0.5);
+      g.stroke({ color: 0xffffff, width: 0.4, alpha: 0.3 });
+      // Sparkle
+      g.star(cx + 2, cy - 2.5, 4, 1.2, 0.4);
+      g.fill({ color: 0xffffff, alpha: 0.7 });
+      g.stroke({ color, width: 1, alpha: 0.5 });
+      break;
+    }
+    case "iron": {
+      // Ingot / anvil shape
+      // Bottom bar
+      g.roundRect(cx - 5, cy + 1, 10, 3, 0.5);
+      g.fill({ color, alpha: 0.9 });
+      // Top bar (narrower)
+      g.roundRect(cx - 3.5, cy - 3, 7, 3.5, 0.5);
+      g.fill({ color: 0xaabbbb, alpha: 0.85 });
+      // Highlight
+      g.rect(cx - 2.5, cy - 2.5, 5, 1);
+      g.fill({ color: 0xccdddd, alpha: 0.4 });
+      g.stroke({ color: 0x556666, width: 0.5, alpha: 0.6 });
+      break;
+    }
+    case "horses": {
+      // Horse head silhouette
+      // Neck/body
+      g.moveTo(cx - 3, cy + 4);
+      g.lineTo(cx - 2, cy);
+      g.lineTo(cx - 1, cy - 2);
+      // Head
+      g.lineTo(cx + 1, cy - 4);
+      g.lineTo(cx + 3, cy - 4.5);
+      // Ear
+      g.lineTo(cx + 3.5, cy - 6);
+      g.lineTo(cx + 4, cy - 4);
+      // Muzzle
+      g.lineTo(cx + 5, cy - 3);
+      g.lineTo(cx + 4, cy - 1.5);
+      g.lineTo(cx + 2, cy - 1);
+      // Back down
+      g.lineTo(cx + 1, cy + 1);
+      g.lineTo(cx + 2, cy + 4);
+      g.closePath();
+      g.fill({ color, alpha: 0.85 });
+      g.stroke({ color: 0x663311, width: 0.5, alpha: 0.5 });
+      // Eye dot
+      g.circle(cx + 2.5, cy - 3, 0.6);
+      g.fill({ color: 0x221100, alpha: 0.8 });
+      break;
+    }
+    case "marble": {
+      // Column / pillar
+      // Glow
+      g.circle(cx, cy, 6);
+      g.fill({ color, alpha: 0.08 });
+      // Base
+      g.roundRect(cx - 4, cy + 2, 8, 2, 0.5);
+      g.fill({ color: 0xcccccc, alpha: 0.8 });
+      // Shaft
+      g.roundRect(cx - 2.5, cy - 4, 5, 6, 0.5);
+      g.fill({ color, alpha: 0.85 });
+      // Capital (top)
+      g.roundRect(cx - 3.5, cy - 5, 7, 1.5, 0.5);
+      g.fill({ color: 0xeeeeee, alpha: 0.8 });
+      // Fluting lines
+      g.moveTo(cx - 1, cy - 3.5);
+      g.lineTo(cx - 1, cy + 1.5);
+      g.stroke({ color: 0xbbbbbb, width: 0.4, alpha: 0.4 });
+      g.moveTo(cx + 1, cy - 3.5);
+      g.lineTo(cx + 1, cy + 1.5);
+      g.stroke({ color: 0xbbbbbb, width: 0.4, alpha: 0.4 });
+      break;
+    }
+    case "wheat": {
+      // Wheat stalks
+      for (let i = -1; i <= 1; i++) {
+        const sx = cx + i * 3;
+        const lean = i * 0.8;
+        // Stem
+        g.moveTo(sx, cy + 4);
+        g.lineTo(sx + lean, cy - 3);
+        g.stroke({ color: 0x998822, width: 0.7, alpha: 0.7 });
+        // Wheat head (oval at top)
+        g.ellipse(sx + lean, cy - 4.5, 1.2, 2.5);
+        g.fill({ color, alpha: 0.85 });
+        // Grain details
+        g.moveTo(sx + lean - 0.8, cy - 5.5);
+        g.lineTo(sx + lean - 1.8, cy - 7);
+        g.stroke({ color, width: 0.5, alpha: 0.6 });
+        g.moveTo(sx + lean + 0.8, cy - 5.5);
+        g.lineTo(sx + lean + 1.8, cy - 7);
+        g.stroke({ color, width: 0.5, alpha: 0.6 });
+      }
+      break;
+    }
+    case "game": {
+      // Deer antler / game animal
+      // Body oval
+      g.ellipse(cx, cy + 1, 4, 2.5);
+      g.fill({ color, alpha: 0.8 });
+      // Head
+      g.circle(cx + 3.5, cy - 1, 1.8);
+      g.fill({ color: 0x99bb55, alpha: 0.8 });
+      // Antlers
+      g.moveTo(cx + 3, cy - 2.5);
+      g.lineTo(cx + 1.5, cy - 5);
+      g.lineTo(cx + 0.5, cy - 5.5);
+      g.stroke({ color: 0x664422, width: 0.7, alpha: 0.7 });
+      g.moveTo(cx + 1.5, cy - 5);
+      g.lineTo(cx + 2.5, cy - 6);
+      g.stroke({ color: 0x664422, width: 0.7, alpha: 0.7 });
+      g.moveTo(cx + 4, cy - 2.5);
+      g.lineTo(cx + 5.5, cy - 5);
+      g.lineTo(cx + 6.5, cy - 5.5);
+      g.stroke({ color: 0x664422, width: 0.7, alpha: 0.7 });
+      g.moveTo(cx + 5.5, cy - 5);
+      g.lineTo(cx + 5, cy - 6);
+      g.stroke({ color: 0x664422, width: 0.7, alpha: 0.7 });
+      // Legs
+      g.moveTo(cx - 2, cy + 3);
+      g.lineTo(cx - 2.5, cy + 5);
+      g.stroke({ color: 0x667733, width: 0.6, alpha: 0.6 });
+      g.moveTo(cx + 2, cy + 3);
+      g.lineTo(cx + 2.5, cy + 5);
+      g.stroke({ color: 0x667733, width: 0.6, alpha: 0.6 });
+      break;
+    }
+    default: {
+      // Fallback diamond
+      const rs = 4;
+      g.moveTo(cx, cy - rs);
+      g.lineTo(cx + rs, cy);
+      g.lineTo(cx, cy + rs);
+      g.lineTo(cx - rs, cy);
+      g.closePath();
+      g.fill({ color, alpha: 0.9 });
+      g.stroke({ color: 0x000000, width: 0.5, alpha: 0.5 });
+      break;
+    }
   }
 }
 

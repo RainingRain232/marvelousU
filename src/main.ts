@@ -100,7 +100,7 @@ import { worldMapRenderer } from "@view/world/WorldMapRenderer";
 import { worldHUD } from "@view/world/ui/WorldHUD";
 import { beginTurn, endTurn, onBattlesResolved } from "@world/systems/TurnSystem";
 import { WorldBalance } from "@world/config/WorldConfig";
-import { hexSpiral, hexNeighbors } from "@world/hex/HexCoord";
+import { hexSpiral, hexNeighbors, hexToPixel } from "@world/hex/HexCoord";
 import { cityView } from "@view/world/CityView";
 import { cityPanel } from "@view/world/ui/CityPanel";
 import { startConstruction, queueRecruitment, deployArmy, foundCity, canFoundCity } from "@world/systems/CitySystem";
@@ -1722,6 +1722,19 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     const mapTiles = Math.ceil((extent * 2) / tileSize);
     viewManager.camera.setMapSize(mapTiles, mapTiles);
     viewManager.camera.setPadding(extent * 0.6);
+
+    // Center camera on p1's capital city
+    for (const city of state.cities.values()) {
+      if (city.owner === "p1" && city.isCapital) {
+        const px = hexToPixel(city.position, hexSize);
+        const cam = viewManager.camera;
+        const visW = cam.screenW / cam.zoom;
+        const visH = cam.screenH / cam.zoom;
+        cam.x = -px.x + visW / 2;
+        cam.y = -px.y + visH / 2;
+        break;
+      }
+    }
   }
 
   // Initialize renderer
