@@ -50,10 +50,15 @@ export class WorldMapRenderer {
   private _fogContainer = new Container();
   private _borderContainer = new Container();
   private _labelContainer = new Container();
+  private _waterContainer = new Container();
   private _hoverGraphics = new Graphics();
 
   private _grid: HexGrid | null = null;
   private _hexGraphics = new Map<string, Graphics>();
+  private _waterTiles: HexCoord[] = [];
+  private _waterPhase = 0;
+  private _waterRedrawTimer = 0;
+  private _tickerCb: (() => void) | null = null;
 
   /** Currently hovered hex (null = none). */
   private _hoveredHex: HexCoord | null = null;
@@ -75,6 +80,7 @@ export class WorldMapRenderer {
     this._vm = vm;
 
     this._container.addChild(this._hexContainer);
+    this._container.addChild(this._waterContainer);
     this._container.addChild(this._campContainer);
     this._container.addChild(this._highlightContainer);
     this._container.addChild(this._borderContainer);
@@ -84,6 +90,19 @@ export class WorldMapRenderer {
 
     vm.layers.background.addChild(this._container);
 
+    // Water animation ticker — redraw every ~150ms for performance
+    const cb = () => {
+      const dt = vm.app.ticker.deltaMS / 1000;
+      this._waterPhase += dt;
+      this._waterRedrawTimer += dt;
+      if (this._waterRedrawTimer >= 0.15 && this._waterTiles.length > 0) {
+        this._waterRedrawTimer = 0;
+        this._drawWaterOverlay();
+      }
+    };
+    vm.app.ticker.add(cb);
+    this._tickerCb = cb;
+
     // Input handling on the canvas
     const canvas = vm.app.canvas as HTMLCanvasElement;
     canvas.addEventListener("pointermove", this._onPointerMove);
@@ -91,6 +110,7 @@ export class WorldMapRenderer {
   }
 
   destroy(): void {
+    if (this._tickerCb) this._vm.app.ticker.remove(this._tickerCb);
     const canvas = this._vm?.app?.canvas as HTMLCanvasElement | undefined;
     if (canvas) {
       canvas.removeEventListener("pointermove", this._onPointerMove);
@@ -100,6 +120,7 @@ export class WorldMapRenderer {
     this._container.removeFromParent();
     this._container.destroy({ children: true });
     this._hexGraphics.clear();
+    this._waterTiles = [];
     this._grid = null;
   }
 
@@ -112,11 +133,15 @@ export class WorldMapRenderer {
     this._grid = grid;
     this._hexContainer.removeChildren();
     this._hexGraphics.clear();
+    this._waterTiles = [];
 
     for (const tile of grid.allTiles()) {
       const g = this._drawHexTile(tile);
       this._hexContainer.addChild(g);
       this._hexGraphics.set(hexKey(tile.q, tile.r), g);
+      if (tile.terrain === TerrainType.WATER) {
+        this._waterTiles.push({ q: tile.q, r: tile.r });
+      }
     }
   }
 
@@ -279,6 +304,41 @@ export class WorldMapRenderer {
 
       this._campContainer.addChild(g);
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Private — water animation
+  // -----------------------------------------------------------------------
+
+  private _drawWaterOverlay(): void {
+    this._waterContainer.removeChildren();
+    const g = new Graphics();
+    const t = this._waterPhase;
+
+    for (const hex of this._waterTiles) {
+      const center = hexToPixel(hex, HEX_SIZE);
+      const cx = center.x;
+      const cy = center.y;
+      const s = HEX_SIZE * 0.35;
+
+      // Animated wave highlights that shift over time
+      for (let i = -1; i <= 1; i++) {
+        const wy = cy + i * s * 0.4;
+        const phase = t * 1.5 + hex.q * 0.7 + hex.r * 0.5 + i * 1.2;
+        const shimmer = Math.sin(phase) * 0.15 + 0.1;
+        const dx = Math.sin(phase * 0.7) * s * 0.15;
+
+        g.moveTo(cx - s * 0.5 + dx, wy);
+        g.bezierCurveTo(
+          cx - s * 0.15 + dx, wy - s * 0.12,
+          cx + s * 0.15 + dx, wy + s * 0.12,
+          cx + s * 0.5 + dx, wy,
+        );
+        g.stroke({ color: 0x88bbff, width: 1, alpha: Math.max(0, shimmer) });
+      }
+    }
+
+    this._waterContainer.addChild(g);
   }
 
   // -----------------------------------------------------------------------
