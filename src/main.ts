@@ -123,6 +123,11 @@ import { worldEventLog } from "@view/world/ui/WorldEventLog";
 import { worldVictoryScreen } from "@view/world/ui/WorldVictoryScreen";
 import { worldHexTooltip } from "@view/world/ui/WorldHexTooltip";
 import { worldMinimap } from "@view/world/ui/WorldMinimap";
+import { worldScoreScreen } from "@view/world/ui/WorldScoreScreen";
+import { worldNationalScreen } from "@view/world/ui/WorldNationalScreen";
+import { worldArmyOverview } from "@view/world/ui/WorldArmyOverview";
+import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
+import { setCityNameIndex } from "@world/state/WorldCity";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -154,6 +159,15 @@ import { worldMinimap } from "@view/world/ui/WorldMinimap";
   menuScreen.onAIToggle = (isAI) => {
     p2IsAI = isAI;
   };
+
+  // Check if we should auto-load a saved world game (from in-game LOAD GAME)
+  const _autoLoadWorld = sessionStorage.getItem("autoLoadWorld") === "1";
+  if (_autoLoadWorld) {
+    sessionStorage.removeItem("autoLoadWorld");
+    startScreen.hide();
+    await _loadWorldGame();
+    return;
+  }
 
   // Check if we were returned from a campaign game via "Return to Campaign"
   const _returnToCampaign = sessionStorage.getItem("returnToCampaign") === "1";
@@ -308,6 +322,11 @@ import { worldMinimap } from "@view/world/ui/WorldMinimap";
   menuScreen.onMultiplayer = () => {
     menuScreen.hide();
     _showMultiplayerPrompt();
+  };
+
+  menuScreen.onLoadWorldGame = async () => {
+    menuScreen.hide();
+    await _loadWorldGame();
   };
 
   const _roomManager = new RoomManager();
@@ -1393,6 +1412,20 @@ async function _bootCampaign(
 // World mode boot
 // ---------------------------------------------------------------------------
 
+/** Load a saved world game from localStorage and initialize views. */
+async function _loadWorldGame(): Promise<void> {
+  const state = loadWorldGame();
+  if (!state) return;
+
+  // Advance the city name index past existing cities
+  setCityNameIndex(state.cities.size);
+
+  // Switch to in-game music
+  audioManager.playGameMusic();
+
+  _initWorldViews(state, true);
+}
+
 /** Show in-game info menu overlay with Leader Info / Race Info options. */
 function _showWorldInfoMenu(state: WorldState): void {
   const player = state.players.get("p1");
@@ -1411,7 +1444,7 @@ function _showWorldInfoMenu(state: WorldState): void {
 
   // Card panel
   const cardW = 260;
-  const cardH = 200;
+  const cardH = 44 + 44 * 9 + 10; // title + 9 buttons + padding
   const cardX = (vm.screenWidth - cardW) / 2;
   const cardY = (vm.screenHeight - cardH) / 2;
 
@@ -1478,21 +1511,64 @@ function _showWorldInfoMenu(state: WorldState): void {
     overlay.addChild(btn);
   };
 
-  addBtn("LEADER INFO", 44, () => {
+  let btnY = 44;
+  const BTN_STEP = 44;
+
+  addBtn("SCORE", btnY, () => {
+    overlay.destroy({ children: true });
+    worldScoreScreen.show(state);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("CITIES", btnY, () => {
+    overlay.destroy({ children: true });
+    worldNationalScreen.show(state);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("ARMIES", btnY, () => {
+    overlay.destroy({ children: true });
+    worldArmyOverview.show(state);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("LEADER INFO", btnY, () => {
     overlay.destroy({ children: true });
     leaderSelectScreen.onBack = () => leaderSelectScreen.hide();
     leaderSelectScreen.onNext = null;
     leaderSelectScreen.show();
   });
+  btnY += BTN_STEP;
 
-  addBtn("RACE INFO", 88, () => {
+  addBtn("RACE INFO", btnY, () => {
     overlay.destroy({ children: true });
     raceDetailScreen.onBack = () => raceDetailScreen.hide();
     raceDetailScreen.onNext = null;
     raceDetailScreen.show(player.raceId);
   });
+  btnY += BTN_STEP;
 
-  addBtn("CLOSE", 142, () => {
+  addBtn("SAVE GAME", btnY, () => {
+    overlay.destroy({ children: true });
+    saveWorldGame(state);
+    worldEventLog.addEvent("Game saved.", 0x88ff88);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("LOAD GAME", btnY, () => {
+    overlay.destroy({ children: true });
+    sessionStorage.setItem("autoLoadWorld", "1");
+    window.location.reload();
+  });
+  btnY += BTN_STEP;
+
+  addBtn("RETURN TO MENU", btnY, () => {
+    overlay.destroy({ children: true });
+    window.location.reload();
+  });
+  btnY += BTN_STEP;
+
+  addBtn("CLOSE", btnY, () => {
     overlay.destroy({ children: true });
   });
 
@@ -1628,17 +1704,24 @@ async function _bootWorldGame(
 
 
 
-  // Configure camera for hex world — the hex grid is centered at (0,0) and
-  // extends roughly radius * HEX_SIZE * 2 in each direction.  We also add
-  // generous padding so the player can pan edge tiles to the centre of the
-  // screen, making them easy to click.
+  _initWorldViews(state);
+}
+
+// ---------------------------------------------------------------------------
+// World view initialization — reused by both new game and load game
+// ---------------------------------------------------------------------------
+
+function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
+  const grid = state.grid;
+
+  // Configure camera for hex world
   {
     const hexSize = WorldBalance.HEX_SIZE;
-    const extent = settings.mapRadius * hexSize * 2;      // rough pixel span
-    const tileSize = BalanceConfig.TILE_SIZE;              // camera unit
-    const mapTiles = Math.ceil((extent * 2) / tileSize);   // map "tiles" in cam units
+    const extent = state.grid.radius * hexSize * 2;
+    const tileSize = BalanceConfig.TILE_SIZE;
+    const mapTiles = Math.ceil((extent * 2) / tileSize);
     viewManager.camera.setMapSize(mapTiles, mapTiles);
-    viewManager.camera.setPadding(extent * 0.6);           // ~60 % of map as padding
+    viewManager.camera.setPadding(extent * 0.6);
   }
 
   // Initialize renderer
@@ -1647,19 +1730,18 @@ async function _bootWorldGame(
 
   // Block hex clicks when they land on a UI panel
   worldMapRenderer.shouldBlockClick = (sx, sy) => {
-    // Check if click is inside the city panel area (right side)
     if (cityPanel.isVisible) {
       const panelX = viewManager.screenWidth - 290;
       if (sx >= panelX) return true;
     }
-    // Check if click is inside the army panel area (left side)
     if (armyPanel.isVisible) {
       if (sx <= 260 && sy >= 64) return true;
     }
-    // Check if research screen or victory screen is open (fullscreen)
     if (researchScreen.isVisible) return true;
     if (worldVictoryScreen.isVisible) return true;
-    // Check if leader/race info screens are open
+    if (worldScoreScreen.isVisible) return true;
+    if (worldNationalScreen.isVisible) return true;
+    if (worldArmyOverview.isVisible) return true;
     if (leaderSelectScreen.container.visible) return true;
     if (raceDetailScreen.container.visible) return true;
     return false;
@@ -1700,10 +1782,8 @@ async function _bootWorldGame(
     worldMapRenderer.clearHighlights();
   };
   armyPanel.onDeploy = (garrisonId) => {
-    // Deploy garrison from city as a field army
     const garrison = state.armies.get(garrisonId);
     if (!garrison) return;
-    // Find the city this garrison belongs to
     for (const city of state.cities.values()) {
       if (city.garrisonArmyId === garrisonId) {
         deployArmy(city, state, [...garrison.units.map((u) => ({ ...u }))]);
@@ -1714,7 +1794,6 @@ async function _bootWorldGame(
     }
   };
   armyPanel.onMove = (armyId) => {
-    // Show movement range and wait for hex click
     const army = state.armies.get(armyId);
     if (!army) return;
     const reachable = getArmyReachableHexes(army, state);
@@ -1768,7 +1847,7 @@ async function _bootWorldGame(
     }
   };
 
-  // Menu button handler — opens an overlay with LEADER INFO / RACE INFO options
+  // Menu button handler
   worldHUD.onMenu = () => {
     _showWorldInfoMenu(state);
   };
@@ -1780,7 +1859,6 @@ async function _bootWorldGame(
   // Initialize victory screen
   worldVictoryScreen.init(viewManager);
   worldVictoryScreen.onReturnToMenu = () => {
-    // Reload the page to return to menu
     window.location.reload();
   };
 
@@ -1794,6 +1872,11 @@ async function _bootWorldGame(
   // Initialize minimap
   worldMinimap.init(viewManager);
   worldMinimap.drawMap(state.grid);
+
+  // Initialize overview screens
+  worldScoreScreen.init(viewManager);
+  worldNationalScreen.init(viewManager);
+  worldArmyOverview.init(viewManager);
 
   // Track movement mode
   let _moveModeArmyId: string | null = null;
@@ -1831,7 +1914,6 @@ async function _bootWorldGame(
         : `Battle at (${battle.hex.q},${battle.hex.r})`;
       worldEventLog.addEvent(`${battleLabel}: ${attacker.owner} vs ${defender?.owner ?? "garrison"}`, 0xff6644);
 
-      // Build battle GameState
       let battleState: GameState;
       if (battle.type === "siege" && battle.defenderCityId) {
         const city = state.cities.get(battle.defenderCityId);
@@ -1841,18 +1923,15 @@ async function _bootWorldGame(
         battleState = buildFieldBattleState(attacker, defender);
       }
 
-      // Run simulation to completion (max 5000 ticks = ~83 seconds of game time)
       const MAX_TICKS = 5000;
       for (let i = 0; i < MAX_TICKS; i++) {
         simTick(battleState);
         if (battleState.winnerId) break;
       }
 
-      // Extract and apply results
       const result = extractBattleResults(battleState, attacker.owner, defender?.owner ?? attacker.owner);
       applyBattleResults(state, battle, result);
 
-      // Log result
       if (result.winnerId) {
         const survivors = result.winnerId === attacker.owner ? result.attackerSurvivors : result.defenderSurvivors;
         const totalSurvivors = survivors.reduce((sum, u) => sum + u.count, 0);
@@ -1878,11 +1957,9 @@ async function _bootWorldGame(
 
     const result = extractBattleResults(battleState, army.owner, "neutral");
 
-    // Update attacker army
     if (result.attackerSurvivors.length > 0) {
       army.units = result.attackerSurvivors;
     } else {
-      // Army destroyed
       const tile = ws.grid.getTile(army.position.q, army.position.r);
       if (tile && tile.armyId === army.id) tile.armyId = null;
       ws.armies.delete(army.id);
@@ -1891,7 +1968,6 @@ async function _bootWorldGame(
     }
 
     if (result.winnerId === army.owner) {
-      // Victory — clear camp and grant rewards
       camp.cleared = true;
       const tile = ws.grid.getTile(camp.position.q, camp.position.r);
       if (tile) tile.campId = null;
@@ -1910,7 +1986,6 @@ async function _bootWorldGame(
   worldHUD.onEndTurn = () => {
     if (state.phase !== WorldPhase.PLAYER_TURN) return;
 
-    // Detect collisions before ending turn
     const battles = detectCollisions(state);
     if (battles.length > 0) {
       state.pendingBattles = battles;
@@ -1918,17 +1993,14 @@ async function _bootWorldGame(
 
     endTurn(state);
 
-    // Resolve any pending battles
     if ((state.phase as WorldPhase) === WorldPhase.BATTLE) {
       resolveWorldBattles();
     }
 
-    // If AI turn, execute AI logic then end their turns
     while ((state.phase as WorldPhase) === WorldPhase.AI_TURN) {
       const aiPid = state.playerOrder[state.currentPlayerIndex];
       executeAITurn(state, aiPid);
 
-      // Detect AI collisions
       const aiBattles = detectCollisions(state);
       if (aiBattles.length > 0) {
         state.pendingBattles = aiBattles;
@@ -1950,22 +2022,19 @@ async function _bootWorldGame(
     _moveModeArmyId = null;
   };
 
-  // Hex click handler — handle city, army, and movement clicks
+  // Hex click handler
   worldMapRenderer.onHexClick = (hex) => {
     const tile = state.grid.getTile(hex.q, hex.r);
     if (!tile) return;
     const currentPid = state.playerOrder[state.currentPlayerIndex];
 
-    // If in movement mode, try to move the army
     if (_moveModeArmyId) {
       const army = state.armies.get(_moveModeArmyId);
       if (army) {
         const moved = moveArmy(army, hex, state);
         if (moved) {
-          // Update fog of war after movement
           updateVisibility(state, army.owner);
 
-          // Check for camp encounter at destination
           const destTile = state.grid.getTile(hex.q, hex.r);
           if (destTile?.campId) {
             const camp = state.camps.get(destTile.campId);
@@ -1974,7 +2043,6 @@ async function _bootWorldGame(
             }
           }
 
-          // Check for collisions at destination
           const battles = detectCollisions(state);
           if (battles.length > 0) {
             state.pendingBattles = battles;
@@ -1990,7 +2058,6 @@ async function _bootWorldGame(
       return;
     }
 
-    // Click on a city hex
     if (tile.cityId) {
       const city = state.cities.get(tile.cityId);
       if (city && city.owner === currentPid) {
@@ -2001,20 +2068,17 @@ async function _bootWorldGame(
       }
     }
 
-    // Click on a hex with a field army
     if (tile.armyId) {
       const army = state.armies.get(tile.armyId);
       if (army && army.owner === currentPid && !army.isGarrison) {
         cityPanel.hide();
         armyPanel.show(army, state);
-        // Show movement range
         const reachable = getArmyReachableHexes(army, state);
         worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.2);
         return;
       }
     }
 
-    // Clicked empty hex — close panels
     if (cityPanel.isVisible) cityPanel.hide();
     if (armyPanel.isVisible) {
       armyPanel.hide();
@@ -2027,8 +2091,10 @@ async function _bootWorldGame(
     updateVisibility(state, pid);
   }
 
-  // Start first turn
-  beginTurn(state);
+  // Start first turn (skip on load — state is already mid-turn)
+  if (!skipBeginTurn) {
+    beginTurn(state);
+  }
   refreshWorld();
 }
 

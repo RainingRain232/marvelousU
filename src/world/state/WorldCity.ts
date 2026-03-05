@@ -87,6 +87,10 @@ export function resetCityNames(): void {
   _nameIndex = 0;
 }
 
+export function setCityNameIndex(n: number): void {
+  _nameIndex = n;
+}
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------

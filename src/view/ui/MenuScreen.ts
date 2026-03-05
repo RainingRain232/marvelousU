@@ -3,6 +3,7 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { GameMode, MapType } from "@/types";
+import { hasWorldSave } from "@world/state/WorldSerialization";
 
 const STYLE_TITLE = new TextStyle({
   fontFamily: "monospace",
@@ -203,6 +204,8 @@ export class MenuScreen {
   onSpellWiki: (() => void) | null = null;
   /** Called when the player clicks "ONLINE MULTIPLAYER". */
   onMultiplayer: (() => void) | null = null;
+  /** Called when the player clicks "LOAD WORLD GAME". */
+  onLoadWorldGame: (() => void) | null = null;
 
   get selectedMapSize(): MapSize {
     return MAP_SIZES[this._selectedSizeIndex];
@@ -864,8 +867,44 @@ export class MenuScreen {
 
     card.addChild(mpBtn);
 
+    // --- LOAD WORLD GAME button (only visible when a save exists) ---
+    if (hasWorldSave()) {
+      const loadBtn = new Container();
+      loadBtn.eventMode = "static";
+      loadBtn.cursor = "pointer";
+      loadBtn.position.set(20, actionStartY + (BH + 8) * 6);
+
+      const loadBg = new Graphics()
+        .roundRect(0, 0, BW, BH, 6)
+        .fill({ color: 0x2a2a1a })
+        .roundRect(0, 0, BW, BH, 6)
+        .stroke({ color: 0xaaaa44, width: 2 });
+      loadBtn.addChild(loadBg);
+
+      const loadLabel = new Text({
+        text: "LOAD WORLD GAME",
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 15,
+          fill: 0xdddd66,
+          fontWeight: "bold",
+          letterSpacing: 2,
+        }),
+      });
+      loadLabel.anchor.set(0.5, 0.5);
+      loadLabel.position.set(BW / 2, BH / 2);
+      loadBtn.addChild(loadLabel);
+
+      loadBtn.on("pointerover", () => { loadBg.tint = 0xffffaa; });
+      loadBtn.on("pointerout", () => { loadBg.tint = 0xffffff; });
+      loadBtn.on("pointerdown", () => { this.onLoadWorldGame?.(); });
+
+      card.addChild(loadBtn);
+    }
+
     // Adjust card height dynamically
-    this._cardH = actionStartY + (BH + 8) * 6 + 18;
+    const totalButtons = hasWorldSave() ? 7 : 6;
+    this._cardH = actionStartY + (BH + 8) * totalButtons + 18;
 
     vm.addToLayer("ui", this.container);
     this._layout();
