@@ -127,8 +127,11 @@ function tickUnit(
       const ty = Math.floor(targetUnit.position.y);
       // Re-path whenever the target tile changed or path is exhausted
       const lastWp = unit.path ? unit.path[unit.path.length - 1] : null;
-      if (!unit.path || unit.pathIndex >= unit.path.length ||
-        !lastWp || lastWp.x !== tx || lastWp.y !== ty) {
+      const needsRepath = !unit.path || unit.pathIndex >= unit.path.length ||
+        !lastWp || lastWp.x !== tx || lastWp.y !== ty;
+      // Throttle chase re-pathing: immediately if no path, otherwise every 10 ticks
+      // to avoid massive allocation pressure in tight headless battle loops
+      if (needsRepath && (!unit.path || unit.pathIndex >= unit.path.length || state.tick % 10 === 0)) {
         unit.path = findPath(
           state.battlefield,
           { x: Math.floor(unit.position.x), y: Math.floor(unit.position.y) },

@@ -115,6 +115,11 @@ function heuristic(ax: number, ay: number, bx: number, by: number): number {
   return Math.abs(ax - bx) + Math.abs(ay - by);
 }
 
+// Reusable data structures to reduce GC pressure in tight loops (headless battles)
+const _open = new Map<string, AStarNode>();
+const _closed = new Set<string>();
+const _all = new Map<string, AStarNode>();
+
 /**
  * A* pathfinding on a 4-directional tile grid.
  *
@@ -140,9 +145,10 @@ export function findPath(
   // Goal must be in bounds
   if (getTile(state, gx, gy) === null) return null;
 
-  const open = new Map<string, AStarNode>(); // keyed by "x,y"
-  const closed = new Set<string>();
-  const all = new Map<string, AStarNode>(); // for reconstruction
+  // Reuse module-level data structures — clear instead of allocate
+  _open.clear();
+  _closed.clear();
+  _all.clear();
 
   const startKey = nodeKey(sx, sy);
   const startNode: AStarNode = {
@@ -152,26 +158,27 @@ export function findPath(
     f: heuristic(sx, sy, gx, gy),
     parent: null,
   };
-  open.set(startKey, startNode);
-  all.set(startKey, startNode);
+  _open.set(startKey, startNode);
+  _all.set(startKey, startNode);
 
-  while (open.size > 0) {
+  while (_open.size > 0) {
     // Pop node with lowest f score
     let bestKey = "";
     let bestF = Infinity;
-    for (const [k, node] of open) {
+    for (const [k, node] of _open) {
       if (node.f < bestF) {
         bestF = node.f;
         bestKey = k;
       }
     }
 
-    const current = open.get(bestKey)!;
-    open.delete(bestKey);
-    closed.add(bestKey);
+    const current = _open.get(bestKey)!;
+    _open.delete(bestKey);
+    _closed.add(bestKey);
 
     if (current.x === gx && current.y === gy) {
-      return reconstructPath(all, bestKey);
+      const result = reconstructPath(_all, bestKey);
+      return result;
     }
 
     for (const dir of CARDINAL_DIRS) {
@@ -179,7 +186,7 @@ export function findPath(
       const ny = current.y + dir.y;
       const nk = nodeKey(nx, ny);
 
-      if (closed.has(nk)) continue;
+      if (_closed.has(nk)) continue;
 
       // Allow goal tile even if blocked by a building (units can attack into it)
       const goalTile = nx === gx && ny === gy;
@@ -188,7 +195,7 @@ export function findPath(
       if (getTile(state, nx, ny) === null) continue;
 
       const g = current.g + 1;
-      const existing = open.get(nk);
+      const existing = _open.get(nk);
 
       if (!existing || g < existing.g) {
         const node: AStarNode = {
@@ -198,8 +205,8 @@ export function findPath(
           f: g + heuristic(nx, ny, gx, gy),
           parent: bestKey,
         };
-        open.set(nk, node);
-        all.set(nk, node);
+        _open.set(nk, node);
+        _all.set(nk, node);
       }
     }
   }
