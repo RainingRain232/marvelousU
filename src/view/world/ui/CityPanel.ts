@@ -238,7 +238,7 @@ export class CityPanel {
 
     // Recruitable units
     if (!city.isUnderSiege) {
-      const units = getRecruitableUnits(city);
+      const units = getRecruitableUnits(city, this._state ?? undefined);
       for (const unitType of units.slice(0, 8)) {
         const unitDef = UNIT_DEFINITIONS[unitType as keyof typeof UNIT_DEFINITIONS];
         if (!unitDef) continue;

@@ -8,6 +8,7 @@ import type { WorldState } from "@world/state/WorldState";
 import { currentPlayer, WorldPhase } from "@world/state/WorldState";
 import { calculateCityYields } from "@world/systems/WorldEconomySystem";
 import { WorldBalance } from "@world/config/WorldConfig";
+import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -107,13 +108,17 @@ export class WorldHUD {
       manaIncome += yields.mana;
       scienceIncome += yields.science;
     }
-    // Deduct army maintenance
-    let totalUnits = 0;
+    // Deduct army maintenance (tier-based)
+    let maintenance = 0;
     for (const army of state.armies.values()) {
       if (army.owner !== player.id) continue;
-      for (const u of army.units) totalUnits += u.count;
+      for (const u of army.units) {
+        const unitDef = UNIT_DEFINITIONS[u.unitType as keyof typeof UNIT_DEFINITIONS];
+        const costTier = unitDef ? Math.ceil(unitDef.cost / 50) : 1;
+        maintenance += u.count * Math.max(1, costTier);
+      }
     }
-    goldIncome -= totalUnits * WorldBalance.ARMY_MAINTENANCE_PER_UNIT;
+    goldIncome -= maintenance;
 
     const goldSign = goldIncome >= 0 ? "+" : "";
     const foodSign = foodIncome >= 0 ? "+" : "";

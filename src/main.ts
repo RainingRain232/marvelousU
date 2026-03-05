@@ -136,6 +136,7 @@ import { worldArmyOverview } from "@view/world/ui/WorldArmyOverview";
 import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
+import { rollRandomEvents } from "@world/systems/WorldRandomEvents";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -2177,6 +2178,14 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
       if ((state.phase as WorldPhase) === WorldPhase.BATTLE) {
         resolveWorldBattlesHeadless();
+      }
+    }
+
+    // Random events at start of player turn
+    if (state.phase === WorldPhase.PLAYER_TURN) {
+      const events = rollRandomEvents(state, "p1");
+      for (const evt of events) {
+        worldEventLog.addEvent(`${evt.title}: ${evt.description}`, evt.color);
       }
     }
 

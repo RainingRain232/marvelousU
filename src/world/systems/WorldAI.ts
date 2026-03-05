@@ -240,7 +240,7 @@ function _manageCityRecruitment(
   if (city.isUnderSiege) return;
   if (city.recruitmentQueue.length >= 2) return;
 
-  const units = getRecruitableUnits(city);
+  const units = getRecruitableUnits(city, state);
   if (units.length === 0) return;
 
   // Consider recruiting a settler if developing and have few cities

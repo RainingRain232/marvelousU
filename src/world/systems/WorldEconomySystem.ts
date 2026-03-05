@@ -10,6 +10,7 @@ import { WorldBalance } from "@world/config/WorldConfig";
 import { getWorldBuildingDef } from "@world/config/WorldBuildingDefs";
 import { RESOURCE_DEFINITIONS, IMPROVEMENT_DEFINITIONS } from "@world/config/ResourceDefs";
 import { getLeader } from "@sim/config/LeaderDefs";
+import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 
 // ---------------------------------------------------------------------------
 // Public
@@ -65,13 +66,18 @@ export function processEconomy(state: WorldState, playerId: string): void {
     }
   }
 
-  // Army maintenance — deduct gold per unit across all armies
-  let totalUnits = 0;
+  // Army maintenance — scaled by unit cost (tier-based)
+  let maintenance = 0;
   for (const army of state.armies.values()) {
     if (army.owner !== playerId) continue;
-    for (const u of army.units) totalUnits += u.count;
+    for (const u of army.units) {
+      const unitDef = UNIT_DEFINITIONS[u.unitType as keyof typeof UNIT_DEFINITIONS];
+      // Maintenance = 1 per unit base + 1 per 50 gold cost (higher tier = more costly)
+      const costTier = unitDef ? Math.ceil(unitDef.cost / 50) : 1;
+      maintenance += u.count * Math.max(1, costTier);
+    }
   }
-  player.gold -= totalUnits * WorldBalance.ARMY_MAINTENANCE_PER_UNIT;
+  player.gold -= maintenance;
   if (player.gold < 0) player.gold = 0;
 }
 

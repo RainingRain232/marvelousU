@@ -194,7 +194,7 @@ export class WorldHexTooltip {
       }
     }
 
-    // Army
+    // Army — show full composition for scouting
     if (tile.armyId && isCurrentlyVisible) {
       const army = this._state.armies.get(tile.armyId);
       if (army && !army.isGarrison) {
@@ -211,6 +211,24 @@ export class WorldHexTooltip {
         armyText.y = y;
         this._textContainer.addChild(armyText);
         y += 14;
+
+        // Show composition breakdown
+        for (const stack of army.units) {
+          const unitName = stack.unitType.replace(/_/g, " ");
+          const hpInfo = stack.hpPerUnit < 100 ? ` (${stack.hpPerUnit}hp)` : "";
+          const compText = new Text({
+            text: `  ${stack.count}x ${unitName}${hpInfo}`,
+            style: new TextStyle({
+              fontFamily: "monospace",
+              fontSize: 9,
+              fill: 0x88bbdd,
+            }),
+          });
+          compText.x = 8;
+          compText.y = y;
+          this._textContainer.addChild(compText);
+          y += 12;
+        }
       }
     }
 

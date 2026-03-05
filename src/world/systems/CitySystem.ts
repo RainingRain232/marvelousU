@@ -19,6 +19,15 @@ import { hexSpiral, hexDistance, type HexCoord } from "@world/hex/HexCoord";
 import { createWorldCity } from "@world/state/WorldCity";
 import { hasResearch } from "@world/systems/ResearchSystem";
 import { getLeader } from "@sim/config/LeaderDefs";
+import type { ResourceType } from "@world/config/ResourceDefs";
+
+// Strategic resources required by unit types
+const UNIT_RESOURCE_REQUIREMENTS: Record<string, ResourceType> = {
+  knight: "iron",
+  pikeman: "iron",
+  cavalry: "horses",
+  horse_archer: "horses",
+};
 
 // ---------------------------------------------------------------------------
 // Building
@@ -71,6 +80,7 @@ export function startConstruction(
 /** Get all unit types available for recruitment in this city. */
 export function getRecruitableUnits(
   city: WorldCity,
+  state?: WorldState,
 ): string[] {
   const units: string[] = [];
 
@@ -87,7 +97,32 @@ export function getRecruitableUnits(
     }
   }
 
+  // Filter by strategic resource requirements
+  if (state) {
+    const playerResources = _getPlayerResources(state, city.owner);
+    return units.filter((u) => {
+      const required = UNIT_RESOURCE_REQUIREMENTS[u];
+      if (!required) return true; // no resource needed
+      return playerResources.has(required);
+    });
+  }
+
   return units;
+}
+
+/** Get all resource types available in a player's city territories. */
+function _getPlayerResources(state: WorldState, playerId: string): Set<ResourceType> {
+  const resources = new Set<ResourceType>();
+  for (const city of state.cities.values()) {
+    if (city.owner !== playerId) continue;
+    for (const hex of city.workedTiles) {
+      const tile = state.grid.getTile(hex.q, hex.r);
+      if (tile?.resource) {
+        resources.add(tile.resource);
+      }
+    }
+  }
+  return resources;
 }
 
 /** Queue a batch of units for recruitment. Returns true if successful. */
