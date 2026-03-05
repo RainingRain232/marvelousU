@@ -664,7 +664,7 @@ const TIER_TT_PAD = 10;
 // ---------------------------------------------------------------------------
 
 export class RaceDetailScreen {
-  readonly container = new Container();
+  readonly container = (() => { const c = new Container(); c.visible = false; return c; })();
 
   private _vm!: ViewManager;
   private _bg!: Graphics;

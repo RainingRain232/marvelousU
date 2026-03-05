@@ -2523,6 +2523,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   worldMapRenderer.onHexClick = async (hex) => {
     const tile = state.grid.getTile(hex.q, hex.r);
     if (!tile) return;
+    if (state.phase !== WorldPhase.PLAYER_TURN) return;
     const currentPid = state.playerOrder[state.currentPlayerIndex];
 
     if (_moveModeArmyId) {
@@ -2600,7 +2601,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             if (destTile?.campId) {
               const camp = state.camps.get(destTile.campId);
               if (camp && !camp.cleared) {
-                _resolveCampBattle(army, camp, state);
+                await _resolveCampBattle(army, camp, state);
               }
             }
 

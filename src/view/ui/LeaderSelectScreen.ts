@@ -123,7 +123,7 @@ const TEXT_IN_DETAIL_W = DETAIL_W - TEXT_IN_DETAIL_X - 10;
 // ---------------------------------------------------------------------------
 
 export class LeaderSelectScreen {
-  readonly container = new Container();
+  readonly container = (() => { const c = new Container(); c.visible = false; return c; })();
 
   private _vm!: ViewManager;
   private _bg!: Graphics;

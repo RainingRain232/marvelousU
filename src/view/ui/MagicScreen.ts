@@ -106,7 +106,7 @@ function getSpellLabel(type: UpgradeType): string {
 // ---------------------------------------------------------------------------
 
 class MagicScreen {
-  container = new Container();
+  container = (() => { const c = new Container(); c.visible = false; return c; })();
   private _vm!: ViewManager;
   private _bg!: Graphics;
   private _mainCard!: Container;
