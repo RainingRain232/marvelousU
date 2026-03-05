@@ -130,7 +130,7 @@ export class CityPanel {
 
     // Panel background
     const bg = new Graphics();
-    bg.roundRect(0, 0, PANEL_W, this._screenH - 20, 8);
+    bg.roundRect(0, 0, PANEL_W, this._screenH - 70, 8);
     bg.fill({ color: 0x0a0a20, alpha: 0.92 });
     bg.stroke({ color: BORDER, width: 1.5 });
     this._contentContainer.addChild(bg);
@@ -158,7 +158,7 @@ export class CityPanel {
 
     // Position panel on right side
     this._contentContainer.x = this._vm.screenWidth - PANEL_W - 10;
-    this._contentContainer.y = 10;
+    this._contentContainer.y = 60; // below the HUD bar
 
     this.container.addChild(this._contentContainer);
   }

@@ -113,10 +113,11 @@ export class ResearchScreen {
     const player = currentPlayer(state);
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
+    const topOffset = 60; // below the HUD bar
 
-    // Backdrop
+    // Backdrop — starts below HUD so top bar stays visible
     const bg = new Graphics();
-    bg.rect(0, 0, sw, sh);
+    bg.rect(0, topOffset, sw, sh - topOffset);
     bg.fill({ color: 0x000000, alpha: 0.85 });
     bg.eventMode = "static";
     this._contentContainer.addChild(bg);
@@ -126,20 +127,20 @@ export class ResearchScreen {
       : this._view === "magic" ? "MAGIC RESEARCH" : "RESEARCH";
     const title = new Text({ text: titleText, style: TITLE_STYLE });
     title.x = (sw - title.width) / 2;
-    title.y = 20;
+    title.y = topOffset + 8;
     this._contentContainer.addChild(title);
 
     // Close button
-    this._contentContainer.addChild(this._makeCloseButton(sw - 40, 10));
+    this._contentContainer.addChild(this._makeCloseButton(sw - 40, topOffset + 4));
 
     if (this._view === "overview") {
       this._buildOverview(player, sw, sh);
     } else if (this._view === "tech") {
       this._buildTechTab(player, sw);
-      this._contentContainer.addChild(this._makeBackButton(20, 10));
+      this._contentContainer.addChild(this._makeBackButton(20, topOffset + 4));
     } else {
       this._buildMagicTab(player, sw);
-      this._contentContainer.addChild(this._makeBackButton(20, 10));
+      this._contentContainer.addChild(this._makeBackButton(20, topOffset + 4));
     }
 
     this.container.addChild(this._contentContainer);
@@ -151,7 +152,7 @@ export class ResearchScreen {
 
   private _buildOverview(player: WorldPlayer, sw: number, sh: number): void {
     const colW = Math.floor(sw / 3);
-    const centerY = 70;
+    const centerY = 100; // below HUD + title
 
     // --- LEFT: Merlin / Magic ---
     this._buildOverviewColumn(
@@ -611,7 +612,7 @@ export class ResearchScreen {
 
     // Layout constants — scrollable container
     const marginL = 80;
-    const marginT = 56;
+    const marginT = 96; // below HUD + title
     const nodeW = Math.min(130, Math.floor((screenW - marginL - 40) / NUM_COLS) - 10);
     const nodeH = 56;
     const colGap = 8;
@@ -914,7 +915,7 @@ export class ResearchScreen {
       return;
     }
 
-    const startY = 56;
+    const startY = 96; // below HUD + title
     const colW = Math.max(60, Math.min(90, Math.floor((screenW - 40) / visibleSchools.length)));
     const totalW = colW * visibleSchools.length;
     const startX = Math.max(20, (screenW - totalW) / 2);
