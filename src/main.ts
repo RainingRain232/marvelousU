@@ -135,6 +135,7 @@ import { worldNationalScreen } from "@view/world/ui/WorldNationalScreen";
 import { worldArmyOverview } from "@view/world/ui/WorldArmyOverview";
 import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
+import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -1787,6 +1788,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     if (worldScoreScreen.isVisible) return true;
     if (worldNationalScreen.isVisible) return true;
     if (worldArmyOverview.isVisible) return true;
+    if (worldBattleViewer.isVisible) return true;
     if (leaderSelectScreen.container.visible) return true;
     if (raceDetailScreen.container.visible) return true;
     if (magicScreen.container.visible) return true;
@@ -1956,6 +1958,9 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     window.location.reload();
   };
 
+  // Initialize battle viewer
+  worldBattleViewer.init(viewManager);
+
   // Initialize hex tooltip
   worldHexTooltip.init(viewManager);
   worldHexTooltip.setState(state);
@@ -1998,8 +2003,37 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     }
   };
 
-  // Resolve all pending battles by running the sim for each
-  const resolveWorldBattles = () => {
+  // Resolve all pending battles — headless (for AI battles)
+  const resolveWorldBattlesHeadless = () => {
+    for (const battle of state.pendingBattles) {
+      const attacker = state.armies.get(battle.attackerArmyId);
+      const defender = battle.defenderArmyId ? state.armies.get(battle.defenderArmyId) : null;
+      if (!attacker) continue;
+
+      let battleState: GameState;
+      if (battle.type === "siege" && battle.defenderCityId) {
+        const city = state.cities.get(battle.defenderCityId);
+        battleState = buildSiegeBattleState(attacker, defender ?? null, city!);
+      } else {
+        if (!defender) continue;
+        battleState = buildFieldBattleState(attacker, defender);
+      }
+
+      const MAX_TICKS = 5000;
+      for (let i = 0; i < MAX_TICKS; i++) {
+        simTick(battleState);
+        if (battleState.winnerId) break;
+      }
+
+      const result = extractBattleResults(battleState, attacker.owner, defender?.owner ?? attacker.owner);
+      applyBattleResults(state, battle, result);
+    }
+
+    onBattlesResolved(state);
+  };
+
+  // Resolve pending battles with visual viewer (for player battles)
+  const resolveWorldBattlesVisual = async () => {
     for (const battle of state.pendingBattles) {
       const attacker = state.armies.get(battle.attackerArmyId);
       const defender = battle.defenderArmyId ? state.armies.get(battle.defenderArmyId) : null;
@@ -2019,10 +2053,20 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         battleState = buildFieldBattleState(attacker, defender);
       }
 
-      const MAX_TICKS = 5000;
-      for (let i = 0; i < MAX_TICKS; i++) {
-        simTick(battleState);
-        if (battleState.winnerId) break;
+      // Show visual battle if human player is involved
+      const humanInvolved = attacker.owner === "p1" || (defender && defender.owner === "p1");
+      if (humanInvolved) {
+        await worldBattleViewer.startBattle(
+          battleState,
+          attacker.owner,
+          defender?.owner ?? "garrison",
+        );
+      } else {
+        const MAX_TICKS = 5000;
+        for (let i = 0; i < MAX_TICKS; i++) {
+          simTick(battleState);
+          if (battleState.winnerId) break;
+        }
       }
 
       const result = extractBattleResults(battleState, attacker.owner, defender?.owner ?? attacker.owner);
@@ -2041,14 +2085,20 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   };
 
   // Resolve a camp battle (army vs neutral camp)
-  const _resolveCampBattle = (army: import("@world/state/WorldArmy").WorldArmy, camp: import("@world/state/WorldCamp").WorldCamp, ws: WorldState) => {
+  const _resolveCampBattle = async (army: import("@world/state/WorldArmy").WorldArmy, camp: import("@world/state/WorldCamp").WorldCamp, ws: WorldState) => {
     worldEventLog.addEvent(`Attacking ${camp.tier === 1 ? "weak" : camp.tier === 2 ? "moderate" : "strong"} camp!`, 0xff8844);
 
     const battleState = buildCampBattleState(army, camp);
-    const MAX_TICKS = 5000;
-    for (let i = 0; i < MAX_TICKS; i++) {
-      simTick(battleState);
-      if (battleState.winnerId) break;
+
+    // Show visual battle for player armies
+    if (army.owner === "p1") {
+      await worldBattleViewer.startBattle(battleState, army.owner, "camp");
+    } else {
+      const MAX_TICKS = 5000;
+      for (let i = 0; i < MAX_TICKS; i++) {
+        simTick(battleState);
+        if (battleState.winnerId) break;
+      }
     }
 
     const result = extractBattleResults(battleState, army.owner, "neutral");
@@ -2090,8 +2140,11 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   };
 
   // End Turn button
-  worldHUD.onEndTurn = () => {
+  let _endTurnBusy = false;
+  worldHUD.onEndTurn = async () => {
     if (state.phase !== WorldPhase.PLAYER_TURN) return;
+    if (_endTurnBusy) return;
+    _endTurnBusy = true;
 
     const battles = detectCollisions(state);
     if (battles.length > 0) {
@@ -2101,7 +2154,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     endTurn(state);
 
     if ((state.phase as WorldPhase) === WorldPhase.BATTLE) {
-      resolveWorldBattles();
+      await resolveWorldBattlesVisual();
     }
 
     while ((state.phase as WorldPhase) === WorldPhase.AI_TURN) {
@@ -2116,7 +2169,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       endTurn(state);
 
       if ((state.phase as WorldPhase) === WorldPhase.BATTLE) {
-        resolveWorldBattles();
+        resolveWorldBattlesHeadless();
       }
     }
 
@@ -2129,10 +2182,11 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     _moveModeArmyId = null;
     _selectedArmyId = null;
     _selectedArmyReachable = new Set();
+    _endTurnBusy = false;
   };
 
   // Hex click handler
-  worldMapRenderer.onHexClick = (hex) => {
+  worldMapRenderer.onHexClick = async (hex) => {
     const tile = state.grid.getTile(hex.q, hex.r);
     if (!tile) return;
     const currentPid = state.playerOrder[state.currentPlayerIndex];
@@ -2148,7 +2202,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           if (destTile?.campId) {
             const camp = state.camps.get(destTile.campId);
             if (camp && !camp.cleared) {
-              _resolveCampBattle(army, camp, state);
+              await _resolveCampBattle(army, camp, state);
             }
           }
 
@@ -2156,7 +2210,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           if (battles.length > 0) {
             state.pendingBattles = battles;
             state.phase = WorldPhase.BATTLE;
-            resolveWorldBattles();
+            await resolveWorldBattlesVisual();
           }
         }
       }
@@ -2214,7 +2268,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             if (battles.length > 0) {
               state.pendingBattles = battles;
               state.phase = WorldPhase.BATTLE;
-              resolveWorldBattles();
+              await resolveWorldBattlesVisual();
             }
           }
           _selectedArmyId = null;
@@ -2248,7 +2302,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     KeyA: 4,        // SW (down-left)
   };
 
-  window.addEventListener("keydown", (e) => {
+  window.addEventListener("keydown", async (e) => {
     // Don't handle keys if a UI element is focused
     const tag = (document.activeElement?.tagName ?? "").toLowerCase();
     if (tag === "input" || tag === "textarea" || tag === "button") return;
@@ -2256,7 +2310,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     // Don't handle if a screen overlay is open
     if (researchScreen.isVisible || conjurePanel.isVisible
       || worldScoreScreen.isVisible || worldNationalScreen.isVisible
-      || worldArmyOverview.isVisible) return;
+      || worldArmyOverview.isVisible || worldBattleViewer.isVisible) return;
 
     if (state.phase !== WorldPhase.PLAYER_TURN) return;
 
@@ -2284,7 +2338,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         if (destTile?.campId) {
           const camp = state.camps.get(destTile.campId);
           if (camp && !camp.cleared) {
-            _resolveCampBattle(army, camp, state);
+            await _resolveCampBattle(army, camp, state);
           }
         }
 
@@ -2292,7 +2346,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         if (battles.length > 0) {
           state.pendingBattles = battles;
           state.phase = WorldPhase.BATTLE;
-          resolveWorldBattles();
+          await resolveWorldBattlesVisual();
         }
 
         // Re-select army if it still has movement points
