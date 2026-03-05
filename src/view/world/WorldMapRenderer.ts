@@ -46,6 +46,7 @@ export class WorldMapRenderer {
   private _container = new Container();
   private _hexContainer = new Container();
   private _campContainer = new Container();
+  private _swordContainer = new Container();
   private _highlightContainer = new Container();
   private _fogContainer = new Container();
   private _borderContainer = new Container();
@@ -58,6 +59,7 @@ export class WorldMapRenderer {
   private _waterTiles: HexCoord[] = [];
   private _waterPhase = 0;
   private _waterRedrawTimer = 0;
+  private _swordHex: HexCoord | null = null;
   private _tickerCb: (() => void) | null = null;
 
   /** Currently hovered hex (null = none). */
@@ -82,6 +84,7 @@ export class WorldMapRenderer {
     this._container.addChild(this._hexContainer);
     this._container.addChild(this._waterContainer);
     this._container.addChild(this._campContainer);
+    this._container.addChild(this._swordContainer);
     this._container.addChild(this._highlightContainer);
     this._container.addChild(this._borderContainer);
     this._container.addChild(this._fogContainer);
@@ -99,6 +102,7 @@ export class WorldMapRenderer {
         this._waterRedrawTimer = 0;
         this._drawWaterOverlay();
       }
+      if (this._swordHex) this._drawSwordFlicker();
     };
     vm.app.ticker.add(cb);
     this._tickerCb = cb;
@@ -591,6 +595,80 @@ export class WorldMapRenderer {
       this.onHexClick?.(hex);
     }
   };
+
+  // -----------------------------------------------------------------------
+  // Sword in the Stone
+  // -----------------------------------------------------------------------
+
+  /** Set the hex where the sword in the stone should be drawn. */
+  setSwordHex(hex: HexCoord): void {
+    this._swordHex = hex;
+    this._drawSwordFlicker();
+  }
+
+  /** Remove the sword in the stone visual. */
+  clearSword(): void {
+    this._swordHex = null;
+    this._swordContainer.removeChildren();
+  }
+
+  /** Redraw the flickering sword in stone. Called each ticker frame. */
+  private _drawSwordFlicker(): void {
+    this._swordContainer.removeChildren();
+    if (!this._swordHex) return;
+
+    const center = hexToPixel(this._swordHex, HEX_SIZE);
+    const g = new Graphics();
+    const cx = center.x;
+    const cy = center.y;
+    const s = HEX_SIZE * 0.35;
+    const t = this._waterPhase; // reuse water animation phase for flickering
+
+    // Stone base (grey rock)
+    g.ellipse(cx, cy + s * 0.3, s * 0.55, s * 0.3);
+    g.fill({ color: 0x666677, alpha: 0.9 });
+    g.stroke({ color: 0x444455, width: 1.5 });
+
+    // Stone top (darker cap)
+    g.ellipse(cx, cy + s * 0.15, s * 0.4, s * 0.2);
+    g.fill({ color: 0x555566, alpha: 0.9 });
+
+    // Sword blade
+    const bladeFlicker = 0.7 + 0.3 * Math.sin(t * 4.0);
+    g.moveTo(cx, cy - s * 1.2);
+    g.lineTo(cx - s * 0.08, cy + s * 0.1);
+    g.lineTo(cx + s * 0.08, cy + s * 0.1);
+    g.closePath();
+    g.fill({ color: 0xccccdd, alpha: bladeFlicker });
+    g.stroke({ color: 0xffffff, width: 1, alpha: bladeFlicker * 0.8 });
+
+    // Cross guard
+    g.moveTo(cx - s * 0.25, cy - s * 0.15);
+    g.lineTo(cx + s * 0.25, cy - s * 0.15);
+    g.stroke({ color: 0xddaa44, width: 2.5, alpha: bladeFlicker });
+
+    // Pommel (golden circle)
+    g.circle(cx, cy - s * 1.25, s * 0.08);
+    g.fill({ color: 0xffdd44, alpha: bladeFlicker });
+
+    // Flickering glow effect around the sword
+    const glowAlpha = 0.15 + 0.15 * Math.sin(t * 3.0 + 1.5);
+    g.circle(cx, cy - s * 0.4, s * 0.7);
+    g.fill({ color: 0xffdd88, alpha: glowAlpha });
+
+    // Sparkles
+    for (let i = 0; i < 3; i++) {
+      const angle = t * 2.0 + i * 2.1;
+      const dist = s * 0.5 + s * 0.2 * Math.sin(t * 1.5 + i);
+      const sx = cx + Math.cos(angle) * dist;
+      const sy = (cy - s * 0.4) + Math.sin(angle) * dist * 0.6;
+      const sparkleAlpha = 0.3 + 0.5 * Math.abs(Math.sin(t * 5.0 + i * 1.7));
+      g.circle(sx, sy, 1.5);
+      g.fill({ color: 0xffffaa, alpha: sparkleAlpha });
+    }
+
+    this._swordContainer.addChild(g);
+  }
 }
 
 // ---------------------------------------------------------------------------

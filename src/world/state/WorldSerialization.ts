@@ -59,6 +59,8 @@ interface SerializedWorldState {
   camps: Record<string, WorldCamp>;
   pendingBattles: PendingBattle[];
   winnerId: string | null;
+  swordHex: { q: number; r: number } | null;
+  swordClaimed: boolean;
   nextEntityId: number;
 }
 
@@ -121,6 +123,8 @@ function serializeWorldState(state: WorldState): SerializedWorldState {
     camps,
     pendingBattles: [...state.pendingBattles],
     winnerId: state.winnerId,
+    swordHex: state.swordHex,
+    swordClaimed: state.swordClaimed,
     nextEntityId: state.nextEntityId,
   };
 }
@@ -183,6 +187,8 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
     camps,
     pendingBattles: [...data.pendingBattles],
     winnerId: data.winnerId,
+    swordHex: data.swordHex ?? null,
+    swordClaimed: data.swordClaimed ?? false,
     nextEntityId: data.nextEntityId,
   };
 }

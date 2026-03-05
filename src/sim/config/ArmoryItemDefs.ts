@@ -255,6 +255,18 @@ export const ARMORY_ITEMS: ArmoryItemDef[] = [
     iconColor: 0x332244,
     iconSymbol: "Z",
   },
+  // --- Special: world mode quest reward ---
+  {
+    id: "excalibur",
+    name: "Excalibur",
+    description: "The legendary sword of King Arthur, drawn from the stone. Grants immense power.",
+    atkBonus: 25,
+    hpBonus: 100,
+    speedBonus: 0.5,
+    rangeBonus: 1,
+    iconColor: 0xffdd44,
+    iconSymbol: "E",
+  },
 ];
 
 // ---------------------------------------------------------------------------

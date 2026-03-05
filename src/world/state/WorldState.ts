@@ -53,6 +53,11 @@ export interface WorldState {
   pendingBattles: PendingBattle[];
   winnerId: string | null;
 
+  /** Hex position of the Sword in the Stone (null if not placed or already claimed). */
+  swordHex: { q: number; r: number } | null;
+  /** Whether the sword has been claimed by Arthur. */
+  swordClaimed: boolean;
+
   /** Auto-incrementing ID counter for cities/armies. */
   nextEntityId: number;
 }
@@ -74,6 +79,8 @@ export function createWorldState(grid: HexGrid, playerOrder: string[]): WorldSta
     camps: new Map(),
     pendingBattles: [],
     winnerId: null,
+    swordHex: null,
+    swordClaimed: false,
     nextEntityId: 1,
   };
 }

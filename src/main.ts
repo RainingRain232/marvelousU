@@ -2096,6 +2096,64 @@ async function _bootWorldGame(
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Sword in the Stone — grassland island 4 hexes from Avalon, guarded by angel
+  // ---------------------------------------------------------------------------
+  {
+    const center = { q: 0, r: 0 };
+    // Find a tile exactly 4 hexes from Avalon
+    const ring4 = hexSpiral(center, 4).filter((h) => hexDistance(center, h) === 4);
+    const shuffledRing = ring4.sort(() => Math.random() - 0.5);
+    let swordHex: { q: number; r: number } | null = null;
+
+    for (const candidate of shuffledRing) {
+      const t = grid.getTile(candidate.q, candidate.r);
+      if (!t) continue;
+      if (t.cityId || t.armyId || t.campId) continue;
+      // Check all neighbors exist (so we can turn them to water)
+      const neighbors = hexNeighbors(candidate);
+      const allValid = neighbors.every((n) => grid.hasTile(n.q, n.r));
+      if (!allValid) continue;
+      swordHex = candidate;
+      break;
+    }
+
+    if (swordHex) {
+      // Set the tile to grassland
+      const swordTile = grid.getTile(swordHex.q, swordHex.r)!;
+      swordTile.terrain = TerrainType.GRASSLAND;
+      swordTile.owner = null;
+      swordTile.resource = null;
+      swordTile.improvement = null;
+
+      // Surround with water
+      const neighbors = hexNeighbors(swordHex);
+      for (const n of neighbors) {
+        const nTile = grid.getTile(n.q, n.r);
+        if (nTile) {
+          nTile.terrain = TerrainType.WATER;
+          nTile.owner = null;
+          nTile.resource = null;
+          nTile.improvement = null;
+          // Don't overwrite existing cities/armies
+        }
+      }
+
+      // Spawn neutral angel army on the tile
+      const angelArmyId = nextId(state, "army");
+      const angelUnits: ArmyUnit[] = [
+        { unitType: UnitType.ANGEL, count: 1, hpPerUnit: 200 },
+      ];
+      const angelArmy = createWorldArmy(angelArmyId, "morgaine", swordHex, angelUnits, false);
+      angelArmy.movementPoints = 0; // stationary
+      state.armies.set(angelArmyId, angelArmy);
+      swordTile.armyId = angelArmyId;
+
+      state.swordHex = swordHex;
+      state.swordClaimed = false;
+    }
+  }
+
   _initWorldViews(state);
 }
 
@@ -2132,6 +2190,11 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   // Initialize renderer
   worldMapRenderer.init(viewManager);
   worldMapRenderer.drawMap(grid);
+
+  // Draw sword in the stone if it exists and hasn't been claimed
+  if (state.swordHex && !state.swordClaimed) {
+    worldMapRenderer.setSwordHex(state.swordHex);
+  }
 
   // Block hex clicks when they land on a UI panel
   worldMapRenderer.shouldBlockClick = (sx, sy) => {
@@ -2566,6 +2629,74 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     });
   };
 
+  // Sword in the Stone proximity check — triggers when player army is within 2 hexes
+  let _swordDialogShown = false;
+  const _checkSwordProximity = async (playerArmy: WorldArmy): Promise<void> => {
+    if (!state.swordHex || state.swordClaimed || _swordDialogShown) return;
+    if (playerArmy.owner !== "p1") return;
+    if (hexDistance(playerArmy.position, state.swordHex) > 2) return;
+
+    _swordDialogShown = true;
+    const player = state.players.get("p1");
+    if (!player) return;
+
+    const isArthur = player.leaderId === "arthur";
+
+    await new Promise<void>((resolve) => {
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card = document.createElement("div");
+      card.style.cssText = "background:#1a1a2e;border:2px solid #8844cc;border-radius:12px;padding:24px;max-width:400px;text-align:center;box-shadow:0 0 30px rgba(136,68,204,0.4);";
+
+      const img = document.createElement("img");
+      img.src = merlinImgUrl;
+      img.style.cssText = "width:80px;height:80px;border-radius:50%;border:2px solid #aa88dd;margin-bottom:12px;image-rendering:pixelated;";
+      card.appendChild(img);
+
+      const title = document.createElement("div");
+      title.textContent = "Merlin speaks!";
+      title.style.cssText = "color:#aa88dd;font-family:monospace;font-size:16px;font-weight:bold;margin-bottom:8px;";
+      card.appendChild(title);
+
+      const text = document.createElement("div");
+      if (isArthur) {
+        text.innerHTML = `<b style="color:#ffd700">Welcome again, my liege!</b><br><br>` +
+          `Your sword has awaited your return. <b style="color:#ffdd44">Excalibur</b> is yours once more \u2014 ` +
+          `may it guide you to victory against the darkness of Morgaine!`;
+      } else {
+        text.innerHTML = `<b style="color:#cc4444">You are not my king. Begone!</b><br><br>` +
+          `The sword recognises only its true master. Only <b style="color:#ffd700">Arthur</b> may claim Excalibur.`;
+      }
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;";
+      card.appendChild(text);
+
+      const btn = document.createElement("button");
+      btn.textContent = "Dismiss";
+      btn.style.cssText = "background:#8844cc;color:white;border:none;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;";
+      btn.onmouseenter = () => { btn.style.background = "#aa66ee"; };
+      btn.onmouseleave = () => { btn.style.background = "#8844cc"; };
+      btn.onclick = () => {
+        backdrop.remove();
+
+        if (isArthur) {
+          // Award Excalibur armory item
+          player.armoryItems.push("excalibur");
+          state.swordClaimed = true;
+          worldMapRenderer.clearSword();
+          worldEventLog.addEvent("Arthur has claimed Excalibur!", 0xffd700);
+          worldNotification.show("Excalibur", "Arthur has reclaimed his legendary sword!", 0xffd700);
+        }
+
+        resolve();
+      };
+      card.appendChild(btn);
+
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
   // Resolve all pending battles — headless (for AI battles)
   const resolveWorldBattlesHeadless = () => {
     for (const battle of state.pendingBattles) {
@@ -2908,6 +3039,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           }
 
           await _checkMorgaineProximity(army);
+          await _checkSwordProximity(army);
         }
       }
       _moveModeArmyId = null;
@@ -2976,6 +3108,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             }
 
             await _checkMorgaineProximity(army);
+            await _checkSwordProximity(army);
           }
           _selectedArmyId = null;
           _selectedArmyReachable = new Set();
@@ -3104,6 +3237,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         }
 
         await _checkMorgaineProximity(army);
+        await _checkSwordProximity(army);
 
         // Re-select army if it still has movement points
         if (army.movementPoints > 0 && state.phase === WorldPhase.PLAYER_TURN) {
