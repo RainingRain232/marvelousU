@@ -2308,7 +2308,7 @@ async function _bootWorldGame(
     }
   }
 
-  // DEBUG: Spawn a p2 army with 1 lancer near p1's capital
+  // DEBUG: Spawn a p2 army near p1's capital
   {
     let p1Capital: import("@world/state/WorldCity").WorldCity | null = null;
     for (const city of state.cities.values()) {
@@ -2322,7 +2322,9 @@ async function _bootWorldGame(
       }) ?? neighbors[0];
       const debugArmyId = nextId(state, "army");
       const debugArmy = createWorldArmy(debugArmyId, "p2", spawnHex, [
-        { unitType: UnitType.LANCER, count: 1, hpPerUnit: UNIT_DEFINITIONS[UnitType.LANCER].hp },
+        { unitType: UnitType.SWORDSMAN, count: 5, hpPerUnit: UNIT_DEFINITIONS[UnitType.SWORDSMAN].hp },
+        { unitType: UnitType.ARCHER, count: 2, hpPerUnit: UNIT_DEFINITIONS[UnitType.ARCHER].hp },
+        { unitType: UnitType.LANCER, count: 3, hpPerUnit: UNIT_DEFINITIONS[UnitType.LANCER].hp },
       ], false);
       state.armies.set(debugArmyId, debugArmy);
       const debugTile = state.grid.getTile(spawnHex.q, spawnHex.r);
@@ -3176,7 +3178,22 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       endTurn(state);
 
       if ((state.phase as WorldPhase) === WorldPhase.BATTLE) {
-        resolveWorldBattlesHeadless();
+        // Use visual resolver if p1 is involved in any battle
+        const humanInBattle = state.pendingBattles.some((b) => {
+          const att = state.armies.get(b.attackerArmyId);
+          const def = b.defenderArmyId ? state.armies.get(b.defenderArmyId) : null;
+          return att?.owner === "p1" || def?.owner === "p1";
+        });
+        if (humanInBattle) {
+          const savedIdx = state.currentPlayerIndex;
+          await resolveWorldBattlesVisual();
+          if ((state.phase as WorldPhase) !== WorldPhase.GAME_OVER) {
+            state.currentPlayerIndex = savedIdx;
+            state.phase = WorldPhase.AI_TURN;
+          }
+        } else {
+          resolveWorldBattlesHeadless();
+        }
       }
     }
 

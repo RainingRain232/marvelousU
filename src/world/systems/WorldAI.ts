@@ -80,8 +80,8 @@ function _evaluateStrategy(
     return "explore";
   }
 
-  // ATTACK if strong (> 15 units in field armies)
-  if (ownUnits > 15 && ownArmies >= 1) {
+  // ATTACK if has a decent field army
+  if (ownUnits > 6 && ownArmies >= 1) {
     return "attack";
   }
 
@@ -434,15 +434,17 @@ function _moveArmyAI(
       break;
 
     case "develop":
-      // Clear camps if nearby, otherwise hold position
-      if (nearestCampTarget && nearestCampDist <= 5) {
+      // Attack nearby enemies, otherwise clear camps
+      if (nearestEnemyTarget && nearestEnemyDist <= 6) {
+        target = nearestEnemyTarget;
+      } else if (nearestCampTarget && nearestCampDist <= 5) {
         target = nearestCampTarget;
       }
       break;
 
     case "attack":
       // Prioritize nearby enemies, then cities
-      if (nearestEnemyTarget && nearestEnemyDist <= 4) {
+      if (nearestEnemyTarget && nearestEnemyDist <= 8) {
         target = nearestEnemyTarget;
       } else if (nearestCityTarget) {
         target = nearestCityTarget;
@@ -451,7 +453,7 @@ function _moveArmyAI(
 
     case "defend":
       // Attack nearby threats
-      if (nearestEnemyTarget && nearestEnemyDist <= 4) {
+      if (nearestEnemyTarget && nearestEnemyDist <= 6) {
         target = nearestEnemyTarget;
       }
       break;

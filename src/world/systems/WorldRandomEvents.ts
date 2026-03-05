@@ -172,6 +172,9 @@ function _resourceDiscovery(_state: WorldState, player: WorldPlayer): WorldEvent
 }
 
 function _desertion(state: WorldState, player: WorldPlayer): WorldEvent | null {
+  // Only trigger when the player can't pay their armies
+  if (player.gold >= 0) return null;
+
   // Find a field army with units to lose
   const armies = [...state.armies.values()].filter(
     (a) => a.owner === player.id && !a.isGarrison && a.units.length > 0,
