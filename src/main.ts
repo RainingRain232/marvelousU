@@ -1608,6 +1608,20 @@ async function _returnFromWorldBattle(): Promise<void> {
       nb.defenders = [];
       const tile = state.grid.getTile(nb.position.q, nb.position.r);
       if (tile) tile.owner = army!.owner;
+
+      // Blacksmith one-time armory reward
+      if (nb.type === "blacksmith" && !nb.armoryRewardClaimed) {
+        nb.armoryRewardClaimed = true;
+        const player = state.players.get(army!.owner);
+        if (player) {
+          const owned = new Set(player.armoryItems);
+          const available = ARMORY_ITEMS.filter((i) => !owned.has(i.id));
+          if (available.length > 0) {
+            const drop = available[Math.floor(Math.random() * available.length)];
+            player.armoryItems.push(drop.id);
+          }
+        }
+      }
     }
   } else {
     // Field / siege battle result
@@ -3212,14 +3226,15 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   const _resolveNeutralBuildingBattle = async (army: import("@world/state/WorldArmy").WorldArmy, nb: import("@world/state/NeutralBuilding").NeutralBuilding, ws: WorldState) => {
     if (nb.captured) return;
 
-    const typeLabel = nb.type === "farm" ? "Farm" : nb.type === "mill" ? "Mill" : "Tower";
+    const NB_LABELS: Record<string, string> = { farm: "Farm", mill: "Mill", tower: "Tower", mage_tower: "Mage Tower", blacksmith: "Blacksmith", market: "Market", temple: "Temple", embassy: "Embassy", faction_hall: "Faction Hall", stables: "Stables", barracks: "Barracks", elite_barracks: "Elite Barracks", elite_stables: "Elite Stables", elite_hall: "Elite Hall" };
+    const typeLabel = NB_LABELS[nb.type] ?? nb.type;
     worldEventLog.addEvent(`Attacking neutral ${typeLabel}!`, 0xff8844);
 
     // Build a fake camp to reuse buildCampBattleState
     const fakeCamp: import("@world/state/WorldCamp").WorldCamp = {
       id: nb.id,
       position: nb.position,
-      tier: nb.type === "tower" ? 3 : nb.type === "mill" ? 2 : 1,
+      tier: (["elite_barracks", "elite_stables", "elite_hall"].includes(nb.type) ? 3 : ["tower", "mage_tower", "market", "temple", "embassy", "faction_hall", "stables", "barracks"].includes(nb.type) ? 3 : ["blacksmith", "mill"].includes(nb.type) ? 2 : 1) as 1 | 2 | 3,
       defenders: [...nb.defenders],
       goldReward: 0,
       cleared: false,
@@ -3273,7 +3288,25 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       const tile = ws.grid.getTile(nb.position.q, nb.position.r);
       if (tile) tile.owner = army.owner;
 
-      worldEventLog.addEvent(`${typeLabel} captured! +${nb.goldIncome} gold/turn`, 0xffcc44);
+      if (nb.type === "mage_tower" || nb.type === "temple") {
+        worldEventLog.addEvent(`${typeLabel} captured! +${nb.manaIncome} mana/turn`, 0x8844ff);
+      } else if (nb.type === "blacksmith" && !nb.armoryRewardClaimed) {
+        nb.armoryRewardClaimed = true;
+        const player = ws.players.get(army.owner);
+        if (player) {
+          const owned = new Set(player.armoryItems);
+          const available = ARMORY_ITEMS.filter((i) => !owned.has(i.id));
+          if (available.length > 0) {
+            const drop = available[Math.floor(Math.random() * available.length)];
+            player.armoryItems.push(drop.id);
+            worldEventLog.addEvent(`${typeLabel} captured! Found: ${drop.name}! +${nb.goldIncome} gold/turn`, 0xff88ff);
+          } else {
+            worldEventLog.addEvent(`${typeLabel} captured! +${nb.goldIncome} gold/turn`, 0xffcc44);
+          }
+        }
+      } else {
+        worldEventLog.addEvent(`${typeLabel} captured! +${nb.goldIncome} gold/turn`, 0xffcc44);
+      }
     } else {
       worldEventLog.addEvent(`${typeLabel} defenders held!`, 0xff6644);
     }

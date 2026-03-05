@@ -256,10 +256,14 @@ export class WorldHexTooltip {
     if (tile.neutralBuildingId && isCurrentlyVisible) {
       const nb = this._state.neutralBuildings.get(tile.neutralBuildingId);
       if (nb) {
-        const typeLabel = nb.type === "farm" ? "Farm" : nb.type === "mill" ? "Mill" : "Tower";
+        const NB_LABELS: Record<string, string> = { farm: "Farm", mill: "Mill", tower: "Tower", mage_tower: "Mage Tower", blacksmith: "Blacksmith", market: "Market", temple: "Temple", embassy: "Embassy", faction_hall: "Faction Hall", stables: "Stables", barracks: "Barracks", elite_barracks: "Elite Barracks", elite_stables: "Elite Stables", elite_hall: "Elite Hall" };
+        const typeLabel = NB_LABELS[nb.type] ?? nb.type;
         const ownerLabel = nb.captured ? (nb.owner === "p1" ? " (Yours)" : ` (${nb.owner})`) : " (Neutral)";
+        const incomeLabel = (nb.type === "mage_tower" || nb.type === "temple")
+          ? `+${nb.manaIncome} mana/turn`
+          : `+${nb.goldIncome} gold/turn`;
         const nbText = new Text({
-          text: `${typeLabel}${ownerLabel} +${nb.goldIncome} gold/turn`,
+          text: `${typeLabel}${ownerLabel} ${incomeLabel}`,
           style: new TextStyle({
             fontFamily: "monospace",
             fontSize: 10,

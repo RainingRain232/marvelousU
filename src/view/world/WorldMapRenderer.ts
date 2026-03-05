@@ -25,6 +25,17 @@ import { FirepitRenderer } from "@view/entities/FirepitRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { MillRenderer } from "@view/entities/MillRenderer";
 import { TowerRenderer } from "@view/entities/TowerRenderer";
+import { MageTowerRenderer } from "@view/entities/MageTowerRenderer";
+import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
+import { MarketRenderer } from "@view/entities/MarketRenderer";
+import { TempleRenderer } from "@view/entities/TempleRenderer";
+import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
+import { FactionHallRenderer } from "@view/entities/FactionHallRenderer";
+import { StableRenderer } from "@view/entities/StableRenderer";
+import { BarracksRenderer } from "@view/entities/BarracksRenderer";
+import { EliteBarracksRenderer } from "@view/entities/EliteBarracksRenderer";
+import { EliteStableRenderer } from "@view/entities/EliteStableRenderer";
+import { EliteHallRenderer } from "@view/entities/EliteHallRenderer";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -78,7 +89,7 @@ export class WorldMapRenderer {
 
   // Neutral building renderers (animated)
   private _neutralBuildingContainer = new Container();
-  private _neutralBuildingRenderers: { renderer: FirepitRenderer | FarmRenderer | MillRenderer | TowerRenderer; tick: (dt: number) => void }[] = [];
+  private _neutralBuildingRenderers: { renderer: { container: Container }; tick: (dt: number) => void }[] = [];
 
   /** Currently hovered hex (null = none). */
   private _hoveredHex: HexCoord | null = null;
@@ -441,6 +452,8 @@ export class WorldMapRenderer {
     const MILL_SCALE = (HEX_SIZE * 2 * 0.7) / 128;
     // Tower is 64×64 natively. Use same scale as castle (256×256) to keep proportions.
     const TOWER_SCALE = (HEX_SIZE * 2 * 0.7) / 256;
+    const MAGE_TOWER_SCALE = (HEX_SIZE * 2 * 0.7) / 128;
+    const BLACKSMITH_SCALE = (HEX_SIZE * 2 * 0.7) / 128;
 
     for (const building of buildings) {
       // Hide in fog
@@ -491,15 +504,99 @@ export class WorldMapRenderer {
         );
         wrapper.addChild(tr.container);
         this._neutralBuildingRenderers.push({ renderer: tr, tick: (dt) => tr.tick(dt, 0 as any) });
+      } else if (building.type === "mage_tower") {
+        const mt = new MageTowerRenderer(ownerStr);
+        mt.container.scale.set(MAGE_TOWER_SCALE);
+        mt.container.position.set(
+          center.x - 64 * MAGE_TOWER_SCALE,
+          center.y - 64 * MAGE_TOWER_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(mt.container);
+        this._neutralBuildingRenderers.push({ renderer: mt, tick: (dt) => mt.tick(dt, 0 as any) });
+      } else if (building.type === "blacksmith") {
+        const bs = new BlacksmithRenderer(ownerStr);
+        bs.container.scale.set(BLACKSMITH_SCALE);
+        bs.container.position.set(
+          center.x - 64 * BLACKSMITH_SCALE,
+          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(bs.container);
+        this._neutralBuildingRenderers.push({ renderer: bs, tick: (dt) => bs.tick(dt, 0 as any) });
+      } else if (building.type === "market") {
+        const mk = new MarketRenderer(ownerStr);
+        mk.container.scale.set(BLACKSMITH_SCALE);
+        mk.container.position.set(
+          center.x - 64 * BLACKSMITH_SCALE,
+          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(mk.container);
+        this._neutralBuildingRenderers.push({ renderer: mk, tick: (dt) => mk.tick(dt, 0 as any) });
+      } else if (building.type === "temple") {
+        const TEMPLE_SCALE = (HEX_SIZE * 2 * 0.7) / 192;
+        const tp = new TempleRenderer(ownerStr);
+        tp.container.scale.set(TEMPLE_SCALE);
+        tp.container.position.set(
+          center.x - 64 * TEMPLE_SCALE,
+          center.y - 96 * TEMPLE_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(tp.container);
+        this._neutralBuildingRenderers.push({ renderer: tp, tick: (dt) => tp.tick(dt, 0 as any) });
+      } else if (building.type === "embassy") {
+        const eb = new EmbassyRenderer(ownerStr);
+        eb.container.scale.set(BLACKSMITH_SCALE);
+        eb.container.position.set(
+          center.x - 64 * BLACKSMITH_SCALE,
+          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(eb.container);
+        this._neutralBuildingRenderers.push({ renderer: eb, tick: (dt) => eb.tick(dt, 0 as any) });
+      } else if (building.type === "faction_hall" || building.type === "elite_hall") {
+        const Ctor = building.type === "elite_hall" ? EliteHallRenderer : FactionHallRenderer;
+        const fh = new Ctor(ownerStr);
+        fh.container.scale.set(BLACKSMITH_SCALE);
+        fh.container.position.set(
+          center.x - 64 * BLACKSMITH_SCALE,
+          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(fh.container);
+        this._neutralBuildingRenderers.push({ renderer: fh, tick: (dt) => fh.tick(dt, 0 as any) });
+      } else if (building.type === "stables" || building.type === "elite_stables") {
+        const STABLE_SCALE = building.type === "stables" ? (HEX_SIZE * 2 * 0.7) / 192 : BLACKSMITH_SCALE;
+        const halfW = building.type === "stables" ? 96 : 64;
+        const halfH = building.type === "stables" ? 64 : 64;
+        const Ctor = building.type === "elite_stables" ? EliteStableRenderer : StableRenderer;
+        const st = new Ctor(ownerStr);
+        st.container.scale.set(STABLE_SCALE);
+        st.container.position.set(
+          center.x - halfW * STABLE_SCALE,
+          center.y - halfH * STABLE_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(st.container);
+        this._neutralBuildingRenderers.push({ renderer: st, tick: (dt) => st.tick(dt, 0 as any) });
+      } else if (building.type === "barracks" || building.type === "elite_barracks") {
+        const Ctor = building.type === "elite_barracks" ? EliteBarracksRenderer : BarracksRenderer;
+        const br = new Ctor(ownerStr);
+        br.container.scale.set(BLACKSMITH_SCALE);
+        br.container.position.set(
+          center.x - 64 * BLACKSMITH_SCALE,
+          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(br.container);
+        this._neutralBuildingRenderers.push({ renderer: br, tick: (dt) => br.tick(dt, 0 as any) });
       }
 
-      // Gold income badge
+      // Income badge (gold=yellow, mana=purple)
       const badge = new Graphics();
       const bx = center.x + HEX_SIZE * 0.45;
       const by = center.y - HEX_SIZE * 0.65;
       badge.circle(bx, by, HEX_SIZE * 0.1);
-      badge.fill({ color: 0xffcc00, alpha: 0.9 });
-      badge.stroke({ color: 0x886600, width: 1 });
+      if (building.type === "mage_tower" || building.type === "temple") {
+        badge.fill({ color: 0x8844ff, alpha: 0.9 });
+        badge.stroke({ color: 0x442288, width: 1 });
+      } else {
+        badge.fill({ color: 0xffcc00, alpha: 0.9 });
+        badge.stroke({ color: 0x886600, width: 1 });
+      }
 
       this._neutralBuildingContainer.addChild(wrapper);
       this._neutralBuildingContainer.addChild(badge);

@@ -55,10 +55,11 @@ export function processEconomy(state: WorldState, playerId: string): void {
     }
   }
 
-  // Income from captured neutral buildings (farms, mills, towers)
+  // Income from captured neutral buildings
   for (const nb of state.neutralBuildings.values()) {
     if (nb.owner === playerId && nb.captured) {
       player.gold += nb.goldIncome;
+      player.mana += nb.manaIncome;
     }
   }
 

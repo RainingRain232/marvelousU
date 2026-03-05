@@ -720,5 +720,175 @@ export function placeNeutralBuildings(
     towersPlaced++;
   }
 
+  // ------------------------------------------------------------------
+  // Place mage towers on ~5% of remaining passable tiles (3-tile spacing)
+  // ------------------------------------------------------------------
+  const allPassable: HexTile[] = [];
+  for (const tile of grid.allTiles()) {
+    if (!isFinite(TERRAIN_DEFINITIONS[tile.terrain].movementCost)) continue;
+    if (tile.cityId || tile.campId) continue;
+    if (usedTiles.has(hexKey(tile.q, tile.r))) continue;
+    let tooClose = false;
+    for (const ps of playerStarts) {
+      if (hexDistance(tile, ps) < minDistFromStart) { tooClose = true; break; }
+    }
+    if (!tooClose) allPassable.push(tile);
+  }
+
+  // Shuffle
+  for (let i = allPassable.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [allPassable[i], allPassable[j]] = [allPassable[j], allPassable[i]];
+  }
+
+  const targetMageTowers = Math.floor(allPassable.length * 0.05);
+  let mageTowersPlaced = 0;
+  const mageTowerPositions: HexCoord[] = [];
+
+  for (const tile of allPassable) {
+    if (mageTowersPlaced >= targetMageTowers) break;
+    const key = hexKey(tile.q, tile.r);
+    if (usedTiles.has(key)) continue;
+
+    let tooCloseToOther = false;
+    for (const mp of mageTowerPositions) {
+      if (hexDistance(tile, mp) < 3) { tooCloseToOther = true; break; }
+    }
+    if (tooCloseToOther) continue;
+
+    const mtId = `nb_${buildings.length + 1}`;
+    const mt = createNeutralBuilding(mtId, "mage_tower", { q: tile.q, r: tile.r }, _neutralBuildingDefenders(5, rng));
+    buildings.push(mt);
+    usedTiles.add(key);
+    tile.neutralBuildingId = mtId;
+    mageTowerPositions.push({ q: tile.q, r: tile.r });
+    mageTowersPlaced++;
+  }
+
+  // ------------------------------------------------------------------
+  // Place blacksmiths on ~5% of remaining passable tiles (3-tile spacing)
+  // ------------------------------------------------------------------
+  const remainingPassable: HexTile[] = [];
+  for (const tile of grid.allTiles()) {
+    if (!isFinite(TERRAIN_DEFINITIONS[tile.terrain].movementCost)) continue;
+    if (tile.cityId || tile.campId) continue;
+    if (usedTiles.has(hexKey(tile.q, tile.r))) continue;
+    let tooClose = false;
+    for (const ps of playerStarts) {
+      if (hexDistance(tile, ps) < minDistFromStart) { tooClose = true; break; }
+    }
+    if (!tooClose) remainingPassable.push(tile);
+  }
+
+  for (let i = remainingPassable.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [remainingPassable[i], remainingPassable[j]] = [remainingPassable[j], remainingPassable[i]];
+  }
+
+  const targetBlacksmiths = Math.floor(remainingPassable.length * 0.05);
+  let blacksmithsPlaced = 0;
+  const blacksmithPositions: HexCoord[] = [];
+
+  for (const tile of remainingPassable) {
+    if (blacksmithsPlaced >= targetBlacksmiths) break;
+    const key = hexKey(tile.q, tile.r);
+    if (usedTiles.has(key)) continue;
+
+    let tooCloseToOther = false;
+    for (const bp of blacksmithPositions) {
+      if (hexDistance(tile, bp) < 3) { tooCloseToOther = true; break; }
+    }
+    if (tooCloseToOther) continue;
+
+    const bsId = `nb_${buildings.length + 1}`;
+    const bs = createNeutralBuilding(bsId, "blacksmith", { q: tile.q, r: tile.r }, _neutralBuildingDefenders(4, rng));
+    buildings.push(bs);
+    usedTiles.add(key);
+    tile.neutralBuildingId = bsId;
+    blacksmithPositions.push({ q: tile.q, r: tile.r });
+    blacksmithsPlaced++;
+  }
+
+  // ------------------------------------------------------------------
+  // Guaranteed placement helper
+  // ------------------------------------------------------------------
+  const _placeGuaranteed = (
+    type: NeutralBuilding["type"],
+    needed: number,
+    positions: HexCoord[],
+    defTier: number,
+  ) => {
+    if (positions.length >= needed) return;
+    const remaining = needed - positions.length;
+    const candidates: HexTile[] = [];
+    for (const tile of grid.allTiles()) {
+      if (!isFinite(TERRAIN_DEFINITIONS[tile.terrain].movementCost)) continue;
+      if (tile.cityId || tile.campId) continue;
+      if (usedTiles.has(hexKey(tile.q, tile.r))) continue;
+      candidates.push(tile);
+    }
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    let placed = 0;
+    for (const tile of candidates) {
+      if (placed >= remaining) break;
+      const key = hexKey(tile.q, tile.r);
+      if (usedTiles.has(key)) continue;
+      let tooClose = false;
+      for (const p of positions) {
+        if (hexDistance(tile, p) < 3) { tooClose = true; break; }
+      }
+      if (tooClose) continue;
+      const id = `nb_${buildings.length + 1}`;
+      const b = createNeutralBuilding(id, type, { q: tile.q, r: tile.r }, _neutralBuildingDefenders(defTier, rng));
+      buildings.push(b);
+      usedTiles.add(key);
+      tile.neutralBuildingId = id;
+      positions.push({ q: tile.q, r: tile.r });
+      placed++;
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // Guaranteed minimum counts based on map radius
+  // ------------------------------------------------------------------
+  const radius = grid.radius;
+
+  // Mage towers & blacksmiths: radius ≤8→1, 9-10→2, 11+→3/4
+  const minMT = radius >= 11 ? 3 : radius >= 9 ? 2 : 1;
+  const minBS = radius >= 11 ? 4 : radius >= 9 ? 2 : 1;
+  _placeGuaranteed("mage_tower", minMT, mageTowerPositions, 5);
+  _placeGuaranteed("blacksmith", minBS, blacksmithPositions, 4);
+
+  // Markets, temples, embassies: 2 at radius 9, +2 per radius above 9
+  const marketPositions: HexCoord[] = [];
+  const templePositions: HexCoord[] = [];
+  const embassyPositions: HexCoord[] = [];
+
+  const minSpecial = radius >= 9 ? 2 + 2 * (radius - 9) : 0;
+  _placeGuaranteed("market", minSpecial, marketPositions, 6);
+  _placeGuaranteed("temple", minSpecial, templePositions, 5);
+  _placeGuaranteed("embassy", minSpecial, embassyPositions, 5);
+
+  // Faction hall, stables, barracks: same scaling as market/temple/embassy
+  const factionHallPos: HexCoord[] = [];
+  const stablesPos: HexCoord[] = [];
+  const barracksPos: HexCoord[] = [];
+  _placeGuaranteed("faction_hall", minSpecial, factionHallPos, 5);
+  _placeGuaranteed("stables", minSpecial, stablesPos, 5);
+  _placeGuaranteed("barracks", minSpecial, barracksPos, 5);
+
+  // Elite buildings: 1 of each from radius 11+
+  if (radius >= 11) {
+    const eliteBarracksPos: HexCoord[] = [];
+    const eliteStablesPos: HexCoord[] = [];
+    const eliteHallPos: HexCoord[] = [];
+    _placeGuaranteed("elite_barracks", 1, eliteBarracksPos, 6);
+    _placeGuaranteed("elite_stables", 1, eliteStablesPos, 6);
+    _placeGuaranteed("elite_hall", 1, eliteHallPos, 6);
+  }
+
   return buildings;
 }
