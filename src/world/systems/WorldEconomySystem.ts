@@ -55,6 +55,11 @@ export function processEconomy(state: WorldState, playerId: string): void {
     }
   }
 
+  // Morgaine crystal bonus: +10 mana and +10 research per crystal per turn
+  if (player.morgaineCrystals > 0) {
+    player.mana += player.morgaineCrystals * 10;
+  }
+
   // Apply leader income_multiplier bonus to gold earned this turn
   if (player.leaderId) {
     const leaderDef = getLeader(player.leaderId);

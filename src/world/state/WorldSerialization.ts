@@ -31,6 +31,7 @@ interface SerializedWorldPlayer {
   mana: number;
   isAI: boolean;
   isAlive: boolean;
+  morgaineCrystals: number;
   armoryItems: string[];
   activeResearch: string | null;
   researchTurnsLeft: number;
@@ -82,6 +83,7 @@ function serializeWorldState(state: WorldState): SerializedWorldState {
       mana: p.mana,
       isAI: p.isAI,
       isAlive: p.isAlive,
+      morgaineCrystals: p.morgaineCrystals,
       armoryItems: [...p.armoryItems],
       activeResearch: p.activeResearch,
       researchTurnsLeft: p.researchTurnsLeft,
@@ -144,6 +146,7 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
       mana: sp.mana ?? 0,
       isAI: sp.isAI,
       isAlive: sp.isAlive,
+      morgaineCrystals: sp.morgaineCrystals ?? 0,
       armoryItems: [...sp.armoryItems],
       activeResearch: sp.activeResearch,
       researchTurnsLeft: sp.researchTurnsLeft,

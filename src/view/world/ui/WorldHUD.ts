@@ -54,6 +54,8 @@ export class WorldHUD {
   private _foodText!: Text;
   private _manaText!: Text;
   private _scienceText!: Text;
+  private _crystalText!: Text;
+  private _crystalContainer!: Container;
   private _endTurnBtn!: Container;
   private _endTurnBg!: Graphics;
   private _screenW = 800;
@@ -126,7 +128,10 @@ export class WorldHUD {
     this._goldText.text = `${player.gold} (${goldSign}${goldIncome})`;
     this._foodText.text = `${Math.floor(player.food)} (${foodSign}${Math.floor(foodIncome)})`;
     this._manaText.text = `${player.mana} (${manaSign}${manaIncome})`;
-    this._scienceText.text = `+${scienceIncome}`;
+    this._scienceText.text = `+${scienceIncome + player.morgaineCrystals * 10}`;
+
+    // Morgaine crystals
+    this._crystalText.text = `${player.morgaineCrystals}/3`;
 
     // Only show End Turn button during player turn
     this._endTurnBtn.visible = state.phase === WorldPhase.PLAYER_TURN;
@@ -146,7 +151,7 @@ export class WorldHUD {
 
     // Background
     const bg = new Graphics();
-    bg.roundRect(0, 0, 320, 82, 6);
+    bg.roundRect(0, 0, 320, 102, 6);
     bg.fill({ color: 0x000000, alpha: 0.6 });
     bar.addChild(bg);
 
@@ -218,6 +223,22 @@ export class WorldHUD {
     this._scienceText.x = 162;
     this._scienceText.y = 64;
     bar.addChild(this._scienceText);
+
+    // Morgaine crystal icon + text
+    this._crystalContainer = new Container();
+    const crystalIcon = new Graphics();
+    crystalIcon.moveTo(0, -6).lineTo(4, 0).lineTo(0, 6).lineTo(-4, 0).closePath();
+    crystalIcon.fill({ color: 0xcc44ff, alpha: 0.9 });
+    crystalIcon.stroke({ color: 0xee88ff, width: 1 });
+    crystalIcon.position.set(150, 92);
+    this._crystalContainer.addChild(crystalIcon);
+    this._crystalText = new Text({ text: "0/3", style: new TextStyle({
+      fontFamily: "monospace", fontSize: 15, fontWeight: "bold", fill: 0xcc88ff,
+    }) });
+    this._crystalText.x = 162;
+    this._crystalText.y = 84;
+    this._crystalContainer.addChild(this._crystalText);
+    bar.addChild(this._crystalContainer);
 
     bar.x = 10;
     bar.y = 10;

@@ -2467,6 +2467,105 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     });
   };
 
+  // Show Merlin dialog after defeating a Morgaine army (crystal awarded)
+  const _showMerlinCrystalDialog = (crystalCount: number): Promise<void> => {
+    return new Promise((resolve) => {
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card = document.createElement("div");
+      card.style.cssText = "background:#1a1a2e;border:2px solid #8844cc;border-radius:12px;padding:24px;max-width:420px;text-align:center;box-shadow:0 0 30px rgba(136,68,204,0.4);";
+
+      const img = document.createElement("img");
+      img.src = merlinImgUrl;
+      img.style.cssText = "width:80px;height:80px;border-radius:50%;border:2px solid #aa88dd;margin-bottom:12px;image-rendering:pixelated;";
+      card.appendChild(img);
+
+      const title = document.createElement("div");
+      title.textContent = "Merlin speaks!";
+      title.style.cssText = "color:#aa88dd;font-family:monospace;font-size:16px;font-weight:bold;margin-bottom:8px;";
+      card.appendChild(title);
+
+      const text = document.createElement("div");
+      if (crystalCount < 3) {
+        text.innerHTML = `<b style="color:#cc88ff">You found a Morgaine Crystal!</b><br><br>` +
+          `These crystals are fragments of Morgaine\u2019s power. Each one grants you <b style="color:#8888ff">+10 mana</b> and <b style="color:#44aa44">+10 research</b> per turn.<br><br>` +
+          `You now have <b style="color:#cc44ff">${crystalCount}/3</b> crystals. ` +
+          `Collect <b style="color:#cc44ff">3 crystals</b> to gain the power to assault <b style="color:#ff8844">Avalon</b>, Morgaine\u2019s fortress at the center of the world. ` +
+          `Conquer Avalon to win the game!<br><br>` +
+          `<span style="color:#aaa">Beware: defeating another player will claim all their crystals.</span>`;
+      } else {
+        text.innerHTML = `<b style="color:#cc88ff">You found a Morgaine Crystal!</b><br><br>` +
+          `You now have <b style="color:#cc44ff">${crystalCount}/3</b> crystals \u2014 enough to break the wards around <b style="color:#ff8844">Avalon</b>!<br><br>` +
+          `March your army to Morgaine\u2019s city at the center of the world. ` +
+          `Defeat her garrison and claim victory!`;
+      }
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;";
+      card.appendChild(text);
+
+      const btn = document.createElement("button");
+      btn.textContent = "Understood";
+      btn.style.cssText = "background:#8844cc;color:white;border:none;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;";
+      btn.onmouseenter = () => { btn.style.background = "#aa66ee"; };
+      btn.onmouseleave = () => { btn.style.background = "#8844cc"; };
+      btn.onclick = () => { backdrop.remove(); resolve(); };
+      card.appendChild(btn);
+
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
+  /** Check if a target hex contains Avalon (Morgaine's city) and block if player lacks 3 crystals. */
+  const _isAvalonBlocked = (targetHex: { q: number; r: number }, playerId: string): boolean => {
+    const tile = state.grid.getTile(targetHex.q, targetHex.r);
+    if (!tile?.cityId) return false;
+    const city = state.cities.get(tile.cityId);
+    if (!city || city.owner !== "morgaine") return false;
+    const player = state.players.get(playerId);
+    if (!player) return false;
+    return player.morgaineCrystals < 3;
+  };
+
+  const _showAvalonBlockedDialog = (): Promise<void> => {
+    return new Promise((resolve) => {
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card = document.createElement("div");
+      card.style.cssText = "background:#1a1a2e;border:2px solid #8844cc;border-radius:12px;padding:24px;max-width:380px;text-align:center;box-shadow:0 0 30px rgba(136,68,204,0.4);";
+
+      const img = document.createElement("img");
+      img.src = merlinImgUrl;
+      img.style.cssText = "width:80px;height:80px;border-radius:50%;border:2px solid #aa88dd;margin-bottom:12px;image-rendering:pixelated;";
+      card.appendChild(img);
+
+      const title = document.createElement("div");
+      title.textContent = "Merlin warns you!";
+      title.style.cssText = "color:#aa88dd;font-family:monospace;font-size:16px;font-weight:bold;margin-bottom:8px;";
+      card.appendChild(title);
+
+      const player = state.players.get("p1");
+      const crystals = player?.morgaineCrystals ?? 0;
+      const text = document.createElement("div");
+      text.innerHTML = `Avalon is protected by powerful wards! You need <b style="color:#cc44ff">3 Morgaine Crystals</b> to breach its defenses.<br><br>` +
+        `You currently have <b style="color:#cc44ff">${crystals}/3</b> crystals. Defeat Morgaine\u2019s roaming armies to collect more.`;
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.5;margin-bottom:16px;";
+      card.appendChild(text);
+
+      const btn = document.createElement("button");
+      btn.textContent = "Understood";
+      btn.style.cssText = "background:#8844cc;color:white;border:none;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;";
+      btn.onmouseenter = () => { btn.style.background = "#aa66ee"; };
+      btn.onmouseleave = () => { btn.style.background = "#8844cc"; };
+      btn.onclick = () => { backdrop.remove(); resolve(); };
+      card.appendChild(btn);
+
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
   // Resolve all pending battles — headless (for AI battles)
   const resolveWorldBattlesHeadless = () => {
     for (const battle of state.pendingBattles) {
@@ -2489,8 +2588,28 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         if (battleState.winnerId) break;
       }
 
-      const result = extractBattleResults(battleState, attacker.owner, defender?.owner ?? attacker.owner);
+      const defenderOwner = defender?.owner ?? attacker.owner;
+      const result = extractBattleResults(battleState, attacker.owner, defenderOwner);
       applyBattleResults(state, battle, result);
+
+      // Award Morgaine crystal to AI winners too
+      if (result.winnerId) {
+        const loserId = result.winnerId === attacker.owner ? defenderOwner : attacker.owner;
+        if (loserId === "morgaine" && result.winnerId !== "morgaine") {
+          const winnerPlayer = state.players.get(result.winnerId);
+          if (winnerPlayer) {
+            winnerPlayer.morgaineCrystals++;
+          }
+        }
+        // Avalon victory for AI
+        if (battle.type === "siege" && battle.defenderCityId) {
+          const capturedCity = state.cities.get(battle.defenderCityId);
+          if (capturedCity && capturedCity.owner === result.winnerId && defenderOwner === "morgaine" && capturedCity.isCapital) {
+            state.winnerId = result.winnerId;
+            state.phase = WorldPhase.GAME_OVER;
+          }
+        }
+      }
     }
 
     onBattlesResolved(state);
@@ -2551,13 +2670,38 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         }
       }
 
-      const result = extractBattleResults(battleState, attacker.owner, defender?.owner ?? attacker.owner);
+      const defenderOwner = defender?.owner ?? attacker.owner;
+      const result = extractBattleResults(battleState, attacker.owner, defenderOwner);
       applyBattleResults(state, battle, result);
 
       if (result.winnerId) {
         const survivors = result.winnerId === attacker.owner ? result.attackerSurvivors : result.defenderSurvivors;
         const totalSurvivors = survivors.reduce((sum, u) => sum + u.count, 0);
         worldEventLog.addEvent(`${result.winnerId} won! ${totalSurvivors} units survived.`, 0x44ff44);
+
+        // Award Morgaine crystal when defeating a Morgaine army
+        const loserId = result.winnerId === attacker.owner ? defenderOwner : attacker.owner;
+        if (loserId === "morgaine" && result.winnerId !== "morgaine") {
+          const winnerPlayer = state.players.get(result.winnerId);
+          if (winnerPlayer) {
+            winnerPlayer.morgaineCrystals++;
+            worldEventLog.addEvent(`${result.winnerId} found a Morgaine Crystal! (${winnerPlayer.morgaineCrystals}/3)`, 0xcc44ff);
+            // Show Merlin dialog for human player
+            if (result.winnerId === "p1") {
+              await _showMerlinCrystalDialog(winnerPlayer.morgaineCrystals);
+            }
+          }
+        }
+
+        // Check for Avalon victory: if a player captured Morgaine's capital
+        if (battle.type === "siege" && battle.defenderCityId) {
+          const capturedCity = state.cities.get(battle.defenderCityId);
+          if (capturedCity && capturedCity.owner === result.winnerId && defenderOwner === "morgaine" && capturedCity.isCapital) {
+            // Capturing Avalon wins the game
+            state.winnerId = result.winnerId;
+            state.phase = WorldPhase.GAME_OVER;
+          }
+        }
       } else {
         worldEventLog.addEvent("Battle ended in a draw.", 0xaaaaaa);
       }
@@ -2732,6 +2876,15 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     if (_moveModeArmyId) {
       const army = state.armies.get(_moveModeArmyId);
       if (army) {
+        // Block moving to Avalon without 3 crystals
+        if (_isAvalonBlocked(hex, army.owner)) {
+          if (army.owner === "p1") await _showAvalonBlockedDialog();
+          _moveModeArmyId = null;
+          worldMapRenderer.clearHighlights();
+          armyPanel.hide();
+          refreshWorld();
+          return;
+        }
         const oldQ = army.position.q;
         const oldR = army.position.r;
         const moved = moveArmy(army, hex, state);
@@ -2795,6 +2948,11 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       if (_selectedArmyReachable.has(clickedKey)) {
         const army = state.armies.get(_selectedArmyId);
         if (army) {
+          // Block moving to Avalon without 3 crystals
+          if (_isAvalonBlocked(hex, army.owner)) {
+            if (army.owner === "p1") await _showAvalonBlockedDialog();
+            return;
+          }
           const oldQ = army.position.q;
           const oldR = army.position.r;
           const moved = moveArmy(army, hex, state);
@@ -2916,6 +3074,12 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       const target = hexNeighbor(army.position, dir);
       const targetKey = hexKey(target.q, target.r);
       if (!_selectedArmyReachable.has(targetKey)) return;
+
+      // Block moving to Avalon without 3 crystals
+      if (_isAvalonBlocked(target, army.owner)) {
+        if (army.owner === "p1") await _showAvalonBlockedDialog();
+        return;
+      }
 
       const oldQ = army.position.q;
       const oldR = army.position.r;

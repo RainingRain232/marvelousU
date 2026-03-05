@@ -42,6 +42,9 @@ export interface WorldPlayer {
   /** Diplomatic relations: playerId → "war" | "peace". All start at war. */
   diplomacy: Map<string, "war" | "peace">;
 
+  /** Morgaine crystals collected by defeating Morgaine's armies. 3 needed to attack Avalon. */
+  morgaineCrystals: number;
+
   /** Hex keys ("q,r") the player has ever seen. Persists across turns. */
   exploredTiles: Set<string>;
   /** Hex keys ("q,r") currently in sight range. Recalculated each turn. */
@@ -71,6 +74,7 @@ export function createWorldPlayer(
     isAI,
     isAlive: true,
     armoryItems,
+    morgaineCrystals: 0,
     activeResearch: null,
     researchTurnsLeft: 0,
     researchProgress: 0,

@@ -429,7 +429,9 @@ export class WorldWikiScreen {
       ["Production", "Determines how fast buildings are constructed in cities. Boosted by workshops and tile improvements."],
       ["Fog of War", "Unexplored territory is hidden. Your cities and armies reveal nearby hexes."],
       ["Camps", "Neutral camps scattered on the map. Defeat their defenders to gain rewards like gold, items, or units."],
-      ["Victory", "Eliminate all rival players to win. Capture their cities and destroy their armies."],
+      ["Morgaine Crystals", "Defeating one of Morgaine's roaming armies awards a Morgaine Crystal. Each crystal grants +10 mana and +10 research per turn. Collect 3 crystals to breach Avalon's wards."],
+      ["Avalon", "Morgaine's fortress city at the center of the world. Protected by powerful wards that require 3 Morgaine Crystals to break. Conquer Avalon to win the game."],
+      ["Victory", "Conquer Avalon to achieve ultimate victory. Defeating other players takes all their Morgaine Crystals."],
     ];
 
     for (const [term, desc] of concepts) {

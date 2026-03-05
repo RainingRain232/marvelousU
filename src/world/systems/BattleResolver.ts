@@ -236,6 +236,12 @@ export function applyBattleResults(
           }
           if (!hasCapital) {
             oldPlayer.isAlive = false;
+            // Transfer Morgaine crystals to the conquering player
+            const winner = worldState.players.get(result.winnerId!);
+            if (winner && oldPlayer.morgaineCrystals > 0) {
+              winner.morgaineCrystals += oldPlayer.morgaineCrystals;
+              oldPlayer.morgaineCrystals = 0;
+            }
           }
         }
       }

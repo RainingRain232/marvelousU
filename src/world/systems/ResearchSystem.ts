@@ -68,8 +68,9 @@ export function advanceResearch(
   if (!def) return null;
 
   const libraryBonus = _getLibraryBonus(player, state);
+  const crystalBonus = player.morgaineCrystals * 10;
   const scienceRatio = 1 - player.magicResearchRatio;
-  const progress = scienceRatio * (1 + libraryBonus);
+  const progress = scienceRatio * (1 + libraryBonus) + crystalBonus;
 
   player.researchProgress += progress;
 
@@ -85,7 +86,7 @@ export function advanceResearch(
 
   // Update turnsLeft estimate for display
   const remaining = def.turnsToComplete - player.researchProgress;
-  const perTurn = scienceRatio * (1 + libraryBonus);
+  const perTurn = scienceRatio * (1 + libraryBonus) + crystalBonus;
   player.researchTurnsLeft = perTurn > 0 ? Math.ceil(remaining / perTurn) : 999;
 
   return null;
@@ -139,8 +140,9 @@ export function advanceMagicResearch(
   const cost = magicTierCost(tier);
 
   const libraryBonus = _getLibraryBonus(player, state);
+  const crystalBonus = player.morgaineCrystals * 10;
   const magicRatio = player.magicResearchRatio;
-  const progress = magicRatio * (1 + libraryBonus);
+  const progress = magicRatio * (1 + libraryBonus) + crystalBonus;
 
   player.magicResearchProgress += progress;
 

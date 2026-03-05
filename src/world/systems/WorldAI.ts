@@ -453,6 +453,15 @@ function _moveArmyAI(
   }
 
   if (target) {
+    // Block AI from moving to Avalon without 3 crystals
+    const targetTile = state.grid.getTile(target.q, target.r);
+    if (targetTile?.cityId) {
+      const targetCity = state.cities.get(targetTile.cityId);
+      if (targetCity?.owner === "morgaine") {
+        const player = state.players.get(army.owner);
+        if (player && player.morgaineCrystals < 3) return;
+      }
+    }
     moveArmy(army, target, state);
   }
 }
