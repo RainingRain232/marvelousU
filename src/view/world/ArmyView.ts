@@ -1,10 +1,11 @@
 // Renders army icons on the world hex map.
 //
-// Each non-garrison army is drawn as a shield icon with unit count badge.
-// Color matches the owning player. Shows dominant unit type icon.
+// Each non-garrison army is drawn as a shield icon with unit count badge,
+// plus a preview sprite of the most numerous unit type.
+// Color matches the owning player. Includes a pulsing glow effect.
 // Supports movement animation (lerp from old to new position).
 
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Container, Graphics, Text, TextStyle, Sprite } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldArmy } from "@world/state/WorldArmy";
@@ -13,6 +14,8 @@ import { hexToPixel, hexKey } from "@world/hex/HexCoord";
 import { WorldBalance } from "@world/config/WorldConfig";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
 import { TerrainType } from "@world/config/TerrainDefs";
+import { UnitType, UnitState } from "@/types";
+import { animationManager } from "@view/animation/AnimationManager";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -38,6 +41,11 @@ const COUNT_STYLE = new TextStyle({
   stroke: { color: 0x000000, width: 2 },
 });
 
+// Glow pulse settings
+const GLOW_PERIOD = 3.0; // seconds for one full pulse cycle
+const GLOW_MIN_ALPHA = 0.0;
+const GLOW_MAX_ALPHA = 0.5;
+
 // ---------------------------------------------------------------------------
 // Animation state
 // ---------------------------------------------------------------------------
@@ -52,6 +60,11 @@ interface ArmyAnim {
   duration: number;
 }
 
+interface GlowEntry {
+  glow: Graphics;
+  phase: number; // radians, randomised per army for variety
+}
+
 // ---------------------------------------------------------------------------
 // ArmyView
 // ---------------------------------------------------------------------------
@@ -60,17 +73,20 @@ export class ArmyView {
   private _container = new Container();
   private _armySprites = new Map<string, Container>();
   private _anims: ArmyAnim[] = [];
+  private _glows = new Map<string, GlowEntry>();
   private _vm: ViewManager | null = null;
   private _tickerCb: (() => void) | null = null;
+  private _elapsed = 0;
 
   init(vm: ViewManager): void {
     this._vm = vm;
     vm.layers.background.addChild(this._container);
 
-    // Animation ticker
     const cb = () => {
       const dt = vm.app.ticker.deltaMS / 1000;
+      this._elapsed += dt;
       this._updateAnims(dt);
+      this._updateGlows();
     };
     vm.app.ticker.add(cb);
     this._tickerCb = cb;
@@ -83,6 +99,7 @@ export class ArmyView {
     this._container.removeFromParent();
     this._container.destroy({ children: true });
     this._armySprites.clear();
+    this._glows.clear();
     this._anims = [];
   }
 
@@ -90,11 +107,11 @@ export class ArmyView {
   drawArmies(state: WorldState, localPlayer?: WorldPlayer): void {
     this._container.removeChildren();
     this._armySprites.clear();
+    this._glows.clear();
     this._anims = [];
 
     for (const army of state.armies.values()) {
       if (army.isGarrison) continue;
-      // Hide enemy armies not in the local player's visible tiles
       if (localPlayer && army.owner !== localPlayer.id) {
         const key = hexKey(army.position.q, army.position.r);
         if (!localPlayer.visibleTiles.has(key)) continue;
@@ -125,7 +142,6 @@ export class ArmyView {
       duration: ANIM_DURATION,
     });
 
-    // Start at from position
     existing.position.set(from.x + OFFSET_X, from.y + OFFSET_Y);
   }
 
@@ -136,6 +152,7 @@ export class ArmyView {
       existing.removeFromParent();
       existing.destroy({ children: true });
     }
+    this._glows.delete(army.id);
 
     if (army.isGarrison) {
       this._armySprites.delete(army.id);
@@ -155,6 +172,7 @@ export class ArmyView {
       existing.destroy({ children: true });
       this._armySprites.delete(armyId);
     }
+    this._glows.delete(armyId);
   }
 
   // -----------------------------------------------------------------------
@@ -166,7 +184,6 @@ export class ArmyView {
       const a = this._anims[i];
       a.elapsed += dt;
       const t = Math.min(1, a.elapsed / a.duration);
-      // Ease out quad
       const ease = 1 - (1 - t) * (1 - t);
       a.sprite.position.set(
         a.fromX + (a.toX - a.fromX) * ease,
@@ -175,6 +192,14 @@ export class ArmyView {
       if (t >= 1) {
         this._anims.splice(i, 1);
       }
+    }
+  }
+
+  private _updateGlows(): void {
+    for (const entry of this._glows.values()) {
+      const wave = Math.sin(this._elapsed * (2 * Math.PI / GLOW_PERIOD) + entry.phase);
+      const alpha = GLOW_MIN_ALPHA + (GLOW_MAX_ALPHA - GLOW_MIN_ALPHA) * (wave * 0.5 + 0.5);
+      entry.glow.alpha = alpha;
     }
   }
 
@@ -198,7 +223,28 @@ export class ArmyView {
       c.addChild(boat);
     }
 
-    // Shield shape
+    // Glow effect — drawn behind everything, pulses over time
+    const glow = new Graphics();
+    glow.circle(0, 0, 16);
+    glow.fill({ color, alpha: 0.4 });
+    glow.circle(0, 0, 12);
+    glow.fill({ color: 0xffffff, alpha: 0.15 });
+    glow.alpha = 0;
+    c.addChild(glow);
+    this._glows.set(army.id, { glow, phase: Math.random() * Math.PI * 2 });
+
+    // Shield shape — improved with gradient-like layering
+    const shieldShadow = new Graphics();
+    shieldShadow.moveTo(1, -9);
+    shieldShadow.lineTo(9, -5);
+    shieldShadow.lineTo(9, 5);
+    shieldShadow.lineTo(1, 11);
+    shieldShadow.lineTo(-7, 5);
+    shieldShadow.lineTo(-7, -5);
+    shieldShadow.closePath();
+    shieldShadow.fill({ color: 0x000000, alpha: 0.35 });
+    c.addChild(shieldShadow);
+
     const shield = new Graphics();
     shield.moveTo(0, -10);
     shield.lineTo(8, -6);
@@ -208,17 +254,51 @@ export class ArmyView {
     shield.lineTo(-8, -6);
     shield.closePath();
     shield.fill({ color });
-    shield.stroke({ color: 0xffffff, width: 1.5, alpha: 0.7 });
+    shield.stroke({ color: 0xffffff, width: 1.5, alpha: 0.8 });
     c.addChild(shield);
 
-    // Icon based on dominant unit type
-    const icon = new Graphics();
-    const dominant = _getDominantType(army);
-    _drawUnitIcon(icon, dominant);
-    c.addChild(icon);
+    // Inner highlight for depth
+    const highlight = new Graphics();
+    highlight.moveTo(0, -7);
+    highlight.lineTo(5, -4);
+    highlight.lineTo(5, 2);
+    highlight.lineTo(0, 6);
+    highlight.lineTo(-5, 2);
+    highlight.lineTo(-5, -4);
+    highlight.closePath();
+    highlight.fill({ color: 0xffffff, alpha: 0.12 });
+    c.addChild(highlight);
 
-    // Unit count badge
+    // Unit preview sprite — show the most numerous unit type
+    const dominantUnit = _getMostNumerousUnit(army);
+    if (dominantUnit) {
+      try {
+        const frames = animationManager.getFrames(dominantUnit as UnitType, UnitState.IDLE);
+        if (frames && frames.length > 0) {
+          const preview = new Sprite(frames[0]);
+          const iconSize = 20;
+          const scale = iconSize / Math.max(preview.width, preview.height);
+          preview.scale.set(scale);
+          preview.anchor.set(0.5, 0.5);
+          preview.x = -14;
+          preview.y = -2;
+          c.addChild(preview);
+        }
+      } catch {
+        // No sprite available, skip preview
+      }
+    }
+
+    // Unit count badge with background
     const total = armyUnitCount(army);
+    const badgeBg = new Graphics();
+    badgeBg.circle(10, -8, 7);
+    badgeBg.fill({ color: 0x000000, alpha: 0.6 });
+    badgeBg.circle(10, -8, 6);
+    badgeBg.fill({ color });
+    badgeBg.stroke({ color: 0xffffff, width: 1, alpha: 0.8 });
+    c.addChild(badgeBg);
+
     const countText = new Text({ text: `${total}`, style: COUNT_STYLE });
     countText.anchor.set(0.5, 0.5);
     countText.x = 10;
@@ -231,92 +311,20 @@ export class ArmyView {
 }
 
 // ---------------------------------------------------------------------------
-// Unit type icon helpers
+// Helpers
 // ---------------------------------------------------------------------------
 
-type UnitCategory = "melee" | "ranged" | "cavalry" | "magic" | "settler" | "mixed";
-
-function _getDominantType(army: WorldArmy): UnitCategory {
-  let melee = 0, ranged = 0, cavalry = 0, magic = 0, settler = 0;
+/** Returns the unitType string with the highest count in the army. */
+function _getMostNumerousUnit(army: WorldArmy): string | null {
+  let best: string | null = null;
+  let bestCount = 0;
   for (const u of army.units) {
-    const t = u.unitType;
-    if (t === "settler") { settler += u.count; continue; }
-    if (t.includes("archer") || t.includes("crossbow") || t.includes("horse_archer")) ranged += u.count;
-    else if (t.includes("cavalry") || t.includes("knight") || t.includes("horse")) cavalry += u.count;
-    else if (t.includes("mage") || t.includes("wizard") || t.includes("national_mage")) magic += u.count;
-    else melee += u.count;
+    if (u.count > bestCount) {
+      bestCount = u.count;
+      best = u.unitType;
+    }
   }
-  if (settler > 0 && melee + ranged + cavalry + magic === 0) return "settler";
-  const max = Math.max(melee, ranged, cavalry, magic);
-  if (max === 0) return "mixed";
-  if (max === cavalry) return "cavalry";
-  if (max === ranged) return "ranged";
-  if (max === magic) return "magic";
-  return "melee";
-}
-
-function _drawUnitIcon(g: Graphics, category: UnitCategory): void {
-  switch (category) {
-    case "melee":
-      // Sword
-      g.moveTo(0, -6);
-      g.lineTo(0, 6);
-      g.stroke({ color: 0xffffff, width: 2, alpha: 0.8 });
-      g.moveTo(-3, -4);
-      g.lineTo(3, -4);
-      g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.8 });
-      break;
-    case "ranged":
-      // Bow
-      g.moveTo(-3, -6);
-      g.bezierCurveTo(-5, 0, -3, 6, -1, 6);
-      g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.8 });
-      // Arrow
-      g.moveTo(-1, 0);
-      g.lineTo(5, 0);
-      g.stroke({ color: 0xffffff, width: 1, alpha: 0.7 });
-      // Arrowhead
-      g.moveTo(3, -2);
-      g.lineTo(5, 0);
-      g.lineTo(3, 2);
-      g.stroke({ color: 0xffffff, width: 1, alpha: 0.7 });
-      break;
-    case "cavalry":
-      // Horse head silhouette (simplified)
-      g.moveTo(-4, 4);
-      g.lineTo(-2, -1);
-      g.lineTo(0, -4);
-      g.lineTo(3, -5);
-      g.lineTo(4, -3);
-      g.lineTo(2, -1);
-      g.lineTo(3, 3);
-      g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.8 });
-      break;
-    case "magic":
-      // Star / sparkle
-      g.star(0, 0, 5, 5, 2.5);
-      g.fill({ color: 0xffffff, alpha: 0.7 });
-      break;
-    case "settler":
-      // Cart / wagon
-      g.rect(-4, -2, 8, 4);
-      g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.7 });
-      g.circle(-2, 3, 2);
-      g.stroke({ color: 0xffffff, width: 1, alpha: 0.6 });
-      g.circle(2, 3, 2);
-      g.stroke({ color: 0xffffff, width: 1, alpha: 0.6 });
-      break;
-    case "mixed":
-    default:
-      // Cross
-      g.moveTo(0, -5);
-      g.lineTo(0, 5);
-      g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.7 });
-      g.moveTo(-5, 0);
-      g.lineTo(5, 0);
-      g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.7 });
-      break;
-  }
+  return best;
 }
 
 /** Singleton instance. */

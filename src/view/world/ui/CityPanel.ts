@@ -168,41 +168,22 @@ export class CityPanel {
   // -----------------------------------------------------------------------
 
   private _buildNormalView(city: WorldCity, state: WorldState, y: number): number {
-    // Info — horizontal stat row
+    // Info
     const yields = calculateCityYields(city, state);
-    const statStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xcccccc });
+    const info = [
+      `Population: ${city.population}`,
+      `Gold/turn: +${yields.gold}  Food/turn: +${yields.food}`,
+      `Production/turn: +${yields.production}`,
+      city.isUnderSiege ? "UNDER SIEGE" : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
 
-    const stats = [
-      { label: "Pop ", value: `${city.population}`, color: 0xffcc44 },
-      { label: "Au ", value: `+${yields.gold}`, color: 0xffdd44 },
-      { label: "Fd ", value: `+${yields.food}`, color: 0x88cc44 },
-      { label: "Pr ", value: `+${yields.production}`, color: 0xdd8844 },
-    ];
-
-    let sx = 12;
-    for (const s of stats) {
-      const lbl = new Text({ text: s.label, style: statStyle });
-      lbl.x = sx;
-      lbl.y = y;
-      this._contentContainer.addChild(lbl);
-      sx += lbl.width;
-      const val = new Text({ text: s.value, style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fontWeight: "bold", fill: s.color }) });
-      val.x = sx;
-      val.y = y;
-      this._contentContainer.addChild(val);
-      sx += val.width + 8;
-    }
-    y += 18;
-
-    if (city.isUnderSiege) {
-      const siegeText = new Text({ text: "UNDER SIEGE", style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fontWeight: "bold", fill: 0xff4444 }) });
-      siegeText.x = 12;
-      siegeText.y = y;
-      this._contentContainer.addChild(siegeText);
-      y += 18;
-    }
-
-    y += 6;
+    const infoText = new Text({ text: info, style: INFO_STYLE });
+    infoText.x = 12;
+    infoText.y = y;
+    this._contentContainer.addChild(infoText);
+    y += infoText.height + 14;
 
     // --- Buildings section ---
     const buildLabel = new Text({ text: "Buildings", style: SECTION_STYLE });

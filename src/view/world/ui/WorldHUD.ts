@@ -149,23 +149,27 @@ export class WorldHUD {
   private _buildTopBar(): void {
     const bar = new Container();
 
-    // Background
+    // Background — wide horizontal bar
     const bg = new Graphics();
-    bg.roundRect(0, 0, 320, 102, 6);
+    bg.roundRect(0, 0, 700, 44, 6);
     bg.fill({ color: 0x000000, alpha: 0.6 });
     bar.addChild(bg);
 
+    let x = 10;
+
     // Turn
     this._turnText = new Text({ text: "Turn 1", style: TURN_STYLE });
-    this._turnText.x = 10;
+    this._turnText.x = x;
     this._turnText.y = 4;
     bar.addChild(this._turnText);
 
     // Phase
     this._phaseText = new Text({ text: "", style: LABEL_STYLE });
-    this._phaseText.x = 10;
+    this._phaseText.x = x;
     this._phaseText.y = 24;
     bar.addChild(this._phaseText);
+
+    x = 120;
 
     // Gold icon + text
     const goldIcon = new Graphics();
@@ -174,12 +178,14 @@ export class WorldHUD {
     goldIcon.stroke({ color: 0xaa8800, width: 1 });
     goldIcon.moveTo(-2, -3).lineTo(-2, 3);
     goldIcon.stroke({ color: 0xaa8800, width: 1.5 });
-    goldIcon.position.set(150, 12);
+    goldIcon.position.set(x, 16);
     bar.addChild(goldIcon);
     this._goldText = new Text({ text: "0", style: VALUE_STYLE });
-    this._goldText.x = 162;
-    this._goldText.y = 4;
+    this._goldText.x = x + 12;
+    this._goldText.y = 8;
     bar.addChild(this._goldText);
+
+    x = 260;
 
     // Food icon + text
     const foodIcon = new Graphics();
@@ -187,26 +193,30 @@ export class WorldHUD {
     foodIcon.fill({ color: 0x88cc44 });
     foodIcon.moveTo(0, -2).lineTo(0, 6);
     foodIcon.stroke({ color: 0x88aa33, width: 1.5 });
-    foodIcon.position.set(150, 32);
+    foodIcon.position.set(x, 16);
     bar.addChild(foodIcon);
     this._foodText = new Text({ text: "0", style: VALUE_STYLE });
-    this._foodText.x = 162;
-    this._foodText.y = 24;
+    this._foodText.x = x + 12;
+    this._foodText.y = 8;
     bar.addChild(this._foodText);
+
+    x = 400;
 
     // Mana icon + text
     const manaIcon = new Graphics();
     manaIcon.moveTo(0, -6).lineTo(5, 2).lineTo(0, 6).lineTo(-5, 2).closePath();
     manaIcon.fill({ color: 0x6666ff, alpha: 0.8 });
     manaIcon.stroke({ color: 0x9999ff, width: 1 });
-    manaIcon.position.set(150, 52);
+    manaIcon.position.set(x, 16);
     bar.addChild(manaIcon);
     this._manaText = new Text({ text: "0", style: new TextStyle({
       fontFamily: "monospace", fontSize: 15, fontWeight: "bold", fill: 0x8888ff,
     }) });
-    this._manaText.x = 162;
-    this._manaText.y = 44;
+    this._manaText.x = x + 12;
+    this._manaText.y = 8;
     bar.addChild(this._manaText);
+
+    x = 500;
 
     // Research icon + text
     const sciIcon = new Graphics();
@@ -215,14 +225,16 @@ export class WorldHUD {
     sciIcon.stroke({ color: 0x55cc77, width: 0.8 });
     sciIcon.rect(-5, 3, 10, 2);
     sciIcon.fill({ color: 0x33aa55 });
-    sciIcon.position.set(150, 72);
+    sciIcon.position.set(x, 16);
     bar.addChild(sciIcon);
     this._scienceText = new Text({ text: "+0", style: new TextStyle({
       fontFamily: "monospace", fontSize: 15, fontWeight: "bold", fill: 0x44aa44,
     }) });
-    this._scienceText.x = 162;
-    this._scienceText.y = 64;
+    this._scienceText.x = x + 12;
+    this._scienceText.y = 8;
     bar.addChild(this._scienceText);
+
+    x = 590;
 
     // Morgaine crystal icon + text
     this._crystalContainer = new Container();
@@ -230,13 +242,13 @@ export class WorldHUD {
     crystalIcon.moveTo(0, -6).lineTo(4, 0).lineTo(0, 6).lineTo(-4, 0).closePath();
     crystalIcon.fill({ color: 0xcc44ff, alpha: 0.9 });
     crystalIcon.stroke({ color: 0xee88ff, width: 1 });
-    crystalIcon.position.set(150, 92);
+    crystalIcon.position.set(x, 16);
     this._crystalContainer.addChild(crystalIcon);
     this._crystalText = new Text({ text: "0/3", style: new TextStyle({
       fontFamily: "monospace", fontSize: 15, fontWeight: "bold", fill: 0xcc88ff,
     }) });
-    this._crystalText.x = 162;
-    this._crystalText.y = 84;
+    this._crystalText.x = x + 12;
+    this._crystalText.y = 8;
     this._crystalContainer.addChild(this._crystalText);
     bar.addChild(this._crystalContainer);
 
@@ -263,7 +275,7 @@ export class WorldHUD {
 
     btn.on("pointerdown", () => this.onResearch?.());
 
-    btn.x = 340;
+    btn.x = 720;
     btn.y = 14;
     this.container.addChild(btn);
   }
@@ -286,7 +298,7 @@ export class WorldHUD {
 
     btn.on("pointerdown", () => this.onMenu?.());
 
-    btn.x = 450;
+    btn.x = 830;
     btn.y = 14;
     this.container.addChild(btn);
   }
