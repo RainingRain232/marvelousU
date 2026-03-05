@@ -1615,7 +1615,11 @@ async function _returnFromWorldBattle(): Promise<void> {
     state.pendingBattles = [];
   }
 
-  onBattlesResolved(state);
+  // Both camp and field battles return to PLAYER_TURN — the battle
+  // was saved with PLAYER_TURN phase so the player can keep acting.
+  // Just clear any remaining pending battles (already resolved above).
+  state.pendingBattles = [];
+
   saveWorldGame(state);
 
   setCityNameIndex(state.cities.size);
@@ -2282,7 +2286,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         );
 
         if (worldBattleViewer.playBattleRequested) {
-          // Save world state and transition to playable battlefield
+          // Restore phase to PLAYER_TURN before saving — battle didn't end the turn
+          state.phase = WorldPhase.PLAYER_TURN;
           saveWorldGame(state);
           sessionStorage.setItem("worldBattleMeta", JSON.stringify({
             attackerArmyId: battle.attackerArmyId,
