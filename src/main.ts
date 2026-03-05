@@ -2308,6 +2308,28 @@ async function _bootWorldGame(
     }
   }
 
+  // DEBUG: Spawn a p2 army with 1 lancer near p1's capital
+  {
+    let p1Capital: import("@world/state/WorldCity").WorldCity | null = null;
+    for (const city of state.cities.values()) {
+      if (city.owner === "p1" && city.isCapital) { p1Capital = city; break; }
+    }
+    if (p1Capital) {
+      const neighbors = hexNeighbors(p1Capital.position);
+      const spawnHex = neighbors.find((h) => {
+        const t = state.grid.getTile(h.q, h.r);
+        return t && !t.armyId && !t.cityId;
+      }) ?? neighbors[0];
+      const debugArmyId = nextId(state, "army");
+      const debugArmy = createWorldArmy(debugArmyId, "p2", spawnHex, [
+        { unitType: UnitType.LANCER, count: 1, hpPerUnit: UNIT_DEFINITIONS[UnitType.LANCER].hp },
+      ], false);
+      state.armies.set(debugArmyId, debugArmy);
+      const debugTile = state.grid.getTile(spawnHex.q, spawnHex.r);
+      if (debugTile) debugTile.armyId = debugArmyId;
+    }
+  }
+
   _initWorldViews(state);
 }
 

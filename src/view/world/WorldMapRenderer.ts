@@ -126,6 +126,8 @@ export class WorldMapRenderer {
     this._container.destroy({ children: true });
     this._hexGraphics.clear();
     this._waterTiles = [];
+    this._waterGraphics = null;
+    this._swordGraphics = null;
     this._grid = null;
   }
 
@@ -384,9 +386,15 @@ export class WorldMapRenderer {
   // Private — water animation
   // -----------------------------------------------------------------------
 
+  private _waterGraphics: Graphics | null = null;
+
   private _drawWaterOverlay(): void {
-    this._waterContainer.removeChildren();
-    const g = new Graphics();
+    if (!this._waterGraphics) {
+      this._waterGraphics = new Graphics();
+      this._waterContainer.addChild(this._waterGraphics);
+    }
+    const g = this._waterGraphics;
+    g.clear();
     const t = this._waterPhase;
 
     for (const hex of this._waterTiles) {
@@ -411,8 +419,6 @@ export class WorldMapRenderer {
         g.stroke({ color: 0x88bbff, width: 1, alpha: Math.max(0, shimmer) });
       }
     }
-
-    this._waterContainer.addChild(g);
   }
 
   // -----------------------------------------------------------------------
@@ -628,18 +634,24 @@ export class WorldMapRenderer {
   }
 
   /** Redraw the flickering sword in stone. Called each ticker frame. */
-  private _drawSwordFlicker(): void {
-    this._swordContainer.removeChildren();
+  private _swordGraphics: Graphics | null = null;
 
+  private _drawSwordFlicker(): void {
     // Collect all hexes that should show a sword (real + fakes)
     const allSwordHexes: HexCoord[] = [];
     if (this._swordHex) allSwordHexes.push(this._swordHex);
     allSwordHexes.push(...this._fakeSwordHexes);
     if (allSwordHexes.length === 0) return;
 
+    if (!this._swordGraphics) {
+      this._swordGraphics = new Graphics();
+      this._swordContainer.addChild(this._swordGraphics);
+    }
+    const g = this._swordGraphics;
+    g.clear();
+
     for (const swordHex of allSwordHexes) {
       const center = hexToPixel(swordHex, HEX_SIZE);
-      const g = new Graphics();
       const cx = center.x;
       const cy = center.y;
       const s = HEX_SIZE * 0.35;
@@ -687,8 +699,6 @@ export class WorldMapRenderer {
         g.circle(sx, sy, 1.5);
         g.fill({ color: 0xffffaa, alpha: sparkleAlpha });
       }
-
-      this._swordContainer.addChild(g);
     }
   }
 }
