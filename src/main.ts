@@ -95,6 +95,7 @@ const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) =>
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
 import type { WorldGameSettings } from "@world/config/WorldConfig";
 import { generateWorldMap, findStartPositions, placeCamps } from "@world/gen/WorldMapGen";
+import { TERRAIN_DEFINITIONS, TerrainType } from "@world/config/TerrainDefs";
 import { createWorldState, nextId, WorldPhase } from "@world/state/WorldState";
 import type { WorldState } from "@world/state/WorldState";
 import { createWorldPlayer } from "@world/state/WorldPlayer";
@@ -1794,6 +1795,20 @@ async function _bootWorldGame(
   const grid = generateWorldMap(settings);
   const startPositions = findStartPositions(grid, settings.numPlayers);
 
+  // Clear mountains and water near starting positions (radius 3)
+  for (const pos of startPositions) {
+    const nearby = hexSpiral(pos, 3);
+    for (const h of nearby) {
+      const tile = grid.getTile(h.q, h.r);
+      if (!tile) continue;
+      if (tile.terrain === TerrainType.WATER) {
+        tile.terrain = TerrainType.GRASSLAND;
+      } else if (tile.terrain === TerrainType.MOUNTAINS) {
+        tile.terrain = TerrainType.HILLS;
+      }
+    }
+  }
+
   // Player IDs
   const playerOrder: string[] = [];
   for (let i = 0; i < settings.numPlayers; i++) {
@@ -1897,7 +1912,8 @@ async function _bootWorldGame(
     const neighbors = hexNeighbors(pos);
     const fieldHex = neighbors.find((h) => {
       const t = grid.getTile(h.q, h.r);
-      return t && !t.cityId && !t.armyId;
+      if (!t || t.cityId || t.armyId) return false;
+      return isFinite(TERRAIN_DEFINITIONS[t.terrain].movementCost);
     });
     if (fieldHex) {
       const fieldId = nextId(state, "army");
@@ -1935,7 +1951,30 @@ async function _bootWorldGame(
     if (campTile) campTile.campId = camp.id;
   }
 
-
+  // Spawn a small neutral army near each player's capital for early combat
+  for (let i = 0; i < settings.numPlayers; i++) {
+    const pos = startPositions[i];
+    if (!pos) continue;
+    // Look for a free walkable tile at distance 2 from the capital
+    const ring = hexSpiral(pos, 2).filter((h) => {
+      const t = grid.getTile(h.q, h.r);
+      if (!t || t.cityId || t.armyId || t.campId) return false;
+      const terrain = TERRAIN_DEFINITIONS[t.terrain];
+      return terrain.buildable && isFinite(terrain.movementCost);
+    });
+    if (ring.length > 0) {
+      const hex = ring[Math.floor(Math.random() * ring.length)];
+      const neutralId = nextId(state, "army");
+      const neutralUnits: ArmyUnit[] = [
+        { unitType: UnitType.SWORDSMAN, count: 5, hpPerUnit: 100 },
+        { unitType: UnitType.ARCHER, count: 2, hpPerUnit: 100 },
+      ];
+      const neutralArmy = createWorldArmy(neutralId, "neutral", hex, neutralUnits, false);
+      state.armies.set(neutralId, neutralArmy);
+      const neutralTile = grid.getTile(hex.q, hex.r);
+      if (neutralTile) neutralTile.armyId = neutralId;
+    }
+  }
 
   _initWorldViews(state);
 }

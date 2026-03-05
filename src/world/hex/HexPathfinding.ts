@@ -77,7 +77,8 @@ export function findHexPath(
       if (!isFinite(terrain.movementCost)) continue; // impassable
 
       const tentativeG = currentG + terrain.movementCost;
-      if (tentativeG > movementBudget) continue; // exceeds budget
+      // Allow the first step even if it exceeds the budget (guaranteed 1-tile move)
+      if (tentativeG > movementBudget && currentG > 0) continue;
 
       const prevG = gScore.get(nKey);
       if (prevG !== undefined && tentativeG >= prevG) continue; // not better
@@ -129,7 +130,8 @@ export function getReachableHexes(
       if (!isFinite(terrain.movementCost)) continue;
 
       const newCost = cost + terrain.movementCost;
-      if (newCost > movementBudget) continue;
+      // Allow the first step even if it exceeds the budget (guaranteed 1-tile move)
+      if (newCost > movementBudget && cost > 0) continue;
 
       const nKey = hexKey(neighbor.q, neighbor.r);
       const prevCost = visited.get(nKey);

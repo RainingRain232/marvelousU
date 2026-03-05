@@ -90,7 +90,7 @@ export const TERRAIN_DEFINITIONS: Record<TerrainType, TerrainDef> = {
   },
   [TerrainType.MOUNTAINS]: {
     type: TerrainType.MOUNTAINS,
-    movementCost: Infinity,
+    movementCost: 4,
     defenseBonus: 50,
     goldYield: 1,
     productionYield: 1,
