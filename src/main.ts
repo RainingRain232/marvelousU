@@ -141,6 +141,7 @@ import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
 import { rollRandomEvents } from "@world/systems/WorldRandomEvents";
 import { worldNotification } from "@view/world/ui/WorldNotification";
+import { worldWikiScreen } from "@view/world/ui/WorldWikiScreen";
 import merlinImgUrl from "@/img/merlin.png";
 
 // ---------------------------------------------------------------------------
@@ -1651,7 +1652,7 @@ function _showWorldInfoMenu(state: WorldState): void {
 
   // Card panel
   const cardW = 260;
-  const cardH = 44 + 44 * 10 + 10; // title + 10 buttons + padding
+  const cardH = 44 + 44 * 11 + 10; // title + 11 buttons + padding
   const cardX = (vm.screenWidth - cardW) / 2;
   const cardY = (vm.screenHeight - cardH) / 2;
 
@@ -1760,6 +1761,12 @@ function _showWorldInfoMenu(state: WorldState): void {
     magicScreen.onBack = () => magicScreen.hide();
     magicScreen.onNext = null;
     magicScreen.show(player.raceId);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("ENCYCLOPEDIA", btnY, () => {
+    overlay.destroy({ children: true });
+    worldWikiScreen.show();
   });
   btnY += BTN_STEP;
 
@@ -2144,6 +2151,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     if (leaderSelectScreen.container.visible) return true;
     if (raceDetailScreen.container.visible) return true;
     if (magicScreen.container.visible) return true;
+    if (worldWikiScreen.isVisible) return true;
     return false;
   };
 
@@ -2312,6 +2320,30 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
   // Initialize notification toasts
   worldNotification.init(viewManager);
+
+  // Initialize wiki screen
+  worldWikiScreen.init(viewManager);
+  worldWikiScreen.onOpenUnits = () => {
+    raceDetailScreen.onBack = () => {
+      raceDetailScreen.hide();
+      worldWikiScreen.show();
+    };
+    raceDetailScreen.showWiki();
+  };
+  worldWikiScreen.onOpenSpells = () => {
+    magicScreen.onBack = () => {
+      magicScreen.hide();
+      worldWikiScreen.show();
+    };
+    magicScreen.showWiki();
+  };
+  worldWikiScreen.onOpenBuildings = () => {
+    buildingWikiScreen.onBack = () => {
+      buildingWikiScreen.hide();
+      worldWikiScreen.show();
+    };
+    buildingWikiScreen.show();
+  };
 
   // Initialize battle viewer
   worldBattleViewer.init(viewManager);
@@ -2823,10 +2855,49 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     const tag = (document.activeElement?.tagName ?? "").toLowerCase();
     if (tag === "input" || tag === "textarea" || tag === "button") return;
 
+    // Escape closes any open window
+    if (e.code === "Escape") {
+      if (researchScreen.isVisible) { researchScreen.hide(); return; }
+      if (conjurePanel.isVisible) { conjurePanel.hide(); return; }
+      if (worldScoreScreen.isVisible) { worldScoreScreen.hide(); return; }
+      if (worldNationalScreen.isVisible) { worldNationalScreen.hide(); return; }
+      if (worldArmyOverview.isVisible) { worldArmyOverview.hide(); return; }
+      // worldBattleViewer is not dismissable (auto-closes after battle)
+      if (leaderSelectScreen.container.visible) { leaderSelectScreen.hide(); return; }
+      if (raceDetailScreen.container.visible) { raceDetailScreen.hide(); return; }
+      if (magicScreen.container.visible) { magicScreen.hide(); return; }
+      if (buildingWikiScreen.container.visible) { buildingWikiScreen.hide(); return; }
+      if (worldWikiScreen.isVisible) { worldWikiScreen.hide(); return; }
+      if (cityPanel.isVisible) { cityPanel.hide(); return; }
+      if (armyPanel.isVisible) {
+        armyPanel.hide();
+        worldMapRenderer.clearHighlights();
+        _selectedArmyId = null;
+        _selectedArmyReachable = new Set();
+        return;
+      }
+      return;
+    }
+
+    // E key ends turn (only when no overlays are open)
+    if (e.code === "KeyE" && state.phase === WorldPhase.PLAYER_TURN
+      && !researchScreen.isVisible && !conjurePanel.isVisible
+      && !worldScoreScreen.isVisible && !worldNationalScreen.isVisible
+      && !worldArmyOverview.isVisible && !worldBattleViewer.isVisible
+      && !worldWikiScreen.isVisible
+      && !leaderSelectScreen.container.visible
+      && !raceDetailScreen.container.visible
+      && !magicScreen.container.visible
+      && !buildingWikiScreen.container.visible) {
+      worldHUD.onEndTurn?.();
+      return;
+    }
+
     // Don't handle if a screen overlay is open
     if (researchScreen.isVisible || conjurePanel.isVisible
       || worldScoreScreen.isVisible || worldNationalScreen.isVisible
-      || worldArmyOverview.isVisible || worldBattleViewer.isVisible) return;
+      || worldArmyOverview.isVisible || worldBattleViewer.isVisible
+      || worldWikiScreen.isVisible) return;
 
     if (state.phase !== WorldPhase.PLAYER_TURN) return;
 
