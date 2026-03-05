@@ -136,6 +136,7 @@ import { worldMinimap } from "@view/world/ui/WorldMinimap";
 import { worldScoreScreen } from "@view/world/ui/WorldScoreScreen";
 import { worldNationalScreen } from "@view/world/ui/WorldNationalScreen";
 import { worldArmyOverview } from "@view/world/ui/WorldArmyOverview";
+import { cityPreviewScreen } from "@view/world/ui/CityPreviewScreen";
 import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
@@ -2767,6 +2768,23 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     cityPanel.show(city, state);
     refreshWorld();
   };
+  cityPanel.onRename = (cityId, newName) => {
+    const city = state.cities.get(cityId);
+    if (city) {
+      city.name = newName;
+      cityPanel.show(city, state);
+      cityView.updateCity(city);
+    }
+  };
+  cityPanel.onViewCity = (cityId) => {
+    const city = state.cities.get(cityId);
+    if (city) {
+      cityPreviewScreen.show(city);
+    }
+  };
+
+  // Initialize city preview screen
+  cityPreviewScreen.init(viewManager);
 
   // Initialize army view
   armyView.init(viewManager);
@@ -2819,6 +2837,15 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       updateVisibility(state, army.owner);
       armyPanel.hide();
       refreshWorld();
+    }
+  };
+
+  armyPanel.onRename = (armyId, newName) => {
+    const army = state.armies.get(armyId);
+    if (army) {
+      army.name = newName;
+      armyPanel.show(army, state);
+      armyView.drawArmies(state);
     }
   };
 
@@ -3919,6 +3946,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       if (raceDetailScreen.container.visible) { raceDetailScreen.hide(); return; }
       if (magicScreen.container.visible) { magicScreen.hide(); return; }
       if (buildingWikiScreen.container.visible) { buildingWikiScreen.hide(); return; }
+      if (cityPreviewScreen.isVisible) { cityPreviewScreen.hide(); return; }
       if (worldWikiScreen.isVisible) { worldWikiScreen.hide(); return; }
       if (cityPanel.isVisible) { cityPanel.hide(); return; }
       if (armyPanel.isVisible) {

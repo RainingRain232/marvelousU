@@ -17,6 +17,7 @@ export interface ArmyUnit {
 
 export interface WorldArmy {
   id: string;
+  name: string;
   owner: string; // player id
   position: HexCoord;
 
@@ -36,6 +37,21 @@ export interface WorldArmy {
 }
 
 // ---------------------------------------------------------------------------
+// Army name pool
+// ---------------------------------------------------------------------------
+
+let _armyIndex = 0;
+
+export function nextArmyName(): string {
+  _armyIndex++;
+  return `Army ${_armyIndex}`;
+}
+
+export function resetArmyNames(): void {
+  _armyIndex = 0;
+}
+
+// ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
 
@@ -48,6 +64,7 @@ export function createWorldArmy(
 ): WorldArmy {
   return {
     id,
+    name: isGarrison ? "Garrison" : nextArmyName(),
     owner,
     position,
     units: [...units],

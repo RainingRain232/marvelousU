@@ -75,6 +75,15 @@ export class CityPanel {
   onClose: (() => void) | null = null;
   /** Called when the player creates a new army from garrison units. */
   onCreateArmy: ((cityId: string, units: Array<{ unitType: string; count: number }>) => void) | null = null;
+  /** Called when the player renames the city. */
+  onRename: ((cityId: string, newName: string) => void) | null = null;
+  /** Called when the player wants to view the city preview. */
+  onViewCity: ((cityId: string) => void) | null = null;
+
+  /** Rename input state. */
+  private _renaming = false;
+  private _renameText = "";
+  private _renameHandler: ((e: KeyboardEvent) => void) | null = null;
 
   // -----------------------------------------------------------------------
   // Lifecycle
@@ -105,6 +114,49 @@ export class CityPanel {
     this._state = null;
     this._armyCreationMode = false;
     this._selectedUnits.clear();
+    this._stopRename();
+  }
+
+  private _stopRename(): void {
+    this._renaming = false;
+    this._renameText = "";
+    if (this._renameHandler) {
+      window.removeEventListener("keydown", this._renameHandler);
+      this._renameHandler = null;
+    }
+  }
+
+  private _startRename(): void {
+    if (!this._city) return;
+    this._renaming = true;
+    this._renameText = this._city.name;
+    this._renameHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        this._stopRename();
+        this._rebuild();
+        return;
+      }
+      if (e.key === "Enter") {
+        const name = this._renameText.trim();
+        if (name.length > 0 && this._city) {
+          this.onRename?.(this._city.id, name);
+        }
+        this._stopRename();
+        this._rebuild();
+        return;
+      }
+      if (e.key === "Backspace") {
+        this._renameText = this._renameText.slice(0, -1);
+        this._rebuild();
+        return;
+      }
+      if (e.key.length === 1 && this._renameText.length < 20) {
+        this._renameText += e.key;
+        this._rebuild();
+      }
+    };
+    window.addEventListener("keydown", this._renameHandler);
+    this._rebuild();
   }
 
   get isVisible(): boolean {
@@ -144,11 +196,47 @@ export class CityPanel {
     this._contentContainer.addChild(closeBtn);
 
     // City name
-    const title = new Text({ text: city.name, style: TITLE_STYLE });
-    title.x = 12;
-    title.y = y;
-    this._contentContainer.addChild(title);
-    y += 24;
+    if (this._renaming) {
+      const inputBg = new Graphics();
+      inputBg.roundRect(12, y, PANEL_W - 70, 20, 3);
+      inputBg.fill({ color: 0x111133 });
+      inputBg.stroke({ color: 0x6688aa, width: 1 });
+      this._contentContainer.addChild(inputBg);
+
+      const inputText = new Text({
+        text: this._renameText + "_",
+        style: TITLE_STYLE,
+      });
+      inputText.x = 16;
+      inputText.y = y;
+      this._contentContainer.addChild(inputText);
+      y += 24;
+    } else {
+      const title = new Text({ text: city.name, style: TITLE_STYLE });
+      title.x = 12;
+      title.y = y;
+      this._contentContainer.addChild(title);
+
+      const renameBtn = _makeButton("Rename", PANEL_W - 80, y, 48, 18, () => {
+        this._startRename();
+      });
+      this._contentContainer.addChild(renameBtn);
+      y += 24;
+
+      // View City button
+      const viewBtn = _makeButton(
+        "VIEW CITY",
+        16,
+        y,
+        PANEL_W - 32,
+        24,
+        () => { this.onViewCity?.(city.id); },
+        0x223344,
+        0x4488aa,
+      );
+      this._contentContainer.addChild(viewBtn);
+      y += 30;
+    }
 
     if (this._armyCreationMode) {
       y = this._buildArmyCreationView(city, state, y);

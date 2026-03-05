@@ -214,10 +214,18 @@ export class WorldMapRenderer {
   // Drawing
   // -----------------------------------------------------------------------
 
+  /** Remove and destroy all children of a container. */
+  private _destroyChildren(container: Container): void {
+    for (const child of container.children) {
+      child.destroy();
+    }
+    container.removeChildren();
+  }
+
   /** Render the entire hex grid. Call once after map generation. */
   drawMap(grid: HexGrid): void {
     this._grid = grid;
-    this._hexContainer.removeChildren();
+    this._destroyChildren(this._hexContainer);
     this._hexGraphics.clear();
     this._waterTiles = [];
 
@@ -238,7 +246,7 @@ export class WorldMapRenderer {
     this.drawForestCreatures(grid);
 
     // Place deer on ~5% of forest tiles
-    this._deerContainer.removeChildren();
+    this._destroyChildren(this._deerContainer);
     this._deer = [];
     const deerScale = (HEX_SIZE / 60) * 0.3;
     for (const tile of grid.allTiles()) {
@@ -289,7 +297,7 @@ export class WorldMapRenderer {
 
   /** Clear all hex highlights. */
   clearHighlights(): void {
-    this._highlightContainer.removeChildren();
+    this._destroyChildren(this._highlightContainer);
   }
 
   /** Draw a path preview as dotted arrows between hexes. */
@@ -364,7 +372,7 @@ export class WorldMapRenderer {
 
   /** Draw fog of war overlay based on a player's explored/visible tiles. */
   drawFog(grid: HexGrid, player: WorldPlayer): void {
-    this._fogContainer.removeChildren();
+    this._destroyChildren(this._fogContainer);
 
     for (const tile of grid.allTiles()) {
       const key = hexKey(tile.q, tile.r);
@@ -397,22 +405,22 @@ export class WorldMapRenderer {
 
   /** Clear fog overlay. */
   clearFog(): void {
-    this._fogContainer.removeChildren();
+    this._destroyChildren(this._fogContainer);
   }
 
   /** Draw territory border lines where ownership changes between adjacent hexes. */
   drawBorders(_grid: HexGrid): void {
-    this._borderContainer.removeChildren();
+    this._destroyChildren(this._borderContainer);
   }
 
   /** Clear territory borders. */
   clearBorders(): void {
-    this._borderContainer.removeChildren();
+    this._destroyChildren(this._borderContainer);
   }
 
   /** Draw camp icons on the map using firepit animation. Only shows uncleared camps in visible/explored tiles. */
   drawCamps(camps: Iterable<WorldCamp>, localPlayer?: WorldPlayer): void {
-    this._campContainer.removeChildren();
+    this._destroyChildren(this._campContainer);
     this._campFirepits = [];
 
     // FirepitRenderer is 2×TS (128×128). Scale to fit hex.
@@ -468,7 +476,7 @@ export class WorldMapRenderer {
 
   /** Draw neutral buildings (farms, mills, towers) on the map. */
   drawNeutralBuildings(buildings: Iterable<NeutralBuilding>, localPlayer?: WorldPlayer): void {
-    this._neutralBuildingContainer.removeChildren();
+    this._destroyChildren(this._neutralBuildingContainer);
     this._neutralBuildingRenderers = [];
 
     const FARM_SCALE = (HEX_SIZE * 2 * 0.7) / 128;
@@ -773,6 +781,11 @@ export class WorldMapRenderer {
     }
 
     // Improvement marker
+    // City tiles also draw road connections to neighboring road tiles
+    if (tile.cityId) {
+      this._drawRoadConnections(g, tile, center);
+    }
+
     if (tile.improvement) {
       if (tile.improvement === "road") {
         // Roads draw connecting lines to neighboring roads and cities
@@ -815,29 +828,30 @@ export class WorldMapRenderer {
 
       if (isRoad || isCity) {
         const nCenter = hexToPixel(n, HEX_SIZE);
-        const midX = (center.x + nCenter.x) / 2;
-        const midY = (center.y + nCenter.y) / 2;
+        // Roads to cities extend all the way to the city center
+        const endX = isCity ? nCenter.x : (center.x + nCenter.x) / 2;
+        const endY = isCity ? nCenter.y : (center.y + nCenter.y) / 2;
 
         // Perpendicular offset for a winding curve, deterministic per tile+direction
         const h = _tileHash(Math.round(center.x), Math.round(center.y), ni + 500);
         const curveAmount = ((h % 200) - 100) / 100 * HEX_SIZE * 0.12;
-        const dx = midX - center.x;
-        const dy = midY - center.y;
+        const dx = endX - center.x;
+        const dy = endY - center.y;
         // Perpendicular direction
         const px = -dy;
         const py = dx;
         const pLen = Math.sqrt(px * px + py * py) || 1;
-        const cpx = (center.x + midX) / 2 + (px / pLen) * curveAmount;
-        const cpy = (center.y + midY) / 2 + (py / pLen) * curveAmount;
+        const cpx = (center.x + endX) / 2 + (px / pLen) * curveAmount;
+        const cpy = (center.y + endY) / 2 + (py / pLen) * curveAmount;
 
         // Road outline (darker)
         g.moveTo(center.x, center.y);
-        g.quadraticCurveTo(cpx, cpy, midX, midY);
+        g.quadraticCurveTo(cpx, cpy, endX, endY);
         g.stroke({ color: 0x665533, width: HEX_SIZE * 0.08, alpha: 0.7 });
 
         // Road fill (lighter)
         g.moveTo(center.x, center.y);
-        g.quadraticCurveTo(cpx, cpy, midX, midY);
+        g.quadraticCurveTo(cpx, cpy, endX, endY);
         g.stroke({ color: 0xbbaa77, width: HEX_SIZE * 0.04, alpha: 0.9 });
 
         hasConnection = true;
@@ -858,7 +872,7 @@ export class WorldMapRenderer {
 
   /** Find forest clusters of 4+ tiles and place a princess & rabbit in each. */
   drawForestCreatures(grid: HexGrid): void {
-    this._forestCreatureContainer.removeChildren();
+    this._destroyChildren(this._forestCreatureContainer);
     this._forestCreatures = [];
 
     const findClusters = (terrainType: TerrainType, minSize: number): HexCoord[][] => {
@@ -1187,7 +1201,7 @@ export class WorldMapRenderer {
   /** Remove the sword in the stone visual. */
   clearSword(): void {
     this._swordHex = null;
-    this._swordContainer.removeChildren();
+    this._destroyChildren(this._swordContainer);
   }
 
   /** Set fake sword trap hexes (drawn identically to real sword). */

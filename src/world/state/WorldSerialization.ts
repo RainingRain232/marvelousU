@@ -178,7 +178,14 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
   for (const [id, c] of Object.entries(data.cities)) cities.set(id, c);
 
   const armies = new Map<string, WorldArmy>();
-  for (const [id, a] of Object.entries(data.armies)) armies.set(id, a);
+  let armyIdx = 0;
+  for (const [id, a] of Object.entries(data.armies)) {
+    if (!a.name) {
+      armyIdx++;
+      a.name = a.isGarrison ? "Garrison" : `Army ${armyIdx}`;
+    }
+    armies.set(id, a);
+  }
 
   const camps = new Map<string, WorldCamp>();
   for (const [id, c] of Object.entries(data.camps)) camps.set(id, c);

@@ -67,6 +67,13 @@ export class ArmyPanel {
   canFoundCityCheck: ((army: WorldArmy, state: WorldState) => boolean) | null = null;
   /** Called when the player wants to conjure with a mage in the army. */
   onConjure: ((armyId: string) => void) | null = null;
+  /** Called when the player renames the army. */
+  onRename: ((armyId: string, newName: string) => void) | null = null;
+
+  /** Rename input state. */
+  private _renaming = false;
+  private _renameText = "";
+  private _renameHandler: ((e: KeyboardEvent) => void) | null = null;
 
   // -----------------------------------------------------------------------
   // Lifecycle
@@ -90,6 +97,49 @@ export class ArmyPanel {
     this._army = null;
     this._state = null;
     this.selectedArmyId = null;
+    this._stopRename();
+  }
+
+  private _stopRename(): void {
+    this._renaming = false;
+    this._renameText = "";
+    if (this._renameHandler) {
+      window.removeEventListener("keydown", this._renameHandler);
+      this._renameHandler = null;
+    }
+  }
+
+  private _startRename(): void {
+    if (!this._army) return;
+    this._renaming = true;
+    this._renameText = this._army.name;
+    this._renameHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        this._stopRename();
+        this._rebuild();
+        return;
+      }
+      if (e.key === "Enter") {
+        const name = this._renameText.trim();
+        if (name.length > 0 && this._army) {
+          this.onRename?.(this._army.id, name);
+        }
+        this._stopRename();
+        this._rebuild();
+        return;
+      }
+      if (e.key === "Backspace") {
+        this._renameText = this._renameText.slice(0, -1);
+        this._rebuild();
+        return;
+      }
+      if (e.key.length === 1 && this._renameText.length < 20) {
+        this._renameText += e.key;
+        this._rebuild();
+      }
+    };
+    window.addEventListener("keydown", this._renameHandler);
+    this._rebuild();
   }
 
   get isVisible(): boolean {
@@ -128,14 +178,38 @@ export class ArmyPanel {
     this._contentContainer.addChild(closeBtn);
 
     // Title
-    const title = new Text({
-      text: army.isGarrison ? "Garrison" : "Army",
-      style: TITLE_STYLE,
-    });
-    title.x = 12;
-    title.y = y;
-    this._contentContainer.addChild(title);
-    y += 24;
+    if (this._renaming) {
+      const inputBg = new Graphics();
+      inputBg.roundRect(12, y, PANEL_W - 70, 20, 3);
+      inputBg.fill({ color: 0x111133 });
+      inputBg.stroke({ color: 0x6688aa, width: 1 });
+      this._contentContainer.addChild(inputBg);
+
+      const inputText = new Text({
+        text: this._renameText + "_",
+        style: TITLE_STYLE,
+      });
+      inputText.x = 16;
+      inputText.y = y;
+      this._contentContainer.addChild(inputText);
+      y += 24;
+    } else {
+      const title = new Text({
+        text: army.isGarrison ? "Garrison" : army.name,
+        style: TITLE_STYLE,
+      });
+      title.x = 12;
+      title.y = y;
+      this._contentContainer.addChild(title);
+
+      if (!army.isGarrison) {
+        const renameBtn = _makeButton("Rename", PANEL_W - 80, y, 48, 18, () => {
+          this._startRename();
+        });
+        this._contentContainer.addChild(renameBtn);
+      }
+      y += 24;
+    }
 
     // Info
     const total = armyUnitCount(army);

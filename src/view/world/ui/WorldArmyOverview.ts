@@ -221,7 +221,7 @@ export class WorldArmyOverview {
     const comp = army.units.map((u) => `${u.count}x ${_formatUnit(u.unitType)}`).join(", ");
     const move = `${army.movementPoints}/${army.maxMovementPoints}`;
 
-    const values = [army.id, `(${army.position.q}, ${army.position.r})`, `${count}`, comp, move];
+    const values = [army.name, `(${army.position.q}, ${army.position.r})`, `${count}`, comp, move];
 
     let cx = x;
     for (let c = 0; c < values.length; c++) {
