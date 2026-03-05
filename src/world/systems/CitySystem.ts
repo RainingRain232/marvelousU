@@ -19,6 +19,7 @@ import { hexSpiral, hexDistance, type HexCoord } from "@world/hex/HexCoord";
 import { createWorldCity } from "@world/state/WorldCity";
 import { calculateCityYields } from "@world/systems/WorldEconomySystem";
 import { hasResearch } from "@world/systems/ResearchSystem";
+import { getLeader } from "@sim/config/LeaderDefs";
 
 // ---------------------------------------------------------------------------
 // Building
@@ -105,10 +106,21 @@ export function queueRecruitment(
 
   // Settlers use a world-mode-specific cost
   const unitCost = unitType === "settler" ? WorldBalance.SETTLER_COST : unitDef.cost;
-  const totalCost = unitCost * count;
+  const baseCost = unitCost * count;
   const player = state.players.get(city.owner);
-  if (!player || player.gold < totalCost) return false;
+  if (!player) return false;
 
+  // Apply leader unit_cost_reduction bonus
+  let costMultiplier = 1;
+  if (player.leaderId) {
+    const leaderDef = getLeader(player.leaderId);
+    if (leaderDef?.bonus.type === "unit_cost_reduction") {
+      costMultiplier = leaderDef.bonus.multiplier;
+    }
+  }
+  const totalCost = Math.ceil(baseCost * costMultiplier);
+
+  if (player.gold < totalCost) return false;
   player.gold -= totalCost;
 
   city.recruitmentQueue.push({

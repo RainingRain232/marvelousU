@@ -9,6 +9,7 @@ import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 import { WorldBalance } from "@world/config/WorldConfig";
 import { getWorldBuildingDef } from "@world/config/WorldBuildingDefs";
 import { RESOURCE_DEFINITIONS, IMPROVEMENT_DEFINITIONS } from "@world/config/ResourceDefs";
+import { getLeader } from "@sim/config/LeaderDefs";
 
 // ---------------------------------------------------------------------------
 // Public
@@ -18,6 +19,8 @@ import { RESOURCE_DEFINITIONS, IMPROVEMENT_DEFINITIONS } from "@world/config/Res
 export function processEconomy(state: WorldState, playerId: string): void {
   const player = state.players.get(playerId);
   if (!player) return;
+
+  const goldBefore = player.gold;
 
   for (const city of state.cities.values()) {
     if (city.owner !== playerId) continue;
@@ -47,6 +50,17 @@ export function processEconomy(state: WorldState, playerId: string): void {
     if (city.foodStockpile >= growthThreshold) {
       city.foodStockpile -= growthThreshold;
       city.population++;
+    }
+  }
+
+  // Apply leader income_multiplier bonus to gold earned this turn
+  if (player.leaderId) {
+    const leaderDef = getLeader(player.leaderId);
+    if (leaderDef?.bonus.type === "income_multiplier") {
+      const earned = player.gold - goldBefore;
+      if (earned > 0) {
+        player.gold = goldBefore + Math.round(earned * leaderDef.bonus.multiplier);
+      }
     }
   }
 

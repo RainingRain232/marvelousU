@@ -81,9 +81,9 @@ import { createUnit } from "@sim/entities/Unit";
 import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
-import { LEADER_DEFINITIONS } from "@sim/config/LeaderDefs";
+import { LEADER_DEFINITIONS, getLeader } from "@sim/config/LeaderDefs";
 import type { LeaderId, LeaderBonus } from "@sim/config/LeaderDefs";
-import { getRace, filterInventoryByRace } from "@sim/config/RaceDefs";
+import { getRace, filterInventoryByRace, RACE_DEFINITIONS } from "@sim/config/RaceDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
 
 // World mode imports
@@ -188,15 +188,36 @@ import { worldMinimap } from "@view/world/ui/WorldMinimap";
   menuScreen.onContinue = () => {
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
       menuScreen.hide();
-      worldSetupScreen.init(viewManager);
-      worldSetupScreen.onStart = async (settings) => {
-        worldSetupScreen.destroy();
-        await _bootWorldGame(settings, raceSelectScreen?.selectedRaceId ?? "man");
-      };
-      worldSetupScreen.onBack = () => {
-        worldSetupScreen.destroy();
+      // World mode: Leader → Race → WorldSetup → boot
+      leaderSelectScreen.onBack = () => {
+        leaderSelectScreen.hide();
         menuScreen.show();
       };
+      leaderSelectScreen.onNext = () => {
+        leaderSelectScreen.hide();
+        raceSelectScreen.onBack = () => {
+          raceSelectScreen.hide();
+          leaderSelectScreen.show();
+        };
+        raceSelectScreen.onNext = () => {
+          raceSelectScreen.hide();
+          worldSetupScreen.init(viewManager);
+          worldSetupScreen.onStart = async (settings) => {
+            worldSetupScreen.destroy();
+            await _bootWorldGame(
+              settings,
+              raceSelectScreen.selectedRaceId,
+              leaderSelectScreen.selectedLeaderId,
+            );
+          };
+          worldSetupScreen.onBack = () => {
+            worldSetupScreen.destroy();
+            raceSelectScreen.show();
+          };
+        };
+        raceSelectScreen.show();
+      };
+      leaderSelectScreen.show();
       return;
     }
     menuScreen.hide();
@@ -1349,9 +1370,116 @@ async function _bootCampaign(
 
 let _activeWorldState: WorldState | null = null;
 
+/** Show in-game info menu overlay with Leader Info / Race Info options. */
+function _showWorldInfoMenu(state: WorldState): void {
+  const player = state.players.get("p1");
+  if (!player) return;
+
+  const vm = viewManager;
+  const overlay = new Container();
+
+  // Dim background — clicking it dismisses the menu
+  const bg = new Graphics();
+  bg.rect(0, 0, vm.screenWidth, vm.screenHeight);
+  bg.fill({ color: 0x000000, alpha: 0.5 });
+  bg.eventMode = "static";
+  bg.on("pointerdown", () => overlay.destroy({ children: true }));
+  overlay.addChild(bg);
+
+  // Card panel
+  const cardW = 260;
+  const cardH = 200;
+  const cardX = (vm.screenWidth - cardW) / 2;
+  const cardY = (vm.screenHeight - cardH) / 2;
+
+  const card = new Graphics();
+  card.roundRect(cardX, cardY, cardW, cardH, 8);
+  card.fill({ color: 0x10102a, alpha: 0.97 });
+  card.stroke({ color: 0x555577, width: 1.5 });
+  card.eventMode = "static"; // prevent clicks from passing through
+  overlay.addChild(card);
+
+  // Title
+  const title = new Text({
+    text: "MENU",
+    style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: 16,
+      fontWeight: "bold",
+      fill: 0xffcc44,
+    }),
+  });
+  title.anchor.set(0.5, 0);
+  title.position.set(cardX + cardW / 2, cardY + 12);
+  overlay.addChild(title);
+
+  const btnStyle = new TextStyle({
+    fontFamily: "monospace",
+    fontSize: 13,
+    fontWeight: "bold",
+    fill: 0xffffff,
+  });
+
+  // Helper: add a button row
+  const addBtn = (label: string, yOffset: number, onClick: () => void) => {
+    const btn = new Container();
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const btnBg = new Graphics();
+    btnBg.roundRect(0, 0, cardW - 40, 34, 5);
+    btnBg.fill({ color: 0x222244 });
+    btnBg.stroke({ color: 0x555577, width: 1 });
+    btn.addChild(btnBg);
+
+    const txt = new Text({ text: label, style: btnStyle });
+    txt.x = 12;
+    txt.y = 8;
+    btn.addChild(txt);
+
+    btn.on("pointerdown", onClick);
+    btn.on("pointerover", () => {
+      btnBg.clear();
+      btnBg.roundRect(0, 0, cardW - 40, 34, 5);
+      btnBg.fill({ color: 0x333366 });
+      btnBg.stroke({ color: 0x7777aa, width: 1 });
+    });
+    btn.on("pointerout", () => {
+      btnBg.clear();
+      btnBg.roundRect(0, 0, cardW - 40, 34, 5);
+      btnBg.fill({ color: 0x222244 });
+      btnBg.stroke({ color: 0x555577, width: 1 });
+    });
+
+    btn.position.set(cardX + 20, cardY + yOffset);
+    overlay.addChild(btn);
+  };
+
+  addBtn("LEADER INFO", 44, () => {
+    overlay.destroy({ children: true });
+    leaderSelectScreen.onBack = () => leaderSelectScreen.hide();
+    leaderSelectScreen.onNext = null;
+    leaderSelectScreen.show();
+  });
+
+  addBtn("RACE INFO", 88, () => {
+    overlay.destroy({ children: true });
+    raceDetailScreen.onBack = () => raceDetailScreen.hide();
+    raceDetailScreen.onNext = null;
+    raceDetailScreen.show(player.raceId);
+  });
+
+  addBtn("CLOSE", 142, () => {
+    overlay.destroy({ children: true });
+  });
+
+  vm.app.stage.addChild(overlay);
+}
+
 async function _bootWorldGame(
   settings: WorldGameSettings,
   raceId: RaceId = "man",
+  leaderId: LeaderId = "arthur",
 ): Promise<void> {
   // Generate map
   const grid = generateWorldMap(settings);
@@ -1366,18 +1494,45 @@ async function _bootWorldGame(
   // Create world state
   const state = createWorldState(grid, playerOrder);
 
+  // AI randomization pools
+  const implementedRaces = RACE_DEFINITIONS.filter((r) => r.implemented).map((r) => r.id);
+  const allLeaderIds = LEADER_DEFINITIONS.map((l) => l.id);
+  // Fisher-Yates shuffle
+  for (let i = allLeaderIds.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allLeaderIds[i], allLeaderIds[j]] = [allLeaderIds[j], allLeaderIds[i]];
+  }
+  const aiLeaderPool = allLeaderIds.filter((id) => id !== leaderId);
+  let aiLeaderIdx = 0;
+
   // Create players
   const humanCount = settings.numPlayers - settings.numAIPlayers;
   for (let i = 0; i < settings.numPlayers; i++) {
     const pid = `p${i + 1}`;
     const isAI = i >= humanCount;
+
+    const playerRaceId = isAI
+      ? implementedRaces[Math.floor(Math.random() * implementedRaces.length)]
+      : raceId;
+    const playerLeaderId = isAI
+      ? aiLeaderPool[aiLeaderIdx++ % aiLeaderPool.length]
+      : leaderId;
+
     const player = createWorldPlayer(
       pid,
-      i === 0 ? raceId : "man", // AI players default to "man" for now
+      playerRaceId,
       isAI,
       WorldBalance.STARTING_GOLD,
       WorldBalance.STARTING_FOOD,
+      playerLeaderId,
     );
+
+    // Apply boot-time leader bonuses
+    const leaderDef = getLeader(playerLeaderId);
+    if (leaderDef?.bonus.type === "gold_bonus") {
+      player.gold += leaderDef.bonus.amount;
+    }
+
     state.players.set(pid, player);
   }
 
@@ -1476,6 +1631,9 @@ async function _bootWorldGame(
     // Check if research screen or victory screen is open (fullscreen)
     if (researchScreen.isVisible) return true;
     if (worldVictoryScreen.isVisible) return true;
+    // Check if leader/race info screens are open
+    if (leaderSelectScreen.container.visible) return true;
+    if (raceDetailScreen.container.visible) return true;
     return false;
   };
 
@@ -1580,6 +1738,11 @@ async function _bootWorldGame(
     } else {
       researchScreen.show(state);
     }
+  };
+
+  // Menu button handler — opens an overlay with LEADER INFO / RACE INFO options
+  worldHUD.onMenu = () => {
+    _showWorldInfoMenu(state);
   };
 
   // Initialize event log

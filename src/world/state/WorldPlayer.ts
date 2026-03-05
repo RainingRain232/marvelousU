@@ -1,6 +1,7 @@
 // Per-player state for world mode.
 
 import type { RaceId } from "@sim/config/RaceDefs";
+import type { LeaderId } from "@sim/config/LeaderDefs";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -9,6 +10,7 @@ import type { RaceId } from "@sim/config/RaceDefs";
 export interface WorldPlayer {
   id: string; // "p1", "p2", etc.
   raceId: RaceId;
+  leaderId: LeaderId | null;
   gold: number;
   food: number;
   isAI: boolean;
@@ -37,10 +39,12 @@ export function createWorldPlayer(
   isAI: boolean,
   startingGold: number,
   startingFood: number,
+  leaderId: LeaderId | null = null,
 ): WorldPlayer {
   return {
     id,
     raceId,
+    leaderId,
     gold: startingGold,
     food: startingFood,
     isAI,

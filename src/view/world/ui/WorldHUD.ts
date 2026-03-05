@@ -55,6 +55,8 @@ export class WorldHUD {
   private _endTurnBg!: Graphics;
   private _researchBtn!: Container;
 
+  private _menuBtn!: Container;
+
   private _screenW = 800;
   private _screenH = 600;
 
@@ -62,6 +64,8 @@ export class WorldHUD {
   onEndTurn: (() => void) | null = null;
   /** Callback when Research button is clicked. */
   onResearch: (() => void) | null = null;
+  /** Callback when Menu button is clicked. */
+  onMenu: (() => void) | null = null;
 
   // -----------------------------------------------------------------------
   // Lifecycle
@@ -73,6 +77,7 @@ export class WorldHUD {
 
     this._buildTopBar();
     this._buildResearchBtn();
+    this._buildMenuBtn();
     this._buildEndTurnBtn();
 
     vm.addToLayer("ui", this.container);
@@ -184,6 +189,30 @@ export class WorldHUD {
 
     this._researchBtn = btn;
     btn.x = 340;
+    btn.y = 14;
+    this.container.addChild(btn);
+  }
+
+  private _buildMenuBtn(): void {
+    const btn = new Container();
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const bg = new Graphics();
+    bg.roundRect(0, 0, 80, 30, 6);
+    bg.fill({ color: 0x443322 });
+    bg.stroke({ color: 0x887755, width: 1.5 });
+    btn.addChild(bg);
+
+    const label = new Text({ text: "MENU", style: BTN_STYLE });
+    label.x = 14;
+    label.y = 6;
+    btn.addChild(label);
+
+    btn.on("pointerdown", () => this.onMenu?.());
+
+    this._menuBtn = btn;
+    btn.x = 450;
     btn.y = 14;
     this.container.addChild(btn);
   }
