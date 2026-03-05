@@ -2790,6 +2790,14 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       for (let i = 0; i < MAX_TICKS; i++) {
         simTick(battleState);
         if (battleState.winnerId) break;
+        // Early exit when all units are dead — no winner will emerge
+        if (i > 0 && i % 50 === 0) {
+          let anyAlive = false;
+          for (const u of battleState.units.values()) {
+            if (u.state !== UnitState.DIE && u.hp > 0) { anyAlive = true; break; }
+          }
+          if (!anyAlive) break;
+        }
       }
 
       const defenderOwner = defender?.owner ?? attacker.owner;
@@ -2871,6 +2879,13 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         for (let i = 0; i < MAX_TICKS; i++) {
           simTick(battleState);
           if (battleState.winnerId) break;
+          if (i > 0 && i % 50 === 0) {
+            let anyAlive = false;
+            for (const u of battleState.units.values()) {
+              if (u.state !== UnitState.DIE && u.hp > 0) { anyAlive = true; break; }
+            }
+            if (!anyAlive) break;
+          }
         }
       }
 
@@ -3011,7 +3026,10 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       await resolveWorldBattlesVisual();
     }
 
-    while ((state.phase as WorldPhase) === WorldPhase.AI_TURN) {
+    // Safety limit: prevent infinite AI loop (e.g. from draw-retreat cycles)
+    let aiTurnGuard = 0;
+    while ((state.phase as WorldPhase) === WorldPhase.AI_TURN && aiTurnGuard < 50) {
+      aiTurnGuard++;
       const aiPid = state.playerOrder[state.currentPlayerIndex];
       executeAITurn(state, aiPid);
 

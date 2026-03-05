@@ -202,7 +202,8 @@ export function applyBattleResults(
   }
 
   // On a draw, retreat the attacker to a neighboring hex to prevent infinite re-battles
-  if (!result.winnerId && attackerArmy) {
+  // Only retreat if the attacker still exists (has survivors)
+  if (!result.winnerId && attackerArmy && result.attackerSurvivors.length > 0) {
     _retreatArmy(worldState, attackerArmy);
   }
 
