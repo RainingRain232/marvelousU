@@ -13,6 +13,7 @@ import { createWorldArmy } from "@world/state/WorldArmy";
 import { processEconomy } from "@world/systems/WorldEconomySystem";
 import { advanceResearch, advanceMagicResearch } from "@world/systems/ResearchSystem";
 import { updateVisibility } from "@world/systems/FogOfWarSystem";
+import { spawnNeutralRaiders } from "@world/systems/NeutralCitySystem";
 
 // ---------------------------------------------------------------------------
 // Turn flow
@@ -93,6 +94,11 @@ function _advanceToNextPlayer(state: WorldState): void {
   // Check if we wrapped around to a new turn
   if (nextIndex <= state.currentPlayerIndex) {
     state.turn++;
+
+    // Spawn neutral city raiders every ~20 turns
+    if (state.turn > 0 && state.turn % 20 === 0) {
+      spawnNeutralRaiders(state);
+    }
   }
 
   state.currentPlayerIndex = nextIndex;

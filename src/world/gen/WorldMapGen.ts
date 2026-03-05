@@ -286,8 +286,8 @@ export function findNeutralCityPositions(
   playerStarts: HexCoord[],
   count: number,
 ): HexCoord[] {
-  const minDistFromPlayers = 5;
-  const minDistBetween = 4;
+  const minDistFromPlayers = 8;
+  const minDistBetween = 8;
 
   const candidates: HexCoord[] = [];
   for (const tile of grid.allTiles()) {

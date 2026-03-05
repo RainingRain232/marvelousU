@@ -94,7 +94,7 @@ const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) =>
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
 import type { WorldGameSettings } from "@world/config/WorldConfig";
-import { generateWorldMap, findStartPositions, placeCamps } from "@world/gen/WorldMapGen";
+import { generateWorldMap, findStartPositions, placeCamps, findNeutralCityPositions } from "@world/gen/WorldMapGen";
 import { TERRAIN_DEFINITIONS, TerrainType } from "@world/config/TerrainDefs";
 import { createWorldState, nextId, WorldPhase } from "@world/state/WorldState";
 import type { WorldState } from "@world/state/WorldState";
@@ -140,6 +140,7 @@ import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
 import { rollRandomEvents } from "@world/systems/WorldRandomEvents";
+import { getNeutralCityGarrison, pickNeutralRace, neutralRng } from "@world/systems/NeutralCitySystem";
 import { worldNotification } from "@view/world/ui/WorldNotification";
 import { worldWikiScreen } from "@view/world/ui/WorldWikiScreen";
 import merlinImgUrl from "@/img/merlin.png";
@@ -2151,6 +2152,78 @@ async function _bootWorldGame(
 
       state.swordHex = swordHex;
       state.swordClaimed = false;
+    }
+  }
+
+  // Re-clear water/mountains around player starts (Sword Island may have placed water on them)
+  for (const pos of startPositions) {
+    const nearby = hexSpiral(pos, 3);
+    for (const h of nearby) {
+      const tile = grid.getTile(h.q, h.r);
+      if (!tile) continue;
+      if (tile.terrain === TerrainType.WATER) {
+        tile.terrain = TerrainType.GRASSLAND;
+      } else if (tile.terrain === TerrainType.MOUNTAINS) {
+        tile.terrain = TerrainType.HILLS;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Neutral cities — independent city-states of random races
+  // ---------------------------------------------------------------------------
+  {
+    const neutralCityCount = Math.max(3, Math.floor(settings.mapRadius * 0.8));
+    const neutralPositions = findNeutralCityPositions(grid, startPositions, neutralCityCount);
+    const neutralSeed = settings.seed || Date.now();
+
+    for (let i = 0; i < neutralPositions.length; i++) {
+      const pos = neutralPositions[i];
+      const neutralId = `neutral_${i + 1}`;
+      const rng = neutralRng(neutralSeed + i * 7919);
+      const neutralRaceId = pickNeutralRace(rng);
+
+      // Create neutral player (not in playerOrder — never takes turns)
+      const neutralPlayer = createWorldPlayer(neutralId, neutralRaceId, true, 0, 0);
+      state.players.set(neutralId, neutralPlayer);
+
+      // Diplomacy: at war with all existing players
+      for (const [pid, p] of state.players) {
+        if (pid !== neutralId) {
+          p.diplomacy.set(neutralId, "war");
+          neutralPlayer.diplomacy.set(pid, "war");
+        }
+      }
+
+      // Create city with Castle + City Walls
+      const cityId = nextId(state, "city");
+      const city = createWorldCity(cityId, neutralId, pos, true);
+      city.population = 4;
+      city.buildings.push(
+        { type: WorldBuildingType.CASTLE as any, completedTurn: 0 },
+        { type: WorldBuildingType.CITY_WALLS as any, completedTurn: 0 },
+      );
+
+      // Territory (radius 2)
+      const territory = hexSpiral(pos, WorldBalance.BASE_CITY_TERRITORY_RADIUS)
+        .filter((h) => grid.hasTile(h.q, h.r));
+      city.territory = territory;
+      city.workedTiles = territory.slice(0, city.population + 1);
+      for (const hex of territory) {
+        const tile = grid.getTile(hex.q, hex.r);
+        if (tile && !tile.owner) tile.owner = neutralId;
+      }
+      const cityTile = grid.getTile(pos.q, pos.r);
+      if (cityTile) cityTile.cityId = cityId;
+
+      // Tier 3 garrison army
+      const garrisonId = nextId(state, "army");
+      const garrisonUnits = getNeutralCityGarrison(neutralRaceId, rng);
+      const garrison = createWorldArmy(garrisonId, neutralId, pos, garrisonUnits, true);
+      city.garrisonArmyId = garrisonId;
+
+      state.cities.set(cityId, city);
+      state.armies.set(garrisonId, garrison);
     }
   }
 
