@@ -3,14 +3,15 @@
 // Shows army composition and movement range when an army is selected.
 // Rendered as a PixiJS panel on the left side of the screen.
 
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Container, Graphics, Text, TextStyle, Sprite } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldArmy } from "@world/state/WorldArmy";
 import { armyUnitCount } from "@world/state/WorldArmy";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { IMPROVEMENT_DEFINITIONS, type ImprovementType } from "@world/config/ResourceDefs";
-import { UnitType } from "@/types";
+import { UnitType, UnitState } from "@/types";
+import { animationManager } from "@view/animation/AnimationManager";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -157,14 +158,22 @@ export class ArmyPanel {
       const unitCost = def?.cost ?? 100;
       power += u.count * unitCost;
 
+      // Unit icon
+      const icon = _makeUnitIcon(u.unitType, 24);
+      if (icon) {
+        icon.x = 12;
+        icon.y = y;
+        this._contentContainer.addChild(icon);
+      }
+
       const uText = new Text({
-        text: `  ${u.unitType} x${u.count}`,
+        text: `${u.unitType} x${u.count}`,
         style: INFO_STYLE,
       });
-      uText.x = 12;
-      uText.y = y;
+      uText.x = icon ? 40 : 12;
+      uText.y = y + 4;
       this._contentContainer.addChild(uText);
-      y += 16;
+      y += 28;
     }
 
     // Power score
@@ -258,13 +267,26 @@ export class ArmyPanel {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function _makeUnitIcon(unitType: string, size: number): Sprite | null {
+  try {
+    const frames = animationManager.getFrames(unitType as UnitType, UnitState.IDLE);
+    if (!frames || frames.length === 0) return null;
+    const sprite = new Sprite(frames[0]);
+    const scale = size / Math.max(sprite.width, sprite.height);
+    sprite.scale.set(scale);
+    return sprite;
+  } catch {
+    return null;
+  }
+}
+
 function _makeButton(
   label: string,
   x: number,
   y: number,
   w: number,
   h: number,
-  onClick: () => void,
+  onClick: (e?: any) => void,
   fillColor = 0x222244,
   strokeColor = BORDER,
 ): Container {
@@ -284,7 +306,7 @@ function _makeButton(
   btn.addChild(txt);
 
   btn.position.set(x, y);
-  btn.on("pointerdown", onClick);
+  btn.on("pointerdown", (e: any) => onClick(e));
 
   return btn;
 }

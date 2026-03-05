@@ -2264,9 +2264,10 @@ async function _bootWorldGame(
       const rng = neutralRng(neutralSeed + i * 7919);
       const neutralRaceId = pickNeutralRace(rng);
 
-      // Create neutral player (not in playerOrder — never takes turns)
+      // Create neutral player (takes AI turns like other AI players)
       const neutralPlayer = createWorldPlayer(neutralId, neutralRaceId, true, 0, 0);
       state.players.set(neutralId, neutralPlayer);
+      state.playerOrder.push(neutralId);
 
       // Diplomacy: at war with all existing players
       for (const [pid, p] of state.players) {
@@ -2430,6 +2431,23 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       cityPanel.show(city, state); // refresh
       worldHUD.update(state); // refresh gold
     }
+  };
+  cityPanel.onCreateArmy = (cityId, units) => {
+    const city = state.cities.get(cityId);
+    if (!city) return;
+    // Block if a field army already occupies this tile
+    const tile = state.grid.getTile(city.position.q, city.position.r);
+    if (tile?.armyId) return;
+
+    const garrison = city.garrisonArmyId ? state.armies.get(city.garrisonArmyId) : null;
+    const armyUnits = units.map((u) => {
+      const gUnit = garrison?.units.find((g) => g.unitType === u.unitType);
+      return { unitType: u.unitType, count: u.count, hpPerUnit: gUnit?.hpPerUnit ?? 100 };
+    });
+
+    deployArmy(city, state, armyUnits);
+    cityPanel.show(city, state);
+    refreshWorld();
   };
 
   // Initialize army view
@@ -2639,6 +2657,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   let _moveModeArmyId: string | null = null;
   let _selectedArmyId: string | null = null;
   let _selectedArmyReachable = new Set<string>();
+  let _lastClickHex: string | null = null;
+  let _lastClickTime = 0;
 
   // The human player for fog of war
   const localPlayer = state.players.get("p1")!;
@@ -3300,10 +3320,33 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       return;
     }
 
+    // Double-click detection
+    const clickKey = hexKey(hex.q, hex.r);
+    const now = performance.now();
+    const isDoubleClick = clickKey === _lastClickHex && now - _lastClickTime < 300;
+    _lastClickHex = clickKey;
+    _lastClickTime = now;
+
     if (tile.cityId) {
       const city = state.cities.get(tile.cityId);
       if (city && city.owner === currentPid) {
+        // Single click on city tile with army → select the army
+        if (tile.armyId && !isDoubleClick) {
+          const army = state.armies.get(tile.armyId);
+          if (army && !army.isGarrison) {
+            cityPanel.hide();
+            armyPanel.show(army, state);
+            const reachable = getArmyReachableHexes(army, state);
+            worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.25);
+            _selectedArmyId = army.id;
+            _selectedArmyReachable = new Set(reachable.map((h) => hexKey(h.q, h.r)));
+            return;
+          }
+        }
+        // Double click on city+army tile, or single click on city-only tile → open city
         armyPanel.hide();
+        _selectedArmyId = null;
+        _selectedArmyReachable = new Set();
         worldMapRenderer.clearHighlights();
         cityPanel.show(city, state);
         return;

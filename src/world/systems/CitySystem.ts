@@ -13,6 +13,8 @@ import {
   type WorldBuildingDef,
 } from "@world/config/WorldBuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import { filterInventoryByRace, getRace } from "@sim/config/RaceDefs";
+import { BuildingType, UnitType } from "@/types";
 import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 import { WorldBalance } from "@world/config/WorldConfig";
 import { hexSpiral, hexDistance, type HexCoord } from "@world/hex/HexCoord";
@@ -83,6 +85,8 @@ export function getRecruitableUnits(
   state?: WorldState,
 ): string[] {
   const units: string[] = [];
+  const player = state?.players.get(city.owner);
+  const raceId = player?.raceId;
 
   // Castle always provides basic units + settlers
   units.push("swordsman", "archer", "settler");
@@ -90,10 +94,31 @@ export function getRecruitableUnits(
   // Buildings unlock additional units
   for (const building of city.buildings) {
     const def = getWorldBuildingDef(building.type);
-    if (def) {
-      for (const u of def.unlocksUnits) {
-        if (!units.includes(u)) units.push(u);
+    if (!def) continue;
+
+    let buildingUnits = [...def.unlocksUnits];
+
+    // Faction Hall: populate from player's race faction units
+    if (building.type === BuildingType.FACTION_HALL && raceId) {
+      const race = getRace(raceId);
+      if (race?.factionUnits) {
+        buildingUnits = race.factionUnits.filter(
+          (ut) => ut && UNIT_DEFINITIONS[ut],
+        ) as string[];
       }
+    }
+
+    // Apply race-based tier filtering (e.g. Horde can't recruit mages)
+    if (raceId) {
+      buildingUnits = filterInventoryByRace(
+        buildingUnits as UnitType[],
+        building.type as BuildingType,
+        raceId,
+      ) as string[];
+    }
+
+    for (const u of buildingUnits) {
+      if (!units.includes(u)) units.push(u);
     }
   }
 

@@ -3,7 +3,7 @@
 // Shows city info, buildings, and recruitment when a city is selected.
 // Rendered as a PixiJS panel on the right side of the screen.
 
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Container, Graphics, Text, TextStyle, Sprite } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldCity } from "@world/state/WorldCity";
@@ -14,6 +14,8 @@ import {
 import { getWorldBuildingDef } from "@world/config/WorldBuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { calculateCityYields } from "@world/systems/WorldEconomySystem";
+import { UnitType, UnitState } from "@/types";
+import { animationManager } from "@view/animation/AnimationManager";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -61,12 +63,18 @@ export class CityPanel {
   private _contentContainer = new Container();
   private _screenH = 600;
 
+  /** Army creation mode state. */
+  private _armyCreationMode = false;
+  private _selectedUnits = new Map<string, number>();
+
   /** Called when a unit recruitment order is placed. */
   onRecruit: ((cityId: string, unitType: string, count: number) => void) | null = null;
   /** Called when a building construction is started. */
   onBuild: ((cityId: string, buildingType: string) => void) | null = null;
   /** Called when the panel should close. */
   onClose: (() => void) | null = null;
+  /** Called when the player creates a new army from garrison units. */
+  onCreateArmy: ((cityId: string, units: Array<{ unitType: string; count: number }>) => void) | null = null;
 
   // -----------------------------------------------------------------------
   // Lifecycle
@@ -95,6 +103,8 @@ export class CityPanel {
     this.container.visible = false;
     this._city = null;
     this._state = null;
+    this._armyCreationMode = false;
+    this._selectedUnits.clear();
   }
 
   get isVisible(): boolean {
@@ -140,22 +150,59 @@ export class CityPanel {
     this._contentContainer.addChild(title);
     y += 24;
 
-    // Info
-    const yields = calculateCityYields(city, state);
-    const info = [
-      `Population: ${city.population}`,
-      `Gold/turn: +${yields.gold}  Food/turn: +${yields.food}`,
-      `Production/turn: +${yields.production}`,
-      city.isUnderSiege ? "UNDER SIEGE" : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+    if (this._armyCreationMode) {
+      y = this._buildArmyCreationView(city, state, y);
+    } else {
+      y = this._buildNormalView(city, state, y);
+    }
 
-    const infoText = new Text({ text: info, style: INFO_STYLE });
-    infoText.x = 12;
-    infoText.y = y;
-    this._contentContainer.addChild(infoText);
-    y += infoText.height + 14;
+    // Position panel on right side
+    this._contentContainer.x = this._vm.screenWidth - PANEL_W - 10;
+    this._contentContainer.y = 10;
+
+    this.container.addChild(this._contentContainer);
+  }
+
+  // -----------------------------------------------------------------------
+  // Normal city view
+  // -----------------------------------------------------------------------
+
+  private _buildNormalView(city: WorldCity, state: WorldState, y: number): number {
+    // Info — horizontal stat row
+    const yields = calculateCityYields(city, state);
+    const statStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xcccccc });
+
+    const stats = [
+      { label: "Pop ", value: `${city.population}`, color: 0xffcc44 },
+      { label: "Au ", value: `+${yields.gold}`, color: 0xffdd44 },
+      { label: "Fd ", value: `+${yields.food}`, color: 0x88cc44 },
+      { label: "Pr ", value: `+${yields.production}`, color: 0xdd8844 },
+    ];
+
+    let sx = 12;
+    for (const s of stats) {
+      const lbl = new Text({ text: s.label, style: statStyle });
+      lbl.x = sx;
+      lbl.y = y;
+      this._contentContainer.addChild(lbl);
+      sx += lbl.width;
+      const val = new Text({ text: s.value, style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fontWeight: "bold", fill: s.color }) });
+      val.x = sx;
+      val.y = y;
+      this._contentContainer.addChild(val);
+      sx += val.width + 8;
+    }
+    y += 18;
+
+    if (city.isUnderSiege) {
+      const siegeText = new Text({ text: "UNDER SIEGE", style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fontWeight: "bold", fill: 0xff4444 }) });
+      siegeText.x = 12;
+      siegeText.y = y;
+      this._contentContainer.addChild(siegeText);
+      y += 18;
+    }
+
+    y += 6;
 
     // --- Buildings section ---
     const buildLabel = new Text({ text: "Buildings", style: SECTION_STYLE });
@@ -199,7 +246,6 @@ export class CityPanel {
     if (!city.constructionQueue && !city.isUnderSiege) {
       const available = getAvailableBuildings(city, state);
       for (const def of available.slice(0, 8)) {
-        // Show up to 8
         const btn = _makeButton(
           `${def.name} (${def.productionCost}p)`,
           16,
@@ -222,7 +268,16 @@ export class CityPanel {
     recruitLabel.x = 12;
     recruitLabel.y = y;
     this._contentContainer.addChild(recruitLabel);
-    y += 20;
+    y += 18;
+
+    const recruitHint = new Text({
+      text: "Shift +5 · Ctrl +10",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x666688 }),
+    });
+    recruitHint.x = 12;
+    recruitHint.y = y;
+    this._contentContainer.addChild(recruitHint);
+    y += 14;
 
     // Pending recruitment
     for (const entry of city.recruitmentQueue) {
@@ -245,15 +300,16 @@ export class CityPanel {
         const player = state.players.get(city.owner);
         const affordable = player ? Math.floor(player.gold / unitDef.cost) : 0;
         const label = `${unitType} (${unitDef.cost}g) [max ${affordable}]`;
-        const btn = _makeButton(label, 16, y, PANEL_W - 32, 22, () => {
-          this.onRecruit?.(city.id, unitType, 1);
+        const btn = _makeButton(label, 16, y, PANEL_W - 32, 22, (e?: any) => {
+          const count = e?.ctrlKey ? 10 : e?.shiftKey ? 5 : 1;
+          this.onRecruit?.(city.id, unitType, count);
         });
         this._contentContainer.addChild(btn);
         y += 26;
       }
     }
 
-    // Garrison info
+    // --- Garrison section ---
     y += 10;
     const garrisonLabel = new Text({ text: "Garrison", style: SECTION_STYLE });
     garrisonLabel.x = 12;
@@ -266,15 +322,39 @@ export class CityPanel {
       : null;
     if (garrison && garrison.units.length > 0) {
       for (const u of garrison.units) {
+        const icon = _makeUnitIcon(u.unitType, 22);
+        if (icon) {
+          icon.x = 14;
+          icon.y = y;
+          this._contentContainer.addChild(icon);
+        }
         const gText = new Text({
-          text: `  ${u.unitType} x${u.count}`,
+          text: `${u.unitType} x${u.count}`,
           style: INFO_STYLE,
         });
-        gText.x = 12;
-        gText.y = y;
+        gText.x = icon ? 40 : 14;
+        gText.y = y + 4;
         this._contentContainer.addChild(gText);
-        y += 16;
+        y += 26;
       }
+
+      y += 6;
+      const createBtn = _makeButton(
+        "CREATE ARMY",
+        16,
+        y,
+        PANEL_W - 32,
+        26,
+        () => {
+          this._armyCreationMode = true;
+          this._selectedUnits.clear();
+          this._rebuild();
+        },
+        0x223344,
+        0x44aa66,
+      );
+      this._contentContainer.addChild(createBtn);
+      y += 32;
     } else {
       const emptyText = new Text({ text: "  (empty)", style: INFO_STYLE });
       emptyText.x = 12;
@@ -283,11 +363,133 @@ export class CityPanel {
       y += 16;
     }
 
-    // Position panel on right side
-    this._contentContainer.x = this._vm.screenWidth - PANEL_W - 10;
-    this._contentContainer.y = 10;
+    return y;
+  }
 
-    this.container.addChild(this._contentContainer);
+  // -----------------------------------------------------------------------
+  // Army creation view
+  // -----------------------------------------------------------------------
+
+  private _buildArmyCreationView(city: WorldCity, state: WorldState, y: number): number {
+    const garrison = city.garrisonArmyId
+      ? state.armies.get(city.garrisonArmyId)
+      : null;
+
+    // Header
+    const header = new Text({ text: "Create Army", style: SECTION_STYLE });
+    header.x = 12;
+    header.y = y;
+    this._contentContainer.addChild(header);
+    y += 20;
+
+    const hint = new Text({
+      text: "Shift +5 · Ctrl +10",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x666688 }),
+    });
+    hint.x = 12;
+    hint.y = y;
+    this._contentContainer.addChild(hint);
+    y += 16;
+
+    if (garrison && garrison.units.length > 0) {
+      for (const u of garrison.units) {
+        const selected = this._selectedUnits.get(u.unitType) ?? 0;
+
+        // Unit icon
+        const icon = _makeUnitIcon(u.unitType, 22);
+        if (icon) {
+          icon.x = 12;
+          icon.y = y;
+          this._contentContainer.addChild(icon);
+        }
+
+        // Unit label
+        const label = new Text({
+          text: `${u.unitType} x${u.count}`,
+          style: INFO_STYLE,
+        });
+        label.x = icon ? 38 : 12;
+        label.y = y + 3;
+        this._contentContainer.addChild(label);
+
+        // [-] button
+        const minusBtn = _makeButton("-", PANEL_W - 120, y, 28, 22, (e?: any) => {
+          const step = e?.ctrlKey ? 10 : e?.shiftKey ? 5 : 1;
+          const cur = this._selectedUnits.get(u.unitType) ?? 0;
+          this._selectedUnits.set(u.unitType, Math.max(0, cur - step));
+          this._rebuild();
+        });
+        this._contentContainer.addChild(minusBtn);
+
+        // Count display
+        const countText = new Text({
+          text: `${selected}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xffcc44, fontWeight: "bold" }),
+        });
+        countText.x = PANEL_W - 82;
+        countText.y = y + 4;
+        this._contentContainer.addChild(countText);
+
+        // [+] button
+        const plusBtn = _makeButton("+", PANEL_W - 60, y, 28, 22, (e?: any) => {
+          const step = e?.ctrlKey ? 10 : e?.shiftKey ? 5 : 1;
+          const cur = this._selectedUnits.get(u.unitType) ?? 0;
+          this._selectedUnits.set(u.unitType, Math.min(u.count, cur + step));
+          this._rebuild();
+        });
+        this._contentContainer.addChild(plusBtn);
+
+        y += 28;
+      }
+    }
+
+    y += 10;
+
+    // CREATE button (only when units selected)
+    let totalSelected = 0;
+    for (const v of this._selectedUnits.values()) totalSelected += v;
+
+    if (totalSelected > 0) {
+      const createBtn = _makeButton(
+        `CREATE ARMY (${totalSelected} units)`,
+        16,
+        y,
+        PANEL_W - 32,
+        28,
+        () => {
+          const units = Array.from(this._selectedUnits.entries())
+            .filter(([, count]) => count > 0)
+            .map(([unitType, count]) => ({ unitType, count }));
+          this.onCreateArmy?.(city.id, units);
+          this._armyCreationMode = false;
+          this._selectedUnits.clear();
+        },
+        0x224422,
+        0x44aa44,
+      );
+      this._contentContainer.addChild(createBtn);
+      y += 34;
+    }
+
+    // CANCEL button
+    const cancelBtn = _makeButton(
+      "CANCEL",
+      16,
+      y,
+      PANEL_W - 32,
+      24,
+      () => {
+        this._armyCreationMode = false;
+        this._selectedUnits.clear();
+        this._rebuild();
+      },
+      0x332222,
+      0xaa4444,
+    );
+    this._contentContainer.addChild(cancelBtn);
+    y += 30;
+
+    return y;
   }
 }
 
@@ -295,13 +497,28 @@ export class CityPanel {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function _makeUnitIcon(unitType: string, size: number): Sprite | null {
+  try {
+    const frames = animationManager.getFrames(unitType as UnitType, UnitState.IDLE);
+    if (!frames || frames.length === 0) return null;
+    const sprite = new Sprite(frames[0]);
+    const scale = size / Math.max(sprite.width, sprite.height);
+    sprite.scale.set(scale);
+    return sprite;
+  } catch {
+    return null;
+  }
+}
+
 function _makeButton(
   label: string,
   x: number,
   y: number,
   w: number,
   h: number,
-  onClick: () => void,
+  onClick: (e?: any) => void,
+  fillColor = 0x222244,
+  strokeColor = BORDER,
 ): Container {
   const btn = new Container();
   btn.eventMode = "static";
@@ -309,8 +526,8 @@ function _makeButton(
 
   const bg = new Graphics();
   bg.roundRect(0, 0, w, h, 4);
-  bg.fill({ color: 0x222244 });
-  bg.stroke({ color: BORDER, width: 1 });
+  bg.fill({ color: fillColor });
+  bg.stroke({ color: strokeColor, width: 1 });
   btn.addChild(bg);
 
   const txt = new Text({ text: label, style: BTN_STYLE });
@@ -319,7 +536,7 @@ function _makeButton(
   btn.addChild(txt);
 
   btn.position.set(x, y);
-  btn.on("pointerdown", onClick);
+  btn.on("pointerdown", (e: any) => onClick(e));
 
   btn.on("pointerover", () => {
     bg.clear();
@@ -330,8 +547,8 @@ function _makeButton(
   btn.on("pointerout", () => {
     bg.clear();
     bg.roundRect(0, 0, w, h, 4);
-    bg.fill({ color: 0x222244 });
-    bg.stroke({ color: BORDER, width: 1 });
+    bg.fill({ color: fillColor });
+    bg.stroke({ color: strokeColor, width: 1 });
   });
 
   return btn;

@@ -231,7 +231,7 @@ export function spawnNeutralRaiders(state: WorldState): void {
     if (units.length === 0) continue;
 
     const army = createWorldArmy(armyId, city.owner, spawnHex, units, false);
-    army.movementPoints = 0; // stationary — raiders don't move on their own
+    army.movementPoints = army.maxMovementPoints;
     state.armies.set(armyId, army);
 
     const tile = state.grid.getTile(spawnHex.q, spawnHex.r);
