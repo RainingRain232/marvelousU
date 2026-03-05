@@ -15,6 +15,7 @@ import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import { currentPlayer } from "@world/state/WorldState";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
+import { calculateCityYields } from "@world/systems/WorldEconomySystem";
 import {
   allResearchDefs,
   getResearchDef,
@@ -306,8 +307,25 @@ export class ResearchScreen {
     ring.stroke({ color, width: 2 });
     this._contentContainer.addChild(ring);
 
-    // Current research info
+    // Science income per turn
     let infoY = imgY + imgSize + 12;
+
+    let scienceIncome = 0;
+    const state = this._state!;
+    for (const city of state.cities.values()) {
+      if (city.owner !== player.id) continue;
+      const yields = calculateCityYields(city, state);
+      scienceIncome += yields.science;
+    }
+
+    const sciIncomeText = new Text({
+      text: `Research Income: +${scienceIncome}/turn`,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fontWeight: "bold", fill: 0x44aa44 }),
+    });
+    sciIncomeText.x = cx - sciIncomeText.width / 2;
+    sciIncomeText.y = infoY;
+    this._contentContainer.addChild(sciIncomeText);
+    infoY += 20;
 
     // Normal research
     const sciLabel = new Text({

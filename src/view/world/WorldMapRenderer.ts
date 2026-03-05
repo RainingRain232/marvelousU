@@ -11,6 +11,7 @@ import {
   pixelToHex,
   hexCorners,
   hexKey,
+  hexNeighbors,
   type HexCoord,
   type HexPixel,
 } from "@world/hex/HexCoord";
@@ -146,6 +147,7 @@ export class WorldMapRenderer {
       }
       g.closePath();
       g.fill({ color, alpha });
+      g.stroke({ color, width: 2, alpha: Math.min(alpha + 0.3, 0.8) });
       this._highlightContainer.addChild(g);
     }
   }
@@ -280,19 +282,72 @@ export class WorldMapRenderer {
       }
     }
 
-    // Improvement marker (small square in bottom-left area)
+    // Improvement marker
     if (tile.improvement) {
-      const impDef = IMPROVEMENT_DEFINITIONS[tile.improvement];
-      if (impDef) {
-        const ix = center.x - HEX_SIZE * 0.25;
-        const iy = center.y + HEX_SIZE * 0.2;
-        g.rect(ix - 3, iy - 3, 6, 6);
-        g.fill({ color: impDef.color, alpha: 0.9 });
-        g.stroke({ color: 0x000000, width: 0.5, alpha: 0.5 });
+      if (tile.improvement === "road") {
+        // Roads draw connecting lines to neighboring roads and cities
+        this._drawRoadConnections(g, tile, center);
+      } else {
+        const impDef = IMPROVEMENT_DEFINITIONS[tile.improvement];
+        if (impDef) {
+          const ix = center.x - HEX_SIZE * 0.25;
+          const iy = center.y + HEX_SIZE * 0.2;
+          g.rect(ix - 3, iy - 3, 6, 6);
+          g.fill({ color: impDef.color, alpha: 0.9 });
+          g.stroke({ color: 0x000000, width: 0.5, alpha: 0.5 });
+        }
       }
     }
 
     return g;
+  }
+
+  // -----------------------------------------------------------------------
+  // Private — road rendering
+  // -----------------------------------------------------------------------
+
+  /** Draw road connections from this tile's center to neighboring roads/cities. */
+  private _drawRoadConnections(g: Graphics, tile: HexTile, center: HexPixel): void {
+    const grid = this._grid;
+    if (!grid) return;
+
+    const neighbors = hexNeighbors(tile);
+    let hasConnection = false;
+
+    for (const n of neighbors) {
+      const nTile = grid.getTile(n.q, n.r);
+      if (!nTile) continue;
+
+      const isRoad = nTile.improvement === "road";
+      const isCity = !!nTile.cityId;
+
+      if (isRoad || isCity) {
+        // Draw road segment from center toward neighbor center
+        const nCenter = hexToPixel(n, HEX_SIZE);
+        // Draw to the midpoint between centers (each tile draws its half)
+        const midX = (center.x + nCenter.x) / 2;
+        const midY = (center.y + nCenter.y) / 2;
+
+        // Road outline (darker)
+        g.moveTo(center.x, center.y);
+        g.lineTo(midX, midY);
+        g.stroke({ color: 0x665533, width: 4, alpha: 0.7 });
+
+        // Road fill (lighter)
+        g.moveTo(center.x, center.y);
+        g.lineTo(midX, midY);
+        g.stroke({ color: 0xbbaa77, width: 2, alpha: 0.9 });
+
+        hasConnection = true;
+      }
+    }
+
+    // If no connections, draw a small road marker dot
+    if (!hasConnection) {
+      g.circle(center.x, center.y, 3);
+      g.fill({ color: 0xbbaa77, alpha: 0.9 });
+      g.stroke({ color: 0x665533, width: 1, alpha: 0.7 });
+    }
   }
 
   // -----------------------------------------------------------------------

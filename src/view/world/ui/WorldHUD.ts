@@ -52,6 +52,7 @@ export class WorldHUD {
   private _goldText!: Text;
   private _foodText!: Text;
   private _manaText!: Text;
+  private _scienceText!: Text;
   private _endTurnBtn!: Container;
   private _endTurnBg!: Graphics;
   private _screenW = 800;
@@ -97,12 +98,14 @@ export class WorldHUD {
     let goldIncome = 0;
     let foodIncome = 0;
     let manaIncome = 0;
+    let scienceIncome = 0;
     for (const city of state.cities.values()) {
       if (city.owner !== player.id) continue;
       const yields = calculateCityYields(city, state);
       goldIncome += yields.gold;
       foodIncome += yields.food - city.population * WorldBalance.FOOD_PER_POPULATION;
       manaIncome += yields.mana;
+      scienceIncome += yields.science;
     }
     // Deduct army maintenance
     let totalUnits = 0;
@@ -118,6 +121,7 @@ export class WorldHUD {
     this._goldText.text = `Gold: ${player.gold} (${goldSign}${goldIncome})`;
     this._foodText.text = `Food: ${Math.floor(player.food)} (${foodSign}${Math.floor(foodIncome)})`;
     this._manaText.text = `Mana: ${player.mana} (${manaSign}${manaIncome})`;
+    this._scienceText.text = `Research: +${scienceIncome}`;
 
     // Only show End Turn button during player turn
     this._endTurnBtn.visible = state.phase === WorldPhase.PLAYER_TURN;
@@ -137,7 +141,7 @@ export class WorldHUD {
 
     // Background
     const bg = new Graphics();
-    bg.roundRect(0, 0, 320, 62, 6);
+    bg.roundRect(0, 0, 320, 82, 6);
     bg.fill({ color: 0x000000, alpha: 0.6 });
     bar.addChild(bg);
 
@@ -172,6 +176,14 @@ export class WorldHUD {
     this._manaText.x = 140;
     this._manaText.y = 44;
     bar.addChild(this._manaText);
+
+    // Research/Science
+    this._scienceText = new Text({ text: "Research: +0", style: new TextStyle({
+      fontFamily: "monospace", fontSize: 15, fontWeight: "bold", fill: 0x44aa44,
+    }) });
+    this._scienceText.x = 140;
+    this._scienceText.y = 64;
+    bar.addChild(this._scienceText);
 
     bar.x = 10;
     bar.y = 10;

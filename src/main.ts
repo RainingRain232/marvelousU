@@ -100,12 +100,12 @@ import type { WorldState } from "@world/state/WorldState";
 import { createWorldPlayer } from "@world/state/WorldPlayer";
 import { createWorldCity } from "@world/state/WorldCity";
 import { createWorldArmy } from "@world/state/WorldArmy";
-import type { ArmyUnit } from "@world/state/WorldArmy";
+import type { ArmyUnit, WorldArmy } from "@world/state/WorldArmy";
 import { worldMapRenderer } from "@view/world/WorldMapRenderer";
 import { worldHUD } from "@view/world/ui/WorldHUD";
 import { beginTurn, endTurn, onBattlesResolved } from "@world/systems/TurnSystem";
 import { WorldBalance } from "@world/config/WorldConfig";
-import { hexSpiral, hexNeighbors, hexToPixel } from "@world/hex/HexCoord";
+import { hexSpiral, hexNeighbors, hexNeighbor, hexToPixel, hexKey } from "@world/hex/HexCoord";
 import { cityView } from "@view/world/CityView";
 import { cityPanel } from "@view/world/ui/CityPanel";
 import { startConstruction, queueRecruitment, deployArmy, foundCity, canFoundCity } from "@world/systems/CitySystem";
@@ -1844,7 +1844,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     const army = state.armies.get(armyId);
     if (!army) return;
     const reachable = getArmyReachableHexes(army, state);
-    worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.2);
+    worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.25);
     _moveModeArmyId = armyId;
   };
   armyPanel.onBuildImprovement = (armyId, improvementType) => {
@@ -1972,8 +1972,10 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   worldNationalScreen.init(viewManager);
   worldArmyOverview.init(viewManager);
 
-  // Track movement mode
+  // Track movement mode (explicit MOVE button) and selected army movement
   let _moveModeArmyId: string | null = null;
+  let _selectedArmyId: string | null = null;
+  let _selectedArmyReachable = new Set<string>();
 
   // The human player for fog of war
   const localPlayer = state.players.get("p1")!;
@@ -2125,6 +2127,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       worldMapRenderer.clearHighlights();
     }
     _moveModeArmyId = null;
+    _selectedArmyId = null;
+    _selectedArmyReachable = new Set();
   };
 
   // Hex click handler
@@ -2157,6 +2161,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         }
       }
       _moveModeArmyId = null;
+      _selectedArmyId = null;
+      _selectedArmyReachable = new Set();
       worldMapRenderer.clearHighlights();
       armyPanel.hide();
       refreshWorld();
@@ -2179,17 +2185,152 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         cityPanel.hide();
         armyPanel.show(army, state);
         const reachable = getArmyReachableHexes(army, state);
-        worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.2);
+        worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.25);
+        _selectedArmyId = army.id;
+        _selectedArmyReachable = new Set(reachable.map((h) => hexKey(h.q, h.r)));
         return;
       }
     }
 
+    // If an army is selected and clicked hex is reachable, move there
+    if (_selectedArmyId) {
+      const clickedKey = hexKey(hex.q, hex.r);
+      if (_selectedArmyReachable.has(clickedKey)) {
+        const army = state.armies.get(_selectedArmyId);
+        if (army) {
+          const moved = moveArmy(army, hex, state);
+          if (moved) {
+            updateVisibility(state, army.owner);
+
+            const destTile = state.grid.getTile(hex.q, hex.r);
+            if (destTile?.campId) {
+              const camp = state.camps.get(destTile.campId);
+              if (camp && !camp.cleared) {
+                _resolveCampBattle(army, camp, state);
+              }
+            }
+
+            const battles = detectCollisions(state);
+            if (battles.length > 0) {
+              state.pendingBattles = battles;
+              state.phase = WorldPhase.BATTLE;
+              resolveWorldBattles();
+            }
+          }
+          _selectedArmyId = null;
+          _selectedArmyReachable = new Set();
+          worldMapRenderer.clearHighlights();
+          armyPanel.hide();
+          refreshWorld();
+          return;
+        }
+      }
+    }
+
+    // Deselect
+    _selectedArmyId = null;
+    _selectedArmyReachable = new Set();
     if (cityPanel.isVisible) cityPanel.hide();
     if (armyPanel.isVisible) {
       armyPanel.hide();
       worldMapRenderer.clearHighlights();
     }
   };
+
+  // Arrow key movement for selected army
+  // Pointy-top hex directions: 0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE
+  const _arrowDirMap: Record<string, number> = {
+    ArrowRight: 0,  // E
+    ArrowLeft: 3,   // W
+    ArrowUp: 2,     // NW (up-left)
+    ArrowDown: 5,   // SE (down-right)
+    KeyQ: 1,        // NE (up-right)
+    KeyA: 4,        // SW (down-left)
+  };
+
+  window.addEventListener("keydown", (e) => {
+    // Don't handle keys if a UI element is focused
+    const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "button") return;
+
+    // Don't handle if a screen overlay is open
+    if (researchScreen.isVisible || conjurePanel.isVisible
+      || worldScoreScreen.isVisible || worldNationalScreen.isVisible
+      || worldArmyOverview.isVisible) return;
+
+    if (state.phase !== WorldPhase.PLAYER_TURN) return;
+
+    const dir = _arrowDirMap[e.code];
+    if (dir === undefined) return;
+
+    e.preventDefault();
+
+    const currentPid = state.playerOrder[state.currentPlayerIndex];
+
+    // If an army is selected, move it in that direction
+    if (_selectedArmyId) {
+      const army = state.armies.get(_selectedArmyId);
+      if (!army || army.movementPoints <= 0) return;
+
+      const target = hexNeighbor(army.position, dir);
+      const targetKey = hexKey(target.q, target.r);
+      if (!_selectedArmyReachable.has(targetKey)) return;
+
+      const moved = moveArmy(army, target, state);
+      if (moved) {
+        updateVisibility(state, army.owner);
+
+        const destTile = state.grid.getTile(target.q, target.r);
+        if (destTile?.campId) {
+          const camp = state.camps.get(destTile.campId);
+          if (camp && !camp.cleared) {
+            _resolveCampBattle(army, camp, state);
+          }
+        }
+
+        const battles = detectCollisions(state);
+        if (battles.length > 0) {
+          state.pendingBattles = battles;
+          state.phase = WorldPhase.BATTLE;
+          resolveWorldBattles();
+        }
+
+        // Re-select army if it still has movement points
+        if (army.movementPoints > 0 && state.phase === WorldPhase.PLAYER_TURN) {
+          armyPanel.show(army, state);
+          const reachable = getArmyReachableHexes(army, state);
+          worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.25);
+          _selectedArmyReachable = new Set(reachable.map((h) => hexKey(h.q, h.r)));
+        } else {
+          _selectedArmyId = null;
+          _selectedArmyReachable = new Set();
+          worldMapRenderer.clearHighlights();
+          armyPanel.hide();
+        }
+        refreshWorld();
+      }
+      return;
+    }
+
+    // No army selected — find own army nearest to center of screen and select it
+    // (This lets arrow keys pick an army to start moving)
+    let bestArmy: WorldArmy | null = null;
+    for (const army of state.armies.values()) {
+      if (army.owner !== currentPid || army.isGarrison) continue;
+      if (army.movementPoints <= 0) continue;
+      if (!bestArmy) { bestArmy = army; continue; }
+      // Just pick the first one with movement
+      bestArmy = army;
+      break;
+    }
+    if (bestArmy) {
+      armyPanel.show(bestArmy, state);
+      const reachable = getArmyReachableHexes(bestArmy, state);
+      worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.25);
+      _selectedArmyId = bestArmy.id;
+      _selectedArmyReachable = new Set(reachable.map((h) => hexKey(h.q, h.r)));
+    }
+  });
 
   // Initialize fog of war for all players
   for (const pid of state.playerOrder) {
