@@ -187,7 +187,7 @@ import { worldMinimap } from "@view/world/ui/WorldMinimap";
   menuScreen.onContinue = () => {
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
       menuScreen.hide();
-      // World mode: Leader → Race → WorldSetup → boot
+      // World mode: Leader → Race → RaceDetail → Magic → Armory → WorldSetup → boot
       leaderSelectScreen.onBack = () => {
         leaderSelectScreen.hide();
         menuScreen.show();
@@ -200,19 +200,45 @@ import { worldMinimap } from "@view/world/ui/WorldMinimap";
         };
         raceSelectScreen.onNext = () => {
           raceSelectScreen.hide();
-          worldSetupScreen.init(viewManager);
-          worldSetupScreen.onStart = async (settings) => {
-            worldSetupScreen.destroy();
-            await _bootWorldGame(
-              settings,
-              raceSelectScreen.selectedRaceId,
-              leaderSelectScreen.selectedLeaderId,
-            );
-          };
-          worldSetupScreen.onBack = () => {
-            worldSetupScreen.destroy();
+          raceDetailScreen.onBack = () => {
+            raceDetailScreen.hide();
             raceSelectScreen.show();
           };
+          raceDetailScreen.onNext = () => {
+            raceDetailScreen.hide();
+            magicScreen.onBack = () => {
+              magicScreen.hide();
+              raceDetailScreen.onBack = () => {
+                raceDetailScreen.hide();
+                raceSelectScreen.show();
+              };
+              raceDetailScreen.show(raceSelectScreen.selectedRaceId);
+            };
+            magicScreen.onNext = () => {
+              magicScreen.hide();
+              armoryScreen.setUnlockedItems(null); // all unlocked
+              armoryScreen.onStartGame = () => {
+                armoryScreen.hide();
+                worldSetupScreen.init(viewManager);
+                worldSetupScreen.onStart = async (settings) => {
+                  worldSetupScreen.destroy();
+                  await _bootWorldGame(
+                    settings,
+                    raceSelectScreen.selectedRaceId,
+                    leaderSelectScreen.selectedLeaderId,
+                    armoryScreen.selectedItems,
+                  );
+                };
+                worldSetupScreen.onBack = () => {
+                  worldSetupScreen.destroy();
+                  armoryScreen.show();
+                };
+              };
+              armoryScreen.show();
+            };
+            magicScreen.show(raceSelectScreen.selectedRaceId);
+          };
+          raceDetailScreen.show(raceSelectScreen.selectedRaceId);
         };
         raceSelectScreen.show();
       };
@@ -1477,6 +1503,7 @@ async function _bootWorldGame(
   settings: WorldGameSettings,
   raceId: RaceId = "man",
   leaderId: LeaderId = "arthur",
+  armoryItems: string[] = [],
 ): Promise<void> {
   // Generate map
   const grid = generateWorldMap(settings);
@@ -1522,6 +1549,7 @@ async function _bootWorldGame(
       WorldBalance.STARTING_GOLD,
       WorldBalance.STARTING_FOOD,
       playerLeaderId,
+      isAI ? [] : armoryItems,
     );
 
     // Apply boot-time leader bonuses
@@ -1532,6 +1560,9 @@ async function _bootWorldGame(
 
     state.players.set(pid, player);
   }
+
+  // Configure national mage abilities from MagicScreen selections
+  _configureNationalMageAbilities();
 
   // Create starting cities and garrisons
   for (let i = 0; i < settings.numPlayers; i++) {

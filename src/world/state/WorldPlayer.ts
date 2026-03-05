@@ -2,6 +2,7 @@
 
 import type { RaceId } from "@sim/config/RaceDefs";
 import type { LeaderId } from "@sim/config/LeaderDefs";
+import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,6 +24,9 @@ export interface WorldPlayer {
   /** Set of completed research IDs. */
   completedResearch: Set<string>;
 
+  /** Equipped armory items (hero stat bonuses). */
+  armoryItems: ArmoryItemId[];
+
   /** Hex keys ("q,r") the player has ever seen. Persists across turns. */
   exploredTiles: Set<string>;
   /** Hex keys ("q,r") currently in sight range. Recalculated each turn. */
@@ -40,6 +44,7 @@ export function createWorldPlayer(
   startingGold: number,
   startingFood: number,
   leaderId: LeaderId | null = null,
+  armoryItems: ArmoryItemId[] = [],
 ): WorldPlayer {
   return {
     id,
@@ -49,6 +54,7 @@ export function createWorldPlayer(
     food: startingFood,
     isAI,
     isAlive: true,
+    armoryItems,
     activeResearch: null,
     researchTurnsLeft: 0,
     completedResearch: new Set(),

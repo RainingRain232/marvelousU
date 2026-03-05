@@ -272,7 +272,7 @@ export class RaceSelectScreen {
     );
 
     // Next button
-    const nextBtn = this._makeNavBtn("ARMORY  >", 195, 44, true);
+    const nextBtn = this._makeNavBtn("CONTINUE  >", 195, 44, true);
     nextBtn.position.set(MAIN_W - 221, MAIN_H - 57);
     nextBtn.on("pointerdown", () => this.onNext?.());
     card.addChild(nextBtn);
