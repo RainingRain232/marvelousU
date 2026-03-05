@@ -3,7 +3,7 @@
 import type { HexCoord } from "@world/hex/HexCoord";
 import { hexDistance, hexKey, hexNeighbors } from "@world/hex/HexCoord";
 import type { HexGrid } from "@world/hex/HexGrid";
-import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
+import { TERRAIN_DEFINITIONS, TerrainType } from "@world/config/TerrainDefs";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,6 +36,7 @@ export function findHexPath(
   start: HexCoord,
   goal: HexCoord,
   movementBudget = Infinity,
+  canCrossWater = false,
 ): HexPathResult | null {
   const startKey = hexKey(start.q, start.r);
   const goalKey = hexKey(goal.q, goal.r);
@@ -46,7 +47,7 @@ export function findHexPath(
 
   // Goal must be a tile armies can stand on (not impassable)
   const goalTerrain = TERRAIN_DEFINITIONS[goalTile.terrain];
-  if (!isFinite(goalTerrain.movementCost)) return null;
+  if (!isFinite(goalTerrain.movementCost) && !(canCrossWater && goalTile.terrain === TerrainType.WATER)) return null;
 
   // Open set (priority queue as sorted array — fine for ~700 hexes)
   const open: Array<{ key: string; f: number }> = [{ key: startKey, f: 0 }];
@@ -74,9 +75,10 @@ export function findHexPath(
       if (!tile) continue;
 
       const terrain = TERRAIN_DEFINITIONS[tile.terrain];
-      if (!isFinite(terrain.movementCost)) continue; // impassable
+      if (!isFinite(terrain.movementCost) && !(canCrossWater && tile.terrain === TerrainType.WATER)) continue;
 
-      const tentativeG = currentG + terrain.movementCost;
+      const effectiveCost = (!isFinite(terrain.movementCost) && canCrossWater && tile.terrain === TerrainType.WATER) ? 2 : terrain.movementCost;
+      const tentativeG = currentG + effectiveCost;
       // Allow the first step even if it exceeds the budget (guaranteed 1-tile move)
       if (tentativeG > movementBudget && currentG > 0) continue;
 
@@ -109,6 +111,7 @@ export function getReachableHexes(
   grid: HexGrid,
   start: HexCoord,
   movementBudget: number,
+  canCrossWater = false,
 ): Map<string, number> {
   const startKey = hexKey(start.q, start.r);
   const visited = new Map<string, number>(); // key → cost to reach
@@ -127,9 +130,10 @@ export function getReachableHexes(
       if (!tile) continue;
 
       const terrain = TERRAIN_DEFINITIONS[tile.terrain];
-      if (!isFinite(terrain.movementCost)) continue;
+      if (!isFinite(terrain.movementCost) && !(canCrossWater && tile.terrain === TerrainType.WATER)) continue;
 
-      const newCost = cost + terrain.movementCost;
+      const effectiveCost = (!isFinite(terrain.movementCost) && canCrossWater && tile.terrain === TerrainType.WATER) ? 2 : terrain.movementCost;
+      const newCost = cost + effectiveCost;
       // Allow the first step even if it exceeds the budget (guaranteed 1-tile move)
       if (newCost > movementBudget && cost > 0) continue;
 

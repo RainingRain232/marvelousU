@@ -8,6 +8,25 @@ import type { WorldArmy, ArmyUnit } from "@world/state/WorldArmy";
 import { createWorldArmy } from "@world/state/WorldArmy";
 import { hexKey, type HexCoord } from "@world/hex/HexCoord";
 import { findHexPath, getReachableHexes } from "@world/hex/HexPathfinding";
+import { hasResearch } from "@world/systems/ResearchSystem";
+import { WorldBuildingType } from "@world/config/WorldBuildingDefs";
+
+// ---------------------------------------------------------------------------
+// Sea travel
+// ---------------------------------------------------------------------------
+
+/** Returns true if the player has researched sea_travel AND has a Shipwright. */
+export function playerCanCrossWater(playerId: string, state: WorldState): boolean {
+  const player = state.players.get(playerId);
+  if (!player) return false;
+  if (!hasResearch(player, "sea_travel")) return false;
+
+  for (const city of state.cities.values()) {
+    if (city.owner !== playerId) continue;
+    if (city.buildings.some((b) => (b.type as string) === WorldBuildingType.SHIPWRIGHT)) return true;
+  }
+  return false;
+}
 
 // ---------------------------------------------------------------------------
 // Movement
@@ -22,7 +41,8 @@ export function moveArmy(
   if (army.isGarrison) return false;
   if (army.movementPoints <= 0) return false;
 
-  const path = findHexPath(state.grid, army.position, target, army.movementPoints);
+  const canSail = playerCanCrossWater(army.owner, state);
+  const path = findHexPath(state.grid, army.position, target, army.movementPoints, canSail);
   if (!path) return false;
 
   // Clear old tile's armyId
@@ -51,7 +71,8 @@ export function getArmyReachableHexes(
   state: WorldState,
 ): HexCoord[] {
   if (army.isGarrison) return [];
-  const reachable = getReachableHexes(state.grid, army.position, army.movementPoints);
+  const canSail = playerCanCrossWater(army.owner, state);
+  const reachable = getReachableHexes(state.grid, army.position, army.movementPoints, canSail);
   return Array.from(reachable.keys())
     .map((k) => {
       const [q, r] = k.split(",").map(Number);

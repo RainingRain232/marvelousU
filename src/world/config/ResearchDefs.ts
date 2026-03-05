@@ -208,6 +208,15 @@ export const RESEARCH_DEFINITIONS: Record<string, ResearchDef> = {
     branch: "economic",
     description: "Unlocks Library (-1 turn from research).",
   },
+  sea_travel: {
+    id: "sea_travel",
+    name: "Sea Travel",
+    turnsToComplete: 8,
+    prerequisites: ["trade"],
+    unlocks: [{ type: "building", value: "shipwright" }],
+    branch: "economic",
+    description: "Unlocks Shipwright. Armies can embark and cross water.",
+  },
 
   // === SIEGE BRANCH ===
   engineering: {

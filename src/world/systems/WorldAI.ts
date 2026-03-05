@@ -202,14 +202,14 @@ function _manageCityBuilding(
       break;
     case "explore":
       priorities = [
-        "granary", "marketplace", "barracks",
+        "granary", "marketplace", "shipwright", "barracks",
         "archery_range", "workshop",
       ];
       break;
     case "develop":
     default:
       priorities = [
-        "granary", "marketplace", "workshop", "library",
+        "granary", "marketplace", "shipwright", "workshop", "library",
         "barracks", "archery_range", "aqueduct",
         "city_walls", "temple",
       ];

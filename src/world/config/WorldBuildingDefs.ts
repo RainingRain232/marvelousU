@@ -22,6 +22,7 @@ export enum WorldBuildingType {
   WORKSHOP = "workshop",
   AQUEDUCT = "aqueduct",
   MILITARY_ACADEMY = "military_academy",
+  SHIPWRIGHT = "shipwright",
 }
 
 // ---------------------------------------------------------------------------
@@ -155,6 +156,19 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     effect: "Recruited units start veteran",
     unlocksUnits: [],
     researchRequired: "industrialization",
+  },
+  [WorldBuildingType.SHIPWRIGHT]: {
+    type: WorldBuildingType.SHIPWRIGHT,
+    name: "Shipwright",
+    productionCost: 65,
+    goldBonus: 1,
+    foodBonus: 0,
+    productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
+    effect: "Armies can embark and cross water tiles",
+    unlocksUnits: [],
+    researchRequired: "sea_travel",
   },
 };
 

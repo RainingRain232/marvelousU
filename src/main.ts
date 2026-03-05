@@ -114,7 +114,7 @@ import { WorldBuildingType } from "@world/config/WorldBuildingDefs";
 import { armyView } from "@view/world/ArmyView";
 import { armyPanel } from "@view/world/ui/ArmyPanel";
 import { conjurePanel } from "@view/world/ui/ConjurePanel";
-import { moveArmy, getArmyReachableHexes, detectCollisions } from "@world/systems/ArmySystem";
+import { moveArmy, getArmyReachableHexes, detectCollisions, playerCanCrossWater } from "@world/systems/ArmySystem";
 import { findHexPath } from "@world/hex/HexPathfinding";
 import { researchScreen } from "@view/world/ui/ResearchScreen";
 import { setActiveResearch, setActiveMagicResearch } from "@world/systems/ResearchSystem";
@@ -273,6 +273,10 @@ import { worldNotification } from "@view/world/ui/WorldNotification";
                     leaderSelectScreen.selectedLeaderId,
                     armoryScreen.selectedItems,
                   );
+                };
+                worldSetupScreen.onLoad = async () => {
+                  worldSetupScreen.destroy();
+                  await _loadWorldGame();
                 };
                 worldSetupScreen.onBack = () => {
                   worldSetupScreen.destroy();
@@ -2214,7 +2218,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       const army = state.armies.get(_selectedArmyId);
       const hKey = hexKey(hex.q, hex.r);
       if (army && _selectedArmyReachable.has(hKey)) {
-        const pathResult = findHexPath(state.grid, army.position, hex, army.movementPoints);
+        const pathResult = findHexPath(state.grid, army.position, hex, army.movementPoints, playerCanCrossWater(army.owner, state));
         if (pathResult) {
           worldMapRenderer.drawPathPreview(pathResult.path);
         } else {

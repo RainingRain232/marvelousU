@@ -12,6 +12,7 @@ import { armyUnitCount } from "@world/state/WorldArmy";
 import { hexToPixel, hexKey } from "@world/hex/HexCoord";
 import { WorldBalance } from "@world/config/WorldConfig";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
+import { TerrainType } from "@world/config/TerrainDefs";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -98,7 +99,9 @@ export class ArmyView {
         const key = hexKey(army.position.q, army.position.r);
         if (!localPlayer.visibleTiles.has(key)) continue;
       }
-      const sprite = this._createArmySprite(army);
+      const tile = state.grid.getTile(army.position.q, army.position.r);
+      const isEmbarked = tile?.terrain === TerrainType.WATER;
+      const sprite = this._createArmySprite(army, isEmbarked);
       this._container.addChild(sprite);
       this._armySprites.set(army.id, sprite);
     }
@@ -179,12 +182,21 @@ export class ArmyView {
   // Private — sprite creation
   // -----------------------------------------------------------------------
 
-  private _createArmySprite(army: WorldArmy): Container {
+  private _createArmySprite(army: WorldArmy, isEmbarked = false): Container {
     const c = new Container();
     const center = hexToPixel(army.position, HEX_SIZE);
 
     const playerIndex = parseInt(army.owner.replace("p", "")) - 1;
     const color = PLAYER_COLORS[playerIndex] ?? 0xffffff;
+
+    // Boat hull when embarked on water
+    if (isEmbarked) {
+      const boat = new Graphics();
+      boat.ellipse(0, 6, 12, 5);
+      boat.fill({ color: 0x8B4513, alpha: 0.85 });
+      boat.stroke({ color: 0x5C2D0A, width: 1 });
+      c.addChild(boat);
+    }
 
     // Shield shape
     const shield = new Graphics();

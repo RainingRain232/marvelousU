@@ -57,6 +57,8 @@ export class WorldSetupScreen {
 
   /** Called when player clicks START. */
   onStart: ((settings: WorldGameSettings) => void) | null = null;
+  /** Called when player clicks LOAD GAME. */
+  onLoad: (() => void) | null = null;
   /** Called when player clicks BACK. */
   onBack: (() => void) | null = null;
 
@@ -77,7 +79,7 @@ export class WorldSetupScreen {
 
     // Card
     const cardW = 360;
-    const cardH = 340;
+    const cardH = 390;
     const cardX = (screenW - cardW) / 2;
     const cardY = (screenH - cardH) / 2;
 
@@ -131,6 +133,12 @@ export class WorldSetupScreen {
     // START button
     this._addButton("START GAME", cardX + 40, y, cardW - 80, 0x336633, 0x55aa55, () => {
       this.onStart?.(this._settings);
+    });
+    y += 50;
+
+    // LOAD GAME button
+    this._addButton("LOAD GAME", cardX + 40, y, cardW - 80, 0x333366, 0x5577aa, () => {
+      this.onLoad?.();
     });
     y += 50;
 
