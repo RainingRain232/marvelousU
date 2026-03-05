@@ -12,6 +12,7 @@ import { createGameState } from "@sim/state/GameState";
 import type { GameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { createUnit } from "@sim/entities/Unit";
+import { createBase } from "@sim/entities/Base";
 import { Direction, GamePhase, GameMode, UnitState } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { hexNeighbors } from "@world/hex/HexCoord";
@@ -30,6 +31,36 @@ export interface BattleResult {
 // ---------------------------------------------------------------------------
 // Build battle state
 // ---------------------------------------------------------------------------
+
+/**
+ * Place virtual bases so the AI has march-to targets.
+ * West base for p1 (attacker), east base for p2 (defender).
+ */
+function _placeBases(state: GameState): void {
+  const gridW = BalanceConfig.GRID_WIDTH;
+  const gridH = BalanceConfig.GRID_HEIGHT;
+  const midY = Math.floor(gridH / 2);
+
+  // p1 base on the far west side
+  const p1Base = createBase({
+    id: "base_p1",
+    direction: Direction.WEST,
+    owner: "p1" as any,
+    position: { x: 0, y: midY - 1 },
+    spawnOffset: { x: 2, y: 1 },
+  });
+  state.bases.set(p1Base.id, p1Base);
+
+  // p2 base on the far east side
+  const p2Base = createBase({
+    id: "base_p2",
+    direction: Direction.EAST,
+    owner: "p2" as any,
+    position: { x: gridW - 3, y: midY - 1 },
+    spawnOffset: { x: 0, y: 1 },
+  });
+  state.bases.set(p2Base.id, p2Base);
+}
 
 /** Create a GameState for a field battle between two world armies. */
 export function buildFieldBattleState(
@@ -53,6 +84,9 @@ export function buildFieldBattleState(
     "p2",
     createPlayerState("p2", Direction.EAST, 0, "se", true),
   );
+
+  // Place virtual bases so units march toward each other
+  _placeBases(state);
 
   // Spawn attacker units on west side
   _spawnWorldUnits(state, attacker, "p1", "west");
@@ -92,6 +126,9 @@ export function buildSiegeBattleState(
     createPlayerState("p2", Direction.EAST, 0, "se", true),
   );
 
+  // Place virtual bases so units march toward each other
+  _placeBases(state);
+
   // Spawn attacker on west
   _spawnWorldUnits(state, attacker, "p1", "west");
 
@@ -128,6 +165,9 @@ export function buildCampBattleState(
     "p2",
     createPlayerState("p2", Direction.EAST, 0, "se", true),
   );
+
+  // Place virtual bases so units march toward each other
+  _placeBases(state);
 
   // Spawn attacker on west
   _spawnWorldUnits(state, attacker, "p1", "west");
