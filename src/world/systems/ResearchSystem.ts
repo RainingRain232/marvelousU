@@ -15,6 +15,7 @@ import {
   getMaxSchoolTier,
   magicTierCost,
 } from "@world/config/MagicResearchDefs";
+import { getRace } from "@sim/config/RaceDefs";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,7 +100,8 @@ export function hasResearch(player: WorldPlayer, researchId: string): boolean {
 
 /** Get all available research for a player. */
 export function getPlayerAvailableResearch(player: WorldPlayer): ResearchDef[] {
-  return getAvailableResearch(player.completedResearch);
+  const race = player.raceId ? getRace(player.raceId) : null;
+  return getAvailableResearch(player.completedResearch, player.raceId, race?.tiers as Record<string, number> | undefined);
 }
 
 // ---------------------------------------------------------------------------

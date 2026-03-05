@@ -152,19 +152,21 @@ function _handleResearch(player: WorldPlayer, strategy: AIStrategy): void {
   const economic = available.filter((r) => r.branch === "economic");
   const military = available.filter((r) => r.branch === "military");
   const magic = available.filter((r) => r.branch === "magic");
+  const siege = available.filter((r) => r.branch === "siege");
+  const buildings = available.filter((r) => r.branch === "buildings");
 
   let pick;
   switch (strategy) {
     case "attack":
-      pick = military[0] ?? magic[0] ?? economic[0];
+      pick = military[0] ?? siege[0] ?? buildings[0] ?? magic[0] ?? economic[0];
       break;
     case "defend":
-      pick = military[0] ?? economic[0] ?? magic[0];
+      pick = military[0] ?? buildings[0] ?? economic[0] ?? siege[0] ?? magic[0];
       break;
     case "explore":
     case "develop":
     default:
-      pick = economic[0] ?? military[0] ?? magic[0];
+      pick = economic[0] ?? buildings[0] ?? military[0] ?? magic[0] ?? siege[0];
       break;
   }
 

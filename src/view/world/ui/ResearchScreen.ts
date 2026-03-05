@@ -51,7 +51,7 @@ const TECH_STYLE = new TextStyle({
 const BORDER = 0x555577;
 
 const BRANCH_COLORS: Record<string, number> = {
-  military: 0xcc4444, magic: 0x8844cc, economic: 0x44aa44, siege: 0xaa8833,
+  military: 0xcc4444, magic: 0x8844cc, economic: 0x44aa44, siege: 0xaa8833, buildings: 0x6688cc,
 };
 
 // ---------------------------------------------------------------------------
@@ -532,111 +532,362 @@ export class ResearchScreen {
   // -----------------------------------------------------------------------
 
   private _buildTechTab(player: WorldPlayer, screenW: number): void {
-    const branches = ["military", "magic", "economic", "siege"];
     const available = new Set(
       getPlayerAvailableResearch(player).map((d) => d.id),
     );
 
-    const colW = Math.floor((screenW - 60) / branches.length);
-    let colX = 30;
+    // Left-to-right tree layout: 7 grid columns, rows grouped by branch
+    // Eras span multiple columns for a cleaner layout
+    const TECH_POS: Record<string, { col: number; row: number }> = {
+      // Economic (rows 0-2)
+      agriculture: { col: 0, row: 0 },
+      masonry: { col: 0, row: 2 },
+      trade: { col: 1, row: 0 },
+      scholarship: { col: 1, row: 1 },
+      banking: { col: 2, row: 0 },
+      sea_travel: { col: 2, row: 1 },
+      industrialization: { col: 3, row: 0 },
+      // Military — melee (row 3)
+      bronze_working: { col: 0, row: 3 },
+      iron_working: { col: 1, row: 3 },
+      steel_working: { col: 2, row: 3 },
+      mithril_forging: { col: 3, row: 3 },
+      adamantine_craft: { col: 4, row: 3 },
+      legendary_arms: { col: 6, row: 3 },
+      // Military — ranged (row 4)
+      improved_bows: { col: 1, row: 4 },
+      advanced_archery: { col: 2, row: 4 },
+      expert_archery: { col: 3, row: 4 },
+      master_archery: { col: 4, row: 4 },
+      legendary_ranged: { col: 6, row: 4 },
+      // Military — cavalry (row 5)
+      cavalry_tactics: { col: 2, row: 5 },
+      cavalry_mastery: { col: 3, row: 5 },
+      heavy_cavalry: { col: 4, row: 5 },
+      legendary_cavalry: { col: 6, row: 5 },
+      // Siege (rows 6-7)
+      siege_engineering: { col: 1, row: 6 },
+      siege_craft: { col: 2, row: 6 },
+      advanced_siege: { col: 3, row: 6 },
+      heavy_artillery: { col: 4, row: 6 },
+      legendary_siege: { col: 6, row: 6 },
+      // Magic (rows 7-8)
+      arcane_study: { col: 0, row: 7 },
+      conjuration: { col: 1, row: 7 },
+      high_sorcery: { col: 2, row: 7 },
+      archmage_arts: { col: 3, row: 7 },
+      divine_blessing: { col: 1, row: 8 },
+      // Buildings (rows 9-11)
+      basic_fortification: { col: 0, row: 9 },
+      arcane_construction: { col: 0, row: 10 },
+      horsemanship: { col: 1, row: 9 },
+      siege_construction: { col: 1, row: 10 },
+      faction_construction: { col: 2, row: 9 },
+      holy_construction: { col: 1, row: 11 },
+      beast_construction: { col: 2, row: 10 },
+      elite_hall: { col: 3, row: 10 },
+      elite_warfare: { col: 4, row: 9 },
+      elite_siege_works: { col: 4, row: 10 },
+      elite_arcanum: { col: 4, row: 11 },
+    };
 
-    const nodePositions = new Map<string, { x: number; y: number; w: number }>();
+    const NUM_COLS = 7;
+    // Eras span multiple grid columns
+    const ERA_SPANS: { label: string; color: number; startCol: number; endCol: number }[] = [
+      { label: "DAWN", color: 0x888866, startCol: 0, endCol: 0 },
+      { label: "EARLY", color: 0x886644, startCol: 1, endCol: 1 },
+      { label: "MIDDLE", color: 0x886644, startCol: 2, endCol: 3 },
+      { label: "ADVANCED", color: 0xaa6633, startCol: 4, endCol: 5 },
+      { label: "LEGENDARY", color: 0xcc6644, startCol: 6, endCol: 6 },
+    ];
+    const BRANCH_LABELS: { label: string; color: number; rows: number[] }[] = [
+      { label: "ECONOMY", color: 0x44aa44, rows: [0, 1, 2] },
+      { label: "MILITARY", color: 0xcc4444, rows: [3, 4, 5] },
+      { label: "SIEGE", color: 0xaa8833, rows: [6] },
+      { label: "MAGIC", color: 0x8844cc, rows: [7, 8] },
+      { label: "BUILDINGS", color: 0x6688cc, rows: [9, 10, 11] },
+    ];
+    const TOTAL_ROWS = 12;
 
-    for (const branch of branches) {
-      const branchDefs = allResearchDefs().filter((d) => d.branch === branch);
-      const color = BRANCH_COLORS[branch] ?? 0x888888;
+    // Layout constants — scrollable container
+    const marginL = 80;
+    const marginT = 56;
+    const nodeW = Math.min(130, Math.floor((screenW - marginL - 40) / NUM_COLS) - 10);
+    const nodeH = 56;
+    const colGap = 8;
+    const rowGap = 6;
+    const colStep = nodeW + colGap;
+    const rowStep = nodeH + rowGap;
 
-      const header = new Text({
-        text: branch.toUpperCase(),
+    // Scrollable content container
+    const scrollContent = new Container();
+    this._contentContainer.addChild(scrollContent);
+
+    // Era headers — each era spans one or more columns
+    for (const era of ERA_SPANS) {
+      const x1 = marginL + era.startCol * colStep;
+      const x2 = marginL + era.endCol * colStep + nodeW;
+      const cx = (x1 + x2) / 2;
+      const eraLabel = new Text({
+        text: era.label,
         style: new TextStyle({
-          fontFamily: "monospace", fontSize: 13, fontWeight: "bold", fill: color,
+          fontFamily: "monospace", fontSize: 8, fontWeight: "bold", fill: era.color, letterSpacing: 1,
         }),
       });
-      header.x = colX + 10;
-      header.y = 56;
-      this._contentContainer.addChild(header);
-
-      let y = 80;
-      const nodeW = colW - 10;
-      for (const def of branchDefs) {
-        nodePositions.set(def.id, { x: colX, y, w: nodeW });
-        const node = this._createTechNode(def, colX, y, nodeW, player, available.has(def.id));
-        this._contentContainer.addChild(node);
-        y += 70;
-      }
-
-      colX += colW;
+      eraLabel.x = cx - eraLabel.width / 2;
+      eraLabel.y = marginT - 4;
+      scrollContent.addChild(eraLabel);
     }
 
-    // Prerequisite lines
+    // Era separator lines (between era groups)
+    for (let i = 1; i < ERA_SPANS.length; i++) {
+      const sepCol = ERA_SPANS[i].startCol;
+      const sx = marginL + sepCol * colStep - colGap / 2;
+      const sep = new Graphics();
+      sep.moveTo(sx, marginT + 10);
+      sep.lineTo(sx, marginT + TOTAL_ROWS * rowStep + 4);
+      sep.stroke({ color: 0x222244, width: 1, alpha: 0.4 });
+      scrollContent.addChildAt(sep, 0);
+    }
+
+    // Branch labels on left margin
+    for (const branch of BRANCH_LABELS) {
+      const midRow = branch.rows[Math.floor(branch.rows.length / 2)];
+      const by = marginT + 14 + midRow * rowStep + (branch.rows.length * rowStep) / 2 - rowStep / 2;
+      const bLabel = new Text({
+        text: branch.label,
+        style: new TextStyle({
+          fontFamily: "monospace", fontSize: 8, fontWeight: "bold", fill: branch.color, letterSpacing: 1,
+        }),
+      });
+      bLabel.rotation = -Math.PI / 2;
+      bLabel.x = 14;
+      bLabel.y = by + bLabel.width / 2;
+      scrollContent.addChild(bLabel);
+
+      // Branch lane background
+      const laneY = marginT + 10 + branch.rows[0] * rowStep - 4;
+      const laneH = branch.rows.length * rowStep + 4;
+      const lane = new Graphics();
+      lane.roundRect(marginL - 6, laneY, NUM_COLS * colStep + 8, laneH, 4);
+      lane.fill({ color: branch.color, alpha: 0.04 });
+      lane.stroke({ color: branch.color, width: 1, alpha: 0.1 });
+      scrollContent.addChildAt(lane, 0);
+    }
+
+    // Branch divider lines
+    const dividerRows = [2.5, 5.5, 6.5, 8.5];
+    for (const dr of dividerRows) {
+      const dy = marginT + 10 + dr * rowStep;
+      const divider = new Graphics();
+      divider.moveTo(30, dy);
+      divider.lineTo(marginL + NUM_COLS * colStep, dy);
+      divider.stroke({ color: 0x333355, width: 1, alpha: 0.3 });
+      scrollContent.addChildAt(divider, 0);
+    }
+
+    // Compute node pixel positions
+    const nodePixelPos = new Map<string, { x: number; y: number }>();
+
+    for (const [techId, pos] of Object.entries(TECH_POS)) {
+      const px = marginL + pos.col * colStep;
+      const py = marginT + 14 + pos.row * rowStep;
+      nodePixelPos.set(techId, { x: px, y: py });
+    }
+
+    // Draw prerequisite connections (bezier curves)
     const lines = new Graphics();
     for (const def of allResearchDefs()) {
-      const toPos = nodePositions.get(def.id);
+      const toPos = nodePixelPos.get(def.id);
       if (!toPos) continue;
 
       for (const prereqId of def.prerequisites) {
-        const fromPos = nodePositions.get(prereqId);
+        const fromPos = nodePixelPos.get(prereqId);
         if (!fromPos) continue;
 
-        const completed = player.completedResearch.has(prereqId);
-        const lineColor = completed ? 0x44aa44 : 0x444466;
+        const completed = player.completedResearch.has(prereqId) && player.completedResearch.has(def.id);
+        const prereqDone = player.completedResearch.has(prereqId);
+        const lineColor = completed ? 0x44aa44 : prereqDone ? 0x668844 : 0x333355;
+        const lineWidth = completed ? 2.5 : prereqDone ? 1.5 : 1;
 
-        lines.moveTo(fromPos.x + fromPos.w / 2, fromPos.y + 60);
-        lines.lineTo(toPos.x + toPos.w / 2, toPos.y);
-        lines.stroke({ color: lineColor, width: completed ? 2 : 1, alpha: 0.7 });
+        const x1 = fromPos.x + nodeW;
+        const y1 = fromPos.y + nodeH / 2;
+        const x2 = toPos.x;
+        const y2 = toPos.y + nodeH / 2;
+        const cpx = (x1 + x2) / 2;
+
+        lines.moveTo(x1, y1);
+        lines.bezierCurveTo(cpx, y1, cpx, y2, x2, y2);
+        lines.stroke({ color: lineColor, width: lineWidth, alpha: 0.7 });
+
+        // Arrowhead
+        const arrowSize = 4;
+        lines.moveTo(x2, y2);
+        lines.lineTo(x2 - arrowSize * 2, y2 - arrowSize);
+        lines.lineTo(x2 - arrowSize * 2, y2 + arrowSize);
+        lines.closePath();
+        lines.fill({ color: lineColor, alpha: 0.7 });
       }
     }
-    this._contentContainer.addChildAt(lines, 1);
+    scrollContent.addChildAt(lines, 0);
+
+    // Draw tech nodes
+    for (const def of allResearchDefs()) {
+      const pos = nodePixelPos.get(def.id);
+      if (!pos) continue;
+      const node = this._createTechNode(def, pos.x, pos.y, nodeW, nodeH, player, available.has(def.id));
+      scrollContent.addChild(node);
+    }
+
+    // Enable vertical scrolling if content exceeds screen
+    const sh = this._vm.screenHeight;
+    const totalH = marginT + 14 + TOTAL_ROWS * rowStep + 20;
+    if (totalH > sh) {
+      scrollContent.eventMode = "static";
+      const bgHit = new Graphics();
+      bgHit.rect(0, 0, screenW, sh);
+      bgHit.fill({ color: 0x000000, alpha: 0.01 });
+      bgHit.eventMode = "static";
+      scrollContent.addChildAt(bgHit, 0);
+
+      let scrollY = 0;
+      const maxScroll = totalH - sh + 40;
+      scrollContent.on("wheel", (e: WheelEvent) => {
+        scrollY = Math.max(-maxScroll, Math.min(0, scrollY - e.deltaY));
+        scrollContent.y = scrollY;
+      });
+    }
   }
 
   private _createTechNode(
-    def: ResearchDef, x: number, y: number, w: number,
+    def: ResearchDef, x: number, y: number, w: number, h: number,
     player: WorldPlayer, isAvailable: boolean,
   ): Container {
     const c = new Container();
     const completed = player.completedResearch.has(def.id);
     const isActive = player.activeResearch === def.id;
+    const branchColor = BRANCH_COLORS[def.branch] ?? 0x888888;
 
-    let fillColor = 0x1a1a2e;
-    let borderColor = BORDER;
+    // Status-based colors
+    let fillColor = 0x12121e;
+    let borderColor = 0x333344;
+    let nameColor = 0x666688;
     if (completed) {
-      fillColor = 0x1a3a1a; borderColor = 0x44aa44;
+      fillColor = 0x0f2a0f; borderColor = 0x44aa44; nameColor = 0xccffcc;
     } else if (isActive) {
-      fillColor = 0x2a2a1a; borderColor = 0xaaaa44;
+      fillColor = 0x2a2a0f; borderColor = 0xffaa22; nameColor = 0xffffcc;
     } else if (isAvailable) {
-      fillColor = 0x1a1a3a; borderColor = 0x4466cc;
+      fillColor = 0x0f0f2a; borderColor = 0x4488ff; nameColor = 0xffffff;
     }
 
+    // Card background with colored left accent
     const bg = new Graphics();
-    bg.roundRect(0, 0, w, 60, 6);
-    bg.fill({ color: fillColor, alpha: 0.9 });
-    bg.stroke({ color: borderColor, width: completed ? 2 : 1 });
+    bg.roundRect(0, 0, w, h, 5);
+    bg.fill({ color: fillColor, alpha: 0.95 });
+    bg.stroke({ color: borderColor, width: completed ? 2 : 1.5 });
     c.addChild(bg);
 
-    const name = new Text({ text: def.name, style: TECH_STYLE });
-    name.x = 8; name.y = 6;
+    // Branch color accent bar on left
+    const accent = new Graphics();
+    accent.roundRect(0, 0, 4, h, 5);
+    accent.fill({ color: branchColor, alpha: completed ? 0.9 : 0.5 });
+    c.addChild(accent);
+
+    // Tech name
+    const name = new Text({
+      text: def.name,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fontWeight: "bold", fill: nameColor }),
+    });
+    name.x = 10; name.y = 4;
     c.addChild(name);
 
-    const turns = new Text({
-      text: completed ? "DONE" : isActive ? `${player.researchTurnsLeft}t` : `${def.turnsToComplete}t`,
+    // Turns / status badge
+    let statusText = `${def.turnsToComplete}t`;
+    let statusColor = 0x888888;
+    if (completed) { statusText = "\u2713"; statusColor = 0x44ff44; }
+    else if (isActive) { statusText = `${player.researchTurnsLeft}t`; statusColor = 0xffaa22; }
+    const status = new Text({
+      text: statusText,
       style: new TextStyle({
-        fontFamily: "monospace", fontSize: 10, fill: completed ? 0x44aa44 : 0xaaaaaa,
+        fontFamily: "monospace", fontSize: completed ? 14 : 9, fontWeight: "bold", fill: statusColor,
       }),
     });
-    turns.x = w - turns.width - 8; turns.y = 6;
-    c.addChild(turns);
+    status.x = w - status.width - 6; status.y = completed ? 1 : 5;
+    c.addChild(status);
 
-    const descStyle = new TextStyle({
-      fontFamily: "monospace", fontSize: 9, fill: 0xaaaaaa, wordWrap: true, wordWrapWidth: w - 16,
-    });
-    const desc = new Text({ text: def.description, style: descStyle });
-    desc.x = 8; desc.y = 24;
-    c.addChild(desc);
+    // Unlocks summary
+    const unlockStrs: string[] = [];
+    for (const u of def.unlocks) {
+      if (u.type === "building") {
+        unlockStrs.push(_formatName(u.value));
+      } else if (u.type === "unit_tier") {
+        unlockStrs.push(u.value.replace("_", " T"));
+      } else if (u.type === "spell_tier") {
+        unlockStrs.push(`Spells T${u.value}`);
+      }
+    }
+    const unlockText = unlockStrs.length > 0 ? unlockStrs.join(", ") : "";
+    if (unlockText) {
+      const unlock = new Text({
+        text: unlockText,
+        style: new TextStyle({
+          fontFamily: "monospace", fontSize: 8, fill: completed ? 0x66aa66 : 0x8888aa,
+          wordWrap: true, wordWrapWidth: w - 16,
+        }),
+      });
+      unlock.x = 10; unlock.y = 18;
+      c.addChild(unlock);
+    }
 
+    // Progress bar (active research only)
+    if (isActive && def.turnsToComplete > 0) {
+      const progress = 1 - (player.researchTurnsLeft / def.turnsToComplete);
+      const barW = w - 16;
+      const barH = 6;
+      const barY = h - barH - 5;
+      const barBg = new Graphics();
+      barBg.roundRect(8, barY, barW, barH, 3);
+      barBg.fill({ color: 0x222233 });
+      c.addChild(barBg);
+      if (progress > 0) {
+        const barFill = new Graphics();
+        barFill.roundRect(8, barY, Math.max(4, barW * progress), barH, 3);
+        barFill.fill({ color: 0xffaa22 });
+        c.addChild(barFill);
+      }
+    }
+
+    // Description tooltip area (show description text below unlocks)
+    const descY = unlockText ? 32 : 18;
+    if (descY + 10 < h) {
+      const desc = new Text({
+        text: def.description,
+        style: new TextStyle({
+          fontFamily: "monospace", fontSize: 7, fill: 0x666688,
+          wordWrap: true, wordWrapWidth: w - 16,
+        }),
+      });
+      desc.x = 10; desc.y = descY;
+      c.addChild(desc);
+    }
+
+    // Interaction
     if (isAvailable && !completed && !isActive) {
       c.eventMode = "static";
       c.cursor = "pointer";
       c.on("pointerdown", () => this.onResearchSelected?.(def.id));
+      c.on("pointerover", () => {
+        bg.clear();
+        bg.roundRect(0, 0, w, h, 5);
+        bg.fill({ color: 0x1a1a44, alpha: 0.95 });
+        bg.stroke({ color: 0x6699ff, width: 2 });
+      });
+      c.on("pointerout", () => {
+        bg.clear();
+        bg.roundRect(0, 0, w, h, 5);
+        bg.fill({ color: fillColor, alpha: 0.95 });
+        bg.stroke({ color: borderColor, width: 1.5 });
+      });
     }
 
     c.position.set(x, y);

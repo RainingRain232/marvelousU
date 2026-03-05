@@ -117,6 +117,15 @@ export function getRecruitableUnits(
       ) as string[];
     }
 
+    // Apply research-based tier gating
+    if (player) {
+      const maxTier = _getMaxRecruitableTier(building.type, player.completedResearch);
+      buildingUnits = buildingUnits.filter((u) => {
+        const def = UNIT_DEFINITIONS[u as keyof typeof UNIT_DEFINITIONS];
+        return def ? (def.tier ?? 1) <= maxTier : true;
+      });
+    }
+
     for (const u of buildingUnits) {
       if (!units.includes(u)) units.push(u);
     }
@@ -371,4 +380,58 @@ export function foundCity(
   }
 
   return cityId;
+}
+
+// ---------------------------------------------------------------------------
+// Research-tier gating
+// ---------------------------------------------------------------------------
+
+/** Determine the maximum unit tier recruitable from a building based on completed research. */
+function _getMaxRecruitableTier(buildingType: string, completedResearch: Set<string>): number {
+  switch (buildingType) {
+    case BuildingType.BARRACKS:
+      if (completedResearch.has("legendary_arms")) return 7;
+      if (completedResearch.has("adamantine_craft")) return 6;
+      if (completedResearch.has("mithril_forging")) return 5;
+      if (completedResearch.has("steel_working")) return 4;
+      if (completedResearch.has("iron_working")) return 3;
+      if (completedResearch.has("bronze_working")) return 2;
+      return 1;
+    case BuildingType.ARCHERY_RANGE:
+      if (completedResearch.has("legendary_ranged")) return 7;
+      if (completedResearch.has("master_archery")) return 5;
+      if (completedResearch.has("expert_archery")) return 4;
+      if (completedResearch.has("advanced_archery")) return 3;
+      if (completedResearch.has("improved_bows")) return 2;
+      return 1;
+    case BuildingType.STABLES:
+      if (completedResearch.has("legendary_cavalry")) return 7;
+      if (completedResearch.has("heavy_cavalry")) return 5;
+      if (completedResearch.has("cavalry_mastery")) return 4;
+      if (completedResearch.has("cavalry_tactics")) return 3;
+      return 2;
+    case BuildingType.SIEGE_WORKSHOP:
+      if (completedResearch.has("legendary_siege")) return 7;
+      if (completedResearch.has("heavy_artillery")) return 5;
+      if (completedResearch.has("advanced_siege")) return 4;
+      if (completedResearch.has("siege_craft")) return 3;
+      if (completedResearch.has("siege_engineering")) return 2;
+      return 1;
+    case BuildingType.MAGE_TOWER:
+      if (completedResearch.has("archmage_arts")) return 7;
+      if (completedResearch.has("high_sorcery")) return 6;
+      if (completedResearch.has("conjuration")) return 4;
+      if (completedResearch.has("arcane_study")) return 2;
+      return 1;
+    case BuildingType.CREATURE_DEN:
+      if (completedResearch.has("archmage_arts")) return 7;
+      if (completedResearch.has("high_sorcery")) return 6;
+      if (completedResearch.has("conjuration")) return 4;
+      if (completedResearch.has("arcane_study")) return 2;
+      return 1;
+    case BuildingType.TEMPLE:
+      return 7;
+    default:
+      return 99;
+  }
 }

@@ -77,7 +77,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "+3 food/turn",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "agriculture",
   },
   [WorldBuildingType.LIBRARY]: {
     type: WorldBuildingType.LIBRARY,
@@ -103,7 +103,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "+5 gold/turn",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "trade",
   },
   [WorldBuildingType.CITY_WALLS]: {
     type: WorldBuildingType.CITY_WALLS,
@@ -116,7 +116,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "+50% city defense in sieges",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "masonry",
   },
   [WorldBuildingType.WORKSHOP]: {
     type: WorldBuildingType.WORKSHOP,
@@ -129,7 +129,7 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "+3 production/turn",
     unlocksUnits: [],
-    researchRequired: null,
+    researchRequired: "banking",
   },
   [WorldBuildingType.AQUEDUCT]: {
     type: WorldBuildingType.AQUEDUCT,
@@ -195,7 +195,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
       UnitType.ANCIENT_DEFENDER, UnitType.ANCIENT_PHALANX, UnitType.ANCIENT_AXEMAN,
       UnitType.ELDER_DEFENDER, UnitType.ELDER_PHALANX, UnitType.ELDER_AXEMAN,
     ],
-    researchRequired: null,
+    researchRequired: "basic_fortification",
   },
   [BuildingType.ARCHERY_RANGE]: {
     type: BuildingType.ARCHERY_RANGE,
@@ -212,7 +212,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
       UnitType.JAVELINEER, UnitType.ARBALESTIER,
       UnitType.ANCIENT_ARCHER, UnitType.ANCIENT_LONGBOWMAN, UnitType.ANCIENT_CROSSBOWMAN,
     ],
-    researchRequired: null,
+    researchRequired: "basic_fortification",
   },
   [BuildingType.STABLES]: {
     type: BuildingType.STABLES,
@@ -246,7 +246,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
       UnitType.CATAPULT, UnitType.SIEGE_CATAPULT, UnitType.TREBUCHET,
       UnitType.WAR_WAGON, UnitType.BOMBARD,
     ],
-    researchRequired: "engineering",
+    researchRequired: "siege_construction",
   },
   [BuildingType.MAGE_TOWER]: {
     type: BuildingType.MAGE_TOWER,
@@ -266,7 +266,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
       UnitType.LIGHTNING_MASTER_MAGE, UnitType.DISTORTION_MASTER_MAGE,
       UnitType.SUMMONER, UnitType.CONSTRUCTIONIST, UnitType.DARK_SAVANT,
     ],
-    researchRequired: "arcane_study",
+    researchRequired: "arcane_construction",
   },
   [BuildingType.CREATURE_DEN]: {
     type: BuildingType.CREATURE_DEN,
@@ -289,7 +289,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
       UnitType.LIGHTNING_ELEMENTAL, UnitType.DISTORTION_ELEMENTAL,
       UnitType.MINOR_EARTH_ELEMENTAL, UnitType.EARTH_ELEMENTAL,
     ],
-    researchRequired: "conjuration",
+    researchRequired: "beast_construction",
   },
   [BuildingType.TEMPLE]: {
     type: BuildingType.TEMPLE,
@@ -304,7 +304,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     unlocksUnits: [
       UnitType.MONK, UnitType.CLERIC, UnitType.SAINT, UnitType.TEMPLAR, UnitType.ANGEL,
     ],
-    researchRequired: "divine_blessing",
+    researchRequired: "holy_construction",
   },
   [BuildingType.FACTION_HALL]: {
     type: BuildingType.FACTION_HALL,
@@ -317,7 +317,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "Train faction-exclusive units",
     unlocksUnits: [], // populated at runtime based on player race
-    researchRequired: "divine_blessing",
+    researchRequired: "faction_construction",
   },
   [BuildingType.EMBASSY]: {
     type: BuildingType.EMBASSY,
@@ -343,7 +343,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "Train elite melee units",
     unlocksUnits: [UnitType.ROYAL_GUARD, UnitType.GIANT_WARRIOR],
-    researchRequired: "mithril_forging",
+    researchRequired: "elite_warfare",
   },
   [BuildingType.ELITE_ARCHERY_RANGE]: {
     type: BuildingType.ELITE_ARCHERY_RANGE,
@@ -359,7 +359,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
       UnitType.ELDER_ARCHER, UnitType.ELDER_REPEATER, UnitType.ELDER_JAVELINEER,
       UnitType.MARKSMAN, UnitType.GIANT_ARCHER,
     ],
-    researchRequired: "mithril_forging",
+    researchRequired: "elite_warfare",
   },
   [BuildingType.ELITE_SIEGE_WORKSHOP]: {
     type: BuildingType.ELITE_SIEGE_WORKSHOP,
@@ -372,7 +372,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "Train elite siege units",
     unlocksUnits: [UnitType.SIEGE_TOWER, UnitType.HELLFIRE_MORTAR, UnitType.CANNON, UnitType.GIANT_SIEGE],
-    researchRequired: "heavy_artillery",
+    researchRequired: "elite_siege_works",
   },
   [BuildingType.ELITE_MAGE_TOWER]: {
     type: BuildingType.ELITE_MAGE_TOWER,
@@ -385,7 +385,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "Train elite mage units",
     unlocksUnits: [UnitType.BATTLEMAGE, UnitType.GIANT_MAGE],
-    researchRequired: "archmage_arts",
+    researchRequired: "elite_arcanum",
   },
   [BuildingType.ELITE_STABLES]: {
     type: BuildingType.ELITE_STABLES,
@@ -398,7 +398,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "Train elite cavalry units",
     unlocksUnits: [UnitType.ELDER_HORSE_ARCHER, UnitType.CATAPHRACT, UnitType.GIANT_CAVALRY],
-    researchRequired: "mithril_forging",
+    researchRequired: "elite_warfare",
   },
   [BuildingType.ELITE_HALL]: {
     type: BuildingType.ELITE_HALL,
@@ -411,7 +411,7 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     scienceBonus: 0,
     effect: "Train heroes, unlocks elite buildings",
     unlocksUnits: [UnitType.HERO],
-    researchRequired: "mithril_forging",
+    researchRequired: "elite_hall",
   },
 };
 
