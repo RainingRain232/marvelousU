@@ -78,6 +78,11 @@ export class WorldBattleViewer {
   private _attackerLabel = "Attacker";
   private _defenderLabel = "Defender";
 
+  /** Set to true when the player clicks the PLAY BATTLE button. */
+  playBattleRequested = false;
+
+  private _playBattleBtn: Container | null = null;
+
   get isVisible(): boolean {
     return this._container.visible;
   }
@@ -149,6 +154,24 @@ export class WorldBattleViewer {
       this._fast = !this._fast;
     });
 
+    // Play Battle button (wider, below the other buttons)
+    this._playBattleBtn = this._buildWideButton(
+      "PLAY BATTLE",
+      vm.screenWidth / 2,
+      54 + BalanceConfig.GRID_HEIGHT * TILE_SIZE + 62,
+      () => {
+        this.playBattleRequested = true;
+        this._stop();
+        this._container.visible = false;
+        if (this._battleState && this._onComplete) {
+          this._onComplete(this._battleState);
+          this._onComplete = null;
+          this._battleState = null;
+        }
+      },
+    );
+    this._playBattleBtn.visible = false;
+
     vm.addToLayer("ui", this._container);
   }
 
@@ -170,11 +193,17 @@ export class WorldBattleViewer {
     battleState: GameState,
     attackerLabel: string,
     defenderLabel: string,
+    canPlay = false,
   ): Promise<GameState> {
     this._battleState = battleState;
     this._attackerLabel = attackerLabel;
     this._defenderLabel = defenderLabel;
     this._fast = false;
+    this.playBattleRequested = false;
+
+    if (this._playBattleBtn) {
+      this._playBattleBtn.visible = canPlay;
+    }
 
     // Draw the battle grid
     this._drawGrid();
@@ -360,6 +389,42 @@ export class WorldBattleViewer {
   // -----------------------------------------------------------------------
   // Private — UI helpers
   // -----------------------------------------------------------------------
+
+  private _buildWideButton(label: string, x: number, y: number, onClick: () => void): Container {
+    const btn = new Container();
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const hw = 70; // half-width
+    const bg = new Graphics();
+    bg.roundRect(-hw, -14, hw * 2, 28, 4);
+    bg.fill({ color: 0x226622 });
+    bg.stroke({ color: 0x44aa44, width: 1.5 });
+    btn.addChild(bg);
+
+    const txt = new Text({ text: label, style: BTN_STYLE });
+    txt.anchor.set(0.5, 0.5);
+    btn.addChild(txt);
+
+    btn.on("pointerdown", onClick);
+    btn.on("pointerover", () => {
+      bg.clear();
+      bg.roundRect(-hw, -14, hw * 2, 28, 4);
+      bg.fill({ color: 0x338833 });
+      bg.stroke({ color: 0x66cc66, width: 1.5 });
+    });
+    btn.on("pointerout", () => {
+      bg.clear();
+      bg.roundRect(-hw, -14, hw * 2, 28, 4);
+      bg.fill({ color: 0x226622 });
+      bg.stroke({ color: 0x44aa44, width: 1.5 });
+    });
+
+    btn.x = x;
+    btn.y = y;
+    this._uiContainer.addChild(btn);
+    return btn;
+  }
 
   private _buildButton(label: string, x: number, y: number, onClick: () => void): void {
     const btn = new Container();

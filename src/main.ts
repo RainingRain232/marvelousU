@@ -126,6 +126,7 @@ import {
   extractBattleResults,
   applyBattleResults,
 } from "@world/systems/BattleResolver";
+import type { BattleResult } from "@world/systems/BattleResolver";
 import { simTick } from "@sim/core/SimLoop";
 import { worldEventLog } from "@view/world/ui/WorldEventLog";
 import { worldVictoryScreen } from "@view/world/ui/WorldVictoryScreen";
@@ -170,6 +171,24 @@ import { worldNotification } from "@view/world/ui/WorldNotification";
   menuScreen.onAIToggle = (isAI) => {
     p2IsAI = isAI;
   };
+
+  // Check if returning from a played world battle
+  const _worldBattleReturn = sessionStorage.getItem("worldBattleReturn") === "1";
+  if (_worldBattleReturn) {
+    sessionStorage.removeItem("worldBattleReturn");
+    startScreen.hide();
+    await _returnFromWorldBattle();
+    return;
+  }
+
+  // Check if we should boot a playable world battle
+  const _worldBattlePlayMode = sessionStorage.getItem("worldBattlePlayMode") === "1";
+  if (_worldBattlePlayMode) {
+    sessionStorage.removeItem("worldBattlePlayMode");
+    startScreen.hide();
+    await _bootWorldBattle();
+    return;
+  }
 
   // Check if we should auto-load a saved world game (from in-game LOAD GAME)
   const _autoLoadWorld = sessionStorage.getItem("autoLoadWorld") === "1";
@@ -1437,6 +1456,173 @@ async function _loadWorldGame(): Promise<void> {
   _initWorldViews(state, true);
 }
 
+// ---------------------------------------------------------------------------
+// World battle play mode
+// ---------------------------------------------------------------------------
+
+/** Rosters for a world battle played in battlefield mode. */
+let _worldBattleRosters: {
+  p1Roster: Array<{ type: UnitType; count: number }>;
+  p2Roster: Array<{ type: UnitType; count: number }>;
+  battleMeta: Record<string, unknown>;
+  playerIsAttacker: boolean;
+} | null = null;
+
+/** Boot a full battlefield game from world battle data. */
+async function _bootWorldBattle(): Promise<void> {
+  const metaJson = sessionStorage.getItem("worldBattleMeta");
+  sessionStorage.removeItem("worldBattleMeta");
+  if (!metaJson) return;
+
+  const meta = JSON.parse(metaJson);
+  const worldState = loadWorldGame();
+  if (!worldState) return;
+
+  const toRoster = (units: Array<{ unitType: string; count: number }>) =>
+    units
+      .filter((u) => u.unitType !== "settler")
+      .map((u) => ({ type: u.unitType as UnitType, count: u.count }));
+
+  let p1Roster: Array<{ type: UnitType; count: number }>;
+  let p2Roster: Array<{ type: UnitType; count: number }>;
+  let playerIsAttacker = true;
+
+  if (meta.battleType === "camp") {
+    const army = worldState.armies.get(meta.armyId);
+    const camp = worldState.camps.get(meta.campId);
+    if (!army || !camp) return;
+    p1Roster = toRoster(army.units);
+    p2Roster = toRoster(camp.defenders);
+  } else {
+    const attacker = worldState.armies.get(meta.attackerArmyId);
+    const defender = meta.defenderArmyId ? worldState.armies.get(meta.defenderArmyId) : null;
+    if (!attacker) return;
+
+    playerIsAttacker = attacker.owner === "p1";
+    if (playerIsAttacker) {
+      p1Roster = toRoster(attacker.units);
+      p2Roster = defender ? toRoster(defender.units) : [];
+    } else {
+      p1Roster = defender ? toRoster(defender.units) : [];
+      p2Roster = toRoster(attacker.units);
+    }
+  }
+
+  _worldBattleRosters = { p1Roster, p2Roster, battleMeta: meta, playerIsAttacker };
+
+  const player = worldState.players.get("p1");
+  audioManager.playGameMusic();
+
+  await _bootGame(
+    true,
+    MAP_SIZES[0],
+    GameMode.BATTLEFIELD,
+    (player?.leaderId as LeaderId) ?? "arthur",
+    (player?.raceId as RaceId) ?? "man",
+    undefined,
+    MapType.MEADOW,
+    player?.armoryItems ?? [],
+  );
+}
+
+/** Return from a played world battle and apply results. */
+async function _returnFromWorldBattle(): Promise<void> {
+  const resultJson = sessionStorage.getItem("worldBattleResult");
+  sessionStorage.removeItem("worldBattleResult");
+
+  const state = loadWorldGame();
+  if (!state || !resultJson) return;
+
+  const data = JSON.parse(resultJson);
+  const meta = data.battleMeta;
+
+  if (meta.battleType === "camp") {
+    // Camp battle result
+    const army = state.armies.get(meta.armyId);
+    const camp = state.camps.get(meta.campId);
+
+    if (army) {
+      if (data.attackerSurvivors.length > 0) {
+        army.units = data.attackerSurvivors;
+      } else {
+        const tile = state.grid.getTile(army.position.q, army.position.r);
+        if (tile && tile.armyId === army.id) tile.armyId = null;
+        state.armies.delete(army.id);
+      }
+    }
+
+    if (camp && data.winnerId === army?.owner) {
+      camp.cleared = true;
+      const tile = state.grid.getTile(camp.position.q, camp.position.r);
+      if (tile) tile.campId = null;
+
+      const player = state.players.get(army!.owner);
+      if (player) {
+        player.gold += camp.goldReward;
+      }
+    }
+  } else {
+    // Field / siege battle result
+    const battleIdx = meta.battleIndex as number;
+    const battle = state.pendingBattles[battleIdx];
+
+    if (battle) {
+      const attacker = state.armies.get(battle.attackerArmyId);
+      const defender = battle.defenderArmyId ? state.armies.get(battle.defenderArmyId) : null;
+
+      // Map winnerId from sim player IDs back to world player IDs
+      let worldWinnerId: string | null = null;
+      if (data.winnerId === "p1") {
+        worldWinnerId = data.playerIsAttacker ? attacker?.owner ?? null : defender?.owner ?? null;
+      } else if (data.winnerId === "p2") {
+        worldWinnerId = data.playerIsAttacker ? defender?.owner ?? null : attacker?.owner ?? null;
+      }
+
+      const result: BattleResult = {
+        winnerId: worldWinnerId,
+        attackerSurvivors: data.playerIsAttacker ? data.attackerSurvivors : data.defenderSurvivors,
+        defenderSurvivors: data.playerIsAttacker ? data.defenderSurvivors : data.attackerSurvivors,
+      };
+
+      applyBattleResults(state, battle, result);
+      state.pendingBattles.splice(battleIdx, 1);
+    }
+
+    // Resolve remaining pending battles headlessly
+    for (const remaining of state.pendingBattles) {
+      const att = state.armies.get(remaining.attackerArmyId);
+      const def = remaining.defenderArmyId ? state.armies.get(remaining.defenderArmyId) : null;
+      if (!att) continue;
+
+      let battleState: GameState;
+      if (remaining.type === "siege" && remaining.defenderCityId) {
+        const city = state.cities.get(remaining.defenderCityId);
+        battleState = buildSiegeBattleState(att, def ?? null, city!);
+      } else {
+        if (!def) continue;
+        battleState = buildFieldBattleState(att, def);
+      }
+
+      const MAX_TICKS = 5000;
+      for (let i = 0; i < MAX_TICKS; i++) {
+        simTick(battleState);
+        if (battleState.winnerId) break;
+      }
+
+      const res = extractBattleResults(battleState, att.owner, def?.owner ?? att.owner);
+      applyBattleResults(state, remaining, res);
+    }
+    state.pendingBattles = [];
+  }
+
+  onBattlesResolved(state);
+  saveWorldGame(state);
+
+  setCityNameIndex(state.cities.size);
+  audioManager.playGameMusic();
+  _initWorldViews(state, true);
+}
+
 /** Show in-game info menu overlay with Leader Info / Race Info options. */
 function _showWorldInfoMenu(state: WorldState): void {
   const player = state.players.get("p1");
@@ -2092,7 +2278,24 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           battleState,
           attacker.owner,
           defender?.owner ?? "garrison",
+          true,
         );
+
+        if (worldBattleViewer.playBattleRequested) {
+          // Save world state and transition to playable battlefield
+          saveWorldGame(state);
+          sessionStorage.setItem("worldBattleMeta", JSON.stringify({
+            attackerArmyId: battle.attackerArmyId,
+            defenderArmyId: battle.defenderArmyId,
+            defenderCityId: battle.defenderCityId ?? null,
+            battleType: battle.type,
+            hex: { q: battle.hex.q, r: battle.hex.r },
+            battleIndex: state.pendingBattles.indexOf(battle),
+          }));
+          sessionStorage.setItem("worldBattlePlayMode", "1");
+          window.location.reload();
+          return;
+        }
       } else {
         const MAX_TICKS = 5000;
         for (let i = 0; i < MAX_TICKS; i++) {
@@ -2124,7 +2327,20 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
     // Show visual battle for player armies
     if (army.owner === "p1") {
-      await worldBattleViewer.startBattle(battleState, army.owner, "camp");
+      await worldBattleViewer.startBattle(battleState, army.owner, "camp", true);
+
+      if (worldBattleViewer.playBattleRequested) {
+        saveWorldGame(ws);
+        sessionStorage.setItem("worldBattleMeta", JSON.stringify({
+          campId: camp.id,
+          armyId: army.id,
+          battleType: "camp",
+          hex: { q: camp.position.q, r: camp.position.r },
+        }));
+        sessionStorage.setItem("worldBattlePlayMode", "1");
+        window.location.reload();
+        return;
+      }
     } else {
       const MAX_TICKS = 5000;
       for (let i = 0; i < MAX_TICKS; i++) {
@@ -2564,7 +2780,11 @@ async function _bootGame(
     // Remove castles and all other player buildings — no structures on the field
     _removeCastlesAndBuildings(state);
     // Spawn starting units
-    if (gameMode === GameMode.CAMPAIGN) {
+    if (_worldBattleRosters) {
+      const midY = Math.floor(mapSize.height / 2);
+      _spawnRoster(state, _worldBattleRosters.p1Roster, "p1", Math.floor(mapSize.width * 0.2), midY, mapSize.height);
+      _spawnRoster(state, _worldBattleRosters.p2Roster, "p2", Math.floor(mapSize.width * 0.8), midY, mapSize.height);
+    } else if (gameMode === GameMode.CAMPAIGN) {
       _spawnScenarioBattlefieldUnits(state, mapSize.width, mapSize.height, scenarioNum ?? 1);
     } else {
       _spawnBattlefieldStartUnits(state, mapSize.width, mapSize.height);
@@ -2791,6 +3011,54 @@ async function _bootGame(
 
   // Victory screen (overlays game during RESOLVE)
   victoryScreen.init(viewManager, state);
+
+  // World battle play mode: intercept RESOLVE to return to world mode
+  if (_worldBattleRosters) {
+    const rosters = _worldBattleRosters;
+    _worldBattleRosters = null;
+
+    EventBus.on("phaseChanged", ({ phase }) => {
+      if (phase !== GamePhase.RESOLVE) return;
+
+      // Hide the default victory screen
+      victoryScreen.container.visible = false;
+
+      // Count survivors
+      const p1Survivors: Array<{ unitType: string; count: number; hpPerUnit: number }> = [];
+      const p2Survivors: Array<{ unitType: string; count: number; hpPerUnit: number }> = [];
+      for (const pid of ["p1", "p2"]) {
+        const counts = new Map<string, { count: number; totalHp: number }>();
+        for (const unit of state.units.values()) {
+          if (unit.owner !== pid) continue;
+          if (unit.state === UnitState.DIE || unit.hp <= 0) continue;
+          const entry = counts.get(unit.type) ?? { count: 0, totalHp: 0 };
+          entry.count++;
+          entry.totalHp += unit.hp;
+          counts.set(unit.type, entry);
+        }
+        const list = pid === "p1" ? p1Survivors : p2Survivors;
+        for (const [unitType, data] of counts) {
+          list.push({ unitType, count: data.count, hpPerUnit: Math.ceil(data.totalHp / data.count) });
+        }
+      }
+
+      // Map back to attacker/defender
+      const resultData = {
+        winnerId: state.winnerId,
+        attackerSurvivors: rosters.playerIsAttacker ? p1Survivors : p2Survivors,
+        defenderSurvivors: rosters.playerIsAttacker ? p2Survivors : p1Survivors,
+        battleMeta: rosters.battleMeta,
+        playerIsAttacker: rosters.playerIsAttacker,
+      };
+
+      sessionStorage.setItem("worldBattleResult", JSON.stringify(resultData));
+      sessionStorage.setItem("worldBattleReturn", "1");
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    });
+  }
 
   // Campaign victory screen (overlays game during RESOLVE in campaign mode)
   campaignVictoryScreen.init(viewManager, state);
