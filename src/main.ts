@@ -2357,8 +2357,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     viewManager.camera.setMapSize(mapTiles, mapTiles);
     viewManager.camera.setPadding(extent * 0.6);
 
-    // Zoom in 50% more than default, then center on p1's capital
-    viewManager.camera.zoom = viewManager.camera.zoom * 1.5;
+    // Zoom in slightly, then center on p1's capital
+    viewManager.camera.zoom = viewManager.camera.zoom * 1.0;
 
     for (const city of state.cities.values()) {
       if (city.owner === "p1" && city.isCapital) {

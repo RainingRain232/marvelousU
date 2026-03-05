@@ -23,8 +23,8 @@ import { animationManager } from "@view/animation/AnimationManager";
 
 const HEX_SIZE = WorldBalance.HEX_SIZE;
 const ANIM_DURATION = 0.25; // seconds for movement lerp
-const OFFSET_X = 14;
-const OFFSET_Y = -8;
+const OFFSET_X = HEX_SIZE * 0.35;
+const OFFSET_Y = HEX_SIZE * -0.2;
 
 const PLAYER_COLORS: number[] = [
   0x4466cc, // p1 blue
@@ -33,12 +33,14 @@ const PLAYER_COLORS: number[] = [
   0xccaa22, // p4 yellow
 ];
 
+const ICON_SCALE = HEX_SIZE / 32; // Scale all icon elements relative to old hex size
+
 const COUNT_STYLE = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 9,
+  fontSize: 9 * ICON_SCALE,
   fontWeight: "bold",
   fill: 0xffffff,
-  stroke: { color: 0x000000, width: 2 },
+  stroke: { color: 0x000000, width: 2 * ICON_SCALE },
 });
 
 // Glow pulse settings
@@ -214,20 +216,22 @@ export class ArmyView {
     const playerIndex = parseInt(army.owner.replace("p", "")) - 1;
     const color = army.owner === "morgaine" ? 0x8844cc : (PLAYER_COLORS[playerIndex] ?? 0xffffff);
 
+    const sc = ICON_SCALE;
+
     // Boat hull when embarked on water
     if (isEmbarked) {
       const boat = new Graphics();
-      boat.ellipse(0, 6, 12, 5);
+      boat.ellipse(0, 6 * sc, 12 * sc, 5 * sc);
       boat.fill({ color: 0x8B4513, alpha: 0.85 });
-      boat.stroke({ color: 0x5C2D0A, width: 1 });
+      boat.stroke({ color: 0x5C2D0A, width: sc });
       c.addChild(boat);
     }
 
     // Glow effect — drawn behind everything, pulses over time
     const glow = new Graphics();
-    glow.circle(0, 0, 16);
+    glow.circle(0, 0, 16 * sc);
     glow.fill({ color, alpha: 0.4 });
-    glow.circle(0, 0, 12);
+    glow.circle(0, 0, 12 * sc);
     glow.fill({ color: 0xffffff, alpha: 0.15 });
     glow.alpha = 0;
     c.addChild(glow);
@@ -235,36 +239,36 @@ export class ArmyView {
 
     // Shield shape — improved with gradient-like layering
     const shieldShadow = new Graphics();
-    shieldShadow.moveTo(1, -9);
-    shieldShadow.lineTo(9, -5);
-    shieldShadow.lineTo(9, 5);
-    shieldShadow.lineTo(1, 11);
-    shieldShadow.lineTo(-7, 5);
-    shieldShadow.lineTo(-7, -5);
+    shieldShadow.moveTo(1 * sc, -9 * sc);
+    shieldShadow.lineTo(9 * sc, -5 * sc);
+    shieldShadow.lineTo(9 * sc, 5 * sc);
+    shieldShadow.lineTo(1 * sc, 11 * sc);
+    shieldShadow.lineTo(-7 * sc, 5 * sc);
+    shieldShadow.lineTo(-7 * sc, -5 * sc);
     shieldShadow.closePath();
     shieldShadow.fill({ color: 0x000000, alpha: 0.35 });
     c.addChild(shieldShadow);
 
     const shield = new Graphics();
-    shield.moveTo(0, -10);
-    shield.lineTo(8, -6);
-    shield.lineTo(8, 4);
-    shield.lineTo(0, 10);
-    shield.lineTo(-8, 4);
-    shield.lineTo(-8, -6);
+    shield.moveTo(0, -10 * sc);
+    shield.lineTo(8 * sc, -6 * sc);
+    shield.lineTo(8 * sc, 4 * sc);
+    shield.lineTo(0, 10 * sc);
+    shield.lineTo(-8 * sc, 4 * sc);
+    shield.lineTo(-8 * sc, -6 * sc);
     shield.closePath();
     shield.fill({ color });
-    shield.stroke({ color: 0xffffff, width: 1.5, alpha: 0.8 });
+    shield.stroke({ color: 0xffffff, width: 1.5 * sc, alpha: 0.8 });
     c.addChild(shield);
 
     // Inner highlight for depth
     const highlight = new Graphics();
-    highlight.moveTo(0, -7);
-    highlight.lineTo(5, -4);
-    highlight.lineTo(5, 2);
-    highlight.lineTo(0, 6);
-    highlight.lineTo(-5, 2);
-    highlight.lineTo(-5, -4);
+    highlight.moveTo(0, -7 * sc);
+    highlight.lineTo(5 * sc, -4 * sc);
+    highlight.lineTo(5 * sc, 2 * sc);
+    highlight.lineTo(0, 6 * sc);
+    highlight.lineTo(-5 * sc, 2 * sc);
+    highlight.lineTo(-5 * sc, -4 * sc);
     highlight.closePath();
     highlight.fill({ color: 0xffffff, alpha: 0.12 });
     c.addChild(highlight);
@@ -276,12 +280,12 @@ export class ArmyView {
         const frames = animationManager.getFrames(dominantUnit as UnitType, UnitState.IDLE);
         if (frames && frames.length > 0) {
           const preview = new Sprite(frames[0]);
-          const iconSize = 20;
+          const iconSize = 20 * sc;
           const scale = iconSize / Math.max(preview.width, preview.height);
           preview.scale.set(scale);
           preview.anchor.set(0.5, 0.5);
-          preview.x = -14;
-          preview.y = -2;
+          preview.x = -14 * sc;
+          preview.y = -2 * sc;
           c.addChild(preview);
         }
       } catch {
@@ -292,17 +296,17 @@ export class ArmyView {
     // Unit count badge with background
     const total = armyUnitCount(army);
     const badgeBg = new Graphics();
-    badgeBg.circle(10, -8, 7);
+    badgeBg.circle(10 * sc, -8 * sc, 7 * sc);
     badgeBg.fill({ color: 0x000000, alpha: 0.6 });
-    badgeBg.circle(10, -8, 6);
+    badgeBg.circle(10 * sc, -8 * sc, 6 * sc);
     badgeBg.fill({ color });
-    badgeBg.stroke({ color: 0xffffff, width: 1, alpha: 0.8 });
+    badgeBg.stroke({ color: 0xffffff, width: sc, alpha: 0.8 });
     c.addChild(badgeBg);
 
     const countText = new Text({ text: `${total}`, style: COUNT_STYLE });
     countText.anchor.set(0.5, 0.5);
-    countText.x = 10;
-    countText.y = -8;
+    countText.x = 10 * sc;
+    countText.y = -8 * sc;
     c.addChild(countText);
 
     c.position.set(center.x + OFFSET_X, center.y + OFFSET_Y);

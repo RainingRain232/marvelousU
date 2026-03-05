@@ -31,7 +31,7 @@ export const DEFAULT_WORLD_SETTINGS: WorldGameSettings = {
 export const WorldBalance = {
   // -- Rendering --
   /** Hex size in pixels (center to corner). */
-  HEX_SIZE: 32,
+  HEX_SIZE: 192,
 
   // -- City --
   /** Hexes around city that count as territory at population 1. */
