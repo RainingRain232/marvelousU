@@ -10,6 +10,7 @@ import type { WorldArmy } from "@world/state/WorldArmy";
 import { armyUnitCount } from "@world/state/WorldArmy";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { IMPROVEMENT_DEFINITIONS, type ImprovementType } from "@world/config/ResourceDefs";
+import { UnitType } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -63,6 +64,8 @@ export class ArmyPanel {
   onFoundCity: ((armyId: string) => void) | null = null;
   /** Check function for city founding eligibility. */
   canFoundCityCheck: ((army: WorldArmy, state: WorldState) => boolean) | null = null;
+  /** Called when the player wants to conjure with a mage in the army. */
+  onConjure: ((armyId: string) => void) | null = null;
 
   // -----------------------------------------------------------------------
   // Lifecycle
@@ -234,6 +237,15 @@ export class ArmyPanel {
       }
     }
 
+    // Conjure button (if army has a national mage)
+    if (_armyHasMage(army)) {
+      const conjBtn = _makeButton("CONJURE", 12, y, PANEL_W - 24, 26, () => {
+        this.onConjure?.(army.id);
+      }, 0x332244, 0x7744aa);
+      this._contentContainer.addChild(conjBtn);
+      y += 32;
+    }
+
     // Position panel on left side, below HUD
     this._contentContainer.x = 10;
     this._contentContainer.y = 64;
@@ -253,6 +265,8 @@ function _makeButton(
   w: number,
   h: number,
   onClick: () => void,
+  fillColor = 0x222244,
+  strokeColor = BORDER,
 ): Container {
   const btn = new Container();
   btn.eventMode = "static";
@@ -260,8 +274,8 @@ function _makeButton(
 
   const bg = new Graphics();
   bg.roundRect(0, 0, w, h, 4);
-  bg.fill({ color: 0x222244 });
-  bg.stroke({ color: BORDER, width: 1 });
+  bg.fill({ color: fillColor });
+  bg.stroke({ color: strokeColor, width: 1 });
   btn.addChild(bg);
 
   const txt = new Text({ text: label, style: BTN_STYLE });
@@ -273,6 +287,27 @@ function _makeButton(
   btn.on("pointerdown", onClick);
 
   return btn;
+}
+
+const NATIONAL_MAGE_TYPES: string[] = [
+  UnitType.NATIONAL_MAGE_T1, UnitType.NATIONAL_MAGE_T2,
+  UnitType.NATIONAL_MAGE_T3, UnitType.NATIONAL_MAGE_T4,
+  UnitType.NATIONAL_MAGE_T5, UnitType.NATIONAL_MAGE_T6,
+  UnitType.NATIONAL_MAGE_T7,
+];
+
+function _armyHasMage(army: WorldArmy): boolean {
+  return army.units.some((u) => NATIONAL_MAGE_TYPES.includes(u.unitType));
+}
+
+/** Get the highest national mage tier in an army (0 if none). */
+export function getArmyMageTier(army: WorldArmy): number {
+  let maxTier = 0;
+  for (const u of army.units) {
+    const idx = NATIONAL_MAGE_TYPES.indexOf(u.unitType);
+    if (idx >= 0 && u.count > 0) maxTier = Math.max(maxTier, idx + 1);
+  }
+  return maxTier;
 }
 
 /** Singleton instance. */

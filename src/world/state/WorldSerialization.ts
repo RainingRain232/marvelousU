@@ -28,6 +28,7 @@ interface SerializedWorldPlayer {
   leaderId: string | null;
   gold: number;
   food: number;
+  mana: number;
   isAI: boolean;
   isAlive: boolean;
   armoryItems: string[];
@@ -77,6 +78,7 @@ function serializeWorldState(state: WorldState): SerializedWorldState {
       leaderId: p.leaderId,
       gold: p.gold,
       food: p.food,
+      mana: p.mana,
       isAI: p.isAI,
       isAlive: p.isAlive,
       armoryItems: [...p.armoryItems],
@@ -137,6 +139,7 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
       leaderId: sp.leaderId as LeaderId | null,
       gold: sp.gold,
       food: sp.food,
+      mana: sp.mana ?? 0,
       isAI: sp.isAI,
       isAlive: sp.isAlive,
       armoryItems: [...sp.armoryItems],

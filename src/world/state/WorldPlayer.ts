@@ -14,6 +14,7 @@ export interface WorldPlayer {
   leaderId: LeaderId | null;
   gold: number;
   food: number;
+  mana: number;
   isAI: boolean;
   isAlive: boolean;
 
@@ -63,6 +64,7 @@ export function createWorldPlayer(
     leaderId,
     gold: startingGold,
     food: startingFood,
+    mana: 0,
     isAI,
     isAlive: true,
     armoryItems,

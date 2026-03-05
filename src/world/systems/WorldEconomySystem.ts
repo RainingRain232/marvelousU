@@ -28,6 +28,7 @@ export function processEconomy(state: WorldState, playerId: string): void {
     const yields = calculateCityYields(city, state);
     player.gold += yields.gold;
     player.food += yields.food;
+    player.mana += yields.mana;
 
     // Food consumption
     const consumed = city.population * WorldBalance.FOOD_PER_POPULATION;
@@ -82,6 +83,8 @@ export interface CityYields {
   gold: number;
   food: number;
   production: number;
+  mana: number;
+  science: number;
 }
 
 /** Calculate per-turn yields for a city from worked tiles + buildings. */
@@ -92,6 +95,8 @@ export function calculateCityYields(
   let gold = WorldBalance.BASE_GOLD_INCOME;
   let food = 0;
   let production = WorldBalance.BASE_PRODUCTION;
+  let mana = 0;
+  let science = 0;
 
   // Tile yields
   for (const hex of city.workedTiles) {
@@ -130,8 +135,10 @@ export function calculateCityYields(
       gold += def.goldBonus;
       food += def.foodBonus;
       production += def.productionBonus;
+      mana += def.manaBonus;
+      science += def.scienceBonus;
     }
   }
 
-  return { gold, food, production };
+  return { gold, food, production, mana, science };
 }

@@ -109,8 +109,10 @@ import { hexSpiral, hexNeighbors, hexToPixel } from "@world/hex/HexCoord";
 import { cityView } from "@view/world/CityView";
 import { cityPanel } from "@view/world/ui/CityPanel";
 import { startConstruction, queueRecruitment, deployArmy, foundCity, canFoundCity } from "@world/systems/CitySystem";
+import { WorldBuildingType } from "@world/config/WorldBuildingDefs";
 import { armyView } from "@view/world/ArmyView";
 import { armyPanel } from "@view/world/ui/ArmyPanel";
+import { conjurePanel } from "@view/world/ui/ConjurePanel";
 import { moveArmy, getArmyReachableHexes, detectCollisions } from "@world/systems/ArmySystem";
 import { researchScreen } from "@view/world/ui/ResearchScreen";
 import { setActiveResearch, setActiveMagicResearch } from "@world/systems/ResearchSystem";
@@ -1662,6 +1664,9 @@ async function _bootWorldGame(
     const cityId = nextId(state, "city");
     const city = createWorldCity(cityId, pid, pos, true);
 
+    // Capital starts with a Castle
+    city.buildings.push({ type: WorldBuildingType.CASTLE as any, completedTurn: 0 });
+
     // Assign territory (radius 2 around city)
     const territoryHexes = hexSpiral(pos, WorldBalance.BASE_CITY_TERRITORY_RADIUS);
     city.territory = territoryHexes.filter((h) => grid.hasTile(h.q, h.r));
@@ -1699,6 +1704,20 @@ async function _bootWorldGame(
         { unitType: UnitType.SWORDSMAN, count: 4, hpPerUnit: 100 },
         { unitType: UnitType.ARCHER, count: 2, hpPerUnit: 100 },
       ];
+
+      // Add a national mage if the race supports magic (up to tier 2)
+      const playerObj = state.players.get(pid);
+      if (playerObj) {
+        const raceDef = getRace(playerObj.raceId);
+        if (raceDef && raceDef.tiers && raceDef.tiers.magic >= 2) {
+          const mageDef = UNIT_DEFINITIONS[UnitType.NATIONAL_MAGE_T2];
+          fieldUnits.push({ unitType: UnitType.NATIONAL_MAGE_T2, count: 1, hpPerUnit: mageDef.hp });
+        } else if (raceDef && raceDef.tiers && raceDef.tiers.magic >= 1) {
+          const mageDef = UNIT_DEFINITIONS[UnitType.NATIONAL_MAGE_T1];
+          fieldUnits.push({ unitType: UnitType.NATIONAL_MAGE_T1, count: 1, hpPerUnit: mageDef.hp });
+        }
+      }
+
       const fieldArmy = createWorldArmy(fieldId, pid, fieldHex, fieldUnits, false);
       state.armies.set(fieldId, fieldArmy);
       const fieldTile = grid.getTile(fieldHex.q, fieldHex.r);
@@ -1806,6 +1825,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   armyPanel.init(viewManager);
   armyPanel.onClose = () => {
     armyPanel.hide();
+    conjurePanel.hide();
     worldMapRenderer.clearHighlights();
   };
   armyPanel.onDeploy = (garrisonId) => {
@@ -1848,6 +1868,48 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       updateVisibility(state, army.owner);
       armyPanel.hide();
       refreshWorld();
+    }
+  };
+
+  // Initialize conjure panel
+  conjurePanel.init(viewManager);
+  conjurePanel.onClose = () => conjurePanel.hide();
+  conjurePanel.onCast = (spell, army) => {
+    const player = state.players.get(army.owner);
+    if (!player) return;
+    const manaCost = spell.manaCost ?? 0;
+    if (player.mana < manaCost) return;
+    player.mana -= manaCost;
+
+    // Add summoned unit to army
+    if (spell.summonUnit) {
+      const unitDef = UNIT_DEFINITIONS[spell.summonUnit as keyof typeof UNIT_DEFINITIONS];
+      const existing = army.units.find((u) => u.unitType === spell.summonUnit);
+      if (existing) {
+        existing.count++;
+      } else {
+        army.units.push({
+          unitType: spell.summonUnit,
+          count: 1,
+          hpPerUnit: unitDef?.hp ?? 100,
+        });
+      }
+    }
+
+    worldEventLog.addEvent(`Conjured ${spell.summonUnit ?? "a creature"}!`, 0xcc88ff);
+    conjurePanel.show(army, state); // refresh panel
+    armyPanel.show(army, state); // refresh army panel
+    worldHUD.update(state);
+    refreshWorld();
+  };
+
+  armyPanel.onConjure = (armyId) => {
+    const army = state.armies.get(armyId);
+    if (!army) return;
+    if (conjurePanel.isVisible) {
+      conjurePanel.hide();
+    } else {
+      conjurePanel.show(army, state);
     }
   };
 

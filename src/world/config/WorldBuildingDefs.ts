@@ -14,6 +14,7 @@ import { BuildingType, UnitType } from "@/types";
 
 /** Civ-style building identifiers. These extend the concept of BuildingType. */
 export enum WorldBuildingType {
+  CASTLE = "castle",
   GRANARY = "granary",
   LIBRARY = "library",
   MARKETPLACE = "marketplace",
@@ -36,6 +37,8 @@ export interface WorldBuildingDef {
   goldBonus: number;
   foodBonus: number;
   productionBonus: number;
+  manaBonus: number;
+  scienceBonus: number;
   /** Descriptive effect text. */
   effect: string;
   /** Unit types this building unlocks for recruitment (empty = none). */
@@ -49,6 +52,19 @@ export interface WorldBuildingDef {
 // ---------------------------------------------------------------------------
 
 export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
+  [WorldBuildingType.CASTLE]: {
+    type: WorldBuildingType.CASTLE,
+    name: "Castle",
+    productionCost: 0,
+    goldBonus: 1,
+    foodBonus: 0,
+    productionBonus: 0,
+    manaBonus: 1,
+    scienceBonus: 1,
+    effect: "+1 gold, +1 mana, +1 science/turn",
+    unlocksUnits: [],
+    researchRequired: null,
+  },
   [WorldBuildingType.GRANARY]: {
     type: WorldBuildingType.GRANARY,
     name: "Granary",
@@ -56,6 +72,8 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 3,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "+3 food/turn",
     unlocksUnits: [],
     researchRequired: null,
@@ -67,6 +85,8 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "-1 turn from research",
     unlocksUnits: [],
     researchRequired: "scholarship",
@@ -78,6 +98,8 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 5,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "+5 gold/turn",
     unlocksUnits: [],
     researchRequired: null,
@@ -89,6 +111,8 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "+50% city defense in sieges",
     unlocksUnits: [],
     researchRequired: null,
@@ -100,6 +124,8 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 3,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "+3 production/turn",
     unlocksUnits: [],
     researchRequired: null,
@@ -111,6 +137,8 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "+50% population growth speed",
     unlocksUnits: [],
     researchRequired: "industrialization",
@@ -122,6 +150,8 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "Recruited units start veteran",
     unlocksUnits: [],
     researchRequired: "industrialization",
@@ -141,6 +171,8 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "Train melee units",
     unlocksUnits: [UnitType.SWORDSMAN, UnitType.DEFENDER, UnitType.PIKEMAN],
     researchRequired: null,
@@ -152,6 +184,8 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "Train ranged units",
     unlocksUnits: [UnitType.ARCHER, UnitType.CROSSBOWMAN],
     researchRequired: null,
@@ -163,6 +197,8 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "Train cavalry units",
     unlocksUnits: [UnitType.KNIGHT, UnitType.QUESTING_KNIGHT],
     researchRequired: "horsemanship",
@@ -174,6 +210,8 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "Train siege units",
     unlocksUnits: [UnitType.CATAPULT],
     researchRequired: "engineering",
@@ -185,6 +223,8 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "Train mage units",
     unlocksUnits: [UnitType.STORM_MAGE],
     researchRequired: "arcane_study",
@@ -196,6 +236,8 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "Train creature units",
     unlocksUnits: [UnitType.TROLL],
     researchRequired: "conjuration",
@@ -207,6 +249,8 @@ export const GAME_BUILDING_WORLD_DEFS: Record<string, WorldBuildingDef> = {
     goldBonus: 0,
     foodBonus: 0,
     productionBonus: 0,
+    manaBonus: 0,
+    scienceBonus: 0,
     effect: "Train holy units",
     unlocksUnits: [UnitType.MONK],
     researchRequired: "divine_blessing",

@@ -51,6 +51,7 @@ export class WorldHUD {
   private _phaseText!: Text;
   private _goldText!: Text;
   private _foodText!: Text;
+  private _manaText!: Text;
   private _endTurnBtn!: Container;
   private _endTurnBg!: Graphics;
   private _screenW = 800;
@@ -95,11 +96,13 @@ export class WorldHUD {
     // Calculate income per turn
     let goldIncome = 0;
     let foodIncome = 0;
+    let manaIncome = 0;
     for (const city of state.cities.values()) {
       if (city.owner !== player.id) continue;
       const yields = calculateCityYields(city, state);
       goldIncome += yields.gold;
       foodIncome += yields.food - city.population * WorldBalance.FOOD_PER_POPULATION;
+      manaIncome += yields.mana;
     }
     // Deduct army maintenance
     let totalUnits = 0;
@@ -111,8 +114,10 @@ export class WorldHUD {
 
     const goldSign = goldIncome >= 0 ? "+" : "";
     const foodSign = foodIncome >= 0 ? "+" : "";
+    const manaSign = manaIncome >= 0 ? "+" : "";
     this._goldText.text = `Gold: ${player.gold} (${goldSign}${goldIncome})`;
     this._foodText.text = `Food: ${Math.floor(player.food)} (${foodSign}${Math.floor(foodIncome)})`;
+    this._manaText.text = `Mana: ${player.mana} (${manaSign}${manaIncome})`;
 
     // Only show End Turn button during player turn
     this._endTurnBtn.visible = state.phase === WorldPhase.PLAYER_TURN;
@@ -132,7 +137,7 @@ export class WorldHUD {
 
     // Background
     const bg = new Graphics();
-    bg.roundRect(0, 0, 320, 44, 6);
+    bg.roundRect(0, 0, 320, 62, 6);
     bg.fill({ color: 0x000000, alpha: 0.6 });
     bar.addChild(bg);
 
@@ -159,6 +164,14 @@ export class WorldHUD {
     this._foodText.x = 140;
     this._foodText.y = 24;
     bar.addChild(this._foodText);
+
+    // Mana
+    this._manaText = new Text({ text: "Mana: 0", style: new TextStyle({
+      fontFamily: "monospace", fontSize: 15, fontWeight: "bold", fill: 0x8888ff,
+    }) });
+    this._manaText.x = 140;
+    this._manaText.y = 44;
+    bar.addChild(this._manaText);
 
     bar.x = 10;
     bar.y = 10;
