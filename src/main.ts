@@ -114,7 +114,6 @@ import { armyPanel } from "@view/world/ui/ArmyPanel";
 import { moveArmy, getArmyReachableHexes, detectCollisions } from "@world/systems/ArmySystem";
 import { researchScreen } from "@view/world/ui/ResearchScreen";
 import { setActiveResearch, setActiveMagicResearch } from "@world/systems/ResearchSystem";
-import { researchSliderScreen } from "@view/world/ui/ResearchSliderScreen";
 import { executeAITurn } from "@world/systems/WorldAI";
 import { updateVisibility } from "@world/systems/FogOfWarSystem";
 import {
@@ -1450,7 +1449,7 @@ function _showWorldInfoMenu(state: WorldState): void {
 
   // Card panel
   const cardW = 260;
-  const cardH = 44 + 44 * 11 + 10; // title + 11 buttons + padding
+  const cardH = 44 + 44 * 10 + 10; // title + 10 buttons + padding
   const cardX = (vm.screenWidth - cardW) / 2;
   const cardY = (vm.screenHeight - cardH) / 2;
 
@@ -1559,12 +1558,6 @@ function _showWorldInfoMenu(state: WorldState): void {
     magicScreen.onBack = () => magicScreen.hide();
     magicScreen.onNext = null;
     magicScreen.show(player.raceId);
-  });
-  btnY += BTN_STEP;
-
-  addBtn("RESEARCH SPLIT", btnY, () => {
-    overlay.destroy({ children: true });
-    researchSliderScreen.show(player);
   });
   btnY += BTN_STEP;
 
@@ -1771,7 +1764,6 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       if (sx <= 260 && sy >= 64) return true;
     }
     if (researchScreen.isVisible) return true;
-    if (researchSliderScreen.isVisible) return true;
     if (worldVictoryScreen.isVisible) return true;
     if (worldScoreScreen.isVisible) return true;
     if (worldNationalScreen.isVisible) return true;
@@ -1873,9 +1865,6 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     setActiveMagicResearch(player, school, tier);
     researchScreen.show(state); // refresh
   };
-
-  // Initialize research slider
-  researchSliderScreen.init(viewManager);
 
   // Initialize HUD
   worldHUD.init(viewManager);
