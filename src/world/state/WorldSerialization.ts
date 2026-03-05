@@ -8,6 +8,7 @@ import type { WorldPlayer } from "@world/state/WorldPlayer";
 import type { WorldCity } from "@world/state/WorldCity";
 import type { WorldArmy } from "@world/state/WorldArmy";
 import type { WorldCamp } from "@world/state/WorldCamp";
+import type { NeutralBuilding } from "@world/state/NeutralBuilding";
 import type { PendingBattle } from "@world/state/WorldState";
 import type { RaceId } from "@sim/config/RaceDefs";
 import type { LeaderId } from "@sim/config/LeaderDefs";
@@ -57,6 +58,7 @@ interface SerializedWorldState {
   armies: Record<string, WorldArmy>;
   players: Record<string, SerializedWorldPlayer>;
   camps: Record<string, WorldCamp>;
+  neutralBuildings: Record<string, NeutralBuilding>;
   pendingBattles: PendingBattle[];
   winnerId: string | null;
   swordHex: { q: number; r: number } | null;
@@ -110,6 +112,9 @@ function serializeWorldState(state: WorldState): SerializedWorldState {
   const camps: Record<string, WorldCamp> = {};
   for (const [id, c] of state.camps) camps[id] = c;
 
+  const neutralBuildings: Record<string, NeutralBuilding> = {};
+  for (const [id, nb] of state.neutralBuildings) neutralBuildings[id] = nb;
+
   return {
     version: 1,
     turn: state.turn,
@@ -122,6 +127,7 @@ function serializeWorldState(state: WorldState): SerializedWorldState {
     armies,
     players,
     camps,
+    neutralBuildings,
     pendingBattles: [...state.pendingBattles],
     winnerId: state.winnerId,
     swordHex: state.swordHex,
@@ -177,6 +183,11 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
   const camps = new Map<string, WorldCamp>();
   for (const [id, c] of Object.entries(data.camps)) camps.set(id, c);
 
+  const neutralBuildings = new Map<string, NeutralBuilding>();
+  if (data.neutralBuildings) {
+    for (const [id, nb] of Object.entries(data.neutralBuildings)) neutralBuildings.set(id, nb);
+  }
+
   return {
     turn: data.turn,
     currentPlayerIndex: data.currentPlayerIndex,
@@ -187,6 +198,7 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
     armies,
     players,
     camps,
+    neutralBuildings,
     pendingBattles: [...data.pendingBattles],
     winnerId: data.winnerId,
     swordHex: data.swordHex ?? null,

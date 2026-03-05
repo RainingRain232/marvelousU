@@ -19,7 +19,12 @@ import { TERRAIN_DEFINITIONS, TerrainType } from "@world/config/TerrainDefs";
 import { WorldBalance } from "@world/config/WorldConfig";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
 import type { WorldCamp } from "@world/state/WorldCamp";
+import type { NeutralBuilding } from "@world/state/NeutralBuilding";
 import { RESOURCE_DEFINITIONS, IMPROVEMENT_DEFINITIONS } from "@world/config/ResourceDefs";
+import { FirepitRenderer } from "@view/entities/FirepitRenderer";
+import { FarmRenderer } from "@view/entities/FarmRenderer";
+import { MillRenderer } from "@view/entities/MillRenderer";
+import { TowerRenderer } from "@view/entities/TowerRenderer";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -68,6 +73,13 @@ export class WorldMapRenderer {
   private _fakeSwordHexes: HexCoord[] = [];
   private _tickerCb: (() => void) | null = null;
 
+  // Camp firepit renderers (animated)
+  private _campFirepits: FirepitRenderer[] = [];
+
+  // Neutral building renderers (animated)
+  private _neutralBuildingContainer = new Container();
+  private _neutralBuildingRenderers: { renderer: FirepitRenderer | FarmRenderer | MillRenderer | TowerRenderer; tick: (dt: number) => void }[] = [];
+
   /** Currently hovered hex (null = none). */
   private _hoveredHex: HexCoord | null = null;
 
@@ -91,6 +103,7 @@ export class WorldMapRenderer {
     this._container.addChild(this._waterContainer);
     this._container.addChild(this._grassContainer);
     this._container.addChild(this._campContainer);
+    this._container.addChild(this._neutralBuildingContainer);
     this._container.addChild(this._swordContainer);
     this._container.addChild(this._highlightContainer);
     this._container.addChild(this._borderContainer);
@@ -116,6 +129,10 @@ export class WorldMapRenderer {
         this._drawGrassOverlay();
       }
       if (this._swordHex || this._fakeSwordHexes.length > 0) this._drawSwordFlicker();
+      // Animate camp firepits
+      for (const fp of this._campFirepits) fp.tick(dt);
+      // Animate neutral building renderers
+      for (const entry of this._neutralBuildingRenderers) entry.tick(dt);
     };
     vm.app.ticker.add(cb);
     this._tickerCb = cb;
@@ -359,9 +376,13 @@ export class WorldMapRenderer {
     this._borderContainer.removeChildren();
   }
 
-  /** Draw camp icons on the map. Only shows uncleared camps in visible/explored tiles. */
+  /** Draw camp icons on the map using firepit animation. Only shows uncleared camps in visible/explored tiles. */
   drawCamps(camps: Iterable<WorldCamp>, localPlayer?: WorldPlayer): void {
     this._campContainer.removeChildren();
+    this._campFirepits = [];
+
+    // FirepitRenderer is 2×TS (128×128). Scale to fit hex.
+    const FIREPIT_SCALE = (HEX_SIZE * 2 * 0.7) / 128;
 
     for (const camp of camps) {
       if (camp.cleared) continue;
@@ -373,31 +394,115 @@ export class WorldMapRenderer {
       }
 
       const center = hexToPixel(camp.position, HEX_SIZE);
-      const g = new Graphics();
 
-      // Tent icon — crossed swords with tent body
-      const s = HEX_SIZE * 0.35;
+      // Hex mask so the firepit doesn't overflow
+      const wrapper = new Container();
+      const mask = new Graphics();
+      const corners = hexCorners(center, HEX_SIZE - 2);
+      mask.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < corners.length; i++) mask.lineTo(corners[i].x, corners[i].y);
+      mask.closePath();
+      mask.fill({ color: 0xffffff });
+      wrapper.addChild(mask);
+      wrapper.mask = mask;
 
-      // Tent body (triangle)
-      g.moveTo(center.x, center.y - s);
-      g.lineTo(center.x - s * 0.8, center.y + s * 0.5);
-      g.lineTo(center.x + s * 0.8, center.y + s * 0.5);
-      g.closePath();
+      const fp = new FirepitRenderer();
+      fp.container.scale.set(FIREPIT_SCALE);
+      fp.container.position.set(
+        center.x - 64 * FIREPIT_SCALE,
+        center.y - 64 * FIREPIT_SCALE + HEX_SIZE * 0.1,
+      );
+      wrapper.addChild(fp.container);
+      this._campFirepits.push(fp);
 
-      // Color by tier
+      // Tier indicator — small colored diamond
+      const s = HEX_SIZE * 0.15;
       const tierColor = camp.tier === 1 ? 0xaa7744 : camp.tier === 2 ? 0xcc5533 : 0xcc2222;
-      g.fill({ color: tierColor, alpha: 0.9 });
-      g.stroke({ color: 0x000000, width: s * 0.06, alpha: 0.6 });
+      const badge = new Graphics();
+      badge.moveTo(center.x, center.y - HEX_SIZE * 0.75 - s);
+      badge.lineTo(center.x + s * 0.7, center.y - HEX_SIZE * 0.75);
+      badge.lineTo(center.x, center.y - HEX_SIZE * 0.75 + s);
+      badge.lineTo(center.x - s * 0.7, center.y - HEX_SIZE * 0.75);
+      badge.closePath();
+      badge.fill({ color: tierColor, alpha: 0.9 });
+      badge.stroke({ color: 0x000000, width: 1, alpha: 0.6 });
 
-      // Crossed swords
-      g.moveTo(center.x - s * 0.6, center.y - s * 0.8);
-      g.lineTo(center.x + s * 0.6, center.y + s * 0.3);
-      g.stroke({ color: 0xdddddd, width: s * 0.06, alpha: 0.8 });
-      g.moveTo(center.x + s * 0.6, center.y - s * 0.8);
-      g.lineTo(center.x - s * 0.6, center.y + s * 0.3);
-      g.stroke({ color: 0xdddddd, width: s * 0.06, alpha: 0.8 });
+      this._campContainer.addChild(wrapper);
+      this._campContainer.addChild(badge);
+    }
+  }
 
-      this._campContainer.addChild(g);
+  /** Draw neutral buildings (farms, mills, towers) on the map. */
+  drawNeutralBuildings(buildings: Iterable<NeutralBuilding>, localPlayer?: WorldPlayer): void {
+    this._neutralBuildingContainer.removeChildren();
+    this._neutralBuildingRenderers = [];
+
+    const FARM_SCALE = (HEX_SIZE * 2 * 0.7) / 128;
+    const MILL_SCALE = (HEX_SIZE * 2 * 0.7) / 128;
+    // Tower is 64×64 natively. Use same scale as castle (256×256) to keep proportions.
+    const TOWER_SCALE = (HEX_SIZE * 2 * 0.7) / 256;
+
+    for (const building of buildings) {
+      // Hide in fog
+      if (localPlayer) {
+        const key = hexKey(building.position.q, building.position.r);
+        if (!localPlayer.exploredTiles.has(key)) continue;
+      }
+
+      const center = hexToPixel(building.position, HEX_SIZE);
+
+      // Hex mask
+      const wrapper = new Container();
+      const mask = new Graphics();
+      const corners = hexCorners(center, HEX_SIZE - 2);
+      mask.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < corners.length; i++) mask.lineTo(corners[i].x, corners[i].y);
+      mask.closePath();
+      mask.fill({ color: 0xffffff });
+      wrapper.addChild(mask);
+      wrapper.mask = mask;
+
+      const ownerStr = building.owner;
+
+      if (building.type === "farm") {
+        const fr = new FarmRenderer(ownerStr);
+        fr.container.scale.set(FARM_SCALE);
+        fr.container.position.set(
+          center.x - 64 * FARM_SCALE,
+          center.y - 64 * FARM_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(fr.container);
+        this._neutralBuildingRenderers.push({ renderer: fr, tick: (dt) => fr.tick(dt, 0 as any) });
+      } else if (building.type === "mill") {
+        const mr = new MillRenderer(ownerStr);
+        mr.container.scale.set(MILL_SCALE);
+        mr.container.position.set(
+          center.x - 32 * MILL_SCALE,
+          center.y - 64 * MILL_SCALE + HEX_SIZE * 0.1,
+        );
+        wrapper.addChild(mr.container);
+        this._neutralBuildingRenderers.push({ renderer: mr, tick: (dt) => mr.tick(dt, 0 as any) });
+      } else if (building.type === "tower") {
+        const tr = new TowerRenderer(ownerStr);
+        tr.container.scale.set(TOWER_SCALE);
+        tr.container.position.set(
+          center.x - 32 * TOWER_SCALE,
+          center.y - 32 * TOWER_SCALE,
+        );
+        wrapper.addChild(tr.container);
+        this._neutralBuildingRenderers.push({ renderer: tr, tick: (dt) => tr.tick(dt, 0 as any) });
+      }
+
+      // Gold income badge
+      const badge = new Graphics();
+      const bx = center.x + HEX_SIZE * 0.45;
+      const by = center.y - HEX_SIZE * 0.65;
+      badge.circle(bx, by, HEX_SIZE * 0.1);
+      badge.fill({ color: 0xffcc00, alpha: 0.9 });
+      badge.stroke({ color: 0x886600, width: 1 });
+
+      this._neutralBuildingContainer.addChild(wrapper);
+      this._neutralBuildingContainer.addChild(badge);
     }
   }
 

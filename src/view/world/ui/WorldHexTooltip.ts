@@ -252,6 +252,27 @@ export class WorldHexTooltip {
       }
     }
 
+    // Neutral building
+    if (tile.neutralBuildingId && isCurrentlyVisible) {
+      const nb = this._state.neutralBuildings.get(tile.neutralBuildingId);
+      if (nb) {
+        const typeLabel = nb.type === "farm" ? "Farm" : nb.type === "mill" ? "Mill" : "Tower";
+        const ownerLabel = nb.captured ? (nb.owner === "p1" ? " (Yours)" : ` (${nb.owner})`) : " (Neutral)";
+        const nbText = new Text({
+          text: `${typeLabel}${ownerLabel} +${nb.goldIncome} gold/turn`,
+          style: new TextStyle({
+            fontFamily: "monospace",
+            fontSize: 10,
+            fill: nb.captured ? 0x44cc44 : 0xffaa44,
+          }),
+        });
+        nbText.x = 8;
+        nbText.y = y;
+        this._textContainer.addChild(nbText);
+        y += 14;
+      }
+    }
+
     // Draw background
     this._bg.clear();
     this._bg.roundRect(0, 0, TOOLTIP_W, y + 6, 4);

@@ -28,6 +28,8 @@ export interface HexTile {
   resource: ResourceType | null;
   /** Player-built improvement on this hex (null = none). */
   improvement: ImprovementType | null;
+  /** Neutral building on this hex (null = none). */
+  neutralBuildingId: string | null;
 }
 
 // ---------------------------------------------------------------------------

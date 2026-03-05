@@ -9,6 +9,8 @@ import { HexGrid, type HexTile } from "@world/hex/HexGrid";
 import { TerrainType, TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 import type { WorldGameSettings } from "@world/config/WorldConfig";
 import { createWorldCamp, type WorldCamp } from "@world/state/WorldCamp";
+import { createNeutralBuilding, type NeutralBuilding } from "@world/state/NeutralBuilding";
+import type { ArmyUnit } from "@world/state/WorldArmy";
 import { RESOURCE_DEFINITIONS } from "@world/config/ResourceDefs";
 
 // ---------------------------------------------------------------------------
@@ -150,6 +152,7 @@ export function generateWorldMap(settings: WorldGameSettings): HexGrid {
       campId: null,
       resource: null,
       improvement: null,
+      neutralBuildingId: null,
     };
     grid.setTile(tile);
   }
@@ -427,4 +430,295 @@ export function placeCamps(
   }
 
   return camps;
+}
+
+// ---------------------------------------------------------------------------
+// Neutral buildings placement (farms, mills, towers)
+// ---------------------------------------------------------------------------
+
+/** Random defenders for a neutral building based on tier (1-6). */
+function _neutralBuildingDefenders(tier: number, _rng: () => number): ArmyUnit[] {
+  // Tier 1-4: random small armies for farms
+  // Tier 5: mill army
+  // Tier 6: tower army
+  switch (tier) {
+    case 1:
+      return [{ unitType: "swordsman", count: 2, hpPerUnit: 100 }];
+    case 2:
+      return [
+        { unitType: "swordsman", count: 3, hpPerUnit: 100 },
+        { unitType: "archer", count: 1, hpPerUnit: 100 },
+      ];
+    case 3:
+      return [
+        { unitType: "swordsman", count: 4, hpPerUnit: 100 },
+        { unitType: "archer", count: 2, hpPerUnit: 100 },
+      ];
+    case 4:
+      return [
+        { unitType: "swordsman", count: 5, hpPerUnit: 100 },
+        { unitType: "archer", count: 3, hpPerUnit: 100 },
+        { unitType: "knight", count: 1, hpPerUnit: 100 },
+      ];
+    case 5:
+      return [
+        { unitType: "swordsman", count: 6, hpPerUnit: 100 },
+        { unitType: "archer", count: 4, hpPerUnit: 100 },
+        { unitType: "knight", count: 2, hpPerUnit: 100 },
+      ];
+    case 6:
+      return [
+        { unitType: "swordsman", count: 8, hpPerUnit: 100 },
+        { unitType: "archer", count: 5, hpPerUnit: 100 },
+        { unitType: "knight", count: 3, hpPerUnit: 100 },
+        { unitType: "crossbowman", count: 2, hpPerUnit: 100 },
+      ];
+    default:
+      return [{ unitType: "swordsman", count: 2, hpPerUnit: 100 }];
+  }
+}
+
+/**
+ * Place neutral farms, mills, and towers on the map.
+ *
+ * Farms: ~10% of grassland tiles, spawned in clusters of 1-2 adjacent tiles.
+ *        Each farm cluster has a 50% chance of an adjacent mill.
+ *        Farms are defended by random t1-t4 armies, mills by t5.
+ *
+ * Towers: ~10% of other (non-grassland, non-water, non-mountain) tiles.
+ *         Defended by t6 armies and give 2 gold.
+ */
+export function placeNeutralBuildings(
+  grid: HexGrid,
+  playerStarts: HexCoord[],
+  neutralCityPositions: HexCoord[],
+  seed: number,
+): NeutralBuilding[] {
+  const rng = mulberry32(seed + 55555);
+  const minDistFromStart = 4;
+  const buildings: NeutralBuilding[] = [];
+  const usedTiles = new Set<string>();
+
+  // Ensure grassland near player starts and neutral cities so farms/mills can spawn
+  const allCityPositions = [...playerStarts, ...neutralCityPositions];
+  for (const pos of allCityPositions) {
+    const nearby = hexSpiral(pos, 5);
+    let convertedCount = 0;
+    for (const h of nearby) {
+      const tile = grid.getTile(h.q, h.r);
+      if (!tile) continue;
+      if (tile.cityId || tile.campId) continue;
+      const dist = hexDistance(h, pos);
+      if (dist < 3) continue; // don't convert tiles right next to city
+      if (tile.terrain === TerrainType.PLAINS || tile.terrain === TerrainType.FOREST) {
+        if (rng() < 0.3 && convertedCount < 4) {
+          tile.terrain = TerrainType.GRASSLAND;
+          convertedCount++;
+        }
+      }
+    }
+  }
+
+  // Collect grassland tiles for farms/mills
+  const grasslandTiles: HexTile[] = [];
+  // Collect other eligible tiles for towers
+  const otherTiles: HexTile[] = [];
+
+  for (const tile of grid.allTiles()) {
+    // Skip occupied tiles
+    if (tile.cityId || tile.campId) continue;
+
+    // Skip tiles too close to player starts
+    let tooClose = false;
+    for (const ps of playerStarts) {
+      if (hexDistance(tile, ps) < minDistFromStart) {
+        tooClose = true;
+        break;
+      }
+    }
+    if (tooClose) continue;
+
+    if (tile.terrain === TerrainType.GRASSLAND) {
+      grasslandTiles.push(tile);
+    } else if (
+      tile.terrain !== TerrainType.WATER &&
+      tile.terrain !== TerrainType.MOUNTAINS &&
+      isFinite(TERRAIN_DEFINITIONS[tile.terrain].movementCost)
+    ) {
+      otherTiles.push(tile);
+    }
+  }
+
+  // Shuffle grassland tiles
+  for (let i = grasslandTiles.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [grasslandTiles[i], grasslandTiles[j]] = [grasslandTiles[j], grasslandTiles[i]];
+  }
+
+  // --- Guaranteed farms & mills near each player start ---
+  // Ensure at least 2 farms and 1 mill within ~4-6 tiles of each player.
+  for (const ps of playerStarts) {
+    let farmsNear = 0;
+    let millNear = false;
+
+    // Gather grassland candidates at distance 4-6 from this player start
+    const nearGrass: HexTile[] = [];
+    const ring = hexSpiral(ps, 6);
+    for (const h of ring) {
+      const tile = grid.getTile(h.q, h.r);
+      if (!tile) continue;
+      const d = hexDistance(h, ps);
+      if (d < 4) continue;
+      if (tile.terrain !== TerrainType.GRASSLAND) continue;
+      if (tile.cityId || tile.campId) continue;
+      if (usedTiles.has(hexKey(tile.q, tile.r))) continue;
+      nearGrass.push(tile);
+    }
+
+    // Shuffle
+    for (let i = nearGrass.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [nearGrass[i], nearGrass[j]] = [nearGrass[j], nearGrass[i]];
+    }
+
+    for (const tile of nearGrass) {
+      if (farmsNear >= 2 && millNear) break;
+      const key = hexKey(tile.q, tile.r);
+      if (usedTiles.has(key)) continue;
+
+      if (farmsNear < 2) {
+        const farmTier = (1 + Math.floor(rng() * 4)) as 1 | 2 | 3 | 4;
+        const farmId = `nb_${buildings.length + 1}`;
+        const farm = createNeutralBuilding(farmId, "farm", { q: tile.q, r: tile.r }, _neutralBuildingDefenders(farmTier, rng));
+        buildings.push(farm);
+        usedTiles.add(key);
+        tile.neutralBuildingId = farmId;
+        farmsNear++;
+      } else if (!millNear) {
+        const millId = `nb_${buildings.length + 1}`;
+        const mill = createNeutralBuilding(millId, "mill", { q: tile.q, r: tile.r }, _neutralBuildingDefenders(5, rng));
+        buildings.push(mill);
+        usedTiles.add(key);
+        tile.neutralBuildingId = millId;
+        millNear = true;
+      }
+    }
+  }
+
+  // Place farms on ~10% of grassland tiles in clusters of 1-2
+  const targetFarmTiles = Math.floor(grasslandTiles.length * 0.10);
+  let farmTilesPlaced = 0;
+
+  for (const tile of grasslandTiles) {
+    if (farmTilesPlaced >= targetFarmTiles) break;
+    const key = hexKey(tile.q, tile.r);
+    if (usedTiles.has(key)) continue;
+    if (tile.cityId || tile.campId) continue;
+
+    // Place first farm
+    const farmTier = (1 + Math.floor(rng() * 4)) as 1 | 2 | 3 | 4;
+    const farmId = `nb_${buildings.length + 1}`;
+    const farm = createNeutralBuilding(
+      farmId,
+      "farm",
+      { q: tile.q, r: tile.r },
+      _neutralBuildingDefenders(farmTier, rng),
+    );
+    buildings.push(farm);
+    usedTiles.add(key);
+    tile.neutralBuildingId = farmId;
+    farmTilesPlaced++;
+
+    // Try to place 1 adjacent farm (cluster of 2)
+    const neighbors = grid.getNeighbors(tile.q, tile.r);
+    const grassNeighbors = neighbors.filter(
+      (n) => n.terrain === TerrainType.GRASSLAND &&
+             !usedTiles.has(hexKey(n.q, n.r)) &&
+             !n.cityId && !n.campId,
+    );
+
+    if (grassNeighbors.length > 0 && rng() < 0.6) {
+      const adjTile = grassNeighbors[Math.floor(rng() * grassNeighbors.length)];
+      const adjKey = hexKey(adjTile.q, adjTile.r);
+      const adjTier = (1 + Math.floor(rng() * 4)) as 1 | 2 | 3 | 4;
+      const adjId = `nb_${buildings.length + 1}`;
+      const adjFarm = createNeutralBuilding(
+        adjId,
+        "farm",
+        { q: adjTile.q, r: adjTile.r },
+        _neutralBuildingDefenders(adjTier, rng),
+      );
+      buildings.push(adjFarm);
+      usedTiles.add(adjKey);
+      adjTile.neutralBuildingId = adjId;
+      farmTilesPlaced++;
+    }
+
+    // 50% chance of an adjacent mill
+    if (rng() < 0.5) {
+      const millNeighbors = grid.getNeighbors(tile.q, tile.r).filter(
+        (n) => n.terrain === TerrainType.GRASSLAND &&
+               !usedTiles.has(hexKey(n.q, n.r)) &&
+               !n.cityId && !n.campId,
+      );
+      if (millNeighbors.length > 0) {
+        const millTile = millNeighbors[Math.floor(rng() * millNeighbors.length)];
+        const millKey = hexKey(millTile.q, millTile.r);
+        const millId = `nb_${buildings.length + 1}`;
+        const mill = createNeutralBuilding(
+          millId,
+          "mill",
+          { q: millTile.q, r: millTile.r },
+          _neutralBuildingDefenders(5, rng),
+        );
+        buildings.push(mill);
+        usedTiles.add(millKey);
+        millTile.neutralBuildingId = millId;
+      }
+    }
+  }
+
+  // Shuffle other tiles for towers
+  for (let i = otherTiles.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [otherTiles[i], otherTiles[j]] = [otherTiles[j], otherTiles[i]];
+  }
+
+  // Place towers on ~10% of other tiles with minimum 3-tile distance between them
+  const targetTowers = Math.floor(otherTiles.length * 0.10);
+  let towersPlaced = 0;
+  const towerPositions: HexCoord[] = [];
+  const minTowerDist = 3;
+
+  for (const tile of otherTiles) {
+    if (towersPlaced >= targetTowers) break;
+    const key = hexKey(tile.q, tile.r);
+    if (usedTiles.has(key)) continue;
+    if (tile.cityId || tile.campId) continue;
+
+    // Check minimum distance to other towers
+    let tooCloseToTower = false;
+    for (const tp of towerPositions) {
+      if (hexDistance(tile, tp) < minTowerDist) {
+        tooCloseToTower = true;
+        break;
+      }
+    }
+    if (tooCloseToTower) continue;
+
+    const towerId = `nb_${buildings.length + 1}`;
+    const tower = createNeutralBuilding(
+      towerId,
+      "tower",
+      { q: tile.q, r: tile.r },
+      _neutralBuildingDefenders(6, rng),
+    );
+    buildings.push(tower);
+    usedTiles.add(key);
+    tile.neutralBuildingId = towerId;
+    towerPositions.push({ q: tile.q, r: tile.r });
+    towersPlaced++;
+  }
+
+  return buildings;
 }

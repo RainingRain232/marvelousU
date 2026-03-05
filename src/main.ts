@@ -94,7 +94,7 @@ const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) =>
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
 import type { WorldGameSettings } from "@world/config/WorldConfig";
-import { generateWorldMap, findStartPositions, placeCamps, findNeutralCityPositions } from "@world/gen/WorldMapGen";
+import { generateWorldMap, findStartPositions, placeCamps, findNeutralCityPositions, placeNeutralBuildings } from "@world/gen/WorldMapGen";
 import { TERRAIN_DEFINITIONS, TERRAIN_TO_MAP_TYPE, TerrainType } from "@world/config/TerrainDefs";
 import { createWorldState, nextId, WorldPhase } from "@world/state/WorldState";
 import type { WorldState } from "@world/state/WorldState";
@@ -1501,6 +1501,12 @@ async function _bootWorldBattle(): Promise<void> {
     if (!army || !camp) return;
     p1Roster = toRoster(army.units);
     p2Roster = toRoster(camp.defenders);
+  } else if (meta.battleType === "neutral_building") {
+    const army = worldState.armies.get(meta.armyId);
+    const nb = worldState.neutralBuildings.get(meta.neutralBuildingId);
+    if (!army || !nb) return;
+    p1Roster = toRoster(army.units);
+    p2Roster = toRoster(nb.defenders);
   } else {
     const attacker = worldState.armies.get(meta.attackerArmyId);
     const defender = meta.defenderArmyId ? worldState.armies.get(meta.defenderArmyId) : null;
@@ -1580,6 +1586,28 @@ async function _returnFromWorldBattle(): Promise<void> {
       if (player) {
         player.gold += camp.goldReward;
       }
+    }
+  } else if (meta.battleType === "neutral_building") {
+    // Neutral building battle result
+    const army = state.armies.get(meta.armyId);
+    const nb = state.neutralBuildings.get(meta.neutralBuildingId);
+
+    if (army) {
+      if (data.attackerSurvivors.length > 0) {
+        army.units = data.attackerSurvivors;
+      } else {
+        const tile = state.grid.getTile(army.position.q, army.position.r);
+        if (tile && tile.armyId === army.id) tile.armyId = null;
+        state.armies.delete(army.id);
+      }
+    }
+
+    if (nb && data.winnerId === army?.owner) {
+      nb.captured = true;
+      nb.owner = army!.owner;
+      nb.defenders = [];
+      const tile = state.grid.getTile(nb.position.q, nb.position.r);
+      if (tile) tile.owner = army!.owner;
     }
   } else {
     // Field / siege battle result
@@ -2314,6 +2342,20 @@ async function _bootWorldGame(
     }
   }
 
+  // Place neutral buildings (farms, mills, towers) — after all cities are placed
+  {
+    const neutralCityPos: import("@world/hex/HexCoord").HexCoord[] = [];
+    for (const city of state.cities.values()) {
+      if (city.owner.startsWith("neutral_")) {
+        neutralCityPos.push(city.position);
+      }
+    }
+    const neutralBuildings = placeNeutralBuildings(grid, startPositions, neutralCityPos, settings.seed || Date.now());
+    for (const nb of neutralBuildings) {
+      state.neutralBuildings.set(nb.id, nb);
+    }
+  }
+
   // DEBUG: Spawn a p2 army near p1's capital
   {
     let p1Capital: import("@world/state/WorldCity").WorldCity | null = null;
@@ -2676,6 +2718,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     worldMapRenderer.drawMap(state.grid);
     worldMapRenderer.drawBorders(state.grid);
     worldMapRenderer.drawCamps(state.camps.values(), localPlayer);
+    worldMapRenderer.drawNeutralBuildings(state.neutralBuildings.values(), localPlayer);
     worldMapRenderer.drawFog(state.grid, localPlayer);
     cityView.drawCities(state, localPlayer);
     armyView.drawArmies(state, localPlayer);
@@ -3165,6 +3208,77 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     }
   };
 
+  // Resolve a neutral building battle (army vs neutral building defenders)
+  const _resolveNeutralBuildingBattle = async (army: import("@world/state/WorldArmy").WorldArmy, nb: import("@world/state/NeutralBuilding").NeutralBuilding, ws: WorldState) => {
+    if (nb.captured) return;
+
+    const typeLabel = nb.type === "farm" ? "Farm" : nb.type === "mill" ? "Mill" : "Tower";
+    worldEventLog.addEvent(`Attacking neutral ${typeLabel}!`, 0xff8844);
+
+    // Build a fake camp to reuse buildCampBattleState
+    const fakeCamp: import("@world/state/WorldCamp").WorldCamp = {
+      id: nb.id,
+      position: nb.position,
+      tier: nb.type === "tower" ? 3 : nb.type === "mill" ? 2 : 1,
+      defenders: [...nb.defenders],
+      goldReward: 0,
+      cleared: false,
+    };
+
+    const battleState = buildCampBattleState(army, fakeCamp);
+
+    if (army.owner === "p1") {
+      await worldBattleViewer.startBattle(battleState, army.owner, "camp", true);
+
+      if (worldBattleViewer.playBattleRequested) {
+        saveWorldGame(ws);
+        const nbTile = ws.grid.getTile(nb.position.q, nb.position.r);
+        sessionStorage.setItem("worldBattleMeta", JSON.stringify({
+          neutralBuildingId: nb.id,
+          armyId: army.id,
+          battleType: "neutral_building",
+          hex: { q: nb.position.q, r: nb.position.r },
+          terrain: nbTile?.terrain ?? "grassland",
+        }));
+        sessionStorage.setItem("worldBattlePlayMode", "1");
+        window.location.reload();
+        return;
+      }
+    } else {
+      const MAX_TICKS = 5000;
+      for (let i = 0; i < MAX_TICKS; i++) {
+        simTick(battleState);
+        if (battleState.winnerId) break;
+      }
+    }
+
+    const result = extractBattleResults(battleState, army.owner, "neutral");
+
+    if (result.attackerSurvivors.length > 0) {
+      army.units = result.attackerSurvivors;
+    } else {
+      const tile = ws.grid.getTile(army.position.q, army.position.r);
+      if (tile && tile.armyId === army.id) tile.armyId = null;
+      ws.armies.delete(army.id);
+      worldEventLog.addEvent("Your army was destroyed!", 0xff4444);
+      return;
+    }
+
+    if (result.winnerId === army.owner) {
+      nb.captured = true;
+      nb.owner = army.owner;
+      nb.defenders = [];
+
+      // Transfer tile ownership
+      const tile = ws.grid.getTile(nb.position.q, nb.position.r);
+      if (tile) tile.owner = army.owner;
+
+      worldEventLog.addEvent(`${typeLabel} captured! +${nb.goldIncome} gold/turn`, 0xffcc44);
+    } else {
+      worldEventLog.addEvent(`${typeLabel} defenders held!`, 0xff6644);
+    }
+  };
+
   // End Turn button
   let _endTurnBusy = false;
   worldHUD.onEndTurn = async () => {
@@ -3305,6 +3419,14 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             }
           }
 
+          // Check for neutral building battle
+          if (destTile?.neutralBuildingId) {
+            const nb = state.neutralBuildings.get(destTile.neutralBuildingId);
+            if (nb && !nb.captured) {
+              await _resolveNeutralBuildingBattle(army, nb, state);
+            }
+          }
+
           const battles = detectCollisions(state);
           if (battles.length > 0) {
             state.pendingBattles = battles;
@@ -3400,6 +3522,14 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
               const camp = state.camps.get(destTile.campId);
               if (camp && !camp.cleared) {
                 await _resolveCampBattle(army, camp, state);
+              }
+            }
+
+            // Check for neutral building battle
+            if (destTile?.neutralBuildingId) {
+              const nb = state.neutralBuildings.get(destTile.neutralBuildingId);
+              if (nb && !nb.captured) {
+                await _resolveNeutralBuildingBattle(army, nb, state);
               }
             }
 
@@ -3535,6 +3665,14 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           const camp = state.camps.get(destTile.campId);
           if (camp && !camp.cleared) {
             await _resolveCampBattle(army, camp, state);
+          }
+        }
+
+        // Check for neutral building battle
+        if (destTile?.neutralBuildingId) {
+          const nb = state.neutralBuildings.get(destTile.neutralBuildingId);
+          if (nb && !nb.captured) {
+            await _resolveNeutralBuildingBattle(army, nb, state);
           }
         }
 

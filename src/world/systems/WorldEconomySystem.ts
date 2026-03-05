@@ -55,6 +55,13 @@ export function processEconomy(state: WorldState, playerId: string): void {
     }
   }
 
+  // Income from captured neutral buildings (farms, mills, towers)
+  for (const nb of state.neutralBuildings.values()) {
+    if (nb.owner === playerId && nb.captured) {
+      player.gold += nb.goldIncome;
+    }
+  }
+
   // Morgaine crystal bonus: +10 mana and +10 research per crystal per turn
   if (player.morgaineCrystals > 0) {
     player.mana += player.morgaineCrystals * 10;
