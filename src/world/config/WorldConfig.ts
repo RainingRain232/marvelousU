@@ -83,4 +83,10 @@ export const WorldBalance = {
 
   /** Number of neutral city-states on the map. */
   NEUTRAL_CITY_COUNT: 3,
+
+  // -- Settlers --
+  /** Gold cost to recruit a settler. */
+  SETTLER_COST: 250,
+  /** Minimum hex distance between cities. */
+  MIN_CITY_DISTANCE: 4,
 } as const;

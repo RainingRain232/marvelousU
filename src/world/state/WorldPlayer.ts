@@ -20,6 +20,11 @@ export interface WorldPlayer {
   researchTurnsLeft: number;
   /** Set of completed research IDs. */
   completedResearch: Set<string>;
+
+  /** Hex keys ("q,r") the player has ever seen. Persists across turns. */
+  exploredTiles: Set<string>;
+  /** Hex keys ("q,r") currently in sight range. Recalculated each turn. */
+  visibleTiles: Set<string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,5 +48,7 @@ export function createWorldPlayer(
     activeResearch: null,
     researchTurnsLeft: 0,
     completedResearch: new Set(),
+    exploredTiles: new Set(),
+    visibleTiles: new Set(),
   };
 }

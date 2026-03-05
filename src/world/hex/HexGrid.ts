@@ -6,6 +6,7 @@
 import type { HexCoord } from "@world/hex/HexCoord";
 import { hexKey, hexNeighbors, hexSpiral } from "@world/hex/HexCoord";
 import type { TerrainType } from "@world/config/TerrainDefs";
+import type { ResourceType, ImprovementType } from "@world/config/ResourceDefs";
 
 // ---------------------------------------------------------------------------
 // Tile
@@ -21,6 +22,12 @@ export interface HexTile {
   cityId: string | null;
   /** Army standing on this hex (null = none). */
   armyId: string | null;
+  /** Neutral camp on this hex (null = none). */
+  campId: string | null;
+  /** Natural resource on this hex (null = none). */
+  resource: ResourceType | null;
+  /** Player-built improvement on this hex (null = none). */
+  improvement: ImprovementType | null;
 }
 
 // ---------------------------------------------------------------------------

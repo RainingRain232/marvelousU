@@ -9,6 +9,7 @@ import type { WorldState } from "@world/state/WorldState";
 import type { WorldArmy } from "@world/state/WorldArmy";
 import { armyUnitCount } from "@world/state/WorldArmy";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import { IMPROVEMENT_DEFINITIONS, type ImprovementType } from "@world/config/ResourceDefs";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -57,6 +58,12 @@ export class ArmyPanel {
   onClose: (() => void) | null = null;
   /** Called to deploy garrison from city. */
   onDeploy: ((armyId: string) => void) | null = null;
+  /** Called to build an improvement at the army's location. */
+  onBuildImprovement: ((armyId: string, improvement: ImprovementType) => void) | null = null;
+  /** Called to found a city at the army's location. */
+  onFoundCity: ((armyId: string) => void) | null = null;
+  /** Check function for city founding eligibility. */
+  canFoundCityCheck: ((army: WorldArmy, state: WorldState) => boolean) | null = null;
 
   // -----------------------------------------------------------------------
   // Lifecycle
@@ -190,6 +197,43 @@ export class ArmyPanel {
       });
       this._contentContainer.addChild(deployBtn);
       y += 32;
+    }
+
+    // Found city button (if army has a settler and conditions are met)
+    if (!army.isGarrison && this._state && this.canFoundCityCheck?.(army, this._state)) {
+      const foundBtn = _makeButton("FOUND CITY", 12, y, PANEL_W - 24, 26, () => {
+        this.onFoundCity?.(army.id);
+      });
+      this._contentContainer.addChild(foundBtn);
+      y += 32;
+    }
+
+    // Build improvement buttons (only for non-garrison armies with MP)
+    if (!army.isGarrison && army.movementPoints > 0 && this._state) {
+      const tile = this._state.grid.getTile(army.position.q, army.position.r);
+      if (tile && !tile.improvement && tile.owner === army.owner) {
+        const validImprovements = Object.values(IMPROVEMENT_DEFINITIONS).filter(
+          (def) => def.validTerrain.includes(tile.terrain),
+        );
+        if (validImprovements.length > 0) {
+          const header = new Text({
+            text: "Build:",
+            style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x88cc44 }),
+          });
+          header.x = 12;
+          header.y = y;
+          this._contentContainer.addChild(header);
+          y += 16;
+
+          for (const impDef of validImprovements) {
+            const btn = _makeButton(impDef.label, 12, y, PANEL_W - 24, 22, () => {
+              this.onBuildImprovement?.(army.id, impDef.type);
+            });
+            this._contentContainer.addChild(btn);
+            y += 26;
+          }
+        }
+      }
     }
 
     // Position panel on left side, below HUD

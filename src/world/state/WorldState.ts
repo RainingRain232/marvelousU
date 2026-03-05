@@ -4,6 +4,7 @@ import { HexGrid } from "@world/hex/HexGrid";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
 import type { WorldCity } from "@world/state/WorldCity";
 import type { WorldArmy } from "@world/state/WorldArmy";
+import type { WorldCamp } from "@world/state/WorldCamp";
 import type { HexCoord } from "@world/hex/HexCoord";
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,7 @@ export interface WorldState {
   cities: Map<string, WorldCity>;
   armies: Map<string, WorldArmy>;
   players: Map<string, WorldPlayer>;
+  camps: Map<string, WorldCamp>;
 
   pendingBattles: PendingBattle[];
   winnerId: string | null;
@@ -69,6 +71,7 @@ export function createWorldState(grid: HexGrid, playerOrder: string[]): WorldSta
     cities: new Map(),
     armies: new Map(),
     players: new Map(),
+    camps: new Map(),
     pendingBattles: [],
     winnerId: null,
     nextEntityId: 1,

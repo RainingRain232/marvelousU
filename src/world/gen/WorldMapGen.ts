@@ -8,6 +8,8 @@ import { hexDistance, hexKey, hexSpiral } from "@world/hex/HexCoord";
 import { HexGrid, type HexTile } from "@world/hex/HexGrid";
 import { TerrainType, TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 import { WorldBalance, type WorldGameSettings } from "@world/config/WorldConfig";
+import { createWorldCamp, type WorldCamp } from "@world/state/WorldCamp";
+import { RESOURCE_DEFINITIONS, type ResourceType } from "@world/config/ResourceDefs";
 
 // ---------------------------------------------------------------------------
 // Seeded PRNG (mulberry32)
@@ -145,11 +147,37 @@ export function generateWorldMap(settings: WorldGameSettings): HexGrid {
       owner: null,
       cityId: null,
       armyId: null,
+      campId: null,
+      resource: null,
+      improvement: null,
     };
     grid.setTile(tile);
   }
 
+  // Place natural resources on ~12% of eligible tiles
+  _placeResources(grid, seed);
+
   return grid;
+}
+
+/** Scatter resources across eligible tiles. */
+function _placeResources(grid: HexGrid, seed: number): void {
+  const rng = mulberry32(seed + 77777);
+  const resourceTypes = Object.values(RESOURCE_DEFINITIONS);
+
+  for (const tile of grid.allTiles()) {
+    if (rng() > 0.12) continue; // ~12% chance
+
+    // Find which resources are valid for this terrain
+    const valid = resourceTypes.filter((r) =>
+      r.validTerrain.includes(tile.terrain),
+    );
+    if (valid.length === 0) continue;
+
+    // Pick a random valid resource
+    const chosen = valid[Math.floor(rng() * valid.length)];
+    tile.resource = chosen.type;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -314,4 +342,89 @@ export function findNeutralCityPositions(
   }
 
   return chosen;
+}
+
+// ---------------------------------------------------------------------------
+// Neutral camps placement
+// ---------------------------------------------------------------------------
+
+/**
+ * Place neutral camps scattered across the map.
+ * Tier is based on distance from player starts:
+ *   - Close (dist < 5): tier 1
+ *   - Mid (dist 5-8): tier 2
+ *   - Far (dist > 8): tier 3
+ */
+export function placeCamps(
+  grid: HexGrid,
+  playerStarts: HexCoord[],
+  count: number,
+  seed: number,
+): WorldCamp[] {
+  const rng = mulberry32(seed + 99999);
+  const minDistFromStart = 3;
+  const minDistBetween = 3;
+
+  // Collect passable, unoccupied candidate tiles
+  const candidates: HexCoord[] = [];
+  for (const tile of grid.allTiles()) {
+    const terrain = TERRAIN_DEFINITIONS[tile.terrain];
+    if (!isFinite(terrain.movementCost)) continue;
+    if (tile.cityId || tile.armyId) continue;
+
+    // Not too close to any player start
+    let tooClose = false;
+    for (const ps of playerStarts) {
+      if (hexDistance(tile, ps) < minDistFromStart) {
+        tooClose = true;
+        break;
+      }
+    }
+    if (tooClose) continue;
+
+    candidates.push({ q: tile.q, r: tile.r });
+  }
+
+  // Shuffle candidates
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  // Pick camps maintaining minimum distance
+  const camps: WorldCamp[] = [];
+  const chosen = new Set<string>();
+
+  for (const c of candidates) {
+    if (camps.length >= count) break;
+
+    // Check distance to already-chosen camps
+    let farEnough = true;
+    for (const existing of camps) {
+      if (hexDistance(c, existing.position) < minDistBetween) {
+        farEnough = false;
+        break;
+      }
+    }
+    if (!farEnough) continue;
+
+    // Determine tier based on nearest player start
+    let minDist = Infinity;
+    for (const ps of playerStarts) {
+      const d = hexDistance(c, ps);
+      if (d < minDist) minDist = d;
+    }
+
+    let tier: 1 | 2 | 3;
+    if (minDist < 6) tier = 1;
+    else if (minDist < 9) tier = 2;
+    else tier = 3;
+
+    const campId = `camp_${camps.length + 1}`;
+    const camp = createWorldCamp(campId, c, tier);
+    camps.push(camp);
+    chosen.add(hexKey(c.q, c.r));
+  }
+
+  return camps;
 }

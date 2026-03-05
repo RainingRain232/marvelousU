@@ -6,7 +6,9 @@
 import { Container, Graphics } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
+import type { WorldPlayer } from "@world/state/WorldPlayer";
 import type { HexGrid } from "@world/hex/HexGrid";
+import { hexKey } from "@world/hex/HexCoord";
 import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 
 // ---------------------------------------------------------------------------
@@ -85,15 +87,15 @@ export class WorldMinimap {
     });
   }
 
-  /** Render the minimap from grid data. */
-  drawMap(grid: HexGrid): void {
+  /** Render the minimap from grid data. Applies fog if localPlayer is provided. */
+  drawMap(grid: HexGrid, localPlayer?: WorldPlayer): void {
     this._mapGraphics.clear();
 
     // Calculate pixel bounds of the grid
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
 
-    const tiles: Array<{ px: number; py: number; color: number; ownerColor: number | null }> = [];
+    const tiles: Array<{ px: number; py: number; color: number; ownerColor: number | null; fogState: "visible" | "explored" | "hidden" }> = [];
 
     for (const tile of grid.allTiles()) {
       // Simple axial → pixel for minimap (flat positioning)
@@ -105,6 +107,15 @@ export class WorldMinimap {
       maxX = Math.max(maxX, px);
       maxY = Math.max(maxY, py);
 
+      // Determine fog state
+      let fogState: "visible" | "explored" | "hidden" = "visible";
+      if (localPlayer) {
+        const key = hexKey(tile.q, tile.r);
+        if (localPlayer.visibleTiles.has(key)) fogState = "visible";
+        else if (localPlayer.exploredTiles.has(key)) fogState = "explored";
+        else fogState = "hidden";
+      }
+
       const terrain = TERRAIN_DEFINITIONS[tile.terrain];
       let ownerColor: number | null = null;
       if (tile.owner) {
@@ -112,7 +123,7 @@ export class WorldMinimap {
         ownerColor = PLAYER_COLORS[idx] ?? null;
       }
 
-      tiles.push({ px, py, color: terrain.color, ownerColor });
+      tiles.push({ px, py, color: terrain.color, ownerColor, fogState });
     }
 
     this._minPx = minX;
@@ -128,12 +139,25 @@ export class WorldMinimap {
       const sx = (t.px - minX) * scale + 2;
       const sy = (t.py - minY) * scale + 2;
 
+      if (t.fogState === "hidden") {
+        // Unexplored — dark dot
+        this._mapGraphics.rect(sx - dotSize / 2, sy - dotSize / 2, dotSize, dotSize);
+        this._mapGraphics.fill({ color: 0x111111 });
+        continue;
+      }
+
       this._mapGraphics.rect(sx - dotSize / 2, sy - dotSize / 2, dotSize, dotSize);
       this._mapGraphics.fill({ color: t.color });
 
       if (t.ownerColor !== null) {
         this._mapGraphics.rect(sx - dotSize / 2, sy - dotSize / 2, dotSize, dotSize);
         this._mapGraphics.fill({ color: t.ownerColor, alpha: 0.4 });
+      }
+
+      if (t.fogState === "explored") {
+        // Explored but not visible — darken
+        this._mapGraphics.rect(sx - dotSize / 2, sy - dotSize / 2, dotSize, dotSize);
+        this._mapGraphics.fill({ color: 0x000000, alpha: 0.5 });
       }
     }
   }

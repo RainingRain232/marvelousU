@@ -8,6 +8,7 @@ import type { WorldCity } from "@world/state/WorldCity";
 import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 import { WorldBalance } from "@world/config/WorldConfig";
 import { getWorldBuildingDef } from "@world/config/WorldBuildingDefs";
+import { RESOURCE_DEFINITIONS, IMPROVEMENT_DEFINITIONS } from "@world/config/ResourceDefs";
 
 // ---------------------------------------------------------------------------
 // Public
@@ -86,6 +87,26 @@ export function calculateCityYields(
     gold += terrain.goldYield;
     food += terrain.foodYield;
     production += terrain.productionYield;
+
+    // Resource bonus
+    if (tile.resource) {
+      const resDef = RESOURCE_DEFINITIONS[tile.resource];
+      if (resDef) {
+        gold += resDef.goldBonus;
+        food += resDef.foodBonus;
+        production += resDef.productionBonus;
+      }
+    }
+
+    // Improvement bonus
+    if (tile.improvement) {
+      const impDef = IMPROVEMENT_DEFINITIONS[tile.improvement];
+      if (impDef) {
+        gold += impDef.goldBonus;
+        food += impDef.foodBonus;
+        production += impDef.productionBonus;
+      }
+    }
   }
 
   // Building bonuses

@@ -5,7 +5,9 @@
 
 import type { WorldState, PendingBattle } from "@world/state/WorldState";
 import type { WorldArmy, ArmyUnit } from "@world/state/WorldArmy";
+import { createWorldArmy } from "@world/state/WorldArmy";
 import type { WorldCity } from "@world/state/WorldCity";
+import type { WorldCamp } from "@world/state/WorldCamp";
 import { createGameState } from "@sim/state/GameState";
 import type { GameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
@@ -103,6 +105,41 @@ export function buildSiegeBattleState(
   return state;
 }
 
+/** Create a GameState for a battle against a neutral camp. */
+export function buildCampBattleState(
+  attacker: WorldArmy,
+  camp: WorldCamp,
+): GameState {
+  const state = createGameState(
+    BalanceConfig.GRID_WIDTH,
+    BalanceConfig.GRID_HEIGHT,
+    0,
+    GameMode.BATTLEFIELD,
+    2,
+  );
+
+  state.players.set(
+    "p1",
+    createPlayerState("p1", Direction.WEST, 0, "nw", true),
+  );
+  state.players.set(
+    "p2",
+    createPlayerState("p2", Direction.EAST, 0, "se", true),
+  );
+
+  // Spawn attacker on west
+  _spawnWorldUnits(state, attacker, "p1", "west");
+
+  // Spawn camp defenders on east using a temporary army
+  const campArmy = createWorldArmy("camp_def", "neutral", camp.position, [...camp.defenders], false);
+  _spawnWorldUnits(state, campArmy, "p2", "east");
+
+  state.phase = GamePhase.BATTLE;
+  state.phaseTimer = -1;
+
+  return state;
+}
+
 // ---------------------------------------------------------------------------
 // Extract results
 // ---------------------------------------------------------------------------
@@ -144,7 +181,9 @@ export function applyBattleResults(
   // Update or destroy attacker army
   if (attackerArmy) {
     if (result.attackerSurvivors.length > 0) {
-      attackerArmy.units = result.attackerSurvivors;
+      // Preserve settlers (they don't fight but survive if army wins)
+      const settlers = attackerArmy.units.filter((u) => u.unitType === "settler");
+      attackerArmy.units = [...result.attackerSurvivors, ...settlers];
     } else {
       _removeArmy(worldState, attackerArmy);
     }
@@ -153,7 +192,8 @@ export function applyBattleResults(
   // Update or destroy defender army
   if (defenderArmy) {
     if (result.defenderSurvivors.length > 0) {
-      defenderArmy.units = result.defenderSurvivors;
+      const settlers = defenderArmy.units.filter((u) => u.unitType === "settler");
+      defenderArmy.units = [...result.defenderSurvivors, ...settlers];
     } else {
       _removeArmy(worldState, defenderArmy);
     }
@@ -214,6 +254,9 @@ function _spawnWorldUnits(
   let row = Math.floor(gridH / 2) - 3;
 
   for (const stack of army.units) {
+    // Settlers don't fight — skip them
+    if (stack.unitType === "settler") continue;
+
     for (let i = 0; i < stack.count; i++) {
       const unit = createUnit({
         type: stack.unitType as any,

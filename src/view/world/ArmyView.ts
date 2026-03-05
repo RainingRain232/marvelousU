@@ -8,8 +8,9 @@ import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldArmy } from "@world/state/WorldArmy";
 import { armyUnitCount } from "@world/state/WorldArmy";
-import { hexToPixel } from "@world/hex/HexCoord";
+import { hexToPixel, hexKey } from "@world/hex/HexCoord";
 import { WorldBalance } from "@world/config/WorldConfig";
+import type { WorldPlayer } from "@world/state/WorldPlayer";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -50,13 +51,18 @@ export class ArmyView {
     this._armySprites.clear();
   }
 
-  /** Redraw all armies from scratch. */
-  drawArmies(state: WorldState): void {
+  /** Redraw all armies from scratch. Hides enemy armies in fog. */
+  drawArmies(state: WorldState, localPlayer?: WorldPlayer): void {
     this._container.removeChildren();
     this._armySprites.clear();
 
     for (const army of state.armies.values()) {
       if (army.isGarrison) continue;
+      // Hide enemy armies not in the local player's visible tiles
+      if (localPlayer && army.owner !== localPlayer.id) {
+        const key = hexKey(army.position.q, army.position.r);
+        if (!localPlayer.visibleTiles.has(key)) continue;
+      }
       const sprite = this._createArmySprite(army);
       this._container.addChild(sprite);
       this._armySprites.set(army.id, sprite);

@@ -5,8 +5,10 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
-import type { HexCoord } from "@world/hex/HexCoord";
+import type { WorldPlayer } from "@world/state/WorldPlayer";
+import { hexKey, type HexCoord } from "@world/hex/HexCoord";
 import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
+import { RESOURCE_DEFINITIONS, IMPROVEMENT_DEFINITIONS } from "@world/config/ResourceDefs";
 import { armyUnitCount } from "@world/state/WorldArmy";
 
 // ---------------------------------------------------------------------------
@@ -37,6 +39,7 @@ export class WorldHexTooltip {
 
   private _vm!: ViewManager;
   private _state: WorldState | null = null;
+  private _localPlayer: WorldPlayer | null = null;
   private _bg = new Graphics();
   private _textContainer = new Container();
 
@@ -67,8 +70,9 @@ export class WorldHexTooltip {
     });
   }
 
-  setState(state: WorldState): void {
+  setState(state: WorldState, localPlayer?: WorldPlayer): void {
     this._state = state;
+    this._localPlayer = localPlayer ?? null;
   }
 
   /** Show tooltip for the given hex, or hide if null. */
@@ -82,6 +86,15 @@ export class WorldHexTooltip {
     if (!tile) {
       this.container.visible = false;
       return;
+    }
+
+    // Hide tooltip for unexplored tiles
+    if (this._localPlayer) {
+      const key = hexKey(hex.q, hex.r);
+      if (!this._localPlayer.exploredTiles.has(key)) {
+        this.container.visible = false;
+        return;
+      }
     }
 
     this._textContainer.removeChildren();
@@ -117,6 +130,36 @@ export class WorldHexTooltip {
     this._textContainer.addChild(moveText);
     y += 14;
 
+    // Resource
+    if (tile.resource) {
+      const resDef = RESOURCE_DEFINITIONS[tile.resource];
+      if (resDef) {
+        const resText = new Text({
+          text: `Resource: ${resDef.label}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: resDef.color }),
+        });
+        resText.x = 8;
+        resText.y = y;
+        this._textContainer.addChild(resText);
+        y += 14;
+      }
+    }
+
+    // Improvement
+    if (tile.improvement) {
+      const impDef = IMPROVEMENT_DEFINITIONS[tile.improvement];
+      if (impDef) {
+        const impText = new Text({
+          text: `Improved: ${impDef.label}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x88cc44 }),
+        });
+        impText.x = 8;
+        impText.y = y;
+        this._textContainer.addChild(impText);
+        y += 14;
+      }
+    }
+
     // Owner
     if (tile.owner) {
       const ownerText = new Text({
@@ -129,10 +172,14 @@ export class WorldHexTooltip {
       y += 14;
     }
 
+    // Check if currently visible (not just explored) for dynamic info
+    const isCurrentlyVisible = !this._localPlayer ||
+      this._localPlayer.visibleTiles.has(hexKey(hex.q, hex.r));
+
     // City
     if (tile.cityId) {
       const city = this._state.cities.get(tile.cityId);
-      if (city) {
+      if (city && isCurrentlyVisible) {
         const cityText = new Text({
           text: `City: ${city.name} (pop ${city.population})`,
           style: new TextStyle({
@@ -149,7 +196,7 @@ export class WorldHexTooltip {
     }
 
     // Army
-    if (tile.armyId) {
+    if (tile.armyId && isCurrentlyVisible) {
       const army = this._state.armies.get(tile.armyId);
       if (army && !army.isGarrison) {
         const total = armyUnitCount(army);
@@ -164,6 +211,26 @@ export class WorldHexTooltip {
         armyText.x = 8;
         armyText.y = y;
         this._textContainer.addChild(armyText);
+        y += 14;
+      }
+    }
+
+    // Camp
+    if (tile.campId && isCurrentlyVisible) {
+      const camp = this._state.camps.get(tile.campId);
+      if (camp && !camp.cleared) {
+        const tierLabel = camp.tier === 1 ? "Weak" : camp.tier === 2 ? "Moderate" : "Strong";
+        const campText = new Text({
+          text: `Camp: ${tierLabel} (Tier ${camp.tier})`,
+          style: new TextStyle({
+            fontFamily: "monospace",
+            fontSize: 10,
+            fill: 0xff8844,
+          }),
+        });
+        campText.x = 8;
+        campText.y = y;
+        this._textContainer.addChild(campText);
         y += 14;
       }
     }

@@ -12,6 +12,7 @@ import type { WorldCity } from "@world/state/WorldCity";
 import { createWorldArmy } from "@world/state/WorldArmy";
 import { processEconomy } from "@world/systems/WorldEconomySystem";
 import { advanceResearch } from "@world/systems/ResearchSystem";
+import { updateVisibility } from "@world/systems/FogOfWarSystem";
 
 // ---------------------------------------------------------------------------
 // Turn flow
@@ -39,6 +40,9 @@ export function beginTurn(state: WorldState): void {
     if (city.owner !== player.id) continue;
     _processRecruitment(city, state);
   }
+
+  // Update fog of war visibility
+  updateVisibility(state, player.id);
 }
 
 /** End the current player's turn. Advance construction, check battles, move to next. */

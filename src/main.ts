@@ -89,7 +89,7 @@ import type { RaceId } from "@sim/config/RaceDefs";
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
 import type { WorldGameSettings } from "@world/config/WorldConfig";
-import { generateWorldMap, findStartPositions } from "@world/gen/WorldMapGen";
+import { generateWorldMap, findStartPositions, placeCamps } from "@world/gen/WorldMapGen";
 import { createWorldState, nextId, WorldPhase } from "@world/state/WorldState";
 import type { WorldState } from "@world/state/WorldState";
 import { createWorldPlayer } from "@world/state/WorldPlayer";
@@ -104,16 +104,18 @@ import { hexSpiral, hexNeighbors } from "@world/hex/HexCoord";
 import { hexKey } from "@world/hex/HexCoord";
 import { cityView } from "@view/world/CityView";
 import { cityPanel } from "@view/world/ui/CityPanel";
-import { startConstruction, queueRecruitment, deployArmy } from "@world/systems/CitySystem";
+import { startConstruction, queueRecruitment, deployArmy, foundCity, canFoundCity } from "@world/systems/CitySystem";
 import { armyView } from "@view/world/ArmyView";
 import { armyPanel } from "@view/world/ui/ArmyPanel";
 import { moveArmy, getArmyReachableHexes, detectCollisions } from "@world/systems/ArmySystem";
 import { researchScreen } from "@view/world/ui/ResearchScreen";
 import { setActiveResearch, advanceResearch } from "@world/systems/ResearchSystem";
 import { executeAITurn } from "@world/systems/WorldAI";
+import { updateVisibility } from "@world/systems/FogOfWarSystem";
 import {
   buildFieldBattleState,
   buildSiegeBattleState,
+  buildCampBattleState,
   extractBattleResults,
   applyBattleResults,
 } from "@world/systems/BattleResolver";
@@ -1432,6 +1434,15 @@ async function _bootWorldGame(
     }
   }
 
+  // Place neutral camps
+  const campCount = Math.max(8, Math.floor(settings.mapRadius * 1.2));
+  const camps = placeCamps(grid, startPositions, campCount, settings.seed || Date.now());
+  for (const camp of camps) {
+    state.camps.set(camp.id, camp);
+    const campTile = grid.getTile(camp.position.q, camp.position.r);
+    if (campTile) campTile.campId = camp.id;
+  }
+
   _activeWorldState = state;
 
   // Configure camera for hex world — the hex grid is centered at (0,0) and
@@ -1524,6 +1535,29 @@ async function _bootWorldGame(
     worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.2);
     _moveModeArmyId = armyId;
   };
+  armyPanel.onBuildImprovement = (armyId, improvementType) => {
+    const army = state.armies.get(armyId);
+    if (!army || army.movementPoints <= 0) return;
+    const tile = state.grid.getTile(army.position.q, army.position.r);
+    if (!tile || tile.improvement) return;
+    tile.improvement = improvementType;
+    army.movementPoints = 0; // costs all movement
+    worldEventLog.addEvent(`Built ${improvementType.replace("_", " ")}`, 0x88cc44);
+    armyPanel.show(army, state); // refresh panel
+    refreshWorld();
+  };
+  armyPanel.canFoundCityCheck = canFoundCity;
+  armyPanel.onFoundCity = (armyId) => {
+    const army = state.armies.get(armyId);
+    if (!army) return;
+    const cityId = foundCity(army, state);
+    if (cityId) {
+      worldEventLog.addEvent(`Founded a new city!`, 0xffcc44);
+      updateVisibility(state, army.owner);
+      armyPanel.hide();
+      refreshWorld();
+    }
+  };
 
   // Initialize research screen
   researchScreen.init(viewManager);
@@ -1573,15 +1607,20 @@ async function _bootWorldGame(
   // Track movement mode
   let _moveModeArmyId: string | null = null;
 
+  // The human player for fog of war
+  const localPlayer = state.players.get("p1")!;
+
   // Helper to refresh all visuals
   const refreshWorld = () => {
     worldHUD.update(state);
     worldMapRenderer.drawMap(state.grid);
-    cityView.drawCities(state);
-    armyView.drawArmies(state);
+    worldMapRenderer.drawCamps(state.camps.values(), localPlayer);
+    worldMapRenderer.drawFog(state.grid, localPlayer);
+    cityView.drawCities(state, localPlayer);
+    armyView.drawArmies(state, localPlayer);
     worldEventLog.setTurn(state.turn);
-    worldMinimap.drawMap(state.grid);
-    worldHexTooltip.setState(state);
+    worldMinimap.drawMap(state.grid, localPlayer);
+    worldHexTooltip.setState(state, localPlayer);
 
     // Check for game over
     if (state.phase === WorldPhase.GAME_OVER) {
@@ -1633,6 +1672,47 @@ async function _bootWorldGame(
     }
 
     onBattlesResolved(state);
+  };
+
+  // Resolve a camp battle (army vs neutral camp)
+  const _resolveCampBattle = (army: import("@world/state/WorldArmy").WorldArmy, camp: import("@world/state/WorldCamp").WorldCamp, ws: WorldState) => {
+    worldEventLog.addEvent(`Attacking ${camp.tier === 1 ? "weak" : camp.tier === 2 ? "moderate" : "strong"} camp!`, 0xff8844);
+
+    const battleState = buildCampBattleState(army, camp);
+    const MAX_TICKS = 5000;
+    for (let i = 0; i < MAX_TICKS; i++) {
+      simTick(battleState);
+      if (battleState.winnerId) break;
+    }
+
+    const result = extractBattleResults(battleState, army.owner, "neutral");
+
+    // Update attacker army
+    if (result.attackerSurvivors.length > 0) {
+      army.units = result.attackerSurvivors;
+    } else {
+      // Army destroyed
+      const tile = ws.grid.getTile(army.position.q, army.position.r);
+      if (tile && tile.armyId === army.id) tile.armyId = null;
+      ws.armies.delete(army.id);
+      worldEventLog.addEvent("Your army was destroyed!", 0xff4444);
+      return;
+    }
+
+    if (result.winnerId === army.owner) {
+      // Victory — clear camp and grant rewards
+      camp.cleared = true;
+      const tile = ws.grid.getTile(camp.position.q, camp.position.r);
+      if (tile) tile.campId = null;
+
+      const player = ws.players.get(army.owner);
+      if (player) {
+        player.gold += camp.goldReward;
+        worldEventLog.addEvent(`Camp cleared! +${camp.goldReward} gold`, 0xffcc44);
+      }
+    } else {
+      worldEventLog.addEvent("Camp defenders held!", 0xff6644);
+    }
   };
 
   // End Turn button
@@ -1691,6 +1771,18 @@ async function _bootWorldGame(
       if (army) {
         const moved = moveArmy(army, hex, state);
         if (moved) {
+          // Update fog of war after movement
+          updateVisibility(state, army.owner);
+
+          // Check for camp encounter at destination
+          const destTile = state.grid.getTile(hex.q, hex.r);
+          if (destTile?.campId) {
+            const camp = state.camps.get(destTile.campId);
+            if (camp && !camp.cleared) {
+              _resolveCampBattle(army, camp, state);
+            }
+          }
+
           // Check for collisions at destination
           const battles = detectCollisions(state);
           if (battles.length > 0) {
@@ -1738,6 +1830,11 @@ async function _bootWorldGame(
       worldMapRenderer.clearHighlights();
     }
   };
+
+  // Initialize fog of war for all players
+  for (const pid of state.playerOrder) {
+    updateVisibility(state, pid);
+  }
 
   // Start first turn
   beginTurn(state);

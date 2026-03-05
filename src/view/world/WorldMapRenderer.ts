@@ -16,6 +16,9 @@ import {
 } from "@world/hex/HexCoord";
 import { TERRAIN_DEFINITIONS, TerrainType } from "@world/config/TerrainDefs";
 import { WorldBalance } from "@world/config/WorldConfig";
+import type { WorldPlayer } from "@world/state/WorldPlayer";
+import type { WorldCamp } from "@world/state/WorldCamp";
+import { RESOURCE_DEFINITIONS, IMPROVEMENT_DEFINITIONS } from "@world/config/ResourceDefs";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -41,7 +44,9 @@ export class WorldMapRenderer {
   private _vm!: ViewManager;
   private _container = new Container();
   private _hexContainer = new Container();
+  private _campContainer = new Container();
   private _highlightContainer = new Container();
+  private _fogContainer = new Container();
   private _labelContainer = new Container();
   private _hoverGraphics = new Graphics();
 
@@ -68,7 +73,9 @@ export class WorldMapRenderer {
     this._vm = vm;
 
     this._container.addChild(this._hexContainer);
+    this._container.addChild(this._campContainer);
     this._container.addChild(this._highlightContainer);
+    this._container.addChild(this._fogContainer);
     this._container.addChild(this._labelContainer);
     this._container.addChild(this._hoverGraphics);
 
@@ -148,6 +155,86 @@ export class WorldMapRenderer {
     this._highlightContainer.removeChildren();
   }
 
+  /** Draw fog of war overlay based on a player's explored/visible tiles. */
+  drawFog(grid: HexGrid, player: WorldPlayer): void {
+    this._fogContainer.removeChildren();
+
+    for (const tile of grid.allTiles()) {
+      const key = hexKey(tile.q, tile.r);
+      const explored = player.exploredTiles.has(key);
+      const visible = player.visibleTiles.has(key);
+
+      if (visible) continue; // fully visible — no overlay
+
+      const center = hexToPixel(tile, HEX_SIZE);
+      const corners = hexCorners(center, HEX_SIZE);
+
+      const g = new Graphics();
+      g.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < corners.length; i++) {
+        g.lineTo(corners[i].x, corners[i].y);
+      }
+      g.closePath();
+
+      if (!explored) {
+        // Never seen — solid black
+        g.fill({ color: 0x000000, alpha: 0.95 });
+      } else {
+        // Explored but not currently visible — dark shroud
+        g.fill({ color: 0x000000, alpha: 0.55 });
+      }
+
+      this._fogContainer.addChild(g);
+    }
+  }
+
+  /** Clear fog overlay. */
+  clearFog(): void {
+    this._fogContainer.removeChildren();
+  }
+
+  /** Draw camp icons on the map. Only shows uncleared camps in visible/explored tiles. */
+  drawCamps(camps: Iterable<WorldCamp>, localPlayer?: WorldPlayer): void {
+    this._campContainer.removeChildren();
+
+    for (const camp of camps) {
+      if (camp.cleared) continue;
+
+      // Hide camps in fog
+      if (localPlayer) {
+        const key = hexKey(camp.position.q, camp.position.r);
+        if (!localPlayer.exploredTiles.has(key)) continue;
+      }
+
+      const center = hexToPixel(camp.position, HEX_SIZE);
+      const g = new Graphics();
+
+      // Tent icon — crossed swords with tent body
+      const s = HEX_SIZE * 0.35;
+
+      // Tent body (triangle)
+      g.moveTo(center.x, center.y - s);
+      g.lineTo(center.x - s * 0.8, center.y + s * 0.5);
+      g.lineTo(center.x + s * 0.8, center.y + s * 0.5);
+      g.closePath();
+
+      // Color by tier
+      const tierColor = camp.tier === 1 ? 0xaa7744 : camp.tier === 2 ? 0xcc5533 : 0xcc2222;
+      g.fill({ color: tierColor, alpha: 0.9 });
+      g.stroke({ color: 0x000000, width: 1.5, alpha: 0.6 });
+
+      // Crossed swords
+      g.moveTo(center.x - s * 0.6, center.y - s * 0.8);
+      g.lineTo(center.x + s * 0.6, center.y + s * 0.3);
+      g.stroke({ color: 0xdddddd, width: 1.5, alpha: 0.8 });
+      g.moveTo(center.x + s * 0.6, center.y - s * 0.8);
+      g.lineTo(center.x - s * 0.6, center.y + s * 0.3);
+      g.stroke({ color: 0xdddddd, width: 1.5, alpha: 0.8 });
+
+      this._campContainer.addChild(g);
+    }
+  }
+
   // -----------------------------------------------------------------------
   // Private — hex drawing
   // -----------------------------------------------------------------------
@@ -182,6 +269,35 @@ export class WorldMapRenderer {
 
     // Terrain decorations
     _drawTerrainDecoration(g, tile.terrain, center);
+
+    // Resource icon (small diamond in bottom-right area of hex)
+    if (tile.resource) {
+      const resDef = RESOURCE_DEFINITIONS[tile.resource];
+      if (resDef) {
+        const rx = center.x + HEX_SIZE * 0.25;
+        const ry = center.y + HEX_SIZE * 0.2;
+        const rs = 4;
+        g.moveTo(rx, ry - rs);
+        g.lineTo(rx + rs, ry);
+        g.lineTo(rx, ry + rs);
+        g.lineTo(rx - rs, ry);
+        g.closePath();
+        g.fill({ color: resDef.color, alpha: 0.9 });
+        g.stroke({ color: 0x000000, width: 0.5, alpha: 0.5 });
+      }
+    }
+
+    // Improvement marker (small square in bottom-left area)
+    if (tile.improvement) {
+      const impDef = IMPROVEMENT_DEFINITIONS[tile.improvement];
+      if (impDef) {
+        const ix = center.x - HEX_SIZE * 0.25;
+        const iy = center.y + HEX_SIZE * 0.2;
+        g.rect(ix - 3, iy - 3, 6, 6);
+        g.fill({ color: impDef.color, alpha: 0.9 });
+        g.stroke({ color: 0x000000, width: 0.5, alpha: 0.5 });
+      }
+    }
 
     return g;
   }
@@ -260,6 +376,18 @@ export class WorldMapRenderer {
 // Terrain decorations
 // ---------------------------------------------------------------------------
 
+// Use tile coordinates as a simple deterministic hash for per-hex variation
+function _tileHash(cx: number, cy: number, seed = 0): number {
+  let h = (cx * 374761 + cy * 668265 + seed) | 0;
+  h = ((h >>> 16) ^ h) * 0x45d9f3b;
+  h = ((h >>> 16) ^ h) * 0x45d9f3b;
+  return ((h >>> 16) ^ h) >>> 0;
+}
+
+function _hashFloat(cx: number, cy: number, seed = 0): number {
+  return (_tileHash(cx, cy, seed) % 10000) / 10000;
+}
+
 function _drawTerrainDecoration(
   g: Graphics,
   terrain: TerrainType,
@@ -267,65 +395,325 @@ function _drawTerrainDecoration(
 ): void {
   const cx = center.x;
   const cy = center.y;
-  const s = HEX_SIZE * 0.3; // decoration scale
+  const s = HEX_SIZE * 0.35;
 
   switch (terrain) {
-    case TerrainType.FOREST: {
-      // Small triangle trees
-      for (const [ox, oy] of [[-4, 2], [3, -2], [0, 5]] as const) {
-        g.moveTo(cx + ox, cy + oy - s * 0.6);
-        g.lineTo(cx + ox - s * 0.35, cy + oy + s * 0.3);
-        g.lineTo(cx + ox + s * 0.35, cy + oy + s * 0.3);
-        g.closePath();
-        g.fill({ color: 0x1a5c1a, alpha: 0.7 });
+    case TerrainType.PLAINS: {
+      // Grass tufts and wildflowers
+      const h0 = _hashFloat(cx, cy, 0);
+      const h1 = _hashFloat(cx, cy, 1);
+      const h2 = _hashFloat(cx, cy, 2);
+      // Scattered grass blades
+      for (let i = 0; i < 5; i++) {
+        const ox = ((_tileHash(cx, cy, i * 3 + 10) % 20) - 10) * 0.8;
+        const oy = ((_tileHash(cx, cy, i * 3 + 11) % 16) - 8) * 0.8;
+        const lean = ((_tileHash(cx, cy, i * 3 + 12) % 6) - 3) * 0.3;
+        const bh = 3 + (_tileHash(cx, cy, i * 3 + 13) % 4);
+        g.moveTo(cx + ox, cy + oy);
+        g.lineTo(cx + ox + lean, cy + oy - bh);
+        g.stroke({ color: 0x5a8a3a, width: 0.8, alpha: 0.5 });
       }
+      // Occasional wildflower
+      if (h0 > 0.6) {
+        const fx = cx + (h1 - 0.5) * 12;
+        const fy = cy + (h2 - 0.5) * 10;
+        const flowerColor = [0xdd5555, 0xdddd44, 0xaa44dd, 0xffaa44][_tileHash(cx, cy, 50) % 4];
+        g.circle(fx, fy, 1.5);
+        g.fill({ color: flowerColor, alpha: 0.7 });
+        // Stem
+        g.moveTo(fx, fy + 1);
+        g.lineTo(fx, fy + 4);
+        g.stroke({ color: 0x447722, width: 0.6, alpha: 0.5 });
+      }
+      break;
+    }
+    case TerrainType.GRASSLAND: {
+      // Lush grass patches with thicker tufts
+      for (let i = 0; i < 4; i++) {
+        const ox = ((_tileHash(cx, cy, i * 4 + 20) % 18) - 9) * 0.8;
+        const oy = ((_tileHash(cx, cy, i * 4 + 21) % 14) - 7) * 0.8;
+        // Small grass clump (3 blades)
+        for (let b = -1; b <= 1; b++) {
+          const lean = b * 1.2 + ((_tileHash(cx, cy, i * 4 + 22 + b) % 4) - 2) * 0.3;
+          const bh = 4 + (_tileHash(cx, cy, i * 4 + 25 + b) % 3);
+          g.moveTo(cx + ox + b * 1.2, cy + oy);
+          g.lineTo(cx + ox + lean, cy + oy - bh);
+          g.stroke({ color: 0x448833, width: 0.8, alpha: 0.55 });
+        }
+      }
+      // Small bush
+      if (_hashFloat(cx, cy, 30) > 0.5) {
+        const bx = cx + (_hashFloat(cx, cy, 31) - 0.5) * 10;
+        const by = cy + (_hashFloat(cx, cy, 32) - 0.5) * 8;
+        g.ellipse(bx, by, 3, 2);
+        g.fill({ color: 0x337722, alpha: 0.45 });
+        g.ellipse(bx + 1, by - 0.5, 2.5, 1.5);
+        g.fill({ color: 0x449933, alpha: 0.35 });
+      }
+      break;
+    }
+    case TerrainType.FOREST: {
+      // Detailed multi-layered trees with trunks and varied shapes
+      const treePositions: [number, number][] = [
+        [-5, 3], [4, -3], [0, 6], [-3, -4], [6, 2],
+      ];
+      for (let i = 0; i < treePositions.length; i++) {
+        const [ox, oy] = treePositions[i];
+        const scale = 0.7 + (_hashFloat(cx, cy, i + 40) * 0.5);
+        const ts = s * 0.4 * scale;
+        const shade = _tileHash(cx, cy, i + 45) % 3;
+        const leafColor = shade === 0 ? 0x1a6b1a : shade === 1 ? 0x226622 : 0x1a5a22;
+        const darkLeaf = shade === 0 ? 0x0f4f0f : shade === 1 ? 0x154415 : 0x0f440f;
+
+        // Trunk
+        g.rect(cx + ox - 0.8, cy + oy - ts * 0.1, 1.6, ts * 0.8);
+        g.fill({ color: 0x5a3a1a, alpha: 0.6 });
+
+        // Tree canopy — layered triangles for depth
+        // Back layer (darker, wider)
+        g.moveTo(cx + ox, cy + oy - ts * 1.3);
+        g.lineTo(cx + ox - ts * 0.55, cy + oy + ts * 0.1);
+        g.lineTo(cx + ox + ts * 0.55, cy + oy + ts * 0.1);
+        g.closePath();
+        g.fill({ color: darkLeaf, alpha: 0.6 });
+
+        // Front layer (lighter, narrower)
+        g.moveTo(cx + ox, cy + oy - ts * 1.1);
+        g.lineTo(cx + ox - ts * 0.4, cy + oy + ts * 0.15);
+        g.lineTo(cx + ox + ts * 0.4, cy + oy + ts * 0.15);
+        g.closePath();
+        g.fill({ color: leafColor, alpha: 0.7 });
+
+        // Highlight on one side
+        g.moveTo(cx + ox + ts * 0.05, cy + oy - ts * 0.9);
+        g.lineTo(cx + ox + ts * 0.3, cy + oy);
+        g.lineTo(cx + ox + ts * 0.1, cy + oy);
+        g.closePath();
+        g.fill({ color: 0x2a8a2a, alpha: 0.25 });
+      }
+      // Ground shadow under trees
+      g.ellipse(cx, cy + s * 0.3, s * 0.6, s * 0.15);
+      g.fill({ color: 0x0a3a0a, alpha: 0.15 });
       break;
     }
     case TerrainType.MOUNTAINS: {
-      // Triangle peaks
-      g.moveTo(cx - s * 0.5, cy + s * 0.4);
-      g.lineTo(cx, cy - s * 0.6);
-      g.lineTo(cx + s * 0.5, cy + s * 0.4);
+      // Detailed mountain with rock texture and snow
+      // Back mountain (smaller, lighter)
+      g.moveTo(cx + s * 0.3, cy + s * 0.4);
+      g.lineTo(cx + s * 0.55, cy - s * 0.25);
+      g.lineTo(cx + s * 0.8, cy + s * 0.4);
       g.closePath();
-      g.fill({ color: 0x888888, alpha: 0.6 });
+      g.fill({ color: 0x7a7a7a, alpha: 0.5 });
+      // Snow on back peak
+      g.moveTo(cx + s * 0.45, cy - s * 0.05);
+      g.lineTo(cx + s * 0.55, cy - s * 0.25);
+      g.lineTo(cx + s * 0.65, cy - s * 0.05);
+      g.closePath();
+      g.fill({ color: 0xddddee, alpha: 0.5 });
+
+      // Main mountain (front, larger)
+      g.moveTo(cx - s * 0.6, cy + s * 0.45);
+      g.lineTo(cx - s * 0.05, cy - s * 0.7);
+      g.lineTo(cx + s * 0.5, cy + s * 0.45);
+      g.closePath();
+      g.fill({ color: 0x888888, alpha: 0.65 });
+      // Left face shadow
+      g.moveTo(cx - s * 0.6, cy + s * 0.45);
+      g.lineTo(cx - s * 0.05, cy - s * 0.7);
+      g.lineTo(cx - s * 0.15, cy + s * 0.45);
+      g.closePath();
+      g.fill({ color: 0x666666, alpha: 0.25 });
       // Snow cap
-      g.moveTo(cx - s * 0.15, cy - s * 0.2);
-      g.lineTo(cx, cy - s * 0.6);
-      g.lineTo(cx + s * 0.15, cy - s * 0.2);
+      g.moveTo(cx - s * 0.2, cy - s * 0.25);
+      g.lineTo(cx - s * 0.05, cy - s * 0.7);
+      g.lineTo(cx + s * 0.12, cy - s * 0.25);
       g.closePath();
-      g.fill({ color: 0xeeeeee, alpha: 0.6 });
+      g.fill({ color: 0xeeeeff, alpha: 0.65 });
+      // Snow drip edge
+      g.moveTo(cx - s * 0.2, cy - s * 0.25);
+      g.bezierCurveTo(cx - s * 0.1, cy - s * 0.2, cx, cy - s * 0.28, cx + s * 0.12, cy - s * 0.25);
+      g.stroke({ color: 0xffffff, width: 0.8, alpha: 0.5 });
+
+      // Rock texture lines
+      for (let i = 0; i < 3; i++) {
+        const ry = cy + s * (0.05 + i * 0.12);
+        const spread = s * (0.15 + i * 0.1);
+        g.moveTo(cx - spread, ry);
+        g.lineTo(cx - spread + s * 0.08, ry - s * 0.04);
+        g.stroke({ color: 0x666666, width: 0.5, alpha: 0.35 });
+      }
       break;
     }
     case TerrainType.WATER: {
-      // Wavy lines
-      for (let i = -1; i <= 1; i++) {
-        const wy = cy + i * s * 0.4;
-        g.moveTo(cx - s * 0.6, wy);
-        g.bezierCurveTo(cx - s * 0.2, wy - s * 0.2, cx + s * 0.2, wy + s * 0.2, cx + s * 0.6, wy);
-        g.stroke({ color: 0x2244aa, width: 1, alpha: 0.5 });
+      // Animated-looking water with depth and highlights
+      // Deep water gradient center
+      g.ellipse(cx, cy, s * 0.5, s * 0.3);
+      g.fill({ color: 0x1a3388, alpha: 0.15 });
+
+      // Wavy lines with varying thickness
+      for (let i = -2; i <= 2; i++) {
+        const wy = cy + i * s * 0.28;
+        const phase = (_tileHash(cx, cy, i + 60) % 10) * 0.3;
+        const wAlpha = 0.35 + Math.abs(i) * 0.05;
+        g.moveTo(cx - s * 0.65, wy);
+        g.bezierCurveTo(
+          cx - s * 0.3 + phase, wy - s * 0.15,
+          cx + s * 0.2 - phase, wy + s * 0.15,
+          cx + s * 0.65, wy,
+        );
+        g.stroke({ color: 0x2244aa, width: 1, alpha: wAlpha });
       }
+      // Light reflections (white highlights)
+      const rx = cx + (_hashFloat(cx, cy, 65) - 0.5) * 8;
+      const ry = cy + (_hashFloat(cx, cy, 66) - 0.5) * 6;
+      g.moveTo(rx - 3, ry);
+      g.lineTo(rx + 3, ry);
+      g.stroke({ color: 0xaabbee, width: 1.5, alpha: 0.3 });
+      g.moveTo(rx + 4, ry + 3);
+      g.lineTo(rx + 7, ry + 3);
+      g.stroke({ color: 0xaabbee, width: 1, alpha: 0.2 });
       break;
     }
     case TerrainType.HILLS: {
-      // Small bumps
-      g.moveTo(cx - s * 0.5, cy + s * 0.2);
-      g.bezierCurveTo(cx - s * 0.25, cy - s * 0.3, cx + s * 0.25, cy - s * 0.3, cx + s * 0.5, cy + s * 0.2);
-      g.stroke({ color: 0x886633, width: 1.5, alpha: 0.5 });
-      break;
-    }
-    case TerrainType.SWAMP: {
-      // Small dots for swamp
-      for (const [ox, oy] of [[-3, -2], [4, 1], [-1, 4], [2, -3]] as const) {
-        g.circle(cx + ox, cy + oy, 1.5);
-        g.fill({ color: 0x446622, alpha: 0.6 });
+      // Multiple rolling hills with shading
+      // Back hill
+      g.moveTo(cx + s * 0.1, cy + s * 0.3);
+      g.bezierCurveTo(cx + s * 0.25, cy - s * 0.15, cx + s * 0.6, cy - s * 0.15, cx + s * 0.7, cy + s * 0.3);
+      g.fill({ color: 0x7a9955, alpha: 0.3 });
+
+      // Main hill
+      g.moveTo(cx - s * 0.55, cy + s * 0.35);
+      g.bezierCurveTo(cx - s * 0.2, cy - s * 0.35, cx + s * 0.3, cy - s * 0.35, cx + s * 0.55, cy + s * 0.35);
+      g.fill({ color: 0x8aaa66, alpha: 0.35 });
+      // Hill shadow (left side)
+      g.moveTo(cx - s * 0.55, cy + s * 0.35);
+      g.bezierCurveTo(cx - s * 0.35, cy - s * 0.1, cx - s * 0.15, cy - s * 0.2, cx - s * 0.05, cy + s * 0.1);
+      g.fill({ color: 0x556633, alpha: 0.2 });
+      // Hill outline
+      g.moveTo(cx - s * 0.55, cy + s * 0.35);
+      g.bezierCurveTo(cx - s * 0.2, cy - s * 0.35, cx + s * 0.3, cy - s * 0.35, cx + s * 0.55, cy + s * 0.35);
+      g.stroke({ color: 0x667744, width: 1.2, alpha: 0.4 });
+
+      // Small rocks on hillside
+      for (let i = 0; i < 3; i++) {
+        const rx = cx + ((_tileHash(cx, cy, i + 70) % 14) - 7) * 0.7;
+        const ry = cy + ((_tileHash(cx, cy, i + 73) % 6)) * 0.5 + 1;
+        g.ellipse(rx, ry, 1.5, 1);
+        g.fill({ color: 0x887766, alpha: 0.4 });
       }
       break;
     }
+    case TerrainType.SWAMP: {
+      // Murky water patches with reeds and lily pads
+      // Murky water puddles
+      g.ellipse(cx - 3, cy + 2, 5, 3);
+      g.fill({ color: 0x334422, alpha: 0.25 });
+      g.ellipse(cx + 4, cy - 1, 4, 2.5);
+      g.fill({ color: 0x334422, alpha: 0.2 });
+
+      // Dead tree / reeds
+      for (let i = 0; i < 3; i++) {
+        const rx = cx + ((_tileHash(cx, cy, i + 80) % 14) - 7);
+        const ry = cy + ((_tileHash(cx, cy, i + 83) % 10) - 5);
+        const rh = 4 + (_tileHash(cx, cy, i + 86) % 4);
+        g.moveTo(rx, ry);
+        g.lineTo(rx + ((_tileHash(cx, cy, i + 89) % 3) - 1) * 0.5, ry - rh);
+        g.stroke({ color: 0x5a6633, width: 0.8, alpha: 0.6 });
+        // Reed tip
+        g.ellipse(rx, ry - rh, 0.8, 1.5);
+        g.fill({ color: 0x776633, alpha: 0.5 });
+      }
+
+      // Lily pads
+      if (_hashFloat(cx, cy, 90) > 0.4) {
+        const lx = cx + (_hashFloat(cx, cy, 91) - 0.5) * 10;
+        const ly = cy + (_hashFloat(cx, cy, 92) - 0.5) * 8;
+        g.ellipse(lx, ly, 2.5, 1.8);
+        g.fill({ color: 0x448833, alpha: 0.5 });
+        // Notch in lily pad
+        g.moveTo(lx, ly);
+        g.lineTo(lx + 2, ly - 1);
+        g.stroke({ color: 0x334422, width: 0.5, alpha: 0.4 });
+      }
+
+      // Fog wisps
+      g.moveTo(cx - s * 0.4, cy - s * 0.1);
+      g.bezierCurveTo(cx - s * 0.1, cy - s * 0.2, cx + s * 0.1, cy - s * 0.05, cx + s * 0.4, cy - s * 0.15);
+      g.stroke({ color: 0x99aa88, width: 1, alpha: 0.15 });
+      break;
+    }
     case TerrainType.DESERT: {
-      // Small dots for sand dunes
-      g.moveTo(cx - s * 0.4, cy + s * 0.1);
-      g.bezierCurveTo(cx - s * 0.1, cy - s * 0.15, cx + s * 0.1, cy + s * 0.15, cx + s * 0.4, cy);
-      g.stroke({ color: 0xcc9944, width: 1, alpha: 0.4 });
+      // Sand dunes with wind ripples and occasional cactus/rocks
+      // Multiple dune curves
+      g.moveTo(cx - s * 0.5, cy + s * 0.15);
+      g.bezierCurveTo(cx - s * 0.15, cy - s * 0.15, cx + s * 0.15, cy + s * 0.1, cx + s * 0.5, cy - s * 0.05);
+      g.stroke({ color: 0xccaa55, width: 1.2, alpha: 0.4 });
+
+      g.moveTo(cx - s * 0.3, cy + s * 0.3);
+      g.bezierCurveTo(cx, cy + s * 0.1, cx + s * 0.2, cy + s * 0.25, cx + s * 0.45, cy + s * 0.15);
+      g.stroke({ color: 0xbb9944, width: 0.8, alpha: 0.3 });
+
+      // Wind ripple lines
+      for (let i = 0; i < 3; i++) {
+        const ry = cy + s * (-0.1 + i * 0.15);
+        const rx = cx + ((_tileHash(cx, cy, i + 100) % 8) - 4);
+        g.moveTo(rx - 4, ry);
+        g.lineTo(rx + 4, ry);
+        g.stroke({ color: 0xddbb66, width: 0.5, alpha: 0.3 });
+      }
+
+      // Occasional cactus or rock
+      if (_hashFloat(cx, cy, 105) > 0.7) {
+        const px = cx + (_hashFloat(cx, cy, 106) - 0.5) * 10;
+        const py = cy + (_hashFloat(cx, cy, 107) - 0.5) * 8;
+        if (_tileHash(cx, cy, 108) % 2 === 0) {
+          // Small cactus
+          g.rect(px - 0.8, py - 4, 1.6, 5);
+          g.fill({ color: 0x448833, alpha: 0.5 });
+          // Arms
+          g.rect(px - 3, py - 2, 2.2, 0.8);
+          g.fill({ color: 0x448833, alpha: 0.45 });
+          g.rect(px - 3, py - 4, 0.8, 2.5);
+          g.fill({ color: 0x448833, alpha: 0.45 });
+          g.rect(px + 1.5, py - 3, 2, 0.8);
+          g.fill({ color: 0x448833, alpha: 0.45 });
+          g.rect(px + 2.7, py - 5, 0.8, 2.5);
+          g.fill({ color: 0x448833, alpha: 0.45 });
+        } else {
+          // Small rock
+          g.ellipse(px, py, 2.5, 1.5);
+          g.fill({ color: 0xaa9977, alpha: 0.5 });
+          g.ellipse(px + 0.3, py - 0.3, 2, 1);
+          g.fill({ color: 0xbbaa88, alpha: 0.3 });
+        }
+      }
+      break;
+    }
+    case TerrainType.TUNDRA: {
+      // Sparse snow patches, frozen ground, and bare shrubs
+      // Snow patches
+      g.ellipse(cx - 3, cy + 2, 4, 2);
+      g.fill({ color: 0xddddee, alpha: 0.3 });
+      g.ellipse(cx + 5, cy - 2, 3.5, 1.8);
+      g.fill({ color: 0xccccdd, alpha: 0.25 });
+      // Bare shrub
+      if (_hashFloat(cx, cy, 110) > 0.5) {
+        const bx = cx + (_hashFloat(cx, cy, 111) - 0.5) * 10;
+        const by = cy + (_hashFloat(cx, cy, 112) - 0.5) * 6;
+        g.moveTo(bx, by);
+        g.lineTo(bx - 2, by - 4);
+        g.stroke({ color: 0x665544, width: 0.7, alpha: 0.5 });
+        g.moveTo(bx, by);
+        g.lineTo(bx + 1, by - 5);
+        g.stroke({ color: 0x665544, width: 0.7, alpha: 0.5 });
+        g.moveTo(bx, by);
+        g.lineTo(bx + 3, by - 3);
+        g.stroke({ color: 0x665544, width: 0.6, alpha: 0.4 });
+      }
+      // Frost lines
+      g.moveTo(cx - s * 0.3, cy);
+      g.lineTo(cx + s * 0.3, cy + 1);
+      g.stroke({ color: 0xbbbbcc, width: 0.5, alpha: 0.2 });
       break;
     }
     default:

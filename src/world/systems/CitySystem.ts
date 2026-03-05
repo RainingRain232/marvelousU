@@ -15,7 +15,8 @@ import {
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 import { WorldBalance } from "@world/config/WorldConfig";
-import { hexSpiral, type HexCoord } from "@world/hex/HexCoord";
+import { hexSpiral, hexDistance, type HexCoord } from "@world/hex/HexCoord";
+import { createWorldCity } from "@world/state/WorldCity";
 import { calculateCityYields } from "@world/systems/WorldEconomySystem";
 import { hasResearch } from "@world/systems/ResearchSystem";
 
@@ -73,8 +74,8 @@ export function getRecruitableUnits(
 ): string[] {
   const units: string[] = [];
 
-  // Castle always provides basic units
-  units.push("swordsman", "archer");
+  // Castle always provides basic units + settlers
+  units.push("swordsman", "archer", "settler");
 
   // Buildings unlock additional units
   for (const building of city.buildings) {
@@ -102,7 +103,9 @@ export function queueRecruitment(
   const unitDef = UNIT_DEFINITIONS[unitType as keyof typeof UNIT_DEFINITIONS];
   if (!unitDef) return false;
 
-  const totalCost = unitDef.cost * count;
+  // Settlers use a world-mode-specific cost
+  const unitCost = unitType === "settler" ? WorldBalance.SETTLER_COST : unitDef.cost;
+  const totalCost = unitCost * count;
   const player = state.players.get(city.owner);
   if (!player || player.gold < totalCost) return false;
 
@@ -219,4 +222,82 @@ export function deployArmy(
   if (tile) tile.armyId = armyId;
 
   return armyId;
+}
+
+// ---------------------------------------------------------------------------
+// City founding (settlers)
+// ---------------------------------------------------------------------------
+
+/** Check if an army can found a city at its current location. */
+export function canFoundCity(
+  army: import("@world/state/WorldArmy").WorldArmy,
+  state: WorldState,
+): boolean {
+  if (army.isGarrison) return false;
+
+  // Must have a settler unit
+  if (!army.units.some((u) => u.unitType === "settler")) return false;
+
+  const tile = state.grid.getTile(army.position.q, army.position.r);
+  if (!tile) return false;
+
+  // Must be on buildable terrain
+  const terrain = TERRAIN_DEFINITIONS[tile.terrain];
+  if (!terrain.buildable) return false;
+
+  // Can't already have a city here
+  if (tile.cityId) return false;
+
+  // Minimum distance from other cities
+  for (const city of state.cities.values()) {
+    if (hexDistance(army.position, city.position) < WorldBalance.MIN_CITY_DISTANCE) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/** Found a new city using a settler from the army. Returns the city ID or null. */
+export function foundCity(
+  army: import("@world/state/WorldArmy").WorldArmy,
+  state: WorldState,
+): string | null {
+  if (!canFoundCity(army, state)) return null;
+
+  // Remove the settler unit from the army
+  const settlerStack = army.units.find((u) => u.unitType === "settler");
+  if (!settlerStack) return null;
+  settlerStack.count--;
+  army.units = army.units.filter((u) => u.count > 0);
+
+  // Create the city
+  const cityId = nextId(state, "city");
+  const city = createWorldCity(cityId, army.owner, army.position, false);
+
+  // Assign territory
+  const territoryHexes = hexSpiral(army.position, WorldBalance.BASE_CITY_TERRITORY_RADIUS);
+  city.territory = territoryHexes.filter((h) => state.grid.hasTile(h.q, h.r));
+  city.workedTiles = city.territory.slice(0, city.population + 1);
+
+  // Mark tiles as owned
+  for (const hex of city.territory) {
+    const t = state.grid.getTile(hex.q, hex.r);
+    if (t && !t.owner) {
+      t.owner = army.owner;
+    }
+  }
+
+  // Place city on grid
+  const tile = state.grid.getTile(army.position.q, army.position.r)!;
+  tile.cityId = cityId;
+  state.cities.set(cityId, city);
+
+  // If army has no more units, remove it
+  if (army.units.length === 0) {
+    if (tile.armyId === army.id) tile.armyId = null;
+    state.armies.delete(army.id);
+  }
+
+  return cityId;
 }
