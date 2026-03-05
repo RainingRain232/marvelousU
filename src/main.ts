@@ -137,6 +137,7 @@ import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
 import { rollRandomEvents } from "@world/systems/WorldRandomEvents";
+import { worldNotification } from "@view/world/ui/WorldNotification";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -1966,6 +1967,9 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     window.location.reload();
   };
 
+  // Initialize notification toasts
+  worldNotification.init(viewManager);
+
   // Initialize battle viewer
   worldBattleViewer.init(viewManager);
 
@@ -2155,6 +2159,17 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     if (_endTurnBusy) return;
     _endTurnBusy = true;
 
+    // Snapshot state for notification checks
+    const p1 = state.players.get("p1")!;
+    const prevResearch = p1.activeResearch;
+    const prevMagicResearch = p1.activeMagicResearch ? { ...p1.activeMagicResearch } : null;
+    const prevBuildings = new Map<string, string | null>();
+    for (const city of state.cities.values()) {
+      if (city.owner === "p1" && city.constructionQueue) {
+        prevBuildings.set(city.id, city.constructionQueue.buildingType);
+      }
+    }
+
     const battles = detectCollisions(state);
     if (battles.length > 0) {
       state.pendingBattles = battles;
@@ -2187,6 +2202,29 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       const events = rollRandomEvents(state, "p1");
       for (const evt of events) {
         worldEventLog.addEvent(`${evt.title}: ${evt.description}`, evt.color);
+        worldNotification.show(evt.title, evt.description, evt.color);
+      }
+    }
+
+    // Check for turn notifications
+    if (state.phase === WorldPhase.PLAYER_TURN) {
+      // Research completed
+      if (prevResearch && !p1.activeResearch) {
+        worldNotification.show("Research Complete", `${prevResearch} has been researched!`, 0x44aa44);
+        worldEventLog.addEvent(`Research complete: ${prevResearch}`, 0x44aa44);
+      }
+      // Magic research completed
+      if (prevMagicResearch && !p1.activeMagicResearch) {
+        worldNotification.show("Magic Research Complete", `${prevMagicResearch.school} tier ${prevMagicResearch.tier} unlocked!`, 0x8888ff);
+        worldEventLog.addEvent(`Magic research complete: ${prevMagicResearch.school} T${prevMagicResearch.tier}`, 0x8888ff);
+      }
+      // Building completed
+      for (const [cityId, buildingType] of prevBuildings) {
+        const city = state.cities.get(cityId);
+        if (city && !city.constructionQueue) {
+          worldNotification.show("Construction Complete", `${city.name}: ${buildingType} finished!`, 0xffcc44);
+          worldEventLog.addEvent(`${city.name} built ${buildingType}`, 0xffcc44);
+        }
       }
     }
 
