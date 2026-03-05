@@ -114,6 +114,7 @@ import { armyView } from "@view/world/ArmyView";
 import { armyPanel } from "@view/world/ui/ArmyPanel";
 import { conjurePanel } from "@view/world/ui/ConjurePanel";
 import { moveArmy, getArmyReachableHexes, detectCollisions } from "@world/systems/ArmySystem";
+import { findHexPath } from "@world/hex/HexPathfinding";
 import { researchScreen } from "@view/world/ui/ResearchScreen";
 import { setActiveResearch, setActiveMagicResearch } from "@world/systems/ResearchSystem";
 import { executeAITurn } from "@world/systems/WorldAI";
@@ -1978,6 +1979,24 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   worldHexTooltip.setState(state);
   worldMapRenderer.onHexHover = (hex) => {
     worldHexTooltip.showForHex(hex);
+
+    // Path preview when army is selected
+    if (hex && _selectedArmyId) {
+      const army = state.armies.get(_selectedArmyId);
+      const hKey = hexKey(hex.q, hex.r);
+      if (army && _selectedArmyReachable.has(hKey)) {
+        const pathResult = findHexPath(state.grid, army.position, hex, army.movementPoints);
+        if (pathResult) {
+          worldMapRenderer.drawPathPreview(pathResult.path);
+        } else {
+          worldMapRenderer.clearPathPreview();
+        }
+      } else {
+        worldMapRenderer.clearPathPreview();
+      }
+    } else {
+      worldMapRenderer.clearPathPreview();
+    }
   };
 
   // Initialize minimap

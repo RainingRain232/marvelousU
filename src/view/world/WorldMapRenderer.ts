@@ -184,6 +184,75 @@ export class WorldMapRenderer {
     this._highlightContainer.removeChildren();
   }
 
+  /** Draw a path preview as dotted arrows between hexes. */
+  drawPathPreview(path: HexCoord[]): void {
+    // Remove old preview (tagged with name)
+    for (let i = this._highlightContainer.children.length - 1; i >= 0; i--) {
+      const child = this._highlightContainer.children[i];
+      if (child.label === "path_preview") {
+        child.removeFromParent();
+        child.destroy();
+      }
+    }
+
+    if (path.length < 2) return;
+
+    const g = new Graphics();
+    g.label = "path_preview";
+
+    // Draw dotted line segments between path hexes
+    for (let i = 0; i < path.length - 1; i++) {
+      const from = hexToPixel(path[i], HEX_SIZE);
+      const to = hexToPixel(path[i + 1], HEX_SIZE);
+
+      // Dashed line
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dashLen = 4;
+      const gapLen = 4;
+      const steps = Math.floor(dist / (dashLen + gapLen));
+
+      for (let s = 0; s < steps; s++) {
+        const t0 = (s * (dashLen + gapLen)) / dist;
+        const t1 = Math.min(1, (s * (dashLen + gapLen) + dashLen) / dist);
+        g.moveTo(from.x + dx * t0, from.y + dy * t0);
+        g.lineTo(from.x + dx * t1, from.y + dy * t1);
+      }
+    }
+    g.stroke({ color: 0xffff88, width: 2, alpha: 0.7 });
+
+    // Arrow at destination
+    const last = hexToPixel(path[path.length - 1], HEX_SIZE);
+    const prev = hexToPixel(path[path.length - 2], HEX_SIZE);
+    const adx = last.x - prev.x;
+    const ady = last.y - prev.y;
+    const alen = Math.sqrt(adx * adx + ady * ady);
+    if (alen > 0) {
+      const nx = adx / alen;
+      const ny = ady / alen;
+      const tipX = last.x;
+      const tipY = last.y;
+      g.moveTo(tipX - nx * 8 - ny * 5, tipY - ny * 8 + nx * 5);
+      g.lineTo(tipX, tipY);
+      g.lineTo(tipX - nx * 8 + ny * 5, tipY - ny * 8 - nx * 5);
+      g.stroke({ color: 0xffff88, width: 2, alpha: 0.8 });
+    }
+
+    this._highlightContainer.addChild(g);
+  }
+
+  /** Clear only path preview graphics. */
+  clearPathPreview(): void {
+    for (let i = this._highlightContainer.children.length - 1; i >= 0; i--) {
+      const child = this._highlightContainer.children[i];
+      if (child.label === "path_preview") {
+        child.removeFromParent();
+        child.destroy();
+      }
+    }
+  }
+
   /** Draw fog of war overlay based on a player's explored/visible tiles. */
   drawFog(grid: HexGrid, player: WorldPlayer): void {
     this._fogContainer.removeChildren();
