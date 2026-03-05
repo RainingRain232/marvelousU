@@ -21,8 +21,19 @@ export interface WorldPlayer {
   activeResearch: string | null;
   /** Turns remaining on active research. */
   researchTurnsLeft: number;
+  /** Accumulated fractional progress toward current normal research. */
+  researchProgress: number;
   /** Set of completed research IDs. */
   completedResearch: Set<string>;
+
+  /** Currently researching magic school tier (null = none). */
+  activeMagicResearch: { school: string; tier: number } | null;
+  /** Accumulated fractional progress toward current magic research. */
+  magicResearchProgress: number;
+  /** School → highest completed tier. */
+  completedMagicResearch: Map<string, number>;
+  /** Fraction of research effort devoted to magic (0.0–1.0). */
+  magicResearchRatio: number;
 
   /** Equipped armory items (hero stat bonuses). */
   armoryItems: ArmoryItemId[];
@@ -57,7 +68,12 @@ export function createWorldPlayer(
     armoryItems,
     activeResearch: null,
     researchTurnsLeft: 0,
+    researchProgress: 0,
     completedResearch: new Set(),
+    activeMagicResearch: null,
+    magicResearchProgress: 0,
+    completedMagicResearch: new Map(),
+    magicResearchRatio: 0.5,
     exploredTiles: new Set(),
     visibleTiles: new Set(),
   };

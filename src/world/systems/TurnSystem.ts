@@ -11,7 +11,7 @@ import {
 import type { WorldCity } from "@world/state/WorldCity";
 import { createWorldArmy } from "@world/state/WorldArmy";
 import { processEconomy } from "@world/systems/WorldEconomySystem";
-import { advanceResearch } from "@world/systems/ResearchSystem";
+import { advanceResearch, advanceMagicResearch } from "@world/systems/ResearchSystem";
 import { updateVisibility } from "@world/systems/FogOfWarSystem";
 
 // ---------------------------------------------------------------------------
@@ -32,8 +32,9 @@ export function beginTurn(state: WorldState): void {
   // Collect resources from all cities this player owns
   processEconomy(state, player.id);
 
-  // Advance research
+  // Advance research (normal + magic)
   advanceResearch(player, state);
+  advanceMagicResearch(player, state);
 
   // Process recruitment — deliver units that are ready
   for (const city of state.cities.values()) {

@@ -33,7 +33,12 @@ interface SerializedWorldPlayer {
   armoryItems: string[];
   activeResearch: string | null;
   researchTurnsLeft: number;
+  researchProgress: number;
   completedResearch: string[];
+  activeMagicResearch: { school: string; tier: number } | null;
+  magicResearchProgress: number;
+  completedMagicResearch: Record<string, number>;
+  magicResearchRatio: number;
   exploredTiles: string[];
 }
 
@@ -77,7 +82,12 @@ function serializeWorldState(state: WorldState): SerializedWorldState {
       armoryItems: [...p.armoryItems],
       activeResearch: p.activeResearch,
       researchTurnsLeft: p.researchTurnsLeft,
+      researchProgress: p.researchProgress,
       completedResearch: [...p.completedResearch],
+      activeMagicResearch: p.activeMagicResearch ? { ...p.activeMagicResearch } : null,
+      magicResearchProgress: p.magicResearchProgress,
+      completedMagicResearch: Object.fromEntries(p.completedMagicResearch),
+      magicResearchRatio: p.magicResearchRatio,
       exploredTiles: [...p.exploredTiles],
     };
   }
@@ -132,7 +142,12 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
       armoryItems: [...sp.armoryItems],
       activeResearch: sp.activeResearch,
       researchTurnsLeft: sp.researchTurnsLeft,
+      researchProgress: sp.researchProgress ?? 0,
       completedResearch: new Set(sp.completedResearch),
+      activeMagicResearch: sp.activeMagicResearch ?? null,
+      magicResearchProgress: sp.magicResearchProgress ?? 0,
+      completedMagicResearch: new Map(Object.entries(sp.completedMagicResearch ?? {})),
+      magicResearchRatio: sp.magicResearchRatio ?? 0.5,
       exploredTiles: new Set(sp.exploredTiles),
       visibleTiles: new Set(), // recalculated on load
     });

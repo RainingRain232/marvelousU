@@ -85,6 +85,11 @@ import { LEADER_DEFINITIONS, getLeader } from "@sim/config/LeaderDefs";
 import type { LeaderId, LeaderBonus } from "@sim/config/LeaderDefs";
 import { getRace, filterInventoryByRace, RACE_DEFINITIONS } from "@sim/config/RaceDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
+import { ARMORY_ITEMS } from "@sim/config/ArmoryItemDefs";
+import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
+
+/** First 2 armory items unlocked at world game start. More drop from camps. */
+const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) => i.id);
 
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
@@ -108,7 +113,8 @@ import { armyView } from "@view/world/ArmyView";
 import { armyPanel } from "@view/world/ui/ArmyPanel";
 import { moveArmy, getArmyReachableHexes, detectCollisions } from "@world/systems/ArmySystem";
 import { researchScreen } from "@view/world/ui/ResearchScreen";
-import { setActiveResearch } from "@world/systems/ResearchSystem";
+import { setActiveResearch, setActiveMagicResearch } from "@world/systems/ResearchSystem";
+import { researchSliderScreen } from "@view/world/ui/ResearchSliderScreen";
 import { executeAITurn } from "@world/systems/WorldAI";
 import { updateVisibility } from "@world/systems/FogOfWarSystem";
 import {
@@ -230,7 +236,7 @@ import { setCityNameIndex } from "@world/state/WorldCity";
             };
             magicScreen.onNext = () => {
               magicScreen.hide();
-              armoryScreen.setUnlockedItems(null); // all unlocked
+              armoryScreen.setUnlockedItems(WORLD_STARTING_ITEMS);
               armoryScreen.onStartGame = () => {
                 armoryScreen.hide();
                 worldSetupScreen.init(viewManager);
@@ -1444,7 +1450,7 @@ function _showWorldInfoMenu(state: WorldState): void {
 
   // Card panel
   const cardW = 260;
-  const cardH = 44 + 44 * 9 + 10; // title + 9 buttons + padding
+  const cardH = 44 + 44 * 11 + 10; // title + 11 buttons + padding
   const cardX = (vm.screenWidth - cardW) / 2;
   const cardY = (vm.screenHeight - cardH) / 2;
 
@@ -1545,6 +1551,20 @@ function _showWorldInfoMenu(state: WorldState): void {
     raceDetailScreen.onBack = () => raceDetailScreen.hide();
     raceDetailScreen.onNext = null;
     raceDetailScreen.show(player.raceId);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("MAGIC", btnY, () => {
+    overlay.destroy({ children: true });
+    magicScreen.onBack = () => magicScreen.hide();
+    magicScreen.onNext = null;
+    magicScreen.show(player.raceId);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("RESEARCH SPLIT", btnY, () => {
+    overlay.destroy({ children: true });
+    researchSliderScreen.show(player);
   });
   btnY += BTN_STEP;
 
@@ -1751,12 +1771,14 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       if (sx <= 260 && sy >= 64) return true;
     }
     if (researchScreen.isVisible) return true;
+    if (researchSliderScreen.isVisible) return true;
     if (worldVictoryScreen.isVisible) return true;
     if (worldScoreScreen.isVisible) return true;
     if (worldNationalScreen.isVisible) return true;
     if (worldArmyOverview.isVisible) return true;
     if (leaderSelectScreen.container.visible) return true;
     if (raceDetailScreen.container.visible) return true;
+    if (magicScreen.container.visible) return true;
     return false;
   };
 
@@ -1846,6 +1868,14 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     researchScreen.show(state); // refresh
     worldHUD.update(state);
   };
+  researchScreen.onMagicResearchSelected = (school, tier) => {
+    const player = state.players.get(state.playerOrder[state.currentPlayerIndex])!;
+    setActiveMagicResearch(player, school, tier);
+    researchScreen.show(state); // refresh
+  };
+
+  // Initialize research slider
+  researchSliderScreen.init(viewManager);
 
   // Initialize HUD
   worldHUD.init(viewManager);
@@ -1989,6 +2019,17 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       if (player) {
         player.gold += camp.goldReward;
         worldEventLog.addEvent(`Camp cleared! +${camp.goldReward} gold`, 0xffcc44);
+
+        // 50% chance to find an armory item
+        if (Math.random() < 0.5) {
+          const owned = new Set(player.armoryItems);
+          const available = ARMORY_ITEMS.filter((i) => !owned.has(i.id));
+          if (available.length > 0) {
+            const drop = available[Math.floor(Math.random() * available.length)];
+            player.armoryItems.push(drop.id);
+            worldEventLog.addEvent(`Found item: ${drop.name}!`, 0xff88ff);
+          }
+        }
       }
     } else {
       worldEventLog.addEvent("Camp defenders held!", 0xff6644);
