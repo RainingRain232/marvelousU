@@ -1997,6 +1997,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   const refreshWorld = () => {
     worldHUD.update(state);
     worldMapRenderer.drawMap(state.grid);
+    worldMapRenderer.drawBorders(state.grid);
     worldMapRenderer.drawCamps(state.camps.values(), localPlayer);
     worldMapRenderer.drawFog(state.grid, localPlayer);
     cityView.drawCities(state, localPlayer);

@@ -48,6 +48,7 @@ export class WorldMapRenderer {
   private _campContainer = new Container();
   private _highlightContainer = new Container();
   private _fogContainer = new Container();
+  private _borderContainer = new Container();
   private _labelContainer = new Container();
   private _hoverGraphics = new Graphics();
 
@@ -76,6 +77,7 @@ export class WorldMapRenderer {
     this._container.addChild(this._hexContainer);
     this._container.addChild(this._campContainer);
     this._container.addChild(this._highlightContainer);
+    this._container.addChild(this._borderContainer);
     this._container.addChild(this._fogContainer);
     this._container.addChild(this._labelContainer);
     this._container.addChild(this._hoverGraphics);
@@ -193,6 +195,48 @@ export class WorldMapRenderer {
   /** Clear fog overlay. */
   clearFog(): void {
     this._fogContainer.removeChildren();
+  }
+
+  /** Draw territory border lines where ownership changes between adjacent hexes. */
+  drawBorders(grid: HexGrid): void {
+    this._borderContainer.removeChildren();
+    const g = new Graphics();
+
+    // For each tile with an owner, check each of its 6 edges.
+    // If the neighbor has a different owner (or no owner), draw that edge.
+    // Hex corners are indexed 0-5 (pointy-top, starting at 30deg).
+    // Edge i connects corner[i] to corner[(i+1)%6].
+    // HEX_DIRECTIONS[i] corresponds to the neighbor across edge i.
+    for (const tile of grid.allTiles()) {
+      if (!tile.owner) continue;
+
+      const playerIndex = parseInt(tile.owner.replace("p", "")) - 1;
+      const color = PLAYER_COLORS[playerIndex] ?? 0xffffff;
+      const center = hexToPixel(tile, HEX_SIZE);
+      const corners = hexCorners(center, HEX_SIZE - 1);
+
+      const neighbors = hexNeighbors(tile);
+      for (let i = 0; i < 6; i++) {
+        const n = neighbors[i];
+        const nTile = grid.getTile(n.q, n.r);
+        const nOwner = nTile?.owner ?? null;
+        if (nOwner === tile.owner) continue;
+
+        // Draw this edge segment
+        const c1 = corners[i];
+        const c2 = corners[(i + 1) % 6];
+        g.moveTo(c1.x, c1.y);
+        g.lineTo(c2.x, c2.y);
+        g.stroke({ color, width: 2.5, alpha: 0.7 });
+      }
+    }
+
+    this._borderContainer.addChild(g);
+  }
+
+  /** Clear territory borders. */
+  clearBorders(): void {
+    this._borderContainer.removeChildren();
   }
 
   /** Draw camp icons on the map. Only shows uncleared camps in visible/explored tiles. */
