@@ -106,7 +106,7 @@ import { worldMapRenderer } from "@view/world/WorldMapRenderer";
 import { worldHUD } from "@view/world/ui/WorldHUD";
 import { beginTurn, endTurn, onBattlesResolved } from "@world/systems/TurnSystem";
 import { WorldBalance } from "@world/config/WorldConfig";
-import { hexSpiral, hexNeighbors, hexNeighbor, hexToPixel, hexKey } from "@world/hex/HexCoord";
+import { hexSpiral, hexNeighbors, hexNeighbor, hexToPixel, hexKey, hexDistance } from "@world/hex/HexCoord";
 import { cityView } from "@view/world/CityView";
 import { cityPanel } from "@view/world/ui/CityPanel";
 import { startConstruction, queueRecruitment, deployArmy, foundCity, canFoundCity } from "@world/systems/CitySystem";
@@ -141,6 +141,7 @@ import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
 import { rollRandomEvents } from "@world/systems/WorldRandomEvents";
 import { worldNotification } from "@view/world/ui/WorldNotification";
+import merlinImgUrl from "@/img/merlin.png";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -1955,7 +1956,114 @@ async function _bootWorldGame(
     if (campTile) campTile.campId = camp.id;
   }
 
-  // Spawn a small neutral army near each player's capital for early combat
+  // ---------------------------------------------------------------------------
+  // Morgaine — NPC faction with central city and roaming armies
+  // ---------------------------------------------------------------------------
+  {
+    // Create Morgaine player (not in playerOrder — she never takes turns)
+    const morgaine = createWorldPlayer("morgaine", "man", true, 0, 0);
+    state.players.set("morgaine", morgaine);
+
+    // Diplomacy: all players at war with Morgaine and vice versa
+    for (const [pid, p] of state.players) {
+      if (pid !== "morgaine") {
+        p.diplomacy.set("morgaine", "war");
+        morgaine.diplomacy.set(pid, "war");
+      }
+    }
+
+    // Clear terrain around map center {q:0, r:0}
+    const center = { q: 0, r: 0 };
+    const centerNearby = hexSpiral(center, 3);
+    for (const h of centerNearby) {
+      const tile = grid.getTile(h.q, h.r);
+      if (!tile) continue;
+      if (tile.terrain === TerrainType.WATER) {
+        tile.terrain = TerrainType.GRASSLAND;
+      } else if (tile.terrain === TerrainType.MOUNTAINS) {
+        tile.terrain = TerrainType.HILLS;
+      }
+    }
+
+    // Create Morgaine's capital city "Avalon" at the center
+    const avalonId = nextId(state, "city");
+    const avalon = createWorldCity(avalonId, "morgaine", center, true);
+    avalon.name = "Avalon";
+    avalon.population = 8;
+    avalon.buildings.push(
+      { type: WorldBuildingType.CASTLE as any, completedTurn: 0 },
+      { type: WorldBuildingType.CITY_WALLS as any, completedTurn: 0 },
+      { type: BuildingType.BARRACKS as any, completedTurn: 0 },
+      { type: BuildingType.ARCHERY_RANGE as any, completedTurn: 0 },
+      { type: WorldBuildingType.GRANARY as any, completedTurn: 0 },
+      { type: WorldBuildingType.WORKSHOP as any, completedTurn: 0 },
+    );
+
+    // Territory (radius 3 around center)
+    const avalonTerritory = hexSpiral(center, 3).filter((h) => grid.hasTile(h.q, h.r));
+    avalon.territory = avalonTerritory;
+    avalon.workedTiles = avalonTerritory.slice(0, avalon.population + 1);
+    for (const hex of avalonTerritory) {
+      const tile = grid.getTile(hex.q, hex.r);
+      if (tile) tile.owner = "morgaine";
+    }
+    const centerTile = grid.getTile(center.q, center.r);
+    if (centerTile) centerTile.cityId = avalonId;
+
+    // Large garrison
+    const garrisonId = nextId(state, "army");
+    const garrisonUnits: ArmyUnit[] = [
+      { unitType: UnitType.SWORDSMAN, count: 15, hpPerUnit: 100 },
+      { unitType: UnitType.ARCHER, count: 8, hpPerUnit: 70 },
+      { unitType: UnitType.KNIGHT, count: 4, hpPerUnit: 180 },
+      { unitType: UnitType.CROSSBOWMAN, count: 2, hpPerUnit: 75 },
+    ];
+    const garrison = createWorldArmy(garrisonId, "morgaine", center, garrisonUnits, true);
+    avalon.garrisonArmyId = garrisonId;
+    state.cities.set(avalonId, avalon);
+    state.armies.set(garrisonId, garrison);
+
+    // Scatter 5 high-tier stationary Morgaine armies across the map
+    const allTiles = grid.allTilesArray();
+    const morgaineArmyPositions: { q: number; r: number }[] = [];
+    // Collect candidate tiles: passable, far from player starts (≥5) and center (≥4), not occupied
+    const candidates = allTiles.filter((t) => {
+      const terrain = TERRAIN_DEFINITIONS[t.terrain];
+      if (!isFinite(terrain.movementCost)) return false;
+      if (t.cityId || t.armyId || t.campId) return false;
+      const coord = { q: t.q, r: t.r };
+      if (hexDistance(coord, center) < 4) return false;
+      for (const sp of startPositions) {
+        if (hexDistance(coord, sp) < 5) return false;
+      }
+      return true;
+    });
+    // Pick 5 spread-out positions
+    const shuffled = candidates.sort(() => Math.random() - 0.5);
+    for (const tile of shuffled) {
+      if (morgaineArmyPositions.length >= 5) break;
+      const coord = { q: tile.q, r: tile.r };
+      // Ensure min distance 4 from other Morgaine armies
+      const tooClose = morgaineArmyPositions.some((p) => hexDistance(coord, p) < 4);
+      if (tooClose) continue;
+      morgaineArmyPositions.push(coord);
+    }
+    for (const pos of morgaineArmyPositions) {
+      const armyId = nextId(state, "army");
+      const units: ArmyUnit[] = [
+        { unitType: UnitType.KNIGHT, count: 6, hpPerUnit: 180 },
+        { unitType: UnitType.CROSSBOWMAN, count: 3, hpPerUnit: 75 },
+        { unitType: UnitType.STORM_MAGE, count: 2, hpPerUnit: 60 },
+      ];
+      const mArmy = createWorldArmy(armyId, "morgaine", pos, units, false);
+      mArmy.movementPoints = 0; // stationary
+      state.armies.set(armyId, mArmy);
+      const mTile = grid.getTile(pos.q, pos.r);
+      if (mTile) mTile.armyId = armyId;
+    }
+  }
+
+  // Spawn a Morgaine introductory army near each player's capital
   for (let i = 0; i < settings.numPlayers; i++) {
     const pos = startPositions[i];
     if (!pos) continue;
@@ -1968,15 +2076,16 @@ async function _bootWorldGame(
     });
     if (ring.length > 0) {
       const hex = ring[Math.floor(Math.random() * ring.length)];
-      const neutralId = nextId(state, "army");
-      const neutralUnits: ArmyUnit[] = [
+      const morgaineId = nextId(state, "army");
+      const morgaineUnits: ArmyUnit[] = [
         { unitType: UnitType.SWORDSMAN, count: 5, hpPerUnit: 100 },
         { unitType: UnitType.ARCHER, count: 2, hpPerUnit: 100 },
       ];
-      const neutralArmy = createWorldArmy(neutralId, "neutral", hex, neutralUnits, false);
-      state.armies.set(neutralId, neutralArmy);
-      const neutralTile = grid.getTile(hex.q, hex.r);
-      if (neutralTile) neutralTile.armyId = neutralId;
+      const morgaineArmy = createWorldArmy(morgaineId, "morgaine", hex, morgaineUnits, false);
+      morgaineArmy.movementPoints = 0; // stationary
+      state.armies.set(morgaineId, morgaineArmy);
+      const morgaineTile = grid.getTile(hex.q, hex.r);
+      if (morgaineTile) morgaineTile.armyId = morgaineId;
     }
   }
 
@@ -2268,6 +2377,64 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     }
   };
 
+  // Merlin warning when player gets near a Morgaine army
+  const _warnedMorgaineArmies = new Set<string>();
+
+  /** Show Merlin warning dialog if a player army is within 1 hex of a Morgaine army. */
+  const _checkMorgaineProximity = (playerArmy: WorldArmy): Promise<void> => {
+    for (const army of state.armies.values()) {
+      if (army.owner !== "morgaine" || army.isGarrison) continue;
+      if (_warnedMorgaineArmies.has(army.id)) continue;
+      if (hexDistance(playerArmy.position, army.position) <= 1) {
+        _warnedMorgaineArmies.add(army.id);
+        return _showMerlinWarning();
+      }
+    }
+    return Promise.resolve();
+  };
+
+  const _showMerlinWarning = (): Promise<void> => {
+    return new Promise((resolve) => {
+      // Backdrop
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      // Card
+      const card = document.createElement("div");
+      card.style.cssText = "background:#1a1a2e;border:2px solid #8844cc;border-radius:12px;padding:24px;max-width:380px;text-align:center;box-shadow:0 0 30px rgba(136,68,204,0.4);";
+
+      // Merlin portrait
+      const img = document.createElement("img");
+      img.src = merlinImgUrl;
+      img.style.cssText = "width:80px;height:80px;border-radius:50%;border:2px solid #aa88dd;margin-bottom:12px;image-rendering:pixelated;";
+      card.appendChild(img);
+
+      // Title
+      const title = document.createElement("div");
+      title.textContent = "Merlin warns you!";
+      title.style.cssText = "color:#aa88dd;font-family:monospace;font-size:16px;font-weight:bold;margin-bottom:8px;";
+      card.appendChild(title);
+
+      // Flavor text
+      const text = document.createElement("div");
+      text.textContent = "Beware! This is one of Morgaine\u2019s armies. She is rumoured to command a powerful city in the center of these lands. Tread carefully\u2026";
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.5;margin-bottom:16px;";
+      card.appendChild(text);
+
+      // Dismiss button
+      const btn = document.createElement("button");
+      btn.textContent = "Dismiss";
+      btn.style.cssText = "background:#8844cc;color:white;border:none;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;";
+      btn.onmouseenter = () => { btn.style.background = "#aa66ee"; };
+      btn.onmouseleave = () => { btn.style.background = "#8844cc"; };
+      btn.onclick = () => { backdrop.remove(); resolve(); };
+      card.appendChild(btn);
+
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
   // Resolve all pending battles — headless (for AI battles)
   const resolveWorldBattlesHeadless = () => {
     for (const battle of state.pendingBattles) {
@@ -2554,6 +2721,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             state.phase = WorldPhase.BATTLE;
             await resolveWorldBattlesVisual();
           }
+
+          await _checkMorgaineProximity(army);
         }
       }
       _moveModeArmyId = null;
@@ -2615,6 +2784,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
               state.phase = WorldPhase.BATTLE;
               await resolveWorldBattlesVisual();
             }
+
+            await _checkMorgaineProximity(army);
           }
           _selectedArmyId = null;
           _selectedArmyReachable = new Set();
@@ -2696,6 +2867,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           state.phase = WorldPhase.BATTLE;
           await resolveWorldBattlesVisual();
         }
+
+        await _checkMorgaineProximity(army);
 
         // Re-select army if it still has movement points
         if (army.movementPoints > 0 && state.phase === WorldPhase.PLAYER_TURN) {

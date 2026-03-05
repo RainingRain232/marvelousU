@@ -187,7 +187,7 @@ export class ArmyView {
     const center = hexToPixel(army.position, HEX_SIZE);
 
     const playerIndex = parseInt(army.owner.replace("p", "")) - 1;
-    const color = PLAYER_COLORS[playerIndex] ?? 0xffffff;
+    const color = army.owner === "morgaine" ? 0x8844cc : (PLAYER_COLORS[playerIndex] ?? 0xffffff);
 
     // Boat hull when embarked on water
     if (isEmbarked) {

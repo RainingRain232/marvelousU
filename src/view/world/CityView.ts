@@ -97,7 +97,7 @@ export class CityView {
 
     // Owner-colored background circle
     const playerIndex = parseInt(city.owner.replace("p", "")) - 1;
-    const color = PLAYER_COLORS[playerIndex] ?? 0xffffff;
+    const color = city.owner === "morgaine" ? 0x8844cc : (PLAYER_COLORS[playerIndex] ?? 0xffffff);
 
     const bg = new Graphics();
     bg.circle(0, 0, 14);

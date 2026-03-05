@@ -14,6 +14,8 @@ import { createPlayerState } from "@sim/state/PlayerState";
 import { createUnit } from "@sim/entities/Unit";
 import { Direction, GamePhase, GameMode, UnitState } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { hexNeighbors } from "@world/hex/HexCoord";
+import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -199,6 +201,11 @@ export function applyBattleResults(
     }
   }
 
+  // On a draw, retreat the attacker to a neighboring hex to prevent infinite re-battles
+  if (!result.winnerId && attackerArmy) {
+    _retreatArmy(worldState, attackerArmy);
+  }
+
   // Handle city capture on siege victory
   if (battle.type === "siege" && battle.defenderCityId && result.winnerId) {
     const city = worldState.cities.get(battle.defenderCityId);
@@ -312,4 +319,31 @@ function _removeArmy(state: WorldState, army: WorldArmy): void {
     tile.armyId = null;
   }
   state.armies.delete(army.id);
+}
+
+/** Move an army to an adjacent empty hex after a draw. */
+function _retreatArmy(state: WorldState, army: WorldArmy): void {
+  const neighbors = hexNeighbors(army.position);
+  for (const n of neighbors) {
+    const tile = state.grid.getTile(n.q, n.r);
+    if (!tile) continue;
+    if (tile.armyId || tile.cityId) continue;
+    const terrain = TERRAIN_DEFINITIONS[tile.terrain];
+    if (!isFinite(terrain.movementCost)) continue;
+
+    // Clear old tile
+    const oldTile = state.grid.getTile(army.position.q, army.position.r);
+    if (oldTile && oldTile.armyId === army.id) {
+      oldTile.armyId = null;
+    }
+
+    // Move to neighbor
+    army.position = n;
+    tile.armyId = army.id;
+    army.movementPoints = 0;
+    return;
+  }
+
+  // No valid retreat hex — destroy the army
+  _removeArmy(state, army);
 }
