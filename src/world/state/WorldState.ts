@@ -58,6 +58,9 @@ export interface WorldState {
   /** Whether the sword has been claimed by Arthur. */
   swordClaimed: boolean;
 
+  /** Fake sword trap tiles — look like real swords but hide a dark savant + fire elemental. */
+  fakeSwordHexes: { q: number; r: number }[];
+
   /** Auto-incrementing ID counter for cities/armies. */
   nextEntityId: number;
 }
@@ -81,6 +84,7 @@ export function createWorldState(grid: HexGrid, playerOrder: string[]): WorldSta
     winnerId: null,
     swordHex: null,
     swordClaimed: false,
+    fakeSwordHexes: [],
     nextEntityId: 1,
   };
 }

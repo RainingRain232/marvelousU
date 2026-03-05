@@ -60,6 +60,7 @@ export class WorldMapRenderer {
   private _waterPhase = 0;
   private _waterRedrawTimer = 0;
   private _swordHex: HexCoord | null = null;
+  private _fakeSwordHexes: HexCoord[] = [];
   private _tickerCb: (() => void) | null = null;
 
   /** Currently hovered hex (null = none). */
@@ -102,7 +103,7 @@ export class WorldMapRenderer {
         this._waterRedrawTimer = 0;
         this._drawWaterOverlay();
       }
-      if (this._swordHex) this._drawSwordFlicker();
+      if (this._swordHex || this._fakeSwordHexes.length > 0) this._drawSwordFlicker();
     };
     vm.app.ticker.add(cb);
     this._tickerCb = cb;
@@ -612,62 +613,83 @@ export class WorldMapRenderer {
     this._swordContainer.removeChildren();
   }
 
+  /** Set fake sword trap hexes (drawn identically to real sword). */
+  setFakeSwordHexes(hexes: HexCoord[]): void {
+    this._fakeSwordHexes = hexes;
+    this._drawSwordFlicker();
+  }
+
+  /** Remove a single fake sword hex (after trap is sprung). */
+  removeFakeSwordHex(hex: HexCoord): void {
+    this._fakeSwordHexes = this._fakeSwordHexes.filter(
+      (h) => h.q !== hex.q || h.r !== hex.r,
+    );
+    this._drawSwordFlicker();
+  }
+
   /** Redraw the flickering sword in stone. Called each ticker frame. */
   private _drawSwordFlicker(): void {
     this._swordContainer.removeChildren();
-    if (!this._swordHex) return;
 
-    const center = hexToPixel(this._swordHex, HEX_SIZE);
-    const g = new Graphics();
-    const cx = center.x;
-    const cy = center.y;
-    const s = HEX_SIZE * 0.35;
-    const t = this._waterPhase; // reuse water animation phase for flickering
+    // Collect all hexes that should show a sword (real + fakes)
+    const allSwordHexes: HexCoord[] = [];
+    if (this._swordHex) allSwordHexes.push(this._swordHex);
+    allSwordHexes.push(...this._fakeSwordHexes);
+    if (allSwordHexes.length === 0) return;
 
-    // Stone base (grey rock)
-    g.ellipse(cx, cy + s * 0.3, s * 0.55, s * 0.3);
-    g.fill({ color: 0x666677, alpha: 0.9 });
-    g.stroke({ color: 0x444455, width: 1.5 });
+    for (const swordHex of allSwordHexes) {
+      const center = hexToPixel(swordHex, HEX_SIZE);
+      const g = new Graphics();
+      const cx = center.x;
+      const cy = center.y;
+      const s = HEX_SIZE * 0.35;
+      const t = this._waterPhase; // reuse water animation phase for flickering
 
-    // Stone top (darker cap)
-    g.ellipse(cx, cy + s * 0.15, s * 0.4, s * 0.2);
-    g.fill({ color: 0x555566, alpha: 0.9 });
+      // Stone base (grey rock)
+      g.ellipse(cx, cy + s * 0.3, s * 0.55, s * 0.3);
+      g.fill({ color: 0x666677, alpha: 0.9 });
+      g.stroke({ color: 0x444455, width: 1.5 });
 
-    // Sword blade
-    const bladeFlicker = 0.7 + 0.3 * Math.sin(t * 4.0);
-    g.moveTo(cx, cy - s * 1.2);
-    g.lineTo(cx - s * 0.08, cy + s * 0.1);
-    g.lineTo(cx + s * 0.08, cy + s * 0.1);
-    g.closePath();
-    g.fill({ color: 0xccccdd, alpha: bladeFlicker });
-    g.stroke({ color: 0xffffff, width: 1, alpha: bladeFlicker * 0.8 });
+      // Stone top (darker cap)
+      g.ellipse(cx, cy + s * 0.15, s * 0.4, s * 0.2);
+      g.fill({ color: 0x555566, alpha: 0.9 });
 
-    // Cross guard
-    g.moveTo(cx - s * 0.25, cy - s * 0.15);
-    g.lineTo(cx + s * 0.25, cy - s * 0.15);
-    g.stroke({ color: 0xddaa44, width: 2.5, alpha: bladeFlicker });
+      // Sword blade
+      const bladeFlicker = 0.7 + 0.3 * Math.sin(t * 4.0);
+      g.moveTo(cx, cy - s * 1.2);
+      g.lineTo(cx - s * 0.08, cy + s * 0.1);
+      g.lineTo(cx + s * 0.08, cy + s * 0.1);
+      g.closePath();
+      g.fill({ color: 0xccccdd, alpha: bladeFlicker });
+      g.stroke({ color: 0xffffff, width: 1, alpha: bladeFlicker * 0.8 });
 
-    // Pommel (golden circle)
-    g.circle(cx, cy - s * 1.25, s * 0.08);
-    g.fill({ color: 0xffdd44, alpha: bladeFlicker });
+      // Cross guard
+      g.moveTo(cx - s * 0.25, cy - s * 0.15);
+      g.lineTo(cx + s * 0.25, cy - s * 0.15);
+      g.stroke({ color: 0xddaa44, width: 2.5, alpha: bladeFlicker });
 
-    // Flickering glow effect around the sword
-    const glowAlpha = 0.15 + 0.15 * Math.sin(t * 3.0 + 1.5);
-    g.circle(cx, cy - s * 0.4, s * 0.7);
-    g.fill({ color: 0xffdd88, alpha: glowAlpha });
+      // Pommel (golden circle)
+      g.circle(cx, cy - s * 1.25, s * 0.08);
+      g.fill({ color: 0xffdd44, alpha: bladeFlicker });
 
-    // Sparkles
-    for (let i = 0; i < 3; i++) {
-      const angle = t * 2.0 + i * 2.1;
-      const dist = s * 0.5 + s * 0.2 * Math.sin(t * 1.5 + i);
-      const sx = cx + Math.cos(angle) * dist;
-      const sy = (cy - s * 0.4) + Math.sin(angle) * dist * 0.6;
-      const sparkleAlpha = 0.3 + 0.5 * Math.abs(Math.sin(t * 5.0 + i * 1.7));
-      g.circle(sx, sy, 1.5);
-      g.fill({ color: 0xffffaa, alpha: sparkleAlpha });
+      // Flickering glow effect around the sword
+      const glowAlpha = 0.15 + 0.15 * Math.sin(t * 3.0 + 1.5);
+      g.circle(cx, cy - s * 0.4, s * 0.7);
+      g.fill({ color: 0xffdd88, alpha: glowAlpha });
+
+      // Sparkles
+      for (let i = 0; i < 3; i++) {
+        const angle = t * 2.0 + i * 2.1;
+        const dist = s * 0.5 + s * 0.2 * Math.sin(t * 1.5 + i);
+        const sx = cx + Math.cos(angle) * dist;
+        const sy = (cy - s * 0.4) + Math.sin(angle) * dist * 0.6;
+        const sparkleAlpha = 0.3 + 0.5 * Math.abs(Math.sin(t * 5.0 + i * 1.7));
+        g.circle(sx, sy, 1.5);
+        g.fill({ color: 0xffffaa, alpha: sparkleAlpha });
+      }
+
+      this._swordContainer.addChild(g);
     }
-
-    this._swordContainer.addChild(g);
   }
 }
 

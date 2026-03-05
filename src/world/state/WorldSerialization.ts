@@ -61,6 +61,7 @@ interface SerializedWorldState {
   winnerId: string | null;
   swordHex: { q: number; r: number } | null;
   swordClaimed: boolean;
+  fakeSwordHexes: { q: number; r: number }[];
   nextEntityId: number;
 }
 
@@ -125,6 +126,7 @@ function serializeWorldState(state: WorldState): SerializedWorldState {
     winnerId: state.winnerId,
     swordHex: state.swordHex,
     swordClaimed: state.swordClaimed,
+    fakeSwordHexes: state.fakeSwordHexes ? [...state.fakeSwordHexes] : [],
     nextEntityId: state.nextEntityId,
   };
 }
@@ -189,6 +191,7 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
     winnerId: data.winnerId,
     swordHex: data.swordHex ?? null,
     swordClaimed: data.swordClaimed ?? false,
+    fakeSwordHexes: data.fakeSwordHexes ?? [],
     nextEntityId: data.nextEntityId,
   };
 }

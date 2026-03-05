@@ -1564,6 +1564,13 @@ async function _returnFromWorldBattle(): Promise<void> {
       const tile = state.grid.getTile(camp.position.q, camp.position.r);
       if (tile) tile.campId = null;
 
+      // Clean up fake sword visual if this was a trap
+      if (state.fakeSwordHexes) {
+        state.fakeSwordHexes = state.fakeSwordHexes.filter(
+          (h) => h.q !== camp.position.q || h.r !== camp.position.r,
+        );
+      }
+
       const player = state.players.get(army!.owner);
       if (player) {
         player.gold += camp.goldReward;
@@ -2155,6 +2162,80 @@ async function _bootWorldGame(
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Fake Sword Traps — look like real swords but hide dark savant + fire elemental
+  // Not surrounded by water. Count scales with map size.
+  // ---------------------------------------------------------------------------
+  {
+    const fakeSwordCount = Math.max(1, Math.floor(settings.mapRadius / 8));
+    const allTilesForFake = [...grid.allTiles()];
+    // Shuffle for randomness
+    for (let i = allTilesForFake.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allTilesForFake[i], allTilesForFake[j]] = [allTilesForFake[j], allTilesForFake[i]];
+    }
+
+    const placedFakeSwords: { q: number; r: number }[] = [];
+
+    for (const tile of allTilesForFake) {
+      if (placedFakeSwords.length >= fakeSwordCount) break;
+
+      // Must be passable land, not occupied
+      const terrain = TERRAIN_DEFINITIONS[tile.terrain];
+      if (!isFinite(terrain.movementCost)) continue;
+      if (tile.terrain === TerrainType.WATER) continue;
+      if (tile.cityId || tile.armyId || tile.campId) continue;
+
+      const coord = { q: tile.q, r: tile.r };
+
+      // Not too close to player starts (≥6)
+      let tooCloseToStart = false;
+      for (const sp of startPositions) {
+        if (hexDistance(coord, sp) < 6) { tooCloseToStart = true; break; }
+      }
+      if (tooCloseToStart) continue;
+
+      // Not too close to real sword
+      if (state.swordHex && hexDistance(coord, state.swordHex) < 5) continue;
+
+      // Not too close to center (Avalon)
+      if (hexDistance(coord, { q: 0, r: 0 }) < 5) continue;
+
+      // Not too close to other fake swords
+      let tooCloseToFake = false;
+      for (const fs of placedFakeSwords) {
+        if (hexDistance(coord, fs) < 6) { tooCloseToFake = true; break; }
+      }
+      if (tooCloseToFake) continue;
+
+      // Place the fake sword — set tile to grassland
+      tile.terrain = TerrainType.GRASSLAND;
+      tile.owner = null;
+      tile.resource = null;
+      tile.improvement = null;
+
+      // Create a camp with hidden dark savant + fire elemental
+      const campId = `fake_sword_camp_${placedFakeSwords.length + 1}`;
+      const fakeCamp: import("@world/state/WorldCamp").WorldCamp = {
+        id: campId,
+        position: coord,
+        tier: 3,
+        defenders: [
+          { unitType: UnitType.DARK_SAVANT, count: 1, hpPerUnit: 200 },
+          { unitType: UnitType.FIRE_ELEMENTAL, count: 1, hpPerUnit: 200 },
+        ],
+        goldReward: 0,
+        cleared: false,
+      };
+      state.camps.set(campId, fakeCamp);
+      tile.campId = campId;
+
+      placedFakeSwords.push(coord);
+    }
+
+    state.fakeSwordHexes = placedFakeSwords;
+  }
+
   // Re-clear water/mountains around player starts (Sword Island may have placed water on them)
   for (const pos of startPositions) {
     const nearby = hexSpiral(pos, 3);
@@ -2267,6 +2348,18 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   // Draw sword in the stone if it exists and hasn't been claimed
   if (state.swordHex && !state.swordClaimed) {
     worldMapRenderer.setSwordHex(state.swordHex);
+  }
+
+  // Draw fake sword traps (look identical to real sword)
+  if (state.fakeSwordHexes && state.fakeSwordHexes.length > 0) {
+    // Only show fake swords whose camps haven't been cleared
+    const activeFakeSwords = state.fakeSwordHexes.filter((h) => {
+      const tile = grid.getTile(h.q, h.r);
+      if (!tile?.campId) return false;
+      const camp = state.camps.get(tile.campId);
+      return camp && !camp.cleared;
+    });
+    worldMapRenderer.setFakeSwordHexes(activeFakeSwords);
   }
 
   // Block hex clicks when they land on a UI panel
@@ -2976,13 +3069,27 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       const tile = ws.grid.getTile(camp.position.q, camp.position.r);
       if (tile) tile.campId = null;
 
+      // Check if this was a fake sword trap — remove the visual
+      const isFakeSword = ws.fakeSwordHexes.some(
+        (h) => h.q === camp.position.q && h.r === camp.position.r,
+      );
+      if (isFakeSword) {
+        worldMapRenderer.removeFakeSwordHex(camp.position);
+        ws.fakeSwordHexes = ws.fakeSwordHexes.filter(
+          (h) => h.q !== camp.position.q || h.r !== camp.position.r,
+        );
+        worldEventLog.addEvent("The sword was a trap! You defeated the guardians.", 0xff4488);
+      }
+
       const player = ws.players.get(army.owner);
       if (player) {
         player.gold += camp.goldReward;
-        worldEventLog.addEvent(`Camp cleared! +${camp.goldReward} gold`, 0xffcc44);
+        if (!isFakeSword) {
+          worldEventLog.addEvent(`Camp cleared! +${camp.goldReward} gold`, 0xffcc44);
+        }
 
-        // 50% chance to find an armory item
-        if (Math.random() < 0.5) {
+        // 50% chance to find an armory item (not from fake sword traps)
+        if (!isFakeSword && Math.random() < 0.5) {
           const owned = new Set(player.armoryItems);
           const available = ARMORY_ITEMS.filter((i) => !owned.has(i.id));
           if (available.length > 0) {
@@ -2993,7 +3100,13 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         }
       }
     } else {
-      worldEventLog.addEvent("Camp defenders held!", 0xff6644);
+      if (ws.fakeSwordHexes.some(
+        (h) => h.q === camp.position.q && h.r === camp.position.r,
+      )) {
+        worldEventLog.addEvent("The sword trap's guardians held!", 0xff6644);
+      } else {
+        worldEventLog.addEvent("Camp defenders held!", 0xff6644);
+      }
     }
   };
 

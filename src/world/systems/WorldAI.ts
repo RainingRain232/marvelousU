@@ -355,10 +355,15 @@ function _moveArmyAI(
   let nearestEnemyDist = Infinity;
   let nearestEnemyStrength = 0;
 
-  // Camps (only if exploring or developing)
+  // Camps (only if exploring or developing) — skip fake sword traps
   if (strategy === "explore" || strategy === "develop") {
+    const fakeSwordSet = new Set(
+      (state.fakeSwordHexes ?? []).map((h) => `${h.q},${h.r}`),
+    );
     for (const camp of state.camps.values()) {
       if (camp.cleared) continue;
+      // AI knows to avoid fake sword traps
+      if (fakeSwordSet.has(`${camp.position.q},${camp.position.r}`)) continue;
       const dist = hexDistance(army.position, camp.position);
       if (dist < nearestCampDist) {
         nearestCampDist = dist;
@@ -462,6 +467,10 @@ function _moveArmyAI(
         if (player && player.morgaineCrystals < 3) return;
       }
     }
+    // AI avoids fake sword trap tiles
+    if ((state.fakeSwordHexes ?? []).some(
+      (h) => h.q === target!.q && h.r === target!.r,
+    )) return;
     moveArmy(army, target, state);
   }
 }
