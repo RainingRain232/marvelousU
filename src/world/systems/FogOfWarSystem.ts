@@ -12,8 +12,8 @@ import { hexSpiral, hexKey } from "@world/hex/HexCoord";
 // Constants
 // ---------------------------------------------------------------------------
 
-const ARMY_SIGHT = 3;
-const CITY_SIGHT = 4;
+const ARMY_SIGHT = 2;
+const CITY_SIGHT = 3;
 
 // ---------------------------------------------------------------------------
 // Public

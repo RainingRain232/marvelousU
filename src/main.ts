@@ -1707,7 +1707,7 @@ function _showWorldInfoMenu(state: WorldState): void {
 
   // Card panel
   const cardW = 260;
-  const cardH = 44 + 44 * 11 + 10; // title + 11 buttons + padding
+  const cardH = 44 + 44 * 12 + 10; // title + 12 buttons + padding
   const cardX = (vm.screenWidth - cardW) / 2;
   const cardY = (vm.screenHeight - cardH) / 2;
 
@@ -1799,7 +1799,7 @@ function _showWorldInfoMenu(state: WorldState): void {
     overlay.destroy({ children: true });
     leaderSelectScreen.onBack = () => leaderSelectScreen.hide();
     leaderSelectScreen.onNext = null;
-    leaderSelectScreen.show();
+    leaderSelectScreen.showInfo(player.leaderId ?? "arthur");
   });
   btnY += BTN_STEP;
 
@@ -1845,12 +1845,146 @@ function _showWorldInfoMenu(state: WorldState): void {
   });
   btnY += BTN_STEP;
 
+  addBtn("CHEATS", btnY, () => {
+    overlay.destroy({ children: true });
+    _showCheatMenu(state);
+  });
+  btnY += BTN_STEP;
+
   addBtn("CLOSE", btnY, () => {
     overlay.destroy({ children: true });
   });
 
   vm.app.stage.addChild(overlay);
 }
+
+/** Cheat menu overlay — provides debug tools for testing. */
+function _showCheatMenu(state: WorldState): void {
+  const player = state.players.get("p1");
+  if (!player) return;
+
+  const vm = viewManager;
+  const overlay = new Container();
+
+  const bg = new Graphics();
+  bg.rect(0, 0, vm.screenWidth, vm.screenHeight);
+  bg.fill({ color: 0x000000, alpha: 0.5 });
+  bg.eventMode = "static";
+  bg.on("pointerdown", () => overlay.destroy({ children: true }));
+  overlay.addChild(bg);
+
+  const cardW = 300;
+  const cardH = 44 + 44 * 6 + 10;
+  const cardX = (vm.screenWidth - cardW) / 2;
+  const cardY = (vm.screenHeight - cardH) / 2;
+
+  const card = new Graphics();
+  card.roundRect(cardX, cardY, cardW, cardH, 8);
+  card.fill({ color: 0x1a0a0a, alpha: 0.97 });
+  card.stroke({ color: 0x774444, width: 1.5 });
+  card.eventMode = "static";
+  overlay.addChild(card);
+
+  const title = new Text({
+    text: "CHEATS",
+    style: new TextStyle({ fontFamily: "monospace", fontSize: 16, fontWeight: "bold", fill: 0xff4444 }),
+  });
+  title.anchor.set(0.5, 0);
+  title.position.set(cardX + cardW / 2, cardY + 12);
+  overlay.addChild(title);
+
+  const btnStyle = new TextStyle({ fontFamily: "monospace", fontSize: 13, fontWeight: "bold", fill: 0xffffff });
+
+  const addBtn = (label: string, yOffset: number, onClick: () => void) => {
+    const btn = new Container();
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+    const btnBg = new Graphics();
+    btnBg.roundRect(0, 0, cardW - 40, 34, 5);
+    btnBg.fill({ color: 0x442222 });
+    btnBg.stroke({ color: 0x774444, width: 1 });
+    btn.addChild(btnBg);
+    const txt = new Text({ text: label, style: btnStyle });
+    txt.x = 12; txt.y = 8;
+    btn.addChild(txt);
+    btn.on("pointerdown", onClick);
+    btn.on("pointerover", () => { btnBg.clear(); btnBg.roundRect(0, 0, cardW - 40, 34, 5); btnBg.fill({ color: 0x663333 }); btnBg.stroke({ color: 0xaa6666, width: 1 }); });
+    btn.on("pointerout", () => { btnBg.clear(); btnBg.roundRect(0, 0, cardW - 40, 34, 5); btnBg.fill({ color: 0x442222 }); btnBg.stroke({ color: 0x774444, width: 1 }); });
+    btn.position.set(cardX + 20, cardY + yOffset);
+    overlay.addChild(btn);
+  };
+
+  const _refreshAll = () => {
+    worldHUD.update(state);
+    worldMapRenderer.drawMap(state.grid);
+    worldMapRenderer.drawBorders(state.grid);
+    worldMapRenderer.drawCamps(state.camps.values(), player);
+    worldMapRenderer.drawNeutralBuildings(state.neutralBuildings.values(), player);
+    worldMapRenderer.drawFog(state.grid, player);
+    cityView.drawCities(state, player);
+    armyView.drawArmies(state, player);
+  };
+
+  let btnY = 44;
+  const BTN_STEP = 44;
+
+  addBtn("+5000 GOLD", btnY, () => {
+    player.gold += 5000;
+    worldHUD.update(state);
+    worldEventLog.addEvent("Cheat: +5000 gold", 0xff4444);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("+5000 MANA", btnY, () => {
+    player.mana += 5000;
+    worldHUD.update(state);
+    worldEventLog.addEvent("Cheat: +5000 mana", 0xff4444);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("+5000 RESEARCH", btnY, () => {
+    player.researchProgress += 5000;
+    worldHUD.update(state);
+    worldEventLog.addEvent("Cheat: +5000 research progress", 0xff4444);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("REMOVE FOG OF WAR", btnY, () => {
+    for (const tile of state.grid.allTiles()) {
+      const key = hexKey(tile.q, tile.r);
+      player.exploredTiles.add(key);
+      player.visibleTiles.add(key);
+    }
+    _refreshAll();
+    worldEventLog.addEvent("Cheat: Fog of war removed", 0xff4444);
+  });
+  btnY += BTN_STEP;
+
+  addBtn("SPAWN ARMY (click tile)", btnY, () => {
+    overlay.destroy({ children: true });
+    worldEventLog.addEvent("Click a tile to spawn 100 Elite Lancers", 0xff4444);
+    _cheatSpawnMode = true;
+  });
+  btnY += BTN_STEP;
+
+  addBtn("CLOSE", btnY, () => {
+    overlay.destroy({ children: true });
+  });
+
+  vm.app.stage.addChild(overlay);
+}
+
+/** Flag for cheat spawn-army-on-click mode. */
+let _cheatSpawnMode = false;
+
+/** Merchant route data — merchants walk back and forth between towns and cities. */
+interface MerchantRoute {
+  armyId: string;
+  path: import("@world/hex/HexCoord").HexCoord[];
+  pathIndex: number;
+  direction: 1 | -1;
+}
+let _merchantRoutes: MerchantRoute[] = [];
 
 async function _bootWorldGame(
   settings: WorldGameSettings,
@@ -2370,6 +2504,127 @@ async function _bootWorldGame(
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Mill towns & roads — each mill gets an adjacent town with a road to the
+  // nearest city. A merchant walks back and forth along the road each turn.
+  // ---------------------------------------------------------------------------
+  _merchantRoutes = [];
+
+  {
+    // Create "merchant" player (passive, at peace with everyone)
+    if (!state.players.has("merchant")) {
+      const merchantPlayer = createWorldPlayer("merchant", "human", true, 0, 0);
+      state.players.set("merchant", merchantPlayer);
+      for (const [pid, p] of state.players) {
+        if (pid !== "merchant") {
+          merchantPlayer.diplomacy.set(pid, "peace");
+          p.diplomacy.set("merchant", "peace");
+        }
+      }
+      // Don't add to playerOrder — merchants don't take turns
+    }
+
+    const mills = [...state.neutralBuildings.values()].filter((nb) => nb.type === "mill");
+
+    for (const mill of mills) {
+      // Find a passable, unoccupied neighbor for the town
+      const neighbors = hexNeighbors(mill.position);
+      const townHex = neighbors.find((h) => {
+        const t = grid.getTile(h.q, h.r);
+        if (!t) return false;
+        if (t.cityId || t.campId || t.neutralBuildingId || t.armyId) return false;
+        return isFinite(TERRAIN_DEFINITIONS[t.terrain].movementCost);
+      });
+      if (!townHex) continue;
+
+      // Create a small neutral town (non-capital WorldCity)
+      const townOwnerId = "mill_town";
+      if (!state.players.has(townOwnerId)) {
+        const townPlayer = createWorldPlayer(townOwnerId, "human", true, 0, 0);
+        state.players.set(townOwnerId, townPlayer);
+        for (const [pid, p] of state.players) {
+          if (pid !== townOwnerId) {
+            p.diplomacy.set(townOwnerId, "war");
+            townPlayer.diplomacy.set(pid, "war");
+          }
+        }
+      }
+
+      const townCityId = nextId(state, "city");
+      const townCity = createWorldCity(townCityId, townOwnerId, townHex, false);
+      townCity.population = 2;
+      const townTerritory = hexSpiral(townHex, 1).filter((h) => grid.hasTile(h.q, h.r));
+      townCity.territory = townTerritory;
+      townCity.workedTiles = townTerritory.slice(0, 3);
+      for (const hex of townTerritory) {
+        const tile = grid.getTile(hex.q, hex.r);
+        if (tile && !tile.owner) tile.owner = townOwnerId;
+      }
+      const townTile = grid.getTile(townHex.q, townHex.r);
+      if (townTile) townTile.cityId = townCityId;
+
+      // Garrison
+      const garrisonId = nextId(state, "army");
+      const garrisonUnits: ArmyUnit[] = [
+        { unitType: "swordsman", count: 4, hpPerUnit: 100 },
+        { unitType: "archer", count: 2, hpPerUnit: 100 },
+      ];
+      const garrison = createWorldArmy(garrisonId, townOwnerId, townHex, garrisonUnits, true);
+      townCity.garrisonArmyId = garrisonId;
+
+      state.cities.set(townCityId, townCity);
+      state.armies.set(garrisonId, garrison);
+
+      // Find nearest city (excluding our new town)
+      let nearestCity: import("@world/state/WorldCity").WorldCity | null = null;
+      let nearestDist = Infinity;
+      for (const city of state.cities.values()) {
+        if (city.id === townCityId) continue;
+        const d = hexDistance(townHex, city.position);
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearestCity = city;
+        }
+      }
+
+      // Lay road from town to nearest city & create merchant
+      if (nearestCity) {
+        const pathResult = findHexPath(grid, townHex, nearestCity.position, Infinity, false);
+        if (pathResult && pathResult.path.length > 1) {
+          for (const step of pathResult.path) {
+            const tile = grid.getTile(step.q, step.r);
+            if (!tile) continue;
+            if (tile.cityId) continue;
+            if (!tile.improvement) {
+              tile.improvement = "road";
+            }
+          }
+
+          // Spawn a merchant army at the town, walking the road
+          const merchantId = nextId(state, "army");
+          const merchantArmy = createWorldArmy(
+            merchantId,
+            "merchant",
+            townHex,
+            [{ unitType: "swordsman", count: 1, hpPerUnit: 100 }],
+            false,
+          );
+          merchantArmy.maxMovementPoints = 2;
+          merchantArmy.movementPoints = 2;
+          state.armies.set(merchantId, merchantArmy);
+          // Don't set tile.armyId — merchants coexist on tiles without blocking
+
+          _merchantRoutes.push({
+            armyId: merchantId,
+            path: pathResult.path,
+            pathIndex: 0,
+            direction: 1,
+          });
+        }
+      }
+    }
+  }
+
   // DEBUG: Spawn a p2 army near p1's capital
   {
     let p1Capital: import("@world/state/WorldCity").WorldCity | null = null;
@@ -2413,8 +2668,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     viewManager.camera.setMapSize(mapTiles, mapTiles);
     viewManager.camera.setPadding(extent * 0.6);
 
-    // Zoom in slightly, then center on p1's capital
-    viewManager.camera.zoom = viewManager.camera.zoom * 1.0;
+    // Start world mode slightly zoomed out
+    viewManager.camera.zoom = 0.75;
 
     for (const city of state.cities.values()) {
       if (city.owner === "p1" && city.isCapital) {
@@ -3375,6 +3630,24 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       }
     }
 
+    // Advance merchants along their routes
+    for (const route of _merchantRoutes) {
+      const merchant = state.armies.get(route.armyId);
+      if (!merchant) continue;
+
+      // Move up to 2 steps per turn
+      for (let step = 0; step < 2; step++) {
+        const nextIdx = route.pathIndex + route.direction;
+        if (nextIdx < 0 || nextIdx >= route.path.length) {
+          route.direction = (route.direction * -1) as 1 | -1;
+          break;
+        }
+        route.pathIndex = nextIdx;
+      }
+
+      merchant.position = { ...route.path[route.pathIndex] };
+    }
+
     // Random events at start of player turn
     if (state.phase === WorldPhase.PLAYER_TURN) {
       const events = rollRandomEvents(state, "p1");
@@ -3422,6 +3695,22 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   worldMapRenderer.onHexClick = async (hex) => {
     const tile = state.grid.getTile(hex.q, hex.r);
     if (!tile) return;
+
+    // Cheat: spawn army on click
+    if (_cheatSpawnMode) {
+      _cheatSpawnMode = false;
+      const armyId = nextId(state, "army");
+      const units: import("@world/state/WorldArmy").ArmyUnit[] = [
+        { unitType: UnitType.ELITE_LANCER, count: 100, hpPerUnit: 180 },
+      ];
+      const army = createWorldArmy(armyId, "p1", { q: hex.q, r: hex.r }, units);
+      state.armies.set(armyId, army);
+      tile.armyId = armyId;
+      refreshWorld();
+      worldEventLog.addEvent(`Cheat: Spawned 100 Elite Lancers at ${hex.q},${hex.r}`, 0xff4444);
+      return;
+    }
+
     if (state.phase !== WorldPhase.PLAYER_TURN) return;
     const currentPid = state.playerOrder[state.currentPlayerIndex];
 
@@ -3602,7 +3891,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     }
   };
 
-  // Arrow key movement for selected army
+  // Arrow key movement for selected army (WASD reserved for camera only)
   // Pointy-top hex directions: 0=E, 1=NE, 2=NW, 3=W, 4=SW, 5=SE
   const _arrowDirMap: Record<string, number> = {
     ArrowRight: 0,  // E
@@ -3610,7 +3899,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     ArrowUp: 2,     // NW (up-left)
     ArrowDown: 5,   // SE (down-right)
     KeyQ: 1,        // NE (up-right)
-    KeyA: 4,        // SW (down-left)
+    KeyZ: 4,        // SW (down-left)
   };
 
   window.addEventListener("keydown", async (e) => {

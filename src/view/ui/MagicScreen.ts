@@ -276,7 +276,10 @@ class MagicScreen {
       );
       const nextBtn = this._makeNavBtn("CONTINUE  >", 254, 57, true);
       nextBtn.position.set(CARD_W - 280, CARD_H - 63);
-      nextBtn.on("pointerdown", () => this.onNext?.());
+      nextBtn.on("pointerdown", () => {
+        if (this.onNext) this.onNext();
+        else this.onBack?.();
+      });
       card.addChild(nextBtn);
 
       // National mage spell footer

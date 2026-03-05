@@ -114,7 +114,8 @@ export class ArmyView {
 
     for (const army of state.armies.values()) {
       if (army.isGarrison) continue;
-      if (localPlayer && army.owner !== localPlayer.id) {
+      // Merchants are always visible (passive decoration)
+      if (army.owner !== "merchant" && localPlayer && army.owner !== localPlayer.id) {
         const key = hexKey(army.position.q, army.position.r);
         if (!localPlayer.visibleTiles.has(key)) continue;
       }
@@ -214,7 +215,7 @@ export class ArmyView {
     const center = hexToPixel(army.position, HEX_SIZE);
 
     const playerIndex = parseInt(army.owner.replace("p", "")) - 1;
-    const color = army.owner === "morgaine" ? 0x8844cc : (PLAYER_COLORS[playerIndex] ?? 0xffffff);
+    const color = army.owner === "merchant" ? 0xddaa44 : army.owner === "morgaine" ? 0x8844cc : (PLAYER_COLORS[playerIndex] ?? 0xffffff);
 
     const sc = ICON_SCALE;
 
@@ -293,20 +294,12 @@ export class ArmyView {
       }
     }
 
-    // Unit count badge with background
+    // Unit count text on the shield itself
     const total = armyUnitCount(army);
-    const badgeBg = new Graphics();
-    badgeBg.circle(10 * sc, -8 * sc, 7 * sc);
-    badgeBg.fill({ color: 0x000000, alpha: 0.6 });
-    badgeBg.circle(10 * sc, -8 * sc, 6 * sc);
-    badgeBg.fill({ color });
-    badgeBg.stroke({ color: 0xffffff, width: sc, alpha: 0.8 });
-    c.addChild(badgeBg);
-
     const countText = new Text({ text: `${total}`, style: COUNT_STYLE });
     countText.anchor.set(0.5, 0.5);
-    countText.x = 10 * sc;
-    countText.y = -8 * sc;
+    countText.x = 0;
+    countText.y = 0;
     c.addChild(countText);
 
     c.position.set(center.x + OFFSET_X, center.y + OFFSET_Y);

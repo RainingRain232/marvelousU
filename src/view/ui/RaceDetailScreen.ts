@@ -821,7 +821,10 @@ export class RaceDetailScreen {
       // Continue button (only in normal mode)
       const nextBtn = this._makeNavBtn("CONTINUE  >", 195, 44, true);
       nextBtn.position.set(CARD_W - 221, CARD_H - 57);
-      nextBtn.on("pointerdown", () => this.onNext?.());
+      nextBtn.on("pointerdown", () => {
+        if (this.onNext) this.onNext();
+        else this.onBack?.();
+      });
       card.addChild(nextBtn);
     }
 

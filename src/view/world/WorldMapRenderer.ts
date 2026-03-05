@@ -21,6 +21,7 @@ import type { WorldPlayer } from "@world/state/WorldPlayer";
 import type { WorldCamp } from "@world/state/WorldCamp";
 import type { NeutralBuilding } from "@world/state/NeutralBuilding";
 import { RESOURCE_DEFINITIONS, IMPROVEMENT_DEFINITIONS } from "@world/config/ResourceDefs";
+import { DeerRenderer } from "@view/environment/DeerRenderer";
 import { FirepitRenderer } from "@view/entities/FirepitRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { MillRenderer } from "@view/entities/MillRenderer";
@@ -91,6 +92,25 @@ export class WorldMapRenderer {
   private _neutralBuildingContainer = new Container();
   private _neutralBuildingRenderers: { renderer: { container: Container }; tick: (dt: number) => void }[] = [];
 
+  // Grassland deer
+  private _deerContainer = new Container();
+  private _deer: { renderer: DeerRenderer; homeX: number; homeY: number }[] = [];
+
+  // Forest creatures (princess & rabbit in large forest clusters)
+  private _forestCreatureContainer = new Container();
+  private _forestCreatures: {
+    gfx: Graphics;
+    type: "princess" | "rabbit";
+    clusterCenters: HexPixel[];
+    currentIdx: number;
+    targetX: number;
+    targetY: number;
+    x: number;
+    y: number;
+    phase: number;
+    waitTimer: number;
+  }[] = [];
+
   /** Currently hovered hex (null = none). */
   private _hoveredHex: HexCoord | null = null;
 
@@ -115,6 +135,8 @@ export class WorldMapRenderer {
     this._container.addChild(this._grassContainer);
     this._container.addChild(this._campContainer);
     this._container.addChild(this._neutralBuildingContainer);
+    this._container.addChild(this._deerContainer);
+    this._container.addChild(this._forestCreatureContainer);
     this._container.addChild(this._swordContainer);
     this._container.addChild(this._highlightContainer);
     this._container.addChild(this._borderContainer);
@@ -144,6 +166,21 @@ export class WorldMapRenderer {
       for (const fp of this._campFirepits) fp.tick(dt);
       // Animate neutral building renderers
       for (const entry of this._neutralBuildingRenderers) entry.tick(dt);
+      // Animate grassland deer
+      for (const d of this._deer) {
+        d.renderer.update(dt);
+        // Clamp deer near its home hex
+        const dx = d.renderer.container.x - d.homeX;
+        const dy = d.renderer.container.y - d.homeY;
+        const maxDrift = HEX_SIZE * 1.2;
+        if (dx * dx + dy * dy > maxDrift * maxDrift) {
+          const ang = Math.atan2(dy, dx);
+          d.renderer.container.x = d.homeX + Math.cos(ang) * maxDrift;
+          d.renderer.container.y = d.homeY + Math.sin(ang) * maxDrift;
+        }
+      }
+      // Animate forest creatures
+      this._tickForestCreatures(dt);
     };
     vm.app.ticker.add(cb);
     this._tickerCb = cb;
@@ -195,6 +232,24 @@ export class WorldMapRenderer {
       if (tile.terrain === TerrainType.PLAINS || tile.terrain === TerrainType.GRASSLAND) {
         this._grassTiles.push({ hex: { q: tile.q, r: tile.r }, terrain: tile.terrain });
       }
+    }
+
+    // Place creatures in terrain clusters
+    this.drawForestCreatures(grid);
+
+    // Place deer on ~5% of forest tiles
+    this._deerContainer.removeChildren();
+    this._deer = [];
+    const deerScale = (HEX_SIZE / 60) * 0.3;
+    for (const tile of grid.allTiles()) {
+      if (tile.terrain !== TerrainType.FOREST) continue;
+      if (_tileHash(tile.q, tile.r, 777) % 20 !== 0) continue;
+      const center = hexToPixel(tile, HEX_SIZE);
+      const bounds = { w: HEX_SIZE * 2, h: HEX_SIZE * 2 };
+      const deer = new DeerRenderer(center.x, center.y, bounds, tile.q * 1000 + tile.r);
+      deer.container.scale.set(deerScale);
+      this._deerContainer.addChild(deer.container);
+      this._deer.push({ renderer: deer, homeX: center.x, homeY: center.y });
     }
   }
 
@@ -346,40 +401,8 @@ export class WorldMapRenderer {
   }
 
   /** Draw territory border lines where ownership changes between adjacent hexes. */
-  drawBorders(grid: HexGrid): void {
+  drawBorders(_grid: HexGrid): void {
     this._borderContainer.removeChildren();
-    const g = new Graphics();
-
-    // For each tile with an owner, check each of its 6 edges.
-    // If the neighbor has a different owner (or no owner), draw that edge.
-    // Hex corners are indexed 0-5 (pointy-top, starting at 30deg).
-    // Edge i connects corner[i] to corner[(i+1)%6].
-    // HEX_DIRECTIONS[i] corresponds to the neighbor across edge i.
-    for (const tile of grid.allTiles()) {
-      if (!tile.owner) continue;
-
-      const playerIndex = parseInt(tile.owner.replace("p", "")) - 1;
-      const color = PLAYER_COLORS[playerIndex] ?? 0xffffff;
-      const center = hexToPixel(tile, HEX_SIZE);
-      const corners = hexCorners(center, HEX_SIZE - 1);
-
-      const neighbors = hexNeighbors(tile);
-      for (let i = 0; i < 6; i++) {
-        const n = neighbors[i];
-        const nTile = grid.getTile(n.q, n.r);
-        const nOwner = nTile?.owner ?? null;
-        if (nOwner === tile.owner) continue;
-
-        // Draw this edge segment
-        const c1 = corners[i];
-        const c2 = corners[(i + 1) % 6];
-        g.moveTo(c1.x, c1.y);
-        g.lineTo(c2.x, c2.y);
-        g.stroke({ color, width: HEX_SIZE * 0.04, alpha: 0.7 });
-      }
-    }
-
-    this._borderContainer.addChild(g);
   }
 
   /** Clear territory borders. */
@@ -464,16 +487,7 @@ export class WorldMapRenderer {
 
       const center = hexToPixel(building.position, HEX_SIZE);
 
-      // Hex mask
       const wrapper = new Container();
-      const mask = new Graphics();
-      const corners = hexCorners(center, HEX_SIZE - 2);
-      mask.moveTo(corners[0].x, corners[0].y);
-      for (let i = 1; i < corners.length; i++) mask.lineTo(corners[i].x, corners[i].y);
-      mask.closePath();
-      mask.fill({ color: 0xffffff });
-      wrapper.addChild(mask);
-      wrapper.mask = mask;
 
       const ownerStr = building.owner;
 
@@ -499,7 +513,7 @@ export class WorldMapRenderer {
         const tr = new TowerRenderer(ownerStr);
         tr.container.scale.set(TOWER_SCALE);
         tr.container.position.set(
-          center.x - 32 * TOWER_SCALE,
+          center.x - 32 * TOWER_SCALE + HEX_SIZE * 0.3,
           center.y - 32 * TOWER_SCALE,
         );
         wrapper.addChild(tr.container);
@@ -514,20 +528,22 @@ export class WorldMapRenderer {
         wrapper.addChild(mt.container);
         this._neutralBuildingRenderers.push({ renderer: mt, tick: (dt) => mt.tick(dt, 0 as any) });
       } else if (building.type === "blacksmith") {
+        const HALF = BLACKSMITH_SCALE * 0.5;
         const bs = new BlacksmithRenderer(ownerStr);
-        bs.container.scale.set(BLACKSMITH_SCALE);
+        bs.container.scale.set(HALF);
         bs.container.position.set(
-          center.x - 64 * BLACKSMITH_SCALE,
-          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+          center.x - 64 * HALF + HEX_SIZE * 0.3,
+          center.y - 64 * HALF + HEX_SIZE * 0.1,
         );
         wrapper.addChild(bs.container);
         this._neutralBuildingRenderers.push({ renderer: bs, tick: (dt) => bs.tick(dt, 0 as any) });
       } else if (building.type === "market") {
+        const MARKET_SCALE = BLACKSMITH_SCALE * 0.5;
         const mk = new MarketRenderer(ownerStr);
-        mk.container.scale.set(BLACKSMITH_SCALE);
+        mk.container.scale.set(MARKET_SCALE);
         mk.container.position.set(
-          center.x - 64 * BLACKSMITH_SCALE,
-          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+          center.x - 64 * MARKET_SCALE - HEX_SIZE * 0.3,
+          center.y - 64 * MARKET_SCALE + HEX_SIZE * 0.1,
         );
         wrapper.addChild(mk.container);
         this._neutralBuildingRenderers.push({ renderer: mk, tick: (dt) => mk.tick(dt, 0 as any) });
@@ -542,21 +558,23 @@ export class WorldMapRenderer {
         wrapper.addChild(tp.container);
         this._neutralBuildingRenderers.push({ renderer: tp, tick: (dt) => tp.tick(dt, 0 as any) });
       } else if (building.type === "embassy") {
+        const HALF = BLACKSMITH_SCALE * 0.5;
         const eb = new EmbassyRenderer(ownerStr);
-        eb.container.scale.set(BLACKSMITH_SCALE);
+        eb.container.scale.set(HALF);
         eb.container.position.set(
-          center.x - 64 * BLACKSMITH_SCALE,
-          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+          center.x - 64 * HALF,
+          center.y - 64 * HALF + HEX_SIZE * 0.1,
         );
         wrapper.addChild(eb.container);
         this._neutralBuildingRenderers.push({ renderer: eb, tick: (dt) => eb.tick(dt, 0 as any) });
       } else if (building.type === "faction_hall" || building.type === "elite_hall") {
+        const HALF = BLACKSMITH_SCALE * 0.5;
         const Ctor = building.type === "elite_hall" ? EliteHallRenderer : FactionHallRenderer;
         const fh = new Ctor(ownerStr);
-        fh.container.scale.set(BLACKSMITH_SCALE);
+        fh.container.scale.set(HALF);
         fh.container.position.set(
-          center.x - 64 * BLACKSMITH_SCALE,
-          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+          center.x - 64 * HALF - HEX_SIZE * 0.3,
+          center.y - 64 * HALF + HEX_SIZE * 0.1,
         );
         wrapper.addChild(fh.container);
         this._neutralBuildingRenderers.push({ renderer: fh, tick: (dt) => fh.tick(dt, 0 as any) });
@@ -576,30 +594,16 @@ export class WorldMapRenderer {
       } else if (building.type === "barracks" || building.type === "elite_barracks") {
         const Ctor = building.type === "elite_barracks" ? EliteBarracksRenderer : BarracksRenderer;
         const br = new Ctor(ownerStr);
-        br.container.scale.set(BLACKSMITH_SCALE);
+        br.container.scale.set(BLACKSMITH_SCALE * 0.5);
         br.container.position.set(
-          center.x - 64 * BLACKSMITH_SCALE,
-          center.y - 64 * BLACKSMITH_SCALE + HEX_SIZE * 0.1,
+          center.x - 64 * BLACKSMITH_SCALE * 0.5 - HEX_SIZE * 0.3,
+          center.y - 64 * BLACKSMITH_SCALE * 0.5 + HEX_SIZE * 0.1,
         );
         wrapper.addChild(br.container);
         this._neutralBuildingRenderers.push({ renderer: br, tick: (dt) => br.tick(dt, 0 as any) });
       }
 
-      // Income badge (gold=yellow, mana=purple)
-      const badge = new Graphics();
-      const bx = center.x + HEX_SIZE * 0.45;
-      const by = center.y - HEX_SIZE * 0.65;
-      badge.circle(bx, by, HEX_SIZE * 0.1);
-      if (building.type === "mage_tower" || building.type === "temple") {
-        badge.fill({ color: 0x8844ff, alpha: 0.9 });
-        badge.stroke({ color: 0x442288, width: 1 });
-      } else {
-        badge.fill({ color: 0xffcc00, alpha: 0.9 });
-        badge.stroke({ color: 0x886600, width: 1 });
-      }
-
       this._neutralBuildingContainer.addChild(wrapper);
-      this._neutralBuildingContainer.addChild(badge);
     }
   }
 
@@ -695,30 +699,65 @@ export class WorldMapRenderer {
   private _drawHexTile(tile: HexTile): Graphics {
     const terrainDef = TERRAIN_DEFINITIONS[tile.terrain];
     const center = hexToPixel(tile, HEX_SIZE);
-    const corners = hexCorners(center, HEX_SIZE - 1);
+    const corners = hexCorners(center, HEX_SIZE + 0.5);
 
     const g = new Graphics();
 
-    // Fill hex with terrain color
-    g.moveTo(corners[0].x, corners[0].y);
-    for (let i = 1; i < corners.length; i++) {
-      g.lineTo(corners[i].x, corners[i].y);
-    }
-    g.closePath();
-    g.fill({ color: terrainDef.color });
-    g.stroke({ color: terrainDef.borderColor, width: HEX_SIZE * 0.01, alpha: 0.5 });
-
-    // Owner territory overlay
+    // Fill hex with terrain color, blended with owner color if owned
+    let fillColor = terrainDef.color;
     if (tile.owner) {
       const playerIndex = parseInt(tile.owner.replace("p", "")) - 1;
       const ownerColor = PLAYER_COLORS[playerIndex] ?? 0xffffff;
-      g.moveTo(corners[0].x, corners[0].y);
-      for (let i = 1; i < corners.length; i++) {
-        g.lineTo(corners[i].x, corners[i].y);
-      }
-      g.closePath();
-      g.fill({ color: ownerColor, alpha: 0.15 });
+      const t = 0.15;
+      const tR = (terrainDef.color >> 16) & 0xff;
+      const tG = (terrainDef.color >> 8) & 0xff;
+      const tB = terrainDef.color & 0xff;
+      const oR = (ownerColor >> 16) & 0xff;
+      const oG = (ownerColor >> 8) & 0xff;
+      const oB = ownerColor & 0xff;
+      const r = Math.round(tR * (1 - t) + oR * t);
+      const g2 = Math.round(tG * (1 - t) + oG * t);
+      const b = Math.round(tB * (1 - t) + oB * t);
+      fillColor = (r << 16) | (g2 << 8) | b;
     }
+    // Base fill slightly oversized to prevent gaps between wobbly edges
+    const baseCorners = hexCorners(center, HEX_SIZE + 2);
+    g.moveTo(baseCorners[0].x, baseCorners[0].y);
+    for (let i = 1; i < baseCorners.length; i++) {
+      g.lineTo(baseCorners[i].x, baseCorners[i].y);
+    }
+    g.closePath();
+    g.fill({ color: fillColor });
+
+    // Draw hex with wobbly edges for organic look
+    g.moveTo(corners[0].x, corners[0].y);
+    for (let i = 0; i < 6; i++) {
+      const c1 = corners[i];
+      const c2 = corners[(i + 1) % 6];
+      // Deterministic seed per edge: use sorted endpoint coords so both tiles sharing this edge get the same wobble
+      const edgeSeed = Math.round(c1.x + c2.x) * 7919 + Math.round(c1.y + c2.y) * 104729;
+      const midX = (c1.x + c2.x) / 2;
+      const midY = (c1.y + c2.y) / 2;
+      // Perpendicular direction to edge
+      const dx = c2.x - c1.x;
+      const dy = c2.y - c1.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const px = -dy / len;
+      const py = dx / len;
+      const wobble = HEX_SIZE * 0.06;
+      // Two control points for a natural curve
+      const h1 = _tileHash(edgeSeed, 0, 1);
+      const h2 = _tileHash(edgeSeed, 0, 2);
+      const off1 = ((h1 % 1000) / 500 - 1) * wobble;
+      const off2 = ((h2 % 1000) / 500 - 1) * wobble;
+      const cp1x = c1.x + dx * 0.33 + px * off1;
+      const cp1y = c1.y + dy * 0.33 + py * off1;
+      const cp2x = c1.x + dx * 0.66 + px * off2;
+      const cp2y = c1.y + dy * 0.66 + py * off2;
+      g.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, c2.x, c2.y);
+    }
+    g.closePath();
+    g.fill({ color: fillColor });
 
     // Terrain decorations
     _drawTerrainDecoration(g, tile.terrain, center);
@@ -766,7 +805,8 @@ export class WorldMapRenderer {
     const neighbors = hexNeighbors(tile);
     let hasConnection = false;
 
-    for (const n of neighbors) {
+    for (let ni = 0; ni < neighbors.length; ni++) {
+      const n = neighbors[ni];
       const nTile = grid.getTile(n.q, n.r);
       if (!nTile) continue;
 
@@ -774,20 +814,30 @@ export class WorldMapRenderer {
       const isCity = !!nTile.cityId;
 
       if (isRoad || isCity) {
-        // Draw road segment from center toward neighbor center
         const nCenter = hexToPixel(n, HEX_SIZE);
-        // Draw to the midpoint between centers (each tile draws its half)
         const midX = (center.x + nCenter.x) / 2;
         const midY = (center.y + nCenter.y) / 2;
 
+        // Perpendicular offset for a winding curve, deterministic per tile+direction
+        const h = _tileHash(Math.round(center.x), Math.round(center.y), ni + 500);
+        const curveAmount = ((h % 200) - 100) / 100 * HEX_SIZE * 0.12;
+        const dx = midX - center.x;
+        const dy = midY - center.y;
+        // Perpendicular direction
+        const px = -dy;
+        const py = dx;
+        const pLen = Math.sqrt(px * px + py * py) || 1;
+        const cpx = (center.x + midX) / 2 + (px / pLen) * curveAmount;
+        const cpy = (center.y + midY) / 2 + (py / pLen) * curveAmount;
+
         // Road outline (darker)
         g.moveTo(center.x, center.y);
-        g.lineTo(midX, midY);
+        g.quadraticCurveTo(cpx, cpy, midX, midY);
         g.stroke({ color: 0x665533, width: HEX_SIZE * 0.08, alpha: 0.7 });
 
         // Road fill (lighter)
         g.moveTo(center.x, center.y);
-        g.lineTo(midX, midY);
+        g.quadraticCurveTo(cpx, cpy, midX, midY);
         g.stroke({ color: 0xbbaa77, width: HEX_SIZE * 0.04, alpha: 0.9 });
 
         hasConnection = true;
@@ -799,6 +849,259 @@ export class WorldMapRenderer {
       g.circle(center.x, center.y, HEX_SIZE * 0.04);
       g.fill({ color: 0xbbaa77, alpha: 0.9 });
       g.stroke({ color: 0x665533, width: 2, alpha: 0.7 });
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Forest creatures — princess & rabbit in large forest clusters
+  // -----------------------------------------------------------------------
+
+  /** Find forest clusters of 4+ tiles and place a princess & rabbit in each. */
+  drawForestCreatures(grid: HexGrid): void {
+    this._forestCreatureContainer.removeChildren();
+    this._forestCreatures = [];
+
+    const findClusters = (terrainType: TerrainType, minSize: number): HexCoord[][] => {
+      const visited = new Set<string>();
+      const clusters: HexCoord[][] = [];
+      for (const tile of grid.allTiles()) {
+        if (tile.terrain !== terrainType) continue;
+        const key = hexKey(tile.q, tile.r);
+        if (visited.has(key)) continue;
+        const cluster: HexCoord[] = [];
+        const queue: HexCoord[] = [{ q: tile.q, r: tile.r }];
+        visited.add(key);
+        while (queue.length > 0) {
+          const cur = queue.shift()!;
+          cluster.push(cur);
+          for (const n of hexNeighbors(cur)) {
+            const nk = hexKey(n.q, n.r);
+            if (visited.has(nk)) continue;
+            const nTile = grid.getTile(n.q, n.r);
+            if (!nTile || nTile.terrain !== terrainType) continue;
+            visited.add(nk);
+            queue.push(n);
+          }
+        }
+        if (cluster.length >= minSize) clusters.push(cluster);
+      }
+      return clusters;
+    };
+
+    const addCreature = (type: "princess" | "rabbit", centers: { x: number; y: number }[], idx: number) => {
+      const gfx = new Graphics();
+      const start = centers[idx];
+      if (type === "princess") this._drawPrincess(gfx, 0, 0);
+      else this._drawRabbit(gfx, 0, 0);
+      gfx.position.set(start.x, start.y);
+      this._forestCreatureContainer.addChild(gfx);
+      this._forestCreatures.push({
+        gfx, type, clusterCenters: centers, currentIdx: idx,
+        targetX: start.x, targetY: start.y, x: start.x, y: start.y,
+        phase: Math.random() * Math.PI * 2,
+        waitTimer: type === "rabbit" ? 0.5 + Math.random() * 2 : 1 + Math.random() * 3,
+      });
+    };
+
+    // Forest clusters: 2-3 rabbits each
+    for (const cluster of findClusters(TerrainType.FOREST, 4)) {
+      const centers = cluster.map((h) => hexToPixel(h, HEX_SIZE));
+      const rabbitCount = 2 + ((_tileHash(cluster[0].q, cluster[0].r, 555) % 2));
+      for (let i = 0; i < rabbitCount; i++) {
+        addCreature("rabbit", centers, Math.min(i, centers.length - 1));
+      }
+    }
+
+    // Grassland clusters: princess + 1-2 rabbits each
+    for (const cluster of findClusters(TerrainType.GRASSLAND, 4)) {
+      const centers = cluster.map((h) => hexToPixel(h, HEX_SIZE));
+      addCreature("princess", centers, 0);
+      const rabbitCount = 1 + ((_tileHash(cluster[0].q, cluster[0].r, 556) % 2));
+      for (let i = 0; i < rabbitCount; i++) {
+        addCreature("rabbit", centers, Math.min(i + 1, centers.length - 1));
+      }
+    }
+  }
+
+  /** Draw a small princess figure at local coordinates. */
+  private _drawPrincess(g: Graphics, x: number, y: number): void {
+    const s = HEX_SIZE * 0.018;
+
+    // Skirt (flared with curved hem)
+    const waistW = s * 1.2;
+    const hemW = s * 3;
+    const skirtTop = y - s * 3;
+    const skirtBot = y + s * 2;
+    g.moveTo(x - waistW, skirtTop);
+    g.bezierCurveTo(x - waistW * 1.2, skirtTop + (skirtBot - skirtTop) * 0.5,
+                     x - hemW * 0.9, skirtBot - s * 1,
+                     x - hemW, skirtBot);
+    // Curved hem
+    g.quadraticCurveTo(x, skirtBot + s * 0.6, x + hemW, skirtBot);
+    g.bezierCurveTo(x + hemW * 0.9, skirtBot - s * 1,
+                     x + waistW * 1.2, skirtTop + (skirtBot - skirtTop) * 0.5,
+                     x + waistW, skirtTop);
+    g.closePath();
+    g.fill({ color: 0xdd66aa, alpha: 0.9 });
+
+    // Skirt fold lines
+    g.moveTo(x - s * 0.5, skirtTop + s * 0.5);
+    g.quadraticCurveTo(x - s * 1, skirtBot - s * 0.5, x - s * 1.8, skirtBot);
+    g.stroke({ color: 0xcc5599, width: 0.5, alpha: 0.5 });
+    g.moveTo(x + s * 0.5, skirtTop + s * 0.5);
+    g.quadraticCurveTo(x + s * 1, skirtBot - s * 0.5, x + s * 1.8, skirtBot);
+    g.stroke({ color: 0xcc5599, width: 0.5, alpha: 0.5 });
+
+    // Skirt highlight
+    g.moveTo(x + s * 0.3, skirtTop + s * 0.5);
+    g.bezierCurveTo(x + s * 1, skirtTop + (skirtBot - skirtTop) * 0.5,
+                     x + hemW * 0.6, skirtBot - s * 0.5,
+                     x + hemW * 0.8, skirtBot);
+    g.lineTo(x + hemW, skirtBot);
+    g.bezierCurveTo(x + hemW * 0.9, skirtBot - s * 1,
+                     x + waistW * 1.2, skirtTop + (skirtBot - skirtTop) * 0.5,
+                     x + waistW, skirtTop);
+    g.closePath();
+    g.fill({ color: 0xee88cc, alpha: 0.35 });
+
+    // Gold trim at hem
+    g.moveTo(x - hemW, skirtBot);
+    g.quadraticCurveTo(x, skirtBot + s * 0.6, x + hemW, skirtBot);
+    g.stroke({ color: 0xf0c070, width: 0.8, alpha: 0.7 });
+
+    // Bodice
+    g.moveTo(x - waistW, skirtTop);
+    g.lineTo(x - s * 1.4, y - s * 4.5);
+    g.lineTo(x + s * 1.4, y - s * 4.5);
+    g.lineTo(x + waistW, skirtTop);
+    g.closePath();
+    g.fill({ color: 0xcc5599, alpha: 0.9 });
+    // Neckline V detail
+    g.moveTo(x - s * 0.8, y - s * 4.5);
+    g.lineTo(x, y - s * 3.5);
+    g.lineTo(x + s * 0.8, y - s * 4.5);
+    g.stroke({ color: 0xf0c070, width: 0.5, alpha: 0.6 });
+
+    // Head
+    g.circle(x, y - s * 6, s * 1.5);
+    g.fill({ color: 0xffddbb });
+
+    // Hair
+    g.circle(x, y - s * 7.2, s * 1.8);
+    g.fill({ color: 0xffcc44, alpha: 0.85 });
+    // Side hair
+    g.ellipse(x - s * 1.2, y - s * 5.5, s * 0.6, s * 2);
+    g.fill({ color: 0xffcc44, alpha: 0.7 });
+    g.ellipse(x + s * 1.2, y - s * 5.5, s * 0.6, s * 2);
+    g.fill({ color: 0xffcc44, alpha: 0.7 });
+
+    // Crown (3 small triangles)
+    for (let i = -1; i <= 1; i++) {
+      g.moveTo(x + i * s * 0.8, y - s * 8.5);
+      g.lineTo(x + i * s * 0.8 - s * 0.4, y - s * 7.5);
+      g.lineTo(x + i * s * 0.8 + s * 0.4, y - s * 7.5);
+      g.closePath();
+      g.fill({ color: 0xffdd22 });
+    }
+
+    // Eyes
+    g.circle(x - s * 0.5, y - s * 6, s * 0.3);
+    g.fill({ color: 0x334466 });
+    g.circle(x + s * 0.5, y - s * 6, s * 0.3);
+    g.fill({ color: 0x334466 });
+  }
+
+  /** Draw a small rabbit at local coordinates. */
+  private _drawRabbit(g: Graphics, x: number, y: number): void {
+    const s = HEX_SIZE * 0.015;
+
+    // Body (oval)
+    g.ellipse(x, y - s * 1.5, s * 2, s * 1.5);
+    g.fill({ color: 0xddccbb });
+
+    // Head
+    g.circle(x + s * 1.8, y - s * 2.5, s * 1.2);
+    g.fill({ color: 0xddccbb });
+
+    // Ears (two tall ellipses)
+    g.ellipse(x + s * 1.2, y - s * 5.5, s * 0.5, s * 2);
+    g.fill({ color: 0xddccbb });
+    g.ellipse(x + s * 1.2, y - s * 5.5, s * 0.3, s * 1.5);
+    g.fill({ color: 0xeebb99, alpha: 0.6 }); // inner ear
+    g.ellipse(x + s * 2.2, y - s * 5, s * 0.5, s * 1.8);
+    g.fill({ color: 0xddccbb });
+    g.ellipse(x + s * 2.2, y - s * 5, s * 0.3, s * 1.3);
+    g.fill({ color: 0xeebb99, alpha: 0.6 });
+
+    // Eye
+    g.circle(x + s * 2.2, y - s * 2.7, s * 0.3);
+    g.fill({ color: 0x332222 });
+
+    // Nose
+    g.circle(x + s * 2.8, y - s * 2.2, s * 0.2);
+    g.fill({ color: 0xcc8877 });
+
+    // Tail (small puff)
+    g.circle(x - s * 2, y - s * 1.5, s * 0.7);
+    g.fill({ color: 0xeeddcc });
+
+    // Front legs
+    g.ellipse(x + s * 1, y - s * 0.2, s * 0.3, s * 0.7);
+    g.fill({ color: 0xccbbaa });
+    // Back legs
+    g.ellipse(x - s * 1, y - s * 0.2, s * 0.4, s * 0.8);
+    g.fill({ color: 0xccbbaa });
+  }
+
+  /** Tick forest creature wandering animation. */
+  private _tickForestCreatures(dt: number): void {
+    for (const c of this._forestCreatures) {
+      c.phase += dt;
+
+      // Wait before picking a new target
+      if (c.waitTimer > 0) {
+        c.waitTimer -= dt;
+        // Idle bobbing
+        const bob = Math.sin(c.phase * 2) * 1.5;
+        c.gfx.position.set(c.x, c.y + bob);
+        continue;
+      }
+
+      // Move toward target
+      const dx = c.targetX - c.x;
+      const dy = c.targetY - c.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      const speed = c.type === "rabbit" ? 25 : 12;
+
+      if (dist < 2) {
+        // Arrived — pick a new random target within the same cluster
+        c.x = c.targetX;
+        c.y = c.targetY;
+        c.waitTimer = c.type === "rabbit"
+          ? 0.5 + Math.random() * 2
+          : 2 + Math.random() * 4;
+
+        // Pick a random hex in the cluster
+        const nextIdx = Math.floor(Math.random() * c.clusterCenters.length);
+        c.currentIdx = nextIdx;
+        const next = c.clusterCenters[nextIdx];
+        // Add some offset within the hex so they don't just go to center
+        c.targetX = next.x + (Math.random() - 0.5) * HEX_SIZE * 0.5;
+        c.targetY = next.y + (Math.random() - 0.5) * HEX_SIZE * 0.4;
+      } else {
+        // Move
+        const step = Math.min(speed * dt, dist);
+        c.x += (dx / dist) * step;
+        c.y += (dy / dist) * step;
+
+        // Flip based on movement direction
+        c.gfx.scale.x = dx < 0 ? -1 : 1;
+      }
+
+      // Bobbing while moving
+      const bob = Math.sin(c.phase * (c.type === "rabbit" ? 6 : 3)) * (c.type === "rabbit" ? 2 : 1);
+      c.gfx.position.set(c.x, c.y + bob);
     }
   }
 
@@ -1016,6 +1319,38 @@ function _drawTerrainDecoration(
           g.stroke({ color: grassColor, width: 1.2, alpha: 0.55 });
         }
       }
+      // Occasional trees (~25% of tiles, 1-3 trees)
+      if (_hashFloat(cx, cy, 900) < 0.25) {
+        const treeCount = 1 + (_tileHash(cx, cy, 901) % 3);
+        for (let t = 0; t < treeCount; t++) {
+          const tx = cx + (_hashFloat(cx, cy, t * 5 + 910) - 0.5) * 90;
+          const ty = cy + (_hashFloat(cx, cy, t * 5 + 911) - 0.5) * 70;
+          const sc = 0.5 + _hashFloat(cx, cy, t + 912) * 0.3;
+          const tw = 3 + sc * 2;
+          const th = 8 + sc * 6;
+          const cr = 6 + sc * 5;
+          const trunkC = [0x3d2a15, 0x4a3320, 0x33200d][_tileHash(cx, cy, t + 920) % 3];
+          const foliageC = [0x2a6630, 0x337733, 0x1f5528, 0x448833][_tileHash(cx, cy, t + 921) % 4];
+          // Shadow
+          g.ellipse(tx, ty + 2, cr * 0.5, cr * 0.12);
+          g.fill({ color: 0x0a3a0a, alpha: 0.12 });
+          // Trunk
+          g.rect(tx - tw / 2, ty - th, tw, th);
+          g.fill({ color: trunkC });
+          // Canopy
+          const canopyY = ty - th - cr * 0.3;
+          for (let c = 0; c < 3; c++) {
+            const ccx = tx + (_hashFloat(cx, cy, t * 10 + c + 930) - 0.5) * cr * 0.6;
+            const ccy = canopyY + (_hashFloat(cx, cy, t * 10 + c + 931) - 0.5) * cr * 0.4;
+            const ccr = cr * (0.4 + _hashFloat(cx, cy, t * 10 + c + 932) * 0.35);
+            g.circle(ccx, ccy, ccr);
+            g.fill({ color: foliageC, alpha: 0.8 });
+          }
+          // Highlight
+          g.circle(tx - cr * 0.15, canopyY - cr * 0.1, cr * 0.25);
+          g.fill({ color: 0x55aa44, alpha: 0.35 });
+        }
+      }
       // Wildflowers scattered
       for (let i = 0; i < 6; i++) {
         if (_hashFloat(cx, cy, i + 50) > 0.4) {
@@ -1052,6 +1387,38 @@ function _drawTerrainDecoration(
           g.stroke({ color: grassColor, width: 1.4, alpha: 0.6 });
         }
       }
+      // Occasional trees (~20% of tiles, 1-3 trees)
+      if (_hashFloat(cx, cy, 950) < 0.2) {
+        const treeCount = 1 + (_tileHash(cx, cy, 951) % 3);
+        for (let t = 0; t < treeCount; t++) {
+          const tx = cx + (_hashFloat(cx, cy, t * 5 + 952) - 0.5) * 80;
+          const ty = cy + (_hashFloat(cx, cy, t * 5 + 953) - 0.5) * 60;
+          const sc = 0.5 + _hashFloat(cx, cy, t + 954) * 0.35;
+          const tw = 3 + sc * 2;
+          const th = 8 + sc * 6;
+          const cr = 6 + sc * 5;
+          const trunkC = [0x3d2a15, 0x4a3320, 0x33200d][_tileHash(cx, cy, t + 960) % 3];
+          const foliageC = [0x1a4420, 0x1f5528, 0x245530, 0x337733][_tileHash(cx, cy, t + 961) % 4];
+          // Shadow
+          g.ellipse(tx, ty + 2, cr * 0.5, cr * 0.12);
+          g.fill({ color: 0x0a3a0a, alpha: 0.12 });
+          // Trunk
+          g.rect(tx - tw / 2, ty - th, tw, th);
+          g.fill({ color: trunkC });
+          // Canopy
+          const canopyY = ty - th - cr * 0.3;
+          for (let c = 0; c < 3; c++) {
+            const ccx = tx + (_hashFloat(cx, cy, t * 10 + c + 970) - 0.5) * cr * 0.6;
+            const ccy = canopyY + (_hashFloat(cx, cy, t * 10 + c + 971) - 0.5) * cr * 0.4;
+            const ccr = cr * (0.4 + _hashFloat(cx, cy, t * 10 + c + 972) * 0.35);
+            g.circle(ccx, ccy, ccr);
+            g.fill({ color: foliageC, alpha: 0.8 });
+          }
+          // Highlight
+          g.circle(tx - cr * 0.15, canopyY - cr * 0.1, cr * 0.25);
+          g.fill({ color: 0x44aa33, alpha: 0.35 });
+        }
+      }
       // Bushes
       for (let i = 0; i < 4; i++) {
         if (_hashFloat(cx, cy, i + 30) > 0.3) {
@@ -1066,61 +1433,132 @@ function _drawTerrainDecoration(
       break;
     }
     case TerrainType.FOREST: {
-      // Dense forest with many multi-layered trees
+      // Fantasia-style ancient gnarled trees with round canopies — dense forest
       const treePositions: [number, number][] = [];
-      for (let i = 0; i < 15; i++) {
+      const treeCount = 20;
+      for (let i = 0; i < treeCount; i++) {
         treePositions.push([
-          ((_tileHash(cx, cy, i * 2 + 40) % 130) - 65),
-          ((_tileHash(cx, cy, i * 2 + 41) % 110) - 55),
+          ((_tileHash(cx, cy, i * 2 + 40) % 140) - 70),
+          ((_tileHash(cx, cy, i * 2 + 41) % 120) - 60),
         ]);
       }
-      // Sort by Y for depth
       treePositions.sort((a, b) => a[1] - b[1]);
+
+      const trunkColors = [0x3d2a15, 0x4a3320, 0x33200d];
+      const foliageColors = [0x1a4420, 0x1f5528, 0x163a18, 0x245530];
+      const highlightColors = [0x2a6635, 0x348840, 0x1e553a];
+      const mossColors = [0x3a6630, 0x2d5525, 0x4a7a3a];
 
       for (let i = 0; i < treePositions.length; i++) {
         const [ox, oy] = treePositions[i];
-        const scale = 0.8 + (_hashFloat(cx, cy, i + 45) * 0.6);
-        const ts = s * 0.35 * scale;
-        const shade = _tileHash(cx, cy, i + 50) % 3;
-        const leafColor = shade === 0 ? 0x1a6b1a : shade === 1 ? 0x226622 : 0x1a5a22;
-        const darkLeaf = shade === 0 ? 0x0f4f0f : shade === 1 ? 0x154415 : 0x0f440f;
+        const scale = 0.7 + (_hashFloat(cx, cy, i + 45) * 0.5);
+        const tx = cx + ox;
+        const ty = cy + oy;
+        const trunkW = (4 + scale * 3);
+        const trunkH = (10 + scale * 8);
+        const canopyR = (8 + scale * 7);
+        const trunkColor = trunkColors[_tileHash(cx, cy, i + 60) % trunkColors.length];
+        const twist = ((_hashFloat(cx, cy, i + 70) - 0.5) * 4);
 
-        // Shadow on ground
-        g.ellipse(cx + ox, cy + oy + ts * 0.4, ts * 0.5, ts * 0.15);
-        g.fill({ color: 0x0a3a0a, alpha: 0.12 });
+        // Ground shadow
+        g.ellipse(tx, ty + 2, canopyR * 0.6, canopyR * 0.15);
+        g.fill({ color: 0x0a3a0a, alpha: 0.15 });
 
-        // Trunk
-        const trunkW = 2 + scale * 1.5;
-        g.rect(cx + ox - trunkW / 2, cy + oy - ts * 0.2, trunkW, ts * 1.0);
-        g.fill({ color: 0x5a3a1a, alpha: 0.65 });
+        // Exposed roots
+        const rootCount = 2 + (_tileHash(cx, cy, i + 80) % 3);
+        for (let r = 0; r < rootCount; r++) {
+          const side = r < rootCount / 2 ? -1 : 1;
+          const rootLen = 4 + _hashFloat(cx, cy, i * 10 + r + 90) * 6;
+          const rootW = 1 + _hashFloat(cx, cy, i * 10 + r + 91);
+          g.moveTo(tx + side * trunkW * 0.2, ty);
+          g.bezierCurveTo(
+            tx + side * rootLen * 0.4, ty + 1,
+            tx + side * rootLen * 0.7, ty + 2,
+            tx + side * rootLen, ty + 2 + _hashFloat(cx, cy, i * 10 + r + 92) * 2,
+          );
+          g.stroke({ color: trunkColor, width: rootW, cap: "round" });
+        }
 
-        // Back canopy (darker, wider)
-        g.moveTo(cx + ox, cy + oy - ts * 1.5);
-        g.lineTo(cx + ox - ts * 0.65, cy + oy + ts * 0.15);
-        g.lineTo(cx + ox + ts * 0.65, cy + oy + ts * 0.15);
+        // Twisted trunk
+        g.moveTo(tx - trunkW / 2, ty);
+        g.bezierCurveTo(
+          tx - trunkW / 2 + twist * 0.3, ty - trunkH * 0.3,
+          tx - trunkW / 2 - twist * 0.2, ty - trunkH * 0.7,
+          tx - trunkW * 0.35, ty - trunkH,
+        );
+        g.lineTo(tx + trunkW * 0.35, ty - trunkH);
+        g.bezierCurveTo(
+          tx + trunkW / 2 + twist * 0.2, ty - trunkH * 0.7,
+          tx + trunkW / 2 - twist * 0.3, ty - trunkH * 0.3,
+          tx + trunkW / 2, ty,
+        );
         g.closePath();
-        g.fill({ color: darkLeaf, alpha: 0.6 });
+        g.fill({ color: trunkColor });
 
-        // Middle canopy
-        g.moveTo(cx + ox, cy + oy - ts * 1.7);
-        g.lineTo(cx + ox - ts * 0.5, cy + oy - ts * 0.3);
-        g.lineTo(cx + ox + ts * 0.5, cy + oy - ts * 0.3);
-        g.closePath();
-        g.fill({ color: leafColor, alpha: 0.65 });
+        // Bark lines
+        for (let b = 0; b < 2; b++) {
+          const bx = tx + (_hashFloat(cx, cy, i * 10 + b + 100) - 0.5) * trunkW * 0.4;
+          const by1 = ty - _hashFloat(cx, cy, i * 10 + b + 101) * trunkH * 0.3;
+          const by2 = by1 - trunkH * 0.3;
+          g.moveTo(bx, by1);
+          g.lineTo(bx, by2);
+          g.stroke({ color: 0x1a1008, width: 0.8, alpha: 0.35 });
+        }
 
-        // Front canopy (lighter, narrower)
-        g.moveTo(cx + ox, cy + oy - ts * 1.3);
-        g.lineTo(cx + ox - ts * 0.4, cy + oy + ts * 0.1);
-        g.lineTo(cx + ox + ts * 0.4, cy + oy + ts * 0.1);
-        g.closePath();
-        g.fill({ color: leafColor, alpha: 0.7 });
+        // Moss patches
+        if (_hashFloat(cx, cy, i + 110) > 0.4) {
+          const mx = tx + (_hashFloat(cx, cy, i + 111) - 0.5) * trunkW * 0.3;
+          const my = ty - _hashFloat(cx, cy, i + 112) * trunkH * 0.6;
+          const mc = mossColors[_tileHash(cx, cy, i + 113) % mossColors.length];
+          g.ellipse(mx, my, 2 + scale, 1 + scale * 0.5);
+          g.fill({ color: mc, alpha: 0.55 });
+        }
 
-        // Highlight
-        g.moveTo(cx + ox + ts * 0.05, cy + oy - ts * 1.0);
-        g.lineTo(cx + ox + ts * 0.3, cy + oy);
-        g.lineTo(cx + ox + ts * 0.1, cy + oy);
-        g.closePath();
-        g.fill({ color: 0x2a8a2a, alpha: 0.2 });
+        // Dense round canopy (overlapping circles like ForestTreeRenderer)
+        const canopyCenterY = ty - trunkH - canopyR * 0.3;
+        const cCount = 4 + (_tileHash(cx, cy, i + 120) % 3);
+        for (let c = 0; c < cCount; c++) {
+          const ccx = tx + (_hashFloat(cx, cy, i * 10 + c + 130) - 0.5) * canopyR * 0.8;
+          const ccy = canopyCenterY + (_hashFloat(cx, cy, i * 10 + c + 131) - 0.5) * canopyR * 0.5;
+          const ccr = canopyR * (0.4 + _hashFloat(cx, cy, i * 10 + c + 132) * 0.4);
+          const fColor = foliageColors[_tileHash(cx, cy, i * 10 + c + 133) % foliageColors.length];
+          g.circle(ccx, ccy, ccr);
+          g.fill({ color: fColor, alpha: 0.8 });
+        }
+
+        // Highlight clusters
+        for (let h = 0; h < 2; h++) {
+          const hx = tx + (_hashFloat(cx, cy, i * 10 + h + 140) - 0.5) * canopyR * 0.5;
+          const hy = canopyCenterY - canopyR * 0.1 + (_hashFloat(cx, cy, i * 10 + h + 141) - 0.5) * canopyR * 0.3;
+          const hr = canopyR * (0.2 + _hashFloat(cx, cy, i * 10 + h + 142) * 0.2);
+          const hc = highlightColors[_tileHash(cx, cy, i * 10 + h + 143) % highlightColors.length];
+          g.circle(hx, hy, hr);
+          g.fill({ color: hc, alpha: 0.45 });
+        }
+
+        // Dappled light
+        if (_hashFloat(cx, cy, i + 150) > 0.5) {
+          const lx = tx + (_hashFloat(cx, cy, i + 151) - 0.5) * canopyR * 0.4;
+          const ly = canopyCenterY - _hashFloat(cx, cy, i + 152) * canopyR * 0.3;
+          g.circle(lx, ly, 1.5 + scale);
+          g.fill({ color: 0x88cc66, alpha: 0.15 });
+        }
+
+        // Hanging vine (1 per tree, static)
+        if (_hashFloat(cx, cy, i + 160) > 0.4) {
+          const vx = tx + (_hashFloat(cx, cy, i + 161) - 0.5) * canopyR * 0.6;
+          const vy = canopyCenterY + canopyR * 0.2;
+          const vLen = 6 + _hashFloat(cx, cy, i + 162) * 8;
+          g.moveTo(vx, vy);
+          g.bezierCurveTo(vx + 2, vy + vLen * 0.3, vx - 1, vy + vLen * 0.7, vx + 1, vy + vLen);
+          g.stroke({ color: 0x2a5520, width: 1, cap: "round" });
+          // Tiny leaf at end
+          g.moveTo(vx + 1, vy + vLen);
+          g.lineTo(vx + 4, vy + vLen + 2);
+          g.lineTo(vx + 1, vy + vLen + 3);
+          g.closePath();
+          g.fill({ color: 0x336633, alpha: 0.7 });
+        }
       }
       break;
     }

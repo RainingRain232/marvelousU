@@ -868,17 +868,18 @@ export function placeNeutralBuildings(
   const embassyPositions: HexCoord[] = [];
 
   const minSpecial = radius >= 9 ? 2 + 2 * (radius - 9) : 0;
+  const minHalf = Math.max(0, Math.floor(minSpecial / 2));
   _placeGuaranteed("market", minSpecial, marketPositions, 6);
-  _placeGuaranteed("temple", minSpecial, templePositions, 5);
-  _placeGuaranteed("embassy", minSpecial, embassyPositions, 5);
+  _placeGuaranteed("temple", minHalf, templePositions, 5);
+  _placeGuaranteed("embassy", minHalf, embassyPositions, 5);
 
-  // Faction hall, stables, barracks: same scaling as market/temple/embassy
+  // Faction hall, stables, barracks
   const factionHallPos: HexCoord[] = [];
   const stablesPos: HexCoord[] = [];
   const barracksPos: HexCoord[] = [];
   _placeGuaranteed("faction_hall", minSpecial, factionHallPos, 5);
-  _placeGuaranteed("stables", minSpecial, stablesPos, 5);
-  _placeGuaranteed("barracks", minSpecial, barracksPos, 5);
+  _placeGuaranteed("stables", minHalf, stablesPos, 5);
+  _placeGuaranteed("barracks", minHalf, barracksPos, 5);
 
   // Elite buildings: 1 of each from radius 11+
   if (radius >= 11) {

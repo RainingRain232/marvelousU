@@ -146,6 +146,12 @@ export class LeaderSelectScreen {
   private _gridMask!: Graphics;
   private _scrollY = 0;
 
+  // UI elements for view-only mode
+  private _nextBtn!: Container;
+  private _title!: Text;
+  private _separatorLine!: Graphics;
+  private _viewOnly = false;
+
   // Callbacks
   onNext: (() => void) | null = null;
   onBack: (() => void) | null = null;
@@ -178,11 +184,41 @@ export class LeaderSelectScreen {
   }
 
   show(): void {
+    this._viewOnly = false;
+    this._gridContainer.visible = true;
+    this._gridMask.visible = true;
+    this._separatorLine.visible = true;
+    this._title.text = "CHOOSE YOUR LEADER";
+    // Restore next button text
+    const nextLabel = this._nextBtn.getChildAt(this._nextBtn.children.length - 1) as Text;
+    if (nextLabel instanceof Text) nextLabel.text = "SELECT RACE  >";
+    this.container.visible = true;
+  }
+
+  /** Show in view-only mode — displays only the current leader info with a CONTINUE button. */
+  showInfo(leaderId: LeaderId): void {
+    this._viewOnly = true;
+    this._selectedId = leaderId;
+    this._selectLeader(leaderId);
+    this._gridContainer.visible = false;
+    this._gridMask.visible = false;
+    this._separatorLine.visible = false;
+    this._title.text = "YOUR LEADER";
+    // Change next button text to CONTINUE
+    const nextLabel = this._nextBtn.getChildAt(this._nextBtn.children.length - 1) as Text;
+    if (nextLabel instanceof Text) nextLabel.text = "CONTINUE";
+    // Center the detail panel
+    this._detailContainer.position.set(MAIN_W / 2 - 200, this._detailContainer.y);
     this.container.visible = true;
   }
 
   hide(): void {
     this.container.visible = false;
+    // Restore detail panel position
+    if (this._viewOnly) {
+      this._detailContainer.position.set(DETAIL_X, this._detailContainer.y);
+      this._viewOnly = false;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -208,10 +244,10 @@ export class LeaderSelectScreen {
     card.addChild(backBtn);
 
     // Title
-    const title = new Text({ text: "CHOOSE YOUR LEADER", style: STYLE_SCREEN_TITLE });
-    title.anchor.set(0.5, 0);
-    title.position.set(MAIN_W / 2, 18);
-    card.addChild(title);
+    this._title = new Text({ text: "CHOOSE YOUR LEADER", style: STYLE_SCREEN_TITLE });
+    this._title.anchor.set(0.5, 0);
+    this._title.position.set(MAIN_W / 2, 18);
+    card.addChild(this._title);
 
     // Header divider
     card.addChild(
@@ -252,11 +288,10 @@ export class LeaderSelectScreen {
     card.on("wheel", (e) => this._onGridWheel(e));
 
     // Vertical separator
-    card.addChild(
-      new Graphics()
-        .rect(DETAIL_X - 10, CONTENT_Y, 1, CONTENT_H)
-        .fill({ color: BORDER_COLOR, alpha: 0.15 }),
-    );
+    this._separatorLine = new Graphics()
+      .rect(DETAIL_X - 10, CONTENT_Y, 1, CONTENT_H)
+      .fill({ color: BORDER_COLOR, alpha: 0.15 });
+    card.addChild(this._separatorLine);
 
     // --- Detail panel (right) ---
     this._detailContainer = new Container();
@@ -269,10 +304,16 @@ export class LeaderSelectScreen {
     );
 
     // Next button
-    const nextBtn = this._makeNavBtn("SELECT RACE  >", 195, 44, true);
-    nextBtn.position.set(MAIN_W - 221, MAIN_H - 57);
-    nextBtn.on("pointerdown", () => this.onNext?.());
-    card.addChild(nextBtn);
+    this._nextBtn = this._makeNavBtn("SELECT RACE  >", 195, 44, true);
+    this._nextBtn.position.set(MAIN_W - 221, MAIN_H - 57);
+    this._nextBtn.on("pointerdown", () => {
+      if (this._viewOnly) {
+        this.onBack?.();
+      } else {
+        this.onNext?.();
+      }
+    });
+    card.addChild(this._nextBtn);
 
     // Select default leader
     this._selectLeader(this._selectedId);

@@ -30,14 +30,14 @@ const TOWN_SCALE = (HEX_SIZE * 2 * 0.7) / 192;   // ≈ 1.4
 
 const NAME_STYLE = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 14,
+  fontSize: Math.round(HEX_SIZE * 0.14),
   fill: 0xffffff,
   stroke: { color: 0x000000, width: 3 },
 });
 
 const POP_STYLE = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 12,
+  fontSize: Math.round(HEX_SIZE * 0.12),
   fontWeight: "bold",
   fill: 0xffee88,
   stroke: { color: 0x000000, width: 3 },
@@ -149,7 +149,7 @@ export class CityView {
     const entry: CityEntry = { container: wrapper };
 
     if (isAvalon) {
-      // Avalon: mountain background + castle
+      // Avalon: mountain background (masked) + castle (unmasked to allow overflow)
       this._drawMountainBackground(inner, center);
       const castle = new CastleRenderer("morgaine");
       castle.container.scale.set(CASTLE_SCALE);
@@ -157,18 +157,18 @@ export class CityView {
         center.x - 128 * CASTLE_SCALE,
         center.y - 128 * CASTLE_SCALE + HEX_SIZE * 0.15,
       );
-      inner.addChild(castle.container);
+      wrapper.addChild(castle.container);
       entry.castle = castle;
       entry.isAvalon = true;
     } else if (isCapital) {
-      // Player capital: castle animation
+      // Player capital: castle animation (unmasked to allow overflow)
       const castle = new CastleRenderer(city.owner);
       castle.container.scale.set(CASTLE_SCALE);
       castle.container.position.set(
         center.x - 128 * CASTLE_SCALE,
         center.y - 128 * CASTLE_SCALE + HEX_SIZE * 0.1,
       );
-      inner.addChild(castle.container);
+      wrapper.addChild(castle.container);
       entry.castle = castle;
     } else {
       // Non-capital city (neutral or player): town animation
@@ -178,7 +178,7 @@ export class CityView {
         center.x - 96 * TOWN_SCALE,
         center.y - 96 * TOWN_SCALE + HEX_SIZE * 0.1,
       );
-      inner.addChild(town.container);
+      wrapper.addChild(town.container);
       entry.town = town;
     }
 
