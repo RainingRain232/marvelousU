@@ -16,10 +16,12 @@ import { UnitState, UnitType } from "@/types";
 import throneImgUrl from "@/img/throne.png";
 import arthurImgUrl from "@/img/arthur.png";
 import merlinImgUrl from "@/img/merlin.png";
+import queenImgUrl from "@/img/queen.png";
 
 const LEADER_IMAGES: Record<string, string> = {
   arthur: arthurImgUrl,
   merlin: merlinImgUrl,
+  guinevere: queenImgUrl,
 };
 
 /** Map leader IDs to unit types for animated sprite previews. */
