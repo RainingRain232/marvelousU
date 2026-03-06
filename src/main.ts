@@ -146,6 +146,7 @@ import { worldNationalScreen } from "@view/world/ui/WorldNationalScreen";
 import { worldArmyOverview } from "@view/world/ui/WorldArmyOverview";
 import { cityPreviewScreen } from "@view/world/ui/CityPreviewScreen";
 import { advisorDialog } from "@view/world/ui/AdvisorDialog";
+import { worldIntroDialog } from "@view/world/ui/WorldIntroDialog";
 import { turnTransition } from "@view/world/ui/TurnTransition";
 import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
@@ -3108,6 +3109,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     if (armyPanel.isVisible) {
       if (sx <= 260 && sy >= 64) return true;
     }
+    if (worldIntroDialog.isVisible) return true;
     if (researchScreen.isVisible) return true;
     if (worldVictoryScreen.isVisible) return true;
     if (worldScoreScreen.isVisible) return true;
@@ -3190,6 +3192,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
   // Initialize advisor dialog
   advisorDialog.init(viewManager);
+  worldIntroDialog.init(viewManager);
   turnTransition.init(viewManager);
 
   // Initialize army view
@@ -4421,6 +4424,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       if (raceDetailScreen.container.visible) { raceDetailScreen.hide(); return; }
       if (magicScreen.container.visible) { magicScreen.hide(); return; }
       if (buildingWikiScreen.container.visible) { buildingWikiScreen.hide(); return; }
+      if (worldIntroDialog.isVisible) { worldIntroDialog.hide(); return; }
       if (advisorDialog.isVisible) { advisorDialog.hide(); return; }
       if (cityPreviewScreen.isVisible) { cityPreviewScreen.hide(); return; }
       if (worldWikiScreen.isVisible) { worldWikiScreen.hide(); return; }
@@ -4586,6 +4590,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   // Start first turn (skip on load — state is already mid-turn)
   if (!skipBeginTurn) {
     beginTurn(state);
+    // Show world intro story dialog for new games
+    worldIntroDialog.show();
   }
   refreshWorld();
 }
