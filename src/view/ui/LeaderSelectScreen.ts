@@ -17,11 +17,45 @@ import throneImgUrl from "@/img/throne.png";
 import arthurImgUrl from "@/img/arthur.png";
 import merlinImgUrl from "@/img/merlin.png";
 import queenImgUrl from "@/img/queen.png";
+import lancelotImgUrl from "@/img/lancelot.png";
+import morganImgUrl from "@/img/morgan.png";
+import gawainImgUrl from "@/img/gawain.png";
+import galahadImgUrl from "@/img/galahad.png";
+import percivalImgUrl from "@/img/percival.png";
+import tristanImgUrl from "@/img/tristan.png";
+import nimueImgUrl from "@/img/nimue.png";
+import kayImgUrl from "@/img/kay.png";
+import bedivereImgUrl from "@/img/bedivere.png";
+import elaineImgUrl from "@/img/elaine.png";
+import mordredImgUrl from "@/img/mordred.png";
+import igraineImgUrl from "@/img/igraine.png";
+import pellinoreImgUrl from "@/img/pellinore.png";
+import ectorImgUrl from "@/img/ector.png";
+import borsImgUrl from "@/img/bors.png";
+import utherImgUrl from "@/img/uther.png";
+import lotImgUrl from "@/img/lot.png";
 
 const LEADER_IMAGES: Record<string, string> = {
   arthur: arthurImgUrl,
   merlin: merlinImgUrl,
   guinevere: queenImgUrl,
+  lancelot: lancelotImgUrl,
+  morgan: morganImgUrl,
+  gawain: gawainImgUrl,
+  galahad: galahadImgUrl,
+  percival: percivalImgUrl,
+  tristan: tristanImgUrl,
+  nimue: nimueImgUrl,
+  kay: kayImgUrl,
+  bedivere: bedivereImgUrl,
+  elaine: elaineImgUrl,
+  mordred: mordredImgUrl,
+  igraine: igraineImgUrl,
+  pellinore: pellinoreImgUrl,
+  ector: ectorImgUrl,
+  bors: borsImgUrl,
+  uther: utherImgUrl,
+  lot: lotImgUrl,
 };
 
 /** Map leader IDs to unit types for animated sprite previews. */
@@ -199,7 +233,13 @@ export class LeaderSelectScreen {
     this.container.addChild(this._mainCard);
 
     // Preload images
-    void Assets.load([throneImgUrl, arthurImgUrl, merlinImgUrl]);
+    void Assets.load([
+      throneImgUrl, arthurImgUrl, merlinImgUrl, queenImgUrl,
+      lancelotImgUrl, morganImgUrl, gawainImgUrl, galahadImgUrl,
+      percivalImgUrl, tristanImgUrl, nimueImgUrl, kayImgUrl,
+      bedivereImgUrl, elaineImgUrl, mordredImgUrl, igraineImgUrl,
+      pellinoreImgUrl, ectorImgUrl, borsImgUrl, utherImgUrl, lotImgUrl,
+    ]);
 
     this._buildUI();
 
