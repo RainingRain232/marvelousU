@@ -75,6 +75,11 @@ export interface SimEvents {
 
   // RPG NPC events
   rpgNPCInteraction: { npcId: string; npcName: string; dialogue: string[] };
+
+  // RPG spell system events
+  rpgSpellLearnPrompt: { memberId: string; memberName: string; picks: number; choices: string[] };
+  rpgSpellLearned: { memberId: string; spellId: string };
+  rpgSpellCast: { casterId: string; spellId: string; fxKey: string; targetIds: string[]; isHeal: boolean };
 }
 
 // ---------------------------------------------------------------------------

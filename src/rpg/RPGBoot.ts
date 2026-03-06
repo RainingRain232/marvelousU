@@ -14,7 +14,9 @@ import { DUNGEON_DEFS } from "@rpg/config/DungeonDefs";
 import { RPGStateMachine } from "@rpg/systems/RPGStateMachine";
 import { moveParty } from "@rpg/systems/OverworldSystem";
 import { moveDungeonParty } from "@rpg/systems/DungeonSystem";
-import { createBattleFromEncounter, calculateInitiative, executeAction, executeEnemyTurn, advanceTurn, applyVictoryRewards, applyDefeatPenalty, isHealAbility, getValidTargets } from "@rpg/systems/TurnBattleSystem";
+import { createBattleFromEncounter, calculateInitiative, executeAction, executeEnemyTurn, advanceTurn, applyVictoryRewards, applyDefeatPenalty, isHealAbility, isHealSpell, isSummonSpell, getValidTargets } from "@rpg/systems/TurnBattleSystem";
+import { learnSpells } from "@rpg/systems/SpellLearningSystem";
+import type { UpgradeType } from "@/types";
 import { createStarterParty } from "@rpg/systems/PartyFactory";
 import { RPGViewManager } from "@view/rpg/RPGViewManager";
 import { ITEM_HEALTH_POTION } from "@rpg/config/RPGItemDefs";
@@ -203,6 +205,21 @@ export class RPGGame {
     this.rpgViewManager.onPauseMenuClosed = () => {
       this._pauseMenuOpen = false;
     };
+
+    // Wire spell learning — when a caster levels up, auto-learn available spells
+    // (In future this can be replaced with a UI prompt for player selection)
+    this._unsubs.push(EventBus.on("rpgSpellLearnPrompt", (e) => {
+      const member = this.rpgState.party.find(m => m.id === e.memberId);
+      if (!member) return;
+      // Auto-pick: select the first N available spells (highest tier first for variety)
+      const choices = (e.choices as UpgradeType[]).slice(0, e.picks as number);
+      if (choices.length > 0) {
+        const learned = learnSpells(member, choices);
+        for (const spellId of learned) {
+          EventBus.emit("rpgSpellLearned", { memberId: member.id, spellId });
+        }
+      }
+    }));
   }
 
   /** Show options screen (from main menu or in-game). */
@@ -423,6 +440,9 @@ export class RPGGame {
             this._handleTurnAction(TurnBattleAction.ITEM);
           }
         };
+        view.onSpellSelected = (spellId: UpgradeType) => {
+          this._handleSpellSelected(spellId);
+        };
         view.onHelpRequested = () => {
           this.rpgViewManager.toggleHelpMenu();
         };
@@ -555,6 +575,42 @@ export class RPGGame {
     }
   }
 
+  /** Pending spell for target selection. */
+  private _pendingSpellId: UpgradeType | null = null;
+
+  private _handleSpellSelected(spellId: UpgradeType): void {
+    if (!this.turnBattleState) return;
+
+    // Summon spells don't need a target
+    if (isSummonSpell(spellId)) {
+      executeAction(
+        this.turnBattleState,
+        TurnBattleAction.ABILITY,
+        null,
+        null,
+        null,
+        this.rpgState,
+        spellId,
+      );
+      this._afterTurnAction();
+      return;
+    }
+
+    // Heal/damage spells need target selection
+    this._pendingSpellId = spellId;
+    this.turnBattleState.selectedAction = TurnBattleAction.ABILITY;
+    this.turnBattleState.phase = TurnBattlePhase.SELECT_TARGET;
+
+    const view = this.rpgViewManager["turnBattleView"];
+    if (view) {
+      const currentId = this.turnBattleState.turnOrder[this.turnBattleState.currentTurnIndex];
+      const targets = isHealSpell(spellId)
+        ? this.turnBattleState.combatants.filter(c => c.hp > 0 && c.isPartyMember)
+        : getValidTargets(this.turnBattleState, currentId);
+      view.setSelectableTargets(targets);
+    }
+  }
+
   private _handleTargetSelected(targetId: string): void {
     if (!this.turnBattleState) return;
 
@@ -568,8 +624,10 @@ export class RPGGame {
       this.turnBattleState.selectedAbility,
       this.turnBattleState.selectedItemId,
       this.rpgState,
+      this._pendingSpellId,
     );
 
+    this._pendingSpellId = null;
     this._afterTurnAction();
   }
 

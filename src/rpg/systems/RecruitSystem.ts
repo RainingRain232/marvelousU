@@ -1,5 +1,5 @@
 // Recruitment system — generates and manages hireable adventurers at towns
-import { UnitType, AbilityType } from "@/types";
+import { UnitType, AbilityType, UpgradeType } from "@/types";
 import { SeededRandom } from "@sim/utils/random";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { createPartyMember } from "./PartyFactory";
@@ -14,6 +14,8 @@ interface RecruitTemplate {
   namePool: string[];
   unitType: UnitType;
   abilityTypes?: AbilityType[];
+  /** Starting spells for caster recruits. */
+  startingSpells?: UpgradeType[];
   description: string;
   baseCost: number;
 }
@@ -29,6 +31,7 @@ const RECRUIT_TEMPLATES: RecruitTemplate[] = [
     namePool: ["Theron", "Marcus", "Lucius", "Vance", "Darius"],
     unitType: UnitType.TEMPLAR,
     abilityTypes: [AbilityType.HEAL],
+    startingSpells: [UpgradeType.SPELL_BLESSING_OF_LIGHT],
     description: "Holy warrior with healing magic. High defense, moderate attack.",
     baseCost: 150,
   },
@@ -61,6 +64,7 @@ const RECRUIT_TEMPLATES: RecruitTemplate[] = [
     namePool: ["Ignis", "Pyra", "Scorch", "Ember", "Blaze"],
     unitType: UnitType.FIRE_MAGE,
     abilityTypes: [AbilityType.FIREBALL],
+    startingSpells: [UpgradeType.SPELL_FLAME_SPARK],
     description: "Fire mage with devastating area magic. Low defense.",
     baseCost: 160,
   },
@@ -68,6 +72,7 @@ const RECRUIT_TEMPLATES: RecruitTemplate[] = [
     namePool: ["Volta", "Zephyr", "Storm", "Nimbus", "Gale"],
     unitType: UnitType.STORM_MAGE,
     abilityTypes: [AbilityType.CHAIN_LIGHTNING],
+    startingSpells: [UpgradeType.SPELL_SPARK],
     description: "Storm mage with chain lightning. Hits multiple enemies.",
     baseCost: 180,
   },
@@ -143,6 +148,7 @@ export function generateRecruits(rpgState: RPGState): RecruitData[] {
       description: template.description,
       cost,
       abilityTypes: template.abilityTypes,
+      startingSpells: template.startingSpells,
     });
   }
 
@@ -167,6 +173,7 @@ export function recruitUnit(rpgState: RPGState, recruit: RecruitData): boolean {
     recruit.unitType as UnitType,
     recruit.level,
     recruit.abilityTypes as AbilityType[] | undefined,
+    recruit.startingSpells as UpgradeType[] | undefined,
   );
 
   rpgState.party.push(member);

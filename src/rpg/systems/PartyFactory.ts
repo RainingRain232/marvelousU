@@ -1,5 +1,5 @@
 // Create starting party members from unit definitions
-import { UnitType, AbilityType } from "@/types";
+import { UnitType, AbilityType, UpgradeType } from "@/types";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import type { PartyMember } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
@@ -14,6 +14,7 @@ export function createPartyMember(
   unitType: UnitType,
   level: number = 1,
   abilityOverrides?: AbilityType[],
+  startingSpells?: UpgradeType[],
 ): PartyMember {
   const def = UNIT_DEFINITIONS[unitType];
 
@@ -40,6 +41,7 @@ export function createPartyMember(
     speed: def.speed,
     range: def.range,
     abilityTypes: abilityOverrides ?? (def.abilityTypes ?? []),
+    knownSpells: startingSpells ?? [],
     equipment: {
       weapon: null,
       armor: null,
@@ -60,8 +62,8 @@ export function createPartyMember(
 
 export function createStarterParty(): PartyMember[] {
   return [
-    createPartyMember("hero", "Hero", UnitType.KNIGHT, 1, [AbilityType.HEAL]),
-    createPartyMember("mage", "Elara", UnitType.FIRE_MAGE, 1, [AbilityType.FIREBALL]),
+    createPartyMember("hero", "Hero", UnitType.KNIGHT, 1, [AbilityType.HEAL], [UpgradeType.SPELL_BLESSING_OF_LIGHT]),
+    createPartyMember("mage", "Elara", UnitType.FIRE_MAGE, 1, [AbilityType.FIREBALL], [UpgradeType.SPELL_FLAME_SPARK]),
     createPartyMember("archer", "Finn", UnitType.ARCHER, 1),
   ];
 }

@@ -1,5 +1,5 @@
 // Top-level RPG persistent state
-import type { AbilityType, RPGPhase, UnitType, Vec2 } from "@/types";
+import type { AbilityType, RPGPhase, UnitType, UpgradeType, Vec2 } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Party & Equipment
@@ -48,6 +48,8 @@ export interface PartyMember {
   speed: number;
   range: number;
   abilityTypes: AbilityType[];
+  /** Spells learned through the spell learning system (UpgradeType keys). */
+  knownSpells: UpgradeType[];
   equipment: EquipmentSlots;
   statusEffects: StatusEffect[];
 }

@@ -30,6 +30,7 @@ export interface RecruitData {
   description: string;
   cost: number;
   abilityTypes?: string[];
+  startingSpells?: string[];
 }
 
 export interface TownData {

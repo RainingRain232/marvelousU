@@ -1,5 +1,5 @@
 // JRPG turn-based battle state
-import type { AbilityType, TurnBattleAction, TurnBattlePhase, UnitType } from "@/types";
+import type { AbilityType, TurnBattleAction, TurnBattlePhase, UnitType, UpgradeType } from "@/types";
 import type { RPGItem, StatusEffect } from "./RPGState";
 
 // ---------------------------------------------------------------------------
@@ -25,6 +25,12 @@ export interface TurnBattleCombatant {
   isDefending: boolean;
   /** Battle line: 1 = front, 2 = back */
   line: 1 | 2;
+  /** Learned spells (UpgradeType keys) — copied from PartyMember.knownSpells. */
+  knownSpells: UpgradeType[];
+  /** True if this combatant was summoned during battle (temporary). */
+  isSummoned: boolean;
+  /** ID of the combatant who summoned this unit. */
+  summonerId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,6 +54,10 @@ export interface TurnBattleState {
   lootReward: RPGItem[];
   log: string[];
   battleContext?: { biome?: string; dungeonFloor?: number; dungeonName?: string };
+  /** Current number of player-side summoned units. */
+  playerSummonCount: number;
+  /** Current number of enemy-side summoned units. */
+  enemySummonCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,5 +87,7 @@ export function createTurnBattleState(
     goldReward,
     lootReward,
     log: [],
+    playerSummonCount: 0,
+    enemySummonCount: 0,
   };
 }

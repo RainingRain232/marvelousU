@@ -1,12 +1,12 @@
 // JRPG-style turn-based battle view — animated sprites from AnimationManager
 import { Container, Graphics, Text, AnimatedSprite } from "pixi.js";
-import { TurnBattlePhase, TurnBattleAction, UnitState } from "@/types";
+import { TurnBattlePhase, TurnBattleAction, UnitState, UpgradeType } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
 import type { ViewManager } from "@view/ViewManager";
 import type { TurnBattleState, TurnBattleCombatant } from "@rpg/state/TurnBattleState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { animationManager } from "@view/animation/AnimationManager";
-import { getAbilityName, getEffectiveSpeed } from "@rpg/systems/TurnBattleSystem";
+import { getAbilityName, getEffectiveSpeed, getSpellName, getSpellMpCost, canCastSpell } from "@rpg/systems/TurnBattleSystem";
 import { drawTerrainDecorationAt } from "@view/world/WorldMapRenderer";
 import { TerrainType } from "@world/config/TerrainDefs";
 
@@ -75,10 +75,15 @@ export class TurnBattleView {
   onTargetSelected: ((targetId: string) => void) | null = null;
   onItemSelected: ((itemId: string) => void) | null = null;
   onHelpRequested: (() => void) | null = null;
+  /** Called when a learned spell is selected (instead of legacy ability). */
+  onSpellSelected: ((spellId: UpgradeType) => void) | null = null;
   private _targetIndex = 0;
   private _selectableTargets: TurnBattleCombatant[] = [];
   private _itemPickMode = false;
   private _itemPickIndex = 0;
+  /** Spell picker sub-menu state. */
+  private _spellPickMode = false;
+  private _spellPickIndex = 0;
 
   init(vm: ViewManager, battleState: TurnBattleState, rpg: RPGState): void {
     this.vm = vm;
@@ -736,6 +741,12 @@ export class TurnBattleView {
       return;
     }
 
+    // Show spell picker when in spell pick mode
+    if (this._spellPickMode) {
+      this._drawSpellPicker();
+      return;
+    }
+
     // Actions + Help as last entry
     const actions = [
       TurnBattleAction.ATTACK,
@@ -759,7 +770,8 @@ export class TurnBattleView {
     // Get ability name for the current combatant
     const currentId = this.battleState.turnOrder[this.battleState.currentTurnIndex];
     const current = this.battleState.combatants.find(c => c.id === currentId);
-    const abilityName = current ? getAbilityName(current.abilityTypes[0] ?? null) : "Ability";
+    const hasSpells = current && current.knownSpells && current.knownSpells.length > 0;
+    const abilityName = hasSpells ? "Spells" : (current ? getAbilityName(current.abilityTypes[0] ?? null) : "Ability");
 
     for (let i = 0; i < menuEntries; i++) {
       const isSelected = i === this._selectedMenuIndex;
@@ -840,6 +852,62 @@ export class TurnBattleView {
     }
   }
 
+  private _drawSpellPicker(): void {
+    const currentId = this.battleState.turnOrder[this.battleState.currentTurnIndex];
+    const current = this.battleState.combatants.find(c => c.id === currentId);
+    const spells = current?.knownSpells ?? [];
+
+    const menuX = 30;
+    const menuY = this.vm.screenHeight - 200;
+    const rows = Math.max(spells.length, 1);
+    const panelH = rows * 24 + 40;
+
+    const bg = new Graphics();
+    bg.roundRect(menuX - 10, menuY - 10, 300, panelH, 6);
+    bg.fill({ color: 0x1a1a3e, alpha: 0.9 });
+    bg.stroke({ color: 0x4444aa, width: 1 });
+    this.menuContainer.addChild(bg);
+
+    const header = new Text({
+      text: "Cast Spell:",
+      style: { fontFamily: "monospace", fontSize: 12, fill: 0x88bbff, fontWeight: "bold" },
+    });
+    header.position.set(menuX, menuY);
+    this.menuContainer.addChild(header);
+
+    if (spells.length === 0) {
+      const empty = new Text({
+        text: "  No spells learned!",
+        style: { fontFamily: "monospace", fontSize: 12, fill: 0x888888 },
+      });
+      empty.position.set(menuX, menuY + 20);
+      this.menuContainer.addChild(empty);
+      return;
+    }
+
+    for (let i = 0; i < spells.length; i++) {
+      const spellId = spells[i];
+      const isSelected = i === this._spellPickIndex;
+      const name = getSpellName(spellId);
+      const cost = getSpellMpCost(spellId);
+      const canCast = canCastSpell(this.battleState, currentId!, spellId);
+      const color = !canCast ? 0x555555 : (isSelected ? 0xffcc00 : 0xcccccc);
+
+      const text = new Text({
+        text: `${isSelected ? ">" : " "} ${name}  (${cost} MP)`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 12,
+          fill: color,
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      text.position.set(menuX, menuY + 20 + i * 24);
+      this.menuContainer.addChild(text);
+      this._menuTexts.push(text);
+    }
+  }
+
   private _updateLog(): void {
     const last5 = this.battleState.log.slice(-5);
     this._logText.text = last5.join("\n");
@@ -860,6 +928,40 @@ export class TurnBattleView {
     const menuEntries = actions.length + 1; // +1 for Help
 
     this._onKeyDown = (e: KeyboardEvent) => {
+      // Spell pick sub-mode
+      if (this._spellPickMode && this.battleState.phase === TurnBattlePhase.SELECT_ACTION) {
+        const currentId = this.battleState.turnOrder[this.battleState.currentTurnIndex];
+        const current = this.battleState.combatants.find(c => c.id === currentId);
+        const spells = current?.knownSpells ?? [];
+        switch (e.code) {
+          case "ArrowUp":
+          case "KeyW":
+            this._spellPickIndex = Math.max(0, this._spellPickIndex - 1);
+            this._drawMenu();
+            break;
+          case "ArrowDown":
+          case "KeyS":
+            this._spellPickIndex = Math.min(spells.length - 1, this._spellPickIndex + 1);
+            this._drawMenu();
+            break;
+          case "Enter":
+          case "Space":
+            if (spells.length > 0 && this._spellPickIndex < spells.length) {
+              const spellId = spells[this._spellPickIndex];
+              if (canCastSpell(this.battleState, currentId!, spellId)) {
+                this._spellPickMode = false;
+                this.onSpellSelected?.(spellId);
+              }
+            }
+            break;
+          case "Escape":
+            this._spellPickMode = false;
+            this._drawMenu();
+            break;
+        }
+        return;
+      }
+
       // Item pick sub-mode (before target selection)
       if (this._itemPickMode && this.battleState.phase === TurnBattlePhase.SELECT_ACTION) {
         const consumables = this._rpg.inventory.items.filter(s => s.item.type === "consumable");
@@ -919,6 +1021,17 @@ export class TurnBattleView {
                 this._itemPickMode = true;
                 this._itemPickIndex = 0;
                 this._drawMenu();
+              }
+            } else if (selectedAction === TurnBattleAction.ABILITY) {
+              // Check if combatant has learned spells — show spell picker
+              const cid = this.battleState.turnOrder[this.battleState.currentTurnIndex];
+              const cur = this.battleState.combatants.find(c => c.id === cid);
+              if (cur && cur.knownSpells && cur.knownSpells.length > 0) {
+                this._spellPickMode = true;
+                this._spellPickIndex = 0;
+                this._drawMenu();
+              } else {
+                this.onActionSelected?.(selectedAction);
               }
             } else {
               this.onActionSelected?.(selectedAction);

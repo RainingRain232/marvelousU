@@ -1,5 +1,5 @@
 // JRPG turn-based battle system — initiative, actions, damage, AI
-import { TurnBattleAction, TurnBattlePhase, AbilityType } from "@/types";
+import { TurnBattleAction, TurnBattlePhase, AbilityType, UpgradeType } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { SeededRandom } from "@sim/utils/random";
@@ -9,6 +9,8 @@ import type { PartyMember, RPGState, RPGItem, StatusEffect } from "@rpg/state/RP
 import { ENCOUNTER_DEFS } from "@rpg/config/EncounterDefs";
 import type { EnemyDef } from "@rpg/config/EncounterDefs";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
+import { RPG_SPELL_DEFS, type RPGSpellDef } from "@rpg/config/RPGSpellDefs";
+import { isCaster, spellPicksOnLevelUp, getSpellChoices } from "@rpg/systems/SpellLearningSystem";
 
 // ---------------------------------------------------------------------------
 // Battle creation
@@ -85,6 +87,8 @@ function _partyToCombatant(member: PartyMember, position: number, line: 1 | 2): 
     position,
     isDefending: false,
     line,
+    knownSpells: [...(member.knownSpells ?? [])],
+    isSummoned: false,
   };
 }
 
@@ -134,6 +138,8 @@ function _enemyToCombatant(enemyDef: EnemyDef, position: number, line: 1 | 2): T
     position,
     isDefending: false,
     line,
+    knownSpells: [],
+    isSummoned: false,
   };
 }
 
@@ -257,6 +263,8 @@ export function executeAction(
   abilityType: AbilityType | null,
   itemId: string | null,
   rpg: RPGState,
+  /** Optional UpgradeType for casting a learned RPG spell instead of a legacy ability. */
+  spellId?: UpgradeType | null,
 ): void {
   const currentId = battle.turnOrder[battle.currentTurnIndex];
   const attacker = battle.combatants.find(c => c.id === currentId);
@@ -269,7 +277,11 @@ export function executeAction(
       _executeAttack(battle, attacker, targetId);
       break;
     case TurnBattleAction.ABILITY:
-      _executeAbility(battle, attacker, targetId, abilityType);
+      if (spellId) {
+        _executeRPGSpell(battle, attacker, targetId, spellId);
+      } else {
+        _executeAbility(battle, attacker, targetId, abilityType);
+      }
       break;
     case TurnBattleAction.DEFEND:
       _executeDefend(battle, attacker);
@@ -393,6 +405,220 @@ function _executeAbility(
   }
 }
 
+// ---------------------------------------------------------------------------
+// RPG Spell execution (learned spells from the spell system)
+// ---------------------------------------------------------------------------
+
+function _executeRPGSpell(
+  battle: TurnBattleState,
+  attacker: TurnBattleCombatant,
+  targetId: string | null,
+  spellId: UpgradeType,
+): void {
+  const spell = RPG_SPELL_DEFS[spellId];
+  if (!spell) {
+    battle.log.push(`${attacker.name} tried to cast an unknown spell!`);
+    return;
+  }
+
+  if (attacker.mp < spell.mpCost) {
+    battle.log.push(`${attacker.name} doesn't have enough MP for ${spell.name}!`);
+    return;
+  }
+
+  attacker.mp -= spell.mpCost;
+
+  // Summon spell
+  if (spell.isSummon && spell.summonUnitType) {
+    _executeSummon(battle, attacker, spell);
+    return;
+  }
+
+  // Heal spell (AoE heals on allies)
+  if (spell.isHeal) {
+    const allies = battle.combatants.filter(
+      c => c.hp > 0 && c.isPartyMember === attacker.isPartyMember,
+    );
+    // Sort by % HP ascending to heal most injured first
+    allies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+    const targets = allies.slice(0, Math.max(1, spell.targets));
+
+    let totalHealed = 0;
+    for (const t of targets) {
+      const healAmount = Math.ceil(attacker.atk * spell.multiplier);
+      const healed = Math.min(healAmount, t.maxHp - t.hp);
+      t.hp += healed;
+      totalHealed += healed;
+    }
+
+    const targetNames = targets.map(t => t.name).join(", ");
+    battle.log.push(`${attacker.name} casts ${spell.name} on ${targetNames}. Healed ${totalHealed} HP!`);
+
+    EventBus.emit("rpgSpellCast", {
+      casterId: attacker.id,
+      spellId,
+      fxKey: spell.fxKey,
+      targetIds: targets.map(t => t.id),
+      isHeal: true,
+    });
+    EventBus.emit("rpgTurnBattleAction", {
+      combatantId: attacker.id,
+      action: TurnBattleAction.ABILITY,
+      targetId: targets[0]?.id,
+    });
+    return;
+  }
+
+  // Damage spell (single or multi-target)
+  const enemies = battle.combatants.filter(
+    c => c.hp > 0 && c.isPartyMember !== attacker.isPartyMember,
+  );
+  if (enemies.length === 0) return;
+
+  let targets: TurnBattleCombatant[];
+  if (spell.targets <= 1) {
+    // Single target — use selected target
+    const t = targetId ? battle.combatants.find(c => c.id === targetId) : enemies[0];
+    targets = t && t.hp > 0 ? [t] : [enemies[0]];
+  } else {
+    // Multi-target: hit up to spell.targets enemies, prioritize selected target first
+    const primary = targetId ? enemies.find(c => c.id === targetId) : null;
+    targets = primary ? [primary] : [];
+    for (const e of enemies) {
+      if (targets.length >= spell.targets) break;
+      if (!targets.includes(e)) targets.push(e);
+    }
+  }
+
+  const hitResults: { name: string; damage: number; crit: boolean }[] = [];
+  for (const t of targets) {
+    if (t.hp <= 0) continue;
+    const { damage: rawDamage, isCritical } = _calculateDamage(
+      attacker.atk, t.def, t.isDefending, spell.multiplier,
+    );
+    const damage = _applyDamageWithShield(t, rawDamage, battle);
+    hitResults.push({ name: t.name, damage, crit: isCritical });
+
+    // Apply status effect
+    if (spell.statusEffect) {
+      t.statusEffects.push({
+        type: spell.statusEffect.type,
+        duration: spell.statusEffect.duration,
+        magnitude: spell.statusEffect.magnitude,
+      });
+    }
+
+    EventBus.emit("rpgTurnBattleDamage", {
+      attackerId: attacker.id,
+      targetId: t.id,
+      damage,
+      isCritical,
+    });
+
+    if (t.hp <= 0) {
+      battle.log.push(`${t.name} is defeated!`);
+    }
+  }
+
+  const hitDesc = hitResults.map(h => `${h.name} ${h.damage}${h.crit ? " CRIT" : ""}`).join(", ");
+  battle.log.push(`${attacker.name} casts ${spell.name}! ${hitDesc}`);
+
+  EventBus.emit("rpgSpellCast", {
+    casterId: attacker.id,
+    spellId,
+    fxKey: spell.fxKey,
+    targetIds: targets.map(t => t.id),
+    isHeal: false,
+  });
+  EventBus.emit("rpgTurnBattleAction", {
+    combatantId: attacker.id,
+    action: TurnBattleAction.ABILITY,
+    targetId: targets[0]?.id,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Summoning
+// ---------------------------------------------------------------------------
+
+function _executeSummon(
+  battle: TurnBattleState,
+  caster: TurnBattleCombatant,
+  spell: RPGSpellDef,
+): void {
+  const isPlayer = caster.isPartyMember;
+  const maxSummons = isPlayer
+    ? RPGBalance.MAX_PLAYER_SUMMONS
+    : RPGBalance.MAX_ENEMY_SLOTS - battle.combatants.filter(c => !c.isPartyMember && c.hp > 0).length;
+
+  const currentSummons = isPlayer ? battle.playerSummonCount : battle.enemySummonCount;
+  const slotsLeft = isPlayer
+    ? RPGBalance.MAX_PLAYER_SUMMONS - currentSummons
+    : maxSummons;
+
+  if (slotsLeft <= 0) {
+    battle.log.push(`${caster.name} can't summon — no slots available!`);
+    // Refund MP
+    caster.mp += spell.mpCost;
+    return;
+  }
+
+  const unitType = spell.summonUnitType!;
+  const unitDef = UNIT_DEFINITIONS[unitType];
+  const summonId = `summon_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+  const summoned: TurnBattleCombatant = {
+    id: summonId,
+    name: `${spell.name}`,
+    isPartyMember: isPlayer,
+    unitType,
+    hp: unitDef.hp,
+    maxHp: unitDef.hp,
+    mp: 0,
+    maxMp: 0,
+    atk: unitDef.atk,
+    def: Math.ceil(unitDef.atk * 0.3),
+    speed: unitDef.speed,
+    range: unitDef.range,
+    abilityTypes: unitDef.abilityTypes ?? [],
+    statusEffects: [],
+    position: battle.combatants.length,
+    isDefending: false,
+    line: unitDef.range <= 1 ? 1 : 2,
+    knownSpells: [],
+    isSummoned: true,
+    summonerId: caster.id,
+  };
+
+  battle.combatants.push(summoned);
+  // Insert into turn order for this round
+  battle.turnOrder.push(summonId);
+
+  if (isPlayer) {
+    battle.playerSummonCount++;
+  } else {
+    battle.enemySummonCount++;
+  }
+
+  battle.log.push(`${caster.name} summons ${spell.name}!`);
+
+  EventBus.emit("rpgSpellCast", {
+    casterId: caster.id,
+    spellId: spell.id,
+    fxKey: spell.fxKey,
+    targetIds: [summonId],
+    isHeal: false,
+  });
+  EventBus.emit("rpgTurnBattleAction", {
+    combatantId: caster.id,
+    action: TurnBattleAction.ABILITY,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Legacy ability info (kept for backwards compatibility with old ability system)
+// ---------------------------------------------------------------------------
+
 interface AbilityInfo {
   name: string;
   mpCost: number;
@@ -428,6 +654,45 @@ export function isHealAbility(abilityType: AbilityType | null): boolean {
 /** Returns the display name for an ability. */
 export function getAbilityName(abilityType: AbilityType | null): string {
   return _getAbilityInfo(abilityType).name;
+}
+
+/** Check if an RPG spell (UpgradeType) targets allies. */
+export function isHealSpell(spellId: UpgradeType): boolean {
+  const def = RPG_SPELL_DEFS[spellId];
+  return def?.isHeal ?? false;
+}
+
+/** Get display name for an RPG spell. */
+export function getSpellName(spellId: UpgradeType): string {
+  return RPG_SPELL_DEFS[spellId]?.name ?? spellId;
+}
+
+/** Get MP cost for an RPG spell. */
+export function getSpellMpCost(spellId: UpgradeType): number {
+  return RPG_SPELL_DEFS[spellId]?.mpCost ?? 0;
+}
+
+/** Check if this is a summon spell. */
+export function isSummonSpell(spellId: UpgradeType): boolean {
+  return RPG_SPELL_DEFS[spellId]?.isSummon ?? false;
+}
+
+/** Check if the caster can afford and has room to summon (for UI disabling). */
+export function canCastSpell(battle: TurnBattleState, casterId: string, spellId: UpgradeType): boolean {
+  const caster = battle.combatants.find(c => c.id === casterId);
+  if (!caster) return false;
+  const spell = RPG_SPELL_DEFS[spellId];
+  if (!spell) return false;
+  if (caster.mp < spell.mpCost) return false;
+  if (spell.isSummon) {
+    const isPlayer = caster.isPartyMember;
+    if (isPlayer && battle.playerSummonCount >= RPGBalance.MAX_PLAYER_SUMMONS) return false;
+    if (!isPlayer) {
+      const enemies = battle.combatants.filter(c => !c.isPartyMember && c.hp > 0).length;
+      if (enemies >= RPGBalance.MAX_ENEMY_SLOTS) return false;
+    }
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -613,8 +878,9 @@ export function executeEnemyTurn(battle: TurnBattleState, rpg: RPGState): void {
 // ---------------------------------------------------------------------------
 
 function _checkBattleEnd(battle: TurnBattleState): boolean {
-  const aliveParty = battle.combatants.filter(c => c.isPartyMember && c.hp > 0);
-  const aliveEnemies = battle.combatants.filter(c => !c.isPartyMember && c.hp > 0);
+  // Summoned units don't count — only real party members and non-summoned enemies
+  const aliveParty = battle.combatants.filter(c => c.isPartyMember && c.hp > 0 && !c.isSummoned);
+  const aliveEnemies = battle.combatants.filter(c => !c.isPartyMember && c.hp > 0 && !c.isSummoned);
 
   if (aliveEnemies.length === 0) {
     battle.phase = TurnBattlePhase.VICTORY;
@@ -780,6 +1046,20 @@ function _applyLevelUp(member: PartyMember): void {
   member.def = Math.ceil(member.def * (1 + growth));
   member.speed = +(member.speed * (1 + growth * 0.5)).toFixed(2);
   member.xpToNext = Math.ceil(member.xpToNext * RPGBalance.XP_SCALE_FACTOR);
+
+  // Spell learning prompt for casters
+  if (isCaster(member.unitType)) {
+    const picks = spellPicksOnLevelUp(member);
+    const choices = getSpellChoices(member);
+    if (picks > 0 && choices.length > 0) {
+      EventBus.emit("rpgSpellLearnPrompt", {
+        memberId: member.id,
+        memberName: member.name,
+        picks,
+        choices: choices.map(s => s.id),
+      });
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
