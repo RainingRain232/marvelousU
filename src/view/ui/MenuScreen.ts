@@ -1,9 +1,15 @@
-// Menu screen: AI toggle + map size selector + game mode selector + Start Game button
+// Menu screen: two-panel flow
+//   Screen 1 — Game mode selection + wiki/utility buttons
+//   Screen 2 — Match setup (map type, map size, AI, players, alliances)
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { GameMode, MapType } from "@/types";
 import { hasWorldSave } from "@world/state/WorldSerialization";
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const STYLE_TITLE = new TextStyle({
   fontFamily: "monospace",
@@ -68,6 +74,10 @@ const STYLE_MODE_DISABLED = new TextStyle({
 const BG_COLOR = 0x0a0a18;
 const BORDER_COLOR = 0xffd700;
 
+// ---------------------------------------------------------------------------
+// Data
+// ---------------------------------------------------------------------------
+
 export interface MapSize {
   label: string;
   width: number;
@@ -88,7 +98,6 @@ export const MAP_SIZES: MapSize[] = [
 interface MapTypeEntry {
   type: MapType;
   label: string;
-  /** If true, the button is greyed out and unselectable. */
   locked?: boolean;
 }
 
@@ -110,10 +119,12 @@ const MAP_TYPES: MapTypeEntry[] = [
 interface GameModeEntry {
   mode: GameMode;
   label: string;
-  /** Short description shown as tooltip/sub-label. */
   desc: string;
-  /** If true, the button is greyed out and unselectable. */
   disabled?: boolean;
+  /** If true, clicking goes straight to onContinue (skips setup screen). */
+  skipSetup?: boolean;
+  /** If true, hide player count / alliance section on setup screen. */
+  hidePlayerSetup?: boolean;
 }
 
 const GAME_MODES: GameModeEntry[] = [
@@ -123,16 +134,36 @@ const GAME_MODES: GameModeEntry[] = [
     mode: GameMode.BATTLEFIELD,
     label: "BATTLEFIELD",
     desc: "No buildings, last unit wins",
+    hidePlayerSetup: true,
   },
   {
     mode: GameMode.ROGUELIKE,
     label: "ROGUELIKE",
     desc: "50% buildings disabled",
   },
-  { mode: GameMode.CAMPAIGN, label: "CAMPAIGN", desc: "Story progression" },
-  { mode: GameMode.WORLD, label: "WORLD", desc: "Hex-based strategy" },
-  { mode: GameMode.WAVE, label: "WAVE MODE", desc: "Endless survival waves" },
+  {
+    mode: GameMode.CAMPAIGN,
+    label: "CAMPAIGN",
+    desc: "Story progression",
+    skipSetup: true,
+  },
+  {
+    mode: GameMode.WORLD,
+    label: "WORLD",
+    desc: "Hex-based strategy",
+    skipSetup: true,
+  },
+  {
+    mode: GameMode.WAVE,
+    label: "WAVE MODE",
+    desc: "Endless survival waves",
+    hidePlayerSetup: true,
+  },
 ];
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function makePanel(w: number, h: number): Container {
   const c = new Container();
@@ -146,18 +177,88 @@ function makePanel(w: number, h: number): Container {
   return c;
 }
 
+function makeActionBtn(
+  w: number,
+  h: number,
+  label: string,
+  fillColor: number,
+  strokeColor: number,
+  textColor: number,
+  onClick: () => void,
+): Container {
+  const btn = new Container();
+  btn.eventMode = "static";
+  btn.cursor = "pointer";
+
+  const bg = new Graphics()
+    .roundRect(0, 0, w, h, 6)
+    .fill({ color: fillColor })
+    .roundRect(0, 0, w, h, 6)
+    .stroke({ color: strokeColor, width: 2 });
+  btn.addChild(bg);
+
+  const lbl = new Text({
+    text: label,
+    style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: 14,
+      fill: textColor,
+      fontWeight: "bold",
+      letterSpacing: 2,
+    }),
+  });
+  lbl.anchor.set(0.5, 0.5);
+  lbl.position.set(w / 2, h / 2);
+  btn.addChild(lbl);
+
+  const hoverTint = textColor;
+  btn.on("pointerover", () => { bg.tint = hoverTint; });
+  btn.on("pointerout", () => { bg.tint = 0xffffff; });
+  btn.on("pointerdown", onClick);
+
+  return btn;
+}
+
+// ---------------------------------------------------------------------------
+// MenuScreen
+// ---------------------------------------------------------------------------
+
 export class MenuScreen {
   readonly container = new Container();
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
 
-  // AI toggle state
+  // --- Screen 1: mode select ---
+  private _screen1!: Container;
+  private _screen1Card!: Container;
+  private _screen1CardW = 380;
+  private _screen1CardH = 0; // computed
+
+  // --- Screen 2: match setup ---
+  private _screen2!: Container;
+  private _screen2Card!: Container;
+  private _screen2CardW = 400;
+  private _screen2CardH = 0; // computed
+  private _screen2PlayerSection!: Container;
+
+  // State
   private _p2IsAI = true;
   private _aiToggleBg!: Graphics;
   private _aiToggleLabel!: Text;
 
-  // Player count & alliance state
+  private _damageNumbers = true;
+  private _dmgToggleBg!: Graphics;
+  private _dmgToggleLabel!: Text;
+
+  private _selectedTypeIndex = 0;
+  private _typeBtns: Array<{ bg: Graphics; label: Text; locked: boolean }> = [];
+
+  private _selectedSizeIndex = 0;
+  private _sizeBtns: Array<{ bg: Graphics; label: Text }> = [];
+
+  private _selectedModeIndex = 0;
+
   private _playerCount = 2;
   private _p3Allied = false;
   private _p4Allied = false;
@@ -168,69 +269,33 @@ export class MenuScreen {
   private _p4AllyContainer!: Container;
   private _p4AllyBg!: Graphics;
   private _p4AllyLabel!: Text;
-  // Damage numbers toggle state
-  private _damageNumbers = true;
-  private _dmgToggleBg!: Graphics;
-  private _dmgToggleLabel!: Text;
 
-  // Map type state
-  private _selectedTypeIndex = 0;
-  private _typeBtns: Array<{ bg: Graphics; label: Text; locked: boolean }> = [];
-
-  // Map size state
-  private _selectedSizeIndex = 0;
-  private _sizeBtns: Array<{ bg: Graphics; label: Text }> = [];
-
-  // Game mode state
-  private _selectedModeIndex = 0;
-  private _modeBtns: Array<{
-    bg: Graphics;
-    label: Text;
-    desc: Text;
-    disabled: boolean;
-  }> = [];
-
-  // card stored for layout
-  private _card!: Container;
-  private _cardW = 400;
-  private _cardH = 580;
-
+  // Callbacks
   onAIToggle: ((isAI: boolean) => void) | null = null;
-  /** Called when the player clicks the "SELECT LEADER" button (proceeds to leader select). */
   onContinue: (() => void) | null = null;
-  /** Called when the player clicks "QUICKPLAY" — skips all selection screens. */
   onQuickPlay: (() => void) | null = null;
-  /** Called when the player clicks "UNIT WIKI" — opens the unit wiki. */
   onUnitWiki: (() => void) | null = null;
-  /** Called when the player clicks "BUILDING WIKI" — opens the building wiki. */
   onBuildingWiki: (() => void) | null = null;
-  /** Called when the player clicks "SPELL WIKI" — opens the spell wiki. */
   onSpellWiki: (() => void) | null = null;
-  /** Called when the player clicks "ONLINE MULTIPLAYER". */
   onMultiplayer: (() => void) | null = null;
-  /** Called when the player clicks "LOAD WORLD GAME". */
   onLoadWorldGame: (() => void) | null = null;
 
+  // Public getters (unchanged API)
   get selectedMapSize(): MapSize {
     return MAP_SIZES[this._selectedSizeIndex];
   }
-
   get selectedMapType(): MapType {
     return MAP_TYPES[this._selectedTypeIndex].type;
   }
-
   get selectedGameMode(): GameMode {
     return GAME_MODES[this._selectedModeIndex].mode;
   }
-
   get damageNumbersEnabled(): boolean {
     return this._damageNumbers;
   }
-
   get selectedPlayerCount(): number {
     return this._playerCount;
   }
-
   get alliedPlayerIds(): string[] {
     const allies: string[] = [];
     if (this._playerCount >= 3 && this._p3Allied) allies.push("p3");
@@ -245,19 +310,61 @@ export class MenuScreen {
   init(vm: ViewManager): void {
     this._vm = vm;
 
-    // Full-screen background
     this._bg = new Graphics();
     this.container.addChild(this._bg);
 
-    // Card panel
-    const CW = this._cardW;
-    const CH = this._cardH;
-    const card = makePanel(CW, CH);
-    this.container.addChild(card);
-    this._card = card;
+    this._buildScreen1();
+    this._buildScreen2();
+
+    // Start on screen 1
+    this._screen2.visible = false;
+
+    vm.addToLayer("ui", this.container);
+    this._layout();
+    vm.app.renderer.on("resize", () => this._layout());
+  }
+
+  show(): void {
+    this.container.visible = true;
+    this._showScreen1();
+  }
+
+  hide(): void {
+    this.container.visible = false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Screen 1 — Mode Select
+  // ---------------------------------------------------------------------------
+
+  private _showScreen1(): void {
+    this._screen1.visible = true;
+    this._screen2.visible = false;
+    this._layout();
+  }
+
+  private _showScreen2(): void {
+    this._screen1.visible = false;
+    this._screen2.visible = true;
+
+    // Show/hide player section based on mode
+    const entry = GAME_MODES[this._selectedModeIndex];
+    this._screen2PlayerSection.visible = !entry.hidePlayerSetup;
+
+    this._layout();
+  }
+
+  private _buildScreen1(): void {
+    const CW = this._screen1CardW;
+    this._screen1 = new Container();
+    this.container.addChild(this._screen1);
+
+    const card = makePanel(CW, 600); // will resize
+    this._screen1.addChild(card);
+    this._screen1Card = card;
 
     // Title
-    const title = new Text({ text: "MENU", style: STYLE_TITLE });
+    const title = new Text({ text: "SELECT MODE", style: STYLE_TITLE });
     title.anchor.set(0.5, 0);
     title.position.set(CW / 2, 18);
     card.addChild(title);
@@ -269,17 +376,191 @@ export class MenuScreen {
         .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
-    // --- AI toggle ---
-    const aiLabel = new Text({ text: "P2 CONTROL", style: STYLE_LABEL });
-    aiLabel.position.set(20, 70);
-    card.addChild(aiLabel);
+    // Mode buttons — single column, full width
+    const mbW = CW - 40;
+    const mbH = 38;
+    const modeGap = 5;
+    const modeStartY = 70;
 
+    for (let i = 0; i < GAME_MODES.length; i++) {
+      const entry = GAME_MODES[i];
+      const modeBtn = new Container();
+      modeBtn.eventMode = "static";
+      modeBtn.cursor = entry.disabled ? "default" : "pointer";
+      modeBtn.position.set(20, modeStartY + i * (mbH + modeGap));
+
+      const modeBg = new Graphics();
+      modeBtn.addChild(modeBg);
+
+      const mLabel = new Text({ text: entry.label, style: STYLE_MODE_INACTIVE });
+      mLabel.anchor.set(0, 0.5);
+      mLabel.position.set(12, mbH / 2);
+      modeBtn.addChild(mLabel);
+
+      const dLabel = new Text({ text: entry.desc, style: STYLE_LABEL });
+      dLabel.anchor.set(1, 0.5);
+      dLabel.position.set(mbW - 12, mbH / 2);
+      modeBtn.addChild(dLabel);
+
+      // Draw bg
+      const drawBg = (selected: boolean) => {
+        modeBg.clear();
+        if (entry.disabled) {
+          modeBg
+            .roundRect(0, 0, mbW, mbH, 4)
+            .fill({ color: 0x0d0d1a })
+            .roundRect(0, 0, mbW, mbH, 4)
+            .stroke({ color: 0x223333, width: 1 });
+          mLabel.style = STYLE_MODE_DISABLED;
+          dLabel.style = STYLE_MODE_DISABLED;
+        } else if (selected) {
+          modeBg
+            .roundRect(0, 0, mbW, mbH, 4)
+            .fill({ color: 0x1a1e2e })
+            .roundRect(0, 0, mbW, mbH, 4)
+            .stroke({ color: 0xffd700, width: 1.5 });
+          mLabel.style = STYLE_MODE_ACTIVE;
+        } else {
+          modeBg
+            .roundRect(0, 0, mbW, mbH, 4)
+            .fill({ color: 0x12121e })
+            .roundRect(0, 0, mbW, mbH, 4)
+            .stroke({ color: 0x334455, width: 1 });
+          mLabel.style = STYLE_MODE_INACTIVE;
+        }
+      };
+
+      drawBg(i === this._selectedModeIndex);
+
+      const idx = i;
+      if (!entry.disabled) {
+        modeBtn.on("pointerover", () => {
+          modeBg.clear();
+          modeBg
+            .roundRect(0, 0, mbW, mbH, 4)
+            .fill({ color: 0x1a2a3a })
+            .roundRect(0, 0, mbW, mbH, 4)
+            .stroke({ color: 0x6688aa, width: 1.5 });
+        });
+        modeBtn.on("pointerout", () => {
+          drawBg(idx === this._selectedModeIndex);
+        });
+        modeBtn.on("pointerdown", () => {
+          this._selectedModeIndex = idx;
+          if (entry.skipSetup) {
+            // World / Campaign — go straight to onContinue
+            this.onContinue?.();
+          } else {
+            this._showScreen2();
+          }
+        });
+      }
+
+      card.addChild(modeBtn);
+    }
+
+    // Divider after modes
+    const modesEndY = modeStartY + GAME_MODES.length * (mbH + modeGap);
+    card.addChild(
+      new Graphics()
+        .rect(20, modesEndY, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
+    // Utility buttons — compact row layout
+    const utilY = modesEndY + 12;
+    const utilBtnH = 34;
+    const utilGap = 6;
+
+    // Row 1: three wiki buttons side by side
+    const wikiW = Math.floor((CW - 40 - utilGap * 2) / 3);
+    const unitWikiBtn = makeActionBtn(wikiW, utilBtnH, "UNITS", 0x1a1a3a, 0x4488cc, 0x88bbff, () => this.onUnitWiki?.());
+    unitWikiBtn.position.set(20, utilY);
+    card.addChild(unitWikiBtn);
+
+    const buildWikiBtn = makeActionBtn(wikiW, utilBtnH, "BUILDINGS", 0x1a2a1a, 0x66aa55, 0x99dd88, () => this.onBuildingWiki?.());
+    buildWikiBtn.position.set(20 + wikiW + utilGap, utilY);
+    card.addChild(buildWikiBtn);
+
+    const spellWikiBtn = makeActionBtn(wikiW, utilBtnH, "SPELLS", 0x1a1a2a, 0x9966ff, 0xbb88ff, () => this.onSpellWiki?.());
+    spellWikiBtn.position.set(20 + (wikiW + utilGap) * 2, utilY);
+    card.addChild(spellWikiBtn);
+
+    // Row 2: Quickplay + Multiplayer
+    const halfW = Math.floor((CW - 40 - utilGap) / 2);
+    const row2Y = utilY + utilBtnH + utilGap;
+
+    const qpBtn = makeActionBtn(halfW, utilBtnH, "QUICKPLAY >>", 0x2a1a0a, 0xcc8833, 0xffcc66, () => this.onQuickPlay?.());
+    qpBtn.position.set(20, row2Y);
+    card.addChild(qpBtn);
+
+    const mpBtn = makeActionBtn(halfW, utilBtnH, "MULTIPLAYER", 0x1a1a3a, 0x6666cc, 0x9999ff, () => this.onMultiplayer?.());
+    mpBtn.position.set(20 + halfW + utilGap, row2Y);
+    card.addChild(mpBtn);
+
+    let bottomY = row2Y + utilBtnH + utilGap;
+
+    // Optional: Load World Game
+    if (hasWorldSave()) {
+      const loadW = CW - 40;
+      const loadBtn = makeActionBtn(loadW, utilBtnH, "LOAD WORLD GAME", 0x2a2a1a, 0xaaaa44, 0xdddd66, () => this.onLoadWorldGame?.());
+      loadBtn.position.set(20, bottomY);
+      card.addChild(loadBtn);
+      bottomY += utilBtnH + utilGap;
+    }
+
+    this._screen1CardH = bottomY + 8;
+
+    // Redraw card background to final height
+    const bg = card.getChildAt(0) as Graphics;
+    bg.clear();
+    bg.roundRect(0, 0, CW, this._screen1CardH, 8)
+      .fill({ color: 0x10102a, alpha: 0.95 })
+      .roundRect(0, 0, CW, this._screen1CardH, 8)
+      .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Screen 2 — Match Setup
+  // ---------------------------------------------------------------------------
+
+  private _buildScreen2(): void {
+    const CW = this._screen2CardW;
+    this._screen2 = new Container();
+    this.container.addChild(this._screen2);
+
+    const card = makePanel(CW, 700);
+    this._screen2.addChild(card);
+    this._screen2Card = card;
+
+    // Title — shows selected mode name
+    const title = new Text({ text: "MATCH SETUP", style: STYLE_TITLE });
+    title.anchor.set(0.5, 0);
+    title.position.set(CW / 2, 18);
+    card.addChild(title);
+
+    // Divider
+    card.addChild(
+      new Graphics()
+        .rect(20, 58, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
+    let curY = 68;
+
+    // --- AI toggle ---
     const TW = CW - 40;
     const TH = 32;
+
+    const aiLabel = new Text({ text: "P2 CONTROL", style: STYLE_LABEL });
+    aiLabel.position.set(20, curY);
+    card.addChild(aiLabel);
+    curY += 20;
+
     const toggleBtn = new Container();
     toggleBtn.eventMode = "static";
     toggleBtn.cursor = "pointer";
-    toggleBtn.position.set(20, 90);
+    toggleBtn.position.set(20, curY);
 
     const toggleBg = new Graphics();
     toggleBtn.addChild(toggleBg);
@@ -300,23 +581,18 @@ export class MenuScreen {
 
     card.addChild(toggleBtn);
     this._refreshAIToggle(TW, TH);
-
-    // Divider
-    card.addChild(
-      new Graphics()
-        .rect(20, 136, CW - 40, 1)
-        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
-    );
+    curY += TH + 12;
 
     // --- Damage numbers toggle ---
     const dmgLabel = new Text({ text: "DAMAGE NUMBERS", style: STYLE_LABEL });
-    dmgLabel.position.set(20, 148);
+    dmgLabel.position.set(20, curY);
     card.addChild(dmgLabel);
+    curY += 20;
 
     const dmgBtn = new Container();
     dmgBtn.eventMode = "static";
     dmgBtn.cursor = "pointer";
-    dmgBtn.position.set(20, 168);
+    dmgBtn.position.set(20, curY);
 
     const dmgBg = new Graphics();
     dmgBtn.addChild(dmgBg);
@@ -336,20 +612,22 @@ export class MenuScreen {
 
     card.addChild(dmgBtn);
     this._refreshDmgToggle(TW, TH);
+    curY += TH + 12;
 
     // Divider
     card.addChild(
       new Graphics()
-        .rect(20, 214, CW - 40, 1)
+        .rect(20, curY, CW - 40, 1)
         .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
+    curY += 12;
 
     // --- Map type selector ---
     const typeLabel = new Text({ text: "MAP TYPE", style: STYLE_LABEL });
-    typeLabel.position.set(20, 226);
+    typeLabel.position.set(20, curY);
     card.addChild(typeLabel);
+    curY += 20;
 
-    // 8 buttons in 2 rows of 4
     const typeColCount = 4;
     const typeGap = 6;
     const tbW = Math.floor(
@@ -364,10 +642,7 @@ export class MenuScreen {
       const typeBtn = new Container();
       typeBtn.eventMode = "static";
       typeBtn.cursor = MAP_TYPES[i].locked ? "default" : "pointer";
-      typeBtn.position.set(
-        20 + col * (tbW + typeGap),
-        246 + row * (tbH + typeGap),
-      );
+      typeBtn.position.set(20 + col * (tbW + typeGap), curY + row * (tbH + typeGap));
 
       const typeBg = new Graphics();
       typeBtn.addChild(typeBg);
@@ -397,21 +672,23 @@ export class MenuScreen {
     }
     this._refreshTypeBtns(tbW, tbH);
 
+    const typeRows = Math.ceil(MAP_TYPES.length / typeColCount);
+    curY += typeRows * (tbH + typeGap) + 6;
+
     // Divider
-    const typeEndY = 246 + 2 * (tbH + typeGap) - typeGap;
     card.addChild(
       new Graphics()
-        .rect(20, typeEndY + 10, CW - 40, 1)
+        .rect(20, curY, CW - 40, 1)
         .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
+    curY += 12;
 
     // --- Map size selector ---
-    const mapSizeStartY = typeEndY + 22;
     const mapLabel = new Text({ text: "MAP SIZE", style: STYLE_LABEL });
-    mapLabel.position.set(20, mapSizeStartY);
+    mapLabel.position.set(20, curY);
     card.addChild(mapLabel);
+    curY += 20;
 
-    // 4 buttons in a row
     const btnCount = MAP_SIZES.length;
     const gap = 6;
     const totalGap = gap * (btnCount - 1);
@@ -423,7 +700,7 @@ export class MenuScreen {
       const sizeBtn = new Container();
       sizeBtn.eventMode = "static";
       sizeBtn.cursor = "pointer";
-      sizeBtn.position.set(20 + i * (sbW + gap), mapSizeStartY + 20);
+      sizeBtn.position.set(20 + i * (sbW + gap), curY);
 
       const sizeBg = new Graphics();
       sizeBtn.addChild(sizeBg);
@@ -446,7 +723,6 @@ export class MenuScreen {
       sizeBtn.on("pointerdown", () => {
         this._selectedSizeIndex = idx;
         this._refreshSizeBtns(sbW, sbH);
-        // Reset player count to 2 if STANDARD (only supports 2 players)
         if (idx === 0 && this._playerCount > 2) {
           this._playerCount = 2;
         }
@@ -456,127 +732,50 @@ export class MenuScreen {
 
       card.addChild(sizeBtn);
       this._sizeBtns.push({ bg: sizeBg, label: topLabel });
-      // store dim label too for style refresh
       (this._sizeBtns[i] as (typeof this._sizeBtns)[0] & { dim: Text }).dim =
         dimLabel;
     }
     this._refreshSizeBtns(sbW, sbH);
+    curY += sbH + 12;
 
     // Divider
-    const sizeEndY = mapSizeStartY + 20 + sbH;
     card.addChild(
       new Graphics()
-        .rect(20, sizeEndY + 10, CW - 40, 1)
+        .rect(20, curY, CW - 40, 1)
         .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
+    curY += 12;
 
-    // --- Game mode selector ---
-    const modeStartY = sizeEndY + 22;
-    const modeLabel = new Text({ text: "GAME MODE", style: STYLE_LABEL });
-    modeLabel.position.set(20, modeStartY);
-    card.addChild(modeLabel);
-
-    // 5 buttons — 3 on the first row, 2 on the second (or all in a responsive grid)
-    // Layout: 2 columns, 3 rows
-    const colCount = 2;
-    const modeGap = 6;
-    const mbW = Math.floor((CW - 40 - modeGap * (colCount - 1)) / colCount);
-    const mbH = 38;
-
-    this._modeBtns = [];
-    for (let i = 0; i < GAME_MODES.length; i++) {
-      const col = i % colCount;
-      const row = Math.floor(i / colCount);
-      const modeBtn = new Container();
-      modeBtn.eventMode = "static";
-      modeBtn.cursor = GAME_MODES[i].disabled ? "default" : "pointer";
-      modeBtn.position.set(
-        20 + col * (mbW + modeGap),
-        modeStartY + 20 + row * (mbH + modeGap),
-      );
-
-      const modeBg = new Graphics();
-      modeBtn.addChild(modeBg);
-
-      const mLabel = new Text({
-        text: GAME_MODES[i].label,
-        style: STYLE_MODE_INACTIVE,
-      });
-      mLabel.anchor.set(0.5, 0);
-      mLabel.position.set(mbW / 2, 5);
-      modeBtn.addChild(mLabel);
-
-      const dLabel = new Text({
-        text: GAME_MODES[i].desc,
-        style: STYLE_MODE_INACTIVE,
-      });
-      dLabel.anchor.set(0.5, 1);
-      dLabel.position.set(mbW / 2, mbH - 4);
-      modeBtn.addChild(dLabel);
-
-      const idx = i;
-      if (!GAME_MODES[i].disabled) {
-        modeBtn.on("pointerdown", () => {
-          this._selectedModeIndex = idx;
-          this._refreshModeBtns(mbW, mbH);
-        });
-      }
-
-      card.addChild(modeBtn);
-      this._modeBtns.push({
-        bg: modeBg,
-        label: mLabel,
-        desc: dLabel,
-        disabled: GAME_MODES[i].disabled ?? false,
-      });
-    }
-    this._refreshModeBtns(mbW, mbH);
-
-    // Divider — placed after 3 rows of mode buttons
-    const modeRowCount = Math.ceil(GAME_MODES.length / colCount);
-    const modeSectionH =
-      modeStartY + 20 + modeRowCount * (mbH + modeGap) - modeGap;
-    card.addChild(
-      new Graphics()
-        .rect(20, modeSectionH + 8, CW - 40, 1)
-        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
-    );
-
-    // --- Player count + alliance section ---
-    const playerStartY = modeSectionH + 22;
+    // --- Player count + alliance section (hidden for Battlefield/Wave) ---
     const playerSection = new Container();
-    playerSection.position.set(0, 0);
+    playerSection.position.set(0, curY);
     card.addChild(playerSection);
+    this._screen2PlayerSection = playerSection;
 
     const playersLabel = new Text({ text: "PLAYERS", style: STYLE_LABEL });
-    playersLabel.position.set(20, playerStartY);
+    playersLabel.position.set(20, 0);
     playerSection.addChild(playersLabel);
 
-    // 3 buttons: 2, 3, 4
     const pcBtnW = 50;
     const pcBtnH = 26;
     const pcGap = 8;
     this._playerCountBtns = [];
     for (let i = 0; i < 3; i++) {
-      const count = i + 2; // 2, 3, 4
+      const count = i + 2;
       const btn = new Container();
       btn.eventMode = "static";
       btn.cursor = "pointer";
-      btn.position.set(20 + i * (pcBtnW + pcGap), playerStartY + 20);
+      btn.position.set(20 + i * (pcBtnW + pcGap), 20);
 
       const bg = new Graphics();
       btn.addChild(bg);
 
-      const lbl = new Text({
-        text: String(count),
-        style: STYLE_SIZE_INACTIVE,
-      });
+      const lbl = new Text({ text: String(count), style: STYLE_SIZE_INACTIVE });
       lbl.anchor.set(0.5, 0.5);
       lbl.position.set(pcBtnW / 2, pcBtnH / 2);
       btn.addChild(lbl);
 
       btn.on("pointerdown", () => {
-        // Only allow 3/4 on DOUBLE+
         if (count > 2 && this._selectedSizeIndex === 0) return;
         this._playerCount = count;
         this._refreshPlayerCountBtns(pcBtnW, pcBtnH);
@@ -589,11 +788,10 @@ export class MenuScreen {
     this._refreshPlayerCountBtns(pcBtnW, pcBtnH);
 
     // Alliance toggles
-    const allyY = playerStartY + 52;
+    const allyY = 52;
     const allyW = (CW - 40 - 8) / 2;
     const allyH = 24;
 
-    // P3 ALLIED
     const p3Ally = new Container();
     p3Ally.eventMode = "static";
     p3Ally.cursor = "pointer";
@@ -614,7 +812,6 @@ export class MenuScreen {
     this._p3AllyBg = p3Bg;
     this._p3AllyLabel = p3Lbl;
 
-    // P4 ALLIED
     const p4Ally = new Container();
     p4Ally.eventMode = "static";
     p4Ally.cursor = "pointer";
@@ -637,295 +834,72 @@ export class MenuScreen {
 
     this._refreshAllianceToggles();
 
-    // Divider after player section
-    const playerSectionH = allyY + allyH + 10;
+    const playerSectionH = allyY + allyH + 12;
+
+    // Divider inside player section
     playerSection.addChild(
       new Graphics()
         .rect(20, playerSectionH, CW - 40, 1)
         .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
-    const actionStartY = playerSectionH + 14;
+    // We track two possible curY values — with and without player section
+    // The actual card height is computed in _layout based on visibility
+    // For now, place the action buttons after player section
+    const actionBaseY = curY; // Y where player section starts
+    const actionYWithPlayers = actionBaseY + playerSectionH + 14;
+    const actionYWithoutPlayers = actionBaseY;
 
-    // --- SELECT LEADER button (proceeds to leader selection, not yet starting the game) ---
+    // --- Action buttons (placed at a fixed offset, repositioned in layout) ---
     const BW = CW - 40;
     const BH = 42;
-    const startBtn = new Container();
-    startBtn.eventMode = "static";
-    startBtn.cursor = "pointer";
-    startBtn.position.set(20, actionStartY);
+    const actionBtnGap = 8;
 
-    const startBg = new Graphics()
-      .roundRect(0, 0, BW, BH, 6)
-      .fill({ color: 0x1a3a1a })
-      .roundRect(0, 0, BW, BH, 6)
-      .stroke({ color: 0x44aa66, width: 2 });
-    startBtn.addChild(startBg);
+    // BACK button
+    const backBtn = makeActionBtn(BW, BH, "<  BACK", 0x1a1a2a, 0x4466aa, 0x88aadd, () => {
+      this._showScreen1();
+    });
+    card.addChild(backBtn);
 
-    const startLabel = new Text({
-      text: "SELECT LEADER  >",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 15,
-        fill: 0x88ffaa,
-        fontWeight: "bold",
-        letterSpacing: 2,
-      }),
-    });
-    startLabel.anchor.set(0.5, 0.5);
-    startLabel.position.set(BW / 2, BH / 2);
-    startBtn.addChild(startLabel);
-
-    startBtn.on("pointerover", () => {
-      startBg.tint = 0xaaffcc;
-    });
-    startBtn.on("pointerout", () => {
-      startBg.tint = 0xffffff;
-    });
-    startBtn.on("pointerdown", () => {
+    // SELECT LEADER button
+    const startBtn = makeActionBtn(BW, BH, "SELECT LEADER  >", 0x1a3a1a, 0x44aa66, 0x88ffaa, () => {
       this.onContinue?.();
     });
-
     card.addChild(startBtn);
 
-    // --- QUICKPLAY button ---
-    const qpBtn = new Container();
-    qpBtn.eventMode = "static";
-    qpBtn.cursor = "pointer";
-    qpBtn.position.set(20, actionStartY + BH + 8);
+    // Store refs for repositioning
+    const actionBtns = { back: backBtn, start: startBtn };
 
-    const qpBg = new Graphics()
-      .roundRect(0, 0, BW, BH, 6)
-      .fill({ color: 0x2a1a0a })
-      .roundRect(0, 0, BW, BH, 6)
-      .stroke({ color: 0xcc8833, width: 2 });
-    qpBtn.addChild(qpBg);
+    // Override _layout to also reposition action buttons
+    const origLayout = this._layout.bind(this);
+    this._layout = () => {
+      // Position action buttons based on player section visibility
+      let actY: number;
+      if (this._screen2PlayerSection.visible) {
+        actY = actionYWithPlayers;
+      } else {
+        actY = actionYWithoutPlayers;
+      }
 
-    const qpLabel = new Text({
-      text: "QUICKPLAY  >>",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 15,
-        fill: 0xffcc66,
-        fontWeight: "bold",
-        letterSpacing: 2,
-      }),
-    });
-    qpLabel.anchor.set(0.5, 0.5);
-    qpLabel.position.set(BW / 2, BH / 2);
-    qpBtn.addChild(qpLabel);
+      actionBtns.back.position.set(20, actY);
+      actionBtns.start.position.set(20, actY + BH + actionBtnGap);
 
-    qpBtn.on("pointerover", () => {
-      qpBg.tint = 0xffddaa;
-    });
-    qpBtn.on("pointerout", () => {
-      qpBg.tint = 0xffffff;
-    });
-    qpBtn.on("pointerdown", () => {
-      this.onQuickPlay?.();
-    });
+      this._screen2CardH = actY + BH * 2 + actionBtnGap + 18;
 
-    card.addChild(qpBtn);
+      // Redraw screen2 card bg
+      const s2bg = this._screen2Card.getChildAt(0) as Graphics;
+      s2bg.clear();
+      s2bg.roundRect(0, 0, this._screen2CardW, this._screen2CardH, 8)
+        .fill({ color: 0x10102a, alpha: 0.95 })
+        .roundRect(0, 0, this._screen2CardW, this._screen2CardH, 8)
+        .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
 
-    // --- UNIT WIKI button ---
-    const wikiBtn = new Container();
-    wikiBtn.eventMode = "static";
-    wikiBtn.cursor = "pointer";
-    wikiBtn.position.set(20, actionStartY + BH + 8 + BH + 8);
-
-    const wikiBg = new Graphics()
-      .roundRect(0, 0, BW, BH, 6)
-      .fill({ color: 0x1a1a3a })
-      .roundRect(0, 0, BW, BH, 6)
-      .stroke({ color: 0x4488cc, width: 2 });
-    wikiBtn.addChild(wikiBg);
-
-    const wikiLabel = new Text({
-      text: "UNIT WIKI",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 15,
-        fill: 0x88bbff,
-        fontWeight: "bold",
-        letterSpacing: 2,
-      }),
-    });
-    wikiLabel.anchor.set(0.5, 0.5);
-    wikiLabel.position.set(BW / 2, BH / 2);
-    wikiBtn.addChild(wikiLabel);
-
-    wikiBtn.on("pointerover", () => {
-      wikiBg.tint = 0xaaddff;
-    });
-    wikiBtn.on("pointerout", () => {
-      wikiBg.tint = 0xffffff;
-    });
-    wikiBtn.on("pointerdown", () => {
-      this.onUnitWiki?.();
-    });
-
-    card.addChild(wikiBtn);
-
-    // --- BUILDING WIKI button ---
-    const bwBtn = new Container();
-    bwBtn.eventMode = "static";
-    bwBtn.cursor = "pointer";
-    bwBtn.position.set(20, actionStartY + BH + 8 + BH + 8 + BH + 8);
-
-    const bwBg = new Graphics()
-      .roundRect(0, 0, BW, BH, 6)
-      .fill({ color: 0x1a2a1a })
-      .roundRect(0, 0, BW, BH, 6)
-      .stroke({ color: 0x66aa55, width: 2 });
-    bwBtn.addChild(bwBg);
-
-    const bwLabel = new Text({
-      text: "BUILDING WIKI",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 15,
-        fill: 0x99dd88,
-        fontWeight: "bold",
-        letterSpacing: 2,
-      }),
-    });
-    bwLabel.anchor.set(0.5, 0.5);
-    bwLabel.position.set(BW / 2, BH / 2);
-    bwBtn.addChild(bwLabel);
-
-    bwBtn.on("pointerover", () => {
-      bwBg.tint = 0xbbffaa;
-    });
-    bwBtn.on("pointerout", () => {
-      bwBg.tint = 0xffffff;
-    });
-    bwBtn.on("pointerdown", () => {
-      this.onBuildingWiki?.();
-    });
-
-    card.addChild(bwBtn);
-
-    // --- SPELL WIKI button ---
-    const swBtn = new Container();
-    swBtn.eventMode = "static";
-    swBtn.cursor = "pointer";
-    swBtn.position.set(20, actionStartY + (BH + 8) * 4);
-
-    const swBg = new Graphics()
-      .roundRect(0, 0, BW, BH, 6)
-      .fill({ color: 0x1a1a2a })
-      .roundRect(0, 0, BW, BH, 6)
-      .stroke({ color: 0x9966ff, width: 2 });
-    swBtn.addChild(swBg);
-
-    const swLabel = new Text({
-      text: "SPELL WIKI",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 15,
-        fill: 0xbb88ff,
-        fontWeight: "bold",
-        letterSpacing: 2,
-      }),
-    });
-    swLabel.anchor.set(0.5, 0.5);
-    swLabel.position.set(BW / 2, BH / 2);
-    swBtn.addChild(swLabel);
-
-    swBtn.on("pointerover", () => { swBg.tint = 0xddbbff; });
-    swBtn.on("pointerout", () => { swBg.tint = 0xffffff; });
-    swBtn.on("pointerdown", () => { this.onSpellWiki?.(); });
-
-    card.addChild(swBtn);
-
-    // --- ONLINE MULTIPLAYER button ---
-    const mpBtn = new Container();
-    mpBtn.eventMode = "static";
-    mpBtn.cursor = "pointer";
-    mpBtn.position.set(20, actionStartY + (BH + 8) * 5);
-
-    const mpBg = new Graphics()
-      .roundRect(0, 0, BW, BH, 6)
-      .fill({ color: 0x1a1a3a })
-      .roundRect(0, 0, BW, BH, 6)
-      .stroke({ color: 0x6666cc, width: 2 });
-    mpBtn.addChild(mpBg);
-
-    const mpLabel = new Text({
-      text: "ONLINE MULTIPLAYER",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 15,
-        fill: 0x9999ff,
-        fontWeight: "bold",
-        letterSpacing: 2,
-      }),
-    });
-    mpLabel.anchor.set(0.5, 0.5);
-    mpLabel.position.set(BW / 2, BH / 2);
-    mpBtn.addChild(mpLabel);
-
-    mpBtn.on("pointerover", () => { mpBg.tint = 0xccccff; });
-    mpBtn.on("pointerout", () => { mpBg.tint = 0xffffff; });
-    mpBtn.on("pointerdown", () => { this.onMultiplayer?.(); });
-
-    card.addChild(mpBtn);
-
-    // --- LOAD WORLD GAME button (only visible when a save exists) ---
-    if (hasWorldSave()) {
-      const loadBtn = new Container();
-      loadBtn.eventMode = "static";
-      loadBtn.cursor = "pointer";
-      loadBtn.position.set(20, actionStartY + (BH + 8) * 6);
-
-      const loadBg = new Graphics()
-        .roundRect(0, 0, BW, BH, 6)
-        .fill({ color: 0x2a2a1a })
-        .roundRect(0, 0, BW, BH, 6)
-        .stroke({ color: 0xaaaa44, width: 2 });
-      loadBtn.addChild(loadBg);
-
-      const loadLabel = new Text({
-        text: "LOAD WORLD GAME",
-        style: new TextStyle({
-          fontFamily: "monospace",
-          fontSize: 15,
-          fill: 0xdddd66,
-          fontWeight: "bold",
-          letterSpacing: 2,
-        }),
-      });
-      loadLabel.anchor.set(0.5, 0.5);
-      loadLabel.position.set(BW / 2, BH / 2);
-      loadBtn.addChild(loadLabel);
-
-      loadBtn.on("pointerover", () => { loadBg.tint = 0xffffaa; });
-      loadBtn.on("pointerout", () => { loadBg.tint = 0xffffff; });
-      loadBtn.on("pointerdown", () => { this.onLoadWorldGame?.(); });
-
-      card.addChild(loadBtn);
-    }
-
-    // Adjust card height dynamically
-    const totalButtons = hasWorldSave() ? 7 : 6;
-    this._cardH = actionStartY + (BH + 8) * totalButtons + 18;
-
-    vm.addToLayer("ui", this.container);
-    this._layout();
-
-    vm.app.renderer.on("resize", () => this._layout());
-  }
-
-  show(): void {
-    this.container.visible = true;
-  }
-
-  hide(): void {
-    this.container.visible = false;
+      origLayout();
+    };
   }
 
   // ---------------------------------------------------------------------------
-  // Private
+  // Refresh helpers
   // ---------------------------------------------------------------------------
 
   private _refreshAIToggle(w: number, h: number): void {
@@ -1013,47 +987,11 @@ export class MenuScreen {
     }
   }
 
-  private _refreshModeBtns(w: number, h: number): void {
-    for (let i = 0; i < this._modeBtns.length; i++) {
-      const entry = this._modeBtns[i];
-      const selected = i === this._selectedModeIndex;
-      const disabled = entry.disabled;
-
-      entry.bg.clear();
-      if (disabled) {
-        entry.bg
-          .roundRect(0, 0, w, h, 4)
-          .fill({ color: 0x0d0d1a })
-          .roundRect(0, 0, w, h, 4)
-          .stroke({ color: 0x223333, width: 1 });
-        entry.label.style = STYLE_MODE_DISABLED;
-        entry.desc.style = STYLE_MODE_DISABLED;
-      } else if (selected) {
-        entry.bg
-          .roundRect(0, 0, w, h, 4)
-          .fill({ color: 0x1a1e2e })
-          .roundRect(0, 0, w, h, 4)
-          .stroke({ color: 0xffd700, width: 1.5 });
-        entry.label.style = STYLE_MODE_ACTIVE;
-        entry.desc.style = STYLE_MODE_ACTIVE;
-      } else {
-        entry.bg
-          .roundRect(0, 0, w, h, 4)
-          .fill({ color: 0x12121e })
-          .roundRect(0, 0, w, h, 4)
-          .stroke({ color: 0x334455, width: 1 });
-        entry.label.style = STYLE_MODE_INACTIVE;
-        entry.desc.style = STYLE_MODE_INACTIVE;
-      }
-    }
-  }
-
   private _refreshPlayerCountBtns(w: number, h: number): void {
     for (let i = 0; i < this._playerCountBtns.length; i++) {
       const entry = this._playerCountBtns[i];
       const count = i + 2;
       const selected = count === this._playerCount;
-      // Only allow 3/4 on DOUBLE+ maps (size index > 0)
       const disabled = count > 2 && this._selectedSizeIndex === 0;
 
       entry.bg.clear();
@@ -1083,10 +1021,9 @@ export class MenuScreen {
   }
 
   private _refreshAllianceToggles(): void {
-    const allyW = (this._cardW - 40 - 8) / 2;
+    const allyW = (this._screen2CardW - 40 - 8) / 2;
     const allyH = 24;
 
-    // P3 toggle
     const p3Active = this._playerCount >= 3;
     const p3Allied = this._p3Allied && p3Active;
     this._p3AllyBg.clear();
@@ -1099,7 +1036,6 @@ export class MenuScreen {
     this._p3AllyLabel.style = !p3Active ? STYLE_MODE_DISABLED : p3Allied ? STYLE_SIZE_ACTIVE : STYLE_SIZE_INACTIVE;
     this._p3AllyContainer.cursor = p3Active ? "pointer" : "default";
 
-    // P4 toggle
     const p4Active = this._playerCount >= 4;
     const p4Allied = this._p4Allied && p4Active;
     this._p4AllyBg.clear();
@@ -1113,6 +1049,10 @@ export class MenuScreen {
     this._p4AllyContainer.cursor = p4Active ? "pointer" : "default";
   }
 
+  // ---------------------------------------------------------------------------
+  // Layout
+  // ---------------------------------------------------------------------------
+
   private _layout(): void {
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
@@ -1120,10 +1060,19 @@ export class MenuScreen {
     this._bg.clear();
     this._bg.rect(0, 0, sw, sh).fill({ color: BG_COLOR });
 
-    this._card.position.set(
-      Math.floor((sw - this._cardW) / 2),
-      Math.floor((sh - this._cardH) / 2),
-    );
+    if (this._screen1?.visible) {
+      this._screen1Card.position.set(
+        Math.floor((sw - this._screen1CardW) / 2),
+        Math.floor((sh - this._screen1CardH) / 2),
+      );
+    }
+
+    if (this._screen2?.visible) {
+      this._screen2Card.position.set(
+        Math.floor((sw - this._screen2CardW) / 2),
+        Math.floor((sh - this._screen2CardH) / 2),
+      );
+    }
   }
 }
 
