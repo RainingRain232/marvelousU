@@ -190,7 +190,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     victoryCode: "8817",
     unlocks: {
       units: [UnitType.GLADIATOR, UnitType.HALBERDIER],
-      leaders: ["joan"],
+      leaders: ["lancelot"],
       items: ["plate_armor"],
     },
   },
@@ -313,7 +313,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     unlocks: {
       units: [UnitType.FROST_DRAGON, UnitType.CYCLOPS],
       buildings: [BuildingType.FACTION_HALL],
-      leaders: ["boudicca"],
+      leaders: ["isolde"],
     },
   },
   {

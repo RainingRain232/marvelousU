@@ -88,11 +88,11 @@ export const QUEST_DEFS: QuestDef[] = [
     },
   },
   {
-    npcId: "leader_caesar",
+    npcId: "leader_bedivere",
     quest: {
-      id: "quest_pax_romana",
-      name: "Pax Romana",
-      description: "Caesar demands you restore order by crushing the Undead Legion. Defeat 3 Undead Legion encounters.",
+      id: "quest_last_knights_oath",
+      name: "The Last Knight's Oath",
+      description: "Bedivere asks you to honour the fallen Round Table by crushing the Undead Legion. Defeat 3 Undead Legion encounters.",
       objectives: [{ type: "kill", targetId: "undead_legion", current: 0, required: 3 }],
       isComplete: false,
       reward: { gold: 250, xp: 350 },
