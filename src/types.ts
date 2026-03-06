@@ -597,6 +597,60 @@ export enum GameMode {
   ROGUELIKE = "roguelike",
   WORLD = "world",
   WAVE = "wave",
+  RPG = "rpg",
+}
+
+// ---------------------------------------------------------------------------
+// RPG mode enums
+// ---------------------------------------------------------------------------
+
+export enum RPGPhase {
+  OVERWORLD = "overworld",
+  DUNGEON = "dungeon",
+  BATTLE_TURN = "battle_turn",
+  BATTLE_AUTO = "battle_auto",
+  TOWN_MENU = "town_menu",
+  GAME_OVER = "game_over",
+}
+
+export enum DungeonTileType {
+  WALL = "wall",
+  FLOOR = "floor",
+  DOOR = "door",
+  STAIRS_DOWN = "stairs_down",
+  STAIRS_UP = "stairs_up",
+  CHEST = "chest",
+  TRAP = "trap",
+}
+
+export enum TurnBattleAction {
+  ATTACK = "attack",
+  ABILITY = "ability",
+  DEFEND = "defend",
+  ITEM = "item",
+  FLEE = "flee",
+}
+
+export enum TurnBattlePhase {
+  INITIATIVE = "initiative",
+  SELECT_ACTION = "select_action",
+  SELECT_TARGET = "select_target",
+  EXECUTE = "execute",
+  ENEMY_TURN = "enemy_turn",
+  CHECK_END = "check_end",
+  VICTORY = "victory",
+  DEFEAT = "defeat",
+  FLED = "fled",
+}
+
+export enum OverworldTileType {
+  GRASS = "grass",
+  FOREST = "forest",
+  MOUNTAIN = "mountain",
+  WATER = "water",
+  PATH = "path",
+  SAND = "sand",
+  SNOW = "snow",
 }
 
 export enum MapType {

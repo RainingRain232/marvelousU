@@ -4,6 +4,7 @@ import { resolve } from "path";
 export default defineConfig({
   resolve: {
     alias: {
+      "@rpg": resolve(__dirname, "src/rpg"),
       "@sim": resolve(__dirname, "src/sim"),
       "@view": resolve(__dirname, "src/view"),
       "@world": resolve(__dirname, "src/world"),

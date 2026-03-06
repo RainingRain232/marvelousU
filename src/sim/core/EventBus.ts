@@ -1,6 +1,7 @@
 // Typed event emitter — bridge between sim and view
 // sim/ emits events; view/ listens. sim/ never imports from view/.
-import type { AbilityType, GamePhase, PlayerId, UnitState, UnitType, Vec2 } from "@/types";
+import type { AbilityType, GamePhase, PlayerId, RPGPhase, TurnBattleAction, UnitState, UnitType, Vec2 } from "@/types";
+import type { RPGItem } from "@rpg/state/RPGState";
 
 // ---------------------------------------------------------------------------
 // Event map — every event the simulation can emit
@@ -46,6 +47,30 @@ export interface SimEvents {
   // Game flow
   phaseChanged: { phase: GamePhase };
   roguelikeDisabledBuildingsChanged: { disabled: string[] };
+
+  // RPG events
+  rpgPhaseChanged: { phase: RPGPhase; previousPhase: RPGPhase };
+  rpgPartyMoved: { position: Vec2; previousPosition: Vec2 };
+  rpgEncounterTriggered: { encounterId: string; encounterType: "random" | "dungeon" | "boss" };
+  rpgDungeonEntered: { dungeonId: string };
+  rpgDungeonFloorChanged: { floor: number; direction: "down" | "up" };
+  rpgDungeonExited: { dungeonId: string };
+  rpgTownEntered: { townId: string };
+  rpgBattleStarted: { mode: "turn" | "auto" };
+  rpgBattleEnded: { victory: boolean; xp: number; gold: number };
+  rpgTurnBattleAction: { combatantId: string; action: TurnBattleAction; targetId?: string };
+  rpgTurnBattleDamage: { attackerId: string; targetId: string; damage: number; isCritical: boolean };
+  rpgItemUsed: { itemId: string; targetId: string };
+  rpgLevelUp: { memberId: string; newLevel: number };
+  rpgQuestUpdated: { questId: string; objectiveIndex: number };
+  rpgQuestCompleted: { questId: string };
+  rpgChestOpened: { position: Vec2; items: RPGItem[] };
+  rpgRoomRevealed: { roomId: string };
+
+  // RPG town/equipment events
+  rpgItemBought: { itemId: string };
+  rpgItemEquipped: { memberId: string; itemId: string; slot: string };
+  rpgInnRested: { cost: number };
 }
 
 // ---------------------------------------------------------------------------

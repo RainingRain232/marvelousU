@@ -160,6 +160,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Endless survival waves",
     hidePlayerSetup: true,
   },
+  {
+    mode: GameMode.RPG,
+    label: "RPG",
+    desc: "Overworld & dungeon crawling",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

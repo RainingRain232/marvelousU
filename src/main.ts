@@ -99,6 +99,9 @@ import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
 /** First 2 armory items unlocked at world game start. More drop from camps. */
 const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) => i.id);
 
+// RPG mode imports
+import { RPGGame } from "@rpg/RPGBoot";
+
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
 import type { WorldGameSettings } from "@world/config/WorldConfig";
@@ -254,6 +257,11 @@ import merlinImgUrl from "@/img/merlin.png";
   const worldSetupScreen = new WorldSetupScreen();
 
   menuScreen.onContinue = () => {
+    if (menuScreen.selectedGameMode === GameMode.RPG) {
+      menuScreen.hide();
+      _bootRPGGame();
+      return;
+    }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
       menuScreen.hide();
       // World mode: Leader → Race → RaceDetail → Magic → Armory → WorldSetup → boot
@@ -1538,6 +1546,27 @@ function _applyCampaignRestrictions(state: GameState, scenarioNum: number): void
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// RPG mode boot
+// ---------------------------------------------------------------------------
+
+let _rpgGame: RPGGame | null = null;
+
+async function _bootRPGGame(): Promise<void> {
+  // Destroy any existing RPG game
+  if (_rpgGame) {
+    _rpgGame.destroy();
+    _rpgGame = null;
+  }
+
+  _rpgGame = new RPGGame();
+  await _rpgGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Campaign mode boot
+// ---------------------------------------------------------------------------
 
 /**
  * Boot a campaign scenario game.
