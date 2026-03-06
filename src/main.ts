@@ -80,6 +80,7 @@ import {
   UnitType,
   UnitState,
   AbilityType,
+  NEUTRAL_PLAYER,
 } from "@/types";
 import { ABILITY_DEFINITIONS } from "@sim/config/AbilityDefs";
 import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
@@ -1482,6 +1483,427 @@ function _setupScenario7(state: GameState, mapW: number, _mapH: number): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Arthurian campaign scenario setup helpers (scenarios 8–23)
+// ---------------------------------------------------------------------------
+
+/** Helper: spawn a cluster of neutral hostile units at a position. */
+function _spawnNeutralGroup(
+  state: GameState,
+  units: Array<{ type: UnitType; count: number }>,
+  baseX: number,
+  baseY: number,
+): void {
+  let idx = 0;
+  for (const entry of units) {
+    for (let i = 0; i < entry.count; i++) {
+      const u = createUnit({
+        type: entry.type,
+        owner: NEUTRAL_PLAYER,
+        position: { x: baseX + (idx % 4), y: baseY + Math.floor(idx / 4) },
+      });
+      state.units.set(u.id, u);
+      EventBus.emit("unitSpawned", {
+        unitId: u.id,
+        buildingId: "",
+        position: { ...u.position },
+      });
+      idx++;
+    }
+  }
+}
+
+/**
+ * Scenario 9 — "The Green Chapel"
+ * Spawn a powerful neutral Green Knight (cyclops-stats) at map centre.
+ */
+function _setupScenario9(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  const knight = createUnit({
+    type: UnitType.CYCLOPS,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  // Boost HP to make the Green Knight a proper boss
+  knight.hp = Math.floor(knight.hp * 2);
+  knight.maxHp = knight.hp;
+  state.units.set(knight.id, knight);
+  EventBus.emit("unitSpawned", {
+    unitId: knight.id,
+    buildingId: "",
+    position: { ...knight.position },
+  });
+}
+
+/**
+ * Scenario 10 — "The Fisher King's Lands"
+ * Spawn blight creatures (spiders, void snails) in the neutral zone.
+ */
+function _setupScenario10(state: GameState, mapW: number, mapH: number): void {
+  // Scatter blight creatures across the centre
+  const positions = [
+    { x: Math.floor(mapW * 0.35), y: Math.floor(mapH * 0.3) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5) },
+    { x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.7) },
+    { x: Math.floor(mapW * 0.6), y: Math.floor(mapH * 0.4) },
+  ];
+  for (const pos of positions) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.SPIDER, count: 2 },
+      { type: UnitType.VOID_SNAIL, count: 1 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 11 — "Morgan's Bargain"
+ * Spawn Faery Queen guards at neutral market buildings.
+ */
+function _setupScenario11(state: GameState, _mapW: number, _mapH: number): void {
+  for (const building of state.buildings.values()) {
+    if (building.owner === null) {
+      // Guard each neutral building with fay creatures
+      _spawnNeutralGroup(state, [
+        { type: UnitType.FAERY_QUEEN, count: 1 },
+        { type: UnitType.PIXIE, count: 3 },
+      ], building.position.x - 1, building.position.y - 1);
+    }
+  }
+}
+
+/**
+ * Scenario 12 — "The Siege Perilous"
+ * Spawn hostile storm mages near ley-line positions and a neutral lancer at centre.
+ */
+function _setupScenario12(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  // The Siege Perilous champion at centre
+  const champion = createUnit({
+    type: UnitType.KNIGHT_LANCER,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  champion.hp = Math.floor(champion.hp * 1.5);
+  champion.maxHp = champion.hp;
+  state.units.set(champion.id, champion);
+  EventBus.emit("unitSpawned", {
+    unitId: champion.id,
+    buildingId: "",
+    position: { ...champion.position },
+  });
+  // Storm mages at ley-line nodes
+  const leyLines = [
+    { x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.25) },
+    { x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.75) },
+  ];
+  for (const pos of leyLines) {
+    _spawnNeutralGroup(state, [{ type: UnitType.STORM_MAGE, count: 2 }], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 13 — "The Black Knight"
+ * Spawn a massively powerful neutral knight at the bridge (map centre).
+ */
+function _setupScenario13(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  const blackKnight = createUnit({
+    type: UnitType.KNIGHT_LANCER,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  // The Black Knight is extremely tough
+  blackKnight.hp = Math.floor(blackKnight.hp * 3);
+  blackKnight.maxHp = blackKnight.hp;
+  state.units.set(blackKnight.id, blackKnight);
+  EventBus.emit("unitSpawned", {
+    unitId: blackKnight.id,
+    buildingId: "",
+    position: { ...blackKnight.position },
+  });
+  // Escort cavalry
+  _spawnNeutralGroup(state, [
+    { type: UnitType.KNIGHT, count: 2 },
+  ], cx - 2, cy + 1);
+}
+
+/**
+ * Scenario 14 — "The Questing Beast"
+ * Spawn a fast, powerful neutral beast (red dragon stats) at map centre.
+ */
+function _setupScenario14(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  const beast = createUnit({
+    type: UnitType.RED_DRAGON,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  // The Questing Beast is extremely resilient
+  beast.hp = Math.floor(beast.hp * 1.5);
+  beast.maxHp = beast.hp;
+  state.units.set(beast.id, beast);
+  EventBus.emit("unitSpawned", {
+    unitId: beast.id,
+    buildingId: "",
+    position: { ...beast.position },
+  });
+  // Smaller creatures trailing in its wake
+  _spawnNeutralGroup(state, [
+    { type: UnitType.SPIDER, count: 2 },
+    { type: UnitType.GIANT_FROG, count: 2 },
+  ], cx - 3, cy + 2);
+}
+
+/**
+ * Scenario 15 — "The Dolorous Stroke"
+ * Spawn undead warriors at ruin positions across the map.
+ */
+function _setupScenario15(state: GameState, mapW: number, mapH: number): void {
+  const ruinPositions = [
+    { x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.3) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.2) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.8) },
+    { x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.6) },
+  ];
+  for (const pos of ruinPositions) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.SWORDSMAN, count: 3 },
+      { type: UnitType.PIKEMAN, count: 2 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 16 — "The Perilous Forest"
+ * Spawn creature waves from forest edges + a neutral summoner at centre.
+ */
+function _setupScenario16(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  // Neutral summoner at centre
+  const summoner = createUnit({
+    type: UnitType.SUMMONER,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  summoner.hp = Math.floor(summoner.hp * 2);
+  summoner.maxHp = summoner.hp;
+  state.units.set(summoner.id, summoner);
+  EventBus.emit("unitSpawned", {
+    unitId: summoner.id,
+    buildingId: "",
+    position: { ...summoner.position },
+  });
+  // Forest edge creature clusters
+  const edges = [
+    { x: 2, y: Math.floor(mapH * 0.3) },
+    { x: mapW - 4, y: Math.floor(mapH * 0.7) },
+    { x: Math.floor(mapW * 0.5), y: 2 },
+    { x: Math.floor(mapW * 0.5), y: mapH - 4 },
+  ];
+  for (const pos of edges) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.SPIDER, count: 2 },
+      { type: UnitType.GIANT_FROG, count: 1 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 17 — "The Tournament at Camelot"
+ * Spawn neutral champion knight pairs at tournament positions.
+ */
+function _setupScenario17(state: GameState, mapW: number, mapH: number): void {
+  const positions = [
+    { x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.3) },
+    { x: Math.floor(mapW * 0.6), y: Math.floor(mapH * 0.7) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5) },
+  ];
+  for (const pos of positions) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.KNIGHT_LANCER, count: 1 },
+      { type: UnitType.LANCER, count: 1 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 18 — "The Chapel of the Grail"
+ * Spawn angelic wardens guarding the Grail Chapel at map centre.
+ */
+function _setupScenario18(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  _spawnNeutralGroup(state, [
+    { type: UnitType.SAINT, count: 2 },
+    { type: UnitType.CLERIC, count: 2 },
+    { type: UnitType.MONK, count: 2 },
+  ], cx - 1, cy - 1);
+}
+
+/**
+ * Scenario 19 — "Lancelot's Betrayal"
+ * Spawn neutral knight groups across the map that can be recruited.
+ */
+function _setupScenario19(state: GameState, mapW: number, mapH: number): void {
+  const knightPositions = [
+    { x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.25) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5) },
+    { x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.75) },
+    { x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.7) },
+    { x: Math.floor(mapW * 0.6), y: Math.floor(mapH * 0.3) },
+  ];
+  for (const pos of knightPositions) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.QUESTING_KNIGHT, count: 2 },
+      { type: UnitType.KNIGHT, count: 1 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 20 — "The Isle of Avalon"
+ * Spawn Fay guardians at neutral hamlet/building positions + frost drake patrols.
+ */
+function _setupScenario20(state: GameState, mapW: number, mapH: number): void {
+  // Fay guardians at each neutral building
+  let guardCount = 0;
+  for (const building of state.buildings.values()) {
+    if (building.owner === null && guardCount < 4) {
+      _spawnNeutralGroup(state, [
+        { type: UnitType.FAERY_QUEEN, count: 1 },
+      ], building.position.x - 1, building.position.y - 1);
+      guardCount++;
+    }
+  }
+  // Frost dragon patrol
+  const frost = createUnit({
+    type: UnitType.FROST_DRAGON,
+    owner: NEUTRAL_PLAYER,
+    position: { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.3) },
+  });
+  state.units.set(frost.id, frost);
+  EventBus.emit("unitSpawned", {
+    unitId: frost.id,
+    buildingId: "",
+    position: { ...frost.position },
+  });
+}
+
+/**
+ * Scenario 21 — "The Grail War"
+ * Spawn void snails and distortion mages in a ring around the Grail (map centre).
+ */
+function _setupScenario21(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  // Ring of distorted creatures around the Grail
+  const ringOffsets = [
+    { x: -3, y: 0 }, { x: 3, y: 0 },
+    { x: 0, y: -3 }, { x: 0, y: 3 },
+  ];
+  for (const off of ringOffsets) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.VOID_SNAIL, count: 1 },
+      { type: UnitType.DISTORTION_MAGE, count: 1 },
+    ], cx + off.x, cy + off.y);
+  }
+  // The Grail guardian — a saint
+  const saint = createUnit({
+    type: UnitType.SAINT,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  saint.hp = Math.floor(saint.hp * 2);
+  saint.maxHp = saint.hp;
+  state.units.set(saint.id, saint);
+  EventBus.emit("unitSpawned", {
+    unitId: saint.id,
+    buildingId: "",
+    position: { ...saint.position },
+  });
+}
+
+/**
+ * Scenario 22 — "The Walls of Camelot"
+ * Spawn loyalist knight reinforcements near P1's flanks + neutral cyclops.
+ */
+function _setupScenario22(state: GameState, mapW: number, mapH: number): void {
+  // Loyalist reinforcements on P1's flanks
+  const flankPositions = [
+    { x: Math.floor(mapW * 0.15), y: Math.floor(mapH * 0.2) },
+    { x: Math.floor(mapW * 0.15), y: Math.floor(mapH * 0.8) },
+  ];
+  for (const pos of flankPositions) {
+    for (let i = 0; i < 3; i++) {
+      const knight = createUnit({
+        type: UnitType.QUESTING_KNIGHT,
+        owner: "p1",
+        position: { x: pos.x + (i % 2), y: pos.y + Math.floor(i / 2) },
+      });
+      state.units.set(knight.id, knight);
+    }
+  }
+  // Neutral cyclops siege-breaker near centre
+  const cyclops = createUnit({
+    type: UnitType.CYCLOPS,
+    owner: NEUTRAL_PLAYER,
+    position: { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5) },
+  });
+  state.units.set(cyclops.id, cyclops);
+  EventBus.emit("unitSpawned", {
+    unitId: cyclops.id,
+    buildingId: "",
+    position: { ...cyclops.position },
+  });
+}
+
+/**
+ * Scenario 23 — "The Dragon of the White Tower"
+ * Spawn a friendly Red Dragon near P1's base and a hostile White (Frost) Dragon near P2.
+ * Also spawn neutral frost dragons from map edges.
+ */
+function _setupScenario23_dragons(state: GameState, mapW: number, mapH: number): void {
+  // Red Dragon for P1 — near the western base
+  const redDragon = createUnit({
+    type: UnitType.RED_DRAGON,
+    owner: "p1",
+    position: { x: Math.floor(mapW * 0.15), y: Math.floor(mapH * 0.5) },
+  });
+  state.units.set(redDragon.id, redDragon);
+
+  // White (Frost) Dragon for P2 — near the eastern base
+  const whiteDragon = createUnit({
+    type: UnitType.FROST_DRAGON,
+    owner: "p2",
+    position: { x: Math.floor(mapW * 0.85), y: Math.floor(mapH * 0.5) },
+  });
+  state.units.set(whiteDragon.id, whiteDragon);
+
+  // Neutral frost dragons from map edges
+  const wildPositions = [
+    { x: Math.floor(mapW * 0.5), y: 3 },
+    { x: Math.floor(mapW * 0.5), y: mapH - 4 },
+  ];
+  for (const pos of wildPositions) {
+    const wildDragon = createUnit({
+      type: UnitType.FROST_DRAGON,
+      owner: NEUTRAL_PLAYER,
+      position: pos,
+    });
+    state.units.set(wildDragon.id, wildDragon);
+    EventBus.emit("unitSpawned", {
+      unitId: wildDragon.id,
+      buildingId: "",
+      position: { ...wildDragon.position },
+    });
+  }
+}
+
 /**
  * ROGUELIKE mode: randomly disable 50% of non-castle building types.
  * Mirrors PhaseSystem logic but runs at boot for the first round.
@@ -1987,8 +2409,24 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
 }
 
 /** Show a brief Merlin compliment overlay, then call the callback. */
-function _showMerlinWaveCompliment(message: string, onDone: () => void): void {
-  // Create a simple overlay with Merlin's message
+/** Speaker colour palette for the dialog. */
+const SPEAKER_COLORS: Record<string, { label: number; border: number; text: number }> = {
+  merlin:    { label: 0xbb88ff, border: 0x9966ff, text: 0xddccff },
+  arthur:    { label: 0xffcc44, border: 0xddaa22, text: 0xffeedd },
+  gawain:    { label: 0xff8844, border: 0xdd6622, text: 0xffddcc },
+  guinevere: { label: 0xff66aa, border: 0xdd4488, text: 0xffddee },
+  lancelot:  { label: 0x44aaff, border: 0x2288dd, text: 0xddeeff },
+  pellinore: { label: 0x88cc44, border: 0x66aa22, text: 0xeeffdd },
+  nimue:     { label: 0x44ddcc, border: 0x22bbaa, text: 0xddfffe },
+  mordred:   { label: 0xcc4444, border: 0xaa2222, text: 0xffdddd },
+  morgan:    { label: 0xaa66cc, border: 0x8844aa, text: 0xeeddff },
+};
+
+function _showMerlinWaveCompliment(
+  message: string,
+  onDone: () => void,
+  secondSpeaker?: { name: string; id: string },
+): void {
   const overlay = new Container();
   const sw = viewManager.screenWidth;
   const sh = viewManager.screenHeight;
@@ -1998,38 +2436,86 @@ function _showMerlinWaveCompliment(message: string, onDone: () => void): void {
     .fill({ color: 0x000000, alpha: 0.7 });
   overlay.addChild(bg);
 
-  const CW = 440;
+  const hasDual = !!secondSpeaker;
+  const CW = hasDual ? 500 : 440;
   const CH = 180;
   const card = new Container();
   card.position.set(Math.floor((sw - CW) / 2), Math.floor((sh - CH) / 2));
+
+  // Pick colours — blend both speakers' borders when dual
+  const merlinColors = SPEAKER_COLORS.merlin;
+  const secondColors = secondSpeaker ? (SPEAKER_COLORS[secondSpeaker.id] ?? merlinColors) : merlinColors;
+  const borderColor = hasDual ? secondColors.border : merlinColors.border;
 
   const cardBg = new Graphics()
     .roundRect(0, 0, CW, CH, 10)
     .fill({ color: 0x0a0a18, alpha: 0.96 })
     .roundRect(0, 0, CW, CH, 10)
-    .stroke({ color: 0x9966ff, alpha: 0.8, width: 2 });
+    .stroke({ color: borderColor, alpha: 0.8, width: 2 });
   card.addChild(cardBg);
 
-  const merlinLabel = new Text({
-    text: "MERLIN SPEAKS:",
-    style: new TextStyle({
-      fontFamily: "monospace",
-      fontSize: 14,
-      fill: 0xbb88ff,
-      fontWeight: "bold",
-      letterSpacing: 2,
-    }),
-  });
-  merlinLabel.anchor.set(0.5, 0);
-  merlinLabel.position.set(CW / 2, 20);
-  card.addChild(merlinLabel);
+  if (hasDual) {
+    // --- Dual speaker layout: leader on left, Merlin on right ---
+    const leaderLabel = new Text({
+      text: secondSpeaker!.name.toUpperCase(),
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 12,
+        fill: secondColors.label,
+        fontWeight: "bold",
+        letterSpacing: 1,
+      }),
+    });
+    leaderLabel.anchor.set(0, 0);
+    leaderLabel.position.set(20, 14);
+    card.addChild(leaderLabel);
+
+    const merlinLabel = new Text({
+      text: "MERLIN",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 12,
+        fill: merlinColors.label,
+        fontWeight: "bold",
+        letterSpacing: 1,
+      }),
+    });
+    merlinLabel.anchor.set(1, 0);
+    merlinLabel.position.set(CW - 20, 14);
+    card.addChild(merlinLabel);
+
+    // Divider accent line between the two names
+    const divider = new Graphics()
+      .moveTo(CW / 2, 12)
+      .lineTo(CW / 2, 28)
+      .stroke({ color: 0x555566, alpha: 0.5, width: 1 });
+    card.addChild(divider);
+  } else {
+    // --- Single speaker: Merlin only ---
+    const merlinLabel = new Text({
+      text: "MERLIN SPEAKS:",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 14,
+        fill: merlinColors.label,
+        fontWeight: "bold",
+        letterSpacing: 2,
+      }),
+    });
+    merlinLabel.anchor.set(0.5, 0);
+    merlinLabel.position.set(CW / 2, 20);
+    card.addChild(merlinLabel);
+  }
+
+  const textTop = hasDual ? 36 : 52;
+  const textColor = hasDual ? secondColors.text : merlinColors.text;
 
   const msgText = new Text({
     text: `"${message}"`,
     style: new TextStyle({
       fontFamily: "monospace",
       fontSize: 13,
-      fill: 0xddccff,
+      fill: textColor,
       letterSpacing: 1,
       wordWrap: true,
       wordWrapWidth: CW - 40,
@@ -2037,7 +2523,7 @@ function _showMerlinWaveCompliment(message: string, onDone: () => void): void {
     }),
   });
   msgText.anchor.set(0.5, 0);
-  msgText.position.set(CW / 2, 52);
+  msgText.position.set(CW / 2, textTop);
   card.addChild(msgText);
 
   const BW = CW - 80;
@@ -5491,6 +5977,22 @@ async function _bootGame(
     if (scenarioNum === 25) {
       _setupScenario24(state, mapSize.width, mapSize.height);
     }
+    // Arthurian scenario setups (9–23)
+    if (scenarioNum === 9) _setupScenario9(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 10) _setupScenario10(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 11) _setupScenario11(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 12) _setupScenario12(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 13) _setupScenario13(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 14) _setupScenario14(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 15) _setupScenario15(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 16) _setupScenario16(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 17) _setupScenario17(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 18) _setupScenario18(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 19) _setupScenario19(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 20) _setupScenario20(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 21) _setupScenario21(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 22) _setupScenario22(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 23) _setupScenario23_dragons(state, mapSize.width, mapSize.height);
   }
 
   // Apply P1's equipped armory items (hero stat bonuses)
@@ -5831,12 +6333,63 @@ async function _bootGame(
     );
   }
 
-  // Scenario 8: Merlin warns about max players
+  // Scenario 8: The Sword in the Stone — Arthur + Merlin
   if (gameMode === GameMode.CAMPAIGN && scenarioNum === 8) {
     simLoop.pause();
     _showMerlinWaveCompliment(
-      "Four commanders on one battlefield — this is the maximum the realm can sustain! You have an ally to the southwest, but two enemy warlords command their own castles. Coordinate with your ally and strike before they overwhelm you!",
+      "Arthur has drawn the sword from the stone, but the lesser kings will not kneel! Three rivals converge on this vast territory. Sir Ector's household rides with you from the southwest — coordinate your forces and prove the boy-king's right to rule!",
       () => { simLoop.resume(); },
+      { name: "Arthur", id: "arthur" },
+    );
+  }
+
+  // Scenario 9: The Green Chapel — Gawain + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 9) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "The Green Knight awaits at the centre of the map — a creature of ancient magic who regenerates from every wound. Hold the towers along the road to whittle him down. Do not let him reach your castle unchallenged!",
+      () => { simLoop.resume(); },
+      { name: "Gawain", id: "gawain" },
+    );
+  }
+
+  // Scenario 13: The Black Knight — Guinevere + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 13) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "A fearsome Black Knight guards the bridge at the centre of the map. He is nigh invincible without proper arms — use your blacksmith to upgrade your forces before attempting the crossing!",
+      () => { simLoop.resume(); },
+      { name: "Guinevere", id: "guinevere" },
+    );
+  }
+
+  // Scenario 14: The Questing Beast — Pellinore + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 14) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "The Questing Beast roams the battlefield — a creature of terrible power that attacks all who cross its path. Slay it for gold, but beware: it will return! You must also contend with a rival king. This is the midpoint of the campaign, commander.",
+      () => { simLoop.resume(); },
+      { name: "Pellinore", id: "pellinore" },
+    );
+  }
+
+  // Scenario 19: Lancelot's Betrayal — Lancelot + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 19) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "Lancelot's treachery has split the Round Table! Neutral knights are scattered across the map — send your diplomats to win their allegiance before the enemy reaches them. The fate of Camelot depends on whose banner they rally to!",
+      () => { simLoop.resume(); },
+      { name: "Lancelot", id: "lancelot" },
+    );
+  }
+
+  // Scenario 23: The Dragon of the White Tower — Nimue + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 23) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "The two dragons beneath Vortigern's tower are loosed! The Red Dragon of Britain fights at your side, but the White Dragon serves the enemy. Wild frost dragons descend from the north — command the skies or be burned from them!",
+      () => { simLoop.resume(); },
+      { name: "Nimue", id: "nimue" },
     );
   }
 

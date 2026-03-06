@@ -188,9 +188,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 8,
-    title: "Steel and Saddle",
+    title: "The Sword in the Stone",
     briefing:
-      "The battlefield has expanded to its largest yet — four commanders now vie for control of a vast territory. An ally rides with you from the southwest, but two enemy warlords have mounted forces converging from all sides. Build stables and field cavalry before they outmanoeuvre you.",
+      "Arthur has drawn Caliburn from the stone, but the lesser kings refuse to bend the knee. Three rival lords converge on Camelot to challenge the boy-king's claim. Sir Ector's household rides from the southwest to honour the foster-father's oath. Neutral stone circles dot the land — capture them and the minor lords within will swear fealty to your banner.",
     victoryCode: "5512",
     unlocks: {
       units: [UnitType.KNIGHT],
@@ -203,9 +203,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 9,
-    title: "The Watchtower",
+    title: "The Green Chapel",
     briefing:
-      "Intelligence reports show the enemy massing troops near neutral towns. Control the high ground. Towers will give you a defensive advantage — station your archers and hold every neutral building you can reach.",
+      "Sir Gawain accepted the Green Knight's challenge and must journey to the Green Chapel to receive the return blow. Towers along the road are waypoints — hold them to protect the pilgrimage. But beware: the Green Knight himself stalks the centre of the map, a towering figure who regenerates from every wound. Only by controlling the towers can your archers thin his strength before he reaches your lines.",
     victoryCode: "9034",
     unlocks: {
       units: [UnitType.SHORTBOW],
@@ -216,9 +216,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 10,
-    title: "Fields of Plenty",
+    title: "The Fisher King's Lands",
     briefing:
-      "A prolonged campaign drains gold fast. Farms boost your income and sustain larger armies. The enemy has learned from their defeats and brings a mixed force. Do not underestimate them.",
+      "The Fisher King lies wounded and his domain withers. The land itself is dying — corrupted creatures crawl from blighted ground. Farms you build slowly restore fertility and income, but the wasteland spawns spiders and void snails from the decay. The enemy suffers no such curse. You must out-earn the blight and purify the land by capturing neutral hamlets before the corruption overwhelms you.",
     victoryCode: "2781",
     unlocks: {
       units: [UnitType.SCOUT_CAVALRY, UnitType.HORSE_ARCHER],
@@ -228,9 +228,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 11,
-    title: "The Merchant War",
+    title: "Morgan's Bargain",
     briefing:
-      "A rival merchant guild has hired sellswords to protect their trade routes — which run straight through your territory. Markets generate gold fast, but they also make tempting targets. Protect your economy while destroying theirs.",
+      "Morgan le Fay offers a devil's bargain — her enchanted markets generate gold faster than anything in the realm, but her agents sell to both sides. Markets on the map are guarded by Fay creatures — faery queens and pixie swarms that must be defeated before you can claim the riches within. Control Morgan's markets and the gold flows; lose them and your enemy grows fat on enchanted coin.",
     victoryCode: "6650",
     unlocks: {
       units: [UnitType.MAGE_HUNTER],
@@ -240,9 +240,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 12,
-    title: "Arcane Uprising",
+    title: "The Siege Perilous",
     briefing:
-      "Mages have taken sides in this war. Your enemies now field fire mages who can burn entire formations. A mage tower will let you study their arts — and counter them. Do not let them roam unchecked.",
+      "The Siege Perilous — the forbidden seat at the Round Table — has been activated by a rogue sorcerer. Arcane energy floods the battlefield and the enemy fields fire mages channelling power from ley lines. A mage tower will let you counter their arts. At the centre of the map sits the Siege Perilous itself — capture it, and a champion knight will rally to your cause each round. Leave it unguarded, and hostile storm mages will pour from the ley-line nodes instead.",
     victoryCode: "4423",
     unlocks: {
       units: [UnitType.FIRE_MAGE],
@@ -252,9 +252,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 13,
-    title: "Iron Forged",
+    title: "The Black Knight",
     briefing:
-      "Your blacksmith lets you upgrade the quality of your forces. Better-equipped soldiers mean fewer losses. The enemy has hired a knight commander who drives their cavalry relentlessly. Break the charge and hold your ground.",
+      "A mysterious Black Knight holds the only bridge across the river, slaying all who dare to cross. Your blacksmith can forge weapons strong enough to challenge him, but until your army is properly equipped, his elite cavalry will cut down anything that attempts the crossing. The enemy sits safely on the far side, building freely. Upgrade your forces and break through — or be trapped forever on this bank.",
     victoryCode: "8817",
     unlocks: {
       units: [UnitType.GLADIATOR, UnitType.HALBERDIER],
@@ -264,9 +264,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 14,
-    title: "The Gladiator's Oath",
+    title: "The Questing Beast",
     briefing:
-      "Freed gladiators and veteran halberdiers have sworn service to your banner. A new challenger has risen — a warlord who has conquered three kingdoms. This is the midpoint of the campaign. Prove you can face a true opponent.",
+      "King Pellinore's legendary quarry — the Questing Beast — rampages across the battlefield, attacking all who cross its path. It is fast, powerful, and regenerates from every wound. Meanwhile, a rival king has declared war. You must survive the Beast's rampages while breaking the enemy's forces. Slay the creature and a bounty of gold is yours — but it will return, drawn by the scent of battle.",
     victoryCode: "1199",
     unlocks: {
       units: [UnitType.STORM_MAGE],
@@ -277,9 +277,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 15,
-    title: "The Storm Rises",
+    title: "The Dolorous Stroke",
     briefing:
-      "Storms now answer your call. Siege workshops let you deploy battering rams and bolt throwers to smash enemy fortifications. The warlord's castle walls will not stand forever.",
+      "Sir Balin has struck the Dolorous Stroke with the Spear of Longinus, wounding the Fisher King and shattering three kingdoms. Castle walls crumble and the dead rise from the ruins. Your siege workshop is the only way to breach the enemy's damaged fortifications, while undead warriors crawl from every shattered ruin on the map. Capture the ruins to lay the dead to rest — or be overwhelmed by the restless fallen.",
     victoryCode: "3362",
     unlocks: {
       units: [UnitType.BATTERING_RAM, UnitType.BALLISTA],
@@ -289,9 +289,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 16,
-    title: "Creatures of the Dark",
+    title: "The Perilous Forest",
     briefing:
-      "Strange allies emerge from the wild — spiders, giant frogs, and other creatures. A creature den lets you harness their power. The enemy fields summoners who call forth minions from thin air. Meet dark with dark.",
+      "The Perilous Forest — where no knight enters without facing a trial. Your creature den lets you tame the forest's inhabitants, but the forest fights back. Waves of hostile creatures — spiders from dark hollows, giant frogs from the marshes, void snails from the deep — pour from the tree line at intervals. The enemy has their own summoners deep within the woods. Tame the wild or be consumed by it.",
     victoryCode: "7745",
     unlocks: {
       units: [UnitType.SPIDER, UnitType.GIANT_FROG, UnitType.SUMMONER],
@@ -301,9 +301,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 17,
-    title: "Hall of Champions",
+    title: "The Tournament at Camelot",
     briefing:
-      "The Elite Hall unlocks the finest warriors your realm can produce. Lancers, elite infantry, and veteran champions stand ready. But the enemy has done the same — expect to face elite forces of their own.",
+      "Arthur has called a grand tournament to find the realm's greatest champions. The Elite Hall represents the tournament grounds — lancers, elite infantry, and veteran knights stand ready to prove their worth. But Mordred has entered his own champions under false banners. Neutral heralds appear at intervals announcing new challengers — powerful knights who attack both sides indiscriminately. Only the strongest will survive the tournament grounds.",
     victoryCode: "9901",
     unlocks: {
       units: [UnitType.LANCER, UnitType.ELITE_LANCER, UnitType.KNIGHT_LANCER],
@@ -314,9 +314,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 18,
-    title: "The Sacred Order",
+    title: "The Chapel of the Grail",
     briefing:
-      "Monks and clerics have joined your army after you liberated their temple. Healing in the field can turn the tide of a long battle. The elven forests have also sent emissaries — a new race fights beside you.",
+      "Three knights — Galahad, Percival, and Bors — have found the path to the Grail Chapel. Your temple trains the clerics and monks who tend the wounded along this sacred road. But the chapel is guarded by angelic wardens who test all who approach — saints and holy warriors of terrible power. Capture the chapel and its divine blessing will heal your base and grant you holy reinforcements each round.",
     victoryCode: "5538",
     unlocks: {
       units: [UnitType.MONK, UnitType.CLERIC],
@@ -326,9 +326,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 19,
-    title: "The Diplomat",
+    title: "Lancelot's Betrayal",
     briefing:
-      "Diplomats can change allegiances on the battlefield — turning enemy units to your cause without a fight. But the enemy has discovered this too. Guard your ranks and exploit every opening. The war reaches its penultimate act.",
+      "Lancelot has been discovered with Guinevere. Half the Round Table's knights defect to his cause. The enemy starts with extra forces — knights who abandoned your banner. But scattered across the map, groups of wavering knights have yet to choose a side. Send your diplomats to win them back before the enemy claims their loyalty. The fate of Camelot hangs on whose words they believe.",
     victoryCode: "2266",
     unlocks: {
       units: [UnitType.DIPLOMAT, UnitType.SAINT],
@@ -336,12 +336,13 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       leaders: ["merlin"],
       items: ["dragonscale_mail"],
     },
+    aiExtraGold: 3000,
   },
   {
     number: 20,
-    title: "The Hidden Village",
+    title: "The Isle of Avalon",
     briefing:
-      "Hamlets cluster around the map, generating steady income for whoever controls them. A cold mage has emerged from the northern glaciers and offered their services. Use their frost abilities to slow enemy advances.",
+      "Avalon's enchanted hamlets are hidden behind mist. Cold mages can freeze the mist-rivers to create paths, while the island's Fay guardians — faery queens and frost drakes — defend each settlement fiercely. Nimue watches from the lake, her ancient power suffusing the isle. Control Avalon's hamlets to fund the final war, but respect the island's guardians or they will sweep your forces into the enchanted waters.",
     victoryCode: "8843",
     unlocks: {
       units: [UnitType.COLD_MAGE, UnitType.DISTORTION_MAGE],
@@ -351,9 +352,9 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 21,
-    title: "The Grinding Mills",
+    title: "The Grail War",
     briefing:
-      "Mills accelerate your gold income from farms and hamlets. Distortion mages can warp space itself — teleporting friendlies or displacing enemies. The enemy commander has unlocked dragons. This will be a hard fight.",
+      "The Holy Grail has been sighted, and every kingdom marches to claim it. Mills and farms fuel the largest armies the realm has ever seen. Distortion mages warp reality around the Grail's resting place — void snails and distortion fields surround it in a ring of twisted space. The enemy has unlocked dragons. Capture the Grail at the centre of the map and a saint will rally to your cause each round. This will be a hard fight.",
     victoryCode: "6671",
     unlocks: {
       units: [UnitType.VOID_SNAIL, UnitType.DEVOURER, UnitType.FAERY_QUEEN],
@@ -363,20 +364,21 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 22,
-    title: "Walls of Stone",
+    title: "The Walls of Camelot",
     briefing:
-      "Walls now let you fortify your territory and channel enemy movement. Exotic creatures join your ranks. A giant cyclops has been sighted among the enemy forces — bring heavy armour and siege weapons.",
+      "Mordred's army besieges Camelot. Walls are your lifeline — fortify your territory and channel the enemy's advance. Mordred fields cyclops siege-breakers and massed infantry to smash through your defences. Loyalist knights from outlying castles will ride to your aid, but only while those castles still stand. Protect your flanks or Mordred's siege engines will reduce everything to rubble.",
     victoryCode: "4417",
     unlocks: {
       units: [UnitType.RED_DRAGON, UnitType.BOLT_THROWER, UnitType.SIEGE_HUNTER],
       items: ["shadow_dagger"],
     },
+    aiExtraGold: 4000,
   },
   {
     number: 23,
-    title: "The Dragon's Roar",
+    title: "The Dragon of the White Tower",
     briefing:
-      "Dragons soar above the battlefield, breathing fire and frost. Firepits power your creatures and boost their morale. Only one final barrier remains between you and total victory — the enemy's mightiest champion and their full army.",
+      "Beneath Vortigern's White Tower, two dragons — one red, one white — have been locked in eternal combat since before Arthur's birth. Merlin prophesied their release, and now both are loose. The Red Dragon of Britain fights for your cause; the White Dragon of the Saxons fights for the enemy. Meanwhile, wild frost dragons descend from the northern wastes, attacking whoever is closest. Command the skies or be burned from them.",
     victoryCode: "9920",
     unlocks: {
       units: [UnitType.FROST_DRAGON, UnitType.CYCLOPS],
