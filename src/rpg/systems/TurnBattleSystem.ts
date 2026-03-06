@@ -939,6 +939,44 @@ export function getAbilityName(abilityType: AbilityType | null): string {
   return _getAbilityInfo(abilityType).name;
 }
 
+/** Returns the MP cost for a legacy ability. */
+export function getAbilityMpCost(abilityType: AbilityType | null): number {
+  return _getAbilityInfo(abilityType).mpCost;
+}
+
+/** Check if a combatant can afford their legacy ability. */
+export function canUseAbility(battle: TurnBattleState, casterId: string): boolean {
+  const caster = battle.combatants.find(c => c.id === casterId);
+  if (!caster) return false;
+  const ability = caster.abilityTypes[0] ?? null;
+  return caster.mp >= _getAbilityInfo(ability).mpCost;
+}
+
+/** Returns a short description for a legacy ability. */
+export function getAbilityDescription(abilityType: AbilityType | null): string {
+  switch (abilityType) {
+    case AbilityType.HEAL:
+      return "Restore HP to an ally based on ATK.";
+    case AbilityType.FIREBALL:
+      return "Hurl a fireball at an enemy for 2x ATK damage.";
+    case AbilityType.CHAIN_LIGHTNING:
+      return "Strike with lightning for 1.8x ATK damage.";
+    case AbilityType.ICE_BALL:
+      return "Launch an ice ball for 1.8x ATK damage.";
+    case AbilityType.FIRE_BREATH:
+      return "Breathe fire for 2.5x ATK damage.";
+    case AbilityType.FROST_BREATH:
+      return "Breathe frost for 2.5x ATK damage.";
+    default:
+      return "A powerful strike for 1.5x ATK damage.";
+  }
+}
+
+/** Returns description for an RPG spell. */
+export function getSpellDescription(spellId: UpgradeType): string {
+  return RPG_SPELL_DEFS[spellId]?.description ?? "";
+}
+
 /** Check if an RPG spell (UpgradeType) targets allies. */
 export function isHealSpell(spellId: UpgradeType): boolean {
   const def = RPG_SPELL_DEFS[spellId];

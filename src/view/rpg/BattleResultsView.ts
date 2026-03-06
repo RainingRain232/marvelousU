@@ -28,6 +28,8 @@ export interface BattleResults {
   goldGained: number;
   lootItems: RPGItem[];
   levelUps: { name: string; newLevel: number; note?: string }[];
+  /** Snapshot of party XP state after rewards are applied. */
+  partyXpState?: { name: string; level: number; xp: number; xpToNext: number }[];
 }
 
 export class BattleResultsView {
@@ -130,7 +132,55 @@ export class BattleResultsView {
       });
       goldLine.position.set(panelX + 25, y);
       this.container.addChild(goldLine);
-      y += 35;
+      y += 28;
+
+      // Per-member XP bars
+      if (results.partyXpState && results.partyXpState.length > 0) {
+        const barW = panelW - 80;
+        const barH = 8;
+        const leveledNames = new Set(results.levelUps.map(lu => lu.name));
+
+        for (const member of results.partyXpState) {
+          const leveled = leveledNames.has(member.name);
+          const fill = member.xpToNext > 0 ? Math.min(1, member.xp / member.xpToNext) : 1;
+
+          const label = new Text({
+            text: `${member.name} Lv.${member.level}`,
+            style: { fontFamily: "monospace", fontSize: 11, fill: leveled ? LEVEL_UP_COLOR : TEXT_COLOR },
+          });
+          label.position.set(panelX + 25, y);
+          this.container.addChild(label);
+
+          const barY = y + 2;
+          const barX = panelX + 25 + barW * 0.45;
+          const actualBarW = barW * 0.55;
+
+          // Bar background
+          const barBg = new Graphics();
+          barBg.roundRect(barX, barY, actualBarW, barH, 3);
+          barBg.fill({ color: 0x222244 });
+          this.container.addChild(barBg);
+
+          // Bar fill
+          if (fill > 0) {
+            const barFill = new Graphics();
+            barFill.roundRect(barX, barY, actualBarW * fill, barH, 3);
+            barFill.fill({ color: leveled ? LEVEL_UP_COLOR : XP_COLOR });
+            this.container.addChild(barFill);
+          }
+
+          // XP text
+          const xpLabel = new Text({
+            text: `${member.xp}/${member.xpToNext}`,
+            style: { fontFamily: "monospace", fontSize: 9, fill: 0x888888 },
+          });
+          xpLabel.position.set(barX + actualBarW + 4, barY - 1);
+          this.container.addChild(xpLabel);
+
+          y += 18;
+        }
+        y += 8;
+      }
 
       // Level ups
       if (results.levelUps.length > 0) {

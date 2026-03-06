@@ -27,6 +27,7 @@ import { TurnBattleAction, TurnBattlePhase } from "@/types";
 import type { BattleResults } from "@view/rpg/BattleResultsView";
 import { saveGame, loadGame, restoreRPGState } from "@rpg/systems/SaveSystem";
 import { loadOptions } from "@view/rpg/OptionsView";
+import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import type { GameOptions } from "@view/rpg/OptionsView";
 
 // ---------------------------------------------------------------------------
@@ -108,6 +109,21 @@ export class RPGGame {
 
       // Restore state
       this.rpgState = restoreRPGState(data.rpgState);
+
+      // Sync overworld party position with saved position and reveal tiles around it
+      this.overworldState.partyPosition = { ...this.rpgState.overworldPosition };
+      const vr = RPGBalance.VISION_RADIUS;
+      const pos = this.overworldState.partyPosition;
+      for (let dy = -vr; dy <= vr; dy++) {
+        for (let dx = -vr; dx <= vr; dx++) {
+          if (dx * dx + dy * dy > vr * vr) continue;
+          const tx = pos.x + dx;
+          const ty = pos.y + dy;
+          if (tx >= 0 && tx < this.overworldState.width && ty >= 0 && ty < this.overworldState.height) {
+            this.overworldState.grid[ty][tx].discovered = true;
+          }
+        }
+      }
 
       this.rpgViewManager.hideLoading();
       this._enterGameplay();
@@ -360,6 +376,7 @@ export class RPGGame {
     }
 
     e.preventDefault();
+    e.stopPropagation();
     moveParty(this.rpgState, this.overworldState, dx, dy, this.stateMachine);
   }
 
@@ -390,6 +407,7 @@ export class RPGGame {
     }
 
     e.preventDefault();
+    e.stopPropagation();
     moveDungeonParty(this.rpgState, this.dungeonState, dx, dy, this.stateMachine);
   }
 
@@ -617,6 +635,7 @@ export class RPGGame {
       goldGained: victory ? battle.goldReward : 0,
       lootItems: victory ? battle.lootReward : [],
       levelUps: this._battleLevelUps,
+      partyXpState: this.rpgState.party.map(m => ({ name: m.name, level: m.level, xp: m.xp, xpToNext: m.xpToNext })),
     };
 
     if (this._levelUpUnsub) {
@@ -816,6 +835,7 @@ export class RPGGame {
       goldGained: this.turnBattleState?.goldReward ?? 0,
       lootItems: this.turnBattleState?.lootReward ?? [],
       levelUps: this._battleLevelUps,
+      partyXpState: this.rpgState.party.map(m => ({ name: m.name, level: m.level, xp: m.xp, xpToNext: m.xpToNext })),
     };
 
     // Track quest kill objectives on victory

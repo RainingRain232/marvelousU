@@ -6,7 +6,7 @@ import type { ViewManager } from "@view/ViewManager";
 import type { TurnBattleState, TurnBattleCombatant } from "@rpg/state/TurnBattleState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { animationManager } from "@view/animation/AnimationManager";
-import { getAbilityName, getEffectiveSpeed, getSpellName, getSpellMpCost, canCastSpell } from "@rpg/systems/TurnBattleSystem";
+import { getAbilityName, getAbilityMpCost, getAbilityDescription, canUseAbility, getEffectiveSpeed, getSpellName, getSpellMpCost, getSpellDescription, canCastSpell } from "@rpg/systems/TurnBattleSystem";
 import { drawTerrainDecorationAt } from "@view/world/WorldMapRenderer";
 import { TerrainType } from "@world/config/TerrainDefs";
 import { ELEMENT_COLORS } from "@rpg/config/ElementDefs";
@@ -867,7 +867,9 @@ export class TurnBattleView {
     const currentId = this.battleState.turnOrder[this.battleState.currentTurnIndex];
     const current = this.battleState.combatants.find(c => c.id === currentId);
     const hasSpells = current && current.knownSpells && current.knownSpells.length > 0;
-    const abilityName = hasSpells ? "Spells" : (current ? getAbilityName(current.abilityTypes[0] ?? null) : "Ability");
+    const abilityType = current?.abilityTypes[0] ?? null;
+    const abilityName = hasSpells ? "Spells" : (current ? getAbilityName(abilityType) : "Ability");
+    const abilityUsable = hasSpells || (currentId ? canUseAbility(this.battleState, currentId) : true);
 
     // Build actions list dynamically — include Limit Break only when gauge is full
     const actions: TurnBattleAction[] = [
@@ -885,10 +887,11 @@ export class TurnBattleView {
 
     const menuX = 30;
     const menuY = this.vm.screenHeight - 200;
+    const menuW = 160;
 
     // Menu background
     const bg = new Graphics();
-    bg.roundRect(menuX - 10, menuY - 10, 160, menuEntries * 28 + 20, 6);
+    bg.roundRect(menuX - 10, menuY - 10, menuW, menuEntries * 28 + 20, 6);
     bg.fill({ color: 0x1a1a3e, alpha: 0.9 });
     bg.stroke({ color: 0x4444aa, width: 1 });
     this.menuContainer.addChild(bg);
@@ -896,9 +899,15 @@ export class TurnBattleView {
     for (let i = 0; i < menuEntries; i++) {
       const isSelected = i === this._selectedMenuIndex;
       let label: string;
+      let disabled = false;
       if (i < actions.length) {
         if (actions[i] === TurnBattleAction.ABILITY) {
           label = abilityName;
+          if (!hasSpells && !abilityUsable) {
+            const cost = getAbilityMpCost(abilityType);
+            label += ` (${cost} MP)`;
+            disabled = true;
+          }
         } else if (actions[i] === TurnBattleAction.SWAP_ROW) {
           label = "Swap Row";
         } else if (actions[i] === TurnBattleAction.LIMIT_BREAK) {
@@ -911,7 +920,8 @@ export class TurnBattleView {
       }
 
       let defaultColor = 0xcccccc;
-      if (i >= actions.length) defaultColor = 0x888888; // Help
+      if (disabled) defaultColor = 0x555555;
+      else if (i >= actions.length) defaultColor = 0x888888; // Help
       else if (actions[i] === TurnBattleAction.LIMIT_BREAK) defaultColor = 0xFF8800;
 
       const text = new Text({
@@ -919,13 +929,47 @@ export class TurnBattleView {
         style: {
           fontFamily: "monospace",
           fontSize: 14,
-          fill: isSelected ? 0xffcc00 : defaultColor,
+          fill: disabled ? 0x555555 : (isSelected ? 0xffcc00 : defaultColor),
           fontWeight: isSelected ? "bold" : "normal",
         },
       });
       text.position.set(menuX, menuY + i * 28);
       this.menuContainer.addChild(text);
       this._menuTexts.push(text);
+    }
+
+    // Tooltip for selected action
+    if (this._selectedMenuIndex < actions.length) {
+      const selectedAction = actions[this._selectedMenuIndex];
+      let tooltipText = "";
+      if (selectedAction === TurnBattleAction.ABILITY) {
+        if (hasSpells) {
+          tooltipText = "Open spell list.";
+        } else {
+          const cost = getAbilityMpCost(abilityType);
+          const desc = getAbilityDescription(abilityType);
+          tooltipText = `${desc}\nCost: ${cost} MP`;
+        }
+      } else if (selectedAction === TurnBattleAction.LIMIT_BREAK) {
+        tooltipText = "Unleash a devastating attack\nusing your full Limit gauge.";
+      }
+
+      if (tooltipText) {
+        const tipX = menuX + menuW + 4;
+        const tipY = menuY - 10;
+        const tipBg = new Graphics();
+        tipBg.roundRect(tipX, tipY, 190, 50, 4);
+        tipBg.fill({ color: 0x1a1a3e, alpha: 0.92 });
+        tipBg.stroke({ color: 0x4444aa, width: 1 });
+        this.menuContainer.addChild(tipBg);
+
+        const tipLabel = new Text({
+          text: tooltipText,
+          style: { fontFamily: "monospace", fontSize: 10, fill: 0xcccccc, wordWrap: true, wordWrapWidth: 180, lineHeight: 14 },
+        });
+        tipLabel.position.set(tipX + 6, tipY + 6);
+        this.menuContainer.addChild(tipLabel);
+      }
     }
   }
 
@@ -1014,6 +1058,7 @@ export class TurnBattleView {
       return;
     }
 
+    const spellPanelW = 300;
     for (let i = 0; i < spells.length; i++) {
       const spellId = spells[i];
       const isSelected = i === this._spellPickIndex;
@@ -1034,6 +1079,28 @@ export class TurnBattleView {
       text.position.set(menuX, menuY + 20 + i * 24);
       this.menuContainer.addChild(text);
       this._menuTexts.push(text);
+    }
+
+    // Tooltip for selected spell
+    if (this._spellPickIndex < spells.length) {
+      const selSpell = spells[this._spellPickIndex];
+      const desc = getSpellDescription(selSpell);
+      if (desc) {
+        const tipX = menuX + spellPanelW + 4;
+        const tipY = menuY - 10;
+        const tipBg = new Graphics();
+        tipBg.roundRect(tipX, tipY, 190, 50, 4);
+        tipBg.fill({ color: 0x1a1a3e, alpha: 0.92 });
+        tipBg.stroke({ color: 0x4444aa, width: 1 });
+        this.menuContainer.addChild(tipBg);
+
+        const tipLabel = new Text({
+          text: desc,
+          style: { fontFamily: "monospace", fontSize: 10, fill: 0xcccccc, wordWrap: true, wordWrapWidth: 180, lineHeight: 14 },
+        });
+        tipLabel.position.set(tipX + 6, tipY + 6);
+        this.menuContainer.addChild(tipLabel);
+      }
     }
   }
 
@@ -1224,6 +1291,9 @@ export class TurnBattleView {
                 this._spellPickMode = true;
                 this._spellPickIndex = 0;
                 this._drawMenu();
+              } else if (!canUseAbility(this.battleState, cid!)) {
+                this.battleState.log.push(`${cur?.name ?? "Unit"} doesn't have enough MP!`);
+                this._updateLog();
               } else {
                 this.onActionSelected?.(selectedAction);
               }
