@@ -154,6 +154,13 @@ import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
 import { rollRandomEvents } from "@world/systems/WorldRandomEvents";
+import {
+  createLeaderEncounterState,
+  placeLeaderEncounter,
+  checkLeaderEncounter,
+  completeLeaderEncounter,
+  type LeaderEncounterState,
+} from "@world/systems/LeaderEncounters";
 import { getNeutralCityGarrison, pickNeutralRace, neutralRng, getUnitsForRace } from "@world/systems/NeutralCitySystem";
 import { worldNotification } from "@view/world/ui/WorldNotification";
 import { worldWikiScreen } from "@view/world/ui/WorldWikiScreen";
@@ -3075,6 +3082,20 @@ async function _bootWorldGame(
     state.fakeSwordHexes = placedFakeSwords;
   }
 
+  // ---------------------------------------------------------------------------
+  // Leader-specific quest encounter — unique quest tile for the player's leader
+  // ---------------------------------------------------------------------------
+  const leaderEncounterState = createLeaderEncounterState();
+  {
+    const p1 = state.players.get("p1");
+    if (p1?.leaderId && p1.leaderId !== "arthur") {
+      placeLeaderEncounter(state, leaderEncounterState, p1.leaderId, startPositions);
+    }
+  }
+
+  // Store encounter state on the world state for later access
+  (state as any)._leaderEncounterState = leaderEncounterState;
+
   // Re-clear water/mountains around player starts (Sword Island may have placed water on them)
   for (const pos of startPositions) {
     const nearby = hexSpiral(pos, 3);
@@ -4110,6 +4131,76 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     });
   };
 
+  // Leader-specific encounter proximity check
+  const _leaderEncState = (state as any)._leaderEncounterState as LeaderEncounterState | undefined;
+  const _checkLeaderEncounterProximity = async (playerArmy: WorldArmy): Promise<void> => {
+    if (!_leaderEncState) return;
+    if (playerArmy.owner !== "p1") return;
+    const player = state.players.get("p1");
+    if (!player) return;
+
+    const encounter = checkLeaderEncounter(_leaderEncState, playerArmy, player);
+    if (!encounter) return;
+
+    // Check if guardians have been defeated (if the quest hex has no army on it)
+    const questHex = _leaderEncState.questHexes.get(player.leaderId!);
+    if (!questHex) return;
+    const questTile = state.grid.getTile(questHex.q, questHex.r);
+    if (questTile?.armyId && encounter.guardians) {
+      // Guardians still present — player must defeat them first
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card = document.createElement("div");
+      const borderColor = `#${encounter.color.toString(16).padStart(6, "0")}`;
+      card.style.cssText = `background:#1a1a2e;border:2px solid ${borderColor};border-radius:12px;padding:24px;max-width:420px;text-align:center;box-shadow:0 0 30px ${borderColor}66;`;
+
+      const title = document.createElement("div");
+      title.textContent = encounter.dialogTitle;
+      title.style.cssText = `color:${borderColor};font-family:monospace;font-size:16px;font-weight:bold;margin-bottom:12px;`;
+      card.appendChild(title);
+
+      const text = document.createElement("div");
+      text.innerHTML = encounter.dialogText.replace(/\n/g, "<br>");
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;";
+      card.appendChild(text);
+
+      // Show rewards
+      const rewards: string[] = [];
+      if (encounter.itemReward) rewards.push(`<b style="color:#ffdd44">${encounter.itemReward.replace(/_/g, " ")}</b> obtained!`);
+      if (encounter.goldReward > 0) rewards.push(`<b style="color:#ffcc44">+${encounter.goldReward} gold</b>`);
+      if (encounter.manaReward > 0) rewards.push(`<b style="color:#8888ff">+${encounter.manaReward} mana</b>`);
+      if (encounter.foodReward > 0) rewards.push(`<b style="color:#44cc44">+${encounter.foodReward} food</b>`);
+      if (rewards.length > 0) {
+        const rewardDiv = document.createElement("div");
+        rewardDiv.innerHTML = rewards.join(" &nbsp; ");
+        rewardDiv.style.cssText = "color:#ccccdd;font-family:monospace;font-size:11px;margin-bottom:16px;padding:8px;background:#222233;border-radius:6px;";
+        card.appendChild(rewardDiv);
+      }
+
+      const btn = document.createElement("button");
+      btn.textContent = "Claim Reward";
+      btn.style.cssText = `background:${borderColor};color:white;border:none;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;`;
+      btn.onmouseenter = () => { btn.style.opacity = "0.8"; };
+      btn.onmouseleave = () => { btn.style.opacity = "1"; };
+      btn.onclick = () => {
+        backdrop.remove();
+        completeLeaderEncounter(_leaderEncState, player, encounter);
+        worldEventLog.addEvent(`${encounter.title}: ${encounter.description}`, encounter.color);
+        worldNotification.show(encounter.title, encounter.description, encounter.color);
+        resolve();
+      };
+      card.appendChild(btn);
+
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
   // Avalon / Morgaine proximity dialogs — triggered when a player unit first approaches Avalon
   let _avalonDialogShown = false;
   let _morgaineDialogShown = false;
@@ -4699,6 +4790,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           await _checkMordredProximity(army);
           await _checkMorgaineProximity(army);
           await _checkSwordProximity(army);
+          await _checkLeaderEncounterProximity(army);
           await _checkAvalonProximity(army);
         }
       }
@@ -4808,6 +4900,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             await _checkMordredProximity(army);
             await _checkMorgaineProximity(army);
             await _checkSwordProximity(army);
+            await _checkLeaderEncounterProximity(army);
             await _checkAvalonProximity(army);
           }
           _selectedArmyId = null;
@@ -4980,6 +5073,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         await _checkMordredProximity(army);
         await _checkMorgaineProximity(army);
         await _checkSwordProximity(army);
+        await _checkLeaderEncounterProximity(army);
         await _checkAvalonProximity(army);
 
         // Re-select army if it still has movement points
