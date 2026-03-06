@@ -73,6 +73,20 @@ const SCENARIO_INTROS: Record<number, IntroPage[]> = {
       text: "Finally, observe the enemy BATTERING RAM — a siege unit that ONLY attacks buildings, ignoring all soldiers. Your SIEGE HUNTER is specifically designed to hunt down and destroy these siege engines. A TREBUCHET provides devastating long-range bombardment. Now, to battle!",
     },
   ],
+  23: [
+    {
+      imageUrl: merlinImgUrl,
+      text: "Sire, I have located a powerful Dark Savant willing to fight for our cause. However, our supply lines are cut — we cannot build or train any reinforcements. You must rely on his dark pyromancy alone.",
+    },
+    {
+      imageUrl: magicImgUrl,
+      text: "The savant's fireballs are devastating, but he is fragile. Fortunately, I have unlocked the RALLY FLAG from the castle upgrade. Press F to place a flag and your savant will rally to it. Use this to pull him back when wounded — his natural regeneration will restore his health over time.",
+    },
+    {
+      imageUrl: swordImgUrl,
+      text: "The enemy has towers and scattered patrols across the field. Do not rush in blindly! Strike, retreat with the flag, let the savant regenerate, then strike again. Patience will win this battle. Now go — and try not to get him killed!",
+    },
+  ],
   3: [
     {
       imageUrl: manPImgUrl,

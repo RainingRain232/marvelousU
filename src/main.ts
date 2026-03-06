@@ -88,6 +88,7 @@ import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
 import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
+import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 import { LEADER_DEFINITIONS, getLeader } from "@sim/config/LeaderDefs";
 import type { LeaderId, LeaderBonus } from "@sim/config/LeaderDefs";
@@ -1288,6 +1289,88 @@ function _spawnRoster(
       position: { x, y },
     });
     state.units.set(u.id, u);
+  }
+}
+
+/**
+ * Scenario 23 — "The Dark Savant"
+ * P1 gets a single Dark Savant in the top-left corner.
+ * P2 gets spread-out enemy patrols and a few towers across the map.
+ * Both sides have castles, but P1 cannot build (handled by p1NoBuild).
+ */
+function _setupScenario23(state: GameState, mapW: number, mapH: number): void {
+  // --- P1: Dark Savant in the top-left corner ---
+  const savant = createUnit({
+    type: UnitType.DARK_SAVANT,
+    owner: "p1",
+    position: { x: 3, y: 3 },
+  });
+  state.units.set(savant.id, savant);
+
+  // --- P2: Spread-out enemy patrols ---
+  const enemyGroups: Array<{ type: UnitType; x: number; y: number; count: number }> = [
+    // Mid-left patrol
+    { type: UnitType.SWORDSMAN, x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.3), count: 3 },
+    { type: UnitType.ARCHER, x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.35), count: 2 },
+    // Centre patrol
+    { type: UnitType.PIKEMAN, x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5), count: 4 },
+    { type: UnitType.LONGBOWMAN, x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.55), count: 2 },
+    // Upper-right patrol
+    { type: UnitType.KNIGHT, x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.25), count: 2 },
+    { type: UnitType.SWORDSMAN, x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.3), count: 3 },
+    // Lower-centre patrol
+    { type: UnitType.DEFENDER, x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.75), count: 3 },
+    { type: UnitType.CROSSBOWMAN, x: Math.floor(mapW * 0.45), y: Math.floor(mapH * 0.75), count: 2 },
+    // Near enemy castle guard
+    { type: UnitType.HALBERDIER, x: Math.floor(mapW * 0.85), y: Math.floor(mapH * 0.5), count: 3 },
+  ];
+
+  for (const group of enemyGroups) {
+    for (let i = 0; i < group.count; i++) {
+      const u = createUnit({
+        type: group.type,
+        owner: "p2",
+        position: { x: group.x + (i % 3), y: group.y + Math.floor(i / 3) },
+      });
+      state.units.set(u.id, u);
+    }
+  }
+
+  // --- P2: Enemy towers spread across the map ---
+  const towerPositions = [
+    { x: Math.floor(mapW * 0.35), y: Math.floor(mapH * 0.2) },
+    { x: Math.floor(mapW * 0.55), y: Math.floor(mapH * 0.4) },
+    { x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.65) },
+  ];
+
+  const towerDef = BUILDING_DEFINITIONS[BuildingType.TOWER];
+  for (let i = 0; i < towerPositions.length; i++) {
+    const pos = towerPositions[i];
+    // Bounds check
+    if (pos.x + towerDef.footprint.w >= mapW || pos.y + towerDef.footprint.h >= mapH) continue;
+
+    const id = `s23-tower-${i}`;
+    const building = createBuilding({
+      id,
+      type: BuildingType.TOWER,
+      owner: "p2",
+      position: pos,
+    });
+    state.buildings.set(id, building);
+
+    // Mark tiles as occupied
+    for (let dy = 0; dy < towerDef.footprint.h; dy++) {
+      for (let dx = 0; dx < towerDef.footprint.w; dx++) {
+        setBuilding(state.battlefield, pos.x + dx, pos.y + dy, id);
+        setWalkable(state.battlefield, pos.x + dx, pos.y + dy, false);
+      }
+    }
+
+    EventBus.emit("buildingPlaced", {
+      buildingId: id,
+      position: { ...pos },
+      owner: "p2",
+    });
   }
 }
 
@@ -4802,6 +4885,27 @@ async function _bootGame(
     if (scenarioDef?.aiExtraGold) {
       const p2 = state.players.get("p2");
       if (p2) p2.gold += scenarioDef.aiExtraGold;
+    }
+    // P1 cannot build anything — empty all shops, blueprints, and upgrade inventories
+    if (scenarioDef?.p1NoBuild) {
+      for (const building of state.buildings.values()) {
+        if (building.owner === "p1") {
+          building.shopInventory = [];
+          building.blueprints = [];
+          building.upgradeInventory = [];
+        }
+      }
+    }
+    // Pre-purchase upgrades for P1
+    if (scenarioDef?.p1StartUpgrades) {
+      for (const upgradeType of scenarioDef.p1StartUpgrades) {
+        const upgrades = UpgradeSystem.getPlayerUpgrades("p1");
+        upgrades.push({ type: upgradeType, level: 1 });
+      }
+    }
+    // Scenario 23: spawn Dark Savant + enemies + enemy towers
+    if (scenarioNum === 23) {
+      _setupScenario23(state, mapSize.width, mapSize.height);
     }
   }
 

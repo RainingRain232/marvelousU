@@ -6,7 +6,7 @@
 // Each victory reveals a 4-digit code that is shown on the victory screen.
 // Entering a code on the scenario select screen unlocks the next scenario.
 
-import { UnitType, BuildingType } from "@/types";
+import { UnitType, BuildingType, UpgradeType } from "@/types";
 import type { RaceId } from "@sim/config/RaceDefs";
 import type { LeaderId } from "@sim/config/LeaderDefs";
 import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
@@ -63,6 +63,15 @@ export interface ScenarioDef {
    * on top of the normal starting gold.
    */
   aiExtraGold?: number;
+  /**
+   * If true, P1 cannot build anything — castle shop, blueprints, and firepit
+   * are all emptied. The player must win with what they start with.
+   */
+  p1NoBuild?: boolean;
+  /**
+   * Upgrade types that P1 starts with already purchased (level 1).
+   */
+  p1StartUpgrades?: import("@/types").UpgradeType[];
 }
 
 // ---------------------------------------------------------------------------
@@ -332,6 +341,18 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     victoryCode: "1337",
     type: "battlefield",
     unlocks: {},
+  },
+  {
+    number: 23,
+    title: "The Dark Savant",
+    briefing:
+      "A lone Dark Savant stands against an entrenched enemy. You cannot build or train — only your savant's fireballs and natural regeneration can carry the day. Use the rally flag to pull back, heal, and strike again.",
+    victoryCode: "6639",
+    unlocks: {},
+    p1NoBuild: true,
+    p1StartUpgrades: [UpgradeType.FLAG],
+    disableEvents: true,
+    aiExtraGold: 5000,
   },
 ];
 
