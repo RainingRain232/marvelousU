@@ -6,6 +6,7 @@ import type { ViewManager } from "@view/ViewManager";
 import type { DungeonState, DungeonFloor } from "@rpg/state/DungeonState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
+import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 // ---------------------------------------------------------------------------
 // Theme-based tile colours
@@ -109,11 +110,13 @@ export class DungeonView {
     this.uiContainer.addChild(this._compassGraphic);
     vm.addToLayer("ui", this.uiContainer);
 
-    // Set camera for dungeon
+    // Set camera for dungeon — convert RPG tile units to base tile units
     const floor = this._currentFloor();
     if (floor) {
-      vm.camera.setMapSize(floor.width, floor.height);
+      const tileRatio = this.TILE_SIZE / BalanceConfig.TILE_SIZE;
+      vm.camera.setMapSize(floor.width * tileRatio, floor.height * tileRatio);
     }
+    vm.camera.zoom = 0.8;
 
     this._drawFloor();
     this._drawFog();

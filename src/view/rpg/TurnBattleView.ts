@@ -71,6 +71,7 @@ export class TurnBattleView {
   onActionSelected: ((action: TurnBattleAction) => void) | null = null;
   onTargetSelected: ((targetId: string) => void) | null = null;
   onItemSelected: ((itemId: string) => void) | null = null;
+  onHelpRequested: (() => void) | null = null;
   private _targetIndex = 0;
   private _selectableTargets: TurnBattleCombatant[] = [];
   private _itemPickMode = false;
@@ -588,6 +589,7 @@ export class TurnBattleView {
       return;
     }
 
+    // Actions + Help as last entry
     const actions = [
       TurnBattleAction.ATTACK,
       TurnBattleAction.ABILITY,
@@ -595,13 +597,14 @@ export class TurnBattleView {
       TurnBattleAction.ITEM,
       TurnBattleAction.FLEE,
     ];
+    const menuEntries = actions.length + 1; // +1 for Help
 
     const menuX = 30;
     const menuY = this.vm.screenHeight - 200;
 
     // Menu background
     const bg = new Graphics();
-    bg.roundRect(menuX - 10, menuY - 10, 160, actions.length * 28 + 20, 6);
+    bg.roundRect(menuX - 10, menuY - 10, 160, menuEntries * 28 + 20, 6);
     bg.fill({ color: 0x1a1a3e, alpha: 0.9 });
     bg.stroke({ color: 0x4444aa, width: 1 });
     this.menuContainer.addChild(bg);
@@ -611,12 +614,16 @@ export class TurnBattleView {
     const current = this.battleState.combatants.find(c => c.id === currentId);
     const abilityName = current ? getAbilityName(current.abilityTypes[0] ?? null) : "Ability";
 
-    for (let i = 0; i < actions.length; i++) {
+    for (let i = 0; i < menuEntries; i++) {
       const isSelected = i === this._selectedMenuIndex;
-      let label = actions[i].charAt(0).toUpperCase() + actions[i].slice(1);
-      // Show specific ability name instead of generic "Ability"
-      if (actions[i] === TurnBattleAction.ABILITY) {
-        label = abilityName;
+      let label: string;
+      if (i < actions.length) {
+        label = actions[i].charAt(0).toUpperCase() + actions[i].slice(1);
+        if (actions[i] === TurnBattleAction.ABILITY) {
+          label = abilityName;
+        }
+      } else {
+        label = "Help";
       }
 
       const text = new Text({
@@ -624,7 +631,7 @@ export class TurnBattleView {
         style: {
           fontFamily: "monospace",
           fontSize: 14,
-          fill: isSelected ? 0xffcc00 : 0xcccccc,
+          fill: isSelected ? 0xffcc00 : (i >= actions.length ? 0x888888 : 0xcccccc),
           fontWeight: isSelected ? "bold" : "normal",
         },
       });
@@ -703,6 +710,7 @@ export class TurnBattleView {
       TurnBattleAction.ITEM,
       TurnBattleAction.FLEE,
     ];
+    const menuEntries = actions.length + 1; // +1 for Help
 
     this._onKeyDown = (e: KeyboardEvent) => {
       // Item pick sub-mode (before target selection)
@@ -743,11 +751,16 @@ export class TurnBattleView {
             break;
           case "ArrowDown":
           case "KeyS":
-            this._selectedMenuIndex = Math.min(actions.length - 1, this._selectedMenuIndex + 1);
+            this._selectedMenuIndex = Math.min(menuEntries - 1, this._selectedMenuIndex + 1);
             this._drawMenu();
             break;
           case "Enter":
           case "Space": {
+            // Help entry is after the action list
+            if (this._selectedMenuIndex >= actions.length) {
+              this.onHelpRequested?.();
+              break;
+            }
             const selectedAction = actions[this._selectedMenuIndex];
             // Intercept ITEM action to show item picker first
             if (selectedAction === TurnBattleAction.ITEM) {

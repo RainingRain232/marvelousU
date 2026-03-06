@@ -168,8 +168,8 @@ export class RPGGame {
     this._onKeyDown = (e: KeyboardEvent) => {
       const phase = this.stateMachine.currentPhase;
 
-      // Help menu toggle (? or F1) during exploration
-      if ((e.key === "?" || e.code === "F1") && (phase === RPGPhase.OVERWORLD || phase === RPGPhase.DUNGEON)) {
+      // Help menu toggle (? or F1) during exploration or battle
+      if ((e.key === "?" || e.code === "F1") && (phase === RPGPhase.OVERWORLD || phase === RPGPhase.DUNGEON || phase === RPGPhase.BATTLE_TURN)) {
         this.rpgViewManager.toggleHelpMenu();
         return;
       }
@@ -341,6 +341,9 @@ export class RPGGame {
             this.turnBattleState.selectedItemId = itemId;
             this._handleTurnAction(TurnBattleAction.ITEM);
           }
+        };
+        view.onHelpRequested = () => {
+          this.rpgViewManager.toggleHelpMenu();
         };
         view.refresh();
       }

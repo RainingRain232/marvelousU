@@ -50,6 +50,7 @@ const HELP_SECTIONS: HelpSection[] = [
       { key: "Enter/Space", desc: "Confirm action" },
       { key: "A/D or Left/Right", desc: "Select target" },
       { key: "Escape", desc: "Cancel target selection" },
+      { key: "? or F1", desc: "Open this help menu" },
     ],
   },
   {
