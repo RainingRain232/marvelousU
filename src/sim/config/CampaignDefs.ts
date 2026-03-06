@@ -190,13 +190,16 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     number: 8,
     title: "Steel and Saddle",
     briefing:
-      "A mounted enemy force has been spotted moving through the hills. Speed and reach will be your greatest weapons. Build a stable and field cavalry before they outmanoeuvre you.",
+      "The battlefield has expanded to its largest yet — four commanders now vie for control of a vast territory. An ally rides with you from the southwest, but two enemy warlords have mounted forces converging from all sides. Build stables and field cavalry before they outmanoeuvre you.",
     victoryCode: "5512",
     unlocks: {
       units: [UnitType.KNIGHT],
       buildings: [BuildingType.TOWER],
       items: ["war_axe"],
     },
+    mapSizeLabel: "TRIPLE",
+    playerCount: 4,
+    alliedPlayerIds: ["p4"],
   },
   {
     number: 9,

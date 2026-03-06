@@ -5293,6 +5293,15 @@ async function _bootGame(
     );
   }
 
+  // Scenario 8: Merlin warns about max players
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 8) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "Four commanders on one battlefield — this is the maximum the realm can sustain! You have an ally to the southwest, but two enemy warlords command their own castles. Coordinate with your ally and strike before they overwhelm you!",
+      () => { simLoop.resume(); },
+    );
+  }
+
   // Scenario 25: Merlin warns the player about the very hard end battle
   if (gameMode === GameMode.CAMPAIGN && scenarioNum === 25) {
     simLoop.pause();
