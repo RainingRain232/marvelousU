@@ -14,7 +14,7 @@ import { DUNGEON_DEFS } from "@rpg/config/DungeonDefs";
 import { RPGStateMachine } from "@rpg/systems/RPGStateMachine";
 import { moveParty } from "@rpg/systems/OverworldSystem";
 import { moveDungeonParty } from "@rpg/systems/DungeonSystem";
-import { createBattleFromEncounter, calculateInitiative, executeAction, executeEnemyTurn, applyVictoryRewards, applyDefeatPenalty } from "@rpg/systems/TurnBattleSystem";
+import { createBattleFromEncounter, calculateInitiative, executeAction, executeEnemyTurn, advanceTurn, applyVictoryRewards, applyDefeatPenalty, isHealAbility } from "@rpg/systems/TurnBattleSystem";
 import { createStarterParty } from "@rpg/systems/PartyFactory";
 import { RPGViewManager } from "@view/rpg/RPGViewManager";
 import { ITEM_HEALTH_POTION } from "@rpg/config/RPGItemDefs";
@@ -94,7 +94,13 @@ export class RPGGame {
 
     // Wire battle results dismissal
     this.rpgViewManager.onBattleResultsDismissed = () => {
-      this.stateMachine.returnToPrevious();
+      // Check for game over: all party members at 1 HP and no gold (can't afford inn)
+      const allCritical = this.rpgState.party.every(m => m.hp <= 1);
+      if (allCritical && this.rpgState.gold === 0) {
+        this.stateMachine.transition(RPGPhase.GAME_OVER);
+      } else {
+        this.stateMachine.returnToPrevious();
+      }
     };
 
     // Wire NPC dialog
@@ -108,6 +114,12 @@ export class RPGGame {
     // Wire help menu
     this.rpgViewManager.onHelpMenuToggled = (open) => {
       this._helpMenuOpen = open;
+    };
+
+    // Wire game over restart
+    this.rpgViewManager.onRestart = () => {
+      this.destroy();
+      this.boot();
     };
 
     // Wire dungeon exit
@@ -298,8 +310,83 @@ export class RPGGame {
       if (this.turnBattleState.phase === TurnBattlePhase.ENEMY_TURN) {
         this._processEnemyTurns();
       }
+    } else {
+      // Auto battle — resolve instantly
+      this._runAutoBattle(encounterId, encounterType);
     }
-    // Auto battle mode will be handled separately
+  }
+
+  private _runAutoBattle(
+    encounterId: string,
+    encounterType: "random" | "dungeon" | "boss",
+  ): void {
+    // Track level-ups
+    this._battleLevelUps = [];
+    this._levelUpUnsub = EventBus.on("rpgLevelUp", (e) => {
+      const member = this.rpgState.party.find(m => m.id === e.memberId);
+      this._battleLevelUps.push({ name: member?.name ?? e.memberId, newLevel: e.newLevel });
+    });
+
+    const battle = createBattleFromEncounter(this.rpgState, encounterId, encounterType);
+    calculateInitiative(battle);
+
+    // Simulate to completion (safety cap at 200 turns)
+    let turns = 0;
+    while (turns < 200) {
+      const p = battle.phase as string;
+      if (p === TurnBattlePhase.VICTORY || p === TurnBattlePhase.DEFEAT || p === TurnBattlePhase.FLED) break;
+
+      const currentId = battle.turnOrder[battle.currentTurnIndex];
+      const current = battle.combatants.find(c => c.id === currentId);
+      if (!current || current.hp <= 0) {
+        advanceTurn(battle);
+        turns++;
+        continue;
+      }
+
+      if (current.isPartyMember) {
+        // Party AI: use ability if MP available and not a heal, else attack weakest enemy
+        const aliveEnemies = battle.combatants.filter(c => !c.isPartyMember && c.hp > 0);
+        if (aliveEnemies.length === 0) break;
+        aliveEnemies.sort((a, b) => a.hp - b.hp);
+        const target = aliveEnemies[0];
+
+        if (current.mp >= 10 && current.abilityTypes.length > 0 && !isHealAbility(current.abilityTypes[0])) {
+          executeAction(battle, TurnBattleAction.ABILITY, target.id, current.abilityTypes[0], null, this.rpgState);
+        } else {
+          executeAction(battle, TurnBattleAction.ATTACK, target.id, null, null, this.rpgState);
+        }
+      } else {
+        executeEnemyTurn(battle, this.rpgState);
+      }
+
+      turns++;
+    }
+
+    // Apply results
+    const victory = (battle.phase as string) === TurnBattlePhase.VICTORY;
+    if (victory) {
+      applyVictoryRewards(this.rpgState, battle);
+    } else {
+      applyDefeatPenalty(this.rpgState, battle);
+    }
+
+    const results: BattleResults = {
+      victory,
+      xpGained: victory ? battle.xpReward : 0,
+      goldGained: victory ? battle.goldReward : 0,
+      lootItems: victory ? battle.lootReward : [],
+      levelUps: this._battleLevelUps,
+    };
+
+    if (this._levelUpUnsub) {
+      this._levelUpUnsub();
+      this._levelUpUnsub = null;
+    }
+    this._battleLevelUps = [];
+    this._pendingEncounterId = null;
+
+    this.rpgViewManager.showBattleResults(results);
   }
 
   private _handleTurnAction(action: TurnBattleAction): void {
@@ -321,9 +408,19 @@ export class RPGGame {
     this.turnBattleState.selectedAction = action;
     this.turnBattleState.phase = TurnBattlePhase.SELECT_TARGET;
 
+    // For abilities, set the selected ability from the current combatant
+    if (action === TurnBattleAction.ABILITY) {
+      const currentId = this.turnBattleState.turnOrder[this.turnBattleState.currentTurnIndex];
+      const current = this.turnBattleState.combatants.find(c => c.id === currentId);
+      this.turnBattleState.selectedAbility = current?.abilityTypes[0] ?? null;
+    } else {
+      this.turnBattleState.selectedAbility = null;
+    }
+
     const view = this.rpgViewManager["turnBattleView"];
     if (view) {
-      const isHealAction = action === TurnBattleAction.ITEM;
+      const isHealAction = action === TurnBattleAction.ITEM
+        || (action === TurnBattleAction.ABILITY && isHealAbility(this.turnBattleState.selectedAbility));
       const targets = this.turnBattleState.combatants.filter(c => {
         if (c.hp <= 0) return false;
         return isHealAction ? c.isPartyMember : !c.isPartyMember;

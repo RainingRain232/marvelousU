@@ -1,6 +1,5 @@
 // JRPG turn-based battle system — initiative, actions, damage, AI
-import { TurnBattleAction, TurnBattlePhase } from "@/types";
-import type { AbilityType } from "@/types";
+import { TurnBattleAction, TurnBattlePhase, AbilityType } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { SeededRandom } from "@sim/utils/random";
@@ -269,10 +268,14 @@ function _executeAbility(
   battle: TurnBattleState,
   attacker: TurnBattleCombatant,
   targetId: string | null,
-  _abilityType: AbilityType | null,
+  abilityType: AbilityType | null,
 ): void {
-  // Simple ability: costs MP, deals 1.5x damage
-  const mpCost = 10;
+  const ability = abilityType ?? attacker.abilityTypes[0] ?? null;
+
+  // Determine ability properties based on type
+  const abilityInfo = _getAbilityInfo(ability);
+  const mpCost = abilityInfo.mpCost;
+
   if (attacker.mp < mpCost) {
     battle.log.push(`${attacker.name} doesn't have enough MP!`);
     return;
@@ -281,31 +284,86 @@ function _executeAbility(
   attacker.mp -= mpCost;
 
   const target = targetId ? battle.combatants.find(c => c.id === targetId) : null;
-  if (!target || target.hp <= 0) return;
+  if (!target) return;
 
-  const { damage, isCritical } = _calculateDamage(attacker.atk, target.def, target.isDefending, 1.5);
+  if (abilityInfo.isHeal) {
+    // Healing ability — targets allies
+    const healAmount = Math.ceil(attacker.atk * abilityInfo.multiplier);
+    const healed = Math.min(healAmount, target.maxHp - target.hp);
+    target.hp += healed;
+    battle.log.push(`${attacker.name} casts ${abilityInfo.name} on ${target.name}. Healed ${healed} HP!`);
 
-  target.hp = Math.max(0, target.hp - damage);
+    EventBus.emit("rpgTurnBattleAction", {
+      combatantId: attacker.id,
+      action: TurnBattleAction.ABILITY,
+      targetId: target.id,
+    });
+  } else {
+    // Damage ability
+    if (target.hp <= 0) return;
+    const { damage, isCritical } = _calculateDamage(
+      attacker.atk, target.def, target.isDefending, abilityInfo.multiplier,
+    );
 
-  const critText = isCritical ? " (CRIT!)" : "";
-  battle.log.push(`${attacker.name} uses ability on ${target.name} for ${damage} damage${critText}`);
+    target.hp = Math.max(0, target.hp - damage);
 
-  EventBus.emit("rpgTurnBattleDamage", {
-    attackerId: attacker.id,
-    targetId: target.id,
-    damage,
-    isCritical,
-  });
+    const critText = isCritical ? " (CRIT!)" : "";
+    battle.log.push(`${attacker.name} casts ${abilityInfo.name} on ${target.name} for ${damage} damage${critText}`);
 
-  EventBus.emit("rpgTurnBattleAction", {
-    combatantId: attacker.id,
-    action: TurnBattleAction.ABILITY,
-    targetId: target.id,
-  });
+    EventBus.emit("rpgTurnBattleDamage", {
+      attackerId: attacker.id,
+      targetId: target.id,
+      damage,
+      isCritical,
+    });
 
-  if (target.hp <= 0) {
-    battle.log.push(`${target.name} is defeated!`);
+    EventBus.emit("rpgTurnBattleAction", {
+      combatantId: attacker.id,
+      action: TurnBattleAction.ABILITY,
+      targetId: target.id,
+    });
+
+    if (target.hp <= 0) {
+      battle.log.push(`${target.name} is defeated!`);
+    }
   }
+}
+
+interface AbilityInfo {
+  name: string;
+  mpCost: number;
+  multiplier: number;
+  isHeal: boolean;
+}
+
+function _getAbilityInfo(ability: AbilityType | null): AbilityInfo {
+  switch (ability) {
+    case AbilityType.HEAL:
+      return { name: "Heal", mpCost: 8, multiplier: 1.2, isHeal: true };
+    case AbilityType.FIREBALL:
+      return { name: "Fireball", mpCost: 12, multiplier: 2.0, isHeal: false };
+    case AbilityType.CHAIN_LIGHTNING:
+      return { name: "Chain Lightning", mpCost: 15, multiplier: 1.8, isHeal: false };
+    case AbilityType.ICE_BALL:
+      return { name: "Ice Ball", mpCost: 12, multiplier: 1.8, isHeal: false };
+    case AbilityType.FIRE_BREATH:
+      return { name: "Fire Breath", mpCost: 20, multiplier: 2.5, isHeal: false };
+    case AbilityType.FROST_BREATH:
+      return { name: "Frost Breath", mpCost: 20, multiplier: 2.5, isHeal: false };
+    default:
+      // Generic power attack for units without specific abilities
+      return { name: "Power Strike", mpCost: 10, multiplier: 1.5, isHeal: false };
+  }
+}
+
+/** Returns true if the ability targets allies (heal/buff). Used by RPGBoot for target selection. */
+export function isHealAbility(abilityType: AbilityType | null): boolean {
+  return _getAbilityInfo(abilityType).isHeal;
+}
+
+/** Returns the display name for an ability. */
+export function getAbilityName(abilityType: AbilityType | null): string {
+  return _getAbilityInfo(abilityType).name;
 }
 
 // ---------------------------------------------------------------------------

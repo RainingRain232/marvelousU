@@ -6,6 +6,7 @@ import type { ViewManager } from "@view/ViewManager";
 import type { TurnBattleState, TurnBattleCombatant } from "@rpg/state/TurnBattleState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { animationManager } from "@view/animation/AnimationManager";
+import { getAbilityName } from "@rpg/systems/TurnBattleSystem";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -550,9 +551,18 @@ export class TurnBattleView {
     bg.stroke({ color: 0x4444aa, width: 1 });
     this.menuContainer.addChild(bg);
 
+    // Get ability name for the current combatant
+    const currentId = this.battleState.turnOrder[this.battleState.currentTurnIndex];
+    const current = this.battleState.combatants.find(c => c.id === currentId);
+    const abilityName = current ? getAbilityName(current.abilityTypes[0] ?? null) : "Ability";
+
     for (let i = 0; i < actions.length; i++) {
       const isSelected = i === this._selectedMenuIndex;
-      const label = actions[i].charAt(0).toUpperCase() + actions[i].slice(1);
+      let label = actions[i].charAt(0).toUpperCase() + actions[i].slice(1);
+      // Show specific ability name instead of generic "Ability"
+      if (actions[i] === TurnBattleAction.ABILITY) {
+        label = abilityName;
+      }
 
       const text = new Text({
         text: `${isSelected ? ">" : " "} ${label}`,

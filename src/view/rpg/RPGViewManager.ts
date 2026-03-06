@@ -16,6 +16,8 @@ import { BattleResultsView } from "./BattleResultsView";
 import type { BattleResults } from "./BattleResultsView";
 import { NPCDialogView } from "./NPCDialogView";
 import { RPGHelpMenuView } from "./RPGHelpMenuView";
+import { MinimapView } from "./MinimapView";
+import { GameOverView } from "./GameOverView";
 
 // ---------------------------------------------------------------------------
 // RPGViewManager
@@ -30,6 +32,8 @@ export class RPGViewManager {
   private battleResultsView: BattleResultsView | null = null;
   private npcDialogView: NPCDialogView | null = null;
   private helpMenuView: RPGHelpMenuView | null = null;
+  private minimapView: MinimapView | null = null;
+  private gameOverView: GameOverView | null = null;
   private _unsubs: Array<() => void> = [];
 
   rpgState!: RPGState;
@@ -52,6 +56,9 @@ export class RPGViewManager {
 
   /** Called when help menu is opened/closed. */
   onHelpMenuToggled: ((open: boolean) => void) | null = null;
+
+  /** Called when player requests restart from Game Over screen. */
+  onRestart: (() => void) | null = null;
 
   init(
     rpgState: RPGState,
@@ -77,9 +84,11 @@ export class RPGViewManager {
   destroy(): void {
     this._hideAll();
     this._hideHud();
+    this._hideMinimap();
     this._hideBattleResults();
     this._hideNPCDialog();
     this._hideHelpMenu();
+    this._hideGameOver();
     for (const unsub of this._unsubs) unsub();
     this._unsubs = [];
   }
@@ -122,17 +131,22 @@ export class RPGViewManager {
         break;
       case RPGPhase.BATTLE_TURN:
         this._hideHud();
+        this._hideMinimap();
         this._showTurnBattle();
         break;
       case RPGPhase.BATTLE_AUTO:
         this._hideHud();
+        this._hideMinimap();
         break;
       case RPGPhase.TOWN_MENU:
         this._hideHud();
+        this._hideMinimap();
         this._showTownMenu();
         break;
       case RPGPhase.GAME_OVER:
         this._hideHud();
+        this._hideMinimap();
+        this._showGameOver();
         break;
     }
   }
@@ -164,6 +178,7 @@ export class RPGViewManager {
     this.overworldView = new OverworldView();
     this.overworldView.init(viewManager, this.overworldState, this.rpgState);
     this._showHud();
+    this._showMinimap();
   }
 
   private _showDungeon(): void {
@@ -171,6 +186,7 @@ export class RPGViewManager {
     this.dungeonView = new DungeonView();
     this.dungeonView.init(viewManager, this.dungeonState, this.rpgState);
     this._showHud();
+    this._hideMinimap(); // No minimap in dungeons (fog-of-war makes it less useful)
   }
 
   private _showTurnBattle(): void {
@@ -202,6 +218,23 @@ export class RPGViewManager {
     if (this.rpgHud) {
       this.rpgHud.destroy();
       this.rpgHud = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Minimap
+  // ---------------------------------------------------------------------------
+
+  private _showMinimap(): void {
+    this._hideMinimap();
+    this.minimapView = new MinimapView();
+    this.minimapView.init(viewManager, this.overworldState, this.rpgState);
+  }
+
+  private _hideMinimap(): void {
+    if (this.minimapView) {
+      this.minimapView.destroy();
+      this.minimapView = null;
     }
   }
 
@@ -256,6 +289,27 @@ export class RPGViewManager {
       this.helpMenuView.destroy();
       this.helpMenuView = null;
       this.onHelpMenuToggled?.(false);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Game Over
+  // ---------------------------------------------------------------------------
+
+  private _showGameOver(): void {
+    this._hideGameOver();
+    this.gameOverView = new GameOverView();
+    this.gameOverView.init(viewManager);
+    this.gameOverView.onRestart = () => {
+      this._hideGameOver();
+      this.onRestart?.();
+    };
+  }
+
+  private _hideGameOver(): void {
+    if (this.gameOverView) {
+      this.gameOverView.destroy();
+      this.gameOverView = null;
     }
   }
 }
