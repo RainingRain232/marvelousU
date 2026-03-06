@@ -3,7 +3,7 @@ import type { Vec2 } from "@/types";
 import { RPGPhase } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
 import { SeededRandom } from "@sim/utils/random";
-import type { OverworldState, OverworldEntity, DungeonEntranceData } from "@rpg/state/OverworldState";
+import type { OverworldState, OverworldEntity, DungeonEntranceData, NPCData } from "@rpg/state/OverworldState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { OVERWORLD_ENCOUNTERS } from "@rpg/config/EncounterDefs";
@@ -96,9 +96,16 @@ function _handleEntityInteraction(
       // Handled by view layer (prompt to open)
       break;
     }
-    case "npc":
+    case "npc": {
+      const npcData = entity.data as NPCData;
+      EventBus.emit("rpgNPCInteraction", {
+        npcId: entity.id,
+        npcName: entity.name,
+        dialogue: npcData.dialogue,
+      });
+      break;
+    }
     case "landmark":
-      // Handled by view layer (show dialogue)
       break;
   }
 }

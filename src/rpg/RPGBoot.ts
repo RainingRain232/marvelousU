@@ -19,6 +19,7 @@ import { createStarterParty } from "@rpg/systems/PartyFactory";
 import { RPGViewManager } from "@view/rpg/RPGViewManager";
 import { ITEM_HEALTH_POTION } from "@rpg/config/RPGItemDefs";
 import { TurnBattleAction, TurnBattlePhase } from "@/types";
+import type { BattleResults } from "@view/rpg/BattleResultsView";
 
 // ---------------------------------------------------------------------------
 // RPGGame
@@ -36,6 +37,13 @@ export class RPGGame {
   private _unsubs: Array<() => void> = [];
   /** Tracks the current encounter for auto-battle fallback. */
   _pendingEncounterId: string | null = null;
+  /** Tracks level-ups during the current battle for the results screen. */
+  private _battleLevelUps: { name: string; newLevel: number }[] = [];
+  private _levelUpUnsub: (() => void) | null = null;
+  /** True when NPC dialog is open — blocks movement input. */
+  private _npcDialogOpen = false;
+  /** True when help menu is open — blocks movement input. */
+  private _helpMenuOpen = false;
 
   async boot(): Promise<void> {
     const seed = Date.now();
@@ -72,11 +80,6 @@ export class RPGGame {
       this._enterDungeon(e.dungeonId);
     }));
 
-    // Wire battle end
-    this._unsubs.push(EventBus.on("rpgBattleEnded", (e) => {
-      this._onBattleEnd(e.victory);
-    }));
-
     // Wire town entry
     this._unsubs.push(EventBus.on("rpgTownEntered", (e) => {
       this._onTownEntered(e.townId);
@@ -87,6 +90,24 @@ export class RPGGame {
       this.rpgViewManager.currentTownData = null;
       this.rpgViewManager.currentTownName = "";
       this.stateMachine.transition(RPGPhase.OVERWORLD);
+    };
+
+    // Wire battle results dismissal
+    this.rpgViewManager.onBattleResultsDismissed = () => {
+      this.stateMachine.returnToPrevious();
+    };
+
+    // Wire NPC dialog
+    this.rpgViewManager.onNPCDialogClosed = () => {
+      this._npcDialogOpen = false;
+    };
+    this._unsubs.push(EventBus.on("rpgNPCInteraction", () => {
+      this._npcDialogOpen = true;
+    }));
+
+    // Wire help menu
+    this.rpgViewManager.onHelpMenuToggled = (open) => {
+      this._helpMenuOpen = open;
     };
 
     // Wire dungeon exit
@@ -103,6 +124,11 @@ export class RPGGame {
     for (const unsub of this._unsubs) unsub();
     this._unsubs = [];
 
+    if (this._levelUpUnsub) {
+      this._levelUpUnsub();
+      this._levelUpUnsub = null;
+    }
+
     if (this._onKeyDown) {
       window.removeEventListener("keydown", this._onKeyDown);
       this._onKeyDown = null;
@@ -118,6 +144,14 @@ export class RPGGame {
   private _setupInput(): void {
     this._onKeyDown = (e: KeyboardEvent) => {
       const phase = this.stateMachine.currentPhase;
+
+      // Help menu toggle (? or F1) during exploration
+      if ((e.key === "?" || e.code === "F1") && (phase === RPGPhase.OVERWORLD || phase === RPGPhase.DUNGEON)) {
+        this.rpgViewManager.toggleHelpMenu();
+        return;
+      }
+
+      if (this._npcDialogOpen || this._helpMenuOpen) return; // Block movement during overlays
 
       if (phase === RPGPhase.OVERWORLD) {
         this._handleOverworldInput(e);
@@ -235,6 +269,13 @@ export class RPGGame {
     encounterType: "random" | "dungeon" | "boss",
   ): void {
     if (this.rpgState.battleMode === "turn") {
+      // Track level-ups during this battle
+      this._battleLevelUps = [];
+      this._levelUpUnsub = EventBus.on("rpgLevelUp", (e) => {
+        const member = this.rpgState.party.find(m => m.id === e.memberId);
+        this._battleLevelUps.push({ name: member?.name ?? e.memberId, newLevel: e.newLevel });
+      });
+
       this.turnBattleState = createBattleFromEncounter(this.rpgState, encounterId, encounterType);
       this.rpgViewManager.turnBattleState = this.turnBattleState;
 
@@ -368,16 +409,28 @@ export class RPGGame {
   // Return from battle
   // ---------------------------------------------------------------------------
 
-  private _onBattleEnd(_victory: boolean): void {
-    // Handled by _returnFromBattle
-  }
+  private _returnFromBattle(victory: boolean): void {
+    // Collect results before clearing state
+    const results: BattleResults = {
+      victory,
+      xpGained: this.turnBattleState?.xpReward ?? 0,
+      goldGained: this.turnBattleState?.goldReward ?? 0,
+      lootItems: this.turnBattleState?.lootReward ?? [],
+      levelUps: this._battleLevelUps,
+    };
 
-  private _returnFromBattle(_victory: boolean): void {
+    // Clean up level-up listener
+    if (this._levelUpUnsub) {
+      this._levelUpUnsub();
+      this._levelUpUnsub = null;
+    }
+    this._battleLevelUps = [];
+
     this.turnBattleState = null;
     this.rpgViewManager.turnBattleState = null;
     this._pendingEncounterId = null;
 
-    // Return to the previous exploration phase
-    this.stateMachine.returnToPrevious();
+    // Show results screen — phase transition happens on dismiss
+    this.rpgViewManager.showBattleResults(results);
   }
 }

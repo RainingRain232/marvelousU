@@ -71,6 +71,9 @@ export interface SimEvents {
   rpgItemBought: { itemId: string };
   rpgItemEquipped: { memberId: string; itemId: string; slot: string };
   rpgInnRested: { cost: number };
+
+  // RPG NPC events
+  rpgNPCInteraction: { npcId: string; npcName: string; dialogue: string[] };
 }
 
 // ---------------------------------------------------------------------------

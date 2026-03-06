@@ -4,7 +4,7 @@ import type { Vec2 } from "@/types";
 import { SeededRandom } from "@sim/utils/random";
 import type { OverworldTile, OverworldEntity, OverworldState } from "@rpg/state/OverworldState";
 import { createOverworldState } from "@rpg/state/OverworldState";
-import type { DungeonEntranceData, TownData } from "@rpg/state/OverworldState";
+import type { DungeonEntranceData, TownData, NPCData } from "@rpg/state/OverworldState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { STARTER_TOWN_SHOP, MID_TOWN_SHOP, LATE_TOWN_SHOP } from "@rpg/config/RPGItemDefs";
 
@@ -277,6 +277,72 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
       type: "dungeon_entrance",
       position: pos,
       name: dungeonNames[i],
+      data,
+    });
+  }
+
+  // Place NPCs (scattered across the map for flavour and hints)
+  const npcDefs: { name: string; dialogue: string[] }[] = [
+    {
+      name: "Wandering Scholar",
+      dialogue: [
+        "Ah, a fellow traveler! These lands hold many secrets.",
+        "I've heard the Goblin Caves to the north are infested with vermin. Low-level adventurers cut their teeth there.",
+        "Stock up on potions at the towns before venturing into dungeons. You'll thank me later.",
+      ],
+    },
+    {
+      name: "Old Hermit",
+      dialogue: [
+        "You look like trouble... the good kind.",
+        "Deep in the Dark Crypt lies a Lich Lord. You'll need to be at least level 6 to stand a chance.",
+        "Equip your party well. Visit the towns — each has different gear for sale.",
+      ],
+    },
+    {
+      name: "Traveling Merchant",
+      dialogue: [
+        "Business has been slow since the monsters moved in.",
+        "I've heard the Dragon's Lair holds treasures beyond imagination, but only the strongest survive.",
+        "If you defeat monsters, they sometimes drop useful equipment. Keep an eye out!",
+      ],
+    },
+    {
+      name: "Lost Knight",
+      dialogue: [
+        "I was separated from my company after an ambush in the forest.",
+        "Press T to toggle between turn-based and auto-battle modes.",
+        "Defending in battle halves the damage you take. Use it wisely against powerful foes.",
+      ],
+    },
+    {
+      name: "Forest Witch",
+      dialogue: [
+        "The spirits of this forest whisper of a great evil stirring...",
+        "Resting at an inn in town will fully restore your party and cure ailments.",
+        "The deeper you go into a dungeon, the stronger the monsters become. But so do the rewards.",
+      ],
+    },
+  ];
+
+  for (let i = 0; i < npcDefs.length; i++) {
+    const pos = _findPlacement(grid, rng, width, height, placements, 6);
+    if (!pos) continue;
+    placements.push(pos);
+
+    const npcId = `npc_${i}`;
+    grid[pos.y][pos.x].entityId = npcId;
+    grid[pos.y][pos.x].encounterRate = 0;
+
+    const data: NPCData = {
+      dialogue: npcDefs[i].dialogue,
+    };
+
+    entities.set(npcId, {
+      id: npcId,
+      type: "npc",
+      position: pos,
+      name: npcDefs[i].name,
       data,
     });
   }
