@@ -68,7 +68,7 @@ export function hasSaveData(): boolean {
 export function saveGame(
   slot: number,
   rpgState: RPGState,
-  overworldState: OverworldState,
+  _overworldState: OverworldState,
 ): boolean {
   if (slot < 0 || slot >= MAX_SLOTS) return false;
 

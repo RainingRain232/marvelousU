@@ -121,8 +121,18 @@ export class GameOverView {
 
   private _setupInput(): void {
     this._onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Enter" || e.code === "Space") {
-        this.onRestart?.();
+      if (e.code === "ArrowUp") {
+        this._selectedIndex = (this._selectedIndex - 1 + this._options.length) % this._options.length;
+        this._draw();
+      } else if (e.code === "ArrowDown") {
+        this._selectedIndex = (this._selectedIndex + 1) % this._options.length;
+        this._draw();
+      } else if (e.code === "Enter" || e.code === "Space") {
+        if (this._selectedIndex === 0) {
+          this.onRestart?.();
+        } else {
+          this.onMainMenu?.();
+        }
       }
     };
     window.addEventListener("keydown", this._onKeyDown);

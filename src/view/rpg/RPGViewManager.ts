@@ -215,7 +215,7 @@ export class RPGViewManager {
       this.onSaveGame?.(slot);
     };
     this.pauseMenuView.onOptions = () => {
-      this.showOptions(gameOptions, (opts) => {
+      this.showOptions(gameOptions, () => {
         // Options are saved inside OptionsView
       }, false);
     };
@@ -458,6 +458,10 @@ export class RPGViewManager {
     this.gameOverView.onRestart = () => {
       this._hideGameOver();
       this.onRestart?.();
+    };
+    this.gameOverView.onMainMenu = () => {
+      this._hideGameOver();
+      this.onMainMenu?.();
     };
   }
 
