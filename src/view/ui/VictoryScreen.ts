@@ -13,10 +13,10 @@ import type { UnitTypeDamageEntry } from "@sim/systems/BattleStatsTracker";
 
 const STYLE_WINNER = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 48,
+  fontSize: 52,
   fill: 0xffd700,
   fontWeight: "bold",
-  letterSpacing: 4,
+  letterSpacing: 5,
   dropShadow: {
     color: 0x000000,
     blur: 10,
@@ -28,7 +28,7 @@ const STYLE_WINNER = new TextStyle({
 
 const STYLE_SUBTITLE = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 20,
+  fontSize: 22,
   fill: 0xaabbcc,
   letterSpacing: 2,
 });
@@ -43,7 +43,7 @@ const STYLE_BTN = new TextStyle({
 
 const STYLE_SECTION_LABEL = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 14,
+  fontSize: 16,
   fill: 0xffd700,
   fontWeight: "bold",
   letterSpacing: 2,
@@ -51,14 +51,14 @@ const STYLE_SECTION_LABEL = new TextStyle({
 
 const STYLE_STAT_LABEL = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 14,
+  fontSize: 15,
   fill: 0x8899aa,
   letterSpacing: 1,
 });
 
 const STYLE_STAT_VALUE = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 14,
+  fontSize: 15,
   fill: 0xeeeeff,
   fontWeight: "bold",
   letterSpacing: 1,
@@ -66,7 +66,7 @@ const STYLE_STAT_VALUE = new TextStyle({
 
 const STYLE_DMG_HEADER = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 12,
+  fontSize: 13,
   fill: 0x8899aa,
   letterSpacing: 1,
   fontWeight: "bold",
@@ -74,14 +74,14 @@ const STYLE_DMG_HEADER = new TextStyle({
 
 const STYLE_DMG_UNIT = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 13,
+  fontSize: 14,
   fill: 0xccddee,
   letterSpacing: 0,
 });
 
 const STYLE_DMG_VALUE = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 13,
+  fontSize: 14,
   fill: 0xff8866,
   fontWeight: "bold",
   letterSpacing: 0,
@@ -89,7 +89,7 @@ const STYLE_DMG_VALUE = new TextStyle({
 
 const STYLE_DMG_KILLS = new TextStyle({
   fontFamily: "monospace",
-  fontSize: 13,
+  fontSize: 14,
   fill: 0x88ff88,
   letterSpacing: 0,
 });
@@ -111,19 +111,19 @@ export class VictoryScreen {
   private _menuBtn!: Container;
   private _statsContainer!: Container;
 
-  private readonly _CARD_W = 700;
-  private _currentCardH = 260;
+  private readonly _CARD_W = 900;
+  private _currentCardH = 300;
 
-  /** If > 0, this is a wave mode battle. Set before init or before phase resolves. */
+  /** If > 0, this is a wave mode battle. */
   waveNumber = 0;
 
-  /** Corruption level for Grail Greed mode display. 0 = no corruption. */
+  /** Corruption level for Grail Greed mode display. */
   corruptionLevel = 0;
 
-  /** Gold spent this round (set externally before battle). */
+  /** Gold spent this round. */
   lastRoundGoldSpent = 0;
 
-  /** Total gold spent across all waves (set externally). */
+  /** Total gold spent across all waves. */
   totalGoldSpent = 0;
 
   /** Called when the player clicks "NEXT WAVE" in wave mode. */
@@ -139,11 +139,9 @@ export class VictoryScreen {
   init(vm: ViewManager, state: GameState): void {
     this._vm = vm;
 
-    // Semi-transparent full-screen overlay
     this._overlay = new Graphics();
     this.container.addChild(this._overlay);
 
-    // Card
     this._card = new Container();
     this._cardBg = new Graphics();
     this._card.addChild(this._cardBg);
@@ -152,30 +150,30 @@ export class VictoryScreen {
     // Winner text
     this._winnerText = new Text({ text: "", style: STYLE_WINNER });
     this._winnerText.anchor.set(0.5, 0);
-    this._winnerText.position.set(this._CARD_W / 2, 24);
+    this._winnerText.position.set(this._CARD_W / 2, 28);
     this._card.addChild(this._winnerText);
 
     // Subtitle
     this._subtitleText = new Text({ text: "VICTORY", style: STYLE_SUBTITLE });
     this._subtitleText.anchor.set(0.5, 0);
-    this._subtitleText.position.set(this._CARD_W / 2, 80);
+    this._subtitleText.position.set(this._CARD_W / 2, 90);
     this._card.addChild(this._subtitleText);
 
     // Divider after header
     this._card.addChild(
       new Graphics()
-        .rect(30, 112, this._CARD_W - 60, 1)
+        .rect(30, 124, this._CARD_W - 60, 1)
         .fill({ color: 0xffd700, alpha: 0.3 }),
     );
 
-    // Stats + damage list container (populated dynamically)
+    // Stats container (populated dynamically)
     this._statsContainer = new Container();
-    this._statsContainer.position.set(0, 120);
+    this._statsContainer.position.set(0, 136);
     this._card.addChild(this._statsContainer);
 
     // Return to Menu button
-    const BW = 240;
-    const BH = 46;
+    const BW = 260;
+    const BH = 48;
 
     this._menuBtn = new Container();
     this._menuBtn.eventMode = "static";
@@ -200,8 +198,8 @@ export class VictoryScreen {
 
     this._card.addChild(this._menuBtn);
 
-    // Next Wave button (wave mode only)
-    const NW_BW = 240;
+    // Next Wave button
+    const NW_BW = 260;
     this._nextWaveBtn = new Container();
     this._nextWaveBtn.eventMode = "static";
     this._nextWaveBtn.cursor = "pointer";
@@ -236,11 +234,9 @@ export class VictoryScreen {
     this._onResize = () => this._layout();
     vm.app.renderer.on("resize", this._onResize);
 
-    // React to phase changes
     this._unsubscribers.push(
       EventBus.on("phaseChanged", ({ phase }) => {
         if (phase === GamePhase.RESOLVE) {
-          // Campaign mode P1 victory is handled by CampaignVictoryScreen instead
           if (state.gameMode === GameMode.CAMPAIGN && state.winnerId === "p1") return;
           this._show(state);
         }
@@ -289,24 +285,23 @@ export class VictoryScreen {
         : "WINS THE ROUND";
     }
 
-    // Build stats + damage breakdown
+    // Build stats
     this._buildStats(state, isWave);
 
     // Position buttons below stats
     const statsH = this._statsContainer.getBounds().height;
-    const btnY = 120 + statsH + 20;
-    const BH = 46;
+    const btnY = 136 + statsH + 24;
+    const BH = 48;
 
     if (isWave && p1Won) {
       this._nextWaveBtn.visible = true;
-      // Side by side buttons
-      this._nextWaveBtn.position.set(this._CARD_W / 2 - 250, btnY);
+      this._nextWaveBtn.position.set(this._CARD_W / 2 - 270, btnY);
       this._menuBtn.position.set(this._CARD_W / 2 + 10, btnY);
-      this._currentCardH = btnY + BH + 24;
+      this._currentCardH = btnY + BH + 28;
     } else {
       this._nextWaveBtn.visible = false;
-      this._menuBtn.position.set(this._CARD_W / 2 - 120, btnY);
-      this._currentCardH = btnY + BH + 24;
+      this._menuBtn.position.set(this._CARD_W / 2 - 130, btnY);
+      this._currentCardH = btnY + BH + 28;
     }
 
     this._drawCard(this._currentCardH);
@@ -318,80 +313,118 @@ export class VictoryScreen {
     this._statsContainer.removeChildren();
     const stats = battleStatsTracker.getStats();
     const p1Stats = stats.perPlayer.get("p1");
+    const p2Stats = stats.perPlayer.get("p2");
 
-    const PAD = 30;
-    const COL_LEFT = PAD;
-    const COL_RIGHT = this._CARD_W / 2 + 10;
-    let ly = 0; // left column y
-    let ry = 0; // right column y
+    const PAD = 36;
+    // Three columns: left stats, center P2 stats, right damage breakdown
+    const COL1 = PAD;
+    const COL2 = 310;
+    const COL3 = 560;
+    let ly = 0;
+    let cy = 0;
+    let ry = 0;
 
-    // --- LEFT COLUMN: Battle Stats ---
-    const statsLabel = new Text({ text: "BATTLE STATS", style: STYLE_SECTION_LABEL });
-    statsLabel.position.set(COL_LEFT, ly);
+    // --- COLUMN 1: P1 Battle Stats ---
+    const statsLabel = new Text({ text: "YOUR STATS", style: STYLE_SECTION_LABEL });
+    statsLabel.position.set(COL1, ly);
     this._statsContainer.addChild(statsLabel);
-    ly += 24;
-
-    const addStat = (label: string, value: string, y: number, col: number): number => {
-      const lbl = new Text({ text: label, style: STYLE_STAT_LABEL });
-      lbl.position.set(col, y);
-      this._statsContainer.addChild(lbl);
-
-      const val = new Text({ text: value, style: STYLE_STAT_VALUE });
-      val.position.set(col + 200, y);
-      this._statsContainer.addChild(val);
-      return y + 22;
-    };
+    ly += 28;
 
     if (p1Stats) {
-      ly = addStat("Damage Dealt", _fmtNum(p1Stats.damageDealt), ly, COL_LEFT);
-      ly = addStat("Damage Received", _fmtNum(p1Stats.damageReceived), ly, COL_LEFT);
-      ly = addStat("Kills", _fmtNum(p1Stats.kills), ly, COL_LEFT);
-      ly = addStat("Units Lost", _fmtNum(p1Stats.unitsLost), ly, COL_LEFT);
-      ly = addStat("Healing Done", _fmtNum(p1Stats.healingDone), ly, COL_LEFT);
+      ly = this._addStat("Damage Dealt", _fmtNum(p1Stats.damageDealt), ly, COL1);
+      ly = this._addStat("Damage Received", _fmtNum(p1Stats.damageReceived), ly, COL1);
+      ly = this._addStat("Kills", _fmtNum(p1Stats.kills), ly, COL1);
+      ly = this._addStat("Units Lost", _fmtNum(p1Stats.unitsLost), ly, COL1);
+      ly = this._addStat("Units Spawned", _fmtNum(p1Stats.unitsSpawned), ly, COL1);
+      ly = this._addStat("Healing Done", _fmtNum(p1Stats.healingDone), ly, COL1);
     }
 
     if (isWave) {
-      ly += 6;
-      // Divider
+      ly += 8;
       this._statsContainer.addChild(
         new Graphics()
-          .rect(COL_LEFT, ly, 280, 1)
+          .rect(COL1, ly, 240, 1)
           .fill({ color: 0xffd700, alpha: 0.15 }),
       );
-      ly += 10;
+      ly += 12;
 
-      ly = addStat("Gold (This Wave)", _fmtNum(this.lastRoundGoldSpent), ly, COL_LEFT);
-      ly = addStat("Gold (All Waves)", _fmtNum(this.totalGoldSpent), ly, COL_LEFT);
+      const waveLabel = new Text({ text: "WAVE ECONOMY", style: STYLE_SECTION_LABEL });
+      waveLabel.position.set(COL1, ly);
+      this._statsContainer.addChild(waveLabel);
+      ly += 28;
 
-      // Surviving units count
+      ly = this._addStat("Gold (This Wave)", _fmtNum(this.lastRoundGoldSpent), ly, COL1);
+      ly = this._addStat("Gold (All Waves)", _fmtNum(this.totalGoldSpent), ly, COL1);
+
       let survivorCount = 0;
       for (const u of state.units.values()) {
         if (u.owner === "p1" && u.hp > 0) survivorCount++;
       }
-      ly = addStat("Surviving Units", String(survivorCount), ly, COL_LEFT);
+      ly = this._addStat("Surviving Units", String(survivorCount), ly, COL1);
+      ly = this._addStat("Wave Number", String(this.waveNumber), ly, COL1);
+      if (this.corruptionLevel > 0) {
+        ly = this._addStat("Corruption Level", String(this.corruptionLevel), ly, COL1);
+      }
     }
 
-    // --- RIGHT COLUMN: Unit Damage Breakdown ---
-    const dmgLabel = new Text({ text: "UNIT DAMAGE BREAKDOWN", style: STYLE_SECTION_LABEL });
-    dmgLabel.position.set(COL_RIGHT, ry);
+    // --- COLUMN 2: Enemy Stats ---
+    const enemyLabel = new Text({ text: "ENEMY STATS", style: STYLE_SECTION_LABEL });
+    enemyLabel.position.set(COL2, cy);
+    this._statsContainer.addChild(enemyLabel);
+    cy += 28;
+
+    if (p2Stats) {
+      cy = this._addStat("Damage Dealt", _fmtNum(p2Stats.damageDealt), cy, COL2);
+      cy = this._addStat("Damage Received", _fmtNum(p2Stats.damageReceived), cy, COL2);
+      cy = this._addStat("Kills", _fmtNum(p2Stats.kills), cy, COL2);
+      cy = this._addStat("Units Lost", _fmtNum(p2Stats.unitsLost), cy, COL2);
+      cy = this._addStat("Units Spawned", _fmtNum(p2Stats.unitsSpawned), cy, COL2);
+      cy = this._addStat("Healing Done", _fmtNum(p2Stats.healingDone), cy, COL2);
+    }
+
+    // Battle duration
+    cy += 8;
+    this._statsContainer.addChild(
+      new Graphics()
+        .rect(COL2, cy, 220, 1)
+        .fill({ color: 0xffd700, alpha: 0.15 }),
+    );
+    cy += 12;
+    const durationSec = Math.floor(stats.battleDurationTicks / 60);
+    const durMin = Math.floor(durationSec / 60);
+    const durSec = durationSec % 60;
+    cy = this._addStat("Battle Duration", `${durMin}m ${durSec}s`, cy, COL2);
+    cy = this._addStat("Total Units", _fmtNum(stats.totalUnitsSpawned), cy, COL2);
+
+    // --- COLUMN 3: Unit Damage Breakdown ---
+    const dmgLabel = new Text({ text: "UNIT DAMAGE", style: STYLE_SECTION_LABEL });
+    dmgLabel.position.set(COL3, ry);
     this._statsContainer.addChild(dmgLabel);
-    ry += 24;
+    ry += 28;
 
     // Header row
     const hdrUnit = new Text({ text: "UNIT", style: STYLE_DMG_HEADER });
-    hdrUnit.position.set(COL_RIGHT, ry);
+    hdrUnit.position.set(COL3, ry);
     this._statsContainer.addChild(hdrUnit);
 
-    const hdrDmg = new Text({ text: "DAMAGE", style: STYLE_DMG_HEADER });
-    hdrDmg.position.set(COL_RIGHT + 150, ry);
+    const hdrDmg = new Text({ text: "DMG", style: STYLE_DMG_HEADER });
+    hdrDmg.position.set(COL3 + 160, ry);
     this._statsContainer.addChild(hdrDmg);
 
     const hdrKills = new Text({ text: "KILLS", style: STYLE_DMG_HEADER });
-    hdrKills.position.set(COL_RIGHT + 240, ry);
+    hdrKills.position.set(COL3 + 250, ry);
     this._statsContainer.addChild(hdrKills);
-    ry += 20;
+    ry += 22;
 
-    // Get p1 unit type damage entries, sorted by damage descending
+    // Divider under header
+    this._statsContainer.addChild(
+      new Graphics()
+        .rect(COL3, ry, 300, 1)
+        .fill({ color: 0x334455, alpha: 0.6 }),
+    );
+    ry += 6;
+
+    // Get p1 unit type damage entries sorted by damage desc
     const p1UnitDmg = stats.unitTypeDamage.get("p1");
     const entries: UnitTypeDamageEntry[] = [];
     if (p1UnitDmg) {
@@ -404,26 +437,36 @@ export class VictoryScreen {
     for (const entry of entries) {
       const unitName = _unitLabel(entry.type);
       const nameText = new Text({ text: unitName, style: STYLE_DMG_UNIT });
-      nameText.position.set(COL_RIGHT, ry);
+      nameText.position.set(COL3, ry);
       this._statsContainer.addChild(nameText);
 
       const dmgText = new Text({ text: _fmtNum(entry.damage), style: STYLE_DMG_VALUE });
-      dmgText.position.set(COL_RIGHT + 150, ry);
+      dmgText.position.set(COL3 + 160, ry);
       this._statsContainer.addChild(dmgText);
 
       const killsText = new Text({ text: String(entry.kills), style: STYLE_DMG_KILLS });
-      killsText.position.set(COL_RIGHT + 240, ry);
+      killsText.position.set(COL3 + 250, ry);
       this._statsContainer.addChild(killsText);
 
-      ry += 20;
+      ry += 22;
     }
 
     if (entries.length === 0) {
       const noData = new Text({ text: "No damage dealt", style: STYLE_STAT_LABEL });
-      noData.position.set(COL_RIGHT, ry);
+      noData.position.set(COL3, ry);
       this._statsContainer.addChild(noData);
-      ry += 20;
     }
+  }
+
+  private _addStat(label: string, value: string, y: number, col: number): number {
+    const lbl = new Text({ text: label, style: STYLE_STAT_LABEL });
+    lbl.position.set(col, y);
+    this._statsContainer.addChild(lbl);
+
+    const val = new Text({ text: value, style: STYLE_STAT_VALUE });
+    val.position.set(col + 180, y);
+    this._statsContainer.addChild(val);
+    return y + 24;
   }
 
   private _drawCard(h: number): void {
