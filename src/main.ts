@@ -114,7 +114,7 @@ import { WorldBuildingType } from "@world/config/WorldBuildingDefs";
 import { armyView } from "@view/world/ArmyView";
 import { armyPanel } from "@view/world/ui/ArmyPanel";
 import { conjurePanel } from "@view/world/ui/ConjurePanel";
-import { moveArmy, getArmyReachableHexes, detectCollisions, playerCanCrossWater } from "@world/systems/ArmySystem";
+import { moveArmy, getArmyReachableHexes, detectCollisions, playerCanCrossWater, splitArmy, mergeArmies } from "@world/systems/ArmySystem";
 import { findHexPath } from "@world/hex/HexPathfinding";
 import { researchScreen } from "@view/world/ui/ResearchScreen";
 import { setActiveResearch, setActiveMagicResearch } from "@world/systems/ResearchSystem";
@@ -138,6 +138,7 @@ import { worldNationalScreen } from "@view/world/ui/WorldNationalScreen";
 import { worldArmyOverview } from "@view/world/ui/WorldArmyOverview";
 import { cityPreviewScreen } from "@view/world/ui/CityPreviewScreen";
 import { advisorDialog } from "@view/world/ui/AdvisorDialog";
+import { turnTransition } from "@view/world/ui/TurnTransition";
 import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
@@ -2793,6 +2794,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
   // Initialize advisor dialog
   advisorDialog.init(viewManager);
+  turnTransition.init(viewManager);
 
   // Initialize army view
   armyView.init(viewManager);
@@ -2896,6 +2898,26 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       conjurePanel.hide();
     } else {
       conjurePanel.show(army, state);
+    }
+  };
+
+  armyPanel.onSplit = (armyId, units) => {
+    const army = state.armies.get(armyId);
+    if (!army) return;
+    const newArmy = splitArmy(army, units, state);
+    if (newArmy) {
+      refreshWorld();
+      armyPanel.show(army, state);
+    }
+  };
+
+  armyPanel.onMerge = (armyId, targetArmyId) => {
+    const army = state.armies.get(armyId);
+    const target = state.armies.get(targetArmyId);
+    if (!army || !target) return;
+    if (mergeArmies(army, target, state)) {
+      refreshWorld();
+      armyPanel.show(army, state);
     }
   };
 
@@ -3010,6 +3032,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   let _moveModeArmyId: string | null = null;
   let _selectedArmyId: string | null = null;
   let _selectedArmyReachable = new Set<string>();
+  let _armyCycleIndex = 0;
   let _lastClickHex: string | null = null;
   let _lastClickTime = 0;
 
@@ -3613,10 +3636,10 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     const p1 = state.players.get("p1")!;
     const prevResearch = p1.activeResearch;
     const prevMagicResearch = p1.activeMagicResearch ? { ...p1.activeMagicResearch } : null;
-    const prevBuildings = new Map<string, string | null>();
+    const prevBuildings = new Map<string, number>();
     for (const city of state.cities.values()) {
-      if (city.owner === "p1" && city.constructionQueue) {
-        prevBuildings.set(city.id, city.constructionQueue.buildingType);
+      if (city.owner === "p1" && city.constructionQueue.length > 0) {
+        prevBuildings.set(city.id, city.constructionQueue.length);
       }
     }
 
@@ -3704,14 +3727,21 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         worldNotification.show("Magic Research Complete", `${prevMagicResearch.school} tier ${prevMagicResearch.tier} unlocked!`, 0x8888ff);
         worldEventLog.addEvent(`Magic research complete: ${prevMagicResearch.school} T${prevMagicResearch.tier}`, 0x8888ff);
       }
-      // Building completed
-      for (const [cityId, buildingType] of prevBuildings) {
+      // Building completed (queue shrunk = something finished)
+      for (const [cityId, prevLen] of prevBuildings) {
         const city = state.cities.get(cityId);
-        if (city && !city.constructionQueue) {
-          worldNotification.show("Construction Complete", `${city.name}: ${buildingType} finished!`, 0xffcc44);
-          worldEventLog.addEvent(`${city.name} built ${buildingType}`, 0xffcc44);
+        if (city && city.constructionQueue.length < prevLen) {
+          const finished = city.buildings[city.buildings.length - 1];
+          const name = finished ? finished.type : "building";
+          worldNotification.show("Construction Complete", `${city.name}: ${name} finished!`, 0xffcc44);
+          worldEventLog.addEvent(`${city.name} built ${name}`, 0xffcc44);
         }
       }
+    }
+
+    // Turn transition animation
+    if (state.phase === WorldPhase.PLAYER_TURN) {
+      await turnTransition.show(state.turn);
     }
 
     refreshWorld();
@@ -3723,6 +3753,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     _moveModeArmyId = null;
     _selectedArmyId = null;
     _selectedArmyReachable = new Set();
+    _armyCycleIndex = 0;
     _endTurnBusy = false;
   };
 
@@ -3989,6 +4020,29 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       || worldWikiScreen.isVisible) return;
 
     if (state.phase !== WorldPhase.PLAYER_TURN) return;
+
+    // Tab cycles through armies with remaining MP
+    if (e.code === "Tab") {
+      e.preventDefault();
+      const movableArmies: import("@world/state/WorldArmy").WorldArmy[] = [];
+      for (const army of state.armies.values()) {
+        if (army.owner === "p1" && !army.isGarrison && army.movementPoints > 0) {
+          movableArmies.push(army);
+        }
+      }
+      if (movableArmies.length > 0) {
+        _armyCycleIndex = _armyCycleIndex % movableArmies.length;
+        const army = movableArmies[_armyCycleIndex];
+        _armyCycleIndex = (_armyCycleIndex + 1) % movableArmies.length;
+        _selectedArmyId = army.id;
+        const reachable = getArmyReachableHexes(army, state);
+        _selectedArmyReachable = new Set(reachable.map(h => `${h.q},${h.r}`));
+        worldMapRenderer.highlightHexes(reachable, 0x44ff44, 0.25);
+        armyPanel.show(army, state);
+        if (cityPanel.isVisible) cityPanel.hide();
+      }
+      return;
+    }
 
     const dir = _arrowDirMap[e.code];
     if (dir === undefined) return;

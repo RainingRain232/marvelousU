@@ -78,6 +78,11 @@ export class WorldBattleViewer {
   private _attackerLabel = "Attacker";
   private _defenderLabel = "Defender";
 
+  /** Initial unit counts for battle result summary. */
+  private _initialP1Count = 0;
+  private _initialP2Count = 0;
+  private _resultContainer: Container | null = null;
+
   /** Set to true when the player clicks the PLAY BATTLE button. */
   playBattleRequested = false;
 
@@ -201,6 +206,23 @@ export class WorldBattleViewer {
     this._fast = false;
     this.playBattleRequested = false;
 
+    // Snapshot initial unit counts
+    this._initialP1Count = 0;
+    this._initialP2Count = 0;
+    for (const unit of battleState.units.values()) {
+      if (unit.hp > 0) {
+        if (unit.owner === "p1") this._initialP1Count++;
+        else if (unit.owner === "p2") this._initialP2Count++;
+      }
+    }
+
+    // Clear previous result overlay
+    if (this._resultContainer) {
+      this._resultContainer.removeFromParent();
+      this._resultContainer.destroy({ children: true });
+      this._resultContainer = null;
+    }
+
     if (this._playBattleBtn) {
       this._playBattleBtn.visible = canPlay;
     }
@@ -277,18 +299,89 @@ export class WorldBattleViewer {
 
     const winnerId = this._battleState?.winnerId;
     const label = winnerId === "p1" ? this._attackerLabel : winnerId === "p2" ? this._defenderLabel : "Draw";
-    this._statusText.text = `${label} wins!`;
-    this._statusText.style.fill = winnerId === "p1" ? 0x4488ff : winnerId === "p2" ? 0xff4444 : 0xaaaaaa;
 
-    // Auto-close after a short delay
-    setTimeout(() => {
+    // Count surviving units
+    let p1Alive = 0;
+    let p2Alive = 0;
+    if (this._battleState) {
+      for (const unit of this._battleState.units.values()) {
+        if (unit.hp <= 0 || unit.state === UnitState.DIE) continue;
+        if (unit.owner === "p1") p1Alive++;
+        else if (unit.owner === "p2") p2Alive++;
+      }
+    }
+
+    const p1Casualties = this._initialP1Count - p1Alive;
+    const p2Casualties = this._initialP2Count - p2Alive;
+
+    // Build result summary overlay
+    const rc = new Container();
+    const sw = this._vm.screenWidth;
+    const baseY = 54 + BalanceConfig.GRID_HEIGHT * TILE_SIZE + 8;
+
+    const winText = new Text({
+      text: `${label} wins!`,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 18, fontWeight: "bold",
+        fill: winnerId === "p1" ? 0x4488ff : winnerId === "p2" ? 0xff4444 : 0xaaaaaa }),
+    });
+    winText.anchor.set(0.5, 0);
+    winText.x = sw / 2;
+    winText.y = baseY;
+    rc.addChild(winText);
+
+    const summaryStyle = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xcccccc });
+    const atkSummary = new Text({
+      text: `${this._attackerLabel}: ${p1Alive} survived, ${p1Casualties} lost`,
+      style: summaryStyle,
+    });
+    atkSummary.anchor.set(0.5, 0);
+    atkSummary.x = sw / 2;
+    atkSummary.y = baseY + 24;
+    rc.addChild(atkSummary);
+
+    const defSummary = new Text({
+      text: `${this._defenderLabel}: ${p2Alive} survived, ${p2Casualties} lost`,
+      style: summaryStyle,
+    });
+    defSummary.anchor.set(0.5, 0);
+    defSummary.x = sw / 2;
+    defSummary.y = baseY + 40;
+    rc.addChild(defSummary);
+
+    // CONTINUE button
+    const continueBtn = new Container();
+    continueBtn.eventMode = "static";
+    continueBtn.cursor = "pointer";
+    const cbg = new Graphics();
+    cbg.roundRect(-60, -14, 120, 28, 4);
+    cbg.fill({ color: 0x336633 });
+    cbg.stroke({ color: 0x55aa55, width: 1.5 });
+    continueBtn.addChild(cbg);
+    const ctxt = new Text({ text: "CONTINUE", style: BTN_STYLE });
+    ctxt.anchor.set(0.5, 0.5);
+    continueBtn.addChild(ctxt);
+    continueBtn.x = sw / 2;
+    continueBtn.y = baseY + 68;
+    continueBtn.on("pointerdown", () => {
       this._container.visible = false;
+      if (this._resultContainer) {
+        this._resultContainer.removeFromParent();
+        this._resultContainer.destroy({ children: true });
+        this._resultContainer = null;
+      }
       if (this._battleState && this._onComplete) {
         this._onComplete(this._battleState);
         this._onComplete = null;
         this._battleState = null;
       }
-    }, 1200);
+    });
+    rc.addChild(continueBtn);
+
+    this._container.addChild(rc);
+    this._resultContainer = rc;
+
+    // Hide the status text since we're showing result overlay
+    this._statusText.text = "";
   }
 
   // -----------------------------------------------------------------------

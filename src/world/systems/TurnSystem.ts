@@ -125,20 +125,18 @@ function _advanceToNextPlayer(state: WorldState): void {
 
 /** Advance a city's construction queue. */
 function _advanceConstruction(city: WorldCity): void {
-  if (!city.constructionQueue || city.isUnderSiege) return;
+  if (city.constructionQueue.length === 0 || city.isUnderSiege) return;
 
-  // Production is gathered from economy; here we just invest it
-  // For now, use a simple flat production rate based on population
-  const production = city.population * 2; // base production per pop
-  city.constructionQueue.invested += production;
+  const item = city.constructionQueue[0];
+  const production = city.population * 2;
+  item.invested += production;
 
-  if (city.constructionQueue.invested >= city.constructionQueue.cost) {
-    // Construction complete
+  if (item.invested >= item.cost) {
     city.buildings.push({
-      type: city.constructionQueue.buildingType,
-      completedTurn: 0, // will be set by caller if needed
+      type: item.buildingType,
+      completedTurn: 0,
     });
-    city.constructionQueue = null;
+    city.constructionQueue.shift();
   }
 }
 

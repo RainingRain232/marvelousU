@@ -744,8 +744,6 @@ export class WorldMapRenderer {
       const c2 = corners[(i + 1) % 6];
       // Deterministic seed per edge: use sorted endpoint coords so both tiles sharing this edge get the same wobble
       const edgeSeed = Math.round(c1.x + c2.x) * 7919 + Math.round(c1.y + c2.y) * 104729;
-      const midX = (c1.x + c2.x) / 2;
-      const midY = (c1.y + c2.y) / 2;
       // Perpendicular direction to edge
       const dx = c2.x - c1.x;
       const dy = c2.y - c1.y;

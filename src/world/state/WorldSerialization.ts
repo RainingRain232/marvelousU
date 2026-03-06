@@ -175,7 +175,13 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
   }
 
   const cities = new Map<string, WorldCity>();
-  for (const [id, c] of Object.entries(data.cities)) cities.set(id, c);
+  for (const [id, c] of Object.entries(data.cities)) {
+    // Backward compat: convert old null/single-item constructionQueue to array
+    if (!Array.isArray(c.constructionQueue)) {
+      (c as any).constructionQueue = (c as any).constructionQueue ? [(c as any).constructionQueue] : [];
+    }
+    cities.set(id, c);
+  }
 
   const armies = new Map<string, WorldArmy>();
   let armyIdx = 0;

@@ -147,10 +147,11 @@ export class WorldNationalScreen {
       // Construction status
       let constructing = "Idle";
       let constructStyle = IDLE_STYLE;
-      if (city.constructionQueue) {
-        const q = city.constructionQueue;
+      if (city.constructionQueue.length > 0) {
+        const q = city.constructionQueue[0];
         const pct = Math.floor((q.invested / q.cost) * 100);
-        constructing = `${q.buildingType} (${pct}%)`;
+        const extra = city.constructionQueue.length > 1 ? ` +${city.constructionQueue.length - 1}` : "";
+        constructing = `${q.buildingType} (${pct}%)${extra}`;
         constructStyle = CELL_STYLE;
       }
 
@@ -217,6 +218,16 @@ export class WorldNationalScreen {
       const relation = localPlayer?.diplomacy.get(pid) ?? "war";
       const raceName = player.raceId.charAt(0).toUpperCase() + player.raceId.slice(1);
 
+      // Count cities and army strength for this player
+      let playerCityCount = 0;
+      for (const c of state.cities.values()) {
+        if (c.owner === pid) playerCityCount++;
+      }
+      let playerArmyStrength = 0;
+      for (const a of state.armies.values()) {
+        if (a.owner === pid) playerArmyStrength += armyUnitCount(a);
+      }
+
       // Player label
       const pLabel = new Text({
         text: `${pid.toUpperCase()} (${raceName})`,
@@ -226,24 +237,33 @@ export class WorldNationalScreen {
       pLabel.y = y;
       this._content.addChild(pLabel);
 
+      // Stats: cities & army strength
+      const statsLabel = new Text({
+        text: `Cities: ${playerCityCount}  Army: ${playerArmyStrength} units`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x8888aa }),
+      });
+      statsLabel.x = tableX + 160;
+      statsLabel.y = y;
+      this._content.addChild(statsLabel);
+
       // Relation label
       const relColor = relation === "war" ? 0xff4444 : 0x44cc44;
       const relLabel = new Text({
         text: relation === "war" ? "AT WAR" : "PEACE",
         style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fontWeight: "bold", fill: relColor }),
       });
-      relLabel.x = tableX + 200;
+      relLabel.x = tableX + 380;
       relLabel.y = y;
       this._content.addChild(relLabel);
 
       // Toggle button
-      const toggleLabel = relation === "war" ? "Offer Peace" : "Declare War";
+      const toggleLabel = relation === "war" ? "Propose Peace" : "Declare War";
       const toggleColor = relation === "war" ? 0x336633 : 0x663333;
       const toggleBtn = new Container();
       toggleBtn.eventMode = "static";
       toggleBtn.cursor = "pointer";
       const tbg = new Graphics();
-      tbg.roundRect(0, 0, 110, 22, 4);
+      tbg.roundRect(0, 0, 120, 22, 4);
       tbg.fill({ color: toggleColor });
       tbg.stroke({ color: relation === "war" ? 0x55aa55 : 0xaa5555, width: 1 });
       toggleBtn.addChild(tbg);
@@ -254,7 +274,7 @@ export class WorldNationalScreen {
       tTxt.x = 8;
       tTxt.y = 3;
       toggleBtn.addChild(tTxt);
-      toggleBtn.x = tableX + 320;
+      toggleBtn.x = tableX + 480;
       toggleBtn.y = y;
 
       const targetPid = pid;

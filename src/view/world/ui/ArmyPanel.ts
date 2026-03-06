@@ -6,7 +6,7 @@
 import { Container, Graphics, Text, TextStyle, Sprite } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
-import type { WorldArmy } from "@world/state/WorldArmy";
+import type { WorldArmy, ArmyUnit } from "@world/state/WorldArmy";
 import { armyUnitCount } from "@world/state/WorldArmy";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { IMPROVEMENT_DEFINITIONS, type ImprovementType } from "@world/config/ResourceDefs";
@@ -69,6 +69,14 @@ export class ArmyPanel {
   onConjure: ((armyId: string) => void) | null = null;
   /** Called when the player renames the army. */
   onRename: ((armyId: string, newName: string) => void) | null = null;
+  /** Called when the player splits the army. */
+  onSplit: ((armyId: string, units: ArmyUnit[]) => void) | null = null;
+  /** Called when the player merges with another army. */
+  onMerge: ((armyId: string, targetArmyId: string) => void) | null = null;
+
+  /** Split mode state. */
+  private _splitMode = false;
+  private _splitUnits = new Map<string, number>();
 
   /** Rename input state. */
   private _renaming = false;
@@ -97,6 +105,8 @@ export class ArmyPanel {
     this._army = null;
     this._state = null;
     this.selectedArmyId = null;
+    this._splitMode = false;
+    this._splitUnits.clear();
     this._stopRename();
   }
 
@@ -329,11 +339,122 @@ export class ArmyPanel {
       y += 32;
     }
 
+    // Split / Merge section (non-garrison only)
+    if (!army.isGarrison) {
+      if (this._splitMode) {
+        y = this._buildSplitView(army, y);
+      } else {
+        // Split button (need at least 2 total units)
+        const canSplit = armyUnitCount(army) >= 2;
+        if (canSplit) {
+          const splitBtn = _makeButton("SPLIT", 12, y, (PANEL_W - 28) / 2, 26, () => {
+            this._splitMode = true;
+            this._splitUnits.clear();
+            this._rebuild();
+          }, 0x223344, 0x4488aa);
+          this._contentContainer.addChild(splitBtn);
+
+          // Merge button (if friendly army on same hex)
+          const mergeTargets = this._findMergeTargets(army);
+          if (mergeTargets.length > 0) {
+            const mergeBtn = _makeButton("MERGE", 12 + (PANEL_W - 28) / 2 + 4, y, (PANEL_W - 28) / 2, 26, () => {
+              this.onMerge?.(army.id, mergeTargets[0].id);
+            }, 0x224422, 0x44aa44);
+            this._contentContainer.addChild(mergeBtn);
+          }
+          y += 32;
+        }
+      }
+    }
+
     // Position panel on left side, below HUD
     this._contentContainer.x = 10;
     this._contentContainer.y = 64;
 
     this.container.addChild(this._contentContainer);
+  }
+
+  private _findMergeTargets(army: WorldArmy): WorldArmy[] {
+    if (!this._state) return [];
+    const targets: WorldArmy[] = [];
+    for (const other of this._state.armies.values()) {
+      if (other.id === army.id) continue;
+      if (other.isGarrison) continue;
+      if (other.owner !== army.owner) continue;
+      if (other.position.q !== army.position.q || other.position.r !== army.position.r) continue;
+      targets.push(other);
+    }
+    return targets;
+  }
+
+  private _buildSplitView(army: WorldArmy, y: number): number {
+    const header = new Text({ text: "Split Army", style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fontWeight: "bold", fill: 0xaaddff }) });
+    header.x = 12;
+    header.y = y;
+    this._contentContainer.addChild(header);
+    y += 20;
+
+    for (const u of army.units) {
+      const selected = this._splitUnits.get(u.unitType) ?? 0;
+
+      const label = new Text({ text: `${u.unitType} x${u.count}`, style: INFO_STYLE });
+      label.x = 12;
+      label.y = y + 3;
+      this._contentContainer.addChild(label);
+
+      const minusBtn = _makeButton("-", PANEL_W - 120, y, 28, 22, (e?: any) => {
+        const step = e?.ctrlKey ? 10 : e?.shiftKey ? 5 : 1;
+        const cur = this._splitUnits.get(u.unitType) ?? 0;
+        this._splitUnits.set(u.unitType, Math.max(0, cur - step));
+        this._rebuild();
+      });
+      this._contentContainer.addChild(minusBtn);
+
+      const countText = new Text({
+        text: `${selected}`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xffcc44, fontWeight: "bold" }),
+      });
+      countText.x = PANEL_W - 82;
+      countText.y = y + 4;
+      this._contentContainer.addChild(countText);
+
+      const plusBtn = _makeButton("+", PANEL_W - 60, y, 28, 22, (e?: any) => {
+        const step = e?.ctrlKey ? 10 : e?.shiftKey ? 5 : 1;
+        const cur = this._splitUnits.get(u.unitType) ?? 0;
+        // Can't split all — must leave at least 1 unit total in source
+        const maxSplit = u.count - (armyUnitCount(army) - _totalSelected(this._splitUnits) <= 1 ? 1 : 0);
+        this._splitUnits.set(u.unitType, Math.min(Math.max(0, maxSplit), cur + step));
+        this._rebuild();
+      });
+      this._contentContainer.addChild(plusBtn);
+      y += 28;
+    }
+
+    y += 8;
+    const totalSel = _totalSelected(this._splitUnits);
+    if (totalSel > 0 && totalSel < armyUnitCount(army)) {
+      const confirmBtn = _makeButton(`SPLIT (${totalSel} units)`, 12, y, PANEL_W - 24, 26, () => {
+        const units: ArmyUnit[] = [];
+        for (const [unitType, count] of this._splitUnits) {
+          if (count > 0) units.push({ unitType, count, hpPerUnit: 100 });
+        }
+        this.onSplit?.(army.id, units);
+        this._splitMode = false;
+        this._splitUnits.clear();
+      }, 0x224422, 0x44aa44);
+      this._contentContainer.addChild(confirmBtn);
+      y += 32;
+    }
+
+    const cancelBtn = _makeButton("CANCEL", 12, y, PANEL_W - 24, 24, () => {
+      this._splitMode = false;
+      this._splitUnits.clear();
+      this._rebuild();
+    }, 0x332222, 0xaa4444);
+    this._contentContainer.addChild(cancelBtn);
+    y += 30;
+
+    return y;
   }
 }
 
@@ -404,6 +525,12 @@ export function getArmyMageTier(army: WorldArmy): number {
     if (idx >= 0 && u.count > 0) maxTier = Math.max(maxTier, idx + 1);
   }
   return maxTier;
+}
+
+function _totalSelected(m: Map<string, number>): number {
+  let t = 0;
+  for (const v of m.values()) t += v;
+  return t;
 }
 
 /** Singleton instance. */

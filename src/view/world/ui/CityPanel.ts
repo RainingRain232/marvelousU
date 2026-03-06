@@ -10,10 +10,12 @@ import type { WorldCity } from "@world/state/WorldCity";
 import {
   getAvailableBuildings,
   getRecruitableUnits,
+  cancelConstruction,
 } from "@world/systems/CitySystem";
 import { getWorldBuildingDef } from "@world/config/WorldBuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { calculateCityYields } from "@world/systems/WorldEconomySystem";
+import { WorldBalance } from "@world/config/WorldConfig";
 import { UnitType, UnitState } from "@/types";
 import { animationManager } from "@view/animation/AnimationManager";
 
@@ -260,8 +262,14 @@ export class CityPanel {
   private _buildNormalView(city: WorldCity, state: WorldState, y: number): number {
     // Info
     const yields = calculateCityYields(city, state);
+    const growthThreshold = WorldBalance.FOOD_FOR_GROWTH_BASE + city.population * WorldBalance.FOOD_FOR_GROWTH_SCALE;
+    const netFood = yields.food - city.population * WorldBalance.FOOD_PER_POPULATION;
+    const growthTurns = netFood > 0 ? Math.ceil((growthThreshold - city.foodStockpile) / netFood) : -1;
+    const growthStr = growthTurns > 0 ? `${growthTurns}t` : netFood <= 0 ? "stalled" : "1t";
+
     const info = [
       `Population: ${city.population}`,
+      `Growth: ${Math.floor(city.foodStockpile)}/${growthThreshold} food (${growthStr})`,
       `Gold/turn: +${yields.gold}  Food/turn: +${yields.food}`,
       `Production/turn: +${yields.production}`,
       city.isUnderSiege ? "UNDER SIEGE" : "",
@@ -295,30 +303,40 @@ export class CityPanel {
       y += 16;
     }
 
-    // Under construction
-    if (city.constructionQueue) {
-      const def = getWorldBuildingDef(city.constructionQueue.buildingType as string);
-      const progress = Math.floor(
-        (city.constructionQueue.invested / city.constructionQueue.cost) * 100,
-      );
+    // Construction queue
+    const production = city.population * 2;
+    for (let i = 0; i < city.constructionQueue.length; i++) {
+      const item = city.constructionQueue[i];
+      const def = getWorldBuildingDef(item.buildingType as string);
+      const progress = Math.floor((item.invested / item.cost) * 100);
+      const turnsLeft = Math.ceil((item.cost - item.invested) / production);
+      const prefix = i === 0 ? "Building" : `Queue #${i + 1}`;
       const cText = new Text({
-        text: `  Building: ${def?.name ?? "?"} (${progress}%)`,
+        text: `  ${prefix}: ${def?.name ?? "?"} (${progress}%, ${turnsLeft}t)`,
         style: INFO_STYLE,
       });
       cText.x = 12;
       cText.y = y;
       this._contentContainer.addChild(cText);
-      y += 16;
+
+      // Cancel button
+      const cancelBtn = _makeButton("X", PANEL_W - 40, y, 20, 16, () => {
+        cancelConstruction(city, i);
+        this._rebuild();
+      }, 0x332222, 0xaa4444);
+      this._contentContainer.addChild(cancelBtn);
+      y += 18;
     }
 
     y += 6;
 
     // Available to build
-    if (!city.constructionQueue && !city.isUnderSiege) {
+    if (!city.isUnderSiege) {
       const available = getAvailableBuildings(city, state);
       for (const def of available.slice(0, 8)) {
+        const turnsEst = Math.ceil(def.productionCost / production);
         const btn = _makeButton(
-          `${def.name} (${def.productionCost}p)`,
+          `${def.name} (${def.productionCost}p, ${turnsEst}t)`,
           16,
           y,
           PANEL_W - 32,

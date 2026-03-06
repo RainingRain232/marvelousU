@@ -43,8 +43,8 @@ export interface WorldCity {
 
   /** Buildings completed in this city. */
   buildings: WorldCityBuilding[];
-  /** Current construction project (null = idle). */
-  constructionQueue: ConstructionItem | null;
+  /** Construction queue (first item is active). */
+  constructionQueue: ConstructionItem[];
   /** Units being recruited (multiple batches allowed). */
   recruitmentQueue: RecruitmentEntry[];
 
@@ -109,7 +109,7 @@ export function createWorldCity(
     population: 1,
     foodStockpile: 0,
     buildings: [],
-    constructionQueue: null,
+    constructionQueue: [],
     recruitmentQueue: [],
     workedTiles: [position],
     territory: [position],

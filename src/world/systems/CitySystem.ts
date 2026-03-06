@@ -41,37 +41,46 @@ export function getAvailableBuildings(
   state: WorldState,
 ): WorldBuildingDef[] {
   const built = new Set<string>(city.buildings.map((b) => b.type));
-  const underConstruction = city.constructionQueue?.buildingType;
+  const queued = new Set<string>(city.constructionQueue.map((q) => q.buildingType));
   const player = state.players.get(city.owner);
 
   return getAllWorldBuildingDefs().filter((def) => {
     // Already built
     if (built.has(def.type)) return false;
-    // Currently building
-    if (underConstruction === def.type) return false;
+    // Already in queue
+    if (queued.has(def.type)) return false;
     // Research prerequisite check
     if (def.researchRequired && player && !hasResearch(player, def.researchRequired)) return false;
     return true;
   });
 }
 
-/** Start constructing a building. */
+/** Start constructing a building (adds to queue). */
 export function startConstruction(
   city: WorldCity,
   buildingType: string,
 ): boolean {
-  if (city.constructionQueue) return false; // already building
   if (city.isUnderSiege) return false;
 
   const def = getWorldBuildingDef(buildingType);
   if (!def) return false;
 
-  city.constructionQueue = {
+  // Don't allow duplicates in queue
+  if (city.constructionQueue.some((q) => q.buildingType === buildingType)) return false;
+
+  city.constructionQueue.push({
     buildingType: buildingType as any,
     invested: 0,
     cost: def.productionCost,
-  };
+  });
 
+  return true;
+}
+
+/** Remove an item from the construction queue by index. */
+export function cancelConstruction(city: WorldCity, index: number): boolean {
+  if (index < 0 || index >= city.constructionQueue.length) return false;
+  city.constructionQueue.splice(index, 1);
   return true;
 }
 

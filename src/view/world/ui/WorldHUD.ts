@@ -9,6 +9,8 @@ import { currentPlayer, WorldPhase } from "@world/state/WorldState";
 import { calculateCityYields } from "@world/systems/WorldEconomySystem";
 import { WorldBalance } from "@world/config/WorldConfig";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import { getResearchDef } from "@world/config/ResearchDefs";
+import { magicTierCost } from "@world/config/MagicResearchDefs";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -56,6 +58,9 @@ export class WorldHUD {
   private _scienceText!: Text;
   private _crystalText!: Text;
   private _crystalContainer!: Container;
+  private _researchText!: Text;
+  private _researchBarBg!: Graphics;
+  private _researchBarFill!: Graphics;
   private _endTurnBtn!: Container;
   private _endTurnBg!: Graphics;
   private _screenW = 800;
@@ -77,6 +82,7 @@ export class WorldHUD {
     this._screenH = vm.screenHeight;
 
     this._buildTopBar();
+    this._buildResearchInfoBar();
     this._buildResearchBtn();
     this._buildMenuBtn();
     this._buildEndTurnBtn();
@@ -132,6 +138,36 @@ export class WorldHUD {
 
     // Morgaine crystals
     this._crystalText.text = `${player.morgaineCrystals}/3`;
+
+    // Research progress
+    let researchStr = "";
+    if (player.activeResearch) {
+      const def = getResearchDef(player.activeResearch);
+      const total = def?.turnsToComplete ?? 1;
+      const pct = Math.min(1, player.researchProgress / total);
+      researchStr = `Research: ${player.activeResearch} (${player.researchTurnsLeft}t)`;
+      this._researchBarFill.clear();
+      this._researchBarFill.rect(0, 0, 200 * pct, 4);
+      this._researchBarFill.fill({ color: 0x44aa44 });
+    }
+    if (player.activeMagicResearch) {
+      const { school, tier } = player.activeMagicResearch;
+      const cost = magicTierCost(tier);
+      const pct = Math.min(1, player.magicResearchProgress / cost);
+      const magicTurns = pct < 1 ? Math.ceil((cost - player.magicResearchProgress) / Math.max(0.01, player.magicResearchRatio)) : 0;
+      const magicStr = `Magic: ${school} T${tier} (${magicTurns}t)`;
+      researchStr = researchStr ? `${researchStr}  |  ${magicStr}` : magicStr;
+      if (!player.activeResearch) {
+        this._researchBarFill.clear();
+        this._researchBarFill.rect(0, 0, 200 * pct, 4);
+        this._researchBarFill.fill({ color: 0x8888ff });
+      }
+    }
+    if (!researchStr) {
+      researchStr = "No research active";
+      this._researchBarFill.clear();
+    }
+    this._researchText.text = researchStr;
 
     // Only show End Turn button during player turn
     this._endTurnBtn.visible = state.phase === WorldPhase.PLAYER_TURN;
@@ -254,6 +290,38 @@ export class WorldHUD {
 
     bar.x = 10;
     bar.y = 10;
+    this.container.addChild(bar);
+  }
+
+  private _buildResearchInfoBar(): void {
+    const bar = new Container();
+
+    const bg = new Graphics();
+    bg.roundRect(0, 0, 500, 20, 4);
+    bg.fill({ color: 0x000000, alpha: 0.5 });
+    bar.addChild(bg);
+
+    this._researchText = new Text({
+      text: "No research active",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x88aa88 }),
+    });
+    this._researchText.x = 8;
+    this._researchText.y = 2;
+    bar.addChild(this._researchText);
+
+    // Progress bar
+    this._researchBarBg = new Graphics();
+    this._researchBarBg.rect(0, 0, 200, 4);
+    this._researchBarBg.fill({ color: 0x333333 });
+    this._researchBarBg.position.set(8, 16);
+    bar.addChild(this._researchBarBg);
+
+    this._researchBarFill = new Graphics();
+    this._researchBarFill.position.set(8, 16);
+    bar.addChild(this._researchBarFill);
+
+    bar.x = 10;
+    bar.y = 58;
     this.container.addChild(bar);
   }
 

@@ -182,7 +182,7 @@ function _manageCityBuilding(
   state: WorldState,
   strategy: AIStrategy,
 ): void {
-  if (city.constructionQueue || city.isUnderSiege) return;
+  if (city.constructionQueue.length > 0 || city.isUnderSiege) return;
 
   const available = getAvailableBuildings(city, state);
   if (available.length === 0) return;
