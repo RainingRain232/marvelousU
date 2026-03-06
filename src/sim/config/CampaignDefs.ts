@@ -82,10 +82,23 @@ export interface ScenarioDef {
    * If omitted, the AI uses default (no race applied).
    */
   aiRace?: RaceId;
+  /**
+   * Override map size for this scenario.
+   * If omitted, uses the player's chosen map size.
+   */
+  mapSizeLabel?: "STANDARD" | "DOUBLE" | "TRIPLE" | "QUADRUPLE" | "QUINTUPLE";
+  /**
+   * Number of players (2-4). If omitted, defaults to 2.
+   */
+  playerCount?: number;
+  /**
+   * Player IDs that are allied with p1. E.g. ["p3"] makes p3 friendly.
+   */
+  alliedPlayerIds?: string[];
 }
 
 // ---------------------------------------------------------------------------
-// Definitions — 26 scenarios
+// Definitions — 25 scenarios
 // ---------------------------------------------------------------------------
 
 export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
@@ -162,13 +175,16 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     number: 7,
     title: "The Long Road",
     briefing:
-      "The enemy has fortified their position with towers and a ring of pikemen. Break through their lines. Your archery range will let you mass ranged units for the first time.",
+      "The road ahead stretches far across a vast territory. A friendly pixie colony in the northeast has pledged their swarm to your cause — their speed and numbers may prove invaluable. Together, push back the enemy and claim this land.",
     victoryCode: "7193",
     unlocks: {
       units: [UnitType.LONGBOWMAN, UnitType.CROSSBOWMAN, UnitType.QUESTING_KNIGHT],
       buildings: [BuildingType.STABLES],
       items: ["steel_shield"],
     },
+    mapSizeLabel: "DOUBLE",
+    playerCount: 3,
+    alliedPlayerIds: ["p3"],
   },
   {
     number: 8,
@@ -367,14 +383,6 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
   {
     number: 24,
-    title: "The Final War",
-    briefing:
-      "Every unit. Every building. Every hero. All of it comes down to this last engagement. The enemy commander has had as long as you to prepare. There will be no second chance. Win — and the realm is yours forever.",
-    victoryCode: "0000",
-    unlocks: {},
-  },
-  {
-    number: 25,
     title: "The Road to Avalon",
     briefing:
       "The path to Avalon lies through a vast battlefield. You have amassed a war chest of 30,000 gold and every unit in the realm answers your call. But the Men of the East have rallied 40,000 gold worth of disciplined soldiers. Spend wisely during preparation — this fight will test everything you have learned.",
@@ -385,7 +393,7 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     aiRace: "man",
   },
   {
-    number: 26,
+    number: 25,
     title: "The Last Stand",
     briefing:
       "Merlin has foreseen a cataclysmic battle. The enemy has summoned ancient giants and archmages of terrifying power — tier VII warriors that can crush entire armies. You have everything at your disposal and extra gold to prepare, but do not underestimate what approaches. This is the very hard end battle.",

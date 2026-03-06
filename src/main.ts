@@ -1404,6 +1404,24 @@ function _setupScenario24(state: GameState, mapW: number, mapH: number): void {
 }
 
 /**
+ * Scenario 7 — "The Long Road"
+ * P3 (allied with P1) starts with 20 pixies near their base in the NE corner.
+ */
+function _setupScenario7(state: GameState, mapW: number, _mapH: number): void {
+  // P3's base is in the NE corner — spawn pixies near it
+  const baseX = mapW - 8;
+  const baseY = 4;
+  for (let i = 0; i < 20; i++) {
+    const u = createUnit({
+      type: UnitType.PIXIE,
+      owner: "p3",
+      position: { x: baseX + (i % 5), y: baseY + Math.floor(i / 5) },
+    });
+    state.units.set(u.id, u);
+  }
+}
+
+/**
  * ROGUELIKE mode: randomly disable 50% of non-castle building types.
  * Mirrors PhaseSystem logic but runs at boot for the first round.
  */
@@ -1737,13 +1755,24 @@ async function _bootCampaign(
   leaderId: LeaderId,
   raceId: RaceId,
 ): Promise<void> {
+  const scenarioDef = getScenario(scenarioNum);
+  // Override map size if the scenario specifies one
+  let effectiveMapSize = mapSize;
+  if (scenarioDef?.mapSizeLabel) {
+    const override = MAP_SIZES.find((m) => m.label === scenarioDef.mapSizeLabel);
+    if (override) effectiveMapSize = override;
+  }
   await _bootGame(
     p2IsAI,
-    mapSize,
+    effectiveMapSize,
     GameMode.CAMPAIGN,
     leaderId,
     raceId,
     scenarioNum,
+    undefined,
+    undefined,
+    scenarioDef?.playerCount ?? 2,
+    scenarioDef?.alliedPlayerIds ?? [],
   );
 }
 
@@ -4936,12 +4965,16 @@ async function _bootGame(
         upgrades.push({ type: upgradeType, level: 1 });
       }
     }
+    // Scenario 7: spawn 20 pixies for allied p3
+    if (scenarioNum === 7) {
+      _setupScenario7(state, mapSize.width, mapSize.height);
+    }
     // Scenario 5: spawn Dark Savant + enemies + enemy towers
     if (scenarioNum === 5) {
       _setupScenario23(state, mapSize.width, mapSize.height);
     }
-    // Scenario 26: spawn tier 7 AI units at P2's corners
-    if (scenarioNum === 26) {
+    // Scenario 25: spawn tier 7 AI units at P2's corners
+    if (scenarioNum === 25) {
       _setupScenario24(state, mapSize.width, mapSize.height);
     }
   }
@@ -4975,6 +5008,14 @@ async function _bootGame(
     setTimeout(() => {
       viewManager.camera.startCinematicZoom(zoomLevel);
     }, 1000);
+  }
+
+  // Scenario 7: zoom out to show the full double-size map, then zoom in
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 7) {
+    viewManager.camera.fitMap();
+    setTimeout(() => {
+      viewManager.camera.startCinematicZoom(1.5);
+    }, 1500);
   }
 
   // 3. Grid background & environment
@@ -5252,8 +5293,8 @@ async function _bootGame(
     );
   }
 
-  // Scenario 26: Merlin warns the player about the very hard end battle
-  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 26) {
+  // Scenario 25: Merlin warns the player about the very hard end battle
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 25) {
     simLoop.pause();
     _showMerlinWaveCompliment(
       "Beware, commander! I sense a terrible darkness gathering. The enemy has unleashed ancient giants and archmages of unimaginable power. This is the very hard end battle — prepare yourself, for there will be no mercy!",
