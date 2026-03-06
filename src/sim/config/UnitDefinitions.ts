@@ -2483,4 +2483,23 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       "A pirate sharpshooter armed with a hand cannon. Devastating single shots, but painfully slow to reload.",
     tier: 1,
   },
+  // ---------------------------------------------------------------------------
+  // Elements faction unit
+  // ---------------------------------------------------------------------------
+  [UnitType.ELEMENTAL_AVATAR]: {
+    type: UnitType.ELEMENTAL_AVATAR,
+    cost: 800,
+    hp: 250,
+    atk: 30,
+    attackSpeed: 0.9,
+    speed: 1.0,
+    range: 4,
+    spawnTime: 7,
+    abilityTypes: [AbilityType.FIREBALL, AbilityType.FIRE_AURA],
+    spriteKey: "fireElemental",
+    element: "fire",
+    description:
+      "A towering convergence of all primal elements — fire, ice, storm, and void swirl within its form. Hurls fireballs and radiates searing heat.",
+    tier: 1,
+  },
 };

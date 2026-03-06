@@ -446,11 +446,16 @@ function _xpForNextLevel(unit: Unit): number {
   return Math.floor(baseCost * Math.pow(1.3, unit.level));
 }
 
+/** Maximum veterancy level a unit can reach. */
+const MAX_LEVEL = 5;
+
 /**
  * Award XP equal to the killed unit's gold cost to the killer.
  * Handles multi-level-ups if enough XP is accumulated.
  */
 function _awardXp(killer: Unit, killed: Unit): void {
+  if (killer.level >= MAX_LEVEL) return;
+
   const killedDef = UNIT_DEFINITIONS[killed.type];
   const xpGain = killedDef.cost;
   if (xpGain <= 0) return;
@@ -459,7 +464,7 @@ function _awardXp(killer: Unit, killed: Unit): void {
 
   // Check for level-up(s) — a single kill could grant multiple levels
   let levelled = false;
-  while (killer.xp >= _xpForNextLevel(killer)) {
+  while (killer.level < MAX_LEVEL && killer.xp >= _xpForNextLevel(killer)) {
     killer.xp -= _xpForNextLevel(killer);
     _applyLevelUp(killer);
     levelled = true;

@@ -8,6 +8,7 @@ import {
   currentPlayer,
   nextId,
 } from "@world/state/WorldState";
+import { RESEARCH_DEFINITIONS } from "@world/config/ResearchDefs";
 import type { WorldCity } from "@world/state/WorldCity";
 import { createWorldArmy } from "@world/state/WorldArmy";
 import { processEconomy } from "@world/systems/WorldEconomySystem";
@@ -115,17 +116,78 @@ function _advanceToNextPlayer(state: WorldState): void {
     state.phase = WorldPhase.PLAYER_TURN;
   }
 
-  // Check victory — if only one player remains alive
+  // Check all victory conditions — domination, city control, research
+  if (_checkVictoryConditions(state)) return;
+
+  beginTurn(state);
+}
+
+/**
+ * Check all victory conditions. If one is met, sets `state.winnerId` and
+ * `state.phase = WorldPhase.GAME_OVER` and returns true. Otherwise false.
+ *
+ * Conditions checked (in order):
+ *  1. Domination   — only 1 alive player remains.
+ *  2. City Control — a single player owns every city on the map.
+ *  3. Research     — a player has completed at least one tech from each of
+ *                    the 5 research branches (military, magic, economic,
+ *                    siege, buildings).
+ */
+function _checkVictoryConditions(state: WorldState): boolean {
+  // ---- 1. Domination: only one (or zero) alive player remains ----
   const alive = state.playerOrder.filter(
     (pid) => state.players.get(pid)!.isAlive,
   );
   if (alive.length <= 1) {
     state.winnerId = alive[0] ?? null;
     state.phase = WorldPhase.GAME_OVER;
-    return;
+    return true;
   }
 
-  beginTurn(state);
+  // ---- 2. City Control: one player owns ALL cities on the map ----
+  if (state.cities.size > 0) {
+    const cities = Array.from(state.cities.values());
+    const firstOwner = cities[0].owner;
+    const allSameOwner = cities.every((c) => c.owner === firstOwner);
+    if (allSameOwner && state.players.get(firstOwner)?.isAlive) {
+      state.winnerId = firstOwner;
+      state.phase = WorldPhase.GAME_OVER;
+      return true;
+    }
+  }
+
+  // ---- 3. Research Victory: a player has completed at least one tech
+  //         from each of the 5 research branches ----
+  const ALL_BRANCHES = ["military", "magic", "economic", "siege", "buildings"] as const;
+
+  // Pre-build a lookup: branchName → set of research IDs in that branch.
+  // We compute this once per check from the static definitions.
+  const branchIds: Record<string, Set<string>> = {};
+  for (const branch of ALL_BRANCHES) {
+    branchIds[branch] = new Set();
+  }
+  for (const def of Object.values(RESEARCH_DEFINITIONS)) {
+    branchIds[def.branch]?.add(def.id);
+  }
+
+  for (const pid of alive) {
+    const player = state.players.get(pid)!;
+    const completed = player.completedResearch;
+    const hasAllBranches = ALL_BRANCHES.every((branch) => {
+      // Player has completed at least one tech that belongs to this branch
+      for (const id of branchIds[branch]) {
+        if (completed.has(id)) return true;
+      }
+      return false;
+    });
+    if (hasAllBranches) {
+      state.winnerId = pid;
+      state.phase = WorldPhase.GAME_OVER;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /** Advance a city's construction queue. */

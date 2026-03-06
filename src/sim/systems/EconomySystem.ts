@@ -17,6 +17,7 @@ import { GamePhase, BuildingState } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { EventBus } from "@sim/core/EventBus";
+import { getDifficultySettings } from "@sim/config/DifficultyConfig";
 
 export const EconomySystem = {
   update(state: GameState, dt: number): void {
@@ -25,8 +26,16 @@ export const EconomySystem = {
 
     const isBattle = state.phase === GamePhase.BATTLE;
 
+    const diffSettings = getDifficultySettings();
+
     for (const player of state.players.values()) {
-      const rate = _incomeRate(state, player.id, isBattle);
+      let rate = _incomeRate(state, player.id, isBattle);
+
+      // Apply AI gold income multiplier based on difficulty
+      if (player.isAI) {
+        rate *= diffSettings.aiGoldMultiplier;
+      }
+
       if (rate > 0) {
         player.goldAccum += rate * dt;
         const whole = Math.floor(player.goldAccum);

@@ -20,6 +20,7 @@ import { turretArrowFX } from "@view/fx/TurretArrowFX";
 import { turretLightningFX } from "@view/fx/TurretLightningFX";
 import { arrowFX } from "@view/fx/ArrowFX";
 import { catapultBoulderFX } from "@view/fx/CatapultBoulderFX";
+import { warpFX } from "@view/fx/WarpFX";
 import { eventBanner } from "@view/ui/EventBanner";
 import { distortionFX } from "@view/fx/DistortionFX";
 import { healFX } from "@view/fx/HealFX";
@@ -43,6 +44,10 @@ import { armoryScreen } from "@view/ui/ArmoryScreen";
 import { scenarioSelectScreen } from "@view/ui/ScenarioSelectScreen";
 import { campaignIntroScreen } from "@view/ui/CampaignIntroScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
+import { battleStatsScreen } from "@view/ui/BattleStatsScreen";
+import { battleStatsTracker } from "@sim/systems/BattleStatsTracker";
+import { settingsScreen } from "@view/ui/SettingsScreen";
+import { hotkeyOverlay } from "@view/ui/HotkeyOverlay";
 import { unitShopScreen } from "@view/ui/UnitShopScreen";
 import type { UnitRoster } from "@view/ui/UnitShopScreen";
 import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
@@ -61,6 +66,7 @@ import { initBases, initBasesMulti } from "@sim/systems/BaseSetup";
 import type { PlayerBaseConfig } from "@sim/systems/BaseSetup";
 import { setAlliance } from "@sim/state/GameState";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { getDifficultySettings } from "@sim/config/DifficultyConfig";
 import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
 import {
@@ -177,6 +183,13 @@ import merlinImgUrl from "@/img/merlin.png";
   // ---------------------------------------------------------------------------
   menuScreen.init(viewManager);
   menuScreen.hide();
+
+  // Settings screen
+  settingsScreen.init(viewManager);
+  settingsScreen.hide();
+
+  // Hotkey help overlay
+  hotkeyOverlay.init(viewManager);
 
   // p2IsAI preference stored here so it is applied when the game boots
   let p2IsAI = true;
@@ -375,6 +388,15 @@ import merlinImgUrl from "@/img/merlin.png";
     await _loadWorldGame();
   };
 
+  menuScreen.onSettings = () => {
+    menuScreen.hide();
+    settingsScreen.onBack = () => {
+      settingsScreen.hide();
+      menuScreen.show();
+    };
+    settingsScreen.show();
+  };
+
   const _roomManager = new RoomManager();
 
   function _showMultiplayerPrompt(): void {
@@ -552,6 +574,8 @@ import merlinImgUrl from "@/img/merlin.png";
     viewManager.onUpdate((_s, dt) => distortionFX.update(dt));
     healFX.init(viewManager);
     viewManager.onUpdate((_s, dt) => healFX.update(dt));
+    warpFX.init(viewManager);
+    viewManager.onUpdate((_s, dt) => warpFX.update(dt));
     damageNumberFX.init(viewManager, state);
     viewManager.onUpdate((_s, dt) => damageNumberFX.update(dt));
     flagFX.init(viewManager);
@@ -561,6 +585,10 @@ import merlinImgUrl from "@/img/merlin.png";
     auraFX.init(viewManager);
     viewManager.onUpdate((_s, dt) => auraFX.update(dt));
     eventBanner.init(viewManager);
+
+    // Battle stats
+    battleStatsTracker.init(state);
+    battleStatsScreen.init(viewManager, state);
 
     // Victory screen
     victoryScreen.init(viewManager, state);
@@ -4594,21 +4622,23 @@ async function _bootGame(
 
   const state = createGameState(mapSize.width, mapSize.height, 0, gameMode, effectivePlayerCount);
 
+  const aiStartGold = Math.floor(startGold * getDifficultySettings().aiStartGoldMultiplier);
+
   if (effectivePlayerCount <= 2) {
     // Classic 2-player layout
     state.players.set("p1", createPlayerState("p1", Direction.WEST, startGold, "nw", false));
-    state.players.set("p2", createPlayerState("p2", Direction.EAST, startGold, "se", p2IsAI));
+    state.players.set("p2", createPlayerState("p2", Direction.EAST, p2IsAI ? aiStartGold : startGold, "se", p2IsAI));
     const basePos = _computeBasePositions(mapSize.width, mapSize.height);
     initBases(state, { westPlayerId: "p1", eastPlayerId: "p2", ...basePos });
   } else {
     // Multi-player layout (3-4 players at corners)
     state.players.set("p1", createPlayerState("p1", Direction.EAST, startGold, "nw", false));
-    state.players.set("p2", createPlayerState("p2", Direction.WEST, startGold, "se", true));
+    state.players.set("p2", createPlayerState("p2", Direction.WEST, aiStartGold, "se", true));
     if (effectivePlayerCount >= 3) {
-      state.players.set("p3", createPlayerState("p3", Direction.WEST, startGold, "ne", true));
+      state.players.set("p3", createPlayerState("p3", Direction.WEST, aiStartGold, "ne", true));
     }
     if (effectivePlayerCount >= 4) {
-      state.players.set("p4", createPlayerState("p4", Direction.EAST, startGold, "sw", true));
+      state.players.set("p4", createPlayerState("p4", Direction.EAST, aiStartGold, "sw", true));
     }
     const configs = _computeMultiBasePositions(mapSize.width, mapSize.height, effectivePlayerCount);
     initBasesMulti(state, configs);
@@ -4882,6 +4912,11 @@ async function _bootGame(
     victoryScreen.waveNumber = 0;
   }
   victoryScreen.init(viewManager, state);
+
+  // Battle stats
+  battleStatsTracker.reset();
+  battleStatsTracker.init(state);
+  battleStatsScreen.init(viewManager, state);
 
   // Wave mode: "NEXT WAVE" button handler
   if (_waveState) {

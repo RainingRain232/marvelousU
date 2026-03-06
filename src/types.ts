@@ -194,6 +194,8 @@ export enum UnitType {
   // Pirate faction
   PIRATE_CAPTAIN = "pirate_captain",
   CORSAIR_GUNNER = "corsair_gunner",
+  // Elements faction
+  ELEMENTAL_AVATAR = "elemental_avatar",
 }
 
 export enum BuildingType {

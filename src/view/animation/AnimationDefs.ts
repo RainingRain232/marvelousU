@@ -803,4 +803,10 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 8,
     dieFps: 7,
   }),
+  [UnitType.ELEMENTAL_AVATAR]: buildDef("fireElemental", {
+    idleFps: 6,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 10,
+  }),
 };

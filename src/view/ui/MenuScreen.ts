@@ -6,6 +6,7 @@ import type { ViewManager } from "@view/ViewManager";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { GameMode, MapType } from "@/types";
 import { hasWorldSave } from "@world/state/WorldSerialization";
+import { Difficulty, DIFFICULTY_SETTINGS, setDifficulty } from "@sim/config/DifficultyConfig";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -251,6 +252,9 @@ export class MenuScreen {
   private _dmgToggleBg!: Graphics;
   private _dmgToggleLabel!: Text;
 
+  private _selectedDifficultyIndex = 1; // NORMAL
+  private _difficultyBtns: Array<{ bg: Graphics; label: Text }> = [];
+
   private _selectedTypeIndex = 0;
   private _typeBtns: Array<{ bg: Graphics; label: Text; locked: boolean }> = [];
 
@@ -279,6 +283,7 @@ export class MenuScreen {
   onSpellWiki: (() => void) | null = null;
   onMultiplayer: (() => void) | null = null;
   onLoadWorldGame: (() => void) | null = null;
+  onSettings: (() => void) | null = null;
 
   // Public getters (unchanged API)
   get selectedMapSize(): MapSize {
@@ -509,6 +514,13 @@ export class MenuScreen {
       bottomY += utilBtnH + utilGap;
     }
 
+    // Settings button
+    const settingsW = CW - 40;
+    const settingsBtn = makeActionBtn(settingsW, utilBtnH, "SETTINGS", 0x1a1a1a, 0x666666, 0xaaaaaa, () => this.onSettings?.());
+    settingsBtn.position.set(20, bottomY);
+    card.addChild(settingsBtn);
+    bottomY += utilBtnH + utilGap;
+
     this._screen1CardH = bottomY + 8;
 
     // Redraw card background to final height
@@ -613,6 +625,47 @@ export class MenuScreen {
     card.addChild(dmgBtn);
     this._refreshDmgToggle(TW, TH);
     curY += TH + 12;
+
+    // --- Difficulty selector ---
+    const diffLabel = new Text({ text: "AI DIFFICULTY", style: STYLE_LABEL });
+    diffLabel.position.set(20, curY);
+    card.addChild(diffLabel);
+    curY += 20;
+
+    const DIFFS = [Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD, Difficulty.BRUTAL];
+    const diffGap = 6;
+    const diffBtnW = Math.floor((CW - 40 - diffGap * (DIFFS.length - 1)) / DIFFS.length);
+    const diffBtnH = 26;
+
+    this._difficultyBtns = [];
+    for (let i = 0; i < DIFFS.length; i++) {
+      const diff = DIFFS[i];
+      const settings = DIFFICULTY_SETTINGS[diff];
+      const btn = new Container();
+      btn.eventMode = "static";
+      btn.cursor = "pointer";
+      btn.position.set(20 + i * (diffBtnW + diffGap), curY);
+
+      const bg = new Graphics();
+      btn.addChild(bg);
+
+      const lbl = new Text({ text: settings.label, style: STYLE_SIZE_INACTIVE });
+      lbl.anchor.set(0.5, 0.5);
+      lbl.position.set(diffBtnW / 2, diffBtnH / 2);
+      btn.addChild(lbl);
+
+      const idx = i;
+      btn.on("pointerdown", () => {
+        this._selectedDifficultyIndex = idx;
+        setDifficulty(DIFFS[idx]);
+        this._refreshDifficultyBtns(diffBtnW, diffBtnH);
+      });
+
+      card.addChild(btn);
+      this._difficultyBtns.push({ bg, label: lbl });
+    }
+    this._refreshDifficultyBtns(diffBtnW, diffBtnH);
+    curY += diffBtnH + 12;
 
     // Divider
     card.addChild(
@@ -914,6 +967,24 @@ export class MenuScreen {
       ? "P2: AI  [click to disable]"
       : "P2: HUMAN  [click to enable AI]";
     this._aiToggleLabel.style.fill = active ? 0x88ffaa : 0xff8888;
+  }
+
+  private _refreshDifficultyBtns(w: number, h: number): void {
+    for (let i = 0; i < this._difficultyBtns.length; i++) {
+      const entry = this._difficultyBtns[i];
+      const selected = i === this._selectedDifficultyIndex;
+
+      entry.bg.clear();
+      entry.bg
+        .roundRect(0, 0, w, h, 4)
+        .fill({ color: selected ? 0x1a2e1a : 0x12121e })
+        .roundRect(0, 0, w, h, 4)
+        .stroke({
+          color: selected ? 0xffd700 : 0x334455,
+          width: selected ? 1.5 : 1,
+        });
+      entry.label.style = selected ? STYLE_SIZE_ACTIVE : STYLE_SIZE_INACTIVE;
+    }
   }
 
   private _refreshDmgToggle(w: number, h: number): void {

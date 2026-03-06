@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hex Background Design Examples — 5x5 Grid</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #111122; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px; }
+  h1 { text-align: center; margin-bottom: 6px; color: #c8a86e; font-size: 1.8em; }
+  .subtitle { text-align: center; color: #888; margin-bottom: 28px; font-size: 0.9em; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 28px; max-width: 1200px; margin: 0 auto; }
+  .card {
+    background: #16213e;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #2a2a4a;
+  }
+  .card canvas { display: block; width: 100%; cursor: crosshair; }
+  .card-info { padding: 14px 18px; border-top: 1px solid #2a2a4a; }
+  .card-info h3 { color: #c8a86e; margin-bottom: 4px; font-size: 1.1em; }
+  .card-info p { color: #999; font-size: 0.85em; line-height: 1.4; }
+  .current-label { background: #cc4444; color: white; font-size: 0.7em; padding: 2px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
+  .new-label { background: #44aa44; color: white; font-size: 0.7em; padding: 2px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<h1>Hex Background Designs — 5x5 with Structures</h1>
+<p class="subtitle">Each card shows a 5-ring hex grid with mixed terrains, plus a castle and tower placed on two hexes.</p>
+
+<div class="grid" id="grid"></div>
+
+<script>
+// ─── Hex math ──────────────────────────────────────────────────────────
+const HEX_SIZE = 38;
+const SQRT3 = Math.sqrt(3);
+
+function hexToPixel(q, r) {
+  return { x: HEX_SIZE * SQRT3 * (q + r / 2), y: HEX_SIZE * 1.5 * r };
+}
+function hexCorners(cx, cy, size) {
+  const c = [];
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI / 180 * (60 * i - 30);
+    c.push({ x: cx + size * Math.cos(a), y: cy + size * Math.sin(a) });
+  }
+  return c;
+}
+
+// 5x5 hex grid (radius 2)
+function getGrid() {
+  const tiles = [];
+  for (let q = -2; q <= 2; q++)
+    for (let r = -2; r <= 2; r++)
+      if (Math.abs(q + r) <= 2)
+        tiles.push({ q, r });
+  return tiles;
+}
+
+// Deterministic hash
+function tileHash(a, b, seed = 0) {
+  let h = (a * 374761 + b * 668265 + seed) | 0;
+  h = ((h >>> 16) ^ h) * 0x45d9f3b;
+  h = ((h >>> 16) ^ h) * 0x45d9f3b;
+  return ((h >>> 16) ^ h) >>> 0;
+}
+function hashFloat(a, b, seed = 0) { return (tileHash(a, b, seed) % 10000) / 10000; }
+
+// ─── Color utils ──────────────────────────────────────────────────────
+function hexColor(n) { return '#' + (n & 0xffffff).toString(16).padStart(6, '0'); }
+function lerpColor(c1, c2, t) {
+  const r = ((c1>>16)&0xff)*(1-t)+((c2>>16)&0xff)*t;
+  const g = ((c1>>8)&0xff)*(1-t)+((c2>>8)&0xff)*t;
+  const b = (c1&0xff)*(1-t)+(c2&0xff)*t;
+  return (Math.round(r)<<16)|(Math.round(g)<<8)|Math.round(b);
+}
+function darken(c, f) {
+  return (Math.round(((c>>16)&0xff)*f)<<16)|(Math.round(((c>>8)&0xff)*f)<<8)|Math.round(((c&0xff)*f));
+}
+function lighten(c, f) {
+  const r = Math.min(255, ((c>>16)&0xff)+(255-((c>>16)&0xff))*f);
+  const g = Math.min(255, ((c>>8)&0xff)+(255-((c>>8)&0xff))*f);
+  const b = Math.min(255, (c&0xff)+(255-(c&0xff))*f);
+  return (Math.round(r)<<16)|(Math.round(g)<<8)|Math.round(b);
+}
+
+// ─── Terrain definitions ──────────────────────────────────────────────
+const TERRAINS = {
+  plains:    { color: 0xc8b464, border: 0xa89444 },
+  grassland: { color: 0x6aaa3a, border: 0x4a8a2a },
+  forest:    { color: 0x2d7a3a, border: 0x1d5a2a },
+  hills:     { color: 0x8a7a4a, border: 0x6a5a3a },
+  mountains: { color: 0x888888, border: 0x666666 },
+  water:     { color: 0x3366aa, border: 0x224488 },
+  desert:    { color: 0xd4b866, border: 0xb49846 },
+  swamp:     { color: 0x5a7a4a, border: 0x3a5a2a },
+};
+
+// Assign terrain to each tile position deterministically
+const TERRAIN_KEYS = Object.keys(TERRAINS);
+function terrainFor(q, r) {
+  const h = tileHash(q * 100, r * 100, 777);
+  // Weight distribution roughly matching the game
+  const weights = [
+    ['grassland', 25], ['plains', 25], ['forest', 15], ['hills', 12],
+    ['water', 8], ['desert', 6], ['mountains', 5], ['swamp', 4],
+  ];
+  let acc = 0;
+  const roll = h % 100;
+  for (const [t, w] of weights) { acc += w; if (roll < acc) return t; }
+  return 'plains';
+}
+
+// Castle position (q=0,r=0) and Tower position (q=1,r=-2)
+const CASTLE_POS = { q: 0, r: 0 };
+const TOWER_POS = { q: 1, r: -2 };
+
+// ─── Drawing helpers ──────────────────────────────────────────────────
+function drawHex(ctx, cx, cy, sz) {
+  const corners = hexCorners(cx, cy, sz || HEX_SIZE);
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x, corners[0].y);
+  for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
+  ctx.closePath();
+}
+function clipHex(ctx, cx, cy, sz) {
+  drawHex(ctx, cx, cy, (sz || HEX_SIZE) - 1);
+  ctx.clip();
+}
+
+// ─── Tower drawing ────────────────────────────────────────────────────
+function drawTower(ctx, cx, cy) {
+  const s = HEX_SIZE * 0.55;
+  const bW = s * 0.5, bH = s * 0.9;
+  const bX = cx - bW/2, bY = cy - bH * 0.5;
+
+  // Shadow
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + s*0.35, bW*0.7, s*0.1, 0, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fill();
+
+  // Tower body
+  ctx.fillStyle = hexColor(0x8b8878);
+  ctx.strokeStyle = hexColor(0x6b6860);
+  ctx.lineWidth = 1;
+  ctx.fillRect(bX, bY, bW, bH);
+  ctx.strokeRect(bX, bY, bW, bH);
+
+  // Left buttress
+  ctx.beginPath();
+  ctx.moveTo(bX, bY + bH);
+  ctx.lineTo(bX - 3, bY + bH);
+  ctx.lineTo(bX, bY + bH * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = hexColor(0x8b8878);
+  ctx.fill();
+  ctx.stroke();
+
+  // Right buttress
+  ctx.beginPath();
+  ctx.moveTo(bX + bW, bY + bH);
+  ctx.lineTo(bX + bW + 3, bY + bH);
+  ctx.lineTo(bX + bW, bY + bH * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Crenellations
+  const mW = 3, mH = 3, gap = 2, step = mW + gap;
+  ctx.fillStyle = hexColor(0xa09d8f);
+  for (let mx = bX; mx < bX + bW - mW; mx += step) {
+    ctx.fillRect(mx, bY - mH, mW, mH);
+    ctx.strokeRect(mx, bY - mH, mW, mH);
+  }
+
+  // Conical roof
+  const rY = bY - mH - s * 0.25;
+  ctx.beginPath();
+  ctx.moveTo(bX - 4, bY - mH + 2);
+  ctx.lineTo(cx, rY);
+  ctx.lineTo(bX + bW + 4, bY - mH + 2);
+  ctx.closePath();
+  ctx.fillStyle = hexColor(0x5a2d2d);
+  ctx.fill();
+  ctx.strokeStyle = hexColor(0x3a1d1d);
+  ctx.stroke();
+
+  // Weathervane
+  ctx.beginPath();
+  ctx.moveTo(cx, rY);
+  ctx.lineTo(cx, rY - 5);
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 3, rY - 4);
+  ctx.lineTo(cx + 3, rY - 4);
+  ctx.stroke();
+
+  // Arched window
+  ctx.beginPath();
+  ctx.moveTo(cx - 2, bY + bH * 0.35);
+  ctx.bezierCurveTo(cx - 2, bY + bH * 0.2, cx + 2, bY + bH * 0.2, cx + 2, bY + bH * 0.35);
+  ctx.lineTo(cx + 2, bY + bH * 0.5);
+  ctx.lineTo(cx - 2, bY + bH * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = hexColor(0x1a1a2e);
+  ctx.fill();
+
+  // Door
+  ctx.fillStyle = hexColor(0x3a2a15);
+  ctx.fillRect(cx - 3, bY + bH - 8, 6, 8);
+  ctx.beginPath();
+  ctx.moveTo(cx - 3, bY + bH - 8);
+  ctx.bezierCurveTo(cx - 3, bY + bH - 13, cx + 3, bY + bH - 13, cx + 3, bY + bH - 8);
+  ctx.fillStyle = hexColor(0x3a2a15);
+  ctx.fill();
+}
+
+// ─── Castle drawing ───────────────────────────────────────────────────
+function drawCastle(ctx, cx, cy) {
+  const s = HEX_SIZE * 0.7;
+
+  // Shadow
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + s*0.4, s*0.6, s*0.1, 0, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fill();
+
+  const wallW = s * 1.2, wallH = s * 0.5;
+  const wallX = cx - wallW/2, wallY = cy - wallH * 0.1;
+  const towerW = s * 0.28, towerH = s * 0.75;
+
+  // Main wall
+  ctx.fillStyle = hexColor(0x8b8878);
+  ctx.strokeStyle = hexColor(0x6b6860);
+  ctx.lineWidth = 1;
+  ctx.fillRect(wallX, wallY, wallW, wallH);
+  ctx.strokeRect(wallX, wallY, wallW, wallH);
+
+  // Brick pattern
+  ctx.strokeStyle = hexColor(0x9a9688);
+  ctx.lineWidth = 0.4;
+  ctx.globalAlpha = 0.35;
+  for (let row = 3; row < wallH; row += 4) {
+    ctx.beginPath();
+    ctx.moveTo(wallX, wallY + row);
+    ctx.lineTo(wallX + wallW, wallY + row);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Wall crenellations
+  const mW = 3, mH = 3, step = mW + 2;
+  ctx.fillStyle = hexColor(0xa09d8f);
+  ctx.strokeStyle = hexColor(0x6b6860);
+  ctx.lineWidth = 0.5;
+  for (let mx = wallX + 2; mx < wallX + wallW - mW; mx += step) {
+    ctx.fillRect(mx, wallY - mH, mW, mH);
+  }
+
+  // Left tower
+  const ltX = wallX - 2, ltY = wallY - towerH * 0.5;
+  ctx.fillStyle = hexColor(0x8b8878);
+  ctx.lineWidth = 1;
+  ctx.fillRect(ltX, ltY, towerW, towerH + wallH * 0.5);
+  ctx.strokeStyle = hexColor(0x6b6860);
+  ctx.strokeRect(ltX, ltY, towerW, towerH + wallH * 0.5);
+  // Tower roof
+  ctx.beginPath();
+  ctx.moveTo(ltX - 2, ltY + 2);
+  ctx.lineTo(ltX + towerW/2, ltY - s*0.22);
+  ctx.lineTo(ltX + towerW + 2, ltY + 2);
+  ctx.closePath();
+  ctx.fillStyle = hexColor(0x5a2d2d);
+  ctx.fill();
+  // Tower crenellations
+  ctx.fillStyle = hexColor(0xa09d8f);
+  for (let mx = ltX; mx < ltX + towerW - 2; mx += 4) {
+    ctx.fillRect(mx, ltY - 2, 2.5, 2.5);
+  }
+
+  // Right tower
+  const rtX = wallX + wallW - towerW + 2, rtY = wallY - towerH * 0.4;
+  ctx.fillStyle = hexColor(0x8b8878);
+  ctx.fillRect(rtX, rtY, towerW, towerH + wallH * 0.4);
+  ctx.strokeStyle = hexColor(0x6b6860);
+  ctx.strokeRect(rtX, rtY, towerW, towerH + wallH * 0.4);
+  ctx.beginPath();
+  ctx.moveTo(rtX - 2, rtY + 2);
+  ctx.lineTo(rtX + towerW/2, rtY - s*0.18);
+  ctx.lineTo(rtX + towerW + 2, rtY + 2);
+  ctx.closePath();
+  ctx.fillStyle = hexColor(0x5a2d2d);
+  ctx.fill();
+  ctx.fillStyle = hexColor(0xa09d8f);
+  for (let mx = rtX; mx < rtX + towerW - 2; mx += 4) {
+    ctx.fillRect(mx, rtY - 2, 2.5, 2.5);
+  }
+
+  // Gatehouse
+  const gW = s * 0.18, gH = s * 0.22;
+  const gX = cx - gW/2, gY = wallY + wallH - gH;
+  ctx.fillStyle = hexColor(0x1a1008);
+  ctx.fillRect(gX, gY, gW, gH);
+  ctx.beginPath();
+  ctx.moveTo(gX, gY);
+  ctx.bezierCurveTo(gX, gY - gH*0.5, gX + gW, gY - gH*0.5, gX + gW, gY);
+  ctx.fill();
+
+  // Windows on towers
+  for (const [wx, wy] of [[ltX + towerW/2, ltY + towerH*0.25], [rtX + towerW/2, rtY + towerH*0.25]]) {
+    ctx.fillStyle = hexColor(0x1a1a2e);
+    ctx.beginPath();
+    ctx.moveTo(wx - 1.5, wy + 1);
+    ctx.bezierCurveTo(wx - 1.5, wy - 2, wx + 1.5, wy - 2, wx + 1.5, wy + 1);
+    ctx.lineTo(wx + 1.5, wy + 3);
+    ctx.lineTo(wx - 1.5, wy + 3);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Flag on left tower
+  const flagX = ltX + towerW/2, flagY = ltY - s*0.22 - 4;
+  ctx.beginPath();
+  ctx.moveTo(flagX, flagY + 6);
+  ctx.lineTo(flagX, flagY - 2);
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(flagX, flagY - 2);
+  ctx.lineTo(flagX + 5, flagY);
+  ctx.lineTo(flagX, flagY + 2);
+  ctx.closePath();
+  ctx.fillStyle = hexColor(0xcc4444);
+  ctx.fill();
+}
+
+// ─── Terrain decorations (simplified) ─────────────────────────────────
+function drawTerrainDeco(ctx, terrain, cx, cy) {
+  const s = HEX_SIZE * 0.35;
+  switch(terrain) {
+    case 'plains': {
+      for (let i = 0; i < 10; i++) {
+        const ox = (tileHash(cx|0, cy|0, i*3+10) % 50) - 25;
+        const oy = (tileHash(cx|0, cy|0, i*3+11) % 40) - 20;
+        const bh = 4 + (tileHash(cx|0, cy|0, i*3+13) % 5);
+        const lean = (tileHash(cx|0, cy|0, i*3+12) % 6 - 3) * 0.4;
+        const gc = [0x5a8a3a, 0x6a9a4a, 0x4a7a2a][tileHash(cx|0,cy|0,i+200)%3];
+        ctx.beginPath();
+        ctx.moveTo(cx+ox, cy+oy);
+        ctx.bezierCurveTo(cx+ox+lean, cy+oy-bh*0.5, cx+ox+lean*1.5, cy+oy-bh*0.8, cx+ox+lean*2, cy+oy-bh);
+        ctx.strokeStyle = hexColor(gc);
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.5;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'grassland': {
+      for (let i = 0; i < 8; i++) {
+        const ox = (tileHash(cx|0,cy|0,i*4+20)%50)-25;
+        const oy = (tileHash(cx|0,cy|0,i*4+21)%40)-20;
+        for (let b = -1; b <= 1; b++) {
+          const lean = b*1.5+(tileHash(cx|0,cy|0,i*4+22+b)%4-2)*0.4;
+          const bh = 5+(tileHash(cx|0,cy|0,i*4+25+b)%5);
+          const gc = [0x448833,0x338822,0x55aa44][tileHash(cx|0,cy|0,i+300)%3];
+          ctx.beginPath();
+          ctx.moveTo(cx+ox+b*2, cy+oy);
+          ctx.bezierCurveTo(cx+ox+b*2+lean, cy+oy-bh*0.4, cx+ox+lean*1.3, cy+oy-bh*0.7, cx+ox+lean*1.5, cy+oy-bh);
+          ctx.strokeStyle = hexColor(gc);
+          ctx.lineWidth = 0.9;
+          ctx.globalAlpha = 0.5;
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'forest': {
+      for (let i = 0; i < 6; i++) {
+        const ox = (tileHash(cx|0,cy|0,i*2+40)%50)-25;
+        const oy = (tileHash(cx|0,cy|0,i*2+41)%40)-20;
+        const sc = 0.5+hashFloat(cx|0,cy|0,i+45)*0.4;
+        const tx = cx+ox, ty = cy+oy;
+        const tw = 2+sc*1.5, th = 5+sc*4, cr = 4+sc*3;
+        const trunkC = [0x3d2a15,0x4a3320,0x33200d][tileHash(cx|0,cy|0,i+60)%3];
+        const folC = [0x1a4420,0x1f5528,0x163a18][tileHash(cx|0,cy|0,i+61)%3];
+        ctx.fillStyle = hexColor(trunkC);
+        ctx.fillRect(tx-tw/2, ty-th, tw, th);
+        for (let c = 0; c < 3; c++) {
+          const ccx = tx+(hashFloat(cx|0,cy|0,i*10+c+130)-0.5)*cr*0.6;
+          const ccy = ty-th-cr*0.3+(hashFloat(cx|0,cy|0,i*10+c+131)-0.5)*cr*0.4;
+          const ccr = cr*(0.35+hashFloat(cx|0,cy|0,i*10+c+132)*0.35);
+          ctx.beginPath();
+          ctx.arc(ccx, ccy, ccr, 0, Math.PI*2);
+          ctx.fillStyle = hexColor(folC);
+          ctx.globalAlpha = 0.75;
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'water': {
+      for (let i = -2; i <= 2; i++) {
+        const wy = cy + i*s*0.4;
+        const phase = (tileHash(cx|0,cy|0,i+60)%10)*0.2;
+        ctx.beginPath();
+        ctx.moveTo(cx-s*0.8, wy);
+        ctx.bezierCurveTo(cx-s*0.3+phase, wy-s*0.12, cx+s*0.2-phase, wy+s*0.12, cx+s*0.8, wy);
+        ctx.strokeStyle = hexColor(0x2244aa);
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.3;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'hills': {
+      ctx.beginPath();
+      ctx.moveTo(cx-s*0.7, cy+s*0.5);
+      ctx.bezierCurveTo(cx-s*0.3, cy-s*0.3, cx+s*0.3, cy-s*0.3, cx+s*0.7, cy+s*0.5);
+      ctx.fillStyle = hexColor(0x8aaa66);
+      ctx.globalAlpha = 0.35;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx+s*0.2, cy+s*0.4);
+      ctx.bezierCurveTo(cx+s*0.4, cy-s*0.1, cx+s*0.6, cy-s*0.1, cx+s*0.8, cy+s*0.4);
+      ctx.fillStyle = hexColor(0x7a9955);
+      ctx.globalAlpha = 0.3;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'mountains': {
+      // Main peak
+      ctx.beginPath();
+      ctx.moveTo(cx-s*0.6, cy+s*0.5);
+      ctx.lineTo(cx, cy-s*0.7);
+      ctx.lineTo(cx+s*0.5, cy+s*0.5);
+      ctx.closePath();
+      ctx.fillStyle = hexColor(0x888888);
+      ctx.globalAlpha = 0.6;
+      ctx.fill();
+      // Snow
+      ctx.beginPath();
+      ctx.moveTo(cx-s*0.15, cy-s*0.25);
+      ctx.lineTo(cx, cy-s*0.7);
+      ctx.lineTo(cx+s*0.12, cy-s*0.25);
+      ctx.closePath();
+      ctx.fillStyle = hexColor(0xeeeeff);
+      ctx.globalAlpha = 0.6;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'desert': {
+      for (let i = 0; i < 3; i++) {
+        const dy = cy+(i-1)*s*0.35;
+        ctx.beginPath();
+        ctx.moveTo(cx-s*0.7, dy+s*0.1);
+        ctx.bezierCurveTo(cx-s*0.2, dy-s*0.15, cx+s*0.2, dy+s*0.08, cx+s*0.7, dy-s*0.08);
+        ctx.strokeStyle = hexColor(0xccaa55);
+        ctx.lineWidth = 1.2;
+        ctx.globalAlpha = 0.35;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'swamp': {
+      for (let i = 0; i < 3; i++) {
+        const px = cx+(tileHash(cx|0,cy|0,i+80)%30-15);
+        const py = cy+(tileHash(cx|0,cy|0,i+81)%24-12);
+        ctx.beginPath();
+        ctx.ellipse(px, py, 5+tileHash(cx|0,cy|0,i+82)%4, 3, 0, 0, Math.PI*2);
+        ctx.fillStyle = hexColor(0x334422);
+        ctx.globalAlpha = 0.2;
+        ctx.fill();
+      }
+      for (let i = 0; i < 4; i++) {
+        const rx = cx+(tileHash(cx|0,cy|0,i+90)%40-20);
+        const ry = cy+(tileHash(cx|0,cy|0,i+91)%30-15);
+        const rh = 5+tileHash(cx|0,cy|0,i+92)%5;
+        ctx.beginPath();
+        ctx.moveTo(rx, ry);
+        ctx.lineTo(rx+1, ry-rh);
+        ctx.strokeStyle = hexColor(0x5a6633);
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.5;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
+  }
+}
+
+// ─── Background design renderers ──────────────────────────────────────
+const designs = [
+  {
+    name: "Current — Flat Fill + Wobble Edges",
+    desc: "Your existing style: solid terrain color with bezier-wobbled edges.",
+    current: true,
+    draw(ctx, cx, cy, color) {
+      const corners = hexCorners(cx, cy, HEX_SIZE + 0.5);
+      ctx.beginPath();
+      ctx.moveTo(corners[0].x, corners[0].y);
+      for (let i = 0; i < 6; i++) {
+        const c1 = corners[i], c2 = corners[(i+1)%6];
+        const dx = c2.x-c1.x, dy = c2.y-c1.y;
+        const len = Math.sqrt(dx*dx+dy*dy)||1;
+        const px = -dy/len, py = dx/len;
+        const w = HEX_SIZE * 0.06;
+        const off1 = (hashFloat(Math.round(c1.x+c2.x), Math.round(c1.y+c2.y), 1)-0.5)*w*2;
+        const off2 = (hashFloat(Math.round(c1.x+c2.x), Math.round(c1.y+c2.y), 2)-0.5)*w*2;
+        ctx.bezierCurveTo(c1.x+dx*0.33+px*off1, c1.y+dy*0.33+py*off1, c1.x+dx*0.66+px*off2, c1.y+dy*0.66+py*off2, c2.x, c2.y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = hexColor(color);
+      ctx.fill();
+    }
+  },
+  {
+    name: "Subtle Noise Texture",
+    desc: "Flat fill with procedural speckle overlay for subtle depth.",
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy); ctx.fillStyle = hexColor(color); ctx.fill();
+      ctx.save(); clipHex(ctx, cx, cy);
+      for (let i = 0; i < 40; i++) {
+        const ox = (hashFloat(cx,cy,i*3+100)-0.5)*HEX_SIZE*1.6;
+        const oy = (hashFloat(cx,cy,i*3+101)-0.5)*HEX_SIZE*1.6;
+        ctx.fillStyle = hashFloat(cx,cy,i*3+102)>0.5 ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+        ctx.fillRect(cx+ox-1, cy+oy-1, 2.5, 2.5);
+      }
+      ctx.restore();
+    }
+  },
+  {
+    name: "Radial Gradient Glow",
+    desc: "Lighter center, darker edges — gentle 3D pillow effect.",
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy);
+      const grad = ctx.createRadialGradient(cx, cy-HEX_SIZE*0.08, 0, cx, cy, HEX_SIZE*0.95);
+      grad.addColorStop(0, hexColor(lighten(color, 0.2)));
+      grad.addColorStop(0.6, hexColor(color));
+      grad.addColorStop(1, hexColor(darken(color, 0.72)));
+      ctx.fillStyle = grad; ctx.fill();
+    }
+  },
+  {
+    name: "Hand-Painted Watercolor",
+    desc: "Semi-transparent overlapping blobs create a hand-painted look.",
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy); ctx.fillStyle = hexColor(color); ctx.fill();
+      ctx.save(); clipHex(ctx, cx, cy);
+      for (let i = 0; i < 10; i++) {
+        const ox = (hashFloat(cx,cy,i*4+200)-0.5)*HEX_SIZE*1.4;
+        const oy = (hashFloat(cx,cy,i*4+201)-0.5)*HEX_SIZE*1.4;
+        const r = HEX_SIZE*(0.15+hashFloat(cx,cy,i*4+202)*0.35);
+        const shade = hashFloat(cx,cy,i*4+203);
+        const c = shade>0.5 ? lighten(color, shade*0.25) : darken(color, 0.7+shade*0.3);
+        ctx.beginPath();
+        ctx.ellipse(cx+ox, cy+oy, r, r*0.7, hashFloat(cx,cy,i+210)*Math.PI, 0, Math.PI*2);
+        ctx.fillStyle = hexColor(c);
+        ctx.globalAlpha = 0.15+hashFloat(cx,cy,i+220)*0.12;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  },
+  {
+    name: "Parchment / Old Map",
+    desc: "Warm parchment tint with ink-style dashed borders. Medieval cartography feel.",
+    draw(ctx, cx, cy, color) {
+      const parchment = lerpColor(color, 0xd4c5a0, 0.35);
+      drawHex(ctx, cx, cy);
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, HEX_SIZE);
+      grad.addColorStop(0, hexColor(lighten(parchment, 0.08)));
+      grad.addColorStop(1, hexColor(darken(parchment, 0.88)));
+      ctx.fillStyle = grad; ctx.fill();
+      ctx.save(); clipHex(ctx, cx, cy);
+      for (let i = 0; i < 15; i++) {
+        const ox = (hashFloat(cx,cy,i*2+300)-0.5)*HEX_SIZE*1.6;
+        const oy = (hashFloat(cx,cy,i*2+301)-0.5)*HEX_SIZE*1.6;
+        ctx.fillStyle = `rgba(80,60,30,${0.03+hashFloat(cx,cy,i+310)*0.04})`;
+        ctx.beginPath(); ctx.arc(cx+ox, cy+oy, 1+hashFloat(cx,cy,i+320)*2, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+      const corners = hexCorners(cx, cy, HEX_SIZE-1);
+      ctx.beginPath(); ctx.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(60,40,20,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([3,2]); ctx.stroke(); ctx.setLineDash([]);
+    }
+  },
+  {
+    name: "Layered Elevation Bands",
+    desc: "Concentric hex rings — topographic contour-line effect.",
+    draw(ctx, cx, cy, color) {
+      for (let ring = 5; ring >= 0; ring--) {
+        const t = ring/5, size = HEX_SIZE*(0.3+t*0.7);
+        const c = lerpColor(lighten(color, 0.25), darken(color, 0.65), t);
+        drawHex(ctx, cx, cy, size); ctx.fillStyle = hexColor(c); ctx.fill();
+      }
+    }
+  },
+  {
+    name: "Cross-Hatch Lines",
+    desc: "Clean fill with fine diagonal hatch lines. Classic cartographic look.",
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy); ctx.fillStyle = hexColor(darken(color, 0.88)); ctx.fill();
+      ctx.save(); clipHex(ctx, cx, cy);
+      ctx.strokeStyle = hexColor(lighten(color, 0.15)); ctx.lineWidth = 0.5;
+      const sp = 5, ext = HEX_SIZE*1.2;
+      ctx.globalAlpha = 0.35;
+      for (let d = -ext; d <= ext; d += sp) {
+        ctx.beginPath(); ctx.moveTo(cx+d-ext, cy-ext); ctx.lineTo(cx+d+ext, cy+ext); ctx.stroke();
+      }
+      ctx.globalAlpha = 0.18;
+      for (let d = -ext; d <= ext; d += sp*1.5) {
+        ctx.beginPath(); ctx.moveTo(cx-ext, cy+d-ext*0.3); ctx.lineTo(cx+ext, cy+d+ext*0.3); ctx.stroke();
+      }
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  },
+  {
+    name: "Soft Inner Shadow",
+    desc: "Flat fill with dark edge vignette + subtle highlight. Clean separation between tiles.",
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy); ctx.fillStyle = hexColor(color); ctx.fill();
+      ctx.save(); clipHex(ctx, cx, cy);
+      const grad = ctx.createRadialGradient(cx, cy, HEX_SIZE*0.4, cx, cy, HEX_SIZE*0.92);
+      grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(0.65, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+      ctx.fillStyle = grad; drawHex(ctx, cx, cy); ctx.fill();
+      const grad2 = ctx.createRadialGradient(cx-HEX_SIZE*0.25, cy-HEX_SIZE*0.25, 0, cx, cy, HEX_SIZE);
+      grad2.addColorStop(0, 'rgba(255,255,255,0.1)'); grad2.addColorStop(0.35, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad2; ctx.fillRect(cx-HEX_SIZE, cy-HEX_SIZE, HEX_SIZE*2, HEX_SIZE*2);
+      ctx.restore();
+    }
+  },
+  {
+    name: "Stippled / Pointillism",
+    desc: "Hundreds of tiny dots in varying shades — old-school RPG map texture.",
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy); ctx.fillStyle = hexColor(darken(color, 0.8)); ctx.fill();
+      ctx.save(); clipHex(ctx, cx, cy);
+      for (let i = 0; i < 120; i++) {
+        const ox = (hashFloat(cx,cy,i*3+500)-0.5)*HEX_SIZE*1.8;
+        const oy = (hashFloat(cx,cy,i*3+501)-0.5)*HEX_SIZE*1.8;
+        const shade = hashFloat(cx,cy,i*3+502);
+        const c = shade>0.6 ? lighten(color, shade*0.3) : shade>0.3 ? color : darken(color, 0.7);
+        ctx.beginPath(); ctx.arc(cx+ox, cy+oy, 0.6+hashFloat(cx,cy,i+510)*1.4, 0, Math.PI*2);
+        ctx.fillStyle = hexColor(c); ctx.globalAlpha = 0.5+hashFloat(cx,cy,i+520)*0.4; ctx.fill();
+      }
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  },
+  {
+    name: "Voronoi Patches",
+    desc: "Irregular patches of 3 tones — natural terrain variation. Organic and rich.",
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy); ctx.fillStyle = hexColor(color); ctx.fill();
+      ctx.save(); clipHex(ctx, cx, cy);
+      const seeds = [];
+      for (let i = 0; i < 5; i++) seeds.push({
+        x: cx+(hashFloat(cx,cy,i*2+600)-0.5)*HEX_SIZE*1.4,
+        y: cy+(hashFloat(cx,cy,i*2+601)-0.5)*HEX_SIZE*1.4,
+        color: [darken(color, 0.78), color, lighten(color, 0.18)][i%3]
+      });
+      const step = 3;
+      for (let x = cx-HEX_SIZE; x <= cx+HEX_SIZE; x += step) {
+        for (let y = cy-HEX_SIZE; y <= cy+HEX_SIZE; y += step) {
+          let minD = Infinity, closest = 0;
+          for (let s = 0; s < seeds.length; s++) { const d=(x-seeds[s].x)**2+(y-seeds[s].y)**2; if(d<minD){minD=d;closest=s;} }
+          ctx.fillStyle = hexColor(seeds[closest].color); ctx.globalAlpha = 0.4;
+          ctx.fillRect(x-step/2, y-step/2, step, step);
+        }
+      }
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  },
+  {
+    name: "Embossed Stone",
+    desc: "Beveled edges with light/shadow — carved stone tile feel.",
+    draw(ctx, cx, cy, color) {
+      // Shadow offset
+      const oc = hexCorners(cx+1, cy+1.5, HEX_SIZE);
+      ctx.beginPath(); ctx.moveTo(oc[0].x, oc[0].y);
+      for (let i=1;i<6;i++) ctx.lineTo(oc[i].x, oc[i].y);
+      ctx.closePath(); ctx.fillStyle = hexColor(darken(color, 0.45)); ctx.fill();
+      // Face
+      const mc = hexCorners(cx, cy, HEX_SIZE-1.5);
+      ctx.beginPath(); ctx.moveTo(mc[0].x, mc[0].y);
+      for (let i=1;i<6;i++) ctx.lineTo(mc[i].x, mc[i].y);
+      ctx.closePath(); ctx.fillStyle = hexColor(color); ctx.fill();
+      // Highlight gradient
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(mc[0].x, mc[0].y);
+      for (let i=1;i<6;i++) ctx.lineTo(mc[i].x, mc[i].y);
+      ctx.closePath(); ctx.clip();
+      const hlGrad = ctx.createLinearGradient(cx-HEX_SIZE, cy-HEX_SIZE, cx+HEX_SIZE*0.3, cy+HEX_SIZE*0.3);
+      hlGrad.addColorStop(0, 'rgba(255,255,255,0.18)'); hlGrad.addColorStop(0.35, 'rgba(255,255,255,0)');
+      hlGrad.addColorStop(0.7, 'rgba(0,0,0,0)'); hlGrad.addColorStop(1, 'rgba(0,0,0,0.14)');
+      ctx.fillStyle = hlGrad; ctx.fillRect(cx-HEX_SIZE, cy-HEX_SIZE, HEX_SIZE*2, HEX_SIZE*2);
+      ctx.restore();
+    }
+  },
+  // ─── NEW DESIGNS ────────────────────────────────────────────────────
+  {
+    name: "Woven / Fabric Weave",
+    desc: "Interlocking horizontal and vertical stripes create a tapestry-like texture. Medieval textile feel.",
+    isNew: true,
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy); ctx.fillStyle = hexColor(color); ctx.fill();
+      ctx.save(); clipHex(ctx, cx, cy);
+      const sp = 4, ext = HEX_SIZE * 1.1;
+      // Horizontal weave
+      for (let y = cy - ext; y <= cy + ext; y += sp * 2) {
+        ctx.fillStyle = hexColor(lighten(color, 0.12));
+        ctx.globalAlpha = 0.3;
+        ctx.fillRect(cx - ext, y, ext * 2, sp * 0.7);
+      }
+      // Vertical weave (offset)
+      for (let x = cx - ext; x <= cx + ext; x += sp * 2) {
+        ctx.fillStyle = hexColor(darken(color, 0.85));
+        ctx.globalAlpha = 0.25;
+        ctx.fillRect(x, cy - ext, sp * 0.7, ext * 2);
+      }
+      // Crossover dots at intersections for weave illusion
+      for (let x = cx - ext; x <= cx + ext; x += sp * 2) {
+        for (let y = cy - ext; y <= cy + ext; y += sp * 2) {
+          ctx.fillStyle = hexColor(darken(color, 0.78));
+          ctx.globalAlpha = 0.15;
+          ctx.fillRect(x - 0.5, y - 0.5, 1.5, 1.5);
+        }
+      }
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  },
+  {
+    name: "Soft Gradient + Thin Border",
+    desc: "Clean radial gradient with a crisp thin outline. Modern, readable, minimal.",
+    isNew: true,
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy);
+      const grad = ctx.createRadialGradient(cx - HEX_SIZE*0.15, cy - HEX_SIZE*0.15, 0, cx, cy, HEX_SIZE * 0.9);
+      grad.addColorStop(0, hexColor(lighten(color, 0.15)));
+      grad.addColorStop(1, hexColor(darken(color, 0.82)));
+      ctx.fillStyle = grad; ctx.fill();
+      // Thin crisp border
+      drawHex(ctx, cx, cy, HEX_SIZE - 0.5);
+      ctx.strokeStyle = hexColor(darken(color, 0.55));
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+  },
+  {
+    name: "Organic Splotch Bleed",
+    desc: "Color bleeds outward in irregular splotches from center. Ink-on-wet-paper effect.",
+    isNew: true,
+    draw(ctx, cx, cy, color) {
+      drawHex(ctx, cx, cy); ctx.fillStyle = hexColor(darken(color, 0.85)); ctx.fill();
+      ctx.save(); clipHex(ctx, cx, cy);
+      // Central mass
+      for (let ring = 0; ring < 5; ring++) {
+        const r = HEX_SIZE * (0.15 + ring * 0.18);
+        const irregularity = 8;
+        ctx.beginPath();
+        for (let a = 0; a < 12; a++) {
+          const angle = (a / 12) * Math.PI * 2;
+          const wobble = (hashFloat(cx, cy, ring*20+a+700) - 0.5) * irregularity * (1 + ring * 0.5);
+          const px = cx + Math.cos(angle) * (r + wobble);
+          const py = cy + Math.sin(angle) * (r + wobble);
+          if (a === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        const alpha = 0.55 - ring * 0.1;
+        const c = ring < 2 ? lighten(color, 0.1) : color;
+        ctx.fillStyle = hexColor(c);
+        ctx.globalAlpha = Math.max(0.08, alpha);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  },
+  {
+    name: "Hex-Within-Hex Inset",
+    desc: "A smaller hex inset inside with a visible border moat. Clean game-board aesthetic.",
+    isNew: true,
+    draw(ctx, cx, cy, color) {
+      // Outer hex — darker border area
+      drawHex(ctx, cx, cy); ctx.fillStyle = hexColor(darken(color, 0.6)); ctx.fill();
+      // Inner hex — main terrain color with slight gradient
+      const innerSize = HEX_SIZE * 0.82;
+      drawHex(ctx, cx, cy, innerSize);
+      const grad = ctx.createRadialGradient(cx, cy - innerSize*0.1, 0, cx, cy, innerSize);
+      grad.addColorStop(0, hexColor(lighten(color, 0.12)));
+      grad.addColorStop(1, hexColor(color));
+      ctx.fillStyle = grad; ctx.fill();
+      // Subtle inner highlight edge
+      drawHex(ctx, cx, cy, innerSize);
+      ctx.strokeStyle = hexColor(lighten(color, 0.2));
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+    }
+  },
+];
+
+// ─── Render all ───────────────────────────────────────────────────────
+const grid = document.getElementById('grid');
+const hexGrid = getGrid(); // 5x5 (radius 2)
+
+designs.forEach((design, di) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const canvas = document.createElement('canvas');
+  // Compute bounds
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  hexGrid.forEach(t => {
+    const p = hexToPixel(t.q, t.r);
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  });
+  const pad = HEX_SIZE + 12;
+  const W = Math.ceil(maxX - minX + pad * 2);
+  const H = Math.ceil(maxY - minY + pad * 2);
+  // HiDPI
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const offX = -minX + pad;
+  const offY = -minY + pad;
+
+  // Dark background
+  ctx.fillStyle = '#0e1628';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw hex tiles
+  hexGrid.forEach(tile => {
+    const pos = hexToPixel(tile.q, tile.r);
+    const px = offX + pos.x, py = offY + pos.y;
+    const terrain = terrainFor(tile.q, tile.r);
+    const terrainColor = TERRAINS[terrain].color;
+
+    ctx.save();
+    design.draw(ctx, px, py, terrainColor);
+    ctx.restore();
+
+    // Terrain decorations
+    ctx.save();
+    // Clip to hex for decorations
+    drawHex(ctx, px, py, HEX_SIZE - 1);
+    ctx.save();
+    ctx.clip();
+    drawTerrainDeco(ctx, terrain, px, py);
+    ctx.restore();
+    ctx.restore();
+  });
+
+  // Draw castle at (0,0)
+  {
+    const p = hexToPixel(CASTLE_POS.q, CASTLE_POS.r);
+    ctx.save();
+    drawCastle(ctx, offX + p.x, offY + p.y);
+    ctx.restore();
+  }
+
+  // Draw tower at (1,-2)
+  {
+    const p = hexToPixel(TOWER_POS.q, TOWER_POS.r);
+    ctx.save();
+    drawTower(ctx, offX + p.x, offY + p.y);
+    ctx.restore();
+  }
+
+  const info = document.createElement('div');
+  info.className = 'card-info';
+  const label = design.current ? '<span class="current-label">CURRENT</span>' : design.isNew ? '<span class="new-label">NEW</span>' : '';
+  info.innerHTML = `<h3>#${di+1}: ${design.name}${label}</h3><p>${design.desc}</p>`;
+
+  card.appendChild(canvas);
+  card.appendChild(info);
+  grid.appendChild(card);
+});
+</script>
+</body>
+</html>

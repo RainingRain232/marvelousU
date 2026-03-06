@@ -281,6 +281,7 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.RUNE_CORE]: "Rune Core",
   [UnitType.PIRATE_CAPTAIN]: "Pirate Captain",
   [UnitType.CORSAIR_GUNNER]: "Corsair Gunner",
+  [UnitType.ELEMENTAL_AVATAR]: "Elemental Avatar",
 };
 
 // ---------------------------------------------------------------------------
@@ -840,3 +841,6 @@ export class HoverTooltip {
 }
 
 export const hoverTooltip = new HoverTooltip();
+
+/** Alias so BattleStatsScreen (and others) can import under the name UNIT_DISPLAY_NAMES. */
+export const UNIT_DISPLAY_NAMES: Record<UnitType, string> = UNIT_LABELS;

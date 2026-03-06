@@ -141,9 +141,9 @@ export const RACE_DEFINITIONS: RaceDef[] = [
     name: "The Elements",
     title: "Wrath of the Primordials",
     flavor: "Born from the raw forces that shaped the world, the Elements command fire, ice, storm, and void alike. They field no mortal soldiers — only creatures and pure elemental magic channelled through ancient conduits.",
-    factionUnit: UnitType.HALBERDIER, // placeholder until faction unit is implemented
-    factionUnits: [UnitType.HALBERDIER],
-    factionUnitLabel: "Coming soon...",
+    factionUnit: UnitType.ELEMENTAL_AVATAR,
+    factionUnits: [UnitType.ELEMENTAL_AVATAR],
+    factionUnitLabel: "Elemental Avatar — a towering convergence of primal elements.",
     implemented: true,
     accentColor: 0xcc6622,
     tiers: {

@@ -354,6 +354,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.RUNE_CORE]: "Rune Core",
   [UnitType.PIRATE_CAPTAIN]: "Pirate Captain",
   [UnitType.CORSAIR_GUNNER]: "Corsair Gunner",
+  [UnitType.ELEMENTAL_AVATAR]: "Elemental Avatar",
 };
 
 // ---------------------------------------------------------------------------

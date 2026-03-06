@@ -8,6 +8,7 @@ import { addToQueue } from "@sim/systems/SpawnSystem";
 import { placeBuilding, BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 import { getTile } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
+import { getDifficultySettings } from "@sim/config/DifficultyConfig";
 
 // Seconds between AI decisions when gold is plentiful vs scarce.
 const INTERVAL_MIN = 1.5; // shortest wait (flush with gold)
@@ -170,7 +171,9 @@ class P2AIBuyer {
     const base = INTERVAL_MIN + t * (INTERVAL_MAX - INTERVAL_MIN);
     // Add ±30% jitter so decisions don't all land on the same beat.
     const jitter = base * 0.3 * (Math.random() * 2 - 1);
-    return Math.max(INTERVAL_MIN, base + jitter);
+    // Apply difficulty speed multiplier (lower = faster decisions)
+    const speed = getDifficultySettings().aiSpeedMultiplier;
+    return Math.max(INTERVAL_MIN * speed, (base + jitter) * speed);
   }
 
   /** Count how many active buildings of the given type p2 currently owns. */
