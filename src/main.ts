@@ -107,6 +107,7 @@ import {
   tickCorruptionModifiers,
   onCorruptionUnitDied,
   type GrailCorruptionState,
+  ALL_CORRUPTION_MODIFIERS,
 } from "@sim/systems/GrailCorruptionSystem";
 
 /** First 2 armory items unlocked at world game start. More drop from camps. */
@@ -276,7 +277,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
   startScreen.onStart = () => {
     startScreen.hide();
     introPlayer.onDone = () => {
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
     };
     introPlayer.play();
   };
@@ -296,7 +297,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       // World mode: Leader → Race → RaceDetail → Magic → Armory → WorldSetup → boot
       leaderSelectScreen.onBack = () => {
         leaderSelectScreen.hide();
-        menuScreen.show();
+        menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
       };
       leaderSelectScreen.onNext = () => {
         leaderSelectScreen.hide();
@@ -384,7 +385,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
 
   mainMenuWikiScreen.onBack = () => {
     mainMenuWikiScreen.hide();
-    menuScreen.show();
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
 
   mainMenuWikiScreen.onOpenUnits = () => {
@@ -431,11 +432,20 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     await _loadWorldGame();
   };
 
+  menuScreen.onLoadWaveGame = () => {
+    const ws = _loadWaveGame();
+    if (!ws) return;
+    menuScreen.hide();
+    _waveState = ws;
+    const extraGold = 1000 + (ws.leftoverGold ?? 0);
+    _startNextWaveShop(ws, extraGold);
+  };
+
   menuScreen.onSettings = () => {
     menuScreen.hide();
     settingsScreen.onBack = () => {
       settingsScreen.hide();
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
     };
     settingsScreen.show();
   };
@@ -453,7 +463,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
 
     if (choice === null) {
       // User cancelled
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
       return;
     }
 
@@ -463,7 +473,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     );
 
     if (!serverUrl) {
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
       return;
     }
 
@@ -501,7 +511,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     lobbyScreen.onBack = () => {
       lobbyScreen.hide();
       _roomManager.disconnect();
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
     };
 
     // Connect
@@ -676,7 +686,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
 
   leaderSelectScreen.onBack = () => {
     leaderSelectScreen.hide();
-    menuScreen.show();
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
 
   // ---------------------------------------------------------------------------
@@ -811,6 +821,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         mapType,
         corruption,
         survivingUnits: [],
+        leftoverGold: 0,
+        totalEnemyGold: 0,
+        lastEnemyGold: 0,
       };
       unitShopScreen.onDone = async (playerRoster) => {
         unitShopScreen.hide();
@@ -821,6 +834,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
           if (uDef) spent += uDef.cost * entry.count;
         }
         _waveState!.totalGoldSpent += spent;
+        _waveState!.leftoverGold = 2000 - spent;
         _waveLastRoundGold = spent;
 
         // Check for new corruption modifier
@@ -839,6 +853,8 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         const enemyBudget = _waveState!.wave === 1
           ? 2000
           : Math.round(_waveState!.totalGoldSpent * 1.3);
+        _waveState!.lastEnemyGold = enemyBudget;
+        _waveState!.totalEnemyGold += enemyBudget;
         const enemyRoster = _generateWaveEnemyRoster(raceId, enemyBudget, _waveState!.wave);
 
         _worldBattleRosters = {
@@ -864,6 +880,20 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       const corruptionLabel = corruption.enabled ? " [GRAIL GREED]" : "";
       unitShopScreen.setCorruptionModifiers(corruption.activeModifiers);
       unitShopScreen.setSurvivingUnits([]);
+      unitShopScreen.onSave = () => { _saveWaveGame(); };
+      unitShopScreen.onLoad = () => {
+        const ws = _loadWaveGame();
+        if (!ws) return;
+        _waveState = ws;
+        unitShopScreen.hide();
+        const extraGold = 1000 + (ws.leftoverGold ?? 0);
+        _startNextWaveShop(ws, extraGold);
+      };
+      unitShopScreen.onBackToMenu = () => {
+        unitShopScreen.hide();
+        _waveState = null;
+        menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+      };
       unitShopScreen.show(raceId, 2000, `WAVE 1${corruptionLabel} — RECRUIT ARMY`);
     } else {
       await _bootGame(
@@ -2304,7 +2334,112 @@ let _waveState: {
   corruption: GrailCorruptionState;
   /** Units that survived the previous wave — carried over to the next battle. */
   survivingUnits: Array<{ type: UnitType; count: number }>;
+  /** Unspent gold from the previous wave shop — carries over to the next round. */
+  leftoverGold: number;
+  /** Total gold the AI has been given across all waves. */
+  totalEnemyGold: number;
+  /** Gold given to the AI for the current wave. */
+  lastEnemyGold: number;
 } | null = null;
+
+// ---------------------------------------------------------------------------
+// Wave save/load (localStorage)
+// ---------------------------------------------------------------------------
+
+const WAVE_SAVE_KEY = "wave_save_v1";
+
+interface SerializedWaveState {
+  version: 1;
+  wave: number;
+  playerRaceId: string;
+  playerLeaderId: string;
+  totalGoldSpent: number;
+  mapSize: { label: string; width: number; height: number };
+  mapType: string;
+  corruption: {
+    enabled: boolean;
+    activeModifierIds: string[];
+    corruptionLevel: number;
+    nextModifierWave: number;
+    usedModifierIds: string[];
+  };
+  survivingUnits: Array<{ type: string; count: number }>;
+  leftoverGold: number;
+  totalEnemyGold: number;
+  lastEnemyGold: number;
+}
+
+function _saveWaveGame(): boolean {
+  if (!_waveState) return false;
+  try {
+    const ws = _waveState;
+    const data: SerializedWaveState = {
+      version: 1,
+      wave: ws.wave,
+      playerRaceId: ws.playerRaceId,
+      playerLeaderId: ws.playerLeaderId,
+      totalGoldSpent: ws.totalGoldSpent,
+      mapSize: { label: ws.mapSize.label, width: ws.mapSize.width, height: ws.mapSize.height },
+      mapType: ws.mapType,
+      corruption: {
+        enabled: ws.corruption.enabled,
+        activeModifierIds: ws.corruption.activeModifiers.map((m) => m.id),
+        corruptionLevel: ws.corruption.corruptionLevel,
+        nextModifierWave: ws.corruption.nextModifierWave,
+        usedModifierIds: [...ws.corruption.usedModifierIds],
+      },
+      survivingUnits: ws.survivingUnits.map((e) => ({ type: e.type, count: e.count })),
+      leftoverGold: ws.leftoverGold,
+      totalEnemyGold: ws.totalEnemyGold,
+      lastEnemyGold: ws.lastEnemyGold,
+    };
+    localStorage.setItem(WAVE_SAVE_KEY, JSON.stringify(data));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function _loadWaveGame(): NonNullable<typeof _waveState> | null {
+  try {
+    const raw = localStorage.getItem(WAVE_SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as SerializedWaveState;
+    if (data.version !== 1) return null;
+
+    // Rebuild corruption state from saved modifier IDs
+    const corruption = createGrailCorruptionState();
+    corruption.enabled = data.corruption.enabled;
+    corruption.corruptionLevel = data.corruption.corruptionLevel;
+    corruption.nextModifierWave = data.corruption.nextModifierWave;
+    corruption.usedModifierIds = new Set(data.corruption.usedModifierIds);
+    // Restore active modifiers by looking up IDs in ALL_CORRUPTION_MODIFIERS
+    for (const id of data.corruption.activeModifierIds) {
+      const mod = ALL_CORRUPTION_MODIFIERS.find((m) => m.id === id);
+      if (mod) corruption.activeModifiers.push(mod);
+    }
+
+    return {
+      wave: data.wave,
+      playerRaceId: data.playerRaceId as RaceId,
+      playerLeaderId: data.playerLeaderId as LeaderId,
+      totalGoldSpent: data.totalGoldSpent,
+      mapSize: data.mapSize,
+      mapType: data.mapType as MapType,
+      corruption,
+      survivingUnits: data.survivingUnits.map((e) => ({ type: e.type as UnitType, count: e.count })),
+      leftoverGold: data.leftoverGold,
+      totalEnemyGold: data.totalEnemyGold,
+      lastEnemyGold: data.lastEnemyGold,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function _hasWaveSave(): boolean {
+  return localStorage.getItem(WAVE_SAVE_KEY) !== null;
+}
 
 const MERLIN_COMPLIMENTS: Record<number, string> = {
   10: "Impressive, young one! Your tactical prowess grows!",
@@ -2380,6 +2515,7 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     }
     const spent = totalRosterCost - survivorCost;
     ws.totalGoldSpent += spent;
+    ws.leftoverGold = extraGold - spent;
     _waveLastRoundGold = spent;
 
     // Check for new corruption modifier
@@ -2396,6 +2532,8 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
 
     // Generate enemy wave: enemies worth totalGoldSpent * 1.3
     const enemyBudget = Math.round(ws.totalGoldSpent * 1.3);
+    ws.lastEnemyGold = enemyBudget;
+    ws.totalEnemyGold += enemyBudget;
     const enemyRoster = _generateWaveEnemyRoster(ws.playerRaceId, enemyBudget, ws.wave);
 
     _worldBattleRosters = {
@@ -2423,6 +2561,20 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     : ws.corruption.enabled ? " [GRAIL GREED]" : "";
   unitShopScreen.setCorruptionModifiers(ws.corruption.activeModifiers);
   unitShopScreen.setSurvivingUnits(ws.survivingUnits);
+  unitShopScreen.onSave = () => { _saveWaveGame(); };
+  unitShopScreen.onLoad = () => {
+    const loaded = _loadWaveGame();
+    if (!loaded) return;
+    _waveState = loaded;
+    unitShopScreen.hide();
+    const loadGold = 1000 + (loaded.leftoverGold ?? 0);
+    _startNextWaveShop(loaded, loadGold);
+  };
+  unitShopScreen.onBackToMenu = () => {
+    unitShopScreen.hide();
+    _waveState = null;
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
   unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave}${corruptionSuffix} — RECRUIT ARMY`);
 }
 
@@ -5843,6 +5995,10 @@ async function _bootGame(
   // Clear all EventBus listeners from previous game/wave to prevent accumulation
   EventBus.clear();
 
+  // Clear old world layers (units, buildings, background, fx, groundfx) so
+  // sprites from a previous wave don't linger on the new map.
+  viewManager.clearWorld();
+
   // Switch to in-game music
   audioManager.playGameMusic();
 
@@ -6220,25 +6376,39 @@ async function _bootGame(
     victoryScreen.corruptionLevel = _waveState.corruption.corruptionLevel;
     victoryScreen.totalGoldSpent = _waveState.totalGoldSpent;
     victoryScreen.lastRoundGoldSpent = _waveLastRoundGold;
+    victoryScreen.enemyGoldThisRound = _waveState.lastEnemyGold;
+    victoryScreen.enemyGoldTotal = _waveState.totalEnemyGold;
+    victoryScreen.p1Roster = _worldBattleRosters?.p1Roster ?? [];
+    victoryScreen.p2Roster = _worldBattleRosters?.p2Roster ?? [];
   } else {
     victoryScreen.waveNumber = 0;
     victoryScreen.corruptionLevel = 0;
     victoryScreen.totalGoldSpent = 0;
     victoryScreen.lastRoundGoldSpent = 0;
+    victoryScreen.enemyGoldThisRound = 0;
+    victoryScreen.enemyGoldTotal = 0;
+    victoryScreen.p1Roster = [];
+    victoryScreen.p2Roster = [];
   }
   victoryScreen.init(viewManager, state);
 
-  // Battle stats
+  // Battle stats (skip the separate stats overlay in wave mode — the
+  // victory screen already shows wave economy info)
   battleStatsTracker.reset();
   battleStatsTracker.init(state);
-  battleStatsScreen.init(viewManager, state);
+  if (!_waveState) {
+    battleStatsScreen.init(viewManager, state);
+  }
 
-  // Wave mode: "NEXT WAVE" button handler
+  // Wave mode: collect survivors immediately at RESOLVE (before the phase
+  // timer clears them) and let "NEXT WAVE" button open the shop.
   if (_waveState) {
     const ws = _waveState;
-    victoryScreen.onNextWave = () => {
-      // Collect surviving p1 units before the game is torn down.
-      // Exclude summoned/imp-summoned units — they are temporary.
+
+    // Snapshot survivors the moment RESOLVE fires — the phase timer will
+    // clear state.units after RESOLVE_DURATION seconds.
+    EventBus.on("phaseChanged", ({ phase }) => {
+      if (phase !== GamePhase.RESOLVE) return;
       const survivorCounts = new Map<UnitType, number>();
       for (const u of state.units.values()) {
         if (u.owner === "p1" && u.hp > 0) {
@@ -6250,15 +6420,23 @@ async function _bootGame(
       for (const [type, count] of survivorCounts) {
         ws.survivingUnits.push({ type, count });
       }
+    });
+
+    victoryScreen.onNextWave = () => {
+      // Hide the battle map, minimap, HUD so the shop has a clean background
+      viewManager.clearWorld();
+      minimap.container.visible = false;
+      hud.container.visible = false;
+      victoryScreen.container.visible = false;
 
       ws.wave++;
-      const nextGold = 1000;
+      const nextGold = 1000 + (ws.leftoverGold ?? 0);
+      ws.leftoverGold = 0;
 
       // Merlin compliment every 10 waves
       const complimentWave = ws.wave - 1; // just won this wave
       if (complimentWave % 10 === 0 && complimentWave > 0) {
         const msg = MERLIN_COMPLIMENTS[complimentWave] ?? MERLIN_COMPLIMENT_DEFAULT;
-        // Show a brief Merlin overlay then proceed to shop
         _showMerlinWaveCompliment(msg, () => {
           _startNextWaveShop(ws, nextGold);
         });

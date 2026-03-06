@@ -263,6 +263,7 @@ export class UnitShopScreen {
   private _goldText!: Text;
   private _titleText!: Text;
   private _startBtn!: Container;
+  private _saveLoadContainer!: Container;
   private _activeModifiers: CorruptionModifier[] = [];
   private _dynamicRows: Container[] = [];
   private _countTexts: Map<UnitType, Text> = new Map();
@@ -279,6 +280,9 @@ export class UnitShopScreen {
   private _activeTooltipUnit: UnitType | null = null;
 
   onDone: ((roster: UnitRoster) => void) | null = null;
+  onSave: (() => void) | null = null;
+  onLoad: (() => void) | null = null;
+  onBackToMenu: (() => void) | null = null;
 
   setCorruptionModifiers(modifiers: CorruptionModifier[]): void {
     this._activeModifiers = modifiers;
@@ -346,6 +350,11 @@ export class UnitShopScreen {
     this._startBtn = this._makeStartButton();
     this._card.addChild(this._startBtn);
 
+    // Save / Load buttons (shown only in wave mode)
+    this._saveLoadContainer = new Container();
+    this._saveLoadContainer.visible = false;
+    this._card.addChild(this._saveLoadContainer);
+
     // Tooltip
     this._tooltip = new Container();
     this._tooltip.visible = false;
@@ -380,6 +389,7 @@ export class UnitShopScreen {
     this._hideTooltip();
     this._buildTabs();
     this._rebuild();
+    this._buildSaveLoadButtons();
     this.container.visible = true;
     this._layout();
   }
@@ -431,20 +441,18 @@ export class UnitShopScreen {
     headerTxt.position.set(PAD, 4);
     this._rosterContainer.addChild(headerTxt);
 
-    // Merge survivors + current purchases
+    // Merge survivors + current purchases.
+    // _counts already includes survivors (pre-filled in show()), so use it
+    // as the source of truth and just annotate which are survivors.
     const merged = new Map<UnitType, { count: number; survivor: number }>();
-    for (const entry of this._survivingUnits) {
-      const e = merged.get(entry.type) ?? { count: 0, survivor: 0 };
-      e.survivor += entry.count;
-      e.count += entry.count;
-      merged.set(entry.type, e);
-    }
     for (const [ut, count] of this._counts) {
       if (count > 0) {
-        const e = merged.get(ut) ?? { count: 0, survivor: 0 };
-        e.count += count;
-        merged.set(ut, e);
+        merged.set(ut, { count, survivor: 0 });
       }
+    }
+    for (const entry of this._survivingUnits) {
+      const e = merged.get(entry.type);
+      if (e) e.survivor = Math.min(entry.count, e.count);
     }
 
     if (merged.size === 0) {
@@ -1016,6 +1024,78 @@ export class UnitShopScreen {
     }
     y += 6;
     return y;
+  }
+
+  private _buildSaveLoadButtons(): void {
+    this._saveLoadContainer.removeChildren();
+    // Only show in wave mode (label contains "WAVE")
+    const isWave = this._label.includes("WAVE");
+    this._saveLoadContainer.visible = isWave;
+    if (!isWave) return;
+
+    const GAP = 6;
+    const BW = Math.floor((this._cardW - 32 - GAP * 2) / 3);
+    const BH = 32;
+    const Y = this._cardH - 56 - BH - 8; // above START button
+    const btnStyle = new TextStyle({ fontFamily: "monospace", fontSize: 13, fontWeight: "bold", letterSpacing: 2 });
+
+    // SAVE button
+    const saveBtn = new Container();
+    saveBtn.eventMode = "static";
+    saveBtn.cursor = "pointer";
+    saveBtn.position.set(16, Y);
+    const saveBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 4).fill({ color: 0x1a2a3a })
+      .roundRect(0, 0, BW, BH, 4).stroke({ color: 0x4488cc, width: 1.5 });
+    saveBtn.addChild(saveBg);
+    const saveLbl = new Text({ text: "SAVE", style: { ...btnStyle, fill: 0x88bbff } });
+    saveLbl.anchor.set(0.5, 0.5);
+    saveLbl.position.set(BW / 2, BH / 2);
+    saveBtn.addChild(saveLbl);
+    saveBtn.on("pointerover", () => { saveBg.tint = 0xaaccff; });
+    saveBtn.on("pointerout", () => { saveBg.tint = 0xffffff; });
+    saveBtn.on("pointerdown", () => {
+      this.onSave?.();
+      saveLbl.text = "SAVED!";
+      setTimeout(() => { saveLbl.text = "SAVE"; }, 1200);
+    });
+    this._saveLoadContainer.addChild(saveBtn);
+
+    // LOAD button
+    const loadBtn = new Container();
+    loadBtn.eventMode = "static";
+    loadBtn.cursor = "pointer";
+    loadBtn.position.set(16 + BW + GAP, Y);
+    const loadBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 4).fill({ color: 0x2a2a1a })
+      .roundRect(0, 0, BW, BH, 4).stroke({ color: 0xaaaa44, width: 1.5 });
+    loadBtn.addChild(loadBg);
+    const loadLbl = new Text({ text: "LOAD", style: { ...btnStyle, fill: 0xdddd66 } });
+    loadLbl.anchor.set(0.5, 0.5);
+    loadLbl.position.set(BW / 2, BH / 2);
+    loadBtn.addChild(loadLbl);
+    loadBtn.on("pointerover", () => { loadBg.tint = 0xeeeebb; });
+    loadBtn.on("pointerout", () => { loadBg.tint = 0xffffff; });
+    loadBtn.on("pointerdown", () => { this.onLoad?.(); });
+    this._saveLoadContainer.addChild(loadBtn);
+
+    // MENU button
+    const menuBtn = new Container();
+    menuBtn.eventMode = "static";
+    menuBtn.cursor = "pointer";
+    menuBtn.position.set(16 + (BW + GAP) * 2, Y);
+    const menuBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 4).fill({ color: 0x1a1a2a })
+      .roundRect(0, 0, BW, BH, 4).stroke({ color: 0x6666aa, width: 1.5 });
+    menuBtn.addChild(menuBg);
+    const menuLbl = new Text({ text: "MENU", style: { ...btnStyle, fill: 0xaaaaff } });
+    menuLbl.anchor.set(0.5, 0.5);
+    menuLbl.position.set(BW / 2, BH / 2);
+    menuBtn.addChild(menuLbl);
+    menuBtn.on("pointerover", () => { menuBg.tint = 0xccccff; });
+    menuBtn.on("pointerout", () => { menuBg.tint = 0xffffff; });
+    menuBtn.on("pointerdown", () => { this.onBackToMenu?.(); });
+    this._saveLoadContainer.addChild(menuBtn);
   }
 
   private _makeStartButton(): Container {

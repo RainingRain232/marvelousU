@@ -192,6 +192,19 @@ export class ViewManager {
   ): void {
     this.layers[name].removeChild(child);
   }
+
+  /**
+   * Remove all children from world layers (background, buildings, groundfx,
+   * units, fx) and clear per-frame update callbacks.  UI layer is left intact
+   * so persistent screens (shop, menu) survive.  Call before re-running
+   * `_bootGame` to ensure a clean visual slate.
+   */
+  clearWorld(): void {
+    for (const name of ["background", "buildings", "groundfx", "units", "fx"] as LayerName[]) {
+      this.layers[name].removeChildren();
+    }
+    this._updateCallbacks = [];
+  }
 }
 
 // ---------------------------------------------------------------------------

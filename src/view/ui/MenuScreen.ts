@@ -298,6 +298,8 @@ export class MenuScreen {
   onWiki: (() => void) | null = null;
   onMultiplayer: (() => void) | null = null;
   onLoadWorldGame: (() => void) | null = null;
+  onLoadWaveGame: (() => void) | null = null;
+  hasWaveSave = false;
   onSettings: (() => void) | null = null;
 
   // Public getters (unchanged API)
@@ -555,6 +557,16 @@ export class MenuScreen {
       loadBtn.position.set(20, bottomY);
       card.addChild(loadBtn);
       this._s1NavItems.push({ container: loadBtn, action: () => this.onLoadWorldGame?.() });
+      bottomY += utilBtnH + utilGap;
+    }
+
+    // Optional: Load Wave Game
+    if (this.hasWaveSave) {
+      const loadW = CW - 40;
+      const loadWaveBtn = makeActionBtn(loadW, utilBtnH, "LOAD WAVE GAME", 0x1a2a2a, 0x44aaaa, 0x88ffff, () => this.onLoadWaveGame?.());
+      loadWaveBtn.position.set(20, bottomY);
+      card.addChild(loadWaveBtn);
+      this._s1NavItems.push({ container: loadWaveBtn, action: () => this.onLoadWaveGame?.() });
       bottomY += utilBtnH + utilGap;
     }
 
