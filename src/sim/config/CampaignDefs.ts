@@ -72,10 +72,15 @@ export interface ScenarioDef {
    * Upgrade types that P1 starts with already purchased (level 1).
    */
   p1StartUpgrades?: import("@/types").UpgradeType[];
+  /**
+   * Extra gold granted to P1 at the start of this scenario,
+   * on top of the normal starting gold.
+   */
+  p1ExtraGold?: number;
 }
 
 // ---------------------------------------------------------------------------
-// Definitions — 21 scenarios
+// Definitions — 24 scenarios
 // ---------------------------------------------------------------------------
 
 export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
@@ -353,6 +358,16 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     p1StartUpgrades: [UpgradeType.FLAG],
     disableEvents: true,
     aiExtraGold: 5000,
+  },
+  {
+    number: 24,
+    title: "The Last Stand",
+    briefing:
+      "Merlin has foreseen a cataclysmic battle. The enemy has summoned ancient giants and archmages of terrifying power — tier VII warriors that can crush entire armies. You have everything at your disposal and extra gold to prepare, but do not underestimate what approaches. This is the very hard end battle.",
+    victoryCode: "7777",
+    unlocks: {},
+    p1ExtraGold: 3000,
+    aiExtraGold: 8000,
   },
 ];
 

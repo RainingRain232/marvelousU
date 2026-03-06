@@ -1375,6 +1375,35 @@ function _setupScenario23(state: GameState, mapW: number, mapH: number): void {
 }
 
 /**
+ * Scenario 24 — "The Last Stand"
+ * P2 gets 2 tier 7 mages and 2 tier 7 melee giants, spawned at the
+ * top-right and bottom-right corners of the map (P2's side) so the
+ * player has time to prepare.
+ */
+function _setupScenario24(state: GameState, mapW: number, mapH: number): void {
+  const margin = 3;
+  // Top-right corner: 1 giant warrior + 1 national mage T7
+  const topRight = [
+    { type: UnitType.GIANT_WARRIOR, x: mapW - margin - 2, y: margin },
+    { type: UnitType.NATIONAL_MAGE_T7, x: mapW - margin, y: margin + 1 },
+  ];
+  // Bottom-right corner: 1 giant warrior + 1 national mage T7
+  const bottomRight = [
+    { type: UnitType.GIANT_WARRIOR, x: mapW - margin - 2, y: mapH - margin - 2 },
+    { type: UnitType.NATIONAL_MAGE_T7, x: mapW - margin, y: mapH - margin - 1 },
+  ];
+
+  for (const entry of [...topRight, ...bottomRight]) {
+    const u = createUnit({
+      type: entry.type,
+      owner: "p2",
+      position: { x: entry.x, y: entry.y },
+    });
+    state.units.set(u.id, u);
+  }
+}
+
+/**
  * ROGUELIKE mode: randomly disable 50% of non-castle building types.
  * Mirrors PhaseSystem logic but runs at boot for the first round.
  */
@@ -4886,6 +4915,10 @@ async function _bootGame(
       const p2 = state.players.get("p2");
       if (p2) p2.gold += scenarioDef.aiExtraGold;
     }
+    if (scenarioDef?.p1ExtraGold) {
+      const p1 = state.players.get("p1");
+      if (p1) p1.gold += scenarioDef.p1ExtraGold;
+    }
     // P1 cannot build anything — empty all shops, blueprints, and upgrade inventories
     if (scenarioDef?.p1NoBuild) {
       for (const building of state.buildings.values()) {
@@ -4906,6 +4939,10 @@ async function _bootGame(
     // Scenario 23: spawn Dark Savant + enemies + enemy towers
     if (scenarioNum === 23) {
       _setupScenario23(state, mapSize.width, mapSize.height);
+    }
+    // Scenario 24: spawn tier 7 AI units at P2's corners
+    if (scenarioNum === 24) {
+      _setupScenario24(state, mapSize.width, mapSize.height);
     }
   }
 
@@ -5199,6 +5236,15 @@ async function _bootGame(
   if (gameMode === GameMode.CAMPAIGN && (scenarioNum === 1 || scenarioNum === 2)) {
     // Start the speed ramp immediately when the game starts
     simLoop.startCinematicSpeed();
+  }
+
+  // Scenario 24: Merlin warns the player about the very hard end battle
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 24) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "Beware, commander! I sense a terrible darkness gathering. The enemy has unleashed ancient giants and archmages of unimaginable power. This is the very hard end battle — prepare yourself, for there will be no mercy!",
+      () => { simLoop.resume(); },
+    );
   }
 
   // ---------------------------------------------------------------------------
