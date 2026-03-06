@@ -163,17 +163,25 @@ export class TownMenuView {
   private _drawTabs(W: number): void {
     const y = 50;
     const tabWidth = Math.min(120, (W - 40) / TABS.length);
-    const g = new Graphics();
 
+    // Draw tab backgrounds first so text renders on top
+    const g = new Graphics();
+    for (let i = 0; i < TABS.length; i++) {
+      const x = 20 + i * tabWidth;
+      const isActive = i === this._activeTab;
+
+      g.roundRect(x, y, tabWidth - 4, 30, 4);
+      g.fill({ color: isActive ? TAB_ACTIVE_COLOR : PANEL_COLOR });
+      g.stroke({ color: isActive ? HIGHLIGHT_COLOR : BORDER_COLOR, width: isActive ? 2 : 1 });
+    }
+    this.container.addChild(g);
+
+    // Draw tab labels on top of backgrounds
     for (let i = 0; i < TABS.length; i++) {
       const x = 20 + i * tabWidth;
       const isActive = i === this._activeTab;
       const tabName = TABS[i];
       const icon = TAB_ICONS[tabName] ?? "";
-
-      g.roundRect(x, y, tabWidth - 4, 30, 4);
-      g.fill({ color: isActive ? TAB_ACTIVE_COLOR : PANEL_COLOR });
-      g.stroke({ color: isActive ? HIGHLIGHT_COLOR : BORDER_COLOR, width: isActive ? 2 : 1 });
 
       const text = new Text({
         text: `${icon} ${tabName}`,
@@ -188,8 +196,6 @@ export class TownMenuView {
       text.position.set(x + (tabWidth - 4) / 2, y + 15);
       this.container.addChild(text);
     }
-
-    this.container.addChild(g);
   }
 
   // ---------------------------------------------------------------------------
