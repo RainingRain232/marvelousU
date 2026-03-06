@@ -6,7 +6,6 @@ import type { ViewManager } from "@view/ViewManager";
 import type { OverworldState, OverworldEntity } from "@rpg/state/OverworldState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
-import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { animationManager } from "@view/animation/AnimationManager";
 
 // ---------------------------------------------------------------------------
@@ -77,13 +76,8 @@ export class OverworldView {
 
     vm.addToLayer("units", this.partyContainer);
 
-    // Set map size on camera — convert RPG tile units to base tile units
-    // Camera clamp uses BalanceConfig.TILE_SIZE, so we scale accordingly
-    const tileRatio = this.TILE_SIZE / BalanceConfig.TILE_SIZE;
-    vm.camera.setMapSize(
-      overworld.width * tileRatio,
-      overworld.height * tileRatio,
-    );
+    // Set map size on camera
+    vm.camera.setMapSize(overworld.width, overworld.height);
 
     // Create party animated sprite
     this._createPartySprite();
@@ -320,9 +314,6 @@ export class OverworldView {
     const ts = this.TILE_SIZE;
     const px = this.overworld.partyPosition.x * ts + ts / 2;
     const py = this.overworld.partyPosition.y * ts + ts / 2;
-
-    // Zoom out to show more of the map (0.6 gives a good overview)
-    this.vm.camera.zoom = 0.6;
 
     // Center camera on party
     const visW = this.vm.screenWidth / this.vm.camera.zoom;

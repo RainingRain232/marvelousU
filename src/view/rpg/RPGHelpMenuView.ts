@@ -27,7 +27,8 @@ const HELP_SECTIONS: HelpSection[] = [
   {
     title: "Overworld Controls",
     lines: [
-      { key: "W/A/S/D or Arrows", desc: "Move party" },
+      { key: "Arrow Keys", desc: "Move party" },
+      { key: "W/A/S/D", desc: "Pan camera" },
       { key: "T", desc: "Toggle battle mode (Turn/Auto)" },
       { key: "? or F1", desc: "Open this help menu" },
       { key: "I", desc: "Open inventory (use items)" },
@@ -36,7 +37,8 @@ const HELP_SECTIONS: HelpSection[] = [
   {
     title: "Dungeon Controls",
     lines: [
-      { key: "W/A/S/D or Arrows", desc: "Move through dungeon" },
+      { key: "Arrow Keys", desc: "Move through dungeon" },
+      { key: "W/A/S/D", desc: "Pan camera" },
       { key: "I", desc: "Open inventory (use items)" },
       { desc: "Find stairs to descend or exit" },
       { desc: "Walk into chests to open them" },

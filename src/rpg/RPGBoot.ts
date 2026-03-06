@@ -208,19 +208,15 @@ export class RPGGame {
 
     switch (e.code) {
       case "ArrowUp":
-      case "KeyW":
         dy = -1;
         break;
       case "ArrowDown":
-      case "KeyS":
         dy = 1;
         break;
       case "ArrowLeft":
-      case "KeyA":
         dx = -1;
         break;
       case "ArrowRight":
-      case "KeyD":
         dx = 1;
         break;
       default:
@@ -239,19 +235,15 @@ export class RPGGame {
 
     switch (e.code) {
       case "ArrowUp":
-      case "KeyW":
         dy = -1;
         break;
       case "ArrowDown":
-      case "KeyS":
         dy = 1;
         break;
       case "ArrowLeft":
-      case "KeyA":
         dx = -1;
         break;
       case "ArrowRight":
-      case "KeyD":
         dx = 1;
         break;
       case "Escape":
