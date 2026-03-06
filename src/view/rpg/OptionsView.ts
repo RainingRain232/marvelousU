@@ -27,6 +27,7 @@ export interface GameOptions {
   battleMode: "turn" | "auto";
   textSpeed: "slow" | "normal" | "fast";
   showMinimap: boolean;
+  spawnRate: number;    // 0–200 (100 = normal)
 }
 
 const DEFAULT_OPTIONS: GameOptions = {
@@ -35,6 +36,7 @@ const DEFAULT_OPTIONS: GameOptions = {
   battleMode: "turn",
   textSpeed: "normal",
   showMinimap: true,
+  spawnRate: 100,
 };
 
 const OPTIONS_STORAGE_KEY = "rpg_options";
@@ -62,11 +64,13 @@ interface OptionEntry {
   key: keyof GameOptions;
   type: "slider" | "toggle" | "cycle";
   values?: string[];
+  max?: number; // max value for sliders (default 100)
 }
 
 const OPTION_ENTRIES: OptionEntry[] = [
   { label: "Music Volume", key: "musicVolume", type: "slider" },
   { label: "SFX Volume", key: "sfxVolume", type: "slider" },
+  { label: "Spawn Rate", key: "spawnRate", type: "slider", max: 200 },
   { label: "Battle Mode", key: "battleMode", type: "cycle", values: ["turn", "auto"] },
   { label: "Text Speed", key: "textSpeed", type: "cycle", values: ["slow", "normal", "fast"] },
   { label: "Show Minimap", key: "showMinimap", type: "toggle" },
@@ -170,6 +174,7 @@ export class OptionsView {
       const val = this._options[entry.key];
 
       if (entry.type === "slider") {
+        const sliderMax = entry.max ?? 100;
         const barW = 140;
         const barH = 12;
         const barX = panelX + panelW - barW - 60;
@@ -180,7 +185,7 @@ export class OptionsView {
         barBg.fill({ color: BAR_BG });
         this.container.addChild(barBg);
 
-        const fillW = (val as number) / 100 * barW;
+        const fillW = (val as number) / sliderMax * barW;
         if (fillW > 0) {
           const barFill = new Graphics();
           barFill.roundRect(barX, barY, fillW, barH, 3);
@@ -251,8 +256,9 @@ export class OptionsView {
     const key = entry.key;
 
     if (entry.type === "slider") {
+      const sliderMax = entry.max ?? 100;
       const current = this._options[key] as number;
-      this._options[key] = Math.max(0, Math.min(100, current + dir * 10)) as never;
+      this._options[key] = Math.max(0, Math.min(sliderMax, current + dir * 10)) as never;
     } else if (entry.type === "toggle") {
       this._options[key] = !this._options[key] as never;
     } else if (entry.type === "cycle" && entry.values) {

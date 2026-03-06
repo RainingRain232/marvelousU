@@ -304,7 +304,8 @@ function _checkRandomEncounter(
   const nightMult = rpg.timeOfDay >= 180 ? 1.5 : 1.0;
   // Fog decreases encounter rate by 30% (enemies can't see you either)
   const fogMult = rpg.weather === "fog" ? 0.7 : 1.0;
-  const chance = baseRate * (1 + overworld.stepsSinceLastEncounter * RPGBalance.ENCOUNTER_RATE_GROWTH) * blessingMult * nightMult * fogMult;
+  const spawnMult = (rpg.spawnRate ?? 100) / 100;
+  const chance = baseRate * (1 + overworld.stepsSinceLastEncounter * RPGBalance.ENCOUNTER_RATE_GROWTH) * blessingMult * nightMult * fogMult * spawnMult;
   const rng = new SeededRandom(rpg.seed + rpg.gameTime);
   rpg.gameTime++;
 

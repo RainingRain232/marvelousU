@@ -662,6 +662,9 @@ export class OverworldView {
   // Roaming enemy sprites
   private _roamingEnemySprites: Map<string, { sprite: AnimatedSprite; shadow: Graphics; container: Container }> = new Map();
 
+  // NPC sprites
+  private _npcSprites: Map<string, { sprite: AnimatedSprite; shadow: Graphics; container: Container }> = new Map();
+
   // Day/night overlay
   private _dayNightOverlay = new Graphics();
 
@@ -782,6 +785,12 @@ export class OverworldView {
       entry.container.destroy({ children: true });
     }
     this._roamingEnemySprites.clear();
+
+    // Destroy NPC sprites
+    for (const entry of this._npcSprites.values()) {
+      entry.container.destroy({ children: true });
+    }
+    this._npcSprites.clear();
 
     this.vm.removeFromLayer("background", this.mapContainer);
     this.vm.removeFromLayer("buildings", this.entityContainer);
@@ -930,8 +939,9 @@ export class OverworldView {
     const halfTs = ts / 2;
     const { x0, y0, x1, y1 } = this._getVisibleTileBounds();
 
-    // Track which hamlets are visible this frame
+    // Track which hamlets/npcs are visible this frame
     const visibleHamlets = new Set<string>();
+    const visibleNpcs = new Set<string>();
 
     for (const entity of this.overworld.entities.values()) {
       const ex = entity.position.x;
@@ -971,6 +981,30 @@ export class OverworldView {
         label.position.set(labelX, labelY);
         this.entityContainer.addChild(label);
         this.entityLabels.push(label);
+      } else if (entity.type === "roaming_enemy") {
+        // Handled by _updateRoamingEnemies() with animated sprites
+        continue;
+      } else if (entity.type === "npc") {
+        // Animated NPC sprite
+        visibleNpcs.add(entity.id);
+        this._updateNpcSprite(entity, ex, ey, ts);
+
+        // Label
+        const cx = ex * ts + halfTs;
+        const cy = ey * ts + halfTs;
+        const label = new Text({
+          text: entity.name,
+          style: {
+            fontFamily: "monospace",
+            fontSize: 9,
+            fill: 0xffffff,
+            align: "center",
+          },
+        });
+        label.anchor.set(0.5, 0);
+        label.position.set(cx, cy + halfTs * 0.7);
+        this.entityContainer.addChild(label);
+        this.entityLabels.push(label);
       } else {
         const cx = ex * ts + halfTs;
         const cy = ey * ts + halfTs;
@@ -1001,6 +1035,9 @@ export class OverworldView {
         this._hamlets.delete(id);
       }
     }
+
+    // Remove NPC sprites that are no longer visible
+    this._cleanupNpcSprites(visibleNpcs);
   }
 
   private _drawEntityMarker(
@@ -1170,6 +1207,63 @@ export class OverworldView {
       if (!activeIds.has(id)) {
         entry.container.destroy({ children: true });
         this._roamingEnemySprites.delete(id);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // NPC sprites
+  // ---------------------------------------------------------------------------
+
+  private static readonly NPC_UNIT_TYPES: UnitType[] = [
+    UnitType.SWORDSMAN, UnitType.ARCHER, UnitType.CLERIC,
+    UnitType.MONK, UnitType.TEMPLAR, UnitType.SAINT, UnitType.DEFENDER,
+  ];
+
+  private _updateNpcSprite(entity: OverworldEntity, ex: number, ey: number, ts: number): void {
+    if (!this._npcSprites.has(entity.id)) {
+      // Deterministic unit type based on entity id hash
+      let hash = 0;
+      for (let i = 0; i < entity.id.length; i++) {
+        hash = ((hash << 5) - hash + entity.id.charCodeAt(i)) | 0;
+      }
+      const types = OverworldView.NPC_UNIT_TYPES;
+      const unitType = types[((hash >>> 0) % types.length)];
+
+      const frames = animationManager.getFrames(unitType, UnitState.IDLE);
+      const frameSet = animationManager.getFrameSet(unitType, UnitState.IDLE);
+
+      const container = new Container();
+      const shadow = new Graphics();
+      shadow.ellipse(0, 4, ts * 0.25, ts * 0.1);
+      shadow.fill({ color: 0x000000, alpha: 0.25 });
+      container.addChild(shadow);
+
+      const sprite = new AnimatedSprite(frames);
+      sprite.anchor.set(0.5, 0.75);
+      sprite.width = ts * 1.0;
+      sprite.height = ts * 1.0;
+      sprite.animationSpeed = frameSet.fps / 60;
+      sprite.loop = true;
+      sprite.play();
+      container.addChild(sprite);
+
+      this.entityContainer.addChild(container);
+      this._npcSprites.set(entity.id, { sprite, shadow, container });
+    }
+
+    const entry = this._npcSprites.get(entity.id)!;
+    const px = ex * ts + ts / 2;
+    const py = ey * ts + ts / 2;
+    entry.container.position.set(px, py);
+  }
+
+  /** Remove NPC sprites for entities no longer visible. Called at end of _drawEntities. */
+  private _cleanupNpcSprites(visibleNpcIds: Set<string>): void {
+    for (const [id, entry] of this._npcSprites) {
+      if (!visibleNpcIds.has(id)) {
+        entry.container.destroy({ children: true });
+        this._npcSprites.delete(id);
       }
     }
   }

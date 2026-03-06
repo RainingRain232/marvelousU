@@ -74,6 +74,7 @@ interface SerializedRPGState {
   // Economy
   townPurchases: Record<string, number>;
   arenaFightsLeft: number;
+  spawnRate?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -224,6 +225,7 @@ export function restoreRPGState(
     // Economy
     townPurchases: serialized.townPurchases ?? {},
     arenaFightsLeft: serialized.arenaFightsLeft ?? 3,
+    spawnRate: serialized.spawnRate ?? 100,
   };
 }
 
@@ -276,5 +278,6 @@ function _serializeRPGState(state: RPGState): SerializedRPGState {
     // Economy
     townPurchases: state.townPurchases,
     arenaFightsLeft: state.arenaFightsLeft,
+    spawnRate: state.spawnRate,
   };
 }
