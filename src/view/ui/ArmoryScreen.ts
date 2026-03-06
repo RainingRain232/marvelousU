@@ -728,6 +728,230 @@ function drawExcaliburIcon(g: Graphics, cx: number, cy: number, size: number): v
   g.circle(cx + 5 * s, cy - 4 * s, 0.6 * s).fill({ color: 0xffffaa, alpha: 0.4 });
 }
 
+// ---------------------------------------------------------------------------
+// Arthurian relic icons
+// ---------------------------------------------------------------------------
+
+function drawHolyGrailIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Holy glow
+  g.circle(cx, cy - 2 * s, 11 * s).fill({ color: 0xffdd44, alpha: 0.12 });
+  // Cup bowl
+  g.poly([
+    cx - 6 * s, cy - 6 * s,
+    cx - 5 * s, cy + 2 * s,
+    cx - 3 * s, cy + 5 * s,
+    cx + 3 * s, cy + 5 * s,
+    cx + 5 * s, cy + 2 * s,
+    cx + 6 * s, cy - 6 * s,
+  ]).fill({ color: 0xddaa22 });
+  // Inner cup
+  g.poly([
+    cx - 4 * s, cy - 6 * s,
+    cx - 3.5 * s, cy + 1 * s,
+    cx - 2 * s, cy + 3.5 * s,
+    cx + 2 * s, cy + 3.5 * s,
+    cx + 3.5 * s, cy + 1 * s,
+    cx + 4 * s, cy - 6 * s,
+  ]).fill({ color: 0xeebb33, alpha: 0.5 });
+  // Stem
+  g.roundRect(cx - 1 * s, cy + 5 * s, 2 * s, 5 * s, 0.5 * s).fill({ color: 0xccaa22 });
+  // Base
+  g.ellipse(cx, cy + 11 * s, 4 * s, 1.5 * s).fill({ color: 0xddaa22 });
+  // Holy light rays
+  g.rect(cx - 0.3 * s, cy - 12 * s, 0.6 * s, 5 * s).fill({ color: 0xffffaa, alpha: 0.5 });
+  g.rect(cx - 4 * s, cy - 9 * s, 0.5 * s, 3 * s).fill({ color: 0xffffaa, alpha: 0.3 });
+  g.rect(cx + 3.5 * s, cy - 9 * s, 0.5 * s, 3 * s).fill({ color: 0xffffaa, alpha: 0.3 });
+  // Gem on cup
+  g.circle(cx, cy - 2 * s, 1.5 * s).fill({ color: 0xff4444 });
+  g.circle(cx, cy - 2 * s, 0.7 * s).fill({ color: 0xff8888, alpha: 0.6 });
+}
+
+function drawLancelotsShieldIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Shield shape (kite shield)
+  g.poly([
+    cx, cy - 12 * s,
+    cx + 8 * s, cy - 8 * s,
+    cx + 7 * s, cy + 2 * s,
+    cx, cy + 12 * s,
+    cx - 7 * s, cy + 2 * s,
+    cx - 8 * s, cy - 8 * s,
+  ]).fill({ color: 0x2244aa });
+  // Shield rim
+  g.poly([
+    cx, cy - 12 * s,
+    cx + 8 * s, cy - 8 * s,
+    cx + 7 * s, cy + 2 * s,
+    cx, cy + 12 * s,
+    cx - 7 * s, cy + 2 * s,
+    cx - 8 * s, cy - 8 * s,
+  ]).stroke({ color: 0xccccdd, width: 1.2 * s });
+  // White stripe (Lancelot's band)
+  g.rect(cx - 2 * s, cy - 11 * s, 4 * s, 22 * s).fill({ color: 0xeeeeff, alpha: 0.7 });
+  // Lake emblem — water ripple
+  g.ellipse(cx, cy - 2 * s, 3.5 * s, 2 * s).fill({ color: 0x4488cc, alpha: 0.6 });
+  g.ellipse(cx, cy - 2 * s, 2 * s, 1 * s).fill({ color: 0x88bbee, alpha: 0.5 });
+  // Gold boss
+  g.circle(cx, cy + 4 * s, 1.5 * s).fill({ color: 0xddaa22 });
+}
+
+function drawGawains_girdleIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Belt body (curved)
+  g.roundRect(cx - 10 * s, cy - 2 * s, 20 * s, 5 * s, 2 * s).fill({ color: 0x228833 });
+  // Belt stitching
+  g.rect(cx - 9 * s, cy - 0.5 * s, 18 * s, 0.6 * s).fill({ color: 0x44bb55, alpha: 0.5 });
+  g.rect(cx - 9 * s, cy + 1.5 * s, 18 * s, 0.6 * s).fill({ color: 0x44bb55, alpha: 0.5 });
+  // Gold buckle
+  g.roundRect(cx - 3 * s, cy - 3.5 * s, 6 * s, 8 * s, 1 * s).fill({ color: 0xddaa22 });
+  g.roundRect(cx - 2 * s, cy - 2.5 * s, 4 * s, 6 * s, 0.5 * s).fill({ color: 0x228833 });
+  // Buckle prong
+  g.rect(cx - 0.4 * s, cy - 2.5 * s, 0.8 * s, 4 * s).fill({ color: 0xccaa22 });
+  // Green glow (enchantment)
+  g.ellipse(cx, cy + 0.5 * s, 12 * s, 5 * s).fill({ color: 0x44ff66, alpha: 0.08 });
+  // Pentangle ornaments
+  g.circle(cx - 6 * s, cy + 0.5 * s, 1 * s).fill({ color: 0x66dd77 });
+  g.circle(cx + 6 * s, cy + 0.5 * s, 1 * s).fill({ color: 0x66dd77 });
+}
+
+function drawMerlinsStaffIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Magical aura
+  g.circle(cx, cy - 10 * s, 6 * s).fill({ color: 0x6644cc, alpha: 0.15 });
+  // Staff shaft
+  g.roundRect(cx - 1 * s, cy - 6 * s, 2 * s, 20 * s, 0.5 * s).fill({ color: 0x553311 });
+  // Wood grain
+  g.rect(cx - 0.3 * s, cy - 4 * s, 0.6 * s, 16 * s).fill({ color: 0x664422, alpha: 0.4 });
+  // Gnarled head (twisted wood)
+  g.poly([
+    cx - 3 * s, cy - 6 * s,
+    cx - 2 * s, cy - 9 * s,
+    cx - 1 * s, cy - 11 * s,
+    cx + 1 * s, cy - 11 * s,
+    cx + 2 * s, cy - 9 * s,
+    cx + 3 * s, cy - 6 * s,
+  ]).fill({ color: 0x664422 });
+  // Crystal orb at top
+  g.circle(cx, cy - 10 * s, 3 * s).fill({ color: 0x7755cc });
+  g.circle(cx, cy - 10 * s, 2 * s).fill({ color: 0x9977ee, alpha: 0.6 });
+  g.circle(cx - 0.8 * s, cy - 11 * s, 0.8 * s).fill({ color: 0xccaaff, alpha: 0.5 });
+  // Sparkles
+  g.circle(cx + 3 * s, cy - 13 * s, 0.5 * s).fill({ color: 0xccaaff, alpha: 0.6 });
+  g.circle(cx - 3.5 * s, cy - 12 * s, 0.4 * s).fill({ color: 0xccaaff, alpha: 0.5 });
+  g.circle(cx + 1 * s, cy - 14 * s, 0.4 * s).fill({ color: 0xccaaff, alpha: 0.4 });
+}
+
+function drawMordredsCrownIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Dark aura
+  g.circle(cx, cy, 10 * s).fill({ color: 0x331111, alpha: 0.15 });
+  // Crown band
+  g.roundRect(cx - 8 * s, cy + 1 * s, 16 * s, 5 * s, 1 * s).fill({ color: 0x222222 });
+  // Crown points (jagged, aggressive)
+  g.poly([
+    cx - 8 * s, cy + 1 * s,
+    cx - 7 * s, cy - 5 * s,
+    cx - 5 * s, cy - 1 * s,
+    cx - 3 * s, cy - 8 * s,
+    cx, cy - 3 * s,
+    cx + 3 * s, cy - 8 * s,
+    cx + 5 * s, cy - 1 * s,
+    cx + 7 * s, cy - 5 * s,
+    cx + 8 * s, cy + 1 * s,
+  ]).fill({ color: 0x333333 });
+  // Dark iron highlights
+  g.poly([
+    cx - 7 * s, cy + 1 * s,
+    cx - 7 * s, cy - 5 * s,
+    cx - 6 * s, cy - 4 * s,
+    cx - 6.5 * s, cy + 1 * s,
+  ]).fill({ color: 0x444444, alpha: 0.5 });
+  // Red gems (malice)
+  g.circle(cx, cy + 3 * s, 1.5 * s).fill({ color: 0xcc2222 });
+  g.circle(cx, cy + 3 * s, 0.7 * s).fill({ color: 0xff5555, alpha: 0.6 });
+  g.circle(cx - 5 * s, cy + 3 * s, 1 * s).fill({ color: 0xaa1111 });
+  g.circle(cx + 5 * s, cy + 3 * s, 1 * s).fill({ color: 0xaa1111 });
+  // Thorny tip highlights
+  g.circle(cx - 3 * s, cy - 7.5 * s, 0.6 * s).fill({ color: 0xcc2222, alpha: 0.4 });
+  g.circle(cx + 3 * s, cy - 7.5 * s, 0.6 * s).fill({ color: 0xcc2222, alpha: 0.4 });
+}
+
+function drawNimuesVeilIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Water aura
+  g.circle(cx, cy, 11 * s).fill({ color: 0x2255aa, alpha: 0.1 });
+  // Veil fabric (flowing shape)
+  g.poly([
+    cx - 6 * s, cy - 10 * s,
+    cx + 6 * s, cy - 10 * s,
+    cx + 8 * s, cy - 4 * s,
+    cx + 7 * s, cy + 4 * s,
+    cx + 5 * s, cy + 10 * s,
+    cx + 2 * s, cy + 12 * s,
+    cx - 2 * s, cy + 12 * s,
+    cx - 5 * s, cy + 10 * s,
+    cx - 7 * s, cy + 4 * s,
+    cx - 8 * s, cy - 4 * s,
+  ]).fill({ color: 0x4488cc, alpha: 0.5 });
+  // Inner shimmer
+  g.poly([
+    cx - 4 * s, cy - 8 * s,
+    cx + 4 * s, cy - 8 * s,
+    cx + 6 * s, cy - 2 * s,
+    cx + 5 * s, cy + 4 * s,
+    cx + 3 * s, cy + 9 * s,
+    cx - 3 * s, cy + 9 * s,
+    cx - 5 * s, cy + 4 * s,
+    cx - 6 * s, cy - 2 * s,
+  ]).fill({ color: 0x88bbee, alpha: 0.3 });
+  // Water droplets / dewdrops
+  g.circle(cx - 2 * s, cy - 4 * s, 1 * s).fill({ color: 0xaaddff, alpha: 0.6 });
+  g.circle(cx + 3 * s, cy - 1 * s, 0.8 * s).fill({ color: 0xaaddff, alpha: 0.5 });
+  g.circle(cx - 1 * s, cy + 3 * s, 0.7 * s).fill({ color: 0xaaddff, alpha: 0.5 });
+  g.circle(cx + 1 * s, cy + 7 * s, 0.6 * s).fill({ color: 0xaaddff, alpha: 0.4 });
+  // Silver clasp at top
+  g.roundRect(cx - 3 * s, cy - 11 * s, 6 * s, 2 * s, 1 * s).fill({ color: 0xccddee });
+  g.circle(cx, cy - 10 * s, 1 * s).fill({ color: 0x4488cc });
+}
+
+function drawPellinoresHornIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Horn body (curved hunting horn)
+  g.poly([
+    cx - 2 * s, cy - 10 * s,
+    cx + 2 * s, cy - 10 * s,
+    cx + 4 * s, cy - 6 * s,
+    cx + 6 * s, cy - 1 * s,
+    cx + 7 * s, cy + 4 * s,
+    cx + 6 * s, cy + 8 * s,
+    cx + 3 * s, cy + 10 * s,
+    cx - 1 * s, cy + 10 * s,
+    cx + 1 * s, cy + 7 * s,
+    cx + 3 * s, cy + 4 * s,
+    cx + 2 * s, cy - 1 * s,
+    cx, cy - 6 * s,
+  ]).fill({ color: 0xaa8844 });
+  // Horn highlight
+  g.poly([
+    cx - 1 * s, cy - 9 * s,
+    cx + 1 * s, cy - 9 * s,
+    cx + 2 * s, cy - 5 * s,
+    cx + 1 * s, cy - 5 * s,
+  ]).fill({ color: 0xccaa66, alpha: 0.5 });
+  // Bell end (flared opening)
+  g.ellipse(cx + 1 * s, cy + 10 * s, 4 * s, 2.5 * s).fill({ color: 0xbb9944 });
+  g.ellipse(cx + 1 * s, cy + 10 * s, 2.5 * s, 1.5 * s).fill({ color: 0x332211, alpha: 0.5 });
+  // Gold bands
+  g.roundRect(cx - 2 * s, cy - 9 * s, 4 * s, 1.5 * s, 0.5 * s).fill({ color: 0xddaa22 });
+  g.roundRect(cx + 1 * s, cy - 2 * s, 4 * s, 1.5 * s, 0.5 * s).fill({ color: 0xddaa22 });
+  // Beast rune engraving
+  g.circle(cx + 1 * s, cy - 5 * s, 1.2 * s).fill({ color: 0xddaa22, alpha: 0.4 });
+  // Sound waves
+  g.poly([cx + 5 * s, cy + 9 * s, cx + 8 * s, cy + 8 * s, cx + 5 * s, cy + 11 * s]).stroke({ color: 0xddcc88, alpha: 0.3, width: 0.6 * s });
+  g.poly([cx + 7 * s, cy + 8 * s, cx + 10 * s, cy + 7 * s, cx + 7 * s, cy + 11 * s]).stroke({ color: 0xddcc88, alpha: 0.2, width: 0.5 * s });
+}
+
 function hasCustomIcon(_id: ArmoryItemId): boolean {
   return true;
 }
@@ -755,6 +979,13 @@ function drawItemIcon(g: Graphics, id: ArmoryItemId, cx: number, cy: number, siz
     case "crown_of_valor": drawCrownOfValorIcon(g, cx, cy, size); break;
     case "shadow_dagger": drawShadowDaggerIcon(g, cx, cy, size); break;
     case "excalibur": drawExcaliburIcon(g, cx, cy, size); break;
+    case "holy_grail": drawHolyGrailIcon(g, cx, cy, size); break;
+    case "lancelots_shield": drawLancelotsShieldIcon(g, cx, cy, size); break;
+    case "gawains_girdle": drawGawains_girdleIcon(g, cx, cy, size); break;
+    case "merlins_staff": drawMerlinsStaffIcon(g, cx, cy, size); break;
+    case "mordreds_crown": drawMordredsCrownIcon(g, cx, cy, size); break;
+    case "nimues_veil": drawNimuesVeilIcon(g, cx, cy, size); break;
+    case "pellinores_horn": drawPellinoresHornIcon(g, cx, cy, size); break;
   }
 }
 

@@ -19,6 +19,9 @@ import nimueImgUrl from "@/img/nimue.png";
 import pellinoreImgUrl from "@/img/pellinore.png";
 import mordredImgUrl from "@/img/mordred.png";
 // Thematic images
+import archerSwordsmanImgUrl from "@/img/archerandswordsman.png";
+import firepitImgUrl from "@/img/firepit.png";
+import barracksImgUrl from "@/img/barracks.png";
 import swordImgUrl from "@/img/sword.png";
 import throneImgUrl from "@/img/throne.png";
 import magicImgUrl from "@/img/magic.png";
@@ -26,19 +29,20 @@ import wallsImgUrl from "@/img/walls.png";
 import avalonImgUrl from "@/img/avalon.png";
 import fairyImgUrl from "@/img/fairy.png";
 import undergroundImgUrl from "@/img/underground.png";
+import fisherKingImgUrl from "@/img/fisherking.png";
 
 /** Map scenario number → image URL (leader portrait or thematic). */
 const SCENARIO_IMAGES: Record<number, string> = {
-  1: swordImgUrl,          // First Blood
-  2: swordImgUrl,          // Firepit Frenzy
-  3: swordImgUrl,          // The Barracks
+  1: archerSwordsmanImgUrl, // First Blood
+  2: firepitImgUrl,         // Firepit Frenzy
+  3: barracksImgUrl,        // The Barracks
   4: swordImgUrl,          // The Art of War
   5: magicImgUrl,          // The Dark Savant
   6: throneImgUrl,         // The First Skirmish
   7: fairyImgUrl,          // The Long Road (pixies)
   8: arthurImgUrl,         // The Sword in the Stone — Arthur
   9: gawainImgUrl,         // The Green Chapel — Gawain
-  10: throneImgUrl,        // The Fisher King's Lands
+  10: fisherKingImgUrl,     // The Fisher King's Lands
   11: morganImgUrl,        // Morgan's Bargain — Morgan le Fay
   12: magicImgUrl,         // The Siege Perilous
   13: guinevereImgUrl,     // The Black Knight — Guinevere unlocked
