@@ -161,7 +161,7 @@ import { merlinMagicScreen } from "@view/world/ui/MerlinMagicScreen";
 import { castSpell } from "@world/systems/OverlandSpellSystem";
 import type { OverlandSpellId } from "@world/config/OverlandSpellDefs";
 import merlinImgUrl from "@/img/merlin.png";
-import { showLeaderIntroduction } from "@view/world/ui/LeaderIntroDialog";
+import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntroDialog";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -2901,6 +2901,49 @@ async function _bootWorldGame(
   }
 
   // ---------------------------------------------------------------------------
+  // Mordred's Army — 8 hexes from Avalon, attacks p1 on proximity
+  // ---------------------------------------------------------------------------
+  {
+    const center = { q: 0, r: 0 };
+    const ring8 = hexSpiral(center, 8).filter((h) => hexDistance(center, h) === 8);
+    const shuffledRing8 = ring8.sort(() => Math.random() - 0.5);
+    let mordredHex: { q: number; r: number } | null = null;
+
+    for (const candidate of shuffledRing8) {
+      const t = grid.getTile(candidate.q, candidate.r);
+      if (!t) continue;
+      if (t.cityId || t.armyId || t.campId || t.owner) continue;
+      const terrain = TERRAIN_DEFINITIONS[t.terrain];
+      if (!isFinite(terrain.movementCost)) continue;
+      // Not too close to any player start
+      let tooClose = false;
+      for (const sp of startPositions) {
+        if (hexDistance(candidate, sp) < 4) { tooClose = true; break; }
+      }
+      if (tooClose) continue;
+      mordredHex = candidate;
+      break;
+    }
+
+    if (mordredHex) {
+      const mordredArmyId = nextId(state, "army");
+      const mordredUnits: ArmyUnit[] = [
+        { unitType: UnitType.KNIGHT, count: 5, hpPerUnit: 180 },
+        { unitType: UnitType.SWORDSMAN, count: 8, hpPerUnit: 100 },
+        { unitType: UnitType.CROSSBOWMAN, count: 4, hpPerUnit: 75 },
+        { unitType: UnitType.STORM_MAGE, count: 2, hpPerUnit: 60 },
+      ];
+      const mordredArmy = createWorldArmy(mordredArmyId, "morgaine", mordredHex, mordredUnits, false);
+      mordredArmy.movementPoints = 0; // stationary until triggered
+      state.armies.set(mordredArmyId, mordredArmy);
+      const mordredTile = grid.getTile(mordredHex.q, mordredHex.r);
+      if (mordredTile) mordredTile.armyId = mordredArmyId;
+      // Store the army ID for the proximity trigger
+      (state as any)._mordredArmyId = mordredArmyId;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Sword in the Stone — grassland island 4 hexes from Avalon, guarded by angel
   // ---------------------------------------------------------------------------
   {
@@ -3734,13 +3777,121 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     }
   };
 
+  // Mordred encounter — triggers when p1 comes within 2 tiles of Mordred's army
+  let _mordredTriggered = false;
+
+  const _showMordredDialog = (): Promise<void> => {
+    return new Promise((resolve) => {
+      // Merlin warns first
+      const backdrop1 = document.createElement("div");
+      backdrop1.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card1 = document.createElement("div");
+      card1.style.cssText = "background:#1a1a2e;border:2px solid #aa88dd;border-radius:12px;padding:24px;max-width:480px;text-align:center;box-shadow:0 0 30px rgba(136,68,204,0.4);";
+
+      const img1 = document.createElement("img");
+      img1.src = merlinImgUrl;
+      img1.style.cssText = "width:100px;height:100px;border-radius:50%;border:2px solid #aa88dd;margin-bottom:12px;image-rendering:pixelated;object-fit:cover;";
+      card1.appendChild(img1);
+
+      const title1 = document.createElement("div");
+      title1.textContent = "MERLIN";
+      title1.style.cssText = "color:#aa88dd;font-family:monospace;font-size:18px;font-weight:bold;margin-bottom:4px;";
+      card1.appendChild(title1);
+
+      const sub1 = document.createElement("div");
+      sub1.textContent = "Archmage of Avalon";
+      sub1.style.cssText = "color:#aaaacc;font-family:monospace;font-size:12px;font-style:italic;margin-bottom:12px;";
+      card1.appendChild(sub1);
+
+      const text1 = document.createElement("div");
+      text1.textContent = "\u201CDark tidings, my liege! Mordred, Arthur\u2019s treacherous son, commands a powerful army nearby. He is cunning, ruthless, and fights without honour. His warriors will attack on sight \u2014 prepare yourself, for there will be no parley with the Usurper.\u201D";
+      text1.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;padding:0 8px;";
+      card1.appendChild(text1);
+
+      const btn1 = document.createElement("button");
+      btn1.textContent = "Very well.";
+      btn1.style.cssText = "background:#222244;color:white;border:1px solid #aa88dd;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;";
+      btn1.onmouseenter = () => { btn1.style.background = "#334466"; };
+      btn1.onmouseleave = () => { btn1.style.background = "#222244"; };
+      btn1.onclick = () => {
+        backdrop1.remove();
+        // Now Mordred speaks
+        _showMordredSpeech().then(resolve);
+      };
+      card1.appendChild(btn1);
+      backdrop1.appendChild(card1);
+      document.body.appendChild(backdrop1);
+    });
+  };
+
+  const _showMordredSpeech = (): Promise<void> => {
+    return new Promise((resolve) => {
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card = document.createElement("div");
+      card.style.cssText = "background:#1a1a2e;border:2px solid #aa4444;border-radius:12px;padding:24px;max-width:480px;text-align:center;box-shadow:0 0 30px rgba(170,68,68,0.5);";
+
+      const img = document.createElement("img");
+      img.src = LEADER_IMAGES["mordred"] ?? "";
+      img.style.cssText = "width:100px;height:100px;border-radius:50%;border:2px solid #aa4444;margin-bottom:12px;image-rendering:pixelated;object-fit:cover;";
+      card.appendChild(img);
+
+      const title = document.createElement("div");
+      title.textContent = "MORDRED";
+      title.style.cssText = "color:#cc4444;font-family:monospace;font-size:18px;font-weight:bold;margin-bottom:4px;";
+      card.appendChild(title);
+
+      const sub = document.createElement("div");
+      sub.textContent = "The Usurper";
+      sub.style.cssText = "color:#aaaacc;font-family:monospace;font-size:12px;font-style:italic;margin-bottom:12px;";
+      card.appendChild(sub);
+
+      const text = document.createElement("div");
+      text.textContent = "\u201CSo, another pretender dares to march near my domain. I am Mordred, and I will have what is rightfully mine \u2014 this land, this throne, everything. My father Arthur denied me my birthright, but I will not be denied again. Your armies will break against mine like waves against stone. Surrender now, or I shall carve your name into a list that grows longer by the day.\u201D";
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;padding:0 8px;";
+      card.appendChild(text);
+
+      const btn = document.createElement("button");
+      btn.textContent = "We shall see about that.";
+      btn.style.cssText = "background:#222244;color:white;border:1px solid #aa4444;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;";
+      btn.onmouseenter = () => { btn.style.background = "#442222"; };
+      btn.onmouseleave = () => { btn.style.background = "#222244"; };
+      btn.onclick = () => { backdrop.remove(); resolve(); };
+      card.appendChild(btn);
+
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
+  const _checkMordredProximity = async (playerArmy: WorldArmy): Promise<void> => {
+    if (_mordredTriggered) return;
+    const mordredArmyId = (state as any)._mordredArmyId as string | undefined;
+    if (!mordredArmyId) return;
+    const mordredArmy = state.armies.get(mordredArmyId);
+    if (!mordredArmy) return;
+
+    if (hexDistance(playerArmy.position, mordredArmy.position) <= 2) {
+      _mordredTriggered = true;
+      await _showMordredDialog();
+
+      // Mordred attacks — give him movement points and move toward the player
+      mordredArmy.movementPoints = 6;
+      moveArmy(mordredArmy, playerArmy.position, state);
+    }
+  };
+
   // Merlin warning when player gets near a Morgaine army
   const _warnedMorgaineArmies = new Set<string>();
 
   /** Show Merlin warning dialog if a player army is within 1 hex of a Morgaine army. */
   const _checkMorgaineProximity = (playerArmy: WorldArmy): Promise<void> => {
+    const mordredId = (state as any)._mordredArmyId as string | undefined;
     for (const army of state.armies.values()) {
       if (army.owner !== "morgaine" || army.isGarrison) continue;
+      if (army.id === mordredId) continue; // Mordred has his own dialog
       if (_warnedMorgaineArmies.has(army.id)) continue;
       if (hexDistance(playerArmy.position, army.position) <= 1) {
         _warnedMorgaineArmies.add(army.id);
@@ -4545,6 +4696,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           }
 
           await _checkLeaderFirstEncounter(army);
+          await _checkMordredProximity(army);
           await _checkMorgaineProximity(army);
           await _checkSwordProximity(army);
           await _checkAvalonProximity(army);
@@ -4652,6 +4804,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
               }
             }
 
+            await _checkLeaderFirstEncounter(army);
+            await _checkMordredProximity(army);
             await _checkMorgaineProximity(army);
             await _checkSwordProximity(army);
             await _checkAvalonProximity(army);
@@ -4823,6 +4977,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         }
 
         await _checkLeaderFirstEncounter(army);
+        await _checkMordredProximity(army);
         await _checkMorgaineProximity(army);
         await _checkSwordProximity(army);
         await _checkAvalonProximity(army);
