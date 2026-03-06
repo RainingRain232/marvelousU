@@ -9,7 +9,7 @@ export const RPGBalance = {
   ENCOUNTER_RATE_GROWTH: 0.02,
 
   // Party
-  MAX_PARTY_SIZE: 4,
+  MAX_PARTY_SIZE: 6,
   BASE_XP_TO_LEVEL: 100,
   XP_SCALE_FACTOR: 1.5,
   LEVEL_STAT_GROWTH: 0.12,

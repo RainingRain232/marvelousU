@@ -2,8 +2,10 @@
 import { Container, Graphics, Text } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { RPGState, RPGItem } from "@rpg/state/RPGState";
-import type { TownData } from "@rpg/state/OverworldState";
+import type { TownData, RecruitData } from "@rpg/state/OverworldState";
 import { buyItem, sellItem, equipItem, unequipItem, restAtInn } from "@rpg/systems/EquipmentSystem";
+import { generateRecruits, recruitUnit } from "@rpg/systems/RecruitSystem";
+import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -19,7 +21,18 @@ const GOLD_COLOR = 0xffd700;
 const HP_GREEN = 0x44aa44;
 const TAB_ACTIVE_COLOR = 0x2a2a4e;
 
-const TABS = ["Shop", "Inn", "Party", "Leave"] as const;
+const RECRUIT_COLOR = 0x44aacc;
+
+const TABS = ["Shop", "Inn", "Recruit", "Party", "Leave"] as const;
+
+// Tab icon glyphs (simple Unicode symbols)
+const TAB_ICONS: Record<string, string> = {
+  Shop: "\u2692",      // crossed hammers (⚒)
+  Inn: "\u2615",       // hot beverage (☕)
+  Recruit: "\u2694",   // crossed swords (⚔)
+  Party: "\u2666",     // diamond (♦)
+  Leave: "\u2192",     // right arrow (→)
+};
 
 // Sub-modes within Party tab
 type PartySubMode = "member_list" | "equip_slot" | "inventory_pick";
@@ -45,6 +58,8 @@ export class TownMenuView {
   private _partySubMode: PartySubMode = "member_list";
   private _equipSlotIndex: number = 0;
   private _inventoryPickIndex: number = 0;
+  private _recruitIndex: number = 0;
+  private _recruits: RecruitData[] = [];
   private _message: string = "";
   private _messageTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -58,6 +73,9 @@ export class TownMenuView {
     this.townName = townName;
 
     vm.addToLayer("ui", this.container);
+
+    // Generate recruits for this visit
+    this._recruits = generateRecruits(rpg);
 
     this._draw();
     this._setupInput();
@@ -105,6 +123,9 @@ export class TownMenuView {
       case "Inn":
         this._drawInn(W, H);
         break;
+      case "Recruit":
+        this._drawRecruit(W, H);
+        break;
       case "Party":
         this._drawParty(W, H);
         break;
@@ -147,16 +168,18 @@ export class TownMenuView {
     for (let i = 0; i < TABS.length; i++) {
       const x = 20 + i * tabWidth;
       const isActive = i === this._activeTab;
+      const tabName = TABS[i];
+      const icon = TAB_ICONS[tabName] ?? "";
 
       g.roundRect(x, y, tabWidth - 4, 30, 4);
       g.fill({ color: isActive ? TAB_ACTIVE_COLOR : PANEL_COLOR });
       g.stroke({ color: isActive ? HIGHLIGHT_COLOR : BORDER_COLOR, width: isActive ? 2 : 1 });
 
       const text = new Text({
-        text: TABS[i],
+        text: `${icon} ${tabName}`,
         style: {
           fontFamily: "monospace",
-          fontSize: 13,
+          fontSize: 12,
           fill: isActive ? HIGHLIGHT_COLOR : TEXT_COLOR,
           fontWeight: isActive ? "bold" : "normal",
         },
@@ -424,6 +447,134 @@ export class TownMenuView {
       noGold.anchor.set(0.5, 0);
       noGold.position.set(W / 2, buttonY + 48);
       this.container.addChild(noGold);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Recruit tab
+  // ---------------------------------------------------------------------------
+
+  private _drawRecruit(W: number, H: number): void {
+    const startY = 100;
+    const g = new Graphics();
+
+    g.roundRect(15, startY - 5, W - 30, H - startY - 60, 6);
+    g.fill({ color: PANEL_COLOR, alpha: 0.8 });
+    g.stroke({ color: BORDER_COLOR, width: 1 });
+    this.container.addChild(g);
+
+    // Header
+    const partyCount = this.rpg.party.length;
+    const maxParty = RPGBalance.MAX_PARTY_SIZE;
+    const headerText = new Text({
+      text: `\u2694 Hire Adventurers  (Party: ${partyCount}/${maxParty})`,
+      style: { fontFamily: "monospace", fontSize: 15, fill: RECRUIT_COLOR, fontWeight: "bold" },
+    });
+    headerText.position.set(25, startY + 6);
+    this.container.addChild(headerText);
+
+    if (this._recruits.length === 0) {
+      const empty = new Text({
+        text: "No adventurers available for hire.",
+        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
+      });
+      empty.position.set(30, startY + 40);
+      this.container.addChild(empty);
+      return;
+    }
+
+    const rowH = 56;
+    for (let i = 0; i < this._recruits.length; i++) {
+      const recruit = this._recruits[i];
+      const y = startY + 32 + i * rowH;
+      const isSelected = i === this._recruitIndex;
+      const canAfford = this.rpg.gold >= recruit.cost;
+      const partyFull = partyCount >= maxParty;
+
+      if (isSelected) {
+        const highlight = new Graphics();
+        highlight.roundRect(20, y - 2, W - 44, rowH - 6, 4);
+        highlight.fill({ color: 0x1a2a3e, alpha: 0.8 });
+        this.container.addChild(highlight);
+      }
+
+      const cursor = isSelected ? ">" : " ";
+      // Unit type icon
+      const typeIcon = _unitTypeIcon(recruit.unitType);
+
+      const nameText = new Text({
+        text: `${cursor} ${typeIcon} ${recruit.name}  Lv.${recruit.level}  (${recruit.unitType.replace(/_/g, " ")})`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 13,
+          fill: isSelected ? HIGHLIGHT_COLOR : (!canAfford || partyFull ? 0x666688 : TEXT_COLOR),
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      nameText.position.set(30, y + 2);
+      this.container.addChild(nameText);
+
+      // Cost
+      const costText = new Text({
+        text: `${recruit.cost}g`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 13,
+          fill: canAfford ? GOLD_COLOR : 0x664444,
+          fontWeight: "bold",
+        },
+      });
+      costText.anchor.set(1, 0);
+      costText.position.set(W - 30, y + 2);
+      this.container.addChild(costText);
+
+      // Abilities
+      const abilities = recruit.abilityTypes?.length
+        ? recruit.abilityTypes.map(a => a.replace(/_/g, " ")).join(", ")
+        : "no special abilities";
+      const abilityText = new Text({
+        text: `Abilities: ${abilities}`,
+        style: { fontFamily: "monospace", fontSize: 10, fill: DIM_TEXT },
+      });
+      abilityText.position.set(50, y + 22);
+      this.container.addChild(abilityText);
+    }
+
+    // Selected recruit description
+    if (this._recruitIndex < this._recruits.length) {
+      const recruit = this._recruits[this._recruitIndex];
+      const desc = new Text({
+        text: recruit.description,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 12,
+          fill: TEXT_COLOR,
+          wordWrap: true,
+          wordWrapWidth: W - 60,
+        },
+      });
+      desc.position.set(30, H - 105);
+      this.container.addChild(desc);
+
+      // Status line
+      const partyFull = partyCount >= maxParty;
+      const canAfford = this.rpg.gold >= recruit.cost;
+      let status = "";
+      if (partyFull) status = "Party is full!";
+      else if (!canAfford) status = "Not enough gold!";
+      else status = "Press Enter to hire";
+
+      const statusText = new Text({
+        text: status,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 12,
+          fill: partyFull || !canAfford ? 0xaa4444 : HP_GREEN,
+          fontWeight: "bold",
+        },
+      });
+      statusText.position.set(30, H - 80);
+      this.container.addChild(statusText);
     }
   }
 
@@ -715,6 +866,9 @@ export class TownMenuView {
         case "Inn":
           this._handleInnInput(e);
           break;
+        case "Recruit":
+          this._handleRecruitInput(e);
+          break;
         case "Party":
           this._handlePartyInput(e);
           break;
@@ -805,6 +959,42 @@ export class TownMenuView {
           this._showMessage("Party fully restored!");
         } else {
           this._showMessage("Not enough gold!");
+        }
+        break;
+      case "Escape":
+        this.onLeave?.();
+        break;
+    }
+  }
+
+  private _handleRecruitInput(e: KeyboardEvent): void {
+    switch (e.code) {
+      case "ArrowUp":
+      case "KeyW":
+        this._recruitIndex = Math.max(0, this._recruitIndex - 1);
+        this._draw();
+        break;
+      case "ArrowDown":
+      case "KeyS":
+        this._recruitIndex = Math.min(this._recruits.length - 1, this._recruitIndex + 1);
+        this._draw();
+        break;
+      case "Enter":
+      case "Space":
+        if (this._recruitIndex < this._recruits.length) {
+          const recruit = this._recruits[this._recruitIndex];
+          if (this.rpg.party.length >= RPGBalance.MAX_PARTY_SIZE) {
+            this._showMessage("Party is full! (Max " + RPGBalance.MAX_PARTY_SIZE + ")");
+          } else if (recruitUnit(this.rpg, recruit)) {
+            this._showMessage(`${recruit.name} joined the party!`);
+            // Remove recruited unit from the list
+            this._recruits.splice(this._recruitIndex, 1);
+            if (this._recruitIndex >= this._recruits.length) {
+              this._recruitIndex = Math.max(0, this._recruits.length - 1);
+            }
+          } else {
+            this._showMessage("Not enough gold!");
+          }
         }
         break;
       case "Escape":
@@ -936,4 +1126,22 @@ function _formatItemStats(item: RPGItem): string {
   if (item.stats.mp) parts.push(`MP+${item.stats.mp}`);
   if (item.stats.speed) parts.push(`SPD${item.stats.speed > 0 ? "+" : ""}${item.stats.speed}`);
   return parts.join("  ");
+}
+
+function _unitTypeIcon(unitType: string): string {
+  switch (unitType) {
+    case "knight": return "\u265E";        // chess knight (♞)
+    case "swordsman": return "\u2694";     // crossed swords (⚔)
+    case "templar": return "\u2720";       // maltese cross (✠)
+    case "archer": return "\u2192";        // right arrow (→)
+    case "longbowman": return "\u27B9";    // double arrow (➹)
+    case "crossbowman": return "\u2295";   // circled plus (⊕)
+    case "fire_mage": return "\u2668";     // hot springs/fire (♨)
+    case "storm_mage": return "\u26A1";    // lightning (⚡)
+    case "pikeman": return "\u2191";       // up arrow (↑)
+    case "assassin": return "\u2620";      // skull (☠)
+    case "mage_hunter": return "\u2623";   // biohazard (☣)
+    case "repeater": return "\u00BB";      // double right angle (»)
+    default: return "\u2022";              // bullet (•)
+  }
 }

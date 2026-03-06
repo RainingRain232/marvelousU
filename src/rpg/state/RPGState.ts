@@ -95,6 +95,10 @@ export interface RPGState {
   gameTime: number;
   battleMode: "turn" | "auto";
   seed: number;
+  /** Steps taken since last town visit — used to reset recruit roster after 20 steps. */
+  stepsSinceLastTown: number;
+  /** Seed used to generate current recruit roster (changes every 20 steps). */
+  recruitSeed: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -117,5 +121,7 @@ export function createRPGState(seed: number, startPosition: Vec2): RPGState {
     gameTime: 0,
     battleMode: "turn",
     seed,
+    stepsSinceLastTown: 0,
+    recruitSeed: seed,
   };
 }

@@ -43,6 +43,8 @@ interface SerializedRPGState {
   gameTime: number;
   battleMode: "turn" | "auto";
   seed: number;
+  stepsSinceLastTown: number;
+  recruitSeed: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +149,8 @@ export function restoreRPGState(
     gameTime: serialized.gameTime,
     battleMode: serialized.battleMode,
     seed: serialized.seed,
+    stepsSinceLastTown: serialized.stepsSinceLastTown ?? 0,
+    recruitSeed: serialized.recruitSeed ?? serialized.seed,
   };
 }
 
@@ -169,5 +173,7 @@ function _serializeRPGState(state: RPGState): SerializedRPGState {
     gameTime: state.gameTime,
     battleMode: state.battleMode,
     seed: state.seed,
+    stepsSinceLastTown: state.stepsSinceLastTown,
+    recruitSeed: state.recruitSeed,
   };
 }

@@ -8,6 +8,7 @@ import type { RPGState } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { OVERWORLD_ENCOUNTERS } from "@rpg/config/EncounterDefs";
 import type { RPGStateMachine } from "./RPGStateMachine";
+import { trackRecruitSteps, resetRecruitStepsOnTownVisit } from "./RecruitSystem";
 
 // ---------------------------------------------------------------------------
 // Movement
@@ -35,6 +36,9 @@ export function moveParty(
 
   // Reveal tiles
   _revealAround(overworld, newX, newY);
+
+  // Track steps for recruit roster reset
+  trackRecruitSteps(rpg);
 
   EventBus.emit("rpgPartyMoved", { position: { x: newX, y: newY }, previousPosition: prev });
 
@@ -81,6 +85,7 @@ function _handleEntityInteraction(
 ): void {
   switch (entity.type) {
     case "town":
+      resetRecruitStepsOnTownVisit(rpg);
       EventBus.emit("rpgTownEntered", { townId: entity.id });
       stateMachine.transition(RPGPhase.TOWN_MENU);
       break;

@@ -21,10 +21,21 @@ export interface OverworldTile {
 // Entities on the overworld
 // ---------------------------------------------------------------------------
 
+export interface RecruitData {
+  id: string;
+  name: string;
+  unitType: string;
+  level: number;
+  description: string;
+  cost: number;
+  abilityTypes?: string[];
+}
+
 export interface TownData {
   shopItems: RPGItem[];
   innCost: number;
   quests: string[];
+  recruits?: RecruitData[];
 }
 
 export interface DungeonEntranceData {
