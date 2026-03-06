@@ -69,6 +69,8 @@ export class TurnBattleView {
   private _selectedMenuIndex = 0;
   private _onKeyDown: ((e: KeyboardEvent) => void) | null = null;
   private _unsubs: Array<() => void> = [];
+  /** Track all active animation intervals so they can be cleared on destroy. */
+  private _activeIntervals: Set<ReturnType<typeof setInterval>> = new Set();
 
   // Callbacks for input
   onActionSelected: ((action: TurnBattleAction) => void) | null = null;
@@ -166,6 +168,10 @@ export class TurnBattleView {
       clearInterval(this._turnArrowInterval);
       this._turnArrowInterval = null;
     }
+
+    // Clear all animation intervals (damage floats, attack tweens, etc.)
+    for (const id of this._activeIntervals) clearInterval(id);
+    this._activeIntervals.clear();
 
     this.vm.removeFromLayer("background", this.bgContainer);
     this.vm.removeFromLayer("units", this.combatantsContainer);
@@ -569,9 +575,11 @@ export class TurnBattleView {
       dmgText.alpha = Math.max(0, 1 - elapsed / 600);
       if (elapsed >= 600) {
         clearInterval(floatInterval);
+        this._activeIntervals.delete(floatInterval);
         dmgText.destroy();
       }
     }, 16);
+    this._activeIntervals.add(floatInterval);
   }
 
   private _playAttackAnimation(entry: BattleSpriteEntry, c: TurnBattleCombatant): void {
@@ -593,6 +601,7 @@ export class TurnBattleView {
 
       if (t >= 1) {
         clearInterval(tweenForward);
+        this._activeIntervals.delete(tweenForward);
 
         // Wait for attack animation to finish, then tween back
         entry.sprite.onComplete = () => {
@@ -604,14 +613,17 @@ export class TurnBattleView {
 
             if (t2 >= 1) {
               clearInterval(tweenBack);
+              this._activeIntervals.delete(tweenBack);
               entry.wrapper.position.y = startY;
               entry.tweening = false;
               this._returnToIdle(entry, c);
             }
           }, 16);
+          this._activeIntervals.add(tweenBack);
         };
       }
     }, 16);
+    this._activeIntervals.add(tweenForward);
   }
 
   // ---------------------------------------------------------------------------

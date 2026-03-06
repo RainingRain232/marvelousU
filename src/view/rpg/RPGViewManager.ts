@@ -398,7 +398,6 @@ export class RPGViewManager {
   }
 
   private _showTownMenu(): void {
-    console.log("[RPGViewMgr] _showTownMenu, currentTownData:", !!this.currentTownData, "currentTownName:", this.currentTownName);
     if (!this.currentTownData) return;
     this.townMenuView = new TownMenuView();
     this.townMenuView.init(viewManager, this.rpgState, this.currentTownData, this.currentTownName, this.currentArcaneLibData ?? undefined);

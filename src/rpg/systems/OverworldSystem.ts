@@ -56,7 +56,7 @@ export function moveParty(
   // (not when already standing on tiles belonging to the same entity)
   if (tile.entityId) {
     const prevTile = overworld.grid[prev.y]?.[prev.x];
-    if (prevTile?.entityId !== tile.entityId) {
+    if (!prevTile || prevTile.entityId !== tile.entityId) {
       const entity = overworld.entities.get(tile.entityId);
       if (entity) {
         _handleEntityInteraction(rpg, overworld, entity, stateMachine);

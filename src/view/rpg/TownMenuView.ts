@@ -88,6 +88,8 @@ export class TownMenuView {
   private _arcaneLibData: ArcaneLibraryData | null = null;
   private _message: string = "";
   private _messageTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Incremented on every _draw() so stale async callbacks can be skipped. */
+  private _drawGeneration = 0;
 
   // Callbacks
   onLeave: (() => void) | null = null;
@@ -124,7 +126,11 @@ export class TownMenuView {
   // ---------------------------------------------------------------------------
 
   private _draw(): void {
-    this.container.removeChildren();
+    // Destroy all old children (Graphics, Text, interactive Containers + their listeners)
+    this._drawGeneration++;
+    while (this.container.children.length > 0) {
+      this.container.children[0].destroy({ children: true });
+    }
 
     const W = this.vm.screenWidth;
     const H = this.vm.screenHeight;
@@ -254,8 +260,9 @@ export class TownMenuView {
     frame.stroke({ color: BORDER_COLOR, width: 2 });
     this.container.addChild(frame);
 
+    const gen = this._drawGeneration;
     void Assets.load(url).then((tex: Texture) => {
-      if (this.container.destroyed) return;
+      if (this.container.destroyed || this._drawGeneration !== gen) return;
       const sprite = new Sprite(tex);
       const scale = Math.min(bannerSize / tex.width, bannerSize / tex.height);
       sprite.scale.set(scale);

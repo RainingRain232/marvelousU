@@ -441,7 +441,6 @@ export class RPGGame {
 
   private _onTownEntered(townId: string): void {
     const entity = this.overworldState.entities.get(townId);
-    console.log("[RPGBoot] _onTownEntered:", townId, "entity:", !!entity, entity?.type);
     if (!entity) return;
 
     if (entity.type === "town") {
