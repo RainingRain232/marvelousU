@@ -219,12 +219,15 @@ export class LeaderSelectScreen {
     const nextLabel = this._nextBtn.getChildAt(this._nextBtn.children.length - 1) as Text;
     if (nextLabel instanceof Text) nextLabel.text = "SELECT RACE  >";
     this.container.visible = true;
+    // Rebuild detail panel so the portrait loads now that the container is visible
+    this._selectLeader(this._selectedId);
   }
 
   /** Show in view-only mode — displays only the current leader info with a CONTINUE button. */
   showInfo(leaderId: LeaderId): void {
     this._viewOnly = true;
     this._selectedId = leaderId;
+    this.container.visible = true;
     this._selectLeader(leaderId);
     this._gridContainer.visible = false;
     this._gridMask.visible = false;
@@ -235,7 +238,6 @@ export class LeaderSelectScreen {
     if (nextLabel instanceof Text) nextLabel.text = "CONTINUE";
     // Center the detail panel
     this._detailContainer.position.set(MAIN_W / 2 - 200, this._detailContainer.y);
-    this.container.visible = true;
   }
 
   hide(): void {
