@@ -285,6 +285,12 @@ export class MenuScreen {
   private _grailGreedBg!: Graphics;
   private _grailGreedLabel!: Text;
 
+  // Keyboard navigation — screen 1
+  private _s1NavItems: Array<{ container: Container; action: () => void }> = [];
+  private _s1FocusIndex = 0;
+  private _s1FocusBorder!: Graphics;
+  private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
+
   // Callbacks
   onAIToggle: ((isAI: boolean) => void) | null = null;
   onContinue: (() => void) | null = null;
@@ -369,6 +375,7 @@ export class MenuScreen {
   private _showScreen1(): void {
     this._screen1.visible = true;
     this._screen2.visible = false;
+    this._s1FocusBorder.visible = false;
     this._layout();
   }
 
@@ -413,6 +420,8 @@ export class MenuScreen {
     const mbH = 38;
     const modeGap = 5;
     const modeStartY = 70;
+
+    this._s1NavItems = [];
 
     for (let i = 0; i < GAME_MODES.length; i++) {
       const entry = GAME_MODES[i];
@@ -480,11 +489,23 @@ export class MenuScreen {
         modeBtn.on("pointerdown", () => {
           this._selectedModeIndex = idx;
           if (entry.skipSetup) {
-            // World / Campaign — go straight to onContinue
             this.onContinue?.();
           } else {
             this._showScreen2();
           }
+        });
+
+        // Register for keyboard navigation
+        this._s1NavItems.push({
+          container: modeBtn,
+          action: () => {
+            this._selectedModeIndex = idx;
+            if (entry.skipSetup) {
+              this.onContinue?.();
+            } else {
+              this._showScreen2();
+            }
+          },
         });
       }
 
@@ -509,6 +530,7 @@ export class MenuScreen {
     const wikiBtn = makeActionBtn(fullW, utilBtnH, "WIKI", 0x1a1a3a, 0x4488cc, 0x88bbff, () => this.onWiki?.());
     wikiBtn.position.set(20, utilY);
     card.addChild(wikiBtn);
+    this._s1NavItems.push({ container: wikiBtn, action: () => this.onWiki?.() });
 
     // Row 2: Quickplay + Multiplayer
     const halfW = Math.floor((CW - 40 - utilGap) / 2);
@@ -517,10 +539,12 @@ export class MenuScreen {
     const qpBtn = makeActionBtn(halfW, utilBtnH, "QUICKPLAY >>", 0x2a1a0a, 0xcc8833, 0xffcc66, () => this.onQuickPlay?.());
     qpBtn.position.set(20, row2Y);
     card.addChild(qpBtn);
+    this._s1NavItems.push({ container: qpBtn, action: () => this.onQuickPlay?.() });
 
     const mpBtn = makeActionBtn(halfW, utilBtnH, "MULTIPLAYER", 0x1a1a3a, 0x6666cc, 0x9999ff, () => this.onMultiplayer?.());
     mpBtn.position.set(20 + halfW + utilGap, row2Y);
     card.addChild(mpBtn);
+    this._s1NavItems.push({ container: mpBtn, action: () => this.onMultiplayer?.() });
 
     let bottomY = row2Y + utilBtnH + utilGap;
 
@@ -530,6 +554,7 @@ export class MenuScreen {
       const loadBtn = makeActionBtn(loadW, utilBtnH, "LOAD WORLD GAME", 0x2a2a1a, 0xaaaa44, 0xdddd66, () => this.onLoadWorldGame?.());
       loadBtn.position.set(20, bottomY);
       card.addChild(loadBtn);
+      this._s1NavItems.push({ container: loadBtn, action: () => this.onLoadWorldGame?.() });
       bottomY += utilBtnH + utilGap;
     }
 
@@ -538,6 +563,7 @@ export class MenuScreen {
     const settingsBtn = makeActionBtn(settingsW, utilBtnH, "SETTINGS", 0x1a1a1a, 0x666666, 0xaaaaaa, () => this.onSettings?.());
     settingsBtn.position.set(20, bottomY);
     card.addChild(settingsBtn);
+    this._s1NavItems.push({ container: settingsBtn, action: () => this.onSettings?.() });
     bottomY += utilBtnH + utilGap;
 
     this._screen1CardH = bottomY + 8;
@@ -550,10 +576,51 @@ export class MenuScreen {
       .roundRect(0, 0, CW, this._screen1CardH, 8)
       .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
 
+    // Focus border for keyboard navigation (rendered on top of everything)
+    this._s1FocusBorder = new Graphics();
+    this._s1FocusBorder.visible = false;
+    card.addChild(this._s1FocusBorder);
+
     // Rune corner diamonds
     this._runes1 = new RuneCorners();
     this._runes1.build(CW, this._screen1CardH);
     card.addChild(this._runes1.container);
+
+    // Keyboard listener
+    this._onKeydown = (e: KeyboardEvent) => {
+      if (!this.container.visible || !this._screen1.visible) return;
+      if (this._s1NavItems.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        this._s1FocusIndex = (this._s1FocusIndex + 1) % this._s1NavItems.length;
+        this._updateS1Focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        this._s1FocusIndex = (this._s1FocusIndex - 1 + this._s1NavItems.length) % this._s1NavItems.length;
+        this._updateS1Focus();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        this._s1NavItems[this._s1FocusIndex].action();
+      }
+    };
+    window.addEventListener("keydown", this._onKeydown);
+  }
+
+  private _updateS1Focus(): void {
+    const item = this._s1NavItems[this._s1FocusIndex];
+    if (!item) return;
+    const c = item.container;
+    const bounds = c.getBounds();
+    const cardPos = this._screen1Card.getGlobalPosition();
+    // Convert to card-local coordinates
+    const lx = bounds.x - cardPos.x;
+    const ly = bounds.y - cardPos.y;
+    this._s1FocusBorder.clear();
+    this._s1FocusBorder
+      .roundRect(lx - 2, ly - 2, bounds.width + 4, bounds.height + 4, 6)
+      .stroke({ color: 0x88ccff, alpha: 0.8, width: 2 });
+    this._s1FocusBorder.visible = true;
   }
 
   // ---------------------------------------------------------------------------

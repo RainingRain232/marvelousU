@@ -809,6 +809,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         mapSize,
         mapType,
         corruption,
+        survivingUnits: [],
       };
       unitShopScreen.onDone = async (playerRoster) => {
         unitShopScreen.hide();
@@ -819,6 +820,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
           if (uDef) spent += uDef.cost * entry.count;
         }
         _waveState!.totalGoldSpent += spent;
+        _waveLastRoundGold = spent;
 
         // Check for new corruption modifier
         if (_waveState!.corruption.enabled) {
@@ -2298,6 +2300,8 @@ let _waveState: {
   mapSize: MapSize;
   mapType: MapType;
   corruption: GrailCorruptionState;
+  /** Units that survived the previous wave — carried over to the next battle. */
+  survivingUnits: Array<{ type: UnitType; count: number }>;
 } | null = null;
 
 const MERLIN_COMPLIMENTS: Record<number, string> = {
@@ -2307,6 +2311,9 @@ const MERLIN_COMPLIMENTS: Record<number, string> = {
   40: "You rival the great kings of old!",
 };
 const MERLIN_COMPLIMENT_DEFAULT = "Truly, you are beyond mortal measure!";
+
+/** Gold spent in the most recent wave shop round (set before each battle). */
+let _waveLastRoundGold = 0;
 
 /** Generate a random enemy roster worth a given gold budget. */
 function _generateWaveEnemyRoster(playerRaceId: RaceId, goldBudget: number, wave: number): UnitRoster {
@@ -2357,13 +2364,27 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
   unitShopScreen.onDone = async (playerRoster) => {
     unitShopScreen.hide();
 
-    // Track gold spent
+    // Track gold spent (only new purchases, not survivors)
     let spent = 0;
     for (const entry of playerRoster) {
       const uDef = UNIT_DEFINITIONS[entry.type];
       if (uDef) spent += uDef.cost * entry.count;
     }
     ws.totalGoldSpent += spent;
+    _waveLastRoundGold = spent;
+
+    // Merge surviving units with newly purchased units
+    const mergedCounts = new Map<UnitType, number>();
+    for (const entry of ws.survivingUnits) {
+      mergedCounts.set(entry.type, (mergedCounts.get(entry.type) ?? 0) + entry.count);
+    }
+    for (const entry of playerRoster) {
+      mergedCounts.set(entry.type, (mergedCounts.get(entry.type) ?? 0) + entry.count);
+    }
+    const fullRoster: Array<{ type: UnitType; count: number }> = [];
+    for (const [type, count] of mergedCounts) {
+      fullRoster.push({ type, count });
+    }
 
     // Check for new corruption modifier
     if (ws.corruption.enabled) {
@@ -2382,7 +2403,7 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     const enemyRoster = _generateWaveEnemyRoster(ws.playerRaceId, enemyBudget, ws.wave);
 
     _worldBattleRosters = {
-      p1Roster: playerRoster,
+      p1Roster: fullRoster,
       p2Roster: enemyRoster,
       battleMeta: { waveMode: true },
       playerIsAttacker: true,
@@ -6200,9 +6221,13 @@ async function _bootGame(
   if (_waveState) {
     victoryScreen.waveNumber = _waveState.wave;
     victoryScreen.corruptionLevel = _waveState.corruption.corruptionLevel;
+    victoryScreen.totalGoldSpent = _waveState.totalGoldSpent;
+    victoryScreen.lastRoundGoldSpent = _waveLastRoundGold;
   } else {
     victoryScreen.waveNumber = 0;
     victoryScreen.corruptionLevel = 0;
+    victoryScreen.totalGoldSpent = 0;
+    victoryScreen.lastRoundGoldSpent = 0;
   }
   victoryScreen.init(viewManager, state);
 
@@ -6215,6 +6240,18 @@ async function _bootGame(
   if (_waveState) {
     const ws = _waveState;
     victoryScreen.onNextWave = () => {
+      // Collect surviving p1 units before the game is torn down
+      const survivorCounts = new Map<UnitType, number>();
+      for (const u of state.units.values()) {
+        if (u.owner === "p1" && u.hp > 0) {
+          survivorCounts.set(u.type, (survivorCounts.get(u.type) ?? 0) + 1);
+        }
+      }
+      ws.survivingUnits = [];
+      for (const [type, count] of survivorCounts) {
+        ws.survivingUnits.push({ type, count });
+      }
+
       ws.wave++;
       const nextGold = 1000;
 
