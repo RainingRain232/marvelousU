@@ -220,6 +220,7 @@ export class RPGViewManager {
     fromMainMenu: boolean,
   ): void {
     this.hideOptions();
+    if (this.pauseMenuView) this.pauseMenuView.inputSuspended = true;
     this.optionsView = new OptionsView();
     this.optionsView.init(viewManager, currentOptions);
     this.optionsView.onOptionsChanged = onChanged;
@@ -228,7 +229,7 @@ export class RPGViewManager {
       if (fromMainMenu && this.mainMenuView) {
         // Main menu is still behind, just remove options overlay
       } else if (this.pauseMenuView) {
-        // Return to pause menu — it's still behind
+        this.pauseMenuView.inputSuspended = false;
       }
     };
   }

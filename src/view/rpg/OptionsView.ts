@@ -96,7 +96,7 @@ export class OptionsView {
 
   destroy(): void {
     if (this._onKeyDown) {
-      window.removeEventListener("keydown", this._onKeyDown);
+      window.removeEventListener("keydown", this._onKeyDown, true);
       this._onKeyDown = null;
     }
     this.vm.removeFromLayer("ui", this.container);
@@ -230,6 +230,7 @@ export class OptionsView {
 
   private _setupInput(): void {
     this._onKeyDown = (e: KeyboardEvent) => {
+      e.stopPropagation();
       if (e.code === "ArrowUp") {
         this._selectedIndex = (this._selectedIndex - 1 + OPTION_ENTRIES.length) % OPTION_ENTRIES.length;
         this._draw();
@@ -248,7 +249,7 @@ export class OptionsView {
         this.onClose?.();
       }
     };
-    window.addEventListener("keydown", this._onKeyDown);
+    window.addEventListener("keydown", this._onKeyDown, true);
   }
 
   private _adjustValue(dir: number): void {

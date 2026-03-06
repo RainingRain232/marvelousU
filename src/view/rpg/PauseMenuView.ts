@@ -50,6 +50,9 @@ export class PauseMenuView {
   onOptions: (() => void) | null = null;
   onQuitToTitle: (() => void) | null = null;
 
+  /** Set to true while a child overlay (e.g. OptionsView) is open. */
+  inputSuspended = false;
+
   private _menuOptions = ["Resume", "Inventory", "Save Game", "Formation", "Help", "Options", "Quit to Title"];
   /** Sub-index for inventory: which party member is selected */
   private _invMemberIndex = 0;
@@ -645,6 +648,7 @@ export class PauseMenuView {
 
   private _setupInput(): void {
     this._onKeyDown = (e: KeyboardEvent) => {
+      if (this.inputSuspended) return;
       e.stopPropagation();
       if (this._mode === "menu") this._handleMenuInput(e);
       else if (this._mode === "save") this._handleSaveInput(e);
