@@ -79,6 +79,8 @@ export class CityPanel {
   onRename: ((cityId: string, newName: string) => void) | null = null;
   /** Called when the player wants to view the city preview. */
   onViewCity: ((cityId: string) => void) | null = null;
+  /** Called when the player wants to consult an advisor. */
+  onAskAdvisor: ((advisor: "merlin" | "queen") => void) | null = null;
 
   /** Rename input state. */
   private _renaming = false;
@@ -431,6 +433,25 @@ export class CityPanel {
       this._contentContainer.addChild(emptyText);
       y += 16;
     }
+
+    // --- Advisor buttons ---
+    y += 10;
+    const merlinBtn = _makeButton(
+      "ASK MERLIN",
+      16, y, (PANEL_W - 36) / 2, 24,
+      () => { this.onAskAdvisor?.("merlin"); },
+      0x1a1a3a, 0x4466aa,
+    );
+    this._contentContainer.addChild(merlinBtn);
+
+    const queenBtn = _makeButton(
+      "ASK QUEEN",
+      20 + (PANEL_W - 36) / 2, y, (PANEL_W - 36) / 2, 24,
+      () => { this.onAskAdvisor?.("queen"); },
+      0x2a1a1a, 0xaa6644,
+    );
+    this._contentContainer.addChild(queenBtn);
+    y += 30;
 
     return y;
   }
