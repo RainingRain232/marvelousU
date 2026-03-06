@@ -163,6 +163,14 @@ import {
 } from "@world/systems/LeaderEncounters";
 import { applyInitialAffinities, processAIDiplomacy } from "@world/systems/LeaderDiplomacy";
 import { lastMorgaineEvents } from "@world/systems/TurnSystem";
+import {
+  createGrailQuestState,
+  trySpawnGrailChapel,
+  checkGrailProximity,
+  applyGrailReward,
+  isGrailKnight,
+  type GrailChoice,
+} from "@world/systems/GrailQuest";
 import { getNeutralCityGarrison, pickNeutralRace, neutralRng, getUnitsForRace } from "@world/systems/NeutralCitySystem";
 import { worldNotification } from "@view/world/ui/WorldNotification";
 import { worldWikiScreen } from "@view/world/ui/WorldWikiScreen";
@@ -3101,6 +3109,10 @@ async function _bootWorldGame(
   // Store encounter state on the world state for later access
   (state as any)._leaderEncounterState = leaderEncounterState;
 
+  // Holy Grail quest state — chapel spawns later during gameplay
+  const grailQuestState = createGrailQuestState();
+  (state as any)._grailQuestState = grailQuestState;
+
   // Re-clear water/mountains around player starts (Sword Island may have placed water on them)
   for (const pos of startPositions) {
     const nearby = hexSpiral(pos, 3);
@@ -4136,6 +4148,84 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     });
   };
 
+  // Holy Grail quest proximity check
+  const _grailQState = (state as any)._grailQuestState as ReturnType<typeof createGrailQuestState> | undefined;
+  const _checkGrailProximity = async (playerArmy: WorldArmy): Promise<void> => {
+    if (!_grailQState || _grailQState.claimed) return;
+    if (playerArmy.owner !== "p1") return;
+
+    const triggered = checkGrailProximity(_grailQState, playerArmy, state);
+    if (!triggered) return;
+
+    const player = state.players.get("p1");
+    if (!player) return;
+
+    const grailKnight = isGrailKnight(player.leaderId);
+    const leaderName = player.leaderId ?? "your leader";
+
+    await new Promise<void>((resolve) => {
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card = document.createElement("div");
+      card.style.cssText = "background:#1a1a2e;border:2px solid #ffeeaa;border-radius:12px;padding:24px;max-width:450px;text-align:center;box-shadow:0 0 40px rgba(255,238,170,0.4);";
+
+      const title = document.createElement("div");
+      title.textContent = "The Holy Grail!";
+      title.style.cssText = "color:#ffeeaa;font-family:monospace;font-size:18px;font-weight:bold;margin-bottom:12px;";
+      card.appendChild(title);
+
+      const text = document.createElement("div");
+      let desc = "The cursed knights have fallen. Within the chapel, the Grail floats in a column of golden light.\n\n";
+      if (grailKnight) {
+        desc += `<b style="color:#ffd700">${leaderName}</b> is a true Grail Knight! The sacred chalice resonates with your purity of purpose.\n\n`;
+      }
+      desc += "Choose your blessing:";
+      text.innerHTML = desc.replace(/\n/g, "<br>");
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;";
+      card.appendChild(text);
+
+      const btnContainer = document.createElement("div");
+      btnContainer.style.cssText = "display:flex;gap:12px;justify-content:center;";
+
+      const makeBtn = (label: string, sublabel: string, choice: GrailChoice, color: string) => {
+        const btn = document.createElement("button");
+        btn.innerHTML = `<b>${label}</b><br><span style="font-size:10px;opacity:0.8">${sublabel}</span>`;
+        btn.style.cssText = `background:${color};color:white;border:none;border-radius:8px;padding:10px 16px;font-family:monospace;font-size:12px;cursor:pointer;min-width:140px;`;
+        btn.onmouseenter = () => { btn.style.opacity = "0.8"; };
+        btn.onmouseleave = () => { btn.style.opacity = "1"; };
+        btn.onclick = () => {
+          backdrop.remove();
+          applyGrailReward(state, _grailQState!, player, choice);
+          const rewardText = choice === "heal_wasteland"
+            ? "The Grail heals the land! Desert tiles around your capital bloom into grassland. +50 mana."
+            : "Eternal Blessing! The Holy Grail joins your armory. +200 gold.";
+          worldEventLog.addEvent(`The Holy Grail: ${rewardText}`, 0xffeeaa);
+          worldNotification.show("The Holy Grail", rewardText, 0xffeeaa);
+          resolve();
+        };
+        return btn;
+      };
+
+      btnContainer.appendChild(makeBtn(
+        "Heal the Wasteland",
+        "Terraform dead tiles + 50 mana",
+        "heal_wasteland",
+        "#44aa44",
+      ));
+      btnContainer.appendChild(makeBtn(
+        "Eternal Blessing",
+        "Holy Grail item + 200 gold",
+        "eternal_blessing",
+        "#cc8844",
+      ));
+
+      card.appendChild(btnContainer);
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
   // Leader-specific encounter proximity check
   const _leaderEncState = (state as any)._leaderEncounterState as LeaderEncounterState | undefined;
   const _checkLeaderEncounterProximity = async (playerArmy: WorldArmy): Promise<void> => {
@@ -4684,6 +4774,16 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         worldEventLog.addEvent(`${evt.title}: ${evt.description}`, evt.color);
         worldNotification.show(evt.title, evt.description, evt.color);
       }
+
+      // Try to spawn the Grail Chapel (after turn 15, 20% chance per turn)
+      const _grailState = (state as any)._grailQuestState as ReturnType<typeof createGrailQuestState> | undefined;
+      if (_grailState && !_grailState.chapelHex) {
+        const grailEvt = trySpawnGrailChapel(state, _grailState);
+        if (grailEvt) {
+          worldEventLog.addEvent(`${grailEvt.title}: ${grailEvt.description}`, grailEvt.color);
+          worldNotification.show(grailEvt.title, grailEvt.description, grailEvt.color);
+        }
+      }
     }
 
     // Check for turn notifications
@@ -4804,6 +4904,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           await _checkMorgaineProximity(army);
           await _checkSwordProximity(army);
           await _checkLeaderEncounterProximity(army);
+          await _checkGrailProximity(army);
           await _checkAvalonProximity(army);
         }
       }
@@ -4914,6 +5015,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             await _checkMorgaineProximity(army);
             await _checkSwordProximity(army);
             await _checkLeaderEncounterProximity(army);
+            await _checkGrailProximity(army);
             await _checkAvalonProximity(army);
           }
           _selectedArmyId = null;
@@ -5087,6 +5189,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         await _checkMorgaineProximity(army);
         await _checkSwordProximity(army);
         await _checkLeaderEncounterProximity(army);
+        await _checkGrailProximity(army);
         await _checkAvalonProximity(army);
 
         // Re-select army if it still has movement points
