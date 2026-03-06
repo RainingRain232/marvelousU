@@ -76,18 +76,23 @@ export class RPGGame {
 
   /** Start a fresh new game. */
   private _startNewGame(): void {
-    const seed = Date.now();
-    const { state: overworldState, startPosition } = generateOverworld(seed);
-    this.overworldState = overworldState;
+    this.rpgViewManager.showLoading("Generating world...");
+    // Defer heavy work so the loading text renders first
+    setTimeout(() => {
+      const seed = Date.now();
+      const { state: overworldState, startPosition } = generateOverworld(seed);
+      this.overworldState = overworldState;
 
-    this.rpgState = createRPGState(seed, startPosition);
-    this.rpgState.party = createStarterParty();
-    this.rpgState.inventory.items.push({ item: ITEM_HEALTH_POTION, quantity: 5 });
+      this.rpgState = createRPGState(seed, startPosition);
+      this.rpgState.party = createStarterParty();
+      this.rpgState.inventory.items.push({ item: ITEM_HEALTH_POTION, quantity: 5 });
 
-    // Apply options
-    this.rpgState.battleMode = this._gameOptions.battleMode;
+      // Apply options
+      this.rpgState.battleMode = this._gameOptions.battleMode;
 
-    this._enterGameplay();
+      this.rpgViewManager.hideLoading();
+      this._enterGameplay();
+    }, 50);
   }
 
   /** Load a saved game from slot. */
@@ -95,14 +100,18 @@ export class RPGGame {
     const data = loadGame(slot);
     if (!data) return;
 
-    // Re-generate overworld from same seed
-    const { state: overworldState } = generateOverworld(data.seed);
-    this.overworldState = overworldState;
+    this.rpgViewManager.showLoading("Loading save...");
+    setTimeout(() => {
+      // Re-generate overworld from same seed
+      const { state: overworldState } = generateOverworld(data.seed);
+      this.overworldState = overworldState;
 
-    // Restore state
-    this.rpgState = restoreRPGState(data.rpgState);
+      // Restore state
+      this.rpgState = restoreRPGState(data.rpgState);
 
-    this._enterGameplay();
+      this.rpgViewManager.hideLoading();
+      this._enterGameplay();
+    }, 50);
   }
 
   /** Common setup after new/load game. */

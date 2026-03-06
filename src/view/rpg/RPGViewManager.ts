@@ -1,5 +1,6 @@
 // Coordinates which RPG view is active based on RPGPhase
 import { RPGPhase } from "@/types";
+import { Container, Graphics, Text } from "pixi.js";
 import { EventBus } from "@sim/core/EventBus";
 import { viewManager } from "@view/ViewManager";
 import type { RPGState } from "@rpg/state/RPGState";
@@ -45,6 +46,7 @@ export class RPGViewManager {
   private mainMenuView: MainMenuView | null = null;
   private optionsView: OptionsView | null = null;
   private pauseMenuView: PauseMenuView | null = null;
+  private _loadingContainer: Container | null = null;
   private _unsubs: Array<() => void> = [];
 
   rpgState!: RPGState;
@@ -169,6 +171,41 @@ export class RPGViewManager {
     if (this.mainMenuView) {
       this.mainMenuView.destroy();
       this.mainMenuView = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Loading overlay
+  // ---------------------------------------------------------------------------
+
+  showLoading(message: string): void {
+    this.hideLoading();
+    const W = viewManager.screenWidth;
+    const H = viewManager.screenHeight;
+    const c = new Container();
+
+    const bg = new Graphics();
+    bg.rect(0, 0, W, H);
+    bg.fill({ color: 0x0a0a18, alpha: 0.95 });
+    c.addChild(bg);
+
+    const text = new Text({
+      text: message,
+      style: { fontFamily: "monospace", fontSize: 18, fill: 0xffdd44, fontWeight: "bold" },
+    });
+    text.anchor.set(0.5, 0.5);
+    text.position.set(W / 2, H / 2);
+    c.addChild(text);
+
+    viewManager.addToLayer("ui", c);
+    this._loadingContainer = c;
+  }
+
+  hideLoading(): void {
+    if (this._loadingContainer) {
+      viewManager.removeFromLayer("ui", this._loadingContainer);
+      this._loadingContainer.destroy({ children: true });
+      this._loadingContainer = null;
     }
   }
 

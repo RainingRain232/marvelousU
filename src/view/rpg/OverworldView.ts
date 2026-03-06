@@ -648,6 +648,10 @@ export class OverworldView {
 
   private TILE_SIZE = RPGBalance.OVERWORLD_TILE_SIZE;
 
+  // Viewport culling – track last rendered tile bounds to avoid redrawing
+  private _lastTileBounds = { x0: -1, y0: -1, x1: -1, y1: -1 };
+  private static readonly TILE_BUFFER = 5; // extra tiles beyond viewport edge
+
   init(vm: ViewManager, overworld: OverworldState, rpg: RPGState): void {
     this.vm = vm;
     this.overworld = overworld;
@@ -671,19 +675,23 @@ export class OverworldView {
     // Create party animated sprite
     this._createPartySprite();
 
-    // Initial render
-    this._drawMap();
-    this._drawEntities();
-    this._drawFog();
+    // Position camera first so viewport culling works correctly
     this._updatePartyPosition();
     this._centerCamera();
 
+    // Initial render (only visible tiles)
+    this._drawMap();
+    this._drawEntities();
+    this._drawFog();
+
     // Listen for movement
     this._unsubs.push(EventBus.on("rpgPartyMoved", () => {
-      this._drawFog();
       this._updatePartyPosition();
       this._setPartyAnimation(UnitState.MOVE);
       this._centerCamera();
+      this._drawMapIfNeeded();
+      this._drawFog();
+      this._drawEntities();
 
       // Return to idle after short delay
       if (this._moveResetTimer) clearTimeout(this._moveResetTimer);
@@ -785,13 +793,32 @@ export class OverworldView {
   // Rendering
   // ---------------------------------------------------------------------------
 
+  /** Return the tile coordinate range currently visible on screen (clamped). */
+  private _getVisibleTileBounds(): { x0: number; y0: number; x1: number; y1: number } {
+    const ts = this.TILE_SIZE;
+    const cam = this.vm.camera;
+    const visW = this.vm.screenWidth / cam.zoom;
+    const visH = this.vm.screenHeight / cam.zoom;
+    const buf = OverworldView.TILE_BUFFER;
+
+    const x0 = Math.max(0, Math.floor(-cam.x / ts) - buf);
+    const y0 = Math.max(0, Math.floor(-cam.y / ts) - buf);
+    const x1 = Math.min(this.overworld.width - 1, Math.floor((-cam.x + visW) / ts) + buf);
+    const y1 = Math.min(this.overworld.height - 1, Math.floor((-cam.y + visH) / ts) + buf);
+
+    return { x0, y0, x1, y1 };
+  }
+
   private _drawMap(): void {
     const g = this._tileGraphics;
     g.clear();
 
     const ts = this.TILE_SIZE;
-    for (let y = 0; y < this.overworld.height; y++) {
-      for (let x = 0; x < this.overworld.width; x++) {
+    const { x0, y0, x1, y1 } = this._getVisibleTileBounds();
+    this._lastTileBounds = { x0, y0, x1, y1 };
+
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
         const tile = this.overworld.grid[y][x];
         const color = TILE_COLORS[tile.type] ?? 0x333333;
         // Base fill
@@ -805,19 +832,38 @@ export class OverworldView {
     }
   }
 
+  /** Redraw map only if the viewport has moved enough to show new tiles. */
+  private _drawMapIfNeeded(): void {
+    const cur = this._getVisibleTileBounds();
+    const last = this._lastTileBounds;
+    if (cur.x0 !== last.x0 || cur.y0 !== last.y0 || cur.x1 !== last.x1 || cur.y1 !== last.y1) {
+      this._drawMap();
+    }
+  }
+
   private _drawEntities(): void {
     const g = this._entityGraphics;
     g.clear();
 
+    // Destroy old labels
+    for (const label of this.entityLabels) label.destroy();
+    this.entityLabels = [];
+
     const ts = this.TILE_SIZE;
     const halfTs = ts / 2;
+    const { x0, y0, x1, y1 } = this._getVisibleTileBounds();
 
     for (const entity of this.overworld.entities.values()) {
-      const tile = this.overworld.grid[entity.position.y]?.[entity.position.x];
+      const ex = entity.position.x;
+      const ey = entity.position.y;
+      // Viewport cull
+      if (ex < x0 || ex > x1 || ey < y0 || ey > y1) continue;
+
+      const tile = this.overworld.grid[ey]?.[ex];
       if (!tile?.discovered) continue;
 
-      const cx = entity.position.x * ts + halfTs;
-      const cy = entity.position.y * ts + halfTs;
+      const cx = ex * ts + halfTs;
+      const cy = ey * ts + halfTs;
 
       this._drawEntityMarker(g, entity, cx, cy, halfTs * 0.6);
 
@@ -904,8 +950,9 @@ export class OverworldView {
     g.clear();
 
     const ts = this.TILE_SIZE;
-    for (let y = 0; y < this.overworld.height; y++) {
-      for (let x = 0; x < this.overworld.width; x++) {
+    const { x0, y0, x1, y1 } = this._getVisibleTileBounds();
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
         const tile = this.overworld.grid[y][x];
         if (!tile.discovered) {
           g.rect(x * ts, y * ts, ts, ts);

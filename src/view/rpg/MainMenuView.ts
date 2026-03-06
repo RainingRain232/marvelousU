@@ -103,6 +103,7 @@ export class MainMenuView {
     void Assets.load(swordInStoneUrl).then((tex: Texture) => {
       if (!this.container.destroyed) {
         const sprite = new Sprite(tex);
+        sprite.eventMode = "none";
         const scale = Math.max(W / tex.width, H / tex.height);
         sprite.scale.set(scale);
         sprite.position.set((W - tex.width * scale) / 2, (H - tex.height * scale) / 2);
