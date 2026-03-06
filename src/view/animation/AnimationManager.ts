@@ -180,6 +180,37 @@ import {
   NATIONAL_MAGE_PALETTES,
   PALETTE_NATIONAL_MAN,
 } from "@view/animation/NationalMageSpriteGen";
+// Wave 2 faction unit imports
+import { generateWarChaplainFrames } from "@view/animation/WarChaplainSpriteGen";
+import { generateShieldCaptainFrames } from "@view/animation/ShieldCaptainSpriteGen";
+import { generateTreantGuardianFrames } from "@view/animation/TreantGuardianSpriteGen";
+import { generateMoonweaverFrames } from "@view/animation/MoonweaverSpriteGen";
+import { generateSiegeTrollFrames } from "@view/animation/SiegeTrollSpriteGen";
+import { generateBloodBerserkerFrames } from "@view/animation/BloodBerserkerSpriteGen";
+import { generateSpellWeaverFrames } from "@view/animation/SpellWeaverSpriteGen";
+import { generateManaWraithFrames } from "@view/animation/ManaWraithSpriteGen";
+import { generateFrostWyrmFrames } from "@view/animation/FrostWyrmSpriteGen";
+import { generateMagmaTitanFrames } from "@view/animation/MagmaTitanSpriteGen";
+import { generateHalflingRiderFrames } from "@view/animation/HalflingRiderSpriteGen";
+import { generateHalflingAlchemistFrames } from "@view/animation/HalflingAlchemistSpriteGen";
+import { generateCinderWraithFrames } from "@view/animation/CinderWraithSpriteGen";
+import { generateVolcanicBehemothFrames } from "@view/animation/VolcanicBehemothSpriteGen";
+import { generateIronbreakerFrames } from "@view/animation/IronbreakerSpriteGen";
+import { generateThundererFrames } from "@view/animation/ThundererSpriteGen";
+import { generateWyvernRiderFrames } from "@view/animation/WyvernRiderSpriteGen";
+import { generatePitFighterFrames } from "@view/animation/PitFighterSpriteGen";
+import { generateBoneColossusFrames } from "@view/animation/BoneColossusSpriteGen";
+import { generateWraithLordFrames } from "@view/animation/WraithLordSpriteGen";
+import { generateDoomGuardFrames } from "@view/animation/DoomGuardSpriteGen";
+import { generateImpOverlordFrames } from "@view/animation/ImpOverlordSpriteGen";
+import { generateArchonFrames } from "@view/animation/ArchonSpriteGen";
+import { generateCelestialArcherFrames } from "@view/animation/CelestialArcherSpriteGen";
+import { generateDireBearFrames } from "@view/animation/DireBearSpriteGen";
+import { generateSerpentPriestFrames } from "@view/animation/SerpentPriestSpriteGen";
+import { generateCrystalGolemFrames } from "@view/animation/CrystalGolemSpriteGen";
+import { generateIronColossusFrames } from "@view/animation/IronColossusSpriteGen";
+import { generateSeaWitchFrames } from "@view/animation/SeaWitchSpriteGen";
+import { generateBoardingMasterFrames } from "@view/animation/BoardingMasterSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -569,6 +600,67 @@ export class AnimationManager {
         this._generateSiegeAutomatonSprites(key, renderer);
       } else if (key === "powder_monkey") {
         this._generatePowderMonkeySprites(key, renderer);
+      // Wave 2 faction units
+      } else if (key === "war_chaplain") {
+        this._generateWave2Sprites(key, renderer, generateWarChaplainFrames);
+      } else if (key === "shield_captain") {
+        this._generateWave2Sprites(key, renderer, generateShieldCaptainFrames);
+      } else if (key === "treant_guardian") {
+        this._generateWave2Sprites(key, renderer, generateTreantGuardianFrames);
+      } else if (key === "moonweaver") {
+        this._generateWave2Sprites(key, renderer, generateMoonweaverFrames);
+      } else if (key === "siege_troll") {
+        this._generateWave2Sprites(key, renderer, generateSiegeTrollFrames);
+      } else if (key === "blood_berserker") {
+        this._generateWave2Sprites(key, renderer, generateBloodBerserkerFrames);
+      } else if (key === "spell_weaver") {
+        this._generateWave2Sprites(key, renderer, generateSpellWeaverFrames);
+      } else if (key === "mana_wraith") {
+        this._generateWave2Sprites(key, renderer, generateManaWraithFrames);
+      } else if (key === "frost_wyrm") {
+        this._generateWave2Sprites(key, renderer, generateFrostWyrmFrames);
+      } else if (key === "magma_titan") {
+        this._generateWave2Sprites(key, renderer, generateMagmaTitanFrames);
+      } else if (key === "halfling_rider") {
+        this._generateWave2Sprites(key, renderer, generateHalflingRiderFrames);
+      } else if (key === "halfling_alchemist") {
+        this._generateWave2Sprites(key, renderer, generateHalflingAlchemistFrames);
+      } else if (key === "cinder_wraith") {
+        this._generateWave2Sprites(key, renderer, generateCinderWraithFrames);
+      } else if (key === "volcanic_behemoth") {
+        this._generateWave2Sprites(key, renderer, generateVolcanicBehemothFrames);
+      } else if (key === "ironbreaker") {
+        this._generateWave2Sprites(key, renderer, generateIronbreakerFrames);
+      } else if (key === "thunderer") {
+        this._generateWave2Sprites(key, renderer, generateThundererFrames);
+      } else if (key === "wyvern_rider") {
+        this._generateWave2Sprites(key, renderer, generateWyvernRiderFrames);
+      } else if (key === "pit_fighter") {
+        this._generateWave2Sprites(key, renderer, generatePitFighterFrames);
+      } else if (key === "bone_colossus") {
+        this._generateWave2Sprites(key, renderer, generateBoneColossusFrames);
+      } else if (key === "wraith_lord") {
+        this._generateWave2Sprites(key, renderer, generateWraithLordFrames);
+      } else if (key === "doom_guard") {
+        this._generateWave2Sprites(key, renderer, generateDoomGuardFrames);
+      } else if (key === "imp_overlord") {
+        this._generateWave2Sprites(key, renderer, generateImpOverlordFrames);
+      } else if (key === "archon") {
+        this._generateWave2Sprites(key, renderer, generateArchonFrames);
+      } else if (key === "celestial_archer") {
+        this._generateWave2Sprites(key, renderer, generateCelestialArcherFrames);
+      } else if (key === "dire_bear") {
+        this._generateWave2Sprites(key, renderer, generateDireBearFrames);
+      } else if (key === "serpent_priest") {
+        this._generateWave2Sprites(key, renderer, generateSerpentPriestFrames);
+      } else if (key === "crystal_golem") {
+        this._generateWave2Sprites(key, renderer, generateCrystalGolemFrames);
+      } else if (key === "iron_colossus") {
+        this._generateWave2Sprites(key, renderer, generateIronColossusFrames);
+      } else if (key === "sea_witch") {
+        this._generateWave2Sprites(key, renderer, generateSeaWitchFrames);
+      } else if (key === "boarding_master") {
+        this._generateWave2Sprites(key, renderer, generateBoardingMasterFrames);
       } else if (key === "mage") {
         // Fallback generic mage (used before race is applied)
         this._generateMageSprites(key, renderer, PALETTE_NATIONAL_MAN);
@@ -2313,6 +2405,24 @@ export class AnimationManager {
 
   private _generatePowderMonkeySprites(key: string, renderer: Renderer): void {
     const textures = generatePowderMonkeyFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  /** Generic helper for wave-2 faction unit sprites. */
+  private _generateWave2Sprites(
+    key: string,
+    renderer: Renderer,
+    genFn: (r: Renderer) => RenderTexture[],
+  ): void {
+    const textures = genFn(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];

@@ -854,4 +854,110 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.POWDER_MONKEY]: buildDef("powder_monkey", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
+  // Wave 2 faction units
+  // Man
+  [UnitType.WAR_CHAPLAIN]: buildDef("war_chaplain", {
+    idleFps: 5, moveFps: 8, attackFps: 10, castFps: 8, dieFps: 7,
+  }),
+  [UnitType.SHIELD_CAPTAIN]: buildDef("shield_captain", {
+    idleFps: 5, moveFps: 6, attackFps: 10, castFps: 8, dieFps: 7,
+  }),
+  // Elves
+  [UnitType.TREANT_GUARDIAN]: buildDef("treant_guardian", {
+    idleFps: 4, moveFps: 5, attackFps: 6, castFps: 6, dieFps: 5,
+  }),
+  [UnitType.MOONWEAVER]: buildDef("moonweaver", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10, dieFps: 8,
+  }),
+  // Horde
+  [UnitType.SIEGE_TROLL]: buildDef("siege_troll", {
+    idleFps: 4, moveFps: 5, attackFps: 5, castFps: 5, dieFps: 5,
+  }),
+  [UnitType.BLOOD_BERSERKER]: buildDef("blood_berserker", {
+    idleFps: 6, moveFps: 12, attackFps: 16, castFps: 10, dieFps: 8,
+  }),
+  // Adept
+  [UnitType.SPELL_WEAVER]: buildDef("spell_weaver", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.MANA_WRAITH]: buildDef("mana_wraith", {
+    idleFps: 7, moveFps: 9, attackFps: 12, castFps: 10, dieFps: 8,
+  }),
+  // Elements
+  [UnitType.FROST_WYRM]: buildDef("frost_wyrm", {
+    idleFps: 4, moveFps: 7, attackFps: 8, castFps: 8, dieFps: 6,
+  }),
+  [UnitType.MAGMA_TITAN]: buildDef("magma_titan", {
+    idleFps: 4, moveFps: 5, attackFps: 6, castFps: 6, dieFps: 5,
+  }),
+  // Halflings
+  [UnitType.HALFLING_RIDER]: buildDef("halfling_rider", {
+    idleFps: 6, moveFps: 10, attackFps: 10, castFps: 8, dieFps: 8,
+  }),
+  [UnitType.HALFLING_ALCHEMIST]: buildDef("halfling_alchemist", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10, dieFps: 8,
+  }),
+  // Lava Children
+  [UnitType.CINDER_WRAITH]: buildDef("cinder_wraith", {
+    idleFps: 8, moveFps: 10, attackFps: 12, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.VOLCANIC_BEHEMOTH]: buildDef("volcanic_behemoth", {
+    idleFps: 3, moveFps: 4, attackFps: 4, castFps: 4, dieFps: 4,
+  }),
+  // Dwarves
+  [UnitType.IRONBREAKER]: buildDef("ironbreaker", {
+    idleFps: 5, moveFps: 7, attackFps: 10, castFps: 8, dieFps: 7,
+  }),
+  [UnitType.THUNDERER]: buildDef("thunderer", {
+    idleFps: 5, moveFps: 7, attackFps: 6, castFps: 6, dieFps: 7,
+  }),
+  // Orcs
+  [UnitType.WYVERN_RIDER]: buildDef("wyvern_rider", {
+    idleFps: 5, moveFps: 8, attackFps: 10, castFps: 8, dieFps: 6,
+  }),
+  [UnitType.PIT_FIGHTER]: buildDef("pit_fighter", {
+    idleFps: 6, moveFps: 10, attackFps: 14, castFps: 10, dieFps: 8,
+  }),
+  // Undead
+  [UnitType.BONE_COLOSSUS]: buildDef("bone_colossus", {
+    idleFps: 3, moveFps: 4, attackFps: 5, castFps: 5, dieFps: 4,
+  }),
+  [UnitType.WRAITH_LORD]: buildDef("wraith_lord", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10, dieFps: 8,
+  }),
+  // Demons
+  [UnitType.DOOM_GUARD]: buildDef("doom_guard", {
+    idleFps: 5, moveFps: 7, attackFps: 10, castFps: 8, dieFps: 7,
+  }),
+  [UnitType.IMP_OVERLORD]: buildDef("imp_overlord", {
+    idleFps: 5, moveFps: 7, attackFps: 8, castFps: 10, dieFps: 7,
+  }),
+  // Angels
+  [UnitType.ARCHON]: buildDef("archon", {
+    idleFps: 5, moveFps: 8, attackFps: 10, castFps: 8, dieFps: 7,
+  }),
+  [UnitType.CELESTIAL_ARCHER]: buildDef("celestial_archer", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 8, dieFps: 8,
+  }),
+  // Beastkin
+  [UnitType.DIRE_BEAR]: buildDef("dire_bear", {
+    idleFps: 4, moveFps: 6, attackFps: 8, castFps: 6, dieFps: 5,
+  }),
+  [UnitType.SERPENT_PRIEST]: buildDef("serpent_priest", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10, dieFps: 8,
+  }),
+  // Golem Collective
+  [UnitType.CRYSTAL_GOLEM]: buildDef("crystal_golem", {
+    idleFps: 5, moveFps: 6, attackFps: 8, castFps: 8, dieFps: 6,
+  }),
+  [UnitType.IRON_COLOSSUS]: buildDef("iron_colossus", {
+    idleFps: 3, moveFps: 4, attackFps: 5, castFps: 5, dieFps: 4,
+  }),
+  // Pirates
+  [UnitType.SEA_WITCH]: buildDef("sea_witch", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.BOARDING_MASTER]: buildDef("boarding_master", {
+    idleFps: 6, moveFps: 10, attackFps: 14, castFps: 10, dieFps: 8,
+  }),
 };

@@ -212,6 +212,52 @@ export enum UnitType {
   THUNDERHAWK = "thunderhawk",
   SIEGE_AUTOMATON = "siege_automaton",
   POWDER_MONKEY = "powder_monkey",
+  // Wave 2 faction units (2 per race)
+  // Man
+  WAR_CHAPLAIN = "war_chaplain",
+  SHIELD_CAPTAIN = "shield_captain",
+  // Elves
+  TREANT_GUARDIAN = "treant_guardian",
+  MOONWEAVER = "moonweaver",
+  // Horde
+  SIEGE_TROLL = "siege_troll",
+  BLOOD_BERSERKER = "blood_berserker",
+  // Adept
+  SPELL_WEAVER = "spell_weaver",
+  MANA_WRAITH = "mana_wraith",
+  // Elements
+  FROST_WYRM = "frost_wyrm",
+  MAGMA_TITAN = "magma_titan",
+  // Halflings
+  HALFLING_RIDER = "halfling_rider",
+  HALFLING_ALCHEMIST = "halfling_alchemist",
+  // Lava Children
+  CINDER_WRAITH = "cinder_wraith",
+  VOLCANIC_BEHEMOTH = "volcanic_behemoth",
+  // Dwarves
+  IRONBREAKER = "ironbreaker",
+  THUNDERER = "thunderer",
+  // Orcs
+  WYVERN_RIDER = "wyvern_rider",
+  PIT_FIGHTER = "pit_fighter",
+  // Undead
+  BONE_COLOSSUS = "bone_colossus",
+  WRAITH_LORD = "wraith_lord",
+  // Demons
+  DOOM_GUARD = "doom_guard",
+  IMP_OVERLORD = "imp_overlord",
+  // Angels
+  ARCHON = "archon",
+  CELESTIAL_ARCHER = "celestial_archer",
+  // Beastkin
+  DIRE_BEAR = "dire_bear",
+  SERPENT_PRIEST = "serpent_priest",
+  // Golem Collective
+  CRYSTAL_GOLEM = "crystal_golem",
+  IRON_COLOSSUS = "iron_colossus",
+  // Pirates
+  SEA_WITCH = "sea_witch",
+  BOARDING_MASTER = "boarding_master",
 }
 
 export enum BuildingType {
