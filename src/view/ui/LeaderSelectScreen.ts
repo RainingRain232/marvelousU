@@ -26,6 +26,24 @@ const LEADER_IMAGES: Record<string, string> = {
 const LEADER_UNIT_MAP: Record<string, UnitType> = {
   arthur: UnitType.SWORDSMAN,
   merlin: UnitType.STORM_MAGE,
+  joan: UnitType.TEMPLAR,
+  napoleon: UnitType.CANNON,
+  cleopatra: UnitType.DIPLOMAT,
+  genghis: UnitType.HORSE_ARCHER,
+  caesar: UnitType.ROYAL_GUARD,
+  saladin: UnitType.KNIGHT,
+  alexander: UnitType.ELITE_LANCER,
+  boudicca: UnitType.BERSERKER,
+  sun_tzu: UnitType.PIKEMAN,
+  leonidas: UnitType.PHALANX,
+  elizabeth: UnitType.LONGBOWMAN,
+  attila: UnitType.CATAPHRACT,
+  charlemagne: UnitType.CLERIC,
+  hannibal: UnitType.RED_DRAGON,
+  wilhelmina: UnitType.ENGINEER,
+  ragnar: UnitType.AXEMAN,
+  nzinga: UnitType.CROSSBOWMAN,
+  vlad: UnitType.DEATH_KNIGHT,
 };
 
 // ---------------------------------------------------------------------------
