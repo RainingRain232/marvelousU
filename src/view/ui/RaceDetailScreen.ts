@@ -7,6 +7,7 @@ import {
   AnimatedSprite, Assets, Rectangle,
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { RACE_DEFINITIONS, getRace } from "@sim/config/RaceDefs";
 import type { RaceDef, RaceId, RaceTiers } from "@sim/config/RaceDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
@@ -26,7 +27,7 @@ const RACE_IMAGES: Record<string, string> = {
   man: manImgUrl,
   horde: hordeImgUrl,
   adept: adeptImgUrl,
-  elements: manImgUrl,
+  // elements: no portrait yet — uses letter fallback
 };
 
 // ---------------------------------------------------------------------------
@@ -668,6 +669,7 @@ export class RaceDetailScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _particles!: AmbientParticles;
   private _mainCard!: Container;
   private _raceId: RaceId = "man";
   private _wikiMode = false;
@@ -705,12 +707,18 @@ export class RaceDetailScreen {
     this._bg = new Graphics();
     this.container.addChild(this._bg);
 
+    this._particles = new AmbientParticles(120);
+    this.container.addChild(this._particles.container);
+
     this._mainCard = new Container();
     this.container.addChild(this._mainCard);
 
     vm.addToLayer("ui", this.container);
     this._layout();
     vm.app.renderer.on("resize", () => this._layout());
+    vm.app.ticker.add((ticker) => {
+      if (this.container.visible) this._particles.update(ticker.deltaMS / 1000);
+    });
   }
 
   show(raceId: RaceId): void {
@@ -743,6 +751,7 @@ export class RaceDetailScreen {
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
     this._bg.clear().rect(0, 0, sw, sh).fill({ color: BG_COLOR });
+    this._particles.resize(sw, sh);
     this._mainCard.position.set(
       Math.floor((sw - CARD_W) / 2),
       Math.floor((sh - CARD_H) / 2),
@@ -1078,8 +1087,8 @@ export class RaceDetailScreen {
     row.position.set(26, y + 26);
     parent.addChild(row);
 
-    const ICON_SIZE = 62;
-    const GAP = 10;
+    const ICON_SIZE = 52;
+    const GAP = 20;
 
     for (let i = 0; i < race.factionUnits.length; i++) {
       const ut = race.factionUnits[i];
@@ -1128,10 +1137,13 @@ export class RaceDetailScreen {
       // Name below icon
       const nameT = new Text({
         text: this._formatUnitName(def.type),
-        style: STYLE_UNIT_NAME,
+        style: new TextStyle({
+          fontFamily: "monospace", fontSize: 9, fill: 0xccddee,
+          wordWrap: true, wordWrapWidth: ICON_SIZE + GAP - 4, align: "center",
+        }),
       });
       nameT.anchor.set(0.5, 0);
-      nameT.position.set(ICON_SIZE / 2, ICON_SIZE + 3);
+      nameT.position.set(ICON_SIZE / 2, ICON_SIZE + 2);
       btn.addChild(nameT);
 
       // Hover: show tooltip

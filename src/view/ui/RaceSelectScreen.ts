@@ -7,6 +7,7 @@ import {
   Sprite, Assets,
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { RACE_DEFINITIONS } from "@sim/config/RaceDefs";
 import type { RaceDef, RaceId } from "@sim/config/RaceDefs";
 import { animationManager } from "@view/animation/AnimationManager";
@@ -24,7 +25,7 @@ const RACE_PORTRAITS: Record<string, string> = {
   man: manPImgUrl,
   horde: hordePImgUrl,
   adept: adeptPImgUrl,
-  elements: manPImgUrl,
+  // elements: no portrait yet — uses letter fallback
   op: manPImgUrl,
 };
 
@@ -134,6 +135,7 @@ export class RaceSelectScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _particles!: AmbientParticles;
   private _mainCard!: Container;
 
   // Grid
@@ -168,6 +170,9 @@ export class RaceSelectScreen {
     this._bg = new Graphics();
     this.container.addChild(this._bg);
 
+    this._particles = new AmbientParticles(120);
+    this.container.addChild(this._particles.container);
+
     this._mainCard = new Container();
     this.container.addChild(this._mainCard);
 
@@ -179,10 +184,15 @@ export class RaceSelectScreen {
     vm.addToLayer("ui", this.container);
     this._layout();
     vm.app.renderer.on("resize", () => this._layout());
+    vm.app.ticker.add((ticker) => {
+      if (this.container.visible) this._particles.update(ticker.deltaMS / 1000);
+    });
   }
 
   show(): void {
     this.container.visible = true;
+    // Re-select to ensure detail panel + portrait are built while visible
+    this._selectRace(this._selectedId);
   }
 
   hide(): void {
@@ -692,6 +702,7 @@ export class RaceSelectScreen {
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
     this._bg.clear().rect(0, 0, sw, sh).fill({ color: BG_COLOR });
+    this._particles.resize(sw, sh);
     this._mainCard.position.set(
       Math.floor((sw - MAIN_W) / 2),
       Math.floor((sh - MAIN_H) / 2),

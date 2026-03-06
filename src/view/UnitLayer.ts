@@ -32,6 +32,7 @@ export class UnitLayer {
 
   private _unitViews = new Map<string, UnitView>();
   private _unsubscribers: Array<() => void> = [];
+  private _pendingTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -73,7 +74,11 @@ export class UnitLayer {
 
         // 3. Remove after DIE anim (~900ms) + corpse fade (CORPSE_FADE_MS) + small buffer.
         const lingerMs = 900 + CORPSE_FADE_MS + 200;
-        setTimeout(() => this._removeUnit(unitId), lingerMs);
+        const tid = setTimeout(() => {
+          this._pendingTimeouts = this._pendingTimeouts.filter((t) => t !== tid);
+          this._removeUnit(unitId);
+        }, lingerMs);
+        this._pendingTimeouts.push(tid);
       }),
     );
   }
@@ -81,6 +86,9 @@ export class UnitLayer {
   destroy(): void {
     for (const unsub of this._unsubscribers) unsub();
     this._unsubscribers = [];
+
+    for (const tid of this._pendingTimeouts) clearTimeout(tid);
+    this._pendingTimeouts = [];
 
     for (const view of this._unitViews.values()) {
       this._vm.removeFromLayer("units", view.container);

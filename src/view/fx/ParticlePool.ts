@@ -172,6 +172,14 @@ export class ParticlePool {
     this._live = [];
   }
 
+  /** Clear all particles, destroy the ParticleContainer and backing texture. */
+  destroy(): void {
+    this.clear();
+    if (this._pc.parent) this._pc.parent.removeChild(this._pc);
+    this._pc.destroy();
+    if (this._texture instanceof RenderTexture) this._texture.destroy(true);
+  }
+
   get liveCount(): number {
     return this._live.length;
   }

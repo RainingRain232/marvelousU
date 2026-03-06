@@ -214,7 +214,12 @@ export class UnitQueueUI {
         if (building) this._addOverlay(building);
       }),
       EventBus.on("buildingDestroyed", ({ buildingId }) => {
-        void buildingId;
+        const overlay = this._overlays.get(buildingId);
+        if (overlay) {
+          this._vm.removeFromLayer("buildings", overlay.container);
+          overlay.destroy();
+          this._overlays.delete(buildingId);
+        }
       }),
     );
   }

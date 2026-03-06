@@ -7,6 +7,8 @@ import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { GameMode, MapType } from "@/types";
 import { hasWorldSave } from "@world/state/WorldSerialization";
 import { Difficulty, DIFFICULTY_SETTINGS, setDifficulty } from "@sim/config/DifficultyConfig";
+import { AmbientParticles } from "@view/fx/AmbientParticles";
+import { RuneCorners } from "@view/fx/RuneCorners";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -235,6 +237,9 @@ export class MenuScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _particles!: AmbientParticles;
+  private _runes1!: RuneCorners;
+  private _runes2!: RuneCorners;
 
   // --- Screen 1: mode select ---
   private _screen1!: Container;
@@ -324,6 +329,10 @@ export class MenuScreen {
     this._bg = new Graphics();
     this.container.addChild(this._bg);
 
+    // Ambient floating particles
+    this._particles = new AmbientParticles(120);
+    this.container.addChild(this._particles.container);
+
     this._buildScreen1();
     this._buildScreen2();
 
@@ -333,6 +342,14 @@ export class MenuScreen {
     vm.addToLayer("ui", this.container);
     this._layout();
     vm.app.renderer.on("resize", () => this._layout());
+    vm.app.ticker.add((ticker) => {
+      if (this.container.visible) {
+        const dt = ticker.deltaMS / 1000;
+        this._particles.update(dt);
+        this._runes1.update(dt);
+        this._runes2.update(dt);
+      }
+    });
   }
 
   show(): void {
@@ -536,6 +553,11 @@ export class MenuScreen {
       .fill({ color: 0x10102a, alpha: 0.95 })
       .roundRect(0, 0, CW, this._screen1CardH, 8)
       .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
+
+    // Rune corner diamonds
+    this._runes1 = new RuneCorners();
+    this._runes1.build(CW, this._screen1CardH);
+    card.addChild(this._runes1.container);
   }
 
   // ---------------------------------------------------------------------------
@@ -929,6 +951,10 @@ export class MenuScreen {
     // Store refs for repositioning
     const actionBtns = { back: backBtn, start: startBtn };
 
+    // Rune corners for screen2
+    this._runes2 = new RuneCorners();
+    card.addChild(this._runes2.container);
+
     // Override _layout to also reposition action buttons
     const origLayout = this._layout.bind(this);
     this._layout = () => {
@@ -952,6 +978,8 @@ export class MenuScreen {
         .fill({ color: 0x10102a, alpha: 0.95 })
         .roundRect(0, 0, this._screen2CardW, this._screen2CardH, 8)
         .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
+
+      this._runes2.build(this._screen2CardW, this._screen2CardH);
 
       origLayout();
     };
@@ -1136,6 +1164,8 @@ export class MenuScreen {
 
     this._bg.clear();
     this._bg.rect(0, 0, sw, sh).fill({ color: BG_COLOR });
+
+    this._particles.resize(sw, sh);
 
     if (this._screen1?.visible) {
       this._screen1Card.position.set(

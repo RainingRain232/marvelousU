@@ -4635,6 +4635,9 @@ async function _bootGame(
   playerCount: number = 2,
   alliedPlayerIds: string[] = [],
 ): Promise<void> {
+  // Clear all EventBus listeners from previous game/wave to prevent accumulation
+  EventBus.clear();
+
   // Switch to in-game music
   audioManager.playGameMusic();
 

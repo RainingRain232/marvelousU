@@ -1550,10 +1550,10 @@ for (const def of tileDefs) {
 </script>
 
 <!-- ================================================================== -->
-<!-- SECTION 3: Age of Wonders–inspired hex tiles                       -->
+<!-- SECTION 3: Age of Wonders–inspired hex tiles (v2 — high detail)    -->
 <!-- ================================================================== -->
-<h1 style="margin-top:60px;">Age of Wonders–Inspired Hex Tiles</h1>
-<p class="subtitle">Hand-painted aesthetic · Lush scattered foliage · Fantasy warmth · HEX_SIZE=192</p>
+<h1 style="margin-top:60px;">Age of Wonders–Inspired Hex Tiles v2</h1>
+<p class="subtitle">Hand-painted · Rich detail · Scattered foliage · Fantasy warmth · HEX_SIZE=192</p>
 <div id="aow-tiles" style="display:flex;flex-wrap:wrap;gap:18px;justify-content:center;max-width:1800px;margin:0 auto;padding:20px 0 60px;"></div>
 
 <script>
@@ -1562,6 +1562,9 @@ const HEX = 192;
 const SQRT3 = Math.sqrt(3);
 
 function hexC(c) { return '#' + ((c >>> 0) & 0xffffff).toString(16).padStart(6,'0'); }
+function rgbaC(c, a) {
+  return `rgba(${(c>>16)&0xff},${(c>>8)&0xff},${c&0xff},${a})`;
+}
 function darken(c, f) {
   const r = ((c>>16)&0xff)*f, g = ((c>>8)&0xff)*f, b = (c&0xff)*f;
   return ((r&0xff)<<16)|((g&0xff)<<8)|(b&0xff);
@@ -1574,6 +1577,12 @@ function blend(c1, c2, t) {
   const r = ((c1>>16)&0xff)*(1-t) + ((c2>>16)&0xff)*t;
   const g = ((c1>>8)&0xff)*(1-t) + ((c2>>8)&0xff)*t;
   const b = (c1&0xff)*(1-t) + (c2&0xff)*t;
+  return ((r&0xff)<<16)|((g&0xff)<<8)|(b&0xff);
+}
+function addColor(c1, c2, strength) {
+  const r = Math.min(255, ((c1>>16)&0xff) + ((c2>>16)&0xff)*strength);
+  const g = Math.min(255, ((c1>>8)&0xff) + ((c2>>8)&0xff)*strength);
+  const b = Math.min(255, (c1&0xff) + (c2&0xff)*strength);
   return ((r&0xff)<<16)|((g&0xff)<<8)|(b&0xff);
 }
 
@@ -1609,235 +1618,1134 @@ function clipHex(ctx, cx, cy, size) {
   ctx.clip();
 }
 
-// --- TERRAIN BASE RENDERS ---
+
+// --- UTILITY: Ambient occlusion vignette for hex edges ---
+
+function drawHexVignette(ctx, cx, cy, color) {
+  // Darkens edges of the hex for depth — gives that painted diorama look
+  const steps = 6;
+  for (let i = 0; i < steps; i++) {
+    const t = i / steps;
+    const innerSize = HEX * (1 - t * 0.15);
+    const outerSize = HEX * (1 - (t-1/steps) * 0.15);
+    drawHexPath(ctx, cx, cy, outerSize);
+    ctx.fillStyle = rgbaC(darken(color, 0.4), 0.03 + t * 0.03);
+    ctx.fill();
+  }
+}
+
+// Consistent light direction: top-left (angle ~ -45deg)
+const LIGHT_X = -0.7, LIGHT_Y = -0.7;
+
+function shadowOffset(size) {
+  return { x: -LIGHT_X * size * 0.04, y: -LIGHT_Y * size * 0.04 };
+}
+
+// --- TERRAIN BASE RENDERS (rich multi-layer painting with vignette) ---
 
 function paintGrassBase(ctx, cx, cy, rng) {
-  // Rich multi-tone grass base
-  const base = 0x4a9933;
-  drawHexPath(ctx, cx, cy, HEX); ctx.fillStyle = hexC(base); ctx.fill();
-  // Paint splotchy variation
-  for (let i = 0; i < 40; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.6, ay = cy + (rng()-0.5)*HEX*1.6;
-    const r = 15 + rng()*35;
+  drawHexPath(ctx, cx, cy, HEX);
+  const grad = ctx.createRadialGradient(cx + LIGHT_X*HEX*0.4, cy + LIGHT_Y*HEX*0.4, 0, cx, cy, HEX*1.1);
+  grad.addColorStop(0, hexC(0x5eae44));
+  grad.addColorStop(0.4, hexC(0x4a9933));
+  grad.addColorStop(0.8, hexC(0x3d8829));
+  grad.addColorStop(1, hexC(0x327020));
+  ctx.fillStyle = grad; ctx.fill();
+  // Large organic color splotches
+  for (let i = 0; i < 55; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.8, ay = cy + (rng()-0.5)*HEX*1.8;
+    const r = 10 + rng()*50;
     ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2);
     const v = rng();
-    ctx.fillStyle = hexC(v < 0.3 ? 0x3d8829 : v < 0.6 ? 0x55aa3d : 0x62b848);
-    ctx.globalAlpha = 0.25 + rng()*0.2; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.fillStyle = hexC(v<0.15 ? 0x327020 : v<0.3 ? 0x55aa3d : v<0.45 ? 0x62b848 : v<0.6 ? 0x4a9030 : v<0.75 ? 0x3a7a22 : v<0.85 ? 0x68c050 : 0x388826);
+    ctx.globalAlpha = 0.1 + rng()*0.18; ctx.fill();
   }
+  // Fine texture noise
+  for (let i = 0; i < 80; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.7, ay = cy + (rng()-0.5)*HEX*1.7;
+    const s = 2 + rng()*5;
+    ctx.fillStyle = hexC(rng()<0.5 ? 0x2a6a1a : 0x6abb50);
+    ctx.globalAlpha = 0.04 + rng()*0.04;
+    ctx.fillRect(ax, ay, s, s*0.6);
+  }
+  // Soil patches
+  for (let i = 0; i < 12; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.5, ay = cy + (rng()-0.5)*HEX*1.5;
+    ctx.beginPath(); ctx.ellipse(ax, ay, 8+rng()*20, 5+rng()*14, rng()*Math.PI, 0, Math.PI*2);
+    ctx.fillStyle = hexC(rng()<0.5 ? 0x6a5a3a : 0x5a4a2a); ctx.globalAlpha = 0.06 + rng()*0.06; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  drawHexVignette(ctx, cx, cy, 0x2a6a1a);
 }
 
 function paintForestBase(ctx, cx, cy, rng) {
-  const base = 0x2d6b2a;
-  drawHexPath(ctx, cx, cy, HEX); ctx.fillStyle = hexC(base); ctx.fill();
-  for (let i = 0; i < 30; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.6, ay = cy + (rng()-0.5)*HEX*1.6;
-    const r = 20 + rng()*30;
+  drawHexPath(ctx, cx, cy, HEX);
+  const grad = ctx.createRadialGradient(cx + LIGHT_X*HEX*0.3, cy + LIGHT_Y*HEX*0.3, 0, cx, cy, HEX*1.1);
+  grad.addColorStop(0, hexC(0x356e30));
+  grad.addColorStop(0.5, hexC(0x2a5a25));
+  grad.addColorStop(1, hexC(0x183a16));
+  ctx.fillStyle = grad; ctx.fill();
+  for (let i = 0; i < 55; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.8, ay = cy + (rng()-0.5)*HEX*1.8;
+    const r = 12 + rng()*45;
     ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2);
-    ctx.fillStyle = hexC(rng() < 0.5 ? 0x245a22 : 0x357a30);
-    ctx.globalAlpha = 0.3; ctx.fill(); ctx.globalAlpha = 1;
+    const v = rng();
+    ctx.fillStyle = hexC(v<0.2 ? 0x142a12 : v<0.4 ? 0x1e4a1a : v<0.6 ? 0x2a5a25 : v<0.8 ? 0x357a30 : 0x1a3a18);
+    ctx.globalAlpha = 0.15 + rng()*0.18; ctx.fill();
   }
+  // Dappled sunlight
+  for (let i = 0; i < 25; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.5, ay = cy + (rng()-0.5)*HEX*1.5;
+    ctx.beginPath(); ctx.ellipse(ax, ay, 3+rng()*12, 2+rng()*8, rng()*Math.PI, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0x88cc55); ctx.globalAlpha = 0.04 + rng()*0.06; ctx.fill();
+  }
+  // Dark leaf litter & humus
+  for (let i = 0; i < 25; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.6, ay = cy + (rng()-0.5)*HEX*1.6;
+    ctx.beginPath(); ctx.ellipse(ax, ay, 4+rng()*14, 2+rng()*8, rng()*Math.PI, 0, Math.PI*2);
+    ctx.fillStyle = hexC(rng()<0.4 ? 0x2a1a0a : rng()<0.7 ? 0x1a2a12 : 0x3a2a18);
+    ctx.globalAlpha = 0.06 + rng()*0.06; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  drawHexVignette(ctx, cx, cy, 0x0a1a08);
 }
 
 function paintHillsBase(ctx, cx, cy, rng) {
-  const base = 0x8a7a4a;
-  drawHexPath(ctx, cx, cy, HEX); ctx.fillStyle = hexC(base); ctx.fill();
-  for (let i = 0; i < 25; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.6, ay = cy + (rng()-0.5)*HEX*1.6;
-    const r = 15 + rng()*30;
+  drawHexPath(ctx, cx, cy, HEX);
+  const grad = ctx.createLinearGradient(cx + LIGHT_X*HEX, cy + LIGHT_Y*HEX, cx - LIGHT_X*HEX, cy - LIGHT_Y*HEX);
+  grad.addColorStop(0, hexC(0xa89a60));
+  grad.addColorStop(0.5, hexC(0x8a7a4a));
+  grad.addColorStop(1, hexC(0x6a5a32));
+  ctx.fillStyle = grad; ctx.fill();
+  for (let i = 0; i < 50; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.8, ay = cy + (rng()-0.5)*HEX*1.8;
+    const r = 10 + rng()*40;
     ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2);
-    ctx.fillStyle = hexC(rng() < 0.5 ? 0x7a6a3a : 0x9a8a5a);
-    ctx.globalAlpha = 0.25; ctx.fill(); ctx.globalAlpha = 1;
+    const v = rng();
+    ctx.fillStyle = hexC(v<0.2 ? 0x6a5a2a : v<0.4 ? 0x9a8a5a : v<0.6 ? 0x8a7a48 : v<0.8 ? 0x7a6a38 : 0xa49460);
+    ctx.globalAlpha = 0.12 + rng()*0.14; ctx.fill();
   }
+  for (let i = 0; i < 20; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.5, ay = cy + (rng()-0.5)*HEX*1.5;
+    ctx.beginPath(); ctx.ellipse(ax, ay, 8+rng()*22, 5+rng()*14, rng()*Math.PI, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0x5a8a3a); ctx.globalAlpha = 0.07 + rng()*0.06; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  drawHexVignette(ctx, cx, cy, 0x4a3a1a);
 }
 
 function paintPlainsBase(ctx, cx, cy, rng) {
-  const base = 0xb8a84e;
-  drawHexPath(ctx, cx, cy, HEX); ctx.fillStyle = hexC(base); ctx.fill();
-  for (let i = 0; i < 30; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.6, ay = cy + (rng()-0.5)*HEX*1.6;
-    const r = 15 + rng()*40;
+  drawHexPath(ctx, cx, cy, HEX);
+  const grad = ctx.createRadialGradient(cx + LIGHT_X*HEX*0.3, cy + LIGHT_Y*HEX*0.3, 0, cx, cy, HEX*1.1);
+  grad.addColorStop(0, hexC(0xd0c06a));
+  grad.addColorStop(0.5, hexC(0xb8a84e));
+  grad.addColorStop(1, hexC(0x968838));
+  ctx.fillStyle = grad; ctx.fill();
+  for (let i = 0; i < 50; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.8, ay = cy + (rng()-0.5)*HEX*1.8;
+    const r = 10 + rng()*45;
     ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2);
-    ctx.fillStyle = hexC(rng() < 0.5 ? 0xc8b864 : 0xa89840);
-    ctx.globalAlpha = 0.2; ctx.fill(); ctx.globalAlpha = 1;
+    const v = rng();
+    ctx.fillStyle = hexC(v<0.2 ? 0xd8c870 : v<0.4 ? 0xa89840 : v<0.6 ? 0xc0b058 : v<0.8 ? 0x98883a : 0xb0a048);
+    ctx.globalAlpha = 0.1 + rng()*0.14; ctx.fill();
   }
+  for (let i = 0; i < 15; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.5, ay = cy + (rng()-0.5)*HEX*1.5;
+    ctx.beginPath(); ctx.ellipse(ax, ay, 6+rng()*16, 4+rng()*10, rng()*Math.PI, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0x8aaa5a); ctx.globalAlpha = 0.06; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  drawHexVignette(ctx, cx, cy, 0x7a6a2a);
 }
 
 function paintWaterBase(ctx, cx, cy, rng) {
-  const base = 0x2855a0;
-  drawHexPath(ctx, cx, cy, HEX); ctx.fillStyle = hexC(base); ctx.fill();
-  for (let i = 0; i < 20; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.6, ay = cy + (rng()-0.5)*HEX*1.6;
-    const r = 20 + rng()*35;
+  drawHexPath(ctx, cx, cy, HEX);
+  const grad = ctx.createRadialGradient(cx + LIGHT_X*HEX*0.3, cy + LIGHT_Y*HEX*0.4, 0, cx + HEX*0.1, cy + HEX*0.1, HEX*1.1);
+  grad.addColorStop(0, hexC(0x5599dd));
+  grad.addColorStop(0.3, hexC(0x3878c0));
+  grad.addColorStop(0.7, hexC(0x2860a8));
+  grad.addColorStop(1, hexC(0x1a4488));
+  ctx.fillStyle = grad; ctx.fill();
+  for (let i = 0; i < 40; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.8, ay = cy + (rng()-0.5)*HEX*1.8;
+    const r = 12 + rng()*45;
     ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2);
-    ctx.fillStyle = hexC(rng() < 0.5 ? 0x3366b0 : 0x1e4488);
-    ctx.globalAlpha = 0.25; ctx.fill(); ctx.globalAlpha = 1;
+    const v = rng();
+    ctx.fillStyle = hexC(v<0.25 ? 0x1e3a70 : v<0.5 ? 0x3060a0 : v<0.75 ? 0x4488cc : 0x2050888);
+    ctx.globalAlpha = 0.08 + rng()*0.12; ctx.fill();
   }
+  // Caustic light patterns
+  for (let i = 0; i < 15; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.3, ay = cy + (rng()-0.5)*HEX*1.3;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.bezierCurveTo(ax+rng()*20, ay+rng()*15, ax-rng()*15, ay+rng()*20, ax+rng()*10-5, ay+rng()*10);
+    ctx.strokeStyle = hexC(0x77bbee); ctx.lineWidth = 1+rng()*2; ctx.globalAlpha = 0.04; ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  drawHexVignette(ctx, cx, cy, 0x0a2244);
 }
 
 function paintDesertBase(ctx, cx, cy, rng) {
-  const base = 0xd4b866;
-  drawHexPath(ctx, cx, cy, HEX); ctx.fillStyle = hexC(base); ctx.fill();
-  for (let i = 0; i < 25; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.6, ay = cy + (rng()-0.5)*HEX*1.6;
-    const r = 15 + rng()*35;
+  drawHexPath(ctx, cx, cy, HEX);
+  const grad = ctx.createLinearGradient(cx + LIGHT_X*HEX*0.6, cy + LIGHT_Y*HEX*0.3, cx - LIGHT_X*HEX*0.6, cy - LIGHT_Y*HEX*0.3);
+  grad.addColorStop(0, hexC(0xe8d480));
+  grad.addColorStop(0.5, hexC(0xd4b866));
+  grad.addColorStop(1, hexC(0xbea050));
+  ctx.fillStyle = grad; ctx.fill();
+  for (let i = 0; i < 50; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.8, ay = cy + (rng()-0.5)*HEX*1.8;
+    const r = 10 + rng()*40;
     ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2);
-    ctx.fillStyle = hexC(rng() < 0.5 ? 0xc4a856 : 0xe0c878);
-    ctx.globalAlpha = 0.2; ctx.fill(); ctx.globalAlpha = 1;
+    const v = rng();
+    ctx.fillStyle = hexC(v<0.2 ? 0xccaa50 : v<0.4 ? 0xe8d080 : v<0.6 ? 0xb89844 : v<0.8 ? 0xd0bc60 : 0xc0a848);
+    ctx.globalAlpha = 0.1 + rng()*0.12; ctx.fill();
   }
+  // Heat shimmer texture
+  for (let i = 0; i < 30; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.5, ay = cy + (rng()-0.5)*HEX*1.5;
+    const w = 8+rng()*20;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay); ctx.quadraticCurveTo(ax+w*0.5, ay-2-rng()*3, ax+w, ay);
+    ctx.strokeStyle = hexC(0xeedd88); ctx.lineWidth = 0.5; ctx.globalAlpha = 0.06; ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  drawHexVignette(ctx, cx, cy, 0x8a7a3a);
 }
 
 function paintMountainBase(ctx, cx, cy, rng) {
-  const base = 0x6a6a72;
-  drawHexPath(ctx, cx, cy, HEX); ctx.fillStyle = hexC(base); ctx.fill();
-  for (let i = 0; i < 20; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.6, ay = cy + (rng()-0.5)*HEX*1.6;
-    const r = 15 + rng()*30;
+  drawHexPath(ctx, cx, cy, HEX);
+  const grad = ctx.createLinearGradient(cx, cy - HEX, cx, cy + HEX);
+  grad.addColorStop(0, hexC(0x9090a0));
+  grad.addColorStop(0.4, hexC(0x6e6e78));
+  grad.addColorStop(1, hexC(0x4a4a55));
+  ctx.fillStyle = grad; ctx.fill();
+  for (let i = 0; i < 45; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.8, ay = cy + (rng()-0.5)*HEX*1.8;
+    const r = 10 + rng()*35;
     ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2);
-    ctx.fillStyle = hexC(rng() < 0.5 ? 0x5a5a64 : 0x7a7a82);
-    ctx.globalAlpha = 0.2; ctx.fill(); ctx.globalAlpha = 1;
+    const v = rng();
+    ctx.fillStyle = hexC(v<0.2 ? 0x44444e : v<0.4 ? 0x7a7a84 : v<0.6 ? 0x5a5a64 : v<0.8 ? 0x8a8a92 : 0x626268);
+    ctx.globalAlpha = 0.12 + rng()*0.12; ctx.fill();
   }
+  // Rock grain
+  for (let i = 0; i < 20; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.4, ay = cy + (rng()-0.5)*HEX*1.4;
+    const w = 12 + rng()*35;
+    ctx.beginPath();
+    ctx.moveTo(ax - w, ay); ctx.lineTo(ax + w, ay + rng()*8 - 4);
+    ctx.strokeStyle = hexC(0x3a3a44); ctx.lineWidth = 0.8 + rng()*0.8; ctx.globalAlpha = 0.08 + rng()*0.06; ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  drawHexVignette(ctx, cx, cy, 0x2a2a34);
 }
 
 function paintSwampBase(ctx, cx, cy, rng) {
-  const base = 0x4a6a3a;
-  drawHexPath(ctx, cx, cy, HEX); ctx.fillStyle = hexC(base); ctx.fill();
-  for (let i = 0; i < 30; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.6, ay = cy + (rng()-0.5)*HEX*1.6;
-    const r = 15 + rng()*30;
+  drawHexPath(ctx, cx, cy, HEX);
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, HEX*1.1);
+  grad.addColorStop(0, hexC(0x4e6e3e));
+  grad.addColorStop(0.5, hexC(0x3d5a30));
+  grad.addColorStop(1, hexC(0x223a1a));
+  ctx.fillStyle = grad; ctx.fill();
+  for (let i = 0; i < 50; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.8, ay = cy + (rng()-0.5)*HEX*1.8;
+    const r = 10 + rng()*40;
     ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2);
     const v = rng();
-    ctx.fillStyle = hexC(v < 0.3 ? 0x3a5a2a : v < 0.6 ? 0x5a7a4a : 0x3d6848);
-    ctx.globalAlpha = 0.25; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.fillStyle = hexC(v<0.2 ? 0x1e3a18 : v<0.4 ? 0x3a5a2a : v<0.6 ? 0x4a6a3a : v<0.8 ? 0x2a4a22 : 0x3e6840);
+    ctx.globalAlpha = 0.12 + rng()*0.15; ctx.fill();
   }
+  // Murky stain patches
+  for (let i = 0; i < 15; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.5, ay = cy + (rng()-0.5)*HEX*1.5;
+    ctx.beginPath(); ctx.ellipse(ax, ay, 8+rng()*22, 5+rng()*14, rng()*Math.PI, 0, Math.PI*2);
+    ctx.fillStyle = hexC(rng()<0.5 ? 0x2a2a18 : 0x1a3a20); ctx.globalAlpha = 0.08 + rng()*0.06; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  drawHexVignette(ctx, cx, cy, 0x0a1a08);
 }
 
-// --- SCATTERED DECORATIONS (AoW style: spread across entire tile, not centered) ---
+function paintTundraBase(ctx, cx, cy, rng) {
+  drawHexPath(ctx, cx, cy, HEX);
+  const grad = ctx.createRadialGradient(cx + LIGHT_X*HEX*0.3, cy + LIGHT_Y*HEX*0.3, 0, cx, cy, HEX*1.1);
+  grad.addColorStop(0, hexC(0xc8d8e8));
+  grad.addColorStop(0.5, hexC(0xaabccc));
+  grad.addColorStop(1, hexC(0x8899aa));
+  ctx.fillStyle = grad; ctx.fill();
+  for (let i = 0; i < 40; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.8, ay = cy + (rng()-0.5)*HEX*1.8;
+    const r = 10 + rng()*40;
+    ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2);
+    ctx.fillStyle = hexC(rng()<0.3 ? 0x99aabb : rng()<0.6 ? 0xbbccdd : 0xaabbcc);
+    ctx.globalAlpha = 0.1 + rng()*0.12; ctx.fill();
+  }
+  // Frost crystals
+  for (let i = 0; i < 40; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.5, ay = cy + (rng()-0.5)*HEX*1.5;
+    ctx.beginPath(); ctx.arc(ax, ay, 1+rng()*2, 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.08 + rng()*0.08; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  drawHexVignette(ctx, cx, cy, 0x667788);
+}
+// --- GROUND COVER & NATURE ELEMENTS ---
 
 function drawGrassTufts(ctx, cx, cy, rng, count) {
   for (let i = 0; i < count; i++) {
-    // Scatter across full hex area
-    const ax = cx + (rng()-0.5)*HEX*1.5;
-    const ay = cy + (rng()-0.5)*HEX*1.5;
-    const h = 6 + rng()*10;
-    const w = 3 + rng()*4;
-    ctx.globalAlpha = 0.5 + rng()*0.3;
-    const gc = rng() < 0.5 ? 0x3d8829 : 0x55aa3d;
-    ctx.strokeStyle = hexC(gc);
-    ctx.lineWidth = 1.5;
-    // 3 blades
-    for (let b = -1; b <= 1; b++) {
+    const ax = cx + (rng()-0.5)*HEX*1.55, ay = cy + (rng()-0.5)*HEX*1.55;
+    const h = 8 + rng()*16;
+    const w = 4 + rng()*6;
+    const blades = 3 + Math.floor(rng()*4);
+    ctx.globalAlpha = 0.4 + rng()*0.4;
+    const gc = [0x3d8829, 0x55aa3d, 0x4a9930, 0x62b848, 0x358822, 0x48a035][Math.floor(rng()*6)];
+    ctx.lineWidth = 1.0 + rng()*0.8;
+    ctx.lineCap = 'round';
+    for (let b = 0; b < blades; b++) {
+      const bOff = (b - (blades-1)/2) * (w / blades);
+      const tipSway = (rng()-0.5) * w * 1.5;
+      ctx.strokeStyle = hexC(lighten(gc, 0.9 + rng()*0.35));
       ctx.beginPath();
-      ctx.moveTo(ax + b*w*0.4, ay);
-      ctx.quadraticCurveTo(ax + b*w, ay - h*0.6, ax + b*w*0.8, ay - h);
+      ctx.moveTo(ax + bOff*0.3, ay);
+      ctx.bezierCurveTo(ax + bOff*0.6, ay - h*0.3, ax + bOff + tipSway*0.5, ay - h*0.65, ax + tipSway, ay - h);
       ctx.stroke();
+    }
+    ctx.beginPath(); ctx.ellipse(ax, ay + 1, w*0.5, 1.5, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.05); ctx.globalAlpha = 1; ctx.fill();
+  }
+  ctx.globalAlpha = 1; ctx.lineCap = 'butt';
+}
+
+function drawFerns(ctx, cx, cy, rng, count) {
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.4, ay = cy + (rng()-0.5)*HEX*1.3;
+    const size = 10 + rng()*16;
+    const angle = (rng()-0.5)*0.6;
+    ctx.save();
+    ctx.translate(ax, ay);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 0.5 + rng()*0.3;
+    // Central stem
+    const gc = [0x3a8a28, 0x4a9a35, 0x2a7a20][Math.floor(rng()*3)];
+    ctx.strokeStyle = hexC(gc); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(2, -size*0.5, 0, -size); ctx.stroke();
+    // Fronds on each side
+    const fronds = 5 + Math.floor(rng()*4);
+    for (let f = 0; f < fronds; f++) {
+      const fy = -size * (0.15 + f * 0.7/fronds);
+      const fLen = size * (0.3 + 0.2*(1 - f/fronds)) * (0.8 + rng()*0.4);
+      for (const dir of [-1, 1]) {
+        ctx.strokeStyle = hexC(lighten(gc, 1 + rng()*0.2));
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(0, fy);
+        ctx.quadraticCurveTo(dir*fLen*0.5, fy - fLen*0.2, dir*fLen, fy + fLen*0.1);
+        ctx.stroke();
+        // Tiny leaflets
+        for (let l = 0; l < 3; l++) {
+          const t = (l+1)/4;
+          const lx = dir*fLen*t*0.8, ly = fy + (fLen*0.1 - fLen*0.2)*t;
+          ctx.beginPath(); ctx.ellipse(lx, ly, 2+rng()*2, 1, dir*0.5, 0, Math.PI*2);
+          ctx.fillStyle = hexC(lighten(gc, 1.1 + rng()*0.2));
+          ctx.globalAlpha = 0.3 + rng()*0.2; ctx.fill();
+        }
+      }
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawBushes(ctx, cx, cy, rng, count) {
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.35, ay = cy + (rng()-0.5)*HEX*1.2;
+    const w = 12 + rng()*18, h = 8 + rng()*12;
+    const gc = [0x3a7a28, 0x4a8a35, 0x2a6a20, 0x458a30][Math.floor(rng()*4)];
+    // Shadow
+    ctx.beginPath(); ctx.ellipse(ax + 2, ay + 2, w*1.05, h*0.4, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.1); ctx.fill();
+    // Main bush body (multiple blobs)
+    for (let b = 0; b < 5; b++) {
+      const bx = ax + (rng()-0.5)*w*0.5, by = ay - h*0.3 + (rng()-0.5)*h*0.3;
+      const br = (w*0.35 + rng()*w*0.25);
+      ctx.beginPath(); ctx.ellipse(bx, by, br, br*0.7, 0, 0, Math.PI*2);
+      ctx.fillStyle = hexC(lighten(gc, 0.9 + rng()*0.3));
+      ctx.globalAlpha = 0.4 + rng()*0.3; ctx.fill();
+    }
+    // Highlight on top-left
+    ctx.beginPath(); ctx.ellipse(ax - w*0.15, ay - h*0.4, w*0.35, h*0.3, 0, 0, Math.PI*2);
+    ctx.fillStyle = hexC(lighten(gc, 1.4)); ctx.globalAlpha = 0.15; ctx.fill();
+    // Berries
+    if (rng() < 0.4) {
+      const bc = rng() < 0.5 ? 0xcc3344 : 0x4444cc;
+      for (let b = 0; b < 4 + Math.floor(rng()*5); b++) {
+        const bx = ax + (rng()-0.5)*w*0.7, by = ay - h*(rng()*0.5);
+        ctx.beginPath(); ctx.arc(bx, by, 1.5+rng(), 0, Math.PI*2);
+        ctx.fillStyle = hexC(bc); ctx.globalAlpha = 0.6 + rng()*0.3; ctx.fill();
+      }
     }
     ctx.globalAlpha = 1;
   }
 }
 
-function drawScatteredFlowers(ctx, cx, cy, rng, count) {
-  const colors = [0xff6688, 0xffaa44, 0xffee55, 0xcc88ff, 0xffffff, 0xff4466];
+function drawStumps(ctx, cx, cy, rng, count) {
   for (let i = 0; i < count; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.4;
-    const ay = cy + (rng()-0.5)*HEX*1.4;
-    const r = 2 + rng()*3;
-    const col = colors[Math.floor(rng()*colors.length)];
-    ctx.globalAlpha = 0.7 + rng()*0.3;
-    // Petals
-    for (let p = 0; p < 5; p++) {
-      const pa = (Math.PI*2/5)*p + rng()*0.3;
-      ctx.beginPath();
-      ctx.arc(ax + Math.cos(pa)*r*0.7, ay + Math.sin(pa)*r*0.7, r*0.5, 0, Math.PI*2);
-      ctx.fillStyle = hexC(col); ctx.fill();
+    const ax = cx + (rng()-0.5)*HEX*1.3, ay = cy + (rng()-0.5)*HEX*1.2;
+    const w = 5 + rng()*6, h = 6 + rng()*8;
+    // Shadow
+    ctx.beginPath(); ctx.ellipse(ax + 2, ay + 1, w*1.2, 3, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.1); ctx.fill();
+    // Stump body
+    ctx.fillStyle = hexC(0x5a3a1a);
+    ctx.fillRect(ax - w/2, ay - h, w, h);
+    // Bark texture
+    ctx.fillStyle = hexC(0x4a2a12); ctx.globalAlpha = 0.4;
+    ctx.fillRect(ax - w/2, ay - h, w*0.3, h);
+    ctx.globalAlpha = 1;
+    // Top ring
+    ctx.beginPath(); ctx.ellipse(ax, ay - h, w/2 + 1, 3, 0, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0x7a5a3a); ctx.fill();
+    // Ring detail
+    ctx.beginPath(); ctx.ellipse(ax, ay - h, w/2 - 1, 2, 0, 0, Math.PI*2);
+    ctx.strokeStyle = hexC(0x6a4a2a); ctx.lineWidth = 0.5; ctx.globalAlpha = 0.5; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(ax, ay - h, w/3, 1.5, 0, 0, Math.PI*2);
+    ctx.strokeStyle = hexC(0x5a3a1a); ctx.stroke();
+    // Moss on stump
+    if (rng() < 0.5) {
+      ctx.beginPath(); ctx.ellipse(ax - w*0.2, ay - h*0.3, w*0.4, h*0.2, 0.3, 0, Math.PI*2);
+      ctx.fillStyle = hexC(0x4a8a2a); ctx.globalAlpha = 0.35; ctx.fill();
     }
-    // Center
-    ctx.beginPath(); ctx.arc(ax, ay, r*0.35, 0, Math.PI*2);
-    ctx.fillStyle = hexC(0xffdd44); ctx.fill();
     ctx.globalAlpha = 1;
   }
+}
+
+function drawFallenLogs(ctx, cx, cy, rng, count) {
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.2, ay = cy + (rng()-0.5)*HEX*1.0;
+    const len = 25 + rng()*40, thick = 4 + rng()*4;
+    const angle = (rng()-0.5)*0.8;
+    ctx.save();
+    ctx.translate(ax, ay);
+    ctx.rotate(angle);
+    // Shadow
+    ctx.beginPath(); ctx.ellipse(2, 2, len/2, thick*0.6, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.08); ctx.fill();
+    // Log body
+    ctx.fillStyle = hexC(0x5a3a1a);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, len/2, thick, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Bark highlight
+    ctx.fillStyle = hexC(0x6a4a2a); ctx.globalAlpha = 0.4;
+    ctx.beginPath(); ctx.ellipse(-len*0.1, -thick*0.3, len*0.35, thick*0.4, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // End cuts
+    ctx.fillStyle = hexC(0x7a5a3a);
+    ctx.beginPath(); ctx.ellipse(-len/2, 0, thick*0.5, thick, Math.PI/2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(len/2, 0, thick*0.5, thick, Math.PI/2, 0, Math.PI*2); ctx.fill();
+    // Moss patches
+    if (rng() < 0.6) {
+      ctx.fillStyle = hexC(0x4a8a2a); ctx.globalAlpha = 0.3;
+      ctx.beginPath(); ctx.ellipse((rng()-0.5)*len*0.4, -thick*0.2, 6+rng()*8, 3+rng()*4, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
+function drawWheatField(ctx, cx, cy, rng) {
+  // Wheat stalks covering most of the tile
+  for (let i = 0; i < 60; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.4, ay = cy + (rng()-0.5)*HEX*1.4;
+    const h = 14 + rng()*20;
+    const sway = (rng()-0.5)*6;
+    ctx.strokeStyle = hexC([0xc8a844, 0xd4b855, 0xb89838, 0xc0a840][Math.floor(rng()*4)]);
+    ctx.lineWidth = 0.8 + rng()*0.6;
+    ctx.globalAlpha = 0.4 + rng()*0.35;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.bezierCurveTo(ax + sway*0.3, ay - h*0.3, ax + sway*0.7, ay - h*0.65, ax + sway, ay - h);
+    ctx.stroke();
+    // Wheat head
+    ctx.fillStyle = hexC(0xd8c060);
+    ctx.beginPath(); ctx.ellipse(ax + sway, ay - h - 2, 1.5 + rng(), 4 + rng()*3, sway*0.05, 0, Math.PI*2);
+    ctx.fill();
+    // Tiny awns
+    ctx.strokeStyle = hexC(0xc8b050); ctx.lineWidth = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(ax + sway - 2, ay - h - 3); ctx.lineTo(ax + sway - 4, ay - h - 7);
+    ctx.moveTo(ax + sway + 2, ay - h - 4); ctx.lineTo(ax + sway + 4, ay - h - 8);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawScatteredFlowers(ctx, cx, cy, rng, count) {
+  const palettes = [
+    [0xff6688, 0xff4466], [0xffaa44, 0xff8822], [0xffee55, 0xddcc33],
+    [0xcc88ff, 0xaa66dd], [0xffffff, 0xdddddd], [0xff88aa, 0xdd6688],
+    [0x88ccff, 0x66aadd], [0xffcc88, 0xddaa66]
+  ];
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.45, ay = cy + (rng()-0.5)*HEX*1.45;
+    const r = 2.5 + rng()*4;
+    const pal = palettes[Math.floor(rng()*palettes.length)];
+    const petals = 4 + Math.floor(rng()*3);
+    ctx.globalAlpha = 0.7 + rng()*0.3;
+    // Stem
+    const stemH = 5 + rng()*10;
+    ctx.strokeStyle = hexC(0x3a7a22); ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay + r);
+    ctx.bezierCurveTo(ax+(rng()-0.5)*3, ay+r+stemH*0.4, ax+(rng()-0.5)*2, ay+r+stemH*0.7, ax+(rng()-0.5)*3, ay+r+stemH);
+    ctx.stroke();
+    // Leaves on stem
+    if (rng() < 0.5) {
+      const ly = ay + r + stemH*0.4;
+      ctx.beginPath(); ctx.ellipse(ax+3, ly, 3, 1.5, 0.4, 0, Math.PI*2);
+      ctx.fillStyle = hexC(0x4a8a2a); ctx.globalAlpha = 0.4; ctx.fill();
+    }
+    ctx.globalAlpha = 0.7 + rng()*0.3;
+    // Petals with shading
+    for (let p = 0; p < petals; p++) {
+      const pa = (Math.PI*2/petals)*p + rng()*0.4;
+      const pr = r * (0.55 + rng()*0.15);
+      ctx.beginPath();
+      ctx.ellipse(ax + Math.cos(pa)*pr, ay + Math.sin(pa)*pr, r*0.5, r*0.3, pa, 0, Math.PI*2);
+      ctx.fillStyle = hexC(rng()<0.6 ? pal[0] : pal[1]); ctx.fill();
+      // Petal highlight
+      ctx.beginPath();
+      ctx.ellipse(ax + Math.cos(pa)*pr*0.7, ay + Math.sin(pa)*pr*0.7, r*0.2, r*0.15, pa, 0, Math.PI*2);
+      ctx.fillStyle = hexC(lighten(pal[0], 1.4)); ctx.globalAlpha = 0.2; ctx.fill();
+      ctx.globalAlpha = 0.7 + rng()*0.3;
+    }
+    // Center
+    ctx.beginPath(); ctx.arc(ax, ay, r*0.3, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xffdd44); ctx.fill();
+    ctx.beginPath(); ctx.arc(ax - r*0.08, ay - r*0.08, r*0.13, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xffee88); ctx.globalAlpha = 0.5; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawScatteredRocks(ctx, cx, cy, rng, count) {
   for (let i = 0; i < count; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.4;
-    const ay = cy + (rng()-0.5)*HEX*1.3;
-    const w = 6 + rng()*14;
-    const h = 4 + rng()*8;
-    const col = rng() < 0.5 ? 0x888888 : 0x777772;
+    const ax = cx + (rng()-0.5)*HEX*1.4, ay = cy + (rng()-0.5)*HEX*1.35;
+    const w = 7 + rng()*18;
+    const h = 5 + rng()*11;
+    const rot = rng()*0.6 - 0.3;
+    const col = [0x888888, 0x777772, 0x8a8a80, 0x6e6e68, 0x7a7a74][Math.floor(rng()*5)];
+    // Drop shadow
+    ctx.beginPath(); ctx.ellipse(ax+3, ay+2, w*1.1, h*0.4, rot, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.1); ctx.fill();
+    // Main rock (irregular)
+    ctx.beginPath(); ctx.ellipse(ax, ay, w, h, rot, 0, Math.PI*2);
+    ctx.fillStyle = hexC(col); ctx.globalAlpha = 0.7 + rng()*0.25; ctx.fill();
+    // Bump
+    ctx.beginPath(); ctx.ellipse(ax + w*0.15*(rng()-0.5), ay - h*0.15, w*0.55, h*0.65, rot+0.15, 0, Math.PI*2);
+    ctx.fillStyle = hexC(lighten(col, 1.1)); ctx.globalAlpha = 0.35; ctx.fill();
+    // Top highlight
+    ctx.beginPath(); ctx.ellipse(ax - w*0.15, ay - h*0.3, w*0.35, h*0.25, rot, 0, Math.PI*2);
+    ctx.fillStyle = hexC(lighten(col, 1.5)); ctx.globalAlpha = 0.18; ctx.fill();
+    // Cracks
+    if (w > 10) {
+      const numCracks = 1 + Math.floor(rng()*2);
+      for (let c = 0; c < numCracks; c++) {
+        ctx.beginPath();
+        const cx1 = ax + (rng()-0.5)*w*0.6, cy1 = ay + (rng()-0.5)*h*0.4;
+        ctx.moveTo(cx1, cy1);
+        ctx.lineTo(cx1 + (rng()-0.5)*w*0.4, cy1 + rng()*h*0.3);
+        ctx.strokeStyle = hexC(darken(col, 0.45)); ctx.lineWidth = 0.6; ctx.globalAlpha = 0.3; ctx.stroke();
+      }
+    }
+    // Moss spot
+    if (rng() < 0.3) {
+      ctx.beginPath(); ctx.ellipse(ax + (rng()-0.5)*w*0.4, ay + (rng()-0.5)*h*0.3, 3+rng()*4, 2+rng()*3, 0, 0, Math.PI*2);
+      ctx.fillStyle = hexC(0x5a8a3a); ctx.globalAlpha = 0.25; ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+// --- FANTASY ELEMENTS ---
+
+function drawStandingStones(ctx, cx, cy, rng, count) {
+  const stones = [];
+  for (let i = 0; i < count; i++) {
+    stones.push({
+      x: cx + (rng()-0.5)*HEX*1.1,
+      y: cy + (rng()-0.5)*HEX*0.9,
+      w: 6 + rng()*8,
+      h: 18 + rng()*25,
+      lean: (rng()-0.5)*0.15
+    });
+  }
+  stones.sort((a,b) => a.y - b.y);
+  for (const s of stones) {
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.lean);
+    // Shadow
+    ctx.beginPath(); ctx.ellipse(3, 2, s.w*1.2, 3, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.12); ctx.fill();
+    // Stone body
     ctx.beginPath();
-    ctx.ellipse(ax, ay, w, h, rng()*0.5, 0, Math.PI*2);
-    ctx.fillStyle = hexC(col); ctx.globalAlpha = 0.6 + rng()*0.3; ctx.fill();
-    // Highlight
+    ctx.moveTo(-s.w/2, 0);
+    ctx.bezierCurveTo(-s.w/2 - 1, -s.h*0.3, -s.w*0.4, -s.h*0.8, -s.w*0.15, -s.h);
+    ctx.bezierCurveTo(0, -s.h*1.05, s.w*0.15, -s.h, s.w*0.3, -s.h*0.9);
+    ctx.bezierCurveTo(s.w/2, -s.h*0.7, s.w/2 + 1, -s.h*0.3, s.w/2, 0);
+    ctx.closePath();
+    ctx.fillStyle = hexC(0x7a7a82); ctx.fill();
+    // Light side
     ctx.beginPath();
-    ctx.ellipse(ax - w*0.15, ay - h*0.25, w*0.5, h*0.4, 0, 0, Math.PI*2);
-    ctx.fillStyle = hexC(lighten(col, 1.3)); ctx.globalAlpha = 0.25; ctx.fill();
+    ctx.moveTo(-s.w/2, 0);
+    ctx.bezierCurveTo(-s.w/2 - 1, -s.h*0.3, -s.w*0.4, -s.h*0.8, -s.w*0.15, -s.h);
+    ctx.lineTo(0, -s.h*0.95);
+    ctx.lineTo(0, 0);
+    ctx.closePath();
+    ctx.fillStyle = hexC(0x9090a0); ctx.globalAlpha = 0.35; ctx.fill();
+    // Rune carvings
+    if (rng() < 0.6) {
+      ctx.strokeStyle = hexC(0x5a5a68); ctx.lineWidth = 1; ctx.globalAlpha = 0.4;
+      const ry = -s.h * (0.3 + rng()*0.4);
+      ctx.beginPath();
+      ctx.moveTo(-s.w*0.2, ry); ctx.lineTo(0, ry - s.h*0.12); ctx.lineTo(s.w*0.2, ry);
+      ctx.moveTo(0, ry - s.h*0.12); ctx.lineTo(0, ry + s.h*0.08);
+      ctx.stroke();
+      // Faint glow from runes
+      ctx.beginPath(); ctx.arc(0, ry - s.h*0.02, s.w*0.4, 0, Math.PI*2);
+      ctx.fillStyle = hexC(0x88aaff); ctx.globalAlpha = 0.05; ctx.fill();
+    }
+    // Lichen/moss
+    ctx.beginPath(); ctx.ellipse(-s.w*0.1, -s.h*0.15, s.w*0.3, s.h*0.08, 0.2, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0x6a8a4a); ctx.globalAlpha = 0.25; ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
+function drawFairyRing(ctx, cx, cy, rng) {
+  const ringR = 20 + rng()*25;
+  const mushCount = 6 + Math.floor(rng()*5);
+  // Faint magical ring on ground
+  ctx.beginPath(); ctx.arc(cx, cy, ringR, 0, Math.PI*2);
+  ctx.strokeStyle = hexC(0x88cc88); ctx.lineWidth = 8; ctx.globalAlpha = 0.04; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, ringR, 0, Math.PI*2);
+  ctx.strokeStyle = hexC(0xaaffaa); ctx.lineWidth = 3; ctx.globalAlpha = 0.06; ctx.stroke();
+  // Darker grass inside ring
+  ctx.beginPath(); ctx.arc(cx, cy, ringR - 2, 0, Math.PI*2);
+  ctx.fillStyle = hexC(0x2a6a1a); ctx.globalAlpha = 0.08; ctx.fill();
+  // Mushrooms around ring
+  for (let i = 0; i < mushCount; i++) {
+    const a = (Math.PI*2/mushCount)*i + rng()*0.3;
+    const mx = cx + Math.cos(a)*(ringR + (rng()-0.5)*6);
+    const my = cy + Math.sin(a)*(ringR + (rng()-0.5)*6);
+    const ms = 2 + rng()*3;
+    // Stem
+    ctx.fillStyle = hexC(0xddccaa); ctx.globalAlpha = 0.7;
+    ctx.fillRect(mx - 0.8, my - ms*1.8, 1.6, ms*1.8);
+    // Cap
+    ctx.beginPath(); ctx.ellipse(mx, my - ms*1.8, ms*1.3, ms*0.8, 0, Math.PI, 0);
+    const mc = rng() < 0.4 ? 0xcc4444 : rng() < 0.7 ? 0xffaa44 : 0xeedd88;
+    ctx.fillStyle = hexC(mc); ctx.fill();
+    // Spots
+    if (mc === 0xcc4444) {
+      for (let s = 0; s < 2; s++) {
+        ctx.beginPath(); ctx.arc(mx + (rng()-0.5)*ms, my - ms*2 + rng()*ms*0.3, ms*0.2, 0, Math.PI*2);
+        ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.5; ctx.fill();
+      }
+    }
+  }
+  // Sparkle particles
+  for (let i = 0; i < 6; i++) {
+    const a = rng()*Math.PI*2;
+    const d = rng()*ringR*0.8;
+    const sx = cx + Math.cos(a)*d, sy = cy + Math.sin(a)*d;
+    ctx.beginPath(); ctx.arc(sx, sy, 1+rng(), 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xaaffaa); ctx.globalAlpha = 0.15 + rng()*0.15; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawGlowingMushrooms(ctx, cx, cy, rng, count) {
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.3, ay = cy + (rng()-0.5)*HEX*1.2;
+    const ms = 3 + rng()*5;
+    const glowCol = rng() < 0.5 ? 0x44ddff : 0x88ff88;
+    // Glow
+    ctx.beginPath(); ctx.arc(ax, ay - ms*1.5, ms*3, 0, Math.PI*2);
+    ctx.fillStyle = hexC(glowCol); ctx.globalAlpha = 0.04; ctx.fill();
+    ctx.beginPath(); ctx.arc(ax, ay - ms*1.5, ms*1.8, 0, Math.PI*2);
+    ctx.fillStyle = hexC(glowCol); ctx.globalAlpha = 0.06; ctx.fill();
+    // Stem
+    ctx.fillStyle = hexC(0xaaccaa); ctx.globalAlpha = 0.7;
+    ctx.fillRect(ax - 1, ay - ms*2, 2, ms*2);
+    // Cap
+    ctx.beginPath(); ctx.ellipse(ax, ay - ms*2, ms*1.5, ms, 0, Math.PI, 0);
+    ctx.fillStyle = hexC(glowCol); ctx.globalAlpha = 0.6; ctx.fill();
+    // Cap highlight
+    ctx.beginPath(); ctx.ellipse(ax - ms*0.3, ay - ms*2.2, ms*0.5, ms*0.3, 0, Math.PI, 0);
+    ctx.fillStyle = hexC(lighten(glowCol, 1.5)); ctx.globalAlpha = 0.3; ctx.fill();
     ctx.globalAlpha = 1;
   }
 }
 
-function drawTreeAoW(ctx, x, y, rng, type) {
-  // type: 'deciduous', 'pine', 'dark'
-  const trunkH = 14 + rng()*10;
-  const trunkW = 3 + rng()*2;
-  // Trunk
-  ctx.fillStyle = hexC(type === 'dark' ? 0x3a2a1a : 0x6b4a2a);
-  ctx.fillRect(x - trunkW/2, y - trunkH, trunkW, trunkH);
+function drawCrystalFormation(ctx, cx, cy, rng) {
+  const ox = cx + (rng()-0.5)*HEX*0.5, oy = cy + (rng()-0.5)*HEX*0.4;
+  const crystalCol = rng() < 0.3 ? 0x88aaff : rng() < 0.6 ? 0xaa66ff : 0x66ffcc;
+  const crystals = 3 + Math.floor(rng()*4);
+  // Base rock
+  ctx.beginPath(); ctx.ellipse(ox, oy + 3, 15 + rng()*10, 6 + rng()*4, 0, 0, Math.PI*2);
+  ctx.fillStyle = hexC(0x5a5a64); ctx.globalAlpha = 0.6; ctx.fill();
+  // Glow
+  ctx.beginPath(); ctx.arc(ox, oy - 8, 25, 0, Math.PI*2);
+  ctx.fillStyle = hexC(crystalCol); ctx.globalAlpha = 0.04; ctx.fill();
+  for (let i = 0; i < crystals; i++) {
+    const cx2 = ox + (rng()-0.5)*18;
+    const ch = 12 + rng()*22;
+    const cw = 3 + rng()*4;
+    const lean = (rng()-0.5)*0.4;
+    ctx.save();
+    ctx.translate(cx2, oy);
+    ctx.rotate(lean);
+    // Crystal body
+    ctx.beginPath();
+    ctx.moveTo(-cw/2, 0);
+    ctx.lineTo(-cw*0.3, -ch*0.8);
+    ctx.lineTo(0, -ch);
+    ctx.lineTo(cw*0.3, -ch*0.8);
+    ctx.lineTo(cw/2, 0);
+    ctx.closePath();
+    ctx.fillStyle = hexC(crystalCol); ctx.globalAlpha = 0.5 + rng()*0.2; ctx.fill();
+    // Light face
+    ctx.beginPath();
+    ctx.moveTo(-cw/2, 0); ctx.lineTo(-cw*0.3, -ch*0.8); ctx.lineTo(0, -ch); ctx.lineTo(0, 0);
+    ctx.closePath();
+    ctx.fillStyle = hexC(lighten(crystalCol, 1.4)); ctx.globalAlpha = 0.25; ctx.fill();
+    // Edge highlight
+    ctx.beginPath(); ctx.moveTo(0, -ch); ctx.lineTo(cw*0.3, -ch*0.8);
+    ctx.strokeStyle = hexC(lighten(crystalCol, 1.8)); ctx.lineWidth = 0.8; ctx.globalAlpha = 0.4; ctx.stroke();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
 
+function drawAncientRuins(ctx, cx, cy, rng) {
+  const ox = cx + (rng()-0.5)*HEX*0.4, oy = cy + (rng()-0.5)*HEX*0.3;
+  // Broken wall segments
+  const segments = 2 + Math.floor(rng()*3);
+  for (let i = 0; i < segments; i++) {
+    const sx = ox + (rng()-0.5)*40, sy = oy + (rng()-0.5)*20;
+    const sw = 8 + rng()*15, sh = 12 + rng()*20;
+    // Shadow
+    ctx.beginPath(); ctx.ellipse(sx+2, sy+2, sw*0.8, 3, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.08); ctx.fill();
+    // Wall
+    ctx.fillStyle = hexC(0x8a8a7a); ctx.globalAlpha = 0.7;
+    // Jagged top
+    ctx.beginPath();
+    ctx.moveTo(sx - sw/2, sy);
+    ctx.lineTo(sx - sw/2, sy - sh*0.7);
+    ctx.lineTo(sx - sw*0.2, sy - sh);
+    ctx.lineTo(sx, sy - sh*0.85);
+    ctx.lineTo(sx + sw*0.2, sy - sh*0.95);
+    ctx.lineTo(sx + sw/2, sy - sh*0.6);
+    ctx.lineTo(sx + sw/2, sy);
+    ctx.closePath(); ctx.fill();
+    // Stone lines
+    ctx.strokeStyle = hexC(0x7a7a6a); ctx.lineWidth = 0.5; ctx.globalAlpha = 0.3;
+    for (let r = 0; r < 3; r++) {
+      const ry = sy - sh*(0.15 + r*0.25);
+      ctx.beginPath(); ctx.moveTo(sx - sw/2 + 1, ry); ctx.lineTo(sx + sw/2 - 1, ry); ctx.stroke();
+    }
+    // Vine/moss
+    if (rng() < 0.6) {
+      ctx.fillStyle = hexC(0x4a8a2a); ctx.globalAlpha = 0.3;
+      ctx.beginPath(); ctx.ellipse(sx + (rng()-0.5)*sw*0.3, sy - sh*0.5, sw*0.25, sh*0.15, 0.3, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // Fallen column
+  if (rng() < 0.5) {
+    const fx = ox + (rng()-0.5)*30, fy = oy + 5 + rng()*10;
+    const flen = 20 + rng()*25;
+    ctx.save(); ctx.translate(fx, fy); ctx.rotate((rng()-0.5)*0.4);
+    ctx.fillStyle = hexC(0x9a9a8a); ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.ellipse(0, 0, flen/2, 4, 0, 0, Math.PI*2); ctx.fill();
+    // Rings
+    ctx.strokeStyle = hexC(0x8a8a7a); ctx.lineWidth = 0.6; ctx.globalAlpha = 0.3;
+    ctx.beginPath(); ctx.ellipse(-flen*0.3, 0, 4, 4, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(flen*0.3, 0, 4, 4, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
+// --- ATMOSPHERIC EFFECTS ---
+
+function drawButterflies(ctx, cx, cy, rng, count) {
+  const colors = [0xffaa44, 0xff6688, 0x88ccff, 0xffee55, 0xcc88ff, 0xffffff];
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.2, ay = cy + (rng()-0.5)*HEX*1.0;
+    const col = colors[Math.floor(rng()*colors.length)];
+    const wingW = 3 + rng()*3, wingH = 2 + rng()*2;
+    const angle = rng()*Math.PI*2;
+    ctx.save(); ctx.translate(ax, ay); ctx.rotate(angle);
+    ctx.globalAlpha = 0.5 + rng()*0.3;
+    // Left wing
+    ctx.beginPath(); ctx.ellipse(-wingW*0.5, 0, wingW, wingH, -0.3, 0, Math.PI*2);
+    ctx.fillStyle = hexC(col); ctx.fill();
+    // Right wing
+    ctx.beginPath(); ctx.ellipse(wingW*0.5, 0, wingW, wingH, 0.3, 0, Math.PI*2);
+    ctx.fill();
+    // Body
+    ctx.fillStyle = hexC(0x222222); ctx.globalAlpha = 0.5;
+    ctx.fillRect(-0.5, -wingH*0.3, 1, wingH*0.6);
+    // Wing pattern
+    ctx.beginPath(); ctx.arc(-wingW*0.5, 0, wingW*0.3, 0, Math.PI*2);
+    ctx.fillStyle = hexC(darken(col, 0.6)); ctx.globalAlpha = 0.2; ctx.fill();
+    ctx.beginPath(); ctx.arc(wingW*0.5, 0, wingW*0.3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawFireflies(ctx, cx, cy, rng, count) {
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng()-0.5)*HEX*1.3, ay = cy + (rng()-0.5)*HEX*1.2;
+    // Outer glow
+    ctx.beginPath(); ctx.arc(ax, ay, 6 + rng()*4, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xaaff44); ctx.globalAlpha = 0.06 + rng()*0.04; ctx.fill();
+    // Inner glow
+    ctx.beginPath(); ctx.arc(ax, ay, 2 + rng()*2, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xddff88); ctx.globalAlpha = 0.15 + rng()*0.15; ctx.fill();
+    // Core
+    ctx.beginPath(); ctx.arc(ax, ay, 1 + rng(), 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xffffcc); ctx.globalAlpha = 0.4 + rng()*0.3; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawLightRays(ctx, cx, cy, rng) {
+  // Diagonal light shafts from top-left
+  const rays = 3 + Math.floor(rng()*3);
+  for (let i = 0; i < rays; i++) {
+    const rx = cx + (rng()-0.5)*HEX*0.8;
+    const ry = cy - HEX*0.5;
+    const rw = 15 + rng()*25;
+    const rh = HEX*1.2;
+    ctx.save();
+    ctx.translate(rx, ry);
+    ctx.rotate(-0.3 + rng()*0.2);
+    ctx.beginPath();
+    ctx.moveTo(-rw/2, 0);
+    ctx.lineTo(-rw*0.8, rh);
+    ctx.lineTo(rw*0.8, rh);
+    ctx.lineTo(rw/2, 0);
+    ctx.closePath();
+    const rayGrad = ctx.createLinearGradient(0, 0, 0, rh);
+    rayGrad.addColorStop(0, 'rgba(255,255,200,0.06)');
+    rayGrad.addColorStop(0.5, 'rgba(255,255,180,0.03)');
+    rayGrad.addColorStop(1, 'rgba(255,255,160,0)');
+    ctx.fillStyle = rayGrad; ctx.fill();
+    ctx.restore();
+  }
+  // Dust motes in light
+  for (let i = 0; i < 8; i++) {
+    const dx = cx + (rng()-0.5)*HEX*0.8, dy = cy + (rng()-0.5)*HEX*0.8;
+    ctx.beginPath(); ctx.arc(dx, dy, 0.8+rng(), 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xffffcc); ctx.globalAlpha = 0.12 + rng()*0.1; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawMistLayer(ctx, cx, cy, rng) {
+  for (let i = 0; i < 6; i++) {
+    const fx = cx + (rng()-0.5)*HEX*1.3, fy = cy + (rng()-0.5)*HEX*0.6 + HEX*0.2;
+    const fw = 30 + rng()*50, fh = 8 + rng()*14;
+    ctx.beginPath(); ctx.ellipse(fx, fy, fw, fh, rng()*0.3, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xccddcc); ctx.globalAlpha = 0.04 + rng()*0.04; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// --- BIRDS ---
+function drawBirds(ctx, cx, cy, rng, count) {
+  for (let i = 0; i < count; i++) {
+    const bx = cx + (rng()-0.5)*HEX*1.0, by = cy + (rng()-0.5)*HEX*0.7 - HEX*0.2;
+    const ws = 4 + rng()*5;
+    ctx.strokeStyle = hexC(0x222222); ctx.lineWidth = 0.8; ctx.globalAlpha = 0.3 + rng()*0.2;
+    ctx.beginPath();
+    ctx.moveTo(bx - ws, by + ws*0.3);
+    ctx.quadraticCurveTo(bx - ws*0.3, by - ws*0.2, bx, by);
+    ctx.quadraticCurveTo(bx + ws*0.3, by - ws*0.2, bx + ws, by + ws*0.3);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+// --- TREES (all types: deciduous, pine, dark, willow, birch, autumn) ---
+
+function drawTreeAoW(ctx, x, y, rng, type, scale) {
+  const sc = scale || 1.0;
   if (type === 'pine') {
-    // Pine tree — 3 layered triangles
-    const layers = 3;
+    const trunkH = (18 + rng()*14) * sc;
+    const trunkW = (3 + rng()*2) * sc;
+    // Ground shadow
+    ctx.beginPath(); ctx.ellipse(x + 3*sc, y + 2, trunkW*2.5, 4*sc, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.1); ctx.fill();
+    // Trunk
+    ctx.fillStyle = hexC(0x5a3a1a);
+    ctx.beginPath();
+    ctx.moveTo(x - trunkW*0.6, y); ctx.bezierCurveTo(x-trunkW*0.45, y-trunkH*0.5, x-trunkW*0.5, y-trunkH*0.9, x-trunkW*0.2, y-trunkH);
+    ctx.lineTo(x+trunkW*0.2, y-trunkH);
+    ctx.bezierCurveTo(x+trunkW*0.5, y-trunkH*0.85, x+trunkW*0.4, y-trunkH*0.4, x+trunkW*0.6, y);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = hexC(0x4a2a12); ctx.globalAlpha = 0.35;
+    ctx.fillRect(x + trunkW*0.1, y - trunkH, trunkW*0.25, trunkH); ctx.globalAlpha = 1;
+    const layers = 3 + (rng()<0.4 ? 1 : 0);
     for (let l = 0; l < layers; l++) {
-      const lw = 12 + (layers-l)*8 + rng()*4;
-      const lh = 12 + rng()*6;
-      const ly = y - trunkH - l*10 + 2;
-      ctx.beginPath();
-      ctx.moveTo(x, ly - lh);
-      ctx.lineTo(x - lw/2, ly);
-      ctx.lineTo(x + lw/2, ly);
-      ctx.closePath();
-      const gc = rng() < 0.5 ? 0x2a5a28 : 0x1e4a1e;
-      ctx.fillStyle = hexC(gc); ctx.fill();
-      // Snow or highlight on top edge
-      ctx.beginPath();
-      ctx.moveTo(x, ly - lh);
-      ctx.lineTo(x - lw*0.3, ly - lh*0.3);
-      ctx.lineTo(x + lw*0.15, ly - lh*0.4);
-      ctx.closePath();
-      ctx.fillStyle = hexC(lighten(gc, 1.4)); ctx.globalAlpha = 0.2; ctx.fill();
+      const lw = (18 + (layers-l)*12 + rng()*8) * sc;
+      const lh = (16 + rng()*10) * sc;
+      const ly = y - trunkH - l*(14*sc) + 5*sc;
+      const gc = [0x1a5520, 0x2a6628, 0x1a4a1e, 0x226622, 0x1e5e22][Math.floor(rng()*5)];
+      // Shadow
+      ctx.beginPath(); ctx.moveTo(x, ly-lh); ctx.lineTo(x-lw/2+3, ly+3); ctx.lineTo(x+lw/2+3, ly+3);
+      ctx.closePath(); ctx.fillStyle = rgbaC(0x000000, 0.06); ctx.fill();
+      // Main
+      ctx.beginPath(); ctx.moveTo(x, ly-lh); ctx.lineTo(x-lw/2, ly); ctx.lineTo(x+lw/2, ly);
+      ctx.closePath(); ctx.fillStyle = hexC(gc); ctx.fill();
+      // Right shadow face
+      ctx.beginPath(); ctx.moveTo(x, ly-lh); ctx.lineTo(x+lw*0.1, ly); ctx.lineTo(x+lw/2, ly);
+      ctx.closePath(); ctx.fillStyle = hexC(darken(gc, 0.7)); ctx.globalAlpha = 0.25; ctx.fill();
+      // Highlight face
+      ctx.beginPath(); ctx.moveTo(x, ly-lh); ctx.lineTo(x-lw*0.4, ly-lh*0.1); ctx.lineTo(x-lw*0.2, ly-lh*0.45);
+      ctx.closePath(); ctx.fillStyle = hexC(lighten(gc, 1.5)); ctx.globalAlpha = 0.12; ctx.fill();
       ctx.globalAlpha = 1;
+      // Snow patches
+      if (rng()<0.25) {
+        ctx.beginPath(); ctx.moveTo(x-lw*0.1, ly-lh*0.8); ctx.lineTo(x, ly-lh); ctx.lineTo(x+lw*0.12, ly-lh*0.75);
+        ctx.closePath(); ctx.fillStyle = rgbaC(0xeeeef8, 0.2); ctx.fill();
+      }
     }
   } else if (type === 'dark') {
-    // Dark/dead tree - twisted branches
-    const canopyR = 16 + rng()*10;
-    const ty = y - trunkH - canopyR*0.5;
-    ctx.beginPath(); ctx.arc(x, ty, canopyR, 0, Math.PI*2);
-    ctx.fillStyle = hexC(0x1a3a18); ctx.globalAlpha = 0.8; ctx.fill();
-    ctx.beginPath(); ctx.arc(x - canopyR*0.2, ty - canopyR*0.2, canopyR*0.4, 0, Math.PI*2);
-    ctx.fillStyle = hexC(0x2a4a28); ctx.globalAlpha = 0.4; ctx.fill();
+    const trunkH = (20 + rng()*16) * sc;
+    const trunkW = (4 + rng()*3) * sc;
+    ctx.beginPath(); ctx.ellipse(x+3, y+2, trunkW*3, 5*sc, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.12); ctx.fill();
+    // Gnarled trunk
+    ctx.fillStyle = hexC(0x2a1a0a);
+    ctx.beginPath();
+    ctx.moveTo(x-trunkW*0.8, y);
+    ctx.bezierCurveTo(x-trunkW*0.6, y-trunkH*0.2, x-trunkW, y-trunkH*0.5, x-trunkW*0.3, y-trunkH);
+    ctx.lineTo(x+trunkW*0.3, y-trunkH);
+    ctx.bezierCurveTo(x+trunkW*0.8, y-trunkH*0.4, x+trunkW*0.5, y-trunkH*0.2, x+trunkW*0.8, y);
+    ctx.closePath(); ctx.fill();
+    // Branches
+    for (let b = 0; b < 3; b++) {
+      const by = y - trunkH*(0.4+b*0.2);
+      const bdir = (b%2===0) ? -1 : 1;
+      const blen = (10+rng()*15)*sc;
+      ctx.strokeStyle = hexC(0x2a1a0a); ctx.lineWidth = 1.5+rng(); ctx.globalAlpha = 0.7;
+      ctx.beginPath(); ctx.moveTo(x, by);
+      ctx.quadraticCurveTo(x+bdir*blen*0.5, by-blen*0.3, x+bdir*blen, by-blen*0.1+rng()*blen*0.3);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    const canopyR = (20+rng()*16)*sc;
+    const ty = y-trunkH-canopyR*0.35;
+    for (let b = 0; b < 7; b++) {
+      const ba = rng()*Math.PI*2, bd = canopyR*0.4*rng();
+      const br = canopyR*(0.35+rng()*0.35);
+      ctx.beginPath(); ctx.arc(x+Math.cos(ba)*bd, ty+Math.sin(ba)*bd, br, 0, Math.PI*2);
+      ctx.fillStyle = hexC([0x142a10, 0x1a3218, 0x1e3a1a, 0x102810][Math.floor(rng()*4)]);
+      ctx.globalAlpha = 0.5+rng()*0.3; ctx.fill();
+    }
+    // Eerie glow
+    for (let b = 0; b < 3; b++) {
+      const ba = rng()*Math.PI*2, bd = canopyR*0.3*rng();
+      ctx.beginPath(); ctx.arc(x+Math.cos(ba)*bd, ty+Math.sin(ba)*bd, 3+rng()*5, 0, Math.PI*2);
+      ctx.fillStyle = hexC(0x66ff44); ctx.globalAlpha = 0.06; ctx.fill();
+    }
+    // Exposed roots
+    for (let r = 0; r < 3; r++) {
+      ctx.beginPath(); ctx.moveTo(x+(rng()-0.5)*trunkW*0.5, y);
+      const rx = x+(rng()-0.5)*trunkW*3, ry = y+2+rng()*6;
+      ctx.quadraticCurveTo(rx*0.5+x*0.5, ry+3, rx, ry);
+      ctx.strokeStyle = hexC(0x2a1a0a); ctx.lineWidth = 1.2+rng(); ctx.globalAlpha = 0.5; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else if (type === 'willow') {
+    const trunkH = (22+rng()*14)*sc;
+    const trunkW = (4+rng()*3)*sc;
+    ctx.beginPath(); ctx.ellipse(x+3, y+2, trunkW*3.5, 6*sc, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.1); ctx.fill();
+    ctx.fillStyle = hexC(0x5a4a2a);
+    ctx.beginPath();
+    ctx.moveTo(x-trunkW*0.7, y);
+    ctx.bezierCurveTo(x-trunkW*0.5, y-trunkH*0.4, x-trunkW*0.6, y-trunkH*0.8, x-trunkW*0.2, y-trunkH);
+    ctx.lineTo(x+trunkW*0.2, y-trunkH);
+    ctx.bezierCurveTo(x+trunkW*0.6, y-trunkH*0.7, x+trunkW*0.4, y-trunkH*0.3, x+trunkW*0.7, y);
+    ctx.closePath(); ctx.fill();
+    // Drooping canopy strands
+    const canopyTop = y - trunkH - 8*sc;
+    const strandCount = 12 + Math.floor(rng()*8);
+    for (let s = 0; s < strandCount; s++) {
+      const sa = (Math.PI*2*s/strandCount) + rng()*0.3;
+      const sreach = (18+rng()*14)*sc;
+      const sdrop = (20+rng()*20)*sc;
+      const sx = x + Math.cos(sa)*sreach;
+      const sy = canopyTop + Math.sin(sa)*sreach*0.4;
+      const gc = [0x4a8a28, 0x5a9a35, 0x3a7a20, 0x55a830][Math.floor(rng()*4)];
+      ctx.strokeStyle = hexC(gc); ctx.lineWidth = 0.8+rng()*0.8; ctx.globalAlpha = 0.4+rng()*0.3;
+      ctx.beginPath(); ctx.moveTo(sx, sy);
+      ctx.bezierCurveTo(sx+(rng()-0.5)*8, sy+sdrop*0.3, sx+(rng()-0.5)*10, sy+sdrop*0.6, sx+(rng()-0.5)*12, sy+sdrop);
+      ctx.stroke();
+      // Tiny leaves along strand
+      for (let l = 0; l < 4; l++) {
+        const t = (l+1)/5;
+        const lx = sx + (rng()-0.5)*8*t, ly = sy + sdrop*t;
+        ctx.beginPath(); ctx.ellipse(lx, ly, 2, 1, rng(), 0, Math.PI*2);
+        ctx.fillStyle = hexC(lighten(gc, 1.1+rng()*0.2)); ctx.globalAlpha = 0.3; ctx.fill();
+      }
+    }
+    // Central canopy mass
+    ctx.beginPath(); ctx.ellipse(x, canopyTop+5*sc, 16*sc, 10*sc, 0, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0x3a7a22); ctx.globalAlpha = 0.5; ctx.fill();
+    ctx.globalAlpha = 1;
+  } else if (type === 'birch') {
+    const trunkH = (20+rng()*14)*sc;
+    const trunkW = (2.5+rng()*1.5)*sc;
+    ctx.beginPath(); ctx.ellipse(x+3, y+2, trunkW*2.5, 4*sc, 0, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.08); ctx.fill();
+    // White bark trunk
+    ctx.fillStyle = hexC(0xe8e0d0);
+    ctx.beginPath();
+    ctx.moveTo(x-trunkW*0.5, y); ctx.lineTo(x-trunkW*0.4, y-trunkH); ctx.lineTo(x+trunkW*0.4, y-trunkH); ctx.lineTo(x+trunkW*0.5, y);
+    ctx.closePath(); ctx.fill();
+    // Black bark marks
+    ctx.fillStyle = hexC(0x2a2a2a);
+    for (let m = 0; m < 5; m++) {
+      const my = y - trunkH*(0.1+m*0.18) + rng()*trunkH*0.05;
+      const mw = trunkW*(0.3+rng()*0.5);
+      ctx.globalAlpha = 0.25+rng()*0.2;
+      ctx.fillRect(x-mw/2, my, mw, 1.5+rng());
+    }
+    ctx.globalAlpha = 1;
+    // Delicate canopy
+    const canopyR = (14+rng()*10)*sc;
+    const ty = y-trunkH-canopyR*0.5;
+    for (let b = 0; b < 8; b++) {
+      const ba = rng()*Math.PI*2, bd = canopyR*0.4*rng();
+      const br = canopyR*(0.35+rng()*0.3);
+      ctx.beginPath(); ctx.arc(x+Math.cos(ba)*bd, ty+Math.sin(ba)*bd, br, 0, Math.PI*2);
+      const gc = rng()<0.5 ? 0x6aaa48 : 0x7abb55;
+      ctx.fillStyle = hexC(gc); ctx.globalAlpha = 0.25+rng()*0.2; ctx.fill();
+    }
+    // Light dapples
+    for (let b = 0; b < 5; b++) {
+      const ba = rng()*Math.PI*2, bd = canopyR*0.3*rng();
+      ctx.beginPath(); ctx.arc(x+Math.cos(ba)*bd, ty+Math.sin(ba)*bd, 2+rng()*3, 0, Math.PI*2);
+      ctx.fillStyle = hexC(0xbbdd88); ctx.globalAlpha = 0.12; ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  } else if (type === 'autumn') {
+    const trunkH = (16+rng()*12)*sc;
+    const trunkW = (3.5+rng()*2.5)*sc;
+    const canopyR = (18+rng()*14)*sc;
+    const ty = y-trunkH-canopyR*0.5;
+    ctx.beginPath(); ctx.ellipse(x+4*sc, y+2, canopyR*1.1, 6*sc, 0.1, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.1); ctx.fill();
+    // Trunk
+    ctx.fillStyle = hexC(0x5a3a1a);
+    ctx.beginPath();
+    ctx.moveTo(x-trunkW*0.6, y);
+    ctx.bezierCurveTo(x-trunkW*0.4, y-trunkH*0.5, x-trunkW*0.5, y-trunkH*0.8, x-trunkW*0.15, y-trunkH);
+    ctx.lineTo(x+trunkW*0.15, y-trunkH);
+    ctx.bezierCurveTo(x+trunkW*0.5, y-trunkH*0.7, x+trunkW*0.35, y-trunkH*0.4, x+trunkW*0.6, y);
+    ctx.closePath(); ctx.fill();
+    // Autumn canopy — warm reds, oranges, golds
+    const autumnColors = [0xcc4422, 0xdd6633, 0xeeaa33, 0xcc7722, 0xbb3318, 0xdd8844, 0xffbb44, 0xcc5533];
+    for (let b = 0; b < 10; b++) {
+      const ba = rng()*Math.PI*2, bd = canopyR*0.35*rng();
+      const br = canopyR*(0.4+rng()*0.35);
+      ctx.beginPath(); ctx.arc(x+Math.cos(ba)*bd, ty+Math.sin(ba)*bd, br, 0, Math.PI*2);
+      ctx.fillStyle = hexC(autumnColors[Math.floor(rng()*autumnColors.length)]);
+      ctx.globalAlpha = 0.25+rng()*0.25; ctx.fill();
+    }
+    // Leaf edge bumps
+    for (let b = 0; b < 12; b++) {
+      const la = rng()*Math.PI*2;
+      const lr = canopyR*(0.75+rng()*0.3);
+      ctx.beginPath(); ctx.arc(x+Math.cos(la)*lr, ty+Math.sin(la)*lr, 3+rng()*5, 0, Math.PI*2);
+      ctx.fillStyle = hexC(autumnColors[Math.floor(rng()*autumnColors.length)]);
+      ctx.globalAlpha = 0.3+rng()*0.2; ctx.fill();
+    }
+    // Highlight
+    ctx.beginPath(); ctx.arc(x-canopyR*0.2, ty-canopyR*0.25, canopyR*0.35, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xffcc55); ctx.globalAlpha = 0.1; ctx.fill();
+    // Falling leaves
+    for (let l = 0; l < 4; l++) {
+      const lx = x + (rng()-0.5)*canopyR*2;
+      const ly = ty + canopyR*0.5 + rng()*canopyR*1.5;
+      ctx.beginPath(); ctx.ellipse(lx, ly, 2+rng()*2, 1+rng(), rng()*Math.PI, 0, Math.PI*2);
+      ctx.fillStyle = hexC(autumnColors[Math.floor(rng()*autumnColors.length)]);
+      ctx.globalAlpha = 0.35+rng()*0.25; ctx.fill();
+    }
     ctx.globalAlpha = 1;
   } else {
-    // Deciduous — round canopy with highlights
-    const canopyR = 16 + rng()*12;
-    const ty = y - trunkH - canopyR*0.6;
-    // Shadow blob
-    ctx.beginPath(); ctx.arc(x + 2, ty + 3, canopyR, 0, Math.PI*2);
-    ctx.fillStyle = hexC(0x1a3a14); ctx.globalAlpha = 0.3; ctx.fill();
-    // Main canopy
-    ctx.beginPath(); ctx.arc(x, ty, canopyR, 0, Math.PI*2);
-    const gc = rng() < 0.4 ? 0x3a8a2e : rng() < 0.7 ? 0x4a9a38 : 0x55a844;
-    ctx.fillStyle = hexC(gc); ctx.globalAlpha = 0.9; ctx.fill();
-    // Sub-blobs for organic look
-    for (let b = 0; b < 4; b++) {
-      const ba = rng()*Math.PI*2;
-      const bd = canopyR*0.3*rng();
-      const br = canopyR*(0.4 + rng()*0.3);
-      ctx.beginPath(); ctx.arc(x + Math.cos(ba)*bd, ty + Math.sin(ba)*bd, br, 0, Math.PI*2);
-      ctx.fillStyle = hexC(lighten(gc, 1.0 + rng()*0.3));
-      ctx.globalAlpha = 0.25; ctx.fill();
+    // Deciduous — rich round canopy (same as v2 but enhanced)
+    const trunkH = (16+rng()*14)*sc;
+    const trunkW = (3.5+rng()*2.5)*sc;
+    const canopyR = (18+rng()*15)*sc;
+    const ty = y-trunkH-canopyR*0.5;
+    ctx.beginPath(); ctx.ellipse(x+4*sc, y+2, canopyR*1.1, 6*sc, 0.1, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x000000, 0.1); ctx.fill();
+    // Trunk
+    ctx.fillStyle = hexC(0x6b4a2a);
+    ctx.beginPath();
+    ctx.moveTo(x-trunkW*0.6, y);
+    ctx.bezierCurveTo(x-trunkW*0.4, y-trunkH*0.5, x-trunkW*0.5, y-trunkH*0.8, x-trunkW*0.15, y-trunkH);
+    ctx.lineTo(x+trunkW*0.15, y-trunkH);
+    ctx.bezierCurveTo(x+trunkW*0.5, y-trunkH*0.7, x+trunkW*0.35, y-trunkH*0.4, x+trunkW*0.6, y);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = hexC(0x7a5a35); ctx.globalAlpha = 0.35;
+    ctx.fillRect(x-trunkW*0.15, y-trunkH, trunkW*0.12, trunkH*0.9); ctx.globalAlpha = 1;
+    // Shadow
+    ctx.beginPath(); ctx.arc(x+3*sc, ty+4*sc, canopyR*1.05, 0, Math.PI*2);
+    ctx.fillStyle = rgbaC(0x0a1a08, 0.15); ctx.fill();
+    const gc = [0x3a8a2e, 0x4a9a38, 0x55a844, 0x408a32, 0x358828, 0x4aa040][Math.floor(rng()*6)];
+    // Build from blobs
+    const blobs = 7+Math.floor(rng()*5);
+    for (let b = 0; b < blobs; b++) {
+      const ba = rng()*Math.PI*2, bd = canopyR*0.35*rng();
+      const br = canopyR*(0.45+rng()*0.4);
+      ctx.beginPath(); ctx.arc(x+Math.cos(ba)*bd, ty+Math.sin(ba)*bd, br, 0, Math.PI*2);
+      ctx.fillStyle = hexC(lighten(gc, 0.85+rng()*0.4));
+      ctx.globalAlpha = 0.25+rng()*0.2; ctx.fill();
     }
-    // Top highlight
-    ctx.beginPath(); ctx.arc(x - canopyR*0.2, ty - canopyR*0.3, canopyR*0.45, 0, Math.PI*2);
-    ctx.fillStyle = hexC(lighten(gc, 1.5)); ctx.globalAlpha = 0.15; ctx.fill();
+    // Solid core
+    ctx.beginPath(); ctx.arc(x, ty, canopyR*0.8, 0, Math.PI*2);
+    ctx.fillStyle = hexC(gc); ctx.globalAlpha = 0.6; ctx.fill();
+    // Top-left light
+    for (let b = 0; b < 5; b++) {
+      const lx = x-canopyR*(0.1+rng()*0.35), ly2 = ty-canopyR*(0.1+rng()*0.35);
+      ctx.beginPath(); ctx.arc(lx, ly2, canopyR*(0.18+rng()*0.2), 0, Math.PI*2);
+      ctx.fillStyle = hexC(lighten(gc, 1.3+rng()*0.3)); ctx.globalAlpha = 0.15+rng()*0.1; ctx.fill();
+    }
+    // Bottom-right shadow
+    for (let b = 0; b < 3; b++) {
+      const lx = x+canopyR*(0.1+rng()*0.25), ly2 = ty+canopyR*(0.05+rng()*0.25);
+      ctx.beginPath(); ctx.arc(lx, ly2, canopyR*(0.2+rng()*0.2), 0, Math.PI*2);
+      ctx.fillStyle = hexC(darken(gc, 0.55)); ctx.globalAlpha = 0.12+rng()*0.08; ctx.fill();
+    }
+    // Edge bumps
+    for (let b = 0; b < 12; b++) {
+      const la = rng()*Math.PI*2, lr = canopyR*(0.75+rng()*0.3);
+      ctx.beginPath(); ctx.arc(x+Math.cos(la)*lr, ty+Math.sin(la)*lr, 3+rng()*6, 0, Math.PI*2);
+      ctx.fillStyle = hexC(lighten(gc, 1+rng()*0.25)); ctx.globalAlpha = 0.3+rng()*0.2; ctx.fill();
+    }
     ctx.globalAlpha = 1;
   }
 }
@@ -1846,35 +2754,55 @@ function drawScatteredTrees(ctx, cx, cy, rng, count, type) {
   const trees = [];
   for (let i = 0; i < count; i++) {
     trees.push({
-      x: cx + (rng()-0.5)*HEX*1.3,
+      x: cx + (rng()-0.5)*HEX*1.35,
       y: cy + (rng()-0.5)*HEX*1.2,
-      type: type || (rng() < 0.6 ? 'deciduous' : 'pine')
+      type: type || (['deciduous','deciduous','pine','birch','deciduous'][Math.floor(rng()*5)]),
+      scale: 0.75 + rng()*0.55
     });
   }
-  // Sort by y so trees in front draw on top
   trees.sort((a,b) => a.y - b.y);
-  for (const t of trees) drawTreeAoW(ctx, t.x, t.y, rng, t.type);
+  for (const t of trees) drawTreeAoW(ctx, t.x, t.y, rng, t.type, t.scale);
 }
+// --- TERRAIN-SPECIFIC DECORATIONS ---
 
 function drawHillMounds(ctx, cx, cy, rng, count) {
+  const mounds = [];
   for (let i = 0; i < count; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.3;
-    const ay = cy + (rng()-0.5)*HEX*1.0 + HEX*0.15;
-    const w = 30 + rng()*50;
-    const h = 15 + rng()*25;
-    // Hill shadow
-    ctx.beginPath(); ctx.ellipse(ax+3, ay+3, w, h*0.7, 0, Math.PI, 0);
-    ctx.fillStyle = hexC(0x5a4a2a); ctx.globalAlpha = 0.2; ctx.fill();
-    // Hill body
-    ctx.beginPath(); ctx.ellipse(ax, ay, w, h, 0, Math.PI, 0);
-    const hc = rng() < 0.5 ? 0x8a7a4a : 0x9a8a5a;
-    ctx.fillStyle = hexC(hc); ctx.globalAlpha = 0.7; ctx.fill();
-    // Green top
-    ctx.beginPath(); ctx.ellipse(ax, ay, w*0.9, h*0.6, 0, Math.PI, 0);
-    ctx.fillStyle = hexC(0x5a8a3a); ctx.globalAlpha = 0.3; ctx.fill();
-    // Highlight
-    ctx.beginPath(); ctx.ellipse(ax - w*0.15, ay, w*0.5, h*0.4, 0, Math.PI, 0);
-    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.08; ctx.fill();
+    mounds.push({ x: cx+(rng()-0.5)*HEX*1.3, y: cy+(rng()-0.5)*HEX*0.9+HEX*0.1, w: 35+rng()*60, h: 22+rng()*35 });
+  }
+  mounds.sort((a,b) => a.y - b.y);
+  for (const m of mounds) {
+    ctx.beginPath(); ctx.ellipse(m.x+4, m.y+4, m.w*1.02, m.h*0.5, 0, Math.PI, 0);
+    ctx.fillStyle = rgbaC(0x000000, 0.1); ctx.fill();
+    const hGrad = ctx.createRadialGradient(m.x-m.w*0.25, m.y-m.h*0.35, 0, m.x, m.y, m.w);
+    const hc = rng()<0.5 ? 0x8a7a4a : 0x9a8a5a;
+    hGrad.addColorStop(0, hexC(lighten(hc, 1.3))); hGrad.addColorStop(0.6, hexC(hc)); hGrad.addColorStop(1, hexC(darken(hc, 0.7)));
+    ctx.beginPath(); ctx.ellipse(m.x, m.y, m.w, m.h, 0, Math.PI, 0);
+    ctx.fillStyle = hGrad; ctx.globalAlpha = 0.8; ctx.fill();
+    // Grass patches on top
+    ctx.beginPath(); ctx.ellipse(m.x-m.w*0.05, m.y, m.w*0.85, m.h*0.5, 0, Math.PI, 0);
+    ctx.fillStyle = hexC(0x5a8a3a); ctx.globalAlpha = 0.2; ctx.fill();
+    // Contour lines
+    for (let t = 0; t < 5; t++) {
+      const ty = m.y - m.h*(0.05+t*0.15);
+      const tw = m.w*(0.9-t*0.12);
+      ctx.beginPath(); ctx.ellipse(m.x, ty, tw, 2, 0, Math.PI, 0);
+      ctx.strokeStyle = hexC(darken(hc, 0.65)); ctx.lineWidth = 0.6; ctx.globalAlpha = 0.08+t*0.02; ctx.stroke();
+    }
+    // Grass tufts on hill
+    for (let t = 0; t < 4; t++) {
+      const gx = m.x+(rng()-0.5)*m.w*0.6, gy = m.y-m.h*(0.15+rng()*0.6);
+      ctx.strokeStyle = hexC(0x5a9a3a); ctx.lineWidth = 0.8; ctx.globalAlpha = 0.3;
+      for (let b = -1; b <= 1; b++) {
+        ctx.beginPath(); ctx.moveTo(gx+b*2, gy);
+        ctx.quadraticCurveTo(gx+b*3.5, gy-4, gx+b*2.5+(rng()-0.5)*2, gy-7-rng()*5); ctx.stroke();
+      }
+    }
+    // Exposed rock face
+    if (rng()<0.4) {
+      ctx.beginPath(); ctx.ellipse(m.x+m.w*0.2, m.y-m.h*0.3, m.w*0.15, m.h*0.2, 0.2, 0, Math.PI*2);
+      ctx.fillStyle = hexC(0x7a7a72); ctx.globalAlpha = 0.35; ctx.fill();
+    }
     ctx.globalAlpha = 1;
   }
 }
@@ -1882,440 +2810,879 @@ function drawHillMounds(ctx, cx, cy, rng, count) {
 function drawMountainPeaks(ctx, cx, cy, rng, count) {
   const peaks = [];
   for (let i = 0; i < count; i++) {
-    peaks.push({
-      x: cx + (rng()-0.5)*HEX*1.1,
-      y: cy + (rng()-0.5)*HEX*0.8,
-      w: 30 + rng()*45,
-      h: 40 + rng()*50
-    });
+    peaks.push({ x: cx+(rng()-0.5)*HEX*1.1, y: cy+(rng()-0.5)*HEX*0.8, w: 35+rng()*55, h: 55+rng()*70 });
   }
   peaks.sort((a,b) => a.y - b.y);
   for (const p of peaks) {
-    // Shadow
+    // Scree at base
+    for (let r = 0; r < 5; r++) {
+      const rx = p.x+(rng()-0.5)*p.w*0.9, ry = p.y-rng()*p.h*0.08;
+      ctx.beginPath(); ctx.ellipse(rx, ry, 3+rng()*5, 2+rng()*3, rng(), 0, Math.PI*2);
+      ctx.fillStyle = hexC(0x5a5a62); ctx.globalAlpha = 0.35; ctx.fill();
+    }
+    // Drop shadow
+    ctx.beginPath(); ctx.moveTo(p.x-p.w/2+5, p.y+5); ctx.lineTo(p.x+4, p.y-p.h+5); ctx.lineTo(p.x+p.w/2+5, p.y+5);
+    ctx.closePath(); ctx.fillStyle = rgbaC(0x000000, 0.12); ctx.fill();
+    const mc = [0x6a6a72, 0x7a7a82, 0x626268, 0x727278, 0x5e5e68][Math.floor(rng()*5)];
+    // Right face (lighter)
+    ctx.beginPath(); ctx.moveTo(p.x+p.w*0.05, p.y); ctx.lineTo(p.x, p.y-p.h); ctx.lineTo(p.x+p.w/2, p.y);
+    ctx.closePath(); ctx.fillStyle = hexC(lighten(mc, 1.15)); ctx.globalAlpha = 0.9; ctx.fill();
+    // Left face (shadow)
+    ctx.beginPath(); ctx.moveTo(p.x-p.w/2, p.y); ctx.lineTo(p.x, p.y-p.h); ctx.lineTo(p.x+p.w*0.05, p.y);
+    ctx.closePath(); ctx.fillStyle = hexC(darken(mc, 0.75)); ctx.globalAlpha = 0.9; ctx.fill();
+    // Ridge
+    ctx.beginPath(); ctx.moveTo(p.x, p.y-p.h); ctx.lineTo(p.x+p.w*0.05, p.y);
+    ctx.strokeStyle = hexC(darken(mc, 0.5)); ctx.lineWidth = 1.2; ctx.globalAlpha = 0.3; ctx.stroke();
+    // Rock texture cracks
+    for (let c = 0; c < 6; c++) {
+      const cy2 = p.y-p.h*(0.1+rng()*0.55), cxO = (rng()-0.5)*p.w*0.35;
+      ctx.beginPath(); ctx.moveTo(p.x+cxO, cy2);
+      ctx.lineTo(p.x+cxO+(rng()-0.5)*12, cy2+rng()*12);
+      ctx.strokeStyle = hexC(darken(mc, 0.5)); ctx.lineWidth = 0.6; ctx.globalAlpha = 0.18; ctx.stroke();
+    }
+    // Ledge detail
+    if (rng()<0.5) {
+      const ly = p.y-p.h*(0.3+rng()*0.2);
+      const lw = p.w*(0.15+rng()*0.15);
+      ctx.beginPath(); ctx.moveTo(p.x-lw, ly); ctx.lineTo(p.x+lw, ly-2);
+      ctx.strokeStyle = hexC(lighten(mc, 1.2)); ctx.lineWidth = 1.5; ctx.globalAlpha = 0.2; ctx.stroke();
+    }
+    // Snow cap with drip
+    const snowH = 0.22+rng()*0.18;
     ctx.beginPath();
-    ctx.moveTo(p.x - p.w/2 + 4, p.y + 4);
-    ctx.lineTo(p.x + 3, p.y - p.h + 4);
-    ctx.lineTo(p.x + p.w/2 + 4, p.y + 4);
+    ctx.moveTo(p.x-p.w*snowH*0.65, p.y-p.h*(1-snowH));
+    ctx.lineTo(p.x, p.y-p.h);
+    ctx.lineTo(p.x+p.w*snowH*0.55, p.y-p.h*(1-snowH*0.85));
+    ctx.quadraticCurveTo(p.x+p.w*snowH*0.35, p.y-p.h*(1-snowH*1.15), p.x+p.w*snowH*0.1, p.y-p.h*(1-snowH*0.9));
+    ctx.quadraticCurveTo(p.x-p.w*snowH*0.1, p.y-p.h*(1-snowH*1.2), p.x-p.w*snowH*0.35, p.y-p.h*(1-snowH*1.05));
+    ctx.quadraticCurveTo(p.x-p.w*snowH*0.5, p.y-p.h*(1-snowH*0.85), p.x-p.w*snowH*0.65, p.y-p.h*(1-snowH));
     ctx.closePath();
-    ctx.fillStyle = hexC(0x3a3a44); ctx.globalAlpha = 0.3; ctx.fill();
-    // Main peak
+    ctx.fillStyle = hexC(0xeeeef4); ctx.globalAlpha = 0.85; ctx.fill();
+    // Snow highlight
     ctx.beginPath();
-    ctx.moveTo(p.x - p.w/2, p.y);
-    ctx.lineTo(p.x, p.y - p.h);
-    ctx.lineTo(p.x + p.w/2, p.y);
-    ctx.closePath();
-    const mc = rng() < 0.5 ? 0x6a6a72 : 0x7a7a82;
-    ctx.fillStyle = hexC(mc); ctx.globalAlpha = 0.85; ctx.fill();
-    // Left shadow face
-    ctx.beginPath();
-    ctx.moveTo(p.x - p.w/2, p.y);
-    ctx.lineTo(p.x, p.y - p.h);
-    ctx.lineTo(p.x - p.w*0.1, p.y);
-    ctx.closePath();
-    ctx.fillStyle = hexC(0x4a4a54); ctx.globalAlpha = 0.3; ctx.fill();
-    // Snow cap
-    ctx.beginPath();
-    ctx.moveTo(p.x - p.w*0.12, p.y - p.h*0.65);
-    ctx.lineTo(p.x, p.y - p.h);
-    ctx.lineTo(p.x + p.w*0.12, p.y - p.h*0.65);
-    ctx.closePath();
-    ctx.fillStyle = hexC(0xeeeef4); ctx.globalAlpha = 0.8; ctx.fill();
+    ctx.moveTo(p.x-p.w*snowH*0.2, p.y-p.h*(1-snowH*0.4));
+    ctx.lineTo(p.x, p.y-p.h); ctx.lineTo(p.x+p.w*snowH*0.15, p.y-p.h*(1-snowH*0.35));
+    ctx.closePath(); ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.25; ctx.fill();
     ctx.globalAlpha = 1;
   }
 }
 
 function drawWaterWaves(ctx, cx, cy, rng) {
-  for (let i = 0; i < 12; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.4;
-    const ay = cy + (rng()-0.5)*HEX*1.3;
-    const w = 15 + rng()*30;
+  // Deep caustics
+  for (let i = 0; i < 10; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.4, ay = cy+(rng()-0.5)*HEX*1.3;
     ctx.beginPath();
-    ctx.moveTo(ax - w, ay);
-    ctx.quadraticCurveTo(ax - w*0.3, ay - 4 - rng()*4, ax, ay);
-    ctx.quadraticCurveTo(ax + w*0.3, ay + 4 + rng()*4, ax + w, ay);
-    ctx.strokeStyle = hexC(rng() < 0.5 ? 0x5588cc : 0x77aadd);
-    ctx.lineWidth = 1 + rng();
-    ctx.globalAlpha = 0.3 + rng()*0.2;
+    ctx.moveTo(ax, ay);
+    const pts = 4+Math.floor(rng()*3);
+    for (let p = 0; p < pts; p++) {
+      ctx.lineTo(ax+(rng()-0.5)*30, ay+(rng()-0.5)*20);
+    }
+    ctx.closePath();
+    ctx.fillStyle = hexC(rng()<0.5 ? 0x1a3a70 : 0x2a5090); ctx.globalAlpha = 0.06; ctx.fill();
+  }
+  // Wave ripples
+  for (let i = 0; i < 22; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.55, ay = cy+(rng()-0.5)*HEX*1.45;
+    const w = 10+rng()*40;
+    ctx.beginPath(); ctx.moveTo(ax-w, ay);
+    ctx.bezierCurveTo(ax-w*0.4, ay-3-rng()*5, ax-w*0.1, ay-2-rng()*4, ax, ay);
+    ctx.bezierCurveTo(ax+w*0.3, ay+2+rng()*3, ax+w*0.6, ay+1+rng()*3, ax+w, ay);
+    ctx.strokeStyle = hexC([0x5588cc, 0x77aadd, 0x4477bb, 0x6699cc][Math.floor(rng()*4)]);
+    ctx.lineWidth = 0.7+rng()*1.3; ctx.globalAlpha = 0.15+rng()*0.18; ctx.stroke();
+  }
+  // Foam patches
+  for (let i = 0; i < 8; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.3, ay = cy+(rng()-0.5)*HEX*1.2;
+    const w = 5+rng()*18;
+    ctx.beginPath(); ctx.ellipse(ax, ay, w, w*0.25, rng()*0.5, 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.04+rng()*0.05; ctx.fill();
+  }
+  // Fish shadow
+  if (rng()<0.4) {
+    const fx = cx+(rng()-0.5)*HEX*0.8, fy = cy+(rng()-0.5)*HEX*0.6;
+    ctx.save(); ctx.translate(fx, fy); ctx.rotate(rng()*Math.PI*2);
+    ctx.beginPath(); ctx.moveTo(-8, 0);
+    ctx.quadraticCurveTo(-3, -4, 5, 0);
+    ctx.quadraticCurveTo(-3, 4, -8, 0);
+    ctx.moveTo(5, 0); ctx.lineTo(9, -3); ctx.lineTo(9, 3); ctx.closePath();
+    ctx.fillStyle = hexC(0x1a3060); ctx.globalAlpha = 0.12; ctx.fill();
+    ctx.restore();
+  }
+  // Seaweed
+  for (let i = 0; i < 4; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.2, ay = cy+(rng()-0.5)*HEX*1.0;
+    const h = 10+rng()*15;
+    ctx.strokeStyle = hexC(0x2a6a3a); ctx.lineWidth = 1.5; ctx.globalAlpha = 0.12;
+    ctx.beginPath(); ctx.moveTo(ax, ay);
+    ctx.bezierCurveTo(ax+(rng()-0.5)*8, ay-h*0.3, ax+(rng()-0.5)*10, ay-h*0.6, ax+(rng()-0.5)*6, ay-h);
     ctx.stroke();
   }
   // Sparkles
-  for (let i = 0; i < 8; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.2;
-    const ay = cy + (rng()-0.5)*HEX*1.2;
-    ctx.beginPath(); ctx.arc(ax, ay, 1 + rng()*2, 0, Math.PI*2);
-    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.2 + rng()*0.3; ctx.fill();
+  for (let i = 0; i < 18; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.35, ay = cy+(rng()-0.5)*HEX*1.35;
+    const sr = 0.8+rng()*2.5;
+    ctx.beginPath(); ctx.arc(ax, ay, sr, 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.1+rng()*0.25; ctx.fill();
+    if (rng()<0.25) {
+      ctx.beginPath(); ctx.moveTo(ax-sr*2, ay); ctx.lineTo(ax+sr*2, ay);
+      ctx.moveTo(ax, ay-sr*2); ctx.lineTo(ax, ay+sr*2);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.4; ctx.globalAlpha = 0.1; ctx.stroke();
+    }
   }
   ctx.globalAlpha = 1;
 }
 
 function drawDesertDeco(ctx, cx, cy, rng) {
-  // Sand ripples
-  for (let i = 0; i < 10; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.4;
-    const ay = cy + (rng()-0.5)*HEX*1.3;
-    const w = 20 + rng()*40;
-    ctx.beginPath();
-    ctx.moveTo(ax - w, ay);
-    ctx.quadraticCurveTo(ax, ay - 3 - rng()*5, ax + w, ay);
-    ctx.strokeStyle = hexC(0xc4a856);
-    ctx.lineWidth = 1 + rng();
-    ctx.globalAlpha = 0.2 + rng()*0.15;
-    ctx.stroke();
+  // Sand dunes
+  for (let i = 0; i < 7; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.35, ay = cy+(rng()-0.5)*HEX*1.2;
+    const w = 30+rng()*65, h = 8+rng()*18;
+    ctx.beginPath(); ctx.ellipse(ax, ay, w, h, rng()*0.3, Math.PI, 0);
+    ctx.fillStyle = hexC(0xe8d080); ctx.globalAlpha = 0.15+rng()*0.12; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(ax, ay+h*0.3, w*0.95, h*0.5, rng()*0.3, 0, Math.PI);
+    ctx.fillStyle = hexC(0xb89844); ctx.globalAlpha = 0.1; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(ax-w*0.9, ay+rng()*3);
+    ctx.quadraticCurveTo(ax, ay-h*0.4-rng()*6, ax+w*0.9, ay+rng()*3);
+    ctx.strokeStyle = hexC(0xd0b860); ctx.lineWidth = 0.7; ctx.globalAlpha = 0.15; ctx.stroke();
   }
-  // Scattered small rocks / cacti
-  for (let i = 0; i < 4; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.2;
-    const ay = cy + (rng()-0.5)*HEX*1.2;
-    if (rng() < 0.5) {
-      // Small cactus
-      const h = 10 + rng()*14;
-      ctx.fillStyle = hexC(0x5a8a3a);
-      ctx.globalAlpha = 0.7;
-      ctx.fillRect(ax-2, ay-h, 4, h);
-      ctx.fillRect(ax-8, ay-h*0.6, 6, 3);
-      ctx.fillRect(ax+2, ay-h*0.75, 6, 3);
-      ctx.fillRect(ax-8, ay-h*0.6-6, 3, 6);
-      ctx.fillRect(ax+5, ay-h*0.75-5, 3, 5);
+  // Wind streaks
+  for (let i = 0; i < 15; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.45, ay = cy+(rng()-0.5)*HEX*1.35;
+    const w = 12+rng()*35;
+    ctx.beginPath(); ctx.moveTo(ax-w, ay); ctx.quadraticCurveTo(ax, ay-1-rng()*3, ax+w, ay);
+    ctx.strokeStyle = hexC(rng()<0.5 ? 0xd0b860 : 0xc0a850);
+    ctx.lineWidth = 0.4+rng()*0.7; ctx.globalAlpha = 0.1+rng()*0.08; ctx.stroke();
+  }
+  // Features
+  for (let i = 0; i < 7; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.25, ay = cy+(rng()-0.5)*HEX*1.15;
+    const feat = rng();
+    if (feat<0.25) {
+      // Cactus
+      const h = 14+rng()*20;
+      ctx.fillStyle = hexC(0x4a8a30); ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(ax-3, ay); ctx.lineTo(ax-2.5, ay-h); ctx.lineTo(ax+2.5, ay-h); ctx.lineTo(ax+3, ay); ctx.closePath(); ctx.fill();
+      const armH = h*(0.35+rng()*0.25);
+      ctx.beginPath();
+      ctx.moveTo(ax-3, ay-armH); ctx.lineTo(ax-10, ay-armH); ctx.lineTo(ax-10, ay-armH-8-rng()*8);
+      ctx.lineTo(ax-7, ay-armH-8-rng()*8); ctx.lineTo(ax-7, ay-armH+3); ctx.lineTo(ax-3, ay-armH+3); ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(ax+3, ay-armH*0.8); ctx.lineTo(ax+9, ay-armH*0.8); ctx.lineTo(ax+9, ay-armH*0.8-6-rng()*6);
+      ctx.lineTo(ax+6, ay-armH*0.8-6-rng()*6); ctx.lineTo(ax+6, ay-armH*0.8+3); ctx.lineTo(ax+3, ay-armH*0.8+3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = hexC(0x5aaa3a); ctx.globalAlpha = 0.25;
+      ctx.fillRect(ax-1, ay-h+2, 1.5, h-4);
+      ctx.beginPath(); ctx.ellipse(ax+3, ay+1, 6, 2, 0.2, 0, Math.PI*2);
+      ctx.fillStyle = rgbaC(0x000000, 0.08); ctx.globalAlpha = 1; ctx.fill();
+    } else if (feat<0.45) {
+      // Rock cluster
+      for (let r = 0; r < 2+Math.floor(rng()*3); r++) {
+        const rx = ax+(rng()-0.5)*14, ry = ay+(rng()-0.5)*8;
+        const rw = 4+rng()*9, rh = 3+rng()*5;
+        ctx.beginPath(); ctx.ellipse(rx, ry, rw, rh, rng()*0.5, 0, Math.PI*2);
+        ctx.fillStyle = hexC(rng()<0.5 ? 0xaa9966 : 0x998855); ctx.globalAlpha = 0.5+rng()*0.3; ctx.fill();
+        ctx.beginPath(); ctx.ellipse(rx-rw*0.15, ry-rh*0.25, rw*0.3, rh*0.25, 0, 0, Math.PI*2);
+        ctx.fillStyle = hexC(0xccbb88); ctx.globalAlpha = 0.15; ctx.fill();
+      }
+    } else if (feat<0.6) {
+      // Dry bush
+      const br = 6+rng()*10;
+      ctx.globalAlpha = 0.45;
+      for (let b = 0; b < 10; b++) {
+        const ba = rng()*Math.PI*2, bd = br*rng();
+        ctx.beginPath(); ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo(ax+Math.cos(ba)*bd*1.5, ay+Math.sin(ba)*bd*1.5, ax+Math.cos(ba)*br, ay+Math.sin(ba)*br);
+        ctx.strokeStyle = hexC(0x8a7a4a); ctx.lineWidth = 0.7; ctx.stroke();
+      }
+    } else if (feat<0.72) {
+      // Skull
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = hexC(0xe0d8c8);
+      ctx.beginPath(); ctx.ellipse(ax, ay-3, 5, 4, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(ax, ay, 4, 3, 0, 0, Math.PI); ctx.fill();
+      ctx.fillStyle = hexC(0x3a3a3a);
+      ctx.beginPath(); ctx.arc(ax-2, ay-3.5, 1.2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ax+2, ay-3.5, 1.2, 0, Math.PI*2); ctx.fill();
     } else {
-      // Small rock
-      ctx.beginPath(); ctx.ellipse(ax, ay, 5+rng()*6, 3+rng()*4, 0, 0, Math.PI*2);
-      ctx.fillStyle = hexC(0xaa9966); ctx.globalAlpha = 0.5; ctx.fill();
+      // Bone / rib
+      ctx.strokeStyle = hexC(0xddccbb); ctx.lineWidth = 1.5; ctx.globalAlpha = 0.35;
+      ctx.beginPath(); ctx.moveTo(ax-8, ay);
+      ctx.quadraticCurveTo(ax, ay-3-rng()*4, ax+8+rng()*8, ay+rng()*3); ctx.stroke();
     }
     ctx.globalAlpha = 1;
   }
 }
 
 function drawSwampDeco(ctx, cx, cy, rng) {
-  // Murky water puddles
-  for (let i = 0; i < 6; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.3;
-    const ay = cy + (rng()-0.5)*HEX*1.2;
-    const w = 12 + rng()*25;
-    const h = 8 + rng()*15;
-    ctx.beginPath(); ctx.ellipse(ax, ay, w, h, rng()*0.5, 0, Math.PI*2);
-    ctx.fillStyle = hexC(0x2a4a3a); ctx.globalAlpha = 0.4; ctx.fill();
-    // Highlight
-    ctx.beginPath(); ctx.ellipse(ax-w*0.2, ay-h*0.2, w*0.4, h*0.3, 0, 0, Math.PI*2);
-    ctx.fillStyle = hexC(0x4a7a5a); ctx.globalAlpha = 0.15; ctx.fill();
-  }
-  // Reeds
+  // Murky water pools
   for (let i = 0; i < 10; i++) {
-    const ax = cx + (rng()-0.5)*HEX*1.3;
-    const ay = cy + (rng()-0.5)*HEX*1.2;
-    const h = 10 + rng()*18;
-    ctx.strokeStyle = hexC(rng() < 0.5 ? 0x5a7a3a : 0x6a8a4a);
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.6;
-    ctx.beginPath();
-    ctx.moveTo(ax, ay);
-    ctx.quadraticCurveTo(ax + (rng()-0.5)*8, ay - h*0.6, ax + (rng()-0.5)*4, ay - h);
+    const ax = cx+(rng()-0.5)*HEX*1.35, ay = cy+(rng()-0.5)*HEX*1.25;
+    const w = 12+rng()*32, h = 8+rng()*20;
+    ctx.beginPath(); ctx.ellipse(ax, ay, w, h, rng()*0.5, 0, Math.PI*2);
+    const wGrad = ctx.createRadialGradient(ax, ay, 0, ax, ay, w);
+    wGrad.addColorStop(0, hexC(0x1a3a2a)); wGrad.addColorStop(1, hexC(0x2a4a38));
+    ctx.fillStyle = wGrad; ctx.globalAlpha = 0.4; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(ax-w*0.2, ay-h*0.2, w*0.3, h*0.2, 0, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0x5a9a6a); ctx.globalAlpha = 0.08; ctx.fill();
+    // Lily pads
+    if (rng()<0.45) {
+      const lx = ax+(rng()-0.5)*w*0.5, ly = ay+(rng()-0.5)*h*0.4;
+      const lr = 3+rng()*5;
+      ctx.beginPath(); ctx.arc(lx, ly, lr, 0.2, Math.PI*2-0.2); ctx.lineTo(lx, ly); ctx.closePath();
+      ctx.fillStyle = hexC(0x3a8a3a); ctx.globalAlpha = 0.55; ctx.fill();
+      // Vein
+      ctx.strokeStyle = hexC(0x2a6a2a); ctx.lineWidth = 0.5; ctx.globalAlpha = 0.3;
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx+lr*0.7, ly-lr*0.3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx-lr*0.5, ly-lr*0.5); ctx.stroke();
+      if (rng()<0.35) {
+        ctx.beginPath(); ctx.arc(lx+lr*0.2, ly-lr*0.1, 1.5+rng(), 0, Math.PI*2);
+        ctx.fillStyle = hexC(rng()<0.5 ? 0xffaacc : 0xffffff); ctx.globalAlpha = 0.6; ctx.fill();
+      }
+    }
+  }
+  // Reeds with detail
+  for (let i = 0; i < 16; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.4, ay = cy+(rng()-0.5)*HEX*1.3;
+    const h = 14+rng()*25;
+    const sway = (rng()-0.5)*8;
+    ctx.strokeStyle = hexC([0x5a7a3a, 0x6a8a4a, 0x4a6a30, 0x558a38][Math.floor(rng()*4)]);
+    ctx.lineWidth = 1+rng()*0.8; ctx.globalAlpha = 0.5+rng()*0.3;
+    ctx.beginPath(); ctx.moveTo(ax, ay);
+    ctx.bezierCurveTo(ax+sway*0.3, ay-h*0.3, ax+sway*0.7, ay-h*0.6, ax+sway, ay-h);
     ctx.stroke();
-    // Cattail top
-    if (rng() < 0.4) {
-      ctx.fillStyle = hexC(0x5a3a1a);
-      ctx.beginPath(); ctx.ellipse(ax + (rng()-0.5)*3, ay - h - 3, 2, 5, 0, 0, Math.PI*2);
-      ctx.fill();
+    if (rng()<0.4) {
+      const leafY = ay-h*(0.25+rng()*0.3), leafDir = rng()<0.5 ? -1 : 1;
+      ctx.beginPath(); ctx.moveTo(ax+sway*0.35, leafY);
+      ctx.quadraticCurveTo(ax+sway*0.35+leafDir*8, leafY-3, ax+sway*0.35+leafDir*13, leafY+1);
+      ctx.strokeStyle = hexC(0x5a8a3a); ctx.lineWidth = 1.3; ctx.stroke();
+    }
+    if (rng()<0.3) {
+      ctx.fillStyle = hexC(0x5a3a1a); ctx.globalAlpha = 0.65;
+      ctx.beginPath(); ctx.ellipse(ax+sway, ay-h-4, 2.5, 6.5, 0, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  // Mushrooms (some glowing)
+  for (let i = 0; i < 5; i++) {
+    const mx = cx+(rng()-0.5)*HEX*1.2, my = cy+(rng()-0.5)*HEX*1.1;
+    const ms = 2+rng()*4;
+    const glowing = rng() < 0.3;
+    if (glowing) {
+      ctx.beginPath(); ctx.arc(mx, my-ms*1.5, ms*2.5, 0, Math.PI*2);
+      ctx.fillStyle = hexC(0x88ff88); ctx.globalAlpha = 0.04; ctx.fill();
+    }
+    ctx.fillStyle = hexC(0xccbb99); ctx.globalAlpha = 0.6;
+    ctx.fillRect(mx-0.8, my-ms*1.8, 1.6, ms*1.8);
+    ctx.beginPath(); ctx.ellipse(mx, my-ms*1.8, ms*1.3, ms*0.8, 0, Math.PI, 0);
+    const mc = glowing ? 0x66dd88 : (rng()<0.5 ? 0xcc4444 : 0xdd8844);
+    ctx.fillStyle = hexC(mc); ctx.globalAlpha = glowing ? 0.5 : 0.6; ctx.fill();
+    if (!glowing && rng()<0.5) {
+      ctx.beginPath(); ctx.arc(mx-ms*0.3, my-ms*2, ms*0.2, 0, Math.PI*2);
+      ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.4; ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // Fog wisps
+  for (let i = 0; i < 5; i++) {
+    const fx = cx+(rng()-0.5)*HEX*1.3, fy = cy+(rng()-0.5)*HEX*0.7+HEX*0.15;
+    ctx.beginPath(); ctx.ellipse(fx, fy, 25+rng()*40, 6+rng()*12, rng()*0.3, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xaaccaa); ctx.globalAlpha = 0.035+rng()*0.035; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawPathTrail(ctx, cx, cy, rng) {
+  ctx.beginPath();
+  const sx = cx+(rng()-0.5)*HEX*1.2, sy = cy+HEX*0.7;
+  const ex = cx+(rng()-0.5)*HEX*0.8, ey = cy-HEX*0.7;
+  const mx = cx+(rng()-0.5)*HEX*0.4, my = cy+(rng()-0.5)*HEX*0.3;
+  ctx.moveTo(sx, sy);
+  ctx.bezierCurveTo(sx+(rng()-0.5)*30, sy-HEX*0.3, mx-20, my+20, mx, my);
+  ctx.bezierCurveTo(mx+20, my-20, ex+(rng()-0.5)*30, ey+HEX*0.3, ex, ey);
+  ctx.strokeStyle = hexC(0x7a6a4a); ctx.lineWidth = 10+rng()*6; ctx.globalAlpha = 0.12; ctx.stroke();
+  ctx.strokeStyle = hexC(0x8a7a5a); ctx.lineWidth = 5+rng()*4; ctx.globalAlpha = 0.08; ctx.stroke();
+  // Path edge detail
+  ctx.strokeStyle = hexC(0x6a5a3a); ctx.lineWidth = 0.8; ctx.globalAlpha = 0.06; ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawStream(ctx, cx, cy, rng) {
+  ctx.beginPath();
+  const sx = cx-HEX*0.65, sy = cy+(rng()-0.5)*HEX*0.6;
+  const ex = cx+HEX*0.65, ey = cy+(rng()-0.5)*HEX*0.6;
+  ctx.moveTo(sx, sy);
+  ctx.bezierCurveTo(sx+HEX*0.3, sy+(rng()-0.5)*HEX*0.4, ex-HEX*0.3, ey+(rng()-0.5)*HEX*0.4, ex, ey);
+  ctx.strokeStyle = hexC(0x3878b8); ctx.lineWidth = 7+rng()*5; ctx.globalAlpha = 0.3; ctx.stroke();
+  ctx.strokeStyle = hexC(0x5599dd); ctx.lineWidth = 3+rng()*3; ctx.globalAlpha = 0.2; ctx.stroke();
+  ctx.strokeStyle = hexC(0x88bbee); ctx.lineWidth = 1+rng(); ctx.globalAlpha = 0.12; ctx.stroke();
+  // Stream sparkles
+  for (let i = 0; i < 5; i++) {
+    const t = rng();
+    const px = sx+(ex-sx)*t+(rng()-0.5)*4, py = sy+(ey-sy)*t+(rng()-0.5)*4;
+    ctx.beginPath(); ctx.arc(px, py, 1+rng(), 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.15+rng()*0.15; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawTundraFeatures(ctx, cx, cy, rng) {
+  // Snow drifts
+  for (let i = 0; i < 6; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.3, ay = cy+(rng()-0.5)*HEX*1.1;
+    const w = 25+rng()*45, h = 6+rng()*12;
+    ctx.beginPath(); ctx.ellipse(ax, ay, w, h, rng()*0.3, Math.PI, 0);
+    ctx.fillStyle = hexC(0xdde8f0); ctx.globalAlpha = 0.15+rng()*0.1; ctx.fill();
+  }
+  // Sparse dead grass
+  for (let i = 0; i < 12; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.4, ay = cy+(rng()-0.5)*HEX*1.3;
+    const h = 5+rng()*8;
+    ctx.strokeStyle = hexC(0x8a7a5a); ctx.lineWidth = 0.8; ctx.globalAlpha = 0.3;
+    for (let b = -1; b <= 1; b++) {
+      ctx.beginPath(); ctx.moveTo(ax+b*2, ay);
+      ctx.quadraticCurveTo(ax+b*3, ay-h*0.6, ax+b*2.5, ay-h); ctx.stroke();
+    }
+  }
+  // Frost-covered rocks
+  for (let i = 0; i < 4; i++) {
+    const ax = cx+(rng()-0.5)*HEX*1.2, ay = cy+(rng()-0.5)*HEX*1.1;
+    const rw = 6+rng()*12, rh = 4+rng()*7;
+    ctx.beginPath(); ctx.ellipse(ax, ay, rw, rh, rng()*0.5, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0x8a8a8a); ctx.globalAlpha = 0.5; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(ax-rw*0.15, ay-rh*0.3, rw*0.5, rh*0.35, 0, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xdde8f0); ctx.globalAlpha = 0.3; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+// --- BUILDINGS (highly detailed with smoke, lanterns, banners) ---
+
+function drawAoWCastle(ctx, cx, cy) {
+  const s = HEX * 0.38;
+  // Ground shadow
+  ctx.beginPath(); ctx.ellipse(cx+5, cy+s*0.58, s*1.4, s*0.22, 0.05, 0, Math.PI*2);
+  ctx.fillStyle = rgbaC(0x000000, 0.15); ctx.fill();
+  // Base platform
+  ctx.fillStyle = hexC(0x6b6860);
+  ctx.beginPath();
+  ctx.moveTo(cx-s*1.35, cy+s*0.3); ctx.lineTo(cx-s*1.25, cy+s*0.58); ctx.lineTo(cx+s*1.25, cy+s*0.58); ctx.lineTo(cx+s*1.35, cy+s*0.3);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = hexC(0x5a5850); ctx.globalAlpha = 0.35;
+  ctx.fillRect(cx-s*1.2, cy+s*0.42, s*2.4, s*0.06); ctx.globalAlpha = 1;
+  // Main wall
+  ctx.fillStyle = hexC(0x8b8878);
+  ctx.fillRect(cx-s*0.92, cy-s*0.42, s*1.84, s*0.72);
+  // Stone pattern
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 7; col++) {
+      const bx = cx-s*0.88+col*s*0.27+(row%2)*s*0.13;
+      const by = cy-s*0.37+row*s*0.16;
+      ctx.strokeStyle = hexC(0x7a7868); ctx.lineWidth = 0.5; ctx.globalAlpha = 0.22;
+      ctx.strokeRect(bx, by, s*0.24, s*0.13);
     }
   }
   ctx.globalAlpha = 1;
-}
-
-// --- AoW-style hex border (soft painted edge, not hard geometric) ---
-function drawAoWBorder(ctx, cx, cy, color) {
-  const corners = aowHexCorners(cx, cy, HEX - 1);
-  // Outer dark border
-  ctx.beginPath();
-  ctx.moveTo(corners[0].x, corners[0].y);
-  for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
-  ctx.closePath();
-  ctx.strokeStyle = hexC(darken(color, 0.5));
-  ctx.lineWidth = 3;
-  ctx.globalAlpha = 0.5;
-  ctx.stroke();
-  // Inner highlight on top-left edges
-  ctx.beginPath();
-  ctx.moveTo(corners[5].x, corners[5].y);
-  ctx.lineTo(corners[0].x, corners[0].y);
-  ctx.lineTo(corners[1].x, corners[1].y);
-  ctx.lineTo(corners[2].x, corners[2].y);
-  ctx.strokeStyle = hexC(lighten(color, 1.4));
-  ctx.lineWidth = 2;
-  ctx.globalAlpha = 0.2;
-  ctx.stroke();
-  // Inner shadow on bottom-right edges
-  ctx.beginPath();
-  ctx.moveTo(corners[2].x, corners[2].y);
-  ctx.lineTo(corners[3].x, corners[3].y);
-  ctx.lineTo(corners[4].x, corners[4].y);
-  ctx.lineTo(corners[5].x, corners[5].y);
-  ctx.strokeStyle = hexC(darken(color, 0.4));
-  ctx.lineWidth = 2;
-  ctx.globalAlpha = 0.25;
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-}
-
-// --- Building renders (same style as section 2) ---
-function drawAoWCastle(ctx, cx, cy) {
-  const s = HEX * 0.35;
-  // Base platform
-  ctx.fillStyle = hexC(0x6b6860);
-  ctx.fillRect(cx - s*1.2, cy + s*0.3, s*2.4, s*0.25);
-  // Main wall
-  ctx.fillStyle = hexC(0x8b8878);
-  ctx.fillRect(cx - s*0.9, cy - s*0.4, s*1.8, s*0.7);
-  // Wall highlight
-  ctx.fillStyle = hexC(0xa09d8f); ctx.globalAlpha = 0.4;
-  ctx.fillRect(cx - s*0.85, cy - s*0.35, s*1.7, s*0.15);
-  ctx.globalAlpha = 1;
+  // Wall top highlight
+  ctx.fillStyle = hexC(0xa09d8f); ctx.globalAlpha = 0.3;
+  ctx.fillRect(cx-s*0.9, cy-s*0.4, s*1.8, s*0.06); ctx.globalAlpha = 1;
   // Left tower
   ctx.fillStyle = hexC(0x8b8878);
-  ctx.fillRect(cx - s*1.0, cy - s*0.9, s*0.45, s*1.2);
+  ctx.fillRect(cx-s*1.08, cy-s*0.98, s*0.52, s*1.28);
+  ctx.fillStyle = hexC(0x9a9888); ctx.globalAlpha = 0.25;
+  ctx.fillRect(cx-s*1.03, cy-s*0.93, s*0.18, s*1.18); ctx.globalAlpha = 1;
   // Right tower
-  ctx.fillRect(cx + s*0.55, cy - s*0.9, s*0.45, s*1.2);
+  ctx.fillStyle = hexC(0x8b8878);
+  ctx.fillRect(cx+s*0.56, cy-s*0.98, s*0.52, s*1.28);
+  ctx.fillStyle = hexC(0x7a7868); ctx.globalAlpha = 0.2;
+  ctx.fillRect(cx+s*0.88, cy-s*0.93, s*0.18, s*1.18); ctx.globalAlpha = 1;
   // Crenellations
-  ctx.fillStyle = hexC(0x7a7868);
-  for (let i = 0; i < 6; i++) {
-    const bx = cx - s*0.85 + i * s*0.3;
-    ctx.fillRect(bx, cy - s*0.5, s*0.15, s*0.1);
+  ctx.fillStyle = hexC(0x8b8878);
+  for (let i = 0; i < 6; i++) { ctx.fillRect(cx-s*0.8+i*s*0.28, cy-s*0.52, s*0.15, s*0.1); }
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(cx-s*1.05+i*s*0.19, cy-s*1.08, s*0.11, s*0.1);
+    ctx.fillRect(cx+s*0.59+i*s*0.19, cy-s*1.08, s*0.11, s*0.1);
   }
   // Tower roofs
   ctx.fillStyle = hexC(0x5a2d2d);
-  ctx.beginPath(); ctx.moveTo(cx - s*1.1, cy - s*0.9);
-  ctx.lineTo(cx - s*0.78, cy - s*1.3); ctx.lineTo(cx - s*0.45, cy - s*0.9);
-  ctx.fill();
-  ctx.beginPath(); ctx.moveTo(cx + s*0.45, cy - s*0.9);
-  ctx.lineTo(cx + s*0.78, cy - s*1.3); ctx.lineTo(cx + s*1.1, cy - s*0.9);
-  ctx.fill();
-  // Gate
-  ctx.fillStyle = hexC(0x3a2a1a);
-  ctx.beginPath(); ctx.arc(cx, cy + s*0.1, s*0.18, Math.PI, 0);
-  ctx.fillRect(cx - s*0.18, cy + s*0.1, s*0.36, s*0.2);
-  ctx.fill();
-  // Flag
+  ctx.beginPath(); ctx.moveTo(cx-s*1.18, cy-s*0.98); ctx.lineTo(cx-s*0.82, cy-s*1.45); ctx.lineTo(cx-s*0.46, cy-s*0.98); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = hexC(0x7a3d3d); ctx.globalAlpha = 0.3;
+  ctx.beginPath(); ctx.moveTo(cx-s*1.13, cy-s*1.0); ctx.lineTo(cx-s*0.82, cy-s*1.4); ctx.lineTo(cx-s*0.82, cy-s*1.0); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.fillStyle = hexC(0x5a2d2d);
+  ctx.beginPath(); ctx.moveTo(cx+s*0.46, cy-s*0.98); ctx.lineTo(cx+s*0.82, cy-s*1.45); ctx.lineTo(cx+s*1.18, cy-s*0.98); ctx.closePath(); ctx.fill();
+  // Gate with arch
+  ctx.fillStyle = hexC(0x2a1a0a);
+  ctx.beginPath(); ctx.arc(cx, cy+s*0.08, s*0.22, Math.PI, 0); ctx.fill();
+  ctx.fillRect(cx-s*0.22, cy+s*0.08, s*0.44, s*0.22);
+  // Portcullis
+  ctx.strokeStyle = hexC(0x555555); ctx.lineWidth = 1; ctx.globalAlpha = 0.45;
+  for (let i = 0; i < 5; i++) { const gx = cx-s*0.16+i*s*0.08;
+    ctx.beginPath(); ctx.moveTo(gx, cy-s*0.06); ctx.lineTo(gx, cy+s*0.28); ctx.stroke(); }
+  for (let j = 0; j < 3; j++) { const gy = cy+s*0.04+j*s*0.08;
+    ctx.beginPath(); ctx.moveTo(cx-s*0.18, gy); ctx.lineTo(cx+s*0.18, gy); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // Flags with wave
   ctx.strokeStyle = hexC(0x6b4a2a); ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(cx - s*0.78, cy - s*1.3); ctx.lineTo(cx - s*0.78, cy - s*1.65); ctx.stroke();
-  ctx.fillStyle = hexC(0xcc3333);
-  ctx.fillRect(cx - s*0.78, cy - s*1.65, s*0.25, s*0.15);
+  ctx.beginPath(); ctx.moveTo(cx-s*0.82, cy-s*1.45); ctx.lineTo(cx-s*0.82, cy-s*1.8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+s*0.82, cy-s*1.45); ctx.lineTo(cx+s*0.82, cy-s*1.8); ctx.stroke();
+  // Flag cloth
+  for (const [fx, fc] of [[cx-s*0.82, 0xcc3333], [cx+s*0.82, 0x3355bb]]) {
+    ctx.fillStyle = hexC(fc);
+    ctx.beginPath();
+    ctx.moveTo(fx, cy-s*1.8);
+    ctx.quadraticCurveTo(fx+s*0.12, cy-s*1.77, fx+s*0.22, cy-s*1.8);
+    ctx.quadraticCurveTo(fx+s*0.18, cy-s*1.68, fx+s*0.22, cy-s*1.62);
+    ctx.quadraticCurveTo(fx+s*0.12, cy-s*1.65, fx, cy-s*1.62);
+    ctx.closePath(); ctx.fill();
+    // Emblem dot
+    ctx.beginPath(); ctx.arc(fx+s*0.11, cy-s*1.71, s*0.03, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xffdd44); ctx.globalAlpha = 0.6; ctx.fill(); ctx.globalAlpha = 1;
+  }
+  // Tower windows with glow
+  for (const wx of [cx-s*0.82, cx+s*0.82]) {
+    ctx.beginPath(); ctx.arc(wx, cy-s*0.42, s*0.14, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xffdd88); ctx.globalAlpha = 0.08; ctx.fill();
+    ctx.fillStyle = hexC(0x3a2a1a); ctx.globalAlpha = 0.8;
+    ctx.beginPath(); ctx.arc(wx, cy-s*0.42, s*0.08, Math.PI, 0); ctx.fill();
+    ctx.fillRect(wx-s*0.08, cy-s*0.42, s*0.16, s*0.12);
+    ctx.fillStyle = hexC(0xffdd88); ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.arc(wx, cy-s*0.42, s*0.06, Math.PI, 0); ctx.fill();
+    ctx.fillRect(wx-s*0.06, cy-s*0.42, s*0.12, s*0.08);
+    ctx.globalAlpha = 1;
+  }
+  // Wall windows
+  ctx.fillStyle = hexC(0xffdd88); ctx.globalAlpha = 0.35;
+  ctx.fillRect(cx-s*0.5, cy-s*0.2, s*0.1, s*0.12);
+  ctx.fillRect(cx+s*0.4, cy-s*0.2, s*0.1, s*0.12);
+  ctx.globalAlpha = 1;
+  // Lanterns at gate
+  for (const lx of [cx-s*0.3, cx+s*0.3]) {
+    ctx.fillStyle = hexC(0x6b4a2a); ctx.fillRect(lx-1, cy-s*0.08, 2, s*0.15);
+    ctx.beginPath(); ctx.arc(lx, cy+s*0.08, 3, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xffcc44); ctx.globalAlpha = 0.6; ctx.fill();
+    ctx.beginPath(); ctx.arc(lx, cy+s*0.08, 6, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xffcc44); ctx.globalAlpha = 0.08; ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  // Smoke from chimney
+  for (let i = 0; i < 5; i++) {
+    const sx = cx+s*0.15+(i-2)*3, sy = cy-s*0.6-i*10;
+    ctx.beginPath(); ctx.arc(sx+(i-2)*4, sy, 4+i*3.5, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xaaaaaa); ctx.globalAlpha = 0.05-i*0.005; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawAoWTower(ctx, cx, cy) {
-  const s = HEX * 0.22;
-  // Base
-  ctx.fillStyle = hexC(0x7a7868);
-  ctx.fillRect(cx - s*0.7, cy - s*0.3, s*1.4, s*1.0);
+  const s = HEX * 0.25;
+  ctx.beginPath(); ctx.ellipse(cx+3, cy+s*0.85, s*0.95, s*0.2, 0.05, 0, Math.PI*2);
+  ctx.fillStyle = rgbaC(0x000000, 0.12); ctx.fill();
+  // Foundation
+  ctx.fillStyle = hexC(0x6a6858);
+  ctx.beginPath();
+  ctx.moveTo(cx-s*0.85, cy+s*0.3); ctx.lineTo(cx-s*0.75, cy+s*0.75); ctx.lineTo(cx+s*0.75, cy+s*0.75); ctx.lineTo(cx+s*0.85, cy+s*0.3);
+  ctx.closePath(); ctx.fill();
   // Tower body
   ctx.fillStyle = hexC(0x8b8878);
-  ctx.fillRect(cx - s*0.5, cy - s*1.6, s*1.0, s*1.9);
-  // Highlight
-  ctx.fillStyle = hexC(0xa09d8f); ctx.globalAlpha = 0.3;
-  ctx.fillRect(cx - s*0.45, cy - s*1.5, s*0.4, s*1.7);
-  ctx.globalAlpha = 1;
-  // Crenellations
-  ctx.fillStyle = hexC(0x7a7868);
-  for (let i = 0; i < 3; i++) {
-    ctx.fillRect(cx - s*0.5 + i*s*0.4, cy - s*1.75, s*0.2, s*0.15);
+  ctx.fillRect(cx-s*0.58, cy-s*1.65, s*1.16, s*1.95);
+  // Stone texture
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 3; col++) {
+      const bx = cx-s*0.53+col*s*0.38+(row%2)*s*0.19;
+      const by = cy-s*1.55+row*s*0.21;
+      ctx.strokeStyle = hexC(0x7a7868); ctx.lineWidth = 0.4; ctx.globalAlpha = 0.2;
+      ctx.strokeRect(bx, by, s*0.35, s*0.18);
+    }
   }
+  ctx.globalAlpha = 1;
+  // Light/shadow faces
+  ctx.fillStyle = hexC(0x9a9888); ctx.globalAlpha = 0.18;
+  ctx.fillRect(cx-s*0.55, cy-s*1.6, s*0.28, s*1.9); ctx.globalAlpha = 1;
+  ctx.fillStyle = hexC(0x7a7868); ctx.globalAlpha = 0.15;
+  ctx.fillRect(cx+s*0.28, cy-s*1.6, s*0.28, s*1.9); ctx.globalAlpha = 1;
+  // Crenellations
+  ctx.fillStyle = hexC(0x8b8878);
+  for (let i = 0; i < 4; i++) { ctx.fillRect(cx-s*0.58+i*s*0.32, cy-s*1.8, s*0.19, s*0.15); }
   // Conical roof
   ctx.fillStyle = hexC(0x5a2d2d);
-  ctx.beginPath();
-  ctx.moveTo(cx - s*0.6, cy - s*1.6);
-  ctx.lineTo(cx, cy - s*2.3);
-  ctx.lineTo(cx + s*0.6, cy - s*1.6);
+  ctx.beginPath(); ctx.moveTo(cx-s*0.75, cy-s*1.65); ctx.lineTo(cx, cy-s*2.6); ctx.lineTo(cx+s*0.75, cy-s*1.65);
   ctx.closePath(); ctx.fill();
-  // Window
-  ctx.fillStyle = hexC(0xffdd88);
-  ctx.globalAlpha = 0.7;
-  ctx.beginPath(); ctx.arc(cx, cy - s*0.8, s*0.15, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = hexC(0x7a3d3d); ctx.globalAlpha = 0.25;
+  ctx.beginPath(); ctx.moveTo(cx-s*0.65, cy-s*1.67); ctx.lineTo(cx, cy-s*2.55); ctx.lineTo(cx, cy-s*1.67); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  // Flag
+  ctx.strokeStyle = hexC(0x6b4a2a); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx, cy-s*2.6); ctx.lineTo(cx, cy-s*3.0); ctx.stroke();
+  ctx.fillStyle = hexC(0xddaa33);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy-s*3.0); ctx.quadraticCurveTo(cx+s*0.15, cy-s*2.95, cx+s*0.22, cy-s*3.0);
+  ctx.quadraticCurveTo(cx+s*0.18, cy-s*2.88, cx+s*0.22, cy-s*2.82);
+  ctx.quadraticCurveTo(cx+s*0.12, cy-s*2.85, cx, cy-s*2.82); ctx.closePath(); ctx.fill();
+  // Windows
+  ctx.fillStyle = hexC(0x3a2a1a); ctx.globalAlpha = 0.8;
+  ctx.beginPath(); ctx.arc(cx, cy-s*0.72, s*0.16, Math.PI, 0); ctx.fill();
+  ctx.fillRect(cx-s*0.16, cy-s*0.72, s*0.32, s*0.25);
+  ctx.fillStyle = hexC(0xffdd88); ctx.globalAlpha = 0.5;
+  ctx.beginPath(); ctx.arc(cx, cy-s*0.72, s*0.13, Math.PI, 0); ctx.fill();
+  ctx.fillRect(cx-s*0.13, cy-s*0.72, s*0.26, s*0.18);
+  // Second window
+  ctx.fillStyle = hexC(0xffdd88); ctx.globalAlpha = 0.3;
+  ctx.beginPath(); ctx.arc(cx, cy-s*0.08, s*0.08, 0, Math.PI*2); ctx.fill();
+  // Glow halo
+  ctx.beginPath(); ctx.arc(cx, cy-s*0.72, s*0.25, 0, Math.PI*2);
+  ctx.fillStyle = hexC(0xffdd88); ctx.globalAlpha = 0.06; ctx.fill();
+  ctx.globalAlpha = 1;
+  // Lantern bracket
+  ctx.strokeStyle = hexC(0x5a4a2a); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx+s*0.58, cy-s*0.3); ctx.lineTo(cx+s*0.8, cy-s*0.35); ctx.lineTo(cx+s*0.8, cy-s*0.2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx+s*0.8, cy-s*0.15, 2.5, 0, Math.PI*2);
+  ctx.fillStyle = hexC(0xffcc44); ctx.globalAlpha = 0.55; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+s*0.8, cy-s*0.15, 5, 0, Math.PI*2);
+  ctx.fillStyle = hexC(0xffcc44); ctx.globalAlpha = 0.06; ctx.fill();
   ctx.globalAlpha = 1;
 }
 
 function drawAoWTown(ctx, cx, cy) {
-  const s = HEX * 0.2;
-  // Several small buildings
+  const s = HEX * 0.23;
+  ctx.beginPath(); ctx.ellipse(cx+3, cy+s*1.3, s*2.2, s*0.35, 0, 0, Math.PI*2);
+  ctx.fillStyle = rgbaC(0x000000, 0.1); ctx.fill();
   const buildings = [
-    { x: -s*1.2, y: 0, w: s*0.9, h: s*0.7, roof: 0x8b4422 },
-    { x: -s*0.1, y: -s*0.3, w: s*1.1, h: s*0.9, roof: 0x5a2d2d },
-    { x: s*0.9, y: s*0.1, w: s*0.8, h: s*0.6, roof: 0x7a5533 },
-    { x: -s*0.5, y: s*0.5, w: s*0.7, h: s*0.5, roof: 0x6b4422 },
+    { x:-s*1.6, y:s*0.2, w:s*1.0, h:s*0.85, roof:0x8b4422, rh:0.7 },
+    { x:-s*0.3, y:-s*0.3, w:s*1.4, h:s*1.15, roof:0x5a2d2d, rh:0.6 },
+    { x:s*1.1, y:s*0.3, w:s*0.95, h:s*0.7, roof:0x7a5533, rh:0.65 },
+    { x:-s*0.8, y:s*0.85, w:s*0.85, h:s*0.55, roof:0x6b4422, rh:0.55 },
+    { x:s*0.35, y:s*0.75, w:s*0.75, h:s*0.6, roof:0x8a5533, rh:0.6 },
   ];
+  buildings.sort((a,b) => a.y - b.y);
   for (const b of buildings) {
-    const bx = cx + b.x, by = cy + b.y;
-    // Wall
-    ctx.fillStyle = hexC(0xc8b888);
-    ctx.fillRect(bx, by, b.w, b.h);
+    const bx = cx+b.x, by = cy+b.y;
+    const wc = [0xc8b888, 0xd0c090, 0xc0b080, 0xd0c898][Math.floor(Math.random()*4)];
+    ctx.fillStyle = hexC(wc); ctx.fillRect(bx, by, b.w, b.h);
+    ctx.fillStyle = hexC(darken(wc, 0.78)); ctx.globalAlpha = 0.2;
+    ctx.fillRect(bx+b.w*0.72, by, b.w*0.28, b.h); ctx.globalAlpha = 1;
+    // Timber frame
+    ctx.strokeStyle = hexC(0x5a4a2a); ctx.lineWidth = 1.3; ctx.globalAlpha = 0.35;
+    ctx.strokeRect(bx+2, by+2, b.w-4, b.h-4);
+    ctx.beginPath(); ctx.moveTo(bx+b.w*0.5, by); ctx.lineTo(bx+b.w*0.5, by+b.h); ctx.stroke();
+    if (b.h > s*0.7) {
+      ctx.beginPath(); ctx.moveTo(bx, by+b.h*0.5); ctx.lineTo(bx+b.w, by+b.h*0.5); ctx.stroke();
+      // Cross brace
+      ctx.beginPath(); ctx.moveTo(bx+2, by+2); ctx.lineTo(bx+b.w*0.5, by+b.h*0.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx+b.w-2, by+2); ctx.lineTo(bx+b.w*0.5, by+b.h*0.5); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
     // Roof
     ctx.fillStyle = hexC(b.roof);
     ctx.beginPath();
-    ctx.moveTo(bx - b.w*0.1, by);
-    ctx.lineTo(bx + b.w/2, by - b.h*0.6);
-    ctx.lineTo(bx + b.w*1.1, by);
+    ctx.moveTo(bx-b.w*0.12, by); ctx.lineTo(bx+b.w/2, by-b.h*b.rh); ctx.lineTo(bx+b.w*1.12, by);
     ctx.closePath(); ctx.fill();
-    // Door/window
-    ctx.fillStyle = hexC(0x3a2a1a); ctx.globalAlpha = 0.6;
-    ctx.fillRect(bx + b.w*0.35, by + b.h*0.4, b.w*0.2, b.h*0.5);
+    ctx.fillStyle = hexC(lighten(b.roof, 1.2)); ctx.globalAlpha = 0.2;
+    ctx.beginPath(); ctx.moveTo(bx-b.w*0.08, by); ctx.lineTo(bx+b.w/2, by-b.h*b.rh); ctx.lineTo(bx+b.w*0.5, by);
+    ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    // Roof ridge detail
+    ctx.strokeStyle = hexC(darken(b.roof, 0.7)); ctx.lineWidth = 0.8; ctx.globalAlpha = 0.3;
+    ctx.beginPath(); ctx.moveTo(bx-b.w*0.08, by); ctx.lineTo(bx+b.w/2, by-b.h*b.rh); ctx.stroke();
+    ctx.globalAlpha = 1;
+    // Door
+    const dw = b.w*0.18, dh = b.h*0.42;
+    ctx.fillStyle = hexC(0x4a3a1a);
+    ctx.fillRect(bx+b.w*0.38, by+b.h-dh, dw, dh);
+    ctx.beginPath(); ctx.arc(bx+b.w*0.38+dw/2, by+b.h-dh, dw/2, Math.PI, 0); ctx.fill();
+    // Door handle
+    ctx.beginPath(); ctx.arc(bx+b.w*0.38+dw*0.7, by+b.h-dh*0.4, 1, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xccaa44); ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1;
+    // Windows
+    if (b.w > s*0.8) {
+      for (const wx of [bx+b.w*0.12, bx+b.w*0.68]) {
+        ctx.fillStyle = hexC(0xffdd88); ctx.globalAlpha = 0.45;
+        ctx.fillRect(wx, by+b.h*0.18, b.w*0.16, b.h*0.18);
+        ctx.strokeStyle = hexC(0x5a4a2a); ctx.lineWidth = 0.7; ctx.globalAlpha = 0.4;
+        ctx.strokeRect(wx, by+b.h*0.18, b.w*0.16, b.h*0.18);
+        // Cross pane
+        ctx.beginPath();
+        ctx.moveTo(wx+b.w*0.08, by+b.h*0.18); ctx.lineTo(wx+b.w*0.08, by+b.h*0.36);
+        ctx.moveTo(wx, by+b.h*0.27); ctx.lineTo(wx+b.w*0.16, by+b.h*0.27);
+        ctx.stroke();
+        // Glow
+        ctx.beginPath(); ctx.ellipse(wx+b.w*0.08, by+b.h*0.27, b.w*0.12, b.h*0.12, 0, 0, Math.PI*2);
+        ctx.fillStyle = hexC(0xffdd88); ctx.globalAlpha = 0.06; ctx.fill();
+      }
+    }
     ctx.globalAlpha = 1;
   }
+  // Chimney + smoke
+  ctx.fillStyle = hexC(0x6a5a4a);
+  ctx.fillRect(cx+s*0.15, cy-s*1.0, s*0.2, s*0.35);
+  for (let i = 0; i < 5; i++) {
+    const sx = cx+s*0.25+(i-2)*2.5, sy = cy-s*1.1-i*9;
+    ctx.beginPath(); ctx.arc(sx+(i-2)*3.5, sy, 3.5+i*3, 0, Math.PI*2);
+    ctx.fillStyle = hexC(0xaaaaaa); ctx.globalAlpha = 0.06-i*0.008; ctx.fill();
+  }
+  // Hanging sign on main building
+  ctx.strokeStyle = hexC(0x5a4a2a); ctx.lineWidth = 1; ctx.globalAlpha = 0.5;
+  ctx.beginPath(); ctx.moveTo(cx+s*0.9, cy-s*0.1); ctx.lineTo(cx+s*1.15, cy-s*0.15); ctx.stroke();
+  ctx.fillStyle = hexC(0x7a5a2a); ctx.globalAlpha = 0.6;
+  ctx.fillRect(cx+s*1.0, cy-s*0.1, s*0.25, s*0.2);
+  ctx.globalAlpha = 1;
+}
+// --- BORDER ---
+function drawAoWBorder(ctx, cx, cy, color) {
+  const corners = aowHexCorners(cx, cy, HEX - 1);
+  ctx.beginPath(); ctx.moveTo(corners[0].x, corners[0].y);
+  for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y); ctx.closePath();
+  ctx.strokeStyle = hexC(darken(color, 0.4)); ctx.lineWidth = 3.5; ctx.globalAlpha = 0.55; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(corners[5].x, corners[5].y);
+  ctx.lineTo(corners[0].x, corners[0].y); ctx.lineTo(corners[1].x, corners[1].y); ctx.lineTo(corners[2].x, corners[2].y);
+  ctx.strokeStyle = hexC(lighten(color, 1.5)); ctx.lineWidth = 2; ctx.globalAlpha = 0.2; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(corners[2].x, corners[2].y);
+  ctx.lineTo(corners[3].x, corners[3].y); ctx.lineTo(corners[4].x, corners[4].y); ctx.lineTo(corners[5].x, corners[5].y);
+  ctx.strokeStyle = hexC(darken(color, 0.3)); ctx.lineWidth = 2; ctx.globalAlpha = 0.3; ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
-// --- TILE DEFINITIONS ---
+// --- TILE DEFINITIONS (expanded) ---
 
 const aowTiles = [
-  // Grassland variations
-  { terrain: 'grassland', label: 'Grassland — Meadow', seed: 101, deco: (ctx,cx,cy,rng) => {
-    drawGrassTufts(ctx, cx, cy, rng, 25);
-    drawScatteredFlowers(ctx, cx, cy, rng, 12);
-    drawScatteredRocks(ctx, cx, cy, rng, 3);
+  // --- GRASSLAND ---
+  { terrain:'grassland', label:'Grassland — Lush Meadow', seed:2101, deco:(ctx,cx,cy,rng)=>{
+    drawGrassTufts(ctx,cx,cy,rng,40);
+    drawScatteredFlowers(ctx,cx,cy,rng,18);
+    drawScatteredRocks(ctx,cx,cy,rng,4);
+    drawButterflies(ctx,cx,cy,rng,4);
   }},
-  { terrain: 'grassland', label: 'Grassland — Dotted Trees', seed: 102, deco: (ctx,cx,cy,rng) => {
-    drawGrassTufts(ctx, cx, cy, rng, 15);
-    drawScatteredTrees(ctx, cx, cy, rng, 4, 'deciduous');
-    drawScatteredFlowers(ctx, cx, cy, rng, 6);
+  { terrain:'grassland', label:'Grassland — Scattered Oaks', seed:2102, deco:(ctx,cx,cy,rng)=>{
+    drawGrassTufts(ctx,cx,cy,rng,22);
+    drawScatteredTrees(ctx,cx,cy,rng,5,'deciduous');
+    drawScatteredFlowers(ctx,cx,cy,rng,8);
+    drawFerns(ctx,cx,cy,rng,3);
+    drawBirds(ctx,cx,cy,rng,2);
   }},
-  { terrain: 'grassland', label: 'Grassland + Castle', seed: 103, building: 'castle', deco: (ctx,cx,cy,rng) => {
-    drawGrassTufts(ctx, cx, cy, rng, 15);
-    drawScatteredFlowers(ctx, cx, cy, rng, 5);
+  { terrain:'grassland', label:'Grassland — Brook & Flowers', seed:2103, deco:(ctx,cx,cy,rng)=>{
+    drawStream(ctx,cx,cy,rng);
+    drawGrassTufts(ctx,cx,cy,rng,28);
+    drawScatteredFlowers(ctx,cx,cy,rng,12);
+    drawScatteredRocks(ctx,cx,cy,rng,5);
+    drawButterflies(ctx,cx,cy,rng,3);
   }},
-
-  // Forest variations
-  { terrain: 'forest', label: 'Forest — Dense', seed: 201, deco: (ctx,cx,cy,rng) => {
-    drawScatteredTrees(ctx, cx, cy, rng, 10, 'deciduous');
-    drawGrassTufts(ctx, cx, cy, rng, 8);
+  { terrain:'grassland', label:'Grassland — Fairy Ring', seed:2104, deco:(ctx,cx,cy,rng)=>{
+    drawGrassTufts(ctx,cx,cy,rng,25);
+    drawFairyRing(ctx,cx,cy,rng);
+    drawScatteredFlowers(ctx,cx,cy,rng,6);
+    drawButterflies(ctx,cx,cy,rng,3);
   }},
-  { terrain: 'forest', label: 'Forest — Pine', seed: 202, deco: (ctx,cx,cy,rng) => {
-    drawScatteredTrees(ctx, cx, cy, rng, 8, 'pine');
-    drawScatteredRocks(ctx, cx, cy, rng, 2);
-  }},
-  { terrain: 'forest', label: 'Forest + Tower', seed: 203, building: 'tower', deco: (ctx,cx,cy,rng) => {
-    drawScatteredTrees(ctx, cx, cy, rng, 5, 'pine');
-    drawGrassTufts(ctx, cx, cy, rng, 6);
-  }},
-
-  // Plains
-  { terrain: 'plains', label: 'Plains — Open', seed: 301, deco: (ctx,cx,cy,rng) => {
-    drawGrassTufts(ctx, cx, cy, rng, 20);
-    drawScatteredRocks(ctx, cx, cy, rng, 5);
-    drawScatteredFlowers(ctx, cx, cy, rng, 4);
-  }},
-  { terrain: 'plains', label: 'Plains + Town', seed: 302, building: 'town', deco: (ctx,cx,cy,rng) => {
-    drawGrassTufts(ctx, cx, cy, rng, 12);
-    drawScatteredFlowers(ctx, cx, cy, rng, 3);
+  { terrain:'grassland', label:'Grassland + Castle', seed:2105, building:'castle', deco:(ctx,cx,cy,rng)=>{
+    drawGrassTufts(ctx,cx,cy,rng,18);
+    drawPathTrail(ctx,cx,cy,rng);
+    drawScatteredFlowers(ctx,cx,cy,rng,5);
+    drawBirds(ctx,cx,cy,rng,2);
   }},
 
-  // Hills
-  { terrain: 'hills', label: 'Hills — Rolling', seed: 401, deco: (ctx,cx,cy,rng) => {
-    drawHillMounds(ctx, cx, cy, rng, 4);
-    drawScatteredRocks(ctx, cx, cy, rng, 5);
-    drawGrassTufts(ctx, cx, cy, rng, 10);
-    drawScatteredTrees(ctx, cx, cy, rng, 2, 'deciduous');
+  // --- FOREST ---
+  { terrain:'forest', label:'Forest — Dense Canopy', seed:2201, deco:(ctx,cx,cy,rng)=>{
+    drawFallenLogs(ctx,cx,cy,rng,1);
+    drawFerns(ctx,cx,cy,rng,6);
+    drawScatteredTrees(ctx,cx,cy,rng,12,'deciduous');
+    drawGrassTufts(ctx,cx,cy,rng,8);
+    drawLightRays(ctx,cx,cy,rng);
   }},
-  { terrain: 'hills', label: 'Hills + Tower', seed: 402, building: 'tower', deco: (ctx,cx,cy,rng) => {
-    drawHillMounds(ctx, cx, cy, rng, 3);
-    drawScatteredRocks(ctx, cx, cy, rng, 3);
-    drawGrassTufts(ctx, cx, cy, rng, 8);
+  { terrain:'forest', label:'Forest — Pine Grove', seed:2202, deco:(ctx,cx,cy,rng)=>{
+    drawScatteredTrees(ctx,cx,cy,rng,10,'pine');
+    drawFerns(ctx,cx,cy,rng,4);
+    drawStumps(ctx,cx,cy,rng,2);
+    drawScatteredRocks(ctx,cx,cy,rng,4);
+    drawGrassTufts(ctx,cx,cy,rng,10);
+  }},
+  { terrain:'forest', label:'Forest — Enchanted Path', seed:2203, deco:(ctx,cx,cy,rng)=>{
+    drawPathTrail(ctx,cx,cy,rng);
+    drawScatteredTrees(ctx,cx,cy,rng,7);
+    drawFerns(ctx,cx,cy,rng,5);
+    drawGlowingMushrooms(ctx,cx,cy,rng,3);
+    drawGrassTufts(ctx,cx,cy,rng,10);
+    drawLightRays(ctx,cx,cy,rng);
+    drawFireflies(ctx,cx,cy,rng,5);
+  }},
+  { terrain:'forest', label:'Forest — Autumn', seed:2204, deco:(ctx,cx,cy,rng)=>{
+    drawScatteredTrees(ctx,cx,cy,rng,8,'autumn');
+    drawFerns(ctx,cx,cy,rng,3);
+    drawFallenLogs(ctx,cx,cy,rng,1);
+    drawScatteredRocks(ctx,cx,cy,rng,3);
+    drawGrassTufts(ctx,cx,cy,rng,8);
+  }},
+  { terrain:'forest', label:'Forest + Tower', seed:2205, building:'tower', deco:(ctx,cx,cy,rng)=>{
+    drawScatteredTrees(ctx,cx,cy,rng,6,'pine');
+    drawPathTrail(ctx,cx,cy,rng);
+    drawFerns(ctx,cx,cy,rng,3);
+    drawGrassTufts(ctx,cx,cy,rng,8);
+    drawBirds(ctx,cx,cy,rng,2);
   }},
 
-  // Mountains
-  { terrain: 'mountains', label: 'Mountains — Peaks', seed: 501, deco: (ctx,cx,cy,rng) => {
-    drawMountainPeaks(ctx, cx, cy, rng, 4);
-    drawScatteredRocks(ctx, cx, cy, rng, 6);
+  // --- PLAINS ---
+  { terrain:'plains', label:'Plains — Wheat Fields', seed:2301, deco:(ctx,cx,cy,rng)=>{
+    drawWheatField(ctx,cx,cy,rng);
+    drawScatteredRocks(ctx,cx,cy,rng,3);
+    drawBirds(ctx,cx,cy,rng,3);
   }},
-  { terrain: 'mountains', label: 'Mountains — Snowy', seed: 502, deco: (ctx,cx,cy,rng) => {
-    drawMountainPeaks(ctx, cx, cy, rng, 5);
+  { terrain:'plains', label:'Plains — Windswept', seed:2302, deco:(ctx,cx,cy,rng)=>{
+    drawGrassTufts(ctx,cx,cy,rng,35);
+    drawScatteredRocks(ctx,cx,cy,rng,7);
+    drawScatteredFlowers(ctx,cx,cy,rng,5);
+    drawBushes(ctx,cx,cy,rng,2);
+    drawButterflies(ctx,cx,cy,rng,2);
+  }},
+  { terrain:'plains', label:'Plains — Standing Stones', seed:2303, deco:(ctx,cx,cy,rng)=>{
+    drawGrassTufts(ctx,cx,cy,rng,20);
+    drawStandingStones(ctx,cx,cy,rng,3);
+    drawScatteredFlowers(ctx,cx,cy,rng,4);
+    drawScatteredRocks(ctx,cx,cy,rng,3);
+  }},
+  { terrain:'plains', label:'Plains + Town', seed:2304, building:'town', deco:(ctx,cx,cy,rng)=>{
+    drawGrassTufts(ctx,cx,cy,rng,15);
+    drawPathTrail(ctx,cx,cy,rng);
+    drawScatteredFlowers(ctx,cx,cy,rng,3);
   }},
 
-  // Water
-  { terrain: 'water', label: 'Water — Open Sea', seed: 601, deco: (ctx,cx,cy,rng) => {
-    drawWaterWaves(ctx, cx, cy, rng);
+  // --- HILLS ---
+  { terrain:'hills', label:'Hills — Rolling Green', seed:2401, deco:(ctx,cx,cy,rng)=>{
+    drawHillMounds(ctx,cx,cy,rng,5);
+    drawScatteredRocks(ctx,cx,cy,rng,6);
+    drawGrassTufts(ctx,cx,cy,rng,16);
+    drawScatteredTrees(ctx,cx,cy,rng,2,'deciduous');
+    drawBushes(ctx,cx,cy,rng,2);
+  }},
+  { terrain:'hills', label:'Hills — Ancient Ruins', seed:2402, deco:(ctx,cx,cy,rng)=>{
+    drawHillMounds(ctx,cx,cy,rng,3);
+    drawAncientRuins(ctx,cx,cy,rng);
+    drawScatteredRocks(ctx,cx,cy,rng,5);
+    drawGrassTufts(ctx,cx,cy,rng,10);
+    drawFerns(ctx,cx,cy,rng,2);
+  }},
+  { terrain:'hills', label:'Hills + Castle', seed:2403, building:'castle', deco:(ctx,cx,cy,rng)=>{
+    drawHillMounds(ctx,cx,cy,rng,3);
+    drawPathTrail(ctx,cx,cy,rng);
+    drawScatteredRocks(ctx,cx,cy,rng,4);
+    drawGrassTufts(ctx,cx,cy,rng,10);
   }},
 
-  // Desert
-  { terrain: 'desert', label: 'Desert — Dunes', seed: 701, deco: (ctx,cx,cy,rng) => {
-    drawDesertDeco(ctx, cx, cy, rng);
+  // --- MOUNTAINS ---
+  { terrain:'mountains', label:'Mountains — Jagged Peaks', seed:2501, deco:(ctx,cx,cy,rng)=>{
+    drawMountainPeaks(ctx,cx,cy,rng,5);
+    drawScatteredRocks(ctx,cx,cy,rng,8);
+    drawBirds(ctx,cx,cy,rng,3);
   }},
-  { terrain: 'desert', label: 'Desert + Castle', seed: 702, building: 'castle', deco: (ctx,cx,cy,rng) => {
-    drawDesertDeco(ctx, cx, cy, rng);
+  { terrain:'mountains', label:'Mountains — Crystal Cave', seed:2502, deco:(ctx,cx,cy,rng)=>{
+    drawMountainPeaks(ctx,cx,cy,rng,3);
+    drawCrystalFormation(ctx,cx,cy,rng);
+    drawScatteredRocks(ctx,cx,cy,rng,5);
+    drawMistLayer(ctx,cx,cy,rng);
+  }},
+  { terrain:'mountains', label:'Mountains + Tower', seed:2503, building:'tower', deco:(ctx,cx,cy,rng)=>{
+    drawMountainPeaks(ctx,cx,cy,rng,3);
+    drawScatteredRocks(ctx,cx,cy,rng,5);
+    drawPathTrail(ctx,cx,cy,rng);
   }},
 
-  // Swamp
-  { terrain: 'swamp', label: 'Swamp — Bog', seed: 801, deco: (ctx,cx,cy,rng) => {
-    drawSwampDeco(ctx, cx, cy, rng);
-    drawScatteredTrees(ctx, cx, cy, rng, 3, 'dark');
+  // --- WATER ---
+  { terrain:'water', label:'Water — Deep Sea', seed:2601, deco:(ctx,cx,cy,rng)=>{
+    drawWaterWaves(ctx,cx,cy,rng);
+  }},
+
+  // --- DESERT ---
+  { terrain:'desert', label:'Desert — Dunes & Bones', seed:2701, deco:(ctx,cx,cy,rng)=>{
+    drawDesertDeco(ctx,cx,cy,rng);
+  }},
+  { terrain:'desert', label:'Desert + Castle', seed:2702, building:'castle', deco:(ctx,cx,cy,rng)=>{
+    drawDesertDeco(ctx,cx,cy,rng);
+    drawPathTrail(ctx,cx,cy,rng);
+  }},
+
+  // --- SWAMP ---
+  { terrain:'swamp', label:'Swamp — Murky Bog', seed:2801, deco:(ctx,cx,cy,rng)=>{
+    drawSwampDeco(ctx,cx,cy,rng);
+    drawScatteredTrees(ctx,cx,cy,rng,4,'dark');
+    drawFireflies(ctx,cx,cy,rng,6);
+    drawMistLayer(ctx,cx,cy,rng);
+  }},
+  { terrain:'swamp', label:'Swamp — Willow Hollow', seed:2802, deco:(ctx,cx,cy,rng)=>{
+    drawSwampDeco(ctx,cx,cy,rng);
+    drawScatteredTrees(ctx,cx,cy,rng,3,'willow');
+    drawFireflies(ctx,cx,cy,rng,4);
+    drawMistLayer(ctx,cx,cy,rng);
+  }},
+  { terrain:'swamp', label:'Swamp + Tower', seed:2803, building:'tower', deco:(ctx,cx,cy,rng)=>{
+    drawSwampDeco(ctx,cx,cy,rng);
+    drawScatteredTrees(ctx,cx,cy,rng,2,'dark');
+    drawFireflies(ctx,cx,cy,rng,4);
+  }},
+
+  // --- TUNDRA ---
+  { terrain:'tundra', label:'Tundra — Frozen Waste', seed:2901, deco:(ctx,cx,cy,rng)=>{
+    drawTundraFeatures(ctx,cx,cy,rng);
+    drawScatteredTrees(ctx,cx,cy,rng,2,'pine');
+    drawBirds(ctx,cx,cy,rng,2);
+  }},
+  { terrain:'tundra', label:'Tundra — Standing Stones', seed:2902, deco:(ctx,cx,cy,rng)=>{
+    drawTundraFeatures(ctx,cx,cy,rng);
+    drawStandingStones(ctx,cx,cy,rng,3);
+    drawMistLayer(ctx,cx,cy,rng);
+  }},
+
+  // --- SPECIAL COMBOS ---
+  { terrain:'forest', label:'Forest — Birch Grove', seed:2210, deco:(ctx,cx,cy,rng)=>{
+    drawScatteredTrees(ctx,cx,cy,rng,9,'birch');
+    drawFerns(ctx,cx,cy,rng,5);
+    drawScatteredFlowers(ctx,cx,cy,rng,6);
+    drawGrassTufts(ctx,cx,cy,rng,10);
+    drawLightRays(ctx,cx,cy,rng);
+    drawButterflies(ctx,cx,cy,rng,3);
+  }},
+  { terrain:'grassland', label:'Grassland — Crystal Field', seed:2110, deco:(ctx,cx,cy,rng)=>{
+    drawGrassTufts(ctx,cx,cy,rng,25);
+    drawCrystalFormation(ctx,cx,cy,rng);
+    drawScatteredFlowers(ctx,cx,cy,rng,8);
+    drawScatteredRocks(ctx,cx,cy,rng,3);
   }},
 ];
 
 const terrainColors = {
-  grassland: 0x4a9933,
-  forest: 0x2d6b2a,
-  plains: 0xb8a84e,
-  hills: 0x8a7a4a,
-  mountains: 0x6a6a72,
-  water: 0x2855a0,
-  desert: 0xd4b866,
-  swamp: 0x4a6a3a,
+  grassland:0x4a9933, forest:0x2d6b2a, plains:0xb8a84e, hills:0x8a7a4a,
+  mountains:0x6a6a72, water:0x2855a0, desert:0xd4b866, swamp:0x4a6a3a, tundra:0x8899aa
 };
-
 const terrainBasePaint = {
-  grassland: paintGrassBase,
-  forest: paintForestBase,
-  plains: paintPlainsBase,
-  hills: paintHillsBase,
-  mountains: paintMountainBase,
-  water: paintWaterBase,
-  desert: paintDesertBase,
-  swamp: paintSwampBase,
+  grassland:paintGrassBase, forest:paintForestBase, plains:paintPlainsBase, hills:paintHillsBase,
+  mountains:paintMountainBase, water:paintWaterBase, desert:paintDesertBase, swamp:paintSwampBase, tundra:paintTundraBase
 };
 
 const container = document.getElementById('aow-tiles');
 
 for (const def of aowTiles) {
   const pad = 30;
-  const cw = HEX * SQRT3 + pad*2;
-  const ch = HEX * 2 + pad*2;
+  const cw = HEX*SQRT3 + pad*2;
+  const ch = HEX*2 + pad*2;
   const cx = cw/2, cy = ch/2;
-
   const canvas = document.createElement('canvas');
   canvas.width = cw; canvas.height = ch;
   const ctx = canvas.getContext('2d');
-
   const rng = mulberry32(def.seed);
 
-  // Dark background
-  ctx.fillStyle = '#0a0a18';
-  ctx.fillRect(0, 0, cw, ch);
-
-  // Clip to hex
-  ctx.save();
-  clipHex(ctx, cx, cy, HEX);
-
-  // Paint terrain base
-  terrainBasePaint[def.terrain](ctx, cx, cy, rng);
-
-  // Draw decorations
-  def.deco(ctx, cx, cy, rng);
-
+  ctx.fillStyle = '#0a0a18'; ctx.fillRect(0,0,cw,ch);
+  ctx.save(); clipHex(ctx,cx,cy,HEX);
+  terrainBasePaint[def.terrain](ctx,cx,cy,rng);
+  def.deco(ctx,cx,cy,rng);
   ctx.restore();
+  drawAoWBorder(ctx,cx,cy,terrainColors[def.terrain]);
 
-  // Draw border on top (unclipped)
-  drawAoWBorder(ctx, cx, cy, terrainColors[def.terrain]);
-
-  // Building on top
   if (def.building) {
-    ctx.save();
-    if (def.building === 'castle') drawAoWCastle(ctx, cx, cy - HEX*0.05);
-    else if (def.building === 'tower') drawAoWTower(ctx, cx, cy);
-    else if (def.building === 'town') drawAoWTown(ctx, cx, cy + HEX*0.1);
+    ctx.save(); clipHex(ctx,cx,cy,HEX-2);
+    if (def.building==='castle') drawAoWCastle(ctx,cx,cy-HEX*0.05);
+    else if (def.building==='tower') drawAoWTower(ctx,cx,cy);
+    else if (def.building==='town') drawAoWTown(ctx,cx,cy+HEX*0.1);
     ctx.restore();
+    drawAoWBorder(ctx,cx,cy,terrainColors[def.terrain]);
   }
 
-  // Card
   const card = document.createElement('div');
   card.style.cssText = 'background:#16213e;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
   card.appendChild(canvas);
   const info = document.createElement('div');
   info.style.cssText = 'padding:12px 16px;border-top:1px solid #2a2a4a;';
   info.innerHTML = `<h3 style="color:#c8a86e;margin:0 0 4px;font-size:1.05em;">${def.label}</h3>
-    <p style="color:#888;font-size:0.82em;margin:0;">AoW-inspired · ${def.terrain}${def.building ? ' + ' + def.building : ''} · HEX_SIZE=${HEX}</p>`;
+    <p style="color:#888;font-size:0.82em;margin:0;">AoW v3 · ${def.terrain}${def.building ? ' + '+def.building : ''} · HEX=${HEX}</p>`;
   card.appendChild(info);
   container.appendChild(card);
 }

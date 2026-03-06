@@ -89,6 +89,8 @@ export class HotkeyOverlay {
   private _overlay!: Graphics;
   private _card!: Container;
   private _cardBg!: Graphics;
+  private _onResize: (() => void) | null = null;
+  private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
 
   // -------------------------------------------------------------------------
   // Lifecycle
@@ -188,14 +190,28 @@ export class HotkeyOverlay {
     vm.addToLayer("ui", this.container);
     this._layout();
 
-    vm.app.renderer.on("resize", () => this._layout());
+    this._onResize = () => this._layout();
+    vm.app.renderer.on("resize", this._onResize);
 
     // Keyboard shortcut listener
-    document.addEventListener("keydown", (e) => {
+    this._onKeydown = (e: KeyboardEvent) => {
       if (e.key === "?" || e.key === "h" || e.key === "H") {
         this.toggle();
       }
-    });
+    };
+    document.addEventListener("keydown", this._onKeydown);
+  }
+
+  destroy(): void {
+    if (this._onResize) {
+      this._vm.app.renderer.off("resize", this._onResize);
+      this._onResize = null;
+    }
+    if (this._onKeydown) {
+      document.removeEventListener("keydown", this._onKeydown);
+      this._onKeydown = null;
+    }
+    this.container.destroy({ children: true });
   }
 
   // -------------------------------------------------------------------------
