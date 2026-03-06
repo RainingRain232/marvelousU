@@ -17,7 +17,7 @@ interface Particle {
   duration: number;    // total cycle duration in seconds
 }
 
-const COLORS = [0xffd700, 0xffaa44, 0xffffdd];
+const COLORS = [0xffd700, 0xffe033, 0xffcc00, 0xffdd55, 0xffee66];
 
 export class AmbientParticles {
   readonly container = new Container();
@@ -42,7 +42,7 @@ export class AmbientParticles {
         speed: 15 + Math.random() * 40,
         driftX: 5 + Math.random() * 20,
         driftSpeed: 0.3 + Math.random() * 0.8,
-        peakAlpha: 0.15 + Math.random() * 0.45,
+        peakAlpha: 0.25 + Math.random() * 0.5,
         size,
         phase: Math.random(), // stagger start
         duration: 6 + Math.random() * 12,

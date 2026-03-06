@@ -6,6 +6,7 @@ import {
   Container, Graphics, Text, TextStyle, Sprite, Assets, Rectangle,
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { getRace, SPELL_MAGIC_TO_TIER } from "@sim/config/RaceDefs";
 import type { RaceDef, RaceId, RaceTiers } from "@sim/config/RaceDefs";
 import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
@@ -109,6 +110,7 @@ class MagicScreen {
   container = (() => { const c = new Container(); c.visible = false; return c; })();
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _particles!: AmbientParticles;
   private _mainCard!: Container;
   private _raceId: RaceId = "man";
   private _wikiMode = false;
@@ -133,6 +135,8 @@ class MagicScreen {
     this._vm = vm;
     this._bg = new Graphics();
     this.container.addChild(this._bg);
+    this._particles = new AmbientParticles(120);
+    this.container.addChild(this._particles.container);
     this._mainCard = new Container();
     this.container.addChild(this._mainCard);
     this._tooltip = new Container();
@@ -141,6 +145,9 @@ class MagicScreen {
     vm.addToLayer("ui", this.container);
     this._layout();
     vm.app.renderer.on("resize", () => this._layout());
+    vm.app.ticker.add((ticker) => {
+      if (this.container.visible) this._particles.update(ticker.deltaMS / 1000);
+    });
   }
 
   show(raceId: RaceId): void {
@@ -180,6 +187,7 @@ class MagicScreen {
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
     this._bg.clear().rect(0, 0, sw, sh).fill({ color: BG_COLOR });
+    this._particles.resize(sw, sh);
     this._mainCard.position.set(
       Math.floor((sw - CARD_W) / 2),
       Math.floor((sh - CARD_H) / 2),
