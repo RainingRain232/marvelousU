@@ -25,6 +25,595 @@ const TILE_COLORS: Record<string, number> = {
 const FOG_COLOR = 0x111122;
 const FOG_ALPHA = 0.7;
 
+// ---------------------------------------------------------------------------
+// Tile hash & RNG (borrowed from world hex renderer)
+// ---------------------------------------------------------------------------
+
+function _tileHash(x: number, y: number, seed: number): number {
+  let h = (x * 374761393 + y * 668265263 + seed * 1274126177) | 0;
+  h = ((h ^ (h >> 13)) * 1274126177) | 0;
+  return (h ^ (h >> 16)) >>> 0;
+}
+
+function _hashFloat(x: number, y: number, seed: number): number {
+  return (_tileHash(x, y, seed) & 0x7fffffff) / 0x7fffffff;
+}
+
+class TileRng {
+  private _x: number;
+  private _y: number;
+  private _idx = 0;
+  constructor(x: number, y: number) { this._x = x; this._y = y; }
+  next(): number { return _hashFloat(this._x, this._y, 9999 + this._idx++); }
+  nextInt(max: number): number { return _tileHash(this._x, this._y, 9999 + this._idx++) % max; }
+}
+
+function _darken(color: number, factor: number): number {
+  const r = Math.round(((color >> 16) & 0xff) * factor);
+  const gc = Math.round(((color >> 8) & 0xff) * factor);
+  const b = Math.round((color & 0xff) * factor);
+  return (Math.min(r, 255) << 16) | (Math.min(gc, 255) << 8) | Math.min(b, 255);
+}
+
+function _lighten(color: number, factor: number): number {
+  const r = Math.min(255, Math.round(((color >> 16) & 0xff) * factor));
+  const gc = Math.min(255, Math.round(((color >> 8) & 0xff) * factor));
+  const b = Math.min(255, Math.round((color & 0xff) * factor));
+  return (r << 16) | (gc << 8) | b;
+}
+
+// ---------------------------------------------------------------------------
+// Terrain base painting (organic splotches like world hex tiles)
+// ---------------------------------------------------------------------------
+
+function _paintTileBase(
+  g: Graphics, cx: number, cy: number, ts: number,
+  baseColor: number, splotchColors: number[], rng: TileRng,
+  splotchCount = 8, extraFn?: (g: Graphics, cx: number, cy: number, ts: number, rng: TileRng) => void,
+): void {
+  // Organic color splotches
+  for (let i = 0; i < splotchCount; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.95;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.95;
+    const r = ts * (0.12 + rng.next() * 0.25);
+    const col = splotchColors[rng.nextInt(splotchColors.length)];
+    g.circle(ax, ay, r);
+    g.fill({ color: col, alpha: 0.1 + rng.next() * 0.15 });
+  }
+  // Fine texture
+  for (let i = 0; i < 8; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.9;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.9;
+    const s = 1 + rng.next() * 3;
+    g.rect(ax, ay, s, s * 0.6);
+    g.fill({ color: _darken(baseColor, 0.7 + rng.next() * 0.3), alpha: 0.04 + rng.next() * 0.04 });
+  }
+  if (extraFn) extraFn(g, cx, cy, ts, rng);
+}
+
+// ---------------------------------------------------------------------------
+// Terrain decoration drawing functions (adapted from world hex)
+// ---------------------------------------------------------------------------
+
+function _drawOWGrassTufts(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng, count: number): void {
+  const grassColors = [0x3d8829, 0x55aa3d, 0x4a9930, 0x62b848, 0x358822];
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.9;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.9;
+    const h = ts * (0.12 + rng.next() * 0.18);
+    const w = ts * (0.06 + rng.next() * 0.06);
+    const blades = 2 + Math.floor(rng.next() * 3);
+    const alpha = 0.4 + rng.next() * 0.4;
+    const gc = grassColors[rng.nextInt(grassColors.length)];
+    for (let b = 0; b < blades; b++) {
+      const bOff = (b - (blades - 1) / 2) * (w / blades);
+      const tipSway = (rng.next() - 0.5) * w * 1.5;
+      g.moveTo(ax + bOff * 0.3, ay);
+      g.bezierCurveTo(
+        ax + bOff * 0.6, ay - h * 0.3,
+        ax + bOff + tipSway * 0.5, ay - h * 0.65,
+        ax + tipSway, ay - h,
+      );
+      g.stroke({ color: _lighten(gc, 0.9 + rng.next() * 0.35), width: 0.8 + rng.next() * 0.5, alpha });
+    }
+  }
+}
+
+function _drawOWFlowers(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng, count: number): void {
+  const palettes = [
+    [0xff6688, 0xff4466], [0xffaa44, 0xff8822], [0xffee55, 0xddcc33],
+    [0xcc88ff, 0xaa66dd], [0xffffff, 0xdddddd],
+  ];
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.85;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.85;
+    const r = 1.5 + rng.next() * 2.5;
+    const pal = palettes[rng.nextInt(palettes.length)];
+    const petals = 4 + Math.floor(rng.next() * 2);
+    const alpha = 0.65 + rng.next() * 0.3;
+    // Stem
+    const stemH = 3 + rng.next() * 5;
+    g.moveTo(ax, ay + r);
+    g.lineTo(ax + (rng.next() - 0.5) * 2, ay + r + stemH);
+    g.stroke({ color: 0x3a7a22, width: 0.6, alpha });
+    // Petals
+    for (let p = 0; p < petals; p++) {
+      const pa = (Math.PI * 2 / petals) * p + rng.next() * 0.4;
+      const pr = r * (0.5 + rng.next() * 0.15);
+      g.ellipse(ax + Math.cos(pa) * pr, ay + Math.sin(pa) * pr, r * 0.4, r * 0.25);
+      g.fill({ color: rng.next() < 0.6 ? pal[0] : pal[1], alpha });
+    }
+    // Center
+    g.circle(ax, ay, r * 0.25);
+    g.fill({ color: 0xffdd44, alpha });
+  }
+}
+
+function _drawOWRocks(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng, count: number): void {
+  const rockColors = [0x888888, 0x777772, 0x8a8a80, 0x6e6e68];
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.85;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.8;
+    const w = ts * (0.08 + rng.next() * 0.12);
+    const h = ts * (0.05 + rng.next() * 0.08);
+    const col = rockColors[rng.nextInt(rockColors.length)];
+    // Shadow
+    g.ellipse(ax + 1.5, ay + 1, w * 1.05, h * 0.4);
+    g.fill({ color: 0x000000, alpha: 0.08 });
+    // Rock
+    g.ellipse(ax, ay, w, h);
+    g.fill({ color: col, alpha: 0.65 + rng.next() * 0.25 });
+    // Highlight
+    g.ellipse(ax - w * 0.15, ay - h * 0.3, w * 0.4, h * 0.3);
+    g.fill({ color: _lighten(col, 1.4), alpha: 0.2 });
+  }
+}
+
+function _drawOWTrees(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng, count: number, treeType: string): void {
+  const trees: { x: number; y: number; sc: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    trees.push({
+      x: cx + (rng.next() - 0.5) * ts * 0.85,
+      y: cy + (rng.next() - 0.5) * ts * 0.75,
+      sc: 0.6 + rng.next() * 0.5,
+    });
+  }
+  trees.sort((a, b) => a.y - b.y);
+
+  for (const t of trees) {
+    const sc = t.sc * ts / 40; // scale relative to tile
+    if (treeType === "pine") {
+      const trunkH = (10 + rng.next() * 8) * sc;
+      const trunkW = (2 + rng.next() * 1.5) * sc;
+      // Shadow
+      g.ellipse(t.x + 2 * sc, t.y + 1, trunkW * 2, 2.5 * sc);
+      g.fill({ color: 0x000000, alpha: 0.1 });
+      // Trunk
+      g.rect(t.x - trunkW * 0.4, t.y - trunkH, trunkW * 0.8, trunkH);
+      g.fill({ color: 0x5a3a1a });
+      // Layers
+      const layers = 3;
+      for (let l = 0; l < layers; l++) {
+        const lw = (10 + (layers - l) * 6 + rng.next() * 4) * sc;
+        const lh = (8 + rng.next() * 5) * sc;
+        const ly = t.y - trunkH - l * (7 * sc) + 3 * sc;
+        const gc = [0x1a5520, 0x2a6628, 0x1a4a1e][rng.nextInt(3)];
+        g.moveTo(t.x, ly - lh);
+        g.lineTo(t.x - lw / 2, ly);
+        g.lineTo(t.x + lw / 2, ly);
+        g.closePath();
+        g.fill({ color: gc });
+        // Shadow face
+        g.moveTo(t.x, ly - lh);
+        g.lineTo(t.x + lw * 0.1, ly);
+        g.lineTo(t.x + lw / 2, ly);
+        g.closePath();
+        g.fill({ color: _darken(gc, 0.7), alpha: 0.25 });
+      }
+    } else {
+      // Deciduous
+      const trunkH = (8 + rng.next() * 7) * sc;
+      const trunkW = (2 + rng.next() * 1.5) * sc;
+      const canopyR = (9 + rng.next() * 7) * sc;
+      const ty = t.y - trunkH - canopyR * 0.5;
+      // Shadow
+      g.ellipse(t.x + 2 * sc, t.y + 1, canopyR * 0.9, 3 * sc);
+      g.fill({ color: 0x000000, alpha: 0.1 });
+      // Trunk
+      g.rect(t.x - trunkW * 0.4, t.y - trunkH, trunkW * 0.8, trunkH);
+      g.fill({ color: 0x6b4a2a });
+      // Canopy blobs
+      const gc = [0x3a8a2e, 0x4a9a38, 0x55a844, 0x358828][rng.nextInt(4)];
+      g.circle(t.x, ty, canopyR * 0.75);
+      g.fill({ color: gc, alpha: 0.6 });
+      for (let b = 0; b < 5; b++) {
+        const ba = rng.next() * Math.PI * 2;
+        const bd = canopyR * 0.3 * rng.next();
+        const br = canopyR * (0.35 + rng.next() * 0.35);
+        g.circle(t.x + Math.cos(ba) * bd, ty + Math.sin(ba) * bd, br);
+        g.fill({ color: _lighten(gc, 0.85 + rng.next() * 0.4), alpha: 0.25 + rng.next() * 0.2 });
+      }
+      // Highlight
+      g.circle(t.x - canopyR * 0.2, ty - canopyR * 0.25, canopyR * 0.3);
+      g.fill({ color: _lighten(gc, 1.4), alpha: 0.15 });
+    }
+  }
+}
+
+function _drawOWFerns(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng, count: number): void {
+  for (let i = 0; i < count; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.85;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.8;
+    const size = ts * (0.1 + rng.next() * 0.12);
+    const alpha = 0.4 + rng.next() * 0.3;
+    const gc = [0x3a8a28, 0x4a9a35, 0x2a7a20][rng.nextInt(3)];
+    // Central stem
+    g.moveTo(ax, ay);
+    g.lineTo(ax, ay - size);
+    g.stroke({ color: gc, width: 0.8, alpha });
+    // Fronds
+    const fronds = 3 + Math.floor(rng.next() * 3);
+    for (let f = 0; f < fronds; f++) {
+      const fy = ay - size * (0.2 + f * 0.6 / fronds);
+      const fLen = size * (0.3 + 0.15 * (1 - f / fronds));
+      for (const dir of [-1, 1]) {
+        g.moveTo(ax, fy);
+        g.quadraticCurveTo(ax + dir * fLen * 0.5, fy - fLen * 0.2, ax + dir * fLen, fy + fLen * 0.1);
+        g.stroke({ color: _lighten(gc, 1 + rng.next() * 0.2), width: 0.6, alpha });
+      }
+    }
+  }
+}
+
+function _drawOWWaves(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng): void {
+  // Deep caustic shapes
+  for (let i = 0; i < 4; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.85;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.8;
+    g.moveTo(ax, ay);
+    for (let p = 0; p < 3; p++) {
+      g.lineTo(ax + (rng.next() - 0.5) * ts * 0.4, ay + (rng.next() - 0.5) * ts * 0.3);
+    }
+    g.closePath();
+    g.fill({ color: rng.next() < 0.5 ? 0x1a3a70 : 0x2a5090, alpha: 0.06 });
+  }
+  // Wave ripples
+  const waveColors = [0x5588cc, 0x77aadd, 0x4477bb, 0x6699cc];
+  for (let i = 0; i < 6; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.9;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.85;
+    const w = ts * (0.1 + rng.next() * 0.25);
+    g.moveTo(ax - w, ay);
+    g.bezierCurveTo(ax - w * 0.3, ay - 2 - rng.next() * 3, ax + w * 0.3, ay + 1 + rng.next() * 2, ax + w, ay);
+    g.stroke({ color: waveColors[rng.nextInt(waveColors.length)], width: 0.6 + rng.next() * 0.8, alpha: 0.15 + rng.next() * 0.15 });
+  }
+  // Foam patches
+  for (let i = 0; i < 3; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.8;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.7;
+    const w = ts * (0.05 + rng.next() * 0.12);
+    g.ellipse(ax, ay, w, w * 0.25);
+    g.fill({ color: 0xffffff, alpha: 0.04 + rng.next() * 0.05 });
+  }
+  // Sparkles
+  for (let i = 0; i < 5; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.85;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.85;
+    g.circle(ax, ay, 0.6 + rng.next() * 1.5);
+    g.fill({ color: 0xffffff, alpha: 0.1 + rng.next() * 0.2 });
+  }
+}
+
+function _drawOWMountainPeaks(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng, count: number): void {
+  const peaks: { x: number; y: number; w: number; h: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    peaks.push({
+      x: cx + (rng.next() - 0.5) * ts * 0.7,
+      y: cy + (rng.next() - 0.5) * ts * 0.5,
+      w: ts * (0.2 + rng.next() * 0.25),
+      h: ts * (0.3 + rng.next() * 0.35),
+    });
+  }
+  peaks.sort((a, b) => a.y - b.y);
+  for (const p of peaks) {
+    // Scree
+    for (let r = 0; r < 2; r++) {
+      const rx = p.x + (rng.next() - 0.5) * p.w * 0.8;
+      const ry = p.y - rng.next() * p.h * 0.05;
+      g.ellipse(rx, ry, 2 + rng.next() * 3, 1 + rng.next() * 2);
+      g.fill({ color: 0x5a5a62, alpha: 0.3 });
+    }
+    // Shadow
+    g.moveTo(p.x - p.w / 2 + 3, p.y + 3);
+    g.lineTo(p.x + 2, p.y - p.h + 3);
+    g.lineTo(p.x + p.w / 2 + 3, p.y + 3);
+    g.closePath();
+    g.fill({ color: 0x000000, alpha: 0.1 });
+    const mc = [0x6a6a72, 0x7a7a82, 0x626268][rng.nextInt(3)];
+    // Right face
+    g.moveTo(p.x + p.w * 0.05, p.y);
+    g.lineTo(p.x, p.y - p.h);
+    g.lineTo(p.x + p.w / 2, p.y);
+    g.closePath();
+    g.fill({ color: _lighten(mc, 1.15), alpha: 0.9 });
+    // Left face (shadow)
+    g.moveTo(p.x - p.w / 2, p.y);
+    g.lineTo(p.x, p.y - p.h);
+    g.lineTo(p.x + p.w * 0.05, p.y);
+    g.closePath();
+    g.fill({ color: _darken(mc, 0.75), alpha: 0.9 });
+    // Ridge line
+    g.moveTo(p.x, p.y - p.h);
+    g.lineTo(p.x + p.w * 0.05, p.y);
+    g.stroke({ color: _darken(mc, 0.5), width: 0.8, alpha: 0.25 });
+    // Rock cracks
+    for (let c = 0; c < 2; c++) {
+      const cy2 = p.y - p.h * (0.15 + rng.next() * 0.5);
+      const cxO = (rng.next() - 0.5) * p.w * 0.3;
+      g.moveTo(p.x + cxO, cy2);
+      g.lineTo(p.x + cxO + (rng.next() - 0.5) * 6, cy2 + rng.next() * 6);
+      g.stroke({ color: _darken(mc, 0.5), width: 0.5, alpha: 0.15 });
+    }
+    // Snow cap
+    const snowH = 0.2 + rng.next() * 0.15;
+    g.moveTo(p.x - p.w * snowH * 0.6, p.y - p.h * (1 - snowH));
+    g.lineTo(p.x, p.y - p.h);
+    g.lineTo(p.x + p.w * snowH * 0.5, p.y - p.h * (1 - snowH * 0.85));
+    g.closePath();
+    g.fill({ color: 0xeeeef4, alpha: 0.8 });
+  }
+}
+
+function _drawOWSandDeco(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng): void {
+  // Sand dunes
+  for (let i = 0; i < 3; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.85;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.75;
+    const w = ts * (0.2 + rng.next() * 0.3);
+    const h = ts * (0.06 + rng.next() * 0.1);
+    g.ellipse(ax, ay, w, h);
+    g.fill({ color: 0xe8d080, alpha: 0.15 + rng.next() * 0.1 });
+    g.ellipse(ax, ay + h * 0.3, w * 0.95, h * 0.5);
+    g.fill({ color: 0xb89844, alpha: 0.08 });
+  }
+  // Wind streaks
+  for (let i = 0; i < 5; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.9;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.85;
+    const w = ts * (0.08 + rng.next() * 0.18);
+    g.moveTo(ax - w, ay);
+    g.quadraticCurveTo(ax, ay - 1 - rng.next() * 2, ax + w, ay);
+    g.stroke({ color: rng.next() < 0.5 ? 0xd0b860 : 0xc0a850, width: 0.4, alpha: 0.1 });
+  }
+  // Features: cacti, dry bushes, rocks
+  for (let i = 0; i < 3; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.8;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.75;
+    const feat = rng.next();
+    if (feat < 0.3) {
+      // Cactus
+      const ch = ts * (0.15 + rng.next() * 0.2);
+      g.rect(ax - 1.5, ay - ch, 3, ch);
+      g.fill({ color: 0x4a8a30, alpha: 0.75 });
+      // Arms
+      const armH = ch * (0.35 + rng.next() * 0.2);
+      g.rect(ax - 6, ay - armH, 5, 1.5);
+      g.fill({ color: 0x4a8a30, alpha: 0.75 });
+      g.rect(ax - 6, ay - armH - 5, 1.5, 5.5);
+      g.fill({ color: 0x4a8a30, alpha: 0.75 });
+      g.rect(ax + 1.5, ay - armH * 0.7, 4, 1.5);
+      g.fill({ color: 0x4a8a30, alpha: 0.75 });
+      g.rect(ax + 4, ay - armH * 0.7 - 4, 1.5, 4.5);
+      g.fill({ color: 0x4a8a30, alpha: 0.75 });
+      // Shadow
+      g.ellipse(ax + 2, ay + 1, 4, 1.5);
+      g.fill({ color: 0x000000, alpha: 0.07 });
+    } else if (feat < 0.55) {
+      // Rock cluster
+      for (let r = 0; r < 2; r++) {
+        const rx = ax + (rng.next() - 0.5) * 8;
+        const ry = ay + (rng.next() - 0.5) * 5;
+        const rw = 2 + rng.next() * 5;
+        const rh = 1.5 + rng.next() * 3;
+        g.ellipse(rx, ry, rw, rh);
+        g.fill({ color: rng.next() < 0.5 ? 0xaa9966 : 0x998855, alpha: 0.5 });
+      }
+    } else if (feat < 0.72) {
+      // Dry bush
+      const br = 3 + rng.next() * 5;
+      for (let b = 0; b < 6; b++) {
+        const ba = rng.next() * Math.PI * 2;
+        g.moveTo(ax, ay);
+        g.lineTo(ax + Math.cos(ba) * br, ay + Math.sin(ba) * br);
+        g.stroke({ color: 0x8a7a4a, width: 0.6, alpha: 0.4 });
+      }
+    } else if (feat < 0.85) {
+      // Skull
+      g.ellipse(ax, ay - 2, 3, 2.5);
+      g.fill({ color: 0xe0d8c8, alpha: 0.5 });
+      g.circle(ax - 1.2, ay - 2.5, 0.8);
+      g.fill({ color: 0x3a3a3a, alpha: 0.5 });
+      g.circle(ax + 1.2, ay - 2.5, 0.8);
+      g.fill({ color: 0x3a3a3a, alpha: 0.5 });
+    } else {
+      // Bone
+      g.moveTo(ax - 5, ay);
+      g.quadraticCurveTo(ax, ay - 2 - rng.next() * 3, ax + 5 + rng.next() * 5, ay + rng.next() * 2);
+      g.stroke({ color: 0xddccbb, width: 1, alpha: 0.3 });
+    }
+  }
+}
+
+function _drawOWSnowDeco(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng): void {
+  // Snow drifts
+  for (let i = 0; i < 4; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.85;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.75;
+    const w = ts * (0.15 + rng.next() * 0.25);
+    const h = ts * (0.04 + rng.next() * 0.07);
+    g.ellipse(ax, ay, w, h);
+    g.fill({ color: 0xdde8f0, alpha: 0.15 + rng.next() * 0.1 });
+  }
+  // Sparse dead grass
+  for (let i = 0; i < 5; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.9;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.85;
+    const h = ts * (0.05 + rng.next() * 0.08);
+    for (let b = -1; b <= 1; b++) {
+      g.moveTo(ax + b * 1.5, ay);
+      g.quadraticCurveTo(ax + b * 2, ay - h * 0.6, ax + b * 1.8, ay - h);
+      g.stroke({ color: 0x8a7a5a, width: 0.6, alpha: 0.25 });
+    }
+  }
+  // Frost rocks
+  for (let i = 0; i < 2; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.8;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.7;
+    const rw = ts * (0.05 + rng.next() * 0.08);
+    const rh = ts * (0.03 + rng.next() * 0.05);
+    g.ellipse(ax, ay, rw, rh);
+    g.fill({ color: 0x8a8a8a, alpha: 0.45 });
+    // Frost on top
+    g.ellipse(ax - rw * 0.15, ay - rh * 0.3, rw * 0.45, rh * 0.35);
+    g.fill({ color: 0xdde8f0, alpha: 0.25 });
+  }
+  // Frost crystals
+  for (let i = 0; i < 8; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.9;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.9;
+    g.circle(ax, ay, 0.8 + rng.next() * 1.5);
+    g.fill({ color: 0xffffff, alpha: 0.06 + rng.next() * 0.06 });
+  }
+}
+
+function _drawOWPathDeco(g: Graphics, cx: number, cy: number, ts: number, rng: TileRng): void {
+  // Cart ruts / worn path lines
+  for (let i = 0; i < 3; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.3;
+    const ay = cy - ts * 0.4;
+    const endY = cy + ts * 0.4;
+    g.moveTo(ax, ay);
+    g.bezierCurveTo(
+      ax + (rng.next() - 0.5) * ts * 0.15, ay + ts * 0.25,
+      ax + (rng.next() - 0.5) * ts * 0.15, endY - ts * 0.25,
+      ax + (rng.next() - 0.5) * ts * 0.1, endY,
+    );
+    g.stroke({ color: 0x9a8a6a, width: 1 + rng.next() * 1.5, alpha: 0.08 + rng.next() * 0.06 });
+  }
+  // Scattered pebbles
+  for (let i = 0; i < 6; i++) {
+    const ax = cx + (rng.next() - 0.5) * ts * 0.7;
+    const ay = cy + (rng.next() - 0.5) * ts * 0.7;
+    const r = 0.8 + rng.next() * 1.8;
+    g.circle(ax, ay, r);
+    g.fill({ color: rng.next() < 0.5 ? 0x9a8a6a : 0x8a7a5a, alpha: 0.25 + rng.next() * 0.15 });
+  }
+  // Footprints (subtle)
+  if (rng.next() < 0.4) {
+    for (let i = 0; i < 3; i++) {
+      const fx = cx + (rng.next() - 0.5) * ts * 0.3;
+      const fy = cy + (rng.next() - 0.5) * ts * 0.5;
+      g.ellipse(fx, fy, 1.5, 2.5);
+      g.fill({ color: _darken(0xc4a76c, 0.8), alpha: 0.08 });
+    }
+  }
+  // Tufts of grass at edges
+  _drawOWGrassTufts(g, cx, cy, ts, rng, 3);
+}
+
+// ---------------------------------------------------------------------------
+// Main tile decoration dispatcher
+// ---------------------------------------------------------------------------
+
+function _drawTileDecoration(
+  g: Graphics, tileType: string, cx: number, cy: number, ts: number,
+): void {
+  const rng = new TileRng(Math.round(cx), Math.round(cy));
+  const variant = _tileHash(Math.round(cx), Math.round(cy), 0);
+
+  switch (tileType) {
+    case OverworldTileType.GRASS: {
+      _paintTileBase(g, cx, cy, ts, 0x4a8c3f,
+        [0x327020, 0x55aa3d, 0x62b848, 0x4a9030, 0x3a7a22], rng);
+      const v = variant % 3;
+      if (v === 0) {
+        _drawOWGrassTufts(g, cx, cy, ts, rng, 8);
+        _drawOWFlowers(g, cx, cy, ts, rng, 4);
+        _drawOWRocks(g, cx, cy, ts, rng, 1);
+      } else if (v === 1) {
+        _drawOWGrassTufts(g, cx, cy, ts, rng, 6);
+        _drawOWRocks(g, cx, cy, ts, rng, 2);
+        _drawOWFlowers(g, cx, cy, ts, rng, 2);
+      } else {
+        _drawOWGrassTufts(g, cx, cy, ts, rng, 10);
+        _drawOWFlowers(g, cx, cy, ts, rng, 6);
+      }
+      break;
+    }
+    case OverworldTileType.FOREST: {
+      _paintTileBase(g, cx, cy, ts, 0x2d6b2d,
+        [0x142a12, 0x1e4a1a, 0x2a5a25, 0x357a30, 0x1a3a18], rng, 10);
+      const v = variant % 3;
+      if (v === 0) {
+        _drawOWFerns(g, cx, cy, ts, rng, 2);
+        _drawOWTrees(g, cx, cy, ts, rng, 3, "deciduous");
+        _drawOWGrassTufts(g, cx, cy, ts, rng, 3);
+      } else if (v === 1) {
+        _drawOWTrees(g, cx, cy, ts, rng, 3, "pine");
+        _drawOWFerns(g, cx, cy, ts, rng, 2);
+        _drawOWRocks(g, cx, cy, ts, rng, 1);
+      } else {
+        _drawOWTrees(g, cx, cy, ts, rng, 2, "pine");
+        _drawOWTrees(g, cx, cy, ts, rng, 2, "deciduous");
+        _drawOWFerns(g, cx, cy, ts, rng, 1);
+      }
+      break;
+    }
+    case OverworldTileType.MOUNTAIN: {
+      _paintTileBase(g, cx, cy, ts, 0x7a7a7a,
+        [0x44444e, 0x7a7a84, 0x5a5a64, 0x8a8a92, 0x626268], rng, 8,
+        // Rock grain lines
+        (g2, cx2, cy2, ts2, rng2) => {
+          for (let i = 0; i < 4; i++) {
+            const ax = cx2 + (rng2.next() - 0.5) * ts2 * 0.8;
+            const ay = cy2 + (rng2.next() - 0.5) * ts2 * 0.8;
+            const w = ts2 * (0.1 + rng2.next() * 0.2);
+            g2.moveTo(ax - w, ay);
+            g2.lineTo(ax + w, ay + rng2.next() * 4 - 2);
+            g2.stroke({ color: 0x3a3a44, width: 0.6, alpha: 0.07 });
+          }
+        });
+      _drawOWMountainPeaks(g, cx, cy, ts, rng, 2 + (variant % 2));
+      _drawOWRocks(g, cx, cy, ts, rng, 3);
+      break;
+    }
+    case OverworldTileType.WATER: {
+      _paintTileBase(g, cx, cy, ts, 0x3366aa,
+        [0x1e3a70, 0x3060a0, 0x4488cc, 0x205088], rng, 6);
+      _drawOWWaves(g, cx, cy, ts, rng);
+      break;
+    }
+    case OverworldTileType.PATH: {
+      _paintTileBase(g, cx, cy, ts, 0xc4a76c,
+        [0xb89850, 0xd0b870, 0xa89040, 0xc0a858], rng, 6);
+      _drawOWPathDeco(g, cx, cy, ts, rng);
+      break;
+    }
+    case OverworldTileType.SAND: {
+      _paintTileBase(g, cx, cy, ts, 0xd4b86a,
+        [0xccaa50, 0xe8d080, 0xb89844, 0xd0bc60, 0xc0a848], rng, 8);
+      _drawOWSandDeco(g, cx, cy, ts, rng);
+      break;
+    }
+    case OverworldTileType.SNOW: {
+      _paintTileBase(g, cx, cy, ts, 0xe8e8f0,
+        [0xd0d8e4, 0xf0f0f8, 0xdde4ee, 0xe0e8f2], rng, 6);
+      _drawOWSnowDeco(g, cx, cy, ts, rng);
+      break;
+    }
+  }
+}
+
 // Town icon colours
 const TOWN_WALL = 0x8b7355;
 const TOWN_ROOF = 0xaa3333;
@@ -205,8 +794,13 @@ export class OverworldView {
       for (let x = 0; x < this.overworld.width; x++) {
         const tile = this.overworld.grid[y][x];
         const color = TILE_COLORS[tile.type] ?? 0x333333;
+        // Base fill
         g.rect(x * ts, y * ts, ts, ts);
         g.fill({ color });
+        // Terrain decorations
+        const cx = x * ts + ts / 2;
+        const cy = y * ts + ts / 2;
+        _drawTileDecoration(g, tile.type, cx, cy, ts);
       }
     }
   }
