@@ -45,6 +45,7 @@ interface SerializedRPGState {
   seed: number;
   stepsSinceLastTown: number;
   recruitSeed: number;
+  formation: Record<string, 1 | 2>;
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +152,7 @@ export function restoreRPGState(
     seed: serialized.seed,
     stepsSinceLastTown: serialized.stepsSinceLastTown ?? 0,
     recruitSeed: serialized.recruitSeed ?? serialized.seed,
+    formation: serialized.formation ?? {},
   };
 }
 
@@ -175,5 +177,6 @@ function _serializeRPGState(state: RPGState): SerializedRPGState {
     seed: state.seed,
     stepsSinceLastTown: state.stepsSinceLastTown,
     recruitSeed: state.recruitSeed,
+    formation: state.formation,
   };
 }

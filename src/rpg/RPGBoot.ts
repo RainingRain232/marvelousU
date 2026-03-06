@@ -14,7 +14,7 @@ import { DUNGEON_DEFS } from "@rpg/config/DungeonDefs";
 import { RPGStateMachine } from "@rpg/systems/RPGStateMachine";
 import { moveParty } from "@rpg/systems/OverworldSystem";
 import { moveDungeonParty } from "@rpg/systems/DungeonSystem";
-import { createBattleFromEncounter, calculateInitiative, executeAction, executeEnemyTurn, advanceTurn, applyVictoryRewards, applyDefeatPenalty, isHealAbility } from "@rpg/systems/TurnBattleSystem";
+import { createBattleFromEncounter, calculateInitiative, executeAction, executeEnemyTurn, advanceTurn, applyVictoryRewards, applyDefeatPenalty, isHealAbility, getValidTargets } from "@rpg/systems/TurnBattleSystem";
 import { createStarterParty } from "@rpg/systems/PartyFactory";
 import { RPGViewManager } from "@view/rpg/RPGViewManager";
 import { ITEM_HEALTH_POTION } from "@rpg/config/RPGItemDefs";
@@ -468,11 +468,11 @@ export class RPGGame {
       }
 
       if (current.isPartyMember) {
-        // Party AI: use ability if MP available and not a heal, else attack weakest enemy
-        const aliveEnemies = battle.combatants.filter(c => !c.isPartyMember && c.hp > 0);
-        if (aliveEnemies.length === 0) break;
-        aliveEnemies.sort((a, b) => a.hp - b.hp);
-        const target = aliveEnemies[0];
+        // Party AI: use ability if MP available and not a heal, else attack weakest reachable enemy
+        const reachable = getValidTargets(battle, current.id);
+        if (reachable.length === 0) break;
+        reachable.sort((a, b) => a.hp - b.hp);
+        const target = reachable[0];
 
         if (current.mp >= 10 && current.abilityTypes.length > 0 && !isHealAbility(current.abilityTypes[0])) {
           executeAction(battle, TurnBattleAction.ABILITY, target.id, current.abilityTypes[0], null, this.rpgState);
@@ -545,12 +545,12 @@ export class RPGGame {
 
     const view = this.rpgViewManager["turnBattleView"];
     if (view) {
+      const currentId = this.turnBattleState.turnOrder[this.turnBattleState.currentTurnIndex];
       const isHealAction = action === TurnBattleAction.ITEM
         || (action === TurnBattleAction.ABILITY && isHealAbility(this.turnBattleState.selectedAbility));
-      const targets = this.turnBattleState.combatants.filter(c => {
-        if (c.hp <= 0) return false;
-        return isHealAction ? c.isPartyMember : !c.isPartyMember;
-      });
+      const targets = isHealAction
+        ? this.turnBattleState.combatants.filter(c => c.hp > 0 && c.isPartyMember)
+        : getValidTargets(this.turnBattleState, currentId);
       view.setSelectableTargets(targets);
     }
   }

@@ -23,6 +23,8 @@ export interface TurnBattleCombatant {
   statusEffects: StatusEffect[];
   position: number;
   isDefending: boolean;
+  /** Battle line: 1 = front, 2 = back */
+  line: 1 | 2;
 }
 
 // ---------------------------------------------------------------------------

@@ -25,18 +25,34 @@ export function createBattleFromEncounter(
 
   const combatants: TurnBattleCombatant[] = [];
 
-  // Add party members
+  // Add party members with formation
   for (let i = 0; i < rpg.party.length; i++) {
     const member = rpg.party[i];
-    combatants.push(_partyToCombatant(member, i));
+    const line = rpg.formation[member.id] ?? (1 as 1 | 2);
+    combatants.push(_partyToCombatant(member, i, line));
   }
 
-  // Add enemies
+  // Add enemies with auto-assigned lines
   let enemyIdx = 0;
+  const allEnemyDefs: { def: EnemyDef; idx: number }[] = [];
   for (const enemyDef of def.enemies) {
     for (let i = 0; i < enemyDef.count; i++) {
-      combatants.push(_enemyToCombatant(enemyDef, enemyIdx++));
+      allEnemyDefs.push({ def: enemyDef, idx: enemyIdx++ });
     }
+  }
+
+  // Auto-assign enemy lines: melee→front, ranged→back
+  let hasFront = false;
+  for (const e of allEnemyDefs) {
+    const unitDef = UNIT_DEFINITIONS[e.def.unitType];
+    const line: 1 | 2 = (e.def.line as 1 | 2) ?? (unitDef.range <= 1 ? 1 : 2);
+    if (line === 1) hasFront = true;
+    combatants.push(_enemyToCombatant(e.def, e.idx, line));
+  }
+  // If no front-line enemies, move first enemy to front
+  if (!hasFront && combatants.length > 0) {
+    const firstEnemy = combatants.find(c => !c.isPartyMember);
+    if (firstEnemy) firstEnemy.line = 1;
   }
 
   const state = createTurnBattleState(
@@ -50,7 +66,7 @@ export function createBattleFromEncounter(
   return state;
 }
 
-function _partyToCombatant(member: PartyMember, position: number): TurnBattleCombatant {
+function _partyToCombatant(member: PartyMember, position: number, line: 1 | 2): TurnBattleCombatant {
   return {
     id: member.id,
     name: member.name,
@@ -68,6 +84,7 @@ function _partyToCombatant(member: PartyMember, position: number): TurnBattleCom
     statusEffects: [...member.statusEffects],
     position,
     isDefending: false,
+    line,
   };
 }
 
@@ -92,7 +109,7 @@ function _computeSpeed(member: PartyMember): number {
   return speed;
 }
 
-function _enemyToCombatant(enemyDef: EnemyDef, position: number): TurnBattleCombatant {
+function _enemyToCombatant(enemyDef: EnemyDef, position: number, line: 1 | 2): TurnBattleCombatant {
   const unitDef = UNIT_DEFINITIONS[enemyDef.unitType];
   const scale = 1 + RPGBalance.ENEMY_LEVEL_SCALE * (enemyDef.level - 1);
 
@@ -113,6 +130,7 @@ function _enemyToCombatant(enemyDef: EnemyDef, position: number): TurnBattleComb
     statusEffects: [],
     position,
     isDefending: false,
+    line,
   };
 }
 
@@ -537,6 +555,32 @@ function _calculateDamage(
 }
 
 // ---------------------------------------------------------------------------
+// Line-aware targeting
+// ---------------------------------------------------------------------------
+
+/** Returns valid targets for an attacker considering battle lines. */
+export function getValidTargets(
+  battle: TurnBattleState,
+  attackerId: string,
+  targetAllies: boolean = false,
+): TurnBattleCombatant[] {
+  const attacker = battle.combatants.find(c => c.id === attackerId);
+  if (!attacker) return [];
+
+  const candidates = battle.combatants.filter(c => {
+    if (c.hp <= 0) return false;
+    return targetAllies ? (c.isPartyMember === attacker.isPartyMember) : (c.isPartyMember !== attacker.isPartyMember);
+  });
+
+  // Ranged units can target anyone
+  if (attacker.range > 1) return candidates;
+
+  // Melee: can only target front line; if front line empty, target back line
+  const frontLine = candidates.filter(c => c.line === 1);
+  return frontLine.length > 0 ? frontLine : candidates;
+}
+
+// ---------------------------------------------------------------------------
 // Enemy AI
 // ---------------------------------------------------------------------------
 
@@ -548,15 +592,15 @@ export function executeEnemyTurn(battle: TurnBattleState, rpg: RPGState): void {
     return;
   }
 
-  const aliveParty = battle.combatants.filter(c => c.isPartyMember && c.hp > 0);
-  if (aliveParty.length === 0) {
+  const reachable = getValidTargets(battle, enemy.id);
+  if (reachable.length === 0) {
     _checkBattleEnd(battle);
     return;
   }
 
-  // Simple AI: attack weakest party member
-  aliveParty.sort((a, b) => a.hp - b.hp);
-  const target = aliveParty[0];
+  // Simple AI: attack weakest reachable party member
+  reachable.sort((a, b) => a.hp - b.hp);
+  const target = reachable[0];
 
   executeAction(battle, TurnBattleAction.ATTACK, target.id, null, null, rpg);
 }

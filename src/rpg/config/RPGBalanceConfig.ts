@@ -37,4 +37,5 @@ export const RPGBalance = {
 
   // Enemy scaling
   ENEMY_LEVEL_SCALE: 0.15,
+  MAX_ENEMY_COUNT: 10,
 } as const;

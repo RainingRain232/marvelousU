@@ -25,7 +25,7 @@ const SLOT_EMPTY_COLOR = 0x444466;
 // Modes
 // ---------------------------------------------------------------------------
 
-type PauseMode = "menu" | "save" | "confirm_quit";
+type PauseMode = "menu" | "save" | "formation" | "confirm_quit";
 
 // ---------------------------------------------------------------------------
 // PauseMenuView
@@ -50,7 +50,7 @@ export class PauseMenuView {
   onOptions: (() => void) | null = null;
   onQuitToTitle: (() => void) | null = null;
 
-  private _menuOptions = ["Resume", "Save Game", "Options", "Quit to Title"];
+  private _menuOptions = ["Resume", "Save Game", "Formation", "Options", "Quit to Title"];
 
   init(vm: ViewManager, rpgState: RPGState, overworldState: OverworldState): void {
     this.vm = vm;
@@ -93,6 +93,8 @@ export class PauseMenuView {
       this._drawPauseMenu(W, H);
     } else if (this._mode === "save") {
       this._drawSaveMenu(W, H);
+    } else if (this._mode === "formation") {
+      this._drawFormation(W, H);
     } else if (this._mode === "confirm_quit") {
       this._drawConfirmQuit(W, H);
     }
@@ -100,7 +102,7 @@ export class PauseMenuView {
 
   private _drawPauseMenu(W: number, H: number): void {
     const panelW = Math.min(320, W - 40);
-    const panelH = 260;
+    const panelH = 300;
     const panelX = (W - panelW) / 2;
     const panelY = (H - panelH) / 2;
 
@@ -233,6 +235,92 @@ export class PauseMenuView {
     this.container.addChild(footer);
   }
 
+  private _drawFormation(W: number, H: number): void {
+    const party = this._rpgState.party;
+    const panelW = Math.min(440, W - 40);
+    const panelH = Math.max(200, party.length * 36 + 100);
+    const panelX = (W - panelW) / 2;
+    const panelY = (H - panelH) / 2;
+
+    const panel = new Graphics();
+    panel.roundRect(panelX, panelY, panelW, panelH, 8);
+    panel.fill({ color: PANEL_COLOR, alpha: 0.96 });
+    panel.stroke({ color: BORDER_COLOR, width: 2 });
+    this.container.addChild(panel);
+
+    const headerText = new Text({
+      text: "Formation",
+      style: { fontFamily: "monospace", fontSize: 20, fill: TITLE_COLOR, fontWeight: "bold" },
+    });
+    headerText.anchor.set(0.5, 0);
+    headerText.position.set(W / 2, panelY + 16);
+    this.container.addChild(headerText);
+
+    // Column headers
+    const colLeft = panelX + 28;
+    const colLine = panelX + panelW - 120;
+    const startY = panelY + 52;
+
+    const nameHeader = new Text({
+      text: "Unit",
+      style: { fontFamily: "monospace", fontSize: 11, fill: DIM_COLOR },
+    });
+    nameHeader.position.set(colLeft, startY);
+    this.container.addChild(nameHeader);
+
+    const lineHeader = new Text({
+      text: "Position",
+      style: { fontFamily: "monospace", fontSize: 11, fill: DIM_COLOR },
+    });
+    lineHeader.position.set(colLine, startY);
+    this.container.addChild(lineHeader);
+
+    for (let i = 0; i < party.length; i++) {
+      const member = party[i];
+      const selected = i === this._selectedIndex;
+      const y = startY + 22 + i * 36;
+      const line = this._rpgState.formation[member.id] ?? 1;
+
+      const nameText = new Text({
+        text: `${selected ? "> " : "  "}${member.name}`,
+        style: {
+          fontFamily: "monospace", fontSize: 13,
+          fill: selected ? SELECTED_COLOR : OPTION_COLOR,
+          fontWeight: selected ? "bold" : "normal",
+        },
+      });
+      nameText.position.set(colLeft, y);
+      this.container.addChild(nameText);
+
+      const rangeLabel = member.range > 1 ? " (ranged)" : " (melee)";
+      const rangeText = new Text({
+        text: rangeLabel,
+        style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
+      });
+      rangeText.position.set(colLeft + 160, y + 2);
+      this.container.addChild(rangeText);
+
+      const lineText = new Text({
+        text: line === 1 ? "[ FRONT ]" : "[ BACK  ]",
+        style: {
+          fontFamily: "monospace", fontSize: 13,
+          fill: line === 1 ? 0x44cc44 : 0x6688ff,
+          fontWeight: "bold",
+        },
+      });
+      lineText.position.set(colLine, y);
+      this.container.addChild(lineText);
+    }
+
+    const footer = new Text({
+      text: "Enter: Toggle Line  |  Escape: Back",
+      style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
+    });
+    footer.anchor.set(0.5, 0);
+    footer.position.set(W / 2, panelY + panelH - 28);
+    this.container.addChild(footer);
+  }
+
   private _drawConfirmQuit(W: number, H: number): void {
     const panelW = 320;
     const panelH = 130;
@@ -271,6 +359,7 @@ export class PauseMenuView {
       e.stopPropagation();
       if (this._mode === "menu") this._handleMenuInput(e);
       else if (this._mode === "save") this._handleSaveInput(e);
+      else if (this._mode === "formation") this._handleFormationInput(e);
       else if (this._mode === "confirm_quit") this._handleConfirmQuitInput(e);
     };
     window.addEventListener("keydown", this._onKeyDown, true);
@@ -292,8 +381,13 @@ export class PauseMenuView {
           this._saveMessage = "";
           this._draw();
           break;
-        case 2: this.onOptions?.(); break;
-        case 3:
+        case 2:
+          this._mode = "formation";
+          this._selectedIndex = 0;
+          this._draw();
+          break;
+        case 3: this.onOptions?.(); break;
+        case 4:
           this._mode = "confirm_quit";
           this._selectedIndex = 1; // Default to No
           this._draw();
@@ -324,6 +418,35 @@ export class PauseMenuView {
     }
   }
 
+  private _handleFormationInput(e: KeyboardEvent): void {
+    const party = this._rpgState.party;
+    if (party.length === 0) {
+      if (e.code === "Escape") {
+        this._mode = "menu";
+        this._selectedIndex = 2;
+        this._draw();
+      }
+      return;
+    }
+
+    if (e.code === "ArrowUp") {
+      this._selectedIndex = (this._selectedIndex - 1 + party.length) % party.length;
+      this._draw();
+    } else if (e.code === "ArrowDown") {
+      this._selectedIndex = (this._selectedIndex + 1) % party.length;
+      this._draw();
+    } else if (e.code === "Enter" || e.code === "Space") {
+      const member = party[this._selectedIndex];
+      const current = this._rpgState.formation[member.id] ?? 1;
+      this._rpgState.formation[member.id] = current === 1 ? 2 : 1;
+      this._draw();
+    } else if (e.code === "Escape") {
+      this._mode = "menu";
+      this._selectedIndex = 2;
+      this._draw();
+    }
+  }
+
   private _handleConfirmQuitInput(e: KeyboardEvent): void {
     if (e.code === "ArrowLeft" || e.code === "ArrowRight") {
       this._selectedIndex = this._selectedIndex === 0 ? 1 : 0;
@@ -333,12 +456,12 @@ export class PauseMenuView {
         this.onQuitToTitle?.();
       } else {
         this._mode = "menu";
-        this._selectedIndex = 3;
+        this._selectedIndex = 4;
         this._draw();
       }
     } else if (e.code === "Escape") {
       this._mode = "menu";
-      this._selectedIndex = 3;
+      this._selectedIndex = 4;
       this._draw();
     }
   }

@@ -164,24 +164,32 @@ export class TownMenuView {
     const y = 50;
     const tabWidth = Math.min(120, (W - 40) / TABS.length);
 
-    // Draw tab backgrounds first so text renders on top
-    const g = new Graphics();
-    for (let i = 0; i < TABS.length; i++) {
-      const x = 20 + i * tabWidth;
-      const isActive = i === this._activeTab;
-
-      g.roundRect(x, y, tabWidth - 4, 30, 4);
-      g.fill({ color: isActive ? TAB_ACTIVE_COLOR : PANEL_COLOR });
-      g.stroke({ color: isActive ? HIGHLIGHT_COLOR : BORDER_COLOR, width: isActive ? 2 : 1 });
-    }
-    this.container.addChild(g);
-
-    // Draw tab labels on top of backgrounds
     for (let i = 0; i < TABS.length; i++) {
       const x = 20 + i * tabWidth;
       const isActive = i === this._activeTab;
       const tabName = TABS[i];
       const icon = TAB_ICONS[tabName] ?? "";
+
+      // Clickable tab container
+      const tab = new Container();
+      tab.position.set(x, y);
+      tab.eventMode = "static";
+      tab.cursor = "pointer";
+      tab.on("pointerdown", () => {
+        if (this._activeTab !== i) {
+          this._activeTab = i;
+          this._itemIndex = 0;
+          this._partyIndex = 0;
+          this._recruitIndex = 0;
+          this._draw();
+        }
+      });
+
+      const g = new Graphics();
+      g.roundRect(0, 0, tabWidth - 4, 30, 4);
+      g.fill({ color: isActive ? TAB_ACTIVE_COLOR : PANEL_COLOR });
+      g.stroke({ color: isActive ? HIGHLIGHT_COLOR : BORDER_COLOR, width: isActive ? 2 : 1 });
+      tab.addChild(g);
 
       const text = new Text({
         text: `${icon} ${tabName}`,
@@ -193,8 +201,10 @@ export class TownMenuView {
         },
       });
       text.anchor.set(0.5, 0.5);
-      text.position.set(x + (tabWidth - 4) / 2, y + 15);
-      this.container.addChild(text);
+      text.position.set((tabWidth - 4) / 2, 15);
+      tab.addChild(text);
+
+      this.container.addChild(tab);
     }
   }
 

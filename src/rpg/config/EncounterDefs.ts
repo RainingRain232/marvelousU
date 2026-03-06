@@ -25,6 +25,8 @@ export interface EnemyDef {
   level: number;
   count: number;
   overrides?: Partial<{ hp: number; atk: number; def: number; speed: number }>;
+  /** Override battle line placement (1=front, 2=back). Auto-assigned by range if omitted. */
+  line?: 1 | 2;
 }
 
 export interface EncounterDef {
@@ -94,6 +96,39 @@ export const ENCOUNTER_DEFS: Record<string, EncounterDef> = {
     lootTable: [
       { item: ITEM_MANA_POTION, chance: 0.2 },
       { item: ITEM_LEATHER_ARMOR, chance: 0.15 },
+    ],
+  },
+
+  orc_warband: {
+    id: "orc_warband",
+    name: "Orc Warband",
+    enemies: [
+      { unitType: UnitType.SWORDSMAN, level: 3, count: 4 },
+      { unitType: UnitType.ARCHER, level: 3, count: 3 },
+      { unitType: UnitType.PIKEMAN, level: 3, count: 2 },
+    ],
+    isBoss: false,
+    xpReward: 100,
+    goldReward: 50,
+    lootTable: [
+      { item: ITEM_HEALTH_POTION, chance: 0.3 },
+      { item: ITEM_IRON_SWORD, chance: 0.15 },
+    ],
+  },
+  desert_raiders: {
+    id: "desert_raiders",
+    name: "Desert Raiders",
+    enemies: [
+      { unitType: UnitType.SWORDSMAN, level: 4, count: 3 },
+      { unitType: UnitType.ARCHER, level: 4, count: 3 },
+      { unitType: UnitType.CROSSBOWMAN, level: 4, count: 2 },
+    ],
+    isBoss: false,
+    xpReward: 120,
+    goldReward: 60,
+    lootTable: [
+      { item: ITEM_GREATER_HEALTH_POTION, chance: 0.2 },
+      { item: ITEM_CHAINMAIL, chance: 0.1 },
     ],
   },
 
@@ -209,10 +244,10 @@ export const ENCOUNTER_DEFS: Record<string, EncounterDef> = {
 // ---------------------------------------------------------------------------
 
 export const OVERWORLD_ENCOUNTERS: Record<string, string[]> = {
-  grass: ["forest_wolves", "bandit_ambush"],
-  forest: ["forest_wolves", "goblin_patrol", "bandit_ambush"],
-  sand: ["bandit_ambush", "skeleton_patrol"],
-  snow: ["skeleton_patrol", "goblin_patrol"],
+  grass: ["forest_wolves", "bandit_ambush", "orc_warband"],
+  forest: ["forest_wolves", "goblin_patrol", "bandit_ambush", "orc_warband"],
+  sand: ["bandit_ambush", "skeleton_patrol", "desert_raiders"],
+  snow: ["skeleton_patrol", "goblin_patrol", "orc_warband"],
 };
 
 export const DUNGEON_ENCOUNTER_TABLES: Record<string, string[]> = {

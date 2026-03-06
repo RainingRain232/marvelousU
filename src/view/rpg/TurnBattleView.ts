@@ -236,28 +236,86 @@ export class TurnBattleView {
   // ---------------------------------------------------------------------------
 
   private _createCombatantSprites(): void {
-    const enemies = this.battleState.combatants.filter(c => !c.isPartyMember);
-    const party = this.battleState.combatants.filter(c => c.isPartyMember);
-
     const screenW = this.vm.screenWidth;
     const screenH = this.vm.screenHeight;
+    const LINE_GAP = 70; // vertical gap between front and back lines
 
-    // Enemies (top area)
-    const enemyStartX = (screenW - (enemies.length * COMBATANT_SPACING)) / 2;
-    for (let i = 0; i < enemies.length; i++) {
-      const c = enemies[i];
-      const x = enemyStartX + i * COMBATANT_SPACING + COMBATANT_SPACING / 2;
-      this._createSpriteEntry(c, x, ENEMY_AREA_Y, false);
+    // --- Enemies ---
+    const enemyFront = this.battleState.combatants.filter(c => !c.isPartyMember && c.line === 1);
+    const enemyBack = this.battleState.combatants.filter(c => !c.isPartyMember && c.line === 2);
+
+    // Dynamic spacing to fit up to 10 enemies
+    const maxEnemyLine = Math.max(enemyFront.length, enemyBack.length, 1);
+    const enemySpacing = Math.min(COMBATANT_SPACING, (screenW - 60) / maxEnemyLine);
+
+    // Back line (further from center = higher up)
+    if (enemyBack.length > 0) {
+      const startX = (screenW - enemyBack.length * enemySpacing) / 2;
+      for (let i = 0; i < enemyBack.length; i++) {
+        const x = startX + i * enemySpacing + enemySpacing / 2;
+        this._createSpriteEntry(enemyBack[i], x, ENEMY_AREA_Y - LINE_GAP / 2, false);
+      }
+    }
+    // Front line (closer to center = lower)
+    {
+      const startX = (screenW - enemyFront.length * enemySpacing) / 2;
+      for (let i = 0; i < enemyFront.length; i++) {
+        const x = startX + i * enemySpacing + enemySpacing / 2;
+        this._createSpriteEntry(enemyFront[i], x, ENEMY_AREA_Y + LINE_GAP / 2, false);
+      }
     }
 
-    // Party (bottom area)
-    const partyY = screenH - PARTY_AREA_Y_OFFSET;
-    const partyStartX = (screenW - (party.length * COMBATANT_SPACING)) / 2;
-    for (let i = 0; i < party.length; i++) {
-      const c = party[i];
-      const x = partyStartX + i * COMBATANT_SPACING + COMBATANT_SPACING / 2;
-      this._createSpriteEntry(c, x, partyY, true);
+    // --- Party ---
+    const partyFront = this.battleState.combatants.filter(c => c.isPartyMember && c.line === 1);
+    const partyBack = this.battleState.combatants.filter(c => c.isPartyMember && c.line === 2);
+    const partyBaseY = screenH - PARTY_AREA_Y_OFFSET;
+
+    // Front line (closer to center = higher up)
+    {
+      const startX = (screenW - partyFront.length * COMBATANT_SPACING) / 2;
+      for (let i = 0; i < partyFront.length; i++) {
+        const x = startX + i * COMBATANT_SPACING + COMBATANT_SPACING / 2;
+        this._createSpriteEntry(partyFront[i], x, partyBaseY - LINE_GAP / 2, true);
+      }
     }
+    // Back line (further from center = lower)
+    if (partyBack.length > 0) {
+      const startX = (screenW - partyBack.length * COMBATANT_SPACING) / 2;
+      for (let i = 0; i < partyBack.length; i++) {
+        const x = startX + i * COMBATANT_SPACING + COMBATANT_SPACING / 2;
+        this._createSpriteEntry(partyBack[i], x, partyBaseY + LINE_GAP / 2, true);
+      }
+    }
+
+    // Line labels
+    this._drawLineLabels(screenW, screenH, LINE_GAP);
+  }
+
+  private _drawLineLabels(_screenW: number, screenH: number, lineGap: number): void {
+    const labelStyle = { fontFamily: "monospace", fontSize: 9, fill: 0x666688 };
+
+    // Enemy labels
+    const eFront = new Text({ text: "Front", style: labelStyle });
+    eFront.anchor.set(0, 0.5);
+    eFront.position.set(4, ENEMY_AREA_Y + lineGap / 2);
+    this.combatantsContainer.addChild(eFront);
+
+    const eBack = new Text({ text: "Back", style: labelStyle });
+    eBack.anchor.set(0, 0.5);
+    eBack.position.set(4, ENEMY_AREA_Y - lineGap / 2);
+    this.combatantsContainer.addChild(eBack);
+
+    // Party labels
+    const partyBaseY = screenH - PARTY_AREA_Y_OFFSET;
+    const pFront = new Text({ text: "Front", style: labelStyle });
+    pFront.anchor.set(0, 0.5);
+    pFront.position.set(4, partyBaseY - lineGap / 2);
+    this.combatantsContainer.addChild(pFront);
+
+    const pBack = new Text({ text: "Back", style: labelStyle });
+    pBack.anchor.set(0, 0.5);
+    pBack.position.set(4, partyBaseY + lineGap / 2);
+    this.combatantsContainer.addChild(pBack);
   }
 
   private _createSpriteEntry(c: TurnBattleCombatant, x: number, y: number, isParty: boolean): void {

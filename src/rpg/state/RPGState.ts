@@ -99,6 +99,8 @@ export interface RPGState {
   stepsSinceLastTown: number;
   /** Seed used to generate current recruit roster (changes every 20 steps). */
   recruitSeed: number;
+  /** Party formation: maps member id → battle line (1=front, 2=back). Missing = front. */
+  formation: Record<string, 1 | 2>;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,5 +125,6 @@ export function createRPGState(seed: number, startPosition: Vec2): RPGState {
     seed,
     stepsSinceLastTown: 0,
     recruitSeed: seed,
+    formation: {},
   };
 }
