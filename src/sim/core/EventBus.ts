@@ -48,6 +48,9 @@ export interface SimEvents {
   // Game flow
   phaseChanged: { phase: GamePhase };
   roguelikeDisabledBuildingsChanged: { disabled: string[] };
+
+  // Grail Greed Corruption
+  corruptionModifierActivated: { modifierName: string; description: string; corruptionLevel: number };
 }
 
 // ---------------------------------------------------------------------------

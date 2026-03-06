@@ -54,6 +54,9 @@ export class VictoryScreen {
   /** If > 0, this is a wave mode battle. Set before init or before phase resolves. */
   waveNumber = 0;
 
+  /** Corruption level for Grail Greed mode display. 0 = no corruption. */
+  corruptionLevel = 0;
+
   /** Called when the player clicks "NEXT WAVE" in wave mode. */
   onNextWave: (() => void) | null = null;
 
@@ -180,10 +183,14 @@ export class VictoryScreen {
     const isWave = this.waveNumber > 0;
     const p1Won = state.winnerId === "p1";
 
+    const corruptionTag = this.corruptionLevel > 0
+      ? ` — CORRUPTION ${this.corruptionLevel}`
+      : "";
+
     if (state.winnerId === null) {
       this._winnerText.text = "DRAW";
       this._subtitleText.text = isWave
-        ? `WAVE ${this.waveNumber} — MUTUAL DESTRUCTION`
+        ? `WAVE ${this.waveNumber}${corruptionTag} — MUTUAL DESTRUCTION`
         : "MUTUAL DESTRUCTION";
     } else {
       const playerLabels: Record<string, string> = {
@@ -195,7 +202,7 @@ export class VictoryScreen {
       const label = playerLabels[state.winnerId] ?? state.winnerId.toUpperCase();
       this._winnerText.text = label;
       this._subtitleText.text = isWave
-        ? `WAVE ${this.waveNumber} ${p1Won ? "COMPLETE" : "— DEFEATED"}`
+        ? `WAVE ${this.waveNumber}${corruptionTag} ${p1Won ? "COMPLETE" : "— DEFEATED"}`
         : "WINS THE ROUND";
     }
 

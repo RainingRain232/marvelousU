@@ -99,6 +99,15 @@ import type { RaceId } from "@sim/config/RaceDefs";
 import { ARMORY_ITEMS } from "@sim/config/ArmoryItemDefs";
 import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
 
+import {
+  createGrailCorruptionState,
+  selectModifier,
+  applyCorruptionModifiers,
+  tickCorruptionModifiers,
+  onCorruptionUnitDied,
+  type GrailCorruptionState,
+} from "@sim/systems/GrailCorruptionSystem";
+
 /** First 2 armory items unlocked at world game start. More drop from camps. */
 const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) => i.id);
 
@@ -789,6 +798,8 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       unitShopScreen.show(raceId, 30000, "YOUR ARMY");
     } else if (gameMode === GameMode.WAVE) {
       // Wave mode: player unit shop → battle vs random wave
+      const corruption = createGrailCorruptionState();
+      corruption.enabled = menuScreen.grailGreedEnabled;
       _waveState = {
         wave: 1,
         playerRaceId: raceId,
@@ -796,6 +807,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         totalGoldSpent: 0,
         mapSize,
         mapType,
+        corruption,
       };
       unitShopScreen.onDone = async (playerRoster) => {
         unitShopScreen.hide();
@@ -806,6 +818,18 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
           if (uDef) spent += uDef.cost * entry.count;
         }
         _waveState!.totalGoldSpent += spent;
+
+        // Check for new corruption modifier
+        if (_waveState!.corruption.enabled) {
+          const newMod = selectModifier(_waveState!.corruption, _waveState!.wave);
+          if (newMod) {
+            EventBus.emit("corruptionModifierActivated", {
+              modifierName: newMod.name,
+              description: newMod.description,
+              corruptionLevel: _waveState!.corruption.corruptionLevel,
+            });
+          }
+        }
 
         // Generate enemy wave
         const enemyBudget = _waveState!.wave === 1
@@ -833,7 +857,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
           [],
         );
       };
-      unitShopScreen.show(raceId, 2000, `WAVE 1 — RECRUIT ARMY`);
+      const corruptionLabel = corruption.enabled ? " [GRAIL GREED]" : "";
+      unitShopScreen.setCorruptionModifiers(corruption.activeModifiers);
+      unitShopScreen.show(raceId, 2000, `WAVE 1${corruptionLabel} — RECRUIT ARMY`);
     } else {
       await _bootGame(
         p2IsAI,
@@ -1849,6 +1875,7 @@ let _waveState: {
   totalGoldSpent: number; // running total of all gold player spent
   mapSize: MapSize;
   mapType: MapType;
+  corruption: GrailCorruptionState;
 } | null = null;
 
 const MERLIN_COMPLIMENTS: Record<number, string> = {
@@ -1916,6 +1943,18 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     }
     ws.totalGoldSpent += spent;
 
+    // Check for new corruption modifier
+    if (ws.corruption.enabled) {
+      const newMod = selectModifier(ws.corruption, ws.wave);
+      if (newMod) {
+        EventBus.emit("corruptionModifierActivated", {
+          modifierName: newMod.name,
+          description: newMod.description,
+          corruptionLevel: ws.corruption.corruptionLevel,
+        });
+      }
+    }
+
     // Generate enemy wave: enemies worth totalGoldSpent * 1.3
     const enemyBudget = Math.round(ws.totalGoldSpent * 1.3);
     const enemyRoster = _generateWaveEnemyRoster(ws.playerRaceId, enemyBudget, ws.wave);
@@ -1940,7 +1979,11 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
       [],
     );
   };
-  unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave} — RECRUIT ARMY`);
+  const corruptionSuffix = ws.corruption.enabled && ws.corruption.corruptionLevel > 0
+    ? ` [CORRUPTION ${ws.corruption.corruptionLevel}]`
+    : ws.corruption.enabled ? " [GRAIL GREED]" : "";
+  unitShopScreen.setCorruptionModifiers(ws.corruption.activeModifiers);
+  unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave}${corruptionSuffix} — RECRUIT ARMY`);
 }
 
 /** Show a brief Merlin compliment overlay, then call the callback. */
@@ -5369,6 +5412,10 @@ async function _bootGame(
       const midY = Math.floor(mapSize.height / 2);
       _spawnRoster(state, _worldBattleRosters.p1Roster, "p1", Math.floor(mapSize.width * 0.2), midY, mapSize.height);
       _spawnRoster(state, _worldBattleRosters.p2Roster, "p2", Math.floor(mapSize.width * 0.8), midY, mapSize.height);
+      // Apply Grail Greed Corruption modifiers to the battle
+      if (_waveState?.corruption.enabled) {
+        applyCorruptionModifiers(state, _waveState.corruption);
+      }
     } else if (gameMode === GameMode.CAMPAIGN) {
       _spawnScenarioBattlefieldUnits(state, mapSize.width, mapSize.height, scenarioNum ?? 1);
     } else {
@@ -5650,8 +5697,10 @@ async function _bootGame(
   // Set wave number so the victory screen shows wave info and next-wave button
   if (_waveState) {
     victoryScreen.waveNumber = _waveState.wave;
+    victoryScreen.corruptionLevel = _waveState.corruption.corruptionLevel;
   } else {
     victoryScreen.waveNumber = 0;
+    victoryScreen.corruptionLevel = 0;
   }
   victoryScreen.init(viewManager, state);
 
@@ -5750,6 +5799,22 @@ async function _bootGame(
   // Simulation loop (fixed timestep, drives all sim systems)
   const simLoop = new SimLoop(state);
   simLoop.start();
+
+  // Grail Greed Corruption — per-tick and unitDied hooks
+  if (_waveState?.corruption.enabled && _waveState.corruption.activeModifiers.length > 0) {
+    const cs = _waveState.corruption;
+    viewManager.onUpdate((s, dt) => {
+      if (s.phase === GamePhase.BATTLE) {
+        tickCorruptionModifiers(s, cs, dt);
+      }
+    });
+    EventBus.on("unitDied", ({ unitId }) => {
+      const unit = state.units.get(unitId);
+      if (unit) {
+        onCorruptionUnitDied(state, cs, unit);
+      }
+    });
+  }
 
   // Start cinematic speed ramp for battlefield campaign scenarios
   if (gameMode === GameMode.CAMPAIGN && (scenarioNum === 1 || scenarioNum === 2)) {

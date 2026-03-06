@@ -8,6 +8,7 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { filterInventoryByRace, getRace } from "@sim/config/RaceDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
 import { BuildingType, UnitType } from "@/types";
+import type { CorruptionModifier } from "@sim/systems/GrailCorruptionSystem";
 
 export type UnitRoster = Array<{ type: UnitType; count: number }>;
 
@@ -146,8 +147,14 @@ export class UnitShopScreen {
   private _randomToggleBg?: Graphics;
   private _randomToggleLabel?: Text;
   private _startBtn!: Container;
+  private _activeModifiers: CorruptionModifier[] = [];
 
   onDone: ((roster: UnitRoster) => void) | null = null;
+
+  /** Set active corruption modifiers to display in the shop. */
+  setCorruptionModifiers(modifiers: CorruptionModifier[]): void {
+    this._activeModifiers = modifiers;
+  }
 
   init(vm: ViewManager): void {
     this._vm = vm;
@@ -301,6 +308,46 @@ export class UnitShopScreen {
       this._scrollContainer.addChild(toggleRow);
       this._unitRows.push(toggleRow);
       yOff += tH + 6;
+    }
+
+    // Active corruption modifiers display
+    if (this._activeModifiers.length > 0) {
+      const modHeaderTxt = new Text({
+        text: `ACTIVE CORRUPTION (${this._activeModifiers.length}):`,
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 10,
+          fill: 0xcc88ff,
+          fontWeight: "bold",
+          letterSpacing: 1,
+        }),
+      });
+      modHeaderTxt.position.set(PAD, yOff + 2);
+      const modHeaderRow = new Container();
+      modHeaderRow.addChild(modHeaderTxt);
+      this._scrollContainer.addChild(modHeaderRow);
+      this._unitRows.push(modHeaderRow);
+      yOff += 18;
+
+      for (const mod of this._activeModifiers) {
+        const modRow = new Container();
+        modRow.position.set(PAD, yOff);
+        const modTxt = new Text({
+          text: `  ${mod.name} — ${mod.description}`,
+          style: new TextStyle({
+            fontFamily: "monospace",
+            fontSize: 9,
+            fill: 0xaa77dd,
+            letterSpacing: 1,
+          }),
+        });
+        modTxt.position.set(0, 2);
+        modRow.addChild(modTxt);
+        this._scrollContainer.addChild(modRow);
+        this._unitRows.push(modRow);
+        yOff += 16;
+      }
+      yOff += 6;
     }
 
     // Unit rows

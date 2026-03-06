@@ -279,6 +279,12 @@ export class MenuScreen {
   private _p4AllyBg!: Graphics;
   private _p4AllyLabel!: Text;
 
+  // Grail Greed Corruption toggle (wave mode only)
+  private _grailGreed = false;
+  private _grailGreedSection!: Container;
+  private _grailGreedBg!: Graphics;
+  private _grailGreedLabel!: Text;
+
   // Callbacks
   onAIToggle: ((isAI: boolean) => void) | null = null;
   onContinue: (() => void) | null = null;
@@ -309,6 +315,9 @@ export class MenuScreen {
     if (this._playerCount >= 3 && this._p3Allied) allies.push("p3");
     if (this._playerCount >= 4 && this._p4Allied) allies.push("p4");
     return allies;
+  }
+  get grailGreedEnabled(): boolean {
+    return this._grailGreed;
   }
 
   // ---------------------------------------------------------------------------
@@ -370,6 +379,9 @@ export class MenuScreen {
     // Show/hide player section based on mode
     const entry = GAME_MODES[this._selectedModeIndex];
     this._screen2PlayerSection.visible = !entry.hidePlayerSetup;
+
+    // Show/hide Grail Greed toggle (wave mode only)
+    this._grailGreedSection.visible = entry.mode === GameMode.WAVE;
 
     this._layout();
   }
@@ -908,12 +920,57 @@ export class MenuScreen {
         .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
+    // --- Grail Greed Corruption toggle (wave mode only) ---
+    const grailSection = new Container();
+    grailSection.position.set(0, curY);
+    grailSection.visible = false; // shown only for wave mode
+    card.addChild(grailSection);
+    this._grailGreedSection = grailSection;
+
+    const grailLabel = new Text({ text: "GRAIL GREED CORRUPTION", style: STYLE_LABEL });
+    grailLabel.position.set(20, 0);
+    grailSection.addChild(grailLabel);
+
+    const grailBtn = new Container();
+    grailBtn.eventMode = "static";
+    grailBtn.cursor = "pointer";
+    grailBtn.position.set(20, 20);
+
+    const grailBg = new Graphics();
+    grailBtn.addChild(grailBg);
+
+    const grailToggleLabel = new Text({ text: "", style: STYLE_BTN });
+    grailToggleLabel.anchor.set(0.5, 0.5);
+    grailToggleLabel.position.set(TW / 2, TH / 2);
+    grailBtn.addChild(grailToggleLabel);
+
+    this._grailGreedBg = grailBg;
+    this._grailGreedLabel = grailToggleLabel;
+
+    grailBtn.on("pointerdown", () => {
+      this._grailGreed = !this._grailGreed;
+      this._refreshGrailGreedToggle(TW, TH);
+    });
+
+    grailSection.addChild(grailBtn);
+    this._refreshGrailGreedToggle(TW, TH);
+
+    const grailSectionH = 20 + TH + 12;
+
+    // Divider inside grail section
+    grailSection.addChild(
+      new Graphics()
+        .rect(20, grailSectionH, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
     // We track two possible curY values — with and without player section
     // The actual card height is computed in _layout based on visibility
     // For now, place the action buttons after player section
     const actionBaseY = curY; // Y where player section starts
     const actionYWithPlayers = actionBaseY + playerSectionH + 14;
     const actionYWithoutPlayers = actionBaseY;
+    const grailSectionFullH = grailSectionH + 14;
 
     // --- Action buttons (placed at a fixed offset, repositioned in layout) ---
     const BW = CW - 40;
@@ -942,12 +999,18 @@ export class MenuScreen {
     // Override _layout to also reposition action buttons
     const origLayout = this._layout.bind(this);
     this._layout = () => {
-      // Position action buttons based on player section visibility
+      // Position action buttons based on player section and grail section visibility
       let actY: number;
       if (this._screen2PlayerSection.visible) {
         actY = actionYWithPlayers;
       } else {
         actY = actionYWithoutPlayers;
+      }
+
+      // Position grail section right after the current section
+      this._grailGreedSection.position.set(0, actY);
+      if (this._grailGreedSection.visible) {
+        actY += grailSectionFullH;
       }
 
       actionBtns.back.position.set(20, actY);
@@ -1107,6 +1170,20 @@ export class MenuScreen {
         entry.label.style = STYLE_SIZE_INACTIVE;
       }
     }
+  }
+
+  private _refreshGrailGreedToggle(w: number, h: number): void {
+    const active = this._grailGreed;
+    this._grailGreedBg.clear();
+    this._grailGreedBg
+      .roundRect(0, 0, w, h, 4)
+      .fill({ color: active ? 0x2a1a2a : 0x1a1a1a })
+      .roundRect(0, 0, w, h, 4)
+      .stroke({ color: active ? 0x9944cc : 0x555555, width: 1.5 });
+    this._grailGreedLabel.text = active
+      ? "CORRUPTION: ON  [click to disable]"
+      : "CORRUPTION: OFF  [click to enable]";
+    this._grailGreedLabel.style.fill = active ? 0xcc88ff : 0x888888;
   }
 
   private _refreshAllianceToggles(): void {
