@@ -1,8 +1,11 @@
 // Main Menu screen — New Game, Continue, Options
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Text, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { getSaveSlots, hasSaveData, deleteSave } from "@rpg/systems/SaveSystem";
 import type { SaveSlotMeta } from "@rpg/systems/SaveSystem";
+
+// Pixel art background image
+import swordInStoneUrl from "@/img/Gemini_Generated_Image_1fm2lt1fm2lt1fm2.png";
 
 // ---------------------------------------------------------------------------
 // Colours
@@ -96,18 +99,18 @@ export class MainMenuView {
     bg.fill({ color: BG_COLOR });
     this.container.addChild(bg);
 
-    // Decorative grid lines
-    const gridGfx = new Graphics();
-    for (let x = 0; x < W; x += 48) {
-      gridGfx.moveTo(x, 0);
-      gridGfx.lineTo(x, H);
-    }
-    for (let y = 0; y < H; y += 48) {
-      gridGfx.moveTo(0, y);
-      gridGfx.lineTo(W, y);
-    }
-    gridGfx.stroke({ color: 0x111128, width: 1 });
-    this.container.addChild(gridGfx);
+    // Background art — sword in the stone
+    void Assets.load(swordInStoneUrl).then((tex: Texture) => {
+      if (!this.container.destroyed) {
+        const sprite = new Sprite(tex);
+        const scale = Math.max(W / tex.width, H / tex.height);
+        sprite.scale.set(scale);
+        sprite.position.set((W - tex.width * scale) / 2, (H - tex.height * scale) / 2);
+        sprite.alpha = 0.25;
+        // Insert behind everything else except the bg rect
+        this.container.addChildAt(sprite, 1);
+      }
+    });
 
     // Title
     const title = new Text({

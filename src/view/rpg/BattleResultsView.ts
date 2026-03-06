@@ -1,7 +1,10 @@
 // Post-battle results overlay — shows XP, gold, loot, and level-ups
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Text, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { RPGItem } from "@rpg/state/RPGState";
+
+import displaycaseUrl from "@/img/displaycase.png";
+import longswordUrl from "@/img/longsword.png";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -72,6 +75,22 @@ export class BattleResultsView {
     panel.fill({ color: PANEL_COLOR, alpha: 0.95 });
     panel.stroke({ color: BORDER_COLOR, width: 2 });
     this.container.addChild(panel);
+
+    // Banner image (top-right corner of panel)
+    const bannerUrl = results.victory ? displaycaseUrl : longswordUrl;
+    const imgSize = 70;
+    void Assets.load(bannerUrl).then((tex: Texture) => {
+      if (this.container.destroyed) return;
+      const sprite = new Sprite(tex);
+      const scale = Math.min(imgSize / tex.width, imgSize / tex.height);
+      sprite.scale.set(scale);
+      sprite.position.set(
+        panelX + panelW - imgSize - 15 + (imgSize - tex.width * scale) / 2,
+        panelY + 12 + (imgSize - tex.height * scale) / 2,
+      );
+      sprite.alpha = 0.8;
+      this.container.addChild(sprite);
+    });
 
     let y = panelY + 20;
 

@@ -1,9 +1,18 @@
 // NPC dialogue overlay — shows dialogue lines, advance with Enter
 // Also handles quest offers, progress, and completion
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Text, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { RPGState, QuestState } from "@rpg/state/RPGState";
 import { getAvailableQuest, getActiveQuest, acceptQuest, claimQuestReward } from "@rpg/systems/QuestSystem";
+
+// Leader portrait images
+import arthurImgUrl from "@/img/arthur.png";
+import merlinImgUrl from "@/img/merlin.png";
+
+const LEADER_PORTRAITS: Record<string, string> = {
+  leader_arthur: arthurImgUrl,
+  leader_merlin: merlinImgUrl,
+};
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -38,6 +47,7 @@ export class NPCDialogView {
   private _dialogPhase: DialogPhase = "dialogue";
   private _questData: QuestState | null = null;
   private _isLeader: boolean = false;
+  private _leaderId: string = "";
   private _leaderTitle: string = "";
   private _blessingName: string = "";
   private _blessingDesc: string = "";
@@ -64,6 +74,7 @@ export class NPCDialogView {
     this._dialogPhase = "dialogue";
     this._questData = null;
     this._isLeader = !!leaderId;
+    this._leaderId = leaderId ?? "";
     this._leaderTitle = leaderTitle ?? "";
     this._blessingName = blessingName ?? "";
     this._blessingDesc = blessingDesc ?? "";
@@ -88,6 +99,36 @@ export class NPCDialogView {
 
     const W = this.vm.screenWidth;
     const H = this.vm.screenHeight;
+
+    // Leader portrait (above dialog box)
+    const portraitUrl = this._isLeader ? LEADER_PORTRAITS[this._leaderId] : undefined;
+    if (portraitUrl) {
+      const pSize = 90;
+      const px = W - pSize - 30;
+      const py = H - 120 - 10 - pSize - 12;
+      const pFrame = new Graphics();
+      pFrame.roundRect(px - 4, py - 4, pSize + 8, pSize + 8, 6);
+      pFrame.fill({ color: BG_COLOR, alpha: 0.9 });
+      pFrame.stroke({ color: LEADER_BORDER_COLOR, width: 2 });
+      this.container.addChild(pFrame);
+
+      void Assets.load(portraitUrl).then((tex: Texture) => {
+        if (this.container.destroyed) return;
+        const sprite = new Sprite(tex);
+        const scale = Math.min(pSize / tex.width, pSize / tex.height);
+        sprite.scale.set(scale);
+        sprite.position.set(
+          px + (pSize - tex.width * scale) / 2,
+          py + (pSize - tex.height * scale) / 2,
+        );
+        const mask = new Graphics();
+        mask.roundRect(px, py, pSize, pSize, 4);
+        mask.fill({ color: 0xffffff });
+        this.container.addChild(mask);
+        sprite.mask = mask;
+        this.container.addChild(sprite);
+      });
+    }
 
     // Dialog box at bottom of screen
     const boxH = 120;

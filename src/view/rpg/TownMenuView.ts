@@ -1,5 +1,5 @@
 // Full-screen town menu — shop, inn, party/equipment, leave
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Text, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { RPGState, RPGItem, EquipmentSlots, PartyMember } from "@rpg/state/RPGState";
 import type { TownData, RecruitData, ArcaneLibraryData } from "@rpg/state/OverworldState";
@@ -10,6 +10,21 @@ import { RPG_SPELL_DEFS, spellPrice } from "@rpg/config/RPGSpellDefs";
 import { isCaster, accessibleSchools, maxKnownSpells, learnSpells } from "@rpg/systems/SpellLearningSystem";
 import type { UpgradeType } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
+
+// Pixel art banner images per tab
+import armoryImgUrl from "@/img/armory.png";
+import merlinImgUrl from "@/img/merlin.png";
+import tavernImgUrl from "@/img/manP.png";
+import throneImgUrl from "@/img/throne.png";
+import displaycaseImgUrl from "@/img/displaycase.png";
+
+const TAB_BANNER_URLS: Record<string, string> = {
+  Shop: armoryImgUrl,
+  Spells: merlinImgUrl,
+  Inn: tavernImgUrl,
+  Recruit: throneImgUrl,
+  Party: displaycaseImgUrl,
+};
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -126,8 +141,9 @@ export class TownMenuView {
     // Tab bar
     this._drawTabs(W);
 
-    // Content area
+    // Tab banner image (right side)
     const tab = TABS[this._activeTab];
+    this._drawTabBanner(tab, W);
     switch (tab) {
       case "Shop":
         this._drawShop(W, H);
@@ -221,6 +237,40 @@ export class TownMenuView {
 
       this.container.addChild(tab);
     }
+  }
+
+  private _drawTabBanner(tabName: string, W: number): void {
+    const url = TAB_BANNER_URLS[tabName];
+    if (!url) return;
+
+    const bannerSize = Math.min(130, W * 0.18);
+    const bx = W - bannerSize - 20;
+    const by = 92;
+
+    // Frame
+    const frame = new Graphics();
+    frame.roundRect(bx - 4, by - 4, bannerSize + 8, bannerSize + 8, 6);
+    frame.fill({ color: PANEL_COLOR, alpha: 0.9 });
+    frame.stroke({ color: BORDER_COLOR, width: 2 });
+    this.container.addChild(frame);
+
+    void Assets.load(url).then((tex: Texture) => {
+      if (this.container.destroyed) return;
+      const sprite = new Sprite(tex);
+      const scale = Math.min(bannerSize / tex.width, bannerSize / tex.height);
+      sprite.scale.set(scale);
+      sprite.position.set(
+        bx + (bannerSize - tex.width * scale) / 2,
+        by + (bannerSize - tex.height * scale) / 2,
+      );
+      // Round the corners via a mask
+      const mask = new Graphics();
+      mask.roundRect(bx, by, bannerSize, bannerSize, 4);
+      mask.fill({ color: 0xffffff });
+      this.container.addChild(mask);
+      sprite.mask = mask;
+      this.container.addChild(sprite);
+    });
   }
 
   // ---------------------------------------------------------------------------

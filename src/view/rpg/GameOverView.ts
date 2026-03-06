@@ -1,6 +1,8 @@
 // Game Over screen — shown when the party is wiped, offers restart
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Text, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+
+import darkCastleUrl from "@/img/Gemini_Generated_Image_c07k0oc07k0oc07k.png";
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -48,10 +50,21 @@ export class GameOverView {
     const W = this.vm.screenWidth;
     const H = this.vm.screenHeight;
 
+    // Background art — dark castle
+    void Assets.load(darkCastleUrl).then((tex: Texture) => {
+      if (this.container.destroyed) return;
+      const sprite = new Sprite(tex);
+      const scale = Math.max(W / tex.width, H / tex.height);
+      sprite.scale.set(scale);
+      sprite.position.set((W - tex.width * scale) / 2, (H - tex.height * scale) / 2);
+      sprite.alpha = 0.3;
+      this.container.addChildAt(sprite, 0);
+    });
+
     // Full-screen dark overlay
     const overlay = new Graphics();
     overlay.rect(0, 0, W, H);
-    overlay.fill({ color: 0x000000, alpha: 0.8 });
+    overlay.fill({ color: 0x000000, alpha: 0.7 });
     this.container.addChild(overlay);
 
     // Panel
