@@ -12,6 +12,8 @@ import { RACE_DEFINITIONS } from "@sim/config/RaceDefs";
 import type { RaceDef, RaceId } from "@sim/config/RaceDefs";
 import { animationManager } from "@view/animation/AnimationManager";
 import { UnitState, UnitType } from "@/types";
+import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import type { UnitDef } from "@sim/config/UnitDefinitions";
 
 // Vite static image imports
 import racesImgUrl from "@/img/races.png";
@@ -102,6 +104,23 @@ const STYLE_BANNER_TITLE = new TextStyle({
   fontWeight: "bold", letterSpacing: 2,
 });
 
+// Tooltip styles
+const STYLE_TT_NAME = new TextStyle({
+  fontFamily: "monospace", fontSize: 13, fill: 0xffd700, fontWeight: "bold",
+});
+const STYLE_TT_STAT = new TextStyle({
+  fontFamily: "monospace", fontSize: 11, fill: 0xbbccdd,
+});
+const STYLE_TT_SPAWN = new TextStyle({
+  fontFamily: "monospace", fontSize: 11, fill: 0x668866,
+});
+const STYLE_TT_DESC = new TextStyle({
+  fontFamily: "monospace", fontSize: 10, fill: 0xaaaadd,
+  wordWrap: true, wordWrapWidth: 210,
+});
+const TT_W = 240;
+const TT_PAD = 10;
+
 // Colors
 const BG_COLOR = 0x0a0a18;
 const BORDER_COLOR = 0xffd700;
@@ -167,6 +186,10 @@ export class RaceSelectScreen {
 
   // Detail panel
   private _detailContainer!: Container;
+
+  // Tooltip
+  private _tooltip!: Container;
+  private _tooltipSprite: AnimatedSprite | null = null;
 
   // Selection
   private _selectedId: RaceId = RACE_DEFINITIONS[0].id;
@@ -298,6 +321,11 @@ export class RaceSelectScreen {
     this._detailContainer = new Container();
     this._detailContainer.position.set(DETAIL_X, CONTENT_Y);
     card.addChild(this._detailContainer);
+
+    // Tooltip (on top of everything)
+    this._tooltip = new Container();
+    this._tooltip.visible = false;
+    card.addChild(this._tooltip);
 
     // Footer divider
     card.addChild(
@@ -622,14 +650,19 @@ export class RaceSelectScreen {
       const units = race.factionUnits.length > 0 ? race.factionUnits : [race.factionUnit];
       let px = tx;
       for (const ut of units) {
+        const def = UNIT_DEFINITIONS[ut];
+        const btn = new Container();
+        btn.position.set(px, ty);
+        btn.eventMode = "static";
+        btn.cursor = "pointer";
+
         // Background box
-        d.addChild(
-          new Graphics()
-            .roundRect(px, ty, prevSize, prevSize, 4)
-            .fill({ color: 0x111122 })
-            .roundRect(px, ty, prevSize, prevSize, 4)
-            .stroke({ color: race.accentColor, alpha: 0.4, width: 1 }),
-        );
+        const bg = new Graphics()
+          .roundRect(0, 0, prevSize, prevSize, 4)
+          .fill({ color: 0x111122 })
+          .roundRect(0, 0, prevSize, prevSize, 4)
+          .stroke({ color: race.accentColor, alpha: 0.4, width: 1 });
+        btn.addChild(bg);
 
         const frames = animationManager.getFrames(ut, UnitState.IDLE);
         if (frames.length > 0 && frames[0] !== Texture.WHITE) {
@@ -637,23 +670,38 @@ export class RaceSelectScreen {
           sprite.anchor.set(0.5, 0.5);
           sprite.width = prevSize - 10;
           sprite.height = prevSize - 10;
-          sprite.position.set(px + prevSize / 2, ty + prevSize / 2);
+          sprite.position.set(prevSize / 2, prevSize / 2);
           const fs = animationManager.getFrameSet(ut, UnitState.IDLE);
           sprite.animationSpeed = fs.fps / 60;
           sprite.loop = true;
           sprite.play();
-          d.addChild(sprite);
+          btn.addChild(sprite);
         }
 
         // Unit name below the preview
-        const nameStr = this._formatUnitName(ut);
-        const nameT = new Text({ text: nameStr, style: new TextStyle({
+        const nameT = new Text({ text: this._formatUnitName(ut), style: new TextStyle({
           fontFamily: "monospace", fontSize: 8, fill: 0x8899aa, letterSpacing: 0,
         }) });
         nameT.anchor.set(0.5, 0);
-        nameT.position.set(px + prevSize / 2, ty + prevSize + 2);
-        d.addChild(nameT);
+        nameT.position.set(prevSize / 2, prevSize + 2);
+        btn.addChild(nameT);
 
+        // Hover handlers for tooltip
+        if (def) {
+          btn.on("pointerover", () => {
+            bg.tint = 0x334466;
+            // Position tooltip relative to the main card
+            const cardX = DETAIL_X + px + prevSize + 4;
+            const cardY = CONTENT_Y + ty;
+            this._showTooltip(def, cardX, cardY);
+          });
+          btn.on("pointerout", () => {
+            bg.tint = 0xffffff;
+            this._hideTooltip();
+          });
+        }
+
+        d.addChild(btn);
         px += prevSize + prevGap;
       }
     } else {
@@ -745,6 +793,147 @@ export class RaceSelectScreen {
       .replace(/_/g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase())
       .substring(0, 16);
+  }
+
+  private _formatUnitLabel(ut: UnitType): string {
+    return (ut as string)
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tooltip
+  // ---------------------------------------------------------------------------
+
+  private _showTooltip(def: UnitDef, cardX: number, cardY: number): void {
+    const tt = this._tooltip;
+    tt.removeChildren();
+    this._tooltipSprite = null;
+
+    let cy = TT_PAD;
+
+    // Animated sprite preview
+    const SPRITE_SIZE = 48;
+    const frames = animationManager.getFrames(def.type, UnitState.IDLE);
+    if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+      const sprite = new AnimatedSprite(frames);
+      sprite.anchor.set(0.5, 0.5);
+      sprite.width = SPRITE_SIZE - 8;
+      sprite.height = SPRITE_SIZE - 8;
+      sprite.position.set(TT_W / 2, cy + SPRITE_SIZE / 2);
+      const fs = animationManager.getFrameSet(def.type, UnitState.IDLE);
+      sprite.animationSpeed = fs.fps / 60;
+      sprite.loop = true;
+      sprite.play();
+      tt.addChild(sprite);
+      this._tooltipSprite = sprite;
+      cy += SPRITE_SIZE + 4;
+    }
+
+    // Name
+    const nameT = new Text({ text: this._formatUnitLabel(def.type), style: STYLE_TT_NAME });
+    nameT.position.set(TT_PAD, cy);
+    tt.addChild(nameT);
+    cy += 18;
+
+    // Description
+    if (def.description) {
+      const descT = new Text({ text: def.description, style: STYLE_TT_DESC });
+      descT.position.set(TT_PAD, cy);
+      tt.addChild(descT);
+      cy += descT.height + 6;
+    }
+
+    // Divider
+    tt.addChild(new Graphics().rect(TT_PAD, cy, TT_W - TT_PAD * 2, 1).fill({ color: 0x334455 }));
+    cy += 5;
+
+    // Stats line 1: HP ATK SPD TIER
+    const line1 = new Text({
+      text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed}${def.tier ? `  T${def.tier}` : ""}`,
+      style: STYLE_TT_STAT,
+    });
+    line1.position.set(TT_PAD, cy);
+    tt.addChild(line1);
+    cy += 14;
+
+    // Stats line 2: RNG AS COST
+    const line2 = new Text({
+      text: `RNG:${def.range}  AS:${def.attackSpeed}  COST:${def.cost}g`,
+      style: STYLE_TT_STAT,
+    });
+    line2.position.set(TT_PAD, cy);
+    tt.addChild(line2);
+    cy += 14;
+
+    // Stats line 3: Spawn + abilities
+    let extraLine = `Spawn: ${def.spawnTime}s`;
+    if (def.abilityTypes.length > 0) {
+      extraLine += `  ${def.abilityTypes.join(", ")}`;
+    }
+    const line3 = new Text({ text: extraLine, style: STYLE_TT_SPAWN });
+    line3.position.set(TT_PAD, cy);
+    tt.addChild(line3);
+    cy += 14;
+
+    // Element badge
+    if (def.element) {
+      const elemT = new Text({
+        text: def.element.charAt(0).toUpperCase() + def.element.slice(1),
+        style: new TextStyle({
+          fontFamily: "monospace", fontSize: 10,
+          fill: this._getElementColor(def.element), fontWeight: "bold",
+        }),
+      });
+      elemT.position.set(TT_PAD, cy);
+      tt.addChild(elemT);
+      cy += 14;
+    }
+
+    const TT_H = cy + TT_PAD;
+
+    // Background
+    const bg = new Graphics()
+      .roundRect(0, 0, TT_W, TT_H, 6)
+      .fill({ color: 0x0d0d1e, alpha: 0.95 })
+      .roundRect(0, 0, TT_W, TT_H, 6)
+      .stroke({ color: 0xffd700, alpha: 0.5, width: 1 });
+    tt.addChildAt(bg, 0);
+
+    // Position: try to place to the right of the hovered item
+    let tx = cardX + 6;
+    let ty = cardY - TT_H / 2;
+
+    // Clamp to stay within card bounds
+    if (tx + TT_W > MAIN_W - 10) {
+      tx = cardX - TT_W - 16;
+    }
+    if (ty < 10) ty = 10;
+    if (ty + TT_H > MAIN_H - 10) ty = MAIN_H - TT_H - 10;
+
+    tt.position.set(tx, ty);
+    tt.visible = true;
+  }
+
+  private _hideTooltip(): void {
+    this._tooltip.visible = false;
+    if (this._tooltipSprite) {
+      this._tooltipSprite.stop();
+      this._tooltipSprite = null;
+    }
+  }
+
+  private _getElementColor(element: string): number {
+    switch (element) {
+      case "fire": return 0xff6622;
+      case "cold": return 0x4488ff;
+      case "lightning": return 0xffdd22;
+      case "distortion": return 0xaa44cc;
+      case "summon": return 0x66aa44;
+      case "nature": return 0x22cc44;
+      case "heal": return 0x44ccaa;
+      default: return 0x888888;
+    }
   }
 
   // ---------------------------------------------------------------------------
