@@ -1,7 +1,7 @@
 // Floating damage / healing numbers above units.
 // Red numbers for damage, green numbers for healing.
 // Floats upward and fades out over ~0.8 seconds.
-import { Container, Text, TextStyle } from "pixi.js";
+import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import gsap from "gsap";
 import type { ViewManager } from "@view/ViewManager";
 import type { GameState } from "@sim/state/GameState";
@@ -28,6 +28,14 @@ const STYLE_HEAL = new TextStyle({
   stroke: { color: 0x000000, width: 3 },
 });
 
+const STYLE_CRIT = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 18,
+  fontWeight: "bold",
+  fill: 0xffaa00,
+  stroke: { color: 0x000000, width: 4 },
+});
+
 export class DamageNumberFX {
   private _container!: Container;
   private _state!: GameState;
@@ -50,6 +58,13 @@ export class DamageNumberFX {
       const unit = this._state.units.get(unitId);
       if (!unit) return;
       this._spawn(unit.position.x, unit.position.y, `-${Math.round(amount)}`, false);
+    });
+
+    EventBus.on("unitCrit", ({ unitId, amount }) => {
+      if (!this._enabled) return;
+      const unit = this._state.units.get(unitId);
+      if (!unit) return;
+      this._spawnCrit(unit.position.x, unit.position.y, amount);
     });
 
     EventBus.on("unitHealed", ({ position, amount }) => {
@@ -98,6 +113,49 @@ export class DamageNumberFX {
       ease: "power2.out",
     });
 
+    gsap.to(text, {
+      alpha: 0,
+      duration: FLOAT_DURATION * 0.4,
+      delay: FLOAT_DURATION * 0.6,
+      ease: "power2.in",
+      onComplete: () => {
+        if (text.parent) this._container.removeChild(text);
+        text.destroy();
+      },
+    });
+  }
+  private _spawnCrit(tx: number, ty: number, amount: number): void {
+    const offsetX = (Math.random() - 0.5) * TS * 0.4;
+    const cx = (tx + 0.5) * TS + offsetX;
+    const cy = (ty + 0.5) * TS - TS * 0.5;
+
+    // White flash behind text
+    const flash = new Graphics().circle(0, 0, TS * 0.3).fill({ color: 0xffffff, alpha: 0.6 });
+    flash.position.set(cx, cy);
+    flash.scale.set(0.3);
+    flash.alpha = 0.8;
+    this._container.addChild(flash);
+    gsap.to(flash.scale, { x: 1.5, y: 1.5, duration: 0.2, ease: "power2.out" });
+    gsap.to(flash, {
+      alpha: 0,
+      duration: 0.2,
+      onComplete: () => {
+        if (flash.parent) this._container.removeChild(flash);
+        flash.destroy();
+      },
+    });
+
+    // Bigger gold damage number
+    const text = new Text({ text: `-${Math.round(amount)}!`, style: STYLE_CRIT });
+    text.anchor.set(0.5, 0.5);
+    text.position.set(cx, cy);
+    text.scale.set(0.8);
+    text.alpha = 0;
+    this._container.addChild(text);
+
+    gsap.to(text.scale, { x: 1.4, y: 1.4, duration: 0.15, ease: "back.out(3)" });
+    gsap.to(text, { alpha: 1, duration: 0.08 });
+    gsap.to(text, { y: cy - FLOAT_DISTANCE, duration: FLOAT_DURATION, ease: "power2.out" });
     gsap.to(text, {
       alpha: 0,
       duration: FLOAT_DURATION * 0.4,

@@ -58,6 +58,8 @@ interface SavedSettings {
   musicVolume?: number;
   gameSpeed?: number;
   scrollSpeed?: number;
+  critEnabled?: boolean;
+  blockEnabled?: boolean;
 }
 
 const GAME_SPEEDS = [1, 1.5, 2, 3];
@@ -187,6 +189,8 @@ export class SettingsScreen {
   private _musicVolume = 50;   // 0-100
   private _gameSpeedIdx = 0;   // index into GAME_SPEEDS
   private _scrollSpeedIdx = 1; // index into SCROLL_SPEEDS
+  private _critEnabled = true;
+  private _blockEnabled = true;
 
   // UI references for volume row
   private _volValueLabel!: Text;
@@ -194,6 +198,8 @@ export class SettingsScreen {
   // UI references for selector rows
   private _speedBtns: SelectorBtn[] = [];
   private _scrollBtns: SelectorBtn[] = [];
+  private _critBtns: SelectorBtn[] = [];
+  private _blockBtns: SelectorBtn[] = [];
 
   // Callbacks
   onBack: (() => void) | null = null;
@@ -212,6 +218,14 @@ export class SettingsScreen {
 
   get scrollSpeed(): number {
     return SCROLL_SPEEDS[this._scrollSpeedIdx];
+  }
+
+  get critEnabled(): boolean {
+    return this._critEnabled;
+  }
+
+  get blockEnabled(): boolean {
+    return this._blockEnabled;
   }
 
   // ---------------------------------------------------------------------------
@@ -265,6 +279,13 @@ export class SettingsScreen {
         const idx = SCROLL_SPEEDS.indexOf(saved.scrollSpeed);
         if (idx !== -1) this._scrollSpeedIdx = idx;
       }
+
+      if (typeof saved.critEnabled === "boolean") {
+        this._critEnabled = saved.critEnabled;
+      }
+      if (typeof saved.blockEnabled === "boolean") {
+        this._blockEnabled = saved.blockEnabled;
+      }
     } catch {
       // Corrupted localStorage — use defaults silently
     }
@@ -275,6 +296,8 @@ export class SettingsScreen {
       musicVolume: this._musicVolume,
       gameSpeed: GAME_SPEEDS[this._gameSpeedIdx],
       scrollSpeed: SCROLL_SPEEDS[this._scrollSpeedIdx],
+      critEnabled: this._critEnabled,
+      blockEnabled: this._blockEnabled,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   }
@@ -335,6 +358,36 @@ export class SettingsScreen {
 
     // --- Camera Scroll Speed row ---
     curY = this._buildScrollSpeedRow(card, CW, curY);
+    curY += 12;
+
+    // Divider
+    card.addChild(
+      new Graphics()
+        .rect(20, curY, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.15 }),
+    );
+    curY += 14;
+
+    // --- Critical Hits toggle ---
+    curY = this._buildToggleRow(card, CW, curY, "CRITICAL HITS", this._critEnabled, this._critBtns, (enabled) => {
+      this._critEnabled = enabled;
+      this._saveToStorage();
+    });
+    curY += 12;
+
+    // Divider
+    card.addChild(
+      new Graphics()
+        .rect(20, curY, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.15 }),
+    );
+    curY += 14;
+
+    // --- Block Chance toggle ---
+    curY = this._buildToggleRow(card, CW, curY, "BLOCK CHANCE", this._blockEnabled, this._blockBtns, (enabled) => {
+      this._blockEnabled = enabled;
+      this._saveToStorage();
+    });
     curY += 16;
 
     // Divider before BACK
@@ -568,9 +621,65 @@ export class SettingsScreen {
     return curY;
   }
 
+  /**
+   * Builds a generic ON/OFF toggle row. Populates the provided btns array.
+   * Returns the new curY after the row.
+   */
+  private _buildToggleRow(
+    card: Container,
+    CW: number,
+    curY: number,
+    label: string,
+    initialValue: boolean,
+    btns: SelectorBtn[],
+    onChange: (enabled: boolean) => void,
+  ): number {
+    const BTN_H = 30;
+    const GAP = 6;
+    const labels = ["ON", "OFF"];
+    const count = labels.length;
+    const totalGap = GAP * (count - 1);
+    const btnW = Math.floor((CW - 40 - totalGap) / count);
+
+    const sectionLabel = new Text({ text: label, style: STYLE_LABEL });
+    sectionLabel.position.set(20, curY);
+    card.addChild(sectionLabel);
+    curY += 20;
+
+    btns.length = 0;
+    for (let i = 0; i < count; i++) {
+      const btn = makeSelectorBtn(btnW, BTN_H, labels[i]);
+      btn.container.position.set(20 + i * (btnW + GAP), curY);
+
+      const idx = i;
+      btn.container.on("pointerover", () => {
+        const isActive = idx === 0 ? initialValue : !initialValue;
+        if (!isActive) btn.bg.tint = 0x6688aa;
+      });
+      btn.container.on("pointerout", () => { btn.bg.tint = 0xffffff; });
+      btn.container.on("pointerdown", () => {
+        const enabled = idx === 0;
+        onChange(enabled);
+        this._refreshToggleBtns(btns, btnW, BTN_H, enabled);
+      });
+
+      card.addChild(btn.container);
+      btns.push(btn);
+    }
+
+    this._refreshToggleBtns(btns, btnW, BTN_H, initialValue);
+    curY += BTN_H;
+    return curY;
+  }
+
   // ---------------------------------------------------------------------------
   // Refresh helpers
   // ---------------------------------------------------------------------------
+
+  private _refreshToggleBtns(btns: SelectorBtn[], btnW: number, btnH: number, enabled: boolean): void {
+    refreshSelectorBtn(btns[0], btnW, btnH, enabled);
+    refreshSelectorBtn(btns[1], btnW, btnH, !enabled);
+  }
 
   private _refreshSpeedBtns(btnW: number, btnH: number): void {
     for (let i = 0; i < this._speedBtns.length; i++) {

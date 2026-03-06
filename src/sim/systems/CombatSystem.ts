@@ -6,7 +6,7 @@ import type { Building } from "@sim/entities/Building";
 import { UnitState, BuildingState, UnitType } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
-import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { BalanceConfig, CombatOptions } from "@sim/config/BalanceConfig";
 import { EventBus } from "@sim/core/EventBus";
 import { destroyBuilding } from "@sim/systems/BuildingSystem";
 
@@ -222,6 +222,14 @@ function _attackBuilding(
         unit.hasCharged = true;
       }
 
+      // Crit check for building attacks
+      if (CombatOptions.critEnabled) {
+        const critChance = def.critChance ?? BalanceConfig.DEFAULT_CRIT_CHANCE;
+        if (Math.random() < critChance) {
+          damage = Math.floor(damage * BalanceConfig.CRIT_DAMAGE_MULTIPLIER);
+        }
+      }
+
       building.health -= damage;
       unit.attackTimer = attackInterval;
 
@@ -350,22 +358,52 @@ function resolveFriendlyTarget(state: GameState, unit: Unit): Unit | null {
 // ---------------------------------------------------------------------------
 
 function applyDamage(attacker: Unit, target: Unit, state: GameState): void {
-  const def = UNIT_DEFINITIONS[attacker.type];
-  const attackInterval = 1 / def.attackSpeed;
+  const atkDef = UNIT_DEFINITIONS[attacker.type];
+  const tgtDef = UNIT_DEFINITIONS[target.type];
+  const attackInterval = 1 / atkDef.attackSpeed;
 
   let damage = attacker.atk;
-  if (def.isChargeUnit && !attacker.hasCharged) {
+  if (atkDef.isChargeUnit && !attacker.hasCharged) {
     damage *= 5;
     attacker.hasCharged = true;
   }
 
+  // --- Block check (target) ---
+  if (CombatOptions.blockEnabled) {
+    const blockChance = tgtDef.blockChance ?? BalanceConfig.DEFAULT_BLOCK_CHANCE;
+    if (blockChance > 0 && Math.random() < blockChance) {
+      EventBus.emit("unitBlocked", { unitId: target.id, attackerId: attacker.id });
+      if (ARROW_UNIT_TYPES.has(attacker.type)) {
+        EventBus.emit("unitAttacked", {
+          attackerId: attacker.id,
+          targetId: target.id,
+          attackerPos: { x: attacker.position.x, y: attacker.position.y },
+          targetPos: { x: target.position.x, y: target.position.y },
+          attackerType: attacker.type,
+        });
+      }
+      attacker.attackTimer = attackInterval;
+      return;
+    }
+  }
+
+  // --- Crit check (attacker) ---
+  let isCrit = false;
+  if (CombatOptions.critEnabled) {
+    const critChance = atkDef.critChance ?? BalanceConfig.DEFAULT_CRIT_CHANCE;
+    if (Math.random() < critChance) {
+      damage = Math.floor(damage * BalanceConfig.CRIT_DAMAGE_MULTIPLIER);
+      isCrit = true;
+    }
+  }
+
   target.hp -= damage;
 
-  EventBus.emit("unitDamaged", {
-    unitId: target.id,
-    amount: damage,
-    attackerId: attacker.id,
-  });
+  if (isCrit) {
+    EventBus.emit("unitCrit", { unitId: target.id, amount: damage, attackerId: attacker.id });
+  } else {
+    EventBus.emit("unitDamaged", { unitId: target.id, amount: damage, attackerId: attacker.id });
+  }
 
   // Emit arrow projectile event for archer-type units (visual only)
   if (ARROW_UNIT_TYPES.has(attacker.type)) {

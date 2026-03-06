@@ -38,6 +38,10 @@ export interface UnitDef {
   tier?: number;
   /** Magic element for mage / healer units. */
   element?: "fire" | "cold" | "lightning" | "distortion" | "summon" | "nature" | "heal";
+  /** Critical hit chance (0.0–1.0). Default 0.05 (5%) if omitted. */
+  critChance?: number;
+  /** Block chance (0.0–1.0). Default 0.0 (0%) if omitted. Shield units override this. */
+  blockChance?: number;
 }
 
 /** Compute tier from gold cost. Same thresholds for all categories. */
@@ -83,6 +87,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       "Holy warrior in shining armor. Better protected than swordsmen with divine blessing.",
     tier: 1,
     element: "heal",
+    blockChance: 0.2,
   },
   [UnitType.ASSASSIN]: {
     type: UnitType.ASSASSIN,
@@ -98,6 +103,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Deadly melee striker in black garb with sword and dagger. Fast and lethal but fragile.",
     tier: 3,
+    critChance: 0.15,
   },
   [UnitType.REPEATER]: {
     type: UnitType.REPEATER,
@@ -1266,6 +1272,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Heavily armored soldier with a massive tower shield, nearly immovable on the front line.",
     tier: 2,
+    blockChance: 0.2,
   },
   [UnitType.PHALANX]: {
     type: UnitType.PHALANX,
@@ -1281,6 +1288,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Armored spearman with a long spear and tower shield, holding enemies at bay from behind a wall of steel.",
     tier: 2,
+    blockChance: 0.2,
   },
   [UnitType.ROYAL_PHALANX]: {
     type: UnitType.ROYAL_PHALANX,
@@ -1311,6 +1319,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Heavily armored royal guard with massive shield. Blocks attacks and strikes with devastating melee blows.",
     tier: 3,
+    blockChance: 0.3,
   },
   [UnitType.AXEMAN]: {
     type: UnitType.AXEMAN,
@@ -1357,6 +1366,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "An undying sentinel from a forgotten age. Its blackened armor is fused to ashen skin, and its tower shield has turned back a thousand charges.",
     tier: 4,
+    blockChance: 0.25,
   },
   [UnitType.ANCIENT_PHALANX]: {
     type: UnitType.ANCIENT_PHALANX,
@@ -1373,6 +1383,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "A grey-skinned spearman who has outlived empires. Its corroded pike still reaches further than any mortal weapon.",
     tier: 4,
+    blockChance: 0.2,
   },
   [UnitType.ANCIENT_AXEMAN]: {
     type: UnitType.ANCIENT_AXEMAN,
@@ -1521,6 +1532,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "No longer human, no longer mortal. A towering monolith of fused black iron and petrified flesh, its void-dark shield swallows all who approach.",
     tier: 5,
+    blockChance: 0.3,
   },
   [UnitType.ELDER_PHALANX]: {
     type: UnitType.ELDER_PHALANX,
@@ -1536,6 +1548,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     size: { width: 1.0, height: 2.0, healthBarOffset: -1.6 },
     description:
       "An impossibly tall sentinel whose barbed lance impales foes before they even glimpse its featureless helm. Whatever it once was, it is something else now.",
+    blockChance: 0.25,
     tier: 5,
   },
   [UnitType.ELDER_AXEMAN]: {
@@ -2010,6 +2023,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "An elite tower-shield soldier clad in gilded plate. Nearly immovable, they anchor battle lines and absorb tremendous punishment.",
     tier: 6,
+    blockChance: 0.3,
   },
   [UnitType.MARKSMAN]: {
     type: UnitType.MARKSMAN,
@@ -2781,6 +2795,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "An officer wielding an enormous tower shield. Nearly impossible to kill from the front, he anchors the line while his men rally behind him.",
     tier: 2,
+    blockChance: 0.3,
   },
   // ── Elves ──
   [UnitType.TREANT_GUARDIAN]: {
@@ -3001,6 +3016,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "The elite of dwarven infantry. Clad in gromril plate from helm to boot, they form an impenetrable wall of enchanted steel.",
     tier: 2,
+    blockChance: 0.25,
   },
   [UnitType.THUNDERER]: {
     type: UnitType.THUNDERER,

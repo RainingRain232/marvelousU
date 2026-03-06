@@ -65,7 +65,8 @@ import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases, initBasesMulti } from "@sim/systems/BaseSetup";
 import type { PlayerBaseConfig } from "@sim/systems/BaseSetup";
 import { setAlliance } from "@sim/state/GameState";
-import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { BalanceConfig, CombatOptions } from "@sim/config/BalanceConfig";
+import { blockFX } from "@view/fx/BlockFX";
 import { getDifficultySettings } from "@sim/config/DifficultyConfig";
 import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
@@ -580,6 +581,10 @@ import merlinImgUrl from "@/img/merlin.png";
     viewManager.onUpdate((_s, dt) => warpFX.update(dt));
     damageNumberFX.init(viewManager, state);
     viewManager.onUpdate((_s, dt) => damageNumberFX.update(dt));
+    blockFX.init(viewManager, state);
+    viewManager.onUpdate((_s, dt) => blockFX.update(dt));
+    CombatOptions.critEnabled = settingsScreen.critEnabled;
+    CombatOptions.blockEnabled = settingsScreen.blockEnabled;
     flagFX.init(viewManager);
     viewManager.onUpdate((_s, dt) => flagFX.update(dt));
     runeCircleFX.init(viewManager);
@@ -5157,6 +5162,12 @@ async function _bootGame(
   damageNumberFX.init(viewManager, state);
   damageNumberFX.enabled = menuScreen.damageNumbersEnabled;
   viewManager.onUpdate((_s, dt) => damageNumberFX.update(dt));
+
+  // Block FX
+  blockFX.init(viewManager, state);
+  viewManager.onUpdate((_s, dt) => blockFX.update(dt));
+  CombatOptions.critEnabled = settingsScreen.critEnabled;
+  CombatOptions.blockEnabled = settingsScreen.blockEnabled;
 
   // Rally flag FX (persistent flag marker with wind sway)
   flagFX.init(viewManager);

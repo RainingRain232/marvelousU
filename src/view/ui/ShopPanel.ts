@@ -1551,6 +1551,14 @@ export class ShopPanel {
       const line3 = new Text({ text: extraLine, style: STYLE_SPAWN });
       line3.position.set(PANEL_PAD, baseY + 32);
       this._statsContainer.addChild(line3);
+
+      const critPct = Math.round((def.critChance ?? 0.05) * 100);
+      const blockPct = Math.round((def.blockChance ?? 0) * 100);
+      let critBlockStr = `CRIT:${critPct}%`;
+      if (blockPct > 0) critBlockStr += `  BLK:${blockPct}%`;
+      const line4 = new Text({ text: critBlockStr, style: STYLE_STAT });
+      line4.position.set(PANEL_PAD, baseY + 44);
+      this._statsContainer.addChild(line4);
     } else {
       // No description - use original layout
       const tierTag2 = def.tier ? `  T${def.tier}` : "";
@@ -1575,6 +1583,14 @@ export class ShopPanel {
       const line3 = new Text({ text: extraLine, style: STYLE_SPAWN });
       line3.position.set(PANEL_PAD, 40);
       this._statsContainer.addChild(line3);
+
+      const critPct2 = Math.round((def.critChance ?? 0.05) * 100);
+      const blockPct2 = Math.round((def.blockChance ?? 0) * 100);
+      let critBlockStr2 = `CRIT:${critPct2}%`;
+      if (blockPct2 > 0) critBlockStr2 += `  BLK:${blockPct2}%`;
+      const line4b = new Text({ text: critBlockStr2, style: STYLE_STAT });
+      line4b.position.set(PANEL_PAD, 52);
+      this._statsContainer.addChild(line4b);
     }
   }
 

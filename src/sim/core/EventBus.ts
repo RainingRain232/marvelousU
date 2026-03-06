@@ -11,6 +11,8 @@ export interface SimEvents {
   unitSpawned: { unitId: string; buildingId: string; position: Vec2 };
   unitDied: { unitId: string; killerUnitId?: string };
   unitDamaged: { unitId: string; amount: number; attackerId: string };
+  unitCrit: { unitId: string; amount: number; attackerId: string };
+  unitBlocked: { unitId: string; attackerId: string };
   unitAttacked: { attackerId: string; targetId: string; attackerPos: Vec2; targetPos: Vec2; attackerType: UnitType };
   unitHealed: { unitId: string; amount: number; position: Vec2; isRegen?: boolean };
   unitLevelUp: { unitId: string; newLevel: number };

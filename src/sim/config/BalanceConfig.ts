@@ -30,6 +30,11 @@ export const BalanceConfig = {
   AGGRO_RANGE: 12, // tiles — how far a unit scans for enemies
   UNIT_DEATH_LINGER: 1.0, // seconds a dead unit stays before removal
 
+  // Critical hit & block
+  DEFAULT_CRIT_CHANCE: 0.05, // 5% baseline for all units
+  CRIT_DAMAGE_MULTIPLIER: 2.5, // crits deal 2.5x damage
+  DEFAULT_BLOCK_CHANCE: 0.0, // 0% baseline — only shield units override
+
   // Capture
   CAPTURE_TIME: 5, // seconds a unit must stand on a neutral building to capture it
   CAPTURE_RANGE: 1.5, // tile radius — unit must be within this distance of building position
@@ -52,3 +57,9 @@ export const BalanceConfig = {
 } as const;
 
 export type BalanceConfigKey = keyof typeof BalanceConfig;
+
+/** Mutable runtime toggles — set by SettingsScreen via main.ts before game start. */
+export const CombatOptions = {
+  critEnabled: true,
+  blockEnabled: true,
+};
