@@ -6,7 +6,8 @@ import type { OverworldTile, OverworldEntity, OverworldState } from "@rpg/state/
 import { createOverworldState } from "@rpg/state/OverworldState";
 import type { DungeonEntranceData, TownData, NPCData } from "@rpg/state/OverworldState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
-import { STARTER_TOWN_SHOP, MID_TOWN_SHOP, LATE_TOWN_SHOP } from "@rpg/config/RPGItemDefs";
+import { generateShopInventory } from "@rpg/config/RPGItemDefs";
+import type { ShopTier } from "@rpg/config/RPGItemDefs";
 
 // ---------------------------------------------------------------------------
 // Simple 2D value noise (seeded)
@@ -213,17 +214,17 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
   const placements: Vec2[] = [];
 
   // Place towns (10 towns for the larger world)
-  const townDefs = [
-    { name: "Haven Village", shop: STARTER_TOWN_SHOP, innCost: 20 },
-    { name: "Millbrook", shop: STARTER_TOWN_SHOP, innCost: 25 },
-    { name: "Ironhold", shop: MID_TOWN_SHOP, innCost: 40 },
-    { name: "Stormgate", shop: MID_TOWN_SHOP, innCost: 50 },
-    { name: "Sunhaven", shop: MID_TOWN_SHOP, innCost: 45 },
-    { name: "Frostpeak", shop: MID_TOWN_SHOP, innCost: 55 },
-    { name: "Dustwind Outpost", shop: MID_TOWN_SHOP, innCost: 50 },
-    { name: "Shadowfen", shop: LATE_TOWN_SHOP, innCost: 70 },
-    { name: "Dragonrest", shop: LATE_TOWN_SHOP, innCost: 80 },
-    { name: "Crystal Citadel", shop: LATE_TOWN_SHOP, innCost: 90 },
+  const townDefs: { name: string; tier: ShopTier; innCost: number }[] = [
+    { name: "Haven Village", tier: "starter", innCost: 20 },
+    { name: "Millbrook", tier: "starter", innCost: 25 },
+    { name: "Ironhold", tier: "mid", innCost: 40 },
+    { name: "Stormgate", tier: "mid", innCost: 50 },
+    { name: "Sunhaven", tier: "mid", innCost: 45 },
+    { name: "Frostpeak", tier: "mid", innCost: 55 },
+    { name: "Dustwind Outpost", tier: "mid", innCost: 50 },
+    { name: "Shadowfen", tier: "late", innCost: 70 },
+    { name: "Dragonrest", tier: "late", innCost: 80 },
+    { name: "Crystal Citadel", tier: "late", innCost: 90 },
   ];
 
   const townPositions: Vec2[] = [];
@@ -239,8 +240,10 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
     grid[pos.y][pos.x].entityId = townId;
     grid[pos.y][pos.x].encounterRate = 0;
 
+    const shopSeed = seed + i * 7919; // unique seed per town
     const townData: TownData = {
-      shopItems: townDefs[i].shop,
+      shopItems: generateShopInventory(townDefs[i].tier, shopSeed),
+      shopTier: townDefs[i].tier,
       innCost: townDefs[i].innCost,
       quests: [],
     };

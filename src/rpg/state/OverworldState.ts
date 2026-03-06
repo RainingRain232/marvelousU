@@ -1,6 +1,7 @@
 // Tile-based overworld map state
 import type { OverworldTileType, Vec2 } from "@/types";
 import type { RPGItem } from "./RPGState";
+import type { ShopTier } from "@rpg/config/RPGItemDefs";
 
 // ---------------------------------------------------------------------------
 // Tiles
@@ -33,6 +34,7 @@ export interface RecruitData {
 
 export interface TownData {
   shopItems: RPGItem[];
+  shopTier: ShopTier;
   innCost: number;
   quests: string[];
   recruits?: RecruitData[];

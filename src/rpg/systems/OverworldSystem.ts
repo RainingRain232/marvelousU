@@ -3,10 +3,11 @@ import type { Vec2 } from "@/types";
 import { RPGPhase } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
 import { SeededRandom } from "@sim/utils/random";
-import type { OverworldState, OverworldEntity, DungeonEntranceData, NPCData } from "@rpg/state/OverworldState";
+import type { OverworldState, OverworldEntity, DungeonEntranceData, NPCData, TownData } from "@rpg/state/OverworldState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { OVERWORLD_ENCOUNTERS } from "@rpg/config/EncounterDefs";
+import { generateShopInventory } from "@rpg/config/RPGItemDefs";
 import type { RPGStateMachine } from "./RPGStateMachine";
 import { trackRecruitSteps, resetRecruitStepsOnTownVisit } from "./RecruitSystem";
 
@@ -84,11 +85,18 @@ function _handleEntityInteraction(
   stateMachine: RPGStateMachine,
 ): void {
   switch (entity.type) {
-    case "town":
+    case "town": {
+      // Refresh shop inventory if 20+ steps since last town visit
+      const townData = entity.data as TownData;
+      if (rpg.stepsSinceLastTown >= 20) {
+        const shopSeed = rpg.recruitSeed + rpg.gameTime + rpg.stepsSinceLastTown;
+        townData.shopItems = generateShopInventory(townData.shopTier, shopSeed);
+      }
       resetRecruitStepsOnTownVisit(rpg);
       EventBus.emit("rpgTownEntered", { townId: entity.id });
       stateMachine.transition(RPGPhase.TOWN_MENU);
       break;
+    }
     case "dungeon_entrance": {
       const data = entity.data as DungeonEntranceData;
       rpg.currentDungeonId = data.dungeonId;
