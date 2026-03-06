@@ -15,6 +15,8 @@ import type { ViewManager } from "@view/ViewManager";
 
 import merlinImgUrl from "@/img/merlin.png";
 import manImgUrl from "@/img/man.png";
+import morgaineImgUrl from "@/img/morgaine.png";
+import avalonImgUrl from "@/img/avalon.png";
 
 // ---------------------------------------------------------------------------
 // Intro page data
@@ -26,6 +28,8 @@ export interface IntroPage {
   subtitle: string;
   borderColor: number;
   text: string;
+  /** Optional delay in ms before the page content fades in. */
+  delay?: number;
 }
 
 const WORLD_INTRO_PAGES: IntroPage[] = [
@@ -42,6 +46,22 @@ const WORLD_INTRO_PAGES: IntroPage[] = [
     subtitle: "Royal Advisor",
     borderColor: 0xaa8844,
     text: "Sire, I have prepared your capital and a small host of loyal soldiers stands ready at the gates. Explore the surrounding lands — you will find farms and villages to bolster your economy, and ancient ruins guarded by fearsome creatures. Beware the sorceress Morgaine who rules from Avalon at the heart of the continent. Her armies roam the land and she will not yield her power easily. Strengthen your forces before you march on her domain!",
+  },
+  {
+    imageUrl: morgaineImgUrl,
+    title: "MORGAINE",
+    subtitle: "Sorceress of Avalon",
+    borderColor: 0x8844aa,
+    text: "You dare set foot upon my lands, pretender? I have ruled these realms since before your grandfather drew breath. Avalon is mine, the armies are mine, and the throne shall remain mine. Come then — raise your pitiful banners and march. I shall enjoy watching them burn.",
+    delay: 1500,
+  },
+  {
+    imageUrl: avalonImgUrl,
+    title: "AVALON",
+    subtitle: "Heart of the Continent",
+    borderColor: 0x44aa88,
+    text: "At the centre of the known world stands Avalon — a fortress-city of ancient stone and dark enchantment. Its towers pierce the clouds and its walls have never been breached. From here Morgaine commands her legions, her gaze reaching every corner of the realm. To claim Avalon is to claim the world itself.",
+    delay: 1500,
   },
 ];
 
@@ -80,6 +100,7 @@ export class WorldIntroDialog {
   private _content = new Container();
   private _pages: IntroPage[] = [];
   private _pageIndex = 0;
+  private _delayTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Called when the player dismisses the last page. */
   onDone: (() => void) | null = null;
@@ -111,6 +132,10 @@ export class WorldIntroDialog {
   }
 
   private _cleanup(): void {
+    if (this._delayTimer) {
+      clearTimeout(this._delayTimer);
+      this._delayTimer = null;
+    }
     this._content.removeFromParent();
     this._content.destroy({ children: true });
     this._content = new Container();
@@ -143,111 +168,141 @@ export class WorldIntroDialog {
     bg.eventMode = "static";
     this._content.addChild(bg);
 
-    // ── Dialog box ───────────────────────────────────────────────────────
-    const DW = 540;
-    const DH = 360;
-    const dx = (sw - DW) / 2;
-    const dy = (sh - DH) / 2;
+    // ── Dialog wrapper (may be delayed) ──────────────────────────────────
+    const dialog = new Container();
+    this._content.addChild(dialog);
 
-    const dialogBg = new Graphics();
-    dialogBg.roundRect(dx, dy, DW, DH, 10);
-    dialogBg.fill({ color: 0x0c0c24, alpha: 0.95 });
-    dialogBg.stroke({ color: page.borderColor, width: 2 });
-    this._content.addChild(dialogBg);
+    const buildDialog = () => {
+      // ── Dialog box ───────────────────────────────────────────────────────
+      const DW = 540;
+      const DH = 360;
+      const dx = (sw - DW) / 2;
+      const dy = (sh - DH) / 2;
 
-    // ── Title ────────────────────────────────────────────────────────────
-    const title = new Text({ text: page.title, style: TITLE_STYLE });
-    title.x = dx + 20;
-    title.y = dy + 14;
-    this._content.addChild(title);
+      const dialogBg = new Graphics();
+      dialogBg.roundRect(dx, dy, DW, DH, 10);
+      dialogBg.fill({ color: 0x0c0c24, alpha: 0.95 });
+      dialogBg.stroke({ color: page.borderColor, width: 2 });
+      dialog.addChild(dialogBg);
 
-    // ── Subtitle ─────────────────────────────────────────────────────────
-    const subText = new Text({ text: page.subtitle, style: SUBTITLE_STYLE });
-    subText.x = dx + 20 + title.width + 12;
-    subText.y = dy + 20;
-    this._content.addChild(subText);
+      // ── Title ────────────────────────────────────────────────────────────
+      const title = new Text({ text: page.title, style: TITLE_STYLE });
+      title.x = dx + 20;
+      title.y = dy + 14;
+      dialog.addChild(title);
 
-    // ── Portrait frame ───────────────────────────────────────────────────
-    const PW = 140;
-    const PH = 180;
-    const px = dx + 20;
-    const py = dy + 50;
+      // ── Subtitle ─────────────────────────────────────────────────────────
+      const subText = new Text({ text: page.subtitle, style: SUBTITLE_STYLE });
+      subText.x = dx + 20 + title.width + 12;
+      subText.y = dy + 20;
+      dialog.addChild(subText);
 
-    const portraitFrame = new Graphics();
-    portraitFrame.roundRect(px, py, PW, PH, 6);
-    portraitFrame.fill({ color: 0x080818 });
-    portraitFrame.stroke({ color: page.borderColor, width: 1.5 });
-    this._content.addChild(portraitFrame);
+      // ── Portrait frame ───────────────────────────────────────────────────
+      const PW = 140;
+      const PH = 180;
+      const px = dx + 20;
+      const py = dy + 50;
 
-    // Load portrait
-    void Assets.load(page.imageUrl).then((tex: Texture) => {
-      if (!this.container.visible) return;
-      const sprite = new Sprite(tex);
-      const maxW = PW - 10;
-      const maxH = PH - 10;
-      const scale = Math.min(maxW / tex.width, maxH / tex.height);
-      sprite.scale.set(scale);
-      sprite.x = px + 5 + (maxW - tex.width * scale) / 2;
-      sprite.y = py + 5 + (maxH - tex.height * scale) / 2;
-      this._content.addChild(sprite);
-    });
+      const portraitFrame = new Graphics();
+      portraitFrame.roundRect(px, py, PW, PH, 6);
+      portraitFrame.fill({ color: 0x080818 });
+      portraitFrame.stroke({ color: page.borderColor, width: 1.5 });
+      dialog.addChild(portraitFrame);
 
-    // ── Decorative quote mark ────────────────────────────────────────────
-    const bigQuote = new Text({
-      text: "\u201C",
-      style: new TextStyle({
-        fontFamily: "serif",
-        fontSize: 48,
-        fill: page.borderColor,
-      }),
-    });
-    bigQuote.x = px + PW + 12;
-    bigQuote.y = py - 10;
-    this._content.addChild(bigQuote);
+      // Load portrait
+      void Assets.load(page.imageUrl).then((tex: Texture) => {
+        if (!this.container.visible) return;
+        const sprite = new Sprite(tex);
+        const maxW = PW - 10;
+        const maxH = PH - 10;
+        const scale = Math.min(maxW / tex.width, maxH / tex.height);
+        sprite.scale.set(scale);
+        sprite.x = px + 5 + (maxW - tex.width * scale) / 2;
+        sprite.y = py + 5 + (maxH - tex.height * scale) / 2;
+        dialog.addChild(sprite);
+      });
 
-    // ── Body text ────────────────────────────────────────────────────────
-    const bodyStyle = new TextStyle({
-      fontFamily: "monospace",
-      fontSize: 13,
-      fill: 0xdddddd,
-      wordWrap: true,
-      wordWrapWidth: DW - PW - 60,
-      lineHeight: 20,
-    });
-
-    const bodyText = new Text({ text: `"${page.text}"`, style: bodyStyle });
-    bodyText.x = px + PW + 20;
-    bodyText.y = py + 10;
-    this._content.addChild(bodyText);
-
-    // ── Page indicator ───────────────────────────────────────────────────
-    if (this._pages.length > 1) {
-      const indicator = new Text({
-        text: `${this._pageIndex + 1} / ${this._pages.length}`,
+      // ── Decorative quote mark ────────────────────────────────────────────
+      const bigQuote = new Text({
+        text: "\u201C",
         style: new TextStyle({
-          fontFamily: "monospace",
-          fontSize: 11,
-          fill: 0x888899,
+          fontFamily: "serif",
+          fontSize: 48,
+          fill: page.borderColor,
         }),
       });
-      indicator.x = dx + DW / 2 - indicator.width / 2;
-      indicator.y = dy + DH - 30;
-      this._content.addChild(indicator);
-    }
+      bigQuote.x = px + PW + 12;
+      bigQuote.y = py - 10;
+      dialog.addChild(bigQuote);
 
-    // ── Action button ────────────────────────────────────────────────────
-    const btnLabel = isLast ? "Very well." : "Continue";
-    const btnW = 130;
-    const btnH = 32;
-    const btn = this._makeBtn(
-      btnLabel,
-      dx + DW / 2 - btnW / 2,
-      dy + DH - 56,
-      btnW,
-      btnH,
-      page.borderColor,
-    );
-    this._content.addChild(btn);
+      // ── Body text ────────────────────────────────────────────────────────
+      const bodyStyle = new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 13,
+        fill: 0xdddddd,
+        wordWrap: true,
+        wordWrapWidth: DW - PW - 60,
+        lineHeight: 20,
+      });
+
+      const bodyText = new Text({ text: `"${page.text}"`, style: bodyStyle });
+      bodyText.x = px + PW + 20;
+      bodyText.y = py + 10;
+      dialog.addChild(bodyText);
+
+      // ── Page indicator ───────────────────────────────────────────────────
+      if (this._pages.length > 1) {
+        const indicator = new Text({
+          text: `${this._pageIndex + 1} / ${this._pages.length}`,
+          style: new TextStyle({
+            fontFamily: "monospace",
+            fontSize: 11,
+            fill: 0x888899,
+          }),
+        });
+        indicator.x = dx + DW / 2 - indicator.width / 2;
+        indicator.y = dy + DH - 30;
+        dialog.addChild(indicator);
+      }
+
+      // ── Action button ────────────────────────────────────────────────────
+      const btnLabel = isLast ? "Very well." : "Continue";
+      const btnW = 130;
+      const btnH = 32;
+      const btn = this._makeBtn(
+        btnLabel,
+        dx + DW / 2 - btnW / 2,
+        dy + DH - 56,
+        btnW,
+        btnH,
+        page.borderColor,
+      );
+      dialog.addChild(btn);
+
+      // Fade in if delayed
+      if (page.delay) {
+        dialog.alpha = 0;
+        const fadeStart = performance.now();
+        const fadeDuration = 600;
+        const tick = () => {
+          if (!this.container.visible) return;
+          const t = Math.min(1, (performance.now() - fadeStart) / fadeDuration);
+          dialog.alpha = t;
+          if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    };
+
+    if (page.delay) {
+      this._delayTimer = setTimeout(() => {
+        this._delayTimer = null;
+        if (!this.container.visible) return;
+        buildDialog();
+      }, page.delay);
+    } else {
+      buildDialog();
+    }
 
     this.container.addChild(this._content);
   }

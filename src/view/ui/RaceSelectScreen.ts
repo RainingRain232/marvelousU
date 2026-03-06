@@ -19,13 +19,32 @@ import elfPImgUrl from "@/img/elfP.png";
 import manPImgUrl from "@/img/manP.png";
 import hordePImgUrl from "@/img/hordeP.png";
 import adeptPImgUrl from "@/img/adeptP.png";
+import halflingPImgUrl from "@/img/halflingP.png";
+import lavaPImgUrl from "@/img/lavaP.png";
+import dwarfPImgUrl from "@/img/dwarfP.png";
+import orcPImgUrl from "@/img/orcP.png";
+import undeadPImgUrl from "@/img/undeadP.png";
+import demonPImgUrl from "@/img/demonP.png";
+import angelPImgUrl from "@/img/angelP.png";
+import beastmenPImgUrl from "@/img/beastmenP.png";
+import elementalsPImgUrl from "@/img/elementalsP.png";
+import piratesPImgUrl from "@/img/piratesP.png";
 
 const RACE_PORTRAITS: Record<string, string> = {
   elf: elfPImgUrl,
   man: manPImgUrl,
   horde: hordePImgUrl,
   adept: adeptPImgUrl,
-  // elements: no portrait yet — uses letter fallback
+  halfling: halflingPImgUrl,
+  lava: lavaPImgUrl,
+  dwarf: dwarfPImgUrl,
+  orc: orcPImgUrl,
+  undead: undeadPImgUrl,
+  demon: demonPImgUrl,
+  angel: angelPImgUrl,
+  beast: beastmenPImgUrl,
+  elements: elementalsPImgUrl,
+  pirate: piratesPImgUrl,
   op: manPImgUrl,
 };
 
@@ -177,7 +196,12 @@ export class RaceSelectScreen {
     this.container.addChild(this._mainCard);
 
     // Preload images
-    void Assets.load([racesImgUrl, elfPImgUrl, manPImgUrl, hordePImgUrl, adeptPImgUrl]);
+    void Assets.load([
+      racesImgUrl, elfPImgUrl, manPImgUrl, hordePImgUrl, adeptPImgUrl,
+      halflingPImgUrl, lavaPImgUrl, dwarfPImgUrl, orcPImgUrl,
+      undeadPImgUrl, demonPImgUrl, angelPImgUrl, beastmenPImgUrl,
+      elementalsPImgUrl, piratesPImgUrl,
+    ]);
 
     this._buildUI();
 
