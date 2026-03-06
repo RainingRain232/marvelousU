@@ -11,7 +11,7 @@ import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { RACE_DEFINITIONS } from "@sim/config/RaceDefs";
 import type { RaceDef, RaceId } from "@sim/config/RaceDefs";
 import { animationManager } from "@view/animation/AnimationManager";
-import { UnitState } from "@/types";
+import { UnitState, UnitType } from "@/types";
 
 // Vite static image imports
 import racesImgUrl from "@/img/races.png";
@@ -167,7 +167,6 @@ export class RaceSelectScreen {
 
   // Detail panel
   private _detailContainer!: Container;
-  private _detailPreviewSprite: AnimatedSprite | null = null;
 
   // Selection
   private _selectedId: RaceId = RACE_DEFINITIONS[0].id;
@@ -510,12 +509,11 @@ export class RaceSelectScreen {
 
   private _buildDetailPanel(race: RaceDef): void {
     const d = this._detailContainer;
-    d.removeChildren();
-    if (this._detailPreviewSprite) {
-      this._detailPreviewSprite.stop();
-      this._detailPreviewSprite.destroy();
-      this._detailPreviewSprite = null;
+    // Stop any playing animated sprites before removing
+    for (const child of d.children) {
+      if (child instanceof AnimatedSprite) { child.stop(); child.destroy(); }
     }
+    d.removeChildren();
 
     // Panel background
     d.addChild(
@@ -604,8 +602,11 @@ export class RaceSelectScreen {
       d.addChild(new Graphics().rect(tx, ty, TEXT_IN_DETAIL_W, 1).fill({ color: 0x334455 }));
       ty += 10;
 
-      // Faction unit label
-      const unitLabel = new Text({ text: "FACTION UNIT", style: STYLE_UNIT_LABEL });
+      // Faction units label
+      const unitLabel = new Text({
+        text: race.factionUnits.length > 1 ? "FACTION UNITS" : "FACTION UNIT",
+        style: STYLE_UNIT_LABEL,
+      });
       unitLabel.position.set(tx, ty);
       d.addChild(unitLabel);
       ty += 18;
@@ -615,28 +616,45 @@ export class RaceSelectScreen {
       d.addChild(unitText);
       ty += unitText.height + 12;
 
-      // Animated unit preview below text
-      const prevSize = 64;
-      const previewBg = new Graphics()
-        .roundRect(tx, ty, prevSize, prevSize, 4)
-        .fill({ color: 0x111122 })
-        .roundRect(tx, ty, prevSize, prevSize, 4)
-        .stroke({ color: race.accentColor, alpha: 0.4, width: 1 });
-      d.addChild(previewBg);
+      // Animated unit previews for all faction units
+      const prevSize = 52;
+      const prevGap = 6;
+      const units = race.factionUnits.length > 0 ? race.factionUnits : [race.factionUnit];
+      let px = tx;
+      for (const ut of units) {
+        // Background box
+        d.addChild(
+          new Graphics()
+            .roundRect(px, ty, prevSize, prevSize, 4)
+            .fill({ color: 0x111122 })
+            .roundRect(px, ty, prevSize, prevSize, 4)
+            .stroke({ color: race.accentColor, alpha: 0.4, width: 1 }),
+        );
 
-      const frames = animationManager.getFrames(race.factionUnit, UnitState.IDLE);
-      if (frames.length > 0 && frames[0] !== Texture.WHITE) {
-        const sprite = new AnimatedSprite(frames);
-        sprite.anchor.set(0.5, 0.5);
-        sprite.width = prevSize - 10;
-        sprite.height = prevSize - 10;
-        sprite.position.set(tx + prevSize / 2, ty + prevSize / 2);
-        const fs = animationManager.getFrameSet(race.factionUnit, UnitState.IDLE);
-        sprite.animationSpeed = fs.fps / 60;
-        sprite.loop = true;
-        sprite.play();
-        this._detailPreviewSprite = sprite;
-        d.addChild(sprite);
+        const frames = animationManager.getFrames(ut, UnitState.IDLE);
+        if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+          const sprite = new AnimatedSprite(frames);
+          sprite.anchor.set(0.5, 0.5);
+          sprite.width = prevSize - 10;
+          sprite.height = prevSize - 10;
+          sprite.position.set(px + prevSize / 2, ty + prevSize / 2);
+          const fs = animationManager.getFrameSet(ut, UnitState.IDLE);
+          sprite.animationSpeed = fs.fps / 60;
+          sprite.loop = true;
+          sprite.play();
+          d.addChild(sprite);
+        }
+
+        // Unit name below the preview
+        const nameStr = this._formatUnitName(ut);
+        const nameT = new Text({ text: nameStr, style: new TextStyle({
+          fontFamily: "monospace", fontSize: 8, fill: 0x8899aa, letterSpacing: 0,
+        }) });
+        nameT.anchor.set(0.5, 0);
+        nameT.position.set(px + prevSize / 2, ty + prevSize + 2);
+        d.addChild(nameT);
+
+        px += prevSize + prevGap;
       }
     } else {
       const soonT = new Text({ text: "COMING SOON", style: new TextStyle({
@@ -716,6 +734,17 @@ export class RaceSelectScreen {
     btn.on("pointerover", () => { bg.tint = primary ? 0xaaffcc : 0xaaddff; });
     btn.on("pointerout", () => { bg.tint = 0xffffff; });
     return btn;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  private _formatUnitName(ut: UnitType): string {
+    return (ut as string)
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .substring(0, 16);
   }
 
   // ---------------------------------------------------------------------------

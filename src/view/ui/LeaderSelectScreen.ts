@@ -39,7 +39,7 @@ const LEADER_UNIT_MAP: Record<string, UnitType> = {
   elizabeth: UnitType.LONGBOWMAN,
   attila: UnitType.CATAPHRACT,
   charlemagne: UnitType.CLERIC,
-  hannibal: UnitType.RED_DRAGON,
+  hannibal: UnitType.RHINO,
   wilhelmina: UnitType.ENGINEER,
   ragnar: UnitType.AXEMAN,
   nzinga: UnitType.CROSSBOWMAN,
