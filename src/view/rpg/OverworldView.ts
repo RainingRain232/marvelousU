@@ -286,6 +286,17 @@ export class OverworldView {
         g.rect(cx - r * 0.25, cy - r * 0.1, r * 0.5, r * 0.8);
         g.fill({ color: 0x66aaff });
         break;
+      case "arcane_library":
+        // Star shape for the arcane library
+        g.rect(cx - r, cy - r * 0.5, r * 2, r * 1.5);
+        g.fill({ color: 0x4422aa });
+        // Tower on top
+        g.rect(cx - r * 0.3, cy - r * 1.2, r * 0.6, r * 0.8);
+        g.fill({ color: 0x6633cc });
+        // Glow outline
+        g.roundRect(cx - r * 1.1, cy - r * 1.3, r * 2.2, r * 2.9, 2);
+        g.stroke({ color: 0xaa66ff, width: 1, alpha: 0.6 });
+        break;
       default:
         // Circle for others
         g.circle(cx, cy, r * 0.5);

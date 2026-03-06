@@ -80,6 +80,7 @@ export interface SimEvents {
   rpgSpellLearnPrompt: { memberId: string; memberName: string; picks: number; choices: string[] };
   rpgSpellLearned: { memberId: string; spellId: string };
   rpgSpellCast: { casterId: string; spellId: string; fxKey: string; targetIds: string[]; isHeal: boolean };
+  rpgAllSpellsKnown: { memberId: string; memberName: string; level: number };
 }
 
 // ---------------------------------------------------------------------------

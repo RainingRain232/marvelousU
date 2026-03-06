@@ -39,6 +39,14 @@ export interface TownData {
   innCost: number;
   quests: string[];
   recruits?: RecruitData[];
+  /** Spells available for purchase at the magic shop (max 5, spell UpgradeType ids). */
+  magicShopSpells?: string[];
+}
+
+/** Data for the Arcane Library — sells higher-tier spells (T4+). */
+export interface ArcaneLibraryData {
+  /** Spells for sale (UpgradeType ids). */
+  spells: string[];
 }
 
 export interface DungeonEntranceData {
@@ -57,11 +65,11 @@ export interface ChestData {
   opened: boolean;
 }
 
-export type OverworldEntityData = TownData | DungeonEntranceData | NPCData | ChestData;
+export type OverworldEntityData = TownData | DungeonEntranceData | NPCData | ChestData | ArcaneLibraryData;
 
 export interface OverworldEntity {
   id: string;
-  type: "town" | "dungeon_entrance" | "npc" | "chest" | "landmark";
+  type: "town" | "dungeon_entrance" | "npc" | "chest" | "landmark" | "arcane_library";
   position: Vec2;
   name: string;
   data: OverworldEntityData;

@@ -4,7 +4,7 @@ import { EventBus } from "@sim/core/EventBus";
 import { viewManager } from "@view/ViewManager";
 import type { RPGState } from "@rpg/state/RPGState";
 import type { OverworldState } from "@rpg/state/OverworldState";
-import type { TownData } from "@rpg/state/OverworldState";
+import type { TownData, ArcaneLibraryData } from "@rpg/state/OverworldState";
 import type { DungeonState } from "@rpg/state/DungeonState";
 import type { TurnBattleState } from "@rpg/state/TurnBattleState";
 import { OverworldView } from "./OverworldView";
@@ -54,6 +54,8 @@ export class RPGViewManager {
   /** Set by RPGBoot when entering a town. */
   currentTownData: TownData | null = null;
   currentTownName: string = "";
+  /** Set by RPGBoot when entering the arcane library. */
+  currentArcaneLibData: ArcaneLibraryData | null = null;
 
   /** Called by RPGBoot to leave town. */
   onLeaveTown: (() => void) | null = null;
@@ -353,7 +355,7 @@ export class RPGViewManager {
   private _showTownMenu(): void {
     if (!this.currentTownData) return;
     this.townMenuView = new TownMenuView();
-    this.townMenuView.init(viewManager, this.rpgState, this.currentTownData, this.currentTownName);
+    this.townMenuView.init(viewManager, this.rpgState, this.currentTownData, this.currentTownName, this.currentArcaneLibData ?? undefined);
     this.townMenuView.onLeave = () => {
       this.onLeaveTown?.();
     };

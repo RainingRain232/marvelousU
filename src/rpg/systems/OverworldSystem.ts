@@ -8,6 +8,8 @@ import type { RPGState } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { OVERWORLD_ENCOUNTERS } from "@rpg/config/EncounterDefs";
 import { generateShopInventory } from "@rpg/config/RPGItemDefs";
+import { generateMagicShopSpells, generateArcaneLibrarySpells } from "@rpg/config/RPGSpellDefs";
+import type { ArcaneLibraryData } from "@rpg/state/OverworldState";
 import type { RPGStateMachine } from "./RPGStateMachine";
 import { trackRecruitSteps, resetRecruitStepsOnTownVisit } from "./RecruitSystem";
 
@@ -91,6 +93,21 @@ function _handleEntityInteraction(
       if (rpg.stepsSinceLastTown >= 20) {
         const shopSeed = rpg.recruitSeed + rpg.gameTime + rpg.stepsSinceLastTown;
         townData.shopItems = generateShopInventory(townData.shopTier, shopSeed);
+        townData.magicShopSpells = generateMagicShopSpells(shopSeed + 9973);
+      }
+      // Ensure magic shop always has stock on first visit
+      if (!townData.magicShopSpells) {
+        townData.magicShopSpells = generateMagicShopSpells(rpg.seed + rpg.gameTime + 9973);
+      }
+      resetRecruitStepsOnTownVisit(rpg);
+      EventBus.emit("rpgTownEntered", { townId: entity.id });
+      stateMachine.transition(RPGPhase.TOWN_MENU);
+      break;
+    }
+    case "arcane_library": {
+      const libData = entity.data as ArcaneLibraryData;
+      if (rpg.stepsSinceLastTown >= 20) {
+        libData.spells = generateArcaneLibrarySpells(rpg.recruitSeed + rpg.gameTime + 13331);
       }
       resetRecruitStepsOnTownVisit(rpg);
       EventBus.emit("rpgTownEntered", { townId: entity.id });

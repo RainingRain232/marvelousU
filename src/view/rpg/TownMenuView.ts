@@ -2,10 +2,14 @@
 import { Container, Graphics, Text } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { RPGState, RPGItem, EquipmentSlots, PartyMember } from "@rpg/state/RPGState";
-import type { TownData, RecruitData } from "@rpg/state/OverworldState";
+import type { TownData, RecruitData, ArcaneLibraryData } from "@rpg/state/OverworldState";
 import { buyItem, sellItem, equipItem, unequipItem, restAtInn } from "@rpg/systems/EquipmentSystem";
 import { generateRecruits, recruitUnit } from "@rpg/systems/RecruitSystem";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
+import { RPG_SPELL_DEFS, spellPrice } from "@rpg/config/RPGSpellDefs";
+import { isCaster, accessibleSchools, maxKnownSpells, learnSpells } from "@rpg/systems/SpellLearningSystem";
+import type { UpgradeType } from "@/types";
+import { EventBus } from "@sim/core/EventBus";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -23,16 +27,19 @@ const TAB_ACTIVE_COLOR = 0x2a2a4e;
 
 const RECRUIT_COLOR = 0x44aacc;
 
-const TABS = ["Shop", "Inn", "Recruit", "Party", "Leave"] as const;
+const TABS = ["Shop", "Spells", "Inn", "Recruit", "Party", "Leave"] as const;
 
 // Tab icon glyphs (simple Unicode symbols)
 const TAB_ICONS: Record<string, string> = {
   Shop: "\u2692",      // crossed hammers (⚒)
+  Spells: "\u2728",    // sparkles (✨)
   Inn: "\u2615",       // hot beverage (☕)
   Recruit: "\u2694",   // crossed swords (⚔)
   Party: "\u2666",     // diamond (♦)
   Leave: "\u2192",     // right arrow (→)
 };
+
+const SPELL_COLOR = 0xaa66ff;
 
 // Sub-modes within Party tab
 type PartySubMode = "member_list" | "equip_slot" | "inventory_pick";
@@ -60,17 +67,22 @@ export class TownMenuView {
   private _inventoryPickIndex: number = 0;
   private _recruitIndex: number = 0;
   private _recruits: RecruitData[] = [];
+  private _spellIndex: number = 0;
+  private _spellBuyerIndex: number = 0;
+  private _spellSubMode: "spell_list" | "buyer_pick" = "spell_list";
+  private _arcaneLibData: ArcaneLibraryData | null = null;
   private _message: string = "";
   private _messageTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Callbacks
   onLeave: (() => void) | null = null;
 
-  init(vm: ViewManager, rpg: RPGState, townData: TownData, townName: string): void {
+  init(vm: ViewManager, rpg: RPGState, townData: TownData, townName: string, arcaneLibData?: ArcaneLibraryData): void {
     this.vm = vm;
     this.rpg = rpg;
     this.townData = townData;
     this.townName = townName;
+    this._arcaneLibData = arcaneLibData ?? null;
 
     vm.addToLayer("ui", this.container);
 
@@ -119,6 +131,9 @@ export class TownMenuView {
     switch (tab) {
       case "Shop":
         this._drawShop(W, H);
+        break;
+      case "Spells":
+        this._drawSpells(W, H);
         break;
       case "Inn":
         this._drawInn(W, H);
@@ -386,6 +401,276 @@ export class TownMenuView {
       });
       desc.position.set(30, H - 90);
       this.container.addChild(desc);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Spells (Magic Shop) tab
+  // ---------------------------------------------------------------------------
+
+  private _getSpellList(): string[] {
+    if (this._arcaneLibData) return this._arcaneLibData.spells ?? [];
+    return this.townData.magicShopSpells ?? [];
+  }
+
+  private _drawSpells(W: number, H: number): void {
+    const startY = 100;
+    const g = new Graphics();
+    g.roundRect(15, startY - 5, W - 30, H - startY - 60, 6);
+    g.fill({ color: PANEL_COLOR, alpha: 0.8 });
+    g.stroke({ color: BORDER_COLOR, width: 1 });
+    this.container.addChild(g);
+
+    const isLibrary = !!this._arcaneLibData;
+    const headerLabel = isLibrary ? "\u2728 Arcane Library" : "\u2728 Magic Shop";
+
+    const header = new Text({
+      text: headerLabel,
+      style: { fontFamily: "monospace", fontSize: 15, fill: SPELL_COLOR, fontWeight: "bold" },
+    });
+    header.position.set(25, startY + 6);
+    this.container.addChild(header);
+
+    if (this._spellSubMode === "buyer_pick") {
+      this._drawSpellBuyerPick(W, H, startY + 28);
+      return;
+    }
+
+    const spells = this._getSpellList();
+    if (spells.length === 0) {
+      const empty = new Text({
+        text: "No spells for sale.",
+        style: { fontFamily: "monospace", fontSize: 14, fill: DIM_TEXT },
+      });
+      empty.position.set(30, startY + 40);
+      this.container.addChild(empty);
+      return;
+    }
+
+    for (let i = 0; i < spells.length; i++) {
+      const spellId = spells[i];
+      const spellDef = RPG_SPELL_DEFS[spellId];
+      if (!spellDef) continue;
+
+      const y = startY + 32 + i * 38;
+      const isSelected = i === this._spellIndex;
+      const price = spellPrice(spellId);
+      const canAfford = this.rpg.gold >= price;
+
+      if (isSelected) {
+        const highlight = new Graphics();
+        highlight.roundRect(20, y - 2, W - 44, 34, 3);
+        highlight.fill({ color: 0x2a1a4e, alpha: 0.8 });
+        this.container.addChild(highlight);
+      }
+
+      const cursor = isSelected ? ">" : " ";
+      const tierLabel = `T${spellDef.tier}`;
+      const schoolLabel = spellDef.school.charAt(0).toUpperCase() + spellDef.school.slice(1);
+
+      const nameText = new Text({
+        text: `${cursor} ${spellDef.name}`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 13,
+          fill: isSelected ? HIGHLIGHT_COLOR : (canAfford ? TEXT_COLOR : 0x664444),
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      nameText.position.set(30, y);
+      this.container.addChild(nameText);
+
+      const priceText = new Text({
+        text: `${price}g`,
+        style: { fontFamily: "monospace", fontSize: 13, fill: canAfford ? GOLD_COLOR : 0x664444 },
+      });
+      priceText.anchor.set(1, 0);
+      priceText.position.set(W - 30, y);
+      this.container.addChild(priceText);
+
+      const detailText = new Text({
+        text: `${tierLabel} ${schoolLabel}  MP:${spellDef.mpCost}  ${spellDef.isHeal ? "Heal" : spellDef.isSummon ? "Summon" : `Dmg x${spellDef.multiplier}`}`,
+        style: { fontFamily: "monospace", fontSize: 10, fill: DIM_TEXT },
+      });
+      detailText.position.set(50, y + 16);
+      this.container.addChild(detailText);
+    }
+
+    // Description of selected spell
+    if (this._spellIndex < spells.length) {
+      const spellDef = RPG_SPELL_DEFS[spells[this._spellIndex]];
+      if (spellDef) {
+        const desc = new Text({
+          text: spellDef.description,
+          style: { fontFamily: "monospace", fontSize: 12, fill: TEXT_COLOR, wordWrap: true, wordWrapWidth: W - 60 },
+        });
+        desc.position.set(30, H - 90);
+        this.container.addChild(desc);
+      }
+    }
+  }
+
+  private _drawSpellBuyerPick(W: number, _H: number, startY: number): void {
+    const spells = this._getSpellList();
+    const spellId = spells[this._spellIndex];
+    const spellDef = RPG_SPELL_DEFS[spellId];
+    if (!spellDef) return;
+
+    const title = new Text({
+      text: `Who should learn ${spellDef.name}?`,
+      style: { fontFamily: "monospace", fontSize: 14, fill: SPELL_COLOR, fontWeight: "bold" },
+    });
+    title.position.set(30, startY + 5);
+    this.container.addChild(title);
+
+    const casters = this.rpg.party.filter(m => isCaster(m.unitType));
+    if (casters.length === 0) {
+      const noOne = new Text({
+        text: "No magic users in your party!",
+        style: { fontFamily: "monospace", fontSize: 13, fill: 0xaa4444 },
+      });
+      noOne.position.set(30, startY + 35);
+      this.container.addChild(noOne);
+      return;
+    }
+
+    for (let i = 0; i < casters.length; i++) {
+      const member = casters[i];
+      const y = startY + 35 + i * 40;
+      const isSelected = i === this._spellBuyerIndex;
+      const schools = new Set(accessibleSchools(member.unitType));
+      const canLearnSchool = schools.has(spellDef.school);
+      const alreadyKnows = member.knownSpells.includes(spellId as UpgradeType);
+      const atMax = member.knownSpells.length >= maxKnownSpells(member);
+      const canLearn = canLearnSchool && !alreadyKnows && !atMax;
+
+      if (isSelected) {
+        const highlight = new Graphics();
+        highlight.roundRect(20, y - 2, W - 44, 36, 3);
+        highlight.fill({ color: 0x2a1a4e, alpha: 0.6 });
+        this.container.addChild(highlight);
+      }
+
+      const cursor = isSelected ? ">" : " ";
+      let statusStr = "";
+      if (alreadyKnows) statusStr = " (already known)";
+      else if (!canLearnSchool) statusStr = " (wrong school)";
+      else if (atMax) statusStr = " (spells full)";
+
+      const memberText = new Text({
+        text: `${cursor} ${member.name} Lv.${member.level} (${member.unitType.replace(/_/g, " ")})${statusStr}`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 13,
+          fill: isSelected ? HIGHLIGHT_COLOR : (canLearn ? TEXT_COLOR : 0x666688),
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      memberText.position.set(30, y);
+      this.container.addChild(memberText);
+
+      const knownText = new Text({
+        text: `Known: ${member.knownSpells.length}/${maxKnownSpells(member)} spells`,
+        style: { fontFamily: "monospace", fontSize: 10, fill: DIM_TEXT },
+      });
+      knownText.position.set(50, y + 18);
+      this.container.addChild(knownText);
+    }
+  }
+
+  private _handleSpellsInput(e: KeyboardEvent): void {
+    if (this._spellSubMode === "buyer_pick") {
+      this._handleSpellBuyerInput(e);
+      return;
+    }
+
+    const spells = this._getSpellList();
+
+    switch (e.code) {
+      case "ArrowUp":
+      case "KeyW":
+        this._spellIndex = Math.max(0, this._spellIndex - 1);
+        this._draw();
+        break;
+      case "ArrowDown":
+      case "KeyS":
+        this._spellIndex = Math.min(spells.length - 1, this._spellIndex + 1);
+        this._draw();
+        break;
+      case "Enter":
+      case "Space":
+        if (this._spellIndex < spells.length) {
+          const price = spellPrice(spells[this._spellIndex]);
+          if (this.rpg.gold < price) {
+            this._showMessage("Not enough gold!");
+          } else {
+            this._spellSubMode = "buyer_pick";
+            this._spellBuyerIndex = 0;
+            this._draw();
+          }
+        }
+        break;
+      case "Escape":
+        this.onLeave?.();
+        break;
+    }
+  }
+
+  private _handleSpellBuyerInput(e: KeyboardEvent): void {
+    const casters = this.rpg.party.filter(m => isCaster(m.unitType));
+    const spells = this._getSpellList();
+    const spellId = spells[this._spellIndex];
+    const spellDef = RPG_SPELL_DEFS[spellId];
+
+    switch (e.code) {
+      case "ArrowUp":
+      case "KeyW":
+        this._spellBuyerIndex = Math.max(0, this._spellBuyerIndex - 1);
+        this._draw();
+        break;
+      case "ArrowDown":
+      case "KeyS":
+        this._spellBuyerIndex = Math.min(casters.length - 1, this._spellBuyerIndex + 1);
+        this._draw();
+        break;
+      case "Enter":
+      case "Space": {
+        if (this._spellBuyerIndex >= casters.length || !spellDef) break;
+        const member = casters[this._spellBuyerIndex];
+        const schools = new Set(accessibleSchools(member.unitType));
+        const alreadyKnows = member.knownSpells.includes(spellId as UpgradeType);
+        const atMax = member.knownSpells.length >= maxKnownSpells(member);
+
+        if (alreadyKnows) {
+          this._showMessage(`${member.name} already knows ${spellDef.name}!`);
+        } else if (!schools.has(spellDef.school)) {
+          this._showMessage(`${member.name} can't learn ${spellDef.school} spells!`);
+        } else if (atMax) {
+          this._showMessage(`${member.name}'s spell slots are full!`);
+        } else {
+          const price = spellPrice(spellId);
+          if (this.rpg.gold < price) {
+            this._showMessage("Not enough gold!");
+          } else {
+            this.rpg.gold -= price;
+            const learned = learnSpells(member, [spellId as UpgradeType]);
+            if (learned.length > 0) {
+              this._showMessage(`${member.name} learned ${spellDef.name}!`);
+              EventBus.emit("rpgSpellLearned", { memberId: member.id, spellId });
+              // Remove from shop
+              const shopSpells = this._getSpellList();
+              const idx = shopSpells.indexOf(spellId);
+              if (idx >= 0) shopSpells.splice(idx, 1);
+            }
+            this._spellSubMode = "spell_list";
+          }
+        }
+        break;
+      }
+      case "Escape":
+        this._spellSubMode = "spell_list";
+        this._draw();
+        break;
     }
   }
 
@@ -856,7 +1141,7 @@ export class TownMenuView {
       const tab = TABS[this._activeTab];
 
       // Tab switching (when not in sub-menu)
-      if (this._partySubMode === "member_list") {
+      if (this._partySubMode === "member_list" && this._spellSubMode === "spell_list") {
         if (e.code === "ArrowLeft") {
           this._activeTab = Math.max(0, this._activeTab - 1);
           this._itemIndex = 0;
@@ -874,6 +1159,9 @@ export class TownMenuView {
       switch (tab) {
         case "Shop":
           this._handleShopInput(e);
+          break;
+        case "Spells":
+          this._handleSpellsInput(e);
           break;
         case "Inn":
           this._handleInnInput(e);

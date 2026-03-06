@@ -1058,6 +1058,12 @@ function _applyLevelUp(member: PartyMember): void {
         picks,
         choices: choices.map(s => s.id),
       });
+    } else if (picks > 0 && choices.length === 0) {
+      EventBus.emit("rpgAllSpellsKnown", {
+        memberId: member.id,
+        memberName: member.name,
+        level: member.level,
+      });
     }
   }
 }

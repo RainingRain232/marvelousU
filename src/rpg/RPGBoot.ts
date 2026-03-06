@@ -5,7 +5,7 @@ import { EventBus } from "@sim/core/EventBus";
 import { viewManager } from "@view/ViewManager";
 import { createRPGState } from "@rpg/state/RPGState";
 import type { RPGState } from "@rpg/state/RPGState";
-import type { OverworldState, TownData } from "@rpg/state/OverworldState";
+import type { OverworldState, TownData, ArcaneLibraryData } from "@rpg/state/OverworldState";
 import type { DungeonState } from "@rpg/state/DungeonState";
 import type { TurnBattleState } from "@rpg/state/TurnBattleState";
 import { generateOverworld } from "@rpg/gen/OverworldGenerator";
@@ -45,7 +45,7 @@ export class RPGGame {
   /** Tracks the current encounter for auto-battle fallback. */
   _pendingEncounterId: string | null = null;
   /** Tracks level-ups during the current battle for the results screen. */
-  private _battleLevelUps: { name: string; newLevel: number }[] = [];
+  private _battleLevelUps: { name: string; newLevel: number; note?: string }[] = [];
   private _levelUpUnsub: (() => void) | null = null;
   /** True when NPC dialog is open — blocks movement input. */
   private _npcDialogOpen = false;
@@ -145,6 +145,7 @@ export class RPGGame {
     this.rpgViewManager.onLeaveTown = () => {
       this.rpgViewManager.currentTownData = null;
       this.rpgViewManager.currentTownName = "";
+      this.rpgViewManager.currentArcaneLibData = null;
       this.stateMachine.transition(RPGPhase.OVERWORLD);
     };
 
@@ -218,6 +219,18 @@ export class RPGGame {
         for (const spellId of learned) {
           EventBus.emit("rpgSpellLearned", { memberId: member.id, spellId });
         }
+      }
+    }));
+
+    // When a caster has learned all available spells for their level
+    this._unsubs.push(EventBus.on("rpgAllSpellsKnown", (e) => {
+      // Add to battle log if in battle, otherwise the battle results will show it
+      if (this._battleLevelUps) {
+        this._battleLevelUps.push({
+          name: e.memberName,
+          newLevel: e.level,
+          note: "Already knows all available spells!",
+        });
       }
     }));
   }
@@ -370,11 +383,27 @@ export class RPGGame {
 
   private _onTownEntered(townId: string): void {
     const entity = this.overworldState.entities.get(townId);
-    if (!entity || entity.type !== "town") return;
+    if (!entity) return;
 
-    const townData = entity.data as TownData;
-    this.rpgViewManager.currentTownData = townData;
-    this.rpgViewManager.currentTownName = entity.name;
+    if (entity.type === "town") {
+      const townData = entity.data as TownData;
+      this.rpgViewManager.currentTownData = townData;
+      this.rpgViewManager.currentTownName = entity.name;
+      this.rpgViewManager.currentArcaneLibData = null;
+    } else if (entity.type === "arcane_library") {
+      // Arcane Library uses a minimal TownData wrapper so the town menu can display
+      const libData = entity.data as ArcaneLibraryData;
+      const fakeTown: TownData = {
+        shopItems: [],
+        shopTier: "late",
+        innCost: 0,
+        quests: [],
+        magicShopSpells: [],
+      };
+      this.rpgViewManager.currentTownData = fakeTown;
+      this.rpgViewManager.currentTownName = entity.name;
+      this.rpgViewManager.currentArcaneLibData = libData;
+    }
   }
 
   // ---------------------------------------------------------------------------

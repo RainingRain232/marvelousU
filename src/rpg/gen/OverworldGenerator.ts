@@ -8,6 +8,8 @@ import type { DungeonEntranceData, TownData, NPCData } from "@rpg/state/Overworl
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { generateShopInventory } from "@rpg/config/RPGItemDefs";
 import type { ShopTier } from "@rpg/config/RPGItemDefs";
+import { generateMagicShopSpells, generateArcaneLibrarySpells } from "@rpg/config/RPGSpellDefs";
+import type { ArcaneLibraryData } from "@rpg/state/OverworldState";
 
 // ---------------------------------------------------------------------------
 // Simple 2D value noise (seeded)
@@ -246,6 +248,7 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
       shopTier: townDefs[i].tier,
       innCost: townDefs[i].innCost,
       quests: [],
+      magicShopSpells: generateMagicShopSpells(shopSeed + 9973),
     };
 
     entities.set(townId, {
@@ -423,6 +426,40 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
       name: npcDefs[i].name,
       data,
     });
+  }
+
+  // Place the Arcane Library (single unique location with T4+ spells)
+  {
+    const pos = _findPlacement(grid, rng, width, height, placements, 20);
+    if (pos) {
+      placements.push(pos);
+      const libId = "arcane_library_0";
+      grid[pos.y][pos.x].entityId = libId;
+      grid[pos.y][pos.x].encounterRate = 0;
+
+      const libData: ArcaneLibraryData = {
+        spells: generateArcaneLibrarySpells(seed + 13331),
+      };
+
+      entities.set(libId, {
+        id: libId,
+        type: "arcane_library",
+        position: pos,
+        name: "Arcane Library",
+        data: libData,
+      });
+
+      // Connect library to nearest town with a path
+      if (townPositions.length > 0) {
+        let nearestTown = townPositions[0];
+        let nearestDist = Infinity;
+        for (const tp of townPositions) {
+          const d = Math.abs(tp.x - pos.x) + Math.abs(tp.y - pos.y);
+          if (d < nearestDist) { nearestDist = d; nearestTown = tp; }
+        }
+        _carvePath(grid, pos, nearestTown);
+      }
+    }
   }
 
   // Start position: near first town or center

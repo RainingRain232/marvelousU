@@ -13,6 +13,7 @@ import type { PartyMember, RPGState } from "@rpg/state/RPGState";
 import { ENCOUNTER_DEFS } from "@rpg/config/EncounterDefs";
 import type { EnemyDef } from "@rpg/config/EncounterDefs";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
+import { isCaster, spellPicksOnLevelUp, getSpellChoices } from "@rpg/systems/SpellLearningSystem";
 import { EventBus } from "@sim/core/EventBus";
 
 // ---------------------------------------------------------------------------
@@ -213,6 +214,26 @@ export function applyRPGBattleResults(rpg: RPGState, result: RPGBattleResult): v
         member.def = Math.ceil(member.def * (1 + growth));
         member.xpToNext = Math.ceil(member.xpToNext * RPGBalance.XP_SCALE_FACTOR);
         EventBus.emit("rpgLevelUp", { memberId: member.id, newLevel: member.level });
+
+        // Trigger spell learning for casters
+        if (isCaster(member.unitType)) {
+          const picks = spellPicksOnLevelUp(member);
+          const choices = getSpellChoices(member);
+          if (picks > 0 && choices.length > 0) {
+            EventBus.emit("rpgSpellLearnPrompt", {
+              memberId: member.id,
+              memberName: member.name,
+              picks,
+              choices: choices.map(s => s.id),
+            });
+          } else if (picks > 0 && choices.length === 0) {
+            EventBus.emit("rpgAllSpellsKnown", {
+              memberId: member.id,
+              memberName: member.name,
+              level: member.level,
+            });
+          }
+        }
       }
     }
 

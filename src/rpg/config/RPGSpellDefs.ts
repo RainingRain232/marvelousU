@@ -95,6 +95,13 @@ export const SPELLS_BY_SCHOOL: Record<SpellSchool, RPGSpellDef[]> = {
   elemental: [], arcane: [], divine: [], shadow: [], conjuration: [],
 };
 
+/** Max spells sold in a town magic shop. */
+export const MAGIC_SHOP_MAX_SPELLS = 5;
+/** Max tier sold in regular magic shops (T1–T3). */
+export const MAGIC_SHOP_MAX_TIER: SpellTier = 3;
+/** Max spells sold at the arcane library. */
+export const ARCANE_LIBRARY_MAX_SPELLS = 8;
+
 for (const [key, def] of Object.entries(UPGRADE_DEFINITIONS)) {
   if (!def.isSpell) continue;
   if (!def.spellTier || !def.spellSchool) continue;
@@ -137,4 +144,98 @@ for (const [key, def] of Object.entries(UPGRADE_DEFINITIONS)) {
   RPG_SPELL_DEFS[key] = spell;
   SPELLS_BY_TIER[tier].push(spell);
   SPELLS_BY_SCHOOL[school].push(spell);
+}
+
+// ---------------------------------------------------------------------------
+// Magic shop / arcane library spell generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate spells for a town magic shop (max 5, tiers 1–3).
+ * Higher tiers are rarer: T1 common, T2 uncommon, T3 rare (~15% chance).
+ */
+export function generateMagicShopSpells(seed: number): string[] {
+  let s = seed | 0;
+  function next(): number {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  const result: string[] = [];
+  const used = new Set<string>();
+
+  for (let i = 0; i < MAGIC_SHOP_MAX_SPELLS; i++) {
+    // Tier weighting: 50% T1, 35% T2, 15% T3
+    const roll = next();
+    const tier: SpellTier = roll < 0.50 ? 1 : roll < 0.85 ? 2 : 3;
+    const pool = SPELLS_BY_TIER[tier];
+    if (pool.length === 0) continue;
+
+    let picked = false;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const spell = pool[Math.floor(next() * pool.length)];
+      if (!used.has(spell.id) && !spell.isSummon) {
+        result.push(spell.id);
+        used.add(spell.id);
+        picked = true;
+        break;
+      }
+    }
+    // Fallback to any T1 spell
+    if (!picked) {
+      for (const spell of SPELLS_BY_TIER[1]) {
+        if (!used.has(spell.id) && !spell.isSummon) {
+          result.push(spell.id);
+          used.add(spell.id);
+          break;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Generate spells for the Arcane Library (up to 8, tiers 4–7).
+ */
+export function generateArcaneLibrarySpells(seed: number): string[] {
+  let s = seed | 0;
+  function next(): number {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  const result: string[] = [];
+  const used = new Set<string>();
+
+  for (let i = 0; i < ARCANE_LIBRARY_MAX_SPELLS; i++) {
+    // Tier weighting: 40% T4, 30% T5, 20% T6, 10% T7
+    const roll = next();
+    const tier: SpellTier = roll < 0.40 ? 4 : roll < 0.70 ? 5 : roll < 0.90 ? 6 : 7;
+    const pool = SPELLS_BY_TIER[tier];
+    if (pool.length === 0) continue;
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const spell = pool[Math.floor(next() * pool.length)];
+      if (!used.has(spell.id)) {
+        result.push(spell.id);
+        used.add(spell.id);
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+
+/** Price for buying a spell (based on tier). */
+export function spellPrice(spellId: string): number {
+  const spell = RPG_SPELL_DEFS[spellId];
+  if (!spell) return 100;
+  return [0, 50, 100, 200, 350, 550, 800, 1200][spell.tier];
 }

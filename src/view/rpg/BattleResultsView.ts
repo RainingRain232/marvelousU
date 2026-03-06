@@ -24,7 +24,7 @@ export interface BattleResults {
   xpGained: number;
   goldGained: number;
   lootItems: RPGItem[];
-  levelUps: { name: string; newLevel: number }[];
+  levelUps: { name: string; newLevel: number; note?: string }[];
 }
 
 export class BattleResultsView {
@@ -131,6 +131,15 @@ export class BattleResultsView {
           luText.position.set(panelX + 25, y);
           this.container.addChild(luText);
           y += 22;
+          if (lu.note) {
+            const noteText = new Text({
+              text: `    ${lu.note}`,
+              style: { fontFamily: "monospace", fontSize: 11, fill: 0xaa88cc },
+            });
+            noteText.position.set(panelX + 25, y);
+            this.container.addChild(noteText);
+            y += 18;
+          }
         }
         y += 10;
       }

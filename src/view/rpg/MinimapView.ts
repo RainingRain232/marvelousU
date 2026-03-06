@@ -127,6 +127,10 @@ export class MinimapView {
           entityG.circle(ex, ey, r * 0.8);
           entityG.fill({ color: NPC_COLOR });
           break;
+        case "arcane_library":
+          entityG.rect(ex - r, ey - r, r * 2, r * 2);
+          entityG.fill({ color: 0xaa66ff });
+          break;
       }
     }
     this.container.addChild(entityG);
