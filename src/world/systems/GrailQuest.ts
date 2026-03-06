@@ -15,6 +15,7 @@ import { hexSpiral, hexDistance, type HexCoord } from "@world/hex/HexCoord";
 import { nextId } from "@world/state/WorldState";
 import { TerrainType } from "@world/config/TerrainDefs";
 import { UnitType } from "@/types";
+import { cureWasteland } from "@world/systems/MorgaineEscalation";
 
 // ---------------------------------------------------------------------------
 // State
@@ -162,25 +163,26 @@ export function applyGrailReward(
   grailState.claimed = true;
 
   if (choice === "heal_wasteland") {
-    // Terraform a 4-hex radius ring of desert/tundra tiles around the player's capital to grassland
+    // Terraform wasteland tiles around the player's capital (radius 5)
     const playerCities = [...state.cities.values()].filter(
       (c) => c.owner === player.id && c.isCapital,
     );
     const capital = playerCities[0];
     if (capital) {
-      for (const hex of hexSpiral(capital.position, 4)) {
+      // Use the dedicated cure function for Morgaine wasteland
+      cureWasteland(state, capital.position, 5, player.id);
+      // Also cure non-Morgaine desert/tundra/swamp
+      for (const hex of hexSpiral(capital.position, 5)) {
         const tile = state.grid.getTile(hex.q, hex.r);
         if (!tile) continue;
-        if (tile.terrain === TerrainType.DESERT || tile.terrain === TerrainType.TUNDRA || tile.terrain === TerrainType.SWAMP) {
+        if (tile.terrain === TerrainType.TUNDRA || tile.terrain === TerrainType.SWAMP) {
           tile.terrain = TerrainType.GRASSLAND;
-          // Remove Morgaine's ownership of corrupted tiles
-          if (tile.owner === "morgaine") {
-            tile.owner = player.id;
-          }
         }
       }
     }
-    // Also give mana bonus
+    // Also cure a ring around Avalon itself (push back the wasteland)
+    cureWasteland(state, { q: 0, r: 0 }, 4, null);
+    // Mana bonus
     player.mana += 50;
   } else {
     // Eternal blessing — grant the Holy Grail armory item

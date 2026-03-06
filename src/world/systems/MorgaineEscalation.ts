@@ -44,6 +44,12 @@ export function processMorgaineEscalation(state: WorldState): MorgaineEvent[] {
     if (evt) events.push(evt);
   }
 
+  // Wasteland ring expansion from Avalon center every 12 turns (after turn 20)
+  if (state.turn >= 20 && state.turn % 12 === 0) {
+    const evt = _expandWastelandRing(state);
+    if (evt) events.push(evt);
+  }
+
   // After turn 30, cast curses against players every 8 turns
   if (state.turn >= 30 && state.turn % 8 === 0) {
     const curseEvents = _castMorgaineCurses(state);
@@ -205,4 +211,73 @@ function _castMorgaineCurses(state: WorldState): MorgaineEvent[] {
   }
 
   return events;
+}
+
+// ---------------------------------------------------------------------------
+// Wasteland ring expansion — spreads outward from Avalon center
+// ---------------------------------------------------------------------------
+
+function _expandWastelandRing(state: WorldState): MorgaineEvent | null {
+  const center = { q: 0, r: 0 };
+  // The wasteland radius grows over time: starts at 3 (Morgaine's base), expands by 1 each cycle
+  const currentRadius = 3 + Math.floor((state.turn - 20) / 12);
+
+  let corrupted = 0;
+
+  // Only corrupt tiles at the frontier (current radius ring)
+  for (const hex of hexSpiral(center, currentRadius)) {
+    const dist = hexDistance(center, hex);
+    if (dist < currentRadius - 1 || dist > currentRadius) continue;
+
+    const tile = state.grid.getTile(hex.q, hex.r);
+    if (!tile) continue;
+    if (tile.terrain === TerrainType.WATER) continue;
+    if (tile.terrain === TerrainType.DESERT && tile.owner === "morgaine") continue; // Already corrupted
+    if (tile.cityId) continue; // Don't corrupt cities
+    if (tile.owner && tile.owner !== "morgaine") continue; // Don't corrupt player territory
+
+    tile.terrain = TerrainType.DESERT;
+    tile.owner = "morgaine";
+    tile.resource = null;
+    tile.improvement = null;
+    corrupted++;
+  }
+
+  if (corrupted === 0) return null;
+
+  return {
+    type: "wasteland_expansion",
+    title: "The Wasteland Grows!",
+    description: `Morgaine's blight spreads from Avalon — ${corrupted} tiles turned to wasteland (radius ${currentRadius}).`,
+    color: 0x664466,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Cure wasteland — used by Holy spells or Grail quest
+// ---------------------------------------------------------------------------
+
+/**
+ * Cure wasteland tiles around a position. Returns the number of tiles cured.
+ * Tiles are restored from desert to grassland and ownership is cleared.
+ */
+export function cureWasteland(
+  state: WorldState,
+  center: { q: number; r: number },
+  radius: number,
+  newOwner: string | null = null,
+): number {
+  let cured = 0;
+  for (const hex of hexSpiral(center, radius)) {
+    const tile = state.grid.getTile(hex.q, hex.r);
+    if (!tile) continue;
+    if (tile.terrain !== TerrainType.DESERT) continue;
+    if (tile.owner !== "morgaine") continue;
+    if (tile.cityId) continue;
+
+    tile.terrain = TerrainType.GRASSLAND;
+    tile.owner = newOwner;
+    cured++;
+  }
+  return cured;
 }
