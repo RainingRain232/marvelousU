@@ -157,6 +157,21 @@ import { generateMarksmanFrames } from "@view/animation/MarksmanSpriteGen";
 import { generateCannonFrames } from "@view/animation/CannonSpriteGen";
 import { generateBattlemageFrames } from "@view/animation/BattlemageSpriteGen";
 import { generateCataphractFrames } from "@view/animation/CataphractSpriteGen";
+import { generateKnightCommanderFrames } from "@view/animation/KnightCommanderSpriteGen";
+import { generateBladedancerFrames } from "@view/animation/BladedancerSpriteGen";
+import { generateBoarRiderFrames } from "@view/animation/BoarRiderSpriteGen";
+import { generateChromanerFrames } from "@view/animation/ChronomanerSpriteGen";
+import { generateStormConduitFrames } from "@view/animation/StormConduitSpriteGen";
+import { generateHalflingBurglarFrames } from "@view/animation/HalflingBurglarSpriteGen";
+import { generateObsidianSentinelFrames } from "@view/animation/ObsidianSentinelSpriteGen";
+import { generateDwarvenCannonFrames } from "@view/animation/DwarvenCannonSpriteGen";
+import { generateOrcShamanFrames } from "@view/animation/OrcShamanSpriteGen";
+import { generateBansheeFrames } from "@view/animation/BansheeSpriteGen";
+import { generateSuccubusFrames } from "@view/animation/SuccubusSpriteGen";
+import { generateValkyrieFrames } from "@view/animation/ValkyrieSpriteGen";
+import { generateThunderhawkFrames } from "@view/animation/ThunderhawkSpriteGen";
+import { generateSiegeAutomatonFrames } from "@view/animation/SiegeAutomatonSpriteGen";
+import { generatePowderMonkeyFrames } from "@view/animation/PowderMonkeySpriteGen";
 import { generateSettlerFrames } from "@view/animation/SettlerSpriteGen";
 import { generateEngineerFrames } from "@view/animation/EngineerSpriteGen";
 import { generateUnicornFrames } from "@view/animation/UnicornSpriteGen";
@@ -524,6 +539,36 @@ export class AnimationManager {
         this._generateMinorEarthElementalSprites(key, renderer);
       } else if (key === "unicorn") {
         this._generateUnicornSprites(key, renderer);
+      } else if (key === "knight_commander") {
+        this._generateKnightCommanderSprites(key, renderer);
+      } else if (key === "bladedancer") {
+        this._generateBladedancerSprites(key, renderer);
+      } else if (key === "boar_rider") {
+        this._generateBoarRiderSprites(key, renderer);
+      } else if (key === "chronomancer") {
+        this._generateChronomancerSprites(key, renderer);
+      } else if (key === "storm_conduit") {
+        this._generateStormConduitSprites(key, renderer);
+      } else if (key === "halfling_burglar") {
+        this._generateHalflingBurglarSprites(key, renderer);
+      } else if (key === "obsidian_sentinel") {
+        this._generateObsidianSentinelSprites(key, renderer);
+      } else if (key === "dwarven_cannon") {
+        this._generateDwarvenCannonSprites(key, renderer);
+      } else if (key === "orc_shaman") {
+        this._generateOrcShamanSprites(key, renderer);
+      } else if (key === "banshee") {
+        this._generateBansheeSprites(key, renderer);
+      } else if (key === "succubus") {
+        this._generateSuccubusSprites(key, renderer);
+      } else if (key === "valkyrie") {
+        this._generateValkyrieSprites(key, renderer);
+      } else if (key === "thunderhawk") {
+        this._generateThunderhawkSprites(key, renderer);
+      } else if (key === "siege_automaton") {
+        this._generateSiegeAutomatonSprites(key, renderer);
+      } else if (key === "powder_monkey") {
+        this._generatePowderMonkeySprites(key, renderer);
       } else if (key === "mage") {
         // Fallback generic mage (used before race is applied)
         this._generateMageSprites(key, renderer, PALETTE_NATIONAL_MAN);
@@ -2073,6 +2118,201 @@ export class AnimationManager {
 
   private _generateUnicornSprites(key: string, renderer: Renderer): void {
     const textures = generateUnicornFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateKnightCommanderSprites(key: string, renderer: Renderer): void {
+    const textures = generateKnightCommanderFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateBladedancerSprites(key: string, renderer: Renderer): void {
+    const textures = generateBladedancerFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateBoarRiderSprites(key: string, renderer: Renderer): void {
+    const textures = generateBoarRiderFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateChronomancerSprites(key: string, renderer: Renderer): void {
+    const textures = generateChromanerFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateStormConduitSprites(key: string, renderer: Renderer): void {
+    const textures = generateStormConduitFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateHalflingBurglarSprites(key: string, renderer: Renderer): void {
+    const textures = generateHalflingBurglarFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateObsidianSentinelSprites(key: string, renderer: Renderer): void {
+    const textures = generateObsidianSentinelFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateDwarvenCannonSprites(key: string, renderer: Renderer): void {
+    const textures = generateDwarvenCannonFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateOrcShamanSprites(key: string, renderer: Renderer): void {
+    const textures = generateOrcShamanFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateBansheeSprites(key: string, renderer: Renderer): void {
+    const textures = generateBansheeFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateSuccubusSprites(key: string, renderer: Renderer): void {
+    const textures = generateSuccubusFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateValkyrieSprites(key: string, renderer: Renderer): void {
+    const textures = generateValkyrieFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateThunderhawkSprites(key: string, renderer: Renderer): void {
+    const textures = generateThunderhawkFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generateSiegeAutomatonSprites(key: string, renderer: Renderer): void {
+    const textures = generateSiegeAutomatonFrames(renderer);
+    for (let row = 0; row < 5; row++) {
+      const state = Object.values(UnitState)[row];
+      const stateTextures: Texture[] = [];
+      for (let col = 0; col < 8; col++) {
+        stateTextures.push(textures[row * 8 + col]);
+      }
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) this._cache.set(ck, stateTextures);
+    }
+  }
+
+  private _generatePowderMonkeySprites(key: string, renderer: Renderer): void {
+    const textures = generatePowderMonkeyFrames(renderer);
     for (let row = 0; row < 5; row++) {
       const state = Object.values(UnitState)[row];
       const stateTextures: Texture[] = [];

@@ -2515,7 +2515,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 3,
     spawnTime: 6,
     abilityTypes: [AbilityType.HEAL],
-    spriteKey: "knight",
+    spriteKey: "knight_commander",
     isHealer: true,
     size: { width: 2.0, height: 2.0, healthBarOffset: -1.0 },
     description:
@@ -2533,7 +2533,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 4,
     abilityTypes: [],
-    spriteKey: "assassin",
+    spriteKey: "bladedancer",
     description:
       "An elven warrior who fights like wind through leaves — twin moonblades blur in a dance of death that shreds anything within reach.",
     tier: 1,
@@ -2548,7 +2548,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1.5,
     spawnTime: 5,
     abilityTypes: [],
-    spriteKey: "scout_cavalry",
+    spriteKey: "boar_rider",
     isChargeUnit: true,
     size: { width: 2.0, height: 2.0, healthBarOffset: -1.0 },
     description:
@@ -2565,7 +2565,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 6,
     spawnTime: 7,
     abilityTypes: [AbilityType.ICE_BALL, AbilityType.DISTORTION_BLAST],
-    spriteKey: "distortion_mage",
+    spriteKey: "chronomancer",
     element: "distortion",
     description:
       "A time-bending arcanist who freezes and warps enemies simultaneously. Foes are slowed, displaced, and utterly helpless.",
@@ -2581,7 +2581,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 4,
     spawnTime: 6,
     abilityTypes: [AbilityType.CHAIN_LIGHTNING],
-    spriteKey: "lightning_elemental",
+    spriteKey: "storm_conduit",
     size: { width: 2.0, height: 2.0, healthBarOffset: -1.0 },
     element: "lightning",
     description:
@@ -2598,7 +2598,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 3,
     abilityTypes: [],
-    spriteKey: "assassin",
+    spriteKey: "halfling_burglar",
     description:
       "A light-fingered halfling who slips past enemy lines with uncanny speed. What they lack in size, they make up for in stab frequency.",
     tier: 1,
@@ -2613,7 +2613,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1.5,
     spawnTime: 6,
     abilityTypes: [],
-    spriteKey: "giant_warrior",
+    spriteKey: "obsidian_sentinel",
     regenRate: 4,
     description:
       "A hulking statue of volcanic glass, nearly immune to damage. It stands like a black mountain, slowly grinding attackers to dust.",
@@ -2629,7 +2629,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 8,
     spawnTime: 8,
     abilityTypes: [],
-    spriteKey: "bombard",
+    spriteKey: "dwarven_cannon",
     description:
       "A masterwork dwarven cannon, compact enough for field deployment. Fires iron shot with devastating accuracy at extreme range.",
     tier: 3,
@@ -2644,7 +2644,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 5,
     spawnTime: 5,
     abilityTypes: [AbilityType.FIREBALL],
-    spriteKey: "fire_mage",
+    spriteKey: "orc_shaman",
     element: "fire",
     description:
       "A rare orc born with the gift of flame. Where most orcs solve problems with axes, this one solves them with fireballs — same result, bigger radius.",
@@ -2660,7 +2660,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 5,
     spawnTime: 4,
     abilityTypes: [AbilityType.ICE_BALL],
-    spriteKey: "cold_mage",
+    spriteKey: "banshee",
     element: "cold",
     description:
       "A wailing spirit of freezing despair. Its keening cry chills the blood and slows the living to a crawl.",
@@ -2676,7 +2676,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 4,
     spawnTime: 5,
     abilityTypes: [AbilityType.WEB],
-    spriteKey: "cold_mage",
+    spriteKey: "succubus",
     description:
       "A beguiling demon who ensnares enemies in webs of dark enchantment, rooting them helplessly while allies close in for the kill.",
     tier: 2,
@@ -2691,7 +2691,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1.5,
     spawnTime: 5,
     abilityTypes: [],
-    spriteKey: "templar",
+    spriteKey: "valkyrie",
     isChargeUnit: true,
     description:
       "A winged holy warrior who descends from the sky like divine judgment. Her charge shatters formations with the force of heaven's fury.",
@@ -2707,7 +2707,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 4,
     spawnTime: 4,
     abilityTypes: [],
-    spriteKey: "pixie",
+    spriteKey: "thunderhawk",
     description:
       "A massive raptor bonded to a Beastkin rider. Faster than any land creature, it swoops in to strike and wheels away before retaliation.",
     tier: 1,
@@ -2722,7 +2722,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 5,
     spawnTime: 9,
     abilityTypes: [],
-    spriteKey: "war_wagon",
+    spriteKey: "siege_automaton",
     siegeOnly: true,
     size: { width: 2.0, height: 2.0, healthBarOffset: -1.0 },
     description:
@@ -2739,7 +2739,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 3,
     spawnTime: 3,
     abilityTypes: [AbilityType.FIREBALL],
-    spriteKey: "archer",
+    spriteKey: "powder_monkey",
     element: "fire",
     description:
       "A nimble crew member armed with satchel charges and black powder bombs. Tosses explosives with gleeful abandon — stand well back.",

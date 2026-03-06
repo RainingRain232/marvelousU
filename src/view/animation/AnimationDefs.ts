@@ -809,49 +809,49 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 10,
     castFps: 10,
   }),
-  [UnitType.KNIGHT_COMMANDER]: buildDef("knight", {
+  [UnitType.KNIGHT_COMMANDER]: buildDef("knight_commander", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.BLADEDANCER]: buildDef("assassin", {
+  [UnitType.BLADEDANCER]: buildDef("bladedancer", {
     idleFps: 6, moveFps: 8, attackFps: 12, castFps: 10,
   }),
-  [UnitType.BOAR_RIDER]: buildDef("scout_cavalry", {
+  [UnitType.BOAR_RIDER]: buildDef("boar_rider", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.CHRONOMANCER]: buildDef("mage", {
+  [UnitType.CHRONOMANCER]: buildDef("chronomancer", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.STORM_CONDUIT]: buildDef("lightning_elemental", {
+  [UnitType.STORM_CONDUIT]: buildDef("storm_conduit", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.HALFLING_BURGLAR]: buildDef("assassin", {
+  [UnitType.HALFLING_BURGLAR]: buildDef("halfling_burglar", {
     idleFps: 6, moveFps: 8, attackFps: 12, castFps: 10,
   }),
-  [UnitType.OBSIDIAN_SENTINEL]: buildDef("giant_warrior", {
+  [UnitType.OBSIDIAN_SENTINEL]: buildDef("obsidian_sentinel", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.DWARVEN_CANNON]: buildDef("bombard", {
+  [UnitType.DWARVEN_CANNON]: buildDef("dwarven_cannon", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.ORC_SHAMAN]: buildDef("fire_mage", {
+  [UnitType.ORC_SHAMAN]: buildDef("orc_shaman", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.BANSHEE]: buildDef("cold_mage", {
+  [UnitType.BANSHEE]: buildDef("banshee", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.SUCCUBUS]: buildDef("cold_mage", {
+  [UnitType.SUCCUBUS]: buildDef("succubus", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.VALKYRIE]: buildDef("templar", {
+  [UnitType.VALKYRIE]: buildDef("valkyrie", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.THUNDERHAWK]: buildDef("pixie", {
+  [UnitType.THUNDERHAWK]: buildDef("thunderhawk", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.SIEGE_AUTOMATON]: buildDef("war_wagon", {
+  [UnitType.SIEGE_AUTOMATON]: buildDef("siege_automaton", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
-  [UnitType.POWDER_MONKEY]: buildDef("archer", {
+  [UnitType.POWDER_MONKEY]: buildDef("powder_monkey", {
     idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
   }),
 };
