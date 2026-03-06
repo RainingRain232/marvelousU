@@ -2138,4 +2138,349 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "mage", tier: 7, element: "fire",
     description: "The supreme national mage — a living conduit of arcane devastation.",
   },
+  // ---------------------------------------------------------------------------
+  // Halfling faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.HALFLING_SLINGER]: {
+    type: UnitType.HALFLING_SLINGER,
+    cost: 120,
+    hp: 50,
+    atk: 11,
+    attackSpeed: 1.6,
+    speed: 1.3,
+    range: 5,
+    spawnTime: 2,
+    abilityTypes: [],
+    spriteKey: "archer",
+    description:
+      "Nimble halfling skirmisher whipping stones with deadly accuracy. Small, fast, and surprisingly lethal.",
+    tier: 1,
+  },
+  [UnitType.HALFLING_CHEF]: {
+    type: UnitType.HALFLING_CHEF,
+    cost: 350,
+    hp: 90,
+    atk: 5,
+    attackSpeed: 0.8,
+    speed: 1.1,
+    range: 3,
+    spawnTime: 5,
+    abilityTypes: [AbilityType.HEAL],
+    spriteKey: "monk",
+    isHealer: true,
+    description:
+      "A halfling master chef whose hearty cooking restores allies in the heat of battle. Heals nearby friendly units.",
+    tier: 2,
+  },
+  // ---------------------------------------------------------------------------
+  // Lava Children faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.MAGMA_GOLEM]: {
+    type: UnitType.MAGMA_GOLEM,
+    cost: 600,
+    hp: 280,
+    atk: 30,
+    attackSpeed: 0.6,
+    speed: 0.6,
+    range: 1.5,
+    spawnTime: 7,
+    abilityTypes: [AbilityType.FIRE_AURA],
+    spriteKey: "troll",
+    regenRate: 3,
+    description:
+      "A massive construct of living magma. Incredibly tough, burns nearby enemies with its molten aura, but ponderous and slow.",
+    tier: 3,
+  },
+  [UnitType.LAVA_SHAMAN]: {
+    type: UnitType.LAVA_SHAMAN,
+    cost: 500,
+    hp: 100,
+    atk: 28,
+    attackSpeed: 0.7,
+    speed: 0.85,
+    range: 5,
+    spawnTime: 6,
+    abilityTypes: [AbilityType.FIREBALL],
+    spriteKey: "fire_mage",
+    element: "fire",
+    description:
+      "A volcanic priest who channels raw lava into searing fireballs. Fragile but devastating at range.",
+    tier: 2,
+  },
+  // ---------------------------------------------------------------------------
+  // Dwarf faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.DWARVEN_GUARDIAN]: {
+    type: UnitType.DWARVEN_GUARDIAN,
+    cost: 250,
+    hp: 180,
+    atk: 18,
+    attackSpeed: 0.8,
+    speed: 0.7,
+    range: 1.5,
+    spawnTime: 4,
+    abilityTypes: [],
+    spriteKey: "royal_defender",
+    description:
+      "An ironclad dwarf shieldbearer. Slow but extremely tough, the backbone of any dwarven battle line.",
+    tier: 1,
+  },
+  [UnitType.RUNESMITH]: {
+    type: UnitType.RUNESMITH,
+    cost: 450,
+    hp: 110,
+    atk: 22,
+    attackSpeed: 0.65,
+    speed: 0.75,
+    range: 5,
+    spawnTime: 6,
+    abilityTypes: [AbilityType.CHAIN_LIGHTNING],
+    spriteKey: "storm_mage",
+    element: "lightning",
+    description:
+      "A master of dwarven rune-craft who inscribes lightning into stone and hurls it at foes. The pride of every hold.",
+    tier: 2,
+  },
+  // ---------------------------------------------------------------------------
+  // Orc faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.ORC_BRUTE]: {
+    type: UnitType.ORC_BRUTE,
+    cost: 280,
+    hp: 200,
+    atk: 32,
+    attackSpeed: 0.7,
+    speed: 1.05,
+    range: 1.5,
+    spawnTime: 4,
+    abilityTypes: [],
+    spriteKey: "berserker",
+    isChargeUnit: true,
+    description:
+      "A hulking orc warrior who charges headlong into battle. Devastating first strike, and tough enough to keep swinging.",
+    tier: 1,
+  },
+  [UnitType.ORC_DRUMMER]: {
+    type: UnitType.ORC_DRUMMER,
+    cost: 200,
+    hp: 120,
+    atk: 8,
+    attackSpeed: 0.9,
+    speed: 1.0,
+    range: 1.5,
+    spawnTime: 3,
+    abilityTypes: [],
+    spriteKey: "warchief",
+    description:
+      "An orc war-drummer whose pounding rhythm steels nearby warriors. Not a fighter, but invaluable for morale.",
+    tier: 1,
+  },
+  // ---------------------------------------------------------------------------
+  // Undead faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.DEATH_KNIGHT]: {
+    type: UnitType.DEATH_KNIGHT,
+    cost: 400,
+    hp: 220,
+    atk: 26,
+    attackSpeed: 0.8,
+    speed: 0.9,
+    range: 1.5,
+    spawnTime: 6,
+    abilityTypes: [],
+    spriteKey: "cataphract",
+    regenRate: 4,
+    description:
+      "A fallen knight raised by dark magic. Nearly indestructible, slowly regenerating from wounds that would fell the living.",
+    tier: 2,
+  },
+  [UnitType.NECROMANCER]: {
+    type: UnitType.NECROMANCER,
+    cost: 550,
+    hp: 75,
+    atk: 20,
+    attackSpeed: 0.6,
+    speed: 0.8,
+    range: 6,
+    spawnTime: 7,
+    abilityTypes: [AbilityType.SUMMON],
+    spriteKey: "dark_savant",
+    element: "summon",
+    description:
+      "A master of death magic who raises skeletal minions to overwhelm the enemy. Fragile but endlessly productive.",
+    tier: 2,
+  },
+  // ---------------------------------------------------------------------------
+  // Demon faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.PIT_LORD]: {
+    type: UnitType.PIT_LORD,
+    cost: 700,
+    hp: 320,
+    atk: 35,
+    attackSpeed: 0.55,
+    speed: 0.65,
+    range: 1.5,
+    spawnTime: 8,
+    abilityTypes: [AbilityType.FIRE_BREATH],
+    spriteKey: "cyclops",
+    regenRate: 2,
+    description:
+      "A towering demon lord from the deepest pits. Breathes hellfire and crushes all in its path. Slow but terrifying.",
+    tier: 3,
+  },
+  [UnitType.HELLFIRE_WARLOCK]: {
+    type: UnitType.HELLFIRE_WARLOCK,
+    cost: 500,
+    hp: 85,
+    atk: 30,
+    attackSpeed: 0.6,
+    speed: 0.85,
+    range: 6,
+    spawnTime: 7,
+    abilityTypes: [AbilityType.FIREBALL, AbilityType.FIRE_IMP_SUMMON],
+    spriteKey: "fire_master_mage",
+    element: "fire",
+    description:
+      "A demonic sorcerer who rains hellfire and summons imps from the abyss to swarm the enemy.",
+    tier: 2,
+  },
+  // ---------------------------------------------------------------------------
+  // Angel faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.SERAPHIM]: {
+    type: UnitType.SERAPHIM,
+    cost: 600,
+    hp: 150,
+    atk: 8,
+    attackSpeed: 0.7,
+    speed: 1.2,
+    range: 4,
+    spawnTime: 7,
+    abilityTypes: [AbilityType.HEAL],
+    spriteKey: "angel",
+    isHealer: true,
+    element: "heal",
+    description:
+      "A six-winged celestial being radiating divine light. Its healing touch can restore entire formations from the brink of death.",
+    tier: 3,
+  },
+  [UnitType.DIVINE_CHAMPION]: {
+    type: UnitType.DIVINE_CHAMPION,
+    cost: 350,
+    hp: 140,
+    atk: 24,
+    attackSpeed: 0.9,
+    speed: 1.1,
+    range: 1.5,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "templar",
+    description:
+      "A holy warrior blessed by the heavens. Fast, resilient, and strikes with righteous fury.",
+    tier: 1,
+  },
+  // ---------------------------------------------------------------------------
+  // Beastkin faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.ALPHA_WOLF]: {
+    type: UnitType.ALPHA_WOLF,
+    cost: 250,
+    hp: 130,
+    atk: 20,
+    attackSpeed: 1.2,
+    speed: 1.6,
+    range: 1.5,
+    spawnTime: 3,
+    abilityTypes: [],
+    spriteKey: "scout_cavalry",
+    isChargeUnit: true,
+    description:
+      "A massive dire wolf that leads the pack. Blisteringly fast, it charges down prey and tears them apart before they can react.",
+    tier: 1,
+  },
+  [UnitType.BEAST_SHAMAN]: {
+    type: UnitType.BEAST_SHAMAN,
+    cost: 400,
+    hp: 95,
+    atk: 18,
+    attackSpeed: 0.7,
+    speed: 1.0,
+    range: 5,
+    spawnTime: 6,
+    abilityTypes: [AbilityType.SUMMON],
+    spriteKey: "summoner",
+    element: "nature",
+    description:
+      "A wild mystic who communes with nature spirits, summoning beast companions to fight alongside the pack.",
+    tier: 2,
+  },
+  // ---------------------------------------------------------------------------
+  // Golem Collective faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.WAR_GOLEM]: {
+    type: UnitType.WAR_GOLEM,
+    cost: 500,
+    hp: 350,
+    atk: 25,
+    attackSpeed: 0.5,
+    speed: 0.5,
+    range: 1.5,
+    spawnTime: 8,
+    abilityTypes: [],
+    spriteKey: "giant_warrior",
+    regenRate: 2,
+    description:
+      "A colossal enchanted construct of living stone. Incredibly slow but nearly indestructible — the ultimate wall of rock.",
+    tier: 2,
+  },
+  [UnitType.RUNE_CORE]: {
+    type: UnitType.RUNE_CORE,
+    cost: 350,
+    hp: 120,
+    atk: 15,
+    attackSpeed: 0.8,
+    speed: 0.7,
+    range: 5,
+    spawnTime: 5,
+    abilityTypes: [AbilityType.DISTORTION_BLAST],
+    spriteKey: "constructionist",
+    element: "distortion",
+    description:
+      "A floating crystalline core pulsing with arcane energy. Projects distortion blasts that warp and shatter enemy formations.",
+    tier: 1,
+  },
+  // ---------------------------------------------------------------------------
+  // Pirate faction units
+  // ---------------------------------------------------------------------------
+  [UnitType.PIRATE_CAPTAIN]: {
+    type: UnitType.PIRATE_CAPTAIN,
+    cost: 300,
+    hp: 140,
+    atk: 22,
+    attackSpeed: 1.0,
+    speed: 1.15,
+    range: 1.5,
+    spawnTime: 4,
+    abilityTypes: [AbilityType.GLADIATOR_NET],
+    spriteKey: "gladiator",
+    description:
+      "A cunning sea-dog who fights dirty — nets enemies to pin them down, then cuts them apart with cutlass and dagger.",
+    tier: 1,
+  },
+  [UnitType.CORSAIR_GUNNER]: {
+    type: UnitType.CORSAIR_GUNNER,
+    cost: 350,
+    hp: 80,
+    atk: 35,
+    attackSpeed: 0.4,
+    speed: 0.9,
+    range: 6,
+    spawnTime: 5,
+    abilityTypes: [],
+    spriteKey: "marksman",
+    description:
+      "A pirate sharpshooter armed with a hand cannon. Devastating single shots, but painfully slow to reload.",
+    tier: 1,
+  },
 };

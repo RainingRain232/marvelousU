@@ -166,6 +166,34 @@ export enum UnitType {
   NATIONAL_MAGE_T5 = "national_mage_t5",
   NATIONAL_MAGE_T6 = "national_mage_t6",
   NATIONAL_MAGE_T7 = "national_mage_t7",
+  HALFLING_SLINGER = "halfling_slinger",
+  HALFLING_CHEF = "halfling_chef",
+  MAGMA_GOLEM = "magma_golem",
+  LAVA_SHAMAN = "lava_shaman",
+  // Dwarf faction
+  DWARVEN_GUARDIAN = "dwarven_guardian",
+  RUNESMITH = "runesmith",
+  // Orc faction
+  ORC_BRUTE = "orc_brute",
+  ORC_DRUMMER = "orc_drummer",
+  // Undead faction
+  DEATH_KNIGHT = "death_knight",
+  NECROMANCER = "necromancer",
+  // Demon faction
+  PIT_LORD = "pit_lord",
+  HELLFIRE_WARLOCK = "hellfire_warlock",
+  // Angel faction
+  SERAPHIM = "seraphim",
+  DIVINE_CHAMPION = "divine_champion",
+  // Beastkin faction
+  ALPHA_WOLF = "alpha_wolf",
+  BEAST_SHAMAN = "beast_shaman",
+  // Golem faction
+  WAR_GOLEM = "war_golem",
+  RUNE_CORE = "rune_core",
+  // Pirate faction
+  PIRATE_CAPTAIN = "pirate_captain",
+  CORSAIR_GUNNER = "corsair_gunner",
 }
 
 export enum BuildingType {
