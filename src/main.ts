@@ -796,6 +796,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         };
         unitShopScreen.showAIShop(raceId, 30000);
       };
+      unitShopScreen.setSurvivingUnits([]);
       unitShopScreen.show(raceId, 30000, "YOUR ARMY");
     } else if (gameMode === GameMode.WAVE) {
       // Wave mode: player unit shop → battle vs random wave
@@ -862,6 +863,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       };
       const corruptionLabel = corruption.enabled ? " [GRAIL GREED]" : "";
       unitShopScreen.setCorruptionModifiers(corruption.activeModifiers);
+      unitShopScreen.setSurvivingUnits([]);
       unitShopScreen.show(raceId, 2000, `WAVE 1${corruptionLabel} — RECRUIT ARMY`);
     } else {
       await _bootGame(
@@ -2364,27 +2366,21 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
   unitShopScreen.onDone = async (playerRoster) => {
     unitShopScreen.hide();
 
-    // Track gold spent (only new purchases, not survivors)
-    let spent = 0;
+    // playerRoster already includes survivors (pre-filled in shop counts).
+    // Calculate gold spent: total cost of roster minus cost of survivors.
+    let totalRosterCost = 0;
     for (const entry of playerRoster) {
       const uDef = UNIT_DEFINITIONS[entry.type];
-      if (uDef) spent += uDef.cost * entry.count;
+      if (uDef) totalRosterCost += uDef.cost * entry.count;
     }
+    let survivorCost = 0;
+    for (const entry of ws.survivingUnits) {
+      const uDef = UNIT_DEFINITIONS[entry.type];
+      if (uDef) survivorCost += uDef.cost * entry.count;
+    }
+    const spent = totalRosterCost - survivorCost;
     ws.totalGoldSpent += spent;
     _waveLastRoundGold = spent;
-
-    // Merge surviving units with newly purchased units
-    const mergedCounts = new Map<UnitType, number>();
-    for (const entry of ws.survivingUnits) {
-      mergedCounts.set(entry.type, (mergedCounts.get(entry.type) ?? 0) + entry.count);
-    }
-    for (const entry of playerRoster) {
-      mergedCounts.set(entry.type, (mergedCounts.get(entry.type) ?? 0) + entry.count);
-    }
-    const fullRoster: Array<{ type: UnitType; count: number }> = [];
-    for (const [type, count] of mergedCounts) {
-      fullRoster.push({ type, count });
-    }
 
     // Check for new corruption modifier
     if (ws.corruption.enabled) {
@@ -2403,7 +2399,7 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     const enemyRoster = _generateWaveEnemyRoster(ws.playerRaceId, enemyBudget, ws.wave);
 
     _worldBattleRosters = {
-      p1Roster: fullRoster,
+      p1Roster: playerRoster,
       p2Roster: enemyRoster,
       battleMeta: { waveMode: true },
       playerIsAttacker: true,
@@ -2426,6 +2422,7 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     ? ` [CORRUPTION ${ws.corruption.corruptionLevel}]`
     : ws.corruption.enabled ? " [GRAIL GREED]" : "";
   unitShopScreen.setCorruptionModifiers(ws.corruption.activeModifiers);
+  unitShopScreen.setSurvivingUnits(ws.survivingUnits);
   unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave}${corruptionSuffix} — RECRUIT ARMY`);
 }
 
@@ -6240,10 +6237,12 @@ async function _bootGame(
   if (_waveState) {
     const ws = _waveState;
     victoryScreen.onNextWave = () => {
-      // Collect surviving p1 units before the game is torn down
+      // Collect surviving p1 units before the game is torn down.
+      // Exclude summoned/imp-summoned units — they are temporary.
       const survivorCounts = new Map<UnitType, number>();
       for (const u of state.units.values()) {
         if (u.owner === "p1" && u.hp > 0) {
+          if (u.id.startsWith("summoned-") || u.id.startsWith("imp-summoned-")) continue;
           survivorCounts.set(u.type, (survivorCounts.get(u.type) ?? 0) + 1);
         }
       }
