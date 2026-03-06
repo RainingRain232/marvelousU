@@ -5,6 +5,8 @@ import {
   Container, Graphics, Text, TextStyle, Rectangle,
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { getAllWorldBuildingDefs } from "@world/config/WorldBuildingDefs";
+import type { WorldBuildingDef } from "@world/config/WorldBuildingDefs";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -34,6 +36,22 @@ const STYLE_LORE_HEADING = new TextStyle({
   letterSpacing: 1,
 });
 
+const STYLE_ITEM_NAME = new TextStyle({
+  fontFamily: "monospace", fontSize: 14, fill: 0xffd700, fontWeight: "bold",
+});
+
+const STYLE_ITEM_STAT = new TextStyle({
+  fontFamily: "monospace", fontSize: 12, fill: 0xaabbcc,
+});
+
+const STYLE_ITEM_EFFECT = new TextStyle({
+  fontFamily: "monospace", fontSize: 12, fill: 0x88ffaa,
+});
+
+const STYLE_ITEM_REQ = new TextStyle({
+  fontFamily: "monospace", fontSize: 12, fill: 0xcc8844,
+});
+
 // Layout
 const BG_COLOR = 0x0a0a18;
 const BORDER_COLOR = 0xffd700;
@@ -42,13 +60,16 @@ const CARD_H = 700;
 const CORNER_R = 10;
 const TAB_H = 36;
 
-type WikiTab = "lore" | "units" | "spells" | "buildings";
+type WikiTab = "lore" | "game_modes" | "units" | "spells" | "buildings" | "world_buildings" | "world_research";
 
 const TAB_DEFS: { id: WikiTab; label: string }[] = [
   { id: "lore", label: "LORE" },
+  { id: "game_modes", label: "GAME MODES" },
   { id: "units", label: "UNITS" },
   { id: "spells", label: "SPELLS" },
   { id: "buildings", label: "BUILDINGS" },
+  { id: "world_buildings", label: "WORLD BUILDINGS" },
+  { id: "world_research", label: "RESEARCH" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -310,8 +331,19 @@ export class MainMenuWikiScreen {
     this._contentContainer.removeChildren();
     this._scrollY = 0;
 
-    if (this._activeTab === "lore") {
-      this._buildLoreContent();
+    switch (this._activeTab) {
+      case "lore":
+        this._buildLoreContent();
+        break;
+      case "game_modes":
+        this._buildGameModesContent();
+        break;
+      case "world_buildings":
+        this._buildWorldBuildingsContent();
+        break;
+      case "world_research":
+        this._buildWorldResearchContent();
+        break;
     }
   }
 
@@ -342,6 +374,347 @@ export class MainMenuWikiScreen {
       );
       cy += 14;
     }
+
+    this._contentH = cy;
+    this._maxScroll = Math.max(0, this._contentH - this._viewH);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Game Modes tab
+  // ---------------------------------------------------------------------------
+
+  private _buildGameModesContent(): void {
+    const c = this._contentContainer;
+    let cy = 8;
+
+    const heading = new Text({ text: "GAME MODES", style: STYLE_LORE_HEADING });
+    heading.position.set(0, cy);
+    c.addChild(heading);
+    cy += 28;
+
+    const modes: { name: string; desc: string }[] = [
+      {
+        name: "STANDARD",
+        desc: "Classic mode. Build your base, recruit an army, and destroy the enemy. Both players start with a castle and a small amount of gold. Research buildings, train units, and deploy them on the battlefield.",
+      },
+      {
+        name: "DEATHMATCH",
+        desc: "Same rules as Standard, but both players start with 10,000 gold. This allows immediate access to powerful units and buildings from the start. Expect fast-paced, high-intensity battles.",
+      },
+      {
+        name: "BATTLEFIELD",
+        desc: "No buildings allowed. Both sides start with pre-built armies and fight to the last unit standing. Pure tactical combat with no economy or construction phase.",
+      },
+      {
+        name: "ROGUELIKE",
+        desc: "50% of buildings are randomly disabled each match. Forces creative adaptation and prevents reliance on a single strategy. Every game plays differently.",
+      },
+      {
+        name: "CAMPAIGN",
+        desc: "A guided tutorial and story progression mode. Play through a series of increasingly difficult scenarios that teach the game's mechanics step by step. Recommended for new players learning the basics of combat, building, and unit management.",
+      },
+      {
+        name: "WORLD",
+        desc: "Hex-based grand strategy mode. Choose a leader from Arthurian legend and build a kingdom on a procedurally generated world map. Found cities, research technologies, recruit armies, cast overland spells, and conquer Morgaine's fortress of Avalon at the center of the map. Features diplomacy, fog of war, neutral camps, random events, and multiple victory conditions.",
+      },
+      {
+        name: "WAVE MODE",
+        desc: "Endless survival mode. Defend against increasingly powerful waves of enemies. See how long you can last as each wave brings stronger and more numerous foes. No opponent — just you against the horde.",
+      },
+    ];
+
+    for (const mode of modes) {
+      const name = new Text({ text: mode.name, style: STYLE_ITEM_NAME });
+      name.position.set(0, cy);
+      c.addChild(name);
+      cy += 20;
+
+      const desc = new Text({ text: mode.desc, style: STYLE_BODY });
+      desc.position.set(12, cy);
+      c.addChild(desc);
+      cy += desc.height + 12;
+
+      c.addChild(
+        new Graphics().rect(0, cy, CARD_W - 60, 1).fill({ color: 0x333355, alpha: 0.3 }),
+      );
+      cy += 10;
+    }
+
+    this._contentH = cy;
+    this._maxScroll = Math.max(0, this._contentH - this._viewH);
+  }
+
+  // ---------------------------------------------------------------------------
+  // World Buildings tab
+  // ---------------------------------------------------------------------------
+
+  private _buildWorldBuildingsContent(): void {
+    const c = this._contentContainer;
+    let cy = 8;
+
+    const heading = new Text({ text: "WORLD MODE BUILDINGS", style: STYLE_LORE_HEADING });
+    heading.position.set(0, cy);
+    c.addChild(heading);
+    cy += 22;
+
+    const intro = new Text({
+      text: "Buildings constructed in cities during world mode. Each provides per-turn bonuses and may unlock new units or abilities.",
+      style: STYLE_BODY,
+    });
+    intro.position.set(0, cy);
+    c.addChild(intro);
+    cy += intro.height + 16;
+
+    const allDefs = getAllWorldBuildingDefs();
+    for (const def of allDefs) {
+      cy = this._buildBuildingEntry(def, cy);
+    }
+
+    this._contentH = cy;
+    this._maxScroll = Math.max(0, this._contentH - this._viewH);
+  }
+
+  private _buildBuildingEntry(def: WorldBuildingDef, startY: number): number {
+    const c = this._contentContainer;
+    let cy = startY;
+
+    const name = new Text({ text: def.name, style: STYLE_ITEM_NAME });
+    name.position.set(0, cy);
+    c.addChild(name);
+    cy += 20;
+
+    const stats: string[] = [];
+    if (def.productionCost > 0) stats.push(`Cost: ${def.productionCost}`);
+    if (def.goldBonus) stats.push(`Gold: +${def.goldBonus}`);
+    if (def.foodBonus) stats.push(`Food: +${def.foodBonus}`);
+    if (def.productionBonus) stats.push(`Production: +${def.productionBonus}`);
+    if (def.manaBonus) stats.push(`Mana: +${def.manaBonus}`);
+    if (def.scienceBonus) stats.push(`Research: +${def.scienceBonus}`);
+    if (stats.length > 0) {
+      const statText = new Text({ text: stats.join("  |  "), style: STYLE_ITEM_STAT });
+      statText.position.set(12, cy);
+      c.addChild(statText);
+      cy += 18;
+    }
+
+    const effect = new Text({ text: def.effect, style: STYLE_ITEM_EFFECT });
+    effect.position.set(12, cy);
+    c.addChild(effect);
+    cy += 18;
+
+    if (def.unlocksUnits.length > 0) {
+      const unlocks = new Text({
+        text: `Unlocks: ${def.unlocksUnits.join(", ")}`,
+        style: STYLE_ITEM_STAT,
+      });
+      unlocks.position.set(12, cy);
+      c.addChild(unlocks);
+      cy += 18;
+    }
+
+    if (def.researchRequired) {
+      const req = new Text({
+        text: `Requires: ${def.researchRequired}`,
+        style: STYLE_ITEM_REQ,
+      });
+      req.position.set(12, cy);
+      c.addChild(req);
+      cy += 18;
+    }
+
+    c.addChild(
+      new Graphics().rect(0, cy + 2, CARD_W - 60, 1).fill({ color: 0x333355, alpha: 0.3 }),
+    );
+    cy += 10;
+
+    return cy;
+  }
+
+  // ---------------------------------------------------------------------------
+  // World Research tab
+  // ---------------------------------------------------------------------------
+
+  private _buildWorldResearchContent(): void {
+    const c = this._contentContainer;
+    let cy = 8;
+
+    // --- TECH RESEARCH ---
+    const techHeading = new Text({ text: "TECHNOLOGY RESEARCH", style: STYLE_LORE_HEADING });
+    techHeading.position.set(0, cy);
+    c.addChild(techHeading);
+    cy += 22;
+
+    const techIntro = new Text({
+      text: "Technology research advances your civilization through 5 branches. Each tech takes a number of turns to complete and may require prerequisites. Research points are generated by libraries, castles, and other buildings.",
+      style: STYLE_BODY,
+    });
+    techIntro.position.set(0, cy);
+    c.addChild(techIntro);
+    cy += techIntro.height + 16;
+
+    const techBranches: { name: string; color: number; techs: { name: string; turns: number; effect: string; requires?: string }[] }[] = [
+      {
+        name: "ECONOMIC",
+        color: 0xffcc44,
+        techs: [
+          { name: "Agriculture", turns: 3, effect: "Unlocks Granary (+3 food/turn)" },
+          { name: "Masonry", turns: 4, effect: "Unlocks City Walls (+50% defense)" },
+          { name: "Trade", turns: 5, effect: "Unlocks Marketplace (+5 gold/turn)", requires: "Agriculture" },
+          { name: "Scholarship", turns: 5, effect: "Unlocks Library (-1 turn from research)", requires: "Agriculture" },
+          { name: "Banking", turns: 7, effect: "Unlocks Workshop (+3 production/turn)", requires: "Trade" },
+          { name: "Sea Travel", turns: 8, effect: "Unlocks Shipwright (water crossing)", requires: "Trade" },
+          { name: "Industrialization", turns: 10, effect: "Unlocks Aqueduct + Military Academy", requires: "Banking" },
+        ],
+      },
+      {
+        name: "MILITARY",
+        color: 0xff4444,
+        techs: [
+          { name: "Bronze Working", turns: 4, effect: "Melee Tier 2" },
+          { name: "Iron Working", turns: 6, effect: "Melee Tier 3", requires: "Bronze Working" },
+          { name: "Steel Working", turns: 8, effect: "Melee Tier 4", requires: "Iron Working" },
+          { name: "Mithril Forging", turns: 12, effect: "Melee Tier 5", requires: "Steel Working" },
+          { name: "Improved Bows", turns: 5, effect: "Ranged Tier 2", requires: "Bronze Working" },
+          { name: "Advanced Archery", turns: 8, effect: "Ranged Tier 3", requires: "Improved Bows" },
+          { name: "Cavalry Tactics", turns: 8, effect: "Cavalry Tier 3", requires: "Horsemanship" },
+          { name: "Cavalry Mastery", turns: 10, effect: "Cavalry Tier 4", requires: "Cavalry Tactics" },
+        ],
+      },
+      {
+        name: "SIEGE",
+        color: 0xaa8844,
+        techs: [
+          { name: "Siege Engineering", turns: 5, effect: "Siege Tier 2", requires: "Bronze Working" },
+          { name: "Siege Craft", turns: 8, effect: "Siege Tier 3", requires: "Siege Engineering" },
+          { name: "Advanced Siege", turns: 10, effect: "Siege Tier 4", requires: "Siege Craft" },
+          { name: "Heavy Artillery", turns: 14, effect: "Siege Tier 5", requires: "Advanced Siege" },
+        ],
+      },
+      {
+        name: "MAGIC",
+        color: 0xaa44ff,
+        techs: [
+          { name: "Arcane Study", turns: 5, effect: "Spell Tiers 1-2, Mage units" },
+          { name: "Conjuration", turns: 7, effect: "Spell Tiers 3-4, Creatures", requires: "Arcane Study" },
+          { name: "High Sorcery", turns: 10, effect: "Spell Tiers 5-6", requires: "Conjuration" },
+          { name: "Archmage Arts", turns: 14, effect: "Spell Tier 7", requires: "High Sorcery" },
+          { name: "Divine Blessing", turns: 6, effect: "Holy unit recruitment", requires: "Arcane Study" },
+        ],
+      },
+      {
+        name: "BUILDINGS",
+        color: 0x44aa66,
+        techs: [
+          { name: "Basic Fortification", turns: 3, effect: "Barracks + Archery Range" },
+          { name: "Horsemanship", turns: 4, effect: "Stables", requires: "Basic Fortification" },
+          { name: "Siege Construction", turns: 4, effect: "Siege Workshop", requires: "Basic Fortification" },
+          { name: "Faction Construction", turns: 5, effect: "Faction Hall + Embassy", requires: "Basic Fortification" },
+          { name: "Arcane Construction", turns: 4, effect: "Mage Tower" },
+          { name: "Holy Construction", turns: 5, effect: "Temple", requires: "Arcane Construction" },
+          { name: "Beast Construction", turns: 6, effect: "Creature Den", requires: "Arcane Construction" },
+          { name: "Elite Hall", turns: 10, effect: "Elite Hall (unlock elite buildings)", requires: "Arcane + Basic Fort." },
+          { name: "Elite Warfare", turns: 6, effect: "Elite Barracks/Archery/Stables", requires: "Elite Hall" },
+          { name: "Elite Siege Works", turns: 6, effect: "Elite Siege Workshop", requires: "Elite Hall" },
+          { name: "Elite Arcanum", turns: 6, effect: "Elite Mage Tower", requires: "Elite Hall" },
+        ],
+      },
+    ];
+
+    for (const branch of techBranches) {
+      const branchName = new Text({
+        text: branch.name,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: branch.color, fontWeight: "bold" }),
+      });
+      branchName.position.set(0, cy);
+      c.addChild(branchName);
+      cy += 22;
+
+      for (const tech of branch.techs) {
+        const line = `${tech.name}  (${tech.turns} turns)  —  ${tech.effect}${tech.requires ? `  [requires: ${tech.requires}]` : ""}`;
+        const techText = new Text({
+          text: line,
+          style: new TextStyle({
+            fontFamily: "monospace", fontSize: 11, fill: 0xbbccdd,
+            wordWrap: true, wordWrapWidth: CARD_W - 80,
+          }),
+        });
+        techText.position.set(12, cy);
+        c.addChild(techText);
+        cy += techText.height + 4;
+      }
+
+      cy += 10;
+    }
+
+    // Separator
+    c.addChild(
+      new Graphics().rect(0, cy, CARD_W - 60, 1).fill({ color: BORDER_COLOR, alpha: 0.3 }),
+    );
+    cy += 20;
+
+    // --- MAGIC RESEARCH ---
+    const magicHeading = new Text({ text: "MAGIC RESEARCH", style: STYLE_LORE_HEADING });
+    magicHeading.position.set(0, cy);
+    c.addChild(magicHeading);
+    cy += 22;
+
+    const magicIntro = new Text({
+      text: "Magic research is separate from technology. Each of the 12 magic schools can be advanced independently through 7 tiers. Higher tiers unlock more powerful spells of that school. Each tier costs progressively more turns (Tier 1: 3 turns, Tier 2: 4 turns, ... Tier 7: 9 turns). Your race determines the maximum tier available for each school.",
+      style: STYLE_BODY,
+    });
+    magicIntro.position.set(0, cy);
+    c.addChild(magicIntro);
+    cy += magicIntro.height + 16;
+
+    const schools: { name: string; color: number; desc: string }[] = [
+      { name: "Fire", color: 0xff4422, desc: "Offensive damage spells — fireballs, flame walls, and infernos" },
+      { name: "Ice", color: 0x44aaff, desc: "Slowing and freezing spells — blizzards, frost bolts, and ice walls" },
+      { name: "Lightning", color: 0xffff44, desc: "Chain damage and stun effects — thunderbolts and storm calls" },
+      { name: "Earth", color: 0x886633, desc: "Defensive and terrain spells — stone walls, earthquakes, and shields" },
+      { name: "Nature", color: 0x44cc44, desc: "Healing, growth, and summoning natural creatures" },
+      { name: "Arcane", color: 0xaa44ff, desc: "Utility and manipulation — teleportation, dispelling, and enchantments" },
+      { name: "Holy", color: 0xffffaa, desc: "Divine healing, protection, and smiting undead" },
+      { name: "Shadow", color: 0x8888aa, desc: "Debuffs, fear, and draining life from enemies" },
+      { name: "Poison", color: 0x88cc22, desc: "Damage over time and weakening effects" },
+      { name: "Void", color: 0x8844aa, desc: "Reality-warping spells — banishment and dimensional rifts" },
+      { name: "Death", color: 0x888888, desc: "Necromancy — raising undead and death curses" },
+      { name: "Conjuration", color: 0xcc8844, desc: "Summoning creatures and constructs to fight for you" },
+    ];
+
+    for (const school of schools) {
+      const schoolText = new Text({
+        text: school.name,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: school.color, fontWeight: "bold" }),
+      });
+      schoolText.position.set(0, cy);
+      c.addChild(schoolText);
+
+      const schoolDesc = new Text({
+        text: school.desc,
+        style: STYLE_ITEM_STAT,
+      });
+      schoolDesc.position.set(120, cy + 1);
+      c.addChild(schoolDesc);
+      cy += 20;
+    }
+
+    cy += 10;
+
+    const tierInfo = new Text({
+      text: "Tier costs: T1 = 3 turns, T2 = 4, T3 = 5, T4 = 6, T5 = 7, T6 = 8, T7 = 9 turns.",
+      style: STYLE_ITEM_STAT,
+    });
+    tierInfo.position.set(0, cy);
+    c.addChild(tierInfo);
+    cy += 24;
+
+    const noteText = new Text({
+      text: "Both research systems work together — technology research unlocks spell tier access, while magic research advances individual schools to unlock specific spells within those tiers.",
+      style: STYLE_BODY,
+    });
+    noteText.position.set(0, cy);
+    c.addChild(noteText);
+    cy += noteText.height + 16;
 
     this._contentH = cy;
     this._maxScroll = Math.max(0, this._contentH - this._viewH);
