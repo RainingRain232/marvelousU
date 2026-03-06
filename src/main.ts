@@ -1172,7 +1172,7 @@ function _spawnScenarioBattlefieldUnits(
       { type: UnitType.GIANT_COURT_JESTER, count: 20 },
       { type: UnitType.FISHERMAN, count: 20 },
     ];
-  } else if (scenarioNum === 22) {
+  } else if (scenarioNum === 4) {
     // The Art of War — ability tutorial battlefield
     // Custom placement: cyclops center, clerics around it, lancers far, mages mid, siege demo
     const cx = Math.floor(mapW / 2);
@@ -4936,12 +4936,12 @@ async function _bootGame(
         upgrades.push({ type: upgradeType, level: 1 });
       }
     }
-    // Scenario 23: spawn Dark Savant + enemies + enemy towers
-    if (scenarioNum === 23) {
+    // Scenario 5: spawn Dark Savant + enemies + enemy towers
+    if (scenarioNum === 5) {
       _setupScenario23(state, mapSize.width, mapSize.height);
     }
-    // Scenario 24: spawn tier 7 AI units at P2's corners
-    if (scenarioNum === 24) {
+    // Scenario 26: spawn tier 7 AI units at P2's corners
+    if (scenarioNum === 26) {
       _setupScenario24(state, mapSize.width, mapSize.height);
     }
   }
@@ -4954,6 +4954,11 @@ async function _bootGame(
 
   // Apply the chosen race to P1 (sets p1RaceId and wires faction hall inventory)
   _applyRace(state, "p1", raceId);
+
+  // Apply forced AI race if the scenario specifies one
+  if (scenarioDef?.aiRace) {
+    _applyRace(state, "p2", scenarioDef.aiRace);
+  }
 
   // 2. Camera — zoom in on the friendly castle at standard-map zoom level
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);
@@ -5238,8 +5243,17 @@ async function _bootGame(
     simLoop.startCinematicSpeed();
   }
 
-  // Scenario 24: Merlin warns the player about the very hard end battle
-  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 24) {
+  // Scenario 6: Merlin introduces the first skirmish
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 6) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "Welcome to your first true skirmish, commander! You now have more gold and greater freedom than before. Build your base, expand your territory, and put your new troops and buildings to good use. Show me what you have learned!",
+      () => { simLoop.resume(); },
+    );
+  }
+
+  // Scenario 26: Merlin warns the player about the very hard end battle
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 26) {
     simLoop.pause();
     _showMerlinWaveCompliment(
       "Beware, commander! I sense a terrible darkness gathering. The enemy has unleashed ancient giants and archmages of unimaginable power. This is the very hard end battle — prepare yourself, for there will be no mercy!",

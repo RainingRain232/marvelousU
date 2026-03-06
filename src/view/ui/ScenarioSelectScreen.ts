@@ -361,6 +361,16 @@ export class ScenarioSelectScreen {
       this._codeHint.style.fill = 0xff6644;
       return;
     }
+    // Cheat code: 9999 unlocks all scenarios
+    if (this._codeValue === "9999") {
+      campaignState.unlockAll();
+      this._codeHint.text = "All scenarios and units unlocked!";
+      this._codeHint.style.fill = 0xffdd44;
+      this._refreshCards();
+      this._codeValue = "";
+      this._updateCodeDisplay();
+      return;
+    }
     const result = campaignState.redeemCode(this._codeValue);
     if (!result) {
       this._codeHint.text = "Invalid code. Try again.";
