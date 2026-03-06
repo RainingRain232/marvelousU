@@ -60,13 +60,701 @@ function drawSpearIcon(g: Graphics, cx: number, cy: number, size: number): void 
   ]).fill({ color: 0xc8d4e0, alpha: 0.4 });
 }
 
-function hasCustomIcon(id: ArmoryItemId): boolean {
-  return id === "longsword" || id === "spear";
+function drawLeatherArmorIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Torso shape
+  g.roundRect(cx - 8 * s, cy - 9 * s, 16 * s, 18 * s, 2 * s).fill({ color: 0x8B6914 });
+  // Shoulder straps
+  g.roundRect(cx - 10 * s, cy - 11 * s, 5 * s, 6 * s, 1 * s).fill({ color: 0x9a7824 });
+  g.roundRect(cx + 5 * s, cy - 11 * s, 5 * s, 6 * s, 1 * s).fill({ color: 0x9a7824 });
+  // Neckline
+  g.poly([cx - 3 * s, cy - 9 * s, cx, cy - 5 * s, cx + 3 * s, cy - 9 * s]).fill({ color: 0x7a5910, alpha: 0.6 });
+  // Stitching lines
+  g.rect(cx - 0.3 * s, cy - 6 * s, 0.6 * s, 14 * s).fill({ color: 0x6a4a08, alpha: 0.5 });
+  // Belt
+  g.roundRect(cx - 9 * s, cy + 4 * s, 18 * s, 2.5 * s, 0.5 * s).fill({ color: 0x6a4a08 });
+  // Belt buckle
+  g.roundRect(cx - 1.5 * s, cy + 3.5 * s, 3 * s, 3.5 * s, 0.5 * s).fill({ color: 0xccaa44 });
+  // Leather texture highlights
+  g.rect(cx - 5 * s, cy - 3 * s, 3 * s, 0.5 * s).fill({ color: 0xa08830, alpha: 0.3 });
+  g.rect(cx + 2 * s, cy + 0 * s, 4 * s, 0.5 * s).fill({ color: 0xa08830, alpha: 0.3 });
+}
+
+function drawLeatherSandalsIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Left sole
+  g.roundRect(cx - 10 * s, cy + 1 * s, 8 * s, 12 * s, 2 * s).fill({ color: 0x7a5520 });
+  // Right sole
+  g.roundRect(cx + 2 * s, cy + 1 * s, 8 * s, 12 * s, 2 * s).fill({ color: 0x7a5520 });
+  // Left straps
+  g.roundRect(cx - 9 * s, cy + 2 * s, 6 * s, 1.5 * s, 0.3 * s).fill({ color: 0x996633 });
+  g.roundRect(cx - 9 * s, cy + 5 * s, 6 * s, 1.5 * s, 0.3 * s).fill({ color: 0x996633 });
+  g.roundRect(cx - 8 * s, cy + 8 * s, 5 * s, 1.5 * s, 0.3 * s).fill({ color: 0x996633 });
+  // Right straps
+  g.roundRect(cx + 3 * s, cy + 2 * s, 6 * s, 1.5 * s, 0.3 * s).fill({ color: 0x996633 });
+  g.roundRect(cx + 3 * s, cy + 5 * s, 6 * s, 1.5 * s, 0.3 * s).fill({ color: 0x996633 });
+  g.roundRect(cx + 4 * s, cy + 8 * s, 5 * s, 1.5 * s, 0.3 * s).fill({ color: 0x996633 });
+  // Ankle lacing (going up)
+  g.rect(cx - 6 * s, cy - 3 * s, 1 * s, 5 * s).fill({ color: 0x996633, alpha: 0.7 });
+  g.rect(cx + 5 * s, cy - 3 * s, 1 * s, 5 * s).fill({ color: 0x996633, alpha: 0.7 });
+  // Wing flourish on left sandal
+  g.poly([cx - 11 * s, cy - 1 * s, cx - 13 * s, cy - 5 * s, cx - 9 * s, cy - 3 * s]).fill({ color: 0xccaa66, alpha: 0.5 });
+  // Wing flourish on right sandal
+  g.poly([cx + 11 * s, cy - 1 * s, cx + 13 * s, cy - 5 * s, cx + 9 * s, cy - 3 * s]).fill({ color: 0xccaa66, alpha: 0.5 });
+}
+
+function drawSteelShieldIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Shield body (pointed bottom)
+  g.poly([
+    cx - 10 * s, cy - 11 * s,
+    cx + 10 * s, cy - 11 * s,
+    cx + 11 * s, cy - 9 * s,
+    cx + 10 * s, cy + 4 * s,
+    cx, cy + 14 * s,
+    cx - 10 * s, cy + 4 * s,
+    cx - 11 * s, cy - 9 * s,
+  ]).fill({ color: 0x8899bb });
+  // Shield rim
+  g.poly([
+    cx - 10 * s, cy - 11 * s,
+    cx + 10 * s, cy - 11 * s,
+    cx + 11 * s, cy - 9 * s,
+    cx + 10 * s, cy + 4 * s,
+    cx, cy + 14 * s,
+    cx - 10 * s, cy + 4 * s,
+    cx - 11 * s, cy - 9 * s,
+  ]).stroke({ color: 0xaabbdd, width: 1.2 * s });
+  // Central vertical bar
+  g.roundRect(cx - 1.5 * s, cy - 9 * s, 3 * s, 20 * s, 0.5 * s).fill({ color: 0x667799 });
+  // Horizontal bar
+  g.roundRect(cx - 8 * s, cy - 2 * s, 16 * s, 2.5 * s, 0.5 * s).fill({ color: 0x667799 });
+  // Central boss (circle)
+  g.circle(cx, cy - 2 * s, 3 * s).fill({ color: 0xaabbcc });
+  g.circle(cx, cy - 2 * s, 2 * s).fill({ color: 0xc0ccdd });
+  // Highlight sheen
+  g.poly([
+    cx - 6 * s, cy - 10 * s,
+    cx - 3 * s, cy - 10 * s,
+    cx - 5 * s, cy + 2 * s,
+    cx - 8 * s, cy + 2 * s,
+  ]).fill({ color: 0xddeeff, alpha: 0.15 });
+}
+
+function drawWarAxeIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Handle
+  g.roundRect(cx - 1.2 * s, cy - 6 * s, 2.4 * s, 22 * s, 0.5 * s).fill({ color: 0x664422 });
+  // Handle grip wrapping
+  g.rect(cx - 1.5 * s, cy + 8 * s, 3 * s, 1 * s).fill({ color: 0x553311, alpha: 0.6 });
+  g.rect(cx - 1.5 * s, cy + 11 * s, 3 * s, 1 * s).fill({ color: 0x553311, alpha: 0.6 });
+  g.rect(cx - 1.5 * s, cy + 14 * s, 3 * s, 1 * s).fill({ color: 0x553311, alpha: 0.6 });
+  // Axe head right blade
+  g.poly([
+    cx + 1 * s, cy - 10 * s,
+    cx + 11 * s, cy - 6 * s,
+    cx + 12 * s, cy - 3 * s,
+    cx + 11 * s, cy + 0 * s,
+    cx + 1 * s, cy + 4 * s,
+  ]).fill({ color: 0xaa4444 });
+  // Axe head left blade (double-headed)
+  g.poly([
+    cx - 1 * s, cy - 10 * s,
+    cx - 11 * s, cy - 6 * s,
+    cx - 12 * s, cy - 3 * s,
+    cx - 11 * s, cy + 0 * s,
+    cx - 1 * s, cy + 4 * s,
+  ]).fill({ color: 0x993333 });
+  // Edge highlight right
+  g.poly([
+    cx + 10 * s, cy - 5 * s,
+    cx + 12 * s, cy - 3 * s,
+    cx + 10 * s, cy - 1 * s,
+  ]).fill({ color: 0xccaaaa, alpha: 0.4 });
+  // Edge highlight left
+  g.poly([
+    cx - 10 * s, cy - 5 * s,
+    cx - 12 * s, cy - 3 * s,
+    cx - 10 * s, cy - 1 * s,
+  ]).fill({ color: 0xccaaaa, alpha: 0.3 });
+}
+
+function drawChainmailIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Torso shape
+  g.roundRect(cx - 8 * s, cy - 9 * s, 16 * s, 18 * s, 2 * s).fill({ color: 0x777788 });
+  // Shoulder guards
+  g.roundRect(cx - 11 * s, cy - 11 * s, 6 * s, 5 * s, 1 * s).fill({ color: 0x888899 });
+  g.roundRect(cx + 5 * s, cy - 11 * s, 6 * s, 5 * s, 1 * s).fill({ color: 0x888899 });
+  // Neckline
+  g.poly([cx - 3 * s, cy - 9 * s, cx, cy - 6 * s, cx + 3 * s, cy - 9 * s]).fill({ color: 0x666677 });
+  // Chain ring pattern (rows of small circles)
+  for (let row = 0; row < 5; row++) {
+    const ry = cy - 4 * s + row * 3.5 * s;
+    const offset = row % 2 === 0 ? 0 : 2 * s;
+    for (let col = -2; col <= 2; col++) {
+      const rx = cx + col * 4 * s + offset;
+      if (rx > cx - 7 * s && rx < cx + 7 * s) {
+        g.circle(rx, ry, 1.2 * s).stroke({ color: 0x999aaa, width: 0.5 * s });
+      }
+    }
+  }
+  // Bottom hem
+  g.roundRect(cx - 9 * s, cy + 7 * s, 18 * s, 2 * s, 0.5 * s).fill({ color: 0x666677 });
+}
+
+function drawIronBootsIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Left boot
+  g.poly([
+    cx - 10 * s, cy - 8 * s,
+    cx - 3 * s, cy - 8 * s,
+    cx - 3 * s, cy + 8 * s,
+    cx - 12 * s, cy + 8 * s,
+    cx - 13 * s, cy + 10 * s,
+    cx - 14 * s, cy + 12 * s,
+    cx - 4 * s, cy + 12 * s,
+    cx - 2 * s, cy + 10 * s,
+    cx - 2 * s, cy + 8 * s,
+  ]).fill({ color: 0x556666 });
+  // Right boot
+  g.poly([
+    cx + 3 * s, cy - 8 * s,
+    cx + 10 * s, cy - 8 * s,
+    cx + 10 * s, cy + 8 * s,
+    cx + 2 * s, cy + 8 * s,
+    cx + 2 * s, cy + 10 * s,
+    cx + 4 * s, cy + 12 * s,
+    cx + 14 * s, cy + 12 * s,
+    cx + 13 * s, cy + 10 * s,
+    cx + 12 * s, cy + 8 * s,
+  ]).fill({ color: 0x556666 });
+  // Metal plate bands left
+  g.roundRect(cx - 10 * s, cy - 5 * s, 7 * s, 2 * s, 0.3 * s).fill({ color: 0x778888 });
+  g.roundRect(cx - 10 * s, cy + 0 * s, 7 * s, 2 * s, 0.3 * s).fill({ color: 0x778888 });
+  g.roundRect(cx - 10 * s, cy + 5 * s, 7 * s, 2 * s, 0.3 * s).fill({ color: 0x778888 });
+  // Metal plate bands right
+  g.roundRect(cx + 3 * s, cy - 5 * s, 7 * s, 2 * s, 0.3 * s).fill({ color: 0x778888 });
+  g.roundRect(cx + 3 * s, cy + 0 * s, 7 * s, 2 * s, 0.3 * s).fill({ color: 0x778888 });
+  g.roundRect(cx + 3 * s, cy + 5 * s, 7 * s, 2 * s, 0.3 * s).fill({ color: 0x778888 });
+  // Rivets
+  g.circle(cx - 9 * s, cy - 4 * s, 0.7 * s).fill({ color: 0x99aaaa });
+  g.circle(cx - 9 * s, cy + 1 * s, 0.7 * s).fill({ color: 0x99aaaa });
+  g.circle(cx + 9 * s, cy - 4 * s, 0.7 * s).fill({ color: 0x99aaaa });
+  g.circle(cx + 9 * s, cy + 1 * s, 0.7 * s).fill({ color: 0x99aaaa });
+  // Sole highlight
+  g.roundRect(cx - 13 * s, cy + 11 * s, 9 * s, 1.5 * s, 0.3 * s).fill({ color: 0x445555 });
+  g.roundRect(cx + 5 * s, cy + 11 * s, 9 * s, 1.5 * s, 0.3 * s).fill({ color: 0x445555 });
+}
+
+function drawFlamingSwordIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Blade
+  g.roundRect(cx - 2 * s, cy - 12 * s, 4 * s, 18 * s, 0.5 * s).fill({ color: 0xdd6633 });
+  // Blade core glow
+  g.rect(cx - 0.8 * s, cy - 11 * s, 1.6 * s, 16 * s).fill({ color: 0xff9944, alpha: 0.6 });
+  // Flame wisps left
+  g.poly([cx - 3 * s, cy - 10 * s, cx - 6 * s, cy - 13 * s, cx - 2 * s, cy - 8 * s]).fill({ color: 0xff6622, alpha: 0.6 });
+  g.poly([cx - 3 * s, cy - 5 * s, cx - 5 * s, cy - 8 * s, cx - 2 * s, cy - 3 * s]).fill({ color: 0xff8833, alpha: 0.5 });
+  // Flame wisps right
+  g.poly([cx + 3 * s, cy - 8 * s, cx + 6 * s, cy - 12 * s, cx + 2 * s, cy - 6 * s]).fill({ color: 0xff6622, alpha: 0.6 });
+  g.poly([cx + 3 * s, cy - 3 * s, cx + 5 * s, cy - 6 * s, cx + 2 * s, cy - 1 * s]).fill({ color: 0xff8833, alpha: 0.5 });
+  // Tip flame
+  g.poly([cx, cy - 15 * s, cx - 2 * s, cy - 12 * s, cx + 2 * s, cy - 12 * s]).fill({ color: 0xffaa22 });
+  // Crossguard
+  g.roundRect(cx - 7 * s, cy + 5 * s, 14 * s, 2.5 * s, 0.5 * s).fill({ color: 0xcc4422 });
+  // Handle
+  g.roundRect(cx - 1.5 * s, cy + 7.5 * s, 3 * s, 5 * s, 0.5 * s).fill({ color: 0x442211 });
+  // Pommel
+  g.circle(cx, cy + 13.5 * s, 2 * s).fill({ color: 0xff6622 });
+  // Ember glow
+  g.circle(cx, cy - 4 * s, 4 * s).fill({ color: 0xff4400, alpha: 0.15 });
+}
+
+function drawElvenBowIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Bow limb (curved arc) - left side
+  g.poly([
+    cx - 2 * s, cy - 13 * s,
+    cx - 4 * s, cy - 10 * s,
+    cx - 6 * s, cy - 5 * s,
+    cx - 7 * s, cy + 0 * s,
+    cx - 6 * s, cy + 5 * s,
+    cx - 4 * s, cy + 10 * s,
+    cx - 2 * s, cy + 13 * s,
+    cx - 1 * s, cy + 12 * s,
+    cx - 3 * s, cy + 9 * s,
+    cx - 5 * s, cy + 4 * s,
+    cx - 5.5 * s, cy + 0 * s,
+    cx - 5 * s, cy - 4 * s,
+    cx - 3 * s, cy - 9 * s,
+    cx - 1 * s, cy - 12 * s,
+  ]).fill({ color: 0x44aa44 });
+  // Bowstring
+  g.rect(cx - 2 * s, cy - 13 * s, 0.5 * s, 26 * s).fill({ color: 0xccddaa, alpha: 0.7 });
+  // Leaf ornament top
+  g.poly([cx - 2 * s, cy - 14 * s, cx - 4 * s, cy - 16 * s, cx + 0 * s, cy - 14 * s]).fill({ color: 0x66cc66, alpha: 0.6 });
+  // Leaf ornament bottom
+  g.poly([cx - 2 * s, cy + 14 * s, cx - 4 * s, cy + 16 * s, cx + 0 * s, cy + 14 * s]).fill({ color: 0x66cc66, alpha: 0.6 });
+  // Arrow
+  g.rect(cx + 1 * s, cy - 8 * s, 1 * s, 16 * s).fill({ color: 0x886644 });
+  // Arrowhead
+  g.poly([cx + 1.5 * s, cy - 12 * s, cx - 0.5 * s, cy - 8 * s, cx + 3.5 * s, cy - 8 * s]).fill({ color: 0xaabbcc });
+  // Arrow fletching
+  g.poly([cx + 0 * s, cy + 6 * s, cx + 1 * s, cy + 8 * s, cx + 0 * s, cy + 10 * s]).fill({ color: 0x66cc66, alpha: 0.5 });
+  g.poly([cx + 3 * s, cy + 6 * s, cx + 2 * s, cy + 8 * s, cx + 3 * s, cy + 10 * s]).fill({ color: 0x66cc66, alpha: 0.5 });
+  // Grip wrapping
+  g.roundRect(cx - 6 * s, cy - 2 * s, 3 * s, 4 * s, 0.5 * s).fill({ color: 0x338833, alpha: 0.5 });
+}
+
+function drawPlateArmorIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Torso plate
+  g.roundRect(cx - 9 * s, cy - 9 * s, 18 * s, 18 * s, 2 * s).fill({ color: 0x9999bb });
+  // Shoulder pauldrons
+  g.roundRect(cx - 13 * s, cy - 12 * s, 8 * s, 7 * s, 2 * s).fill({ color: 0xaaaacc });
+  g.roundRect(cx + 5 * s, cy - 12 * s, 8 * s, 7 * s, 2 * s).fill({ color: 0xaaaacc });
+  // Pauldron ridges
+  g.roundRect(cx - 12 * s, cy - 11 * s, 6 * s, 1.2 * s, 0.3 * s).fill({ color: 0xbbbbdd, alpha: 0.5 });
+  g.roundRect(cx - 12 * s, cy - 9 * s, 6 * s, 1.2 * s, 0.3 * s).fill({ color: 0xbbbbdd, alpha: 0.5 });
+  g.roundRect(cx + 6 * s, cy - 11 * s, 6 * s, 1.2 * s, 0.3 * s).fill({ color: 0xbbbbdd, alpha: 0.5 });
+  g.roundRect(cx + 6 * s, cy - 9 * s, 6 * s, 1.2 * s, 0.3 * s).fill({ color: 0xbbbbdd, alpha: 0.5 });
+  // Neckguard
+  g.poly([cx - 4 * s, cy - 9 * s, cx, cy - 5 * s, cx + 4 * s, cy - 9 * s]).fill({ color: 0x888aaa });
+  // Center crest line
+  g.rect(cx - 0.5 * s, cy - 6 * s, 1 * s, 14 * s).fill({ color: 0x7778aa, alpha: 0.6 });
+  // Chest plate sections
+  g.roundRect(cx - 7 * s, cy - 4 * s, 6 * s, 7 * s, 1 * s).fill({ color: 0xa5a5cc, alpha: 0.3 });
+  g.roundRect(cx + 1 * s, cy - 4 * s, 6 * s, 7 * s, 1 * s).fill({ color: 0xa5a5cc, alpha: 0.3 });
+  // Waist plate
+  g.roundRect(cx - 9 * s, cy + 5 * s, 18 * s, 3 * s, 0.5 * s).fill({ color: 0x8888aa });
+  // Metal sheen highlights
+  g.poly([
+    cx - 6 * s, cy - 8 * s,
+    cx - 4 * s, cy - 8 * s,
+    cx - 5 * s, cy + 3 * s,
+    cx - 7 * s, cy + 3 * s,
+  ]).fill({ color: 0xddddff, alpha: 0.12 });
+  // Rivets
+  g.circle(cx - 7 * s, cy - 3 * s, 0.8 * s).fill({ color: 0xccccdd });
+  g.circle(cx + 7 * s, cy - 3 * s, 0.8 * s).fill({ color: 0xccccdd });
+  g.circle(cx - 7 * s, cy + 4 * s, 0.8 * s).fill({ color: 0xccccdd });
+  g.circle(cx + 7 * s, cy + 4 * s, 0.8 * s).fill({ color: 0xccccdd });
+}
+
+function drawWingedBootsIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Boot body
+  g.poly([
+    cx - 3 * s, cy - 6 * s,
+    cx + 3 * s, cy - 6 * s,
+    cx + 3 * s, cy + 6 * s,
+    cx + 8 * s, cy + 6 * s,
+    cx + 9 * s, cy + 8 * s,
+    cx + 8 * s, cy + 10 * s,
+    cx - 4 * s, cy + 10 * s,
+    cx - 5 * s, cy + 8 * s,
+    cx - 4 * s, cy + 6 * s,
+  ]).fill({ color: 0x7799cc });
+  // Boot trim
+  g.roundRect(cx - 4 * s, cy - 7 * s, 8 * s, 3 * s, 1 * s).fill({ color: 0x99bbee });
+  // Left wing
+  g.poly([
+    cx - 4 * s, cy - 2 * s,
+    cx - 10 * s, cy - 8 * s,
+    cx - 13 * s, cy - 10 * s,
+    cx - 11 * s, cy - 6 * s,
+    cx - 14 * s, cy - 7 * s,
+    cx - 11 * s, cy - 3 * s,
+    cx - 12 * s, cy - 3 * s,
+    cx - 8 * s, cy + 1 * s,
+    cx - 4 * s, cy + 2 * s,
+  ]).fill({ color: 0xeeeeff });
+  // Right wing
+  g.poly([
+    cx + 4 * s, cy - 2 * s,
+    cx + 10 * s, cy - 8 * s,
+    cx + 13 * s, cy - 10 * s,
+    cx + 11 * s, cy - 6 * s,
+    cx + 14 * s, cy - 7 * s,
+    cx + 11 * s, cy - 3 * s,
+    cx + 12 * s, cy - 3 * s,
+    cx + 8 * s, cy + 1 * s,
+    cx + 4 * s, cy + 2 * s,
+  ]).fill({ color: 0xeeeeff });
+  // Wing feather details
+  g.poly([cx - 6 * s, cy - 4 * s, cx - 9 * s, cy - 7 * s, cx - 7 * s, cy - 3 * s]).fill({ color: 0xddddef, alpha: 0.5 });
+  g.poly([cx + 6 * s, cy - 4 * s, cx + 9 * s, cy - 7 * s, cx + 7 * s, cy - 3 * s]).fill({ color: 0xddddef, alpha: 0.5 });
+  // Sole
+  g.roundRect(cx - 5 * s, cy + 9 * s, 14 * s, 2 * s, 0.5 * s).fill({ color: 0x5577aa });
+  // Magical sparkle
+  g.circle(cx - 8 * s, cy - 6 * s, 0.8 * s).fill({ color: 0xffffff, alpha: 0.7 });
+  g.circle(cx + 10 * s, cy - 5 * s, 0.6 * s).fill({ color: 0xffffff, alpha: 0.5 });
+}
+
+function drawMaceOfMightIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Handle
+  g.roundRect(cx - 1.2 * s, cy + 0 * s, 2.4 * s, 16 * s, 0.5 * s).fill({ color: 0x664422 });
+  // Handle grip
+  g.rect(cx - 1.5 * s, cy + 9 * s, 3 * s, 1 * s).fill({ color: 0x553311, alpha: 0.6 });
+  g.rect(cx - 1.5 * s, cy + 12 * s, 3 * s, 1 * s).fill({ color: 0x553311, alpha: 0.6 });
+  // Mace head base
+  g.circle(cx, cy - 4 * s, 6 * s).fill({ color: 0x777766 });
+  // Flanges/spikes
+  g.poly([cx, cy - 12 * s, cx - 2 * s, cy - 9 * s, cx + 2 * s, cy - 9 * s]).fill({ color: 0x888877 });
+  g.poly([cx + 8 * s, cy - 4 * s, cx + 5 * s, cy - 6 * s, cx + 5 * s, cy - 2 * s]).fill({ color: 0x888877 });
+  g.poly([cx - 8 * s, cy - 4 * s, cx - 5 * s, cy - 6 * s, cx - 5 * s, cy - 2 * s]).fill({ color: 0x888877 });
+  g.poly([cx + 5 * s, cy + 2 * s, cx + 4 * s, cy - 0 * s, cx + 2 * s, cy + 2 * s]).fill({ color: 0x888877 });
+  g.poly([cx - 5 * s, cy + 2 * s, cx - 4 * s, cy - 0 * s, cx - 2 * s, cy + 2 * s]).fill({ color: 0x888877 });
+  // Diagonal flanges
+  g.poly([cx + 6 * s, cy - 10 * s, cx + 3 * s, cy - 8 * s, cx + 5 * s, cy - 6 * s]).fill({ color: 0x888877 });
+  g.poly([cx - 6 * s, cy - 10 * s, cx - 3 * s, cy - 8 * s, cx - 5 * s, cy - 6 * s]).fill({ color: 0x888877 });
+  // Metal sheen
+  g.circle(cx - 1 * s, cy - 5 * s, 2.5 * s).fill({ color: 0xaaaaaa, alpha: 0.2 });
+  // Pommel
+  g.circle(cx, cy + 16 * s, 1.8 * s).fill({ color: 0x776655 });
+}
+
+function drawHalberdIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Long shaft
+  g.roundRect(cx - 1 * s, cy - 6 * s, 2 * s, 24 * s, 0.5 * s).fill({ color: 0x776644 });
+  // Axe blade (one side)
+  g.poly([
+    cx + 1 * s, cy - 8 * s,
+    cx + 9 * s, cy - 5 * s,
+    cx + 10 * s, cy - 2 * s,
+    cx + 9 * s, cy + 1 * s,
+    cx + 1 * s, cy + 4 * s,
+  ]).fill({ color: 0x778877 });
+  // Blade edge highlight
+  g.poly([
+    cx + 8 * s, cy - 4 * s,
+    cx + 10 * s, cy - 2 * s,
+    cx + 8 * s, cy + 0 * s,
+  ]).fill({ color: 0xaabbaa, alpha: 0.4 });
+  // Back spike
+  g.poly([
+    cx - 1 * s, cy - 4 * s,
+    cx - 6 * s, cy - 2 * s,
+    cx - 1 * s, cy + 0 * s,
+  ]).fill({ color: 0x667766 });
+  // Top spike/spearpoint
+  g.poly([
+    cx, cy - 14 * s,
+    cx + 2.5 * s, cy - 8 * s,
+    cx - 2.5 * s, cy - 8 * s,
+  ]).fill({ color: 0x99aa99 });
+  // Spike highlight
+  g.poly([
+    cx - 0.5 * s, cy - 13 * s,
+    cx + 1 * s, cy - 9 * s,
+    cx - 1 * s, cy - 9 * s,
+  ]).fill({ color: 0xbbccbb, alpha: 0.4 });
+  // Shaft reinforcement
+  g.roundRect(cx - 2 * s, cy - 6 * s, 4 * s, 2 * s, 0.3 * s).fill({ color: 0x888877 });
+  g.roundRect(cx - 2 * s, cy + 2 * s, 4 * s, 2 * s, 0.3 * s).fill({ color: 0x888877 });
+}
+
+function drawEnchantedCloakIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Cloak body (flowing shape)
+  g.poly([
+    cx - 3 * s, cy - 12 * s,
+    cx + 3 * s, cy - 12 * s,
+    cx + 5 * s, cy - 8 * s,
+    cx + 10 * s, cy + 2 * s,
+    cx + 12 * s, cy + 10 * s,
+    cx + 10 * s, cy + 14 * s,
+    cx + 4 * s, cy + 12 * s,
+    cx, cy + 14 * s,
+    cx - 4 * s, cy + 12 * s,
+    cx - 10 * s, cy + 14 * s,
+    cx - 12 * s, cy + 10 * s,
+    cx - 10 * s, cy + 2 * s,
+    cx - 5 * s, cy - 8 * s,
+  ]).fill({ color: 0x5533aa });
+  // Inner lining
+  g.poly([
+    cx - 2 * s, cy - 8 * s,
+    cx + 2 * s, cy - 8 * s,
+    cx + 6 * s, cy + 4 * s,
+    cx + 4 * s, cy + 12 * s,
+    cx, cy + 10 * s,
+    cx - 4 * s, cy + 12 * s,
+    cx - 6 * s, cy + 4 * s,
+  ]).fill({ color: 0x7744cc, alpha: 0.4 });
+  // Clasp at neck
+  g.circle(cx, cy - 11 * s, 2.5 * s).fill({ color: 0xddaa22 });
+  g.circle(cx, cy - 11 * s, 1.5 * s).fill({ color: 0xffcc44 });
+  // Magical shimmer dots
+  g.circle(cx - 5 * s, cy + 2 * s, 0.8 * s).fill({ color: 0xaa88ff, alpha: 0.6 });
+  g.circle(cx + 3 * s, cy + 5 * s, 0.7 * s).fill({ color: 0xcc99ff, alpha: 0.5 });
+  g.circle(cx - 2 * s, cy + 8 * s, 0.9 * s).fill({ color: 0xbb88ff, alpha: 0.4 });
+  g.circle(cx + 6 * s, cy - 1 * s, 0.6 * s).fill({ color: 0xddaaff, alpha: 0.5 });
+  g.circle(cx - 7 * s, cy + 7 * s, 0.7 * s).fill({ color: 0xaa88ff, alpha: 0.3 });
+  // Hem glow
+  g.poly([
+    cx - 10 * s, cy + 13 * s,
+    cx - 4 * s, cy + 11 * s,
+    cx, cy + 13 * s,
+    cx + 4 * s, cy + 11 * s,
+    cx + 10 * s, cy + 13 * s,
+  ]).stroke({ color: 0x9966dd, width: 0.8 * s, alpha: 0.4 });
+}
+
+function drawGiantsBeltIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Belt body (thick band)
+  g.roundRect(cx - 14 * s, cy - 4 * s, 28 * s, 8 * s, 2 * s).fill({ color: 0x8B6914 });
+  // Belt texture - leather grain
+  g.rect(cx - 12 * s, cy - 2 * s, 24 * s, 0.5 * s).fill({ color: 0x7a5910, alpha: 0.4 });
+  g.rect(cx - 12 * s, cy + 1 * s, 24 * s, 0.5 * s).fill({ color: 0x7a5910, alpha: 0.4 });
+  // Large buckle
+  g.roundRect(cx - 5 * s, cy - 6 * s, 10 * s, 12 * s, 1.5 * s).fill({ color: 0xccaa44 });
+  g.roundRect(cx - 3.5 * s, cy - 4.5 * s, 7 * s, 9 * s, 1 * s).fill({ color: 0x8B6914 });
+  // Buckle prong
+  g.roundRect(cx - 0.5 * s, cy - 5 * s, 1 * s, 6 * s, 0.3 * s).fill({ color: 0xddbb55 });
+  // Studs along belt
+  g.circle(cx - 10 * s, cy, 1.2 * s).fill({ color: 0xccaa44 });
+  g.circle(cx + 10 * s, cy, 1.2 * s).fill({ color: 0xccaa44 });
+  g.circle(cx - 7 * s, cy, 1 * s).fill({ color: 0xbbaa44, alpha: 0.6 });
+  g.circle(cx + 7 * s, cy, 1 * s).fill({ color: 0xbbaa44, alpha: 0.6 });
+  // Belt holes
+  g.circle(cx + 12 * s, cy - 1 * s, 0.6 * s).fill({ color: 0x6a4a08 });
+  g.circle(cx + 12 * s, cy + 1 * s, 0.6 * s).fill({ color: 0x6a4a08 });
+  // Giant rune engraving on buckle
+  g.rect(cx - 1.5 * s, cy + 1 * s, 3 * s, 0.8 * s).fill({ color: 0xddcc66, alpha: 0.5 });
+  g.rect(cx - 0.4 * s, cy - 0 * s, 0.8 * s, 3 * s).fill({ color: 0xddcc66, alpha: 0.5 });
+}
+
+function drawDragonscaleMailIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Torso shape
+  g.roundRect(cx - 9 * s, cy - 9 * s, 18 * s, 18 * s, 2 * s).fill({ color: 0xbb5511 });
+  // Shoulder guards
+  g.roundRect(cx - 12 * s, cy - 12 * s, 7 * s, 6 * s, 2 * s).fill({ color: 0xcc6622 });
+  g.roundRect(cx + 5 * s, cy - 12 * s, 7 * s, 6 * s, 2 * s).fill({ color: 0xcc6622 });
+  // Neckguard
+  g.poly([cx - 3 * s, cy - 9 * s, cx, cy - 6 * s, cx + 3 * s, cy - 9 * s]).fill({ color: 0xaa4411 });
+  // Scale pattern (overlapping rows)
+  for (let row = 0; row < 4; row++) {
+    const ry = cy - 4 * s + row * 4 * s;
+    const offset = row % 2 === 0 ? 0 : 3 * s;
+    for (let col = -2; col <= 2; col++) {
+      const rx = cx + col * 6 * s + offset;
+      if (rx > cx - 8 * s && rx < cx + 8 * s) {
+        g.poly([
+          rx, ry - 2 * s,
+          rx + 2.5 * s, ry,
+          rx, ry + 2.5 * s,
+          rx - 2.5 * s, ry,
+        ]).fill({ color: 0xdd7733, alpha: 0.5 });
+        g.poly([
+          rx, ry - 2 * s,
+          rx + 2.5 * s, ry,
+          rx, ry + 2.5 * s,
+          rx - 2.5 * s, ry,
+        ]).stroke({ color: 0xee8844, width: 0.3 * s, alpha: 0.4 });
+      }
+    }
+  }
+  // Waist plate
+  g.roundRect(cx - 9 * s, cy + 6 * s, 18 * s, 2.5 * s, 0.5 * s).fill({ color: 0xaa4411 });
+  // Fire-glow accent
+  g.circle(cx, cy - 2 * s, 3 * s).fill({ color: 0xff6600, alpha: 0.1 });
+}
+
+function drawStormLanceIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Shaft
+  g.roundRect(cx - 1.2 * s, cy - 2 * s, 2.4 * s, 20 * s, 0.5 * s).fill({ color: 0x556688 });
+  // Lance head (elongated diamond)
+  g.poly([
+    cx, cy - 14 * s,
+    cx + 3 * s, cy - 6 * s,
+    cx, cy - 2 * s,
+    cx - 3 * s, cy - 6 * s,
+  ]).fill({ color: 0x6699dd });
+  // Lance head highlight
+  g.poly([
+    cx - 0.5 * s, cy - 13 * s,
+    cx + 1.5 * s, cy - 7 * s,
+    cx - 0.5 * s, cy - 3 * s,
+  ]).fill({ color: 0x88bbff, alpha: 0.4 });
+  // Lightning bolt left
+  g.poly([
+    cx - 4 * s, cy - 10 * s,
+    cx - 6 * s, cy - 7 * s,
+    cx - 4.5 * s, cy - 7 * s,
+    cx - 7 * s, cy - 3 * s,
+    cx - 5 * s, cy - 5 * s,
+    cx - 3.5 * s, cy - 5 * s,
+  ]).fill({ color: 0x66bbff, alpha: 0.6 });
+  // Lightning bolt right
+  g.poly([
+    cx + 4 * s, cy - 9 * s,
+    cx + 7 * s, cy - 5 * s,
+    cx + 5 * s, cy - 5 * s,
+    cx + 6 * s, cy - 2 * s,
+    cx + 4 * s, cy - 4 * s,
+    cx + 3.5 * s, cy - 4 * s,
+  ]).fill({ color: 0x66bbff, alpha: 0.6 });
+  // Electric glow
+  g.circle(cx, cy - 8 * s, 5 * s).fill({ color: 0x4488cc, alpha: 0.15 });
+  // Handguard
+  g.roundRect(cx - 5 * s, cy - 2 * s, 10 * s, 2 * s, 0.5 * s).fill({ color: 0x4477aa });
+  // Grip wrapping
+  g.rect(cx - 1.5 * s, cy + 4 * s, 3 * s, 1 * s).fill({ color: 0x445566, alpha: 0.5 });
+  g.rect(cx - 1.5 * s, cy + 7 * s, 3 * s, 1 * s).fill({ color: 0x445566, alpha: 0.5 });
+  g.rect(cx - 1.5 * s, cy + 10 * s, 3 * s, 1 * s).fill({ color: 0x445566, alpha: 0.5 });
+  // Spark dots
+  g.circle(cx - 5 * s, cy - 8 * s, 0.5 * s).fill({ color: 0xaaddff, alpha: 0.7 });
+  g.circle(cx + 6 * s, cy - 6 * s, 0.4 * s).fill({ color: 0xaaddff, alpha: 0.6 });
+}
+
+function drawCrownOfValorIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Crown band
+  g.roundRect(cx - 10 * s, cy + 0 * s, 20 * s, 6 * s, 1 * s).fill({ color: 0xddaa22 });
+  // Crown points
+  g.poly([cx - 9 * s, cy, cx - 8 * s, cy - 8 * s, cx - 5 * s, cy]).fill({ color: 0xddaa22 });
+  g.poly([cx - 4 * s, cy, cx - 2 * s, cy - 11 * s, cx + 0 * s, cy]).fill({ color: 0xeebb33 });
+  g.poly([cx + 1 * s, cy, cx + 2 * s, cy - 11 * s, cx + 4 * s, cy]).fill({ color: 0xddaa22 });
+  g.poly([cx + 5 * s, cy, cx + 8 * s, cy - 8 * s, cx + 9 * s, cy]).fill({ color: 0xddaa22 });
+  // Jewels on points
+  g.circle(cx - 2 * s, cy - 8 * s, 1.5 * s).fill({ color: 0xff3333 });
+  g.circle(cx + 2 * s, cy - 8 * s, 1.5 * s).fill({ color: 0x3355ff });
+  g.circle(cx - 8 * s, cy - 5 * s, 1.2 * s).fill({ color: 0x33cc33 });
+  g.circle(cx + 8 * s, cy - 5 * s, 1.2 * s).fill({ color: 0x33cc33 });
+  // Band detail - gems along base
+  g.circle(cx - 6 * s, cy + 3 * s, 1.3 * s).fill({ color: 0xff4444 });
+  g.circle(cx, cy + 3 * s, 1.5 * s).fill({ color: 0x4488ff });
+  g.circle(cx + 6 * s, cy + 3 * s, 1.3 * s).fill({ color: 0xff4444 });
+  // Gold trim highlights
+  g.roundRect(cx - 9 * s, cy - 0.5 * s, 18 * s, 1 * s, 0.3 * s).fill({ color: 0xffcc44, alpha: 0.4 });
+  // Inner band shadow
+  g.roundRect(cx - 9 * s, cy + 5 * s, 18 * s, 2 * s, 0.5 * s).fill({ color: 0xbb8811, alpha: 0.5 });
+  // Velvet interior hint
+  g.roundRect(cx - 7 * s, cy + 6 * s, 14 * s, 4 * s, 1 * s).fill({ color: 0x882222, alpha: 0.4 });
+}
+
+function drawShadowDaggerIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Shadow aura
+  g.circle(cx, cy - 2 * s, 8 * s).fill({ color: 0x221133, alpha: 0.3 });
+  // Blade (sleek, narrow)
+  g.poly([
+    cx, cy - 14 * s,
+    cx + 2 * s, cy - 3 * s,
+    cx + 1.5 * s, cy + 2 * s,
+    cx - 1.5 * s, cy + 2 * s,
+    cx - 2 * s, cy - 3 * s,
+  ]).fill({ color: 0x443366 });
+  // Blade edge highlight
+  g.poly([
+    cx - 0.3 * s, cy - 13 * s,
+    cx + 0.8 * s, cy - 4 * s,
+    cx + 0.5 * s, cy + 1 * s,
+    cx - 0.5 * s, cy + 1 * s,
+  ]).fill({ color: 0x6655aa, alpha: 0.4 });
+  // Fuller (groove)
+  g.rect(cx - 0.3 * s, cy - 10 * s, 0.6 * s, 8 * s).fill({ color: 0x332244, alpha: 0.5 });
+  // Crossguard (curved)
+  g.poly([
+    cx - 6 * s, cy + 1 * s,
+    cx - 5 * s, cy + 3 * s,
+    cx + 5 * s, cy + 3 * s,
+    cx + 6 * s, cy + 1 * s,
+  ]).fill({ color: 0x332244 });
+  // Handle (wrapped)
+  g.roundRect(cx - 1.2 * s, cy + 3 * s, 2.4 * s, 7 * s, 0.5 * s).fill({ color: 0x221133 });
+  // Handle wrapping
+  g.rect(cx - 1.5 * s, cy + 4 * s, 3 * s, 0.8 * s).fill({ color: 0x443355, alpha: 0.6 });
+  g.rect(cx - 1.5 * s, cy + 6.5 * s, 3 * s, 0.8 * s).fill({ color: 0x443355, alpha: 0.6 });
+  g.rect(cx - 1.5 * s, cy + 9 * s, 3 * s, 0.8 * s).fill({ color: 0x443355, alpha: 0.6 });
+  // Pommel
+  g.circle(cx, cy + 11 * s, 1.8 * s).fill({ color: 0x332244 });
+  g.circle(cx, cy + 11 * s, 0.8 * s).fill({ color: 0x8855cc, alpha: 0.5 });
+  // Shadow wisps
+  g.poly([cx - 3 * s, cy - 8 * s, cx - 5 * s, cy - 11 * s, cx - 2 * s, cy - 6 * s]).fill({ color: 0x332244, alpha: 0.4 });
+  g.poly([cx + 3 * s, cy - 6 * s, cx + 5 * s, cy - 10 * s, cx + 2 * s, cy - 4 * s]).fill({ color: 0x332244, alpha: 0.4 });
+}
+
+function drawExcaliburIcon(g: Graphics, cx: number, cy: number, size: number): void {
+  const s = size / 30;
+  // Holy glow
+  g.circle(cx, cy - 2 * s, 10 * s).fill({ color: 0xffdd44, alpha: 0.12 });
+  // Blade (wide, majestic)
+  g.poly([
+    cx - 2.5 * s, cy + 5 * s,
+    cx - 2.5 * s, cy - 8 * s,
+    cx - 1.5 * s, cy - 12 * s,
+    cx, cy - 14 * s,
+    cx + 1.5 * s, cy - 12 * s,
+    cx + 2.5 * s, cy - 8 * s,
+    cx + 2.5 * s, cy + 5 * s,
+  ]).fill({ color: 0xdde8f8 });
+  // Blade highlight (center fuller)
+  g.rect(cx - 0.5 * s, cy - 12 * s, 1 * s, 16 * s).fill({ color: 0xffffff, alpha: 0.35 });
+  // Blade edge gleam
+  g.poly([
+    cx - 2 * s, cy - 10 * s,
+    cx - 1 * s, cy - 10 * s,
+    cx - 1.5 * s, cy + 3 * s,
+    cx - 2.5 * s, cy + 3 * s,
+  ]).fill({ color: 0xeef4ff, alpha: 0.3 });
+  // Ornate crossguard
+  g.roundRect(cx - 9 * s, cy + 4 * s, 18 * s, 3 * s, 1 * s).fill({ color: 0xddaa22 });
+  // Crossguard end ornaments
+  g.circle(cx - 9 * s, cy + 5.5 * s, 2 * s).fill({ color: 0xeebb33 });
+  g.circle(cx + 9 * s, cy + 5.5 * s, 2 * s).fill({ color: 0xeebb33 });
+  // Central gem on crossguard
+  g.circle(cx, cy + 5.5 * s, 1.8 * s).fill({ color: 0x3366ff });
+  g.circle(cx, cy + 5.5 * s, 1 * s).fill({ color: 0x88aaff, alpha: 0.6 });
+  // Handle
+  g.roundRect(cx - 1.5 * s, cy + 7 * s, 3 * s, 6 * s, 0.5 * s).fill({ color: 0x664411 });
+  // Handle gold wrapping
+  g.rect(cx - 1.8 * s, cy + 8 * s, 3.6 * s, 0.8 * s).fill({ color: 0xddaa22, alpha: 0.6 });
+  g.rect(cx - 1.8 * s, cy + 10.5 * s, 3.6 * s, 0.8 * s).fill({ color: 0xddaa22, alpha: 0.6 });
+  // Pommel (golden orb)
+  g.circle(cx, cy + 14.5 * s, 2.5 * s).fill({ color: 0xeebb33 });
+  g.circle(cx, cy + 14.5 * s, 1.2 * s).fill({ color: 0xffdd66, alpha: 0.6 });
+  // Holy sparkles
+  g.circle(cx - 4 * s, cy - 8 * s, 0.7 * s).fill({ color: 0xffffaa, alpha: 0.6 });
+  g.circle(cx + 3 * s, cy - 10 * s, 0.5 * s).fill({ color: 0xffffaa, alpha: 0.5 });
+  g.circle(cx + 5 * s, cy - 4 * s, 0.6 * s).fill({ color: 0xffffaa, alpha: 0.4 });
+}
+
+function hasCustomIcon(_id: ArmoryItemId): boolean {
+  return true;
 }
 
 function drawItemIcon(g: Graphics, id: ArmoryItemId, cx: number, cy: number, size: number): void {
-  if (id === "longsword") drawLongswordIcon(g, cx, cy, size);
-  else if (id === "spear") drawSpearIcon(g, cx, cy, size);
+  switch (id) {
+    case "longsword": drawLongswordIcon(g, cx, cy, size); break;
+    case "spear": drawSpearIcon(g, cx, cy, size); break;
+    case "leather_armor": drawLeatherArmorIcon(g, cx, cy, size); break;
+    case "leather_sandals": drawLeatherSandalsIcon(g, cx, cy, size); break;
+    case "steel_shield": drawSteelShieldIcon(g, cx, cy, size); break;
+    case "war_axe": drawWarAxeIcon(g, cx, cy, size); break;
+    case "chainmail": drawChainmailIcon(g, cx, cy, size); break;
+    case "iron_boots": drawIronBootsIcon(g, cx, cy, size); break;
+    case "flaming_sword": drawFlamingSwordIcon(g, cx, cy, size); break;
+    case "elven_bow": drawElvenBowIcon(g, cx, cy, size); break;
+    case "plate_armor": drawPlateArmorIcon(g, cx, cy, size); break;
+    case "winged_boots": drawWingedBootsIcon(g, cx, cy, size); break;
+    case "mace_of_might": drawMaceOfMightIcon(g, cx, cy, size); break;
+    case "halberd": drawHalberdIcon(g, cx, cy, size); break;
+    case "enchanted_cloak": drawEnchantedCloakIcon(g, cx, cy, size); break;
+    case "giants_belt": drawGiantsBeltIcon(g, cx, cy, size); break;
+    case "dragonscale_mail": drawDragonscaleMailIcon(g, cx, cy, size); break;
+    case "storm_lance": drawStormLanceIcon(g, cx, cy, size); break;
+    case "crown_of_valor": drawCrownOfValorIcon(g, cx, cy, size); break;
+    case "shadow_dagger": drawShadowDaggerIcon(g, cx, cy, size); break;
+    case "excalibur": drawExcaliburIcon(g, cx, cy, size); break;
+  }
 }
 
 // ---------------------------------------------------------------------------

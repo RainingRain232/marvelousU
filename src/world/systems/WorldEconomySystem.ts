@@ -11,6 +11,7 @@ import { getWorldBuildingDef } from "@world/config/WorldBuildingDefs";
 import { RESOURCE_DEFINITIONS, IMPROVEMENT_DEFINITIONS } from "@world/config/ResourceDefs";
 import { getLeader } from "@sim/config/LeaderDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import { isCityCursed } from "@world/systems/OverlandSpellSystem";
 
 // ---------------------------------------------------------------------------
 // Public
@@ -157,6 +158,31 @@ export function calculateCityYields(
       mana += def.manaBonus;
       science += def.scienceBonus;
     }
+  }
+
+  // Apply overland spell curses
+  if (isCityCursed(state, city.id, "famine")) {
+    food = 0; // No food production during famine
+  }
+  if (isCityCursed(state, city.id, "corruption")) {
+    // Corruption: tiles produce nothing — zero out tile yields
+    gold = WorldBalance.BASE_GOLD_INCOME;
+    food = 0;
+    production = WorldBalance.BASE_PRODUCTION;
+  }
+
+  // Apply Prosperity bonus (caster's cities get +3 gold)
+  const owner = state.players.get(city.owner);
+  if (owner?.activeSpells.has("prosperity")) {
+    gold += 3;
+  }
+  // Apply Fertility bonus (caster's cities get +50% food)
+  if (owner?.activeSpells.has("fertility")) {
+    food = Math.floor(food * 1.5);
+  }
+  // Apply Channel Surge (double mana)
+  if (owner?.activeSpells.has("channel_surge")) {
+    mana *= 2;
   }
 
   return { gold, food, production, mana, science };

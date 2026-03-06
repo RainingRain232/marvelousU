@@ -44,9 +44,18 @@ export class VictoryScreen {
   private _cardBg!: Graphics;
   private _winnerText!: Text;
   private _subtitleText!: Text;
+  private _nextWaveBtn!: Container;
+  private _menuBtn!: Container;
 
   private readonly _CARD_W = 360;
-  private readonly _CARD_H = 200;
+  private readonly _CARD_H_NORMAL = 200;
+  private readonly _CARD_H_WAVE = 250;
+
+  /** If > 0, this is a wave mode battle. Set before init or before phase resolves. */
+  waveNumber = 0;
+
+  /** Called when the player clicks "NEXT WAVE" in wave mode. */
+  onNextWave: (() => void) | null = null;
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -64,7 +73,6 @@ export class VictoryScreen {
     this._cardBg = new Graphics();
     this._card.addChild(this._cardBg);
     this.container.addChild(this._card);
-    this._drawCard();
 
     // Winner text
     this._winnerText = new Text({ text: "", style: STYLE_WINNER });
@@ -81,29 +89,56 @@ export class VictoryScreen {
     // Return to Menu button
     const BW = this._CARD_W - 60;
     const BH = 40;
-    const btn = new Container();
-    btn.eventMode = "static";
-    btn.cursor = "pointer";
-    btn.position.set(30, 138);
+
+    this._menuBtn = new Container();
+    this._menuBtn.eventMode = "static";
+    this._menuBtn.cursor = "pointer";
+    this._menuBtn.position.set(30, 138);
 
     const btnBg = new Graphics()
       .roundRect(0, 0, BW, BH, 6)
       .fill({ color: 0x1a2a3a })
       .roundRect(0, 0, BW, BH, 6)
       .stroke({ color: 0x4488cc, width: 1.5 });
-    btn.addChild(btnBg);
+    this._menuBtn.addChild(btnBg);
 
     const btnLabel = new Text({ text: "RETURN TO MENU", style: STYLE_BTN });
     btnLabel.style.fill = 0x88ccff;
     btnLabel.anchor.set(0.5, 0.5);
     btnLabel.position.set(BW / 2, BH / 2);
-    btn.addChild(btnLabel);
+    this._menuBtn.addChild(btnLabel);
 
-    btn.on("pointerover", () => { btnBg.tint = 0xaaddff; });
-    btn.on("pointerout", () => { btnBg.tint = 0xffffff; });
-    btn.on("pointerdown", () => { window.location.reload(); });
+    this._menuBtn.on("pointerover", () => { btnBg.tint = 0xaaddff; });
+    this._menuBtn.on("pointerout", () => { btnBg.tint = 0xffffff; });
+    this._menuBtn.on("pointerdown", () => { window.location.reload(); });
 
-    this._card.addChild(btn);
+    this._card.addChild(this._menuBtn);
+
+    // Next Wave button (wave mode only)
+    this._nextWaveBtn = new Container();
+    this._nextWaveBtn.eventMode = "static";
+    this._nextWaveBtn.cursor = "pointer";
+    this._nextWaveBtn.position.set(30, 138);
+    this._nextWaveBtn.visible = false;
+
+    const nwBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 6)
+      .fill({ color: 0x1a3a1a })
+      .roundRect(0, 0, BW, BH, 6)
+      .stroke({ color: 0x44aa66, width: 2 });
+    this._nextWaveBtn.addChild(nwBg);
+
+    const nwLabel = new Text({ text: "NEXT WAVE  >", style: STYLE_BTN });
+    nwLabel.style.fill = 0x88ffaa;
+    nwLabel.anchor.set(0.5, 0.5);
+    nwLabel.position.set(BW / 2, BH / 2);
+    this._nextWaveBtn.addChild(nwLabel);
+
+    this._nextWaveBtn.on("pointerover", () => { nwBg.tint = 0xaaffcc; });
+    this._nextWaveBtn.on("pointerout", () => { nwBg.tint = 0xffffff; });
+    this._nextWaveBtn.on("pointerdown", () => { this.onNextWave?.(); });
+
+    this._card.addChild(this._nextWaveBtn);
 
     this.container.visible = false;
     vm.addToLayer("ui", this.container);
@@ -126,9 +161,14 @@ export class VictoryScreen {
   // ---------------------------------------------------------------------------
 
   private _show(state: GameState): void {
+    const isWave = this.waveNumber > 0;
+    const p1Won = state.winnerId === "p1";
+
     if (state.winnerId === null) {
       this._winnerText.text = "DRAW";
-      this._subtitleText.text = "MUTUAL DESTRUCTION";
+      this._subtitleText.text = isWave
+        ? `WAVE ${this.waveNumber} — MUTUAL DESTRUCTION`
+        : "MUTUAL DESTRUCTION";
     } else {
       const playerLabels: Record<string, string> = {
         p1: "PLAYER 1",
@@ -138,17 +178,34 @@ export class VictoryScreen {
       };
       const label = playerLabels[state.winnerId] ?? state.winnerId.toUpperCase();
       this._winnerText.text = label;
-      this._subtitleText.text = "WINS THE ROUND";
+      this._subtitleText.text = isWave
+        ? `WAVE ${this.waveNumber} ${p1Won ? "COMPLETE" : "— DEFEATED"}`
+        : "WINS THE ROUND";
     }
+
+    // In wave mode, show "NEXT WAVE" if p1 won, otherwise just "RETURN TO MENU"
+    if (isWave && p1Won) {
+      this._nextWaveBtn.visible = true;
+      this._nextWaveBtn.position.set(30, 138);
+      this._menuBtn.position.set(30, 188);
+      this._drawCard(this._CARD_H_WAVE);
+    } else {
+      this._nextWaveBtn.visible = false;
+      this._menuBtn.position.set(30, 138);
+      this._drawCard(this._CARD_H_NORMAL);
+    }
+
     this.container.visible = true;
+    this._layout();
   }
 
-  private _drawCard(): void {
+  private _drawCard(h?: number): void {
+    const cardH = h ?? this._CARD_H_NORMAL;
     this._cardBg.clear();
     this._cardBg
-      .roundRect(0, 0, this._CARD_W, this._CARD_H, 10)
+      .roundRect(0, 0, this._CARD_W, cardH, 10)
       .fill({ color: 0x0a0a18, alpha: 0.96 })
-      .roundRect(0, 0, this._CARD_W, this._CARD_H, 10)
+      .roundRect(0, 0, this._CARD_W, cardH, 10)
       .stroke({ color: 0xffd700, alpha: 0.6, width: 2 });
   }
 
@@ -159,9 +216,10 @@ export class VictoryScreen {
     this._overlay.clear();
     this._overlay.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.55 });
 
+    const cardH = this._nextWaveBtn.visible ? this._CARD_H_WAVE : this._CARD_H_NORMAL;
     this._card.position.set(
       Math.floor((sw - this._CARD_W) / 2),
-      Math.floor((sh - this._CARD_H) / 2),
+      Math.floor((sh - cardH) / 2),
     );
   }
 }

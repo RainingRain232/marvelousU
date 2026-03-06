@@ -14,6 +14,7 @@ import { processEconomy } from "@world/systems/WorldEconomySystem";
 import { advanceResearch, advanceMagicResearch } from "@world/systems/ResearchSystem";
 import { updateVisibility } from "@world/systems/FogOfWarSystem";
 import { spawnNeutralRaiders } from "@world/systems/NeutralCitySystem";
+import { processOverlandSpells, getSpellMovementBonus } from "@world/systems/OverlandSpellSystem";
 
 // ---------------------------------------------------------------------------
 // Turn flow
@@ -23,10 +24,14 @@ import { spawnNeutralRaiders } from "@world/systems/NeutralCitySystem";
 export function beginTurn(state: WorldState): void {
   const player = currentPlayer(state);
 
-  // Reset army movement points for this player
+  // Process overland spell effects (cooldowns, durations, per-turn effects)
+  processOverlandSpells(state, player.id);
+
+  // Reset army movement points for this player (with spell bonuses)
+  const moveBonus = getSpellMovementBonus(player);
   for (const army of state.armies.values()) {
     if (army.owner === player.id && !army.isGarrison) {
-      army.movementPoints = army.maxMovementPoints;
+      army.movementPoints = army.maxMovementPoints + moveBonus;
     }
   }
 

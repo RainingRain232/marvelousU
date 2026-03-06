@@ -131,6 +131,7 @@ const GAME_MODES: GameModeEntry[] = [
   },
   { mode: GameMode.CAMPAIGN, label: "CAMPAIGN", desc: "Story progression" },
   { mode: GameMode.WORLD, label: "WORLD", desc: "Hex-based strategy" },
+  { mode: GameMode.WAVE, label: "WAVE MODE", desc: "Endless survival waves" },
 ];
 
 function makePanel(w: number, h: number): Container {

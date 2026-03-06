@@ -83,6 +83,8 @@ export class CityPanel {
   onViewCity: ((cityId: string) => void) | null = null;
   /** Called when the player wants to consult an advisor. */
   onAskAdvisor: ((advisor: "merlin" | "queen") => void) | null = null;
+  /** Called when the player wants to open Merlin's Magic screen. */
+  onMerlinMagic: (() => void) | null = null;
 
   /** Rename input state. */
   private _renaming = false;
@@ -469,6 +471,16 @@ export class CityPanel {
       0x2a1a1a, 0xaa6644,
     );
     this._contentContainer.addChild(queenBtn);
+    y += 30;
+
+    // Merlin's Magic button
+    const magicBtn = _makeButton(
+      "MERLIN'S MAGIC",
+      16, y, PANEL_W - 32, 24,
+      () => { this.onMerlinMagic?.(); },
+      0x1a0a2a, 0x8844cc,
+    );
+    this._contentContainer.addChild(magicBtn);
     y += 30;
 
     return y;

@@ -44,6 +44,12 @@ interface SerializedWorldPlayer {
   magicResearchRatio: number;
   diplomacy: Record<string, string>;
   exploredTiles: string[];
+  activeSpells?: Record<string, number>;
+  spellCooldowns?: Record<string, number>;
+  alchemyMode?: string | null;
+  masteryProgress?: number;
+  spellBlastActive?: boolean;
+  cursedCities?: Record<string, string[]>;
 }
 
 interface SerializedWorldState {
@@ -100,6 +106,14 @@ function serializeWorldState(state: WorldState): SerializedWorldState {
       magicResearchRatio: p.magicResearchRatio,
       diplomacy: Object.fromEntries(p.diplomacy),
       exploredTiles: [...p.exploredTiles],
+      activeSpells: Object.fromEntries(p.activeSpells),
+      spellCooldowns: Object.fromEntries(p.spellCooldowns),
+      alchemyMode: p.alchemyMode,
+      masteryProgress: p.masteryProgress,
+      spellBlastActive: p.spellBlastActive,
+      cursedCities: Object.fromEntries(
+        Array.from(p.cursedCities.entries()).map(([k, v]) => [k, [...v]])
+      ),
     };
   }
 
@@ -171,6 +185,14 @@ function deserializeWorldState(data: SerializedWorldState): WorldState {
       diplomacy: new Map(Object.entries(sp.diplomacy ?? {})) as Map<string, "war" | "peace">,
       exploredTiles: new Set(sp.exploredTiles),
       visibleTiles: new Set(), // recalculated on load
+      activeSpells: new Map(Object.entries(sp.activeSpells ?? {})) as any,
+      spellCooldowns: new Map(Object.entries(sp.spellCooldowns ?? {})) as any,
+      alchemyMode: (sp.alchemyMode as "gold_to_mana" | "mana_to_gold" | null) ?? null,
+      masteryProgress: sp.masteryProgress ?? 0,
+      spellBlastActive: sp.spellBlastActive ?? false,
+      cursedCities: new Map(
+        Object.entries(sp.cursedCities ?? {}).map(([k, v]: [string, any]) => [k, new Set(v)])
+      ),
     });
   }
 

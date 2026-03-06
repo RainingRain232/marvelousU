@@ -60,7 +60,7 @@ function pickRandom<T>(arr: T[], rng: () => number): T {
  * Collect all unit types available to a race up to a given max tier.
  * Uses the race tier filtering system from RaceDefs.
  */
-function getUnitsForRace(raceId: RaceId, maxTier: number): UnitType[] {
+export function getUnitsForRace(raceId: RaceId, maxTier: number): UnitType[] {
   const seen = new Set<UnitType>();
   const result: UnitType[] = [];
 

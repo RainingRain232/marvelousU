@@ -3,6 +3,7 @@
 import type { RaceId } from "@sim/config/RaceDefs";
 import type { LeaderId } from "@sim/config/LeaderDefs";
 import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
+import type { OverlandSpellId } from "@world/config/OverlandSpellDefs";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,6 +50,20 @@ export interface WorldPlayer {
   exploredTiles: Set<string>;
   /** Hex keys ("q,r") currently in sight range. Recalculated each turn. */
   visibleTiles: Set<string>;
+
+  // --- Overland spells (Merlin's Magic) ---
+  /** Active overland spell effects: spellId → turns remaining (0 = permanent until dispelled). */
+  activeSpells: Map<OverlandSpellId, number>;
+  /** Cooldowns: spellId → turns until available again. */
+  spellCooldowns: Map<OverlandSpellId, number>;
+  /** Alchemy toggle mode: null = off, "gold_to_mana" or "mana_to_gold". */
+  alchemyMode: "gold_to_mana" | "mana_to_gold" | null;
+  /** Spell of Mastery channeling progress (turns invested). */
+  masteryProgress: number;
+  /** Whether Spell Blast shield is active (consumes on next enemy spell). */
+  spellBlastActive: boolean;
+  /** City IDs afflicted by famine (spellId → Set of cityIds). */
+  cursedCities: Map<string, Set<string>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,5 +101,11 @@ export function createWorldPlayer(
     diplomacy: new Map(),
     exploredTiles: new Set(),
     visibleTiles: new Set(),
+    activeSpells: new Map(),
+    spellCooldowns: new Map(),
+    alchemyMode: null,
+    masteryProgress: 0,
+    spellBlastActive: false,
+    cursedCities: new Map(),
   };
 }

@@ -43,6 +43,8 @@ import { armoryScreen } from "@view/ui/ArmoryScreen";
 import { scenarioSelectScreen } from "@view/ui/ScenarioSelectScreen";
 import { campaignIntroScreen } from "@view/ui/CampaignIntroScreen";
 import { victoryScreen } from "@view/ui/VictoryScreen";
+import { unitShopScreen } from "@view/ui/UnitShopScreen";
+import type { UnitRoster } from "@view/ui/UnitShopScreen";
 import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
 import { buildingWikiScreen } from "@view/ui/BuildingWikiScreen";
@@ -143,9 +145,12 @@ import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
 import { rollRandomEvents } from "@world/systems/WorldRandomEvents";
-import { getNeutralCityGarrison, pickNeutralRace, neutralRng } from "@world/systems/NeutralCitySystem";
+import { getNeutralCityGarrison, pickNeutralRace, neutralRng, getUnitsForRace } from "@world/systems/NeutralCitySystem";
 import { worldNotification } from "@view/world/ui/WorldNotification";
 import { worldWikiScreen } from "@view/world/ui/WorldWikiScreen";
+import { merlinMagicScreen } from "@view/world/ui/MerlinMagicScreen";
+import { castSpell } from "@world/systems/OverlandSpellSystem";
+import type { OverlandSpellId } from "@world/config/OverlandSpellDefs";
 import merlinImgUrl from "@/img/merlin.png";
 
 // ---------------------------------------------------------------------------
@@ -655,6 +660,9 @@ import merlinImgUrl from "@/img/merlin.png";
   armoryScreen.init(viewManager);
   armoryScreen.hide();
 
+  // Unit shop screen (Battlefield / Wave mode)
+  unitShopScreen.init(viewManager);
+
   magicScreen.onNext = () => {
     magicScreen.hide();
     // Set unlocked items based on game mode
@@ -685,6 +693,82 @@ import merlinImgUrl from "@/img/merlin.png";
     if (gameMode === GameMode.CAMPAIGN) {
       // Campaign: go to scenario select instead of booting directly
       scenarioSelectScreen.show();
+    } else if (gameMode === GameMode.BATTLEFIELD) {
+      // Battlefield: player unit shop → AI unit shop → battle
+      unitShopScreen.onDone = (playerRoster) => {
+        unitShopScreen.hide();
+        // AI shop
+        unitShopScreen.onDone = async (aiRoster) => {
+          unitShopScreen.hide();
+          _worldBattleRosters = {
+            p1Roster: playerRoster,
+            p2Roster: aiRoster,
+            battleMeta: {},
+            playerIsAttacker: true,
+          };
+          await _bootGame(
+            true,
+            mapSize,
+            GameMode.BATTLEFIELD,
+            leaderId,
+            raceId,
+            undefined,
+            mapType,
+            undefined,
+            2,
+            [],
+          );
+        };
+        unitShopScreen.showAIShop(raceId, 30000);
+      };
+      unitShopScreen.show(raceId, 30000, "YOUR ARMY");
+    } else if (gameMode === GameMode.WAVE) {
+      // Wave mode: player unit shop → battle vs random wave
+      _waveState = {
+        wave: 1,
+        playerRaceId: raceId,
+        playerLeaderId: leaderId,
+        totalGoldSpent: 0,
+        mapSize,
+        mapType,
+      };
+      unitShopScreen.onDone = async (playerRoster) => {
+        unitShopScreen.hide();
+        // Track gold spent
+        let spent = 0;
+        for (const entry of playerRoster) {
+          const uDef = UNIT_DEFINITIONS[entry.type];
+          if (uDef) spent += uDef.cost * entry.count;
+        }
+        _waveState!.totalGoldSpent += spent;
+
+        // Generate enemy wave
+        const enemyBudget = _waveState!.wave === 1
+          ? 2000
+          : Math.round(_waveState!.totalGoldSpent * 1.3);
+        const enemyRoster = _generateWaveEnemyRoster(raceId, enemyBudget, _waveState!.wave);
+
+        _worldBattleRosters = {
+          p1Roster: playerRoster,
+          p2Roster: enemyRoster,
+          battleMeta: { waveMode: true },
+          playerIsAttacker: true,
+        };
+
+        await _bootGame(
+          true,
+          mapSize,
+          GameMode.BATTLEFIELD,
+          leaderId,
+          raceId,
+          undefined,
+          mapType,
+          undefined,
+          2,
+          [],
+        );
+      };
+      unitShopScreen.show(raceId, 2000, `WAVE 1 — RECRUIT ARMY`);
     } else {
       await _bootGame(
         p2IsAI,
@@ -1479,6 +1563,203 @@ let _worldBattleRosters: {
   playerIsAttacker: boolean;
 } | null = null;
 
+/** Wave mode state — persists across rounds until the player loses. */
+let _waveState: {
+  wave: number;
+  playerRaceId: RaceId;
+  playerLeaderId: LeaderId;
+  totalGoldSpent: number; // running total of all gold player spent
+  mapSize: MapSize;
+  mapType: MapType;
+} | null = null;
+
+const MERLIN_COMPLIMENTS: Record<number, string> = {
+  10: "Impressive, young one! Your tactical prowess grows!",
+  20: "By the stars! Even I am amazed by your skill!",
+  30: "Legends shall be written of this day!",
+  40: "You rival the great kings of old!",
+};
+const MERLIN_COMPLIMENT_DEFAULT = "Truly, you are beyond mortal measure!";
+
+/** Generate a random enemy roster worth a given gold budget. */
+function _generateWaveEnemyRoster(playerRaceId: RaceId, goldBudget: number, wave: number): UnitRoster {
+  // Pick a random enemy race (different from player's)
+  const races = RACE_DEFINITIONS.filter((r) => r.implemented && r.id !== "op" && r.id !== playerRaceId);
+  const enemyRace = races[Math.floor(Math.random() * races.length)];
+  const enemyRaceId = enemyRace?.id ?? "man";
+
+  // Max tier scales with wave
+  const maxTier = wave <= 5 ? 3 : wave <= 10 ? 5 : 7;
+
+  const available = getUnitsForRace(enemyRaceId, maxTier);
+  if (available.length === 0) return [{ type: UnitType.SWORDSMAN, count: 10 }];
+
+  // Also add faction units
+  const race = getRace(enemyRaceId);
+  if (race) {
+    for (const fut of race.factionUnits) {
+      if (fut && UNIT_DEFINITIONS[fut] && !available.includes(fut)) {
+        const tier = UNIT_DEFINITIONS[fut].tier ?? 1;
+        if (tier <= maxTier) available.push(fut);
+      }
+    }
+  }
+
+  const roster: UnitRoster = [];
+  const counts = new Map<UnitType, number>();
+  let remaining = goldBudget;
+  let safety = 500;
+
+  while (remaining > 0 && safety-- > 0) {
+    const affordable = available.filter((ut) => (UNIT_DEFINITIONS[ut]?.cost ?? 100) <= remaining);
+    if (affordable.length === 0) break;
+    const pick = affordable[Math.floor(Math.random() * affordable.length)];
+    const cost = UNIT_DEFINITIONS[pick]?.cost ?? 100;
+    counts.set(pick, (counts.get(pick) ?? 0) + 1);
+    remaining -= cost;
+  }
+
+  for (const [type, count] of counts) {
+    roster.push({ type, count });
+  }
+  return roster;
+}
+
+/** Start the next wave's shop screen after a wave victory. */
+function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: number): void {
+  unitShopScreen.onDone = async (playerRoster) => {
+    unitShopScreen.hide();
+
+    // Track gold spent
+    let spent = 0;
+    for (const entry of playerRoster) {
+      const uDef = UNIT_DEFINITIONS[entry.type];
+      if (uDef) spent += uDef.cost * entry.count;
+    }
+    ws.totalGoldSpent += spent;
+
+    // Generate enemy wave: enemies worth totalGoldSpent * 1.3
+    const enemyBudget = Math.round(ws.totalGoldSpent * 1.3);
+    const enemyRoster = _generateWaveEnemyRoster(ws.playerRaceId, enemyBudget, ws.wave);
+
+    _worldBattleRosters = {
+      p1Roster: playerRoster,
+      p2Roster: enemyRoster,
+      battleMeta: { waveMode: true },
+      playerIsAttacker: true,
+    };
+
+    await _bootGame(
+      true,
+      ws.mapSize,
+      GameMode.BATTLEFIELD,
+      ws.playerLeaderId,
+      ws.playerRaceId,
+      undefined,
+      ws.mapType,
+      undefined,
+      2,
+      [],
+    );
+  };
+  unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave} — RECRUIT ARMY`);
+}
+
+/** Show a brief Merlin compliment overlay, then call the callback. */
+function _showMerlinWaveCompliment(message: string, onDone: () => void): void {
+  // Create a simple overlay with Merlin's message
+  const overlay = new Container();
+  const sw = viewManager.screenWidth;
+  const sh = viewManager.screenHeight;
+
+  const bg = new Graphics()
+    .rect(0, 0, sw, sh)
+    .fill({ color: 0x000000, alpha: 0.7 });
+  overlay.addChild(bg);
+
+  const CW = 440;
+  const CH = 180;
+  const card = new Container();
+  card.position.set(Math.floor((sw - CW) / 2), Math.floor((sh - CH) / 2));
+
+  const cardBg = new Graphics()
+    .roundRect(0, 0, CW, CH, 10)
+    .fill({ color: 0x0a0a18, alpha: 0.96 })
+    .roundRect(0, 0, CW, CH, 10)
+    .stroke({ color: 0x9966ff, alpha: 0.8, width: 2 });
+  card.addChild(cardBg);
+
+  const merlinLabel = new Text({
+    text: "MERLIN SPEAKS:",
+    style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: 14,
+      fill: 0xbb88ff,
+      fontWeight: "bold",
+      letterSpacing: 2,
+    }),
+  });
+  merlinLabel.anchor.set(0.5, 0);
+  merlinLabel.position.set(CW / 2, 20);
+  card.addChild(merlinLabel);
+
+  const msgText = new Text({
+    text: `"${message}"`,
+    style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: 13,
+      fill: 0xddccff,
+      letterSpacing: 1,
+      wordWrap: true,
+      wordWrapWidth: CW - 40,
+      align: "center",
+    }),
+  });
+  msgText.anchor.set(0.5, 0);
+  msgText.position.set(CW / 2, 52);
+  card.addChild(msgText);
+
+  const BW = CW - 80;
+  const BH = 36;
+  const btn = new Container();
+  btn.eventMode = "static";
+  btn.cursor = "pointer";
+  btn.position.set(40, CH - 52);
+
+  const btnBg = new Graphics()
+    .roundRect(0, 0, BW, BH, 6)
+    .fill({ color: 0x1a3a1a })
+    .roundRect(0, 0, BW, BH, 6)
+    .stroke({ color: 0x44aa66, width: 2 });
+  btn.addChild(btnBg);
+
+  const btnLabel = new Text({
+    text: "CONTINUE",
+    style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: 14,
+      fill: 0x88ffaa,
+      fontWeight: "bold",
+      letterSpacing: 2,
+    }),
+  });
+  btnLabel.anchor.set(0.5, 0.5);
+  btnLabel.position.set(BW / 2, BH / 2);
+  btn.addChild(btnLabel);
+
+  btn.on("pointerover", () => { btnBg.tint = 0xaaffcc; });
+  btn.on("pointerout", () => { btnBg.tint = 0xffffff; });
+  btn.on("pointerdown", () => {
+    viewManager.removeFromLayer("ui", overlay);
+    overlay.destroy({ children: true });
+    onDone();
+  });
+
+  card.addChild(btn);
+  overlay.addChild(card);
+  viewManager.addToLayer("ui", overlay);
+}
+
 /** Boot a full battlefield game from world battle data. */
 async function _bootWorldBattle(): Promise<void> {
   const metaJson = sessionStorage.getItem("worldBattleMeta");
@@ -1710,7 +1991,7 @@ function _showWorldInfoMenu(state: WorldState): void {
 
   // Card panel
   const cardW = 260;
-  const cardH = 44 + 44 * 12 + 10; // title + 12 buttons + padding
+  const cardH = 44 + 44 * 13 + 10; // title + 13 buttons + padding
   const cardX = (vm.screenWidth - cardW) / 2;
   const cardY = (vm.screenHeight - cardH) / 2;
 
@@ -1822,6 +2103,12 @@ function _showWorldInfoMenu(state: WorldState): void {
   });
   btnY += BTN_STEP;
 
+  addBtn("MERLIN'S MAGIC", btnY, () => {
+    overlay.destroy({ children: true });
+    merlinMagicScreen.show(state);
+  });
+  btnY += BTN_STEP;
+
   addBtn("ENCYCLOPEDIA", btnY, () => {
     overlay.destroy({ children: true });
     worldWikiScreen.show();
@@ -1857,6 +2144,82 @@ function _showWorldInfoMenu(state: WorldState): void {
   addBtn("CLOSE", btnY, () => {
     overlay.destroy({ children: true });
   });
+
+  vm.app.stage.addChild(overlay);
+}
+
+/** Target city picker for offensive spells. */
+function _showTargetCityPicker(
+  state: WorldState,
+  spellId: OverlandSpellId,
+  cities: Array<{ id: string; name: string; owner: string }>,
+): void {
+  const vm = viewManager;
+  const overlay = new Container();
+
+  const bg = new Graphics();
+  bg.rect(0, 0, vm.screenWidth, vm.screenHeight);
+  bg.fill({ color: 0x000000, alpha: 0.5 });
+  bg.eventMode = "static";
+  bg.on("pointerdown", () => overlay.destroy({ children: true }));
+  overlay.addChild(bg);
+
+  const cardW = 280;
+  const cardH = 44 + cities.length * 40 + 10;
+  const cardX = (vm.screenWidth - cardW) / 2;
+  const cardY = (vm.screenHeight - cardH) / 2;
+
+  const card = new Graphics();
+  card.roundRect(cardX, cardY, cardW, cardH, 8);
+  card.fill({ color: 0x10102a, alpha: 0.97 });
+  card.stroke({ color: 0xff4444, width: 1.5 });
+  card.eventMode = "static";
+  overlay.addChild(card);
+
+  const title = new Text({
+    text: "SELECT TARGET CITY",
+    style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fontWeight: "bold", fill: 0xff6644 }),
+  });
+  title.anchor.set(0.5, 0);
+  title.position.set(cardX + cardW / 2, cardY + 12);
+  overlay.addChild(title);
+
+  const btnStyle = new TextStyle({ fontFamily: "monospace", fontSize: 12, fontWeight: "bold", fill: 0xffffff });
+
+  for (let i = 0; i < cities.length; i++) {
+    const city = cities[i];
+    const y = cardY + 44 + i * 40;
+
+    const btn = new Container();
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+    const btnBg = new Graphics();
+    btnBg.roundRect(0, 0, cardW - 40, 32, 5);
+    btnBg.fill({ color: 0x332222 });
+    btnBg.stroke({ color: 0x774444, width: 1 });
+    btn.addChild(btnBg);
+    const txt = new Text({ text: `${city.name} (${city.owner})`, style: btnStyle });
+    txt.x = 12;
+    txt.y = 7;
+    btn.addChild(txt);
+    btn.position.set(cardX + 20, y);
+    btn.on("pointerdown", () => {
+      overlay.destroy({ children: true });
+      const result = castSpell(state, "p1", spellId, city.id);
+      if (result.success) {
+        worldEventLog.addEvent(result.message, 0xcc88ff);
+        worldNotification.show("Merlin's Magic", result.message, 0xcc88ff);
+      } else {
+        worldEventLog.addEvent(result.message, 0xff4444);
+        worldNotification.show("Merlin's Magic", result.message, 0xff4444);
+      }
+      worldHUD.update(state);
+      merlinMagicScreen.show(state);
+    });
+    btn.on("pointerover", () => { btnBg.clear(); btnBg.roundRect(0, 0, cardW - 40, 32, 5); btnBg.fill({ color: 0x553333 }); btnBg.stroke({ color: 0xaa6666, width: 1 }); });
+    btn.on("pointerout", () => { btnBg.clear(); btnBg.roundRect(0, 0, cardW - 40, 32, 5); btnBg.fill({ color: 0x332222 }); btnBg.stroke({ color: 0x774444, width: 1 }); });
+    overlay.addChild(btn);
+  }
 
   vm.app.stage.addChild(overlay);
 }
@@ -2727,6 +3090,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     if (raceDetailScreen.container.visible) return true;
     if (magicScreen.container.visible) return true;
     if (worldWikiScreen.isVisible) return true;
+    if (merlinMagicScreen.isVisible) return true;
     return false;
   };
 
@@ -2787,6 +3151,10 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
   cityPanel.onAskAdvisor = (advisor) => {
     advisorDialog.show(advisor);
+  };
+  cityPanel.onMerlinMagic = () => {
+    cityPanel.hide();
+    merlinMagicScreen.show(state);
   };
 
   // Initialize city preview screen
@@ -3028,6 +3396,9 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   worldNationalScreen.init(viewManager);
   worldArmyOverview.init(viewManager);
 
+  // Initialize Merlin's Magic screen
+  merlinMagicScreen.init(viewManager);
+
   // Track movement mode (explicit MOVE button) and selected army movement
   let _moveModeArmyId: string | null = null;
   let _selectedArmyId: string | null = null;
@@ -3056,6 +3427,43 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     // Check for game over
     if (state.phase === WorldPhase.GAME_OVER) {
       worldVictoryScreen.show(state);
+    }
+  };
+
+  // Merlin's Magic screen callbacks (after refreshWorld is defined)
+  merlinMagicScreen.onCastSpell = (spellId: OverlandSpellId) => {
+    const result = castSpell(state, "p1", spellId);
+    if (result.success) {
+      worldEventLog.addEvent(result.message, 0xcc88ff);
+      worldNotification.show("Merlin's Magic", result.message, 0xcc88ff);
+    } else {
+      worldEventLog.addEvent(result.message, 0xff4444);
+      worldNotification.show("Merlin's Magic", result.message, 0xff4444);
+    }
+    refreshWorld();
+    merlinMagicScreen.show(state);
+  };
+  merlinMagicScreen.onSelectTarget = (spellId: OverlandSpellId, targetType: string) => {
+    if (targetType === "enemy_city") {
+      const enemyCities: Array<{ id: string; name: string; owner: string }> = [];
+      for (const city of state.cities.values()) {
+        if (city.owner !== "p1") {
+          enemyCities.push({ id: city.id, name: city.name, owner: city.owner });
+        }
+      }
+      if (enemyCities.length === 0) {
+        worldNotification.show("Merlin's Magic", "No enemy cities to target.", 0xff4444);
+        return;
+      }
+      _showTargetCityPicker(state, spellId, enemyCities);
+    } else if (targetType === "army") {
+      merlinMagicScreen.hide();
+      worldNotification.show("Mass Teleport", "Select an army to teleport, then click a destination hex.", 0xaa88ff);
+      const result = castSpell(state, "p1", spellId);
+      if (result.success) {
+        worldEventLog.addEvent(result.message, 0xcc88ff);
+      }
+      refreshWorld();
     }
   };
 
@@ -4467,10 +4875,37 @@ async function _bootGame(
   eventBanner.init(viewManager);
 
   // Victory screen (overlays game during RESOLVE)
+  // Set wave number so the victory screen shows wave info and next-wave button
+  if (_waveState) {
+    victoryScreen.waveNumber = _waveState.wave;
+  } else {
+    victoryScreen.waveNumber = 0;
+  }
   victoryScreen.init(viewManager, state);
 
+  // Wave mode: "NEXT WAVE" button handler
+  if (_waveState) {
+    const ws = _waveState;
+    victoryScreen.onNextWave = () => {
+      ws.wave++;
+      const nextGold = 1000;
+
+      // Merlin compliment every 10 waves
+      const complimentWave = ws.wave - 1; // just won this wave
+      if (complimentWave % 10 === 0 && complimentWave > 0) {
+        const msg = MERLIN_COMPLIMENTS[complimentWave] ?? MERLIN_COMPLIMENT_DEFAULT;
+        // Show a brief Merlin overlay then proceed to shop
+        _showMerlinWaveCompliment(msg, () => {
+          _startNextWaveShop(ws, nextGold);
+        });
+      } else {
+        _startNextWaveShop(ws, nextGold);
+      }
+    };
+  }
+
   // World battle play mode: intercept RESOLVE to return to world mode
-  if (_worldBattleRosters) {
+  if (_worldBattleRosters && !_worldBattleRosters.battleMeta?.waveMode) {
     const rosters = _worldBattleRosters;
     _worldBattleRosters = null;
 
@@ -4515,6 +4950,9 @@ async function _bootGame(
         window.location.reload();
       }, 2000);
     });
+  } else if (_worldBattleRosters?.battleMeta?.waveMode) {
+    // Wave mode: clear the rosters flag (handled by victoryScreen.onNextWave)
+    _worldBattleRosters = null;
   }
 
   // Campaign victory screen (overlays game during RESOLVE in campaign mode)

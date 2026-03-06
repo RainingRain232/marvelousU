@@ -550,6 +550,7 @@ export enum GameMode {
   CAMPAIGN = "campaign",
   ROGUELIKE = "roguelike",
   WORLD = "world",
+  WAVE = "wave",
 }
 
 export enum MapType {
