@@ -148,7 +148,7 @@ import { worldNationalScreen } from "@view/world/ui/WorldNationalScreen";
 import { worldArmyOverview } from "@view/world/ui/WorldArmyOverview";
 import { cityPreviewScreen } from "@view/world/ui/CityPreviewScreen";
 import { advisorDialog } from "@view/world/ui/AdvisorDialog";
-import { worldIntroDialog } from "@view/world/ui/WorldIntroDialog";
+import { worldIntroDialog, AVALON_PROXIMITY_PAGE, MORGAINE_PROXIMITY_PAGE } from "@view/world/ui/WorldIntroDialog";
 import { turnTransition } from "@view/world/ui/TurnTransition";
 import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
@@ -3942,6 +3942,47 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     });
   };
 
+  // Avalon / Morgaine proximity dialogs — triggered when a player unit first approaches Avalon
+  let _avalonDialogShown = false;
+  let _morgaineDialogShown = false;
+
+  /** Find the hex position of Morgaine's capital (Avalon). */
+  const _getAvalonHex = (): { q: number; r: number } | null => {
+    for (const city of state.cities.values()) {
+      if (city.owner === "morgaine" && city.isCapital) return city.position;
+    }
+    return null;
+  };
+
+  /** Show Avalon dialog at 2 tiles range, Morgaine dialog at 1 tile range. */
+  const _checkAvalonProximity = async (playerArmy: WorldArmy): Promise<void> => {
+    if (playerArmy.owner !== "p1") return;
+    if (_avalonDialogShown && _morgaineDialogShown) return;
+
+    const avalonHex = _getAvalonHex();
+    if (!avalonHex) return;
+
+    const dist = hexDistance(playerArmy.position, avalonHex);
+
+    // Avalon textbox at 2 tiles range
+    if (!_avalonDialogShown && dist <= 2) {
+      _avalonDialogShown = true;
+      await new Promise<void>((resolve) => {
+        worldIntroDialog.onDone = resolve;
+        worldIntroDialog.show([AVALON_PROXIMITY_PAGE]);
+      });
+    }
+
+    // Morgaine textbox at 1 tile range
+    if (!_morgaineDialogShown && dist <= 1) {
+      _morgaineDialogShown = true;
+      await new Promise<void>((resolve) => {
+        worldIntroDialog.onDone = resolve;
+        worldIntroDialog.show([MORGAINE_PROXIMITY_PAGE]);
+      });
+    }
+  };
+
   // Resolve all pending battles — headless (for AI battles)
   const resolveWorldBattlesHeadless = () => {
     for (const battle of state.pendingBattles) {
@@ -4488,6 +4529,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
           await _checkMorgaineProximity(army);
           await _checkSwordProximity(army);
+          await _checkAvalonProximity(army);
         }
       }
       _moveModeArmyId = null;
@@ -4594,6 +4636,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
             await _checkMorgaineProximity(army);
             await _checkSwordProximity(army);
+            await _checkAvalonProximity(army);
           }
           _selectedArmyId = null;
           _selectedArmyReachable = new Set();
@@ -4763,6 +4806,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
         await _checkMorgaineProximity(army);
         await _checkSwordProximity(army);
+        await _checkAvalonProximity(army);
 
         // Re-select army if it still has movement points
         if (army.movementPoints > 0 && state.phase === WorldPhase.PLAYER_TURN) {

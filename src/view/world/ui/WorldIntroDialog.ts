@@ -47,23 +47,25 @@ const WORLD_INTRO_PAGES: IntroPage[] = [
     borderColor: 0xaa8844,
     text: "Sire, I have prepared your capital and a small host of loyal soldiers stands ready at the gates. Explore the surrounding lands — you will find farms and villages to bolster your economy, and ancient ruins guarded by fearsome creatures. Beware the sorceress Morgaine who rules from Avalon at the heart of the continent. Her armies roam the land and she will not yield her power easily. Strengthen your forces before you march on her domain!",
   },
-  {
-    imageUrl: morgaineImgUrl,
-    title: "MORGAINE",
-    subtitle: "Sorceress of Avalon",
-    borderColor: 0x8844aa,
-    text: "You dare set foot upon my lands, pretender? I have ruled these realms since before your grandfather drew breath. Avalon is mine, the armies are mine, and the throne shall remain mine. Come then — raise your pitiful banners and march. I shall enjoy watching them burn.",
-    delay: 1500,
-  },
-  {
-    imageUrl: avalonImgUrl,
-    title: "AVALON",
-    subtitle: "Heart of the Continent",
-    borderColor: 0x44aa88,
-    text: "At the centre of the known world stands Avalon — a fortress-city of ancient stone and dark enchantment. Its towers pierce the clouds and its walls have never been breached. From here Morgaine commands her legions, her gaze reaching every corner of the realm. To claim Avalon is to claim the world itself.",
-    delay: 1500,
-  },
 ];
+
+/** Proximity-triggered dialog page for Avalon (shown when 2 tiles away). */
+export const AVALON_PROXIMITY_PAGE: IntroPage = {
+  imageUrl: avalonImgUrl,
+  title: "AVALON",
+  subtitle: "Heart of the Continent",
+  borderColor: 0x44aa88,
+  text: "At the centre of the known world stands Avalon — a fortress-city of ancient stone and dark enchantment. Its towers pierce the clouds and its walls have never been breached. From here Morgaine commands her legions, her gaze reaching every corner of the realm. To claim Avalon is to claim the world itself.",
+};
+
+/** Proximity-triggered dialog page for Morgaine (shown when 1 tile away). */
+export const MORGAINE_PROXIMITY_PAGE: IntroPage = {
+  imageUrl: morgaineImgUrl,
+  title: "MORGAINE",
+  subtitle: "Sorceress of Avalon",
+  borderColor: 0x8844aa,
+  text: "You dare set foot upon my lands, pretender? I have ruled these realms since before your grandfather drew breath. Avalon is mine, the armies are mine, and the throne shall remain mine. Come then — raise your pitiful banners and march. I shall enjoy watching them burn.",
+};
 
 // ---------------------------------------------------------------------------
 // Styles
