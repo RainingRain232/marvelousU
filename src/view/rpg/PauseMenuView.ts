@@ -65,7 +65,7 @@ export class PauseMenuView {
 
   destroy(): void {
     if (this._onKeyDown) {
-      window.removeEventListener("keydown", this._onKeyDown);
+      window.removeEventListener("keydown", this._onKeyDown, true);
       this._onKeyDown = null;
     }
     if (this._saveMessageTimer) {
