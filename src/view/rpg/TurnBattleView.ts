@@ -7,6 +7,8 @@ import type { TurnBattleState, TurnBattleCombatant } from "@rpg/state/TurnBattle
 import type { RPGState } from "@rpg/state/RPGState";
 import { animationManager } from "@view/animation/AnimationManager";
 import { getAbilityName, getEffectiveSpeed } from "@rpg/systems/TurnBattleSystem";
+import { drawTerrainDecorationAt } from "@view/world/WorldMapRenderer";
+import { TerrainType } from "@world/config/TerrainDefs";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -211,6 +213,22 @@ export class TurnBattleView {
     const groundY = H * 0.6;
     this._bgGraphic.rect(0, groundY, W, H - groundY);
     this._bgGraphic.fill({ color: palette.ground, alpha: 0.4 });
+
+    // Terrain decorations on the ground area using the world map renderer
+    const terrain = _biomeToTerrain(ctx);
+    if (terrain) {
+      // Tile decorations across the ground in a grid pattern
+      const spacing = 80;
+      const cols = Math.ceil(W / spacing) + 1;
+      const rows = Math.ceil((H - groundY) / spacing) + 1;
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const cx = col * spacing + (row % 2 === 0 ? 0 : spacing * 0.5);
+          const cy = groundY + row * spacing * 0.8 + spacing * 0.3;
+          drawTerrainDecorationAt(this._bgGraphic, terrain, cx, cy);
+        }
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -942,6 +960,22 @@ function _getBattlePalette(ctx?: { biome?: string; dungeonFloor?: number }): Bat
     case "mountain": return { top: 0x667788, bottom: 0x333344, ground: 0x555566 };
     case "water":    return { top: 0x3366aa, bottom: 0x112244, ground: 0x1a3d6e };
     default:         return { top: 0x1a1a3e, bottom: 0x1a1a2e, ground: 0x2a2a3e };
+  }
+}
+
+function _biomeToTerrain(ctx?: { biome?: string; dungeonFloor?: number }): TerrainType | null {
+  if (ctx?.dungeonFloor !== undefined) {
+    return TerrainType.MOUNTAINS; // rocky underground feel
+  }
+  switch (ctx?.biome) {
+    case "grass":    return TerrainType.GRASSLAND;
+    case "forest":   return TerrainType.FOREST;
+    case "sand":     return TerrainType.DESERT;
+    case "snow":     return TerrainType.TUNDRA;
+    case "path":     return TerrainType.PLAINS;
+    case "mountain": return TerrainType.MOUNTAINS;
+    case "water":    return TerrainType.SWAMP;
+    default:         return TerrainType.GRASSLAND;
   }
 }
 

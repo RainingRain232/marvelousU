@@ -3158,3 +3158,17 @@ function _drawResourceIcon(
 
 /** Singleton instance. */
 export const worldMapRenderer = new WorldMapRenderer();
+
+/**
+ * Draw terrain decoration at a given point (for use outside the hex map,
+ * e.g. RPG battle backgrounds). The decoration fills roughly a HEX_SIZE
+ * radius around (cx, cy).
+ */
+export function drawTerrainDecorationAt(
+  g: Graphics,
+  terrain: TerrainType,
+  cx: number,
+  cy: number,
+): void {
+  _drawTerrainDecoration(g, terrain, { x: cx, y: cy } as HexPixel);
+}
