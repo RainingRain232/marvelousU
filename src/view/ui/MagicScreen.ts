@@ -274,8 +274,8 @@ class MagicScreen {
       card.addChild(
         new Graphics().rect(21, CARD_H - footerH + 2, CARD_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.15 }),
       );
-      const nextBtn = this._makeNavBtn("CONTINUE  >", 254, 57, true);
-      nextBtn.position.set(CARD_W - 280, CARD_H - 63);
+      const nextBtn = this._makeNavBtn("CONTINUE  >", 195, 44, true);
+      nextBtn.position.set(CARD_W - 221, CARD_H - 57);
       nextBtn.on("pointerdown", () => {
         if (this.onNext) this.onNext();
         else this.onBack?.();
@@ -1183,7 +1183,7 @@ class MagicScreen {
       text: label,
       style: new TextStyle({
         fontFamily: "monospace",
-        fontSize: primary ? 22 : 18,
+        fontSize: primary ? 17 : 14,
         fill: primary ? 0x88ffaa : 0x88bbff,
         fontWeight: "bold", letterSpacing: 1,
       }),

@@ -42,18 +42,22 @@ const STYLE_DESC = new TextStyle({
 export class EventBanner {
   readonly container = new Container();
 
+  private _vm!: ViewManager;
   private _bg!: Graphics;
   private _titleText!: Text;
   private _descText!: Text;
   private _screenW = 800;
   private _screenH = 600;
   private _tween: gsap.core.Tween | null = null;
+  private _unsubscribers: Array<() => void> = [];
+  private _onResize: (() => void) | null = null;
 
   // -------------------------------------------------------------------------
   // Lifecycle
   // -------------------------------------------------------------------------
 
   init(vm: ViewManager): void {
+    this._vm = vm;
     this._screenW = vm.screenWidth;
     this._screenH = vm.screenHeight;
 
@@ -64,17 +68,30 @@ export class EventBanner {
     this.container.visible = false;
 
     // Listen for events
-    EventBus.on("randomEvent", ({ title, description }) => {
-      this._show(title, description);
-    });
+    this._unsubscribers.push(
+      EventBus.on("randomEvent", ({ title, description }) => {
+        this._show(title, description);
+      }),
+    );
 
     // Reposition on resize
-    const onResize = () => {
+    this._onResize = () => {
       this._screenW = vm.screenWidth;
       this._screenH = vm.screenHeight;
       this._reposition();
     };
-    vm.app.renderer.on("resize", onResize);
+    vm.app.renderer.on("resize", this._onResize);
+  }
+
+  destroy(): void {
+    for (const unsub of this._unsubscribers) unsub();
+    this._unsubscribers = [];
+    if (this._tween) { this._tween.kill(); this._tween = null; }
+    if (this._onResize) {
+      this._vm.app.renderer.off("resize", this._onResize);
+      this._onResize = null;
+    }
+    this.container.destroy({ children: true });
   }
 
   // -------------------------------------------------------------------------

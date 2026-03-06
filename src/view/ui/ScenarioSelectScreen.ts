@@ -168,6 +168,8 @@ export class ScenarioSelectScreen {
   private _detailBriefing!: Text;
   private _detailUnlockText!: Text;
   private _detailLockedNote!: Text;
+  private _onResize: (() => void) | null = null;
+  private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -188,7 +190,8 @@ export class ScenarioSelectScreen {
 
     vm.addToLayer("ui", this.container);
     this._layout();
-    vm.app.renderer.on("resize", () => this._layout());
+    this._onResize = () => this._layout();
+    vm.app.renderer.on("resize", this._onResize);
   }
 
   show(): void {
@@ -199,6 +202,18 @@ export class ScenarioSelectScreen {
 
   hide(): void {
     this.container.visible = false;
+  }
+
+  destroy(): void {
+    if (this._onResize) {
+      this._vm.app.renderer.off("resize", this._onResize);
+      this._onResize = null;
+    }
+    if (this._onKeydown) {
+      window.removeEventListener("keydown", this._onKeydown);
+      this._onKeydown = null;
+    }
+    this.container.destroy({ children: true });
   }
 
   get selectedScenario(): number {
@@ -320,7 +335,7 @@ export class ScenarioSelectScreen {
     barContainer.addChild(this._codeHint);
 
     // Keyboard listener (added to window while screen is visible)
-    window.addEventListener("keydown", (e) => {
+    this._onKeydown = (e: KeyboardEvent) => {
       if (!this.container.visible) return;
       if (e.key >= "0" && e.key <= "9" && this._codeValue.length < 4) {
         this._codeValue += e.key;
@@ -331,7 +346,8 @@ export class ScenarioSelectScreen {
       } else if (e.key === "Enter") {
         this._redeemCode();
       }
-    });
+    };
+    window.addEventListener("keydown", this._onKeydown);
   }
 
   private _updateCodeDisplay(): void {

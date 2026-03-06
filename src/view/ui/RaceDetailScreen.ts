@@ -26,7 +26,7 @@ const RACE_IMAGES: Record<string, string> = {
   man: manImgUrl,
   horde: hordeImgUrl,
   adept: adeptImgUrl,
-  elements: manImgUrl,
+  // elements: no portrait yet — uses letter fallback
 };
 
 // ---------------------------------------------------------------------------
@@ -1078,8 +1078,8 @@ export class RaceDetailScreen {
     row.position.set(26, y + 26);
     parent.addChild(row);
 
-    const ICON_SIZE = 62;
-    const GAP = 10;
+    const ICON_SIZE = 52;
+    const GAP = 20;
 
     for (let i = 0; i < race.factionUnits.length; i++) {
       const ut = race.factionUnits[i];
@@ -1128,10 +1128,13 @@ export class RaceDetailScreen {
       // Name below icon
       const nameT = new Text({
         text: this._formatUnitName(def.type),
-        style: STYLE_UNIT_NAME,
+        style: new TextStyle({
+          fontFamily: "monospace", fontSize: 9, fill: 0xccddee,
+          wordWrap: true, wordWrapWidth: ICON_SIZE + GAP - 4, align: "center",
+        }),
       });
       nameT.anchor.set(0.5, 0);
-      nameT.position.set(ICON_SIZE / 2, ICON_SIZE + 3);
+      nameT.position.set(ICON_SIZE / 2, ICON_SIZE + 2);
       btn.addChild(nameT);
 
       // Hover: show tooltip

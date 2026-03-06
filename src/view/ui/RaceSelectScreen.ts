@@ -24,7 +24,7 @@ const RACE_PORTRAITS: Record<string, string> = {
   man: manPImgUrl,
   horde: hordePImgUrl,
   adept: adeptPImgUrl,
-  elements: manPImgUrl,
+  // elements: no portrait yet — uses letter fallback
   op: manPImgUrl,
 };
 

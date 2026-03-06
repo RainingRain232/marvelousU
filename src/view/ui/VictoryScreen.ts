@@ -61,6 +61,9 @@ export class VictoryScreen {
   // Lifecycle
   // ---------------------------------------------------------------------------
 
+  private _unsubscribers: Array<() => void> = [];
+  private _onResize: (() => void) | null = null;
+
   init(vm: ViewManager, state: GameState): void {
     this._vm = vm;
 
@@ -144,16 +147,29 @@ export class VictoryScreen {
     vm.addToLayer("ui", this.container);
     this._layout();
 
-    vm.app.renderer.on("resize", () => this._layout());
+    this._onResize = () => this._layout();
+    vm.app.renderer.on("resize", this._onResize);
 
     // React to phase changes
-    EventBus.on("phaseChanged", ({ phase }) => {
-      if (phase === GamePhase.RESOLVE) {
-        // Campaign mode P1 victory is handled by CampaignVictoryScreen instead
-        if (state.gameMode === GameMode.CAMPAIGN && state.winnerId === "p1") return;
-        this._show(state);
-      }
-    });
+    this._unsubscribers.push(
+      EventBus.on("phaseChanged", ({ phase }) => {
+        if (phase === GamePhase.RESOLVE) {
+          // Campaign mode P1 victory is handled by CampaignVictoryScreen instead
+          if (state.gameMode === GameMode.CAMPAIGN && state.winnerId === "p1") return;
+          this._show(state);
+        }
+      }),
+    );
+  }
+
+  destroy(): void {
+    for (const unsub of this._unsubscribers) unsub();
+    this._unsubscribers = [];
+    if (this._onResize) {
+      this._vm.app.renderer.off("resize", this._onResize);
+      this._onResize = null;
+    }
+    this.container.destroy({ children: true });
   }
 
   // ---------------------------------------------------------------------------

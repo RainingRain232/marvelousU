@@ -145,6 +145,9 @@ export class UnitView {
   /** True once the death sequence (anim + fade) has been started. */
   private _deathStarted = false;
 
+  /** Pending corpse-fade timeout so we can cancel it on early destroy. */
+  private _corpseFadeTimeout: ReturnType<typeof setTimeout> | null = null;
+
   constructor(unit: Unit) {
     this._buildPlaceholder(unit);
     this._buildHpBar(unit);
@@ -246,7 +249,8 @@ export class UnitView {
     // Schedule corpse fade after the DIE animation plays.
     // 7 frames at 8fps ≈ 875ms. Fade starts after that window.
     const animDurationMs = 900;
-    setTimeout(() => {
+    this._corpseFadeTimeout = setTimeout(() => {
+      this._corpseFadeTimeout = null;
       gsap.to(this.container, {
         alpha: 0,
         duration: CORPSE_FADE_MS / 1000,
@@ -256,6 +260,12 @@ export class UnitView {
   }
 
   destroy(): void {
+    if (this._corpseFadeTimeout !== null) {
+      clearTimeout(this._corpseFadeTimeout);
+      this._corpseFadeTimeout = null;
+    }
+    gsap.killTweensOf(this.container);
+    gsap.killTweensOf(this._shieldBlink);
     this.container.destroy({ children: true });
   }
 

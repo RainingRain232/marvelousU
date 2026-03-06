@@ -173,9 +173,9 @@ export class DeathFX {
   destroy(): void {
     for (const unsub of this._unsubscribers) unsub();
     this._unsubscribers = [];
-    this._dustPool.clear();
-    this._soulPool.clear();
-    this._dissolvePool.clear();
+    this._dustPool.destroy();
+    this._soulPool.destroy();
+    this._dissolvePool.destroy();
   }
 }
 

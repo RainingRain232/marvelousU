@@ -115,6 +115,18 @@ export class FlagFX {
       duration: 0.15,
     });
   }
+
+  destroy(): void {
+    for (const flag of this._flags.values()) {
+      gsap.killTweensOf(flag);
+      gsap.killTweensOf(flag.scale);
+      if (flag.parent) flag.parent.removeChild(flag);
+      flag.destroy({ children: true });
+    }
+    this._flags.clear();
+    this._cloths.clear();
+    this._phases.clear();
+  }
 }
 
 export const flagFX = new FlagFX();

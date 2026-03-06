@@ -217,6 +217,14 @@ export class BuildingWikiScreen {
     this._hideTooltip();
   }
 
+  destroy(): void {
+    for (const rt of this._textureCache.values()) {
+      if (rt) rt.destroy(true);
+    }
+    this._textureCache.clear();
+    this.container.destroy({ children: true });
+  }
+
   // ---------------------------------------------------------------------------
   // Build UI
   // ---------------------------------------------------------------------------

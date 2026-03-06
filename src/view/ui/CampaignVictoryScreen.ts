@@ -99,6 +99,9 @@ export class CampaignVictoryScreen {
   // Lifecycle
   // ---------------------------------------------------------------------------
 
+  private _unsubscribers: Array<() => void> = [];
+  private _onResize: (() => void) | null = null;
+
   init(vm: ViewManager, state: GameState): void {
     this._vm = vm;
 
@@ -115,16 +118,29 @@ export class CampaignVictoryScreen {
     this.container.visible = false;
     vm.addToLayer("ui", this.container);
     this._layout();
-    vm.app.renderer.on("resize", () => this._layout());
+    this._onResize = () => this._layout();
+    vm.app.renderer.on("resize", this._onResize);
 
     // React to phase changes — only show if campaign mode and P1 wins
-    EventBus.on("phaseChanged", ({ phase }) => {
-      if (phase === GamePhase.RESOLVE && state.gameMode === GameMode.CAMPAIGN) {
-        if (state.winnerId === "p1") {
-          this._show(state);
+    this._unsubscribers.push(
+      EventBus.on("phaseChanged", ({ phase }) => {
+        if (phase === GamePhase.RESOLVE && state.gameMode === GameMode.CAMPAIGN) {
+          if (state.winnerId === "p1") {
+            this._show(state);
+          }
         }
-      }
-    });
+      }),
+    );
+  }
+
+  destroy(): void {
+    for (const unsub of this._unsubscribers) unsub();
+    this._unsubscribers = [];
+    if (this._onResize) {
+      this._vm.app.renderer.off("resize", this._onResize);
+      this._onResize = null;
+    }
+    this.container.destroy({ children: true });
   }
 
   // ---------------------------------------------------------------------------

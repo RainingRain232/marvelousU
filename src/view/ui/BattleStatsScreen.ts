@@ -116,6 +116,8 @@ export class BattleStatsScreen {
   private _card!: Container;
   private _cardBg!: Graphics;
   private _cardH = 0;
+  private _unsubscribers: Array<() => void> = [];
+  private _onResize: (() => void) | null = null;
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -138,14 +140,27 @@ export class BattleStatsScreen {
     vm.addToLayer("ui", this.container);
     this._layout();
 
-    vm.app.renderer.on("resize", () => this._layout());
+    this._onResize = () => this._layout();
+    vm.app.renderer.on("resize", this._onResize);
 
     // Show when battle resolves
-    EventBus.on("phaseChanged", ({ phase }) => {
-      if (phase === GamePhase.RESOLVE) {
-        this._show(state);
-      }
-    });
+    this._unsubscribers.push(
+      EventBus.on("phaseChanged", ({ phase }) => {
+        if (phase === GamePhase.RESOLVE) {
+          this._show(state);
+        }
+      }),
+    );
+  }
+
+  destroy(): void {
+    for (const unsub of this._unsubscribers) unsub();
+    this._unsubscribers = [];
+    if (this._onResize) {
+      this._vm.app.renderer.off("resize", this._onResize);
+      this._onResize = null;
+    }
+    this.container.destroy({ children: true });
   }
 
   // ---------------------------------------------------------------------------
