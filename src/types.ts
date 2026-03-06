@@ -196,6 +196,22 @@ export enum UnitType {
   CORSAIR_GUNNER = "corsair_gunner",
   // Elements faction
   ELEMENTAL_AVATAR = "elemental_avatar",
+  // Additional faction units
+  KNIGHT_COMMANDER = "knight_commander",
+  BLADEDANCER = "bladedancer",
+  BOAR_RIDER = "boar_rider",
+  CHRONOMANCER = "chronomancer",
+  STORM_CONDUIT = "storm_conduit",
+  HALFLING_BURGLAR = "halfling_burglar",
+  OBSIDIAN_SENTINEL = "obsidian_sentinel",
+  DWARVEN_CANNON = "dwarven_cannon",
+  ORC_SHAMAN = "orc_shaman",
+  BANSHEE = "banshee",
+  SUCCUBUS = "succubus",
+  VALKYRIE = "valkyrie",
+  THUNDERHAWK = "thunderhawk",
+  SIEGE_AUTOMATON = "siege_automaton",
+  POWDER_MONKEY = "powder_monkey",
 }
 
 export enum BuildingType {

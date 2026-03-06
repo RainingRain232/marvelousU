@@ -809,4 +809,49 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     attackFps: 10,
     castFps: 10,
   }),
+  [UnitType.KNIGHT_COMMANDER]: buildDef("knight", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.BLADEDANCER]: buildDef("assassin", {
+    idleFps: 6, moveFps: 8, attackFps: 12, castFps: 10,
+  }),
+  [UnitType.BOAR_RIDER]: buildDef("scout_cavalry", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.CHRONOMANCER]: buildDef("mage", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.STORM_CONDUIT]: buildDef("lightning_elemental", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.HALFLING_BURGLAR]: buildDef("assassin", {
+    idleFps: 6, moveFps: 8, attackFps: 12, castFps: 10,
+  }),
+  [UnitType.OBSIDIAN_SENTINEL]: buildDef("giant_warrior", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.DWARVEN_CANNON]: buildDef("bombard", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.ORC_SHAMAN]: buildDef("fire_mage", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.BANSHEE]: buildDef("cold_mage", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.SUCCUBUS]: buildDef("cold_mage", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.VALKYRIE]: buildDef("templar", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.THUNDERHAWK]: buildDef("pixie", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.SIEGE_AUTOMATON]: buildDef("war_wagon", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
+  [UnitType.POWDER_MONKEY]: buildDef("archer", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10,
+  }),
 };

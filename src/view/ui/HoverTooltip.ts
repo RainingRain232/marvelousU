@@ -282,6 +282,21 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.PIRATE_CAPTAIN]: "Pirate Captain",
   [UnitType.CORSAIR_GUNNER]: "Corsair Gunner",
   [UnitType.ELEMENTAL_AVATAR]: "Elemental Avatar",
+  [UnitType.KNIGHT_COMMANDER]: "Knight Commander",
+  [UnitType.BLADEDANCER]: "Bladedancer",
+  [UnitType.BOAR_RIDER]: "Boar Rider",
+  [UnitType.CHRONOMANCER]: "Chronomancer",
+  [UnitType.STORM_CONDUIT]: "Storm Conduit",
+  [UnitType.HALFLING_BURGLAR]: "Halfling Burglar",
+  [UnitType.OBSIDIAN_SENTINEL]: "Obsidian Sentinel",
+  [UnitType.DWARVEN_CANNON]: "Dwarven Cannon",
+  [UnitType.ORC_SHAMAN]: "Orc Shaman",
+  [UnitType.BANSHEE]: "Banshee",
+  [UnitType.SUCCUBUS]: "Succubus",
+  [UnitType.VALKYRIE]: "Valkyrie",
+  [UnitType.THUNDERHAWK]: "Thunderhawk",
+  [UnitType.SIEGE_AUTOMATON]: "Siege Automaton",
+  [UnitType.POWDER_MONKEY]: "Powder Monkey",
 };
 
 // ---------------------------------------------------------------------------
