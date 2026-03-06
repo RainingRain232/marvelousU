@@ -53,6 +53,7 @@ import type { UnitRoster } from "@view/ui/UnitShopScreen";
 import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
 import { buildingWikiScreen } from "@view/ui/BuildingWikiScreen";
+import { mainMenuWikiScreen } from "@view/ui/MainMenuWikiScreen";
 import { minimap } from "@view/ui/Minimap";
 import { lobbyScreen } from "@view/ui/LobbyScreen";
 import { RoomManager } from "@net/RoomManager";
@@ -362,41 +363,47 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     );
   };
 
-  menuScreen.onUnitWiki = () => {
-    menuScreen.hide();
-    raceDetailScreen.onBack = () => {
-      raceDetailScreen.hide();
-      menuScreen.show();
-    };
-    raceDetailScreen.showWiki();
-  };
-
   // ---------------------------------------------------------------------------
-  // Building wiki screen
+  // Wiki screen (units, spells, buildings, lore)
   // ---------------------------------------------------------------------------
   buildingWikiScreen.init(viewManager);
   buildingWikiScreen.hide();
 
-  buildingWikiScreen.onBack = () => {
-    buildingWikiScreen.hide();
+  mainMenuWikiScreen.init(viewManager);
+  mainMenuWikiScreen.hide();
+
+  mainMenuWikiScreen.onBack = () => {
+    mainMenuWikiScreen.hide();
     menuScreen.show();
   };
 
-  menuScreen.onBuildingWiki = () => {
-    menuScreen.hide();
+  mainMenuWikiScreen.onOpenUnits = () => {
+    raceDetailScreen.onBack = () => {
+      raceDetailScreen.hide();
+      mainMenuWikiScreen.show();
+    };
+    raceDetailScreen.showWiki();
+  };
+
+  mainMenuWikiScreen.onOpenSpells = () => {
+    magicScreen.onBack = () => {
+      magicScreen.hide();
+      mainMenuWikiScreen.show();
+    };
+    magicScreen.showWiki();
+  };
+
+  mainMenuWikiScreen.onOpenBuildings = () => {
+    buildingWikiScreen.onBack = () => {
+      buildingWikiScreen.hide();
+      mainMenuWikiScreen.show();
+    };
     buildingWikiScreen.show();
   };
 
-  // ---------------------------------------------------------------------------
-  // Spell wiki
-  // ---------------------------------------------------------------------------
-  menuScreen.onSpellWiki = () => {
+  menuScreen.onWiki = () => {
     menuScreen.hide();
-    magicScreen.onBack = () => {
-      magicScreen.hide();
-      menuScreen.show();
-    };
-    magicScreen.showWiki();
+    mainMenuWikiScreen.show();
   };
 
   // ---------------------------------------------------------------------------

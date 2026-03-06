@@ -283,9 +283,7 @@ export class MenuScreen {
   onAIToggle: ((isAI: boolean) => void) | null = null;
   onContinue: (() => void) | null = null;
   onQuickPlay: (() => void) | null = null;
-  onUnitWiki: (() => void) | null = null;
-  onBuildingWiki: (() => void) | null = null;
-  onSpellWiki: (() => void) | null = null;
+  onWiki: (() => void) | null = null;
   onMultiplayer: (() => void) | null = null;
   onLoadWorldGame: (() => void) | null = null;
   onSettings: (() => void) | null = null;
@@ -494,19 +492,11 @@ export class MenuScreen {
     const utilBtnH = 34;
     const utilGap = 6;
 
-    // Row 1: three wiki buttons side by side
-    const wikiW = Math.floor((CW - 40 - utilGap * 2) / 3);
-    const unitWikiBtn = makeActionBtn(wikiW, utilBtnH, "UNITS", 0x1a1a3a, 0x4488cc, 0x88bbff, () => this.onUnitWiki?.());
-    unitWikiBtn.position.set(20, utilY);
-    card.addChild(unitWikiBtn);
-
-    const buildWikiBtn = makeActionBtn(wikiW, utilBtnH, "BUILDINGS", 0x1a2a1a, 0x66aa55, 0x99dd88, () => this.onBuildingWiki?.());
-    buildWikiBtn.position.set(20 + wikiW + utilGap, utilY);
-    card.addChild(buildWikiBtn);
-
-    const spellWikiBtn = makeActionBtn(wikiW, utilBtnH, "SPELLS", 0x1a1a2a, 0x9966ff, 0xbb88ff, () => this.onSpellWiki?.());
-    spellWikiBtn.position.set(20 + (wikiW + utilGap) * 2, utilY);
-    card.addChild(spellWikiBtn);
+    // Row 1: Wiki button (full width)
+    const fullW = CW - 40;
+    const wikiBtn = makeActionBtn(fullW, utilBtnH, "WIKI", 0x1a1a3a, 0x4488cc, 0x88bbff, () => this.onWiki?.());
+    wikiBtn.position.set(20, utilY);
+    card.addChild(wikiBtn);
 
     // Row 2: Quickplay + Multiplayer
     const halfW = Math.floor((CW - 40 - utilGap) / 2);
