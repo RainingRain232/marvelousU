@@ -45,7 +45,7 @@ export function equipItem(rpg: RPGState, memberId: string, itemId: string): bool
 export function unequipItem(
   rpg: RPGState,
   memberId: string,
-  slot: "weapon" | "armor" | "accessory",
+  slot: keyof import("@rpg/state/RPGState").EquipmentSlots,
 ): boolean {
   const member = rpg.party.find(m => m.id === memberId);
   if (!member) return false;
@@ -167,11 +167,16 @@ export function useItem(rpg: RPGState, itemId: string, memberId: string): boolea
 // Helpers
 // ---------------------------------------------------------------------------
 
-function _itemTypeToSlot(type: RPGItem["type"]): "weapon" | "armor" | "accessory" | null {
+function _itemTypeToSlot(type: RPGItem["type"]): keyof import("@rpg/state/RPGState").EquipmentSlots | null {
   switch (type) {
     case "weapon": return "weapon";
     case "armor": return "armor";
     case "accessory": return "accessory";
+    case "helmet": return "helmet";
+    case "shield": return "shield";
+    case "legs": return "legs";
+    case "boots": return "boots";
+    case "ring": return "ring";
     default: return null;
   }
 }

@@ -135,6 +135,15 @@ export function deleteSave(slot: number): void {
 export function restoreRPGState(
   serialized: SerializedRPGState,
 ): RPGState {
+  // Backward compat: ensure all equipment slots exist on loaded party members
+  for (const member of serialized.party) {
+    member.equipment.helmet ??= null;
+    member.equipment.shield ??= null;
+    member.equipment.legs ??= null;
+    member.equipment.boots ??= null;
+    member.equipment.ring ??= null;
+  }
+
   return {
     phase: "overworld" as RPGState["phase"],
     party: serialized.party,

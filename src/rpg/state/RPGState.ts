@@ -8,7 +8,7 @@ import type { AbilityType, RPGPhase, UnitType, Vec2 } from "@/types";
 export interface RPGItem {
   id: string;
   name: string;
-  type: "weapon" | "armor" | "accessory" | "consumable" | "key";
+  type: "weapon" | "armor" | "accessory" | "helmet" | "shield" | "legs" | "boots" | "ring" | "consumable" | "key";
   stats: Partial<{ atk: number; def: number; hp: number; mp: number; speed: number }>;
   description: string;
   abilityType?: AbilityType;
@@ -19,6 +19,11 @@ export interface EquipmentSlots {
   weapon: RPGItem | null;
   armor: RPGItem | null;
   accessory: RPGItem | null;
+  helmet: RPGItem | null;
+  shield: RPGItem | null;
+  legs: RPGItem | null;
+  boots: RPGItem | null;
+  ring: RPGItem | null;
 }
 
 export interface StatusEffect {

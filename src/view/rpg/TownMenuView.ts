@@ -1,7 +1,7 @@
 // Full-screen town menu — shop, inn, party/equipment, leave
 import { Container, Graphics, Text } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
-import type { RPGState, RPGItem } from "@rpg/state/RPGState";
+import type { RPGState, RPGItem, EquipmentSlots, PartyMember } from "@rpg/state/RPGState";
 import type { TownData, RecruitData } from "@rpg/state/OverworldState";
 import { buyItem, sellItem, equipItem, unequipItem, restAtInn } from "@rpg/systems/EquipmentSystem";
 import { generateRecruits, recruitUnit } from "@rpg/systems/RecruitSystem";
@@ -688,20 +688,17 @@ export class TownMenuView {
     title.position.set(30, startY + 10);
     this.container.addChild(title);
 
-    const slots: Array<{ label: string; slot: "weapon" | "armor" | "accessory"; item: RPGItem | null }> = [
-      { label: "Weapon", slot: "weapon", item: member.equipment.weapon },
-      { label: "Armor", slot: "armor", item: member.equipment.armor },
-      { label: "Accessory", slot: "accessory", item: member.equipment.accessory },
-    ];
+    const slotDefs = _allSlotDefs(member);
 
-    for (let i = 0; i < slots.length; i++) {
-      const { label, item } = slots[i];
-      const y = startY + 50 + i * 40;
+    const slotSpacing = 28;
+    for (let i = 0; i < slotDefs.length; i++) {
+      const { label, item } = slotDefs[i];
+      const y = startY + 50 + i * slotSpacing;
       const isSelected = i === this._equipSlotIndex;
 
       if (isSelected) {
         const highlight = new Graphics();
-        highlight.roundRect(20, y - 4, W - 44, 34, 3);
+        highlight.roundRect(20, y - 3, W - 44, slotSpacing - 2, 3);
         highlight.fill({ color: 0x2a2a4e, alpha: 0.6 });
         this.container.addChild(highlight);
       }
@@ -714,7 +711,7 @@ export class TownMenuView {
         text: `${cursor} ${label}: ${itemName}${statsStr}`,
         style: {
           fontFamily: "monospace",
-          fontSize: 13,
+          fontSize: 12,
           fill: isSelected ? HIGHLIGHT_COLOR : TEXT_COLOR,
           fontWeight: isSelected ? "bold" : "normal",
         },
@@ -724,10 +721,10 @@ export class TownMenuView {
     }
 
     const hint = new Text({
-      text: "Enter = Change equipment  |  Backspace = Unequip  |  Esc = Back",
+      text: "Enter = Change  |  Backspace = Unequip  |  Esc = Back",
       style: { fontFamily: "monospace", fontSize: 11, fill: DIM_TEXT },
     });
-    hint.position.set(30, startY + 190);
+    hint.position.set(30, startY + 50 + slotDefs.length * slotSpacing + 8);
     this.container.addChild(hint);
   }
 
@@ -735,8 +732,7 @@ export class TownMenuView {
     const member = this.rpg.party[this._partyIndex];
     if (!member) return;
 
-    const slotNames = ["weapon", "armor", "accessory"] as const;
-    const targetSlot = slotNames[this._equipSlotIndex];
+    const targetSlot = _SLOT_KEYS[this._equipSlotIndex];
 
     const title = new Text({
       text: `Select ${targetSlot} for ${member.name}`,
@@ -1062,7 +1058,7 @@ export class TownMenuView {
         break;
       case "ArrowDown":
       case "KeyS":
-        this._equipSlotIndex = Math.min(2, this._equipSlotIndex + 1);
+        this._equipSlotIndex = Math.min(_SLOT_KEYS.length - 1, this._equipSlotIndex + 1);
         this._draw();
         break;
       case "Enter":
@@ -1073,8 +1069,7 @@ export class TownMenuView {
         break;
       case "Backspace": {
         // Unequip current slot
-        const slotNames = ["weapon", "armor", "accessory"] as const;
-        const slot = slotNames[this._equipSlotIndex];
+        const slot = _SLOT_KEYS[this._equipSlotIndex];
         const member = this.rpg.party[this._partyIndex];
         if (member && member.equipment[slot]) {
           unequipItem(this.rpg, member.id, slot);
@@ -1090,8 +1085,7 @@ export class TownMenuView {
   }
 
   private _handleInventoryPickInput(e: KeyboardEvent): void {
-    const slotNames = ["weapon", "armor", "accessory"] as const;
-    const targetSlot = slotNames[this._equipSlotIndex];
+    const targetSlot = _SLOT_KEYS[this._equipSlotIndex];
     const matchingItems = this.rpg.inventory.items.filter(s => s.item.type === targetSlot);
 
     switch (e.code) {
@@ -1133,6 +1127,29 @@ export class TownMenuView {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const _SLOT_KEYS: (keyof EquipmentSlots)[] = [
+  "weapon", "armor", "helmet", "shield", "legs", "boots", "ring", "accessory",
+];
+
+const _SLOT_LABELS: Record<keyof EquipmentSlots, string> = {
+  weapon: "Weapon",
+  armor: "Armor",
+  helmet: "Helmet",
+  shield: "Shield",
+  legs: "Legs",
+  boots: "Boots",
+  ring: "Ring",
+  accessory: "Accessory",
+};
+
+function _allSlotDefs(member: PartyMember): Array<{ label: string; slot: keyof EquipmentSlots; item: RPGItem | null }> {
+  return _SLOT_KEYS.map(slot => ({
+    label: _SLOT_LABELS[slot],
+    slot,
+    item: member.equipment[slot],
+  }));
+}
 
 function _formatItemStats(item: RPGItem): string {
   const parts: string[] = [];

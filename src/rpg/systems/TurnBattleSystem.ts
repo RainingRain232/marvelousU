@@ -90,22 +90,25 @@ function _partyToCombatant(member: PartyMember, position: number, line: 1 | 2): 
 
 function _computeAtk(member: PartyMember): number {
   let atk = member.atk;
-  if (member.equipment.weapon?.stats.atk) atk += member.equipment.weapon.stats.atk;
-  if (member.equipment.accessory?.stats.atk) atk += member.equipment.accessory.stats.atk;
+  for (const item of Object.values(member.equipment)) {
+    if (item?.stats.atk) atk += item.stats.atk;
+  }
   return atk;
 }
 
 function _computeDef(member: PartyMember): number {
   let def = member.def;
-  if (member.equipment.armor?.stats.def) def += member.equipment.armor.stats.def;
-  if (member.equipment.accessory?.stats.def) def += member.equipment.accessory.stats.def;
+  for (const item of Object.values(member.equipment)) {
+    if (item?.stats.def) def += item.stats.def;
+  }
   return def;
 }
 
 function _computeSpeed(member: PartyMember): number {
   let speed = member.speed;
-  if (member.equipment.accessory?.stats.speed) speed += member.equipment.accessory.stats.speed;
-  if (member.equipment.armor?.stats.speed) speed += member.equipment.armor.stats.speed;
+  for (const item of Object.values(member.equipment)) {
+    if (item?.stats.speed) speed += item.stats.speed;
+  }
   return speed;
 }
 

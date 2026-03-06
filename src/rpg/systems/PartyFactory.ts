@@ -44,6 +44,11 @@ export function createPartyMember(
       weapon: null,
       armor: null,
       accessory: null,
+      helmet: null,
+      shield: null,
+      legs: null,
+      boots: null,
+      ring: null,
     },
     statusEffects: [],
   };

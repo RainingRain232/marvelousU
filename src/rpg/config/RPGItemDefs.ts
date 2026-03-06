@@ -124,6 +124,170 @@ export const ITEM_PLATE_ARMOR: RPGItem = {
 };
 
 // ---------------------------------------------------------------------------
+// Helmets
+// ---------------------------------------------------------------------------
+
+export const ITEM_LEATHER_CAP: RPGItem = {
+  id: "leather_cap",
+  name: "Leather Cap",
+  type: "helmet",
+  stats: { def: 2 },
+  description: "A simple leather cap.",
+  value: 25,
+};
+
+export const ITEM_IRON_HELM: RPGItem = {
+  id: "iron_helm",
+  name: "Iron Helm",
+  type: "helmet",
+  stats: { def: 5 },
+  description: "Sturdy iron helmet.",
+  value: 80,
+};
+
+export const ITEM_GREAT_HELM: RPGItem = {
+  id: "great_helm",
+  name: "Great Helm",
+  type: "helmet",
+  stats: { def: 9, speed: -0.1 },
+  description: "A massive helm. Heavy but protective.",
+  value: 200,
+};
+
+// ---------------------------------------------------------------------------
+// Shields
+// ---------------------------------------------------------------------------
+
+export const ITEM_WOODEN_SHIELD: RPGItem = {
+  id: "wooden_shield",
+  name: "Wooden Shield",
+  type: "shield",
+  stats: { def: 3 },
+  description: "A basic wooden shield.",
+  value: 30,
+};
+
+export const ITEM_IRON_SHIELD: RPGItem = {
+  id: "iron_shield",
+  name: "Iron Shield",
+  type: "shield",
+  stats: { def: 7 },
+  description: "A solid iron shield.",
+  value: 100,
+};
+
+export const ITEM_TOWER_SHIELD: RPGItem = {
+  id: "tower_shield",
+  name: "Tower Shield",
+  type: "shield",
+  stats: { def: 12, speed: -0.2 },
+  description: "Massive tower shield. Very heavy.",
+  value: 250,
+};
+
+// ---------------------------------------------------------------------------
+// Legs
+// ---------------------------------------------------------------------------
+
+export const ITEM_CLOTH_PANTS: RPGItem = {
+  id: "cloth_pants",
+  name: "Cloth Pants",
+  type: "legs",
+  stats: { def: 1 },
+  description: "Simple cloth legwear.",
+  value: 20,
+};
+
+export const ITEM_CHAIN_LEGGINGS: RPGItem = {
+  id: "chain_leggings",
+  name: "Chain Leggings",
+  type: "legs",
+  stats: { def: 5 },
+  description: "Chainmail leg protection.",
+  value: 90,
+};
+
+export const ITEM_PLATE_GREAVES: RPGItem = {
+  id: "plate_greaves",
+  name: "Plate Greaves",
+  type: "legs",
+  stats: { def: 10, speed: -0.1 },
+  description: "Heavy plate leg armor.",
+  value: 220,
+};
+
+// ---------------------------------------------------------------------------
+// Boots
+// ---------------------------------------------------------------------------
+
+export const ITEM_SANDALS: RPGItem = {
+  id: "sandals",
+  name: "Sandals",
+  type: "boots",
+  stats: { speed: 0.1 },
+  description: "Light and breezy.",
+  value: 15,
+};
+
+export const ITEM_LEATHER_BOOTS: RPGItem = {
+  id: "leather_boots",
+  name: "Leather Boots",
+  type: "boots",
+  stats: { def: 2, speed: 0.2 },
+  description: "Sturdy leather boots.",
+  value: 50,
+};
+
+export const ITEM_IRON_GREAVES: RPGItem = {
+  id: "iron_greaves",
+  name: "Iron Greaves",
+  type: "boots",
+  stats: { def: 5, speed: -0.1 },
+  description: "Heavy iron boots.",
+  value: 140,
+};
+
+export const ITEM_WINGED_BOOTS: RPGItem = {
+  id: "winged_boots",
+  name: "Winged Boots",
+  type: "boots",
+  stats: { speed: 0.5, def: 3 },
+  description: "Enchanted boots that grant great speed.",
+  value: 280,
+};
+
+// ---------------------------------------------------------------------------
+// Rings
+// ---------------------------------------------------------------------------
+
+export const ITEM_COPPER_RING: RPGItem = {
+  id: "copper_ring",
+  name: "Copper Ring",
+  type: "ring",
+  stats: { atk: 2 },
+  description: "A simple copper ring.",
+  value: 30,
+};
+
+export const ITEM_SILVER_RING: RPGItem = {
+  id: "silver_ring",
+  name: "Silver Ring",
+  type: "ring",
+  stats: { atk: 4, def: 2 },
+  description: "A polished silver ring.",
+  value: 100,
+};
+
+export const ITEM_GOLD_RING: RPGItem = {
+  id: "gold_ring",
+  name: "Gold Ring",
+  type: "ring",
+  stats: { atk: 6, def: 4, hp: 20 },
+  description: "A gleaming gold ring of power.",
+  value: 250,
+};
+
+// ---------------------------------------------------------------------------
 // Accessories
 // ---------------------------------------------------------------------------
 
@@ -165,6 +329,27 @@ export const ALL_RPG_ITEMS: Record<string, RPGItem> = {
   leather_armor: ITEM_LEATHER_ARMOR,
   chainmail: ITEM_CHAINMAIL,
   plate_armor: ITEM_PLATE_ARMOR,
+  // Helmets
+  leather_cap: ITEM_LEATHER_CAP,
+  iron_helm: ITEM_IRON_HELM,
+  great_helm: ITEM_GREAT_HELM,
+  // Shields
+  wooden_shield: ITEM_WOODEN_SHIELD,
+  iron_shield: ITEM_IRON_SHIELD,
+  tower_shield: ITEM_TOWER_SHIELD,
+  // Legs
+  cloth_pants: ITEM_CLOTH_PANTS,
+  chain_leggings: ITEM_CHAIN_LEGGINGS,
+  plate_greaves: ITEM_PLATE_GREAVES,
+  // Boots
+  sandals: ITEM_SANDALS,
+  leather_boots: ITEM_LEATHER_BOOTS,
+  iron_greaves: ITEM_IRON_GREAVES,
+  winged_boots: ITEM_WINGED_BOOTS,
+  // Rings
+  copper_ring: ITEM_COPPER_RING,
+  silver_ring: ITEM_SILVER_RING,
+  gold_ring: ITEM_GOLD_RING,
   // Accessories
   speed_ring: ITEM_SPEED_RING,
   health_amulet: ITEM_HEALTH_AMULET,
@@ -180,6 +365,11 @@ export const STARTER_TOWN_SHOP: RPGItem[] = [
   ITEM_ANTIDOTE,
   ITEM_IRON_SWORD,
   ITEM_LEATHER_ARMOR,
+  ITEM_LEATHER_CAP,
+  ITEM_WOODEN_SHIELD,
+  ITEM_CLOTH_PANTS,
+  ITEM_SANDALS,
+  ITEM_COPPER_RING,
 ];
 
 export const MID_TOWN_SHOP: RPGItem[] = [
@@ -190,6 +380,11 @@ export const MID_TOWN_SHOP: RPGItem[] = [
   ITEM_STEEL_SWORD,
   ITEM_MAGIC_STAFF,
   ITEM_CHAINMAIL,
+  ITEM_IRON_HELM,
+  ITEM_IRON_SHIELD,
+  ITEM_CHAIN_LEGGINGS,
+  ITEM_LEATHER_BOOTS,
+  ITEM_SILVER_RING,
   ITEM_SPEED_RING,
   ITEM_HEALTH_AMULET,
 ];
@@ -200,6 +395,12 @@ export const LATE_TOWN_SHOP: RPGItem[] = [
   ITEM_FIRE_SCROLL,
   ITEM_WAR_AXE,
   ITEM_PLATE_ARMOR,
+  ITEM_GREAT_HELM,
+  ITEM_TOWER_SHIELD,
+  ITEM_PLATE_GREAVES,
+  ITEM_IRON_GREAVES,
+  ITEM_WINGED_BOOTS,
+  ITEM_GOLD_RING,
   ITEM_SPEED_RING,
   ITEM_HEALTH_AMULET,
 ];
