@@ -1,5 +1,5 @@
 // Save/Load system using localStorage
-import type { RPGState } from "@rpg/state/RPGState";
+import type { RPGState, ActiveBlessing } from "@rpg/state/RPGState";
 import type { OverworldState } from "@rpg/state/OverworldState";
 
 const SAVE_KEY_PREFIX = "rpg_save_";
@@ -46,6 +46,8 @@ interface SerializedRPGState {
   stepsSinceLastTown: number;
   recruitSeed: number;
   formation: Record<string, 1 | 2>;
+  metLeaders: string[];
+  leaderBlessings: ActiveBlessing[];
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +164,8 @@ export function restoreRPGState(
     stepsSinceLastTown: serialized.stepsSinceLastTown ?? 0,
     recruitSeed: serialized.recruitSeed ?? serialized.seed,
     formation: serialized.formation ?? {},
+    metLeaders: new Set(serialized.metLeaders ?? []),
+    leaderBlessings: serialized.leaderBlessings ?? [],
   };
 }
 
@@ -187,5 +191,7 @@ function _serializeRPGState(state: RPGState): SerializedRPGState {
     stepsSinceLastTown: state.stepsSinceLastTown,
     recruitSeed: state.recruitSeed,
     formation: state.formation,
+    metLeaders: Array.from(state.metLeaders),
+    leaderBlessings: state.leaderBlessings,
   };
 }

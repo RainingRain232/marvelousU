@@ -11,6 +11,9 @@ import { getAvailableQuest, getActiveQuest, acceptQuest, claimQuestReward } from
 
 const BG_COLOR = 0x0e0e1a;
 const BORDER_COLOR = 0x4444aa;
+const LEADER_BORDER_COLOR = 0xffd700;
+const LEADER_TITLE_COLOR = 0xccaa55;
+const BLESSING_COLOR = 0x88ff88;
 const NAME_COLOR = 0xffcc00;
 const TEXT_COLOR = 0xdddddd;
 const PROMPT_COLOR = 0x888888;
@@ -20,7 +23,7 @@ const QUEST_COLOR = 0x88ff88;
 // NPCDialogView
 // ---------------------------------------------------------------------------
 
-type DialogPhase = "dialogue" | "quest_offer" | "quest_progress" | "quest_complete";
+type DialogPhase = "dialogue" | "blessing" | "quest_offer" | "quest_progress" | "quest_complete";
 
 export class NPCDialogView {
   private vm!: ViewManager;
@@ -34,10 +37,24 @@ export class NPCDialogView {
   private _rpg: RPGState | null = null;
   private _dialogPhase: DialogPhase = "dialogue";
   private _questData: QuestState | null = null;
+  private _isLeader: boolean = false;
+  private _leaderTitle: string = "";
+  private _blessingName: string = "";
+  private _blessingDesc: string = "";
 
   onClose: (() => void) | null = null;
 
-  init(vm: ViewManager, npcName: string, lines: string[], npcId?: string, rpg?: RPGState): void {
+  init(
+    vm: ViewManager,
+    npcName: string,
+    lines: string[],
+    npcId?: string,
+    rpg?: RPGState,
+    leaderId?: string,
+    leaderTitle?: string,
+    blessingName?: string,
+    blessingDesc?: string,
+  ): void {
     this.vm = vm;
     this._npcName = npcName;
     this._lines = lines;
@@ -46,6 +63,10 @@ export class NPCDialogView {
     this._currentLine = 0;
     this._dialogPhase = "dialogue";
     this._questData = null;
+    this._isLeader = !!leaderId;
+    this._leaderTitle = leaderTitle ?? "";
+    this._blessingName = blessingName ?? "";
+    this._blessingDesc = blessingDesc ?? "";
 
     vm.addToLayer("ui", this.container);
 
@@ -74,18 +95,21 @@ export class NPCDialogView {
     const boxX = 20;
     const boxW = W - 40;
 
+    const borderColor = this._isLeader ? LEADER_BORDER_COLOR : BORDER_COLOR;
+
     const bg = new Graphics();
     bg.roundRect(boxX, boxY, boxW, boxH, 8);
     bg.fill({ color: BG_COLOR, alpha: 0.92 });
-    bg.stroke({ color: BORDER_COLOR, width: 2 });
+    bg.stroke({ color: borderColor, width: this._isLeader ? 3 : 2 });
     this.container.addChild(bg);
 
     // NPC name tag
     const nameTag = new Graphics();
     const nameW = Math.max(100, this._npcName.length * 9 + 20);
-    nameTag.roundRect(boxX + 15, boxY - 14, nameW, 28, 4);
+    const tagH = this._isLeader && this._leaderTitle ? 40 : 28;
+    nameTag.roundRect(boxX + 15, boxY - 14, nameW, tagH, 4);
     nameTag.fill({ color: BG_COLOR });
-    nameTag.stroke({ color: BORDER_COLOR, width: 1 });
+    nameTag.stroke({ color: borderColor, width: 1 });
     this.container.addChild(nameTag);
 
     const nameText = new Text({
@@ -95,7 +119,19 @@ export class NPCDialogView {
     nameText.position.set(boxX + 25, boxY - 10);
     this.container.addChild(nameText);
 
-    if (this._dialogPhase === "dialogue") {
+    // Leader title subtitle
+    if (this._isLeader && this._leaderTitle) {
+      const titleText = new Text({
+        text: this._leaderTitle,
+        style: { fontFamily: "monospace", fontSize: 10, fill: LEADER_TITLE_COLOR, fontStyle: "italic" },
+      });
+      titleText.position.set(boxX + 25, boxY + 5);
+      this.container.addChild(titleText);
+    }
+
+    if (this._dialogPhase === "blessing") {
+      this._drawBlessing(boxX, boxY, boxW, boxH);
+    } else if (this._dialogPhase === "dialogue") {
       this._drawDialogue(boxX, boxY, boxW, boxH);
     } else if (this._dialogPhase === "quest_offer") {
       this._drawQuestOffer(boxX, boxY, boxW, boxH);
@@ -123,9 +159,9 @@ export class NPCDialogView {
     this.container.addChild(dialogText);
 
     const isLast = this._currentLine >= this._lines.length - 1;
-    const hasQuest = this._checkHasQuestContent();
+    const hasMore = this._checkHasQuestContent() || (this._isLeader && this._blessingName);
     const promptStr = isLast
-      ? (hasQuest ? "Press Enter to continue..." : "Press Enter to close")
+      ? (hasMore ? "Press Enter to continue..." : "Press Enter to close")
       : "Press Enter to continue...";
     const prompt = new Text({
       text: promptStr,
@@ -143,6 +179,33 @@ export class NPCDialogView {
       pageText.position.set(boxX + 20, boxY + boxH - 20);
       this.container.addChild(pageText);
     }
+  }
+
+  private _drawBlessing(boxX: number, boxY: number, boxW: number, boxH: number): void {
+    const headerText = new Text({
+      text: `Blessing Received: ${this._blessingName}`,
+      style: { fontFamily: "monospace", fontSize: 14, fill: BLESSING_COLOR, fontWeight: "bold" },
+    });
+    headerText.position.set(boxX + 20, boxY + 20);
+    this.container.addChild(headerText);
+
+    const descText = new Text({
+      text: this._blessingDesc,
+      style: {
+        fontFamily: "monospace", fontSize: 12, fill: TEXT_COLOR,
+        wordWrap: true, wordWrapWidth: boxW - 40,
+      },
+    });
+    descText.position.set(boxX + 20, boxY + 45);
+    this.container.addChild(descText);
+
+    const prompt = new Text({
+      text: "Press Enter to continue...",
+      style: { fontFamily: "monospace", fontSize: 10, fill: PROMPT_COLOR },
+    });
+    prompt.anchor.set(1, 0);
+    prompt.position.set(boxX + boxW - 15, boxY + boxH - 22);
+    this.container.addChild(prompt);
   }
 
   private _drawQuestOffer(boxX: number, boxY: number, boxW: number, boxH: number): void {
@@ -291,6 +354,26 @@ export class NPCDialogView {
     this.onClose?.();
   }
 
+  /** After dialogue ends, show blessing (if leader) then quest content. */
+  private _afterDialogueEnd(): void {
+    // Show blessing phase for leaders who granted a blessing
+    if (this._isLeader && this._blessingName) {
+      this._dialogPhase = "blessing";
+      this._draw();
+      return;
+    }
+    this._afterBlessingPhase();
+  }
+
+  /** After blessing (or skipped), transition to quest content or close. */
+  private _afterBlessingPhase(): void {
+    if (this._checkHasQuestContent()) {
+      this._transitionToQuestPhase();
+    } else {
+      this.onClose?.();
+    }
+  }
+
   private _setupInput(): void {
     this._onKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Enter" || e.code === "Space") {
@@ -299,13 +382,12 @@ export class NPCDialogView {
             this._currentLine++;
             this._draw();
           } else {
-            // After dialogue, check for quest content
-            if (this._checkHasQuestContent()) {
-              this._transitionToQuestPhase();
-            } else {
-              this.onClose?.();
-            }
+            this._afterDialogueEnd();
           }
+        } else if (this._dialogPhase === "blessing") {
+          // Blessing acknowledged, move to quest or close
+          this._blessingName = ""; // Don't show blessing again
+          this._afterBlessingPhase();
         } else if (this._dialogPhase === "quest_offer") {
           // Accept quest
           if (this._rpg && this._questData) {

@@ -74,7 +74,7 @@ export interface SimEvents {
   rpgInnRested: { cost: number };
 
   // RPG NPC events
-  rpgNPCInteraction: { npcId: string; npcName: string; dialogue: string[] };
+  rpgNPCInteraction: { npcId: string; npcName: string; dialogue: string[]; leaderId?: string; leaderTitle?: string };
 
   // RPG spell system events
   rpgSpellLearnPrompt: { memberId: string; memberName: string; picks: number; choices: string[] };

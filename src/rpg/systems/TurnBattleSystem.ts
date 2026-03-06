@@ -11,6 +11,7 @@ import type { EnemyDef } from "@rpg/config/EncounterDefs";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { RPG_SPELL_DEFS, type RPGSpellDef } from "@rpg/config/RPGSpellDefs";
 import { isCaster, spellPicksOnLevelUp, getSpellChoices } from "@rpg/systems/SpellLearningSystem";
+import { getBlessingAtkMultiplier, getBlessingDefMultiplier } from "@rpg/systems/LeaderEncounterSystem";
 
 // ---------------------------------------------------------------------------
 // Battle creation
@@ -32,6 +33,18 @@ export function createBattleFromEncounter(
     const member = rpg.party[i];
     const line = rpg.formation[member.id] ?? (1 as 1 | 2);
     combatants.push(_partyToCombatant(member, i, line));
+  }
+
+  // Apply leader blessing ATK/DEF multipliers to party combatants
+  const atkMult = getBlessingAtkMultiplier(rpg);
+  const defMult = getBlessingDefMultiplier(rpg);
+  if (atkMult !== 1 || defMult !== 1) {
+    for (const c of combatants) {
+      if (c.isPartyMember) {
+        c.atk = Math.floor(c.atk * atkMult);
+        c.def = Math.floor(c.def * defMult);
+      }
+    }
   }
 
   // Add enemies with auto-assigned lines

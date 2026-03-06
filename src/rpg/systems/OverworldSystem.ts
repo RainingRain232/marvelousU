@@ -12,6 +12,9 @@ import { generateMagicShopSpells, generateArcaneLibrarySpells } from "@rpg/confi
 import type { ArcaneLibraryData } from "@rpg/state/OverworldState";
 import type { RPGStateMachine } from "./RPGStateMachine";
 import { trackRecruitSteps, resetRecruitStepsOnTownVisit } from "./RecruitSystem";
+import { tickBlessings, applyBlessingHpRegen, getBlessingEncounterRateMult, grantBlessing, meetsLeaderSpawnCondition } from "./LeaderEncounterSystem";
+import { getLeaderEncounterDef } from "@rpg/config/LeaderEncounterDefs";
+import { getLeader } from "@sim/config/LeaderDefs";
 
 // ---------------------------------------------------------------------------
 // Movement
@@ -42,6 +45,10 @@ export function moveParty(
 
   // Track steps for recruit roster reset
   trackRecruitSteps(rpg);
+
+  // Tick leader blessings and apply HP regen
+  tickBlessings(rpg);
+  applyBlessingHpRegen(rpg);
 
   EventBus.emit("rpgPartyMoved", { position: { x: newX, y: newY }, previousPosition: prev });
 
@@ -128,10 +135,44 @@ function _handleEntityInteraction(
     }
     case "npc": {
       const npcData = entity.data as NPCData;
+      let dialogue = npcData.dialogue;
+      let leaderId: string | undefined;
+      let leaderTitle: string | undefined;
+
+      // Leader NPC handling — swap dialogue and grant blessing on first meeting
+      if (npcData.leaderId) {
+        const encDef = getLeaderEncounterDef(npcData.leaderId);
+        const ldrDef = getLeader(npcData.leaderId);
+        leaderId = npcData.leaderId;
+        leaderTitle = ldrDef?.title;
+
+        if (encDef) {
+          // Check spawn conditions (level requirements, etc.)
+          if (!meetsLeaderSpawnCondition(rpg, encDef)) {
+            // Player doesn't meet requirements yet — show a hint
+            dialogue = [`A legendary figure stands here, but they seem uninterested in you... for now.`];
+            leaderId = undefined;
+            leaderTitle = undefined;
+          } else if (rpg.metLeaders.has(npcData.leaderId)) {
+            // Return visit — shorter dialogue
+            dialogue = encDef.returnDialogue;
+          } else {
+            // First meeting — intro dialogue, mark as met, grant blessing
+            dialogue = encDef.introDialogue;
+            rpg.metLeaders.add(npcData.leaderId);
+            if (encDef.blessing) {
+              grantBlessing(rpg, npcData.leaderId, encDef.blessing);
+            }
+          }
+        }
+      }
+
       EventBus.emit("rpgNPCInteraction", {
         npcId: entity.id,
         npcName: entity.name,
-        dialogue: npcData.dialogue,
+        dialogue,
+        leaderId,
+        leaderTitle,
       });
       break;
     }
@@ -153,8 +194,9 @@ function _checkRandomEncounter(
 ): void {
   overworld.stepsSinceLastEncounter++;
 
-  // Increasing chance with each step
-  const chance = baseRate * (1 + overworld.stepsSinceLastEncounter * RPGBalance.ENCOUNTER_RATE_GROWTH);
+  // Increasing chance with each step, modified by leader blessings
+  const blessingMult = getBlessingEncounterRateMult(rpg);
+  const chance = baseRate * (1 + overworld.stepsSinceLastEncounter * RPGBalance.ENCOUNTER_RATE_GROWTH) * blessingMult;
   const rng = new SeededRandom(rpg.seed + rpg.gameTime);
   rpg.gameTime++;
 

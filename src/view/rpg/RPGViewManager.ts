@@ -5,6 +5,7 @@ import { viewManager } from "@view/ViewManager";
 import type { RPGState } from "@rpg/state/RPGState";
 import type { OverworldState } from "@rpg/state/OverworldState";
 import type { TownData, ArcaneLibraryData } from "@rpg/state/OverworldState";
+import { getLeaderEncounterDef } from "@rpg/config/LeaderEncounterDefs";
 import type { DungeonState } from "@rpg/state/DungeonState";
 import type { TurnBattleState } from "@rpg/state/TurnBattleState";
 import { OverworldView } from "./OverworldView";
@@ -104,7 +105,7 @@ export class RPGViewManager {
 
     // Listen for NPC interactions
     this._unsubs.push(EventBus.on("rpgNPCInteraction", (e) => {
-      this._showNPCDialog(e.npcName, e.dialogue, e.npcId);
+      this._showNPCDialog(e.npcName, e.dialogue, e.npcId, e.leaderId, e.leaderTitle);
     }));
 
     // Start in overworld
@@ -410,10 +411,22 @@ export class RPGViewManager {
   // NPC Dialog
   // ---------------------------------------------------------------------------
 
-  private _showNPCDialog(npcName: string, dialogue: string[], npcId?: string): void {
+  private _showNPCDialog(npcName: string, dialogue: string[], npcId?: string, leaderId?: string, leaderTitle?: string): void {
     this._hideNPCDialog();
     this.npcDialogView = new NPCDialogView();
-    this.npcDialogView.init(viewManager, npcName, dialogue, npcId, this.rpgState);
+
+    // Look up blessing info for leaders (blessing was already granted in OverworldSystem)
+    let blessingName: string | undefined;
+    let blessingDesc: string | undefined;
+    if (leaderId) {
+      const encDef = getLeaderEncounterDef(leaderId);
+      if (encDef?.blessing && this.rpgState?.leaderBlessings.some(b => b.leaderId === leaderId)) {
+        blessingName = encDef.blessing.name;
+        blessingDesc = encDef.blessing.description;
+      }
+    }
+
+    this.npcDialogView.init(viewManager, npcName, dialogue, npcId, this.rpgState, leaderId, leaderTitle, blessingName, blessingDesc);
     this.npcDialogView.onClose = () => {
       this._hideNPCDialog();
       this.onNPCDialogClosed?.();

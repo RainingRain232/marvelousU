@@ -58,6 +58,8 @@ export interface DungeonEntranceData {
 export interface NPCData {
   dialogue: string[];
   questId?: string;
+  /** If set, this NPC is a legendary leader from LeaderEncounterDefs. */
+  leaderId?: string;
 }
 
 export interface ChestData {

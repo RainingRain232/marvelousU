@@ -1,5 +1,6 @@
 // Top-level RPG persistent state
 import type { AbilityType, RPGPhase, UnitType, UpgradeType, Vec2 } from "@/types";
+import type { LeaderBlessing } from "@rpg/config/LeaderEncounterDefs";
 
 // ---------------------------------------------------------------------------
 // Party & Equipment
@@ -84,6 +85,18 @@ export interface QuestState {
 }
 
 // ---------------------------------------------------------------------------
+// Leader blessings (active buffs from legendary leader encounters)
+// ---------------------------------------------------------------------------
+
+export interface ActiveBlessing {
+  blessingId: string;
+  leaderId: string;
+  name: string;
+  effect: LeaderBlessing["effect"];
+  remainingSteps: number; // -1 = permanent
+}
+
+// ---------------------------------------------------------------------------
 // RPGState
 // ---------------------------------------------------------------------------
 
@@ -108,6 +121,10 @@ export interface RPGState {
   recruitSeed: number;
   /** Party formation: maps member id → battle line (1=front, 2=back). Missing = front. */
   formation: Record<string, 1 | 2>;
+  /** Leader IDs the player has met. */
+  metLeaders: Set<string>;
+  /** Active leader blessings (timed party buffs). */
+  leaderBlessings: ActiveBlessing[];
 }
 
 // ---------------------------------------------------------------------------
@@ -133,5 +150,7 @@ export function createRPGState(seed: number, startPosition: Vec2): RPGState {
     stepsSinceLastTown: 0,
     recruitSeed: seed,
     formation: {},
+    metLeaders: new Set(),
+    leaderBlessings: [],
   };
 }

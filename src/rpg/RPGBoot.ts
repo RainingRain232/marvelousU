@@ -22,6 +22,7 @@ import { RPGViewManager } from "@view/rpg/RPGViewManager";
 import { ITEM_HEALTH_POTION } from "@rpg/config/RPGItemDefs";
 import { audioManager } from "@audio/AudioManager";
 import { updateKillObjective, checkQuestCompletion } from "@rpg/systems/QuestSystem";
+import { checkPostBattleLeaderSpawn, checkDungeonExitLeaderSpawn, getBlessingXpMultiplier, getBlessingGoldMultiplier } from "@rpg/systems/LeaderEncounterSystem";
 import { TurnBattleAction, TurnBattlePhase } from "@/types";
 import type { BattleResults } from "@view/rpg/BattleResultsView";
 import { saveGame, loadGame, restoreRPGState } from "@rpg/systems/SaveSystem";
@@ -181,6 +182,10 @@ export class RPGGame {
     this._unsubs.push(EventBus.on("rpgDungeonExited", () => {
       this.dungeonState = null;
       this.rpgViewManager.dungeonState = null;
+      // Check for dungeon-exit leader spawns
+      if (this.overworldState) {
+        checkDungeonExitLeaderSpawn(this.rpgState, this.overworldState);
+      }
     }));
 
     // Wire return to main menu from game over
@@ -538,9 +543,16 @@ export class RPGGame {
     // Apply results
     const victory = (battle.phase as string) === TurnBattlePhase.VICTORY;
     if (victory) {
+      // Apply blessing multipliers to rewards before granting
+      battle.xpReward = Math.floor(battle.xpReward * getBlessingXpMultiplier(this.rpgState));
+      battle.goldReward = Math.floor(battle.goldReward * getBlessingGoldMultiplier(this.rpgState));
       applyVictoryRewards(this.rpgState, battle);
       if (this._pendingEncounterId) {
         this._trackQuestKill(this._pendingEncounterId);
+      }
+      // Check for post-battle leader spawns
+      if (this.overworldState) {
+        checkPostBattleLeaderSpawn(this.rpgState, this.overworldState);
       }
     } else {
       applyDefeatPenalty(this.rpgState, battle);
@@ -667,6 +679,9 @@ export class RPGGame {
 
     // Check for battle end states
     if (this.turnBattleState.phase === TurnBattlePhase.VICTORY) {
+      // Apply blessing multipliers to rewards
+      this.turnBattleState.xpReward = Math.floor(this.turnBattleState.xpReward * getBlessingXpMultiplier(this.rpgState));
+      this.turnBattleState.goldReward = Math.floor(this.turnBattleState.goldReward * getBlessingGoldMultiplier(this.rpgState));
       applyVictoryRewards(this.rpgState, this.turnBattleState);
       view?.refresh();
       // Return to previous phase after short delay
@@ -753,6 +768,11 @@ export class RPGGame {
     // Track quest kill objectives on victory
     if (victory && this._pendingEncounterId) {
       this._trackQuestKill(this._pendingEncounterId);
+    }
+
+    // Check for post-battle leader spawns
+    if (victory && this.overworldState) {
+      checkPostBattleLeaderSpawn(this.rpgState, this.overworldState);
     }
 
     // Clean up level-up listener

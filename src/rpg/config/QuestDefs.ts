@@ -62,6 +62,42 @@ export const QUEST_DEFS: QuestDef[] = [
       reward: { gold: 300, xp: 200 },
     },
   },
+  // =========================================================================
+  // Leader quests — tied to legendary leader NPCs
+  // =========================================================================
+  {
+    npcId: "leader_arthur",
+    quest: {
+      id: "quest_round_table_errand",
+      name: "The Round Table's Errand",
+      description: "King Arthur asks you to prove your worth against the Dark Knights threatening the realm. Defeat 3 Dark Knight Squads.",
+      objectives: [{ type: "kill", targetId: "dark_knight_squad", current: 0, required: 3 }],
+      isComplete: false,
+      reward: { gold: 200, xp: 300 },
+    },
+  },
+  {
+    npcId: "leader_merlin",
+    quest: {
+      id: "quest_sorcerers_trial",
+      name: "The Sorcerer's Trial",
+      description: "Merlin challenges you to confront the rogue mages corrupting the ley lines. Defeat 2 Warlock Covens.",
+      objectives: [{ type: "kill", targetId: "warlock_coven", current: 0, required: 2 }],
+      isComplete: false,
+      reward: { gold: 150, xp: 250 },
+    },
+  },
+  {
+    npcId: "leader_caesar",
+    quest: {
+      id: "quest_pax_romana",
+      name: "Pax Romana",
+      description: "Caesar demands you restore order by crushing the Undead Legion. Defeat 3 Undead Legion encounters.",
+      objectives: [{ type: "kill", targetId: "undead_legion", current: 0, required: 3 }],
+      isComplete: false,
+      reward: { gold: 250, xp: 350 },
+    },
+  },
 ];
 
 /** Look up quest def by NPC ID. */

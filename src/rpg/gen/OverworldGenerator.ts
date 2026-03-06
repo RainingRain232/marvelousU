@@ -10,6 +10,7 @@ import { generateShopInventory } from "@rpg/config/RPGItemDefs";
 import type { ShopTier } from "@rpg/config/RPGItemDefs";
 import { generateMagicShopSpells, generateArcaneLibrarySpells } from "@rpg/config/RPGSpellDefs";
 import type { ArcaneLibraryData } from "@rpg/state/OverworldState";
+import { placeLeaderNPCs } from "@rpg/systems/LeaderEncounterSystem";
 
 // ---------------------------------------------------------------------------
 // Simple 2D value noise (seeded)
@@ -130,7 +131,7 @@ function _carvePath(grid: OverworldTile[][], from: Vec2, to: Vec2): void {
 // Find placement position
 // ---------------------------------------------------------------------------
 
-function _findPlacement(
+export function findPlacement(
   grid: OverworldTile[][],
   rng: SeededRandom,
   width: number,
@@ -233,7 +234,7 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
   const entities = new Map<string, OverworldEntity>();
 
   for (let i = 0; i < townDefs.length; i++) {
-    const pos = _findPlacement(grid, rng, width, height, placements, 25);
+    const pos = findPlacement(grid, rng, width, height, placements, 25);
     if (!pos) continue;
     placements.push(pos);
     townPositions.push(pos);
@@ -283,7 +284,7 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
   const dungeonLevels = [3, 6, 10, 2, 8, 12, 4];
 
   for (let i = 0; i < dungeonIds.length; i++) {
-    const pos = _findPlacement(grid, rng, width, height, placements, 18);
+    const pos = findPlacement(grid, rng, width, height, placements, 18);
     if (!pos) continue;
     placements.push(pos);
 
@@ -406,7 +407,7 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
   ];
 
   for (let i = 0; i < npcDefs.length; i++) {
-    const pos = _findPlacement(grid, rng, width, height, placements, 12);
+    const pos = findPlacement(grid, rng, width, height, placements, 12);
     if (!pos) continue;
     placements.push(pos);
 
@@ -428,9 +429,12 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
     });
   }
 
+  // Place legendary leader NPCs (Arthurian + historical)
+  placeLeaderNPCs(grid, rng, width, height, placements, entities, townPositions, findPlacement);
+
   // Place the Arcane Library (single unique location with T4+ spells)
   {
-    const pos = _findPlacement(grid, rng, width, height, placements, 20);
+    const pos = findPlacement(grid, rng, width, height, placements, 20);
     if (pos) {
       placements.push(pos);
       const libId = "arcane_library_0";
