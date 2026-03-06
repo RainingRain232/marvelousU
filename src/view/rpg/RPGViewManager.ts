@@ -48,6 +48,7 @@ export class RPGViewManager {
   private pauseMenuView: PauseMenuView | null = null;
   private _loadingContainer: Container | null = null;
   private _unsubs: Array<() => void> = [];
+  private _activeTransition: TransitionOverlay | null = null;
 
   rpgState!: RPGState;
   overworldState!: OverworldState;
@@ -299,8 +300,14 @@ export class RPGViewManager {
       || phase === RPGPhase.GAME_OVER;
 
     if (isMajor) {
+      // Cancel any in-flight transition to prevent stacking
+      if (this._activeTransition) {
+        this._activeTransition.cancel();
+      }
       const overlay = new TransitionOverlay(viewManager);
+      this._activeTransition = overlay;
       overlay.transition(() => {
+        this._activeTransition = null;
         this._applyPhaseChange(phase);
       });
     } else {
@@ -391,6 +398,7 @@ export class RPGViewManager {
   }
 
   private _showTownMenu(): void {
+    console.log("[RPGViewMgr] _showTownMenu, currentTownData:", !!this.currentTownData, "currentTownName:", this.currentTownName);
     if (!this.currentTownData) return;
     this.townMenuView = new TownMenuView();
     this.townMenuView.init(viewManager, this.rpgState, this.currentTownData, this.currentTownName, this.currentArcaneLibData ?? undefined);

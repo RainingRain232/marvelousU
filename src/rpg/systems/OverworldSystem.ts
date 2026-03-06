@@ -52,12 +52,16 @@ export function moveParty(
 
   EventBus.emit("rpgPartyMoved", { position: { x: newX, y: newY }, previousPosition: prev });
 
-  // Check entity interaction
+  // Check entity interaction — only trigger when stepping onto a NEW entity
+  // (not when already standing on tiles belonging to the same entity)
   if (tile.entityId) {
-    const entity = overworld.entities.get(tile.entityId);
-    if (entity) {
-      _handleEntityInteraction(rpg, overworld, entity, stateMachine);
-      return; // Don't check encounters on entity tiles
+    const prevTile = overworld.grid[prev.y]?.[prev.x];
+    if (prevTile?.entityId !== tile.entityId) {
+      const entity = overworld.entities.get(tile.entityId);
+      if (entity) {
+        _handleEntityInteraction(rpg, overworld, entity, stateMachine);
+        return; // Don't check encounters on entity tiles
+      }
     }
   }
 

@@ -6,7 +6,9 @@ import type { ViewManager } from "@view/ViewManager";
 import type { OverworldState, OverworldEntity } from "@rpg/state/OverworldState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
+import { GamePhase } from "@/types";
 import { animationManager } from "@view/animation/AnimationManager";
+import { HamletRenderer } from "@view/entities/HamletRenderer";
 
 // ---------------------------------------------------------------------------
 // Tile colours
@@ -614,11 +616,6 @@ function _drawTileDecoration(
   }
 }
 
-// Town icon colours
-const TOWN_WALL = 0x8b7355;
-const TOWN_ROOF = 0xaa3333;
-const TOWN_DOOR = 0x553322;
-
 // ---------------------------------------------------------------------------
 // OverworldView
 // ---------------------------------------------------------------------------
@@ -633,6 +630,7 @@ export class OverworldView {
   private fogContainer = new Container();
   private partyContainer = new Container();
   private entityLabels: Text[] = [];
+  private _hamlets: Map<string, HamletRenderer> = new Map();
 
   private _tileGraphics = new Graphics();
   private _fogGraphics = new Graphics();
@@ -684,6 +682,13 @@ export class OverworldView {
     this._drawEntities();
     this._drawFog();
 
+    // Per-frame hamlet animation
+    this._unsubs.push(vm.onUpdate((_state, dt) => {
+      for (const hamlet of this._hamlets.values()) {
+        hamlet.tick(dt, GamePhase.PREP);
+      }
+    }));
+
     // Listen for movement
     this._unsubs.push(EventBus.on("rpgPartyMoved", () => {
       this._updatePartyPosition();
@@ -711,6 +716,10 @@ export class OverworldView {
 
     if (this._idleTimer) clearTimeout(this._idleTimer);
     if (this._moveResetTimer) clearTimeout(this._moveResetTimer);
+
+    // Destroy hamlet renderers
+    for (const hamlet of this._hamlets.values()) hamlet.destroy();
+    this._hamlets.clear();
 
     this.vm.removeFromLayer("background", this.mapContainer);
     this.vm.removeFromLayer("buildings", this.entityContainer);
@@ -853,34 +862,76 @@ export class OverworldView {
     const halfTs = ts / 2;
     const { x0, y0, x1, y1 } = this._getVisibleTileBounds();
 
+    // Track which hamlets are visible this frame
+    const visibleHamlets = new Set<string>();
+
     for (const entity of this.overworld.entities.values()) {
       const ex = entity.position.x;
       const ey = entity.position.y;
-      // Viewport cull
-      if (ex < x0 || ex > x1 || ey < y0 || ey > y1) continue;
+
+      // Towns are 4×4 tiles — check if any part is visible
+      const townSize = entity.type === "town" ? 4 : 1;
+      if (ex + townSize - 1 < x0 || ex > x1 || ey + townSize - 1 < y0 || ey > y1) continue;
 
       const tile = this.overworld.grid[ey]?.[ex];
       if (!tile?.discovered) continue;
 
-      const cx = ex * ts + halfTs;
-      const cy = ey * ts + halfTs;
+      if (entity.type === "town") {
+        // Use HamletRenderer for towns
+        visibleHamlets.add(entity.id);
+        if (!this._hamlets.has(entity.id)) {
+          const hamlet = new HamletRenderer(entity.id);
+          hamlet.container.position.set(ex * ts, ey * ts);
+          this.entityContainer.addChild(hamlet.container);
+          this._hamlets.set(entity.id, hamlet);
+        }
 
-      this._drawEntityMarker(g, entity, cx, cy, halfTs * 0.6);
+        // Label centered on the 4×4 area
+        const labelX = ex * ts + 2 * ts;
+        const labelY = (ey + 4) * ts + 4;
+        const label = new Text({
+          text: entity.name,
+          style: {
+            fontFamily: "monospace",
+            fontSize: 11,
+            fill: 0xffffff,
+            fontWeight: "bold",
+            align: "center",
+          },
+        });
+        label.anchor.set(0.5, 0);
+        label.position.set(labelX, labelY);
+        this.entityContainer.addChild(label);
+        this.entityLabels.push(label);
+      } else {
+        const cx = ex * ts + halfTs;
+        const cy = ey * ts + halfTs;
 
-      // Label
-      const label = new Text({
-        text: entity.name,
-        style: {
-          fontFamily: "monospace",
-          fontSize: 9,
-          fill: 0xffffff,
-          align: "center",
-        },
-      });
-      label.anchor.set(0.5, 0);
-      label.position.set(cx, cy + halfTs * 0.7);
-      this.entityContainer.addChild(label);
-      this.entityLabels.push(label);
+        this._drawEntityMarker(g, entity, cx, cy, halfTs * 0.6);
+
+        // Label
+        const label = new Text({
+          text: entity.name,
+          style: {
+            fontFamily: "monospace",
+            fontSize: 9,
+            fill: 0xffffff,
+            align: "center",
+          },
+        });
+        label.anchor.set(0.5, 0);
+        label.position.set(cx, cy + halfTs * 0.7);
+        this.entityContainer.addChild(label);
+        this.entityLabels.push(label);
+      }
+    }
+
+    // Remove hamlets that are no longer visible
+    for (const [id, hamlet] of this._hamlets) {
+      if (!visibleHamlets.has(id)) {
+        hamlet.destroy();
+        this._hamlets.delete(id);
+      }
     }
   }
 
@@ -892,24 +943,6 @@ export class OverworldView {
     r: number,
   ): void {
     switch (entity.type) {
-      case "town":
-        // Simplified town icon: house shape
-        // Building body
-        g.rect(cx - r * 0.8, cy - r * 0.3, r * 1.6, r * 1.3);
-        g.fill({ color: TOWN_WALL });
-        // Roof (triangle)
-        g.moveTo(cx - r, cy - r * 0.3);
-        g.lineTo(cx, cy - r * 1.1);
-        g.lineTo(cx + r, cy - r * 0.3);
-        g.closePath();
-        g.fill({ color: TOWN_ROOF });
-        // Door
-        g.rect(cx - r * 0.2, cy + r * 0.2, r * 0.4, r * 0.8);
-        g.fill({ color: TOWN_DOOR });
-        // Outline
-        g.roundRect(cx - r, cy - r * 1.1, r * 2, r * 2.1, 1);
-        g.stroke({ color: 0xffffff, width: 1, alpha: 0.4 });
-        break;
       case "dungeon_entrance":
         // Triangle for dungeons
         g.moveTo(cx, cy - r);

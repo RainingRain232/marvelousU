@@ -140,8 +140,8 @@ export function findPlacement(
   minDist: number,
 ): Vec2 | null {
   for (let attempt = 0; attempt < 500; attempt++) {
-    const x = rng.int(4, width - 4);
-    const y = rng.int(4, height - 4);
+    const x = rng.int(6, width - 8);
+    const y = rng.int(6, height - 8);
     const tile = grid[y][x];
     if (!tile.walkable) continue;
     if (tile.entityId) continue;
@@ -240,8 +240,21 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
     townPositions.push(pos);
 
     const townId = `town_${i}`;
-    grid[pos.y][pos.x].entityId = townId;
-    grid[pos.y][pos.x].encounterRate = 0;
+
+    // Towns occupy a 4×4 tile area (matching HamletRenderer's 128×128px at 32px tiles)
+    for (let dy = 0; dy < 4; dy++) {
+      for (let dx = 0; dx < 4; dx++) {
+        const tx = pos.x + dx;
+        const ty = pos.y + dy;
+        if (tx < width && ty < height) {
+          grid[ty][tx].entityId = townId;
+          grid[ty][tx].encounterRate = 0;
+          grid[ty][tx].walkable = true;
+          grid[ty][tx].type = OverworldTileType.GRASS;
+          grid[ty][tx].movementCost = 1;
+        }
+      }
+    }
 
     const shopSeed = seed + i * 7919; // unique seed per town
     const townData: TownData = {
@@ -466,9 +479,9 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
     }
   }
 
-  // Start position: near first town or center
+  // Start position: just outside the first town (below the 4×4 area)
   const startPosition = townPositions.length > 0
-    ? { x: townPositions[0].x, y: townPositions[0].y + 1 }
+    ? { x: townPositions[0].x + 1, y: townPositions[0].y + 4 }
     : { x: Math.floor(width / 2), y: Math.floor(height / 2) };
 
   // Make sure start is walkable

@@ -153,6 +153,8 @@ export class RPGGame {
     }));
 
     this.rpgViewManager.onLeaveTown = () => {
+      // Move party outside the town's 4×4 area to prevent re-entry on next step
+      this._movePartyOutsideTown();
       this.rpgViewManager.currentTownData = null;
       this.rpgViewManager.currentTownName = "";
       this.rpgViewManager.currentArcaneLibData = null;
@@ -395,8 +397,51 @@ export class RPGGame {
   // Town
   // ---------------------------------------------------------------------------
 
+  /** Move the party to the first walkable tile outside the current town's 4×4 area. */
+  private _movePartyOutsideTown(): void {
+    const ow = this.overworldState;
+    const pos = ow.partyPosition;
+    const tile = ow.grid[pos.y]?.[pos.x];
+    if (!tile?.entityId) return;
+
+    const entity = ow.entities.get(tile.entityId);
+    if (!entity || (entity.type !== "town" && entity.type !== "arcane_library")) return;
+
+    const townX = entity.position.x;
+    const townY = entity.position.y;
+    const townSize = 4;
+
+    // Scan all tiles around the 4×4 perimeter for a walkable non-entity tile
+    const candidates: { x: number; y: number }[] = [];
+    // Bottom edge (prefer: closest to party x)
+    for (let dx = 0; dx < townSize; dx++) candidates.push({ x: townX + dx, y: townY + townSize });
+    // Top edge
+    for (let dx = 0; dx < townSize; dx++) candidates.push({ x: townX + dx, y: townY - 1 });
+    // Right edge
+    for (let dy = 0; dy < townSize; dy++) candidates.push({ x: townX + townSize, y: townY + dy });
+    // Left edge
+    for (let dy = 0; dy < townSize; dy++) candidates.push({ x: townX - 1, y: townY + dy });
+
+    // Sort by distance to current party position
+    candidates.sort((a, b) => {
+      const da = Math.abs(a.x - pos.x) + Math.abs(a.y - pos.y);
+      const db = Math.abs(b.x - pos.x) + Math.abs(b.y - pos.y);
+      return da - db;
+    });
+
+    for (const c of candidates) {
+      const t = ow.grid[c.y]?.[c.x];
+      if (t && t.walkable && !t.entityId) {
+        ow.partyPosition = { x: c.x, y: c.y };
+        this.rpgState.overworldPosition = { x: c.x, y: c.y };
+        return;
+      }
+    }
+  }
+
   private _onTownEntered(townId: string): void {
     const entity = this.overworldState.entities.get(townId);
+    console.log("[RPGBoot] _onTownEntered:", townId, "entity:", !!entity, entity?.type);
     if (!entity) return;
 
     if (entity.type === "town") {
