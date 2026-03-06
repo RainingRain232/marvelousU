@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fantasy Menu Mockups</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a18;
+    color: #fff;
+    font-family: monospace;
+    overflow-x: hidden;
+  }
+
+  .mockup-selector {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: #0d0d22;
+    border-bottom: 2px solid #ffd700;
+    padding: 10px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .mockup-selector span {
+    color: #ffd700;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 2px;
+  }
+  .mockup-selector button {
+    background: #12121e;
+    border: 1px solid #334455;
+    color: #8899aa;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 6px 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+  .mockup-selector button.active,
+  .mockup-selector button:hover {
+    border-color: #ffd700;
+    color: #ffd700;
+    background: #1a1e2e;
+  }
+
+  .mockup {
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    padding-top: 50px;
+    position: relative;
+    overflow: hidden;
+  }
+  .mockup.active { display: block; }
+
+  /* ====== SHARED MENU CARD ====== */
+  .menu-card {
+    width: 380px;
+    background: rgba(16, 16, 42, 0.95);
+    border: 1.5px solid rgba(255, 215, 0, 0.4);
+    border-radius: 8px;
+    padding: 18px 20px;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+  }
+  .menu-card h1 {
+    text-align: center;
+    color: #ffd700;
+    font-size: 28px;
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+  }
+  .menu-card .divider {
+    height: 1px;
+    background: rgba(255, 215, 0, 0.2);
+    margin: 8px 0;
+  }
+  .mode-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    margin: 5px 0;
+    border-radius: 4px;
+    background: #12121e;
+    border: 1px solid #334455;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn:hover {
+    background: #1a2a3a;
+    border-color: #6688aa;
+  }
+  .mode-btn.selected {
+    background: #1a1e2e;
+    border-color: #ffd700;
+  }
+  .mode-btn .mode-name {
+    color: #8899aa;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .mode-btn.selected .mode-name { color: #ffd700; font-weight: bold; }
+  .mode-btn .mode-desc {
+    color: #8899aa;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .util-row {
+    display: flex;
+    gap: 6px;
+    margin: 5px 0;
+  }
+  .util-btn {
+    flex: 1;
+    padding: 8px 4px;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-width: 2px;
+    border-style: solid;
+    transition: all 0.2s;
+  }
+  .util-btn:hover { filter: brightness(1.3); }
+  .btn-units    { background: #1a1a3a; border-color: #4488cc; color: #88bbff; }
+  .btn-buildings{ background: #1a2a1a; border-color: #66aa55; color: #99dd88; }
+  .btn-spells   { background: #1a1a2a; border-color: #9966ff; color: #bb88ff; }
+  .btn-quickplay{ background: #2a1a0a; border-color: #cc8833; color: #ffcc66; }
+  .btn-multi    { background: #1a1a3a; border-color: #6666cc; color: #9999ff; }
+  .btn-settings { background: #1a1a1a; border-color: #666666; color: #aaaaaa; }
+
+  /* ====== CONCEPT A: TWIN DRAGONS ====== */
+  .dragon-left, .dragon-right {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+    pointer-events: none;
+  }
+  .dragon-left { left: calc(50% - 320px); }
+  .dragon-right { right: calc(50% - 320px); transform: translateY(-50%) scaleX(-1); }
+
+  .dragon-svg {
+    width: 200px;
+    height: 400px;
+    filter: drop-shadow(0 0 20px rgba(255, 80, 0, 0.4));
+    animation: dragonFloat 4s ease-in-out infinite;
+  }
+  .dragon-right .dragon-svg {
+    animation-delay: -2s;
+  }
+  @keyframes dragonFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+  }
+
+  /* Dragon fire breath particles */
+  .dragon-fire {
+    position: absolute;
+    width: 100px;
+    height: 200px;
+    top: 25%;
+  }
+  .dragon-left .dragon-fire { right: -20px; }
+  .dragon-right .dragon-fire { left: -20px; }
+
+  .fire-particle {
+    position: absolute;
+    border-radius: 50%;
+    animation: fireFloat 2s ease-out infinite;
+    opacity: 0;
+  }
+  @keyframes fireFloat {
+    0% { opacity: 0; transform: translateY(0) scale(1); }
+    20% { opacity: 0.8; }
+    100% { opacity: 0; transform: translateY(-80px) scale(0.2); }
+  }
+
+  /* ====== CONCEPT B: GARGOYLES + STONE FRAME ====== */
+  .stone-frame {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    height: 600px;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .stone-pillar {
+    position: absolute;
+    width: 50px;
+    top: 60px;
+    bottom: 20px;
+    background: linear-gradient(90deg, #2a2a35, #3a3a48, #2a2a35);
+    border-radius: 4px;
+  }
+  .stone-pillar-left { left: 0; }
+  .stone-pillar-right { right: 0; }
+  .stone-pillar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -8px; right: -8px; height: 30px;
+    background: linear-gradient(180deg, #3a3a48, #2a2a35);
+    border-radius: 4px 4px 0 0;
+  }
+  .stone-pillar::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: -8px; right: -8px; height: 30px;
+    background: linear-gradient(0deg, #3a3a48, #2a2a35);
+    border-radius: 0 0 4px 4px;
+  }
+
+  .gargoyle {
+    position: absolute;
+    top: 10px;
+    z-index: 6;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.8));
+  }
+  .gargoyle-left { left: -10px; }
+  .gargoyle-right { right: -10px; transform: scaleX(-1); }
+
+  .gargoyle-svg {
+    width: 100px;
+    height: 90px;
+  }
+
+  .gargoyle-eyes {
+    animation: gargoyleGlow 3s ease-in-out infinite;
+  }
+  @keyframes gargoyleGlow {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  .stone-arch {
+    position: absolute;
+    top: 0;
+    left: 30px;
+    right: 30px;
+    height: 70px;
+    border: 4px solid #3a3a48;
+    border-bottom: none;
+    border-radius: 220px 220px 0 0;
+    background: linear-gradient(180deg, rgba(58,58,72,0.3), transparent);
+  }
+
+  /* ====== CONCEPT C: FIREPIT ABOVE ====== */
+  .firepit-container {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    pointer-events: none;
+  }
+  .firepit-bowl {
+    width: 120px;
+    height: 40px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .firepit-flames {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 100px;
+  }
+  .flame {
+    position: absolute;
+    bottom: 0;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    animation: flameFlicker 0.8s ease-in-out infinite alternate;
+  }
+  .flame-1 {
+    left: 50%; transform: translateX(-50%);
+    width: 30px; height: 60px;
+    background: radial-gradient(ellipse at bottom, #ff6600, #ff3300 40%, transparent 70%);
+    animation-duration: 0.6s;
+  }
+  .flame-2 {
+    left: 30%; transform: translateX(-50%);
+    width: 22px; height: 45px;
+    background: radial-gradient(ellipse at bottom, #ffaa00, #ff6600 40%, transparent 70%);
+    animation-duration: 0.8s;
+    animation-delay: -0.3s;
+  }
+  .flame-3 {
+    left: 70%; transform: translateX(-50%);
+    width: 22px; height: 45px;
+    background: radial-gradient(ellipse at bottom, #ffaa00, #ff6600 40%, transparent 70%);
+    animation-duration: 0.7s;
+    animation-delay: -0.5s;
+  }
+  .flame-core {
+    left: 50%; transform: translateX(-50%);
+    width: 16px; height: 35px;
+    background: radial-gradient(ellipse at bottom, #ffffcc, #ffdd44 50%, transparent 80%);
+    animation-duration: 0.5s;
+    animation-delay: -0.2s;
+    z-index: 2;
+  }
+  @keyframes flameFlicker {
+    0%   { transform: translateX(-50%) scaleX(1) scaleY(1); opacity: 1; }
+    25%  { transform: translateX(-50%) scaleX(0.9) scaleY(1.05); }
+    50%  { transform: translateX(-50%) scaleX(1.05) scaleY(0.95); opacity: 0.9; }
+    75%  { transform: translateX(-50%) scaleX(0.95) scaleY(1.02); }
+    100% { transform: translateX(-50%) scaleX(1) scaleY(0.98); opacity: 1; }
+  }
+
+  /* Ember particles rising from fire */
+  .ember {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #ffaa00;
+    animation: emberRise linear infinite;
+    opacity: 0;
+  }
+  @keyframes emberRise {
+    0%   { opacity: 0; transform: translateY(0) translateX(0); }
+    10%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-120px) translateX(var(--drift)); }
+  }
+
+  /* Firepit glow on the menu card */
+  .firepit-glow {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 80px;
+    background: radial-gradient(ellipse, rgba(255, 100, 0, 0.15), transparent 70%);
+    pointer-events: none;
+    animation: glowPulse 2s ease-in-out infinite;
+  }
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* ====== CONCEPT D: TORCHES + CHAINS + BANNER ====== */
+  .torch {
+    position: absolute;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .torch-left { left: calc(50% - 240px); }
+  .torch-right { right: calc(50% - 240px); }
+
+  .torch-bracket {
+    width: 20px;
+    height: 60px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .torch-bracket-body {
+    width: 8px;
+    height: 50px;
+    background: linear-gradient(180deg, #5a4a3a, #3a2a1a);
+    margin: 0 auto;
+    border-radius: 2px;
+    position: relative;
+  }
+  .torch-bracket-body::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -8px;
+    width: 24px;
+    height: 12px;
+    background: #3a2a1a;
+    border-radius: 0 0 4px 4px;
+  }
+  .torch-flames {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 50px;
+  }
+  .torch-flame {
+    position: absolute;
+    bottom: 0;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  }
+  .torch-flame-outer {
+    left: 50%; transform: translateX(-50%);
+    width: 20px; height: 35px;
+    background: radial-gradient(ellipse at bottom, #ff6600, #ff3300 50%, transparent 75%);
+    animation: flameFlicker 0.6s ease-in-out infinite alternate;
+  }
+  .torch-flame-inner {
+    left: 50%; transform: translateX(-50%);
+    width: 10px; height: 20px;
+    background: radial-gradient(ellipse at bottom, #ffffcc, #ffdd44 60%, transparent 85%);
+    animation: flameFlicker 0.4s ease-in-out infinite alternate;
+    animation-delay: -0.2s;
+    z-index: 2;
+  }
+  .torch-glow {
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(255, 100, 0, 0.2), transparent 60%);
+    animation: glowPulse 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .banner {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+    pointer-events: none;
+  }
+
+  .banner-cloth {
+    width: 320px;
+    height: 50px;
+    background: linear-gradient(180deg, #3a1a1a, #2a0a0a);
+    border: 2px solid #8b6914;
+    border-top: 4px solid #8b6914;
+    clip-path: polygon(0 0, 100% 0, 95% 100%, 50% 85%, 5% 100%);
+    text-align: center;
+    line-height: 40px;
+    color: #ffd700;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+
+  .chain {
+    position: absolute;
+    width: 4px;
+    height: 30px;
+    top: -30px;
+  }
+  .chain-left { left: 10px; }
+  .chain-right { right: 10px; }
+  .chain-link {
+    width: 4px;
+    height: 8px;
+    border: 1px solid #8b8b6b;
+    border-radius: 2px;
+    margin-bottom: 1px;
+  }
+
+  /* ====== CONCEPT E: MAGIC RUNES + PARTICLE BORDER ====== */
+  #mockup-e .menu-card {
+    /* override so we can use it as the rune anchor */
+    overflow: visible;
+  }
+  .rune-border {
+    position: absolute;
+    left: -20px;
+    top: -20px;
+    right: -20px;
+    bottom: -20px;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .rune-corner {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    color: #ffd700;
+    font-size: 30px;
+    text-align: center;
+    line-height: 50px;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+    animation: runeGlow 3s ease-in-out infinite;
+  }
+  .rune-tl { top: -10px; left: -10px; }
+  .rune-tr { top: -10px; right: -10px; animation-delay: -0.75s; }
+  .rune-bl { bottom: -10px; left: -10px; animation-delay: -1.5s; }
+  .rune-br { bottom: -10px; right: -10px; animation-delay: -2.25s; }
+  @keyframes runeGlow {
+    0%, 100% { opacity: 0.4; text-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
+    50% { opacity: 1; text-shadow: 0 0 20px rgba(255, 215, 0, 0.9), 0 0 40px rgba(255, 150, 0, 0.4); }
+  }
+
+  .magic-particles {
+    position: absolute;
+    inset: -80px;
+    overflow: visible;
+  }
+  .magic-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: #ffd700;
+    border-radius: 50%;
+    animation: magicOrbit linear infinite;
+    opacity: 0;
+    box-shadow: 0 0 6px #ffd700;
+  }
+  @keyframes magicOrbit {
+    0%   { opacity: 0; }
+    10%  { opacity: 0.8; }
+    90%  { opacity: 0.8; }
+    100% { opacity: 0; }
+  }
+
+  .rune-line-top, .rune-line-bottom {
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.4), transparent);
+  }
+  .rune-line-top { top: 15px; }
+  .rune-line-bottom { bottom: 15px; }
+  .rune-line-left, .rune-line-right {
+    position: absolute;
+    top: 40px;
+    bottom: 40px;
+    width: 2px;
+    background: linear-gradient(180deg, transparent, rgba(255, 215, 0, 0.4), transparent);
+  }
+  .rune-line-left { left: 15px; }
+  .rune-line-right { right: 15px; }
+
+  /* Full-screen background particles for concept E */
+  .bg-particles {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .bg-particle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0;
+  }
+  .bg-particle--gold {
+    background: #ffd700;
+    box-shadow: 0 0 4px rgba(255, 215, 0, 0.6);
+  }
+  .bg-particle--amber {
+    background: #ffaa44;
+    box-shadow: 0 0 4px rgba(255, 170, 68, 0.5);
+  }
+  .bg-particle--white {
+    background: #ffffdd;
+    box-shadow: 0 0 6px rgba(255, 255, 200, 0.4);
+  }
+  @keyframes bgParticleFloat {
+    0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+    15%  { opacity: var(--peak-opacity, 0.6); }
+    85%  { opacity: var(--peak-opacity, 0.4); }
+    100% { opacity: 0; transform: translateY(var(--float-dist, -300px)) scale(0.2); }
+  }
+
+  /* Ambient floating particles for all mockups */
+  .ambient-particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: rgba(255, 215, 0, 0.5);
+    animation: ambientFloat linear infinite;
+    opacity: 0;
+  }
+  @keyframes ambientFloat {
+    0%   { opacity: 0; transform: translateY(0); }
+    20%  { opacity: 0.6; }
+    80%  { opacity: 0.4; }
+    100% { opacity: 0; transform: translateY(-200px); }
+  }
+
+  /* Label for each concept */
+  .concept-label {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffd700;
+    font-size: 14px;
+    letter-spacing: 3px;
+    opacity: 0.6;
+    text-align: center;
+    z-index: 20;
+  }
+</style>
+</head>
+<body>
+
+<!-- Concept Selector -->
+<div class="mockup-selector">
+  <span>CONCEPT:</span>
+  <button class="active" onclick="showMockup('a')">A - Twin Dragons</button>
+  <button onclick="showMockup('b')">B - Gargoyles</button>
+  <button onclick="showMockup('c')">C - Firepit</button>
+  <button onclick="showMockup('d')">D - Torches + Banner</button>
+  <button onclick="showMockup('e')">E - Magic Runes</button>
+</div>
+
+<!-- ============================================================ -->
+<!-- CONCEPT A: Twin Dragons flanking the menu                     -->
+<!-- ============================================================ -->
+<div class="mockup active" id="mockup-a">
+  <!-- Left Dragon -->
+  <div class="dragon-left">
+    <svg class="dragon-svg" viewBox="0 0 200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Body -->
+      <ellipse cx="100" cy="220" rx="45" ry="80" fill="#8B2020"/>
+      <ellipse cx="100" cy="220" rx="38" ry="70" fill="#A52828"/>
+      <!-- Belly -->
+      <ellipse cx="100" cy="235" rx="25" ry="50" fill="#CC6633"/>
+      <!-- Neck -->
+      <path d="M85 150 Q70 100 80 60 Q90 40 105 50 Q115 60 110 100 Q108 140 105 150" fill="#A52828"/>
+      <!-- Head -->
+      <ellipse cx="90" cy="55" rx="25" ry="18" fill="#8B2020"/>
+      <ellipse cx="90" cy="52" rx="22" ry="14" fill="#A52828"/>
+      <!-- Snout -->
+      <path d="M68 50 Q60 48 55 52 Q58 56 68 55" fill="#8B2020"/>
+      <!-- Eye -->
+      <circle cx="78" cy="48" r="4" fill="#FF4400"/>
+      <circle cx="78" cy="48" r="2" fill="#FFCC00"/>
+      <!-- Horns -->
+      <path d="M85 38 Q82 20 75 10" stroke="#5a3a2a" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M100 38 Q102 22 108 14" stroke="#5a3a2a" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <!-- Left Wing -->
+      <path d="M60 170 Q10 120 5 80 Q8 90 25 100 Q15 80 12 50 Q18 70 35 85 Q30 65 28 35 Q35 60 50 80 L55 160" fill="#7a1818" opacity="0.8"/>
+      <path d="M60 170 Q10 120 5 80" stroke="#992222" stroke-width="1.5" fill="none"/>
+      <!-- Right Wing -->
+      <path d="M140 170 Q190 120 195 80 Q192 90 175 100 Q185 80 188 50 Q182 70 165 85 Q170 65 172 35 Q165 60 150 80 L145 160" fill="#7a1818" opacity="0.8"/>
+      <path d="M140 170 Q190 120 195 80" stroke="#992222" stroke-width="1.5" fill="none"/>
+      <!-- Legs -->
+      <path d="M75 290 Q70 320 65 340 Q60 345 55 340 L60 338 L65 342 L70 338" fill="#8B2020"/>
+      <path d="M125 290 Q130 320 135 340 Q140 345 145 340 L140 338 L135 342 L130 338" fill="#8B2020"/>
+      <!-- Tail -->
+      <path d="M100 300 Q110 340 130 360 Q145 375 160 370 Q155 365 150 370 Q145 365 155 360" fill="#8B2020" opacity="0.9"/>
+      <!-- Fire breath toward center -->
+      <g opacity="0.7">
+        <ellipse cx="55" cy="58" rx="15" ry="6" fill="#FF4400" opacity="0.5">
+          <animate attributeName="rx" values="15;20;15" dur="0.8s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0.5;0.8;0.5" dur="0.8s" repeatCount="indefinite"/>
+        </ellipse>
+        <ellipse cx="45" cy="58" rx="10" ry="4" fill="#FFAA00" opacity="0.4">
+          <animate attributeName="rx" values="10;14;10" dur="0.6s" repeatCount="indefinite"/>
+        </ellipse>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Right Dragon (mirrored) -->
+  <div class="dragon-right">
+    <svg class="dragon-svg" viewBox="0 0 200 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="100" cy="220" rx="45" ry="80" fill="#8B2020"/>
+      <ellipse cx="100" cy="220" rx="38" ry="70" fill="#A52828"/>
+      <ellipse cx="100" cy="235" rx="25" ry="50" fill="#CC6633"/>
+      <path d="M85 150 Q70 100 80 60 Q90 40 105 50 Q115 60 110 100 Q108 140 105 150" fill="#A52828"/>
+      <ellipse cx="90" cy="55" rx="25" ry="18" fill="#8B2020"/>
+      <ellipse cx="90" cy="52" rx="22" ry="14" fill="#A52828"/>
+      <path d="M68 50 Q60 48 55 52 Q58 56 68 55" fill="#8B2020"/>
+      <circle cx="78" cy="48" r="4" fill="#FF4400"/>
+      <circle cx="78" cy="48" r="2" fill="#FFCC00"/>
+      <path d="M85 38 Q82 20 75 10" stroke="#5a3a2a" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M100 38 Q102 22 108 14" stroke="#5a3a2a" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M60 170 Q10 120 5 80 Q8 90 25 100 Q15 80 12 50 Q18 70 35 85 Q30 65 28 35 Q35 60 50 80 L55 160" fill="#7a1818" opacity="0.8"/>
+      <path d="M140 170 Q190 120 195 80 Q192 90 175 100 Q185 80 188 50 Q182 70 165 85 Q170 65 172 35 Q165 60 150 80 L145 160" fill="#7a1818" opacity="0.8"/>
+      <path d="M75 290 Q70 320 65 340 Q60 345 55 340 L60 338 L65 342 L70 338" fill="#8B2020"/>
+      <path d="M125 290 Q130 320 135 340 Q140 345 145 340 L140 338 L135 342 L130 338" fill="#8B2020"/>
+      <path d="M100 300 Q110 340 130 360 Q145 375 160 370 Q155 365 150 370 Q145 365 155 360" fill="#8B2020" opacity="0.9"/>
+      <g opacity="0.7">
+        <ellipse cx="55" cy="58" rx="15" ry="6" fill="#FF4400" opacity="0.5">
+          <animate attributeName="rx" values="15;20;15" dur="0.8s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0.5;0.8;0.5" dur="0.8s" repeatCount="indefinite"/>
+        </ellipse>
+        <ellipse cx="45" cy="58" rx="10" ry="4" fill="#FFAA00" opacity="0.4">
+          <animate attributeName="rx" values="10;14;10" dur="0.6s" repeatCount="indefinite"/>
+        </ellipse>
+      </g>
+    </svg>
+  </div>
+
+  <div class="menu-card">
+    <h1>SELECT MODE</h1>
+    <div class="divider"></div>
+    <div class="mode-btn selected"><span class="mode-name">STANDARD</span><span class="mode-desc">Classic mode</span></div>
+    <div class="mode-btn"><span class="mode-name">DEATHMATCH</span><span class="mode-desc">10000 gold start</span></div>
+    <div class="mode-btn"><span class="mode-name">BATTLEFIELD</span><span class="mode-desc">No buildings, last unit wins</span></div>
+    <div class="mode-btn"><span class="mode-name">ROGUELIKE</span><span class="mode-desc">50% buildings disabled</span></div>
+    <div class="mode-btn"><span class="mode-name">CAMPAIGN</span><span class="mode-desc">Story progression</span></div>
+    <div class="mode-btn"><span class="mode-name">WORLD</span><span class="mode-desc">Hex-based strategy</span></div>
+    <div class="mode-btn"><span class="mode-name">WAVE MODE</span><span class="mode-desc">Endless survival waves</span></div>
+    <div class="divider"></div>
+    <div class="util-row">
+      <div class="util-btn btn-units">UNITS</div>
+      <div class="util-btn btn-buildings">BUILDINGS</div>
+      <div class="util-btn btn-spells">SPELLS</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-quickplay">QUICKPLAY >></div>
+      <div class="util-btn btn-multi">MULTIPLAYER</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-settings" style="flex:1">SETTINGS</div>
+    </div>
+  </div>
+
+  <div class="concept-label">CONCEPT A: Twin Dragons flanking the menu</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- CONCEPT B: Gargoyles + Stone Frame                            -->
+<!-- ============================================================ -->
+<div class="mockup" id="mockup-b">
+  <div class="stone-frame">
+    <div class="stone-arch"></div>
+    <div class="stone-pillar stone-pillar-left"></div>
+    <div class="stone-pillar stone-pillar-right"></div>
+
+    <!-- Left Gargoyle -->
+    <div class="gargoyle gargoyle-left">
+      <svg class="gargoyle-svg" viewBox="0 0 100 90" fill="none">
+        <!-- Body crouching -->
+        <ellipse cx="55" cy="65" rx="30" ry="20" fill="#4a4a55"/>
+        <ellipse cx="55" cy="60" rx="25" ry="18" fill="#555566"/>
+        <!-- Head -->
+        <circle cx="40" cy="40" r="18" fill="#4a4a55"/>
+        <circle cx="40" cy="38" r="15" fill="#555566"/>
+        <!-- Snout -->
+        <path d="M25 40 Q18 38 15 42 Q18 46 25 44" fill="#4a4a55"/>
+        <!-- Fangs -->
+        <path d="M22 43 L20 48" stroke="#7a7a8a" stroke-width="2" stroke-linecap="round"/>
+        <path d="M26 44 L25 49" stroke="#7a7a8a" stroke-width="2" stroke-linecap="round"/>
+        <!-- Eyes (glowing) -->
+        <circle class="gargoyle-eyes" cx="33" cy="35" r="3" fill="#ff4400"/>
+        <circle class="gargoyle-eyes" cx="43" cy="34" r="3" fill="#ff4400"/>
+        <circle cx="33" cy="35" r="1.5" fill="#ffcc00"/>
+        <circle cx="43" cy="34" r="1.5" fill="#ffcc00"/>
+        <!-- Horns -->
+        <path d="M32 24 Q28 12 22 8" stroke="#3a3a44" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M48 24 Q52 14 58 10" stroke="#3a3a44" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <!-- Wings (folded) -->
+        <path d="M70 50 Q90 35 95 20 Q88 30 80 35 Q85 25 88 12 Q82 25 75 32 L72 48" fill="#3a3a44" opacity="0.7"/>
+        <!-- Claws -->
+        <path d="M30 78 Q25 85 20 82 M34 80 Q30 88 26 85 M78 78 Q82 85 86 82 M74 80 Q78 88 82 85" stroke="#4a4a55" stroke-width="2" fill="none"/>
+        <!-- Tail -->
+        <path d="M85 65 Q95 70 92 80 Q90 85 88 82" stroke="#4a4a55" stroke-width="3" fill="none"/>
+      </svg>
+    </div>
+
+    <!-- Right Gargoyle (mirrored) -->
+    <div class="gargoyle gargoyle-right">
+      <svg class="gargoyle-svg" viewBox="0 0 100 90" fill="none">
+        <ellipse cx="55" cy="65" rx="30" ry="20" fill="#4a4a55"/>
+        <ellipse cx="55" cy="60" rx="25" ry="18" fill="#555566"/>
+        <circle cx="40" cy="40" r="18" fill="#4a4a55"/>
+        <circle cx="40" cy="38" r="15" fill="#555566"/>
+        <path d="M25 40 Q18 38 15 42 Q18 46 25 44" fill="#4a4a55"/>
+        <path d="M22 43 L20 48" stroke="#7a7a8a" stroke-width="2" stroke-linecap="round"/>
+        <path d="M26 44 L25 49" stroke="#7a7a8a" stroke-width="2" stroke-linecap="round"/>
+        <circle class="gargoyle-eyes" cx="33" cy="35" r="3" fill="#ff4400" style="animation-delay:-1.5s"/>
+        <circle class="gargoyle-eyes" cx="43" cy="34" r="3" fill="#ff4400" style="animation-delay:-1.5s"/>
+        <circle cx="33" cy="35" r="1.5" fill="#ffcc00"/>
+        <circle cx="43" cy="34" r="1.5" fill="#ffcc00"/>
+        <path d="M32 24 Q28 12 22 8" stroke="#3a3a44" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M48 24 Q52 14 58 10" stroke="#3a3a44" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M70 50 Q90 35 95 20 Q88 30 80 35 Q85 25 88 12 Q82 25 75 32 L72 48" fill="#3a3a44" opacity="0.7"/>
+        <path d="M30 78 Q25 85 20 82 M34 80 Q30 88 26 85 M78 78 Q82 85 86 82 M74 80 Q78 88 82 85" stroke="#4a4a55" stroke-width="2" fill="none"/>
+        <path d="M85 65 Q95 70 92 80 Q90 85 88 82" stroke="#4a4a55" stroke-width="3" fill="none"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="menu-card">
+    <h1>SELECT MODE</h1>
+    <div class="divider"></div>
+    <div class="mode-btn selected"><span class="mode-name">STANDARD</span><span class="mode-desc">Classic mode</span></div>
+    <div class="mode-btn"><span class="mode-name">DEATHMATCH</span><span class="mode-desc">10000 gold start</span></div>
+    <div class="mode-btn"><span class="mode-name">BATTLEFIELD</span><span class="mode-desc">No buildings, last unit wins</span></div>
+    <div class="mode-btn"><span class="mode-name">ROGUELIKE</span><span class="mode-desc">50% buildings disabled</span></div>
+    <div class="mode-btn"><span class="mode-name">CAMPAIGN</span><span class="mode-desc">Story progression</span></div>
+    <div class="mode-btn"><span class="mode-name">WORLD</span><span class="mode-desc">Hex-based strategy</span></div>
+    <div class="mode-btn"><span class="mode-name">WAVE MODE</span><span class="mode-desc">Endless survival waves</span></div>
+    <div class="divider"></div>
+    <div class="util-row">
+      <div class="util-btn btn-units">UNITS</div>
+      <div class="util-btn btn-buildings">BUILDINGS</div>
+      <div class="util-btn btn-spells">SPELLS</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-quickplay">QUICKPLAY >></div>
+      <div class="util-btn btn-multi">MULTIPLAYER</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-settings" style="flex:1">SETTINGS</div>
+    </div>
+  </div>
+
+  <div class="concept-label">CONCEPT B: Stone pillars with gargoyles perched on top</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- CONCEPT C: Firepit above menu                                 -->
+<!-- ============================================================ -->
+<div class="mockup" id="mockup-c">
+  <div class="firepit-container" id="firepit-c" style="top: calc(50% - 290px);">
+    <div class="firepit-flames">
+      <div class="flame flame-1"></div>
+      <div class="flame flame-2"></div>
+      <div class="flame flame-3"></div>
+      <div class="flame flame-core"></div>
+    </div>
+    <div class="firepit-bowl">
+      <svg viewBox="0 0 120 40" fill="none">
+        <!-- Bowl -->
+        <path d="M10 10 Q10 35 60 35 Q110 35 110 10" fill="#3a2a1a" stroke="#5a4a3a" stroke-width="2"/>
+        <path d="M10 10 Q10 5 60 5 Q110 5 110 10" fill="#4a3a2a" stroke="#5a4a3a" stroke-width="2"/>
+        <!-- Coals -->
+        <ellipse cx="40" cy="15" rx="8" ry="4" fill="#cc3300" opacity="0.8">
+          <animate attributeName="opacity" values="0.6;0.9;0.6" dur="1.5s" repeatCount="indefinite"/>
+        </ellipse>
+        <ellipse cx="60" cy="13" rx="10" ry="5" fill="#ff4400" opacity="0.7">
+          <animate attributeName="opacity" values="0.5;0.8;0.5" dur="2s" repeatCount="indefinite"/>
+        </ellipse>
+        <ellipse cx="80" cy="15" rx="8" ry="4" fill="#cc3300" opacity="0.8">
+          <animate attributeName="opacity" values="0.7;1;0.7" dur="1.8s" repeatCount="indefinite"/>
+        </ellipse>
+      </svg>
+    </div>
+    <!-- Embers -->
+    <div class="ember" style="left:30px; bottom:60px; --drift:15px; animation-duration:2.5s; animation-delay:0s;"></div>
+    <div class="ember" style="left:50px; bottom:60px; --drift:-10px; animation-duration:2s; animation-delay:0.4s;"></div>
+    <div class="ember" style="left:70px; bottom:60px; --drift:20px; animation-duration:3s; animation-delay:0.8s;"></div>
+    <div class="ember" style="left:40px; bottom:60px; --drift:-18px; animation-duration:2.2s; animation-delay:1.2s;"></div>
+    <div class="ember" style="left:85px; bottom:60px; --drift:8px; animation-duration:2.8s; animation-delay:1.6s;"></div>
+    <div class="ember" style="left:55px; bottom:60px; --drift:-5px; animation-duration:1.8s; animation-delay:0.6s;"></div>
+    <div class="ember" style="left:65px; bottom:60px; --drift:12px; animation-duration:2.4s; animation-delay:1s;"></div>
+    <div class="ember" style="left:35px; bottom:60px; --drift:-22px; animation-duration:3.2s; animation-delay:0.2s;"></div>
+  </div>
+
+  <div class="firepit-glow" style="top: calc(50% - 240px);"></div>
+
+  <div class="menu-card">
+    <h1>SELECT MODE</h1>
+    <div class="divider"></div>
+    <div class="mode-btn selected"><span class="mode-name">STANDARD</span><span class="mode-desc">Classic mode</span></div>
+    <div class="mode-btn"><span class="mode-name">DEATHMATCH</span><span class="mode-desc">10000 gold start</span></div>
+    <div class="mode-btn"><span class="mode-name">BATTLEFIELD</span><span class="mode-desc">No buildings, last unit wins</span></div>
+    <div class="mode-btn"><span class="mode-name">ROGUELIKE</span><span class="mode-desc">50% buildings disabled</span></div>
+    <div class="mode-btn"><span class="mode-name">CAMPAIGN</span><span class="mode-desc">Story progression</span></div>
+    <div class="mode-btn"><span class="mode-name">WORLD</span><span class="mode-desc">Hex-based strategy</span></div>
+    <div class="mode-btn"><span class="mode-name">WAVE MODE</span><span class="mode-desc">Endless survival waves</span></div>
+    <div class="divider"></div>
+    <div class="util-row">
+      <div class="util-btn btn-units">UNITS</div>
+      <div class="util-btn btn-buildings">BUILDINGS</div>
+      <div class="util-btn btn-spells">SPELLS</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-quickplay">QUICKPLAY >></div>
+      <div class="util-btn btn-multi">MULTIPLAYER</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-settings" style="flex:1">SETTINGS</div>
+    </div>
+  </div>
+
+  <div class="concept-label">CONCEPT C: Animated firepit brazier above the menu with rising embers</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- CONCEPT D: Torches + Hanging Banner                           -->
+<!-- ============================================================ -->
+<div class="mockup" id="mockup-d">
+  <!-- Banner above -->
+  <div class="banner" style="top: calc(50% - 300px);">
+    <div style="position:relative;">
+      <div class="chain chain-left">
+        <div class="chain-link"></div>
+        <div class="chain-link"></div>
+        <div class="chain-link"></div>
+      </div>
+      <div class="chain chain-right">
+        <div class="chain-link"></div>
+        <div class="chain-link"></div>
+        <div class="chain-link"></div>
+      </div>
+      <div class="banner-cloth">RAIN'S AUTOBATTLER</div>
+    </div>
+  </div>
+
+  <!-- Left Torch -->
+  <div class="torch torch-left" style="top: calc(50% - 120px);">
+    <div class="torch-glow"></div>
+    <div class="torch-bracket">
+      <div class="torch-flames">
+        <div class="torch-flame torch-flame-outer"></div>
+        <div class="torch-flame torch-flame-inner"></div>
+      </div>
+      <div class="torch-bracket-body"></div>
+    </div>
+  </div>
+
+  <!-- Right Torch -->
+  <div class="torch torch-right" style="top: calc(50% - 120px);">
+    <div class="torch-glow" style="animation-delay:-1s;"></div>
+    <div class="torch-bracket">
+      <div class="torch-flames">
+        <div class="torch-flame torch-flame-outer" style="animation-delay:-0.3s;"></div>
+        <div class="torch-flame torch-flame-inner" style="animation-delay:-0.5s;"></div>
+      </div>
+      <div class="torch-bracket-body"></div>
+    </div>
+  </div>
+
+  <div class="menu-card">
+    <h1>SELECT MODE</h1>
+    <div class="divider"></div>
+    <div class="mode-btn selected"><span class="mode-name">STANDARD</span><span class="mode-desc">Classic mode</span></div>
+    <div class="mode-btn"><span class="mode-name">DEATHMATCH</span><span class="mode-desc">10000 gold start</span></div>
+    <div class="mode-btn"><span class="mode-name">BATTLEFIELD</span><span class="mode-desc">No buildings, last unit wins</span></div>
+    <div class="mode-btn"><span class="mode-name">ROGUELIKE</span><span class="mode-desc">50% buildings disabled</span></div>
+    <div class="mode-btn"><span class="mode-name">CAMPAIGN</span><span class="mode-desc">Story progression</span></div>
+    <div class="mode-btn"><span class="mode-name">WORLD</span><span class="mode-desc">Hex-based strategy</span></div>
+    <div class="mode-btn"><span class="mode-name">WAVE MODE</span><span class="mode-desc">Endless survival waves</span></div>
+    <div class="divider"></div>
+    <div class="util-row">
+      <div class="util-btn btn-units">UNITS</div>
+      <div class="util-btn btn-buildings">BUILDINGS</div>
+      <div class="util-btn btn-spells">SPELLS</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-quickplay">QUICKPLAY >></div>
+      <div class="util-btn btn-multi">MULTIPLAYER</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-settings" style="flex:1">SETTINGS</div>
+    </div>
+  </div>
+
+  <div class="concept-label">CONCEPT D: Wall torches flanking the menu + hanging banner above</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- CONCEPT E: Magic Runes + Particle Border                      -->
+<!-- ============================================================ -->
+<div class="mockup" id="mockup-e">
+  <!-- Full-screen background particles -->
+  <div class="bg-particles" id="bg-particles-e"></div>
+  <div class="menu-card" style="position:relative;">
+    <!-- Rune border wraps around the card -->
+    <div class="rune-border" id="rune-border-e">
+      <div class="rune-line-top"></div>
+      <div class="rune-line-bottom"></div>
+      <div class="rune-line-left"></div>
+      <div class="rune-line-right"></div>
+      <div class="rune-corner rune-tl">&loz;</div>
+      <div class="rune-corner rune-tr">&loz;</div>
+      <div class="rune-corner rune-bl">&loz;</div>
+      <div class="rune-corner rune-br">&loz;</div>
+      <div class="magic-particles" id="magic-particles-e"></div>
+    </div>
+    <h1>SELECT MODE</h1>
+    <div class="divider"></div>
+    <div class="mode-btn selected"><span class="mode-name">STANDARD</span><span class="mode-desc">Classic mode</span></div>
+    <div class="mode-btn"><span class="mode-name">DEATHMATCH</span><span class="mode-desc">10000 gold start</span></div>
+    <div class="mode-btn"><span class="mode-name">BATTLEFIELD</span><span class="mode-desc">No buildings, last unit wins</span></div>
+    <div class="mode-btn"><span class="mode-name">ROGUELIKE</span><span class="mode-desc">50% buildings disabled</span></div>
+    <div class="mode-btn"><span class="mode-name">CAMPAIGN</span><span class="mode-desc">Story progression</span></div>
+    <div class="mode-btn"><span class="mode-name">WORLD</span><span class="mode-desc">Hex-based strategy</span></div>
+    <div class="mode-btn"><span class="mode-name">WAVE MODE</span><span class="mode-desc">Endless survival waves</span></div>
+    <div class="divider"></div>
+    <div class="util-row">
+      <div class="util-btn btn-units">UNITS</div>
+      <div class="util-btn btn-buildings">BUILDINGS</div>
+      <div class="util-btn btn-spells">SPELLS</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-quickplay">QUICKPLAY >></div>
+      <div class="util-btn btn-multi">MULTIPLAYER</div>
+    </div>
+    <div class="util-row">
+      <div class="util-btn btn-settings" style="flex:1">SETTINGS</div>
+    </div>
+  </div>
+
+  <div class="concept-label">CONCEPT E: Arcane rune frame with orbiting magic particles</div>
+</div>
+
+<script>
+  // Tab switching
+  function showMockup(id) {
+    document.querySelectorAll('.mockup').forEach(m => m.classList.remove('active'));
+    document.querySelectorAll('.mockup-selector button').forEach(b => b.classList.remove('active'));
+    document.getElementById('mockup-' + id).classList.add('active');
+    document.querySelectorAll('.mockup-selector button').forEach(b => {
+      if (b.textContent.startsWith(id.toUpperCase() + ' ')) b.classList.add('active');
+    });
+  }
+
+  // Mode button click simulation
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.menu-card');
+      card.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+
+  // Generate magic particles for concept E
+  (function() {
+    const container = document.getElementById('magic-particles-e');
+    if (!container) return;
+    const border = document.getElementById('rune-border-e');
+
+    for (let i = 0; i < 20; i++) {
+      const p = document.createElement('div');
+      p.className = 'magic-particle';
+      const dur = 4 + Math.random() * 6;
+      const delay = Math.random() * dur;
+      const side = Math.floor(Math.random() * 4); // 0=top, 1=right, 2=bottom, 3=left
+
+      p.style.animationDuration = dur + 's';
+      p.style.animationDelay = '-' + delay + 's';
+
+      // Position along the border edges
+      if (side === 0) { // top
+        p.style.top = '0px';
+        p.style.left = (10 + Math.random() * 80) + '%';
+        p.style.animationName = 'magicOrbit';
+        p.style.setProperty('--move', '400px');
+      } else if (side === 1) { // right
+        p.style.right = '0px';
+        p.style.top = (10 + Math.random() * 80) + '%';
+      } else if (side === 2) { // bottom
+        p.style.bottom = '0px';
+        p.style.left = (10 + Math.random() * 80) + '%';
+      } else { // left
+        p.style.left = '0px';
+        p.style.top = (10 + Math.random() * 80) + '%';
+      }
+
+      // Add a custom orbit animation for each particle
+      const angle = Math.random() * 360;
+      const radius = 3 + Math.random() * 8;
+      p.style.animation = `magicOrbit ${dur}s linear infinite, magicWander${i} ${dur/2}s ease-in-out infinite alternate`;
+      p.style.animationDelay = `-${delay}s`;
+
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes magicWander${i} {
+          0% { transform: translate(0, 0); }
+          100% { transform: translate(${(Math.random()-0.5)*20}px, ${(Math.random()-0.5)*20}px); }
+        }
+      `;
+      document.head.appendChild(style);
+
+      container.appendChild(p);
+    }
+  })();
+
+  // Background particles for concept E
+  (function() {
+    const container = document.getElementById('bg-particles-e');
+    if (!container) return;
+    const colors = ['bg-particle--gold', 'bg-particle--amber', 'bg-particle--white'];
+    for (let i = 0; i < 120; i++) {
+      const p = document.createElement('div');
+      const size = 2 + Math.random() * 4;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      p.className = 'bg-particle ' + color;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.bottom = (Math.random() * 80) + '%';
+      const dur = 5 + Math.random() * 10;
+      const delay = Math.random() * dur;
+      const drift = -200 - Math.random() * 400;
+      const peakOpacity = 0.2 + Math.random() * 0.5;
+      p.style.setProperty('--float-dist', drift + 'px');
+      p.style.setProperty('--peak-opacity', peakOpacity.toString());
+      p.style.animation = `bgParticleFloat ${dur}s linear infinite`;
+      p.style.animationDelay = `-${delay}s`;
+      container.appendChild(p);
+    }
+  })();
+</script>
+
+</body>
+</html>

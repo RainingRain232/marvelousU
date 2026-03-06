@@ -7,6 +7,7 @@ import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { GameMode, MapType } from "@/types";
 import { hasWorldSave } from "@world/state/WorldSerialization";
 import { Difficulty, DIFFICULTY_SETTINGS, setDifficulty } from "@sim/config/DifficultyConfig";
+import { AmbientParticles } from "@view/fx/AmbientParticles";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -229,6 +230,7 @@ export class MenuScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _particles!: AmbientParticles;
 
   // --- Screen 1: mode select ---
   private _screen1!: Container;
@@ -318,6 +320,10 @@ export class MenuScreen {
     this._bg = new Graphics();
     this.container.addChild(this._bg);
 
+    // Ambient floating particles
+    this._particles = new AmbientParticles(120);
+    this.container.addChild(this._particles.container);
+
     this._buildScreen1();
     this._buildScreen2();
 
@@ -327,6 +333,11 @@ export class MenuScreen {
     vm.addToLayer("ui", this.container);
     this._layout();
     vm.app.renderer.on("resize", () => this._layout());
+    vm.app.ticker.add((ticker) => {
+      if (this.container.visible) {
+        this._particles.update(ticker.deltaMS / 1000);
+      }
+    });
   }
 
   show(): void {
@@ -1130,6 +1141,8 @@ export class MenuScreen {
 
     this._bg.clear();
     this._bg.rect(0, 0, sw, sh).fill({ color: BG_COLOR });
+
+    this._particles.resize(sw, sh);
 
     if (this._screen1?.visible) {
       this._screen1Card.position.set(

@@ -1,6 +1,7 @@
 // Full-screen title screen: "Rain's Autobattler" + START button
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { AmbientParticles } from "@view/fx/AmbientParticles";
 
 const STYLE_TITLE = new TextStyle({
   fontFamily: "monospace",
@@ -30,6 +31,7 @@ export class StartScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _particles!: AmbientParticles;
   private _titleText!: Text;
   private _btn!: Container;
   private _btnBg!: Graphics;
@@ -46,6 +48,10 @@ export class StartScreen {
     // Full-screen dark background
     this._bg = new Graphics();
     this.container.addChild(this._bg);
+
+    // Ambient floating particles
+    this._particles = new AmbientParticles(120);
+    this.container.addChild(this._particles.container);
 
     // Title text
     this._titleText = new Text({ text: "Rain's Autobattler", style: STYLE_TITLE });
@@ -84,6 +90,11 @@ export class StartScreen {
     this._layout();
 
     vm.app.renderer.on("resize", () => this._layout());
+    vm.app.ticker.add((ticker) => {
+      if (this.container.visible) {
+        this._particles.update(ticker.deltaMS / 1000);
+      }
+    });
   }
 
   show(): void {
@@ -114,6 +125,8 @@ export class StartScreen {
     // Redraw background to fill screen
     this._bg.clear();
     this._bg.rect(0, 0, sw, sh).fill({ color: 0x0a0a18 });
+
+    this._particles.resize(sw, sh);
 
     this._titleText.position.set(sw / 2, sh / 2 - 60);
 
