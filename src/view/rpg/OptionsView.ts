@@ -27,7 +27,8 @@ export interface GameOptions {
   battleMode: "turn" | "auto";
   textSpeed: "slow" | "normal" | "fast";
   showMinimap: boolean;
-  spawnRate: number;    // 0–200 (100 = normal)
+  randomEncounterRate: number;  // 0–200 (100 = normal)
+  roamingEncounterRate: number; // 0–200 (100 = normal)
 }
 
 const DEFAULT_OPTIONS: GameOptions = {
@@ -36,7 +37,8 @@ const DEFAULT_OPTIONS: GameOptions = {
   battleMode: "turn",
   textSpeed: "normal",
   showMinimap: true,
-  spawnRate: 100,
+  randomEncounterRate: 100,
+  roamingEncounterRate: 100,
 };
 
 const OPTIONS_STORAGE_KEY = "rpg_options";
@@ -45,7 +47,14 @@ export function loadOptions(): GameOptions {
   try {
     const raw = localStorage.getItem(OPTIONS_STORAGE_KEY);
     if (!raw) return { ...DEFAULT_OPTIONS };
-    return { ...DEFAULT_OPTIONS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    // Migrate old single spawnRate to new split rates
+    if (parsed.spawnRate !== undefined && parsed.randomEncounterRate === undefined) {
+      parsed.randomEncounterRate = parsed.spawnRate;
+      parsed.roamingEncounterRate = parsed.spawnRate;
+      delete parsed.spawnRate;
+    }
+    return { ...DEFAULT_OPTIONS, ...parsed };
   } catch {
     return { ...DEFAULT_OPTIONS };
   }
@@ -70,7 +79,8 @@ interface OptionEntry {
 const OPTION_ENTRIES: OptionEntry[] = [
   { label: "Music Volume", key: "musicVolume", type: "slider" },
   { label: "SFX Volume", key: "sfxVolume", type: "slider" },
-  { label: "Spawn Rate", key: "spawnRate", type: "slider", max: 200 },
+  { label: "Random Encounters", key: "randomEncounterRate", type: "slider", max: 200 },
+  { label: "Roaming Encounters", key: "roamingEncounterRate", type: "slider", max: 200 },
   { label: "Battle Mode", key: "battleMode", type: "cycle", values: ["turn", "auto"] },
   { label: "Text Speed", key: "textSpeed", type: "cycle", values: ["slow", "normal", "fast"] },
   { label: "Show Minimap", key: "showMinimap", type: "toggle" },
@@ -121,7 +131,7 @@ export class OptionsView {
 
     // Panel
     const panelW = Math.min(480, W - 40);
-    const panelH = Math.min(380, H - 60);
+    const panelH = Math.min(430, H - 60);
     const panelX = (W - panelW) / 2;
     const panelY = (H - panelH) / 2;
 

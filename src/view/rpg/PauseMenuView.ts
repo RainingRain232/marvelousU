@@ -161,7 +161,7 @@ export class PauseMenuView {
     this._saveSlots = getSaveSlots();
 
     const panelW = Math.min(440, W - 40);
-    const panelH = 300;
+    const panelH = Math.min(52 + this._saveSlots.length * 70 + 60, H - 40);
     const panelX = (W - panelW) / 2;
     const panelY = (H - panelH) / 2;
 
@@ -704,11 +704,12 @@ export class PauseMenuView {
   }
 
   private _handleSaveInput(e: KeyboardEvent): void {
+    const slotCount = this._saveSlots.length;
     if (e.code === "ArrowUp") {
-      this._selectedIndex = (this._selectedIndex - 1 + 3) % 3;
+      this._selectedIndex = (this._selectedIndex - 1 + slotCount) % slotCount;
       this._draw();
     } else if (e.code === "ArrowDown") {
-      this._selectedIndex = (this._selectedIndex + 1) % 3;
+      this._selectedIndex = (this._selectedIndex + 1) % slotCount;
       this._draw();
     } else if (e.code === "Enter" || e.code === "Space") {
       const ok = saveGame(this._selectedIndex, this._rpgState, this._overworldState);

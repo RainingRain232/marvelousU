@@ -90,7 +90,8 @@ export class RPGGame {
 
       // Apply options
       this.rpgState.battleMode = this._gameOptions.battleMode;
-      this.rpgState.spawnRate = this._gameOptions.spawnRate;
+      this.rpgState.randomEncounterRate = this._gameOptions.randomEncounterRate;
+      this.rpgState.roamingEncounterRate = this._gameOptions.roamingEncounterRate;
 
       this.rpgViewManager.hideLoading();
       this._enterGameplay();
@@ -274,7 +275,8 @@ export class RPGGame {
       this._gameOptions = opts;
       if (this.rpgState) {
         this.rpgState.battleMode = opts.battleMode;
-        this.rpgState.spawnRate = opts.spawnRate;
+        this.rpgState.randomEncounterRate = opts.randomEncounterRate;
+        this.rpgState.roamingEncounterRate = opts.roamingEncounterRate;
       }
     }, fromMainMenu);
   }

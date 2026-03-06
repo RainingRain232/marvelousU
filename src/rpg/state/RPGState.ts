@@ -193,8 +193,10 @@ export interface RPGState {
   tutorialFlags: Record<string, boolean>;
   /** Battle animation speed multiplier */
   battleSpeed: 1 | 2 | 4;
-  /** Spawn rate multiplier: 0=none, 100=normal, 200=double */
-  spawnRate: number;
+  /** Random (tile) encounter rate multiplier: 0=none, 100=normal, 200=double */
+  randomEncounterRate: number;
+  /** Roaming enemy encounter rate multiplier: 0=none, 100=normal, 200=double */
+  roamingEncounterRate: number;
 
   // --- Endgame ---
   /** New Game+ count (0 = first playthrough) */
@@ -253,7 +255,8 @@ export function createRPGState(seed: number, startPosition: Vec2): RPGState {
     difficulty: "normal",
     tutorialFlags: {},
     battleSpeed: 1,
-    spawnRate: 100,
+    randomEncounterRate: 100,
+    roamingEncounterRate: 100,
     // Endgame
     ngPlusCount: 0,
     abyssRecord: 0,

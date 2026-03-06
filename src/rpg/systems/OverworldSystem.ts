@@ -217,6 +217,7 @@ function _handleEntityInteraction(
     case "roaming_enemy": {
       const enemyData = entity.data as RoamingEnemyData;
       if (enemyData.defeated || enemyData.respawnCounter > 0) break;
+      if ((rpg.roamingEncounterRate ?? 100) <= 0) break;
       enemyData.defeated = true;
       enemyData.respawnCounter = 100; // respawn after 100 steps
       EventBus.emit("rpgEncounterTriggered", {
@@ -304,7 +305,7 @@ function _checkRandomEncounter(
   const nightMult = rpg.timeOfDay >= 180 ? 1.5 : 1.0;
   // Fog decreases encounter rate by 30% (enemies can't see you either)
   const fogMult = rpg.weather === "fog" ? 0.7 : 1.0;
-  const spawnMult = (rpg.spawnRate ?? 100) / 100;
+  const spawnMult = (rpg.randomEncounterRate ?? 100) / 100;
   const chance = baseRate * (1 + overworld.stepsSinceLastEncounter * RPGBalance.ENCOUNTER_RATE_GROWTH) * blessingMult * nightMult * fogMult * spawnMult;
   const rng = new SeededRandom(rpg.seed + rpg.gameTime);
   rpg.gameTime++;

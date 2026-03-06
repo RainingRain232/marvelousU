@@ -61,7 +61,8 @@ export function createNewGamePlus(oldState: RPGState, startPosition: Vec2): RPGS
     // Economy
     townPurchases: {},
     arenaFightsLeft: 3,
-    spawnRate: oldState.spawnRate,
+    randomEncounterRate: oldState.randomEncounterRate,
+    roamingEncounterRate: oldState.roamingEncounterRate,
   };
 }
 
