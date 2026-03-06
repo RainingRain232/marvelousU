@@ -191,6 +191,8 @@ export class RaceSelectScreen {
 
   show(): void {
     this.container.visible = true;
+    // Re-select to ensure detail panel + portrait are built while visible
+    this._selectRace(this._selectedId);
   }
 
   hide(): void {

@@ -217,7 +217,7 @@ class MagicScreen {
     );
 
     // Header
-    const backBtn = this._makeNavBtn("< BACK", 135, 47, false);
+    const backBtn = this._makeNavBtn("< BACK", 104, 36, false);
     backBtn.position.set(21, 18);
     backBtn.on("pointerdown", () => this.onBack?.());
     card.addChild(backBtn);
