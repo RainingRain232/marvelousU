@@ -10,7 +10,7 @@ export interface RPGItem {
   id: string;
   name: string;
   type: "weapon" | "armor" | "accessory" | "helmet" | "shield" | "legs" | "boots" | "ring" | "consumable" | "key";
-  stats: Partial<{ atk: number; def: number; hp: number; mp: number; speed: number }>;
+  stats: Partial<{ atk: number; def: number; hp: number; mp: number; speed: number; block: number; critChance: number }>;
   description: string;
   abilityType?: AbilityType;
   value: number;

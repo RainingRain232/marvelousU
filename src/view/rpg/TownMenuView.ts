@@ -1446,6 +1446,8 @@ function _formatItemStats(item: RPGItem): string {
   if (item.stats.hp) parts.push(`HP+${item.stats.hp}`);
   if (item.stats.mp) parts.push(`MP+${item.stats.mp}`);
   if (item.stats.speed) parts.push(`SPD${item.stats.speed > 0 ? "+" : ""}${item.stats.speed}`);
+  if (item.stats.block) parts.push(`BLK ${Math.round(item.stats.block * 100)}%`);
+  if (item.stats.critChance) parts.push(`CRIT+${Math.round(item.stats.critChance * 100)}%`);
   return parts.join("  ");
 }
 

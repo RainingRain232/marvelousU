@@ -21,6 +21,10 @@ export interface TurnBattleCombatant {
   range: number;
   abilityTypes: AbilityType[];
   statusEffects: StatusEffect[];
+  /** Chance (0–1) to block an incoming attack for zero damage. */
+  blockChance: number;
+  /** Bonus crit chance (0–1) added on top of the base CRITICAL_CHANCE. */
+  critBonus: number;
   position: number;
   isDefending: boolean;
   /** Battle line: 1 = front, 2 = back */

@@ -97,6 +97,8 @@ function _partyToCombatant(member: PartyMember, position: number, line: 1 | 2): 
     range: member.range,
     abilityTypes: member.abilityTypes,
     statusEffects: [...member.statusEffects],
+    blockChance: _computeBlock(member),
+    critBonus: _computeCritBonus(member),
     position,
     isDefending: false,
     line,
@@ -129,6 +131,22 @@ function _computeSpeed(member: PartyMember): number {
   return speed;
 }
 
+function _computeBlock(member: PartyMember): number {
+  let block = 0;
+  for (const item of Object.values(member.equipment)) {
+    if (item?.stats.block) block += item.stats.block;
+  }
+  return Math.min(block, 0.5); // cap at 50%
+}
+
+function _computeCritBonus(member: PartyMember): number {
+  let crit = 0;
+  for (const item of Object.values(member.equipment)) {
+    if (item?.stats.critChance) crit += item.stats.critChance;
+  }
+  return Math.min(crit, 0.4); // cap at +40%
+}
+
 function _enemyToCombatant(enemyDef: EnemyDef, position: number, line: 1 | 2): TurnBattleCombatant {
   const unitDef = UNIT_DEFINITIONS[enemyDef.unitType];
   const scale = 1 + RPGBalance.ENEMY_LEVEL_SCALE * (enemyDef.level - 1);
@@ -148,6 +166,8 @@ function _enemyToCombatant(enemyDef: EnemyDef, position: number, line: 1 | 2): T
     range: unitDef.range,
     abilityTypes: unitDef.abilityTypes ?? [],
     statusEffects: [],
+    blockChance: 0,
+    critBonus: 0,
     position,
     isDefending: false,
     line,
@@ -326,7 +346,21 @@ function _executeAttack(
   const target = targetId ? battle.combatants.find(c => c.id === targetId) : null;
   if (!target || target.hp <= 0) return;
 
-  const { damage: rawDamage, isCritical } = _calculateDamage(attacker.atk, target.def, target.isDefending, 1.0);
+  const { damage: rawDamage, isCritical, isBlocked } = _calculateDamage(
+    attacker.atk, target.def, target.isDefending, 1.0,
+    attacker.critBonus, target.blockChance,
+  );
+
+  if (isBlocked) {
+    battle.log.push(`${target.name} blocks ${attacker.name}'s attack!`);
+    EventBus.emit("rpgTurnBattleAction", {
+      combatantId: attacker.id,
+      action: TurnBattleAction.ATTACK,
+      targetId: target.id,
+    });
+    return;
+  }
+
   const damage = _applyDamageWithShield(target, rawDamage, battle);
 
   const critText = isCritical ? " (CRIT!)" : "";
@@ -391,9 +425,21 @@ function _executeAbility(
   } else {
     // Damage ability
     if (target.hp <= 0) return;
-    const { damage: rawDamage, isCritical } = _calculateDamage(
+    const { damage: rawDamage, isCritical, isBlocked } = _calculateDamage(
       attacker.atk, target.def, target.isDefending, abilityInfo.multiplier,
+      attacker.critBonus, target.blockChance,
     );
+
+    if (isBlocked) {
+      battle.log.push(`${target.name} blocks ${attacker.name}'s ${abilityInfo.name}!`);
+      EventBus.emit("rpgTurnBattleAction", {
+        combatantId: attacker.id,
+        action: TurnBattleAction.ABILITY,
+        targetId: target.id,
+      });
+      return;
+    }
+
     const damage = _applyDamageWithShield(target, rawDamage, battle);
 
     const critText = isCritical ? " (CRIT!)" : "";
@@ -503,14 +549,19 @@ function _executeRPGSpell(
     }
   }
 
-  const hitResults: { name: string; damage: number; crit: boolean }[] = [];
+  const hitResults: { name: string; damage: number; crit: boolean; blocked: boolean }[] = [];
   for (const t of targets) {
     if (t.hp <= 0) continue;
-    const { damage: rawDamage, isCritical } = _calculateDamage(
+    const { damage: rawDamage, isCritical, isBlocked } = _calculateDamage(
       attacker.atk, t.def, t.isDefending, spell.multiplier,
+      attacker.critBonus, t.blockChance,
     );
+    if (isBlocked) {
+      hitResults.push({ name: t.name, damage: 0, crit: false, blocked: true });
+      continue;
+    }
     const damage = _applyDamageWithShield(t, rawDamage, battle);
-    hitResults.push({ name: t.name, damage, crit: isCritical });
+    hitResults.push({ name: t.name, damage, crit: isCritical, blocked: false });
 
     // Apply status effect
     if (spell.statusEffect) {
@@ -533,7 +584,9 @@ function _executeRPGSpell(
     }
   }
 
-  const hitDesc = hitResults.map(h => `${h.name} ${h.damage}${h.crit ? " CRIT" : ""}`).join(", ");
+  const hitDesc = hitResults.map(h =>
+    h.blocked ? `${h.name} BLOCKED` : `${h.name} ${h.damage}${h.crit ? " CRIT" : ""}`,
+  ).join(", ");
   battle.log.push(`${attacker.name} casts ${spell.name}! ${hitDesc}`);
 
   EventBus.emit("rpgSpellCast", {
@@ -595,6 +648,8 @@ function _executeSummon(
     range: unitDef.range,
     abilityTypes: unitDef.abilityTypes ?? [],
     statusEffects: [],
+    blockChance: 0,
+    critBonus: 0,
     position: battle.combatants.length,
     isDefending: false,
     line: unitDef.range <= 1 ? 1 : 2,
@@ -824,15 +879,21 @@ function _calculateDamage(
   def: number,
   isDefending: boolean,
   multiplier: number,
-): { damage: number; isCritical: boolean } {
-  const isCritical = Math.random() < RPGBalance.CRITICAL_CHANCE;
+  attackerCritBonus: number = 0,
+  targetBlockChance: number = 0,
+): { damage: number; isCritical: boolean; isBlocked: boolean } {
+  // Block check — target's shield can negate the hit entirely
+  const isBlocked = targetBlockChance > 0 && Math.random() < targetBlockChance;
+  if (isBlocked) return { damage: 0, isCritical: false, isBlocked: true };
+
+  const isCritical = Math.random() < RPGBalance.CRITICAL_CHANCE + attackerCritBonus;
   const critMult = isCritical ? RPGBalance.CRITICAL_MULT : 1.0;
   const defendMult = isDefending ? RPGBalance.DEFEND_DAMAGE_MULT : 1.0;
 
   const baseDamage = atk * multiplier * critMult - def * 0.5;
   const damage = Math.max(1, Math.round(baseDamage * defendMult));
 
-  return { damage, isCritical };
+  return { damage, isCritical, isBlocked: false };
 }
 
 // ---------------------------------------------------------------------------

@@ -96,7 +96,7 @@ export const ITEM_STONE_AXE: RPGItem = {
 };
 export const ITEM_BRONZE_DAGGER: RPGItem = {
   id: "bronze_dagger", name: "Bronze Dagger", type: "weapon",
-  stats: { atk: 3, speed: 0.1 }, description: "A small bronze blade. Quick.", value: 25,
+  stats: { atk: 3, speed: 0.1, critChance: 0.03 }, description: "A small bronze blade. Quick. +3% crit.", value: 25,
 };
 export const ITEM_SHORTBOW: RPGItem = {
   id: "shortbow", name: "Shortbow", type: "weapon",
@@ -108,7 +108,7 @@ export const ITEM_HUNTING_BOW: RPGItem = {
 };
 export const ITEM_IRON_DAGGER: RPGItem = {
   id: "iron_dagger", name: "Iron Dagger", type: "weapon",
-  stats: { atk: 4, speed: 0.2 }, description: "Small but swift iron blade.", value: 35,
+  stats: { atk: 4, speed: 0.2, critChance: 0.04 }, description: "Small but swift iron blade. +4% crit.", value: 35,
 };
 export const ITEM_APPRENTICE_WAND: RPGItem = {
   id: "apprentice_wand", name: "Apprentice Wand", type: "weapon",
@@ -158,7 +158,7 @@ export const ITEM_LONGBOW: RPGItem = {
 };
 export const ITEM_RAPIER: RPGItem = {
   id: "rapier", name: "Rapier", type: "weapon",
-  stats: { atk: 9, speed: 0.3 }, description: "A swift thrusting blade.", value: 160,
+  stats: { atk: 9, speed: 0.3, critChance: 0.06 }, description: "A swift thrusting blade. +6% crit.", value: 160,
 };
 export const ITEM_STEEL_MACE: RPGItem = {
   id: "steel_mace", name: "Steel Mace", type: "weapon",
@@ -174,7 +174,7 @@ export const ITEM_CROSSBOW: RPGItem = {
 };
 export const ITEM_SCIMITAR: RPGItem = {
   id: "scimitar", name: "Scimitar", type: "weapon",
-  stats: { atk: 10, speed: 0.2 }, description: "A curved slashing blade.", value: 140,
+  stats: { atk: 10, speed: 0.2, critChance: 0.05 }, description: "A curved slashing blade. +5% crit.", value: 140,
 };
 export const ITEM_HALBERD: RPGItem = {
   id: "halberd", name: "Halberd", type: "weapon",
@@ -190,7 +190,7 @@ export const ITEM_OAK_STAFF: RPGItem = {
 };
 export const ITEM_TWIN_DAGGERS: RPGItem = {
   id: "twin_daggers", name: "Twin Daggers", type: "weapon",
-  stats: { atk: 8, speed: 0.4 }, description: "A matched pair. Blindingly fast.", value: 165,
+  stats: { atk: 8, speed: 0.4, critChance: 0.08 }, description: "A matched pair. Blindingly fast. +8% crit.", value: 165,
 };
 export const ITEM_BASTARD_SWORD: RPGItem = {
   id: "bastard_sword", name: "Bastard Sword", type: "weapon",
@@ -212,7 +212,7 @@ export const ITEM_WAR_AXE: RPGItem = {
 };
 export const ITEM_FLAMEBLADE: RPGItem = {
   id: "flameblade", name: "Flameblade", type: "weapon",
-  stats: { atk: 18, speed: -0.1 }, description: "A blade wreathed in fire.", value: 350,
+  stats: { atk: 18, speed: -0.1, critChance: 0.08 }, description: "A blade wreathed in fire. +8% crit.", value: 350,
 };
 export const ITEM_FROST_STAFF: RPGItem = {
   id: "frost_staff", name: "Frost Staff", type: "weapon",
@@ -224,7 +224,7 @@ export const ITEM_COMPOSITE_BOW: RPGItem = {
 };
 export const ITEM_MITHRIL_DAGGER: RPGItem = {
   id: "mithril_dagger", name: "Mithril Dagger", type: "weapon",
-  stats: { atk: 13, speed: 0.4 }, description: "Light as air, sharp as hate.", value: 320,
+  stats: { atk: 13, speed: 0.4, critChance: 0.10 }, description: "Light as air, sharp as hate. +10% crit.", value: 320,
 };
 export const ITEM_THUNDER_SPEAR: RPGItem = {
   id: "thunder_spear", name: "Thunder Spear", type: "weapon",
@@ -240,7 +240,7 @@ export const ITEM_RUNIC_STAFF: RPGItem = {
 };
 export const ITEM_ASSASSIN_BLADE: RPGItem = {
   id: "assassin_blade", name: "Assassin's Blade", type: "weapon",
-  stats: { atk: 15, speed: 0.3 }, description: "Silent and lethal.", value: 350,
+  stats: { atk: 15, speed: 0.3, critChance: 0.12 }, description: "Silent and lethal. +12% crit.", value: 350,
 };
 
 // --- T4: Epic (boss drops, atk 20–28) ---
@@ -254,7 +254,7 @@ export const ITEM_ARCHMAGE_STAFF: RPGItem = {
 };
 export const ITEM_VOIDCLEAVER: RPGItem = {
   id: "voidcleaver", name: "Voidcleaver", type: "weapon",
-  stats: { atk: 22, speed: 0.2 }, description: "Cuts through reality itself.", value: 580,
+  stats: { atk: 22, speed: 0.2, critChance: 0.12 }, description: "Cuts through reality itself. +12% crit.", value: 580,
 };
 export const ITEM_SOULREAPER: RPGItem = {
   id: "soulreaper", name: "Soulreaper", type: "weapon",
@@ -264,11 +264,11 @@ export const ITEM_SOULREAPER: RPGItem = {
 // --- T5: Legendary ---
 export const ITEM_EXCALIBUR: RPGItem = {
   id: "excalibur", name: "Excalibur", type: "weapon",
-  stats: { atk: 35, def: 8, hp: 50 }, description: "The legendary holy sword.", value: 999,
+  stats: { atk: 35, def: 8, hp: 50, critChance: 0.15 }, description: "The legendary holy sword. +15% crit.", value: 999,
 };
 export const ITEM_RAGNAROK: RPGItem = {
   id: "ragnarok", name: "Ragnarok", type: "weapon",
-  stats: { atk: 40, speed: -0.3 }, description: "The blade of the end times.", value: 999,
+  stats: { atk: 40, speed: -0.3, critChance: 0.10 }, description: "The blade of the end times. +10% crit.", value: 999,
 };
 export const ITEM_STAFF_OF_ETERNITY: RPGItem = {
   id: "staff_of_eternity", name: "Staff of Eternity", type: "weapon",
@@ -490,79 +490,79 @@ export const ITEM_HELM_OF_DOMINION: RPGItem = {
 // --- T1 (def 1–4) ---
 export const ITEM_POT_LID: RPGItem = {
   id: "pot_lid", name: "Pot Lid", type: "shield",
-  stats: { def: 1 }, description: "A kitchen pot lid. Desperate times.", value: 3,
+  stats: { def: 1, block: 0.03 }, description: "A kitchen pot lid. Desperate times. 3% block.", value: 3,
 };
 export const ITEM_BUCKLER: RPGItem = {
   id: "buckler", name: "Buckler", type: "shield",
-  stats: { def: 2, speed: 0.1 }, description: "A small, nimble shield.", value: 20,
+  stats: { def: 2, speed: 0.1, block: 0.04 }, description: "A small, nimble shield. 4% block.", value: 20,
 };
 export const ITEM_WOODEN_SHIELD: RPGItem = {
   id: "wooden_shield", name: "Wooden Shield", type: "shield",
-  stats: { def: 3 }, description: "A basic wooden shield.", value: 30,
+  stats: { def: 3, block: 0.05 }, description: "A basic wooden shield. 5% block.", value: 30,
 };
 export const ITEM_HIDE_SHIELD: RPGItem = {
   id: "hide_shield", name: "Hide Shield", type: "shield",
-  stats: { def: 3, hp: 3 }, description: "Stretched animal hide over wood.", value: 28,
+  stats: { def: 3, hp: 3, block: 0.04 }, description: "Stretched animal hide over wood. 4% block.", value: 28,
 };
 export const ITEM_BRONZE_SHIELD: RPGItem = {
   id: "bronze_shield", name: "Bronze Shield", type: "shield",
-  stats: { def: 4 }, description: "A round bronze shield.", value: 40,
+  stats: { def: 4, block: 0.05 }, description: "A round bronze shield. 5% block.", value: 40,
 };
 
 // --- T2 (def 5–9) ---
 export const ITEM_IRON_SHIELD: RPGItem = {
   id: "iron_shield", name: "Iron Shield", type: "shield",
-  stats: { def: 7 }, description: "A solid iron shield.", value: 100,
+  stats: { def: 7, block: 0.07 }, description: "A solid iron shield. 7% block.", value: 100,
 };
 export const ITEM_STEEL_SHIELD: RPGItem = {
   id: "steel_shield", name: "Steel Shield", type: "shield",
-  stats: { def: 8 }, description: "Polished steel protection.", value: 120,
+  stats: { def: 8, block: 0.08 }, description: "Polished steel protection. 8% block.", value: 120,
 };
 export const ITEM_KITE_SHIELD: RPGItem = {
   id: "kite_shield", name: "Kite Shield", type: "shield",
-  stats: { def: 6, hp: 8 }, description: "Long shield covering the body.", value: 95,
+  stats: { def: 6, hp: 8, block: 0.10 }, description: "Long shield covering the body. 10% block.", value: 95,
 };
 export const ITEM_HEATER_SHIELD: RPGItem = {
   id: "heater_shield", name: "Heater Shield", type: "shield",
-  stats: { def: 7, speed: 0.1 }, description: "Well-balanced knight's shield.", value: 110,
+  stats: { def: 7, speed: 0.1, block: 0.08 }, description: "Well-balanced knight's shield. 8% block.", value: 110,
 };
 export const ITEM_ROUND_SHIELD: RPGItem = {
   id: "round_shield", name: "Round Shield", type: "shield",
-  stats: { def: 5, speed: 0.2 }, description: "Light and easy to maneuver.", value: 85,
+  stats: { def: 5, speed: 0.2, block: 0.06 }, description: "Light and easy to maneuver. 6% block.", value: 85,
 };
 export const ITEM_SPIKED_BUCKLER: RPGItem = {
   id: "spiked_buckler", name: "Spiked Buckler", type: "shield",
-  stats: { def: 4, atk: 2, speed: 0.1 }, description: "Small shield with a spike.", value: 90,
+  stats: { def: 4, atk: 2, speed: 0.1, block: 0.06 }, description: "Small shield with a spike. 6% block.", value: 90,
 };
 
 // --- T3 ---
 export const ITEM_TOWER_SHIELD: RPGItem = {
   id: "tower_shield", name: "Tower Shield", type: "shield",
-  stats: { def: 12, speed: -0.2 }, description: "Massive tower shield.", value: 250,
+  stats: { def: 12, speed: -0.2, block: 0.15 }, description: "Massive tower shield. 15% block.", value: 250,
 };
 export const ITEM_SPIKED_SHIELD: RPGItem = {
   id: "spiked_shield", name: "Spiked Shield", type: "shield",
-  stats: { def: 10, atk: 3 }, description: "Defensive and offensive.", value: 240,
+  stats: { def: 10, atk: 3, block: 0.12 }, description: "Defensive and offensive. 12% block.", value: 240,
 };
 export const ITEM_WARDENS_SHIELD: RPGItem = {
   id: "wardens_shield", name: "Warden's Shield", type: "shield",
-  stats: { def: 11, hp: 15 }, description: "Standard issue for elite guards.", value: 260,
+  stats: { def: 11, hp: 15, block: 0.14 }, description: "Standard issue for elite guards. 14% block.", value: 260,
 };
 
 // --- T4 ---
 export const ITEM_AEGIS: RPGItem = {
   id: "aegis", name: "Aegis", type: "shield",
-  stats: { def: 16, hp: 30 }, description: "Shield of mythical guardians.", value: 550,
+  stats: { def: 16, hp: 30, block: 0.18 }, description: "Shield of mythical guardians. 18% block.", value: 550,
 };
 export const ITEM_INFERNAL_WARD: RPGItem = {
   id: "infernal_ward", name: "Infernal Ward", type: "shield",
-  stats: { def: 14, atk: 4, hp: 20 }, description: "Forged in hellfire.", value: 520,
+  stats: { def: 14, atk: 4, hp: 20, block: 0.16 }, description: "Forged in hellfire. 16% block.", value: 520,
 };
 
 // --- T5 ---
 export const ITEM_MIRROR_SHIELD: RPGItem = {
   id: "mirror_shield", name: "Mirror Shield", type: "shield",
-  stats: { def: 18, speed: 0.1, hp: 20 }, description: "Reflects all evil.", value: 999,
+  stats: { def: 18, speed: 0.1, hp: 20, block: 0.22 }, description: "Reflects all evil. 22% block.", value: 999,
 };
 
 // ===========================================================================
