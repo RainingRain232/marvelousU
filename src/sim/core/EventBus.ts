@@ -62,6 +62,7 @@ export interface SimEvents {
   rpgTurnBattleDamage: { attackerId: string; targetId: string; damage: number; isCritical: boolean };
   rpgItemUsed: { itemId: string; targetId: string };
   rpgLevelUp: { memberId: string; newLevel: number };
+  rpgQuestAccepted: { questId: string };
   rpgQuestUpdated: { questId: string; objectiveIndex: number };
   rpgQuestCompleted: { questId: string };
   rpgChestOpened: { position: Vec2; items: RPGItem[] };

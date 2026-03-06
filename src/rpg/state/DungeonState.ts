@@ -47,6 +47,7 @@ export interface DungeonFloor {
 export interface DungeonState {
   dungeonId: string;
   name: string;
+  theme: string;
   floors: DungeonFloor[];
   currentFloor: number;
   partyPosition: Vec2;

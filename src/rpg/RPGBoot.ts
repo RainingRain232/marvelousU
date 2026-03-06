@@ -18,6 +18,8 @@ import { createBattleFromEncounter, calculateInitiative, executeAction, executeE
 import { createStarterParty } from "@rpg/systems/PartyFactory";
 import { RPGViewManager } from "@view/rpg/RPGViewManager";
 import { ITEM_HEALTH_POTION } from "@rpg/config/RPGItemDefs";
+import { audioManager } from "@audio/AudioManager";
+import { updateKillObjective, checkQuestCompletion } from "@rpg/systems/QuestSystem";
 import { TurnBattleAction, TurnBattlePhase } from "@/types";
 import type { BattleResults } from "@view/rpg/BattleResultsView";
 
@@ -136,6 +138,9 @@ export class RPGGame {
 
     // Set camera zoom for overworld
     viewManager.camera.zoom = 2;
+
+    // Start background music
+    audioManager.playGameMusic();
   }
 
   destroy(): void {
@@ -331,6 +336,12 @@ export class RPGGame {
         view.onTargetSelected = (targetId: string) => {
           this._handleTargetSelected(targetId);
         };
+        view.onItemSelected = (itemId: string) => {
+          if (this.turnBattleState) {
+            this.turnBattleState.selectedItemId = itemId;
+            this._handleTurnAction(TurnBattleAction.ITEM);
+          }
+        };
         view.refresh();
       }
 
@@ -395,6 +406,9 @@ export class RPGGame {
     const victory = (battle.phase as string) === TurnBattlePhase.VICTORY;
     if (victory) {
       applyVictoryRewards(this.rpgState, battle);
+      if (this._pendingEncounterId) {
+        this._trackQuestKill(this._pendingEncounterId);
+      }
     } else {
       applyDefeatPenalty(this.rpgState, battle);
     }
@@ -468,7 +482,7 @@ export class RPGGame {
       action,
       targetId,
       this.turnBattleState.selectedAbility,
-      null,
+      this.turnBattleState.selectedItemId,
       this.rpgState,
     );
 
@@ -544,6 +558,11 @@ export class RPGGame {
       levelUps: this._battleLevelUps,
     };
 
+    // Track quest kill objectives on victory
+    if (victory && this._pendingEncounterId) {
+      this._trackQuestKill(this._pendingEncounterId);
+    }
+
     // Clean up level-up listener
     if (this._levelUpUnsub) {
       this._levelUpUnsub();
@@ -557,5 +576,11 @@ export class RPGGame {
 
     // Show results screen — phase transition happens on dismiss
     this.rpgViewManager.showBattleResults(results);
+  }
+
+  private _trackQuestKill(encounterId: string): void {
+    updateKillObjective(this.rpgState, encounterId);
+    checkQuestCompletion(this.rpgState);
+    // Rewards are claimed when player returns to the quest NPC
   }
 }

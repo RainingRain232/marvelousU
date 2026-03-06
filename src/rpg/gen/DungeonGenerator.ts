@@ -36,6 +36,7 @@ export function generateDungeon(def: DungeonDef, seed: number): DungeonState {
   return {
     dungeonId: def.id,
     name: def.name,
+    theme: def.theme,
     floors,
     currentFloor: 0,
     partyPosition: { ...floors[0].stairsUp },

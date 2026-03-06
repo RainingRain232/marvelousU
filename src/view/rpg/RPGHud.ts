@@ -47,6 +47,8 @@ export class RPGHud {
     this._unsubs.push(EventBus.on("rpgLevelUp", () => this._draw()));
     this._unsubs.push(EventBus.on("rpgItemBought", () => this._draw()));
     this._unsubs.push(EventBus.on("rpgInnRested", () => this._draw()));
+    this._unsubs.push(EventBus.on("rpgQuestAccepted", () => this._draw()));
+    this._unsubs.push(EventBus.on("rpgQuestCompleted", () => this._draw()));
 
     // Periodic refresh for post-battle HP sync
     this._updateInterval = setInterval(() => this._draw(), 2000);
@@ -67,7 +69,9 @@ export class RPGHud {
     this.container.removeChildren();
 
     const party = this.rpg.party;
-    const hudH = HUD_PAD * 2 + party.length * MEMBER_HEIGHT + 24;
+    const activeQuests = this.rpg.quests.filter(q => !q.isComplete);
+    const questH = activeQuests.length > 0 ? activeQuests.length * 18 + 14 : 0;
+    const hudH = HUD_PAD * 2 + party.length * MEMBER_HEIGHT + 24 + questH;
     const x = this.vm.screenWidth - HUD_W - 10;
     const y = 10;
 
@@ -148,6 +152,29 @@ export class RPGHud {
       });
       xpText.position.set(barX + BAR_W + 4, barY + BAR_H + 1);
       this.container.addChild(xpText);
+    }
+
+    // Quest tracker
+    if (activeQuests.length > 0) {
+      const qy = y + HUD_PAD + 18 + party.length * MEMBER_HEIGHT + 4;
+
+      // Divider
+      const div = new Graphics();
+      div.rect(x + HUD_PAD, qy, HUD_W - HUD_PAD * 2, 1);
+      div.fill({ color: HUD_BORDER, alpha: 0.5 });
+      this.container.addChild(div);
+
+      for (let qi = 0; qi < activeQuests.length; qi++) {
+        const quest = activeQuests[qi];
+        const obj = quest.objectives[0]; // Show first objective
+        const progress = obj ? `${obj.current}/${obj.required}` : "";
+        const questText = new Text({
+          text: `${quest.name}: ${progress}`,
+          style: { fontFamily: "monospace", fontSize: 8, fill: 0x88ff88 },
+        });
+        questText.position.set(x + HUD_PAD, qy + 6 + qi * 18);
+        this.container.addChild(questText);
+      }
     }
   }
 }

@@ -336,6 +336,7 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
 
     const data: NPCData = {
       dialogue: npcDefs[i].dialogue,
+      questId: `npc_${i}`,
     };
 
     entities.set(npcId, {

@@ -19,6 +19,7 @@ import { RPGHelpMenuView } from "./RPGHelpMenuView";
 import { MinimapView } from "./MinimapView";
 import { GameOverView } from "./GameOverView";
 import { InventoryView } from "./InventoryView";
+import { TransitionOverlay } from "./TransitionOverlay";
 
 // ---------------------------------------------------------------------------
 // RPGViewManager
@@ -79,7 +80,7 @@ export class RPGViewManager {
 
     // Listen for NPC interactions
     this._unsubs.push(EventBus.on("rpgNPCInteraction", (e) => {
-      this._showNPCDialog(e.npcName, e.dialogue);
+      this._showNPCDialog(e.npcName, e.dialogue, e.npcId);
     }));
 
     // Start in overworld
@@ -134,6 +135,24 @@ export class RPGViewManager {
   // ---------------------------------------------------------------------------
 
   private _onPhaseChanged(phase: RPGPhase, _prev: RPGPhase): void {
+    // Major phase changes get a fade transition
+    const isMajor = phase === RPGPhase.OVERWORLD
+      || phase === RPGPhase.DUNGEON
+      || phase === RPGPhase.BATTLE_TURN
+      || phase === RPGPhase.TOWN_MENU
+      || phase === RPGPhase.GAME_OVER;
+
+    if (isMajor) {
+      const overlay = new TransitionOverlay(viewManager);
+      overlay.transition(() => {
+        this._applyPhaseChange(phase);
+      });
+    } else {
+      this._applyPhaseChange(phase);
+    }
+  }
+
+  private _applyPhaseChange(phase: RPGPhase): void {
     this._hideAll();
 
     switch (phase) {
@@ -267,10 +286,10 @@ export class RPGViewManager {
   // NPC Dialog
   // ---------------------------------------------------------------------------
 
-  private _showNPCDialog(npcName: string, dialogue: string[]): void {
+  private _showNPCDialog(npcName: string, dialogue: string[], npcId?: string): void {
     this._hideNPCDialog();
     this.npcDialogView = new NPCDialogView();
-    this.npcDialogView.init(viewManager, npcName, dialogue);
+    this.npcDialogView.init(viewManager, npcName, dialogue, npcId, this.rpgState);
     this.npcDialogView.onClose = () => {
       this._hideNPCDialog();
       this.onNPCDialogClosed?.();

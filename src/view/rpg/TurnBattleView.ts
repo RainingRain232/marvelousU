@@ -70,8 +70,11 @@ export class TurnBattleView {
   // Callbacks for input
   onActionSelected: ((action: TurnBattleAction) => void) | null = null;
   onTargetSelected: ((targetId: string) => void) | null = null;
+  onItemSelected: ((itemId: string) => void) | null = null;
   private _targetIndex = 0;
   private _selectableTargets: TurnBattleCombatant[] = [];
+  private _itemPickMode = false;
+  private _itemPickIndex = 0;
 
   init(vm: ViewManager, battleState: TurnBattleState, rpg: RPGState): void {
     this.vm = vm;
@@ -167,6 +170,7 @@ export class TurnBattleView {
 
   /** Called by the battle system to refresh the view after state changes. */
   refresh(): void {
+    this._itemPickMode = false;
     this._updateBars();
     this._drawMenu();
     this._updateLog();
@@ -578,6 +582,12 @@ export class TurnBattleView {
 
     if (this.battleState.phase !== TurnBattlePhase.SELECT_ACTION) return;
 
+    // Show item picker instead of action menu when in item pick mode
+    if (this._itemPickMode) {
+      this._drawItemPicker();
+      return;
+    }
+
     const actions = [
       TurnBattleAction.ATTACK,
       TurnBattleAction.ABILITY,
@@ -624,6 +634,58 @@ export class TurnBattleView {
     }
   }
 
+  private _drawItemPicker(): void {
+    const consumables = this._rpg.inventory.items.filter(s => s.item.type === "consumable");
+
+    const menuX = 30;
+    const menuY = this.vm.screenHeight - 200;
+    const itemH = Math.max(consumables.length, 1) * 24 + 40;
+
+    // Panel background
+    const bg = new Graphics();
+    bg.roundRect(menuX - 10, menuY - 10, 260, itemH, 6);
+    bg.fill({ color: 0x1a1a3e, alpha: 0.9 });
+    bg.stroke({ color: 0x4444aa, width: 1 });
+    this.menuContainer.addChild(bg);
+
+    // Header
+    const header = new Text({
+      text: "Use Item:",
+      style: { fontFamily: "monospace", fontSize: 12, fill: 0x88bbff, fontWeight: "bold" },
+    });
+    header.position.set(menuX, menuY);
+    this.menuContainer.addChild(header);
+
+    if (consumables.length === 0) {
+      const empty = new Text({
+        text: "  No consumables!",
+        style: { fontFamily: "monospace", fontSize: 12, fill: 0x888888 },
+      });
+      empty.position.set(menuX, menuY + 20);
+      this.menuContainer.addChild(empty);
+      return;
+    }
+
+    for (let i = 0; i < consumables.length; i++) {
+      const { item, quantity } = consumables[i];
+      const isSelected = i === this._itemPickIndex;
+      const statsStr = _formatItemStats(item);
+
+      const text = new Text({
+        text: `${isSelected ? ">" : " "} ${item.name} x${quantity}  ${statsStr}`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 12,
+          fill: isSelected ? 0xffcc00 : 0xcccccc,
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      text.position.set(menuX, menuY + 20 + i * 24);
+      this.menuContainer.addChild(text);
+      this._menuTexts.push(text);
+    }
+  }
+
   private _updateLog(): void {
     const last5 = this.battleState.log.slice(-5);
     this._logText.text = last5.join("\n");
@@ -643,6 +705,35 @@ export class TurnBattleView {
     ];
 
     this._onKeyDown = (e: KeyboardEvent) => {
+      // Item pick sub-mode (before target selection)
+      if (this._itemPickMode && this.battleState.phase === TurnBattlePhase.SELECT_ACTION) {
+        const consumables = this._rpg.inventory.items.filter(s => s.item.type === "consumable");
+        switch (e.code) {
+          case "ArrowUp":
+          case "KeyW":
+            this._itemPickIndex = Math.max(0, this._itemPickIndex - 1);
+            this._drawMenu();
+            break;
+          case "ArrowDown":
+          case "KeyS":
+            this._itemPickIndex = Math.min(consumables.length - 1, this._itemPickIndex + 1);
+            this._drawMenu();
+            break;
+          case "Enter":
+          case "Space":
+            if (consumables.length > 0 && this._itemPickIndex < consumables.length) {
+              this._itemPickMode = false;
+              this.onItemSelected?.(consumables[this._itemPickIndex].item.id);
+            }
+            break;
+          case "Escape":
+            this._itemPickMode = false;
+            this._drawMenu();
+            break;
+        }
+        return;
+      }
+
       if (this.battleState.phase === TurnBattlePhase.SELECT_ACTION) {
         switch (e.code) {
           case "ArrowUp":
@@ -656,9 +747,24 @@ export class TurnBattleView {
             this._drawMenu();
             break;
           case "Enter":
-          case "Space":
-            this.onActionSelected?.(actions[this._selectedMenuIndex]);
+          case "Space": {
+            const selectedAction = actions[this._selectedMenuIndex];
+            // Intercept ITEM action to show item picker first
+            if (selectedAction === TurnBattleAction.ITEM) {
+              const consumables = this._rpg.inventory.items.filter(s => s.item.type === "consumable");
+              if (consumables.length === 0) {
+                this.battleState.log.push("No items to use!");
+                this._updateLog();
+              } else {
+                this._itemPickMode = true;
+                this._itemPickIndex = 0;
+                this._drawMenu();
+              }
+            } else {
+              this.onActionSelected?.(selectedAction);
+            }
             break;
+          }
         }
       } else if (this.battleState.phase === TurnBattlePhase.SELECT_TARGET) {
         switch (e.code) {
@@ -762,4 +868,11 @@ function _lerpColor(c1: number, c2: number, t: number): number {
   const g = Math.round(g1 + (g2 - g1) * t);
   const b = Math.round(b1 + (b2 - b1) * t);
   return (r << 16) | (g << 8) | b;
+}
+
+function _formatItemStats(item: { stats: { hp?: number; mp?: number } }): string {
+  const parts: string[] = [];
+  if (item.stats.hp) parts.push(`HP+${item.stats.hp}`);
+  if (item.stats.mp) parts.push(`MP+${item.stats.mp}`);
+  return parts.join(" ");
 }

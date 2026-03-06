@@ -8,18 +8,58 @@ import type { RPGState } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 
 // ---------------------------------------------------------------------------
-// Tile colours
+// Theme-based tile colours
 // ---------------------------------------------------------------------------
 
-const DUNGEON_COLORS: Record<string, number> = {
-  [DungeonTileType.WALL]: 0x222233,
-  [DungeonTileType.FLOOR]: 0x555566,
-  [DungeonTileType.DOOR]: 0x886644,
-  [DungeonTileType.STAIRS_DOWN]: 0x338833,
-  [DungeonTileType.STAIRS_UP]: 0x3388aa,
-  [DungeonTileType.CHEST]: 0xddaa33,
-  [DungeonTileType.TRAP]: 0xaa3333,
-};
+function _getThemeColors(theme: string): Record<string, number> {
+  // Shared special tile colors
+  const base = {
+    [DungeonTileType.STAIRS_DOWN]: 0x338833,
+    [DungeonTileType.STAIRS_UP]: 0x3388aa,
+    [DungeonTileType.CHEST]: 0xddaa33,
+    [DungeonTileType.TRAP]: 0xaa3333,
+  };
+
+  switch (theme) {
+    case "cave":
+      return {
+        ...base,
+        [DungeonTileType.WALL]: 0x2a2218,
+        [DungeonTileType.FLOOR]: 0x5c5040,
+        [DungeonTileType.DOOR]: 0x8a6a3a,
+      };
+    case "crypt":
+      return {
+        ...base,
+        [DungeonTileType.WALL]: 0x1a1a2a,
+        [DungeonTileType.FLOOR]: 0x444466,
+        [DungeonTileType.DOOR]: 0x665588,
+      };
+    case "volcanic":
+      return {
+        ...base,
+        [DungeonTileType.WALL]: 0x2a1010,
+        [DungeonTileType.FLOOR]: 0x664430,
+        [DungeonTileType.DOOR]: 0xaa5533,
+      };
+    default:
+      return {
+        ...base,
+        [DungeonTileType.WALL]: 0x222233,
+        [DungeonTileType.FLOOR]: 0x555566,
+        [DungeonTileType.DOOR]: 0x886644,
+      };
+  }
+}
+
+function _getFogTint(theme: string): number {
+  switch (theme) {
+    case "cave": return 0x0a0800;
+    case "crypt": return 0x050510;
+    case "volcanic": return 0x100500;
+    default: return 0x000000;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // DungeonView
@@ -42,11 +82,15 @@ export class DungeonView {
 
   private _unsubs: Array<() => void> = [];
   private TILE_SIZE = RPGBalance.DUNGEON_TILE_SIZE;
+  private _themeColors!: Record<string, number>;
+  private _fogTint!: number;
 
   init(vm: ViewManager, dungeon: DungeonState, rpg: RPGState): void {
     this.vm = vm;
     this.dungeon = dungeon;
     this._rpg = rpg;
+    this._themeColors = _getThemeColors(dungeon.theme);
+    this._fogTint = _getFogTint(dungeon.theme);
 
     this.mapContainer.addChild(this._tileGraphics);
     vm.addToLayer("background", this.mapContainer);
@@ -192,7 +236,7 @@ export class DungeonView {
         const tile = floor.grid[y][x];
         if (!tile.revealed && !tile.visible) continue;
 
-        const color = DUNGEON_COLORS[tile.type] ?? 0x333333;
+        const color = this._themeColors[tile.type] ?? 0x333333;
         const alpha = tile.visible ? 1.0 : 0.5;
         g.rect(x * ts, y * ts, ts, ts);
         g.fill({ color, alpha });
@@ -217,10 +261,10 @@ export class DungeonView {
         const tile = floor.grid[y][x];
         if (!tile.revealed && !tile.visible) {
           g.rect(x * ts, y * ts, ts, ts);
-          g.fill({ color: 0x000000, alpha: 0.95 });
+          g.fill({ color: this._fogTint, alpha: 0.95 });
         } else if (tile.revealed && !tile.visible) {
           g.rect(x * ts, y * ts, ts, ts);
-          g.fill({ color: 0x000000, alpha: 0.5 });
+          g.fill({ color: this._fogTint, alpha: 0.5 });
         }
       }
     }

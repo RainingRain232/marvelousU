@@ -37,6 +37,7 @@ export interface TurnBattleState {
   selectedAction: TurnBattleAction | null;
   selectedAbility: AbilityType | null;
   selectedTargetId: string | null;
+  selectedItemId: string | null;
   round: number;
   encounterType: "random" | "dungeon" | "boss";
   canFlee: boolean;
@@ -66,6 +67,7 @@ export function createTurnBattleState(
     selectedAction: null,
     selectedAbility: null,
     selectedTargetId: null,
+    selectedItemId: null,
     round: 1,
     encounterType,
     canFlee: encounterType !== "boss",

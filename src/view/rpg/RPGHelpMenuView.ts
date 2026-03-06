@@ -79,6 +79,7 @@ const HELP_SECTIONS: HelpSection[] = [
     lines: [
       { desc: "Defend halves incoming damage for one round." },
       { desc: "Abilities cost MP but deal 1.5x damage." },
+      { desc: "Use Item to heal party members with consumables." },
       { desc: "You can't flee from boss battles." },
       { desc: "Defeated enemies may drop loot items." },
       { desc: "All living party members share XP equally." },
@@ -86,11 +87,20 @@ const HELP_SECTIONS: HelpSection[] = [
     ],
   },
   {
+    title: "Quests",
+    lines: [
+      { desc: "Talk to NPCs to receive quests." },
+      { desc: "Active quest progress is shown in the HUD." },
+      { desc: "Return to the quest-giver when objectives are complete." },
+      { desc: "Rewards include gold and XP for the whole party." },
+    ],
+  },
+  {
     title: "Exploration Tips",
     lines: [
       { desc: "Visit towns to heal at the inn and buy gear." },
       { desc: "Equip items from the Party tab in town menus." },
-      { desc: "Talk to NPCs for hints and lore." },
+      { desc: "Talk to NPCs for hints, lore, and quests." },
       { desc: "Yellow squares on the map are towns." },
       { desc: "Red triangles are dungeon entrances." },
     ],
