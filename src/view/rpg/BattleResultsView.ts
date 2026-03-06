@@ -78,7 +78,7 @@ export class BattleResultsView {
 
     // Banner image (top-right corner of panel)
     const bannerUrl = results.victory ? displaycaseUrl : longswordUrl;
-    const imgSize = 70;
+    const imgSize = 130;
     void Assets.load(bannerUrl).then((tex: Texture) => {
       if (this.container.destroyed) return;
       const sprite = new Sprite(tex);

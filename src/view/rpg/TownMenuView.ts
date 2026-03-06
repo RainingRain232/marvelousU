@@ -243,7 +243,7 @@ export class TownMenuView {
     const url = TAB_BANNER_URLS[tabName];
     if (!url) return;
 
-    const bannerSize = Math.min(130, W * 0.18);
+    const bannerSize = Math.min(220, W * 0.28);
     const bx = W - bannerSize - 20;
     const by = 92;
 

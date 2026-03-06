@@ -103,7 +103,7 @@ export class NPCDialogView {
     // Leader portrait (above dialog box)
     const portraitUrl = this._isLeader ? LEADER_PORTRAITS[this._leaderId] : undefined;
     if (portraitUrl) {
-      const pSize = 90;
+      const pSize = 160;
       const px = W - pSize - 30;
       const py = H - 120 - 10 - pSize - 12;
       const pFrame = new Graphics();
