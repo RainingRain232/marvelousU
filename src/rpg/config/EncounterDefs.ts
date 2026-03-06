@@ -14,6 +14,15 @@ import {
   ITEM_PLATE_ARMOR,
   ITEM_SPEED_RING,
   ITEM_HEALTH_AMULET,
+  ITEM_LEATHER_CAP,
+  ITEM_WOODEN_SHIELD,
+  ITEM_LEATHER_BOOTS,
+  ITEM_COPPER_RING,
+  ITEM_IRON_HELM,
+  ITEM_CHAIN_LEGGINGS,
+  ITEM_IRON_SHIELD,
+  ITEM_WINGED_BOOTS,
+  ITEM_GOLD_RING,
 } from "@rpg/config/RPGItemDefs";
 
 // ---------------------------------------------------------------------------
@@ -54,7 +63,10 @@ export const ENCOUNTER_DEFS: Record<string, EncounterDef> = {
     isBoss: false,
     xpReward: 30,
     goldReward: 15,
-    lootTable: [{ item: ITEM_HEALTH_POTION, chance: 0.2 }],
+    lootTable: [
+      { item: ITEM_HEALTH_POTION, chance: 0.2 },
+      { item: ITEM_LEATHER_CAP, chance: 0.08 },
+    ],
   },
   bandit_ambush: {
     id: "bandit_ambush",
@@ -69,6 +81,7 @@ export const ENCOUNTER_DEFS: Record<string, EncounterDef> = {
     lootTable: [
       { item: ITEM_HEALTH_POTION, chance: 0.25 },
       { item: ITEM_IRON_SWORD, chance: 0.1 },
+      { item: ITEM_WOODEN_SHIELD, chance: 0.08 },
     ],
   },
   goblin_patrol: {
@@ -81,7 +94,10 @@ export const ENCOUNTER_DEFS: Record<string, EncounterDef> = {
     isBoss: false,
     xpReward: 40,
     goldReward: 20,
-    lootTable: [{ item: ITEM_HEALTH_POTION, chance: 0.15 }],
+    lootTable: [
+      { item: ITEM_HEALTH_POTION, chance: 0.15 },
+      { item: ITEM_COPPER_RING, chance: 0.1 },
+    ],
   },
   skeleton_patrol: {
     id: "skeleton_patrol",
@@ -96,6 +112,7 @@ export const ENCOUNTER_DEFS: Record<string, EncounterDef> = {
     lootTable: [
       { item: ITEM_MANA_POTION, chance: 0.2 },
       { item: ITEM_LEATHER_ARMOR, chance: 0.15 },
+      { item: ITEM_IRON_HELM, chance: 0.1 },
     ],
   },
 
@@ -113,6 +130,8 @@ export const ENCOUNTER_DEFS: Record<string, EncounterDef> = {
     lootTable: [
       { item: ITEM_HEALTH_POTION, chance: 0.3 },
       { item: ITEM_IRON_SWORD, chance: 0.15 },
+      { item: ITEM_IRON_SHIELD, chance: 0.1 },
+      { item: ITEM_LEATHER_BOOTS, chance: 0.1 },
     ],
   },
   desert_raiders: {
@@ -129,6 +148,7 @@ export const ENCOUNTER_DEFS: Record<string, EncounterDef> = {
     lootTable: [
       { item: ITEM_GREATER_HEALTH_POTION, chance: 0.2 },
       { item: ITEM_CHAINMAIL, chance: 0.1 },
+      { item: ITEM_CHAIN_LEGGINGS, chance: 0.1 },
     ],
   },
 
@@ -219,6 +239,8 @@ export const ENCOUNTER_DEFS: Record<string, EncounterDef> = {
       { item: ITEM_PLATE_ARMOR, chance: 1.0 },
       { item: ITEM_HEALTH_AMULET, chance: 1.0 },
       { item: ITEM_GREATER_HEALTH_POTION, chance: 1.0 },
+      { item: ITEM_WINGED_BOOTS, chance: 0.5 },
+      { item: ITEM_GOLD_RING, chance: 0.5 },
     ],
   },
   boss_lich: {
