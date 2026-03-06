@@ -171,6 +171,11 @@ import {
   isGrailKnight,
   type GrailChoice,
 } from "@world/systems/GrailQuest";
+import {
+  createCamlannState,
+  processCamlann,
+  isCamlannBattle,
+} from "@world/systems/CamlannEvent";
 import { getNeutralCityGarrison, pickNeutralRace, neutralRng, getUnitsForRace } from "@world/systems/NeutralCitySystem";
 import { worldNotification } from "@view/world/ui/WorldNotification";
 import { worldWikiScreen } from "@view/world/ui/WorldWikiScreen";
@@ -3113,6 +3118,10 @@ async function _bootWorldGame(
   const grailQuestState = createGrailQuestState();
   (state as any)._grailQuestState = grailQuestState;
 
+  // Camlann state — Arthur vs Mordred final battle
+  const camlannState = createCamlannState();
+  (state as any)._camlannState = camlannState;
+
   // Re-clear water/mountains around player starts (Sword Island may have placed water on them)
   for (const pos of startPositions) {
     const nearby = hexSpiral(pos, 3);
@@ -4401,10 +4410,18 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       const defender = battle.defenderArmyId ? state.armies.get(battle.defenderArmyId) : null;
       if (!attacker) continue;
 
+      // Check for Camlann special battle
+      const _cState = (state as any)._camlannState as ReturnType<typeof createCamlannState> | undefined;
+      const defOwner = defender?.owner ?? "garrison";
+      if (_cState && isCamlannBattle(state, _cState, attacker.owner, defOwner)) {
+        worldEventLog.addEvent("THE BATTLE OF CAMLANN! Arthur and Mordred clash in their final, fateful battle!", 0xff4444);
+        worldNotification.show("The Battle of Camlann", "Father and son meet on the field of destiny. Only one shall prevail!", 0xff4444);
+      }
+
       const battleLabel = battle.type === "siege"
         ? `Siege at (${battle.hex.q},${battle.hex.r})`
         : `Battle at (${battle.hex.q},${battle.hex.r})`;
-      worldEventLog.addEvent(`${battleLabel}: ${attacker.owner} vs ${defender?.owner ?? "garrison"}`, 0xff6644);
+      worldEventLog.addEvent(`${battleLabel}: ${attacker.owner} vs ${defOwner}`, 0xff6644);
 
       let battleState: GameState;
       if (battle.type === "siege" && battle.defenderCityId) {
@@ -4782,6 +4799,16 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
         if (grailEvt) {
           worldEventLog.addEvent(`${grailEvt.title}: ${grailEvt.description}`, grailEvt.color);
           worldNotification.show(grailEvt.title, grailEvt.description, grailEvt.color);
+        }
+      }
+
+      // Check for Camlann — Arthur vs Mordred war declaration (after turn 40)
+      const _camlannSt = (state as any)._camlannState as ReturnType<typeof createCamlannState> | undefined;
+      if (_camlannSt) {
+        const camlannEvt = processCamlann(state, _camlannSt);
+        if (camlannEvt) {
+          worldEventLog.addEvent(`${camlannEvt.title}: ${camlannEvt.description}`, camlannEvt.color);
+          worldNotification.show(camlannEvt.title, camlannEvt.description, camlannEvt.color);
         }
       }
     }
