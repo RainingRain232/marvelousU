@@ -22,6 +22,9 @@ import { audioManager } from "@audio/AudioManager";
 import { updateKillObjective, checkQuestCompletion } from "@rpg/systems/QuestSystem";
 import { TurnBattleAction, TurnBattlePhase } from "@/types";
 import type { BattleResults } from "@view/rpg/BattleResultsView";
+import { saveGame, loadGame, restoreRPGState } from "@rpg/systems/SaveSystem";
+import { loadOptions } from "@view/rpg/OptionsView";
+import type { GameOptions } from "@view/rpg/OptionsView";
 
 // ---------------------------------------------------------------------------
 // RPGGame
@@ -47,57 +50,103 @@ export class RPGGame {
   /** True when help menu is open — blocks movement input. */
   private _helpMenuOpen = false;
   private _inventoryOpen = false;
+  /** Current game options. */
+  private _gameOptions: GameOptions = loadOptions();
+  /** True when pause/save menu is open during gameplay. */
+  private _pauseMenuOpen = false;
 
   async boot(): Promise<void> {
-    const seed = Date.now();
+    // State machine starts at MAIN_MENU
+    this.stateMachine = new RPGStateMachine(RPGPhase.MAIN_MENU);
 
-    // Generate overworld
-    const { state: overworldState, startPosition } = generateOverworld(seed);
-    this.overworldState = overworldState;
-
-    // Create RPG state
-    this.rpgState = createRPGState(seed, startPosition);
-    this.rpgState.party = createStarterParty();
-
-    // Give starting items
-    this.rpgState.inventory.items.push({ item: ITEM_HEALTH_POTION, quantity: 5 });
-
-    // State machine
-    this.stateMachine = new RPGStateMachine();
-
-    // View manager
+    // View manager — show main menu
     this.rpgViewManager = new RPGViewManager();
-    this.rpgViewManager.init(this.rpgState, this.overworldState);
+    this.rpgViewManager.showMainMenu(
+      () => this._startNewGame(),
+      (slot) => this._loadSavedGame(slot),
+      () => this._showOptions(true),
+    );
 
     // Wire input
     this._setupInput();
+  }
 
-    // Wire encounter events
+  /** Start a fresh new game. */
+  private _startNewGame(): void {
+    const seed = Date.now();
+    const { state: overworldState, startPosition } = generateOverworld(seed);
+    this.overworldState = overworldState;
+
+    this.rpgState = createRPGState(seed, startPosition);
+    this.rpgState.party = createStarterParty();
+    this.rpgState.inventory.items.push({ item: ITEM_HEALTH_POTION, quantity: 5 });
+
+    // Apply options
+    this.rpgState.battleMode = this._gameOptions.battleMode;
+
+    this._enterGameplay();
+  }
+
+  /** Load a saved game from slot. */
+  private _loadSavedGame(slot: number): void {
+    const data = loadGame(slot);
+    if (!data) return;
+
+    // Re-generate overworld from same seed
+    const { state: overworldState } = generateOverworld(data.seed);
+    this.overworldState = overworldState;
+
+    // Restore state
+    this.rpgState = restoreRPGState(data.rpgState);
+
+    this._enterGameplay();
+  }
+
+  /** Common setup after new/load game. */
+  private _enterGameplay(): void {
+    this.rpgViewManager.hideMainMenu();
+    this.rpgViewManager.hideOptions();
+    this.rpgViewManager.init(this.rpgState, this.overworldState);
+
+    // Transition to overworld
+    this.stateMachine.transition(RPGPhase.OVERWORLD);
+
+    // Wire gameplay events
+    this._wireGameplayEvents();
+
+    // Set camera zoom
+    viewManager.camera.zoom = 2;
+
+    // Start music
+    audioManager.playGameMusic();
+  }
+
+  /** Wire all gameplay event handlers. */
+  private _wireGameplayEvents(): void {
+    // Clear existing subs
+    for (const unsub of this._unsubs) unsub();
+    this._unsubs = [];
+
     this._unsubs.push(EventBus.on("rpgEncounterTriggered", (e) => {
       this._pendingEncounterId = e.encounterId;
       this._startBattle(e.encounterId, e.encounterType);
     }));
 
-    // Wire dungeon entry
     this._unsubs.push(EventBus.on("rpgDungeonEntered", (e) => {
       this._enterDungeon(e.dungeonId);
     }));
 
-    // Wire town entry
     this._unsubs.push(EventBus.on("rpgTownEntered", (e) => {
       this._onTownEntered(e.townId);
     }));
 
-    // Wire town leave
     this.rpgViewManager.onLeaveTown = () => {
       this.rpgViewManager.currentTownData = null;
       this.rpgViewManager.currentTownName = "";
       this.stateMachine.transition(RPGPhase.OVERWORLD);
     };
 
-    // Wire battle results dismissal
     this.rpgViewManager.onBattleResultsDismissed = () => {
-      // Check for game over: all party members at 1 HP and no gold (can't afford inn)
       const allCritical = this.rpgState.party.every(m => m.hp <= 1);
       if (allCritical && this.rpgState.gold === 0) {
         this.stateMachine.transition(RPGPhase.GAME_OVER);
@@ -106,7 +155,6 @@ export class RPGGame {
       }
     };
 
-    // Wire NPC dialog
     this.rpgViewManager.onNPCDialogClosed = () => {
       this._npcDialogOpen = false;
     };
@@ -114,33 +162,57 @@ export class RPGGame {
       this._npcDialogOpen = true;
     }));
 
-    // Wire help menu
     this.rpgViewManager.onHelpMenuToggled = (open) => {
       this._helpMenuOpen = open;
     };
 
-    // Wire inventory
     this.rpgViewManager.onInventoryClosed = () => {
       this._inventoryOpen = false;
     };
 
-    // Wire game over restart
     this.rpgViewManager.onRestart = () => {
       this.destroy();
       this.boot();
     };
 
-    // Wire dungeon exit
     this._unsubs.push(EventBus.on("rpgDungeonExited", () => {
       this.dungeonState = null;
       this.rpgViewManager.dungeonState = null;
     }));
 
-    // Set camera zoom for overworld
-    viewManager.camera.zoom = 2;
+    // Wire return to main menu from game over
+    this.rpgViewManager.onMainMenu = () => {
+      this.destroy();
+      this.boot();
+    };
 
-    // Start background music
-    audioManager.playGameMusic();
+    // Wire pause menu save
+    this.rpgViewManager.onSaveGame = (slot: number) => {
+      if (this.rpgState && this.overworldState) {
+        saveGame(slot, this.rpgState, this.overworldState);
+      }
+    };
+
+    // Wire pause menu quit to title
+    this.rpgViewManager.onQuitToTitle = () => {
+      this.destroy();
+      this.boot();
+    };
+
+    // Wire pause menu close
+    this.rpgViewManager.onPauseMenuClosed = () => {
+      this._pauseMenuOpen = false;
+    };
+  }
+
+  /** Show options screen (from main menu or in-game). */
+  private _showOptions(fromMainMenu: boolean): void {
+    this.rpgViewManager.showOptions(this._gameOptions, (opts) => {
+      this._gameOptions = opts;
+      if (this.rpgState) {
+        this.rpgState.battleMode = opts.battleMode;
+      }
+    }, fromMainMenu);
   }
 
   destroy(): void {
@@ -168,6 +240,24 @@ export class RPGGame {
     this._onKeyDown = (e: KeyboardEvent) => {
       const phase = this.stateMachine.currentPhase;
 
+      // Main menu / options phases — input handled by their views
+      if (phase === RPGPhase.MAIN_MENU || phase === RPGPhase.OPTIONS) return;
+
+      // Pause menu (Escape) during exploration
+      if (e.code === "Escape" && (phase === RPGPhase.OVERWORLD || phase === RPGPhase.DUNGEON)) {
+        if (this._pauseMenuOpen) {
+          this.rpgViewManager.hidePauseMenu();
+          this._pauseMenuOpen = false;
+        } else if (!this._npcDialogOpen && !this._helpMenuOpen && !this._inventoryOpen) {
+          this.rpgViewManager.showPauseMenu(this.rpgState, this.overworldState, this._gameOptions);
+          this._pauseMenuOpen = true;
+        }
+        return;
+      }
+
+      // Block all gameplay input when pause menu is open
+      if (this._pauseMenuOpen) return;
+
       // Help menu toggle (? or F1) during exploration or battle
       if ((e.key === "?" || e.code === "F1") && (phase === RPGPhase.OVERWORLD || phase === RPGPhase.DUNGEON || phase === RPGPhase.BATTLE_TURN)) {
         this.rpgViewManager.toggleHelpMenu();
@@ -181,7 +271,7 @@ export class RPGGame {
         return;
       }
 
-      if (this._npcDialogOpen || this._helpMenuOpen || this._inventoryOpen) return; // Block movement during overlays
+      if (this._npcDialogOpen || this._helpMenuOpen || this._inventoryOpen) return;
 
       if (phase === RPGPhase.OVERWORLD) {
         this._handleOverworldInput(e);

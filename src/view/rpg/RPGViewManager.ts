@@ -20,6 +20,10 @@ import { MinimapView } from "./MinimapView";
 import { GameOverView } from "./GameOverView";
 import { InventoryView } from "./InventoryView";
 import { TransitionOverlay } from "./TransitionOverlay";
+import { MainMenuView } from "./MainMenuView";
+import { OptionsView } from "./OptionsView";
+import type { GameOptions } from "./OptionsView";
+import { PauseMenuView } from "./PauseMenuView";
 
 // ---------------------------------------------------------------------------
 // RPGViewManager
@@ -37,6 +41,9 @@ export class RPGViewManager {
   private minimapView: MinimapView | null = null;
   private gameOverView: GameOverView | null = null;
   private inventoryView: InventoryView | null = null;
+  private mainMenuView: MainMenuView | null = null;
+  private optionsView: OptionsView | null = null;
+  private pauseMenuView: PauseMenuView | null = null;
   private _unsubs: Array<() => void> = [];
 
   rpgState!: RPGState;
@@ -65,6 +72,18 @@ export class RPGViewManager {
 
   /** Called when inventory overlay is closed. */
   onInventoryClosed: (() => void) | null = null;
+
+  /** Called to return to main menu (from game over). */
+  onMainMenu: (() => void) | null = null;
+
+  /** Called to save from pause menu. */
+  onSaveGame: ((slot: number) => void) | null = null;
+
+  /** Called to quit to title from pause menu. */
+  onQuitToTitle: (() => void) | null = null;
+
+  /** Called when pause menu is closed (so RPGBoot can update its flag). */
+  onPauseMenuClosed: (() => void) | null = null;
 
   /** Pending callbacks to wire on TurnBattleView once it's created (deferred by transition). */
   pendingBattleCallbacks: ((view: TurnBattleView) => void) | null = null;
@@ -99,6 +118,9 @@ export class RPGViewManager {
     this._hideHelpMenu();
     this._hideGameOver();
     this._hideInventory();
+    this.hideMainMenu();
+    this.hideOptions();
+    this.hidePauseMenu();
     for (const unsub of this._unsubs) unsub();
     this._unsubs = [];
   }
@@ -122,6 +144,97 @@ export class RPGViewManager {
       this._showInventory();
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Main Menu
+  // ---------------------------------------------------------------------------
+
+  showMainMenu(
+    onNewGame: () => void,
+    onLoadGame: (slot: number) => void,
+    onOptions: () => void,
+  ): void {
+    this.hideMainMenu();
+    this.mainMenuView = new MainMenuView();
+    this.mainMenuView.init(viewManager);
+    this.mainMenuView.onNewGame = onNewGame;
+    this.mainMenuView.onLoadGame = onLoadGame;
+    this.mainMenuView.onOptions = onOptions;
+  }
+
+  hideMainMenu(): void {
+    if (this.mainMenuView) {
+      this.mainMenuView.destroy();
+      this.mainMenuView = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Options
+  // ---------------------------------------------------------------------------
+
+  showOptions(
+    currentOptions: GameOptions,
+    onChanged: (opts: GameOptions) => void,
+    fromMainMenu: boolean,
+  ): void {
+    this.hideOptions();
+    this.optionsView = new OptionsView();
+    this.optionsView.init(viewManager, currentOptions);
+    this.optionsView.onOptionsChanged = onChanged;
+    this.optionsView.onClose = () => {
+      this.hideOptions();
+      if (fromMainMenu && this.mainMenuView) {
+        // Main menu is still behind, just remove options overlay
+      } else if (this.pauseMenuView) {
+        // Return to pause menu — it's still behind
+      }
+    };
+  }
+
+  hideOptions(): void {
+    if (this.optionsView) {
+      this.optionsView.destroy();
+      this.optionsView = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pause Menu
+  // ---------------------------------------------------------------------------
+
+  showPauseMenu(rpgState: RPGState, overworldState: OverworldState, gameOptions: GameOptions): void {
+    this.hidePauseMenu();
+    this.pauseMenuView = new PauseMenuView();
+    this.pauseMenuView.init(viewManager, rpgState, overworldState);
+    this.pauseMenuView.onResume = () => {
+      this.hidePauseMenu();
+      this.onPauseMenuClosed?.();
+    };
+    this.pauseMenuView.onSave = (slot) => {
+      this.onSaveGame?.(slot);
+    };
+    this.pauseMenuView.onOptions = () => {
+      this.showOptions(gameOptions, (opts) => {
+        // Options are saved inside OptionsView
+      }, false);
+    };
+    this.pauseMenuView.onQuitToTitle = () => {
+      this.hidePauseMenu();
+      this.onQuitToTitle?.();
+    };
+  }
+
+  hidePauseMenu(): void {
+    if (this.pauseMenuView) {
+      this.pauseMenuView.destroy();
+      this.pauseMenuView = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Battle Results
+  // ---------------------------------------------------------------------------
 
   showBattleResults(results: BattleResults): void {
     this._hideBattleResults();

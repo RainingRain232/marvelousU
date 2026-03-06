@@ -9,11 +9,18 @@ import { EventBus } from "@sim/core/EventBus";
 // ---------------------------------------------------------------------------
 
 const RPG_TRANSITIONS: StateTransition<RPGPhase>[] = [
+  // Main menu transitions
+  { from: RPGPhase.MAIN_MENU, to: RPGPhase.OVERWORLD },
+  { from: RPGPhase.MAIN_MENU, to: RPGPhase.OPTIONS },
+  // Options returns
+  { from: RPGPhase.OPTIONS, to: RPGPhase.MAIN_MENU },
+  { from: RPGPhase.OPTIONS, to: RPGPhase.OVERWORLD },
   // Overworld transitions
   { from: RPGPhase.OVERWORLD, to: RPGPhase.DUNGEON },
   { from: RPGPhase.OVERWORLD, to: RPGPhase.BATTLE_TURN },
   { from: RPGPhase.OVERWORLD, to: RPGPhase.BATTLE_AUTO },
   { from: RPGPhase.OVERWORLD, to: RPGPhase.TOWN_MENU },
+  { from: RPGPhase.OVERWORLD, to: RPGPhase.MAIN_MENU },
   // Dungeon transitions
   { from: RPGPhase.DUNGEON, to: RPGPhase.BATTLE_TURN },
   { from: RPGPhase.DUNGEON, to: RPGPhase.BATTLE_AUTO },
@@ -27,6 +34,8 @@ const RPG_TRANSITIONS: StateTransition<RPGPhase>[] = [
   { from: RPGPhase.TOWN_MENU, to: RPGPhase.OVERWORLD },
   // Game over from any
   { from: "*", to: RPGPhase.GAME_OVER },
+  // Game over to main menu
+  { from: RPGPhase.GAME_OVER, to: RPGPhase.MAIN_MENU },
 ];
 
 // ---------------------------------------------------------------------------
@@ -37,8 +46,8 @@ export class RPGStateMachine {
   private fsm: StateMachine<RPGPhase>;
   private _previousPhase: RPGPhase = RPGPhase.OVERWORLD;
 
-  constructor() {
-    this.fsm = new StateMachine<RPGPhase>(RPGPhase.OVERWORLD, RPG_TRANSITIONS);
+  constructor(initialPhase: RPGPhase = RPGPhase.MAIN_MENU) {
+    this.fsm = new StateMachine<RPGPhase>(initialPhase, RPG_TRANSITIONS);
   }
 
   get currentPhase(): RPGPhase {

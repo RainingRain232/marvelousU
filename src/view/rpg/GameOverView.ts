@@ -22,7 +22,9 @@ export class GameOverView {
   private container = new Container();
   private _onKeyDown: ((e: KeyboardEvent) => void) | null = null;
   private _selectedIndex = 0;
+  private _options = ["Start New Adventure", "Return to Title"];
   onRestart: (() => void) | null = null;
+  onMainMenu: (() => void) | null = null;
 
   init(vm: ViewManager): void {
     this.vm = vm;
@@ -90,19 +92,22 @@ export class GameOverView {
     msg.position.set(W / 2, panelY + 75);
     this.container.addChild(msg);
 
-    // Restart option
-    const restartText = new Text({
-      text: `${this._selectedIndex === 0 ? "> " : "  "}Start New Adventure`,
-      style: {
-        fontFamily: "monospace",
-        fontSize: 14,
-        fill: this._selectedIndex === 0 ? OPTION_COLOR : TEXT_COLOR,
-        fontWeight: this._selectedIndex === 0 ? "bold" : "normal",
-      },
-    });
-    restartText.anchor.set(0.5, 0);
-    restartText.position.set(W / 2, panelY + 145);
-    this.container.addChild(restartText);
+    // Options
+    for (let i = 0; i < this._options.length; i++) {
+      const selected = i === this._selectedIndex;
+      const optText = new Text({
+        text: `${selected ? "> " : "  "}${this._options[i]}`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 14,
+          fill: selected ? OPTION_COLOR : TEXT_COLOR,
+          fontWeight: selected ? "bold" : "normal",
+        },
+      });
+      optText.anchor.set(0.5, 0);
+      optText.position.set(W / 2, panelY + 130 + i * 28);
+      this.container.addChild(optText);
+    }
 
     // Footer
     const footer = new Text({

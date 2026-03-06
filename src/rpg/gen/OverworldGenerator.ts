@@ -135,7 +135,7 @@ function _findPlacement(
   existing: Vec2[],
   minDist: number,
 ): Vec2 | null {
-  for (let attempt = 0; attempt < 200; attempt++) {
+  for (let attempt = 0; attempt < 500; attempt++) {
     const x = rng.int(4, width - 4);
     const y = rng.int(4, height - 4);
     const tile = grid[y][x];
@@ -174,9 +174,9 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
   const centerY = height / 2;
   const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
 
-  // Generate terrain
-  const scale1 = 0.06;
-  const scale2 = 0.12;
+  // Generate terrain (scales adjusted for larger map so biomes are proportionally sized)
+  const scale1 = 0.03;
+  const scale2 = 0.06;
 
   const grid: OverworldTile[][] = [];
   for (let y = 0; y < height; y++) {
@@ -212,26 +212,32 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
 
   const placements: Vec2[] = [];
 
-  // Place towns (4 towns)
+  // Place towns (10 towns for the larger world)
   const townDefs = [
     { name: "Haven Village", shop: STARTER_TOWN_SHOP, innCost: 20 },
+    { name: "Millbrook", shop: STARTER_TOWN_SHOP, innCost: 25 },
     { name: "Ironhold", shop: MID_TOWN_SHOP, innCost: 40 },
     { name: "Stormgate", shop: MID_TOWN_SHOP, innCost: 50 },
+    { name: "Sunhaven", shop: MID_TOWN_SHOP, innCost: 45 },
+    { name: "Frostpeak", shop: MID_TOWN_SHOP, innCost: 55 },
+    { name: "Dustwind Outpost", shop: MID_TOWN_SHOP, innCost: 50 },
+    { name: "Shadowfen", shop: LATE_TOWN_SHOP, innCost: 70 },
     { name: "Dragonrest", shop: LATE_TOWN_SHOP, innCost: 80 },
+    { name: "Crystal Citadel", shop: LATE_TOWN_SHOP, innCost: 90 },
   ];
 
   const townPositions: Vec2[] = [];
   const entities = new Map<string, OverworldEntity>();
 
   for (let i = 0; i < townDefs.length; i++) {
-    const pos = _findPlacement(grid, rng, width, height, placements, 12);
+    const pos = _findPlacement(grid, rng, width, height, placements, 25);
     if (!pos) continue;
     placements.push(pos);
     townPositions.push(pos);
 
     const townId = `town_${i}`;
     grid[pos.y][pos.x].entityId = townId;
-    grid[pos.y][pos.x].encounterRate = 0; // No encounters on town tile
+    grid[pos.y][pos.x].encounterRate = 0;
 
     const townData: TownData = {
       shopItems: townDefs[i].shop,
@@ -248,18 +254,30 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
     });
   }
 
-  // Connect towns with paths
+  // Connect towns with paths (chain + cross-links for better connectivity)
   for (let i = 0; i < townPositions.length - 1; i++) {
     _carvePath(grid, townPositions[i], townPositions[i + 1]);
   }
+  // Add a few cross-connections for a road network
+  if (townPositions.length >= 6) {
+    _carvePath(grid, townPositions[0], townPositions[3]);
+    _carvePath(grid, townPositions[2], townPositions[5]);
+    _carvePath(grid, townPositions[4], townPositions[7] ?? townPositions[townPositions.length - 1]);
+  }
 
-  // Place dungeon entrances (3 dungeons)
-  const dungeonIds = ["goblin_caves", "dark_crypt", "dragon_lair"];
-  const dungeonNames = ["Goblin Caves", "Dark Crypt", "Dragon's Lair"];
-  const dungeonLevels = [3, 6, 10];
+  // Place dungeon entrances (7 dungeons for the larger world)
+  const dungeonIds = [
+    "goblin_caves", "dark_crypt", "dragon_lair",
+    "goblin_caves", "dark_crypt", "dragon_lair", "goblin_caves",
+  ];
+  const dungeonNames = [
+    "Goblin Caves", "Dark Crypt", "Dragon's Lair",
+    "Sunken Tunnels", "Bone Crypts", "Wyrm Peak", "Bandit Hideout",
+  ];
+  const dungeonLevels = [3, 6, 10, 2, 8, 12, 4];
 
   for (let i = 0; i < dungeonIds.length; i++) {
-    const pos = _findPlacement(grid, rng, width, height, placements, 8);
+    const pos = _findPlacement(grid, rng, width, height, placements, 18);
     if (!pos) continue;
     placements.push(pos);
 
@@ -281,13 +299,13 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
     });
   }
 
-  // Place NPCs (scattered across the map for flavour and hints)
+  // Place NPCs (12 NPCs scattered across the larger map)
   const npcDefs: { name: string; dialogue: string[] }[] = [
     {
       name: "Wandering Scholar",
       dialogue: [
         "Ah, a fellow traveler! These lands hold many secrets.",
-        "I've heard the Goblin Caves to the north are infested with vermin. Low-level adventurers cut their teeth there.",
+        "I've heard the Goblin Caves are infested with vermin. Low-level adventurers cut their teeth there.",
         "Stock up on potions at the towns before venturing into dungeons. You'll thank me later.",
       ],
     },
@@ -323,10 +341,66 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
         "The deeper you go into a dungeon, the stronger the monsters become. But so do the rewards.",
       ],
     },
+    {
+      name: "Desert Nomad",
+      dialogue: [
+        "The sands shift, but the roads between towns are safe enough.",
+        "Dustwind Outpost is a rough place, but the gear they sell is solid.",
+        "Watch for bandits in the wastelands — they're tougher than they look.",
+      ],
+    },
+    {
+      name: "Mountain Sage",
+      dialogue: [
+        "From these peaks, I can see the whole world spread below.",
+        "Frostpeak village sits high in the mountains. They forge the finest steel.",
+        "The Wyrm Peak dungeon is said to house an ancient dragon. Tread carefully.",
+      ],
+    },
+    {
+      name: "Retired Adventurer",
+      dialogue: [
+        "I used to be an adventurer like you... until I found enough gold to retire.",
+        "Press Escape to open the pause menu. You can save your game there!",
+        "The Crystal Citadel has the best equipment money can buy.",
+      ],
+    },
+    {
+      name: "Mysterious Stranger",
+      dialogue: [
+        "You have the look of someone destined for greatness... or doom.",
+        "The Sunken Tunnels beneath the marshes hold ancient treasures.",
+        "Not all who wander are lost. But some definitely are.",
+      ],
+    },
+    {
+      name: "Village Elder",
+      dialogue: [
+        "Welcome, young adventurer. Our villages need heroes like you.",
+        "There are many towns across these lands. Each has unique supplies for sale.",
+        "The roads between towns are the safest paths. Stick to them when you can.",
+      ],
+    },
+    {
+      name: "Young Apprentice",
+      dialogue: [
+        "I'm studying magic! One day I'll be as powerful as Elara the Fire Mage.",
+        "Did you know you can use items during battle? They can turn the tide!",
+        "I heard there's a hidden dungeon near the Bone Crypts. Spooky!",
+      ],
+    },
+    {
+      name: "Fisherman",
+      dialogue: [
+        "The waters around here are too dangerous for fishing these days.",
+        "Shadowfen village sits at the edge of the dark marshlands. Brave folks live there.",
+        "If you find yourself low on health, head to the nearest inn. It's worth the gold.",
+      ],
+    },
   ];
 
   for (let i = 0; i < npcDefs.length; i++) {
-    const pos = _findPlacement(grid, rng, width, height, placements, 6);
+    const pos = _findPlacement(grid, rng, width, height, placements, 12);
     if (!pos) continue;
     placements.push(pos);
 

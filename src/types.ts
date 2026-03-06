@@ -651,11 +651,13 @@ export enum GameMode {
 // ---------------------------------------------------------------------------
 
 export enum RPGPhase {
+  MAIN_MENU = "main_menu",
   OVERWORLD = "overworld",
   DUNGEON = "dungeon",
   BATTLE_TURN = "battle_turn",
   BATTLE_AUTO = "battle_auto",
   TOWN_MENU = "town_menu",
+  OPTIONS = "options",
   GAME_OVER = "game_over",
 }
 
