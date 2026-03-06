@@ -324,6 +324,15 @@ export const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     victoryCode: "0000",
     unlocks: {},
   },
+  {
+    number: 22,
+    title: "The Art of War",
+    briefing:
+      "A training ground to master the art of war. Watch your clerics heal under fire, lancers charge with devastating force, master mages unleash destructive spells, and siege hunters track down enemy siege engines. Knowledge is the sharpest weapon.",
+    victoryCode: "1337",
+    type: "battlefield",
+    unlocks: {},
+  },
 ];
 
 // ---------------------------------------------------------------------------

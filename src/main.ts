@@ -1171,6 +1171,79 @@ function _spawnScenarioBattlefieldUnits(
       { type: UnitType.GIANT_COURT_JESTER, count: 20 },
       { type: UnitType.FISHERMAN, count: 20 },
     ];
+  } else if (scenarioNum === 22) {
+    // The Art of War — ability tutorial battlefield
+    // Custom placement: cyclops center, clerics around it, lancers far, mages mid, siege demo
+    const cx = Math.floor(mapW / 2);
+    const cy = midY;
+
+    // --- P2: Cyclops in the dead center ---
+    const cyclops = createUnit({ type: UnitType.CYCLOPS, owner: "p2", position: { x: cx, y: cy } });
+    state.units.set(cyclops.id, cyclops);
+
+    // --- P1: Clerics surrounding the cyclops (ring of 8) ---
+    const clericOffsets = [
+      { x: -2, y: -2 }, { x: 0, y: -2 }, { x: 2, y: -2 },
+      { x: -2, y: 0 },                    { x: 2, y: 0 },
+      { x: -2, y: 2 }, { x: 0, y: 2 }, { x: 2, y: 2 },
+    ];
+    for (const off of clericOffsets) {
+      const u = createUnit({
+        type: UnitType.CLERIC, owner: "p1",
+        position: { x: cx + off.x, y: cy + off.y },
+      });
+      state.units.set(u.id, u);
+    }
+
+    // --- P1: Lancers charging from far left (20 lancers) ---
+    const lancerBaseX = Math.floor(mapW * 0.05);
+    for (let i = 0; i < 20; i++) {
+      const col = Math.floor(i / 5);
+      const row = i % 5;
+      const u = createUnit({
+        type: UnitType.LANCER, owner: "p1",
+        position: { x: lancerBaseX + col, y: cy - 2 + row },
+      });
+      state.units.set(u.id, u);
+    }
+
+    // --- P1: Master mages at medium range (2 of each element) ---
+    const mageTypes = [
+      UnitType.FIRE_MASTER_MAGE, UnitType.FIRE_MASTER_MAGE,
+      UnitType.LIGHTNING_MASTER_MAGE, UnitType.LIGHTNING_MASTER_MAGE,
+      UnitType.COLD_MASTER_MAGE, UnitType.COLD_MASTER_MAGE,
+    ];
+    const mageBaseX = Math.floor(mapW * 0.25);
+    for (let i = 0; i < mageTypes.length; i++) {
+      const u = createUnit({
+        type: mageTypes[i], owner: "p1",
+        position: { x: mageBaseX, y: cy - 3 + i },
+      });
+      state.units.set(u.id, u);
+    }
+
+    // --- P2: Battering ram (siege-only, attacks buildings) on the right ---
+    const ram = createUnit({
+      type: UnitType.BATTERING_RAM, owner: "p2",
+      position: { x: Math.floor(mapW * 0.8), y: cy + 5 },
+    });
+    state.units.set(ram.id, ram);
+
+    // --- P1: Siege hunter to hunt the battering ram ---
+    const hunter = createUnit({
+      type: UnitType.SIEGE_HUNTER, owner: "p1",
+      position: { x: Math.floor(mapW * 0.6), y: cy + 5 },
+    });
+    state.units.set(hunter.id, hunter);
+
+    // --- P1: Trebuchet for long-range siege demonstration ---
+    const treb = createUnit({
+      type: UnitType.TREBUCHET, owner: "p1",
+      position: { x: Math.floor(mapW * 0.15), y: cy + 6 },
+    });
+    state.units.set(treb.id, treb);
+
+    return; // skip generic roster spawning
   } else {
     // Default battlefield — 4 swordsmen each
     p1Roster = [{ type: UnitType.SWORDSMAN, count: 4 }];
