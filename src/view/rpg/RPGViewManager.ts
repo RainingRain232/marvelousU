@@ -18,6 +18,7 @@ import { NPCDialogView } from "./NPCDialogView";
 import { RPGHelpMenuView } from "./RPGHelpMenuView";
 import { MinimapView } from "./MinimapView";
 import { GameOverView } from "./GameOverView";
+import { InventoryView } from "./InventoryView";
 
 // ---------------------------------------------------------------------------
 // RPGViewManager
@@ -34,6 +35,7 @@ export class RPGViewManager {
   private helpMenuView: RPGHelpMenuView | null = null;
   private minimapView: MinimapView | null = null;
   private gameOverView: GameOverView | null = null;
+  private inventoryView: InventoryView | null = null;
   private _unsubs: Array<() => void> = [];
 
   rpgState!: RPGState;
@@ -59,6 +61,9 @@ export class RPGViewManager {
 
   /** Called when player requests restart from Game Over screen. */
   onRestart: (() => void) | null = null;
+
+  /** Called when inventory overlay is closed. */
+  onInventoryClosed: (() => void) | null = null;
 
   init(
     rpgState: RPGState,
@@ -89,6 +94,7 @@ export class RPGViewManager {
     this._hideNPCDialog();
     this._hideHelpMenu();
     this._hideGameOver();
+    this._hideInventory();
     for (const unsub of this._unsubs) unsub();
     this._unsubs = [];
   }
@@ -102,6 +108,14 @@ export class RPGViewManager {
       this._hideHelpMenu();
     } else {
       this._showHelpMenu();
+    }
+  }
+
+  toggleInventory(): void {
+    if (this.inventoryView) {
+      this._hideInventory();
+    } else {
+      this._showInventory();
     }
   }
 
@@ -310,6 +324,27 @@ export class RPGViewManager {
     if (this.gameOverView) {
       this.gameOverView.destroy();
       this.gameOverView = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Inventory
+  // ---------------------------------------------------------------------------
+
+  private _showInventory(): void {
+    this._hideInventory();
+    this.inventoryView = new InventoryView();
+    this.inventoryView.init(viewManager, this.rpgState);
+    this.inventoryView.onClose = () => {
+      this._hideInventory();
+    };
+  }
+
+  private _hideInventory(): void {
+    if (this.inventoryView) {
+      this.inventoryView.destroy();
+      this.inventoryView = null;
+      this.onInventoryClosed?.();
     }
   }
 }

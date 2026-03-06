@@ -125,6 +125,45 @@ export function restAtInn(rpg: RPGState, cost: number): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Use consumable items (outside battle)
+// ---------------------------------------------------------------------------
+
+/** Use a consumable item on a party member outside of battle. */
+export function useItem(rpg: RPGState, itemId: string, memberId: string): boolean {
+  const slotIndex = rpg.inventory.items.findIndex(s => s.item.id === itemId);
+  if (slotIndex < 0) return false;
+
+  const invSlot = rpg.inventory.items[slotIndex];
+  const item = invSlot.item;
+  if (item.type !== "consumable") return false;
+
+  const member = rpg.party.find(m => m.id === memberId);
+  if (!member) return false;
+
+  // Apply HP restore
+  if (item.stats.hp && item.stats.hp > 0) {
+    member.hp = Math.min(member.maxHp, member.hp + item.stats.hp);
+  }
+  // Apply MP restore
+  if (item.stats.mp && item.stats.mp > 0) {
+    member.mp = Math.min(member.maxMp, member.mp + item.stats.mp);
+  }
+  // Antidote: clear poison
+  if (item.id === "antidote") {
+    member.statusEffects = member.statusEffects.filter(e => e.type !== "poison");
+  }
+
+  // Consume
+  invSlot.quantity--;
+  if (invSlot.quantity <= 0) {
+    rpg.inventory.items.splice(slotIndex, 1);
+  }
+
+  EventBus.emit("rpgItemUsed", { itemId: item.id, targetId: memberId });
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

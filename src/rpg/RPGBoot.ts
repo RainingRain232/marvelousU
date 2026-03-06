@@ -44,6 +44,7 @@ export class RPGGame {
   private _npcDialogOpen = false;
   /** True when help menu is open — blocks movement input. */
   private _helpMenuOpen = false;
+  private _inventoryOpen = false;
 
   async boot(): Promise<void> {
     const seed = Date.now();
@@ -116,6 +117,11 @@ export class RPGGame {
       this._helpMenuOpen = open;
     };
 
+    // Wire inventory
+    this.rpgViewManager.onInventoryClosed = () => {
+      this._inventoryOpen = false;
+    };
+
     // Wire game over restart
     this.rpgViewManager.onRestart = () => {
       this.destroy();
@@ -163,7 +169,14 @@ export class RPGGame {
         return;
       }
 
-      if (this._npcDialogOpen || this._helpMenuOpen) return; // Block movement during overlays
+      // Inventory toggle (I) during exploration
+      if (e.code === "KeyI" && (phase === RPGPhase.OVERWORLD || phase === RPGPhase.DUNGEON)) {
+        this.rpgViewManager.toggleInventory();
+        this._inventoryOpen = !this._inventoryOpen;
+        return;
+      }
+
+      if (this._npcDialogOpen || this._helpMenuOpen || this._inventoryOpen) return; // Block movement during overlays
 
       if (phase === RPGPhase.OVERWORLD) {
         this._handleOverworldInput(e);
@@ -276,6 +289,21 @@ export class RPGGame {
   // Battle
   // ---------------------------------------------------------------------------
 
+  private _getBattleContext(): { biome?: string; dungeonFloor?: number; dungeonName?: string } | undefined {
+    if (this.dungeonState) {
+      return {
+        dungeonFloor: this.dungeonState.currentFloor,
+        dungeonName: this.dungeonState.name,
+      };
+    }
+    const pos = this.rpgState.overworldPosition;
+    const tile = this.overworldState.grid[pos.y]?.[pos.x];
+    if (tile) {
+      return { biome: tile.type };
+    }
+    return undefined;
+  }
+
   private _startBattle(
     encounterId: string,
     encounterType: "random" | "dungeon" | "boss",
@@ -288,7 +316,7 @@ export class RPGGame {
         this._battleLevelUps.push({ name: member?.name ?? e.memberId, newLevel: e.newLevel });
       });
 
-      this.turnBattleState = createBattleFromEncounter(this.rpgState, encounterId, encounterType);
+      this.turnBattleState = createBattleFromEncounter(this.rpgState, encounterId, encounterType, this._getBattleContext());
       this.rpgViewManager.turnBattleState = this.turnBattleState;
 
       // Calculate initiative and start
@@ -327,7 +355,7 @@ export class RPGGame {
       this._battleLevelUps.push({ name: member?.name ?? e.memberId, newLevel: e.newLevel });
     });
 
-    const battle = createBattleFromEncounter(this.rpgState, encounterId, encounterType);
+    const battle = createBattleFromEncounter(this.rpgState, encounterId, encounterType, this._getBattleContext());
     calculateInitiative(battle);
 
     // Simulate to completion (safety cap at 200 turns)

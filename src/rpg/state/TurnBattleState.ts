@@ -44,6 +44,7 @@ export interface TurnBattleState {
   goldReward: number;
   lootReward: RPGItem[];
   log: string[];
+  battleContext?: { biome?: string; dungeonFloor?: number; dungeonName?: string };
 }
 
 // ---------------------------------------------------------------------------

@@ -12,7 +12,6 @@ import { getAbilityName } from "@rpg/systems/TurnBattleSystem";
 // Layout constants
 // ---------------------------------------------------------------------------
 
-const BATTLE_BG_COLOR = 0x1a1a2e;
 const ENEMY_AREA_Y = 130;
 const PARTY_AREA_Y_OFFSET = 170; // from bottom
 const HP_BAR_WIDTH = 100;
@@ -80,8 +79,7 @@ export class TurnBattleView {
     this._rpg = rpg;
 
     // Background
-    this._bgGraphic.rect(0, 0, vm.screenWidth, vm.screenHeight);
-    this._bgGraphic.fill({ color: BATTLE_BG_COLOR });
+    this._drawBackground();
     this.bgContainer.addChild(this._bgGraphic);
     vm.addToLayer("background", this.bgContainer);
 
@@ -173,6 +171,32 @@ export class TurnBattleView {
     this._drawMenu();
     this._updateLog();
     this._updateTurnIndicator();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Background
+  // ---------------------------------------------------------------------------
+
+  private _drawBackground(): void {
+    this._bgGraphic.clear();
+    const W = this.vm.screenWidth;
+    const H = this.vm.screenHeight;
+    const ctx = this.battleState.battleContext;
+    const palette = _getBattlePalette(ctx);
+    const stripes = 20;
+    const stripeH = Math.ceil(H / stripes);
+
+    for (let i = 0; i < stripes; i++) {
+      const t = i / (stripes - 1);
+      const color = _lerpColor(palette.top, palette.bottom, t);
+      this._bgGraphic.rect(0, i * stripeH, W, stripeH + 1);
+      this._bgGraphic.fill({ color });
+    }
+
+    // Ground region (lower 40%)
+    const groundY = H * 0.6;
+    this._bgGraphic.rect(0, groundY, W, H - groundY);
+    this._bgGraphic.fill({ color: palette.ground, alpha: 0.4 });
   }
 
   // ---------------------------------------------------------------------------
@@ -333,6 +357,27 @@ export class TurnBattleView {
           ring.circle(0, -10, 44);
           ring.stroke({ color: 0xffcc00, width: 3, alpha: 0.8 });
           entry.barsContainer.addChild(ring);
+        }
+      }
+
+      // Status effect icons
+      if (c.statusEffects.length > 0 && !isDead) {
+        const iconY = entry.isParty ? barY + HP_BAR_HEIGHT + 30 : barY + HP_BAR_HEIGHT + 14;
+        for (let si = 0; si < c.statusEffects.length; si++) {
+          const se = c.statusEffects[si];
+          const iconX = barX + si * 16;
+          const iconG = new Graphics();
+          iconG.circle(iconX + 6, iconY, 5);
+          iconG.fill({ color: _statusColor(se.type) });
+          entry.barsContainer.addChild(iconG);
+
+          const label = new Text({
+            text: _statusAbbrev(se.type),
+            style: { fontFamily: "monospace", fontSize: 7, fill: 0xffffff },
+          });
+          label.anchor.set(0.5, 0.5);
+          label.position.set(iconX + 6, iconY);
+          entry.barsContainer.addChild(label);
         }
       }
 
@@ -651,4 +696,70 @@ export class TurnBattleView {
     this._targetIndex = 0;
     this._updateBars();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Status effect display helpers
+// ---------------------------------------------------------------------------
+
+function _statusColor(type: string): number {
+  switch (type) {
+    case "poison": return 0x44aa44;
+    case "regen": return 0x44ff88;
+    case "slow": return 0x8888ff;
+    case "haste": return 0xffaa44;
+    case "shield": return 0x88bbff;
+    case "stun": return 0xffff44;
+    default: return 0x888888;
+  }
+}
+
+function _statusAbbrev(type: string): string {
+  switch (type) {
+    case "poison": return "P";
+    case "regen": return "R";
+    case "slow": return "S";
+    case "haste": return "H";
+    case "shield": return "Sh";
+    case "stun": return "!";
+    default: return "?";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Battle background helpers
+// ---------------------------------------------------------------------------
+
+interface BattlePalette { top: number; bottom: number; ground: number }
+
+function _getBattlePalette(ctx?: { biome?: string; dungeonFloor?: number }): BattlePalette {
+  if (ctx?.dungeonFloor !== undefined) {
+    const depth = Math.min(ctx.dungeonFloor, 5);
+    const t = depth / 5;
+    return {
+      top: _lerpColor(0x1a1a2e, 0x0a0a0e, t),
+      bottom: _lerpColor(0x2a2a3e, 0x1a0a0a, t),
+      ground: _lerpColor(0x333344, 0x2a1515, t),
+    };
+  }
+
+  switch (ctx?.biome) {
+    case "grass":    return { top: 0x4488cc, bottom: 0x223355, ground: 0x3a6b2a };
+    case "forest":   return { top: 0x2a5533, bottom: 0x112211, ground: 0x2a4a1a };
+    case "sand":     return { top: 0xcc9944, bottom: 0x553322, ground: 0x8b7355 };
+    case "snow":     return { top: 0xaabbdd, bottom: 0x556688, ground: 0xccccdd };
+    case "path":     return { top: 0x5588aa, bottom: 0x2a3344, ground: 0x8b7355 };
+    case "mountain": return { top: 0x667788, bottom: 0x333344, ground: 0x555566 };
+    case "water":    return { top: 0x3366aa, bottom: 0x112244, ground: 0x1a3d6e };
+    default:         return { top: 0x1a1a3e, bottom: 0x1a1a2e, ground: 0x2a2a3e };
+  }
+}
+
+function _lerpColor(c1: number, c2: number, t: number): number {
+  const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
+  const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return (r << 16) | (g << 8) | b;
 }

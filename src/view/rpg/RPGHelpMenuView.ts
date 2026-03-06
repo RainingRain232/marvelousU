@@ -30,14 +30,17 @@ const HELP_SECTIONS: HelpSection[] = [
       { key: "W/A/S/D or Arrows", desc: "Move party" },
       { key: "T", desc: "Toggle battle mode (Turn/Auto)" },
       { key: "? or F1", desc: "Open this help menu" },
+      { key: "I", desc: "Open inventory (use items)" },
     ],
   },
   {
     title: "Dungeon Controls",
     lines: [
       { key: "W/A/S/D or Arrows", desc: "Move through dungeon" },
+      { key: "I", desc: "Open inventory (use items)" },
       { desc: "Find stairs to descend or exit" },
       { desc: "Walk into chests to open them" },
+      { desc: "Compass arrow shows stairs direction" },
     ],
   },
   {
@@ -55,6 +58,7 @@ const HELP_SECTIONS: HelpSection[] = [
       { key: "Left/Right", desc: "Switch tabs" },
       { key: "Up/Down", desc: "Navigate items" },
       { key: "Enter", desc: "Buy / Equip / Rest" },
+      { key: "Tab", desc: "Toggle Buy/Sell in shop" },
       { key: "Backspace", desc: "Unequip item" },
       { key: "Escape", desc: "Go back / Leave town" },
     ],

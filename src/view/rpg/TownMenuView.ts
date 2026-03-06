@@ -3,7 +3,7 @@ import { Container, Graphics, Text } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { RPGState, RPGItem } from "@rpg/state/RPGState";
 import type { TownData } from "@rpg/state/OverworldState";
-import { buyItem, equipItem, unequipItem, restAtInn } from "@rpg/systems/EquipmentSystem";
+import { buyItem, sellItem, equipItem, unequipItem, restAtInn } from "@rpg/systems/EquipmentSystem";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -39,6 +39,7 @@ export class TownMenuView {
 
   // Navigation state
   private _activeTab: number = 0;
+  private _shopMode: "buy" | "sell" = "buy";
   private _itemIndex: number = 0;
   private _partyIndex: number = 0;
   private _partySubMode: PartySubMode = "member_list";
@@ -174,7 +175,6 @@ export class TownMenuView {
 
   private _drawShop(W: number, H: number): void {
     const startY = 100;
-    const items = this.townData.shopItems;
     const g = new Graphics();
 
     // Panel background
@@ -182,6 +182,26 @@ export class TownMenuView {
     g.fill({ color: PANEL_COLOR, alpha: 0.8 });
     g.stroke({ color: BORDER_COLOR, width: 1 });
     this.container.addChild(g);
+
+    // Buy/Sell mode toggle header
+    const buyLabel = this._shopMode === "buy" ? "[BUY]" : " BUY ";
+    const sellLabel = this._shopMode === "sell" ? "[SELL]" : " SELL ";
+    const modeText = new Text({
+      text: `Tab: ${buyLabel}  ${sellLabel}`,
+      style: { fontFamily: "monospace", fontSize: 12, fill: HIGHLIGHT_COLOR },
+    });
+    modeText.position.set(20, startY + 2);
+    this.container.addChild(modeText);
+
+    if (this._shopMode === "buy") {
+      this._drawShopBuy(W, H, startY + 22);
+    } else {
+      this._drawShopSell(W, H, startY + 22);
+    }
+  }
+
+  private _drawShopBuy(W: number, H: number, startY: number): void {
+    const items = this.townData.shopItems;
 
     if (items.length === 0) {
       const empty = new Text({
@@ -244,6 +264,79 @@ export class TownMenuView {
     if (this._itemIndex < items.length) {
       const desc = new Text({
         text: items[this._itemIndex].description,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 12,
+          fill: TEXT_COLOR,
+          wordWrap: true,
+          wordWrapWidth: W - 60,
+        },
+      });
+      desc.position.set(30, H - 90);
+      this.container.addChild(desc);
+    }
+  }
+
+  private _drawShopSell(W: number, H: number, startY: number): void {
+    const invItems = this.rpg.inventory.items;
+
+    if (invItems.length === 0) {
+      const empty = new Text({
+        text: "No items to sell.",
+        style: { fontFamily: "monospace", fontSize: 14, fill: DIM_TEXT },
+      });
+      empty.position.set(30, startY + 15);
+      this.container.addChild(empty);
+      return;
+    }
+
+    for (let i = 0; i < invItems.length; i++) {
+      const { item, quantity } = invItems[i];
+      const y = startY + 10 + i * 32;
+      const isSelected = i === this._itemIndex;
+
+      if (isSelected) {
+        const highlight = new Graphics();
+        highlight.roundRect(20, y - 2, W - 44, 28, 3);
+        highlight.fill({ color: 0x2a2a4e, alpha: 0.8 });
+        this.container.addChild(highlight);
+      }
+
+      const cursor = isSelected ? ">" : " ";
+      const sellPrice = Math.floor(item.value / 2);
+
+      const nameText = new Text({
+        text: `${cursor} ${item.name} x${quantity}`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 13,
+          fill: isSelected ? HIGHLIGHT_COLOR : TEXT_COLOR,
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      nameText.position.set(30, y);
+      this.container.addChild(nameText);
+
+      const priceText = new Text({
+        text: `${sellPrice}g`,
+        style: { fontFamily: "monospace", fontSize: 13, fill: GOLD_COLOR },
+      });
+      priceText.anchor.set(1, 0);
+      priceText.position.set(W / 2, y);
+      this.container.addChild(priceText);
+
+      const statsText = new Text({
+        text: _formatItemStats(item),
+        style: { fontFamily: "monospace", fontSize: 11, fill: DIM_TEXT },
+      });
+      statsText.position.set(W / 2 + 20, y + 2);
+      this.container.addChild(statsText);
+    }
+
+    // Selected item description
+    if (this._itemIndex < invItems.length) {
+      const desc = new Text({
+        text: invItems[this._itemIndex].item.description,
         style: {
           fontFamily: "monospace",
           fontSize: 12,
@@ -570,8 +663,10 @@ export class TownMenuView {
   }
 
   private _drawControls(W: number, H: number): void {
+    const tab = TABS[this._activeTab];
+    const extra = tab === "Shop" ? "  Tab=Buy/Sell" : "";
     const controlText = new Text({
-      text: "Left/Right=Tab  Up/Down=Navigate  Enter=Select  Esc=Back",
+      text: `Left/Right=Tab  Up/Down=Navigate  Enter=Select  Esc=Back${extra}`,
       style: { fontFamily: "monospace", fontSize: 11, fill: DIM_TEXT },
     });
     controlText.anchor.set(0.5, 0);
@@ -633,33 +728,72 @@ export class TownMenuView {
   }
 
   private _handleShopInput(e: KeyboardEvent): void {
-    const items = this.townData.shopItems;
+    if (e.code === "Tab") {
+      e.preventDefault();
+      this._shopMode = this._shopMode === "buy" ? "sell" : "buy";
+      this._itemIndex = 0;
+      this._draw();
+      return;
+    }
 
-    switch (e.code) {
-      case "ArrowUp":
-      case "KeyW":
-        this._itemIndex = Math.max(0, this._itemIndex - 1);
-        this._draw();
-        break;
-      case "ArrowDown":
-      case "KeyS":
-        this._itemIndex = Math.min(items.length - 1, this._itemIndex + 1);
-        this._draw();
-        break;
-      case "Enter":
-      case "Space":
-        if (this._itemIndex < items.length) {
-          const item = items[this._itemIndex];
-          if (buyItem(this.rpg, item)) {
-            this._showMessage(`Bought ${item.name}!`);
-          } else {
-            this._showMessage("Not enough gold!");
+    if (this._shopMode === "buy") {
+      const items = this.townData.shopItems;
+      switch (e.code) {
+        case "ArrowUp":
+        case "KeyW":
+          this._itemIndex = Math.max(0, this._itemIndex - 1);
+          this._draw();
+          break;
+        case "ArrowDown":
+        case "KeyS":
+          this._itemIndex = Math.min(items.length - 1, this._itemIndex + 1);
+          this._draw();
+          break;
+        case "Enter":
+        case "Space":
+          if (this._itemIndex < items.length) {
+            const item = items[this._itemIndex];
+            if (buyItem(this.rpg, item)) {
+              this._showMessage(`Bought ${item.name}!`);
+            } else {
+              this._showMessage("Not enough gold!");
+            }
           }
-        }
-        break;
-      case "Escape":
-        this.onLeave?.();
-        break;
+          break;
+        case "Escape":
+          this.onLeave?.();
+          break;
+      }
+    } else {
+      const invItems = this.rpg.inventory.items;
+      switch (e.code) {
+        case "ArrowUp":
+        case "KeyW":
+          this._itemIndex = Math.max(0, this._itemIndex - 1);
+          this._draw();
+          break;
+        case "ArrowDown":
+        case "KeyS":
+          this._itemIndex = Math.min(invItems.length - 1, this._itemIndex + 1);
+          this._draw();
+          break;
+        case "Enter":
+        case "Space":
+          if (this._itemIndex < invItems.length) {
+            const item = invItems[this._itemIndex].item;
+            const sellPrice = Math.floor(item.value / 2);
+            if (sellItem(this.rpg, item.id)) {
+              this._showMessage(`Sold ${item.name} for ${sellPrice}g!`);
+              if (this._itemIndex >= this.rpg.inventory.items.length) {
+                this._itemIndex = Math.max(0, this.rpg.inventory.items.length - 1);
+              }
+            }
+          }
+          break;
+        case "Escape":
+          this.onLeave?.();
+          break;
+      }
     }
   }
 

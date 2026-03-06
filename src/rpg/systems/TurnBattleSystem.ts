@@ -18,6 +18,7 @@ export function createBattleFromEncounter(
   rpg: RPGState,
   encounterId: string,
   encounterType: "random" | "dungeon" | "boss",
+  battleContext?: { biome?: string; dungeonFloor?: number; dungeonName?: string },
 ): TurnBattleState {
   const def = ENCOUNTER_DEFS[encounterId];
   if (!def) throw new Error(`Unknown encounter: ${encounterId}`);
@@ -38,13 +39,15 @@ export function createBattleFromEncounter(
     }
   }
 
-  return createTurnBattleState(
+  const state = createTurnBattleState(
     combatants,
     encounterType,
     def.xpReward,
     def.goldReward,
     def.lootTable.filter(l => Math.random() < l.chance).map(l => l.item),
   );
+  state.battleContext = battleContext;
+  return state;
 }
 
 function _partyToCombatant(member: PartyMember, position: number): TurnBattleCombatant {
@@ -121,9 +124,9 @@ export function calculateInitiative(battle: TurnBattleState): void {
   const rng = new SeededRandom(Date.now());
   const alive = battle.combatants.filter(c => c.hp > 0);
 
-  // Sort by speed (descending), random tiebreaker
+  // Sort by effective speed (descending), random tiebreaker
   alive.sort((a, b) => {
-    const diff = b.speed - a.speed;
+    const diff = _getEffectiveSpeed(b) - _getEffectiveSpeed(a);
     if (Math.abs(diff) > 0.01) return diff;
     return rng.next() - 0.5;
   });
@@ -170,6 +173,25 @@ export function advanceTurn(battle: TurnBattleState): void {
   if (!current || current.hp <= 0) {
     // Skip dead combatants
     advanceTurn(battle);
+    return;
+  }
+
+  // Check for stun — skip turn
+  const stunEffect = current.statusEffects.find(e => e.type === "stun");
+  if (stunEffect) {
+    battle.log.push(`${current.name} is stunned and cannot act!`);
+    stunEffect.duration--;
+    if (stunEffect.duration <= 0) {
+      current.statusEffects = current.statusEffects.filter(e => e !== stunEffect);
+      battle.log.push(`${current.name}'s stun wore off.`);
+    }
+    // Guard against infinite recursion if all combatants are stunned
+    const allStunned = battle.combatants
+      .filter(c => c.hp > 0)
+      .every(c => c.statusEffects.some(e => e.type === "stun"));
+    if (!allStunned) {
+      advanceTurn(battle);
+    }
     return;
   }
 
@@ -235,9 +257,8 @@ function _executeAttack(
   const target = targetId ? battle.combatants.find(c => c.id === targetId) : null;
   if (!target || target.hp <= 0) return;
 
-  const { damage, isCritical } = _calculateDamage(attacker.atk, target.def, target.isDefending, 1.0);
-
-  target.hp = Math.max(0, target.hp - damage);
+  const { damage: rawDamage, isCritical } = _calculateDamage(attacker.atk, target.def, target.isDefending, 1.0);
+  const damage = _applyDamageWithShield(target, rawDamage, battle);
 
   const critText = isCritical ? " (CRIT!)" : "";
   battle.log.push(`${attacker.name} attacks ${target.name} for ${damage} damage${critText}`);
@@ -301,11 +322,10 @@ function _executeAbility(
   } else {
     // Damage ability
     if (target.hp <= 0) return;
-    const { damage, isCritical } = _calculateDamage(
+    const { damage: rawDamage, isCritical } = _calculateDamage(
       attacker.atk, target.def, target.isDefending, abilityInfo.multiplier,
     );
-
-    target.hp = Math.max(0, target.hp - damage);
+    const damage = _applyDamageWithShield(target, rawDamage, battle);
 
     const critText = isCritical ? " (CRIT!)" : "";
     battle.log.push(`${attacker.name} casts ${abilityInfo.name} on ${target.name} for ${damage} damage${critText}`);
@@ -558,16 +578,57 @@ function _tickStatusEffects(battle: TurnBattleState): void {
           break;
         case "regen":
           c.hp = Math.min(c.maxHp, c.hp + effect.magnitude);
+          battle.log.push(`${c.name} regenerates ${effect.magnitude} HP.`);
+          break;
+        case "slow":
+        case "haste":
+        case "shield":
+        case "stun":
+          // These are handled elsewhere (speed calc, damage calc, turn skip)
           break;
       }
 
       effect.duration--;
       if (effect.duration > 0) {
         remaining.push(effect);
+      } else {
+        battle.log.push(`${c.name}'s ${effect.type} wore off.`);
       }
     }
     c.statusEffects = remaining;
   }
+}
+
+/** Get speed adjusted for slow/haste status effects. */
+function _getEffectiveSpeed(c: TurnBattleCombatant): number {
+  let speed = c.speed;
+  for (const e of c.statusEffects) {
+    if (e.type === "slow") speed -= e.magnitude;
+    if (e.type === "haste") speed += e.magnitude;
+  }
+  return Math.max(0.1, speed);
+}
+
+/** Apply damage to target with shield absorption. Returns actual damage dealt. */
+function _applyDamageWithShield(
+  target: TurnBattleCombatant,
+  damage: number,
+  battle: TurnBattleState,
+): number {
+  const shieldEffect = target.statusEffects.find(e => e.type === "shield");
+  if (shieldEffect) {
+    const absorbed = Math.min(damage, shieldEffect.magnitude);
+    damage -= absorbed;
+    shieldEffect.magnitude -= absorbed;
+    if (shieldEffect.magnitude <= 0) {
+      target.statusEffects = target.statusEffects.filter(e => e !== shieldEffect);
+      battle.log.push(`${target.name}'s shield shattered!`);
+    } else {
+      battle.log.push(`${target.name}'s shield absorbed ${absorbed} damage.`);
+    }
+  }
+  target.hp = Math.max(0, target.hp - damage);
+  return damage;
 }
 
 // ---------------------------------------------------------------------------

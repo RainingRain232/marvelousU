@@ -38,6 +38,7 @@ export class DungeonView {
   private _tileGraphics = new Graphics();
   private _fogGraphics = new Graphics();
   private _floorLabel!: Text;
+  private _compassGraphic = new Graphics();
 
   private _unsubs: Array<() => void> = [];
   private TILE_SIZE = RPGBalance.DUNGEON_TILE_SIZE;
@@ -56,11 +57,12 @@ export class DungeonView {
     vm.addToLayer("units", this.partyGraphic);
 
     this._floorLabel = new Text({
-      text: `Floor ${dungeon.currentFloor + 1}`,
-      style: { fontFamily: "monospace", fontSize: 14, fill: 0xffffff },
+      text: this._buildInfoText(),
+      style: { fontFamily: "monospace", fontSize: 13, fill: 0xffffff },
     });
     this._floorLabel.position.set(10, 10);
     this.uiContainer.addChild(this._floorLabel);
+    this.uiContainer.addChild(this._compassGraphic);
     vm.addToLayer("ui", this.uiContainer);
 
     // Set camera for dungeon
@@ -72,6 +74,7 @@ export class DungeonView {
     this._drawFloor();
     this._drawFog();
     this._drawParty();
+    this._drawCompass();
     this._centerCamera();
 
     // Listen for movement and floor changes
@@ -79,14 +82,17 @@ export class DungeonView {
       this._updateVisibility();
       this._drawFog();
       this._drawParty();
+      this._floorLabel.text = this._buildInfoText();
+      this._drawCompass();
       this._centerCamera();
     }));
 
-    this._unsubs.push(EventBus.on("rpgDungeonFloorChanged", (e) => {
-      this._floorLabel.text = `Floor ${e.floor + 1}`;
+    this._unsubs.push(EventBus.on("rpgDungeonFloorChanged", () => {
+      this._floorLabel.text = this._buildInfoText();
       this._drawFloor();
       this._drawFog();
       this._drawParty();
+      this._drawCompass();
       this._centerCamera();
     }));
   }
@@ -104,6 +110,65 @@ export class DungeonView {
     this.fogContainer.destroy({ children: true });
     this.partyGraphic.destroy();
     this.uiContainer.destroy({ children: true });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Info text and compass
+  // ---------------------------------------------------------------------------
+
+  private _buildInfoText(): string {
+    const floor = this._currentFloor();
+    if (!floor) return "";
+    const cleared = floor.rooms.filter(r => r.cleared).length;
+    const total = floor.rooms.length;
+    return `Floor ${this.dungeon.currentFloor + 1}/${this.dungeon.totalFloors}  |  Rooms: ${cleared}/${total}`;
+  }
+
+  private _drawCompass(): void {
+    this._compassGraphic.clear();
+    const floor = this._currentFloor();
+    if (!floor) return;
+
+    const target = floor.stairsDown ?? floor.stairsUp;
+    if (!target) return;
+
+    const pos = this.dungeon.partyPosition;
+    const dx = target.x - pos.x;
+    const dy = target.y - pos.y;
+
+    // If party is on the stairs, no need for compass
+    if (dx === 0 && dy === 0) return;
+
+    const angle = Math.atan2(dy, dx);
+    const cx = this.vm.screenWidth - 40;
+    const cy = 30;
+    const r = 14;
+
+    // Circle background
+    this._compassGraphic.circle(cx, cy, r + 2);
+    this._compassGraphic.fill({ color: 0x1a1a2e, alpha: 0.8 });
+    this._compassGraphic.stroke({ color: 0x4444aa, width: 1 });
+
+    // Arrow pointing toward stairs
+    const tipX = cx + Math.cos(angle) * r;
+    const tipY = cy + Math.sin(angle) * r;
+    const backAngle1 = angle + 2.6;
+    const backAngle2 = angle - 2.6;
+    this._compassGraphic.moveTo(tipX, tipY);
+    this._compassGraphic.lineTo(cx + Math.cos(backAngle1) * 6, cy + Math.sin(backAngle1) * 6);
+    this._compassGraphic.lineTo(cx + Math.cos(backAngle2) * 6, cy + Math.sin(backAngle2) * 6);
+    this._compassGraphic.closePath();
+    this._compassGraphic.fill({ color: floor.stairsDown ? 0x338833 : 0x3388aa });
+
+    // Label
+    const dist = Math.round(Math.sqrt(dx * dx + dy * dy));
+    const label = new Text({
+      text: floor.stairsDown ? `↓${dist}` : `↑${dist}`,
+      style: { fontFamily: "monospace", fontSize: 9, fill: 0xaaaacc },
+    });
+    label.anchor.set(0.5, 0);
+    label.position.set(cx, cy + r + 5);
+    this.uiContainer.addChild(label);
   }
 
   // ---------------------------------------------------------------------------
