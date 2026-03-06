@@ -162,6 +162,7 @@ import {
   type LeaderEncounterState,
 } from "@world/systems/LeaderEncounters";
 import { applyInitialAffinities, processAIDiplomacy } from "@world/systems/LeaderDiplomacy";
+import { lastMorgaineEvents } from "@world/systems/TurnSystem";
 import { getNeutralCityGarrison, pickNeutralRace, neutralRng, getUnitsForRace } from "@world/systems/NeutralCitySystem";
 import { worldNotification } from "@view/world/ui/WorldNotification";
 import { worldWikiScreen } from "@view/world/ui/WorldWikiScreen";
@@ -4674,6 +4675,12 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     if (state.phase === WorldPhase.PLAYER_TURN) {
       const events = rollRandomEvents(state, "p1");
       for (const evt of events) {
+        worldEventLog.addEvent(`${evt.title}: ${evt.description}`, evt.color);
+        worldNotification.show(evt.title, evt.description, evt.color);
+      }
+
+      // Display Morgaine escalation events from the turn cycle
+      for (const evt of lastMorgaineEvents) {
         worldEventLog.addEvent(`${evt.title}: ${evt.description}`, evt.color);
         worldNotification.show(evt.title, evt.description, evt.color);
       }
