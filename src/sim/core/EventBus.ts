@@ -81,6 +81,16 @@ export interface SimEvents {
   rpgSpellLearned: { memberId: string; spellId: string };
   rpgSpellCast: { casterId: string; spellId: string; fxKey: string; targetIds: string[]; isHeal: boolean };
   rpgAllSpellsKnown: { memberId: string; memberName: string; level: number };
+
+  // RPG world events
+  rpgWorldEvent: { id: string; title: string; description: string; choices: { label: string; effects: Record<string, unknown> }[] };
+  rpgAchievementUnlocked: { achievementId: string };
+  rpgShrineUsed: { entityId: string; buff: { type: string; duration: number; magnitude: number } };
+  rpgHerbGathered: { entityId: string; remaining: number };
+  rpgFishCaught: { entityId: string };
+  rpgFastTravel: { targetEntityId: string; position: Vec2 };
+  rpgTutorialTip: { tipId: string; message: string };
+  rpgBanter: { text: string };
 }
 
 // ---------------------------------------------------------------------------

@@ -10,6 +10,12 @@ import { RPG_SPELL_DEFS, spellPrice } from "@rpg/config/RPGSpellDefs";
 import { isCaster, accessibleSchools, maxKnownSpells, learnSpells } from "@rpg/systems/SpellLearningSystem";
 import type { UpgradeType } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
+import { canPromote, getAvailablePromotions, applyPromotion } from "@rpg/systems/PromotionSystem";
+import { getAvailableArenaTiers } from "@rpg/config/ArenaDefs";
+import { canFightInArena, getArenaEncounter } from "@rpg/systems/ArenaSystem";
+import { CRAFTING_RECIPES, CRAFT_MATERIALS } from "@rpg/config/CraftingDefs";
+import { canCraft, craft } from "@rpg/systems/CraftingSystem";
+import { MASTERY_BONUSES } from "@rpg/config/MasteryDefs";
 
 // Pixel art banner images per tab
 import armoryImgUrl from "@/img/armory.png";
@@ -42,7 +48,7 @@ const TAB_ACTIVE_COLOR = 0x2a2a4e;
 
 const RECRUIT_COLOR = 0x44aacc;
 
-const TABS = ["Shop", "Spells", "Inn", "Recruit", "Party", "Leave"] as const;
+const TABS = ["Shop", "Spells", "Inn", "Recruit", "Party", "Arena", "Forge", "Leave"] as const;
 
 // Tab icon glyphs (simple Unicode symbols)
 const TAB_ICONS: Record<string, string> = {
@@ -51,13 +57,15 @@ const TAB_ICONS: Record<string, string> = {
   Inn: "\u2615",       // hot beverage (☕)
   Recruit: "\u2694",   // crossed swords (⚔)
   Party: "\u2666",     // diamond (♦)
+  Arena: "\u2603",     // arena/colosseum (☃)
+  Forge: "\u2692",     // hammer & pick (⚒)
   Leave: "\u2192",     // right arrow (→)
 };
 
 const SPELL_COLOR = 0xaa66ff;
 
 // Sub-modes within Party tab
-type PartySubMode = "member_list" | "equip_slot" | "inventory_pick";
+type PartySubMode = "member_list" | "equip_slot" | "inventory_pick" | "promotion_pick" | "mastery_pick";
 
 // ---------------------------------------------------------------------------
 // TownMenuView
@@ -90,6 +98,25 @@ export class TownMenuView {
   private _messageTimer: ReturnType<typeof setTimeout> | null = null;
   /** Incremented on every _draw() so stale async callbacks can be skipped. */
   private _drawGeneration = 0;
+
+  // Arena state
+  private _arenaIndex: number = 0;
+
+  // Forge/Crafting state
+  private _forgeIndex: number = 0;
+
+  // Promotion state
+  private _promotionIndex: number = 0;
+
+  // Mastery state
+  private _masteryIndex: number = 0;
+
+  // Purchase confirmation dialog state
+  private _confirmDialog: {
+    message: string;
+    onYes: () => void;
+    onNo: () => void;
+  } | null = null;
 
   // Callbacks
   onLeave: (() => void) | null = null;
@@ -166,6 +193,12 @@ export class TownMenuView {
       case "Party":
         this._drawParty(W, H);
         break;
+      case "Arena":
+        this._drawArena(W, H);
+        break;
+      case "Forge":
+        this._drawForge(W, H);
+        break;
       case "Leave":
         this._drawLeave(W, H);
         break;
@@ -174,6 +207,11 @@ export class TownMenuView {
     // Message bar
     if (this._message) {
       this._drawMessage(W, H);
+    }
+
+    // Confirmation dialog overlay
+    if (this._confirmDialog) {
+      this._drawConfirmDialog(W, H);
     }
 
     // Controls hint
@@ -187,6 +225,27 @@ export class TownMenuView {
     });
     title.position.set(20, 12);
     this.container.addChild(title);
+
+    // Reputation stars
+    const townRep = (this.rpg as any).townReputation?.[this.townName] ?? 0;
+    const maxStars = 10;
+    const filled = Math.min(townRep, maxStars);
+    const starStr = "\u2605".repeat(filled) + "\u2606".repeat(maxStars - filled);
+    const repText = new Text({
+      text: `Rep: ${starStr}`,
+      style: { fontFamily: "monospace", fontSize: 13, fill: GOLD_COLOR },
+    });
+    repText.position.set(20, 36);
+    this.container.addChild(repText);
+
+    if (townRep >= 3) {
+      const discountText = new Text({
+        text: "10% discount!",
+        style: { fontFamily: "monospace", fontSize: 11, fill: HP_GREEN, fontWeight: "bold" },
+      });
+      discountText.position.set(repText.x + repText.width + 12, 38);
+      this.container.addChild(discountText);
+    }
 
     const gold = new Text({
       text: `Gold: ${this.rpg.gold}`,
@@ -955,20 +1014,25 @@ export class TownMenuView {
       this._drawEquipSlots(W, startY);
     } else if (this._partySubMode === "inventory_pick") {
       this._drawInventoryPick(W, H, startY);
+    } else if (this._partySubMode === "promotion_pick") {
+      this._drawPromotionPick(W, startY);
+    } else if (this._partySubMode === "mastery_pick") {
+      this._drawMasteryPick(W, startY);
     }
   }
 
   private _drawMemberList(W: number, startY: number): void {
     const party = this.rpg.party;
+    const rowHeight = 100; // Increased to fit promote/mastery info
 
     for (let i = 0; i < party.length; i++) {
       const member = party[i];
-      const y = startY + 10 + i * 80;
+      const y = startY + 10 + i * rowHeight;
       const isSelected = i === this._partyIndex;
 
       if (isSelected) {
         const highlight = new Graphics();
-        highlight.roundRect(20, y - 4, W - 44, 72, 4);
+        highlight.roundRect(20, y - 4, W - 44, rowHeight - 8, 4);
         highlight.fill({ color: 0x2a2a4e, alpha: 0.6 });
         this.container.addChild(highlight);
       }
@@ -1016,6 +1080,52 @@ export class TownMenuView {
       });
       equipText.position.set(44, y + 50);
       this.container.addChild(equipText);
+
+      // Promote button (if available)
+      if (canPromote(member)) {
+        const promoPath = getAvailablePromotions(member);
+        const cost = promoPath?.goldCost ?? 200;
+        const canAffordPromo = this.rpg.gold >= cost;
+
+        const promoBtn = new Container();
+        promoBtn.position.set(W - 170, y + 2);
+        promoBtn.eventMode = "static";
+        promoBtn.cursor = "pointer";
+        const capturedIndex = i;
+        promoBtn.on("pointerdown", () => {
+          this._partyIndex = capturedIndex;
+          this._partySubMode = "promotion_pick";
+          this._promotionIndex = 0;
+          this._draw();
+        });
+
+        const promoBg = new Graphics();
+        promoBg.roundRect(0, 0, 130, 22, 4);
+        promoBg.fill({ color: canAffordPromo ? 0x2a4a2e : 0x3a2a2a });
+        promoBg.stroke({ color: canAffordPromo ? HP_GREEN : 0x664444, width: 1 });
+        promoBtn.addChild(promoBg);
+
+        const promoText = new Text({
+          text: `Promote (${cost}g)`,
+          style: { fontFamily: "monospace", fontSize: 10, fill: canAffordPromo ? 0xffffff : 0x664444, fontWeight: "bold" },
+        });
+        promoText.anchor.set(0.5, 0.5);
+        promoText.position.set(65, 11);
+        promoBtn.addChild(promoText);
+
+        this.container.addChild(promoBtn);
+      }
+
+      // Mastery info (if member has mastery points)
+      const masteryPoints = (member as any).masteryPoints ?? 0;
+      if (masteryPoints > 0) {
+        const masteryText = new Text({
+          text: `\u2728 Mastery Points: ${masteryPoints}  [P=Mastery]`,
+          style: { fontFamily: "monospace", fontSize: 10, fill: SPELL_COLOR },
+        });
+        masteryText.position.set(44, y + 66);
+        this.container.addChild(masteryText);
+      }
     }
   }
 
@@ -1126,6 +1236,509 @@ export class TownMenuView {
   }
 
   // ---------------------------------------------------------------------------
+  // Promotion pick (Party sub-mode)
+  // ---------------------------------------------------------------------------
+
+  private _drawPromotionPick(W: number, startY: number): void {
+    const member = this.rpg.party[this._partyIndex];
+    if (!member) return;
+
+    const promotions = getAvailablePromotions(member);
+
+    const title = new Text({
+      text: `Promote ${member.name} (${member.unitType.replace(/_/g, " ")})`,
+      style: { fontFamily: "monospace", fontSize: 16, fill: 0xffffff, fontWeight: "bold" },
+    });
+    title.position.set(30, startY + 10);
+    this.container.addChild(title);
+
+    if (!promotions || promotions.options.length === 0) {
+      const noPromo = new Text({
+        text: "No promotion paths available.",
+        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
+      });
+      noPromo.position.set(30, startY + 45);
+      this.container.addChild(noPromo);
+      return;
+    }
+
+    const cost = promotions.goldCost;
+    const canAfford = this.rpg.gold >= cost;
+
+    for (let i = 0; i < promotions.options.length; i++) {
+      const option = promotions.options[i];
+      const y = startY + 45 + i * 36;
+      const isSelected = i === this._promotionIndex;
+
+      if (isSelected) {
+        const highlight = new Graphics();
+        highlight.roundRect(20, y - 2, W - 44, 32, 3);
+        highlight.fill({ color: 0x2a4a2e, alpha: 0.6 });
+        this.container.addChild(highlight);
+      }
+
+      const cursor = isSelected ? ">" : " ";
+      const promoText = new Text({
+        text: `${cursor} ${option.to.replace(/_/g, " ")}`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 13,
+          fill: isSelected ? HIGHLIGHT_COLOR : (canAfford ? TEXT_COLOR : 0x664444),
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      promoText.position.set(30, y);
+      this.container.addChild(promoText);
+
+      const costText = new Text({
+        text: `${cost}g`,
+        style: { fontFamily: "monospace", fontSize: 13, fill: canAfford ? GOLD_COLOR : 0x664444 },
+      });
+      costText.anchor.set(1, 0);
+      costText.position.set(W - 30, y);
+      this.container.addChild(costText);
+
+      const descText = new Text({
+        text: option.description,
+        style: { fontFamily: "monospace", fontSize: 10, fill: DIM_TEXT },
+      });
+      descText.position.set(50, y + 16);
+      this.container.addChild(descText);
+    }
+
+    const hint = new Text({
+      text: "Enter = Promote  |  Esc = Back",
+      style: { fontFamily: "monospace", fontSize: 11, fill: DIM_TEXT },
+    });
+    hint.position.set(30, startY + 45 + promotions.options.length * 36 + 10);
+    this.container.addChild(hint);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mastery pick (Party sub-mode)
+  // ---------------------------------------------------------------------------
+
+  private _drawMasteryPick(W: number, startY: number): void {
+    const member = this.rpg.party[this._partyIndex];
+    if (!member) return;
+
+    const masteryPoints = (member as any).masteryPoints ?? 0;
+    const masteryBonuses: Record<string, number> = (member as any).masteryBonuses ?? {};
+
+    const title = new Text({
+      text: `${member.name} - Mastery (Points: ${masteryPoints})`,
+      style: { fontFamily: "monospace", fontSize: 16, fill: SPELL_COLOR, fontWeight: "bold" },
+    });
+    title.position.set(30, startY + 10);
+    this.container.addChild(title);
+
+    if (MASTERY_BONUSES.length === 0) {
+      const noBonuses = new Text({
+        text: "No mastery bonuses defined.",
+        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
+      });
+      noBonuses.position.set(30, startY + 45);
+      this.container.addChild(noBonuses);
+      return;
+    }
+
+    for (let i = 0; i < MASTERY_BONUSES.length; i++) {
+      const bonus = MASTERY_BONUSES[i];
+      const current = masteryBonuses[bonus.id] ?? 0;
+      const max = bonus.maxPurchases;
+      const cost = bonus.cost;
+      const y = startY + 45 + i * 32;
+      const isSelected = i === this._masteryIndex;
+      const canBuy = masteryPoints >= cost && current < max;
+
+      if (isSelected) {
+        const highlight = new Graphics();
+        highlight.roundRect(20, y - 2, W - 44, 28, 3);
+        highlight.fill({ color: 0x2a1a4e, alpha: 0.6 });
+        this.container.addChild(highlight);
+      }
+
+      const cursor = isSelected ? ">" : " ";
+      const bonusText = new Text({
+        text: `${cursor} ${bonus.name}  (${current}/${max})  Cost: ${cost} pts`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 12,
+          fill: isSelected ? HIGHLIGHT_COLOR : (canBuy ? TEXT_COLOR : 0x666688),
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      bonusText.position.set(30, y);
+      this.container.addChild(bonusText);
+
+      if (isSelected && bonus.description) {
+        const descText = new Text({
+          text: bonus.description,
+          style: { fontFamily: "monospace", fontSize: 10, fill: DIM_TEXT },
+        });
+        descText.position.set(50, y + 16);
+        this.container.addChild(descText);
+      }
+    }
+
+    const hint = new Text({
+      text: "Enter = Buy  |  Esc = Back",
+      style: { fontFamily: "monospace", fontSize: 11, fill: DIM_TEXT },
+    });
+    hint.position.set(30, startY + 45 + MASTERY_BONUSES.length * 32 + 10);
+    this.container.addChild(hint);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Arena tab
+  // ---------------------------------------------------------------------------
+
+  private _drawArena(W: number, H: number): void {
+    const startY = 100;
+    const g = new Graphics();
+
+    g.roundRect(15, startY - 5, W - 30, H - startY - 60, 6);
+    g.fill({ color: PANEL_COLOR, alpha: 0.8 });
+    g.stroke({ color: BORDER_COLOR, width: 1 });
+    this.container.addChild(g);
+
+    const fightsLeft = (this.rpg as any).arenaFightsLeft ?? 0;
+    const headerText = new Text({
+      text: `\u2694 Arena  (Fights remaining: ${fightsLeft})`,
+      style: { fontFamily: "monospace", fontSize: 15, fill: RECRUIT_COLOR, fontWeight: "bold" },
+    });
+    headerText.position.set(25, startY + 6);
+    this.container.addChild(headerText);
+
+    if (fightsLeft <= 0) {
+      const noFights = new Text({
+        text: "No arena fights remaining today. Come back tomorrow!",
+        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
+      });
+      noFights.position.set(30, startY + 40);
+      this.container.addChild(noFights);
+      return;
+    }
+
+    const avgPartyLevel = Math.round(this.rpg.party.reduce((s, m) => s + m.level, 0) / (this.rpg.party.length || 1));
+    const tiers = getAvailableArenaTiers(avgPartyLevel);
+    if (tiers.length === 0) {
+      const noTiers = new Text({
+        text: "No arena tiers available.",
+        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
+      });
+      noTiers.position.set(30, startY + 40);
+      this.container.addChild(noTiers);
+      return;
+    }
+
+    const canFight = canFightInArena(this.rpg);
+
+    for (let i = 0; i < tiers.length; i++) {
+      const tier = tiers[i];
+      const y = startY + 36 + i * 44;
+      const isSelected = i === this._arenaIndex;
+      const betAmount = tier.betAmounts[0] ?? 50;
+      const canAfford = this.rpg.gold >= betAmount;
+
+      if (isSelected) {
+        const highlight = new Graphics();
+        highlight.roundRect(20, y - 2, W - 44, 40, 4);
+        highlight.fill({ color: 0x1a2a3e, alpha: 0.8 });
+        this.container.addChild(highlight);
+      }
+
+      const cursor = isSelected ? ">" : " ";
+      const tierText = new Text({
+        text: `${cursor} ${tier.name}  -  Bet: ${betAmount}g`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 13,
+          fill: isSelected ? HIGHLIGHT_COLOR : (canFight && canAfford ? TEXT_COLOR : 0x666688),
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      tierText.position.set(30, y + 2);
+      this.container.addChild(tierText);
+
+      const rewardText = new Text({
+        text: `Bets: ${tier.betAmounts.join("/")}g  |  Level: ${tier.requiredLevel}`,
+        style: { fontFamily: "monospace", fontSize: 10, fill: DIM_TEXT },
+      });
+      rewardText.position.set(50, y + 20);
+      this.container.addChild(rewardText);
+
+      // Fight button
+      if (isSelected) {
+        const fightBtn = new Container();
+        fightBtn.position.set(W - 130, y + 2);
+        fightBtn.eventMode = "static";
+        fightBtn.cursor = "pointer";
+        fightBtn.on("pointerdown", () => {
+          this._handleArenaFight(i);
+        });
+
+        const btnBg = new Graphics();
+        btnBg.roundRect(0, 0, 90, 24, 4);
+        btnBg.fill({ color: canFight && canAfford ? 0x4a2a2e : 0x3a2a2a });
+        btnBg.stroke({ color: canFight && canAfford ? 0xaa4444 : 0x664444, width: 1 });
+        fightBtn.addChild(btnBg);
+
+        const btnText = new Text({
+          text: "Fight!",
+          style: { fontFamily: "monospace", fontSize: 11, fill: canFight && canAfford ? 0xffffff : 0x664444, fontWeight: "bold" },
+        });
+        btnText.anchor.set(0.5, 0.5);
+        btnText.position.set(45, 12);
+        fightBtn.addChild(btnText);
+
+        this.container.addChild(fightBtn);
+      }
+    }
+  }
+
+  private _handleArenaFight(tierIndex: number): void {
+    const avgPartyLevel = Math.round(this.rpg.party.reduce((s, m) => s + m.level, 0) / (this.rpg.party.length || 1));
+    const tiers = getAvailableArenaTiers(avgPartyLevel);
+    if (tierIndex >= tiers.length) return;
+    const tier = tiers[tierIndex];
+    const betAmount = tier.betAmounts[0] ?? 50;
+
+    if (!canFightInArena(this.rpg)) {
+      this._showMessage("Cannot fight in this arena tier!");
+      return;
+    }
+    if (this.rpg.gold < betAmount) {
+      this._showMessage("Not enough gold for the bet!");
+      return;
+    }
+
+    this.rpg.gold -= betAmount;
+    const encounter = getArenaEncounter(this.rpg, tierIndex, betAmount);
+    if (encounter) {
+      EventBus.emit("rpgEncounterTriggered", {
+        encounterId: encounter.encounterId,
+        encounterType: "random",
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Forge (Crafting) tab
+  // ---------------------------------------------------------------------------
+
+  private _drawForge(W: number, H: number): void {
+    const startY = 100;
+    const g = new Graphics();
+
+    g.roundRect(15, startY - 5, W - 30, H - startY - 60, 6);
+    g.fill({ color: PANEL_COLOR, alpha: 0.8 });
+    g.stroke({ color: BORDER_COLOR, width: 1 });
+    this.container.addChild(g);
+
+    const headerText = new Text({
+      text: "\u2692 Forge - Crafting",
+      style: { fontFamily: "monospace", fontSize: 15, fill: HIGHLIGHT_COLOR, fontWeight: "bold" },
+    });
+    headerText.position.set(25, startY + 6);
+    this.container.addChild(headerText);
+
+    if (CRAFTING_RECIPES.length === 0) {
+      const noRecipes = new Text({
+        text: "No crafting recipes available.",
+        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
+      });
+      noRecipes.position.set(30, startY + 40);
+      this.container.addChild(noRecipes);
+      return;
+    }
+
+    for (let i = 0; i < CRAFTING_RECIPES.length; i++) {
+      const recipe = CRAFTING_RECIPES[i];
+      const y = startY + 36 + i * 48;
+      const isSelected = i === this._forgeIndex;
+      const craftable = canCraft(this.rpg, recipe.id);
+
+      if (isSelected) {
+        const highlight = new Graphics();
+        highlight.roundRect(20, y - 2, W - 44, 44, 4);
+        highlight.fill({ color: 0x1a2a1e, alpha: 0.8 });
+        this.container.addChild(highlight);
+      }
+
+      const cursor = isSelected ? ">" : " ";
+      const recipeText = new Text({
+        text: `${cursor} ${recipe.name}`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 13,
+          fill: isSelected ? HIGHLIGHT_COLOR : (craftable ? TEXT_COLOR : 0x666688),
+          fontWeight: isSelected ? "bold" : "normal",
+        },
+      });
+      recipeText.position.set(30, y + 2);
+      this.container.addChild(recipeText);
+
+      // Ingredient requirements
+      const ingredients = recipe.ingredients ?? [];
+      const matStrings = ingredients.map((ing) => {
+        const matDef = CRAFT_MATERIALS.find(m => m.id === ing.itemId);
+        const matName = matDef?.name ?? ing.itemId;
+        const have = this.rpg.inventory.items.find(s => s.item.id === ing.itemId)?.quantity ?? 0;
+        const need = ing.quantity;
+        const color = have >= need ? HP_GREEN : 0xaa4444;
+        return { text: `${matName}: ${have}/${need}`, color };
+      });
+
+      let matX = 50;
+      for (const matInfo of matStrings) {
+        const matText = new Text({
+          text: matInfo.text,
+          style: { fontFamily: "monospace", fontSize: 10, fill: matInfo.color },
+        });
+        matText.position.set(matX, y + 20);
+        this.container.addChild(matText);
+        matX += matText.width + 16;
+      }
+
+      // Craft button (for selected item)
+      if (isSelected) {
+        const craftBtn = new Container();
+        craftBtn.position.set(W - 120, y + 2);
+        craftBtn.eventMode = "static";
+        craftBtn.cursor = "pointer";
+        const capturedRecipeIndex = i;
+        craftBtn.on("pointerdown", () => {
+          const r = CRAFTING_RECIPES[capturedRecipeIndex];
+          if (canCraft(this.rpg, r.id)) {
+            const success = craft(this.rpg, r.id);
+            if (success) {
+              this._showMessage(`Crafted ${r.result.name}!`);
+            } else {
+              this._showMessage("Crafting failed!");
+            }
+          } else {
+            this._showMessage("Missing materials!");
+          }
+        });
+
+        const btnBg = new Graphics();
+        btnBg.roundRect(0, 0, 80, 24, 4);
+        btnBg.fill({ color: craftable ? 0x2a4a2e : 0x3a2a2a });
+        btnBg.stroke({ color: craftable ? HP_GREEN : 0x664444, width: 1 });
+        craftBtn.addChild(btnBg);
+
+        const btnText = new Text({
+          text: "Craft",
+          style: { fontFamily: "monospace", fontSize: 11, fill: craftable ? 0xffffff : 0x664444, fontWeight: "bold" },
+        });
+        btnText.anchor.set(0.5, 0.5);
+        btnText.position.set(40, 12);
+        craftBtn.addChild(btnText);
+
+        this.container.addChild(craftBtn);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Purchase confirmation dialog
+  // ---------------------------------------------------------------------------
+
+  private _drawConfirmDialog(W: number, H: number): void {
+    if (!this._confirmDialog) return;
+
+    // Semi-transparent overlay
+    const overlay = new Graphics();
+    overlay.rect(0, 0, W, H);
+    overlay.fill({ color: 0x000000, alpha: 0.6 });
+    overlay.eventMode = "static"; // Block clicks through
+    this.container.addChild(overlay);
+
+    // Dialog panel
+    const panelW = 400;
+    const panelH = 120;
+    const px = (W - panelW) / 2;
+    const py = (H - panelH) / 2;
+
+    const panel = new Graphics();
+    panel.roundRect(px, py, panelW, panelH, 8);
+    panel.fill({ color: 0xffffff });
+    panel.stroke({ color: BORDER_COLOR, width: 2 });
+    this.container.addChild(panel);
+
+    // Message text
+    const msgText = new Text({
+      text: this._confirmDialog.message,
+      style: {
+        fontFamily: "monospace",
+        fontSize: 14,
+        fill: 0x111111,
+        fontWeight: "bold",
+        wordWrap: true,
+        wordWrapWidth: panelW - 40,
+        align: "center",
+      },
+    });
+    msgText.anchor.set(0.5, 0);
+    msgText.position.set(W / 2, py + 20);
+    this.container.addChild(msgText);
+
+    // Yes button
+    const yesBtn = new Container();
+    yesBtn.position.set(px + panelW / 2 - 90, py + panelH - 45);
+    yesBtn.eventMode = "static";
+    yesBtn.cursor = "pointer";
+    yesBtn.on("pointerdown", () => {
+      const cb = this._confirmDialog?.onYes;
+      this._confirmDialog = null;
+      cb?.();
+    });
+
+    const yesBg = new Graphics();
+    yesBg.roundRect(0, 0, 70, 28, 4);
+    yesBg.fill({ color: 0x2a4a2e });
+    yesBg.stroke({ color: HP_GREEN, width: 1 });
+    yesBtn.addChild(yesBg);
+
+    const yesText = new Text({
+      text: "Yes",
+      style: { fontFamily: "monospace", fontSize: 13, fill: 0xffffff, fontWeight: "bold" },
+    });
+    yesText.anchor.set(0.5, 0.5);
+    yesText.position.set(35, 14);
+    yesBtn.addChild(yesText);
+    this.container.addChild(yesBtn);
+
+    // No button
+    const noBtn = new Container();
+    noBtn.position.set(px + panelW / 2 + 20, py + panelH - 45);
+    noBtn.eventMode = "static";
+    noBtn.cursor = "pointer";
+    noBtn.on("pointerdown", () => {
+      const cb = this._confirmDialog?.onNo;
+      this._confirmDialog = null;
+      cb?.();
+      this._draw();
+    });
+
+    const noBg = new Graphics();
+    noBg.roundRect(0, 0, 70, 28, 4);
+    noBg.fill({ color: 0x4a2a2a });
+    noBg.stroke({ color: 0xaa4444, width: 1 });
+    noBtn.addChild(noBg);
+
+    const noText = new Text({
+      text: "No",
+      style: { fontFamily: "monospace", fontSize: 13, fill: 0xffffff, fontWeight: "bold" },
+    });
+    noText.anchor.set(0.5, 0.5);
+    noText.position.set(35, 14);
+    noBtn.addChild(noText);
+    this.container.addChild(noBtn);
+  }
+
+  // ---------------------------------------------------------------------------
   // Leave tab
   // ---------------------------------------------------------------------------
 
@@ -1198,7 +1811,9 @@ export class TownMenuView {
       const tab = TABS[this._activeTab];
 
       // Tab switching (when not in sub-menu)
-      if (this._partySubMode === "member_list" && this._spellSubMode === "spell_list") {
+      if (this._confirmDialog) {
+        // Block tab switching during confirmation dialog
+      } else if (this._partySubMode === "member_list" && this._spellSubMode === "spell_list") {
         if (e.code === "ArrowLeft") {
           this._activeTab = Math.max(0, this._activeTab - 1);
           this._itemIndex = 0;
@@ -1229,6 +1844,12 @@ export class TownMenuView {
         case "Party":
           this._handlePartyInput(e);
           break;
+        case "Arena":
+          this._handleArenaInput(e);
+          break;
+        case "Forge":
+          this._handleForgeInput(e);
+          break;
         case "Leave":
           this._handleLeaveInput(e);
           break;
@@ -1239,6 +1860,12 @@ export class TownMenuView {
   }
 
   private _handleShopInput(e: KeyboardEvent): void {
+    // Handle confirmation dialog input first
+    if (this._confirmDialog) {
+      this._handleConfirmDialogInput(e);
+      return;
+    }
+
     if (e.code === "Tab") {
       e.preventDefault();
       this._shopMode = this._shopMode === "buy" ? "sell" : "buy";
@@ -1264,10 +1891,26 @@ export class TownMenuView {
         case "Space":
           if (this._itemIndex < items.length) {
             const item = items[this._itemIndex];
-            if (buyItem(this.rpg, item)) {
-              this._showMessage(`Bought ${item.name}!`);
+            if (item.value > 200) {
+              // Show confirmation dialog for expensive purchases
+              this._confirmDialog = {
+                message: `Buy ${item.name} for ${item.value}g?`,
+                onYes: () => {
+                  if (buyItem(this.rpg, item)) {
+                    this._showMessage(`Bought ${item.name}!`);
+                  } else {
+                    this._showMessage("Not enough gold!");
+                  }
+                },
+                onNo: () => {},
+              };
+              this._draw();
             } else {
-              this._showMessage("Not enough gold!");
+              if (buyItem(this.rpg, item)) {
+                this._showMessage(`Bought ${item.name}!`);
+              } else {
+                this._showMessage("Not enough gold!");
+              }
             }
           }
           break;
@@ -1361,12 +2004,22 @@ export class TownMenuView {
   }
 
   private _handlePartyInput(e: KeyboardEvent): void {
+    // Handle confirmation dialog input first
+    if (this._confirmDialog) {
+      this._handleConfirmDialogInput(e);
+      return;
+    }
+
     if (this._partySubMode === "member_list") {
       this._handleMemberListInput(e);
     } else if (this._partySubMode === "equip_slot") {
       this._handleEquipSlotInput(e);
     } else if (this._partySubMode === "inventory_pick") {
       this._handleInventoryPickInput(e);
+    } else if (this._partySubMode === "promotion_pick") {
+      this._handlePromotionPickInput(e);
+    } else if (this._partySubMode === "mastery_pick") {
+      this._handleMasteryPickInput(e);
     }
   }
 
@@ -1388,6 +2041,16 @@ export class TownMenuView {
         this._equipSlotIndex = 0;
         this._draw();
         break;
+      case "KeyP": {
+        // Open mastery screen for selected member
+        const member = this.rpg.party[this._partyIndex];
+        if (member && ((member as any).masteryPoints ?? 0) > 0) {
+          this._partySubMode = "mastery_pick";
+          this._masteryIndex = 0;
+          this._draw();
+        }
+        break;
+      }
       case "Escape":
         this.onLeave?.();
         break;
@@ -1459,6 +2122,168 @@ export class TownMenuView {
         this._partySubMode = "equip_slot";
         this._draw();
         break;
+    }
+  }
+
+  private _handlePromotionPickInput(e: KeyboardEvent): void {
+    const member = this.rpg.party[this._partyIndex];
+    if (!member) return;
+    const promotions = getAvailablePromotions(member);
+    if (!promotions) return;
+
+    switch (e.code) {
+      case "ArrowUp":
+      case "KeyW":
+        this._promotionIndex = Math.max(0, this._promotionIndex - 1);
+        this._draw();
+        break;
+      case "ArrowDown":
+      case "KeyS":
+        this._promotionIndex = Math.min(promotions.options.length - 1, this._promotionIndex + 1);
+        this._draw();
+        break;
+      case "Enter":
+      case "Space": {
+        if (this._promotionIndex >= promotions.options.length) break;
+        const option = promotions.options[this._promotionIndex];
+        const cost = promotions.goldCost;
+        if (this.rpg.gold < cost) {
+          this._showMessage("Not enough gold for promotion!");
+        } else {
+          this.rpg.gold -= cost;
+          applyPromotion(this.rpg, member.id, option.to);
+          this._showMessage(`${member.name} promoted to ${option.to.replace(/_/g, " ")}!`);
+          this._partySubMode = "member_list";
+        }
+        break;
+      }
+      case "Escape":
+        this._partySubMode = "member_list";
+        this._draw();
+        break;
+    }
+  }
+
+  private _handleMasteryPickInput(e: KeyboardEvent): void {
+    const member = this.rpg.party[this._partyIndex];
+    if (!member) return;
+    const masteryPoints = (member as any).masteryPoints ?? 0;
+    const masteryBonuses: Record<string, number> = (member as any).masteryBonuses ?? {};
+
+    switch (e.code) {
+      case "ArrowUp":
+      case "KeyW":
+        this._masteryIndex = Math.max(0, this._masteryIndex - 1);
+        this._draw();
+        break;
+      case "ArrowDown":
+      case "KeyS":
+        this._masteryIndex = Math.min(MASTERY_BONUSES.length - 1, this._masteryIndex + 1);
+        this._draw();
+        break;
+      case "Enter":
+      case "Space": {
+        if (this._masteryIndex >= MASTERY_BONUSES.length) break;
+        const bonus = MASTERY_BONUSES[this._masteryIndex];
+        const current = masteryBonuses[bonus.id] ?? 0;
+        const max = bonus.maxPurchases;
+        const cost = bonus.cost;
+
+        if (masteryPoints < cost) {
+          this._showMessage("Not enough mastery points!");
+        } else if (current >= max) {
+          this._showMessage("Already at maximum level!");
+        } else {
+          (member as any).masteryPoints -= cost;
+          if (!(member as any).masteryBonuses) (member as any).masteryBonuses = {};
+          (member as any).masteryBonuses[bonus.id] = current + 1;
+          this._showMessage(`${bonus.name} upgraded to ${current + 1}/${max}!`);
+        }
+        break;
+      }
+      case "Escape":
+        this._partySubMode = "member_list";
+        this._draw();
+        break;
+    }
+  }
+
+  private _handleArenaInput(e: KeyboardEvent): void {
+    const avgPartyLevel = Math.round(this.rpg.party.reduce((s, m) => s + m.level, 0) / (this.rpg.party.length || 1));
+    const tiers = getAvailableArenaTiers(avgPartyLevel);
+
+    switch (e.code) {
+      case "ArrowUp":
+      case "KeyW":
+        this._arenaIndex = Math.max(0, this._arenaIndex - 1);
+        this._draw();
+        break;
+      case "ArrowDown":
+      case "KeyS":
+        this._arenaIndex = Math.min(tiers.length - 1, this._arenaIndex + 1);
+        this._draw();
+        break;
+      case "Enter":
+      case "Space":
+        this._handleArenaFight(this._arenaIndex);
+        break;
+      case "Escape":
+        this.onLeave?.();
+        break;
+    }
+  }
+
+  private _handleForgeInput(e: KeyboardEvent): void {
+    switch (e.code) {
+      case "ArrowUp":
+      case "KeyW":
+        this._forgeIndex = Math.max(0, this._forgeIndex - 1);
+        this._draw();
+        break;
+      case "ArrowDown":
+      case "KeyS":
+        this._forgeIndex = Math.min(CRAFTING_RECIPES.length - 1, this._forgeIndex + 1);
+        this._draw();
+        break;
+      case "Enter":
+      case "Space": {
+        if (this._forgeIndex >= CRAFTING_RECIPES.length) break;
+        const recipe = CRAFTING_RECIPES[this._forgeIndex];
+        if (canCraft(this.rpg, recipe.id)) {
+          const success = craft(this.rpg, recipe.id);
+          if (success) {
+            this._showMessage(`Crafted ${recipe.result.name}!`);
+          } else {
+            this._showMessage("Crafting failed!");
+          }
+        } else {
+          this._showMessage("Missing materials!");
+        }
+        break;
+      }
+      case "Escape":
+        this.onLeave?.();
+        break;
+    }
+  }
+
+  private _handleConfirmDialogInput(e: KeyboardEvent): void {
+    switch (e.code) {
+      case "KeyY":
+      case "Enter": {
+        const cb = this._confirmDialog?.onYes;
+        this._confirmDialog = null;
+        cb?.();
+        break;
+      }
+      case "KeyN":
+      case "Escape": {
+        const cb = this._confirmDialog?.onNo;
+        this._confirmDialog = null;
+        cb?.();
+        this._draw();
+        break;
+      }
     }
   }
 

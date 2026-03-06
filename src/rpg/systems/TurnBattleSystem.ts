@@ -12,6 +12,9 @@ import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { RPG_SPELL_DEFS, type RPGSpellDef } from "@rpg/config/RPGSpellDefs";
 import { isCaster, spellPicksOnLevelUp, getSpellChoices } from "@rpg/systems/SpellLearningSystem";
 import { getBlessingAtkMultiplier, getBlessingDefMultiplier } from "@rpg/systems/LeaderEncounterSystem";
+import { getUnitElement, getElementEffectiveness, getEffectivenessText } from "@rpg/config/ElementDefs";
+import { getLimitBreak, LIMIT_GAUGE_MAX } from "@rpg/config/LimitBreakDefs";
+import { checkStatusCombo } from "@rpg/config/StatusComboDefs";
 
 // ---------------------------------------------------------------------------
 // Battle creation
@@ -32,7 +35,12 @@ export function createBattleFromEncounter(
   for (let i = 0; i < rpg.party.length; i++) {
     const member = rpg.party[i];
     const line = rpg.formation[member.id] ?? (1 as 1 | 2);
-    combatants.push(_partyToCombatant(member, i, line));
+    const combatant = _partyToCombatant(member, i, line);
+
+    // Apply affinity bonuses based on relationships with other party members
+    _applyAffinityBonuses(combatant, rpg);
+
+    combatants.push(combatant);
   }
 
   // Apply leader blessing ATK/DEF multipliers to party combatants
@@ -56,13 +64,13 @@ export function createBattleFromEncounter(
     }
   }
 
-  // Auto-assign enemy lines: melee→front, ranged→back
+  // Auto-assign enemy lines: melee->front, ranged->back
   let hasFront = false;
   for (const e of allEnemyDefs) {
     const unitDef = UNIT_DEFINITIONS[e.def.unitType];
     const line: 1 | 2 = (e.def.line as 1 | 2) ?? (unitDef.range <= 1 ? 1 : 2);
     if (line === 1) hasFront = true;
-    combatants.push(_enemyToCombatant(e.def, e.idx, line));
+    combatants.push(_enemyToCombatant(e.def, e.idx, line, rpg.difficulty));
   }
   // If no front-line enemies, move first enemy to front
   if (!hasFront && combatants.length > 0) {
@@ -78,7 +86,29 @@ export function createBattleFromEncounter(
     def.lootTable.filter(l => Math.random() < l.chance).map(l => l.item),
   );
   state.battleContext = battleContext;
+
+  // Update bestiary
+  _updateBestiary(rpg, encounterId);
+
   return state;
+}
+
+/** Apply affinity bonuses: each affinity level with another living party member gives +2% ATK and +2% DEF */
+function _applyAffinityBonuses(combatant: TurnBattleCombatant, rpg: RPGState): void {
+  if (!rpg.affinity[combatant.id]) return;
+
+  let totalAffinity = 0;
+  for (const member of rpg.party) {
+    if (member.id === combatant.id) continue;
+    const score = rpg.affinity[combatant.id]?.[member.id] ?? 0;
+    totalAffinity += score;
+  }
+
+  if (totalAffinity > 0) {
+    const bonusPct = totalAffinity * 0.02; // 2% per affinity point
+    combatant.atk = Math.floor(combatant.atk * (1 + bonusPct));
+    combatant.def = Math.floor(combatant.def * (1 + bonusPct));
+  }
 }
 
 function _partyToCombatant(member: PartyMember, position: number, line: 1 | 2): TurnBattleCombatant {
@@ -104,6 +134,12 @@ function _partyToCombatant(member: PartyMember, position: number, line: 1 | 2): 
     line,
     knownSpells: [...(member.knownSpells ?? [])],
     isSummoned: false,
+    // New combat depth fields
+    element: getUnitElement(member.unitType),
+    limitGauge: 0,
+    threat: 0,
+    counterReady: false,
+    tauntTurns: 0,
   };
 }
 
@@ -147,21 +183,29 @@ function _computeCritBonus(member: PartyMember): number {
   return Math.min(crit, 0.4); // cap at +40%
 }
 
-function _enemyToCombatant(enemyDef: EnemyDef, position: number, line: 1 | 2): TurnBattleCombatant {
+function _enemyToCombatant(
+  enemyDef: EnemyDef,
+  position: number,
+  line: 1 | 2,
+  difficulty: "easy" | "normal" | "hard" = "normal",
+): TurnBattleCombatant {
   const unitDef = UNIT_DEFINITIONS[enemyDef.unitType];
   const scale = 1 + RPGBalance.ENEMY_LEVEL_SCALE * (enemyDef.level - 1);
+
+  // Difficulty stat multiplier
+  const diffMult = difficulty === "easy" ? 0.8 : difficulty === "hard" ? 1.3 : 1.0;
 
   return {
     id: `enemy_${position}`,
     name: `${unitDef.type.replace(/_/g, " ")}`,
     isPartyMember: false,
     unitType: enemyDef.unitType,
-    hp: enemyDef.overrides?.hp ?? Math.ceil(unitDef.hp * scale),
-    maxHp: enemyDef.overrides?.hp ?? Math.ceil(unitDef.hp * scale),
+    hp: Math.ceil((enemyDef.overrides?.hp ?? Math.ceil(unitDef.hp * scale)) * diffMult),
+    maxHp: Math.ceil((enemyDef.overrides?.hp ?? Math.ceil(unitDef.hp * scale)) * diffMult),
     mp: 0,
     maxMp: 0,
-    atk: enemyDef.overrides?.atk ?? Math.ceil(unitDef.atk * scale),
-    def: enemyDef.overrides?.def ?? Math.ceil(unitDef.atk * scale * 0.3),
+    atk: Math.ceil((enemyDef.overrides?.atk ?? Math.ceil(unitDef.atk * scale)) * diffMult),
+    def: Math.ceil((enemyDef.overrides?.def ?? Math.ceil(unitDef.atk * scale * 0.3)) * diffMult),
     speed: enemyDef.overrides?.speed ?? unitDef.speed,
     range: unitDef.range,
     abilityTypes: unitDef.abilityTypes ?? [],
@@ -173,7 +217,31 @@ function _enemyToCombatant(enemyDef: EnemyDef, position: number, line: 1 | 2): T
     line,
     knownSpells: [],
     isSummoned: false,
+    // New combat depth fields
+    element: getUnitElement(enemyDef.unitType),
+    limitGauge: 0,
+    threat: 0,
+    counterReady: false,
+    tauntTurns: 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Bestiary
+// ---------------------------------------------------------------------------
+
+function _updateBestiary(rpg: RPGState, encounterId: string): void {
+  const def = ENCOUNTER_DEFS[encounterId];
+  if (!def) return;
+
+  if (!rpg.bestiary[encounterId]) {
+    rpg.bestiary[encounterId] = {
+      encounterId,
+      name: def.name,
+      timesDefeated: 0,
+      firstSeen: rpg.gameTime,
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +260,7 @@ export function calculateInitiative(battle: TurnBattleState): void {
   });
 
   // Build turn order with speed-based extra turns
-  // Find median speed — units with 2x+ median speed get a bonus turn
+  // Find median speed -- units with 2x+ median speed get a bonus turn
   const speeds = alive.map(c => getEffectiveSpeed(c));
   const medianSpeed = speeds.length > 0 ? speeds[Math.floor(speeds.length / 2)] : 1;
   const bonusThreshold = medianSpeed * 2;
@@ -240,8 +308,11 @@ export function advanceTurn(battle: TurnBattleState): void {
   if (nextIndex <= battle.currentTurnIndex) {
     battle.round++;
     _tickStatusEffects(battle);
-    // Reset defending flags
-    for (const c of battle.combatants) c.isDefending = false;
+    // Reset defending flags and decrement taunt turns
+    for (const c of battle.combatants) {
+      c.isDefending = false;
+      if (c.tauntTurns > 0) c.tauntTurns--;
+    }
     // Recalculate initiative
     calculateInitiative(battle);
     return;
@@ -259,7 +330,7 @@ export function advanceTurn(battle: TurnBattleState): void {
     return;
   }
 
-  // Check for stun — skip turn
+  // Check for stun -- skip turn
   const stunEffect = current.statusEffects.find(e => e.type === "stun");
   if (stunEffect) {
     battle.log.push(`${current.name} is stunned and cannot act!`);
@@ -325,6 +396,12 @@ export function executeAction(
     case TurnBattleAction.FLEE:
       _executeFlee(battle, rpg);
       return; // Flee doesn't advance turn normally
+    case TurnBattleAction.SWAP_ROW:
+      _executeSwapRow(battle, attacker);
+      break;
+    case TurnBattleAction.LIMIT_BREAK:
+      _executeLimitBreak(battle, attacker);
+      break;
   }
 
   // Check battle end
@@ -346,9 +423,13 @@ function _executeAttack(
   const target = targetId ? battle.combatants.find(c => c.id === targetId) : null;
   if (!target || target.hp <= 0) return;
 
+  // Element effectiveness for basic attacks
+  const elemMult = getElementEffectiveness(attacker.element, target.element);
+
   const { damage: rawDamage, isCritical, isBlocked } = _calculateDamage(
     attacker.atk, target.def, target.isDefending, 1.0,
     attacker.critBonus, target.blockChance,
+    attacker.line, target.line,
   );
 
   if (isBlocked) {
@@ -361,10 +442,22 @@ function _executeAttack(
     return;
   }
 
-  const damage = _applyDamageWithShield(target, rawDamage, battle);
+  const elemAdjustedDamage = Math.max(1, Math.round(rawDamage * elemMult));
+  const damage = _applyDamageWithShield(target, elemAdjustedDamage, battle);
 
+  // Effectiveness text
+  const effText = getEffectivenessText(elemMult);
   const critText = isCritical ? " (CRIT!)" : "";
-  battle.log.push(`${attacker.name} attacks ${target.name} for ${damage} damage${critText}`);
+  const elemLog = effText ? ` ${effText}` : "";
+  battle.log.push(`${attacker.name} attacks ${target.name} for ${damage} damage${critText}${elemLog}`);
+
+  // Threat: add damage dealt to attacker's threat
+  attacker.threat += damage;
+
+  // Limit gauge: attacker gains for dealing damage
+  attacker.limitGauge = Math.min(LIMIT_GAUGE_MAX, attacker.limitGauge + 10);
+  // Target gains for taking damage
+  target.limitGauge = Math.min(LIMIT_GAUGE_MAX, target.limitGauge + 15);
 
   EventBus.emit("rpgTurnBattleDamage", {
     attackerId: attacker.id,
@@ -381,6 +474,36 @@ function _executeAttack(
 
   if (target.hp <= 0) {
     battle.log.push(`${target.name} is defeated!`);
+  } else {
+    // Counter-attack check: target has counterReady and attacker is in melee range
+    _tryCounterAttack(battle, target, attacker);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Counter-attack
+// ---------------------------------------------------------------------------
+
+function _tryCounterAttack(
+  battle: TurnBattleState,
+  defender: TurnBattleCombatant,
+  attacker: TurnBattleCombatant,
+): void {
+  if (!defender.counterReady) return;
+  if (defender.hp <= 0) return;
+
+  // Check melee range: both on front line, or defender is ranged
+  const inRange = defender.line === 1 && attacker.line === 1 || defender.range > 1;
+  if (!inRange) return;
+
+  const counterDamage = Math.max(1, Math.floor(defender.atk * 0.5));
+  attacker.hp = Math.max(0, attacker.hp - counterDamage);
+  defender.counterReady = false;
+
+  battle.log.push(`${defender.name} counter-attacks ${attacker.name} for ${counterDamage} damage!`);
+
+  if (attacker.hp <= 0) {
+    battle.log.push(`${attacker.name} is defeated!`);
   }
 }
 
@@ -411,11 +534,14 @@ function _executeAbility(
   if (!target) return;
 
   if (abilityInfo.isHeal) {
-    // Healing ability — targets allies
+    // Healing ability -- targets allies
     const healAmount = Math.ceil(attacker.atk * abilityInfo.multiplier);
     const healed = Math.min(healAmount, target.maxHp - target.hp);
     target.hp += healed;
     battle.log.push(`${attacker.name} casts ${abilityInfo.name} on ${target.name}. Healed ${healed} HP!`);
+
+    // Threat: add half of healed amount
+    attacker.threat += Math.floor(healed / 2);
 
     EventBus.emit("rpgTurnBattleAction", {
       combatantId: attacker.id,
@@ -425,9 +551,14 @@ function _executeAbility(
   } else {
     // Damage ability
     if (target.hp <= 0) return;
+
+    // Element effectiveness for abilities
+    const elemMult = getElementEffectiveness(attacker.element, target.element);
+
     const { damage: rawDamage, isCritical, isBlocked } = _calculateDamage(
       attacker.atk, target.def, target.isDefending, abilityInfo.multiplier,
       attacker.critBonus, target.blockChance,
+      attacker.line, target.line,
     );
 
     if (isBlocked) {
@@ -440,10 +571,18 @@ function _executeAbility(
       return;
     }
 
-    const damage = _applyDamageWithShield(target, rawDamage, battle);
+    const elemAdjustedDamage = Math.max(1, Math.round(rawDamage * elemMult));
+    const damage = _applyDamageWithShield(target, elemAdjustedDamage, battle);
 
+    const effText = getEffectivenessText(elemMult);
     const critText = isCritical ? " (CRIT!)" : "";
-    battle.log.push(`${attacker.name} casts ${abilityInfo.name} on ${target.name} for ${damage} damage${critText}`);
+    const elemLog = effText ? ` ${effText}` : "";
+    battle.log.push(`${attacker.name} casts ${abilityInfo.name} on ${target.name} for ${damage} damage${critText}${elemLog}`);
+
+    // Threat & limit gauge
+    attacker.threat += damage;
+    attacker.limitGauge = Math.min(LIMIT_GAUGE_MAX, attacker.limitGauge + 10);
+    target.limitGauge = Math.min(LIMIT_GAUGE_MAX, target.limitGauge + 15);
 
     EventBus.emit("rpgTurnBattleDamage", {
       attackerId: attacker.id,
@@ -460,6 +599,8 @@ function _executeAbility(
 
     if (target.hp <= 0) {
       battle.log.push(`${target.name} is defeated!`);
+    } else {
+      _tryCounterAttack(battle, target, attacker);
     }
   }
 }
@@ -510,6 +651,9 @@ function _executeRPGSpell(
       totalHealed += healed;
     }
 
+    // Threat: add half of total healed
+    attacker.threat += Math.floor(totalHealed / 2);
+
     const targetNames = targets.map(t => t.name).join(", ");
     battle.log.push(`${attacker.name} casts ${spell.name} on ${targetNames}. Healed ${totalHealed} HP!`);
 
@@ -536,7 +680,7 @@ function _executeRPGSpell(
 
   let targets: TurnBattleCombatant[];
   if (spell.targets <= 1) {
-    // Single target — use selected target
+    // Single target -- use selected target
     const t = targetId ? battle.combatants.find(c => c.id === targetId) : enemies[0];
     targets = t && t.hp > 0 ? [t] : [enemies[0]];
   } else {
@@ -552,24 +696,49 @@ function _executeRPGSpell(
   const hitResults: { name: string; damage: number; crit: boolean; blocked: boolean }[] = [];
   for (const t of targets) {
     if (t.hp <= 0) continue;
+
+    // Element effectiveness for spells
+    const elemMult = getElementEffectiveness(attacker.element, t.element);
+
     const { damage: rawDamage, isCritical, isBlocked } = _calculateDamage(
       attacker.atk, t.def, t.isDefending, spell.multiplier,
       attacker.critBonus, t.blockChance,
+      attacker.line, t.line,
     );
     if (isBlocked) {
       hitResults.push({ name: t.name, damage: 0, crit: false, blocked: true });
       continue;
     }
-    const damage = _applyDamageWithShield(t, rawDamage, battle);
+
+    const elemAdjustedDamage = Math.max(1, Math.round(rawDamage * elemMult));
+    const damage = _applyDamageWithShield(t, elemAdjustedDamage, battle);
     hitResults.push({ name: t.name, damage, crit: isCritical, blocked: false });
 
-    // Apply status effect
+    // Threat & limit gauge
+    attacker.threat += damage;
+    attacker.limitGauge = Math.min(LIMIT_GAUGE_MAX, attacker.limitGauge + 10);
+    t.limitGauge = Math.min(LIMIT_GAUGE_MAX, t.limitGauge + 15);
+
+    // Apply status effect with combo check
     if (spell.statusEffect) {
+      // Check for status combos before applying
+      const combo = checkStatusCombo(t.statusEffects, spell.statusEffect.type);
+      if (combo) {
+        battle.log.push(`Combo: ${combo.name}!`);
+        _applyComboEffect(battle, combo, attacker, t);
+      }
+
       t.statusEffects.push({
         type: spell.statusEffect.type,
         duration: spell.statusEffect.duration,
         magnitude: spell.statusEffect.magnitude,
       });
+    }
+
+    // Element effectiveness text
+    const effText = getEffectivenessText(elemMult);
+    if (effText) {
+      hitResults[hitResults.length - 1].name += ` (${effText})`;
     }
 
     EventBus.emit("rpgTurnBattleDamage", {
@@ -581,6 +750,8 @@ function _executeRPGSpell(
 
     if (t.hp <= 0) {
       battle.log.push(`${t.name} is defeated!`);
+    } else {
+      _tryCounterAttack(battle, t, attacker);
     }
   }
 
@@ -604,6 +775,44 @@ function _executeRPGSpell(
 }
 
 // ---------------------------------------------------------------------------
+// Status combo application
+// ---------------------------------------------------------------------------
+
+function _applyComboEffect(
+  battle: TurnBattleState,
+  combo: ReturnType<typeof checkStatusCombo> & {},
+  attacker: TurnBattleCombatant,
+  target: TurnBattleCombatant,
+): void {
+  switch (combo.effect.type) {
+    case "stun":
+      target.statusEffects.push({
+        type: "stun",
+        duration: combo.effect.duration,
+        magnitude: 0,
+      });
+      break;
+    case "burst_damage": {
+      const burstDamage = Math.max(1, Math.floor(combo.effect.multiplier * attacker.atk));
+      target.hp = Math.max(0, target.hp - burstDamage);
+      battle.log.push(`${target.name} takes ${burstDamage} burst damage!`);
+      if (target.hp <= 0) {
+        battle.log.push(`${target.name} is defeated!`);
+      }
+      break;
+    }
+    case "freeze":
+      // Freeze = stun for the specified duration
+      target.statusEffects.push({
+        type: "stun",
+        duration: combo.effect.duration,
+        magnitude: 0,
+      });
+      break;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Summoning
 // ---------------------------------------------------------------------------
 
@@ -623,7 +832,7 @@ function _executeSummon(
     : maxSummons;
 
   if (slotsLeft <= 0) {
-    battle.log.push(`${caster.name} can't summon — no slots available!`);
+    battle.log.push(`${caster.name} can't summon -- no slots available!`);
     // Refund MP
     caster.mp += spell.mpCost;
     return;
@@ -656,6 +865,12 @@ function _executeSummon(
     knownSpells: [],
     isSummoned: true,
     summonerId: caster.id,
+    // New combat depth fields
+    element: getUnitElement(unitType),
+    limitGauge: 0,
+    threat: 0,
+    counterReady: false,
+    tauntTurns: 0,
   };
 
   battle.combatants.push(summoned);
@@ -772,11 +987,110 @@ function _executeDefend(
   attacker: TurnBattleCombatant,
 ): void {
   attacker.isDefending = true;
+  attacker.counterReady = true;
+  attacker.threat += 10;
+  attacker.limitGauge = Math.min(LIMIT_GAUGE_MAX, attacker.limitGauge + 5);
   battle.log.push(`${attacker.name} takes a defensive stance.`);
 
   EventBus.emit("rpgTurnBattleAction", {
     combatantId: attacker.id,
     action: TurnBattleAction.DEFEND,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Swap Row
+// ---------------------------------------------------------------------------
+
+function _executeSwapRow(
+  battle: TurnBattleState,
+  attacker: TurnBattleCombatant,
+): void {
+  attacker.line = attacker.line === 1 ? 2 : 1;
+  const rowName = attacker.line === 1 ? "front" : "back";
+  battle.log.push(`${attacker.name} moves to the ${rowName} row.`);
+
+  EventBus.emit("rpgTurnBattleAction", {
+    combatantId: attacker.id,
+    action: TurnBattleAction.SWAP_ROW,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Limit Break
+// ---------------------------------------------------------------------------
+
+function _executeLimitBreak(
+  battle: TurnBattleState,
+  attacker: TurnBattleCombatant,
+): void {
+  if (attacker.limitGauge < LIMIT_GAUGE_MAX) {
+    battle.log.push(`${attacker.name}'s limit gauge is not full!`);
+    return;
+  }
+
+  const lb = getLimitBreak(attacker.unitType);
+  battle.log.push(`${attacker.name} unleashes ${lb.name}!`);
+
+  if (lb.targetMode === "all_enemies") {
+    // Deal multiplier * ATK damage to all enemies
+    const enemies = battle.combatants.filter(
+      c => c.hp > 0 && c.isPartyMember !== attacker.isPartyMember,
+    );
+    for (const enemy of enemies) {
+      const elemMult = getElementEffectiveness(lb.element, enemy.element);
+      const rawDamage = Math.max(1, Math.round(attacker.atk * lb.multiplier * elemMult));
+      const damage = _applyDamageWithShield(enemy, rawDamage, battle);
+      const effText = getEffectivenessText(elemMult);
+      const elemLog = effText ? ` ${effText}` : "";
+      battle.log.push(`${enemy.name} takes ${damage} damage!${elemLog}`);
+
+      EventBus.emit("rpgTurnBattleDamage", {
+        attackerId: attacker.id,
+        targetId: enemy.id,
+        damage,
+        isCritical: false,
+      });
+
+      if (enemy.hp <= 0) {
+        battle.log.push(`${enemy.name} is defeated!`);
+      }
+    }
+  } else if (lb.targetMode === "all_allies" || lb.targetMode === "self_and_allies") {
+    const allies = battle.combatants.filter(
+      c => c.hp > 0 && c.isPartyMember === attacker.isPartyMember,
+    );
+
+    if (lb.isHeal) {
+      // Heal all allies to full + remove negative status effects
+      for (const ally of allies) {
+        ally.hp = ally.maxHp;
+        ally.statusEffects = ally.statusEffects.filter(
+          e => e.type === "regen" || e.type === "haste" || e.type === "shield",
+        );
+      }
+      battle.log.push(`All allies are fully healed and cleansed!`);
+    }
+
+    if (lb.statusEffect) {
+      // Apply status effect to all allies
+      for (const ally of allies) {
+        ally.statusEffects.push({
+          type: lb.statusEffect.type as StatusEffect["type"],
+          duration: lb.statusEffect.duration,
+          magnitude: lb.statusEffect.magnitude,
+        });
+      }
+      battle.log.push(`All allies gain ${lb.statusEffect.type}!`);
+    }
+  }
+
+  // Reset gauge after use
+  attacker.limitGauge = 0;
+
+  EventBus.emit("rpgTurnBattleAction", {
+    combatantId: attacker.id,
+    action: TurnBattleAction.LIMIT_BREAK,
   });
 }
 
@@ -811,6 +1125,9 @@ function _executeItem(
     const healed = Math.min(item.stats.hp, target.maxHp - target.hp);
     target.hp += healed;
     battle.log.push(`${attacker.name} uses ${item.name} on ${target.name}. Healed ${healed} HP.`);
+
+    // Threat: add half of healed amount
+    attacker.threat += Math.floor(healed / 2);
   }
   if (item.stats.mp && item.stats.mp > 0) {
     const restored = Math.min(item.stats.mp, target.maxMp - target.mp);
@@ -871,7 +1188,7 @@ function _avgSpeed(battle: TurnBattleState, isParty: boolean): number {
 }
 
 // ---------------------------------------------------------------------------
-// Damage calculation
+// Damage calculation (with row bonuses)
 // ---------------------------------------------------------------------------
 
 function _calculateDamage(
@@ -881,8 +1198,10 @@ function _calculateDamage(
   multiplier: number,
   attackerCritBonus: number = 0,
   targetBlockChance: number = 0,
+  attackerLine?: 1 | 2,
+  defenderLine?: 1 | 2,
 ): { damage: number; isCritical: boolean; isBlocked: boolean } {
-  // Block check — target's shield can negate the hit entirely
+  // Block check -- target's shield can negate the hit entirely
   const isBlocked = targetBlockChance > 0 && Math.random() < targetBlockChance;
   if (isBlocked) return { damage: 0, isCritical: false, isBlocked: true };
 
@@ -890,7 +1209,23 @@ function _calculateDamage(
   const critMult = isCritical ? RPGBalance.CRITICAL_MULT : 1.0;
   const defendMult = isDefending ? RPGBalance.DEFEND_DAMAGE_MULT : 1.0;
 
-  const baseDamage = atk * multiplier * critMult - def * 0.5;
+  // Row bonuses
+  let atkRowMult = 1.0;
+  if (attackerLine === 1) {
+    atkRowMult = 1.10; // Front row: +10% ATK bonus
+  } else if (attackerLine === 2) {
+    atkRowMult = 0.85; // Back row: -15% ATK penalty
+  }
+
+  let defRowMult = 1.0;
+  if (defenderLine === 2) {
+    defRowMult = 1.15; // Back row: +15% DEF bonus
+  }
+
+  const effectiveAtk = atk * atkRowMult;
+  const effectiveDef = def * defRowMult;
+
+  const baseDamage = effectiveAtk * multiplier * critMult - effectiveDef * 0.5;
   const damage = Math.max(1, Math.round(baseDamage * defendMult));
 
   return { damage, isCritical, isBlocked: false };
@@ -940,9 +1275,24 @@ export function executeEnemyTurn(battle: TurnBattleState, rpg: RPGState): void {
     return;
   }
 
-  // Simple AI: attack weakest reachable party member
-  reachable.sort((a, b) => a.hp - b.hp);
-  const target = reachable[0];
+  // Threat-based targeting
+  let target: TurnBattleCombatant;
+
+  // If any party member has tauntTurns > 0, always target that member
+  const tauntTarget = reachable.find(c => c.tauntTurns > 0);
+  if (tauntTarget) {
+    target = tauntTarget;
+  } else {
+    // 70% chance target highest-threat party member, 30% random
+    if (Math.random() < 0.7) {
+      // Sort by threat descending, pick highest
+      const sorted = [...reachable].sort((a, b) => b.threat - a.threat);
+      target = sorted[0];
+    } else {
+      // Random target
+      target = reachable[Math.floor(Math.random() * reachable.length)];
+    }
+  }
 
   executeAction(battle, TurnBattleAction.ATTACK, target.id, null, null, rpg);
 }
@@ -952,7 +1302,7 @@ export function executeEnemyTurn(battle: TurnBattleState, rpg: RPGState): void {
 // ---------------------------------------------------------------------------
 
 function _checkBattleEnd(battle: TurnBattleState): boolean {
-  // Summoned units don't count — only real party members and non-summoned enemies
+  // Summoned units don't count -- only real party members and non-summoned enemies
   const aliveParty = battle.combatants.filter(c => c.isPartyMember && c.hp > 0 && !c.isSummoned);
   const aliveEnemies = battle.combatants.filter(c => !c.isPartyMember && c.hp > 0 && !c.isSummoned);
 
@@ -994,7 +1344,8 @@ function _tickStatusEffects(battle: TurnBattleState): void {
         case "haste":
         case "shield":
         case "stun":
-          // These are handled elsewhere (speed calc, damage calc, turn skip)
+        case "wet":
+          // These are handled elsewhere (speed calc, damage calc, turn skip, combo)
           break;
       }
 
@@ -1049,15 +1400,22 @@ export function applyVictoryRewards(
   rpg: RPGState,
   battle: TurnBattleState,
 ): void {
-  // Gold
-  rpg.gold += battle.goldReward;
+  // Difficulty multiplier for rewards
+  const rewardMult = rpg.difficulty === "easy" ? 1.5 : rpg.difficulty === "hard" ? 0.75 : 1.0;
 
-  // XP distributed evenly to living party members
+  // Gold (with difficulty scaling)
+  rpg.gold += Math.floor(battle.goldReward * rewardMult);
+
+  // XP distributed to all party members; KO'd get 50%, alive get full (death penalty)
+  const totalXp = Math.floor(battle.xpReward * rewardMult);
   const aliveParty = rpg.party.filter(m => m.hp > 0);
-  const xpEach = aliveParty.length > 0 ? Math.ceil(battle.xpReward / aliveParty.length) : 0;
+  const allMembers = rpg.party;
+  const xpEach = allMembers.length > 0 ? Math.ceil(totalXp / allMembers.length) : 0;
 
-  for (const member of aliveParty) {
-    member.xp += xpEach;
+  for (const member of allMembers) {
+    // Death penalty: KO'd members get 50% XP
+    const memberXp = member.hp <= 0 ? Math.floor(xpEach * 0.5) : xpEach;
+    member.xp += memberXp;
 
     // Check level up
     while (member.xp >= member.xpToNext && member.level < RPGBalance.MAX_LEVEL) {
@@ -1081,6 +1439,42 @@ export function applyVictoryRewards(
   // Loot
   for (const item of battle.lootReward) {
     _addItemToInventory(rpg, item);
+  }
+
+  // Bestiary: increment timesDefeated for all encounter IDs that match
+  // We find the encounter by matching enemy types in battle
+  for (const key of Object.keys(rpg.bestiary)) {
+    const entry = rpg.bestiary[key];
+    if (entry) {
+      // Increment if this bestiary entry was just seen (firstSeen matches or updated this battle)
+      const def = ENCOUNTER_DEFS[key];
+      if (def) {
+        // Check if this battle's enemies match the encounter definition
+        const battleEnemyTypes = battle.combatants
+          .filter(c => !c.isPartyMember && !c.isSummoned)
+          .map(c => c.unitType);
+        const encEnemyTypes = def.enemies.flatMap(e => Array(e.count).fill(e.unitType));
+        const matches = encEnemyTypes.every(t => battleEnemyTypes.includes(t)) &&
+          battleEnemyTypes.length === encEnemyTypes.length;
+        if (matches) {
+          entry.timesDefeated++;
+        }
+      }
+    }
+  }
+
+  // Affinity: for each pair of living party members, increment affinity by 1
+  for (let i = 0; i < aliveParty.length; i++) {
+    for (let j = i + 1; j < aliveParty.length; j++) {
+      const a = aliveParty[i];
+      const b = aliveParty[j];
+
+      if (!rpg.affinity[a.id]) rpg.affinity[a.id] = {};
+      if (!rpg.affinity[b.id]) rpg.affinity[b.id] = {};
+
+      rpg.affinity[a.id][b.id] = (rpg.affinity[a.id][b.id] ?? 0) + 1;
+      rpg.affinity[b.id][a.id] = (rpg.affinity[b.id][a.id] ?? 0) + 1;
+    }
   }
 
   EventBus.emit("rpgBattleEnded", {

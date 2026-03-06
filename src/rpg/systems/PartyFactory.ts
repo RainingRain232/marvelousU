@@ -53,6 +53,11 @@ export function createPartyMember(
       ring: null,
     },
     statusEffects: [],
+    masteryPoints: 0,
+    masteryBonuses: {},
+    bonusCritChance: 0,
+    bonusHealingMult: 0,
+    battlesFought: 0,
   };
 }
 

@@ -4,7 +4,8 @@ import type { OverworldState } from "@rpg/state/OverworldState";
 
 const SAVE_KEY_PREFIX = "rpg_save_";
 const SAVE_META_KEY = "rpg_save_meta";
-const MAX_SLOTS = 3;
+const MAX_SLOTS = 4;
+const AUTO_SAVE_SLOT = 3;
 
 // ---------------------------------------------------------------------------
 // Save metadata (for showing slot info in menus)
@@ -48,6 +49,31 @@ interface SerializedRPGState {
   formation: Record<string, 1 | 2>;
   metLeaders: string[];
   leaderBlessings: ActiveBlessing[];
+  // Narrative
+  mainQuestStep: number;
+  collectedLore: string[];
+  townReputation: Record<string, number>;
+  karma: number;
+  // World
+  timeOfDay: number;
+  weather: "clear" | "rain" | "snow" | "fog";
+  weatherTimer: number;
+  discoveredTowns: string[];
+  // Party Identity
+  affinity: Record<string, Record<string, number>>;
+  hiredUniqueRecruits: string[];
+  // QoL
+  bestiary: RPGState["bestiary"];
+  achievements: string[];
+  difficulty: "easy" | "normal" | "hard";
+  tutorialFlags: Record<string, boolean>;
+  battleSpeed: 1 | 2 | 4;
+  // Endgame
+  ngPlusCount: number;
+  abyssRecord: number;
+  // Economy
+  townPurchases: Record<string, number>;
+  arenaFightsLeft: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +160,13 @@ export function deleteSave(slot: number): void {
   localStorage.setItem(SAVE_META_KEY, JSON.stringify(slots));
 }
 
+export function autoSave(
+  rpgState: RPGState,
+  overworldState: OverworldState,
+): boolean {
+  return saveGame(AUTO_SAVE_SLOT, rpgState, overworldState);
+}
+
 export function restoreRPGState(
   serialized: SerializedRPGState,
 ): RPGState {
@@ -166,6 +199,31 @@ export function restoreRPGState(
     formation: serialized.formation ?? {},
     metLeaders: new Set(serialized.metLeaders ?? []),
     leaderBlessings: serialized.leaderBlessings ?? [],
+    // Narrative
+    mainQuestStep: serialized.mainQuestStep ?? 0,
+    collectedLore: new Set(serialized.collectedLore ?? []),
+    townReputation: serialized.townReputation ?? {},
+    karma: serialized.karma ?? 0,
+    // World
+    timeOfDay: serialized.timeOfDay ?? 60,
+    weather: serialized.weather ?? "clear",
+    weatherTimer: serialized.weatherTimer ?? 40,
+    discoveredTowns: new Set(serialized.discoveredTowns ?? []),
+    // Party Identity
+    affinity: serialized.affinity ?? {},
+    hiredUniqueRecruits: new Set(serialized.hiredUniqueRecruits ?? []),
+    // QoL
+    bestiary: serialized.bestiary ?? {},
+    achievements: new Set(serialized.achievements ?? []),
+    difficulty: serialized.difficulty ?? "normal",
+    tutorialFlags: serialized.tutorialFlags ?? {},
+    battleSpeed: serialized.battleSpeed ?? 1,
+    // Endgame
+    ngPlusCount: serialized.ngPlusCount ?? 0,
+    abyssRecord: serialized.abyssRecord ?? 0,
+    // Economy
+    townPurchases: serialized.townPurchases ?? {},
+    arenaFightsLeft: serialized.arenaFightsLeft ?? 3,
   };
 }
 
@@ -193,5 +251,30 @@ function _serializeRPGState(state: RPGState): SerializedRPGState {
     formation: state.formation,
     metLeaders: Array.from(state.metLeaders),
     leaderBlessings: state.leaderBlessings,
+    // Narrative
+    mainQuestStep: state.mainQuestStep,
+    collectedLore: Array.from(state.collectedLore),
+    townReputation: state.townReputation,
+    karma: state.karma,
+    // World
+    timeOfDay: state.timeOfDay,
+    weather: state.weather,
+    weatherTimer: state.weatherTimer,
+    discoveredTowns: Array.from(state.discoveredTowns),
+    // Party Identity
+    affinity: state.affinity,
+    hiredUniqueRecruits: Array.from(state.hiredUniqueRecruits),
+    // QoL
+    bestiary: state.bestiary,
+    achievements: Array.from(state.achievements),
+    difficulty: state.difficulty,
+    tutorialFlags: state.tutorialFlags,
+    battleSpeed: state.battleSpeed,
+    // Endgame
+    ngPlusCount: state.ngPlusCount,
+    abyssRecord: state.abyssRecord,
+    // Economy
+    townPurchases: state.townPurchases,
+    arenaFightsLeft: state.arenaFightsLeft,
   };
 }

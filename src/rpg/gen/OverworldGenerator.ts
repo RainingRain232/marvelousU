@@ -4,13 +4,14 @@ import type { Vec2 } from "@/types";
 import { SeededRandom } from "@sim/utils/random";
 import type { OverworldTile, OverworldEntity, OverworldState } from "@rpg/state/OverworldState";
 import { createOverworldState } from "@rpg/state/OverworldState";
-import type { DungeonEntranceData, TownData, NPCData } from "@rpg/state/OverworldState";
+import type { DungeonEntranceData, TownData, NPCData, RoamingEnemyData, ShrineData, HerbNodeData, FishingSpotData } from "@rpg/state/OverworldState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { generateShopInventory } from "@rpg/config/RPGItemDefs";
 import type { ShopTier } from "@rpg/config/RPGItemDefs";
 import { generateMagicShopSpells, generateArcaneLibrarySpells } from "@rpg/config/RPGSpellDefs";
 import type { ArcaneLibraryData } from "@rpg/state/OverworldState";
 import { placeLeaderNPCs } from "@rpg/systems/LeaderEncounterSystem";
+import { ENCOUNTER_DEFS, OVERWORLD_ENCOUNTERS } from "@rpg/config/EncounterDefs";
 
 // ---------------------------------------------------------------------------
 // Simple 2D value noise (seeded)
@@ -477,6 +478,167 @@ export function generateOverworld(seed: number): { state: OverworldState; startP
         _carvePath(grid, pos, nearestTown);
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Place roaming enemies (20)
+  // ---------------------------------------------------------------------------
+  const biomeEncounterMap: Record<string, string[]> = OVERWORLD_ENCOUNTERS;
+
+  for (let i = 0; i < 20; i++) {
+    const pos = findPlacement(grid, rng, width, height, placements, 8);
+    if (!pos) continue;
+    placements.push(pos);
+
+    // Determine biome at this position
+    const tileType = grid[pos.y][pos.x].type;
+    const biomeKey = tileType === OverworldTileType.PATH ? "grass" : tileType;
+    const encounterTable = biomeEncounterMap[biomeKey] ?? biomeEncounterMap["grass"];
+    const encounterId = rng.pick(encounterTable);
+    const encDef = ENCOUNTER_DEFS[encounterId];
+
+    // Find most common unit type in encounter
+    let displayUnitType = "swordsman";
+    if (encDef) {
+      const unitCounts: Record<string, number> = {};
+      for (const enemy of encDef.enemies) {
+        unitCounts[enemy.unitType] = (unitCounts[enemy.unitType] || 0) + enemy.count;
+      }
+      let maxCount = 0;
+      for (const [ut, count] of Object.entries(unitCounts)) {
+        if (count > maxCount) {
+          maxCount = count;
+          displayUnitType = ut;
+        }
+      }
+    }
+
+    const entityId = `roaming_enemy_${i}`;
+    grid[pos.y][pos.x].entityId = entityId;
+    grid[pos.y][pos.x].encounterRate = 0;
+
+    const data: RoamingEnemyData = {
+      encounterId,
+      displayUnitType,
+      defeated: false,
+      respawnCounter: 0,
+    };
+
+    entities.set(entityId, {
+      id: entityId,
+      type: "roaming_enemy",
+      position: pos,
+      name: encDef?.name ?? "Roaming Enemy",
+      data,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Place shrines (10) — ATK or DEF buff
+  // ---------------------------------------------------------------------------
+  for (let i = 0; i < 10; i++) {
+    const pos = findPlacement(grid, rng, width, height, placements, 12);
+    if (!pos) continue;
+    placements.push(pos);
+
+    const isAtk = rng.next() < 0.5;
+    const entityId = `shrine_${i}`;
+    grid[pos.y][pos.x].entityId = entityId;
+    grid[pos.y][pos.x].encounterRate = 0;
+
+    const data: ShrineData = {
+      buff: {
+        type: isAtk ? "atk" : "def",
+        magnitude: isAtk ? 5 : 4,
+        duration: 50,
+      },
+      used: false,
+      respawnCounter: 0,
+    };
+
+    entities.set(entityId, {
+      id: entityId,
+      type: "shrine",
+      position: pos,
+      name: isAtk ? "Shrine of Might" : "Shrine of Fortitude",
+      data,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Place herb nodes (10)
+  // ---------------------------------------------------------------------------
+  for (let i = 0; i < 10; i++) {
+    const pos = findPlacement(grid, rng, width, height, placements, 10);
+    if (!pos) continue;
+    placements.push(pos);
+
+    const entityId = `herb_node_${i}`;
+    grid[pos.y][pos.x].entityId = entityId;
+    grid[pos.y][pos.x].encounterRate = 0;
+
+    const data: HerbNodeData = {
+      herbCount: 3,
+      respawnCounter: 0,
+    };
+
+    entities.set(entityId, {
+      id: entityId,
+      type: "herb_node",
+      position: pos,
+      name: "Herb Patch",
+      data,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Place fishing spots (5)
+  // ---------------------------------------------------------------------------
+  for (let i = 0; i < 5; i++) {
+    // Fishing spots prefer water-adjacent tiles
+    let pos: Vec2 | null = null;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const candidate = findPlacement(grid, rng, width, height, placements, 15);
+      if (!candidate) continue;
+      // Check if adjacent to water
+      const neighbors = [
+        { x: candidate.x + 1, y: candidate.y },
+        { x: candidate.x - 1, y: candidate.y },
+        { x: candidate.x, y: candidate.y + 1 },
+        { x: candidate.x, y: candidate.y - 1 },
+      ];
+      const nearWater = neighbors.some(
+        n => n.x >= 0 && n.x < width && n.y >= 0 && n.y < height && grid[n.y][n.x].type === OverworldTileType.WATER,
+      );
+      if (nearWater) {
+        pos = candidate;
+        break;
+      }
+      // Fall through after many attempts — accept any walkable tile
+      if (attempt > 150) {
+        pos = candidate;
+        break;
+      }
+    }
+    if (!pos) continue;
+    placements.push(pos);
+
+    const entityId = `fishing_spot_${i}`;
+    grid[pos.y][pos.x].entityId = entityId;
+    grid[pos.y][pos.x].encounterRate = 0;
+
+    const data: FishingSpotData = {
+      used: false,
+      respawnCounter: 0,
+    };
+
+    entities.set(entityId, {
+      id: entityId,
+      type: "fishing_spot",
+      position: pos,
+      name: "Fishing Spot",
+      data,
+    });
   }
 
   // Start position: just outside the first town (below the 4×4 area)

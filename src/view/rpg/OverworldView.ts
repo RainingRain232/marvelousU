@@ -3,7 +3,7 @@ import { Container, Graphics, Text, AnimatedSprite } from "pixi.js";
 import { OverworldTileType, UnitType, UnitState } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
 import type { ViewManager } from "@view/ViewManager";
-import type { OverworldState, OverworldEntity } from "@rpg/state/OverworldState";
+import type { OverworldState, OverworldEntity, RoamingEnemyData, ShrineData, HerbNodeData, FishingSpotData } from "@rpg/state/OverworldState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { GamePhase } from "@/types";
@@ -617,6 +617,23 @@ function _drawTileDecoration(
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Get the most common unit type from an array (for roaming enemy display). */
+export function getMostCommonUnit(unitTypes: UnitType[]): UnitType {
+  const counts = new Map<UnitType, number>();
+  for (const ut of unitTypes) counts.set(ut, (counts.get(ut) ?? 0) + 1);
+  let best = unitTypes[0];
+  let bestCount = 0;
+  for (const ut of unitTypes) {
+    const c = counts.get(ut)!;
+    if (c > bestCount) { bestCount = c; best = ut; }
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------------------
 // OverworldView
 // ---------------------------------------------------------------------------
 
@@ -641,6 +658,26 @@ export class OverworldView {
   private _partyState: UnitState = UnitState.IDLE;
   private _idleTimer: ReturnType<typeof setTimeout> | null = null;
   private _moveResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Roaming enemy sprites
+  private _roamingEnemySprites: Map<string, { sprite: AnimatedSprite; shadow: Graphics; container: Container }> = new Map();
+
+  // Day/night overlay
+  private _dayNightOverlay = new Graphics();
+
+  // Weather particles
+  private _weatherContainer = new Container();
+  private _weatherParticles: Graphics[] = [];
+  private _weatherFogOverlay: Graphics | null = null;
+  private _currentWeather: string = "clear";
+  private _weatherTime = 0;
+
+  // Banter speech bubble
+  private _banterContainer = new Container();
+  /** @internal stored for cleanup */ private _banterBg: Graphics | null = null;
+  private _banterText: Text | null = null;
+  private _banterTimer = 0;
+  private _banterFadeTimer = 0;
 
   private _unsubs: Array<() => void> = [];
 
@@ -667,6 +704,16 @@ export class OverworldView {
 
     vm.addToLayer("units", this.partyContainer);
 
+    // Day/night overlay (above fog, below UI)
+    vm.addToLayer("fx", this._dayNightOverlay);
+
+    // Weather particle container
+    vm.addToLayer("fx", this._weatherContainer);
+
+    // Banter bubble above party
+    this._banterContainer.visible = false;
+    vm.addToLayer("ui", this._banterContainer);
+
     // Set map size on camera
     vm.camera.setMapSize(overworld.width, overworld.height);
 
@@ -682,11 +729,15 @@ export class OverworldView {
     this._drawEntities();
     this._drawFog();
 
-    // Per-frame hamlet animation
+    // Per-frame updates
     this._unsubs.push(vm.onUpdate((_state, dt) => {
       for (const hamlet of this._hamlets.values()) {
         hamlet.tick(dt, GamePhase.PREP);
       }
+      this._updateRoamingEnemies();
+      this._updateDayNightOverlay();
+      this._updateWeather(dt);
+      this._updateBanter(dt);
     }));
 
     // Listen for movement
@@ -706,6 +757,11 @@ export class OverworldView {
       }, 400);
     }));
 
+    // Listen for banter events
+    this._unsubs.push(EventBus.on("rpgBanter", ({ text }) => {
+      this._showBanter(text);
+    }));
+
     // Schedule occasional idle animation
     this._scheduleIdleInterrupt();
   }
@@ -721,10 +777,19 @@ export class OverworldView {
     for (const hamlet of this._hamlets.values()) hamlet.destroy();
     this._hamlets.clear();
 
+    // Destroy roaming enemy sprites
+    for (const entry of this._roamingEnemySprites.values()) {
+      entry.container.destroy({ children: true });
+    }
+    this._roamingEnemySprites.clear();
+
     this.vm.removeFromLayer("background", this.mapContainer);
     this.vm.removeFromLayer("buildings", this.entityContainer);
     this.vm.removeFromLayer("groundfx", this.fogContainer);
     this.vm.removeFromLayer("units", this.partyContainer);
+    this.vm.removeFromLayer("fx", this._dayNightOverlay);
+    this.vm.removeFromLayer("fx", this._weatherContainer);
+    this.vm.removeFromLayer("ui", this._banterContainer);
 
     for (const label of this.entityLabels) label.destroy();
     this.entityLabels = [];
@@ -733,6 +798,9 @@ export class OverworldView {
     this.entityContainer.destroy({ children: true });
     this.fogContainer.destroy({ children: true });
     this.partyContainer.destroy({ children: true });
+    this._dayNightOverlay.destroy();
+    this._weatherContainer.destroy({ children: true });
+    this._banterContainer.destroy({ children: true });
   }
 
   // ---------------------------------------------------------------------------
@@ -970,6 +1038,60 @@ export class OverworldView {
         g.roundRect(cx - r * 1.1, cy - r * 1.3, r * 2.2, r * 2.9, 2);
         g.stroke({ color: 0xaa66ff, width: 1, alpha: 0.6 });
         break;
+      case "shrine": {
+        const shrineData = entity.data as ShrineData;
+        const dimAlpha = shrineData.used ? 0.3 : 1.0;
+        // Stone column
+        g.rect(cx - r * 0.25, cy - r * 0.6, r * 0.5, r * 1.2);
+        g.fill({ color: 0x888888, alpha: dimAlpha });
+        // Glowing circle on top – color based on buff type
+        const buffColors: Record<string, number> = {
+          attack: 0xff4444, defense: 0x4488ff, speed: 0x44ff44,
+          hp: 0xff88cc, mana: 0x8844ff,
+        };
+        const glowColor = buffColors[shrineData.buff.type] ?? 0xffcc44;
+        g.circle(cx, cy - r * 0.7, r * 0.35);
+        g.fill({ color: glowColor, alpha: 0.8 * dimAlpha });
+        // Glow halo
+        g.circle(cx, cy - r * 0.7, r * 0.55);
+        g.fill({ color: glowColor, alpha: 0.15 * dimAlpha });
+        break;
+      }
+      case "herb_node": {
+        const herbData = entity.data as HerbNodeData;
+        const dimAlpha = herbData.herbCount <= 0 ? 0.3 : 1.0;
+        // 3 leaf shapes
+        for (let i = -1; i <= 1; i++) {
+          const lx = cx + i * r * 0.35;
+          const ly = cy - r * 0.1 + Math.abs(i) * r * 0.15;
+          g.ellipse(lx, ly - r * 0.3, r * 0.18, r * 0.4);
+          g.fill({ color: 0x33aa33, alpha: 0.8 * dimAlpha });
+          // Stem
+          g.moveTo(lx, ly);
+          g.lineTo(lx, ly + r * 0.3);
+          g.stroke({ color: 0x227722, width: 1, alpha: 0.7 * dimAlpha });
+        }
+        break;
+      }
+      case "fishing_spot": {
+        const fishData = entity.data as FishingSpotData;
+        const dimAlpha = fishData.used ? 0.3 : 1.0;
+        // Blue wavy circle
+        g.circle(cx, cy, r * 0.55);
+        g.fill({ color: 0x3388dd, alpha: 0.5 * dimAlpha });
+        // Wavy ring
+        for (let i = 0; i < 8; i++) {
+          const a = (Math.PI * 2 / 8) * i;
+          const wobble = r * 0.05 * Math.sin(i * 3);
+          const px = cx + Math.cos(a) * (r * 0.6 + wobble);
+          const py = cy + Math.sin(a) * (r * 0.4 + wobble);
+          if (i === 0) g.moveTo(px, py);
+          else g.lineTo(px, py);
+        }
+        g.closePath();
+        g.stroke({ color: 0x66bbff, width: 1.5, alpha: 0.6 * dimAlpha });
+        break;
+      }
       default:
         // Circle for others
         g.circle(cx, cy, r * 0.5);
@@ -991,6 +1113,266 @@ export class OverworldView {
           g.rect(x * ts, y * ts, ts, ts);
           g.fill({ color: FOG_COLOR, alpha: FOG_ALPHA });
         }
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Roaming enemies
+  // ---------------------------------------------------------------------------
+
+  private _updateRoamingEnemies(): void {
+    const ts = this.TILE_SIZE;
+    const activeIds = new Set<string>();
+
+    for (const entity of this.overworld.entities.values()) {
+      if (entity.type !== "roaming_enemy") continue;
+      activeIds.add(entity.id);
+
+      const enemyData = entity.data as RoamingEnemyData;
+
+      if (!this._roamingEnemySprites.has(entity.id)) {
+        // Create sprite for this roaming enemy
+        const unitType = enemyData.displayUnitType as UnitType;
+        const frames = animationManager.getFrames(unitType, UnitState.IDLE);
+        const frameSet = animationManager.getFrameSet(unitType, UnitState.IDLE);
+
+        const container = new Container();
+        const shadow = new Graphics();
+        shadow.ellipse(0, 4, ts * 0.25, ts * 0.1);
+        shadow.fill({ color: 0x000000, alpha: 0.25 });
+        container.addChild(shadow);
+
+        const sprite = new AnimatedSprite(frames);
+        sprite.anchor.set(0.5, 0.75);
+        sprite.width = ts * 1.0;
+        sprite.height = ts * 1.0;
+        sprite.animationSpeed = frameSet.fps / 60;
+        sprite.loop = true;
+        sprite.play();
+        container.addChild(sprite);
+
+        this.entityContainer.addChild(container);
+        this._roamingEnemySprites.set(entity.id, { sprite, shadow, container });
+      }
+
+      const entry = this._roamingEnemySprites.get(entity.id)!;
+      // Update position
+      const px = entity.position.x * ts + ts / 2;
+      const py = entity.position.y * ts + ts / 2;
+      entry.container.position.set(px, py);
+      // Hide if defeated
+      entry.container.visible = !enemyData.defeated;
+    }
+
+    // Remove sprites for entities that no longer exist
+    for (const [id, entry] of this._roamingEnemySprites) {
+      if (!activeIds.has(id)) {
+        entry.container.destroy({ children: true });
+        this._roamingEnemySprites.delete(id);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Day/Night overlay
+  // ---------------------------------------------------------------------------
+
+  private _updateDayNightOverlay(): void {
+    const g = this._dayNightOverlay;
+    g.clear();
+
+    const timeOfDay = this.rpg.timeOfDay;
+    let color = 0x000000;
+    let alpha = 0;
+
+    if (timeOfDay >= 0 && timeOfDay < 60) {
+      // Morning: warm tint
+      color = 0xffeecc;
+      alpha = 0.05;
+    } else if (timeOfDay >= 60 && timeOfDay < 120) {
+      // Day: no overlay
+      alpha = 0;
+    } else if (timeOfDay >= 120 && timeOfDay < 180) {
+      // Evening: warm orange
+      color = 0xff8844;
+      alpha = 0.15;
+    } else {
+      // Night: dark blue-black
+      color = 0x000033;
+      alpha = 0.35;
+    }
+
+    if (alpha > 0) {
+      const cam = this.vm.camera;
+      const visW = this.vm.screenWidth / cam.zoom;
+      const visH = this.vm.screenHeight / cam.zoom;
+      g.rect(-cam.x, -cam.y, visW, visH);
+      g.fill({ color, alpha });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Weather particles
+  // ---------------------------------------------------------------------------
+
+  private _updateWeather(dt: number): void {
+    const weather = this.rpg.weather;
+    this._weatherTime += dt;
+
+    // Rebuild particles if weather changed
+    if (weather !== this._currentWeather) {
+      this._currentWeather = weather;
+      this._clearWeatherParticles();
+      this._createWeatherParticles(weather);
+    }
+
+    const cam = this.vm.camera;
+    const visW = this.vm.screenWidth / cam.zoom;
+    const visH = this.vm.screenHeight / cam.zoom;
+    const ox = -cam.x;
+    const oy = -cam.y;
+
+    if (weather === "rain") {
+      for (const p of this._weatherParticles) {
+        p.x += 2.5;
+        p.y += 6.0;
+        // Wrap around
+        if (p.x > ox + visW) p.x = ox - 5;
+        if (p.y > oy + visH) p.y = oy - 10;
+      }
+    } else if (weather === "snow") {
+      for (let i = 0; i < this._weatherParticles.length; i++) {
+        const p = this._weatherParticles[i];
+        p.x += Math.sin(this._weatherTime * 0.8 + i * 1.3) * 0.4;
+        p.y += 1.2;
+        if (p.y > oy + visH) p.y = oy - 5;
+        if (p.x > ox + visW) p.x = ox;
+        if (p.x < ox) p.x = ox + visW;
+      }
+    } else if (weather === "fog") {
+      if (this._weatherFogOverlay) {
+        this._weatherFogOverlay.clear();
+        const fogAlpha = 0.2 + Math.sin(this._weatherTime * 0.5) * 0.03;
+        this._weatherFogOverlay.rect(ox, oy, visW, visH);
+        this._weatherFogOverlay.fill({ color: 0xffffff, alpha: fogAlpha });
+      }
+    }
+  }
+
+  private _createWeatherParticles(weather: string): void {
+    const cam = this.vm.camera;
+    const visW = this.vm.screenWidth / cam.zoom;
+    const visH = this.vm.screenHeight / cam.zoom;
+    const ox = -cam.x;
+    const oy = -cam.y;
+
+    if (weather === "rain") {
+      const count = 20 + Math.floor(Math.random() * 11); // 20-30
+      for (let i = 0; i < count; i++) {
+        const p = new Graphics();
+        p.moveTo(0, 0);
+        p.lineTo(-4, -10);
+        p.stroke({ color: 0x6688cc, width: 1.5, alpha: 0.5 });
+        p.x = ox + Math.random() * visW;
+        p.y = oy + Math.random() * visH;
+        this._weatherContainer.addChild(p);
+        this._weatherParticles.push(p);
+      }
+    } else if (weather === "snow") {
+      const count = 15 + Math.floor(Math.random() * 6); // 15-20
+      for (let i = 0; i < count; i++) {
+        const p = new Graphics();
+        const r = 1.5 + Math.random() * 2;
+        p.circle(0, 0, r);
+        p.fill({ color: 0xffffff, alpha: 0.7 });
+        p.x = ox + Math.random() * visW;
+        p.y = oy + Math.random() * visH;
+        this._weatherContainer.addChild(p);
+        this._weatherParticles.push(p);
+      }
+    } else if (weather === "fog") {
+      const fog = new Graphics();
+      fog.rect(ox, oy, visW, visH);
+      fog.fill({ color: 0xffffff, alpha: 0.2 });
+      this._weatherContainer.addChild(fog);
+      this._weatherFogOverlay = fog;
+    }
+  }
+
+  private _clearWeatherParticles(): void {
+    for (const p of this._weatherParticles) p.destroy();
+    this._weatherParticles = [];
+    if (this._weatherFogOverlay) {
+      this._weatherFogOverlay.destroy();
+      this._weatherFogOverlay = null;
+    }
+    this._weatherContainer.removeChildren();
+    this._weatherTime = 0;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Banter speech bubbles
+  // ---------------------------------------------------------------------------
+
+  private _showBanter(text: string): void {
+    // Clear old banter
+    this._banterContainer.removeChildren();
+    if (this._banterBg) { this._banterBg.destroy(); this._banterBg = null; }
+    if (this._banterText) { this._banterText.destroy(); this._banterText = null; }
+
+    const bg = new Graphics();
+    const label = new Text({
+      text,
+      style: {
+        fontFamily: "monospace",
+        fontSize: 10,
+        fill: 0x000000,
+        wordWrap: true,
+        wordWrapWidth: 140,
+      },
+    });
+    label.anchor.set(0.5, 1);
+    label.position.set(0, -4);
+
+    // Background rounded rect
+    const padX = 8;
+    const padY = 5;
+    const w = label.width + padX * 2;
+    const h = label.height + padY * 2;
+    bg.roundRect(-w / 2, -h - 4, w, h, 6);
+    bg.fill({ color: 0xffffff, alpha: 0.92 });
+    bg.stroke({ color: 0x000000, width: 1, alpha: 0.3 });
+
+    this._banterContainer.addChild(bg);
+    this._banterContainer.addChild(label);
+    this._banterBg = bg;
+    this._banterText = label;
+    this._banterContainer.visible = true;
+    this._banterContainer.alpha = 1;
+    this._banterTimer = 3.0; // show for 3 seconds
+    this._banterFadeTimer = 0;
+  }
+
+  private _updateBanter(dt: number): void {
+    if (!this._banterContainer.visible) return;
+
+    // Position above party sprite
+    const ts = this.TILE_SIZE;
+    const px = this.overworld.partyPosition.x * ts + ts / 2;
+    const py = this.overworld.partyPosition.y * ts + ts / 2 - ts * 0.8;
+    this._banterContainer.position.set(px, py);
+
+    if (this._banterTimer > 0) {
+      this._banterTimer -= dt / 1000;
+      if (this._banterTimer <= 0) {
+        this._banterFadeTimer = 0.5; // fade out over 0.5s
+      }
+    } else if (this._banterFadeTimer > 0) {
+      this._banterFadeTimer -= dt / 1000;
+      this._banterContainer.alpha = Math.max(0, this._banterFadeTimer / 0.5);
+      if (this._banterFadeTimer <= 0) {
+        this._banterContainer.visible = false;
       }
     }
   }

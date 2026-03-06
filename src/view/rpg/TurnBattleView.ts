@@ -1,6 +1,6 @@
 // JRPG-style turn-based battle view — animated sprites from AnimationManager
 import { Container, Graphics, Text, AnimatedSprite } from "pixi.js";
-import { TurnBattlePhase, TurnBattleAction, UnitState, UpgradeType } from "@/types";
+import { TurnBattlePhase, TurnBattleAction, UnitState, UpgradeType, RPGElementType } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
 import type { ViewManager } from "@view/ViewManager";
 import type { TurnBattleState, TurnBattleCombatant } from "@rpg/state/TurnBattleState";
@@ -9,6 +9,7 @@ import { animationManager } from "@view/animation/AnimationManager";
 import { getAbilityName, getEffectiveSpeed, getSpellName, getSpellMpCost, canCastSpell } from "@rpg/systems/TurnBattleSystem";
 import { drawTerrainDecorationAt } from "@view/world/WorldMapRenderer";
 import { TerrainType } from "@world/config/TerrainDefs";
+import { ELEMENT_COLORS } from "@rpg/config/ElementDefs";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -19,6 +20,7 @@ const PARTY_AREA_Y_OFFSET = 170; // from bottom
 const HP_BAR_WIDTH = 100;
 const HP_BAR_HEIGHT = 8;
 const MP_BAR_HEIGHT = 5;
+const LB_BAR_HEIGHT = 5;
 const COMBATANT_SPACING = 140;
 const SPRITE_DISPLAY_SIZE = 80;
 const TWEEN_DISTANCE = 40;
@@ -38,6 +40,8 @@ interface BattleSpriteEntry {
   isDead: boolean;
   isParty: boolean;
   tweening: boolean;
+  /** Limit gauge bar Graphics for pulse animation when full. */
+  lbBarFill?: Graphics;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,6 +75,21 @@ export class TurnBattleView {
   private _unsubs: Array<() => void> = [];
   /** Track all active animation intervals so they can be cleared on destroy. */
   private _activeIntervals: Set<ReturnType<typeof setInterval>> = new Set();
+
+  // --- Battle speed toggle ---
+  private _speedButtonContainer = new Container();
+  private _battleSpeed: 1 | 2 | 4 = 1;
+
+  // --- Log scroll state ---
+  private _logScrollOffset = 0;
+  private _onLogWheel: ((e: WheelEvent) => void) | null = null;
+
+  // --- LB pulse interval ---
+  private _lbPulseInterval: ReturnType<typeof setInterval> | null = null;
+  private _lbPulseTick = 0;
+
+  // --- VFX container for spell particle effects ---
+  private _vfxContainer = new Container();
 
   // Callbacks for input
   onActionSelected: ((action: TurnBattleAction) => void) | null = null;
@@ -125,6 +144,29 @@ export class TurnBattleView {
     // Turn order bar
     vm.addToLayer("ui", this.turnOrderContainer);
 
+    // VFX layer (above combatants)
+    vm.addToLayer("units", this._vfxContainer);
+
+    // Battle speed toggle button
+    this._battleSpeed = rpg.battleSpeed ?? 1;
+    this._drawSpeedButton();
+    vm.addToLayer("ui", this._speedButtonContainer);
+
+    // LB pulse interval
+    this._lbPulseTick = 0;
+    this._lbPulseInterval = setInterval(() => {
+      this._lbPulseTick++;
+      for (const [id, entry] of this._spriteMap) {
+        if (entry.lbBarFill) {
+          const c = this.battleState.combatants.find(cb => cb.id === id);
+          if (c && c.limitGauge >= 100) {
+            entry.lbBarFill.alpha = 0.6 + 0.4 * Math.sin(this._lbPulseTick * 0.15);
+          }
+        }
+      }
+    }, 50);
+    this._activeIntervals.add(this._lbPulseInterval);
+
     // Disable camera panning
     vm.camera.x = 0;
     vm.camera.y = 0;
@@ -144,6 +186,20 @@ export class TurnBattleView {
       this._onDamage(e.targetId, e.damage);
       this._updateBars();
       this._updateLog();
+
+      // Screen shake on critical hit
+      if (e.isCritical) {
+        this._screenShake();
+      }
+
+      // Spell/ability VFX based on attacker element
+      const attacker = this.battleState.combatants.find(c => c.id === e.attackerId);
+      if (attacker) {
+        const targetEntry = this._spriteMap.get(e.targetId);
+        if (targetEntry) {
+          this._spawnElementVFX(attacker.element, targetEntry.baseX, targetEntry.baseY, e.damage < 0);
+        }
+      }
     }));
 
     this._unsubs.push(EventBus.on("rpgTurnBattleAction", (e) => {
@@ -169,6 +225,17 @@ export class TurnBattleView {
       this._turnArrowInterval = null;
     }
 
+    if (this._lbPulseInterval) {
+      clearInterval(this._lbPulseInterval);
+      this._activeIntervals.delete(this._lbPulseInterval);
+      this._lbPulseInterval = null;
+    }
+
+    if (this._onLogWheel) {
+      window.removeEventListener("wheel", this._onLogWheel);
+      this._onLogWheel = null;
+    }
+
     // Clear all animation intervals (damage floats, attack tweens, etc.)
     for (const id of this._activeIntervals) clearInterval(id);
     this._activeIntervals.clear();
@@ -179,6 +246,8 @@ export class TurnBattleView {
     this.vm.removeFromLayer("ui", this.logContainer);
     this.vm.removeFromLayer("ui", this.turnIndicatorContainer);
     this.vm.removeFromLayer("ui", this.turnOrderContainer);
+    this.vm.removeFromLayer("ui", this._speedButtonContainer);
+    this.vm.removeFromLayer("units", this._vfxContainer);
 
     this.bgContainer.destroy({ children: true });
     this.combatantsContainer.destroy({ children: true });
@@ -186,6 +255,8 @@ export class TurnBattleView {
     this.logContainer.destroy({ children: true });
     this.turnIndicatorContainer.destroy({ children: true });
     this.turnOrderContainer.destroy({ children: true });
+    this._speedButtonContainer.destroy({ children: true });
+    this._vfxContainer.destroy({ children: true });
 
     this._spriteMap.clear();
   }
@@ -373,6 +444,15 @@ export class TurnBattleView {
     nameText.position.set(0, 0);
     barsContainer.addChild(nameText);
 
+    // Element icon (small colored circle next to name)
+    const elemColor = ELEMENT_COLORS[c.element] ?? 0x999999;
+    const elemIcon = new Graphics();
+    elemIcon.circle(0, 0, 5);
+    elemIcon.fill({ color: elemColor });
+    // Position to the right of the name text
+    elemIcon.position.set(nameText.width / 2 + 8, 5);
+    barsContainer.addChild(elemIcon);
+
     const entry: BattleSpriteEntry = {
       sprite,
       wrapper,
@@ -441,6 +521,28 @@ export class TurnBattleView {
         mpText.anchor.set(0.5, 0);
         mpText.position.set(0, mpBarY + MP_BAR_HEIGHT + 1);
         entry.barsContainer.addChild(mpText);
+
+        // Limit Gauge bar (below MP bar)
+        const lbBarY = mpBarY + MP_BAR_HEIGHT + 12;
+        const lbRatio = Math.max(0, Math.min(1, (c.limitGauge ?? 0) / 100));
+        const lbBg = new Graphics();
+        lbBg.rect(barX, lbBarY, HP_BAR_WIDTH, LB_BAR_HEIGHT);
+        lbBg.fill({ color: 0x332200 });
+        entry.barsContainer.addChild(lbBg);
+
+        const lbFill = new Graphics();
+        lbFill.rect(barX, lbBarY, HP_BAR_WIDTH * lbRatio, LB_BAR_HEIGHT);
+        lbFill.fill({ color: lbRatio >= 1 ? 0xff8800 : 0xcc8800 });
+        entry.barsContainer.addChild(lbFill);
+        entry.lbBarFill = lbRatio >= 1 ? lbFill : undefined;
+
+        const lbLabel = new Text({
+          text: "LB",
+          style: { fontFamily: "monospace", fontSize: 7, fill: 0xffaa44 },
+        });
+        lbLabel.anchor.set(1, 0.5);
+        lbLabel.position.set(barX - 3, lbBarY + LB_BAR_HEIGHT / 2);
+        entry.barsContainer.addChild(lbLabel);
       }
 
       // Defend tint
@@ -556,7 +658,7 @@ export class TurnBattleView {
         const c = this.battleState.combatants.find(cb => cb.id === targetId);
         entry.sprite.tint = c?.isDefending ? 0x88aacc : 0xffffff;
       }
-    }, 150);
+    }, this._getSpeedDuration(150));
 
     // Show floating damage number
     const dmgText = new Text({
@@ -568,12 +670,13 @@ export class TurnBattleView {
     entry.wrapper.addChild(dmgText);
 
     // Float up and fade
+    const floatDuration = this._getSpeedDuration(600);
     let elapsed = 0;
     const floatInterval = setInterval(() => {
       elapsed += 16;
       dmgText.position.y -= 1;
-      dmgText.alpha = Math.max(0, 1 - elapsed / 600);
-      if (elapsed >= 600) {
+      dmgText.alpha = Math.max(0, 1 - elapsed / floatDuration);
+      if (elapsed >= floatDuration) {
         clearInterval(floatInterval);
         this._activeIntervals.delete(floatInterval);
         dmgText.destroy();
@@ -594,8 +697,9 @@ export class TurnBattleView {
     // Play attack animation
     this._playState(entry, c, UnitState.ATTACK, false);
 
+    const tweenDuration = this._getSpeedDuration(TWEEN_DURATION_MS);
     const tweenForward = setInterval(() => {
-      const t = Math.min(1, (Date.now() - startTime) / TWEEN_DURATION_MS);
+      const t = Math.min(1, (Date.now() - startTime) / tweenDuration);
       const ease = t * (2 - t); // ease-out quad
       entry.wrapper.position.y = startY + (targetY - startY) * ease;
 
@@ -607,7 +711,7 @@ export class TurnBattleView {
         entry.sprite.onComplete = () => {
           const returnStart = Date.now();
           const tweenBack = setInterval(() => {
-            const t2 = Math.min(1, (Date.now() - returnStart) / TWEEN_DURATION_MS);
+            const t2 = Math.min(1, (Date.now() - returnStart) / tweenDuration);
             const ease2 = t2 * (2 - t2);
             entry.wrapper.position.y = targetY + (startY - targetY) * ease2;
 
@@ -759,14 +863,24 @@ export class TurnBattleView {
       return;
     }
 
-    // Actions + Help as last entry
-    const actions = [
+    // Get ability name for the current combatant
+    const currentId = this.battleState.turnOrder[this.battleState.currentTurnIndex];
+    const current = this.battleState.combatants.find(c => c.id === currentId);
+    const hasSpells = current && current.knownSpells && current.knownSpells.length > 0;
+    const abilityName = hasSpells ? "Spells" : (current ? getAbilityName(current.abilityTypes[0] ?? null) : "Ability");
+
+    // Build actions list dynamically — include Limit Break only when gauge is full
+    const actions: TurnBattleAction[] = [
       TurnBattleAction.ATTACK,
       TurnBattleAction.ABILITY,
       TurnBattleAction.DEFEND,
       TurnBattleAction.ITEM,
-      TurnBattleAction.FLEE,
+      TurnBattleAction.SWAP_ROW,
     ];
+    if (current && (current.limitGauge ?? 0) >= 100) {
+      actions.push(TurnBattleAction.LIMIT_BREAK);
+    }
+    actions.push(TurnBattleAction.FLEE);
     const menuEntries = actions.length + 1; // +1 for Help
 
     const menuX = 30;
@@ -779,30 +893,33 @@ export class TurnBattleView {
     bg.stroke({ color: 0x4444aa, width: 1 });
     this.menuContainer.addChild(bg);
 
-    // Get ability name for the current combatant
-    const currentId = this.battleState.turnOrder[this.battleState.currentTurnIndex];
-    const current = this.battleState.combatants.find(c => c.id === currentId);
-    const hasSpells = current && current.knownSpells && current.knownSpells.length > 0;
-    const abilityName = hasSpells ? "Spells" : (current ? getAbilityName(current.abilityTypes[0] ?? null) : "Ability");
-
     for (let i = 0; i < menuEntries; i++) {
       const isSelected = i === this._selectedMenuIndex;
       let label: string;
       if (i < actions.length) {
-        label = actions[i].charAt(0).toUpperCase() + actions[i].slice(1);
         if (actions[i] === TurnBattleAction.ABILITY) {
           label = abilityName;
+        } else if (actions[i] === TurnBattleAction.SWAP_ROW) {
+          label = "Swap Row";
+        } else if (actions[i] === TurnBattleAction.LIMIT_BREAK) {
+          label = "Limit Break";
+        } else {
+          label = actions[i].charAt(0).toUpperCase() + actions[i].slice(1);
         }
       } else {
         label = "Help";
       }
+
+      let defaultColor = 0xcccccc;
+      if (i >= actions.length) defaultColor = 0x888888; // Help
+      else if (actions[i] === TurnBattleAction.LIMIT_BREAK) defaultColor = 0xFF8800;
 
       const text = new Text({
         text: `${isSelected ? ">" : " "} ${label}`,
         style: {
           fontFamily: "monospace",
           fontSize: 14,
-          fill: isSelected ? 0xffcc00 : (i >= actions.length ? 0x888888 : 0xcccccc),
+          fill: isSelected ? 0xffcc00 : defaultColor,
           fontWeight: isSelected ? "bold" : "normal",
         },
       });
@@ -921,24 +1038,87 @@ export class TurnBattleView {
   }
 
   private _updateLog(): void {
-    const last5 = this.battleState.log.slice(-5);
-    this._logText.text = last5.join("\n");
+    // Remove old log children (keep original _logText hidden; use colored texts)
+    this.logContainer.removeChildren();
+    this._logText.text = "";
+
+    const log = this.battleState.log;
+    const maxVisible = 8;
+    // Clamp scroll offset
+    this._logScrollOffset = Math.max(0, Math.min(this._logScrollOffset, Math.max(0, log.length - maxVisible)));
+    const startIdx = Math.max(0, log.length - maxVisible - this._logScrollOffset);
+    const endIdx = Math.min(log.length, startIdx + maxVisible);
+    const visible = log.slice(startIdx, endIdx);
+
+    const logX = this.vm.screenWidth - 320;
+    const logY = 20;
+
+    // Background panel
+    const bg = new Graphics();
+    bg.roundRect(logX - 6, logY - 4, 312, maxVisible * 16 + 8, 4);
+    bg.fill({ color: 0x0a0a14, alpha: 0.7 });
+    this.logContainer.addChild(bg);
+
+    for (let i = 0; i < visible.length; i++) {
+      const line = visible[i];
+      const color = _getLogLineColor(line);
+      const txt = new Text({
+        text: line,
+        style: { fontFamily: "monospace", fontSize: 11, fill: color, wordWrap: true, wordWrapWidth: 300 },
+      });
+      txt.position.set(logX, logY + i * 16);
+      this.logContainer.addChild(txt);
+    }
+
+    // Scroll indicator
+    if (log.length > maxVisible) {
+      const indicator = new Text({
+        text: `[${log.length - maxVisible - this._logScrollOffset + 1}-${log.length - this._logScrollOffset}/${log.length}]`,
+        style: { fontFamily: "monospace", fontSize: 8, fill: 0x666666 },
+      });
+      indicator.position.set(logX, logY + maxVisible * 16 + 2);
+      this.logContainer.addChild(indicator);
+    }
+
+    // Setup mouse wheel listener for log scroll (once)
+    if (!this._onLogWheel) {
+      this._onLogWheel = (e: WheelEvent) => {
+        const log = this.battleState.log;
+        if (log.length <= maxVisible) return;
+        if (e.deltaY < 0) {
+          this._logScrollOffset = Math.min(this._logScrollOffset + 1, log.length - maxVisible);
+        } else {
+          this._logScrollOffset = Math.max(this._logScrollOffset - 1, 0);
+        }
+        this._updateLog();
+      };
+      window.addEventListener("wheel", this._onLogWheel);
+    }
   }
 
   // ---------------------------------------------------------------------------
   // Input
   // ---------------------------------------------------------------------------
 
-  private _setupInput(): void {
-    const actions = [
+  /** Build the current actions list (matches _drawMenu logic). */
+  private _getCurrentActions(): TurnBattleAction[] {
+    const currentId = this.battleState.turnOrder[this.battleState.currentTurnIndex];
+    const current = this.battleState.combatants.find(c => c.id === currentId);
+    const actions: TurnBattleAction[] = [
       TurnBattleAction.ATTACK,
       TurnBattleAction.ABILITY,
       TurnBattleAction.DEFEND,
       TurnBattleAction.ITEM,
-      TurnBattleAction.FLEE,
+      TurnBattleAction.SWAP_ROW,
     ];
-    const menuEntries = actions.length + 1; // +1 for Help
+    if (current && (current.limitGauge ?? 0) >= 100) {
+      actions.push(TurnBattleAction.LIMIT_BREAK);
+    }
+    actions.push(TurnBattleAction.FLEE);
+    return actions;
+  }
 
+  private _setupInput(): void {
     this._onKeyDown = (e: KeyboardEvent) => {
       // Spell pick sub-mode
       if (this._spellPickMode && this.battleState.phase === TurnBattlePhase.SELECT_ACTION) {
@@ -1004,6 +1184,8 @@ export class TurnBattleView {
       }
 
       if (this.battleState.phase === TurnBattlePhase.SELECT_ACTION) {
+        const actions = this._getCurrentActions();
+        const menuEntries = actions.length + 1; // +1 for Help
         switch (e.code) {
           case "ArrowUp":
           case "KeyW":
@@ -1082,11 +1264,225 @@ export class TurnBattleView {
     window.addEventListener("keydown", this._onKeyDown);
   }
 
+  // ---------------------------------------------------------------------------
+  // Battle Speed Toggle
+  // ---------------------------------------------------------------------------
+
+  private _drawSpeedButton(): void {
+    this._speedButtonContainer.removeChildren();
+
+    const btnX = this.vm.screenWidth - 50;
+    const btnY = 4;
+
+    const bg = new Graphics();
+    bg.roundRect(btnX, btnY, 42, 22, 4);
+    bg.fill({ color: 0x1a1a3e, alpha: 0.9 });
+    bg.stroke({ color: 0x4444aa, width: 1 });
+    this._speedButtonContainer.addChild(bg);
+
+    const label = new Text({
+      text: `${this._battleSpeed}x`,
+      style: { fontFamily: "monospace", fontSize: 12, fill: 0xffcc00, fontWeight: "bold" },
+    });
+    label.position.set(btnX + 8, btnY + 3);
+    this._speedButtonContainer.addChild(label);
+
+    // Make interactive
+    bg.eventMode = "static";
+    bg.cursor = "pointer";
+    bg.on("pointertap", () => {
+      if (this._battleSpeed === 1) this._battleSpeed = 2;
+      else if (this._battleSpeed === 2) this._battleSpeed = 4;
+      else this._battleSpeed = 1;
+      this._rpg.battleSpeed = this._battleSpeed;
+      this._drawSpeedButton();
+    });
+  }
+
+  /** Get effective tween/delay duration adjusted for battle speed. */
+  private _getSpeedDuration(baseMs: number): number {
+    return baseMs / this._battleSpeed;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Screen Shake on Critical Hit
+  // ---------------------------------------------------------------------------
+
+  private _screenShake(): void {
+    const container = this.combatantsContainer;
+    const origX = container.position.x;
+    const origY = container.position.y;
+    const duration = 200;
+    const startTime = Date.now();
+
+    const shakeInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= duration) {
+        clearInterval(shakeInterval);
+        this._activeIntervals.delete(shakeInterval);
+        container.position.set(origX, origY);
+        return;
+      }
+      container.position.set(
+        origX + (Math.random() * 6 - 3),
+        origY + (Math.random() * 6 - 3),
+      );
+    }, 16);
+    this._activeIntervals.add(shakeInterval);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Spell / Ability Visual Effects
+  // ---------------------------------------------------------------------------
+
+  private _spawnElementVFX(element: RPGElementType, x: number, y: number, isHeal: boolean): void {
+    if (isHeal || element === RPGElementType.HOLY) {
+      this._spawnHealVFX(x, y);
+      return;
+    }
+
+    switch (element) {
+      case RPGElementType.FIRE:
+        this._spawnBurstVFX(x, y, 8, [0xFF4400, 0xFF6600, 0xFF8800]);
+        break;
+      case RPGElementType.COLD:
+        this._spawnBurstVFX(x, y, 8, [0x44AAFF, 0xAADDFF, 0xFFFFFF]);
+        break;
+      case RPGElementType.LIGHTNING:
+        this._spawnLightningVFX(x, y);
+        break;
+      case RPGElementType.NATURE:
+        this._spawnBurstVFX(x, y, 6, [0x44BB44, 0x88FF88]);
+        break;
+      case RPGElementType.DARK:
+        this._spawnBurstVFX(x, y, 6, [0x8844CC, 0x440066]);
+        break;
+      default:
+        // Physical — small white burst
+        this._spawnBurstVFX(x, y, 4, [0xFFFFFF, 0xCCCCCC]);
+        break;
+    }
+  }
+
+  private _spawnBurstVFX(cx: number, cy: number, count: number, colors: number[]): void {
+    const duration = this._getSpeedDuration(400);
+    const particles: { g: Graphics; vx: number; vy: number }[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.3;
+      const speed = 1.5 + Math.random();
+      const g = new Graphics();
+      const color = colors[i % colors.length];
+      g.circle(0, 0, 3 + Math.random() * 2);
+      g.fill({ color, alpha: 0.9 });
+      g.position.set(cx, cy);
+      this._vfxContainer.addChild(g);
+      particles.push({ g, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed });
+    }
+
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const t = Math.min(1, elapsed / duration);
+      for (const p of particles) {
+        p.g.position.x += p.vx;
+        p.g.position.y += p.vy;
+        p.g.alpha = 1 - t;
+        p.g.scale.set(1 - t * 0.5);
+      }
+      if (t >= 1) {
+        clearInterval(interval);
+        this._activeIntervals.delete(interval);
+        for (const p of particles) {
+          p.g.destroy();
+        }
+      }
+    }, 16);
+    this._activeIntervals.add(interval);
+  }
+
+  private _spawnLightningVFX(cx: number, cy: number): void {
+    const duration = this._getSpeedDuration(300);
+    const lines: Graphics[] = [];
+
+    for (let i = 0; i < 4; i++) {
+      const g = new Graphics();
+      const angle = (Math.PI * 2 * i) / 4 + Math.random() * 0.5;
+      const len = 20 + Math.random() * 15;
+      g.moveTo(cx, cy);
+      // Jagged line
+      const mx = cx + Math.cos(angle) * len * 0.5 + (Math.random() - 0.5) * 8;
+      const my = cy + Math.sin(angle) * len * 0.5 + (Math.random() - 0.5) * 8;
+      g.lineTo(mx, my);
+      g.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
+      g.stroke({ color: 0xFFDD00, width: 2, alpha: 0.9 });
+      this._vfxContainer.addChild(g);
+      lines.push(g);
+    }
+
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const t = Math.min(1, elapsed / duration);
+      for (const l of lines) l.alpha = 1 - t;
+      if (t >= 1) {
+        clearInterval(interval);
+        this._activeIntervals.delete(interval);
+        for (const l of lines) l.destroy();
+      }
+    }, 16);
+    this._activeIntervals.add(interval);
+  }
+
+  private _spawnHealVFX(cx: number, cy: number): void {
+    const duration = this._getSpeedDuration(500);
+    const particles: Graphics[] = [];
+
+    for (let i = 0; i < 6; i++) {
+      const g = new Graphics();
+      g.circle(0, 0, 3);
+      g.fill({ color: 0x44FF44, alpha: 0.8 });
+      g.position.set(cx + (Math.random() - 0.5) * 30, cy);
+      this._vfxContainer.addChild(g);
+      particles.push(g);
+    }
+
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const t = Math.min(1, elapsed / duration);
+      for (const p of particles) {
+        p.position.y -= 1.2;
+        p.alpha = 1 - t;
+      }
+      if (t >= 1) {
+        clearInterval(interval);
+        this._activeIntervals.delete(interval);
+        for (const p of particles) p.destroy();
+      }
+    }, 16);
+    this._activeIntervals.add(interval);
+  }
+
   setSelectableTargets(targets: TurnBattleCombatant[]): void {
     this._selectableTargets = targets;
     this._targetIndex = 0;
     this._updateBars();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Log line color helper
+// ---------------------------------------------------------------------------
+
+function _getLogLineColor(line: string): number {
+  const lower = line.toLowerCase();
+  if (lower.includes("limit break")) return 0xFF8800;
+  if (lower.includes("counter")) return 0x44FFFF;
+  if (lower.includes("damage") || lower.includes("hits")) return 0xFF4444;
+  if (lower.includes("heal") || lower.includes("restore")) return 0x44FF44;
+  if (lower.includes("status") || lower.includes("poison") || lower.includes("stun") || lower.includes("combo:")) return 0xFFFF44;
+  return 0xFFFFFF;
 }
 
 // ---------------------------------------------------------------------------

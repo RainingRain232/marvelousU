@@ -1,5 +1,5 @@
 // JRPG turn-based battle state
-import type { AbilityType, TurnBattleAction, TurnBattlePhase, UnitType, UpgradeType } from "@/types";
+import type { AbilityType, RPGElementType, TurnBattleAction, TurnBattlePhase, UnitType, UpgradeType } from "@/types";
 import type { RPGItem, StatusEffect } from "./RPGState";
 
 // ---------------------------------------------------------------------------
@@ -35,6 +35,18 @@ export interface TurnBattleCombatant {
   isSummoned: boolean;
   /** ID of the combatant who summoned this unit. */
   summonerId?: string;
+
+  // --- New combat depth fields ---
+  /** Element type for damage calculations */
+  element: RPGElementType;
+  /** Limit break gauge (0–100). At 100, LIMIT_BREAK action available. */
+  limitGauge: number;
+  /** Threat score for aggro targeting. Enemy AI targets highest threat. */
+  threat: number;
+  /** True if counter-attack is ready (set when defending). */
+  counterReady: boolean;
+  /** Number of turns forced taunt is active (enemies must target this unit). */
+  tauntTurns: number;
 }
 
 // ---------------------------------------------------------------------------

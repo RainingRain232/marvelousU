@@ -677,6 +677,18 @@ export enum TurnBattleAction {
   DEFEND = "defend",
   ITEM = "item",
   FLEE = "flee",
+  SWAP_ROW = "swap_row",
+  LIMIT_BREAK = "limit_break",
+}
+
+export enum RPGElementType {
+  PHYSICAL = "physical",
+  FIRE = "fire",
+  COLD = "cold",
+  LIGHTNING = "lightning",
+  NATURE = "nature",
+  HOLY = "holy",
+  DARK = "dark",
 }
 
 export enum TurnBattlePhase {

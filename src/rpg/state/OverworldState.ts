@@ -67,11 +67,34 @@ export interface ChestData {
   opened: boolean;
 }
 
-export type OverworldEntityData = TownData | DungeonEntranceData | NPCData | ChestData | ArcaneLibraryData;
+export interface RoamingEnemyData {
+  encounterId: string;
+  displayUnitType: string; // UnitType used for sprite display
+  defeated: boolean;
+  respawnCounter: number; // steps until respawn (0 = active)
+}
+
+export interface ShrineData {
+  buff: { type: string; magnitude: number; duration: number };
+  used: boolean;
+  respawnCounter: number;
+}
+
+export interface HerbNodeData {
+  herbCount: number;
+  respawnCounter: number;
+}
+
+export interface FishingSpotData {
+  used: boolean;
+  respawnCounter: number;
+}
+
+export type OverworldEntityData = TownData | DungeonEntranceData | NPCData | ChestData | ArcaneLibraryData | RoamingEnemyData | ShrineData | HerbNodeData | FishingSpotData;
 
 export interface OverworldEntity {
   id: string;
-  type: "town" | "dungeon_entrance" | "npc" | "chest" | "landmark" | "arcane_library";
+  type: "town" | "dungeon_entrance" | "npc" | "chest" | "landmark" | "arcane_library" | "roaming_enemy" | "shrine" | "herb_node" | "fishing_spot";
   position: Vec2;
   name: string;
   data: OverworldEntityData;

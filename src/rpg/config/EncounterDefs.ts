@@ -966,4 +966,10 @@ export const DUNGEON_ENCOUNTER_TABLES: Record<string, string[]> = {
   dark_crypt: ["dungeon_undead", "skeleton_patrol", "dungeon_mages", "dungeon_sentinels", "dungeon_lich_servants"],
   dragon_lair: ["dungeon_mages", "dungeon_undead", "dungeon_demon_guard", "dungeon_vampires"],
   demon_fortress: ["dungeon_demon_guard", "dungeon_vampires", "dungeon_golems", "dungeon_lich_servants"],
+  abyssal_sanctum: ["dungeon_demon_guard", "dungeon_golems", "dungeon_vampires", "dungeon_mages", "dungeon_lich_servants"],
+  the_abyss: [
+    "dungeon_rats", "dungeon_spiders", "goblin_patrol", "dungeon_sentinels",
+    "dungeon_undead", "skeleton_patrol", "dungeon_mages",
+    "dungeon_golems", "dungeon_vampires", "dungeon_demon_guard", "dungeon_lich_servants",
+  ],
 };
