@@ -6,7 +6,7 @@ import type { ViewManager } from "@view/ViewManager";
 import type { TurnBattleState, TurnBattleCombatant } from "@rpg/state/TurnBattleState";
 import type { RPGState } from "@rpg/state/RPGState";
 import { animationManager } from "@view/animation/AnimationManager";
-import { getAbilityName } from "@rpg/systems/TurnBattleSystem";
+import { getAbilityName, getEffectiveSpeed } from "@rpg/systems/TurnBattleSystem";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -52,6 +52,7 @@ export class TurnBattleView {
   private menuContainer = new Container();
   private logContainer = new Container();
   private turnIndicatorContainer = new Container();
+  private turnOrderContainer = new Container();
 
   private _bgGraphic = new Graphics();
   private _menuTexts: Text[] = [];
@@ -112,6 +113,9 @@ export class TurnBattleView {
     this.turnIndicatorContainer.addChild(this._turnIndicator);
     vm.addToLayer("ui", this.turnIndicatorContainer);
 
+    // Turn order bar
+    vm.addToLayer("ui", this.turnOrderContainer);
+
     // Disable camera panning
     vm.camera.x = 0;
     vm.camera.y = 0;
@@ -123,6 +127,7 @@ export class TurnBattleView {
     this._drawMenu();
     this._updateLog();
     this._updateTurnIndicator();
+    this._drawTurnOrder();
     this._setupInput();
 
     // Listen for battle events
@@ -137,6 +142,7 @@ export class TurnBattleView {
       this._updateBars();
       this._drawMenu();
       this._updateLog();
+      this._drawTurnOrder();
     }));
   }
 
@@ -159,12 +165,14 @@ export class TurnBattleView {
     this.vm.removeFromLayer("ui", this.menuContainer);
     this.vm.removeFromLayer("ui", this.logContainer);
     this.vm.removeFromLayer("ui", this.turnIndicatorContainer);
+    this.vm.removeFromLayer("ui", this.turnOrderContainer);
 
     this.bgContainer.destroy({ children: true });
     this.combatantsContainer.destroy({ children: true });
     this.menuContainer.destroy({ children: true });
     this.logContainer.destroy({ children: true });
     this.turnIndicatorContainer.destroy({ children: true });
+    this.turnOrderContainer.destroy({ children: true });
 
     this._spriteMap.clear();
   }
@@ -176,6 +184,7 @@ export class TurnBattleView {
     this._drawMenu();
     this._updateLog();
     this._updateTurnIndicator();
+    this._drawTurnOrder();
   }
 
   // ---------------------------------------------------------------------------
@@ -570,6 +579,68 @@ export class TurnBattleView {
 
     drawArrow();
     this._turnArrowInterval = setInterval(drawArrow, 50);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Turn order bar
+  // ---------------------------------------------------------------------------
+
+  private _drawTurnOrder(): void {
+    this.turnOrderContainer.removeChildren();
+
+    const turnOrder = this.battleState.turnOrder;
+    const currentIdx = this.battleState.currentTurnIndex;
+    const maxShow = Math.min(turnOrder.length, 10);
+
+    // Show from current turn onward
+    const barX = 10;
+    const barY = 32;
+    const slotW = 70;
+    const slotH = 22;
+    const gap = 2;
+
+    // Background
+    const bg = new Graphics();
+    bg.roundRect(barX - 4, barY - 4, maxShow * (slotW + gap) + 4, slotH + 8, 4);
+    bg.fill({ color: 0x0e0e1a, alpha: 0.8 });
+    bg.stroke({ color: 0x333355, width: 1 });
+    this.turnOrderContainer.addChild(bg);
+
+    for (let i = 0; i < maxShow; i++) {
+      const orderIdx = (currentIdx + i) % turnOrder.length;
+      const id = turnOrder[orderIdx];
+      const c = this.battleState.combatants.find(cb => cb.id === id);
+      if (!c) continue;
+
+      const x = barX + i * (slotW + gap);
+      const isCurrent = i === 0;
+      const isDead = c.hp <= 0;
+
+      // Slot background
+      const slot = new Graphics();
+      slot.roundRect(x, barY, slotW, slotH, 3);
+      if (isCurrent) {
+        slot.fill({ color: 0x3a3a1a, alpha: 0.9 });
+        slot.stroke({ color: 0xffcc00, width: 1 });
+      } else {
+        slot.fill({ color: c.isPartyMember ? 0x1a2a1a : 0x2a1a1a, alpha: 0.7 });
+      }
+      this.turnOrderContainer.addChild(slot);
+
+      // Name (truncated)
+      const displayName = c.name.length > 7 ? c.name.slice(0, 6) + "." : c.name;
+      const spd = Math.round(getEffectiveSpeed(c));
+      const nameText = new Text({
+        text: `${displayName} ${spd}`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 9,
+          fill: isDead ? 0x555555 : (isCurrent ? 0xffcc00 : (c.isPartyMember ? 0x88ff88 : 0xff8888)),
+        },
+      });
+      nameText.position.set(x + 4, barY + 4);
+      this.turnOrderContainer.addChild(nameText);
+    }
   }
 
   // ---------------------------------------------------------------------------

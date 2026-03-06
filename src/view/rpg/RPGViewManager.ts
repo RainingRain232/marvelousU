@@ -66,6 +66,9 @@ export class RPGViewManager {
   /** Called when inventory overlay is closed. */
   onInventoryClosed: (() => void) | null = null;
 
+  /** Pending callbacks to wire on TurnBattleView once it's created (deferred by transition). */
+  pendingBattleCallbacks: ((view: TurnBattleView) => void) | null = null;
+
   init(
     rpgState: RPGState,
     overworldState: OverworldState,
@@ -226,6 +229,12 @@ export class RPGViewManager {
     if (!this.turnBattleState) return;
     this.turnBattleView = new TurnBattleView();
     this.turnBattleView.init(viewManager, this.turnBattleState, this.rpgState);
+
+    // Apply deferred callbacks (set before transition started)
+    if (this.pendingBattleCallbacks) {
+      this.pendingBattleCallbacks(this.turnBattleView);
+      this.pendingBattleCallbacks = null;
+    }
   }
 
   private _showTownMenu(): void {

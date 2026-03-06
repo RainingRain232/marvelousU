@@ -126,12 +126,35 @@ export function calculateInitiative(battle: TurnBattleState): void {
 
   // Sort by effective speed (descending), random tiebreaker
   alive.sort((a, b) => {
-    const diff = _getEffectiveSpeed(b) - _getEffectiveSpeed(a);
+    const diff = getEffectiveSpeed(b) - getEffectiveSpeed(a);
     if (Math.abs(diff) > 0.01) return diff;
     return rng.next() - 0.5;
   });
 
-  battle.turnOrder = alive.map(c => c.id);
+  // Build turn order with speed-based extra turns
+  // Find median speed — units with 2x+ median speed get a bonus turn
+  const speeds = alive.map(c => getEffectiveSpeed(c));
+  const medianSpeed = speeds.length > 0 ? speeds[Math.floor(speeds.length / 2)] : 1;
+  const bonusThreshold = medianSpeed * 2;
+
+  const turnOrder: string[] = [];
+  const bonusTurns: { id: string; speed: number }[] = [];
+
+  for (const c of alive) {
+    turnOrder.push(c.id);
+    // Grant a bonus turn if speed is 2x+ the median
+    if (getEffectiveSpeed(c) >= bonusThreshold && bonusThreshold > 0.2) {
+      bonusTurns.push({ id: c.id, speed: getEffectiveSpeed(c) });
+    }
+  }
+
+  // Insert bonus turns after the normal roster (sorted by speed desc)
+  bonusTurns.sort((a, b) => b.speed - a.speed);
+  for (const bt of bonusTurns) {
+    turnOrder.push(bt.id);
+  }
+
+  battle.turnOrder = turnOrder;
   battle.currentTurnIndex = 0;
   battle.phase = TurnBattlePhase.SELECT_ACTION;
 
@@ -600,7 +623,7 @@ function _tickStatusEffects(battle: TurnBattleState): void {
 }
 
 /** Get speed adjusted for slow/haste status effects. */
-function _getEffectiveSpeed(c: TurnBattleCombatant): number {
+export function getEffectiveSpeed(c: TurnBattleCombatant): number {
   let speed = c.speed;
   for (const e of c.statusEffects) {
     if (e.type === "slow") speed -= e.magnitude;

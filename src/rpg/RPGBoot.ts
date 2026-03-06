@@ -319,9 +319,8 @@ export class RPGGame {
       // Calculate initiative and start
       calculateInitiative(this.turnBattleState);
 
-      // Wire up view callbacks
-      const view = this.rpgViewManager["turnBattleView"];
-      if (view) {
+      // Wire up view callbacks (deferred — view is created after transition)
+      this.rpgViewManager.pendingBattleCallbacks = (view) => {
         view.onActionSelected = (action: TurnBattleAction) => {
           this._handleTurnAction(action);
         };
@@ -338,12 +337,12 @@ export class RPGGame {
           this.rpgViewManager.toggleHelpMenu();
         };
         view.refresh();
-      }
 
-      // If first turn is enemy, execute it
-      if (this.turnBattleState.phase === TurnBattlePhase.ENEMY_TURN) {
-        this._processEnemyTurns();
-      }
+        // If first turn is enemy, execute it
+        if (this.turnBattleState?.phase === TurnBattlePhase.ENEMY_TURN) {
+          this._processEnemyTurns();
+        }
+      };
     } else {
       // Auto battle — resolve instantly
       this._runAutoBattle(encounterId, encounterType);
@@ -519,24 +518,45 @@ export class RPGGame {
     view?.refresh();
   }
 
+  private _processingEnemyTurns = false;
+
   private _processEnemyTurns(): void {
-    if (!this.turnBattleState) return;
+    if (!this.turnBattleState || this._processingEnemyTurns) return;
+    this._processingEnemyTurns = true;
+    this._processNextEnemyTurn();
+  }
 
-    // Execute all consecutive enemy turns
-    // Use string comparison to avoid TS narrowing issues
-    while ((this.turnBattleState.phase as string) === TurnBattlePhase.ENEMY_TURN) {
-      executeEnemyTurn(this.turnBattleState, this.rpgState);
-
-      // Check end conditions after each enemy action
-      const p = this.turnBattleState.phase as string;
-      if (p === TurnBattlePhase.VICTORY || p === TurnBattlePhase.DEFEAT) {
-        this._afterTurnAction();
-        return;
-      }
+  private _processNextEnemyTurn(): void {
+    if (!this.turnBattleState) {
+      this._processingEnemyTurns = false;
+      return;
     }
 
+    if ((this.turnBattleState.phase as string) !== TurnBattlePhase.ENEMY_TURN) {
+      // Enemy turns done — refresh and return control to player
+      this._processingEnemyTurns = false;
+      const view = this.rpgViewManager["turnBattleView"];
+      view?.refresh();
+      return;
+    }
+
+    // Execute one enemy turn
+    executeEnemyTurn(this.turnBattleState, this.rpgState);
+
+    // Refresh view to show the action
     const view = this.rpgViewManager["turnBattleView"];
     view?.refresh();
+
+    // Check end conditions
+    const p = this.turnBattleState.phase as string;
+    if (p === TurnBattlePhase.VICTORY || p === TurnBattlePhase.DEFEAT) {
+      this._processingEnemyTurns = false;
+      this._afterTurnAction();
+      return;
+    }
+
+    // Delay before next enemy turn so player can see each action
+    setTimeout(() => this._processNextEnemyTurn(), 600);
   }
 
   // ---------------------------------------------------------------------------
