@@ -161,6 +161,7 @@ import {
   completeLeaderEncounter,
   type LeaderEncounterState,
 } from "@world/systems/LeaderEncounters";
+import { applyInitialAffinities, processAIDiplomacy } from "@world/systems/LeaderDiplomacy";
 import { getNeutralCityGarrison, pickNeutralRace, neutralRng, getUnitsForRace } from "@world/systems/NeutralCitySystem";
 import { worldNotification } from "@view/world/ui/WorldNotification";
 import { worldWikiScreen } from "@view/world/ui/WorldWikiScreen";
@@ -2691,6 +2692,9 @@ async function _bootWorldGame(
     }
   }
 
+  // Apply Arthurian lore affinities — lore allies start at peace
+  applyInitialAffinities(state);
+
   // Configure national mage abilities from MagicScreen selections
   _configureNationalMageAbilities();
 
@@ -4617,6 +4621,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     while ((state.phase as WorldPhase) === WorldPhase.AI_TURN && aiTurnGuard < 50) {
       aiTurnGuard++;
       const aiPid = state.playerOrder[state.currentPlayerIndex];
+      const aiPlayer = state.players.get(aiPid);
+      if (aiPlayer) processAIDiplomacy(state, aiPlayer);
       executeAITurn(state, aiPid);
 
       const aiBattles = detectCollisions(state);
