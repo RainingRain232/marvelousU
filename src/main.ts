@@ -161,6 +161,7 @@ import { merlinMagicScreen } from "@view/world/ui/MerlinMagicScreen";
 import { castSpell } from "@world/systems/OverlandSpellSystem";
 import type { OverlandSpellId } from "@world/config/OverlandSpellDefs";
 import merlinImgUrl from "@/img/merlin.png";
+import { showLeaderIntroduction } from "@view/world/ui/LeaderIntroDialog";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -3717,6 +3718,22 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     }
   };
 
+  // Leader introduction when player first encounters an enemy player's units
+  const _checkLeaderFirstEncounter = async (playerArmy: WorldArmy): Promise<void> => {
+    for (const army of state.armies.values()) {
+      if (army.owner === "p1" || army.owner === playerArmy.owner) continue;
+      if (army.owner === "morgaine") continue; // Morgaine has her own dialog
+      if (hexDistance(playerArmy.position, army.position) > 2) continue;
+
+      const enemyPlayer = state.players.get(army.owner);
+      if (!enemyPlayer?.leaderId) continue;
+
+      // showLeaderIntroduction handles deduplication internally
+      await showLeaderIntroduction(enemyPlayer.leaderId);
+      return; // Only one intro per movement step
+    }
+  };
+
   // Merlin warning when player gets near a Morgaine army
   const _warnedMorgaineArmies = new Set<string>();
 
@@ -4527,6 +4544,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             }
           }
 
+          await _checkLeaderFirstEncounter(army);
           await _checkMorgaineProximity(army);
           await _checkSwordProximity(army);
           await _checkAvalonProximity(army);
@@ -4804,6 +4822,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           }
         }
 
+        await _checkLeaderFirstEncounter(army);
         await _checkMorgaineProximity(army);
         await _checkSwordProximity(army);
         await _checkAvalonProximity(army);
