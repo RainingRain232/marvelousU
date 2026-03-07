@@ -187,7 +187,7 @@ function _damageUnit(
   if (!unit || unit.state === UnitState.DIE) return;
 
   proj.hitIds.add(unitId);
-  unit.hp -= damage;
+  unit.hp = Math.min(unit.maxHp, unit.hp - damage);
 
   // Apply slow effect if the projectile carries one
   if (proj.slowDuration > 0) {
