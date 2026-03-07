@@ -77,6 +77,11 @@ export interface Unit {
   // Passive regeneration
   regenRate: number; // HP restored per second (0 = no regen)
   regenAccumulator: number; // Fractional HP accumulator for sub-1 healing ticks
+
+  // Player command (RTS manual control)
+  playerCommandGoal: Vec2 | null; // Move-to position from player right-click
+  playerCommandTargetId: string | null; // Attack target from player right-click on enemy
+  playerControlled: boolean; // True when unit has a player command override
 }
 
 // ---------------------------------------------------------------------------
@@ -175,5 +180,8 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     pathFailCount: 0,
     regenRate: def.regenRate ?? 0,
     regenAccumulator: 0,
+    playerCommandGoal: null,
+    playerCommandTargetId: null,
+    playerControlled: false,
   };
 }

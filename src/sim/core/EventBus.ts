@@ -46,6 +46,9 @@ export interface SimEvents {
   // Rally flag
   flagPlaced: { playerId: PlayerId; position: Vec2 };
 
+  // Player manual commands (RTS controls)
+  playerCommandIssued: { unitIds: string[]; goal: Vec2; targetId?: string };
+
   // Game flow
   phaseChanged: { phase: GamePhase };
   roguelikeDisabledBuildingsChanged: { disabled: string[] };

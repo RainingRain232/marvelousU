@@ -5,6 +5,7 @@ import type { ViewManager } from "@view/ViewManager";
 import { UnitView, CORPSE_FADE_MS } from "@view/entities/UnitView";
 import { deathFX } from "@view/fx/DeathFX";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { unitSelectionManager } from "@input/UnitSelectionManager";
 
 // ---------------------------------------------------------------------------
 // UnitLayer
@@ -104,7 +105,10 @@ export class UnitLayer {
   readonly update = (state: GameState): void => {
     for (const [id, view] of this._unitViews) {
       const unit = state.units.get(id);
-      if (unit) view.update(unit);
+      if (unit) {
+        view.update(unit);
+        view.setSelected(unitSelectionManager.isSelected(id));
+      }
     }
   };
 

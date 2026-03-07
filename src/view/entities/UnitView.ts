@@ -133,6 +133,9 @@ export class UnitView {
   private _levelText = new Text({ text: "", style: new TextStyle({ fontSize: 10, fill: 0x000000, fontWeight: "bold", align: "center", stroke: { color: 0xffffff, width: 2 } }) });
   private _displayedLevel = 0;
 
+  // RTS selection ring (visible only when selected in manual control mode)
+  private _selectionRing = new Graphics();
+
   // Animated sprite — null until AnimationManager is ready
   private _sprite: AnimatedSprite | null = null;
 
@@ -149,6 +152,7 @@ export class UnitView {
   private _corpseFadeTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(unit: Unit) {
+    this._buildSelectionRing();
     this._buildPlaceholder(unit);
     this._buildHpBar(unit);
     this._buildShield(unit);
@@ -267,6 +271,23 @@ export class UnitView {
     gsap.killTweensOf(this.container);
     gsap.killTweensOf(this._shieldBlink);
     this.container.destroy({ children: true });
+  }
+
+  // ---------------------------------------------------------------------------
+  // RTS selection ring
+  // ---------------------------------------------------------------------------
+
+  private _buildSelectionRing(): void {
+    const r = RADIUS + 4;
+    this._selectionRing
+      .circle(0, 0, r)
+      .stroke({ color: 0x44ff44, alpha: 0.8, width: 2 });
+    this._selectionRing.visible = false;
+    this.container.addChild(this._selectionRing);
+  }
+
+  setSelected(selected: boolean): void {
+    this._selectionRing.visible = selected;
   }
 
   // ---------------------------------------------------------------------------

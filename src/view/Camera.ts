@@ -36,6 +36,9 @@ export class Camera {
   y = 0;
   zoom = 1;
 
+  /** When true, camera pans on middle-click instead of left-click (RTS mode). */
+  manualControlMode = false;
+
   // Screen dimensions — must be set/updated when the renderer resizes
   screenW = 800;
   screenH = 600;
@@ -380,8 +383,9 @@ export class Camera {
   // ---------------------------------------------------------------------------
 
   private _handlePointerDown(e: PointerEvent): void {
-    // Left button only
-    if (e.button !== 0) return;
+    // Pan button: middle-click (1) in manual control mode, left-click (0) otherwise
+    const panButton = this.manualControlMode ? 1 : 0;
+    if (e.button !== panButton) return;
     this._dragging = true;
     this._dragStartX = e.clientX;
     this._dragStartY = e.clientY;

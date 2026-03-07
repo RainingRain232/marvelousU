@@ -61,6 +61,7 @@ interface SavedSettings {
   scrollSpeed?: number;
   critEnabled?: boolean;
   blockEnabled?: boolean;
+  manualControl?: boolean;
 }
 
 const GAME_SPEEDS = [1, 1.5, 2, 3];
@@ -193,6 +194,7 @@ export class SettingsScreen {
   private _scrollSpeedIdx = 1; // index into SCROLL_SPEEDS
   private _critEnabled = true;
   private _blockEnabled = true;
+  private _manualControlEnabled = false;
 
   // UI references for volume row
   private _volValueLabel!: Text;
@@ -202,6 +204,7 @@ export class SettingsScreen {
   private _scrollBtns: SelectorBtn[] = [];
   private _critBtns: SelectorBtn[] = [];
   private _blockBtns: SelectorBtn[] = [];
+  private _manualControlBtns: SelectorBtn[] = [];
 
   // Callbacks
   onBack: (() => void) | null = null;
@@ -228,6 +231,10 @@ export class SettingsScreen {
 
   get blockEnabled(): boolean {
     return this._blockEnabled;
+  }
+
+  get manualControlEnabled(): boolean {
+    return this._manualControlEnabled;
   }
 
   // ---------------------------------------------------------------------------
@@ -296,6 +303,9 @@ export class SettingsScreen {
       if (typeof saved.blockEnabled === "boolean") {
         this._blockEnabled = saved.blockEnabled;
       }
+      if (typeof saved.manualControl === "boolean") {
+        this._manualControlEnabled = saved.manualControl;
+      }
     } catch {
       // Corrupted localStorage — use defaults silently
     }
@@ -308,6 +318,7 @@ export class SettingsScreen {
       scrollSpeed: SCROLL_SPEEDS[this._scrollSpeedIdx],
       critEnabled: this._critEnabled,
       blockEnabled: this._blockEnabled,
+      manualControl: this._manualControlEnabled,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   }
@@ -396,6 +407,21 @@ export class SettingsScreen {
     // --- Block Chance toggle ---
     curY = this._buildToggleRow(card, CW, curY, "BLOCK CHANCE", this._blockEnabled, this._blockBtns, (enabled) => {
       this._blockEnabled = enabled;
+      this._saveToStorage();
+    });
+    curY += 12;
+
+    // Divider
+    card.addChild(
+      new Graphics()
+        .rect(20, curY, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.15 }),
+    );
+    curY += 14;
+
+    // --- Manual Control toggle ---
+    curY = this._buildToggleRow(card, CW, curY, "MANUAL CONTROL", this._manualControlEnabled, this._manualControlBtns, (enabled) => {
+      this._manualControlEnabled = enabled;
       this._saveToStorage();
     });
     curY += 16;

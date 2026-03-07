@@ -1,11 +1,13 @@
 // Central input dispatcher — delegates pointer events to the active mode
 import type { ViewManager } from "@view/ViewManager";
 import type { PlayerId } from "@/types";
-import { UpgradeType } from "@/types";
+import { GamePhase, UpgradeType } from "@/types";
 import type { GameState } from "@sim/state/GameState";
 import { selectionMode } from "@input/SelectionMode";
+import { unitSelectionManager } from "@input/UnitSelectionManager";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
+import { settingsScreen } from "@view/ui/SettingsScreen";
 import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 import { EventBus } from "@sim/core/EventBus";
 
@@ -55,6 +57,9 @@ export class InputManager {
   private _pointerDownY = 0;
   private _pointerMoved = false;
 
+  // RTS box-select: true when left-drag started and manual control is active
+  private _leftDragActive = false;
+
   private static readonly DRAG_THRESHOLD = 5; // pixels
 
   // Bound event handlers
@@ -80,6 +85,12 @@ export class InputManager {
 
     // Initialise selection mode
     selectionMode.init(state, vm.camera, localPlayerId);
+
+    // Initialise RTS selection manager
+    unitSelectionManager.init();
+
+    // Set camera pan mode based on manual control setting
+    vm.camera.manualControlMode = settingsScreen.manualControlEnabled;
 
     // Bind handlers
     this._onPointerDown = this._handlePointerDown.bind(this);
@@ -108,6 +119,7 @@ export class InputManager {
     this._canvas.removeEventListener("contextmenu", this._onContextMenu);
     this._canvas.removeEventListener("mousemove", this._onMouseMove);
     window.removeEventListener("keydown", this._onKeyDown);
+    unitSelectionManager.destroy();
   }
 
   // ---------------------------------------------------------------------------
@@ -126,6 +138,15 @@ export class InputManager {
     selectionMode.setPlayerId(playerId);
   }
 
+  /** Whether RTS manual control is active right now. */
+  private get _manualActive(): boolean {
+    return (
+      settingsScreen.manualControlEnabled &&
+      this._mode !== "placement" &&
+      this._state.phase === GamePhase.BATTLE
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Private: pointer events
   // ---------------------------------------------------------------------------
@@ -136,6 +157,15 @@ export class InputManager {
       this._pointerDownX = e.clientX;
       this._pointerDownY = e.clientY;
       this._pointerMoved = false;
+      this._leftDragActive = false;
+
+      // Start box selection tracking for manual control
+      if (this._manualActive) {
+        const rect = this._canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        unitSelectionManager.startBox(sx, sy);
+      }
     }
   }
 
@@ -145,26 +175,97 @@ export class InputManager {
     const dy = e.clientY - this._pointerDownY;
     if (Math.sqrt(dx * dx + dy * dy) > InputManager.DRAG_THRESHOLD) {
       this._pointerMoved = true;
+
+      // Update box selection for manual control
+      if (this._manualActive) {
+        this._leftDragActive = true;
+        const rect = this._canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        unitSelectionManager.updateBox(sx, sy);
+      }
     }
   }
 
   private _handlePointerUp(e: PointerEvent): void {
-    if (e.button !== 0) return;
-    if (this._pointerMoved) return; // was a drag, not a click
+    if (e.button === 0) {
+      // --- Manual control: box-select on drag, single-select on click ---
+      if (this._manualActive) {
+        if (this._leftDragActive) {
+          // Drag ended → box-select
+          unitSelectionManager.endBox(
+            this._state,
+            this._vm.camera,
+            this._localPlayerId,
+          );
+          this._leftDragActive = false;
+          return;
+        }
 
-    // Compute canvas-relative coords
-    const rect = this._canvas.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
+        // Click (no drag) → try to select a friendly unit
+        const rect = this._canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const world = this._vm.camera.screenToWorld(sx, sy);
 
-    // Delegate to active mode
-    if (this._mode === "placement") {
-      // BuildingPlacer manages its own pointerdown (capture phase) for confirm;
-      // InputManager just observes mode transitions via buildingPlacer.isActive.
-      this._syncPlacementMode();
-    } else {
-      // SELECTION mode
-      selectionMode.handleClick(sx, sy);
+        const hit = unitSelectionManager.hitTestUnit(
+          this._state,
+          world.x,
+          world.y,
+          this._localPlayerId,
+        );
+        if (hit) {
+          unitSelectionManager.selectUnit(hit.id);
+          return;
+        }
+
+        // No friendly unit hit → deselect all, fall through to normal click
+        unitSelectionManager.deselectAll();
+      }
+
+      if (this._pointerMoved) return; // was a drag, not a click
+
+      // Compute canvas-relative coords
+      const rect = this._canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+
+      // Delegate to active mode
+      if (this._mode === "placement") {
+        this._syncPlacementMode();
+      } else {
+        selectionMode.handleClick(sx, sy);
+      }
+      return;
+    }
+
+    // --- Right-click (button 2): issue commands when manual control is on ---
+    if (e.button === 2 && this._manualActive && unitSelectionManager.hasSelection) {
+      const rect = this._canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const world = this._vm.camera.screenToWorld(sx, sy);
+
+      // Check for enemy unit or building under cursor
+      const enemy = unitSelectionManager.hitTestEnemy(
+        this._state,
+        world.x,
+        world.y,
+        this._localPlayerId,
+      );
+
+      if (enemy) {
+        unitSelectionManager.issueAttackTarget(
+          enemy.id,
+          enemy.position,
+          this._state,
+        );
+      } else {
+        unitSelectionManager.issueMoveTo(
+          { x: world.x, y: world.y },
+          this._state,
+        );
+      }
     }
   }
 
@@ -173,6 +274,10 @@ export class InputManager {
       if (this._mode === "placement") {
         // BuildingPlacer handles ESC itself; sync mode after
         this._syncPlacementMode();
+      }
+      // ESC also deselects units in manual control mode
+      if (this._manualActive) {
+        unitSelectionManager.deselectAll();
       }
     }
 

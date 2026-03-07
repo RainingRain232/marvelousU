@@ -405,6 +405,9 @@ function _deserializeUnit(su: SerializedUnit): Unit {
     regenRate: def?.regenRate ?? 0,
     regenAccumulator: 0,
     constructionTargetId: su.constructionTargetId,
+    playerCommandGoal: null,
+    playerCommandTargetId: null,
+    playerControlled: false,
   };
 }
 

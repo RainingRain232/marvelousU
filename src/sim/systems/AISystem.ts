@@ -89,6 +89,25 @@ function _handleIdle(state: GameState, unit: Unit): void {
   // out of range. Only act if there's still no target.
   if (unit.targetId) return;
 
+  // Player command override — prioritise manual commands over AI goals
+  if (unit.playerControlled) {
+    if (unit.playerCommandTargetId) {
+      const target = state.units.get(unit.playerCommandTargetId)
+                  ?? state.buildings.get(unit.playerCommandTargetId);
+      if (target) {
+        unit.targetId = unit.playerCommandTargetId;
+        startMoving(state, unit, target.position);
+        return;
+      }
+      // Target gone — clear command, revert to AI
+      unit.playerCommandTargetId = null;
+      unit.playerControlled = false;
+    } else if (unit.playerCommandGoal) {
+      startMoving(state, unit, unit.playerCommandGoal);
+      return;
+    }
+  }
+
   const def = UNIT_DEFINITIONS[unit.type];
   let goal: { x: number; y: number } | null;
 
@@ -109,6 +128,17 @@ function _handleIdle(state: GameState, unit: Unit): void {
  * than BUILDING_AGGRO_RANGE. CombatSystem owns unit-vs-unit targeting.
  */
 function _handleMove(state: GameState, unit: Unit): void {
+  // Player command override — skip AI re-pathing while moving to player goal
+  if (unit.playerControlled && !unit.playerCommandTargetId) {
+    if (!unit.path || unit.pathIndex >= unit.path.length) {
+      // Reached destination — revert to AI
+      unit.playerControlled = false;
+      unit.playerCommandGoal = null;
+    } else {
+      return; // Still moving to player goal
+    }
+  }
+
   const def = UNIT_DEFINITIONS[unit.type];
 
   if (unit.targetId) {
