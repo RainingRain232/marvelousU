@@ -8,6 +8,8 @@ import type { SurvivorArcanaDef } from "../config/SurvivorArcanaDefs";
 import type { UpgradeChoice } from "../systems/SurvivorLevelSystem";
 import type { SurvivorState } from "../state/SurvivorState";
 import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
+import { WEAPON_DEFS, PASSIVE_DEFS } from "../config/SurvivorWeaponDefs";
+import type { SurvivorWeaponId, SurvivorPassiveId } from "../config/SurvivorWeaponDefs";
 
 const STYLE_TITLE = new TextStyle({ fontFamily: "monospace", fontSize: 28, fill: 0xffd700, fontWeight: "bold", letterSpacing: 3 });
 const STYLE_CHOICE = new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: 0xffffff, fontWeight: "bold" });
@@ -21,6 +23,9 @@ export class SurvivorLevelUpUI {
 
   private _onUpgrade: ((choice: UpgradeChoice) => void) | null = null;
   private _onArcana: ((arcana: SurvivorArcanaDef) => void) | null = null;
+  private _tooltip = new Container();
+  private _tooltipBg = new Graphics();
+  private _tooltipContent = new Container();
 
   setUpgradeCallback(cb: (choice: UpgradeChoice) => void): void { this._onUpgrade = cb; }
   setArcanaCallback(cb: (arcana: SurvivorArcanaDef) => void): void { this._onArcana = cb; }
@@ -83,11 +88,25 @@ export class SurvivorLevelUpUI {
       card.addChild(desc);
 
       card.on("pointerdown", () => this._onUpgrade?.(choice));
-      card.on("pointerover", () => { bg.tint = 0x3366aa; });
-      card.on("pointerout", () => { bg.tint = 0xffffff; });
+      card.on("pointerover", (e) => {
+        bg.tint = 0x3366aa;
+        this._showUpgradeTooltip(choice, e.globalX, e.globalY, sw, sh);
+      });
+      card.on("pointermove", (e) => {
+        if (this._tooltip.visible) this._positionLevelUpTooltip(e.globalX, e.globalY, sw, sh);
+      });
+      card.on("pointerout", () => { bg.tint = 0xffffff; this._tooltip.visible = false; });
 
       this.levelUpOverlay.addChild(card);
     }
+
+    // Tooltip layer (on top of cards)
+    this._tooltip.removeChildren();
+    this._tooltipBg = new Graphics();
+    this._tooltipContent = new Container();
+    this._tooltip.addChild(this._tooltipBg, this._tooltipContent);
+    this._tooltip.visible = false;
+    this.levelUpOverlay.addChild(this._tooltip);
   }
 
   hideLevelUp(): void {
@@ -192,6 +211,133 @@ export class SurvivorLevelUpUI {
 
   hidePause(): void {
     this.pauseOverlay.removeChildren();
+  }
+
+  private _showUpgradeTooltip(choice: UpgradeChoice, gx: number, gy: number, sw: number, sh: number): void {
+    this._tooltipContent.removeChildren();
+    const TT_W = 230;
+    const TT_PAD = 10;
+    let y = TT_PAD;
+
+    if (choice.type === "weapon") {
+      const def = WEAPON_DEFS[choice.id as SurvivorWeaponId];
+      if (!def) return;
+
+      const targetLevel = choice.level;
+      const prevLevel = choice.isNew ? 0 : targetLevel - 1;
+
+      // Stats at target level
+      const dmg = def.baseDamage + def.damagePerLevel * (targetLevel - 1);
+      const cd = Math.max(0.1, def.baseCooldown - def.cooldownPerLevel * (targetLevel - 1));
+      const area = def.baseArea + def.areaPerLevel * (targetLevel - 1);
+      const count = def.baseCount + def.countPerLevel * (targetLevel - 1);
+
+      if (choice.isNew) {
+        // New weapon — show base stats
+        y = this._ttStat("DMG", `${dmg}`, "", y);
+        y = this._ttStat("CD", `${cd.toFixed(1)}s`, "", y);
+        if (area > 0) y = this._ttStat("AREA", `${area.toFixed(1)}`, "", y);
+        y = this._ttStat("COUNT", `${count}`, "", y);
+        if (def.basePierce > 0) y = this._ttStat("PIERCE", `${def.basePierce}`, "", y);
+        if (def.baseSpeed > 0) y = this._ttStat("SPEED", `${def.baseSpeed}`, "", y);
+      } else {
+        // Level-up — show current -> next with delta
+        const prevDmg = def.baseDamage + def.damagePerLevel * (prevLevel - 1);
+        const prevCd = Math.max(0.1, def.baseCooldown - def.cooldownPerLevel * (prevLevel - 1));
+        const prevArea = def.baseArea + def.areaPerLevel * (prevLevel - 1);
+        const prevCount = def.baseCount + def.countPerLevel * (prevLevel - 1);
+
+        y = this._ttStat("DMG", `${prevDmg}`, dmg !== prevDmg ? ` -> ${dmg} (+${dmg - prevDmg})` : "", y);
+        y = this._ttStat("CD", `${prevCd.toFixed(1)}s`, cd !== prevCd ? ` -> ${cd.toFixed(1)}s` : "", y);
+        if (area > 0 || prevArea > 0) {
+          y = this._ttStat("AREA", `${prevArea.toFixed(1)}`, area !== prevArea ? ` -> ${area.toFixed(1)}` : "", y);
+        }
+        y = this._ttStat("COUNT", `${prevCount}`, count !== prevCount ? ` -> ${count}` : "", y);
+      }
+
+      // Evolution hint
+      if (def.evolutionId && def.evolutionPassive) {
+        y += 2;
+        const passiveDef = PASSIVE_DEFS[def.evolutionPassive];
+        const hint = new Text({
+          text: `Evolves with: ${passiveDef?.name ?? def.evolutionPassive}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x888899 }),
+        });
+        hint.position.set(TT_PAD, y);
+        this._tooltipContent.addChild(hint);
+        y += 14;
+      }
+    } else {
+      // Passive
+      const def = PASSIVE_DEFS[choice.id as SurvivorPassiveId];
+      if (!def) return;
+
+      const bonuses: { label: string; value: string }[] = [];
+      if (def.hpPerLevel) bonuses.push({ label: "HP", value: `+${def.hpPerLevel}/lv` });
+      if (def.speedPerLevel) bonuses.push({ label: "Speed", value: `+${(def.speedPerLevel * 100).toFixed(0)}%/lv` });
+      if (def.areaPerLevel) bonuses.push({ label: "Area", value: `+${(def.areaPerLevel * 100).toFixed(0)}%/lv` });
+      if (def.attackSpeedPerLevel) bonuses.push({ label: "Atk Spd", value: `+${(def.attackSpeedPerLevel * 100).toFixed(0)}%/lv` });
+      if (def.critPerLevel) bonuses.push({ label: "Crit", value: `+${(def.critPerLevel * 100).toFixed(0)}%/lv` });
+      if (def.pickupRadiusPerLevel) bonuses.push({ label: "Pickup", value: `+${def.pickupRadiusPerLevel}/lv` });
+      if (def.xpMultPerLevel) bonuses.push({ label: "XP", value: `+${(def.xpMultPerLevel * 100).toFixed(0)}%/lv` });
+      if (def.regenPerLevel) bonuses.push({ label: "Regen", value: `+${def.regenPerLevel} HP/s/lv` });
+
+      for (const b of bonuses) {
+        y = this._ttStat(b.label, b.value, "", y);
+      }
+
+      if (!choice.isNew) {
+        const totalLabel = new Text({
+          text: `At Lv.${choice.level}:`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x99aabb }),
+        });
+        totalLabel.position.set(TT_PAD, y + 2);
+        this._tooltipContent.addChild(totalLabel);
+        y += 16;
+
+        for (const b of bonuses) {
+          // Show total at target level
+          const numVal = parseFloat(b.value.replace(/[^0-9.]/g, ""));
+          const isPercent = b.value.includes("%");
+          const total = isPercent ? numVal * choice.level : numVal * choice.level;
+          const totalStr = isPercent ? `${total.toFixed(0)}%` : `${total}`;
+          y = this._ttStat(b.label, totalStr, " total", y);
+        }
+      }
+    }
+
+    const totalH = y + TT_PAD;
+    this._tooltipBg.clear()
+      .roundRect(0, 0, TT_W, totalH, 6).fill({ color: 0x0d0d1e, alpha: 0.95 })
+      .roundRect(0, 0, TT_W, totalH, 6).stroke({ color: 0xffd700, alpha: 0.55, width: 1.5 });
+
+    this._positionLevelUpTooltip(gx, gy, sw, sh);
+    this._tooltip.visible = true;
+  }
+
+  private _ttStat(label: string, value: string, delta: string, y: number): number {
+    const TT_PAD = 10;
+    const lbl = new Text({
+      text: `${label}:`,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x8899aa }),
+    });
+    lbl.position.set(TT_PAD, y);
+    this._tooltipContent.addChild(lbl);
+
+    const val = new Text({
+      text: value + delta,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: delta ? 0x44ff88 : 0xffd700 }),
+    });
+    val.position.set(TT_PAD + 75, y);
+    this._tooltipContent.addChild(val);
+    return y + 16;
+  }
+
+  private _positionLevelUpTooltip(gx: number, gy: number, sw: number, sh: number): void {
+    const ttH = this._tooltipBg.height || 100;
+    const x = Math.max(4, Math.min(gx + 16, sw - 240));
+    const y = Math.max(4, Math.min(gy - ttH / 2, sh - ttH - 4));
+    this._tooltip.position.set(x, y);
   }
 
   private _buildButton(label: string, x: number, y: number, bgColor: number, onClick: () => void): Container {

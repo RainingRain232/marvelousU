@@ -4,7 +4,8 @@
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
-import { WEAPON_DEFS } from "../config/SurvivorWeaponDefs";
+import { WEAPON_DEFS, EVOLUTION_DEFS, PASSIVE_DEFS } from "../config/SurvivorWeaponDefs";
+import type { SurvivorEvolutionDef } from "../config/SurvivorWeaponDefs";
 import type { SurvivorState } from "../state/SurvivorState";
 
 const STYLE_HUD = new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xffffff, fontWeight: "bold" });
@@ -24,6 +25,10 @@ export class SurvivorHUD {
   private _levelText!: Text;
   private _goldHudText!: Text;
   private _weaponHudContainer = new Container();
+  private _weaponIcons: Map<string, { container: Container; level: number; evolved: boolean }> = new Map();
+  private _tooltip = new Container();
+  private _tooltipBg!: Graphics;
+  private _tooltipContent = new Container();
   private _bossWarning: Text | null = null;
   private _bossWarningTimer = 0;
 
@@ -111,6 +116,15 @@ export class SurvivorHUD {
     this._buffContainer.removeChildren();
     this._buffContainer.position.set(10, 34);
     this.container.addChild(this._buffContainer);
+
+    // Weapon tooltip (on top of everything)
+    this._weaponIcons.clear();
+    this._tooltip.removeChildren();
+    this._tooltipBg = new Graphics();
+    this._tooltipContent = new Container();
+    this._tooltip.addChild(this._tooltipBg, this._tooltipContent);
+    this._tooltip.visible = false;
+    this.container.addChild(this._tooltip);
   }
 
   update(s: SurvivorState, sw: number, sh: number): void {
@@ -225,13 +239,32 @@ export class SurvivorHUD {
   }
 
   private _updateWeaponHud(s: SurvivorState): void {
-    this._weaponHudContainer.removeChildren();
     const iconSize = 36;
     const gap = 4;
+
+    // Check if icons need rebuilding (weapon added/removed/leveled/evolved)
+    let needsRebuild = s.weapons.length !== this._weaponIcons.size;
+    if (!needsRebuild) {
+      for (const ws of s.weapons) {
+        const cached = this._weaponIcons.get(ws.id);
+        if (!cached || cached.level !== ws.level || cached.evolved !== ws.evolved) {
+          needsRebuild = true;
+          break;
+        }
+      }
+    }
+    if (!needsRebuild) return;
+
+    this._weaponHudContainer.removeChildren();
+    this._weaponIcons.clear();
+    this._tooltip.visible = false;
+
     for (let i = 0; i < s.weapons.length; i++) {
       const ws = s.weapons[i];
       const def = WEAPON_DEFS[ws.id];
       const icon = new Container();
+      icon.eventMode = "static";
+      icon.cursor = "pointer";
 
       const bg = new Graphics()
         .roundRect(0, 0, iconSize, iconSize, 4)
@@ -252,8 +285,135 @@ export class SurvivorHUD {
       icon.addChild(lvl);
 
       icon.position.set(i * (iconSize + gap), 0);
+
+      // Tooltip hover
+      const weaponId = ws.id;
+      const weaponLevel = ws.level;
+      const evolved = ws.evolved;
+      icon.on("pointerover", (e) => {
+        this._showWeaponTooltip(weaponId, weaponLevel, evolved, e.globalX, e.globalY);
+      });
+      icon.on("pointermove", (e) => {
+        if (this._tooltip.visible) this._positionTooltip(e.globalX, e.globalY);
+      });
+      icon.on("pointerout", () => { this._tooltip.visible = false; });
+
       this._weaponHudContainer.addChild(icon);
+      this._weaponIcons.set(ws.id, { container: icon, level: ws.level, evolved: ws.evolved });
     }
+  }
+
+  private _showWeaponTooltip(weaponId: string, level: number, evolved: boolean, gx: number, gy: number): void {
+    this._tooltipContent.removeChildren();
+    const TT_W = 220;
+    const TT_PAD = 10;
+    let y = TT_PAD;
+
+    const def = WEAPON_DEFS[weaponId as keyof typeof WEAPON_DEFS];
+    if (!def) return;
+
+    // Check if evolved and get evolution def
+    let evoDef: SurvivorEvolutionDef | undefined;
+    if (evolved && def.evolutionId) {
+      evoDef = EVOLUTION_DEFS[def.evolutionId];
+    }
+
+    // Name
+    const nameStr = evoDef ? evoDef.name : def.name;
+    const nameTag = evolved ? " [EVOLVED]" : ` Lv.${level}`;
+    const name = new Text({
+      text: nameStr + nameTag,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: evolved ? 0xffd700 : 0xffffff, fontWeight: "bold" }),
+    });
+    name.position.set(TT_PAD, y);
+    this._tooltipContent.addChild(name);
+    y += 18;
+
+    // Description
+    const descStr = evoDef ? evoDef.description : def.description;
+    const desc = new Text({
+      text: descStr,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x99aabb, wordWrap: true, wordWrapWidth: TT_W - TT_PAD * 2 }),
+    });
+    desc.position.set(TT_PAD, y);
+    this._tooltipContent.addChild(desc);
+    y += desc.height + 8;
+
+    // Divider
+    const divider = new Graphics().rect(TT_PAD, y, TT_W - TT_PAD * 2, 1).fill({ color: 0xffd700, alpha: 0.3 });
+    this._tooltipContent.addChild(divider);
+    y += 6;
+
+    // Stats
+    if (evoDef) {
+      // Evolved stats are fixed
+      y = this._addTooltipStat("DMG", `${evoDef.damage}`, y);
+      if (evoDef.cooldown > 0) y = this._addTooltipStat("CD", `${evoDef.cooldown.toFixed(1)}s`, y);
+      if (evoDef.area > 0) y = this._addTooltipStat("AREA", `${evoDef.area.toFixed(1)}`, y);
+      y = this._addTooltipStat("COUNT", `${evoDef.count}`, y);
+    } else {
+      // Computed stats for current level
+      const dmg = def.baseDamage + def.damagePerLevel * (level - 1);
+      const cd = Math.max(0.1, def.baseCooldown - def.cooldownPerLevel * (level - 1));
+      const area = def.baseArea + def.areaPerLevel * (level - 1);
+      const count = def.baseCount + def.countPerLevel * (level - 1);
+
+      y = this._addTooltipStat("DMG", `${dmg}`, y);
+      y = this._addTooltipStat("CD", `${cd.toFixed(1)}s`, y);
+      if (area > 0) y = this._addTooltipStat("AREA", `${area.toFixed(1)}`, y);
+      y = this._addTooltipStat("COUNT", `${count}`, y);
+      if (def.basePierce > 0) y = this._addTooltipStat("PIERCE", `${def.basePierce}`, y);
+      if (def.baseDuration > 0) y = this._addTooltipStat("DUR", `${def.baseDuration.toFixed(1)}s`, y);
+
+      // Evolution hint
+      if (def.evolutionId && def.evolutionPassive) {
+        y += 4;
+        const evoHint = new Text({
+          text: `Evolves with: ${WEAPON_DEFS[weaponId as keyof typeof WEAPON_DEFS].evolutionPassive}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x888899 }),
+        });
+        // Get the passive name from the ID
+        const passiveId = def.evolutionPassive;
+        const passiveDef = PASSIVE_DEFS[passiveId];
+        evoHint.text = `Evolves with: ${passiveDef?.name ?? passiveId}`;
+        evoHint.position.set(TT_PAD, y);
+        this._tooltipContent.addChild(evoHint);
+        y += 14;
+      }
+    }
+
+    const totalH = y + TT_PAD;
+    this._tooltipBg.clear()
+      .roundRect(0, 0, TT_W, totalH, 6).fill({ color: 0x0d0d1e, alpha: 0.95 })
+      .roundRect(0, 0, TT_W, totalH, 6).stroke({ color: 0xffd700, alpha: 0.55, width: 1.5 });
+
+    this._positionTooltip(gx, gy);
+    this._tooltip.visible = true;
+  }
+
+  private _addTooltipStat(label: string, value: string, y: number): number {
+    const TT_PAD = 10;
+    const lbl = new Text({
+      text: `${label}:`,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x8899aa }),
+    });
+    lbl.position.set(TT_PAD, y);
+    this._tooltipContent.addChild(lbl);
+
+    const val = new Text({
+      text: value,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xffd700 }),
+    });
+    val.position.set(TT_PAD + 70, y);
+    this._tooltipContent.addChild(val);
+    return y + 16;
+  }
+
+  private _positionTooltip(gx: number, gy: number): void {
+    // Position above cursor, clamped to screen
+    const x = Math.max(4, Math.min(gx - 110, (this.container.parent?.width ?? 800) - 224));
+    const y = Math.max(4, gy - this._tooltipBg.height - 16);
+    this._tooltip.position.set(x, y);
   }
 
   private _updateBossHud(s: SurvivorState): void {
