@@ -144,6 +144,7 @@ function _tryInitiateCast(state: GameState, unit: Unit): void {
     const ability = state.abilities.get(abilityId);
     if (!ability) continue;
     if (ability.currentCooldown > 0) continue;
+    if (ability.targetsFriendlies) continue; // Skip heal/buff abilities when attacking buildings
     if (!inRange(unit.position, targetPos, ability.range)) continue;
 
     // Initiate cast

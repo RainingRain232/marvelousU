@@ -334,8 +334,8 @@ function resolveTarget(state: GameState, unit: Unit): Unit | null {
  * Find the nearest living friendly unit that is below its max HP.
  */
 function resolveFriendlyTarget(state: GameState, unit: Unit): Unit | null {
-  let best: Unit | null = null;
-  let bestHpPct = 1;
+  let nearest: Unit | null = null;
+  let nearestDistSq = AGGRO_RANGE_SQ + 1;
 
   for (const candidate of state.units.values()) {
     if (!isAlly(state, unit.owner, candidate.owner)) continue;
@@ -344,15 +344,13 @@ function resolveFriendlyTarget(state: GameState, unit: Unit): Unit | null {
 
     const dsq = distanceSq(unit.position, candidate.position);
     if (dsq > AGGRO_RANGE_SQ) continue;
-
-    const hpPct = candidate.hp / candidate.maxHp;
-    if (hpPct < bestHpPct) {
-      best = candidate;
-      bestHpPct = hpPct;
+    if (dsq < nearestDistSq) {
+      nearest = candidate;
+      nearestDistSq = dsq;
     }
   }
 
-  return best;
+  return nearest;
 }
 
 // ---------------------------------------------------------------------------
