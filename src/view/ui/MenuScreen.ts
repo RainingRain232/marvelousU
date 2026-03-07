@@ -297,6 +297,23 @@ export class MenuScreen {
   private _randomEventsBg!: Graphics;
   private _randomEventsLabel!: Text;
 
+  // Scaling Difficulty toggle (wave mode only)
+  private _scalingDifficulty = false;
+  private _scalingDifficultySection!: Container;
+  private _scalingDifficultyBg!: Graphics;
+  private _scalingDifficultyLabel!: Text;
+
+  // Boss Waves toggle (wave mode only)
+  private _bossWaves = false;
+  private _bossWavesSection!: Container;
+  private _bossWavesBg!: Graphics;
+  private _bossWavesLabel!: Text;
+
+  private _waveIntro = true;
+  private _waveIntroSection!: Container;
+  private _waveIntroBg!: Graphics;
+  private _waveIntroLabel!: Text;
+
   // Dynamic load wave button area (rebuilt on show)
   private _loadWaveBtnSlot!: Container;
   private _loadWaveBtnSlotY = 0;
@@ -348,6 +365,15 @@ export class MenuScreen {
   }
   get randomEventsEnabled(): boolean {
     return this._randomEvents;
+  }
+  get scalingDifficultyEnabled(): boolean {
+    return this._scalingDifficulty;
+  }
+  get bossWavesEnabled(): boolean {
+    return this._bossWaves;
+  }
+  get waveIntroEnabled(): boolean {
+    return this._waveIntro;
   }
 
   // ---------------------------------------------------------------------------
@@ -451,6 +477,9 @@ export class MenuScreen {
     // Show/hide Grail Greed toggle (wave mode only)
     this._grailGreedSection.visible = entry.mode === GameMode.WAVE;
     this._randomEventsSection.visible = entry.mode === GameMode.WAVE;
+    this._scalingDifficultySection.visible = entry.mode === GameMode.WAVE;
+    this._bossWavesSection.visible = entry.mode === GameMode.WAVE;
+    this._waveIntroSection.visible = entry.mode === GameMode.WAVE;
 
     this._layout();
   }
@@ -1150,6 +1179,135 @@ export class MenuScreen {
 
     const randomEventsSectionFullH = randomEventsSectionH + 14;
 
+    // --- Scaling Difficulty toggle (wave mode only) ---
+    const scalingSection = new Container();
+    scalingSection.position.set(0, curY);
+    scalingSection.visible = false;
+    card.addChild(scalingSection);
+    this._scalingDifficultySection = scalingSection;
+
+    const sdLabel = new Text({ text: "SCALING DIFFICULTY", style: STYLE_LABEL });
+    sdLabel.position.set(20, 0);
+    scalingSection.addChild(sdLabel);
+
+    const sdBtn = new Container();
+    sdBtn.eventMode = "static";
+    sdBtn.cursor = "pointer";
+    sdBtn.position.set(20, 20);
+
+    const sdBg = new Graphics();
+    sdBtn.addChild(sdBg);
+
+    const sdToggleLabel = new Text({ text: "", style: STYLE_BTN });
+    sdToggleLabel.anchor.set(0.5, 0.5);
+    sdToggleLabel.position.set(TW / 2, TH / 2);
+    sdBtn.addChild(sdToggleLabel);
+
+    this._scalingDifficultyBg = sdBg;
+    this._scalingDifficultyLabel = sdToggleLabel;
+
+    sdBtn.on("pointerdown", () => {
+      this._scalingDifficulty = !this._scalingDifficulty;
+      this._refreshScalingDifficultyToggle(TW, TH);
+    });
+
+    scalingSection.addChild(sdBtn);
+    this._refreshScalingDifficultyToggle(TW, TH);
+
+    const scalingSectionH = 20 + TH + 12;
+    scalingSection.addChild(
+      new Graphics()
+        .rect(20, scalingSectionH, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+    const scalingSectionFullH = scalingSectionH + 14;
+
+    // --- Boss Waves toggle (wave mode only) ---
+    const bossSection = new Container();
+    bossSection.position.set(0, curY);
+    bossSection.visible = false;
+    card.addChild(bossSection);
+    this._bossWavesSection = bossSection;
+
+    const bwLabel = new Text({ text: "BOSS WAVES", style: STYLE_LABEL });
+    bwLabel.position.set(20, 0);
+    bossSection.addChild(bwLabel);
+
+    const bwBtn = new Container();
+    bwBtn.eventMode = "static";
+    bwBtn.cursor = "pointer";
+    bwBtn.position.set(20, 20);
+
+    const bwBg = new Graphics();
+    bwBtn.addChild(bwBg);
+
+    const bwToggleLabel = new Text({ text: "", style: STYLE_BTN });
+    bwToggleLabel.anchor.set(0.5, 0.5);
+    bwToggleLabel.position.set(TW / 2, TH / 2);
+    bwBtn.addChild(bwToggleLabel);
+
+    this._bossWavesBg = bwBg;
+    this._bossWavesLabel = bwToggleLabel;
+
+    bwBtn.on("pointerdown", () => {
+      this._bossWaves = !this._bossWaves;
+      this._refreshBossWavesToggle(TW, TH);
+    });
+
+    bossSection.addChild(bwBtn);
+    this._refreshBossWavesToggle(TW, TH);
+
+    const bossSectionH = 20 + TH + 12;
+    bossSection.addChild(
+      new Graphics()
+        .rect(20, bossSectionH, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+    const bossSectionFullH = bossSectionH + 14;
+
+    // --- Wave Intro toggle (wave mode only) ---
+    const introSection = new Container();
+    introSection.position.set(0, curY);
+    introSection.visible = false;
+    card.addChild(introSection);
+    this._waveIntroSection = introSection;
+
+    const wiLabel = new Text({ text: "WAVE INTRO", style: STYLE_LABEL });
+    wiLabel.position.set(20, 0);
+    introSection.addChild(wiLabel);
+
+    const wiBtn = new Container();
+    wiBtn.eventMode = "static";
+    wiBtn.cursor = "pointer";
+    wiBtn.position.set(20, 20);
+
+    const wiBg = new Graphics();
+    wiBtn.addChild(wiBg);
+
+    const wiToggleLabel = new Text({ text: "", style: STYLE_BTN });
+    wiToggleLabel.anchor.set(0.5, 0.5);
+    wiToggleLabel.position.set(TW / 2, TH / 2);
+    wiBtn.addChild(wiToggleLabel);
+
+    this._waveIntroBg = wiBg;
+    this._waveIntroLabel = wiToggleLabel;
+
+    wiBtn.on("pointerdown", () => {
+      this._waveIntro = !this._waveIntro;
+      this._refreshWaveIntroToggle(TW, TH);
+    });
+
+    introSection.addChild(wiBtn);
+    this._refreshWaveIntroToggle(TW, TH);
+
+    const introSectionH = 20 + TH + 12;
+    introSection.addChild(
+      new Graphics()
+        .rect(20, introSectionH, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+    const introSectionFullH = introSectionH + 14;
+
     // We track two possible curY values — with and without player section
     // The actual card height is computed in _layout based on visibility
     // For now, place the action buttons after player section
@@ -1203,6 +1361,24 @@ export class MenuScreen {
       this._randomEventsSection.position.set(0, actY);
       if (this._randomEventsSection.visible) {
         actY += randomEventsSectionFullH;
+      }
+
+      // Position scaling difficulty section
+      this._scalingDifficultySection.position.set(0, actY);
+      if (this._scalingDifficultySection.visible) {
+        actY += scalingSectionFullH;
+      }
+
+      // Position boss waves section
+      this._bossWavesSection.position.set(0, actY);
+      if (this._bossWavesSection.visible) {
+        actY += bossSectionFullH;
+      }
+
+      // Position wave intro section
+      this._waveIntroSection.position.set(0, actY);
+      if (this._waveIntroSection.visible) {
+        actY += introSectionFullH;
       }
 
       actionBtns.back.position.set(20, actY);
@@ -1390,6 +1566,48 @@ export class MenuScreen {
       ? "EVENTS: ON  [click to disable]"
       : "EVENTS: OFF  [click to enable]";
     this._randomEventsLabel.style.fill = active ? 0x88ffdd : 0x888888;
+  }
+
+  private _refreshScalingDifficultyToggle(w: number, h: number): void {
+    const active = this._scalingDifficulty;
+    this._scalingDifficultyBg.clear();
+    this._scalingDifficultyBg
+      .roundRect(0, 0, w, h, 4)
+      .fill({ color: active ? 0x2a2a1a : 0x1a1a1a })
+      .roundRect(0, 0, w, h, 4)
+      .stroke({ color: active ? 0xccaa44 : 0x555555, width: 1.5 });
+    this._scalingDifficultyLabel.text = active
+      ? "SCALING: ON  [click to disable]"
+      : "SCALING: OFF  [click to enable]";
+    this._scalingDifficultyLabel.style.fill = active ? 0xffdd66 : 0x888888;
+  }
+
+  private _refreshBossWavesToggle(w: number, h: number): void {
+    const active = this._bossWaves;
+    this._bossWavesBg.clear();
+    this._bossWavesBg
+      .roundRect(0, 0, w, h, 4)
+      .fill({ color: active ? 0x2a1a1a : 0x1a1a1a })
+      .roundRect(0, 0, w, h, 4)
+      .stroke({ color: active ? 0xcc4444 : 0x555555, width: 1.5 });
+    this._bossWavesLabel.text = active
+      ? "BOSS: ON  [click to disable]"
+      : "BOSS: OFF  [click to enable]";
+    this._bossWavesLabel.style.fill = active ? 0xff6666 : 0x888888;
+  }
+
+  private _refreshWaveIntroToggle(w: number, h: number): void {
+    const active = this._waveIntro;
+    this._waveIntroBg.clear();
+    this._waveIntroBg
+      .roundRect(0, 0, w, h, 4)
+      .fill({ color: active ? 0x1a2a2a : 0x1a1a1a })
+      .roundRect(0, 0, w, h, 4)
+      .stroke({ color: active ? 0x44aaaa : 0x555555, width: 1.5 });
+    this._waveIntroLabel.text = active
+      ? "INTRO: ON  [click to disable]"
+      : "INTRO: OFF  [click to enable]";
+    this._waveIntroLabel.style.fill = active ? 0x66dddd : 0x888888;
   }
 
   private _refreshAllianceToggles(): void {

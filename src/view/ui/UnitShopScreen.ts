@@ -6,7 +6,7 @@ import { AnimatedSprite, Assets, Container, Graphics, Sprite, Text, TextStyle, T
 import type { ViewManager } from "@view/ViewManager";
 import { UNIT_DEFINITIONS, computeTier } from "@sim/config/UnitDefinitions";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
-import { filterInventoryByRace, getRace } from "@sim/config/RaceDefs";
+import { filterInventoryByRace, getRace, RACE_DEFINITIONS } from "@sim/config/RaceDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
 import { BuildingType, UnitType, UnitState } from "@/types";
 import type { CorruptionModifier } from "@sim/systems/GrailCorruptionSystem";
@@ -184,7 +184,7 @@ function getFactionUnits(raceId: RaceId): UnitType[] {
   return result;
 }
 
-function getAllShopUnits(raceId: RaceId): UnitType[] {
+export function getAllShopUnits(raceId: RaceId): UnitType[] {
   const seen = new Set<UnitType>();
   const result: UnitType[] = [];
   for (const tab of SHOP_TABS) {
@@ -285,6 +285,9 @@ export class UnitShopScreen {
   // Wave hint
   private _waveHint: { raceName: string; mainUnits: string[] } | null = null;
 
+  // Mercenaries (random units from other races available this wave)
+  private _mercenaries: Array<{ type: UnitType; raceId: string }> = [];
+
   // Price modifier tooltip
   private _priceTooltip!: Container;
   private _priceTooltipText!: Text;
@@ -306,6 +309,11 @@ export class UnitShopScreen {
   /** Set wave hint about next enemy race and main units. */
   setWaveHint(hint: { raceName: string; mainUnits: string[] } | null): void {
     this._waveHint = hint;
+  }
+
+  /** Set mercenary offerings for the current wave. */
+  setMercenaries(mercs: Array<{ type: UnitType; raceId: string }>): void {
+    this._mercenaries = mercs;
   }
 
   init(vm: ViewManager): void {
@@ -430,6 +438,7 @@ export class UnitShopScreen {
     this._counts.clear();
     this._raceId = raceId;
     this._activeTabIndex = 0;
+    this._mercenaries = [];
     this._hideTooltip();
     this._buildTabs();
     this._rebuild();
@@ -573,6 +582,22 @@ export class UnitShopScreen {
       });
     }
 
+    // Add mercenary tab (wave mode only, when mercenaries are available)
+    if (this._mercenaries.length > 0) {
+      const mercRaceNames = [...new Set(this._mercenaries.map((m) => {
+        const r = RACE_DEFINITIONS.find((rd) => rd.id === m.raceId);
+        return r?.name ?? m.raceId;
+      }))].join(" & ");
+      this._tabs.push({
+        id: "mercenaries",
+        building: null,
+        label: "MERCS",
+        color: 0xffaa00,
+        description: `Hired swords from foreign lands. These mercenaries from the ${mercRaceNames} offer their services for gold. New fighters arrive each wave.`,
+        imageUrl: null,
+      });
+    }
+
     const PAD = 16;
     const availW = this._cardW - PAD * 2;
     const tabCount = this._tabs.length;
@@ -694,9 +719,11 @@ export class UnitShopScreen {
     const tab = this._tabs[this._activeTabIndex];
     if (!tab) return;
 
-    const units = tab.building
-      ? getUnitsForBuilding(tab.building, this._raceId)
-      : getFactionUnits(this._raceId);
+    const units = tab.id === "mercenaries"
+      ? this._mercenaries.map((m) => m.type)
+      : tab.building
+        ? getUnitsForBuilding(tab.building, this._raceId)
+        : getFactionUnits(this._raceId);
 
     let y = 0;
 
@@ -1326,9 +1353,11 @@ export class UnitShopScreen {
   private _clampScroll(): void {
     const tab = this._tabs[this._activeTabIndex];
     if (!tab) return;
-    const units = tab.building
-      ? getUnitsForBuilding(tab.building, this._raceId)
-      : getFactionUnits(this._raceId);
+    const units = tab.id === "mercenaries"
+      ? this._mercenaries.map((m) => m.type)
+      : tab.building
+        ? getUnitsForBuilding(tab.building, this._raceId)
+        : getFactionUnits(this._raceId);
     const topExtra = (this._isAIShop ? 36 : 0) + (this._activeModifiers.length > 0 ? 18 + this._activeModifiers.length * 16 + 6 : 0);
     const contentH = topExtra + units.length * ROW_H;
     const viewH = this._cardH - this._contentTop - 60;

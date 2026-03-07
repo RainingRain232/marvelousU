@@ -175,6 +175,9 @@ export class VictoryScreen {
   /** Enemy roster for the current wave. */
   p2Roster: UnitRoster = [];
 
+  /** Best wave reached (for game-over display). */
+  waveBestRun = 0;
+
   /** Called when the player clicks "NEXT WAVE" in wave mode. */
   onNextWave: (() => void) | null = null;
 
@@ -355,7 +358,7 @@ export class VictoryScreen {
       const label = playerLabels[state.winnerId] ?? state.winnerId.toUpperCase();
       this._winnerText.text = label;
       this._subtitleText.text = isWave
-        ? `WAVE ${this.waveNumber}${corruptionTag} ${p1Won ? "COMPLETE" : "— DEFEATED"}`
+        ? `WAVE ${this.waveNumber}${corruptionTag} ${p1Won ? "COMPLETE" : "— GAME OVER"}`
         : "WINS THE ROUND";
     }
 
@@ -450,6 +453,9 @@ export class VictoryScreen {
     ly = this._addStat("Wave Number", String(this.waveNumber), ly, COL1);
     if (this.corruptionLevel > 0) {
       ly = this._addStat("Corruption", String(this.corruptionLevel), ly, COL1);
+    }
+    if (state.winnerId !== "p1" && this.waveBestRun > 0) {
+      ly = this._addStat("Best Run Ever", `Wave ${this.waveBestRun}`, ly, COL1);
     }
 
     // Battle duration

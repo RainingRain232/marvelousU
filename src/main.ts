@@ -48,7 +48,7 @@ import { battleStatsScreen } from "@view/ui/BattleStatsScreen";
 import { battleStatsTracker } from "@sim/systems/BattleStatsTracker";
 import { settingsScreen } from "@view/ui/SettingsScreen";
 import { hotkeyOverlay } from "@view/ui/HotkeyOverlay";
-import { unitShopScreen } from "@view/ui/UnitShopScreen";
+import { unitShopScreen, getAllShopUnits } from "@view/ui/UnitShopScreen";
 import type { UnitRoster } from "@view/ui/UnitShopScreen";
 import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
@@ -835,6 +835,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         randomEvents: menuScreen.randomEventsEnabled,
         pendingEvent: null,
         bonusGold: 0,
+        scalingDifficulty: menuScreen.scalingDifficultyEnabled,
+        bossWaves: menuScreen.bossWavesEnabled,
+        mercenaries: _generateMercenaries(raceId, 1),
       };
       unitShopScreen.onDone = async (playerRoster) => {
         unitShopScreen.hide();
@@ -861,12 +864,16 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         }
 
         // Generate enemy wave
+        const multiplier = _getWaveDifficultyMultiplier(_waveState!.wave, _waveState!.scalingDifficulty);
         const enemyBudget = _waveState!.wave === 1
           ? 2000
-          : Math.round(_waveState!.totalGoldSpent * 1.3);
+          : Math.round(_waveState!.totalGoldSpent * multiplier);
         _waveState!.lastEnemyGold = enemyBudget;
         _waveState!.totalEnemyGold += enemyBudget;
-        const enemyRoster = _generateWaveEnemyRoster(raceId, enemyBudget, _waveState!.wave);
+        const isBossWave = _waveState!.bossWaves && _waveState!.wave % 5 === 0;
+        const enemyRoster = isBossWave
+          ? _generateBossWaveRoster(raceId, Math.round(enemyBudget * 1.25), _waveState!.wave)
+          : _generateWaveEnemyRoster(raceId, enemyBudget, _waveState!.wave);
 
         _worldBattleRosters = {
           p1Roster: playerRoster,
@@ -892,6 +899,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       unitShopScreen.setCorruptionModifiers(corruption.activeModifiers);
       unitShopScreen.setSurvivingUnits([]);
       unitShopScreen.setWaveHint(_generateWaveHint(raceId, 1));
+      unitShopScreen.setMercenaries(_waveState!.mercenaries);
       unitShopScreen.onSave = () => { _saveWaveGame(); };
       unitShopScreen.onLoad = () => {
         const ws = _loadWaveGame();
@@ -906,7 +914,14 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         _waveState = null;
         menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
       };
-      unitShopScreen.show(raceId, 2000, `WAVE 1${corruptionLabel} — RECRUIT ARMY`);
+      const showWaveShop = () => {
+        unitShopScreen.show(raceId, 2000, `WAVE 1${corruptionLabel} — RECRUIT ARMY`);
+      };
+      if (menuScreen.waveIntroEnabled) {
+        _showWaveIntro(leaderId, showWaveShop);
+      } else {
+        showWaveShop();
+      }
     } else {
       await _bootGame(
         p2IsAI,
@@ -2388,6 +2403,12 @@ let _waveState: {
   pendingEvent: PendingWaveEvent | null;
   /** Extra gold bonus from Gold Rush event. */
   bonusGold: number;
+  /** Whether scaling difficulty is enabled (multiplier grows each wave). */
+  scalingDifficulty: boolean;
+  /** Whether boss waves are enabled (every 5th wave). */
+  bossWaves: boolean;
+  /** Current mercenary offerings (2 random units from other races). */
+  mercenaries: Array<{ type: UnitType; raceId: string }>;
 } | null = null;
 
 // ---------------------------------------------------------------------------
@@ -2417,6 +2438,9 @@ interface SerializedWaveState {
   lastEnemyGold: number;
   randomEvents?: boolean;
   bonusGold?: number;
+  scalingDifficulty?: boolean;
+  bossWaves?: boolean;
+  mercenaries?: Array<{ type: string; raceId: string }>;
 }
 
 function _saveWaveGame(): boolean {
@@ -2444,6 +2468,9 @@ function _saveWaveGame(): boolean {
       lastEnemyGold: ws.lastEnemyGold,
       randomEvents: ws.randomEvents,
       bonusGold: ws.bonusGold,
+      scalingDifficulty: ws.scalingDifficulty,
+      bossWaves: ws.bossWaves,
+      mercenaries: ws.mercenaries.map((m) => ({ type: m.type, raceId: m.raceId })),
     };
     localStorage.setItem(WAVE_SAVE_KEY, JSON.stringify(data));
     return true;
@@ -2486,6 +2513,9 @@ function _loadWaveGame(): NonNullable<typeof _waveState> | null {
       randomEvents: data.randomEvents ?? false,
       pendingEvent: null,
       bonusGold: data.bonusGold ?? 0,
+      scalingDifficulty: data.scalingDifficulty ?? false,
+      bossWaves: data.bossWaves ?? false,
+      mercenaries: (data.mercenaries ?? []).map((m) => ({ type: m.type as UnitType, raceId: m.raceId })),
     };
   } catch {
     return null;
@@ -2588,6 +2618,137 @@ function _generateWaveHint(playerRaceId: RaceId, wave: number): { raceName: stri
   return { raceName, mainUnits: unitNames };
 }
 
+// ---------------------------------------------------------------------------
+// Wave best-run tracking (localStorage)
+// ---------------------------------------------------------------------------
+
+const WAVE_BEST_KEY = "wave_best_v1";
+
+interface WaveBestRun {
+  wave: number;
+  totalGoldSpent: number;
+  raceId: string;
+  leaderId: string;
+  date: string;
+}
+
+function _getWaveBestRuns(): WaveBestRun[] {
+  try {
+    const raw = localStorage.getItem(WAVE_BEST_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as WaveBestRun[];
+  } catch { return []; }
+}
+
+function _saveWaveBestRun(run: WaveBestRun): void {
+  const runs = _getWaveBestRuns();
+  runs.push(run);
+  runs.sort((a, b) => b.wave - a.wave);
+  // Keep top 10
+  localStorage.setItem(WAVE_BEST_KEY, JSON.stringify(runs.slice(0, 10)));
+}
+
+function _getWaveBestWave(): number {
+  const runs = _getWaveBestRuns();
+  return runs.length > 0 ? runs[0].wave : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Mercenary generation (2 random units from other races)
+// ---------------------------------------------------------------------------
+
+function _generateMercenaries(playerRaceId: RaceId, wave: number): Array<{ type: UnitType; raceId: string }> {
+  const maxTier = wave <= 5 ? 3 : wave <= 10 ? 5 : 7;
+  const otherRaces = RACE_DEFINITIONS.filter((r) => r.implemented && r.id !== "op" && r.id !== playerRaceId);
+  if (otherRaces.length === 0) return [];
+
+  const candidates: Array<{ type: UnitType; raceId: string }> = [];
+  for (const race of otherRaces) {
+    const units = getUnitsForRace(race.id, maxTier);
+    for (const ut of units) {
+      candidates.push({ type: ut, raceId: race.id });
+    }
+    // Include faction units
+    for (const fut of race.factionUnits) {
+      if (fut && UNIT_DEFINITIONS[fut]) {
+        const tier = UNIT_DEFINITIONS[fut].tier ?? 1;
+        if (tier <= maxTier && !candidates.some((c) => c.type === fut)) {
+          candidates.push({ type: fut, raceId: race.id });
+        }
+      }
+    }
+  }
+
+  // Remove any units already available to the player's race
+  const playerUnits = new Set(getAllShopUnits(playerRaceId));
+  const filtered = candidates.filter((c) => !playerUnits.has(c.type));
+  if (filtered.length === 0) return [];
+
+  // Shuffle and pick 2
+  const shuffled = filtered.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 2);
+}
+
+// ---------------------------------------------------------------------------
+// Boss wave generation
+// ---------------------------------------------------------------------------
+
+function _generateBossWaveRoster(playerRaceId: RaceId, goldBudget: number, _wave: number): UnitRoster {
+  // Boss waves: pick a single race and heavily invest in high-tier units
+  const races = RACE_DEFINITIONS.filter((r) => r.implemented && r.id !== "op" && r.id !== playerRaceId);
+  const enemyRace = races[Math.floor(Math.random() * races.length)];
+  const enemyRaceId = enemyRace?.id ?? "man";
+
+  // Boss waves use max tier available
+  const maxTier = 7;
+  const available = getUnitsForRace(enemyRaceId, maxTier);
+
+  // Add faction units
+  const race = getRace(enemyRaceId);
+  if (race) {
+    for (const fut of race.factionUnits) {
+      if (fut && UNIT_DEFINITIONS[fut] && !available.includes(fut)) {
+        available.push(fut);
+      }
+    }
+  }
+
+  if (available.length === 0) return [{ type: UnitType.SWORDSMAN, count: 10 }];
+
+  // Prefer expensive (high-tier) units — sort by cost descending, pick from top half
+  available.sort((a, b) => (UNIT_DEFINITIONS[b]?.cost ?? 0) - (UNIT_DEFINITIONS[a]?.cost ?? 0));
+  const elitePool = available.slice(0, Math.max(3, Math.ceil(available.length * 0.4)));
+
+  const roster: UnitRoster = [];
+  const counts = new Map<UnitType, number>();
+  let remaining = goldBudget;
+  let safety = 500;
+
+  while (remaining > 0 && safety-- > 0) {
+    const affordable = elitePool.filter((ut) => (UNIT_DEFINITIONS[ut]?.cost ?? 100) <= remaining);
+    if (affordable.length === 0) break;
+    const pick = affordable[Math.floor(Math.random() * affordable.length)];
+    const cost = UNIT_DEFINITIONS[pick]?.cost ?? 100;
+    counts.set(pick, (counts.get(pick) ?? 0) + 1);
+    remaining -= cost;
+  }
+
+  for (const [type, count] of counts) {
+    roster.push({ type, count });
+  }
+  return roster;
+}
+
+// ---------------------------------------------------------------------------
+// Scaling difficulty multiplier
+// ---------------------------------------------------------------------------
+
+function _getWaveDifficultyMultiplier(wave: number, scalingEnabled: boolean): number {
+  if (!scalingEnabled) return 1.3;
+  // Starts at 1.3, grows by 0.05 per wave, capping at 3.0
+  return Math.min(3.0, 1.3 + (wave - 1) * 0.05);
+}
+
 /** Wave event definitions. */
 const WAVE_EVENTS: Array<{
   type: WaveEventType;
@@ -2662,11 +2823,15 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
       }
     }
 
-    // Generate enemy wave: enemies worth totalGoldSpent * 1.3
-    const enemyBudget = Math.round(ws.totalGoldSpent * 1.3);
+    // Generate enemy wave: enemies worth totalGoldSpent * multiplier
+    const multiplier = _getWaveDifficultyMultiplier(ws.wave, ws.scalingDifficulty);
+    const enemyBudget = Math.round(ws.totalGoldSpent * multiplier);
     ws.lastEnemyGold = enemyBudget;
     ws.totalEnemyGold += enemyBudget;
-    const enemyRoster = _generateWaveEnemyRoster(ws.playerRaceId, enemyBudget, ws.wave);
+    const isBossWave = ws.bossWaves && ws.wave % 5 === 0;
+    const enemyRoster = isBossWave
+      ? _generateBossWaveRoster(ws.playerRaceId, Math.round(enemyBudget * 1.25), ws.wave)
+      : _generateWaveEnemyRoster(ws.playerRaceId, enemyBudget, ws.wave);
 
     _worldBattleRosters = {
       p1Roster: playerRoster,
@@ -2693,6 +2858,9 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     : ws.corruption.enabled ? " [GRAIL GREED]" : "";
   unitShopScreen.setCorruptionModifiers(ws.corruption.activeModifiers);
   unitShopScreen.setSurvivingUnits(ws.survivingUnits);
+  // Regenerate mercenaries each wave
+  ws.mercenaries = _generateMercenaries(ws.playerRaceId, ws.wave);
+  unitShopScreen.setMercenaries(ws.mercenaries);
   unitShopScreen.onSave = () => { _saveWaveGame(); };
   unitShopScreen.onLoad = () => {
     const loaded = _loadWaveGame();
@@ -2707,8 +2875,60 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     _waveState = null;
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
+  const bossTag = ws.bossWaves && ws.wave % 5 === 0 ? " [BOSS]" : "";
   unitShopScreen.setWaveHint(_generateWaveHint(ws.playerRaceId, ws.wave));
-  unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave}${corruptionSuffix} — RECRUIT ARMY`);
+  unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave}${corruptionSuffix}${bossTag} — RECRUIT ARMY`);
+}
+
+/** Show a multi-screen Merlin introduction for wave mode. */
+function _showWaveIntro(leaderId: string, onDone: () => void): void {
+  const leader = getLeader(leaderId as LeaderId);
+  const leaderName = leader?.name ?? "Commander";
+  const secondSpeaker = { name: leaderName, id: leaderId };
+
+  // Intro dialog pages — alternating between Merlin and the leader
+  const pages: Array<{ message: string; speaker?: { name: string; id: string } }> = [
+    {
+      message: `Ah, ${leaderName}! The ancient arena awakens once more. I have arranged a... challenge for you.`,
+    },
+    {
+      message: "A challenge? What sort of sorcery is this, Merlin?",
+      speaker: secondSpeaker,
+    },
+    {
+      message: "Endless waves of foes shall march against you. Each wave fiercer than the last. Survive — and grow stronger.",
+    },
+    {
+      message: "You will earn gold for each victory. Spend it wisely in the shop to recruit troops and fortify your army.",
+    },
+    {
+      message: "And my soldiers who survive the battle?",
+      speaker: secondSpeaker,
+    },
+    {
+      message: "They fight on! Your veterans carry over between waves. Guard them well — a seasoned army is worth its weight in gold.",
+    },
+    {
+      message: "Very well. Let the waves come. We shall not falter!",
+      speaker: secondSpeaker,
+    },
+    {
+      message: "That's the spirit! Now then — to the shop with you. Your first wave awaits...",
+    },
+  ];
+
+  let pageIndex = 0;
+  const showNext = (): void => {
+    if (pageIndex >= pages.length) {
+      onDone();
+      return;
+    }
+    const page = pages[pageIndex];
+    pageIndex++;
+    // Pages with a speaker use dual-speaker layout; pages without are Merlin-only
+    _showMerlinWaveCompliment(page.message, showNext, page.speaker);
+  };
+  showNext();
 }
 
 /** Show a brief Merlin compliment overlay, then call the callback. */
@@ -6592,6 +6812,20 @@ async function _bootGame(
       ws.survivingUnits = [];
       for (const [type, count] of survivorCounts) {
         ws.survivingUnits.push({ type, count });
+      }
+
+      // On defeat, save best run and delete wave save
+      if (state.winnerId !== "p1") {
+        _saveWaveBestRun({
+          wave: ws.wave,
+          totalGoldSpent: ws.totalGoldSpent,
+          raceId: ws.playerRaceId,
+          leaderId: ws.playerLeaderId,
+          date: new Date().toISOString().slice(0, 10),
+        });
+        localStorage.removeItem(WAVE_SAVE_KEY);
+        // Set best run info on victory screen for display
+        victoryScreen.waveBestRun = _getWaveBestWave();
       }
     });
 
