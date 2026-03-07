@@ -56,6 +56,11 @@ import {
   type DragonPalette,
 } from "@view/animation/DragonSpriteGen";
 import {
+  generateTrueDragonFrames,
+  PALETTE_FIRE_DRAGON,
+  PALETTE_ICE_DRAGON,
+} from "@view/animation/TrueDragonSpriteGen";
+import {
   generateCyclopsFrames,
   PALETTE_CYCLOPS,
   type CyclopsPalette,
@@ -370,6 +375,10 @@ export class AnimationManager {
         this._generateDragonSprites(key, renderer, PALETTE_RED_DRAGON, false);
       } else if (key === "frost_dragon") {
         this._generateDragonSprites(key, renderer, PALETTE_FROST_DRAGON, true);
+      } else if (key === "fire_dragon") {
+        this._generateTrueDragonSprites(key, renderer, PALETTE_FIRE_DRAGON, false);
+      } else if (key === "ice_dragon") {
+        this._generateTrueDragonSprites(key, renderer, PALETTE_ICE_DRAGON, true);
       } else if (key === "cyclops") {
         this._generateCyclopsSprites(key, renderer, PALETTE_CYCLOPS);
       } else if (key === "pikeman") {
@@ -941,6 +950,39 @@ export class AnimationManager {
     const textures = generateDragonFrames(renderer, palette, isFrost);
 
     // Map the 40 frames to animation states (8 frames per state)
+    const states = [
+      UnitState.IDLE,
+      UnitState.MOVE,
+      UnitState.ATTACK,
+      UnitState.CAST,
+      UnitState.DIE,
+    ];
+
+    for (let stateIndex = 0; stateIndex < states.length; stateIndex++) {
+      const state = states[stateIndex];
+      const stateTextures = textures.slice(
+        stateIndex * 8,
+        (stateIndex + 1) * 8,
+      );
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, stateTextures);
+      }
+    }
+  }
+
+  /**
+   * Generate procedural true-dragon sprites (side-view, higher tier).
+   * Used for fire_dragon and ice_dragon.
+   */
+  private _generateTrueDragonSprites(
+    key: string,
+    renderer: Renderer,
+    palette: DragonPalette,
+    isFrost: boolean,
+  ): void {
+    const textures = generateTrueDragonFrames(renderer, palette, isFrost);
+
     const states = [
       UnitState.IDLE,
       UnitState.MOVE,

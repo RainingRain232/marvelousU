@@ -351,6 +351,20 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
     castFps: 8,
     dieFps: 6,
   }),
+  [UnitType.FIRE_DRAGON]: buildDef("fire_dragon", {
+    idleFps: 4,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 6,
+  }),
+  [UnitType.ICE_DRAGON]: buildDef("ice_dragon", {
+    idleFps: 4,
+    moveFps: 8,
+    attackFps: 10,
+    castFps: 8,
+    dieFps: 6,
+  }),
   [UnitType.CYCLOPS]: buildDef("cyclops", {
     idleFps: 3,
     moveFps: 6,

@@ -270,8 +270,10 @@ const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.MONK]: "Monk",
   [UnitType.CLERIC]: "Cleric",
   [UnitType.SAINT]: "Saint",
-  [UnitType.RED_DRAGON]: "Red Dragon",
-  [UnitType.FROST_DRAGON]: "Frost Dragon",
+  [UnitType.RED_DRAGON]: "Fire Drake",
+  [UnitType.FROST_DRAGON]: "Ice Drake",
+  [UnitType.FIRE_DRAGON]: "Fire Dragon",
+  [UnitType.ICE_DRAGON]: "Ice Dragon",
   [UnitType.CYCLOPS]: "Cyclops",
   [UnitType.HALBERDIER]: "Halberdier",
   [UnitType.ELVEN_ARCHER]: "Elven Archer",
@@ -428,8 +430,10 @@ const UPGRADE_LABELS: Record<UpgradeType, string> = {
   [UpgradeType.SUMMON_PIXIE]: "Pixie",
   [UpgradeType.SUMMON_FIRE_ELEMENTAL]: "Fire Elem",
   [UpgradeType.SUMMON_ICE_ELEMENTAL]: "Ice Elem",
-  [UpgradeType.SUMMON_RED_DRAGON]: "Dragon",
-  [UpgradeType.SUMMON_FROST_DRAGON]: "Frost Drg",
+  [UpgradeType.SUMMON_RED_DRAGON]: "Fire Drake",
+  [UpgradeType.SUMMON_FROST_DRAGON]: "Ice Drake",
+  [UpgradeType.SUMMON_FIRE_DRAGON]: "Fire Drgn",
+  [UpgradeType.SUMMON_ICE_DRAGON]: "Ice Drgn",
   [UpgradeType.SUMMON_SPIDER_BROOD]: "Spider",
   [UpgradeType.SUMMON_TROLL]: "Troll",
   [UpgradeType.SUMMON_ANGEL]: "Angel",
@@ -3000,7 +3004,7 @@ export class ShopPanel {
         break;
       }
       case UpgradeType.SUMMON_RED_DRAGON: {
-        // Fearsome red dragon
+        // Fire drake
         const dBody = new Graphics().ellipse(0, 0, S * 0.4, S * 0.2).fill({ color: 0xcc2200, alpha: 0.9 });
         const dHead = new Graphics().ellipse(S * 0.35, -S * 0.15, S * 0.15, S * 0.1).fill({ color: 0xdd3300 });
         // Eye
@@ -3024,7 +3028,7 @@ export class ShopPanel {
         break;
       }
       case UpgradeType.SUMMON_FROST_DRAGON: {
-        // Icy blue dragon
+        // Ice drake
         const fdBody = new Graphics().ellipse(0, 0, S * 0.4, S * 0.2).fill({ color: 0x4488cc, alpha: 0.9 });
         const fdHead = new Graphics().ellipse(S * 0.35, -S * 0.15, S * 0.15, S * 0.1).fill({ color: 0x55aadd });
         // Eye
@@ -3047,6 +3051,79 @@ export class ShopPanel {
         gsap.to(frostBreath, { alpha: 0.1, scale: 1.2, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
         gsap.to(frostGlow, { scale: 1.4, alpha: 0.04, duration: 0.5, yoyo: true, repeat: -1 });
         gsap.to(fdBody, { y: -1, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        break;
+      }
+
+      case UpgradeType.SUMMON_FIRE_DRAGON: {
+        // Ancient fire dragon — side profile, larger and darker than drake
+        const fdgBody = new Graphics().ellipse(0, 0, S * 0.45, S * 0.25).fill({ color: 0x881111, alpha: 0.9 });
+        const fdgNeck = new Graphics().moveTo(S * 0.2, -S * 0.1).lineTo(S * 0.4, -S * 0.35).lineTo(S * 0.35, -S * 0.08)
+          .fill({ color: 0x771111 });
+        const fdgHead = new Graphics().ellipse(S * 0.42, -S * 0.38, S * 0.12, S * 0.08).fill({ color: 0x881111 });
+        fdgHead.circle(S * 0.46, -S * 0.4, 1.5).fill({ color: 0xffaa00, alpha: 0.9 });
+        // Horns
+        const fdgHorns = new Graphics().moveTo(S * 0.38, -S * 0.44).lineTo(S * 0.28, -S * 0.6).lineTo(S * 0.36, -S * 0.46)
+          .fill({ color: 0x443322 });
+        // Wings (large, bat-like)
+        const fdgWing = new Graphics()
+          .moveTo(-S * 0.1, -S * 0.15).lineTo(-S * 0.55, -S * 0.65).lineTo(-S * 0.5, -S * 0.35)
+          .lineTo(-S * 0.35, -S * 0.08).closePath().fill({ color: 0x551100, alpha: 0.7 });
+        // Spines along back
+        const fdgSpines = new Graphics();
+        for (let i = 0; i < 5; i++) {
+          const sx = -S * 0.2 + i * S * 0.1;
+          fdgSpines.moveTo(sx, -S * 0.12 - i * S * 0.04).lineTo(sx, -S * 0.22 - i * S * 0.04).lineTo(sx + S * 0.03, -S * 0.12 - i * S * 0.04);
+        }
+        fdgSpines.fill({ color: 0x550808 });
+        // Tail
+        const fdgTail = new Graphics().moveTo(-S * 0.45, S * 0.05)
+          .quadraticCurveTo(-S * 0.7, S * 0.3, -S * 0.6, S * 0.2)
+          .stroke({ color: 0x881111, width: 2.5 });
+        // Fire breath
+        const fdgBreath = new Graphics().moveTo(S * 0.52, -S * 0.38)
+          .lineTo(S * 0.8, -S * 0.5).lineTo(S * 0.78, -S * 0.25).closePath()
+          .fill({ color: 0xff5500, alpha: 0.5 });
+        iconC.addChild(fdgTail, fdgBody, fdgWing, fdgSpines, fdgNeck, fdgHead, fdgHorns, fdgBreath);
+        gsap.to(fdgWing, { y: 4, rotation: 0.12, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(fdgBreath, { alpha: 0.15, scale: 1.3, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(fdgBody, { y: -1.5, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        break;
+      }
+      case UpgradeType.SUMMON_ICE_DRAGON: {
+        // Ancient ice dragon — side profile, icy blue, crystalline accents
+        const idgBody = new Graphics().ellipse(0, 0, S * 0.45, S * 0.25).fill({ color: 0x224488, alpha: 0.9 });
+        const idgNeck = new Graphics().moveTo(S * 0.2, -S * 0.1).lineTo(S * 0.4, -S * 0.35).lineTo(S * 0.35, -S * 0.08)
+          .fill({ color: 0x1a3366 });
+        const idgHead = new Graphics().ellipse(S * 0.42, -S * 0.38, S * 0.12, S * 0.08).fill({ color: 0x224488 });
+        idgHead.circle(S * 0.46, -S * 0.4, 1.5).fill({ color: 0x66ffff, alpha: 0.9 });
+        // Horns (icy)
+        const idgHorns = new Graphics().moveTo(S * 0.38, -S * 0.44).lineTo(S * 0.28, -S * 0.6).lineTo(S * 0.36, -S * 0.46)
+          .fill({ color: 0x99aacc });
+        // Wings
+        const idgWing = new Graphics()
+          .moveTo(-S * 0.1, -S * 0.15).lineTo(-S * 0.55, -S * 0.65).lineTo(-S * 0.5, -S * 0.35)
+          .lineTo(-S * 0.35, -S * 0.08).closePath().fill({ color: 0x1a3366, alpha: 0.7 });
+        // Spines
+        const idgSpines = new Graphics();
+        for (let i = 0; i < 5; i++) {
+          const sx = -S * 0.2 + i * S * 0.1;
+          idgSpines.moveTo(sx, -S * 0.12 - i * S * 0.04).lineTo(sx, -S * 0.22 - i * S * 0.04).lineTo(sx + S * 0.03, -S * 0.12 - i * S * 0.04);
+        }
+        idgSpines.fill({ color: 0x112244 });
+        // Tail
+        const idgTail = new Graphics().moveTo(-S * 0.45, S * 0.05)
+          .quadraticCurveTo(-S * 0.7, S * 0.3, -S * 0.6, S * 0.2)
+          .stroke({ color: 0x224488, width: 2.5 });
+        // Frost breath
+        const idgBreath = new Graphics().moveTo(S * 0.52, -S * 0.38)
+          .lineTo(S * 0.8, -S * 0.5).lineTo(S * 0.78, -S * 0.25).closePath()
+          .fill({ color: 0x88ddff, alpha: 0.4 });
+        const idgGlow = new Graphics().circle(S * 0.65, -S * 0.38, S * 0.15).fill({ color: 0x66ccff, alpha: 0.12 });
+        iconC.addChild(idgTail, idgBody, idgWing, idgSpines, idgNeck, idgHead, idgHorns, idgBreath, idgGlow);
+        gsap.to(idgWing, { y: 4, rotation: 0.12, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(idgBreath, { alpha: 0.1, scale: 1.2, duration: 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        gsap.to(idgGlow, { scale: 1.4, alpha: 0.04, duration: 0.5, yoyo: true, repeat: -1 });
+        gsap.to(idgBody, { y: -1.5, duration: 0.7, yoyo: true, repeat: -1, ease: "sine.inOut" });
         break;
       }
 

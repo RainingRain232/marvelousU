@@ -243,8 +243,10 @@ const UNIT_LABELS: Record<string, string> = {
   [UnitType.DARK_SAVANT]: "Dark Savant",
   [UnitType.ANGEL]: "Angel",
   [UnitType.CYCLOPS]: "Cyclops",
-  [UnitType.RED_DRAGON]: "Red Dragon",
-  [UnitType.FROST_DRAGON]: "Frost Dragon",
+  [UnitType.RED_DRAGON]: "Fire Drake",
+  [UnitType.FROST_DRAGON]: "Ice Drake",
+  [UnitType.FIRE_DRAGON]: "Fire Dragon",
+  [UnitType.ICE_DRAGON]: "Ice Dragon",
 };
 
 function _unitLabel(unitType: string): string {

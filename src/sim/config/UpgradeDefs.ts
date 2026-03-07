@@ -117,6 +117,8 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
       UnitType.CYCLOPS,
       UnitType.RED_DRAGON,
       UnitType.FROST_DRAGON,
+      UnitType.FIRE_DRAGON,
+      UnitType.ICE_DRAGON,
     ],
   },
   [UpgradeType.CREATURE_HEALTH]: {
@@ -129,6 +131,8 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
       UnitType.CYCLOPS,
       UnitType.RED_DRAGON,
       UnitType.FROST_DRAGON,
+      UnitType.FIRE_DRAGON,
+      UnitType.ICE_DRAGON,
     ],
   },
   [UpgradeType.MAGE_RANGE]: {
@@ -267,15 +271,27 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeType, UpgradeDef> = {
   },
   [UpgradeType.SUMMON_RED_DRAGON]: {
     type: UpgradeType.SUMMON_RED_DRAGON, cost: 0, manaCost: 500, maxLevel: 99, effect: 0,
-    description: "Call forth a fearsome red dragon from the arcane depths.", appliesTo: [],
+    description: "Call forth a fire drake from the arcane depths.", appliesTo: [],
     isSpell: true, spellType: "summon", summonUnit: UnitType.RED_DRAGON,
     spellSchool: "conjuration", spellTier: 4, spellMagicType: "fire",
   },
   [UpgradeType.SUMMON_FROST_DRAGON]: {
     type: UpgradeType.SUMMON_FROST_DRAGON, cost: 0, manaCost: 500, maxLevel: 99, effect: 0,
-    description: "Summon an ancient frost dragon wreathed in blizzard.", appliesTo: [],
+    description: "Summon an ice drake wreathed in blizzard.", appliesTo: [],
     isSpell: true, spellType: "summon", summonUnit: UnitType.FROST_DRAGON,
     spellSchool: "conjuration", spellTier: 4, spellMagicType: "ice",
+  },
+  [UpgradeType.SUMMON_FIRE_DRAGON]: {
+    type: UpgradeType.SUMMON_FIRE_DRAGON, cost: 0, manaCost: 800, maxLevel: 99, effect: 0,
+    description: "Summon an ancient fire dragon, a true wyrm of terrible power.", appliesTo: [],
+    isSpell: true, spellType: "summon", summonUnit: UnitType.FIRE_DRAGON,
+    spellSchool: "conjuration", spellTier: 5, spellMagicType: "fire",
+  },
+  [UpgradeType.SUMMON_ICE_DRAGON]: {
+    type: UpgradeType.SUMMON_ICE_DRAGON, cost: 0, manaCost: 800, maxLevel: 99, effect: 0,
+    description: "Summon an ancient ice dragon, lord of the frozen wastes.", appliesTo: [],
+    isSpell: true, spellType: "summon", summonUnit: UnitType.ICE_DRAGON,
+    spellSchool: "conjuration", spellTier: 5, spellMagicType: "ice",
   },
 
   // ═══════════════════════════════════════════════════════════════

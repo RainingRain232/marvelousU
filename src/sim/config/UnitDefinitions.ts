@@ -1130,7 +1130,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       healthBarOffset: -0.8, // health bar positioned higher
     },
     description:
-      "Ancient red dragon that breathes devastating fire, scorching all who dare oppose it.",
+      "Fire-breathing drake that scorches all who dare oppose it.",
     tier: 4,
   },
   [UnitType.FROST_DRAGON]: {
@@ -1150,8 +1150,48 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
       healthBarOffset: -0.8, // health bar positioned higher
     },
     description:
-      "Mighty ice dragon whose freezing breath slows enemies to a crawl before shattering them.",
+      "Ice drake whose freezing breath slows enemies to a crawl before shattering them.",
     tier: 4,
+  },
+  [UnitType.FIRE_DRAGON]: {
+    type: UnitType.FIRE_DRAGON,
+    cost: 2000,
+    hp: 900,
+    atk: 55,
+    attackSpeed: 0.7,
+    speed: 1.0,
+    range: 2,
+    spawnTime: 20,
+    abilityTypes: [AbilityType.FIRE_BREATH],
+    spriteKey: "fire_dragon",
+    size: {
+      width: 2.0,
+      height: 3.0,
+      healthBarOffset: -1.2,
+    },
+    description:
+      "Ancient fire dragon with armoured scales and devastating breath. Towers above the battlefield.",
+    tier: 5,
+  },
+  [UnitType.ICE_DRAGON]: {
+    type: UnitType.ICE_DRAGON,
+    cost: 1900,
+    hp: 850,
+    atk: 50,
+    attackSpeed: 0.7,
+    speed: 1.0,
+    range: 2,
+    spawnTime: 20,
+    abilityTypes: [AbilityType.FROST_BREATH],
+    spriteKey: "ice_dragon",
+    size: {
+      width: 2.0,
+      height: 3.0,
+      healthBarOffset: -1.2,
+    },
+    description:
+      "Ancient ice dragon whose freezing breath encases entire formations in ice.",
+    tier: 5,
   },
   [UnitType.CYCLOPS]: {
     type: UnitType.CYCLOPS,

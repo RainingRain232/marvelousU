@@ -460,10 +460,12 @@ const TIER_TOOLTIP_DATA: Record<keyof RaceTiers, TierTooltipInfo> = {
         { name: "Faery Queen", desc: "Faery Distortion — teleports foes 4 tiles." },
       ] },
       { tier: 4, abilities: [
-        { name: "Red Dragon", desc: "Fire Breath — 80 dmg in AoE 3.5." },
-        { name: "Frost Dragon", desc: "Frost Breath — 60 dmg + 4s slow." },
+        { name: "Fire Drake", desc: "Fire Breath — 80 dmg in AoE 3.5." },
+        { name: "Ice Drake", desc: "Frost Breath — 60 dmg + 4s slow." },
       ] },
       { tier: 5, abilities: [
+        { name: "Fire Dragon", desc: "Ancient wyrm — Fire Breath, 900 HP." },
+        { name: "Ice Dragon", desc: "Ancient wyrm — Frost Breath + slow, 850 HP." },
         { name: "Cyclops", desc: "HP 800, earth-shattering melee blows." },
         { name: "Angel", desc: "Divine warrior, HP 1500, ATK 90." },
       ] },
