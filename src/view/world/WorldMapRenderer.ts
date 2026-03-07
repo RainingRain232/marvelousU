@@ -69,6 +69,7 @@ export class WorldMapRenderer {
   private _borderContainer = new Container();
   private _labelContainer = new Container();
   private _waterContainer = new Container();
+  private _riverContainer = new Container();
   private _hoverGraphics = new Graphics();
 
   private _grassContainer = new Container();
@@ -131,6 +132,7 @@ export class WorldMapRenderer {
     this._vm = vm;
 
     this._container.addChild(this._hexContainer);
+    this._container.addChild(this._riverContainer);
     this._container.addChild(this._waterContainer);
     this._container.addChild(this._grassContainer);
     this._container.addChild(this._campContainer);
@@ -241,6 +243,9 @@ export class WorldMapRenderer {
         this._grassTiles.push({ hex: { q: tile.q, r: tile.r }, terrain: tile.terrain });
       }
     }
+
+    // Generate rivers across the map
+    this._generateRivers(grid);
 
     // Place creatures in terrain clusters
     this.drawForestCreatures(grid);
@@ -622,6 +627,7 @@ export class WorldMapRenderer {
   private _waterGraphics: Graphics | null = null;
 
   private _drawWaterOverlay(): void {
+    // Water overlay now only handles subtle shimmer on water tiles (no wave lines)
     if (!this._waterGraphics) {
       this._waterGraphics = new Graphics();
       this._waterContainer.addChild(this._waterGraphics);
@@ -630,26 +636,240 @@ export class WorldMapRenderer {
     g.clear();
     const t = this._waterPhase;
 
+    // Subtle sparkle animation on water tiles instead of wave lines
     for (const hex of this._waterTiles) {
       const center = hexToPixel(hex, HEX_SIZE);
       const cx = center.x;
       const cy = center.y;
-      const s = HEX_SIZE * 0.35;
+      const rng = new TileRng(cx, cy);
 
-      // Animated wave highlights that shift over time
-      for (let i = -3; i <= 3; i++) {
-        const wy = cy + i * s * 0.22;
-        const phase = t * 1.5 + hex.q * 0.7 + hex.r * 0.5 + i * 1.2;
-        const shimmer = Math.sin(phase) * 0.15 + 0.1;
-        const dx = Math.sin(phase * 0.7) * s * 0.15;
+      for (let i = 0; i < 5; i++) {
+        const sx = cx + (rng.next() - 0.5) * HEX_SIZE * 1.2;
+        const sy = cy + (rng.next() - 0.5) * HEX_SIZE * 1.0;
+        const phase = t * 2.0 + rng.next() * Math.PI * 2;
+        const alpha = Math.max(0, Math.sin(phase) * 0.2);
+        if (alpha > 0.02) {
+          g.circle(sx, sy, 1.5 + rng.next() * 2);
+          g.fill({ color: 0xaaddff, alpha });
+        }
+      }
+    }
+  }
 
-        g.moveTo(cx - s * 0.65 + dx, wy);
-        g.bezierCurveTo(
-          cx - s * 0.2 + dx, wy - s * 0.1,
-          cx + s * 0.2 + dx, wy + s * 0.1,
-          cx + s * 0.65 + dx, wy,
-        );
-        g.stroke({ color: 0x88bbff, width: 1.5, alpha: Math.max(0, shimmer) });
+  // -----------------------------------------------------------------------
+  // Private — river generation & rendering
+  // -----------------------------------------------------------------------
+
+  /**
+   * Generate and draw organic rivers across the map.
+   * Rivers originate from highlands (mountains, hills) and flow toward water
+   * tiles or the map edge. Each river follows a downhill path through the
+   * terrain, preferring lower-elevation tiles.
+   */
+  private _generateRivers(grid: HexGrid): void {
+    this._destroyChildren(this._riverContainer);
+
+    // Elevation lookup for river flow — higher = more upstream
+    const elevation = (terrain: TerrainType): number => {
+      switch (terrain) {
+        case TerrainType.MOUNTAINS: return 5;
+        case TerrainType.HILLS: return 4;
+        case TerrainType.FOREST: return 3;
+        case TerrainType.SWAMP: return 1;
+        case TerrainType.WATER: return 0;
+        default: return 2; // plains, grassland, desert, tundra
+      }
+    };
+
+    // Collect highland source tiles (mountains and some hills)
+    const sources: HexTile[] = [];
+    for (const tile of grid.allTiles()) {
+      if (tile.terrain === TerrainType.MOUNTAINS) {
+        // ~30% of mountains spawn rivers
+        if (_tileHash(tile.q, tile.r, 4444) % 10 < 3) sources.push(tile);
+      } else if (tile.terrain === TerrainType.HILLS) {
+        // ~15% of hills spawn rivers
+        if (_tileHash(tile.q, tile.r, 4444) % 20 < 3) sources.push(tile);
+      }
+    }
+
+    // Track which hexes already have a river to allow merging
+    const riverHexes = new Set<string>();
+    const allPaths: HexCoord[][] = [];
+
+    for (const src of sources) {
+      const path: HexCoord[] = [{ q: src.q, r: src.r }];
+      let cur = src;
+      const visited = new Set<string>();
+      visited.add(hexKey(cur.q, cur.r));
+
+      for (let step = 0; step < 40; step++) {
+        // Reached water — done
+        if (cur.terrain === TerrainType.WATER && step > 0) break;
+
+        // Get neighbors sorted by elevation (prefer downhill, with some randomness)
+        const neighbors = hexNeighbors(cur);
+        let best: HexTile | null = null;
+        let bestScore = Infinity;
+
+        for (const n of neighbors) {
+          const nTile = grid.getTile(n.q, n.r);
+          if (!nTile) continue;
+          if (visited.has(hexKey(n.q, n.r))) continue;
+
+          const elev = elevation(nTile.terrain);
+          // Prefer flowing into existing rivers (river merging)
+          const mergeBonus = riverHexes.has(hexKey(n.q, n.r)) ? -2 : 0;
+          // Deterministic jitter so rivers aren't perfectly straight
+          const jitter = (_tileHash(n.q, n.r, step * 137 + 8888) % 100) / 100 * 1.5;
+          const score = elev + jitter + mergeBonus;
+
+          if (score < bestScore) {
+            bestScore = score;
+            best = nTile;
+          }
+        }
+
+        if (!best) break; // stuck, end river
+        path.push({ q: best.q, r: best.r });
+        visited.add(hexKey(best.q, best.r));
+
+        // If we merged into an existing river, stop
+        if (riverHexes.has(hexKey(best.q, best.r))) break;
+
+        cur = best;
+      }
+
+      // Only keep rivers with at least 3 segments
+      if (path.length >= 3) {
+        for (const h of path) riverHexes.add(hexKey(h.q, h.r));
+        allPaths.push(path);
+      }
+    }
+
+    // Draw all rivers
+    const g = new Graphics();
+    this._riverContainer.addChild(g);
+
+    for (const path of allPaths) {
+      this._drawRiverPath(g, path, grid);
+    }
+  }
+
+  /**
+   * Draw a single river path as a detailed, organic bezier curve.
+   * The river gets wider as it flows downstream.
+   */
+  private _drawRiverPath(g: Graphics, path: HexCoord[], grid: HexGrid): void {
+    if (path.length < 2) return;
+
+    // Convert hex coords to pixel positions with organic offsets
+    const points: { x: number; y: number }[] = [];
+    for (let i = 0; i < path.length; i++) {
+      const center = hexToPixel(path[i], HEX_SIZE);
+      // Offset each point organically so the river doesn't go through hex centers
+      const rng = new TileRng(center.x, center.y);
+      // Use different seed so river offsets differ from terrain deco
+      const ox = (_tileHash(path[i].q, path[i].r, 5555) % 200 - 100) / 100 * HEX_SIZE * 0.25;
+      const oy = (_tileHash(path[i].q, path[i].r, 6666) % 200 - 100) / 100 * HEX_SIZE * 0.25;
+      points.push({ x: center.x + ox, y: center.y + oy });
+      // consume rng so it doesn't clash
+      rng.next();
+    }
+
+    // Insert midpoints between each pair for smoother curves
+    const detailed: { x: number; y: number }[] = [];
+    for (let i = 0; i < points.length; i++) {
+      detailed.push(points[i]);
+      if (i < points.length - 1) {
+        const a = points[i];
+        const b = points[i + 1];
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        // Perpendicular offset for organic meandering
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const perpX = -dy / len;
+        const perpY = dx / len;
+        const h = _tileHash(path[i].q * 3 + path[Math.min(i + 1, path.length - 1)].r, i, 7777);
+        const wobble = ((h % 300) - 150) / 150 * HEX_SIZE * 0.3;
+        detailed.push({ x: mx + perpX * wobble, y: my + perpY * wobble });
+      }
+    }
+
+    // Draw the river as layered strokes for depth:
+    // 1. Broad dark underlay (riverbed shadow)
+    // 2. Main water body
+    // 3. Lighter center highlight
+    // 4. Occasional sparkle dots
+
+    const drawCurve = (pts: { x: number; y: number }[], color: number, width: number, alpha: number) => {
+      if (pts.length < 2) return;
+      g.moveTo(pts[0].x, pts[0].y);
+
+      if (pts.length === 2) {
+        g.lineTo(pts[1].x, pts[1].y);
+      } else {
+        // Use quadratic curves through midpoints for smooth catmull-rom-like path
+        for (let i = 0; i < pts.length - 1; i++) {
+          const p1 = pts[i + 1];
+          if (i < pts.length - 2) {
+            const p2 = pts[i + 2];
+            const cpx = p1.x;
+            const cpy = p1.y;
+            const endx = (p1.x + p2.x) / 2;
+            const endy = (p1.y + p2.y) / 2;
+            g.quadraticCurveTo(cpx, cpy, endx, endy);
+          } else {
+            g.lineTo(p1.x, p1.y);
+          }
+        }
+      }
+      g.stroke({ color, width, alpha });
+    };
+
+    const baseWidth = HEX_SIZE * 0.08;
+
+    // Layer 1: Dark riverbed shadow
+    drawCurve(detailed, 0x1a3060, baseWidth + 6, 0.25);
+
+    // Layer 2: Main water body
+    drawCurve(detailed, 0x3070b0, baseWidth + 3, 0.5);
+
+    // Layer 3: Light center
+    drawCurve(detailed, 0x5599dd, baseWidth, 0.4);
+
+    // Layer 4: Thin bright highlight along center
+    drawCurve(detailed, 0x88ccff, baseWidth * 0.4, 0.25);
+
+    // Layer 5: Sparkle dots along the river
+    for (let i = 0; i < detailed.length; i += 2) {
+      const p = detailed[i];
+      const h = _tileHash(Math.round(p.x), Math.round(p.y), 9090);
+      if (h % 3 === 0) {
+        const sx = p.x + ((h % 10) - 5) * 0.5;
+        const sy = p.y + (((h >> 4) % 10) - 5) * 0.5;
+        g.circle(sx, sy, 1 + (h % 3) * 0.5);
+        g.fill({ color: 0xbbddff, alpha: 0.2 + (h % 5) * 0.04 });
+      }
+    }
+
+    // Draw wider sections where river flows through flatlands
+    for (let i = 1; i < path.length - 1; i++) {
+      const tile = grid.getTile(path[i].q, path[i].r);
+      if (!tile) continue;
+      if (tile.terrain === TerrainType.PLAINS || tile.terrain === TerrainType.GRASSLAND || tile.terrain === TerrainType.SWAMP) {
+        // Wider puddle/pool at this point
+        const center = hexToPixel(path[i], HEX_SIZE);
+        const rng = new TileRng(center.x + 111, center.y + 222);
+        const poolW = HEX_SIZE * 0.15 + rng.next() * HEX_SIZE * 0.1;
+        const poolH = poolW * (0.3 + rng.next() * 0.3);
+        g.ellipse(center.x, center.y, poolW, poolH);
+        g.fill({ color: 0x3878b8, alpha: 0.15 });
+        // Edge highlight
+        g.ellipse(center.x - poolW * 0.1, center.y - poolH * 0.2, poolW * 0.6, poolH * 0.5);
+        g.fill({ color: 0x5599dd, alpha: 0.08 });
       }
     }
   }

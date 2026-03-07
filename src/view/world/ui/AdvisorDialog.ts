@@ -5,7 +5,7 @@
 import { Container, Graphics, Text, TextStyle, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import merlinImgUrl from "@/img/merlin.png";
-import throneImgUrl from "@/img/throne.png";
+import queenImgUrl from "@/img/queen.png";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -138,7 +138,7 @@ export class AdvisorDialog {
     this._content.addChild(portraitFrame);
 
     // Load portrait image
-    const imgUrl = advisor === "merlin" ? merlinImgUrl : throneImgUrl;
+    const imgUrl = advisor === "merlin" ? merlinImgUrl : queenImgUrl;
     void Assets.load(imgUrl).then((tex: Texture) => {
       if (!this.container.visible) return;
       const sprite = new Sprite(tex);

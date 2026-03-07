@@ -23,6 +23,7 @@ export enum WorldBuildingType {
   AQUEDUCT = "aqueduct",
   MILITARY_ACADEMY = "military_academy",
   SHIPWRIGHT = "shipwright",
+  ROUND_TABLE = "round_table",
 }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +170,19 @@ export const WORLD_BUILDING_DEFS: Record<string, WorldBuildingDef> = {
     effect: "Armies can embark and cross water tiles",
     unlocksUnits: [],
     researchRequired: "sea_travel",
+  },
+  [WorldBuildingType.ROUND_TABLE]: {
+    type: WorldBuildingType.ROUND_TABLE,
+    name: "The Round Table",
+    productionCost: 120,
+    goldBonus: 5,
+    foodBonus: 0,
+    productionBonus: 3,
+    manaBonus: 5,
+    scienceBonus: 5,
+    effect: "Arthur only. +5 gold, +3 prod, +5 mana, +5 research/turn. Units recruit 1 turn faster.",
+    unlocksUnits: [UnitType.QUESTING_KNIGHT],
+    researchRequired: null,
   },
 };
 

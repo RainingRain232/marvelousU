@@ -17,6 +17,9 @@ import merlinImgUrl from "@/img/merlin.png";
 import hordeImgUrl from "@/img/horde.png";
 import manImgUrl from "@/img/man.png";
 import manPImgUrl from "@/img/manP.png";
+import magicImgUrl from "@/img/magic.png";
+import swordImgUrl from "@/img/sword.png";
+import armoryImgUrl from "@/img/armory.png";
 
 // ---------------------------------------------------------------------------
 // Intro page data — keyed by scenario number
@@ -46,6 +49,42 @@ const SCENARIO_INTROS: Record<number, IntroPage[]> = {
     {
       imageUrl: hordeImgUrl,
       text: "What do you mean, you have never seen the castle and the firepit to even click it? Oh well, for now all the firepits units from the land have gathered to address this insult. We will have to calm them down a little. And click that firepit in the next mission!",
+    },
+  ],
+  22: [
+    {
+      imageUrl: swordImgUrl,
+      text: "Welcome to the training grounds, commander. Today you will learn the special abilities that set elite units apart from common soldiers. Each unit on this field demonstrates a key battlefield mechanic.",
+    },
+    {
+      imageUrl: magicImgUrl,
+      text: "First, observe your CLERICS surrounding the enemy Cyclops. Clerics do not attack — instead they HEAL nearby wounded allies, keeping your forces alive under the beast's crushing blows. Healing is the backbone of any prolonged engagement.",
+    },
+    {
+      imageUrl: armoryImgUrl,
+      text: "From a distance, your LANCERS will charge in on horseback. When a lancer reaches its target after a long ride, it deals 5x CHARGE DAMAGE on its first strike — devastating against heavy targets like the Cyclops.",
+    },
+    {
+      imageUrl: magicImgUrl,
+      text: "Your MASTER MAGES stand ready with destructive magic: fireballs, chain lightning, and ice storms. These high-level casters deal massive area damage from long range. Watch the battlefield light up with arcane fury.",
+    },
+    {
+      imageUrl: swordImgUrl,
+      text: "Finally, observe the enemy BATTERING RAM — a siege unit that ONLY attacks buildings, ignoring all soldiers. Your SIEGE HUNTER is specifically designed to hunt down and destroy these siege engines. A TREBUCHET provides devastating long-range bombardment. Now, to battle!",
+    },
+  ],
+  23: [
+    {
+      imageUrl: merlinImgUrl,
+      text: "Sire, I have located a powerful Dark Savant willing to fight for our cause. However, our supply lines are cut — we cannot build or train any reinforcements. You must rely on his dark pyromancy alone.",
+    },
+    {
+      imageUrl: magicImgUrl,
+      text: "The savant's fireballs are devastating, but he is fragile. Fortunately, I have unlocked the RALLY FLAG from the castle upgrade. Press F to place a flag and your savant will rally to it. Use this to pull him back when wounded — his natural regeneration will restore his health over time.",
+    },
+    {
+      imageUrl: swordImgUrl,
+      text: "The enemy has towers and scattered patrols across the field. Do not rush in blindly! Strike, retreat with the flag, let the savant regenerate, then strike again. Patience will win this battle. Now go — and try not to get him killed!",
     },
   ],
   3: [

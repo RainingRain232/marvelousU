@@ -21,13 +21,64 @@ import elfImgUrl from "@/img/elf.png";
 import manImgUrl from "@/img/man.png";
 import hordeImgUrl from "@/img/horde.png";
 import adeptImgUrl from "@/img/adept.png";
+import halflingImgUrl from "@/img/halfling.png";
+import lavaImgUrl from "@/img/lava.png";
+import dwarfImgUrl from "@/img/dwarf.png";
+import orcImgUrl from "@/img/orc.png";
+import undeadImgUrl from "@/img/undead.png";
+import demonImgUrl from "@/img/demon.png";
+import angelImgUrl from "@/img/angel.png";
+import beastmenImgUrl from "@/img/beastmen.png";
+import elementalsImgUrl from "@/img/elementals.png";
+import piratesImgUrl from "@/img/pirates.png";
+import elfPImgUrl from "@/img/elfP.png";
+import manPImgUrl from "@/img/manP.png";
+import hordePImgUrl from "@/img/hordeP.png";
+import adeptPImgUrl from "@/img/adeptP.png";
+import halflingPImgUrl from "@/img/halflingP.png";
+import lavaPImgUrl from "@/img/lavaP.png";
+import dwarfPImgUrl from "@/img/dwarfP.png";
+import orcPImgUrl from "@/img/orcP.png";
+import undeadPImgUrl from "@/img/undeadP.png";
+import demonPImgUrl from "@/img/demonP.png";
+import angelPImgUrl from "@/img/angelP.png";
+import beastmenPImgUrl from "@/img/beastmenP.png";
+import elementalsPImgUrl from "@/img/elementalsP.png";
+import piratesPImgUrl from "@/img/piratesP.png";
+
+const RACE_PORTRAITS: Record<string, string> = {
+  elf: elfPImgUrl,
+  man: manPImgUrl,
+  horde: hordePImgUrl,
+  adept: adeptPImgUrl,
+  halfling: halflingPImgUrl,
+  lava: lavaPImgUrl,
+  dwarf: dwarfPImgUrl,
+  orc: orcPImgUrl,
+  undead: undeadPImgUrl,
+  demon: demonPImgUrl,
+  angel: angelPImgUrl,
+  beast: beastmenPImgUrl,
+  elements: elementalsPImgUrl,
+  pirate: piratesPImgUrl,
+  op: manPImgUrl,
+};
 
 const RACE_IMAGES: Record<string, string> = {
   elf: elfImgUrl,
   man: manImgUrl,
   horde: hordeImgUrl,
   adept: adeptImgUrl,
-  // elements: no portrait yet — uses letter fallback
+  halfling: halflingImgUrl,
+  lava: lavaImgUrl,
+  dwarf: dwarfImgUrl,
+  orc: orcImgUrl,
+  undead: undeadImgUrl,
+  demon: demonImgUrl,
+  angel: angelImgUrl,
+  beast: beastmenImgUrl,
+  elements: elementalsImgUrl,
+  pirate: piratesImgUrl,
 };
 
 // ---------------------------------------------------------------------------
@@ -920,6 +971,39 @@ export class RaceDetailScreen {
     const flavorT = new Text({ text: race.flavor, style: STYLE_FLAVOR });
     flavorT.position.set(0, cy);
     cont.addChild(flavorT);
+
+    // Race portrait (raceP image) to the right of flavor text
+    const rpW = 240;
+    const rpH = PORTRAIT_SIZE - 20;
+    const infoW = CARD_W - x - 26;
+    const rpX = infoW - rpW;
+    const rpY = 0;
+
+    cont.addChild(
+      new Graphics()
+        .roundRect(rpX, rpY, rpW, rpH, 6)
+        .fill({ color: 0x060612 })
+        .roundRect(rpX, rpY, rpW, rpH, 6)
+        .stroke({ color: race.accentColor, alpha: 0.5, width: 1.5 }),
+    );
+
+    const portraitUrl = RACE_PORTRAITS[race.id];
+    if (portraitUrl) {
+      void Assets.load(portraitUrl).then((tex: Texture) => {
+        if (!this.container.visible) return;
+        const sprite = new Sprite(tex);
+        const maxW = rpW - 10;
+        const maxH = rpH - 10;
+        const scale = Math.min(maxW / tex.width, maxH / tex.height);
+        sprite.scale.set(scale);
+        sprite.position.set(
+          rpX + 5 + (maxW - tex.width * scale) / 2,
+          rpY + 5 + (maxH - tex.height * scale) / 2,
+        );
+        cont.addChild(sprite);
+      });
+    }
+
     cy += flavorT.height + 10;
 
     // Tier ratings — unit tiers then magic tiers

@@ -1,108 +1,201 @@
 // Pre-battle unit shop screen for Battlefield and Wave modes.
-// Players spend a gold budget to assemble an army from race-filtered units.
+// Tabbed interface: building tabs across top, unit list on left, building
+// flavour text + image on right. Roster summary below gold display.
 
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { AnimatedSprite, Assets, Container, Graphics, Sprite, Text, TextStyle, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { UNIT_DEFINITIONS, computeTier } from "@sim/config/UnitDefinitions";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { filterInventoryByRace, getRace } from "@sim/config/RaceDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
-import { BuildingType, UnitType } from "@/types";
+import { BuildingType, UnitType, UnitState } from "@/types";
+import type { CorruptionModifier } from "@sim/systems/GrailCorruptionSystem";
+import { animationManager } from "@view/animation/AnimationManager";
+import { UNIT_LABELS } from "@view/ui/HoverTooltip";
+
+// Building images
+import barracksImgUrl from "@/img/barracks.png";
+import archerandswordsmanImgUrl from "@/img/archerandswordsman.png";
+import hordeImgUrl from "@/img/horde.png";
+import wallsImgUrl from "@/img/walls.png";
+import dragonImgUrl from "@/img/dragon.png";
+import magicImgUrl from "@/img/magic.png";
+import angelImgUrl from "@/img/angel.png";
+
+// Race portrait images
+import elfPImgUrl from "@/img/elfP.png";
+import manPImgUrl from "@/img/manP.png";
+import hordePImgUrl from "@/img/hordeP.png";
+import adeptPImgUrl from "@/img/adeptP.png";
+import halflingPImgUrl from "@/img/halflingP.png";
+import lavaPImgUrl from "@/img/lavaP.png";
+import dwarfPImgUrl from "@/img/dwarfP.png";
+import orcPImgUrl from "@/img/orcP.png";
+import undeadPImgUrl from "@/img/undeadP.png";
+import demonPImgUrl from "@/img/demonP.png";
+import angelPImgUrl from "@/img/angelP.png";
+import beastmenPImgUrl from "@/img/beastmenP.png";
+import elementalsPImgUrl from "@/img/elementalsP.png";
+import piratesPImgUrl from "@/img/piratesP.png";
 
 export type UnitRoster = Array<{ type: UnitType; count: number }>;
 
-// Buildings whose inventories form the purchasable unit pool
-const SHOP_BUILDINGS: BuildingType[] = [
-  BuildingType.BARRACKS,
-  BuildingType.ARCHERY_RANGE,
-  BuildingType.STABLES,
-  BuildingType.SIEGE_WORKSHOP,
-  BuildingType.CREATURE_DEN,
-  BuildingType.MAGE_TOWER,
-  BuildingType.TEMPLE,
+const RACE_PORTRAITS: Record<string, string> = {
+  elf: elfPImgUrl,
+  man: manPImgUrl,
+  horde: hordePImgUrl,
+  adept: adeptPImgUrl,
+  halfling: halflingPImgUrl,
+  lava: lavaPImgUrl,
+  dwarf: dwarfPImgUrl,
+  orc: orcPImgUrl,
+  undead: undeadPImgUrl,
+  demon: demonPImgUrl,
+  angel: angelPImgUrl,
+  beast: beastmenPImgUrl,
+  elements: elementalsPImgUrl,
+  pirate: piratesPImgUrl,
+  op: manPImgUrl,
+};
+
+// ---------------------------------------------------------------------------
+// Tab data
+// ---------------------------------------------------------------------------
+
+interface TabDef {
+  id: string;
+  building: BuildingType | null;
+  label: string;
+  color: number;
+  description: string;
+  imageUrl: string | null;
+}
+
+const SHOP_TABS: Omit<TabDef, "id">[] = [
+  {
+    building: BuildingType.BARRACKS,
+    label: "BARRACKS",
+    color: 0xff6644,
+    description: "Military training grounds for infantry and specialized warriors. Swordsmen, pikemen, assassins, and heavy defenders are forged here.",
+    imageUrl: barracksImgUrl,
+  },
+  {
+    building: BuildingType.ARCHERY_RANGE,
+    label: "ARCHERY",
+    color: 0x66cc44,
+    description: "Training grounds for marksmen who strike from distance with deadly precision. Archers, crossbowmen, and longbowmen hone their aim here.",
+    imageUrl: archerandswordsmanImgUrl,
+  },
+  {
+    building: BuildingType.STABLES,
+    label: "STABLES",
+    color: 0xddaa44,
+    description: "Houses and trains mounted cavalry units for swift battlefield mobility. Knights and lancers charge forth to break enemy lines.",
+    imageUrl: hordeImgUrl,
+  },
+  {
+    building: BuildingType.SIEGE_WORKSHOP,
+    label: "SIEGE",
+    color: 0x8888aa,
+    description: "Forge where devastating siege weapons are crafted for destroying fortifications. Ballistae, catapults, and trebuchets rain destruction.",
+    imageUrl: wallsImgUrl,
+  },
+  {
+    building: BuildingType.CREATURE_DEN,
+    label: "CREATURES",
+    color: 0xcc66cc,
+    description: "Mystical habitat where legendary creatures are tamed for battle. Dragons, trolls, elementals, and other beasts answer the call.",
+    imageUrl: dragonImgUrl,
+  },
+  {
+    building: BuildingType.MAGE_TOWER,
+    label: "MAGES",
+    color: 0x6688ff,
+    description: "Arcane academy where elemental mages master fire, ice, lightning, and distortion. Their devastating spells turn the tide of war.",
+    imageUrl: magicImgUrl,
+  },
+  {
+    building: BuildingType.TEMPLE,
+    label: "TEMPLE",
+    color: 0xffdd88,
+    description: "Sacred sanctuary where healers and holy warriors train to support allies. Monks, clerics, and angels channel divine power.",
+    imageUrl: angelImgUrl,
+  },
 ];
 
-const STYLE_TITLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 22,
-  fill: 0xffd700,
-  fontWeight: "bold",
-  letterSpacing: 2,
-});
+// ---------------------------------------------------------------------------
+// Text styles
+// ---------------------------------------------------------------------------
 
-const STYLE_GOLD = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 16,
-  fill: 0xffcc00,
-  fontWeight: "bold",
-  letterSpacing: 1,
-});
+const STYLE_TITLE = new TextStyle({ fontFamily: "monospace", fontSize: 26, fill: 0xffd700, fontWeight: "bold", letterSpacing: 2 });
+const STYLE_GOLD = new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffcc00, fontWeight: "bold", letterSpacing: 1 });
+const STYLE_TAB = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0x888899, fontWeight: "bold", letterSpacing: 1 });
+const STYLE_TAB_ACTIVE = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xffffff, fontWeight: "bold", letterSpacing: 1 });
+const STYLE_UNIT_NAME = new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xccddee, letterSpacing: 1 });
+const STYLE_UNIT_COST = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xaabb88, letterSpacing: 1 });
+const STYLE_COUNT = new TextStyle({ fontFamily: "monospace", fontSize: 15, fill: 0xffffff, fontWeight: "bold" });
+const STYLE_BTN = new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xffffff, fontWeight: "bold", letterSpacing: 1 });
+const STYLE_BUILDING_TITLE = new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffd700, fontWeight: "bold", letterSpacing: 1 });
+const STYLE_BUILDING_DESC = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xaabbcc, wordWrap: true, wordWrapWidth: 340, lineHeight: 20 });
+const STYLE_ROSTER_HEADER = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xccaa44, fontWeight: "bold", letterSpacing: 1 });
+const STYLE_ROSTER_ENTRY = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x99aabb, letterSpacing: 1 });
+const STYLE_ROSTER_SURVIVOR = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x77cc77, letterSpacing: 1 });
 
-const STYLE_UNIT_NAME = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 11,
-  fill: 0xccddee,
-  letterSpacing: 1,
-});
-
-const STYLE_UNIT_COST = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 10,
-  fill: 0xaabb88,
-  letterSpacing: 1,
-});
-
-const STYLE_COUNT = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 13,
-  fill: 0xffffff,
-  fontWeight: "bold",
-});
-
-const STYLE_BTN = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 13,
-  fill: 0xffffff,
-  fontWeight: "bold",
-  letterSpacing: 1,
-});
+// Hover tooltip styles
+const STYLE_TT_NAME = new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xdddddd, fontWeight: "bold" });
+const STYLE_TT_STAT = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xbbccdd });
+const STYLE_TT_DESC = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x99aabb, wordWrap: true, wordWrapWidth: 210 });
+const STYLE_TT_ABILITY = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x88cc88 });
 
 const BG_COLOR = 0x0a0a18;
 const BORDER_COLOR = 0xffd700;
 
-/** Get all purchasable unit types for a race, including faction units. */
-function getShopUnits(raceId: RaceId): UnitType[] {
+const TT_W = 240;
+const TT_PAD = 10;
+const TT_PREVIEW_H = 80;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getUnitsForBuilding(bt: BuildingType, raceId: RaceId): UnitType[] {
+  const bDef = BUILDING_DEFINITIONS[bt];
+  if (!bDef) return [];
+  const filtered = filterInventoryByRace(bDef.shopInventory, bt, raceId);
+  const result: UnitType[] = [];
+  for (const ut of filtered) {
+    const uDef = UNIT_DEFINITIONS[ut];
+    if (!uDef) continue;
+    if (uDef.siegeOnly || uDef.diplomatOnly) continue;
+    if (ut === UnitType.SETTLER) continue;
+    result.push(ut);
+  }
+  result.sort((a, b) => (UNIT_DEFINITIONS[a].cost ?? 0) - (UNIT_DEFINITIONS[b].cost ?? 0));
+  return result;
+}
+
+function getFactionUnits(raceId: RaceId): UnitType[] {
+  const race = getRace(raceId);
+  if (!race) return [];
+  const result: UnitType[] = [];
+  for (const fut of race.factionUnits) {
+    if (fut && UNIT_DEFINITIONS[fut]) result.push(fut);
+  }
+  return result;
+}
+
+function getAllShopUnits(raceId: RaceId): UnitType[] {
   const seen = new Set<UnitType>();
   const result: UnitType[] = [];
-
-  for (const bt of SHOP_BUILDINGS) {
-    const bDef = BUILDING_DEFINITIONS[bt];
-    if (!bDef) continue;
-    const filtered = filterInventoryByRace(bDef.shopInventory, bt, raceId);
-    for (const ut of filtered) {
-      if (seen.has(ut)) continue;
-      const uDef = UNIT_DEFINITIONS[ut];
-      if (!uDef) continue;
-      if (uDef.siegeOnly || uDef.diplomatOnly) continue;
-      if (ut === UnitType.SETTLER) continue;
-      seen.add(ut);
-      result.push(ut);
+  for (const tab of SHOP_TABS) {
+    if (!tab.building) continue;
+    for (const ut of getUnitsForBuilding(tab.building, raceId)) {
+      if (!seen.has(ut)) { seen.add(ut); result.push(ut); }
     }
   }
-
-  // Add faction units
-  const race = getRace(raceId);
-  if (race) {
-    for (const fut of race.factionUnits) {
-      if (fut && !seen.has(fut) && UNIT_DEFINITIONS[fut]) {
-        seen.add(fut);
-        result.push(fut);
-      }
-    }
+  for (const ut of getFactionUnits(raceId)) {
+    if (!seen.has(ut)) { seen.add(ut); result.push(ut); }
   }
-
-  // Sort by cost
-  result.sort((a, b) => (UNIT_DEFINITIONS[a].cost ?? 0) - (UNIT_DEFINITIONS[b].cost ?? 0));
   return result;
 }
 
@@ -118,36 +211,102 @@ function makePanel(w: number, h: number): Container {
   return c;
 }
 
+// ---------------------------------------------------------------------------
+// Layout constants
+// ---------------------------------------------------------------------------
+
+const ROW_H = 36;
+const BTN_AREA_W = 100;
+const LEFT_W = 520;
+const ROSTER_BOX_H = 80; // fixed height for the "YOUR ARMY" box
+
+// ---------------------------------------------------------------------------
+// UnitShopScreen
+// ---------------------------------------------------------------------------
+
 export class UnitShopScreen {
   readonly container = new Container();
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
   private _card!: Container;
-  private _cardW = 520;
-  private _cardH = 600;
+  private _cardW = 1200;
+  private _cardH = 920;
 
   // State
   private _gold = 30000;
   private _goldSpent = 0;
-  private _units: UnitType[] = [];
   private _counts: Map<UnitType, number> = new Map();
   private _isAIShop = false;
   private _label = "UNIT SHOP";
+  private _raceId: RaceId = "man" as RaceId;
+
+  // Surviving units from previous wave (displayed in roster summary)
+  private _survivingUnits: UnitRoster = [];
+
+  // Tabs
+  private _tabs: TabDef[] = [];
+  private _activeTabIndex = 0;
+  private _tabContainers: Container[] = [];
+  private _tabBgs: Graphics[] = [];
+  private _tabTexts: Text[] = [];
+
+  // Content areas
+  private _unitListContainer!: Container;
+  private _unitScrollContainer!: Container;
+  private _unitScrollMask!: Graphics;
+  private _unitScrollY = 0;
+  private _detailContainer!: Container;
+  private _rosterContainer!: Container;
 
   // UI refs
   private _goldText!: Text;
   private _titleText!: Text;
-  private _unitRows: Container[] = [];
-  private _scrollContainer!: Container;
-  private _scrollMask!: Graphics;
-  private _scrollY = 0;
+  private _startBtn!: Container;
+  private _saveLoadContainer!: Container;
+  private _activeModifiers: CorruptionModifier[] = [];
+  private _dynamicRows: Container[] = [];
+  private _countTexts: Map<UnitType, Text> = new Map();
   private _randomToggleOn = false;
   private _randomToggleBg?: Graphics;
   private _randomToggleLabel?: Text;
-  private _startBtn!: Container;
+
+  // Tooltip
+  private _tooltip!: Container;
+  private _tooltipBg!: Graphics;
+  private _tooltipPreview!: Container;
+  private _tooltipStats!: Container;
+  private _tooltipSprite: AnimatedSprite | null = null;
+  private _activeTooltipUnit: UnitType | null = null;
+
+  // Price modifier system (discount/markup)
+  private _priceModifiers: Map<UnitType, number> = new Map(); // negative = discount%, positive = markup%
+
+  // Wave hint
+  private _waveHint: { raceName: string; mainUnits: string[] } | null = null;
+
+  // Price modifier tooltip
+  private _priceTooltip!: Container;
+  private _priceTooltipText!: Text;
 
   onDone: ((roster: UnitRoster) => void) | null = null;
+  onSave: (() => void) | null = null;
+  onLoad: (() => void) | null = null;
+  onBackToMenu: (() => void) | null = null;
+
+  setCorruptionModifiers(modifiers: CorruptionModifier[]): void {
+    this._activeModifiers = modifiers;
+  }
+
+  /** Set surviving units from previous waves (shown in roster summary). */
+  setSurvivingUnits(units: UnitRoster): void {
+    this._survivingUnits = units;
+  }
+
+  /** Set wave hint about next enemy race and main units. */
+  setWaveHint(hint: { raceName: string; mainUnits: string[] } | null): void {
+    this._waveHint = hint;
+  }
 
   init(vm: ViewManager): void {
     this._vm = vm;
@@ -161,185 +320,487 @@ export class UnitShopScreen {
     // Title
     this._titleText = new Text({ text: this._label, style: STYLE_TITLE });
     this._titleText.anchor.set(0.5, 0);
-    this._titleText.position.set(this._cardW / 2, 14);
+    this._titleText.position.set(this._cardW / 2, 10);
     this._card.addChild(this._titleText);
 
     // Gold display
     this._goldText = new Text({ text: "", style: STYLE_GOLD });
     this._goldText.anchor.set(0.5, 0);
-    this._goldText.position.set(this._cardW / 2, 44);
+    this._goldText.position.set(this._cardW / 2, 38);
     this._card.addChild(this._goldText);
 
-    // Divider
-    this._card.addChild(
-      new Graphics()
-        .rect(16, 68, this._cardW - 32, 1)
-        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
-    );
+    // Roster summary area (between gold and tabs)
+    this._rosterContainer = new Container();
+    this._rosterContainer.position.set(16, 62);
+    this._card.addChild(this._rosterContainer);
 
-    // Scrollable unit list area
-    this._scrollContainer = new Container();
-    this._scrollContainer.position.set(0, 76);
-    this._card.addChild(this._scrollContainer);
+    // Divider below roster / above tabs will be drawn dynamically
+    // Tab bar area starts at y = TABS_Y (calculated)
+    // Content starts below tabs
 
-    this._scrollMask = new Graphics()
-      .rect(0, 76, this._cardW, this._cardH - 76 - 60);
-    this._scrollMask.fill({ color: 0xffffff });
-    this._card.addChild(this._scrollMask);
-    this._scrollContainer.mask = this._scrollMask;
+    // Left panel: unit list (scrollable) — positioned dynamically in _rebuild
+    this._unitListContainer = new Container();
+    this._card.addChild(this._unitListContainer);
+
+    this._unitScrollContainer = new Container();
+    this._unitListContainer.addChild(this._unitScrollContainer);
+
+    this._unitScrollMask = new Graphics();
+    this._unitListContainer.addChild(this._unitScrollMask);
+    this._unitScrollContainer.mask = this._unitScrollMask;
+
+    // Right panel: detail / flavour
+    this._detailContainer = new Container();
+    this._card.addChild(this._detailContainer);
 
     // Mouse wheel scrolling
     this._card.eventMode = "static";
     this._card.on("wheel", (e: WheelEvent) => {
-      this._scrollY -= e.deltaY * 0.5;
+      this._unitScrollY -= e.deltaY * 0.5;
       this._clampScroll();
-      this._scrollContainer.y = 76 + this._scrollY;
+      this._unitScrollContainer.y = this._unitScrollY;
     });
 
-    // START button (positioned at bottom of card)
+    // START button
     this._startBtn = this._makeStartButton();
     this._card.addChild(this._startBtn);
 
+    // Save / Load buttons (shown only in wave mode)
+    this._saveLoadContainer = new Container();
+    this._saveLoadContainer.visible = false;
+    this._card.addChild(this._saveLoadContainer);
+
+    // Tooltip
+    this._tooltip = new Container();
+    this._tooltip.visible = false;
+    this._tooltipBg = new Graphics();
+    this._tooltip.addChild(this._tooltipBg);
+    this._tooltipPreview = new Container();
+    this._tooltip.addChild(this._tooltipPreview);
+    this._tooltipStats = new Container();
+    this._tooltipStats.position.set(0, TT_PREVIEW_H);
+    this._tooltip.addChild(this._tooltipStats);
+    this.container.addChild(this._tooltip);
+
+    // Price modifier tooltip (small label on hover)
+    this._priceTooltip = new Container();
+    this._priceTooltip.visible = false;
+    const ptBg = new Graphics().roundRect(0, 0, 120, 22, 4).fill({ color: 0x0a0a18, alpha: 0.95 }).roundRect(0, 0, 120, 22, 4).stroke({ color: 0x888888, width: 1 });
+    this._priceTooltip.addChild(ptBg);
+    this._priceTooltipText = new Text({ text: "", style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xffffff }) });
+    this._priceTooltipText.position.set(6, 3);
+    this._priceTooltip.addChild(this._priceTooltipText);
+    this.container.addChild(this._priceTooltip);
+
     vm.addToLayer("ui", this.container);
     this.container.visible = false;
-
     vm.app.renderer.on("resize", () => this._layout());
   }
 
   show(raceId: RaceId, gold: number, label?: string): void {
-
     this._gold = gold;
     this._goldSpent = 0;
     this._isAIShop = false;
     this._label = label ?? "UNIT SHOP";
     this._randomToggleOn = false;
-    this._scrollY = 0;
+    this._unitScrollY = 0;
     this._counts.clear();
-    this._units = getShopUnits(raceId);
+    // Pre-fill survivors as already-purchased (free re-buy)
+    for (const entry of this._survivingUnits) {
+      this._counts.set(entry.type, (this._counts.get(entry.type) ?? 0) + entry.count);
+    }
+    this._raceId = raceId;
+    this._activeTabIndex = 0;
+    this._hideTooltip();
+    this._generatePriceModifiers(raceId);
+    this._buildTabs();
     this._rebuild();
+    this._buildSaveLoadButtons();
     this.container.visible = true;
     this._layout();
   }
 
   showAIShop(raceId: RaceId, gold: number): void {
-
     this._gold = gold;
     this._goldSpent = 0;
     this._isAIShop = true;
     this._label = "AI ARMY SHOP";
     this._randomToggleOn = false;
-    this._scrollY = 0;
+    this._unitScrollY = 0;
     this._counts.clear();
-    this._units = getShopUnits(raceId);
+    this._raceId = raceId;
+    this._activeTabIndex = 0;
+    this._hideTooltip();
+    this._buildTabs();
     this._rebuild();
     this.container.visible = true;
     this._layout();
   }
 
   hide(): void {
+    this._hideTooltip();
     this.container.visible = false;
   }
 
   // -------------------------------------------------------------------------
-  // Private
+  // Roster summary (units bought + survivors)
   // -------------------------------------------------------------------------
 
-  private _rebuild(): void {
-    // Clear old rows
-    for (const r of this._unitRows) {
-      this._scrollContainer.removeChild(r);
-      r.destroy({ children: true });
+  private _refreshRoster(): void {
+    this._rosterContainer.removeChildren();
+
+    const ROSTER_W = this._cardW - 36;
+    const ROSTER_H = ROSTER_BOX_H;
+    const LINE_H = 16;
+    const PAD = 8;
+
+    // Box background
+    const boxBg = new Graphics()
+      .roundRect(0, 0, ROSTER_W, ROSTER_H, 5)
+      .fill({ color: 0x0d0d20, alpha: 0.7 })
+      .roundRect(0, 0, ROSTER_W, ROSTER_H, 5)
+      .stroke({ color: 0x997722, alpha: 0.4, width: 1 });
+    this._rosterContainer.addChild(boxBg);
+
+    // Header
+    const headerTxt = new Text({ text: "YOUR ARMY", style: STYLE_ROSTER_HEADER });
+    headerTxt.position.set(PAD, 4);
+    this._rosterContainer.addChild(headerTxt);
+
+    // Merge survivors + current purchases.
+    // _counts already includes survivors (pre-filled in show()), so use it
+    // as the source of truth and just annotate which are survivors.
+    const merged = new Map<UnitType, { count: number; survivor: number }>();
+    for (const [ut, count] of this._counts) {
+      if (count > 0) {
+        merged.set(ut, { count, survivor: 0 });
+      }
     }
-    this._unitRows = [];
-
-    this._titleText.text = this._label;
-    this._refreshGold();
-
-    // Remove old random toggle if any
-    if (this._randomToggleBg?.parent) {
-      this._randomToggleBg.parent.parent?.removeChild(this._randomToggleBg.parent);
+    for (const entry of this._survivingUnits) {
+      const e = merged.get(entry.type);
+      if (e) e.survivor = Math.min(entry.count, e.count);
     }
 
-    const ROW_H = 32;
+    if (merged.size === 0) {
+      const emptyTxt = new Text({ text: "(no units yet)", style: STYLE_ROSTER_ENTRY });
+      emptyTxt.position.set(PAD, 22);
+      this._rosterContainer.addChild(emptyTxt);
+      return;
+    }
+
+    // Total unit count
+    let totalUnits = 0;
+    for (const info of merged.values()) totalUnits += info.count;
+    const totalTxt = new Text({
+      text: `(${totalUnits} units)`,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x888899, letterSpacing: 1 }),
+    });
+    totalTxt.position.set(PAD + headerTxt.width + 8, 6);
+    this._rosterContainer.addChild(totalTxt);
+
+    // Flow entries in rows below header
+    let x = PAD;
+    let y = 22;
+    const maxW = ROSTER_W - PAD * 2;
+
+    for (const [ut, info] of merged) {
+      const name = UNIT_LABELS[ut] ?? ut.replace(/_/g, " ");
+      let label = `${name} x${info.count}`;
+      if (info.survivor > 0 && info.count > info.survivor) {
+        label = `${name} x${info.count} (${info.survivor} surv.)`;
+      } else if (info.survivor > 0 && info.count === info.survivor) {
+        label = `${name} x${info.count} (surv.)`;
+      }
+
+      const style = info.survivor > 0 ? STYLE_ROSTER_SURVIVOR : STYLE_ROSTER_ENTRY;
+      const entryTxt = new Text({ text: label, style });
+
+      if (x + entryTxt.width > maxW && x > PAD) {
+        x = PAD;
+        y += LINE_H;
+      }
+
+      entryTxt.position.set(x, y);
+      this._rosterContainer.addChild(entryTxt);
+      x += entryTxt.width + 16; // gap between entries
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Tab management
+  // -------------------------------------------------------------------------
+
+  private get _tabsY(): number {
+    // title(10..36) + gold(38..56) + gap(4) + roster box(62..62+ROSTER_BOX_H) + gap(6)
+    return 62 + ROSTER_BOX_H + 6;
+  }
+
+  private get _contentTop(): number {
+    return this._tabsY + 36;
+  }
+
+  private _buildTabs(): void {
+    for (const tc of this._tabContainers) {
+      tc.parent?.removeChild(tc);
+      tc.destroy({ children: true });
+    }
+    this._tabContainers = [];
+    this._tabBgs = [];
+    this._tabTexts = [];
+
+    this._tabs = [];
+    for (const t of SHOP_TABS) {
+      if (t.building) {
+        const units = getUnitsForBuilding(t.building, this._raceId);
+        if (units.length === 0) continue;
+      }
+      this._tabs.push({ ...t, id: t.building ?? "faction" });
+    }
+
+    // Add faction tab
+    const factionUnits = getFactionUnits(this._raceId);
+    if (factionUnits.length > 0) {
+      const race = getRace(this._raceId);
+      this._tabs.push({
+        id: "faction",
+        building: null,
+        label: race ? race.name.toUpperCase() : "FACTION",
+        color: race?.accentColor ?? 0xffaa44,
+        description: race
+          ? `Elite warriors unique to the ${race.name}. ${race.flavor}`
+          : "Faction-exclusive units.",
+        imageUrl: RACE_PORTRAITS[this._raceId] ?? null,
+      });
+    }
+
     const PAD = 16;
-    let yOff = 0;
+    const availW = this._cardW - PAD * 2;
+    const tabCount = this._tabs.length;
+    const TAB_GAP = 4;
+    const TAB_W = Math.floor((availW - TAB_GAP * (tabCount - 1)) / tabCount);
+    const TAB_H = 30;
 
-    // AI random toggle row
-    if (this._isAIShop) {
-      const toggleRow = new Container();
-      toggleRow.position.set(PAD, yOff);
+    for (let i = 0; i < tabCount; i++) {
+      const tab = this._tabs[i];
+      const tc = new Container();
+      tc.position.set(PAD + i * (TAB_W + TAB_GAP), this._tabsY);
+      tc.eventMode = "static";
+      tc.cursor = "pointer";
 
-      const tW = this._cardW - PAD * 2;
-      const tH = 30;
-      const tBg = new Graphics();
-      toggleRow.addChild(tBg);
+      const bg = new Graphics();
+      tc.addChild(bg);
+      this._tabBgs.push(bg);
 
-      const tLabel = new Text({ text: "", style: STYLE_BTN });
-      tLabel.anchor.set(0.5, 0.5);
-      tLabel.position.set(tW / 2, tH / 2);
-      toggleRow.addChild(tLabel);
+      const txt = new Text({ text: tab.label, style: STYLE_TAB });
+      txt.anchor.set(0.5, 0.5);
+      txt.position.set(TAB_W / 2, TAB_H / 2);
+      tc.addChild(txt);
+      this._tabTexts.push(txt);
 
-      this._randomToggleBg = tBg;
-      this._randomToggleLabel = tLabel;
-      this._refreshRandomToggle(tW, tH);
-
-      toggleRow.eventMode = "static";
-      toggleRow.cursor = "pointer";
-      toggleRow.on("pointerdown", () => {
-        this._randomToggleOn = !this._randomToggleOn;
-        this._refreshRandomToggle(tW, tH);
-        if (this._randomToggleOn) {
-          this._fillRandomArmy();
-        } else {
-          this._counts.clear();
-          this._goldSpent = 0;
-          this._refreshAllRows();
-          this._refreshGold();
+      tc.on("pointerdown", () => {
+        this._activeTabIndex = i;
+        this._refreshTabs();
+        this._rebuild();
+      });
+      tc.on("pointerover", () => {
+        if (i !== this._activeTabIndex) {
+          bg.clear()
+            .roundRect(0, 0, TAB_W, TAB_H, 4)
+            .fill({ color: tab.color, alpha: 0.12 })
+            .roundRect(0, 0, TAB_W, TAB_H, 4)
+            .stroke({ color: tab.color, alpha: 0.4, width: 1 });
+        }
+      });
+      tc.on("pointerout", () => {
+        if (i !== this._activeTabIndex) {
+          this._drawTabInactive(bg, TAB_W, TAB_H);
         }
       });
 
-      this._scrollContainer.addChild(toggleRow);
-      this._unitRows.push(toggleRow);
-      yOff += tH + 6;
+      this._card.addChild(tc);
+      this._tabContainers.push(tc);
     }
 
-    // Unit rows
-    for (const ut of this._units) {
+    this._refreshTabs();
+  }
+
+  private _refreshTabs(): void {
+    const PAD = 16;
+    const availW = this._cardW - PAD * 2;
+    const tabCount = this._tabs.length;
+    const TAB_GAP = 4;
+    const TAB_W = Math.floor((availW - TAB_GAP * (tabCount - 1)) / tabCount);
+    const TAB_H = 30;
+
+    for (let i = 0; i < tabCount; i++) {
+      const tab = this._tabs[i];
+      const bg = this._tabBgs[i];
+      const txt = this._tabTexts[i];
+      const isActive = i === this._activeTabIndex;
+
+      bg.clear();
+      if (isActive) {
+        bg.roundRect(0, 0, TAB_W, TAB_H, 4)
+          .fill({ color: tab.color, alpha: 0.3 })
+          .roundRect(0, 0, TAB_W, TAB_H, 4)
+          .stroke({ color: tab.color, alpha: 0.9, width: 2 });
+        bg.rect(4, TAB_H - 3, TAB_W - 8, 3)
+          .fill({ color: tab.color, alpha: 0.9 });
+        txt.style = { ...STYLE_TAB_ACTIVE, fill: tab.color } as TextStyle;
+      } else {
+        this._drawTabInactive(bg, TAB_W, TAB_H);
+        txt.style = STYLE_TAB;
+      }
+    }
+  }
+
+  private _drawTabInactive(bg: Graphics, w: number, h: number): void {
+    bg.clear()
+      .roundRect(0, 0, w, h, 4)
+      .fill({ color: 0x111122, alpha: 0.5 })
+      .roundRect(0, 0, w, h, 4)
+      .stroke({ color: 0x334455, alpha: 0.5, width: 1 });
+  }
+
+  // -------------------------------------------------------------------------
+  // Rebuild content for active tab
+  // -------------------------------------------------------------------------
+
+  private _rebuild(): void {
+    for (const r of this._dynamicRows) {
+      r.parent?.removeChild(r);
+      r.destroy({ children: true });
+    }
+    this._dynamicRows = [];
+    this._countTexts.clear();
+    this._detailContainer.removeChildren();
+
+    this._titleText.text = this._label;
+    this._refreshGold();
+    this._refreshRoster();
+
+    const CONTENT_TOP = this._contentTop;
+    const CONTENT_H = this._cardH - CONTENT_TOP - 60;
+
+    // Position left panel
+    this._unitListContainer.position.set(16, CONTENT_TOP);
+    this._unitScrollMask.clear()
+      .rect(0, 0, LEFT_W, CONTENT_H)
+      .fill({ color: 0xffffff });
+
+    // Position right panel
+    this._detailContainer.position.set(16 + LEFT_W + 20, CONTENT_TOP);
+
+    const tab = this._tabs[this._activeTabIndex];
+    if (!tab) return;
+
+    const units = tab.building
+      ? getUnitsForBuilding(tab.building, this._raceId)
+      : getFactionUnits(this._raceId);
+
+    let y = 0;
+
+    // AI random toggle
+    if (this._isAIShop) {
+      const toggleRow = this._buildRandomToggle(LEFT_W);
+      toggleRow.position.set(0, y);
+      this._unitScrollContainer.addChild(toggleRow);
+      this._dynamicRows.push(toggleRow);
+      y += 36;
+    }
+
+    // Corruption modifiers
+    if (this._activeModifiers.length > 0) {
+      y = this._buildCorruptionRows(y);
+    }
+
+    for (const ut of units) {
       const uDef = UNIT_DEFINITIONS[ut];
       if (!uDef) continue;
-      const cost = uDef.cost ?? 100;
-      const tier = uDef.tier ?? computeTier(cost);
+      const baseCost = uDef.cost ?? 100;
+      const priceMod = this._priceModifiers.get(ut) ?? 0;
+      const cost = this._getEffectiveCost(ut);
+      const tier = uDef.tier ?? computeTier(baseCost);
 
       const row = new Container();
-      row.position.set(PAD, yOff);
+      row.position.set(0, y);
+      row.eventMode = "static";
+      row.cursor = "pointer";
 
-      // Name + cost label
-      const nameStr = ut.replace(/_/g, " ").toUpperCase();
-      const nameTxt = new Text({
-        text: `T${tier} ${nameStr}`,
-        style: STYLE_UNIT_NAME,
-      });
-      nameTxt.position.set(0, 4);
+      // Row background — tinted for discount/markup
+      const rowBgColor = priceMod < 0 ? 0x112211 : priceMod > 0 ? 0x221111 : 0x111122;
+      const rowBg = new Graphics()
+        .roundRect(0, 0, LEFT_W, ROW_H - 2, 3)
+        .fill({ color: rowBgColor, alpha: 0.5 });
+      row.addChild(rowBg);
+
+      // Name text — colored for discount/markup
+      const nameLabel = UNIT_LABELS[ut] ?? ut.replace(/_/g, " ");
+      let nameFill = 0xccddee;
+      if (priceMod < 0) {
+        // Greener for bigger discount: -10% → light green, -30% → bright green
+        const t = Math.abs(priceMod) / 30; // 0..1
+        const r = Math.round(0x66 + (0x22 - 0x66) * t);
+        const g = Math.round(0xdd + (0xff - 0xdd) * t);
+        const b = Math.round(0x66 + (0x44 - 0x66) * t);
+        nameFill = (r << 16) | (g << 8) | b;
+      } else if (priceMod > 0) {
+        nameFill = 0xff8888;
+      }
+      const nameTxt = new Text({ text: `T${tier}  ${nameLabel}`, style: { ...STYLE_UNIT_NAME, fill: nameFill } });
+      nameTxt.position.set(8, 3);
       row.addChild(nameTxt);
 
-      const costTxt = new Text({
-        text: `${cost}g`,
-        style: STYLE_UNIT_COST,
-      });
-      costTxt.position.set(0, 18);
+      // Cost text — colored for discount/markup
+      let costFill = 0xaabb88;
+      let costLabel = `${cost}g`;
+      if (priceMod < 0) {
+        const t = Math.abs(priceMod) / 30;
+        const r = Math.round(0x66 + (0x22 - 0x66) * t);
+        const g = Math.round(0xff);
+        const b = Math.round(0x66 + (0x22 - 0x66) * t);
+        costFill = (r << 16) | (g << 8) | b;
+        costLabel = `${cost}g (was ${baseCost}g)`;
+      } else if (priceMod > 0) {
+        costFill = 0xff6666;
+        costLabel = `${cost}g (was ${baseCost}g)`;
+      }
+      const costTxt = new Text({ text: costLabel, style: { ...STYLE_UNIT_COST, fill: costFill } });
+      costTxt.position.set(8, 19);
+      costTxt.eventMode = "static";
       row.addChild(costTxt);
 
-      // Count display
-      const countTxt = new Text({
-        text: "0",
-        style: STYLE_COUNT,
-      });
-      countTxt.anchor.set(0.5, 0.5);
-      countTxt.position.set(this._cardW - PAD * 2 - 80, ROW_H / 2);
-      row.addChild(countTxt);
+      // Hover on cost shows discount/markup percentage
+      if (priceMod !== 0) {
+        costTxt.on("pointerover", (e) => {
+          const label = priceMod < 0
+            ? `${Math.abs(priceMod)}% OFF`
+            : `+${priceMod}% COST`;
+          this._priceTooltipText.text = label;
+          this._priceTooltip.position.set(e.globalX + 10, e.globalY - 20);
+          this._priceTooltip.visible = true;
+        });
+        costTxt.on("pointermove", (e) => {
+          this._priceTooltip.position.set(e.globalX + 10, e.globalY - 20);
+        });
+        costTxt.on("pointerout", () => {
+          this._priceTooltip.visible = false;
+        });
+      }
 
-      // Minus button
-      const minusBtn = this._makeSmallBtn("-", this._cardW - PAD * 2 - 120, ROW_H / 2);
+      const rightX = LEFT_W - BTN_AREA_W;
+      const minusBtn = this._makeSmallBtn("-", rightX + 14, ROW_H / 2);
+      row.addChild(minusBtn);
+
+      const countTxt = new Text({ text: String(this._counts.get(ut) ?? 0), style: STYLE_COUNT });
+      countTxt.anchor.set(0.5, 0.5);
+      countTxt.position.set(rightX + BTN_AREA_W / 2, ROW_H / 2);
+      row.addChild(countTxt);
+      this._countTexts.set(ut, countTxt);
+
+      const plusBtn = this._makeSmallBtn("+", rightX + BTN_AREA_W - 14, ROW_H / 2);
+      row.addChild(plusBtn);
+
       minusBtn.on("pointerdown", () => {
         const cur = this._counts.get(ut) ?? 0;
         if (cur > 0) {
@@ -347,12 +808,10 @@ export class UnitShopScreen {
           this._goldSpent -= cost;
           countTxt.text = String(cur - 1);
           this._refreshGold();
+          this._refreshRoster();
         }
       });
-      row.addChild(minusBtn);
 
-      // Plus button
-      const plusBtn = this._makeSmallBtn("+", this._cardW - PAD * 2 - 40, ROW_H / 2);
       plusBtn.on("pointerdown", () => {
         const cur = this._counts.get(ut) ?? 0;
         if (this._goldSpent + cost <= this._gold) {
@@ -360,100 +819,459 @@ export class UnitShopScreen {
           this._goldSpent += cost;
           countTxt.text = String(cur + 1);
           this._refreshGold();
+          this._refreshRoster();
         }
       });
-      row.addChild(plusBtn);
 
-      // Store ref to countTxt for refreshing
-      (row as Container & { _countTxt: Text; _unitType: UnitType })._countTxt = countTxt;
-      (row as Container & { _unitType: UnitType })._unitType = ut;
+      // Hover tooltip
+      row.on("pointerover", (e) => {
+        rowBg.clear().roundRect(0, 0, LEFT_W, ROW_H - 2, 3).fill({ color: priceMod < 0 ? 0x1a3322 : priceMod > 0 ? 0x331a1a : 0x1a2244, alpha: 0.8 });
+        this._showTooltip(ut, e.globalX, e.globalY);
+      });
+      row.on("pointermove", (e) => {
+        if (this._activeTooltipUnit === ut) this._positionTooltip(e.globalX, e.globalY);
+      });
+      row.on("pointerout", () => {
+        rowBg.clear().roundRect(0, 0, LEFT_W, ROW_H - 2, 3).fill({ color: rowBgColor, alpha: 0.5 });
+        this._hideTooltip();
+        this._priceTooltip.visible = false;
+      });
 
-      this._scrollContainer.addChild(row);
-      this._unitRows.push(row);
-      yOff += ROW_H;
+      this._unitScrollContainer.addChild(row);
+      this._dynamicRows.push(row);
+      y += ROW_H;
     }
 
-    this._scrollContainer.y = 76;
-    this._scrollY = 0;
+    this._unitScrollY = 0;
+    this._unitScrollContainer.y = 0;
+
+    this._buildDetailPanel(tab);
   }
 
-  private _makeSmallBtn(label: string, x: number, y: number): Container {
+  // -------------------------------------------------------------------------
+  // Detail panel
+  // -------------------------------------------------------------------------
+
+  private _buildDetailPanel(tab: TabDef): void {
+    const DETAIL_W = this._cardW - LEFT_W - 16 - 20 - 16;
+    const CONTENT_H = this._cardH - this._contentTop - 60;
+    let dy = 0;
+
+    const title = new Text({
+      text: tab.label,
+      style: { ...STYLE_BUILDING_TITLE, fill: tab.color } as TextStyle,
+    });
+    title.position.set(0, dy);
+    this._detailContainer.addChild(title);
+    dy += 30;
+
+    const line = new Graphics()
+      .rect(0, dy, Math.min(DETAIL_W, 200), 2)
+      .fill({ color: tab.color, alpha: 0.5 });
+    this._detailContainer.addChild(line);
+    dy += 12;
+
+    const desc = new Text({
+      text: tab.description,
+      style: { ...STYLE_BUILDING_DESC, wordWrapWidth: DETAIL_W - 10 } as TextStyle,
+    });
+    desc.position.set(0, dy);
+    this._detailContainer.addChild(desc);
+    dy += desc.height + 20;
+
+    // Image
+    const imgUrl = tab.imageUrl;
+    if (imgUrl) {
+      const imgAreaH = CONTENT_H - dy - 10;
+      if (imgAreaH > 60) {
+        const framePad = 6;
+        const frameW = Math.min(DETAIL_W, 380);
+        const frameH = Math.min(imgAreaH, 340);
+
+        const frame = new Graphics()
+          .roundRect(0, dy, frameW, frameH, 6)
+          .fill({ color: 0x0a0a1a, alpha: 0.6 })
+          .roundRect(0, dy, frameW, frameH, 6)
+          .stroke({ color: tab.color, alpha: 0.4, width: 1.5 });
+        this._detailContainer.addChild(frame);
+
+        void Assets.load(imgUrl).then((tex: Texture) => {
+          if (!this._detailContainer.parent) return;
+          const sprite = new Sprite(tex);
+          const maxW = frameW - framePad * 2;
+          const maxH = frameH - framePad * 2;
+          const scale = Math.min(maxW / tex.width, maxH / tex.height);
+          sprite.scale.set(scale);
+          sprite.position.set(
+            framePad + (maxW - tex.width * scale) / 2,
+            dy + framePad + (maxH - tex.height * scale) / 2,
+          );
+          this._detailContainer.addChild(sprite);
+        });
+      }
+    }
+
+    // Wave hint (next wave enemy info)
+    if (this._waveHint) {
+      const hintY = CONTENT_H - 90;
+      const hintBox = new Graphics()
+        .roundRect(0, hintY, DETAIL_W, 80, 5)
+        .fill({ color: 0x1a1a0a, alpha: 0.7 })
+        .roundRect(0, hintY, DETAIL_W, 80, 5)
+        .stroke({ color: 0xaaaa44, alpha: 0.5, width: 1 });
+      this._detailContainer.addChild(hintBox);
+
+      const hintTitle = new Text({
+        text: "SCOUT REPORT",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xddcc44, fontWeight: "bold", letterSpacing: 1 }),
+      });
+      hintTitle.position.set(8, hintY + 6);
+      this._detailContainer.addChild(hintTitle);
+
+      const hintRace = new Text({
+        text: `Enemy: ${this._waveHint.raceName}`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xccbb88, letterSpacing: 1 }),
+      });
+      hintRace.position.set(8, hintY + 24);
+      this._detailContainer.addChild(hintRace);
+
+      const unitNames = this._waveHint.mainUnits.slice(0, 4).join(", ");
+      const hintUnits = new Text({
+        text: `Expect: ${unitNames}`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xaa9977, letterSpacing: 1, wordWrap: true, wordWrapWidth: DETAIL_W - 16 }),
+      });
+      hintUnits.position.set(8, hintY + 40);
+      this._detailContainer.addChild(hintUnits);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Tooltip
+  // -------------------------------------------------------------------------
+
+  private _showTooltip(ut: UnitType, gx: number, gy: number): void {
+    this._activeTooltipUnit = ut;
+    const def = UNIT_DEFINITIONS[ut];
+    if (!def) return;
+
+    this._tooltipPreview.removeChildren();
+    this._tooltipStats.removeChildren();
+    if (this._tooltipSprite) { this._tooltipSprite.stop(); this._tooltipSprite = null; }
+
+    const frames = animationManager.getFrames(ut, UnitState.IDLE);
+    if (frames.length > 0 && frames[0] !== Texture.WHITE) {
+      const sprite = new AnimatedSprite(frames);
+      sprite.anchor.set(0.5, 0.5);
+      sprite.width = 56; sprite.height = 56;
+      sprite.position.set(TT_W / 2, TT_PREVIEW_H / 2);
+      const frameSet = animationManager.getFrameSet(ut, UnitState.IDLE);
+      sprite.animationSpeed = frameSet.fps / 60;
+      sprite.loop = true; sprite.play();
+      this._tooltipSprite = sprite;
+      this._tooltipPreview.addChild(sprite);
+    } else {
+      const g = new Graphics()
+        .circle(TT_W / 2, TT_PREVIEW_H / 2, 22).fill({ color: 0x334466 })
+        .circle(TT_W / 2, TT_PREVIEW_H / 2, 22).stroke({ color: 0x5588aa, width: 1 });
+      this._tooltipPreview.addChild(g);
+      const letter = new Text({
+        text: (UNIT_LABELS[ut] ?? ut).charAt(0),
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xdddddd, fontWeight: "bold" }),
+      });
+      letter.anchor.set(0.5, 0.5);
+      letter.position.set(TT_W / 2, TT_PREVIEW_H / 2);
+      this._tooltipPreview.addChild(letter);
+    }
+
+    let sy = TT_PAD;
+    const tier = def.tier ?? computeTier(def.cost);
+    const nameLabel = UNIT_LABELS[ut] ?? ut.replace(/_/g, " ");
+
+    const nameTxt = new Text({ text: `${nameLabel}  T${tier}`, style: STYLE_TT_NAME });
+    nameTxt.position.set(TT_PAD, sy); this._tooltipStats.addChild(nameTxt); sy += 18;
+
+    if (def.description) {
+      const descTxt = new Text({ text: def.description, style: STYLE_TT_DESC });
+      descTxt.position.set(TT_PAD, sy); this._tooltipStats.addChild(descTxt); sy += descTxt.height + 6;
+    }
+
+    const line1 = new Text({ text: `HP:${def.hp}  ATK:${def.atk}  SPD:${def.speed.toFixed(1)}`, style: STYLE_TT_STAT });
+    line1.position.set(TT_PAD, sy); this._tooltipStats.addChild(line1); sy += 14;
+    const line2 = new Text({ text: `RNG:${def.range}  AS:${def.attackSpeed}  COST:${def.cost}g`, style: STYLE_TT_STAT });
+    line2.position.set(TT_PAD, sy); this._tooltipStats.addChild(line2); sy += 14;
+    const line3 = new Text({ text: `Spawn: ${def.spawnTime}s`, style: STYLE_TT_STAT });
+    line3.position.set(TT_PAD, sy); this._tooltipStats.addChild(line3); sy += 14;
+
+    if (def.abilityTypes.length > 0) {
+      const abilTxt = new Text({ text: def.abilityTypes.join(", "), style: STYLE_TT_ABILITY });
+      abilTxt.position.set(TT_PAD, sy); this._tooltipStats.addChild(abilTxt); sy += 14;
+    }
+
+    const tags: string[] = [];
+    if (def.isChargeUnit) tags.push("Charge");
+    if (def.isHealer) tags.push("Healer");
+    if (def.siegeOnly) tags.push("Siege Only");
+    if (tags.length > 0) {
+      const tagTxt = new Text({ text: tags.join(" | "), style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xccaa66 }) });
+      tagTxt.position.set(TT_PAD, sy); this._tooltipStats.addChild(tagTxt); sy += 14;
+    }
+
+    const totalH = TT_PREVIEW_H + sy + TT_PAD;
+    this._tooltipBg.clear()
+      .roundRect(0, 0, TT_W, totalH, 6).fill({ color: 0x0d0d1e, alpha: 0.95 })
+      .roundRect(0, 0, TT_W, totalH, 6).stroke({ color: BORDER_COLOR, alpha: 0.55, width: 1.5 });
+
+    this._positionTooltip(gx, gy);
+    this._tooltip.visible = true;
+  }
+
+  private _positionTooltip(gx: number, gy: number): void {
+    const sw = this._vm.screenWidth;
+    const sh = this._vm.screenHeight;
+    let tx = gx + 16; let ty = gy - 20;
+    if (tx + TT_W > sw - 10) tx = gx - TT_W - 16;
+    if (ty < 10) ty = 10;
+    const ttH = this._tooltipBg.height || 200;
+    if (ty + ttH > sh - 10) ty = sh - ttH - 10;
+    this._tooltip.position.set(tx, ty);
+  }
+
+  private _hideTooltip(): void {
+    this._tooltip.visible = false;
+    this._activeTooltipUnit = null;
+    if (this._tooltipSprite) { this._tooltipSprite.stop(); this._tooltipSprite = null; }
+    this._tooltipPreview.removeChildren();
+    this._tooltipStats.removeChildren();
+  }
+
+  // -------------------------------------------------------------------------
+  // Small +/- buttons
+  // -------------------------------------------------------------------------
+
+  private _makeSmallBtn(label: string, cx: number, cy: number): Container {
     const btn = new Container();
     btn.eventMode = "static";
     btn.cursor = "pointer";
-    btn.position.set(x - 14, y - 12);
-
+    const bw = 26; const bh = 24;
+    btn.position.set(cx - bw / 2, cy - bh / 2);
     const bg = new Graphics()
-      .roundRect(0, 0, 28, 24, 4)
-      .fill({ color: 0x1a2a3a })
-      .roundRect(0, 0, 28, 24, 4)
-      .stroke({ color: 0x4488cc, width: 1 });
+      .roundRect(0, 0, bw, bh, 4).fill({ color: 0x1a2a3a })
+      .roundRect(0, 0, bw, bh, 4).stroke({ color: 0x4488cc, width: 1 });
     btn.addChild(bg);
-
     const txt = new Text({
       text: label,
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 16,
-        fill: 0x88ccff,
-        fontWeight: "bold",
-      }),
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: 0x88ccff, fontWeight: "bold" }),
     });
     txt.anchor.set(0.5, 0.5);
-    txt.position.set(14, 12);
+    txt.position.set(bw / 2, bh / 2);
     btn.addChild(txt);
-
     btn.on("pointerover", () => { bg.tint = 0xaaddff; });
     btn.on("pointerout", () => { bg.tint = 0xffffff; });
-
     return btn;
+  }
+
+  // -------------------------------------------------------------------------
+  // Random toggle, corruption, start button
+  // -------------------------------------------------------------------------
+
+  private _buildRandomToggle(w: number): Container {
+    const toggleRow = new Container();
+    const tH = 30;
+    const tBg = new Graphics();
+    toggleRow.addChild(tBg);
+    const tLabel = new Text({ text: "", style: STYLE_BTN });
+    tLabel.anchor.set(0.5, 0.5);
+    tLabel.position.set(w / 2, tH / 2);
+    toggleRow.addChild(tLabel);
+    this._randomToggleBg = tBg;
+    this._randomToggleLabel = tLabel;
+    this._refreshRandomToggle(w, tH);
+    toggleRow.eventMode = "static";
+    toggleRow.cursor = "pointer";
+    toggleRow.on("pointerdown", () => {
+      this._randomToggleOn = !this._randomToggleOn;
+      this._refreshRandomToggle(w, tH);
+      if (this._randomToggleOn) {
+        this._fillRandomArmy();
+      } else {
+        this._counts.clear();
+        this._goldSpent = 0;
+        this._refreshAllRows();
+        this._refreshGold();
+        this._refreshRoster();
+      }
+    });
+    return toggleRow;
+  }
+
+  private _buildCorruptionRows(startY: number): number {
+    let y = startY;
+    const modHeaderRow = new Container();
+    modHeaderRow.position.set(0, y);
+    const modHeaderTxt = new Text({
+      text: `ACTIVE CORRUPTION (${this._activeModifiers.length}):`,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xcc88ff, fontWeight: "bold", letterSpacing: 1 }),
+    });
+    modHeaderTxt.position.set(4, 2);
+    modHeaderRow.addChild(modHeaderTxt);
+    this._unitScrollContainer.addChild(modHeaderRow);
+    this._dynamicRows.push(modHeaderRow);
+    y += 18;
+
+    for (const mod of this._activeModifiers) {
+      const modRow = new Container();
+      modRow.position.set(0, y);
+      const modTxt = new Text({
+        text: `  ${mod.name} — ${mod.description}`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0xaa77dd, letterSpacing: 1 }),
+      });
+      modTxt.position.set(4, 2);
+      modRow.addChild(modTxt);
+      this._unitScrollContainer.addChild(modRow);
+      this._dynamicRows.push(modRow);
+      y += 16;
+    }
+    y += 6;
+    return y;
+  }
+
+  private _buildSaveLoadButtons(): void {
+    this._saveLoadContainer.removeChildren();
+    // Only show in wave mode (label contains "WAVE")
+    const isWave = this._label.includes("WAVE");
+    this._saveLoadContainer.visible = isWave;
+    if (!isWave) return;
+
+    const GAP = 6;
+    const BW = Math.floor((this._cardW - 32 - GAP * 2) / 3);
+    const BH = 32;
+    const Y = this._cardH - 56 - BH - 8; // above START button
+    const btnStyle = new TextStyle({ fontFamily: "monospace", fontSize: 13, fontWeight: "bold", letterSpacing: 2 });
+
+    // SAVE button
+    const saveBtn = new Container();
+    saveBtn.eventMode = "static";
+    saveBtn.cursor = "pointer";
+    saveBtn.position.set(16, Y);
+    const saveBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 4).fill({ color: 0x1a2a3a })
+      .roundRect(0, 0, BW, BH, 4).stroke({ color: 0x4488cc, width: 1.5 });
+    saveBtn.addChild(saveBg);
+    const saveLbl = new Text({ text: "SAVE", style: { ...btnStyle, fill: 0x88bbff } });
+    saveLbl.anchor.set(0.5, 0.5);
+    saveLbl.position.set(BW / 2, BH / 2);
+    saveBtn.addChild(saveLbl);
+    saveBtn.on("pointerover", () => { saveBg.tint = 0xaaccff; });
+    saveBtn.on("pointerout", () => { saveBg.tint = 0xffffff; });
+    saveBtn.on("pointerdown", () => {
+      this.onSave?.();
+      saveLbl.text = "SAVED!";
+      setTimeout(() => { saveLbl.text = "SAVE"; }, 1200);
+    });
+    this._saveLoadContainer.addChild(saveBtn);
+
+    // LOAD button
+    const loadBtn = new Container();
+    loadBtn.eventMode = "static";
+    loadBtn.cursor = "pointer";
+    loadBtn.position.set(16 + BW + GAP, Y);
+    const loadBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 4).fill({ color: 0x2a2a1a })
+      .roundRect(0, 0, BW, BH, 4).stroke({ color: 0xaaaa44, width: 1.5 });
+    loadBtn.addChild(loadBg);
+    const loadLbl = new Text({ text: "LOAD", style: { ...btnStyle, fill: 0xdddd66 } });
+    loadLbl.anchor.set(0.5, 0.5);
+    loadLbl.position.set(BW / 2, BH / 2);
+    loadBtn.addChild(loadLbl);
+    loadBtn.on("pointerover", () => { loadBg.tint = 0xeeeebb; });
+    loadBtn.on("pointerout", () => { loadBg.tint = 0xffffff; });
+    loadBtn.on("pointerdown", () => { this.onLoad?.(); });
+    this._saveLoadContainer.addChild(loadBtn);
+
+    // MENU button
+    const menuBtn = new Container();
+    menuBtn.eventMode = "static";
+    menuBtn.cursor = "pointer";
+    menuBtn.position.set(16 + (BW + GAP) * 2, Y);
+    const menuBg = new Graphics()
+      .roundRect(0, 0, BW, BH, 4).fill({ color: 0x1a1a2a })
+      .roundRect(0, 0, BW, BH, 4).stroke({ color: 0x6666aa, width: 1.5 });
+    menuBtn.addChild(menuBg);
+    const menuLbl = new Text({ text: "MENU", style: { ...btnStyle, fill: 0xaaaaff } });
+    menuLbl.anchor.set(0.5, 0.5);
+    menuLbl.position.set(BW / 2, BH / 2);
+    menuBtn.addChild(menuLbl);
+    menuBtn.on("pointerover", () => { menuBg.tint = 0xccccff; });
+    menuBtn.on("pointerout", () => { menuBg.tint = 0xffffff; });
+    menuBtn.on("pointerdown", () => { this.onBackToMenu?.(); });
+    this._saveLoadContainer.addChild(menuBtn);
+  }
+
+  /** Generate random price modifiers: 10% of units discounted, 10% marked up. */
+  private _generatePriceModifiers(raceId: RaceId): void {
+    this._priceModifiers.clear();
+    // Only apply in wave mode
+    if (!this._label.includes("WAVE")) return;
+
+    const allUnits = getAllShopUnits(raceId);
+    if (allUnits.length === 0) return;
+
+    const shuffled = [...allUnits].sort(() => Math.random() - 0.5);
+    const discountCount = Math.max(1, Math.round(allUnits.length * 0.1));
+    const markupCount = Math.max(1, Math.round(allUnits.length * 0.1));
+
+    // First discountCount units get a discount (10-30%)
+    for (let i = 0; i < discountCount && i < shuffled.length; i++) {
+      const discount = -(10 + Math.floor(Math.random() * 21)); // -10 to -30
+      this._priceModifiers.set(shuffled[i], discount);
+    }
+    // Next markupCount units get a markup (1-10%)
+    for (let i = discountCount; i < discountCount + markupCount && i < shuffled.length; i++) {
+      const markup = 1 + Math.floor(Math.random() * 10); // +1 to +10
+      this._priceModifiers.set(shuffled[i], markup);
+    }
+  }
+
+  /** Get the effective cost of a unit, accounting for price modifiers. */
+  private _getEffectiveCost(ut: UnitType): number {
+    const baseCost = UNIT_DEFINITIONS[ut]?.cost ?? 100;
+    const mod = this._priceModifiers.get(ut);
+    if (!mod) return baseCost;
+    return Math.round(baseCost * (1 + mod / 100));
   }
 
   private _makeStartButton(): Container {
     const BW = this._cardW - 32;
-    const BH = 40;
+    const BH = 44;
     const btn = new Container();
     btn.eventMode = "static";
     btn.cursor = "pointer";
-    btn.position.set(16, this._cardH - 52);
-
+    btn.position.set(16, this._cardH - 56);
     const bg = new Graphics()
-      .roundRect(0, 0, BW, BH, 6)
-      .fill({ color: 0x1a3a1a })
-      .roundRect(0, 0, BW, BH, 6)
-      .stroke({ color: 0x44aa66, width: 2 });
+      .roundRect(0, 0, BW, BH, 6).fill({ color: 0x1a3a1a })
+      .roundRect(0, 0, BW, BH, 6).stroke({ color: 0x44aa66, width: 2 });
     btn.addChild(bg);
-
     const lbl = new Text({
       text: "START BATTLE  >",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 15,
-        fill: 0x88ffaa,
-        fontWeight: "bold",
-        letterSpacing: 2,
-      }),
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 17, fill: 0x88ffaa, fontWeight: "bold", letterSpacing: 2 }),
     });
     lbl.anchor.set(0.5, 0.5);
     lbl.position.set(BW / 2, BH / 2);
     btn.addChild(lbl);
-
     btn.on("pointerover", () => { bg.tint = 0xaaffcc; });
     btn.on("pointerout", () => { bg.tint = 0xffffff; });
-    btn.on("pointerdown", () => {
-      const roster = this._buildRoster();
-      this.onDone?.(roster);
-    });
-
+    btn.on("pointerdown", () => { this.onDone?.(this._buildRoster()); });
     return btn;
   }
+
+  // -------------------------------------------------------------------------
+  // Roster & gold helpers
+  // -------------------------------------------------------------------------
 
   private _buildRoster(): UnitRoster {
     const roster: UnitRoster = [];
     for (const [ut, count] of this._counts) {
-      if (count > 0) {
-        roster.push({ type: ut, count });
-      }
+      if (count > 0) roster.push({ type: ut, count });
     }
     return roster;
   }
@@ -464,23 +1282,17 @@ export class UnitShopScreen {
   }
 
   private _refreshAllRows(): void {
-    for (const row of this._unitRows) {
-      const r = row as Container & { _countTxt?: Text; _unitType?: UnitType };
-      if (r._countTxt && r._unitType) {
-        r._countTxt.text = String(this._counts.get(r._unitType) ?? 0);
-      }
+    for (const [ut, txt] of this._countTexts) {
+      txt.text = String(this._counts.get(ut) ?? 0);
     }
   }
 
   private _refreshRandomToggle(w: number, h: number): void {
     if (!this._randomToggleBg || !this._randomToggleLabel) return;
     const on = this._randomToggleOn;
-    this._randomToggleBg.clear();
-    this._randomToggleBg
-      .roundRect(0, 0, w, h, 4)
-      .fill({ color: on ? 0x1a3a1a : 0x2a1a1a })
-      .roundRect(0, 0, w, h, 4)
-      .stroke({ color: on ? 0x44aa66 : 0xaa4444, width: 1.5 });
+    this._randomToggleBg.clear()
+      .roundRect(0, 0, w, h, 4).fill({ color: on ? 0x1a3a1a : 0x2a1a1a })
+      .roundRect(0, 0, w, h, 4).stroke({ color: on ? 0x44aa66 : 0xaa4444, width: 1.5 });
     this._randomToggleLabel.text = on
       ? "RANDOM ARMY: ON  [click to disable]"
       : "RANDOM ARMY: OFF  [click to enable]";
@@ -490,18 +1302,14 @@ export class UnitShopScreen {
   private _fillRandomArmy(): void {
     this._counts.clear();
     this._goldSpent = 0;
-
-    const available = this._units.filter((ut) => {
+    const available = getAllShopUnits(this._raceId).filter((ut) => {
       const uDef = UNIT_DEFINITIONS[ut];
       return uDef && uDef.cost <= this._gold;
     });
     if (available.length === 0) return;
-
-    // Simple random fill: keep adding random units until budget exhausted
     let remaining = this._gold;
     let safety = 500;
     while (remaining > 0 && safety-- > 0) {
-      // Pick a random unit we can afford
       const affordable = available.filter((ut) => (UNIT_DEFINITIONS[ut].cost ?? 100) <= remaining);
       if (affordable.length === 0) break;
       const pick = affordable[Math.floor(Math.random() * affordable.length)];
@@ -510,25 +1318,29 @@ export class UnitShopScreen {
       this._goldSpent += cost;
       remaining -= cost;
     }
-
     this._refreshAllRows();
     this._refreshGold();
+    this._refreshRoster();
   }
 
   private _clampScroll(): void {
-    const contentH = this._unitRows.length * 32 + (this._isAIShop ? 36 : 0);
-    const viewH = this._cardH - 76 - 60;
+    const tab = this._tabs[this._activeTabIndex];
+    if (!tab) return;
+    const units = tab.building
+      ? getUnitsForBuilding(tab.building, this._raceId)
+      : getFactionUnits(this._raceId);
+    const topExtra = (this._isAIShop ? 36 : 0) + (this._activeModifiers.length > 0 ? 18 + this._activeModifiers.length * 16 + 6 : 0);
+    const contentH = topExtra + units.length * ROW_H;
+    const viewH = this._cardH - this._contentTop - 60;
     const minScroll = Math.min(0, viewH - contentH);
-    this._scrollY = Math.max(minScroll, Math.min(0, this._scrollY));
+    this._unitScrollY = Math.max(minScroll, Math.min(0, this._unitScrollY));
   }
 
   private _layout(): void {
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
-
     this._bg.clear();
     this._bg.rect(0, 0, sw, sh).fill({ color: BG_COLOR });
-
     this._card.position.set(
       Math.floor((sw - this._cardW) / 2),
       Math.floor((sh - this._cardH) / 2),

@@ -285,15 +285,40 @@ export class MenuScreen {
   private _p4AllyBg!: Graphics;
   private _p4AllyLabel!: Text;
 
+  // Grail Greed Corruption toggle (wave mode only)
+  private _grailGreed = false;
+  private _grailGreedSection!: Container;
+  private _grailGreedBg!: Graphics;
+  private _grailGreedLabel!: Text;
+
+  // Random Events toggle (wave mode only)
+  private _randomEvents = false;
+  private _randomEventsSection!: Container;
+  private _randomEventsBg!: Graphics;
+  private _randomEventsLabel!: Text;
+
+  // Dynamic load wave button area (rebuilt on show)
+  private _loadWaveBtnSlot!: Container;
+  private _loadWaveBtnSlotY = 0;
+  private _s1SettingsBtn!: Container;
+  private _s1UtilBtnH = 0;
+  private _s1UtilGap = 0;
+
+  // Keyboard navigation — screen 1
+  private _s1NavItems: Array<{ container: Container; action: () => void }> = [];
+  private _s1FocusIndex = 0;
+  private _s1FocusBorder!: Graphics;
+  private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
+
   // Callbacks
   onAIToggle: ((isAI: boolean) => void) | null = null;
   onContinue: (() => void) | null = null;
   onQuickPlay: (() => void) | null = null;
-  onUnitWiki: (() => void) | null = null;
-  onBuildingWiki: (() => void) | null = null;
-  onSpellWiki: (() => void) | null = null;
+  onWiki: (() => void) | null = null;
   onMultiplayer: (() => void) | null = null;
   onLoadWorldGame: (() => void) | null = null;
+  onLoadWaveGame: (() => void) | null = null;
+  hasWaveSave = false;
   onSettings: (() => void) | null = null;
 
   // Public getters (unchanged API)
@@ -317,6 +342,12 @@ export class MenuScreen {
     if (this._playerCount >= 3 && this._p3Allied) allies.push("p3");
     if (this._playerCount >= 4 && this._p4Allied) allies.push("p4");
     return allies;
+  }
+  get grailGreedEnabled(): boolean {
+    return this._grailGreed;
+  }
+  get randomEventsEnabled(): boolean {
+    return this._randomEvents;
   }
 
   // ---------------------------------------------------------------------------
@@ -354,11 +385,48 @@ export class MenuScreen {
 
   show(): void {
     this.container.visible = true;
+    this._rebuildLoadWaveButton();
     this._showScreen1();
   }
 
   hide(): void {
     this.container.visible = false;
+  }
+
+  /** Rebuild the load-wave-game button dynamically based on current hasWaveSave. */
+  private _rebuildLoadWaveButton(): void {
+    // Remove old nav item for the wave load button (filter it out)
+    this._s1NavItems = this._s1NavItems.filter(
+      (item) => !this._loadWaveBtnSlot.children.includes(item.container),
+    );
+    this._loadWaveBtnSlot.removeChildren();
+
+    const CW = this._screen1CardW;
+    let bottomY = this._loadWaveBtnSlotY;
+
+    if (this.hasWaveSave) {
+      const loadW = CW - 40;
+      const loadWaveBtn = makeActionBtn(loadW, this._s1UtilBtnH, "LOAD WAVE GAME", 0x1a2a2a, 0x44aaaa, 0x88ffff, () => this.onLoadWaveGame?.());
+      loadWaveBtn.position.set(20, bottomY);
+      this._loadWaveBtnSlot.addChild(loadWaveBtn);
+      this._s1NavItems.push({ container: loadWaveBtn, action: () => this.onLoadWaveGame?.() });
+      bottomY += this._s1UtilBtnH + this._s1UtilGap;
+    }
+
+    // Reposition settings button and resize card
+    this._s1SettingsBtn.position.set(20, bottomY);
+    bottomY += this._s1UtilBtnH + this._s1UtilGap;
+
+    this._screen1CardH = bottomY + 8;
+
+    const bg = this._screen1Card.getChildAt(0) as Graphics;
+    bg.clear();
+    bg.roundRect(0, 0, CW, this._screen1CardH, 8)
+      .fill({ color: 0x10102a, alpha: 0.95 })
+      .roundRect(0, 0, CW, this._screen1CardH, 8)
+      .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
+
+    this._runes1.build(CW, this._screen1CardH);
   }
 
   // ---------------------------------------------------------------------------
@@ -368,6 +436,7 @@ export class MenuScreen {
   private _showScreen1(): void {
     this._screen1.visible = true;
     this._screen2.visible = false;
+    this._s1FocusBorder.visible = false;
     this._layout();
   }
 
@@ -378,6 +447,10 @@ export class MenuScreen {
     // Show/hide player section based on mode
     const entry = GAME_MODES[this._selectedModeIndex];
     this._screen2PlayerSection.visible = !entry.hidePlayerSetup;
+
+    // Show/hide Grail Greed toggle (wave mode only)
+    this._grailGreedSection.visible = entry.mode === GameMode.WAVE;
+    this._randomEventsSection.visible = entry.mode === GameMode.WAVE;
 
     this._layout();
   }
@@ -409,6 +482,8 @@ export class MenuScreen {
     const mbH = 38;
     const modeGap = 5;
     const modeStartY = 70;
+
+    this._s1NavItems = [];
 
     for (let i = 0; i < GAME_MODES.length; i++) {
       const entry = GAME_MODES[i];
@@ -476,11 +551,23 @@ export class MenuScreen {
         modeBtn.on("pointerdown", () => {
           this._selectedModeIndex = idx;
           if (entry.skipSetup) {
-            // World / Campaign — go straight to onContinue
             this.onContinue?.();
           } else {
             this._showScreen2();
           }
+        });
+
+        // Register for keyboard navigation
+        this._s1NavItems.push({
+          container: modeBtn,
+          action: () => {
+            this._selectedModeIndex = idx;
+            if (entry.skipSetup) {
+              this.onContinue?.();
+            } else {
+              this._showScreen2();
+            }
+          },
         });
       }
 
@@ -500,19 +587,12 @@ export class MenuScreen {
     const utilBtnH = 34;
     const utilGap = 6;
 
-    // Row 1: three wiki buttons side by side
-    const wikiW = Math.floor((CW - 40 - utilGap * 2) / 3);
-    const unitWikiBtn = makeActionBtn(wikiW, utilBtnH, "UNITS", 0x1a1a3a, 0x4488cc, 0x88bbff, () => this.onUnitWiki?.());
-    unitWikiBtn.position.set(20, utilY);
-    card.addChild(unitWikiBtn);
-
-    const buildWikiBtn = makeActionBtn(wikiW, utilBtnH, "BUILDINGS", 0x1a2a1a, 0x66aa55, 0x99dd88, () => this.onBuildingWiki?.());
-    buildWikiBtn.position.set(20 + wikiW + utilGap, utilY);
-    card.addChild(buildWikiBtn);
-
-    const spellWikiBtn = makeActionBtn(wikiW, utilBtnH, "SPELLS", 0x1a1a2a, 0x9966ff, 0xbb88ff, () => this.onSpellWiki?.());
-    spellWikiBtn.position.set(20 + (wikiW + utilGap) * 2, utilY);
-    card.addChild(spellWikiBtn);
+    // Row 1: Wiki button (full width)
+    const fullW = CW - 40;
+    const wikiBtn = makeActionBtn(fullW, utilBtnH, "WIKI", 0x1a1a3a, 0x4488cc, 0x88bbff, () => this.onWiki?.());
+    wikiBtn.position.set(20, utilY);
+    card.addChild(wikiBtn);
+    this._s1NavItems.push({ container: wikiBtn, action: () => this.onWiki?.() });
 
     // Row 2: Quickplay + Multiplayer
     const halfW = Math.floor((CW - 40 - utilGap) / 2);
@@ -521,10 +601,12 @@ export class MenuScreen {
     const qpBtn = makeActionBtn(halfW, utilBtnH, "QUICKPLAY >>", 0x2a1a0a, 0xcc8833, 0xffcc66, () => this.onQuickPlay?.());
     qpBtn.position.set(20, row2Y);
     card.addChild(qpBtn);
+    this._s1NavItems.push({ container: qpBtn, action: () => this.onQuickPlay?.() });
 
     const mpBtn = makeActionBtn(halfW, utilBtnH, "MULTIPLAYER", 0x1a1a3a, 0x6666cc, 0x9999ff, () => this.onMultiplayer?.());
     mpBtn.position.set(20 + halfW + utilGap, row2Y);
     card.addChild(mpBtn);
+    this._s1NavItems.push({ container: mpBtn, action: () => this.onMultiplayer?.() });
 
     let bottomY = row2Y + utilBtnH + utilGap;
 
@@ -534,17 +616,30 @@ export class MenuScreen {
       const loadBtn = makeActionBtn(loadW, utilBtnH, "LOAD WORLD GAME", 0x2a2a1a, 0xaaaa44, 0xdddd66, () => this.onLoadWorldGame?.());
       loadBtn.position.set(20, bottomY);
       card.addChild(loadBtn);
+      this._s1NavItems.push({ container: loadBtn, action: () => this.onLoadWorldGame?.() });
       bottomY += utilBtnH + utilGap;
     }
 
-    // Settings button
+    // Dynamic slot: Load Wave Game (rebuilt on show())
+    this._loadWaveBtnSlot = new Container();
+    this._loadWaveBtnSlotY = bottomY;
+    this._loadWaveBtnSlot.position.set(0, 0);
+    card.addChild(this._loadWaveBtnSlot);
+
+    // Settings button (repositioned dynamically by _rebuildLoadWaveButton)
     const settingsW = CW - 40;
     const settingsBtn = makeActionBtn(settingsW, utilBtnH, "SETTINGS", 0x1a1a1a, 0x666666, 0xaaaaaa, () => this.onSettings?.());
     settingsBtn.position.set(20, bottomY);
     card.addChild(settingsBtn);
+    this._s1NavItems.push({ container: settingsBtn, action: () => this.onSettings?.() });
     bottomY += utilBtnH + utilGap;
 
     this._screen1CardH = bottomY + 8;
+
+    // Store refs for dynamic repositioning
+    this._s1SettingsBtn = settingsBtn;
+    this._s1UtilBtnH = utilBtnH;
+    this._s1UtilGap = utilGap;
 
     // Redraw card background to final height
     const bg = card.getChildAt(0) as Graphics;
@@ -554,10 +649,51 @@ export class MenuScreen {
       .roundRect(0, 0, CW, this._screen1CardH, 8)
       .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
 
+    // Focus border for keyboard navigation (rendered on top of everything)
+    this._s1FocusBorder = new Graphics();
+    this._s1FocusBorder.visible = false;
+    card.addChild(this._s1FocusBorder);
+
     // Rune corner diamonds
     this._runes1 = new RuneCorners();
     this._runes1.build(CW, this._screen1CardH);
     card.addChild(this._runes1.container);
+
+    // Keyboard listener
+    this._onKeydown = (e: KeyboardEvent) => {
+      if (!this.container.visible || !this._screen1.visible) return;
+      if (this._s1NavItems.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        this._s1FocusIndex = (this._s1FocusIndex + 1) % this._s1NavItems.length;
+        this._updateS1Focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        this._s1FocusIndex = (this._s1FocusIndex - 1 + this._s1NavItems.length) % this._s1NavItems.length;
+        this._updateS1Focus();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        this._s1NavItems[this._s1FocusIndex].action();
+      }
+    };
+    window.addEventListener("keydown", this._onKeydown);
+  }
+
+  private _updateS1Focus(): void {
+    const item = this._s1NavItems[this._s1FocusIndex];
+    if (!item) return;
+    const c = item.container;
+    const bounds = c.getBounds();
+    const cardPos = this._screen1Card.getGlobalPosition();
+    // Convert to card-local coordinates
+    const lx = bounds.x - cardPos.x;
+    const ly = bounds.y - cardPos.y;
+    this._s1FocusBorder.clear();
+    this._s1FocusBorder
+      .roundRect(lx - 2, ly - 2, bounds.width + 4, bounds.height + 4, 6)
+      .stroke({ color: 0x88ccff, alpha: 0.8, width: 2 });
+    this._s1FocusBorder.visible = true;
   }
 
   // ---------------------------------------------------------------------------
@@ -924,12 +1060,103 @@ export class MenuScreen {
         .fill({ color: BORDER_COLOR, alpha: 0.2 }),
     );
 
+    // --- Grail Greed Corruption toggle (wave mode only) ---
+    const grailSection = new Container();
+    grailSection.position.set(0, curY);
+    grailSection.visible = false; // shown only for wave mode
+    card.addChild(grailSection);
+    this._grailGreedSection = grailSection;
+
+    const grailLabel = new Text({ text: "GRAIL GREED CORRUPTION", style: STYLE_LABEL });
+    grailLabel.position.set(20, 0);
+    grailSection.addChild(grailLabel);
+
+    const grailBtn = new Container();
+    grailBtn.eventMode = "static";
+    grailBtn.cursor = "pointer";
+    grailBtn.position.set(20, 20);
+
+    const grailBg = new Graphics();
+    grailBtn.addChild(grailBg);
+
+    const grailToggleLabel = new Text({ text: "", style: STYLE_BTN });
+    grailToggleLabel.anchor.set(0.5, 0.5);
+    grailToggleLabel.position.set(TW / 2, TH / 2);
+    grailBtn.addChild(grailToggleLabel);
+
+    this._grailGreedBg = grailBg;
+    this._grailGreedLabel = grailToggleLabel;
+
+    grailBtn.on("pointerdown", () => {
+      this._grailGreed = !this._grailGreed;
+      this._refreshGrailGreedToggle(TW, TH);
+    });
+
+    grailSection.addChild(grailBtn);
+    this._refreshGrailGreedToggle(TW, TH);
+
+    const grailSectionH = 20 + TH + 12;
+
+    // Divider inside grail section
+    grailSection.addChild(
+      new Graphics()
+        .rect(20, grailSectionH, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
+    // --- Random Events toggle (wave mode only) ---
+    const randomEventsSection = new Container();
+    randomEventsSection.position.set(0, curY);
+    randomEventsSection.visible = false; // shown only for wave mode
+    card.addChild(randomEventsSection);
+    this._randomEventsSection = randomEventsSection;
+
+    const reLabel = new Text({ text: "RANDOM EVENTS", style: STYLE_LABEL });
+    reLabel.position.set(20, 0);
+    randomEventsSection.addChild(reLabel);
+
+    const reBtn = new Container();
+    reBtn.eventMode = "static";
+    reBtn.cursor = "pointer";
+    reBtn.position.set(20, 20);
+
+    const reBg = new Graphics();
+    reBtn.addChild(reBg);
+
+    const reToggleLabel = new Text({ text: "", style: STYLE_BTN });
+    reToggleLabel.anchor.set(0.5, 0.5);
+    reToggleLabel.position.set(TW / 2, TH / 2);
+    reBtn.addChild(reToggleLabel);
+
+    this._randomEventsBg = reBg;
+    this._randomEventsLabel = reToggleLabel;
+
+    reBtn.on("pointerdown", () => {
+      this._randomEvents = !this._randomEvents;
+      this._refreshRandomEventsToggle(TW, TH);
+    });
+
+    randomEventsSection.addChild(reBtn);
+    this._refreshRandomEventsToggle(TW, TH);
+
+    const randomEventsSectionH = 20 + TH + 12;
+
+    // Divider inside random events section
+    randomEventsSection.addChild(
+      new Graphics()
+        .rect(20, randomEventsSectionH, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+
+    const randomEventsSectionFullH = randomEventsSectionH + 14;
+
     // We track two possible curY values — with and without player section
     // The actual card height is computed in _layout based on visibility
     // For now, place the action buttons after player section
     const actionBaseY = curY; // Y where player section starts
     const actionYWithPlayers = actionBaseY + playerSectionH + 14;
     const actionYWithoutPlayers = actionBaseY;
+    const grailSectionFullH = grailSectionH + 14;
 
     // --- Action buttons (placed at a fixed offset, repositioned in layout) ---
     const BW = CW - 40;
@@ -958,12 +1185,24 @@ export class MenuScreen {
     // Override _layout to also reposition action buttons
     const origLayout = this._layout.bind(this);
     this._layout = () => {
-      // Position action buttons based on player section visibility
+      // Position action buttons based on player section and grail section visibility
       let actY: number;
       if (this._screen2PlayerSection.visible) {
         actY = actionYWithPlayers;
       } else {
         actY = actionYWithoutPlayers;
+      }
+
+      // Position grail section right after the current section
+      this._grailGreedSection.position.set(0, actY);
+      if (this._grailGreedSection.visible) {
+        actY += grailSectionFullH;
+      }
+
+      // Position random events section after grail section
+      this._randomEventsSection.position.set(0, actY);
+      if (this._randomEventsSection.visible) {
+        actY += randomEventsSectionFullH;
       }
 
       actionBtns.back.position.set(20, actY);
@@ -1123,6 +1362,34 @@ export class MenuScreen {
         entry.label.style = STYLE_SIZE_INACTIVE;
       }
     }
+  }
+
+  private _refreshGrailGreedToggle(w: number, h: number): void {
+    const active = this._grailGreed;
+    this._grailGreedBg.clear();
+    this._grailGreedBg
+      .roundRect(0, 0, w, h, 4)
+      .fill({ color: active ? 0x2a1a2a : 0x1a1a1a })
+      .roundRect(0, 0, w, h, 4)
+      .stroke({ color: active ? 0x9944cc : 0x555555, width: 1.5 });
+    this._grailGreedLabel.text = active
+      ? "CORRUPTION: ON  [click to disable]"
+      : "CORRUPTION: OFF  [click to enable]";
+    this._grailGreedLabel.style.fill = active ? 0xcc88ff : 0x888888;
+  }
+
+  private _refreshRandomEventsToggle(w: number, h: number): void {
+    const active = this._randomEvents;
+    this._randomEventsBg.clear();
+    this._randomEventsBg
+      .roundRect(0, 0, w, h, 4)
+      .fill({ color: active ? 0x1a2a2a : 0x1a1a1a })
+      .roundRect(0, 0, w, h, 4)
+      .stroke({ color: active ? 0x44aaaa : 0x555555, width: 1.5 });
+    this._randomEventsLabel.text = active
+      ? "EVENTS: ON  [click to disable]"
+      : "EVENTS: OFF  [click to enable]";
+    this._randomEventsLabel.style.fill = active ? 0x88ffdd : 0x888888;
   }
 
   private _refreshAllianceToggles(): void {

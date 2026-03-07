@@ -21,8 +21,17 @@ export interface PlayerBattleStats {
   buildingsCaptured: number;
 }
 
+/** Per-unit-type damage breakdown for a single player. */
+export interface UnitTypeDamageEntry {
+  type: UnitType;
+  damage: number;
+  kills: number;
+}
+
 export interface BattleStats {
   perPlayer: Map<PlayerId, PlayerBattleStats>;
+  /** Per-player per-unit-type damage breakdown. */
+  unitTypeDamage: Map<PlayerId, Map<UnitType, UnitTypeDamageEntry>>;
   battleDurationTicks: number;
   totalUnitsSpawned: number;
 }
@@ -52,6 +61,7 @@ function createPlayerStats(): PlayerBattleStats {
 class BattleStatsTracker {
   private stats: BattleStats = {
     perPlayer: new Map(),
+    unitTypeDamage: new Map(),
     battleDurationTicks: 0,
     totalUnitsSpawned: 0,
   };
@@ -74,6 +84,7 @@ class BattleStatsTracker {
     this._detach();
     this.stats = {
       perPlayer: new Map(),
+      unitTypeDamage: new Map(),
       battleDurationTicks: 0,
       totalUnitsSpawned: 0,
     };
@@ -166,6 +177,7 @@ class BattleStatsTracker {
           if (killer) {
             this._playerStats(killer.owner).kills++;
             this._recordMvpKill(killer.owner, killer.type);
+            this._unitTypeDamage(killer.owner, killer.type).kills++;
           }
         }
       }),
@@ -182,6 +194,7 @@ class BattleStatsTracker {
         const attacker = state.units.get(attackerId);
         if (attacker) {
           this._playerStats(attacker.owner).damageDealt += amount;
+          this._unitTypeDamage(attacker.owner, attacker.type).damage += amount;
         }
       }),
 
@@ -228,6 +241,21 @@ class BattleStatsTracker {
       this.stats.perPlayer.set(playerId, ps);
     }
     return ps;
+  }
+
+  /** Return (or lazily create) the UnitTypeDamageEntry for a given player + unit type. */
+  private _unitTypeDamage(playerId: PlayerId, unitType: UnitType): UnitTypeDamageEntry {
+    let playerMap = this.stats.unitTypeDamage.get(playerId);
+    if (!playerMap) {
+      playerMap = new Map();
+      this.stats.unitTypeDamage.set(playerId, playerMap);
+    }
+    let entry = playerMap.get(unitType);
+    if (!entry) {
+      entry = { type: unitType, damage: 0, kills: 0 };
+      playerMap.set(unitType, entry);
+    }
+    return entry;
   }
 
   /** Increment the kill count for the given (owner, unitType) pair in the MVP map. */

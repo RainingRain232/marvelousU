@@ -53,6 +53,7 @@ import type { UnitRoster } from "@view/ui/UnitShopScreen";
 import { campaignVictoryScreen } from "@view/ui/CampaignVictoryScreen";
 import { hoverTooltip } from "@view/ui/HoverTooltip";
 import { buildingWikiScreen } from "@view/ui/BuildingWikiScreen";
+import { mainMenuWikiScreen } from "@view/ui/MainMenuWikiScreen";
 import { minimap } from "@view/ui/Minimap";
 import { lobbyScreen } from "@view/ui/LobbyScreen";
 import { RoomManager } from "@net/RoomManager";
@@ -65,7 +66,8 @@ import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases, initBasesMulti } from "@sim/systems/BaseSetup";
 import type { PlayerBaseConfig } from "@sim/systems/BaseSetup";
 import { setAlliance } from "@sim/state/GameState";
-import { BalanceConfig } from "@sim/config/BalanceConfig";
+import { BalanceConfig, CombatOptions } from "@sim/config/BalanceConfig";
+import { blockFX } from "@view/fx/BlockFX";
 import { getDifficultySettings } from "@sim/config/DifficultyConfig";
 import { SimLoop } from "@sim/core/SimLoop";
 import { EventBus } from "@sim/core/EventBus";
@@ -78,6 +80,7 @@ import {
   UnitType,
   UnitState,
   AbilityType,
+  NEUTRAL_PLAYER,
 } from "@/types";
 import { ABILITY_DEFINITIONS } from "@sim/config/AbilityDefs";
 import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
@@ -88,6 +91,7 @@ import { createBuilding } from "@sim/entities/Building";
 import { createUnit } from "@sim/entities/Unit";
 import { setBuilding, setWalkable, getTile } from "@sim/core/Grid";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
+import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 import { BUILDING_MIN_GAP } from "@sim/systems/BuildingSystem";
 import { LEADER_DEFINITIONS, getLeader } from "@sim/config/LeaderDefs";
 import type { LeaderId, LeaderBonus } from "@sim/config/LeaderDefs";
@@ -95,6 +99,16 @@ import { getRace, filterInventoryByRace, RACE_DEFINITIONS } from "@sim/config/Ra
 import type { RaceId } from "@sim/config/RaceDefs";
 import { ARMORY_ITEMS } from "@sim/config/ArmoryItemDefs";
 import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
+
+import {
+  createGrailCorruptionState,
+  selectModifier,
+  applyCorruptionModifiers,
+  tickCorruptionModifiers,
+  onCorruptionUnitDied,
+  type GrailCorruptionState,
+  ALL_CORRUPTION_MODIFIERS,
+} from "@sim/systems/GrailCorruptionSystem";
 
 /** First 2 armory items unlocked at world game start. More drop from camps. */
 const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) => i.id);
@@ -149,11 +163,34 @@ import { worldNationalScreen } from "@view/world/ui/WorldNationalScreen";
 import { worldArmyOverview } from "@view/world/ui/WorldArmyOverview";
 import { cityPreviewScreen } from "@view/world/ui/CityPreviewScreen";
 import { advisorDialog } from "@view/world/ui/AdvisorDialog";
+import { worldIntroDialog, AVALON_PROXIMITY_PAGE, MORGAINE_PROXIMITY_PAGE } from "@view/world/ui/WorldIntroDialog";
 import { turnTransition } from "@view/world/ui/TurnTransition";
 import { saveWorldGame, loadWorldGame } from "@world/state/WorldSerialization";
 import { setCityNameIndex } from "@world/state/WorldCity";
 import { worldBattleViewer } from "@view/world/ui/WorldBattleViewer";
 import { rollRandomEvents } from "@world/systems/WorldRandomEvents";
+import {
+  createLeaderEncounterState,
+  placeLeaderEncounter,
+  checkLeaderEncounter,
+  completeLeaderEncounter,
+  type LeaderEncounterState,
+} from "@world/systems/LeaderEncounters";
+import { applyInitialAffinities, processAIDiplomacy } from "@world/systems/LeaderDiplomacy";
+import { lastMorgaineEvents } from "@world/systems/TurnSystem";
+import {
+  createGrailQuestState,
+  trySpawnGrailChapel,
+  checkGrailProximity,
+  applyGrailReward,
+  isGrailKnight,
+  type GrailChoice,
+} from "@world/systems/GrailQuest";
+import {
+  createCamlannState,
+  processCamlann,
+  isCamlannBattle,
+} from "@world/systems/CamlannEvent";
 import { getNeutralCityGarrison, pickNeutralRace, neutralRng, getUnitsForRace } from "@world/systems/NeutralCitySystem";
 import { worldNotification } from "@view/world/ui/WorldNotification";
 import { worldWikiScreen } from "@view/world/ui/WorldWikiScreen";
@@ -161,6 +198,7 @@ import { merlinMagicScreen } from "@view/world/ui/MerlinMagicScreen";
 import { castSpell } from "@world/systems/OverlandSpellSystem";
 import type { OverlandSpellId } from "@world/config/OverlandSpellDefs";
 import merlinImgUrl from "@/img/merlin.png";
+import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntroDialog";
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -242,7 +280,7 @@ import merlinImgUrl from "@/img/merlin.png";
   startScreen.onStart = () => {
     startScreen.hide();
     introPlayer.onDone = () => {
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
     };
     introPlayer.play();
   };
@@ -267,7 +305,7 @@ import merlinImgUrl from "@/img/merlin.png";
       // World mode: Leader → Race → RaceDetail → Magic → Armory → WorldSetup → boot
       leaderSelectScreen.onBack = () => {
         leaderSelectScreen.hide();
-        menuScreen.show();
+        menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
       };
       leaderSelectScreen.onNext = () => {
         leaderSelectScreen.hide();
@@ -344,41 +382,47 @@ import merlinImgUrl from "@/img/merlin.png";
     );
   };
 
-  menuScreen.onUnitWiki = () => {
-    menuScreen.hide();
-    raceDetailScreen.onBack = () => {
-      raceDetailScreen.hide();
-      menuScreen.show();
-    };
-    raceDetailScreen.showWiki();
-  };
-
   // ---------------------------------------------------------------------------
-  // Building wiki screen
+  // Wiki screen (units, spells, buildings, lore)
   // ---------------------------------------------------------------------------
   buildingWikiScreen.init(viewManager);
   buildingWikiScreen.hide();
 
-  buildingWikiScreen.onBack = () => {
-    buildingWikiScreen.hide();
-    menuScreen.show();
+  mainMenuWikiScreen.init(viewManager);
+  mainMenuWikiScreen.hide();
+
+  mainMenuWikiScreen.onBack = () => {
+    mainMenuWikiScreen.hide();
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
 
-  menuScreen.onBuildingWiki = () => {
-    menuScreen.hide();
+  mainMenuWikiScreen.onOpenUnits = () => {
+    raceDetailScreen.onBack = () => {
+      raceDetailScreen.hide();
+      mainMenuWikiScreen.show();
+    };
+    raceDetailScreen.showWiki();
+  };
+
+  mainMenuWikiScreen.onOpenSpells = () => {
+    magicScreen.onBack = () => {
+      magicScreen.hide();
+      mainMenuWikiScreen.show();
+    };
+    magicScreen.showWiki();
+  };
+
+  mainMenuWikiScreen.onOpenBuildings = () => {
+    buildingWikiScreen.onBack = () => {
+      buildingWikiScreen.hide();
+      mainMenuWikiScreen.show();
+    };
     buildingWikiScreen.show();
   };
 
-  // ---------------------------------------------------------------------------
-  // Spell wiki
-  // ---------------------------------------------------------------------------
-  menuScreen.onSpellWiki = () => {
+  menuScreen.onWiki = () => {
     menuScreen.hide();
-    magicScreen.onBack = () => {
-      magicScreen.hide();
-      menuScreen.show();
-    };
-    magicScreen.showWiki();
+    mainMenuWikiScreen.show();
   };
 
   // ---------------------------------------------------------------------------
@@ -396,11 +440,20 @@ import merlinImgUrl from "@/img/merlin.png";
     await _loadWorldGame();
   };
 
+  menuScreen.onLoadWaveGame = () => {
+    const ws = _loadWaveGame();
+    if (!ws) return;
+    menuScreen.hide();
+    _waveState = ws;
+    const extraGold = 1000 + (ws.leftoverGold ?? 0);
+    _startNextWaveShop(ws, extraGold);
+  };
+
   menuScreen.onSettings = () => {
     menuScreen.hide();
     settingsScreen.onBack = () => {
       settingsScreen.hide();
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
     };
     settingsScreen.show();
   };
@@ -418,7 +471,7 @@ import merlinImgUrl from "@/img/merlin.png";
 
     if (choice === null) {
       // User cancelled
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
       return;
     }
 
@@ -428,7 +481,7 @@ import merlinImgUrl from "@/img/merlin.png";
     );
 
     if (!serverUrl) {
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
       return;
     }
 
@@ -466,7 +519,7 @@ import merlinImgUrl from "@/img/merlin.png";
     lobbyScreen.onBack = () => {
       lobbyScreen.hide();
       _roomManager.disconnect();
-      menuScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
     };
 
     // Connect
@@ -586,6 +639,10 @@ import merlinImgUrl from "@/img/merlin.png";
     viewManager.onUpdate((_s, dt) => warpFX.update(dt));
     damageNumberFX.init(viewManager, state);
     viewManager.onUpdate((_s, dt) => damageNumberFX.update(dt));
+    blockFX.init(viewManager, state);
+    viewManager.onUpdate((_s, dt) => blockFX.update(dt));
+    CombatOptions.critEnabled = settingsScreen.critEnabled;
+    CombatOptions.blockEnabled = settingsScreen.blockEnabled;
     flagFX.init(viewManager);
     viewManager.onUpdate((_s, dt) => flagFX.update(dt));
     runeCircleFX.init(viewManager);
@@ -637,7 +694,7 @@ import merlinImgUrl from "@/img/merlin.png";
 
   leaderSelectScreen.onBack = () => {
     leaderSelectScreen.hide();
-    menuScreen.show();
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
 
   // ---------------------------------------------------------------------------
@@ -757,9 +814,12 @@ import merlinImgUrl from "@/img/merlin.png";
         };
         unitShopScreen.showAIShop(raceId, 30000);
       };
+      unitShopScreen.setSurvivingUnits([]);
       unitShopScreen.show(raceId, 30000, "YOUR ARMY");
     } else if (gameMode === GameMode.WAVE) {
       // Wave mode: player unit shop → battle vs random wave
+      const corruption = createGrailCorruptionState();
+      corruption.enabled = menuScreen.grailGreedEnabled;
       _waveState = {
         wave: 1,
         playerRaceId: raceId,
@@ -767,6 +827,14 @@ import merlinImgUrl from "@/img/merlin.png";
         totalGoldSpent: 0,
         mapSize,
         mapType,
+        corruption,
+        survivingUnits: [],
+        leftoverGold: 0,
+        totalEnemyGold: 0,
+        lastEnemyGold: 0,
+        randomEvents: menuScreen.randomEventsEnabled,
+        pendingEvent: null,
+        bonusGold: 0,
       };
       unitShopScreen.onDone = async (playerRoster) => {
         unitShopScreen.hide();
@@ -777,11 +845,27 @@ import merlinImgUrl from "@/img/merlin.png";
           if (uDef) spent += uDef.cost * entry.count;
         }
         _waveState!.totalGoldSpent += spent;
+        _waveState!.leftoverGold = 2000 - spent;
+        _waveLastRoundGold = spent;
+
+        // Check for new corruption modifier
+        if (_waveState!.corruption.enabled) {
+          const newMod = selectModifier(_waveState!.corruption, _waveState!.wave);
+          if (newMod) {
+            EventBus.emit("corruptionModifierActivated", {
+              modifierName: newMod.name,
+              description: newMod.description,
+              corruptionLevel: _waveState!.corruption.corruptionLevel,
+            });
+          }
+        }
 
         // Generate enemy wave
         const enemyBudget = _waveState!.wave === 1
           ? 2000
           : Math.round(_waveState!.totalGoldSpent * 1.3);
+        _waveState!.lastEnemyGold = enemyBudget;
+        _waveState!.totalEnemyGold += enemyBudget;
         const enemyRoster = _generateWaveEnemyRoster(raceId, enemyBudget, _waveState!.wave);
 
         _worldBattleRosters = {
@@ -804,7 +888,25 @@ import merlinImgUrl from "@/img/merlin.png";
           [],
         );
       };
-      unitShopScreen.show(raceId, 2000, `WAVE 1 — RECRUIT ARMY`);
+      const corruptionLabel = corruption.enabled ? " [GRAIL GREED]" : "";
+      unitShopScreen.setCorruptionModifiers(corruption.activeModifiers);
+      unitShopScreen.setSurvivingUnits([]);
+      unitShopScreen.setWaveHint(_generateWaveHint(raceId, 1));
+      unitShopScreen.onSave = () => { _saveWaveGame(); };
+      unitShopScreen.onLoad = () => {
+        const ws = _loadWaveGame();
+        if (!ws) return;
+        _waveState = ws;
+        unitShopScreen.hide();
+        const extraGold = 1000 + (ws.leftoverGold ?? 0);
+        _startNextWaveShop(ws, extraGold);
+      };
+      unitShopScreen.onBackToMenu = () => {
+        unitShopScreen.hide();
+        _waveState = null;
+        menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+      };
+      unitShopScreen.show(raceId, 2000, `WAVE 1${corruptionLabel} — RECRUIT ARMY`);
     } else {
       await _bootGame(
         p2IsAI,
@@ -1178,6 +1280,79 @@ function _spawnScenarioBattlefieldUnits(
       { type: UnitType.GIANT_COURT_JESTER, count: 20 },
       { type: UnitType.FISHERMAN, count: 20 },
     ];
+  } else if (scenarioNum === 4) {
+    // The Art of War — ability tutorial battlefield
+    // Custom placement: cyclops center, clerics around it, lancers far, mages mid, siege demo
+    const cx = Math.floor(mapW / 2);
+    const cy = midY;
+
+    // --- P2: Cyclops in the dead center ---
+    const cyclops = createUnit({ type: UnitType.CYCLOPS, owner: "p2", position: { x: cx, y: cy } });
+    state.units.set(cyclops.id, cyclops);
+
+    // --- P1: Clerics surrounding the cyclops (ring of 8) ---
+    const clericOffsets = [
+      { x: -2, y: -2 }, { x: 0, y: -2 }, { x: 2, y: -2 },
+      { x: -2, y: 0 },                    { x: 2, y: 0 },
+      { x: -2, y: 2 }, { x: 0, y: 2 }, { x: 2, y: 2 },
+    ];
+    for (const off of clericOffsets) {
+      const u = createUnit({
+        type: UnitType.CLERIC, owner: "p1",
+        position: { x: cx + off.x, y: cy + off.y },
+      });
+      state.units.set(u.id, u);
+    }
+
+    // --- P1: Lancers charging from far left (20 lancers) ---
+    const lancerBaseX = Math.floor(mapW * 0.05);
+    for (let i = 0; i < 20; i++) {
+      const col = Math.floor(i / 5);
+      const row = i % 5;
+      const u = createUnit({
+        type: UnitType.LANCER, owner: "p1",
+        position: { x: lancerBaseX + col, y: cy - 2 + row },
+      });
+      state.units.set(u.id, u);
+    }
+
+    // --- P1: Master mages at medium range (2 of each element) ---
+    const mageTypes = [
+      UnitType.FIRE_MASTER_MAGE, UnitType.FIRE_MASTER_MAGE,
+      UnitType.LIGHTNING_MASTER_MAGE, UnitType.LIGHTNING_MASTER_MAGE,
+      UnitType.COLD_MASTER_MAGE, UnitType.COLD_MASTER_MAGE,
+    ];
+    const mageBaseX = Math.floor(mapW * 0.25);
+    for (let i = 0; i < mageTypes.length; i++) {
+      const u = createUnit({
+        type: mageTypes[i], owner: "p1",
+        position: { x: mageBaseX, y: cy - 3 + i },
+      });
+      state.units.set(u.id, u);
+    }
+
+    // --- P2: Battering ram (siege-only, attacks buildings) on the right ---
+    const ram = createUnit({
+      type: UnitType.BATTERING_RAM, owner: "p2",
+      position: { x: Math.floor(mapW * 0.8), y: cy + 5 },
+    });
+    state.units.set(ram.id, ram);
+
+    // --- P1: Siege hunter to hunt the battering ram ---
+    const hunter = createUnit({
+      type: UnitType.SIEGE_HUNTER, owner: "p1",
+      position: { x: Math.floor(mapW * 0.6), y: cy + 5 },
+    });
+    state.units.set(hunter.id, hunter);
+
+    // --- P1: Trebuchet for long-range siege demonstration ---
+    const treb = createUnit({
+      type: UnitType.TREBUCHET, owner: "p1",
+      position: { x: Math.floor(mapW * 0.15), y: cy + 6 },
+    });
+    state.units.set(treb.id, treb);
+
+    return; // skip generic roster spawning
   } else {
     // Default battlefield — 4 swordsmen each
     p1Roster = [{ type: UnitType.SWORDSMAN, count: 4 }];
@@ -1222,6 +1397,556 @@ function _spawnRoster(
       position: { x, y },
     });
     state.units.set(u.id, u);
+  }
+}
+
+/**
+ * Scenario 23 — "The Dark Savant"
+ * P1 gets a single Dark Savant in the top-left corner.
+ * P2 gets spread-out enemy patrols and a few towers across the map.
+ * Both sides have castles, but P1 cannot build (handled by p1NoBuild).
+ */
+function _setupScenario23(state: GameState, mapW: number, mapH: number): void {
+  // --- P1: Dark Savant in the top-left corner ---
+  const savant = createUnit({
+    type: UnitType.DARK_SAVANT,
+    owner: "p1",
+    position: { x: 3, y: 3 },
+  });
+  state.units.set(savant.id, savant);
+
+  // --- P2: Spread-out enemy patrols ---
+  const enemyGroups: Array<{ type: UnitType; x: number; y: number; count: number }> = [
+    // Mid-left patrol
+    { type: UnitType.SWORDSMAN, x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.3), count: 3 },
+    { type: UnitType.ARCHER, x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.35), count: 2 },
+    // Centre patrol
+    { type: UnitType.PIKEMAN, x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5), count: 4 },
+    { type: UnitType.LONGBOWMAN, x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.55), count: 2 },
+    // Upper-right patrol
+    { type: UnitType.KNIGHT, x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.25), count: 2 },
+    { type: UnitType.SWORDSMAN, x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.3), count: 3 },
+    // Lower-centre patrol
+    { type: UnitType.DEFENDER, x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.75), count: 3 },
+    { type: UnitType.CROSSBOWMAN, x: Math.floor(mapW * 0.45), y: Math.floor(mapH * 0.75), count: 2 },
+    // Near enemy castle guard
+    { type: UnitType.HALBERDIER, x: Math.floor(mapW * 0.85), y: Math.floor(mapH * 0.5), count: 3 },
+  ];
+
+  for (const group of enemyGroups) {
+    for (let i = 0; i < group.count; i++) {
+      const u = createUnit({
+        type: group.type,
+        owner: "p2",
+        position: { x: group.x + (i % 3), y: group.y + Math.floor(i / 3) },
+      });
+      state.units.set(u.id, u);
+    }
+  }
+
+  // --- P2: Enemy towers spread across the map ---
+  const towerPositions = [
+    { x: Math.floor(mapW * 0.35), y: Math.floor(mapH * 0.2) },
+    { x: Math.floor(mapW * 0.55), y: Math.floor(mapH * 0.4) },
+    { x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.65) },
+  ];
+
+  const towerDef = BUILDING_DEFINITIONS[BuildingType.TOWER];
+  for (let i = 0; i < towerPositions.length; i++) {
+    const pos = towerPositions[i];
+    // Bounds check
+    if (pos.x + towerDef.footprint.w >= mapW || pos.y + towerDef.footprint.h >= mapH) continue;
+
+    const id = `s23-tower-${i}`;
+    const building = createBuilding({
+      id,
+      type: BuildingType.TOWER,
+      owner: "p2",
+      position: pos,
+    });
+    state.buildings.set(id, building);
+
+    // Mark tiles as occupied
+    for (let dy = 0; dy < towerDef.footprint.h; dy++) {
+      for (let dx = 0; dx < towerDef.footprint.w; dx++) {
+        setBuilding(state.battlefield, pos.x + dx, pos.y + dy, id);
+        setWalkable(state.battlefield, pos.x + dx, pos.y + dy, false);
+      }
+    }
+
+    EventBus.emit("buildingPlaced", {
+      buildingId: id,
+      position: { ...pos },
+      owner: "p2",
+    });
+  }
+}
+
+/**
+ * Scenario 24 — "The Last Stand"
+ * P2 gets 2 tier 7 mages and 2 tier 7 melee giants, spawned at the
+ * top-right and bottom-right corners of the map (P2's side) so the
+ * player has time to prepare.
+ */
+function _setupScenario24(state: GameState, mapW: number, mapH: number): void {
+  const margin = 3;
+  // Top-right corner: 1 giant warrior + 1 national mage T7
+  const topRight = [
+    { type: UnitType.GIANT_WARRIOR, x: mapW - margin - 2, y: margin },
+    { type: UnitType.NATIONAL_MAGE_T7, x: mapW - margin, y: margin + 1 },
+  ];
+  // Bottom-right corner: 1 giant warrior + 1 national mage T7
+  const bottomRight = [
+    { type: UnitType.GIANT_WARRIOR, x: mapW - margin - 2, y: mapH - margin - 2 },
+    { type: UnitType.NATIONAL_MAGE_T7, x: mapW - margin, y: mapH - margin - 1 },
+  ];
+
+  for (const entry of [...topRight, ...bottomRight]) {
+    const u = createUnit({
+      type: entry.type,
+      owner: "p2",
+      position: { x: entry.x, y: entry.y },
+    });
+    state.units.set(u.id, u);
+  }
+}
+
+/**
+ * Scenario 7 — "The Long Road"
+ * P3 (allied with P1) starts with 20 pixies near their base in the NE corner.
+ */
+function _setupScenario7(state: GameState, mapW: number, _mapH: number): void {
+  // P3's base is in the NE corner — spawn pixies near it
+  const baseX = mapW - 8;
+  const baseY = 4;
+  for (let i = 0; i < 20; i++) {
+    const u = createUnit({
+      type: UnitType.PIXIE,
+      owner: "p3",
+      position: { x: baseX + (i % 5), y: baseY + Math.floor(i / 5) },
+    });
+    state.units.set(u.id, u);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Arthurian campaign scenario setup helpers (scenarios 8–23)
+// ---------------------------------------------------------------------------
+
+/** Helper: spawn a cluster of neutral hostile units at a position. */
+function _spawnNeutralGroup(
+  state: GameState,
+  units: Array<{ type: UnitType; count: number }>,
+  baseX: number,
+  baseY: number,
+): void {
+  let idx = 0;
+  for (const entry of units) {
+    for (let i = 0; i < entry.count; i++) {
+      const u = createUnit({
+        type: entry.type,
+        owner: NEUTRAL_PLAYER,
+        position: { x: baseX + (idx % 4), y: baseY + Math.floor(idx / 4) },
+      });
+      state.units.set(u.id, u);
+      EventBus.emit("unitSpawned", {
+        unitId: u.id,
+        buildingId: "",
+        position: { ...u.position },
+      });
+      idx++;
+    }
+  }
+}
+
+/**
+ * Scenario 9 — "The Green Chapel"
+ * Spawn a powerful neutral Green Knight (cyclops-stats) at map centre.
+ */
+function _setupScenario9(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  const knight = createUnit({
+    type: UnitType.CYCLOPS,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  // Boost HP to make the Green Knight a proper boss
+  knight.hp = Math.floor(knight.hp * 2);
+  knight.maxHp = knight.hp;
+  state.units.set(knight.id, knight);
+  EventBus.emit("unitSpawned", {
+    unitId: knight.id,
+    buildingId: "",
+    position: { ...knight.position },
+  });
+}
+
+/**
+ * Scenario 10 — "The Fisher King's Lands"
+ * Spawn blight creatures (spiders, void snails) in the neutral zone.
+ */
+function _setupScenario10(state: GameState, mapW: number, mapH: number): void {
+  // Scatter blight creatures across the centre
+  const positions = [
+    { x: Math.floor(mapW * 0.35), y: Math.floor(mapH * 0.3) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5) },
+    { x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.7) },
+    { x: Math.floor(mapW * 0.6), y: Math.floor(mapH * 0.4) },
+  ];
+  for (const pos of positions) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.SPIDER, count: 2 },
+      { type: UnitType.VOID_SNAIL, count: 1 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 11 — "Morgan's Bargain"
+ * Spawn Faery Queen guards at neutral market buildings.
+ */
+function _setupScenario11(state: GameState, _mapW: number, _mapH: number): void {
+  for (const building of state.buildings.values()) {
+    if (building.owner === null) {
+      // Guard each neutral building with fay creatures
+      _spawnNeutralGroup(state, [
+        { type: UnitType.FAERY_QUEEN, count: 1 },
+        { type: UnitType.PIXIE, count: 3 },
+      ], building.position.x - 1, building.position.y - 1);
+    }
+  }
+}
+
+/**
+ * Scenario 12 — "The Siege Perilous"
+ * Spawn hostile storm mages near ley-line positions and a neutral lancer at centre.
+ */
+function _setupScenario12(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  // The Siege Perilous champion at centre
+  const champion = createUnit({
+    type: UnitType.KNIGHT_LANCER,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  champion.hp = Math.floor(champion.hp * 1.5);
+  champion.maxHp = champion.hp;
+  state.units.set(champion.id, champion);
+  EventBus.emit("unitSpawned", {
+    unitId: champion.id,
+    buildingId: "",
+    position: { ...champion.position },
+  });
+  // Storm mages at ley-line nodes
+  const leyLines = [
+    { x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.25) },
+    { x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.75) },
+  ];
+  for (const pos of leyLines) {
+    _spawnNeutralGroup(state, [{ type: UnitType.STORM_MAGE, count: 2 }], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 13 — "The Black Knight"
+ * Spawn a massively powerful neutral knight at the bridge (map centre).
+ */
+function _setupScenario13(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  const blackKnight = createUnit({
+    type: UnitType.KNIGHT_LANCER,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  // The Black Knight is extremely tough
+  blackKnight.hp = Math.floor(blackKnight.hp * 3);
+  blackKnight.maxHp = blackKnight.hp;
+  state.units.set(blackKnight.id, blackKnight);
+  EventBus.emit("unitSpawned", {
+    unitId: blackKnight.id,
+    buildingId: "",
+    position: { ...blackKnight.position },
+  });
+  // Escort cavalry
+  _spawnNeutralGroup(state, [
+    { type: UnitType.KNIGHT, count: 2 },
+  ], cx - 2, cy + 1);
+}
+
+/**
+ * Scenario 14 — "The Questing Beast"
+ * Spawn a fast, powerful neutral beast (red dragon stats) at map centre.
+ */
+function _setupScenario14(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  const beast = createUnit({
+    type: UnitType.RED_DRAGON,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  // The Questing Beast is extremely resilient
+  beast.hp = Math.floor(beast.hp * 1.5);
+  beast.maxHp = beast.hp;
+  state.units.set(beast.id, beast);
+  EventBus.emit("unitSpawned", {
+    unitId: beast.id,
+    buildingId: "",
+    position: { ...beast.position },
+  });
+  // Smaller creatures trailing in its wake
+  _spawnNeutralGroup(state, [
+    { type: UnitType.SPIDER, count: 2 },
+    { type: UnitType.GIANT_FROG, count: 2 },
+  ], cx - 3, cy + 2);
+}
+
+/**
+ * Scenario 15 — "The Dolorous Stroke"
+ * Spawn undead warriors at ruin positions across the map.
+ */
+function _setupScenario15(state: GameState, mapW: number, mapH: number): void {
+  const ruinPositions = [
+    { x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.3) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.2) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.8) },
+    { x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.6) },
+  ];
+  for (const pos of ruinPositions) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.SWORDSMAN, count: 3 },
+      { type: UnitType.PIKEMAN, count: 2 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 16 — "The Perilous Forest"
+ * Spawn creature waves from forest edges + a neutral summoner at centre.
+ */
+function _setupScenario16(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  // Neutral summoner at centre
+  const summoner = createUnit({
+    type: UnitType.SUMMONER,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  summoner.hp = Math.floor(summoner.hp * 2);
+  summoner.maxHp = summoner.hp;
+  state.units.set(summoner.id, summoner);
+  EventBus.emit("unitSpawned", {
+    unitId: summoner.id,
+    buildingId: "",
+    position: { ...summoner.position },
+  });
+  // Forest edge creature clusters
+  const edges = [
+    { x: 2, y: Math.floor(mapH * 0.3) },
+    { x: mapW - 4, y: Math.floor(mapH * 0.7) },
+    { x: Math.floor(mapW * 0.5), y: 2 },
+    { x: Math.floor(mapW * 0.5), y: mapH - 4 },
+  ];
+  for (const pos of edges) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.SPIDER, count: 2 },
+      { type: UnitType.GIANT_FROG, count: 1 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 17 — "The Tournament at Camelot"
+ * Spawn neutral champion knight pairs at tournament positions.
+ */
+function _setupScenario17(state: GameState, mapW: number, mapH: number): void {
+  const positions = [
+    { x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.3) },
+    { x: Math.floor(mapW * 0.6), y: Math.floor(mapH * 0.7) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5) },
+  ];
+  for (const pos of positions) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.KNIGHT_LANCER, count: 1 },
+      { type: UnitType.LANCER, count: 1 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 18 — "The Chapel of the Grail"
+ * Spawn angelic wardens guarding the Grail Chapel at map centre.
+ */
+function _setupScenario18(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  _spawnNeutralGroup(state, [
+    { type: UnitType.SAINT, count: 2 },
+    { type: UnitType.CLERIC, count: 2 },
+    { type: UnitType.MONK, count: 2 },
+  ], cx - 1, cy - 1);
+}
+
+/**
+ * Scenario 19 — "Lancelot's Betrayal"
+ * Spawn neutral knight groups across the map that can be recruited.
+ */
+function _setupScenario19(state: GameState, mapW: number, mapH: number): void {
+  const knightPositions = [
+    { x: Math.floor(mapW * 0.3), y: Math.floor(mapH * 0.25) },
+    { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5) },
+    { x: Math.floor(mapW * 0.7), y: Math.floor(mapH * 0.75) },
+    { x: Math.floor(mapW * 0.4), y: Math.floor(mapH * 0.7) },
+    { x: Math.floor(mapW * 0.6), y: Math.floor(mapH * 0.3) },
+  ];
+  for (const pos of knightPositions) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.QUESTING_KNIGHT, count: 2 },
+      { type: UnitType.KNIGHT, count: 1 },
+    ], pos.x, pos.y);
+  }
+}
+
+/**
+ * Scenario 20 — "The Isle of Avalon"
+ * Spawn Fay guardians at neutral hamlet/building positions + frost drake patrols.
+ */
+function _setupScenario20(state: GameState, mapW: number, mapH: number): void {
+  // Fay guardians at each neutral building
+  let guardCount = 0;
+  for (const building of state.buildings.values()) {
+    if (building.owner === null && guardCount < 4) {
+      _spawnNeutralGroup(state, [
+        { type: UnitType.FAERY_QUEEN, count: 1 },
+      ], building.position.x - 1, building.position.y - 1);
+      guardCount++;
+    }
+  }
+  // Frost dragon patrol
+  const frost = createUnit({
+    type: UnitType.FROST_DRAGON,
+    owner: NEUTRAL_PLAYER,
+    position: { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.3) },
+  });
+  state.units.set(frost.id, frost);
+  EventBus.emit("unitSpawned", {
+    unitId: frost.id,
+    buildingId: "",
+    position: { ...frost.position },
+  });
+}
+
+/**
+ * Scenario 21 — "The Grail War"
+ * Spawn void snails and distortion mages in a ring around the Grail (map centre).
+ */
+function _setupScenario21(state: GameState, mapW: number, mapH: number): void {
+  const cx = Math.floor(mapW / 2);
+  const cy = Math.floor(mapH / 2);
+  // Ring of distorted creatures around the Grail
+  const ringOffsets = [
+    { x: -3, y: 0 }, { x: 3, y: 0 },
+    { x: 0, y: -3 }, { x: 0, y: 3 },
+  ];
+  for (const off of ringOffsets) {
+    _spawnNeutralGroup(state, [
+      { type: UnitType.VOID_SNAIL, count: 1 },
+      { type: UnitType.DISTORTION_MAGE, count: 1 },
+    ], cx + off.x, cy + off.y);
+  }
+  // The Grail guardian — a saint
+  const saint = createUnit({
+    type: UnitType.SAINT,
+    owner: NEUTRAL_PLAYER,
+    position: { x: cx, y: cy },
+  });
+  saint.hp = Math.floor(saint.hp * 2);
+  saint.maxHp = saint.hp;
+  state.units.set(saint.id, saint);
+  EventBus.emit("unitSpawned", {
+    unitId: saint.id,
+    buildingId: "",
+    position: { ...saint.position },
+  });
+}
+
+/**
+ * Scenario 22 — "The Walls of Camelot"
+ * Spawn loyalist knight reinforcements near P1's flanks + neutral cyclops.
+ */
+function _setupScenario22(state: GameState, mapW: number, mapH: number): void {
+  // Loyalist reinforcements on P1's flanks
+  const flankPositions = [
+    { x: Math.floor(mapW * 0.15), y: Math.floor(mapH * 0.2) },
+    { x: Math.floor(mapW * 0.15), y: Math.floor(mapH * 0.8) },
+  ];
+  for (const pos of flankPositions) {
+    for (let i = 0; i < 3; i++) {
+      const knight = createUnit({
+        type: UnitType.QUESTING_KNIGHT,
+        owner: "p1",
+        position: { x: pos.x + (i % 2), y: pos.y + Math.floor(i / 2) },
+      });
+      state.units.set(knight.id, knight);
+    }
+  }
+  // Neutral cyclops siege-breaker near centre
+  const cyclops = createUnit({
+    type: UnitType.CYCLOPS,
+    owner: NEUTRAL_PLAYER,
+    position: { x: Math.floor(mapW * 0.5), y: Math.floor(mapH * 0.5) },
+  });
+  state.units.set(cyclops.id, cyclops);
+  EventBus.emit("unitSpawned", {
+    unitId: cyclops.id,
+    buildingId: "",
+    position: { ...cyclops.position },
+  });
+}
+
+/**
+ * Scenario 23 — "The Dragon of the White Tower"
+ * Spawn a friendly Red Dragon near P1's base and a hostile White (Frost) Dragon near P2.
+ * Also spawn neutral frost dragons from map edges.
+ */
+function _setupScenario23_dragons(state: GameState, mapW: number, mapH: number): void {
+  // Red Dragon for P1 — near the western base
+  const redDragon = createUnit({
+    type: UnitType.RED_DRAGON,
+    owner: "p1",
+    position: { x: Math.floor(mapW * 0.15), y: Math.floor(mapH * 0.5) },
+  });
+  state.units.set(redDragon.id, redDragon);
+
+  // White (Frost) Dragon for P2 — near the eastern base
+  const whiteDragon = createUnit({
+    type: UnitType.FROST_DRAGON,
+    owner: "p2",
+    position: { x: Math.floor(mapW * 0.85), y: Math.floor(mapH * 0.5) },
+  });
+  state.units.set(whiteDragon.id, whiteDragon);
+
+  // Neutral frost dragons from map edges
+  const wildPositions = [
+    { x: Math.floor(mapW * 0.5), y: 3 },
+    { x: Math.floor(mapW * 0.5), y: mapH - 4 },
+  ];
+  for (const pos of wildPositions) {
+    const wildDragon = createUnit({
+      type: UnitType.FROST_DRAGON,
+      owner: NEUTRAL_PLAYER,
+      position: pos,
+    });
+    state.units.set(wildDragon.id, wildDragon);
+    EventBus.emit("unitSpawned", {
+      unitId: wildDragon.id,
+      buildingId: "",
+      position: { ...wildDragon.position },
+    });
   }
 }
 
@@ -1580,13 +2305,24 @@ async function _bootCampaign(
   leaderId: LeaderId,
   raceId: RaceId,
 ): Promise<void> {
+  const scenarioDef = getScenario(scenarioNum);
+  // Override map size if the scenario specifies one
+  let effectiveMapSize = mapSize;
+  if (scenarioDef?.mapSizeLabel) {
+    const override = MAP_SIZES.find((m) => m.label === scenarioDef.mapSizeLabel);
+    if (override) effectiveMapSize = override;
+  }
   await _bootGame(
     p2IsAI,
-    mapSize,
+    effectiveMapSize,
     GameMode.CAMPAIGN,
     leaderId,
     raceId,
     scenarioNum,
+    undefined,
+    undefined,
+    scenarioDef?.playerCount ?? 2,
+    scenarioDef?.alliedPlayerIds ?? [],
   );
 }
 
@@ -1620,6 +2356,15 @@ let _worldBattleRosters: {
   playerIsAttacker: boolean;
 } | null = null;
 
+/** Wave random event types. */
+type WaveEventType = "lady_of_the_lake" | "rogue_mage" | "gold_rush";
+
+/** Pending wave event to apply at next battle start. */
+interface PendingWaveEvent {
+  type: WaveEventType;
+  description: string;
+}
+
 /** Wave mode state — persists across rounds until the player loses. */
 let _waveState: {
   wave: number;
@@ -1628,7 +2373,128 @@ let _waveState: {
   totalGoldSpent: number; // running total of all gold player spent
   mapSize: MapSize;
   mapType: MapType;
+  corruption: GrailCorruptionState;
+  /** Units that survived the previous wave — carried over to the next battle. */
+  survivingUnits: Array<{ type: UnitType; count: number }>;
+  /** Unspent gold from the previous wave shop — carries over to the next round. */
+  leftoverGold: number;
+  /** Total gold the AI has been given across all waves. */
+  totalEnemyGold: number;
+  /** Gold given to the AI for the current wave. */
+  lastEnemyGold: number;
+  /** Whether random events are enabled. */
+  randomEvents: boolean;
+  /** Pending event to apply at next battle start. */
+  pendingEvent: PendingWaveEvent | null;
+  /** Extra gold bonus from Gold Rush event. */
+  bonusGold: number;
 } | null = null;
+
+// ---------------------------------------------------------------------------
+// Wave save/load (localStorage)
+// ---------------------------------------------------------------------------
+
+const WAVE_SAVE_KEY = "wave_save_v1";
+
+interface SerializedWaveState {
+  version: 1;
+  wave: number;
+  playerRaceId: string;
+  playerLeaderId: string;
+  totalGoldSpent: number;
+  mapSize: { label: string; width: number; height: number };
+  mapType: string;
+  corruption: {
+    enabled: boolean;
+    activeModifierIds: string[];
+    corruptionLevel: number;
+    nextModifierWave: number;
+    usedModifierIds: string[];
+  };
+  survivingUnits: Array<{ type: string; count: number }>;
+  leftoverGold: number;
+  totalEnemyGold: number;
+  lastEnemyGold: number;
+  randomEvents?: boolean;
+  bonusGold?: number;
+}
+
+function _saveWaveGame(): boolean {
+  if (!_waveState) return false;
+  try {
+    const ws = _waveState;
+    const data: SerializedWaveState = {
+      version: 1,
+      wave: ws.wave,
+      playerRaceId: ws.playerRaceId,
+      playerLeaderId: ws.playerLeaderId,
+      totalGoldSpent: ws.totalGoldSpent,
+      mapSize: { label: ws.mapSize.label, width: ws.mapSize.width, height: ws.mapSize.height },
+      mapType: ws.mapType,
+      corruption: {
+        enabled: ws.corruption.enabled,
+        activeModifierIds: ws.corruption.activeModifiers.map((m) => m.id),
+        corruptionLevel: ws.corruption.corruptionLevel,
+        nextModifierWave: ws.corruption.nextModifierWave,
+        usedModifierIds: [...ws.corruption.usedModifierIds],
+      },
+      survivingUnits: ws.survivingUnits.map((e) => ({ type: e.type, count: e.count })),
+      leftoverGold: ws.leftoverGold,
+      totalEnemyGold: ws.totalEnemyGold,
+      lastEnemyGold: ws.lastEnemyGold,
+      randomEvents: ws.randomEvents,
+      bonusGold: ws.bonusGold,
+    };
+    localStorage.setItem(WAVE_SAVE_KEY, JSON.stringify(data));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function _loadWaveGame(): NonNullable<typeof _waveState> | null {
+  try {
+    const raw = localStorage.getItem(WAVE_SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as SerializedWaveState;
+    if (data.version !== 1) return null;
+
+    // Rebuild corruption state from saved modifier IDs
+    const corruption = createGrailCorruptionState();
+    corruption.enabled = data.corruption.enabled;
+    corruption.corruptionLevel = data.corruption.corruptionLevel;
+    corruption.nextModifierWave = data.corruption.nextModifierWave;
+    corruption.usedModifierIds = new Set(data.corruption.usedModifierIds);
+    // Restore active modifiers by looking up IDs in ALL_CORRUPTION_MODIFIERS
+    for (const id of data.corruption.activeModifierIds) {
+      const mod = ALL_CORRUPTION_MODIFIERS.find((m) => m.id === id);
+      if (mod) corruption.activeModifiers.push(mod);
+    }
+
+    return {
+      wave: data.wave,
+      playerRaceId: data.playerRaceId as RaceId,
+      playerLeaderId: data.playerLeaderId as LeaderId,
+      totalGoldSpent: data.totalGoldSpent,
+      mapSize: data.mapSize,
+      mapType: data.mapType as MapType,
+      corruption,
+      survivingUnits: data.survivingUnits.map((e) => ({ type: e.type as UnitType, count: e.count })),
+      leftoverGold: data.leftoverGold,
+      totalEnemyGold: data.totalEnemyGold,
+      lastEnemyGold: data.lastEnemyGold,
+      randomEvents: data.randomEvents ?? false,
+      pendingEvent: null,
+      bonusGold: data.bonusGold ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function _hasWaveSave(): boolean {
+  return localStorage.getItem(WAVE_SAVE_KEY) !== null;
+}
 
 const MERLIN_COMPLIMENTS: Record<number, string> = {
   10: "Impressive, young one! Your tactical prowess grows!",
@@ -1637,6 +2503,9 @@ const MERLIN_COMPLIMENTS: Record<number, string> = {
   40: "You rival the great kings of old!",
 };
 const MERLIN_COMPLIMENT_DEFAULT = "Truly, you are beyond mortal measure!";
+
+/** Gold spent in the most recent wave shop round (set before each battle). */
+let _waveLastRoundGold = 0;
 
 /** Generate a random enemy roster worth a given gold budget. */
 function _generateWaveEnemyRoster(playerRaceId: RaceId, goldBudget: number, wave: number): UnitRoster {
@@ -1682,21 +2551,121 @@ function _generateWaveEnemyRoster(playerRaceId: RaceId, goldBudget: number, wave
   return roster;
 }
 
+/** Generate a wave hint (enemy race + main unit types) for the next wave. */
+function _generateWaveHint(playerRaceId: RaceId, wave: number): { raceName: string; mainUnits: string[] } {
+  const races = RACE_DEFINITIONS.filter((r) => r.implemented && r.id !== "op" && r.id !== playerRaceId);
+  const enemyRace = races[Math.floor(Math.random() * races.length)];
+  const enemyRaceId = enemyRace?.id ?? "man";
+  const raceName = enemyRace?.name ?? "Human";
+
+  const maxTier = wave <= 5 ? 3 : wave <= 10 ? 5 : 7;
+  const available = getUnitsForRace(enemyRaceId, maxTier);
+
+  // Also add faction units
+  const race = getRace(enemyRaceId);
+  if (race) {
+    for (const fut of race.factionUnits) {
+      if (fut && UNIT_DEFINITIONS[fut] && !available.includes(fut)) {
+        const tier = UNIT_DEFINITIONS[fut].tier ?? 1;
+        if (tier <= maxTier) available.push(fut);
+      }
+    }
+  }
+
+  // Pick a few representative unit names
+  const unitNames: string[] = [];
+  const seen = new Set<string>();
+  const shuffled = [...available].sort(() => Math.random() - 0.5);
+  for (const ut of shuffled) {
+    const name = ut.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    if (!seen.has(name)) {
+      seen.add(name);
+      unitNames.push(name);
+    }
+    if (unitNames.length >= 4) break;
+  }
+
+  return { raceName, mainUnits: unitNames };
+}
+
+/** Wave event definitions. */
+const WAVE_EVENTS: Array<{
+  type: WaveEventType;
+  weight: number;
+  getMessage: (wave: number) => string;
+}> = [
+  {
+    type: "lady_of_the_lake",
+    weight: 1,
+    getMessage: (wave) =>
+      `The Lady of the Lake has sent ${wave} sacred priestess${wave > 1 ? "es" : ""} to aid King Arthur in his noble quest! "Go forth, servants of Avalon, and mend the wounds of the righteous!"`,
+  },
+  {
+    type: "rogue_mage",
+    weight: 1,
+    getMessage: () =>
+      `A rogue mage, corrupted by Morgan le Fay's dark enchantments, has appeared on the battlefield! Beware — this sorcerer answers to no lord and attacks all who draw near.`,
+  },
+  {
+    type: "gold_rush",
+    weight: 1,
+    getMessage: () =>
+      `The treasuries of Camelot overflow! A caravan from the mines of Cornwall has arrived bearing 200 gold pieces. Fortune smiles upon the realm!`,
+  },
+];
+
+/** Roll a random wave event. Returns null if no event triggers. */
+function _rollWaveEvent(wave: number): PendingWaveEvent | null {
+  if (Math.random() > 0.3) return null; // 30% chance
+  const totalWeight = WAVE_EVENTS.reduce((sum, e) => sum + e.weight, 0);
+  let roll = Math.random() * totalWeight;
+  for (const event of WAVE_EVENTS) {
+    roll -= event.weight;
+    if (roll <= 0) {
+      return { type: event.type, description: event.getMessage(wave) };
+    }
+  }
+  return null;
+}
+
 /** Start the next wave's shop screen after a wave victory. */
 function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: number): void {
   unitShopScreen.onDone = async (playerRoster) => {
     unitShopScreen.hide();
 
-    // Track gold spent
-    let spent = 0;
+    // playerRoster already includes survivors (pre-filled in shop counts).
+    // Calculate gold spent: total cost of roster minus cost of survivors.
+    let totalRosterCost = 0;
     for (const entry of playerRoster) {
       const uDef = UNIT_DEFINITIONS[entry.type];
-      if (uDef) spent += uDef.cost * entry.count;
+      if (uDef) totalRosterCost += uDef.cost * entry.count;
     }
+    let survivorCost = 0;
+    for (const entry of ws.survivingUnits) {
+      const uDef = UNIT_DEFINITIONS[entry.type];
+      if (uDef) survivorCost += uDef.cost * entry.count;
+    }
+    const spent = totalRosterCost - survivorCost;
     ws.totalGoldSpent += spent;
+    ws.leftoverGold = extraGold - spent;
+    _waveLastRoundGold = spent;
+
+    // Check for new corruption modifier
+    if (ws.corruption.enabled) {
+      const newMod = selectModifier(ws.corruption, ws.wave);
+      if (newMod) {
+        EventBus.emit("corruptionModifierActivated", {
+          modifierName: newMod.name,
+          description: newMod.description,
+          corruptionLevel: ws.corruption.corruptionLevel,
+        });
+      }
+    }
 
     // Generate enemy wave: enemies worth totalGoldSpent * 1.3
     const enemyBudget = Math.round(ws.totalGoldSpent * 1.3);
+    ws.lastEnemyGold = enemyBudget;
+    ws.totalEnemyGold += enemyBudget;
     const enemyRoster = _generateWaveEnemyRoster(ws.playerRaceId, enemyBudget, ws.wave);
 
     _worldBattleRosters = {
@@ -1719,12 +2688,48 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
       [],
     );
   };
-  unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave} — RECRUIT ARMY`);
+  const corruptionSuffix = ws.corruption.enabled && ws.corruption.corruptionLevel > 0
+    ? ` [CORRUPTION ${ws.corruption.corruptionLevel}]`
+    : ws.corruption.enabled ? " [GRAIL GREED]" : "";
+  unitShopScreen.setCorruptionModifiers(ws.corruption.activeModifiers);
+  unitShopScreen.setSurvivingUnits(ws.survivingUnits);
+  unitShopScreen.onSave = () => { _saveWaveGame(); };
+  unitShopScreen.onLoad = () => {
+    const loaded = _loadWaveGame();
+    if (!loaded) return;
+    _waveState = loaded;
+    unitShopScreen.hide();
+    const loadGold = 1000 + (loaded.leftoverGold ?? 0);
+    _startNextWaveShop(loaded, loadGold);
+  };
+  unitShopScreen.onBackToMenu = () => {
+    unitShopScreen.hide();
+    _waveState = null;
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  unitShopScreen.setWaveHint(_generateWaveHint(ws.playerRaceId, ws.wave));
+  unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave}${corruptionSuffix} — RECRUIT ARMY`);
 }
 
 /** Show a brief Merlin compliment overlay, then call the callback. */
-function _showMerlinWaveCompliment(message: string, onDone: () => void): void {
-  // Create a simple overlay with Merlin's message
+/** Speaker colour palette for the dialog. */
+const SPEAKER_COLORS: Record<string, { label: number; border: number; text: number }> = {
+  merlin:    { label: 0xbb88ff, border: 0x9966ff, text: 0xddccff },
+  arthur:    { label: 0xffcc44, border: 0xddaa22, text: 0xffeedd },
+  gawain:    { label: 0xff8844, border: 0xdd6622, text: 0xffddcc },
+  guinevere: { label: 0xff66aa, border: 0xdd4488, text: 0xffddee },
+  lancelot:  { label: 0x44aaff, border: 0x2288dd, text: 0xddeeff },
+  pellinore: { label: 0x88cc44, border: 0x66aa22, text: 0xeeffdd },
+  nimue:     { label: 0x44ddcc, border: 0x22bbaa, text: 0xddfffe },
+  mordred:   { label: 0xcc4444, border: 0xaa2222, text: 0xffdddd },
+  morgan:    { label: 0xaa66cc, border: 0x8844aa, text: 0xeeddff },
+};
+
+function _showMerlinWaveCompliment(
+  message: string,
+  onDone: () => void,
+  secondSpeaker?: { name: string; id: string },
+): void {
   const overlay = new Container();
   const sw = viewManager.screenWidth;
   const sh = viewManager.screenHeight;
@@ -1734,38 +2739,86 @@ function _showMerlinWaveCompliment(message: string, onDone: () => void): void {
     .fill({ color: 0x000000, alpha: 0.7 });
   overlay.addChild(bg);
 
-  const CW = 440;
+  const hasDual = !!secondSpeaker;
+  const CW = hasDual ? 500 : 440;
   const CH = 180;
   const card = new Container();
   card.position.set(Math.floor((sw - CW) / 2), Math.floor((sh - CH) / 2));
+
+  // Pick colours — blend both speakers' borders when dual
+  const merlinColors = SPEAKER_COLORS.merlin;
+  const secondColors = secondSpeaker ? (SPEAKER_COLORS[secondSpeaker.id] ?? merlinColors) : merlinColors;
+  const borderColor = hasDual ? secondColors.border : merlinColors.border;
 
   const cardBg = new Graphics()
     .roundRect(0, 0, CW, CH, 10)
     .fill({ color: 0x0a0a18, alpha: 0.96 })
     .roundRect(0, 0, CW, CH, 10)
-    .stroke({ color: 0x9966ff, alpha: 0.8, width: 2 });
+    .stroke({ color: borderColor, alpha: 0.8, width: 2 });
   card.addChild(cardBg);
 
-  const merlinLabel = new Text({
-    text: "MERLIN SPEAKS:",
-    style: new TextStyle({
-      fontFamily: "monospace",
-      fontSize: 14,
-      fill: 0xbb88ff,
-      fontWeight: "bold",
-      letterSpacing: 2,
-    }),
-  });
-  merlinLabel.anchor.set(0.5, 0);
-  merlinLabel.position.set(CW / 2, 20);
-  card.addChild(merlinLabel);
+  if (hasDual) {
+    // --- Dual speaker layout: leader on left, Merlin on right ---
+    const leaderLabel = new Text({
+      text: secondSpeaker!.name.toUpperCase(),
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 12,
+        fill: secondColors.label,
+        fontWeight: "bold",
+        letterSpacing: 1,
+      }),
+    });
+    leaderLabel.anchor.set(0, 0);
+    leaderLabel.position.set(20, 14);
+    card.addChild(leaderLabel);
+
+    const merlinLabel = new Text({
+      text: "MERLIN",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 12,
+        fill: merlinColors.label,
+        fontWeight: "bold",
+        letterSpacing: 1,
+      }),
+    });
+    merlinLabel.anchor.set(1, 0);
+    merlinLabel.position.set(CW - 20, 14);
+    card.addChild(merlinLabel);
+
+    // Divider accent line between the two names
+    const divider = new Graphics()
+      .moveTo(CW / 2, 12)
+      .lineTo(CW / 2, 28)
+      .stroke({ color: 0x555566, alpha: 0.5, width: 1 });
+    card.addChild(divider);
+  } else {
+    // --- Single speaker: Merlin only ---
+    const merlinLabel = new Text({
+      text: "MERLIN SPEAKS:",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 14,
+        fill: merlinColors.label,
+        fontWeight: "bold",
+        letterSpacing: 2,
+      }),
+    });
+    merlinLabel.anchor.set(0.5, 0);
+    merlinLabel.position.set(CW / 2, 20);
+    card.addChild(merlinLabel);
+  }
+
+  const textTop = hasDual ? 36 : 52;
+  const textColor = hasDual ? secondColors.text : merlinColors.text;
 
   const msgText = new Text({
     text: `"${message}"`,
     style: new TextStyle({
       fontFamily: "monospace",
       fontSize: 13,
-      fill: 0xddccff,
+      fill: textColor,
       letterSpacing: 1,
       wordWrap: true,
       wordWrapWidth: CW - 40,
@@ -1773,7 +2826,7 @@ function _showMerlinWaveCompliment(message: string, onDone: () => void): void {
     }),
   });
   msgText.anchor.set(0.5, 0);
-  msgText.position.set(CW / 2, 52);
+  msgText.position.set(CW / 2, textTop);
   card.addChild(msgText);
 
   const BW = CW - 80;
@@ -2492,6 +3545,9 @@ async function _bootWorldGame(
     }
   }
 
+  // Apply Arthurian lore affinities — lore allies start at peace
+  applyInitialAffinities(state);
+
   // Configure national mage abilities from MagicScreen selections
   _configureNationalMageAbilities();
 
@@ -2709,6 +3765,49 @@ async function _bootWorldGame(
   }
 
   // ---------------------------------------------------------------------------
+  // Mordred's Army — 8 hexes from Avalon, attacks p1 on proximity
+  // ---------------------------------------------------------------------------
+  {
+    const center = { q: 0, r: 0 };
+    const ring8 = hexSpiral(center, 8).filter((h) => hexDistance(center, h) === 8);
+    const shuffledRing8 = ring8.sort(() => Math.random() - 0.5);
+    let mordredHex: { q: number; r: number } | null = null;
+
+    for (const candidate of shuffledRing8) {
+      const t = grid.getTile(candidate.q, candidate.r);
+      if (!t) continue;
+      if (t.cityId || t.armyId || t.campId || t.owner) continue;
+      const terrain = TERRAIN_DEFINITIONS[t.terrain];
+      if (!isFinite(terrain.movementCost)) continue;
+      // Not too close to any player start
+      let tooClose = false;
+      for (const sp of startPositions) {
+        if (hexDistance(candidate, sp) < 4) { tooClose = true; break; }
+      }
+      if (tooClose) continue;
+      mordredHex = candidate;
+      break;
+    }
+
+    if (mordredHex) {
+      const mordredArmyId = nextId(state, "army");
+      const mordredUnits: ArmyUnit[] = [
+        { unitType: UnitType.KNIGHT, count: 5, hpPerUnit: 180 },
+        { unitType: UnitType.SWORDSMAN, count: 8, hpPerUnit: 100 },
+        { unitType: UnitType.CROSSBOWMAN, count: 4, hpPerUnit: 75 },
+        { unitType: UnitType.STORM_MAGE, count: 2, hpPerUnit: 60 },
+      ];
+      const mordredArmy = createWorldArmy(mordredArmyId, "morgaine", mordredHex, mordredUnits, false);
+      mordredArmy.movementPoints = 0; // stationary until triggered
+      state.armies.set(mordredArmyId, mordredArmy);
+      const mordredTile = grid.getTile(mordredHex.q, mordredHex.r);
+      if (mordredTile) mordredTile.armyId = mordredArmyId;
+      // Store the army ID for the proximity trigger
+      (state as any)._mordredArmyId = mordredArmyId;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Sword in the Stone — grassland island 4 hexes from Avalon, guarded by angel
   // ---------------------------------------------------------------------------
   {
@@ -2839,6 +3938,28 @@ async function _bootWorldGame(
 
     state.fakeSwordHexes = placedFakeSwords;
   }
+
+  // ---------------------------------------------------------------------------
+  // Leader-specific quest encounter — unique quest tile for the player's leader
+  // ---------------------------------------------------------------------------
+  const leaderEncounterState = createLeaderEncounterState();
+  {
+    const p1 = state.players.get("p1");
+    if (p1?.leaderId && p1.leaderId !== "arthur") {
+      placeLeaderEncounter(state, leaderEncounterState, p1.leaderId, startPositions);
+    }
+  }
+
+  // Store encounter state on the world state for later access
+  (state as any)._leaderEncounterState = leaderEncounterState;
+
+  // Holy Grail quest state — chapel spawns later during gameplay
+  const grailQuestState = createGrailQuestState();
+  (state as any)._grailQuestState = grailQuestState;
+
+  // Camlann state — Arthur vs Mordred final battle
+  const camlannState = createCamlannState();
+  (state as any)._camlannState = camlannState;
 
   // Re-clear water/mountains around player starts (Sword Island may have placed water on them)
   for (const pos of startPositions) {
@@ -3137,6 +4258,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     if (armyPanel.isVisible) {
       if (sx <= 260 && sy >= 64) return true;
     }
+    if (worldIntroDialog.isVisible) return true;
     if (researchScreen.isVisible) return true;
     if (worldVictoryScreen.isVisible) return true;
     if (worldScoreScreen.isVisible) return true;
@@ -3219,6 +4341,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
 
   // Initialize advisor dialog
   advisorDialog.init(viewManager);
+  worldIntroDialog.init(viewManager);
   turnTransition.init(viewManager);
 
   // Initialize army view
@@ -3524,13 +4647,137 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     }
   };
 
+  // Leader introduction when player first encounters an enemy player's units
+  const _checkLeaderFirstEncounter = async (playerArmy: WorldArmy): Promise<void> => {
+    for (const army of state.armies.values()) {
+      if (army.owner === "p1" || army.owner === playerArmy.owner) continue;
+      if (army.owner === "morgaine") continue; // Morgaine has her own dialog
+      if (hexDistance(playerArmy.position, army.position) > 2) continue;
+
+      const enemyPlayer = state.players.get(army.owner);
+      if (!enemyPlayer?.leaderId) continue;
+
+      // showLeaderIntroduction handles deduplication internally
+      await showLeaderIntroduction(enemyPlayer.leaderId);
+      return; // Only one intro per movement step
+    }
+  };
+
+  // Mordred encounter — triggers when p1 comes within 2 tiles of Mordred's army
+  let _mordredTriggered = false;
+
+  const _showMordredDialog = (): Promise<void> => {
+    return new Promise((resolve) => {
+      // Merlin warns first
+      const backdrop1 = document.createElement("div");
+      backdrop1.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card1 = document.createElement("div");
+      card1.style.cssText = "background:#1a1a2e;border:2px solid #aa88dd;border-radius:12px;padding:24px;max-width:480px;text-align:center;box-shadow:0 0 30px rgba(136,68,204,0.4);";
+
+      const img1 = document.createElement("img");
+      img1.src = merlinImgUrl;
+      img1.style.cssText = "width:100px;height:100px;border-radius:50%;border:2px solid #aa88dd;margin-bottom:12px;image-rendering:pixelated;object-fit:cover;";
+      card1.appendChild(img1);
+
+      const title1 = document.createElement("div");
+      title1.textContent = "MERLIN";
+      title1.style.cssText = "color:#aa88dd;font-family:monospace;font-size:18px;font-weight:bold;margin-bottom:4px;";
+      card1.appendChild(title1);
+
+      const sub1 = document.createElement("div");
+      sub1.textContent = "Archmage of Avalon";
+      sub1.style.cssText = "color:#aaaacc;font-family:monospace;font-size:12px;font-style:italic;margin-bottom:12px;";
+      card1.appendChild(sub1);
+
+      const text1 = document.createElement("div");
+      text1.textContent = "\u201CDark tidings, my liege! Mordred, Arthur\u2019s treacherous son, commands a powerful army nearby. He is cunning, ruthless, and fights without honour. His warriors will attack on sight \u2014 prepare yourself, for there will be no parley with the Usurper.\u201D";
+      text1.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;padding:0 8px;";
+      card1.appendChild(text1);
+
+      const btn1 = document.createElement("button");
+      btn1.textContent = "Very well.";
+      btn1.style.cssText = "background:#222244;color:white;border:1px solid #aa88dd;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;";
+      btn1.onmouseenter = () => { btn1.style.background = "#334466"; };
+      btn1.onmouseleave = () => { btn1.style.background = "#222244"; };
+      btn1.onclick = () => {
+        backdrop1.remove();
+        // Now Mordred speaks
+        _showMordredSpeech().then(resolve);
+      };
+      card1.appendChild(btn1);
+      backdrop1.appendChild(card1);
+      document.body.appendChild(backdrop1);
+    });
+  };
+
+  const _showMordredSpeech = (): Promise<void> => {
+    return new Promise((resolve) => {
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card = document.createElement("div");
+      card.style.cssText = "background:#1a1a2e;border:2px solid #aa4444;border-radius:12px;padding:24px;max-width:480px;text-align:center;box-shadow:0 0 30px rgba(170,68,68,0.5);";
+
+      const img = document.createElement("img");
+      img.src = LEADER_IMAGES["mordred"] ?? "";
+      img.style.cssText = "width:100px;height:100px;border-radius:50%;border:2px solid #aa4444;margin-bottom:12px;image-rendering:pixelated;object-fit:cover;";
+      card.appendChild(img);
+
+      const title = document.createElement("div");
+      title.textContent = "MORDRED";
+      title.style.cssText = "color:#cc4444;font-family:monospace;font-size:18px;font-weight:bold;margin-bottom:4px;";
+      card.appendChild(title);
+
+      const sub = document.createElement("div");
+      sub.textContent = "The Usurper";
+      sub.style.cssText = "color:#aaaacc;font-family:monospace;font-size:12px;font-style:italic;margin-bottom:12px;";
+      card.appendChild(sub);
+
+      const text = document.createElement("div");
+      text.textContent = "\u201CSo, another pretender dares to march near my domain. I am Mordred, and I will have what is rightfully mine \u2014 this land, this throne, everything. My father Arthur denied me my birthright, but I will not be denied again. Your armies will break against mine like waves against stone. Surrender now, or I shall carve your name into a list that grows longer by the day.\u201D";
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;padding:0 8px;";
+      card.appendChild(text);
+
+      const btn = document.createElement("button");
+      btn.textContent = "We shall see about that.";
+      btn.style.cssText = "background:#222244;color:white;border:1px solid #aa4444;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;";
+      btn.onmouseenter = () => { btn.style.background = "#442222"; };
+      btn.onmouseleave = () => { btn.style.background = "#222244"; };
+      btn.onclick = () => { backdrop.remove(); resolve(); };
+      card.appendChild(btn);
+
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
+  const _checkMordredProximity = async (playerArmy: WorldArmy): Promise<void> => {
+    if (_mordredTriggered) return;
+    const mordredArmyId = (state as any)._mordredArmyId as string | undefined;
+    if (!mordredArmyId) return;
+    const mordredArmy = state.armies.get(mordredArmyId);
+    if (!mordredArmy) return;
+
+    if (hexDistance(playerArmy.position, mordredArmy.position) <= 2) {
+      _mordredTriggered = true;
+      await _showMordredDialog();
+
+      // Mordred attacks — give him movement points and move toward the player
+      mordredArmy.movementPoints = 6;
+      moveArmy(mordredArmy, playerArmy.position, state);
+    }
+  };
+
   // Merlin warning when player gets near a Morgaine army
   const _warnedMorgaineArmies = new Set<string>();
 
   /** Show Merlin warning dialog if a player army is within 1 hex of a Morgaine army. */
   const _checkMorgaineProximity = (playerArmy: WorldArmy): Promise<void> => {
+    const mordredId = (state as any)._mordredArmyId as string | undefined;
     for (const army of state.armies.values()) {
       if (army.owner !== "morgaine" || army.isGarrison) continue;
+      if (army.id === mordredId) continue; // Mordred has his own dialog
       if (_warnedMorgaineArmies.has(army.id)) continue;
       if (hexDistance(playerArmy.position, army.position) <= 1) {
         _warnedMorgaineArmies.add(army.id);
@@ -3749,6 +4996,195 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     });
   };
 
+  // Holy Grail quest proximity check
+  const _grailQState = (state as any)._grailQuestState as ReturnType<typeof createGrailQuestState> | undefined;
+  const _checkGrailProximity = async (playerArmy: WorldArmy): Promise<void> => {
+    if (!_grailQState || _grailQState.claimed) return;
+    if (playerArmy.owner !== "p1") return;
+
+    const triggered = checkGrailProximity(_grailQState, playerArmy, state);
+    if (!triggered) return;
+
+    const player = state.players.get("p1");
+    if (!player) return;
+
+    const grailKnight = isGrailKnight(player.leaderId);
+    const leaderName = player.leaderId ?? "your leader";
+
+    await new Promise<void>((resolve) => {
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card = document.createElement("div");
+      card.style.cssText = "background:#1a1a2e;border:2px solid #ffeeaa;border-radius:12px;padding:24px;max-width:450px;text-align:center;box-shadow:0 0 40px rgba(255,238,170,0.4);";
+
+      const title = document.createElement("div");
+      title.textContent = "The Holy Grail!";
+      title.style.cssText = "color:#ffeeaa;font-family:monospace;font-size:18px;font-weight:bold;margin-bottom:12px;";
+      card.appendChild(title);
+
+      const text = document.createElement("div");
+      let desc = "The cursed knights have fallen. Within the chapel, the Grail floats in a column of golden light.\n\n";
+      if (grailKnight) {
+        desc += `<b style="color:#ffd700">${leaderName}</b> is a true Grail Knight! The sacred chalice resonates with your purity of purpose.\n\n`;
+      }
+      desc += "Choose your blessing:";
+      text.innerHTML = desc.replace(/\n/g, "<br>");
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;";
+      card.appendChild(text);
+
+      const btnContainer = document.createElement("div");
+      btnContainer.style.cssText = "display:flex;gap:12px;justify-content:center;";
+
+      const makeBtn = (label: string, sublabel: string, choice: GrailChoice, color: string) => {
+        const btn = document.createElement("button");
+        btn.innerHTML = `<b>${label}</b><br><span style="font-size:10px;opacity:0.8">${sublabel}</span>`;
+        btn.style.cssText = `background:${color};color:white;border:none;border-radius:8px;padding:10px 16px;font-family:monospace;font-size:12px;cursor:pointer;min-width:140px;`;
+        btn.onmouseenter = () => { btn.style.opacity = "0.8"; };
+        btn.onmouseleave = () => { btn.style.opacity = "1"; };
+        btn.onclick = () => {
+          backdrop.remove();
+          applyGrailReward(state, _grailQState!, player, choice);
+          const rewardText = choice === "heal_wasteland"
+            ? "The Grail heals the land! Desert tiles around your capital bloom into grassland. +50 mana."
+            : "Eternal Blessing! The Holy Grail joins your armory. +200 gold.";
+          worldEventLog.addEvent(`The Holy Grail: ${rewardText}`, 0xffeeaa);
+          worldNotification.show("The Holy Grail", rewardText, 0xffeeaa);
+          resolve();
+        };
+        return btn;
+      };
+
+      btnContainer.appendChild(makeBtn(
+        "Heal the Wasteland",
+        "Terraform dead tiles + 50 mana",
+        "heal_wasteland",
+        "#44aa44",
+      ));
+      btnContainer.appendChild(makeBtn(
+        "Eternal Blessing",
+        "Holy Grail item + 200 gold",
+        "eternal_blessing",
+        "#cc8844",
+      ));
+
+      card.appendChild(btnContainer);
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
+  // Leader-specific encounter proximity check
+  const _leaderEncState = (state as any)._leaderEncounterState as LeaderEncounterState | undefined;
+  const _checkLeaderEncounterProximity = async (playerArmy: WorldArmy): Promise<void> => {
+    if (!_leaderEncState) return;
+    if (playerArmy.owner !== "p1") return;
+    const player = state.players.get("p1");
+    if (!player) return;
+
+    const encounter = checkLeaderEncounter(_leaderEncState, playerArmy, player);
+    if (!encounter) return;
+
+    // Check if guardians have been defeated (if the quest hex has no army on it)
+    const questHex = _leaderEncState.questHexes.get(player.leaderId!);
+    if (!questHex) return;
+    const questTile = state.grid.getTile(questHex.q, questHex.r);
+    if (questTile?.armyId && encounter.guardians) {
+      // Guardians still present — player must defeat them first
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+
+      const card = document.createElement("div");
+      const borderColor = `#${encounter.color.toString(16).padStart(6, "0")}`;
+      card.style.cssText = `background:#1a1a2e;border:2px solid ${borderColor};border-radius:12px;padding:24px;max-width:420px;text-align:center;box-shadow:0 0 30px ${borderColor}66;`;
+
+      const title = document.createElement("div");
+      title.textContent = encounter.dialogTitle;
+      title.style.cssText = `color:${borderColor};font-family:monospace;font-size:16px;font-weight:bold;margin-bottom:12px;`;
+      card.appendChild(title);
+
+      const text = document.createElement("div");
+      text.innerHTML = encounter.dialogText.replace(/\n/g, "<br>");
+      text.style.cssText = "color:#ccccdd;font-family:monospace;font-size:12px;line-height:1.6;margin-bottom:16px;text-align:left;";
+      card.appendChild(text);
+
+      // Show rewards
+      const rewards: string[] = [];
+      if (encounter.itemReward) rewards.push(`<b style="color:#ffdd44">${encounter.itemReward.replace(/_/g, " ")}</b> obtained!`);
+      if (encounter.goldReward > 0) rewards.push(`<b style="color:#ffcc44">+${encounter.goldReward} gold</b>`);
+      if (encounter.manaReward > 0) rewards.push(`<b style="color:#8888ff">+${encounter.manaReward} mana</b>`);
+      if (encounter.foodReward > 0) rewards.push(`<b style="color:#44cc44">+${encounter.foodReward} food</b>`);
+      if (rewards.length > 0) {
+        const rewardDiv = document.createElement("div");
+        rewardDiv.innerHTML = rewards.join(" &nbsp; ");
+        rewardDiv.style.cssText = "color:#ccccdd;font-family:monospace;font-size:11px;margin-bottom:16px;padding:8px;background:#222233;border-radius:6px;";
+        card.appendChild(rewardDiv);
+      }
+
+      const btn = document.createElement("button");
+      btn.textContent = "Claim Reward";
+      btn.style.cssText = `background:${borderColor};color:white;border:none;border-radius:6px;padding:8px 24px;font-family:monospace;font-size:13px;cursor:pointer;`;
+      btn.onmouseenter = () => { btn.style.opacity = "0.8"; };
+      btn.onmouseleave = () => { btn.style.opacity = "1"; };
+      btn.onclick = () => {
+        backdrop.remove();
+        completeLeaderEncounter(_leaderEncState, player, encounter);
+        worldEventLog.addEvent(`${encounter.title}: ${encounter.description}`, encounter.color);
+        worldNotification.show(encounter.title, encounter.description, encounter.color);
+        resolve();
+      };
+      card.appendChild(btn);
+
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+    });
+  };
+
+  // Avalon / Morgaine proximity dialogs — triggered when a player unit first approaches Avalon
+  let _avalonDialogShown = false;
+  let _morgaineDialogShown = false;
+
+  /** Find the hex position of Morgaine's capital (Avalon). */
+  const _getAvalonHex = (): { q: number; r: number } | null => {
+    for (const city of state.cities.values()) {
+      if (city.owner === "morgaine" && city.isCapital) return city.position;
+    }
+    return null;
+  };
+
+  /** Show Avalon dialog at 2 tiles range, Morgaine dialog at 1 tile range. */
+  const _checkAvalonProximity = async (playerArmy: WorldArmy): Promise<void> => {
+    if (playerArmy.owner !== "p1") return;
+    if (_avalonDialogShown && _morgaineDialogShown) return;
+
+    const avalonHex = _getAvalonHex();
+    if (!avalonHex) return;
+
+    const dist = hexDistance(playerArmy.position, avalonHex);
+
+    // Avalon textbox at 2 tiles range
+    if (!_avalonDialogShown && dist <= 2) {
+      _avalonDialogShown = true;
+      await new Promise<void>((resolve) => {
+        worldIntroDialog.onDone = resolve;
+        worldIntroDialog.show([AVALON_PROXIMITY_PAGE]);
+      });
+    }
+
+    // Morgaine textbox at 1 tile range
+    if (!_morgaineDialogShown && dist <= 1) {
+      _morgaineDialogShown = true;
+      await new Promise<void>((resolve) => {
+        worldIntroDialog.onDone = resolve;
+        worldIntroDialog.show([MORGAINE_PROXIMITY_PAGE]);
+      });
+    }
+  };
+
   // Resolve all pending battles — headless (for AI battles)
   const resolveWorldBattlesHeadless = () => {
     for (const battle of state.pendingBattles) {
@@ -3813,10 +5249,18 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       const defender = battle.defenderArmyId ? state.armies.get(battle.defenderArmyId) : null;
       if (!attacker) continue;
 
+      // Check for Camlann special battle
+      const _cState = (state as any)._camlannState as ReturnType<typeof createCamlannState> | undefined;
+      const defOwner = defender?.owner ?? "garrison";
+      if (_cState && isCamlannBattle(state, _cState, attacker.owner, defOwner)) {
+        worldEventLog.addEvent("THE BATTLE OF CAMLANN! Arthur and Mordred clash in their final, fateful battle!", 0xff4444);
+        worldNotification.show("The Battle of Camlann", "Father and son meet on the field of destiny. Only one shall prevail!", 0xff4444);
+      }
+
       const battleLabel = battle.type === "siege"
         ? `Siege at (${battle.hex.q},${battle.hex.r})`
         : `Battle at (${battle.hex.q},${battle.hex.r})`;
-      worldEventLog.addEvent(`${battleLabel}: ${attacker.owner} vs ${defender?.owner ?? "garrison"}`, 0xff6644);
+      worldEventLog.addEvent(`${battleLabel}: ${attacker.owner} vs ${defOwner}`, 0xff6644);
 
       let battleState: GameState;
       if (battle.type === "siege" && battle.defenderCityId) {
@@ -4124,6 +5568,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
     while ((state.phase as WorldPhase) === WorldPhase.AI_TURN && aiTurnGuard < 50) {
       aiTurnGuard++;
       const aiPid = state.playerOrder[state.currentPlayerIndex];
+      const aiPlayer = state.players.get(aiPid);
+      if (aiPlayer) processAIDiplomacy(state, aiPlayer);
       executeAITurn(state, aiPid);
 
       const aiBattles = detectCollisions(state);
@@ -4177,6 +5623,32 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       for (const evt of events) {
         worldEventLog.addEvent(`${evt.title}: ${evt.description}`, evt.color);
         worldNotification.show(evt.title, evt.description, evt.color);
+      }
+
+      // Display Morgaine escalation events from the turn cycle
+      for (const evt of lastMorgaineEvents) {
+        worldEventLog.addEvent(`${evt.title}: ${evt.description}`, evt.color);
+        worldNotification.show(evt.title, evt.description, evt.color);
+      }
+
+      // Try to spawn the Grail Chapel (after turn 15, 20% chance per turn)
+      const _grailState = (state as any)._grailQuestState as ReturnType<typeof createGrailQuestState> | undefined;
+      if (_grailState && !_grailState.chapelHex) {
+        const grailEvt = trySpawnGrailChapel(state, _grailState);
+        if (grailEvt) {
+          worldEventLog.addEvent(`${grailEvt.title}: ${grailEvt.description}`, grailEvt.color);
+          worldNotification.show(grailEvt.title, grailEvt.description, grailEvt.color);
+        }
+      }
+
+      // Check for Camlann — Arthur vs Mordred war declaration (after turn 40)
+      const _camlannSt = (state as any)._camlannState as ReturnType<typeof createCamlannState> | undefined;
+      if (_camlannSt) {
+        const camlannEvt = processCamlann(state, _camlannSt);
+        if (camlannEvt) {
+          worldEventLog.addEvent(`${camlannEvt.title}: ${camlannEvt.description}`, camlannEvt.color);
+          worldNotification.show(camlannEvt.title, camlannEvt.description, camlannEvt.color);
+        }
       }
     }
 
@@ -4293,8 +5765,13 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
             }
           }
 
+          await _checkLeaderFirstEncounter(army);
+          await _checkMordredProximity(army);
           await _checkMorgaineProximity(army);
           await _checkSwordProximity(army);
+          await _checkLeaderEncounterProximity(army);
+          await _checkGrailProximity(army);
+          await _checkAvalonProximity(army);
         }
       }
       _moveModeArmyId = null;
@@ -4399,8 +5876,13 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
               }
             }
 
+            await _checkLeaderFirstEncounter(army);
+            await _checkMordredProximity(army);
             await _checkMorgaineProximity(army);
             await _checkSwordProximity(army);
+            await _checkLeaderEncounterProximity(army);
+            await _checkGrailProximity(army);
+            await _checkAvalonProximity(army);
           }
           _selectedArmyId = null;
           _selectedArmyReachable = new Set();
@@ -4450,6 +5932,7 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
       if (raceDetailScreen.container.visible) { raceDetailScreen.hide(); return; }
       if (magicScreen.container.visible) { magicScreen.hide(); return; }
       if (buildingWikiScreen.container.visible) { buildingWikiScreen.hide(); return; }
+      if (worldIntroDialog.isVisible) { worldIntroDialog.hide(); return; }
       if (advisorDialog.isVisible) { advisorDialog.hide(); return; }
       if (cityPreviewScreen.isVisible) { cityPreviewScreen.hide(); return; }
       if (worldWikiScreen.isVisible) { worldWikiScreen.hide(); return; }
@@ -4567,8 +6050,13 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
           }
         }
 
+        await _checkLeaderFirstEncounter(army);
+        await _checkMordredProximity(army);
         await _checkMorgaineProximity(army);
         await _checkSwordProximity(army);
+        await _checkLeaderEncounterProximity(army);
+        await _checkGrailProximity(army);
+        await _checkAvalonProximity(army);
 
         // Re-select army if it still has movement points
         if (army.movementPoints > 0 && state.phase === WorldPhase.PLAYER_TURN) {
@@ -4615,6 +6103,8 @@ function _initWorldViews(state: WorldState, skipBeginTurn = false): void {
   // Start first turn (skip on load — state is already mid-turn)
   if (!skipBeginTurn) {
     beginTurn(state);
+    // Show world intro story dialog for new games
+    worldIntroDialog.show();
   }
   refreshWorld();
 }
@@ -4637,6 +6127,10 @@ async function _bootGame(
 ): Promise<void> {
   // Clear all EventBus listeners from previous game/wave to prevent accumulation
   EventBus.clear();
+
+  // Clear old world layers (units, buildings, background, fx, groundfx) so
+  // sprites from a previous wave don't linger on the new map.
+  viewManager.clearWorld();
 
   // Switch to in-game music
   audioManager.playGameMusic();
@@ -4711,6 +6205,50 @@ async function _bootGame(
       const midY = Math.floor(mapSize.height / 2);
       _spawnRoster(state, _worldBattleRosters.p1Roster, "p1", Math.floor(mapSize.width * 0.2), midY, mapSize.height);
       _spawnRoster(state, _worldBattleRosters.p2Roster, "p2", Math.floor(mapSize.width * 0.8), midY, mapSize.height);
+      // Apply Grail Greed Corruption modifiers to the battle
+      if (_waveState?.corruption.enabled) {
+        applyCorruptionModifiers(state, _waveState.corruption);
+      }
+      // Apply pending wave events (spawn units)
+      if (_waveState?.pendingEvent) {
+        const ev = _waveState.pendingEvent;
+        const midX = Math.floor(mapSize.width / 2);
+        const midY = Math.floor(mapSize.height / 2);
+        if (ev.type === "lady_of_the_lake") {
+          // Spawn 1 cleric per wave number for the player
+          const clericCount = _waveState.wave;
+          for (let i = 0; i < clericCount; i++) {
+            const id = `event-cleric-${i}`;
+            const px = midX + Math.floor(Math.random() * 6) - 3;
+            const py = midY + Math.floor(Math.random() * 6) - 3;
+            const unit = createUnit({
+              id,
+              type: UnitType.CLERIC,
+              owner: "p1",
+              position: { x: px, y: py },
+            });
+            state.units.set(id, unit);
+            EventBus.emit("unitSpawned", { unitId: id, buildingId: "", position: { x: px, y: py } });
+          }
+        } else if (ev.type === "rogue_mage") {
+          // Spawn a random tier 1-3 mage hostile to both (neutral)
+          const mageTypes = [
+            UnitType.FIRE_MAGE, UnitType.STORM_MAGE,
+            UnitType.COLD_MAGE, UnitType.DISTORTION_MAGE,
+          ];
+          const pick = mageTypes[Math.floor(Math.random() * mageTypes.length)];
+          const id = `event-rogue-mage`;
+          const unit = createUnit({
+            id,
+            type: pick,
+            owner: NEUTRAL_PLAYER,
+            position: { x: midX, y: midY },
+          });
+          state.units.set(id, unit);
+          EventBus.emit("unitSpawned", { unitId: id, buildingId: "", position: { x: midX, y: midY } });
+        }
+        _waveState.pendingEvent = null;
+      }
     } else if (gameMode === GameMode.CAMPAIGN) {
       _spawnScenarioBattlefieldUnits(state, mapSize.width, mapSize.height, scenarioNum ?? 1);
     } else {
@@ -4753,6 +6291,55 @@ async function _bootGame(
       const p2 = state.players.get("p2");
       if (p2) p2.gold += scenarioDef.aiExtraGold;
     }
+    if (scenarioDef?.p1ExtraGold) {
+      const p1 = state.players.get("p1");
+      if (p1) p1.gold += scenarioDef.p1ExtraGold;
+    }
+    // P1 cannot build anything — empty all shops, blueprints, and upgrade inventories
+    if (scenarioDef?.p1NoBuild) {
+      for (const building of state.buildings.values()) {
+        if (building.owner === "p1") {
+          building.shopInventory = [];
+          building.blueprints = [];
+          building.upgradeInventory = [];
+        }
+      }
+    }
+    // Pre-purchase upgrades for P1
+    if (scenarioDef?.p1StartUpgrades) {
+      for (const upgradeType of scenarioDef.p1StartUpgrades) {
+        const upgrades = UpgradeSystem.getPlayerUpgrades("p1");
+        upgrades.push({ type: upgradeType, level: 1 });
+      }
+    }
+    // Scenario 7: spawn 20 pixies for allied p3
+    if (scenarioNum === 7) {
+      _setupScenario7(state, mapSize.width, mapSize.height);
+    }
+    // Scenario 5: spawn Dark Savant + enemies + enemy towers
+    if (scenarioNum === 5) {
+      _setupScenario23(state, mapSize.width, mapSize.height);
+    }
+    // Scenario 25: spawn tier 7 AI units at P2's corners
+    if (scenarioNum === 25) {
+      _setupScenario24(state, mapSize.width, mapSize.height);
+    }
+    // Arthurian scenario setups (9–23)
+    if (scenarioNum === 9) _setupScenario9(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 10) _setupScenario10(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 11) _setupScenario11(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 12) _setupScenario12(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 13) _setupScenario13(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 14) _setupScenario14(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 15) _setupScenario15(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 16) _setupScenario16(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 17) _setupScenario17(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 18) _setupScenario18(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 19) _setupScenario19(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 20) _setupScenario20(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 21) _setupScenario21(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 22) _setupScenario22(state, mapSize.width, mapSize.height);
+    if (scenarioNum === 23) _setupScenario23_dragons(state, mapSize.width, mapSize.height);
   }
 
   // Apply P1's equipped armory items (hero stat bonuses)
@@ -4763,6 +6350,11 @@ async function _bootGame(
 
   // Apply the chosen race to P1 (sets p1RaceId and wires faction hall inventory)
   _applyRace(state, "p1", raceId);
+
+  // Apply forced AI race if the scenario specifies one
+  if (scenarioDef?.aiRace) {
+    _applyRace(state, "p2", scenarioDef.aiRace);
+  }
 
   // 2. Camera — zoom in on the friendly castle at standard-map zoom level
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);
@@ -4779,6 +6371,14 @@ async function _bootGame(
     setTimeout(() => {
       viewManager.camera.startCinematicZoom(zoomLevel);
     }, 1000);
+  }
+
+  // Scenario 7: zoom out to show the full double-size map, then zoom in
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 7) {
+    viewManager.camera.fitMap();
+    setTimeout(() => {
+      viewManager.camera.startCinematicZoom(1.5);
+    }, 1500);
   }
 
   // 3. Grid background & environment
@@ -4921,6 +6521,12 @@ async function _bootGame(
   damageNumberFX.enabled = menuScreen.damageNumbersEnabled;
   viewManager.onUpdate((_s, dt) => damageNumberFX.update(dt));
 
+  // Block FX
+  blockFX.init(viewManager, state);
+  viewManager.onUpdate((_s, dt) => blockFX.update(dt));
+  CombatOptions.critEnabled = settingsScreen.critEnabled;
+  CombatOptions.blockEnabled = settingsScreen.blockEnabled;
+
   // Rally flag FX (persistent flag marker with wind sway)
   flagFX.init(viewManager);
   viewManager.onUpdate((_s, dt) => flagFX.update(dt));
@@ -4940,33 +6546,98 @@ async function _bootGame(
   // Set wave number so the victory screen shows wave info and next-wave button
   if (_waveState) {
     victoryScreen.waveNumber = _waveState.wave;
+    victoryScreen.corruptionLevel = _waveState.corruption.corruptionLevel;
+    victoryScreen.totalGoldSpent = _waveState.totalGoldSpent;
+    victoryScreen.lastRoundGoldSpent = _waveLastRoundGold;
+    victoryScreen.enemyGoldThisRound = _waveState.lastEnemyGold;
+    victoryScreen.enemyGoldTotal = _waveState.totalEnemyGold;
+    victoryScreen.p1Roster = _worldBattleRosters?.p1Roster ?? [];
+    victoryScreen.p2Roster = _worldBattleRosters?.p2Roster ?? [];
   } else {
     victoryScreen.waveNumber = 0;
+    victoryScreen.corruptionLevel = 0;
+    victoryScreen.totalGoldSpent = 0;
+    victoryScreen.lastRoundGoldSpent = 0;
+    victoryScreen.enemyGoldThisRound = 0;
+    victoryScreen.enemyGoldTotal = 0;
+    victoryScreen.p1Roster = [];
+    victoryScreen.p2Roster = [];
   }
   victoryScreen.init(viewManager, state);
 
-  // Battle stats
+  // Battle stats (skip the separate stats overlay in wave mode — the
+  // victory screen already shows wave economy info)
   battleStatsTracker.reset();
   battleStatsTracker.init(state);
-  battleStatsScreen.init(viewManager, state);
+  if (!_waveState) {
+    battleStatsScreen.init(viewManager, state);
+  }
 
-  // Wave mode: "NEXT WAVE" button handler
+  // Wave mode: collect survivors immediately at RESOLVE (before the phase
+  // timer clears them) and let "NEXT WAVE" button open the shop.
   if (_waveState) {
     const ws = _waveState;
+
+    // Snapshot survivors the moment RESOLVE fires — the phase timer will
+    // clear state.units after RESOLVE_DURATION seconds.
+    EventBus.on("phaseChanged", ({ phase }) => {
+      if (phase !== GamePhase.RESOLVE) return;
+      const survivorCounts = new Map<UnitType, number>();
+      for (const u of state.units.values()) {
+        if (u.owner === "p1" && u.hp > 0) {
+          if (u.id.startsWith("summoned-") || u.id.startsWith("imp-summoned-")) continue;
+          survivorCounts.set(u.type, (survivorCounts.get(u.type) ?? 0) + 1);
+        }
+      }
+      ws.survivingUnits = [];
+      for (const [type, count] of survivorCounts) {
+        ws.survivingUnits.push({ type, count });
+      }
+    });
+
     victoryScreen.onNextWave = () => {
+      // Hide the battle map, minimap, HUD so the shop has a clean background
+      viewManager.clearWorld();
+      minimap.container.visible = false;
+      hud.container.visible = false;
+      victoryScreen.container.visible = false;
+
       ws.wave++;
-      const nextGold = 1000;
+      let nextGold = 1000 + (ws.leftoverGold ?? 0) + (ws.bonusGold ?? 0);
+      ws.bonusGold = 0;
+      ws.leftoverGold = 0;
+
+      // Roll random event if enabled
+      let pendingEvent: PendingWaveEvent | null = null;
+      if (ws.randomEvents) {
+        pendingEvent = _rollWaveEvent(ws.wave);
+        if (pendingEvent) {
+          ws.pendingEvent = pendingEvent;
+          if (pendingEvent.type === "gold_rush") {
+            nextGold += 200;
+            ws.pendingEvent = null; // no spawn needed
+          }
+        }
+      }
+
+      // Chain: Merlin compliment → event dialog → shop
+      const openShop = () => _startNextWaveShop(ws, nextGold);
+
+      const showEventThenShop = () => {
+        if (pendingEvent) {
+          _showMerlinWaveCompliment(pendingEvent.description, openShop);
+        } else {
+          openShop();
+        }
+      };
 
       // Merlin compliment every 10 waves
       const complimentWave = ws.wave - 1; // just won this wave
       if (complimentWave % 10 === 0 && complimentWave > 0) {
         const msg = MERLIN_COMPLIMENTS[complimentWave] ?? MERLIN_COMPLIMENT_DEFAULT;
-        // Show a brief Merlin overlay then proceed to shop
-        _showMerlinWaveCompliment(msg, () => {
-          _startNextWaveShop(ws, nextGold);
-        });
+        _showMerlinWaveCompliment(msg, showEventThenShop);
       } else {
-        _startNextWaveShop(ws, nextGold);
+        showEventThenShop();
       }
     };
   }
@@ -5041,10 +6712,104 @@ async function _bootGame(
   const simLoop = new SimLoop(state);
   simLoop.start();
 
+  // Grail Greed Corruption — per-tick and unitDied hooks
+  if (_waveState?.corruption.enabled && _waveState.corruption.activeModifiers.length > 0) {
+    const cs = _waveState.corruption;
+    viewManager.onUpdate((s, dt) => {
+      if (s.phase === GamePhase.BATTLE) {
+        tickCorruptionModifiers(s, cs, dt);
+      }
+    });
+    EventBus.on("unitDied", ({ unitId }) => {
+      const unit = state.units.get(unitId);
+      if (unit) {
+        onCorruptionUnitDied(state, cs, unit);
+      }
+    });
+  }
+
   // Start cinematic speed ramp for battlefield campaign scenarios
   if (gameMode === GameMode.CAMPAIGN && (scenarioNum === 1 || scenarioNum === 2)) {
     // Start the speed ramp immediately when the game starts
     simLoop.startCinematicSpeed();
+  }
+
+  // Scenario 6: Merlin introduces the first skirmish
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 6) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "Welcome to your first true skirmish, commander! You now have more gold and greater freedom than before. Build your base, expand your territory, and put your new troops and buildings to good use. Show me what you have learned!",
+      () => { simLoop.resume(); },
+    );
+  }
+
+  // Scenario 8: The Sword in the Stone — Arthur + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 8) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "Arthur has drawn the sword from the stone, but the lesser kings will not kneel! Three rivals converge on this vast territory. Sir Ector's household rides with you from the southwest — coordinate your forces and prove the boy-king's right to rule!",
+      () => { simLoop.resume(); },
+      { name: "Arthur", id: "arthur" },
+    );
+  }
+
+  // Scenario 9: The Green Chapel — Gawain + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 9) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "The Green Knight awaits at the centre of the map — a creature of ancient magic who regenerates from every wound. Hold the towers along the road to whittle him down. Do not let him reach your castle unchallenged!",
+      () => { simLoop.resume(); },
+      { name: "Gawain", id: "gawain" },
+    );
+  }
+
+  // Scenario 13: The Black Knight — Guinevere + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 13) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "A fearsome Black Knight guards the bridge at the centre of the map. He is nigh invincible without proper arms — use your blacksmith to upgrade your forces before attempting the crossing!",
+      () => { simLoop.resume(); },
+      { name: "Guinevere", id: "guinevere" },
+    );
+  }
+
+  // Scenario 14: The Questing Beast — Pellinore + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 14) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "The Questing Beast roams the battlefield — a creature of terrible power that attacks all who cross its path. Slay it for gold, but beware: it will return! You must also contend with a rival king. This is the midpoint of the campaign, commander.",
+      () => { simLoop.resume(); },
+      { name: "Pellinore", id: "pellinore" },
+    );
+  }
+
+  // Scenario 19: Lancelot's Betrayal — Lancelot + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 19) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "Lancelot's treachery has split the Round Table! Neutral knights are scattered across the map — send your diplomats to win their allegiance before the enemy reaches them. The fate of Camelot depends on whose banner they rally to!",
+      () => { simLoop.resume(); },
+      { name: "Lancelot", id: "lancelot" },
+    );
+  }
+
+  // Scenario 23: The Dragon of the White Tower — Nimue + Merlin
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 23) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "The two dragons beneath Vortigern's tower are loosed! The Red Dragon of Britain fights at your side, but the White Dragon serves the enemy. Wild frost dragons descend from the north — command the skies or be burned from them!",
+      () => { simLoop.resume(); },
+      { name: "Nimue", id: "nimue" },
+    );
+  }
+
+  // Scenario 25: Merlin warns the player about the very hard end battle
+  if (gameMode === GameMode.CAMPAIGN && scenarioNum === 25) {
+    simLoop.pause();
+    _showMerlinWaveCompliment(
+      "Beware, commander! I sense a terrible darkness gathering. The enemy has unleashed ancient giants and archmages of unimaginable power. This is the very hard end battle — prepare yourself, for there will be no mercy!",
+      () => { simLoop.resume(); },
+    );
   }
 
   // ---------------------------------------------------------------------------

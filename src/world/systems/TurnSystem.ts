@@ -16,6 +16,10 @@ import { advanceResearch, advanceMagicResearch } from "@world/systems/ResearchSy
 import { updateVisibility } from "@world/systems/FogOfWarSystem";
 import { spawnNeutralRaiders } from "@world/systems/NeutralCitySystem";
 import { processOverlandSpells, getSpellMovementBonus } from "@world/systems/OverlandSpellSystem";
+import { processMorgaineEscalation, type MorgaineEvent } from "@world/systems/MorgaineEscalation";
+
+/** Morgaine escalation events from the most recent turn cycle. Consumed by the UI. */
+export let lastMorgaineEvents: MorgaineEvent[] = [];
 
 // ---------------------------------------------------------------------------
 // Turn flow
@@ -105,6 +109,9 @@ function _advanceToNextPlayer(state: WorldState): void {
     if (state.turn > 0 && state.turn % 20 === 0) {
       spawnNeutralRaiders(state);
     }
+
+    // Morgaine escalation — spawn armies, expand corruption, cast curses
+    lastMorgaineEvents = processMorgaineEscalation(state);
   }
 
   state.currentPlayerIndex = nextIndex;

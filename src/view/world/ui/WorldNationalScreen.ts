@@ -1,10 +1,56 @@
 // National overview screen — shows all owned cities and what they are producing.
 
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Container, Graphics, Text, TextStyle, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldCity } from "@world/state/WorldCity";
 import { armyUnitCount } from "@world/state/WorldArmy";
+import { getLeader } from "@sim/config/LeaderDefs";
+
+// Leader portrait images (same imports used in LeaderSelectScreen)
+import arthurImgUrl from "@/img/arthur.png";
+import merlinImgUrl from "@/img/merlin.png";
+import queenImgUrl from "@/img/queen.png";
+import lancelotImgUrl from "@/img/lancelot.png";
+import morganImgUrl from "@/img/morgan.png";
+import gawainImgUrl from "@/img/gawain.png";
+import galahadImgUrl from "@/img/galahad.png";
+import percivalImgUrl from "@/img/percival.png";
+import tristanImgUrl from "@/img/tristan.png";
+import nimueImgUrl from "@/img/nimue.png";
+import kayImgUrl from "@/img/kay.png";
+import bedivereImgUrl from "@/img/bedivere.png";
+import elaineImgUrl from "@/img/elaine.png";
+import mordredImgUrl from "@/img/mordred.png";
+import igraineImgUrl from "@/img/igraine.png";
+import pellinoreImgUrl from "@/img/pellinore.png";
+import ectorImgUrl from "@/img/ector.png";
+import borsImgUrl from "@/img/bors.png";
+import utherImgUrl from "@/img/uther.png";
+import lotImgUrl from "@/img/lot.png";
+
+const LEADER_IMAGES: Record<string, string> = {
+  arthur: arthurImgUrl,
+  merlin: merlinImgUrl,
+  guinevere: queenImgUrl,
+  lancelot: lancelotImgUrl,
+  morgan: morganImgUrl,
+  gawain: gawainImgUrl,
+  galahad: galahadImgUrl,
+  percival: percivalImgUrl,
+  tristan: tristanImgUrl,
+  nimue: nimueImgUrl,
+  kay: kayImgUrl,
+  bedivere: bedivereImgUrl,
+  elaine: elaineImgUrl,
+  mordred: mordredImgUrl,
+  igraine: igraineImgUrl,
+  pellinore: pellinoreImgUrl,
+  ector: ectorImgUrl,
+  bors: borsImgUrl,
+  uther: utherImgUrl,
+  lot: lotImgUrl,
+};
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -35,6 +81,20 @@ const IDLE_STYLE = new TextStyle({
   fontSize: 11,
   fill: 0x888888,
   fontStyle: "italic",
+});
+
+const LEADER_NAME_STYLE = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 14,
+  fontWeight: "bold",
+  fill: 0xffcc44,
+});
+
+const LEADER_TITLE_STYLE = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 10,
+  fontStyle: "italic",
+  fill: 0xaaaacc,
 });
 
 // ---------------------------------------------------------------------------
@@ -210,13 +270,76 @@ export class WorldNationalScreen {
     this._content.addChild(diploTitle);
 
     const localPlayer = state.players.get("p1");
+    const PORTRAIT_SIZE = 64;
+    const ROW_H_DIPLO = PORTRAIT_SIZE + 16;
     let dipRow = 0;
     for (const [pid, player] of state.players) {
       if (pid === "p1" || !player.isAlive) continue;
 
-      const y = diploY + 36 + dipRow * 32;
+      const y = diploY + 36 + dipRow * ROW_H_DIPLO;
       const relation = localPlayer?.diplomacy.get(pid) ?? "war";
       const raceName = player.raceId.charAt(0).toUpperCase() + player.raceId.slice(1);
+
+      // Resolve leader info
+      const leaderId = pid === "morgaine" ? "morgan" : player.leaderId;
+      const leaderDef = leaderId ? getLeader(leaderId) : null;
+      const leaderName = leaderDef?.name ?? pid.toUpperCase();
+      const leaderTitle = leaderDef?.title ?? "";
+
+      // Row background
+      const rowBg = new Graphics();
+      rowBg.roundRect(tableX - 8, y - 4, totalW + 16, ROW_H_DIPLO - 4, 6);
+      rowBg.fill({ color: 0x111122, alpha: 0.6 });
+      rowBg.stroke({ color: 0x333355, width: 1 });
+      this._content.addChild(rowBg);
+
+      // Portrait frame
+      const portraitFrame = new Graphics();
+      portraitFrame.roundRect(tableX, y, PORTRAIT_SIZE, PORTRAIT_SIZE, 4);
+      portraitFrame.fill({ color: 0x080818 });
+      portraitFrame.stroke({ color: relation === "war" ? 0x884444 : 0x448844, width: 1.5 });
+      this._content.addChild(portraitFrame);
+
+      // Load portrait image
+      const imgUrl = leaderId ? LEADER_IMAGES[leaderId] : null;
+      if (imgUrl) {
+        void Assets.load(imgUrl).then((tex: Texture) => {
+          if (!this.container.visible) return;
+          const sprite = new Sprite(tex);
+          const maxW = PORTRAIT_SIZE - 6;
+          const maxH = PORTRAIT_SIZE - 6;
+          const scale = Math.min(maxW / tex.width, maxH / tex.height);
+          sprite.scale.set(scale);
+          sprite.x = tableX + 3 + (maxW - tex.width * scale) / 2;
+          sprite.y = y + 3 + (maxH - tex.height * scale) / 2;
+          this._content.addChild(sprite);
+        });
+      }
+
+      const textX = tableX + PORTRAIT_SIZE + 12;
+
+      // Leader name
+      const nameLabel = new Text({ text: leaderName, style: LEADER_NAME_STYLE });
+      nameLabel.x = textX;
+      nameLabel.y = y + 2;
+      this._content.addChild(nameLabel);
+
+      // Leader title
+      if (leaderTitle) {
+        const titleLabel = new Text({ text: leaderTitle, style: LEADER_TITLE_STYLE });
+        titleLabel.x = textX;
+        titleLabel.y = y + 20;
+        this._content.addChild(titleLabel);
+      }
+
+      // Race label
+      const raceLabel = new Text({
+        text: `Race: ${raceName}`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x8888aa }),
+      });
+      raceLabel.x = textX;
+      raceLabel.y = y + 34;
+      this._content.addChild(raceLabel);
 
       // Count cities and army strength for this player
       let playerCityCount = 0;
@@ -228,22 +351,13 @@ export class WorldNationalScreen {
         if (a.owner === pid) playerArmyStrength += armyUnitCount(a);
       }
 
-      // Player label
-      const pLabel = new Text({
-        text: `${pid.toUpperCase()} (${raceName})`,
-        style: CELL_STYLE,
-      });
-      pLabel.x = tableX;
-      pLabel.y = y;
-      this._content.addChild(pLabel);
-
-      // Stats: cities & army strength
+      // Stats
       const statsLabel = new Text({
         text: `Cities: ${playerCityCount}  Army: ${playerArmyStrength} units`,
         style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x8888aa }),
       });
-      statsLabel.x = tableX + 160;
-      statsLabel.y = y;
+      statsLabel.x = textX;
+      statsLabel.y = y + 48;
       this._content.addChild(statsLabel);
 
       // Relation label
@@ -253,7 +367,7 @@ export class WorldNationalScreen {
         style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fontWeight: "bold", fill: relColor }),
       });
       relLabel.x = tableX + 380;
-      relLabel.y = y;
+      relLabel.y = y + 20;
       this._content.addChild(relLabel);
 
       // Toggle button
@@ -275,7 +389,7 @@ export class WorldNationalScreen {
       tTxt.y = 3;
       toggleBtn.addChild(tTxt);
       toggleBtn.x = tableX + 480;
-      toggleBtn.y = y;
+      toggleBtn.y = y + 20;
 
       const targetPid = pid;
       toggleBtn.on("pointerdown", () => {
@@ -320,6 +434,7 @@ export class WorldNationalScreen {
     btn.on("pointerdown", () => this.hide());
     return btn;
   }
+
 }
 
 function _formatUnit(s: string): string {

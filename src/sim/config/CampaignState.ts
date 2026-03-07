@@ -262,6 +262,17 @@ export class CampaignState {
     return sourceScenario;
   }
 
+  /** Unlock all scenarios and all cumulative unlocks from every scenario. */
+  unlockAll(): void {
+    for (const scenario of SCENARIO_DEFINITIONS) {
+      if (!this._progress.unlockedScenarios.includes(scenario.number)) {
+        this._progress.unlockedScenarios.push(scenario.number);
+      }
+      this._applyUnlocks(scenario.unlocks);
+    }
+    _save(this._progress);
+  }
+
   /** Reset all campaign progress back to default. */
   reset(): void {
     this._progress = _defaultProgress();

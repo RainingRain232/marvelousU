@@ -10,6 +10,7 @@ import type { ArmyUnit } from "@world/state/WorldArmy";
 import {
   getAllWorldBuildingDefs,
   getWorldBuildingDef,
+  WorldBuildingType,
   type WorldBuildingDef,
 } from "@world/config/WorldBuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
@@ -51,6 +52,11 @@ export function getAvailableBuildings(
     if (queued.has(def.type)) return false;
     // Research prerequisite check
     if (def.researchRequired && player && !hasResearch(player, def.researchRequired)) return false;
+    // Round Table is Arthur-only and must be in capital
+    if (def.type === WorldBuildingType.ROUND_TABLE) {
+      if (!player || player.leaderId !== "arthur") return false;
+      if (!city.isCapital) return false;
+    }
     return true;
   });
 }
