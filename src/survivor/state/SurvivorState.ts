@@ -111,6 +111,7 @@ export interface SurvivorState {
   xpToNext: number;
   totalKills: number;
   totalDamageDealt: number;
+  weaponDamageDealt: Record<string, number>; // weapon ID -> total damage
 
   // Timing
   gameTime: number; // seconds elapsed
@@ -189,6 +190,7 @@ export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapT
     xpToNext: SurvivorBalance.XP_BASE,
     totalKills: 0,
     totalDamageDealt: 0,
+    weaponDamageDealt: {},
     gameTime: 0,
     spawnAccumulator: 0,
     bossTimer: SurvivorBalance.BOSS_INTERVAL,

@@ -17,7 +17,8 @@ export interface SurvivorCharacterDef {
   regenBonus: number; // hp/sec
   passiveBonus?: SurvivorPassiveId; // starts with level 1 of this passive
   description: string;
-  unlocked: boolean; // unlocked by default
+  unlocked: boolean; // unlocked by default (free characters)
+  unlockCost: number; // gold cost to unlock (0 = free)
 }
 
 export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
@@ -33,6 +34,7 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     regenBonus: 0,
     description: "Balanced fighter with a spinning blade",
     unlocked: true,
+    unlockCost: 0,
   },
   {
     id: "archer",
@@ -46,6 +48,7 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     regenBonus: 0,
     description: "Fast ranged fighter",
     unlocked: true,
+    unlockCost: 0,
   },
   {
     id: "fire_mage",
@@ -59,6 +62,7 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     regenBonus: 0,
     description: "Fragile but powerful area damage",
     unlocked: true,
+    unlockCost: 0,
   },
   {
     id: "cleric",
@@ -71,7 +75,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     critBonus: 0,
     regenBonus: 1,
     description: "Sustained fighter with holy aura and regen",
-    unlocked: true,
+    unlocked: false,
+    unlockCost: 200,
   },
   {
     id: "assassin",
@@ -84,7 +89,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     critBonus: 0.15,
     regenBonus: 0,
     description: "Glass cannon with high crit and speed",
-    unlocked: true,
+    unlocked: false,
+    unlockCost: 300,
   },
   {
     id: "knight",
@@ -98,7 +104,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     regenBonus: 0,
     passiveBonus: SurvivorPassiveId.PLATE_ARMOR,
     description: "Tanky but slow, starts with armor",
-    unlocked: true,
+    unlocked: false,
+    unlockCost: 500,
   },
   {
     id: "necromancer",
@@ -111,7 +118,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     critBonus: 0,
     regenBonus: 0,
     description: "Lifesteal specialist",
-    unlocked: true,
+    unlocked: false,
+    unlockCost: 750,
   },
   {
     id: "pirate",
@@ -124,6 +132,7 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     critBonus: 0.05,
     regenBonus: 0,
     description: "Explosive area damage dealer",
-    unlocked: true,
+    unlocked: false,
+    unlockCost: 1000,
   },
 ];

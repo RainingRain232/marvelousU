@@ -51,12 +51,15 @@ function enemiesInRadius(state: SurvivorState, x: number, y: number, radius: num
   return state.enemies.filter((e) => e.alive && distSq(x, y, e.position.x, e.position.y) < rSq);
 }
 
-function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number): void {
+function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number, weaponId?: string): void {
   const isCrit = Math.random() < state.player.critChance;
   const finalDmg = isCrit ? amount * 2.5 : amount;
   enemy.hp -= finalDmg;
   enemy.hitTimer = 0.1;
   state.totalDamageDealt += finalDmg;
+  if (weaponId) {
+    state.weaponDamageDealt[weaponId] = (state.weaponDamageDealt[weaponId] ?? 0) + finalDmg;
+  }
   _damageCallback?.(enemy.position.x, enemy.position.y, finalDmg, isCrit);
   if (enemy.hp <= 0) {
     enemy.alive = false;
@@ -137,7 +140,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
     case "spinning_blade": {
       const enemies = enemiesInRadius(state, px, py, area);
       for (const e of enemies) {
-        damageEnemy(state, e, damage);
+        damageEnemy(state, e, damage, ws.id);
       }
       if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area);
       break;
@@ -167,13 +170,13 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
     case "lightning_chain": {
       const first = nearestEnemy(state, px, py, area);
       if (!first) break;
-      damageEnemy(state, first, damage);
+      damageEnemy(state, first, damage, ws.id);
       _weaponFxCallback?.(first.position.x, first.position.y, def.color, 2);
       let prev = first;
       for (let i = 1; i < count; i++) {
         const next = nearestEnemy(state, prev.position.x, prev.position.y, area * 0.8);
         if (!next || next === prev) break;
-        damageEnemy(state, next, damage * 0.8);
+        damageEnemy(state, next, damage * 0.8, ws.id);
         _weaponFxCallback?.(next.position.x, next.position.y, def.color, 1.5);
         prev = next;
       }
@@ -182,7 +185,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
     case "ice_nova": {
       const enemies = enemiesInRadius(state, px, py, area);
       for (const e of enemies) {
-        damageEnemy(state, e, damage);
+        damageEnemy(state, e, damage, ws.id);
         e.slowFactor = 0.4;
         e.slowTimer = def.baseDuration + ws.level * 0.3;
       }
@@ -192,7 +195,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
     case "holy_circle": {
       const enemies = enemiesInRadius(state, px, py, area);
       for (const e of enemies) {
-        damageEnemy(state, e, damage);
+        damageEnemy(state, e, damage, ws.id);
       }
       break;
     }
@@ -202,7 +205,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         if (!target) break;
         const enemies = enemiesInRadius(state, target.position.x, target.position.y, area);
         for (const e of enemies) {
-          damageEnemy(state, e, damage);
+          damageEnemy(state, e, damage, ws.id);
         }
         _weaponFxCallback?.(target.position.x, target.position.y, def.color, area);
       }
@@ -211,7 +214,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
     case "warp_field": {
       const enemies = enemiesInRadius(state, px, py, area);
       for (const e of enemies) {
-        damageEnemy(state, e, damage);
+        damageEnemy(state, e, damage, ws.id);
       }
       if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area);
       break;
@@ -222,7 +225,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         const oy = py + (Math.random() * 2 - 1) * 8;
         const enemies = enemiesInRadius(state, ox, oy, area);
         for (const e of enemies) {
-          damageEnemy(state, e, damage);
+          damageEnemy(state, e, damage, ws.id);
         }
         _weaponFxCallback?.(ox, oy, def.color, area);
       }
@@ -232,7 +235,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
       for (let i = 0; i < count; i++) {
         const target = nearestEnemy(state, px, py, area);
         if (!target) break;
-        damageEnemy(state, target, damage);
+        damageEnemy(state, target, damage, ws.id);
         state.player.hp = Math.min(state.player.maxHp, state.player.hp + damage * 0.3);
       }
       break;
@@ -281,7 +284,7 @@ export const SurvivorCombatSystem = {
         if (!e.alive) continue;
         if (proj.hitEnemies.has(e.id)) continue;
         if (distSq(proj.position.x, proj.position.y, e.position.x, e.position.y) < proj.area * proj.area) {
-          damageEnemy(state, e, proj.damage);
+          damageEnemy(state, e, proj.damage, proj.weaponId);
           proj.hitEnemies.add(e.id);
           proj.pierce--;
           if (proj.pierce <= 0) {

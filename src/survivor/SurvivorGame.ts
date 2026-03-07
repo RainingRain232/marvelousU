@@ -21,6 +21,7 @@ import { SurvivorCombatSystem } from "./systems/SurvivorCombatSystem";
 import { SurvivorPickupSystem } from "./systems/SurvivorPickupSystem";
 import { generateUpgradeChoices, applyUpgrade } from "./systems/SurvivorLevelSystem";
 import type { UpgradeChoice } from "./systems/SurvivorLevelSystem";
+import { SurvivorPersistence } from "./state/SurvivorPersistence";
 import { audioManager } from "@audio/AudioManager";
 
 // ---------------------------------------------------------------------------
@@ -114,6 +115,9 @@ export class SurvivorGame {
   private _bossWarning: Text | null = null;
   private _bossWarningTimer = 0;
 
+  // Gold HUD
+  private _goldHudText!: Text;
+
   // Boss HP bar (UI layer)
   private _bossHpContainer = new Container();
   private _bossHpBarBg!: Graphics;
@@ -169,24 +173,35 @@ export class SurvivorGame {
     title.position.set(sw / 2, 20);
     this._charSelectOverlay.addChild(title);
 
-    // Character cards
-    const unlockedChars = SURVIVOR_CHARACTERS.filter((c) => c.unlocked);
+    // Gold display
+    const saveData = SurvivorPersistence.load();
+    const goldText = new Text({ text: `Gold: ${saveData.totalGold}`, style: new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: 0xffd700, fontWeight: "bold" }) });
+    goldText.anchor.set(1, 0);
+    goldText.position.set(sw - 20, 25);
+    this._charSelectOverlay.addChild(goldText);
+
+    // Character cards — show all, locked ones are dimmed with unlock button
     const cardW = 180;
     const cardH = 210;
     const gap = 12;
-    const totalW = unlockedChars.length * cardW + (unlockedChars.length - 1) * gap;
+    const cols = Math.min(SURVIVOR_CHARACTERS.length, 4);
+    const totalW = cols * cardW + (cols - 1) * gap;
     const startX = (sw - totalW) / 2;
     const startY = 70;
 
-    for (let i = 0; i < unlockedChars.length; i++) {
-      const charDef = unlockedChars[i];
-      const card = this._buildCharCard(charDef, cardW, cardH);
-      card.position.set(startX + i * (cardW + gap), startY);
+    for (let i = 0; i < SURVIVOR_CHARACTERS.length; i++) {
+      const charDef = SURVIVOR_CHARACTERS[i];
+      const isUnlocked = charDef.unlocked || saveData.unlockedCharacters.includes(charDef.id);
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const card = this._buildCharCard(charDef, cardW, cardH, isUnlocked, saveData.totalGold);
+      card.position.set(startX + col * (cardW + gap), startY + row * (cardH + gap));
       this._charSelectOverlay.addChild(card);
     }
 
     // Map selection section
-    const mapSectionY = startY + cardH + 20;
+    const rows2 = Math.ceil(SURVIVOR_CHARACTERS.length / cols);
+    const mapSectionY = startY + rows2 * (cardH + gap) + 10;
     const mapTitle = new Text({ text: "SELECT MAP", style: new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffd700, fontWeight: "bold" }) });
     mapTitle.anchor.set(0.5, 0);
     mapTitle.position.set(sw / 2, mapSectionY);
@@ -253,16 +268,17 @@ export class SurvivorGame {
     }
   }
 
-  private _buildCharCard(charDef: SurvivorCharacterDef, w: number, h: number): Container {
+  private _buildCharCard(charDef: SurvivorCharacterDef, w: number, h: number, isUnlocked: boolean, currentGold: number): Container {
     const card = new Container();
     card.eventMode = "static";
-    card.cursor = "pointer";
+    card.cursor = isUnlocked ? "pointer" : "default";
 
+    const borderColor = isUnlocked ? 0x4488cc : 0x333344;
     const bg = new Graphics()
       .roundRect(0, 0, w, h, 8)
-      .fill({ color: 0x1a1a2e, alpha: 0.9 })
+      .fill({ color: isUnlocked ? 0x1a1a2e : 0x111122, alpha: 0.9 })
       .roundRect(0, 0, w, h, 8)
-      .stroke({ color: 0x4488cc, width: 2 });
+      .stroke({ color: borderColor, width: 2 });
     card.addChild(bg);
 
     // Character sprite preview
@@ -274,12 +290,14 @@ export class SurvivorGame {
       preview.anchor.set(0.5, 0.5);
       preview.position.set(w / 2, 55);
       preview.scale.set(2);
+      if (!isUnlocked) preview.tint = 0x444444;
       card.addChild(preview);
     }
 
     const nameText = new Text({ text: charDef.name, style: STYLE_CHAR_NAME });
     nameText.anchor.set(0.5, 0);
     nameText.position.set(w / 2, 100);
+    if (!isUnlocked) nameText.tint = 0x666666;
     card.addChild(nameText);
 
     const weaponDef = WEAPON_DEFS[charDef.startingWeapon];
@@ -295,12 +313,41 @@ export class SurvivorGame {
     descText.style.wordWrapWidth = w - 20;
     card.addChild(descText);
 
-    card.on("pointerdown", () => {
-      viewManager.removeFromLayer("ui", this._charSelectOverlay);
-      this._startGame(charDef);
-    });
-    card.on("pointerover", () => { bg.tint = 0x3366aa; });
-    card.on("pointerout", () => { bg.tint = 0xffffff; });
+    if (isUnlocked) {
+      card.on("pointerdown", () => {
+        viewManager.removeFromLayer("ui", this._charSelectOverlay);
+        this._startGame(charDef);
+      });
+      card.on("pointerover", () => { bg.tint = 0x3366aa; });
+      card.on("pointerout", () => { bg.tint = 0xffffff; });
+    } else {
+      // Unlock button
+      const canAfford = currentGold >= charDef.unlockCost;
+      const lockBg = new Graphics()
+        .roundRect(w / 2 - 60, h - 38, 120, 28, 4)
+        .fill({ color: canAfford ? 0x2a4a2a : 0x2a2a2a })
+        .roundRect(w / 2 - 60, h - 38, 120, 28, 4)
+        .stroke({ color: canAfford ? 0xffd700 : 0x555555, width: 1 });
+      card.addChild(lockBg);
+      const lockText = new Text({
+        text: `Unlock: ${charDef.unlockCost}g`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: canAfford ? 0xffd700 : 0x666666, fontWeight: "bold" }),
+      });
+      lockText.anchor.set(0.5, 0.5);
+      lockText.position.set(w / 2, h - 24);
+      card.addChild(lockText);
+
+      if (canAfford) {
+        card.cursor = "pointer";
+        card.on("pointerdown", () => {
+          if (SurvivorPersistence.unlockCharacter(charDef.id, charDef.unlockCost)) {
+            this._showCharacterSelect(); // refresh
+          }
+        });
+        card.on("pointerover", () => { bg.tint = 0x335533; });
+        card.on("pointerout", () => { bg.tint = 0xffffff; });
+      }
+    }
 
     return card;
   }
@@ -451,6 +498,12 @@ export class SurvivorGame {
     this._killText.position.set(sw - 10, 10);
     this._hudContainer.addChild(this._killText);
 
+    // Gold counter
+    this._goldHudText = new Text({ text: "Gold: 0", style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xffd700 }) });
+    this._goldHudText.anchor.set(1, 0);
+    this._goldHudText.position.set(sw - 10, 26);
+    this._hudContainer.addChild(this._goldHudText);
+
     // Level
     this._levelText = new Text({ text: "Lv.1", style: STYLE_HUD });
     this._levelText.position.set(10 + hpW + 8, 12);
@@ -501,6 +554,9 @@ export class SurvivorGame {
 
     // Kills
     this._killText.text = `Kills: ${s.totalKills}`;
+
+    // Gold
+    this._goldHudText.text = `Gold: ${s.gold}`;
 
     // Level
     this._levelText.text = `Lv.${s.level}`;
@@ -703,13 +759,28 @@ export class SurvivorGame {
     const sh = viewManager.screenHeight;
     const s = this._state;
 
+    // Persist gold and high score
+    const newTotalGold = SurvivorPersistence.addGold(s.gold);
+    SurvivorPersistence.addHighScore({
+      characterId: s.player.characterDef.id,
+      characterName: s.player.characterDef.name,
+      mapName: SURVIVOR_MAPS[this._selectedMapIndex].name,
+      timeSurvived: s.gameTime,
+      kills: s.totalKills,
+      level: s.level,
+      damageDealt: s.totalDamageDealt,
+      gold: s.gold,
+      date: Date.now(),
+    });
+
     const dim = new Graphics().rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.75 });
     this._resultsOverlay.addChild(dim);
 
-    const cardW = 420;
-    const cardH = 400;
+    const weaponCount = s.weapons.length;
+    const cardW = 440;
+    const cardH = 380 + weaponCount * 18 + 30;
     const cx = (sw - cardW) / 2;
-    const cy = (sh - cardH) / 2;
+    const cy = Math.max(10, (sh - cardH) / 2);
     const card = new Graphics()
       .roundRect(cx, cy, cardW, cardH, 12)
       .fill({ color: 0x0a0a18, alpha: 0.95 })
@@ -719,7 +790,7 @@ export class SurvivorGame {
 
     const title = new Text({ text: "DEFEATED", style: STYLE_RESULT_TITLE });
     title.anchor.set(0.5, 0);
-    title.position.set(sw / 2, cy + 20);
+    title.position.set(sw / 2, cy + 16);
     this._resultsOverlay.addChild(title);
 
     const mins = Math.floor(s.gameTime / 60);
@@ -729,23 +800,23 @@ export class SurvivorGame {
       `Enemies Killed: ${s.totalKills}`,
       `Level Reached:  ${s.level}`,
       `Damage Dealt:   ${Math.floor(s.totalDamageDealt)}`,
-      `Gold Earned:    ${s.gold}`,
+      `Gold Earned:    ${s.gold}  (Total: ${newTotalGold})`,
       `Character:      ${s.player.characterDef.name}`,
       `Map:            ${SURVIVOR_MAPS[this._selectedMapIndex].name}`,
     ];
 
-    let sy = cy + 75;
+    let sy = cy + 65;
     for (const stat of stats) {
       const t = new Text({ text: stat, style: STYLE_RESULT_STAT });
       t.anchor.set(0.5, 0);
       t.position.set(sw / 2, sy);
       this._resultsOverlay.addChild(t);
-      sy += 26;
+      sy += 24;
     }
 
-    // Weapons summary
-    sy += 8;
-    const weaponsLabel = new Text({ text: "Weapons:", style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xffd700 }) });
+    // Weapon DPS breakdown
+    sy += 6;
+    const weaponsLabel = new Text({ text: "Weapon Damage Breakdown:", style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xffd700 }) });
     weaponsLabel.anchor.set(0.5, 0);
     weaponsLabel.position.set(sw / 2, sy);
     this._resultsOverlay.addChild(weaponsLabel);
@@ -753,8 +824,11 @@ export class SurvivorGame {
 
     for (const ws of s.weapons) {
       const def = WEAPON_DEFS[ws.id];
+      const totalDmg = s.weaponDamageDealt[ws.id] ?? 0;
+      const dps = s.gameTime > 0 ? totalDmg / s.gameTime : 0;
+      const pct = s.totalDamageDealt > 0 ? (totalDmg / s.totalDamageDealt * 100) : 0;
       const t = new Text({
-        text: `${def.name} Lv.${ws.level}${ws.evolved ? " [EVOLVED]" : ""}`,
+        text: `${def.name} Lv.${ws.level}${ws.evolved ? " [EVO]" : ""}  ${Math.floor(totalDmg)} dmg (${dps.toFixed(1)} DPS, ${pct.toFixed(0)}%)`,
         style: STYLE_CHAR_DESC,
       });
       t.anchor.set(0.5, 0);
@@ -763,29 +837,78 @@ export class SurvivorGame {
       sy += 18;
     }
 
-    // Return button
-    const btnW = 200;
-    const btnH = 44;
-    const btn = new Container();
-    btn.eventMode = "static";
-    btn.cursor = "pointer";
-    btn.position.set((sw - btnW) / 2, cy + cardH - 60);
-    const btnBg = new Graphics()
+    // Buttons row
+    const btnW = 180;
+    const btnH = 40;
+    const btnGap = 16;
+    const btnY = cy + cardH - 56;
+
+    // Play Again button
+    const playBtn = new Container();
+    playBtn.eventMode = "static";
+    playBtn.cursor = "pointer";
+    playBtn.position.set(sw / 2 - btnW - btnGap / 2, btnY);
+    const playBg = new Graphics()
+      .roundRect(0, 0, btnW, btnH, 6)
+      .fill({ color: 0x1a3a1a })
+      .roundRect(0, 0, btnW, btnH, 6)
+      .stroke({ color: 0x44cc44, width: 2 });
+    playBtn.addChild(playBg);
+    const playLabel = new Text({ text: "PLAY AGAIN", style: STYLE_BTN });
+    playLabel.anchor.set(0.5, 0.5);
+    playLabel.position.set(btnW / 2, btnH / 2);
+    playBtn.addChild(playLabel);
+    playBtn.on("pointerdown", () => {
+      viewManager.removeFromLayer("ui", this._resultsOverlay);
+      this._resultsOverlay.removeChildren();
+      this._cleanup();
+      this._showCharacterSelect();
+    });
+    playBtn.on("pointerover", () => { playBg.tint = 0x88ff88; });
+    playBtn.on("pointerout", () => { playBg.tint = 0xffffff; });
+    this._resultsOverlay.addChild(playBtn);
+
+    // Return to Menu button
+    const menuBtn = new Container();
+    menuBtn.eventMode = "static";
+    menuBtn.cursor = "pointer";
+    menuBtn.position.set(sw / 2 + btnGap / 2, btnY);
+    const menuBg = new Graphics()
       .roundRect(0, 0, btnW, btnH, 6)
       .fill({ color: 0x1a2a3a })
       .roundRect(0, 0, btnW, btnH, 6)
       .stroke({ color: 0x4488cc, width: 2 });
-    btn.addChild(btnBg);
-    const btnLabel = new Text({ text: "RETURN TO MENU", style: STYLE_BTN });
-    btnLabel.anchor.set(0.5, 0.5);
-    btnLabel.position.set(btnW / 2, btnH / 2);
-    btn.addChild(btnLabel);
-    btn.on("pointerdown", () => window.location.reload());
-    btn.on("pointerover", () => { btnBg.tint = 0xaaddff; });
-    btn.on("pointerout", () => { btnBg.tint = 0xffffff; });
-    this._resultsOverlay.addChild(btn);
+    menuBtn.addChild(menuBg);
+    const menuLabel = new Text({ text: "MAIN MENU", style: STYLE_BTN });
+    menuLabel.anchor.set(0.5, 0.5);
+    menuLabel.position.set(btnW / 2, btnH / 2);
+    menuBtn.addChild(menuLabel);
+    menuBtn.on("pointerdown", () => window.location.reload());
+    menuBtn.on("pointerover", () => { menuBg.tint = 0xaaddff; });
+    menuBtn.on("pointerout", () => { menuBg.tint = 0xffffff; });
+    this._resultsOverlay.addChild(menuBtn);
 
     viewManager.addToLayer("ui", this._resultsOverlay);
+  }
+
+  private _cleanup(): void {
+    SurvivorInputSystem.destroy();
+    SurvivorCombatSystem.setDamageCallback(null);
+    SurvivorCombatSystem.setWeaponFxCallback(null);
+    SurvivorCombatSystem.setPlayerHitCallback(null);
+    SurvivorPickupSystem.setChestCallback(null);
+    if (this._tickerCb) {
+      viewManager.app.ticker.remove(this._tickerCb);
+      this._tickerCb = null;
+    }
+    this._enemyViews.clear();
+    this._gemViews.clear();
+    this._chestViews.clear();
+    this._dmgNumbers = [];
+    this._weaponFxParticles = [];
+    this._orbitGfx = [];
+    this._notifications = [];
+    viewManager.clearWorld();
   }
 
   // ---------------------------------------------------------------------------
@@ -1215,16 +1338,7 @@ export class SurvivorGame {
   // ---------------------------------------------------------------------------
 
   destroy(): void {
-    SurvivorInputSystem.destroy();
-    SurvivorCombatSystem.setDamageCallback(null);
-    SurvivorCombatSystem.setWeaponFxCallback(null);
-    SurvivorCombatSystem.setPlayerHitCallback(null);
-    SurvivorPickupSystem.setChestCallback(null);
-    if (this._tickerCb) {
-      viewManager.app.ticker.remove(this._tickerCb);
-      this._tickerCb = null;
-    }
-    viewManager.clearWorld();
+    this._cleanup();
     viewManager.removeFromLayer("ui", this._hudContainer);
     viewManager.removeFromLayer("ui", this._levelUpOverlay);
     viewManager.removeFromLayer("ui", this._resultsOverlay);
