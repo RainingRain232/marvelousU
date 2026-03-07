@@ -1,7 +1,8 @@
 // Central input dispatcher — delegates pointer events to the active mode
+import { Graphics } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { PlayerId } from "@/types";
-import { GamePhase, UpgradeType } from "@/types";
+import { UpgradeType } from "@/types";
 import type { GameState } from "@sim/state/GameState";
 import { selectionMode } from "@input/SelectionMode";
 import { unitSelectionManager } from "@input/UnitSelectionManager";
@@ -60,6 +61,9 @@ export class InputManager {
   // RTS box-select: true when left-drag started and manual control is active
   private _leftDragActive = false;
 
+  // Selection box overlay (screen-space rectangle drawn on the UI layer)
+  private _selectionBoxGfx: Graphics | null = null;
+
   private static readonly DRAG_THRESHOLD = 5; // pixels
 
   // Bound event handlers
@@ -92,6 +96,12 @@ export class InputManager {
     // Set camera pan mode based on manual control setting
     vm.camera.manualControlMode = settingsScreen.manualControlEnabled;
 
+    // Selection box overlay on the UI layer (screen-space)
+    this._selectionBoxGfx = new Graphics();
+    this._selectionBoxGfx.visible = false;
+    this._selectionBoxGfx.eventMode = "none";
+    vm.addToLayer("ui", this._selectionBoxGfx);
+
     // Bind handlers
     this._onPointerDown = this._handlePointerDown.bind(this);
     this._onPointerMove = this._handlePointerMove.bind(this);
@@ -120,6 +130,10 @@ export class InputManager {
     this._canvas.removeEventListener("mousemove", this._onMouseMove);
     window.removeEventListener("keydown", this._onKeyDown);
     unitSelectionManager.destroy();
+    if (this._selectionBoxGfx) {
+      this._selectionBoxGfx.destroy();
+      this._selectionBoxGfx = null;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -140,10 +154,12 @@ export class InputManager {
 
   /** Whether RTS manual control is active right now. */
   private get _manualActive(): boolean {
+    const enabled = settingsScreen.manualControlEnabled;
+    // Keep camera pan mode in sync with the setting (may change between games)
+    this._vm.camera.manualControlMode = enabled;
     return (
-      settingsScreen.manualControlEnabled &&
-      this._mode !== "placement" &&
-      this._state.phase === GamePhase.BATTLE
+      enabled &&
+      this._mode !== "placement"
     );
   }
 
@@ -183,6 +199,7 @@ export class InputManager {
         const sx = e.clientX - rect.left;
         const sy = e.clientY - rect.top;
         unitSelectionManager.updateBox(sx, sy);
+        this._drawSelectionBox();
       }
     }
   }
@@ -199,10 +216,12 @@ export class InputManager {
             this._localPlayerId,
           );
           this._leftDragActive = false;
+          this._hideSelectionBox();
           return;
         }
 
-        // Click (no drag) → try to select a friendly unit
+        // Click (no drag) → cancel box-select state and try to select a unit
+        unitSelectionManager.cancelBox();
         const rect = this._canvas.getBoundingClientRect();
         const sx = e.clientX - rect.left;
         const sy = e.clientY - rect.top;
@@ -314,6 +333,35 @@ export class InputManager {
     this._state.rallyFlags.set(pid, pos);
 
     EventBus.emit("flagPlaced", { playerId: pid, position: pos });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private: selection box overlay
+  // ---------------------------------------------------------------------------
+
+  private _drawSelectionBox(): void {
+    const box = unitSelectionManager.selectionBox;
+    const gfx = this._selectionBoxGfx;
+    if (!box || !gfx) return;
+
+    const x = Math.min(box.x1, box.x2);
+    const y = Math.min(box.y1, box.y2);
+    const w = Math.abs(box.x2 - box.x1);
+    const h = Math.abs(box.y2 - box.y1);
+
+    gfx.clear();
+    gfx.rect(x, y, w, h)
+      .fill({ color: 0x44ff44, alpha: 0.1 })
+      .rect(x, y, w, h)
+      .stroke({ color: 0x44ff44, alpha: 0.6, width: 1.5 });
+    gfx.visible = true;
+  }
+
+  private _hideSelectionBox(): void {
+    if (this._selectionBoxGfx) {
+      this._selectionBoxGfx.clear();
+      this._selectionBoxGfx.visible = false;
+    }
   }
 
   // ---------------------------------------------------------------------------

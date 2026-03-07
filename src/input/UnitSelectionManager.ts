@@ -8,7 +8,7 @@ import type { Unit } from "@sim/entities/Unit";
 import type { Camera } from "@view/Camera";
 import type { PlayerId, Vec2 } from "@/types";
 import { UnitState, BuildingState } from "@/types";
-import { startMoving, startGroupMoving } from "@sim/systems/MovementSystem";
+import { startMoving } from "@sim/systems/MovementSystem";
 import { EventBus } from "@sim/core/EventBus";
 
 // ---------------------------------------------------------------------------
@@ -18,8 +18,6 @@ import { EventBus } from "@sim/core/EventBus";
 /** Tile-space radius for single-click unit hit detection. */
 const HIT_RADIUS = 0.6;
 const HIT_RADIUS_SQ = HIT_RADIUS * HIT_RADIUS;
-
-let _cmdGroupCounter = 0;
 
 // ---------------------------------------------------------------------------
 // UnitSelectionManager
@@ -94,6 +92,10 @@ class UnitSelectionManager {
   updateBox(sx: number, sy: number): void {
     this._boxEndX = sx;
     this._boxEndY = sy;
+  }
+
+  cancelBox(): void {
+    this._isBoxSelecting = false;
   }
 
   endBox(
@@ -213,22 +215,14 @@ class UnitSelectionManager {
     });
     if (ids.length === 0) return;
 
-    if (ids.length === 1) {
-      const unit = state.units.get(ids[0])!;
+    for (const id of ids) {
+      const unit = state.units.get(id)!;
       unit.playerCommandGoal = { ...worldPos };
       unit.playerCommandTargetId = null;
       unit.playerControlled = true;
+      unit.groupId = null;
+      unit.formationOffset = { x: 0, y: 0 };
       startMoving(state, unit, worldPos);
-    } else {
-      // Use formation movement for multi-unit commands
-      const groupId = `cmd-${++_cmdGroupCounter}`;
-      for (const id of ids) {
-        const unit = state.units.get(id)!;
-        unit.playerCommandGoal = { ...worldPos };
-        unit.playerCommandTargetId = null;
-        unit.playerControlled = true;
-      }
-      startGroupMoving(state, ids, groupId, worldPos);
     }
 
     EventBus.emit("playerCommandIssued", { unitIds: ids, goal: worldPos });
