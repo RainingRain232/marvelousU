@@ -178,6 +178,12 @@ export class VictoryScreen {
   /** Best wave reached (for game-over display). */
   waveBestRun = 0;
 
+  /** If true, use the enlarged wave-style layout for battlefield mode. */
+  isBattlefield = false;
+
+  /** Gold budget each player had in battlefield mode. */
+  battlefieldGold = 0;
+
   /** Called when the player clicks "NEXT WAVE" in wave mode. */
   onNextWave: (() => void) | null = null;
 
@@ -238,7 +244,7 @@ export class VictoryScreen {
       .stroke({ color: 0x4488cc, width: 1.5 });
     this._menuBtn.addChild(btnBg);
 
-    const btnLabel = new Text({ text: "RETURN TO MENU", style: STYLE_BTN });
+    const btnLabel = new Text({ text: "BACK TO MAIN MENU", style: STYLE_BTN });
     btnLabel.style.fill = 0x88ccff;
     btnLabel.anchor.set(0.5, 0.5);
     btnLabel.position.set(BW / 2, BH / 2);
@@ -326,13 +332,14 @@ export class VictoryScreen {
   private _show(state: GameState): void {
     this._hideTooltip();
     const isWave = this.waveNumber > 0;
+    const useEnlargedLayout = isWave || this.isBattlefield;
     const p1Won = state.winnerId === "p1";
 
-    // Wave mode: fill the screen with padding; normal: fixed 900px card
+    // Wave/battlefield mode: fill the screen with padding; normal: fixed 900px card
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
     const SCREEN_PAD = 40;
-    this._CARD_W = isWave ? Math.max(1100, sw - SCREEN_PAD * 2) : 900;
+    this._CARD_W = useEnlargedLayout ? Math.max(1100, sw - SCREEN_PAD * 2) : 900;
     this._winnerText.position.set(this._CARD_W / 2, 20);
     this._subtitleText.position.set(this._CARD_W / 2, 76);
     // Redraw header divider
@@ -347,7 +354,9 @@ export class VictoryScreen {
       this._winnerText.text = "DRAW";
       this._subtitleText.text = isWave
         ? `WAVE ${this.waveNumber}${corruptionTag} — MUTUAL DESTRUCTION`
-        : "MUTUAL DESTRUCTION";
+        : this.isBattlefield
+          ? "MUTUAL DESTRUCTION"
+          : "MUTUAL DESTRUCTION";
     } else {
       const playerLabels: Record<string, string> = {
         p1: "PLAYER 1",
@@ -359,12 +368,14 @@ export class VictoryScreen {
       this._winnerText.text = label;
       this._subtitleText.text = isWave
         ? `WAVE ${this.waveNumber}${corruptionTag} ${p1Won ? "COMPLETE" : "— GAME OVER"}`
-        : "WINS THE ROUND";
+        : this.isBattlefield
+          ? (p1Won ? "VICTORY" : "DEFEAT")
+          : "WINS THE ROUND";
     }
 
-    // Build stats — set card height first for wave mode so army lists know their bounds
+    // Build stats — set card height first for enlarged layout so army lists know their bounds
     const BH = 48;
-    if (isWave) {
+    if (useEnlargedLayout) {
       this._currentCardH = Math.max(500, sh - SCREEN_PAD * 2);
       this._buildWaveStats(state);
     } else {
@@ -372,9 +383,9 @@ export class VictoryScreen {
     }
 
     // Position buttons at the bottom of the card
-    if (isWave) {
+    if (useEnlargedLayout) {
       const btnY = this._currentCardH - BH - 20;
-      if (p1Won) {
+      if (isWave && p1Won) {
         this._nextWaveBtn.visible = true;
         this._nextWaveBtn.position.set(this._CARD_W / 2 - 270, btnY);
         this._menuBtn.position.set(this._CARD_W / 2 + 10, btnY);
@@ -433,24 +444,35 @@ export class VictoryScreen {
       ly = this._addStat("Units Lost", _fmtNum(p1Stats.unitsLost), ly, COL1);
       ly = this._addStat("Units Spawned", _fmtNum(p1Stats.unitsSpawned), ly, COL1);
       ly = this._addStat("Healing Done", _fmtNum(p1Stats.healingDone), ly, COL1);
+      ly = this._addStat("Health Regen", _fmtNum(p1Stats.healthRegenerated), ly, COL1);
     }
 
-    // Wave economy section
+    // Economy section
     ly += 6;
     this._addDivider(COL1, ly, COL_W);
     ly += 10;
-    this._addSectionLabel("WAVE ECONOMY", COL1, ly);
-    ly += 24;
 
-    ly = this._addStat("Gold (This Wave)", _fmtNum(this.lastRoundGoldSpent), ly, COL1);
-    ly = this._addStat("Gold (All Waves)", _fmtNum(this.totalGoldSpent), ly, COL1);
+    if (this.waveNumber > 0) {
+      this._addSectionLabel("WAVE ECONOMY", COL1, ly);
+      ly += 24;
+      ly = this._addStat("Gold (This Wave)", _fmtNum(this.lastRoundGoldSpent), ly, COL1);
+      ly = this._addStat("Gold (All Waves)", _fmtNum(this.totalGoldSpent), ly, COL1);
+    } else {
+      this._addSectionLabel("ECONOMY", COL1, ly);
+      ly += 24;
+      if (this.battlefieldGold > 0) {
+        ly = this._addStat("Army Budget", _fmtNum(this.battlefieldGold), ly, COL1);
+      }
+    }
 
     let survivorCount = 0;
     for (const u of state.units.values()) {
       if (u.owner === "p1" && u.hp > 0) survivorCount++;
     }
     ly = this._addStat("Surviving Units", String(survivorCount), ly, COL1);
-    ly = this._addStat("Wave Number", String(this.waveNumber), ly, COL1);
+    if (this.waveNumber > 0) {
+      ly = this._addStat("Wave Number", String(this.waveNumber), ly, COL1);
+    }
     if (this.corruptionLevel > 0) {
       ly = this._addStat("Corruption", String(this.corruptionLevel), ly, COL1);
     }
@@ -478,17 +500,26 @@ export class VictoryScreen {
       cy = this._addStat("Units Lost", _fmtNum(p2Stats.unitsLost), cy, COL2);
       cy = this._addStat("Units Spawned", _fmtNum(p2Stats.unitsSpawned), cy, COL2);
       cy = this._addStat("Healing Done", _fmtNum(p2Stats.healingDone), cy, COL2);
+      cy = this._addStat("Health Regen", _fmtNum(p2Stats.healthRegenerated), cy, COL2);
     }
 
-    // AI Economy
+    // Enemy Economy
     cy += 6;
     this._addDivider(COL2, cy, COL_W);
     cy += 10;
-    this._addSectionLabel("AI ECONOMY", COL2, cy);
-    cy += 24;
 
-    cy = this._addStat("Gold (This Wave)", _fmtNum(this.enemyGoldThisRound), cy, COL2);
-    cy = this._addStat("Gold (All Waves)", _fmtNum(this.enemyGoldTotal), cy, COL2);
+    if (this.waveNumber > 0) {
+      this._addSectionLabel("AI ECONOMY", COL2, cy);
+      cy += 24;
+      cy = this._addStat("Gold (This Wave)", _fmtNum(this.enemyGoldThisRound), cy, COL2);
+      cy = this._addStat("Gold (All Waves)", _fmtNum(this.enemyGoldTotal), cy, COL2);
+    } else {
+      this._addSectionLabel("ENEMY ECONOMY", COL2, cy);
+      cy += 24;
+      if (this.battlefieldGold > 0) {
+        cy = this._addStat("Army Budget", _fmtNum(this.battlefieldGold), cy, COL2);
+      }
+    }
 
     let enemySurvivorCount = 0;
     for (const u of state.units.values()) {
@@ -782,6 +813,7 @@ export class VictoryScreen {
       ly = this._addStat("Units Lost", _fmtNum(p1Stats.unitsLost), ly, COL1);
       ly = this._addStat("Units Spawned", _fmtNum(p1Stats.unitsSpawned), ly, COL1);
       ly = this._addStat("Healing Done", _fmtNum(p1Stats.healingDone), ly, COL1);
+      ly = this._addStat("Health Regen", _fmtNum(p1Stats.healthRegenerated), ly, COL1);
     }
 
     // --- COLUMN 2: Enemy Stats ---
@@ -795,6 +827,7 @@ export class VictoryScreen {
       cy = this._addStat("Units Lost", _fmtNum(p2Stats.unitsLost), cy, COL2);
       cy = this._addStat("Units Spawned", _fmtNum(p2Stats.unitsSpawned), cy, COL2);
       cy = this._addStat("Healing Done", _fmtNum(p2Stats.healingDone), cy, COL2);
+      cy = this._addStat("Health Regen", _fmtNum(p2Stats.healthRegenerated), cy, COL2);
     }
 
     cy += 8;

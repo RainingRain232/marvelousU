@@ -867,7 +867,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
             _worldBattleRosters = {
               p1Roster: playerRoster,
               p2Roster: p2Roster,
-              battleMeta: {},
+              battleMeta: { menuBattlefield: true },
               playerIsAttacker: true,
             };
             await _bootGame(
@@ -6868,6 +6868,8 @@ async function _bootGame(
   // Victory screen (overlays game during RESOLVE)
   // Set wave number so the victory screen shows wave info and next-wave button
   if (_waveState) {
+    victoryScreen.isBattlefield = false;
+    victoryScreen.battlefieldGold = 0;
     victoryScreen.waveNumber = _waveState.wave;
     victoryScreen.corruptionLevel = _waveState.corruption.corruptionLevel;
     victoryScreen.totalGoldSpent = _waveState.totalGoldSpent;
@@ -6876,8 +6878,21 @@ async function _bootGame(
     victoryScreen.enemyGoldTotal = _waveState.totalEnemyGold;
     victoryScreen.p1Roster = _worldBattleRosters?.p1Roster ?? [];
     victoryScreen.p2Roster = _worldBattleRosters?.p2Roster ?? [];
+  } else if (isBattlefieldSetup && _worldBattleRosters) {
+    victoryScreen.waveNumber = 0;
+    victoryScreen.isBattlefield = true;
+    victoryScreen.battlefieldGold = menuScreen.battlefieldGold;
+    victoryScreen.corruptionLevel = 0;
+    victoryScreen.totalGoldSpent = 0;
+    victoryScreen.lastRoundGoldSpent = 0;
+    victoryScreen.enemyGoldThisRound = 0;
+    victoryScreen.enemyGoldTotal = 0;
+    victoryScreen.p1Roster = _worldBattleRosters.p1Roster;
+    victoryScreen.p2Roster = _worldBattleRosters.p2Roster;
   } else {
     victoryScreen.waveNumber = 0;
+    victoryScreen.isBattlefield = false;
+    victoryScreen.battlefieldGold = 0;
     victoryScreen.corruptionLevel = 0;
     victoryScreen.totalGoldSpent = 0;
     victoryScreen.lastRoundGoldSpent = 0;
@@ -6980,7 +6995,8 @@ async function _bootGame(
   }
 
   // World battle play mode: intercept RESOLVE to return to world mode
-  if (_worldBattleRosters && !_worldBattleRosters.battleMeta?.waveMode) {
+  // (skip for menu-started battlefield and wave mode — they use the victory screen)
+  if (_worldBattleRosters && !_worldBattleRosters.battleMeta?.waveMode && !_worldBattleRosters.battleMeta?.menuBattlefield) {
     const rosters = _worldBattleRosters;
     _worldBattleRosters = null;
 
@@ -7027,6 +7043,9 @@ async function _bootGame(
     });
   } else if (_worldBattleRosters?.battleMeta?.waveMode) {
     // Wave mode: clear the rosters flag (handled by victoryScreen.onNextWave)
+    _worldBattleRosters = null;
+  } else if (_worldBattleRosters?.battleMeta?.menuBattlefield) {
+    // Menu battlefield: clear rosters, victory screen handles "back to menu"
     _worldBattleRosters = null;
   }
 

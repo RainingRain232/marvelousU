@@ -16,6 +16,7 @@ export interface PlayerBattleStats {
   damageDealt: number;
   damageReceived: number;
   healingDone: number;
+  healthRegenerated: number;
   goldSpent: number;
   buildingsDestroyed: number;
   buildingsCaptured: number;
@@ -48,6 +49,7 @@ function createPlayerStats(): PlayerBattleStats {
     damageDealt: 0,
     damageReceived: 0,
     healingDone: 0,
+    healthRegenerated: 0,
     goldSpent: 0,
     buildingsDestroyed: 0,
     buildingsCaptured: 0,
@@ -199,13 +201,15 @@ class BattleStatsTracker {
       }),
 
       EventBus.on("unitHealed", ({ unitId, amount, isRegen }) => {
-        // Skip passive regeneration — only count active healing.
-        if (isRegen) return;
         const state = this.state;
         if (!state) return;
         const unit = state.units.get(unitId);
         if (!unit) return;
-        this._playerStats(unit.owner).healingDone += amount;
+        if (isRegen) {
+          this._playerStats(unit.owner).healthRegenerated += amount;
+        } else {
+          this._playerStats(unit.owner).healingDone += amount;
+        }
       }),
 
       EventBus.on("goldChanged", ({ playerId, amount }) => {

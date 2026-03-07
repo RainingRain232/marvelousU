@@ -1366,7 +1366,7 @@ export class MenuScreen {
         let step = 1000;
         if (e.ctrlKey) step = 10000;
         else if (e.shiftKey) step = 5000;
-        this._battlefieldGold = Math.max(1000, Math.min(200000, this._battlefieldGold + delta * step));
+        this._battlefieldGold = Math.max(1000, Math.min(999999, this._battlefieldGold + delta * step));
         this._battlefieldGoldLabel.text = this._formatGold();
       });
       return btn;
