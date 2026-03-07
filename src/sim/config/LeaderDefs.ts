@@ -204,6 +204,30 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     bonusLabel: "Base starts with +1000 extra health.",
     bonus: { type: "base_health_bonus", amount: 1000 },
   },
+  {
+    id: "isolde",
+    name: "Isolde",
+    title: "The Fair Healer",
+    flavor: "Princess of Ireland and the most gifted healer in all the isles, Isolde learned the names of every herb and salve before she could hold a sword. She mended wounds that should have been mortal — including those of Tristan, the very knight who slew her uncle. Their doomed love became legend, but her skill in the healing arts endured long after the poets fell silent.",
+    bonusLabel: "Base starts with +500 extra health.",
+    bonus: { type: "base_health_bonus", amount: 500 },
+  },
+  {
+    id: "gareth",
+    name: "Gareth",
+    title: "Knight of Many Colours",
+    flavor: "Brother to Gawain and nephew to the king, Gareth came to Camelot and served a full year in the kitchens before requesting knighthood. Kay mocked him as 'Beaumains' — pretty hands — but when the year ended, Gareth rode out and defeated the Red Knight, the Blue Knight, and the Green Knight in succession. His humility proved sharper than any blade.",
+    bonusLabel: "Creature Den units start at Level 1.",
+    bonus: { type: "unit_start_level_building", building: BuildingType.CREATURE_DEN, level: 1 },
+  },
+  {
+    id: "agravain",
+    name: "Agravain",
+    title: "The Dark Knight",
+    flavor: "Son of King Lot and brother to Gawain, Agravain earned the name 'Dark Knight' not for villainy but for doing what no other knight had the stomach to do. He exposed Lancelot and Guinevere's affair — a truth every knight of the Round Table knew but none dared speak. It destroyed Camelot, and Lancelot killed him for it, but Agravain went to his grave calling it honesty.",
+    bonusLabel: "Base starts with +1000 extra health.",
+    bonus: { type: "base_health_bonus", amount: 1000 },
+  },
 ];
 
 // ---------------------------------------------------------------------------

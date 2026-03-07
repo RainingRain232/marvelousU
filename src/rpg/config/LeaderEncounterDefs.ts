@@ -351,7 +351,7 @@ export const LEADER_ENCOUNTER_DEFS: LeaderEncounterDef[] = [
   // Morgana — The Fay Enchantress
   // =========================================================================
   {
-    leaderId: "morgana",
+    leaderId: "morgan",
     spawnType: "town_visitor",
     introDialogue: [
       "You can see me? Interesting. Most mortals walk right past without a glance.",
