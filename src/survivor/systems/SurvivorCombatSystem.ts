@@ -18,10 +18,12 @@ import type {
 
 type DamageCallback = ((x: number, y: number, amount: number, isCrit: boolean) => void) | null;
 type WeaponFxCallback = ((x: number, y: number, color: number, radius: number) => void) | null;
+type ChainFxCallback = ((points: { x: number; y: number }[], color: number) => void) | null;
 type PlayerHitCallback = (() => void) | null;
 
 let _damageCallback: DamageCallback = null;
 let _weaponFxCallback: WeaponFxCallback = null;
+let _chainFxCallback: ChainFxCallback = null;
 let _playerHitCallback: PlayerHitCallback = null;
 
 // ---------------------------------------------------------------------------
@@ -334,8 +336,10 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
       const first = nearestEnemy(state, px, py, area);
       if (!first) break;
       const chainHitSet = new Set<number>([first.id]);
+      const chainPoints: { x: number; y: number }[] = [{ x: px, y: py }];
       damageEnemy(state, first, damage, ws.id);
       _weaponFxCallback?.(first.position.x, first.position.y, def.color, 2);
+      chainPoints.push({ x: first.position.x, y: first.position.y });
       let prev = first;
       for (let i = 1; i < count; i++) {
         const next = nearestEnemyExcluding(state, prev.position.x, prev.position.y, area * 0.8, chainHitSet);
@@ -343,8 +347,10 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         chainHitSet.add(next.id);
         damageEnemy(state, next, damage * 0.8, ws.id);
         _weaponFxCallback?.(next.position.x, next.position.y, def.color, 1.5);
+        chainPoints.push({ x: next.position.x, y: next.position.y });
         prev = next;
       }
+      _chainFxCallback?.(chainPoints, def.color);
       break;
     }
     case "ice_nova": {
@@ -546,6 +552,7 @@ function _updateEnemyProjectiles(state: SurvivorState, dt: number): void {
 export const SurvivorCombatSystem = {
   setDamageCallback(cb: DamageCallback): void { _damageCallback = cb; },
   setWeaponFxCallback(cb: WeaponFxCallback): void { _weaponFxCallback = cb; },
+  setChainFxCallback(cb: ChainFxCallback): void { _chainFxCallback = cb; },
   setPlayerHitCallback(cb: PlayerHitCallback): void { _playerHitCallback = cb; },
 
   update(state: SurvivorState, dt: number): void {

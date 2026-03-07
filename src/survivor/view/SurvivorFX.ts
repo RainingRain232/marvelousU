@@ -33,6 +33,8 @@ export class SurvivorFX {
 
   pendingDmgNumbers: { x: number; y: number; amount: number; isCrit: boolean; isHeal: boolean }[] = [];
   pendingWeaponFx: { x: number; y: number; color: number; radius: number }[] = [];
+  pendingChainFx: { points: { x: number; y: number }[]; color: number }[] = [];
+  private _chainBolts: { gfx: Graphics; lifetime: number }[] = [];
 
   init(): void {
     this.dmgNumberContainer.removeChildren();
@@ -42,6 +44,8 @@ export class SurvivorFX {
     this._orbitGfx = [];
     this.pendingDmgNumbers = [];
     this.pendingWeaponFx = [];
+    this.pendingChainFx = [];
+    this._chainBolts = [];
   }
 
   spawnDamageNumbers(): void {
@@ -122,6 +126,65 @@ export class SurvivorFX {
         this.weaponFxContainer.removeChild(p.gfx);
         p.gfx.destroy();
         this._weaponFxParticles.splice(i, 1);
+      }
+    }
+  }
+
+  spawnChainFx(): void {
+    for (const chain of this.pendingChainFx) {
+      if (chain.points.length < 2) continue;
+      const bolt = new Graphics();
+      // Draw jagged lightning bolt between each pair of points
+      for (let i = 0; i < chain.points.length - 1; i++) {
+        const from = chain.points[i];
+        const to = chain.points[i + 1];
+        const sx = from.x * TS;
+        const sy = from.y * TS;
+        const ex = to.x * TS;
+        const ey = to.y * TS;
+        const dx = ex - sx;
+        const dy = ey - sy;
+        const segments = 5 + Math.floor(Math.random() * 4);
+
+        // Main bolt
+        bolt.moveTo(sx, sy);
+        for (let j = 1; j < segments; j++) {
+          const t = j / segments;
+          const jitter = 6 + Math.random() * 8;
+          const perpX = -dy / (Math.sqrt(dx * dx + dy * dy) || 1) * (Math.random() - 0.5) * jitter;
+          const perpY = dx / (Math.sqrt(dx * dx + dy * dy) || 1) * (Math.random() - 0.5) * jitter;
+          bolt.lineTo(sx + dx * t + perpX, sy + dy * t + perpY);
+        }
+        bolt.lineTo(ex, ey);
+        bolt.stroke({ color: chain.color, width: 2.5, alpha: 0.9 });
+
+        // Glow bolt (wider, lower alpha)
+        bolt.moveTo(sx, sy);
+        for (let j = 1; j < segments; j++) {
+          const t = j / segments;
+          const jitter = 4 + Math.random() * 6;
+          const perpX = -dy / (Math.sqrt(dx * dx + dy * dy) || 1) * (Math.random() - 0.5) * jitter;
+          const perpY = dx / (Math.sqrt(dx * dx + dy * dy) || 1) * (Math.random() - 0.5) * jitter;
+          bolt.lineTo(sx + dx * t + perpX, sy + dy * t + perpY);
+        }
+        bolt.lineTo(ex, ey);
+        bolt.stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
+      }
+      this.weaponFxContainer.addChild(bolt);
+      this._chainBolts.push({ gfx: bolt, lifetime: 0.25 });
+    }
+    this.pendingChainFx = [];
+  }
+
+  updateChainFx(dt: number): void {
+    for (let i = this._chainBolts.length - 1; i >= 0; i--) {
+      const b = this._chainBolts[i];
+      b.lifetime -= dt;
+      b.gfx.alpha = Math.max(0, b.lifetime / 0.15);
+      if (b.lifetime <= 0) {
+        this.weaponFxContainer.removeChild(b.gfx);
+        b.gfx.destroy();
+        this._chainBolts.splice(i, 1);
       }
     }
   }

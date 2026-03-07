@@ -112,6 +112,9 @@ export class SurvivorGame {
     SurvivorCombatSystem.setWeaponFxCallback((x, y, color, radius) => {
       this._fx.pendingWeaponFx.push({ x, y, color, radius });
     });
+    SurvivorCombatSystem.setChainFxCallback((points, color) => {
+      this._fx.pendingChainFx.push({ points, color });
+    });
     SurvivorCombatSystem.setPlayerHitCallback(() => {
       this._camera.shake(6, 0.2);
     });
@@ -287,6 +290,8 @@ export class SurvivorGame {
     this._fx.updateDamageNumbers(dt);
     this._fx.spawnWeaponFx();
     this._fx.updateWeaponFx(dt);
+    this._fx.spawnChainFx();
+    this._fx.updateChainFx(dt);
 
     // HUD
     this._hud.update(s, viewManager.screenWidth, viewManager.screenHeight);
@@ -317,6 +322,7 @@ export class SurvivorGame {
     SurvivorInputSystem.destroy();
     SurvivorCombatSystem.setDamageCallback(null);
     SurvivorCombatSystem.setWeaponFxCallback(null);
+    SurvivorCombatSystem.setChainFxCallback(null);
     SurvivorCombatSystem.setPlayerHitCallback(null);
     SurvivorPickupSystem.setChestCallback(null);
     SurvivorPickupSystem.setArcanaCallback(null);
