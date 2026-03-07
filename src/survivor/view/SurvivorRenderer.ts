@@ -263,7 +263,8 @@ export class SurvivorRenderer {
         view.roundRect(-8, -6, 16, 12, 2).fill({ color: 0x8b4513 });
         view.roundRect(-9, -8, 18, 5, 2).fill({ color: 0xa0522d });
         view.circle(0, -2, 3).fill({ color });
-        view.circle(0, 0, 14).fill({ color, alpha: 0.15 });
+        view.circle(0, 0, 24).fill({ color, alpha: 0.1 });
+        view.circle(0, 0, 18).stroke({ color, width: 1.5, alpha: 0.3 });
         this.gemContainer.addChild(view);
         this._chestViews.set(chest.id, view);
       }

@@ -60,11 +60,12 @@ const CARD_H = 700;
 const CORNER_R = 10;
 const TAB_H = 36;
 
-type WikiTab = "lore" | "game_modes" | "units" | "spells" | "buildings" | "world_buildings" | "world_research";
+type WikiTab = "lore" | "game_modes" | "leaders" | "units" | "spells" | "buildings" | "world_buildings" | "world_research";
 
 const TAB_DEFS: { id: WikiTab; label: string }[] = [
   { id: "lore", label: "LORE" },
   { id: "game_modes", label: "GAME MODES" },
+  { id: "leaders", label: "LEADERS" },
   { id: "units", label: "UNITS" },
   { id: "spells", label: "SPELLS" },
   { id: "buildings", label: "BUILDINGS" },
@@ -137,6 +138,119 @@ const LORE_SECTIONS: LoreSection[] = [
   {
     heading: "The Fall of Camelot",
     body: "Camelot does not fall to a single catastrophe. It erodes. The Grail Quest strips the Round Table of its finest knights: some die in the wilderness, others achieve the vision and never return, and those who fail come back diminished, haunted by their unworthiness. With the Table weakened, long-suppressed grievances resurface. When Mordred exposes Lancelot and Guinevere's affair, it detonates every fault line at once. Arthur is forced by his own laws to condemn his wife. Lancelot's rescue splits the knighthood into warring camps. Arthur pursues Lancelot to the continent, leaving Mordred as regent. The rest unfolds with terrible inevitability. Mordred declares Arthur dead and claims the crown. Arthur returns to a civil war. At the Battle of Camlann, father and son destroy each other.\n\nThe mortally wounded Arthur is carried to the shores of a mist-shrouded lake. A barge appears, crewed by veiled women. They bear him to the Isle of Avalon, where he is said to sleep still, healing from his wounds, waiting for the hour when Britain's need is greatest. The sword Excalibur is returned to the waters. The Round Table lies empty. But the story does not end. It waits.",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Leader lore (from Legends_of_Camelot_Lore.docx)
+// ---------------------------------------------------------------------------
+
+interface LeaderLore {
+  name: string;
+  title: string;
+  body: string;
+}
+
+const LEADER_LORE: LeaderLore[] = [
+  {
+    name: "Arthur",
+    title: "The Once and Future King",
+    body: "Arthur stands at the heart of British mythological tradition, a figure whose origins stretch back to the earliest Welsh and Latin chronicles of the post-Roman period. The ninth-century Historia Brittonum lists him as a war leader who fought twelve battles against Saxon invaders, culminating in a decisive victory at Mount Badon. Geoffrey of Monmouth transformed this shadowy commander into a full-blown monarch in his twelfth-century Historia Regum Britanniae, weaving together threads of Welsh poetry, folk memory, and pure invention to create the king we recognise today.\n\nAccording to the legends, Arthur was conceived at Tintagel through Merlin's sorcery, raised in secret by Sir Ector, and revealed as the rightful heir when he drew a sword from a stone that no other man could move. He established his court at Camelot, gathered the finest warriors of the age to his Round Table, and forged a fragmented land into a united kingdom through courage and justice. His reign became a golden age of chivalry, cut short by civil war and the treachery of those closest to him.\n\nAt the Battle of Camlann, Arthur fell fighting his own kin, and was carried away by mysterious queens to the isle of Avalon. No grave was ever found. The enduring belief that Arthur sleeps beneath the hills, waiting to return in Britain's hour of greatest need, earned him the title Rex Quondam Rexque Futurus — the Once and Future King — a symbol of hope that has persisted for nearly a thousand years.",
+  },
+  {
+    name: "Merlin",
+    title: "Archmage of Avalon",
+    body: "Merlin is the archetypal wizard of Western literature, yet his origins are surprisingly tangled. Geoffrey of Monmouth created the character by fusing two distinct traditions: the historical Welsh bard Myrddin Wyllt, a sixth-century poet said to have been driven mad by the horrors of battle, and the Romano-British leader Ambrosius Aurelianus, whose prophetic abilities were recorded in earlier chronicles. The resulting figure — Merlin Ambrosius — first appeared in Geoffrey's Historia Regum Britanniae around 1136.\n\nMedieval tradition held that Merlin was born of a mortal woman and a supernatural being, an origin that granted him prophetic sight and command over forces beyond mortal understanding. He served as counsellor to Uther Pendragon and engineered the circumstances of Arthur's conception at Tintagel. Later romances, particularly those of Robert de Boron and the Vulgate Cycle, expanded his role into that of Arthur's mentor and the architect of the Round Table itself.\n\nMerlin's downfall came through love. The enchantress known variously as Viviane, Nimue, or Niniane learned his secrets and used them to imprison him — within a tree, a cave, or an invisible tower, depending on the telling. His voice fell silent, and Camelot lost its wisest guide. Yet the legend suggests his counsel never truly ended; across the centuries, storytellers have imagined his voice still echoing in the deep places of the earth, guiding those wise enough to listen.",
+  },
+  {
+    name: "Guinevere",
+    title: "Queen of Camelot",
+    body: "Guinevere first appears in Geoffrey of Monmouth's chronicle as a noblewoman of Roman descent, and later romances describe her as the daughter of King Leodegrance of Cameliard. Her marriage to Arthur brought the Round Table itself as a dowry, along with a hundred knights — a detail that underscores her importance to the political foundation of Camelot.\n\nAcross the centuries, Guinevere has been portrayed as everything from a wise and capable queen to a tragic figure whose passions brought ruin upon the kingdom. The twelfth-century French poet Chrétien de Troyes established her love affair with Lancelot as a central thread of the Arthurian cycle, and Thomas Malory's Le Morte d'Arthur gave the story its most enduring form. In Malory's telling, the queen's relationship with Lancelot is the slow-burning fuse that eventually detonates the fellowship of the Round Table, splitting its greatest champions into warring factions.\n\nYet Guinevere was no passive figure. Multiple traditions describe her as a shrewd ruler who held court in Arthur's absence, dispensing justice with an authority that silenced even the most quarrelsome lords. Her story ends in repentance: after the fall of Camelot, she withdrew to a convent and lived out her remaining years in reflection, a final act that medieval audiences would have read as both punishment and redemption.",
+  },
+  {
+    name: "Lancelot",
+    title: "Knight of the Lake",
+    body: "Lancelot is a comparatively late addition to the Arthurian canon. He has no presence in the earliest Welsh or Latin sources; his first major appearance is in Chrétien de Troyes's twelfth-century poem Lancelot, the Knight of the Cart, which already centres on his devotion to Guinevere. The vast prose Lancelot-Grail cycle of the thirteenth century then expanded his biography into an epic spanning his entire life.\n\nAccording to the romances, Lancelot was the orphaned son of King Ban of Benoic, spirited away as an infant by the Lady of the Lake and raised in her enchanted domain beneath the waters. He emerged as a young man of extraordinary martial ability, quickly establishing himself as the foremost knight of the Round Table. His prowess in battle and tournament was unmatched; his lance shattered shields and his sword settled sieges that armies could not.\n\nThe tragedy of Lancelot lies in the contradiction at his core. His absolute devotion to Guinevere made him the perfect courtly lover but an imperfect knight: when the quest for the Holy Grail demanded spiritual purity, Lancelot was found wanting. He could glimpse the Grail but never fully achieve it — that honour fell to his own son, Galahad. In the end, his love for the queen tore the fellowship apart, and Lancelot spent his final days as a hermit, dying shortly after learning of Guinevere's death.",
+  },
+  {
+    name: "Morgan le Fay",
+    title: "The Fay Enchantress",
+    body: "Morgan le Fay is one of the most complex and contradictory figures in the Arthurian tradition. Her earliest appearances, in Geoffrey of Monmouth's Vita Merlini and Chrétien de Troyes's romances, depict her as a benevolent healer and ruler of Avalon — a skilled practitioner of medicine who could change her shape and fly on magical wings. Scholars have linked her to the Welsh goddess Modron and the Irish war deity known as the Morrígan, suggesting roots far older than the medieval romances.\n\nAs Christian morality increasingly shaped the legends, Morgan's characterisation shifted. The Vulgate and Post-Vulgate Cycles recast her as an antagonist: Arthur's half-sister, born to Igraine and Gorlois, who studied the dark arts and schemed against Camelot from the shadows. In Sir Gawain and the Green Knight, she is revealed as the unseen architect of the entire plot, having engineered the Green Knight's challenge to test Arthur's court and frighten Guinevere. Later romances portray her as a seductress who learned her craft from Merlin himself and used it to manipulate kings.\n\nYet even at her most villainous, Morgan retains a strange dignity. When Arthur lies mortally wounded at Camlann, it is Morgan who arrives in a dark barge to carry him to Avalon — the same island she rules, the same place of healing she presided over in the very earliest stories. Her duality — healer and schemer, protector and rival — has made her one of the most enduring figures in the entire cycle.",
+  },
+  {
+    name: "Gawain",
+    title: "Knight of the Sun",
+    body: "Gawain holds a peculiar distinction in Arthurian literature: no other knight appears in more tales, yet he is rarely the central hero of any single one. He is Arthur's nephew, the son of King Lot of Orkney and Arthur's half-sister Morgause, and in the earliest traditions he was the pre-eminent knight of the Round Table — a position that only shifted to Lancelot when the French romances gained dominance.\n\nHis most famous adventure is Sir Gawain and the Green Knight, the fourteenth-century masterpiece in which a monstrous green warrior crashes Arthur's New Year's feast and issues an impossible challenge. Gawain alone steps forward when no other knight dares, accepting a blow he believes will mean his death. The poem tests his courage, honesty, and courtesy to the breaking point, and his single small failure — concealing a protective girdle out of fear for his life — becomes one of the most nuanced explorations of human virtue in medieval literature.\n\nAn old Welsh tradition holds that Gawain's strength waxes with the sun, reaching its peak at noon and fading as evening approaches. This solar association, combined with his reputation for courtesy and his fierce loyalty to Arthur, made him the model of achievable human excellence — not the impossible sainthood of a Galahad, but the best that a flawed mortal could manage.",
+  },
+  {
+    name: "Galahad",
+    title: "The Pure Knight",
+    body: "Galahad is a relatively late creation in the Arthurian tradition, first appearing in the thirteenth-century Vulgate Cycle as the knight destined to achieve the Holy Grail. He is the son of Lancelot, conceived through deception when Elaine of Corbenic, with the aid of enchantment, took on the appearance of Guinevere. Where his father's spiritual potential was squandered through sin, Galahad represents that potential perfectly fulfilled.\n\nUpon arriving at Camelot, Galahad took the Siege Perilous — the one seat at the Round Table that would destroy any knight unworthy of it. Where others were consumed, Galahad sat unharmed, confirming his singular purity. During the Grail Quest, he surpassed every other knight: where Lancelot could only glimpse the sacred vessel, and Percival and Bors could witness it, Galahad alone looked directly upon its mysteries.\n\nHis achievement of the Grail is both the climax and the beginning of the end for the Round Table. The quest scattered Arthur's knights across the land, and many never returned. Galahad himself ascended to a realm beyond the mortal world after beholding the Grail's secrets, leaving the fellowship diminished. He embodies a medieval paradox: the perfect knight whose very perfection renders him unsuitable for the imperfect world that needs him most.",
+  },
+  {
+    name: "Percival",
+    title: "Seeker of the Grail",
+    body: "Percival's story is one of the oldest Grail narratives, predating Galahad's by several decades. Chrétien de Troyes introduced him in the late twelfth century in Perceval, the Story of the Grail — a poem left tantalizingly unfinished at the author's death. In Chrétien's telling, Percival is a naïve Welsh boy raised in isolation by his mother, who kept him ignorant of knighthood after losing her husband and other sons to war.\n\nWhen Percival stumbles upon a group of knights in the forest, he mistakes them for angels and immediately sets out for Arthur's court, arriving as an uncouth rustic who must learn everything from scratch. His journey from innocent fool to Grail seeker became one of the defining narratives of chivalric literature. In the German poet Wolfram von Eschenbach's Parzival, the story was expanded into a sprawling epic that explored questions of faith, doubt, and perseverance.\n\nIn earlier versions of the Grail legend, Percival was the knight who achieved the sacred vessel. When later romances introduced Galahad as the supreme Grail knight, Percival was relegated to one of three worthy companions — alongside Bors — who could witness the Grail but not fully attain it. Even so, his arc from ignorant youth to spiritual seeker remains among the most compelling in the entire tradition: a reminder that wisdom often begins in simplicity and earnest dedication.",
+  },
+  {
+    name: "Tristan",
+    title: "The Sorrowful Knight",
+    body: "The story of Tristan originated as an independent Celtic romance, separate from the Arthurian cycle entirely. The earliest surviving versions date to the twelfth century, composed by the poets Béroul and Thomas of Britain, and they tell a tale of doomed love that predates and likely inspired the more famous affair between Lancelot and Guinevere.\n\nTristan was the nephew of King Mark of Cornwall. Sent to Ireland on a diplomatic mission to bring back the princess Isolde as a bride for his uncle, Tristan and Isolde accidentally drank a love potion during the voyage home and fell into an unbreakable passion. Their subsequent adulterous relationship — conducted under Mark's nose, punctuated by exile, disguise, and narrow escapes — became one of the great tragic love stories of medieval Europe. No version of the tale grants them a happy ending.\n\nThe thirteenth-century Prose Tristan formally integrated the character into the Arthurian world, making him a Knight of the Round Table and a peer of Lancelot in martial skill. Malory continued this tradition in Le Morte d'Arthur, devoting substantial sections to Tristan's adventures. His name, likely derived from the French triste or the Celtic Drystan, carries the melancholy that defines his legend: a knight whose blade was as lethal as his love life was sorrowful.",
+  },
+  {
+    name: "Nimue",
+    title: "Lady of the Lake",
+    body: "The Lady of the Lake is among the most enigmatic figures in Arthurian legend, and her identity shifts dramatically depending on which text one consults. She is variously called Nimue, Viviane, and Niniane, and her role ranges from benevolent guardian to dangerous enchantress. The confusion is partly deliberate: she represents the unpredictable power of the otherworld, a figure who operates by rules that mortals cannot fully comprehend.\n\nHer most famous acts define the boundaries of the Arthurian story. It was the Lady of the Lake who presented Arthur with Excalibur, the enchanted sword that made him nearly invincible. She raised the infant Lancelot in her domain beneath the waters, shaping him into the greatest knight of the age. And when Merlin fell in love with her, she turned his own teachings against him, imprisoning the wizard so thoroughly that he was never seen again.\n\nIn Malory's Le Morte d'Arthur, Nimue evolves from Merlin's captor into a protector of the realm, repeatedly intervening to save Arthur from magical assassination attempts. At the very end, when Bedivere casts Excalibur into the lake after Arthur's final battle, a hand rises from the water to reclaim it — and Nimue is among the queens who arrive in a dark barge to carry the dying king to Avalon. She bookends the entire saga: the giver and reclaimer of the sword, present at both the beginning and the end.",
+  },
+  {
+    name: "Kay",
+    title: "Seneschal of Camelot",
+    body: "Kay is one of the oldest characters in the Arthurian tradition, appearing in the earliest Welsh sources alongside Arthur himself. In the tale of Culhwch and Olwen, drawn from the Mabinogion, Kay possesses almost superhuman abilities: he can hold his breath for nine days, grow as tall as a tree, and radiate heat from his hands so intense that no rain could wet him. These fantastical qualities suggest that Kay may have originated as a figure from Celtic mythology long before the romance tradition domesticated him.\n\nBy the time of the French romances and Malory's Le Morte d'Arthur, Kay had been transformed into Arthur's foster-brother and the seneschal — chief steward — of Camelot. In this role he managed the day-to-day governance of the court: supplying armies, overseeing the treasury, and handling the logistics that allowed other knights to ride off on quests. He is frequently portrayed as sharp-tongued and boastful, a foil to the more courteous knights, yet his loyalty to Arthur is never in question.\n\nThe most famous episode involving Kay is the drawing of the sword from the stone. In most tellings, the young Arthur pulls the sword only because Kay has forgotten his own and sends his foster-brother to fetch a replacement. It is a small, accidental moment that changes the course of history — and Kay, for all his bluster, is the one who recognises what has happened and kneels before the new king.",
+  },
+  {
+    name: "Bedivere",
+    title: "The Loyal Hand",
+    body: "Like Kay, Bedivere belongs to the oldest stratum of Arthurian legend, appearing in Welsh tradition as Bedwyr, one of Arthur's earliest and most trusted companions. In the Mabinogion, Bedwyr is described as a formidable warrior despite having lost one hand — a detail preserved across centuries of retelling that speaks to his extraordinary resilience.\n\nBedivere's defining moment comes at the very end of the story. After the catastrophic Battle of Camlann, Arthur lies mortally wounded and commands Bedivere to return Excalibur to the lake from which it came. Twice Bedivere approaches the water and cannot bring himself to throw away so magnificent a weapon, hiding it and lying to his king. Only on the third attempt does he obey, hurling the sword over the water — and a hand rises from beneath the surface to catch it and draw it under.\n\nThis scene, rendered powerfully in both Malory and Tennyson, has become one of the most iconic moments in the entire legend. Bedivere is the last knight to see Arthur alive before the barge carries him to Avalon. His reluctance to part with Excalibur is deeply human — a final, understandable act of attachment in the face of overwhelming loss — and his eventual obedience marks the true end of Camelot's age.",
+  },
+  {
+    name: "Elaine",
+    title: "The Lily Maid",
+    body: "The name Elaine recurs throughout Arthurian literature, attached to at least five distinct women in Malory's work alone. The most famous is Elaine of Astolat, also known as the Fair Maid of Astolat, whose story of unrequited love for Lancelot has haunted readers and artists for centuries.\n\nIn Malory's telling, Lancelot lodges with Elaine's father before a tournament and, to maintain his disguise, agrees to wear her favour in the lists — something he had never done for any woman, including Guinevere. Elaine falls hopelessly in love. She nurses Lancelot back to health after he is wounded, and when he departs, she begs him to marry her or at least take her as his lover. He refuses both, gently but absolutely, bound as he is to the queen.\n\nElaine dies of grief. At her instruction, her body is placed in a small barge, clutching a lily in one hand and a final letter in the other, and floated down the river to Camelot, where Arthur's court discovers her with sorrow. Tennyson immortalised this image in his poem \"The Lady of Shalott,\" transforming Elaine into one of the most recognisable figures in Victorian art. Her tragedy is a quiet counterpoint to the grand betrayals and battles of the Arthurian cycle: a reminder of the private devastation that the great knights leave in their wake.",
+  },
+  {
+    name: "Mordred",
+    title: "The Usurper",
+    body: "Mordred is the shadow that falls across every version of the Arthurian legend. In Geoffrey of Monmouth's chronicle, he is Arthur's nephew who seizes the throne while the king campaigns abroad. Later romances darkened his origins considerably: in the Vulgate Cycle and Malory, Mordred is Arthur's own son, born of an unwitting incestuous union with his half-sister Morgause.\n\nUpon learning of the child's existence and a prophecy that this offspring would destroy him, Arthur attempted to eliminate the threat by setting all children born on a certain day adrift at sea — an echo of the biblical Herod. Mordred alone survived, washed ashore and raised in secret, a living reminder that some fates cannot be avoided.\n\nMordred's rebellion is the catastrophe that ends the golden age. Left as regent while Arthur pursues Lancelot to France, Mordred declares the king dead, attempts to marry Guinevere, and raises an army. At the Battle of Camlann, father and son meet in combat: Arthur drives a spear through Mordred's body, but Mordred, with his last strength, deals Arthur his mortal wound. It is the final, devastating proof that Camelot's destruction came not from foreign enemies but from within — from blood, ambition, and the consequences of a king's oldest sin.",
+  },
+  {
+    name: "Igraine",
+    title: "Duchess of Cornwall",
+    body: "Igraine — also rendered as Igerna, Ygraine, or Ygerna depending on the source — is the mother of Arthur, and her story sets the entire legend in motion. In Geoffrey of Monmouth's telling, she was the wife of Gorlois, Duke of Cornwall, and renowned for her beauty. King Uther Pendragon became consumed with desire for her, and when Gorlois refused to surrender his wife, war erupted between them.\n\nIt was Merlin who provided the terrible solution. Through sorcery, Uther was disguised as Gorlois and gained entry to Tintagel Castle, where he lay with Igraine while her true husband was being killed in battle elsewhere. Arthur was conceived that night. The moral ambiguity of this act — a king using deception and magic to take another man's wife — casts a long shadow over the legend, suggesting that Camelot's foundation was flawed from its very first moment.\n\nIgraine's other children, born to Gorlois before his death, include Morgan le Fay and Morgause — figures who would shape Arthur's fate as profoundly as any enemy. In some romances, Igraine outlives Uther and is discovered alive in an enchanted castle years later; in others, she dies before her son ever learns her identity. Either way, she is the silent origin point of every major conflict in the cycle, the woman whose unwilling role in Merlin's scheme gave birth to both a golden age and its destruction.",
+  },
+  {
+    name: "Pellinore",
+    title: "The Questing King",
+    body: "King Pellinore is defined by a single, magnificent obsession: the Questing Beast. This bizarre creature — described as having the head of a serpent, the body of a leopard, the haunches of a lion, and the feet of a deer, with a belly that produced the sound of thirty baying hounds — appears throughout the Arthurian romances as a quarry that can never quite be caught.\n\nPellinore devoted his life to hunting this impossible prey, riding endlessly through the wild places of Britain in pursuit. In the Post-Vulgate Cycle, the Questing Beast was born from a princess's unnatural desire and the sorcery of a demon, making its hunt a kind of penance or cosmic errand. Pellinore's obsession with it marks him as a figure apart from the courtly world of Camelot — a king more at home in the untamed forest than in any throne room.\n\nBeyond his famous hunt, Pellinore plays a significant role in the political tensions of the Round Table. He killed King Lot of Orkney in battle, a deed that earned him the lasting enmity of Lot's sons, particularly Gawain. This feud between the houses of Pellinore and Orkney runs as a dark undercurrent through the romances, and Pellinore's eventual murder at the hands of Gawain and his brothers is one of the cycle's many instances of vengeance breeding further vengeance.",
+  },
+  {
+    name: "Ector",
+    title: "The Humble Lord",
+    body: "Sir Ector is one of the quietest yet most essential figures in the Arthurian legend. When Merlin spirited the newborn Arthur away from Uther Pendragon's court for the child's protection, it was Ector who received the infant and raised him as his own alongside his biological son, Kay. Ector asked no questions and sought no reward; he simply provided the stable, loving household that allowed a future king to grow up in safety.\n\nThe extent of Ector's role varies between sources. In some tellings he is a minor lord of modest means; in others, a man of considerable estates who managed his lands with such prudence that his people prospered even in lean years. What remains constant is his selflessness. He kept Arthur's true identity secret, treated the boy no differently from his own son, and when the moment came for Arthur to claim the throne by drawing the sword from the stone, Ector was the first to kneel.\n\nHis place in the legend serves as a quiet argument that the virtues which sustain a kingdom — prudence, humility, and steady care — are no less heroic than those displayed on the battlefield. Without Ector's unremarkable goodness, there would have been no Arthur at all.",
+  },
+  {
+    name: "Bors",
+    title: "The Steadfast",
+    body: "Sir Bors de Ganis is the cousin of Lancelot and the brother of Lionel, and of the three knights who achieved the Holy Grail — Galahad, Percival, and Bors — he is the most human. Where Galahad is divinely pure and Percival is touched by holy innocence, Bors is simply a good man who tries his best. He is neither the strongest nor the holiest knight at the Round Table, but he is arguably the most dependable.\n\nDuring the Grail Quest, Bors faces a series of moral dilemmas that test his character more subtly than any battle could. In one famous episode from the Vulgate Cycle, he must choose between rescuing his brother Lionel and saving a maiden in distress — an impossible choice that illustrates the agonising contradictions of chivalric duty. He chooses the maiden, and the consequences haunt him.\n\nAfter the fall of Camelot, Bors is one of the few knights who survives the final catastrophe. In Malory's telling, he is present at Lancelot's death and afterwards travels to the Holy Land to fight in the Crusades, eventually dying on a Good Friday. His quiet perseverance across the entire arc of the legend — from the Grail Quest to the bitter end — makes him a figure of understated heroism: the knight who was always exactly where he was needed.",
+  },
+  {
+    name: "Uther",
+    title: "The Pendragon",
+    body: "Uther Pendragon is Arthur's father and the king whose reign immediately preceded the golden age of Camelot. The epithet \"Pendragon\" derives from the Welsh pen, meaning \"chief,\" and dragon, meaning \"warrior\" — a title signifying supreme military leadership. Geoffrey of Monmouth records that a dragon-shaped comet appeared in the sky at the death of Uther's brother Ambrosius, and Merlin interpreted it as a sign that Uther would take the throne.\n\nUther's reign was defined by warfare. He fought against Saxon invaders and rival British kings, uniting the fractious lords of the island through force of arms and political cunning. His treasury was perpetually engaged in funding campaigns, and his rule, while effective, lacked the idealism that would characterise his son's court. Uther was a pragmatist in an age that demanded pragmatism.\n\nHis most consequential act was also his most morally compromised. Consumed by desire for Igraine, wife of the Duke of Cornwall, Uther enlisted Merlin's sorcery to take her through deception — an act that produced Arthur but also introduced a stain of dishonour into the royal bloodline. Uther eventually married Igraine after her husband's death, but he did not live long after, reportedly poisoned by Saxon enemies. His legacy is inseparable from his son's: everything Arthur built rested on foundations that Uther laid, for better and for worse.",
+  },
+  {
+    name: "Lot",
+    title: "King of Orkney",
+    body: "King Lot of Lothian and Orkney occupies an uneasy position in Arthurian legend: he is both Arthur's brother-in-law and, at various points, his rival. Married to Morgause, Arthur's half-sister, Lot fathered some of the Round Table's most important knights — Gawain, Gaheris, Agravain, and Gareth — as well as, in some versions, the traitor Mordred.\n\nIn the early stages of Arthur's reign, Lot was among the rebel kings who refused to accept the young monarch's authority. He brought his northern armies south and fought against Arthur at the Battle of Bedegraine, one of the defining conflicts of the king's consolidation of power. The rebellion ultimately failed, and Lot was killed by King Pellinore — a death that ignited a blood feud between their families lasting generations.\n\nLot's legacy in the romances is primarily dynastic. Through his sons, particularly Gawain, the House of Orkney became one of the two great power blocs at the Round Table, perpetually in tension with the House of Ban represented by Lancelot and his kin. This rivalry, rooted in Lot's death and the grudges it spawned, contributed as much to Camelot's eventual downfall as any act of outright treachery. Lot himself is remembered as a stern northern lord: a builder of impregnable fortresses on storm-battered coasts, a ruler whose strength lay in endurance rather than glamour.",
   },
 ];
 
@@ -338,6 +452,9 @@ export class MainMenuWikiScreen {
       case "game_modes":
         this._buildGameModesContent();
         break;
+      case "leaders":
+        this._buildLeadersContent();
+        break;
       case "world_buildings":
         this._buildWorldBuildingsContent();
         break;
@@ -421,6 +538,14 @@ export class MainMenuWikiScreen {
         name: "WAVE MODE",
         desc: "Endless survival mode. Defend against increasingly powerful waves of enemies. See how long you can last as each wave brings stronger and more numerous foes. No opponent — just you against the horde.",
       },
+      {
+        name: "SURVIVOR",
+        desc: "Vampire Survivors-style action roguelike. Choose a character and fight through endless hordes of enemies on a scrolling map. Defeat enemies to collect XP gems and level up, choosing new weapons and passive items at each level. Weapons fire automatically — you only control movement. Collect treasure chests for gold, health, screen clears, and powerful Arcana abilities. Survive long enough to face massive bosses. Features 10 unique weapons with evolution paths, 8 passive items, synergy bonuses, elite enemies, map hazards, and landmark buffs.",
+      },
+      {
+        name: "RPG",
+        desc: "Overworld adventure mode. Explore a procedurally generated map with your hero, enter dungeons, fight encounters in tactical autobattler combat, collect loot, and level up. Meet legendary Arthurian characters on the road who offer quests and blessings. Features town visits, dungeon crawling, boss fights, and a narrative-driven experience through the world of Camelot.",
+      },
     ];
 
     for (const mode of modes) {
@@ -438,6 +563,51 @@ export class MainMenuWikiScreen {
         new Graphics().rect(0, cy, CARD_W - 60, 1).fill({ color: 0x333355, alpha: 0.3 }),
       );
       cy += 10;
+    }
+
+    this._contentH = cy;
+    this._maxScroll = Math.max(0, this._contentH - this._viewH);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Leaders tab
+  // ---------------------------------------------------------------------------
+
+  private _buildLeadersContent(): void {
+    const c = this._contentContainer;
+    let cy = 8;
+
+    const heading = new Text({ text: "LEGENDS OF CAMELOT", style: STYLE_LORE_HEADING });
+    heading.position.set(0, cy);
+    c.addChild(heading);
+    cy += 22;
+
+    const intro = new Text({
+      text: "Heroes, Sorcerers, and Sovereigns of the Arthurian Cycle. Each leader can be chosen in World mode, granting a unique passive bonus to your kingdom.",
+      style: STYLE_BODY,
+    });
+    intro.position.set(0, cy);
+    c.addChild(intro);
+    cy += intro.height + 16;
+
+    for (const leader of LEADER_LORE) {
+      const titleText = new Text({
+        text: `${leader.name}  —  ${leader.title}`,
+        style: STYLE_ITEM_NAME,
+      });
+      titleText.position.set(0, cy);
+      c.addChild(titleText);
+      cy += 22;
+
+      const body = new Text({ text: leader.body, style: STYLE_BODY });
+      body.position.set(0, cy);
+      c.addChild(body);
+      cy += body.height + 12;
+
+      c.addChild(
+        new Graphics().rect(0, cy, CARD_W - 60, 1).fill({ color: 0x333355, alpha: 0.3 }),
+      );
+      cy += 14;
     }
 
     this._contentH = cy;

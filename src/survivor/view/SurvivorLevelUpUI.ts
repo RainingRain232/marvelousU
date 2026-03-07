@@ -8,7 +8,7 @@ import type { SurvivorArcanaDef } from "../config/SurvivorArcanaDefs";
 import type { UpgradeChoice } from "../systems/SurvivorLevelSystem";
 import type { SurvivorState } from "../state/SurvivorState";
 import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
-import { WEAPON_DEFS, PASSIVE_DEFS } from "../config/SurvivorWeaponDefs";
+import { WEAPON_DEFS, PASSIVE_DEFS, EVOLUTION_DEFS } from "../config/SurvivorWeaponDefs";
 import type { SurvivorWeaponId, SurvivorPassiveId } from "../config/SurvivorWeaponDefs";
 
 const STYLE_TITLE = new TextStyle({ fontFamily: "monospace", fontSize: 28, fill: 0xffd700, fontWeight: "bold", letterSpacing: 3 });
@@ -184,29 +184,207 @@ export class SurvivorLevelUpUI {
 
     const title = new Text({ text: "PAUSED", style: new TextStyle({ fontFamily: "monospace", fontSize: 32, fill: 0xffd700, fontWeight: "bold", letterSpacing: 4 }) });
     title.anchor.set(0.5, 0.5);
-    title.position.set(sw / 2, sh / 2 - 100);
+    title.position.set(sw / 2, 40);
     this.pauseOverlay.addChild(title);
 
     const s = state;
     const mins = Math.floor(s.gameTime / 60);
     const secs = Math.floor(s.gameTime % 60);
-    const stats = [
-      `Time: ${mins}:${secs.toString().padStart(2, "0")}`,
-      `Level: ${s.level}`,
-      `Kills: ${s.totalKills}`,
-      `Weapons: ${s.weapons.length}/${SurvivorBalance.MAX_WEAPON_SLOTS}`,
-      `Gold: ${s.gold}`,
-    ];
-    const statsText = new Text({ text: stats.join("\n"), style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xcccccc, lineHeight: 22 }) });
+    const statsText = new Text({
+      text: `Time: ${mins}:${secs.toString().padStart(2, "0")}  |  Lv.${s.level}  |  Kills: ${s.totalKills}  |  Gold: ${s.gold}`,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xcccccc }),
+    });
     statsText.anchor.set(0.5, 0);
-    statsText.position.set(sw / 2, sh / 2 - 50);
+    statsText.position.set(sw / 2, 70);
     this.pauseOverlay.addChild(statsText);
 
-    const resumeBtn = this._buildButton("RESUME", sw / 2, sh / 2 + 80, 0x224422, onResume);
+    // --- Inventory: Weapons ---
+    const invY = 100;
+    if (s.weapons.length > 0) {
+      const weaponLabel = new Text({
+        text: `WEAPONS (${s.weapons.length}/${SurvivorBalance.MAX_WEAPON_SLOTS})`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xff8844, fontWeight: "bold" }),
+      });
+      weaponLabel.anchor.set(0.5, 0);
+      weaponLabel.position.set(sw / 2, invY);
+      this.pauseOverlay.addChild(weaponLabel);
+
+      const cardW = 200;
+      const cardH = 100;
+      const gap = 10;
+      const totalW = s.weapons.length * cardW + (s.weapons.length - 1) * gap;
+      const startX = (sw - totalW) / 2;
+
+      for (let i = 0; i < s.weapons.length; i++) {
+        const ws = s.weapons[i];
+        const def = WEAPON_DEFS[ws.id];
+        const card = this._buildInventoryCard(
+          def.name + (ws.evolved ? " [EVOLVED]" : ""),
+          ws.evolved ? "MAX" : `Lv.${ws.level}`,
+          "WEAPON",
+          ws.evolved ? 0xffd700 : def.color,
+          this._getWeaponStatsText(ws.id, ws.level, ws.evolved),
+          cardW, cardH,
+        );
+        card.position.set(startX + i * (cardW + gap), invY + 22);
+        this.pauseOverlay.addChild(card);
+      }
+    }
+
+    // --- Inventory: Passives ---
+    const passiveY = invY + 132;
+    if (s.passives.length > 0) {
+      const passiveLabel = new Text({
+        text: "PASSIVES",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0x44aaff, fontWeight: "bold" }),
+      });
+      passiveLabel.anchor.set(0.5, 0);
+      passiveLabel.position.set(sw / 2, passiveY);
+      this.pauseOverlay.addChild(passiveLabel);
+
+      const cardW = 180;
+      const cardH = 70;
+      const gap = 10;
+      const totalW = s.passives.length * cardW + (s.passives.length - 1) * gap;
+      const startX = (sw - totalW) / 2;
+
+      for (let i = 0; i < s.passives.length; i++) {
+        const ps = s.passives[i];
+        const def = PASSIVE_DEFS[ps.id];
+        const card = this._buildInventoryCard(
+          def.name,
+          `Lv.${ps.level}`,
+          "PASSIVE",
+          0x44aaff,
+          this._getPassiveStatsText(ps.id, ps.level),
+          cardW, cardH,
+        );
+        card.position.set(startX + i * (cardW + gap), passiveY + 22);
+        this.pauseOverlay.addChild(card);
+      }
+    }
+
+    // --- Arcana ---
+    const arcanaY = s.passives.length > 0 ? passiveY + 102 : passiveY;
+    if (s.arcana.length > 0) {
+      const arcanaLabel = new Text({
+        text: "ARCANA",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xaa44ff, fontWeight: "bold" }),
+      });
+      arcanaLabel.anchor.set(0.5, 0);
+      arcanaLabel.position.set(sw / 2, arcanaY);
+      this.pauseOverlay.addChild(arcanaLabel);
+
+      const cardW = 180;
+      const cardH = 50;
+      const gap = 10;
+      const totalW = s.arcana.length * cardW + (s.arcana.length - 1) * gap;
+      const startX = (sw - totalW) / 2;
+
+      for (let i = 0; i < s.arcana.length; i++) {
+        const arc = s.arcana[i];
+        const rarityColor = arc.rarity === "legendary" ? 0xffd700 : arc.rarity === "rare" ? 0x4488ff : 0xaaaaaa;
+        const card = this._buildInventoryCard(
+          arc.name,
+          arc.rarity.toUpperCase(),
+          "",
+          rarityColor,
+          arc.description,
+          cardW, cardH,
+        );
+        card.position.set(startX + i * (cardW + gap), arcanaY + 22);
+        this.pauseOverlay.addChild(card);
+      }
+    }
+
+    // --- Buttons ---
+    const btnY = Math.max(sh - 90, arcanaY + (s.arcana.length > 0 ? 90 : 20));
+    const resumeBtn = this._buildButton("RESUME", sw / 2 - 110, btnY, 0x224422, onResume);
     this.pauseOverlay.addChild(resumeBtn);
 
-    const quitBtn = this._buildButton("QUIT TO MENU", sw / 2, sh / 2 + 130, 0x442222, onQuit);
+    const quitBtn = this._buildButton("QUIT TO MENU", sw / 2 + 110, btnY, 0x442222, onQuit);
     this.pauseOverlay.addChild(quitBtn);
+  }
+
+  private _buildInventoryCard(name: string, badge: string, typeLabel: string, borderColor: number, statsStr: string, w: number, h: number): Container {
+    const card = new Container();
+
+    const cardBg = new Graphics()
+      .roundRect(0, 0, w, h, 6)
+      .fill({ color: 0x1a1a2e, alpha: 0.95 })
+      .roundRect(0, 0, w, h, 6)
+      .stroke({ color: borderColor, width: 1.5 });
+    card.addChild(cardBg);
+
+    const nameText = new Text({
+      text: name,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xffffff, fontWeight: "bold" }),
+    });
+    nameText.position.set(8, 6);
+    card.addChild(nameText);
+
+    const badgeText = new Text({
+      text: badge,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xffd700, fontWeight: "bold" }),
+    });
+    badgeText.anchor.set(1, 0);
+    badgeText.position.set(w - 8, 8);
+    card.addChild(badgeText);
+
+    if (typeLabel) {
+      const typeLbl = new Text({
+        text: typeLabel,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: typeLabel === "WEAPON" ? 0xff8844 : 0x44aaff }),
+      });
+      typeLbl.position.set(8, 22);
+      card.addChild(typeLbl);
+    }
+
+    const statsY = typeLabel ? 35 : 24;
+    const desc = new Text({
+      text: statsStr,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x99aabb, wordWrap: true, wordWrapWidth: w - 16 }),
+    });
+    desc.position.set(8, statsY);
+    card.addChild(desc);
+
+    return card;
+  }
+
+  private _getWeaponStatsText(weaponId: SurvivorWeaponId, level: number, evolved: boolean): string {
+    const def = WEAPON_DEFS[weaponId];
+    if (evolved && def.evolutionId) {
+      const evoDef = EVOLUTION_DEFS[def.evolutionId];
+      const parts: string[] = [`DMG: ${evoDef.damage}`];
+      if (evoDef.cooldown > 0) parts.push(`CD: ${evoDef.cooldown.toFixed(1)}s`);
+      if (evoDef.area > 0) parts.push(`AREA: ${evoDef.area.toFixed(1)}`);
+      if (evoDef.count > 1) parts.push(`COUNT: ${evoDef.count}`);
+      return parts.join("  |  ");
+    }
+    const dmg = def.baseDamage + def.damagePerLevel * (level - 1);
+    const cd = Math.max(0.1, def.baseCooldown - def.cooldownPerLevel * (level - 1));
+    const area = def.baseArea + def.areaPerLevel * (level - 1);
+    const count = def.baseCount + def.countPerLevel * (level - 1);
+    const parts: string[] = [`DMG: ${dmg}`];
+    if (cd > 0) parts.push(`CD: ${cd.toFixed(1)}s`);
+    if (area > 0) parts.push(`AREA: ${area.toFixed(1)}`);
+    if (count > 1) parts.push(`COUNT: ${count}`);
+    if (def.basePierce > 0) parts.push(`PIERCE: ${def.basePierce}`);
+    return parts.join("  |  ");
+  }
+
+  private _getPassiveStatsText(passiveId: SurvivorPassiveId, level: number): string {
+    const def = PASSIVE_DEFS[passiveId];
+    const parts: string[] = [];
+    if (def.hpPerLevel) parts.push(`HP: +${def.hpPerLevel * level}`);
+    if (def.speedPerLevel) parts.push(`Speed: +${(def.speedPerLevel * level * 100).toFixed(0)}%`);
+    if (def.areaPerLevel) parts.push(`Area: +${(def.areaPerLevel * level * 100).toFixed(0)}%`);
+    if (def.attackSpeedPerLevel) parts.push(`Atk Spd: +${(def.attackSpeedPerLevel * level * 100).toFixed(0)}%`);
+    if (def.critPerLevel) parts.push(`Crit: +${(def.critPerLevel * level * 100).toFixed(0)}%`);
+    if (def.pickupRadiusPerLevel) parts.push(`Pickup: +${def.pickupRadiusPerLevel * level}`);
+    if (def.xpMultPerLevel) parts.push(`XP: +${(def.xpMultPerLevel * level * 100).toFixed(0)}%`);
+    if (def.regenPerLevel) parts.push(`Regen: +${def.regenPerLevel * level} HP/s`);
+    return parts.join("  |  ");
   }
 
   hidePause(): void {

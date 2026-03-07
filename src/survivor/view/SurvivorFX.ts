@@ -106,24 +106,34 @@ export class SurvivorFX {
 
   spawnWeaponFx(): void {
     for (const fx of this.pendingWeaponFx) {
-      // AoE pulse ring
+      // AoE pulse ring — outer glow + inner ring
       const ring = new Graphics()
         .circle(0, 0, fx.radius * TS * 0.3)
-        .stroke({ color: fx.color, width: 2, alpha: 0.7 });
+        .stroke({ color: fx.color, width: 4, alpha: 0.6 })
+        .circle(0, 0, fx.radius * TS * 0.3 * 0.85)
+        .stroke({ color: 0xffffff, width: 1.5, alpha: 0.3 });
       ring.position.set(fx.x * TS, fx.y * TS);
       this.weaponFxContainer.addChild(ring);
-      this._weaponFxParticles.push({ gfx: ring, lifetime: 0.4, vx: 0, vy: 0, startAlpha: 0.7 });
+      this._weaponFxParticles.push({ gfx: ring, lifetime: 0.5, vx: 0, vy: 0, startAlpha: 0.6 });
+
+      // Fill flash
+      const flash = new Graphics()
+        .circle(0, 0, fx.radius * TS * 0.25)
+        .fill({ color: fx.color, alpha: 0.15 });
+      flash.position.set(fx.x * TS, fx.y * TS);
+      this.weaponFxContainer.addChild(flash);
+      this._weaponFxParticles.push({ gfx: flash, lifetime: 0.35, vx: 0, vy: 0, startAlpha: 0.15 });
 
       // Sparks
-      for (let i = 0; i < 4; i++) {
-        const spark = new Graphics().circle(0, 0, 2).fill({ color: fx.color });
+      for (let i = 0; i < 6; i++) {
+        const spark = new Graphics().circle(0, 0, 2.5).fill({ color: fx.color });
         const angle = Math.random() * Math.PI * 2;
-        const speed = 30 + Math.random() * 40;
+        const speed = 40 + Math.random() * 50;
         spark.position.set(fx.x * TS, fx.y * TS);
         this.weaponFxContainer.addChild(spark);
         this._weaponFxParticles.push({
           gfx: spark,
-          lifetime: 0.3,
+          lifetime: 0.35,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
           startAlpha: 1,
@@ -139,10 +149,10 @@ export class SurvivorFX {
       p.lifetime -= dt;
       p.gfx.position.x += p.vx * dt;
       p.gfx.position.y += p.vy * dt;
-      p.gfx.alpha = p.startAlpha * Math.max(0, p.lifetime / 0.4);
+      p.gfx.alpha = p.startAlpha * Math.max(0, p.lifetime / 0.5);
       // Scale up rings
       if (p.vx === 0 && p.vy === 0) {
-        const scale = 1 + (1 - p.lifetime / 0.4) * 2;
+        const scale = 1 + (1 - p.lifetime / 0.5) * 2;
         p.gfx.scale.set(scale);
       }
       if (p.lifetime <= 0) {
@@ -367,7 +377,11 @@ export class SurvivorFX {
         const pulse = 0.7 + Math.sin(time * 3) * 0.3;
         const g = new Graphics()
           .circle(0, 0, radius * pulse)
-          .stroke({ color: 0xffd700, width: 1.5, alpha: 0.3 });
+          .stroke({ color: 0xffd700, width: 3, alpha: 0.35 })
+          .circle(0, 0, radius * pulse * 0.92)
+          .stroke({ color: 0xffffcc, width: 1, alpha: 0.2 })
+          .circle(0, 0, radius * pulse)
+          .fill({ color: 0xffd700, alpha: 0.06 });
         g.position.set(px, py);
         this.weaponFxContainer.addChild(g);
         this._orbitGfx.push(g);
