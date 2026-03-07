@@ -5,6 +5,7 @@ import {
   Container, Graphics, Text, TextStyle, Rectangle,
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { getAllWorldBuildingDefs } from "@world/config/WorldBuildingDefs";
 import type { WorldBuildingDef } from "@world/config/WorldBuildingDefs";
 
@@ -263,6 +264,7 @@ export class MainMenuWikiScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _particles!: AmbientParticles;
   private _mainCard!: Container;
   private _activeTab: WikiTab = "lore";
 
@@ -297,6 +299,9 @@ export class MainMenuWikiScreen {
     this._bg = new Graphics();
     this.container.addChild(this._bg);
 
+    this._particles = new AmbientParticles(120);
+    this.container.addChild(this._particles.container);
+
     this._mainCard = new Container();
     this.container.addChild(this._mainCard);
 
@@ -304,6 +309,11 @@ export class MainMenuWikiScreen {
     vm.addToLayer("ui", this.container);
 
     vm.app.renderer.on("resize", () => this._layout());
+    vm.app.ticker.add((ticker) => {
+      if (this.container.visible) {
+        this._particles.update(ticker.deltaMS / 1000);
+      }
+    });
   }
 
   show(): void {
@@ -922,8 +932,9 @@ export class MainMenuWikiScreen {
     if (!this._vm) return;
     const sw = this._vm.screenWidth;
     const sh = this._vm.screenHeight;
-    this._bg.clear().rect(0, 0, sw, sh).fill({ color: BG_COLOR, alpha: 0.85 });
+    this._bg.clear().rect(0, 0, sw, sh).fill({ color: BG_COLOR });
     this._bg.eventMode = "static"; // block clicks behind
+    this._particles.resize(sw, sh);
     this._mainCard.position.set(
       Math.floor((sw - CARD_W) / 2),
       Math.floor((sh - CARD_H) / 2),

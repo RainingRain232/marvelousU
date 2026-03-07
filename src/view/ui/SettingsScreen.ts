@@ -2,6 +2,7 @@
 // Persists: music volume, game speed, camera scroll speed to localStorage.
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { AmbientParticles } from "@view/fx/AmbientParticles";
 
 // ---------------------------------------------------------------------------
 // Style constants
@@ -179,6 +180,7 @@ export class SettingsScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _particles!: AmbientParticles;
 
   // Card geometry
   private readonly _cardW = 380;
@@ -238,6 +240,9 @@ export class SettingsScreen {
     this._bg = new Graphics();
     this.container.addChild(this._bg);
 
+    this._particles = new AmbientParticles(120);
+    this.container.addChild(this._particles.container);
+
     this._loadFromStorage();
     this._buildCard();
 
@@ -246,6 +251,11 @@ export class SettingsScreen {
     vm.addToLayer("ui", this.container);
     this._layout();
     vm.app.renderer.on("resize", () => this._layout());
+    vm.app.ticker.add((ticker) => {
+      if (this.container.visible) {
+        this._particles.update(ticker.deltaMS / 1000);
+      }
+    });
   }
 
   show(): void {
@@ -704,6 +714,8 @@ export class SettingsScreen {
     // Full-screen dark overlay
     this._bg.clear();
     this._bg.rect(0, 0, sw, sh).fill({ color: BG_COLOR });
+
+    this._particles.resize(sw, sh);
 
     // Center the card
     if (this._card) {
