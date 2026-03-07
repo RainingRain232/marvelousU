@@ -131,8 +131,14 @@ interface GameModeEntry {
 }
 
 const GAME_MODES: GameModeEntry[] = [
+  {
+    mode: GameMode.CAMPAIGN,
+    label: "CAMPAIGN",
+    desc: "Story progression",
+    skipSetup: true,
+  },
   { mode: GameMode.STANDARD, label: "STANDARD", desc: "Classic mode" },
-  { mode: GameMode.DEATHMATCH, label: "DEATHMATCH", desc: "10000 gold start" },
+  { mode: GameMode.DEATHMATCH, label: "SKIRMISH", desc: "10000 gold start" },
   {
     mode: GameMode.BATTLEFIELD,
     label: "BATTLEFIELD",
@@ -143,12 +149,6 @@ const GAME_MODES: GameModeEntry[] = [
     mode: GameMode.ROGUELIKE,
     label: "ROGUELIKE",
     desc: "50% buildings disabled",
-  },
-  {
-    mode: GameMode.CAMPAIGN,
-    label: "CAMPAIGN",
-    desc: "Story progression",
-    skipSetup: true,
   },
   {
     mode: GameMode.WORLD,

@@ -525,7 +525,7 @@ export class MainMenuWikiScreen {
         desc: "Classic mode. Build your base, recruit an army, and destroy the enemy. Both players start with a castle and a small amount of gold. Research buildings, train units, and deploy them on the battlefield.",
       },
       {
-        name: "DEATHMATCH",
+        name: "SKIRMISH",
         desc: "Same rules as Standard, but both players start with 10,000 gold. This allows immediate access to powerful units and buildings from the start. Expect fast-paced, high-intensity battles.",
       },
       {
