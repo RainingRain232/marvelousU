@@ -1,6 +1,8 @@
 // Typed event emitter — bridge between sim and view
 // sim/ emits events; view/ listens. sim/ never imports from view/.
 import type { AbilityType, GamePhase, PlayerId, RPGPhase, TurnBattleAction, UnitState, UnitType, Vec2 } from "@/types";
+import type { UnitCommand } from "@sim/state/CommandTypes";
+import type { ResourceType } from "@sim/entities/ResourceNode";
 import type { RPGItem } from "@rpg/state/RPGState";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +47,21 @@ export interface SimEvents {
 
   // Rally flag
   flagPlaced: { playerId: PlayerId; position: Vec2 };
+
+  // RTS commands & selection
+  unitCommandIssued: { unitIds: string[]; command: UnitCommand };
+  selectionChanged: { playerId: PlayerId; selectedIds: string[] };
+  controlGroupAssigned: { playerId: PlayerId; group: number; unitIds: string[] };
+
+  // RTS resources
+  resourceDelivered: { playerId: PlayerId; resourceType: ResourceType; amount: number };
+  resourceNodeDepleted: { nodeId: string };
+  workerGathering: { unitId: string; nodeId: string };
+
+  // RTS construction
+  constructionStarted: { buildingId: string; workerId: string };
+  constructionProgress: { buildingId: string; progress: number };
+  constructionComplete: { buildingId: string };
 
   // Game flow
   phaseChanged: { phase: GamePhase };

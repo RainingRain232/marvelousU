@@ -55,6 +55,8 @@ import { hoverTooltip } from "@view/ui/HoverTooltip";
 import { buildingWikiScreen } from "@view/ui/BuildingWikiScreen";
 import { mainMenuWikiScreen } from "@view/ui/MainMenuWikiScreen";
 import { minimap } from "@view/ui/Minimap";
+import { selectionView } from "@view/ui/SelectionView";
+import { ResourceNodeView } from "@view/entities/ResourceNodeView";
 import { lobbyScreen } from "@view/ui/LobbyScreen";
 import { RoomManager } from "@net/RoomManager";
 import { campaignState } from "@sim/config/CampaignState";
@@ -64,6 +66,7 @@ import { createGameState } from "@sim/state/GameState";
 import type { GameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
 import { initBases, initBasesMulti } from "@sim/systems/BaseSetup";
+import { setupRTSMap } from "@sim/systems/RTSMapSetup";
 import type { PlayerBaseConfig } from "@sim/systems/BaseSetup";
 import { setAlliance } from "@sim/state/GameState";
 import { BalanceConfig, CombatOptions } from "@sim/config/BalanceConfig";
@@ -6600,6 +6603,11 @@ async function _bootGame(
     _applyRace(state, "p2", scenarioDef.aiRace);
   }
 
+  // RTS mode: place resource nodes and starting units
+  if (gameMode === GameMode.RTS) {
+    setupRTSMap(state);
+  }
+
   // 2. Camera — zoom in on the friendly castle at standard-map zoom level
   viewManager.camera.setMapSize(mapSize.width, mapSize.height);
   // Centre on P1's castle (4×4 footprint → offset by 2 to centre)
@@ -6656,6 +6664,29 @@ async function _bootGame(
   minimap.init(viewManager, state, viewManager.camera, mapType);
   EventBus.on("buildingPlaced", () => minimap.redrawTerrain(state));
   EventBus.on("buildingDestroyed", () => minimap.redrawTerrain(state));
+
+  // 6d. RTS views: selection rings + resource nodes
+  if (gameMode === GameMode.RTS) {
+    selectionView.init(viewManager, state, "p1");
+    // Render resource nodes
+    const _rtsNodeViews: ResourceNodeView[] = [];
+    for (const node of state.resourceNodes.values()) {
+      const nv = new ResourceNodeView(node);
+      viewManager.addToLayer("buildings", nv.container);
+      _rtsNodeViews.push(nv);
+    }
+    // Update resource node views each frame
+    viewManager.onUpdate((s) => {
+      selectionView.update();
+      let idx = 0;
+      for (const node of s.resourceNodes.values()) {
+        if (idx < _rtsNodeViews.length) {
+          _rtsNodeViews[idx].update(node);
+        }
+        idx++;
+      }
+    });
+  }
 
   // 7. Spawn queue UI
   unitQueueUI.init(viewManager, state);

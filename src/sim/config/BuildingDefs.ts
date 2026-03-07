@@ -26,6 +26,10 @@ export interface BuildingDef {
   prerequisite?: { types: BuildingType[]; minCount: number };
   /** Flavor text for shop description */
   description?: string;
+  /** RTS: seconds to construct (0 = instant, used in non-RTS modes). */
+  buildTime?: number;
+  /** RTS: workers can deliver resources to this building. */
+  isDropOff?: boolean;
 }
 
 export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
@@ -72,6 +76,8 @@ export const BUILDING_DEFINITIONS: Record<BuildingType, BuildingDef> = {
     ],
     description:
       "The heart of your kingdom. Trains basic units and provides defensive turrets.",
+    buildTime: 0,
+    isDropOff: true,
   },
   [BuildingType.BARRACKS]: {
     type: BuildingType.BARRACKS,

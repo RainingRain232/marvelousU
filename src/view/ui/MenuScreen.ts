@@ -174,6 +174,11 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Vampire survivors roguelite",
     skipSetup: true,
   },
+  {
+    mode: GameMode.RTS,
+    label: "RTS",
+    desc: "Real-time strategy",
+  },
 ];
 
 // ---------------------------------------------------------------------------

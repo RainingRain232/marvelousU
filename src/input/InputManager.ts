@@ -1,7 +1,7 @@
 // Central input dispatcher — delegates pointer events to the active mode
 import type { ViewManager } from "@view/ViewManager";
 import type { PlayerId } from "@/types";
-import { UpgradeType } from "@/types";
+import { GameMode, UpgradeType } from "@/types";
 import type { GameState } from "@sim/state/GameState";
 import { selectionMode } from "@input/SelectionMode";
 import { buildingPlacer } from "@view/ui/BuildingPlacer";
@@ -30,13 +30,15 @@ export type InputModeId = "selection" | "placement";
  *   - When BuildingPlacer.activate() is called → mode becomes PLACEMENT
  *   - When BuildingPlacer deactivates (confirm or cancel) → mode back to SELECTION
  *
- * Drag detection:
- *   Camera pan is handled directly by Camera.ts via its own pointer listeners.
- *   InputManager detects whether a pointerup was a "click" (moved < DRAG_THRESHOLD
- *   pixels) and only forwards genuine clicks to the active mode.
- *
- * Touch support:
- *   PointerEvents cover both mouse and touch; no separate touch handlers needed.
+ * RTS additions:
+ *   - Right-click → issue move/attack command to selected units
+ *   - Left-drag → box-select units
+ *   - A key → attack-move mode (next left-click issues attack-move)
+ *   - H key → hold position
+ *   - S key → stop
+ *   - Ctrl+1-9 → assign control group
+ *   - 1-9 → recall control group
+ *   - Ctrl+A → select all units
  */
 export class InputManager {
   private _mode: InputModeId = "selection";
@@ -54,8 +56,12 @@ export class InputManager {
   private _pointerDownX = 0;
   private _pointerDownY = 0;
   private _pointerMoved = false;
+  private _pointerDownButton = 0;
 
   private static readonly DRAG_THRESHOLD = 5; // pixels
+
+  // RTS: attack-move mode flag (A key pressed, awaiting click)
+  private _attackMoveMode = false;
 
   // Bound event handlers
   private _onPointerDown!: (e: PointerEvent) => void;
@@ -126,44 +132,82 @@ export class InputManager {
     selectionMode.setPlayerId(playerId);
   }
 
+  private get _isRTS(): boolean {
+    return this._state.gameMode === GameMode.RTS;
+  }
+
   // ---------------------------------------------------------------------------
   // Private: pointer events
   // ---------------------------------------------------------------------------
 
   private _handlePointerDown(e: PointerEvent): void {
-    // Track start position for drag detection (left button only)
-    if (e.button === 0) {
-      this._pointerDownX = e.clientX;
-      this._pointerDownY = e.clientY;
-      this._pointerMoved = false;
+    this._pointerDownX = e.clientX;
+    this._pointerDownY = e.clientY;
+    this._pointerMoved = false;
+    this._pointerDownButton = e.button;
+
+    // RTS: left-button starts potential box-select
+    if (e.button === 0 && this._isRTS && this._mode === "selection" && !this._attackMoveMode) {
+      const rect = this._canvas.getBoundingClientRect();
+      selectionMode.startBoxSelect(e.clientX - rect.left, e.clientY - rect.top);
     }
   }
 
   private _handlePointerMove(e: PointerEvent): void {
-    if (!(e.buttons & 1)) return; // left button not held
     const dx = e.clientX - this._pointerDownX;
     const dy = e.clientY - this._pointerDownY;
-    if (Math.sqrt(dx * dx + dy * dy) > InputManager.DRAG_THRESHOLD) {
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > InputManager.DRAG_THRESHOLD) {
       this._pointerMoved = true;
+    }
+
+    // RTS: update box-select while dragging
+    if (this._isRTS && selectionMode.isBoxSelecting && this._pointerDownButton === 0) {
+      const rect = this._canvas.getBoundingClientRect();
+      selectionMode.updateBoxSelect(e.clientX - rect.left, e.clientY - rect.top);
     }
   }
 
   private _handlePointerUp(e: PointerEvent): void {
-    if (e.button !== 0) return;
-    if (this._pointerMoved) return; // was a drag, not a click
-
-    // Compute canvas-relative coords
     const rect = this._canvas.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
 
+    // RTS: right-click — issue command
+    if (e.button === 2 && this._isRTS && this._mode === "selection") {
+      this._attackMoveMode = false; // cancel attack-move on right-click
+      selectionMode.handleRightClick(sx, sy);
+      return;
+    }
+
+    // Left button
+    if (e.button !== 0) return;
+
+    // RTS: finish box-select if we dragged
+    if (this._isRTS && this._pointerMoved && selectionMode.isBoxSelecting) {
+      selectionMode.finishBoxSelect(sx, sy, e.shiftKey);
+      return;
+    }
+
+    // Cancel box-select if it was a click (not a drag)
+    if (this._isRTS && selectionMode.isBoxSelecting) {
+      selectionMode.finishBoxSelect(sx, sy, e.shiftKey);
+    }
+
+    if (this._pointerMoved) return; // was a drag, not a click
+
+    // RTS: attack-move click
+    if (this._isRTS && this._attackMoveMode) {
+      this._attackMoveMode = false;
+      selectionMode.handleAttackMoveClick(sx, sy);
+      return;
+    }
+
     // Delegate to active mode
     if (this._mode === "placement") {
-      // BuildingPlacer manages its own pointerdown (capture phase) for confirm;
-      // InputManager just observes mode transitions via buildingPlacer.isActive.
       this._syncPlacementMode();
     } else {
-      // SELECTION mode
       selectionMode.handleClick(sx, sy);
     }
   }
@@ -171,13 +215,53 @@ export class InputManager {
   private _handleKeyDown(e: KeyboardEvent): void {
     if (e.code === "Escape") {
       if (this._mode === "placement") {
-        // BuildingPlacer handles ESC itself; sync mode after
         this._syncPlacementMode();
+      }
+      if (this._attackMoveMode) {
+        this._attackMoveMode = false;
       }
     }
 
+    // Non-RTS keys
     if (e.code === "KeyF") {
       this._tryPlaceFlag();
+    }
+
+    // RTS-specific keys
+    if (!this._isRTS) return;
+
+    // A = attack-move mode
+    if (e.code === "KeyA" && !e.ctrlKey && !e.metaKey) {
+      this._attackMoveMode = true;
+    }
+
+    // H = hold position
+    if (e.code === "KeyH") {
+      selectionMode.handleHold();
+    }
+
+    // S = stop
+    if (e.code === "KeyS" && !e.ctrlKey && !e.metaKey) {
+      selectionMode.handleStop();
+    }
+
+    // Ctrl+A = select all
+    if (e.code === "KeyA" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      selectionMode.selectAll();
+    }
+
+    // Control groups: Ctrl+1-9 to assign, 1-9 to recall
+    const digitMatch = e.code.match(/^Digit(\d)$/);
+    if (digitMatch) {
+      const num = parseInt(digitMatch[1], 10);
+      if (num >= 1 && num <= 9) {
+        if (e.ctrlKey || e.metaKey) {
+          selectionMode.assignControlGroup(num);
+        } else {
+          selectionMode.recallControlGroup(num);
+        }
+      }
     }
   }
 
@@ -215,10 +299,6 @@ export class InputManager {
   // Private: keep mode in sync with BuildingPlacer's active state
   // ---------------------------------------------------------------------------
 
-  /**
-   * Called after any placement-mode action to check if BuildingPlacer is
-   * still active and update `_mode` accordingly.
-   */
   private _syncPlacementMode(): void {
     if (!buildingPlacer.isActive) {
       this._mode = "selection";

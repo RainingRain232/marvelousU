@@ -13,7 +13,7 @@
 // Emits "goldChanged" whenever a player's gold value changes.
 
 import type { GameState } from "@sim/state/GameState";
-import { GamePhase, BuildingState } from "@/types";
+import { GamePhase, GameMode, BuildingState } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { EventBus } from "@sim/core/EventBus";
@@ -21,10 +21,13 @@ import { getDifficultySettings } from "@sim/config/DifficultyConfig";
 
 export const EconomySystem = {
   update(state: GameState, dt: number): void {
-    // No income during RESOLVE
-    if (state.phase === GamePhase.RESOLVE) return;
+    // No income during RESOLVE (non-RTS modes only)
+    if (state.phase === GamePhase.RESOLVE && state.gameMode !== GameMode.RTS) return;
 
-    const isBattle = state.phase === GamePhase.BATTLE;
+    // RTS mode: no battle bonus, income always ticks
+    const isBattle = state.gameMode === GameMode.RTS
+      ? false
+      : state.phase === GamePhase.BATTLE;
 
     const diffSettings = getDifficultySettings();
 

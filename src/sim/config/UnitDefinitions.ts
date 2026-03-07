@@ -42,6 +42,12 @@ export interface UnitDef {
   critChance?: number;
   /** Block chance (0.0–1.0). Default 0.0 (0%) if omitted. Shield units override this. */
   blockChance?: number;
+  /** RTS: if true, this unit can gather resources and construct buildings. */
+  isWorker?: boolean;
+  /** RTS: resources gathered per second while at a resource node. */
+  gatherRate?: number;
+  /** RTS: max resources this worker can carry before returning to drop-off. */
+  carryCapacity?: number;
 }
 
 /** Compute tier from gold cost. Same thresholds for all categories. */
@@ -408,6 +414,9 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     diplomatOnly: true,
     description: "A brave settler who establishes a forward castle on neutral territory. Cannot fight.",
     tier: 1,
+    isWorker: true,
+    gatherRate: 5,
+    carryCapacity: 10,
   },
   [UnitType.ENGINEER]: {
     type: UnitType.ENGINEER,
@@ -423,6 +432,9 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     diplomatOnly: true,
     description: "A skilled engineer who constructs a forward tower on neutral territory. Cannot fight.",
     tier: 1,
+    isWorker: true,
+    gatherRate: 6,
+    carryCapacity: 12,
   },
   [UnitType.DISTORTION_MAGE]: {
     type: UnitType.DISTORTION_MAGE,

@@ -58,6 +58,11 @@ export interface Building {
   // Settler/Engineer construction: ID of the unit building this structure
   constructionUnitId: string | null;
 
+  // RTS construction
+  constructionProgress: number; // 0 to buildTime seconds elapsed
+  buildTime: number; // Total seconds to complete (0 = instant)
+  constructionWorkerIds: string[]; // Worker unit IDs currently building this
+
   // Economy / production
   shopInventory: UnitType[]; // Unit types this building can train
   blueprints: BuildingType[]; // Building blueprints sold from this building's shop
@@ -94,6 +99,9 @@ export function createBuilding(opts: CreateBuildingOptions): Building {
     captureProgress: 0,
     capturePlayerId: null,
     constructionUnitId: null,
+    constructionProgress: 0,
+    buildTime: def.buildTime ?? 0,
+    constructionWorkerIds: [],
     shopInventory: [...def.shopInventory],
     blueprints: [...def.blueprints],
     upgradeInventory: [...(def.upgradeInventory ?? [])],

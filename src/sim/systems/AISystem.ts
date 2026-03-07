@@ -20,7 +20,7 @@ import type { GameState } from "@sim/state/GameState";
 import { isEnemy, isAlly } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Building } from "@sim/entities/Building";
-import { UnitState, UnitType, BuildingState } from "@/types";
+import { UnitState, UnitType, BuildingState, GameMode } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
@@ -53,6 +53,13 @@ export const AISystem = {
       if (unit.state === UnitState.DIE) continue;
       if (unit.state === UnitState.CAST) continue;
       if (unit.idleInterruptionTimer > 0) continue;
+
+      // RTS: skip units with player commands, hold position, or actively gathering
+      if (state.gameMode === GameMode.RTS) {
+        if (unit.command) continue;
+        if (unit.holdPosition) continue;
+        if (unit.gatherTargetId) continue; // Worker is gathering — ResourceSystem owns it
+      }
 
       if (unit.diplomatOnly) {
         // Settler/Engineer movement is handled by SimLoop override, not AI

@@ -9,6 +9,8 @@ import type { Building } from "@sim/entities/Building";
 import type { Unit } from "@sim/entities/Unit";
 import type { Projectile } from "@sim/entities/Projectile";
 import type { Ability } from "@sim/abilities/Ability";
+import type { ResourceNode } from "@sim/entities/ResourceNode";
+import type { SelectionState } from "@sim/state/SelectionState";
 import type { PlayerState } from "@sim/state/PlayerState";
 import { createBattlefieldState } from "@sim/state/BattlefieldState";
 import type { BattlefieldState } from "@sim/state/BattlefieldState";
@@ -59,6 +61,12 @@ export interface GameState {
   // Rally flags — per-player flag position set via the Flag upgrade ability
   rallyFlags: Map<PlayerId, Vec2>;
 
+  // RTS resources
+  resourceNodes: Map<string, ResourceNode>;
+
+  // RTS selection (per-player, keyed by PlayerId)
+  selection: Map<PlayerId, SelectionState>;
+
   // World
   battlefield: BattlefieldState;
 }
@@ -81,13 +89,14 @@ export function createGameState(
   gameMode: GameMode = GameMode.STANDARD,
   playerCount: number = 2,
 ): GameState {
+  const isRTS = gameMode === GameMode.RTS;
   return {
-    phase: GamePhase.PREP,
+    phase: isRTS ? GamePhase.RTS_ACTIVE : GamePhase.PREP,
     gameMode,
     tick: 0,
     rngSeed,
-    phaseTimer: BalanceConfig.PREP_DURATION,
-    eventTimer: BalanceConfig.RANDOM_EVENT_INTERVAL,
+    phaseTimer: isRTS ? -1 : BalanceConfig.PREP_DURATION,
+    eventTimer: isRTS ? Infinity : BalanceConfig.RANDOM_EVENT_INTERVAL,
     winnerId: null,
     roguelikeDisabledBuildings: [],
     p1LeaderId: null,
@@ -104,6 +113,8 @@ export function createGameState(
     alliances: new Set(),
     priorityTargets: new Map(),
     rallyFlags: new Map(),
+    resourceNodes: new Map(),
+    selection: new Map(),
     battlefield: createBattlefieldState(width, height, playerCount),
   };
 }

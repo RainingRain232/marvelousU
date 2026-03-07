@@ -627,12 +627,14 @@ export enum BuildingState {
   GHOST = "ghost",
   ACTIVE = "active",
   DESTROYED = "destroyed",
+  CONSTRUCTION = "construction",
 }
 
 export enum GamePhase {
   PREP = "prep",
   BATTLE = "battle",
   RESOLVE = "resolve",
+  RTS_ACTIVE = "rts_active",
 }
 
 export enum GameMode {
@@ -645,6 +647,7 @@ export enum GameMode {
   WAVE = "wave",
   RPG = "rpg",
   SURVIVOR = "survivor",
+  RTS = "rts",
 }
 
 // ---------------------------------------------------------------------------

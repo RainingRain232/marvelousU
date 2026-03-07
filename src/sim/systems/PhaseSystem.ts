@@ -37,6 +37,12 @@ import { getRace } from "@sim/config/RaceDefs";
 
 export const PhaseSystem = {
   update(state: GameState, dt: number): void {
+    // RTS mode: continuous play, only check win condition
+    if (state.gameMode === GameMode.RTS) {
+      _tickRTS(state);
+      return;
+    }
+
     switch (state.phase) {
       case GamePhase.PREP:
         _tickPrep(state, dt);
@@ -50,6 +56,42 @@ export const PhaseSystem = {
     }
   },
 };
+
+// ---------------------------------------------------------------------------
+// RTS tick — continuous play, only check castle destruction
+// ---------------------------------------------------------------------------
+
+function _tickRTS(state: GameState): void {
+  if (state.winnerId) return; // Already resolved
+
+  const winResult = _checkRTSWinCondition(state);
+  if (winResult !== undefined) {
+    state.winnerId = winResult;
+    state.phase = GamePhase.RESOLVE;
+    EventBus.emit("phaseChanged", { phase: GamePhase.RESOLVE });
+  }
+}
+
+/**
+ * RTS win condition: a player loses when their castle is destroyed.
+ * Returns undefined (ongoing), null (draw), or PlayerId (winner).
+ */
+function _checkRTSWinCondition(state: GameState): string | null | undefined {
+  const eliminated = new Set<string>();
+  for (const base of state.bases.values()) {
+    if (base.health <= 0) {
+      eliminated.add(base.owner);
+    }
+  }
+  if (eliminated.size === 0) return undefined;
+
+  const allPlayers = [...state.players.keys()];
+  const survivors = allPlayers.filter((id) => !eliminated.has(id));
+  if (survivors.length === 0) return null;
+  if (survivors.length === 1) return survivors[0];
+  if (_allAllied(state, survivors)) return survivors[0];
+  return undefined;
+}
 
 // ---------------------------------------------------------------------------
 // PREP tick

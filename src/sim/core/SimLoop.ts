@@ -26,6 +26,9 @@ import { EconomySystem } from "@sim/systems/EconomySystem";
 import { UnitBehaviorSystem } from "@sim/systems/UnitBehaviorSystem";
 import { RandomEventSystem } from "@sim/systems/RandomEventSystem";
 import { RegenSystem } from "@sim/systems/RegenSystem";
+import { CommandSystem } from "@sim/systems/CommandSystem";
+import { ResourceSystem } from "@sim/systems/ResourceSystem";
+import { ConstructionSystem } from "@sim/systems/ConstructionSystem";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,8 +52,11 @@ export function simTick(state: GameState): void {
   PhaseSystem.update(state, DT);
   RandomEventSystem.update(state, DT);
   EconomySystem.update(state, DT);
+  ResourceSystem.update(state, DT);       // RTS: worker gather/deliver
   UnitBehaviorSystem.update(state, DT);
   RegenSystem.update(state, DT);
+  CommandSystem.update(state, DT);         // RTS: player/AI commands
+  ConstructionSystem.update(state, DT);    // RTS: building construction
   SpawnSystem.update(state, DT);
   AbilitySystem.update(state, DT);
   MovementSystem.update(state, DT);

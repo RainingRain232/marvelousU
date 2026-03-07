@@ -243,6 +243,10 @@ export class BuildingView {
   private _eliteStableRenderer: EliteStableRenderer | null = null;
   private _archiveRenderer: ArchiveRenderer | null = null;
 
+  // Construction progress bar (RTS mode)
+  private _constructionBar: Graphics | null = null;
+  private _constructionBarBg: Graphics | null = null;
+
   constructor(building: Building) {
     const def = BUILDING_DEFINITIONS[building.type];
     const ts = BalanceConfig.TILE_SIZE;
@@ -515,10 +519,18 @@ export class BuildingView {
     }
 
     const ghostAlpha = building.state === BuildingState.GHOST ? 0.4
-      : building.state === BuildingState.DESTROYED ? 0.35 : 1;
+      : building.state === BuildingState.DESTROYED ? 0.35
+      : building.state === BuildingState.CONSTRUCTION ? 0.5 : 1;
     this._body.alpha = ghostAlpha;
     this._label.alpha = ghostAlpha;
     this.container.alpha = ghostAlpha;
+
+    // Construction progress bar
+    if (building.state === BuildingState.CONSTRUCTION) {
+      this._updateConstructionBar(building);
+    } else if (this._constructionBar) {
+      this._constructionBar.visible = false;
+    }
 
     if (building.state === BuildingState.ACTIVE && dt > 0) {
       // Detailed renderers: tick them
@@ -662,6 +674,38 @@ export class BuildingView {
     else if (this._eliteSiegeWorkshopRenderer) this._eliteSiegeWorkshopRenderer.setOwner(owner);
     else if (this._eliteMageTowerRenderer) this._eliteMageTowerRenderer.setOwner(owner);
     else if (this._archiveRenderer) this._archiveRenderer.setOwner(owner);
+  }
+
+  private _updateConstructionBar(building: Building): void {
+    const CBAR_H = 6;
+    const CBAR_Y = this._ph + 6;
+    const CBAR_COLOR = 0x4488ff;
+    const CBAR_BG = 0x222233;
+
+    if (!this._constructionBarBg) {
+      this._constructionBarBg = new Graphics();
+      this._constructionBarBg.rect(0, CBAR_Y, this._pw, CBAR_H).fill({ color: CBAR_BG });
+      this.container.addChild(this._constructionBarBg);
+    }
+    if (!this._constructionBar) {
+      this._constructionBar = new Graphics();
+      this.container.addChild(this._constructionBar);
+    }
+
+    this._constructionBarBg.visible = true;
+    this._constructionBar.visible = true;
+
+    const pct = building.buildTime > 0
+      ? Math.min(building.constructionProgress / building.buildTime, 1)
+      : 1;
+    const fillW = this._pw * pct;
+
+    this._constructionBar.clear();
+    if (fillW > 0) {
+      this._constructionBar
+        .rect(0, CBAR_Y, fillW, CBAR_H)
+        .fill({ color: CBAR_COLOR });
+    }
   }
 
   destroy(): void {

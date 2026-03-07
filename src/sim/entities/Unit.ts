@@ -3,6 +3,8 @@ import { Direction, UnitState, UnitType } from "@/types";
 import type { PlayerId, Vec2 } from "@/types";
 import { StateMachine } from "@sim/core/StateMachine";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import type { UnitCommand } from "@sim/state/CommandTypes";
+import type { ResourceType } from "@sim/entities/ResourceNode";
 
 export interface Unit {
   // Identity
@@ -77,6 +79,17 @@ export interface Unit {
   // Passive regeneration
   regenRate: number; // HP restored per second (0 = no regen)
   regenAccumulator: number; // Fractional HP accumulator for sub-1 healing ticks
+
+  // RTS command system
+  command: UnitCommand | null; // Current player-issued command
+  commandQueue: UnitCommand[]; // Queued commands (shift+click)
+  holdPosition: boolean; // If true, don't auto-march — stay put unless enemies in range
+
+  // RTS resource carrying (workers)
+  carryType: ResourceType | null;
+  carryAmount: number;
+  gatherTargetId: string | null; // ResourceNode ID
+  dropOffBuildingId: string | null; // Building ID to return resources to
 }
 
 // ---------------------------------------------------------------------------
@@ -175,5 +188,13 @@ export function createUnit(opts: CreateUnitOptions): Unit {
     pathFailCount: 0,
     regenRate: def.regenRate ?? 0,
     regenAccumulator: 0,
+    // RTS fields
+    command: null,
+    commandQueue: [],
+    holdPosition: false,
+    carryType: null,
+    carryAmount: 0,
+    gatherTargetId: null,
+    dropOffBuildingId: null,
   };
 }

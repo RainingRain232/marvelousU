@@ -405,6 +405,14 @@ function _deserializeUnit(su: SerializedUnit): Unit {
     regenRate: def?.regenRate ?? 0,
     regenAccumulator: 0,
     constructionTargetId: su.constructionTargetId,
+    // RTS fields
+    command: null,
+    commandQueue: [],
+    holdPosition: false,
+    carryType: null,
+    carryAmount: 0,
+    gatherTargetId: null,
+    dropOffBuildingId: null,
   };
 }
 
@@ -442,6 +450,10 @@ function _deserializeBuilding(sb: SerializedBuilding): Building {
       targetId: t.targetId,
     })),
     constructionUnitId: sb.constructionUnitId,
+    // RTS fields
+    constructionProgress: 0,
+    buildTime: 0,
+    constructionWorkerIds: [],
   };
 }
 

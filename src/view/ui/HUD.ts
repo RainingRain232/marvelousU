@@ -3,8 +3,9 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { EventBus } from "@sim/core/EventBus";
 import type { GameState } from "@sim/state/GameState";
 import type { ViewManager } from "@view/ViewManager";
-import { GamePhase } from "@/types";
+import { GameMode, GamePhase } from "@/types";
 import type { PlayerId } from "@/types";
+import { ResourceType } from "@sim/entities/ResourceNode";
 
 // ---------------------------------------------------------------------------
 // Layout constants (all in screen pixels, anchored to top-left / top-right)
@@ -44,6 +45,30 @@ const STYLE_MANA_VALUE = new TextStyle({
   fill: 0x4488ff,
   fontWeight: "bold",
 });
+const STYLE_WOOD_LABEL = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 11,
+  fill: 0x55aa55,
+  letterSpacing: 1,
+});
+const STYLE_WOOD_VALUE = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 15,
+  fill: 0x44cc44,
+  fontWeight: "bold",
+});
+const STYLE_STONE_LABEL = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 11,
+  fill: 0x888899,
+  letterSpacing: 1,
+});
+const STYLE_STONE_VALUE = new TextStyle({
+  fontFamily: "monospace",
+  fontSize: 15,
+  fill: 0xaaaacc,
+  fontWeight: "bold",
+});
 const STYLE_PHASE = new TextStyle({
   fontFamily: "monospace",
   fontSize: 13,
@@ -57,6 +82,7 @@ const PHASE_LABELS: Record<string, string> = {
   prep: "PREP",
   battle: "BATTLE",
   resolve: "RESOLVE",
+  rts_active: "RTS",
 };
 
 // Button style shared by AI toggle and START BATTLE
@@ -108,12 +134,16 @@ export class HUD {
   private _westGoldVal!: Text;
   private _westManaVal!: Text;
   private _westUnitVal!: Text;
+  private _westWoodVal!: Text;
+  private _westStoneVal!: Text;
 
   // East panel
   private _eastPanel!: Container;
   private _eastGoldVal!: Text;
   private _eastManaVal!: Text;
   private _eastUnitVal!: Text;
+  private _eastWoodVal!: Text;
+  private _eastStoneVal!: Text;
 
   // Phase panel
   private _phasePanel!: Container;
@@ -137,6 +167,7 @@ export class HUD {
   private _westPlayerId: PlayerId = "";
   private _eastPlayerId: PlayerId = "";
   private _screenW = 800;
+  private _gameMode: GameMode = GameMode.STANDARD;
 
   private _unsubscribers: Array<() => void> = [];
 
@@ -157,6 +188,8 @@ export class HUD {
     this._westPlayerId = ids.westPlayerId;
     this._eastPlayerId = ids.eastPlayerId;
     this._screenW = vm.screenWidth;
+    this._gameMode = state.gameMode;
+    this._state = state;
 
     this._buildWestPanel();
     this._buildEastPanel();
@@ -178,6 +211,9 @@ export class HUD {
       }),
       EventBus.on("phaseChanged", ({ phase }) => {
         this._setPhase(phase);
+      }),
+      EventBus.on("resourceDelivered", ({ playerId, resourceType, amount }) => {
+        this._setResource(playerId, resourceType, amount);
       }),
     );
 
@@ -213,6 +249,16 @@ export class HUD {
     this._westUnitVal.text = String(westUnits);
     this._eastUnitVal.text = String(eastUnits);
 
+    // RTS: sync wood/stone
+    if (this._gameMode === GameMode.RTS) {
+      const west = state.players.get(this._westPlayerId);
+      const east = state.players.get(this._eastPlayerId);
+      if (west && this._westWoodVal) this._westWoodVal.text = String(west.wood);
+      if (west && this._westStoneVal) this._westStoneVal.text = String(west.stone);
+      if (east && this._eastWoodVal) this._eastWoodVal.text = String(east.wood);
+      if (east && this._eastStoneVal) this._eastStoneVal.text = String(east.stone);
+    }
+
     // Fade out speed label
     if (this._speedLabelTimer > 0) {
       this._speedLabelTimer -= 1 / 60; // approximate per-frame
@@ -229,7 +275,9 @@ export class HUD {
   // ---------------------------------------------------------------------------
 
   private _buildWestPanel(): void {
-    this._westPanel = makePanel(PANEL_W, PANEL_H);
+    const isRTS = this._gameMode === GameMode.RTS;
+    const panelW = isRTS ? 340 : PANEL_W;
+    this._westPanel = makePanel(panelW, PANEL_H);
     this._westPanel.position.set(PAD, PAD);
 
     const goldLabel = new Text({ text: "GOLD", style: STYLE_LABEL });
@@ -244,24 +292,43 @@ export class HUD {
     this._westManaVal = new Text({ text: "0", style: STYLE_MANA_VALUE });
     this._westManaVal.position.set(60, 24);
 
-    const unitLabel = new Text({ text: "UNITS", style: STYLE_LABEL });
-    unitLabel.position.set(130, 8);
-
-    this._westUnitVal = new Text({ text: "0", style: STYLE_VALUE });
-    this._westUnitVal.position.set(130, 24);
-
     this._westPanel.addChild(goldLabel);
     this._westPanel.addChild(this._westGoldVal);
     this._westPanel.addChild(manaLabel);
     this._westPanel.addChild(this._westManaVal);
+
+    if (isRTS) {
+      const woodLabel = new Text({ text: "WOOD", style: STYLE_WOOD_LABEL });
+      woodLabel.position.set(110, 8);
+      this._westWoodVal = new Text({ text: "0", style: STYLE_WOOD_VALUE });
+      this._westWoodVal.position.set(110, 24);
+
+      const stoneLabel = new Text({ text: "STONE", style: STYLE_STONE_LABEL });
+      stoneLabel.position.set(160, 8);
+      this._westStoneVal = new Text({ text: "0", style: STYLE_STONE_VALUE });
+      this._westStoneVal.position.set(160, 24);
+
+      this._westPanel.addChild(woodLabel);
+      this._westPanel.addChild(this._westWoodVal);
+      this._westPanel.addChild(stoneLabel);
+      this._westPanel.addChild(this._westStoneVal);
+    }
+
+    const unitLabel = new Text({ text: "UNITS", style: STYLE_LABEL });
+    unitLabel.position.set(isRTS ? 220 : 130, 8);
+
+    this._westUnitVal = new Text({ text: "0", style: STYLE_VALUE });
+    this._westUnitVal.position.set(isRTS ? 220 : 130, 24);
+
     this._westPanel.addChild(unitLabel);
     this._westPanel.addChild(this._westUnitVal);
     this.container.addChild(this._westPanel);
   }
 
   private _buildEastPanel(): void {
-    this._eastPanel = makePanel(PANEL_W, PANEL_H);
-    // x positioned in _repositionEastPanel
+    const isRTS = this._gameMode === GameMode.RTS;
+    const panelW = isRTS ? 340 : PANEL_W;
+    this._eastPanel = makePanel(panelW, PANEL_H);
     this._eastPanel.position.y = PAD;
 
     const goldLabel = new Text({ text: "GOLD", style: STYLE_LABEL });
@@ -276,16 +343,34 @@ export class HUD {
     this._eastManaVal = new Text({ text: "0", style: STYLE_MANA_VALUE });
     this._eastManaVal.position.set(60, 24);
 
-    const unitLabel = new Text({ text: "UNITS", style: STYLE_LABEL });
-    unitLabel.position.set(130, 8);
-
-    this._eastUnitVal = new Text({ text: "0", style: STYLE_VALUE });
-    this._eastUnitVal.position.set(130, 24);
-
     this._eastPanel.addChild(goldLabel);
     this._eastPanel.addChild(this._eastGoldVal);
     this._eastPanel.addChild(eastManaLabel);
     this._eastPanel.addChild(this._eastManaVal);
+
+    if (isRTS) {
+      const woodLabel = new Text({ text: "WOOD", style: STYLE_WOOD_LABEL });
+      woodLabel.position.set(110, 8);
+      this._eastWoodVal = new Text({ text: "0", style: STYLE_WOOD_VALUE });
+      this._eastWoodVal.position.set(110, 24);
+
+      const stoneLabel = new Text({ text: "STONE", style: STYLE_STONE_LABEL });
+      stoneLabel.position.set(160, 8);
+      this._eastStoneVal = new Text({ text: "0", style: STYLE_STONE_VALUE });
+      this._eastStoneVal.position.set(160, 24);
+
+      this._eastPanel.addChild(woodLabel);
+      this._eastPanel.addChild(this._eastWoodVal);
+      this._eastPanel.addChild(stoneLabel);
+      this._eastPanel.addChild(this._eastStoneVal);
+    }
+
+    const unitLabel = new Text({ text: "UNITS", style: STYLE_LABEL });
+    unitLabel.position.set(isRTS ? 220 : 130, 8);
+
+    this._eastUnitVal = new Text({ text: "0", style: STYLE_VALUE });
+    this._eastUnitVal.position.set(isRTS ? 220 : 130, 24);
+
     this._eastPanel.addChild(unitLabel);
     this._eastPanel.addChild(this._eastUnitVal);
     this.container.addChild(this._eastPanel);
@@ -313,7 +398,8 @@ export class HUD {
   // ---------------------------------------------------------------------------
 
   private _repositionEastPanel(): void {
-    this._eastPanel.position.x = this._screenW - PANEL_W - PAD;
+    const panelW = this._gameMode === GameMode.RTS ? 340 : PANEL_W;
+    this._eastPanel.position.x = this._screenW - panelW - PAD;
   }
 
   private _repositionPhasePanel(): void {
@@ -331,10 +417,14 @@ export class HUD {
     if (west) {
       this._westGoldVal.text = String(west.gold);
       this._westManaVal.text = String(west.mana);
+      if (this._westWoodVal) this._westWoodVal.text = String(west.wood);
+      if (this._westStoneVal) this._westStoneVal.text = String(west.stone);
     }
     if (east) {
       this._eastGoldVal.text = String(east.gold);
       this._eastManaVal.text = String(east.mana);
+      if (this._eastWoodVal) this._eastWoodVal.text = String(east.wood);
+      if (this._eastStoneVal) this._eastStoneVal.text = String(east.stone);
     }
     this._setPhase(state.phase);
     this.update(state);
@@ -370,6 +460,23 @@ export class HUD {
       this._eastManaVal.text = String(amount);
     }
   }
+
+  private _setResource(playerId: PlayerId, resourceType: ResourceType, _amount: number): void {
+    const player = playerId === this._westPlayerId
+      ? { woodVal: this._westWoodVal, stoneVal: this._westStoneVal }
+      : playerId === this._eastPlayerId
+        ? { woodVal: this._eastWoodVal, stoneVal: this._eastStoneVal }
+        : null;
+    if (!player) return;
+
+    const ps = this._state?.players.get(playerId);
+    if (!ps) return;
+    if (resourceType === ResourceType.WOOD && player.woodVal) player.woodVal.text = String(ps.wood);
+    if (resourceType === ResourceType.STONE && player.stoneVal) player.stoneVal.text = String(ps.stone);
+    if (resourceType === ResourceType.GOLD) this._setGold(playerId, ps.gold);
+  }
+
+  private _state: GameState | null = null;
 
   private _setPhase(phase: GamePhase): void {
     this._currentPhase = phase;
