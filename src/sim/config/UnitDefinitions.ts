@@ -139,7 +139,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     type: UnitType.LONGBOWMAN,
     cost: 275,
     hp: 65,
-    atk: 14,
+    atk: 18,
     attackSpeed: 0.7,
     speed: 0.9,
     range: 6,
@@ -168,7 +168,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   [UnitType.KNIGHT]: {
     type: UnitType.KNIGHT,
     cost: 300,
-    hp: 180,
+    hp: 200,
     atk: 25,
     attackSpeed: 0.7,
     speed: 1.5,
@@ -184,6 +184,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Armored cavalry unit that charges into battle with devastating force and speed.",
     tier: 1,
+    blockChance: 0.1,
   },
   [UnitType.QUESTING_KNIGHT]: {
     type: UnitType.QUESTING_KNIGHT,
@@ -218,7 +219,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "mage",
     description:
       "Pyromancer who hurls explosive fireballs, engulfing enemies in flames.",
-    tier: 1,
+    tier: 2,
     element: "fire",
   },
   [UnitType.STORM_MAGE]: {
@@ -234,7 +235,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "mage",
     description:
       "Storm caller who unleashes devastating lightning bolts from the heavens.",
-    tier: 1,
+    tier: 2,
     element: "lightning",
   },
   [UnitType.PIKEMAN]: {
@@ -322,7 +323,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.SUMMON],
     spriteKey: "golem",
-    tier: 1,
+    tier: 3,
     element: "summon",
   },
   [UnitType.CONSTRUCTIONIST]: {
@@ -336,7 +337,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 8,
     abilityTypes: [AbilityType.SUMMON],
     spriteKey: "constructionist",
-    tier: 2,
+    tier: 4,
     element: "summon",
   },
   [UnitType.COLD_MAGE]: {
@@ -370,7 +371,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     type: UnitType.GLADIATOR,
     cost: 350,
     hp: 140,
-    atk: 15,
+    atk: 18,
     attackSpeed: 0.8,
     speed: 1.0,
     range: 2.5,
@@ -637,7 +638,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     type: UnitType.TROLL,
     cost: 700,
     hp: 400,
-    atk: 25,
+    atk: 30,
     attackSpeed: 0.6,
     speed: 0.5,
     range: 1,
@@ -652,9 +653,9 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.RHINO]: {
     type: UnitType.RHINO,
-    cost: 500,
+    cost: 400,
     hp: 350,
-    atk: 15,
+    atk: 25,
     attackSpeed: 0.5,
     speed: 0.6,
     range: 1,
@@ -837,7 +838,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     cost: 600,
     hp: 100,
     atk: 30,
-    attackSpeed: 0.2, // slow but long range
+    attackSpeed: 0.35, // slow but long range
     speed: 0.5,
     range: 7,
     spawnTime: 10,
@@ -858,11 +859,11 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "catapult",
     description:
       "Heavy catapult that launches boulders in a high arc, devastating buildings from extreme range.",
-    tier: 4,
+    tier: 3,
   },
   [UnitType.SIEGE_CATAPULT]: {
     type: UnitType.SIEGE_CATAPULT,
-    cost: 400,
+    cost: 550,
     hp: 200,
     atk: 55,
     attackSpeed: 0.1,
@@ -882,7 +883,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.TREBUCHET]: {
     type: UnitType.TREBUCHET,
-    cost: 300,
+    cost: 500,
     hp: 250,
     atk: 70,
     attackSpeed: 0.07,
@@ -964,8 +965,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.HELLFIRE_MORTAR]: {
     type: UnitType.HELLFIRE_MORTAR,
-    cost: 2600,
-    hp: 350,
+    cost: 2200,
+    hp: 550,
     atk: 150,
     attackSpeed: 0.05,
     speed: 0.2,
@@ -1028,7 +1029,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     abilityTypes: [],
     spriteKey: "royal_lancer",
     isChargeUnit: true,
-    tier: 4,
+    tier: 3,
   },
   [UnitType.ELITE_LANCER]: {
     type: UnitType.ELITE_LANCER,
@@ -1232,7 +1233,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "Divine celestial warrior of the heavens, wielding a blazing sword and radiating holy light.",
-    tier: 5,
+    tier: 7,
     element: "heal",
   },
   [UnitType.DARK_SAVANT]: {
@@ -1249,7 +1250,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 5,
     description:
       "Master of dark pyromancy who hurls devastating fireballs with increased destructive power.",
-    tier: 4,
+    tier: 7,
     element: "fire",
   },
   [UnitType.HALBERDIER]: {
@@ -1344,6 +1345,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     description:
       "Elite pikeman in gilded armor wielding an enormous pike, impaling foes long before they can strike.",
     tier: 3,
+    blockChance: 0.15,
   },
   [UnitType.ROYAL_DEFENDER]: {
     type: UnitType.ROYAL_DEFENDER,
@@ -1654,9 +1656,9 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.WARCHIEF]: {
     type: UnitType.WARCHIEF,
-    cost: 350,
+    cost: 400,
     hp: 160,
-    atk: 28,
+    atk: 24,
     attackSpeed: 0.9,
     speed: 1.1,
     range: 1.5,
@@ -1665,13 +1667,13 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "warchief",
     description:
       "Brutal horde warchief wielding a massive cleaver. Inspires nearby warriors with savage fury.",
-    tier: 1,
+    tier: 2,
   },
   [UnitType.ARCHMAGE]: {
     type: UnitType.ARCHMAGE,
-    cost: 400,
+    cost: 600,
     hp: 80,
-    atk: 25,
+    atk: 18,
     attackSpeed: 0.6,
     speed: 0.85,
     range: 6,
@@ -1681,7 +1683,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     regenRate: 3,
     description:
       "Supreme arcanist channelling raw magical energy. Devastating at range with arcane bolts.",
-    tier: 1,
+    tier: 3,
     element: "fire",
   },
   [UnitType.RUFUS]: {
@@ -1923,7 +1925,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     },
     description:
       "A living mountain given terrible purpose — granite plates and crystal veins form an unstoppable juggernaut that shrugs off all punishment.",
-    tier: 5,
+    tier: 6,
   },
   [UnitType.MINOR_EARTH_ELEMENTAL]: {
     type: UnitType.MINOR_EARTH_ELEMENTAL,
@@ -1952,8 +1954,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     cost: 3200,
     hp: 1200,
     atk: 100,
-    attackSpeed: 0.35,
-    speed: 0.35,
+    attackSpeed: 0.45,
+    speed: 0.45,
     range: 1,
     spawnTime: 12,
     abilityTypes: [],
@@ -2197,10 +2199,10 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   // ---------------------------------------------------------------------------
   [UnitType.HALFLING_SLINGER]: {
     type: UnitType.HALFLING_SLINGER,
-    cost: 120,
+    cost: 200,
     hp: 50,
     atk: 11,
-    attackSpeed: 1.6,
+    attackSpeed: 1.2,
     speed: 1.3,
     range: 5,
     spawnTime: 2,
@@ -2249,7 +2251,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     type: UnitType.LAVA_SHAMAN,
     cost: 500,
     hp: 100,
-    atk: 28,
+    atk: 22,
     attackSpeed: 0.7,
     speed: 0.85,
     range: 5,
@@ -2266,8 +2268,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   // ---------------------------------------------------------------------------
   [UnitType.DWARVEN_GUARDIAN]: {
     type: UnitType.DWARVEN_GUARDIAN,
-    cost: 250,
-    hp: 180,
+    cost: 300,
+    hp: 160,
     atk: 18,
     attackSpeed: 0.8,
     speed: 0.7,
@@ -2300,8 +2302,8 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   // ---------------------------------------------------------------------------
   [UnitType.ORC_BRUTE]: {
     type: UnitType.ORC_BRUTE,
-    cost: 280,
-    hp: 200,
+    cost: 400,
+    hp: 160,
     atk: 32,
     attackSpeed: 0.7,
     speed: 1.05,
@@ -2312,7 +2314,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     isChargeUnit: true,
     description:
       "A hulking orc warrior who charges headlong into battle. Devastating first strike, and tough enough to keep swinging.",
-    tier: 1,
+    tier: 2,
   },
   [UnitType.ORC_DRUMMER]: {
     type: UnitType.ORC_DRUMMER,
@@ -2334,7 +2336,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   // ---------------------------------------------------------------------------
   [UnitType.DEATH_KNIGHT]: {
     type: UnitType.DEATH_KNIGHT,
-    cost: 400,
+    cost: 500,
     hp: 220,
     atk: 26,
     attackSpeed: 0.8,
@@ -2385,7 +2387,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.HELLFIRE_WARLOCK]: {
     type: UnitType.HELLFIRE_WARLOCK,
-    cost: 500,
+    cost: 650,
     hp: 85,
     atk: 30,
     attackSpeed: 0.6,
@@ -2397,7 +2399,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     element: "fire",
     description:
       "A demonic sorcerer who rains hellfire and summons imps from the abyss to swarm the enemy.",
-    tier: 2,
+    tier: 3,
   },
   // ---------------------------------------------------------------------------
   // Angel faction units
@@ -2421,9 +2423,9 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.DIVINE_CHAMPION]: {
     type: UnitType.DIVINE_CHAMPION,
-    cost: 350,
+    cost: 400,
     hp: 140,
-    atk: 24,
+    atk: 20,
     attackSpeed: 0.9,
     speed: 1.1,
     range: 1.5,
@@ -2432,17 +2434,17 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "templar",
     description:
       "A holy warrior blessed by the heavens. Fast, resilient, and strikes with righteous fury.",
-    tier: 1,
+    tier: 2,
   },
   // ---------------------------------------------------------------------------
   // Beastkin faction units
   // ---------------------------------------------------------------------------
   [UnitType.ALPHA_WOLF]: {
     type: UnitType.ALPHA_WOLF,
-    cost: 250,
+    cost: 350,
     hp: 130,
     atk: 20,
-    attackSpeed: 1.2,
+    attackSpeed: 1.0,
     speed: 1.6,
     range: 1.5,
     spawnTime: 3,
@@ -2509,9 +2511,9 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   // ---------------------------------------------------------------------------
   [UnitType.PIRATE_CAPTAIN]: {
     type: UnitType.PIRATE_CAPTAIN,
-    cost: 300,
+    cost: 350,
     hp: 140,
-    atk: 22,
+    atk: 18,
     attackSpeed: 1.0,
     speed: 1.15,
     range: 1.5,
@@ -2554,7 +2556,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     element: "fire",
     description:
       "A towering convergence of all primal elements — fire, ice, storm, and void swirl within its form. Hurls fireballs and radiates searing heat.",
-    tier: 1,
+    tier: 3,
   },
   // ---------------------------------------------------------------------------
   // Additional faction units
@@ -2579,10 +2581,10 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.BLADEDANCER]: {
     type: UnitType.BLADEDANCER,
-    cost: 350,
+    cost: 450,
     hp: 85,
     atk: 22,
-    attackSpeed: 1.4,
+    attackSpeed: 1.2,
     speed: 1.5,
     range: 1,
     spawnTime: 4,
@@ -2590,7 +2592,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "bladedancer",
     description:
       "An elven warrior who fights like wind through leaves — twin moonblades blur in a dance of death that shreds anything within reach.",
-    tier: 1,
+    tier: 2,
   },
   [UnitType.BOAR_RIDER]: {
     type: UnitType.BOAR_RIDER,
@@ -2644,10 +2646,10 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.HALFLING_BURGLAR]: {
     type: UnitType.HALFLING_BURGLAR,
-    cost: 200,
+    cost: 300,
     hp: 55,
     atk: 18,
-    attackSpeed: 1.5,
+    attackSpeed: 1.3,
     speed: 1.6,
     range: 1,
     spawnTime: 3,
@@ -2785,7 +2787,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.POWDER_MONKEY]: {
     type: UnitType.POWDER_MONKEY,
-    cost: 250,
+    cost: 350,
     hp: 60,
     atk: 25,
     attackSpeed: 0.6,
@@ -2891,7 +2893,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.BLOOD_BERSERKER]: {
     type: UnitType.BLOOD_BERSERKER,
-    cost: 400,
+    cost: 500,
     hp: 110,
     atk: 30,
     attackSpeed: 1.3,
@@ -2900,7 +2902,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spawnTime: 5,
     abilityTypes: [],
     spriteKey: "blood_berserker",
-    regenRate: 8,
+    regenRate: 5,
     description:
       "A frenzied warrior who feeds on the blood of the fallen. Each swing restores vitality — the more he kills, the harder he is to stop.",
     tier: 2,
@@ -3093,10 +3095,10 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.PIT_FIGHTER]: {
     type: UnitType.PIT_FIGHTER,
-    cost: 350,
+    cost: 450,
     hp: 95,
     atk: 22,
-    attackSpeed: 1.4,
+    attackSpeed: 1.2,
     speed: 1.3,
     range: 1,
     spawnTime: 4,
@@ -3104,7 +3106,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "pit_fighter",
     description:
       "A scarred arena champion wielding twin axes. Years in the fighting pits have honed reflexes that make him a blur of steel.",
-    tier: 1,
+    tier: 2,
   },
   // ── Undead ──
   [UnitType.BONE_COLOSSUS]: {
@@ -3263,7 +3265,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     hp: 500,
     atk: 35,
     attackSpeed: 0.4,
-    speed: 0.3,
+    speed: 0.4,
     range: 1.5,
     spawnTime: 9,
     abilityTypes: [],
@@ -3292,10 +3294,10 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
   },
   [UnitType.BOARDING_MASTER]: {
     type: UnitType.BOARDING_MASTER,
-    cost: 350,
+    cost: 400,
     hp: 100,
     atk: 20,
-    attackSpeed: 1.4,
+    attackSpeed: 1.2,
     speed: 1.4,
     range: 1,
     spawnTime: 4,
@@ -3303,6 +3305,6 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     spriteKey: "boarding_master",
     description:
       "A dual-cutlass fighter trained in the brutal art of ship-to-ship combat. Fast, vicious, and utterly without mercy.",
-    tier: 1,
+    tier: 2,
   },
 };
