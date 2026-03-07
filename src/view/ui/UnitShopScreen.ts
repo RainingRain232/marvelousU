@@ -237,7 +237,7 @@ export class UnitShopScreen {
   private _gold = 30000;
   private _goldSpent = 0;
   private _counts: Map<UnitType, number> = new Map();
-  private _isAIShop = false;
+
   private _label = "UNIT SHOP";
   private _raceId: RaceId = "man" as RaceId;
 
@@ -408,7 +408,6 @@ export class UnitShopScreen {
   show(raceId: RaceId, gold: number, label?: string): void {
     this._gold = gold;
     this._goldSpent = 0;
-    this._isAIShop = false;
     this._label = label ?? "UNIT SHOP";
     this._randomToggleOn = false;
     this._unitScrollY = 0;
@@ -431,7 +430,6 @@ export class UnitShopScreen {
   showAIShop(raceId: RaceId, gold: number): void {
     this._gold = gold;
     this._goldSpent = 0;
-    this._isAIShop = true;
     this._label = "AI ARMY SHOP";
     this._randomToggleOn = false;
     this._unitScrollY = 0;
@@ -727,8 +725,8 @@ export class UnitShopScreen {
 
     let y = 0;
 
-    // AI random toggle
-    if (this._isAIShop) {
+    // Random army toggle
+    {
       const toggleRow = this._buildRandomToggle(LEFT_W);
       toggleRow.position.set(0, y);
       this._unitScrollContainer.addChild(toggleRow);
@@ -1358,7 +1356,7 @@ export class UnitShopScreen {
       : tab.building
         ? getUnitsForBuilding(tab.building, this._raceId)
         : getFactionUnits(this._raceId);
-    const topExtra = (this._isAIShop ? 36 : 0) + (this._activeModifiers.length > 0 ? 18 + this._activeModifiers.length * 16 + 6 : 0);
+    const topExtra = 36 + (this._activeModifiers.length > 0 ? 18 + this._activeModifiers.length * 16 + 6 : 0);
     const contentH = topExtra + units.length * ROW_H;
     const viewH = this._cardH - this._contentTop - 60;
     const minScroll = Math.min(0, viewH - contentH);
