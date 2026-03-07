@@ -1387,8 +1387,8 @@ export class MenuScreen {
         actY += introSectionFullH;
       }
 
-      actionBtns.back.position.set(20, actY);
-      actionBtns.start.position.set(20, actY + BH + actionBtnGap);
+      actionBtns.start.position.set(20, actY);
+      actionBtns.back.position.set(20, actY + BH + actionBtnGap);
 
       this._screen2CardH = actY + BH * 2 + actionBtnGap + 18;
 

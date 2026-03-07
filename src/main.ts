@@ -7137,14 +7137,114 @@ async function _bootGame(
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Escape menu overlay (Resume / Back to Main Menu)
+  // ---------------------------------------------------------------------------
+  const escMenuOverlay = new Container();
+  escMenuOverlay.eventMode = "static";
+  escMenuOverlay.visible = false;
+
+  const sw = viewManager.screenWidth;
+  const sh = viewManager.screenHeight;
+
+  const escBg = new Graphics()
+    .rect(0, 0, sw, sh)
+    .fill({ color: 0x000000, alpha: 0.55 });
+  escMenuOverlay.addChild(escBg);
+
+  const panelW = 280;
+  const panelH = 180;
+  const panelX = (sw - panelW) / 2;
+  const panelY = (sh - panelH) / 2;
+
+  const escPanel = new Graphics()
+    .roundRect(panelX, panelY, panelW, panelH, 8)
+    .fill({ color: 0x10102a, alpha: 0.95 })
+    .roundRect(panelX, panelY, panelW, panelH, 8)
+    .stroke({ color: 0xffd700, alpha: 0.5, width: 1.5 });
+  escMenuOverlay.addChild(escPanel);
+
+  const escTitle = new Text({
+    text: "PAUSED",
+    style: new TextStyle({
+      fontFamily: "monospace", fontSize: 24, fill: 0xffd700,
+      fontWeight: "bold", letterSpacing: 4,
+    }),
+  });
+  escTitle.anchor.set(0.5, 0);
+  escTitle.position.set(sw / 2, panelY + 16);
+  escMenuOverlay.addChild(escTitle);
+
+  const escBtnW = panelW - 40;
+  const escBtnH = 38;
+
+  const makeEscBtn = (label: string, y: number, bgCol: number, borderCol: number, textCol: number, onClick: () => void) => {
+    const c = new Container();
+    c.eventMode = "static";
+    c.cursor = "pointer";
+    const bg = new Graphics()
+      .roundRect(0, 0, escBtnW, escBtnH, 6)
+      .fill({ color: bgCol, alpha: 0.9 })
+      .roundRect(0, 0, escBtnW, escBtnH, 6)
+      .stroke({ color: borderCol, alpha: 0.6, width: 1 });
+    const txt = new Text({
+      text: label,
+      style: new TextStyle({
+        fontFamily: "monospace", fontSize: 14, fill: textCol, fontWeight: "bold",
+      }),
+    });
+    txt.anchor.set(0.5, 0.5);
+    txt.position.set(escBtnW / 2, escBtnH / 2);
+    c.addChild(bg, txt);
+    c.position.set(panelX + 20, y);
+    c.on("pointerover", () => { bg.alpha = 0.7; });
+    c.on("pointerout", () => { bg.alpha = 1; });
+    c.on("pointertap", onClick);
+    return c;
+  };
+
+  let escMenuOpen = false;
+
+  const hideEscMenu = () => {
+    escMenuOverlay.visible = false;
+    escMenuOpen = false;
+    if (simLoop.isPaused) {
+      simLoop.resume();
+      pauseOverlay.visible = false;
+    }
+  };
+
+  const showEscMenu = () => {
+    if (!simLoop.isPaused) {
+      simLoop.pause();
+    }
+    pauseOverlay.visible = false; // hide the simple PAUSED text
+    escMenuOverlay.visible = true;
+    escMenuOpen = true;
+  };
+
+  const resumeBtn = makeEscBtn("RESUME", panelY + 60, 0x1a3a1a, 0x44aa66, 0x88ffaa, hideEscMenu);
+  const mainMenuBtn = makeEscBtn("BACK TO MAIN MENU", panelY + 60 + escBtnH + 10, 0x3a1a1a, 0xaa4444, 0xff8888, () => {
+    window.location.reload();
+  });
+  escMenuOverlay.addChild(resumeBtn, mainMenuBtn);
+  viewManager.addToLayer("ui", escMenuOverlay);
+
   window.addEventListener("keydown", (e) => {
     // Don't handle keys if a text input or button is focused
     const tag = (document.activeElement?.tagName ?? "").toLowerCase();
     if (tag === "input" || tag === "textarea" || tag === "button") return;
 
-    if (e.code === "Space" && !e.repeat) {
+    if (e.code === "Escape" && !e.repeat) {
       e.preventDefault();
-      togglePause();
+      if (escMenuOpen) {
+        hideEscMenu();
+      } else {
+        showEscMenu();
+      }
+    } else if (e.code === "Space" && !e.repeat) {
+      e.preventDefault();
+      if (!escMenuOpen) togglePause();
     } else if (e.code === "Digit0" && !e.repeat) {
       simLoop.speedUp();
       hud.showSpeedLabel(simLoop.timeScale);
