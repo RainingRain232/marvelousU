@@ -628,6 +628,15 @@ export class HoverTooltip {
     this._statsContainer.addChild(line3);
     y += 12;
 
+    const critPct = Math.round((def.critChance ?? 0.05) * 100);
+    const blockPct = Math.round((def.blockChance ?? 0) * 100);
+    let critBlockStr = `CRIT:${critPct}%`;
+    if (blockPct > 0) critBlockStr += `  BLK:${blockPct}%`;
+    const line4 = new Text({ text: critBlockStr, style: STYLE_STAT });
+    line4.position.set(PANEL_PAD, y);
+    this._statsContainer.addChild(line4);
+    y += 12;
+
     this._resizeBg(PREVIEW_H + y + PANEL_PAD);
   }
 
