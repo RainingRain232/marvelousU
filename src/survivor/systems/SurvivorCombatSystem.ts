@@ -73,6 +73,17 @@ function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number)
     });
     // Gold
     state.gold += enemy.isBoss ? 50 : 1;
+    // Boss drops treasure chest
+    if (enemy.isBoss) {
+      const chestTypes = ["gold", "heal", "bomb"] as const;
+      state.chests.push({
+        id: state.nextChestId++,
+        position: { x: enemy.position.x, y: enemy.position.y },
+        alive: true,
+        type: chestTypes[Math.floor(Math.random() * chestTypes.length)],
+        value: 100 + Math.floor(state.gameTime / 60) * 50,
+      });
+    }
   }
 }
 

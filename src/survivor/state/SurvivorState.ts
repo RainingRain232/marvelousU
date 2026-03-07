@@ -62,6 +62,14 @@ export interface SurvivorProjectile {
   hitEnemies: Set<number>; // enemy IDs already hit (for pierce tracking)
 }
 
+export interface SurvivorChest {
+  id: number;
+  position: Vec2;
+  alive: boolean;
+  type: "gold" | "heal" | "bomb"; // gold=bonus gold, heal=full heal, bomb=screen clear
+  value: number;
+}
+
 export interface SurvivorPlayer {
   position: Vec2;
   hp: number;
@@ -95,6 +103,7 @@ export interface SurvivorState {
   enemies: SurvivorEnemy[];
   gems: SurvivorGem[];
   projectiles: SurvivorProjectile[];
+  chests: SurvivorChest[];
 
   // Progression
   xp: number;
@@ -123,6 +132,7 @@ export interface SurvivorState {
   nextEnemyId: number;
   nextGemId: number;
   nextProjectileId: number;
+  nextChestId: number;
 
   // Input state
   input: {
@@ -173,6 +183,7 @@ export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapT
     enemies: [],
     gems: [],
     projectiles: [],
+    chests: [],
     xp: 0,
     level: 1,
     xpToNext: SurvivorBalance.XP_BASE,
@@ -191,6 +202,7 @@ export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapT
     nextEnemyId: 1,
     nextGemId: 1,
     nextProjectileId: 1,
+    nextChestId: 1,
     input: { left: false, right: false, up: false, down: false },
     gold: 0,
   };

@@ -95,6 +95,10 @@ export class SurvivorGame {
   private _weaponFxParticles: WeaponFXParticle[] = [];
   // Orbiting FX objects for spinning blade / fireball ring
   private _orbitGfx: Graphics[] = [];
+  // Chest views
+  private _chestViews = new Map<number, Graphics>();
+  // Notification banners
+  private _notifications: { text: Text; lifetime: number }[] = [];
 
   // HUD elements
   private _hudContainer = new Container();
@@ -365,6 +369,13 @@ export class SurvivorGame {
       this._shakeTimer = 0.2;
       this._shakeIntensity = 6;
     });
+    SurvivorPickupSystem.setChestCallback((type, value) => {
+      let msg = "";
+      if (type === "gold") msg = `+${value} GOLD!`;
+      else if (type === "heal") msg = "FULL HEAL!";
+      else if (type === "bomb") msg = "SCREEN CLEAR!";
+      this._showNotification(msg, type === "gold" ? 0xffd700 : type === "heal" ? 0x44ff44 : 0xff4444);
+    });
 
     // Init systems
     SurvivorInputSystem.init(this._state);
@@ -565,6 +576,32 @@ export class SurvivorGame {
       this._bossNameText.text = unitDef?.description ?? boss.type.toUpperCase();
     } else {
       this._bossHpContainer.visible = false;
+    }
+  }
+
+  private _showNotification(msg: string, color: number): void {
+    const sw = viewManager.screenWidth;
+    const text = new Text({
+      text: msg,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 22, fill: color, fontWeight: "bold", letterSpacing: 2 }),
+    });
+    text.anchor.set(0.5, 0.5);
+    text.position.set(sw / 2, viewManager.screenHeight * 0.25);
+    this._hudContainer.addChild(text);
+    this._notifications.push({ text, lifetime: 2.0 });
+  }
+
+  private _updateNotifications(dt: number): void {
+    for (let i = this._notifications.length - 1; i >= 0; i--) {
+      const n = this._notifications[i];
+      n.lifetime -= dt;
+      n.text.alpha = Math.min(1, n.lifetime / 0.5);
+      n.text.position.y -= dt * 15; // drift up
+      if (n.lifetime <= 0) {
+        this._hudContainer.removeChild(n.text);
+        n.text.destroy();
+        this._notifications.splice(i, 1);
+      }
     }
   }
 
@@ -946,6 +983,7 @@ export class SurvivorGame {
     // Render entities
     this._renderEnemies(s);
     this._renderGems(s);
+    this._renderChests(s);
     this._renderProjectiles(s);
     this._renderOrbitingWeapons(s);
 
@@ -957,6 +995,7 @@ export class SurvivorGame {
 
     // HUD
     this._updateHUD();
+    this._updateNotifications(dt);
 
     // Camera
     this._syncCamera();
@@ -1079,6 +1118,44 @@ export class SurvivorGame {
     }
   }
 
+  private _renderChests(s: SurvivorState): void {
+    const activeIds = new Set<number>();
+
+    for (const chest of s.chests) {
+      if (!chest.alive) continue;
+      activeIds.add(chest.id);
+      let view = this._chestViews.get(chest.id);
+
+      if (!view) {
+        view = new Graphics();
+        const color = chest.type === "gold" ? 0xffd700 : chest.type === "heal" ? 0x44ff44 : 0xff4444;
+        // Chest body
+        view.roundRect(-8, -6, 16, 12, 2).fill({ color: 0x8b4513 });
+        // Lid
+        view.roundRect(-9, -8, 18, 5, 2).fill({ color: 0xa0522d });
+        // Lock/gem
+        view.circle(0, -2, 3).fill({ color });
+        // Glow
+        view.circle(0, 0, 14).fill({ color, alpha: 0.15 });
+        this._gemContainer.addChild(view);
+        this._chestViews.set(chest.id, view);
+      }
+
+      view.position.set(chest.position.x * TS, chest.position.y * TS);
+      // Gentle pulse
+      const pulse = 1 + Math.sin(s.gameTime * 3 + chest.id) * 0.08;
+      view.scale.set(pulse);
+    }
+
+    for (const [id, view] of this._chestViews) {
+      if (!activeIds.has(id)) {
+        this._gemContainer.removeChild(view);
+        view.destroy();
+        this._chestViews.delete(id);
+      }
+    }
+  }
+
   private _renderProjectiles(s: SurvivorState): void {
     this._projectileContainer.removeChildren();
     for (const proj of s.projectiles) {
@@ -1142,6 +1219,7 @@ export class SurvivorGame {
     SurvivorCombatSystem.setDamageCallback(null);
     SurvivorCombatSystem.setWeaponFxCallback(null);
     SurvivorCombatSystem.setPlayerHitCallback(null);
+    SurvivorPickupSystem.setChestCallback(null);
     if (this._tickerCb) {
       viewManager.app.ticker.remove(this._tickerCb);
       this._tickerCb = null;

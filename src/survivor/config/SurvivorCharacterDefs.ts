@@ -84,7 +84,7 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     critBonus: 0.15,
     regenBonus: 0,
     description: "Glass cannon with high crit and speed",
-    unlocked: false,
+    unlocked: true,
   },
   {
     id: "knight",
@@ -98,7 +98,7 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     regenBonus: 0,
     passiveBonus: SurvivorPassiveId.PLATE_ARMOR,
     description: "Tanky but slow, starts with armor",
-    unlocked: false,
+    unlocked: true,
   },
   {
     id: "necromancer",
@@ -111,7 +111,7 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     critBonus: 0,
     regenBonus: 0,
     description: "Lifesteal specialist",
-    unlocked: false,
+    unlocked: true,
   },
   {
     id: "pirate",
@@ -124,6 +124,6 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     critBonus: 0.05,
     regenBonus: 0,
     description: "Explosive area damage dealer",
-    unlocked: false,
+    unlocked: true,
   },
 ];
