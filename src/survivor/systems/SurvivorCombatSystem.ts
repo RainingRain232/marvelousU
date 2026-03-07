@@ -19,11 +19,13 @@ import type {
 type DamageCallback = ((x: number, y: number, amount: number, isCrit: boolean) => void) | null;
 type WeaponFxCallback = ((x: number, y: number, color: number, radius: number) => void) | null;
 type ChainFxCallback = ((points: { x: number; y: number }[], color: number) => void) | null;
+type ArcFxCallback = ((sx: number, sy: number, tx: number, ty: number, color: number, area: number) => void) | null;
 type PlayerHitCallback = (() => void) | null;
 
 let _damageCallback: DamageCallback = null;
 let _weaponFxCallback: WeaponFxCallback = null;
 let _chainFxCallback: ChainFxCallback = null;
+let _arcFxCallback: ArcFxCallback = null;
 let _playerHitCallback: PlayerHitCallback = null;
 
 // ---------------------------------------------------------------------------
@@ -378,7 +380,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         for (const e of enemies) {
           damageEnemy(state, e, damage, ws.id);
         }
-        _weaponFxCallback?.(target.position.x, target.position.y, def.color, area);
+        _arcFxCallback?.(px, py, target.position.x, target.position.y, def.color, area);
       }
       break;
     }
@@ -553,6 +555,7 @@ export const SurvivorCombatSystem = {
   setDamageCallback(cb: DamageCallback): void { _damageCallback = cb; },
   setWeaponFxCallback(cb: WeaponFxCallback): void { _weaponFxCallback = cb; },
   setChainFxCallback(cb: ChainFxCallback): void { _chainFxCallback = cb; },
+  setArcFxCallback(cb: ArcFxCallback): void { _arcFxCallback = cb; },
   setPlayerHitCallback(cb: PlayerHitCallback): void { _playerHitCallback = cb; },
 
   update(state: SurvivorState, dt: number): void {

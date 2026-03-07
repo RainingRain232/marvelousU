@@ -23,6 +23,23 @@ interface WeaponFXParticle {
   startAlpha: number;
 }
 
+interface ArcBoulder {
+  gfx: Graphics;
+  sx: number; sy: number;
+  tx: number; ty: number;
+  color: number;
+  area: number;
+  progress: number; // 0→1
+  duration: number;
+}
+
+interface TrailParticle {
+  gfx: Graphics;
+  lifetime: number;
+  vx: number;
+  vy: number;
+}
+
 export class SurvivorFX {
   readonly dmgNumberContainer = new Container();
   readonly weaponFxContainer = new Container();
@@ -34,7 +51,10 @@ export class SurvivorFX {
   pendingDmgNumbers: { x: number; y: number; amount: number; isCrit: boolean; isHeal: boolean }[] = [];
   pendingWeaponFx: { x: number; y: number; color: number; radius: number }[] = [];
   pendingChainFx: { points: { x: number; y: number }[]; color: number }[] = [];
+  pendingArcFx: { sx: number; sy: number; tx: number; ty: number; color: number; area: number }[] = [];
   private _chainBolts: { gfx: Graphics; lifetime: number }[] = [];
+  private _arcBoulders: ArcBoulder[] = [];
+  private _trailParticles: TrailParticle[] = [];
 
   init(): void {
     this.dmgNumberContainer.removeChildren();
@@ -45,7 +65,10 @@ export class SurvivorFX {
     this.pendingDmgNumbers = [];
     this.pendingWeaponFx = [];
     this.pendingChainFx = [];
+    this.pendingArcFx = [];
     this._chainBolts = [];
+    this._arcBoulders = [];
+    this._trailParticles = [];
   }
 
   spawnDamageNumbers(): void {
@@ -189,6 +212,104 @@ export class SurvivorFX {
     }
   }
 
+  spawnArcFx(): void {
+    for (const arc of this.pendingArcFx) {
+      const g = new Graphics();
+      // Boulder body
+      g.circle(0, 0, 6).fill({ color: arc.color, alpha: 0.9 });
+      g.circle(-2, -2, 2).fill({ color: 0x000000, alpha: 0.2 }); // crack detail
+      g.position.set(arc.sx * TS, arc.sy * TS);
+      this.weaponFxContainer.addChild(g);
+      this._arcBoulders.push({
+        gfx: g,
+        sx: arc.sx * TS, sy: arc.sy * TS,
+        tx: arc.tx * TS, ty: arc.ty * TS,
+        color: arc.color,
+        area: arc.area,
+        progress: 0,
+        duration: 0.4,
+      });
+    }
+    this.pendingArcFx = [];
+  }
+
+  updateArcFx(dt: number): void {
+    for (let i = this._arcBoulders.length - 1; i >= 0; i--) {
+      const b = this._arcBoulders[i];
+      b.progress += dt / b.duration;
+
+      if (b.progress >= 1) {
+        // Impact — spawn ring + rock fragments
+        this.weaponFxContainer.removeChild(b.gfx);
+        b.gfx.destroy();
+        this._arcBoulders.splice(i, 1);
+
+        // Impact ring
+        const ring = new Graphics()
+          .circle(0, 0, b.area * TS * 0.3)
+          .stroke({ color: b.color, width: 2.5, alpha: 0.8 });
+        ring.position.set(b.tx, b.ty);
+        this.weaponFxContainer.addChild(ring);
+        this._weaponFxParticles.push({ gfx: ring, lifetime: 0.5, vx: 0, vy: 0, startAlpha: 0.8 });
+
+        // Rock fragments
+        for (let j = 0; j < 6; j++) {
+          const frag = new Graphics();
+          const sz = 2 + Math.random() * 3;
+          frag.rect(-sz / 2, -sz / 2, sz, sz).fill({ color: b.color, alpha: 0.8 });
+          frag.position.set(b.tx, b.ty);
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 40 + Math.random() * 60;
+          this.weaponFxContainer.addChild(frag);
+          this._weaponFxParticles.push({
+            gfx: frag,
+            lifetime: 0.4,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 20,
+            startAlpha: 0.8,
+          });
+        }
+
+        // Dust puff
+        const dust = new Graphics()
+          .circle(0, 0, 10)
+          .fill({ color: 0x998877, alpha: 0.4 });
+        dust.position.set(b.tx, b.ty);
+        this.weaponFxContainer.addChild(dust);
+        this._weaponFxParticles.push({ gfx: dust, lifetime: 0.6, vx: 0, vy: 0, startAlpha: 0.4 });
+      } else {
+        // Parabolic arc: y offset = arcHeight * 4 * t * (1-t)
+        const t = b.progress;
+        const dx = b.tx - b.sx;
+        const dy = b.ty - b.sy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const arcHeight = Math.max(40, dist * 0.4);
+        const x = b.sx + dx * t;
+        const y = b.sy + dy * t - arcHeight * 4 * t * (1 - t);
+        b.gfx.position.set(x, y);
+        // Scale up slightly as it reaches peak
+        const scale = 0.8 + 0.4 * Math.sin(t * Math.PI);
+        b.gfx.scale.set(scale);
+      }
+    }
+  }
+
+  updateTrailParticles(dt: number): void {
+    for (let i = this._trailParticles.length - 1; i >= 0; i--) {
+      const p = this._trailParticles[i];
+      p.lifetime -= dt;
+      p.gfx.position.x += p.vx * dt;
+      p.gfx.position.y += p.vy * dt;
+      p.gfx.alpha = Math.max(0, p.lifetime / 0.3);
+      p.gfx.scale.set(Math.max(0.2, p.lifetime / 0.3));
+      if (p.lifetime <= 0) {
+        this.weaponFxContainer.removeChild(p.gfx);
+        p.gfx.destroy();
+        this._trailParticles.splice(i, 1);
+      }
+    }
+  }
+
   renderOrbitingWeapons(s: SurvivorState): void {
     // Cleanup old
     for (const g of this._orbitGfx) {
@@ -217,6 +338,22 @@ export class SurvivorFX {
           if (ws.id === "fireball_ring") {
             g.circle(0, 0, 5).fill({ color: 0xff6600, alpha: 0.9 });
             g.circle(0, 0, 3).fill({ color: 0xffcc00, alpha: 0.8 });
+
+            // Spawn ember trail particles behind the fireball
+            for (let t = 0; t < 2; t++) {
+              const ember = new Graphics();
+              const sz = 1.5 + Math.random() * 2;
+              ember.circle(0, 0, sz).fill({ color: Math.random() > 0.5 ? 0xff6600 : 0xffcc00, alpha: 0.7 });
+              ember.position.set(px + ox + (Math.random() - 0.5) * 4, py + oy + (Math.random() - 0.5) * 4);
+              this.weaponFxContainer.addChild(ember);
+              const trailAngle = angle + Math.PI + (Math.random() - 0.5) * 0.8;
+              this._trailParticles.push({
+                gfx: ember,
+                lifetime: 0.2 + Math.random() * 0.15,
+                vx: Math.cos(trailAngle) * (10 + Math.random() * 15),
+                vy: Math.sin(trailAngle) * (10 + Math.random() * 15) - 8,
+              });
+            }
           } else {
             g.rect(-6, -2, 12, 4).fill({ color: 0xcccccc, alpha: 0.9 });
             g.rotation = angle;
@@ -242,5 +379,7 @@ export class SurvivorFX {
     this._dmgNumbers = [];
     this._weaponFxParticles = [];
     this._orbitGfx = [];
+    this._arcBoulders = [];
+    this._trailParticles = [];
   }
 }

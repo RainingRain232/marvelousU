@@ -95,7 +95,7 @@ export class SurvivorHUD {
     this.container.addChild(this._levelText);
 
     // Weapon icons
-    this._weaponHudContainer.position.set(10, sh - 55);
+    this._weaponHudContainer.position.set(10, sh - 70);
     this.container.addChild(this._weaponHudContainer);
 
     // Boss HP bar
@@ -239,8 +239,8 @@ export class SurvivorHUD {
   }
 
   private _updateWeaponHud(s: SurvivorState): void {
-    const iconSize = 36;
-    const gap = 4;
+    const iconSize = 52;
+    const gap = 6;
 
     // Check if icons need rebuilding (weapon added/removed/leveled/evolved)
     let needsRebuild = s.weapons.length !== this._weaponIcons.size;
@@ -253,53 +253,161 @@ export class SurvivorHUD {
         }
       }
     }
-    if (!needsRebuild) return;
 
-    this._weaponHudContainer.removeChildren();
-    this._weaponIcons.clear();
-    this._tooltip.visible = false;
+    if (needsRebuild) {
+      this._weaponHudContainer.removeChildren();
+      this._weaponIcons.clear();
+      this._tooltip.visible = false;
 
-    for (let i = 0; i < s.weapons.length; i++) {
-      const ws = s.weapons[i];
+      for (let i = 0; i < s.weapons.length; i++) {
+        const ws = s.weapons[i];
+        const def = WEAPON_DEFS[ws.id];
+        const icon = new Container();
+        icon.eventMode = "static";
+        icon.cursor = "pointer";
+
+        const bg = new Graphics()
+          .roundRect(0, 0, iconSize, iconSize, 6)
+          .fill({ color: 0x1a1a2e, alpha: 0.9 })
+          .roundRect(0, 0, iconSize, iconSize, 6)
+          .stroke({ color: ws.evolved ? 0xffd700 : def.color, width: ws.evolved ? 2.5 : 1.5 });
+        icon.addChild(bg);
+
+        // Draw weapon-specific icon
+        const weaponIcon = new Graphics();
+        weaponIcon.position.set(iconSize / 2, iconSize / 2 - 4);
+        this._drawWeaponIcon(weaponIcon, ws.id, def.color);
+        icon.addChild(weaponIcon);
+
+        // Level label
+        const lvl = new Text({
+          text: ws.evolved ? "MAX" : `Lv${ws.level}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: ws.evolved ? 0xffd700 : 0xaabbcc }),
+        });
+        lvl.anchor.set(0.5, 1);
+        lvl.position.set(iconSize / 2, iconSize - 2);
+        icon.addChild(lvl);
+
+        // Cooldown overlay (initially empty, updated each frame)
+        const cdOverlay = new Graphics();
+        cdOverlay.name = "cdOverlay";
+        icon.addChild(cdOverlay);
+
+        icon.position.set(i * (iconSize + gap), 0);
+
+        // Tooltip hover
+        const weaponId = ws.id;
+        const weaponLevel = ws.level;
+        const evolved = ws.evolved;
+        icon.on("pointerover", (e) => {
+          this._showWeaponTooltip(weaponId, weaponLevel, evolved, e.globalX, e.globalY);
+        });
+        icon.on("pointermove", (e) => {
+          if (this._tooltip.visible) this._positionTooltip(e.globalX, e.globalY);
+        });
+        icon.on("pointerout", () => { this._tooltip.visible = false; });
+
+        this._weaponHudContainer.addChild(icon);
+        this._weaponIcons.set(ws.id, { container: icon, level: ws.level, evolved: ws.evolved });
+      }
+    }
+
+    // Update cooldown overlays every frame
+    for (const ws of s.weapons) {
+      const cached = this._weaponIcons.get(ws.id);
+      if (!cached) continue;
       const def = WEAPON_DEFS[ws.id];
-      const icon = new Container();
-      icon.eventMode = "static";
-      icon.cursor = "pointer";
+      const cd = def.baseCooldown > 0
+        ? Math.max(0.1, def.baseCooldown - def.cooldownPerLevel * (ws.level - 1))
+        : 0;
+      const cdOverlay = cached.container.getChildByName("cdOverlay") as Graphics;
+      if (!cdOverlay) continue;
+      cdOverlay.clear();
 
-      const bg = new Graphics()
-        .roundRect(0, 0, iconSize, iconSize, 4)
-        .fill({ color: 0x1a1a2e, alpha: 0.85 })
-        .roundRect(0, 0, iconSize, iconSize, 4)
-        .stroke({ color: ws.evolved ? 0xffd700 : def.color, width: ws.evolved ? 2 : 1 });
-      icon.addChild(bg);
+      if (cd > 0 && ws.cooldownTimer > 0) {
+        const ratio = ws.cooldownTimer / cd;
+        // Dark sweep overlay
+        const cx = iconSize / 2;
+        const cy = iconSize / 2;
+        const r = iconSize / 2;
+        const startAngle = -Math.PI / 2;
+        const endAngle = startAngle + Math.PI * 2 * ratio;
+        cdOverlay.moveTo(cx, cy);
+        cdOverlay.arc(cx, cy, r, startAngle, endAngle);
+        cdOverlay.lineTo(cx, cy);
+        cdOverlay.fill({ color: 0x000000, alpha: 0.55 });
+      }
+    }
+  }
 
-      const dot = new Graphics().circle(iconSize / 2, iconSize / 2 - 4, 6).fill({ color: def.color });
-      icon.addChild(dot);
-
-      const lvl = new Text({
-        text: ws.evolved ? "MAX" : `${ws.level}`,
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: ws.evolved ? 0xffd700 : 0xaabbcc }),
-      });
-      lvl.anchor.set(0.5, 1);
-      lvl.position.set(iconSize / 2, iconSize - 2);
-      icon.addChild(lvl);
-
-      icon.position.set(i * (iconSize + gap), 0);
-
-      // Tooltip hover
-      const weaponId = ws.id;
-      const weaponLevel = ws.level;
-      const evolved = ws.evolved;
-      icon.on("pointerover", (e) => {
-        this._showWeaponTooltip(weaponId, weaponLevel, evolved, e.globalX, e.globalY);
-      });
-      icon.on("pointermove", (e) => {
-        if (this._tooltip.visible) this._positionTooltip(e.globalX, e.globalY);
-      });
-      icon.on("pointerout", () => { this._tooltip.visible = false; });
-
-      this._weaponHudContainer.addChild(icon);
-      this._weaponIcons.set(ws.id, { container: icon, level: ws.level, evolved: ws.evolved });
+  private _drawWeaponIcon(g: Graphics, weaponId: string, color: number): void {
+    switch (weaponId) {
+      case "fireball_ring":
+        // Flame shape
+        g.circle(0, 2, 6).fill({ color: 0xff6600, alpha: 0.8 });
+        g.circle(0, 0, 4).fill({ color: 0xffcc00, alpha: 0.9 });
+        g.circle(0, -2, 2).fill({ color: 0xffee88 });
+        break;
+      case "arrow_volley":
+        // Arrow pointing right
+        g.moveTo(-8, 0).lineTo(6, 0).stroke({ color, width: 2 });
+        g.moveTo(6, 0).lineTo(2, -4).lineTo(2, 4).closePath().fill({ color });
+        g.moveTo(-8, 0).lineTo(-6, -3).stroke({ color: 0x8b4513, width: 1.5 });
+        g.moveTo(-8, 0).lineTo(-6, 3).stroke({ color: 0x8b4513, width: 1.5 });
+        break;
+      case "lightning_chain":
+        // Lightning bolt
+        g.moveTo(-2, -8).lineTo(2, -2).lineTo(-1, -2).lineTo(3, 8).lineTo(-1, 1).lineTo(1, 1).lineTo(-2, -8)
+          .fill({ color: 0xaaddff, alpha: 0.9 });
+        break;
+      case "ice_nova":
+        // Snowflake/ice crystal
+        g.moveTo(0, -7).lineTo(0, 7).stroke({ color, width: 2 });
+        g.moveTo(-6, -3.5).lineTo(6, 3.5).stroke({ color, width: 2 });
+        g.moveTo(-6, 3.5).lineTo(6, -3.5).stroke({ color, width: 2 });
+        g.circle(0, 0, 2).fill({ color: 0xffffff, alpha: 0.6 });
+        break;
+      case "holy_circle":
+        // Golden halo
+        g.circle(0, 0, 7).stroke({ color: 0xffd700, width: 2 });
+        g.circle(0, 0, 3).fill({ color: 0xffd700, alpha: 0.4 });
+        break;
+      case "catapult_strike":
+        // Boulder
+        g.circle(0, 1, 6).fill({ color: 0x886644 });
+        g.circle(-2, -1, 2).fill({ color: 0x664433, alpha: 0.5 });
+        g.circle(2, 2, 1.5).fill({ color: 0xaa8866, alpha: 0.5 });
+        break;
+      case "spinning_blade":
+        // Sword/blade shape
+        g.rect(-2, -9, 4, 14).fill({ color: 0xcccccc });
+        g.rect(-5, 3, 10, 2).fill({ color: 0x8b4513 });
+        g.rect(-1, 5, 2, 3).fill({ color: 0x8b4513 });
+        g.moveTo(0, -9).lineTo(-2, -7).lineTo(2, -7).closePath().fill({ color: 0xdddddd });
+        break;
+      case "warp_field":
+        // Swirl/portal
+        g.circle(0, 0, 7).stroke({ color: 0x9944cc, width: 1.5, alpha: 0.6 });
+        g.circle(0, 0, 4).stroke({ color: 0xbb66ee, width: 1.5, alpha: 0.8 });
+        g.circle(0, 0, 1.5).fill({ color: 0xdd88ff });
+        break;
+      case "rune_circle":
+        // Rune symbol
+        g.circle(0, 0, 7).stroke({ color, width: 1.5 });
+        g.moveTo(-4, -4).lineTo(4, 4).stroke({ color, width: 1.5 });
+        g.moveTo(4, -4).lineTo(-4, 4).stroke({ color, width: 1.5 });
+        g.circle(0, 0, 2).fill({ color, alpha: 0.5 });
+        break;
+      case "soul_drain":
+        // Ghost/wisp
+        g.circle(0, -2, 5).fill({ color: 0x44ff88, alpha: 0.7 });
+        g.moveTo(-5, -2).lineTo(-5, 4).lineTo(-3, 2).lineTo(-1, 5).lineTo(1, 2).lineTo(3, 5).lineTo(5, 2).lineTo(5, -2)
+          .fill({ color: 0x44ff88, alpha: 0.6 });
+        g.circle(-2, -3, 1).fill({ color: 0xffffff });
+        g.circle(2, -3, 1).fill({ color: 0xffffff });
+        break;
+      default:
+        g.circle(0, 0, 6).fill({ color });
     }
   }
 
