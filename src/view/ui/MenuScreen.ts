@@ -168,6 +168,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Overworld & dungeon crawling",
     skipSetup: true,
   },
+  {
+    mode: GameMode.SURVIVOR,
+    label: "SURVIVOR",
+    desc: "Vampire survivors roguelite",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

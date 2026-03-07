@@ -116,6 +116,9 @@ const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) =>
 // RPG mode imports
 import { RPGGame } from "@rpg/RPGBoot";
 
+// Survivor mode imports
+import { SurvivorGame } from "@/survivor/SurvivorGame";
+
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
 import type { WorldGameSettings } from "@world/config/WorldConfig";
@@ -298,6 +301,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.RPG) {
       menuScreen.hide();
       _bootRPGGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.SURVIVOR) {
+      menuScreen.hide();
+      _bootSurvivorGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2302,6 +2310,22 @@ async function _bootRPGGame(): Promise<void> {
 
   _rpgGame = new RPGGame();
   await _rpgGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Survivor mode boot
+// ---------------------------------------------------------------------------
+
+let _survivorGame: SurvivorGame | null = null;
+
+async function _bootSurvivorGame(): Promise<void> {
+  if (_survivorGame) {
+    _survivorGame.destroy();
+    _survivorGame = null;
+  }
+
+  _survivorGame = new SurvivorGame();
+  await _survivorGame.boot();
 }
 
 // ---------------------------------------------------------------------------

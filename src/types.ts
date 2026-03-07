@@ -644,6 +644,7 @@ export enum GameMode {
   WORLD = "world",
   WAVE = "wave",
   RPG = "rpg",
+  SURVIVOR = "survivor",
 }
 
 // ---------------------------------------------------------------------------
