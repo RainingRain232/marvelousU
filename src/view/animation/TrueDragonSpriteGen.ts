@@ -407,6 +407,57 @@ function _drawLeg(
   g.fill();
 }
 
+/** Front paw / arm — shorter and wider than hind leg, with spread toes */
+function _drawFrontPaw(
+  g: Graphics,
+  px: number,
+  py: number,
+  reach: number,
+  p: DragonPalette,
+) {
+  // Upper arm
+  const elbowX = px + 3 + reach * 0.4;
+  const elbowY = py + 8;
+  g.fill(p.body);
+  g.moveTo(px - 3, py);
+  g.lineTo(elbowX - 3, elbowY);
+  g.lineTo(elbowX + 3, elbowY);
+  g.lineTo(px + 3, py);
+  g.closePath();
+  g.fill();
+
+  // Forearm
+  const pawX = elbowX + 1 + reach * 0.3;
+  const pawY = elbowY + 8;
+  g.fill(p.body);
+  g.moveTo(elbowX - 2, elbowY);
+  g.lineTo(pawX - 3, pawY);
+  g.lineTo(pawX + 4, pawY);
+  g.lineTo(elbowX + 3, elbowY);
+  g.closePath();
+  g.fill();
+
+  // Elbow joint
+  g.fill(p.bodyDark);
+  g.circle(elbowX, elbowY, 2.5);
+  g.fill();
+
+  // Paw pad (wider than hind foot)
+  g.fill(p.bodyDark);
+  g.ellipse(pawX, pawY + 1, 4, 2);
+  g.fill();
+
+  // Claws (4 spread toes)
+  g.fill(p.claw);
+  for (let i = 0; i < 4; i++) {
+    const cx = pawX - 3 + i * 2.2;
+    g.moveTo(cx, pawY + 1);
+    g.lineTo(cx + 0.4, pawY + 4 + reach * 0.2);
+    g.lineTo(cx + 1.2, pawY + 1);
+  }
+  g.fill();
+}
+
 /** Thick tail curving down-left with spaded tip */
 function _drawTail(
   g: Graphics,
@@ -554,8 +605,9 @@ function _drawIdle(
   // Wing
   _drawWingSide(g, bodyX - 2, bodyY - 12, wingFlap, p);
 
-  // Front leg
-  _drawLeg(g, bodyX + 6, bodyY + 15, 0.15, p);
+  // Front paws
+  _drawFrontPaw(g, bodyX + 8, bodyY + 5, 0, p);
+  _drawFrontPaw(g, bodyX + 2, bodyY + 6, -1, p);
 
   // Head
   const headX = bodyX + 14;
@@ -653,9 +705,10 @@ function _drawWalk(
   // Wing (slightly flapping while walking)
   _drawWingSide(g, bodyX - 2, bodyY - 12, wingFlap, p);
 
-  // Front leg
-  const frontKnee = Math.sin(legPhase) * 0.3;
-  _drawLeg(g, bodyX + 6 + Math.sin(legPhase) * 2, bodyY + 15, frontKnee, p);
+  // Front paws (walking animation — alternating reach)
+  const frontReach = Math.sin(legPhase) * 3;
+  _drawFrontPaw(g, bodyX + 8 + Math.sin(legPhase) * 1.5, bodyY + 5, frontReach, p);
+  _drawFrontPaw(g, bodyX + 2 + Math.sin(legPhase + Math.PI) * 1.5, bodyY + 6, -frontReach, p);
 
   // Head
   const headX = bodyX + 14;
@@ -786,25 +839,9 @@ function _drawAttack(
   g.lineTo(bodyX - 20, bodyY + 2);
   g.stroke();
 
-  // Front leg (extended forward, claws out)
-  g.fill(p.body);
-  g.moveTo(bodyX + 6, bodyY + 15);
-  g.lineTo(bodyX + 14 + lunge * 0.3, bodyY + 12);
-  g.lineTo(bodyX + 16 + lunge * 0.3, bodyY + 18);
-  g.lineTo(bodyX + 10, bodyY + 20);
-  g.closePath();
-  g.fill();
-
-  // Extended claws
-  g.fill(p.claw);
-  for (let i = 0; i < 3; i++) {
-    const cx = bodyX + 14 + lunge * 0.3 + i * 2;
-    const cy = bodyY + 14;
-    g.moveTo(cx, cy);
-    g.lineTo(cx + 1, cy + 5);
-    g.lineTo(cx + 2, cy);
-  }
-  g.fill();
+  // Front paws (extended forward for strike)
+  _drawFrontPaw(g, bodyX + 8, bodyY + 5, lunge * 0.5, p);
+  _drawFrontPaw(g, bodyX + 2, bodyY + 6, lunge * 0.3, p);
 
   // Head (jaw wide open for bite)
   const headX = bodyX + 16 + neckExtend;
@@ -903,8 +940,9 @@ function _drawBreath(
   // Wings (raised for dramatic pose)
   _drawWingSide(g, bodyX - 2, bodyY - 12, -8, p);
 
-  // Front leg
-  _drawLeg(g, bodyX + 6, bodyY + 15, 0.1, p);
+  // Front paws (braced)
+  _drawFrontPaw(g, bodyX + 8, bodyY + 5, 1, p);
+  _drawFrontPaw(g, bodyX + 2, bodyY + 6, 0, p);
 
   // Head (mouth wide open)
   const headX = bodyX + 12;
@@ -1052,10 +1090,31 @@ function _drawDie(
     g.fill();
   }
 
-  // Legs (crumpled)
+  // Hind legs (crumpled)
   g.fill(p.body);
   g.ellipse(bodyX - 2, bodyY + 18, 4, 6);
-  g.ellipse(bodyX + 8, bodyY + 20, 4, 5);
+  g.ellipse(bodyX + 4, bodyY + 20, 4, 5);
+  g.fill();
+
+  // Front paws (splayed out, limp)
+  g.fill(p.body);
+  g.ellipse(bodyX + 12, bodyY + 10 + headDroop * 0.3, 3, 5);
+  g.ellipse(bodyX + 8, bodyY + 12 + headDroop * 0.2, 3, 4);
+  g.fill();
+  // Paw pads
+  g.fill(p.bodyDark);
+  g.ellipse(bodyX + 13, bodyY + 14 + headDroop * 0.3, 3, 1.5);
+  g.ellipse(bodyX + 9, bodyY + 15 + headDroop * 0.2, 2.5, 1.5);
+  g.fill();
+  // Limp claws
+  g.fill(p.claw);
+  for (let i = 0; i < 3; i++) {
+    const cx = bodyX + 11 + i * 1.8;
+    const cy = bodyY + 15 + headDroop * 0.3;
+    g.moveTo(cx, cy);
+    g.lineTo(cx + 0.3, cy + 2.5);
+    g.lineTo(cx + 1, cy);
+  }
   g.fill();
 
   // Death particles
