@@ -320,6 +320,11 @@ export class MenuScreen {
   private _waveIntroBg!: Graphics;
   private _waveIntroLabel!: Text;
 
+  // Battlefield gold
+  private _battlefieldGold = 30000;
+  private _battlefieldGoldSection!: Container;
+  private _battlefieldGoldLabel!: Text;
+
   // Dynamic load wave button area (rebuilt on show)
   private _loadWaveBtnSlot!: Container;
   private _loadWaveBtnSlotY = 0;
@@ -380,6 +385,9 @@ export class MenuScreen {
   }
   get waveIntroEnabled(): boolean {
     return this._waveIntro;
+  }
+  get battlefieldGold(): number {
+    return this._battlefieldGold;
   }
 
   // ---------------------------------------------------------------------------
@@ -486,6 +494,9 @@ export class MenuScreen {
     this._scalingDifficultySection.visible = entry.mode === GameMode.WAVE;
     this._bossWavesSection.visible = entry.mode === GameMode.WAVE;
     this._waveIntroSection.visible = entry.mode === GameMode.WAVE;
+
+    // Show battlefield gold section
+    this._battlefieldGoldSection.visible = entry.mode === GameMode.BATTLEFIELD;
 
     this._layout();
   }
@@ -1314,6 +1325,73 @@ export class MenuScreen {
     );
     const introSectionFullH = introSectionH + 14;
 
+    // --- Battlefield gold adjustment section ---
+    const goldSection = new Container();
+    goldSection.visible = false;
+    card.addChild(goldSection);
+    this._battlefieldGoldSection = goldSection;
+
+    const goldLabel = new Text({ text: "STARTING GOLD", style: STYLE_LABEL });
+    goldLabel.position.set(20, 0);
+    goldSection.addChild(goldLabel);
+
+    this._battlefieldGoldLabel = new Text({
+      text: this._formatGold(),
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffd700, fontWeight: "bold" }),
+    });
+    this._battlefieldGoldLabel.anchor.set(0.5, 0.5);
+    this._battlefieldGoldLabel.position.set(CW / 2, 38);
+    goldSection.addChild(this._battlefieldGoldLabel);
+
+    const goldBtnW = 36;
+    const goldBtnH = 28;
+    const makeGoldBtn = (label: string, x: number, y: number, delta: number) => {
+      const btn = new Container();
+      btn.eventMode = "static";
+      btn.cursor = "pointer";
+      const bg = new Graphics()
+        .roundRect(0, 0, goldBtnW, goldBtnH, 4)
+        .fill({ color: delta > 0 ? 0x1a3a1a : 0x3a1a1a })
+        .roundRect(0, 0, goldBtnW, goldBtnH, 4)
+        .stroke({ color: delta > 0 ? 0x44aa66 : 0xaa4444, width: 1 });
+      const txt = new Text({
+        text: label,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: delta > 0 ? 0x88ffaa : 0xff8888, fontWeight: "bold" }),
+      });
+      txt.anchor.set(0.5, 0.5);
+      txt.position.set(goldBtnW / 2, goldBtnH / 2);
+      btn.addChild(bg, txt);
+      btn.position.set(x, y);
+      btn.on("pointerdown", (e: PointerEvent) => {
+        let step = 1000;
+        if (e.ctrlKey) step = 10000;
+        else if (e.shiftKey) step = 5000;
+        this._battlefieldGold = Math.max(1000, Math.min(200000, this._battlefieldGold + delta * step));
+        this._battlefieldGoldLabel.text = this._formatGold();
+      });
+      return btn;
+    };
+
+    const goldBtnY = 26;
+    goldSection.addChild(makeGoldBtn("-", 20, goldBtnY, -1));
+    goldSection.addChild(makeGoldBtn("+", CW - 20 - goldBtnW, goldBtnY, 1));
+
+    const goldHintLabel = new Text({
+      text: "shift: 5k  ctrl: 10k",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x667788 }),
+    });
+    goldHintLabel.anchor.set(0.5, 0);
+    goldHintLabel.position.set(CW / 2, 54);
+    goldSection.addChild(goldHintLabel);
+
+    const goldSectionH = 68;
+    goldSection.addChild(
+      new Graphics()
+        .rect(20, goldSectionH, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+    const goldSectionFullH = goldSectionH + 14;
+
     // We track two possible curY values — with and without player section
     // The actual card height is computed in _layout based on visibility
     // For now, place the action buttons after player section
@@ -1385,6 +1463,12 @@ export class MenuScreen {
       this._waveIntroSection.position.set(0, actY);
       if (this._waveIntroSection.visible) {
         actY += introSectionFullH;
+      }
+
+      // Position battlefield gold section
+      this._battlefieldGoldSection.position.set(0, actY);
+      if (this._battlefieldGoldSection.visible) {
+        actY += goldSectionFullH;
       }
 
       actionBtns.start.position.set(20, actY);
@@ -1614,6 +1698,10 @@ export class MenuScreen {
       ? "INTRO: ON  [click to disable]"
       : "INTRO: OFF  [click to enable]";
     this._waveIntroLabel.style.fill = active ? 0x66dddd : 0x888888;
+  }
+
+  private _formatGold(): string {
+    return this._battlefieldGold.toLocaleString() + " GOLD";
   }
 
   private _refreshAllianceToggles(): void {

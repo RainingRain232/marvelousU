@@ -796,6 +796,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       scenarioSelectScreen.show();
     } else if (gameMode === GameMode.BATTLEFIELD) {
       // Battlefield: P1 shop → P2 leader/race/magic → P2 shop → battle
+      const bfGold = menuScreen.battlefieldGold;
       unitShopScreen.onDone = (playerRoster) => {
         unitShopScreen.hide();
 
@@ -885,13 +886,13 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
             );
           };
           unitShopScreen.setSurvivingUnits([]);
-          unitShopScreen.show(p2RaceId, 30000, "PLAYER 2 ARMY");
+          unitShopScreen.show(p2RaceId, bfGold, "PLAYER 2 ARMY");
         };
 
         leaderSelectScreen.show("P2 — CHOOSE LEADER");
       };
       unitShopScreen.setSurvivingUnits([]);
-      unitShopScreen.show(raceId, 30000, "PLAYER 1 ARMY");
+      unitShopScreen.show(raceId, bfGold, "PLAYER 1 ARMY");
     } else if (gameMode === GameMode.WAVE) {
       // Wave mode: player unit shop → battle vs random wave
       const corruption = createGrailCorruptionState();
