@@ -11,6 +11,18 @@ import type {
 } from "../state/SurvivorState";
 
 // ---------------------------------------------------------------------------
+// Callbacks for VFX
+// ---------------------------------------------------------------------------
+
+type DamageCallback = ((x: number, y: number, amount: number, isCrit: boolean) => void) | null;
+type WeaponFxCallback = ((x: number, y: number, color: number, radius: number) => void) | null;
+type PlayerHitCallback = (() => void) | null;
+
+let _damageCallback: DamageCallback = null;
+let _weaponFxCallback: WeaponFxCallback = null;
+let _playerHitCallback: PlayerHitCallback = null;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -45,6 +57,7 @@ function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number)
   enemy.hp -= finalDmg;
   enemy.hitTimer = 0.1;
   state.totalDamageDealt += finalDmg;
+  _damageCallback?.(enemy.position.x, enemy.position.y, finalDmg, isCrit);
   if (enemy.hp <= 0) {
     enemy.alive = false;
     enemy.deathTimer = 0.8;
@@ -111,11 +124,11 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
   switch (ws.id) {
     case "fireball_ring":
     case "spinning_blade": {
-      // Orbiting projectiles — handled by view as visual, but we do instant AoE damage
       const enemies = enemiesInRadius(state, px, py, area);
       for (const e of enemies) {
         damageEnemy(state, e, damage);
       }
+      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area);
       break;
     }
     case "arrow_volley": {
@@ -141,31 +154,31 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
       break;
     }
     case "lightning_chain": {
-      // Chain damage from nearest enemy outward
       const first = nearestEnemy(state, px, py, area);
       if (!first) break;
       damageEnemy(state, first, damage);
+      _weaponFxCallback?.(first.position.x, first.position.y, def.color, 2);
       let prev = first;
       for (let i = 1; i < count; i++) {
         const next = nearestEnemy(state, prev.position.x, prev.position.y, area * 0.8);
         if (!next || next === prev) break;
         damageEnemy(state, next, damage * 0.8);
+        _weaponFxCallback?.(next.position.x, next.position.y, def.color, 1.5);
         prev = next;
       }
       break;
     }
     case "ice_nova": {
-      // AoE around player, applies slow
       const enemies = enemiesInRadius(state, px, py, area);
       for (const e of enemies) {
         damageEnemy(state, e, damage);
         e.slowFactor = 0.4;
         e.slowTimer = def.baseDuration + ws.level * 0.3;
       }
+      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area);
       break;
     }
     case "holy_circle": {
-      // Damage aura
       const enemies = enemiesInRadius(state, px, py, area);
       for (const e of enemies) {
         damageEnemy(state, e, damage);
@@ -173,7 +186,6 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
       break;
     }
     case "catapult_strike": {
-      // Drop boulders on random enemy clusters
       for (let i = 0; i < count; i++) {
         const target = nearestEnemy(state, px, py, 20);
         if (!target) break;
@@ -181,19 +193,19 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         for (const e of enemies) {
           damageEnemy(state, e, damage);
         }
+        _weaponFxCallback?.(target.position.x, target.position.y, def.color, area);
       }
       break;
     }
     case "warp_field": {
-      // AoE burst
       const enemies = enemiesInRadius(state, px, py, area);
       for (const e of enemies) {
         damageEnemy(state, e, damage);
       }
+      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area);
       break;
     }
     case "rune_circle": {
-      // Random ground AoE
       for (let i = 0; i < count; i++) {
         const ox = px + (Math.random() * 2 - 1) * 8;
         const oy = py + (Math.random() * 2 - 1) * 8;
@@ -201,11 +213,11 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         for (const e of enemies) {
           damageEnemy(state, e, damage);
         }
+        _weaponFxCallback?.(ox, oy, def.color, area);
       }
       break;
     }
     case "soul_drain": {
-      // Lifesteal to nearest enemies
       for (let i = 0; i < count; i++) {
         const target = nearestEnemy(state, px, py, area);
         if (!target) break;
@@ -222,6 +234,10 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
 // ---------------------------------------------------------------------------
 
 export const SurvivorCombatSystem = {
+  setDamageCallback(cb: DamageCallback): void { _damageCallback = cb; },
+  setWeaponFxCallback(cb: WeaponFxCallback): void { _weaponFxCallback = cb; },
+  setPlayerHitCallback(cb: PlayerHitCallback): void { _playerHitCallback = cb; },
+
   update(state: SurvivorState, dt: number): void {
     if (state.paused || state.levelUpPending || state.gameOver) return;
 
@@ -296,6 +312,7 @@ export const SurvivorCombatSystem = {
           const dmg = e.atk * SurvivorBalance.ENEMY_DAMAGE_TO_PLAYER_SCALE;
           state.player.hp -= dmg;
           state.player.invincibilityTimer = SurvivorBalance.PLAYER_INVINCIBILITY_TIME;
+          _playerHitCallback?.();
           if (state.player.hp <= 0) {
             state.player.hp = 0;
             state.gameOver = true;
