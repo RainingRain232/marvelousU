@@ -2,7 +2,7 @@
 import { Container, Graphics, Text, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 
-import darkCastleUrl from "@/img/Gemini_Generated_Image_c07k0oc07k0oc07k.png";
+import darkCastleUrl from "@/img/underground.png";
 
 // ---------------------------------------------------------------------------
 // Layout

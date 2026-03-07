@@ -5,7 +5,7 @@ import { getSaveSlots, hasSaveData, deleteSave } from "@rpg/systems/SaveSystem";
 import type { SaveSlotMeta } from "@rpg/systems/SaveSystem";
 
 // Pixel art background image
-import swordInStoneUrl from "@/img/Gemini_Generated_Image_1fm2lt1fm2lt1fm2.png";
+import swordInStoneUrl from "@/img/sword.png";
 
 // ---------------------------------------------------------------------------
 // Colours
