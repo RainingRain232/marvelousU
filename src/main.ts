@@ -824,6 +824,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         leftoverGold: 0,
         totalEnemyGold: 0,
         lastEnemyGold: 0,
+        randomEvents: menuScreen.randomEventsEnabled,
+        pendingEvent: null,
+        bonusGold: 0,
       };
       unitShopScreen.onDone = async (playerRoster) => {
         unitShopScreen.hide();
@@ -880,6 +883,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       const corruptionLabel = corruption.enabled ? " [GRAIL GREED]" : "";
       unitShopScreen.setCorruptionModifiers(corruption.activeModifiers);
       unitShopScreen.setSurvivingUnits([]);
+      unitShopScreen.setWaveHint(_generateWaveHint(raceId, 1));
       unitShopScreen.onSave = () => { _saveWaveGame(); };
       unitShopScreen.onLoad = () => {
         const ws = _loadWaveGame();
@@ -2323,6 +2327,15 @@ let _worldBattleRosters: {
   playerIsAttacker: boolean;
 } | null = null;
 
+/** Wave random event types. */
+type WaveEventType = "lady_of_the_lake" | "rogue_mage" | "gold_rush";
+
+/** Pending wave event to apply at next battle start. */
+interface PendingWaveEvent {
+  type: WaveEventType;
+  description: string;
+}
+
 /** Wave mode state — persists across rounds until the player loses. */
 let _waveState: {
   wave: number;
@@ -2340,6 +2353,12 @@ let _waveState: {
   totalEnemyGold: number;
   /** Gold given to the AI for the current wave. */
   lastEnemyGold: number;
+  /** Whether random events are enabled. */
+  randomEvents: boolean;
+  /** Pending event to apply at next battle start. */
+  pendingEvent: PendingWaveEvent | null;
+  /** Extra gold bonus from Gold Rush event. */
+  bonusGold: number;
 } | null = null;
 
 // ---------------------------------------------------------------------------
@@ -2367,6 +2386,8 @@ interface SerializedWaveState {
   leftoverGold: number;
   totalEnemyGold: number;
   lastEnemyGold: number;
+  randomEvents?: boolean;
+  bonusGold?: number;
 }
 
 function _saveWaveGame(): boolean {
@@ -2392,6 +2413,8 @@ function _saveWaveGame(): boolean {
       leftoverGold: ws.leftoverGold,
       totalEnemyGold: ws.totalEnemyGold,
       lastEnemyGold: ws.lastEnemyGold,
+      randomEvents: ws.randomEvents,
+      bonusGold: ws.bonusGold,
     };
     localStorage.setItem(WAVE_SAVE_KEY, JSON.stringify(data));
     return true;
@@ -2431,6 +2454,9 @@ function _loadWaveGame(): NonNullable<typeof _waveState> | null {
       leftoverGold: data.leftoverGold,
       totalEnemyGold: data.totalEnemyGold,
       lastEnemyGold: data.lastEnemyGold,
+      randomEvents: data.randomEvents ?? false,
+      pendingEvent: null,
+      bonusGold: data.bonusGold ?? 0,
     };
   } catch {
     return null;
@@ -2494,6 +2520,83 @@ function _generateWaveEnemyRoster(playerRaceId: RaceId, goldBudget: number, wave
     roster.push({ type, count });
   }
   return roster;
+}
+
+/** Generate a wave hint (enemy race + main unit types) for the next wave. */
+function _generateWaveHint(playerRaceId: RaceId, wave: number): { raceName: string; mainUnits: string[] } {
+  const races = RACE_DEFINITIONS.filter((r) => r.implemented && r.id !== "op" && r.id !== playerRaceId);
+  const enemyRace = races[Math.floor(Math.random() * races.length)];
+  const enemyRaceId = enemyRace?.id ?? "man";
+  const raceName = enemyRace?.name ?? "Human";
+
+  const maxTier = wave <= 5 ? 3 : wave <= 10 ? 5 : 7;
+  const available = getUnitsForRace(enemyRaceId, maxTier);
+
+  // Also add faction units
+  const race = getRace(enemyRaceId);
+  if (race) {
+    for (const fut of race.factionUnits) {
+      if (fut && UNIT_DEFINITIONS[fut] && !available.includes(fut)) {
+        const tier = UNIT_DEFINITIONS[fut].tier ?? 1;
+        if (tier <= maxTier) available.push(fut);
+      }
+    }
+  }
+
+  // Pick a few representative unit names
+  const unitNames: string[] = [];
+  const seen = new Set<string>();
+  const shuffled = [...available].sort(() => Math.random() - 0.5);
+  for (const ut of shuffled) {
+    const name = ut.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    if (!seen.has(name)) {
+      seen.add(name);
+      unitNames.push(name);
+    }
+    if (unitNames.length >= 4) break;
+  }
+
+  return { raceName, mainUnits: unitNames };
+}
+
+/** Wave event definitions. */
+const WAVE_EVENTS: Array<{
+  type: WaveEventType;
+  weight: number;
+  getMessage: (wave: number) => string;
+}> = [
+  {
+    type: "lady_of_the_lake",
+    weight: 1,
+    getMessage: (wave) =>
+      `The Lady of the Lake has sent ${wave} sacred priestess${wave > 1 ? "es" : ""} to aid King Arthur in his noble quest! "Go forth, servants of Avalon, and mend the wounds of the righteous!"`,
+  },
+  {
+    type: "rogue_mage",
+    weight: 1,
+    getMessage: () =>
+      `A rogue mage, corrupted by Morgan le Fay's dark enchantments, has appeared on the battlefield! Beware — this sorcerer answers to no lord and attacks all who draw near.`,
+  },
+  {
+    type: "gold_rush",
+    weight: 1,
+    getMessage: () =>
+      `The treasuries of Camelot overflow! A caravan from the mines of Cornwall has arrived bearing 200 gold pieces. Fortune smiles upon the realm!`,
+  },
+];
+
+/** Roll a random wave event. Returns null if no event triggers. */
+function _rollWaveEvent(wave: number): PendingWaveEvent | null {
+  if (Math.random() > 0.3) return null; // 30% chance
+  const totalWeight = WAVE_EVENTS.reduce((sum, e) => sum + e.weight, 0);
+  let roll = Math.random() * totalWeight;
+  for (const event of WAVE_EVENTS) {
+    roll -= event.weight;
+    if (roll <= 0) {
+      return { type: event.type, description: event.getMessage(wave) };
+    }
+  }
+  return null;
 }
 
 /** Start the next wave's shop screen after a wave victory. */
@@ -2575,6 +2678,7 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     _waveState = null;
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
+  unitShopScreen.setWaveHint(_generateWaveHint(ws.playerRaceId, ws.wave));
   unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave}${corruptionSuffix} — RECRUIT ARMY`);
 }
 
@@ -6076,6 +6180,46 @@ async function _bootGame(
       if (_waveState?.corruption.enabled) {
         applyCorruptionModifiers(state, _waveState.corruption);
       }
+      // Apply pending wave events (spawn units)
+      if (_waveState?.pendingEvent) {
+        const ev = _waveState.pendingEvent;
+        const midX = Math.floor(mapSize.width / 2);
+        const midY = Math.floor(mapSize.height / 2);
+        if (ev.type === "lady_of_the_lake") {
+          // Spawn 1 cleric per wave number for the player
+          const clericCount = _waveState.wave;
+          for (let i = 0; i < clericCount; i++) {
+            const id = `event-cleric-${i}`;
+            const px = midX + Math.floor(Math.random() * 6) - 3;
+            const py = midY + Math.floor(Math.random() * 6) - 3;
+            const unit = createUnit({
+              id,
+              type: UnitType.CLERIC,
+              owner: "p1",
+              position: { x: px, y: py },
+            });
+            state.units.set(id, unit);
+            EventBus.emit("unitSpawned", { unitId: id, buildingId: "", position: { x: px, y: py } });
+          }
+        } else if (ev.type === "rogue_mage") {
+          // Spawn a random tier 1-3 mage hostile to both (neutral)
+          const mageTypes = [
+            UnitType.FIRE_MAGE, UnitType.STORM_MAGE,
+            UnitType.COLD_MAGE, UnitType.DISTORTION_MAGE,
+          ];
+          const pick = mageTypes[Math.floor(Math.random() * mageTypes.length)];
+          const id = `event-rogue-mage`;
+          const unit = createUnit({
+            id,
+            type: pick,
+            owner: NEUTRAL_PLAYER,
+            position: { x: midX, y: midY },
+          });
+          state.units.set(id, unit);
+          EventBus.emit("unitSpawned", { unitId: id, buildingId: "", position: { x: midX, y: midY } });
+        }
+        _waveState.pendingEvent = null;
+      }
     } else if (gameMode === GameMode.CAMPAIGN) {
       _spawnScenarioBattlefieldUnits(state, mapSize.width, mapSize.height, scenarioNum ?? 1);
     } else {
@@ -6430,18 +6574,41 @@ async function _bootGame(
       victoryScreen.container.visible = false;
 
       ws.wave++;
-      const nextGold = 1000 + (ws.leftoverGold ?? 0);
+      let nextGold = 1000 + (ws.leftoverGold ?? 0) + (ws.bonusGold ?? 0);
+      ws.bonusGold = 0;
       ws.leftoverGold = 0;
+
+      // Roll random event if enabled
+      let pendingEvent: PendingWaveEvent | null = null;
+      if (ws.randomEvents) {
+        pendingEvent = _rollWaveEvent(ws.wave);
+        if (pendingEvent) {
+          ws.pendingEvent = pendingEvent;
+          if (pendingEvent.type === "gold_rush") {
+            nextGold += 200;
+            ws.pendingEvent = null; // no spawn needed
+          }
+        }
+      }
+
+      // Chain: Merlin compliment → event dialog → shop
+      const openShop = () => _startNextWaveShop(ws, nextGold);
+
+      const showEventThenShop = () => {
+        if (pendingEvent) {
+          _showMerlinWaveCompliment(pendingEvent.description, openShop);
+        } else {
+          openShop();
+        }
+      };
 
       // Merlin compliment every 10 waves
       const complimentWave = ws.wave - 1; // just won this wave
       if (complimentWave % 10 === 0 && complimentWave > 0) {
         const msg = MERLIN_COMPLIMENTS[complimentWave] ?? MERLIN_COMPLIMENT_DEFAULT;
-        _showMerlinWaveCompliment(msg, () => {
-          _startNextWaveShop(ws, nextGold);
-        });
+        _showMerlinWaveCompliment(msg, showEventThenShop);
       } else {
-        _startNextWaveShop(ws, nextGold);
+        showEventThenShop();
       }
     };
   }

@@ -279,6 +279,16 @@ export class UnitShopScreen {
   private _tooltipSprite: AnimatedSprite | null = null;
   private _activeTooltipUnit: UnitType | null = null;
 
+  // Price modifier system (discount/markup)
+  private _priceModifiers: Map<UnitType, number> = new Map(); // negative = discount%, positive = markup%
+
+  // Wave hint
+  private _waveHint: { raceName: string; mainUnits: string[] } | null = null;
+
+  // Price modifier tooltip
+  private _priceTooltip!: Container;
+  private _priceTooltipText!: Text;
+
   onDone: ((roster: UnitRoster) => void) | null = null;
   onSave: (() => void) | null = null;
   onLoad: (() => void) | null = null;
@@ -291,6 +301,11 @@ export class UnitShopScreen {
   /** Set surviving units from previous waves (shown in roster summary). */
   setSurvivingUnits(units: UnitRoster): void {
     this._survivingUnits = units;
+  }
+
+  /** Set wave hint about next enemy race and main units. */
+  setWaveHint(hint: { raceName: string; mainUnits: string[] } | null): void {
+    this._waveHint = hint;
   }
 
   init(vm: ViewManager): void {
@@ -367,6 +382,16 @@ export class UnitShopScreen {
     this._tooltip.addChild(this._tooltipStats);
     this.container.addChild(this._tooltip);
 
+    // Price modifier tooltip (small label on hover)
+    this._priceTooltip = new Container();
+    this._priceTooltip.visible = false;
+    const ptBg = new Graphics().roundRect(0, 0, 120, 22, 4).fill({ color: 0x0a0a18, alpha: 0.95 }).roundRect(0, 0, 120, 22, 4).stroke({ color: 0x888888, width: 1 });
+    this._priceTooltip.addChild(ptBg);
+    this._priceTooltipText = new Text({ text: "", style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xffffff }) });
+    this._priceTooltipText.position.set(6, 3);
+    this._priceTooltip.addChild(this._priceTooltipText);
+    this.container.addChild(this._priceTooltip);
+
     vm.addToLayer("ui", this.container);
     this.container.visible = false;
     vm.app.renderer.on("resize", () => this._layout());
@@ -387,6 +412,7 @@ export class UnitShopScreen {
     this._raceId = raceId;
     this._activeTabIndex = 0;
     this._hideTooltip();
+    this._generatePriceModifiers(raceId);
     this._buildTabs();
     this._rebuild();
     this._buildSaveLoadButtons();
@@ -691,27 +717,76 @@ export class UnitShopScreen {
     for (const ut of units) {
       const uDef = UNIT_DEFINITIONS[ut];
       if (!uDef) continue;
-      const cost = uDef.cost ?? 100;
-      const tier = uDef.tier ?? computeTier(cost);
+      const baseCost = uDef.cost ?? 100;
+      const priceMod = this._priceModifiers.get(ut) ?? 0;
+      const cost = this._getEffectiveCost(ut);
+      const tier = uDef.tier ?? computeTier(baseCost);
 
       const row = new Container();
       row.position.set(0, y);
       row.eventMode = "static";
       row.cursor = "pointer";
 
+      // Row background — tinted for discount/markup
+      const rowBgColor = priceMod < 0 ? 0x112211 : priceMod > 0 ? 0x221111 : 0x111122;
       const rowBg = new Graphics()
         .roundRect(0, 0, LEFT_W, ROW_H - 2, 3)
-        .fill({ color: 0x111122, alpha: 0.5 });
+        .fill({ color: rowBgColor, alpha: 0.5 });
       row.addChild(rowBg);
 
+      // Name text — colored for discount/markup
       const nameLabel = UNIT_LABELS[ut] ?? ut.replace(/_/g, " ");
-      const nameTxt = new Text({ text: `T${tier}  ${nameLabel}`, style: STYLE_UNIT_NAME });
+      let nameFill = 0xccddee;
+      if (priceMod < 0) {
+        // Greener for bigger discount: -10% → light green, -30% → bright green
+        const t = Math.abs(priceMod) / 30; // 0..1
+        const r = Math.round(0x66 + (0x22 - 0x66) * t);
+        const g = Math.round(0xdd + (0xff - 0xdd) * t);
+        const b = Math.round(0x66 + (0x44 - 0x66) * t);
+        nameFill = (r << 16) | (g << 8) | b;
+      } else if (priceMod > 0) {
+        nameFill = 0xff8888;
+      }
+      const nameTxt = new Text({ text: `T${tier}  ${nameLabel}`, style: { ...STYLE_UNIT_NAME, fill: nameFill } });
       nameTxt.position.set(8, 3);
       row.addChild(nameTxt);
 
-      const costTxt = new Text({ text: `${cost}g`, style: STYLE_UNIT_COST });
+      // Cost text — colored for discount/markup
+      let costFill = 0xaabb88;
+      let costLabel = `${cost}g`;
+      if (priceMod < 0) {
+        const t = Math.abs(priceMod) / 30;
+        const r = Math.round(0x66 + (0x22 - 0x66) * t);
+        const g = Math.round(0xff);
+        const b = Math.round(0x66 + (0x22 - 0x66) * t);
+        costFill = (r << 16) | (g << 8) | b;
+        costLabel = `${cost}g (was ${baseCost}g)`;
+      } else if (priceMod > 0) {
+        costFill = 0xff6666;
+        costLabel = `${cost}g (was ${baseCost}g)`;
+      }
+      const costTxt = new Text({ text: costLabel, style: { ...STYLE_UNIT_COST, fill: costFill } });
       costTxt.position.set(8, 19);
+      costTxt.eventMode = "static";
       row.addChild(costTxt);
+
+      // Hover on cost shows discount/markup percentage
+      if (priceMod !== 0) {
+        costTxt.on("pointerover", (e) => {
+          const label = priceMod < 0
+            ? `${Math.abs(priceMod)}% OFF`
+            : `+${priceMod}% COST`;
+          this._priceTooltipText.text = label;
+          this._priceTooltip.position.set(e.globalX + 10, e.globalY - 20);
+          this._priceTooltip.visible = true;
+        });
+        costTxt.on("pointermove", (e) => {
+          this._priceTooltip.position.set(e.globalX + 10, e.globalY - 20);
+        });
+        costTxt.on("pointerout", () => {
+          this._priceTooltip.visible = false;
+        });
+      }
 
       const rightX = LEFT_W - BTN_AREA_W;
       const minusBtn = this._makeSmallBtn("-", rightX + 14, ROW_H / 2);
@@ -750,15 +825,16 @@ export class UnitShopScreen {
 
       // Hover tooltip
       row.on("pointerover", (e) => {
-        rowBg.clear().roundRect(0, 0, LEFT_W, ROW_H - 2, 3).fill({ color: 0x1a2244, alpha: 0.8 });
+        rowBg.clear().roundRect(0, 0, LEFT_W, ROW_H - 2, 3).fill({ color: priceMod < 0 ? 0x1a3322 : priceMod > 0 ? 0x331a1a : 0x1a2244, alpha: 0.8 });
         this._showTooltip(ut, e.globalX, e.globalY);
       });
       row.on("pointermove", (e) => {
         if (this._activeTooltipUnit === ut) this._positionTooltip(e.globalX, e.globalY);
       });
       row.on("pointerout", () => {
-        rowBg.clear().roundRect(0, 0, LEFT_W, ROW_H - 2, 3).fill({ color: 0x111122, alpha: 0.5 });
+        rowBg.clear().roundRect(0, 0, LEFT_W, ROW_H - 2, 3).fill({ color: rowBgColor, alpha: 0.5 });
         this._hideTooltip();
+        this._priceTooltip.visible = false;
       });
 
       this._unitScrollContainer.addChild(row);
@@ -833,6 +909,39 @@ export class UnitShopScreen {
           this._detailContainer.addChild(sprite);
         });
       }
+    }
+
+    // Wave hint (next wave enemy info)
+    if (this._waveHint) {
+      const hintY = CONTENT_H - 90;
+      const hintBox = new Graphics()
+        .roundRect(0, hintY, DETAIL_W, 80, 5)
+        .fill({ color: 0x1a1a0a, alpha: 0.7 })
+        .roundRect(0, hintY, DETAIL_W, 80, 5)
+        .stroke({ color: 0xaaaa44, alpha: 0.5, width: 1 });
+      this._detailContainer.addChild(hintBox);
+
+      const hintTitle = new Text({
+        text: "SCOUT REPORT",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xddcc44, fontWeight: "bold", letterSpacing: 1 }),
+      });
+      hintTitle.position.set(8, hintY + 6);
+      this._detailContainer.addChild(hintTitle);
+
+      const hintRace = new Text({
+        text: `Enemy: ${this._waveHint.raceName}`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xccbb88, letterSpacing: 1 }),
+      });
+      hintRace.position.set(8, hintY + 24);
+      this._detailContainer.addChild(hintRace);
+
+      const unitNames = this._waveHint.mainUnits.slice(0, 4).join(", ");
+      const hintUnits = new Text({
+        text: `Expect: ${unitNames}`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xaa9977, letterSpacing: 1, wordWrap: true, wordWrapWidth: DETAIL_W - 16 }),
+      });
+      hintUnits.position.set(8, hintY + 40);
+      this._detailContainer.addChild(hintUnits);
     }
   }
 
@@ -1096,6 +1205,39 @@ export class UnitShopScreen {
     menuBtn.on("pointerout", () => { menuBg.tint = 0xffffff; });
     menuBtn.on("pointerdown", () => { this.onBackToMenu?.(); });
     this._saveLoadContainer.addChild(menuBtn);
+  }
+
+  /** Generate random price modifiers: 10% of units discounted, 10% marked up. */
+  private _generatePriceModifiers(raceId: RaceId): void {
+    this._priceModifiers.clear();
+    // Only apply in wave mode
+    if (!this._label.includes("WAVE")) return;
+
+    const allUnits = getAllShopUnits(raceId);
+    if (allUnits.length === 0) return;
+
+    const shuffled = [...allUnits].sort(() => Math.random() - 0.5);
+    const discountCount = Math.max(1, Math.round(allUnits.length * 0.1));
+    const markupCount = Math.max(1, Math.round(allUnits.length * 0.1));
+
+    // First discountCount units get a discount (10-30%)
+    for (let i = 0; i < discountCount && i < shuffled.length; i++) {
+      const discount = -(10 + Math.floor(Math.random() * 21)); // -10 to -30
+      this._priceModifiers.set(shuffled[i], discount);
+    }
+    // Next markupCount units get a markup (1-10%)
+    for (let i = discountCount; i < discountCount + markupCount && i < shuffled.length; i++) {
+      const markup = 1 + Math.floor(Math.random() * 10); // +1 to +10
+      this._priceModifiers.set(shuffled[i], markup);
+    }
+  }
+
+  /** Get the effective cost of a unit, accounting for price modifiers. */
+  private _getEffectiveCost(ut: UnitType): number {
+    const baseCost = UNIT_DEFINITIONS[ut]?.cost ?? 100;
+    const mod = this._priceModifiers.get(ut);
+    if (!mod) return baseCost;
+    return Math.round(baseCost * (1 + mod / 100));
   }
 
   private _makeStartButton(): Container {
