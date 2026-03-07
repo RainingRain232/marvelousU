@@ -251,12 +251,12 @@ export class LeaderSelectScreen {
     });
   }
 
-  show(): void {
+  show(titleOverride?: string): void {
     this._viewOnly = false;
     this._gridContainer.visible = true;
     this._gridMask.visible = true;
     this._separatorLine.visible = true;
-    this._title.text = "CHOOSE YOUR LEADER";
+    this._title.text = titleOverride ?? "CHOOSE YOUR LEADER";
     // Restore next button text
     const nextLabel = this._nextBtn.getChildAt(this._nextBtn.children.length - 1) as Text;
     if (nextLabel instanceof Text) nextLabel.text = "SELECT RACE  >";

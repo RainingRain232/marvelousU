@@ -193,6 +193,7 @@ export class RaceSelectScreen {
 
   // Selection
   private _selectedId: RaceId = RACE_DEFINITIONS[0].id;
+  private _title!: Text;
 
   onNext: (() => void) | null = null;
   onBack: (() => void) | null = null;
@@ -235,8 +236,9 @@ export class RaceSelectScreen {
     });
   }
 
-  show(): void {
+  show(titleOverride?: string): void {
     this.container.visible = true;
+    if (this._title) this._title.text = titleOverride ?? "SELECT YOUR RACE";
     // Re-select to ensure detail panel + portrait are built while visible
     this._selectRace(this._selectedId);
   }
@@ -268,10 +270,10 @@ export class RaceSelectScreen {
     card.addChild(backBtn);
 
     // Title
-    const title = new Text({ text: "SELECT YOUR RACE", style: STYLE_SCREEN_TITLE });
-    title.anchor.set(0.5, 0);
-    title.position.set(MAIN_W / 2, 18);
-    card.addChild(title);
+    this._title = new Text({ text: "SELECT YOUR RACE", style: STYLE_SCREEN_TITLE });
+    this._title.anchor.set(0.5, 0);
+    this._title.position.set(MAIN_W / 2, 18);
+    card.addChild(this._title);
 
     // Header divider
     card.addChild(

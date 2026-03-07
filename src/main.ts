@@ -795,35 +795,103 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       // Campaign: go to scenario select instead of booting directly
       scenarioSelectScreen.show();
     } else if (gameMode === GameMode.BATTLEFIELD) {
-      // Battlefield: player unit shop → AI unit shop → battle
+      // Battlefield: P1 shop → P2 leader/race/magic → P2 shop → battle
       unitShopScreen.onDone = (playerRoster) => {
         unitShopScreen.hide();
-        // AI shop
-        unitShopScreen.onDone = async (aiRoster) => {
-          unitShopScreen.hide();
-          _worldBattleRosters = {
-            p1Roster: playerRoster,
-            p2Roster: aiRoster,
-            battleMeta: {},
-            playerIsAttacker: true,
-          };
-          await _bootGame(
-            true,
-            mapSize,
-            GameMode.BATTLEFIELD,
-            leaderId,
-            raceId,
-            undefined,
-            mapType,
-            undefined,
-            2,
-            [],
-          );
+
+        // --- P2 setup: Leader → Race → RaceDetail → Magic → Shop ---
+        // Save+restore P1 callbacks so screens can be reused for P2
+        const origLeaderOnNext = leaderSelectScreen.onNext;
+        const origRaceOnBack = raceSelectScreen.onBack;
+        const origRaceOnNext = raceSelectScreen.onNext;
+        const origRaceDetailOnNext = raceDetailScreen.onNext;
+        const origMagicOnNext = magicScreen.onNext;
+        const origMagicOnBack = magicScreen.onBack;
+        const origArmoryOnBack = armoryScreen.onBack;
+
+        const restoreCallbacks = () => {
+          leaderSelectScreen.onNext = origLeaderOnNext;
+          raceSelectScreen.onBack = origRaceOnBack;
+          raceSelectScreen.onNext = origRaceOnNext;
+          raceDetailScreen.onNext = origRaceDetailOnNext;
+          magicScreen.onNext = origMagicOnNext;
+          magicScreen.onBack = origMagicOnBack;
+          armoryScreen.onBack = origArmoryOnBack;
         };
-        unitShopScreen.showAIShop(raceId, 30000);
+
+        // P2 Leader select
+        leaderSelectScreen.onNext = () => {
+          leaderSelectScreen.hide();
+          raceSelectScreen.show("P2 — SELECT RACE");
+        };
+
+        raceSelectScreen.onBack = () => {
+          raceSelectScreen.hide();
+          leaderSelectScreen.show("P2 — CHOOSE LEADER");
+        };
+
+        raceSelectScreen.onNext = () => {
+          raceSelectScreen.hide();
+          raceDetailScreen.onBack = () => {
+            raceDetailScreen.hide();
+            raceSelectScreen.show();
+          };
+          raceDetailScreen.show(raceSelectScreen.selectedRaceId);
+        };
+
+        raceDetailScreen.onNext = () => {
+          raceDetailScreen.hide();
+          magicScreen.onBack = () => {
+            magicScreen.hide();
+            raceDetailScreen.onBack = () => {
+              raceDetailScreen.hide();
+              raceSelectScreen.show();
+            };
+            raceDetailScreen.show(raceSelectScreen.selectedRaceId);
+          };
+          magicScreen.show(raceSelectScreen.selectedRaceId);
+        };
+
+        magicScreen.onNext = () => {
+          magicScreen.hide();
+          const p2LeaderId = leaderSelectScreen.selectedLeaderId;
+          const p2RaceId = raceSelectScreen.selectedRaceId;
+
+          // Restore original callbacks before proceeding
+          restoreCallbacks();
+
+          // P2 unit shop
+          unitShopScreen.onDone = async (p2Roster) => {
+            unitShopScreen.hide();
+            _worldBattleRosters = {
+              p1Roster: playerRoster,
+              p2Roster: p2Roster,
+              battleMeta: {},
+              playerIsAttacker: true,
+            };
+            await _bootGame(
+              true,
+              mapSize,
+              GameMode.BATTLEFIELD,
+              leaderId,
+              raceId,
+              undefined,
+              mapType,
+              undefined,
+              2,
+              [],
+              p2LeaderId,
+              p2RaceId,
+            );
+          };
+          unitShopScreen.setSurvivingUnits([]);
+          unitShopScreen.show(p2RaceId, 30000, "PLAYER 2 ARMY");
+        };
+
+        leaderSelectScreen.show("P2 — CHOOSE LEADER");
       };
       unitShopScreen.setSurvivingUnits([]);
-      unitShopScreen.show(raceId, 30000, "YOUR ARMY");
+      unitShopScreen.show(raceId, 30000, "PLAYER 1 ARMY");
     } else if (gameMode === GameMode.WAVE) {
       // Wave mode: player unit shop → battle vs random wave
       const corruption = createGrailCorruptionState();
@@ -6368,6 +6436,8 @@ async function _bootGame(
   armoryOverride?: string[],
   playerCount: number = 2,
   alliedPlayerIds: string[] = [],
+  p2LeaderId?: LeaderId,
+  p2RaceId?: RaceId,
 ): Promise<void> {
   // Clear all EventBus listeners from previous game/wave to prevent accumulation
   EventBus.clear();
@@ -6594,6 +6664,14 @@ async function _bootGame(
 
   // Apply the chosen race to P1 (sets p1RaceId and wires faction hall inventory)
   _applyRace(state, "p1", raceId);
+
+  // Apply P2 leader bonus and race if provided (battlefield mode)
+  if (p2LeaderId) {
+    _applyLeaderBonus(state, "p2", p2LeaderId, mapSize);
+  }
+  if (p2RaceId) {
+    _applyRace(state, "p2", p2RaceId);
+  }
 
   // Apply forced AI race if the scenario specifies one
   if (scenarioDef?.aiRace) {
