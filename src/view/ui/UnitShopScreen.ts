@@ -241,9 +241,6 @@ export class UnitShopScreen {
   private _label = "UNIT SHOP";
   private _raceId: RaceId = "man" as RaceId;
 
-  /** Perk-based price discount percentage (0 = none). */
-  perkDiscount = 0;
-
   // Surviving units from previous wave (displayed in roster summary)
   private _survivingUnits: UnitRoster = [];
 
@@ -1266,11 +1263,8 @@ export class UnitShopScreen {
   private _getEffectiveCost(ut: UnitType): number {
     const baseCost = UNIT_DEFINITIONS[ut]?.cost ?? 100;
     const mod = this._priceModifiers.get(ut);
-    let cost = mod ? Math.round(baseCost * (1 + mod / 100)) : baseCost;
-    if (this.perkDiscount > 0) {
-      cost = Math.round(cost * (1 - this.perkDiscount / 100));
-    }
-    return Math.max(1, cost);
+    if (!mod) return baseCost;
+    return Math.round(baseCost * (1 + mod / 100));
   }
 
   private _makeStartButton(): Container {

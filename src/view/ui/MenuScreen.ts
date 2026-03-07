@@ -168,6 +168,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Overworld & dungeon crawling",
     skipSetup: true,
   },
+  {
+    mode: GameMode.SURVIVOR,
+    label: "SURVIVOR",
+    desc: "Vampire survivors roguelite",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -314,16 +320,6 @@ export class MenuScreen {
   private _waveIntroBg!: Graphics;
   private _waveIntroLabel!: Text;
 
-  private _wavePerks = false;
-  private _wavePerksSection!: Container;
-  private _wavePerksBg!: Graphics;
-  private _wavePerksLabel!: Text;
-
-  private _waveTypes = false;
-  private _waveTypesSection!: Container;
-  private _waveTypesBg!: Graphics;
-  private _waveTypesLabel!: Text;
-
   // Dynamic load wave button area (rebuilt on show)
   private _loadWaveBtnSlot!: Container;
   private _loadWaveBtnSlotY = 0;
@@ -347,7 +343,6 @@ export class MenuScreen {
   onLoadWaveGame: (() => void) | null = null;
   hasWaveSave = false;
   onSettings: (() => void) | null = null;
-  onHallOfFame: (() => void) | null = null;
 
   // Public getters (unchanged API)
   get selectedMapSize(): MapSize {
@@ -385,12 +380,6 @@ export class MenuScreen {
   }
   get waveIntroEnabled(): boolean {
     return this._waveIntro;
-  }
-  get wavePerksEnabled(): boolean {
-    return this._wavePerks;
-  }
-  get waveTypesEnabled(): boolean {
-    return this._waveTypes;
   }
 
   // ---------------------------------------------------------------------------
@@ -497,8 +486,6 @@ export class MenuScreen {
     this._scalingDifficultySection.visible = entry.mode === GameMode.WAVE;
     this._bossWavesSection.visible = entry.mode === GameMode.WAVE;
     this._waveIntroSection.visible = entry.mode === GameMode.WAVE;
-    this._wavePerksSection.visible = entry.mode === GameMode.WAVE;
-    this._waveTypesSection.visible = entry.mode === GameMode.WAVE;
 
     this._layout();
   }
@@ -642,15 +629,9 @@ export class MenuScreen {
     card.addChild(wikiBtn);
     this._s1NavItems.push({ container: wikiBtn, action: () => this.onWiki?.() });
 
-    // Hall of Fame button (full width)
-    const hofBtn = makeActionBtn(fullW, utilBtnH, "HALL OF FAME", 0x2a1a2a, 0xcc88ff, 0xddaaff, () => this.onHallOfFame?.());
-    hofBtn.position.set(20, utilY + utilBtnH + utilGap);
-    card.addChild(hofBtn);
-    this._s1NavItems.push({ container: hofBtn, action: () => this.onHallOfFame?.() });
-
     // Row 2: Quickplay + Multiplayer
     const halfW = Math.floor((CW - 40 - utilGap) / 2);
-    const row2Y = utilY + utilBtnH * 2 + utilGap * 2;
+    const row2Y = utilY + utilBtnH + utilGap;
 
     const qpBtn = makeActionBtn(halfW, utilBtnH, "QUICKPLAY >>", 0x2a1a0a, 0xcc8833, 0xffcc66, () => this.onQuickPlay?.());
     qpBtn.position.set(20, row2Y);
@@ -1333,92 +1314,6 @@ export class MenuScreen {
     );
     const introSectionFullH = introSectionH + 14;
 
-    // --- Wave Perks toggle (wave mode only) ---
-    const perksSection = new Container();
-    perksSection.position.set(0, curY);
-    perksSection.visible = false;
-    card.addChild(perksSection);
-    this._wavePerksSection = perksSection;
-
-    const wpLabel = new Text({ text: "WAVE PERKS", style: STYLE_LABEL });
-    wpLabel.position.set(20, 0);
-    perksSection.addChild(wpLabel);
-
-    const wpBtn = new Container();
-    wpBtn.eventMode = "static";
-    wpBtn.cursor = "pointer";
-    wpBtn.position.set(20, 20);
-
-    const wpBg = new Graphics();
-    wpBtn.addChild(wpBg);
-
-    const wpToggleLabel = new Text({ text: "", style: STYLE_BTN });
-    wpToggleLabel.anchor.set(0.5, 0.5);
-    wpToggleLabel.position.set(TW / 2, TH / 2);
-    wpBtn.addChild(wpToggleLabel);
-
-    this._wavePerksBg = wpBg;
-    this._wavePerksLabel = wpToggleLabel;
-
-    wpBtn.on("pointerdown", () => {
-      this._wavePerks = !this._wavePerks;
-      this._refreshWavePerksToggle(TW, TH);
-    });
-
-    perksSection.addChild(wpBtn);
-    this._refreshWavePerksToggle(TW, TH);
-
-    const perksSectionH = 20 + TH + 12;
-    perksSection.addChild(
-      new Graphics()
-        .rect(20, perksSectionH, CW - 40, 1)
-        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
-    );
-    const perksSectionFullH = perksSectionH + 14;
-
-    // --- Wave Types toggle (wave mode only) ---
-    const typesSection = new Container();
-    typesSection.position.set(0, curY);
-    typesSection.visible = false;
-    card.addChild(typesSection);
-    this._waveTypesSection = typesSection;
-
-    const wtLabel = new Text({ text: "WAVE TYPES", style: STYLE_LABEL });
-    wtLabel.position.set(20, 0);
-    typesSection.addChild(wtLabel);
-
-    const wtBtn = new Container();
-    wtBtn.eventMode = "static";
-    wtBtn.cursor = "pointer";
-    wtBtn.position.set(20, 20);
-
-    const wtBg = new Graphics();
-    wtBtn.addChild(wtBg);
-
-    const wtToggleLabel = new Text({ text: "", style: STYLE_BTN });
-    wtToggleLabel.anchor.set(0.5, 0.5);
-    wtToggleLabel.position.set(TW / 2, TH / 2);
-    wtBtn.addChild(wtToggleLabel);
-
-    this._waveTypesBg = wtBg;
-    this._waveTypesLabel = wtToggleLabel;
-
-    wtBtn.on("pointerdown", () => {
-      this._waveTypes = !this._waveTypes;
-      this._refreshWaveTypesToggle(TW, TH);
-    });
-
-    typesSection.addChild(wtBtn);
-    this._refreshWaveTypesToggle(TW, TH);
-
-    const typesSectionH = 20 + TH + 12;
-    typesSection.addChild(
-      new Graphics()
-        .rect(20, typesSectionH, CW - 40, 1)
-        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
-    );
-    const typesSectionFullH = typesSectionH + 14;
-
     // We track two possible curY values — with and without player section
     // The actual card height is computed in _layout based on visibility
     // For now, place the action buttons after player section
@@ -1490,18 +1385,6 @@ export class MenuScreen {
       this._waveIntroSection.position.set(0, actY);
       if (this._waveIntroSection.visible) {
         actY += introSectionFullH;
-      }
-
-      // Position wave perks section
-      this._wavePerksSection.position.set(0, actY);
-      if (this._wavePerksSection.visible) {
-        actY += perksSectionFullH;
-      }
-
-      // Position wave types section
-      this._waveTypesSection.position.set(0, actY);
-      if (this._waveTypesSection.visible) {
-        actY += typesSectionFullH;
       }
 
       actionBtns.back.position.set(20, actY);
@@ -1717,34 +1600,6 @@ export class MenuScreen {
       ? "BOSS: ON  [click to disable]"
       : "BOSS: OFF  [click to enable]";
     this._bossWavesLabel.style.fill = active ? 0xff6666 : 0x888888;
-  }
-
-  private _refreshWavePerksToggle(w: number, h: number): void {
-    const active = this._wavePerks;
-    this._wavePerksBg.clear();
-    this._wavePerksBg
-      .roundRect(0, 0, w, h, 4)
-      .fill({ color: active ? 0x1a2a2a : 0x1a1a1a })
-      .roundRect(0, 0, w, h, 4)
-      .stroke({ color: active ? 0x44ccaa : 0x555555, width: 1.5 });
-    this._wavePerksLabel.text = active
-      ? "PERKS: ON  [click to disable]"
-      : "PERKS: OFF  [click to enable]";
-    this._wavePerksLabel.style.fill = active ? 0x88ffcc : 0x888888;
-  }
-
-  private _refreshWaveTypesToggle(w: number, h: number): void {
-    const active = this._waveTypes;
-    this._waveTypesBg.clear();
-    this._waveTypesBg
-      .roundRect(0, 0, w, h, 4)
-      .fill({ color: active ? 0x2a2a1a : 0x1a1a1a })
-      .roundRect(0, 0, w, h, 4)
-      .stroke({ color: active ? 0xccaa44 : 0x555555, width: 1.5 });
-    this._waveTypesLabel.text = active
-      ? "TYPES: ON  [click to disable]"
-      : "TYPES: OFF  [click to enable]";
-    this._waveTypesLabel.style.fill = active ? 0xffdd66 : 0x888888;
   }
 
   private _refreshWaveIntroToggle(w: number, h: number): void {

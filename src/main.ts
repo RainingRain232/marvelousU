@@ -116,6 +116,9 @@ const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) =>
 // RPG mode imports
 import { RPGGame } from "@rpg/RPGBoot";
 
+// Survivor mode imports
+import { SurvivorGame } from "@/survivor/SurvivorGame";
+
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
 import type { WorldGameSettings } from "@world/config/WorldConfig";
@@ -300,6 +303,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       _bootRPGGame();
       return;
     }
+    if (menuScreen.selectedGameMode === GameMode.SURVIVOR) {
+      menuScreen.hide();
+      _bootSurvivorGame();
+      return;
+    }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
       menuScreen.hide();
       // World mode: Leader → Race → RaceDetail → Magic → Armory → WorldSetup → boot
@@ -423,10 +431,6 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
   menuScreen.onWiki = () => {
     menuScreen.hide();
     mainMenuWikiScreen.show();
-  };
-
-  menuScreen.onHallOfFame = () => {
-    _showHallOfFame();
   };
 
   // ---------------------------------------------------------------------------
@@ -842,9 +846,6 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         scalingDifficulty: menuScreen.scalingDifficultyEnabled,
         bossWaves: menuScreen.bossWavesEnabled,
         mercenaries: _generateMercenaries(raceId, 1),
-        wavePerks: menuScreen.wavePerksEnabled,
-        activePerks: [],
-        waveTypes: menuScreen.waveTypesEnabled,
       };
       unitShopScreen.onDone = async (playerRoster) => {
         unitShopScreen.hide();
@@ -872,21 +873,15 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
 
         // Generate enemy wave
         const multiplier = _getWaveDifficultyMultiplier(_waveState!.wave, _waveState!.scalingDifficulty);
-        let enemyBudget = _waveState!.wave === 1
+        const enemyBudget = _waveState!.wave === 1
           ? 2000
           : Math.round(_waveState!.totalGoldSpent * multiplier);
-        // Apply perk: enemy budget reduction
-        const budgetReduction = _waveState!.activePerks
-          .filter((p) => p.effect.type === "enemy_budget_reduction")
-          .reduce((sum, p) => sum + p.effect.value, 0);
-        if (budgetReduction > 0) enemyBudget = Math.round(enemyBudget * (1 - budgetReduction / 100));
         _waveState!.lastEnemyGold = enemyBudget;
         _waveState!.totalEnemyGold += enemyBudget;
         const isBossWave = _waveState!.bossWaves && _waveState!.wave % 5 === 0;
-        const waveType = _getWaveType(_waveState!.wave, _waveState!.waveTypes);
         const enemyRoster = isBossWave
           ? _generateBossWaveRoster(raceId, Math.round(enemyBudget * 1.25), _waveState!.wave)
-          : _generateTypedWaveRoster(raceId, enemyBudget, _waveState!.wave, waveType);
+          : _generateWaveEnemyRoster(raceId, enemyBudget, _waveState!.wave);
 
         _worldBattleRosters = {
           p1Roster: playerRoster,
@@ -927,7 +922,6 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         _waveState = null;
         menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
       };
-      unitShopScreen.perkDiscount = 0;
       const showWaveShop = () => {
         unitShopScreen.show(raceId, 2000, `WAVE 1${corruptionLabel} — RECRUIT ARMY`);
       };
@@ -2319,6 +2313,22 @@ async function _bootRPGGame(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Survivor mode boot
+// ---------------------------------------------------------------------------
+
+let _survivorGame: SurvivorGame | null = null;
+
+async function _bootSurvivorGame(): Promise<void> {
+  if (_survivorGame) {
+    _survivorGame.destroy();
+    _survivorGame = null;
+  }
+
+  _survivorGame = new SurvivorGame();
+  await _survivorGame.boot();
+}
+
+// ---------------------------------------------------------------------------
 // Campaign mode boot
 // ---------------------------------------------------------------------------
 
@@ -2385,38 +2395,6 @@ let _worldBattleRosters: {
   playerIsAttacker: boolean;
 } | null = null;
 
-/** Wave perk — roguelike buff chosen every 3 waves. */
-interface WavePerk {
-  id: string;
-  name: string;
-  description: string;
-  effect: {
-    type: "hp_bonus" | "attack_bonus" | "gold_bonus" | "price_discount" | "enemy_budget_reduction" | "extra_merc_slot";
-    value: number;
-  };
-}
-
-const WAVE_PERK_POOL: WavePerk[] = [
-  { id: "hp10", name: "+10% Unit HP", description: "All your units gain 10% bonus hit points.", effect: { type: "hp_bonus", value: 10 } },
-  { id: "atk15", name: "+15% Unit Attack", description: "All your units deal 15% more damage.", effect: { type: "attack_bonus", value: 15 } },
-  { id: "gold200", name: "+200 Starting Gold", description: "Gain 200 extra gold each wave.", effect: { type: "gold_bonus", value: 200 } },
-  { id: "price15", name: "Shop Prices -15%", description: "All shop unit prices reduced by 15%.", effect: { type: "price_discount", value: 15 } },
-  { id: "budget10", name: "Enemy Budget -10%", description: "Enemy waves receive 10% less gold.", effect: { type: "enemy_budget_reduction", value: 10 } },
-  { id: "merc1", name: "+1 Mercenary Slot", description: "One extra mercenary offering each wave.", effect: { type: "extra_merc_slot", value: 1 } },
-];
-
-/** Wave type — special wave variations. */
-type WaveType = "normal" | "swarm" | "elite" | "siege" | "mirror";
-
-function _getWaveType(wave: number, enabled: boolean): WaveType {
-  if (!enabled) return "normal";
-  if (wave % 8 === 0) return "mirror";
-  if (wave % 5 === 2) return "swarm";
-  if (wave % 5 === 4) return "elite";
-  if (wave > 5 && wave % 5 === 1) return "siege";
-  return "normal";
-}
-
 /** Wave random event types. */
 type WaveEventType = "lady_of_the_lake" | "rogue_mage" | "gold_rush";
 
@@ -2455,12 +2433,6 @@ let _waveState: {
   bossWaves: boolean;
   /** Current mercenary offerings (2 random units from other races). */
   mercenaries: Array<{ type: UnitType; raceId: string }>;
-  /** Whether wave perks are enabled (roguelike buffs every 3 waves). */
-  wavePerks: boolean;
-  /** Active perks chosen so far this run. */
-  activePerks: WavePerk[];
-  /** Whether wave types are enabled (swarm/elite/siege/mirror). */
-  waveTypes: boolean;
 } | null = null;
 
 // ---------------------------------------------------------------------------
@@ -2493,9 +2465,6 @@ interface SerializedWaveState {
   scalingDifficulty?: boolean;
   bossWaves?: boolean;
   mercenaries?: Array<{ type: string; raceId: string }>;
-  wavePerks?: boolean;
-  activePerks?: Array<{ id: string }>;
-  waveTypes?: boolean;
 }
 
 function _saveWaveGame(): boolean {
@@ -2526,9 +2495,6 @@ function _saveWaveGame(): boolean {
       scalingDifficulty: ws.scalingDifficulty,
       bossWaves: ws.bossWaves,
       mercenaries: ws.mercenaries.map((m) => ({ type: m.type, raceId: m.raceId })),
-      wavePerks: ws.wavePerks,
-      activePerks: ws.activePerks.map((p) => ({ id: p.id })),
-      waveTypes: ws.waveTypes,
     };
     localStorage.setItem(WAVE_SAVE_KEY, JSON.stringify(data));
     return true;
@@ -2574,11 +2540,6 @@ function _loadWaveGame(): NonNullable<typeof _waveState> | null {
       scalingDifficulty: data.scalingDifficulty ?? false,
       bossWaves: data.bossWaves ?? false,
       mercenaries: (data.mercenaries ?? []).map((m) => ({ type: m.type as UnitType, raceId: m.raceId })),
-      wavePerks: data.wavePerks ?? false,
-      activePerks: (data.activePerks ?? [])
-        .map((p) => WAVE_PERK_POOL.find((wp) => wp.id === p.id))
-        .filter((p): p is WavePerk => p !== undefined),
-      waveTypes: data.waveTypes ?? false,
     };
   } catch {
     return null;
@@ -2601,24 +2562,16 @@ const MERLIN_COMPLIMENT_DEFAULT = "Truly, you are beyond mortal measure!";
 let _waveLastRoundGold = 0;
 
 /** Generate a random enemy roster worth a given gold budget. */
-function _generateWaveEnemyRoster(
-  playerRaceId: RaceId, goldBudget: number, wave: number,
-  opts?: { forceRaceId?: RaceId; overrideMaxTier?: number; minTier?: number; siegeOnly?: boolean },
-): UnitRoster {
-  // Pick a random enemy race (different from player's) or use forced race
-  let enemyRaceId: RaceId;
-  if (opts?.forceRaceId) {
-    enemyRaceId = opts.forceRaceId;
-  } else {
-    const races = RACE_DEFINITIONS.filter((r) => r.implemented && r.id !== "op" && r.id !== playerRaceId);
-    const enemyRace = races[Math.floor(Math.random() * races.length)];
-    enemyRaceId = enemyRace?.id ?? ("man" as RaceId);
-  }
+function _generateWaveEnemyRoster(playerRaceId: RaceId, goldBudget: number, wave: number): UnitRoster {
+  // Pick a random enemy race (different from player's)
+  const races = RACE_DEFINITIONS.filter((r) => r.implemented && r.id !== "op" && r.id !== playerRaceId);
+  const enemyRace = races[Math.floor(Math.random() * races.length)];
+  const enemyRaceId = enemyRace?.id ?? "man";
 
   // Max tier scales with wave
-  const maxTier = opts?.overrideMaxTier ?? (wave <= 5 ? 3 : wave <= 10 ? 5 : 7);
+  const maxTier = wave <= 5 ? 3 : wave <= 10 ? 5 : 7;
 
-  let available = getUnitsForRace(enemyRaceId, maxTier);
+  const available = getUnitsForRace(enemyRaceId, maxTier);
   if (available.length === 0) return [{ type: UnitType.SWORDSMAN, count: 10 }];
 
   // Also add faction units
@@ -2630,23 +2583,6 @@ function _generateWaveEnemyRoster(
         if (tier <= maxTier) available.push(fut);
       }
     }
-  }
-
-  // Apply min tier filter (for elite waves)
-  if (opts?.minTier) {
-    const minT = opts.minTier;
-    const filtered = available.filter((ut) => {
-      const tier = UNIT_DEFINITIONS[ut]?.tier ?? 1;
-      return tier >= minT;
-    });
-    if (filtered.length > 0) available = filtered;
-  }
-
-  // Apply siege-only filter
-  if (opts?.siegeOnly) {
-    const siegeUnits = BUILDING_DEFINITIONS[BuildingType.SIEGE_WORKSHOP]?.shopInventory ?? [];
-    const filtered = available.filter((ut) => siegeUnits.includes(ut));
-    if (filtered.length > 0) available = filtered;
   }
 
   const roster: UnitRoster = [];
@@ -2667,26 +2603,6 @@ function _generateWaveEnemyRoster(
     roster.push({ type, count });
   }
   return roster;
-}
-
-/** Generate an enemy roster with wave type variation. */
-function _generateTypedWaveRoster(
-  playerRaceId: RaceId, goldBudget: number, wave: number, waveType: WaveType,
-): UnitRoster {
-  switch (waveType) {
-    case "swarm":
-      return _generateWaveEnemyRoster(playerRaceId, goldBudget, wave, { overrideMaxTier: 3 });
-    case "elite": {
-      const minTier = wave <= 5 ? 2 : wave <= 10 ? 4 : 5;
-      return _generateWaveEnemyRoster(playerRaceId, goldBudget, wave, { minTier });
-    }
-    case "siege":
-      return _generateWaveEnemyRoster(playerRaceId, goldBudget, wave, { siegeOnly: true });
-    case "mirror":
-      return _generateWaveEnemyRoster(playerRaceId, goldBudget, wave, { forceRaceId: playerRaceId });
-    default:
-      return _generateWaveEnemyRoster(playerRaceId, goldBudget, wave);
-  }
 }
 
 /** Generate a wave hint (enemy race + main unit types) for the next wave. */
@@ -2761,130 +2677,6 @@ function _getWaveBestWave(): number {
   return runs.length > 0 ? runs[0].wave : 0;
 }
 
-/** Show a Hall of Fame overlay with top 10 best wave runs. */
-function _showHallOfFame(): void {
-  const overlay = new Container();
-  const sw = viewManager.screenWidth;
-  const sh = viewManager.screenHeight;
-
-  const bg = new Graphics().rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.75 });
-  bg.eventMode = "static";
-  overlay.addChild(bg);
-
-  const runs = _getWaveBestRuns();
-  const CW = 500;
-  const rowH = 28;
-  const headerH = 65;
-  const footerH = 56;
-  const contentH = Math.max(1, runs.length) * rowH;
-  const CH = headerH + contentH + footerH;
-  const card = new Container();
-  card.position.set(Math.floor((sw - CW) / 2), Math.floor((sh - CH) / 2));
-
-  const cardBg = new Graphics()
-    .roundRect(0, 0, CW, CH, 10)
-    .fill({ color: 0x0a0a18, alpha: 0.96 })
-    .roundRect(0, 0, CW, CH, 10)
-    .stroke({ color: 0xffd700, alpha: 0.8, width: 2 });
-  card.addChild(cardBg);
-
-  const title = new Text({
-    text: "HALL OF FAME",
-    style: new TextStyle({
-      fontFamily: "monospace", fontSize: 20, fill: 0xffd700,
-      fontWeight: "bold", letterSpacing: 3,
-    }),
-  });
-  title.anchor.set(0.5, 0);
-  title.position.set(CW / 2, 14);
-  card.addChild(title);
-
-  // Column headers
-  const colStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x8899aa, letterSpacing: 1 });
-  const cols = [
-    { text: "#", x: 24 },
-    { text: "WAVE", x: 60 },
-    { text: "RACE", x: 130 },
-    { text: "LEADER", x: 260 },
-    { text: "DATE", x: 390 },
-  ];
-  for (const c of cols) {
-    const t = new Text({ text: c.text, style: colStyle });
-    t.position.set(c.x, 46);
-    card.addChild(t);
-  }
-
-  if (runs.length === 0) {
-    const emptyText = new Text({
-      text: "No runs recorded yet. Play Wave Mode!",
-      style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0x556677 }),
-    });
-    emptyText.anchor.set(0.5, 0);
-    emptyText.position.set(CW / 2, headerH + 10);
-    card.addChild(emptyText);
-  } else {
-    const rowStyle = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xccddee });
-    const goldRowStyle = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xffd700, fontWeight: "bold" });
-    for (let i = 0; i < runs.length; i++) {
-      const run = runs[i];
-      const y = headerH + i * rowH;
-      const style = i === 0 ? goldRowStyle : rowStyle;
-
-      const raceDef = RACE_DEFINITIONS.find((r) => r.id === run.raceId);
-      const leaderDef = getLeader(run.leaderId as LeaderId);
-      const data = [
-        { text: `${i + 1}`, x: 24 },
-        { text: `${run.wave}`, x: 60 },
-        { text: (raceDef?.name ?? run.raceId).toUpperCase(), x: 130 },
-        { text: (leaderDef?.name ?? run.leaderId ?? "?").toUpperCase(), x: 260 },
-        { text: run.date, x: 390 },
-      ];
-      for (const d of data) {
-        const t = new Text({ text: d.text, style });
-        t.position.set(d.x, y);
-        card.addChild(t);
-      }
-    }
-  }
-
-  // Close button
-  const BW = CW - 80;
-  const BH = 36;
-  const btn = new Container();
-  btn.eventMode = "static";
-  btn.cursor = "pointer";
-  btn.position.set(40, CH - 48);
-
-  const btnBg = new Graphics()
-    .roundRect(0, 0, BW, BH, 6)
-    .fill({ color: 0x1a1a2a })
-    .roundRect(0, 0, BW, BH, 6)
-    .stroke({ color: 0x4466aa, width: 2 });
-  btn.addChild(btnBg);
-
-  const btnLabel = new Text({
-    text: "CLOSE",
-    style: new TextStyle({
-      fontFamily: "monospace", fontSize: 14, fill: 0x88aadd,
-      fontWeight: "bold", letterSpacing: 2,
-    }),
-  });
-  btnLabel.anchor.set(0.5, 0.5);
-  btnLabel.position.set(BW / 2, BH / 2);
-  btn.addChild(btnLabel);
-
-  btn.on("pointerover", () => { btnBg.tint = 0xaaccff; });
-  btn.on("pointerout", () => { btnBg.tint = 0xffffff; });
-  btn.on("pointerdown", () => {
-    viewManager.removeFromLayer("ui", overlay);
-    overlay.destroy({ children: true });
-  });
-
-  card.addChild(btn);
-  overlay.addChild(card);
-  viewManager.addToLayer("ui", overlay);
-}
-
 // ---------------------------------------------------------------------------
 // Mercenary generation (2 random units from other races)
 // ---------------------------------------------------------------------------
@@ -2916,13 +2708,9 @@ function _generateMercenaries(playerRaceId: RaceId, wave: number): Array<{ type:
   const filtered = candidates.filter((c) => !playerUnits.has(c.type));
   if (filtered.length === 0) return [];
 
-  // Shuffle and pick 2 + extra merc perk slots
-  const extraSlots = _waveState?.activePerks
-    .filter((p) => p.effect.type === "extra_merc_slot")
-    .reduce((sum, p) => sum + p.effect.value, 0) ?? 0;
-  const mercCount = 2 + extraSlots;
+  // Shuffle and pick 2
   const shuffled = filtered.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, mercCount);
+  return shuffled.slice(0, 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -3061,19 +2849,13 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
 
     // Generate enemy wave: enemies worth totalGoldSpent * multiplier
     const multiplier = _getWaveDifficultyMultiplier(ws.wave, ws.scalingDifficulty);
-    let enemyBudget = Math.round(ws.totalGoldSpent * multiplier);
-    // Apply perk: enemy budget reduction
-    const budgetReduction2 = ws.activePerks
-      .filter((p) => p.effect.type === "enemy_budget_reduction")
-      .reduce((sum, p) => sum + p.effect.value, 0);
-    if (budgetReduction2 > 0) enemyBudget = Math.round(enemyBudget * (1 - budgetReduction2 / 100));
+    const enemyBudget = Math.round(ws.totalGoldSpent * multiplier);
     ws.lastEnemyGold = enemyBudget;
     ws.totalEnemyGold += enemyBudget;
     const isBossWave = ws.bossWaves && ws.wave % 5 === 0;
-    const waveType = _getWaveType(ws.wave, ws.waveTypes);
     const enemyRoster = isBossWave
       ? _generateBossWaveRoster(ws.playerRaceId, Math.round(enemyBudget * 1.25), ws.wave)
-      : _generateTypedWaveRoster(ws.playerRaceId, enemyBudget, ws.wave, waveType);
+      : _generateWaveEnemyRoster(ws.playerRaceId, enemyBudget, ws.wave);
 
     _worldBattleRosters = {
       p1Roster: playerRoster,
@@ -3117,111 +2899,9 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
     _waveState = null;
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
-  const isBoss = ws.bossWaves && ws.wave % 5 === 0;
-  const bossTag = isBoss ? " [BOSS]" : "";
-  const wt = _getWaveType(ws.wave, ws.waveTypes);
-  const typeTag = !isBoss && wt !== "normal" ? ` [${wt.toUpperCase()}]` : "";
+  const bossTag = ws.bossWaves && ws.wave % 5 === 0 ? " [BOSS]" : "";
   unitShopScreen.setWaveHint(_generateWaveHint(ws.playerRaceId, ws.wave));
-  const perkDiscount = ws.activePerks
-    .filter((p) => p.effect.type === "price_discount")
-    .reduce((sum, p) => sum + p.effect.value, 0);
-  unitShopScreen.perkDiscount = perkDiscount;
-  unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave}${corruptionSuffix}${bossTag}${typeTag} — RECRUIT ARMY`);
-}
-
-/** Show a perk choice screen — player picks 1 of 3 random buffs. */
-function _showPerkChoiceScreen(
-  ws: NonNullable<typeof _waveState>,
-  onDone: () => void,
-): void {
-  const overlay = new Container();
-  const sw = viewManager.screenWidth;
-  const sh = viewManager.screenHeight;
-
-  const bg = new Graphics().rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.75 });
-  bg.eventMode = "static";
-  overlay.addChild(bg);
-
-  // Pick 3 random perks (excluding already-chosen ones)
-  const available = WAVE_PERK_POOL.filter((p) => !ws.activePerks.some((ap) => ap.id === p.id));
-  const shuffled = [...available].sort(() => Math.random() - 0.5);
-  const choices = shuffled.slice(0, Math.min(3, shuffled.length));
-
-  const CW = 500;
-  const btnH = 60;
-  const gap = 10;
-  const CH = 60 + choices.length * (btnH + gap) + 10;
-  const card = new Container();
-  card.position.set(Math.floor((sw - CW) / 2), Math.floor((sh - CH) / 2));
-
-  const cardBg = new Graphics()
-    .roundRect(0, 0, CW, CH, 10)
-    .fill({ color: 0x0a0a18, alpha: 0.96 })
-    .roundRect(0, 0, CW, CH, 10)
-    .stroke({ color: 0x44ccaa, alpha: 0.8, width: 2 });
-  card.addChild(cardBg);
-
-  const title = new Text({
-    text: "CHOOSE A PERK",
-    style: new TextStyle({
-      fontFamily: "monospace", fontSize: 18, fill: 0xffd700,
-      fontWeight: "bold", letterSpacing: 3,
-    }),
-  });
-  title.anchor.set(0.5, 0);
-  title.position.set(CW / 2, 16);
-  card.addChild(title);
-
-  const btnW = CW - 60;
-  const startY = 50;
-
-  for (let i = 0; i < choices.length; i++) {
-    const perk = choices[i];
-    const btn = new Container();
-    btn.eventMode = "static";
-    btn.cursor = "pointer";
-    btn.position.set(30, startY + i * (btnH + gap));
-
-    const btnBg = new Graphics()
-      .roundRect(0, 0, btnW, btnH, 6)
-      .fill({ color: 0x12122a })
-      .roundRect(0, 0, btnW, btnH, 6)
-      .stroke({ color: 0x44ccaa, width: 1.5 });
-    btn.addChild(btnBg);
-
-    const nameText = new Text({
-      text: perk.name,
-      style: new TextStyle({
-        fontFamily: "monospace", fontSize: 14, fill: 0xffd700, fontWeight: "bold",
-      }),
-    });
-    nameText.position.set(12, 10);
-    btn.addChild(nameText);
-
-    const descText = new Text({
-      text: perk.description,
-      style: new TextStyle({
-        fontFamily: "monospace", fontSize: 11, fill: 0xaabbcc,
-        wordWrap: true, wordWrapWidth: btnW - 24,
-      }),
-    });
-    descText.position.set(12, 32);
-    btn.addChild(descText);
-
-    btn.on("pointerover", () => { btnBg.tint = 0xaaffcc; });
-    btn.on("pointerout", () => { btnBg.tint = 0xffffff; });
-    btn.on("pointerdown", () => {
-      ws.activePerks.push(perk);
-      viewManager.removeFromLayer("ui", overlay);
-      overlay.destroy({ children: true });
-      onDone();
-    });
-
-    card.addChild(btn);
-  }
-
-  overlay.addChild(card);
-  viewManager.addToLayer("ui", overlay);
+  unitShopScreen.show(ws.playerRaceId, extraGold, `WAVE ${ws.wave}${corruptionSuffix}${bossTag} — RECRUIT ARMY`);
 }
 
 /** Show a multi-screen Merlin introduction for wave mode. */
@@ -7181,16 +6861,9 @@ async function _bootGame(
       victoryScreen.container.visible = false;
 
       ws.wave++;
-      const justWon = ws.wave - 1;
       let nextGold = 1000 + (ws.leftoverGold ?? 0) + (ws.bonusGold ?? 0);
       ws.bonusGold = 0;
       ws.leftoverGold = 0;
-
-      // Add perk gold bonus
-      const perkGoldBonus = ws.activePerks
-        .filter((p) => p.effect.type === "gold_bonus")
-        .reduce((sum, p) => sum + p.effect.value, 0);
-      nextGold += perkGoldBonus;
 
       // Roll random event if enabled
       let pendingEvent: PendingWaveEvent | null = null;
@@ -7205,7 +6878,7 @@ async function _bootGame(
         }
       }
 
-      // Chain: perk choice → Merlin compliment → event dialog → shop
+      // Chain: Merlin compliment → event dialog → shop
       const openShop = () => _startNextWaveShop(ws, nextGold);
 
       const showEventThenShop = () => {
@@ -7216,21 +6889,13 @@ async function _bootGame(
         }
       };
 
-      const showComplimentChain = () => {
-        // Merlin compliment every 10 waves
-        if (justWon % 10 === 0 && justWon > 0) {
-          const msg = MERLIN_COMPLIMENTS[justWon] ?? MERLIN_COMPLIMENT_DEFAULT;
-          _showMerlinWaveCompliment(msg, showEventThenShop);
-        } else {
-          showEventThenShop();
-        }
-      };
-
-      // Perk choice every 3 waves (after wave 3, 6, 9, ...)
-      if (ws.wavePerks && justWon > 0 && justWon % 3 === 0) {
-        _showPerkChoiceScreen(ws, showComplimentChain);
+      // Merlin compliment every 10 waves
+      const complimentWave = ws.wave - 1; // just won this wave
+      if (complimentWave % 10 === 0 && complimentWave > 0) {
+        const msg = MERLIN_COMPLIMENTS[complimentWave] ?? MERLIN_COMPLIMENT_DEFAULT;
+        _showMerlinWaveCompliment(msg, showEventThenShop);
       } else {
-        showComplimentChain();
+        showEventThenShop();
       }
     };
   }
@@ -7319,32 +6984,6 @@ async function _bootGame(
         onCorruptionUnitDied(state, cs, unit);
       }
     });
-  }
-
-  // Wave Perks — apply stat bonuses when battle starts
-  if (_waveState?.activePerks && _waveState.activePerks.length > 0) {
-    const hpBonus = _waveState.activePerks
-      .filter((p) => p.effect.type === "hp_bonus")
-      .reduce((sum, p) => sum + p.effect.value, 0);
-    const atkBonus = _waveState.activePerks
-      .filter((p) => p.effect.type === "attack_bonus")
-      .reduce((sum, p) => sum + p.effect.value, 0);
-    if (hpBonus > 0 || atkBonus > 0) {
-      EventBus.on("phaseChanged", ({ phase }) => {
-        if (phase !== GamePhase.BATTLE) return;
-        for (const u of state.units.values()) {
-          if (u.owner !== "p1") continue;
-          if (hpBonus > 0) {
-            const bonus = Math.round(u.maxHp * hpBonus / 100);
-            u.maxHp += bonus;
-            u.hp += bonus;
-          }
-          if (atkBonus > 0) {
-            u.atk = Math.round(u.atk * (1 + atkBonus / 100));
-          }
-        }
-      });
-    }
   }
 
   // Start cinematic speed ramp for battlefield campaign scenarios
