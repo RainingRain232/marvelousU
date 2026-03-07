@@ -12,13 +12,16 @@ function distSq(ax: number, ay: number, bx: number, by: number): number {
 }
 
 type ChestCallback = ((type: string, value: number) => void) | null;
+type ArcanaCallback = (() => void) | null;
 let _chestCallback: ChestCallback = null;
+let _arcanaCallback: ArcanaCallback = null;
 
 export const SurvivorPickupSystem = {
   setChestCallback(cb: ChestCallback): void { _chestCallback = cb; },
+  setArcanaCallback(cb: ArcanaCallback): void { _arcanaCallback = cb; },
 
   update(state: SurvivorState, dt: number): void {
-    if (state.paused || state.levelUpPending || state.gameOver) return;
+    if (state.paused || state.levelUpPending || state.gameOver || state.victory) return;
 
     const px = state.player.position.x;
     const py = state.player.position.y;
@@ -34,7 +37,9 @@ export const SurvivorPickupSystem = {
 
       if (dSq < pickupRSq) {
         gem.alive = false;
-        const xpGain = gem.value * state.player.xpMultiplier;
+        let xpGain = gem.value * state.player.xpMultiplier;
+        // Merlin's Wisdom: +100% XP near Archive
+        if (state.activeLandmarkBuffs.has("archive")) xpGain *= 2.0;
         state.xp += xpGain;
 
         while (state.xp >= state.xpToNext) {
@@ -87,6 +92,10 @@ export const SurvivorPickupSystem = {
                 });
               }
             }
+            break;
+          case "arcana":
+            // Trigger arcana selection UI
+            _arcanaCallback?.();
             break;
         }
         _chestCallback?.(chest.type, chest.value);

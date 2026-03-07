@@ -1,0 +1,216 @@
+// ---------------------------------------------------------------------------
+// Survivor level-up overlay + arcana selection + pause menu
+// ---------------------------------------------------------------------------
+
+import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { ARCANA_DEFS, ARCANA_CHOICES } from "../config/SurvivorArcanaDefs";
+import type { SurvivorArcanaDef } from "../config/SurvivorArcanaDefs";
+import type { UpgradeChoice } from "../systems/SurvivorLevelSystem";
+import type { SurvivorState } from "../state/SurvivorState";
+import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
+
+const STYLE_TITLE = new TextStyle({ fontFamily: "monospace", fontSize: 28, fill: 0xffd700, fontWeight: "bold", letterSpacing: 3 });
+const STYLE_CHOICE = new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: 0xffffff, fontWeight: "bold" });
+const STYLE_CHOICE_DESC = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xaabbcc });
+const STYLE_BTN = new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: 0xffffff, fontWeight: "bold" });
+
+export class SurvivorLevelUpUI {
+  readonly levelUpOverlay = new Container();
+  readonly arcanaOverlay = new Container();
+  readonly pauseOverlay = new Container();
+
+  private _onUpgrade: ((choice: UpgradeChoice) => void) | null = null;
+  private _onArcana: ((arcana: SurvivorArcanaDef) => void) | null = null;
+
+  setUpgradeCallback(cb: (choice: UpgradeChoice) => void): void { this._onUpgrade = cb; }
+  setArcanaCallback(cb: (arcana: SurvivorArcanaDef) => void): void { this._onArcana = cb; }
+
+  showLevelUp(choices: UpgradeChoice[], level: number, sw: number, sh: number): void {
+    this.levelUpOverlay.removeChildren();
+
+    const dim = new Graphics().rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.6 });
+    this.levelUpOverlay.addChild(dim);
+
+    const title = new Text({ text: `LEVEL UP! (Lv.${level})`, style: STYLE_TITLE });
+    title.anchor.set(0.5, 0);
+    title.position.set(sw / 2, sh * 0.15);
+    this.levelUpOverlay.addChild(title);
+
+    const cardW = 220;
+    const cardH = 120;
+    const gap = 16;
+    const totalW = choices.length * cardW + (choices.length - 1) * gap;
+    const startX = (sw - totalW) / 2;
+    const startY = sh * 0.35;
+
+    for (let i = 0; i < choices.length; i++) {
+      const choice = choices[i];
+      const card = new Container();
+      card.eventMode = "static";
+      card.cursor = "pointer";
+      card.position.set(startX + i * (cardW + gap), startY);
+
+      const bg = new Graphics()
+        .roundRect(0, 0, cardW, cardH, 8)
+        .fill({ color: 0x1a1a2e, alpha: 0.95 })
+        .roundRect(0, 0, cardW, cardH, 8)
+        .stroke({ color: choice.color, width: 2 });
+      card.addChild(bg);
+
+      const badge = new Text({
+        text: choice.isNew ? "NEW" : `Lv.${choice.level}`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: choice.isNew ? 0x44ff44 : 0xffd700, fontWeight: "bold" }),
+      });
+      badge.anchor.set(1, 0);
+      badge.position.set(cardW - 10, 8);
+      card.addChild(badge);
+
+      const name = new Text({ text: choice.name, style: STYLE_CHOICE });
+      name.position.set(10, 10);
+      card.addChild(name);
+
+      const typeLabel = new Text({
+        text: choice.type === "weapon" ? "WEAPON" : "PASSIVE",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: choice.type === "weapon" ? 0xff8844 : 0x44aaff }),
+      });
+      typeLabel.position.set(10, 32);
+      card.addChild(typeLabel);
+
+      const desc = new Text({ text: choice.description, style: STYLE_CHOICE_DESC });
+      desc.position.set(10, 50);
+      desc.style.wordWrap = true;
+      desc.style.wordWrapWidth = cardW - 20;
+      card.addChild(desc);
+
+      card.on("pointerdown", () => this._onUpgrade?.(choice));
+      card.on("pointerover", () => { bg.tint = 0x3366aa; });
+      card.on("pointerout", () => { bg.tint = 0xffffff; });
+
+      this.levelUpOverlay.addChild(card);
+    }
+  }
+
+  hideLevelUp(): void {
+    this.levelUpOverlay.removeChildren();
+  }
+
+  showArcanaSelection(state: SurvivorState, sw: number, sh: number): void {
+    this.arcanaOverlay.removeChildren();
+
+    const bg = new Graphics().rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.7 });
+    bg.eventMode = "static";
+    this.arcanaOverlay.addChild(bg);
+
+    const title = new Text({ text: "CHOOSE AN ARCANA", style: new TextStyle({ fontFamily: "monospace", fontSize: 24, fill: 0xaa44ff, fontWeight: "bold" }) });
+    title.anchor.set(0.5, 0.5);
+    title.position.set(sw / 2, sh / 2 - 120);
+    this.arcanaOverlay.addChild(title);
+
+    const owned = new Set(state.arcana.map((a) => a.id));
+    const available = ARCANA_DEFS.filter((a) => !owned.has(a.id));
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
+    const choices = shuffled.slice(0, ARCANA_CHOICES);
+
+    const cardW = 200;
+    const gap = 15;
+    const totalW = choices.length * cardW + (choices.length - 1) * gap;
+    const startX = (sw - totalW) / 2;
+
+    for (let i = 0; i < choices.length; i++) {
+      const arcana = choices[i];
+      const card = new Container();
+      card.eventMode = "static";
+      card.cursor = "pointer";
+      card.position.set(startX + i * (cardW + gap), sh / 2 - 60);
+
+      const rarityColor = arcana.rarity === "legendary" ? 0xffd700 : arcana.rarity === "rare" ? 0x4488ff : 0xaaaaaa;
+      const cardBg = new Graphics()
+        .roundRect(0, 0, cardW, 140, 8)
+        .fill({ color: 0x1a1a2e, alpha: 0.95 })
+        .roundRect(0, 0, cardW, 140, 8)
+        .stroke({ color: rarityColor, width: 2 });
+      card.addChild(cardBg);
+
+      const rarityLabel = new Text({ text: arcana.rarity.toUpperCase(), style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: rarityColor }) });
+      rarityLabel.position.set(10, 8);
+      card.addChild(rarityLabel);
+
+      const nameText = new Text({ text: arcana.name, style: new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: 0xffffff, fontWeight: "bold" }) });
+      nameText.anchor.set(0.5, 0);
+      nameText.position.set(cardW / 2, 30);
+      card.addChild(nameText);
+
+      const descText = new Text({ text: arcana.description, style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xaabbcc, wordWrap: true, wordWrapWidth: cardW - 20 }) });
+      descText.position.set(10, 58);
+      card.addChild(descText);
+
+      card.on("pointerdown", () => this._onArcana?.(arcana));
+      card.on("pointerover", () => { cardBg.tint = 0x6644aa; });
+      card.on("pointerout", () => { cardBg.tint = 0xffffff; });
+
+      this.arcanaOverlay.addChild(card);
+    }
+  }
+
+  hideArcana(): void {
+    this.arcanaOverlay.removeChildren();
+  }
+
+  showPauseMenu(state: SurvivorState, sw: number, sh: number, onResume: () => void, onQuit: () => void): void {
+    this.pauseOverlay.removeChildren();
+
+    const bg = new Graphics().rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.6 });
+    bg.eventMode = "static";
+    this.pauseOverlay.addChild(bg);
+
+    const title = new Text({ text: "PAUSED", style: new TextStyle({ fontFamily: "monospace", fontSize: 32, fill: 0xffd700, fontWeight: "bold", letterSpacing: 4 }) });
+    title.anchor.set(0.5, 0.5);
+    title.position.set(sw / 2, sh / 2 - 100);
+    this.pauseOverlay.addChild(title);
+
+    const s = state;
+    const mins = Math.floor(s.gameTime / 60);
+    const secs = Math.floor(s.gameTime % 60);
+    const stats = [
+      `Time: ${mins}:${secs.toString().padStart(2, "0")}`,
+      `Level: ${s.level}`,
+      `Kills: ${s.totalKills}`,
+      `Weapons: ${s.weapons.length}/${SurvivorBalance.MAX_WEAPON_SLOTS}`,
+      `Gold: ${s.gold}`,
+    ];
+    const statsText = new Text({ text: stats.join("\n"), style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xcccccc, lineHeight: 22 }) });
+    statsText.anchor.set(0.5, 0);
+    statsText.position.set(sw / 2, sh / 2 - 50);
+    this.pauseOverlay.addChild(statsText);
+
+    const resumeBtn = this._buildButton("RESUME", sw / 2, sh / 2 + 80, 0x224422, onResume);
+    this.pauseOverlay.addChild(resumeBtn);
+
+    const quitBtn = this._buildButton("QUIT TO MENU", sw / 2, sh / 2 + 130, 0x442222, onQuit);
+    this.pauseOverlay.addChild(quitBtn);
+  }
+
+  hidePause(): void {
+    this.pauseOverlay.removeChildren();
+  }
+
+  private _buildButton(label: string, x: number, y: number, bgColor: number, onClick: () => void): Container {
+    const btn = new Container();
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+    const btnBg = new Graphics()
+      .roundRect(-90, -18, 180, 36, 6)
+      .fill({ color: bgColor })
+      .roundRect(-90, -18, 180, 36, 6)
+      .stroke({ color: 0x888888, width: 1 });
+    btn.addChild(btnBg);
+    const btnText = new Text({ text: label, style: STYLE_BTN });
+    btnText.anchor.set(0.5, 0.5);
+    btn.addChild(btnText);
+    btn.position.set(x, y);
+    btn.on("pointerdown", onClick);
+    btn.on("pointerover", () => { btnBg.tint = 0x66aaff; });
+    btn.on("pointerout", () => { btnBg.tint = 0xffffff; });
+    return btn;
+  }
+}

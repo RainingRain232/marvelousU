@@ -51,6 +51,19 @@ export const SurvivorBalance = {
   BOSS_SIZE_MULTIPLIER: 2.0,
   BOSS_XP_MULTIPLIER: 50,
 
+  // Dash
+  DASH_SPEED: 16,           // tiles/sec during dash
+  DASH_DURATION: 0.15,      // seconds
+  DASH_COOLDOWN: 1.5,       // seconds between dashes
+  DASH_IFRAMES: 0.2,        // invincibility window
+
+  // Chest drops
+  CHEST_DROP_CHANCE: 0.005,
+  CHEST_DROP_LUCK_SCALE: 0.5,
+
+  // Victory
+  VICTORY_TIME: 1800,       // 30 minutes
+
   // Timing
   SIM_TICK_MS: 1000 / 60,
 } as const;

@@ -2,15 +2,58 @@
 // Survivor wave spawning — spawns enemies from screen edges
 // ---------------------------------------------------------------------------
 
+import { UnitType } from "@/types";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
-import { WAVE_TABLE, BOSS_DEFS } from "../config/SurvivorEnemyDefs";
+import { WAVE_TABLE, BOSS_DEFS, DEATH_BOSS_DEF } from "../config/SurvivorEnemyDefs";
 import type { SurvivorEnemyDef } from "../config/SurvivorEnemyDefs";
+import { ELITE_CONFIG, ELITE_DEFS } from "../config/SurvivorEliteDefs";
+import type { EliteType } from "../config/SurvivorEliteDefs";
 import type { SurvivorState, SurvivorEnemy } from "../state/SurvivorState";
 
 // Visible area in tiles (approximate)
 const VIEW_HALF_W = 16;
 const VIEW_HALF_H = 10;
+
+const ELITE_TYPES: EliteType[] = ["charger", "ranged", "shielded", "summoner"];
+
+// ---------------------------------------------------------------------------
+// Arthurian name system — bosses & elites get corrupted knight names
+// ---------------------------------------------------------------------------
+
+const ARTHURIAN_BOSS_NAMES: Partial<Record<UnitType, string>> = {
+  [UnitType.GIANT_WARRIOR]: "Corrupted Galahad",
+  [UnitType.TROLL]: "Beastsworn Bors",
+  [UnitType.RED_DRAGON]: "Pendragon's Bane",
+  [UnitType.CYCLOPS]: "The Blinded Kay",
+  [UnitType.ARCHON]: "Mordred Ascendant",
+  [UnitType.PIT_LORD]: "Fallen Agravaine",
+};
+
+const ARTHURIAN_ELITE_PREFIXES: Record<EliteType, string[]> = {
+  charger: ["Sir Pellinore's", "Erec the", "Calogrenant's"],
+  ranged: ["Tristan's", "Iseult's", "Dindrane's"],
+  shielded: ["Gaheris'", "Bedivere's", "Tor's"],
+  summoner: ["Morgause's", "Nimue's", "Viviane's"],
+};
+
+const ARTHURIAN_ELITE_SUFFIXES: Record<EliteType, string> = {
+  charger: "Charger",
+  ranged: "Shade",
+  shielded: "Bulwark",
+  summoner: "Conjurer",
+};
+
+function _getArthurianName(type: UnitType, isBoss: boolean, eliteType: EliteType | null, isDeathBoss: boolean): string | null {
+  if (isDeathBoss) return "The Questing Beast";
+  if (isBoss) return ARTHURIAN_BOSS_NAMES[type] ?? "Dark Knight";
+  if (eliteType) {
+    const prefixes = ARTHURIAN_ELITE_PREFIXES[eliteType];
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    return `${prefix} ${ARTHURIAN_ELITE_SUFFIXES[eliteType]}`;
+  }
+  return null;
+}
 
 function _getSpawnPosition(state: SurvivorState): { x: number; y: number } {
   const px = state.player.position.x;
@@ -44,7 +87,7 @@ function _getSpawnPosition(state: SurvivorState): { x: number; y: number } {
   return { x, y };
 }
 
-function _getActiveEnemyPool(minute: number): SurvivorEnemyDef[] {
+function _getActiveEnemyPool(minute: number): { def: SurvivorEnemyDef; weight: number }[] {
   const pool: { def: SurvivorEnemyDef; weight: number }[] = [];
   for (const entry of WAVE_TABLE) {
     if (minute < entry.minuteStart) continue;
@@ -53,19 +96,30 @@ function _getActiveEnemyPool(minute: number): SurvivorEnemyDef[] {
       pool.push({ def, weight: entry.weight });
     }
   }
-  return _weightedPick(pool);
+  return pool;
 }
 
-function _weightedPick(pool: { def: SurvivorEnemyDef; weight: number }[]): SurvivorEnemyDef[] {
-  // Just return all defs — we'll pick randomly from the flat list
-  return pool.map((p) => p.def);
+function _pickRandomEnemy(pool: { def: SurvivorEnemyDef; weight: number }[]): SurvivorEnemyDef {
+  const totalWeight = pool.reduce((sum, p) => sum + p.weight, 0);
+  let r = Math.random() * totalWeight;
+  for (const p of pool) {
+    r -= p.weight;
+    if (r <= 0) return p.def;
+  }
+  return pool[pool.length - 1].def;
 }
 
-function _pickRandomEnemy(pool: SurvivorEnemyDef[]): SurvivorEnemyDef {
-  return pool[Math.floor(Math.random() * pool.length)];
+function _rollEliteType(minute: number): EliteType | null {
+  if (minute < ELITE_CONFIG.MIN_MINUTE) return null;
+  const chance = Math.min(
+    ELITE_CONFIG.MAX_CHANCE,
+    ELITE_CONFIG.BASE_CHANCE + ELITE_CONFIG.CHANCE_PER_MIN * minute,
+  );
+  if (Math.random() >= chance) return null;
+  return ELITE_TYPES[Math.floor(Math.random() * ELITE_TYPES.length)];
 }
 
-function _createEnemy(state: SurvivorState, def: SurvivorEnemyDef, pos: { x: number; y: number }): SurvivorEnemy {
+function _createEnemy(state: SurvivorState, def: SurvivorEnemyDef, pos: { x: number; y: number }, isDeathBoss = false): SurvivorEnemy {
   const unitDef = UNIT_DEFINITIONS[def.type];
   const minute = state.gameTime / 60;
   const hpScale = (1 + SurvivorBalance.ENEMY_HP_SCALE_PER_MIN * minute) ** 2;
@@ -84,6 +138,13 @@ function _createEnemy(state: SurvivorState, def: SurvivorEnemyDef, pos: { x: num
     speed *= 0.6;
   }
 
+  // Roll for elite
+  const eliteType = def.isBoss ? null : _rollEliteType(minute);
+  if (eliteType) {
+    hp *= ELITE_DEFS[eliteType].hpMultiplier;
+  }
+
+  const isBoss = def.isBoss ?? false;
   return {
     id: state.nextEnemyId++,
     type: def.type,
@@ -93,38 +154,63 @@ function _createEnemy(state: SurvivorState, def: SurvivorEnemyDef, pos: { x: num
     atk,
     speed,
     tier: def.tier,
-    isBoss: def.isBoss ?? false,
+    isBoss,
     alive: true,
     hitTimer: 0,
     slowFactor: 1,
     slowTimer: 0,
     deathTimer: 0,
+    eliteType,
+    eliteTimer: 0,
+    chargeTimer: 0,
+    chargeDirX: 0,
+    chargeDirY: 0,
+    isDeathBoss,
+    displayName: _getArthurianName(def.type, isBoss, eliteType, isDeathBoss),
   };
 }
 
 export const SurvivorWaveSystem = {
   update(state: SurvivorState, dt: number): void {
-    if (state.paused || state.levelUpPending || state.gameOver) return;
+    if (state.paused || state.levelUpPending || state.gameOver || state.victory) return;
 
     const minute = state.gameTime / 60;
+
+    // Victory condition — spawn Death boss at 30 minutes
+    if (state.gameTime >= SurvivorBalance.VICTORY_TIME && !state.deathBossSpawned) {
+      state.deathBossSpawned = true;
+      const pos = _getSpawnPosition(state);
+      state.enemies.push(_createEnemy(state, DEATH_BOSS_DEF, pos, true));
+    }
+
+    // Stop regular spawning after Death boss is spawned
+    if (state.deathBossSpawned) {
+      // Still cleanup dead enemies
+      state.enemies = state.enemies.filter((e) => e.alive || e.deathTimer > 0);
+      return;
+    }
+
+    // Apply event spawn rate multiplier
+    const eventSpawnMult = state.activeEvent?.spawnRateMultiplier ?? 1;
 
     // Regular enemy spawning
     const spawnRate = Math.min(
       SurvivorBalance.ENEMY_MAX_SPAWN_RATE,
       SurvivorBalance.ENEMY_BASE_SPAWN_RATE + SurvivorBalance.ENEMY_SPAWN_RATE_SCALE * minute,
-    );
+    ) * eventSpawnMult;
     state.spawnAccumulator += spawnRate * dt;
 
     const pool = _getActiveEnemyPool(minute);
     if (pool.length === 0) return;
 
-    const aliveCount = state.enemies.filter((e) => e.alive).length;
+    let aliveCount = state.enemies.filter((e) => e.alive).length;
 
-    while (state.spawnAccumulator >= 1 && aliveCount + (state.spawnAccumulator | 0) <= SurvivorBalance.ENEMY_MAX_ALIVE) {
+    while (state.spawnAccumulator >= 1 && aliveCount < SurvivorBalance.ENEMY_MAX_ALIVE) {
       state.spawnAccumulator -= 1;
       const def = _pickRandomEnemy(pool);
       const pos = _getSpawnPosition(state);
       state.enemies.push(_createEnemy(state, def, pos));
+      aliveCount++;
     }
 
     // Boss spawning

@@ -7,6 +7,10 @@ import { UnitType, MapType } from "@/types";
 import type { SurvivorCharacterDef } from "../config/SurvivorCharacterDefs";
 import { SurvivorWeaponId, SurvivorPassiveId, SurvivorEvolutionId } from "../config/SurvivorWeaponDefs";
 import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
+import type { EliteType } from "../config/SurvivorEliteDefs";
+import type { SurvivorArcanaDef } from "../config/SurvivorArcanaDefs";
+import { SurvivorPersistence } from "./SurvivorPersistence";
+import { META_UPGRADES } from "../config/SurvivorMetaUpgradeDefs";
 
 // ---------------------------------------------------------------------------
 // Sub-state interfaces
@@ -40,6 +44,17 @@ export interface SurvivorEnemy {
   slowFactor: number;
   slowTimer: number;
   deathTimer: number; // countdown after dying before removal
+  // Elite
+  eliteType: EliteType | null;
+  eliteTimer: number; // cooldown for elite ability
+  // Charger state
+  chargeTimer: number; // remaining charge duration
+  chargeDirX: number;
+  chargeDirY: number;
+  // Death boss flag
+  isDeathBoss: boolean;
+  // Display name (Arthurian themed for bosses/elites)
+  displayName: string | null;
 }
 
 export interface SurvivorGem {
@@ -62,12 +77,64 @@ export interface SurvivorProjectile {
   hitEnemies: Set<number>; // enemy IDs already hit (for pierce tracking)
 }
 
+export interface SurvivorEnemyProjectile {
+  id: number;
+  position: Vec2;
+  velocity: Vec2;
+  damage: number;
+  lifetime: number;
+}
+
 export interface SurvivorChest {
   id: number;
   position: Vec2;
   alive: boolean;
-  type: "gold" | "heal" | "bomb"; // gold=bonus gold, heal=full heal, bomb=screen clear
+  type: "gold" | "heal" | "bomb" | "arcana";
   value: number;
+}
+
+export type LandmarkType = "sword_stone" | "chapel" | "archive";
+export type TempLandmarkType = "faction_hall" | "blacksmith" | "stable";
+
+export interface SurvivorLandmark {
+  id: string;
+  type: LandmarkType;
+  position: Vec2;
+  radius: number; // buff aura radius in tiles
+  buffType: string; // key checked by systems
+  name: string; // display name
+}
+
+export interface SurvivorTempLandmark {
+  id: number;
+  type: TempLandmarkType;
+  position: Vec2;
+  radius: number;
+  buffType: string;
+  name: string;
+  remaining: number; // seconds until despawn
+  duration: number; // total duration (for fade calc)
+}
+
+export interface SurvivorHazard {
+  id: number;
+  type: "lava" | "ice" | "thorns" | "fog";
+  position: Vec2;
+  radius: number;
+  damage: number; // per second
+  slowFactor: number; // 1 = normal, <1 = slow
+  speedBonus: number; // added to speed (ice patches)
+}
+
+export interface SurvivorTimedEvent {
+  id: string;
+  name: string;
+  duration: number; // total duration
+  remaining: number; // time remaining
+  spawnRateMultiplier: number;
+  enemySpeedMultiplier: number;
+  xpMultiplier: number;
+  color: number; // banner color
 }
 
 export interface SurvivorPlayer {
@@ -84,6 +151,10 @@ export interface SurvivorPlayer {
   attackSpeedMultiplier: number;
   regenRate: number;
   invincibilityTimer: number;
+  dashCooldownTimer: number;
+  dashTimer: number;
+  dashDirX: number;
+  dashDirY: number;
   characterDef: SurvivorCharacterDef;
 }
 
@@ -103,7 +174,26 @@ export interface SurvivorState {
   enemies: SurvivorEnemy[];
   gems: SurvivorGem[];
   projectiles: SurvivorProjectile[];
+  enemyProjectiles: SurvivorEnemyProjectile[];
   chests: SurvivorChest[];
+
+  // Landmarks
+  landmarks: SurvivorLandmark[];
+  tempLandmarks: SurvivorTempLandmark[];
+  tempLandmarkCooldown: number; // seconds until next temp landmark spawns
+  nextTempLandmarkId: number;
+  activeLandmarkBuffs: Set<string>;
+
+  // Hazards & events
+  hazards: SurvivorHazard[];
+  activeEvent: SurvivorTimedEvent | null;
+  eventCooldown: number; // seconds until next event can trigger
+
+  // Arcana
+  arcana: SurvivorArcanaDef[];
+
+  // Synergies
+  activeSynergies: string[];
 
   // Progression
   xp: number;
@@ -128,12 +218,16 @@ export interface SurvivorState {
   paused: boolean;
   levelUpPending: boolean; // true while level-up screen is shown
   gameOver: boolean;
+  victory: boolean;
+  deathBossSpawned: boolean;
 
   // Counters for ID generation
   nextEnemyId: number;
   nextGemId: number;
   nextProjectileId: number;
   nextChestId: number;
+  nextHazardId: number;
+  nextEnemyProjId: number;
 
   // Input state
   input: {
@@ -145,31 +239,93 @@ export interface SurvivorState {
 
   // Meta
   gold: number; // earned this run
+  goldMultiplier: number;
 }
 
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
 
+function _generateLandmarks(mapW: number, mapH: number): SurvivorLandmark[] {
+  const cx = mapW / 2;
+  const cy = mapH / 2;
+  const r = Math.min(mapW, mapH) * 0.3; // 30% of map half-size from center
+
+  // Place in equilateral triangle around center
+  return [
+    {
+      id: "sword_stone",
+      type: "sword_stone",
+      position: { x: cx + r * Math.cos(-Math.PI / 2), y: cy + r * Math.sin(-Math.PI / 2) }, // top
+      radius: 5,
+      buffType: "sword_stone",
+      name: "Excalibur's Blessing",
+    },
+    {
+      id: "chapel",
+      type: "chapel",
+      position: { x: cx + r * Math.cos(Math.PI / 6), y: cy + r * Math.sin(Math.PI / 6) }, // bottom-right
+      radius: 5,
+      buffType: "chapel",
+      name: "Lady's Grace",
+    },
+    {
+      id: "archive",
+      type: "archive",
+      position: { x: cx + r * Math.cos(5 * Math.PI / 6), y: cy + r * Math.sin(5 * Math.PI / 6) }, // bottom-left
+      radius: 5,
+      buffType: "archive",
+      name: "Merlin's Wisdom",
+    },
+  ];
+}
+
 export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapType, mapWidth: number, mapHeight: number): SurvivorState {
-  const baseHp = SurvivorBalance.PLAYER_BASE_HP + charDef.hpBonus;
-  const baseSpeed = SurvivorBalance.PLAYER_SPEED * (1 + charDef.speedBonus);
+  // Apply meta upgrades from persistence
+  const metaLevels = SurvivorPersistence.getMetaUpgrades();
+  let metaHpBonus = 0;
+  let metaSpeedBonus = 0;
+  let metaAtkBonus = 0;
+  let metaXpBonus = 0;
+  let metaPickupBonus = 0;
+  let metaGoldMult = 1.0;
+
+  for (const upgrade of META_UPGRADES) {
+    const level = metaLevels[upgrade.id] ?? 0;
+    if (level <= 0) continue;
+    const value = upgrade.valuePerLevel * level;
+    switch (upgrade.stat) {
+      case "hp": metaHpBonus += value; break;
+      case "speed": metaSpeedBonus += value; break;
+      case "atk": metaAtkBonus += value; break;
+      case "xpMult": metaXpBonus += value; break;
+      case "pickupRadius": metaPickupBonus += value; break;
+      case "goldMult": metaGoldMult += value; break;
+    }
+  }
+
+  const baseHp = SurvivorBalance.PLAYER_BASE_HP + charDef.hpBonus + metaHpBonus;
+  const baseSpeed = SurvivorBalance.PLAYER_SPEED * (1 + charDef.speedBonus + metaSpeedBonus);
 
   return {
     player: {
       position: { x: mapWidth / 2, y: mapHeight / 2 },
       hp: baseHp,
       maxHp: baseHp,
-      atk: SurvivorBalance.PLAYER_BASE_ATK,
+      atk: SurvivorBalance.PLAYER_BASE_ATK * (1 + metaAtkBonus),
       speed: baseSpeed,
-      pickupRadius: SurvivorBalance.PLAYER_PICKUP_RADIUS,
+      pickupRadius: SurvivorBalance.PLAYER_PICKUP_RADIUS + metaPickupBonus,
       magnetRadius: SurvivorBalance.PLAYER_MAGNET_RADIUS,
       critChance: 0.05 + charDef.critBonus,
-      xpMultiplier: 1.0,
+      xpMultiplier: 1.0 + metaXpBonus,
       areaMultiplier: 1.0 + charDef.areaBonus,
       attackSpeedMultiplier: 1.0,
       regenRate: charDef.regenBonus,
       invincibilityTimer: 0,
+      dashCooldownTimer: 0,
+      dashTimer: 0,
+      dashDirX: 0,
+      dashDirY: 0,
       characterDef: charDef,
     },
     weapons: [{
@@ -184,7 +340,18 @@ export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapT
     enemies: [],
     gems: [],
     projectiles: [],
+    enemyProjectiles: [],
     chests: [],
+    landmarks: _generateLandmarks(mapWidth, mapHeight),
+    tempLandmarks: [],
+    tempLandmarkCooldown: 60, // first temp landmark after 1 minute
+    nextTempLandmarkId: 1,
+    activeLandmarkBuffs: new Set(),
+    hazards: [],
+    activeEvent: null,
+    eventCooldown: 180, // first event after 3 minutes
+    arcana: [],
+    activeSynergies: [],
     xp: 0,
     level: 1,
     xpToNext: SurvivorBalance.XP_BASE,
@@ -201,11 +368,16 @@ export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapT
     paused: false,
     levelUpPending: false,
     gameOver: false,
+    victory: false,
+    deathBossSpawned: false,
     nextEnemyId: 1,
     nextGemId: 1,
     nextProjectileId: 1,
     nextChestId: 1,
+    nextHazardId: 1,
+    nextEnemyProjId: 1,
     input: { left: false, right: false, up: false, down: false },
     gold: 0,
+    goldMultiplier: metaGoldMult,
   };
 }

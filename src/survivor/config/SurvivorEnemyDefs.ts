@@ -92,3 +92,16 @@ export const WAVE_TABLE: WaveEntry[] = [
   { minuteStart: 12, minuteEnd: -1, enemies: TIER3, weight: 2 },
   { minuteStart: 18, minuteEnd: -1, enemies: TIER4, weight: 1 },
 ];
+
+// ---------------------------------------------------------------------------
+// Death boss — final boss at 30 minutes
+// ---------------------------------------------------------------------------
+
+export const DEATH_BOSS_DEF: SurvivorEnemyDef = {
+  type: UnitType.WRAITH_LORD,
+  tier: 4,
+  hpMult: 10.0,
+  atkMult: 5.0,
+  speedMult: 0.8,
+  isBoss: true,
+};

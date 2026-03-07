@@ -9,6 +9,7 @@ import {
   WEAPON_DEFS,
   PASSIVE_DEFS,
 } from "../config/SurvivorWeaponDefs";
+import { SYNERGY_DEFS } from "../config/SurvivorSynergyDefs";
 import type { SurvivorState } from "../state/SurvivorState";
 
 // ---------------------------------------------------------------------------
@@ -138,6 +139,9 @@ export function applyUpgrade(state: SurvivorState, choice: UpgradeChoice): void 
     _recalcPassives(state);
   }
 
+  // Check synergies
+  _checkSynergies(state);
+
   state.levelUpPending = false;
 }
 
@@ -194,6 +198,24 @@ function _checkEvolution(state: SurvivorState, ws: { id: SurvivorWeaponId; level
   if (hasPassive) {
     ws.evolved = true;
     ws.evolutionId = def.evolutionId;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Synergy check
+// ---------------------------------------------------------------------------
+
+function _checkSynergies(state: SurvivorState): void {
+  const ownedWeapons = new Set(state.weapons.map((w) => w.id));
+  const ownedPassives = new Set(state.passives.map((p) => p.id));
+
+  state.activeSynergies = [];
+  for (const syn of SYNERGY_DEFS) {
+    const hasWeapons = syn.requireWeapons.every((w) => ownedWeapons.has(w));
+    const hasPassives = syn.requirePassives.every((p) => ownedPassives.has(p));
+    if (hasWeapons && hasPassives) {
+      state.activeSynergies.push(syn.id);
+    }
   }
 }
 
