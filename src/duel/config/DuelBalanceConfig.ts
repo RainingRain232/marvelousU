@@ -25,6 +25,13 @@ export const DuelBalance = {
   // Input
   INPUT_BUFFER_FRAMES: 8,
   SIMULTANEOUS_WINDOW: 4,
+  DASH_TAP_WINDOW: 12, // max frames between taps for a dash
+
+  // Dash
+  DASH_FORWARD_SPEED: 14, // pixels per frame
+  DASH_BACK_SPEED: 11,
+  DASH_DURATION: 10, // frames
+  DASH_BACK_INVINCIBLE: 4, // i-frames at start of backdash
 
   // Hit effects
   HIT_FREEZE_FRAMES: 6,

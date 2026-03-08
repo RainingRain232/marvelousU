@@ -164,6 +164,8 @@ export class DuelFightView {
       palette,
       isFlashing: isHitFlash,
       flashColor: 0xffffff,
+      helmeted: charId === "arthur",
+      helmColor: 0x888899,
       drawExtras: extras,
     };
 
@@ -190,6 +192,10 @@ export class DuelFightView {
         return "block_stand";
       case DuelFighterState.BLOCK_CROUCH:
         return "block_crouch";
+      case DuelFighterState.DASH_FORWARD:
+        return "walk_forward"; // reuse walk pose for dash
+      case DuelFighterState.DASH_BACK:
+        return "walk_back";
       case DuelFighterState.HIT_STUN:
       case DuelFighterState.GRABBED:
         return "hit_stun";
@@ -241,15 +247,21 @@ export class DuelFightView {
         return Math.floor(fighter.stateTimer / animSpeed) % frames.length;
       }
 
+      case DuelFighterState.DASH_FORWARD:
+      case DuelFighterState.DASH_BACK: {
+        // Fast cycle through walk frames during dash
+        return Math.floor(fighter.stateTimer / 3) % frames.length;
+      }
+
       case DuelFighterState.KNOCKDOWN:
       case DuelFighterState.GET_UP:
       case DuelFighterState.HIT_STUN: {
-        // Progress through frames based on timer
+        // Progress through frames based on stateTimer
         const maxTimer = fighter.state === DuelFighterState.KNOCKDOWN ? 40 :
-          fighter.state === DuelFighterState.GET_UP ? 20 : fighter.hitstunFrames;
-        const elapsed = maxTimer - fighter.stateTimer;
-        if (maxTimer <= 0 || elapsed < 0) return 0;
-        const progress = Math.min(elapsed / maxTimer, 0.999);
+          fighter.state === DuelFighterState.GET_UP ? 20 :
+          (fighter.hitstunFrames + fighter.stateTimer);
+        if (maxTimer <= 0) return 0;
+        const progress = Math.min(fighter.stateTimer / maxTimer, 0.999);
         return Math.max(0, Math.floor(progress * frames.length));
       }
 

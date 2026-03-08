@@ -106,8 +106,13 @@ function _updateFighter(
   const fighter = state.fighters[idx];
   const charDef = DUEL_CHARACTERS[fighter.characterId];
 
-  // Increment animation timer
-  fighter.stateTimer++;
+  // Increment animation timer (skip for states that count stateTimer down)
+  if (
+    fighter.state !== DuelFighterState.KNOCKDOWN &&
+    fighter.state !== DuelFighterState.GET_UP
+  ) {
+    fighter.stateTimer++;
+  }
 
   // Decrement timers
   if (fighter.invincibleFrames > 0) fighter.invincibleFrames--;
@@ -127,18 +132,26 @@ function _updateFighter(
     case DuelFighterState.BLOCK_STAND:
     case DuelFighterState.BLOCK_CROUCH:
       if (fighter.blockstunFrames <= 0) {
-        // Stay blocking if still holding back
-        if (!input.back) {
-          fighter.state = DuelFighterState.IDLE;
-        }
-      }
-      // Allow transition between stand/crouch block
-      if (input.back && input.down) {
-        fighter.state = DuelFighterState.BLOCK_CROUCH;
-      } else if (input.back) {
-        fighter.state = DuelFighterState.BLOCK_STAND;
+        fighter.state = DuelFighterState.IDLE;
       }
       return;
+
+    case DuelFighterState.DASH_FORWARD:
+    case DuelFighterState.DASH_BACK: {
+      fighter.dashFrames--;
+      const dashDir = fighter.state === DuelFighterState.DASH_FORWARD
+        ? (fighter.facingRight ? 1 : -1)
+        : (fighter.facingRight ? -1 : 1);
+      const dashSpd = fighter.state === DuelFighterState.DASH_FORWARD
+        ? DuelBalance.DASH_FORWARD_SPEED
+        : DuelBalance.DASH_BACK_SPEED;
+      fighter.position.x += dashDir * dashSpd;
+      if (fighter.dashFrames <= 0) {
+        fighter.state = DuelFighterState.IDLE;
+        fighter.velocity.x = 0;
+      }
+      return;
+    }
 
     case DuelFighterState.KNOCKDOWN:
       fighter.stateTimer--;
@@ -158,7 +171,12 @@ function _updateFighter(
 
     case DuelFighterState.VICTORY:
     case DuelFighterState.DEFEAT:
+      return;
+
     case DuelFighterState.GRABBED:
+      if (fighter.hitstunFrames <= 0) {
+        fighter.state = DuelFighterState.IDLE;
+      }
       return;
 
     case DuelFighterState.ATTACK:
@@ -200,14 +218,23 @@ function _updateFighter(
     return;
   }
 
-  // Movement / blocking
-  if (input.back) {
-    if (input.down) {
-      fighter.state = DuelFighterState.BLOCK_CROUCH;
-    } else {
-      fighter.state = DuelFighterState.BLOCK_STAND;
-    }
-  } else if (input.down) {
+  // Dash (double-tap)
+  if (input.dashForward && fighter.grounded) {
+    fighter.state = DuelFighterState.DASH_FORWARD;
+    fighter.dashFrames = DuelBalance.DASH_DURATION;
+    fighter.stateTimer = 0;
+    return;
+  }
+  if (input.dashBack && fighter.grounded) {
+    fighter.state = DuelFighterState.DASH_BACK;
+    fighter.dashFrames = DuelBalance.DASH_DURATION;
+    fighter.stateTimer = 0;
+    fighter.invincibleFrames = DuelBalance.DASH_BACK_INVINCIBLE;
+    return;
+  }
+
+  // Movement (back = walk back, blocking is resolved on hit)
+  if (input.down) {
     fighter.state = DuelFighterState.CROUCH_IDLE;
   } else if (input.up && fighter.grounded) {
     // Jump
@@ -345,7 +372,7 @@ function _updateGrab(
       fighter.moveHasHit = true;
       opponent.hp -= grab.damage;
       opponent.state = DuelFighterState.GRABBED;
-      opponent.stateTimer = grab.hitstun;
+      opponent.stateTimer = 0;
       opponent.hitstunFrames = grab.hitstun;
 
       // Knockback
@@ -449,7 +476,16 @@ function _resolveHit(
   const isBlocking = _isBlocking(defender, move);
 
   if (isBlocking) {
+    // Enter block state reactively
+    const crouching =
+      defender.state === DuelFighterState.CROUCH ||
+      defender.state === DuelFighterState.CROUCH_IDLE ||
+      defender.state === DuelFighterState.BLOCK_CROUCH;
+    defender.state = crouching
+      ? DuelFighterState.BLOCK_CROUCH
+      : DuelFighterState.BLOCK_STAND;
     defender.blockstunFrames = move.blockstun;
+    defender.stateTimer = 0;
     if (move.type === "special") {
       defender.hp -= move.chipDamage;
     }
@@ -467,6 +503,7 @@ function _resolveHit(
       defender.stateTimer = 40;
     } else {
       defender.state = DuelFighterState.HIT_STUN;
+      defender.stateTimer = 0;
       defender.hitstunFrames = move.hitstun;
     }
     defender.currentMove = null;
@@ -494,13 +531,32 @@ function _resolveHit(
   );
 }
 
+function _isHoldingBack(defender: DuelFighter): boolean {
+  return defender.facingRight ? defender.input.left : defender.input.right;
+}
+
 function _isBlocking(defender: DuelFighter, move: DuelMoveDef): boolean {
-  if (defender.state === DuelFighterState.BLOCK_STAND) {
-    return move.height !== AttackHeight.LOW;
-  }
-  if (defender.state === DuelFighterState.BLOCK_CROUCH) {
+  const holdingBack = _isHoldingBack(defender);
+  if (!holdingBack) return false;
+
+  const crouching =
+    defender.state === DuelFighterState.CROUCH ||
+    defender.state === DuelFighterState.CROUCH_IDLE;
+
+  // Crouch block (holding down-back)
+  if (crouching || defender.state === DuelFighterState.BLOCK_CROUCH) {
     return move.height !== AttackHeight.HIGH && move.height !== AttackHeight.OVERHEAD;
   }
+
+  // Standing block (holding back while standing / walking back)
+  if (
+    defender.state === DuelFighterState.IDLE ||
+    defender.state === DuelFighterState.WALK_BACK ||
+    defender.state === DuelFighterState.BLOCK_STAND
+  ) {
+    return move.height !== AttackHeight.LOW;
+  }
+
   return false;
 }
 
@@ -582,5 +638,6 @@ function _resetFighter(
   fighter.comboDamageScaling = 1;
   fighter.grounded = true;
   fighter.invincibleFrames = 0;
+  fighter.dashFrames = 0;
   fighter.inputBuffer = [];
 }

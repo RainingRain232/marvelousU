@@ -24,6 +24,8 @@ export const DuelAISystem = {
       down: false,
       forward: false,
       back: false,
+      dashForward: false,
+      dashBack: false,
       action: null,
     };
 

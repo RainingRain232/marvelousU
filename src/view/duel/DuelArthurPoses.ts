@@ -675,27 +675,52 @@ export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalett
   const crossguardColor = pal.weaponAccent ?? 0xddaa33;
   const shieldColor = pal.accent ?? 0xbb2222;
 
-  // --- Shield on back arm ---
+  // --- Shield on back arm (large kite shield) ---
   if (p.backArm) {
     const sx = p.backArm.handX;
     const sy = p.backArm.handY;
-    // Kite shield: taller than wide, pointed bottom
+    const shieldW = 38;
+    const shieldH = 58;
+    const shieldX = sx - shieldW / 2 + 2;
+    const shieldY = sy - shieldH * 0.45;
+
+    // Kite shield shape: wider at top, tapering to point at bottom
     // Outline
-    g.roundRect(sx - 13, sy - 20, 22, 36, 4);
+    g.moveTo(shieldX, shieldY + 6);
+    g.quadraticCurveTo(shieldX, shieldY, shieldX + shieldW / 2, shieldY - 2);
+    g.quadraticCurveTo(shieldX + shieldW, shieldY, shieldX + shieldW, shieldY + 6);
+    g.lineTo(shieldX + shieldW - 2, shieldY + shieldH * 0.6);
+    g.lineTo(shieldX + shieldW / 2, shieldY + shieldH);
+    g.lineTo(shieldX + 2, shieldY + shieldH * 0.6);
+    g.closePath();
     g.fill({ color: 0x222233 });
-    // Shield face (crimson with steel border)
-    g.roundRect(sx - 11, sy - 18, 18, 32, 3);
+
+    // Shield face (crimson)
+    const inset = 3;
+    g.moveTo(shieldX + inset, shieldY + 6 + inset / 2);
+    g.quadraticCurveTo(shieldX + inset, shieldY + inset, shieldX + shieldW / 2, shieldY - 2 + inset);
+    g.quadraticCurveTo(shieldX + shieldW - inset, shieldY + inset, shieldX + shieldW - inset, shieldY + 6 + inset / 2);
+    g.lineTo(shieldX + shieldW - inset - 2, shieldY + shieldH * 0.58);
+    g.lineTo(shieldX + shieldW / 2, shieldY + shieldH - inset * 2);
+    g.lineTo(shieldX + inset + 2, shieldY + shieldH * 0.58);
+    g.closePath();
     g.fill({ color: shieldColor });
-    // Steel rim
-    g.roundRect(sx - 11, sy - 18, 18, 32, 3);
-    g.stroke({ color: 0x888899, width: 2 });
-    // Cross emblem on shield
-    g.moveTo(sx - 2, sy - 12);
-    g.lineTo(sx - 2, sy + 6);
-    g.stroke({ color: crossguardColor, width: 3 });
-    g.moveTo(sx - 8, sy - 5);
-    g.lineTo(sx + 4, sy - 5);
-    g.stroke({ color: crossguardColor, width: 3 });
+
+    // Steel rim highlight
+    g.moveTo(shieldX + 1, shieldY + 6);
+    g.quadraticCurveTo(shieldX + 1, shieldY + 1, shieldX + shieldW / 2, shieldY - 1);
+    g.quadraticCurveTo(shieldX + shieldW - 1, shieldY + 1, shieldX + shieldW - 1, shieldY + 6);
+    g.stroke({ color: 0x999aaa, width: 1.5 });
+
+    // Cross emblem centered on shield
+    const cx = shieldX + shieldW / 2;
+    const cy = shieldY + shieldH * 0.35;
+    g.moveTo(cx, cy - 16);
+    g.lineTo(cx, cy + 14);
+    g.stroke({ color: crossguardColor, width: 4 });
+    g.moveTo(cx - 10, cy - 4);
+    g.lineTo(cx + 10, cy - 4);
+    g.stroke({ color: crossguardColor, width: 4 });
   }
 
   // --- Sword in front arm ---
@@ -753,18 +778,15 @@ export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalett
     g.fill({ color: crossguardColor });
   }
 
-  // --- Helm visor slit (drawn over head) ---
+  // --- Helm crest/plume (drawn over the helmeted head) ---
   if (p.head) {
     const hx = p.head.x;
     const hy = p.head.y;
-    // Great helm covers the head — draw a visor slit
-    g.moveTo(hx - 2, hy - 3);
-    g.lineTo(hx + 12, hy - 3);
-    g.stroke({ color: 0x222233, width: 3 });
-    // Helm top ridge
-    g.moveTo(hx - 6, hy - 18);
-    g.lineTo(hx + 8, hy - 18);
-    g.stroke({ color: 0x999aaa, width: 2, cap: "round" });
+    const hr = p.head.radius ?? 24;
+    // Small crimson crest on top of helm
+    g.moveTo(hx - 2, hy - hr + 1);
+    g.quadraticCurveTo(hx + 2, hy - hr - 10, hx + 10, hy - hr + 1);
+    g.fill({ color: shieldColor, alpha: 0.8 });
   }
 
   // --- Cape (drawn from shoulders, flowing behind) ---

@@ -77,6 +77,8 @@ export interface DuelInputResult {
   down: boolean;
   forward: boolean;
   back: boolean;
+  dashForward: boolean;
+  dashBack: boolean;
   // Resolved action (null = no new action)
   action: string | null; // move ID to start
 }
@@ -120,6 +122,7 @@ export interface DuelFighter {
   comboDamageScaling: number;
   grounded: boolean;
   invincibleFrames: number;
+  dashFrames: number; // remaining frames in a dash (0 = not dashing)
   // Input (raw key state)
   input: {
     left: boolean;
@@ -198,6 +201,7 @@ export function createFighter(
     comboDamageScaling: 1,
     grounded: true,
     invincibleFrames: 0,
+    dashFrames: 0,
     input: {
       left: false,
       right: false,

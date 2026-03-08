@@ -205,6 +205,10 @@ export interface DrawFighterOptions {
   palette: FighterPalette;
   isFlashing?: boolean;
   flashColor?: number;
+  /** When true, skip face/hair and draw a helm-colored head instead. */
+  helmeted?: boolean;
+  /** Helm color (used when helmeted is true). */
+  helmColor?: number;
   /** Custom draw function for character-specific details (weapon, accessories). */
   drawExtras?: (g: Graphics, p: FighterPose, pal: FighterPalette) => void;
 }
@@ -294,34 +298,87 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
     // Neck
     const neckFromX = p.torso ? p.torso.x : 0;
     const neckFromY = p.torso ? p.torso.y - p.torso.height / 2 : -100;
-    drawLimb(g, neckFromX, neckFromY, p.head.x, p.head.y + 16, 9, skinColor, outline);
-
     const hr = p.head.radius ?? 24;
+    const hx = p.head.x;
+    const hy = p.head.y;
 
-    // Hair (behind head)
-    drawCircle(g, p.head.x, p.head.y - 3, hr + 3, hairColor, outline);
+    if (opts.helmeted) {
+      // Helmeted head — draw neck in armor color, helm over head
+      const helmCol = isFlashing && flashColor ? flashColor : (opts.helmColor ?? pal.body);
+      drawLimb(g, neckFromX, neckFromY, hx, hy + 16, 9, helmCol, outline);
 
-    // Head circle
-    drawCircle(g, p.head.x, p.head.y, hr, skinColor, outline);
+      // Helm shape (slightly taller than head)
+      drawCircle(g, hx, hy - 1, hr + 2, helmCol, outline);
 
-    // Eyes
-    const eyeY = p.head.y - 3;
-    // Back eye
-    g.circle(p.head.x - 3, eyeY, 3.5);
-    g.fill({ color: 0xffffff });
-    g.circle(p.head.x - 2, eyeY, 2);
-    g.fill({ color: pal.eyes });
-    // Front eye
-    g.circle(p.head.x + 6, eyeY, 5);
-    g.fill({ color: 0xffffff });
-    g.circle(p.head.x + 8, eyeY, 2.5);
-    g.fill({ color: pal.eyes });
+      // Visor slit
+      g.roundRect(hx - 4, hy - 5, 16, 5, 2);
+      g.fill({ color: 0x111118 });
 
-    // Mouth
-    const mouthX = p.head.x + 3;
-    g.moveTo(mouthX - 4, p.head.y + 9);
-    g.lineTo(mouthX + 4, p.head.y + 8);
-    g.stroke({ color: 0x442222, width: 2, cap: "round" });
+      // Helm ridge on top
+      g.moveTo(hx - 8, hy - hr + 2);
+      g.lineTo(hx + 10, hy - hr + 2);
+      g.stroke({ color: helmCol, width: 4, cap: "round" });
+      g.moveTo(hx - 7, hy - hr + 2);
+      g.lineTo(hx + 9, hy - hr + 2);
+      g.stroke({ color: 0xaaaabb, width: 2, cap: "round" });
+
+      // Breather holes (small dots)
+      for (let i = 0; i < 3; i++) {
+        g.circle(hx + 4 + i * 4, hy + 6, 1.2);
+        g.fill({ color: 0x111118 });
+      }
+    } else {
+      // Normal head with face
+      drawLimb(g, neckFromX, neckFromY, hx, hy + 16, 9, skinColor, outline);
+
+      // Hair (behind head)
+      drawCircle(g, hx, hy - 3, hr + 3, hairColor, outline);
+
+      // Head circle
+      drawCircle(g, hx, hy, hr, skinColor, outline);
+
+      // Nose (subtle wedge)
+      g.moveTo(hx + 8, hy - 4);
+      g.lineTo(hx + 12, hy + 2);
+      g.lineTo(hx + 8, hy + 3);
+      g.stroke({ color: outline, width: 1.2, cap: "round", join: "round", alpha: 0.4 });
+
+      // Eyes — proportional, slightly narrowed for serious look
+      const eyeY = hy - 4;
+
+      // Back eye (further, slightly smaller for 3/4 perspective)
+      g.ellipse(hx - 2, eyeY, 3.5, 2.5);
+      g.fill({ color: 0xffffff });
+      g.circle(hx - 1, eyeY, 1.8);
+      g.fill({ color: pal.eyes });
+      g.circle(hx - 0.5, eyeY - 0.3, 0.8);
+      g.fill({ color: 0x111111 }); // pupil
+
+      // Front eye (closer, slightly larger)
+      g.ellipse(hx + 8, eyeY, 4.5, 2.8);
+      g.fill({ color: 0xffffff });
+      g.circle(hx + 8.5, eyeY, 2);
+      g.fill({ color: pal.eyes });
+      g.circle(hx + 9, eyeY - 0.3, 0.9);
+      g.fill({ color: 0x111111 }); // pupil
+
+      // Eyebrows — angled slightly for determined look
+      g.moveTo(hx - 5, eyeY - 5);
+      g.lineTo(hx + 1, eyeY - 6);
+      g.stroke({ color: hairColor, width: 2.5, cap: "round" });
+      g.moveTo(hx + 4, eyeY - 6);
+      g.lineTo(hx + 13, eyeY - 5.5);
+      g.stroke({ color: hairColor, width: 2.5, cap: "round" });
+
+      // Mouth — firm, slightly downturned line
+      g.moveTo(hx + 2, hy + 8);
+      g.lineTo(hx + 10, hy + 7.5);
+      g.stroke({ color: 0x553333, width: 1.8, cap: "round" });
+      // Slight lower lip shadow
+      g.moveTo(hx + 3, hy + 10);
+      g.lineTo(hx + 9, hy + 9.5);
+      g.stroke({ color: 0x553333, width: 1, cap: "round", alpha: 0.3 });
+    }
   }
 
   // Character-specific extras (weapon, accessories)

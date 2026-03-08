@@ -709,6 +709,8 @@ export enum DuelFighterState {
   HIT_STUN = "hit_stun",
   KNOCKDOWN = "knockdown",
   GET_UP = "get_up",
+  DASH_FORWARD = "dash_forward",
+  DASH_BACK = "dash_back",
   GRAB = "grab",
   GRABBED = "grabbed",
   VICTORY = "victory",

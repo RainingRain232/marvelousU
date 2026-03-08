@@ -82,6 +82,12 @@ let _onKeyUp: ((e: KeyboardEvent) => void) | null = null;
 // Track which buttons were freshly pressed this frame
 const _justPressed: Set<string> = new Set();
 
+// Dash double-tap detection: track last release frame for forward/back directions
+let _lastForwardRelease = -999;
+let _lastBackRelease = -999;
+let _dashForwardTriggered = false;
+let _dashBackTriggered = false;
+
 // ---- Public API ------------------------------------------------------------
 
 export const DuelInputSystem = {
@@ -118,6 +124,14 @@ export const DuelInputSystem = {
       if (mapped) {
         const inp = _state.fighters[0].input as Record<string, boolean>;
         inp[mapped] = false;
+
+        // Track direction releases for double-tap dash detection
+        const fighter = _state.fighters[0];
+        const fwdKey = fighter.facingRight ? "right" : "left";
+        const bkKey = fighter.facingRight ? "left" : "right";
+        if (mapped === fwdKey) _lastForwardRelease = _state.frameCount;
+        if (mapped === bkKey) _lastBackRelease = _state.frameCount;
+
         e.preventDefault();
       }
     };
@@ -135,6 +149,24 @@ export const DuelInputSystem = {
     const forward = fighter.facingRight ? inp.right : inp.left;
     const back = fighter.facingRight ? inp.left : inp.right;
 
+    // Detect double-tap dashes
+    const forwardKey = fighter.facingRight ? "right" : "left";
+    const backKey = fighter.facingRight ? "left" : "right";
+    const frame = state.frameCount;
+
+    // Check if forward/back was just pressed (in _justPressed set)
+    if (_justPressed.has(forwardKey) && frame - _lastForwardRelease <= DuelBalance.DASH_TAP_WINDOW) {
+      _dashForwardTriggered = true;
+    }
+    if (_justPressed.has(backKey) && frame - _lastBackRelease <= DuelBalance.DASH_TAP_WINDOW) {
+      _dashBackTriggered = true;
+    }
+
+    // Track releases for double-tap detection
+    // (we detect release→press within window)
+    // Release detection: if direction was in buffer last frame but not held now
+    // We handle this via keyup events tracked below
+
     const result: DuelInputResult = {
       left: inp.left,
       right: inp.right,
@@ -142,8 +174,14 @@ export const DuelInputSystem = {
       down: inp.down,
       forward,
       back,
+      dashForward: _dashForwardTriggered,
+      dashBack: _dashBackTriggered,
       action: null,
     };
+
+    // Consume dash triggers
+    _dashForwardTriggered = false;
+    _dashBackTriggered = false;
 
     // Only resolve attacks if fighter can act
     if (_canAct(fighter)) {
@@ -166,6 +204,10 @@ export const DuelInputSystem = {
     _onKeyUp = null;
     _state = null;
     _justPressed.clear();
+    _lastForwardRelease = -999;
+    _lastBackRelease = -999;
+    _dashForwardTriggered = false;
+    _dashBackTriggered = false;
   },
 };
 
