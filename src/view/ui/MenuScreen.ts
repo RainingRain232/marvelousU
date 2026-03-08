@@ -221,6 +221,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: t("mode.colosseum_desc"),
     skipSetup: true,
   },
+  {
+    mode: GameMode.DUEL,
+    label: t("mode.duel"),
+    desc: t("mode.duel_desc"),
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

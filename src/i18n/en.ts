@@ -70,6 +70,8 @@ export const en: Record<string, string> = {
   "mode.survivor_desc": "Vampire survivors roguelite",
   "mode.colosseum": "COLOSSEUM",
   "mode.colosseum_desc": "Tournament arena combat",
+  "mode.duel": "DUEL",
+  "mode.duel_desc": "Street fighter-style combat",
 
   // ─── MenuScreen ─── map sizes ───
   "map.standard": "STANDARD",

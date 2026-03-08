@@ -119,6 +119,7 @@ import { RPGGame } from "@rpg/RPGBoot";
 // Survivor mode imports
 import { SurvivorGame } from "@/survivor/SurvivorGame";
 import { ColosseumGame } from "@rpg/colosseum/ColosseumGame";
+import { DuelGame } from "./duel/DuelGame";
 
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
@@ -312,6 +313,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.COLOSSEUM) {
       menuScreen.hide();
       _bootColosseumGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.DUEL) {
+      menuScreen.hide();
+      _bootDuelGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2428,6 +2434,32 @@ async function _bootColosseumGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("colosseumExit", _onColosseumExit);
+}
+
+// ---------------------------------------------------------------------------
+// Duel mode boot
+// ---------------------------------------------------------------------------
+
+let _duelGame: DuelGame | null = null;
+
+async function _bootDuelGame(): Promise<void> {
+  if (_duelGame) {
+    _duelGame.destroy();
+    _duelGame = null;
+  }
+
+  _duelGame = new DuelGame();
+  await _duelGame.boot();
+
+  const _onDuelExit = () => {
+    window.removeEventListener("duelExit", _onDuelExit);
+    if (_duelGame) {
+      _duelGame.destroy();
+      _duelGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("duelExit", _onDuelExit);
 }
 
 // ---------------------------------------------------------------------------

@@ -661,6 +661,7 @@ export enum GameMode {
   RPG = "rpg",
   SURVIVOR = "survivor",
   COLOSSEUM = "colosseum",
+  DUEL = "duel",
 }
 
 // ---------------------------------------------------------------------------
@@ -678,6 +679,47 @@ export enum ColosseumPhase {
   POST_MATCH = "colosseum_post_match",
   TOURNAMENT_RESULTS = "colosseum_tournament_results",
   RANKINGS = "colosseum_rankings",
+}
+
+// ---------------------------------------------------------------------------
+// Duel mode enums
+// ---------------------------------------------------------------------------
+
+export enum DuelPhase {
+  CHAR_SELECT = "duel_char_select",
+  ARENA_SELECT = "duel_arena_select",
+  INTRO = "duel_intro",
+  FIGHTING = "duel_fighting",
+  ROUND_END = "duel_round_end",
+  MATCH_END = "duel_match_end",
+}
+
+export enum DuelFighterState {
+  IDLE = "idle",
+  WALK_FORWARD = "walk_forward",
+  WALK_BACK = "walk_back",
+  CROUCH = "crouch",
+  CROUCH_IDLE = "crouch_idle",
+  JUMP = "jump",
+  JUMP_FORWARD = "jump_forward",
+  JUMP_BACK = "jump_back",
+  ATTACK = "attack",
+  BLOCK_STAND = "block_stand",
+  BLOCK_CROUCH = "block_crouch",
+  HIT_STUN = "hit_stun",
+  KNOCKDOWN = "knockdown",
+  GET_UP = "get_up",
+  GRAB = "grab",
+  GRABBED = "grabbed",
+  VICTORY = "victory",
+  DEFEAT = "defeat",
+}
+
+export enum AttackHeight {
+  HIGH = "high",
+  LOW = "low",
+  MID = "mid",
+  OVERHEAD = "overhead",
 }
 
 // ---------------------------------------------------------------------------

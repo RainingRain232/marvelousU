@@ -1,0 +1,242 @@
+// ---------------------------------------------------------------------------
+// Duel mode – state interfaces
+// ---------------------------------------------------------------------------
+
+import { AttackHeight, DuelFighterState, DuelPhase } from "../../types";
+import { DuelBalance } from "../config/DuelBalanceConfig";
+
+// ---- Hitbox ----------------------------------------------------------------
+
+export interface Hitbox {
+  x: number; // offset from fighter position
+  y: number; // offset from ground (negative = up)
+  width: number;
+  height: number;
+}
+
+// ---- Move definition (frame data) -----------------------------------------
+
+export interface DuelMoveDef {
+  id: string;
+  name: string;
+  type: "normal" | "special" | "grab";
+  height: AttackHeight;
+  startup: number; // frames before hitbox active
+  active: number; // frames hitbox is active
+  recovery: number; // frames after hitbox ends
+  damage: number;
+  chipDamage: number;
+  hitstun: number;
+  blockstun: number;
+  knockback: number;
+  hitbox: Hitbox;
+  isProjectile?: boolean;
+  projectileSpeed?: number;
+  projectileHeight?: AttackHeight;
+  isAntiAir?: boolean;
+  isLauncher?: boolean;
+  hasInvincibility?: boolean;
+  invincibleStartup?: number; // frames of invincibility at start
+  movesForward?: number; // pixels to move forward during move
+  movesBack?: number; // pixels to move backward
+}
+
+// ---- Character definition --------------------------------------------------
+
+export interface DuelCharacterDef {
+  id: string;
+  name: string;
+  title: string;
+  portrait: string;
+  fighterType: "sword" | "mage" | "archer";
+  maxHp: number;
+  walkSpeed: number;
+  backWalkSpeed: number;
+  jumpVelocity: number;
+  jumpForwardSpeed: number;
+  weight: number; // affects knockback
+  normals: Record<string, DuelMoveDef>;
+  specials: Record<string, DuelMoveDef>;
+  grab: DuelMoveDef;
+}
+
+// ---- Input buffer ----------------------------------------------------------
+
+export interface InputBufferEntry {
+  code: string;
+  frame: number;
+  pressed: boolean;
+}
+
+// ---- Input result (what the system resolved this frame) --------------------
+
+export interface DuelInputResult {
+  left: boolean;
+  right: boolean;
+  up: boolean;
+  down: boolean;
+  forward: boolean;
+  back: boolean;
+  // Resolved action (null = no new action)
+  action: string | null; // move ID to start
+}
+
+// ---- Projectile ------------------------------------------------------------
+
+export interface DuelProjectile {
+  id: number;
+  ownerId: number;
+  moveId: string;
+  position: { x: number; y: number };
+  velocity: { x: number; y: number };
+  hitbox: Hitbox;
+  damage: number;
+  chipDamage: number;
+  height: AttackHeight;
+  hitstun: number;
+  blockstun: number;
+  knockback: number;
+  lifetime: number;
+  active: boolean;
+}
+
+// ---- Fighter ---------------------------------------------------------------
+
+export interface DuelFighter {
+  characterId: string;
+  position: { x: number; y: number };
+  velocity: { x: number; y: number };
+  facingRight: boolean;
+  hp: number;
+  maxHp: number;
+  state: DuelFighterState;
+  stateTimer: number;
+  currentMove: string | null;
+  moveFrame: number;
+  moveHasHit: boolean; // prevent multi-hit on same move
+  hitstunFrames: number;
+  blockstunFrames: number;
+  comboCount: number;
+  comboDamageScaling: number;
+  grounded: boolean;
+  invincibleFrames: number;
+  // Input (raw key state)
+  input: {
+    left: boolean;
+    right: boolean;
+    up: boolean;
+    down: boolean;
+    lightPunch: boolean;
+    medPunch: boolean;
+    heavyPunch: boolean;
+    lightKick: boolean;
+    medKick: boolean;
+    heavyKick: boolean;
+  };
+  inputBuffer: InputBufferEntry[];
+}
+
+// ---- Round -----------------------------------------------------------------
+
+export interface DuelRound {
+  roundNumber: number;
+  winnerId: number | null;
+  timeRemaining: number;
+}
+
+// ---- Top-level state -------------------------------------------------------
+
+export interface DuelState {
+  phase: DuelPhase;
+  fighters: [DuelFighter, DuelFighter];
+  round: DuelRound;
+  roundResults: (0 | 1)[];
+  bestOf: number;
+  arenaId: string;
+  isPaused: boolean;
+  isAIOpponent: boolean;
+  aiDifficulty: number;
+  frameCount: number;
+  slowdownFrames: number;
+  projectiles: DuelProjectile[];
+  nextProjectileId: number;
+  // Announcements
+  announcement: string | null;
+  announcementTimer: number;
+}
+
+// ---- Factory ---------------------------------------------------------------
+
+export function createFighter(
+  characterId: string,
+  x: number,
+  facingRight: boolean,
+  maxHp: number,
+): DuelFighter {
+  return {
+    characterId,
+    position: { x, y: DuelBalance.STAGE_FLOOR_Y },
+    velocity: { x: 0, y: 0 },
+    facingRight,
+    hp: maxHp,
+    maxHp,
+    state: DuelFighterState.IDLE,
+    stateTimer: 0,
+    currentMove: null,
+    moveFrame: 0,
+    moveHasHit: false,
+    hitstunFrames: 0,
+    blockstunFrames: 0,
+    comboCount: 0,
+    comboDamageScaling: 1,
+    grounded: true,
+    invincibleFrames: 0,
+    input: {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      lightPunch: false,
+      medPunch: false,
+      heavyPunch: false,
+      lightKick: false,
+      medKick: false,
+      heavyKick: false,
+    },
+    inputBuffer: [],
+  };
+}
+
+export function createDuelState(
+  p1CharId: string,
+  p2CharId: string,
+  p1MaxHp: number,
+  p2MaxHp: number,
+  arenaId: string,
+  isAI: boolean,
+): DuelState {
+  return {
+    phase: DuelPhase.INTRO,
+    fighters: [
+      createFighter(p1CharId, DuelBalance.P1_START_X, true, p1MaxHp),
+      createFighter(p2CharId, DuelBalance.P2_START_X, false, p2MaxHp),
+    ],
+    round: {
+      roundNumber: 1,
+      winnerId: null,
+      timeRemaining: DuelBalance.ROUND_TIME_FRAMES,
+    },
+    roundResults: [],
+    bestOf: DuelBalance.BEST_OF,
+    arenaId,
+    isPaused: false,
+    isAIOpponent: isAI,
+    aiDifficulty: 1,
+    frameCount: 0,
+    slowdownFrames: 0,
+    projectiles: [],
+    nextProjectileId: 1,
+    announcement: null,
+    announcementTimer: 0,
+  };
+}

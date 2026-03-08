@@ -70,6 +70,8 @@ export const nl: Record<string, string> = {
   "mode.survivor_desc": "Vampire survivors roguelite",
   "mode.colosseum": "COLOSSEUM",
   "mode.colosseum_desc": "Toernooi arena gevecht",
+  "mode.duel": "DUEL",
+  "mode.duel_desc": "Straatgevecht-stijl combat",
 
   // ─── MenuScreen ─── kaartgroottes ───
   "map.standard": "STANDAARD",
