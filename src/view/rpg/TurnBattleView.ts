@@ -7,8 +7,6 @@ import type { TurnBattleState, TurnBattleCombatant } from "@rpg/state/TurnBattle
 import type { RPGState } from "@rpg/state/RPGState";
 import { animationManager } from "@view/animation/AnimationManager";
 import { getAbilityName, getAbilityMpCost, getAbilityDescription, canUseAbility, getEffectiveSpeed, getSpellName, getSpellMpCost, getSpellDescription, canCastSpell } from "@rpg/systems/TurnBattleSystem";
-import { drawTerrainDecorationAt } from "@view/world/WorldMapRenderer";
-import { TerrainType } from "@world/config/TerrainDefs";
 import { ELEMENT_COLORS } from "@rpg/config/ElementDefs";
 import { t } from "@/i18n/i18n";
 
@@ -282,9 +280,11 @@ export class TurnBattleView {
     const H = this.vm.screenHeight;
     const ctx = this.battleState.battleContext;
     const palette = _getBattlePalette(ctx);
-    const stripes = 20;
-    const stripeH = Math.ceil(H / stripes);
 
+    // Sky gradient (upper 58%)
+    const groundY = H * 0.58;
+    const stripes = 20;
+    const stripeH = Math.ceil(groundY / stripes);
     for (let i = 0; i < stripes; i++) {
       const t = i / (stripes - 1);
       const color = _lerpColor(palette.top, palette.bottom, t);
@@ -292,26 +292,23 @@ export class TurnBattleView {
       this._bgGraphic.fill({ color });
     }
 
-    // Ground region (lower 40%)
-    const groundY = H * 0.6;
-    this._bgGraphic.rect(0, groundY, W, H - groundY);
-    this._bgGraphic.fill({ color: palette.ground, alpha: 0.4 });
-
-    // Terrain decorations on the ground area using the world map renderer
-    const terrain = _biomeToTerrain(ctx);
-    if (terrain) {
-      // Tile decorations across the ground in a grid pattern
-      const spacing = 80;
-      const cols = Math.ceil(W / spacing) + 1;
-      const rows = Math.ceil((H - groundY) / spacing) + 1;
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const cx = col * spacing + (row % 2 === 0 ? 0 : spacing * 0.5);
-          const cy = groundY + row * spacing * 0.8 + spacing * 0.3;
-          drawTerrainDecorationAt(this._bgGraphic, terrain, cx, cy);
-        }
-      }
+    // Ground plane with perspective gradient (lighter near horizon = farther)
+    const gRows = 12;
+    for (let i = 0; i < gRows; i++) {
+      const t = i / (gRows - 1);
+      const y = groundY + t * (H - groundY);
+      const rowH = (H - groundY) / gRows + 1;
+      const color = _lerpColor(_lightenColor(palette.ground, 0.28), palette.ground, t);
+      this._bgGraphic.rect(0, y, W, rowH);
+      this._bgGraphic.fill({ color });
     }
+
+    // Thin horizon line
+    this._bgGraphic.rect(0, groundY - 0.5, W, 2);
+    this._bgGraphic.fill({ color: _lightenColor(palette.ground, 0.5), alpha: 0.6 });
+
+    // Ground decorations (no hex shapes)
+    _drawBattleGroundDecorations(this._bgGraphic, W, H, groundY, ctx);
   }
 
   // ---------------------------------------------------------------------------
@@ -1613,19 +1610,204 @@ function _getBattlePalette(ctx?: { biome?: string; dungeonFloor?: number }): Bat
   }
 }
 
-function _biomeToTerrain(ctx?: { biome?: string; dungeonFloor?: number }): TerrainType | null {
+function _lightenColor(color: number, amount: number): number {
+  const r = Math.min(255, ((color >> 16) & 0xff) + Math.round(amount * 255));
+  const g = Math.min(255, ((color >> 8) & 0xff) + Math.round(amount * 255));
+  const b = Math.min(255, (color & 0xff) + Math.round(amount * 255));
+  return (r << 16) | (g << 8) | b;
+}
+
+/** Perspective-mapped Y on the ground plane. t=0 = horizon, t=1 = bottom edge. */
+function _gY(groundY: number, H: number, t: number): number {
+  return groundY + Math.pow(t, 1.4) * (H - groundY) * 0.92;
+}
+
+/** Deterministic pseudo-random float in [0,1] from two integers. */
+function _prng(a: number, b: number): number {
+  const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+function _drawBattleGroundDecorations(
+  g: Graphics, W: number, H: number, groundY: number,
+  ctx?: { biome?: string; dungeonFloor?: number },
+): void {
   if (ctx?.dungeonFloor !== undefined) {
-    return TerrainType.MOUNTAINS; // rocky underground feel
+    _drawDungeonFloor(g, W, H, groundY);
+    return;
   }
   switch (ctx?.biome) {
-    case "grass":    return TerrainType.GRASSLAND;
-    case "forest":   return TerrainType.FOREST;
-    case "sand":     return TerrainType.DESERT;
-    case "snow":     return TerrainType.TUNDRA;
-    case "path":     return TerrainType.PLAINS;
-    case "mountain": return TerrainType.MOUNTAINS;
-    case "water":    return TerrainType.SWAMP;
-    default:         return TerrainType.GRASSLAND;
+    case "grass":
+    case "forest":
+    case "path":
+      _drawGrassFloor(g, W, H, groundY, ctx.biome === "forest");
+      break;
+    case "sand":
+      _drawDesertFloor(g, W, H, groundY);
+      break;
+    case "snow":
+      _drawSnowFloor(g, W, H, groundY);
+      break;
+    case "mountain":
+      _drawMountainFloor(g, W, H, groundY);
+      break;
+    default:
+      _drawArenaFloor(g, W, H, groundY);
+      break;
+  }
+}
+
+function _drawGrassFloor(g: Graphics, W: number, H: number, groundY: number, dark: boolean): void {
+  const bladeColor = dark ? 0x1e4a16 : 0x3a8a28;
+  const sideColor  = dark ? 0x163a10 : 0x2a6a1a;
+  const rows = 10;
+  for (let row = 0; row < rows; row++) {
+    const t = row / (rows - 1);
+    const y = _gY(groundY, H, t);
+    const scale = 0.25 + t * 0.75;
+    const tufts = Math.round(28 - t * 14);
+    for (let i = 0; i < tufts; i++) {
+      const r1 = _prng(i, row);
+      const r2 = _prng(i + 100, row);
+      const x = (i / tufts + r1 * 0.6 / tufts) * W * 1.05 - W * 0.025;
+      const bh = (5 + r2 * 5) * scale;
+      const bw = 1 + r1 * scale;
+      const lean = (r1 - 0.5) * 5 * scale;
+      // Centre blade
+      g.moveTo(x, y).lineTo(x + lean, y - bh);
+      g.stroke({ color: bladeColor, width: bw, alpha: 0.7 + t * 0.2 });
+      // Side blades
+      g.moveTo(x - 2 * scale, y).lineTo(x - 3 * scale + lean, y - bh * 0.8);
+      g.stroke({ color: sideColor, width: bw * 0.8, alpha: 0.45 });
+      g.moveTo(x + 2 * scale, y).lineTo(x + 3 * scale + lean, y - bh * 0.8);
+      g.stroke({ color: sideColor, width: bw * 0.8, alpha: 0.45 });
+    }
+  }
+}
+
+function _drawDesertFloor(g: Graphics, W: number, H: number, groundY: number): void {
+  // Dune ridge waves
+  const rows = 8;
+  for (let row = 0; row < rows; row++) {
+    const t = row / (rows - 1);
+    const y = _gY(groundY, H, t);
+    g.moveTo(0, y);
+    for (let x = 0; x <= W; x += 18) {
+      const wave = Math.sin(x * 0.018 + row * 1.7) * 4 * (0.5 + t * 2);
+      g.lineTo(x, y + wave);
+    }
+    g.stroke({ color: 0xc8a464, width: 1 + t, alpha: 0.1 + t * 0.18 });
+  }
+  // Scattered rocks
+  const rockSeeds = [0.15, 0.45, 0.7, 0.85, 0.3];
+  for (let i = 0; i < rockSeeds.length; i++) {
+    const t = 0.45 + _prng(i, 77) * 0.4;
+    const x = rockSeeds[i] * W;
+    const y = _gY(groundY, H, t);
+    const r = (6 + _prng(i, 33) * 8) * (0.4 + t * 0.6);
+    g.ellipse(x, y, r * 1.8, r * 0.7).fill({ color: 0x9a8060, alpha: 0.5 });
+  }
+}
+
+function _drawSnowFloor(g: Graphics, W: number, H: number, groundY: number): void {
+  // Subtle horizontal texture lines
+  const rows = 10;
+  for (let row = 0; row < rows; row++) {
+    const t = row / (rows - 1);
+    const y = _gY(groundY, H, t);
+    g.moveTo(0, y).lineTo(W, y);
+    g.stroke({ color: 0xffffff, width: 1, alpha: 0.05 + t * 0.04 });
+  }
+  // Sparkle dots
+  for (let i = 0; i < 50; i++) {
+    const fx = _prng(i, 1);
+    const fy = _prng(i, 2);
+    const t = fy * fy;
+    const x = fx * W;
+    const y = _gY(groundY, H, t);
+    const r = 0.5 + fy * 1.5;
+    g.circle(x, y, r).fill({ color: 0xeeeeff, alpha: 0.35 + fy * 0.4 });
+  }
+}
+
+function _drawMountainFloor(g: Graphics, W: number, H: number, groundY: number): void {
+  // Jagged horizontal rock strata lines
+  const rows = 9;
+  for (let row = 0; row < rows; row++) {
+    const t = row / (rows - 1);
+    const y = _gY(groundY, H, t);
+    g.moveTo(0, y);
+    let px = 0;
+    while (px < W) {
+      const seg = 12 + Math.sin(px * 0.3 + row * 3.1) * 8;
+      const jitter = _prng(Math.floor(px / 12), row) * 4 * (0.5 + t);
+      g.lineTo(px + seg, y + jitter);
+      px += seg;
+    }
+    g.stroke({ color: 0x44445a, width: 1, alpha: 0.15 + t * 0.1 });
+  }
+  // Boulders
+  const bSeeds: [number, number][] = [[0.1, 0.55], [0.6, 0.48], [0.82, 0.7], [0.35, 0.8]];
+  for (const [xf, tf] of bSeeds) {
+    const x = xf * W;
+    const y = _gY(groundY, H, tf);
+    const s = (8 + tf * 12) * (0.4 + tf * 0.6);
+    g.ellipse(x, y, s * 1.5, s * 0.9).fill({ color: 0x5a5a6a, alpha: 0.55 });
+    g.ellipse(x - s * 0.2, y - s * 0.2, s * 0.45, s * 0.28).fill({ color: 0x7a7a8a, alpha: 0.3 });
+  }
+}
+
+function _drawDungeonFloor(g: Graphics, W: number, H: number, groundY: number): void {
+  // Stone tile floor: perspective horizontal seams + staggered vertical seams
+  const rows = 12;
+  const numCols = 6;
+  for (let row = 0; row <= rows; row++) {
+    const t = row / rows;
+    const y = _gY(groundY, H, t);
+    // Horizontal seam
+    g.moveTo(0, y).lineTo(W, y);
+    g.stroke({ color: 0x555566, width: 1, alpha: 0.28 + t * 0.18 });
+    if (row < rows) {
+      // Vertical seams with perspective convergence toward centre
+      const tNext = (row + 1) / rows;
+      const yNext = _gY(groundY, H, tNext);
+      const offset = (row % 2) * (W / numCols / 2);
+      for (let c = 0; c <= numCols; c++) {
+        const bx = (c / numCols) * W + offset;
+        if (bx < 0 || bx > W) continue;
+        const tx = bx + (W / 2 - bx) * 0.08; // slight converge toward horizon centre
+        g.moveTo(tx, y).lineTo(bx, yNext);
+        g.stroke({ color: 0x555566, width: 1, alpha: 0.18 });
+      }
+    }
+  }
+}
+
+function _drawArenaFloor(g: Graphics, W: number, H: number, groundY: number): void {
+  // Classic colosseum/arena: radial lines converging to vanishing point + elliptical rings
+  const numRadial = 14;
+  for (let i = 0; i <= numRadial; i++) {
+    const bx = (i / numRadial) * W;
+    g.moveTo(bx, H).lineTo(W / 2, groundY);
+    g.stroke({ color: 0x999988, width: 1, alpha: 0.12 });
+  }
+  // Elliptical rings spaced with perspective
+  const numRings = 8;
+  for (let ring = 1; ring <= numRings; ring++) {
+    const t = ring / numRings;
+    const cy = _gY(groundY, H, t);
+    const rx = t * W * 0.54;
+    const ry = Math.max(2, (cy - groundY) * 0.14);
+    g.ellipse(W / 2, cy, rx, ry);
+    g.stroke({ color: 0xaaa990, width: 1, alpha: 0.18 + t * 0.1 });
+  }
+  // Fine sand texture lines
+  for (let i = 0; i < 22; i++) {
+    const t = (i / 22) * (i / 22);
+    const y = groundY + t * (H - groundY);
+    const xOff = _prng(i, 5) * W * 0.08;
+    g.moveTo(xOff, y).lineTo(W - xOff, y);
+    g.stroke({ color: 0xccbb99, width: 1, alpha: 0.04 + t * 0.05 });
   }
 }
 
