@@ -163,6 +163,12 @@ export interface DuelState {
   // Announcements
   announcement: string | null;
   announcementTimer: number;
+  // Screen dimensions (resolved at match start)
+  screenW: number;
+  screenH: number;
+  stageFloorY: number;
+  stageLeft: number;
+  stageRight: number;
 }
 
 // ---- Factory ---------------------------------------------------------------
@@ -172,10 +178,11 @@ export function createFighter(
   x: number,
   facingRight: boolean,
   maxHp: number,
+  floorY: number = 0,
 ): DuelFighter {
   return {
     characterId,
-    position: { x, y: DuelBalance.STAGE_FLOOR_Y },
+    position: { x, y: floorY },
     velocity: { x: 0, y: 0 },
     facingRight,
     hp: maxHp,
@@ -214,12 +221,20 @@ export function createDuelState(
   p2MaxHp: number,
   arenaId: string,
   isAI: boolean,
+  screenW: number,
+  screenH: number,
 ): DuelState {
+  const floorY = Math.round(screenH * DuelBalance.STAGE_FLOOR_RATIO);
+  const stageLeft = DuelBalance.STAGE_MARGIN;
+  const stageRight = screenW - DuelBalance.STAGE_MARGIN;
+  const p1X = Math.round(screenW * DuelBalance.P1_START_RATIO);
+  const p2X = Math.round(screenW * DuelBalance.P2_START_RATIO);
+
   return {
     phase: DuelPhase.INTRO,
     fighters: [
-      createFighter(p1CharId, DuelBalance.P1_START_X, true, p1MaxHp),
-      createFighter(p2CharId, DuelBalance.P2_START_X, false, p2MaxHp),
+      createFighter(p1CharId, p1X, true, p1MaxHp, floorY),
+      createFighter(p2CharId, p2X, false, p2MaxHp, floorY),
     ],
     round: {
       roundNumber: 1,
@@ -238,5 +253,10 @@ export function createDuelState(
     nextProjectileId: 1,
     announcement: null,
     announcementTimer: 0,
+    screenW,
+    screenH,
+    stageFloorY: floorY,
+    stageLeft,
+    stageRight,
   };
 }

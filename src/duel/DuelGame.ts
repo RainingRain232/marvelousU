@@ -67,16 +67,17 @@ export class DuelGame {
     const p1Def = DUEL_CHARACTERS[p1Id];
     const p2Def = DUEL_CHARACTERS[p2Id];
 
+    const sw = viewManager.screenWidth;
+    const sh = viewManager.screenHeight;
+
     this._state = createDuelState(
       p1Id, p2Id,
       p1Def.maxHp, p2Def.maxHp,
       arenaId, true,
+      sw, sh,
     );
 
     this._prevHp = [p1Def.maxHp, p2Def.maxHp];
-
-    const sw = viewManager.screenWidth;
-    const sh = viewManager.screenHeight;
 
     // Build views
     this._arenaRenderer.build(arenaId, sw, sh);
@@ -95,6 +96,9 @@ export class DuelGame {
       this._beginFighting();
     });
     viewManager.addToLayer("ui", this._introView.container);
+
+    // Disable camera keyboard panning — arrow/WASD keys are for fighting
+    viewManager.camera.keyboardEnabled = false;
 
     // Start game loop
     this._simAccumulator = 0;
@@ -203,6 +207,7 @@ export class DuelGame {
 
   private _render(): void {
     if (!this._state) return;
+    this._arenaRenderer.update(performance.now() / 1000);
     this._fightView.update(this._state);
     this._hud.update(this._state);
   }
@@ -278,6 +283,7 @@ export class DuelGame {
   }
 
   private _cleanup(): void {
+    viewManager.camera.keyboardEnabled = true;
     DuelInputSystem.destroy();
 
     if (this._tickerCb) {

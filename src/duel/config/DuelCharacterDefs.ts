@@ -83,48 +83,48 @@ export const ARTHUR_DEF: DuelCharacterDef = {
   portrait: "arthur",
   fighterType: "sword",
   maxHp: 1000,
-  walkSpeed: 3.5,
-  backWalkSpeed: 2.5,
-  jumpVelocity: -14,
-  jumpForwardSpeed: 4,
+  walkSpeed: 5.5,
+  backWalkSpeed: 4.0,
+  jumpVelocity: -20,
+  jumpForwardSpeed: 6,
   weight: 1.0,
 
   normals: {
     // Q — Light high: quick sword jab
     light_high: normal(
       "light_high", "Jab", AttackHeight.HIGH,
-      4, 3, 6, 30, 12, 8, 5,
-      { x: 25, y: -60, width: 40, height: 20 },
+      4, 3, 6, 30, 12, 8, 8,
+      { x: 40, y: -120, width: 70, height: 35 },
     ),
     // W — Medium high: horizontal slash
     med_high: normal(
       "med_high", "Slash", AttackHeight.HIGH,
-      7, 4, 10, 60, 18, 12, 15,
-      { x: 20, y: -55, width: 55, height: 25 },
+      7, 4, 10, 60, 18, 12, 22,
+      { x: 35, y: -110, width: 90, height: 40 },
     ),
     // E — Heavy high: two-handed overhead
     heavy_high: normal(
       "heavy_high", "Heavy Slash", AttackHeight.HIGH,
-      12, 5, 16, 100, 24, 16, 30,
-      { x: 15, y: -70, width: 50, height: 40 },
+      12, 5, 16, 100, 24, 16, 45,
+      { x: 25, y: -150, width: 80, height: 70 },
     ),
     // A — Light low: quick low kick
     light_low: normal(
       "light_low", "Low Kick", AttackHeight.LOW,
-      4, 3, 7, 25, 10, 7, 3,
-      { x: 20, y: -15, width: 35, height: 20 },
+      4, 3, 7, 25, 10, 7, 5,
+      { x: 35, y: -25, width: 60, height: 35 },
     ),
     // S — Medium low: crouching sword poke
     med_low: normal(
       "med_low", "Low Poke", AttackHeight.LOW,
-      8, 4, 12, 50, 16, 10, 10,
-      { x: 20, y: -20, width: 50, height: 25 },
+      8, 4, 12, 50, 16, 10, 15,
+      { x: 35, y: -35, width: 85, height: 40 },
     ),
     // D — Heavy low: sweeping leg + sword
     heavy_low: normal(
       "heavy_low", "Sweep", AttackHeight.LOW,
-      14, 5, 18, 80, 0, 14, 20,
-      { x: 15, y: -10, width: 55, height: 20 },
+      14, 5, 18, 80, 0, 14, 30,
+      { x: 25, y: -18, width: 90, height: 35 },
       { isLauncher: true },
     ),
   },
@@ -133,27 +133,27 @@ export const ARTHUR_DEF: DuelCharacterDef = {
     // Q+W — Sword Thrust: lunging forward stab
     sword_thrust: special(
       "sword_thrust", "Sword Thrust", AttackHeight.MID,
-      8, 5, 14, 80, 16, 20, 14, 25,
-      { x: 20, y: -50, width: 70, height: 25 },
-      { movesForward: 60 },
+      8, 5, 14, 80, 16, 20, 14, 38,
+      { x: 35, y: -100, width: 110, height: 40 },
+      { movesForward: 100 },
     ),
     // W+E — Overhead Cleave: slow overhead, must block standing
     overhead_cleave: special(
       "overhead_cleave", "Overhead Cleave", AttackHeight.OVERHEAD,
-      16, 6, 20, 130, 26, 28, 18, 40,
-      { x: 10, y: -80, width: 50, height: 50 },
+      16, 6, 20, 130, 26, 28, 18, 60,
+      { x: 15, y: -160, width: 80, height: 90 },
     ),
     // A+S — Low Sweep: ground-level sword sweep
     low_sweep: special(
       "low_sweep", "Low Sweep", AttackHeight.LOW,
-      10, 5, 16, 70, 14, 18, 12, 15,
-      { x: 15, y: -10, width: 65, height: 20 },
+      10, 5, 16, 70, 14, 18, 12, 22,
+      { x: 25, y: -18, width: 110, height: 35 },
     ),
     // S+D — Rising Slash: anti-air uppercut
     rising_slash: special(
       "rising_slash", "Rising Slash", AttackHeight.MID,
-      6, 8, 22, 110, 22, 24, 16, 35,
-      { x: 10, y: -90, width: 40, height: 60 },
+      6, 8, 22, 110, 22, 24, 16, 50,
+      { x: 15, y: -180, width: 65, height: 100 },
       { isAntiAir: true, hasInvincibility: true, invincibleStartup: 4 },
     ),
   },
@@ -170,8 +170,8 @@ export const ARTHUR_DEF: DuelCharacterDef = {
     chipDamage: 0,
     hitstun: 30,
     blockstun: 0,
-    knockback: 60,
-    hitbox: { x: 15, y: -50, width: 35, height: 40 },
+    knockback: 90,
+    hitbox: { x: 25, y: -100, width: 55, height: 70 },
   },
 };
 
@@ -186,42 +186,42 @@ export const MERLIN_DEF: DuelCharacterDef = {
   portrait: "merlin",
   fighterType: "mage",
   maxHp: 900,
-  walkSpeed: 3.0,
-  backWalkSpeed: 2.2,
-  jumpVelocity: -13,
-  jumpForwardSpeed: 3.5,
+  walkSpeed: 4.5,
+  backWalkSpeed: 3.5,
+  jumpVelocity: -19,
+  jumpForwardSpeed: 5.5,
   weight: 0.9,
 
   normals: {
     light_high: normal(
       "light_high", "Staff Poke", AttackHeight.HIGH,
-      5, 3, 7, 25, 11, 7, 4,
-      { x: 25, y: -60, width: 45, height: 18 },
+      5, 3, 7, 25, 11, 7, 6,
+      { x: 40, y: -120, width: 75, height: 30 },
     ),
     med_high: normal(
       "med_high", "Staff Swing", AttackHeight.HIGH,
-      9, 4, 12, 50, 16, 11, 12,
-      { x: 20, y: -55, width: 55, height: 22 },
+      9, 4, 12, 50, 16, 11, 18,
+      { x: 35, y: -110, width: 90, height: 38 },
     ),
     heavy_high: normal(
       "heavy_high", "Staff Slam", AttackHeight.HIGH,
-      14, 5, 18, 85, 22, 15, 25,
-      { x: 15, y: -65, width: 50, height: 35 },
+      14, 5, 18, 85, 22, 15, 38,
+      { x: 25, y: -130, width: 80, height: 60 },
     ),
     light_low: normal(
       "light_low", "Low Staff", AttackHeight.LOW,
-      5, 3, 8, 20, 9, 6, 3,
-      { x: 22, y: -15, width: 40, height: 18 },
+      5, 3, 8, 20, 9, 6, 5,
+      { x: 38, y: -25, width: 65, height: 30 },
     ),
     med_low: normal(
       "med_low", "Staff Sweep", AttackHeight.LOW,
-      10, 4, 14, 45, 14, 10, 10,
-      { x: 18, y: -18, width: 52, height: 22 },
+      10, 4, 14, 45, 14, 10, 15,
+      { x: 30, y: -30, width: 85, height: 38 },
     ),
     heavy_low: normal(
       "heavy_low", "Ground Slam", AttackHeight.LOW,
-      16, 5, 20, 70, 0, 14, 18,
-      { x: 12, y: -10, width: 55, height: 20 },
+      16, 5, 20, 70, 0, 14, 28,
+      { x: 20, y: -18, width: 90, height: 35 },
       { isLauncher: true },
     ),
   },
@@ -230,22 +230,22 @@ export const MERLIN_DEF: DuelCharacterDef = {
     // Q+W — Arcane Bolt: hadouken projectile
     arcane_bolt: special(
       "arcane_bolt", "Arcane Bolt", AttackHeight.MID,
-      12, 3, 16, 60, 12, 18, 12, 15,
-      { x: 30, y: -50, width: 20, height: 20 },
-      { isProjectile: true, projectileSpeed: 6, projectileHeight: AttackHeight.MID },
+      12, 3, 16, 60, 12, 18, 12, 22,
+      { x: 50, y: -100, width: 35, height: 35 },
+      { isProjectile: true, projectileSpeed: 9, projectileHeight: AttackHeight.MID },
     ),
     // W+E — Thunder Strike: overhead lightning at mid-range
     thunder_strike: special(
       "thunder_strike", "Thunder Strike", AttackHeight.OVERHEAD,
-      18, 6, 18, 100, 20, 24, 16, 30,
-      { x: 100, y: -100, width: 30, height: 100 },
+      18, 6, 18, 100, 20, 24, 16, 45,
+      { x: 160, y: -190, width: 50, height: 190 },
     ),
     // A+S — Frost Wave: low ground projectile
     frost_wave: special(
       "frost_wave", "Frost Wave", AttackHeight.LOW,
-      14, 3, 18, 50, 10, 16, 10, 10,
-      { x: 30, y: -15, width: 25, height: 20 },
-      { isProjectile: true, projectileSpeed: 4, projectileHeight: AttackHeight.LOW },
+      14, 3, 18, 50, 10, 16, 10, 15,
+      { x: 50, y: -25, width: 40, height: 35 },
+      { isProjectile: true, projectileSpeed: 6, projectileHeight: AttackHeight.LOW },
     ),
     // S+D — Teleport: vanish and reappear behind opponent
     teleport: special(
@@ -268,8 +268,8 @@ export const MERLIN_DEF: DuelCharacterDef = {
     chipDamage: 0,
     hitstun: 28,
     blockstun: 0,
-    knockback: 50,
-    hitbox: { x: 15, y: -50, width: 35, height: 40 },
+    knockback: 75,
+    hitbox: { x: 25, y: -100, width: 55, height: 70 },
   },
 };
 
@@ -284,42 +284,42 @@ export const ELAINE_DEF: DuelCharacterDef = {
   portrait: "elaine",
   fighterType: "archer",
   maxHp: 850,
-  walkSpeed: 4.0,
-  backWalkSpeed: 3.0,
-  jumpVelocity: -14.5,
-  jumpForwardSpeed: 4.5,
+  walkSpeed: 6.0,
+  backWalkSpeed: 4.5,
+  jumpVelocity: -21,
+  jumpForwardSpeed: 7,
   weight: 0.8,
 
   normals: {
     light_high: normal(
       "light_high", "Quick Strike", AttackHeight.HIGH,
-      3, 3, 5, 22, 10, 7, 4,
-      { x: 22, y: -58, width: 38, height: 18 },
+      3, 3, 5, 22, 10, 7, 6,
+      { x: 38, y: -115, width: 60, height: 30 },
     ),
     med_high: normal(
       "med_high", "Bow Swing", AttackHeight.HIGH,
-      6, 4, 9, 45, 15, 10, 10,
-      { x: 18, y: -55, width: 50, height: 22 },
+      6, 4, 9, 45, 15, 10, 15,
+      { x: 30, y: -110, width: 80, height: 38 },
     ),
     heavy_high: normal(
       "heavy_high", "Bow Slam", AttackHeight.HIGH,
-      10, 5, 14, 75, 20, 14, 22,
-      { x: 15, y: -65, width: 48, height: 30 },
+      10, 5, 14, 75, 20, 14, 32,
+      { x: 25, y: -130, width: 75, height: 50 },
     ),
     light_low: normal(
       "light_low", "Shin Kick", AttackHeight.LOW,
-      3, 3, 6, 18, 8, 6, 3,
-      { x: 20, y: -12, width: 32, height: 18 },
+      3, 3, 6, 18, 8, 6, 5,
+      { x: 35, y: -20, width: 55, height: 30 },
     ),
     med_low: normal(
       "med_low", "Slide Kick", AttackHeight.LOW,
-      7, 4, 10, 40, 13, 9, 8,
-      { x: 18, y: -15, width: 45, height: 20 },
+      7, 4, 10, 40, 13, 9, 12,
+      { x: 30, y: -25, width: 75, height: 35 },
     ),
     heavy_low: normal(
       "heavy_low", "Sweep Kick", AttackHeight.LOW,
-      11, 5, 15, 60, 0, 12, 15,
-      { x: 12, y: -10, width: 50, height: 18 },
+      11, 5, 15, 60, 0, 12, 22,
+      { x: 20, y: -18, width: 80, height: 30 },
       { isLauncher: true },
     ),
   },
@@ -328,28 +328,28 @@ export const ELAINE_DEF: DuelCharacterDef = {
     // Q+W — Power Shot: fast arrow projectile
     power_shot: special(
       "power_shot", "Power Shot", AttackHeight.MID,
-      8, 3, 12, 50, 10, 16, 10, 12,
-      { x: 30, y: -50, width: 18, height: 12 },
-      { isProjectile: true, projectileSpeed: 8, projectileHeight: AttackHeight.MID },
+      8, 3, 12, 50, 10, 16, 10, 18,
+      { x: 50, y: -100, width: 30, height: 20 },
+      { isProjectile: true, projectileSpeed: 12, projectileHeight: AttackHeight.MID },
     ),
     // W+E — Rain of Arrows: arcing overhead at set distance
     rain_of_arrows: special(
       "rain_of_arrows", "Rain of Arrows", AttackHeight.OVERHEAD,
-      16, 8, 16, 70, 14, 20, 14, 20,
-      { x: 80, y: -90, width: 60, height: 90 },
+      16, 8, 16, 70, 14, 20, 14, 30,
+      { x: 130, y: -180, width: 100, height: 180 },
     ),
     // A+S — Leg Sweep: quick trip, combo starter
     leg_sweep: special(
       "leg_sweep", "Leg Sweep", AttackHeight.LOW,
-      6, 4, 12, 40, 8, 14, 8, 5,
-      { x: 15, y: -10, width: 50, height: 18 },
+      6, 4, 12, 40, 8, 14, 8, 8,
+      { x: 25, y: -18, width: 80, height: 30 },
     ),
     // S+D — Backflip Shot: jump back + fire arrow
     backflip_shot: special(
       "backflip_shot", "Backflip Shot", AttackHeight.MID,
-      6, 6, 10, 55, 11, 16, 10, 15,
-      { x: 20, y: -55, width: 20, height: 15 },
-      { isProjectile: true, projectileSpeed: 7, projectileHeight: AttackHeight.MID, movesBack: 80 },
+      6, 6, 10, 55, 11, 16, 10, 22,
+      { x: 35, y: -110, width: 30, height: 25 },
+      { isProjectile: true, projectileSpeed: 10, projectileHeight: AttackHeight.MID, movesBack: 130 },
     ),
   },
 
@@ -365,8 +365,8 @@ export const ELAINE_DEF: DuelCharacterDef = {
     chipDamage: 0,
     hitstun: 26,
     blockstun: 0,
-    knockback: 55,
-    hitbox: { x: 12, y: -50, width: 30, height: 40 },
+    knockback: 80,
+    hitbox: { x: 20, y: -100, width: 50, height: 70 },
   },
 };
 

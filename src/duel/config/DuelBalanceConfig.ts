@@ -10,12 +10,10 @@ export const DuelBalance = {
   ROUND_TIME_FRAMES: 99 * 60,
 
   // Physics
-  GRAVITY: 0.8,
-  STAGE_WIDTH: 800,
-  STAGE_FLOOR_Y: 400,
-  STAGE_LEFT: 50,
-  STAGE_RIGHT: 750,
-  PUSH_BACK_SPEED: 2,
+  GRAVITY: 1.2,
+  STAGE_FLOOR_RATIO: 0.82, // floor Y as fraction of screen height
+  PUSH_BACK_SPEED: 3,
+  STAGE_MARGIN: 60, // left/right wall margin from screen edge
 
   // Combo
   COMBO_DAMAGE_SCALING: 0.9,
@@ -45,16 +43,19 @@ export const DuelBalance = {
   ROUND_START_DELAY: 90, // frames before "FIGHT"
   ROUND_END_DELAY: 120,
 
-  // Positions
-  P1_START_X: 250,
-  P2_START_X: 550,
+  // Positions (ratios of screen width for dynamic sizing)
+  P1_START_RATIO: 0.3,
+  P2_START_RATIO: 0.7,
 
-  // Fighter body (hurtbox)
-  STAND_HURTBOX_W: 40,
-  STAND_HURTBOX_H: 90,
-  CROUCH_HURTBOX_H: 55,
+  // Fighter body (hurtbox) — scaled up for ~200px tall fighters
+  STAND_HURTBOX_W: 60,
+  STAND_HURTBOX_H: 190,
+  CROUCH_HURTBOX_H: 130,
 
   // Jump
-  DEFAULT_JUMP_VELOCITY: -14,
-  JUMP_FORWARD_SPEED: 4,
+  DEFAULT_JUMP_VELOCITY: -20,
+  JUMP_FORWARD_SPEED: 6,
+
+  // Fighter visual scale
+  FIGHTER_SCALE: 1.0, // base scale for skeleton drawing
 } as const;

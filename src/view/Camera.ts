@@ -39,6 +39,9 @@ export class Camera {
   /** When true, camera pans on middle-click instead of left-click (RTS mode). */
   manualControlMode = false;
 
+  /** When false, keyboard panning (WASD / arrows) is ignored. */
+  keyboardEnabled = true;
+
   // Screen dimensions — must be set/updated when the renderer resizes
   screenW = 800;
   screenH = 600;
@@ -414,10 +417,12 @@ export class Camera {
   // ---------------------------------------------------------------------------
 
   private _handleKeyDown(e: KeyboardEvent): void {
+    if (!this.keyboardEnabled) return;
     this._setKey(e.code, true);
   }
 
   private _handleKeyUp(e: KeyboardEvent): void {
+    if (!this.keyboardEnabled) return;
     this._setKey(e.code, false);
   }
 

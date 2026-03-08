@@ -68,8 +68,8 @@ export const DuelProjectileSystem = {
       // Off-screen or expired
       if (
         proj.lifetime <= 0 ||
-        proj.position.x < DuelBalance.STAGE_LEFT - DuelBalance.PROJECTILE_DESPAWN_X ||
-        proj.position.x > DuelBalance.STAGE_RIGHT + DuelBalance.PROJECTILE_DESPAWN_X
+        proj.position.x < state.stageLeft - DuelBalance.PROJECTILE_DESPAWN_X ||
+        proj.position.x > state.stageRight + DuelBalance.PROJECTILE_DESPAWN_X
       ) {
         state.projectiles.splice(i, 1);
         continue;
@@ -144,8 +144,8 @@ function _applyProjectileHit(
     const dir = proj.velocity.x > 0 ? 1 : -1;
     target.position.x += dir * proj.knockback;
     target.position.x = Math.max(
-      DuelBalance.STAGE_LEFT,
-      Math.min(DuelBalance.STAGE_RIGHT, target.position.x),
+      state.stageLeft,
+      Math.min(state.stageRight, target.position.x),
     );
 
     // Combo tracking

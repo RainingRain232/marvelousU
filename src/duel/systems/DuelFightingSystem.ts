@@ -45,8 +45,8 @@ export const DuelFightingSystem = {
     // Clamp to stage
     for (const f of state.fighters) {
       f.position.x = Math.max(
-        DuelBalance.STAGE_LEFT,
-        Math.min(DuelBalance.STAGE_RIGHT, f.position.x),
+        state.stageLeft,
+        Math.min(state.stageRight, f.position.x),
       );
     }
 
@@ -61,8 +61,10 @@ export const DuelFightingSystem = {
     const p1Def = DUEL_CHARACTERS[state.fighters[0].characterId];
     const p2Def = DUEL_CHARACTERS[state.fighters[1].characterId];
 
-    _resetFighter(state.fighters[0], DuelBalance.P1_START_X, true, p1Def.maxHp);
-    _resetFighter(state.fighters[1], DuelBalance.P2_START_X, false, p2Def.maxHp);
+    const p1X = Math.round(state.screenW * DuelBalance.P1_START_RATIO);
+    const p2X = Math.round(state.screenW * DuelBalance.P2_START_RATIO);
+    _resetFighter(state.fighters[0], p1X, true, p1Def.maxHp, state.stageFloorY);
+    _resetFighter(state.fighters[1], p2X, false, p2Def.maxHp, state.stageFloorY);
 
     state.round.timeRemaining = DuelBalance.ROUND_TIME_FRAMES;
     state.round.winnerId = null;
@@ -103,6 +105,9 @@ function _updateFighter(
 ): void {
   const fighter = state.fighters[idx];
   const charDef = DUEL_CHARACTERS[fighter.characterId];
+
+  // Increment animation timer
+  fighter.stateTimer++;
 
   // Decrement timers
   if (fighter.invincibleFrames > 0) fighter.invincibleFrames--;
@@ -174,8 +179,8 @@ function _updateFighter(
     fighter.position.x += fighter.velocity.x;
     fighter.position.y += fighter.velocity.y;
 
-    if (fighter.position.y >= DuelBalance.STAGE_FLOOR_Y) {
-      fighter.position.y = DuelBalance.STAGE_FLOOR_Y;
+    if (fighter.position.y >= state.stageFloorY) {
+      fighter.position.y = state.stageFloorY;
       fighter.velocity.y = 0;
       fighter.velocity.x = 0;
       fighter.grounded = true;
@@ -347,8 +352,8 @@ function _updateGrab(
       const dir = fighter.facingRight ? 1 : -1;
       opponent.position.x += dir * grab.knockback;
       opponent.position.x = Math.max(
-        DuelBalance.STAGE_LEFT,
-        Math.min(DuelBalance.STAGE_RIGHT, opponent.position.x),
+        state.stageLeft,
+        Math.min(state.stageRight, opponent.position.x),
       );
 
       state.slowdownFrames = DuelBalance.HIT_FREEZE_FRAMES;
@@ -484,8 +489,8 @@ function _resolveHit(
 
   // Clamp positions
   defender.position.x = Math.max(
-    DuelBalance.STAGE_LEFT,
-    Math.min(DuelBalance.STAGE_RIGHT, defender.position.x),
+    state.stageLeft,
+    Math.min(state.stageRight, defender.position.x),
   );
 }
 
@@ -557,9 +562,10 @@ function _resetFighter(
   x: number,
   facingRight: boolean,
   maxHp: number,
+  floorY: number,
 ): void {
   fighter.position.x = x;
-  fighter.position.y = DuelBalance.STAGE_FLOOR_Y;
+  fighter.position.y = floorY;
   fighter.velocity.x = 0;
   fighter.velocity.y = 0;
   fighter.facingRight = facingRight;

@@ -1,18 +1,43 @@
 // ---------------------------------------------------------------------------
-// Duel mode – main fight rendering view
+// Duel mode – main fight rendering view (skeleton-based)
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics } from "pixi.js";
 import { DuelFighterState } from "../../types";
-import { DuelBalance } from "../../duel/config/DuelBalanceConfig";
 import { DUEL_CHARACTERS } from "../../duel/config/DuelCharacterDefs";
 import type { DuelFighter, DuelState } from "../../duel/state/DuelState";
+import {
+  drawFighterSkeleton,
+  drawFighterShadow,
+  type FighterPose,
+  type FighterPalette,
+  type DrawFighterOptions,
+} from "./DuelSkeletonRenderer";
+import { ARTHUR_PALETTE, ARTHUR_POSES, drawArthurExtras } from "./DuelArthurPoses";
+import { MERLIN_PALETTE, MERLIN_POSES, drawMerlinExtras } from "./DuelMerlinPoses";
+import { ELAINE_PALETTE, ELAINE_POSES, drawElaineExtras } from "./DuelElainePoses";
 
-// Fighter placeholder colors
-const P1_COLOR = 0x3366cc;
-const P2_COLOR = 0xcc3333;
-const P1_OUTLINE = 0x5588ee;
-const P2_OUTLINE = 0xee5555;
+// ---- Character data lookup -------------------------------------------------
+
+const PALETTES: Record<string, FighterPalette> = {
+  arthur: ARTHUR_PALETTE,
+  merlin: MERLIN_PALETTE,
+  elaine: ELAINE_PALETTE,
+};
+
+const POSES: Record<string, Record<string, FighterPose[]>> = {
+  arthur: ARTHUR_POSES,
+  merlin: MERLIN_POSES,
+  elaine: ELAINE_POSES,
+};
+
+const EXTRAS: Record<string, (g: Graphics, p: FighterPose, pal: FighterPalette) => void> = {
+  arthur: drawArthurExtras,
+  merlin: drawMerlinExtras,
+  elaine: drawElaineExtras,
+};
+
+// ---- Projectile colors -----------------------------------------------------
 
 const PROJECTILE_COLORS: Record<string, number> = {
   arcane_bolt: 0x8888ff,
@@ -21,14 +46,17 @@ const PROJECTILE_COLORS: Record<string, number> = {
   backflip_shot: 0xddbb44,
 };
 
-// Hit spark
-const SPARK_DURATION = 12;
+// ---- Hit spark -------------------------------------------------------------
+
+const SPARK_DURATION = 15;
 
 interface HitSpark {
   x: number;
   y: number;
   timer: number;
 }
+
+// ---- Fight view class ------------------------------------------------------
 
 export class DuelFightView {
   readonly container = new Container();
@@ -41,8 +69,6 @@ export class DuelFightView {
   private _p2Gfx = new Graphics();
   private _projGfx = new Graphics();
   private _sparkGfx = new Graphics();
-
-  // Shadow graphics
   private _shadowGfx = new Graphics();
 
   private _sparks: HitSpark[] = [];
@@ -69,16 +95,16 @@ export class DuelFightView {
 
   /** Call each display frame to render current state. */
   update(state: DuelState): void {
-    this._drawFighter(this._p1Gfx, state.fighters[0], P1_COLOR, P1_OUTLINE);
-    this._drawFighter(this._p2Gfx, state.fighters[1], P2_COLOR, P2_OUTLINE);
+    this._drawFighter(this._p1Gfx, state.fighters[0], state);
+    this._drawFighter(this._p2Gfx, state.fighters[1], state);
     this._drawShadows(state);
     this._drawProjectiles(state);
     this._drawSparks();
 
     // Screen shake on hit freeze
     if (state.slowdownFrames > 0) {
-      const shake = (Math.random() - 0.5) * 4;
-      this.container.position.set(shake, (Math.random() - 0.5) * 3);
+      const shake = (Math.random() - 0.5) * 6;
+      this.container.position.set(shake, (Math.random() - 0.5) * 4);
     } else {
       this.container.position.set(0, 0);
     }
@@ -89,164 +115,159 @@ export class DuelFightView {
     this._sparks.push({ x, y, timer: SPARK_DURATION });
   }
 
+  // ---- Fighter drawing -----------------------------------------------------
+
   private _drawFighter(
     g: Graphics,
     fighter: DuelFighter,
-    color: number,
-    outline: number,
+    _state: DuelState,
   ): void {
     g.clear();
 
-    const x = fighter.position.x;
-    const y = fighter.position.y;
-    const isCrouching =
-      fighter.state === DuelFighterState.CROUCH ||
-      fighter.state === DuelFighterState.CROUCH_IDLE ||
-      fighter.state === DuelFighterState.BLOCK_CROUCH;
-    const bodyH = isCrouching ? DuelBalance.CROUCH_HURTBOX_H : DuelBalance.STAND_HURTBOX_H;
-    const bodyW = DuelBalance.STAND_HURTBOX_W;
-    const dir = fighter.facingRight ? 1 : -1;
+    const charId = fighter.characterId;
+    const palette = PALETTES[charId];
+    const poses = POSES[charId];
+    const extras = EXTRAS[charId];
 
-    const charDef = DUEL_CHARACTERS[fighter.characterId];
+    if (!palette || !poses) return;
 
-    // Fighter body
+    // Determine which pose to use
+    const poseKey = this._getPoseKey(fighter);
+    const poseFrames = poses[poseKey] ?? poses["idle"];
+    if (!poseFrames || poseFrames.length === 0) return;
+
+    // Determine frame index based on state timer / move frame
+    const frameIdx = Math.min(
+      this._getFrameIndex(fighter, poseFrames),
+      poseFrames.length - 1,
+    );
+    const currentPose = poseFrames[frameIdx];
+    if (!currentPose) return;
+
+    // Position and flip the graphics
+    g.position.set(fighter.position.x, fighter.position.y);
+    g.scale.x = fighter.facingRight ? 1 : -1;
+
+    // Flash effect on hit
+    const isHitFlash = fighter.state === DuelFighterState.HIT_STUN &&
+      fighter.hitstunFrames % 4 < 2;
+
+    // Invincibility flicker
+    if (fighter.invincibleFrames > 0 && fighter.invincibleFrames % 4 < 2) {
+      g.alpha = 0.4;
+    } else {
+      g.alpha = 1;
+    }
+
+    const opts: DrawFighterOptions = {
+      pose: currentPose,
+      palette,
+      isFlashing: isHitFlash,
+      flashColor: 0xffffff,
+      drawExtras: extras,
+    };
+
+    drawFighterSkeleton(g, opts);
+  }
+
+  /** Map fighter state to pose key. */
+  private _getPoseKey(fighter: DuelFighter): string {
     switch (fighter.state) {
-      case DuelFighterState.KNOCKDOWN:
-      case DuelFighterState.DEFEAT: {
-        // Lying down
-        g.roundRect(x - bodyH / 2, y - 15, bodyH, 15, 3);
-        g.fill({ color, alpha: 0.7 });
-        g.stroke({ color: outline, width: 1.5 });
-        break;
-      }
-
-      case DuelFighterState.HIT_STUN:
-      case DuelFighterState.GRABBED: {
-        // Recoiling
-        const lean = dir * -5;
-        g.roundRect(x - bodyW / 2 + lean, y - bodyH, bodyW, bodyH, 4);
-        g.fill({ color: 0xffffff, alpha: 0.3 });
-        g.roundRect(x - bodyW / 2 + lean, y - bodyH, bodyW, bodyH, 4);
-        g.fill({ color, alpha: 0.8 });
-        g.stroke({ color: 0xff4444, width: 2 });
-        break;
-      }
-
+      case DuelFighterState.IDLE:
+        return "idle";
+      case DuelFighterState.WALK_FORWARD:
+        return "walk_forward";
+      case DuelFighterState.WALK_BACK:
+        return "walk_back";
+      case DuelFighterState.CROUCH:
+      case DuelFighterState.CROUCH_IDLE:
+        return "crouch";
+      case DuelFighterState.JUMP:
+      case DuelFighterState.JUMP_FORWARD:
+      case DuelFighterState.JUMP_BACK:
+        return "jump";
       case DuelFighterState.BLOCK_STAND:
-      case DuelFighterState.BLOCK_CROUCH: {
-        // Blocking stance with shield/guard
-        g.roundRect(x - bodyW / 2, y - bodyH, bodyW, bodyH, 4);
-        g.fill({ color, alpha: 0.9 });
-        g.stroke({ color: 0xffdd44, width: 2 });
-        // Guard indicator
-        g.rect(x + dir * 15, y - bodyH + 10, 5, bodyH - 20);
-        g.fill({ color: 0xffdd44, alpha: 0.6 });
-        break;
-      }
+        return "block_stand";
+      case DuelFighterState.BLOCK_CROUCH:
+        return "block_crouch";
+      case DuelFighterState.HIT_STUN:
+      case DuelFighterState.GRABBED:
+        return "hit_stun";
+      case DuelFighterState.KNOCKDOWN:
+        return "knockdown";
+      case DuelFighterState.GET_UP:
+        return "get_up";
+      case DuelFighterState.VICTORY:
+        return "victory";
+      case DuelFighterState.DEFEAT:
+        return "defeat";
+      case DuelFighterState.ATTACK:
+        // Use the current move name as pose key
+        return fighter.currentMove ?? "idle";
+      case DuelFighterState.GRAB:
+        return "grab";
+      default:
+        return "idle";
+    }
+  }
 
+  /** Calculate frame index for animation. */
+  private _getFrameIndex(fighter: DuelFighter, frames: FighterPose[]): number {
+    if (frames.length <= 1) return 0;
+
+    switch (fighter.state) {
       case DuelFighterState.ATTACK:
       case DuelFighterState.GRAB: {
-        // Attacking - show body + weapon extension
-        g.roundRect(x - bodyW / 2, y - bodyH, bodyW, bodyH, 4);
-        g.fill({ color });
-        g.stroke({ color: outline, width: 1.5 });
-
-        // Show hitbox as weapon extension
+        // Map moveFrame to pose frames based on startup/active/recovery
+        const charDef = DUEL_CHARACTERS[fighter.characterId];
         const move =
           charDef.normals[fighter.currentMove ?? ""] ??
           charDef.specials[fighter.currentMove ?? ""] ??
           (fighter.currentMove === "grab" ? charDef.grab : null);
 
-        if (move && fighter.moveFrame >= move.startup && fighter.moveFrame < move.startup + move.active) {
-          const hbX = x + dir * move.hitbox.x;
-          const hbY = y + move.hitbox.y;
-          const hbW = move.hitbox.width;
-          const hbH = move.hitbox.height;
-          // Weapon glow
-          const weaponColor = charDef.fighterType === "mage" ? 0x8888ff :
-            charDef.fighterType === "archer" ? 0xddbb44 : 0xccccdd;
-          if (dir > 0) {
-            g.rect(hbX, hbY, hbW, hbH);
-          } else {
-            g.rect(hbX - hbW, hbY, hbW, hbH);
-          }
-          g.fill({ color: weaponColor, alpha: 0.4 });
-          g.stroke({ color: weaponColor, width: 1, alpha: 0.7 });
+        if (move) {
+          const totalFrames = move.startup + move.active + move.recovery;
+          const progress = Math.min(fighter.moveFrame / totalFrames, 0.999);
+          return Math.floor(progress * frames.length);
         }
-        break;
+        return 0;
       }
 
-      case DuelFighterState.VICTORY: {
-        // Victory pose
-        g.roundRect(x - bodyW / 2, y - bodyH - 5, bodyW, bodyH, 4);
-        g.fill({ color });
-        g.stroke({ color: 0xffdd44, width: 2 });
-        // Raised arm
-        g.rect(x + dir * 5, y - bodyH - 25, 6, 25);
-        g.fill({ color });
-        break;
+      case DuelFighterState.IDLE:
+      case DuelFighterState.WALK_FORWARD:
+      case DuelFighterState.WALK_BACK: {
+        // Loop based on stateTimer / frameCount
+        const animSpeed = fighter.state === DuelFighterState.IDLE ? 12 : 8;
+        return Math.floor(fighter.stateTimer / animSpeed) % frames.length;
       }
 
-      default: {
-        // Standard standing/walking/jumping
-        const offsetY = fighter.grounded ? 0 : 0;
-        g.roundRect(x - bodyW / 2, y - bodyH + offsetY, bodyW, bodyH, 4);
-        g.fill({ color });
-        g.stroke({ color: outline, width: 1.5 });
-
-        // Head
-        g.circle(x, y - bodyH - 6 + offsetY, 8);
-        g.fill({ color });
-        g.stroke({ color: outline, width: 1 });
-
-        // Weapon indicator based on type
-        if (charDef.fighterType === "sword") {
-          // Sword
-          g.moveTo(x + dir * 18, y - bodyH + 20);
-          g.lineTo(x + dir * 35, y - bodyH + 5);
-          g.stroke({ color: 0xccccdd, width: 3 });
-          // Shield
-          g.roundRect(x - dir * 15, y - bodyH + 15, 10, 20, 2);
-          g.fill({ color: 0x8b4513 });
-        } else if (charDef.fighterType === "mage") {
-          // Staff
-          g.moveTo(x + dir * 15, y - bodyH - 10);
-          g.lineTo(x + dir * 15, y);
-          g.stroke({ color: 0x8b4513, width: 3 });
-          // Crystal
-          g.circle(x + dir * 15, y - bodyH - 14, 4);
-          g.fill({ color: 0x8888ff, alpha: 0.8 });
-        } else if (charDef.fighterType === "archer") {
-          // Bow
-          g.moveTo(x + dir * 20, y - bodyH + 10);
-          g.quadraticCurveTo(x + dir * 30, y - bodyH / 2, x + dir * 20, y - 10);
-          g.stroke({ color: 0x8b4513, width: 2 });
-          // String
-          g.moveTo(x + dir * 20, y - bodyH + 10);
-          g.lineTo(x + dir * 20, y - 10);
-          g.stroke({ color: 0xcccccc, width: 0.8 });
-        }
-        break;
+      case DuelFighterState.KNOCKDOWN:
+      case DuelFighterState.GET_UP:
+      case DuelFighterState.HIT_STUN: {
+        // Progress through frames based on timer
+        const maxTimer = fighter.state === DuelFighterState.KNOCKDOWN ? 40 :
+          fighter.state === DuelFighterState.GET_UP ? 20 : fighter.hitstunFrames;
+        const elapsed = maxTimer - fighter.stateTimer;
+        if (maxTimer <= 0 || elapsed < 0) return 0;
+        const progress = Math.min(elapsed / maxTimer, 0.999);
+        return Math.max(0, Math.floor(progress * frames.length));
       }
-    }
 
-    // Invincibility flash
-    if (fighter.invincibleFrames > 0 && fighter.invincibleFrames % 4 < 2) {
-      g.alpha = 0.5;
-    } else {
-      g.alpha = 1;
+      default:
+        return 0;
     }
   }
+
+  // ---- Shadows --------------------------------------------------------------
 
   private _drawShadows(state: DuelState): void {
     this._shadowGfx.clear();
     for (const f of state.fighters) {
-      const floorY = DuelBalance.STAGE_FLOOR_Y;
-      const shadowScale = f.grounded ? 1 : 0.7;
-      this._shadowGfx.ellipse(f.position.x, floorY + 2, 20 * shadowScale, 5 * shadowScale);
-      this._shadowGfx.fill({ color: 0x000000, alpha: 0.25 });
+      drawFighterShadow(this._shadowGfx, f.position.x, state.stageFloorY, f.grounded);
     }
   }
+
+  // ---- Projectiles ----------------------------------------------------------
 
   private _drawProjectiles(state: DuelState): void {
     this._projGfx.clear();
@@ -257,23 +278,33 @@ export class DuelFightView {
       const w = proj.hitbox.width;
       const h = proj.hitbox.height;
 
-      // Glow
+      // Outer glow
+      this._projGfx.circle(x, y, w * 1.2);
+      this._projGfx.fill({ color, alpha: 0.15 });
+
+      // Mid glow
       this._projGfx.circle(x, y, w * 0.8);
-      this._projGfx.fill({ color, alpha: 0.2 });
+      this._projGfx.fill({ color, alpha: 0.3 });
 
       // Core
       this._projGfx.ellipse(x, y, w / 2, h / 2);
-      this._projGfx.fill({ color, alpha: 0.8 });
-      this._projGfx.stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
+      this._projGfx.fill({ color, alpha: 0.9 });
+      this._projGfx.stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 });
+
+      // Inner bright
+      this._projGfx.circle(x, y, w * 0.2);
+      this._projGfx.fill({ color: 0xffffff, alpha: 0.8 });
 
       // Trail
       const trailDir = proj.velocity.x > 0 ? -1 : 1;
-      this._projGfx.moveTo(x, y - h / 4);
-      this._projGfx.lineTo(x + trailDir * w, y);
-      this._projGfx.lineTo(x, y + h / 4);
-      this._projGfx.fill({ color, alpha: 0.3 });
+      this._projGfx.moveTo(x, y - h / 3);
+      this._projGfx.lineTo(x + trailDir * w * 1.5, y);
+      this._projGfx.lineTo(x, y + h / 3);
+      this._projGfx.fill({ color, alpha: 0.25 });
     }
   }
+
+  // ---- Hit sparks -----------------------------------------------------------
 
   private _drawSparks(): void {
     this._sparkGfx.clear();
@@ -286,23 +317,32 @@ export class DuelFightView {
       }
 
       const t = spark.timer / SPARK_DURATION;
-      const size = 8 + (1 - t) * 12;
+      const size = 12 + (1 - t) * 20;
 
-      // Burst lines
-      for (let j = 0; j < 6; j++) {
-        const angle = (j / 6) * Math.PI * 2;
-        const r = size * (1 - t);
-        this._sparkGfx.moveTo(spark.x, spark.y);
-        this._sparkGfx.lineTo(
-          spark.x + Math.cos(angle) * r,
-          spark.y + Math.sin(angle) * r,
+      // Starburst rays
+      const rayCount = 8;
+      for (let j = 0; j < rayCount; j++) {
+        const angle = (j / rayCount) * Math.PI * 2 + (1 - t) * 2;
+        const innerR = size * 0.3 * (1 - t);
+        const outerR = size * (1 - t * 0.3);
+        this._sparkGfx.moveTo(
+          spark.x + Math.cos(angle) * innerR,
+          spark.y + Math.sin(angle) * innerR,
         );
-        this._sparkGfx.stroke({ color: 0xffff88, width: 2, alpha: t });
+        this._sparkGfx.lineTo(
+          spark.x + Math.cos(angle) * outerR,
+          spark.y + Math.sin(angle) * outerR,
+        );
+        this._sparkGfx.stroke({ color: 0xffff88, width: 3, alpha: t });
       }
 
-      // Center flash
-      this._sparkGfx.circle(spark.x, spark.y, 4 * t);
-      this._sparkGfx.fill({ color: 0xffffff, alpha: t * 0.8 });
+      // Orange outer glow
+      this._sparkGfx.circle(spark.x, spark.y, size * 0.6 * t);
+      this._sparkGfx.fill({ color: 0xff8800, alpha: t * 0.4 });
+
+      // White center flash
+      this._sparkGfx.circle(spark.x, spark.y, 5 * t);
+      this._sparkGfx.fill({ color: 0xffffff, alpha: t * 0.9 });
     }
   }
 
