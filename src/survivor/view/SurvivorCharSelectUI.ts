@@ -2,7 +2,8 @@
 // Survivor character select + map select + meta upgrade shop
 // ---------------------------------------------------------------------------
 
-import { Container, Graphics, Text, TextStyle, AnimatedSprite } from "pixi.js";
+import { Container, Graphics, Text, TextStyle, AnimatedSprite, Assets, Sprite, Texture } from "pixi.js";
+import archerandswordsmanImgUrl from "@/img/archerandswordsman.png";
 import { t } from "@/i18n/i18n";
 import { UnitState, MapType } from "@/types";
 import { animationManager } from "@view/animation/AnimationManager";
@@ -16,9 +17,26 @@ import { SurvivorPersistence } from "../state/SurvivorPersistence";
 const STYLE_TITLE = new TextStyle({ fontFamily: "monospace", fontSize: 28, fill: 0xffd700, fontWeight: "bold", letterSpacing: 3 });
 const STYLE_CHAR_NAME = new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffd700, fontWeight: "bold" });
 const STYLE_CHAR_DESC = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xaabbcc });
+
+const SURVIVOR_HINTS = [
+  "Move constantly — staying still lets enemies surround you.",
+  "Pick up XP orbs quickly. Levelling up fast unlocks stronger upgrades.",
+  "Area-of-effect and piercing upgrades combo well against dense hordes.",
+  "The Magnet passive pulls XP from far away — great on crowded maps.",
+  "Each character plays differently — try them all to find your style.",
+  "Larger maps give more room to kite, but enemies spread unpredictably.",
+  "Meta upgrades persist between runs — invest early for long-term gains.",
+  "Boss enemies spawn on a timer — watch the clock and save abilities.",
+  "Choke points on the map let one good AoE weapon do all the work.",
+  "Speed upgrades let you stay ahead of the horde and dictate the fight.",
+  "Some weapons synergise with specific characters — experiment freely.",
+  "Spending meta gold on HP upgrades makes every run more forgiving.",
+];
+
 export class SurvivorCharSelectUI {
   readonly container = new Container();
   private _selectedMapIndex = 0;
+  private _survivorHintIndex = 0;
   private _onStart: ((charDef: SurvivorCharacterDef, mapIndex: number) => void) | null = null;
 
   setStartCallback(cb: (charDef: SurvivorCharacterDef, mapIndex: number) => void): void {
@@ -123,6 +141,11 @@ export class SurvivorCharSelectUI {
     const metaSectionY = mapStartY + mapCardH + 20;
     const metaSection = this._buildMetaUpgradeSection(metaSectionY, sw, sh);
     this.container.addChild(metaSection);
+
+    // High score panel on the right
+    const hsPanel = this._buildSurvivorHSPanel(saveData.highScores);
+    hsPanel.position.set(sw - 320, 70);
+    this.container.addChild(hsPanel);
   }
 
   private _getMapSwatchColor(mapType: MapType): number {
@@ -216,6 +239,204 @@ export class SurvivorCharSelectUI {
     }
 
     return card;
+  }
+
+  private _buildSurvivorHSPanel(scores: import("../state/SurvivorPersistence").HighScoreEntry[]): Container {
+    const p = new Container();
+    const W = 300;
+    const bg = new Graphics();
+    p.addChild(bg);
+
+    let curY = 10;
+
+    // Archer & swordsman image (async)
+    const imgH = 90;
+    const imgSlot = new Container();
+    imgSlot.position.set(0, curY);
+    p.addChild(imgSlot);
+    void Assets.load(archerandswordsmanImgUrl).then((tex: Texture) => {
+      if (!p.parent) return;
+      const img = new Sprite(tex);
+      const scale = Math.min(imgH / img.texture.height, (W - 20) / img.texture.width);
+      img.scale.set(scale);
+      img.anchor.set(0.5, 0);
+      img.position.set(W / 2, 0);
+      imgSlot.addChild(img);
+    });
+    curY += imgH + 6;
+
+    // Title
+    const titleStyle = new TextStyle({ fontFamily: "monospace", fontSize: 15, fill: 0xffd700, fontWeight: "bold", letterSpacing: 2 });
+    const title = new Text({ text: "SURVIVOR  RECORDS", style: titleStyle });
+    title.anchor.set(0.5, 0);
+    title.position.set(W / 2, curY);
+    p.addChild(title);
+    curY += 24;
+
+    // Divider
+    p.addChild(new Graphics().rect(10, curY, W - 20, 1).fill({ color: 0xffd700, alpha: 0.25 }));
+    curY += 10;
+
+    if (scores.length === 0) {
+      const noStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x556677, letterSpacing: 1 });
+      const noRuns = new Text({ text: "No runs recorded yet.\nPlay Survivor mode to set a record!", style: noStyle });
+      noRuns.style.wordWrap = true;
+      noRuns.style.wordWrapWidth = W - 20;
+      noRuns.anchor.set(0.5, 0);
+      noRuns.position.set(W / 2, curY);
+      p.addChild(noRuns);
+      curY += 42;
+    } else {
+      // --- Personal best banner ---
+      const best = scores[0];
+      const bestMins = Math.floor(best.timeSurvived / 60);
+      const bestSecs = Math.floor(best.timeSurvived % 60);
+      const bestTimeStr = `${bestMins}:${String(bestSecs).padStart(2, "0")}`;
+
+      const bannerBg = new Graphics()
+        .roundRect(10, 0, W - 20, 44, 6)
+        .fill({ color: 0x001a00, alpha: 0.9 })
+        .roundRect(10, 0, W - 20, 44, 6)
+        .stroke({ color: 0xffd700, alpha: 0.7, width: 1.5 });
+      bannerBg.position.set(0, curY);
+      p.addChild(bannerBg);
+
+      const pbLabel = new Text({ text: "PERSONAL BEST", style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x997700, letterSpacing: 2 }) });
+      pbLabel.anchor.set(0.5, 0);
+      pbLabel.position.set(W / 2, curY + 4);
+      p.addChild(pbLabel);
+
+      const pbTime = new Text({ text: bestTimeStr, style: new TextStyle({ fontFamily: "monospace", fontSize: 22, fill: 0xffd700, fontWeight: "bold" }) });
+      pbTime.anchor.set(0.5, 0);
+      pbTime.position.set(W / 2, curY + 16);
+      p.addChild(pbTime);
+
+      const pbSub = new Text({ text: `${best.characterName} · ${best.mapName}`, style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xaabb88 }) });
+      pbSub.anchor.set(1, 0);
+      pbSub.position.set(W - 14, curY + 4);
+      p.addChild(pbSub);
+
+      curY += 52;
+
+      // --- Aggregate stats ---
+      const totalKills = scores.reduce((s, r) => s + r.kills, 0);
+      const statStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x778899 });
+      const statVStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xaaccdd, fontWeight: "bold" });
+
+      const statsRow = new Container();
+      const sRuns = new Text({ text: "RUNS", style: statStyle });
+      const sRunsV = new Text({ text: String(scores.length), style: statVStyle });
+      const sKills = new Text({ text: "TOTAL KILLS", style: statStyle });
+      const sKillsV = new Text({ text: String(totalKills), style: statVStyle });
+      sRuns.position.set(10, 0);
+      sRunsV.position.set(48, 0);
+      sKills.position.set(115, 0);
+      sKillsV.position.set(210, 0);
+      statsRow.addChild(sRuns, sRunsV, sKills, sKillsV);
+      statsRow.position.set(0, curY);
+      p.addChild(statsRow);
+      curY += 18;
+
+      // Divider
+      p.addChild(new Graphics().rect(10, curY, W - 20, 1).fill({ color: 0x334455, alpha: 0.8 }));
+      curY += 8;
+
+      // --- Table header ---
+      const hdrStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x8899aa, letterSpacing: 1 });
+      const hdr = new Container();
+      const hName = new Text({ text: "NAME", style: hdrStyle });
+      const hMap = new Text({ text: "MAP", style: hdrStyle });
+      const hTime = new Text({ text: "TIME", style: hdrStyle });
+      const hLvl = new Text({ text: "LV", style: hdrStyle });
+      hName.position.set(10, 0);
+      hMap.position.set(90, 0);
+      hTime.position.set(170, 0);
+      hLvl.position.set(242, 0);
+      hdr.addChild(hName, hMap, hTime, hLvl);
+      hdr.position.set(0, curY);
+      p.addChild(hdr);
+      curY += 14;
+
+      const MEDAL_COLORS = [0xffd700, 0xc0c0c0, 0xcd7f32];
+      const rowStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xddeeff });
+
+      const top = scores.slice(0, 8);
+      for (let i = 0; i < top.length; i++) {
+        const s = top[i];
+        const mins = Math.floor(s.timeSurvived / 60);
+        const secs = Math.floor(s.timeSurvived % 60);
+        const timeStr = `${mins}:${String(secs).padStart(2, "0")}`;
+
+        const rowH = 20;
+        const rowBg = new Graphics()
+          .rect(8, 0, W - 16, rowH)
+          .fill({ color: i % 2 === 0 ? 0x111128 : 0x0d0d20, alpha: 0.7 });
+        rowBg.position.set(0, curY);
+        p.addChild(rowBg);
+
+        const timeColor = i < 3 ? MEDAL_COLORS[i] : 0xddeeff;
+        const wName = new Text({ text: s.characterName.slice(0, 8), style: rowStyle });
+        const wMap = new Text({ text: s.mapName.slice(0, 8), style: rowStyle });
+        const wTime = new Text({ text: timeStr, style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: timeColor, fontWeight: i === 0 ? "bold" : "normal" }) });
+        const wLvl = new Text({ text: String(s.level), style: rowStyle });
+        wName.position.set(10, curY + 4);
+        wMap.position.set(90, curY + 4);
+        wTime.position.set(170, curY + 3);
+        wLvl.position.set(242, curY + 4);
+        p.addChild(wName, wMap, wTime, wLvl);
+        curY += rowH;
+      }
+    }
+
+    // --- Hints section ---
+    curY += 6;
+    p.addChild(new Graphics().rect(10, curY, W - 20, 1).fill({ color: 0x334455, alpha: 0.8 }));
+    curY += 8;
+
+    const tipLabel = new Text({ text: "TIP", style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x556677, letterSpacing: 2 }) });
+    tipLabel.position.set(12, curY);
+    p.addChild(tipLabel);
+    curY += 14;
+
+    const hintStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x99bbcc, wordWrap: true, wordWrapWidth: W - 24 });
+    const hintText = new Text({ text: SURVIVOR_HINTS[this._survivorHintIndex % SURVIVOR_HINTS.length], style: hintStyle });
+    hintText.position.set(12, curY);
+    p.addChild(hintText);
+    curY += 40;
+
+    // Next hint button
+    const nextBtnW = W - 20;
+    const nextBtnH = 22;
+    const nextBtnBg = new Graphics()
+      .roundRect(0, 0, nextBtnW, nextBtnH, 4)
+      .fill({ color: 0x1a2030, alpha: 0.9 })
+      .roundRect(0, 0, nextBtnW, nextBtnH, 4)
+      .stroke({ color: 0x445566, width: 1 });
+    const nextBtnLabel = new Text({ text: "NEXT TIP  →", style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x6688aa, letterSpacing: 1 }) });
+    nextBtnLabel.anchor.set(0.5, 0.5);
+    nextBtnLabel.position.set(nextBtnW / 2, nextBtnH / 2);
+    const nextBtn = new Container();
+    nextBtn.addChild(nextBtnBg, nextBtnLabel);
+    nextBtn.position.set(10, curY);
+    nextBtn.eventMode = "static";
+    nextBtn.cursor = "pointer";
+    nextBtn.on("pointerdown", () => {
+      this._survivorHintIndex = (this._survivorHintIndex + 1) % SURVIVOR_HINTS.length;
+      hintText.text = SURVIVOR_HINTS[this._survivorHintIndex];
+    });
+    nextBtn.on("pointerover", () => { nextBtnBg.tint = 0x3366aa; });
+    nextBtn.on("pointerout", () => { nextBtnBg.tint = 0xffffff; });
+    p.addChild(nextBtn);
+    curY += nextBtnH;
+
+    // Draw background
+    curY += 12;
+    bg.roundRect(0, 0, W, curY, 8)
+      .fill({ color: 0x10102a, alpha: 0.95 })
+      .roundRect(0, 0, W, curY, 8)
+      .stroke({ color: 0xffd700, alpha: 0.4, width: 1.5 });
+
+    return p;
   }
 
   private _buildMetaUpgradeSection(startY: number, sw: number, sh: number): Container {

@@ -62,9 +62,10 @@ const CARD_H = 700;
 const CORNER_R = 10;
 const TAB_H = 36;
 
-type WikiTab = "lore" | "game_modes" | "leaders" | "units" | "spells" | "buildings" | "world_buildings" | "world_research";
+type WikiTab = "guidance" | "lore" | "game_modes" | "leaders" | "units" | "spells" | "buildings" | "world_buildings" | "world_research";
 
 const TAB_DEFS: { id: WikiTab; label: string }[] = [
+  { id: "guidance", label: "★ GUIDANCE" },
   { id: "lore", label: "LORE" },
   { id: "game_modes", label: "GAME MODES" },
   { id: "leaders", label: "LEADERS" },
@@ -319,7 +320,7 @@ export class MainMenuWikiScreen {
 
   show(): void {
     this.container.visible = true;
-    this._activeTab = "lore";
+    this._activeTab = "guidance";
     this._rebuild();
     this._layout();
   }
@@ -457,6 +458,9 @@ export class MainMenuWikiScreen {
     this._scrollY = 0;
 
     switch (this._activeTab) {
+      case "guidance":
+        this._buildGuidanceContent();
+        break;
       case "lore":
         this._buildLoreContent();
         break;
@@ -473,6 +477,368 @@ export class MainMenuWikiScreen {
         this._buildWorldResearchContent();
         break;
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Guidance tab
+  // ---------------------------------------------------------------------------
+
+  private _buildGuidanceContent(): void {
+    const c = this._contentContainer;
+    const W = CARD_W - 60;
+    let cy = 8;
+
+    const heading = (text: string) => {
+      const t2 = new Text({ text, style: STYLE_LORE_HEADING });
+      t2.position.set(0, cy);
+      c.addChild(t2);
+      cy += 26;
+    };
+
+    const subheading = (text: string) => {
+      const t2 = new Text({ text, style: STYLE_ITEM_NAME });
+      t2.position.set(0, cy);
+      c.addChild(t2);
+      cy += 22;
+    };
+
+    const body = (text: string, indent = 12) => {
+      const t2 = new Text({ text, style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xccddee, wordWrap: true, wordWrapWidth: W - indent, lineHeight: 20 }) });
+      t2.position.set(indent, cy);
+      c.addChild(t2);
+      cy += t2.height + 10;
+    };
+
+    const bullet = (text: string) => {
+      const t2 = new Text({ text: `•  ${text}`, style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xaabbcc, wordWrap: true, wordWrapWidth: W - 28, lineHeight: 19 }) });
+      t2.position.set(16, cy);
+      c.addChild(t2);
+      cy += t2.height + 4;
+    };
+
+    const note = (text: string) => {
+      const t2 = new Text({ text, style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x88ffaa, wordWrap: true, wordWrapWidth: W - 20, lineHeight: 18 }) });
+      t2.position.set(12, cy);
+      c.addChild(t2);
+      cy += t2.height + 8;
+    };
+
+    const divider = () => {
+      c.addChild(new Graphics().rect(0, cy, W, 1).fill({ color: 0x334466, alpha: 0.5 }));
+      cy += 16;
+    };
+
+    // =========================================================================
+    // CORE CONCEPTS
+    // =========================================================================
+    heading("CORE CONCEPTS — HOW THE GAME WORKS");
+    body("If you're new to the game, start here. These fundamentals apply to Standard, Skirmish, Roguelike, and Campaign modes. Other modes (Wave, Survivor, World, RPG) are covered in their own sections below.");
+
+    subheading("PREP PHASE vs BATTLE PHASE");
+    body("Every match is divided into two alternating phases. During the PREP phase, the battlefield is paused — units do not move or fight. You use this time to build structures, spend gold, research upgrades, and position defences. When the PREP phase ends (either by pressing the Ready button, or automatically after a countdown), the BATTLE phase begins. Units march, fight, and die. Once the battle ends, you return to PREP.");
+    bullet("You cannot build or buy units during the battle phase — plan ahead.");
+    bullet("The PREP timer appears at the top of the screen. Use every second of it.");
+    bullet("Skirmish mode has unlimited prep time. Standard mode has a countdown.");
+
+    subheading("ECONOMY — GOLD AND INCOME");
+    body("Gold is your primary resource. You earn it passively each round based on the buildings you have constructed. Certain buildings — particularly the Town Hall and its upgrades — increase your income. You can also find neutral gold mines on the map and capture them for a permanent income boost.");
+    bullet("Build income structures early. A 10% income advantage compounds over many rounds.");
+    bullet("Neutral buildings on the map provide income when captured — send a unit to stand on them.");
+    bullet("Spending all your gold before a battle is usually correct. Stockpiling gold has no benefit.");
+
+    subheading("BUILDINGS");
+    body("Buildings are your economic engine and unit source. Each building type produces a different category of unit. To unlock stronger units, you must upgrade the building that produces them, or research upgrades in specialised structures.");
+    bullet("BARRACKS — produces infantry (swordsmen, spearmen, knights).");
+    bullet("ARCHERY RANGE — produces ranged units (archers, crossbowmen, longbowmen).");
+    bullet("STABLES — produces cavalry (mounted knights, lancers).");
+    bullet("MAGE TOWER — produces magical units (mages, storm mages, archmages).");
+    bullet("SIEGE WORKSHOP — produces siege engines (catapults, trebuchets, cannons).");
+    bullet("CREATURE DEN — produces beasts and monsters (wolves, trolls, dragons).");
+    bullet("TEMPLE — produces holy units (clerics, paladins, angels).");
+    bullet("TOWN HALL — increases gold income per round. Upgrade it first.");
+    note("Tip: You don't need every building. Specialise. Two fully upgraded Barracks will outperform one of everything.");
+
+    subheading("UNITS AND THEIR ROLES");
+    body("Units are produced automatically by buildings when you pay their cost. Each unit type has different stats — health, attack damage, attack speed, move speed, and range. Understanding what each type is strong and weak against is the key skill of the game.");
+    bullet("INFANTRY — high health, fights in melee. Good all-round frontline.");
+    bullet("SPEARMEN — bonus damage against cavalry and large creatures.");
+    bullet("ARCHERS — ranged damage from safety. Weak if enemies reach them.");
+    bullet("CAVALRY — fast, high damage. Excellent at flanking and targeting archers.");
+    bullet("MAGES — area-of-effect damage. Melts grouped infantry. Fragile.");
+    bullet("SIEGE ENGINES — massive damage to buildings and grouped units. Very slow.");
+    bullet("CREATURES — powerful late-game units. Expensive but often game-winning.");
+    bullet("ANGELS / PALADINS — high health, strong vs undead and creatures.");
+    note("Tip: Counters matter. A cavalry charge into a line of spearmen will lose badly. A cavalry charge into a group of archers will win easily.");
+
+    subheading("RACES");
+    body("Each race has a unique faction unit that provides a bonus to their army. Races also affect which units are available and how your army fights overall. Some races excel at ranged combat, others at tanking or magic.");
+    bullet("MAN — balanced army, no weaknesses. Good for learning.");
+    bullet("ELF — superior archers and mages. Fragile but lethal at range.");
+    bullet("DWARF — exceptional defence, heavily armoured infantry and siege.");
+    bullet("ORC — aggressive infantry with high attack. Less defensive.");
+    bullet("UNDEAD — unique units that revive or drain life. Requires adaptation.");
+    bullet("HALFLING — fast, tricky units. High mobility.");
+    note("Tip: Read the Race Select screen carefully. Each race has a Faction Unit that appears at the start of battle. These can swing fights early.");
+
+    subheading("LEADERS");
+    body("Your chosen leader grants a passive bonus that is active for the entire match. Bonuses range from extra starting gold, to attack or HP multipliers, to units that spawn at higher levels. Choose a leader whose bonus matches your intended strategy.");
+    bullet("Arthur: Stables units start at level 2. Best for cavalry builds.");
+    bullet("Merlin: Mages start at level 1. A Storm Mage spawns at battle start.");
+    bullet("Morgan le Fay: +300 bonus gold at the start. Strong economic opener.");
+    bullet("Lancelot: Units spawn 30% faster. Aggressive pressure builds.");
+    bullet("Gawain: All units +15% HP. Works with every army composition.");
+    note("Tip: The leader bonus is fixed for the whole match. Don't pick an income leader if you plan to spend gold on creatures — pick an income leader if you want a faster economy.");
+
+    divider();
+
+    // =========================================================================
+    // STANDARD & SKIRMISH
+    // =========================================================================
+    heading("STANDARD & SKIRMISH — YOUR FIRST MATCH");
+
+    subheading("THE FIRST TWO MINUTES");
+    body("The opening of any match determines the rest of the game. Your first two prep phases should focus on economy and a basic defence, not on building your dream army.");
+    bullet("Build a Town Hall first, or upgrade your existing one. Income beats unit cost in the long run.");
+    bullet("Build at least one military building immediately so you can start producing units.");
+    bullet("Queue the cheapest viable unit (usually swordsmen) to begin building army size.");
+    bullet("On your first battle phase, you will probably only have a handful of units. That is fine — hold your ground.");
+    bullet("Do not try to attack the enemy castle in the first 3–4 rounds. Defend and grow.");
+
+    subheading("MID GAME — BUILDING YOUR ARMY");
+    body("Once your economy is running (2–3 income buildings), shift your gold toward military. The mid-game is about unit composition — building a mix that works together, not just buying the most expensive thing.");
+    bullet("Add a second military building of a different type to diversify your army.");
+    bullet("Research upgrades in your existing buildings before building new ones.");
+    bullet("If you have cavalry, protect them — don't send them into spearmen.");
+    bullet("Capture neutral income buildings on the map by sending one unit to occupy them.");
+
+    subheading("LATE GAME — PUSHING AND WINNING");
+    body("The late game is won by siege and concentrated damage. If the enemy has a strong castle defence, you need siege weapons to crack it. Dragons and other top-tier units can carry a push if they reach the enemy base.");
+    bullet("Build a Siege Workshop when you have excess gold and a stable frontline.");
+    bullet("Push with your full army — don't dribble units in one at a time.");
+    bullet("If you are ahead, spend gold on attack. If you are behind, spend gold on defence and income.");
+
+    note("Skirmish mode starts both players with 10,000 gold. Skip the economy phase entirely and go straight to your ideal army composition from the start.");
+
+    divider();
+
+    // =========================================================================
+    // WAVE MODE
+    // =========================================================================
+    heading("WAVE MODE — SURVIVAL GUIDE");
+    body("Wave mode is a single-player survival challenge. You play as one faction defending against endless enemy waves. There is no opponent — only escalating hordes. Your goal is to survive as many waves as possible.");
+
+    subheading("SETUP AND SETTINGS");
+    body("Before each wave run, you choose your race, leader, difficulty, and optional modifiers. These choices are permanent for the run.");
+    bullet("Grail Greed: Each wave gives bonus gold, but enemies scale harder. High risk, high reward.");
+    bullet("Scaling Difficulty: Later waves get exponentially harder. Push your wave record early in the run.");
+    bullet("Boss Waves: Every 10 waves, a boss enemy leads the charge. Prepare accordingly.");
+    bullet("Random Events: Random buffs and debuffs apply each wave. Adds unpredictability.");
+    bullet("Wave Intro: A dramatic intro plays before each wave. Disable for faster gameplay.");
+
+    subheading("EARLY WAVES (1–10)");
+    body("The first ten waves are your setup window. Focus entirely on economy and building your army infrastructure.");
+    bullet("Build your Town Hall immediately and queue income upgrades.");
+    bullet("Get two military buildings running as fast as possible.");
+    bullet("Don't worry about defence in waves 1–5. Your starting units will hold.");
+    bullet("Research upgrades between every wave — they compound.");
+    bullet("Wave 10 has a boss. Have at least one siege unit or high-damage creature ready.");
+
+    subheading("MID WAVES (10–30)");
+    body("Enemy composition begins to diversify. Pure infantry strategies start to break down.");
+    bullet("Add ranged units if you only have melee, and vice versa.");
+    bullet("Build a Siege Workshop — catapults kill grouped enemies efficiently.");
+    bullet("Upgrade your castle's walls to absorb more punishment on inevitable breach waves.");
+    bullet("Mages become extremely valuable here against armoured enemies.");
+
+    subheading("LATE WAVES (30+)");
+    body("Enemies have high health, multiple unit types, and often siege of their own. Survival requires a diverse army with a clear damage strategy.");
+    bullet("Creature Den units — dragons, trolls, elementals — become necessary.");
+    bullet("Multiple Mage Towers provide the sustained AoE needed to handle hordes.");
+    bullet("Prioritise killing enemy siege before it reaches your castle.");
+    bullet("At very high waves, enemies will breach your castle. Having high base HP (via the Nimue or Lot leader bonuses) buys critical time.");
+    note("Personal best records are displayed on the Wave Mode setup screen. Your top 8 runs by wave reached are saved automatically.");
+
+    divider();
+
+    // =========================================================================
+    // SURVIVOR MODE
+    // =========================================================================
+    heading("SURVIVOR MODE — ACTION ROGUELIKE GUIDE");
+    body("Survivor mode is a fast-paced action game. You control a single hero character who moves around a map while enemies flood in from all sides. Weapons fire automatically — your only input is movement. Survive as long as possible, collect XP gems to level up, and choose upgrades at each level.");
+
+    subheading("CHARACTER SELECTION");
+    body("Each character has a different starting weapon, stats, and passive ability. Choosing a character also determines your starting power level and play style.");
+    bullet("SWORDSMAN — balanced melee character. Wide sword sweep hits enemies in an arc.");
+    bullet("ARCHER — ranged character. Fires automatically at the nearest enemy.");
+    bullet("FIRE MAGE — AoE specialist. Fireballs explode on impact, damaging nearby enemies.");
+    bullet("Locked characters are unlocked with gold earned from runs.");
+
+    subheading("MOVEMENT AND SURVIVAL");
+    body("Movement is the most important skill in Survivor mode. Dying usually means you made a movement error, not that your build was wrong.");
+    bullet("Always be moving. Standing still lets the horde surround you from all sides.");
+    bullet("Move perpendicular to the direction enemies are coming from — this extends your survival time.");
+    bullet("Never move directly toward a dense cluster of enemies. Circle them.");
+    bullet("Use the edges of the map to limit the angle enemies can approach from.");
+    bullet("Save speed upgrades — they increase your ability to escape bad situations.");
+
+    subheading("XP AND LEVELLING");
+    body("Defeated enemies drop XP gems. You must collect these gems by walking over them or using the Magnet passive. Each gem collected fills your XP bar. When it fills, you level up and choose one of three upgrades.");
+    bullet("Collect gems quickly — they do not despawn, but enemies will overwhelm you if you stay in one place.");
+    bullet("The Magnet passive pulls gems from a wide radius automatically. It is one of the strongest passives in the game.");
+    bullet("At higher levels, enemies become dense enough that XP practically rains down. Early levels are harder for XP collection.");
+
+    subheading("WEAPON UPGRADES AND BUILDS");
+    body("At each level, you choose one of three random upgrades: a new weapon, a weapon upgrade, or a passive item. Building a coherent set of weapons that synergise is the difference between an average run and a great run.");
+    bullet("Prioritise upgrading existing weapons over adding new ones early on.");
+    bullet("Piercing weapons (arrows, lances) are excellent in corridors and choke points.");
+    bullet("AoE weapons (fireballs, explosions, lightning) are excellent against dense hordes.");
+    bullet("Passive items (speed, magnet, armour, HP regen) are universally valuable.");
+    bullet("Weapon evolutions unlock when you have a weapon at max level AND a specific passive. Read the evolution requirements.");
+    note("Tip: Two fully evolved weapons beat six partially-upgraded ones. Focus your upgrades.");
+
+    subheading("BOSSES AND ELITE ENEMIES");
+    body("Elite enemies (red-outlined) spawn periodically and have much higher HP and special abilities. Bosses appear at timed intervals and are the primary threat to long runs.");
+    bullet("Elite enemies drop large XP gems and treasure chests on death — worth hunting.");
+    bullet("Treasure chests contain gold, health pickups, screen clears, or powerful Arcana abilities.");
+    bullet("Boss enemies do not go away. Keep moving in large circles while your weapons deal damage.");
+    bullet("Arcana abilities (gained from treasure chests) are extremely powerful. Prioritise chests.");
+
+    subheading("META UPGRADES");
+    body("Gold earned from each run is saved permanently. You can spend this gold in the Survivor select screen on meta upgrades that persist between runs and make every subsequent run easier.");
+    bullet("Max HP upgrades are the best early meta investment — they make all runs more forgiving.");
+    bullet("XP gain upgrades make levelling faster, which unlocks better builds sooner.");
+    bullet("Upgrade the magnet range early — gem collection is often the bottleneck on long runs.");
+    note("Meta upgrades carry over forever. Even bad runs contribute to your long-term progression.");
+
+    divider();
+
+    // =========================================================================
+    // WORLD MODE
+    // =========================================================================
+    heading("WORLD MODE — GRAND STRATEGY GUIDE");
+    body("World mode is a full hex-based grand strategy game built on top of the core battle system. You play as a faction on a procedurally generated world map, founding cities, researching technologies, building armies, and conquering Morgaine's Avalon fortress at the centre of the map.");
+
+    subheading("THE WORLD MAP");
+    body("The map is a hex grid. Your starting town is near the edge of the map. Avalon, the win condition, is in the centre. Between you and it are neutral camps, other factions, and fog of war.");
+    bullet("Fog of war hides everything beyond your current vision range. Send scouts or expand to reveal it.");
+    bullet("Neutral camps can be captured and converted into income — essential for expansion.");
+    bullet("Other factions have their own armies and will expand toward you. Diplomacy can delay conflict.");
+    bullet("The world map uses a turn-based system. Each turn, you move your armies and manage your cities.");
+
+    subheading("FOUNDING CITIES");
+    body("Your starting town is the foundation of your empire. Build more towns to increase your resource production and military capacity. Each city can be upgraded with buildings that provide income, units, or strategic advantages.");
+    bullet("Town Hall: Core income building. Upgrade it first in every city.");
+    bullet("Barracks / Archery Range / Stables: Produce military units for the world map army.");
+    bullet("Mage Guild: Unlocks overland spells and magic research.");
+    bullet("Forge: Improves unit stats through research.");
+    bullet("Market: Increases trade income between connected cities.");
+
+    subheading("RESEARCH");
+    body("The research system unlocks permanent upgrades for your faction. Research is divided into military, economic, and magical trees. You can only research one thing at a time, so choose deliberately.");
+    bullet("Military research upgrades the stats of unit types you rely on.");
+    bullet("Economic research increases income, reduces building costs, and unlocks new structures.");
+    bullet("Magical research unlocks overland spells and improves their power.");
+    note("Tip: Research compounds over many turns. A 10% income upgrade early is worth far more than a 10% attack upgrade late.");
+
+    subheading("OVERLAND SPELLS");
+    body("Once you build a Mage Guild and research the relevant spells, you can cast overland spells on the world map. These have major strategic effects.");
+    bullet("Siege spells damage enemy cities directly without a battle.");
+    bullet("Summon spells create units on the world map that join your army.");
+    bullet("Fog spells reveal hidden areas or blind enemy scouts.");
+    bullet("Buff spells strengthen your army before a major engagement.");
+
+    subheading("COMBAT");
+    body("When your world map army enters a hex containing enemies, a battle is triggered. This uses the full tactical battle system — the same PREP/BATTLE loop as all other modes. Win the battle to capture the hex.");
+    bullet("Your world map army's composition is set before battles. Build a balanced force.");
+    bullet("Losing a battle causes your army to retreat. You do not permanently lose units (they are rebuilt over turns).");
+    bullet("Defending your own cities gives a significant defensive bonus. Attack carefully.");
+
+    subheading("WINNING");
+    body("The victory condition is capturing Avalon at the centre of the map. Avalon is a fortress with extremely powerful defences, guarded by Morgaine's army. You must build a powerful army, potentially ally with other factions, and conduct a final siege.");
+    bullet("Avalon has walls, towers, and elite units. You will need siege equipment.");
+    bullet("Other factions may also be racing for Avalon. Monitor their expansion.");
+    bullet("Diplomatic alliances can let you focus on Avalon while an ally handles a rival faction.");
+
+    divider();
+
+    // =========================================================================
+    // RPG MODE
+    // =========================================================================
+    heading("RPG MODE — ADVENTURE GUIDE");
+    body("RPG mode is an overworld exploration game. You control a hero who travels across a procedurally generated map, enters dungeons, fights encounters, collects loot, and builds their character through experience and equipment. Combat uses the autobattler system — you set up your hero's party and they fight automatically.");
+
+    subheading("OVERWORLD EXPLORATION");
+    body("The overworld map is a large grid filled with locations — dungeons, towns, camps, shrines, and encounters. You move your hero across it turn by turn, choosing which locations to visit.");
+    bullet("Dungeons are the primary source of loot and experience. Enter them whenever possible.");
+    bullet("Towns allow you to rest (restoring HP), buy equipment, and receive quests.");
+    bullet("Arthurian characters — Merlin, Guinevere, and others — appear on the road and offer blessings or quests. Talk to everyone.");
+    bullet("Shrines grant permanent buffs. Prioritise them.");
+
+    subheading("DUNGEON CRAWLING");
+    body("Each dungeon has multiple floors. Each floor contains one or more encounters, and the final floor has a boss. Clearing a dungeon rewards major loot.");
+    bullet("Encounters are tactical battles. Your hero fights alongside summoned units — set up your party wisely.");
+    bullet("Boss enemies have special abilities and much higher HP. Keep your HP high before the boss floor.");
+    bullet("Loot drops from enemies. Better dungeons have rarer loot.");
+    bullet("You can retreat from a dungeon if you are running low on health, preserving your progress.");
+
+    subheading("EQUIPMENT AND LEVELLING");
+    body("Your hero gains experience from victories and levels up over time. Each level increases your hero's base stats. Equipment (weapons, armour, rings, amulets) provides additional stat bonuses.");
+    bullet("Weapon type determines your hero's attack style in battle.");
+    bullet("Armour reduces damage taken. Prioritise it in the early game.");
+    bullet("Rings and amulets provide special passive effects — read them carefully.");
+    bullet("Higher rarity equipment (uncommon, rare, epic) has significantly better stats.");
+
+    subheading("QUESTS AND NPCS");
+    body("Arthurian NPCs appear throughout the overworld and offer quests and rewards. Completing quests is often the fastest way to earn powerful unique items.");
+    bullet("Merlin offers magical research quests that reward spellbooks.");
+    bullet("Arthur's knights offer combat challenges — win for equipment.");
+    bullet("Villagers in towns occasionally have simple quests for gold rewards.");
+    note("Tip: NPCs disappear after a few turns if you do not visit them. Move toward them promptly when they appear on the map.");
+
+    divider();
+
+    // =========================================================================
+    // BATTLEFIELD MODE
+    // =========================================================================
+    heading("BATTLEFIELD MODE — PURE COMBAT");
+    body("Battlefield mode strips out all economy and construction. Both sides start with a pre-built army and fight until one side is destroyed. There is no prep phase for building — only for reviewing your army. This mode rewards knowledge of unit counters and positioning.");
+    bullet("You cannot buy or build anything. Your army is fixed at the start.");
+    bullet("Study your enemy's army composition before the battle begins. You have time.");
+    bullet("Position your melee units in the front, ranged in the back, mages behind them.");
+    bullet("Cavalry should be positioned on the flanks — they will charge around the frontline.");
+    bullet("If the enemy has many archers, charge them immediately with cavalry.");
+    bullet("If the enemy has many cavalry, position spearmen at the front edges.");
+    note("Tip: Battlefield mode is ideal for quickly learning how different unit types interact without the complexity of economy management.");
+
+    divider();
+
+    // =========================================================================
+    // ROGUELIKE MODE
+    // =========================================================================
+    heading("ROGUELIKE MODE — ADAPTIVE STRATEGY");
+    body("Roguelike mode uses the same rules as Standard mode, but with a twist: at the start of the match, 50% of all building types are randomly disabled. You cannot build or use those buildings. This forces you to abandon fixed strategies and adapt to whatever tools you have available.");
+    bullet("Check which buildings are enabled before committing to a strategy.");
+    bullet("If your favourite unit type is disabled, its counters are probably weaker too — exploit that.");
+    bullet("Disabled buildings mean disabled counters. A world with no Mage Towers is a world where cavalry can dominate.");
+    bullet("If the Town Hall is disabled, focus purely on military — income will be tight.");
+    bullet("Creature Den disabled? Focus on human units. Stables disabled? Go heavy infantry and ranged.");
+    note("Tip: Roguelike mode is the most replayable mode in the game. No two matches play out the same way.");
+
+    divider();
+
+    // =========================================================================
+    // CAMPAIGN MODE
+    // =========================================================================
+    heading("CAMPAIGN MODE — LEARNING THE GAME");
+    body("Campaign mode is the recommended entry point for new players. It presents a series of hand-crafted scenarios with increasing difficulty, each teaching a specific game mechanic. Read the scenario description carefully — each one tells you what to focus on.");
+    bullet("Scenario 1: Basic combat. Build one barracks, recruit swordsmen, attack.");
+    bullet("Scenario 2: Economy. Demonstrates the power of upgrading the Town Hall early.");
+    bullet("Scenario 3: Unit counters. You must use archers to stop a cavalry rush.");
+    bullet("Later scenarios introduce siege, magic, and complex multi-building strategies.");
+    note("Tip: Even experienced players benefit from replaying the campaign after learning a new race or leader. The scenarios are short enough to run in 5–10 minutes each.");
+
+    this._contentH = cy;
+    this._maxScroll = Math.max(0, this._contentH - this._viewH);
   }
 
   // ---------------------------------------------------------------------------

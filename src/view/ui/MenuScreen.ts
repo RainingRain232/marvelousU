@@ -1,7 +1,8 @@
 // Menu screen: two-panel flow
 //   Screen 1 — Game mode selection + wiki/utility buttons
 //   Screen 2 — Match setup (map type, map size, AI, players, alliances)
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Container, Graphics, Text, TextStyle, Assets, Sprite, Texture } from "pixi.js";
+import dragonImgUrl from "@/img/dragon.png";
 import type { ViewManager } from "@view/ViewManager";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { GameMode, MapType } from "@/types";
@@ -77,6 +78,45 @@ const STYLE_MODE_DISABLED = new TextStyle({
 
 const BG_COLOR = 0x0a0a18;
 const BORDER_COLOR = 0xffd700;
+
+// ---------------------------------------------------------------------------
+// Wave high-score helpers (reads from wave_best_v1 localStorage)
+// ---------------------------------------------------------------------------
+
+interface _WaveBestRun {
+  wave: number;
+  totalGoldSpent: number;
+  raceId: string;
+  leaderId: string;
+  date: string;
+}
+
+function _readWaveBestRuns(): _WaveBestRun[] {
+  try {
+    const raw = localStorage.getItem("wave_best_v1");
+    if (!raw) return [];
+    return JSON.parse(raw) as _WaveBestRun[];
+  } catch { return []; }
+}
+
+// ---------------------------------------------------------------------------
+// Wave mode hints
+// ---------------------------------------------------------------------------
+
+const WAVE_HINTS = [
+  "Build a mix of unit types — each wave brings different enemy compositions.",
+  "Grail Greed rewards bold play: more gold each wave, but enemies scale faster.",
+  "Upgrade buildings between waves to raise the level cap of units they spawn.",
+  "Save gold in early waves — powerful siege units pay off in the long run.",
+  "Boss waves arrive every 10 waves and hit hard. Keep your base health up.",
+  "Mage towers shred armoured enemies that sword infantry struggle against.",
+  "Different races excel in different roles — experiment to find your style.",
+  "Your leader bonus is active from wave 1. Pick one that fits your plan.",
+  "Creature Dens produce strong units — invest early for a mid-game spike.",
+  "Towers near the enemy spawn point delay their advance. Build forward.",
+  "Scaling difficulty makes later waves brutal — push your wave record early.",
+  "Alliance matches share resources. Coordinate unit types with your ally.",
+];
 
 // ---------------------------------------------------------------------------
 // Data
@@ -321,6 +361,10 @@ export class MenuScreen {
   private _waveIntroBg!: Graphics;
   private _waveIntroLabel!: Text;
 
+  // Wave high-score panel (sibling to _screen2Card, shown for wave mode)
+  private _waveHSPanel!: Container;
+  private _waveHintIndex = 0;
+
   // Battlefield gold
   private _battlefieldGold = 30000;
   private _battlefieldGoldSection!: Container;
@@ -498,6 +542,11 @@ export class MenuScreen {
 
     // Show battlefield gold section
     this._battlefieldGoldSection.visible = entry.mode === GameMode.BATTLEFIELD;
+
+    // Wave high-score panel
+    const isWave = entry.mode === GameMode.WAVE;
+    this._waveHSPanel.visible = isWave;
+    if (isWave) this._buildWaveHSContent();
 
     this._layout();
   }
@@ -1425,6 +1474,11 @@ export class MenuScreen {
     this._runes2 = new RuneCorners();
     card.addChild(this._runes2.container);
 
+    // Wave high-score panel (sibling to _screen2Card, outside the card)
+    this._waveHSPanel = new Container();
+    this._waveHSPanel.visible = false;
+    this._screen2.addChild(this._waveHSPanel);
+
     // Override _layout to also reposition action buttons
     const origLayout = this._layout.bind(this);
     this._layout = () => {
@@ -1488,7 +1542,220 @@ export class MenuScreen {
       this._runes2.build(this._screen2CardW, this._screen2CardH);
 
       origLayout();
+
+      // Position wave HS panel to the right of the settings card
+      if (this._waveHSPanel.visible) {
+        this._waveHSPanel.position.set(
+          this._screen2Card.x + this._screen2CardW + 16,
+          this._screen2Card.y,
+        );
+      }
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wave high-score panel
+  // ---------------------------------------------------------------------------
+
+  private _buildWaveHSContent(): void {
+    const p = this._waveHSPanel;
+    // Clear previous content
+    while (p.children.length > 0) p.removeChildAt(0);
+
+    const W = 300;
+    const runs = _readWaveBestRuns();
+
+    // Background card
+    const bg = new Graphics();
+    p.addChild(bg);
+
+    let curY = 10;
+
+    // Reserve space for dragon image header (loaded async)
+    const imgH = 90;
+    const imgPlaceholder = new Container();
+    imgPlaceholder.position.set(0, curY);
+    p.addChild(imgPlaceholder);
+    void Assets.load(dragonImgUrl).then((tex: Texture) => {
+      if (!p.parent) return;
+      const img = new Sprite(tex);
+      const scale = Math.min(imgH / img.texture.height, (W - 20) / img.texture.width);
+      img.scale.set(scale);
+      img.anchor.set(0.5, 0);
+      img.position.set(W / 2, 0);
+      imgPlaceholder.addChild(img);
+    });
+    curY += imgH + 6;
+
+    // Title
+    const titleStyle = new TextStyle({ fontFamily: "monospace", fontSize: 15, fill: 0xffd700, fontWeight: "bold", letterSpacing: 2 });
+    const title = new Text({ text: "WAVE MODE  RECORDS", style: titleStyle });
+    title.anchor.set(0.5, 0);
+    title.position.set(W / 2, curY);
+    p.addChild(title);
+    curY += 24;
+
+    // Divider
+    p.addChild(new Graphics().rect(10, curY, W - 20, 1).fill({ color: 0xffd700, alpha: 0.25 }));
+    curY += 10;
+
+    if (runs.length === 0) {
+      const noStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x556677, letterSpacing: 1 });
+      const noRuns = new Text({ text: "No runs recorded yet.\nPlay Wave mode to set a record!", style: noStyle });
+      noRuns.style.wordWrap = true;
+      noRuns.style.wordWrapWidth = W - 20;
+      noRuns.anchor.set(0.5, 0);
+      noRuns.position.set(W / 2, curY);
+      p.addChild(noRuns);
+      curY += 42;
+    } else {
+      // --- Personal best banner ---
+      const best = runs[0];
+      const bannerBg = new Graphics()
+        .roundRect(10, 0, W - 20, 44, 6)
+        .fill({ color: 0x1a1400, alpha: 0.9 })
+        .roundRect(10, 0, W - 20, 44, 6)
+        .stroke({ color: 0xffd700, alpha: 0.7, width: 1.5 });
+      bannerBg.position.set(0, curY);
+      p.addChild(bannerBg);
+
+      const pbLabel = new Text({ text: "PERSONAL BEST", style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x997700, letterSpacing: 2 }) });
+      pbLabel.anchor.set(0.5, 0);
+      pbLabel.position.set(W / 2, curY + 4);
+      p.addChild(pbLabel);
+
+      const pbWave = new Text({ text: `Wave  ${best.wave}`, style: new TextStyle({ fontFamily: "monospace", fontSize: 22, fill: 0xffd700, fontWeight: "bold" }) });
+      pbWave.anchor.set(0.5, 0);
+      pbWave.position.set(W / 2, curY + 16);
+      p.addChild(pbWave);
+
+      const pbSub = new Text({ text: `${best.raceId} · ${best.leaderId}`, style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xaabb88 }) });
+      pbSub.anchor.set(1, 0);
+      pbSub.position.set(W - 14, curY + 4);
+      p.addChild(pbSub);
+
+      curY += 52;
+
+      // --- Aggregate stats ---
+      const avgWave = Math.round(runs.reduce((s, r) => s + r.wave, 0) / runs.length);
+      const statStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x778899 });
+      const statVStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xaaccdd, fontWeight: "bold" });
+
+      const statsRow = new Container();
+      const sRuns = new Text({ text: "RUNS", style: statStyle });
+      const sRunsV = new Text({ text: String(runs.length), style: statVStyle });
+      const sAvg = new Text({ text: "AVG WAVE", style: statStyle });
+      const sAvgV = new Text({ text: String(avgWave), style: statVStyle });
+      sRuns.position.set(10, 0);
+      sRunsV.position.set(48, 0);
+      sAvg.position.set(130, 0);
+      sAvgV.position.set(208, 0);
+      statsRow.addChild(sRuns, sRunsV, sAvg, sAvgV);
+      statsRow.position.set(0, curY);
+      p.addChild(statsRow);
+      curY += 18;
+
+      // Divider
+      p.addChild(new Graphics().rect(10, curY, W - 20, 1).fill({ color: 0x334455, alpha: 0.8 }));
+      curY += 8;
+
+      // --- Table header ---
+      const hdrStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x8899aa, letterSpacing: 1 });
+      const hdr = new Container();
+      const hWave = new Text({ text: "WAVE", style: hdrStyle });
+      const hRace = new Text({ text: "RACE", style: hdrStyle });
+      const hLeader = new Text({ text: "LEADER", style: hdrStyle });
+      const hDate = new Text({ text: "DATE", style: hdrStyle });
+      hWave.position.set(10, 0);
+      hRace.position.set(62, 0);
+      hLeader.position.set(135, 0);
+      hDate.position.set(218, 0);
+      hdr.addChild(hWave, hRace, hLeader, hDate);
+      hdr.position.set(0, curY);
+      p.addChild(hdr);
+      curY += 14;
+
+      const MEDAL_COLORS = [0xffd700, 0xc0c0c0, 0xcd7f32];
+      const rowStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xddeeff });
+      const dateStyle = new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x556677 });
+
+      const top = runs.slice(0, 8);
+      for (let i = 0; i < top.length; i++) {
+        const run = top[i];
+        const rowH = 20;
+        const rowBg = new Graphics()
+          .rect(8, 0, W - 16, rowH)
+          .fill({ color: i % 2 === 0 ? 0x111128 : 0x0d0d20, alpha: 0.7 });
+        rowBg.position.set(0, curY);
+        p.addChild(rowBg);
+
+        const waveColor = i < 3 ? MEDAL_COLORS[i] : 0xddeeff;
+        const wNum = new Text({ text: `${run.wave}`, style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: waveColor, fontWeight: i === 0 ? "bold" : "normal" }) });
+        const wRace = new Text({ text: run.raceId.slice(0, 8), style: rowStyle });
+        const wLeader = new Text({ text: run.leaderId.slice(0, 7), style: rowStyle });
+        // Parse date — stored as ISO string or locale string
+        let dateStr = "—";
+        try {
+          const d = new Date(run.date);
+          if (!isNaN(d.getTime())) dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+        } catch { /* */ }
+        const wDate = new Text({ text: dateStr, style: dateStyle });
+        wNum.position.set(10, curY + 3);
+        wRace.position.set(62, curY + 4);
+        wLeader.position.set(135, curY + 4);
+        wDate.position.set(218, curY + 4);
+        p.addChild(wNum, wRace, wLeader, wDate);
+        curY += rowH;
+      }
+    }
+
+    // --- Hints section ---
+    curY += 6;
+    p.addChild(new Graphics().rect(10, curY, W - 20, 1).fill({ color: 0x334455, alpha: 0.8 }));
+    curY += 8;
+
+    const tipLabel = new Text({ text: "TIP", style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x556677, letterSpacing: 2 }) });
+    tipLabel.position.set(12, curY);
+    p.addChild(tipLabel);
+    curY += 14;
+
+    const hintStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x99bbcc, wordWrap: true, wordWrapWidth: W - 24 });
+    const hintText = new Text({ text: WAVE_HINTS[this._waveHintIndex % WAVE_HINTS.length], style: hintStyle });
+    hintText.position.set(12, curY);
+    p.addChild(hintText);
+    curY += 40;
+
+    // Next hint button
+    const nextBtnW = W - 20;
+    const nextBtnH = 22;
+    const nextBtnBg = new Graphics()
+      .roundRect(0, 0, nextBtnW, nextBtnH, 4)
+      .fill({ color: 0x1a2030, alpha: 0.9 })
+      .roundRect(0, 0, nextBtnW, nextBtnH, 4)
+      .stroke({ color: 0x445566, width: 1 });
+    const nextBtnLabel = new Text({ text: "NEXT TIP  →", style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x6688aa, letterSpacing: 1 }) });
+    nextBtnLabel.anchor.set(0.5, 0.5);
+    nextBtnLabel.position.set(nextBtnW / 2, nextBtnH / 2);
+    const nextBtn = new Container();
+    nextBtn.addChild(nextBtnBg, nextBtnLabel);
+    nextBtn.position.set(10, curY);
+    nextBtn.eventMode = "static";
+    nextBtn.cursor = "pointer";
+    nextBtn.on("pointerdown", () => {
+      this._waveHintIndex = (this._waveHintIndex + 1) % WAVE_HINTS.length;
+      hintText.text = WAVE_HINTS[this._waveHintIndex];
+    });
+    nextBtn.on("pointerover", () => { nextBtnBg.tint = 0x3366aa; });
+    nextBtn.on("pointerout", () => { nextBtnBg.tint = 0xffffff; });
+    p.addChild(nextBtn);
+    curY += nextBtnH;
+
+    // Draw background
+    curY += 12;
+    bg.roundRect(0, 0, W, curY, 8)
+      .fill({ color: 0x10102a, alpha: 0.95 })
+      .roundRect(0, 0, W, curY, 8)
+      .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
   }
 
   // ---------------------------------------------------------------------------
