@@ -3029,22 +3029,33 @@ function _showMerlinWaveCompliment(
   overlay.addChild(bg);
 
   const merlinColors = SPEAKER_COLORS.merlin;
-  const PORTRAIT_W = 120;
-  const PORTRAIT_H = 150;
-  const CW = 460;
-  const CH = 200;
-  const TOTAL_H = PORTRAIT_H + 10 + CH;
+
+  // Side-by-side layout: portrait left, text right
+  const PORTRAIT_W = 300;
+  const PORTRAIT_H = 440;
+  const TEXT_W = 480;
+  const PAD = 24;
+  const DW = PORTRAIT_W + TEXT_W + PAD * 3; // total dialog width
+  const DH = PORTRAIT_H + PAD * 2;          // total dialog height
 
   const wrapper = new Container();
-  wrapper.position.set(Math.floor((sw - CW) / 2), Math.floor((sh - TOTAL_H) / 2));
+  wrapper.position.set(Math.floor((sw - DW) / 2), Math.floor((sh - DH) / 2));
   overlay.addChild(wrapper);
 
-  // Portrait frame above text box
+  // Dialog background
+  const dialogBg = new Graphics()
+    .roundRect(0, 0, DW, DH, 12)
+    .fill({ color: 0x080814, alpha: 0.97 })
+    .roundRect(0, 0, DW, DH, 12)
+    .stroke({ color: merlinColors.border, alpha: 0.9, width: 2.5 });
+  wrapper.addChild(dialogBg);
+
+  // Portrait frame on the left
   const portraitFrame = new Graphics()
-    .roundRect((CW - PORTRAIT_W) / 2, 0, PORTRAIT_W, PORTRAIT_H, 6)
-    .fill({ color: 0x080818, alpha: 0.95 })
-    .roundRect((CW - PORTRAIT_W) / 2, 0, PORTRAIT_W, PORTRAIT_H, 6)
-    .stroke({ color: merlinColors.border, alpha: 0.8, width: 2 });
+    .roundRect(PAD, PAD, PORTRAIT_W, PORTRAIT_H, 8)
+    .fill({ color: 0x04040e })
+    .roundRect(PAD, PAD, PORTRAIT_W, PORTRAIT_H, 8)
+    .stroke({ color: merlinColors.border, alpha: 0.7, width: 1.5 });
   wrapper.addChild(portraitFrame);
 
   void Assets.load(merlinImgUrl).then((tex: Texture) => {
@@ -3055,61 +3066,69 @@ function _showMerlinWaveCompliment(
     const scale = Math.min(maxW / tex.width, maxH / tex.height);
     sprite.scale.set(scale);
     sprite.position.set(
-      (CW - PORTRAIT_W) / 2 + 4 + (maxW - tex.width * scale) / 2,
-      4 + (maxH - tex.height * scale) / 2,
+      PAD + 4 + (maxW - tex.width * scale) / 2,
+      PAD + 4 + (maxH - tex.height * scale) / 2,
     );
     wrapper.addChild(sprite);
   });
 
-  // Text card below portrait
-  const cardY = PORTRAIT_H + 10;
-  const card = new Container();
-  card.position.set(0, cardY);
-  wrapper.addChild(card);
-
-  const cardBg = new Graphics()
-    .roundRect(0, 0, CW, CH, 10)
-    .fill({ color: 0x0a0a18, alpha: 0.96 })
-    .roundRect(0, 0, CW, CH, 10)
-    .stroke({ color: merlinColors.border, alpha: 0.8, width: 2 });
-  card.addChild(cardBg);
+  // Right side: name + text + button
+  const textX = PAD + PORTRAIT_W + PAD;
+  const textY = PAD;
 
   const merlinLabel = new Text({
     text: "MERLIN",
     style: new TextStyle({
       fontFamily: "monospace",
-      fontSize: 14,
+      fontSize: 20,
       fill: merlinColors.label,
       fontWeight: "bold",
-      letterSpacing: 2,
+      letterSpacing: 3,
     }),
   });
-  merlinLabel.anchor.set(0.5, 0);
-  merlinLabel.position.set(CW / 2, 14);
-  card.addChild(merlinLabel);
+  merlinLabel.position.set(textX, textY);
+  wrapper.addChild(merlinLabel);
+
+  const subtitle = new Text({
+    text: "Archmage of Avalon",
+    style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: 12,
+      fill: 0x8877aa,
+      fontStyle: "italic",
+      letterSpacing: 1,
+    }),
+  });
+  subtitle.position.set(textX, textY + 28);
+  wrapper.addChild(subtitle);
+
+  // Divider
+  const divider = new Graphics()
+    .rect(textX, textY + 50, TEXT_W, 1)
+    .fill({ color: merlinColors.border, alpha: 0.4 });
+  wrapper.addChild(divider);
 
   const msgText = new Text({
     text: `"${message}"`,
     style: new TextStyle({
       fontFamily: "monospace",
-      fontSize: 13,
+      fontSize: 14,
       fill: merlinColors.text,
       letterSpacing: 1,
       wordWrap: true,
-      wordWrapWidth: CW - 40,
-      align: "center",
+      wordWrapWidth: TEXT_W - 10,
+      lineHeight: 22,
     }),
   });
-  msgText.anchor.set(0.5, 0);
-  msgText.position.set(CW / 2, 40);
-  card.addChild(msgText);
+  msgText.position.set(textX, textY + 62);
+  wrapper.addChild(msgText);
 
-  const BW = CW - 80;
-  const BH = 36;
+  const BW = TEXT_W;
+  const BH = 40;
   const btn = new Container();
   btn.eventMode = "static";
   btn.cursor = "pointer";
-  btn.position.set(40, CH - 50);
+  btn.position.set(textX, DH - PAD - BH);
 
   const btnBg = new Graphics()
     .roundRect(0, 0, BW, BH, 6)
@@ -3122,7 +3141,7 @@ function _showMerlinWaveCompliment(
     text: "CONTINUE",
     style: new TextStyle({
       fontFamily: "monospace",
-      fontSize: 14,
+      fontSize: 15,
       fill: 0x88ffaa,
       fontWeight: "bold",
       letterSpacing: 2,
@@ -3140,7 +3159,7 @@ function _showMerlinWaveCompliment(
     onDone();
   });
 
-  card.addChild(btn);
+  wrapper.addChild(btn);
 
   viewManager.addToLayer("ui", overlay);
 }

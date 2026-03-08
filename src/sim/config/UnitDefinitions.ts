@@ -66,6 +66,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDef> = {
     range: 1,
     spawnTime: 3,
     abilityTypes: [],
+    blockChance: 0.15,
     spriteKey: "swordsman",
     description:
       "A sturdy frontline warrior with reliable steel and unwavering courage.",

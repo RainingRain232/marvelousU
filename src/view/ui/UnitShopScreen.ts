@@ -1166,8 +1166,17 @@ export class UnitShopScreen {
     line1.position.set(TT_PAD, sy); this._tooltipStats.addChild(line1); sy += 14;
     const line2 = new Text({ text: `RNG:${def.range}  AS:${def.attackSpeed}  COST:${def.cost}g`, style: STYLE_TT_STAT });
     line2.position.set(TT_PAD, sy); this._tooltipStats.addChild(line2); sy += 14;
+    const blockPct = def.blockChance ? Math.round(def.blockChance * 100) : 0;
     const line3 = new Text({ text: `Spawn: ${def.spawnTime}s`, style: STYLE_TT_STAT });
     line3.position.set(TT_PAD, sy); this._tooltipStats.addChild(line3); sy += 14;
+
+    if (blockPct > 0) {
+      const blockTxt = new Text({
+        text: `Block: ${blockPct}%`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x66aaff }),
+      });
+      blockTxt.position.set(TT_PAD, sy); this._tooltipStats.addChild(blockTxt); sy += 14;
+    }
 
     if (def.abilityTypes.length > 0) {
       const abilTxt = new Text({ text: def.abilityTypes.join(", "), style: STYLE_TT_ABILITY });
