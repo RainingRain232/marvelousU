@@ -142,6 +142,7 @@ function _handleEntityInteraction(
       }
       // Discover this town for fast travel
       rpg.discoveredTowns.add(entity.id);
+      rpg.arenaFightsLeft = 3;
       resetRecruitStepsOnTownVisit(rpg);
       EventBus.emit("rpgTownEntered", { townId: entity.id });
       stateMachine.transition(RPGPhase.TOWN_MENU);

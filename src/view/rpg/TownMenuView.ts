@@ -1413,7 +1413,7 @@ export class TownMenuView {
 
     if (fightsLeft <= 0) {
       const noFights = new Text({
-        text: "No arena fights remaining today. Come back tomorrow!",
+        text: "No arena fights remaining. Leave and re-enter to get more!",
         style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
       });
       noFights.position.set(30, startY + 40);
