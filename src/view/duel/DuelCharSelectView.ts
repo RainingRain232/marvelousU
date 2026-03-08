@@ -9,13 +9,16 @@ import {
 } from "../../duel/config/DuelCharacterDefs";
 import { DUEL_ARENA_IDS, DUEL_ARENAS } from "../../duel/config/DuelArenaDefs";
 import type { DuelCharacterDef } from "../../duel/state/DuelState";
+import { duelAudio } from "../../duel/systems/DuelAudioSystem";
 
-const COL_BG = 0x111122;
+const COL_BG = 0x0a0015;
+const COL_BG_MID = 0x1a0a30;
 const COL_PANEL = 0x1a1a2e;
 const COL_BORDER = 0x444466;
-const COL_SELECTED = 0xffdd44;
+const COL_ACCENT = 0xe94560;
+const COL_SELECTED = 0xe94560;
 const COL_TEXT = 0xeeeeee;
-const COL_TITLE = 0xffcc33;
+const COL_TITLE = 0xffffff;
 const COL_STAT = 0x88aacc;
 
 type StartCallback = (p1Id: string, p2Id: string, arenaId: string) => void;
@@ -28,6 +31,7 @@ export class DuelCharSelectView {
   private _arenaIndex = 0;
   private _phase: "character" | "arena" = "character";
   private _startCallback: StartCallback | null = null;
+  private _onEscapeCallback: (() => void) | null = null;
   private _onKeyDown: ((e: KeyboardEvent) => void) | null = null;
 
   private _screenW = 0;
@@ -35,6 +39,10 @@ export class DuelCharSelectView {
 
   setStartCallback(cb: StartCallback): void {
     this._startCallback = cb;
+  }
+
+  setEscapeCallback(cb: () => void): void {
+    this._onEscapeCallback = cb;
   }
 
   show(sw: number, sh: number): void {
@@ -62,18 +70,22 @@ export class DuelCharSelectView {
     switch (e.code) {
       case "ArrowLeft":
         this._p1Index = (this._p1Index - 1 + ids.length) % ids.length;
+        duelAudio.playSelect();
         break;
       case "ArrowRight":
         this._p1Index = (this._p1Index + 1) % ids.length;
+        duelAudio.playSelect();
         break;
       case "Enter":
       case "Space":
+        duelAudio.playConfirm();
         this._phase = "arena";
         // AI picks a different character
         this._p2Index = (this._p1Index + 1 + Math.floor(Math.random() * (ids.length - 1))) % ids.length;
         break;
       case "Escape":
-        window.dispatchEvent(new CustomEvent("duelExit"));
+        duelAudio.playCancel();
+        this._onEscapeCallback?.();
         return;
       default:
         return;
@@ -87,12 +99,15 @@ export class DuelCharSelectView {
     switch (e.code) {
       case "ArrowLeft":
         this._arenaIndex = (this._arenaIndex - 1 + arenas.length) % arenas.length;
+        duelAudio.playSelect();
         break;
       case "ArrowRight":
         this._arenaIndex = (this._arenaIndex + 1) % arenas.length;
+        duelAudio.playSelect();
         break;
       case "Enter":
       case "Space":
+        duelAudio.playConfirm();
         this._cleanup();
         this._startCallback?.(
           DUEL_CHARACTER_IDS[this._p1Index],
@@ -101,6 +116,7 @@ export class DuelCharSelectView {
         );
         return;
       case "Escape":
+        duelAudio.playCancel();
         this._phase = "character";
         break;
       default:
@@ -110,16 +126,44 @@ export class DuelCharSelectView {
     this._draw();
   }
 
+  private _drawMenuBackground(sw: number, sh: number): void {
+    const bg = new Graphics();
+    const time = performance.now() / 1000;
+
+    // Dark gradient background
+    bg.rect(0, 0, sw, sh);
+    bg.fill({ color: COL_BG });
+    bg.rect(0, sh * 0.3, sw, sh * 0.4);
+    bg.fill({ color: COL_BG_MID, alpha: 0.5 });
+
+    // Animated horizontal lines
+    for (let i = 0; i < 20; i++) {
+      const y = ((i * 60 + time * 30) % sh);
+      const wobble = Math.sin(time + i) * 50;
+      bg.moveTo(0, y);
+      bg.lineTo(sw, y + wobble);
+      bg.stroke({ color: COL_ACCENT, width: 2, alpha: 0.1 });
+    }
+
+    // Animated vertical lines
+    for (let i = 0; i < 15; i++) {
+      const x = ((i * 140 + time * 20) % sw);
+      const wobble = Math.sin(time + i) * 30;
+      bg.moveTo(x, 0);
+      bg.lineTo(x + wobble, sh);
+      bg.stroke({ color: 0x6432c8, width: 2, alpha: 0.08 });
+    }
+
+    this.container.addChild(bg);
+  }
+
   private _draw(): void {
     this.container.removeChildren();
     const sw = this._screenW;
     const sh = this._screenH;
 
     // Background
-    const bg = new Graphics();
-    bg.rect(0, 0, sw, sh);
-    bg.fill({ color: COL_BG });
-    this.container.addChild(bg);
+    this._drawMenuBackground(sw, sh);
 
     if (this._phase === "character") {
       this._drawCharacterSelect(sw, sh);
@@ -132,7 +176,7 @@ export class DuelCharSelectView {
     // Title
     const title = new Text({
       text: "CHOOSE YOUR CHAMPION",
-      style: { fontFamily: "monospace", fontSize: 32, fill: COL_TITLE, fontWeight: "bold" },
+      style: { fontFamily: 'Impact, "Arial Black", sans-serif', fontSize: 36, fill: COL_TITLE, fontWeight: "bold", letterSpacing: 2 },
     });
     title.anchor.set(0.5, 0);
     title.position.set(sw / 2, 30);

@@ -5,7 +5,6 @@
 import type { Ticker } from "pixi.js";
 import { DuelPhase, DuelFighterState } from "../types";
 import { viewManager } from "../view/ViewManager";
-import { audioManager } from "../audio/AudioManager";
 import { DuelStateMachine } from "./DuelStateMachine";
 import { DuelBalance } from "./config/DuelBalanceConfig";
 import { DUEL_CHARACTERS } from "./config/DuelCharacterDefs";
@@ -13,9 +12,12 @@ import { DuelInputSystem } from "./systems/DuelInputSystem";
 import { DuelFightingSystem } from "./systems/DuelFightingSystem";
 import { DuelProjectileSystem } from "./systems/DuelProjectileSystem";
 import { DuelAISystem } from "./systems/DuelAISystem";
+import { duelAudio } from "./systems/DuelAudioSystem";
 import { createDuelState } from "./state/DuelState";
 import type { DuelInputResult, DuelState } from "./state/DuelState";
 
+import { DuelMenuView } from "../view/duel/DuelMenuView";
+import type { DuelMenuChoice } from "../view/duel/DuelMenuView";
 import { DuelCharSelectView } from "../view/duel/DuelCharSelectView";
 import { DuelFightView } from "../view/duel/DuelFightView";
 import { DuelHUD } from "../view/duel/DuelHUD";
@@ -29,21 +31,59 @@ export class DuelGame {
   private _simAccumulator = 0;
 
   // View delegates
+  private _menuView = new DuelMenuView();
   private _charSelect = new DuelCharSelectView();
   private _fightView = new DuelFightView();
   private _hud = new DuelHUD();
   private _arenaRenderer = new DuelArenaRenderer();
   private _introView = new DuelIntroView();
 
-  // Track previous fighter HP for spark effects
+  // Track previous fighter HP for spark/audio effects
   private _prevHp: [number, number] = [0, 0];
+  private _prevBlockstun: [number, number] = [0, 0];
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
-    audioManager.playGameMusic();
+
+    // Init procedural audio
+    duelAudio.init();
 
     this._stateMachine = new DuelStateMachine(DuelPhase.CHAR_SELECT);
-    this._showCharacterSelect();
+    this._showMainMenu();
+  }
+
+  // ---- Main menu -----------------------------------------------------------
+
+  private _showMainMenu(): void {
+    const sw = viewManager.screenWidth;
+    const sh = viewManager.screenHeight;
+
+    this._menuView.setSelectCallback((choice: DuelMenuChoice) => {
+      viewManager.removeFromLayer("ui", this._menuView.container);
+      this._menuView.hide();
+      this._handleMenuChoice(choice);
+    });
+
+    this._menuView.show(sw, sh);
+    viewManager.addToLayer("ui", this._menuView.container);
+  }
+
+  private _handleMenuChoice(choice: DuelMenuChoice): void {
+    switch (choice) {
+      case "ARCADE":
+      case "VS MODE":
+      case "VS CPU":
+      case "TRAINING":
+        // All lead to character select for now
+        this._showCharacterSelect();
+        break;
+      case "CONTROLS":
+      case "HOW TO PLAY":
+      case "SETTINGS":
+        // Show info screen briefly, then return to menu
+        this._showMainMenu();
+        break;
+    }
   }
 
   // ---- Character select ----------------------------------------------------
@@ -55,6 +95,11 @@ export class DuelGame {
     this._charSelect.setStartCallback((p1Id, p2Id, arenaId) => {
       viewManager.removeFromLayer("ui", this._charSelect.container);
       this._startMatch(p1Id, p2Id, arenaId);
+    });
+
+    this._charSelect.setEscapeCallback(() => {
+      viewManager.removeFromLayer("ui", this._charSelect.container);
+      this._showMainMenu();
     });
 
     this._charSelect.show(sw, sh);
@@ -78,6 +123,7 @@ export class DuelGame {
     );
 
     this._prevHp = [p1Def.maxHp, p2Def.maxHp];
+    this._prevBlockstun = [0, 0];
 
     // Build views
     this._arenaRenderer.build(arenaId, sw, sh);
@@ -121,6 +167,7 @@ export class DuelGame {
     DuelAISystem.reset();
 
     // Round announcement
+    duelAudio.playRoundStart();
     this._announce(`ROUND ${this._state.round.roundNumber}`, 60);
     setTimeout(() => {
       this._announce("FIGHT!", 40);
@@ -187,13 +234,28 @@ export class DuelGame {
 
     this._state.frameCount++;
 
-    // Hit spark effects
+    // Hit spark effects + audio
     for (let i = 0; i < 2; i++) {
       const f = this._state.fighters[i];
       if (f.hp < this._prevHp[i]) {
         this._fightView.addSpark(f.position.x, f.position.y - 45);
+
+        // Determine hit severity for audio
+        const damage = this._prevHp[i] - f.hp;
+        if (damage > f.maxHp * 0.15) {
+          duelAudio.playHit("heavy");
+        } else {
+          duelAudio.playHit("light");
+        }
       }
+
+      // Block audio
+      if (f.blockstunFrames > 0 && this._prevBlockstun[i] === 0) {
+        duelAudio.playBlock();
+      }
+
       this._prevHp[i] = f.hp;
+      this._prevBlockstun[i] = f.blockstunFrames;
     }
 
     // Check round end
@@ -235,6 +297,7 @@ export class DuelGame {
       // Match over
       const matchWinner = p1Wins >= winsNeeded ? 0 : 1;
       const winnerName = DUEL_CHARACTERS[this._state.fighters[matchWinner].characterId].name;
+      duelAudio.playKO();
       this._announce(`${winnerName.toUpperCase()} WINS!`, 180);
 
       setTimeout(() => {
@@ -243,6 +306,7 @@ export class DuelGame {
     } else {
       // Next round
       const ko = this._state.fighters[winner === 0 ? 1 : 0].hp <= 0;
+      duelAudio.playKO();
       this._announce(ko ? "K.O.!" : "TIME!", 90);
 
       setTimeout(() => {
@@ -261,7 +325,9 @@ export class DuelGame {
     DuelAISystem.reset();
 
     this._prevHp = [this._state.fighters[0].hp, this._state.fighters[1].hp];
+    this._prevBlockstun = [0, 0];
 
+    duelAudio.playRoundStart();
     this._announce(`ROUND ${this._state.round.roundNumber}`, 60);
     setTimeout(() => {
       this._announce("FIGHT!", 40);
@@ -271,7 +337,7 @@ export class DuelGame {
   private _endMatch(): void {
     this._cleanup();
     this._stateMachine.transition(DuelPhase.CHAR_SELECT);
-    this._showCharacterSelect();
+    this._showMainMenu();
   }
 
   // ---- Utility -------------------------------------------------------------
@@ -301,7 +367,9 @@ export class DuelGame {
 
   destroy(): void {
     this._cleanup();
+    viewManager.removeFromLayer("ui", this._menuView.container);
     viewManager.removeFromLayer("ui", this._charSelect.container);
+    this._menuView.destroy();
     this._charSelect.destroy();
     this._fightView.destroy();
     this._hud.destroy();

@@ -125,6 +125,7 @@ function _updateFighter(
       if (fighter.hitstunFrames <= 0) {
         fighter.state = DuelFighterState.IDLE;
         fighter.comboCount = 0;
+        fighter.comboDamage = 0;
         fighter.comboDamageScaling = 1;
       }
       return;
@@ -515,6 +516,7 @@ function _resolveHit(
 
     // Combo tracking
     attacker.comboCount++;
+    attacker.comboDamage += damage;
     attacker.comboDamageScaling = Math.max(
       DuelBalance.MIN_DAMAGE_SCALING,
       attacker.comboDamageScaling * DuelBalance.COMBO_DAMAGE_SCALING,
@@ -635,6 +637,7 @@ function _resetFighter(
   fighter.hitstunFrames = 0;
   fighter.blockstunFrames = 0;
   fighter.comboCount = 0;
+  fighter.comboDamage = 0;
   fighter.comboDamageScaling = 1;
   fighter.grounded = true;
   fighter.invincibleFrames = 0;

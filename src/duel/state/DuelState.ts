@@ -119,6 +119,7 @@ export interface DuelFighter {
   hitstunFrames: number;
   blockstunFrames: number;
   comboCount: number;
+  comboDamage: number;
   comboDamageScaling: number;
   grounded: boolean;
   invincibleFrames: number;
@@ -198,6 +199,7 @@ export function createFighter(
     hitstunFrames: 0,
     blockstunFrames: 0,
     comboCount: 0,
+    comboDamage: 0,
     comboDamageScaling: 1,
     grounded: true,
     invincibleFrames: 0,
