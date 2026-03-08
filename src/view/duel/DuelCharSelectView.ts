@@ -246,6 +246,7 @@ export class DuelCharSelectView {
     const portraitColor =
       charDef.fighterType === "sword" ? 0x3366cc :
       charDef.fighterType === "mage" ? 0x6633aa :
+      charDef.fighterType === "spear" ? 0xaa8833 :
       0x33aa66;
     portraitG.roundRect(x + 15, y + 15, w - 30, 100, 4);
     portraitG.fill({ color: portraitColor, alpha: 0.6 });
@@ -256,6 +257,7 @@ export class DuelCharSelectView {
     const icon =
       charDef.fighterType === "sword" ? "\u2694" :
       charDef.fighterType === "mage" ? "\u2728" :
+      charDef.fighterType === "spear" ? "\u{1F531}" :
       "\u{1F3F9}";
     const iconText = new Text({
       text: icon,
@@ -287,8 +289,8 @@ export class DuelCharSelectView {
     const stats = [
       { label: "HP", value: charDef.maxHp / 1000 },
       { label: "SPD", value: charDef.walkSpeed / 4.5 },
-      { label: "DMG", value: charDef.fighterType === "sword" ? 0.9 : charDef.fighterType === "mage" ? 0.65 : 0.5 },
-      { label: "RNG", value: charDef.fighterType === "archer" ? 0.95 : charDef.fighterType === "mage" ? 0.85 : 0.55 },
+      { label: "DMG", value: charDef.fighterType === "sword" ? 0.9 : charDef.fighterType === "spear" ? 0.8 : charDef.fighterType === "mage" ? 0.65 : 0.5 },
+      { label: "RNG", value: charDef.fighterType === "archer" ? 0.95 : charDef.fighterType === "mage" ? 0.85 : charDef.fighterType === "spear" ? 0.9 : 0.55 },
     ];
 
     const barY = y + 175;

@@ -528,12 +528,159 @@ export const ELAINE_DEF: DuelCharacterDef = {
   },
 };
 
+// ===========================================================================
+// LANCELOT — Spearman
+// ===========================================================================
+
+export const LANCELOT_DEF: DuelCharacterDef = {
+  id: "lancelot",
+  name: "Lancelot",
+  title: "The Peerless Knight",
+  portrait: "lancelot",
+  fighterType: "spear",
+  maxHp: 950,
+  walkSpeed: 5.0,
+  backWalkSpeed: 3.8,
+  jumpVelocity: -19,
+  jumpForwardSpeed: 6,
+  weight: 0.95,
+
+  normals: {
+    // Q — Light high: quick spear jab — long range, low damage
+    light_high: normal(
+      "light_high", "Jab", AttackHeight.HIGH,
+      4, 3, 7, 28, 11, 8, 7,
+      { x: 45, y: -120, width: 85, height: 30 },
+    ),
+    // W — Medium high: horizontal spear sweep
+    med_high: normal(
+      "med_high", "Spear Sweep", AttackHeight.HIGH,
+      8, 4, 11, 55, 17, 12, 20,
+      { x: 40, y: -110, width: 100, height: 38 },
+    ),
+    // E — Heavy high: overhead spear slam
+    heavy_high: normal(
+      "heavy_high", "Overhead Slam", AttackHeight.HIGH,
+      13, 5, 17, 90, 22, 15, 40,
+      { x: 30, y: -150, width: 85, height: 65 },
+    ),
+    // A — Light low: low spear poke at legs
+    light_low: normal(
+      "light_low", "Low Poke", AttackHeight.LOW,
+      4, 3, 7, 22, 9, 7, 5,
+      { x: 40, y: -25, width: 75, height: 30 },
+    ),
+    // S — Medium low: crouching spear sweep
+    med_low: normal(
+      "med_low", "Low Sweep", AttackHeight.LOW,
+      9, 4, 13, 48, 15, 10, 14,
+      { x: 38, y: -30, width: 90, height: 38 },
+    ),
+    // D — Heavy low: trip with spear butt
+    heavy_low: normal(
+      "heavy_low", "Butt Strike", AttackHeight.LOW,
+      14, 5, 18, 75, 0, 14, 28,
+      { x: 28, y: -18, width: 85, height: 35 },
+      { isLauncher: true },
+    ),
+  },
+
+  specials: {
+    // Q+W — Spear Lunge: long-range piercing thrust
+    spear_lunge: special(
+      "spear_lunge", "Spear Lunge", AttackHeight.MID,
+      8, 5, 15, 85, 17, 20, 14, 40,
+      { x: 40, y: -100, width: 130, height: 35 },
+      { movesForward: 120 },
+    ),
+    // W+E — Overhead Impale: must block standing, long reach
+    overhead_impale: special(
+      "overhead_impale", "Overhead Impale", AttackHeight.OVERHEAD,
+      16, 6, 20, 120, 24, 26, 18, 55,
+      { x: 20, y: -160, width: 90, height: 85 },
+    ),
+    // A+S — Lance Sweep: spinning low sweep with spear
+    lance_sweep: special(
+      "lance_sweep", "Lance Sweep", AttackHeight.LOW,
+      10, 5, 16, 65, 13, 18, 12, 20,
+      { x: 30, y: -18, width: 120, height: 35 },
+    ),
+    // S+D — Rising Lance: anti-air upward thrust
+    rising_lance: special(
+      "rising_lance", "Rising Lance", AttackHeight.MID,
+      6, 8, 22, 105, 21, 24, 16, 48,
+      { x: 18, y: -180, width: 60, height: 110 },
+      { isAntiAir: true, hasInvincibility: true, invincibleStartup: 4 },
+    ),
+    // Q+D — Lance Charge: rushing forward with couched spear
+    lance_charge: special(
+      "lance_charge", "Lance Charge", AttackHeight.MID,
+      8, 6, 18, 95, 19, 22, 14, 58,
+      { x: 25, y: -100, width: 110, height: 55 },
+      { movesForward: 180, hasInvincibility: true, invincibleStartup: 3 },
+    ),
+    // E+A — Spear Throw: ranged projectile
+    spear_throw: special(
+      "spear_throw", "Spear Throw", AttackHeight.MID,
+      12, 3, 18, 65, 13, 18, 12, 25,
+      { x: 55, y: -100, width: 35, height: 25 },
+      { isProjectile: true, projectileSpeed: 11, projectileHeight: AttackHeight.MID },
+    ),
+    // E+D — Cross Spear: lunging cross-body thrust, wide hitbox
+    cross_spear: special(
+      "cross_spear", "Cross Spear", AttackHeight.MID,
+      10, 8, 18, 130, 26, 26, 16, 50,
+      { x: 25, y: -130, width: 120, height: 75 },
+      { movesForward: 70 },
+    ),
+    // W+S — Counter Stance: parry with spear shaft, riposte
+    counter_stance: special(
+      "counter_stance", "Counter Stance", AttackHeight.MID,
+      3, 10, 16, 90, 18, 22, 14, 38,
+      { x: 18, y: -120, width: 70, height: 80 },
+      { hasInvincibility: true, invincibleStartup: 8 },
+    ),
+  },
+
+  zeals: {
+    dragon_lance: zeal(
+      "dragon_lance", "Dragon Lance", AttackHeight.MID,
+      10, 8, 20, 155, 31, 28, 18, 52,
+      { x: 35, y: -130, width: 140, height: 85 },
+      { movesForward: 100 },
+    ),
+    spear_whirlwind: zeal(
+      "spear_whirlwind", "Spear Whirlwind", AttackHeight.MID,
+      14, 12, 28, 290, 58, 38, 22, 75,
+      { x: 15, y: -150, width: 170, height: 130 },
+      { isLauncher: true },
+    ),
+  },
+
+  grab: {
+    id: "shaft_choke",
+    name: "Shaft Choke",
+    type: "grab",
+    height: AttackHeight.MID,
+    startup: 5,
+    active: 3,
+    recovery: 26,
+    damage: 85,
+    chipDamage: 0,
+    hitstun: 28,
+    blockstun: 0,
+    knockback: 85,
+    hitbox: { x: 25, y: -100, width: 55, height: 70 },
+  },
+};
+
 // ---- Character registry ----------------------------------------------------
 
 export const DUEL_CHARACTERS: Record<string, DuelCharacterDef> = {
   arthur: ARTHUR_DEF,
   merlin: MERLIN_DEF,
   elaine: ELAINE_DEF,
+  lancelot: LANCELOT_DEF,
 };
 
-export const DUEL_CHARACTER_IDS = ["arthur", "merlin", "elaine"] as const;
+export const DUEL_CHARACTER_IDS = ["arthur", "merlin", "elaine", "lancelot"] as const;

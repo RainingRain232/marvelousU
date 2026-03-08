@@ -16,6 +16,7 @@ import {
 import { ARTHUR_PALETTE, ARTHUR_POSES, drawArthurExtras, drawArthurBackExtras } from "./DuelArthurPoses";
 import { MERLIN_PALETTE, MERLIN_POSES, drawMerlinExtras } from "./DuelMerlinPoses";
 import { ELAINE_PALETTE, ELAINE_POSES, drawElaineExtras } from "./DuelElainePoses";
+import { LANCELOT_PALETTE, LANCELOT_POSES, drawLancelotExtras, drawLancelotBackExtras } from "./DuelLancelotPoses";
 
 // ---- Character data lookup -------------------------------------------------
 
@@ -23,22 +24,26 @@ const PALETTES: Record<string, FighterPalette> = {
   arthur: ARTHUR_PALETTE,
   merlin: MERLIN_PALETTE,
   elaine: ELAINE_PALETTE,
+  lancelot: LANCELOT_PALETTE,
 };
 
 const POSES: Record<string, Record<string, FighterPose[]>> = {
   arthur: ARTHUR_POSES,
   merlin: MERLIN_POSES,
   elaine: ELAINE_POSES,
+  lancelot: LANCELOT_POSES,
 };
 
 const EXTRAS: Record<string, (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void> = {
   arthur: drawArthurExtras,
   merlin: drawMerlinExtras,
   elaine: drawElaineExtras,
+  lancelot: drawLancelotExtras,
 };
 
 const BACK_EXTRAS: Record<string, (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void> = {
   arthur: drawArthurBackExtras,
+  lancelot: drawLancelotBackExtras,
 };
 
 // ---- Projectile colors -----------------------------------------------------
@@ -48,6 +53,7 @@ const PROJECTILE_COLORS: Record<string, number> = {
   frost_wave: 0x88ccff,
   power_shot: 0xddbb44,
   backflip_shot: 0xddbb44,
+  spear_throw: 0xccbb88,
 };
 
 // ---- Hit spark -------------------------------------------------------------
@@ -78,10 +84,16 @@ const ELAINE_SPECIALS = new Set([
   "backflip_shot", "triple_shot", "hunters_trap",
   "piercing_arrow", "evasive_strike",
 ]);
+const LANCELOT_SPECIALS = new Set([
+  "spear_lunge", "overhead_impale", "lance_sweep",
+  "rising_lance", "lance_charge", "spear_throw",
+  "cross_spear", "counter_stance",
+]);
 const ALL_SPECIALS: Record<string, Set<string>> = {
   arthur: ARTHUR_SPECIALS,
   merlin: MERLIN_SPECIALS,
   elaine: ELAINE_SPECIALS,
+  lancelot: LANCELOT_SPECIALS,
 };
 
 // Zeal (ultimate) moves — even flashier VFX
@@ -89,6 +101,7 @@ const ZEAL_MOVES: Record<string, Set<string>> = {
   arthur: new Set(["royal_judgment", "excalibur_unleashed"]),
   merlin: new Set(["thunder_wrath", "arcane_apocalypse"]),
   elaine: new Set(["storm_volley", "celestial_arrow"]),
+  lancelot: new Set(["dragon_lance", "spear_whirlwind"]),
 };
 
 // Zeal VFX colors — brighter, more intense than specials
@@ -96,6 +109,7 @@ const ZEAL_COLORS: Record<string, { primary: number; secondary: number; glow: nu
   arthur: { primary: 0xffee88, secondary: 0xffaa22, glow: 0xffffff },
   merlin: { primary: 0xaaaaff, secondary: 0x6644ff, glow: 0xffffff },
   elaine: { primary: 0x88eeff, secondary: 0x44aadd, glow: 0xffffff },
+  lancelot: { primary: 0xffee66, secondary: 0xddaa22, glow: 0xffffff },
 };
 
 // Special VFX color themes per character
@@ -103,6 +117,7 @@ const SPECIAL_COLORS: Record<string, { primary: number; secondary: number; glow:
   arthur: { primary: 0xffdd44, secondary: 0xff8800, glow: 0xffffaa },  // golden sword energy
   merlin: { primary: 0x8866ff, secondary: 0x4422cc, glow: 0xccaaff },  // arcane purple
   elaine: { primary: 0x44ddff, secondary: 0x2288aa, glow: 0xaaeeff },  // cyan wind/arrow
+  lancelot: { primary: 0xddcc44, secondary: 0xaa8822, glow: 0xffeeaa },  // golden lance energy
 };
 
 // ---- Special VFX particle --------------------------------------------------
@@ -276,6 +291,9 @@ export class DuelFightView {
     } else if (fighter.characterId === "elaine") {
       // Wind trail
       this._spawnWindTrail(x + dir * 20, y - 80, dir, colors);
+    } else if (fighter.characterId === "lancelot") {
+      // Lance thrust trail
+      this._spawnLanceTrail(x + dir * 20, y - 90, dir, colors, moveId);
     }
   }
 
@@ -471,6 +489,8 @@ export class DuelFightView {
       this._spawnArcaneExplosion(x, y, colors);
     } else if (fighter.characterId === "elaine") {
       this._spawnZealArrowBarrage(x, y, dir, colors, moveId);
+    } else if (fighter.characterId === "lancelot") {
+      this._spawnZealLanceBarrage(x, y, dir, colors, moveId);
     }
   }
 
@@ -656,6 +676,127 @@ export class DuelFightView {
     }
   }
 
+  /** Lancelot special: directional lance thrust streak */
+  private _spawnLanceTrail(
+    cx: number, cy: number, dir: number,
+    colors: { primary: number; secondary: number; glow: number },
+    moveId: string,
+  ): void {
+    const isVertical = moveId === "rising_lance" || moveId === "overhead_impale" || moveId === "spear_vault";
+    const count = 10;
+    for (let i = 0; i < count; i++) {
+      const t = i / count;
+      if (isVertical) {
+        // Vertical thrust streak
+        this._specialParticles.push({
+          x: cx + (Math.random() - 0.5) * 20,
+          y: cy + t * 60 - 30,
+          vx: (Math.random() - 0.5) * 2,
+          vy: -4 - Math.random() * 4,
+          life: 14 + i * 1.5,
+          maxLife: 14 + i * 1.5,
+          size: 5 - t * 2,
+          color: i % 2 === 0 ? colors.glow : colors.primary,
+          type: "trail",
+        });
+      } else {
+        // Horizontal lance thrust streak
+        this._specialParticles.push({
+          x: cx - dir * i * 10,
+          y: cy + (Math.random() - 0.5) * 20,
+          vx: dir * (5 + Math.random() * 5),
+          vy: (Math.random() - 0.5) * 1.5,
+          life: 14 + Math.random() * 8,
+          maxLife: 22,
+          size: 3 + Math.random() * 3,
+          color: i % 2 === 0 ? colors.primary : colors.glow,
+          type: "trail",
+        });
+      }
+    }
+    // Impact point spark
+    this._specialParticles.push({
+      x: cx + dir * 30,
+      y: cy,
+      vx: 0, vy: 0,
+      life: 16,
+      maxLife: 16,
+      size: 8,
+      color: colors.primary,
+      type: "ring",
+    });
+  }
+
+  /** Lancelot zeal: spinning spear barrage / dragon lance charge */
+  private _spawnZealLanceBarrage(
+    cx: number, cy: number, dir: number,
+    colors: { primary: number; secondary: number; glow: number },
+    moveId: string,
+  ): void {
+    if (moveId === "spear_whirlwind") {
+      // Spinning vortex of lance energy
+      for (let i = 0; i < 30; i++) {
+        const angle = (i / 30) * Math.PI * 4;
+        const dist = 20 + (i / 30) * 60;
+        const speed = 2 + (i / 30) * 4;
+        this._specialParticles.push({
+          x: cx + Math.cos(angle) * dist * 0.3,
+          y: cy - 90 + Math.sin(angle) * dist * 0.3,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 24 + Math.random() * 12,
+          maxLife: 36,
+          size: 3 + Math.random() * 5,
+          color: i % 4 === 0 ? 0xffffff : i % 2 === 0 ? colors.primary : colors.secondary,
+          type: "slash",
+        });
+      }
+      // Triple rings for whirlwind
+      for (let r = 0; r < 3; r++) {
+        this._specialParticles.push({
+          x: cx, y: cy - 90,
+          vx: 0, vy: 0,
+          life: 28 - r * 5,
+          maxLife: 28 - r * 5,
+          size: 10 + r * 10,
+          color: r === 0 ? colors.glow : colors.primary,
+          type: "ring",
+        });
+      }
+    } else {
+      // Dragon Lance: forward charge trail with intense golden energy
+      const count = 18;
+      for (let i = 0; i < count; i++) {
+        const spread = (Math.random() - 0.5) * 30;
+        this._specialParticles.push({
+          x: cx - dir * i * 8,
+          y: cy - 90 + spread,
+          vx: dir * (8 + Math.random() * 8),
+          vy: spread * 0.08 + (Math.random() - 0.5) * 2,
+          life: 20 + Math.random() * 12,
+          maxLife: 32,
+          size: 4 + Math.random() * 5,
+          color: i % 3 === 0 ? 0xffffff : colors.primary,
+          type: "trail",
+        });
+      }
+      // Giant lance tip trail
+      for (let i = 0; i < 6; i++) {
+        this._specialParticles.push({
+          x: cx + dir * 20,
+          y: cy - 90 + (Math.random() - 0.5) * 8,
+          vx: dir * (14 + i * 2),
+          vy: 0,
+          life: 22 + i * 2,
+          maxLife: 22 + i * 2,
+          size: 7 - i * 0.6,
+          color: 0xffffff,
+          type: "trail",
+        });
+      }
+    }
+  }
+
   // ---- Fighter drawing -----------------------------------------------------
 
   private _drawFighter(
@@ -733,8 +874,8 @@ export class DuelFightView {
       palette,
       isFlashing: isHitFlash,
       flashColor: 0xffffff,
-      helmeted: charId === "arthur",
-      helmColor: 0x888899,
+      helmeted: charId === "arthur" || charId === "lancelot",
+      helmColor: charId === "lancelot" ? 0x7788aa : 0x888899,
       drawBackExtras: backExtras,
       drawExtras: extras,
     };

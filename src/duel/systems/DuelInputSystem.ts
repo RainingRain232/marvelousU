@@ -66,10 +66,22 @@ const ELAINE_SPECIALS: SpecialCombo[] = [
   { buttons: ["medPunch", "medKick"], moveId: "evasive_strike" },
 ];
 
+const LANCELOT_SPECIALS: SpecialCombo[] = [
+  { buttons: ["lightPunch", "medPunch"], moveId: "spear_lunge" },
+  { buttons: ["medPunch", "heavyPunch"], moveId: "overhead_impale" },
+  { buttons: ["lightKick", "medKick"], moveId: "lance_sweep" },
+  { buttons: ["medKick", "heavyKick"], moveId: "rising_lance" },
+  { buttons: ["lightPunch", "heavyKick"], moveId: "lance_charge" },
+  { buttons: ["heavyPunch", "lightKick"], moveId: "spear_throw" },
+  { buttons: ["heavyPunch", "heavyKick"], moveId: "cross_spear" },
+  { buttons: ["medPunch", "medKick"], moveId: "counter_stance" },
+];
+
 const CHARACTER_SPECIALS: Record<string, SpecialCombo[]> = {
   arthur: ARTHUR_SPECIALS,
   merlin: MERLIN_SPECIALS,
   elaine: ELAINE_SPECIALS,
+  lancelot: LANCELOT_SPECIALS,
 };
 
 // Zeal (ultimate) combos — 3 buttons pressed simultaneously

@@ -67,10 +67,44 @@ export const EXCALIBUR_STONE: DuelArenaDef = {
   fogAlpha: 0.1,
 };
 
+export const BROCELIANDE_FOREST: DuelArenaDef = {
+  id: "broceliande",
+  name: "Brocéliande Forest",
+  stageWidth: 800,
+  stageFloorY: 400,
+  leftWall: 50,
+  rightWall: 750,
+  skyTop: 0x0a1a0a,
+  skyBottom: 0x1a3322,
+  groundColor: 0x3a3020,
+  groundHighlight: 0x4a4030,
+  accentColor: 0x44dd66,
+  fogColor: 0x446644,
+  fogAlpha: 0.2,
+};
+
+export const TINTAGEL_CLIFFS: DuelArenaDef = {
+  id: "tintagel",
+  name: "Tintagel Cliffs",
+  stageWidth: 800,
+  stageFloorY: 400,
+  leftWall: 50,
+  rightWall: 750,
+  skyTop: 0x223344,
+  skyBottom: 0x556688,
+  groundColor: 0x555550,
+  groundHighlight: 0x666660,
+  accentColor: 0xeebb55,
+  fogColor: 0x889999,
+  fogAlpha: 0.12,
+};
+
 export const DUEL_ARENAS: Record<string, DuelArenaDef> = {
   camelot: CAMELOT_COURTYARD,
   avalon: AVALON_SHORE,
   excalibur: EXCALIBUR_STONE,
+  broceliande: BROCELIANDE_FOREST,
+  tintagel: TINTAGEL_CLIFFS,
 };
 
-export const DUEL_ARENA_IDS = ["camelot", "avalon", "excalibur"] as const;
+export const DUEL_ARENA_IDS = ["camelot", "avalon", "excalibur", "broceliande", "tintagel"] as const;

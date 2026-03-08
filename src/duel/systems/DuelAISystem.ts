@@ -33,6 +33,12 @@ const COMBO_ROUTES: Record<string, string[][]> = {
     ["light_high", "med_high", "backflip_shot"],
     ["light_low", "med_low", "leg_sweep"],
   ],
+  spear: [
+    ["light_high", "light_high", "med_high", "spear_lunge"],
+    ["light_low", "light_high", "med_high", "heavy_high"],
+    ["light_high", "med_high", "lance_charge"],
+    ["light_low", "med_low", "lance_sweep"],
+  ],
 };
 
 export const DuelAISystem = {
@@ -233,7 +239,7 @@ export const DuelAISystem = {
     }
     if (rand < 0.85) {
       // Zoners fire projectiles at range
-      if (charDef.fighterType === "mage" || charDef.fighterType === "archer") {
+      if (charDef.fighterType === "mage" || charDef.fighterType === "archer" || charDef.fighterType === "spear") {
         const specialIds = Object.keys(charDef.specials);
         result.action = specialIds[0]; // usually the projectile
         _currentDecision = null;
