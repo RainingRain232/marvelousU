@@ -59,7 +59,7 @@ export interface SimEvents {
   // RPG events
   rpgPhaseChanged: { phase: RPGPhase; previousPhase: RPGPhase };
   rpgPartyMoved: { position: Vec2; previousPosition: Vec2 };
-  rpgEncounterTriggered: { encounterId: string; encounterType: "random" | "dungeon" | "boss"; arenaBet?: number };
+  rpgEncounterTriggered: { encounterId: string; encounterType: "random" | "dungeon" | "boss"; arenaBet?: number; arenaMode?: "auto" | "turn" };
   rpgDungeonEntered: { dungeonId: string };
   rpgDungeonFloorChanged: { floor: number; direction: "down" | "up" };
   rpgDungeonExited: { dungeonId: string };

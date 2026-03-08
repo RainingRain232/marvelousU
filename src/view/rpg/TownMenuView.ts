@@ -102,6 +102,7 @@ export class TownMenuView {
 
   // Arena state
   private _arenaIndex: number = 0;
+  private _arenaBetIndex: number = 0; // index into current tier's betAmounts
 
   // Forge/Crafting state
   private _forgeIndex: number = 0;
@@ -1397,103 +1398,201 @@ export class TownMenuView {
   private _drawArena(W: number, H: number): void {
     const startY = 100;
     const g = new Graphics();
-
     g.roundRect(15, startY - 5, W - 30, H - startY - 60, 6);
     g.fill({ color: PANEL_COLOR, alpha: 0.8 });
     g.stroke({ color: BORDER_COLOR, width: 1 });
     this.container.addChild(g);
 
     const fightsLeft = (this.rpg as any).arenaFightsLeft ?? 0;
-    const headerText = new Text({
-      text: `\u2694 Arena  (Fights remaining: ${fightsLeft})`,
+    const header = new Text({
+      text: `\u2694 Arena`,
       style: { fontFamily: "monospace", fontSize: 15, fill: RECRUIT_COLOR, fontWeight: "bold" },
     });
-    headerText.position.set(25, startY + 6);
-    this.container.addChild(headerText);
+    header.position.set(25, startY + 6);
+    this.container.addChild(header);
 
-    const desc = new Text({
-      text: "Bet gold and fight. Win to double your bet — lose and forfeit it. Re-enter town to reset fights.",
-      style: { fontFamily: "monospace", fontSize: 11, fill: DIM_TEXT, wordWrap: true, wordWrapWidth: W - 60 },
+    const fightsText = new Text({
+      text: `Fights left: ${fightsLeft}`,
+      style: { fontFamily: "monospace", fontSize: 12, fill: fightsLeft > 0 ? TEXT_COLOR : 0xaa4444 },
     });
-    desc.position.set(25, startY + 28);
-    this.container.addChild(desc);
+    fightsText.position.set(W - 150, startY + 8);
+    this.container.addChild(fightsText);
 
     const avgPartyLevel = Math.round(this.rpg.party.reduce((s, m) => s + m.level, 0) / (this.rpg.party.length || 1));
     const tiers = getAvailableArenaTiers(avgPartyLevel);
 
     if (tiers.length === 0) {
-      const noTiers = new Text({
-        text: "No arena tiers available at your level.",
-        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
-      });
-      noTiers.position.set(30, startY + 60);
-      this.container.addChild(noTiers);
+      const t = new Text({ text: "No tiers available at your level.", style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT } });
+      t.position.set(30, startY + 50);
+      this.container.addChild(t);
       return;
     }
 
-    if (fightsLeft <= 0) {
-      const noFights = new Text({
-        text: "No fights remaining. Leave and re-enter town to reset.",
-        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
-      });
-      noFights.position.set(30, startY + 60);
-      this.container.addChild(noFights);
-      return;
-    }
+    // Clamp arenaIndex
+    this._arenaIndex = Math.min(this._arenaIndex, tiers.length - 1);
+    const tier = tiers[this._arenaIndex];
 
-    const canFight = canFightInArena(this.rpg);
-    let rowY = startY + 60;
+    // Clamp betIndex
+    this._arenaBetIndex = Math.min(this._arenaBetIndex, tier.betAmounts.length - 1);
+    const betAmount = tier.betAmounts[this._arenaBetIndex];
+    const canAfford = this.rpg.gold >= betAmount;
+    const canFight = canFightInArena(this.rpg) && canAfford;
 
-    for (let i = 0; i < tiers.length; i++) {
-      const tier = tiers[i];
+    // Tier selector (if more than one tier available)
+    let y = startY + 36;
+    if (tiers.length > 1) {
+      const prevBtn = this._makeArrowBtn("◄", 25, y, () => {
+        this._arenaIndex = Math.max(0, this._arenaIndex - 1);
+        this._arenaBetIndex = 0;
+        this._draw();
+      }, this._arenaIndex > 0);
+      this.container.addChild(prevBtn);
 
-      // Tier header
       const tierLabel = new Text({
         text: tier.name,
         style: { fontFamily: "monospace", fontSize: 13, fill: HIGHLIGHT_COLOR, fontWeight: "bold" },
       });
-      tierLabel.position.set(25, rowY);
+      tierLabel.position.set(55, y + 2);
       this.container.addChild(tierLabel);
-      rowY += 20;
 
-      // One button per bet amount
-      for (const bet of tier.betAmounts) {
-        const canAfford = this.rpg.gold >= bet;
-        const active = canFight && canAfford;
+      const nextBtn = this._makeArrowBtn("►", 55 + tierLabel.width + 8, y, () => {
+        this._arenaIndex = Math.min(tiers.length - 1, this._arenaIndex + 1);
+        this._arenaBetIndex = 0;
+        this._draw();
+      }, this._arenaIndex < tiers.length - 1);
+      this.container.addChild(nextBtn);
+      y += 30;
+    } else {
+      const tierLabel = new Text({
+        text: tier.name,
+        style: { fontFamily: "monospace", fontSize: 13, fill: HIGHLIGHT_COLOR, fontWeight: "bold" },
+      });
+      tierLabel.position.set(25, y + 2);
+      this.container.addChild(tierLabel);
+      y += 28;
+    }
 
-        const btn = new Container();
-        btn.position.set(30, rowY);
-        btn.eventMode = "static";
-        btn.cursor = active ? "pointer" : "default";
+    // Bet selector
+    const betLabel = new Text({
+      text: "Your bet:",
+      style: { fontFamily: "monospace", fontSize: 12, fill: DIM_TEXT },
+    });
+    betLabel.position.set(25, y + 4);
+    this.container.addChild(betLabel);
 
-        const btnBg = new Graphics();
-        btnBg.roundRect(0, 0, 140, 26, 4);
-        btnBg.fill({ color: active ? 0x4a2a2e : 0x222233 });
-        btnBg.stroke({ color: active ? 0xcc5555 : 0x444466, width: 1 });
-        btn.addChild(btnBg);
+    const prevBetBtn = this._makeArrowBtn("◄", 105, y, () => {
+      this._arenaBetIndex = Math.max(0, this._arenaBetIndex - 1);
+      this._draw();
+    }, this._arenaBetIndex > 0);
+    this.container.addChild(prevBetBtn);
 
-        const btnText = new Text({
-          text: `Fight  —  Bet ${bet}g  →  Win ${bet * 2}g`,
-          style: { fontFamily: "monospace", fontSize: 11, fill: active ? 0xffffff : 0x555577 },
-        });
-        btnText.position.set(8, 6);
-        btn.addChild(btnText);
+    const betValText = new Text({
+      text: `${betAmount}g`,
+      style: { fontFamily: "monospace", fontSize: 14, fill: 0xffdd88, fontWeight: "bold" },
+    });
+    betValText.position.set(135, y + 2);
+    this.container.addChild(betValText);
 
-        if (active) {
-          const tierIdx = i;
-          const betAmt = bet;
-          btn.on("pointerdown", () => this._handleArenaFight(tierIdx, betAmt));
-        }
+    const nextBetBtn = this._makeArrowBtn("►", 175, y, () => {
+      this._arenaBetIndex = Math.min(tier.betAmounts.length - 1, this._arenaBetIndex + 1);
+      this._draw();
+    }, this._arenaBetIndex < tier.betAmounts.length - 1);
+    this.container.addChild(nextBetBtn);
 
-        this.container.addChild(btn);
-        rowY += 34;
-      }
+    const winText = new Text({
+      text: `→ win: ${betAmount * 2}g`,
+      style: { fontFamily: "monospace", fontSize: 12, fill: canAfford ? 0x88dd88 : DIM_TEXT },
+    });
+    winText.position.set(215, y + 4);
+    this.container.addChild(winText);
 
-      rowY += 8; // gap between tiers
+    if (!canAfford) {
+      const warn = new Text({
+        text: "Not enough gold",
+        style: { fontFamily: "monospace", fontSize: 11, fill: 0xaa4444 },
+      });
+      warn.position.set(25, y + 26);
+      this.container.addChild(warn);
+    }
+
+    y += 50;
+
+    // Fight buttons
+    if (fightsLeft <= 0) {
+      const t = new Text({
+        text: "No fights left. Leave and re-enter town to reset.",
+        style: { fontFamily: "monospace", fontSize: 12, fill: 0xaa4444 },
+      });
+      t.position.set(25, y);
+      this.container.addChild(t);
+    } else {
+      // Watch button (auto-resolve)
+      const watchBtn = this._makeArenaActionBtn("Watch", 25, y, canFight, () => this._handleArenaFight(this._arenaIndex, betAmount, "auto"));
+      this.container.addChild(watchBtn);
+
+      // Fight button (manual turn-based)
+      const fightBtn = this._makeArenaActionBtn("Fight!", 130, y, canFight, () => this._handleArenaFight(this._arenaIndex, betAmount, "turn"));
+      this.container.addChild(fightBtn);
+
+      y += 40;
+      const hint = new Text({
+        text: "Watch = auto-resolve  |  Fight = you play it",
+        style: { fontFamily: "monospace", fontSize: 10, fill: DIM_TEXT },
+      });
+      hint.position.set(25, y);
+      this.container.addChild(hint);
     }
   }
 
-  private _handleArenaFight(tierIndex: number, betAmount: number): void {
+  private _makeArrowBtn(label: string, x: number, y: number, onClick: () => void, enabled: boolean): Container {
+    const btn = new Container();
+    btn.position.set(x, y);
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const bg = new Graphics();
+    bg.roundRect(0, 0, 22, 22, 3);
+    bg.fill({ color: enabled ? 0x2a3a4e : 0x1a1a2a });
+    bg.stroke({ color: enabled ? 0x6688aa : 0x333344, width: 1 });
+    btn.addChild(bg);
+
+    const txt = new Text({
+      text: label,
+      style: { fontFamily: "monospace", fontSize: 12, fill: enabled ? 0xaaccff : 0x444466 },
+    });
+    txt.anchor.set(0.5, 0.5);
+    txt.position.set(11, 11);
+    btn.addChild(txt);
+
+    btn.on("pointerdown", () => { if (enabled) onClick(); });
+    return btn;
+  }
+
+  private _makeArenaActionBtn(label: string, x: number, y: number, enabled: boolean, onClick: () => void): Container {
+    const btn = new Container();
+    btn.position.set(x, y);
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const bg = new Graphics();
+    bg.roundRect(0, 0, 95, 30, 5);
+    bg.fill({ color: enabled ? 0x1e3a1e : 0x222233 });
+    bg.stroke({ color: enabled ? 0x44aa44 : 0x444466, width: 1 });
+    btn.addChild(bg);
+
+    const txt = new Text({
+      text: label,
+      style: { fontFamily: "monospace", fontSize: 13, fill: enabled ? 0xffffff : 0x555577, fontWeight: "bold" },
+    });
+    txt.anchor.set(0.5, 0.5);
+    txt.position.set(47, 15);
+    btn.addChild(txt);
+
+    btn.on("pointerdown", () => { if (enabled) onClick(); });
+    return btn;
+  }
+
+  private _handleArenaFight(tierIndex: number, betAmount: number, mode: "auto" | "turn"): void {
     const avgPartyLevel = Math.round(this.rpg.party.reduce((s, m) => s + m.level, 0) / (this.rpg.party.length || 1));
     const tiers = getAvailableArenaTiers(avgPartyLevel);
     if (tierIndex >= tiers.length) return;
@@ -1514,9 +1613,9 @@ export class TownMenuView {
         encounterId: encounter.encounterId,
         encounterType: "random",
         arenaBet: betAmount,
+        arenaMode: mode,
       });
     } else {
-      // No valid encounter — refund the bet
       this.rpg.gold += betAmount;
     }
   }
@@ -2209,22 +2308,32 @@ export class TownMenuView {
   private _handleArenaInput(e: KeyboardEvent): void {
     const avgPartyLevel = Math.round(this.rpg.party.reduce((s, m) => s + m.level, 0) / (this.rpg.party.length || 1));
     const tiers = getAvailableArenaTiers(avgPartyLevel);
+    const tier = tiers[this._arenaIndex];
 
     switch (e.code) {
       case "ArrowUp":
       case "KeyW":
         this._arenaIndex = Math.max(0, this._arenaIndex - 1);
+        this._arenaBetIndex = 0;
         this._draw();
         break;
       case "ArrowDown":
       case "KeyS":
         this._arenaIndex = Math.min(tiers.length - 1, this._arenaIndex + 1);
+        this._arenaBetIndex = 0;
         this._draw();
+        break;
+      case "ArrowLeft":
+      case "KeyA":
+        if (tier) { this._arenaBetIndex = Math.max(0, this._arenaBetIndex - 1); this._draw(); }
+        break;
+      case "ArrowRight":
+      case "KeyD":
+        if (tier) { this._arenaBetIndex = Math.min(tier.betAmounts.length - 1, this._arenaBetIndex + 1); this._draw(); }
         break;
       case "Enter":
       case "Space": {
-        const tier = tiers[this._arenaIndex];
-        if (tier) this._handleArenaFight(this._arenaIndex, tier.betAmounts[0]);
+        if (tier) this._handleArenaFight(this._arenaIndex, tier.betAmounts[this._arenaBetIndex], "turn");
         break;
       }
       case "Escape":

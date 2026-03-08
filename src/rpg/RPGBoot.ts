@@ -49,6 +49,8 @@ export class RPGGame {
   _pendingEncounterId: string | null = null;
   /** If the current battle is an arena fight, stores the bet amount; null otherwise. */
   private _pendingArenaBet: number | null = null;
+  /** For arena fights: "auto" = watch/auto-resolve, "turn" = player controls. */
+  private _pendingArenaMode: "auto" | "turn" | null = null;
   /** Tracks level-ups during the current battle for the results screen. */
   private _battleLevelUps: { name: string; newLevel: number; note?: string }[] = [];
   private _levelUpUnsub: (() => void) | null = null;
@@ -163,6 +165,7 @@ export class RPGGame {
     this._unsubs.push(EventBus.on("rpgEncounterTriggered", (e) => {
       this._pendingEncounterId = e.encounterId;
       this._pendingArenaBet = e.arenaBet ?? null;
+      this._pendingArenaMode = e.arenaMode ?? null;
       this._startBattle(e.encounterId, e.encounterType);
     }));
 
@@ -525,7 +528,11 @@ export class RPGGame {
     encounterId: string,
     encounterType: "random" | "dungeon" | "boss",
   ): void {
-    if (this.rpgState.battleMode === "turn") {
+    // Arena "Watch" forces auto-resolve regardless of the player's battle mode setting
+    const effectiveMode = this._pendingArenaMode === "auto" ? "auto"
+      : this._pendingArenaMode === "turn" ? "turn"
+      : this.rpgState.battleMode;
+    if (effectiveMode === "turn") {
       // Track level-ups during this battle
       this._battleLevelUps = [];
       this._levelUpUnsub = EventBus.on("rpgLevelUp", (e) => {
@@ -539,7 +546,7 @@ export class RPGGame {
       // Calculate initiative and start
       calculateInitiative(this.turnBattleState);
 
-      // Wire up view callbacks (deferred — view is created after transition)
+      // Wire up view callbacks before transitioning — view is created during transition
       this.rpgViewManager.pendingBattleCallbacks = (view) => {
         view.onActionSelected = (action: TurnBattleAction) => {
           this._handleTurnAction(action);
@@ -566,6 +573,9 @@ export class RPGGame {
           this._processEnemyTurns();
         }
       };
+
+      // Transition to battle view (creates the view, which reads pendingBattleCallbacks)
+      this.stateMachine.transition(RPGPhase.BATTLE_TURN);
     } else {
       // Auto battle — resolve instantly
       this._runAutoBattle(encounterId, encounterType);
@@ -670,6 +680,7 @@ export class RPGGame {
     this._battleLevelUps = [];
     this._pendingEncounterId = null;
     this._pendingArenaBet = null;
+    this._pendingArenaMode = null;
 
     this.rpgViewManager.showBattleResults(results);
   }
@@ -903,6 +914,7 @@ export class RPGGame {
     this.rpgViewManager.turnBattleState = null;
     this._pendingEncounterId = null;
     this._pendingArenaBet = null;
+    this._pendingArenaMode = null;
 
     // Show results screen — phase transition happens on dismiss
     this.rpgViewManager.showBattleResults(results);

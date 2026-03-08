@@ -30,8 +30,12 @@ const RPG_TRANSITIONS: StateTransition<RPGPhase>[] = [
   { from: RPGPhase.BATTLE_TURN, to: RPGPhase.DUNGEON },
   { from: RPGPhase.BATTLE_AUTO, to: RPGPhase.OVERWORLD },
   { from: RPGPhase.BATTLE_AUTO, to: RPGPhase.DUNGEON },
-  // Town returns
+  // Town transitions
   { from: RPGPhase.TOWN_MENU, to: RPGPhase.OVERWORLD },
+  { from: RPGPhase.TOWN_MENU, to: RPGPhase.BATTLE_TURN },
+  { from: RPGPhase.TOWN_MENU, to: RPGPhase.BATTLE_AUTO },
+  { from: RPGPhase.BATTLE_TURN, to: RPGPhase.TOWN_MENU },
+  { from: RPGPhase.BATTLE_AUTO, to: RPGPhase.TOWN_MENU },
   // Game over from any
   { from: "*", to: RPGPhase.GAME_OVER },
   // Game over to main menu
