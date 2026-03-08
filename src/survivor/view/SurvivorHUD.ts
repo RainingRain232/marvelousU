@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
 import { WEAPON_DEFS, EVOLUTION_DEFS, PASSIVE_DEFS } from "../config/SurvivorWeaponDefs";
 import type { SurvivorEvolutionDef } from "../config/SurvivorWeaponDefs";
@@ -78,13 +79,13 @@ export class SurvivorHUD {
     this.container.addChild(this._timerText);
 
     // Kill count
-    this._killText = new Text({ text: "Kills: 0", style: STYLE_HUD_SMALL });
+    this._killText = new Text({ text: t("survivor.kills") + " 0", style: STYLE_HUD_SMALL });
     this._killText.anchor.set(1, 0);
     this._killText.position.set(sw - 10, 10);
     this.container.addChild(this._killText);
 
     // Gold
-    this._goldHudText = new Text({ text: "Gold: 0", style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xffd700 }) });
+    this._goldHudText = new Text({ text: t("survivor.gold") + " 0", style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xffd700 }) });
     this._goldHudText.anchor.set(1, 0);
     this._goldHudText.position.set(sw - 10, 26);
     this.container.addChild(this._goldHudText);
@@ -162,7 +163,7 @@ export class SurvivorHUD {
       this._bossWarningTimer -= DT;
       if (!this._bossWarning) {
         this._bossWarning = new Text({
-          text: "BOSS INCOMING!",
+          text: t("survivor.boss_incoming"),
           style: new TextStyle({ fontFamily: "monospace", fontSize: 24, fill: 0xff4444, fontWeight: "bold", letterSpacing: 3 }),
         });
         this._bossWarning.anchor.set(0.5, 0.5);

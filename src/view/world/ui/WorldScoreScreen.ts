@@ -1,6 +1,7 @@
 // Score overview screen — compares all players' resources, cities, units, etc.
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
@@ -82,7 +83,7 @@ export class WorldScoreScreen {
     this._content.addChild(bg);
 
     // Title
-    const title = new Text({ text: "SCORE", style: TITLE_STYLE });
+    const title = new Text({ text: t("world.score"), style: TITLE_STYLE });
     title.x = (sw - title.width) / 2;
     title.y = 20;
     this._content.addChild(title);

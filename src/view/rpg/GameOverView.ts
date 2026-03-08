@@ -1,6 +1,7 @@
 // Game Over screen — shown when the party is wiped, offers restart
 import { Container, Graphics, Text, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { t } from "@/i18n/i18n";
 
 import darkCastleUrl from "@/img/underground.png";
 
@@ -81,7 +82,7 @@ export class GameOverView {
 
     // Title
     const title = new Text({
-      text: "GAME OVER",
+      text: t("rpg.game_over"),
       style: { fontFamily: "monospace", fontSize: 28, fill: TITLE_COLOR, fontWeight: "bold" },
     });
     title.anchor.set(0.5, 0);
@@ -90,7 +91,7 @@ export class GameOverView {
 
     // Message
     const msg = new Text({
-      text: "Your party has fallen in battle.\nThe adventure ends here... or does it?",
+      text: t("rpg.game_over_text"),
       style: {
         fontFamily: "monospace",
         fontSize: 12,
@@ -124,7 +125,7 @@ export class GameOverView {
 
     // Footer
     const footer = new Text({
-      text: "Press Enter to continue",
+      text: t("rpg.press_enter"),
       style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
     });
     footer.anchor.set(0.5, 0);

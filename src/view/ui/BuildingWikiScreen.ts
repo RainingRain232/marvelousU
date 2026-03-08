@@ -12,6 +12,7 @@ import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import type { BuildingDef } from "@sim/config/BuildingDefs";
 import { BuildingType } from "@/types";
 import { BUILDING_LABELS, UNIT_LABELS } from "@view/ui/HoverTooltip";
+import { t } from "@/i18n/i18n";
 
 // Building renderers (same set as HoverTooltip)
 import { CastleRenderer } from "@view/entities/CastleRenderer";
@@ -250,13 +251,13 @@ export class BuildingWikiScreen {
     );
 
     // Back button
-    const backBtn = this._makeNavBtn("< BACK", 104, 36, false);
+    const backBtn = this._makeNavBtn(t("back"), 104, 36, false);
     backBtn.position.set(21, 18);
     backBtn.on("pointerdown", () => this.onBack?.());
     card.addChild(backBtn);
 
     // Title
-    const title = new Text({ text: "BUILDING WIKI", style: STYLE_SCREEN_TITLE });
+    const title = new Text({ text: t("bwiki.title"), style: STYLE_SCREEN_TITLE });
     title.anchor.set(0.5, 0);
     title.position.set(CARD_W / 2, 18);
     card.addChild(title);
@@ -268,7 +269,7 @@ export class BuildingWikiScreen {
 
     // Description
     const desc = new Text({
-      text: "All buildings available in Rain. Buildings are organised by prerequisite tier — higher tiers require earlier buildings to be constructed first. Hover over a building for details.",
+      text: t("bwiki.desc"),
       style: STYLE_SUBTITLE,
     });
     desc.position.set(26, 75);

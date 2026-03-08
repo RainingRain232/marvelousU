@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle, AnimatedSprite } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import { UnitState, MapType } from "@/types";
 import { animationManager } from "@view/animation/AnimationManager";
 import { SURVIVOR_MAPS } from "../config/SurvivorBalanceConfig";
@@ -34,7 +35,7 @@ export class SurvivorCharSelectUI {
     this.container.addChild(bg);
 
     // Title
-    const title = new Text({ text: "SELECT SURVIVOR", style: STYLE_TITLE });
+    const title = new Text({ text: t("survivor.select"), style: STYLE_TITLE });
     title.anchor.set(0.5, 0);
     title.position.set(sw / 2, 20);
     this.container.addChild(title);
@@ -68,7 +69,7 @@ export class SurvivorCharSelectUI {
     // Map selection
     const rows2 = Math.ceil(SURVIVOR_CHARACTERS.length / cols);
     const mapSectionY = startY + rows2 * (cardH + gap) + 10;
-    const mapTitle = new Text({ text: "SELECT MAP", style: new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffd700, fontWeight: "bold" }) });
+    const mapTitle = new Text({ text: t("survivor.select_map"), style: new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffd700, fontWeight: "bold" }) });
     mapTitle.anchor.set(0.5, 0);
     mapTitle.position.set(sw / 2, mapSectionY);
     this.container.addChild(mapTitle);
@@ -220,7 +221,7 @@ export class SurvivorCharSelectUI {
   private _buildMetaUpgradeSection(startY: number, sw: number, sh: number): Container {
     const section = new Container();
 
-    const title = new Text({ text: "UPGRADES", style: new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffd700, fontWeight: "bold" }) });
+    const title = new Text({ text: t("survivor.upgrades"), style: new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffd700, fontWeight: "bold" }) });
     title.anchor.set(0.5, 0);
     title.position.set(sw / 2, 0);
     section.addChild(title);

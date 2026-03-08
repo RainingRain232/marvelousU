@@ -4,6 +4,7 @@
 // Displays winner info, turn count, and a return-to-menu button.
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 
@@ -163,7 +164,7 @@ export class WorldVictoryScreen {
     btnBg.stroke({ color: 0x5555aa, width: 2 });
     btn.addChild(btnBg);
 
-    const btnLabel = new Text({ text: "RETURN TO MENU", style: BTN_STYLE });
+    const btnLabel = new Text({ text: t("world.return_menu"), style: BTN_STYLE });
     btnLabel.x = (220 - btnLabel.width) / 2;
     btnLabel.y = 10;
     btn.addChild(btnLabel);

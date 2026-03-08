@@ -1,6 +1,7 @@
 // Research allocation slider — divides research effort between Science and Magic.
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
 
@@ -79,7 +80,7 @@ export class ResearchSliderScreen {
     this._content.addChild(bg);
 
     // Title
-    const title = new Text({ text: "RESEARCH ALLOCATION", style: TITLE_STYLE });
+    const title = new Text({ text: t("world.research_alloc"), style: TITLE_STYLE });
     title.x = (sw - title.width) / 2;
     title.y = 40;
     this._content.addChild(title);
@@ -101,8 +102,8 @@ export class ResearchSliderScreen {
     this._content.addChild(valueText);
 
     // Labels
-    const sciLabel = new Text({ text: "Science", style: LABEL_STYLE });
-    const magLabel = new Text({ text: "Magic", style: LABEL_STYLE });
+    const sciLabel = new Text({ text: t("world.science"), style: LABEL_STYLE });
+    const magLabel = new Text({ text: t("world.magic"), style: LABEL_STYLE });
 
     const sliderW = 400;
     const sliderX = (sw - sliderW) / 2;
@@ -193,7 +194,7 @@ export class ResearchSliderScreen {
 
     // Flavor text
     const flavor = new Text({
-      text: "\"Even the most gifted mages must occasionally turn their minds to mundane science\n— lest their towers collapse from poor engineering.\"",
+      text: t("world.research_quote"),
       style: FLAVOR_STYLE,
     });
     flavor.x = (sw - flavor.width) / 2;

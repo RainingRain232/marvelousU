@@ -4,6 +4,7 @@
 // Rendered as a PixiJS panel on the right side of the screen.
 
 import { Container, Graphics, Text, TextStyle, Sprite } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldCity } from "@world/state/WorldCity";
@@ -286,7 +287,7 @@ export class CityPanel {
     y += infoText.height + 14;
 
     // --- Buildings section ---
-    const buildLabel = new Text({ text: "Buildings", style: SECTION_STYLE });
+    const buildLabel = new Text({ text: t("world.buildings"), style: SECTION_STYLE });
     buildLabel.x = 12;
     buildLabel.y = y;
     this._contentContainer.addChild(buildLabel);
@@ -355,14 +356,14 @@ export class CityPanel {
     y += 10;
 
     // --- Recruitment section ---
-    const recruitLabel = new Text({ text: "Recruit", style: SECTION_STYLE });
+    const recruitLabel = new Text({ text: t("world.recruit"), style: SECTION_STYLE });
     recruitLabel.x = 12;
     recruitLabel.y = y;
     this._contentContainer.addChild(recruitLabel);
     y += 18;
 
     const recruitHint = new Text({
-      text: "Shift +5 · Ctrl +10",
+      text: t("world.shift_hint"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x666688 }),
     });
     recruitHint.x = 12;
@@ -402,7 +403,7 @@ export class CityPanel {
 
     // --- Garrison section ---
     y += 10;
-    const garrisonLabel = new Text({ text: "Garrison", style: SECTION_STYLE });
+    const garrisonLabel = new Text({ text: t("world.garrison"), style: SECTION_STYLE });
     garrisonLabel.x = 12;
     garrisonLabel.y = y;
     this._contentContainer.addChild(garrisonLabel);
@@ -431,7 +432,7 @@ export class CityPanel {
 
       y += 6;
       const createBtn = _makeButton(
-        "CREATE ARMY",
+        t("world.create_army"),
         16,
         y,
         PANEL_W - 32,
@@ -447,7 +448,7 @@ export class CityPanel {
       this._contentContainer.addChild(createBtn);
       y += 32;
     } else {
-      const emptyText = new Text({ text: "  (empty)", style: INFO_STYLE });
+      const emptyText = new Text({ text: t("world.empty"), style: INFO_STYLE });
       emptyText.x = 12;
       emptyText.y = y;
       this._contentContainer.addChild(emptyText);
@@ -503,7 +504,7 @@ export class CityPanel {
     y += 20;
 
     const hint = new Text({
-      text: "Shift +5 · Ctrl +10",
+      text: t("world.shift_hint"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x666688 }),
     });
     hint.x = 12;

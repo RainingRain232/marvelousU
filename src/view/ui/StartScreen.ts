@@ -3,6 +3,7 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { RuneCorners } from "@view/fx/RuneCorners";
+import { t } from "@/i18n/i18n";
 
 const STYLE_TITLE = new TextStyle({
   fontFamily: "monospace",
@@ -57,7 +58,7 @@ export class StartScreen {
     this.container.addChild(this._particles.container);
 
     // Title text
-    this._titleText = new Text({ text: "Rain's Autobattler", style: STYLE_TITLE });
+    this._titleText = new Text({ text: t("start_screen.title"), style: STYLE_TITLE });
     this._titleText.anchor.set(0.5, 0.5);
     this.container.addChild(this._titleText);
 
@@ -71,7 +72,7 @@ export class StartScreen {
     this._btnBg = new Graphics();
     this._btn.addChild(this._btnBg);
 
-    const btnLabel = new Text({ text: "START", style: STYLE_BTN });
+    const btnLabel = new Text({ text: t("start"), style: STYLE_BTN });
     btnLabel.anchor.set(0.5, 0.5);
     btnLabel.position.set(BW / 2, BH / 2);
     this._btn.addChild(btnLabel);

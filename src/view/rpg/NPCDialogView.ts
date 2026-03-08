@@ -3,6 +3,7 @@
 import { Container, Graphics, Text, Sprite, Assets, Texture } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { RPGState, QuestState } from "@rpg/state/RPGState";
+import { t } from "@/i18n/i18n";
 import { getAvailableQuest, getActiveQuest, acceptQuest, claimQuestReward } from "@rpg/systems/QuestSystem";
 
 // Leader portrait images
@@ -202,8 +203,8 @@ export class NPCDialogView {
     const isLast = this._currentLine >= this._lines.length - 1;
     const hasMore = this._checkHasQuestContent() || (this._isLeader && this._blessingName);
     const promptStr = isLast
-      ? (hasMore ? "Press Enter to continue..." : "Press Enter to close")
-      : "Press Enter to continue...";
+      ? (hasMore ? t("rpg.press_continue") : t("rpg.npc_press_close"))
+      : t("rpg.press_continue");
     const prompt = new Text({
       text: promptStr,
       style: { fontFamily: "monospace", fontSize: 10, fill: PROMPT_COLOR },
@@ -241,7 +242,7 @@ export class NPCDialogView {
     this.container.addChild(descText);
 
     const prompt = new Text({
-      text: "Press Enter to continue...",
+      text: t("rpg.press_continue"),
       style: { fontFamily: "monospace", fontSize: 10, fill: PROMPT_COLOR },
     });
     prompt.anchor.set(1, 0);
@@ -278,7 +279,7 @@ export class NPCDialogView {
     this.container.addChild(rewardText);
 
     const prompt = new Text({
-      text: "Enter = Accept  |  Esc = Decline",
+      text: t("rpg.accept_decline"),
       style: { fontFamily: "monospace", fontSize: 10, fill: PROMPT_COLOR },
     });
     prompt.anchor.set(1, 0);
@@ -309,7 +310,7 @@ export class NPCDialogView {
     }
 
     const prompt = new Text({
-      text: "Press Enter to close",
+      text: t("rpg.npc_press_close"),
       style: { fontFamily: "monospace", fontSize: 10, fill: PROMPT_COLOR },
     });
     prompt.anchor.set(1, 0);
@@ -336,7 +337,7 @@ export class NPCDialogView {
     this.container.addChild(rewardText);
 
     const prompt = new Text({
-      text: "Press Enter to close",
+      text: t("rpg.npc_press_close"),
       style: { fontFamily: "monospace", fontSize: 10, fill: PROMPT_COLOR },
     });
     prompt.anchor.set(1, 0);

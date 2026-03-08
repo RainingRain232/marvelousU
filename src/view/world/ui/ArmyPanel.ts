@@ -4,6 +4,7 @@
 // Rendered as a PixiJS panel on the left side of the screen.
 
 import { Container, Graphics, Text, TextStyle, Sprite } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldArmy, ArmyUnit } from "@world/state/WorldArmy";
@@ -311,7 +312,7 @@ export class ArmyPanel {
         );
         if (validImprovements.length > 0) {
           const header = new Text({
-            text: "Build:",
+            text: t("world.build"),
             style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x88cc44 }),
           });
           header.x = 12;
@@ -388,7 +389,7 @@ export class ArmyPanel {
   }
 
   private _buildSplitView(army: WorldArmy, y: number): number {
-    const header = new Text({ text: "Split Army", style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fontWeight: "bold", fill: 0xaaddff }) });
+    const header = new Text({ text: t("world.split_army"), style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fontWeight: "bold", fill: 0xaaddff }) });
     header.x = 12;
     header.y = y;
     this._contentContainer.addChild(header);

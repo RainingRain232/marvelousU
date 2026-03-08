@@ -1,6 +1,7 @@
 // Full-screen overlay showing all encountered enemies (bestiary)
 import { Container, Graphics, Text } from "pixi.js";
 import type { RPGState } from "@rpg/state/RPGState";
+import { t } from "@/i18n/i18n";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -61,7 +62,7 @@ export function createBestiaryView(rpgState: RPGState): Container {
 
   // Title
   const title = new Text({
-    text: "Bestiary",
+    text: t("rpg.bestiary"),
     style: { fontFamily: "monospace", fontSize: 20, fill: TITLE_COLOR, fontWeight: "bold" },
   });
   title.anchor.set(0.5, 0);
@@ -101,7 +102,7 @@ export function createBestiaryView(rpgState: RPGState): Container {
 
     if (entries.length === 0) {
       const emptyText = new Text({
-        text: "No creatures encountered yet.",
+        text: t("rpg.no_creatures"),
         style: { fontFamily: "monospace", fontSize: 12, fill: DIM_TEXT },
       });
       emptyText.anchor.set(0.5, 0);
@@ -150,7 +151,7 @@ export function createBestiaryView(rpgState: RPGState): Container {
       // Tier 3: mastered badge
       if (tier >= 3) {
         const badge = new Text({
-          text: "MASTERED",
+          text: t("rpg.mastered"),
           style: { fontFamily: "monospace", fontSize: 9, fill: MASTERED_COLOR, fontWeight: "bold" },
         });
         badge.anchor.set(1, 0);

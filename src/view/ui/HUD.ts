@@ -5,6 +5,7 @@ import type { GameState } from "@sim/state/GameState";
 import type { ViewManager } from "@view/ViewManager";
 import { GamePhase } from "@/types";
 import type { PlayerId } from "@/types";
+import { t } from "@/i18n/i18n";
 
 // ---------------------------------------------------------------------------
 // Layout constants (all in screen pixels, anchored to top-left / top-right)
@@ -52,11 +53,11 @@ const STYLE_PHASE = new TextStyle({
   letterSpacing: 2,
 });
 
-// Phase display strings
-const PHASE_LABELS: Record<string, string> = {
-  prep: "PREP",
-  battle: "BATTLE",
-  resolve: "RESOLVE",
+// Phase display keys (resolved via i18n at runtime)
+const PHASE_KEYS: Record<string, string> = {
+  prep: "hud.prep",
+  battle: "hud.battle",
+  resolve: "hud.resolve",
 };
 
 // Button style shared by AI toggle and START BATTLE
@@ -232,19 +233,19 @@ export class HUD {
     this._westPanel = makePanel(PANEL_W, PANEL_H);
     this._westPanel.position.set(PAD, PAD);
 
-    const goldLabel = new Text({ text: "GOLD", style: STYLE_LABEL });
+    const goldLabel = new Text({ text: t("hud.gold"), style: STYLE_LABEL });
     goldLabel.position.set(10, 8);
 
     this._westGoldVal = new Text({ text: "0", style: STYLE_VALUE });
     this._westGoldVal.position.set(10, 24);
 
-    const manaLabel = new Text({ text: "MANA", style: STYLE_MANA_LABEL });
+    const manaLabel = new Text({ text: t("hud.mana"), style: STYLE_MANA_LABEL });
     manaLabel.position.set(60, 8);
 
     this._westManaVal = new Text({ text: "0", style: STYLE_MANA_VALUE });
     this._westManaVal.position.set(60, 24);
 
-    const unitLabel = new Text({ text: "UNITS", style: STYLE_LABEL });
+    const unitLabel = new Text({ text: t("hud.units"), style: STYLE_LABEL });
     unitLabel.position.set(130, 8);
 
     this._westUnitVal = new Text({ text: "0", style: STYLE_VALUE });
@@ -264,19 +265,19 @@ export class HUD {
     // x positioned in _repositionEastPanel
     this._eastPanel.position.y = PAD;
 
-    const goldLabel = new Text({ text: "GOLD", style: STYLE_LABEL });
+    const goldLabel = new Text({ text: t("hud.gold"), style: STYLE_LABEL });
     goldLabel.position.set(10, 8);
 
     this._eastGoldVal = new Text({ text: "0", style: STYLE_VALUE });
     this._eastGoldVal.position.set(10, 24);
 
-    const eastManaLabel = new Text({ text: "MANA", style: STYLE_MANA_LABEL });
+    const eastManaLabel = new Text({ text: t("hud.mana"), style: STYLE_MANA_LABEL });
     eastManaLabel.position.set(60, 8);
 
     this._eastManaVal = new Text({ text: "0", style: STYLE_MANA_VALUE });
     this._eastManaVal.position.set(60, 24);
 
-    const unitLabel = new Text({ text: "UNITS", style: STYLE_LABEL });
+    const unitLabel = new Text({ text: t("hud.units"), style: STYLE_LABEL });
     unitLabel.position.set(130, 8);
 
     this._eastUnitVal = new Text({ text: "0", style: STYLE_VALUE });
@@ -298,7 +299,7 @@ export class HUD {
     const h = 36;
     this._phasePanel = makePanel(w, h);
 
-    this._phaseText = new Text({ text: "PREP", style: STYLE_PHASE });
+    this._phaseText = new Text({ text: t("hud.prep"), style: STYLE_PHASE });
     this._phaseText.anchor.set(0.5, 0.5);
     this._phaseText.position.set(w / 2, h / 2);
 
@@ -373,7 +374,7 @@ export class HUD {
 
   private _setPhase(phase: GamePhase): void {
     this._currentPhase = phase;
-    this._phaseText.text = PHASE_LABELS[phase] ?? phase.toUpperCase();
+    this._phaseText.text = t(PHASE_KEYS[phase] ?? phase);
     if (this._startBattleBtn) {
       this._startBattleBtn.visible = phase === GamePhase.PREP;
     }
@@ -440,8 +441,8 @@ export class HUD {
       .roundRect(0, 0, W, H, 4)
       .stroke({ color: isP1Active ? 0x4488cc : 0xaa44cc, width: 1.5 });
     this._switchBtnLabel.text = isP1Active
-      ? "CONTROLLING: P1  [click→P2]"
-      : "CONTROLLING: P2  [click→P1]";
+      ? t("hud.controlling_p1")
+      : t("hud.controlling_p2");
     this._switchBtnLabel.style.fill = isP1Active ? 0x88ccff : 0xee88ff;
   }
 
@@ -468,7 +469,7 @@ export class HUD {
       .stroke({ color: 0x4488cc, width: 1.5 });
     btn.addChild(bg);
 
-    const label = new Text({ text: "START BATTLE", style: STYLE_BTN });
+    const label = new Text({ text: t("hud.start_battle"), style: STYLE_BTN });
     label.style.fill = 0x88ccff;
     label.anchor.set(0.5, 0.5);
     label.position.set(W / 2, H / 2);
@@ -523,7 +524,7 @@ export class HUD {
   /** Flash the current game speed on screen. Called by main.ts on speed change. */
   showSpeedLabel(scale: number): void {
     const pct = Math.round(scale * 100);
-    this._speedLabel.text = `SPEED: ${pct}%`;
+    this._speedLabel.text = `${t("hud.speed")} ${pct}%`;
     this._speedLabel.position.x = Math.floor(this._screenW / 2);
     this._speedLabel.visible = true;
     this._speedLabel.alpha = 1;

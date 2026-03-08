@@ -4,6 +4,7 @@
 // Players can cast spells, see cooldowns, active effects, and mana costs.
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldPlayer } from "@world/state/WorldPlayer";
@@ -139,7 +140,7 @@ export class MerlinMagicScreen {
     this._content.addChild(bg);
 
     // Title
-    const title = new Text({ text: "MERLIN'S MAGIC", style: TITLE_STYLE });
+    const title = new Text({ text: t("world.merlin_magic"), style: TITLE_STYLE });
     title.x = (sw - title.width) / 2;
     title.y = 16;
     this._content.addChild(title);
@@ -213,7 +214,7 @@ export class MerlinMagicScreen {
     if (active.length === 0) return y;
 
     const label = new Text({
-      text: "Active Enchantments:",
+      text: t("world.active_enchantments"),
       style: new TextStyle({
         fontFamily: "monospace",
         fontSize: 12,

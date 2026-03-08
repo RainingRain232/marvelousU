@@ -3,6 +3,7 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { AmbientParticles } from "@view/fx/AmbientParticles";
+import { t, getLanguage, setLanguage, type Language } from "@/i18n/i18n";
 
 // ---------------------------------------------------------------------------
 // Style constants
@@ -68,7 +69,10 @@ const GAME_SPEEDS = [1, 1.5, 2, 3];
 const GAME_SPEED_LABELS = ["1x", "1.5x", "2x", "3x"];
 
 const SCROLL_SPEEDS = [0.5, 1, 1.5];
-const SCROLL_SPEED_LABELS = ["Slow", "Normal", "Fast"];
+const SCROLL_SPEED_KEYS = ["settings.scroll_slow", "settings.scroll_normal", "settings.scroll_fast"];
+
+const LANGUAGES: Language[] = ["en", "nl"];
+const LANGUAGE_LABELS = ["English", "Nederlands"];
 
 // ---------------------------------------------------------------------------
 // Local helper: panel container with rounded-rect dark background
@@ -199,7 +203,11 @@ export class SettingsScreen {
   // UI references for volume row
   private _volValueLabel!: Text;
 
+  // Language state
+  private _langIdx = LANGUAGES.indexOf(getLanguage());
+
   // UI references for selector rows
+  private _langBtns: SelectorBtn[] = [];
   private _speedBtns: SelectorBtn[] = [];
   private _scrollBtns: SelectorBtn[] = [];
   private _critBtns: SelectorBtn[] = [];
@@ -338,7 +346,7 @@ export class SettingsScreen {
     this.container.addChild(card);
 
     // --- Title ---
-    const title = new Text({ text: "SETTINGS", style: STYLE_TITLE });
+    const title = new Text({ text: t("settings.title"), style: STYLE_TITLE });
     title.anchor.set(0.5, 0);
     title.position.set(CW / 2, 18);
     card.addChild(title);
@@ -350,6 +358,18 @@ export class SettingsScreen {
       new Graphics()
         .rect(20, curY, CW - 40, 1)
         .fill({ color: BORDER_COLOR, alpha: 0.2 }),
+    );
+    curY += 14;
+
+    // --- Language row ---
+    curY = this._buildLanguageRow(card, CW, curY);
+    curY += 12;
+
+    // Divider
+    card.addChild(
+      new Graphics()
+        .rect(20, curY, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.15 }),
     );
     curY += 14;
 
@@ -390,7 +410,7 @@ export class SettingsScreen {
     curY += 14;
 
     // --- Critical Hits toggle ---
-    curY = this._buildToggleRow(card, CW, curY, "CRITICAL HITS", this._critEnabled, this._critBtns, (enabled) => {
+    curY = this._buildToggleRow(card, CW, curY, t("settings.critical_hits"), this._critEnabled, this._critBtns, (enabled) => {
       this._critEnabled = enabled;
       this._saveToStorage();
     });
@@ -405,7 +425,7 @@ export class SettingsScreen {
     curY += 14;
 
     // --- Block Chance toggle ---
-    curY = this._buildToggleRow(card, CW, curY, "BLOCK CHANCE", this._blockEnabled, this._blockBtns, (enabled) => {
+    curY = this._buildToggleRow(card, CW, curY, t("settings.block_chance"), this._blockEnabled, this._blockBtns, (enabled) => {
       this._blockEnabled = enabled;
       this._saveToStorage();
     });
@@ -420,7 +440,7 @@ export class SettingsScreen {
     curY += 14;
 
     // --- Manual Control toggle ---
-    curY = this._buildToggleRow(card, CW, curY, "MANUAL CONTROL", this._manualControlEnabled, this._manualControlBtns, (enabled) => {
+    curY = this._buildToggleRow(card, CW, curY, t("settings.manual_control"), this._manualControlEnabled, this._manualControlBtns, (enabled) => {
       this._manualControlEnabled = enabled;
       this._saveToStorage();
     });
@@ -438,7 +458,7 @@ export class SettingsScreen {
     const backBtn = makeActionBtn(
       CW - 40,
       40,
-      "<  BACK",
+      t("back"),
       0x1a1a2a,
       0x4466aa,
       0x88aadd,
@@ -476,7 +496,7 @@ export class SettingsScreen {
     const BTN_H = 28;
 
     // Section label
-    const sectionLabel = new Text({ text: "MUSIC VOLUME", style: STYLE_LABEL });
+    const sectionLabel = new Text({ text: t("settings.music_volume"), style: STYLE_LABEL });
     sectionLabel.position.set(20, curY);
     card.addChild(sectionLabel);
     curY += 20;
@@ -577,7 +597,7 @@ export class SettingsScreen {
     const btnW = Math.floor((CW - 40 - totalGap) / count);
 
     // Section label
-    const sectionLabel = new Text({ text: "GAME SPEED", style: STYLE_LABEL });
+    const sectionLabel = new Text({ text: t("settings.game_speed"), style: STYLE_LABEL });
     sectionLabel.position.set(20, curY);
     card.addChild(sectionLabel);
     curY += 20;
@@ -618,19 +638,19 @@ export class SettingsScreen {
   private _buildScrollSpeedRow(card: Container, CW: number, curY: number): number {
     const BTN_H = 30;
     const GAP = 6;
-    const count = SCROLL_SPEED_LABELS.length;
+    const count = SCROLL_SPEED_KEYS.length;
     const totalGap = GAP * (count - 1);
     const btnW = Math.floor((CW - 40 - totalGap) / count);
 
     // Section label
-    const sectionLabel = new Text({ text: "CAMERA SCROLL SPEED", style: STYLE_LABEL });
+    const sectionLabel = new Text({ text: t("settings.scroll_speed"), style: STYLE_LABEL });
     sectionLabel.position.set(20, curY);
     card.addChild(sectionLabel);
     curY += 20;
 
     this._scrollBtns = [];
     for (let i = 0; i < count; i++) {
-      const btn = makeSelectorBtn(btnW, BTN_H, SCROLL_SPEED_LABELS[i]);
+      const btn = makeSelectorBtn(btnW, BTN_H, t(SCROLL_SPEED_KEYS[i]));
       btn.container.position.set(20 + i * (btnW + GAP), curY);
 
       const idx = i;
@@ -658,6 +678,49 @@ export class SettingsScreen {
   }
 
   /**
+   * Builds the Language selector row: label + buttons for each available language.
+   * Returns the new curY after the row.
+   */
+  private _buildLanguageRow(card: Container, CW: number, curY: number): number {
+    const BTN_H = 30;
+    const GAP = 6;
+    const count = LANGUAGE_LABELS.length;
+    const totalGap = GAP * (count - 1);
+    const btnW = Math.floor((CW - 40 - totalGap) / count);
+
+    const sectionLabel = new Text({ text: t("settings.language"), style: STYLE_LABEL });
+    sectionLabel.position.set(20, curY);
+    card.addChild(sectionLabel);
+    curY += 20;
+
+    this._langBtns = [];
+    for (let i = 0; i < count; i++) {
+      const btn = makeSelectorBtn(btnW, BTN_H, LANGUAGE_LABELS[i]);
+      btn.container.position.set(20 + i * (btnW + GAP), curY);
+
+      const idx = i;
+      btn.container.on("pointerover", () => {
+        if (idx !== this._langIdx) btn.bg.tint = 0x6688aa;
+      });
+      btn.container.on("pointerout", () => { btn.bg.tint = 0xffffff; });
+      btn.container.on("pointerdown", () => {
+        if (idx !== this._langIdx) {
+          this._langIdx = idx;
+          this._refreshLangBtns(btnW, BTN_H);
+          setLanguage(LANGUAGES[idx]); // saves & reloads page
+        }
+      });
+
+      card.addChild(btn.container);
+      this._langBtns.push(btn);
+    }
+
+    this._refreshLangBtns(btnW, BTN_H);
+    curY += BTN_H;
+    return curY;
+  }
+
+  /**
    * Builds a generic ON/OFF toggle row. Populates the provided btns array.
    * Returns the new curY after the row.
    */
@@ -672,7 +735,7 @@ export class SettingsScreen {
   ): number {
     const BTN_H = 30;
     const GAP = 6;
-    const labels = ["ON", "OFF"];
+    const labels = [t("on"), t("off")];
     const count = labels.length;
     const totalGap = GAP * (count - 1);
     const btnW = Math.floor((CW - 40 - totalGap) / count);
@@ -711,6 +774,12 @@ export class SettingsScreen {
   // ---------------------------------------------------------------------------
   // Refresh helpers
   // ---------------------------------------------------------------------------
+
+  private _refreshLangBtns(btnW: number, btnH: number): void {
+    for (let i = 0; i < this._langBtns.length; i++) {
+      refreshSelectorBtn(this._langBtns[i], btnW, btnH, i === this._langIdx);
+    }
+  }
 
   private _refreshToggleBtns(btns: SelectorBtn[], btnW: number, btnH: number, enabled: boolean): void {
     refreshSelectorBtn(btns[0], btnW, btnH, enabled);

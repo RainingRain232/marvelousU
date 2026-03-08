@@ -4,6 +4,7 @@
 // before starting a world game. Rendered as PixiJS UI on the stage.
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import {
   type WorldGameSettings,
@@ -90,7 +91,7 @@ export class WorldSetupScreen {
     this.container.addChild(card);
 
     // Title
-    const title = new Text({ text: "WORLD MODE", style: TITLE_STYLE });
+    const title = new Text({ text: t("world.world_mode"), style: TITLE_STYLE });
     title.x = cardX + (cardW - title.width) / 2;
     title.y = cardY + 16;
     this.container.addChild(title);

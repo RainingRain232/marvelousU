@@ -13,6 +13,7 @@ import type { RaceDef, RaceId } from "@sim/config/RaceDefs";
 import { animationManager } from "@view/animation/AnimationManager";
 import { UnitState, UnitType } from "@/types";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
+import { t } from "@/i18n/i18n";
 import type { UnitDef } from "@sim/config/UnitDefinitions";
 
 // Vite static image imports
@@ -238,7 +239,7 @@ export class RaceSelectScreen {
 
   show(titleOverride?: string): void {
     this.container.visible = true;
-    if (this._title) this._title.text = titleOverride ?? "SELECT YOUR RACE";
+    if (this._title) this._title.text = titleOverride ?? t("race.select");
     // Re-select to ensure detail panel + portrait are built while visible
     this._selectRace(this._selectedId);
   }
@@ -264,13 +265,13 @@ export class RaceSelectScreen {
     );
 
     // Back button
-    const backBtn = this._makeNavBtn("< BACK", 104, 36, false);
+    const backBtn = this._makeNavBtn(t("back"), 104, 36, false);
     backBtn.position.set(21, 18);
     backBtn.on("pointerdown", () => this.onBack?.());
     card.addChild(backBtn);
 
     // Title
-    this._title = new Text({ text: "SELECT YOUR RACE", style: STYLE_SCREEN_TITLE });
+    this._title = new Text({ text: t("race.select"), style: STYLE_SCREEN_TITLE });
     this._title.anchor.set(0.5, 0);
     this._title.position.set(MAIN_W / 2, 18);
     card.addChild(this._title);
@@ -335,7 +336,7 @@ export class RaceSelectScreen {
     );
 
     // Next button
-    const nextBtn = this._makeNavBtn("CONTINUE  >", 195, 44, true);
+    const nextBtn = this._makeNavBtn(t("race.continue"), 195, 44, true);
     nextBtn.position.set(MAIN_W - 221, MAIN_H - 57);
     nextBtn.on("pointerdown", () => this.onNext?.());
     card.addChild(nextBtn);
@@ -393,7 +394,7 @@ export class RaceSelectScreen {
     const textX = imgFrameX + imgFrameW + 16;
     const textW = BANNER_IMG_W - textX - 10;
 
-    const bannerTitle = new Text({ text: "THE RACES OF RAIN", style: STYLE_BANNER_TITLE });
+    const bannerTitle = new Text({ text: t("race.races_of_rain"), style: STYLE_BANNER_TITLE });
     bannerTitle.position.set(textX, 20);
     bannerBox.addChild(bannerTitle);
 
@@ -402,7 +403,7 @@ export class RaceSelectScreen {
     );
 
     const flavorText = new Text({
-      text: "The races of Rain are varied and do not all get along. Ancient grudges and clashing ambitions ensure that peace is a rare and fragile thing.\n\nChoose your faction wisely.",
+      text: t("race.races_desc"),
       style: new TextStyle({
         fontFamily: "monospace", fontSize: 11, fill: 0x99aabb,
         wordWrap: true, wordWrapWidth: textW,
@@ -455,7 +456,7 @@ export class RaceSelectScreen {
 
     // "Coming soon" badge for unimplemented races
     if (!race.implemented) {
-      const soon = new Text({ text: "COMING SOON", style: STYLE_COMING_SOON });
+      const soon = new Text({ text: t("race.coming_soon"), style: STYLE_COMING_SOON });
       soon.position.set(60, 50);
       card.addChild(soon);
     }
@@ -707,7 +708,7 @@ export class RaceSelectScreen {
         px += prevSize + prevGap;
       }
     } else {
-      const soonT = new Text({ text: "COMING SOON", style: new TextStyle({
+      const soonT = new Text({ text: t("race.coming_soon"), style: new TextStyle({
         fontFamily: "monospace", fontSize: 14, fill: 0x334455, letterSpacing: 3,
       }) });
       soonT.position.set(tx, ty);

@@ -9,6 +9,7 @@ import { hasWorldSave } from "@world/state/WorldSerialization";
 import { Difficulty, DIFFICULTY_SETTINGS, setDifficulty } from "@sim/config/DifficultyConfig";
 import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { RuneCorners } from "@view/fx/RuneCorners";
+import { t } from "@/i18n/i18n";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -91,11 +92,11 @@ const BASE_W = BalanceConfig.GRID_WIDTH;
 const BASE_H = BalanceConfig.GRID_HEIGHT;
 
 export const MAP_SIZES: MapSize[] = [
-  { label: "STANDARD", width: BASE_W, height: BASE_H },
-  { label: "DOUBLE", width: BASE_W * 2, height: BASE_H * 2 },
-  { label: "TRIPLE", width: BASE_W * 3, height: BASE_H * 3 },
-  { label: "QUADRUPLE", width: BASE_W * 4, height: BASE_H * 4 },
-  { label: "QUINTUPLE", width: BASE_W * 5, height: BASE_H * 5 },
+  { label: t("map.standard"), width: BASE_W, height: BASE_H },
+  { label: t("map.double"), width: BASE_W * 2, height: BASE_H * 2 },
+  { label: t("map.triple"), width: BASE_W * 3, height: BASE_H * 3 },
+  { label: t("map.quadruple"), width: BASE_W * 4, height: BASE_H * 4 },
+  { label: t("map.quintuple"), width: BASE_W * 5, height: BASE_H * 5 },
 ];
 
 interface MapTypeEntry {
@@ -105,18 +106,18 @@ interface MapTypeEntry {
 }
 
 const MAP_TYPES: MapTypeEntry[] = [
-  { type: MapType.MEADOW, label: "MEADOW" },
-  { type: MapType.GRASS, label: "GRASS" },
-  { type: MapType.PLAINS, label: "PLAINS" },
-  { type: MapType.FOREST, label: "FOREST" },
-  { type: MapType.FANTASIA, label: "FANTASIA" },
-  { type: MapType.TUNDRA, label: "TUNDRA" },
-  { type: MapType.SWAMP, label: "SWAMP" },
-  { type: MapType.VOLCANIC, label: "VOLCANIC" },
-  { type: MapType.OCEAN, label: "OCEAN" },
-  { type: MapType.HILLS, label: "HILLS" },
-  { type: MapType.MOUNTAINS, label: "MOUNTAINS" },
-  { type: MapType.DESERT, label: "DESERT" },
+  { type: MapType.MEADOW, label: t("map.meadow") },
+  { type: MapType.GRASS, label: t("map.grass") },
+  { type: MapType.PLAINS, label: t("map.plains") },
+  { type: MapType.FOREST, label: t("map.forest") },
+  { type: MapType.FANTASIA, label: t("map.fantasia") },
+  { type: MapType.TUNDRA, label: t("map.tundra") },
+  { type: MapType.SWAMP, label: t("map.swamp") },
+  { type: MapType.VOLCANIC, label: t("map.volcanic") },
+  { type: MapType.OCEAN, label: t("map.ocean") },
+  { type: MapType.HILLS, label: t("map.hills") },
+  { type: MapType.MOUNTAINS, label: t("map.mountains") },
+  { type: MapType.DESERT, label: t("map.desert") },
 ];
 
 interface GameModeEntry {
@@ -133,45 +134,45 @@ interface GameModeEntry {
 const GAME_MODES: GameModeEntry[] = [
   {
     mode: GameMode.CAMPAIGN,
-    label: "CAMPAIGN",
-    desc: "Story progression",
+    label: t("mode.campaign"),
+    desc: t("mode.campaign_desc"),
     skipSetup: true,
   },
-  { mode: GameMode.STANDARD, label: "STANDARD", desc: "Classic mode" },
-  { mode: GameMode.DEATHMATCH, label: "SKIRMISH", desc: "10000 gold start" },
+  { mode: GameMode.STANDARD, label: t("mode.standard"), desc: t("mode.standard_desc") },
+  { mode: GameMode.DEATHMATCH, label: t("mode.skirmish"), desc: t("mode.skirmish_desc") },
   {
     mode: GameMode.BATTLEFIELD,
-    label: "BATTLEFIELD",
-    desc: "No buildings, last unit wins",
+    label: t("mode.battlefield"),
+    desc: t("mode.battlefield_desc"),
     hidePlayerSetup: true,
   },
   {
     mode: GameMode.ROGUELIKE,
-    label: "ROGUELIKE",
-    desc: "50% buildings disabled",
+    label: t("mode.roguelike"),
+    desc: t("mode.roguelike_desc"),
   },
   {
     mode: GameMode.WORLD,
-    label: "WORLD",
-    desc: "Hex-based strategy",
+    label: t("mode.world"),
+    desc: t("mode.world_desc"),
     skipSetup: true,
   },
   {
     mode: GameMode.WAVE,
-    label: "WAVE MODE",
-    desc: "Endless survival waves",
+    label: t("mode.wave"),
+    desc: t("mode.wave_desc"),
     hidePlayerSetup: true,
   },
   {
     mode: GameMode.RPG,
-    label: "RPG",
-    desc: "Overworld & dungeon crawling",
+    label: t("mode.rpg"),
+    desc: t("mode.rpg_desc"),
     skipSetup: true,
   },
   {
     mode: GameMode.SURVIVOR,
-    label: "SURVIVOR",
-    desc: "Vampire survivors roguelite",
+    label: t("mode.survivor"),
+    desc: t("mode.survivor_desc"),
     skipSetup: true,
   },
 ];
@@ -511,7 +512,7 @@ export class MenuScreen {
     this._screen1Card = card;
 
     // Title
-    const title = new Text({ text: "SELECT MODE", style: STYLE_TITLE });
+    const title = new Text({ text: t("menu.select_mode"), style: STYLE_TITLE });
     title.anchor.set(0.5, 0);
     title.position.set(CW / 2, 18);
     card.addChild(title);
@@ -756,7 +757,7 @@ export class MenuScreen {
     this._screen2Card = card;
 
     // Title — shows selected mode name
-    const title = new Text({ text: "MATCH SETUP", style: STYLE_TITLE });
+    const title = new Text({ text: t("menu.match_setup"), style: STYLE_TITLE });
     title.anchor.set(0.5, 0);
     title.position.set(CW / 2, 18);
     card.addChild(title);
@@ -774,7 +775,7 @@ export class MenuScreen {
     const TW = CW - 40;
     const TH = 32;
 
-    const aiLabel = new Text({ text: "P2 CONTROL", style: STYLE_LABEL });
+    const aiLabel = new Text({ text: t("menu.p2_control"), style: STYLE_LABEL });
     aiLabel.position.set(20, curY);
     card.addChild(aiLabel);
     curY += 20;
@@ -806,7 +807,7 @@ export class MenuScreen {
     curY += TH + 12;
 
     // --- Damage numbers toggle ---
-    const dmgLabel = new Text({ text: "DAMAGE NUMBERS", style: STYLE_LABEL });
+    const dmgLabel = new Text({ text: t("menu.damage_numbers"), style: STYLE_LABEL });
     dmgLabel.position.set(20, curY);
     card.addChild(dmgLabel);
     curY += 20;
@@ -837,7 +838,7 @@ export class MenuScreen {
     curY += TH + 12;
 
     // --- Difficulty selector ---
-    const diffLabel = new Text({ text: "AI DIFFICULTY", style: STYLE_LABEL });
+    const diffLabel = new Text({ text: t("menu.ai_difficulty"), style: STYLE_LABEL });
     diffLabel.position.set(20, curY);
     card.addChild(diffLabel);
     curY += 20;
@@ -886,7 +887,7 @@ export class MenuScreen {
     curY += 12;
 
     // --- Map type selector ---
-    const typeLabel = new Text({ text: "MAP TYPE", style: STYLE_LABEL });
+    const typeLabel = new Text({ text: t("menu.map_type"), style: STYLE_LABEL });
     typeLabel.position.set(20, curY);
     card.addChild(typeLabel);
     curY += 20;
@@ -947,7 +948,7 @@ export class MenuScreen {
     curY += 12;
 
     // --- Map size selector ---
-    const mapLabel = new Text({ text: "MAP SIZE", style: STYLE_LABEL });
+    const mapLabel = new Text({ text: t("menu.map_size"), style: STYLE_LABEL });
     mapLabel.position.set(20, curY);
     card.addChild(mapLabel);
     curY += 20;
@@ -1015,7 +1016,7 @@ export class MenuScreen {
     card.addChild(playerSection);
     this._screen2PlayerSection = playerSection;
 
-    const playersLabel = new Text({ text: "PLAYERS", style: STYLE_LABEL });
+    const playersLabel = new Text({ text: t("menu.players"), style: STYLE_LABEL });
     playersLabel.position.set(20, 0);
     playerSection.addChild(playersLabel);
 
@@ -1061,7 +1062,7 @@ export class MenuScreen {
     p3Ally.position.set(20, allyY);
     const p3Bg = new Graphics();
     p3Ally.addChild(p3Bg);
-    const p3Lbl = new Text({ text: "P3 ALLIED", style: STYLE_SIZE_INACTIVE });
+    const p3Lbl = new Text({ text: t("menu.p3_allied"), style: STYLE_SIZE_INACTIVE });
     p3Lbl.anchor.set(0.5, 0.5);
     p3Lbl.position.set(allyW / 2, allyH / 2);
     p3Ally.addChild(p3Lbl);
@@ -1081,7 +1082,7 @@ export class MenuScreen {
     p4Ally.position.set(20 + allyW + 8, allyY);
     const p4Bg = new Graphics();
     p4Ally.addChild(p4Bg);
-    const p4Lbl = new Text({ text: "P4 ALLIED", style: STYLE_SIZE_INACTIVE });
+    const p4Lbl = new Text({ text: t("menu.p4_allied"), style: STYLE_SIZE_INACTIVE });
     p4Lbl.anchor.set(0.5, 0.5);
     p4Lbl.position.set(allyW / 2, allyH / 2);
     p4Ally.addChild(p4Lbl);
@@ -1113,7 +1114,7 @@ export class MenuScreen {
     card.addChild(grailSection);
     this._grailGreedSection = grailSection;
 
-    const grailLabel = new Text({ text: "GRAIL GREED CORRUPTION", style: STYLE_LABEL });
+    const grailLabel = new Text({ text: t("menu.grail_greed"), style: STYLE_LABEL });
     grailLabel.position.set(20, 0);
     grailSection.addChild(grailLabel);
 
@@ -1157,7 +1158,7 @@ export class MenuScreen {
     card.addChild(randomEventsSection);
     this._randomEventsSection = randomEventsSection;
 
-    const reLabel = new Text({ text: "RANDOM EVENTS", style: STYLE_LABEL });
+    const reLabel = new Text({ text: t("menu.random_events"), style: STYLE_LABEL });
     reLabel.position.set(20, 0);
     randomEventsSection.addChild(reLabel);
 
@@ -1203,7 +1204,7 @@ export class MenuScreen {
     card.addChild(scalingSection);
     this._scalingDifficultySection = scalingSection;
 
-    const sdLabel = new Text({ text: "SCALING DIFFICULTY", style: STYLE_LABEL });
+    const sdLabel = new Text({ text: t("menu.scaling_difficulty"), style: STYLE_LABEL });
     sdLabel.position.set(20, 0);
     scalingSection.addChild(sdLabel);
 
@@ -1246,7 +1247,7 @@ export class MenuScreen {
     card.addChild(bossSection);
     this._bossWavesSection = bossSection;
 
-    const bwLabel = new Text({ text: "BOSS WAVES", style: STYLE_LABEL });
+    const bwLabel = new Text({ text: t("menu.boss_waves"), style: STYLE_LABEL });
     bwLabel.position.set(20, 0);
     bossSection.addChild(bwLabel);
 
@@ -1289,7 +1290,7 @@ export class MenuScreen {
     card.addChild(introSection);
     this._waveIntroSection = introSection;
 
-    const wiLabel = new Text({ text: "WAVE INTRO", style: STYLE_LABEL });
+    const wiLabel = new Text({ text: t("menu.wave_intro"), style: STYLE_LABEL });
     wiLabel.position.set(20, 0);
     introSection.addChild(wiLabel);
 
@@ -1331,7 +1332,7 @@ export class MenuScreen {
     card.addChild(goldSection);
     this._battlefieldGoldSection = goldSection;
 
-    const goldLabel = new Text({ text: "STARTING GOLD", style: STYLE_LABEL });
+    const goldLabel = new Text({ text: t("menu.starting_gold"), style: STYLE_LABEL });
     goldLabel.position.set(20, 0);
     goldSection.addChild(goldLabel);
 
@@ -1377,7 +1378,7 @@ export class MenuScreen {
     goldSection.addChild(makeGoldBtn("+", CW - 20 - goldBtnW, goldBtnY, 1));
 
     const goldHintLabel = new Text({
-      text: "shift: 5k  ctrl: 10k",
+      text: t("menu.gold_hint"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x667788 }),
     });
     goldHintLabel.anchor.set(0.5, 0);

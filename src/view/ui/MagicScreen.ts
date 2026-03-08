@@ -13,6 +13,7 @@ import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
 import type { UpgradeDef } from "@sim/config/UpgradeDefs";
 import { UpgradeType } from "@/types";
 
+import { t } from "@/i18n/i18n";
 import merlinImgUrl from "@/img/merlin.png";
 
 // ---------------------------------------------------------------------------
@@ -217,7 +218,7 @@ class MagicScreen {
     );
 
     // Header
-    const backBtn = this._makeNavBtn("< BACK", 104, 36, false);
+    const backBtn = this._makeNavBtn(t("back"), 104, 36, false);
     backBtn.position.set(21, 18);
     backBtn.on("pointerdown", () => this.onBack?.());
     card.addChild(backBtn);
@@ -250,7 +251,7 @@ class MagicScreen {
         new Graphics().rect(21, TIERS_Y - 4, CARD_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.15 }),
       );
 
-      const TIER_SECTION_LABEL = new Text({ text: "YOUR MAGIC TIERS", style: STYLE_SECTION });
+      const TIER_SECTION_LABEL = new Text({ text: t("magic.your_tiers"), style: STYLE_SECTION });
       TIER_SECTION_LABEL.position.set(26, TIERS_Y);
       card.addChild(TIER_SECTION_LABEL);
 
@@ -282,7 +283,7 @@ class MagicScreen {
       card.addChild(
         new Graphics().rect(21, CARD_H - footerH + 2, CARD_W - 42, 1).fill({ color: BORDER_COLOR, alpha: 0.15 }),
       );
-      const nextBtn = this._makeNavBtn("CONTINUE  >", 195, 44, true);
+      const nextBtn = this._makeNavBtn(t("race.continue"), 195, 44, true);
       nextBtn.position.set(CARD_W - 221, CARD_H - 57);
       nextBtn.on("pointerdown", () => {
         if (this.onNext) this.onNext();
@@ -351,7 +352,7 @@ class MagicScreen {
 
     // Subtitle
     const subtitle = new Text({
-      text: "Complete overview of all spells. Hover over a spell to see details.",
+      text: t("magic.spell_overview"),
       style: new TextStyle({
         fontFamily: "monospace", fontSize: 17, fill: 0x99aabb, letterSpacing: 1,
       }),
@@ -653,7 +654,7 @@ class MagicScreen {
     cy += 26;
 
     if (spells.length === 0) {
-      const noAccess = new Text({ text: "No Access", style: STYLE_NO_ACCESS });
+      const noAccess = new Text({ text: t("magic.no_access"), style: STYLE_NO_ACCESS });
       noAccess.position.set(x + 5, cy);
       parent.addChild(noAccess);
       cy += 20;
@@ -1091,7 +1092,7 @@ class MagicScreen {
 
     // Label
     const labelT = new Text({
-      text: "NATIONAL MAGE SPELLS:",
+      text: t("magic.national_spells"),
       style: new TextStyle({
         fontFamily: "monospace", fontSize: 12, fill: 0x88bbff,
         fontWeight: "bold", letterSpacing: 1,

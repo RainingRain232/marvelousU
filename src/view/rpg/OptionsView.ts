@@ -1,6 +1,7 @@
 // Options screen — game settings (accessible from main menu and in-game via Escape)
 import { Container, Graphics, Text } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { t } from "@/i18n/i18n";
 
 // ---------------------------------------------------------------------------
 // Colours
@@ -77,13 +78,13 @@ interface OptionEntry {
 }
 
 const OPTION_ENTRIES: OptionEntry[] = [
-  { label: "Music Volume", key: "musicVolume", type: "slider" },
-  { label: "SFX Volume", key: "sfxVolume", type: "slider" },
-  { label: "Random Encounters", key: "randomEncounterRate", type: "slider", max: 200 },
-  { label: "Roaming Encounters", key: "roamingEncounterRate", type: "slider", max: 200 },
-  { label: "Battle Mode", key: "battleMode", type: "cycle", values: ["turn", "auto"] },
-  { label: "Text Speed", key: "textSpeed", type: "cycle", values: ["slow", "normal", "fast"] },
-  { label: "Show Minimap", key: "showMinimap", type: "toggle" },
+  { label: t("rpg.music_volume"), key: "musicVolume", type: "slider" },
+  { label: t("rpg.sfx_volume"), key: "sfxVolume", type: "slider" },
+  { label: t("rpg.random_encounters"), key: "randomEncounterRate", type: "slider", max: 200 },
+  { label: t("rpg.roaming_encounters"), key: "roamingEncounterRate", type: "slider", max: 200 },
+  { label: t("rpg.battle_mode"), key: "battleMode", type: "cycle", values: ["turn", "auto"] },
+  { label: t("rpg.text_speed"), key: "textSpeed", type: "cycle", values: ["slow", "normal", "fast"] },
+  { label: t("rpg.show_minimap"), key: "showMinimap", type: "toggle" },
 ];
 
 export class OptionsView {
@@ -143,7 +144,7 @@ export class OptionsView {
 
     // Title
     const title = new Text({
-      text: "OPTIONS",
+      text: t("rpg.options_title"),
       style: { fontFamily: "monospace", fontSize: 22, fill: TITLE_COLOR, fontWeight: "bold" },
     });
     title.anchor.set(0.5, 0);
@@ -226,7 +227,7 @@ export class OptionsView {
 
     // Footer
     const footer = new Text({
-      text: "Up/Down: Navigate  |  Left/Right: Adjust  |  Escape: Back",
+      text: t("rpg.options_nav"),
       style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
     });
     footer.anchor.set(0.5, 0);

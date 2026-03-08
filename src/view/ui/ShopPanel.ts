@@ -18,6 +18,7 @@ import { addToQueue } from "@sim/systems/SpawnSystem";
 import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { UPGRADE_DEFINITIONS } from "@sim/config/UpgradeDefs";
+import { t } from "@/i18n/i18n";
 import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 import {
   BuildingType,
@@ -1102,7 +1103,7 @@ export class ShopPanel {
             Math.ceil(schoolUpgrades.length / ICONS_PER_ROW) * (ICON_SIZE + ICON_GAP);
         }
       } else {
-        const label = new Text({ text: "UPGRADES", style: STYLE_SECTION });
+        const label = new Text({ text: t("shop.upgrades"), style: STYLE_SECTION });
         label.position.set(PANEL_PAD, cursorY + 4);
         this._scrollContainer.addChild(label);
         cursorY += SECTION_LABEL_H;
@@ -1122,7 +1123,7 @@ export class ShopPanel {
 
     // BUILD section (non-economic buildings)
     if (orderedBuildings.length > 0) {
-      const label = new Text({ text: "BUILD", style: STYLE_SECTION });
+      const label = new Text({ text: t("shop.build"), style: STYLE_SECTION });
       label.position.set(PANEL_PAD, cursorY + 4);
       this._scrollContainer.addChild(label);
       cursorY += SECTION_LABEL_H;
@@ -1146,7 +1147,7 @@ export class ShopPanel {
       const econRowCount = Math.ceil(
         orderedEconomyBuildings.length / ICONS_PER_ROW,
       );
-      const label = new Text({ text: "ECONOMY", style: STYLE_SECTION });
+      const label = new Text({ text: t("shop.economy"), style: STYLE_SECTION });
       label.position.set(PANEL_PAD, cursorY + 4);
       this._scrollContainer.addChild(label);
       cursorY += SECTION_LABEL_H;

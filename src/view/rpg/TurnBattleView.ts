@@ -10,6 +10,7 @@ import { getAbilityName, getAbilityMpCost, getAbilityDescription, canUseAbility,
 import { drawTerrainDecorationAt } from "@view/world/WorldMapRenderer";
 import { TerrainType } from "@world/config/TerrainDefs";
 import { ELEMENT_COLORS } from "@rpg/config/ElementDefs";
+import { t } from "@/i18n/i18n";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -377,24 +378,24 @@ export class TurnBattleView {
     const labelStyle = { fontFamily: "monospace", fontSize: 9, fill: 0x666688 };
 
     // Enemy labels
-    const eFront = new Text({ text: "Front", style: labelStyle });
+    const eFront = new Text({ text: t("rpg.front_label"), style: labelStyle });
     eFront.anchor.set(0, 0.5);
     eFront.position.set(4, ENEMY_AREA_Y + lineGap / 2);
     this.combatantsContainer.addChild(eFront);
 
-    const eBack = new Text({ text: "Back", style: labelStyle });
+    const eBack = new Text({ text: t("rpg.back_label"), style: labelStyle });
     eBack.anchor.set(0, 0.5);
     eBack.position.set(4, ENEMY_AREA_Y - lineGap / 2);
     this.combatantsContainer.addChild(eBack);
 
     // Party labels
     const partyBaseY = screenH - PARTY_AREA_Y_OFFSET;
-    const pFront = new Text({ text: "Front", style: labelStyle });
+    const pFront = new Text({ text: t("rpg.front_label"), style: labelStyle });
     pFront.anchor.set(0, 0.5);
     pFront.position.set(4, partyBaseY - lineGap / 2);
     this.combatantsContainer.addChild(pFront);
 
-    const pBack = new Text({ text: "Back", style: labelStyle });
+    const pBack = new Text({ text: t("rpg.back_label"), style: labelStyle });
     pBack.anchor.set(0, 0.5);
     pBack.position.set(4, partyBaseY + lineGap / 2);
     this.combatantsContainer.addChild(pBack);
@@ -989,7 +990,7 @@ export class TurnBattleView {
 
     // Header
     const header = new Text({
-      text: "Use Item:",
+      text: t("rpg.use_item"),
       style: { fontFamily: "monospace", fontSize: 12, fill: 0x88bbff, fontWeight: "bold" },
     });
     header.position.set(menuX, menuY);
@@ -997,7 +998,7 @@ export class TurnBattleView {
 
     if (consumables.length === 0) {
       const empty = new Text({
-        text: "  No consumables!",
+        text: t("rpg.no_consumables"),
         style: { fontFamily: "monospace", fontSize: 12, fill: 0x888888 },
       });
       empty.position.set(menuX, menuY + 20);
@@ -1042,7 +1043,7 @@ export class TurnBattleView {
     this.menuContainer.addChild(bg);
 
     const header = new Text({
-      text: "Cast Spell:",
+      text: t("rpg.cast_spell"),
       style: { fontFamily: "monospace", fontSize: 12, fill: 0x88bbff, fontWeight: "bold" },
     });
     header.position.set(menuX, menuY);
@@ -1050,7 +1051,7 @@ export class TurnBattleView {
 
     if (spells.length === 0) {
       const empty = new Text({
-        text: "  No spells learned!",
+        text: t("rpg.no_spells"),
         style: { fontFamily: "monospace", fontSize: 12, fill: 0x888888 },
       });
       empty.position.set(menuX, menuY + 20);

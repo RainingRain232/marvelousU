@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import { WEAPON_DEFS } from "../config/SurvivorWeaponDefs";
 import { SURVIVOR_MAPS } from "../config/SurvivorBalanceConfig";
 import { SurvivorPersistence } from "../state/SurvivorPersistence";
@@ -48,7 +49,7 @@ export class SurvivorResultsUI {
       .stroke({ color: 0xff4444, width: 2 });
     this.resultsOverlay.addChild(card);
 
-    const title = new Text({ text: "DEFEATED", style: STYLE_RESULT_TITLE });
+    const title = new Text({ text: t("survivor.defeated"), style: STYLE_RESULT_TITLE });
     title.anchor.set(0.5, 0);
     title.position.set(sw / 2, cy + 16);
     this.resultsOverlay.addChild(title);
@@ -75,7 +76,7 @@ export class SurvivorResultsUI {
     }
 
     sy += 6;
-    const weaponsLabel = new Text({ text: "Weapon Damage Breakdown:", style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xffd700 }) });
+    const weaponsLabel = new Text({ text: t("survivor.weapon_breakdown"), style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xffd700 }) });
     weaponsLabel.anchor.set(0.5, 0);
     weaponsLabel.position.set(sw / 2, sy);
     this.resultsOverlay.addChild(weaponsLabel);
@@ -131,7 +132,7 @@ export class SurvivorResultsUI {
     bg.eventMode = "static";
     this.victoryOverlay.addChild(bg);
 
-    const title = new Text({ text: "YOU SURVIVED!", style: new TextStyle({ fontFamily: "monospace", fontSize: 36, fill: 0xffd700, fontWeight: "bold", letterSpacing: 3 }) });
+    const title = new Text({ text: t("survivor.survived"), style: new TextStyle({ fontFamily: "monospace", fontSize: 36, fill: 0xffd700, fontWeight: "bold", letterSpacing: 3 }) });
     title.anchor.set(0.5, 0.5);
     title.position.set(sw / 2, sh / 2 - 120);
     this.victoryOverlay.addChild(title);

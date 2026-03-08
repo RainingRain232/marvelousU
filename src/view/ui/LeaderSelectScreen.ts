@@ -11,6 +11,7 @@ import { LEADER_DEFINITIONS } from "@sim/config/LeaderDefs";
 import type { LeaderDef, LeaderId } from "@sim/config/LeaderDefs";
 import { animationManager } from "@view/animation/AnimationManager";
 import { UnitState, UnitType } from "@/types";
+import { t } from "@/i18n/i18n";
 
 // Vite static image imports
 import throneImgUrl from "@/img/throne.png";
@@ -256,10 +257,10 @@ export class LeaderSelectScreen {
     this._gridContainer.visible = true;
     this._gridMask.visible = true;
     this._separatorLine.visible = true;
-    this._title.text = titleOverride ?? "CHOOSE YOUR LEADER";
+    this._title.text = titleOverride ?? t("leader.choose");
     // Restore next button text
     const nextLabel = this._nextBtn.getChildAt(this._nextBtn.children.length - 1) as Text;
-    if (nextLabel instanceof Text) nextLabel.text = "SELECT RACE  >";
+    if (nextLabel instanceof Text) nextLabel.text = t("leader.select_race");
     this.container.visible = true;
     // Rebuild detail panel so the portrait loads now that the container is visible
     this._selectLeader(this._selectedId);
@@ -274,10 +275,10 @@ export class LeaderSelectScreen {
     this._gridContainer.visible = false;
     this._gridMask.visible = false;
     this._separatorLine.visible = false;
-    this._title.text = "YOUR LEADER";
+    this._title.text = t("leader.your_leader");
     // Change next button text to CONTINUE
     const nextLabel = this._nextBtn.getChildAt(this._nextBtn.children.length - 1) as Text;
-    if (nextLabel instanceof Text) nextLabel.text = "CONTINUE";
+    if (nextLabel instanceof Text) nextLabel.text = t("continue");
     // Center the detail panel
     this._detailContainer.position.set(MAIN_W / 2 - 200, this._detailContainer.y);
   }
@@ -308,13 +309,13 @@ export class LeaderSelectScreen {
     );
 
     // Back button
-    const backBtn = this._makeNavBtn("< BACK", 104, 36, false);
+    const backBtn = this._makeNavBtn(t("back"), 104, 36, false);
     backBtn.position.set(21, 18);
     backBtn.on("pointerdown", () => this.onBack?.());
     card.addChild(backBtn);
 
     // Title
-    this._title = new Text({ text: "CHOOSE YOUR LEADER", style: STYLE_SCREEN_TITLE });
+    this._title = new Text({ text: t("leader.choose"), style: STYLE_SCREEN_TITLE });
     this._title.anchor.set(0.5, 0);
     this._title.position.set(MAIN_W / 2, 18);
     card.addChild(this._title);
@@ -374,7 +375,7 @@ export class LeaderSelectScreen {
     );
 
     // Next button
-    this._nextBtn = this._makeNavBtn("SELECT RACE  >", 195, 44, true);
+    this._nextBtn = this._makeNavBtn(t("leader.select_race"), 195, 44, true);
     this._nextBtn.position.set(MAIN_W - 221, MAIN_H - 57);
     this._nextBtn.on("pointerdown", () => {
       if (this._viewOnly) {
@@ -438,7 +439,7 @@ export class LeaderSelectScreen {
     const textX = imgFrameX + imgFrameW + 16;
     const textW = BANNER_IMG_W - textX - 10;
 
-    const bannerTitle = new Text({ text: "THE THRONE ROOM", style: STYLE_BANNER_TITLE });
+    const bannerTitle = new Text({ text: t("leader.throne_room"), style: STYLE_BANNER_TITLE });
     bannerTitle.position.set(textX, 20);
     bannerBox.addChild(bannerTitle);
 
@@ -447,7 +448,7 @@ export class LeaderSelectScreen {
     );
 
     const flavorText = new Text({
-      text: "Every leader brings a unique bonus to your campaign. Choose wisely — the right commander can turn the tide of battle before a single sword is drawn.\n\nStudy their strengths and pick the one that best complements your strategy.",
+      text: t("leader.throne_desc"),
       style: new TextStyle({
         fontFamily: "monospace", fontSize: 11, fill: 0x99aabb,
         wordWrap: true, wordWrapWidth: textW,
@@ -615,7 +616,7 @@ export class LeaderSelectScreen {
 
     // Lore label
     const loreLabel = new Text({
-      text: "LORE",
+      text: t("leader.lore"),
       style: new TextStyle({
         fontFamily: "monospace", fontSize: 10, fill: 0x556677, letterSpacing: 2,
       }),
@@ -635,7 +636,7 @@ export class LeaderSelectScreen {
     ty += 10;
 
     // Bonus label
-    const bonusLabel = new Text({ text: "BONUS", style: STYLE_BONUS_LABEL });
+    const bonusLabel = new Text({ text: t("leader.bonus"), style: STYLE_BONUS_LABEL });
     bonusLabel.position.set(tx, ty);
     d.addChild(bonusLabel);
     ty += 16;

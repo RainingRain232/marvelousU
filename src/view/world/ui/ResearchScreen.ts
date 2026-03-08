@@ -11,6 +11,7 @@
 import {
   Container, Graphics, Text, TextStyle, Sprite, Assets, Texture,
 } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import { currentPlayer } from "@world/state/WorldState";
@@ -229,7 +230,7 @@ export class ResearchScreen {
 
     // Last research
     const lastLabel = new Text({
-      text: "Last Researched:",
+      text: t("world.last_researched"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x888899 }),
     });
     lastLabel.x = cx - lastLabel.width / 2;
@@ -278,7 +279,7 @@ export class ResearchScreen {
 
     // Label
     const labelText = new Text({
-      text: "CURRENT",
+      text: t("world.current"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 16, fontWeight: "bold", fill: color }),
     });
     labelText.x = cx - labelText.width / 2;
@@ -330,7 +331,7 @@ export class ResearchScreen {
 
     // Normal research
     const sciLabel = new Text({
-      text: "Science:",
+      text: t("world.science") + ":",
       style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fontWeight: "bold", fill: 0x44aa44 }),
     });
     sciLabel.x = cx - sciLabel.width / 2;
@@ -352,7 +353,7 @@ export class ResearchScreen {
 
     // Magic research
     const magLabel = new Text({
-      text: "Magic:",
+      text: t("world.magic") + ":",
       style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fontWeight: "bold", fill: 0x8844cc }),
     });
     magLabel.x = cx - magLabel.width / 2;
@@ -384,7 +385,7 @@ export class ResearchScreen {
     const sliderY = infoY;
 
     const allocLabel = new Text({
-      text: "RESEARCH ALLOCATION",
+      text: t("world.research_alloc"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fontWeight: "bold", fill: 0xaaaacc }),
     });
     allocLabel.x = cx - allocLabel.width / 2;
@@ -462,7 +463,7 @@ export class ResearchScreen {
 
     // Labels under slider
     const sciSliderLabel = new Text({
-      text: "Sci",
+      text: t("world.sci"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 8, fill: 0x44aa44 }),
     });
     sciSliderLabel.x = sliderX;
@@ -470,7 +471,7 @@ export class ResearchScreen {
     this._contentContainer.addChild(sciSliderLabel);
 
     const magSliderLabel = new Text({
-      text: "Mag",
+      text: t("world.mag"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 8, fill: 0x8844cc }),
     });
     magSliderLabel.x = sliderX + sliderW - magSliderLabel.width;
@@ -480,7 +481,7 @@ export class ResearchScreen {
     // Flavor text
     const flavorY = trackY + 32;
     const flavor = new Text({
-      text: "\"Even the most gifted mages\nmust occasionally turn their\nminds to mundane science\n\u2014 lest their towers collapse\nfrom poor engineering.\"",
+      text: t("world.research_quote"),
       style: new TextStyle({
         fontFamily: "monospace", fontSize: 9, fill: 0x666688, fontStyle: "italic",
         wordWrap: true, wordWrapWidth: w - 60,
@@ -906,7 +907,7 @@ export class ResearchScreen {
 
     if (visibleSchools.length === 0) {
       const noMagic = new Text({
-        text: "This race has no magic schools available.",
+        text: t("world.no_magic_schools"),
         style: TECH_STYLE,
       });
       noMagic.x = (screenW - noMagic.width) / 2;
@@ -1082,7 +1083,7 @@ export class ResearchScreen {
     btn.addChild(bg);
 
     const txt = new Text({
-      text: "< BACK",
+      text: t("back"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fontWeight: "bold", fill: 0xcccccc }),
     });
     txt.x = 8; txt.y = 4;

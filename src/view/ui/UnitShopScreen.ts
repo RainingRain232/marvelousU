@@ -12,6 +12,7 @@ import { BuildingType, UnitType, UnitState } from "@/types";
 import type { CorruptionModifier } from "@sim/systems/GrailCorruptionSystem";
 import { animationManager } from "@view/animation/AnimationManager";
 import { UNIT_LABELS } from "@view/ui/HoverTooltip";
+import { t } from "@/i18n/i18n";
 
 // Building images
 import barracksImgUrl from "@/img/barracks.png";
@@ -494,7 +495,7 @@ export class UnitShopScreen {
     this._rosterContainer.addChild(boxBg);
 
     // Header
-    const headerTxt = new Text({ text: "YOUR ARMY", style: STYLE_ROSTER_HEADER });
+    const headerTxt = new Text({ text: t("unitshop.your_army"), style: STYLE_ROSTER_HEADER });
     headerTxt.position.set(PAD, 4);
     this._rosterContainer.addChild(headerTxt);
 
@@ -513,7 +514,7 @@ export class UnitShopScreen {
     }
 
     if (merged.size === 0) {
-      const emptyTxt = new Text({ text: "(no units yet)", style: STYLE_ROSTER_ENTRY });
+      const emptyTxt = new Text({ text: t("unitshop.no_units"), style: STYLE_ROSTER_ENTRY });
       emptyTxt.position.set(PAD, 22);
       this._rosterContainer.addChild(emptyTxt);
       return;
@@ -781,7 +782,7 @@ export class UnitShopScreen {
           .fill({ color: 0xddaa44, alpha: 0.5 });
         divider.addChild(divLine);
         const divLabel = new Text({
-          text: "ELITE",
+          text: t("unitshop.elite"),
           style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xddaa44, fontWeight: "bold", letterSpacing: 2 }),
         });
         divLabel.anchor.set(0.5, 0.5);
@@ -1045,7 +1046,7 @@ export class UnitShopScreen {
 
       // Title
       const hintTitle = new Text({
-        text: "SCOUT REPORT",
+        text: t("unitshop.scout_report"),
         style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xddcc44, fontWeight: "bold", letterSpacing: 1 }),
       });
       hintTitle.position.set(TEXT_X, hintY + 6);
@@ -1332,7 +1333,7 @@ export class UnitShopScreen {
       .roundRect(0, 0, BW, BH, 3).fill({ color: 0x223355 })
       .roundRect(0, 0, BW, BH, 3).stroke({ color: 0x4488cc, width: 1 });
     saveBtn.addChild(saveBg);
-    const saveLbl = new Text({ text: "SAVE", style: { ...btnStyle, fill: 0x88bbff } });
+    const saveLbl = new Text({ text: t("save"), style: { ...btnStyle, fill: 0x88bbff } });
     saveLbl.anchor.set(0.5, 0.5);
     saveLbl.position.set(BW / 2, BH / 2);
     saveBtn.addChild(saveLbl);
@@ -1341,7 +1342,7 @@ export class UnitShopScreen {
     saveBtn.on("pointerdown", () => {
       this.onSave?.();
       saveLbl.text = "SAVED!";
-      setTimeout(() => { saveLbl.text = "SAVE"; }, 1200);
+      setTimeout(() => { saveLbl.text = t("save"); }, 1200);
     });
     this._saveLoadContainer.addChild(saveBtn);
 
@@ -1354,7 +1355,7 @@ export class UnitShopScreen {
       .roundRect(0, 0, BW, BH, 3).fill({ color: 0x3a3a22 })
       .roundRect(0, 0, BW, BH, 3).stroke({ color: 0xaaaa44, width: 1 });
     loadBtn.addChild(loadBg);
-    const loadLbl = new Text({ text: "LOAD", style: { ...btnStyle, fill: 0xdddd66 } });
+    const loadLbl = new Text({ text: t("load"), style: { ...btnStyle, fill: 0xdddd66 } });
     loadLbl.anchor.set(0.5, 0.5);
     loadLbl.position.set(BW / 2, BH / 2);
     loadBtn.addChild(loadLbl);
@@ -1372,7 +1373,7 @@ export class UnitShopScreen {
       .roundRect(0, 0, BW, BH, 3).fill({ color: 0x2a2a44 })
       .roundRect(0, 0, BW, BH, 3).stroke({ color: 0x6666aa, width: 1 });
     menuBtn.addChild(menuBg);
-    const menuLbl = new Text({ text: "MENU", style: { ...btnStyle, fill: 0xaaaaff } });
+    const menuLbl = new Text({ text: t("menu"), style: { ...btnStyle, fill: 0xaaaaff } });
     menuLbl.anchor.set(0.5, 0.5);
     menuLbl.position.set(BW / 2, BH / 2);
     menuBtn.addChild(menuLbl);
@@ -1433,7 +1434,7 @@ export class UnitShopScreen {
       .roundRect(0, 0, BW, BH, 6).stroke({ color: 0x44aa66, width: 2 });
     btn.addChild(bg);
     const lbl = new Text({
-      text: "START BATTLE  >",
+      text: t("unitshop.start_battle"),
       style: new TextStyle({ fontFamily: "monospace", fontSize: 17, fill: 0x88ffaa, fontWeight: "bold", letterSpacing: 2 }),
     });
     lbl.anchor.set(0.5, 0.5);

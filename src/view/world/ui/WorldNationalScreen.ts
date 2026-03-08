@@ -1,6 +1,7 @@
 // National overview screen — shows all owned cities and what they are producing.
 
 import { Container, Graphics, Text, TextStyle, Sprite, Assets, Texture } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import type { WorldCity } from "@world/state/WorldCity";
@@ -145,7 +146,7 @@ export class WorldNationalScreen {
     this._content.addChild(bg);
 
     // Title
-    const title = new Text({ text: "CITIES", style: TITLE_STYLE });
+    const title = new Text({ text: t("world.cities"), style: TITLE_STYLE });
     title.x = (sw - title.width) / 2;
     title.y = 20;
     this._content.addChild(title);
@@ -160,7 +161,7 @@ export class WorldNationalScreen {
     }
 
     if (cities.length === 0) {
-      const noCity = new Text({ text: "No cities.", style: CELL_STYLE });
+      const noCity = new Text({ text: t("world.no_cities"), style: CELL_STYLE });
       noCity.x = (sw - noCity.width) / 2;
       noCity.y = 80;
       this._content.addChild(noCity);
@@ -264,7 +265,7 @@ export class WorldNationalScreen {
     // -----------------------------------------------------------------------
 
     const diploY = tableY + 26 + cities.length * rowH + 30;
-    const diploTitle = new Text({ text: "DIPLOMACY", style: TITLE_STYLE });
+    const diploTitle = new Text({ text: t("world.diplomacy"), style: TITLE_STYLE });
     diploTitle.x = (sw - diploTitle.width) / 2;
     diploTitle.y = diploY;
     this._content.addChild(diploTitle);

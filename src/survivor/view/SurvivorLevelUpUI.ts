@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import { ARCANA_DEFS, ARCANA_CHOICES } from "../config/SurvivorArcanaDefs";
 import type { SurvivorArcanaDef } from "../config/SurvivorArcanaDefs";
 import type { UpgradeChoice } from "../systems/SurvivorLevelSystem";
@@ -120,7 +121,7 @@ export class SurvivorLevelUpUI {
     bg.eventMode = "static";
     this.arcanaOverlay.addChild(bg);
 
-    const title = new Text({ text: "CHOOSE AN ARCANA", style: new TextStyle({ fontFamily: "monospace", fontSize: 24, fill: 0xaa44ff, fontWeight: "bold" }) });
+    const title = new Text({ text: t("survivor.choose_arcana"), style: new TextStyle({ fontFamily: "monospace", fontSize: 24, fill: 0xaa44ff, fontWeight: "bold" }) });
     title.anchor.set(0.5, 0.5);
     title.position.set(sw / 2, sh / 2 - 120);
     this.arcanaOverlay.addChild(title);
@@ -182,7 +183,7 @@ export class SurvivorLevelUpUI {
     bg.eventMode = "static";
     this.pauseOverlay.addChild(bg);
 
-    const title = new Text({ text: "PAUSED", style: new TextStyle({ fontFamily: "monospace", fontSize: 32, fill: 0xffd700, fontWeight: "bold", letterSpacing: 4 }) });
+    const title = new Text({ text: t("survivor.paused"), style: new TextStyle({ fontFamily: "monospace", fontSize: 32, fill: 0xffd700, fontWeight: "bold", letterSpacing: 4 }) });
     title.anchor.set(0.5, 0.5);
     title.position.set(sw / 2, 40);
     this.pauseOverlay.addChild(title);
@@ -235,7 +236,7 @@ export class SurvivorLevelUpUI {
     const passiveY = invY + 132;
     if (s.passives.length > 0) {
       const passiveLabel = new Text({
-        text: "PASSIVES",
+        text: t("survivor.passives"),
         style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0x44aaff, fontWeight: "bold" }),
       });
       passiveLabel.anchor.set(0.5, 0);
@@ -268,7 +269,7 @@ export class SurvivorLevelUpUI {
     const arcanaY = s.passives.length > 0 ? passiveY + 102 : passiveY;
     if (s.arcana.length > 0) {
       const arcanaLabel = new Text({
-        text: "ARCANA",
+        text: t("survivor.arcana"),
         style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xaa44ff, fontWeight: "bold" }),
       });
       arcanaLabel.anchor.set(0.5, 0);

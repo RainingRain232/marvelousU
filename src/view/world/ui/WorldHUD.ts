@@ -3,6 +3,7 @@
 // Rendered as PixiJS containers on the UI layer (not affected by camera).
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import type { WorldState } from "@world/state/WorldState";
 import { currentPlayer, WorldPhase } from "@world/state/WorldState";
@@ -336,7 +337,7 @@ export class WorldHUD {
     bg.stroke({ color: 0x5555aa, width: 1.5 });
     btn.addChild(bg);
 
-    const label = new Text({ text: "RESEARCH", style: BTN_STYLE });
+    const label = new Text({ text: t("world.research"), style: BTN_STYLE });
     label.x = 10;
     label.y = 6;
     btn.addChild(label);
@@ -359,7 +360,7 @@ export class WorldHUD {
     bg.stroke({ color: 0x887755, width: 1.5 });
     btn.addChild(bg);
 
-    const label = new Text({ text: "MENU", style: BTN_STYLE });
+    const label = new Text({ text: t("menu"), style: BTN_STYLE });
     label.x = 14;
     label.y = 6;
     btn.addChild(label);
@@ -382,7 +383,7 @@ export class WorldHUD {
     this._endTurnBg.stroke({ color: 0x55aa55, width: 2 });
     btn.addChild(this._endTurnBg);
 
-    const label = new Text({ text: "END TURN", style: BTN_STYLE });
+    const label = new Text({ text: t("world.end_turn"), style: BTN_STYLE });
     label.x = 16;
     label.y = 8;
     btn.addChild(label);

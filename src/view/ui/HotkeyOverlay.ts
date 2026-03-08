@@ -1,6 +1,7 @@
 // Overlay that shows keyboard shortcuts when the user presses "?" or "H".
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { t } from "@/i18n/i18n";
 
 // ---------------------------------------------------------------------------
 // Text styles
@@ -49,11 +50,11 @@ const STYLE_BTN = new TextStyle({
 // ---------------------------------------------------------------------------
 
 const KEYBINDINGS: Array<{ key: string; desc: string }> = [
-  { key: "F",        desc: "Place Rally Flag (costs 100g)" },
-  { key: "ESC",      desc: "Cancel Placement" },
-  { key: "H / ?",   desc: "Toggle This Help" },
-  { key: "Mouse",   desc: "Select / Pan Camera" },
-  { key: "Scroll",  desc: "Zoom In / Out" },
+  { key: "F",        desc: t("hotkey.rally_flag") },
+  { key: "ESC",      desc: t("hotkey.cancel_placement") },
+  { key: "H / ?",   desc: t("hotkey.toggle_help") },
+  { key: "Mouse",   desc: t("hotkey.select_pan") },
+  { key: "Scroll",  desc: t("hotkey.zoom") },
 ];
 
 // ---------------------------------------------------------------------------
@@ -120,7 +121,7 @@ export class HotkeyOverlay {
     this._drawCard();
 
     // Title
-    const title = new Text({ text: "KEYBOARD SHORTCUTS", style: STYLE_TITLE });
+    const title = new Text({ text: t("hotkey.title"), style: STYLE_TITLE });
     title.anchor.set(0.5, 0.5);
     title.position.set(CARD_W / 2, TITLE_H / 2);
     this._card.addChild(title);
@@ -172,7 +173,7 @@ export class HotkeyOverlay {
       .stroke({ color: 0x4488cc, width: 1.5 });
     closeBtn.addChild(closeBg);
 
-    const closeLabel = new Text({ text: "CLOSE", style: STYLE_BTN });
+    const closeLabel = new Text({ text: t("close"), style: STYLE_BTN });
     closeLabel.style.fill = 0x88ccff;
     closeLabel.anchor.set(0.5, 0.5);
     closeLabel.position.set(BW / 2, BTN_H / 2);

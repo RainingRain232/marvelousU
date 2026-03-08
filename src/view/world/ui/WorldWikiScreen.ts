@@ -4,6 +4,7 @@
 import {
   Container, Graphics, Text, TextStyle, Rectangle,
 } from "pixi.js";
+import { t } from "@/i18n/i18n";
 import type { ViewManager } from "@view/ViewManager";
 import { getAllWorldBuildingDefs } from "@world/config/WorldBuildingDefs";
 import type { WorldBuildingDef } from "@world/config/WorldBuildingDefs";
@@ -161,7 +162,7 @@ export class WorldWikiScreen {
     card.eventMode = "static";
 
     // Title
-    const title = new Text({ text: "ENCYCLOPEDIA", style: STYLE_TITLE });
+    const title = new Text({ text: t("world.encyclopedia"), style: STYLE_TITLE });
     title.anchor.set(0.5, 0);
     title.position.set(CARD_W / 2, 14);
     card.addChild(title);
@@ -283,13 +284,13 @@ export class WorldWikiScreen {
     const c = this._contentContainer;
     let cy = 8;
 
-    const sectionTitle = new Text({ text: "WORLD MODE BUILDINGS", style: STYLE_SECTION });
+    const sectionTitle = new Text({ text: t("world.world_buildings"), style: STYLE_SECTION });
     sectionTitle.position.set(0, cy);
     c.addChild(sectionTitle);
     cy += 28;
 
     const desc = new Text({
-      text: "Buildings that can be constructed in cities during world mode. Each provides per-turn bonuses.",
+      text: t("world.world_buildings_desc"),
       style: STYLE_BODY,
     });
     desc.position.set(0, cy);
@@ -375,7 +376,7 @@ export class WorldWikiScreen {
     const c = this._contentContainer;
     let cy = 8;
 
-    const sectionTitle = new Text({ text: "CONTROLS", style: STYLE_SECTION });
+    const sectionTitle = new Text({ text: t("world.controls"), style: STYLE_SECTION });
     sectionTitle.position.set(0, cy);
     c.addChild(sectionTitle);
     cy += 28;
@@ -414,7 +415,7 @@ export class WorldWikiScreen {
     cy += 16;
 
     // World mode concepts section
-    const conceptsTitle = new Text({ text: "CORE CONCEPTS", style: STYLE_SECTION });
+    const conceptsTitle = new Text({ text: t("world.core_concepts"), style: STYLE_SECTION });
     conceptsTitle.position.set(0, cy);
     c.addChild(conceptsTitle);
     cy += 28;

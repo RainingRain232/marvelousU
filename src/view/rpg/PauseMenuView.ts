@@ -4,6 +4,7 @@ import type { ViewManager } from "@view/ViewManager";
 import type { RPGState } from "@rpg/state/RPGState";
 import type { OverworldState } from "@rpg/state/OverworldState";
 import { getSaveSlots, saveGame } from "@rpg/systems/SaveSystem";
+import { t } from "@/i18n/i18n";
 import type { SaveSlotMeta } from "@rpg/systems/SaveSystem";
 
 // ---------------------------------------------------------------------------
@@ -122,7 +123,7 @@ export class PauseMenuView {
     this.container.addChild(panel);
 
     const title = new Text({
-      text: "PAUSED",
+      text: t("rpg.paused"),
       style: { fontFamily: "monospace", fontSize: 22, fill: TITLE_COLOR, fontWeight: "bold" },
     });
     title.anchor.set(0.5, 0);
@@ -149,7 +150,7 @@ export class PauseMenuView {
     }
 
     const footer = new Text({
-      text: "Escape: Resume  |  Enter: Select",
+      text: t("rpg.escape_resume"),
       style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
     });
     footer.anchor.set(0.5, 0);
@@ -172,7 +173,7 @@ export class PauseMenuView {
     this.container.addChild(panel);
 
     const headerText = new Text({
-      text: "Save Game",
+      text: t("rpg.save_game"),
       style: { fontFamily: "monospace", fontSize: 20, fill: TITLE_COLOR, fontWeight: "bold" },
     });
     headerText.anchor.set(0.5, 0);
@@ -236,7 +237,7 @@ export class PauseMenuView {
     }
 
     const footer = new Text({
-      text: "Enter: Save  |  Escape: Back",
+      text: t("rpg.enter_save"),
       style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
     });
     footer.anchor.set(0.5, 0);
@@ -260,7 +261,7 @@ export class PauseMenuView {
     this.container.addChild(panel);
 
     const headerText = new Text({
-      text: "Inventory",
+      text: t("rpg.inventory"),
       style: { fontFamily: "monospace", fontSize: 20, fill: TITLE_COLOR, fontWeight: "bold" },
     });
     headerText.anchor.set(0.5, 0);
@@ -282,7 +283,7 @@ export class PauseMenuView {
     let y = panelY + 62;
 
     const partyHeader = new Text({
-      text: "Party Equipment",
+      text: t("rpg.party_equipment"),
       style: { fontFamily: "monospace", fontSize: 12, fill: DIM_COLOR },
     });
     partyHeader.position.set(panelX + 20, y);
@@ -395,7 +396,7 @@ export class PauseMenuView {
 
     if (inv.length === 0) {
       const emptyText = new Text({
-        text: "No items",
+        text: t("rpg.no_items"),
         style: { fontFamily: "monospace", fontSize: 11, fill: SLOT_EMPTY_COLOR },
       });
       emptyText.position.set(panelX + 20, itemsY + 18);
@@ -427,7 +428,7 @@ export class PauseMenuView {
     }
 
     const footer = new Text({
-      text: "Up/Down: Select member  |  Escape: Back",
+      text: t("rpg.select_member"),
       style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
     });
     footer.anchor.set(0.5, 0);
@@ -449,7 +450,7 @@ export class PauseMenuView {
     this.container.addChild(panel);
 
     const headerText = new Text({
-      text: "Formation",
+      text: t("rpg.formation"),
       style: { fontFamily: "monospace", fontSize: 20, fill: TITLE_COLOR, fontWeight: "bold" },
     });
     headerText.anchor.set(0.5, 0);
@@ -462,14 +463,14 @@ export class PauseMenuView {
     const startY = panelY + 52;
 
     const nameHeader = new Text({
-      text: "Unit",
+      text: t("rpg.unit"),
       style: { fontFamily: "monospace", fontSize: 11, fill: DIM_COLOR },
     });
     nameHeader.position.set(colLeft, startY);
     this.container.addChild(nameHeader);
 
     const lineHeader = new Text({
-      text: "Position",
+      text: t("rpg.position"),
       style: { fontFamily: "monospace", fontSize: 11, fill: DIM_COLOR },
     });
     lineHeader.position.set(colLine, startY);
@@ -513,7 +514,7 @@ export class PauseMenuView {
     }
 
     const footer = new Text({
-      text: "Enter: Toggle Line  |  Escape: Back",
+      text: t("rpg.toggle_line"),
       style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
     });
     footer.anchor.set(0.5, 0);
@@ -534,7 +535,7 @@ export class PauseMenuView {
     this.container.addChild(panel);
 
     const headerText = new Text({
-      text: "Controls & Help",
+      text: t("rpg.controls_help"),
       style: { fontFamily: "monospace", fontSize: 20, fill: TITLE_COLOR, fontWeight: "bold" },
     });
     headerText.anchor.set(0.5, 0);
@@ -605,7 +606,7 @@ export class PauseMenuView {
     }
 
     const footer = new Text({
-      text: "Press Escape or Enter to close",
+      text: t("rpg.press_close"),
       style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
     });
     footer.anchor.set(0.5, 0);
@@ -626,7 +627,7 @@ export class PauseMenuView {
     this.container.addChild(panel);
 
     const msg = new Text({
-      text: "Quit to title?\nUnsaved progress will be lost.",
+      text: t("rpg.quit_confirm"),
       style: { fontFamily: "monospace", fontSize: 13, fill: OPTION_COLOR, align: "center", lineHeight: 20 },
     });
     msg.anchor.set(0.5, 0);

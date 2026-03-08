@@ -16,6 +16,7 @@ import { canFightInArena, getArenaEncounter } from "@rpg/systems/ArenaSystem";
 import { CRAFTING_RECIPES, CRAFT_MATERIALS } from "@rpg/config/CraftingDefs";
 import { canCraft, craft } from "@rpg/systems/CraftingSystem";
 import { MASTERY_BONUSES } from "@rpg/config/MasteryDefs";
+import { t } from "@/i18n/i18n";
 
 // Pixel art banner images per tab
 import armoryImgUrl from "@/img/armory.png";
@@ -240,7 +241,7 @@ export class TownMenuView {
 
     if (townRep >= 3) {
       const discountText = new Text({
-        text: "10% discount!",
+        text: t("rpg.discount"),
         style: { fontFamily: "monospace", fontSize: 11, fill: HP_GREEN, fontWeight: "bold" },
       });
       discountText.position.set(repText.x + repText.width + 12, 38);
@@ -375,7 +376,7 @@ export class TownMenuView {
 
     if (items.length === 0) {
       const empty = new Text({
-        text: "No items for sale.",
+        text: t("rpg.no_items_sale"),
         style: { fontFamily: "monospace", fontSize: 14, fill: DIM_TEXT },
       });
       empty.position.set(30, startY + 15);
@@ -452,7 +453,7 @@ export class TownMenuView {
 
     if (invItems.length === 0) {
       const empty = new Text({
-        text: "No items to sell.",
+        text: t("rpg.no_items_sell"),
         style: { fontFamily: "monospace", fontSize: 14, fill: DIM_TEXT },
       });
       empty.position.set(30, startY + 15);
@@ -555,7 +556,7 @@ export class TownMenuView {
     const spells = this._getSpellList();
     if (spells.length === 0) {
       const empty = new Text({
-        text: "No spells for sale.",
+        text: t("rpg.no_spells_sale"),
         style: { fontFamily: "monospace", fontSize: 14, fill: DIM_TEXT },
       });
       empty.position.set(30, startY + 40);
@@ -642,7 +643,7 @@ export class TownMenuView {
     const casters = this.rpg.party.filter(m => isCaster(m.unitType));
     if (casters.length === 0) {
       const noOne = new Text({
-        text: "No magic users in your party!",
+        text: t("rpg.no_magic_users"),
         style: { fontFamily: "monospace", fontSize: 13, fill: 0xaa4444 },
       });
       noOne.position.set(30, startY + 35);
@@ -718,7 +719,7 @@ export class TownMenuView {
         if (this._spellIndex < spells.length) {
           const price = spellPrice(spells[this._spellIndex]);
           if (this.rpg.gold < price) {
-            this._showMessage("Not enough gold!");
+            this._showMessage(t("rpg.not_enough_gold"));
           } else {
             this._spellSubMode = "buyer_pick";
             this._spellBuyerIndex = 0;
@@ -766,7 +767,7 @@ export class TownMenuView {
         } else {
           const price = spellPrice(spellId);
           if (this.rpg.gold < price) {
-            this._showMessage("Not enough gold!");
+            this._showMessage(t("rpg.not_enough_gold"));
           } else {
             this.rpg.gold -= price;
             const learned = learnSpells(member, [spellId as UpgradeType]);
@@ -806,14 +807,14 @@ export class TownMenuView {
     this.container.addChild(g);
 
     const innTitle = new Text({
-      text: "Welcome to the Inn",
+      text: t("rpg.inn_welcome"),
       style: { fontFamily: "monospace", fontSize: 18, fill: 0xffffff, fontWeight: "bold" },
     });
     innTitle.position.set(30, startY + 20);
     this.container.addChild(innTitle);
 
     const innDesc = new Text({
-      text: "Rest and restore all party members to full HP and MP.\nAll negative status effects will be cured.",
+      text: t("rpg.inn_desc"),
       style: { fontFamily: "monospace", fontSize: 13, fill: TEXT_COLOR, wordWrap: true, wordWrapWidth: W - 80 },
     });
     innDesc.position.set(30, startY + 55);
@@ -858,7 +859,7 @@ export class TownMenuView {
 
     if (!canAfford) {
       const noGold = new Text({
-        text: "Not enough gold!",
+        text: t("rpg.not_enough_gold"),
         style: { fontFamily: "monospace", fontSize: 12, fill: 0xaa4444 },
       });
       noGold.anchor.set(0.5, 0);
@@ -892,7 +893,7 @@ export class TownMenuView {
 
     if (this._recruits.length === 0) {
       const empty = new Text({
-        text: "No adventurers available for hire.",
+        text: t("rpg.no_adventurers"),
         style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
       });
       empty.position.set(30, startY + 40);
@@ -978,7 +979,7 @@ export class TownMenuView {
       const canAfford = this.rpg.gold >= recruit.cost;
       let status = "";
       if (partyFull) status = "Party is full!";
-      else if (!canAfford) status = "Not enough gold!";
+      else if (!canAfford) status = t("rpg.not_enough_gold");
       else status = "Press Enter to hire";
 
       const statusText = new Text({
@@ -1173,7 +1174,7 @@ export class TownMenuView {
     }
 
     const hint = new Text({
-      text: "Enter = Change  |  Backspace = Unequip  |  Esc = Back",
+      text: t("rpg.equip_controls"),
       style: { fontFamily: "monospace", fontSize: 11, fill: DIM_TEXT },
     });
     hint.position.set(30, startY + 50 + slotDefs.length * slotSpacing + 8);
@@ -1254,7 +1255,7 @@ export class TownMenuView {
 
     if (!promotions || promotions.options.length === 0) {
       const noPromo = new Text({
-        text: "No promotion paths available.",
+        text: t("rpg.no_promotions"),
         style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
       });
       noPromo.position.set(30, startY + 45);
@@ -1307,7 +1308,7 @@ export class TownMenuView {
     }
 
     const hint = new Text({
-      text: "Enter = Promote  |  Esc = Back",
+      text: t("rpg.promote_controls"),
       style: { fontFamily: "monospace", fontSize: 11, fill: DIM_TEXT },
     });
     hint.position.set(30, startY + 45 + promotions.options.length * 36 + 10);
@@ -1334,7 +1335,7 @@ export class TownMenuView {
 
     if (MASTERY_BONUSES.length === 0) {
       const noBonuses = new Text({
-        text: "No mastery bonuses defined.",
+        text: t("rpg.no_mastery"),
         style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
       });
       noBonuses.position.set(30, startY + 45);
@@ -1899,7 +1900,7 @@ export class TownMenuView {
                   if (buyItem(this.rpg, item)) {
                     this._showMessage(`Bought ${item.name}!`);
                   } else {
-                    this._showMessage("Not enough gold!");
+                    this._showMessage(t("rpg.not_enough_gold"));
                   }
                 },
                 onNo: () => {},
@@ -1909,7 +1910,7 @@ export class TownMenuView {
               if (buyItem(this.rpg, item)) {
                 this._showMessage(`Bought ${item.name}!`);
               } else {
-                this._showMessage("Not enough gold!");
+                this._showMessage(t("rpg.not_enough_gold"));
               }
             }
           }
@@ -1958,7 +1959,7 @@ export class TownMenuView {
         if (restAtInn(this.rpg, this.townData.innCost)) {
           this._showMessage("Party fully restored!");
         } else {
-          this._showMessage("Not enough gold!");
+          this._showMessage(t("rpg.not_enough_gold"));
         }
         break;
       case "Escape":
@@ -1993,7 +1994,7 @@ export class TownMenuView {
               this._recruitIndex = Math.max(0, this._recruits.length - 1);
             }
           } else {
-            this._showMessage("Not enough gold!");
+            this._showMessage(t("rpg.not_enough_gold"));
           }
         }
         break;

@@ -10,6 +10,7 @@ import { UNIT_DEFINITIONS, computeTier } from "@sim/config/UnitDefinitions";
 import { animationManager } from "@view/animation/AnimationManager";
 import { UNIT_LABELS } from "@view/ui/HoverTooltip";
 import type { UnitRoster } from "@view/ui/UnitShopScreen";
+import { t } from "@/i18n/i18n";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -212,7 +213,7 @@ export class VictoryScreen {
     this._card.addChild(this._winnerText);
 
     // Subtitle
-    this._subtitleText = new Text({ text: "VICTORY", style: STYLE_SUBTITLE });
+    this._subtitleText = new Text({ text: t("victory.victory"), style: STYLE_SUBTITLE });
     this._subtitleText.anchor.set(0.5, 0);
     this._subtitleText.position.set(this._CARD_W / 2, 76);
     this._card.addChild(this._subtitleText);
@@ -244,7 +245,7 @@ export class VictoryScreen {
       .stroke({ color: 0x4488cc, width: 1.5 });
     this._menuBtn.addChild(btnBg);
 
-    const btnLabel = new Text({ text: "BACK TO MAIN MENU", style: STYLE_BTN });
+    const btnLabel = new Text({ text: t("victory.back_to_menu"), style: STYLE_BTN });
     btnLabel.style.fill = 0x88ccff;
     btnLabel.anchor.set(0.5, 0.5);
     btnLabel.position.set(BW / 2, BH / 2);
@@ -270,7 +271,7 @@ export class VictoryScreen {
       .stroke({ color: 0x44aa66, width: 2 });
     this._nextWaveBtn.addChild(nwBg);
 
-    const nwLabel = new Text({ text: "NEXT WAVE  >", style: STYLE_BTN });
+    const nwLabel = new Text({ text: t("victory.next_wave"), style: STYLE_BTN });
     nwLabel.style.fill = 0x88ffaa;
     nwLabel.anchor.set(0.5, 0.5);
     nwLabel.position.set(NW_BW / 2, BH / 2);
@@ -555,13 +556,13 @@ export class VictoryScreen {
     const killsX = colX + colW - 40;
 
     // Header
-    const hdrUnit = new Text({ text: "UNIT", style: STYLE_DMG_HEADER });
+    const hdrUnit = new Text({ text: t("victory.unit"), style: STYLE_DMG_HEADER });
     hdrUnit.position.set(colX, y);
     this._statsContainer.addChild(hdrUnit);
-    const hdrDmg = new Text({ text: "DMG", style: STYLE_DMG_HEADER });
+    const hdrDmg = new Text({ text: t("victory.dmg"), style: STYLE_DMG_HEADER });
     hdrDmg.position.set(dmgX, y);
     this._statsContainer.addChild(hdrDmg);
-    const hdrKills = new Text({ text: "KILLS", style: STYLE_DMG_HEADER });
+    const hdrKills = new Text({ text: t("victory.kills"), style: STYLE_DMG_HEADER });
     hdrKills.position.set(killsX, y);
     this._statsContainer.addChild(hdrKills);
     y += 18;
@@ -615,7 +616,7 @@ export class VictoryScreen {
     }
 
     if (entries.length === 0) {
-      const noData = new Text({ text: "No damage dealt", style: STYLE_STAT_LABEL });
+      const noData = new Text({ text: t("victory.no_damage"), style: STYLE_STAT_LABEL });
       noData.position.set(colX, y);
       this._statsContainer.addChild(noData);
       y += ROW_H;

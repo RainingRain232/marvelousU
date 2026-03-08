@@ -6,6 +6,7 @@ import {
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { AmbientParticles } from "@view/fx/AmbientParticles";
+import { t } from "@/i18n/i18n";
 import {
   ARMORY_ITEMS,
   MAX_EQUIPPED_ITEMS,
@@ -1209,7 +1210,7 @@ export class ArmoryScreen {
     );
 
     // Title
-    const title = new Text({ text: "ARMORY", style: STYLE_SCREEN_TITLE });
+    const title = new Text({ text: t("armory.title"), style: STYLE_SCREEN_TITLE });
     title.anchor.set(0.5, 0);
     title.position.set(MAIN_W / 2, 18);
     card.addChild(title);
@@ -1388,7 +1389,7 @@ export class ArmoryScreen {
     parent.addChild(armContainer);
 
     // Section label above frame
-    const armLabel = new Text({ text: "THE ARMORY", style: STYLE_SECTION });
+    const armLabel = new Text({ text: t("armory.the_armory"), style: STYLE_SECTION });
     armLabel.position.set(0, -20);
     armContainer.addChild(armLabel);
 
@@ -1470,7 +1471,7 @@ export class ArmoryScreen {
 
     // Description label
     const descLabel = new Text({
-      text: "DESCRIPTION",
+      text: t("armory.description"),
       style: new TextStyle({
         fontFamily: "monospace", fontSize: 10, fill: 0x556677, letterSpacing: 2,
       }),
@@ -1489,7 +1490,7 @@ export class ArmoryScreen {
     );
 
     // Stats label
-    const statsLabel = new Text({ text: "BONUSES", style: STYLE_STAT_LABEL });
+    const statsLabel = new Text({ text: t("armory.bonuses"), style: STYLE_STAT_LABEL });
     statsLabel.position.set(10, 243);
     dp.addChild(statsLabel);
 

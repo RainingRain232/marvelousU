@@ -10,6 +10,7 @@ import {
   Assets,
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
+import { t } from "@/i18n/i18n";
 
 import throneImgUrl from "@/img/throne.png";
 import arthurImgUrl from "@/img/arthur.png";
@@ -34,49 +35,49 @@ const SCENARIO_INTROS: Record<number, IntroPage[]> = {
   1: [
     {
       imageUrl: throneImgUrl,
-      text: "The lands of Rain have long been without ruler. Let me guide you to your rightful destiny as ruler of these lands!",
+      text: t("campaign.intro1"),
     },
     {
       imageUrl: arthurImgUrl,
-      text: "Your first task is to quell the resistance in your local realm, a unit of swordsmen has risen against your rule. Most castle units would only defend their castle and not move out, but these castle trained units have betrayed their oath to defend your lands!",
+      text: t("campaign.intro2"),
     },
   ],
   2: [
     {
       imageUrl: merlinImgUrl,
-      text: "Oof now that that is over we can go back to the order of the day. However, I heard you did not click on the firepit building near the castle in your previous campaign!",
+      text: t("campaign.intro3"),
     },
     {
       imageUrl: hordeImgUrl,
-      text: "What do you mean, you have never seen the castle and the firepit to even click it? Oh well, for now all the firepits units from the land have gathered to address this insult. We will have to calm them down a little. And click that firepit in the next mission!",
+      text: t("campaign.intro4"),
     },
   ],
   22: [
     {
       imageUrl: swordImgUrl,
-      text: "Welcome to the training grounds, commander. Today you will learn the special abilities that set elite units apart from common soldiers. Each unit on this field demonstrates a key battlefield mechanic.",
+      text: t("campaign.intro5"),
     },
     {
       imageUrl: magicImgUrl,
-      text: "First, observe your CLERICS surrounding the enemy Cyclops. Clerics do not attack — instead they HEAL nearby wounded allies, keeping your forces alive under the beast's crushing blows. Healing is the backbone of any prolonged engagement.",
+      text: t("campaign.intro6"),
     },
     {
       imageUrl: armoryImgUrl,
-      text: "From a distance, your LANCERS will charge in on horseback. When a lancer reaches its target after a long ride, it deals 5x CHARGE DAMAGE on its first strike — devastating against heavy targets like the Cyclops.",
+      text: t("campaign.intro7"),
     },
     {
       imageUrl: magicImgUrl,
-      text: "Your MASTER MAGES stand ready with destructive magic: fireballs, chain lightning, and ice storms. These high-level casters deal massive area damage from long range. Watch the battlefield light up with arcane fury.",
+      text: t("campaign.intro8"),
     },
     {
       imageUrl: swordImgUrl,
-      text: "Finally, observe the enemy BATTERING RAM — a siege unit that ONLY attacks buildings, ignoring all soldiers. Your SIEGE HUNTER is specifically designed to hunt down and destroy these siege engines. A TREBUCHET provides devastating long-range bombardment. Now, to battle!",
+      text: t("campaign.intro9"),
     },
   ],
   23: [
     {
       imageUrl: merlinImgUrl,
-      text: "Sire, I have located a powerful Dark Savant willing to fight for our cause. However, our supply lines are cut — we cannot build or train any reinforcements. You must rely on his dark pyromancy alone.",
+      text: t("campaign.intro10"),
     },
     {
       imageUrl: magicImgUrl,
@@ -249,7 +250,7 @@ export class CampaignIntroScreen {
       .stroke({ color: 0x44aa66, width: 1.5 });
     this._actionBtn.addChild(btnBg);
 
-    this._actionLabel = new Text({ text: "CONTINUE", style: STYLE_BTN });
+    this._actionLabel = new Text({ text: t("continue"), style: STYLE_BTN });
     this._actionLabel.anchor.set(0.5, 0.5);
     this._actionLabel.position.set(btnW / 2, btnH / 2);
     this._actionBtn.addChild(this._actionLabel);
@@ -279,7 +280,7 @@ export class CampaignIntroScreen {
     if (!page) return;
 
     const isLast = this._pageIndex >= this._pages.length - 1;
-    this._actionLabel.text = isLast ? "START" : "CONTINUE";
+    this._actionLabel.text = isLast ? t("start") : t("continue");
 
     // Text
     this._bodyText.text = page.text;
