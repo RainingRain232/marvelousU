@@ -2,13 +2,19 @@
 // Accessed from the main menu via the WIKI button.
 
 import {
-  Container, Graphics, Text, TextStyle, Rectangle,
+  Container, Graphics, Text, TextStyle, Rectangle, Assets, Sprite, Texture,
 } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { t } from "@/i18n/i18n";
 import { getAllWorldBuildingDefs } from "@world/config/WorldBuildingDefs";
 import type { WorldBuildingDef } from "@world/config/WorldBuildingDefs";
+import throneImgUrl from "@/img/throne.png";
+import arthurImgUrl from "@/img/arthur.png";
+import racesImgUrl from "@/img/races.png";
+import merlinImgUrl from "@/img/merlin.png";
+import wallsImgUrl from "@/img/walls.png";
+import magicImgUrl from "@/img/magic.png";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -480,6 +486,28 @@ export class MainMenuWikiScreen {
   }
 
   // ---------------------------------------------------------------------------
+  // Shared helper: centered banner image at the top of a tab
+  // ---------------------------------------------------------------------------
+
+  private _addTabBanner(imgUrl: string, maxH: number, startY: number): number {
+    const c = this._contentContainer;
+    const imgW = CARD_W - 60;
+    const slot = new Container();
+    slot.position.set(0, startY);
+    c.addChild(slot);
+    void Assets.load(imgUrl).then((tex: Texture) => {
+      if (!c.parent) return;
+      const img = new Sprite(tex);
+      const scale = Math.min(maxH / img.texture.height, imgW / img.texture.width);
+      img.scale.set(scale);
+      img.anchor.set(0.5, 0);
+      img.position.set(imgW / 2, 0);
+      slot.addChild(img);
+    });
+    return startY + maxH + 16;
+  }
+
+  // ---------------------------------------------------------------------------
   // Guidance tab
   // ---------------------------------------------------------------------------
 
@@ -527,6 +555,8 @@ export class MainMenuWikiScreen {
       c.addChild(new Graphics().rect(0, cy, W, 1).fill({ color: 0x334466, alpha: 0.5 }));
       cy += 16;
     };
+
+    cy = this._addTabBanner(throneImgUrl, 200, cy);
 
     // =========================================================================
     // CORE CONCEPTS
@@ -848,6 +878,7 @@ export class MainMenuWikiScreen {
   private _buildLoreContent(): void {
     const c = this._contentContainer;
     let cy = 8;
+    cy = this._addTabBanner(arthurImgUrl, 200, cy);
 
     for (const section of LORE_SECTIONS) {
       // Heading
@@ -880,6 +911,7 @@ export class MainMenuWikiScreen {
   private _buildGameModesContent(): void {
     const c = this._contentContainer;
     let cy = 8;
+    cy = this._addTabBanner(racesImgUrl, 200, cy);
 
     const heading = new Text({ text: t("wiki.game_modes"), style: STYLE_LORE_HEADING });
     heading.position.set(0, cy);
@@ -953,6 +985,7 @@ export class MainMenuWikiScreen {
   private _buildLeadersContent(): void {
     const c = this._contentContainer;
     let cy = 8;
+    cy = this._addTabBanner(merlinImgUrl, 200, cy);
 
     const heading = new Text({ text: t("wiki.legends"), style: STYLE_LORE_HEADING });
     heading.position.set(0, cy);
@@ -998,6 +1031,7 @@ export class MainMenuWikiScreen {
   private _buildWorldBuildingsContent(): void {
     const c = this._contentContainer;
     let cy = 8;
+    cy = this._addTabBanner(wallsImgUrl, 200, cy);
 
     const heading = new Text({ text: t("wiki.world_buildings"), style: STYLE_LORE_HEADING });
     heading.position.set(0, cy);
@@ -1084,6 +1118,7 @@ export class MainMenuWikiScreen {
   private _buildWorldResearchContent(): void {
     const c = this._contentContainer;
     let cy = 8;
+    cy = this._addTabBanner(magicImgUrl, 200, cy);
 
     // --- TECH RESEARCH ---
     const techHeading = new Text({ text: t("wiki.tech_research"), style: STYLE_LORE_HEADING });
