@@ -2,10 +2,12 @@
 import { Container, Graphics, Text } from "pixi.js";
 import type { ViewManager } from "@view/ViewManager";
 import type { RPGState } from "@rpg/state/RPGState";
-import type { OverworldState } from "@rpg/state/OverworldState";
+import type { OverworldState, TownData } from "@rpg/state/OverworldState";
 import { getSaveSlots, saveGame } from "@rpg/systems/SaveSystem";
 import { t } from "@/i18n/i18n";
 import type { SaveSlotMeta } from "@rpg/systems/SaveSystem";
+import { generateShopInventory } from "@rpg/config/RPGItemDefs";
+import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 
 // ---------------------------------------------------------------------------
 // Colours
@@ -26,7 +28,7 @@ const SLOT_EMPTY_COLOR = 0x444466;
 // Modes
 // ---------------------------------------------------------------------------
 
-type PauseMode = "menu" | "save" | "inventory" | "formation" | "help" | "confirm_quit";
+type PauseMode = "menu" | "save" | "inventory" | "formation" | "help" | "confirm_quit" | "cheats";
 
 // ---------------------------------------------------------------------------
 // PauseMenuView
@@ -54,9 +56,19 @@ export class PauseMenuView {
   /** Set to true while a child overlay (e.g. OptionsView) is open. */
   inputSuspended = false;
 
-  private _menuOptions = ["Resume", "Inventory", "Save Game", "Formation", "Help", "Options", "Quit to Title"];
+  private _menuOptions = ["Resume", "Inventory", "Save Game", "Formation", "Help", "Options", "Cheats", "Quit to Title"];
   /** Sub-index for inventory: which party member is selected */
   private _invMemberIndex = 0;
+  private _cheatMessage = "";
+  private _cheatMessageTimer: ReturnType<typeof setTimeout> | null = null;
+  private _cheatOptions = [
+    "Add 5000 Gold",
+    "Level Up All Units",
+    "Heal All Units",
+    "Refresh Shop Inventory",
+    "Fill Inventory with Potions",
+    "Back",
+  ];
 
   init(vm: ViewManager, rpgState: RPGState, overworldState: OverworldState): void {
     this.vm = vm;
@@ -74,6 +86,9 @@ export class PauseMenuView {
     }
     if (this._saveMessageTimer) {
       clearTimeout(this._saveMessageTimer);
+    }
+    if (this._cheatMessageTimer) {
+      clearTimeout(this._cheatMessageTimer);
     }
     this.vm.removeFromLayer("ui", this.container);
     this.container.destroy({ children: true });
@@ -107,12 +122,14 @@ export class PauseMenuView {
       this._drawHelp(W, H);
     } else if (this._mode === "confirm_quit") {
       this._drawConfirmQuit(W, H);
+    } else if (this._mode === "cheats") {
+      this._drawCheats(W, H);
     }
   }
 
   private _drawPauseMenu(W: number, H: number): void {
     const panelW = Math.min(320, W - 40);
-    const panelH = 380;
+    const panelH = 420;
     const panelX = (W - panelW) / 2;
     const panelY = (H - panelH) / 2;
 
@@ -643,6 +660,65 @@ export class PauseMenuView {
     this.container.addChild(yesNo);
   }
 
+  private _drawCheats(W: number, H: number): void {
+    const panelW = Math.min(340, W - 40);
+    const panelH = 60 + this._cheatOptions.length * 40 + 60;
+    const panelX = (W - panelW) / 2;
+    const panelY = (H - panelH) / 2;
+
+    const panel = new Graphics();
+    panel.roundRect(panelX, panelY, panelW, panelH, 8);
+    panel.fill({ color: PANEL_COLOR, alpha: 0.96 });
+    panel.stroke({ color: 0xaa4444, width: 2 });
+    this.container.addChild(panel);
+
+    const title = new Text({
+      text: "~ CHEATS ~",
+      style: { fontFamily: "monospace", fontSize: 18, fill: 0xff6666, fontWeight: "bold" },
+    });
+    title.anchor.set(0.5, 0);
+    title.position.set(W / 2, panelY + 16);
+    this.container.addChild(title);
+
+    const startY = panelY + 52;
+    const spacing = 40;
+
+    for (let i = 0; i < this._cheatOptions.length; i++) {
+      const selected = i === this._selectedIndex;
+      const isBack = i === this._cheatOptions.length - 1;
+      const text = new Text({
+        text: `${selected ? "> " : "  "}${this._cheatOptions[i]}`,
+        style: {
+          fontFamily: "monospace",
+          fontSize: 15,
+          fill: isBack ? DIM_COLOR : selected ? SELECTED_COLOR : OPTION_COLOR,
+          fontWeight: selected ? "bold" : "normal",
+        },
+      });
+      text.anchor.set(0.5, 0);
+      text.position.set(W / 2, startY + i * spacing);
+      this.container.addChild(text);
+    }
+
+    if (this._cheatMessage) {
+      const msg = new Text({
+        text: this._cheatMessage,
+        style: { fontFamily: "monospace", fontSize: 12, fill: 0x44ee88, fontWeight: "bold" },
+      });
+      msg.anchor.set(0.5, 0);
+      msg.position.set(W / 2, panelY + panelH - 50);
+      this.container.addChild(msg);
+    }
+
+    const footer = new Text({
+      text: "Enter: Select  |  Escape: Back",
+      style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
+    });
+    footer.anchor.set(0.5, 0);
+    footer.position.set(W / 2, panelY + panelH - 28);
+    this.container.addChild(footer);
+  }
+
   // ---------------------------------------------------------------------------
   // Input
   // ---------------------------------------------------------------------------
@@ -657,6 +733,7 @@ export class PauseMenuView {
       else if (this._mode === "formation") this._handleFormationInput(e);
       else if (this._mode === "help") this._handleHelpInput(e);
       else if (this._mode === "confirm_quit") this._handleConfirmQuitInput(e);
+      else if (this._mode === "cheats") this._handleCheatsInput(e);
     };
     window.addEventListener("keydown", this._onKeyDown, true);
   }
@@ -694,6 +771,12 @@ export class PauseMenuView {
           break;
         case 5: this.onOptions?.(); break;
         case 6:
+          this._mode = "cheats";
+          this._selectedIndex = 0;
+          this._cheatMessage = "";
+          this._draw();
+          break;
+        case 7:
           this._mode = "confirm_quit";
           this._selectedIndex = 1; // Default to No
           this._draw();
@@ -777,6 +860,111 @@ export class PauseMenuView {
     }
   }
 
+  private _handleCheatsInput(e: KeyboardEvent): void {
+    if (e.code === "ArrowUp") {
+      this._selectedIndex = (this._selectedIndex - 1 + this._cheatOptions.length) % this._cheatOptions.length;
+      this._draw();
+    } else if (e.code === "ArrowDown") {
+      this._selectedIndex = (this._selectedIndex + 1) % this._cheatOptions.length;
+      this._draw();
+    } else if (e.code === "Enter" || e.code === "Space") {
+      this._applyCheat(this._selectedIndex);
+    } else if (e.code === "Escape") {
+      this._mode = "menu";
+      this._selectedIndex = 6;
+      this._draw();
+    }
+  }
+
+  private _applyCheat(index: number): void {
+    const backIndex = this._cheatOptions.length - 1;
+    if (index === backIndex) {
+      this._mode = "menu";
+      this._selectedIndex = 6;
+      this._draw();
+      return;
+    }
+
+    switch (index) {
+      case 0: // Add 5000 Gold
+        this._rpgState.gold += 5000;
+        this._showCheatMessage("+ 5000 Gold added!");
+        break;
+
+      case 1: { // Level Up All Units
+        const growth = RPGBalance.LEVEL_STAT_GROWTH;
+        for (const member of this._rpgState.party) {
+          if (member.level < RPGBalance.MAX_LEVEL) {
+            member.level++;
+            member.xp = 0;
+            member.xpToNext = Math.ceil(member.xpToNext * RPGBalance.XP_SCALE_FACTOR);
+            member.maxHp = Math.ceil(member.maxHp * (1 + growth));
+            member.hp = member.maxHp;
+            member.maxMp = Math.ceil(member.maxMp * (1 + growth));
+            member.mp = member.maxMp;
+            member.atk = Math.ceil(member.atk * (1 + growth));
+            member.def = Math.ceil(member.def * (1 + growth));
+            member.speed = +(member.speed * (1 + growth * 0.5)).toFixed(2);
+          }
+        }
+        this._showCheatMessage("All units leveled up!");
+        break;
+      }
+
+      case 2: // Heal All Units
+        for (const member of this._rpgState.party) {
+          member.hp = member.maxHp;
+          member.mp = member.maxMp;
+          member.statusEffects = [];
+        }
+        this._showCheatMessage("All units fully healed!");
+        break;
+
+      case 3: { // Refresh Shop Inventory
+        let refreshed = 0;
+        for (const entity of this._overworldState.entities.values()) {
+          if (entity.type === "town") {
+            const town = entity.data as TownData;
+            const newSeed = Math.floor(Math.random() * 999999);
+            town.shopItems = generateShopInventory(town.shopTier, newSeed);
+            refreshed++;
+          }
+        }
+        this._showCheatMessage(`Shop inventory refreshed (${refreshed} towns)!`);
+        break;
+      }
+
+      case 4: { // Fill Inventory with Potions
+        const potion = {
+          id: "health_potion",
+          name: "Health Potion",
+          type: "consumable" as const,
+          stats: { hp: 50 },
+          description: "Restores 50 HP.",
+          value: 50,
+        };
+        const existing = this._rpgState.inventory.items.find(e => e.item.id === "health_potion");
+        if (existing) {
+          existing.quantity += 10;
+        } else if (this._rpgState.inventory.items.length < this._rpgState.inventory.maxSlots) {
+          this._rpgState.inventory.items.push({ item: potion, quantity: 10 });
+        }
+        this._showCheatMessage("x10 Health Potions added!");
+        break;
+      }
+    }
+  }
+
+  private _showCheatMessage(msg: string): void {
+    this._cheatMessage = msg;
+    if (this._cheatMessageTimer) clearTimeout(this._cheatMessageTimer);
+    this._cheatMessageTimer = setTimeout(() => {
+      this._cheatMessage = "";
+      this._draw();
+    }, 2000);
+    this._draw();
+  }
+
   private _handleConfirmQuitInput(e: KeyboardEvent): void {
     if (e.code === "ArrowLeft" || e.code === "ArrowRight") {
       this._selectedIndex = this._selectedIndex === 0 ? 1 : 0;
@@ -786,12 +974,12 @@ export class PauseMenuView {
         this.onQuitToTitle?.();
       } else {
         this._mode = "menu";
-        this._selectedIndex = 6;
+        this._selectedIndex = 7;
         this._draw();
       }
     } else if (e.code === "Escape") {
       this._mode = "menu";
-      this._selectedIndex = 6;
+      this._selectedIndex = 7;
       this._draw();
     }
   }
