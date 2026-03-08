@@ -68,6 +68,8 @@ export const nl: Record<string, string> = {
   "mode.rpg_desc": "Bovenwereld & kerkerverkenning",
   "mode.survivor": "OVERLEVER",
   "mode.survivor_desc": "Vampire survivors roguelite",
+  "mode.colosseum": "COLOSSEUM",
+  "mode.colosseum_desc": "Toernooi arena gevecht",
 
   // ─── MenuScreen ─── kaartgroottes ───
   "map.standard": "STANDAARD",

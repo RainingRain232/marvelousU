@@ -65,6 +65,8 @@ export interface TurnBattleState {
   round: number;
   encounterType: "random" | "dungeon" | "boss";
   canFlee: boolean;
+  /** When false, ITEM action is disabled (colosseum no-items rule). */
+  canUseItems: boolean;
   xpReward: number;
   goldReward: number;
   lootReward: RPGItem[];
@@ -99,6 +101,7 @@ export function createTurnBattleState(
     round: 1,
     encounterType,
     canFlee: encounterType !== "boss",
+    canUseItems: true,
     xpReward,
     goldReward,
     lootReward,

@@ -118,6 +118,7 @@ import { RPGGame } from "@rpg/RPGBoot";
 
 // Survivor mode imports
 import { SurvivorGame } from "@/survivor/SurvivorGame";
+import { ColosseumGame } from "@rpg/colosseum/ColosseumGame";
 
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
@@ -306,6 +307,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.SURVIVOR) {
       menuScreen.hide();
       _bootSurvivorGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.COLOSSEUM) {
+      menuScreen.hide();
+      _bootColosseumGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2395,6 +2401,33 @@ async function _bootSurvivorGame(): Promise<void> {
 
   _survivorGame = new SurvivorGame();
   await _survivorGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Colosseum mode boot
+// ---------------------------------------------------------------------------
+
+let _colosseumGame: ColosseumGame | null = null;
+
+async function _bootColosseumGame(): Promise<void> {
+  if (_colosseumGame) {
+    _colosseumGame.destroy();
+    _colosseumGame = null;
+  }
+
+  _colosseumGame = new ColosseumGame();
+  await _colosseumGame.boot();
+
+  // Listen for exit event
+  const _onColosseumExit = () => {
+    window.removeEventListener("colosseumExit", _onColosseumExit);
+    if (_colosseumGame) {
+      _colosseumGame.destroy();
+      _colosseumGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("colosseumExit", _onColosseumExit);
 }
 
 // ---------------------------------------------------------------------------

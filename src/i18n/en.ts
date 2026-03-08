@@ -68,6 +68,8 @@ export const en: Record<string, string> = {
   "mode.rpg_desc": "Overworld & dungeon crawling",
   "mode.survivor": "SURVIVOR",
   "mode.survivor_desc": "Vampire survivors roguelite",
+  "mode.colosseum": "COLOSSEUM",
+  "mode.colosseum_desc": "Tournament arena combat",
 
   // ─── MenuScreen ─── map sizes ───
   "map.standard": "STANDARD",

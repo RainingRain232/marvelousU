@@ -660,6 +660,24 @@ export enum GameMode {
   WAVE = "wave",
   RPG = "rpg",
   SURVIVOR = "survivor",
+  COLOSSEUM = "colosseum",
+}
+
+// ---------------------------------------------------------------------------
+// Colosseum mode enums
+// ---------------------------------------------------------------------------
+
+export enum ColosseumPhase {
+  MAIN_MENU = "colosseum_main_menu",
+  PARTY_SETUP = "colosseum_party_setup",
+  TOURNAMENT_BRACKET = "colosseum_tournament_bracket",
+  PRE_MATCH = "colosseum_pre_match",
+  BATTLE_TURN = "colosseum_battle_turn",
+  BATTLE_AUTO = "colosseum_battle_auto",
+  SPECTATE = "colosseum_spectate",
+  POST_MATCH = "colosseum_post_match",
+  TOURNAMENT_RESULTS = "colosseum_tournament_results",
+  RANKINGS = "colosseum_rankings",
 }
 
 // ---------------------------------------------------------------------------

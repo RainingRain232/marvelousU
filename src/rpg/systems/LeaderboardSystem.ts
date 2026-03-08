@@ -11,6 +11,7 @@ export interface Leaderboards {
   highestLevel: LeaderboardEntry[];
   mostGold: LeaderboardEntry[];
   fastestBossKill: LeaderboardEntry[];
+  colosseumElo: LeaderboardEntry[];
 }
 
 function _load(): Leaderboards {
@@ -18,7 +19,7 @@ function _load(): Leaderboards {
     const raw = localStorage.getItem(LEADERBOARD_KEY);
     if (raw) return JSON.parse(raw);
   } catch { /* ignore */ }
-  return { abyssDepth: [], highestLevel: [], mostGold: [], fastestBossKill: [] };
+  return { abyssDepth: [], highestLevel: [], mostGold: [], fastestBossKill: [], colosseumElo: [] };
 }
 
 function _save(boards: Leaderboards): void {

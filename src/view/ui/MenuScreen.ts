@@ -215,6 +215,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: t("mode.survivor_desc"),
     skipSetup: true,
   },
+  {
+    mode: GameMode.COLOSSEUM,
+    label: t("mode.colosseum"),
+    desc: t("mode.colosseum_desc"),
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
