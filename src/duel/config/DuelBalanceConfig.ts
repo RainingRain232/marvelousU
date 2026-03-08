@@ -42,7 +42,7 @@ export const DuelBalance = {
   PROJECTILE_DESPAWN_X: 100, // margin past stage edges
 
   // Grab
-  GRAB_RANGE: 45,
+  GRAB_RANGE: 75,
   GRAB_WHIFF_RECOVERY: 30,
 
   // Rounds
@@ -65,4 +65,11 @@ export const DuelBalance = {
 
   // Fighter visual scale
   FIGHTER_SCALE: 1.0, // base scale for skeleton drawing
+
+  // Zeal (ultimate meter)
+  ZEAL_MAX: 100,
+  ZEAL_GAIN_ON_HIT: 8,   // attacker gains when landing a hit
+  ZEAL_GAIN_ON_HURT: 5,   // defender gains when getting hit
+  ZEAL_1_COST: 50,
+  ZEAL_2_COST: 100,
 } as const;

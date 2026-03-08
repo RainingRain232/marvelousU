@@ -72,6 +72,39 @@ function special(
   };
 }
 
+function zeal(
+  id: string,
+  name: string,
+  height: AttackHeight,
+  startup: number,
+  active: number,
+  recovery: number,
+  damage: number,
+  chipDamage: number,
+  hitstun: number,
+  blockstun: number,
+  knockback: number,
+  hitbox: { x: number; y: number; width: number; height: number },
+  extra?: Partial<DuelMoveDef>,
+): DuelMoveDef {
+  return {
+    id,
+    name,
+    type: "zeal",
+    height,
+    startup,
+    active,
+    recovery,
+    damage,
+    chipDamage,
+    hitstun,
+    blockstun,
+    knockback,
+    hitbox,
+    ...extra,
+  };
+}
+
 // ===========================================================================
 // ARTHUR — Swordsman
 // ===========================================================================
@@ -169,6 +202,35 @@ export const ARTHUR_DEF: DuelCharacterDef = {
       10, 8, 24, 160, 32, 30, 20, 70,
       { x: 10, y: -200, width: 80, height: 120 },
       { isAntiAir: true, hasInvincibility: true, invincibleStartup: 6 },
+    ),
+    // E+D — Cross Slash: wide two-hit cross pattern, high damage
+    cross_slash: special(
+      "cross_slash", "Cross Slash", AttackHeight.MID,
+      10, 8, 18, 140, 28, 26, 16, 55,
+      { x: 20, y: -140, width: 100, height: 80 },
+      { movesForward: 60 },
+    ),
+    // W+S — Parry Counter: quick defensive stance with counter strike
+    parry_counter: special(
+      "parry_counter", "Parry Counter", AttackHeight.MID,
+      3, 10, 16, 95, 19, 22, 14, 40,
+      { x: 15, y: -120, width: 70, height: 80 },
+      { hasInvincibility: true, invincibleStartup: 8 },
+    ),
+  },
+
+  zeals: {
+    royal_judgment: zeal(
+      "royal_judgment", "Royal Judgment", AttackHeight.MID,
+      10, 8, 20, 150, 30, 28, 18, 50,
+      { x: 30, y: -130, width: 120, height: 90 },
+      { movesForward: 80 },
+    ),
+    excalibur_unleashed: zeal(
+      "excalibur_unleashed", "Excalibur Unleashed", AttackHeight.MID,
+      14, 10, 28, 300, 60, 40, 24, 80,
+      { x: 20, y: -150, width: 160, height: 120 },
+      { movesForward: 60, isLauncher: true },
     ),
   },
 
@@ -281,6 +343,33 @@ export const MERLIN_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 12 },
     ),
+    // E+D — Void Rift: tears open a rift at mid-range, pulls opponent in
+    void_rift: special(
+      "void_rift", "Void Rift", AttackHeight.MID,
+      14, 10, 18, 105, 21, 24, 16, 35,
+      { x: 120, y: -150, width: 70, height: 150 },
+    ),
+    // W+S — Mana Shield: absorbs a hit and retaliates with a burst
+    mana_shield: special(
+      "mana_shield", "Mana Shield", AttackHeight.MID,
+      4, 14, 12, 75, 15, 20, 12, 30,
+      { x: 20, y: -120, width: 60, height: 80 },
+      { hasInvincibility: true, invincibleStartup: 10 },
+    ),
+  },
+
+  zeals: {
+    thunder_wrath: zeal(
+      "thunder_wrath", "Thunder Wrath", AttackHeight.MID,
+      6, 4, 22, 130, 26, 26, 16, 45,
+      { x: 0, y: -120, width: 600, height: 80 },
+    ),
+    arcane_apocalypse: zeal(
+      "arcane_apocalypse", "Arcane Apocalypse", AttackHeight.MID,
+      16, 12, 30, 280, 56, 38, 22, 70,
+      { x: 10, y: -160, width: 200, height: 140 },
+      { isLauncher: true },
+    ),
   },
 
   grab: {
@@ -390,6 +479,35 @@ export const ELAINE_DEF: DuelCharacterDef = {
       "hunters_trap", "Hunter's Trap", AttackHeight.LOW,
       10, 15, 16, 60, 12, 20, 14, 10,
       { x: 80, y: -20, width: 60, height: 30 },
+    ),
+    // E+D — Piercing Arrow: charged long-range arrow that goes through block
+    piercing_arrow: special(
+      "piercing_arrow", "Piercing Arrow", AttackHeight.MID,
+      16, 4, 14, 100, 20, 22, 14, 35,
+      { x: 50, y: -100, width: 30, height: 20 },
+      { isProjectile: true, projectileSpeed: 16, projectileHeight: AttackHeight.MID },
+    ),
+    // W+S — Evasive Roll: quick dodge forward with a rising kick at the end
+    evasive_strike: special(
+      "evasive_strike", "Evasive Strike", AttackHeight.MID,
+      5, 5, 12, 65, 13, 18, 10, 25,
+      { x: 25, y: -130, width: 65, height: 60 },
+      { movesForward: 120, hasInvincibility: true, invincibleStartup: 6 },
+    ),
+  },
+
+  zeals: {
+    storm_volley: zeal(
+      "storm_volley", "Storm Volley", AttackHeight.MID,
+      8, 10, 18, 140, 28, 26, 16, 45,
+      { x: 30, y: -120, width: 140, height: 80 },
+      { movesForward: 40 },
+    ),
+    celestial_arrow: zeal(
+      "celestial_arrow", "Celestial Arrow", AttackHeight.MID,
+      12, 8, 26, 290, 58, 38, 22, 75,
+      { x: 20, y: -140, width: 200, height: 100 },
+      { isLauncher: true },
     ),
   },
 

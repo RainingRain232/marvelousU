@@ -40,6 +40,8 @@ const ARTHUR_SPECIALS: SpecialCombo[] = [
   { buttons: ["medKick", "heavyKick"], moveId: "rising_slash" },
   { buttons: ["lightPunch", "heavyKick"], moveId: "shield_charge" },
   { buttons: ["heavyPunch", "lightKick"], moveId: "excalibur" },
+  { buttons: ["heavyPunch", "heavyKick"], moveId: "cross_slash" },
+  { buttons: ["medPunch", "medKick"], moveId: "parry_counter" },
 ];
 
 const MERLIN_SPECIALS: SpecialCombo[] = [
@@ -49,6 +51,8 @@ const MERLIN_SPECIALS: SpecialCombo[] = [
   { buttons: ["medKick", "heavyKick"], moveId: "teleport" },
   { buttons: ["lightPunch", "heavyKick"], moveId: "arcane_storm" },
   { buttons: ["heavyPunch", "lightKick"], moveId: "mystic_barrier" },
+  { buttons: ["heavyPunch", "heavyKick"], moveId: "void_rift" },
+  { buttons: ["medPunch", "medKick"], moveId: "mana_shield" },
 ];
 
 const ELAINE_SPECIALS: SpecialCombo[] = [
@@ -58,6 +62,8 @@ const ELAINE_SPECIALS: SpecialCombo[] = [
   { buttons: ["medKick", "heavyKick"], moveId: "backflip_shot" },
   { buttons: ["lightPunch", "heavyKick"], moveId: "triple_shot" },
   { buttons: ["heavyPunch", "lightKick"], moveId: "hunters_trap" },
+  { buttons: ["heavyPunch", "heavyKick"], moveId: "piercing_arrow" },
+  { buttons: ["medPunch", "medKick"], moveId: "evasive_strike" },
 ];
 
 const CHARACTER_SPECIALS: Record<string, SpecialCombo[]> = {
@@ -65,6 +71,10 @@ const CHARACTER_SPECIALS: Record<string, SpecialCombo[]> = {
   merlin: MERLIN_SPECIALS,
   elaine: ELAINE_SPECIALS,
 };
+
+// Zeal (ultimate) combos — 3 buttons pressed simultaneously
+const ZEAL_1_COMBO: [string, string, string] = ["lightPunch", "medPunch", "heavyPunch"]; // Q+W+E
+const ZEAL_2_COMBO: [string, string, string] = ["lightKick", "medKick", "heavyKick"];    // A+S+D
 
 // Grab is universal: Q+A (lightPunch + lightKick)
 const GRAB_COMBO: [string, string] = ["lightPunch", "lightKick"];
@@ -250,6 +260,18 @@ function _canAct(fighter: DuelFighter): boolean {
 }
 
 function _resolveAction(fighter: DuelFighter, frame: number): string | null {
+  // 0. Check for zeal (ultimate) combos first — highest priority (3 buttons)
+  if (_checkTripleSimultaneous(fighter, ZEAL_1_COMBO, frame)) {
+    _pendingNormal = null;
+    _pendingNormalFrame = 0;
+    return "zeal_1";
+  }
+  if (_checkTripleSimultaneous(fighter, ZEAL_2_COMBO, frame)) {
+    _pendingNormal = null;
+    _pendingNormalFrame = 0;
+    return "zeal_2";
+  }
+
   // 1. Always check for specials first (simultaneous presses within window)
   const charSpecials = CHARACTER_SPECIALS[fighter.characterId] ?? [];
   for (const combo of charSpecials) {
@@ -288,6 +310,31 @@ function _resolveAction(fighter: DuelFighter, frame: number): string | null {
   }
 
   return null;
+}
+
+function _checkTripleSimultaneous(
+  fighter: DuelFighter,
+  buttons: [string, string, string],
+  frame: number,
+): boolean {
+  const win = DuelBalance.SIMULTANEOUS_WINDOW;
+  const buf = fighter.inputBuffer;
+
+  let foundA = false;
+  let foundB = false;
+  let foundC = false;
+
+  for (let i = buf.length - 1; i >= 0; i--) {
+    const entry = buf[i];
+    if (frame - entry.frame > win) break;
+    if (!entry.pressed) continue;
+    if (entry.code === buttons[0]) foundA = true;
+    if (entry.code === buttons[1]) foundB = true;
+    if (entry.code === buttons[2]) foundC = true;
+  }
+
+  const inp = fighter.input as Record<string, boolean>;
+  return foundA && foundB && foundC && inp[buttons[0]] && inp[buttons[1]] && inp[buttons[2]];
 }
 
 function _checkSimultaneous(

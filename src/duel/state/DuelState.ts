@@ -19,7 +19,7 @@ export interface Hitbox {
 export interface DuelMoveDef {
   id: string;
   name: string;
-  type: "normal" | "special" | "grab";
+  type: "normal" | "special" | "grab" | "zeal";
   height: AttackHeight;
   startup: number; // frames before hitbox active
   active: number; // frames hitbox is active
@@ -57,6 +57,7 @@ export interface DuelCharacterDef {
   weight: number; // affects knockback
   normals: Record<string, DuelMoveDef>;
   specials: Record<string, DuelMoveDef>;
+  zeals: Record<string, DuelMoveDef>;
   grab: DuelMoveDef;
 }
 
@@ -126,6 +127,7 @@ export interface DuelFighter {
   grounded: boolean;
   invincibleFrames: number;
   dashFrames: number; // remaining frames in a dash (0 = not dashing)
+  zealGauge: number; // 0–100 ultimate meter
   // Input (raw key state)
   input: {
     left: boolean;
@@ -215,6 +217,7 @@ export function createFighter(
     grounded: true,
     invincibleFrames: 0,
     dashFrames: 0,
+    zealGauge: 0,
     input: {
       left: false,
       right: false,

@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text } from "pixi.js";
+import { DuelBalance } from "../../duel/config/DuelBalanceConfig";
 import type { DuelState } from "../../duel/state/DuelState";
 
 const HP_BAR_HEIGHT = 36;
@@ -10,6 +11,8 @@ const HP_BAR_Y = 40;
 const HP_BAR_MARGIN = 50;
 const TIMER_BOX_W = 76;
 const TIMER_BOX_H = 56;
+const ZEAL_BAR_HEIGHT = 10;
+const ZEAL_BAR_Y = HP_BAR_Y + HP_BAR_HEIGHT + 6;
 
 // Colors
 const COL_BG_DARK = 0x111111;
@@ -31,6 +34,7 @@ export class DuelHUD {
   readonly container = new Container();
 
   private _healthBarGfx = new Graphics();
+  private _zealBarGfx = new Graphics();
   private _timerGfx = new Graphics();
   private _comboGfx = new Graphics();
   private _announcementGfx = new Graphics();
@@ -69,6 +73,12 @@ export class DuelHUD {
   private _p2ComboCount = 0;
   private _p2ComboDamage = 0;
   private _p2LastCount = 0;
+
+  // Zeal meter tracking
+  private _p1ZealDisplay = 0;
+  private _p2ZealDisplay = 0;
+  private _p1ZealFlash = 0;
+  private _p2ZealFlash = 0;
 
   // Training mode display
   private _trainingInfo: Text;
@@ -156,6 +166,7 @@ export class DuelHUD {
 
     this.container.addChild(
       this._healthBarGfx,
+      this._zealBarGfx,
       this._timerGfx,
       this._roundDotGfx,
       this._comboGfx,
@@ -282,6 +293,9 @@ export class DuelHUD {
       }
     }
 
+    // ===== Zeal meters =====
+    this._updateZealBars(f1.zealGauge, f2.zealGauge, centerX, barW, p1X, p2X);
+
     // ===== Combo display =====
     this._updateCombo(f1, f2, sw, sh);
 
@@ -359,6 +373,79 @@ export class DuelHUD {
         g.rect(x, y, healthWidth, height);
       }
       g.fill({ color: 0xff0000, alpha: flash });
+    }
+  }
+
+  private _updateZealBars(
+    p1Zeal: number, p2Zeal: number,
+    _centerX: number, barW: number,
+    p1X: number, p2X: number,
+  ): void {
+    this._zealBarGfx.clear();
+    const max = DuelBalance.ZEAL_MAX;
+
+    // Smooth display
+    this._p1ZealDisplay += (p1Zeal - this._p1ZealDisplay) * 0.15;
+    this._p2ZealDisplay += (p2Zeal - this._p2ZealDisplay) * 0.15;
+
+    // Flash when reaching thresholds
+    if (p1Zeal >= max && this._p1ZealFlash < 1) this._p1ZealFlash = 1;
+    if (p2Zeal >= max && this._p2ZealFlash < 1) this._p2ZealFlash = 1;
+    if (this._p1ZealFlash > 0) this._p1ZealFlash -= 1 / 60;
+    if (this._p2ZealFlash > 0) this._p2ZealFlash -= 1 / 60;
+
+    this._drawZealBar(this._zealBarGfx, p1X, ZEAL_BAR_Y, barW, ZEAL_BAR_HEIGHT,
+      this._p1ZealDisplay / max, this._p1ZealFlash, true);
+    this._drawZealBar(this._zealBarGfx, p2X, ZEAL_BAR_Y, barW, ZEAL_BAR_HEIGHT,
+      this._p2ZealDisplay / max, this._p2ZealFlash, false);
+  }
+
+  private _drawZealBar(
+    g: Graphics, x: number, y: number, width: number, height: number,
+    ratio: number, flash: number, isP1: boolean,
+  ): void {
+    // Background
+    g.roundRect(x - 1, y - 1, width + 2, height + 2, 3);
+    g.fill({ color: 0x0a0a1a });
+    g.stroke({ color: 0x333355, width: 1 });
+
+    const fillW = Math.min(1, ratio) * width;
+    if (fillW <= 0) return;
+
+    // Color: blue → gold → white as it fills
+    const col = ratio >= 1.0 ? 0xffdd66 : ratio >= 0.5 ? 0x4488ff : 0x2244aa;
+
+    if (isP1) {
+      g.rect(x + width - fillW, y, fillW, height);
+    } else {
+      g.rect(x, y, fillW, height);
+    }
+    g.fill({ color: col });
+
+    // Half-meter notch
+    const notchX = isP1 ? x + width * 0.5 : x + width * 0.5;
+    g.rect(notchX - 0.5, y, 1, height);
+    g.fill({ color: 0xffffff, alpha: 0.3 });
+
+    // Shine
+    if (isP1) {
+      g.rect(x + width - fillW, y, fillW, height / 3);
+    } else {
+      g.rect(x, y, fillW, height / 3);
+    }
+    g.fill({ color: 0xffffff, alpha: 0.2 });
+
+    // Full meter glow/pulse
+    if (ratio >= 1.0) {
+      const pulse = 0.15 + Math.sin(performance.now() / 200) * 0.1;
+      g.roundRect(x - 2, y - 2, width + 4, height + 4, 4);
+      g.fill({ color: 0xffdd66, alpha: pulse });
+    }
+
+    // Flash effect when reaching full
+    if (flash > 0) {
+      g.roundRect(x - 3, y - 3, width + 6, height + 6, 5);
+      g.fill({ color: 0xffffff, alpha: flash * 0.5 });
     }
   }
 

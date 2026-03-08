@@ -124,9 +124,11 @@ function _updateFighter(
     case DuelFighterState.HIT_STUN:
       if (fighter.hitstunFrames <= 0) {
         fighter.state = DuelFighterState.IDLE;
-        fighter.comboCount = 0;
-        fighter.comboDamage = 0;
-        fighter.comboDamageScaling = 1;
+        // Reset the OPPONENT's combo tracking — they were the attacker
+        const opponent = state.fighters[idx === 0 ? 1 : 0];
+        opponent.comboCount = 0;
+        opponent.comboDamage = 0;
+        opponent.comboDamageScaling = 1;
       }
       return;
 
@@ -278,17 +280,30 @@ function _startMove(
   moveId: string,
 ): void {
   const charDef = DUEL_CHARACTERS[fighter.characterId];
+
+  // Handle zeal (ultimate) moves — map generic "zeal_1"/"zeal_2" to character-specific moves
+  let actualMoveId = moveId;
+  if (moveId === "zeal_1" || moveId === "zeal_2") {
+    const zealCost = moveId === "zeal_1" ? DuelBalance.ZEAL_1_COST : DuelBalance.ZEAL_2_COST;
+    if (fighter.zealGauge < zealCost) return; // not enough meter
+    const zealKeys = Object.keys(charDef.zeals);
+    actualMoveId = moveId === "zeal_1" ? zealKeys[0] : zealKeys[1];
+    if (!actualMoveId) return;
+    fighter.zealGauge -= zealCost;
+  }
+
   const move =
-    charDef.normals[moveId] ??
-    charDef.specials[moveId] ??
-    (moveId === "grab" ? charDef.grab : null);
+    charDef.normals[actualMoveId] ??
+    charDef.specials[actualMoveId] ??
+    charDef.zeals[actualMoveId] ??
+    (actualMoveId === "grab" ? charDef.grab : null);
 
   if (!move) return;
 
   // Track combo chains: if canceling from a previous hit, increment chain
   const wasCanceling = fighter.canCancelMove && fighter.state === DuelFighterState.ATTACK;
-  fighter.state = moveId === "grab" ? DuelFighterState.GRAB : DuelFighterState.ATTACK;
-  fighter.currentMove = moveId;
+  fighter.state = actualMoveId === "grab" ? DuelFighterState.GRAB : DuelFighterState.ATTACK;
+  fighter.currentMove = actualMoveId;
   fighter.moveFrame = 0;
   fighter.moveHasHit = false;
   fighter.canCancelMove = false;
@@ -317,7 +332,7 @@ function _startMove(
   }
 
   // Teleport special case
-  if (moveId === "teleport") {
+  if (actualMoveId === "teleport") {
     const opponent = state.fighters[idx === 0 ? 1 : 0];
     const behindDist = 60;
     const dir = opponent.facingRight ? -1 : 1;
@@ -334,7 +349,8 @@ function _updateAttack(
   const charDef = DUEL_CHARACTERS[fighter.characterId];
   const move =
     charDef.normals[fighter.currentMove!] ??
-    charDef.specials[fighter.currentMove!];
+    charDef.specials[fighter.currentMove!] ??
+    charDef.zeals[fighter.currentMove!];
 
   if (!move) {
     fighter.state = DuelFighterState.IDLE;
@@ -380,7 +396,8 @@ function _canCancelAttack(fighter: DuelFighter): boolean {
   const charDef = DUEL_CHARACTERS[fighter.characterId];
   const move =
     charDef.normals[fighter.currentMove!] ??
-    charDef.specials[fighter.currentMove!];
+    charDef.specials[fighter.currentMove!] ??
+    charDef.zeals[fighter.currentMove!];
   if (!move) return false;
 
   // Allow cancel once we've passed the active frames (entering recovery)
@@ -405,20 +422,19 @@ function _updateGrab(
   ) {
     const opponent = state.fighters[idx === 0 ? 1 : 0];
     if (_inGrabRange(fighter, opponent)) {
-      // Grab connects! (unblockable)
+      // Grab connects! (unblockable) — throw opponent into the air
       fighter.moveHasHit = true;
       opponent.hp -= grab.damage;
-      opponent.state = DuelFighterState.GRABBED;
+      opponent.state = DuelFighterState.HIT_STUN;
       opponent.stateTimer = 0;
       opponent.hitstunFrames = grab.hitstun;
 
-      // Knockback
+      // Launch: upward + horizontal knockback
       const dir = fighter.facingRight ? 1 : -1;
-      opponent.position.x += dir * grab.knockback;
-      opponent.position.x = Math.max(
-        state.stageLeft,
-        Math.min(state.stageRight, opponent.position.x),
-      );
+      opponent.velocity.y = -14;
+      opponent.velocity.x = dir * 5;
+      opponent.grounded = false;
+      opponent.position.x += dir * grab.knockback * 0.3;
 
       state.slowdownFrames = DuelBalance.HIT_FREEZE_FRAMES;
     }
@@ -442,7 +458,8 @@ function _checkHits(state: DuelState, attackerIdx: number): void {
   const charDef = DUEL_CHARACTERS[attacker.characterId];
   const move =
     charDef.normals[attacker.currentMove!] ??
-    charDef.specials[attacker.currentMove!];
+    charDef.specials[attacker.currentMove!] ??
+    charDef.zeals[attacker.currentMove!];
 
   if (!move) return;
   if (move.isProjectile) return; // handled by projectile system
@@ -560,6 +577,10 @@ function _resolveHit(
 
     // Enable cancel into next move (combo chain, max 5)
     attacker.canCancelMove = true;
+
+    // Zeal meter gain
+    attacker.zealGauge = Math.min(DuelBalance.ZEAL_MAX, attacker.zealGauge + DuelBalance.ZEAL_GAIN_ON_HIT);
+    defender.zealGauge = Math.min(DuelBalance.ZEAL_MAX, defender.zealGauge + DuelBalance.ZEAL_GAIN_ON_HURT);
 
     // Hit freeze
     state.slowdownFrames = DuelBalance.HIT_FREEZE_FRAMES;

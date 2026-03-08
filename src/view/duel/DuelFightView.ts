@@ -66,19 +66,36 @@ interface HitSpark {
 const ARTHUR_SPECIALS = new Set([
   "sword_thrust", "overhead_cleave", "low_sweep",
   "rising_slash", "shield_charge", "excalibur",
+  "cross_slash", "parry_counter",
 ]);
 const MERLIN_SPECIALS = new Set([
   "arcane_bolt", "thunder_strike", "frost_wave",
   "teleport", "arcane_storm", "mystic_barrier",
+  "void_rift", "mana_shield",
 ]);
 const ELAINE_SPECIALS = new Set([
   "power_shot", "rain_of_arrows", "leg_sweep",
   "backflip_shot", "triple_shot", "hunters_trap",
+  "piercing_arrow", "evasive_strike",
 ]);
 const ALL_SPECIALS: Record<string, Set<string>> = {
   arthur: ARTHUR_SPECIALS,
   merlin: MERLIN_SPECIALS,
   elaine: ELAINE_SPECIALS,
+};
+
+// Zeal (ultimate) moves — even flashier VFX
+const ZEAL_MOVES: Record<string, Set<string>> = {
+  arthur: new Set(["royal_judgment", "excalibur_unleashed"]),
+  merlin: new Set(["thunder_wrath", "arcane_apocalypse"]),
+  elaine: new Set(["storm_volley", "celestial_arrow"]),
+};
+
+// Zeal VFX colors — brighter, more intense than specials
+const ZEAL_COLORS: Record<string, { primary: number; secondary: number; glow: number }> = {
+  arthur: { primary: 0xffee88, secondary: 0xffaa22, glow: 0xffffff },
+  merlin: { primary: 0xaaaaff, secondary: 0x6644ff, glow: 0xffffff },
+  elaine: { primary: 0x88eeff, secondary: 0x44aadd, glow: 0xffffff },
 };
 
 // Special VFX color themes per character
@@ -99,7 +116,7 @@ interface SpecialVFXParticle {
   maxLife: number;
   size: number;
   color: number;
-  type: "spark" | "trail" | "ring" | "slash";
+  type: "spark" | "trail" | "ring" | "slash" | "lightning" | "flash";
 }
 
 // ---- Fight view class ------------------------------------------------------
@@ -181,26 +198,32 @@ export class DuelFightView {
       const prevMove = this._prevMoves[i];
       const curMove = f.state === DuelFighterState.ATTACK ? f.currentMove : null;
 
-      // Detect when a new special move starts
+      // Detect when a new special or zeal move starts
       if (curMove && curMove !== prevMove) {
-        const specials = ALL_SPECIALS[f.characterId];
-        if (specials?.has(curMove)) {
+        const isZeal = ZEAL_MOVES[f.characterId]?.has(curMove);
+        const isSpecial = ALL_SPECIALS[f.characterId]?.has(curMove);
+        if (isZeal) {
+          this._spawnZealVFX(f, curMove, state);
+        } else if (isSpecial) {
           this._spawnSpecialVFX(f, curMove);
         }
       }
 
       this._prevMoves[i] = curMove;
 
-      // Spawn trailing particles during active frames of specials
+      // Spawn trailing particles during active frames
       if (
         f.state === DuelFighterState.ATTACK &&
-        f.currentMove &&
-        ALL_SPECIALS[f.characterId]?.has(f.currentMove)
+        f.currentMove
       ) {
-        const charDef = DUEL_CHARACTERS[f.characterId];
-        const move = charDef.specials[f.currentMove];
-        if (move && f.moveFrame >= move.startup && f.moveFrame < move.startup + move.active) {
-          this._spawnActiveTrail(f);
+        const isZeal = ZEAL_MOVES[f.characterId]?.has(f.currentMove);
+        const isSpecial = ALL_SPECIALS[f.characterId]?.has(f.currentMove);
+        if (isZeal || isSpecial) {
+          const charDef = DUEL_CHARACTERS[f.characterId];
+          const move = isZeal ? charDef.zeals[f.currentMove] : charDef.specials[f.currentMove];
+          if (move && f.moveFrame >= move.startup && f.moveFrame < move.startup + move.active) {
+            this._spawnActiveTrail(f, isZeal);
+          }
         }
       }
     }
@@ -341,9 +364,12 @@ export class DuelFightView {
     }
   }
 
-  private _spawnActiveTrail(fighter: DuelFighter): void {
-    if (Math.random() > 0.4) return; // don't spawn every frame
-    const colors = SPECIAL_COLORS[fighter.characterId] ?? SPECIAL_COLORS.arthur;
+  private _spawnActiveTrail(fighter: DuelFighter, isZeal = false): void {
+    if (!isZeal && Math.random() > 0.4) return; // don't spawn every frame
+    if (isZeal && Math.random() > 0.7) return; // zeal spawns more often
+    const colors = isZeal
+      ? (ZEAL_COLORS[fighter.characterId] ?? ZEAL_COLORS.arthur)
+      : (SPECIAL_COLORS[fighter.characterId] ?? SPECIAL_COLORS.arthur);
     const dir = fighter.facingRight ? 1 : -1;
     const x = fighter.position.x + dir * (30 + Math.random() * 40);
     const y = fighter.position.y - 60 - Math.random() * 80;
@@ -359,6 +385,275 @@ export class DuelFightView {
       color: Math.random() > 0.5 ? colors.primary : colors.glow,
       type: "spark",
     });
+  }
+
+  // ---- Zeal VFX (ultra-flashy ultimates) ------------------------------------
+
+  private _spawnZealVFX(fighter: DuelFighter, moveId: string, state: DuelState): void {
+    const colors = ZEAL_COLORS[fighter.characterId] ?? ZEAL_COLORS.arthur;
+    const dir = fighter.facingRight ? 1 : -1;
+    const x = fighter.position.x;
+    const y = fighter.position.y;
+
+    // Screen flash
+    this._specialParticles.push({
+      x: state.screenW / 2,
+      y: state.screenH / 2,
+      vx: 0, vy: 0,
+      life: 15,
+      maxLife: 15,
+      size: Math.max(state.screenW, state.screenH),
+      color: colors.glow,
+      type: "flash",
+    });
+
+    // Massive burst of energy sparks (3x more than specials)
+    const sparkCount = 36;
+    for (let i = 0; i < sparkCount; i++) {
+      const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.2;
+      const speed = 4 + Math.random() * 8;
+      this._specialParticles.push({
+        x: x + dir * 15 + Math.random() * 30 - 15,
+        y: y - 90 + Math.random() * 60 - 30,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 3,
+        life: 25 + Math.random() * 15,
+        maxLife: 40,
+        size: 4 + Math.random() * 6,
+        color: Math.random() > 0.3 ? colors.primary : colors.glow,
+        type: "spark",
+      });
+    }
+
+    // Double expanding rings
+    this._specialParticles.push({
+      x: x + dir * 10,
+      y: y - 85,
+      vx: 0, vy: 0,
+      life: 30,
+      maxLife: 30,
+      size: 15,
+      color: colors.primary,
+      type: "ring",
+    });
+    this._specialParticles.push({
+      x: x + dir * 10,
+      y: y - 85,
+      vx: 0, vy: 0,
+      life: 22,
+      maxLife: 22,
+      size: 8,
+      color: colors.glow,
+      type: "ring",
+    });
+
+    // Rising energy pillar particles
+    for (let i = 0; i < 16; i++) {
+      this._specialParticles.push({
+        x: x + Math.random() * 40 - 20,
+        y: y - Math.random() * 20,
+        vx: Math.random() * 2 - 1,
+        vy: -6 - Math.random() * 8,
+        life: 20 + Math.random() * 10,
+        maxLife: 30,
+        size: 3 + Math.random() * 4,
+        color: Math.random() > 0.5 ? colors.primary : 0xffffff,
+        type: "spark",
+      });
+    }
+
+    // Character-specific zeal effects
+    if (fighter.characterId === "merlin" && moveId === "thunder_wrath") {
+      this._spawnThunderZap(fighter, state, colors);
+    } else if (fighter.characterId === "arthur") {
+      this._spawnZealSlashBarrage(x, y, dir, colors, moveId);
+    } else if (fighter.characterId === "merlin") {
+      this._spawnArcaneExplosion(x, y, colors);
+    } else if (fighter.characterId === "elaine") {
+      this._spawnZealArrowBarrage(x, y, dir, colors, moveId);
+    }
+  }
+
+  /** Merlin Zeal 1: Lightning zap line from Merlin to opponent */
+  private _spawnThunderZap(
+    fighter: DuelFighter, state: DuelState,
+    colors: { primary: number; secondary: number; glow: number },
+  ): void {
+    const opponentIdx = state.fighters[0] === fighter ? 1 : 0;
+    const opponent = state.fighters[opponentIdx];
+    const sx = fighter.position.x;
+    const sy = fighter.position.y - 90;
+    const ex = opponent.position.x;
+    const ey = opponent.position.y - 90;
+
+    // Create jagged lightning segments between start and end
+    const segments = 12;
+    let px = sx;
+    let py = sy;
+    for (let i = 1; i <= segments; i++) {
+      const t = i / segments;
+      const nx = sx + (ex - sx) * t + (i < segments ? (Math.random() - 0.5) * 40 : 0);
+      const ny = sy + (ey - sy) * t + (i < segments ? (Math.random() - 0.5) * 50 : 0);
+
+      // Main bolt segment
+      this._specialParticles.push({
+        x: px, y: py,
+        vx: (nx - px) * 0.02,
+        vy: (ny - py) * 0.02,
+        life: 18 + Math.random() * 6,
+        maxLife: 24,
+        size: 6 + Math.random() * 3,
+        color: 0xffffff,
+        type: "lightning",
+      });
+
+      // Branch sparks at each node
+      if (Math.random() > 0.4) {
+        this._specialParticles.push({
+          x: nx, y: ny,
+          vx: (Math.random() - 0.5) * 6,
+          vy: (Math.random() - 0.5) * 6,
+          life: 10 + Math.random() * 8,
+          maxLife: 18,
+          size: 3 + Math.random() * 2,
+          color: Math.random() > 0.5 ? 0x88aaff : colors.primary,
+          type: "spark",
+        });
+      }
+
+      px = nx;
+      py = ny;
+    }
+
+    // Impact spark shower at opponent
+    for (let i = 0; i < 20; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 3 + Math.random() * 6;
+      this._specialParticles.push({
+        x: ex + Math.random() * 20 - 10,
+        y: ey + Math.random() * 20 - 10,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 15 + Math.random() * 10,
+        maxLife: 25,
+        size: 3 + Math.random() * 4,
+        color: Math.random() > 0.3 ? 0xffffff : 0x6688ff,
+        type: "spark",
+      });
+    }
+
+    // Flash at impact point
+    this._specialParticles.push({
+      x: ex, y: ey,
+      vx: 0, vy: 0,
+      life: 12,
+      maxLife: 12,
+      size: 80,
+      color: 0xaaccff,
+      type: "flash",
+    });
+  }
+
+  /** Arthur zeal: multi-slash arcs with energy trails */
+  private _spawnZealSlashBarrage(
+    cx: number, cy: number, dir: number,
+    colors: { primary: number; secondary: number; glow: number },
+    moveId: string,
+  ): void {
+    const slashCount = moveId === "excalibur_unleashed" ? 4 : 3;
+    for (let s = 0; s < slashCount; s++) {
+      const offset = s * 5;
+      const angleBase = -Math.PI * 0.5 + s * 0.4;
+      for (let i = 0; i < 10; i++) {
+        const t = i / 10;
+        const angle = angleBase + t * Math.PI * 0.7;
+        const dist = 30 + t * 45 + s * 10;
+        this._specialParticles.push({
+          x: cx + Math.cos(angle) * dist * dir + dir * 20,
+          y: cy - 100 + Math.sin(angle) * dist,
+          vx: Math.cos(angle) * 2 * dir,
+          vy: Math.sin(angle) * 2 - 1,
+          life: 14 + offset + i * 1.5,
+          maxLife: 14 + offset + i * 1.5,
+          size: 7 - t * 2,
+          color: i % 3 === 0 ? 0xffffff : colors.primary,
+          type: "slash",
+        });
+      }
+    }
+  }
+
+  /** Merlin zeal 2: massive arcane explosion */
+  private _spawnArcaneExplosion(
+    cx: number, cy: number,
+    colors: { primary: number; secondary: number; glow: number },
+  ): void {
+    // Dense spiral explosion
+    for (let i = 0; i < 40; i++) {
+      const angle = (i / 40) * Math.PI * 4;
+      const speed = 2 + (i / 40) * 6;
+      this._specialParticles.push({
+        x: cx, y: cy - 90,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 28 + Math.random() * 12,
+        maxLife: 40,
+        size: 3 + Math.random() * 5,
+        color: i % 4 === 0 ? 0xffffff : i % 2 === 0 ? colors.primary : colors.secondary,
+        type: "spark",
+      });
+    }
+    // Triple rings
+    for (let r = 0; r < 3; r++) {
+      this._specialParticles.push({
+        x: cx, y: cy - 90,
+        vx: 0, vy: 0,
+        life: 30 - r * 6,
+        maxLife: 30 - r * 6,
+        size: 10 + r * 8,
+        color: r === 0 ? colors.glow : colors.primary,
+        type: "ring",
+      });
+    }
+  }
+
+  /** Elaine zeal: barrage of glowing arrows */
+  private _spawnZealArrowBarrage(
+    cx: number, cy: number, dir: number,
+    colors: { primary: number; secondary: number; glow: number },
+    moveId: string,
+  ): void {
+    const count = moveId === "celestial_arrow" ? 20 : 14;
+    for (let i = 0; i < count; i++) {
+      const spread = (Math.random() - 0.5) * 40;
+      this._specialParticles.push({
+        x: cx - dir * (i * 6),
+        y: cy - 80 + spread,
+        vx: dir * (8 + Math.random() * 6),
+        vy: spread * 0.1 + Math.random() * 2 - 1,
+        life: 18 + Math.random() * 10,
+        maxLife: 28,
+        size: 3 + Math.random() * 4,
+        color: i % 3 === 0 ? 0xffffff : colors.primary,
+        type: "trail",
+      });
+    }
+    if (moveId === "celestial_arrow") {
+      // Giant glowing arrow trail
+      for (let i = 0; i < 8; i++) {
+        this._specialParticles.push({
+          x: cx + dir * 20,
+          y: cy - 90 + Math.random() * 10 - 5,
+          vx: dir * (12 + i * 2),
+          vy: 0,
+          life: 20 + i * 2,
+          maxLife: 20 + i * 2,
+          size: 8 - i * 0.5,
+          color: 0xffffff,
+          type: "trail",
+        });
+      }
+    }
   }
 
   // ---- Fighter drawing -----------------------------------------------------
@@ -405,15 +700,27 @@ export class DuelFightView {
       g.alpha = 1;
     }
 
-    // Special move glow: add a body aura when performing a special
-    const isSpecial = fighter.state === DuelFighterState.ATTACK &&
+    // Special/Zeal move glow: add a body aura
+    const isZeal = fighter.state === DuelFighterState.ATTACK &&
+      fighter.currentMove &&
+      ZEAL_MOVES[charId]?.has(fighter.currentMove);
+    const isSpecial = !isZeal && fighter.state === DuelFighterState.ATTACK &&
       fighter.currentMove &&
       ALL_SPECIALS[charId]?.has(fighter.currentMove);
 
-    if (isSpecial) {
+    if (isZeal) {
+      const colors = ZEAL_COLORS[charId] ?? ZEAL_COLORS.arthur;
+      const pulse = 0.5 + Math.sin(fighter.moveFrame * 0.7) * 0.2;
+      // Big intense aura for zeal
+      g.circle(0, -90, 75 + Math.sin(fighter.moveFrame * 0.4) * 12);
+      g.fill({ color: colors.primary, alpha: pulse * 0.35 });
+      g.circle(0, -90, 50 + Math.sin(fighter.moveFrame * 0.5) * 6);
+      g.fill({ color: colors.glow, alpha: pulse * 0.25 });
+      g.circle(0, -90, 30);
+      g.fill({ color: 0xffffff, alpha: pulse * 0.15 });
+    } else if (isSpecial) {
       const colors = SPECIAL_COLORS[charId] ?? SPECIAL_COLORS.arthur;
       const pulse = 0.3 + Math.sin(fighter.moveFrame * 0.5) * 0.15;
-      // Body glow aura
       g.circle(0, -90, 55 + Math.sin(fighter.moveFrame * 0.3) * 8);
       g.fill({ color: colors.primary, alpha: pulse * 0.25 });
       g.circle(0, -90, 35);
@@ -434,8 +741,8 @@ export class DuelFightView {
 
     drawFighterSkeleton(g, opts);
 
-    // Draw weapon trail / energy effect on top of fighter during specials
-    if (isSpecial && currentPose.frontArm) {
+    // Draw weapon trail / energy effect on top of fighter during specials/zeals
+    if ((isSpecial || isZeal) && currentPose.frontArm) {
       const colors = SPECIAL_COLORS[charId] ?? SPECIAL_COLORS.arthur;
       const handX = currentPose.frontArm.handX;
       const handY = currentPose.frontArm.handY;
@@ -708,6 +1015,31 @@ export class DuelFightView {
           // Glow
           g.circle(p.x, p.y, sz * 2);
           g.fill({ color: p.color, alpha: t * 0.2 });
+          break;
+        }
+
+        case "lightning": {
+          // Jagged bright bolt segment
+          const boltW = p.size * (0.3 + t * 0.7);
+          const jitter = (1 - t) * 8;
+          const jx = (Math.random() - 0.5) * jitter;
+          const jy = (Math.random() - 0.5) * jitter;
+          // Outer glow
+          g.circle(p.x + jx, p.y + jy, boltW * 2.5);
+          g.fill({ color: 0x4466ff, alpha: t * 0.2 });
+          // Core bolt
+          g.circle(p.x + jx, p.y + jy, boltW);
+          g.fill({ color: 0xffffff, alpha: t * 0.9 });
+          // Bright center
+          g.circle(p.x + jx, p.y + jy, boltW * 0.4);
+          g.fill({ color: 0xccddff, alpha: t });
+          break;
+        }
+
+        case "flash": {
+          // Full-screen or localized flash that fades
+          g.rect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+          g.fill({ color: p.color, alpha: t * 0.4 });
           break;
         }
       }
