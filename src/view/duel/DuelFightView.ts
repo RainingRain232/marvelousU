@@ -13,7 +13,7 @@ import {
   type FighterPalette,
   type DrawFighterOptions,
 } from "./DuelSkeletonRenderer";
-import { ARTHUR_PALETTE, ARTHUR_POSES, drawArthurExtras } from "./DuelArthurPoses";
+import { ARTHUR_PALETTE, ARTHUR_POSES, drawArthurExtras, drawArthurBackExtras } from "./DuelArthurPoses";
 import { MERLIN_PALETTE, MERLIN_POSES, drawMerlinExtras } from "./DuelMerlinPoses";
 import { ELAINE_PALETTE, ELAINE_POSES, drawElaineExtras } from "./DuelElainePoses";
 
@@ -31,10 +31,14 @@ const POSES: Record<string, Record<string, FighterPose[]>> = {
   elaine: ELAINE_POSES,
 };
 
-const EXTRAS: Record<string, (g: Graphics, p: FighterPose, pal: FighterPalette) => void> = {
+const EXTRAS: Record<string, (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void> = {
   arthur: drawArthurExtras,
   merlin: drawMerlinExtras,
   elaine: drawElaineExtras,
+};
+
+const BACK_EXTRAS: Record<string, (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void> = {
+  arthur: drawArthurBackExtras,
 };
 
 // ---- Projectile colors -----------------------------------------------------
@@ -159,6 +163,7 @@ export class DuelFightView {
       g.alpha = 1;
     }
 
+    const backExtras = BACK_EXTRAS[charId];
     const opts: DrawFighterOptions = {
       pose: currentPose,
       palette,
@@ -166,6 +171,7 @@ export class DuelFightView {
       flashColor: 0xffffff,
       helmeted: charId === "arthur",
       helmColor: 0x888899,
+      drawBackExtras: backExtras,
       drawExtras: extras,
     };
 

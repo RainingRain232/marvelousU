@@ -23,6 +23,7 @@ import { DuelFightView } from "../view/duel/DuelFightView";
 import { DuelHUD } from "../view/duel/DuelHUD";
 import { DuelArenaRenderer } from "../view/duel/DuelArenaRenderer";
 import { DuelIntroView } from "../view/duel/DuelIntroView";
+import { DuelControlsView } from "../view/duel/DuelControlsView";
 
 export class DuelGame {
   private _state: DuelState | null = null;
@@ -37,6 +38,7 @@ export class DuelGame {
   private _hud = new DuelHUD();
   private _arenaRenderer = new DuelArenaRenderer();
   private _introView = new DuelIntroView();
+  private _controlsView = new DuelControlsView();
 
   // Track previous fighter HP for spark/audio effects
   private _prevHp: [number, number] = [0, 0];
@@ -79,11 +81,28 @@ export class DuelGame {
         break;
       case "CONTROLS":
       case "HOW TO PLAY":
+        this._showControls();
+        break;
       case "SETTINGS":
-        // Show info screen briefly, then return to menu
+        // Return to menu for now
         this._showMainMenu();
         break;
     }
+  }
+
+  // ---- Controls screen ------------------------------------------------------
+
+  private _showControls(): void {
+    const sw = viewManager.screenWidth;
+    const sh = viewManager.screenHeight;
+
+    this._controlsView.setEscapeCallback(() => {
+      viewManager.removeFromLayer("ui", this._controlsView.container);
+      this._showMainMenu();
+    });
+
+    this._controlsView.show(sw, sh);
+    viewManager.addToLayer("ui", this._controlsView.container);
   }
 
   // ---- Character select ----------------------------------------------------
@@ -369,12 +388,14 @@ export class DuelGame {
     this._cleanup();
     viewManager.removeFromLayer("ui", this._menuView.container);
     viewManager.removeFromLayer("ui", this._charSelect.container);
+    viewManager.removeFromLayer("ui", this._controlsView.container);
     this._menuView.destroy();
     this._charSelect.destroy();
     this._fightView.destroy();
     this._hud.destroy();
     this._arenaRenderer.destroy();
     this._introView.destroy();
+    this._controlsView.destroy();
   }
 }
 

@@ -504,6 +504,68 @@ export const MERLIN_POSES: Record<string, FighterPose[]> = {
     ),
   ],
 
+  // -- arcane_storm (3 frames: raise staff, channel overhead, recovery) ------
+  arcane_storm: [
+    // raise staff skyward
+    pose(
+      head(0, -188),
+      torso(0, -133, 52, 46, 90, -0.04),
+      arm(22, -173, 28, -205, 34, -240, true),
+      arm(-22, -173, -26, -200, -30, -232, true),
+      leg(12, -85, 16, -46, 20, 0),
+      leg(-12, -85, -16, -46, -20, 0),
+    ),
+    // channeling storm energy, arms wide
+    pose(
+      head(0, -190),
+      torso(0, -135, 52, 46, 90, 0),
+      arm(22, -175, 48, -200, 65, -220, true),
+      arm(-22, -175, -48, -198, -65, -215, true),
+      leg(12, -85, 18, -46, 22, 0),
+      leg(-12, -85, -18, -46, -22, 0),
+    ),
+    // recovery
+    pose(
+      head(0, -185),
+      torso(0, -130, 52, 46, 90, 0),
+      arm(22, -170, 30, -152, 28, -132, false),
+      arm(-22, -170, -28, -150, -24, -128, false),
+      leg(12, -85, 14, -45, 16, 0),
+      leg(-12, -85, -14, -45, -16, 0),
+    ),
+  ],
+
+  // -- mystic_barrier (3 frames: stance, barrier hold, recovery) ------------
+  mystic_barrier: [
+    // hands crossed in front, defensive stance
+    pose(
+      head(-2, -186),
+      torso(-2, -131, 52, 46, 90, -0.06),
+      arm(22, -171, 10, -155, -5, -145, true),
+      arm(-22, -171, -10, -155, 5, -145, true),
+      leg(12, -85, 14, -45, 16, 0),
+      leg(-12, -85, -14, -45, -16, 0),
+    ),
+    // barrier up: arms spread forming a shield
+    pose(
+      head(0, -188),
+      torso(0, -133, 52, 46, 90, 0),
+      arm(22, -173, 36, -180, 44, -195, true),
+      arm(-22, -173, -36, -178, -44, -192, true),
+      leg(12, -85, 16, -46, 20, 0),
+      leg(-12, -85, -16, -46, -20, 0),
+    ),
+    // recovery
+    pose(
+      head(0, -185),
+      torso(0, -130, 52, 46, 90, 0),
+      arm(22, -170, 30, -152, 28, -132, false),
+      arm(-22, -170, -28, -150, -24, -128, false),
+      leg(12, -85, 14, -45, 16, 0),
+      leg(-12, -85, -14, -45, -16, 0),
+    ),
+  ],
+
   // -- grab (3 frames: reach with staff, pin, recovery) ----------------------
   grab: [
     // reach: extend staff to hook opponent
@@ -672,9 +734,11 @@ export function drawMerlinExtras(
   g: Graphics,
   p: FighterPose,
   pal: FighterPalette,
+  isFlashing: boolean,
+  flashColor: number,
 ): void {
-  const staffColor = pal.weapon ?? 0x8b6914;
-  const crystalColor = pal.weaponAccent ?? 0x8888ff;
+  const staffColor = isFlashing ? flashColor : (pal.weapon ?? 0x8b6914);
+  const crystalColor = isFlashing ? flashColor : (pal.weaponAccent ?? 0x8888ff);
 
   // -- Staff ----------------------------------------------------------------
   // Staff runs from the front hand to a point above it (or to ground)
@@ -729,29 +793,32 @@ export function drawMerlinExtras(
   const headX = p.head.x;
   const headY = p.head.y;
   const hr = p.head.radius ?? 24;
+  const hatColor = isFlashing ? flashColor : 0x2a3388;
+  const hatBandColor = isFlashing ? flashColor : 0x886633;
+  const hatStarColor = isFlashing ? flashColor : 0xdddd88;
 
   // Hat brim (ellipse behind head)
   g.ellipse(headX + 2, headY - hr + 2, hr + 10, 5);
-  g.fill({ color: 0x2a3388 });
+  g.fill({ color: hatColor });
 
   // Hat cone (triangle)
   g.moveTo(headX - hr - 4, headY - hr + 4);
   g.lineTo(headX + 8, headY - hr - 50);
   g.lineTo(headX + hr + 4, headY - hr + 4);
   g.closePath();
-  g.fill({ color: 0x2a3388 });
+  g.fill({ color: hatColor });
 
   // Hat band
   g.moveTo(headX - hr - 2, headY - hr + 4);
   g.lineTo(headX + hr + 2, headY - hr + 4);
-  g.stroke({ color: 0x886633, width: 3 });
+  g.stroke({ color: hatBandColor, width: 3 });
 
   // Hat star accent
   g.circle(headX + 4, headY - hr - 20, 3);
-  g.fill({ color: 0xdddd88, alpha: 0.7 });
+  g.fill({ color: hatStarColor, alpha: 0.7 });
 
   // -- Beard ----------------------------------------------------------------
-  const beardColor = pal.hair;
+  const beardColor = isFlashing ? flashColor : pal.hair;
   const mouthY = headY + 10;
 
   // Beard: flows down from chin area

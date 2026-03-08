@@ -209,8 +209,10 @@ export interface DrawFighterOptions {
   helmeted?: boolean;
   /** Helm color (used when helmeted is true). */
   helmColor?: number;
+  /** Draw behind body (capes, cloaks, etc.). Called before back arm. */
+  drawBackExtras?: (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void;
   /** Custom draw function for character-specific details (weapon, accessories). */
-  drawExtras?: (g: Graphics, p: FighterPose, pal: FighterPalette) => void;
+  drawExtras?: (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void;
 }
 
 /**
@@ -222,12 +224,18 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
   const { pose: p, palette: pal, isFlashing, flashColor } = opts;
   const outline = pal.outline;
 
-  const skinColor = isFlashing && flashColor ? flashColor : pal.skin;
-  const bodyColor = isFlashing && flashColor ? flashColor : pal.body;
-  const pantsColor = isFlashing && flashColor ? flashColor : pal.pants;
-  const shoeColor = isFlashing && flashColor ? flashColor : pal.shoes;
-  const hairColor = isFlashing && flashColor ? flashColor : pal.hair;
-  const handColor = isFlashing && flashColor ? flashColor : (pal.gloves ?? skinColor);
+  const flashing = !!(isFlashing && flashColor);
+  const fColor = flashColor ?? 0xffffff;
+
+  const skinColor = flashing ? fColor : pal.skin;
+  const bodyColor = flashing ? fColor : pal.body;
+  const pantsColor = flashing ? fColor : pal.pants;
+  const shoeColor = flashing ? fColor : pal.shoes;
+  const hairColor = flashing ? fColor : pal.hair;
+  const handColor = flashing ? fColor : (pal.gloves ?? skinColor);
+
+  // Draw back extras first (capes, cloaks) — behind everything
+  opts.drawBackExtras?.(g, p, pal, flashing, fColor);
 
   // Draw order: back arm → back leg → torso → front leg → front arm → head
 
@@ -382,7 +390,7 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
   }
 
   // Character-specific extras (weapon, accessories)
-  opts.drawExtras?.(g, p, pal);
+  opts.drawExtras?.(g, p, pal, flashing, fColor);
 }
 
 // ---- Shadow ---------------------------------------------------------------

@@ -156,6 +156,20 @@ export const ARTHUR_DEF: DuelCharacterDef = {
       { x: 15, y: -180, width: 65, height: 100 },
       { isAntiAir: true, hasInvincibility: true, invincibleStartup: 4 },
     ),
+    // Q+D — Shield Charge: rushing forward shield slam
+    shield_charge: special(
+      "shield_charge", "Shield Charge", AttackHeight.MID,
+      8, 6, 18, 90, 18, 22, 14, 55,
+      { x: 20, y: -100, width: 70, height: 60 },
+      { movesForward: 160, hasInvincibility: true, invincibleStartup: 3 },
+    ),
+    // E+A — Excalibur: massive upward swing (super)
+    excalibur: special(
+      "excalibur", "Excalibur", AttackHeight.MID,
+      10, 8, 24, 160, 32, 30, 20, 70,
+      { x: 10, y: -200, width: 80, height: 120 },
+      { isAntiAir: true, hasInvincibility: true, invincibleStartup: 6 },
+    ),
   },
 
   grab: {
@@ -254,6 +268,19 @@ export const MERLIN_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 10 },
     ),
+    // Q+D — Arcane Storm: multi-hit overhead spell column
+    arcane_storm: special(
+      "arcane_storm", "Arcane Storm", AttackHeight.OVERHEAD,
+      14, 10, 20, 120, 24, 26, 18, 40,
+      { x: 100, y: -200, width: 80, height: 200 },
+    ),
+    // E+A — Mystic Barrier: counter stance, reflects projectiles
+    mystic_barrier: special(
+      "mystic_barrier", "Mystic Barrier", AttackHeight.MID,
+      4, 12, 14, 0, 0, 0, 0, 0,
+      { x: 0, y: 0, width: 0, height: 0 },
+      { hasInvincibility: true, invincibleStartup: 12 },
+    ),
   },
 
   grab: {
@@ -350,6 +377,19 @@ export const ELAINE_DEF: DuelCharacterDef = {
       6, 6, 10, 55, 11, 16, 10, 22,
       { x: 35, y: -110, width: 30, height: 25 },
       { isProjectile: true, projectileSpeed: 10, projectileHeight: AttackHeight.MID, movesBack: 130 },
+    ),
+    // Q+D — Triple Shot: three rapid arrows
+    triple_shot: special(
+      "triple_shot", "Triple Shot", AttackHeight.MID,
+      6, 8, 14, 75, 15, 18, 12, 20,
+      { x: 50, y: -100, width: 30, height: 20 },
+      { isProjectile: true, projectileSpeed: 14, projectileHeight: AttackHeight.MID },
+    ),
+    // E+A — Hunter's Trap: low ground snare
+    hunters_trap: special(
+      "hunters_trap", "Hunter's Trap", AttackHeight.LOW,
+      10, 15, 16, 60, 12, 20, 14, 10,
+      { x: 80, y: -20, width: 60, height: 30 },
     ),
   },
 

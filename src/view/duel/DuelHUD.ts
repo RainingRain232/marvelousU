@@ -64,9 +64,11 @@ export class DuelHUD {
   private _p1ComboTimer = 0;
   private _p1ComboCount = 0;
   private _p1ComboDamage = 0;
+  private _p1LastCount = 0;
   private _p2ComboTimer = 0;
   private _p2ComboCount = 0;
   private _p2ComboDamage = 0;
+  private _p2LastCount = 0;
 
   // Announcement animation
   private _announcementScale = 1;
@@ -344,14 +346,24 @@ export class DuelHUD {
     // f1.comboCount = number of hits P1 has landed in current combo
 
     if (f1.comboCount > 1) {
+      if (f1.comboCount !== this._p1LastCount) {
+        this._p1ComboTimer = 2; // reset timer on each new hit
+      }
       this._p1ComboCount = f1.comboCount;
       this._p1ComboDamage = f1.comboDamage;
-      this._p1ComboTimer = 2;
+      this._p1LastCount = f1.comboCount;
+    } else {
+      this._p1LastCount = 0;
     }
     if (f2.comboCount > 1) {
+      if (f2.comboCount !== this._p2LastCount) {
+        this._p2ComboTimer = 2;
+      }
       this._p2ComboCount = f2.comboCount;
       this._p2ComboDamage = f2.comboDamage;
-      this._p2ComboTimer = 2;
+      this._p2LastCount = f2.comboCount;
+    } else {
+      this._p2LastCount = 0;
     }
     if (this._p1ComboTimer > 0) this._p1ComboTimer -= 1 / 60;
     if (this._p2ComboTimer > 0) this._p2ComboTimer -= 1 / 60;
@@ -368,13 +380,20 @@ export class DuelHUD {
       const alpha = Math.min(1, this._p1ComboTimer);
       const colorIdx = Math.min(this._p1ComboCount - 2, COMBO_COLORS.length - 1);
 
+      // Scale pop effect: big on new hit, settles to 1
+      // When timer=2 (just hit): scale = 1 + 0.3*3 = 1.9
+      // Quickly drops to 1.0
+      const popScale = 1 + Math.max(0, 0.3 - (2 - this._p1ComboTimer)) * 3;
+
       this._p1ComboHit.text = `${this._p1ComboCount} HIT`;
       this._p1ComboHit.style.fill = COMBO_COLORS[colorIdx];
       this._p1ComboHit.alpha = alpha;
       this._p1ComboHit.position.set(comboX, comboY);
+      this._p1ComboHit.scale.set(popScale);
 
       this._p1ComboLabel.alpha = alpha;
-      this._p1ComboLabel.position.set(comboX, comboY + 32);
+      this._p1ComboLabel.position.set(comboX, comboY + 36 * popScale);
+      this._p1ComboLabel.scale.set(popScale * 0.8);
 
       const dmgPct = Math.round((this._p1ComboDamage / f2.maxHp) * 100);
       if (dmgPct > 0) {
@@ -382,7 +401,8 @@ export class DuelHUD {
         this._p1ComboDmg.text = `${dmgPct}%`;
         this._p1ComboDmg.style.fill = dmgPct >= 50 ? 0xff4444 : dmgPct >= 30 ? 0xffaa00 : 0x44ddff;
         this._p1ComboDmg.alpha = alpha;
-        this._p1ComboDmg.position.set(comboX, comboY - 36);
+        this._p1ComboDmg.position.set(comboX, comboY - 40 * popScale);
+        this._p1ComboDmg.scale.set(popScale);
       }
     }
 
@@ -398,13 +418,17 @@ export class DuelHUD {
       const alpha = Math.min(1, this._p2ComboTimer);
       const colorIdx = Math.min(this._p2ComboCount - 2, COMBO_COLORS.length - 1);
 
+      const popScale = 1 + Math.max(0, 0.3 - (2 - this._p2ComboTimer)) * 3;
+
       this._p2ComboHit.text = `${this._p2ComboCount} HIT`;
       this._p2ComboHit.style.fill = COMBO_COLORS[colorIdx];
       this._p2ComboHit.alpha = alpha;
       this._p2ComboHit.position.set(comboX, comboY);
+      this._p2ComboHit.scale.set(popScale);
 
       this._p2ComboLabel.alpha = alpha;
-      this._p2ComboLabel.position.set(comboX, comboY + 32);
+      this._p2ComboLabel.position.set(comboX, comboY + 36 * popScale);
+      this._p2ComboLabel.scale.set(popScale * 0.8);
 
       const dmgPct = Math.round((this._p2ComboDamage / f1.maxHp) * 100);
       if (dmgPct > 0) {
@@ -412,7 +436,8 @@ export class DuelHUD {
         this._p2ComboDmg.text = `${dmgPct}%`;
         this._p2ComboDmg.style.fill = dmgPct >= 50 ? 0xff4444 : dmgPct >= 30 ? 0xffaa00 : 0x44ddff;
         this._p2ComboDmg.alpha = alpha;
-        this._p2ComboDmg.position.set(comboX, comboY - 36);
+        this._p2ComboDmg.position.set(comboX, comboY - 40 * popScale);
+        this._p2ComboDmg.scale.set(popScale);
       }
     }
   }

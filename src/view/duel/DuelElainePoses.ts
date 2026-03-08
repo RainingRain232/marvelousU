@@ -505,6 +505,68 @@ export const ELAINE_POSES: Record<string, FighterPose[]> = {
     ),
   ],
 
+  // ---------- triple_shot (3 frames: draw, rapid fire, recovery) -----------
+  triple_shot: [
+    // draw back bow
+    pose(
+      head(5, -186),
+      torso(0, -131, 48, 38, 88, -0.05),
+      arm(22, -171, 10, -155, -5, -145, false),
+      arm(-22, -171, -38, -153, -45, -138, false),
+      leg(12, -85, 16, -44, 18, 0),
+      leg(-12, -85, -18, -44, -20, 0),
+    ),
+    // rapid fire: arm extended, releasing arrows
+    pose(
+      head(8, -184),
+      torso(4, -129, 48, 38, 88, 0.08),
+      arm(24, -169, 55, -158, 90, -152, false),
+      arm(-20, -169, -30, -150, -25, -130, false),
+      leg(14, -85, 18, -44, 20, 0),
+      leg(-10, -85, -16, -44, -18, 0),
+    ),
+    // recovery
+    pose(
+      head(5, -185),
+      torso(0, -130, 48, 38, 88),
+      arm(22, -170, 38, -148, 42, -125, false),
+      arm(-22, -170, -38, -150, -35, -128, false),
+      leg(12, -85, 18, -44, 16, 0),
+      leg(-12, -85, -20, -44, -22, 0),
+    ),
+  ],
+
+  // ---------- hunters_trap (3 frames: crouch, plant, recovery) ------------
+  hunters_trap: [
+    // crouch down
+    pose(
+      head(4, -148),
+      torso(2, -100, 48, 40, 72, 0.1),
+      arm(22, -132, 30, -95, 35, -60, false),
+      arm(-22, -132, -28, -100, -25, -75, false),
+      leg(14, -64, 24, -32, 22, 0),
+      leg(-10, -64, -18, -32, -16, 0),
+    ),
+    // planting trap on ground
+    pose(
+      head(8, -145),
+      torso(6, -96, 48, 40, 70, 0.16),
+      arm(24, -128, 44, -70, 55, -15, false),
+      arm(-20, -128, -22, -90, -18, -60, false),
+      leg(16, -60, 26, -30, 24, 0),
+      leg(-8, -60, -14, -32, -14, 0),
+    ),
+    // recovery
+    pose(
+      head(5, -185),
+      torso(0, -130, 48, 38, 88),
+      arm(22, -170, 38, -148, 42, -125, false),
+      arm(-22, -170, -38, -150, -35, -128, false),
+      leg(12, -85, 18, -44, 16, 0),
+      leg(-12, -85, -20, -44, -22, 0),
+    ),
+  ],
+
   // ---------- grab (3 frames: reach, bind, recovery) -----------------------
   grab: [
     // reach – lunge forward to grapple
@@ -663,7 +725,7 @@ export const ELAINE_POSES: Record<string, FighterPose[]> = {
 
 // ---- Draw extras (longbow, bowstring, quiver, hood) -----------------------
 
-export function drawElaineExtras(g: Graphics, p: FighterPose, pal: FighterPalette): void {
+export function drawElaineExtras(g: Graphics, p: FighterPose, pal: FighterPalette, _isFlashing: boolean, _flashColor: number): void {
   const bowColor = pal.weapon ?? 0x8b6914;
   const stringColor = pal.weaponAccent ?? 0xddbb44;
   const quiverColor = 0x775533;

@@ -38,6 +38,8 @@ const ARTHUR_SPECIALS: SpecialCombo[] = [
   { buttons: ["medPunch", "heavyPunch"], moveId: "overhead_cleave" },
   { buttons: ["lightKick", "medKick"], moveId: "low_sweep" },
   { buttons: ["medKick", "heavyKick"], moveId: "rising_slash" },
+  { buttons: ["lightPunch", "heavyKick"], moveId: "shield_charge" },
+  { buttons: ["heavyPunch", "lightKick"], moveId: "excalibur" },
 ];
 
 const MERLIN_SPECIALS: SpecialCombo[] = [
@@ -45,6 +47,8 @@ const MERLIN_SPECIALS: SpecialCombo[] = [
   { buttons: ["medPunch", "heavyPunch"], moveId: "thunder_strike" },
   { buttons: ["lightKick", "medKick"], moveId: "frost_wave" },
   { buttons: ["medKick", "heavyKick"], moveId: "teleport" },
+  { buttons: ["lightPunch", "heavyKick"], moveId: "arcane_storm" },
+  { buttons: ["heavyPunch", "lightKick"], moveId: "mystic_barrier" },
 ];
 
 const ELAINE_SPECIALS: SpecialCombo[] = [
@@ -52,6 +56,8 @@ const ELAINE_SPECIALS: SpecialCombo[] = [
   { buttons: ["medPunch", "heavyPunch"], moveId: "rain_of_arrows" },
   { buttons: ["lightKick", "medKick"], moveId: "leg_sweep" },
   { buttons: ["medKick", "heavyKick"], moveId: "backflip_shot" },
+  { buttons: ["lightPunch", "heavyKick"], moveId: "triple_shot" },
+  { buttons: ["heavyPunch", "lightKick"], moveId: "hunters_trap" },
 ];
 
 const CHARACTER_SPECIALS: Record<string, SpecialCombo[]> = {

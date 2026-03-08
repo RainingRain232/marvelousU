@@ -545,6 +545,77 @@ export const ARTHUR_POSES: Record<string, FighterPose[]> = {
     ),
   ],
 
+  // -- shield_charge (3 frames: wind up, charge, impact) --
+  shield_charge: [
+    // crouch behind shield
+    pose(
+      head(0, -180),
+      torso(-3, -128, 56, 44, 90, -0.08),
+      arm(24, -168, 30, -150, 22, -135),
+      arm(-28, -168, -10, -152, 10, -142),
+      leg(14, -85, 20, -46, 18, 0),
+      leg(-14, -85, -20, -46, -22, 0),
+    ),
+    // lunging forward with shield
+    pose(
+      head(16, -178),
+      torso(12, -124, 56, 44, 90, 0.15),
+      arm(34, -164, 50, -148, 55, -132),
+      arm(-14, -164, 12, -148, 40, -138),
+      leg(14, -85, 32, -48, 38, 0),
+      leg(-14, -85, -8, -42, -10, 0),
+    ),
+    // recovery
+    pose(
+      head(5, -185),
+      torso(0, -130, 56, 44, 90),
+      arm(26, -170, 38, -148, 30, -125),
+      arm(-26, -170, -38, -148, -32, -125),
+      leg(14, -85, 18, -45, 16, 0),
+      leg(-14, -85, -18, -45, -16, 0),
+    ),
+  ],
+
+  // -- excalibur (4 frames: crouch, massive rising slash, peak, recovery) --
+  excalibur: [
+    // deep crouch gathering power
+    pose(
+      head(0, -148),
+      torso(-2, -100, 58, 46, 72, -0.06),
+      arm(26, -132, 18, -108, 5, -90),
+      arm(-26, -132, -38, -115, -34, -95),
+      leg(16, -64, 28, -32, 24, 0),
+      leg(-16, -64, -28, -32, -26, 0),
+    ),
+    // explosive upward slash
+    pose(
+      head(10, -185),
+      torso(6, -130, 56, 44, 90, 0.12),
+      arm(30, -170, 50, -175, 60, -210),
+      arm(-22, -170, -32, -148, -26, -125),
+      leg(14, -85, 22, -44, 22, 0),
+      leg(-14, -85, -16, -46, -18, 0),
+    ),
+    // peak — sword high, airborne
+    pose(
+      head(8, -205),
+      torso(4, -152, 56, 44, 88, 0.08),
+      arm(28, -190, 42, -205, 48, -240),
+      arm(-24, -190, -38, -172, -32, -155),
+      leg(14, -108, 22, -82, 20, -62),
+      leg(-14, -108, -18, -78, -20, -58),
+    ),
+    // recovery landing
+    pose(
+      head(5, -185),
+      torso(0, -130, 56, 44, 90),
+      arm(26, -170, 38, -148, 30, -125),
+      arm(-26, -170, -38, -148, -32, -125),
+      leg(14, -85, 18, -45, 16, 0),
+      leg(-14, -85, -18, -45, -16, 0),
+    ),
+  ],
+
   // -- block_stand (1 frame: shield raised in front) --
   block_stand: [
     pose(
@@ -670,7 +741,35 @@ export const ARTHUR_POSES: Record<string, FighterPose[]> = {
 
 // ---- Draw extras (sword, shield, armor details) ----------------------------
 
-export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalette): void {
+/**
+ * Draw Arthur's cape behind the body (called before skeleton).
+ */
+export function drawArthurBackExtras(
+  g: Graphics,
+  p: FighterPose,
+  pal: FighterPalette,
+  _isFlashing: boolean,
+  _flashColor: number,
+): void {
+  const capeColor = pal.accent ?? 0xbb2222;
+
+  if (p.torso && p.backArm) {
+    const capeTop = p.torso.y - p.torso.height / 2;
+    const capeX = p.torso.x - p.torso.topWidth / 2 - 2;
+    const capeBottom = p.torso.y + p.torso.height / 2 + 15;
+    const capeMid = (capeTop + capeBottom) / 2;
+
+    // Cape flowing behind (simple quadratic curve)
+    g.moveTo(capeX, capeTop);
+    g.quadraticCurveTo(capeX - 18, capeMid, capeX - 10, capeBottom);
+    g.lineTo(capeX + 5, capeBottom - 2);
+    g.quadraticCurveTo(capeX - 8, capeMid, capeX + 4, capeTop + 4);
+    g.closePath();
+    g.fill({ color: capeColor, alpha: 0.7 });
+  }
+}
+
+export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalette, _isFlashing: boolean, _flashColor: number): void {
   const weaponColor = pal.weapon ?? 0xccccdd;
   const crossguardColor = pal.weaponAccent ?? 0xddaa33;
   const shieldColor = pal.accent ?? 0xbb2222;
@@ -789,19 +888,4 @@ export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalett
     g.fill({ color: shieldColor, alpha: 0.8 });
   }
 
-  // --- Cape (drawn from shoulders, flowing behind) ---
-  if (p.torso && p.backArm) {
-    const capeTop = p.torso.y - p.torso.height / 2;
-    const capeX = p.torso.x - p.torso.topWidth / 2 - 2;
-    const capeBottom = p.torso.y + p.torso.height / 2 + 15;
-    const capeMid = (capeTop + capeBottom) / 2;
-
-    // Cape flowing behind (simple quadratic curve)
-    g.moveTo(capeX, capeTop);
-    g.quadraticCurveTo(capeX - 18, capeMid, capeX - 10, capeBottom);
-    g.lineTo(capeX + 5, capeBottom - 2);
-    g.quadraticCurveTo(capeX - 8, capeMid, capeX + 4, capeTop + 4);
-    g.closePath();
-    g.fill({ color: shieldColor, alpha: 0.7 });
-  }
 }
