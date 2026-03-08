@@ -181,6 +181,11 @@ function _updateFighter(
       return;
 
     case DuelFighterState.ATTACK:
+      // Allow combo cancel: if move has hit and we're in recovery, accept new action
+      if (input.action && _canCancelAttack(fighter)) {
+        _startMove(state, fighter, idx, input.action);
+        return;
+      }
       _updateAttack(state, fighter, idx);
       return;
 
@@ -280,11 +285,19 @@ function _startMove(
 
   if (!move) return;
 
+  // Track combo chains: if canceling from a previous hit, increment chain
+  const wasCanceling = fighter.canCancelMove && fighter.state === DuelFighterState.ATTACK;
   fighter.state = moveId === "grab" ? DuelFighterState.GRAB : DuelFighterState.ATTACK;
   fighter.currentMove = moveId;
   fighter.moveFrame = 0;
   fighter.moveHasHit = false;
+  fighter.canCancelMove = false;
   fighter.stateTimer = move.startup + move.active + move.recovery;
+  if (wasCanceling) {
+    fighter.comboChain++;
+  } else {
+    fighter.comboChain = 0;
+  }
 
   // Invincibility on some specials (e.g. Rising Slash)
   if (move.hasInvincibility && move.invincibleStartup) {
@@ -348,7 +361,30 @@ function _updateAttack(
     fighter.currentMove = null;
     fighter.moveFrame = 0;
     fighter.velocity.x = 0;
+    fighter.canCancelMove = false;
+    fighter.comboChain = 0;
   }
+}
+
+/** Check if a fighter in ATTACK state can cancel into a new move (combo chain).
+ *  Cancel is allowed if:
+ *  - The current move has hit (not blocked)
+ *  - We're past the active frames (in recovery)
+ *  - Chain count < 5
+ */
+function _canCancelAttack(fighter: DuelFighter): boolean {
+  if (fighter.state !== DuelFighterState.ATTACK) return false;
+  if (!fighter.canCancelMove) return false;
+  if (fighter.comboChain >= 5) return false;
+
+  const charDef = DUEL_CHARACTERS[fighter.characterId];
+  const move =
+    charDef.normals[fighter.currentMove!] ??
+    charDef.specials[fighter.currentMove!];
+  if (!move) return false;
+
+  // Allow cancel once we've passed the active frames (entering recovery)
+  return fighter.moveFrame >= move.startup + move.active;
 }
 
 function _updateGrab(
@@ -522,6 +558,9 @@ function _resolveHit(
       attacker.comboDamageScaling * DuelBalance.COMBO_DAMAGE_SCALING,
     );
 
+    // Enable cancel into next move (combo chain, max 5)
+    attacker.canCancelMove = true;
+
     // Hit freeze
     state.slowdownFrames = DuelBalance.HIT_FREEZE_FRAMES;
   }
@@ -634,6 +673,8 @@ function _resetFighter(
   fighter.currentMove = null;
   fighter.moveFrame = 0;
   fighter.moveHasHit = false;
+  fighter.canCancelMove = false;
+  fighter.comboChain = 0;
   fighter.hitstunFrames = 0;
   fighter.blockstunFrames = 0;
   fighter.comboCount = 0;

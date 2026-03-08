@@ -70,6 +70,9 @@ export class DuelHUD {
   private _p2ComboDamage = 0;
   private _p2LastCount = 0;
 
+  // Training mode display
+  private _trainingInfo: Text;
+
   // Announcement animation
   private _announcementScale = 1;
 
@@ -126,6 +129,13 @@ export class DuelHUD {
         stroke: { color: 0x000000, width: 4 } },
     });
 
+    // Training info
+    this._trainingInfo = new Text({
+      text: "",
+      style: { fontFamily: '"Segoe UI", monospace', fontSize: 14, fill: 0xaaaaaa },
+    });
+    this._trainingInfo.visible = false;
+
     this._p1ComboHit.anchor.set(0.5);
     this._p1ComboLabel.anchor.set(0.5);
     this._p1ComboDmg.anchor.set(0.5);
@@ -160,6 +170,7 @@ export class DuelHUD {
       this._p2ComboLabel,
       this._p2ComboDmg,
       this._announcementText,
+      this._trainingInfo,
     );
   }
 
@@ -276,6 +287,24 @@ export class DuelHUD {
 
     // ===== Announcement =====
     this._updateAnnouncement(state, sw, sh);
+
+    // ===== Training mode info =====
+    if (state.gameMode === "training") {
+      this._trainingInfo.visible = true;
+      const dummyLabels: Record<string, string> = {
+        stand: "STAND", crouch: "CROUCH", jump: "JUMP", cpu: "CPU",
+      };
+      const dummyLabel = dummyLabels[state.trainingDummyMode] ?? "STAND";
+      this._trainingInfo.text =
+        `TRAINING MODE  |  Dummy: ${dummyLabel}  |  F1:Stand F2:Crouch F3:Jump F4:CPU F5:Reset`;
+      this._trainingInfo.position.set(10, sh - 24);
+
+      // Hide timer in training
+      this._timerText.text = "\u221E";
+      this._timerText.style.fill = 0x888888;
+    } else {
+      this._trainingInfo.visible = false;
+    }
   }
 
   private _drawHealthBar(

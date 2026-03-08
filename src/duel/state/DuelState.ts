@@ -116,6 +116,8 @@ export interface DuelFighter {
   currentMove: string | null;
   moveFrame: number;
   moveHasHit: boolean; // prevent multi-hit on same move
+  canCancelMove: boolean; // true when current move has hit and can be canceled
+  comboChain: number; // number of moves chained via cancel in current combo (max 5)
   hitstunFrames: number;
   blockstunFrames: number;
   comboCount: number;
@@ -150,8 +152,13 @@ export interface DuelRound {
 
 // ---- Top-level state -------------------------------------------------------
 
+export type DuelGameMode = "vs_cpu" | "vs_mode" | "arcade" | "training";
+
+export type TrainingDummyMode = "stand" | "crouch" | "jump" | "cpu";
+
 export interface DuelState {
   phase: DuelPhase;
+  gameMode: DuelGameMode;
   fighters: [DuelFighter, DuelFighter];
   round: DuelRound;
   roundResults: (0 | 1)[];
@@ -160,6 +167,8 @@ export interface DuelState {
   isPaused: boolean;
   isAIOpponent: boolean;
   aiDifficulty: number;
+  // Training mode
+  trainingDummyMode: TrainingDummyMode;
   frameCount: number;
   slowdownFrames: number;
   projectiles: DuelProjectile[];
@@ -196,6 +205,8 @@ export function createFighter(
     currentMove: null,
     moveFrame: 0,
     moveHasHit: false,
+    canCancelMove: false,
+    comboChain: 0,
     hitstunFrames: 0,
     blockstunFrames: 0,
     comboCount: 0,
@@ -229,6 +240,7 @@ export function createDuelState(
   isAI: boolean,
   screenW: number,
   screenH: number,
+  gameMode: DuelGameMode = "vs_cpu",
 ): DuelState {
   const floorY = Math.round(screenH * DuelBalance.STAGE_FLOOR_RATIO);
   const stageLeft = DuelBalance.STAGE_MARGIN;
@@ -238,6 +250,7 @@ export function createDuelState(
 
   return {
     phase: DuelPhase.INTRO,
+    gameMode,
     fighters: [
       createFighter(p1CharId, p1X, true, p1MaxHp, floorY),
       createFighter(p2CharId, p2X, false, p2MaxHp, floorY),
@@ -245,7 +258,7 @@ export function createDuelState(
     round: {
       roundNumber: 1,
       winnerId: null,
-      timeRemaining: DuelBalance.ROUND_TIME_FRAMES,
+      timeRemaining: gameMode === "training" ? Infinity : DuelBalance.ROUND_TIME_FRAMES,
     },
     roundResults: [],
     bestOf: DuelBalance.BEST_OF,
@@ -264,5 +277,6 @@ export function createDuelState(
     stageFloorY: floorY,
     stageLeft,
     stageRight,
+    trainingDummyMode: "stand",
   };
 }

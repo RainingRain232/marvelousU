@@ -1,15 +1,39 @@
 // ---------------------------------------------------------------------------
-// Duel mode – AI opponent system
+// Duel mode – AI opponent system (aggressive, combo-aware)
 // ---------------------------------------------------------------------------
 
 import { DuelFighterState } from "../../types";
 import { DUEL_CHARACTERS } from "../config/DuelCharacterDefs";
 import type { DuelInputResult, DuelState } from "../state/DuelState";
 
-// AI reaction timers
+// AI internal state
 let _reactionTimer = 0;
 let _actionCooldown = 0;
 let _currentDecision: string | null = null;
+let _comboSequence: string[] = [];
+let _comboStep = 0;
+
+// Pre-built combo routes per fighter type for the AI to use
+const COMBO_ROUTES: Record<string, string[][]> = {
+  sword: [
+    ["light_high", "light_high", "med_high", "sword_thrust"],
+    ["light_low", "light_high", "med_high", "heavy_high"],
+    ["light_high", "med_high", "rising_slash"],
+    ["light_low", "med_low", "low_sweep"],
+  ],
+  mage: [
+    ["light_high", "light_high", "med_high", "arcane_bolt"],
+    ["light_low", "light_high", "med_high"],
+    ["light_high", "med_high", "thunder_strike"],
+    ["light_low", "med_low", "frost_wave"],
+  ],
+  archer: [
+    ["light_high", "light_high", "med_high", "power_shot"],
+    ["light_low", "light_high", "med_high", "heavy_high"],
+    ["light_high", "med_high", "backflip_shot"],
+    ["light_low", "med_low", "leg_sweep"],
+  ],
+};
 
 export const DuelAISystem = {
   /** Generate AI input for fighter[1] based on game state and difficulty. */
@@ -29,7 +53,7 @@ export const DuelAISystem = {
       action: null,
     };
 
-    // Only act if we can
+    // Can't act in these states
     if (
       ai.state === DuelFighterState.HIT_STUN ||
       ai.state === DuelFighterState.KNOCKDOWN ||
@@ -38,88 +62,193 @@ export const DuelAISystem = {
       ai.state === DuelFighterState.VICTORY ||
       ai.state === DuelFighterState.DEFEAT
     ) {
+      _comboSequence = [];
+      _comboStep = 0;
       return result;
     }
 
-    if (_actionCooldown > 0) {
-      _actionCooldown--;
+    const dist = Math.abs(ai.position.x - player.position.x);
+    const reactionSpeed = [20, 8, 4, 2][difficulty] ?? 8;
+    const blockChance = [0.2, 0.55, 0.8, 0.95][difficulty] ?? 0.55;
+
+    // === If we're in a combo sequence, keep going ===
+    if (_comboSequence.length > 0 && _comboStep < _comboSequence.length) {
+      // Wait until current attack finishes before issuing next
+      if (ai.state === DuelFighterState.ATTACK || ai.state === DuelFighterState.GRAB) {
+        return result; // let current attack play out
+      }
+
+      // Check if the combo target is still in hitstun (combo is still valid)
+      if (_comboStep > 0 && player.state !== DuelFighterState.HIT_STUN &&
+          player.state !== DuelFighterState.KNOCKDOWN &&
+          player.state !== DuelFighterState.GRABBED) {
+        // Combo dropped, reset
+        _comboSequence = [];
+        _comboStep = 0;
+      } else {
+        // Issue next move in combo
+        result.action = _comboSequence[_comboStep];
+        _comboStep++;
+        if (_comboStep >= _comboSequence.length) {
+          _comboSequence = [];
+          _comboStep = 0;
+        }
+        return result;
+      }
     }
 
-    const dist = Math.abs(ai.position.x - player.position.x);
-    const reactionSpeed = [30, 18, 10, 4][difficulty] ?? 18;
+    // === Currently attacking, wait for it to finish ===
+    if (ai.state === DuelFighterState.ATTACK || ai.state === DuelFighterState.GRAB) {
+      return result;
+    }
 
-    // Block reaction
+    // === Block reaction — when player is attacking nearby ===
     if (
-      player.state === DuelFighterState.ATTACK ||
-      player.state === DuelFighterState.GRAB
+      (player.state === DuelFighterState.ATTACK ||
+       player.state === DuelFighterState.GRAB) &&
+      dist < 140
     ) {
-      const blockChance = [0.2, 0.45, 0.7, 0.9][difficulty] ?? 0.4;
-      if (Math.random() < blockChance && dist < 120) {
-        // Decide high or low block
+      if (Math.random() < blockChance) {
         const playerMove = player.currentMove;
         const playerCharDef = DUEL_CHARACTERS[player.characterId];
         const move =
           playerCharDef.normals[playerMove ?? ""] ??
           playerCharDef.specials[playerMove ?? ""];
 
-        if (move && (move.height === "low")) {
+        if (move && move.height === "low") {
           result.back = true;
           result.down = true;
-          // Set directional keys
           if (ai.facingRight) result.left = true;
           else result.right = true;
-          return result;
         } else {
           result.back = true;
           if (ai.facingRight) result.left = true;
           else result.right = true;
-          return result;
         }
+        return result;
       }
     }
 
-    // Idle AI decision making
-    if (_actionCooldown <= 0 && ai.state !== DuelFighterState.ATTACK) {
-      _reactionTimer++;
-
-      if (_reactionTimer >= reactionSpeed) {
-        _reactionTimer = 0;
-        _currentDecision = _makeDecision(state, difficulty, dist);
-        _actionCooldown = Math.max(5, reactionSpeed / 2);
+    // === Decision cooldown ===
+    if (_actionCooldown > 0) {
+      _actionCooldown--;
+      // Keep executing movement decisions during cooldown
+      if (_currentDecision) {
+        _applyMovementDecision(_currentDecision, ai, result);
       }
+      return result;
     }
 
-    // Execute current decision
-    if (_currentDecision) {
-      switch (_currentDecision) {
-        case "approach":
+    // === Reaction timer ===
+    _reactionTimer++;
+    if (_reactionTimer < reactionSpeed) {
+      if (_currentDecision) {
+        _applyMovementDecision(_currentDecision, ai, result);
+      }
+      return result;
+    }
+
+    _reactionTimer = 0;
+    _actionCooldown = Math.max(2, Math.floor(reactionSpeed / 3));
+
+    // === Make a new decision ===
+    const charDef = DUEL_CHARACTERS[ai.characterId];
+    const rand = Math.random();
+
+    // Close range — attack or start combo
+    if (dist < 70) {
+      if (rand < 0.12) {
+        result.action = "grab";
+        _currentDecision = null;
+        return result;
+      }
+      if (rand < 0.65) {
+        // Start a combo!
+        const routes = COMBO_ROUTES[charDef.fighterType] ?? COMBO_ROUTES.sword;
+        const route = routes[Math.floor(Math.random() * routes.length)];
+        _comboSequence = [...route];
+        _comboStep = 0;
+        result.action = _comboSequence[_comboStep];
+        _comboStep++;
+        _currentDecision = null;
+        return result;
+      }
+      if (rand < 0.80) {
+        // Single attack
+        const normalIds = Object.keys(charDef.normals);
+        result.action = normalIds[Math.floor(Math.random() * normalIds.length)];
+        _currentDecision = null;
+        return result;
+      }
+      _currentDecision = "retreat";
+      _applyMovementDecision(_currentDecision, ai, result);
+      return result;
+    }
+
+    // Mid range
+    if (dist < 160) {
+      if (rand < 0.40) {
+        _currentDecision = "approach";
+        _applyMovementDecision(_currentDecision, ai, result);
+        return result;
+      }
+      if (rand < 0.60) {
+        // Dash in to attack range
+        result.dashForward = true;
+        _currentDecision = null;
+        return result;
+      }
+      if (rand < 0.80) {
+        // Use a special at range
+        const specialIds = Object.keys(charDef.specials);
+        result.action = specialIds[Math.floor(Math.random() * specialIds.length)];
+        _currentDecision = null;
+        return result;
+      }
+      if (rand < 0.88) {
+        result.up = true; // jump
+        if (Math.random() > 0.5) {
           result.forward = true;
           if (ai.facingRight) result.right = true;
           else result.left = true;
-          break;
-
-        case "retreat":
-          result.back = true;
-          if (ai.facingRight) result.left = true;
-          else result.right = true;
-          break;
-
-        case "jump":
-          result.up = true;
-          break;
-
-        case "crouch":
-          result.down = true;
-          break;
-
-        default:
-          // It's a move ID
-          result.action = _currentDecision;
-          _currentDecision = null;
-          break;
+        }
+        _currentDecision = null;
+        return result;
       }
+      _currentDecision = "retreat";
+      _applyMovementDecision(_currentDecision, ai, result);
+      return result;
     }
 
+    // Far range
+    if (rand < 0.45) {
+      _currentDecision = "approach";
+      _applyMovementDecision(_currentDecision, ai, result);
+      return result;
+    }
+    if (rand < 0.65) {
+      result.dashForward = true;
+      _currentDecision = null;
+      return result;
+    }
+    if (rand < 0.85) {
+      // Zoners fire projectiles at range
+      if (charDef.fighterType === "mage" || charDef.fighterType === "archer") {
+        const specialIds = Object.keys(charDef.specials);
+        result.action = specialIds[0]; // usually the projectile
+        _currentDecision = null;
+        return result;
+      }
+      _currentDecision = "approach";
+      _applyMovementDecision(_currentDecision, ai, result);
+      return result;
+    }
+    // Jump approach
+    result.up = true;
+    result.forward = true;
+    if (ai.facingRight) result.right = true;
+    else result.left = true;
+    _currentDecision = null;
     return result;
   },
 
@@ -127,59 +256,26 @@ export const DuelAISystem = {
     _reactionTimer = 0;
     _actionCooldown = 0;
     _currentDecision = null;
+    _comboSequence = [];
+    _comboStep = 0;
   },
 };
 
-function _makeDecision(
-  state: DuelState,
-  difficulty: number,
-  dist: number,
-): string {
-  const ai = state.fighters[1];
-  const charDef = DUEL_CHARACTERS[ai.characterId];
-  const specialIds = Object.keys(charDef.specials);
-  const normalIds = Object.keys(charDef.normals);
-  const rand = Math.random();
-
-  // Close range
-  if (dist < 60) {
-    if (rand < 0.15) return "grab";
-    if (rand < 0.5) {
-      // Light/medium attack
-      return normalIds[Math.floor(Math.random() * 3)] ?? "light_high";
-    }
-    if (rand < 0.7 && difficulty >= 1) {
-      return specialIds[Math.floor(Math.random() * specialIds.length)] ?? "light_high";
-    }
-    if (rand < 0.85) return "retreat";
-    return "approach";
+function _applyMovementDecision(
+  decision: string,
+  ai: { facingRight: boolean },
+  result: DuelInputResult,
+): void {
+  switch (decision) {
+    case "approach":
+      result.forward = true;
+      if (ai.facingRight) result.right = true;
+      else result.left = true;
+      break;
+    case "retreat":
+      result.back = true;
+      if (ai.facingRight) result.left = true;
+      else result.right = true;
+      break;
   }
-
-  // Mid range
-  if (dist < 150) {
-    if (rand < 0.3) return "approach";
-    if (rand < 0.5 && difficulty >= 1) {
-      // Use specials at range
-      return specialIds[Math.floor(Math.random() * specialIds.length)] ?? "light_high";
-    }
-    if (rand < 0.7) {
-      return normalIds[Math.floor(Math.random() * normalIds.length)] ?? "light_high";
-    }
-    if (rand < 0.8) return "retreat";
-    if (rand < 0.9) return "jump";
-    return "crouch";
-  }
-
-  // Far range
-  if (rand < 0.5) return "approach";
-  if (rand < 0.75 && difficulty >= 1) {
-    // Projectile characters should zone
-    if (charDef.fighterType === "mage" || charDef.fighterType === "archer") {
-      // Use first special (usually projectile)
-      return specialIds[0] ?? "approach";
-    }
-    return "approach";
-  }
-  if (rand < 0.85) return "jump";
-  return "approach";
 }

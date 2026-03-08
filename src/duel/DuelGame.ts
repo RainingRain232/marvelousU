@@ -14,7 +14,7 @@ import { DuelProjectileSystem } from "./systems/DuelProjectileSystem";
 import { DuelAISystem } from "./systems/DuelAISystem";
 import { duelAudio } from "./systems/DuelAudioSystem";
 import { createDuelState } from "./state/DuelState";
-import type { DuelInputResult, DuelState } from "./state/DuelState";
+import type { DuelInputResult, DuelState, DuelGameMode } from "./state/DuelState";
 
 import { DuelMenuView } from "../view/duel/DuelMenuView";
 import type { DuelMenuChoice } from "../view/duel/DuelMenuView";
@@ -43,6 +43,12 @@ export class DuelGame {
   // Track previous fighter HP for spark/audio effects
   private _prevHp: [number, number] = [0, 0];
   private _prevBlockstun: [number, number] = [0, 0];
+
+  // Game mode (set before char select)
+  private _gameMode: DuelGameMode = "vs_cpu";
+
+  // Training mode key handler
+  private _trainingKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -73,10 +79,19 @@ export class DuelGame {
   private _handleMenuChoice(choice: DuelMenuChoice): void {
     switch (choice) {
       case "ARCADE":
+        this._gameMode = "arcade";
+        this._showCharacterSelect();
+        break;
       case "VS MODE":
+        this._gameMode = "vs_mode";
+        this._showCharacterSelect();
+        break;
       case "VS CPU":
+        this._gameMode = "vs_cpu";
+        this._showCharacterSelect();
+        break;
       case "TRAINING":
-        // All lead to character select for now
+        this._gameMode = "training";
         this._showCharacterSelect();
         break;
       case "CONTROLS":
@@ -134,11 +149,13 @@ export class DuelGame {
     const sw = viewManager.screenWidth;
     const sh = viewManager.screenHeight;
 
+    const isAI = this._gameMode !== "vs_mode";
     this._state = createDuelState(
       p1Id, p2Id,
       p1Def.maxHp, p2Def.maxHp,
-      arenaId, true,
+      arenaId, isAI,
       sw, sh,
+      this._gameMode,
     );
 
     this._prevHp = [p1Def.maxHp, p2Def.maxHp];
@@ -185,12 +202,73 @@ export class DuelGame {
     DuelInputSystem.init(this._state);
     DuelAISystem.reset();
 
+    // Training mode setup
+    if (this._state.gameMode === "training") {
+      this._setupTrainingControls();
+      duelAudio.playRoundStart();
+      this._announce("TRAINING", 60);
+      setTimeout(() => {
+        this._announce("FIGHT!", 40);
+      }, 1000);
+      return;
+    }
+
     // Round announcement
     duelAudio.playRoundStart();
     this._announce(`ROUND ${this._state.round.roundNumber}`, 60);
     setTimeout(() => {
       this._announce("FIGHT!", 40);
     }, 1000);
+  }
+
+  private _setupTrainingControls(): void {
+    // F1-F4 to switch dummy mode, F5 to reset positions
+    this._trainingKeyHandler = (e: KeyboardEvent) => {
+      if (!this._state || this._state.gameMode !== "training") return;
+      switch (e.code) {
+        case "F1":
+          this._state.trainingDummyMode = "stand";
+          this._announce("DUMMY: STAND", 60);
+          break;
+        case "F2":
+          this._state.trainingDummyMode = "crouch";
+          this._announce("DUMMY: CROUCH", 60);
+          break;
+        case "F3":
+          this._state.trainingDummyMode = "jump";
+          this._announce("DUMMY: JUMP", 60);
+          break;
+        case "F4":
+          this._state.trainingDummyMode = "cpu";
+          this._announce("DUMMY: CPU", 60);
+          break;
+        case "F5": {
+          // Reset positions
+          const p1X = Math.round(this._state.screenW * DuelBalance.P1_START_RATIO);
+          const p2X = Math.round(this._state.screenW * DuelBalance.P2_START_RATIO);
+          const p1 = this._state.fighters[0];
+          const p2 = this._state.fighters[1];
+          p1.position.x = p1X;
+          p1.position.y = this._state.stageFloorY;
+          p1.velocity.x = 0;
+          p1.velocity.y = 0;
+          p1.grounded = true;
+          p1.state = DuelFighterState.IDLE;
+          p1.hp = p1.maxHp;
+          p2.position.x = p2X;
+          p2.position.y = this._state.stageFloorY;
+          p2.velocity.x = 0;
+          p2.velocity.y = 0;
+          p2.grounded = true;
+          p2.state = DuelFighterState.IDLE;
+          p2.hp = p2.maxHp;
+          this._state.projectiles = [];
+          this._announce("RESET", 40);
+          break;
+        }
+      }
+    };
+    window.addEventListener("keydown", this._trainingKeyHandler);
   }
 
   // ---- Game loop -----------------------------------------------------------
@@ -233,17 +311,23 @@ export class DuelGame {
 
   private _simulateFrame(): void {
     if (!this._state) return;
+    const isTraining = this._state.gameMode === "training";
 
     // Process P1 input
     const p1Input = DuelInputSystem.update(this._state);
 
-    // Process P2 (AI) input
-    const p2Input: DuelInputResult = this._state.isAIOpponent
-      ? DuelAISystem.update(this._state, this._state.aiDifficulty)
-      : _emptyInput();
+    // Process P2 input
+    let p2Input: DuelInputResult;
+    if (isTraining) {
+      p2Input = _trainingDummyInput(this._state);
+    } else if (this._state.isAIOpponent) {
+      p2Input = DuelAISystem.update(this._state, this._state.aiDifficulty);
+    } else {
+      p2Input = _emptyInput();
+    }
 
-    // Apply AI input to fighter[1]'s input state
-    if (this._state.isAIOpponent) {
+    // Apply AI/dummy input to fighter[1]'s input state
+    if (this._state.isAIOpponent || isTraining) {
       _applyInputToFighter(this._state, 1, p2Input);
     }
 
@@ -275,6 +359,44 @@ export class DuelGame {
 
       this._prevHp[i] = f.hp;
       this._prevBlockstun[i] = f.blockstunFrames;
+    }
+
+    // Training mode: auto-regen dummy HP after combo drops, and never end round
+    if (isTraining) {
+      const dummy = this._state.fighters[1];
+      const player = this._state.fighters[0];
+      // Regen dummy HP when not being combo'd
+      if (dummy.state !== DuelFighterState.HIT_STUN &&
+          dummy.state !== DuelFighterState.KNOCKDOWN &&
+          dummy.state !== DuelFighterState.GET_UP &&
+          dummy.state !== DuelFighterState.GRABBED) {
+        if (dummy.hp < dummy.maxHp) {
+          dummy.hp = Math.min(dummy.maxHp, dummy.hp + 5);
+        }
+      }
+      // Keep player HP full
+      player.hp = player.maxHp;
+      // Don't let timer run out
+      this._state.round.timeRemaining = DuelBalance.ROUND_TIME_FRAMES;
+      // Reset dummy if KO'd
+      if (dummy.hp <= 0) {
+        const p2Def = DUEL_CHARACTERS[dummy.characterId];
+        const p2X = Math.round(this._state.screenW * DuelBalance.P2_START_RATIO);
+        dummy.hp = p2Def.maxHp;
+        dummy.position.x = p2X;
+        dummy.position.y = this._state.stageFloorY;
+        dummy.state = DuelFighterState.IDLE;
+        dummy.velocity.x = 0;
+        dummy.velocity.y = 0;
+        dummy.grounded = true;
+        dummy.hitstunFrames = 0;
+        dummy.blockstunFrames = 0;
+        dummy.comboCount = 0;
+        dummy.comboDamage = 0;
+        dummy.comboDamageScaling = 1;
+      }
+      this._prevHp = [player.hp, dummy.hp];
+      return; // skip round end check
     }
 
     // Check round end
@@ -371,6 +493,11 @@ export class DuelGame {
     viewManager.camera.keyboardEnabled = true;
     DuelInputSystem.destroy();
 
+    if (this._trainingKeyHandler) {
+      window.removeEventListener("keydown", this._trainingKeyHandler);
+      this._trainingKeyHandler = null;
+    }
+
     if (this._tickerCb) {
       viewManager.app.ticker.remove(this._tickerCb);
       this._tickerCb = null;
@@ -413,6 +540,43 @@ function _emptyInput(): DuelInputResult {
     dashBack: false,
     action: null,
   };
+}
+
+function _trainingDummyInput(state: DuelState): DuelInputResult {
+  const mode = state.trainingDummyMode;
+
+  // CPU mode: use normal AI
+  if (mode === "cpu") {
+    return DuelAISystem.update(state, state.aiDifficulty);
+  }
+
+  const result = _emptyInput();
+  const dummy = state.fighters[1];
+
+  // Only apply dummy behavior when idle (not in hitstun/knockdown etc)
+  if (
+    dummy.state === DuelFighterState.IDLE ||
+    dummy.state === DuelFighterState.CROUCH_IDLE ||
+    dummy.state === DuelFighterState.WALK_BACK ||
+    dummy.state === DuelFighterState.WALK_FORWARD
+  ) {
+    switch (mode) {
+      case "crouch":
+        result.down = true;
+        break;
+      case "jump":
+        if (dummy.grounded) {
+          result.up = true;
+        }
+        break;
+      case "stand":
+      default:
+        // Just stand there
+        break;
+    }
+  }
+
+  return result;
 }
 
 function _applyInputToFighter(state: DuelState, idx: number, input: DuelInputResult): void {
