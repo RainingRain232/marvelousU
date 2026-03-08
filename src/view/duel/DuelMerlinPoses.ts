@@ -819,22 +819,41 @@ export function drawMerlinExtras(
 
   // -- Beard ----------------------------------------------------------------
   const beardColor = isFlashing ? flashColor : pal.hair;
-  const mouthY = headY + 10;
+  const beardShadow = isFlashing ? flashColor : 0xaaaabb;
+  const mouthY = headY + 8;
 
-  // Beard: flows down from chin area
-  // Main beard shape (three strands for flowing look)
-  // Center strand
-  g.moveTo(headX - 4, mouthY);
-  g.quadraticCurveTo(headX, mouthY + 30, headX - 2, mouthY + 50);
-  g.stroke({ color: beardColor, width: 8, cap: "round" });
+  // Solid flowing beard shape — wide at jaw, tapering to a point
+  // Outline
+  g.moveTo(headX - 14, mouthY - 4);
+  g.quadraticCurveTo(headX - 16, mouthY + 14, headX - 10, mouthY + 30);
+  g.quadraticCurveTo(headX - 6, mouthY + 42, headX - 1, mouthY + 52);
+  g.quadraticCurveTo(headX + 4, mouthY + 42, headX + 8, mouthY + 28);
+  g.quadraticCurveTo(headX + 12, mouthY + 12, headX + 10, mouthY - 2);
+  g.closePath();
+  g.fill({ color: 0x111122 });
 
-  // Left strand
+  // Beard fill
+  g.moveTo(headX - 13, mouthY - 3);
+  g.quadraticCurveTo(headX - 15, mouthY + 14, headX - 9, mouthY + 29);
+  g.quadraticCurveTo(headX - 5, mouthY + 41, headX - 1, mouthY + 50);
+  g.quadraticCurveTo(headX + 3, mouthY + 41, headX + 7, mouthY + 27);
+  g.quadraticCurveTo(headX + 11, mouthY + 12, headX + 9, mouthY - 1);
+  g.closePath();
+  g.fill({ color: beardColor });
+
+  // Subtle wave lines to give texture
+  g.moveTo(headX - 8, mouthY + 8);
+  g.quadraticCurveTo(headX - 4, mouthY + 14, headX - 6, mouthY + 22);
+  g.stroke({ color: beardShadow, width: 1, alpha: 0.3 });
+  g.moveTo(headX, mouthY + 6);
+  g.quadraticCurveTo(headX + 2, mouthY + 18, headX - 1, mouthY + 32);
+  g.stroke({ color: beardShadow, width: 1, alpha: 0.3 });
+  g.moveTo(headX + 5, mouthY + 6);
+  g.quadraticCurveTo(headX + 6, mouthY + 14, headX + 4, mouthY + 22);
+  g.stroke({ color: beardShadow, width: 1, alpha: 0.3 });
+
+  // Mustache area (covers upper lip)
   g.moveTo(headX - 10, mouthY - 2);
-  g.quadraticCurveTo(headX - 14, mouthY + 22, headX - 12, mouthY + 40);
-  g.stroke({ color: beardColor, width: 6, cap: "round" });
-
-  // Right strand
-  g.moveTo(headX + 4, mouthY);
-  g.quadraticCurveTo(headX + 8, mouthY + 18, headX + 6, mouthY + 35);
-  g.stroke({ color: beardColor, width: 5, cap: "round" });
+  g.quadraticCurveTo(headX, mouthY + 4, headX + 8, mouthY - 1);
+  g.stroke({ color: beardColor, width: 4, cap: "round" });
 }

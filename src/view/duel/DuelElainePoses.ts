@@ -725,11 +725,68 @@ export const ELAINE_POSES: Record<string, FighterPose[]> = {
 
 // ---- Draw extras (longbow, bowstring, quiver, hood) -----------------------
 
-export function drawElaineExtras(g: Graphics, p: FighterPose, pal: FighterPalette, _isFlashing: boolean, _flashColor: number): void {
+export function drawElaineExtras(g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number): void {
   const bowColor = pal.weapon ?? 0x8b6914;
   const stringColor = pal.weaponAccent ?? 0xddbb44;
   const quiverColor = 0x775533;
   const arrowTipColor = 0xaaaaaa;
+  const hairColor = isFlashing ? flashColor : (pal.hair ?? 0x994422);
+
+  // -- Long flowing hair (drawn before hood, behind body) --
+  const headX = p.head.x;
+  const headY = p.head.y;
+  const hr = p.head.radius ?? 24;
+
+  // Long hair flowing down behind shoulders
+  // Main hair mass (outline)
+  g.moveTo(headX - hr + 2, headY);
+  g.quadraticCurveTo(headX - hr - 6, headY + 20, headX - hr + 2, headY + 55);
+  g.quadraticCurveTo(headX - hr + 6, headY + 65, headX - 4, headY + 60);
+  g.quadraticCurveTo(headX + 4, headY + 58, headX + 6, headY + 50);
+  g.quadraticCurveTo(headX + 10, headY + 35, headX + hr - 4, headY + 10);
+  g.closePath();
+  g.fill({ color: 0x222222 });
+
+  // Hair fill
+  g.moveTo(headX - hr + 3, headY + 1);
+  g.quadraticCurveTo(headX - hr - 4, headY + 20, headX - hr + 3, headY + 53);
+  g.quadraticCurveTo(headX - hr + 7, headY + 63, headX - 3, headY + 58);
+  g.quadraticCurveTo(headX + 3, headY + 56, headX + 5, headY + 48);
+  g.quadraticCurveTo(headX + 9, headY + 34, headX + hr - 5, headY + 11);
+  g.closePath();
+  g.fill({ color: hairColor });
+
+  // Hair strands for texture
+  g.moveTo(headX - hr + 6, headY + 8);
+  g.quadraticCurveTo(headX - hr + 2, headY + 28, headX - hr + 8, headY + 45);
+  g.stroke({ color: 0x773311, width: 1, alpha: 0.3 });
+  g.moveTo(headX - 4, headY + 10);
+  g.quadraticCurveTo(headX - 2, headY + 30, headX - 4, headY + 50);
+  g.stroke({ color: 0x773311, width: 1, alpha: 0.3 });
+
+  // -- Eyelashes (drawn as small angled lines above eyes) --
+  // Front eye lashes
+  g.moveTo(headX + 4, headY - 8);
+  g.lineTo(headX + 3, headY - 11);
+  g.stroke({ color: 0x222222, width: 1.2 });
+  g.moveTo(headX + 8, headY - 8.5);
+  g.lineTo(headX + 9, headY - 12);
+  g.stroke({ color: 0x222222, width: 1.2 });
+  g.moveTo(headX + 12, headY - 8);
+  g.lineTo(headX + 14, headY - 11);
+  g.stroke({ color: 0x222222, width: 1.2 });
+  // Back eye lashes
+  g.moveTo(headX - 4, headY - 7.5);
+  g.lineTo(headX - 5, headY - 10);
+  g.stroke({ color: 0x222222, width: 1 });
+  g.moveTo(headX, headY - 8);
+  g.lineTo(headX, headY - 10.5);
+  g.stroke({ color: 0x222222, width: 1 });
+
+  // -- Lips (slightly fuller, pinkish tint) --
+  g.moveTo(headX + 3, headY + 7);
+  g.quadraticCurveTo(headX + 7, headY + 6, headX + 10, headY + 7);
+  g.stroke({ color: 0xcc7777, width: 2, cap: "round" });
 
   // -- Longbow (curved arc from front hand) --
   const hx = p.frontArm.handX;
@@ -771,6 +828,10 @@ export function drawElaineExtras(g: Graphics, p: FighterPose, pal: FighterPalett
   g.fill({ color: 0x222222 });
   g.roundRect(qx - qw / 2, qy, qw, qh, 3);
   g.fill({ color: quiverColor });
+  // Quiver strap
+  g.moveTo(qx, qy);
+  g.lineTo(qx + 16, qy - 14);
+  g.stroke({ color: quiverColor, width: 2 });
 
   // Arrow tips sticking out of quiver
   for (let i = 0; i < 3; i++) {
@@ -785,13 +846,16 @@ export function drawElaineExtras(g: Graphics, p: FighterPose, pal: FighterPalett
     g.lineTo(ax + 2, ay - 6);
     g.closePath();
     g.fill({ color: arrowTipColor });
+    // Fletching
+    g.moveTo(ax - 1, ay + 2);
+    g.lineTo(ax - 3, ay + 6);
+    g.stroke({ color: 0x448844, width: 1 });
+    g.moveTo(ax + 1, ay + 2);
+    g.lineTo(ax + 3, ay + 6);
+    g.stroke({ color: 0x448844, width: 1 });
   }
 
   // -- Hood outline on head --
-  const headX = p.head.x;
-  const headY = p.head.y;
-  const hr = p.head.radius ?? 24;
-
   // Hood is a slightly larger arc behind/over the head
   g.moveTo(headX - hr - 4, headY + 6);
   g.quadraticCurveTo(headX - hr - 6, headY - hr - 8, headX, headY - hr - 10);
@@ -801,4 +865,18 @@ export function drawElaineExtras(g: Graphics, p: FighterPose, pal: FighterPalett
   g.quadraticCurveTo(headX - hr - 6, headY - hr - 8, headX, headY - hr - 10);
   g.quadraticCurveTo(headX + hr + 6, headY - hr - 8, headX + hr + 4, headY + 6);
   g.stroke({ color: 0x448844, width: 3, cap: "round", join: "round" });
+
+  // -- Belt detail with pouch --
+  if (p.torso) {
+    const t = p.torso;
+    const beltY = t.y + t.height / 2 - 6;
+    // Small pouch on belt
+    g.roundRect(t.x + t.bottomWidth / 2 - 2, beltY - 2, 8, 10, 2);
+    g.fill({ color: quiverColor });
+    g.roundRect(t.x + t.bottomWidth / 2 - 2, beltY - 2, 8, 10, 2);
+    g.stroke({ color: 0x222222, width: 1 });
+    // Belt buckle
+    g.roundRect(t.x - 3, beltY, 6, 5, 1);
+    g.fill({ color: stringColor });
+  }
 }

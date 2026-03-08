@@ -773,13 +773,109 @@ export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalett
   const weaponColor = pal.weapon ?? 0xccccdd;
   const crossguardColor = pal.weaponAccent ?? 0xddaa33;
   const shieldColor = pal.accent ?? 0xbb2222;
+  const armorColor = pal.body ?? 0x888899;
+  const armorHighlight = 0xaaaabb;
+  const armorShadow = 0x666677;
+
+  // --- Armor detail overlays on torso ---
+  if (p.torso) {
+    const t = p.torso;
+    // Shoulder pauldrons (armor plates on top of shoulders)
+    const lsx = t.x - t.topWidth / 2 - 4;
+    const rsx = t.x + t.topWidth / 2 + 4;
+    const sy = t.y - t.height / 2 - 2;
+
+    // Left pauldron
+    g.roundRect(lsx - 8, sy - 3, 18, 14, 4);
+    g.fill({ color: armorColor });
+    g.roundRect(lsx - 8, sy - 3, 18, 14, 4);
+    g.stroke({ color: armorHighlight, width: 1 });
+    g.moveTo(lsx - 4, sy + 4);
+    g.lineTo(lsx + 8, sy + 4);
+    g.stroke({ color: armorShadow, width: 1 });
+
+    // Right pauldron
+    g.roundRect(rsx - 10, sy - 3, 18, 14, 4);
+    g.fill({ color: armorColor });
+    g.roundRect(rsx - 10, sy - 3, 18, 14, 4);
+    g.stroke({ color: armorHighlight, width: 1 });
+    g.moveTo(rsx - 6, sy + 4);
+    g.lineTo(rsx + 6, sy + 4);
+    g.stroke({ color: armorShadow, width: 1 });
+
+    // Chest plate line detail
+    g.moveTo(t.x, t.y - t.height / 2 + 6);
+    g.lineTo(t.x, t.y + t.height / 2 - 10);
+    g.stroke({ color: armorHighlight, width: 1, alpha: 0.4 });
+
+    // Horizontal armor segment lines
+    g.moveTo(t.x - t.topWidth / 3, t.y - 4);
+    g.lineTo(t.x + t.topWidth / 3, t.y - 4);
+    g.stroke({ color: armorShadow, width: 1, alpha: 0.5 });
+  }
+
+  // --- Knee guards on legs ---
+  if (p.frontLeg) {
+    const kx = p.frontLeg.kneeX;
+    const ky = p.frontLeg.kneeY;
+    g.roundRect(kx - 8, ky - 6, 16, 12, 4);
+    g.fill({ color: armorColor });
+    g.roundRect(kx - 8, ky - 6, 16, 12, 4);
+    g.stroke({ color: armorHighlight, width: 1 });
+  }
+  if (p.backLeg) {
+    const kx = p.backLeg.kneeX;
+    const ky = p.backLeg.kneeY;
+    g.roundRect(kx - 7, ky - 5, 14, 10, 3);
+    g.fill({ color: armorShadow });
+    g.roundRect(kx - 7, ky - 5, 14, 10, 3);
+    g.stroke({ color: armorColor, width: 1 });
+  }
+
+  // --- Boot detail (buckle straps) ---
+  if (p.frontLeg) {
+    const fx = p.frontLeg.footX;
+    const fy = p.frontLeg.footY;
+    // Boot strap
+    g.moveTo(fx - 6, fy - 8);
+    g.lineTo(fx + 8, fy - 8);
+    g.stroke({ color: 0x553311, width: 2 });
+    // Buckle
+    g.roundRect(fx - 1, fy - 10, 5, 5, 1);
+    g.fill({ color: crossguardColor });
+  }
+  if (p.backLeg) {
+    const fx = p.backLeg.footX;
+    const fy = p.backLeg.footY;
+    g.moveTo(fx - 5, fy - 7);
+    g.lineTo(fx + 7, fy - 7);
+    g.stroke({ color: 0x553311, width: 1.5 });
+    g.roundRect(fx, fy - 9, 4, 4, 1);
+    g.fill({ color: crossguardColor });
+  }
+
+  // --- Gauntlet rivets on front arm ---
+  if (p.frontArm) {
+    const ex = p.frontArm.elbowX;
+    const ey = p.frontArm.elbowY;
+    // Elbow guard
+    g.circle(ex, ey, 6);
+    g.fill({ color: armorColor });
+    g.circle(ex, ey, 6);
+    g.stroke({ color: armorHighlight, width: 1 });
+    // Rivet dots on forearm
+    const mx = (ex + p.frontArm.handX) / 2;
+    const my = (ey + p.frontArm.handY) / 2;
+    g.circle(mx, my, 2);
+    g.fill({ color: armorHighlight });
+  }
 
   // --- Shield on back arm (large kite shield) ---
   if (p.backArm) {
     const sx = p.backArm.handX;
     const sy = p.backArm.handY;
-    const shieldW = 38;
-    const shieldH = 58;
+    const shieldW = 48;
+    const shieldH = 72;
     const shieldX = sx - shieldW / 2 + 2;
     const shieldY = sy - shieldH * 0.45;
 
@@ -809,17 +905,35 @@ export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalett
     g.moveTo(shieldX + 1, shieldY + 6);
     g.quadraticCurveTo(shieldX + 1, shieldY + 1, shieldX + shieldW / 2, shieldY - 1);
     g.quadraticCurveTo(shieldX + shieldW - 1, shieldY + 1, shieldX + shieldW - 1, shieldY + 6);
+    g.stroke({ color: 0x999aaa, width: 2 });
+
+    // Bottom rim
+    g.moveTo(shieldX + 2, shieldY + shieldH * 0.6);
+    g.lineTo(shieldX + shieldW / 2, shieldY + shieldH);
+    g.lineTo(shieldX + shieldW - 2, shieldY + shieldH * 0.6);
     g.stroke({ color: 0x999aaa, width: 1.5 });
 
     // Cross emblem centered on shield
     const cx = shieldX + shieldW / 2;
-    const cy = shieldY + shieldH * 0.35;
-    g.moveTo(cx, cy - 16);
-    g.lineTo(cx, cy + 14);
-    g.stroke({ color: crossguardColor, width: 4 });
-    g.moveTo(cx - 10, cy - 4);
-    g.lineTo(cx + 10, cy - 4);
-    g.stroke({ color: crossguardColor, width: 4 });
+    const cy = shieldY + shieldH * 0.33;
+    g.moveTo(cx, cy - 20);
+    g.lineTo(cx, cy + 18);
+    g.stroke({ color: crossguardColor, width: 5 });
+    g.moveTo(cx - 13, cy - 4);
+    g.lineTo(cx + 13, cy - 4);
+    g.stroke({ color: crossguardColor, width: 5 });
+
+    // Shield boss (central rivet)
+    g.circle(cx, cy - 4, 4);
+    g.fill({ color: 0x222233 });
+    g.circle(cx, cy - 4, 3);
+    g.fill({ color: armorHighlight });
+
+    // Corner rivets
+    g.circle(shieldX + 8, shieldY + 10, 2);
+    g.fill({ color: armorHighlight });
+    g.circle(shieldX + shieldW - 8, shieldY + 10, 2);
+    g.fill({ color: armorHighlight });
   }
 
   // --- Sword in front arm ---
@@ -849,13 +963,20 @@ export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalett
     g.lineTo(tipX, tipY);
     g.stroke({ color: weaponColor, width: 5, cap: "round" });
 
+    // Blade fuller (groove down center)
+    const fullerStart = 0.15;
+    const fullerEnd = 0.85;
+    g.moveTo(hx + nx * bladeLen * fullerStart, hy + ny * bladeLen * fullerStart);
+    g.lineTo(hx + nx * bladeLen * fullerEnd, hy + ny * bladeLen * fullerEnd);
+    g.stroke({ color: armorShadow, width: 1.5, cap: "round", alpha: 0.4 });
+
     // Blade highlight (thinner, lighter line)
     g.moveTo(hx + ny * 1, hy - nx * 1);
     g.lineTo(tipX + ny * 1, tipY - nx * 1);
     g.stroke({ color: 0xeeeeff, width: 1.5, cap: "round" });
 
     // Crossguard (perpendicular to blade)
-    const guardLen = 10;
+    const guardLen = 12;
     const gx1 = hx + ny * guardLen;
     const gy1 = hy - nx * guardLen;
     const gx2 = hx - ny * guardLen;
@@ -863,18 +984,26 @@ export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalett
 
     g.moveTo(gx1, gy1);
     g.lineTo(gx2, gy2);
-    g.stroke({ color: 0x222233, width: 6, cap: "round" });
+    g.stroke({ color: 0x222233, width: 7, cap: "round" });
     g.moveTo(gx1, gy1);
     g.lineTo(gx2, gy2);
-    g.stroke({ color: crossguardColor, width: 4, cap: "round" });
+    g.stroke({ color: crossguardColor, width: 5, cap: "round" });
+
+    // Crossguard end caps
+    g.circle(gx1, gy1, 3);
+    g.fill({ color: crossguardColor });
+    g.circle(gx2, gy2, 3);
+    g.fill({ color: crossguardColor });
 
     // Pommel (small circle behind the hand)
-    const pommelX = hx - nx * 6;
-    const pommelY = hy - ny * 6;
-    g.circle(pommelX, pommelY, 4);
+    const pommelX = hx - nx * 7;
+    const pommelY = hy - ny * 7;
+    g.circle(pommelX, pommelY, 5);
     g.fill({ color: 0x222233 });
-    g.circle(pommelX, pommelY, 3);
+    g.circle(pommelX, pommelY, 4);
     g.fill({ color: crossguardColor });
+    g.circle(pommelX - nx * 0.5, pommelY - ny * 0.5, 1.5);
+    g.fill({ color: 0xffee88 }); // gem in pommel
   }
 
   // --- Helm crest/plume (drawn over the helmeted head) ---
@@ -882,10 +1011,13 @@ export function drawArthurExtras(g: Graphics, p: FighterPose, pal: FighterPalett
     const hx = p.head.x;
     const hy = p.head.y;
     const hr = p.head.radius ?? 24;
-    // Small crimson crest on top of helm
-    g.moveTo(hx - 2, hy - hr + 1);
-    g.quadraticCurveTo(hx + 2, hy - hr - 10, hx + 10, hy - hr + 1);
-    g.fill({ color: shieldColor, alpha: 0.8 });
+    // Larger crimson plume on top of helm
+    g.moveTo(hx - 4, hy - hr + 2);
+    g.quadraticCurveTo(hx, hy - hr - 16, hx + 14, hy - hr + 2);
+    g.fill({ color: shieldColor, alpha: 0.85 });
+    // Plume highlight
+    g.moveTo(hx, hy - hr - 2);
+    g.quadraticCurveTo(hx + 3, hy - hr - 10, hx + 10, hy - hr);
+    g.stroke({ color: 0xdd4444, width: 1.5, alpha: 0.6 });
   }
-
 }
