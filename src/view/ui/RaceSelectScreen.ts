@@ -449,7 +449,7 @@ export class RaceSelectScreen {
     card.addChild(nameText);
 
     // Race subtitle
-    const titleText = new Text({ text: race.title, style: STYLE_RACE_TITLE });
+    const titleText = new Text({ text: t(`race.${race.id}.title`), style: STYLE_RACE_TITLE });
     titleText.position.set(60, 28);
     if (!race.implemented) titleText.alpha = 0.35;
     card.addChild(titleText);
@@ -613,7 +613,7 @@ export class RaceSelectScreen {
     ty += 28;
 
     // Race title
-    const titleT = new Text({ text: race.title, style: STYLE_DETAIL_TITLE });
+    const titleT = new Text({ text: t(`race.${race.id}.title`), style: STYLE_DETAIL_TITLE });
     titleT.position.set(tx, ty);
     d.addChild(titleT);
     ty += 22;
@@ -623,7 +623,7 @@ export class RaceSelectScreen {
     ty += 10;
 
     // Flavor text
-    const flavorT = new Text({ text: race.flavor, style: STYLE_DETAIL_FLAVOR });
+    const flavorT = new Text({ text: t(`race.${race.id}.flavor`), style: STYLE_DETAIL_FLAVOR });
     flavorT.position.set(tx, ty);
     d.addChild(flavorT);
     ty += flavorT.height + 12;
@@ -635,14 +635,14 @@ export class RaceSelectScreen {
 
       // Faction units label
       const unitLabel = new Text({
-        text: race.factionUnits.length > 1 ? "FACTION UNITS" : "FACTION UNIT",
+        text: race.factionUnits.length > 1 ? t("race.faction_units") : t("race.faction_unit"),
         style: STYLE_UNIT_LABEL,
       });
       unitLabel.position.set(tx, ty);
       d.addChild(unitLabel);
       ty += 18;
 
-      const unitText = new Text({ text: race.factionUnitLabel, style: STYLE_UNIT_TEXT });
+      const unitText = new Text({ text: t(`race.${race.id}.faction_unit_label`), style: STYLE_UNIT_TEXT });
       unitText.position.set(tx, ty);
       d.addChild(unitText);
       ty += unitText.height + 12;

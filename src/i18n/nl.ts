@@ -148,6 +148,99 @@ export const nl: Record<string, string> = {
   "leader.lore": "VERHAAL",
   "leader.bonus": "BONUS",
 
+  // ─── Leaders (per-leader texts) ───
+  "leader.arthur.title": "De Eens en Toekomstige Koning",
+  "leader.arthur.flavor": "Gekroond door het lot en gebonden aan de eed van Camelot, trok Arthur het zwaard uit de steen terwijl geen andere hand het kon bewegen. Hij smeedde een verscheurd land tot één koninkrijk door moed, rechtvaardigheid en een onbreekbare wil. Ridders schaarden zich onder zijn banier niet voor goud of roem, maar omdat Arthur een droom belichaamde — dat eer kon heersen waar tirannie ooit regeerde. Zelfs nu fluisteren legenden dat hij slaapt onder de holle heuvels, wachtend op het uur van Brittannië's grootste nood.",
+  "leader.arthur.bonus": "Stallen-eenheden beginnen op Niveau 2.",
+
+  "leader.merlin.title": "Aartsmagi van Avalon",
+  "leader.merlin.flavor": "Geboren uit een sterfelijke vrouw en een bovenwereldse geest, wandelde Merlin tussen werelden voordat Arthur ooit ademde. Het was Merlin die het zwaard in de steen plaatste, die Camelot's muren optrok met gefluisterde woorden, en die de toekomst in de vlammen zag — al kon hij het nooit veranderen. Zijn raadgeving vormde koningen en deed pretendenten vallen, toch kon hij voor alle vooruitziendheid het lot niet ontvluchten dat de liefde voor hem spon. Ze zeggen dat zijn stem nog steeds galmt in de diepe plaatsen der aarde, degenen die wijs genoeg zijn te leiden.",
+  "leader.merlin.bonus": "Magiërs beginnen op Niveau 1. Een Stormmage verschijnt nabij je kasteel bij het begin van de strijd.",
+
+  "leader.guinevere.title": "Koningin van Camelot",
+  "leader.guinevere.flavor": "De schoonste koningin die ooit de troon van Camelot sierde, Guinevere's schoonheid werd slechts geëvenaard door haar felle vastberadenheid. Ze hield rechtszitting wanneer Arthur ten oorlog trok, en sprak recht met een wijsheid die zelfs de meest twistzieke heren tot zwijgen bracht. Haar aanwezigheid op de wallen spoorde verdedigers aan die anders gebroken zouden zijn, en haar stem droeg de autoriteit van de kroon zelf.",
+  "leader.guinevere.bonus": "Alle eenheden hebben +20% aanval.",
+
+  "leader.lancelot.title": "Ridder van het Meer",
+  "leader.lancelot.flavor": "Opgevoed door de Dame van het Meer in een rijk onder de wateren, verscheen Lancelot als de meest gevreesde strijder die de Ronde Tafel ooit kende. Geen ridder kon zijn zwaard evenaren, geen fort kon zijn belegering weerstaan. Zijn lans verbrijzelde schilden als brandhout, en legers die zijn banier zagen naderen gaven zich vaak over voor de eerste aanval.",
+  "leader.lancelot.bonus": "Belegeringseenheden verschijnen 30% sneller.",
+
+  "leader.morgan.title": "De Fay Tovenares",
+  "leader.morgan.flavor": "Halfzus van de koning en meesteres van de oude magieën, leerde Morgan le Fay haar ambacht op de verborgen plaatsen van Avalon waar de sluier tussen werelden dun wordt. Ze beheerst illusie en betovering met een subtiliteit die zelfs Merlin waakzaam maakt. Rijkdom vloeit naar haar door arcane akkoorden, en haar schatkamers zijn nooit leeg.",
+  "leader.morgan.bonus": "Start met +300 bonus goud.",
+
+  "leader.gawain.title": "Ridder van de Zon",
+  "leader.gawain.flavor": "Neef van Arthur en kampioen van het gewone volk, Gawain's kracht neemt toe met de zon — 's middags vecht hij met de woede van drie mannen. Hij accepteerde de uitdaging van de Groene Ridder toen niemand anders durfde, en liep de zekere dood tegemoet met een glimlach. Zijn veerkracht is legendarisch; wonden die mindere strijders zouden vellen, vertragen zijn pas nauwelijks.",
+  "leader.gawain.bonus": "Alle eenheden hebben +15% TP.",
+
+  "leader.galahad.title": "De Zuivere Ridder",
+  "leader.galahad.flavor": "Zoon van Lancelot maar vrij van zijn vaders zonden, alleen Galahad bleek waardig om in de Belegerde Zetel te zitten — de zetel aan de Ronde Tafel die iedereen vernietigde die niet waardig was. Zijn zuiverheid van hart opende deuren die kracht niet kon, en goddelijke voorzienigheid zegende elke onderneming die hij ondernam met overvloed en welvaart.",
+  "leader.galahad.bonus": "Goudinkomen is +25% hoger.",
+
+  "leader.percival.title": "Zoeker van de Graal",
+  "leader.percival.flavor": "Een eenvoudige jongen opgevoed in de Welshe wildernis, Percival keerde naar Camelot zonder kennis van ridderschap — en vertrok als een van de drie die de Heilige Graal aanschouwden. Zijn onschuld was zijn schild, zijn oprechtheid zijn zwaard. Hij bouwt en versterkt met dezelfde eerlijke toewijding die hij meebracht op zijn heilige zoektocht.",
+  "leader.percival.bonus": "Gebouwen kosten 15% minder goud.",
+
+  "leader.tristan.title": "De Droevige Ridder",
+  "leader.tristan.flavor": "De beste zwaardvechter van Cornwall, Tristans zwaard zong met een melancholie die zijn dodelijkheid verdoezelde. Hij won koninkrijken door enkelvoudige gevechten en veroverde betwiste grond met een snelheid die zijn vijanden deed duizelen. Waar anderen belegering legden, liep Tristan simpelweg naar binnen en plantte zijn standaard voordat de verdedigers konden reageren.",
+  "leader.tristan.bonus": "Neutrale gebouwen worden 40% sneller veroverd.",
+
+  "leader.nimue.title": "Dame van het Meer",
+  "leader.nimue.flavor": "Hoedster van de heilige wateren en bewaarder van Excalibur, Nimue wieldt macht ouder dan enig sterfelijk koninkrijk. Het was zij die Arthur het zwaard gaf dat hem onoverwinnelijk maakte, en zij die Lancelot opvoedde onder betoverde golven. Haar zegen beschermt kasteelmuren met oude magie, waardoor ze veel moeilijker te doorbreken zijn.",
+  "leader.nimue.bonus": "Basis begint met +500 extra gezondheid.",
+
+  "leader.kay.title": "Seneschalk van Camelot",
+  "leader.kay.flavor": "Arthurs pleegbroer en de rentmeester die Camelot draaiende hield terwijl zijn ridders ten roem reden. Kay beheerde de schatkist, bevoorraadde de legers, en onderhandelde met kooplieden zo slim dat elke munt verder reikte onder zijn hoede. Hij mist misschien de romantiek van een zoekende ridder, maar zonder Kay zou er geen koninkrijk zijn om voor te zoeken.",
+  "leader.kay.bonus": "Alle eenheden kosten 10% minder goud.",
+
+  "leader.bedivere.title": "De Trouwe Hand",
+  "leader.bedivere.flavor": "De eerste ridder die trouw zwoer aan Arthur en de laatste die naast hem stond bij Camlann, Bedivere's loyaliteit wankelde nooit in decennia van oorlog en verraad. Hij verloor een hand in de strijd maar vocht door, en zijn doorzettingsvermogen in de schildmuur werd een legende. Waar Bedivere staat, breekt de linie niet.",
+  "leader.bedivere.bonus": "Alle eenheden hebben +25% TP.",
+
+  "leader.elaine.title": "De Lelimaged",
+  "leader.elaine.flavor": "De Dame van Astolat wier onbeantwoorde toewijding het droevigste verhaal van geheel Camelot werd. Toch lag onder de tragedie een scherpzinnige geest en een dodelijk oog — Elaine trainde de boogschutters van Astolat, en haar boogschutters werden gevreesd in het hele rijk. Onder haar begeleiding trof elke pijl zijn doel met ongekende precisie.",
+  "leader.elaine.bonus": "Boogschutters beginnen op Niveau 1.",
+
+  "leader.mordred.title": "De Usurpator",
+  "leader.mordred.flavor": "Arthurs onwettige zoon, geboren uit verraad en opgegroeid in de schaduw, Mordred verlangde naar de troon met een honger die alle andere gevoelens verteerde. Zijn strijders vechten met een razernij geboren uit wanhoop en ambitie, aanvallend voordat hun vijanden een verdediging kunnen opbouwen. Bij Camlann bewees hij dat zelfs het grootste koninkrijk kan vallen voor iemand die vecht zonder scrupules.",
+  "leader.mordred.bonus": "Alle eenheden hebben +15% aanvalssnelheid.",
+
+  "leader.igraine.title": "Hertogin van Cornwall",
+  "leader.igraine.flavor": "Moeder van zowel Arthur als Morgan, verduurde Igraine de complotten van koningen en tovenaars met een gratie die ijzeren vastberadenheid verborg. Een vrome vrouw, stichtte zij tempels en heiligdommen door het hele rijk, en de geneesheren die zij ondersteunde trainden sneller en vaardiger dan welke andere in het land. Haar erfenis van genade overleefde elke oorlog die haar kinderen vochten.",
+  "leader.igraine.bonus": "Tempels trainen eenheden 25% sneller.",
+
+  "leader.pellinore.title": "De Zoekende Koning",
+  "leader.pellinore.flavor": "Gezworen te jagen op het Zoekende Beest — een wezen dat geen sterveling kon vangen — Pellinore bracht zijn leven door met het achtervolgen van monsters door de wilde plaatsen van de wereld. Zijn verwantschap met beesten is onovertroffen; wezens die voor andere mannen vluchten, scharen zich bij Pellinore's oproep. De holen die hij vestigt produceren beesten van ongewone sluwheid en felheid.",
+  "leader.pellinore.bonus": "Eenheden van het Wezenshol beginnen op Niveau 1.",
+
+  "leader.ector.title": "De Bescheiden Heer",
+  "leader.ector.flavor": "De stille heer die de jonge Arthur als zijn eigen opvoedde, nooit roem of beloning zoekend. Ector beheerde zijn landgoederen met zulke prudentie dat zijn landen floreerden zelfs in de karigste jaren. Zijn schatkist was altijd vol, zijn volk altijd gevoed, en toen de tijd aanbrak om zijn pleegzoons aanspraken op de troon te ondersteunen, had hij goud genoeg om een leger uit te rusten.",
+  "leader.ector.bonus": "Start met +500 bonus goud.",
+
+  "leader.bors.title": "De Standvastige",
+  "leader.bors.flavor": "Een van de drie ridders die de Graal bereikten, Bors was noch de zuiverste noch de machtigste — maar hij was de meest betrouwbare. In elke strijd stond hij precies waar hij nodig was, noch te ver vooruitgaand noch te snel terugwijkend. Zijn soldaten namen zijn stille vertrouwen over, vechtend met zowel groter doorzettingsvermogen als scherper staal.",
+  "leader.bors.bonus": "Alle eenheden hebben +10% TP en +10% aanval.",
+
+  "leader.uther.title": "De Pendragon",
+  "leader.uther.flavor": "Arthurs vader en de draken-gebaande koning die als eerste de strijdende heren van Brittannië verenigde door wapengeweld. Uther regeerde door kracht en sluwheid, waarbij hij tribuut onttrok uit elke hoek van zijn domein. Onder de ijzeren blik van de Pendragon stroomde goud onophoudelijk in de koninklijke schatkamers, campagnes financierend die allen verpletterde die de kroon trotseerden.",
+  "leader.uther.bonus": "Goudinkomen is +15% hoger.",
+
+  "leader.lot.title": "Koning van Orkney",
+  "leader.lot.flavor": "Heerser van de stormgeteisterde noordelijke eilanden en vader van Gawain, bouwde Lot zijn fort op kliffen zo steil dat geen enkel leger ze kon beklimmen. Zijn vestingen waren legendarisch om hun onneembaarheid — dikke muren, diepe grachten, en voorraden om een beleg jarenlang te weerstaan. Zij die beschutting zoeken achter Lots verdedigingen vinden hun bolwerken bijna onbreekbaar.",
+  "leader.lot.bonus": "Basis begint met +1000 extra gezondheid.",
+
+  "leader.isolde.title": "De Schone Heelmeester",
+  "leader.isolde.flavor": "Prinses van Ierland en de meest begaafde heelmeester van alle eilanden, Isolde leerde de namen van elk kruid en elke zalf voordat ze een zwaard kon vasthouden. Ze genas wonden die dodelijk hadden moeten zijn — inclusief die van Tristan, de ridder die haar oom doodde. Hun gedoemde liefde werd een legende, maar haar vaardigheid in de geneeskunst bleef lang voortleven nadat de dichters zweefden.",
+  "leader.isolde.bonus": "Basis begint met +500 extra gezondheid.",
+
+  "leader.gareth.title": "Ridder van Vele Kleuren",
+  "leader.gareth.flavor": "Broer van Gawain en neef van de koning, Gareth keerde naar Camelot en diende een vol jaar in de keukens voordat hij om ridderschap vroeg. Kay bespotte hem als 'Beaumains' — mooie handen — maar toen het jaar eindigde, reed Gareth uit en versloeg de Rode Ridder, de Blauwe Ridder en de Groene Ridder achtereenvolgens. Zijn bescheidenheid bleek scherper dan welk zwaard.",
+  "leader.gareth.bonus": "Eenheden van het Wezenshol beginnen op Niveau 1.",
+
+  "leader.agravain.title": "De Donkere Ridder",
+  "leader.agravain.flavor": "Zoon van Koning Lot en broer van Gawain, verdiende Agravain de naam 'Donkere Ridder' niet voor schurkenstreken maar voor het doen van wat geen andere ridder de moed had te doen. Hij onthulde de verhouding van Lancelot en Guinevere — een waarheid die elke ridder van de Ronde Tafel kende maar niemand durfde uit te spreken. Het vernietigde Camelot, en Lancelot doodde hem ervoor, maar Agravain ging zijn graf in en noemde het eerlijkheid.",
+  "leader.agravain.bonus": "Basis begint met +1000 extra gezondheid.",
+
   // ─── RaceSelectScreen ───
   "race.select": "KIES JE RAS",
   "race.continue": "DOORGAAN  >",
@@ -157,6 +250,71 @@ export const nl: Record<string, string> = {
   "race.faction_units": "FACTIE-EENHEDEN",
   "race.faction_unit": "FACTIE-EENHEID",
   "race.elite": "ELITE",
+
+  // ─── Races (per-race texts) ───
+  "race.man.title": "Heren van het Rijk",
+  "race.man.flavor": "Taai en aanpasbaar, smeden de mannen van het rijk imperia door ijzeren wil en gedisciplineerde legers. Waar elfen vertrouwen op gratie en dwergen op vakmanschap, vertrouwen mensen op aantallen, loyaliteit en koppige moed.",
+  "race.man.faction_unit_label": "Hellebaardier — elite zware infanterie met superieur bereik en wapenrusting.",
+
+  "race.elf.title": "Kinderen van het Woud",
+  "race.elf.flavor": "Oud voorbij geheugen, weven de elfen magie en pijlvuur tot een kunstvorm. Hun boogschutters treffen van afstanden die vijanden hulpeloos achterlaten, en hun band met het levende hout geeft hen ongekende veerkracht.",
+  "race.elf.faction_unit_label": "Elfenboogschutter — ongeëvenaard bereik en precisie, treft van verre.",
+
+  "race.horde.title": "Kracht in Aantallen",
+  "race.horde.flavor": "De Horde bouwt geen tempels en bestudeert geen rollen. Ze scherpen bladen, kweken oorlogsbeesten en marcheren. Wat ze missen aan arcane finesse maken ze goed met overweldigende kracht en een totale onverschilligheid voor zelfbehoud.",
+  "race.horde.faction_unit_label": "Oorlogshoofd — brutale gevechtsleider die een enorm hakmes wieldt.",
+
+  "race.adept.title": "Meesters van het Arcane",
+  "race.adept.flavor": "Waar anderen soldaten trainen, trainen de Adepten geesten. Hun legers zijn klein en kwetsbaar, maar een enkele aartsmagus kan een bataljon vellen. Ze beheersen elke school van magie en buigen de werkelijkheid zelf naar hun wil.",
+  "race.adept.faction_unit_label": "Aartsmagus — opperste arcanist die verwoestende arcane energie kanaliseert.",
+
+  "race.elements.title": "Toorn der Primordialen",
+  "race.elements.flavor": "Geboren uit de ruwe krachten die de wereld vormden, beheersen de Elementen vuur, ijs, storm en leegte gelijkelijk. Ze vuren geen sterfelijke soldaten aan — alleen wezens en pure elementaire magie gekanalisseerd door oude geleiders.",
+  "race.elements.faction_unit_label": "Elementaire Avatar — een torenhoge convergentie van primaire elementen.",
+
+  "race.op.title": "Voorbij Alle Grenzen",
+  "race.op.flavor": "Sommigen noemen het vals spelen. Anderen noemen het lot. De OP kennen geen grenzen — elke eenheid, elke rang, onbeperkt goud. Waarom moeite doen als je simpelweg kunt overweldigen?",
+  "race.op.faction_unit_label": "Geen — De OP hebben geen exclusieve eenheden nodig.",
+
+  "race.halfling.title": "Het Kleine Volk",
+  "race.halfling.flavor": "Door allen onderschat, overleven de Halflingen door sluwheid, snelheid en een ongekende gave voor het raken van dingen met stenen. Hun slingeraars zijn de snelste in het land, en hun band met bosbeesten maakt hun legers bedrieglijk gevaarlijk.",
+  "race.halfling.faction_unit_label": "Halfling Slinger — bliksemsnelle schermutselaar op afstand met dodelijke nauwkeurigheid.",
+
+  "race.lava.title": "Geboren uit de Gloeiende Diepte",
+  "race.lava.flavor": "Gesmeed in het hart van vulkanen waar steen stroomt als water, zijn de Lava Kinderen wezens van levende vlam en obsidiaan. Ze beheersen vuur met een vertrouwdheid die geen sterfelijke magiër kan evenaren, en hun golemlegers wuiven klappen weg die staal zouden versplinteren.",
+  "race.lava.faction_unit_label": "Magmagolem — massief gesmolten construct met vuuraura en hoge veerkracht.",
+
+  "race.dwarf.title": "Smeedmeesters van de Diepte",
+  "race.dwarf.flavor": "Meesters van steen en staal, zijn dwergenbolwerken bijna oninneembare vestingen. Hun strijders zijn kort van gestalte maar onbreekbaar van vastberadenheid, gehuld in het fijnste pantser dat geld — of een berg — kan kopen.",
+  "race.dwarf.faction_unit_label": "Dwergenhoeder — ijzergeharnast schilddrager, langzaam maar bijna onvernietigbaar.",
+
+  "race.orc.title": "Bloed en Donder",
+  "race.orc.flavor": "De orcische horden overweldigen met pure felheid. Waar anderen plannen en intrigeren, laden orcs gewoon aan — en ze slaan hard genoeg dat het verschil zelden uitmaakt.",
+  "race.orc.faction_unit_label": "Orcbruut — omvangrijke aanvaller die treft als een lawine.",
+
+  "race.undead.title": "Het Eindeloze Legioen",
+  "race.undead.flavor": "De dood is geen belemmering voor een ondeadleger — het is een promotie. Elke gevallen strijder staat opnieuw op, en hun generaals hebben eeuwen gehad om de kunst van de verovering te perfectioneren.",
+  "race.undead.faction_unit_label": "Doodsridder — onsterfelijke gepantserde revenant die herstelt van dodelijke wonden.",
+
+  "race.demon.title": "Gesel van de Kuil",
+  "race.demon.flavor": "Opgeroepen uit rijken waar genade een vergeten concept is, zwelgen demonen in vernietiging. Hun legers corrumperen het land waarover ze marcheren, en laten slechts as en stilte achter.",
+  "race.demon.faction_unit_label": "Kuilheer — torenhoge demon die hellevuur ademt en alles voor hem verbrijzelt.",
+
+  "race.angel.title": "Dienaren van het Licht",
+  "race.angel.flavor": "Stralende strijders van goddelijke oorsprong, engelen vechten niet voor verovering maar om te beschermen. Hun genezend licht en gezegende wapens maken hen tot de meest gevreesde defensieve strijdmacht in het bestaan.",
+  "race.angel.faction_unit_label": "Serafijn — zesvleugelige hemelse genezer die goddelijke herstel uitstraalt.",
+
+  "race.beast.title": "Wild en Ongetem",
+  "race.beast.flavor": "Noch volledig beest noch volledig mens, eren de Beastkin het oude pact tussen roofdier en stam. Hun strijders bewegen met dierlijk instinct en vechten met een felheid die zelfs doorgewinterde soldaten doet rillen.",
+  "race.beast.faction_unit_label": "Alpha Wolf — bliksemsnelle geduchte wolf die aanvalt en zijn prooi verscheurt.",
+
+  "race.golem.title": "Geesten van Steen",
+  "race.golem.flavor": "Reusachtige wandelende forten van betoverd gesteente, het Golemcollectief bloedt niet, rust niet en voelt geen angst. Ze marcheren gewoon — totdat er niets meer is om naar te marcheren.",
+  "race.golem.faction_unit_label": "Oorlogsgolem — kolossaal steenconstruct, bijna onvernietigbaar.",
+
+  "race.pirate.title": "Roovers van de Hoge Zee",
+  "race.pirate.flavor": "Geen kust is veilig als de zwarte vlag wappert. Piratenmansschappen vechten vuil, slaan snel toe en verdwijnen voordat versterkingen arriveren — slechts lege schatkamers en brandende dokken achterlatend.",
+  "race.pirate.faction_unit_label": "Piratenkap — sluwe vechter die vijanden vastgooit en ze neerlegt.",
 
   // ─── ShopPanel ───
   "shop.upgrades": "UPGRADES",

@@ -148,6 +148,99 @@ export const en: Record<string, string> = {
   "leader.lore": "LORE",
   "leader.bonus": "BONUS",
 
+  // ─── Leaders (per-leader texts) ───
+  "leader.arthur.title": "The Once and Future King",
+  "leader.arthur.flavor": "Crowned by destiny and bound by the oath of Camelot, Arthur drew the sword from the stone when no other hand could move it. He forged a fractured land into a single kingdom through courage, justice, and an unbreakable will. Knights rallied to his banner not for gold or glory, but because Arthur embodied a dream — that honour could rule where tyranny once reigned. Even now, legends whisper that he sleeps beneath the hollow hills, waiting for the hour of Britain's greatest need.",
+  "leader.arthur.bonus": "Stables units start at Level 2.",
+
+  "leader.merlin.title": "Archmage of Avalon",
+  "leader.merlin.flavor": "Born of mortal woman and otherworldly spirit, Merlin walked between worlds before Arthur ever drew breath. It was Merlin who set the sword in the stone, who raised Camelot's walls with whispered words, and who saw the future in the flames — though he could never change it. His counsel shaped kings and toppled pretenders, yet for all his foresight he could not escape the fate that love wove for him. They say his voice still echoes in the deep places of the earth, guiding those wise enough to listen.",
+  "leader.merlin.bonus": "Mages start at Level 1. A Storm Mage spawns near your castle at battle start.",
+
+  "leader.guinevere.title": "Queen of Camelot",
+  "leader.guinevere.flavor": "The fairest queen to grace the throne of Camelot, Guinevere's beauty was matched only by her fierce resolve. She held court when Arthur rode to war, dispensing justice with a wisdom that silenced even the most quarrelsome lords. Her presence on the ramparts rallied defenders who might otherwise have broken, and her voice carried the authority of the crown itself.",
+  "leader.guinevere.bonus": "All units have +20% attack.",
+
+  "leader.lancelot.title": "Knight of the Lake",
+  "leader.lancelot.flavor": "Raised by the Lady of the Lake in a realm beneath the waters, Lancelot emerged as the most fearsome warrior the Round Table ever knew. No knight could match his blade, no fortress could withstand his siege. His lance shattered shields like kindling, and armies that saw his banner approaching often surrendered before the first charge.",
+  "leader.lancelot.bonus": "Siege units spawn 30% faster.",
+
+  "leader.morgan.title": "The Fay Enchantress",
+  "leader.morgan.flavor": "Half-sister to the king and mistress of the old magics, Morgan le Fay learned her craft in the hidden places of Avalon where the veil between worlds grows thin. She commands illusion and enchantment with a subtlety that makes even Merlin wary. Wealth flows to her through arcane bargains, and her coffers are never empty.",
+  "leader.morgan.bonus": "Start with +300 bonus gold.",
+
+  "leader.gawain.title": "Knight of the Sun",
+  "leader.gawain.flavor": "Nephew to Arthur and champion of the common folk, Gawain's strength waxes with the sun — at noon he fights with the fury of three men. He accepted the Green Knight's challenge when no other dared, and walked into certain death with a smile. His resilience is legendary; wounds that would fell lesser warriors barely slow his stride.",
+  "leader.gawain.bonus": "All units have +15% HP.",
+
+  "leader.galahad.title": "The Pure Knight",
+  "leader.galahad.flavor": "Son of Lancelot yet untouched by his father's sins, Galahad alone proved worthy to sit in the Siege Perilous — the seat at the Round Table that destroyed all who were unworthy. His purity of heart opened doors that strength could not, and divine providence blessed every venture he undertook with abundance and prosperity.",
+  "leader.galahad.bonus": "Gold income is +25% higher.",
+
+  "leader.percival.title": "Seeker of the Grail",
+  "leader.percival.flavor": "A simple boy raised in the Welsh wilderness, Percival came to Camelot knowing nothing of knighthood — and left as one of the three who beheld the Holy Grail. His innocence was his shield, his earnestness his sword. He builds and fortifies with the same honest dedication he brought to his sacred quest.",
+  "leader.percival.bonus": "Buildings cost 15% less gold.",
+
+  "leader.tristan.title": "The Sorrowful Knight",
+  "leader.tristan.flavor": "The finest swordsman of Cornwall, Tristan's blade sang with a melancholy that belied its lethality. He won kingdoms through single combat and claimed contested ground with a swiftness that left his enemies reeling. Where others laid siege, Tristan simply walked in and planted his standard before the defenders could react.",
+  "leader.tristan.bonus": "Neutral buildings are captured 40% faster.",
+
+  "leader.nimue.title": "Lady of the Lake",
+  "leader.nimue.flavor": "Guardian of the sacred waters and keeper of Excalibur, Nimue wields power older than any mortal kingdom. It was she who gave Arthur the sword that made him invincible, and she who raised Lancelot beneath enchanted waves. Her blessing wards castle walls with ancient magic, making them far harder to breach.",
+  "leader.nimue.bonus": "Base starts with +500 extra health.",
+
+  "leader.kay.title": "Seneschal of Camelot",
+  "leader.kay.flavor": "Arthur's foster-brother and the steward who kept Camelot running while its knights rode to glory. Kay managed the treasury, supplied the armies, and negotiated with merchants so shrewdly that every coin stretched further under his watch. He may lack the romance of a questing knight, but without Kay there would be no kingdom to quest for.",
+  "leader.kay.bonus": "All units cost 10% less gold.",
+
+  "leader.bedivere.title": "The Loyal Hand",
+  "leader.bedivere.flavor": "The first knight to swear fealty to Arthur and the last to stand beside him at Camlann, Bedivere's loyalty never wavered through decades of war and treachery. He lost a hand in battle yet fought on, and his endurance in the shield wall became the stuff of legend. Where Bedivere stands, the line does not break.",
+  "leader.bedivere.bonus": "All units have +25% HP.",
+
+  "leader.elaine.title": "The Lily Maid",
+  "leader.elaine.flavor": "The Lady of Astolat whose unrequited devotion became the saddest tale in all of Camelot. Yet beneath the tragedy lay a keen mind and a deadly eye — Elaine trained the archers of Astolat, and her bowmen were feared across the realm. Under her tutelage, every arrow found its mark with uncanny precision.",
+  "leader.elaine.bonus": "Archers start at Level 1.",
+
+  "leader.mordred.title": "The Usurper",
+  "leader.mordred.flavor": "Arthur's illegitimate son, born of treachery and raised in shadow, Mordred craved the throne with a hunger that consumed all other feeling. His warriors fight with a frenzied speed born of desperation and ambition, striking before their foes can mount a defence. At Camlann he proved that even the greatest kingdom can fall to one who fights without scruple.",
+  "leader.mordred.bonus": "All units have +15% attack speed.",
+
+  "leader.igraine.title": "Duchess of Cornwall",
+  "leader.igraine.flavor": "Mother of Arthur and Morgan both, Igraine endured the schemes of kings and sorcerers with a grace that hid iron resolve. A devout woman, she founded temples and sanctuaries across the realm, and the healers she patronised trained faster and more skilfully than any in the land. Her legacy of mercy outlasted every war her children fought.",
+  "leader.igraine.bonus": "Temples train units 25% faster.",
+
+  "leader.pellinore.title": "The Questing King",
+  "leader.pellinore.flavor": "Sworn to hunt the Questing Beast — a creature no mortal could catch — Pellinore spent his life pursuing monsters through the wild places of the world. His kinship with beasts is unmatched; creatures that flee from other men rally to Pellinore's call. The dens he establishes produce beasts of unusual cunning and ferocity.",
+  "leader.pellinore.bonus": "Creature Den units start at Level 1.",
+
+  "leader.ector.title": "The Humble Lord",
+  "leader.ector.flavor": "The quiet lord who raised young Arthur as his own, never seeking glory or reward. Ector managed his estates with such prudence that his lands prospered even in the leanest years. His treasury was always full, his people always fed, and when the time came to support his foster-son's claim to the throne, he had gold enough to outfit an army.",
+  "leader.ector.bonus": "Start with +500 bonus gold.",
+
+  "leader.bors.title": "The Steadfast",
+  "leader.bors.flavor": "One of the three knights to achieve the Grail, Bors was neither the purest nor the mightiest — but he was the most dependable. In every battle he stood exactly where he was needed, neither advancing too far nor retreating too soon. His soldiers absorbed his quiet confidence, fighting with both greater fortitude and sharper steel.",
+  "leader.bors.bonus": "All units have +10% HP and +10% attack.",
+
+  "leader.uther.title": "The Pendragon",
+  "leader.uther.flavor": "Arthur's father and the dragon-bannered king who first united the warring lords of Britain by force of arms. Uther ruled through strength and cunning, extracting tribute from every corner of his domain. Under the Pendragon's iron gaze, gold flowed ceaselessly into the royal coffers, funding campaigns that crushed all who defied the crown.",
+  "leader.uther.bonus": "Gold income is +15% higher.",
+
+  "leader.lot.title": "King of Orkney",
+  "leader.lot.flavor": "Ruler of the storm-battered northern isles and father to Gawain, Lot built his fortress on cliffs so sheer that no army could scale them. His keeps were legendary for their impregnability — thick-walled, deep-moated, and provisioned to withstand siege for years. Those who shelter behind Lot's defences find their strongholds nearly unbreakable.",
+  "leader.lot.bonus": "Base starts with +1000 extra health.",
+
+  "leader.isolde.title": "The Fair Healer",
+  "leader.isolde.flavor": "Princess of Ireland and the most gifted healer in all the isles, Isolde learned the names of every herb and salve before she could hold a sword. She mended wounds that should have been mortal — including those of Tristan, the very knight who slew her uncle. Their doomed love became legend, but her skill in the healing arts endured long after the poets fell silent.",
+  "leader.isolde.bonus": "Base starts with +500 extra health.",
+
+  "leader.gareth.title": "Knight of Many Colours",
+  "leader.gareth.flavor": "Brother to Gawain and nephew to the king, Gareth came to Camelot and served a full year in the kitchens before requesting knighthood. Kay mocked him as 'Beaumains' — pretty hands — but when the year ended, Gareth rode out and defeated the Red Knight, the Blue Knight, and the Green Knight in succession. His humility proved sharper than any blade.",
+  "leader.gareth.bonus": "Creature Den units start at Level 1.",
+
+  "leader.agravain.title": "The Dark Knight",
+  "leader.agravain.flavor": "Son of King Lot and brother to Gawain, Agravain earned the name 'Dark Knight' not for villainy but for doing what no other knight had the stomach to do. He exposed Lancelot and Guinevere's affair — a truth every knight of the Round Table knew but none dared speak. It destroyed Camelot, and Lancelot killed him for it, but Agravain went to his grave calling it honesty.",
+  "leader.agravain.bonus": "Base starts with +1000 extra health.",
+
   // ─── RaceSelectScreen ───
   "race.select": "SELECT YOUR RACE",
   "race.continue": "CONTINUE  >",
@@ -157,6 +250,71 @@ export const en: Record<string, string> = {
   "race.faction_units": "FACTION UNITS",
   "race.faction_unit": "FACTION UNIT",
   "race.elite": "ELITE",
+
+  // ─── Races (per-race texts) ───
+  "race.man.title": "Lords of the Realm",
+  "race.man.flavor": "Hardy and adaptable, the men of the realm forge empires through iron will and disciplined armies. Where elves rely on grace and dwarves on craft, men rely on numbers, loyalty, and stubborn courage.",
+  "race.man.faction_unit_label": "Halberdier — elite heavy infantry with superior reach and armour.",
+
+  "race.elf.title": "Children of the Forest",
+  "race.elf.flavor": "Ancient beyond memory, the elves weave magic and arrow-fire into an art form. Their archers strike from distances that leave enemies helpless, and their bond with the living wood grants them uncanny resilience.",
+  "race.elf.faction_unit_label": "Elven Archer — unmatched range and precision, strikes from afar.",
+
+  "race.horde.title": "Strength in Numbers",
+  "race.horde.flavor": "The Horde does not build temples or study scrolls. They sharpen blades, breed war-beasts, and march. What they lack in arcane finesse they make up for with overwhelming force and an utter disregard for self-preservation.",
+  "race.horde.faction_unit_label": "Warchief — brutal melee leader wielding a massive cleaver.",
+
+  "race.adept.title": "Masters of the Arcane",
+  "race.adept.flavor": "Where others train soldiers, the Adept train minds. Their armies are small and fragile, but a single archmage can level a battalion. They command every school of magic and bend reality itself to their will.",
+  "race.adept.faction_unit_label": "Archmage — supreme arcanist channelling devastating arcane energy.",
+
+  "race.elements.title": "Wrath of the Primordials",
+  "race.elements.flavor": "Born from the raw forces that shaped the world, the Elements command fire, ice, storm, and void alike. They field no mortal soldiers — only creatures and pure elemental magic channelled through ancient conduits.",
+  "race.elements.faction_unit_label": "Elemental Avatar — a towering convergence of primal elements.",
+
+  "race.op.title": "Beyond All Limits",
+  "race.op.flavor": "Some call it cheating. Others call it destiny. The OP know no boundaries — every unit, every tier, unlimited gold. Why struggle when you can simply overwhelm?",
+  "race.op.faction_unit_label": "None — The OP need no exclusive units.",
+
+  "race.halfling.title": "The Little Folk",
+  "race.halfling.flavor": "Underestimated by all, the Halflings survive through cunning, speed, and an uncanny knack for hitting things with rocks. Their slingers are the fastest in the land, and their bond with woodland creatures makes their armies deceptively dangerous.",
+  "race.halfling.faction_unit_label": "Halfling Slinger — lightning-fast ranged skirmisher with deadly accuracy.",
+
+  "race.lava.title": "Born of the Molten Deep",
+  "race.lava.flavor": "Forged in the heart of volcanoes where rock flows like water, the Lava Children are creatures of living flame and obsidian. They command fire with an intimacy no mortal mage can match, and their golem armies shrug off blows that would shatter steel.",
+  "race.lava.faction_unit_label": "Magma Golem — massive molten construct with fire aura and high resilience.",
+
+  "race.dwarf.title": "Forge-Lords of the Deep",
+  "race.dwarf.flavor": "Masters of stone and steel, dwarven holds are near-impregnable fortresses. Their warriors are short of stature but unbreakable in resolve, clad in the finest armour money — or a mountain — can buy.",
+  "race.dwarf.faction_unit_label": "Dwarven Guardian — ironclad shieldbearer, slow but nearly indestructible.",
+
+  "race.orc.title": "Blood and Thunder",
+  "race.orc.flavor": "The orcish hordes overwhelm with sheer ferocity. Where others plan and scheme, orcs simply charge — and they hit hard enough that the difference rarely matters.",
+  "race.orc.faction_unit_label": "Orc Brute — hulking charger who hits like an avalanche.",
+
+  "race.undead.title": "The Endless Legion",
+  "race.undead.flavor": "Death is no obstacle to an undead army — it is a promotion. Every fallen warrior rises again, and their generals have had centuries to perfect the art of conquest.",
+  "race.undead.faction_unit_label": "Death Knight — undying armoured revenant that regenerates from mortal wounds.",
+
+  "race.demon.title": "Scourge of the Pit",
+  "race.demon.flavor": "Summoned from realms where mercy is a forgotten concept, demons revel in destruction. Their armies corrupt the land they march through, leaving nothing but ash and silence.",
+  "race.demon.faction_unit_label": "Pit Lord — towering demon that breathes hellfire and crushes all before it.",
+
+  "race.angel.title": "Servants of Light",
+  "race.angel.flavor": "Radiant warriors of divine origin, angels fight not for conquest but to protect. Their healing light and blessed weapons make them the most feared defensive force in existence.",
+  "race.angel.faction_unit_label": "Seraphim — six-winged celestial healer radiating divine restoration.",
+
+  "race.beast.title": "Wild and Untamed",
+  "race.beast.flavor": "Neither fully beast nor fully man, the Beastkin honour the ancient pact between predator and tribe. Their warriors move with animal instinct and fight with a ferocity that chills even seasoned soldiers.",
+  "race.beast.faction_unit_label": "Alpha Wolf — lightning-fast dire wolf that charges and tears apart its prey.",
+
+  "race.golem.title": "Minds of Stone",
+  "race.golem.flavor": "Vast walking fortresses of enchanted rock, the Golem Collective does not bleed, does not tire, and does not feel fear. They simply advance — until there is nothing left to advance toward.",
+  "race.golem.faction_unit_label": "War Golem — colossal stone construct, nearly indestructible.",
+
+  "race.pirate.title": "Raiders of the High Seas",
+  "race.pirate.flavor": "No coast is safe when the black flag flies. Pirate crews fight dirty, hit fast, and vanish before reinforcements arrive — leaving only empty coffers and burning docks behind.",
+  "race.pirate.faction_unit_label": "Pirate Captain — cunning fighter who nets enemies and cuts them down.",
 
   // ─── ShopPanel ───
   "shop.upgrades": "UPGRADES",

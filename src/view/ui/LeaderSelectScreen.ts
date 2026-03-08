@@ -517,7 +517,7 @@ export class LeaderSelectScreen {
     c.addChild(nameText);
 
     // Title
-    const titleText = new Text({ text: leader.title, style: STYLE_LEADER_TITLE });
+    const titleText = new Text({ text: t(`leader.${leader.id}.title`), style: STYLE_LEADER_TITLE });
     titleText.anchor.set(0.5, 0);
     titleText.position.set(LEADER_CARD_W / 2, LEADER_CARD_H - 14);
     c.addChild(titleText);
@@ -605,7 +605,7 @@ export class LeaderSelectScreen {
     ty += 28;
 
     // Title
-    const titleT = new Text({ text: leader.title, style: STYLE_DETAIL_TITLE });
+    const titleT = new Text({ text: t(`leader.${leader.id}.title`), style: STYLE_DETAIL_TITLE });
     titleT.position.set(tx, ty);
     d.addChild(titleT);
     ty += 22;
@@ -626,7 +626,7 @@ export class LeaderSelectScreen {
     ty += 16;
 
     // Flavor text
-    const flavorT = new Text({ text: leader.flavor, style: STYLE_DETAIL_FLAVOR });
+    const flavorT = new Text({ text: t(`leader.${leader.id}.flavor`), style: STYLE_DETAIL_FLAVOR });
     flavorT.position.set(tx, ty);
     d.addChild(flavorT);
     ty += flavorT.height + 14;
@@ -642,7 +642,7 @@ export class LeaderSelectScreen {
     ty += 16;
 
     // Bonus text
-    const bonusT = new Text({ text: leader.bonusLabel, style: STYLE_BONUS_TEXT });
+    const bonusT = new Text({ text: t(`leader.${leader.id}.bonus`), style: STYLE_BONUS_TEXT });
     bonusT.position.set(tx, ty);
     d.addChild(bonusT);
   }
