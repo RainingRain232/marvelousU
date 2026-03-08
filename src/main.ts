@@ -59,7 +59,7 @@ import { lobbyScreen } from "@view/ui/LobbyScreen";
 import { RoomManager } from "@net/RoomManager";
 import { campaignState } from "@sim/config/CampaignState";
 import { getScenario, SCENARIO_DEFINITIONS } from "@sim/config/CampaignDefs";
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Assets, Container, Graphics, Sprite, Text, Texture, TextStyle } from "pixi.js";
 import { createGameState } from "@sim/state/GameState";
 import type { GameState } from "@sim/state/GameState";
 import { createPlayerState } from "@sim/state/PlayerState";
@@ -2977,37 +2977,14 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
 function _showWaveIntro(leaderId: string, onDone: () => void): void {
   const leader = getLeader(leaderId as LeaderId);
   const leaderName = leader?.name ?? "Commander";
-  const secondSpeaker = { name: leaderName, id: leaderId };
 
-  // Intro dialog pages — alternating between Merlin and the leader
-  const pages: Array<{ message: string; speaker?: { name: string; id: string } }> = [
-    {
-      message: `Ah, ${leaderName}! The ancient arena awakens once more. I have arranged a... challenge for you.`,
-    },
-    {
-      message: "A challenge? What sort of sorcery is this, Merlin?",
-      speaker: secondSpeaker,
-    },
-    {
-      message: "Endless waves of foes shall march against you. Each wave fiercer than the last. Survive — and grow stronger.",
-    },
-    {
-      message: "You will earn gold for each victory. Spend it wisely in the shop to recruit troops and fortify your army.",
-    },
-    {
-      message: "And my soldiers who survive the battle?",
-      speaker: secondSpeaker,
-    },
-    {
-      message: "They fight on! Your veterans carry over between waves. Guard them well — a seasoned army is worth its weight in gold.",
-    },
-    {
-      message: "Very well. Let the waves come. We shall not falter!",
-      speaker: secondSpeaker,
-    },
-    {
-      message: "That's the spirit! Now then — to the shop with you. Your first wave awaits...",
-    },
+  // Merlin-only intro dialog pages
+  const pages: string[] = [
+    `Ah, ${leaderName}! The ancient arena awakens once more. I have arranged a challenge for you.`,
+    "Endless waves of foes shall march against you. Each wave fiercer than the last. Survive — and grow stronger.",
+    "You will earn gold for each victory. Spend it wisely in the shop to recruit troops and fortify your army.",
+    "Your veterans carry over between waves. Guard them well — a seasoned army is worth its weight in gold.",
+    "Now then — to the shop with you. Your first wave awaits...",
   ];
 
   let pageIndex = 0;
@@ -3016,10 +2993,9 @@ function _showWaveIntro(leaderId: string, onDone: () => void): void {
       onDone();
       return;
     }
-    const page = pages[pageIndex];
+    const msg = pages[pageIndex];
     pageIndex++;
-    // Pages with a speaker use dual-speaker layout; pages without are Merlin-only
-    _showMerlinWaveCompliment(page.message, showNext, page.speaker);
+    _showMerlinWaveCompliment(msg, showNext);
   };
   showNext();
 }
@@ -3041,7 +3017,7 @@ const SPEAKER_COLORS: Record<string, { label: number; border: number; text: numb
 function _showMerlinWaveCompliment(
   message: string,
   onDone: () => void,
-  secondSpeaker?: { name: string; id: string },
+  _secondSpeaker?: { name: string; id: string },
 ): void {
   const overlay = new Container();
   const sw = viewManager.screenWidth;
@@ -3052,86 +3028,72 @@ function _showMerlinWaveCompliment(
     .fill({ color: 0x000000, alpha: 0.7 });
   overlay.addChild(bg);
 
-  const hasDual = !!secondSpeaker;
-  const CW = hasDual ? 500 : 440;
-  const CH = 180;
-  const card = new Container();
-  card.position.set(Math.floor((sw - CW) / 2), Math.floor((sh - CH) / 2));
-
-  // Pick colours — blend both speakers' borders when dual
   const merlinColors = SPEAKER_COLORS.merlin;
-  const secondColors = secondSpeaker ? (SPEAKER_COLORS[secondSpeaker.id] ?? merlinColors) : merlinColors;
-  const borderColor = hasDual ? secondColors.border : merlinColors.border;
+  const PORTRAIT_W = 120;
+  const PORTRAIT_H = 150;
+  const CW = 460;
+  const CH = 200;
+  const TOTAL_H = PORTRAIT_H + 10 + CH;
+
+  const wrapper = new Container();
+  wrapper.position.set(Math.floor((sw - CW) / 2), Math.floor((sh - TOTAL_H) / 2));
+  overlay.addChild(wrapper);
+
+  // Portrait frame above text box
+  const portraitFrame = new Graphics()
+    .roundRect((CW - PORTRAIT_W) / 2, 0, PORTRAIT_W, PORTRAIT_H, 6)
+    .fill({ color: 0x080818, alpha: 0.95 })
+    .roundRect((CW - PORTRAIT_W) / 2, 0, PORTRAIT_W, PORTRAIT_H, 6)
+    .stroke({ color: merlinColors.border, alpha: 0.8, width: 2 });
+  wrapper.addChild(portraitFrame);
+
+  void Assets.load(merlinImgUrl).then((tex: Texture) => {
+    if (!wrapper.parent) return;
+    const sprite = new Sprite(tex);
+    const maxW = PORTRAIT_W - 8;
+    const maxH = PORTRAIT_H - 8;
+    const scale = Math.min(maxW / tex.width, maxH / tex.height);
+    sprite.scale.set(scale);
+    sprite.position.set(
+      (CW - PORTRAIT_W) / 2 + 4 + (maxW - tex.width * scale) / 2,
+      4 + (maxH - tex.height * scale) / 2,
+    );
+    wrapper.addChild(sprite);
+  });
+
+  // Text card below portrait
+  const cardY = PORTRAIT_H + 10;
+  const card = new Container();
+  card.position.set(0, cardY);
+  wrapper.addChild(card);
 
   const cardBg = new Graphics()
     .roundRect(0, 0, CW, CH, 10)
     .fill({ color: 0x0a0a18, alpha: 0.96 })
     .roundRect(0, 0, CW, CH, 10)
-    .stroke({ color: borderColor, alpha: 0.8, width: 2 });
+    .stroke({ color: merlinColors.border, alpha: 0.8, width: 2 });
   card.addChild(cardBg);
 
-  if (hasDual) {
-    // --- Dual speaker layout: leader on left, Merlin on right ---
-    const leaderLabel = new Text({
-      text: secondSpeaker!.name.toUpperCase(),
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 12,
-        fill: secondColors.label,
-        fontWeight: "bold",
-        letterSpacing: 1,
-      }),
-    });
-    leaderLabel.anchor.set(0, 0);
-    leaderLabel.position.set(20, 14);
-    card.addChild(leaderLabel);
-
-    const merlinLabel = new Text({
-      text: "MERLIN",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 12,
-        fill: merlinColors.label,
-        fontWeight: "bold",
-        letterSpacing: 1,
-      }),
-    });
-    merlinLabel.anchor.set(1, 0);
-    merlinLabel.position.set(CW - 20, 14);
-    card.addChild(merlinLabel);
-
-    // Divider accent line between the two names
-    const divider = new Graphics()
-      .moveTo(CW / 2, 12)
-      .lineTo(CW / 2, 28)
-      .stroke({ color: 0x555566, alpha: 0.5, width: 1 });
-    card.addChild(divider);
-  } else {
-    // --- Single speaker: Merlin only ---
-    const merlinLabel = new Text({
-      text: "MERLIN SPEAKS:",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 14,
-        fill: merlinColors.label,
-        fontWeight: "bold",
-        letterSpacing: 2,
-      }),
-    });
-    merlinLabel.anchor.set(0.5, 0);
-    merlinLabel.position.set(CW / 2, 20);
-    card.addChild(merlinLabel);
-  }
-
-  const textTop = hasDual ? 36 : 52;
-  const textColor = hasDual ? secondColors.text : merlinColors.text;
+  const merlinLabel = new Text({
+    text: "MERLIN",
+    style: new TextStyle({
+      fontFamily: "monospace",
+      fontSize: 14,
+      fill: merlinColors.label,
+      fontWeight: "bold",
+      letterSpacing: 2,
+    }),
+  });
+  merlinLabel.anchor.set(0.5, 0);
+  merlinLabel.position.set(CW / 2, 14);
+  card.addChild(merlinLabel);
 
   const msgText = new Text({
     text: `"${message}"`,
     style: new TextStyle({
       fontFamily: "monospace",
       fontSize: 13,
-      fill: textColor,
+      fill: merlinColors.text,
       letterSpacing: 1,
       wordWrap: true,
       wordWrapWidth: CW - 40,
@@ -3139,7 +3101,7 @@ function _showMerlinWaveCompliment(
     }),
   });
   msgText.anchor.set(0.5, 0);
-  msgText.position.set(CW / 2, textTop);
+  msgText.position.set(CW / 2, 40);
   card.addChild(msgText);
 
   const BW = CW - 80;
@@ -3147,7 +3109,7 @@ function _showMerlinWaveCompliment(
   const btn = new Container();
   btn.eventMode = "static";
   btn.cursor = "pointer";
-  btn.position.set(40, CH - 52);
+  btn.position.set(40, CH - 50);
 
   const btnBg = new Graphics()
     .roundRect(0, 0, BW, BH, 6)
@@ -3179,7 +3141,7 @@ function _showMerlinWaveCompliment(
   });
 
   card.addChild(btn);
-  overlay.addChild(card);
+
   viewManager.addToLayer("ui", overlay);
 }
 

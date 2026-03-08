@@ -21,6 +21,7 @@ import wallsImgUrl from "@/img/walls.png";
 import dragonImgUrl from "@/img/dragon.png";
 import magicImgUrl from "@/img/magic.png";
 import angelImgUrl from "@/img/angel.png";
+import scoutImgUrl from "@/img/scout.png";
 
 // Race portrait images
 import elfPImgUrl from "@/img/elfP.png";
@@ -158,6 +159,21 @@ const TT_PREVIEW_H = 80;
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Maps each normal building to its elite counterpart (if any). */
+const ELITE_BUILDING_MAP: Partial<Record<BuildingType, BuildingType>> = {
+  [BuildingType.BARRACKS]: BuildingType.ELITE_BARRACKS,
+  [BuildingType.ARCHERY_RANGE]: BuildingType.ELITE_ARCHERY_RANGE,
+  [BuildingType.STABLES]: BuildingType.ELITE_STABLES,
+  [BuildingType.SIEGE_WORKSHOP]: BuildingType.ELITE_SIEGE_WORKSHOP,
+  [BuildingType.MAGE_TOWER]: BuildingType.ELITE_MAGE_TOWER,
+};
+
+function getEliteUnitsForBuilding(bt: BuildingType, raceId: RaceId): UnitType[] {
+  const eliteBt = ELITE_BUILDING_MAP[bt];
+  if (!eliteBt) return [];
+  return getUnitsForBuilding(eliteBt, raceId);
+}
+
 function getUnitsForBuilding(bt: BuildingType, raceId: RaceId): UnitType[] {
   const bDef = BUILDING_DEFINITIONS[bt];
   if (!bDef) return [];
@@ -190,6 +206,10 @@ export function getAllShopUnits(raceId: RaceId): UnitType[] {
   for (const tab of SHOP_TABS) {
     if (!tab.building) continue;
     for (const ut of getUnitsForBuilding(tab.building, raceId)) {
+      if (!seen.has(ut)) { seen.add(ut); result.push(ut); }
+    }
+    // Include elite building units
+    for (const ut of getEliteUnitsForBuilding(tab.building, raceId)) {
       if (!seen.has(ut)) { seen.add(ut); result.push(ut); }
     }
   }
@@ -230,8 +250,9 @@ export class UnitShopScreen {
   private _vm!: ViewManager;
   private _bg!: Graphics;
   private _card!: Container;
-  private _cardW = 1200;
-  private _cardH = 920;
+  private _cardW = 1400;
+  private _cardH = 1000;
+  private _cardBg!: Graphics;
 
   // State
   private _gold = 30000;
@@ -284,6 +305,7 @@ export class UnitShopScreen {
 
   // Wave hint
   private _waveHint: { raceName: string; mainUnits: string[] } | null = null;
+  private _scoutReportPurchased = false;
 
   // Mercenaries (random units from other races available this wave)
   private _mercenaries: Array<{ type: UnitType; raceId: string }> = [];
@@ -323,6 +345,7 @@ export class UnitShopScreen {
     this.container.addChild(this._bg);
 
     this._card = makePanel(this._cardW, this._cardH);
+    this._cardBg = this._card.getChildAt(0) as Graphics;
     this.container.addChild(this._card);
 
     // Title
@@ -373,10 +396,10 @@ export class UnitShopScreen {
     this._startBtn = this._makeStartButton();
     this._card.addChild(this._startBtn);
 
-    // Save / Load buttons (shown only in wave mode)
+    // Save / Load / Menu buttons (placed inside detail panel)
     this._saveLoadContainer = new Container();
     this._saveLoadContainer.visible = false;
-    this._card.addChild(this._saveLoadContainer);
+    this._detailContainer.addChild(this._saveLoadContainer);
 
     // Tooltip
     this._tooltip = new Container();
@@ -411,6 +434,7 @@ export class UnitShopScreen {
     this._label = label ?? "UNIT SHOP";
     this._randomToggleOn = false;
     this._unitScrollY = 0;
+    this._scoutReportPurchased = false;
     this._counts.clear();
     // Pre-fill survivors as already-purchased (free re-buy)
     for (const entry of this._survivingUnits) {
@@ -697,6 +721,10 @@ export class UnitShopScreen {
     this._dynamicRows = [];
     this._countTexts.clear();
     this._detailContainer.removeChildren();
+    // Re-create save/load container (destroyed by removeChildren)
+    this._saveLoadContainer = new Container();
+    this._saveLoadContainer.visible = false;
+    this._detailContainer.addChild(this._saveLoadContainer);
 
     this._titleText.text = this._label;
     this._refreshGold();
@@ -739,6 +767,46 @@ export class UnitShopScreen {
       y = this._buildCorruptionRows(y);
     }
 
+    y = this._buildUnitRows(units, y);
+
+    // Elite units — add divider stripe and elite building units below
+    if (tab.building) {
+      const eliteUnits = getEliteUnitsForBuilding(tab.building, this._raceId);
+      if (eliteUnits.length > 0) {
+        // Divider stripe
+        const divider = new Container();
+        divider.position.set(0, y);
+        const divLine = new Graphics()
+          .rect(4, 4, LEFT_W - 8, 2)
+          .fill({ color: 0xddaa44, alpha: 0.5 });
+        divider.addChild(divLine);
+        const divLabel = new Text({
+          text: "ELITE",
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xddaa44, fontWeight: "bold", letterSpacing: 2 }),
+        });
+        divLabel.anchor.set(0.5, 0.5);
+        divLabel.position.set(LEFT_W / 2, 12);
+        divider.addChild(divLabel);
+        this._unitScrollContainer.addChild(divider);
+        this._dynamicRows.push(divider);
+        y += 22;
+
+        y = this._buildUnitRows(eliteUnits, y);
+      }
+    }
+
+    this._unitScrollY = 0;
+    this._unitScrollContainer.y = 0;
+
+    this._buildDetailPanel(tab);
+  }
+
+  // -------------------------------------------------------------------------
+  // Unit row builder
+  // -------------------------------------------------------------------------
+
+  private _buildUnitRows(units: UnitType[], startY: number): number {
+    let y = startY;
     for (const ut of units) {
       const uDef = UNIT_DEFINITIONS[ut];
       if (!uDef) continue;
@@ -763,8 +831,7 @@ export class UnitShopScreen {
       const nameLabel = UNIT_LABELS[ut] ?? ut.replace(/_/g, " ");
       let nameFill = 0xccddee;
       if (priceMod < 0) {
-        // Greener for bigger discount: -10% → light green, -30% → bright green
-        const t = Math.abs(priceMod) / 30; // 0..1
+        const t = Math.abs(priceMod) / 30;
         const r = Math.round(0x66 + (0x22 - 0x66) * t);
         const g = Math.round(0xdd + (0xff - 0xdd) * t);
         const b = Math.round(0x66 + (0x44 - 0x66) * t);
@@ -866,11 +933,7 @@ export class UnitShopScreen {
       this._dynamicRows.push(row);
       y += ROW_H;
     }
-
-    this._unitScrollY = 0;
-    this._unitScrollContainer.y = 0;
-
-    this._buildDetailPanel(tab);
+    return y;
   }
 
   // -------------------------------------------------------------------------
@@ -902,7 +965,13 @@ export class UnitShopScreen {
     });
     desc.position.set(0, dy);
     this._detailContainer.addChild(desc);
-    dy += desc.height + 20;
+    dy += desc.height + 14;
+
+    // Save / Load / Menu buttons (in wave mode)
+    this._buildSaveLoadInDetail(dy, DETAIL_W);
+    if (this._label.includes("WAVE")) {
+      dy += 34;
+    }
 
     // Image
     const imgUrl = tab.imageUrl;
@@ -936,37 +1005,110 @@ export class UnitShopScreen {
       }
     }
 
-    // Wave hint (next wave enemy info)
+    // Wave hint (scout report)
     if (this._waveHint) {
-      const hintY = CONTENT_H - 90;
+      const SCOUT_COST = 50;
+      const SCOUT_IMG_W = 60;
+      const SCOUT_IMG_H = 70;
+      const IMG_PAD = 6;
+      const TEXT_X = SCOUT_IMG_W + IMG_PAD * 2 + 4;
+      const BOX_H = this._scoutReportPurchased ? 100 : Math.max(46, SCOUT_IMG_H + IMG_PAD * 2);
+      const hintY = CONTENT_H - BOX_H - 6;
       const hintBox = new Graphics()
-        .roundRect(0, hintY, DETAIL_W, 80, 5)
+        .roundRect(0, hintY, DETAIL_W, BOX_H, 5)
         .fill({ color: 0x1a1a0a, alpha: 0.7 })
-        .roundRect(0, hintY, DETAIL_W, 80, 5)
+        .roundRect(0, hintY, DETAIL_W, BOX_H, 5)
         .stroke({ color: 0xaaaa44, alpha: 0.5, width: 1 });
       this._detailContainer.addChild(hintBox);
 
+      // Scout portrait
+      const scoutFrame = new Graphics()
+        .roundRect(IMG_PAD, hintY + IMG_PAD, SCOUT_IMG_W, SCOUT_IMG_H, 4)
+        .fill({ color: 0x0a0a0a })
+        .roundRect(IMG_PAD, hintY + IMG_PAD, SCOUT_IMG_W, SCOUT_IMG_H, 4)
+        .stroke({ color: 0xaaaa44, alpha: 0.6, width: 1 });
+      this._detailContainer.addChild(scoutFrame);
+
+      void Assets.load(scoutImgUrl).then((tex: Texture) => {
+        if (!this._detailContainer.parent) return;
+        const spr = new Sprite(tex);
+        const maxW = SCOUT_IMG_W - 6;
+        const maxH = SCOUT_IMG_H - 6;
+        const sc = Math.min(maxW / tex.width, maxH / tex.height);
+        spr.scale.set(sc);
+        spr.position.set(
+          IMG_PAD + 3 + (maxW - tex.width * sc) / 2,
+          hintY + IMG_PAD + 3 + (maxH - tex.height * sc) / 2,
+        );
+        this._detailContainer.addChild(spr);
+      });
+
+      // Title
       const hintTitle = new Text({
         text: "SCOUT REPORT",
         style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xddcc44, fontWeight: "bold", letterSpacing: 1 }),
       });
-      hintTitle.position.set(8, hintY + 6);
+      hintTitle.position.set(TEXT_X, hintY + 6);
       this._detailContainer.addChild(hintTitle);
 
+      // Left side: enemy race (always visible)
       const hintRace = new Text({
         text: `Enemy: ${this._waveHint.raceName}`,
         style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xccbb88, letterSpacing: 1 }),
       });
-      hintRace.position.set(8, hintY + 24);
+      hintRace.position.set(TEXT_X, hintY + 24);
       this._detailContainer.addChild(hintRace);
 
-      const unitNames = this._waveHint.mainUnits.slice(0, 4).join(", ");
-      const hintUnits = new Text({
-        text: `Expect: ${unitNames}`,
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xaa9977, letterSpacing: 1, wordWrap: true, wordWrapWidth: DETAIL_W - 16 }),
-      });
-      hintUnits.position.set(8, hintY + 40);
-      this._detailContainer.addChild(hintUnits);
+      if (this._scoutReportPurchased) {
+        // Detailed info revealed
+        const unitNames = this._waveHint.mainUnits.slice(0, 4).join(", ");
+        const hintUnits = new Text({
+          text: `Expect: ${unitNames}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xaa9977, letterSpacing: 1, wordWrap: true, wordWrapWidth: DETAIL_W - TEXT_X - 8 }),
+        });
+        hintUnits.position.set(TEXT_X, hintY + 42);
+        this._detailContainer.addChild(hintUnits);
+      } else {
+        // "Detailed Scout Report" button on the right
+        const btnW = 160;
+        const btnH = 22;
+        const btnX = DETAIL_W - btnW - 8;
+        const btnY = hintY + 18;
+        const scoutBtn = new Container();
+        scoutBtn.eventMode = "static";
+        scoutBtn.cursor = "pointer";
+        scoutBtn.position.set(btnX, btnY);
+        const scoutBg = new Graphics()
+          .roundRect(0, 0, btnW, btnH, 3)
+          .fill({ color: 0x2a2a1a })
+          .roundRect(0, 0, btnW, btnH, 3)
+          .stroke({ color: 0xaaaa44, width: 1 });
+        scoutBtn.addChild(scoutBg);
+        const scoutLbl = new Text({
+          text: `DETAILS (${SCOUT_COST}g)`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0xddcc44, fontWeight: "bold", letterSpacing: 1 }),
+        });
+        scoutLbl.anchor.set(0.5, 0.5);
+        scoutLbl.position.set(btnW / 2, btnH / 2);
+        scoutBtn.addChild(scoutLbl);
+
+        scoutBtn.on("pointerover", () => { scoutBg.tint = 0xeeeebb; });
+        scoutBtn.on("pointerout", () => { scoutBg.tint = 0xffffff; });
+        scoutBtn.on("pointerdown", () => {
+          if (this._goldSpent + SCOUT_COST <= this._gold) {
+            this._goldSpent += SCOUT_COST;
+            this._scoutReportPurchased = true;
+            this._refreshGold();
+            // Rebuild to show revealed info
+            this._detailContainer.removeChildren();
+            this._saveLoadContainer = new Container();
+            this._saveLoadContainer.visible = false;
+            this._detailContainer.addChild(this._saveLoadContainer);
+            this._buildDetailPanel(tab);
+          }
+        });
+        this._detailContainer.addChild(scoutBtn);
+      }
     }
   }
 
@@ -1160,27 +1302,26 @@ export class UnitShopScreen {
     return y;
   }
 
-  private _buildSaveLoadButtons(): void {
+  /** Build save/load/menu buttons inside the detail panel at the given y offset. */
+  private _buildSaveLoadInDetail(dy: number, detailW: number): void {
     this._saveLoadContainer.removeChildren();
-    // Only show in wave mode (label contains "WAVE")
     const isWave = this._label.includes("WAVE");
     this._saveLoadContainer.visible = isWave;
     if (!isWave) return;
 
-    const GAP = 6;
-    const BW = Math.floor((this._cardW - 32 - GAP * 2) / 3);
-    const BH = 32;
-    const Y = this._cardH - 56 - BH - 8; // above START button
-    const btnStyle = new TextStyle({ fontFamily: "monospace", fontSize: 13, fontWeight: "bold", letterSpacing: 2 });
+    const GAP = 5;
+    const BW = Math.floor((detailW - GAP * 2) / 3);
+    const BH = 24;
+    const btnStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fontWeight: "bold", letterSpacing: 1 });
 
     // SAVE button
     const saveBtn = new Container();
     saveBtn.eventMode = "static";
     saveBtn.cursor = "pointer";
-    saveBtn.position.set(16, Y);
+    saveBtn.position.set(0, dy);
     const saveBg = new Graphics()
-      .roundRect(0, 0, BW, BH, 4).fill({ color: 0x1a2a3a })
-      .roundRect(0, 0, BW, BH, 4).stroke({ color: 0x4488cc, width: 1.5 });
+      .roundRect(0, 0, BW, BH, 3).fill({ color: 0x223355 })
+      .roundRect(0, 0, BW, BH, 3).stroke({ color: 0x4488cc, width: 1 });
     saveBtn.addChild(saveBg);
     const saveLbl = new Text({ text: "SAVE", style: { ...btnStyle, fill: 0x88bbff } });
     saveLbl.anchor.set(0.5, 0.5);
@@ -1199,10 +1340,10 @@ export class UnitShopScreen {
     const loadBtn = new Container();
     loadBtn.eventMode = "static";
     loadBtn.cursor = "pointer";
-    loadBtn.position.set(16 + BW + GAP, Y);
+    loadBtn.position.set(BW + GAP, dy);
     const loadBg = new Graphics()
-      .roundRect(0, 0, BW, BH, 4).fill({ color: 0x2a2a1a })
-      .roundRect(0, 0, BW, BH, 4).stroke({ color: 0xaaaa44, width: 1.5 });
+      .roundRect(0, 0, BW, BH, 3).fill({ color: 0x3a3a22 })
+      .roundRect(0, 0, BW, BH, 3).stroke({ color: 0xaaaa44, width: 1 });
     loadBtn.addChild(loadBg);
     const loadLbl = new Text({ text: "LOAD", style: { ...btnStyle, fill: 0xdddd66 } });
     loadLbl.anchor.set(0.5, 0.5);
@@ -1217,10 +1358,10 @@ export class UnitShopScreen {
     const menuBtn = new Container();
     menuBtn.eventMode = "static";
     menuBtn.cursor = "pointer";
-    menuBtn.position.set(16 + (BW + GAP) * 2, Y);
+    menuBtn.position.set((BW + GAP) * 2, dy);
     const menuBg = new Graphics()
-      .roundRect(0, 0, BW, BH, 4).fill({ color: 0x1a1a2a })
-      .roundRect(0, 0, BW, BH, 4).stroke({ color: 0x6666aa, width: 1.5 });
+      .roundRect(0, 0, BW, BH, 3).fill({ color: 0x2a2a44 })
+      .roundRect(0, 0, BW, BH, 3).stroke({ color: 0x6666aa, width: 1 });
     menuBtn.addChild(menuBg);
     const menuLbl = new Text({ text: "MENU", style: { ...btnStyle, fill: 0xaaaaff } });
     menuLbl.anchor.set(0.5, 0.5);
@@ -1230,6 +1371,12 @@ export class UnitShopScreen {
     menuBtn.on("pointerout", () => { menuBg.tint = 0xffffff; });
     menuBtn.on("pointerdown", () => { this.onBackToMenu?.(); });
     this._saveLoadContainer.addChild(menuBtn);
+  }
+
+  private _buildSaveLoadButtons(): void {
+    // Now built inside _buildDetailPanel — this is kept for compatibility
+    // when called from _repositionFixedElements before a full rebuild.
+    // The actual buttons are placed in _buildDetailPanel.
   }
 
   /** Generate random price modifiers: 10% of units discounted, 10% marked up. */
@@ -1357,7 +1504,15 @@ export class UnitShopScreen {
         ? getUnitsForBuilding(tab.building, this._raceId)
         : getFactionUnits(this._raceId);
     const topExtra = 36 + (this._activeModifiers.length > 0 ? 18 + this._activeModifiers.length * 16 + 6 : 0);
-    const contentH = topExtra + units.length * ROW_H;
+    let totalRows = units.length;
+    // Account for elite units + divider
+    if (tab.building) {
+      const eliteUnits = getEliteUnitsForBuilding(tab.building, this._raceId);
+      if (eliteUnits.length > 0) {
+        totalRows += eliteUnits.length;
+      }
+    }
+    const contentH = topExtra + totalRows * ROW_H + (tab.building && getEliteUnitsForBuilding(tab.building, this._raceId).length > 0 ? 22 : 0);
     const viewH = this._cardH - this._contentTop - 60;
     const minScroll = Math.min(0, viewH - contentH);
     this._unitScrollY = Math.max(minScroll, Math.min(0, this._unitScrollY));
@@ -1368,10 +1523,31 @@ export class UnitShopScreen {
     const sh = this._vm.screenHeight;
     this._bg.clear();
     this._bg.rect(0, 0, sw, sh).fill({ color: BG_COLOR });
+
+    // Adapt card height to screen — leave 40px margin
+    const newH = Math.min(1000, sh - 40);
+    if (newH !== this._cardH) {
+      this._cardH = newH;
+      this._cardBg.clear()
+        .roundRect(0, 0, this._cardW, this._cardH, 8)
+        .fill({ color: 0x10102a, alpha: 0.95 })
+        .roundRect(0, 0, this._cardW, this._cardH, 8)
+        .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
+      this._repositionFixedElements();
+      this._rebuild();
+    }
+
     this._card.position.set(
       Math.floor((sw - this._cardW) / 2),
       Math.floor((sh - this._cardH) / 2),
     );
+  }
+
+  private _repositionFixedElements(): void {
+    if (this._startBtn) {
+      this._startBtn.position.set(16, this._cardH - 56);
+    }
+    this._buildSaveLoadButtons();
   }
 }
 
