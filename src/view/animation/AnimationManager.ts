@@ -216,6 +216,17 @@ import { generateCrystalGolemFrames } from "@view/animation/CrystalGolemSpriteGe
 import { generateIronColossusFrames } from "@view/animation/IronColossusSpriteGen";
 import { generateSeaWitchFrames } from "@view/animation/SeaWitchSpriteGen";
 import { generateBoardingMasterFrames } from "@view/animation/BoardingMasterSpriteGen";
+// New units
+import { generateNovicePriestFrames } from "@view/animation/NovicePriestSpriteGen";
+import { generateSkirmisherFrames } from "@view/animation/SkirmisherSpriteGen";
+import { generateHeavyLancerFrames } from "@view/animation/HeavyLancerSpriteGen";
+import { generateHordeArcherFrames } from "@view/animation/HordeArcherSpriteGen";
+import { generateHordeHealerFrames } from "@view/animation/HordeHealerSpriteGen";
+import { generateStoneFistFrames } from "@view/animation/StoneFistSpriteGen";
+import { generateBladeAdeptFrames } from "@view/animation/BladeAdeptSpriteGen";
+import { generateBuccaneerFrames } from "@view/animation/BuccaneerSpriteGen";
+import { generateDebufferWarlockFrames } from "@view/animation/DebufferWarlockSpriteGen";
+import { generateWarDrummerFrames } from "@view/animation/WarDrummerSpriteGen";
 
 // ---------------------------------------------------------------------------
 // Placeholder palette — one color per animation row
@@ -670,6 +681,27 @@ export class AnimationManager {
         this._generateWave2Sprites(key, renderer, generateSeaWitchFrames);
       } else if (key === "boarding_master") {
         this._generateWave2Sprites(key, renderer, generateBoardingMasterFrames);
+      // --- New units ---
+      } else if (key === "novice_priest") {
+        this._generateMapSprites(key, renderer, generateNovicePriestFrames);
+      } else if (key === "skirmisher") {
+        this._generateMapSprites(key, renderer, generateSkirmisherFrames);
+      } else if (key === "heavy_lancer") {
+        this._generateMapSprites(key, renderer, generateHeavyLancerFrames);
+      } else if (key === "horde_archer") {
+        this._generateMapSprites(key, renderer, generateHordeArcherFrames);
+      } else if (key === "horde_healer") {
+        this._generateMapSprites(key, renderer, generateHordeHealerFrames);
+      } else if (key === "stone_fist") {
+        this._generateMapSprites(key, renderer, generateStoneFistFrames);
+      } else if (key === "blade_adept") {
+        this._generateMapSprites(key, renderer, generateBladeAdeptFrames);
+      } else if (key === "buccaneer") {
+        this._generateMapSprites(key, renderer, generateBuccaneerFrames);
+      } else if (key === "debuffer_warlock") {
+        this._generateMapSprites(key, renderer, generateDebufferWarlockFrames);
+      } else if (key === "war_drummer") {
+        this._generateMapSprites(key, renderer, generateWarDrummerFrames);
       } else if (key === "mage") {
         // Fallback generic mage (used before race is applied)
         this._generateMageSprites(key, renderer, PALETTE_NATIONAL_MAN);
@@ -2459,6 +2491,20 @@ export class AnimationManager {
   }
 
   /** Generic helper for wave-2 faction unit sprites. */
+  private _generateMapSprites(
+    key: string,
+    renderer: Renderer,
+    genFn: (r: Renderer) => Map<UnitState, Texture[]>,
+  ): void {
+    const stateTextures = genFn(renderer);
+    for (const [state, textures] of stateTextures) {
+      const ck = cacheKey(key, state);
+      if (!this._cache.has(ck)) {
+        this._cache.set(ck, textures);
+      }
+    }
+  }
+
   private _generateWave2Sprites(
     key: string,
     renderer: Renderer,

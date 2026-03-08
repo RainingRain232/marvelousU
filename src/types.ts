@@ -260,6 +260,17 @@ export enum UnitType {
   // Pirates
   SEA_WITCH = "sea_witch",
   BOARDING_MASTER = "boarding_master",
+  // --- New units ---
+  NOVICE_PRIEST = "novice_priest",
+  SKIRMISHER = "skirmisher",
+  HEAVY_LANCER = "heavy_lancer",
+  HORDE_ARCHER = "horde_archer",
+  HORDE_HEALER = "horde_healer",
+  STONE_FIST = "stone_fist",
+  BLADE_ADEPT = "blade_adept",
+  BUCCANEER = "buccaneer",
+  DEBUFFER_WARLOCK = "debuffer_warlock",
+  WAR_DRUMMER = "war_drummer",
 }
 
 export enum BuildingType {

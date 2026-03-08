@@ -330,6 +330,17 @@ export const UNIT_LABELS: Record<UnitType, string> = {
   [UnitType.IRON_COLOSSUS]: "Iron Colossus",
   [UnitType.SEA_WITCH]: "Sea Witch",
   [UnitType.BOARDING_MASTER]: "Boarding Master",
+  // --- New units ---
+  [UnitType.NOVICE_PRIEST]: "Novice Priest",
+  [UnitType.SKIRMISHER]: "Skirmisher",
+  [UnitType.HEAVY_LANCER]: "Heavy Lancer",
+  [UnitType.HORDE_ARCHER]: "Horde Archer",
+  [UnitType.HORDE_HEALER]: "Horde Healer",
+  [UnitType.STONE_FIST]: "Stone Fist",
+  [UnitType.BLADE_ADEPT]: "Blade Adept",
+  [UnitType.BUCCANEER]: "Buccaneer",
+  [UnitType.DEBUFFER_WARLOCK]: "Debuffer Warlock",
+  [UnitType.WAR_DRUMMER]: "War Drummer",
 };
 
 // ---------------------------------------------------------------------------

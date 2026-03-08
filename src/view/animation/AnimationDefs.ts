@@ -974,4 +974,35 @@ export const ANIMATION_DEFS: Record<UnitType, AnimationDef> = {
   [UnitType.BOARDING_MASTER]: buildDef("boarding_master", {
     idleFps: 6, moveFps: 10, attackFps: 14, castFps: 10, dieFps: 8,
   }),
+  // --- New units ---
+  [UnitType.NOVICE_PRIEST]: buildDef("novice_priest", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.SKIRMISHER]: buildDef("skirmisher", {
+    idleFps: 6, moveFps: 10, attackFps: 14, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.HEAVY_LANCER]: buildDef("heavy_lancer", {
+    idleFps: 6, moveFps: 10, attackFps: 12, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.HORDE_ARCHER]: buildDef("horde_archer", {
+    idleFps: 6, moveFps: 10, attackFps: 14, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.HORDE_HEALER]: buildDef("horde_healer", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.STONE_FIST]: buildDef("stone_fist", {
+    idleFps: 5, moveFps: 8, attackFps: 12, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.BLADE_ADEPT]: buildDef("blade_adept", {
+    idleFps: 6, moveFps: 10, attackFps: 14, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.BUCCANEER]: buildDef("buccaneer", {
+    idleFps: 6, moveFps: 8, attackFps: 12, castFps: 10, dieFps: 8,
+  }),
+  [UnitType.DEBUFFER_WARLOCK]: buildDef("debuffer_warlock", {
+    idleFps: 6, moveFps: 8, attackFps: 10, castFps: 12, dieFps: 8,
+  }),
+  [UnitType.WAR_DRUMMER]: buildDef("war_drummer", {
+    idleFps: 6, moveFps: 8, attackFps: 12, castFps: 10, dieFps: 8,
+  }),
 };
