@@ -79,6 +79,9 @@ const NORMAL_MAP: Record<string, string> = {
   heavyKick: "heavy_low",
 };
 
+// All attack buttons
+const ATTACK_BUTTONS = new Set(Object.keys(NORMAL_MAP));
+
 // ---- Module state ----------------------------------------------------------
 
 let _state: DuelState | null = null;
@@ -93,6 +96,14 @@ let _lastForwardRelease = -999;
 let _lastBackRelease = -999;
 let _dashForwardTriggered = false;
 let _dashBackTriggered = false;
+
+// Pending normal: when a single attack button is pressed, wait a few frames
+// before committing to a normal, giving time for a second button (special).
+let _pendingNormal: string | null = null;
+let _pendingNormalFrame = 0;
+
+// How many frames to wait for a potential second button press
+const SPECIAL_WAIT_FRAMES = 5;
 
 // ---- Public API ------------------------------------------------------------
 
@@ -160,18 +171,12 @@ export const DuelInputSystem = {
     const backKey = fighter.facingRight ? "left" : "right";
     const frame = state.frameCount;
 
-    // Check if forward/back was just pressed (in _justPressed set)
     if (_justPressed.has(forwardKey) && frame - _lastForwardRelease <= DuelBalance.DASH_TAP_WINDOW) {
       _dashForwardTriggered = true;
     }
     if (_justPressed.has(backKey) && frame - _lastBackRelease <= DuelBalance.DASH_TAP_WINDOW) {
       _dashBackTriggered = true;
     }
-
-    // Track releases for double-tap detection
-    // (we detect release→press within window)
-    // Release detection: if direction was in buffer last frame but not held now
-    // We handle this via keyup events tracked below
 
     const result: DuelInputResult = {
       left: inp.left,
@@ -189,13 +194,13 @@ export const DuelInputSystem = {
     _dashForwardTriggered = false;
     _dashBackTriggered = false;
 
-    // Only resolve attacks if fighter can act
+    // Resolve attacks if fighter can act
     if (_canAct(fighter)) {
-      result.action = _resolveAction(fighter, state.frameCount);
+      result.action = _resolveAction(fighter, frame);
     }
 
     // Trim old buffer entries
-    _trimBuffer(fighter, state.frameCount);
+    _trimBuffer(fighter, frame);
 
     // Clear just-pressed set for next frame
     _justPressed.clear();
@@ -214,6 +219,8 @@ export const DuelInputSystem = {
     _lastBackRelease = -999;
     _dashForwardTriggered = false;
     _dashBackTriggered = false;
+    _pendingNormal = null;
+    _pendingNormalFrame = 0;
   },
 };
 
@@ -221,33 +228,63 @@ export const DuelInputSystem = {
 
 function _canAct(fighter: DuelFighter): boolean {
   const s = fighter.state;
-  return (
+  if (
     s === DuelFighterState.IDLE ||
     s === DuelFighterState.WALK_FORWARD ||
     s === DuelFighterState.WALK_BACK ||
     s === DuelFighterState.CROUCH ||
     s === DuelFighterState.CROUCH_IDLE
-  );
+  ) return true;
+
+  // Allow input during ATTACK for combo cancels
+  if (s === DuelFighterState.ATTACK && fighter.canCancelMove) return true;
+
+  // Allow air attacks
+  if (
+    s === DuelFighterState.JUMP ||
+    s === DuelFighterState.JUMP_FORWARD ||
+    s === DuelFighterState.JUMP_BACK
+  ) return true;
+
+  return false;
 }
 
 function _resolveAction(fighter: DuelFighter, frame: number): string | null {
-  // Check for specials first (simultaneous presses within window)
+  // 1. Always check for specials first (simultaneous presses within window)
   const charSpecials = CHARACTER_SPECIALS[fighter.characterId] ?? [];
   for (const combo of charSpecials) {
     if (_checkSimultaneous(fighter, combo.buttons, frame)) {
+      _pendingNormal = null;
+      _pendingNormalFrame = 0;
       return combo.moveId;
     }
   }
 
-  // Check for grab (Q+A)
+  // 2. Check for grab (Q+A)
   if (_checkSimultaneous(fighter, GRAB_COMBO, frame)) {
+    _pendingNormal = null;
+    _pendingNormalFrame = 0;
     return "grab";
   }
 
-  // Check for single-button normals (only on fresh press)
+  // 3. New attack button press? Start pending timer instead of firing immediately.
   for (const btn of _justPressed) {
-    const moveId = NORMAL_MAP[btn];
-    if (moveId) return moveId;
+    if (ATTACK_BUTTONS.has(btn)) {
+      _pendingNormal = btn;
+      _pendingNormalFrame = frame;
+      return null; // wait for potential second button
+    }
+  }
+
+  // 4. Check if pending normal wait expired
+  if (_pendingNormal !== null) {
+    if (frame - _pendingNormalFrame >= SPECIAL_WAIT_FRAMES) {
+      const moveId = NORMAL_MAP[_pendingNormal];
+      _pendingNormal = null;
+      _pendingNormalFrame = 0;
+      return moveId ?? null;
+    }
+    return null; // still waiting
   }
 
   return null;

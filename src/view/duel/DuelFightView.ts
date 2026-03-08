@@ -60,6 +60,48 @@ interface HitSpark {
   timer: number;
 }
 
+// ---- Special move VFX definitions ------------------------------------------
+
+// Which moves are specials (need flashy VFX)
+const ARTHUR_SPECIALS = new Set([
+  "sword_thrust", "overhead_cleave", "low_sweep",
+  "rising_slash", "shield_charge", "excalibur",
+]);
+const MERLIN_SPECIALS = new Set([
+  "arcane_bolt", "thunder_strike", "frost_wave",
+  "teleport", "arcane_storm", "mystic_barrier",
+]);
+const ELAINE_SPECIALS = new Set([
+  "power_shot", "rain_of_arrows", "leg_sweep",
+  "backflip_shot", "triple_shot", "hunters_trap",
+]);
+const ALL_SPECIALS: Record<string, Set<string>> = {
+  arthur: ARTHUR_SPECIALS,
+  merlin: MERLIN_SPECIALS,
+  elaine: ELAINE_SPECIALS,
+};
+
+// Special VFX color themes per character
+const SPECIAL_COLORS: Record<string, { primary: number; secondary: number; glow: number }> = {
+  arthur: { primary: 0xffdd44, secondary: 0xff8800, glow: 0xffffaa },  // golden sword energy
+  merlin: { primary: 0x8866ff, secondary: 0x4422cc, glow: 0xccaaff },  // arcane purple
+  elaine: { primary: 0x44ddff, secondary: 0x2288aa, glow: 0xaaeeff },  // cyan wind/arrow
+};
+
+// ---- Special VFX particle --------------------------------------------------
+
+interface SpecialVFXParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: number;
+  type: "spark" | "trail" | "ring" | "slash";
+}
+
 // ---- Fight view class ------------------------------------------------------
 
 export class DuelFightView {
@@ -74,12 +116,18 @@ export class DuelFightView {
   private _projGfx = new Graphics();
   private _sparkGfx = new Graphics();
   private _shadowGfx = new Graphics();
+  private _specialFxGfx = new Graphics();
 
   private _sparks: HitSpark[] = [];
+  private _specialParticles: SpecialVFXParticle[] = [];
+
+  // Track previous move to detect special start
+  private _prevMoves: [string | null, string | null] = [null, null];
 
   constructor() {
     this.container.addChild(this._arenaLayer);
     this.container.addChild(this._shadowGfx);
+    this.container.addChild(this._specialFxGfx);
     this.container.addChild(this._fighterLayer);
     this.container.addChild(this._fxLayer);
 
@@ -95,15 +143,21 @@ export class DuelFightView {
 
   init(_sw: number, _sh: number): void {
     this._sparks = [];
+    this._specialParticles = [];
+    this._prevMoves = [null, null];
   }
 
   /** Call each display frame to render current state. */
   update(state: DuelState): void {
+    // Check for new specials and spawn VFX
+    this._checkSpecialStarts(state);
+
     this._drawFighter(this._p1Gfx, state.fighters[0], state);
     this._drawFighter(this._p2Gfx, state.fighters[1], state);
     this._drawShadows(state);
     this._drawProjectiles(state);
     this._drawSparks();
+    this._drawSpecialVFX(state);
 
     // Screen shake on hit freeze
     if (state.slowdownFrames > 0) {
@@ -117,6 +171,194 @@ export class DuelFightView {
   /** Spawn a hit spark effect at the given position. */
   addSpark(x: number, y: number): void {
     this._sparks.push({ x, y, timer: SPARK_DURATION });
+  }
+
+  // ---- Special VFX detection -----------------------------------------------
+
+  private _checkSpecialStarts(state: DuelState): void {
+    for (let i = 0; i < 2; i++) {
+      const f = state.fighters[i];
+      const prevMove = this._prevMoves[i];
+      const curMove = f.state === DuelFighterState.ATTACK ? f.currentMove : null;
+
+      // Detect when a new special move starts
+      if (curMove && curMove !== prevMove) {
+        const specials = ALL_SPECIALS[f.characterId];
+        if (specials?.has(curMove)) {
+          this._spawnSpecialVFX(f, curMove);
+        }
+      }
+
+      this._prevMoves[i] = curMove;
+
+      // Spawn trailing particles during active frames of specials
+      if (
+        f.state === DuelFighterState.ATTACK &&
+        f.currentMove &&
+        ALL_SPECIALS[f.characterId]?.has(f.currentMove)
+      ) {
+        const charDef = DUEL_CHARACTERS[f.characterId];
+        const move = charDef.specials[f.currentMove];
+        if (move && f.moveFrame >= move.startup && f.moveFrame < move.startup + move.active) {
+          this._spawnActiveTrail(f);
+        }
+      }
+    }
+  }
+
+  private _spawnSpecialVFX(fighter: DuelFighter, moveId: string): void {
+    const colors = SPECIAL_COLORS[fighter.characterId] ?? SPECIAL_COLORS.arthur;
+    const dir = fighter.facingRight ? 1 : -1;
+    const x = fighter.position.x;
+    const y = fighter.position.y;
+
+    // Initial burst of energy sparks
+    const sparkCount = 12;
+    for (let i = 0; i < sparkCount; i++) {
+      const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.3;
+      const speed = 3 + Math.random() * 5;
+      this._specialParticles.push({
+        x: x + dir * 20 + Math.random() * 20 - 10,
+        y: y - 90 + Math.random() * 40 - 20,
+        vx: Math.cos(angle) * speed * dir,
+        vy: Math.sin(angle) * speed - 2,
+        life: 18 + Math.random() * 10,
+        maxLife: 28,
+        size: 3 + Math.random() * 4,
+        color: Math.random() > 0.5 ? colors.primary : colors.glow,
+        type: "spark",
+      });
+    }
+
+    // Expanding ring effect
+    this._specialParticles.push({
+      x: x + dir * 15,
+      y: y - 85,
+      vx: 0,
+      vy: 0,
+      life: 20,
+      maxLife: 20,
+      size: 10,
+      color: colors.primary,
+      type: "ring",
+    });
+
+    // Character-specific startup flash
+    if (fighter.characterId === "arthur") {
+      // Sword slash arc
+      this._spawnSlashArc(x + dir * 30, y - 100, dir, colors, moveId);
+    } else if (fighter.characterId === "merlin") {
+      // Magic circle burst
+      this._spawnMagicBurst(x, y - 90, colors);
+    } else if (fighter.characterId === "elaine") {
+      // Wind trail
+      this._spawnWindTrail(x + dir * 20, y - 80, dir, colors);
+    }
+  }
+
+  private _spawnSlashArc(
+    cx: number, cy: number, dir: number,
+    colors: { primary: number; secondary: number; glow: number },
+    moveId: string,
+  ): void {
+    // Create a sweeping arc of particles that follow a slash path
+    const isVertical = moveId === "rising_slash" || moveId === "excalibur" || moveId === "overhead_cleave";
+    const count = 8;
+    for (let i = 0; i < count; i++) {
+      const t = i / count;
+      let angle: number;
+      if (isVertical) {
+        angle = -Math.PI * 0.8 + t * Math.PI * 0.6;
+      } else {
+        angle = -Math.PI * 0.3 + t * Math.PI * 0.6;
+      }
+      const dist = 25 + t * 30;
+      this._specialParticles.push({
+        x: cx + Math.cos(angle) * dist * dir,
+        y: cy + Math.sin(angle) * dist,
+        vx: Math.cos(angle) * 1.5 * dir,
+        vy: Math.sin(angle) * 1.5 - 1,
+        life: 12 + i * 2,
+        maxLife: 12 + i * 2,
+        size: 6 - t * 2,
+        color: i % 2 === 0 ? colors.glow : colors.primary,
+        type: "slash",
+      });
+    }
+  }
+
+  private _spawnMagicBurst(
+    cx: number, cy: number,
+    colors: { primary: number; secondary: number; glow: number },
+  ): void {
+    // Spiral particles outward
+    for (let i = 0; i < 16; i++) {
+      const angle = (i / 16) * Math.PI * 2;
+      const speed = 2 + Math.random() * 3;
+      this._specialParticles.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 22 + Math.random() * 8,
+        maxLife: 30,
+        size: 2 + Math.random() * 3,
+        color: i % 3 === 0 ? colors.glow : i % 3 === 1 ? colors.primary : colors.secondary,
+        type: "spark",
+      });
+    }
+    // Second ring
+    this._specialParticles.push({
+      x: cx,
+      y: cy,
+      vx: 0,
+      vy: 0,
+      life: 25,
+      maxLife: 25,
+      size: 5,
+      color: colors.secondary,
+      type: "ring",
+    });
+  }
+
+  private _spawnWindTrail(
+    cx: number, cy: number, dir: number,
+    colors: { primary: number; secondary: number; glow: number },
+  ): void {
+    // Horizontal streak particles
+    for (let i = 0; i < 10; i++) {
+      this._specialParticles.push({
+        x: cx - dir * i * 8,
+        y: cy + Math.random() * 30 - 15,
+        vx: dir * (4 + Math.random() * 4),
+        vy: Math.random() * 2 - 1,
+        life: 15 + Math.random() * 8,
+        maxLife: 23,
+        size: 2 + Math.random() * 3,
+        color: i % 2 === 0 ? colors.primary : colors.glow,
+        type: "trail",
+      });
+    }
+  }
+
+  private _spawnActiveTrail(fighter: DuelFighter): void {
+    if (Math.random() > 0.4) return; // don't spawn every frame
+    const colors = SPECIAL_COLORS[fighter.characterId] ?? SPECIAL_COLORS.arthur;
+    const dir = fighter.facingRight ? 1 : -1;
+    const x = fighter.position.x + dir * (30 + Math.random() * 40);
+    const y = fighter.position.y - 60 - Math.random() * 80;
+
+    this._specialParticles.push({
+      x,
+      y,
+      vx: dir * (1 + Math.random() * 2),
+      vy: -1 - Math.random(),
+      life: 10 + Math.random() * 8,
+      maxLife: 18,
+      size: 2 + Math.random() * 3,
+      color: Math.random() > 0.5 ? colors.primary : colors.glow,
+      type: "spark",
+    });
   }
 
   // ---- Fighter drawing -----------------------------------------------------
@@ -163,6 +405,21 @@ export class DuelFightView {
       g.alpha = 1;
     }
 
+    // Special move glow: add a body aura when performing a special
+    const isSpecial = fighter.state === DuelFighterState.ATTACK &&
+      fighter.currentMove &&
+      ALL_SPECIALS[charId]?.has(fighter.currentMove);
+
+    if (isSpecial) {
+      const colors = SPECIAL_COLORS[charId] ?? SPECIAL_COLORS.arthur;
+      const pulse = 0.3 + Math.sin(fighter.moveFrame * 0.5) * 0.15;
+      // Body glow aura
+      g.circle(0, -90, 55 + Math.sin(fighter.moveFrame * 0.3) * 8);
+      g.fill({ color: colors.primary, alpha: pulse * 0.25 });
+      g.circle(0, -90, 35);
+      g.fill({ color: colors.glow, alpha: pulse * 0.15 });
+    }
+
     const backExtras = BACK_EXTRAS[charId];
     const opts: DrawFighterOptions = {
       pose: currentPose,
@@ -176,6 +433,31 @@ export class DuelFightView {
     };
 
     drawFighterSkeleton(g, opts);
+
+    // Draw weapon trail / energy effect on top of fighter during specials
+    if (isSpecial && currentPose.frontArm) {
+      const colors = SPECIAL_COLORS[charId] ?? SPECIAL_COLORS.arthur;
+      const handX = currentPose.frontArm.handX;
+      const handY = currentPose.frontArm.handY;
+      const pulse = 0.5 + Math.sin(fighter.moveFrame * 0.6) * 0.3;
+
+      // Glowing energy at weapon/hand point
+      g.circle(handX, handY, 12 + Math.sin(fighter.moveFrame * 0.4) * 4);
+      g.fill({ color: colors.glow, alpha: pulse * 0.4 });
+      g.circle(handX, handY, 6);
+      g.fill({ color: 0xffffff, alpha: pulse * 0.6 });
+
+      // Small energy sparks around the hand
+      const sparkTime = fighter.moveFrame * 0.15;
+      for (let i = 0; i < 4; i++) {
+        const a = sparkTime + (i / 4) * Math.PI * 2;
+        const r = 14 + Math.sin(sparkTime * 2 + i) * 4;
+        const sx = handX + Math.cos(a) * r;
+        const sy = handY + Math.sin(a) * r;
+        g.circle(sx, sy, 2);
+        g.fill({ color: colors.primary, alpha: 0.6 + Math.sin(a) * 0.3 });
+      }
+    }
   }
 
   /** Map fighter state to pose key. */
@@ -361,6 +643,74 @@ export class DuelFightView {
       // White center flash
       this._sparkGfx.circle(spark.x, spark.y, 5 * t);
       this._sparkGfx.fill({ color: 0xffffff, alpha: t * 0.9 });
+    }
+  }
+
+  // ---- Special move VFX particles ------------------------------------------
+
+  private _drawSpecialVFX(_state: DuelState): void {
+    this._specialFxGfx.clear();
+
+    for (let i = this._specialParticles.length - 1; i >= 0; i--) {
+      const p = this._specialParticles[i];
+      p.life--;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.life <= 0) {
+        this._specialParticles.splice(i, 1);
+        continue;
+      }
+
+      const t = p.life / p.maxLife; // 1 = fresh, 0 = dead
+      const g = this._specialFxGfx;
+
+      switch (p.type) {
+        case "spark": {
+          // Fading, shrinking bright spark
+          g.circle(p.x, p.y, p.size * t);
+          g.fill({ color: p.color, alpha: t * 0.8 });
+          // Bright core
+          if (p.size > 3) {
+            g.circle(p.x, p.y, p.size * t * 0.4);
+            g.fill({ color: 0xffffff, alpha: t * 0.6 });
+          }
+          break;
+        }
+
+        case "trail": {
+          // Elongated streak that fades
+          g.moveTo(p.x - p.vx * 2, p.y - p.vy * 2);
+          g.lineTo(p.x, p.y);
+          g.stroke({ color: p.color, width: p.size * t * 1.5, alpha: t * 0.7, cap: "round" });
+          // Bright tip
+          g.circle(p.x, p.y, p.size * t * 0.5);
+          g.fill({ color: 0xffffff, alpha: t * 0.5 });
+          break;
+        }
+
+        case "ring": {
+          // Expanding ring
+          const radius = p.size + (1 - t) * 50;
+          g.circle(p.x, p.y, radius);
+          g.stroke({ color: p.color, width: 3 * t, alpha: t * 0.6 });
+          // Inner ring
+          g.circle(p.x, p.y, radius * 0.7);
+          g.stroke({ color: 0xffffff, width: 1.5 * t, alpha: t * 0.3 });
+          break;
+        }
+
+        case "slash": {
+          // Bright arc fragment
+          const sz = p.size * (0.5 + t * 0.5);
+          g.circle(p.x, p.y, sz);
+          g.fill({ color: p.color, alpha: t * 0.9 });
+          // Glow
+          g.circle(p.x, p.y, sz * 2);
+          g.fill({ color: p.color, alpha: t * 0.2 });
+          break;
+        }
+      }
     }
   }
 
