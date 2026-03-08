@@ -1411,102 +1411,95 @@ export class TownMenuView {
     headerText.position.set(25, startY + 6);
     this.container.addChild(headerText);
 
-    if (fightsLeft <= 0) {
-      const noFights = new Text({
-        text: "No arena fights remaining. Leave and re-enter to get more!",
-        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
-      });
-      noFights.position.set(30, startY + 40);
-      this.container.addChild(noFights);
-      return;
-    }
+    const desc = new Text({
+      text: "Bet gold and fight. Win to double your bet — lose and forfeit it. Re-enter town to reset fights.",
+      style: { fontFamily: "monospace", fontSize: 11, fill: DIM_TEXT, wordWrap: true, wordWrapWidth: W - 60 },
+    });
+    desc.position.set(25, startY + 28);
+    this.container.addChild(desc);
 
     const avgPartyLevel = Math.round(this.rpg.party.reduce((s, m) => s + m.level, 0) / (this.rpg.party.length || 1));
     const tiers = getAvailableArenaTiers(avgPartyLevel);
+
     if (tiers.length === 0) {
       const noTiers = new Text({
-        text: "No arena tiers available.",
+        text: "No arena tiers available at your level.",
         style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
       });
-      noTiers.position.set(30, startY + 40);
+      noTiers.position.set(30, startY + 60);
       this.container.addChild(noTiers);
       return;
     }
 
+    if (fightsLeft <= 0) {
+      const noFights = new Text({
+        text: "No fights remaining. Leave and re-enter town to reset.",
+        style: { fontFamily: "monospace", fontSize: 13, fill: DIM_TEXT },
+      });
+      noFights.position.set(30, startY + 60);
+      this.container.addChild(noFights);
+      return;
+    }
+
     const canFight = canFightInArena(this.rpg);
+    let rowY = startY + 60;
 
     for (let i = 0; i < tiers.length; i++) {
       const tier = tiers[i];
-      const y = startY + 36 + i * 44;
-      const isSelected = i === this._arenaIndex;
-      const betAmount = tier.betAmounts[0] ?? 50;
-      const canAfford = this.rpg.gold >= betAmount;
 
-      if (isSelected) {
-        const highlight = new Graphics();
-        highlight.roundRect(20, y - 2, W - 44, 40, 4);
-        highlight.fill({ color: 0x1a2a3e, alpha: 0.8 });
-        this.container.addChild(highlight);
-      }
-
-      const cursor = isSelected ? ">" : " ";
-      const tierText = new Text({
-        text: `${cursor} ${tier.name}  -  Bet: ${betAmount}g`,
-        style: {
-          fontFamily: "monospace",
-          fontSize: 13,
-          fill: isSelected ? HIGHLIGHT_COLOR : (canFight && canAfford ? TEXT_COLOR : 0x666688),
-          fontWeight: isSelected ? "bold" : "normal",
-        },
+      // Tier header
+      const tierLabel = new Text({
+        text: tier.name,
+        style: { fontFamily: "monospace", fontSize: 13, fill: HIGHLIGHT_COLOR, fontWeight: "bold" },
       });
-      tierText.position.set(30, y + 2);
-      this.container.addChild(tierText);
+      tierLabel.position.set(25, rowY);
+      this.container.addChild(tierLabel);
+      rowY += 20;
 
-      const rewardText = new Text({
-        text: `Bets: ${tier.betAmounts.join("/")}g  |  Level: ${tier.requiredLevel}`,
-        style: { fontFamily: "monospace", fontSize: 10, fill: DIM_TEXT },
-      });
-      rewardText.position.set(50, y + 20);
-      this.container.addChild(rewardText);
+      // One button per bet amount
+      for (const bet of tier.betAmounts) {
+        const canAfford = this.rpg.gold >= bet;
+        const active = canFight && canAfford;
 
-      // Fight button
-      if (isSelected) {
-        const fightBtn = new Container();
-        fightBtn.position.set(W - 130, y + 2);
-        fightBtn.eventMode = "static";
-        fightBtn.cursor = "pointer";
-        fightBtn.on("pointerdown", () => {
-          this._handleArenaFight(i);
-        });
+        const btn = new Container();
+        btn.position.set(30, rowY);
+        btn.eventMode = "static";
+        btn.cursor = active ? "pointer" : "default";
 
         const btnBg = new Graphics();
-        btnBg.roundRect(0, 0, 90, 24, 4);
-        btnBg.fill({ color: canFight && canAfford ? 0x4a2a2e : 0x3a2a2a });
-        btnBg.stroke({ color: canFight && canAfford ? 0xaa4444 : 0x664444, width: 1 });
-        fightBtn.addChild(btnBg);
+        btnBg.roundRect(0, 0, 140, 26, 4);
+        btnBg.fill({ color: active ? 0x4a2a2e : 0x222233 });
+        btnBg.stroke({ color: active ? 0xcc5555 : 0x444466, width: 1 });
+        btn.addChild(btnBg);
 
         const btnText = new Text({
-          text: "Fight!",
-          style: { fontFamily: "monospace", fontSize: 11, fill: canFight && canAfford ? 0xffffff : 0x664444, fontWeight: "bold" },
+          text: `Fight  —  Bet ${bet}g  →  Win ${bet * 2}g`,
+          style: { fontFamily: "monospace", fontSize: 11, fill: active ? 0xffffff : 0x555577 },
         });
-        btnText.anchor.set(0.5, 0.5);
-        btnText.position.set(45, 12);
-        fightBtn.addChild(btnText);
+        btnText.position.set(8, 6);
+        btn.addChild(btnText);
 
-        this.container.addChild(fightBtn);
+        if (active) {
+          const tierIdx = i;
+          const betAmt = bet;
+          btn.on("pointerdown", () => this._handleArenaFight(tierIdx, betAmt));
+        }
+
+        this.container.addChild(btn);
+        rowY += 34;
       }
+
+      rowY += 8; // gap between tiers
     }
   }
 
-  private _handleArenaFight(tierIndex: number): void {
+  private _handleArenaFight(tierIndex: number, betAmount: number): void {
     const avgPartyLevel = Math.round(this.rpg.party.reduce((s, m) => s + m.level, 0) / (this.rpg.party.length || 1));
     const tiers = getAvailableArenaTiers(avgPartyLevel);
     if (tierIndex >= tiers.length) return;
-    const tier = tiers[tierIndex];
-    const betAmount = tier.betAmounts[0] ?? 50;
 
     if (!canFightInArena(this.rpg)) {
-      this._showMessage("Cannot fight in this arena tier!");
+      this._showMessage("No arena fights remaining!");
       return;
     }
     if (this.rpg.gold < betAmount) {
@@ -1520,7 +1513,11 @@ export class TownMenuView {
       EventBus.emit("rpgEncounterTriggered", {
         encounterId: encounter.encounterId,
         encounterType: "random",
+        arenaBet: betAmount,
       });
+    } else {
+      // No valid encounter — refund the bet
+      this.rpg.gold += betAmount;
     }
   }
 
@@ -2225,9 +2222,11 @@ export class TownMenuView {
         this._draw();
         break;
       case "Enter":
-      case "Space":
-        this._handleArenaFight(this._arenaIndex);
+      case "Space": {
+        const tier = tiers[this._arenaIndex];
+        if (tier) this._handleArenaFight(this._arenaIndex, tier.betAmounts[0]);
         break;
+      }
       case "Escape":
         this.onLeave?.();
         break;

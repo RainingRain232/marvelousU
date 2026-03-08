@@ -8,7 +8,7 @@ export interface ArenaTier {
 export const ARENA_TIERS: ArenaTier[] = [
   {
     name: "Bronze Arena",
-    requiredLevel: 5,
+    requiredLevel: 1,
     betAmounts: [50, 100],
     encounters: ["forest_wolves", "goblin_patrol", "bandit_ambush", "field_bandits"],
   },

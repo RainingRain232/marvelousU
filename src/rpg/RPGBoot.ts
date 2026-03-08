@@ -15,6 +15,7 @@ import { RPGStateMachine } from "@rpg/systems/RPGStateMachine";
 import { moveParty } from "@rpg/systems/OverworldSystem";
 import { moveDungeonParty } from "@rpg/systems/DungeonSystem";
 import { createBattleFromEncounter, calculateInitiative, executeAction, executeEnemyTurn, advanceTurn, applyVictoryRewards, applyDefeatPenalty, isHealAbility, isHealSpell, isSummonSpell, getValidTargets } from "@rpg/systems/TurnBattleSystem";
+import { applyArenaResult } from "@rpg/systems/ArenaSystem";
 import { learnSpells } from "@rpg/systems/SpellLearningSystem";
 import type { UpgradeType } from "@/types";
 import { createStarterParty } from "@rpg/systems/PartyFactory";
@@ -46,6 +47,8 @@ export class RPGGame {
   private _unsubs: Array<() => void> = [];
   /** Tracks the current encounter for auto-battle fallback. */
   _pendingEncounterId: string | null = null;
+  /** If the current battle is an arena fight, stores the bet amount; null otherwise. */
+  private _pendingArenaBet: number | null = null;
   /** Tracks level-ups during the current battle for the results screen. */
   private _battleLevelUps: { name: string; newLevel: number; note?: string }[] = [];
   private _levelUpUnsub: (() => void) | null = null;
@@ -159,6 +162,7 @@ export class RPGGame {
 
     this._unsubs.push(EventBus.on("rpgEncounterTriggered", (e) => {
       this._pendingEncounterId = e.encounterId;
+      this._pendingArenaBet = e.arenaBet ?? null;
       this._startBattle(e.encounterId, e.encounterType);
     }));
 
@@ -617,7 +621,24 @@ export class RPGGame {
 
     // Apply results
     const victory = (battle.phase as string) === TurnBattlePhase.VICTORY;
-    if (victory) {
+    if (this._pendingArenaBet !== null) {
+      // Arena fight — use arena-specific result handler
+      applyArenaResult(this.rpgState, this._pendingArenaBet, victory);
+      if (victory) {
+        battle.xpReward = Math.floor(battle.xpReward * getBlessingXpMultiplier(this.rpgState));
+        battle.goldReward = 0; // Gold handled by arena system
+        applyVictoryRewards(this.rpgState, battle);
+        if (this._pendingEncounterId) this._trackQuestKill(this._pendingEncounterId);
+        if (this.overworldState) checkPostBattleLeaderSpawn(this.rpgState, this.overworldState);
+      } else {
+        for (const c of battle.combatants) {
+          if (!c.isPartyMember) continue;
+          const m = this.rpgState.party.find(p => p.id === c.id);
+          if (m) m.hp = 1;
+        }
+        EventBus.emit("rpgBattleEnded", { victory: false, xp: 0, gold: 0 });
+      }
+    } else if (victory) {
       // Apply blessing multipliers to rewards before granting
       battle.xpReward = Math.floor(battle.xpReward * getBlessingXpMultiplier(this.rpgState));
       battle.goldReward = Math.floor(battle.goldReward * getBlessingGoldMultiplier(this.rpgState));
@@ -648,6 +669,7 @@ export class RPGGame {
     }
     this._battleLevelUps = [];
     this._pendingEncounterId = null;
+    this._pendingArenaBet = null;
 
     this.rpgViewManager.showBattleResults(results);
   }
@@ -755,10 +777,18 @@ export class RPGGame {
 
     // Check for battle end states
     if (this.turnBattleState.phase === TurnBattlePhase.VICTORY) {
-      // Apply blessing multipliers to rewards
-      this.turnBattleState.xpReward = Math.floor(this.turnBattleState.xpReward * getBlessingXpMultiplier(this.rpgState));
-      this.turnBattleState.goldReward = Math.floor(this.turnBattleState.goldReward * getBlessingGoldMultiplier(this.rpgState));
-      applyVictoryRewards(this.rpgState, this.turnBattleState);
+      if (this._pendingArenaBet !== null) {
+        applyArenaResult(this.rpgState, this._pendingArenaBet, true);
+        // Arena XP still applies
+        this.turnBattleState.xpReward = Math.floor(this.turnBattleState.xpReward * getBlessingXpMultiplier(this.rpgState));
+        this.turnBattleState.goldReward = 0; // Gold handled by arena system
+        applyVictoryRewards(this.rpgState, this.turnBattleState);
+      } else {
+        // Apply blessing multipliers to rewards
+        this.turnBattleState.xpReward = Math.floor(this.turnBattleState.xpReward * getBlessingXpMultiplier(this.rpgState));
+        this.turnBattleState.goldReward = Math.floor(this.turnBattleState.goldReward * getBlessingGoldMultiplier(this.rpgState));
+        applyVictoryRewards(this.rpgState, this.turnBattleState);
+      }
       view?.refresh();
       // Return to previous phase after short delay
       setTimeout(() => this._returnFromBattle(true), 1500);
@@ -766,7 +796,17 @@ export class RPGGame {
     }
 
     if (this.turnBattleState.phase === TurnBattlePhase.DEFEAT) {
-      applyDefeatPenalty(this.rpgState, this.turnBattleState);
+      if (this._pendingArenaBet !== null) {
+        applyArenaResult(this.rpgState, this._pendingArenaBet, false);
+        // Sync HP (revive party at 1 HP like normal defeat)
+        for (const c of this.turnBattleState.combatants) {
+          if (!c.isPartyMember) continue;
+          const m = this.rpgState.party.find(p => p.id === c.id);
+          if (m) m.hp = 1;
+        }
+      } else {
+        applyDefeatPenalty(this.rpgState, this.turnBattleState);
+      }
       view?.refresh();
       setTimeout(() => this._returnFromBattle(false), 1500);
       return;
@@ -862,6 +902,7 @@ export class RPGGame {
     this.turnBattleState = null;
     this.rpgViewManager.turnBattleState = null;
     this._pendingEncounterId = null;
+    this._pendingArenaBet = null;
 
     // Show results screen — phase transition happens on dismiss
     this.rpgViewManager.showBattleResults(results);
