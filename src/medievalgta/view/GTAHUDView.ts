@@ -54,6 +54,10 @@ export class GTAHUDView {
   private lastLocation = "";
   private locationFadeTimer = 0;
 
+  // Damage flash
+  private damageFlash!: Graphics;
+  private lastHp: number = 100;
+
   init(screenW: number, screenH: number, onExit?: () => void): void {
     this.container.removeChildren();
     this._onExit = onExit ?? null;
@@ -67,11 +71,17 @@ export class GTAHUDView {
     this.buildGameOverOverlay(screenW, screenH);
     this.buildPauseMenu(screenW, screenH);
 
+    // Damage flash overlay (full-screen red, starts invisible)
+    this.damageFlash = new Graphics();
+    this.damageFlash.rect(0, 0, screenW, screenH).fill({ color: 0xCC0000 });
+    this.damageFlash.alpha = 0;
+
     this.container.addChild(this.statusPanel);
     this.container.addChild(this.wantedPanel);
     this.container.addChild(this.questTracker);
     this.container.addChild(this.notificationContainer);
     if (this.locationLabel) this.container.addChild(this.locationLabel);
+    this.container.addChild(this.damageFlash);
     this.container.addChild(this.dialogBox);
     this.container.addChild(this.questLogOverlay);
     this.container.addChild(this.gameOverOverlay);
@@ -558,6 +568,14 @@ export class GTAHUDView {
 
     // --- Quest Log ---
     this.updateQuestLog(state, screenW, screenH);
+
+    // --- Damage Flash ---
+    if (p.hp < this.lastHp) {
+      this.damageFlash.alpha = 0.4;
+    }
+    this.damageFlash.alpha *= 0.9;
+    if (this.damageFlash.alpha < 0.01) this.damageFlash.alpha = 0;
+    this.lastHp = p.hp;
 
     // --- Game Over ---
     this.gameOverOverlay.visible = state.gameOver;

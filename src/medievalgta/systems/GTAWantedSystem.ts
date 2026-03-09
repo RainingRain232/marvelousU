@@ -135,12 +135,73 @@ function updateReinforcements(state: MedievalGTAState, dt: number): void {
 
 // ─── updateWanted ────────────────────────────────────────────────────────────
 
+function updateBountyHunter(state: MedievalGTAState): void {
+  const p = state.player;
+
+  // Reset flag when wanted drops below 5
+  if (p.wantedLevel < 5) {
+    state.bountyHunterSpawned = false;
+    return;
+  }
+
+  // Spawn bounty hunter at wanted 5 if not already spawned
+  if (p.wantedLevel >= 5 && !state.bountyHunterSpawned) {
+    state.bountyHunterSpawned = true;
+
+    // Spawn from a random gate
+    const gate = GATE_POSITIONS[Math.floor(Math.random() * GATE_POSITIONS.length)];
+    const id = `bounty_hunter_${state.nextId++}`;
+    const npc: GTANPC = {
+      id,
+      type: 'knight',
+      name: 'Bounty Hunter',
+      pos: { x: gate.x + (Math.random() - 0.5) * 60, y: gate.y + (Math.random() - 0.5) * 60 },
+      vel: { x: 0, y: 0 },
+      hp: 200,
+      maxHp: 200,
+      behavior: 'chase_player',
+      facing: 0,
+      facingDir: 's',
+      patrolPath: [],
+      patrolIndex: 0,
+      patrolDir: 1,
+      wanderTarget: null,
+      wanderTimer: 0,
+      chaseTimer: 999,
+      attackTimer: 0,
+      attackCooldown: 0.8,
+      alertRadius: 9999,
+      aggroRadius: 9999,
+      dialogLines: ['You have a price on your head!', 'Justice will be served!'],
+      questId: null,
+      onHorse: false,
+      colorVariant: 0,
+      dead: false,
+      deathTimer: 0,
+      homePos: { x: gate.x, y: gate.y },
+      damage: 30,
+      speed: 180,
+    };
+    state.npcs.set(id, npc);
+
+    state.notifications.push({
+      id: `notif_${state.nextId++}`,
+      text: 'A Bounty Hunter is after you!',
+      timer: 4.0,
+      color: 0xff0000,
+    });
+  }
+}
+
 export function updateWanted(state: MedievalGTAState, dt: number): void {
   const p = state.player;
   if (p.state === 'dead') return;
 
   // Reinforcement spawning
   updateReinforcements(state, dt);
+
+  // Bounty hunter at wanted 5
+  updateBountyHunter(state);
 
   if (p.wantedLevel <= 0) return;
 

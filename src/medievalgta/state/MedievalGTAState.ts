@@ -23,7 +23,7 @@ export type GTAHorseState = 'free' | 'tied' | 'ridden_by_player' | 'ridden_by_np
 
 export type GTAQuestStatus = 'available' | 'active' | 'completed' | 'failed';
 
-export type GTAItemType = 'gold_pile' | 'health_potion' | 'sword' | 'bow' | 'key' | 'supply_crate' | 'letter';
+export type GTAItemType = 'gold_pile' | 'health_potion' | 'sword' | 'bow' | 'key' | 'supply_crate' | 'letter' | 'treasure_chest';
 
 export type GTABuildingType =
   | 'castle' | 'castle_tower' | 'barracks' | 'church' | 'tavern'
@@ -61,6 +61,10 @@ export interface GTAPlayer {
   runStamina: number;       // 0-100
   runStaminaRegen: number;
   stealAnimTimer: number;
+  hasBow: boolean;
+  pickpocketCooldown: number;
+  killStreak: number;
+  killStreakTimer: number;
 }
 
 export interface GTANPC {
@@ -157,6 +161,15 @@ export interface GTAItem {
   collected: boolean;
 }
 
+export interface GTAProjectile {
+  id: string;
+  pos: GTAVec2;
+  vel: GTAVec2;
+  damage: number;
+  life: number; // seconds remaining
+  ownedByPlayer: boolean;
+}
+
 export interface GTAParticle {
   pos: GTAVec2;
   vel: GTAVec2;
@@ -182,8 +195,10 @@ export interface MedievalGTAState {
   buildings: GTABuilding[];
   items: GTAItem[];
   quests: GTAQuest[];
+  projectiles: GTAProjectile[];
   particles: GTAParticle[];
   notifications: GTANotification[];
+  bountyHunterSpawned: boolean;
   worldWidth: number;
   worldHeight: number;
   cityBounds: { x: number; y: number; w: number; h: number };
@@ -244,6 +259,10 @@ export function createMedievalGTAState(): MedievalGTAState {
       runStamina: 100,
       runStaminaRegen: 15,
       stealAnimTimer: 0,
+      hasBow: false,
+      pickpocketCooldown: 0,
+      killStreak: 0,
+      killStreakTimer: 0,
     },
 
     npcs: new Map<string, GTANPC>(),
@@ -251,8 +270,10 @@ export function createMedievalGTAState(): MedievalGTAState {
     buildings: [],
     items: [],
     quests: [],
+    projectiles: [],
     particles: [],
     notifications: [],
+    bountyHunterSpawned: false,
 
     worldWidth: 4000,
     worldHeight: 3000,

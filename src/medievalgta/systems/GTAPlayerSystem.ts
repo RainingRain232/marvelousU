@@ -107,6 +107,11 @@ export function updatePlayer(state: MedievalGTAState, dt: number): void {
   if (p.invincibleTimer  > 0) p.invincibleTimer  = Math.max(0, p.invincibleTimer  - dt);
   if (p.dialogCooldown   > 0) p.dialogCooldown   = Math.max(0, p.dialogCooldown   - dt);
   if (p.stealAnimTimer   > 0) p.stealAnimTimer   = Math.max(0, p.stealAnimTimer   - dt);
+  if (p.pickpocketCooldown > 0) p.pickpocketCooldown = Math.max(0, p.pickpocketCooldown - dt);
+  if (p.killStreakTimer > 0) {
+    p.killStreakTimer = Math.max(0, p.killStreakTimer - dt);
+    if (p.killStreakTimer <= 0) p.killStreak = 0;
+  }
   if (p.blockTimer       > 0 && !state.rightMouseDown) p.blockTimer = 0;
 
   // ── Wanted decay ────────────────────────────────────────────────────────

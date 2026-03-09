@@ -5,7 +5,7 @@
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type {
-  MedievalGTAState, GTAPlayer, GTANPC, GTAHorse, GTAItem,
+  MedievalGTAState, GTAPlayer, GTANPC, GTAHorse, GTAItem, GTAProjectile,
 } from "../state/MedievalGTAState";
 
 // Palette lookup for NPC types
@@ -83,6 +83,13 @@ export class GTACharacterRenderer {
     for (const item of state.items) {
       if (!item.collected) {
         entries.push({ y: item.pos.y, draw: () => this.drawItem(item) });
+      }
+    }
+
+    // Projectiles (arrows)
+    if (state.projectiles) {
+      for (const proj of state.projectiles) {
+        entries.push({ y: proj.pos.y, draw: () => this.drawProjectile(proj) });
       }
     }
 
@@ -172,6 +179,14 @@ export class GTACharacterRenderer {
         .lineTo(bowCx + Math.cos(bowAngle + 0.8) * 10, bowCy + Math.sin(bowAngle + 0.8) * 10)
         .stroke({ color: 0xAA9966, width: 0.8 });
       // Quiver on back
+      g.rect(px - dx * 5 - 2, py - dy * 5 - 8, 4, 10).fill({ color: 0x6B4226 });
+      // Arrow tips poking out
+      g.moveTo(px - dx * 5, py - dy * 5 - 8).lineTo(px - dx * 5, py - dy * 5 - 12).stroke({ color: 0x888888, width: 1 });
+      g.moveTo(px - dx * 5 + 2, py - dy * 5 - 8).lineTo(px - dx * 5 + 2, py - dy * 5 - 11).stroke({ color: 0x888888, width: 1 });
+    }
+
+    // Quiver on back if player has bow (but not currently using bow, since bow rendering already includes quiver)
+    if (p.weapon !== 'bow' && (p as any).hasBow) {
       g.rect(px - dx * 5 - 2, py - dy * 5 - 8, 4, 10).fill({ color: 0x6B4226 });
       // Arrow tips poking out
       g.moveTo(px - dx * 5, py - dy * 5 - 8).lineTo(px - dx * 5, py - dy * 5 - 12).stroke({ color: 0x888888, width: 1 });
@@ -526,7 +541,47 @@ export class GTACharacterRenderer {
         g.circle(px, py + 1, 2).fill({ color: 0xCC2222 });
         break;
       }
+      case 'treasure_chest': {
+        // Chest body (brown rectangle)
+        g.roundRect(px - 6, py - 5, 12, 10, 1).fill({ color: 0x6B4226 });
+        g.roundRect(px - 6, py - 5, 12, 10, 1).stroke({ color: 0x4A2810, width: 1 });
+        // Gold band across the middle
+        g.rect(px - 6, py - 1, 12, 3).fill({ color: 0xDAA520 });
+        // Gold clasp/lock circle
+        g.circle(px, py + 0.5, 1.5).fill({ color: 0xFFCC00 });
+        g.circle(px, py + 0.5, 1.5).stroke({ color: 0x8B6914, width: 0.5 });
+        // Highlight shimmer
+        g.rect(px - 4, py - 4, 3, 1).fill({ color: 0xFFFFAA, alpha: 0.4 });
+        break;
+      }
     }
+  }
+
+  // ===================== PROJECTILES =====================
+  private drawProjectile(proj: GTAProjectile): void {
+    const g = this.gfx;
+    const px = proj.pos.x, py = proj.pos.y;
+    // Direction from velocity
+    const speed = Math.sqrt(proj.vel.x * proj.vel.x + proj.vel.y * proj.vel.y);
+    const dx = speed > 0 ? proj.vel.x / speed : 1;
+    const dy = speed > 0 ? proj.vel.y / speed : 0;
+    // Arrow shaft (10px line in direction of travel)
+    const tailX = px - dx * 10;
+    const tailY = py - dy * 10;
+    g.moveTo(tailX, tailY).lineTo(px, py).stroke({ color: 0x5C3A1E, width: 1.5 });
+    // Arrowhead triangle at front
+    const perpX = -dy;
+    const perpY = dx;
+    const tipX = px + dx * 3;
+    const tipY = py + dy * 3;
+    g.poly([
+      tipX, tipY,
+      px + perpX * 2, py + perpY * 2,
+      px - perpX * 2, py - perpY * 2,
+    ]).fill({ color: 0x888888 });
+    // Fletching (small lines at tail)
+    g.moveTo(tailX, tailY).lineTo(tailX + perpX * 2, tailY + perpY * 2).stroke({ color: 0xCCCCCC, width: 0.7 });
+    g.moveTo(tailX, tailY).lineTo(tailX - perpX * 2, tailY - perpY * 2).stroke({ color: 0xCCCCCC, width: 0.7 });
   }
 }
 

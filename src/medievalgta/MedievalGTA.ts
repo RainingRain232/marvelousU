@@ -266,6 +266,12 @@ function populateItems(state: MedievalGTAState): void {
     { type: "key", x: 2350, y: 1350, amount: 1 },
     // Bow — near the barracks training yard
     { type: "bow", x: 1650, y: 700, amount: 1 },
+    // Treasure chests in hidden/rewarding spots
+    { type: "treasure_chest", x: 950, y: 520, amount: 50 },    // Behind the castle
+    { type: "treasure_chest", x: 1000, y: 1700, amount: 30 },  // In the prison
+    { type: "treasure_chest", x: 1500, y: 300, amount: 40 },   // Outside north forest
+    { type: "treasure_chest", x: 2300, y: 600, amount: 35 },   // Behind the church
+    { type: "treasure_chest", x: 1800, y: 2800, amount: 25 },  // In a farm field south
   ];
 
   for (const it of items) {
@@ -620,6 +626,24 @@ export class MedievalGTA {
       if (key === "p") {
         state.paused = !state.paused;
         state.showPauseMenu = state.paused;
+      }
+
+      // Weapon switching with 1/2/3
+      if (key === "1" && !state.paused && !state.gameOver) {
+        state.player.weapon = 'fists';
+        state.notifications.push({ id: `notif_${state.nextId++}`, text: 'Switched to Fists', timer: 2.0, color: 0xcccccc });
+      }
+      if (key === "2" && !state.paused && !state.gameOver) {
+        state.player.weapon = 'sword';
+        state.notifications.push({ id: `notif_${state.nextId++}`, text: 'Switched to Sword', timer: 2.0, color: 0xaaaaff });
+      }
+      if (key === "3" && !state.paused && !state.gameOver) {
+        if (state.player.hasBow) {
+          state.player.weapon = 'bow';
+          state.notifications.push({ id: `notif_${state.nextId++}`, text: 'Switched to Bow', timer: 2.0, color: 0x88ff88 });
+        } else {
+          state.notifications.push({ id: `notif_${state.nextId++}`, text: 'You need to find a bow first!', timer: 2.0, color: 0xff4444 });
+        }
       }
     };
 

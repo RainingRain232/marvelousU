@@ -1,5 +1,5 @@
 // GTACombatSystem.ts – Combat helpers, particles, and notifications. No PixiJS.
-import type { MedievalGTAState, GTAVec2, GTANPC } from '../state/MedievalGTAState';
+import type { MedievalGTAState, GTAVec2, GTANPC, GTAProjectile } from '../state/MedievalGTAState';
 import { GTAConfig } from '../config/MedievalGTAConfig';
 import { increaseWanted } from './GTAWantedSystem';
 
@@ -172,6 +172,19 @@ export function dealDamageToNPC(
     addNotification(state, `${npc.name} slain.`, 0xaaaaaa);
   }
 
+  // Kill streak
+  state.player.killStreak++;
+  state.player.killStreakTimer = 3.0;
+  if (state.player.killStreak === 2) {
+    addNotification(state, 'DOUBLE KILL!', 0xff8800);
+  } else if (state.player.killStreak === 3) {
+    addNotification(state, 'TRIPLE KILL!', 0xff0000);
+  } else if (state.player.killStreak === 5) {
+    addNotification(state, 'RAMPAGE!', 0xff2222);
+  } else if (state.player.killStreak === 10) {
+    addNotification(state, 'UNSTOPPABLE!', 0xffd700);
+  }
+
   // Death particles
   spawnHitParticles(state, npc.pos, 0xcc0000, 12);
 
@@ -262,7 +275,30 @@ function resolvePlayerAttacks(state: MedievalGTAState, _dt: number): void {
   if (!attackJustStarted) return;
   if (p.state === 'dead') return;
 
-  // Determine range and damage based on weapon
+  // Sprint attack bonus: 1.5x damage when running fast
+  const speed = Math.sqrt(p.vel.x * p.vel.x + p.vel.y * p.vel.y);
+  const isSprinting = speed > GTAConfig.RUN_SPEED * 0.8;
+  const sprintMultiplier = isSprinting ? 1.5 : 1.0;
+  if (isSprinting && p.weapon !== 'bow') {
+    addNotification(state, 'Sprint attack!', 0xff8800);
+  }
+
+  // Bow: spawn projectile instead of instant hit
+  if (p.weapon === 'bow') {
+    const projSpeed = 400;
+    const proj: GTAProjectile = {
+      id: `proj_${state.nextId++}`,
+      pos: { x: p.pos.x, y: p.pos.y },
+      vel: { x: Math.cos(p.facing) * projSpeed, y: Math.sin(p.facing) * projSpeed },
+      damage: Math.floor(GTAConfig.BOW_DAMAGE * sprintMultiplier),
+      life: 2.0,
+      ownedByPlayer: true,
+    };
+    state.projectiles.push(proj);
+    return;
+  }
+
+  // Melee: determine range and damage based on weapon
   let range: number;
   let damage: number;
   const CONE_HALF_ANGLE = Math.PI / 6; // 30 degrees each side = 60 degree cone
@@ -270,16 +306,12 @@ function resolvePlayerAttacks(state: MedievalGTAState, _dt: number): void {
   switch (p.weapon) {
     case 'sword':
       range = GTAConfig.ATTACK_RANGE_MELEE + 25; // sword has extra reach
-      damage = GTAConfig.SWORD_DAMAGE;
-      break;
-    case 'bow':
-      range = GTAConfig.ATTACK_RANGE_BOW;
-      damage = GTAConfig.BOW_DAMAGE;
+      damage = Math.floor(GTAConfig.SWORD_DAMAGE * sprintMultiplier);
       break;
     case 'fists':
     default:
       range = GTAConfig.ATTACK_RANGE_MELEE;
-      damage = GTAConfig.FIST_DAMAGE;
+      damage = Math.floor(GTAConfig.FIST_DAMAGE * sprintMultiplier);
       break;
   }
 
@@ -313,11 +345,73 @@ function resolvePlayerAttacks(state: MedievalGTAState, _dt: number): void {
     }
   }
 
-  if (!hitAny && p.weapon !== 'bow') {
+  if (!hitAny) {
     // Swing miss - spawn small white particles at attack point
     const missX = p.pos.x + Math.cos(p.facing) * range * 0.7;
     const missY = p.pos.y + Math.sin(p.facing) * range * 0.7;
     spawnHitParticles(state, { x: missX, y: missY }, 0xcccccc, 2);
+  }
+}
+
+// ─── Projectile system ──────────────────────────────────────────────────────
+
+function updateProjectiles(state: MedievalGTAState, dt: number): void {
+  for (let i = state.projectiles.length - 1; i >= 0; i--) {
+    const proj = state.projectiles[i];
+
+    // Move
+    proj.pos.x += proj.vel.x * dt;
+    proj.pos.y += proj.vel.y * dt;
+
+    // Decrease life
+    proj.life -= dt;
+    if (proj.life <= 0) {
+      state.projectiles.splice(i, 1);
+      continue;
+    }
+
+    // Remove if out of world bounds
+    if (proj.pos.x < 0 || proj.pos.x > state.worldWidth || proj.pos.y < 0 || proj.pos.y > state.worldHeight) {
+      state.projectiles.splice(i, 1);
+      continue;
+    }
+
+    // Check collision with buildings (remove on hit)
+    let hitBuilding = false;
+    for (const bld of state.buildings) {
+      if (!bld.blocksMovement) continue;
+      if (proj.pos.x >= bld.x && proj.pos.x <= bld.x + bld.w &&
+          proj.pos.y >= bld.y && proj.pos.y <= bld.y + bld.h) {
+        hitBuilding = true;
+        break;
+      }
+    }
+    if (hitBuilding) {
+      spawnHitParticles(state, proj.pos, 0x888888, 3);
+      state.projectiles.splice(i, 1);
+      continue;
+    }
+
+    // Check collision with NPCs (player-owned projectiles only)
+    if (proj.ownedByPlayer) {
+      let hitNpc = false;
+      for (const [npcId, npc] of state.npcs) {
+        if (npc.dead) continue;
+        const dx = npc.pos.x - proj.pos.x;
+        const dy = npc.pos.y - proj.pos.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 12) {
+          dealDamageToNPC(state, npcId, proj.damage);
+          spawnHitParticles(state, proj.pos, 0xffff88, 5);
+          hitNpc = true;
+          break;
+        }
+      }
+      if (hitNpc) {
+        state.projectiles.splice(i, 1);
+        continue;
+      }
+    }
   }
 }
 
@@ -330,6 +424,7 @@ function resolvePlayerAttacks(state: MedievalGTAState, _dt: number): void {
 export function updateCombat(state: MedievalGTAState, dt: number): void {
   if (!state.paused && !state.gameOver) {
     resolvePlayerAttacks(state, dt);
+    updateProjectiles(state, dt);
   }
   updateParticles(state, dt);
   tickNotifications(state, dt);

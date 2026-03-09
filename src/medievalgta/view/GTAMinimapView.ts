@@ -197,6 +197,19 @@ export class GTAMinimapView {
       }
     });
 
+    // ---- Quest objective markers (gold diamonds for active quest targets) ----
+    for (const quest of state.quests) {
+      if (quest.status !== 'active') continue;
+      for (const obj of quest.objectives) {
+        if (obj.completed || !obj.targetPos) continue;
+        const qx = toMapX(obj.targetPos.x);
+        const qy = toMapY(obj.targetPos.y);
+        // Gold diamond marker
+        g.poly([qx, qy - 3, qx + 2.5, qy, qx, qy + 3, qx - 2.5, qy]).fill({ color: 0xFFDD00 });
+        g.poly([qx, qy - 3, qx + 2.5, qy, qx, qy + 3, qx - 2.5, qy]).stroke({ color: 0xAA8800, width: 0.5 });
+      }
+    }
+
     // ---- Player (bright white blinking dot) ----
     const px = toMapX(state.player.pos.x);
     const py = toMapY(state.player.pos.y);

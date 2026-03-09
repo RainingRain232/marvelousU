@@ -2,6 +2,7 @@
 import type { MedievalGTAState, GTANPC } from '../state/MedievalGTAState';
 import { GTAConfig } from '../config/MedievalGTAConfig';
 import { addNotification } from './GTACombatSystem';
+import { increaseWanted } from './GTAWantedSystem';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -193,6 +194,7 @@ function updateItemPickup(state: MedievalGTAState): void {
       }
       case 'bow': {
         p.weapon = 'bow';
+        p.hasBow = true;
         addNotification(state, 'Picked up Bow!', 0xccccff);
         _trackCollectObjective(state, 'bow', 1);
         break;
@@ -210,6 +212,11 @@ function updateItemPickup(state: MedievalGTAState): void {
       case 'letter': {
         addNotification(state, 'Picked up Letter', 0xccccff);
         _trackCollectObjective(state, 'letter', 1);
+        break;
+      }
+      case 'treasure_chest': {
+        p.gold += item.amount;
+        addNotification(state, `Found treasure chest! +${item.amount} gold!`, 0xffdd44);
         break;
       }
     }
@@ -259,6 +266,41 @@ function updateNPCInteraction(state: MedievalGTAState): void {
   // Start new dialog with E key
   const ePressed = state.interactKey && !state.lastInteractKey;
   if (!ePressed || p.dialogCooldown > 0 || p.state === 'dead') return;
+
+  // ── Tavern healing: check if near a tavern building ──
+  for (const bld of state.buildings) {
+    if (bld.type !== 'tavern') continue;
+    const cx = bld.x + bld.w / 2;
+    const cy = bld.y + bld.h / 2;
+    const d = dist(p.pos.x, p.pos.y, cx, cy);
+    if (d < 60 + Math.max(bld.w, bld.h) / 2) {
+      if (p.gold >= 10) {
+        p.gold -= 10;
+        p.hp = p.maxHp;
+        addNotification(state, 'Healed at tavern! (-10 gold)', 0x44ff44);
+        p.dialogCooldown = 0.5;
+        return;
+      } else {
+        addNotification(state, 'Not enough gold! (need 10)', 0xff4444);
+        p.dialogCooldown = 0.5;
+        return;
+      }
+    }
+  }
+
+  // ── Pickpocketing: steal from civilian/merchant from behind ──
+  if (p.pickpocketCooldown <= 0) {
+    const nearby = findNearestInteractableNPC(state, 30);
+    if (nearby && (nearby.type === 'civilian_m' || nearby.type === 'civilian_f' || nearby.type === 'merchant')) {
+      const stolen = 5 + Math.floor(Math.random() * 11); // 5-15
+      p.gold += stolen;
+      p.pickpocketCooldown = 3.0; // 3 second cooldown
+      addNotification(state, `Pickpocketed ${stolen} gold!`, 0xffdd44);
+      increaseWanted(state, 1);
+      p.dialogCooldown = 0.3;
+      return;
+    }
+  }
 
   const npc = findNearestInteractableNPC(state, GTAConfig.INTERACT_RANGE);
   if (!npc) return;
