@@ -14,7 +14,7 @@ const CY = GTAConfig.CITY_Y;
 const CW = GTAConfig.CITY_W;
 const CH = GTAConfig.CITY_H;
 const WT = GTAConfig.WALL_THICKNESS;
-const ZOOM = 1.5;
+// Camera zoom is handled by the parent GTA world container
 
 // seeded pseudo-random for deterministic decoration placement
 function mulberry32(seed: number) {
@@ -1033,15 +1033,8 @@ export class CamelotCityRenderer {
   }
 
   // ===================== UPDATE =====================
-  update(state: MedievalGTAState, screenW: number, screenH: number): void {
-    const zoom = ZOOM;
-
-    // Camera
-    this.container.position.set(
-      -state.cameraX * zoom + screenW / 2,
-      -state.cameraY * zoom + screenH / 2,
-    );
-    this.container.scale.set(zoom);
+  update(state: MedievalGTAState, _screenW: number, _screenH: number): void {
+    // Camera transform is handled by the parent GTA world container
 
     // Draw buildings (only on first call or if buildings change)
     if (this.buildingLayer.children.length === 0 && state.buildings.length > 0) {

@@ -463,6 +463,7 @@ export class MedievalGTA {
   private _charContainer: Container | null = null;
   private _hudContainer: Container | null = null;
   private _minimapContainer: Container | null = null;
+  private _gtaWorld: Container | null = null;
 
   // Event handler references (so we can remove them)
   private _onKeyDown: ((e: KeyboardEvent) => void) | null = null;
@@ -477,8 +478,13 @@ export class MedievalGTA {
   // -----------------------------------------------------------------------
 
   async boot(): Promise<void> {
-    // 1. Clear existing world layers
+    // 1. Clear existing world layers & disable ViewManager camera (WASD conflict)
     viewManager.clearWorld();
+    viewManager.camera.detach();
+    // Reset ViewManager's world container so it doesn't interfere
+    viewManager.camera.x = 0;
+    viewManager.camera.y = 0;
+    viewManager.camera.zoom = 1;
 
     // 2. Create & populate state
     this._state = initState();
@@ -504,8 +510,13 @@ export class MedievalGTA {
     this._hudContainer = this._hudView.container;
     this._minimapContainer = this._minimapView.container;
 
-    viewManager.layers.background.addChild(this._cityContainer);
-    viewManager.layers.units.addChild(this._charContainer);
+    // Use a dedicated GTA world container on the stage (bypasses ViewManager camera)
+    this._gtaWorld = new Container();
+    viewManager.app.stage.addChild(this._gtaWorld);
+    this._gtaWorld.addChild(this._cityContainer);
+    this._gtaWorld.addChild(this._charContainer);
+
+    // UI goes on top (screen-space, not world-space)
     viewManager.layers.ui.addChild(this._hudContainer);
     viewManager.layers.ui.addChild(this._minimapContainer);
 
@@ -531,15 +542,12 @@ export class MedievalGTA {
     // Remove input listeners
     this._unregisterInput();
 
-    // Remove containers from layers
-    if (this._cityContainer) {
-      this._cityContainer.removeFromParent();
-      this._cityContainer.destroy({ children: true });
+    // Remove GTA world container (city + characters)
+    if (this._gtaWorld) {
+      this._gtaWorld.removeFromParent();
+      this._gtaWorld.destroy({ children: true });
+      this._gtaWorld = null;
       this._cityContainer = null;
-    }
-    if (this._charContainer) {
-      this._charContainer.removeFromParent();
-      this._charContainer.destroy({ children: true });
       this._charContainer = null;
     }
     if (this._hudContainer) {
@@ -552,6 +560,9 @@ export class MedievalGTA {
       this._minimapContainer.destroy({ children: true });
       this._minimapContainer = null;
     }
+
+    // Re-attach ViewManager camera for other game modes
+    viewManager.camera.attach(viewManager.app.canvas as HTMLCanvasElement);
 
     // Dispatch exit event for main.ts
     window.dispatchEvent(new Event("medievalGTAExit"));
@@ -726,9 +737,15 @@ export class MedievalGTA {
     // --- Camera update (always, even when paused) ---
     this._updateCamera(state);
 
-    // --- Render update ---
+    // --- Apply camera to GTA world container ---
     const sw = viewManager.app.screen.width;
     const sh = viewManager.app.screen.height;
+    if (this._gtaWorld) {
+      this._gtaWorld.scale.set(ZOOM);
+      this._gtaWorld.position.set(-state.cameraX * ZOOM, -state.cameraY * ZOOM);
+    }
+
+    // --- Render update ---
     this._cityRenderer.update(state, sw, sh);
     this._charRenderer.update(state);
     this._hudView.update(state, sw, sh);
