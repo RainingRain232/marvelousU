@@ -24,6 +24,8 @@ import { DuelHUD } from "../view/duel/DuelHUD";
 import { DuelArenaRenderer } from "../view/duel/DuelArenaRenderer";
 import { DuelIntroView } from "../view/duel/DuelIntroView";
 import { DuelControlsView } from "../view/duel/DuelControlsView";
+import { DuelPauseMenu } from "../view/duel/DuelPauseMenu";
+import type { PauseMenuChoice } from "../view/duel/DuelPauseMenu";
 
 export class DuelGame {
   private _state: DuelState | null = null;
@@ -39,6 +41,7 @@ export class DuelGame {
   private _arenaRenderer = new DuelArenaRenderer();
   private _introView = new DuelIntroView();
   private _controlsView = new DuelControlsView();
+  private _pauseMenu = new DuelPauseMenu();
 
   // Track previous fighter HP for spark/audio effects
   private _prevHp: [number, number] = [0, 0];
@@ -49,6 +52,14 @@ export class DuelGame {
 
   // Training mode key handler
   private _trainingKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+
+  // Pause key handler
+  private _pauseKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+
+  // Store match params for restart
+  private _matchP1Id = "";
+  private _matchP2Id = "";
+  private _matchArenaId = "";
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -143,6 +154,10 @@ export class DuelGame {
   // ---- Match start ---------------------------------------------------------
 
   private _startMatch(p1Id: string, p2Id: string, arenaId: string): void {
+    this._matchP1Id = p1Id;
+    this._matchP2Id = p2Id;
+    this._matchArenaId = arenaId;
+
     const p1Def = DUEL_CHARACTERS[p1Id];
     const p2Def = DUEL_CHARACTERS[p2Id];
 
@@ -206,6 +221,9 @@ export class DuelGame {
     DuelInputSystem.init(this._state);
     DuelAISystem.reset();
 
+    // Setup pause key (ESC)
+    this._setupPauseKey();
+
     // Training mode setup
     if (this._state.gameMode === "training") {
       this._setupTrainingControls();
@@ -223,6 +241,62 @@ export class DuelGame {
     setTimeout(() => {
       this._announce("FIGHT!", 40);
     }, 1000);
+  }
+
+  private _setupPauseKey(): void {
+    this._pauseKeyHandler = (e: KeyboardEvent) => {
+      if (e.code !== "Escape") return;
+      if (!this._state) return;
+      if (this._state.phase !== DuelPhase.FIGHTING) return;
+      e.preventDefault();
+      this._showPauseMenu();
+    };
+    window.addEventListener("keydown", this._pauseKeyHandler);
+  }
+
+  private _showPauseMenu(): void {
+    if (!this._state) return;
+    this._state.isPaused = true;
+
+    // Temporarily remove the pause key listener so it doesn't interfere
+    if (this._pauseKeyHandler) {
+      window.removeEventListener("keydown", this._pauseKeyHandler);
+    }
+
+    const sw = viewManager.screenWidth;
+    const sh = viewManager.screenHeight;
+
+    this._pauseMenu.setSelectCallback((choice: PauseMenuChoice) => {
+      this._pauseMenu.hide();
+      viewManager.removeFromLayer("ui", this._pauseMenu.container);
+      this._handlePauseChoice(choice);
+    });
+
+    this._pauseMenu.show(sw, sh);
+    viewManager.addToLayer("ui", this._pauseMenu.container);
+  }
+
+  private _handlePauseChoice(choice: PauseMenuChoice): void {
+    switch (choice) {
+      case "RESUME":
+        if (this._state) this._state.isPaused = false;
+        // Re-attach pause key listener
+        if (this._pauseKeyHandler) {
+          window.addEventListener("keydown", this._pauseKeyHandler);
+        }
+        break;
+      case "RESTART MATCH":
+        this._cleanup();
+        this._startMatch(this._matchP1Id, this._matchP2Id, this._matchArenaId);
+        break;
+      case "CHARACTER SELECT":
+        this._cleanup();
+        this._showCharacterSelect();
+        break;
+      case "MAIN MENU":
+        this._endMatch();
+        break;
+    }
   }
 
   private _setupTrainingControls(): void {
@@ -502,6 +576,14 @@ export class DuelGame {
       this._trainingKeyHandler = null;
     }
 
+    if (this._pauseKeyHandler) {
+      window.removeEventListener("keydown", this._pauseKeyHandler);
+      this._pauseKeyHandler = null;
+    }
+
+    this._pauseMenu.hide();
+    viewManager.removeFromLayer("ui", this._pauseMenu.container);
+
     if (this._tickerCb) {
       viewManager.app.ticker.remove(this._tickerCb);
       this._tickerCb = null;
@@ -520,6 +602,7 @@ export class DuelGame {
     viewManager.removeFromLayer("ui", this._menuView.container);
     viewManager.removeFromLayer("ui", this._charSelect.container);
     viewManager.removeFromLayer("ui", this._controlsView.container);
+    viewManager.removeFromLayer("ui", this._pauseMenu.container);
     this._menuView.destroy();
     this._charSelect.destroy();
     this._fightView.destroy();
@@ -527,6 +610,7 @@ export class DuelGame {
     this._arenaRenderer.destroy();
     this._introView.destroy();
     this._controlsView.destroy();
+    this._pauseMenu.destroy();
   }
 }
 
