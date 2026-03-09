@@ -226,6 +226,8 @@ export interface MedievalGTAState {
   screenHeight: number;
   interactKey: boolean;
   lastInteractKey: boolean;
+  insideBuilding: string | null;
+  interiorType: GTABuildingType | null;
 }
 
 export function createMedievalGTAState(): MedievalGTAState {
@@ -307,6 +309,8 @@ export function createMedievalGTAState(): MedievalGTAState {
     screenHeight: 800,
     interactKey: false,
     lastInteractKey: false,
+    insideBuilding: null,
+    interiorType: null,
   };
 }
 

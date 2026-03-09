@@ -11,6 +11,7 @@ import type {
   GTAHorse,
   GTAItem,
   GTABuilding,
+  GTABuildingType,
   GTANPC,
   GTANPCType,
 } from "./state/MedievalGTAState";
@@ -27,6 +28,7 @@ import { CamelotCityRenderer } from "./view/CamelotCityRenderer";
 import { GTACharacterRenderer } from "./view/GTACharacterRenderer";
 import { GTAHUDView } from "./view/GTAHUDView";
 import { GTAMinimapView } from "./view/GTAMinimapView";
+import { GTAInteriorRenderer } from "./view/GTAInteriorRenderer";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -34,6 +36,12 @@ import { GTAMinimapView } from "./view/GTAMinimapView";
 
 const CAMERA_LERP = GTAConfig.CAMERA_LERP;
 const ZOOM = GTAConfig.CAMERA_ZOOM;
+
+// Building types that can be entered
+const ENTERABLE_TYPES: Set<string> = new Set([
+  'tavern', 'church', 'blacksmith_shop', 'castle', 'barracks', 'stable',
+]);
+const ENTER_DOOR_RANGE = 50;
 
 // ---------------------------------------------------------------------------
 // Helper: create an NPC instance from definitions
@@ -253,25 +261,25 @@ function populateHorses(state: MedievalGTAState): void {
 
 function populateItems(state: MedievalGTAState): void {
   const items: Array<{ type: GTAItem["type"]; x: number; y: number; amount: number }> = [
-    // Gold piles
-    { type: "gold_pile", x: 1680, y: 1380, amount: 15 },
-    { type: "gold_pile", x: 2500, y: 1100, amount: 10 },
-    { type: "gold_pile", x: 1100, y: 2000, amount: 20 },
-    { type: "gold_pile", x: 3000, y: 600, amount: 25 },
-    // Health potions
-    { type: "health_potion", x: 2250, y: 1350, amount: 1 },
-    { type: "health_potion", x: 1050, y: 1250, amount: 1 },
-    { type: "health_potion", x: 1800, y: 800, amount: 1 },
-    // Quest item: holy key for "The Holy Relic" quest (near tavern)
-    { type: "key", x: 2350, y: 1350, amount: 1 },
-    // Bow — near the barracks training yard
-    { type: "bow", x: 1650, y: 700, amount: 1 },
-    // Treasure chests in hidden/rewarding spots
-    { type: "treasure_chest", x: 950, y: 520, amount: 50 },    // Behind the castle
-    { type: "treasure_chest", x: 1000, y: 1700, amount: 30 },  // In the prison
+    // Gold piles — placed on open ground / streets
+    { type: "gold_pile", x: 1750, y: 1430, amount: 15 },   // Market square walkway
+    { type: "gold_pile", x: 2500, y: 1100, amount: 10 },   // Near cottage east
+    { type: "gold_pile", x: 1100, y: 2050, amount: 20 },   // South street
+    { type: "gold_pile", x: 3000, y: 470, amount: 25 },    // Outside NE, near wall
+    // Health potions — near buildings but outside their collision
+    { type: "health_potion", x: 2400, y: 1520, amount: 1 },  // South of tavern entrance
+    { type: "health_potion", x: 1050, y: 1520, amount: 1 },  // South of blacksmith entrance
+    { type: "health_potion", x: 1650, y: 920, amount: 1 },   // South of barracks entrance
+    // Quest item: holy key for "The Holy Relic" quest (outside tavern door)
+    { type: "key", x: 2400, y: 1520, amount: 1 },
+    // Bow — on the ground south of barracks entrance
+    { type: "bow", x: 1650, y: 920, amount: 1 },
+    // Treasure chests in accessible spots
+    { type: "treasure_chest", x: 1075, y: 1070, amount: 50 },  // South of castle entrance
+    { type: "treasure_chest", x: 1050, y: 1920, amount: 30 },  // South of prison entrance
     { type: "treasure_chest", x: 1500, y: 300, amount: 40 },   // Outside north forest
-    { type: "treasure_chest", x: 2300, y: 600, amount: 35 },   // Behind the church
-    { type: "treasure_chest", x: 1800, y: 2800, amount: 25 },  // In a farm field south
+    { type: "treasure_chest", x: 2225, y: 920, amount: 35 },   // South of church entrance
+    { type: "treasure_chest", x: 1800, y: 2800, amount: 25 },  // Farm field south
   ];
 
   for (const it of items) {
@@ -396,11 +404,19 @@ function populateBuildings(state: MedievalGTAState): void {
   blds.push(b("wall_tower", cityX + cityW - 50, cityY - 10, 60, 60, "Tower NE"));
   blds.push(b("wall_tower", cityX - 10, cityY + cityH - 50, 60, 60, "Tower SW"));
   blds.push(b("wall_tower", cityX + cityW - 50, cityY + cityH - 50, 60, 60, "Tower SE"));
-  // Intermediate towers
-  blds.push(b("wall_tower", midX - 30, cityY - 10, 60, 60, "Tower N Mid"));
-  blds.push(b("wall_tower", midX - 30, cityY + cityH - 50, 60, 60, "Tower S Mid"));
-  blds.push(b("wall_tower", cityX - 10, midY - 30, 60, 60, "Tower W Mid"));
-  blds.push(b("wall_tower", cityX + cityW - 50, midY - 30, 60, 60, "Tower E Mid"));
+  // Intermediate towers — placed BESIDE the gate openings, not on them
+  // North gate flanking towers
+  blds.push(b("wall_tower", midX - gateGap / 2 - 60, cityY - 10, 50, 50, "Tower N Gate W"));
+  blds.push(b("wall_tower", midX + gateGap / 2 + 10, cityY - 10, 50, 50, "Tower N Gate E"));
+  // South gate flanking towers
+  blds.push(b("wall_tower", midX - gateGap / 2 - 60, cityY + cityH - 40, 50, 50, "Tower S Gate W"));
+  blds.push(b("wall_tower", midX + gateGap / 2 + 10, cityY + cityH - 40, 50, 50, "Tower S Gate E"));
+  // West gate flanking towers
+  blds.push(b("wall_tower", cityX - 10, midY - gateGap / 2 - 60, 50, 50, "Tower W Gate N"));
+  blds.push(b("wall_tower", cityX - 10, midY + gateGap / 2 + 10, 50, 50, "Tower W Gate S"));
+  // East gate flanking towers
+  blds.push(b("wall_tower", cityX + cityW - 40, midY - gateGap / 2 - 60, 50, 50, "Tower E Gate N"));
+  blds.push(b("wall_tower", cityX + cityW - 40, midY + gateGap / 2 + 10, 50, 50, "Tower E Gate S"));
 
   // ---- Outside: farm fields ----
   blds.push(b("farm_field", 900, 2700, 300, 200, "Wheat Field"));
@@ -461,12 +477,14 @@ export class MedievalGTA {
   private _charRenderer!: GTACharacterRenderer;
   private _hudView!: GTAHUDView;
   private _minimapView!: GTAMinimapView;
+  private _interiorRenderer!: GTAInteriorRenderer;
 
   // Containers added to viewManager layers
   private _cityContainer: Container | null = null;
   private _charContainer: Container | null = null;
   private _hudContainer: Container | null = null;
   private _minimapContainer: Container | null = null;
+  private _interiorContainer: Container | null = null;
   private _gtaWorld: Container | null = null;
 
   // Event handler references (so we can remove them)
@@ -500,6 +518,7 @@ export class MedievalGTA {
     this._charRenderer = new GTACharacterRenderer();
     this._hudView = new GTAHUDView();
     this._minimapView = new GTAMinimapView();
+    this._interiorRenderer = new GTAInteriorRenderer();
 
     // 4. Init renderers
     const sw = viewManager.app.screen.width;
@@ -508,11 +527,13 @@ export class MedievalGTA {
     this._charRenderer.init();
     this._hudView.init(sw, sh, () => this.destroy());
     this._minimapView.init(sw, sh);
+    this._interiorRenderer.init();
 
     this._cityContainer = this._cityRenderer.container;
     this._charContainer = this._charRenderer.container;
     this._hudContainer = this._hudView.container;
     this._minimapContainer = this._minimapView.container;
+    this._interiorContainer = this._interiorRenderer.container;
 
     // Use a dedicated GTA world container on the stage (bypasses ViewManager camera)
     // Insert BEFORE the UI layer so UI renders on top of the game world
@@ -526,6 +547,9 @@ export class MedievalGTA {
     }
     this._gtaWorld.addChild(this._cityContainer);
     this._gtaWorld.addChild(this._charContainer);
+
+    // Interior renderer goes above world but below UI (screen-space)
+    viewManager.layers.ui.addChild(this._interiorContainer);
 
     // UI goes on top (screen-space, not world-space)
     viewManager.layers.ui.addChild(this._hudContainer);
@@ -560,6 +584,11 @@ export class MedievalGTA {
       this._gtaWorld = null;
       this._cityContainer = null;
       this._charContainer = null;
+    }
+    if (this._interiorContainer) {
+      this._interiorContainer.removeFromParent();
+      this._interiorContainer.destroy({ children: true });
+      this._interiorContainer = null;
     }
     if (this._hudContainer) {
       this._hudContainer.removeFromParent();
@@ -596,6 +625,33 @@ export class MedievalGTA {
         state.interactKey = true;
       }
 
+      // Building enter/exit on E
+      if (key === "e") {
+        if (state.insideBuilding !== null) {
+          // Exit building
+          state.insideBuilding = null;
+          state.interiorType = null;
+        } else if (!state.paused && !state.gameOver && !state.dialogNpcId) {
+          // Try to enter a building
+          const px = state.player.pos.x;
+          const py = state.player.pos.y;
+          for (const bld of state.buildings) {
+            if (!ENTERABLE_TYPES.has(bld.type)) continue;
+            // Door position: center-bottom of building
+            const doorX = bld.x + bld.w / 2;
+            const doorY = bld.y + bld.h;
+            const dx = px - doorX;
+            const dy = py - doorY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < ENTER_DOOR_RANGE) {
+              state.insideBuilding = bld.id;
+              state.interiorType = bld.type as GTABuildingType;
+              break;
+            }
+          }
+        }
+      }
+
       // Game-over restart
       if (state.gameOver && key === "r") {
         this._restart();
@@ -610,7 +666,10 @@ export class MedievalGTA {
 
       // Escape: toggle pause menu (or close overlays first)
       if (key === "escape") {
-        if (state.showQuestLog) {
+        if (state.insideBuilding !== null) {
+          state.insideBuilding = null;
+          state.interiorType = null;
+        } else if (state.showQuestLog) {
           state.showQuestLog = false;
         } else if (state.dialogNpcId) {
           state.dialogNpcId = null;
@@ -723,8 +782,9 @@ export class MedievalGTA {
     state.screenWidth = viewManager.app.screen.width;
     state.screenHeight = viewManager.app.screen.height;
 
-    // --- Simulation (skip if paused/game over) ---
-    if (!state.paused && !state.gameOver) {
+    // --- Simulation (skip if paused/game over/inside building) ---
+    const insideBuilding = state.insideBuilding !== null;
+    if (!state.paused && !state.gameOver && !insideBuilding) {
       // Update systems in order
       updatePlayer(state, dt);
       updateHorses(state, dt);
@@ -773,9 +833,17 @@ export class MedievalGTA {
       this._gtaWorld.position.set(-state.cameraX * ZOOM, -state.cameraY * ZOOM);
     }
 
+    // --- Show/hide world vs interior ---
+    if (this._gtaWorld) {
+      this._gtaWorld.visible = !insideBuilding;
+    }
+
     // --- Render update ---
-    this._cityRenderer.update(state, sw, sh);
-    this._charRenderer.update(state);
+    if (!insideBuilding) {
+      this._cityRenderer.update(state, sw, sh);
+      this._charRenderer.update(state);
+    }
+    this._interiorRenderer.update(state, sw, sh);
     this._hudView.update(state, sw, sh);
     this._minimapView.update(state, sw, sh);
 

@@ -74,6 +74,7 @@ function resolveAABB(
 /** Resolve player vs all buildings. */
 function resolvePlayerBuildings(pos: GTAVec2, buildings: GTABuilding[], half: number): void {
   for (const b of buildings) {
+    if (b.blocksMovement === false) continue;
     if (rectsOverlap(pos.x, pos.y, half, b.x, b.y, b.w, b.h)) {
       resolveAABB(pos, b, half);
     }
