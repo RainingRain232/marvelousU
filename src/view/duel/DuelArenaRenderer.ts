@@ -270,12 +270,14 @@ export class DuelArenaRenderer {
     g.rect(gateX - gateW / 2, gateTop + 20, gateW, gateH - 20);
     g.fill({ color: 0x1a1a22 });
     // Arch top
+    { const r = gateW / 2; g.moveTo(gateX + r * Math.cos(Math.PI), gateTop + 20 + r * Math.sin(Math.PI)); }
     g.arc(gateX, gateTop + 20, gateW / 2, Math.PI, 0);
     g.lineTo(gateX + gateW / 2, gateTop + 20);
     g.lineTo(gateX - gateW / 2, gateTop + 20);
     g.closePath();
     g.fill({ color: 0x1a1a22 });
     // Gate arch frame
+    { const r = gateW / 2 + 5; g.moveTo(gateX + r * Math.cos(Math.PI), gateTop + 20 + r * Math.sin(Math.PI)); }
     g.arc(gateX, gateTop + 20, gateW / 2 + 5, Math.PI, 0);
     g.stroke({ color: 0x7a7a72, width: 5 });
     // Vertical frame pillars
@@ -1292,8 +1294,10 @@ export class DuelArenaRenderer {
     // Vaulted ceiling arches
     for (let i = 0; i < 6; i++) {
       const cx = sw * (0.1 + i * 0.16);
+      { const r = sw * 0.09; g.moveTo(cx + r, floorY * 0.08); }
       g.arc(cx, floorY * 0.08, sw * 0.09, 0, Math.PI);
       g.stroke({ color: 0x3a2a22, width: 8 });
+      g.moveTo(cx + sw * 0.09, floorY * 0.08);
       g.arc(cx, floorY * 0.08, sw * 0.09, 0, Math.PI);
       g.stroke({ color: 0x4a3a30, width: 4 });
       // Keystone detail
@@ -1793,8 +1797,10 @@ export class DuelArenaRenderer {
       g.closePath();
       g.fill({ color: 0x2a1a33 });
       // Ornate bowl
+      g.moveTo(bx - 10, floorY - 32);
       g.arc(bx, floorY - 32, 10, Math.PI, 0);
       g.fill({ color: 0x331144 });
+      g.moveTo(bx - 12, floorY - 32);
       g.arc(bx, floorY - 32, 12, Math.PI, 0);
       g.stroke({ color: 0x441155, width: 1 });
       this._flames.push({ x: bx, y: floorY - 40, baseRadius: 7, phase: bx * 0.1 });
@@ -3012,6 +3018,7 @@ export class DuelArenaRenderer {
     g.stroke({ color: a.accentColor, width: 1 });
     // Lace edge pattern
     for (let lx = altarX - 26; lx < altarX + 26; lx += 6) {
+      g.moveTo(lx + 3, altarY - 24);
       g.arc(lx, altarY - 24, 3, 0, Math.PI);
       g.stroke({ color: 0xeeddcc, width: 0.8, alpha: 0.5 });
     }
@@ -3060,6 +3067,7 @@ export class DuelArenaRenderer {
     // Incense brazier
     const incX = altarX;
     const incY = altarY - 12;
+    g.moveTo(incX - 6, incY);
     g.arc(incX, incY, 6, Math.PI, 0);
     g.fill({ color: 0x8b7355 });
     // Incense smoke particles
@@ -4037,6 +4045,7 @@ export class DuelArenaRenderer {
       g.rect(mx - 2, floorY - 8, 4, 8);
       g.fill({ color: 0xccbb99 });
       // Cap
+      g.moveTo(mx - 7, floorY - 8);
       g.arc(mx, floorY - 8, 7, Math.PI, 0);
       g.fill({ color: 0xcc4433 });
       // Spots
@@ -4281,6 +4290,7 @@ export class DuelArenaRenderer {
     g.rect(archX + 12, cliffTop - 55, 12, 55);
     g.fill({ color: 0x6a6a62 });
     // Partial arch (broken)
+    { const r = 22; g.moveTo(archX + 2 + r * Math.cos(Math.PI), cliffTop - 50 + r * Math.sin(Math.PI)); }
     g.arc(archX + 2, cliffTop - 50, 22, Math.PI, Math.PI + 0.8);
     g.stroke({ color: 0x6a6a62, width: 10 });
 

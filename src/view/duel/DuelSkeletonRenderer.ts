@@ -480,6 +480,7 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       drawCircle(g, hx, hy - 1, hr + 2, helmCol, outline);
 
       // Helm shading — darker on back side
+      { const sa = Math.PI * 0.5; g.moveTo(hx + (hr + 1) * Math.cos(sa), hy - 1 + (hr + 1) * Math.sin(sa)); }
       g.arc(hx, hy - 1, hr + 1, Math.PI * 0.5, Math.PI * 1.5);
       g.fill({ color: darken(helmCol, 0.2), alpha: 0.3 });
 
@@ -526,6 +527,7 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       g.circle(hx, hy - 3, hr + 3);
       g.fill({ color: hairColor });
       // Hair side coverage (wraps around head more)
+      { const sa = Math.PI * 0.55; g.moveTo(hx + (hr + 2) * Math.cos(sa), hy + (hr + 2) * Math.sin(sa)); }
       g.arc(hx, hy, hr + 2, Math.PI * 0.55, Math.PI * 1.45);
       g.fill({ color: hairColor });
       // Hair texture strands
@@ -551,6 +553,7 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       drawCircle(g, hx, hy, hr, skinColor, outline);
 
       // Subtle cheek/face contour shading
+      { const sa = -Math.PI * 0.3; g.moveTo(hx + (hr - 1) * Math.cos(sa), hy + (hr - 1) * Math.sin(sa)); }
       g.arc(hx, hy, hr - 1, -Math.PI * 0.3, Math.PI * 0.3);
       g.fill({ color: lighten(skinColor, 0.08), alpha: 0.3 });
 

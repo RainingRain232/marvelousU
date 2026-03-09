@@ -790,6 +790,7 @@ export function drawIgraineExtras(
   const gemColor = isFlashing ? flashColor : 0xffddaa;
 
   // Circlet band (arc across forehead)
+  { const sa = -Math.PI * 0.85, r = hr + 2; g.moveTo(headX + r * Math.cos(sa), headY - 2 + r * Math.sin(sa)); }
   g.arc(headX, headY - 2, hr + 2, -Math.PI * 0.85, -Math.PI * 0.15);
   g.stroke({ color: circletColor, width: 3 });
 
