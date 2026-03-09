@@ -121,6 +121,7 @@ import { SurvivorGame } from "@/survivor/SurvivorGame";
 import { ColosseumGame } from "@rpg/colosseum/ColosseumGame";
 import { DuelGame } from "./duel/DuelGame";
 import { MedievalGTA } from "./medievalgta/MedievalGTA";
+import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
@@ -231,6 +232,10 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
   menuScreen.init(viewManager);
   menuScreen.hide();
 
+  // Camelot hub map screen (replaces menu as the primary mode select)
+  camelotHubScreen.init(viewManager);
+  camelotHubScreen.hide();
+
   // Settings screen
   settingsScreen.init(viewManager);
   settingsScreen.hide();
@@ -286,9 +291,40 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
   startScreen.onStart = () => {
     startScreen.hide();
     introPlayer.onDone = () => {
-      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+      camelotHubScreen.show();
     };
     introPlayer.play();
+  };
+
+  // Hub screen: clicking a building selects that game mode
+  const HUB_MODE_INDEX: Record<string, number> = {
+    [GameMode.CAMPAIGN]: 0, [GameMode.STANDARD]: 1, [GameMode.DEATHMATCH]: 2,
+    [GameMode.BATTLEFIELD]: 3, [GameMode.ROGUELIKE]: 4, [GameMode.WORLD]: 5,
+    [GameMode.WAVE]: 6, [GameMode.RPG]: 7, [GameMode.SURVIVOR]: 8,
+    [GameMode.COLOSSEUM]: 9, [GameMode.DUEL]: 10, [GameMode.MEDIEVAL_GTA]: 11,
+  };
+  // Modes that need the setup screen (not skipSetup)
+  const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
+
+  camelotHubScreen.onSelectMode = (mode) => {
+    camelotHubScreen.hide();
+    const idx = HUB_MODE_INDEX[mode];
+    if (idx !== undefined) {
+      (menuScreen as any)._selectedModeIndex = idx;
+    }
+    if (NEEDS_SETUP.has(mode)) {
+      // Show menu on the setup screen (screen 2)
+      menuScreen.show();
+      (menuScreen as any)._showScreen2();
+    } else {
+      menuScreen.onContinue?.();
+    }
+  };
+
+  // Hub screen: compass opens the classic menu
+  camelotHubScreen.onOpenMenu = () => {
+    camelotHubScreen.hide();
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
 
   // ---------------------------------------------------------------------------
