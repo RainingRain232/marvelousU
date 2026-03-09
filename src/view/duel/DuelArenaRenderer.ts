@@ -1242,6 +1242,7 @@ export class DuelArenaRenderer {
     }
   }
 
+
   // =========================================================================
   // Helper: draw a sky gradient from arena palette
   // =========================================================================
@@ -1267,12 +1268,26 @@ export class DuelArenaRenderer {
     const g = this._staticGfx;
     const floorY = this._floorY;
 
-    // Dark interior ceiling (no sky – indoors)
+    // Dark interior ceiling
     g.rect(0, 0, sw, floorY);
     g.fill({ color: a.skyTop });
     // Warm ambient light gradient from below
-    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: 0x332211, alpha: 0.3 });
+
+    // Ceiling beams (heavy timber)
+    for (let i = 0; i < 8; i++) {
+      const bx = sw * (0.06 + i * 0.13);
+      g.rect(bx - 4, 0, 8, floorY * 0.08);
+      g.fill({ color: 0x3a2a18 });
+      g.rect(bx - 3, 0, 6, floorY * 0.08);
+      g.fill({ color: 0x4a3a28, alpha: 0.5 });
+    }
+    // Cross beams
+    g.rect(0, floorY * 0.06, sw, 6);
+    g.fill({ color: 0x3a2a18 });
+    g.rect(0, floorY * 0.06, sw, 3);
+    g.fill({ color: 0x4a3a28, alpha: 0.5 });
 
     // Vaulted ceiling arches
     for (let i = 0; i < 6; i++) {
@@ -1281,17 +1296,20 @@ export class DuelArenaRenderer {
       g.stroke({ color: 0x3a2a22, width: 8 });
       g.arc(cx, floorY * 0.08, sw * 0.09, 0, Math.PI);
       g.stroke({ color: 0x4a3a30, width: 4 });
+      // Keystone detail
+      g.rect(cx - 4, floorY * 0.08 - 4, 8, 8);
+      g.fill({ color: 0x5a4a38 });
     }
     // Ceiling keystone line
     g.moveTo(0, floorY * 0.08);
     g.lineTo(sw, floorY * 0.08);
     g.stroke({ color: 0x4a3a30, width: 3 });
 
-    // Back wall
-    const wallY = floorY * 0.15;
+    // Back wall with rich stone
+    const wallY = floorY * 0.12;
     g.rect(0, wallY, sw, floorY - wallY);
     g.fill({ color: 0x443322 });
-    // Stone texture
+    // Stone block pattern
     for (let y = wallY + 10; y < floorY; y += 16) {
       g.moveTo(0, y).lineTo(sw, y);
       g.stroke({ color: 0x3a2a1a, width: 0.6, alpha: 0.4 });
@@ -1305,118 +1323,226 @@ export class DuelArenaRenderer {
       }
       sRow++;
     }
+    // Mortar highlights on wall
+    for (let y = wallY + 10; y < floorY; y += 32) {
+      g.moveTo(0, y + 1).lineTo(sw, y + 1);
+      g.stroke({ color: 0x554433, width: 0.4, alpha: 0.2 });
+    }
+
+    // Grand fireplace (center back wall)
+    const fpX = sw * 0.5;
+    const fpY = floorY * 0.45;
+    // Mantle
+    g.rect(fpX - 50, fpY - 10, 100, 10);
+    g.fill({ color: 0x5a4a38 });
+    g.rect(fpX - 52, fpY - 12, 104, 4);
+    g.fill({ color: 0x6a5a48 });
+    // Firebox
+    g.moveTo(fpX - 40, fpY);
+    g.lineTo(fpX - 35, fpY - 50);
+    g.quadraticCurveTo(fpX, fpY - 65, fpX + 35, fpY - 50);
+    g.lineTo(fpX + 40, fpY);
+    g.closePath();
+    g.fill({ color: 0x1a0a00 });
+    // Fire glow inside
+    for (let r = 30; r > 0; r -= 5) {
+      g.circle(fpX, fpY - 15, r);
+      g.fill({ color: 0xff6622, alpha: 0.008 });
+    }
+    // Logs
+    g.moveTo(fpX - 20, fpY - 5);
+    g.lineTo(fpX + 15, fpY - 8);
+    g.stroke({ color: 0x3a2a15, width: 5, cap: "round" });
+    g.moveTo(fpX - 15, fpY - 3);
+    g.lineTo(fpX + 20, fpY - 6);
+    g.stroke({ color: 0x4a3a25, width: 4, cap: "round" });
+    this._flames.push({ x: fpX, y: fpY - 20, baseRadius: 10, phase: 0 });
+    this._flames.push({ x: fpX - 8, y: fpY - 16, baseRadius: 7, phase: 1.2 });
+    this._flames.push({ x: fpX + 8, y: fpY - 16, baseRadius: 7, phase: 2.4 });
 
     // Large tapestries on back wall
-    const tapestryXs = [sw * 0.12, sw * 0.32, sw * 0.68, sw * 0.88];
+    const tapestryXs = [sw * 0.1, sw * 0.28, sw * 0.72, sw * 0.9];
     const tapColors = [0xaa2222, 0x2244aa, 0xaa2222, 0x2244aa];
     for (let i = 0; i < tapestryXs.length; i++) {
       const tx = tapestryXs[i];
-      const ty = wallY + 20;
-      const tw = 40;
-      const th = 80;
-      // Rod
-      g.rect(tx - tw / 2 - 4, ty - 4, tw + 8, 4);
+      const ty = wallY + 15;
+      const tw = 44;
+      const th = 90;
+      // Rod with finials
+      g.rect(tx - tw / 2 - 6, ty - 5, tw + 12, 5);
+      g.fill({ color: 0x8b7355 });
+      g.circle(tx - tw / 2 - 6, ty - 2, 3);
+      g.fill({ color: 0x8b7355 });
+      g.circle(tx + tw / 2 + 6, ty - 2, 3);
       g.fill({ color: 0x8b7355 });
       // Tapestry body
       g.rect(tx - tw / 2, ty, tw, th);
       g.fill({ color: tapColors[i] });
-      // Gold border
+      // Gold border with inner border
       g.rect(tx - tw / 2, ty, tw, th);
       g.stroke({ color: a.accentColor, width: 2 });
+      g.rect(tx - tw / 2 + 4, ty + 4, tw - 8, th - 8);
+      g.stroke({ color: a.accentColor, width: 1, alpha: 0.4 });
       // Central emblem (shield shape)
       g.moveTo(tx, ty + 15);
-      g.lineTo(tx - 10, ty + 25);
-      g.lineTo(tx - 10, ty + 45);
-      g.lineTo(tx, ty + 55);
-      g.lineTo(tx + 10, ty + 45);
-      g.lineTo(tx + 10, ty + 25);
+      g.lineTo(tx - 12, ty + 28);
+      g.lineTo(tx - 12, ty + 50);
+      g.lineTo(tx, ty + 62);
+      g.lineTo(tx + 12, ty + 50);
+      g.lineTo(tx + 12, ty + 28);
       g.closePath();
-      g.fill({ color: a.accentColor, alpha: 0.5 });
-      // Fringe at bottom
-      for (let fx = tx - tw / 2 + 3; fx < tx + tw / 2; fx += 5) {
-        g.moveTo(fx, ty + th);
-        g.lineTo(fx, ty + th + 6);
-        g.stroke({ color: a.accentColor, width: 1, alpha: 0.6 });
+      g.fill({ color: a.accentColor, alpha: 0.4 });
+      g.stroke({ color: a.accentColor, width: 1, alpha: 0.6 });
+      // Cross or crown on emblem
+      if (i % 2 === 0) {
+        g.rect(tx - 1, ty + 22, 2, 20);
+        g.fill({ color: a.accentColor, alpha: 0.6 });
+        g.rect(tx - 6, ty + 30, 12, 2);
+        g.fill({ color: a.accentColor, alpha: 0.6 });
+      } else {
+        // Crown
+        g.moveTo(tx - 8, ty + 42);
+        g.lineTo(tx - 6, ty + 30);
+        g.lineTo(tx - 2, ty + 36);
+        g.lineTo(tx, ty + 28);
+        g.lineTo(tx + 2, ty + 36);
+        g.lineTo(tx + 6, ty + 30);
+        g.lineTo(tx + 8, ty + 42);
+        g.closePath();
+        g.fill({ color: a.accentColor, alpha: 0.5 });
       }
-      // Register for banner sway animation
+      // Fringe
+      for (let fx = tx - tw / 2 + 3; fx < tx + tw / 2; fx += 4) {
+        g.moveTo(fx, ty + th);
+        g.lineTo(fx, ty + th + 8);
+        g.stroke({ color: a.accentColor, width: 1, alpha: 0.5 });
+      }
       this._banners.push({
         x: tx - tw / 2, y: ty, width: tw, height: th,
         phase: i * 1.5, color: tapColors[i], trimColor: a.accentColor,
       });
     }
 
+    // Weapon displays between tapestries
+    for (const wx of [sw * 0.19, sw * 0.81]) {
+      const wy = wallY + 40;
+      // Shield
+      g.circle(wx, wy, 12);
+      g.fill({ color: 0x883322 });
+      g.circle(wx, wy, 12);
+      g.stroke({ color: 0x665522, width: 2 });
+      g.circle(wx, wy, 4);
+      g.fill({ color: 0xbbaa55 });
+      // Crossed swords behind shield
+      g.moveTo(wx - 18, wy - 18);
+      g.lineTo(wx + 18, wy + 18);
+      g.stroke({ color: 0x999999, width: 2 });
+      g.moveTo(wx + 18, wy - 18);
+      g.lineTo(wx - 18, wy + 18);
+      g.stroke({ color: 0x999999, width: 2 });
+    }
+
     // Round table in background (perspective ellipse)
     const tableX = sw * 0.5;
-    const tableY = floorY * 0.72;
-    const tableRX = sw * 0.22;
-    const tableRY = 18;
+    const tableY = floorY * 0.74;
+    const tableRX = sw * 0.24;
+    const tableRY = 20;
     // Table shadow
-    g.ellipse(tableX, tableY + 6, tableRX + 4, tableRY + 2);
+    g.ellipse(tableX, tableY + 8, tableRX + 6, tableRY + 3);
     g.fill({ color: 0x000000, alpha: 0.2 });
-    // Table body (thick wooden ring)
+    // Table body — outer ring
     g.ellipse(tableX, tableY, tableRX, tableRY);
     g.fill({ color: 0x5a3a1a });
     g.ellipse(tableX, tableY, tableRX, tableRY);
     g.stroke({ color: 0x4a2a0a, width: 3 });
-    // Inner gap (the round table's open center)
-    g.ellipse(tableX, tableY, tableRX * 0.65, tableRY * 0.6);
+    // Wood grain ring
+    g.ellipse(tableX, tableY, tableRX * 0.85, tableRY * 0.8);
+    g.stroke({ color: 0x6a4a2a, width: 1, alpha: 0.3 });
+    // Inner gap (open center)
+    g.ellipse(tableX, tableY, tableRX * 0.6, tableRY * 0.55);
     g.fill({ color: 0x443322 });
-    // Table highlight
-    g.ellipse(tableX, tableY - 2, tableRX * 0.9, tableRY * 0.5);
-    g.stroke({ color: 0x7a5a3a, width: 1, alpha: 0.4 });
+    // Gold Pendragon crest inlay on table
+    g.ellipse(tableX, tableY, tableRX * 0.75, tableRY * 0.7);
+    g.stroke({ color: a.accentColor, width: 1.5, alpha: 0.2 });
 
-    // Chairs around the table (small rectangles)
-    for (let i = 0; i < 10; i++) {
-      const angle = (i / 10) * Math.PI * 2;
-      const cx = tableX + Math.cos(angle) * (tableRX + 14);
-      const cy = tableY + Math.sin(angle) * (tableRY + 10);
-      g.roundRect(cx - 4, cy - 6, 8, 12, 2);
+    // Chairs with high backs
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const cx = tableX + Math.cos(angle) * (tableRX + 16);
+      const cy = tableY + Math.sin(angle) * (tableRY + 12);
+      // Chair back
+      g.roundRect(cx - 5, cy - 10, 10, 16, 2);
       g.fill({ color: 0x4a2a12 });
+      g.roundRect(cx - 5, cy - 10, 10, 16, 2);
+      g.stroke({ color: 0x3a1a08, width: 0.5 });
+      // Seat cushion
+      g.roundRect(cx - 4, cy + 2, 8, 4, 1);
+      g.fill({ color: 0x882222, alpha: 0.5 });
     }
 
     // Candelabras on table
-    const candleXs = [tableX - tableRX * 0.4, tableX, tableX + tableRX * 0.4];
+    const candleXs = [tableX - tableRX * 0.45, tableX - tableRX * 0.15, tableX + tableRX * 0.15, tableX + tableRX * 0.45];
     for (const cx of candleXs) {
-      // Base
-      g.rect(cx - 3, tableY - 10, 6, 10);
+      // Ornate base
+      g.moveTo(cx - 5, tableY - 4);
+      g.lineTo(cx - 3, tableY - 12);
+      g.lineTo(cx + 3, tableY - 12);
+      g.lineTo(cx + 5, tableY - 4);
+      g.closePath();
       g.fill({ color: 0x8b7355 });
-      // Candle
-      g.rect(cx - 1.5, tableY - 20, 3, 10);
-      g.fill({ color: 0xeeddcc });
-      this._flames.push({ x: cx, y: tableY - 24, baseRadius: 4, phase: cx * 0.2 });
+      // Arms (3 candle holders)
+      for (const off of [-6, 0, 6]) {
+        g.rect(cx + off - 1, tableY - 22, 2, 10);
+        g.fill({ color: 0xeeddcc });
+        this._flames.push({ x: cx + off, y: tableY - 25, baseRadius: 3.5, phase: (cx + off) * 0.2 });
+      }
+      // Horizontal arm
+      g.moveTo(cx - 7, tableY - 14);
+      g.lineTo(cx + 7, tableY - 14);
+      g.stroke({ color: 0x8b7355, width: 2 });
     }
 
     // Wall sconce torches
-    const sconces = [sw * 0.04, sw * 0.22, sw * 0.5, sw * 0.78, sw * 0.96];
+    const sconces = [sw * 0.04, sw * 0.19, sw * 0.38, sw * 0.62, sw * 0.81, sw * 0.96];
     for (const sx of sconces) {
-      const sy = wallY + 50;
-      g.rect(sx - 2, sy, 4, 15);
+      const sy = wallY + 45;
+      // Bracket
+      g.moveTo(sx, sy + 15);
+      g.lineTo(sx - 6, sy + 8);
+      g.lineTo(sx, sy);
+      g.lineTo(sx + 6, sy + 8);
+      g.closePath();
       g.fill({ color: 0x3a3a3a });
-      g.rect(sx - 5, sy + 10, 10, 3);
-      g.fill({ color: 0x3a3a3a });
-      g.rect(sx - 1.5, sy - 8, 3, 12);
+      // Torch
+      g.rect(sx - 1.5, sy - 10, 3, 14);
       g.fill({ color: 0x6b4c2a });
-      this._flames.push({ x: sx, y: sy - 12, baseRadius: 5, phase: sx * 0.15 });
-      // Glow
-      for (let r = 35; r > 0; r -= 5) {
-        g.circle(sx, sy - 12, r);
-        g.fill({ color: 0xff8833, alpha: 0.006 });
+      this._flames.push({ x: sx, y: sy - 14, baseRadius: 5, phase: sx * 0.15 });
+      // Warm glow pools
+      for (let r = 40; r > 0; r -= 5) {
+        g.circle(sx, sy - 14, r);
+        g.fill({ color: 0xff8833, alpha: 0.005 });
       }
     }
 
-    // Stone floor with rich tiles
+    // Carpet runner on floor (red with gold trim)
+    g.rect(sw * 0.35, floorY, sw * 0.3, sh - floorY);
+    g.fill({ color: 0x882222, alpha: 0.15 });
+    g.rect(sw * 0.35, floorY, 3, sh - floorY);
+    g.fill({ color: a.accentColor, alpha: 0.1 });
+    g.rect(sw * 0.65 - 3, floorY, 3, sh - floorY);
+    g.fill({ color: a.accentColor, alpha: 0.1 });
+
+    // Stone floor with rich tile pattern
     g.rect(0, floorY, sw, sh - floorY);
     g.fill({ color: a.groundColor });
     g.rect(0, floorY, sw, 3);
     g.fill({ color: a.groundHighlight, alpha: 0.5 });
-    // Tile pattern
     let tRow = 0;
     for (let y = floorY + 2; y < sh; y += 20) {
       const off = (tRow % 2) * 20;
       for (let x = off; x < sw; x += 40) {
         g.roundRect(x + 1, y + 1, 38, 18, 1);
         g.stroke({ color: a.groundHighlight, width: 0.5, alpha: 0.2 });
-        // Alternating dark tiles
         if ((Math.floor(x / 40) + tRow) % 2 === 0) {
           g.roundRect(x + 1, y + 1, 38, 18, 1);
           g.fill({ color: 0x000000, alpha: 0.06 });
@@ -1424,34 +1550,48 @@ export class DuelArenaRenderer {
       }
       tRow++;
     }
+    // Light pools on floor from torches
+    for (const sx of sconces) {
+      g.ellipse(sx, floorY + 8, 25, 6);
+      g.fill({ color: 0xff8833, alpha: 0.03 });
+    }
 
-    // Fog / warm ambient
-    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
+    // Warm fog
+    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
   private _update_round_table(time: number): void {
     const g = this._animGfx;
-    // Flames
+    // Flames (all torches + candelabras + fireplace)
     for (const f of this._flames) {
       const flicker = Math.sin(time * 8 + f.phase) * 2;
       const flicker2 = Math.cos(time * 12 + f.phase * 1.7) * 1.5;
-      g.circle(f.x + flicker2 * 0.3, f.y - 2, f.baseRadius + 3 + Math.sin(time * 5 + f.phase) * 1);
-      g.fill({ color: 0xff6600, alpha: 0.12 });
-      g.ellipse(f.x + flicker2 * 0.5, f.y - flicker * 0.5, f.baseRadius, f.baseRadius + 2 + flicker);
-      g.fill({ color: 0xff6611, alpha: 0.7 });
-      g.ellipse(f.x, f.y - 1, f.baseRadius * 0.5, f.baseRadius + flicker * 0.3);
-      g.fill({ color: 0xffdd44, alpha: 0.9 });
+      // Outer glow
+      g.circle(f.x + flicker2 * 0.3, f.y - 2, f.baseRadius + 4 + Math.sin(time * 5 + f.phase) * 1.5);
+      g.fill({ color: 0xff6600, alpha: 0.1 });
+      // Flame body
+      g.ellipse(f.x + flicker2 * 0.5, f.y - flicker * 0.5, f.baseRadius * 0.8, f.baseRadius + 2.5 + flicker);
+      g.fill({ color: 0xff6611, alpha: 0.65 });
+      // Inner bright
+      g.ellipse(f.x, f.y - 1, f.baseRadius * 0.4, f.baseRadius * 0.8 + flicker * 0.3);
+      g.fill({ color: 0xffdd44, alpha: 0.85 });
+      // Hot core
       g.circle(f.x, f.y + 1, 1.5);
       g.fill({ color: 0xffffcc, alpha: 0.9 });
     }
     // Subtle tapestry sway
     for (const b of this._banners) {
       const sway = Math.sin(time * 0.8 + b.phase) * 1.5;
-      // Just re-draw slight highlight shift
       g.rect(b.x + sway * 0.3, b.y + b.height * 0.3, b.width * 0.3, b.height * 0.4);
       g.fill({ color: 0xffffff, alpha: 0.02 + Math.sin(time + b.phase) * 0.01 });
     }
+    // Fireplace glow pulse
+    const fpX = this._sw * 0.5;
+    const fpY = this._floorY * 0.45;
+    const pulse = 0.04 + Math.sin(time * 1.2) * 0.02;
+    g.circle(fpX, fpY - 15, 35);
+    g.fill({ color: 0xff6622, alpha: pulse });
   }
 
   // =========================================================================
@@ -1465,117 +1605,214 @@ export class DuelArenaRenderer {
     // Very dark interior
     this._drawSkyGradient(g, a, sw, floorY, 10);
 
+    // Corrupted ceiling with hanging stalactite formations
+    for (let i = 0; i < 10; i++) {
+      const cx = sw * (0.05 + i * 0.1);
+      const cLen = 15 + Math.sin(i * 3.7) * 10;
+      g.moveTo(cx - 3, 0);
+      g.lineTo(cx, cLen);
+      g.lineTo(cx + 3, 0);
+      g.closePath();
+      g.fill({ color: 0x1a1025, alpha: 0.6 });
+    }
+
     // Back wall — dark stone with purple veins
-    const wallY = floorY * 0.2;
+    const wallY = floorY * 0.18;
     g.rect(0, wallY, sw, floorY - wallY);
     g.fill({ color: 0x1a1122 });
-    // Stone texture
+    // Stone texture with varying darkness
     for (let y = wallY + 12; y < floorY; y += 14) {
       g.moveTo(0, y).lineTo(sw, y);
       g.stroke({ color: 0x151020, width: 0.7, alpha: 0.5 });
     }
-    // Purple corruption veins on walls
+    let mRow = 0;
+    for (let y = wallY; y < floorY; y += 14) {
+      const off = (mRow % 2) * 18;
+      for (let x = off; x < sw; x += 36) {
+        g.moveTo(x, y).lineTo(x, y + 14);
+        g.stroke({ color: 0x151020, width: 0.4, alpha: 0.3 });
+      }
+      mRow++;
+    }
+
+    // Purple corruption veins — more extensive network
     const veins = [
-      [sw * 0.1, wallY + 30, sw * 0.15, floorY - 10],
-      [sw * 0.3, wallY + 50, sw * 0.28, floorY - 20],
-      [sw * 0.7, wallY + 20, sw * 0.72, floorY - 15],
-      [sw * 0.9, wallY + 40, sw * 0.88, floorY - 10],
+      [sw * 0.08, wallY + 20, sw * 0.12, floorY - 10],
+      [sw * 0.22, wallY + 40, sw * 0.2, floorY - 20],
+      [sw * 0.35, wallY + 15, sw * 0.38, floorY * 0.7],
+      [sw * 0.48, wallY + 50, sw * 0.5, floorY - 15],
+      [sw * 0.62, wallY + 10, sw * 0.6, floorY - 25],
+      [sw * 0.75, wallY + 35, sw * 0.78, floorY - 10],
+      [sw * 0.88, wallY + 25, sw * 0.85, floorY - 15],
     ];
     for (const [x1, y1, x2, y2] of veins) {
+      // Main vein
       g.moveTo(x1, y1);
       g.quadraticCurveTo(x1 + 20, (y1 + y2) / 2, x2, y2);
-      g.stroke({ color: 0x6622aa, width: 2, alpha: 0.3 });
-      g.moveTo(x1 + 2, y1 + 5);
-      g.quadraticCurveTo(x1 + 18, (y1 + y2) / 2 + 10, x2 - 5, y2);
-      g.stroke({ color: 0x8833cc, width: 1, alpha: 0.2 });
+      g.stroke({ color: 0x6622aa, width: 2.5, alpha: 0.3 });
+      // Glow around vein
+      g.moveTo(x1, y1);
+      g.quadraticCurveTo(x1 + 20, (y1 + y2) / 2, x2, y2);
+      g.stroke({ color: 0x8833cc, width: 5, alpha: 0.06 });
+      // Branch veins
+      const midX = (x1 + x2) / 2 + 10;
+      const midY = (y1 + y2) / 2;
+      g.moveTo(midX, midY);
+      g.lineTo(midX + 15, midY - 20);
+      g.stroke({ color: 0x6622aa, width: 1.5, alpha: 0.2 });
+      g.moveTo(midX, midY + 15);
+      g.lineTo(midX - 12, midY + 30);
+      g.stroke({ color: 0x6622aa, width: 1, alpha: 0.15 });
     }
 
     // Massive dark throne in center background
     const throneX = sw * 0.5;
-    const throneY = wallY + 20;
-    // Throne back (tall, pointed)
-    g.moveTo(throneX - 35, floorY - 5);
-    g.lineTo(throneX - 30, throneY + 30);
-    g.lineTo(throneX - 20, throneY);
-    g.lineTo(throneX - 8, throneY - 20);
-    g.lineTo(throneX, throneY - 30);
-    g.lineTo(throneX + 8, throneY - 20);
-    g.lineTo(throneX + 20, throneY);
-    g.lineTo(throneX + 30, throneY + 30);
-    g.lineTo(throneX + 35, floorY - 5);
+    const throneY = wallY + 15;
+    // Throne back (tall, pointed, more ornate)
+    g.moveTo(throneX - 40, floorY - 5);
+    g.lineTo(throneX - 35, throneY + 35);
+    g.lineTo(throneX - 25, throneY + 5);
+    g.lineTo(throneX - 15, throneY - 10);
+    g.lineTo(throneX - 8, throneY - 25);
+    g.lineTo(throneX, throneY - 35);
+    g.lineTo(throneX + 8, throneY - 25);
+    g.lineTo(throneX + 15, throneY - 10);
+    g.lineTo(throneX + 25, throneY + 5);
+    g.lineTo(throneX + 35, throneY + 35);
+    g.lineTo(throneX + 40, floorY - 5);
     g.closePath();
     g.fill({ color: 0x1a1025 });
-    g.moveTo(throneX - 35, floorY - 5);
-    g.lineTo(throneX - 30, throneY + 30);
-    g.lineTo(throneX - 20, throneY);
-    g.lineTo(throneX - 8, throneY - 20);
-    g.lineTo(throneX, throneY - 30);
-    g.lineTo(throneX + 8, throneY - 20);
-    g.lineTo(throneX + 20, throneY);
-    g.lineTo(throneX + 30, throneY + 30);
-    g.lineTo(throneX + 35, floorY - 5);
+    // Throne outline
+    g.moveTo(throneX - 40, floorY - 5);
+    g.lineTo(throneX - 35, throneY + 35);
+    g.lineTo(throneX - 25, throneY + 5);
+    g.lineTo(throneX - 15, throneY - 10);
+    g.lineTo(throneX - 8, throneY - 25);
+    g.lineTo(throneX, throneY - 35);
+    g.lineTo(throneX + 8, throneY - 25);
+    g.lineTo(throneX + 15, throneY - 10);
+    g.lineTo(throneX + 25, throneY + 5);
+    g.lineTo(throneX + 35, throneY + 35);
+    g.lineTo(throneX + 40, floorY - 5);
     g.stroke({ color: 0x331155, width: 2 });
     // Throne seat
-    g.rect(throneX - 22, floorY * 0.6, 44, 14);
+    g.rect(throneX - 24, floorY * 0.58, 48, 16);
     g.fill({ color: 0x221133 });
-    // Skull motifs
-    for (const sx of [throneX - 15, throneX + 15]) {
-      g.circle(sx, throneY + 40, 5);
+    g.rect(throneX - 24, floorY * 0.58, 48, 16);
+    g.stroke({ color: 0x331144, width: 1 });
+    // Armrests
+    g.rect(throneX - 28, floorY * 0.56, 8, 22);
+    g.fill({ color: 0x1a1025 });
+    g.rect(throneX + 20, floorY * 0.56, 8, 22);
+    g.fill({ color: 0x1a1025 });
+    // Skull motifs on armrests and throne
+    for (const sx of [throneX - 18, throneX + 18, throneX - 24, throneX + 24]) {
+      const sy = throneY + 40;
+      g.circle(sx, sy, 5);
       g.fill({ color: 0x443355 });
-      g.circle(sx - 2, throneY + 38, 1.2);
+      g.circle(sx - 2, sy - 2, 1.2);
       g.fill({ color: 0x220033 });
-      g.circle(sx + 2, throneY + 38, 1.2);
+      g.circle(sx + 2, sy - 2, 1.2);
       g.fill({ color: 0x220033 });
+      g.moveTo(sx - 2, sy + 2);
+      g.lineTo(sx + 2, sy + 2);
+      g.stroke({ color: 0x220033, width: 0.8 });
     }
-    // Glowing eye on throne top
-    g.circle(throneX, throneY - 22, 4);
+    // Glowing evil eye on throne top
+    g.circle(throneX, throneY - 27, 5);
     g.fill({ color: a.accentColor, alpha: 0.6 });
-    for (let r = 15; r > 0; r -= 3) {
-      g.circle(throneX, throneY - 22, r);
-      g.fill({ color: a.accentColor, alpha: 0.01 });
+    for (let r = 20; r > 0; r -= 3) {
+      g.circle(throneX, throneY - 27, r);
+      g.fill({ color: a.accentColor, alpha: 0.012 });
+    }
+    // Slit pupil
+    g.moveTo(throneX, throneY - 31);
+    g.lineTo(throneX, throneY - 23);
+    g.stroke({ color: 0x110011, width: 2, alpha: 0.8 });
+
+    // Dark pillars with gargoyles
+    for (const px of [sw * 0.12, sw * 0.88]) {
+      g.rect(px - 14, wallY, 28, floorY - wallY);
+      g.fill({ color: 0x1a1025 });
+      g.rect(px - 16, wallY, 32, 12);
+      g.fill({ color: 0x221133 });
+      g.rect(px - 16, floorY - 12, 32, 12);
+      g.fill({ color: 0x221133 });
+      // Pillar detail lines
+      g.rect(px - 2, wallY + 12, 4, floorY - wallY - 24);
+      g.fill({ color: 0x151020, alpha: 0.5 });
+      // Gargoyle at top
+      g.circle(px, wallY + 22, 8);
+      g.fill({ color: 0x2a1a33 });
+      g.circle(px - 3, wallY + 20, 1.5);
+      g.fill({ color: 0xcc44ff, alpha: 0.3 });
+      g.circle(px + 3, wallY + 20, 1.5);
+      g.fill({ color: 0xcc44ff, alpha: 0.3 });
+      // Purple rune on pillar
+      g.circle(px, wallY + (floorY - wallY) * 0.4, 8);
+      g.stroke({ color: a.accentColor, width: 1, alpha: 0.2 });
+      g.circle(px, wallY + (floorY - wallY) * 0.4, 4);
+      g.fill({ color: a.accentColor, alpha: 0.3 });
     }
 
-    // Pillars
-    for (const px of [sw * 0.15, sw * 0.85]) {
-      g.rect(px - 12, wallY, 24, floorY - wallY);
-      g.fill({ color: 0x1a1025 });
-      g.rect(px - 14, wallY, 28, 10);
-      g.fill({ color: 0x221133 });
-      g.rect(px - 14, floorY - 10, 28, 10);
-      g.fill({ color: 0x221133 });
-      // Purple rune on pillar
-      g.circle(px, wallY + (floorY - wallY) * 0.4, 6);
-      g.fill({ color: a.accentColor, alpha: 0.2 });
-      g.circle(px, wallY + (floorY - wallY) * 0.4, 3);
-      g.fill({ color: a.accentColor, alpha: 0.4 });
+    // Additional wall pillars
+    for (const px of [sw * 0.32, sw * 0.68]) {
+      g.rect(px - 10, wallY, 20, floorY - wallY);
+      g.fill({ color: 0x151020 });
+      g.rect(px - 12, wallY, 24, 8);
+      g.fill({ color: 0x1a1128 });
+      g.rect(px - 12, floorY - 8, 24, 8);
+      g.fill({ color: 0x1a1128 });
+    }
+
+    // Corrupted banners
+    for (const bx of [sw * 0.22, sw * 0.78]) {
+      const by = wallY + 25;
+      g.rect(bx - 15, by, 30, 60);
+      g.fill({ color: 0x220033 });
+      g.rect(bx - 15, by, 30, 60);
+      g.stroke({ color: 0x331144, width: 1 });
+      // Torn bottom edge
+      for (let i = 0; i < 6; i++) {
+        g.moveTo(bx - 15 + i * 6, by + 60);
+        g.lineTo(bx - 12 + i * 6, by + 65 + (i % 2) * 5);
+        g.lineTo(bx - 9 + i * 6, by + 60);
+        g.fill({ color: 0x220033 });
+      }
+      // Skull emblem
+      g.circle(bx, by + 25, 8);
+      g.fill({ color: 0x443355, alpha: 0.5 });
     }
 
     // Purple flame braziers
-    for (const bx of [sw * 0.25, sw * 0.75]) {
-      // Brazier stand
+    for (const bx of [sw * 0.22, sw * 0.42, sw * 0.58, sw * 0.78]) {
       g.moveTo(bx - 8, floorY);
-      g.lineTo(bx - 5, floorY - 30);
-      g.lineTo(bx + 5, floorY - 30);
+      g.lineTo(bx - 5, floorY - 32);
+      g.lineTo(bx + 5, floorY - 32);
       g.lineTo(bx + 8, floorY);
       g.closePath();
       g.fill({ color: 0x2a1a33 });
-      // Bowl
-      g.arc(bx, floorY - 30, 10, Math.PI, 0);
+      // Ornate bowl
+      g.arc(bx, floorY - 32, 10, Math.PI, 0);
       g.fill({ color: 0x331144 });
-      this._flames.push({ x: bx, y: floorY - 38, baseRadius: 7, phase: bx * 0.1 });
+      g.arc(bx, floorY - 32, 12, Math.PI, 0);
+      g.stroke({ color: 0x441155, width: 1 });
+      this._flames.push({ x: bx, y: floorY - 40, baseRadius: 7, phase: bx * 0.1 });
     }
 
-    // Cracked floor
+    // Cracked floor with purple glow
     g.rect(0, floorY, sw, sh - floorY);
     g.fill({ color: a.groundColor });
     g.rect(0, floorY, sw, 3);
-    g.fill({ color: a.groundHighlight, alpha: 0.5 });
-    // Cracks
+    g.fill({ color: a.groundHighlight, alpha: 0.4 });
+    // Extensive cracks
     const cracks = [
-      [sw * 0.15, floorY + 3, sw * 0.25, floorY + 15, sw * 0.2, floorY + 25],
-      [sw * 0.4, floorY + 5, sw * 0.5, floorY + 12, sw * 0.55, floorY + 20],
-      [sw * 0.65, floorY + 2, sw * 0.7, floorY + 18, sw * 0.75, floorY + 10],
-      [sw * 0.85, floorY + 8, sw * 0.9, floorY + 20, sw * 0.88, floorY + 28],
+      [sw * 0.1, floorY + 2, sw * 0.18, floorY + 14, sw * 0.15, floorY + 22],
+      [sw * 0.25, floorY + 4, sw * 0.35, floorY + 10, sw * 0.4, floorY + 18],
+      [sw * 0.45, floorY + 3, sw * 0.5, floorY + 15, sw * 0.48, floorY + 24],
+      [sw * 0.55, floorY + 5, sw * 0.62, floorY + 12, sw * 0.65, floorY + 20],
+      [sw * 0.7, floorY + 2, sw * 0.78, floorY + 16, sw * 0.75, floorY + 8],
+      [sw * 0.82, floorY + 6, sw * 0.88, floorY + 18, sw * 0.9, floorY + 25],
     ];
     for (const [x1, y1, x2, y2, x3, y3] of cracks) {
       g.moveTo(x1, y1);
@@ -1585,34 +1822,53 @@ export class DuelArenaRenderer {
       // Purple glow in cracks
       g.moveTo(x1, y1);
       g.lineTo(x2, y2);
-      g.stroke({ color: a.accentColor, width: 0.8, alpha: 0.2 });
+      g.stroke({ color: a.accentColor, width: 3, alpha: 0.08 });
+      g.moveTo(x1, y1);
+      g.lineTo(x2, y2);
+      g.stroke({ color: a.accentColor, width: 0.8, alpha: 0.25 });
+    }
+    // Corruption puddles on floor
+    for (let i = 0; i < 4; i++) {
+      const px = sw * (0.2 + i * 0.2);
+      g.ellipse(px, floorY + 8, 12, 4);
+      g.fill({ color: 0x330044, alpha: 0.2 });
+      g.ellipse(px, floorY + 8, 8, 2.5);
+      g.fill({ color: a.accentColor, alpha: 0.06 });
     }
 
-    // Register purple smoke particles
-    for (let i = 0; i < 20; i++) {
+    // Purple smoke particles
+    for (let i = 0; i < 25; i++) {
       this._particles.push({
-        x: Math.random() * sw, y: floorY * 0.5 + Math.random() * floorY * 0.4,
+        x: Math.random() * sw, y: floorY * 0.4 + Math.random() * floorY * 0.5,
         vx: (Math.random() - 0.5) * 0.15, vy: -0.1 - Math.random() * 0.15,
-        radius: 1.5 + Math.random() * 2, alpha: 0.15 + Math.random() * 0.2,
+        radius: 1.5 + Math.random() * 2.5, alpha: 0.12 + Math.random() * 0.2,
         phase: Math.random() * Math.PI * 2, color: a.accentColor,
       });
     }
-    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    // Mist layers
+    for (let i = 0; i < 3; i++) {
+      this._mistLayers.push({
+        y: floorY - 8 + i * 10, speed: 0.15 + i * 0.05,
+        offset: i * 70, alpha: 0.04, height: 20 + i * 5,
+      });
+    }
+    g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
   private _update_mordred_throne(time: number): void {
     const g = this._animGfx;
+    const sw = this._sw;
     // Purple flames
     for (const f of this._flames) {
       const flicker = Math.sin(time * 7 + f.phase) * 2.5;
       const flicker2 = Math.cos(time * 11 + f.phase * 1.5) * 1.5;
       g.circle(f.x + flicker2 * 0.3, f.y - 2, f.baseRadius + 5 + Math.sin(time * 4 + f.phase) * 2);
-      g.fill({ color: 0x6622cc, alpha: 0.12 });
+      g.fill({ color: 0x6622cc, alpha: 0.1 });
       g.ellipse(f.x + flicker2 * 0.5, f.y - flicker * 0.4, f.baseRadius, f.baseRadius + 3 + flicker);
-      g.fill({ color: 0x7733dd, alpha: 0.65 });
+      g.fill({ color: 0x7733dd, alpha: 0.6 });
       g.ellipse(f.x, f.y, f.baseRadius * 0.5, f.baseRadius + flicker * 0.3);
-      g.fill({ color: 0xcc66ff, alpha: 0.85 });
+      g.fill({ color: 0xcc66ff, alpha: 0.8 });
       g.circle(f.x, f.y + 1, 2);
       g.fill({ color: 0xeeccff, alpha: 0.9 });
     }
@@ -1620,17 +1876,26 @@ export class DuelArenaRenderer {
     for (const p of this._particles) {
       p.x += p.vx + Math.sin(time * 1.2 + p.phase) * 0.15;
       p.y += p.vy;
-      if (p.y < this._floorY * 0.2) { p.y = this._floorY * 0.9; p.x = Math.random() * this._sw; }
+      if (p.y < this._floorY * 0.15) { p.y = this._floorY * 0.85; p.x = Math.random() * sw; }
       const pulse = p.alpha * (0.4 + Math.sin(time * 2 + p.phase) * 0.4);
       g.circle(p.x, p.y, p.radius + 2);
-      g.fill({ color: p.color, alpha: pulse * 0.15 });
+      g.fill({ color: p.color, alpha: pulse * 0.12 });
       g.circle(p.x, p.y, p.radius);
       g.fill({ color: p.color, alpha: pulse });
     }
     // Pulsing throne eye
     const eyePulse = 0.3 + Math.sin(time * 1.5) * 0.2;
-    g.circle(this._sw * 0.5, this._floorY * 0.2 + 20 - 22, 6);
+    const throneY = this._floorY * 0.18 + 15;
+    g.circle(this._sw * 0.5, throneY - 27, 7);
     g.fill({ color: 0xcc44ff, alpha: eyePulse });
+    // Dark fog drift
+    for (const m of this._mistLayers) {
+      const offset = (time * m.speed * 20 + m.offset) % (sw + 200) - 100;
+      for (let x = -100; x < sw + 100; x += 80) {
+        g.ellipse((x + offset) % (sw + 200) - 100, m.y, 50, m.height / 2);
+        g.fill({ color: 0x220033, alpha: m.alpha });
+      }
+    }
   }
 
   // =========================================================================
@@ -1643,92 +1908,174 @@ export class DuelArenaRenderer {
 
     this._drawSkyGradient(g, a, sw, floorY);
     // Hazy golden horizon
-    g.rect(0, floorY * 0.7, sw, floorY * 0.3);
+    g.rect(0, floorY * 0.65, sw, floorY * 0.35);
     g.fill({ color: 0xddcc88, alpha: 0.08 });
 
-    // Rolling green hills in background
-    g.moveTo(0, floorY * 0.6);
-    g.quadraticCurveTo(sw * 0.15, floorY * 0.5, sw * 0.3, floorY * 0.55);
-    g.quadraticCurveTo(sw * 0.5, floorY * 0.48, sw * 0.7, floorY * 0.53);
-    g.quadraticCurveTo(sw * 0.85, floorY * 0.5, sw, floorY * 0.58);
+    // Layered rolling hills
+    // Far hills
+    g.moveTo(0, floorY * 0.52);
+    g.quadraticCurveTo(sw * 0.12, floorY * 0.44, sw * 0.25, floorY * 0.48);
+    g.quadraticCurveTo(sw * 0.4, floorY * 0.42, sw * 0.55, floorY * 0.46);
+    g.quadraticCurveTo(sw * 0.7, floorY * 0.41, sw * 0.85, floorY * 0.45);
+    g.quadraticCurveTo(sw * 0.95, floorY * 0.43, sw, floorY * 0.5);
+    g.lineTo(sw, floorY * 0.6);
+    g.lineTo(0, floorY * 0.6);
+    g.closePath();
+    g.fill({ color: 0x4a6638, alpha: 0.25 });
+    // Mid hills
+    g.moveTo(0, floorY * 0.58);
+    g.quadraticCurveTo(sw * 0.15, floorY * 0.5, sw * 0.3, floorY * 0.54);
+    g.quadraticCurveTo(sw * 0.5, floorY * 0.48, sw * 0.7, floorY * 0.52);
+    g.quadraticCurveTo(sw * 0.85, floorY * 0.49, sw, floorY * 0.56);
     g.lineTo(sw, floorY * 0.7);
     g.lineTo(0, floorY * 0.7);
     g.closePath();
     g.fill({ color: 0x557744, alpha: 0.35 });
+    // Near hills
+    g.moveTo(0, floorY * 0.68);
+    g.quadraticCurveTo(sw * 0.2, floorY * 0.62, sw * 0.4, floorY * 0.66);
+    g.quadraticCurveTo(sw * 0.6, floorY * 0.6, sw * 0.8, floorY * 0.64);
+    g.lineTo(sw, floorY * 0.7);
+    g.lineTo(sw, floorY * 0.8);
+    g.lineTo(0, floorY * 0.8);
+    g.closePath();
+    g.fill({ color: 0x668855, alpha: 0.4 });
 
-    // Abbey ruins — tall broken arches
-    const archPositions = [sw * 0.15, sw * 0.35, sw * 0.55, sw * 0.75];
+    // Distant cross on hilltop
+    g.rect(sw * 0.78, floorY * 0.38, 3, 20);
+    g.fill({ color: 0x999988, alpha: 0.4 });
+    g.rect(sw * 0.78 - 5, floorY * 0.42, 13, 2);
+    g.fill({ color: 0x999988, alpha: 0.4 });
+
+    // Abbey ruins — tall broken arches with buttresses
+    const archPositions = [sw * 0.12, sw * 0.3, sw * 0.48, sw * 0.66, sw * 0.84];
     for (let i = 0; i < archPositions.length; i++) {
       const ax = archPositions[i];
-      const archH = 100 + (i % 2) * 20;
-      const pillarW = 12;
-      // Left pillar
-      g.rect(ax - 20, floorY - archH, pillarW, archH);
-      g.fill({ color: 0x8a8a7a });
-      // Right pillar
-      g.rect(ax + 8, floorY - archH + (i % 2) * 15, pillarW, archH - (i % 2) * 15);
-      g.fill({ color: 0x8a8a7a });
-      // Pointed gothic arch (if not broken)
-      if (i % 2 === 0) {
-        g.moveTo(ax - 20, floorY - archH);
-        g.quadraticCurveTo(ax - 6, floorY - archH - 25, ax + 8, floorY - archH);
-        g.stroke({ color: 0x8a8a7a, width: 10 });
+      const archH = 105 + (i % 2) * 25;
+      const pillarW = 14;
+      // Flying buttress (behind)
+      if (i > 0 && i < archPositions.length - 1) {
+        g.moveTo(ax - 25, floorY - archH * 0.6);
+        g.lineTo(ax - 35, floorY - 10);
+        g.stroke({ color: 0x7a7a6a, width: 4, alpha: 0.4 });
       }
-      // Stone texture on pillars
-      for (let y = floorY - archH + 5; y < floorY; y += 12) {
-        g.moveTo(ax - 20, y).lineTo(ax - 20 + pillarW, y);
+      // Left pillar
+      g.rect(ax - 22, floorY - archH, pillarW, archH);
+      g.fill({ color: 0x8a8a7a });
+      g.rect(ax - 22, floorY - archH, 3, archH);
+      g.fill({ color: 0x9a9a8a, alpha: 0.3 });
+      // Right pillar (some broken shorter)
+      const rh = archH - (i % 2) * 20;
+      g.rect(ax + 8, floorY - rh, pillarW, rh);
+      g.fill({ color: 0x8a8a7a });
+      g.rect(ax + 8, floorY - rh, 3, rh);
+      g.fill({ color: 0x9a9a8a, alpha: 0.3 });
+      // Gothic arch
+      if (i % 2 === 0) {
+        g.moveTo(ax - 22, floorY - archH);
+        g.quadraticCurveTo(ax - 4, floorY - archH - 30, ax + 8, floorY - archH);
+        g.stroke({ color: 0x8a8a7a, width: 10 });
+        // Inner arch line
+        g.moveTo(ax - 18, floorY - archH + 4);
+        g.quadraticCurveTo(ax - 4, floorY - archH - 22, ax + 12, floorY - archH + 4);
+        g.stroke({ color: 0x7a7a6a, width: 3 });
+      }
+      // Pillar capitals
+      g.rect(ax - 24, floorY - archH, pillarW + 4, 6);
+      g.fill({ color: 0x9a9a8a });
+      // Stone texture
+      for (let y = floorY - archH + 8; y < floorY; y += 12) {
+        g.moveTo(ax - 22, y).lineTo(ax - 22 + pillarW, y);
         g.stroke({ color: 0x7a7a6a, width: 0.5, alpha: 0.4 });
       }
     }
 
-    // Rose window (circular, broken) in center
+    // Rose window (circular) — more detailed
     const wX = sw * 0.5;
-    const wY = floorY * 0.35;
+    const wY = floorY * 0.3;
+    // Frame
+    g.circle(wX, wY, 32);
+    g.stroke({ color: 0x8a8a7a, width: 7 });
     g.circle(wX, wY, 28);
-    g.stroke({ color: 0x8a8a7a, width: 6 });
-    g.circle(wX, wY, 25);
-    g.fill({ color: 0x4466aa, alpha: 0.2 });
+    g.fill({ color: 0x223355, alpha: 0.2 });
+    // Outer ring tracery
+    g.circle(wX, wY, 24);
+    g.stroke({ color: 0x8a8a7a, width: 2 });
     // Radial spokes
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
       g.moveTo(wX, wY);
-      g.lineTo(wX + Math.cos(angle) * 24, wY + Math.sin(angle) * 24);
-      g.stroke({ color: 0x8a8a7a, width: 2 });
+      g.lineTo(wX + Math.cos(angle) * 27, wY + Math.sin(angle) * 27);
+      g.stroke({ color: 0x8a8a7a, width: 1.5 });
     }
-    // Colored glass fragments
-    const glassColors = [0xaa3333, 0x3355aa, 0xddaa33, 0x33aa55];
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2 + 0.2;
-      const gx = wX + Math.cos(angle) * 14;
-      const gy = wY + Math.sin(angle) * 14;
-      g.circle(gx, gy, 6);
+    // Colored glass — 12 petals
+    const glassColors = [0xaa3333, 0x3355aa, 0xddaa33, 0x33aa55, 0xaa3366, 0x3388aa];
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2 + 0.15;
+      const gx = wX + Math.cos(angle) * 16;
+      const gy = wY + Math.sin(angle) * 16;
+      g.circle(gx, gy, 5);
       g.fill({ color: glassColors[i % glassColors.length], alpha: 0.25 });
     }
+    // Center rosette
+    g.circle(wX, wY, 6);
+    g.fill({ color: 0xddaa33, alpha: 0.3 });
+    g.circle(wX, wY, 6);
+    g.stroke({ color: 0x8a8a7a, width: 1.5 });
 
-    // Gravestones scattered
-    const graves = [sw * 0.08, sw * 0.22, sw * 0.42, sw * 0.62, sw * 0.82, sw * 0.92];
-    for (const gx of graves) {
-      g.roundRect(gx - 5, floorY - 16, 10, 16, 3);
+    // Gravestones — more detailed
+    const graves = [sw * 0.06, sw * 0.18, sw * 0.36, sw * 0.54, sw * 0.72, sw * 0.86, sw * 0.94];
+    for (let gi = 0; gi < graves.length; gi++) {
+      const gx = graves[gi];
+      const gh = 14 + (gi % 3) * 4;
+      // Stone
+      g.roundRect(gx - 6, floorY - gh, 12, gh, 3);
       g.fill({ color: 0x777768 });
-      g.roundRect(gx - 5, floorY - 16, 10, 16, 3);
+      g.roundRect(gx - 6, floorY - gh, 12, gh, 3);
       g.stroke({ color: 0x666658, width: 1 });
-      // Cross
-      g.rect(gx - 1, floorY - 14, 2, 8);
-      g.fill({ color: 0x888878, alpha: 0.5 });
-      g.rect(gx - 3, floorY - 12, 6, 2);
-      g.fill({ color: 0x888878, alpha: 0.5 });
+      // Cross on some
+      if (gi % 2 === 0) {
+        g.rect(gx - 1, floorY - gh + 3, 2, 8);
+        g.fill({ color: 0x888878, alpha: 0.5 });
+        g.rect(gx - 3, floorY - gh + 5, 6, 2);
+        g.fill({ color: 0x888878, alpha: 0.5 });
+      }
+      // Moss at base
+      g.ellipse(gx, floorY - 1, 8, 3);
+      g.fill({ color: 0x447733, alpha: 0.2 });
     }
 
-    // Overgrown ivy on ruins
-    for (let i = 0; i < 8; i++) {
-      const ix = sw * 0.1 + i * sw * 0.1 + Math.sin(i * 2) * 20;
-      const iy = floorY - 40 - Math.sin(i * 3) * 30;
+    // Overgrown ivy on ruins — more extensive
+    for (let i = 0; i < 14; i++) {
+      const ix = sw * 0.05 + i * sw * 0.07 + Math.sin(i * 2.3) * 15;
+      const iy = floorY - 35 - Math.sin(i * 2.8) * 40;
+      // Main vine
       g.moveTo(ix, iy);
-      g.quadraticCurveTo(ix + 5, iy + 15, ix - 3, iy + 25);
-      g.stroke({ color: 0x336622, width: 2, alpha: 0.4 });
-      // Leaf clusters
-      g.circle(ix - 1, iy + 8, 4);
-      g.fill({ color: 0x447733, alpha: 0.35 });
+      g.quadraticCurveTo(ix + 4, iy + 20, ix - 2, iy + 35);
+      g.stroke({ color: 0x336622, width: 1.5, alpha: 0.45 });
+      // Leaf clusters at intervals
+      for (let l = 0; l < 3; l++) {
+        const lx = ix + Math.sin(l * 2) * 4;
+        const ly = iy + 8 + l * 10;
+        g.circle(lx, ly, 3.5);
+        g.fill({ color: 0x447733, alpha: 0.3 });
+        g.circle(lx + 2, ly - 1, 2.5);
+        g.fill({ color: 0x558844, alpha: 0.25 });
+      }
+    }
+
+    // Wildflowers
+    for (let i = 0; i < 12; i++) {
+      const fx = sw * (0.05 + i * 0.08);
+      const fy = floorY - 2;
+      // Stem
+      g.moveTo(fx, fy);
+      g.lineTo(fx + (i % 2 ? 1 : -1), fy - 6 - (i % 3) * 2);
+      g.stroke({ color: 0x448833, width: 0.8, alpha: 0.5 });
+      // Flower head
+      const flowerColors = [0xeeddff, 0xffddee, 0xffffdd, 0xddeeff];
+      g.circle(fx + (i % 2 ? 1 : -1), fy - 7 - (i % 3) * 2, 2);
+      g.fill({ color: flowerColors[i % flowerColors.length], alpha: 0.4 });
     }
 
     // Ground — old stone and grass
@@ -1736,8 +2083,8 @@ export class DuelArenaRenderer {
     g.fill({ color: a.groundColor });
     g.rect(0, floorY, sw, 3);
     g.fill({ color: a.groundHighlight, alpha: 0.5 });
-    // Grass patches
-    for (let x = 0; x < sw; x += 15) {
+    // Grass patches — denser
+    for (let x = 0; x < sw; x += 10) {
       const blades = 2 + (Math.sin(x * 0.6) > 0 ? 1 : 0);
       for (let b = 0; b < blades; b++) {
         g.moveTo(x + b * 3, floorY + 2);
@@ -1745,25 +2092,38 @@ export class DuelArenaRenderer {
         g.stroke({ color: 0x558844, width: 1, alpha: 0.4 });
       }
     }
+    // Scattered rubble
+    for (let i = 0; i < 8; i++) {
+      const rx = sw * (0.1 + i * 0.1) + Math.sin(i * 4) * 10;
+      g.roundRect(rx, floorY + 2, 5 + i % 3 * 2, 3 + i % 2 * 2, 1);
+      g.fill({ color: 0x8a8a7a, alpha: 0.3 });
+    }
 
-    // Holy light beams through window
-    g.moveTo(wX - 15, wY + 25);
-    g.lineTo(wX + 15, wY + 25);
-    g.lineTo(wX + 50, floorY);
-    g.lineTo(wX - 50, floorY);
+    // Holy light beams through window — wider, more visible
+    g.moveTo(wX - 18, wY + 30);
+    g.lineTo(wX + 18, wY + 30);
+    g.lineTo(wX + 60, floorY + 10);
+    g.lineTo(wX - 60, floorY + 10);
     g.closePath();
     g.fill({ color: 0xeedd88, alpha: 0.04 });
+    // Secondary beam
+    g.moveTo(wX - 10, wY + 30);
+    g.lineTo(wX + 10, wY + 30);
+    g.lineTo(wX + 35, floorY + 10);
+    g.lineTo(wX - 35, floorY + 10);
+    g.closePath();
+    g.fill({ color: 0xffeebb, alpha: 0.03 });
 
-    // Particles
-    for (let i = 0; i < 15; i++) {
+    // Dust mote particles
+    for (let i = 0; i < 20; i++) {
       this._particles.push({
-        x: wX - 30 + Math.random() * 60, y: wY + Math.random() * (floorY - wY),
+        x: wX - 40 + Math.random() * 80, y: wY + Math.random() * (floorY - wY),
         vx: (Math.random() - 0.5) * 0.1, vy: 0.05 + Math.random() * 0.1,
         radius: 0.8 + Math.random() * 1.5, alpha: 0.2 + Math.random() * 0.3,
         phase: Math.random() * Math.PI * 2, color: 0xeedd88,
       });
     }
-    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
+    g.rect(0, floorY * 0.55, sw, floorY * 0.45);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
@@ -1773,7 +2133,7 @@ export class DuelArenaRenderer {
     for (const p of this._particles) {
       p.x += p.vx + Math.sin(time * 0.5 + p.phase) * 0.1;
       p.y += p.vy;
-      if (p.y > this._floorY) { p.y = this._floorY * 0.35; p.x = this._sw * 0.5 - 30 + Math.random() * 60; }
+      if (p.y > this._floorY) { p.y = this._floorY * 0.3; p.x = this._sw * 0.5 - 40 + Math.random() * 80; }
       const pulse = p.alpha * (0.5 + Math.sin(time * 1.5 + p.phase) * 0.5);
       g.circle(p.x, p.y, p.radius + 1);
       g.fill({ color: p.color, alpha: pulse * 0.2 });
@@ -1782,10 +2142,12 @@ export class DuelArenaRenderer {
     }
     // Pulsing window glow
     const wX = this._sw * 0.5;
-    const wY = this._floorY * 0.35;
-    const pulse = 0.15 + Math.sin(time * 0.8) * 0.05;
-    g.circle(wX, wY, 26);
+    const wY = this._floorY * 0.3;
+    const pulse = 0.12 + Math.sin(time * 0.8) * 0.05;
+    g.circle(wX, wY, 30);
     g.fill({ color: 0xeedd88, alpha: pulse });
+    g.circle(wX, wY, 18);
+    g.fill({ color: 0xffeeaa, alpha: pulse * 0.5 });
   }
 
   // =========================================================================
@@ -1797,28 +2159,38 @@ export class DuelArenaRenderer {
     const floorY = this._floorY;
 
     this._drawSkyGradient(g, a, sw, floorY);
-    // Heavy overcast
-    for (let i = 0; i < 12; i++) {
-      const cx = sw * (Math.sin(i * 2.3) * 0.4 + 0.5);
-      const cy = floorY * (0.05 + Math.sin(i * 1.7) * 0.06);
-      const cr = 40 + (i % 4) * 15;
-      g.circle(cx, cy, cr);
-      g.fill({ color: 0x556666, alpha: 0.35 });
-      g.circle(cx + cr * 0.3, cy + 5, cr * 0.7);
-      g.fill({ color: 0x667777, alpha: 0.25 });
+    // Heavy overcast sky layers
+    for (let layer = 0; layer < 3; layer++) {
+      for (let i = 0; i < 8; i++) {
+        const cx = sw * (Math.sin(i * 2.3 + layer) * 0.4 + 0.5);
+        const cy = floorY * (0.03 + layer * 0.04 + Math.sin(i * 1.7 + layer) * 0.04);
+        const cr = 35 + (i % 4) * 12 + layer * 8;
+        g.circle(cx, cy, cr);
+        g.fill({ color: 0x556666 - layer * 0x111111, alpha: 0.25 - layer * 0.05 });
+        g.circle(cx + cr * 0.3, cy + 4, cr * 0.7);
+        g.fill({ color: 0x667777 - layer * 0x111111, alpha: 0.2 - layer * 0.05 });
+      }
     }
 
-    // Distant barren hills
-    g.moveTo(0, floorY * 0.55);
-    for (let x = 0; x <= sw; x += sw / 8) {
-      g.lineTo(x, floorY * (0.45 + Math.sin(x * 0.005 + 1) * 0.06));
+    // Distant barren hills — 3 layers for depth
+    g.moveTo(0, floorY * 0.5);
+    for (let x = 0; x <= sw; x += sw / 10) {
+      g.lineTo(x, floorY * (0.4 + Math.sin(x * 0.004 + 0.5) * 0.06));
+    }
+    g.lineTo(sw, floorY * 0.55);
+    g.lineTo(0, floorY * 0.55);
+    g.closePath();
+    g.fill({ color: 0x3a4a3a, alpha: 0.3 });
+
+    g.moveTo(0, floorY * 0.58);
+    for (let x = 0; x <= sw; x += sw / 10) {
+      g.lineTo(x, floorY * (0.48 + Math.sin(x * 0.006 + 2) * 0.06));
     }
     g.lineTo(sw, floorY * 0.65);
     g.lineTo(0, floorY * 0.65);
     g.closePath();
     g.fill({ color: 0x445544, alpha: 0.35 });
 
-    // Closer hills
     g.moveTo(0, floorY * 0.68);
     for (let x = 0; x <= sw; x += sw / 10) {
       g.lineTo(x, floorY * (0.58 + Math.sin(x * 0.008 + 3) * 0.05));
@@ -1828,58 +2200,91 @@ export class DuelArenaRenderer {
     g.closePath();
     g.fill({ color: 0x554e40, alpha: 0.45 });
 
-    // Dead trees (skeletal, leafless)
+    // Dead trees (skeletal, leafless) — more detailed
     const deadTrees = [
-      { x: sw * 0.05, h: 100 }, { x: sw * 0.18, h: 80 },
-      { x: sw * 0.4, h: 60 }, { x: sw * 0.6, h: 70 },
-      { x: sw * 0.82, h: 90 }, { x: sw * 0.95, h: 85 },
+      { x: sw * 0.03, h: 110 }, { x: sw * 0.14, h: 85 },
+      { x: sw * 0.32, h: 55 }, { x: sw * 0.5, h: 45 },
+      { x: sw * 0.68, h: 65 }, { x: sw * 0.82, h: 95 },
+      { x: sw * 0.95, h: 100 },
     ];
     for (const t of deadTrees) {
-      // Trunk
-      g.moveTo(t.x - 3, floorY);
-      g.lineTo(t.x - 1, floorY - t.h);
-      g.lineTo(t.x + 1, floorY - t.h);
-      g.lineTo(t.x + 3, floorY);
+      // Trunk with taper
+      g.moveTo(t.x - 4, floorY);
+      g.lineTo(t.x - 1.5, floorY - t.h);
+      g.lineTo(t.x + 1.5, floorY - t.h);
+      g.lineTo(t.x + 4, floorY);
       g.closePath();
       g.fill({ color: 0x3a3028 });
-      // Branches (crooked, bare)
-      const branchCount = 3 + Math.floor(Math.sin(t.x) * 2);
+      // Bark texture
+      for (let y = floorY - t.h + 10; y < floorY; y += 12) {
+        g.moveTo(t.x - 2, y);
+        g.lineTo(t.x + 1, y + 3);
+        g.stroke({ color: 0x2a2018, width: 0.6, alpha: 0.4 });
+      }
+      // Roots at base
+      g.moveTo(t.x - 4, floorY);
+      g.quadraticCurveTo(t.x - 10, floorY + 2, t.x - 14, floorY + 3);
+      g.stroke({ color: 0x3a3028, width: 2, cap: "round" });
+      g.moveTo(t.x + 4, floorY);
+      g.quadraticCurveTo(t.x + 10, floorY + 2, t.x + 12, floorY + 4);
+      g.stroke({ color: 0x3a3028, width: 2, cap: "round" });
+      // Branches
+      const branchCount = 3 + Math.floor(Math.abs(Math.sin(t.x)) * 2);
       for (let b = 0; b < branchCount; b++) {
-        const by = floorY - t.h + b * (t.h * 0.2);
+        const by = floorY - t.h + b * (t.h * 0.18) + 5;
         const dir = b % 2 === 0 ? 1 : -1;
-        const bLen = 20 + b * 8;
+        const bLen = 18 + b * 8;
         const ex = t.x + dir * bLen;
-        const ey = by - 10 + b * 3;
+        const ey = by - 8 + b * 3;
         g.moveTo(t.x, by);
-        g.quadraticCurveTo(t.x + dir * bLen * 0.5, by - 15, ex, ey);
-        g.stroke({ color: 0x3a3028, width: 2 - b * 0.3, cap: "round" });
+        g.quadraticCurveTo(t.x + dir * bLen * 0.5, by - 12, ex, ey);
+        g.stroke({ color: 0x3a3028, width: 2 - b * 0.25, cap: "round" });
         // Sub-branches
         g.moveTo(ex, ey);
         g.lineTo(ex + dir * 10, ey - 8);
-        g.stroke({ color: 0x3a3028, width: 1, cap: "round", alpha: 0.6 });
+        g.stroke({ color: 0x3a3028, width: 0.8, cap: "round", alpha: 0.6 });
+        g.moveTo(ex * 0.95 + t.x * 0.05, ey + 3);
+        g.lineTo(ex + dir * 6, ey + 8);
+        g.stroke({ color: 0x3a3028, width: 0.6, cap: "round", alpha: 0.5 });
       }
     }
 
-    // Standing stones (circle of menhirs)
-    const stoneXs = [sw * 0.3, sw * 0.45, sw * 0.55, sw * 0.7];
+    // Standing stones — more detailed menhirs
+    const stoneXs = [sw * 0.26, sw * 0.38, sw * 0.48, sw * 0.58, sw * 0.72];
     for (const sx of stoneXs) {
-      const sh2 = 25 + Math.sin(sx * 0.1) * 10;
-      g.moveTo(sx - 8, floorY);
-      g.lineTo(sx - 5, floorY - sh2);
-      g.quadraticCurveTo(sx, floorY - sh2 - 5, sx + 5, floorY - sh2);
-      g.lineTo(sx + 8, floorY);
+      const sh2 = 28 + Math.sin(sx * 0.1) * 12;
+      g.moveTo(sx - 9, floorY);
+      g.lineTo(sx - 6, floorY - sh2);
+      g.quadraticCurveTo(sx, floorY - sh2 - 6, sx + 6, floorY - sh2);
+      g.lineTo(sx + 9, floorY);
       g.closePath();
       g.fill({ color: 0x666655 });
       g.stroke({ color: 0x555544, width: 1 });
+      // Weathering marks
+      g.moveTo(sx - 4, floorY - sh2 + 8);
+      g.lineTo(sx - 2, floorY - sh2 + 18);
+      g.stroke({ color: 0x555544, width: 0.5, alpha: 0.5 });
+      // Lichen patches
+      g.circle(sx + 2, floorY - sh2 + 12, 3);
+      g.fill({ color: 0x778866, alpha: 0.25 });
+    }
+
+    // Cairn (stacked stones)
+    const cairnX = sw * 0.88;
+    for (let i = 0; i < 4; i++) {
+      g.roundRect(cairnX - 8 + i * 2, floorY - 8 - i * 6, 16 - i * 4, 7, 2);
+      g.fill({ color: 0x777766 });
+      g.roundRect(cairnX - 8 + i * 2, floorY - 8 - i * 6, 16 - i * 4, 7, 2);
+      g.stroke({ color: 0x666655, width: 0.5 });
     }
 
     // Scattered bones/debris
-    for (let i = 0; i < 8; i++) {
-      const bx = sw * (0.1 + i * 0.1) + Math.sin(i * 5) * 15;
+    for (let i = 0; i < 10; i++) {
+      const bx = sw * (0.08 + i * 0.09) + Math.sin(i * 5) * 12;
       const by = floorY + 3;
       g.moveTo(bx, by);
-      g.lineTo(bx + 8 + i % 3 * 3, by + 1);
-      g.stroke({ color: 0xaaa899, width: 1.5, cap: "round", alpha: 0.4 });
+      g.lineTo(bx + 6 + i % 3 * 3, by + 1);
+      g.stroke({ color: 0xaaa899, width: 1.5, cap: "round", alpha: 0.35 });
     }
 
     // Ground — muddy, barren
@@ -1888,29 +2293,39 @@ export class DuelArenaRenderer {
     g.rect(0, floorY, sw, 3);
     g.fill({ color: a.groundHighlight, alpha: 0.4 });
     // Muddy puddle patches
-    for (let i = 0; i < 5; i++) {
-      const px = sw * (0.15 + i * 0.18);
-      g.ellipse(px, floorY + 8, 18 + i * 3, 4);
+    for (let i = 0; i < 6; i++) {
+      const px = sw * (0.1 + i * 0.15);
+      g.ellipse(px, floorY + 7, 16 + i * 3, 4);
       g.fill({ color: 0x444435, alpha: 0.3 });
+      g.ellipse(px, floorY + 7, 10, 2.5);
+      g.fill({ color: 0x556655, alpha: 0.12 });
+    }
+    // Dead grass patches
+    for (let x = 10; x < sw; x += 25) {
+      for (let b = 0; b < 2; b++) {
+        g.moveTo(x + b * 3, floorY + 2);
+        g.lineTo(x + b * 3 + (b - 1) * 3, floorY - 3);
+        g.stroke({ color: 0x887755, width: 0.8, alpha: 0.3 });
+      }
     }
 
-    // Heavy fog
-    for (let i = 0; i < 5; i++) {
+    // Heavy fog layers
+    for (let i = 0; i < 6; i++) {
       this._mistLayers.push({
-        y: floorY - 15 + i * 12, speed: 0.3 + i * 0.1,
-        offset: i * 80, alpha: 0.06 - i * 0.005, height: 30 + i * 8,
+        y: floorY - 20 + i * 12, speed: 0.25 + i * 0.08,
+        offset: i * 70, alpha: 0.06 - i * 0.005, height: 28 + i * 8,
       });
     }
     // Wind-blown particles
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 18; i++) {
       this._particles.push({
-        x: Math.random() * sw, y: floorY * 0.5 + Math.random() * floorY * 0.4,
-        vx: 0.5 + Math.random() * 0.5, vy: (Math.random() - 0.5) * 0.2,
-        radius: 0.5 + Math.random() * 1, alpha: 0.1 + Math.random() * 0.15,
+        x: Math.random() * sw, y: floorY * 0.4 + Math.random() * floorY * 0.5,
+        vx: 0.4 + Math.random() * 0.5, vy: (Math.random() - 0.5) * 0.2,
+        radius: 0.5 + Math.random() * 1, alpha: 0.1 + Math.random() * 0.12,
         phase: Math.random() * Math.PI * 2, color: 0x998877,
       });
     }
-    g.rect(0, floorY * 0.4, sw, floorY * 0.6);
+    g.rect(0, floorY * 0.35, sw, floorY * 0.65);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
@@ -1921,17 +2336,17 @@ export class DuelArenaRenderer {
     for (const p of this._particles) {
       p.x += p.vx + Math.sin(time * 2 + p.phase) * 0.3;
       p.y += p.vy + Math.cos(time * 1.5 + p.phase) * 0.1;
-      if (p.x > sw + 10) { p.x = -10; p.y = this._floorY * 0.5 + Math.random() * this._floorY * 0.4; }
+      if (p.x > sw + 10) { p.x = -10; p.y = this._floorY * 0.4 + Math.random() * this._floorY * 0.5; }
       const fade = p.alpha * (0.5 + Math.sin(time * 3 + p.phase) * 0.3);
       g.circle(p.x, p.y, p.radius);
       g.fill({ color: p.color, alpha: fade });
     }
-    // Fog drift
+    // Fog drift — more layers
     for (const m of this._mistLayers) {
       const offset = (time * m.speed * 30 + m.offset) % (sw + 200) - 100;
-      for (let x = -100; x < sw + 100; x += 70) {
+      for (let x = -100; x < sw + 100; x += 60) {
         const mx = (x + offset) % (sw + 200) - 100;
-        g.ellipse(mx, m.y + Math.sin(time * 0.4 + x * 0.01) * 5, 55, m.height / 2);
+        g.ellipse(mx, m.y + Math.sin(time * 0.4 + x * 0.01) * 5, 50, m.height / 2);
         g.fill({ color: 0x998877, alpha: m.alpha });
       }
     }
@@ -1947,75 +2362,161 @@ export class DuelArenaRenderer {
 
     this._drawSkyGradient(g, a, sw, floorY);
     // Soft clouds
-    for (let i = 0; i < 8; i++) {
-      const cx = sw * (0.1 + i * 0.12);
-      const cy = floorY * (0.08 + Math.sin(i * 1.5) * 0.04);
-      g.ellipse(cx, cy, 35 + i * 5, 12);
+    for (let i = 0; i < 10; i++) {
+      const cx = sw * (0.05 + i * 0.1);
+      const cy = floorY * (0.06 + Math.sin(i * 1.5) * 0.04);
+      g.ellipse(cx, cy, 30 + i * 4, 10 + i % 3 * 2);
       g.fill({ color: 0xddeeff, alpha: 0.15 });
+      g.ellipse(cx + 15, cy + 3, 20 + i * 2, 8);
+      g.fill({ color: 0xddeeff, alpha: 0.1 });
     }
 
-    // Distant mountains
-    g.moveTo(0, floorY * 0.45);
-    g.lineTo(sw * 0.15, floorY * 0.32);
-    g.lineTo(sw * 0.3, floorY * 0.38);
-    g.lineTo(sw * 0.5, floorY * 0.28);
-    g.lineTo(sw * 0.7, floorY * 0.35);
-    g.lineTo(sw * 0.85, floorY * 0.3);
-    g.lineTo(sw, floorY * 0.4);
+    // Distant mountains — more detailed with snow caps
+    g.moveTo(0, floorY * 0.42);
+    g.lineTo(sw * 0.1, floorY * 0.35);
+    g.lineTo(sw * 0.18, floorY * 0.28);
+    g.lineTo(sw * 0.28, floorY * 0.35);
+    g.lineTo(sw * 0.4, floorY * 0.3);
+    g.lineTo(sw * 0.52, floorY * 0.22);
+    g.lineTo(sw * 0.62, floorY * 0.3);
+    g.lineTo(sw * 0.72, floorY * 0.25);
+    g.lineTo(sw * 0.82, floorY * 0.32);
+    g.lineTo(sw * 0.92, floorY * 0.28);
+    g.lineTo(sw, floorY * 0.38);
     g.lineTo(sw, floorY * 0.5);
     g.lineTo(0, floorY * 0.5);
     g.closePath();
     g.fill({ color: 0x445566, alpha: 0.3 });
+    // Snow caps
+    g.moveTo(sw * 0.16, floorY * 0.3);
+    g.lineTo(sw * 0.18, floorY * 0.28);
+    g.lineTo(sw * 0.2, floorY * 0.3);
+    g.closePath();
+    g.fill({ color: 0xeeeeff, alpha: 0.3 });
+    g.moveTo(sw * 0.5, floorY * 0.24);
+    g.lineTo(sw * 0.52, floorY * 0.22);
+    g.lineTo(sw * 0.54, floorY * 0.24);
+    g.closePath();
+    g.fill({ color: 0xeeeeff, alpha: 0.3 });
+
+    // Treeline below mountains
+    g.moveTo(0, floorY * 0.48);
+    for (let x = 0; x <= sw; x += 12) {
+      g.lineTo(x, floorY * (0.44 + Math.sin(x * 0.03) * 0.02));
+    }
+    g.lineTo(sw, floorY * 0.52);
+    g.lineTo(0, floorY * 0.52);
+    g.closePath();
+    g.fill({ color: 0x2a4422, alpha: 0.35 });
 
     // Lake water body
-    const waterY = floorY * 0.55;
+    const waterY = floorY * 0.52;
     g.rect(0, waterY, sw, floorY - waterY);
     g.fill({ color: 0x2a5577 });
     // Water surface shimmer
     g.rect(0, waterY, sw, 4);
     g.fill({ color: 0x5599bb, alpha: 0.4 });
+    // Depth gradient
+    g.rect(0, waterY + (floorY - waterY) * 0.4, sw, (floorY - waterY) * 0.6);
+    g.fill({ color: 0x1a3355, alpha: 0.2 });
+    // Mountain reflection in water
+    g.moveTo(0, waterY + 10);
+    for (let x = 0; x <= sw; x += sw / 6) {
+      g.lineTo(x, waterY + 10 + Math.sin(x * 0.01 + 1) * 8);
+    }
+    g.lineTo(sw, waterY + 25);
+    g.lineTo(0, waterY + 25);
+    g.closePath();
+    g.fill({ color: 0x445566, alpha: 0.1 });
 
-    // Willow trees on edges
-    for (const tx of [-5, sw * 0.06, sw * 0.92, sw + 5]) {
-      const th = 110 + Math.sin(tx * 0.1) * 20;
-      g.rect(tx - 6, floorY - th, 12, th);
+    // Willow trees on edges — more lush
+    for (const tx of [-8, sw * 0.05, sw * 0.93, sw + 8]) {
+      const th = 115 + Math.sin(tx * 0.1) * 20;
+      // Trunk with bark detail
+      g.rect(tx - 7, floorY - th, 14, th);
       g.fill({ color: 0x3a2a18 });
-      g.ellipse(tx, floorY - th, 35, 25);
-      g.fill({ color: 0x336633, alpha: 0.5 });
-      // Drooping branches
-      for (let b = 0; b < 8; b++) {
-        const bx = tx - 30 + b * 8;
-        g.moveTo(bx, floorY - th + 10);
-        g.quadraticCurveTo(bx + 3, floorY - th + 40, bx + 1, floorY - 15);
-        g.stroke({ color: 0x448833, width: 1.2, alpha: 0.35 });
+      g.rect(tx - 7, floorY - th, 4, th);
+      g.fill({ color: 0x4a3a28, alpha: 0.3 });
+      // Canopy
+      g.ellipse(tx, floorY - th - 5, 40, 28);
+      g.fill({ color: 0x336633, alpha: 0.45 });
+      g.ellipse(tx + 5, floorY - th, 30, 20);
+      g.fill({ color: 0x448844, alpha: 0.35 });
+      // Drooping branches — more
+      for (let b = 0; b < 12; b++) {
+        const bx = tx - 35 + b * 6;
+        g.moveTo(bx, floorY - th + 8);
+        g.quadraticCurveTo(bx + 3, floorY - th + 45, bx + 1, floorY - 10);
+        g.stroke({ color: 0x448833, width: 1, alpha: 0.3 });
+        // Leaf cluster at tip
+        g.circle(bx + 1, floorY - 12, 2.5);
+        g.fill({ color: 0x55aa44, alpha: 0.2 });
       }
     }
 
-    // Stone platform / bridge
-    g.rect(sw * 0.08, floorY - 5, sw * 0.84, 8);
+    // Reeds along water edge
+    for (let x = sw * 0.15; x < sw * 0.85; x += 20) {
+      for (let r = 0; r < 3; r++) {
+        const rx = x + r * 3 - 3;
+        g.moveTo(rx, floorY);
+        g.lineTo(rx + Math.sin(rx * 0.5) * 2, floorY - 12 - r * 4);
+        g.stroke({ color: 0x557733, width: 1, alpha: 0.4 });
+      }
+    }
+
+    // Stone platform / bridge — more detailed
+    g.rect(sw * 0.06, floorY - 6, sw * 0.88, 10);
     g.fill({ color: 0x667766 });
-    g.rect(sw * 0.08, floorY - 5, sw * 0.84, 2);
+    g.rect(sw * 0.06, floorY - 6, sw * 0.88, 3);
     g.fill({ color: 0x778877, alpha: 0.5 });
-    // Pillars under platform
-    for (const px of [sw * 0.2, sw * 0.5, sw * 0.8]) {
-      g.rect(px - 5, floorY + 3, 10, 25);
+    // Stone block texture
+    for (let x = sw * 0.06; x < sw * 0.94; x += 30) {
+      g.moveTo(x, floorY - 6);
+      g.lineTo(x, floorY + 4);
+      g.stroke({ color: 0x556655, width: 0.5, alpha: 0.3 });
+    }
+    // Moss on bridge
+    for (let i = 0; i < 6; i++) {
+      const mx = sw * (0.12 + i * 0.14);
+      g.ellipse(mx, floorY - 4, 8, 2);
+      g.fill({ color: 0x447733, alpha: 0.15 });
+    }
+    // Support pillars
+    for (const px of [sw * 0.18, sw * 0.38, sw * 0.58, sw * 0.78]) {
+      g.rect(px - 6, floorY + 4, 12, 28);
       g.fill({ color: 0x667766 });
+      g.rect(px - 6, floorY + 4, 3, 28);
+      g.fill({ color: 0x778877, alpha: 0.3 });
     }
 
-    // Lily pads on water
-    for (let i = 0; i < 8; i++) {
-      const lx = sw * (0.1 + i * 0.11);
-      const ly = waterY + 10 + (i % 3) * 8;
-      g.ellipse(lx, ly, 6, 3);
-      g.fill({ color: 0x337733, alpha: 0.5 });
+    // Lily pads on water — more with flowers
+    for (let i = 0; i < 12; i++) {
+      const lx = sw * (0.08 + i * 0.08);
+      const ly = waterY + 8 + (i % 4) * 7;
+      g.ellipse(lx, ly, 6 + i % 2 * 2, 3);
+      g.fill({ color: 0x337733, alpha: 0.45 });
+      g.ellipse(lx, ly, 6 + i % 2 * 2, 3);
+      g.stroke({ color: 0x226622, width: 0.5, alpha: 0.3 });
+      // Flower on some
       if (i % 3 === 0) {
-        g.circle(lx, ly - 3, 2);
+        g.circle(lx, ly - 3, 2.5);
         g.fill({ color: 0xeeddff, alpha: 0.5 });
+        g.circle(lx, ly - 3, 1);
+        g.fill({ color: 0xffee88, alpha: 0.6 });
       }
+    }
+
+    // Dragonflies (static base positions)
+    for (let i = 0; i < 5; i++) {
+      this._particles.push({
+        x: sw * (0.2 + i * 0.15), y: waterY - 10 - i * 5,
+        vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.2,
+        radius: 1.5, alpha: 0.4, phase: Math.random() * Math.PI * 2, color: 0x44ddff,
+      });
     }
 
     // Water reflections
-    for (let y = waterY + 8; y < floorY; y += 6) {
+    for (let y = waterY + 6; y < floorY; y += 5) {
       const alpha = 0.08 - (y - waterY) * 0.001;
       g.moveTo(0, y);
       g.lineTo(sw, y);
@@ -2028,16 +2529,16 @@ export class DuelArenaRenderer {
     g.rect(0, floorY, sw, 3);
     g.fill({ color: a.groundHighlight, alpha: 0.5 });
 
-    // Ripples
-    for (let i = 0; i < 10; i++) {
+    // Water ripples
+    for (let i = 0; i < 12; i++) {
       this._ripples.push({
-        y: waterY + 3 + i * 5, amplitude: 1 + Math.random() * 1.5,
-        frequency: 0.03 + Math.random() * 0.02, speed: 0.6 + Math.random() * 0.4,
-        phase: Math.random() * Math.PI * 2, alpha: 0.1 + Math.random() * 0.08,
+        y: waterY + 3 + i * 4, amplitude: 1 + Math.random() * 1.5,
+        frequency: 0.03 + Math.random() * 0.02, speed: 0.5 + Math.random() * 0.4,
+        phase: Math.random() * Math.PI * 2, alpha: 0.1 + Math.random() * 0.06,
       });
     }
     // Sparkle particles
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 15; i++) {
       this._particles.push({
         x: Math.random() * sw, y: waterY + Math.random() * (floorY - waterY),
         vx: (Math.random() - 0.5) * 0.1, vy: 0,
@@ -2045,7 +2546,7 @@ export class DuelArenaRenderer {
         phase: Math.random() * Math.PI * 2, color: a.accentColor,
       });
     }
-    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    g.rect(0, floorY * 0.45, sw, floorY * 0.55);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
   }
 
@@ -2060,13 +2561,31 @@ export class DuelArenaRenderer {
       }
       g.stroke({ color: 0x88ccdd, width: 0.8, alpha: r.alpha * (0.7 + Math.sin(time * 0.5 + r.phase) * 0.3) });
     }
-    // Water sparkles
+    // Water sparkles + dragonflies
     for (const p of this._particles) {
-      p.x += Math.sin(time * 0.3 + p.phase) * 0.2;
-      const pulse = p.alpha * (0.3 + Math.sin(time * 3 + p.phase) * 0.7);
-      if (pulse > 0.15) {
-        g.circle(p.x, p.y, p.radius);
-        g.fill({ color: 0xffffff, alpha: pulse });
+      if (p.color === 0x44ddff) {
+        // Dragonfly — erratic movement
+        p.x += Math.sin(time * 4 + p.phase) * 1.5;
+        p.y += Math.cos(time * 3 + p.phase * 1.3) * 1;
+        // Wings
+        g.moveTo(p.x - 4, p.y - 1);
+        g.lineTo(p.x, p.y);
+        g.lineTo(p.x - 4, p.y + 1);
+        g.stroke({ color: 0xaaeeff, width: 0.8, alpha: 0.4 });
+        g.moveTo(p.x + 4, p.y - 1);
+        g.lineTo(p.x, p.y);
+        g.lineTo(p.x + 4, p.y + 1);
+        g.stroke({ color: 0xaaeeff, width: 0.8, alpha: 0.4 });
+        // Body
+        g.circle(p.x, p.y, 1);
+        g.fill({ color: 0x44ddff, alpha: 0.6 });
+      } else {
+        p.x += Math.sin(time * 0.3 + p.phase) * 0.2;
+        const pulse = p.alpha * (0.3 + Math.sin(time * 3 + p.phase) * 0.7);
+        if (pulse > 0.15) {
+          g.circle(p.x, p.y, p.radius);
+          g.fill({ color: 0xffffff, alpha: pulse });
+        }
       }
     }
   }
@@ -2081,104 +2600,207 @@ export class DuelArenaRenderer {
 
     this._drawSkyGradient(g, a, sw, floorY, 10);
     // Red glow at horizon
-    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
+    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
     g.fill({ color: 0xff4400, alpha: 0.06 });
+    g.rect(0, floorY * 0.7, sw, floorY * 0.3);
+    g.fill({ color: 0xff2200, alpha: 0.04 });
 
-    // Volcanic mountain background
+    // Volcanic mountain background — more detail
     g.moveTo(0, floorY * 0.7);
-    g.lineTo(sw * 0.2, floorY * 0.45);
-    g.lineTo(sw * 0.35, floorY * 0.22);
-    g.lineTo(sw * 0.5, floorY * 0.15);
-    g.lineTo(sw * 0.65, floorY * 0.22);
-    g.lineTo(sw * 0.8, floorY * 0.4);
+    g.lineTo(sw * 0.12, floorY * 0.5);
+    g.lineTo(sw * 0.25, floorY * 0.35);
+    g.lineTo(sw * 0.38, floorY * 0.2);
+    g.lineTo(sw * 0.5, floorY * 0.12);
+    g.lineTo(sw * 0.62, floorY * 0.2);
+    g.lineTo(sw * 0.75, floorY * 0.35);
+    g.lineTo(sw * 0.88, floorY * 0.5);
     g.lineTo(sw, floorY * 0.65);
     g.lineTo(sw, floorY);
     g.lineTo(0, floorY);
     g.closePath();
     g.fill({ color: 0x2a1a0a });
-    // Lava glow at peak
-    g.circle(sw * 0.5, floorY * 0.12, 20);
+    // Rock face detail
+    for (let i = 0; i < 8; i++) {
+      const rx = sw * (0.2 + i * 0.08);
+      const ry = floorY * (0.3 + Math.abs(rx / sw - 0.5) * 0.8);
+      g.moveTo(rx, ry);
+      g.lineTo(rx + 15, ry + 20);
+      g.stroke({ color: 0x1a0a00, width: 1.5, alpha: 0.3 });
+    }
+    // Mountain ridges
+    g.moveTo(sw * 0.3, floorY * 0.3);
+    g.lineTo(sw * 0.42, floorY * 0.18);
+    g.lineTo(sw * 0.5, floorY * 0.12);
+    g.stroke({ color: 0x3a2a1a, width: 1.5, alpha: 0.5 });
+    g.moveTo(sw * 0.5, floorY * 0.12);
+    g.lineTo(sw * 0.58, floorY * 0.18);
+    g.lineTo(sw * 0.7, floorY * 0.3);
+    g.stroke({ color: 0x3a2a1a, width: 1.5, alpha: 0.5 });
+
+    // Volcano crater glow
+    g.circle(sw * 0.5, floorY * 0.1, 25);
     g.fill({ color: 0xff4400, alpha: 0.15 });
-    g.circle(sw * 0.5, floorY * 0.12, 10);
+    g.circle(sw * 0.5, floorY * 0.1, 14);
     g.fill({ color: 0xff6622, alpha: 0.25 });
+    g.circle(sw * 0.5, floorY * 0.1, 6);
+    g.fill({ color: 0xffaa44, alpha: 0.35 });
     // Smoke from peak
-    for (let i = 0; i < 5; i++) {
-      g.circle(sw * 0.5 + i * 8 - 16, floorY * 0.08 - i * 5, 12 + i * 3);
-      g.fill({ color: 0x332222, alpha: 0.2 - i * 0.03 });
+    for (let i = 0; i < 8; i++) {
+      g.circle(sw * 0.5 + (i - 4) * 7, floorY * 0.06 - i * 4, 10 + i * 3);
+      g.fill({ color: 0x332222, alpha: 0.2 - i * 0.02 });
     }
 
-    // Lava rivers flowing down mountain
+    // Lava rivers — more streams
     const lavaStreams = [
-      { x1: sw * 0.45, y1: floorY * 0.2, x2: sw * 0.3, y2: floorY * 0.65 },
-      { x1: sw * 0.55, y1: floorY * 0.2, x2: sw * 0.68, y2: floorY * 0.6 },
+      { x1: sw * 0.42, y1: floorY * 0.18, x2: sw * 0.25, y2: floorY * 0.65 },
+      { x1: sw * 0.48, y1: floorY * 0.15, x2: sw * 0.35, y2: floorY * 0.5 },
+      { x1: sw * 0.52, y1: floorY * 0.15, x2: sw * 0.65, y2: floorY * 0.5 },
+      { x1: sw * 0.58, y1: floorY * 0.18, x2: sw * 0.72, y2: floorY * 0.6 },
     ];
     for (const ls of lavaStreams) {
+      // Glow around lava
       g.moveTo(ls.x1, ls.y1);
-      g.quadraticCurveTo((ls.x1 + ls.x2) / 2 + 10, (ls.y1 + ls.y2) / 2, ls.x2, ls.y2);
+      g.quadraticCurveTo((ls.x1 + ls.x2) / 2 + 8, (ls.y1 + ls.y2) / 2, ls.x2, ls.y2);
+      g.stroke({ color: 0xff4400, width: 8, alpha: 0.06 });
+      // Main flow
+      g.moveTo(ls.x1, ls.y1);
+      g.quadraticCurveTo((ls.x1 + ls.x2) / 2 + 8, (ls.y1 + ls.y2) / 2, ls.x2, ls.y2);
       g.stroke({ color: 0xff4400, width: 4, alpha: 0.3 });
+      // Bright center
       g.moveTo(ls.x1, ls.y1);
-      g.quadraticCurveTo((ls.x1 + ls.x2) / 2 + 10, (ls.y1 + ls.y2) / 2, ls.x2, ls.y2);
-      g.stroke({ color: 0xff8844, width: 2, alpha: 0.4 });
+      g.quadraticCurveTo((ls.x1 + ls.x2) / 2 + 8, (ls.y1 + ls.y2) / 2, ls.x2, ls.y2);
+      g.stroke({ color: 0xff8844, width: 2, alpha: 0.5 });
     }
 
-    // Dragon bones (ribs and skull)
+    // Lava pool at base
+    g.ellipse(sw * 0.3, floorY * 0.68, 25, 8);
+    g.fill({ color: 0xff4400, alpha: 0.2 });
+    g.ellipse(sw * 0.3, floorY * 0.68, 15, 5);
+    g.fill({ color: 0xff8844, alpha: 0.25 });
+
+    // Rocky outcrops in foreground
+    for (const rx of [sw * 0.05, sw * 0.15, sw * 0.85, sw * 0.95]) {
+      const rh = 15 + Math.sin(rx * 0.2) * 8;
+      g.moveTo(rx - 10, floorY);
+      g.lineTo(rx - 6, floorY - rh);
+      g.lineTo(rx + 2, floorY - rh + 3);
+      g.lineTo(rx + 10, floorY);
+      g.closePath();
+      g.fill({ color: 0x2a1a0a });
+      g.stroke({ color: 0x1a0a00, width: 0.8 });
+    }
+
+    // Dragon bones (ribs and skull) — more detailed
     const boneX = sw * 0.2;
     const boneY = floorY - 5;
-    // Spine
-    g.moveTo(boneX - 40, boneY);
-    g.quadraticCurveTo(boneX, boneY - 15, boneX + 50, boneY - 5);
-    g.stroke({ color: 0xccbb99, width: 4, cap: "round" });
-    // Ribs
-    for (let i = 0; i < 5; i++) {
-      const rx = boneX - 20 + i * 15;
-      const ry = boneY - 10 - Math.sin(i * 0.5) * 3;
-      g.moveTo(rx, ry);
-      g.quadraticCurveTo(rx + 5, ry - 25, rx + 2, ry - 35);
-      g.stroke({ color: 0xccbb99, width: 2.5, cap: "round", alpha: 0.7 });
+    // Spine with vertebrae detail
+    g.moveTo(boneX - 45, boneY);
+    g.quadraticCurveTo(boneX, boneY - 18, boneX + 55, boneY - 6);
+    g.stroke({ color: 0xccbb99, width: 5, cap: "round" });
+    // Vertebra bumps
+    for (let i = 0; i < 8; i++) {
+      const vx = boneX - 35 + i * 11;
+      const vy = boneY - 5 - Math.sin(i * 0.5) * 8;
+      g.circle(vx, vy - 3, 3);
+      g.fill({ color: 0xccbb99, alpha: 0.6 });
     }
-    // Skull
+    // Ribs — more
+    for (let i = 0; i < 7; i++) {
+      const rx = boneX - 25 + i * 12;
+      const ry = boneY - 12 - Math.sin(i * 0.5) * 4;
+      g.moveTo(rx, ry);
+      g.quadraticCurveTo(rx + 4, ry - 28, rx + 2, ry - 40);
+      g.stroke({ color: 0xccbb99, width: 2.5, cap: "round", alpha: 0.6 + (i % 2) * 0.15 });
+    }
+    // Tail bones trailing
+    for (let i = 0; i < 5; i++) {
+      g.circle(boneX + 60 + i * 8, boneY - 4 + i * 1.5, 2.5 - i * 0.3);
+      g.fill({ color: 0xccbb99, alpha: 0.5 - i * 0.08 });
+    }
+
+    // Dragon skull — more detailed
     const skullX = sw * 0.78;
-    g.ellipse(skullX, floorY - 12, 18, 12);
+    // Skull shape
+    g.ellipse(skullX, floorY - 14, 20, 14);
     g.fill({ color: 0xccbb99 });
-    g.ellipse(skullX, floorY - 12, 18, 12);
+    g.ellipse(skullX, floorY - 14, 20, 14);
+    g.stroke({ color: 0xaa9977, width: 1.5 });
+    // Snout
+    g.moveTo(skullX + 18, floorY - 16);
+    g.lineTo(skullX + 30, floorY - 12);
+    g.lineTo(skullX + 28, floorY - 8);
+    g.lineTo(skullX + 18, floorY - 10);
+    g.closePath();
+    g.fill({ color: 0xccbb99 });
     g.stroke({ color: 0xaa9977, width: 1 });
     // Eye sockets
-    g.circle(skullX - 6, floorY - 14, 4);
+    g.circle(skullX - 6, floorY - 16, 5);
     g.fill({ color: 0x331100 });
-    g.circle(skullX + 6, floorY - 14, 4);
+    g.circle(skullX + 6, floorY - 16, 5);
     g.fill({ color: 0x331100 });
-    // Horns
-    g.moveTo(skullX - 12, floorY - 20);
-    g.quadraticCurveTo(skullX - 22, floorY - 35, skullX - 18, floorY - 40);
-    g.stroke({ color: 0xaa9977, width: 3, cap: "round" });
-    g.moveTo(skullX + 12, floorY - 20);
-    g.quadraticCurveTo(skullX + 22, floorY - 35, skullX + 18, floorY - 40);
-    g.stroke({ color: 0xaa9977, width: 3, cap: "round" });
+    // Glowing eyes (faint ember)
+    g.circle(skullX - 6, floorY - 16, 2);
+    g.fill({ color: 0xff4400, alpha: 0.15 });
+    g.circle(skullX + 6, floorY - 16, 2);
+    g.fill({ color: 0xff4400, alpha: 0.15 });
+    // Teeth
+    for (let i = 0; i < 5; i++) {
+      g.moveTo(skullX + 20 + i * 2.5, floorY - 8);
+      g.lineTo(skullX + 21 + i * 2.5, floorY - 5);
+      g.stroke({ color: 0xccbb99, width: 1.5 });
+    }
+    // Horns — curved
+    g.moveTo(skullX - 14, floorY - 22);
+    g.quadraticCurveTo(skullX - 26, floorY - 40, skullX - 20, floorY - 48);
+    g.stroke({ color: 0xaa9977, width: 3.5, cap: "round" });
+    g.moveTo(skullX + 14, floorY - 22);
+    g.quadraticCurveTo(skullX + 26, floorY - 40, skullX + 20, floorY - 48);
+    g.stroke({ color: 0xaa9977, width: 3.5, cap: "round" });
+
+    // Obsidian shards
+    for (const ox of [sw * 0.42, sw * 0.55, sw * 0.62]) {
+      g.moveTo(ox, floorY);
+      g.lineTo(ox - 3, floorY - 12);
+      g.lineTo(ox + 4, floorY - 15);
+      g.lineTo(ox + 2, floorY);
+      g.closePath();
+      g.fill({ color: 0x111118 });
+      g.stroke({ color: 0x222228, width: 0.5 });
+    }
 
     // Rocky ground with lava cracks
     g.rect(0, floorY, sw, sh - floorY);
     g.fill({ color: a.groundColor });
     g.rect(0, floorY, sw, 3);
     g.fill({ color: a.groundHighlight, alpha: 0.4 });
-    // Lava cracks in ground
-    for (let i = 0; i < 6; i++) {
-      const cx = sw * (0.1 + i * 0.15);
+    // More extensive lava cracks
+    for (let i = 0; i < 8; i++) {
+      const cx = sw * (0.08 + i * 0.12);
       g.moveTo(cx, floorY + 2);
-      g.lineTo(cx + 10, floorY + 12);
-      g.lineTo(cx + 5, floorY + 20);
-      g.stroke({ color: 0xff4400, width: 1.5, alpha: 0.3 });
+      g.lineTo(cx + 8, floorY + 10);
+      g.lineTo(cx + 4, floorY + 18);
+      g.stroke({ color: 0xff4400, width: 1.5, alpha: 0.25 });
+      g.moveTo(cx, floorY + 2);
+      g.lineTo(cx + 8, floorY + 10);
+      g.stroke({ color: 0xff8844, width: 0.8, alpha: 0.3 });
+    }
+    // Scorched earth patches
+    for (let i = 0; i < 5; i++) {
+      const px = sw * (0.15 + i * 0.18);
+      g.ellipse(px, floorY + 6, 14, 4);
+      g.fill({ color: 0x1a0a00, alpha: 0.2 });
     }
 
     // Ember particles
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 30; i++) {
       this._particles.push({
-        x: Math.random() * sw, y: floorY * 0.3 + Math.random() * floorY * 0.6,
+        x: Math.random() * sw, y: floorY * 0.2 + Math.random() * floorY * 0.7,
         vx: (Math.random() - 0.5) * 0.3, vy: -0.3 - Math.random() * 0.5,
         radius: 1 + Math.random() * 2, alpha: 0.3 + Math.random() * 0.5,
         phase: Math.random() * Math.PI * 2, color: i % 3 === 0 ? 0xff8844 : 0xff4422,
       });
     }
-    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
@@ -2189,24 +2811,35 @@ export class DuelArenaRenderer {
     for (const p of this._particles) {
       p.x += p.vx + Math.sin(time * 2 + p.phase) * 0.3;
       p.y += p.vy;
-      if (p.y < this._floorY * 0.1) { p.y = this._floorY; p.x = Math.random() * sw; }
+      if (p.y < this._floorY * 0.05) { p.y = this._floorY; p.x = Math.random() * sw; }
       const fade = p.alpha * (0.3 + Math.sin(time * 4 + p.phase) * 0.5);
-      g.circle(p.x, p.y, p.radius + 1);
-      g.fill({ color: p.color, alpha: fade * 0.2 });
+      // Glow
+      g.circle(p.x, p.y, p.radius + 1.5);
+      g.fill({ color: p.color, alpha: fade * 0.15 });
+      // Core
       g.circle(p.x, p.y, p.radius * 0.6);
       g.fill({ color: 0xffcc44, alpha: fade });
     }
     // Lava glow pulse at peak
-    const pulse = 0.1 + Math.sin(time * 1.5) * 0.05;
-    g.circle(sw * 0.5, this._floorY * 0.12, 25);
+    const pulse = 0.12 + Math.sin(time * 1.5) * 0.06;
+    g.circle(sw * 0.5, this._floorY * 0.1, 28);
     g.fill({ color: 0xff4400, alpha: pulse });
-    // Heat shimmer above lava
-    for (let x = 0; x < sw; x += 20) {
+    g.circle(sw * 0.5, this._floorY * 0.1, 12);
+    g.fill({ color: 0xff8844, alpha: pulse * 1.5 });
+    // Heat shimmer
+    for (let x = sw * 0.15; x < sw * 0.85; x += 15) {
       const shimmer = Math.sin(time * 3 + x * 0.05) * 2;
-      g.moveTo(x, this._floorY * 0.65 + shimmer);
-      g.lineTo(x + 15, this._floorY * 0.65 - shimmer);
+      g.moveTo(x, this._floorY * 0.6 + shimmer);
+      g.lineTo(x + 10, this._floorY * 0.6 - shimmer);
       g.stroke({ color: 0xff6633, width: 1, alpha: 0.03 });
     }
+    // Skull eye flicker
+    const skullX = sw * 0.78;
+    const eyeGlow = 0.1 + Math.sin(time * 2) * 0.08;
+    g.circle(skullX - 6, this._floorY - 16, 3);
+    g.fill({ color: 0xff4400, alpha: eyeGlow });
+    g.circle(skullX + 6, this._floorY - 16, 3);
+    g.fill({ color: 0xff4400, alpha: eyeGlow });
   }
 
   // =========================================================================
@@ -2220,7 +2853,7 @@ export class DuelArenaRenderer {
     // Dark interior with golden ambient
     this._drawSkyGradient(g, a, sw, floorY, 8);
 
-    // Vaulted ceiling with pointed arches
+    // Vaulted ceiling with ornate pointed arches
     for (let i = 0; i < 5; i++) {
       const cx = sw * (0.1 + i * 0.2);
       g.moveTo(cx - sw * 0.1, floorY * 0.12);
@@ -2229,9 +2862,19 @@ export class DuelArenaRenderer {
       g.moveTo(cx - sw * 0.1, floorY * 0.12);
       g.quadraticCurveTo(cx, -floorY * 0.04, cx + sw * 0.1, floorY * 0.12);
       g.stroke({ color: 0x6a6554, width: 3 });
+      // Rib vault lines converging to keystone
+      g.moveTo(cx, floorY * 0.01);
+      g.lineTo(cx - sw * 0.08, floorY * 0.12);
+      g.stroke({ color: 0x5a5544, width: 2, alpha: 0.5 });
+      g.moveTo(cx, floorY * 0.01);
+      g.lineTo(cx + sw * 0.08, floorY * 0.12);
+      g.stroke({ color: 0x5a5544, width: 2, alpha: 0.5 });
+      // Keystone
+      g.roundRect(cx - 4, 0, 8, 8, 2);
+      g.fill({ color: 0x6a6554 });
     }
 
-    // Stone walls
+    // Stone walls with column details
     const wallY = floorY * 0.12;
     g.rect(0, wallY, sw, floorY - wallY);
     g.fill({ color: 0x665544 });
@@ -2239,8 +2882,32 @@ export class DuelArenaRenderer {
       g.moveTo(0, y).lineTo(sw, y);
       g.stroke({ color: 0x5a4a3a, width: 0.6, alpha: 0.35 });
     }
+    // Block pattern
+    let wRow = 0;
+    for (let y = wallY; y < floorY; y += 14) {
+      const off = (wRow % 2) * 16;
+      for (let x = off; x < sw; x += 32) {
+        g.moveTo(x, y).lineTo(x, y + 14);
+        g.stroke({ color: 0x5a4a3a, width: 0.4, alpha: 0.25 });
+      }
+      wRow++;
+    }
 
-    // Stained glass windows
+    // Wall columns
+    for (const px of [sw * 0.1, sw * 0.3, sw * 0.5, sw * 0.7, sw * 0.9]) {
+      g.rect(px - 8, wallY, 16, floorY - wallY);
+      g.fill({ color: 0x6a5a48 });
+      g.rect(px - 8, wallY, 4, floorY - wallY);
+      g.fill({ color: 0x7a6a58, alpha: 0.3 });
+      // Capital
+      g.rect(px - 10, wallY, 20, 8);
+      g.fill({ color: 0x7a6a58 });
+      // Base
+      g.rect(px - 10, floorY - 8, 20, 8);
+      g.fill({ color: 0x7a6a58 });
+    }
+
+    // Stained glass windows — richer detail
     const windowXs = [sw * 0.15, sw * 0.38, sw * 0.62, sw * 0.85];
     const windowColors = [
       [0xaa3333, 0x3344aa, 0xddaa33],
@@ -2250,88 +2917,167 @@ export class DuelArenaRenderer {
     ];
     for (let i = 0; i < windowXs.length; i++) {
       const wx = windowXs[i];
-      const wy = wallY + 20;
-      const ww = 30;
-      const wh = 60;
-      // Window frame
-      g.rect(wx - ww / 2 - 3, wy - 3, ww + 6, wh + 6);
+      const wy = wallY + 16;
+      const ww = 34;
+      const wh = 68;
+      // Frame
+      g.rect(wx - ww / 2 - 4, wy - 4, ww + 8, wh + 8);
       g.fill({ color: 0x5a5544 });
       // Pointed top
-      g.moveTo(wx - ww / 2 - 3, wy - 3);
-      g.quadraticCurveTo(wx, wy - 25, wx + ww / 2 + 3, wy - 3);
+      g.moveTo(wx - ww / 2 - 4, wy - 4);
+      g.quadraticCurveTo(wx, wy - 28, wx + ww / 2 + 4, wy - 4);
       g.fill({ color: 0x5a5544 });
-      // Glass
+      // Glass background
       g.rect(wx - ww / 2, wy, ww, wh);
       g.fill({ color: 0x222244, alpha: 0.3 });
-      // Colored glass sections
+      // Pointed glass top
+      g.moveTo(wx - ww / 2, wy);
+      g.quadraticCurveTo(wx, wy - 22, wx + ww / 2, wy);
+      g.fill({ color: 0x222244, alpha: 0.2 });
+      // Colored glass — 6 sections
       const cols = windowColors[i];
-      g.rect(wx - ww / 2, wy, ww / 3, wh / 2);
-      g.fill({ color: cols[0], alpha: 0.2 });
-      g.rect(wx - ww / 2 + ww / 3, wy, ww / 3, wh / 2);
-      g.fill({ color: cols[1], alpha: 0.2 });
-      g.rect(wx - ww / 2 + ww * 2 / 3, wy, ww / 3, wh / 2);
-      g.fill({ color: cols[2], alpha: 0.2 });
-      g.rect(wx - ww / 2, wy + wh / 2, ww, wh / 2);
-      g.fill({ color: cols[1], alpha: 0.15 });
-      // Dividers
-      g.moveTo(wx, wy).lineTo(wx, wy + wh);
-      g.stroke({ color: 0x5a5544, width: 2 });
-      g.moveTo(wx - ww / 2, wy + wh / 2).lineTo(wx + ww / 2, wy + wh / 2);
-      g.stroke({ color: 0x5a5544, width: 2 });
+      const secW = ww / 3;
+      const secH = wh / 3;
+      for (let sy = 0; sy < 3; sy++) {
+        for (let sx = 0; sx < 3; sx++) {
+          g.rect(wx - ww / 2 + sx * secW, wy + sy * secH, secW, secH);
+          g.fill({ color: cols[sx % cols.length], alpha: 0.15 + (sy === 1 ? 0.05 : 0) });
+        }
+      }
+      // Lead dividers — grid
+      for (let d = 1; d < 3; d++) {
+        g.moveTo(wx - ww / 2 + d * secW, wy).lineTo(wx - ww / 2 + d * secW, wy + wh);
+        g.stroke({ color: 0x5a5544, width: 1.5 });
+      }
+      for (let d = 1; d < 3; d++) {
+        g.moveTo(wx - ww / 2, wy + d * secH).lineTo(wx + ww / 2, wy + d * secH);
+        g.stroke({ color: 0x5a5544, width: 1.5 });
+      }
+      // Rosette at top
+      g.circle(wx, wy - 8, 6);
+      g.fill({ color: cols[1], alpha: 0.25 });
+      g.circle(wx, wy - 8, 6);
+      g.stroke({ color: 0x5a5544, width: 1.5 });
       // Light beam from window
       g.moveTo(wx - ww / 2, wy + wh);
       g.lineTo(wx + ww / 2, wy + wh);
-      g.lineTo(wx + ww / 2 + 20, floorY);
-      g.lineTo(wx - ww / 2 - 10, floorY);
+      g.lineTo(wx + ww / 2 + 25, floorY);
+      g.lineTo(wx - ww / 2 - 12, floorY);
       g.closePath();
-      g.fill({ color: a.accentColor, alpha: 0.03 });
+      g.fill({ color: a.accentColor, alpha: 0.025 });
     }
 
-    // Central altar with grail
+    // Pews (rows of benches)
+    for (let row = 0; row < 3; row++) {
+      const py = floorY * (0.65 + row * 0.08);
+      for (const side of [-1, 1]) {
+        const px = sw * 0.5 + side * sw * 0.22;
+        g.rect(px - 25, py, 50, 6);
+        g.fill({ color: 0x5a3a1a });
+        // Back rest
+        g.rect(px - 25, py - 8, 50, 3);
+        g.fill({ color: 0x5a3a1a });
+        g.rect(px - 25, py - 8, 1, 8);
+        g.fill({ color: 0x4a2a0a });
+        g.rect(px + 24, py - 8, 1, 8);
+        g.fill({ color: 0x4a2a0a });
+      }
+    }
+
+    // Central altar with grail — more detailed
     const altarX = sw * 0.5;
     const altarY = floorY - 8;
+    // Steps leading up
+    g.rect(altarX - 45, altarY - 5, 90, 5);
+    g.fill({ color: 0x887766 });
+    g.rect(altarX - 38, altarY - 10, 76, 5);
+    g.fill({ color: 0x887766 });
     // Altar table
-    g.rect(altarX - 28, altarY - 25, 56, 25);
+    g.rect(altarX - 30, altarY - 30, 60, 20);
     g.fill({ color: 0x776655 });
-    g.rect(altarX - 28, altarY - 25, 56, 25);
+    g.rect(altarX - 30, altarY - 30, 60, 20);
     g.stroke({ color: 0x665544, width: 1.5 });
-    // Altar cloth
-    g.rect(altarX - 25, altarY - 25, 50, 6);
+    // Altar front carved panel
+    g.rect(altarX - 25, altarY - 28, 50, 16);
+    g.fill({ color: 0x6a5a48 });
+    // Cross carved into panel
+    g.rect(altarX - 1.5, altarY - 27, 3, 12);
+    g.fill({ color: 0x887766, alpha: 0.5 });
+    g.rect(altarX - 5, altarY - 23, 10, 2);
+    g.fill({ color: 0x887766, alpha: 0.5 });
+    // Altar cloth with lace edge
+    g.rect(altarX - 28, altarY - 30, 56, 6);
     g.fill({ color: 0xeeddcc });
-    g.rect(altarX - 25, altarY - 25, 50, 6);
+    g.rect(altarX - 28, altarY - 30, 56, 6);
     g.stroke({ color: a.accentColor, width: 1 });
-    // Grail cup
-    g.moveTo(altarX - 6, altarY - 32);
-    g.lineTo(altarX - 8, altarY - 25);
-    g.lineTo(altarX + 8, altarY - 25);
-    g.lineTo(altarX + 6, altarY - 32);
+    // Lace edge pattern
+    for (let lx = altarX - 26; lx < altarX + 26; lx += 6) {
+      g.arc(lx, altarY - 24, 3, 0, Math.PI);
+      g.stroke({ color: 0xeeddcc, width: 0.8, alpha: 0.5 });
+    }
+    // Grail cup — more ornate
+    g.moveTo(altarX - 7, altarY - 38);
+    g.lineTo(altarX - 9, altarY - 30);
+    g.lineTo(altarX + 9, altarY - 30);
+    g.lineTo(altarX + 7, altarY - 38);
     g.closePath();
     g.fill({ color: 0xddaa33 });
     g.stroke({ color: 0xbb8822, width: 1 });
-    // Grail stem
-    g.rect(altarX - 2, altarY - 25, 4, 6);
+    // Gemstone on cup
+    g.circle(altarX, altarY - 34, 2);
+    g.fill({ color: 0xcc3333, alpha: 0.6 });
+    // Stem
+    g.rect(altarX - 2, altarY - 30, 4, 7);
     g.fill({ color: 0xddaa33 });
-    // Grail base
-    g.ellipse(altarX, altarY - 19, 6, 2);
+    // Base
+    g.ellipse(altarX, altarY - 23, 7, 2.5);
     g.fill({ color: 0xddaa33 });
-    // Grail glow
-    for (let r = 20; r > 0; r -= 3) {
-      g.circle(altarX, altarY - 30, r);
-      g.fill({ color: a.accentColor, alpha: 0.008 });
-    }
-    // Candles on altar
-    for (const cx of [altarX - 18, altarX + 18]) {
-      g.rect(cx - 1.5, altarY - 35, 3, 10);
-      g.fill({ color: 0xeeddcc });
-      this._flames.push({ x: cx, y: altarY - 38, baseRadius: 3.5, phase: cx * 0.2 });
+    g.ellipse(altarX, altarY - 23, 7, 2.5);
+    g.stroke({ color: 0xbb8822, width: 0.8 });
+    // Grail divine glow
+    for (let r = 25; r > 0; r -= 3) {
+      g.circle(altarX, altarY - 35, r);
+      g.fill({ color: a.accentColor, alpha: 0.01 });
     }
 
-    // Floor — polished stone tiles
+    // Candles on altar + tall candlesticks
+    for (const cx of [altarX - 20, altarX + 20]) {
+      g.rect(cx - 1.5, altarY - 38, 3, 8);
+      g.fill({ color: 0xeeddcc });
+      this._flames.push({ x: cx, y: altarY - 41, baseRadius: 3.5, phase: cx * 0.2 });
+    }
+    // Tall floor candlesticks
+    for (const cx of [altarX - 40, altarX + 40]) {
+      g.rect(cx - 2, altarY - 50, 4, 42);
+      g.fill({ color: 0x8b7355 });
+      g.ellipse(cx, altarY - 8, 5, 2);
+      g.fill({ color: 0x8b7355 });
+      g.rect(cx - 1.5, altarY - 58, 3, 8);
+      g.fill({ color: 0xeeddcc });
+      this._flames.push({ x: cx, y: altarY - 61, baseRadius: 4, phase: cx * 0.15 });
+    }
+
+    // Incense brazier
+    const incX = altarX;
+    const incY = altarY - 12;
+    g.arc(incX, incY, 6, Math.PI, 0);
+    g.fill({ color: 0x8b7355 });
+    // Incense smoke particles
+    for (let i = 0; i < 8; i++) {
+      this._particles.push({
+        x: incX + (Math.random() - 0.5) * 5, y: incY - 5 - Math.random() * 30,
+        vx: (Math.random() - 0.5) * 0.08, vy: -0.05 - Math.random() * 0.05,
+        radius: 1 + Math.random() * 2, alpha: 0.08 + Math.random() * 0.1,
+        phase: Math.random() * Math.PI * 2, color: 0xddddcc,
+      });
+    }
+
+    // Floor — polished stone tiles with central aisle
     g.rect(0, floorY, sw, sh - floorY);
     g.fill({ color: a.groundColor });
     g.rect(0, floorY, sw, 3);
     g.fill({ color: a.groundHighlight, alpha: 0.5 });
-    // Checkered floor
+    // Checkered pattern
     let tRow = 0;
     for (let y = floorY + 2; y < sh; y += 18) {
       for (let x = 0; x < sw; x += 36) {
@@ -2342,9 +3088,12 @@ export class DuelArenaRenderer {
       }
       tRow++;
     }
+    // Central carpet runner
+    g.rect(sw * 0.42, floorY, sw * 0.16, sh - floorY);
+    g.fill({ color: 0x882222, alpha: 0.1 });
 
-    // Dust particles in light beams
-    for (let i = 0; i < 18; i++) {
+    // Dust/light particles
+    for (let i = 0; i < 14; i++) {
       this._particles.push({
         x: Math.random() * sw, y: wallY + Math.random() * (floorY - wallY),
         vx: (Math.random() - 0.5) * 0.05, vy: 0.03 + Math.random() * 0.05,
@@ -2352,7 +3101,7 @@ export class DuelArenaRenderer {
         phase: Math.random() * Math.PI * 2, color: a.accentColor,
       });
     }
-    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
@@ -2369,21 +3118,30 @@ export class DuelArenaRenderer {
       g.circle(f.x, f.y + 1, 1.5);
       g.fill({ color: 0xffffcc, alpha: 0.9 });
     }
-    // Dust motes
+    // Dust motes + incense smoke
     for (const p of this._particles) {
       p.x += p.vx + Math.sin(time * 0.4 + p.phase) * 0.08;
       p.y += p.vy;
       if (p.y > this._floorY) { p.y = this._floorY * 0.12; }
+      if (p.y < 0) { p.y = this._floorY * 0.5; }
       const pulse = p.alpha * (0.3 + Math.sin(time * 1.5 + p.phase) * 0.5);
-      g.circle(p.x, p.y, p.radius);
-      g.fill({ color: 0xffffff, alpha: pulse });
+      if (p.color === 0xddddcc) {
+        // Incense — larger, more diffuse
+        g.circle(p.x, p.y, p.radius + 2);
+        g.fill({ color: p.color, alpha: pulse * 0.3 });
+      } else {
+        g.circle(p.x, p.y, p.radius);
+        g.fill({ color: 0xffffff, alpha: pulse });
+      }
     }
     // Grail glow pulse
     const altarX = this._sw * 0.5;
     const altarY = this._floorY - 8;
     const pulse = 0.06 + Math.sin(time * 1.2) * 0.03;
-    g.circle(altarX, altarY - 30, 18);
+    g.circle(altarX, altarY - 35, 20);
     g.fill({ color: 0xffee88, alpha: pulse });
+    g.circle(altarX, altarY - 35, 10);
+    g.fill({ color: 0xffffcc, alpha: pulse * 0.8 });
   }
 
   // =========================================================================
@@ -2395,77 +3153,155 @@ export class DuelArenaRenderer {
     const floorY = this._floorY;
 
     this._drawSkyGradient(g, a, sw, floorY);
-    // Bright fluffy clouds
-    for (let i = 0; i < 6; i++) {
-      const cx = sw * (0.08 + i * 0.17);
-      const cy = floorY * (0.1 + Math.sin(i * 1.8) * 0.04);
-      for (let j = 0; j < 3; j++) {
-        g.ellipse(cx + j * 18 - 18, cy + j * 3, 25 + j * 5, 12 + j * 2);
-        g.fill({ color: 0xffffff, alpha: 0.2 - j * 0.04 });
+    // Bright fluffy clouds — multiple layers
+    for (let layer = 0; layer < 2; layer++) {
+      for (let i = 0; i < 6; i++) {
+        const cx = sw * (0.06 + i * 0.17 + layer * 0.08);
+        const cy = floorY * (0.08 + layer * 0.05 + Math.sin(i * 1.8 + layer) * 0.04);
+        for (let j = 0; j < 3; j++) {
+          g.ellipse(cx + j * 16 - 16, cy + j * 3, 22 + j * 5, 10 + j * 2);
+          g.fill({ color: 0xffffff, alpha: 0.18 - j * 0.04 - layer * 0.04 });
+        }
       }
     }
 
-    // Sun
-    const sunX = sw * 0.8;
-    const sunY = floorY * 0.12;
-    for (let r = 50; r > 0; r -= 4) {
+    // Sun with rays
+    const sunX = sw * 0.82;
+    const sunY = floorY * 0.1;
+    // Rays
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      g.moveTo(sunX + Math.cos(angle) * 20, sunY + Math.sin(angle) * 20);
+      g.lineTo(sunX + Math.cos(angle) * 55, sunY + Math.sin(angle) * 55);
+      g.stroke({ color: 0xffee88, width: 1.5, alpha: 0.04 });
+    }
+    for (let r = 55; r > 0; r -= 4) {
       g.circle(sunX, sunY, r);
       g.fill({ color: 0xffdd88, alpha: 0.006 });
     }
     g.circle(sunX, sunY, 18);
     g.fill({ color: 0xffee99, alpha: 0.7 });
+    g.circle(sunX, sunY, 12);
+    g.fill({ color: 0xffffff, alpha: 0.3 });
 
-    // Ocean
-    const seaY = floorY * 0.5;
+    // Ocean — layered colors
+    const seaY = floorY * 0.48;
+    // Horizon line haze
+    g.rect(0, seaY - 5, sw, 10);
+    g.fill({ color: 0xaabbcc, alpha: 0.1 });
+    // Main ocean
     g.rect(0, seaY, sw, floorY - seaY);
     g.fill({ color: 0x3366aa });
     g.rect(0, seaY, sw, 3);
     g.fill({ color: 0x5588cc, alpha: 0.5 });
-    // Ocean color variation
-    g.rect(0, seaY + (floorY - seaY) * 0.5, sw, (floorY - seaY) * 0.5);
-    g.fill({ color: 0x225588, alpha: 0.3 });
+    // Depth layers
+    g.rect(0, seaY + (floorY - seaY) * 0.3, sw, (floorY - seaY) * 0.3);
+    g.fill({ color: 0x225588, alpha: 0.2 });
+    g.rect(0, seaY + (floorY - seaY) * 0.6, sw, (floorY - seaY) * 0.4);
+    g.fill({ color: 0x1a4466, alpha: 0.15 });
+    // Sun reflection on water
+    g.moveTo(sunX - 30, seaY + 5);
+    g.lineTo(sunX + 30, seaY + 5);
+    g.lineTo(sunX + 15, seaY + 40);
+    g.lineTo(sunX - 15, seaY + 40);
+    g.closePath();
+    g.fill({ color: 0xffee88, alpha: 0.05 });
 
-    // Lighthouse on distant cliff (right side)
-    const lhX = sw * 0.88;
-    const lhCliffY = seaY + 20;
-    // Cliff
-    g.moveTo(lhX - 30, floorY * 0.75);
-    g.lineTo(lhX - 20, lhCliffY);
-    g.lineTo(lhX + 25, lhCliffY + 5);
-    g.lineTo(lhX + 35, floorY * 0.75);
+    // Distant sailing ship
+    const shipX = sw * 0.55;
+    const shipY = seaY + 15;
+    // Hull
+    g.moveTo(shipX - 10, shipY);
+    g.lineTo(shipX - 8, shipY + 4);
+    g.lineTo(shipX + 8, shipY + 4);
+    g.lineTo(shipX + 10, shipY);
+    g.closePath();
+    g.fill({ color: 0x4a3a2a, alpha: 0.5 });
+    // Mast
+    g.moveTo(shipX, shipY);
+    g.lineTo(shipX, shipY - 15);
+    g.stroke({ color: 0x4a3a2a, width: 1, alpha: 0.5 });
+    // Sail
+    g.moveTo(shipX, shipY - 14);
+    g.lineTo(shipX + 8, shipY - 8);
+    g.lineTo(shipX, shipY - 3);
+    g.closePath();
+    g.fill({ color: 0xeeeedd, alpha: 0.4 });
+
+    // Lighthouse on cliff (right) — more detailed
+    const lhX = sw * 0.9;
+    const lhCliffY = seaY + 18;
+    // Cliff with layers
+    g.moveTo(lhX - 35, floorY * 0.8);
+    g.lineTo(lhX - 25, lhCliffY);
+    g.lineTo(lhX + 28, lhCliffY + 3);
+    g.lineTo(lhX + 40, floorY * 0.8);
     g.closePath();
     g.fill({ color: 0x667766 });
-    // Lighthouse tower
-    g.rect(lhX - 5, lhCliffY - 50, 10, 50);
+    // Cliff face strata
+    for (let y = lhCliffY + 5; y < floorY * 0.8; y += 8) {
+      g.moveTo(lhX - 30, y);
+      g.lineTo(lhX + 35, y + 2);
+      g.stroke({ color: 0x556655, width: 0.6, alpha: 0.3 });
+    }
+    // Lighthouse tower — tapered
+    g.moveTo(lhX - 6, lhCliffY);
+    g.lineTo(lhX - 4, lhCliffY - 52);
+    g.lineTo(lhX + 4, lhCliffY - 52);
+    g.lineTo(lhX + 6, lhCliffY);
+    g.closePath();
     g.fill({ color: 0xeeeedd });
-    // Red stripe
-    g.rect(lhX - 5, lhCliffY - 35, 10, 10);
+    // Red stripes
+    g.rect(lhX - 5, lhCliffY - 38, 10, 10);
+    g.fill({ color: 0xcc3333 });
+    g.rect(lhX - 5, lhCliffY - 18, 10, 10);
     g.fill({ color: 0xcc3333 });
     // Lamp room
-    g.rect(lhX - 7, lhCliffY - 55, 14, 8);
+    g.rect(lhX - 7, lhCliffY - 58, 14, 8);
     g.fill({ color: 0xffee88, alpha: 0.6 });
-    g.rect(lhX - 7, lhCliffY - 55, 14, 8);
+    g.rect(lhX - 7, lhCliffY - 58, 14, 8);
     g.stroke({ color: 0x333333, width: 1 });
+    // Window panes
+    g.moveTo(lhX, lhCliffY - 58);
+    g.lineTo(lhX, lhCliffY - 50);
+    g.stroke({ color: 0x333333, width: 0.8 });
     // Roof
-    g.moveTo(lhX - 8, lhCliffY - 55);
-    g.lineTo(lhX, lhCliffY - 62);
-    g.lineTo(lhX + 8, lhCliffY - 55);
+    g.moveTo(lhX - 8, lhCliffY - 58);
+    g.lineTo(lhX, lhCliffY - 65);
+    g.lineTo(lhX + 8, lhCliffY - 58);
     g.closePath();
     g.fill({ color: 0x444444 });
+    // Light beam
+    this._flames.push({ x: lhX, y: lhCliffY - 54, baseRadius: 5, phase: 0 });
 
-    // Coastal cliffs (left foreground)
-    g.moveTo(-10, floorY * 0.6);
-    g.lineTo(-10, seaY + 10);
-    g.lineTo(sw * 0.12, seaY + 5);
-    g.lineTo(sw * 0.18, floorY * 0.7);
-    g.lineTo(sw * 0.15, floorY);
-    g.lineTo(-10, floorY);
+    // Coastal cliffs (left) — larger, more detail
+    g.moveTo(-15, floorY * 0.55);
+    g.lineTo(-15, seaY + 8);
+    g.lineTo(sw * 0.1, seaY + 3);
+    g.lineTo(sw * 0.16, seaY + 12);
+    g.lineTo(sw * 0.22, floorY * 0.7);
+    g.lineTo(sw * 0.2, floorY);
+    g.lineTo(-15, floorY);
     g.closePath();
     g.fill({ color: 0x778877 });
     // Cliff face detail
-    for (let y = seaY + 15; y < floorY; y += 10) {
-      g.moveTo(0, y).lineTo(sw * 0.12, y + 2);
+    for (let y = seaY + 12; y < floorY; y += 8) {
+      g.moveTo(0, y).lineTo(sw * 0.15, y + 2);
       g.stroke({ color: 0x667766, width: 0.6, alpha: 0.3 });
+    }
+    // Grass on cliff top
+    for (let x = 0; x < sw * 0.12; x += 6) {
+      g.moveTo(x, seaY + 5 + x * 0.2);
+      g.lineTo(x + 1, seaY + 1 + x * 0.2);
+      g.stroke({ color: 0x558844, width: 1, alpha: 0.5 });
+    }
+
+    // Rock pools (foreground, near shore)
+    for (const rpx of [sw * 0.3, sw * 0.5, sw * 0.7]) {
+      g.ellipse(rpx, floorY + 3, 10, 4);
+      g.fill({ color: 0x336699, alpha: 0.2 });
+      g.ellipse(rpx, floorY + 3, 10, 4);
+      g.stroke({ color: 0x667766, width: 1, alpha: 0.3 });
     }
 
     // Beach / sand ground
@@ -2474,36 +3310,59 @@ export class DuelArenaRenderer {
     g.rect(0, floorY, sw, 3);
     g.fill({ color: a.groundHighlight, alpha: 0.5 });
     // Sand texture
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 25; i++) {
       const sx = Math.sin(i * 7.7) * sw * 0.45 + sw * 0.5;
-      g.ellipse(sx, floorY + 5 + (i % 4) * 3, 4 + i % 3, 1.5);
-      g.fill({ color: a.groundHighlight, alpha: 0.15 });
+      g.ellipse(sx, floorY + 4 + (i % 4) * 3, 4 + i % 3, 1.5);
+      g.fill({ color: a.groundHighlight, alpha: 0.12 });
     }
+    // Driftwood
+    g.moveTo(sw * 0.4, floorY + 5);
+    g.lineTo(sw * 0.48, floorY + 3);
+    g.stroke({ color: 0x8a7a5a, width: 3, cap: "round" });
+    g.moveTo(sw * 0.42, floorY + 4);
+    g.lineTo(sw * 0.44, floorY + 2);
+    g.stroke({ color: 0x8a7a5a, width: 1.5, cap: "round" });
     // Shells
-    for (let i = 0; i < 6; i++) {
-      const sx = sw * (0.15 + i * 0.14);
+    for (let i = 0; i < 8; i++) {
+      const sx = sw * (0.12 + i * 0.11);
       g.ellipse(sx, floorY + 4, 3, 2);
       g.fill({ color: 0xeeddcc, alpha: 0.4 });
     }
+    // Seaweed
+    for (let i = 0; i < 4; i++) {
+      const sx = sw * (0.25 + i * 0.18);
+      g.moveTo(sx, floorY + 2);
+      g.quadraticCurveTo(sx + 3, floorY - 3, sx + 6, floorY + 1);
+      g.stroke({ color: 0x336633, width: 1.5, alpha: 0.3 });
+    }
 
-    // Register wave ripples
-    for (let i = 0; i < 8; i++) {
+    // Beach grass tufts
+    for (const bx of [sw * 0.08, sw * 0.18]) {
+      for (let b = 0; b < 5; b++) {
+        g.moveTo(bx + b * 2, floorY);
+        g.lineTo(bx + b * 2 + (b - 2) * 2, floorY - 8 - b);
+        g.stroke({ color: 0x88aa55, width: 0.8, alpha: 0.5 });
+      }
+    }
+
+    // Wave ripples
+    for (let i = 0; i < 10; i++) {
       this._ripples.push({
-        y: seaY + 4 + i * 6, amplitude: 1.5 + Math.random() * 2,
+        y: seaY + 4 + i * 5, amplitude: 1.5 + Math.random() * 2,
         frequency: 0.03 + Math.random() * 0.02, speed: 0.8 + Math.random() * 0.5,
-        phase: Math.random() * Math.PI * 2, alpha: 0.12 + Math.random() * 0.08,
+        phase: Math.random() * Math.PI * 2, alpha: 0.1 + Math.random() * 0.08,
       });
     }
-    // Seagull-like particles
-    for (let i = 0; i < 6; i++) {
+    // Seagulls
+    for (let i = 0; i < 8; i++) {
       this._particles.push({
-        x: Math.random() * sw, y: floorY * (0.15 + Math.random() * 0.25),
+        x: Math.random() * sw, y: floorY * (0.12 + Math.random() * 0.25),
         vx: 0.3 + Math.random() * 0.4, vy: Math.sin(i) * 0.1,
         radius: 1.5, alpha: 0.5, phase: Math.random() * Math.PI * 2, color: 0xffffff,
       });
     }
-    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
-    g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
+    g.rect(0, floorY * 0.55, sw, floorY * 0.45);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.4 });
   }
 
   private _update_cornwall(time: number): void {
@@ -2518,26 +3377,45 @@ export class DuelArenaRenderer {
       g.stroke({ color: 0x88bbdd, width: 1, alpha: r.alpha * (0.7 + Math.sin(time * 0.5 + r.phase) * 0.3) });
     }
     // Wave foam
-    const seaY = this._floorY * 0.5;
-    for (let i = 0; i < 3; i++) {
-      const fy = seaY + 10 + i * 15;
-      for (let x = 0; x < sw; x += 50) {
+    const seaY = this._floorY * 0.48;
+    for (let i = 0; i < 4; i++) {
+      const fy = seaY + 8 + i * 12;
+      for (let x = 0; x < sw; x += 45) {
         const fx = x + Math.sin(time * (1 + i * 0.3) + x * 0.01) * 15;
         g.moveTo(fx, fy);
-        g.lineTo(fx + 14, fy - 1);
-        g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.12 + Math.sin(time * 2 + i) * 0.05 });
+        g.lineTo(fx + 12, fy - 1);
+        g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.1 + Math.sin(time * 2 + i) * 0.04 });
       }
     }
-    // Seagulls — simple V shapes drifting
+    // Shore wash
+    const washY = this._floorY - 3;
+    const washPhase = (Math.sin(time * 0.5) + 1) * 0.5;
+    g.moveTo(sw * 0.15, washY + 3);
+    for (let x = sw * 0.15; x < sw * 0.85; x += 8) {
+      g.lineTo(x, washY + 3 - washPhase * 4 + Math.sin(x * 0.08 + time * 2) * 1);
+    }
+    g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.08 * washPhase });
+    // Seagulls — V shapes
     for (const p of this._particles) {
       p.x += p.vx;
       p.y += p.vy + Math.sin(time * 2 + p.phase) * 0.15;
-      if (p.x > sw + 20) { p.x = -20; p.y = this._floorY * (0.15 + Math.random() * 0.2); }
-      // V shape (wings)
-      g.moveTo(p.x - 4, p.y + 2);
+      if (p.x > sw + 20) { p.x = -20; p.y = this._floorY * (0.12 + Math.random() * 0.2); }
+      const wingFlap = Math.sin(time * 6 + p.phase) * 2;
+      g.moveTo(p.x - 5, p.y + wingFlap);
       g.lineTo(p.x, p.y);
-      g.lineTo(p.x + 4, p.y + 2);
+      g.lineTo(p.x + 5, p.y + wingFlap);
       g.stroke({ color: 0xffffff, width: 1.2, alpha: p.alpha });
+    }
+    // Lighthouse beam sweep
+    for (const f of this._flames) {
+      const beamAngle = time * 0.5;
+      const bx = f.x + Math.cos(beamAngle) * 40;
+      const by = f.y + Math.sin(beamAngle) * 20;
+      g.moveTo(f.x, f.y);
+      g.lineTo(bx, by);
+      g.stroke({ color: 0xffee88, width: 3, alpha: 0.06 });
+      g.circle(f.x, f.y, 6 + Math.sin(time * 3) * 1);
+      g.fill({ color: 0xffee88, alpha: 0.3 });
     }
   }
 
@@ -2552,89 +3430,197 @@ export class DuelArenaRenderer {
     // Near-black background
     this._drawSkyGradient(g, a, sw, floorY, 8);
 
+    // Barely visible distant towers/turrets through darkness
+    for (const tx of [sw * 0.15, sw * 0.4, sw * 0.6, sw * 0.85]) {
+      const th = 40 + Math.sin(tx * 0.1) * 15;
+      g.rect(tx - 8, floorY * 0.06 - th, 16, th);
+      g.fill({ color: 0x060610, alpha: 0.5 });
+      // Turret top
+      g.moveTo(tx - 10, floorY * 0.06 - th);
+      g.lineTo(tx, floorY * 0.06 - th - 10);
+      g.lineTo(tx + 10, floorY * 0.06 - th);
+      g.closePath();
+      g.fill({ color: 0x060610, alpha: 0.5 });
+    }
+
     // Massive dark fortress wall
-    const wallY = floorY * 0.18;
+    const wallY = floorY * 0.15;
     g.rect(0, wallY, sw, floorY - wallY);
     g.fill({ color: 0x0a0a18 });
-    // Faint stone lines
+    // Stone lines
     for (let y = wallY + 18; y < floorY; y += 18) {
       g.moveTo(0, y).lineTo(sw, y);
       g.stroke({ color: 0x0e0e20, width: 0.7, alpha: 0.5 });
     }
-
-    // Massive pillars
-    for (const px of [sw * 0.1, sw * 0.3, sw * 0.5, sw * 0.7, sw * 0.9]) {
-      g.rect(px - 14, wallY, 28, floorY - wallY);
-      g.fill({ color: 0x0c0c1a });
-      g.rect(px - 16, wallY, 32, 12);
-      g.fill({ color: 0x101028 });
-      g.rect(px - 16, floorY - 12, 32, 12);
-      g.fill({ color: 0x101028 });
+    let kRow = 0;
+    for (let y = wallY; y < floorY; y += 18) {
+      const off = (kRow % 2) * 22;
+      for (let x = off; x < sw; x += 44) {
+        g.moveTo(x, y).lineTo(x, y + 18);
+        g.stroke({ color: 0x0e0e20, width: 0.4, alpha: 0.3 });
+      }
+      kRow++;
     }
 
-    // Glowing rune circles on walls
-    const runeXs = [sw * 0.2, sw * 0.4, sw * 0.6, sw * 0.8];
+    // Portcullis (center back)
+    const portX = sw * 0.5;
+    const portY = wallY + 10;
+    const portW = 50;
+    const portH = floorY - portY - 5;
+    g.roundRect(portX - portW / 2 - 4, portY - 4, portW + 8, portH + 4, 3);
+    g.fill({ color: 0x080818 });
+    // Iron bars (vertical)
+    for (let x = portX - portW / 2 + 5; x < portX + portW / 2; x += 8) {
+      g.moveTo(x, portY);
+      g.lineTo(x, portY + portH);
+      g.stroke({ color: 0x333344, width: 2 });
+    }
+    // Iron bars (horizontal)
+    for (let y = portY + 10; y < portY + portH; y += 12) {
+      g.moveTo(portX - portW / 2, y);
+      g.lineTo(portX + portW / 2, y);
+      g.stroke({ color: 0x333344, width: 1.5 });
+    }
+    // Darkness beyond
+    g.rect(portX - portW / 2, portY, portW, portH);
+    g.fill({ color: 0x020208, alpha: 0.6 });
+
+    // Massive pillars with gargoyles
+    for (const px of [sw * 0.08, sw * 0.28, sw * 0.72, sw * 0.92]) {
+      g.rect(px - 16, wallY, 32, floorY - wallY);
+      g.fill({ color: 0x0c0c1a });
+      g.rect(px - 16, wallY, 6, floorY - wallY);
+      g.fill({ color: 0x0e0e1e, alpha: 0.5 });
+      // Capital
+      g.rect(px - 18, wallY, 36, 14);
+      g.fill({ color: 0x101028 });
+      // Base
+      g.rect(px - 18, floorY - 14, 36, 14);
+      g.fill({ color: 0x101028 });
+      // Gargoyle
+      g.circle(px, wallY + 22, 7);
+      g.fill({ color: 0x151530 });
+      g.circle(px - 2.5, wallY + 20, 1.5);
+      g.fill({ color: a.accentColor, alpha: 0.3 });
+      g.circle(px + 2.5, wallY + 20, 1.5);
+      g.fill({ color: a.accentColor, alpha: 0.3 });
+      // Wing-like protrusions
+      g.moveTo(px - 7, wallY + 22);
+      g.lineTo(px - 14, wallY + 18);
+      g.stroke({ color: 0x151530, width: 2 });
+      g.moveTo(px + 7, wallY + 22);
+      g.lineTo(px + 14, wallY + 18);
+      g.stroke({ color: 0x151530, width: 2 });
+    }
+
+    // Glowing rune circles — more ornate
+    const runeXs = [sw * 0.18, sw * 0.38, sw * 0.62, sw * 0.82];
     for (let i = 0; i < runeXs.length; i++) {
       const rx = runeXs[i];
-      const ry = wallY + (floorY - wallY) * 0.35;
+      const ry = wallY + (floorY - wallY) * 0.4;
       // Outer circle
-      g.circle(rx, ry, 14);
+      g.circle(rx, ry, 16);
       g.stroke({ color: a.accentColor, width: 1.5, alpha: 0.2 });
-      // Inner rune (triangle)
-      g.moveTo(rx, ry - 8);
-      g.lineTo(rx - 7, ry + 5);
-      g.lineTo(rx + 7, ry + 5);
+      // Middle circle
+      g.circle(rx, ry, 11);
+      g.stroke({ color: a.accentColor, width: 1, alpha: 0.15 });
+      // Inner rune (triangle + inverted triangle = star)
+      g.moveTo(rx, ry - 9);
+      g.lineTo(rx - 8, ry + 5);
+      g.lineTo(rx + 8, ry + 5);
       g.closePath();
-      g.stroke({ color: a.accentColor, width: 1, alpha: 0.3 });
-      // Center dot
-      g.circle(rx, ry, 2.5);
+      g.stroke({ color: a.accentColor, width: 1, alpha: 0.25 });
+      g.moveTo(rx, ry + 9);
+      g.lineTo(rx - 8, ry - 5);
+      g.lineTo(rx + 8, ry - 5);
+      g.closePath();
+      g.stroke({ color: a.accentColor, width: 1, alpha: 0.2 });
+      // Center eye
+      g.circle(rx, ry, 3);
       g.fill({ color: a.accentColor, alpha: 0.3 });
     }
 
-    // Hanging chains (static base)
-    for (let i = 0; i < 8; i++) {
-      const cx = sw * (0.05 + i * 0.12);
-      const cy1 = wallY + 5;
-      const cy2 = wallY + 40 + (i % 3) * 20;
-      g.moveTo(cx, cy1);
-      g.lineTo(cx, cy2);
-      g.stroke({ color: 0x333344, width: 2 });
+    // Hanging chains — more detailed with hooks
+    for (let i = 0; i < 10; i++) {
+      const cx = sw * (0.04 + i * 0.1);
+      const cy1 = wallY + 3;
+      const cy2 = wallY + 35 + (i % 4) * 18;
       // Chain links
-      for (let y = cy1; y < cy2; y += 8) {
-        g.ellipse(cx, y, 2.5, 4);
+      for (let y = cy1; y < cy2; y += 7) {
+        g.ellipse(cx + Math.sin(y * 0.3) * 1, y, 2.5, 3.5);
+        g.stroke({ color: 0x444455, width: 1 });
+      }
+      // Hook or weight at bottom
+      if (i % 3 === 0) {
+        g.moveTo(cx, cy2);
+        g.quadraticCurveTo(cx + 5, cy2 + 8, cx, cy2 + 12);
+        g.stroke({ color: 0x444455, width: 1.5 });
+      } else {
+        g.circle(cx, cy2 + 4, 4);
+        g.fill({ color: 0x222233 });
+        g.circle(cx, cy2 + 4, 4);
         g.stroke({ color: 0x444455, width: 1 });
       }
     }
 
-    // Dark floor
+    // Weapon racks on walls
+    for (const wx of [sw * 0.15, sw * 0.85]) {
+      const wy = wallY + (floorY - wallY) * 0.6;
+      // Rack
+      g.rect(wx - 18, wy, 36, 3);
+      g.fill({ color: 0x222233 });
+      // Weapons
+      g.moveTo(wx - 12, wy);
+      g.lineTo(wx - 12, wy - 25);
+      g.stroke({ color: 0x555566, width: 2 });
+      g.moveTo(wx, wy);
+      g.lineTo(wx + 2, wy - 30);
+      g.stroke({ color: 0x555566, width: 2 });
+      g.moveTo(wx + 12, wy);
+      g.lineTo(wx + 10, wy - 22);
+      g.stroke({ color: 0x555566, width: 2 });
+      // Blade tips
+      g.moveTo(wx - 14, wy - 25);
+      g.lineTo(wx - 12, wy - 30);
+      g.lineTo(wx - 10, wy - 25);
+      g.closePath();
+      g.fill({ color: 0x777788 });
+    }
+
+    // Dark floor with purple rune patterns
     g.rect(0, floorY, sw, sh - floorY);
     g.fill({ color: a.groundColor });
     g.rect(0, floorY, sw, 2);
     g.fill({ color: a.groundHighlight, alpha: 0.3 });
+    // Rune circle on floor (center)
+    g.ellipse(sw * 0.5, floorY + 8, 60, 8);
+    g.stroke({ color: a.accentColor, width: 1, alpha: 0.1 });
+    g.ellipse(sw * 0.5, floorY + 8, 40, 5);
+    g.stroke({ color: a.accentColor, width: 0.8, alpha: 0.08 });
     // Rune lines on floor
-    for (let x = sw * 0.2; x < sw * 0.8; x += 40) {
-      g.moveTo(x, floorY + 4);
-      g.lineTo(x + 20, floorY + 4);
-      g.stroke({ color: a.accentColor, width: 0.8, alpha: 0.15 });
+    for (let x = sw * 0.15; x < sw * 0.85; x += 35) {
+      g.moveTo(x, floorY + 3);
+      g.lineTo(x + 18, floorY + 3);
+      g.stroke({ color: a.accentColor, width: 0.8, alpha: 0.12 });
     }
 
     // Purple mist particles
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 25; i++) {
       this._particles.push({
-        x: Math.random() * sw, y: floorY * 0.4 + Math.random() * floorY * 0.5,
+        x: Math.random() * sw, y: floorY * 0.3 + Math.random() * floorY * 0.6,
         vx: (Math.random() - 0.5) * 0.2, vy: -0.05 - Math.random() * 0.1,
-        radius: 2 + Math.random() * 2.5, alpha: 0.1 + Math.random() * 0.15,
+        radius: 2 + Math.random() * 2.5, alpha: 0.1 + Math.random() * 0.12,
         phase: Math.random() * Math.PI * 2, color: a.accentColor,
       });
     }
-    // Mist layers
-    for (let i = 0; i < 4; i++) {
+    // Dark mist layers
+    for (let i = 0; i < 5; i++) {
       this._mistLayers.push({
-        y: floorY - 10 + i * 8, speed: 0.2 + i * 0.08,
-        offset: i * 60, alpha: 0.05, height: 25 + i * 6,
+        y: floorY - 12 + i * 8, speed: 0.15 + i * 0.06,
+        offset: i * 55, alpha: 0.05, height: 22 + i * 6,
       });
     }
-    g.rect(0, floorY * 0.3, sw, floorY * 0.7);
+    g.rect(0, floorY * 0.25, sw, floorY * 0.75);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
@@ -2642,35 +3628,47 @@ export class DuelArenaRenderer {
     const g = this._animGfx;
     const sw = this._sw;
     // Pulsing runes
-    const runeXs = [sw * 0.2, sw * 0.4, sw * 0.6, sw * 0.8];
-    const wallY = this._floorY * 0.18;
+    const runeXs = [sw * 0.18, sw * 0.38, sw * 0.62, sw * 0.82];
+    const wallY = this._floorY * 0.15;
     for (let i = 0; i < runeXs.length; i++) {
       const rx = runeXs[i];
-      const ry = wallY + (this._floorY - wallY) * 0.35;
+      const ry = wallY + (this._floorY - wallY) * 0.4;
       const pulse = 0.15 + Math.sin(time * 1.5 + i * 1.2) * 0.1;
-      g.circle(rx, ry, 16);
-      g.fill({ color: 0x8844cc, alpha: pulse * 0.3 });
-      g.circle(rx, ry, 3);
+      g.circle(rx, ry, 18);
+      g.fill({ color: 0x8844cc, alpha: pulse * 0.2 });
+      g.circle(rx, ry, 4);
       g.fill({ color: 0xaa66ee, alpha: pulse });
     }
+    // Floor rune circle pulse
+    const floorPulse = 0.05 + Math.sin(time * 0.8) * 0.03;
+    g.ellipse(sw * 0.5, this._floorY + 8, 60, 8);
+    g.stroke({ color: 0x8844cc, width: 1.5, alpha: floorPulse });
     // Floating shadow particles
     for (const p of this._particles) {
       p.x += p.vx + Math.sin(time * 0.8 + p.phase) * 0.15;
       p.y += p.vy;
-      if (p.y < this._floorY * 0.15) { p.y = this._floorY * 0.85; p.x = Math.random() * sw; }
+      if (p.y < this._floorY * 0.1) { p.y = this._floorY * 0.85; p.x = Math.random() * sw; }
       const fade = p.alpha * (0.4 + Math.sin(time * 1.5 + p.phase) * 0.4);
       g.circle(p.x, p.y, p.radius + 2);
-      g.fill({ color: p.color, alpha: fade * 0.15 });
+      g.fill({ color: p.color, alpha: fade * 0.12 });
       g.circle(p.x, p.y, p.radius);
       g.fill({ color: p.color, alpha: fade });
     }
     // Dark fog drift
     for (const m of this._mistLayers) {
       const offset = (time * m.speed * 20 + m.offset) % (sw + 200) - 100;
-      for (let x = -100; x < sw + 100; x += 80) {
-        g.ellipse((x + offset) % (sw + 200) - 100, m.y, 55, m.height / 2);
+      for (let x = -100; x < sw + 100; x += 70) {
+        g.ellipse((x + offset) % (sw + 200) - 100, m.y, 50, m.height / 2);
         g.fill({ color: 0x110022, alpha: m.alpha });
       }
+    }
+    // Swaying chains
+    for (let i = 0; i < 10; i++) {
+      const cx = sw * (0.04 + i * 0.1);
+      const sway = Math.sin(time * 0.6 + i * 0.8) * 2;
+      g.moveTo(cx + sway * 0.3, this._floorY * 0.15 + 35 + (i % 4) * 18);
+      g.lineTo(cx + sway, this._floorY * 0.15 + 40 + (i % 4) * 18);
+      g.stroke({ color: 0x444455, width: 1, alpha: 0.3 });
     }
   }
 
@@ -2684,68 +3682,127 @@ export class DuelArenaRenderer {
 
     this._drawSkyGradient(g, a, sw, floorY);
     // Red/orange glow at horizon (fires)
-    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
+    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
     g.fill({ color: 0xcc4422, alpha: 0.08 });
-    g.rect(0, floorY * 0.75, sw, floorY * 0.25);
-    g.fill({ color: 0xff6633, alpha: 0.05 });
+    g.rect(0, floorY * 0.7, sw, floorY * 0.3);
+    g.fill({ color: 0xff6633, alpha: 0.06 });
 
-    // Smoke clouds
-    for (let i = 0; i < 10; i++) {
-      const cx = sw * (Math.sin(i * 2.1) * 0.4 + 0.5);
-      const cy = floorY * (0.05 + i * 0.04);
-      g.circle(cx, cy, 30 + i * 4);
-      g.fill({ color: 0x443333, alpha: 0.25 - i * 0.02 });
+    // Smoke clouds — layered
+    for (let layer = 0; layer < 2; layer++) {
+      for (let i = 0; i < 8; i++) {
+        const cx = sw * (Math.sin(i * 2.1 + layer * 1.5) * 0.4 + 0.5);
+        const cy = floorY * (0.03 + layer * 0.06 + i * 0.03);
+        g.circle(cx, cy, 28 + i * 4 + layer * 8);
+        g.fill({ color: 0x443333 - layer * 0x111111, alpha: 0.2 - i * 0.015 - layer * 0.05 });
+      }
     }
 
-    // Distant burning buildings
-    for (const bx of [sw * 0.15, sw * 0.4, sw * 0.7, sw * 0.9]) {
-      const bh = 30 + Math.sin(bx) * 15;
-      const by = floorY * 0.55;
+    // Distant hills / terrain
+    g.moveTo(0, floorY * 0.55);
+    for (let x = 0; x <= sw; x += sw / 10) {
+      g.lineTo(x, floorY * (0.45 + Math.sin(x * 0.006 + 1) * 0.05));
+    }
+    g.lineTo(sw, floorY * 0.6);
+    g.lineTo(0, floorY * 0.6);
+    g.closePath();
+    g.fill({ color: 0x3a2a20, alpha: 0.4 });
+
+    // Distant burning buildings — more
+    for (const bx of [sw * 0.1, sw * 0.25, sw * 0.42, sw * 0.58, sw * 0.75, sw * 0.92]) {
+      const bh = 25 + Math.sin(bx * 0.7) * 15;
+      const by = floorY * 0.5;
       // Building silhouette
-      g.rect(bx - 12, by - bh, 24, bh + 10);
-      g.fill({ color: 0x2a2020, alpha: 0.5 });
+      g.rect(bx - 10, by - bh, 20, bh + 8);
+      g.fill({ color: 0x2a2020, alpha: 0.45 });
+      // Partial collapse
+      if (Math.sin(bx * 1.3) > 0) {
+        g.moveTo(bx - 8, by - bh);
+        g.lineTo(bx + 5, by - bh + 8);
+        g.lineTo(bx + 10, by - bh);
+        g.closePath();
+        g.fill({ color: 0x443333, alpha: 0.3 });
+      }
       // Fire glow on top
-      g.circle(bx, by - bh, 10);
-      g.fill({ color: 0xff4400, alpha: 0.15 });
-      this._flames.push({ x: bx, y: by - bh - 5, baseRadius: 5, phase: bx * 0.1 });
+      g.circle(bx, by - bh, 8);
+      g.fill({ color: 0xff4400, alpha: 0.12 });
+      this._flames.push({ x: bx, y: by - bh - 4, baseRadius: 4, phase: bx * 0.1 });
     }
 
-    // Broken siege equipment
-    // Broken wagon wheel (left)
-    const wheelX = sw * 0.2;
-    g.circle(wheelX, floorY - 5, 15);
+    // Siege tower ruin (left)
+    const stX = sw * 0.08;
+    g.rect(stX - 15, floorY - 70, 30, 70);
+    g.fill({ color: 0x3a2a1a, alpha: 0.6 });
+    // Tilted/broken top
+    g.moveTo(stX - 15, floorY - 70);
+    g.lineTo(stX - 10, floorY - 80);
+    g.lineTo(stX + 20, floorY - 65);
+    g.lineTo(stX + 15, floorY - 70);
+    g.closePath();
+    g.fill({ color: 0x3a2a1a, alpha: 0.5 });
+    // Crossbeams
+    for (let y = floorY - 60; y < floorY; y += 15) {
+      g.moveTo(stX - 15, y);
+      g.lineTo(stX + 15, y);
+      g.stroke({ color: 0x2a1a0a, width: 2, alpha: 0.5 });
+    }
+    // Fire on siege tower
+    this._flames.push({ x: stX, y: floorY - 75, baseRadius: 8, phase: 3.5 });
+
+    // Broken wagon wheel
+    const wheelX = sw * 0.22;
+    g.circle(wheelX, floorY - 5, 16);
     g.stroke({ color: 0x4a3a2a, width: 3 });
     for (let i = 0; i < 6; i++) {
       const angle = (i / 6) * Math.PI * 2 + 0.3;
       g.moveTo(wheelX, floorY - 5);
-      g.lineTo(wheelX + Math.cos(angle) * 13, floorY - 5 + Math.sin(angle) * 13);
+      g.lineTo(wheelX + Math.cos(angle) * 14, floorY - 5 + Math.sin(angle) * 14);
       g.stroke({ color: 0x4a3a2a, width: 1.5 });
     }
+    // Second broken wheel (tilted)
+    g.ellipse(wheelX + 25, floorY - 2, 10, 6);
+    g.stroke({ color: 0x4a3a2a, width: 2 });
 
-    // Broken spears / weapons stuck in ground
-    const weaponXs = [sw * 0.12, sw * 0.28, sw * 0.45, sw * 0.58, sw * 0.72, sw * 0.88];
+    // Broken spears / weapons stuck in ground — more variety
+    const weaponXs = [sw * 0.15, sw * 0.3, sw * 0.38, sw * 0.48, sw * 0.56, sw * 0.65, sw * 0.75, sw * 0.85];
     for (let i = 0; i < weaponXs.length; i++) {
       const wx = weaponXs[i];
-      const angle = -0.15 + (i % 3) * 0.1;
-      const wLen = 35 + (i % 2) * 15;
+      const angle = -0.2 + (i % 4) * 0.08;
+      const wLen = 30 + (i % 3) * 12;
       const topX = wx + Math.sin(angle) * wLen;
       const topY = floorY - Math.cos(angle) * wLen;
-      // Shaft
       g.moveTo(wx, floorY + 2);
       g.lineTo(topX, topY);
-      g.stroke({ color: 0x5a4a3a, width: 2.5, cap: "round" });
-      // Point or broken top
-      if (i % 2 === 0) {
+      g.stroke({ color: 0x5a4a3a, width: 2, cap: "round" });
+      // Spear point, axe head, or broken
+      if (i % 3 === 0) {
         g.moveTo(topX - 3, topY + 2);
-        g.lineTo(topX, topY - 6);
+        g.lineTo(topX, topY - 7);
         g.lineTo(topX + 3, topY + 2);
         g.closePath();
+        g.fill({ color: 0x888899 });
+      } else if (i % 3 === 1) {
+        // Axe head
+        g.moveTo(topX, topY);
+        g.quadraticCurveTo(topX + 8, topY - 5, topX + 6, topY + 6);
+        g.lineTo(topX, topY);
         g.fill({ color: 0x888899 });
       }
     }
 
-    // Shields scattered on ground
-    for (const sx of [sw * 0.35, sw * 0.65]) {
+    // Fallen knight helmets
+    for (const hx of [sw * 0.35, sw * 0.62]) {
+      g.ellipse(hx, floorY + 1, 7, 5);
+      g.fill({ color: 0x666677 });
+      g.ellipse(hx, floorY + 1, 7, 5);
+      g.stroke({ color: 0x555566, width: 1 });
+      // Visor slit
+      g.moveTo(hx - 3, floorY);
+      g.lineTo(hx + 3, floorY);
+      g.stroke({ color: 0x333344, width: 1 });
+    }
+
+    // Shields scattered
+    for (const sx of [sw * 0.28, sw * 0.5, sw * 0.72]) {
       g.ellipse(sx, floorY + 2, 12, 5);
       g.fill({ color: 0x883322 });
       g.ellipse(sx, floorY + 2, 12, 5);
@@ -2754,11 +3811,30 @@ export class DuelArenaRenderer {
       g.fill({ color: 0x888899 });
     }
 
+    // Tattered banner on pole
+    const bannerX = sw * 0.45;
+    g.moveTo(bannerX, floorY + 3);
+    g.lineTo(bannerX - 1, floorY - 55);
+    g.stroke({ color: 0x5a4a3a, width: 3, cap: "round" });
+    // Torn banner
+    g.moveTo(bannerX, floorY - 52);
+    g.lineTo(bannerX + 22, floorY - 48);
+    g.lineTo(bannerX + 18, floorY - 38);
+    g.lineTo(bannerX + 25, floorY - 35);
+    g.lineTo(bannerX + 15, floorY - 28);
+    g.lineTo(bannerX, floorY - 32);
+    g.closePath();
+    g.fill({ color: 0x882222, alpha: 0.5 });
+    this._banners.push({
+      x: bannerX, y: floorY - 52, width: 25, height: 24,
+      phase: 0, color: 0x882222, trimColor: 0xddaa33,
+    });
+
     // Trenches / disturbed earth
-    for (let i = 0; i < 4; i++) {
-      const tx = sw * (0.15 + i * 0.22);
-      g.ellipse(tx, floorY + 4, 25, 5);
-      g.fill({ color: 0x3a2a1a, alpha: 0.4 });
+    for (let i = 0; i < 5; i++) {
+      const tx = sw * (0.12 + i * 0.18);
+      g.ellipse(tx, floorY + 5, 22, 5);
+      g.fill({ color: 0x3a2a1a, alpha: 0.35 });
     }
 
     // Ground — muddy, scarred earth
@@ -2767,23 +3843,35 @@ export class DuelArenaRenderer {
     g.rect(0, floorY, sw, 3);
     g.fill({ color: a.groundHighlight, alpha: 0.4 });
     // Blood/mud stains
-    for (let i = 0; i < 8; i++) {
-      const sx = sw * (0.08 + i * 0.11);
-      g.ellipse(sx, floorY + 6 + (i % 3) * 4, 8 + i % 4 * 3, 3);
+    for (let i = 0; i < 10; i++) {
+      const sx = sw * (0.06 + i * 0.09);
+      g.ellipse(sx, floorY + 5 + (i % 3) * 4, 7 + i % 4 * 3, 3);
       g.fill({ color: 0x4a2020, alpha: 0.2 });
     }
+    // Crater
+    g.ellipse(sw * 0.6, floorY + 6, 20, 5);
+    g.fill({ color: 0x3a2a1a, alpha: 0.3 });
+    g.ellipse(sw * 0.6, floorY + 6, 20, 5);
+    g.stroke({ color: 0x4a3a2a, width: 0.8, alpha: 0.3 });
 
-    // Smoke / fire particles
-    for (let i = 0; i < 20; i++) {
+    // Smoke / fire particles — more
+    for (let i = 0; i < 28; i++) {
       this._particles.push({
-        x: Math.random() * sw, y: floorY * 0.4 + Math.random() * floorY * 0.5,
+        x: Math.random() * sw, y: floorY * 0.3 + Math.random() * floorY * 0.6,
         vx: (Math.random() - 0.5) * 0.3, vy: -0.15 - Math.random() * 0.25,
         radius: 1.5 + Math.random() * 2, alpha: 0.15 + Math.random() * 0.2,
         phase: Math.random() * Math.PI * 2,
-        color: i % 3 === 0 ? 0xff6633 : 0x664444,
+        color: i % 4 === 0 ? 0xff6633 : i % 4 === 1 ? 0xffaa44 : 0x664444,
       });
     }
-    g.rect(0, floorY * 0.4, sw, floorY * 0.6);
+    // Mist layers
+    for (let i = 0; i < 3; i++) {
+      this._mistLayers.push({
+        y: floorY - 5 + i * 10, speed: 0.2 + i * 0.1,
+        offset: i * 80, alpha: 0.04, height: 20 + i * 6,
+      });
+    }
+    g.rect(0, floorY * 0.35, sw, floorY * 0.65);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
@@ -2795,28 +3883,44 @@ export class DuelArenaRenderer {
       const flicker = Math.sin(time * 6 + f.phase) * 2;
       const flicker2 = Math.cos(time * 9 + f.phase) * 1.5;
       g.circle(f.x + flicker2 * 0.3, f.y, f.baseRadius + 3 + flicker);
-      g.fill({ color: 0xff4400, alpha: 0.15 });
+      g.fill({ color: 0xff4400, alpha: 0.12 });
       g.ellipse(f.x + flicker2 * 0.5, f.y - flicker * 0.3, f.baseRadius, f.baseRadius + 2 + flicker);
-      g.fill({ color: 0xff6622, alpha: 0.5 });
+      g.fill({ color: 0xff6622, alpha: 0.45 });
       g.ellipse(f.x, f.y, f.baseRadius * 0.4, f.baseRadius * 0.7);
-      g.fill({ color: 0xffcc44, alpha: 0.7 });
+      g.fill({ color: 0xffcc44, alpha: 0.65 });
     }
     // Smoke and ember particles
     for (const p of this._particles) {
       p.x += p.vx + Math.sin(time * 1.5 + p.phase) * 0.2;
       p.y += p.vy;
-      if (p.y < this._floorY * 0.1) { p.y = this._floorY; p.x = Math.random() * sw; }
+      if (p.y < this._floorY * 0.05) { p.y = this._floorY; p.x = Math.random() * sw; }
       const fade = p.alpha * (0.3 + Math.sin(time * 2.5 + p.phase) * 0.4);
       if (p.color === 0x664444) {
-        // Smoke — larger, more diffuse
+        // Smoke
         g.circle(p.x, p.y, p.radius + 3);
-        g.fill({ color: p.color, alpha: fade * 0.3 });
+        g.fill({ color: p.color, alpha: fade * 0.25 });
       } else {
-        // Ember — small bright
+        // Ember
         g.circle(p.x, p.y, p.radius);
         g.fill({ color: p.color, alpha: fade });
         g.circle(p.x, p.y, p.radius * 0.5);
         g.fill({ color: 0xffcc44, alpha: fade * 0.8 });
+      }
+    }
+    // Banner sway
+    for (const b of this._banners) {
+      const sway = Math.sin(time * 1.5 + b.phase) * 3;
+      g.moveTo(b.x, b.y);
+      g.lineTo(b.x + b.width + sway, b.y + 4 + sway * 0.5);
+      g.lineTo(b.x + b.width * 0.7 + sway * 0.8, b.y + b.height * 0.5);
+      g.stroke({ color: b.color, width: 1.5, alpha: 0.3 });
+    }
+    // Smoke drift
+    for (const m of this._mistLayers) {
+      const offset = (time * m.speed * 25 + m.offset) % (sw + 200) - 100;
+      for (let x = -100; x < sw + 100; x += 70) {
+        g.ellipse((x + offset) % (sw + 200) - 100, m.y, 45, m.height / 2);
+        g.fill({ color: 0x443333, alpha: m.alpha });
       }
     }
   }
