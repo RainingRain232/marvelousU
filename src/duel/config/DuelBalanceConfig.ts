@@ -13,7 +13,7 @@ export const DuelBalance = {
   GRAVITY: 1.2,
   STAGE_FLOOR_RATIO: 0.82, // floor Y as fraction of screen height
   PUSH_BACK_SPEED: 3,
-  STAGE_MARGIN: 20, // left/right wall margin from screen edge
+  STAGE_MARGIN: 60, // left/right wall margin from screen edge
 
   // Combo
   COMBO_DAMAGE_SCALING: 0.9,

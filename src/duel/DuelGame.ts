@@ -170,6 +170,13 @@ export class DuelGame {
     viewManager.addToLayer("background", this._fightView.container);
     viewManager.addToLayer("ui", this._hud.container);
 
+    // Reset camera — duel uses a static full-screen view, no pan/zoom
+    viewManager.camera.x = 0;
+    viewManager.camera.y = 0;
+    viewManager.camera.zoom = 1;
+    viewManager.camera.stopCinematicZoom();
+    viewManager.camera.keyboardEnabled = false;
+
     // Show intro
     this._stateMachine.transition(DuelPhase.ARENA_SELECT);
     this._stateMachine.transition(DuelPhase.INTRO);
@@ -178,9 +185,6 @@ export class DuelGame {
       this._beginFighting();
     });
     viewManager.addToLayer("ui", this._introView.container);
-
-    // Disable camera keyboard panning — arrow/WASD keys are for fighting
-    viewManager.camera.keyboardEnabled = false;
 
     // Start game loop
     this._simAccumulator = 0;
