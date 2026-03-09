@@ -1,0 +1,111 @@
+// Balance and world configuration for Medieval GTA mode
+
+export const GTAConfig = {
+  // Movement
+  WALK_SPEED: 120,
+  RUN_SPEED: 200,
+  HORSE_SPEED: 350,
+  ROLL_SPEED: 300,
+  ROLL_DURATION: 0.3,
+
+  // Combat
+  FIST_DAMAGE: 5,
+  SWORD_DAMAGE: 20,
+  BOW_DAMAGE: 15,
+  GUARD_DAMAGE: 15,
+  KNIGHT_DAMAGE: 25,
+  CRIMINAL_DAMAGE: 10,
+  ATTACK_COOLDOWN_FIST: 0.4,
+  ATTACK_COOLDOWN_SWORD: 0.6,
+  ATTACK_COOLDOWN_BOW: 1.0,
+  ATTACK_RANGE_MELEE: 40,
+  ATTACK_RANGE_BOW: 200,
+  BLOCK_REDUCTION: 0.7,
+
+  // Player
+  PLAYER_MAX_HP: 100,
+  STAMINA_DRAIN: 25,
+  STAMINA_REGEN: 15,
+  INVINCIBLE_DURATION: 0.5,
+
+  // NPCs
+  GUARD_HP: 80,
+  KNIGHT_HP: 120,
+  CIVILIAN_HP: 30,
+  CRIMINAL_HP: 50,
+  ARCHER_HP: 60,
+  GUARD_ALERT_RADIUS: 200,
+  GUARD_AGGRO_RADIUS: 150,
+  GUARD_CHASE_SPEED: 140,
+  KNIGHT_CHASE_SPEED: 160,
+  NPC_WANDER_SPEED: 40,
+  NPC_WANDER_RADIUS: 150,
+
+  // Wanted
+  WANTED_DECAY_TIME: 30,
+  WANTED_PUNCH_CIVILIAN: 1,
+  WANTED_ATTACK_GUARD: 2,
+  WANTED_KILL_GUARD: 3,
+  WANTED_ATTACK_KNIGHT: 4,
+  WANTED_MAX: 5,
+
+  // Horse
+  HORSE_HP: 80,
+  HORSE_STEAL_RANGE: 50,
+  HORSE_DISMOUNT_RANGE: 30,
+
+  // World
+  WORLD_WIDTH: 4000,
+  WORLD_HEIGHT: 3000,
+  CITY_X: 800,
+  CITY_Y: 500,
+  CITY_W: 2400,
+  CITY_H: 2000,
+  WALL_THICKNESS: 40,
+  TILE_SIZE: 32,
+
+  // Camera
+  CAMERA_LERP: 0.08,
+  CAMERA_ZOOM: 1.5,
+
+  // Day/Night
+  DAY_CYCLE_SPEED: 0.003,
+
+  // Interaction
+  INTERACT_RANGE: 50,
+  DIALOG_COOLDOWN: 0.5,
+
+  // Item pickup
+  PICKUP_RANGE: 30,
+  HEALTH_POTION_HEAL: 30,
+
+  // Notification
+  NOTIFICATION_DURATION: 3.0,
+
+  // Guard chase break-off distance
+  GUARD_CHASE_RADIUS: 600,
+
+  // Wanted alert scaling
+  WANTED_ALERT_RADIUS_PER_STAR: 80,
+
+  // NPC flee speed
+  NPC_FLEE_SPEED: 140,
+
+  // NPC attack range (melee)
+  NPC_ATTACK_RANGE: 50,
+
+  // City layout key positions
+  PLAYER_SPAWN: { x: 2000, y: 1500 },
+  CASTLE_BOUNDS: { x: 850, y: 550, w: 450, h: 500 },
+  MARKET_CENTER: { x: 1800, y: 1450 },
+  TAVERN_POS: { x: 2400, y: 1350 },
+  STABLE_POS: { x: 2825, y: 2000 },
+  CHURCH_POS: { x: 2225, y: 725 },
+  BARRACKS_POS: { x: 1650, y: 725 },
+  BLACKSMITH_POS: { x: 1025, y: 1350 },
+  PRISON_POS: { x: 1050, y: 1750 },
+  GATE_N: { x: 2000, y: 500 },
+  GATE_S: { x: 2000, y: 2500 },
+  GATE_E: { x: 3200, y: 1500 },
+  GATE_W: { x: 800, y: 1500 },
+};

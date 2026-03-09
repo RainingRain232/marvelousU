@@ -1,0 +1,1117 @@
+// ---------------------------------------------------------------------------
+// CamelotCityRenderer — renders the entire medieval world: ground, walls,
+// buildings, environment, day/night, and particles.
+// ---------------------------------------------------------------------------
+
+import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { GTAConfig } from "../config/MedievalGTAConfig";
+import type { MedievalGTAState, GTABuilding, GTAParticle } from "../state/MedievalGTAState";
+
+const WW = GTAConfig.WORLD_WIDTH;
+const WH = GTAConfig.WORLD_HEIGHT;
+const CX = GTAConfig.CITY_X;
+const CY = GTAConfig.CITY_Y;
+const CW = GTAConfig.CITY_W;
+const CH = GTAConfig.CITY_H;
+const WT = GTAConfig.WALL_THICKNESS;
+const ZOOM = 1.5;
+
+// seeded pseudo-random for deterministic decoration placement
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0; seed = seed + 0x6d2b79f5 | 0;
+    let t = ((seed ^ (seed >>> 15)) * (1 | seed)) | 0;
+    t = (t + ((t ^ (t >>> 7)) * (61 | t)) | 0) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export class CamelotCityRenderer {
+  readonly container = new Container();
+
+  // Layers
+  private groundLayer = new Container();
+  private roadLayer = new Container();
+  private buildingLayer = new Container();
+  private wallLayer = new Container();
+  private decorLayer = new Container();
+  private outsideFeatureLayer = new Container();
+  private dayNightOverlay = new Graphics();
+  private windowLightsLayer = new Graphics();
+  private particleGfx = new Graphics();
+
+  init(): void {
+    this.container.removeChildren();
+
+    this.groundLayer.removeChildren();
+    this.roadLayer.removeChildren();
+    this.buildingLayer.removeChildren();
+    this.wallLayer.removeChildren();
+    this.decorLayer.removeChildren();
+    this.outsideFeatureLayer.removeChildren();
+
+    this.drawGround();
+    this.drawRoads();
+    this.drawOutsideFeatures();
+    this.drawWalls();
+
+    this.container.addChild(this.groundLayer);
+    this.container.addChild(this.roadLayer);
+    this.container.addChild(this.outsideFeatureLayer);
+    this.container.addChild(this.buildingLayer);
+    this.container.addChild(this.wallLayer);
+    this.container.addChild(this.decorLayer);
+    this.container.addChild(this.windowLightsLayer);
+    this.container.addChild(this.dayNightOverlay);
+    this.container.addChild(this.particleGfx);
+  }
+
+  // ===================== GROUND =====================
+  private drawGround(): void {
+    const g = new Graphics();
+
+    // Base grass
+    g.rect(0, 0, WW, WH).fill({ color: 0x4a8c3f });
+
+    // Subtle grass variation patches
+    const rng = mulberry32(42);
+    for (let i = 0; i < 300; i++) {
+      const px = rng() * WW;
+      const py = rng() * WH;
+      // skip if inside city
+      if (px > CX + WT && px < CX + CW - WT && py > CY + WT && py < CY + CH - WT) continue;
+      const sw = 30 + rng() * 60;
+      const sh = 20 + rng() * 50;
+      const shade = rng() > 0.5 ? 0x3d7a34 : 0x57a048;
+      g.rect(px - sw / 2, py - sh / 2, sw, sh).fill({ color: shade, alpha: 0.4 });
+    }
+
+    // Grass tufts (darker green dots outside city)
+    for (let i = 0; i < 500; i++) {
+      const px = rng() * WW;
+      const py = rng() * WH;
+      if (px > CX && px < CX + CW && py > CY && py < CY + CH) continue;
+      g.circle(px, py, 2 + rng() * 3).fill({ color: 0x2d6b24, alpha: 0.5 });
+    }
+
+    // Inside city: cobblestone
+    const cityInnerX = CX + WT;
+    const cityInnerY = CY + WT;
+    const cityInnerW = CW - WT * 2;
+    const cityInnerH = CH - WT * 2;
+    g.rect(cityInnerX, cityInnerY, cityInnerW, cityInnerH).fill({ color: 0x8a8a80 });
+
+    // Cobblestone pattern
+    const stoneSize = 8;
+    const gap = 1;
+    for (let row = 0; row < Math.ceil(cityInnerH / (stoneSize + gap)); row++) {
+      const offsetX = (row % 2) * (stoneSize / 2);
+      for (let col = 0; col < Math.ceil(cityInnerW / (stoneSize + gap)) + 1; col++) {
+        const sx = cityInnerX + col * (stoneSize + gap) + offsetX;
+        const sy = cityInnerY + row * (stoneSize + gap);
+        if (sx >= cityInnerX + cityInnerW || sy >= cityInnerY + cityInnerH) continue;
+        const shade = 0x808078 + Math.floor(rng() * 0x181818);
+        const clampedShade = Math.min(shade, 0x999990);
+        g.rect(sx, sy, stoneSize, stoneSize).fill({ color: clampedShade });
+      }
+    }
+
+    // Market square: lighter stone
+    const mktX = 1500, mktY = 1200, mktW = 600, mktH = 500;
+    g.rect(mktX, mktY, mktW, mktH).fill({ color: 0xBBA898, alpha: 0.7 });
+    // Finer market stones
+    for (let row = 0; row < Math.ceil(mktH / 10); row++) {
+      for (let col = 0; col < Math.ceil(mktW / 10); col++) {
+        const shade = 0xAA9888 + Math.floor(rng() * 0x111111);
+        g.rect(mktX + col * 10 + 1, mktY + row * 10 + 1, 8, 8).fill({ color: Math.min(shade, 0xCCBBAA) });
+      }
+    }
+
+    this.groundLayer.addChild(g);
+  }
+
+  // ===================== ROADS =====================
+  private drawRoads(): void {
+    const g = new Graphics();
+    const roadColor = 0x9a9080;
+    const roadW = 36;
+
+    // Main north-south road through center
+    g.rect(1950 - roadW / 2, CY, roadW, CH).fill({ color: roadColor });
+    // Main east-west road
+    g.rect(CX, 1400 - roadW / 2, CW, roadW).fill({ color: roadColor });
+
+    // Roads to gates from outside
+    // North gate road
+    g.rect(1950 - roadW / 2, 0, roadW, CY).fill({ color: 0x8B7355, alpha: 0.8 });
+    // South gate road
+    g.rect(1950 - roadW / 2, CY + CH, roadW, WH - CY - CH).fill({ color: 0x8B7355, alpha: 0.8 });
+    // East gate road
+    g.rect(CX + CW, 1400 - roadW / 2, WW - CX - CW, roadW).fill({ color: 0x8B7355, alpha: 0.8 });
+    // West gate road
+    g.rect(0, 1400 - roadW / 2, CX, roadW).fill({ color: 0x8B7355, alpha: 0.8 });
+
+    // Side streets connecting buildings inside city
+    // Castle to market
+    g.rect(1100 - 12, CY + WT, 24, 1200 - CY - WT).fill({ color: roadColor, alpha: 0.5 });
+    // Church area
+    g.rect(2050, CY + WT + 350, 24, 300).fill({ color: roadColor, alpha: 0.5 });
+
+    this.roadLayer.addChild(g);
+  }
+
+  // ===================== OUTSIDE FEATURES =====================
+  private drawOutsideFeatures(): void {
+    const g = new Graphics();
+    const rng = mulberry32(123);
+
+    // ---- Forest (north) ----
+    for (let i = 0; i < 80; i++) {
+      const tx = 100 + rng() * (WW - 200);
+      const ty = 30 + rng() * 380;
+      // skip near the north gate road
+      if (Math.abs(tx - 1950) < 40) continue;
+      const radius = 14 + rng() * 18;
+      // Shadow
+      g.ellipse(tx + 3, ty + radius * 0.7, radius * 0.8, radius * 0.4).fill({ color: 0x1a3a10, alpha: 0.35 });
+      // Trunk
+      g.rect(tx - 2, ty + radius * 0.2, 4, radius * 0.6).fill({ color: 0x5C3A1E });
+      // Canopy layers
+      g.circle(tx, ty, radius).fill({ color: 0x2d6b24 });
+      g.circle(tx - radius * 0.3, ty + radius * 0.15, radius * 0.7).fill({ color: 0x358030 });
+      g.circle(tx + radius * 0.25, ty - radius * 0.1, radius * 0.65).fill({ color: 0x3d8a38 });
+      // Light highlight
+      g.circle(tx - radius * 0.2, ty - radius * 0.3, radius * 0.3).fill({ color: 0x4da045, alpha: 0.5 });
+    }
+
+    // ---- Farm fields (south of city) ----
+    const farmBaseY = CY + CH + 80;
+    const farmColors = [0x6B8E23, 0x7B9C33, 0x5A7D13, 0x8B9E53];
+    for (let fi = 0; fi < 6; fi++) {
+      const fx = 400 + fi * 520;
+      const fy = farmBaseY + (fi % 2) * 120;
+      const fw = 400;
+      const fh = 200;
+      // skip near south road
+      if (fx < 2050 && fx + fw > 1850) continue;
+      // Field background
+      g.rect(fx, fy, fw, fh).fill({ color: 0x8B7355, alpha: 0.3 });
+      // Crop rows
+      for (let row = 0; row < 10; row++) {
+        const rowColor = farmColors[row % farmColors.length];
+        g.rect(fx + 10, fy + 10 + row * (fh / 10), fw - 20, fh / 10 - 4).fill({ color: rowColor, alpha: 0.7 });
+      }
+      // Fence
+      g.rect(fx, fy, fw, 2).fill({ color: 0x8B6914 });
+      g.rect(fx, fy + fh - 2, fw, 2).fill({ color: 0x8B6914 });
+      g.rect(fx, fy, 2, fh).fill({ color: 0x8B6914 });
+      g.rect(fx + fw - 2, fy, 2, fh).fill({ color: 0x8B6914 });
+    }
+
+    // Farmhouses
+    const farmhouses = [
+      { x: 600, y: farmBaseY + 30 },
+      { x: 1400, y: farmBaseY + 150 },
+      { x: 2800, y: farmBaseY + 60 },
+    ];
+    for (const fh of farmhouses) {
+      g.rect(fh.x, fh.y, 50, 40).fill({ color: 0x8B6914 });
+      g.rect(fh.x - 2, fh.y - 2, 54, 4).fill({ color: 0x654321 });
+      // Roof
+      g.poly([fh.x - 5, fh.y, fh.x + 25, fh.y - 15, fh.x + 55, fh.y]).fill({ color: 0xA08050 });
+      // Door
+      g.rect(fh.x + 20, fh.y + 20, 10, 20).fill({ color: 0x4A2810 });
+    }
+
+    // Mill (windmill)
+    const millX = 3200, millY = farmBaseY + 100;
+    // Base building
+    g.rect(millX - 20, millY - 30, 40, 60).fill({ color: 0x9A8060 });
+    g.poly([millX - 25, millY - 30, millX, millY - 55, millX + 25, millY - 30]).fill({ color: 0x705030 });
+    // Windmill arms (cross shape)
+    g.moveTo(millX, millY - 35).lineTo(millX - 35, millY - 70).stroke({ color: 0x5C3A1E, width: 3 });
+    g.moveTo(millX, millY - 35).lineTo(millX + 35, millY - 70).stroke({ color: 0x5C3A1E, width: 3 });
+    g.moveTo(millX, millY - 35).lineTo(millX - 35, millY).stroke({ color: 0x5C3A1E, width: 3 });
+    g.moveTo(millX, millY - 35).lineTo(millX + 35, millY).stroke({ color: 0x5C3A1E, width: 3 });
+    // Sail fabric
+    g.poly([millX, millY - 37, millX - 10, millY - 55, millX - 30, millY - 65]).fill({ color: 0xE8DCC8, alpha: 0.7 });
+    g.poly([millX, millY - 37, millX + 10, millY - 55, millX + 30, millY - 65]).fill({ color: 0xE8DCC8, alpha: 0.7 });
+
+    // Scattered rocks outside
+    for (let i = 0; i < 40; i++) {
+      const rx = rng() * WW;
+      const ry = rng() * WH;
+      if (rx > CX - 30 && rx < CX + CW + 30 && ry > CY - 30 && ry < CY + CH + 30) continue;
+      g.circle(rx, ry, 2 + rng() * 4).fill({ color: 0x888880, alpha: 0.5 });
+    }
+
+    // Open fields east — wildflowers
+    for (let i = 0; i < 60; i++) {
+      const fx = CX + CW + 100 + rng() * (WW - CX - CW - 200);
+      const fy = 100 + rng() * (WH - 200);
+      if (fy < 450 || Math.abs(fy - 1400) < 30) continue;
+      const flowerColors = [0xFF6B6B, 0xFFD93D, 0xC084FC, 0xFFF1CC, 0x6EE7B7];
+      g.circle(fx, fy, 2).fill({ color: flowerColors[Math.floor(rng() * flowerColors.length)] });
+    }
+
+    this.outsideFeatureLayer.addChild(g);
+  }
+
+  // ===================== WALLS & TOWERS =====================
+  private drawWalls(): void {
+    const g = new Graphics();
+
+    const wallBase = 0x776655;
+    const wallHighlight = 0x887766;
+    const wallDark = 0x665544;
+    const gateWidth = 100;
+
+    // Helper: draw stone block pattern on a horizontal wall segment
+    const drawHWall = (x: number, y: number, w: number, h: number) => {
+      g.rect(x, y, w, h).fill({ color: wallBase });
+      // Stone blocks
+      const blockW = 20;
+      const blockH = h / 2;
+      for (let row = 0; row < 2; row++) {
+        const offsetX = row % 2 === 0 ? 0 : blockW / 2;
+        for (let bx = 0; bx < Math.ceil(w / blockW) + 1; bx++) {
+          const px = x + bx * blockW + offsetX;
+          if (px >= x + w) break;
+          const bw = Math.min(blockW - 1, x + w - px - 1);
+          if (bw <= 0) continue;
+          g.rect(px, y + row * blockH, bw, blockH - 1).fill({ color: wallHighlight, alpha: 0.3 });
+        }
+      }
+      // Crenellations on top edge
+      for (let cx = x; cx < x + w; cx += 20) {
+        g.rect(cx, y - 6, 10, 6).fill({ color: wallDark });
+      }
+    };
+
+    const drawVWall = (x: number, y: number, w: number, h: number) => {
+      g.rect(x, y, w, h).fill({ color: wallBase });
+      const blockH = 20;
+      const blockW = w / 2;
+      for (let col = 0; col < 2; col++) {
+        const offsetY = col % 2 === 0 ? 0 : blockH / 2;
+        for (let by = 0; by < Math.ceil(h / blockH) + 1; by++) {
+          const py = y + by * blockH + offsetY;
+          if (py >= y + h) break;
+          const bh = Math.min(blockH - 1, y + h - py - 1);
+          if (bh <= 0) continue;
+          g.rect(x + col * blockW, py, blockW - 1, bh).fill({ color: wallHighlight, alpha: 0.3 });
+        }
+      }
+      // Crenellations on outer edge
+      for (let cy = y; cy < y + h; cy += 20) {
+        g.rect(x - 6, cy, 6, 10).fill({ color: wallDark });
+      }
+    };
+
+    // North wall (with gate)
+    const gateNX = 1950 - gateWidth / 2;
+    drawHWall(CX, CY, gateNX - CX, WT);
+    drawHWall(gateNX + gateWidth, CY, CX + CW - gateNX - gateWidth, WT);
+
+    // South wall
+    const gateSX = 1950 - gateWidth / 2;
+    drawHWall(CX, CY + CH - WT, gateSX - CX, WT);
+    drawHWall(gateSX + gateWidth, CY + CH - WT, CX + CW - gateSX - gateWidth, WT);
+
+    // West wall
+    const gateWY = 1400 - gateWidth / 2;
+    drawVWall(CX, CY, WT, gateWY - CY);
+    drawVWall(CX, gateWY + gateWidth, WT, CY + CH - gateWY - gateWidth);
+
+    // East wall
+    const gateEY = 1400 - gateWidth / 2;
+    drawVWall(CX + CW - WT, CY, WT, gateEY - CY);
+    drawVWall(CX + CW - WT, gateEY + gateWidth, WT, CY + CH - gateEY - gateWidth);
+
+    // Gate frames (wooden beams)
+    const drawGateH = (gx: number, gy: number) => {
+      // Wooden frame
+      g.rect(gx, gy, gateWidth, 6).fill({ color: 0x4A2810 });
+      g.rect(gx, gy + WT - 6, gateWidth, 6).fill({ color: 0x4A2810 });
+      // Portcullis lines
+      for (let px = gx + 8; px < gx + gateWidth; px += 12) {
+        g.moveTo(px, gy).lineTo(px, gy + WT).stroke({ color: 0x555555, width: 2, alpha: 0.6 });
+      }
+      for (let py = gy + 8; py < gy + WT; py += 10) {
+        g.moveTo(gx, py).lineTo(gx + gateWidth, py).stroke({ color: 0x555555, width: 1, alpha: 0.3 });
+      }
+    };
+    const drawGateV = (gx: number, gy: number) => {
+      g.rect(gx, gy, 6, gateWidth).fill({ color: 0x4A2810 });
+      g.rect(gx + WT - 6, gy, 6, gateWidth).fill({ color: 0x4A2810 });
+      for (let py = gy + 8; py < gy + gateWidth; py += 12) {
+        g.moveTo(gx, py).lineTo(gx + WT, py).stroke({ color: 0x555555, width: 2, alpha: 0.6 });
+      }
+      for (let px = gx + 8; px < gx + WT; px += 10) {
+        g.moveTo(px, gy).lineTo(px, gy + gateWidth).stroke({ color: 0x555555, width: 1, alpha: 0.3 });
+      }
+    };
+
+    drawGateH(gateNX, CY);
+    drawGateH(gateSX, CY + CH - WT);
+    drawGateV(CX, gateWY);
+    drawGateV(CX + CW - WT, gateEY);
+
+    // ---- TOWERS ----
+    const towerColor = 0x776655;
+    const roofColor = 0x4A6680;
+
+    const drawTower = (tx: number, ty: number, r: number) => {
+      // Shadow
+      g.circle(tx + 3, ty + 3, r).fill({ color: 0x333333, alpha: 0.3 });
+      // Base
+      g.circle(tx, ty, r).fill({ color: towerColor });
+      g.circle(tx, ty, r).stroke({ color: 0x554433, width: 2 });
+      // Stone detail rings
+      g.circle(tx, ty, r - 4).stroke({ color: 0x887766, width: 1, alpha: 0.5 });
+      // Conical roof
+      g.circle(tx, ty, r - 3).fill({ color: roofColor, alpha: 0.7 });
+      g.circle(tx, ty, r * 0.4).fill({ color: 0x5A7690 });
+      // Window slits
+      g.rect(tx - 1, ty - r * 0.5, 2, 6).fill({ color: 0x222222 });
+      g.rect(tx - 1, ty + r * 0.3, 2, 6).fill({ color: 0x222222 });
+      // Battlement nubs around edge
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+        const bx = tx + Math.cos(a) * (r + 3);
+        const by = ty + Math.sin(a) * (r + 3);
+        g.rect(bx - 3, by - 3, 6, 6).fill({ color: wallDark });
+      }
+    };
+
+    // 4 corner towers (radius 30)
+    drawTower(CX, CY, 30);
+    drawTower(CX + CW, CY, 30);
+    drawTower(CX, CY + CH, 30);
+    drawTower(CX + CW, CY + CH, 30);
+
+    // Intermediate towers (2 per wall, radius 25)
+    // North wall
+    drawTower(CX + CW * 0.3, CY, 25);
+    drawTower(CX + CW * 0.7, CY, 25);
+    // South wall
+    drawTower(CX + CW * 0.3, CY + CH, 25);
+    drawTower(CX + CW * 0.7, CY + CH, 25);
+    // West wall
+    drawTower(CX, CY + CH * 0.3, 25);
+    drawTower(CX, CY + CH * 0.7, 25);
+    // East wall
+    drawTower(CX + CW, CY + CH * 0.3, 25);
+    drawTower(CX + CW, CY + CH * 0.7, 25);
+
+    this.wallLayer.addChild(g);
+  }
+
+  // ===================== BUILDINGS =====================
+  drawBuildings(buildings: GTABuilding[]): void {
+    this.buildingLayer.removeChildren();
+    const g = new Graphics();
+
+    for (const b of buildings) {
+      switch (b.type) {
+        case 'castle': this.drawCastle(g, b); break;
+        case 'barracks': this.drawBarracks(g, b); break;
+        case 'church': this.drawChurch(g, b); break;
+        case 'tavern': this.drawTavern(g, b); break;
+        case 'market_stall': this.drawMarketStall(g, b); break;
+        case 'blacksmith_shop': this.drawBlacksmith(g, b); break;
+        case 'stable': this.drawStable(g, b); break;
+        case 'prison': this.drawPrison(g, b); break;
+        case 'house_large': this.drawHouseLarge(g, b); break;
+        case 'house_medium': this.drawHouseMedium(g, b); break;
+        case 'house_small': this.drawHouseSmall(g, b); break;
+        case 'fountain': this.drawFountain(g, b); break;
+        case 'well': this.drawWell(g, b); break;
+        case 'tree_cluster': this.drawTreeCluster(g, b); break;
+        case 'cart': this.drawCart(g, b); break;
+        case 'hay_bale': this.drawHayBale(g, b); break;
+        case 'farm_field': this.drawFarmField(g, b); break;
+        case 'farmhouse': this.drawFarmhouse(g, b); break;
+        case 'mill': this.drawMill(g, b); break;
+        default: break; // walls/gates handled separately
+      }
+    }
+
+    this.buildingLayer.addChild(g);
+  }
+
+  // ---- Castle Keep ----
+  private drawCastle(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    // Shadow
+    g.rect(x + 5, y + 5, w, h).fill({ color: 0x222222, alpha: 0.3 });
+    // Courtyard (lighter stone floor)
+    g.rect(x + 15, y + 15, w - 30, h - 30).fill({ color: 0x9A9080 });
+    // Outer walls - thick dark stone
+    g.rect(x, y, w, 12).fill({ color: 0x555555 });
+    g.rect(x, y + h - 12, w, 12).fill({ color: 0x555555 });
+    g.rect(x, y, 12, h).fill({ color: 0x555555 });
+    g.rect(x + w - 12, y, 12, h).fill({ color: 0x555555 });
+    // Crenellations on castle walls
+    for (let cx = x; cx < x + w; cx += 14) {
+      g.rect(cx, y - 5, 7, 5).fill({ color: 0x555555 });
+      g.rect(cx, y + h, 7, 5).fill({ color: 0x555555 });
+    }
+    for (let cy = y; cy < y + h; cy += 14) {
+      g.rect(x - 5, cy, 5, 7).fill({ color: 0x555555 });
+      g.rect(x + w, cy, 5, 7).fill({ color: 0x555555 });
+    }
+    // Central keep tower
+    const kw = 80, kh = 80;
+    const kx = x + w / 2 - kw / 2, ky = y + h / 2 - kh / 2 - 20;
+    g.rect(kx, ky, kw, kh).fill({ color: 0x444444 });
+    g.rect(kx, ky, kw, kh).stroke({ color: 0x333333, width: 2 });
+    // Keep roof detail
+    g.rect(kx + 5, ky + 5, kw - 10, kh - 10).fill({ color: 0x4A4A4A });
+    // Keep windows
+    g.rect(kx + 15, ky + 20, 8, 12).fill({ color: 0x222222 });
+    g.rect(kx + kw - 23, ky + 20, 8, 12).fill({ color: 0x222222 });
+    g.rect(kx + kw / 2 - 4, ky + 15, 8, 12).fill({ color: 0x222222 });
+
+    // Corner turrets
+    const turretR = 10;
+    const turretPositions = [
+      { tx: x + 6, ty: y + 6 },
+      { tx: x + w - 6, ty: y + 6 },
+      { tx: x + 6, ty: y + h - 6 },
+      { tx: x + w - 6, ty: y + h - 6 },
+    ];
+    for (const tp of turretPositions) {
+      g.circle(tp.tx, tp.ty, turretR).fill({ color: 0x666666 });
+      g.circle(tp.tx, tp.ty, turretR).stroke({ color: 0x444444, width: 1 });
+      // Conical roof
+      g.circle(tp.tx, tp.ty, turretR - 3).fill({ color: 0x8B2020 });
+      g.circle(tp.tx, tp.ty, 3).fill({ color: 0xAA3333 });
+    }
+
+    // Banners on castle walls
+    const bannerPositions = [
+      { bx: x + w / 4, by: y + 14 },
+      { bx: x + w * 3 / 4, by: y + 14 },
+    ];
+    for (const bp of bannerPositions) {
+      // Pole
+      g.rect(bp.bx - 1, bp.by, 2, 30).fill({ color: 0x8B6914 });
+      // Banner
+      g.rect(bp.bx + 1, bp.by + 2, 16, 24).fill({ color: 0xCC2222 });
+      // Gold trim
+      g.rect(bp.bx + 1, bp.by + 2, 16, 3).fill({ color: 0xDAA520 });
+      g.rect(bp.bx + 1, bp.by + 23, 16, 3).fill({ color: 0xDAA520 });
+      // Lion emblem (simple cross shape)
+      g.rect(bp.bx + 6, bp.by + 8, 6, 2).fill({ color: 0xDAA520 });
+      g.rect(bp.bx + 8, bp.by + 6, 2, 6).fill({ color: 0xDAA520 });
+    }
+
+    // Drawbridge entrance (south side)
+    const dbW = 40, dbX = x + w / 2 - dbW / 2;
+    g.rect(dbX, y + h - 14, dbW, 16).fill({ color: 0x6B4226 });
+    // Plank lines
+    for (let ly = y + h - 12; ly < y + h + 2; ly += 4) {
+      g.moveTo(dbX, ly).lineTo(dbX + dbW, ly).stroke({ color: 0x4A2810, width: 1 });
+    }
+
+    // Label
+    if (b.label) {
+      const label = new Text({
+        text: b.label,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0xDAA520, fontWeight: "bold" }),
+      });
+      label.anchor.set(0.5, 0.5);
+      label.position.set(x + w / 2, y - 14);
+      this.buildingLayer.addChild(label);
+    }
+  }
+
+  // ---- Barracks ----
+  private drawBarracks(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    // Shadow
+    g.rect(x + 4, y + 4, w, h).fill({ color: 0x222222, alpha: 0.25 });
+    // Main building
+    g.rect(x, y, w, h).fill({ color: 0x7A7060 });
+    g.rect(x, y, w, h).stroke({ color: 0x554433, width: 2 });
+    // Roof
+    g.rect(x - 3, y - 3, w + 6, h * 0.15).fill({ color: 0x6B2020 });
+    g.rect(x - 3, y + h - h * 0.1, w + 6, h * 0.13).fill({ color: 0x6B2020 });
+    // Windows
+    for (let wx = x + 25; wx < x + w - 20; wx += 50) {
+      g.rect(wx, y + h * 0.3, 10, 14).fill({ color: 0x333333 });
+      g.rect(wx, y + h * 0.3, 10, 14).stroke({ color: 0x554433, width: 1 });
+    }
+    // Training yard (south of building)
+    const yardY = y + h + 5;
+    // Training dummies
+    for (let d = 0; d < 3; d++) {
+      const dx = x + 40 + d * 60;
+      g.rect(dx - 1, yardY, 2, 20).fill({ color: 0x8B6914 }); // pole
+      g.circle(dx, yardY, 5).fill({ color: 0xBBA880 }); // head
+      g.moveTo(dx - 8, yardY + 8).lineTo(dx + 8, yardY + 8).stroke({ color: 0x8B6914, width: 2 }); // arms
+    }
+    // Weapon rack
+    const rackX = x + w - 60;
+    g.rect(rackX, yardY + 2, 30, 4).fill({ color: 0x6B4226 });
+    g.moveTo(rackX + 5, yardY + 6).lineTo(rackX + 5, yardY - 10).stroke({ color: 0x888888, width: 2 });
+    g.moveTo(rackX + 15, yardY + 6).lineTo(rackX + 15, yardY - 12).stroke({ color: 0x888888, width: 2 });
+    g.moveTo(rackX + 25, yardY + 6).lineTo(rackX + 25, yardY - 8).stroke({ color: 0x888888, width: 2 });
+
+    // Red military banners
+    g.rect(x + 10, y + 5, 2, 20).fill({ color: 0x8B6914 });
+    g.poly([x + 12, y + 5, x + 26, y + 12, x + 12, y + 20]).fill({ color: 0xCC2222 });
+
+    if (b.label) {
+      const label = new Text({
+        text: b.label,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0xCCBBAA }),
+      });
+      label.anchor.set(0.5, 0.5);
+      label.position.set(x + w / 2, y - 10);
+      this.buildingLayer.addChild(label);
+    }
+  }
+
+  // ---- Church ----
+  private drawChurch(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    g.rect(x + 4, y + 4, w, h).fill({ color: 0x222222, alpha: 0.25 });
+    // Main building
+    g.rect(x, y, w, h).fill({ color: 0x9A9080 });
+    g.rect(x, y, w, h).stroke({ color: 0x706050, width: 2 });
+    // Gothic peaked roof
+    g.poly([x - 8, y + 20, x + w / 2, y - 40, x + w + 8, y + 20]).fill({ color: 0x4A4A5A });
+    g.poly([x - 8, y + 20, x + w / 2, y - 40, x + w + 8, y + 20]).stroke({ color: 0x3A3A4A, width: 1 });
+    // Steeple/spire
+    g.poly([x + w / 2 - 10, y - 30, x + w / 2, y - 65, x + w / 2 + 10, y - 30]).fill({ color: 0x4A4A5A });
+    // Golden cross on peak
+    g.rect(x + w / 2 - 1.5, y - 80, 3, 18).fill({ color: 0xDAA520 });
+    g.rect(x + w / 2 - 6, y - 74, 12, 3).fill({ color: 0xDAA520 });
+
+    // Rose window
+    const rwx = x + w / 2, rwy = y + 30;
+    g.circle(rwx, rwy, 12).fill({ color: 0x333333 });
+    g.circle(rwx, rwy, 12).stroke({ color: 0x706050, width: 2 });
+    // Colored segments
+    const segColors = [0xCC3333, 0x3366CC, 0xDAA520, 0x33AA55];
+    for (let s = 0; s < 4; s++) {
+      const a = s * Math.PI / 2;
+      g.moveTo(rwx, rwy)
+        .arc(rwx, rwy, 10, a, a + Math.PI / 2)
+        .lineTo(rwx, rwy)
+        .fill({ color: segColors[s], alpha: 0.7 });
+    }
+
+    // Stained glass windows
+    const windowColors = [0xCC3333, 0x3366CC, 0xDAA520];
+    for (let wi = 0; wi < 3; wi++) {
+      const wx = x + 30 + wi * (w - 60) / 2;
+      const wy = y + h * 0.5;
+      g.rect(wx, wy, 8, 16).fill({ color: 0x333333 });
+      g.rect(wx + 1, wy + 1, 6, 14).fill({ color: windowColors[wi], alpha: 0.6 });
+      // Gothic arch top
+      g.moveTo(wx, wy).arc(wx + 4, wy, 4, Math.PI, 0).fill({ color: windowColors[wi], alpha: 0.6 });
+    }
+
+    // Stone steps at entrance (south)
+    for (let step = 0; step < 3; step++) {
+      const sw = 40 + step * 6;
+      g.rect(x + w / 2 - sw / 2, y + h + step * 4, sw, 4).fill({ color: 0x8A8A80 });
+    }
+
+    if (b.label) {
+      const label = new Text({
+        text: b.label,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0xDAA520 }),
+      });
+      label.anchor.set(0.5, 0.5);
+      label.position.set(x + w / 2, y - 85);
+      this.buildingLayer.addChild(label);
+    }
+  }
+
+  // ---- Tavern ----
+  private drawTavern(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    g.rect(x + 4, y + 4, w, h).fill({ color: 0x222222, alpha: 0.25 });
+    // Walls - cream/plaster
+    g.rect(x, y, w, h).fill({ color: 0xE8DCC0 });
+    // Timber frame cross pattern
+    // Horizontal beams
+    g.rect(x, y, w, 4).fill({ color: 0x5C3A1E });
+    g.rect(x, y + h - 4, w, 4).fill({ color: 0x5C3A1E });
+    g.rect(x, y + h / 2 - 2, w, 4).fill({ color: 0x5C3A1E });
+    // Vertical beams
+    g.rect(x, y, 4, h).fill({ color: 0x5C3A1E });
+    g.rect(x + w - 4, y, 4, h).fill({ color: 0x5C3A1E });
+    g.rect(x + w / 2 - 2, y, 4, h).fill({ color: 0x5C3A1E });
+    // Diagonal cross-bracing
+    g.moveTo(x + 4, y + 4).lineTo(x + w / 2 - 2, y + h / 2 - 2).stroke({ color: 0x5C3A1E, width: 2 });
+    g.moveTo(x + w / 2 + 2, y + 4).lineTo(x + 4, y + h / 2 - 2).stroke({ color: 0x5C3A1E, width: 2 });
+    g.moveTo(x + w / 2 + 2, y + 4).lineTo(x + w - 4, y + h / 2 - 2).stroke({ color: 0x5C3A1E, width: 2 });
+    g.moveTo(x + w - 4, y + 4).lineTo(x + w / 2 + 2, y + h / 2 - 2).stroke({ color: 0x5C3A1E, width: 2 });
+
+    // Pitched roof
+    g.poly([x - 6, y, x + w / 2, y - 25, x + w + 6, y]).fill({ color: 0x6B4226 });
+    g.poly([x - 6, y, x + w / 2, y - 25, x + w + 6, y]).stroke({ color: 0x4A2810, width: 1 });
+
+    // Glowing windows (warm yellow)
+    for (let wi = 0; wi < 3; wi++) {
+      const wx = x + 20 + wi * (w - 50) / 2;
+      g.rect(wx, y + h * 0.25, 14, 12).fill({ color: 0xFFDD44, alpha: 0.7 });
+      g.rect(wx, y + h * 0.25, 14, 12).stroke({ color: 0x5C3A1E, width: 1 });
+      // Window cross
+      g.moveTo(wx + 7, y + h * 0.25).lineTo(wx + 7, y + h * 0.25 + 12).stroke({ color: 0x5C3A1E, width: 1 });
+      g.moveTo(wx, y + h * 0.25 + 6).lineTo(wx + 14, y + h * 0.25 + 6).stroke({ color: 0x5C3A1E, width: 1 });
+    }
+
+    // Chimney
+    g.rect(x + w - 30, y - 20, 12, 20).fill({ color: 0x665544 });
+
+    // Hanging sign
+    g.rect(x + w / 2 - 1, y + h, 2, 12).fill({ color: 0x5C3A1E });
+    g.roundRect(x + w / 2 - 15, y + h + 10, 30, 16, 3).fill({ color: 0x5C3A1E });
+    const signText = new Text({
+      text: "TAVERN",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 6, fill: 0xDAA520 }),
+    });
+    signText.anchor.set(0.5, 0.5);
+    signText.position.set(x + w / 2, y + h + 18);
+    this.buildingLayer.addChild(signText);
+
+    // Barrels outside
+    for (let bi = 0; bi < 3; bi++) {
+      const bx = x - 15 + bi * 12;
+      const by = y + h - 20;
+      g.circle(bx, by, 6).fill({ color: 0x6B4226 });
+      g.circle(bx, by, 6).stroke({ color: 0x4A2810, width: 1 });
+      g.circle(bx, by, 3).fill({ color: 0x4A2810, alpha: 0.3 });
+    }
+
+    // Door
+    g.rect(x + w / 2 - 10, y + h - 24, 20, 24).fill({ color: 0x4A2810 });
+    g.rect(x + w / 2 - 10, y + h - 24, 20, 24).stroke({ color: 0x3A1800, width: 1 });
+    g.circle(x + w / 2 + 6, y + h - 12, 2).fill({ color: 0x888888 }); // handle
+  }
+
+  // ---- Market Stall ----
+  private drawMarketStall(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    const rng = mulberry32(b.x * 100 + b.y);
+    const awningColors = [0xCC3333, 0xDDAA22, 0x33AA55, 0x3366BB];
+    const awningColor = awningColors[Math.floor(rng() * awningColors.length)];
+
+    // Wooden counter
+    g.rect(x, y + h * 0.4, w, h * 0.6).fill({ color: 0x8B6914 });
+    g.rect(x, y + h * 0.4, w, h * 0.6).stroke({ color: 0x6B4226, width: 1 });
+
+    // Support poles
+    g.rect(x + 2, y, 3, h).fill({ color: 0x6B4226 });
+    g.rect(x + w - 5, y, 3, h).fill({ color: 0x6B4226 });
+
+    // Awning
+    g.poly([x - 5, y + 3, x + w / 2, y - 10, x + w + 5, y + 3]).fill({ color: awningColor });
+    // Awning stripes
+    g.rect(x - 5, y, w + 10, 3).fill({ color: awningColor });
+    for (let sx = x - 5; sx < x + w + 5; sx += 12) {
+      g.rect(sx, y - 2, 6, 6).fill({ color: 0xFFFFFF, alpha: 0.3 });
+    }
+
+    // Goods on counter (colored dots)
+    for (let gi = 0; gi < 5; gi++) {
+      const gx = x + 8 + gi * (w - 16) / 4;
+      const gy = y + h * 0.55;
+      const goodColors = [0xFF6644, 0xFFDD44, 0x44BB44, 0xDD8844, 0xCC88CC];
+      g.circle(gx, gy, 3).fill({ color: goodColors[gi] });
+    }
+  }
+
+  // ---- Blacksmith ----
+  private drawBlacksmith(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    g.rect(x + 4, y + 4, w, h).fill({ color: 0x222222, alpha: 0.25 });
+    // Dark stone/wood building
+    g.rect(x, y, w, h).fill({ color: 0x5A5040 });
+    g.rect(x, y, w, h).stroke({ color: 0x3A3020, width: 2 });
+    // Roof
+    g.rect(x - 3, y - 3, w + 6, 8).fill({ color: 0x443322 });
+
+    // Chimney with glow
+    g.rect(x + w - 30, y - 20, 16, 22).fill({ color: 0x444444 });
+    g.rect(x + w - 30, y - 20, 16, 22).stroke({ color: 0x333333, width: 1 });
+    // Fire glow at chimney top
+    g.circle(x + w - 22, y - 22, 10).fill({ color: 0xFF4400, alpha: 0.3 });
+    g.circle(x + w - 22, y - 22, 6).fill({ color: 0xFF6600, alpha: 0.4 });
+
+    // Forge window (orange glow)
+    g.rect(x + 15, y + h * 0.3, 16, 12).fill({ color: 0xFF6600, alpha: 0.6 });
+    g.rect(x + 15, y + h * 0.3, 16, 12).stroke({ color: 0x3A3020, width: 1 });
+
+    // Anvil (outside)
+    const anvX = x + w + 10, anvY = y + h / 2;
+    g.moveTo(anvX, anvY).lineTo(anvX + 16, anvY).lineTo(anvX + 14, anvY - 8)
+      .lineTo(anvX + 2, anvY - 8).lineTo(anvX, anvY).fill({ color: 0x444444 });
+    // Anvil base
+    g.rect(anvX + 4, anvY, 8, 6).fill({ color: 0x333333 });
+
+    // Bucket of water
+    g.rect(x - 10, y + h - 15, 8, 10).fill({ color: 0x555555 });
+    g.rect(x - 10, y + h - 15, 8, 3).fill({ color: 0x4488BB, alpha: 0.6 });
+
+    // Door
+    g.rect(x + w / 2 - 10, y + h - 20, 20, 20).fill({ color: 0x3A2010 });
+
+    if (b.label) {
+      const label = new Text({
+        text: b.label,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0xFF8844 }),
+      });
+      label.anchor.set(0.5, 0.5);
+      label.position.set(x + w / 2, y - 12);
+      this.buildingLayer.addChild(label);
+    }
+  }
+
+  // ---- Stable ----
+  private drawStable(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    g.rect(x + 4, y + 4, w, h).fill({ color: 0x222222, alpha: 0.2 });
+    // Wooden structure
+    g.rect(x, y, w, h).fill({ color: 0x8B6914 });
+    // Vertical plank pattern
+    for (let px = x; px < x + w; px += 10) {
+      g.rect(px, y, 1, h).fill({ color: 0x6B4226, alpha: 0.5 });
+    }
+    g.rect(x, y, w, h).stroke({ color: 0x6B4226, width: 2 });
+
+    // Open front (south side) — stall dividers
+    g.rect(x, y + h - 8, w, 8).fill({ color: 0x6B4226 });
+    for (let s = 0; s < 4; s++) {
+      const sx = x + 10 + s * (w - 20) / 3;
+      g.rect(sx, y + h * 0.5, 3, h * 0.5).fill({ color: 0x6B4226 });
+    }
+
+    // Hay scattered
+    const rng = mulberry32(b.x + b.y * 7);
+    for (let hi = 0; hi < 12; hi++) {
+      const hx = x + 5 + rng() * (w - 10);
+      const hy = y + h * 0.55 + rng() * (h * 0.35);
+      g.rect(hx, hy, 4 + rng() * 4, 2).fill({ color: 0xCCBB55, alpha: 0.6 });
+    }
+
+    // Roof
+    g.poly([x - 5, y, x + w / 2, y - 18, x + w + 5, y]).fill({ color: 0x8B6914 });
+    g.poly([x - 5, y, x + w / 2, y - 18, x + w + 5, y]).stroke({ color: 0x6B4226, width: 1 });
+
+    // Fence around yard (south)
+    const fenceY = y + h + 10;
+    g.rect(x - 20, fenceY, w + 40, 2).fill({ color: 0x8B6914 });
+    for (let fp = x - 20; fp < x + w + 20; fp += 15) {
+      g.rect(fp, fenceY - 8, 2, 10).fill({ color: 0x8B6914 });
+    }
+
+    if (b.label) {
+      const label = new Text({
+        text: b.label,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0xCCBB88 }),
+      });
+      label.anchor.set(0.5, 0.5);
+      label.position.set(x + w / 2, y - 24);
+      this.buildingLayer.addChild(label);
+    }
+  }
+
+  // ---- Prison ----
+  private drawPrison(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    g.rect(x + 4, y + 4, w, h).fill({ color: 0x222222, alpha: 0.3 });
+    // Dark stone building
+    g.rect(x, y, w, h).fill({ color: 0x444444 });
+    g.rect(x, y, w, h).stroke({ color: 0x333333, width: 3 });
+    // Stone block texture
+    for (let row = 0; row < Math.ceil(h / 12); row++) {
+      const offset = (row % 2) * 10;
+      for (let col = 0; col < Math.ceil(w / 20) + 1; col++) {
+        const bx = x + col * 20 + offset;
+        if (bx >= x + w) continue;
+        const bw = Math.min(19, x + w - bx);
+        g.rect(bx, y + row * 12, bw, 11).stroke({ color: 0x3A3A3A, width: 0.5 });
+      }
+    }
+
+    // Tiny barred windows
+    for (let wi = 0; wi < 3; wi++) {
+      const wx = x + 30 + wi * (w - 60) / 2;
+      const wy = y + 20;
+      g.rect(wx, wy, 8, 10).fill({ color: 0x222222 });
+      // Bars
+      g.moveTo(wx + 2, wy).lineTo(wx + 2, wy + 10).stroke({ color: 0x555555, width: 1 });
+      g.moveTo(wx + 4, wy).lineTo(wx + 4, wy + 10).stroke({ color: 0x555555, width: 1 });
+      g.moveTo(wx + 6, wy).lineTo(wx + 6, wy + 10).stroke({ color: 0x555555, width: 1 });
+    }
+
+    // Heavy iron door
+    const doorX = x + w / 2 - 12;
+    g.rect(doorX, y + h - 28, 24, 28).fill({ color: 0x333333 });
+    g.rect(doorX, y + h - 28, 24, 28).stroke({ color: 0x222222, width: 2 });
+    // Rivets
+    const rivetPos = [
+      [doorX + 4, y + h - 24], [doorX + 20, y + h - 24],
+      [doorX + 4, y + h - 12], [doorX + 20, y + h - 12],
+      [doorX + 12, y + h - 18],
+    ];
+    for (const [rx, ry] of rivetPos) {
+      g.circle(rx, ry, 2).fill({ color: 0x555555 });
+    }
+
+    // Guard post
+    g.rect(x + w + 5, y + h - 30, 15, 30).fill({ color: 0x555555 });
+    g.rect(x + w + 5, y + h - 35, 15, 5).fill({ color: 0x444444 });
+
+    if (b.label) {
+      const label = new Text({
+        text: b.label,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x888888 }),
+      });
+      label.anchor.set(0.5, 0.5);
+      label.position.set(x + w / 2, y - 10);
+      this.buildingLayer.addChild(label);
+    }
+  }
+
+  // ---- House Large ----
+  private drawHouseLarge(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    g.rect(x + 3, y + 3, w, h).fill({ color: 0x222222, alpha: 0.2 });
+    g.rect(x, y, w, h).fill({ color: 0x9A8A70 });
+    g.rect(x, y, w, h).stroke({ color: 0x706050, width: 2 });
+    // Peaked roof
+    g.poly([x - 4, y, x + w / 2, y - 20, x + w + 4, y]).fill({ color: 0x6B4226 });
+    // Windows (2 upstairs, 2 downstairs)
+    for (let wi = 0; wi < 2; wi++) {
+      const wx = x + 12 + wi * (w - 34);
+      g.rect(wx, y + 10, 10, 12).fill({ color: 0x333333 });
+      g.rect(wx, y + 10, 10, 12).stroke({ color: 0x554433, width: 1 });
+      g.rect(wx, y + h * 0.5, 10, 12).fill({ color: 0x333333 });
+      g.rect(wx, y + h * 0.5, 10, 12).stroke({ color: 0x554433, width: 1 });
+    }
+    // Door
+    g.rect(x + w / 2 - 8, y + h - 18, 16, 18).fill({ color: 0x5C3A1E });
+    g.circle(x + w / 2 + 4, y + h - 9, 1.5).fill({ color: 0x888888 });
+  }
+
+  // ---- House Medium ----
+  private drawHouseMedium(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    g.rect(x + 3, y + 3, w, h).fill({ color: 0x222222, alpha: 0.2 });
+    // Timber-framed
+    g.rect(x, y, w, h).fill({ color: 0xDDCCAA });
+    // Beams
+    g.rect(x, y, w, 3).fill({ color: 0x5C3A1E });
+    g.rect(x, y + h - 3, w, 3).fill({ color: 0x5C3A1E });
+    g.rect(x, y, 3, h).fill({ color: 0x5C3A1E });
+    g.rect(x + w - 3, y, 3, h).fill({ color: 0x5C3A1E });
+    g.moveTo(x, y).lineTo(x + w, y + h).stroke({ color: 0x5C3A1E, width: 2 });
+    // Peaked roof
+    g.poly([x - 3, y, x + w / 2, y - 14, x + w + 3, y]).fill({ color: 0x7A5030 });
+    // Window
+    g.rect(x + w / 2 - 5, y + 10, 10, 10).fill({ color: 0x444444 });
+    g.rect(x + w / 2 - 5, y + 10, 10, 10).stroke({ color: 0x5C3A1E, width: 1 });
+    // Door
+    g.rect(x + w / 2 - 6, y + h - 16, 12, 16).fill({ color: 0x5C3A1E });
+  }
+
+  // ---- House Small ----
+  private drawHouseSmall(g: Graphics, b: GTABuilding): void {
+    const { x, y, w, h } = b;
+    g.rect(x + 2, y + 2, w, h).fill({ color: 0x222222, alpha: 0.15 });
+    g.rect(x, y, w, h).fill({ color: 0xAA9970 });
+    g.rect(x, y, w, h).stroke({ color: 0x706050, width: 1 });
+    // Thatched roof (golden-brown with texture)
+    g.poly([x - 4, y, x + w / 2, y - 12, x + w + 4, y]).fill({ color: 0xBBA855 });
+    // Roof texture lines
+    for (let rx = x - 2; rx < x + w / 2; rx += 4) {
+      const ry = y - 12 * (1 - (rx - x) / (w / 2));
+      g.moveTo(rx, y).lineTo(rx + 2, ry + 2).stroke({ color: 0x998844, width: 1, alpha: 0.5 });
+    }
+    // Tiny window
+    g.rect(x + w / 2 - 4, y + 8, 8, 8).fill({ color: 0x444444 });
+    // Door
+    g.rect(x + w / 2 - 5, y + h - 14, 10, 14).fill({ color: 0x5C3A1E });
+  }
+
+  // ---- Fountain ----
+  private drawFountain(g: Graphics, b: GTABuilding): void {
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    // Outer basin
+    g.circle(cx, cy, 24).fill({ color: 0x888880 });
+    g.circle(cx, cy, 24).stroke({ color: 0x666660, width: 2 });
+    // Water
+    g.circle(cx, cy, 20).fill({ color: 0x4488BB, alpha: 0.6 });
+    // Inner pedestal
+    g.circle(cx, cy, 8).fill({ color: 0x999990 });
+    // Water spray lines
+    g.moveTo(cx, cy - 8).lineTo(cx - 3, cy - 18).stroke({ color: 0x88BBDD, width: 1, alpha: 0.5 });
+    g.moveTo(cx, cy - 8).lineTo(cx + 3, cy - 18).stroke({ color: 0x88BBDD, width: 1, alpha: 0.5 });
+    g.moveTo(cx, cy - 8).lineTo(cx, cy - 20).stroke({ color: 0x88BBDD, width: 1, alpha: 0.6 });
+    // Light sparkles
+    g.circle(cx - 6, cy - 4, 1.5).fill({ color: 0xAADDFF, alpha: 0.5 });
+    g.circle(cx + 8, cy + 2, 1.5).fill({ color: 0xAADDFF, alpha: 0.5 });
+  }
+
+  // ---- Well ----
+  private drawWell(g: Graphics, b: GTABuilding): void {
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    g.circle(cx, cy, 12).fill({ color: 0x777770 });
+    g.circle(cx, cy, 12).stroke({ color: 0x555550, width: 2 });
+    g.circle(cx, cy, 8).fill({ color: 0x223344 });
+    // Wooden frame
+    g.rect(cx - 14, cy - 2, 28, 4).fill({ color: 0x6B4226 });
+    g.rect(cx - 1, cy - 12, 2, 10).fill({ color: 0x6B4226 });
+  }
+
+  // ---- Tree Cluster ----
+  private drawTreeCluster(g: Graphics, b: GTABuilding): void {
+    const rng = mulberry32(b.x * 13 + b.y * 7);
+    for (let t = 0; t < 3; t++) {
+      const tx = b.x + 8 + rng() * (b.w - 16);
+      const ty = b.y + 8 + rng() * (b.h - 16);
+      const r = 8 + rng() * 6;
+      g.circle(tx + 2, ty + r * 0.6, r * 0.6).fill({ color: 0x1a3a10, alpha: 0.3 });
+      g.rect(tx - 1, ty + 2, 3, r * 0.5).fill({ color: 0x5C3A1E });
+      g.circle(tx, ty, r).fill({ color: 0x2d6b24 });
+      g.circle(tx - r * 0.2, ty - r * 0.2, r * 0.4).fill({ color: 0x3d8a38, alpha: 0.6 });
+    }
+  }
+
+  // ---- Cart ----
+  private drawCart(g: Graphics, b: GTABuilding): void {
+    g.rect(b.x, b.y, b.w, b.h).fill({ color: 0x8B6914 });
+    g.rect(b.x, b.y, b.w, b.h).stroke({ color: 0x6B4226, width: 1 });
+    // Wheels
+    g.circle(b.x + 4, b.y + b.h, 4).stroke({ color: 0x5C3A1E, width: 2 });
+    g.circle(b.x + b.w - 4, b.y + b.h, 4).stroke({ color: 0x5C3A1E, width: 2 });
+    // Handle
+    g.moveTo(b.x + b.w, b.y + b.h / 2).lineTo(b.x + b.w + 10, b.y + b.h / 2 + 5).stroke({ color: 0x6B4226, width: 2 });
+  }
+
+  // ---- Hay Bale ----
+  private drawHayBale(g: Graphics, b: GTABuilding): void {
+    g.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2).fill({ color: 0xCCBB55 });
+    g.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2).stroke({ color: 0xAA9944, width: 1 });
+    // Straw texture
+    g.moveTo(b.x + 3, b.y + b.h / 2).lineTo(b.x + b.w - 3, b.y + b.h / 2).stroke({ color: 0xBBAA44, width: 1 });
+  }
+
+  // ---- Farm Field ----
+  private drawFarmField(g: Graphics, b: GTABuilding): void {
+    g.rect(b.x, b.y, b.w, b.h).fill({ color: 0x8B7355, alpha: 0.4 });
+    const rowH = b.h / 8;
+    const colors = [0x6B8E23, 0x7B9C33];
+    for (let r = 0; r < 8; r++) {
+      g.rect(b.x + 3, b.y + r * rowH + 2, b.w - 6, rowH - 3).fill({ color: colors[r % 2], alpha: 0.6 });
+    }
+  }
+
+  // ---- Farmhouse ----
+  private drawFarmhouse(g: Graphics, b: GTABuilding): void {
+    g.rect(b.x, b.y, b.w, b.h).fill({ color: 0x8B6914 });
+    g.poly([b.x - 3, b.y, b.x + b.w / 2, b.y - 12, b.x + b.w + 3, b.y]).fill({ color: 0xA08050 });
+    g.rect(b.x + b.w / 2 - 5, b.y + b.h - 12, 10, 12).fill({ color: 0x4A2810 });
+  }
+
+  // ---- Mill ----
+  private drawMill(g: Graphics, b: GTABuilding): void {
+    g.rect(b.x, b.y, b.w, b.h).fill({ color: 0x9A8060 });
+    g.poly([b.x - 3, b.y, b.x + b.w / 2, b.y - 18, b.x + b.w + 3, b.y]).fill({ color: 0x705030 });
+    const cx = b.x + b.w / 2, cy = b.y - 10;
+    g.moveTo(cx, cy).lineTo(cx - 25, cy - 25).stroke({ color: 0x5C3A1E, width: 2 });
+    g.moveTo(cx, cy).lineTo(cx + 25, cy - 25).stroke({ color: 0x5C3A1E, width: 2 });
+    g.moveTo(cx, cy).lineTo(cx - 25, cy + 25).stroke({ color: 0x5C3A1E, width: 2 });
+    g.moveTo(cx, cy).lineTo(cx + 25, cy + 25).stroke({ color: 0x5C3A1E, width: 2 });
+  }
+
+  // ===================== UPDATE =====================
+  update(state: MedievalGTAState, screenW: number, screenH: number): void {
+    const zoom = ZOOM;
+
+    // Camera
+    this.container.position.set(
+      -state.cameraX * zoom + screenW / 2,
+      -state.cameraY * zoom + screenH / 2,
+    );
+    this.container.scale.set(zoom);
+
+    // Draw buildings (only on first call or if buildings change)
+    if (this.buildingLayer.children.length === 0 && state.buildings.length > 0) {
+      this.drawBuildings(state.buildings);
+    }
+
+    // Day/Night overlay
+    this.updateDayNight(state);
+
+    // Particles
+    this.updateParticles(state.particles);
+  }
+
+  private updateDayNight(state: MedievalGTAState): void {
+    const g = this.dayNightOverlay;
+    g.clear();
+
+    // dayTime: 0=dawn, 0.25=noon, 0.5=dusk, 0.75=midnight
+    const dt = state.dayTime;
+    // Calculate darkness: 0 at noon (0.25), max at midnight (0.75)
+    let darkness: number;
+    if (dt <= 0.25) {
+      // dawn -> noon: fading darkness
+      darkness = 0.5 * (1 - dt / 0.25);
+    } else if (dt <= 0.5) {
+      // noon -> dusk: increasing darkness
+      darkness = 0.5 * ((dt - 0.25) / 0.25);
+    } else if (dt <= 0.75) {
+      // dusk -> midnight: deepening
+      darkness = 0.5 + 0.15 * ((dt - 0.5) / 0.25);
+    } else {
+      // midnight -> dawn: lightening
+      darkness = 0.65 * (1 - (dt - 0.75) / 0.25);
+    }
+
+    if (darkness > 0.02) {
+      g.rect(0, 0, WW, WH).fill({ color: 0x000033, alpha: darkness });
+    }
+
+    // Window lights at night
+    const wl = this.windowLightsLayer;
+    wl.clear();
+    if (darkness > 0.15) {
+      const lightAlpha = Math.min(1, (darkness - 0.15) * 3);
+      // Place warm yellow dots on known building positions
+      const windowSpots = [
+        // Tavern windows
+        { x: 2220, y: 1225 }, { x: 2260, y: 1225 }, { x: 2310, y: 1225 },
+        // Castle windows
+        { x: 1060, y: 780 }, { x: 1100, y: 780 },
+        // Houses scattered
+        { x: 1700, y: 800 }, { x: 1800, y: 900 }, { x: 2400, y: 900 },
+        { x: 1300, y: 1700 }, { x: 1500, y: 1800 }, { x: 2100, y: 1900 },
+        { x: 2700, y: 1600 }, { x: 1200, y: 1100 },
+      ];
+      for (const ws of windowSpots) {
+        wl.circle(ws.x, ws.y, 4).fill({ color: 0xFFDD44, alpha: lightAlpha * 0.7 });
+        wl.circle(ws.x, ws.y, 8).fill({ color: 0xFFAA22, alpha: lightAlpha * 0.2 });
+      }
+    }
+  }
+
+  private updateParticles(particles: GTAParticle[]): void {
+    const g = this.particleGfx;
+    g.clear();
+
+    for (const p of particles) {
+      if (p.life <= 0) continue;
+      const alpha = Math.min(1, p.life / p.maxLife);
+      g.circle(p.pos.x, p.pos.y, p.size).fill({ color: p.color, alpha });
+    }
+  }
+}

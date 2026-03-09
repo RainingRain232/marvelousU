@@ -120,6 +120,7 @@ import { RPGGame } from "@rpg/RPGBoot";
 import { SurvivorGame } from "@/survivor/SurvivorGame";
 import { ColosseumGame } from "@rpg/colosseum/ColosseumGame";
 import { DuelGame } from "./duel/DuelGame";
+import { MedievalGTA } from "./medievalgta/MedievalGTA";
 
 // World mode imports
 import { WorldSetupScreen } from "@view/world/ui/WorldSetupScreen";
@@ -313,6 +314,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.COLOSSEUM) {
       menuScreen.hide();
       _bootColosseumGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.MEDIEVAL_GTA) {
+      menuScreen.hide();
+      _bootMedievalGTA();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.DUEL) {
@@ -2460,6 +2466,32 @@ async function _bootDuelGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("duelExit", _onDuelExit);
+}
+
+// ---------------------------------------------------------------------------
+// Medieval GTA mode boot
+// ---------------------------------------------------------------------------
+
+let _medievalGTA: MedievalGTA | null = null;
+
+async function _bootMedievalGTA(): Promise<void> {
+  if (_medievalGTA) {
+    _medievalGTA.destroy();
+    _medievalGTA = null;
+  }
+
+  _medievalGTA = new MedievalGTA();
+  await _medievalGTA.boot();
+
+  const _onExit = () => {
+    window.removeEventListener("medievalGTAExit", _onExit);
+    if (_medievalGTA) {
+      _medievalGTA.destroy();
+      _medievalGTA = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("medievalGTAExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

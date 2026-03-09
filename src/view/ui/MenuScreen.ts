@@ -227,6 +227,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: t("mode.duel_desc"),
     skipSetup: true,
   },
+  {
+    mode: GameMode.MEDIEVAL_GTA,
+    label: "MEDIEVAL GTA",
+    desc: "Open-world Camelot sandbox",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
