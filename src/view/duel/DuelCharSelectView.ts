@@ -2,7 +2,7 @@
 // Duel mode – character select screen
 // ---------------------------------------------------------------------------
 
-import { Container, Graphics, Text } from "pixi.js";
+import { Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import {
   DUEL_CHARACTERS,
   DUEL_CHARACTER_IDS,
@@ -10,6 +10,51 @@ import {
 import { DUEL_ARENA_IDS, DUEL_ARENAS } from "../../duel/config/DuelArenaDefs";
 import type { DuelCharacterDef } from "../../duel/state/DuelState";
 import { duelAudio } from "../../duel/systems/DuelAudioSystem";
+
+// Leader portrait imports
+import arthurImgUrl from "@/img/arthur.png";
+import merlinImgUrl from "@/img/merlin.png";
+import queenImgUrl from "@/img/queen.png";
+import lancelotImgUrl from "@/img/lancelot.png";
+import morganImgUrl from "@/img/morgan.png";
+import gawainImgUrl from "@/img/gawain.png";
+import galahadImgUrl from "@/img/galahad.png";
+import percivalImgUrl from "@/img/percival.png";
+import tristanImgUrl from "@/img/tristan.png";
+import nimueImgUrl from "@/img/nimue.png";
+import kayImgUrl from "@/img/kay.png";
+import bedivereImgUrl from "@/img/bedivere.png";
+import elaineImgUrl from "@/img/elaine.png";
+import mordredImgUrl from "@/img/mordred.png";
+import igraineImgUrl from "@/img/igraine.png";
+import pellinoreImgUrl from "@/img/pellinore.png";
+import ectorImgUrl from "@/img/ector.png";
+import borsImgUrl from "@/img/bors.png";
+import utherImgUrl from "@/img/uther.png";
+import lotImgUrl from "@/img/lot.png";
+
+const LEADER_IMAGES: Record<string, string> = {
+  arthur: arthurImgUrl,
+  merlin: merlinImgUrl,
+  guinevere: queenImgUrl,
+  lancelot: lancelotImgUrl,
+  morgan: morganImgUrl,
+  gawain: gawainImgUrl,
+  galahad: galahadImgUrl,
+  percival: percivalImgUrl,
+  tristan: tristanImgUrl,
+  nimue: nimueImgUrl,
+  kay: kayImgUrl,
+  bedivere: bedivereImgUrl,
+  elaine: elaineImgUrl,
+  mordred: mordredImgUrl,
+  igraine: igraineImgUrl,
+  pellinore: pellinoreImgUrl,
+  ector: ectorImgUrl,
+  bors: borsImgUrl,
+  uther: utherImgUrl,
+  lot: lotImgUrl,
+};
 
 const COL_BG = 0x0a0015;
 const COL_BG_MID = 0x1a0a30;
@@ -37,6 +82,10 @@ export class DuelCharSelectView {
   private _screenW = 0;
   private _screenH = 0;
 
+  // Cached portrait textures
+  private _portraitTextures: Record<string, Texture> = {};
+  private _portraitsLoaded = false;
+
   setStartCallback(cb: StartCallback): void {
     this._startCallback = cb;
   }
@@ -54,6 +103,19 @@ export class DuelCharSelectView {
     this._arenaIndex = 0;
 
     this._draw();
+
+    // Preload leader portraits
+    if (!this._portraitsLoaded) {
+      const urls = Object.values(LEADER_IMAGES);
+      void Assets.load(urls).then(() => {
+        for (const [id, url] of Object.entries(LEADER_IMAGES)) {
+          const tex = Assets.get<Texture>(url);
+          if (tex) this._portraitTextures[id] = tex;
+        }
+        this._portraitsLoaded = true;
+        this._draw(); // Redraw with portraits
+      });
+    }
 
     this._onKeyDown = (e: KeyboardEvent) => {
       if (this._phase === "character") {
@@ -201,7 +263,7 @@ export class DuelCharSelectView {
       const y = startY + row * (cardH + gapY);
       const isSelected = i === this._p1Index;
 
-      this._drawCharCard(x, y, cardW, cardH, charDef, isSelected);
+      this._drawCharCard(x, y, cardW, cardH, charId, charDef, isSelected);
     }
 
     // Instructions
@@ -228,6 +290,7 @@ export class DuelCharSelectView {
     y: number,
     w: number,
     h: number,
+    charId: string,
     charDef: DuelCharacterDef,
     selected: boolean,
   ): void {
@@ -246,7 +309,13 @@ export class DuelCharSelectView {
 
     this.container.addChild(card);
 
-    // Portrait placeholder (colored rectangle with icon)
+    // Portrait area dimensions
+    const portraitX = x + 8;
+    const portraitY = y + 8;
+    const portraitW = w - 16;
+    const portraitH = 60;
+
+    // Portrait background (colored by fighter type)
     const portraitG = new Graphics();
     const portraitColor =
       charDef.fighterType === "sword" ? 0x3366cc :
@@ -254,12 +323,43 @@ export class DuelCharSelectView {
       charDef.fighterType === "spear" ? 0xaa8833 :
       charDef.fighterType === "axe" ? 0x886633 :
       0x33aa66;
-    portraitG.roundRect(x + 8, y + 8, w - 16, 60, 4);
-    portraitG.fill({ color: portraitColor, alpha: 0.6 });
-    portraitG.stroke({ color: portraitColor, width: 1 });
+    portraitG.roundRect(portraitX, portraitY, portraitW, portraitH, 4);
+    portraitG.fill({ color: portraitColor, alpha: 0.4 });
+    portraitG.stroke({ color: portraitColor, width: 1, alpha: 0.5 });
     this.container.addChild(portraitG);
 
-    // Type icon
+    // Leader portrait image
+    const tex = this._portraitTextures[charId];
+    if (tex) {
+      // Create a container to mask the sprite within the portrait area
+      const portraitContainer = new Container();
+      portraitContainer.position.set(portraitX, portraitY);
+
+      const sprite = new Sprite(tex);
+      const scale = Math.min(portraitW / tex.width, portraitH / tex.height);
+      sprite.scale.set(scale);
+      sprite.position.set(
+        (portraitW - tex.width * scale) / 2,
+        (portraitH - tex.height * scale) / 2,
+      );
+
+      // Clip mask
+      const mask = new Graphics();
+      mask.roundRect(0, 0, portraitW, portraitH, 4);
+      mask.fill({ color: 0xffffff });
+      portraitContainer.addChild(mask);
+      portraitContainer.mask = mask;
+      portraitContainer.addChild(sprite);
+
+      // Dim slightly for non-selected
+      if (!selected) {
+        sprite.alpha = 0.7;
+      }
+
+      this.container.addChild(portraitContainer);
+    }
+
+    // Type icon (below portrait)
     const icon =
       charDef.fighterType === "sword" ? "\u2694" :
       charDef.fighterType === "mage" ? "\u2728" :
@@ -268,10 +368,10 @@ export class DuelCharSelectView {
       "\u{1F3F9}";
     const iconText = new Text({
       text: icon,
-      style: { fontFamily: "monospace", fontSize: 24, fill: 0xffffff },
+      style: { fontFamily: "monospace", fontSize: 14, fill: 0xffffff },
     });
-    iconText.anchor.set(0.5);
-    iconText.position.set(x + w / 2, y + 38);
+    iconText.anchor.set(0.5, 0);
+    iconText.position.set(x + w / 2, y + portraitH + 10);
     this.container.addChild(iconText);
 
     // Name
@@ -280,7 +380,7 @@ export class DuelCharSelectView {
       style: { fontFamily: "monospace", fontSize: 13, fill: COL_TEXT, fontWeight: "bold" },
     });
     name.anchor.set(0.5, 0);
-    name.position.set(x + w / 2, y + 72);
+    name.position.set(x + w / 2, y + 84);
     this.container.addChild(name);
 
     // Title
@@ -289,7 +389,7 @@ export class DuelCharSelectView {
       style: { fontFamily: "monospace", fontSize: 8, fill: COL_STAT },
     });
     titleText.anchor.set(0.5, 0);
-    titleText.position.set(x + w / 2, y + 88);
+    titleText.position.set(x + w / 2, y + 99);
     this.container.addChild(titleText);
 
     // Stat bars
@@ -300,9 +400,9 @@ export class DuelCharSelectView {
       { label: "RNG", value: charDef.fighterType === "archer" ? 0.95 : charDef.fighterType === "mage" ? 0.85 : charDef.fighterType === "spear" ? 0.9 : charDef.fighterType === "axe" ? 0.45 : 0.55 },
     ];
 
-    const barY = y + 102;
+    const barY = y + 112;
     for (let s = 0; s < stats.length; s++) {
-      const sy = barY + s * 15;
+      const sy = barY + s * 13;
 
       const label = new Text({
         text: stats[s].label,
