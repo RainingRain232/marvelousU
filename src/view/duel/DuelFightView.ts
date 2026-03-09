@@ -17,6 +17,22 @@ import { ARTHUR_PALETTE, ARTHUR_POSES, drawArthurExtras, drawArthurBackExtras } 
 import { MERLIN_PALETTE, MERLIN_POSES, drawMerlinExtras } from "./DuelMerlinPoses";
 import { ELAINE_PALETTE, ELAINE_POSES, drawElaineExtras } from "./DuelElainePoses";
 import { LANCELOT_PALETTE, LANCELOT_POSES, drawLancelotExtras, drawLancelotBackExtras } from "./DuelLancelotPoses";
+import { GUINEVERE_PALETTE, GUINEVERE_POSES, drawGuinevereExtras, drawGuinevereBackExtras } from "./DuelGuineverePoses";
+import { MORGAN_PALETTE, MORGAN_POSES, drawMorganExtras } from "./DuelMorganPoses";
+import { GAWAIN_PALETTE, GAWAIN_POSES, drawGawainExtras } from "./DuelGawainPoses";
+import { MORDRED_PALETTE, MORDRED_POSES, drawMordredExtras, drawMordredBackExtras } from "./DuelMordredPoses";
+import { GALAHAD_PALETTE, GALAHAD_POSES, drawGalahadExtras, drawGalahadBackExtras } from "./DuelGalahadPoses";
+import { PERCIVAL_PALETTE, PERCIVAL_POSES, drawPercivalExtras, drawPercivalBackExtras } from "./DuelPercivalPoses";
+import { TRISTAN_PALETTE, TRISTAN_POSES, drawTristanExtras, drawTristanBackExtras } from "./DuelTristanPoses";
+import { NIMUE_PALETTE, NIMUE_POSES, drawNimueExtras } from "./DuelNimuePoses";
+import { KAY_PALETTE, KAY_POSES, drawKayExtras } from "./DuelKayPoses";
+import { BEDIVERE_PALETTE, BEDIVERE_POSES, drawBedivereExtras, drawBedivereBackExtras } from "./DuelBediverePoses";
+import { PELLINORE_PALETTE, PELLINORE_POSES, drawPellinoreExtras } from "./DuelPellinorePoses";
+import { IGRAINE_PALETTE, IGRAINE_POSES, drawIgraineExtras } from "./DuelIgrainePoses";
+import { ECTOR_PALETTE, ECTOR_POSES, drawEctorExtras } from "./DuelEctorPoses";
+import { BORS_PALETTE, BORS_POSES, drawBorsExtras } from "./DuelBorsPoses";
+import { UTHER_PALETTE, UTHER_POSES, drawUtherExtras } from "./DuelUtherPoses";
+import { LOT_PALETTE, LOT_POSES, drawLotExtras, drawLotBackExtras } from "./DuelLotPoses";
 
 // ---- Character data lookup -------------------------------------------------
 
@@ -25,6 +41,22 @@ const PALETTES: Record<string, FighterPalette> = {
   merlin: MERLIN_PALETTE,
   elaine: ELAINE_PALETTE,
   lancelot: LANCELOT_PALETTE,
+  guinevere: GUINEVERE_PALETTE,
+  morgan: MORGAN_PALETTE,
+  gawain: GAWAIN_PALETTE,
+  mordred: MORDRED_PALETTE,
+  galahad: GALAHAD_PALETTE,
+  percival: PERCIVAL_PALETTE,
+  tristan: TRISTAN_PALETTE,
+  nimue: NIMUE_PALETTE,
+  kay: KAY_PALETTE,
+  bedivere: BEDIVERE_PALETTE,
+  pellinore: PELLINORE_PALETTE,
+  igraine: IGRAINE_PALETTE,
+  ector: ECTOR_PALETTE,
+  bors: BORS_PALETTE,
+  uther: UTHER_PALETTE,
+  lot: LOT_PALETTE,
 };
 
 const POSES: Record<string, Record<string, FighterPose[]>> = {
@@ -32,6 +64,22 @@ const POSES: Record<string, Record<string, FighterPose[]>> = {
   merlin: MERLIN_POSES,
   elaine: ELAINE_POSES,
   lancelot: LANCELOT_POSES,
+  guinevere: GUINEVERE_POSES,
+  morgan: MORGAN_POSES,
+  gawain: GAWAIN_POSES,
+  mordred: MORDRED_POSES,
+  galahad: GALAHAD_POSES,
+  percival: PERCIVAL_POSES,
+  tristan: TRISTAN_POSES,
+  nimue: NIMUE_POSES,
+  kay: KAY_POSES,
+  bedivere: BEDIVERE_POSES,
+  pellinore: PELLINORE_POSES,
+  igraine: IGRAINE_POSES,
+  ector: ECTOR_POSES,
+  bors: BORS_POSES,
+  uther: UTHER_POSES,
+  lot: LOT_POSES,
 };
 
 const EXTRAS: Record<string, (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void> = {
@@ -39,11 +87,34 @@ const EXTRAS: Record<string, (g: Graphics, p: FighterPose, pal: FighterPalette, 
   merlin: drawMerlinExtras,
   elaine: drawElaineExtras,
   lancelot: drawLancelotExtras,
+  guinevere: drawGuinevereExtras,
+  morgan: drawMorganExtras,
+  gawain: drawGawainExtras,
+  mordred: drawMordredExtras,
+  galahad: drawGalahadExtras,
+  percival: drawPercivalExtras,
+  tristan: drawTristanExtras,
+  nimue: drawNimueExtras,
+  kay: drawKayExtras,
+  bedivere: drawBedivereExtras,
+  pellinore: drawPellinoreExtras,
+  igraine: drawIgraineExtras,
+  ector: drawEctorExtras,
+  bors: drawBorsExtras,
+  uther: drawUtherExtras,
+  lot: drawLotExtras,
 };
 
 const BACK_EXTRAS: Record<string, (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void> = {
   arthur: drawArthurBackExtras,
   lancelot: drawLancelotBackExtras,
+  guinevere: drawGuinevereBackExtras,
+  mordred: drawMordredBackExtras,
+  galahad: drawGalahadBackExtras,
+  percival: drawPercivalBackExtras,
+  tristan: drawTristanBackExtras,
+  bedivere: drawBedivereBackExtras,
+  lot: drawLotBackExtras,
 };
 
 // ---- Projectile colors -----------------------------------------------------
@@ -54,6 +125,34 @@ const PROJECTILE_COLORS: Record<string, number> = {
   power_shot: 0xddbb44,
   backflip_shot: 0xddbb44,
   spear_throw: 0xccbb88,
+  // Morgan
+  shadow_bolt: 0xaa44ff,
+  dark_wave: 0x6622aa,
+  // Gawain
+  sun_arrow: 0xffcc00,
+  solar_flip: 0xffcc00,
+  rapid_volley: 0xffcc00,
+  radiant_shot: 0xffee44,
+  // Nimue
+  water_bolt: 0x44ccff,
+  // Tristan
+  lance_toss: 0xccbb88,
+  // Kay
+  pike_toss: 0x998877,
+  // Igraine
+  holy_bolt: 0xffee88,
+  sacred_wave: 0xffee88,
+  // Ector
+  crossbow_bolt: 0x888899,
+  retreat_shot: 0x888899,
+  rapid_bolts: 0x888899,
+  heavy_bolt: 0x888899,
+  // Uther
+  dragon_bolt: 0xcc4422,
+  low_shot: 0xcc4422,
+  pendragon_retreat: 0xcc4422,
+  siege_volley: 0xcc4422,
+  dragon_bolt_heavy: 0xff4422,
 };
 
 // ---- Hit spark -------------------------------------------------------------
@@ -94,6 +193,22 @@ const ALL_SPECIALS: Record<string, Set<string>> = {
   merlin: MERLIN_SPECIALS,
   elaine: ELAINE_SPECIALS,
   lancelot: LANCELOT_SPECIALS,
+  guinevere: new Set(["divine_thrust", "holy_cleave", "sanctified_sweep", "radiant_rise", "royal_charge", "blessed_blade", "cross_judgment", "royal_parry"]),
+  morgan: new Set(["shadow_bolt", "hex_strike", "dark_wave", "shadow_step", "curse_storm", "fay_barrier", "soul_drain", "dark_counter"]),
+  gawain: new Set(["sun_arrow", "blazing_rain", "low_kick", "solar_flip", "rapid_volley", "sun_trap", "radiant_shot", "dawn_strike"]),
+  mordred: new Set(["dark_thrust", "treachery_cleave", "shadow_sweep", "usurper_rise", "dark_charge", "betrayal_blade", "doom_slash", "dark_parry"]),
+  galahad: new Set(["holy_thrust", "divine_cleave", "purifying_sweep", "ascending_light", "shield_rush", "grail_strike", "radiant_cross", "aegis_counter"]),
+  percival: new Set(["quest_thrust", "pilgrim_cleave", "seeker_sweep", "grail_rise", "zealous_charge", "quest_strike", "cross_blade", "pilgrim_guard"]),
+  tristan: new Set(["lance_pierce", "sorrow_impale", "lance_trip", "mourning_rise", "grief_charge", "lance_toss", "cross_lance", "sorrow_counter"]),
+  nimue: new Set(["water_bolt", "tidal_strike", "frost_wave", "mist_step", "lake_storm", "water_shield", "whirlpool", "ice_counter"]),
+  kay: new Set(["pike_thrust", "authority_slam", "pike_sweep", "pike_vault", "bull_rush", "pike_toss", "cross_pike", "stern_guard"]),
+  bedivere: new Set(["shield_thrust", "tower_slam", "low_bash", "rising_guard", "fortress_charge", "last_stand", "shield_cross", "iron_wall"]),
+  pellinore: new Set(["axe_cleave", "beast_slam", "ground_smash", "savage_rise", "stampede", "questing_blow", "wild_swing", "beast_guard"]),
+  igraine: new Set(["holy_bolt", "divine_strike", "sacred_wave", "grace_step", "heaven_storm", "divine_barrier", "smite", "prayer_counter"]),
+  ector: new Set(["crossbow_bolt", "bomb_lob", "caltrops", "retreat_shot", "rapid_bolts", "bear_trap", "heavy_bolt", "gadget_dodge"]),
+  bors: new Set(["axe_lunge", "overhead_axe", "low_chop", "rising_axe", "bull_charge", "steadfast_blow", "whirlwind_axe", "iron_resolve"]),
+  uther: new Set(["dragon_bolt", "fire_rain", "low_shot", "pendragon_retreat", "siege_volley", "dragon_trap", "dragon_bolt_heavy", "royal_dodge"]),
+  lot: new Set(["death_thrust", "orkney_cleave", "reaper_sweep", "death_rise", "dark_charge", "soul_reap", "doom_cross", "death_counter"]),
 };
 
 // Zeal (ultimate) moves — even flashier VFX
@@ -102,6 +217,22 @@ const ZEAL_MOVES: Record<string, Set<string>> = {
   merlin: new Set(["thunder_wrath", "arcane_apocalypse"]),
   elaine: new Set(["storm_volley", "celestial_arrow"]),
   lancelot: new Set(["dragon_lance", "spear_whirlwind"]),
+  guinevere: new Set(["divine_retribution", "queens_judgment"]),
+  morgan: new Set(["shadow_apocalypse", "fay_eclipse"]),
+  gawain: new Set(["solar_barrage", "sunburst_arrow"]),
+  mordred: new Set(["usurper_wrath", "treachery_unleashed"]),
+  galahad: new Set(["holy_radiance", "grail_ascension"]),
+  percival: new Set(["grail_quest", "sacred_revelation"]),
+  tristan: new Set(["sorrow_tempest", "lament_drive"]),
+  nimue: new Set(["tidal_wrath", "lake_judgment"]),
+  kay: new Set(["seneschal_fury", "martial_authority"]),
+  bedivere: new Set(["bulwark_crash", "loyal_sacrifice"]),
+  pellinore: new Set(["questing_beast", "primal_fury"]),
+  igraine: new Set(["divine_grace", "cornwall_judgment"]),
+  ector: new Set(["siege_barrage", "engineer_masterwork"]),
+  bors: new Set(["steadfast_fury", "unbreakable_will"]),
+  uther: new Set(["pendragon_barrage", "dragon_fury"]),
+  lot: new Set(["orkney_doom", "death_sentence"]),
 };
 
 // Zeal VFX colors — brighter, more intense than specials
@@ -110,14 +241,46 @@ const ZEAL_COLORS: Record<string, { primary: number; secondary: number; glow: nu
   merlin: { primary: 0xaaaaff, secondary: 0x6644ff, glow: 0xffffff },
   elaine: { primary: 0x88eeff, secondary: 0x44aadd, glow: 0xffffff },
   lancelot: { primary: 0xffee66, secondary: 0xddaa22, glow: 0xffffff },
+  guinevere: { primary: 0xffffaa, secondary: 0xddaa33, glow: 0xffffff },
+  morgan: { primary: 0xcc66ff, secondary: 0x8822cc, glow: 0xffffff },
+  gawain: { primary: 0xffdd44, secondary: 0xff8800, glow: 0xffffff },
+  mordred: { primary: 0xff4444, secondary: 0xcc0000, glow: 0xffffff },
+  galahad: { primary: 0xaaddff, secondary: 0x6699dd, glow: 0xffffff },
+  percival: { primary: 0x88bbee, secondary: 0x4488cc, glow: 0xffffff },
+  tristan: { primary: 0x6699cc, secondary: 0x445577, glow: 0xffffff },
+  nimue: { primary: 0x66eeff, secondary: 0x2299cc, glow: 0xffffff },
+  kay: { primary: 0xccbb88, secondary: 0x998866, glow: 0xffffff },
+  bedivere: { primary: 0xaabbaa, secondary: 0x778877, glow: 0xffffff },
+  pellinore: { primary: 0xddaa44, secondary: 0xaa7722, glow: 0xffffff },
+  igraine: { primary: 0xffeeaa, secondary: 0xddcc66, glow: 0xffffff },
+  ector: { primary: 0xaabb99, secondary: 0x778866, glow: 0xffffff },
+  bors: { primary: 0x88aa66, secondary: 0x668844, glow: 0xffffff },
+  uther: { primary: 0xff6644, secondary: 0xcc3311, glow: 0xffffff },
+  lot: { primary: 0x66ff88, secondary: 0x44aa55, glow: 0xffffff },
 };
 
 // Special VFX color themes per character
 const SPECIAL_COLORS: Record<string, { primary: number; secondary: number; glow: number }> = {
-  arthur: { primary: 0xffdd44, secondary: 0xff8800, glow: 0xffffaa },  // golden sword energy
-  merlin: { primary: 0x8866ff, secondary: 0x4422cc, glow: 0xccaaff },  // arcane purple
-  elaine: { primary: 0x44ddff, secondary: 0x2288aa, glow: 0xaaeeff },  // cyan wind/arrow
-  lancelot: { primary: 0xddcc44, secondary: 0xaa8822, glow: 0xffeeaa },  // golden lance energy
+  arthur: { primary: 0xffdd44, secondary: 0xff8800, glow: 0xffffaa },
+  merlin: { primary: 0x8866ff, secondary: 0x4422cc, glow: 0xccaaff },
+  elaine: { primary: 0x44ddff, secondary: 0x2288aa, glow: 0xaaeeff },
+  lancelot: { primary: 0xddcc44, secondary: 0xaa8822, glow: 0xffeeaa },
+  guinevere: { primary: 0xffee66, secondary: 0xddaa22, glow: 0xffffcc },
+  morgan: { primary: 0xaa44ff, secondary: 0x6622aa, glow: 0xcc88ff },
+  gawain: { primary: 0xffcc00, secondary: 0xdd8800, glow: 0xffee88 },
+  mordred: { primary: 0xcc2222, secondary: 0x880000, glow: 0xff6666 },
+  galahad: { primary: 0x88ccff, secondary: 0x4488cc, glow: 0xccddff },
+  percival: { primary: 0x6699cc, secondary: 0x4466aa, glow: 0xaaccee },
+  tristan: { primary: 0x4477aa, secondary: 0x335577, glow: 0x88aacc },
+  nimue: { primary: 0x44ccff, secondary: 0x2299cc, glow: 0x88eeff },
+  kay: { primary: 0xaa9966, secondary: 0x886644, glow: 0xccbb88 },
+  bedivere: { primary: 0x889988, secondary: 0x667766, glow: 0xaabbaa },
+  pellinore: { primary: 0xcc8833, secondary: 0xaa6622, glow: 0xddaa55 },
+  igraine: { primary: 0xffee88, secondary: 0xddcc44, glow: 0xffffcc },
+  ector: { primary: 0x889977, secondary: 0x667755, glow: 0xaabb99 },
+  bors: { primary: 0x669944, secondary: 0x447722, glow: 0x88bb66 },
+  uther: { primary: 0xcc4422, secondary: 0xaa2211, glow: 0xff6644 },
+  lot: { primary: 0x44aa44, secondary: 0x228822, glow: 0x66ff88 },
 };
 
 // ---- Special VFX particle --------------------------------------------------
@@ -281,18 +444,16 @@ export class DuelFightView {
       type: "ring",
     });
 
-    // Character-specific startup flash
-    if (fighter.characterId === "arthur") {
-      // Sword slash arc
+    // Character-specific startup flash (based on fighter type for new characters)
+    const charDef = DUEL_CHARACTERS[fighter.characterId];
+    const fType = charDef?.fighterType ?? "sword";
+    if (fType === "sword" || fType === "axe") {
       this._spawnSlashArc(x + dir * 30, y - 100, dir, colors, moveId);
-    } else if (fighter.characterId === "merlin") {
-      // Magic circle burst
+    } else if (fType === "mage") {
       this._spawnMagicBurst(x, y - 90, colors);
-    } else if (fighter.characterId === "elaine") {
-      // Wind trail
+    } else if (fType === "archer") {
       this._spawnWindTrail(x + dir * 20, y - 80, dir, colors);
-    } else if (fighter.characterId === "lancelot") {
-      // Lance thrust trail
+    } else if (fType === "spear") {
       this._spawnLanceTrail(x + dir * 20, y - 90, dir, colors, moveId);
     }
   }
@@ -480,16 +641,18 @@ export class DuelFightView {
       });
     }
 
-    // Character-specific zeal effects
+    // Character-specific zeal effects (type-based for new characters)
+    const zealCharDef = DUEL_CHARACTERS[fighter.characterId];
+    const zealFType = zealCharDef?.fighterType ?? "sword";
     if (fighter.characterId === "merlin" && moveId === "thunder_wrath") {
       this._spawnThunderZap(fighter, state, colors);
-    } else if (fighter.characterId === "arthur") {
+    } else if (zealFType === "sword" || zealFType === "axe") {
       this._spawnZealSlashBarrage(x, y, dir, colors, moveId);
-    } else if (fighter.characterId === "merlin") {
+    } else if (zealFType === "mage") {
       this._spawnArcaneExplosion(x, y, colors);
-    } else if (fighter.characterId === "elaine") {
+    } else if (zealFType === "archer") {
       this._spawnZealArrowBarrage(x, y, dir, colors, moveId);
-    } else if (fighter.characterId === "lancelot") {
+    } else if (zealFType === "spear") {
       this._spawnZealLanceBarrage(x, y, dir, colors, moveId);
     }
   }
@@ -874,8 +1037,8 @@ export class DuelFightView {
       palette,
       isFlashing: isHitFlash,
       flashColor: 0xffffff,
-      helmeted: charId === "arthur" || charId === "lancelot",
-      helmColor: charId === "lancelot" ? 0x7788aa : 0x888899,
+      helmeted: charId === "arthur" || charId === "lancelot" || charId === "mordred" || charId === "percival" || charId === "kay" || charId === "bedivere" || charId === "lot" || charId === "pellinore",
+      helmColor: charId === "lancelot" ? 0x7788aa : charId === "mordred" ? 0x222233 : charId === "percival" ? 0x6688aa : charId === "lot" ? 0x333344 : charId === "bedivere" ? 0x777788 : charId === "pellinore" ? 0x886644 : charId === "kay" ? 0x776655 : 0x888899,
       drawBackExtras: backExtras,
       drawExtras: extras,
     };

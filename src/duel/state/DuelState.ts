@@ -48,7 +48,7 @@ export interface DuelCharacterDef {
   name: string;
   title: string;
   portrait: string;
-  fighterType: "sword" | "mage" | "archer" | "spear";
+  fighterType: "sword" | "mage" | "archer" | "spear" | "axe";
   maxHp: number;
   walkSpeed: number;
   backWalkSpeed: number;

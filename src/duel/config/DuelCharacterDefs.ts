@@ -674,6 +674,25 @@ export const LANCELOT_DEF: DuelCharacterDef = {
   },
 };
 
+// ---- New character imports --------------------------------------------------
+
+import { GUINEVERE_DEF } from "./characters/GuinevereDef";
+import { MORGAN_DEF } from "./characters/MorganDef";
+import { GAWAIN_DEF } from "./characters/GawainDef";
+import { MORDRED_DEF } from "./characters/MordredDef";
+import { GALAHAD_DEF } from "./characters/GalahadDef";
+import { PERCIVAL_DEF } from "./characters/PercivalDef";
+import { TRISTAN_DEF } from "./characters/TristanDef";
+import { NIMUE_DEF } from "./characters/NimueDef";
+import { KAY_DEF } from "./characters/KayDef";
+import { BEDIVERE_DEF } from "./characters/BedivereDef";
+import { PELLINORE_DEF } from "./characters/PellinoreDef";
+import { IGRAINE_DEF } from "./characters/IgraineDef";
+import { ECTOR_DEF } from "./characters/EctorDef";
+import { BORS_DEF } from "./characters/BorsDef";
+import { UTHER_DEF } from "./characters/UtherDef";
+import { LOT_DEF } from "./characters/LotDef";
+
 // ---- Character registry ----------------------------------------------------
 
 export const DUEL_CHARACTERS: Record<string, DuelCharacterDef> = {
@@ -681,6 +700,27 @@ export const DUEL_CHARACTERS: Record<string, DuelCharacterDef> = {
   merlin: MERLIN_DEF,
   elaine: ELAINE_DEF,
   lancelot: LANCELOT_DEF,
+  guinevere: GUINEVERE_DEF,
+  morgan: MORGAN_DEF,
+  gawain: GAWAIN_DEF,
+  mordred: MORDRED_DEF,
+  galahad: GALAHAD_DEF,
+  percival: PERCIVAL_DEF,
+  tristan: TRISTAN_DEF,
+  nimue: NIMUE_DEF,
+  kay: KAY_DEF,
+  bedivere: BEDIVERE_DEF,
+  pellinore: PELLINORE_DEF,
+  igraine: IGRAINE_DEF,
+  ector: ECTOR_DEF,
+  bors: BORS_DEF,
+  uther: UTHER_DEF,
+  lot: LOT_DEF,
 };
 
-export const DUEL_CHARACTER_IDS = ["arthur", "merlin", "elaine", "lancelot"] as const;
+export const DUEL_CHARACTER_IDS = [
+  "arthur", "merlin", "elaine", "lancelot",
+  "guinevere", "morgan", "gawain", "mordred", "galahad",
+  "percival", "tristan", "nimue", "kay", "bedivere",
+  "pellinore", "igraine", "ector", "bors", "uther", "lot",
+] as const;

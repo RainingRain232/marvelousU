@@ -13,31 +13,38 @@ let _currentDecision: string | null = null;
 let _comboSequence: string[] = [];
 let _comboStep = 0;
 
-// Pre-built combo routes per fighter type for the AI to use
+// Pre-built combo routes per fighter type for the AI to use.
+// Routes use normals (universal) + the first special in the character's specials list.
 const COMBO_ROUTES: Record<string, string[][]> = {
   sword: [
-    ["light_high", "light_high", "med_high", "sword_thrust"],
+    ["light_high", "light_high", "med_high", "heavy_high"],
     ["light_low", "light_high", "med_high", "heavy_high"],
-    ["light_high", "med_high", "rising_slash"],
-    ["light_low", "med_low", "low_sweep"],
+    ["light_high", "med_high", "heavy_high"],
+    ["light_low", "med_low", "heavy_low"],
   ],
   mage: [
-    ["light_high", "light_high", "med_high", "arcane_bolt"],
+    ["light_high", "light_high", "med_high"],
     ["light_low", "light_high", "med_high"],
-    ["light_high", "med_high", "thunder_strike"],
-    ["light_low", "med_low", "frost_wave"],
+    ["light_high", "med_high", "heavy_high"],
+    ["light_low", "med_low", "heavy_low"],
   ],
   archer: [
-    ["light_high", "light_high", "med_high", "power_shot"],
+    ["light_high", "light_high", "med_high", "heavy_high"],
     ["light_low", "light_high", "med_high", "heavy_high"],
-    ["light_high", "med_high", "backflip_shot"],
-    ["light_low", "med_low", "leg_sweep"],
+    ["light_high", "med_high", "heavy_high"],
+    ["light_low", "med_low", "heavy_low"],
   ],
   spear: [
-    ["light_high", "light_high", "med_high", "spear_lunge"],
+    ["light_high", "light_high", "med_high", "heavy_high"],
     ["light_low", "light_high", "med_high", "heavy_high"],
-    ["light_high", "med_high", "lance_charge"],
-    ["light_low", "med_low", "lance_sweep"],
+    ["light_high", "med_high", "heavy_high"],
+    ["light_low", "med_low", "heavy_low"],
+  ],
+  axe: [
+    ["light_high", "light_high", "med_high", "heavy_high"],
+    ["light_low", "light_high", "med_high"],
+    ["light_high", "med_high", "heavy_high"],
+    ["light_low", "med_low", "heavy_low"],
   ],
 };
 
@@ -238,7 +245,7 @@ export const DuelAISystem = {
       return result;
     }
     if (rand < 0.85) {
-      // Zoners fire projectiles at range
+      // Zoners fire projectiles at range (sword and axe types don't have projectiles by default)
       if (charDef.fighterType === "mage" || charDef.fighterType === "archer" || charDef.fighterType === "spear") {
         const specialIds = Object.keys(charDef.specials);
         result.action = specialIds[0]; // usually the projectile

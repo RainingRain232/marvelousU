@@ -179,21 +179,26 @@ export class DuelCharSelectView {
       style: { fontFamily: 'Impact, "Arial Black", sans-serif', fontSize: 36, fill: COL_TITLE, fontWeight: "bold", letterSpacing: 2 },
     });
     title.anchor.set(0.5, 0);
-    title.position.set(sw / 2, 30);
+    title.position.set(sw / 2, 10);
     this.container.addChild(title);
 
-    // Character cards
-    const cardW = 180;
-    const cardH = 280;
-    const gap = 30;
-    const totalW = DUEL_CHARACTER_IDS.length * cardW + (DUEL_CHARACTER_IDS.length - 1) * gap;
+    // Grid layout: 5 columns x 4 rows for 20 characters
+    const cols = 5;
+    const cardW = 140;
+    const cardH = 165;
+    const gapX = 12;
+    const gapY = 10;
+    const totalW = cols * cardW + (cols - 1) * gapX;
     const startX = (sw - totalW) / 2;
+    const startY = 55;
 
     for (let i = 0; i < DUEL_CHARACTER_IDS.length; i++) {
       const charId = DUEL_CHARACTER_IDS[i];
       const charDef = DUEL_CHARACTERS[charId];
-      const x = startX + i * (cardW + gap);
-      const y = 100;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = startX + col * (cardW + gapX);
+      const y = startY + row * (cardH + gapY);
       const isSelected = i === this._p1Index;
 
       this._drawCharCard(x, y, cardW, cardH, charDef, isSelected);
@@ -205,7 +210,7 @@ export class DuelCharSelectView {
       style: { fontFamily: "monospace", fontSize: 14, fill: 0x888899 },
     });
     inst.anchor.set(0.5, 0);
-    inst.position.set(sw / 2, sh - 40);
+    inst.position.set(sw / 2, sh - 35);
     this.container.addChild(inst);
 
     // Controls info
@@ -214,7 +219,7 @@ export class DuelCharSelectView {
       style: { fontFamily: "monospace", fontSize: 11, fill: 0x667788 },
     });
     controls.anchor.set(0.5, 0);
-    controls.position.set(sw / 2, sh - 20);
+    controls.position.set(sw / 2, sh - 18);
     this.container.addChild(controls);
   }
 
@@ -247,8 +252,9 @@ export class DuelCharSelectView {
       charDef.fighterType === "sword" ? 0x3366cc :
       charDef.fighterType === "mage" ? 0x6633aa :
       charDef.fighterType === "spear" ? 0xaa8833 :
+      charDef.fighterType === "axe" ? 0x886633 :
       0x33aa66;
-    portraitG.roundRect(x + 15, y + 15, w - 30, 100, 4);
+    portraitG.roundRect(x + 8, y + 8, w - 16, 60, 4);
     portraitG.fill({ color: portraitColor, alpha: 0.6 });
     portraitG.stroke({ color: portraitColor, width: 1 });
     this.container.addChild(portraitG);
@@ -258,56 +264,57 @@ export class DuelCharSelectView {
       charDef.fighterType === "sword" ? "\u2694" :
       charDef.fighterType === "mage" ? "\u2728" :
       charDef.fighterType === "spear" ? "\u{1F531}" :
+      charDef.fighterType === "axe" ? "\u{1FA93}" :
       "\u{1F3F9}";
     const iconText = new Text({
       text: icon,
-      style: { fontFamily: "monospace", fontSize: 36, fill: 0xffffff },
+      style: { fontFamily: "monospace", fontSize: 24, fill: 0xffffff },
     });
     iconText.anchor.set(0.5);
-    iconText.position.set(x + w / 2, y + 65);
+    iconText.position.set(x + w / 2, y + 38);
     this.container.addChild(iconText);
 
     // Name
     const name = new Text({
       text: charDef.name,
-      style: { fontFamily: "monospace", fontSize: 18, fill: COL_TEXT, fontWeight: "bold" },
+      style: { fontFamily: "monospace", fontSize: 13, fill: COL_TEXT, fontWeight: "bold" },
     });
     name.anchor.set(0.5, 0);
-    name.position.set(x + w / 2, y + 125);
+    name.position.set(x + w / 2, y + 72);
     this.container.addChild(name);
 
     // Title
     const titleText = new Text({
       text: charDef.title,
-      style: { fontFamily: "monospace", fontSize: 11, fill: COL_STAT },
+      style: { fontFamily: "monospace", fontSize: 8, fill: COL_STAT },
     });
     titleText.anchor.set(0.5, 0);
-    titleText.position.set(x + w / 2, y + 148);
+    titleText.position.set(x + w / 2, y + 88);
     this.container.addChild(titleText);
 
     // Stat bars
     const stats = [
-      { label: "HP", value: charDef.maxHp / 1000 },
-      { label: "SPD", value: charDef.walkSpeed / 4.5 },
-      { label: "DMG", value: charDef.fighterType === "sword" ? 0.9 : charDef.fighterType === "spear" ? 0.8 : charDef.fighterType === "mage" ? 0.65 : 0.5 },
-      { label: "RNG", value: charDef.fighterType === "archer" ? 0.95 : charDef.fighterType === "mage" ? 0.85 : charDef.fighterType === "spear" ? 0.9 : 0.55 },
+      { label: "HP", value: charDef.maxHp / 1100 },
+      { label: "SPD", value: charDef.walkSpeed / 6.0 },
+      { label: "DMG", value: charDef.fighterType === "axe" ? 0.95 : charDef.fighterType === "sword" ? 0.85 : charDef.fighterType === "spear" ? 0.75 : charDef.fighterType === "mage" ? 0.6 : 0.5 },
+      { label: "RNG", value: charDef.fighterType === "archer" ? 0.95 : charDef.fighterType === "mage" ? 0.85 : charDef.fighterType === "spear" ? 0.9 : charDef.fighterType === "axe" ? 0.45 : 0.55 },
     ];
 
-    const barY = y + 175;
+    const barY = y + 102;
     for (let s = 0; s < stats.length; s++) {
-      const sy = barY + s * 22;
+      const sy = barY + s * 15;
 
       const label = new Text({
         text: stats[s].label,
-        style: { fontFamily: "monospace", fontSize: 10, fill: 0x888899 },
+        style: { fontFamily: "monospace", fontSize: 8, fill: 0x888899 },
       });
-      label.position.set(x + 15, sy);
+      label.position.set(x + 8, sy);
       this.container.addChild(label);
 
       const barBg = new Graphics();
-      barBg.rect(x + 50, sy + 2, w - 75, 10);
+      barBg.rect(x + 34, sy + 1, w - 48, 8);
       barBg.fill({ color: 0x222233 });
-      barBg.rect(x + 50, sy + 2, (w - 75) * stats[s].value, 10);
+      barBg.rect(x + 34, sy + 1, (w - 48) * stats[s].value, 8);
       barBg.fill({ color: selected ? COL_SELECTED : COL_STAT });
       this.container.addChild(barBg);
     }
@@ -316,48 +323,53 @@ export class DuelCharSelectView {
   private _drawArenaSelect(sw: number, sh: number): void {
     const title = new Text({
       text: "CHOOSE YOUR ARENA",
-      style: { fontFamily: "monospace", fontSize: 32, fill: COL_TITLE, fontWeight: "bold" },
+      style: { fontFamily: "monospace", fontSize: 28, fill: COL_TITLE, fontWeight: "bold" },
     });
     title.anchor.set(0.5, 0);
-    title.position.set(sw / 2, 30);
+    title.position.set(sw / 2, 10);
     this.container.addChild(title);
 
-    // Arena cards
-    const cardW = 200;
-    const cardH = 160;
-    const gap = 30;
-    const totalW = DUEL_ARENA_IDS.length * cardW + (DUEL_ARENA_IDS.length - 1) * gap;
+    // Grid layout: 5 columns x 3 rows for 15 arenas
+    const cols = 5;
+    const cardW = 148;
+    const cardH = 115;
+    const gapX = 12;
+    const gapY = 10;
+    const totalW = cols * cardW + (cols - 1) * gapX;
     const startX = (sw - totalW) / 2;
+    const startY = 45;
 
     for (let i = 0; i < DUEL_ARENA_IDS.length; i++) {
       const arenaId = DUEL_ARENA_IDS[i];
       const arena = DUEL_ARENAS[arenaId];
-      const x = startX + i * (cardW + gap);
-      const y = 120;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = startX + col * (cardW + gapX);
+      const y = startY + row * (cardH + gapY);
       const isSelected = i === this._arenaIndex;
 
       const card = new Graphics();
-      card.roundRect(x, y, cardW, cardH, 8);
+      card.roundRect(x, y, cardW, cardH, 6);
       card.fill({ color: COL_PANEL });
       card.stroke({ color: isSelected ? COL_SELECTED : COL_BORDER, width: isSelected ? 3 : 1 });
 
       // Arena preview (mini landscape)
-      card.rect(x + 10, y + 10, cardW - 20, 90);
+      card.rect(x + 6, y + 6, cardW - 12, 65);
       card.fill({ color: arena.skyTop });
-      card.rect(x + 10, y + 60, cardW - 20, 40);
+      card.rect(x + 6, y + 40, cardW - 12, 31);
       card.fill({ color: arena.groundColor });
       // Accent
-      card.circle(x + cardW / 2, y + 50, 8);
+      card.circle(x + cardW / 2, y + 35, 5);
       card.fill({ color: arena.accentColor, alpha: 0.5 });
 
       this.container.addChild(card);
 
       const name = new Text({
         text: arena.name,
-        style: { fontFamily: "monospace", fontSize: 14, fill: isSelected ? COL_SELECTED : COL_TEXT, fontWeight: isSelected ? "bold" : "normal" },
+        style: { fontFamily: "monospace", fontSize: 10, fill: isSelected ? COL_SELECTED : COL_TEXT, fontWeight: isSelected ? "bold" : "normal" },
       });
       name.anchor.set(0.5, 0);
-      name.position.set(x + cardW / 2, y + 110);
+      name.position.set(x + cardW / 2, y + 78);
       this.container.addChild(name);
     }
 
@@ -367,10 +379,10 @@ export class DuelCharSelectView {
 
     const vs = new Text({
       text: `${p1Def.name}  vs  ${p2Def.name}`,
-      style: { fontFamily: "monospace", fontSize: 24, fill: COL_TEXT, fontWeight: "bold" },
+      style: { fontFamily: "monospace", fontSize: 22, fill: COL_TEXT, fontWeight: "bold" },
     });
     vs.anchor.set(0.5, 0);
-    vs.position.set(sw / 2, 320);
+    vs.position.set(sw / 2, sh - 65);
     this.container.addChild(vs);
 
     const inst = new Text({
@@ -378,7 +390,7 @@ export class DuelCharSelectView {
       style: { fontFamily: "monospace", fontSize: 14, fill: 0x888899 },
     });
     inst.anchor.set(0.5, 0);
-    inst.position.set(sw / 2, sh - 40);
+    inst.position.set(sw / 2, sh - 35);
     this.container.addChild(inst);
   }
 
