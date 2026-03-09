@@ -268,6 +268,8 @@ export class CamelotHubScreen {
   // Animated building preview in tooltip
   private _previewRenderer: { container: Container; tick(dt: number, phase: GamePhase): void } | null = null;
   private _previewContainer!: Container;
+  private _previewParticles!: AmbientParticles;
+  private _previewMask!: Graphics;
 
   private _treesData: TreeData[] = [];
   private _wallTowers: TowerData[] = [];
@@ -326,6 +328,14 @@ export class CamelotHubScreen {
     this._tooltip.addChild(this._tooltipPreview);
     this._previewContainer = new Container();
     this._previewContainer.position.set(10, 48);
+    // Mask so particles + building don't overflow the preview area
+    this._previewMask = new Graphics().rect(0, 0, 180, 140).fill({ color: 0xffffff });
+    this._previewContainer.addChild(this._previewMask);
+    this._previewContainer.mask = this._previewMask;
+    // Ambient particles inside preview — only in the dark sky area (top 70%)
+    this._previewParticles = new AmbientParticles(20);
+    this._previewParticles.resize(180, 140 * 0.7);
+    this._previewContainer.addChild(this._previewParticles.container);
     this._tooltip.addChild(this._previewContainer);
     this._mapContainer.addChild(this._tooltip);
 
@@ -353,8 +363,11 @@ export class CamelotHubScreen {
       this._drawCompassGlow();
       this._particles.update(dt);
       this._runes.update(dt);
-      if (this._previewRenderer && this._tooltip.visible) {
-        this._previewRenderer.tick(dt, GamePhase.PREP);
+      if (this._tooltip.visible) {
+        this._previewParticles.update(dt);
+        if (this._previewRenderer) {
+          this._previewRenderer.tick(dt, GamePhase.PREP);
+        }
       }
     };
     vm.app.ticker.add(this._tickerFn);
@@ -536,21 +549,9 @@ export class CamelotHubScreen {
     // Dark background matching the menu's night sky
     g.rect(0, 0, pw, ph).fill({ color: 0x0a0a18 });
 
-    // Ambient star/particle dots (static, matching AmbientParticles style)
-    const starRng = seededRandom(b.id.length * 7 + 13);
-    const starColors = [0xffd700, 0xffe033, 0xffcc00, 0xffdd55, 0xffee66];
-    for (let i = 0; i < 25; i++) {
-      const sx = starRng() * pw;
-      const sy = starRng() * ph;
-      const sr = 0.8 + starRng() * 1.5;
-      const sa = 0.15 + starRng() * 0.35;
-      const sc = starColors[Math.floor(starRng() * starColors.length)];
-      g.circle(sx, sy, sr).fill({ color: sc, alpha: sa });
-    }
-
-    // Ground plane
-    g.rect(0, ph * 0.65, pw, ph * 0.35).fill({ color: 0x2a3a1a, alpha: 0.7 });
-    g.moveTo(0, ph * 0.65).lineTo(pw, ph * 0.65).stroke({ color: 0x3a5a2a, width: 1, alpha: 0.5 });
+    // Ground plane (30% at the bottom)
+    g.rect(0, ph * 0.7, pw, ph * 0.3).fill({ color: 0x2a3a1a, alpha: 0.7 });
+    g.moveTo(0, ph * 0.7).lineTo(pw, ph * 0.7).stroke({ color: 0x3a5a2a, width: 1, alpha: 0.5 });
 
     // Clear previous renderer
     this._clearPreviewRenderer();
