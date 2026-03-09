@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camelot Hub Map — Visual Mockups</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a18; color: #ccc; font-family: 'Georgia', serif; }
+  .section { padding: 40px 20px; text-align: center; }
+  .section h2 { color: #DAA520; font-size: 28px; letter-spacing: 4px; margin-bottom: 8px; }
+  .section p { color: #8899AA; font-size: 14px; margin-bottom: 20px; max-width: 700px; margin-left: auto; margin-right: auto; }
+  canvas { display: block; margin: 0 auto; border: 2px solid #DAA520; border-radius: 4px; }
+  .divider { height: 1px; max-width: 600px; margin: 0 auto; background: linear-gradient(90deg, transparent, #DAA520, transparent); }
+</style>
+</head>
+<body>
+
+<div class="section">
+  <h2>— CAMELOT HUB MAP —</h2>
+  <p>Visual mockups for the game mode selection screen. Each building/location corresponds to a game mode. Scroll down to see iterations.</p>
+</div>
+<div class="divider"></div>
+
+<!-- Iteration 1: Warm daylight, painterly style -->
+<div class="section">
+  <h2>I · DAYLIGHT — PAINTERLY</h2>
+  <p>Warm afternoon light. Rich detail with textured ground, individual trees, rooftop colors. Soft shadows and a river winding past.</p>
+  <canvas id="c1" width="1200" height="900"></canvas>
+</div>
+<div class="divider"></div>
+
+<!-- Iteration 2: Parchment/map style -->
+<div class="section">
+  <h2>II · PARCHMENT MAP</h2>
+  <p>Old-world cartography style. Aged parchment tones, ink outlines, hand-drawn feel. Labels in ornate script.</p>
+  <canvas id="c2" width="1200" height="900"></canvas>
+</div>
+<div class="divider"></div>
+
+<!-- Iteration 3: Twilight/magical atmosphere -->
+<div class="section">
+  <h2>III · TWILIGHT — MAGICAL</h2>
+  <p>Dusk settling over Camelot. Warm window glows, lantern light along roads, purple-blue sky gradient. Stars emerging.</p>
+  <canvas id="c3" width="1200" height="900"></canvas>
+</div>
+
+<script>
+// =========================================================================
+// SHARED DRAWING UTILITIES
+// =========================================================================
+
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+// Draw a rounded rectangle
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// Blend two hex colors
+function lerpColor(c1, c2, t) {
+  const r1 = (c1 >> 16) & 255, g1 = (c1 >> 8) & 255, b1 = c1 & 255;
+  const r2 = (c2 >> 16) & 255, g2 = (c2 >> 8) & 255, b2 = c2 & 255;
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return `rgb(${r},${g},${b})`;
+}
+
+function hexColor(hex) {
+  const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+  return `rgb(${r},${g},${b})`;
+}
+
+function hexColorA(hex, a) {
+  const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// =========================================================================
+// CAMELOT MAP LAYOUT — shared across all iterations
+// =========================================================================
+
+const MAP = {
+  // Canvas
+  W: 1200, H: 900,
+
+  // City walls (inner area)
+  city: { x: 250, y: 150, w: 700, h: 580 },
+  wallThickness: 14,
+
+  // Gates (center of opening)
+  gates: {
+    north: { x: 600, y: 150, w: 70 },
+    south: { x: 600, y: 730, w: 80 },
+    east:  { x: 950, y: 420, w: 70 },
+    west:  { x: 250, y: 440, w: 70 },
+  },
+
+  // River (points for a curved path, flows SW to NE)
+  river: [
+    { x: 0, y: 800 },
+    { x: 100, y: 780 },
+    { x: 250, y: 760 },
+    { x: 400, y: 770 },
+    { x: 550, y: 800 },
+    { x: 700, y: 830 },
+    { x: 850, y: 810 },
+    { x: 1000, y: 780 },
+    { x: 1100, y: 790 },
+    { x: 1200, y: 770 },
+  ],
+
+  // === BUILDINGS (game mode locations) ===
+  buildings: [
+    // 1. Castle Keep — STANDARD/BATTLEFIELD
+    {
+      id: 'castle', x: 480, y: 160, w: 240, h: 180,
+      label: 'Castle Keep', mode: 'Standard / Battlefield',
+      roofColor: 0x556677, wallColor: 0x667788, accent: 0xDAA520,
+      type: 'castle',
+    },
+    // 2. Barracks — DUEL
+    {
+      id: 'barracks', x: 740, y: 180, w: 170, h: 120,
+      label: 'Royal Barracks', mode: 'Duel',
+      roofColor: 0x884433, wallColor: 0x776655, accent: 0xCC4444,
+      type: 'barracks',
+    },
+    // 3. Market Square — MEDIEVAL GTA
+    {
+      id: 'market', x: 420, y: 420, w: 200, h: 160,
+      label: 'Market Square', mode: 'Medieval GTA',
+      roofColor: 0xCC9944, wallColor: 0xBBAA77, accent: 0xEECC44,
+      type: 'market',
+    },
+    // 4. Grand Library — CAMPAIGN
+    {
+      id: 'library', x: 270, y: 200, w: 150, h: 130,
+      label: 'Grand Library', mode: 'Campaign',
+      roofColor: 0x445566, wallColor: 0x556677, accent: 0x88AACC,
+      type: 'library',
+    },
+    // 5. Colosseum — COLOSSEUM
+    {
+      id: 'colosseum', x: 980, y: 500, w: 180, h: 170,
+      label: 'The Colosseum', mode: 'Colosseum',
+      roofColor: 0x998866, wallColor: 0x887766, accent: 0xCC8844,
+      type: 'colosseum',
+    },
+    // 6. City Gate — RPG
+    {
+      id: 'gate', x: 540, y: 680, w: 120, h: 70,
+      label: 'Southern Gate', mode: 'RPG',
+      roofColor: 0x776655, wallColor: 0x665544, accent: 0x44AA44,
+      type: 'gate',
+    },
+    // 7. Mage Tower — WAVE
+    {
+      id: 'mage_tower', x: 870, y: 300, w: 70, h: 90,
+      label: 'Mage Tower', mode: 'Wave',
+      roofColor: 0x4455AA, wallColor: 0x556688, accent: 0x8888FF,
+      type: 'tower',
+    },
+    // 8. Tavern — SURVIVOR
+    {
+      id: 'tavern', x: 640, y: 500, w: 140, h: 100,
+      label: 'The Prancing Pony', mode: 'Survivor',
+      roofColor: 0x885533, wallColor: 0x776644, accent: 0xFFCC44,
+      type: 'tavern',
+    },
+    // 9. Docks — WORLD
+    {
+      id: 'docks', x: 850, y: 750, w: 160, h: 70,
+      label: 'River Docks', mode: 'World',
+      roofColor: 0x665544, wallColor: 0x554433, accent: 0x4488AA,
+      type: 'docks',
+    },
+    // 10. Training Grounds — ROGUELIKE
+    {
+      id: 'training', x: 1000, y: 300, w: 140, h: 110,
+      label: 'Training Grounds', mode: 'Roguelike',
+      roofColor: 0x556644, wallColor: 0x667755, accent: 0x88AA44,
+      type: 'training',
+    },
+    // 11. Church/Cathedral (future)
+    {
+      id: 'church', x: 300, y: 400, w: 100, h: 150,
+      label: 'Cathedral', mode: '—',
+      roofColor: 0x777788, wallColor: 0x667777, accent: 0xDDDDCC,
+      type: 'church',
+    },
+    // 12. Stables (future)
+    {
+      id: 'stable', x: 750, y: 580, w: 130, h: 90,
+      label: 'Royal Stables', mode: '—',
+      roofColor: 0x775533, wallColor: 0x664422, accent: 0xAA8844,
+      type: 'stable',
+    },
+    // 13. Prison (future)
+    {
+      id: 'prison', x: 270, y: 560, w: 110, h: 90,
+      label: 'The Dungeon', mode: '—',
+      roofColor: 0x444455, wallColor: 0x555566, accent: 0x666677,
+      type: 'prison',
+    },
+    // 14. Blacksmith (future)
+    {
+      id: 'forge', x: 660, y: 340, w: 100, h: 80,
+      label: "Blacksmith's Forge", mode: '—',
+      roofColor: 0x553322, wallColor: 0x664433, accent: 0xFF6633,
+      type: 'forge',
+    },
+    // 15. Observatory/Wizard Tower (future)
+    {
+      id: 'observatory', x: 100, y: 280, w: 80, h: 80,
+      label: 'Observatory', mode: '—',
+      roofColor: 0x334466, wallColor: 0x445577, accent: 0xAAAAFF,
+      type: 'tower',
+    },
+    // 16. Garden/Park (future)
+    {
+      id: 'garden', x: 420, y: 340, w: 90, h: 70,
+      label: 'Royal Gardens', mode: '—',
+      roofColor: 0x448844, wallColor: 0x336633, accent: 0x66CC66,
+      type: 'garden',
+    },
+    // 17. Harbor Master (future)
+    {
+      id: 'harbor', x: 1050, y: 700, w: 100, h: 80,
+      label: 'Harbor Master', mode: '—',
+      roofColor: 0x665544, wallColor: 0x554433, accent: 0x4488AA,
+      type: 'harbor',
+    },
+    // 18. Farmstead outside (future)
+    {
+      id: 'farm', x: 80, y: 600, w: 120, h: 90,
+      label: 'Farmstead', mode: '—',
+      roofColor: 0x998844, wallColor: 0x887733, accent: 0xCCBB55,
+      type: 'farm',
+    },
+  ],
+
+  // Decorative small houses (no game mode)
+  houses: [
+    { x: 530, y: 350, w: 45, h: 35, color: 0x887766 },
+    { x: 580, y: 345, w: 40, h: 40, color: 0x998877 },
+    { x: 500, y: 600, w: 50, h: 35, color: 0x887755 },
+    { x: 780, y: 450, w: 45, h: 40, color: 0x776655 },
+    { x: 825, y: 440, w: 35, h: 35, color: 0x887766 },
+    { x: 810, y: 490, w: 40, h: 35, color: 0x998866 },
+    { x: 350, y: 500, w: 40, h: 45, color: 0x887755 },
+    { x: 400, y: 510, w: 35, h: 35, color: 0x776655 },
+    { x: 690, y: 620, w: 45, h: 35, color: 0x887766 },
+    { x: 300, y: 350, w: 35, h: 30, color: 0x776644 },
+    { x: 770, y: 350, w: 40, h: 30, color: 0x887755 },
+    // Outside houses
+    { x: 120, y: 450, w: 50, h: 40, color: 0x776644 },
+    { x: 180, y: 480, w: 40, h: 35, color: 0x887733 },
+    { x: 1060, y: 200, w: 45, h: 40, color: 0x776655 },
+    { x: 1100, y: 250, w: 40, h: 35, color: 0x887744 },
+    { x: 150, y: 700, w: 45, h: 40, color: 0x887744 },
+    { x: 1000, y: 650, w: 40, h: 35, color: 0x776655 },
+  ],
+
+  // Tree positions
+  trees: [],  // will be generated
+
+  // Road paths
+  roads: [
+    // Main N-S road
+    [{ x: 600, y: 0 }, { x: 600, y: 150 }, { x: 600, y: 420 }, { x: 600, y: 730 }, { x: 600, y: 900 }],
+    // Main E-W road
+    [{ x: 0, y: 440 }, { x: 250, y: 440 }, { x: 600, y: 420 }, { x: 950, y: 420 }, { x: 1200, y: 420 }],
+    // Castle approach
+    [{ x: 600, y: 340 }, { x: 600, y: 160 }],
+    // To colosseum
+    [{ x: 950, y: 420 }, { x: 980, y: 500 }, { x: 1060, y: 580 }],
+    // To docks
+    [{ x: 950, y: 580 }, { x: 930, y: 750 }],
+    // To training grounds
+    [{ x: 950, y: 350 }, { x: 1060, y: 350 }],
+    // Market circle road
+    [{ x: 420, y: 500 }, { x: 520, y: 580 }, { x: 620, y: 500 }, { x: 520, y: 420 }, { x: 420, y: 500 }],
+  ],
+};
+
+// Generate trees
+(function() {
+  const rng = seededRandom(42);
+  // Forest patches outside walls
+  const forestAreas = [
+    { cx: 100, cy: 150, r: 120, count: 30 },   // NW forest
+    { cx: 1100, cy: 130, r: 100, count: 25 },   // NE forest
+    { cx: 60, cy: 500, r: 80, count: 15 },      // W forest
+    { cx: 150, cy: 800, r: 100, count: 20 },     // SW forest
+    { cx: 1100, cy: 850, r: 80, count: 15 },     // SE forest
+    { cx: 1150, cy: 450, r: 60, count: 10 },     // E trees
+  ];
+  // Inside city — gardens/parks
+  const gardenAreas = [
+    { cx: 455, cy: 370, r: 30, count: 6 },    // Royal gardens
+    { cx: 320, cy: 480, r: 20, count: 4 },    // Church garden
+    { cx: 680, cy: 260, r: 25, count: 5 },    // Castle garden
+  ];
+  for (const area of [...forestAreas, ...gardenAreas]) {
+    for (let i = 0; i < area.count; i++) {
+      const angle = rng() * Math.PI * 2;
+      const dist = rng() * area.r;
+      const tx = area.cx + Math.cos(angle) * dist;
+      const ty = area.cy + Math.sin(angle) * dist;
+      const size = 8 + rng() * 10;
+      MAP.trees.push({ x: tx, y: ty, size, shade: rng() * 0.3 });
+    }
+  }
+  // Scattered individual trees
+  for (let i = 0; i < 40; i++) {
+    const tx = rng() * 1200;
+    const ty = rng() * 900;
+    // Skip if inside city
+    if (tx > 260 && tx < 940 && ty > 160 && ty < 720) continue;
+    MAP.trees.push({ x: tx, y: ty, size: 6 + rng() * 8, shade: rng() * 0.3 });
+  }
+})();
+
+// Wall tower positions
+const wallTowers = (function() {
+  const c = MAP.city;
+  const towers = [];
+  // Corners
+  towers.push({ x: c.x, y: c.y, size: 22 });
+  towers.push({ x: c.x + c.w, y: c.y, size: 22 });
+  towers.push({ x: c.x, y: c.y + c.h, size: 22 });
+  towers.push({ x: c.x + c.w, y: c.y + c.h, size: 22 });
+  // N wall intermediate
+  towers.push({ x: c.x + c.w * 0.3, y: c.y, size: 16 });
+  towers.push({ x: c.x + c.w * 0.7, y: c.y, size: 16 });
+  // S wall
+  towers.push({ x: c.x + c.w * 0.3, y: c.y + c.h, size: 16 });
+  towers.push({ x: c.x + c.w * 0.7, y: c.y + c.h, size: 16 });
+  // E wall
+  towers.push({ x: c.x + c.w, y: c.y + c.h * 0.3, size: 16 });
+  towers.push({ x: c.x + c.w, y: c.y + c.h * 0.7, size: 16 });
+  // W wall
+  towers.push({ x: c.x, y: c.y + c.h * 0.3, size: 16 });
+  towers.push({ x: c.x, y: c.y + c.h * 0.7, size: 16 });
+  return towers;
+})();
+
+
+// =========================================================================
+// ITERATION 1: DAYLIGHT PAINTERLY
+// =========================================================================
+
+(function drawIteration1() {
+  const canvas = document.getElementById('c1');
+  const ctx = canvas.getContext('2d');
+  const W = 1200, H = 900;
+  const rng = seededRandom(123);
+
+  // --- Sky/background gradient (green countryside) ---
+  const bgGrad = ctx.createRadialGradient(600, 450, 100, 600, 450, 700);
+  bgGrad.addColorStop(0, '#5a8a3a');
+  bgGrad.addColorStop(0.5, '#4a7a2a');
+  bgGrad.addColorStop(1, '#3a6a1a');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Grass texture — subtle dots
+  for (let i = 0; i < 3000; i++) {
+    const gx = rng() * W, gy = rng() * H;
+    const gb = 60 + rng() * 40;
+    ctx.fillStyle = `rgba(${30 + rng()*30}, ${gb + 20}, ${10 + rng()*20}, 0.3)`;
+    ctx.fillRect(gx, gy, 2 + rng() * 3, 2 + rng() * 3);
+  }
+
+  // --- Farmland patches outside ---
+  const farms = [
+    { x: 30, y: 580, w: 160, h: 120 },
+    { x: 50, y: 720, w: 120, h: 80 },
+    { x: 1020, y: 100, w: 130, h: 90 },
+  ];
+  for (const f of farms) {
+    // Field rows
+    for (let row = 0; row < f.h; row += 8) {
+      ctx.fillStyle = row % 16 < 8 ? 'rgba(120,110,40,0.4)' : 'rgba(90,130,30,0.3)';
+      ctx.fillRect(f.x, f.y + row, f.w, 7);
+    }
+    ctx.strokeStyle = 'rgba(80,70,30,0.3)';
+    ctx.strokeRect(f.x, f.y, f.w, f.h);
+  }
+
+  // --- River ---
+  ctx.save();
+  ctx.beginPath();
+  const rp = MAP.river;
+  ctx.moveTo(rp[0].x, rp[0].y);
+  for (let i = 1; i < rp.length - 1; i++) {
+    const xc = (rp[i].x + rp[i + 1].x) / 2;
+    const yc = (rp[i].y + rp[i + 1].y) / 2;
+    ctx.quadraticCurveTo(rp[i].x, rp[i].y, xc, yc);
+  }
+  ctx.lineTo(rp[rp.length - 1].x, rp[rp.length - 1].y);
+  // Widen for river banks
+  ctx.lineTo(1200, 900);
+  ctx.lineTo(0, 900);
+  ctx.closePath();
+  const riverGrad = ctx.createLinearGradient(0, 760, 0, 900);
+  riverGrad.addColorStop(0, '#3366AA');
+  riverGrad.addColorStop(0.3, '#2255AA');
+  riverGrad.addColorStop(1, '#1a4488');
+  ctx.fillStyle = riverGrad;
+  ctx.fill();
+
+  // River surface shimmer
+  for (let i = 0; i < 200; i++) {
+    const sx = rng() * W;
+    const sy = 780 + rng() * 120;
+    ctx.fillStyle = `rgba(100,160,255,${0.1 + rng() * 0.15})`;
+    ctx.fillRect(sx, sy, 8 + rng() * 15, 1.5);
+  }
+
+  // River bank line
+  ctx.beginPath();
+  ctx.moveTo(rp[0].x, rp[0].y);
+  for (let i = 1; i < rp.length - 1; i++) {
+    const xc = (rp[i].x + rp[i + 1].x) / 2;
+    const yc = (rp[i].y + rp[i + 1].y) / 2;
+    ctx.quadraticCurveTo(rp[i].x, rp[i].y, xc, yc);
+  }
+  ctx.lineTo(rp[rp.length - 1].x, rp[rp.length - 1].y);
+  ctx.strokeStyle = '#5a8a3a';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.restore();
+
+  // --- Roads ---
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const road of MAP.roads) {
+    // Road shadow
+    ctx.beginPath();
+    ctx.moveTo(road[0].x, road[0].y);
+    for (let i = 1; i < road.length; i++) ctx.lineTo(road[i].x, road[i].y);
+    ctx.strokeStyle = 'rgba(80,60,30,0.5)';
+    ctx.lineWidth = 20;
+    ctx.stroke();
+    // Road fill
+    ctx.beginPath();
+    ctx.moveTo(road[0].x, road[0].y);
+    for (let i = 1; i < road.length; i++) ctx.lineTo(road[i].x, road[i].y);
+    ctx.strokeStyle = '#9a8a6a';
+    ctx.lineWidth = 16;
+    ctx.stroke();
+    // Road center line
+    ctx.beginPath();
+    ctx.moveTo(road[0].x, road[0].y);
+    for (let i = 1; i < road.length; i++) ctx.lineTo(road[i].x, road[i].y);
+    ctx.strokeStyle = 'rgba(180,160,120,0.3)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 8]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // --- City walls ---
+  const c = MAP.city;
+  const wt = MAP.wallThickness;
+  const gN = MAP.gates.north, gS = MAP.gates.south, gE = MAP.gates.east, gW = MAP.gates.west;
+
+  // Wall shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(c.x + 4, c.y + 4, c.w, wt);
+  ctx.fillRect(c.x + 4, c.y + c.h - wt + 4, c.w, wt);
+  ctx.fillRect(c.x + 4, c.y + 4, wt, c.h);
+  ctx.fillRect(c.x + c.w - wt + 4, c.y + 4, wt, c.h);
+
+  // Draw walls with gaps for gates
+  ctx.fillStyle = '#887766';
+  // North wall
+  ctx.fillRect(c.x, c.y, gN.x - gN.w/2 - c.x, wt);
+  ctx.fillRect(gN.x + gN.w/2, c.y, c.x + c.w - gN.x - gN.w/2, wt);
+  // South wall
+  ctx.fillRect(c.x, c.y + c.h - wt, gS.x - gS.w/2 - c.x, wt);
+  ctx.fillRect(gS.x + gS.w/2, c.y + c.h - wt, c.x + c.w - gS.x - gS.w/2, wt);
+  // West wall
+  ctx.fillRect(c.x, c.y, wt, gW.x > 0 ? gW.w/2 > 0 ? (gW.y - gW.w/2 - c.y) : c.h : c.h);
+  ctx.fillRect(c.x, c.y, wt, MAP.gates.west.y - MAP.gates.west.w/2 - c.y);
+  ctx.fillRect(c.x, MAP.gates.west.y + MAP.gates.west.w/2, wt, c.y + c.h - MAP.gates.west.y - MAP.gates.west.w/2);
+  // East wall
+  ctx.fillRect(c.x + c.w - wt, c.y, wt, MAP.gates.east.y - MAP.gates.east.w/2 - c.y);
+  ctx.fillRect(c.x + c.w - wt, MAP.gates.east.y + MAP.gates.east.w/2, wt, c.y + c.h - MAP.gates.east.y - MAP.gates.east.w/2);
+
+  // Wall stone texture
+  ctx.strokeStyle = 'rgba(60,50,40,0.3)';
+  ctx.lineWidth = 0.5;
+  // Horizontal stone lines on N/S walls
+  for (let sy = 0; sy < wt; sy += 5) {
+    // North wall stones
+    for (let sx = c.x; sx < c.x + c.w; sx += 12 + rng() * 8) {
+      if (sx > gN.x - gN.w/2 && sx < gN.x + gN.w/2) continue;
+      const sw = 8 + rng() * 12;
+      ctx.strokeRect(sx, c.y + sy, sw, 4);
+    }
+  }
+
+  // Crenellations
+  ctx.fillStyle = '#998877';
+  // North wall crenellations
+  for (let cx2 = c.x; cx2 < c.x + c.w; cx2 += 16) {
+    if (cx2 > gN.x - gN.w/2 - 10 && cx2 < gN.x + gN.w/2 + 10) continue;
+    ctx.fillRect(cx2, c.y - 5, 8, 6);
+  }
+  // South wall crenellations
+  for (let cx2 = c.x; cx2 < c.x + c.w; cx2 += 16) {
+    if (cx2 > gS.x - gS.w/2 - 10 && cx2 < gS.x + gS.w/2 + 10) continue;
+    ctx.fillRect(cx2, c.y + c.h - 1, 8, 6);
+  }
+  // West wall crenellations
+  for (let cy2 = c.y; cy2 < c.y + c.h; cy2 += 16) {
+    if (cy2 > gW.y - gW.w/2 - 10 && cy2 < gW.y + gW.w/2 + 10) continue;
+    ctx.fillRect(c.x - 5, cy2, 6, 8);
+  }
+  // East wall crenellations
+  for (let cy2 = c.y; cy2 < c.y + c.h; cy2 += 16) {
+    if (cy2 > gE.y - gE.w/2 - 10 && cy2 < gE.y + gE.w/2 + 10) continue;
+    ctx.fillRect(c.x + c.w - 1, cy2, 6, 8);
+  }
+
+  // --- City interior ground ---
+  ctx.fillStyle = '#8a8a7a';
+  ctx.fillRect(c.x + wt, c.y + wt, c.w - 2*wt, c.h - 2*wt);
+  // Cobblestone pattern
+  for (let gy = c.y + wt; gy < c.y + c.h - wt; gy += 6) {
+    for (let gx = c.x + wt; gx < c.x + c.w - wt; gx += 6) {
+      const offset = (Math.floor(gy / 6) % 2) * 3;
+      const v = 120 + rng() * 30;
+      ctx.fillStyle = `rgb(${v},${v-5},${v-15})`;
+      ctx.fillRect(gx + offset, gy, 5, 5);
+    }
+  }
+
+  // --- Wall towers ---
+  for (const t of wallTowers) {
+    // Shadow
+    ctx.beginPath();
+    ctx.arc(t.x + 3, t.y + 3, t.size, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fill();
+    // Tower base
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+    ctx.fillStyle = '#776655';
+    ctx.fill();
+    ctx.strokeStyle = '#554433';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Tower top (lighter)
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.size - 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#887766';
+    ctx.fill();
+    // Crenellation dots
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+      ctx.fillStyle = '#998877';
+      ctx.fillRect(t.x + Math.cos(a) * (t.size - 1) - 2, t.y + Math.sin(a) * (t.size - 1) - 2, 4, 4);
+    }
+  }
+
+  // --- Trees (behind buildings) ---
+  for (const tree of MAP.trees) {
+    // Shadow
+    ctx.beginPath();
+    ctx.ellipse(tree.x + 3, tree.y + 4, tree.size * 0.8, tree.size * 0.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fill();
+    // Canopy
+    ctx.beginPath();
+    ctx.arc(tree.x, tree.y, tree.size, 0, Math.PI * 2);
+    const g = 80 + (1 - tree.shade) * 60;
+    ctx.fillStyle = `rgb(${30 + tree.shade * 40}, ${g}, ${20 + tree.shade * 20})`;
+    ctx.fill();
+    // Highlight
+    ctx.beginPath();
+    ctx.arc(tree.x - tree.size * 0.25, tree.y - tree.size * 0.25, tree.size * 0.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(120,180,60,0.25)`;
+    ctx.fill();
+    // Trunk dot
+    ctx.beginPath();
+    ctx.arc(tree.x, tree.y, 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#553311';
+    ctx.fill();
+  }
+
+  // --- Small decorative houses ---
+  for (const h of MAP.houses) {
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(h.x + 3, h.y + 3, h.w, h.h);
+    // Walls
+    ctx.fillStyle = hexColor(h.color);
+    ctx.fillRect(h.x, h.y, h.w, h.h);
+    // Roof ridge
+    ctx.strokeStyle = hexColor(h.color - 0x111111);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(h.x, h.y + h.h / 2);
+    ctx.lineTo(h.x + h.w, h.y + h.h / 2);
+    ctx.stroke();
+    // Door
+    ctx.fillStyle = '#553311';
+    ctx.fillRect(h.x + h.w / 2 - 3, h.y + h.h - 8, 6, 8);
+  }
+
+  // --- Main buildings ---
+  function drawBuilding(b) {
+    const shadowOff = 5;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    if (b.type === 'colosseum') {
+      ctx.beginPath();
+      ctx.ellipse(b.x + b.w/2 + shadowOff, b.y + b.h/2 + shadowOff, b.w/2, b.h/2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      roundRect(ctx, b.x + shadowOff, b.y + shadowOff, b.w, b.h, b.type === 'tower' ? b.w/2 : 4);
+      ctx.fill();
+    }
+
+    if (b.type === 'castle') {
+      // Castle is special — multi-part
+      // Outer wall
+      ctx.fillStyle = hexColor(b.wallColor);
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = hexColor(b.wallColor - 0x222222);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Inner courtyard
+      ctx.fillStyle = '#8a8a7a';
+      ctx.fillRect(b.x + 20, b.y + 20, b.w - 40, b.h - 40);
+      // Keep (center)
+      ctx.fillStyle = hexColor(b.roofColor);
+      ctx.fillRect(b.x + b.w/2 - 50, b.y + 20, 100, 80);
+      ctx.strokeStyle = hexColor(b.roofColor - 0x111111);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x + b.w/2 - 50, b.y + 20, 100, 80);
+      // Keep roof highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.fillRect(b.x + b.w/2 - 48, b.y + 22, 96, 20);
+      // Corner turrets
+      const turrets = [
+        [b.x + 8, b.y + 8], [b.x + b.w - 8, b.y + 8],
+        [b.x + 8, b.y + b.h - 8], [b.x + b.w - 8, b.y + b.h - 8],
+      ];
+      for (const [tx, ty] of turrets) {
+        ctx.beginPath();
+        ctx.arc(tx, ty, 14, 0, Math.PI * 2);
+        ctx.fillStyle = hexColor(b.wallColor);
+        ctx.fill();
+        ctx.strokeStyle = hexColor(b.wallColor - 0x222222);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Turret roof (red)
+        ctx.beginPath();
+        ctx.arc(tx, ty, 9, 0, Math.PI * 2);
+        ctx.fillStyle = '#884433';
+        ctx.fill();
+        // Flag
+        ctx.fillStyle = hexColor(b.accent);
+        ctx.fillRect(tx - 1, ty - 18, 2, 14);
+        ctx.fillRect(tx + 1, ty - 18, 8, 5);
+      }
+      // Banners on keep
+      ctx.fillStyle = hexColor(b.accent);
+      ctx.fillRect(b.x + b.w/2 - 20, b.y + 30, 4, 20);
+      ctx.fillRect(b.x + b.w/2 - 16, b.y + 30, 12, 8);
+      ctx.fillRect(b.x + b.w/2 + 16, b.y + 30, 4, 20);
+      ctx.fillRect(b.x + b.w/2 + 20, b.y + 30, 12, 8);
+      // Gate
+      ctx.fillStyle = '#443322';
+      ctx.fillRect(b.x + b.w/2 - 15, b.y + b.h - 5, 30, 8);
+      // Portcullis lines
+      ctx.strokeStyle = '#332211';
+      ctx.lineWidth = 1;
+      for (let px = b.x + b.w/2 - 12; px <= b.x + b.w/2 + 12; px += 5) {
+        ctx.beginPath();
+        ctx.moveTo(px, b.y + b.h - 4);
+        ctx.lineTo(px, b.y + b.h + 2);
+        ctx.stroke();
+      }
+    } else if (b.type === 'colosseum') {
+      // Elliptical arena
+      ctx.beginPath();
+      ctx.ellipse(b.x + b.w/2, b.y + b.h/2, b.w/2, b.h/2, 0, 0, Math.PI * 2);
+      ctx.fillStyle = hexColor(b.wallColor);
+      ctx.fill();
+      ctx.strokeStyle = hexColor(b.wallColor - 0x222222);
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // Inner ring
+      ctx.beginPath();
+      ctx.ellipse(b.x + b.w/2, b.y + b.h/2, b.w/2 - 20, b.h/2 - 20, 0, 0, Math.PI * 2);
+      ctx.fillStyle = hexColor(b.roofColor);
+      ctx.fill();
+      ctx.strokeStyle = hexColor(b.wallColor - 0x111111);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Arena floor (sand)
+      ctx.beginPath();
+      ctx.ellipse(b.x + b.w/2, b.y + b.h/2, b.w/2 - 35, b.h/2 - 35, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#CCBB88';
+      ctx.fill();
+      // Archways around perimeter
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+        const ax = b.x + b.w/2 + Math.cos(a) * (b.w/2 - 10);
+        const ay = b.y + b.h/2 + Math.sin(a) * (b.h/2 - 10);
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.beginPath();
+        ctx.arc(ax, ay, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Entrance
+      ctx.fillStyle = '#443322';
+      ctx.fillRect(b.x + b.w/2 - 12, b.y + b.h - 5, 24, 8);
+    } else if (b.type === 'tower') {
+      // Circular tower
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h/2, b.w/2, 0, Math.PI * 2);
+      ctx.fillStyle = hexColor(b.wallColor);
+      ctx.fill();
+      ctx.strokeStyle = hexColor(b.wallColor - 0x222222);
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Conical roof
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h/2, b.w/2 - 8, 0, Math.PI * 2);
+      ctx.fillStyle = hexColor(b.roofColor);
+      ctx.fill();
+      // Spire
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h/2, 4, 0, Math.PI * 2);
+      ctx.fillStyle = hexColor(b.accent);
+      ctx.fill();
+      // Magical glow
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h/2, b.w/2 + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = hexColorA(b.accent, 0.3);
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else if (b.type === 'church') {
+      // Rectangular body
+      ctx.fillStyle = hexColor(b.wallColor);
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = hexColor(b.wallColor - 0x222222);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Roof
+      ctx.fillStyle = hexColor(b.roofColor);
+      ctx.fillRect(b.x + 5, b.y + 5, b.w - 10, b.h - 10);
+      // Steeple
+      ctx.fillStyle = hexColor(b.roofColor - 0x111111);
+      ctx.fillRect(b.x + b.w/2 - 12, b.y - 10, 24, 30);
+      // Cross
+      ctx.fillStyle = hexColor(b.accent);
+      ctx.fillRect(b.x + b.w/2 - 1, b.y - 20, 3, 15);
+      ctx.fillRect(b.x + b.w/2 - 6, b.y - 15, 13, 3);
+      // Windows
+      ctx.fillStyle = '#AABBCC';
+      ctx.fillRect(b.x + 15, b.y + b.h/2 - 8, 8, 12);
+      ctx.fillRect(b.x + b.w - 23, b.y + b.h/2 - 8, 8, 12);
+      // Rose window
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + 30, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#CC8866';
+      ctx.fill();
+      ctx.strokeStyle = hexColor(b.accent);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else if (b.type === 'market') {
+      // Open square with stalls
+      ctx.fillStyle = '#BBAA88';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = '#998866';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Market stalls (colored awnings)
+      const stallColors = ['#CC4444', '#44AA44', '#4444CC', '#CC8844', '#AA44AA', '#44AAAA'];
+      for (let i = 0; i < 6; i++) {
+        const sx = b.x + 15 + (i % 3) * 60;
+        const sy = b.y + 20 + Math.floor(i / 3) * 70;
+        ctx.fillStyle = stallColors[i];
+        ctx.fillRect(sx, sy, 50, 30);
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.fillRect(sx, sy + 15, 50, 15);
+        // Awning stripes
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1;
+        for (let stripe = sx + 5; stripe < sx + 50; stripe += 10) {
+          ctx.beginPath();
+          ctx.moveTo(stripe, sy);
+          ctx.lineTo(stripe, sy + 15);
+          ctx.stroke();
+        }
+      }
+      // Fountain in center
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h/2 + 20, 15, 0, Math.PI * 2);
+      ctx.fillStyle = '#667788';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h/2 + 20, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#5588BB';
+      ctx.fill();
+    } else if (b.type === 'gate') {
+      // Gate structure
+      ctx.fillStyle = hexColor(b.wallColor);
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = hexColor(b.wallColor - 0x222222);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Gate towers
+      ctx.beginPath();
+      ctx.arc(b.x + 10, b.y + b.h/2, 18, 0, Math.PI * 2);
+      ctx.fillStyle = '#776655';
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(b.x + b.w - 10, b.y + b.h/2, 18, 0, Math.PI * 2);
+      ctx.fillStyle = '#776655';
+      ctx.fill();
+      ctx.stroke();
+      // Gate opening
+      ctx.fillStyle = '#332211';
+      ctx.fillRect(b.x + b.w/2 - 15, b.y, 30, b.h);
+      // Portcullis
+      ctx.strokeStyle = '#554433';
+      ctx.lineWidth = 1;
+      for (let gx = b.x + b.w/2 - 12; gx <= b.x + b.w/2 + 12; gx += 5) {
+        ctx.beginPath();
+        ctx.moveTo(gx, b.y);
+        ctx.lineTo(gx, b.y + b.h);
+        ctx.stroke();
+      }
+    } else if (b.type === 'docks') {
+      // Wooden pier structure
+      ctx.fillStyle = hexColor(b.wallColor);
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      // Planks
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 0.5;
+      for (let py = b.y; py < b.y + b.h; py += 5) {
+        ctx.beginPath();
+        ctx.moveTo(b.x, py);
+        ctx.lineTo(b.x + b.w, py);
+        ctx.stroke();
+      }
+      // Bollards
+      for (let bx = b.x + 20; bx < b.x + b.w; bx += 40) {
+        ctx.beginPath();
+        ctx.arc(bx, b.y + b.h - 8, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#443322';
+        ctx.fill();
+      }
+      // Small boats
+      ctx.fillStyle = '#664422';
+      ctx.beginPath();
+      ctx.ellipse(b.x + 40, b.y + b.h + 15, 20, 8, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(b.x + 110, b.y + b.h + 20, 25, 10, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (b.type === 'library') {
+      ctx.fillStyle = hexColor(b.wallColor);
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = hexColor(b.wallColor - 0x222222);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Roof
+      ctx.fillStyle = hexColor(b.roofColor);
+      ctx.fillRect(b.x + 4, b.y + 4, b.w - 8, b.h - 8);
+      // Dome
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h * 0.35, 25, 0, Math.PI * 2);
+      ctx.fillStyle = hexColor(b.roofColor + 0x111111);
+      ctx.fill();
+      ctx.strokeStyle = hexColor(b.wallColor - 0x111111);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Windows (book-shaped)
+      ctx.fillStyle = hexColor(b.accent);
+      for (let wy = b.y + 30; wy < b.y + b.h - 20; wy += 25) {
+        ctx.fillRect(b.x + 10, wy, 6, 10);
+        ctx.fillRect(b.x + b.w - 16, wy, 6, 10);
+      }
+      // Pillars at entrance
+      ctx.fillStyle = '#AABBBB';
+      ctx.fillRect(b.x + b.w/2 - 20, b.y + b.h - 15, 4, 15);
+      ctx.fillRect(b.x + b.w/2 + 16, b.y + b.h - 15, 4, 15);
+    } else if (b.type === 'training') {
+      // Training grounds (outdoor area with fence)
+      ctx.fillStyle = '#BBAA77';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      // Fence
+      ctx.strokeStyle = '#665522';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Dashed fence posts
+      ctx.fillStyle = '#554411';
+      for (let fx = b.x; fx <= b.x + b.w; fx += 20) {
+        ctx.fillRect(fx - 2, b.y - 2, 4, 4);
+        ctx.fillRect(fx - 2, b.y + b.h - 2, 4, 4);
+      }
+      // Training dummies
+      ctx.fillStyle = '#886644';
+      ctx.fillRect(b.x + 30, b.y + 30, 4, 25);
+      ctx.beginPath();
+      ctx.arc(b.x + 32, b.y + 25, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#AA8855';
+      ctx.fill();
+      ctx.fillStyle = '#886644';
+      ctx.fillRect(b.x + 80, b.y + 40, 4, 25);
+      ctx.beginPath();
+      ctx.arc(b.x + 82, b.y + 35, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#AA8855';
+      ctx.fill();
+      // Archery targets
+      ctx.beginPath();
+      ctx.arc(b.x + b.w - 30, b.y + 40, 10, 0, Math.PI * 2);
+      ctx.fillStyle = '#CC3333';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(b.x + b.w - 30, b.y + 40, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(b.x + b.w - 30, b.y + 40, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#CC3333';
+      ctx.fill();
+    } else {
+      // Generic building
+      ctx.fillStyle = hexColor(b.wallColor);
+      roundRect(ctx, b.x, b.y, b.w, b.h, 3);
+      ctx.fill();
+      ctx.strokeStyle = hexColor(b.wallColor - 0x222222);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Roof
+      ctx.fillStyle = hexColor(b.roofColor);
+      roundRect(ctx, b.x + 4, b.y + 4, b.w - 8, b.h - 8, 2);
+      ctx.fill();
+      // Roof ridge
+      ctx.strokeStyle = hexColor(b.roofColor - 0x111111);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(b.x + 4, b.y + b.h/2);
+      ctx.lineTo(b.x + b.w - 4, b.y + b.h/2);
+      ctx.stroke();
+      // Door
+      ctx.fillStyle = '#553322';
+      ctx.fillRect(b.x + b.w/2 - 5, b.y + b.h - 4, 10, 6);
+      // Windows
+      if (b.w > 80) {
+        ctx.fillStyle = '#AABBCC';
+        ctx.fillRect(b.x + 15, b.y + b.h/2 - 5, 8, 8);
+        ctx.fillRect(b.x + b.w - 23, b.y + b.h/2 - 5, 8, 8);
+      }
+      // Accent detail
+      if (b.type === 'forge') {
+        // Chimney smoke
+        ctx.beginPath();
+        ctx.arc(b.x + 20, b.y + 10, 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(100,80,60,0.25)';
+        ctx.fill();
+        // Forge glow
+        ctx.fillStyle = hexColorA(b.accent, 0.4);
+        ctx.fillRect(b.x + b.w/2 - 10, b.y + 10, 20, 15);
+      }
+    }
+  }
+
+  // Draw buildings sorted by Y for proper overlap
+  const sortedBuildings = [...MAP.buildings].sort((a, b) => a.y - b.y);
+  for (const b of sortedBuildings) drawBuilding(b);
+
+  // --- Labels ---
+  function drawLabel(b) {
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h + 14;
+
+    // Label background
+    ctx.font = 'bold 10px Georgia';
+    const textW = ctx.measureText(b.label).width;
+
+    ctx.fillStyle = 'rgba(10,10,24,0.75)';
+    roundRect(ctx, cx - textW/2 - 8, cy - 8, textW + 16, 28, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(218,165,32,0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Building name
+    ctx.fillStyle = '#DAA520';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(b.label, cx, cy - 4);
+
+    // Mode name
+    if (b.mode !== '—') {
+      ctx.font = '9px Georgia';
+      ctx.fillStyle = '#88AACC';
+      ctx.fillText(`[ ${b.mode} ]`, cx, cy + 9);
+    } else {
+      ctx.font = '8px Georgia';
+      ctx.fillStyle = '#556677';
+      ctx.fillText('coming soon', cx, cy + 9);
+    }
+  }
+
+  for (const b of MAP.buildings) drawLabel(b);
+
+  // --- Compass Rose (bottom-left) ---
+  const compassX = 70, compassY = H - 100;
+  ctx.save();
+  ctx.translate(compassX, compassY);
+  // Circle
+  ctx.beginPath();
+  ctx.arc(0, 0, 35, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(10,10,24,0.6)';
+  ctx.fill();
+  ctx.strokeStyle = '#DAA520';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Points
+  const dirs = [
+    { label: 'N', angle: -Math.PI/2, len: 28 },
+    { label: 'S', angle: Math.PI/2, len: 28 },
+    { label: 'E', angle: 0, len: 28 },
+    { label: 'W', angle: Math.PI, len: 28 },
+  ];
+  for (const d of dirs) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(d.angle) * d.len, Math.sin(d.angle) * d.len);
+    ctx.strokeStyle = d.label === 'N' ? '#CC3333' : '#DAA520';
+    ctx.lineWidth = d.label === 'N' ? 2.5 : 1.5;
+    ctx.stroke();
+    // Label
+    ctx.font = 'bold 11px Georgia';
+    ctx.fillStyle = d.label === 'N' ? '#CC3333' : '#DAA520';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(d.label, Math.cos(d.angle) * (d.len + 12), Math.sin(d.angle) * (d.len + 12));
+  }
+  ctx.restore();
+
+  // --- Title banner ---
+  ctx.fillStyle = 'rgba(10,10,24,0.7)';
+  roundRect(ctx, W/2 - 140, 10, 280, 36, 6);
+  ctx.fill();
+  ctx.strokeStyle = '#DAA520';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.font = 'bold 18px Georgia';
+  ctx.fillStyle = '#DAA520';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('✦  KINGDOM OF CAMELOT  ✦', W/2, 28);
+
+})();
+
+
+// =========================================================================
+// ITERATION 2: PARCHMENT MAP
+// =========================================================================
+
+(function drawIteration2() {
+  const canvas = document.getElementById('c2');
+  const ctx = canvas.getContext('2d');
+  const W = 1200, H = 900;
+  const rng = seededRandom(456);
+
+  // --- Parchment background ---
+  const parchGrad = ctx.createRadialGradient(600, 450, 50, 600, 450, 650);
+  parchGrad.addColorStop(0, '#E8D8B8');
+  parchGrad.addColorStop(0.7, '#D8C8A0');
+  parchGrad.addColorStop(1, '#C0B088');
+  ctx.fillStyle = parchGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Parchment texture (noise/stains)
+  for (let i = 0; i < 5000; i++) {
+    const px = rng() * W, py = rng() * H;
+    ctx.fillStyle = `rgba(${100 + rng()*60}, ${80 + rng()*50}, ${40 + rng()*40}, ${0.02 + rng() * 0.04})`;
+    ctx.fillRect(px, py, 1 + rng() * 4, 1 + rng() * 4);
+  }
+
+  // Age stains
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    ctx.arc(rng() * W, rng() * H, 30 + rng() * 80, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(140,120,80,${0.03 + rng() * 0.05})`;
+    ctx.fill();
+  }
+
+  // Burnt edges
+  ctx.fillStyle = 'rgba(100,70,30,0.15)';
+  ctx.fillRect(0, 0, W, 15);
+  ctx.fillRect(0, H - 15, W, 15);
+  ctx.fillRect(0, 0, 15, H);
+  ctx.fillRect(W - 15, 0, 15, H);
+
+  // --- Decorative border ---
+  ctx.strokeStyle = '#8B7355';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(20, 20, W - 40, H - 40);
+  ctx.strokeStyle = '#A08060';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(25, 25, W - 50, H - 50);
+  // Corner ornaments
+  for (const [cx, cy] of [[30, 30], [W-30, 30], [30, H-30], [W-30, H-30]]) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#8B7355';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#D8C8A0';
+    ctx.fill();
+  }
+
+  const inkColor = '#3a2a1a';
+  const inkLight = '#6a5a4a';
+  const inkFaint = '#9a8a7a';
+  const accentInk = '#8B4513';
+
+  // --- Green areas (hatched) ---
+  function drawHatchArea(x, y, w, h, density = 5) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(60,100,40,0.2)';
+    ctx.lineWidth = 0.5;
+    for (let dy = -w; dy < h + w; dy += density) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + dy);
+      ctx.lineTo(x + w, y + dy + w);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Green countryside hatching
+  drawHatchArea(30, 30, 210, 700, 4);
+  drawHatchArea(960, 30, 220, 300, 4);
+  drawHatchArea(30, 740, 800, 140, 4);
+
+  // --- River (ink style) ---
+  ctx.save();
+  ctx.beginPath();
+  const rp = MAP.river;
+  ctx.moveTo(rp[0].x, rp[0].y);
+  for (let i = 1; i < rp.length - 1; i++) {
+    const xc = (rp[i].x + rp[i+1].x) / 2;
+    const yc = (rp[i].y + rp[i+1].y) / 2;
+    ctx.quadraticCurveTo(rp[i].x, rp[i].y, xc, yc);
+  }
+  ctx.lineTo(rp[rp.length-1].x, rp[rp.length-1].y);
+  ctx.lineTo(1200, 900);
+  ctx.lineTo(0, 900);
+  ctx.closePath();
+  // Water area with horizontal lines (cartographic water)
+  ctx.fillStyle = 'rgba(100,130,170,0.15)';
+  ctx.fill();
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(60,80,120,0.2)';
+  ctx.lineWidth = 0.5;
+  for (let hy = 760; hy < 900; hy += 4) {
+    ctx.beginPath();
+    ctx.moveTo(0, hy);
+    ctx.lineTo(W, hy);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // River outline
+  ctx.beginPath();
+  ctx.moveTo(rp[0].x, rp[0].y);
+  for (let i = 1; i < rp.length - 1; i++) {
+    const xc = (rp[i].x + rp[i+1].x) / 2;
+    const yc = (rp[i].y + rp[i+1].y) / 2;
+    ctx.quadraticCurveTo(rp[i].x, rp[i].y, xc, yc);
+  }
+  ctx.lineTo(rp[rp.length-1].x, rp[rp.length-1].y);
+  ctx.strokeStyle = inkColor;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // River label
+  ctx.save();
+  ctx.translate(700, 820);
+  ctx.rotate(-0.05);
+  ctx.font = 'italic 13px Georgia';
+  ctx.fillStyle = '#4a6a8a';
+  ctx.textAlign = 'center';
+  ctx.fillText('~ River Avalon ~', 0, 0);
+  ctx.restore();
+
+  // --- Roads (dotted paths) ---
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = inkLight;
+  ctx.lineWidth = 1.5;
+  for (const road of MAP.roads) {
+    ctx.beginPath();
+    ctx.moveTo(road[0].x, road[0].y);
+    for (let i = 1; i < road.length; i++) ctx.lineTo(road[i].x, road[i].y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // --- City walls (double line) ---
+  const c = MAP.city;
+  ctx.strokeStyle = inkColor;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(c.x, c.y, c.w, c.h);
+  ctx.strokeStyle = inkLight;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(c.x + 5, c.y + 5, c.w - 10, c.h - 10);
+
+  // Gate gaps (erase wall at gates)
+  ctx.fillStyle = '#D8C8A0';
+  const gN = MAP.gates.north, gS = MAP.gates.south, gE = MAP.gates.east, gW = MAP.gates.west;
+  ctx.fillRect(gN.x - gN.w/2, c.y - 3, gN.w, 12);
+  ctx.fillRect(gS.x - gS.w/2, c.y + c.h - 8, gS.w, 14);
+  ctx.fillRect(c.x - 3, gW.y - gW.w/2, 12, gW.w);
+  ctx.fillRect(c.x + c.w - 8, gE.y - gE.w/2, 14, gE.w);
+
+  // Wall tower markers (filled squares on wall line)
+  for (const t of wallTowers) {
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = inkColor;
+    ctx.fillRect(-t.size/3, -t.size/3, t.size*2/3, t.size*2/3);
+    ctx.restore();
+  }
+
+  // Crenellation ticks on walls
+  ctx.strokeStyle = inkColor;
+  ctx.lineWidth = 1;
+  for (let tx = c.x + 10; tx < c.x + c.w - 10; tx += 12) {
+    if (tx > gN.x - gN.w/2 - 5 && tx < gN.x + gN.w/2 + 5) continue;
+    ctx.beginPath(); ctx.moveTo(tx, c.y); ctx.lineTo(tx, c.y - 4); ctx.stroke();
+  }
+  for (let tx = c.x + 10; tx < c.x + c.w - 10; tx += 12) {
+    if (tx > gS.x - gS.w/2 - 5 && tx < gS.x + gS.w/2 + 5) continue;
+    ctx.beginPath(); ctx.moveTo(tx, c.y + c.h); ctx.lineTo(tx, c.y + c.h + 4); ctx.stroke();
+  }
+
+  // --- Trees (ink sketched) ---
+  for (const tree of MAP.trees) {
+    ctx.beginPath();
+    ctx.arc(tree.x, tree.y, tree.size * 0.7, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(40,80,20,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Scribble fill
+    for (let a = 0; a < 4; a++) {
+      const angle = rng() * Math.PI * 2;
+      const r = rng() * tree.size * 0.5;
+      ctx.beginPath();
+      ctx.arc(tree.x + Math.cos(angle) * r, tree.y + Math.sin(angle) * r, 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(40,80,20,0.3)';
+      ctx.fill();
+    }
+  }
+
+  // --- Buildings (ink outlines, labeled) ---
+  function drawParchmentBuilding(b) {
+    if (b.type === 'colosseum') {
+      ctx.beginPath();
+      ctx.ellipse(b.x + b.w/2, b.y + b.h/2, b.w/2, b.h/2, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = inkColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(b.x + b.w/2, b.y + b.h/2, b.w/2 - 15, b.h/2 - 15, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = inkLight;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Fill center
+      ctx.beginPath();
+      ctx.ellipse(b.x + b.w/2, b.y + b.h/2, b.w/2 - 30, b.h/2 - 30, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(180,160,120,0.3)';
+      ctx.fill();
+    } else if (b.type === 'tower') {
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h/2, b.w/2, 0, Math.PI * 2);
+      ctx.strokeStyle = inkColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h/2, b.w/2 - 6, 0, Math.PI * 2);
+      ctx.strokeStyle = inkLight;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Star/magical symbol in center
+      ctx.font = '14px Georgia';
+      ctx.fillStyle = accentInk;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✦', b.x + b.w/2, b.y + b.h/2);
+    } else if (b.type === 'castle') {
+      ctx.strokeStyle = inkColor;
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = inkLight;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(b.x + 8, b.y + 8, b.w - 16, b.h - 16);
+      // Keep
+      ctx.fillStyle = 'rgba(60,50,40,0.15)';
+      ctx.fillRect(b.x + b.w/2 - 40, b.y + 15, 80, 60);
+      ctx.strokeStyle = inkColor;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x + b.w/2 - 40, b.y + 15, 80, 60);
+      // Turret diamonds
+      for (const [tx, ty] of [[b.x+8,b.y+8],[b.x+b.w-8,b.y+8],[b.x+8,b.y+b.h-8],[b.x+b.w-8,b.y+b.h-8]]) {
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(Math.PI/4);
+        ctx.fillStyle = inkColor;
+        ctx.fillRect(-5, -5, 10, 10);
+        ctx.restore();
+      }
+      // Crown symbol
+      ctx.font = '16px Georgia';
+      ctx.fillStyle = accentInk;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('♛', b.x + b.w/2, b.y + 45);
+    } else if (b.type === 'church') {
+      ctx.strokeStyle = inkColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Cross
+      ctx.strokeStyle = accentInk;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(b.x + b.w/2, b.y - 12);
+      ctx.lineTo(b.x + b.w/2, b.y + 15);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(b.x + b.w/2 - 8, b.y - 4);
+      ctx.lineTo(b.x + b.w/2 + 8, b.y - 4);
+      ctx.stroke();
+    } else if (b.type === 'market') {
+      ctx.strokeStyle = inkColor;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Stall marks
+      for (let i = 0; i < 4; i++) {
+        const sx = b.x + 20 + (i % 2) * 90;
+        const sy = b.y + 20 + Math.floor(i / 2) * 70;
+        ctx.strokeRect(sx, sy, 40, 20);
+      }
+      // Fountain circle
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h/2 + 15, 12, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (b.type === 'gate') {
+      ctx.strokeStyle = inkColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Gate towers
+      ctx.beginPath();
+      ctx.arc(b.x + 10, b.y + b.h/2, 12, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(b.x + b.w - 10, b.y + b.h/2, 12, 0, Math.PI * 2);
+      ctx.stroke();
+      // Arrow symbol
+      ctx.font = '14px Georgia';
+      ctx.fillStyle = accentInk;
+      ctx.textAlign = 'center';
+      ctx.fillText('⬇', b.x + b.w/2, b.y + b.h + 15);
+    } else {
+      ctx.strokeStyle = inkColor;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Light fill
+      ctx.fillStyle = 'rgba(60,50,40,0.06)';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+    }
+  }
+
+  for (const b of MAP.buildings) drawParchmentBuilding(b);
+
+  // --- Small houses ---
+  for (const h of MAP.houses) {
+    ctx.strokeStyle = inkFaint;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(h.x, h.y, h.w, h.h);
+  }
+
+  // --- Labels (hand-lettered style) ---
+  for (const b of MAP.buildings) {
+    const cx = b.x + b.w/2;
+    const cy = b.y + b.h + 12;
+    ctx.font = 'italic 10px Georgia';
+    ctx.fillStyle = inkColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(b.label, cx, cy);
+    if (b.mode !== '—') {
+      ctx.font = '8px Georgia';
+      ctx.fillStyle = accentInk;
+      ctx.fillText(`[ ${b.mode} ]`, cx, cy + 13);
+    }
+  }
+
+  // --- Compass Rose ---
+  const compassX = 1100, compassY = 100;
+  ctx.save();
+  ctx.translate(compassX, compassY);
+  // Ornate circle
+  ctx.beginPath();
+  ctx.arc(0, 0, 40, 0, Math.PI * 2);
+  ctx.strokeStyle = inkColor;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, 36, 0, Math.PI * 2);
+  ctx.strokeStyle = inkLight;
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+  // Compass points with decorative arrows
+  for (const [label, angle, primary] of [['N',-Math.PI/2,true],['S',Math.PI/2,false],['E',0,false],['W',Math.PI,false]]) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    const tx = Math.cos(angle) * 30;
+    const ty = Math.sin(angle) * 30;
+    ctx.lineTo(tx, ty);
+    ctx.strokeStyle = primary ? accentInk : inkColor;
+    ctx.lineWidth = primary ? 2 : 1;
+    ctx.stroke();
+    // Arrowhead
+    const aSize = 5;
+    const perpAngle = angle + Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(tx - Math.cos(angle) * aSize + Math.cos(perpAngle) * aSize/2,
+               ty - Math.sin(angle) * aSize + Math.sin(perpAngle) * aSize/2);
+    ctx.lineTo(tx - Math.cos(angle) * aSize - Math.cos(perpAngle) * aSize/2,
+               ty - Math.sin(angle) * aSize - Math.sin(perpAngle) * aSize/2);
+    ctx.closePath();
+    ctx.fillStyle = primary ? accentInk : inkColor;
+    ctx.fill();
+    // Label
+    ctx.font = primary ? 'bold 12px Georgia' : '10px Georgia';
+    ctx.fillStyle = primary ? accentInk : inkColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, Math.cos(angle) * 48, Math.sin(angle) * 48);
+  }
+  ctx.restore();
+
+  // --- Title cartouche ---
+  ctx.save();
+  ctx.translate(W/2, 55);
+  // Scroll/cartouche shape
+  ctx.beginPath();
+  ctx.moveTo(-130, -18);
+  ctx.quadraticCurveTo(-145, 0, -130, 18);
+  ctx.lineTo(130, 18);
+  ctx.quadraticCurveTo(145, 0, 130, -18);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(220,200,160,0.8)';
+  ctx.fill();
+  ctx.strokeStyle = inkColor;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.font = 'bold 16px Georgia';
+  ctx.fillStyle = inkColor;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('✦  CAMELOT  ✦', 0, -3);
+  ctx.font = 'italic 9px Georgia';
+  ctx.fillStyle = accentInk;
+  ctx.fillText('Seat of King Arthur & the Knights of the Round Table', 0, 11);
+  ctx.restore();
+
+  // --- Scale bar ---
+  ctx.strokeStyle = inkColor;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(50, H - 50); ctx.lineTo(200, H - 50); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(50, H - 54); ctx.lineTo(50, H - 46); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(200, H - 54); ctx.lineTo(200, H - 46); ctx.stroke();
+  ctx.font = '9px Georgia';
+  ctx.fillStyle = inkColor;
+  ctx.textAlign = 'center';
+  ctx.fillText('~ 500 paces ~', 125, H - 40);
+
+})();
+
+
+// =========================================================================
+// ITERATION 3: TWILIGHT / MAGICAL ATMOSPHERE
+// =========================================================================
+
+(function drawIteration3() {
+  const canvas = document.getElementById('c3');
+  const ctx = canvas.getContext('2d');
+  const W = 1200, H = 900;
+  const rng = seededRandom(789);
+
+  // --- Night sky gradient ---
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#0d0d2b');
+  skyGrad.addColorStop(0.3, '#1a1a3a');
+  skyGrad.addColorStop(0.6, '#2a2a4a');
+  skyGrad.addColorStop(1, '#1a2040');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  for (let i = 0; i < 150; i++) {
+    const sx = rng() * W, sy = rng() * H * 0.6;
+    const size = 0.5 + rng() * 2;
+    const brightness = 0.3 + rng() * 0.7;
+    ctx.beginPath();
+    ctx.arc(sx, sy, size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200,210,255,${brightness})`;
+    ctx.fill();
+    // Twinkle glow
+    if (rng() > 0.7) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, size * 3, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(180,200,255,${brightness * 0.1})`;
+      ctx.fill();
+    }
+  }
+
+  // Moon
+  ctx.beginPath();
+  ctx.arc(1050, 80, 30, 0, Math.PI * 2);
+  const moonGrad = ctx.createRadialGradient(1050, 80, 0, 1050, 80, 30);
+  moonGrad.addColorStop(0, 'rgba(255,250,230,0.95)');
+  moonGrad.addColorStop(0.6, 'rgba(220,210,180,0.6)');
+  moonGrad.addColorStop(1, 'rgba(180,170,150,0.1)');
+  ctx.fillStyle = moonGrad;
+  ctx.fill();
+  // Moonlight glow
+  ctx.beginPath();
+  ctx.arc(1050, 80, 60, 0, Math.PI * 2);
+  const glowGrad = ctx.createRadialGradient(1050, 80, 20, 1050, 80, 60);
+  glowGrad.addColorStop(0, 'rgba(200,200,180,0.1)');
+  glowGrad.addColorStop(1, 'rgba(100,100,150,0)');
+  ctx.fillStyle = glowGrad;
+  ctx.fill();
+
+  // --- Dark ground ---
+  const groundGrad = ctx.createRadialGradient(600, 450, 100, 600, 450, 700);
+  groundGrad.addColorStop(0, '#1a3320');
+  groundGrad.addColorStop(0.5, '#152a18');
+  groundGrad.addColorStop(1, '#0d1f10');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, 200, W, H);
+
+  // Grass texture (dark)
+  for (let i = 0; i < 2000; i++) {
+    const gx = rng() * W, gy = 200 + rng() * (H - 200);
+    ctx.fillStyle = `rgba(${20+rng()*20}, ${40+rng()*30}, ${15+rng()*15}, 0.3)`;
+    ctx.fillRect(gx, gy, 2 + rng() * 3, 1 + rng() * 2);
+  }
+
+  // --- River at night ---
+  ctx.save();
+  ctx.beginPath();
+  const rp = MAP.river;
+  ctx.moveTo(rp[0].x, rp[0].y);
+  for (let i = 1; i < rp.length - 1; i++) {
+    const xc = (rp[i].x + rp[i+1].x) / 2;
+    const yc = (rp[i].y + rp[i+1].y) / 2;
+    ctx.quadraticCurveTo(rp[i].x, rp[i].y, xc, yc);
+  }
+  ctx.lineTo(rp[rp.length-1].x, rp[rp.length-1].y);
+  ctx.lineTo(1200, 900);
+  ctx.lineTo(0, 900);
+  ctx.closePath();
+  ctx.fillStyle = '#0a1525';
+  ctx.fill();
+  // Moonlight reflections on water
+  for (let i = 0; i < 100; i++) {
+    const rx = rng() * W;
+    const ry = 775 + rng() * 125;
+    ctx.fillStyle = `rgba(150,170,200,${0.02 + rng() * 0.08})`;
+    ctx.fillRect(rx, ry, 5 + rng() * 20, 1);
+  }
+  ctx.restore();
+
+  // --- Roads (barely visible) ---
+  for (const road of MAP.roads) {
+    ctx.beginPath();
+    ctx.moveTo(road[0].x, road[0].y);
+    for (let i = 1; i < road.length; i++) ctx.lineTo(road[i].x, road[i].y);
+    ctx.strokeStyle = 'rgba(80,70,50,0.4)';
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // Lantern lights along main roads
+  const lanternPositions = [
+    { x: 600, y: 200 }, { x: 600, y: 300 }, { x: 600, y: 500 }, { x: 600, y: 620 },
+    { x: 400, y: 440 }, { x: 500, y: 430 }, { x: 700, y: 430 }, { x: 800, y: 430 },
+    { x: 350, y: 440 }, { x: 850, y: 430 },
+  ];
+  for (const l of lanternPositions) {
+    ctx.beginPath();
+    ctx.arc(l.x, l.y, 20, 0, Math.PI * 2);
+    const lGrad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, 20);
+    lGrad.addColorStop(0, 'rgba(255,200,80,0.25)');
+    lGrad.addColorStop(1, 'rgba(255,150,50,0)');
+    ctx.fillStyle = lGrad;
+    ctx.fill();
+    // Lantern dot
+    ctx.beginPath();
+    ctx.arc(l.x, l.y, 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,200,100,0.8)';
+    ctx.fill();
+  }
+
+  // --- City walls (dark stone) ---
+  const c = MAP.city;
+  const wt = MAP.wallThickness;
+  const gN = MAP.gates.north, gS = MAP.gates.south, gE = MAP.gates.east, gW = MAP.gates.west;
+
+  ctx.fillStyle = '#2a2520';
+  // N wall
+  ctx.fillRect(c.x, c.y, gN.x - gN.w/2 - c.x, wt);
+  ctx.fillRect(gN.x + gN.w/2, c.y, c.x + c.w - gN.x - gN.w/2, wt);
+  // S wall
+  ctx.fillRect(c.x, c.y + c.h - wt, gS.x - gS.w/2 - c.x, wt);
+  ctx.fillRect(gS.x + gS.w/2, c.y + c.h - wt, c.x + c.w - gS.x - gS.w/2, wt);
+  // W wall
+  ctx.fillRect(c.x, c.y, wt, gW.y - gW.w/2 - c.y);
+  ctx.fillRect(c.x, gW.y + gW.w/2, wt, c.y + c.h - gW.y - gW.w/2);
+  // E wall
+  ctx.fillRect(c.x + c.w - wt, c.y, wt, gE.y - gE.w/2 - c.y);
+  ctx.fillRect(c.x + c.w - wt, gE.y + gE.w/2, wt, c.y + c.h - gE.y - gE.w/2);
+
+  // Wall highlight (moonlit top edge)
+  ctx.fillStyle = 'rgba(100,100,120,0.3)';
+  ctx.fillRect(c.x, c.y, c.w, 2);
+
+  // City interior (dark cobblestone)
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(c.x + wt, c.y + wt, c.w - 2*wt, c.h - 2*wt);
+  for (let gy = c.y + wt; gy < c.y + c.h - wt; gy += 6) {
+    for (let gx = c.x + wt; gx < c.x + c.w - wt; gx += 6) {
+      const offset = (Math.floor(gy / 6) % 2) * 3;
+      const v = 25 + rng() * 12;
+      ctx.fillStyle = `rgb(${v},${v},${v+5})`;
+      ctx.fillRect(gx + offset, gy, 5, 5);
+    }
+  }
+
+  // --- Wall towers ---
+  for (const t of wallTowers) {
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+    ctx.fillStyle = '#2a2520';
+    ctx.fill();
+    ctx.strokeStyle = '#3a3530';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Torch on each tower
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 8, 0, Math.PI * 2);
+    const tGrad = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, 12);
+    tGrad.addColorStop(0, 'rgba(255,180,60,0.5)');
+    tGrad.addColorStop(1, 'rgba(255,100,20,0)');
+    ctx.fillStyle = tGrad;
+    ctx.fill();
+  }
+
+  // --- Trees (dark silhouettes) ---
+  for (const tree of MAP.trees) {
+    ctx.beginPath();
+    ctx.arc(tree.x, tree.y, tree.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(10,${25 + tree.shade * 20},5,0.7)`;
+    ctx.fill();
+  }
+
+  // --- Small houses (dark with lit windows) ---
+  for (const h of MAP.houses) {
+    ctx.fillStyle = '#1a1815';
+    ctx.fillRect(h.x, h.y, h.w, h.h);
+    ctx.strokeStyle = '#2a2520';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(h.x, h.y, h.w, h.h);
+    // Lit window
+    if (rng() > 0.3) {
+      const wx = h.x + h.w/2 - 3 + rng() * 4;
+      const wy = h.y + h.h/2 - 3;
+      ctx.fillStyle = 'rgba(255,200,80,0.7)';
+      ctx.fillRect(wx, wy, 5, 5);
+      // Window glow
+      ctx.beginPath();
+      ctx.arc(wx + 2.5, wy + 2.5, 10, 0, Math.PI * 2);
+      const wGrad = ctx.createRadialGradient(wx+2.5, wy+2.5, 0, wx+2.5, wy+2.5, 10);
+      wGrad.addColorStop(0, 'rgba(255,180,60,0.15)');
+      wGrad.addColorStop(1, 'rgba(255,100,20,0)');
+      ctx.fillStyle = wGrad;
+      ctx.fill();
+    }
+  }
+
+  // --- Main buildings (dark with warm window glows) ---
+  function drawNightBuilding(b) {
+    const darkWall = lerpColor(b.wallColor, 0x111111, 0.7);
+    const darkRoof = lerpColor(b.roofColor, 0x111111, 0.7);
+
+    if (b.type === 'castle') {
+      ctx.fillStyle = darkWall;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = '#1a1815';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Keep
+      ctx.fillStyle = darkRoof;
+      ctx.fillRect(b.x + b.w/2 - 50, b.y + 20, 100, 80);
+      // Turrets
+      for (const [tx, ty] of [[b.x+8,b.y+8],[b.x+b.w-8,b.y+8],[b.x+8,b.y+b.h-8],[b.x+b.w-8,b.y+b.h-8]]) {
+        ctx.beginPath();
+        ctx.arc(tx, ty, 14, 0, Math.PI * 2);
+        ctx.fillStyle = darkWall;
+        ctx.fill();
+        // Torch glow
+        ctx.beginPath();
+        ctx.arc(tx, ty, 10, 0, Math.PI * 2);
+        const tg = ctx.createRadialGradient(tx, ty, 0, tx, ty, 14);
+        tg.addColorStop(0, 'rgba(255,180,60,0.4)');
+        tg.addColorStop(1, 'rgba(255,100,20,0)');
+        ctx.fillStyle = tg;
+        ctx.fill();
+      }
+      // Keep windows (lit)
+      for (let wy = b.y + 30; wy < b.y + 85; wy += 18) {
+        for (let wx = b.x + b.w/2 - 35; wx < b.x + b.w/2 + 35; wx += 20) {
+          ctx.fillStyle = 'rgba(255,200,80,0.8)';
+          ctx.fillRect(wx, wy, 6, 8);
+          ctx.beginPath();
+          ctx.arc(wx + 3, wy + 4, 12, 0, Math.PI * 2);
+          const wg = ctx.createRadialGradient(wx+3, wy+4, 0, wx+3, wy+4, 12);
+          wg.addColorStop(0, 'rgba(255,180,60,0.12)');
+          wg.addColorStop(1, 'rgba(255,100,20,0)');
+          ctx.fillStyle = wg;
+          ctx.fill();
+        }
+      }
+      // Grand entrance glow
+      ctx.beginPath();
+      ctx.arc(b.x + b.w/2, b.y + b.h, 25, 0, Math.PI * 2);
+      const eg = ctx.createRadialGradient(b.x+b.w/2, b.y+b.h, 0, b.x+b.w/2, b.y+b.h, 25);
+      eg.addColorStop(0, 'rgba(255,180,60,0.3)');
+      eg.addColorStop(1, 'rgba(255,100,20,0)');
+      ctx.fillStyle = eg;
+      ctx.fill();
+    } else if (b.type === 'colosseum') {
+      ctx.beginPath();
+      ctx.ellipse(b.x+b.w/2, b.y+b.h/2, b.w/2, b.h/2, 0, 0, Math.PI*2);
+      ctx.fillStyle = darkWall;
+      ctx.fill();
+      ctx.strokeStyle = '#2a2520';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Inner arena with torch glow
+      ctx.beginPath();
+      ctx.ellipse(b.x+b.w/2, b.y+b.h/2, b.w/2-30, b.h/2-30, 0, 0, Math.PI*2);
+      ctx.fillStyle = '#2a2218';
+      ctx.fill();
+      // Torches around arena
+      for (let a = 0; a < Math.PI*2; a += Math.PI/6) {
+        const fx = b.x + b.w/2 + Math.cos(a)*(b.w/2-20);
+        const fy = b.y + b.h/2 + Math.sin(a)*(b.h/2-20);
+        ctx.beginPath();
+        ctx.arc(fx, fy, 8, 0, Math.PI*2);
+        const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 8);
+        fg.addColorStop(0, 'rgba(255,160,40,0.4)');
+        fg.addColorStop(1, 'rgba(255,100,20,0)');
+        ctx.fillStyle = fg;
+        ctx.fill();
+      }
+    } else if (b.type === 'tower') {
+      ctx.beginPath();
+      ctx.arc(b.x+b.w/2, b.y+b.h/2, b.w/2, 0, Math.PI*2);
+      ctx.fillStyle = darkWall;
+      ctx.fill();
+      // Magical glow!
+      ctx.beginPath();
+      ctx.arc(b.x+b.w/2, b.y+b.h/2, b.w/2+15, 0, Math.PI*2);
+      const mg = ctx.createRadialGradient(b.x+b.w/2, b.y+b.h/2, b.w/4, b.x+b.w/2, b.y+b.h/2, b.w/2+15);
+      mg.addColorStop(0, hexColorA(b.accent, 0.4));
+      mg.addColorStop(0.6, hexColorA(b.accent, 0.15));
+      mg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = mg;
+      ctx.fill();
+      // Magical particles
+      for (let i = 0; i < 8; i++) {
+        const pa = rng() * Math.PI * 2;
+        const pr = rng() * (b.w/2 + 10);
+        const px = b.x + b.w/2 + Math.cos(pa) * pr;
+        const py = b.y + b.h/2 + Math.sin(pa) * pr;
+        ctx.beginPath();
+        ctx.arc(px, py, 1 + rng() * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = hexColorA(b.accent, 0.3 + rng() * 0.4);
+        ctx.fill();
+      }
+    } else if (b.type === 'market') {
+      ctx.fillStyle = '#1a1815';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      // Stall lanterns
+      for (let i = 0; i < 6; i++) {
+        const sx = b.x + 35 + (i%3) * 60;
+        const sy = b.y + 30 + Math.floor(i/3) * 70;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 15, 0, Math.PI * 2);
+        const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, 15);
+        sg.addColorStop(0, 'rgba(255,180,60,0.3)');
+        sg.addColorStop(1, 'rgba(255,100,20,0)');
+        ctx.fillStyle = sg;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,200,100,0.7)';
+        ctx.fill();
+      }
+    } else {
+      // Generic night building
+      roundRect(ctx, b.x, b.y, b.w, b.h, 3);
+      ctx.fillStyle = darkWall;
+      ctx.fill();
+      ctx.strokeStyle = '#1a1815';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Windows
+      const numWindows = Math.max(1, Math.floor(b.w / 30));
+      for (let wi = 0; wi < numWindows; wi++) {
+        const wx = b.x + 12 + wi * (b.w - 20) / numWindows;
+        const wy = b.y + b.h / 2 - 3;
+        if (rng() > 0.3) {
+          ctx.fillStyle = 'rgba(255,200,80,0.7)';
+          ctx.fillRect(wx, wy, 5, 6);
+          ctx.beginPath();
+          ctx.arc(wx + 2.5, wy + 3, 10, 0, Math.PI * 2);
+          const wGrad = ctx.createRadialGradient(wx+2.5, wy+3, 0, wx+2.5, wy+3, 10);
+          wGrad.addColorStop(0, 'rgba(255,180,60,0.1)');
+          wGrad.addColorStop(1, 'rgba(255,100,20,0)');
+          ctx.fillStyle = wGrad;
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  const sorted = [...MAP.buildings].sort((a,b) => a.y - b.y);
+  for (const b of sorted) drawNightBuilding(b);
+
+  // --- Labels (glowing text) ---
+  for (const b of MAP.buildings) {
+    const cx = b.x + b.w/2;
+    const cy = b.y + b.h + 14;
+
+    // Dark bg
+    ctx.font = 'bold 10px Georgia';
+    const tw = ctx.measureText(b.label).width;
+    ctx.fillStyle = 'rgba(5,5,15,0.8)';
+    roundRect(ctx, cx - tw/2 - 8, cy - 8, tw + 16, 28, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(218,165,32,0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#DAA520';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(b.label, cx, cy - 4);
+
+    if (b.mode !== '—') {
+      ctx.font = '9px Georgia';
+      ctx.fillStyle = '#6688AA';
+      ctx.fillText(`[ ${b.mode} ]`, cx, cy + 9);
+    } else {
+      ctx.font = '8px Georgia';
+      ctx.fillStyle = '#334455';
+      ctx.fillText('coming soon', cx, cy + 9);
+    }
+  }
+
+  // --- Title ---
+  ctx.fillStyle = 'rgba(5,5,15,0.8)';
+  roundRect(ctx, W/2 - 160, 10, 320, 38, 6);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(218,165,32,0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.font = 'bold 18px Georgia';
+  ctx.fillStyle = '#DAA520';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('✦  CAMELOT BY MOONLIGHT  ✦', W/2, 29);
+
+})();
+
+</script>
+</body>
+</html>
