@@ -5,12 +5,13 @@ import { Container, Graphics, Text, TextStyle, Assets, Sprite, Texture } from "p
 import dragonImgUrl from "@/img/dragon.png";
 import type { ViewManager } from "@view/ViewManager";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
-import { GameMode, MapType } from "@/types";
+import { GameMode, GamePhase, MapType } from "@/types";
 import { hasWorldSave } from "@world/state/WorldSerialization";
 import { Difficulty, DIFFICULTY_SETTINGS, setDifficulty } from "@sim/config/DifficultyConfig";
 import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { RuneCorners } from "@view/fx/RuneCorners";
 import { t } from "@/i18n/i18n";
+import { CastleRenderer } from "@view/entities/CastleRenderer";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -392,6 +393,7 @@ export class MenuScreen {
   private _loadWaveBtnSlot!: Container;
   private _loadWaveBtnSlotY = 0;
   private _s1SettingsBtn!: Container;
+  private _s1BackMapBtn!: Container;
   private _s1UtilBtnH = 0;
   private _s1UtilGap = 0;
 
@@ -400,6 +402,11 @@ export class MenuScreen {
   private _s1FocusIndex = 0;
   private _s1FocusBorder!: Graphics;
   private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
+
+  // Building renderer decoration (castle on screen 1)
+  private _buildingRenderer: CastleRenderer | null = null;
+  private _buildingContainer!: Container;
+  private _buildingPreviewGfx!: Graphics;
 
   // Callbacks
   onAIToggle: ((isAI: boolean) => void) | null = null;
@@ -411,6 +418,7 @@ export class MenuScreen {
   onLoadWaveGame: (() => void) | null = null;
   hasWaveSave = false;
   onSettings: (() => void) | null = null;
+  onBackToMap: (() => void) | null = null;
 
   // Public getters (unchanged API)
   get selectedMapSize(): MapSize {
@@ -482,6 +490,9 @@ export class MenuScreen {
         this._particles.update(dt);
         this._runes1.update(dt);
         this._runes2.update(dt);
+        if (this._buildingRenderer && this._screen1.visible) {
+          this._buildingRenderer.tick(dt, GamePhase.PREP);
+        }
       }
     });
   }
@@ -516,8 +527,10 @@ export class MenuScreen {
       bottomY += this._s1UtilBtnH + this._s1UtilGap;
     }
 
-    // Reposition settings button and resize card
+    // Reposition settings and back-to-map buttons, then resize card
     this._s1SettingsBtn.position.set(20, bottomY);
+    bottomY += this._s1UtilBtnH + this._s1UtilGap;
+    this._s1BackMapBtn.position.set(20, bottomY);
     bottomY += this._s1UtilBtnH + this._s1UtilGap;
 
     this._screen1CardH = bottomY + 8;
@@ -748,10 +761,18 @@ export class MenuScreen {
     this._s1NavItems.push({ container: settingsBtn, action: () => this.onSettings?.() });
     bottomY += utilBtnH + utilGap;
 
+    // Back to Map button
+    const backMapBtn = makeActionBtn(CW - 40, utilBtnH, "\u25c0 BACK TO MAP", 0x1a2a1a, 0x55aa55, 0x88dd88, () => this.onBackToMap?.());
+    backMapBtn.position.set(20, bottomY);
+    card.addChild(backMapBtn);
+    this._s1NavItems.push({ container: backMapBtn, action: () => this.onBackToMap?.() });
+    bottomY += utilBtnH + utilGap;
+
     this._screen1CardH = bottomY + 8;
 
     // Store refs for dynamic repositioning
     this._s1SettingsBtn = settingsBtn;
+    this._s1BackMapBtn = backMapBtn;
     this._s1UtilBtnH = utilBtnH;
     this._s1UtilGap = utilGap;
 
@@ -773,6 +794,18 @@ export class MenuScreen {
     this._runes1.build(CW, this._screen1CardH);
     card.addChild(this._runes1.container);
 
+    // Animated castle renderer beside the card
+    this._buildingContainer = new Container();
+    this._screen1.addChild(this._buildingContainer);
+
+    // Dark preview backdrop
+    this._buildingPreviewGfx = new Graphics();
+    this._buildingContainer.addChild(this._buildingPreviewGfx);
+
+    // Create the castle renderer
+    this._buildingRenderer = new CastleRenderer(null);
+    this._buildingContainer.addChild(this._buildingRenderer.container);
+
     // Keyboard listener
     this._onKeydown = (e: KeyboardEvent) => {
       if (!this.container.visible || !this._screen1.visible) return;
@@ -789,6 +822,8 @@ export class MenuScreen {
       } else if (e.key === "Enter") {
         e.preventDefault();
         this._s1NavItems[this._s1FocusIndex].action();
+      } else if (e.key === "Escape") {
+        this.onBackToMap?.();
       }
     };
     window.addEventListener("keydown", this._onKeydown);
@@ -2033,10 +2068,55 @@ export class MenuScreen {
     this._particles.resize(sw, sh);
 
     if (this._screen1?.visible) {
-      this._screen1Card.position.set(
-        Math.floor((sw - this._screen1CardW) / 2),
-        Math.floor((sh - this._screen1CardH) / 2),
-      );
+      // Offset card slightly left to make room for the building renderer
+      const cardX = Math.floor((sw - this._screen1CardW) / 2) - 80;
+      const cardY = Math.floor((sh - this._screen1CardH) / 2);
+      this._screen1Card.position.set(cardX, cardY);
+
+      // Position building renderer to the right of the card
+      if (this._buildingContainer) {
+        const previewW = 180;
+        const previewH = 220;
+        const bx = cardX + this._screen1CardW + 30;
+        const by = cardY + Math.floor((this._screen1CardH - previewH) / 2);
+
+        // Dark backdrop with gold border
+        this._buildingPreviewGfx.clear()
+          .roundRect(0, 0, previewW, previewH, 8)
+          .fill({ color: 0x0a0a18, alpha: 0.9 })
+          .roundRect(0, 0, previewW, previewH, 8)
+          .stroke({ color: BORDER_COLOR, alpha: 0.3, width: 1.5 });
+
+        // Ground plane
+        const groundY = previewH * 0.72;
+        this._buildingPreviewGfx
+          .rect(0, groundY, previewW, previewH - groundY)
+          .fill({ color: 0x2a3a1a, alpha: 0.6 });
+        this._buildingPreviewGfx
+          .moveTo(0, groundY).lineTo(previewW, groundY)
+          .stroke({ color: 0x4a6a2a, width: 1, alpha: 0.5 });
+
+        // "MAIN MENU" label below the preview
+        // (use a Graphics text approach — will be added as Text in init, but for simplicity redraw)
+        this._buildingContainer.position.set(bx, by);
+
+        // Scale and center the castle renderer inside the preview
+        if (this._buildingRenderer) {
+          const rc = this._buildingRenderer.container;
+          const bounds = rc.getLocalBounds();
+          const bw = bounds.width || 128;
+          const bh = bounds.height || 128;
+          const fitW = previewW - 20;
+          const fitH = previewH - 20;
+          const scale = Math.min(fitW / bw, fitH / bh, 1.3);
+          rc.scale.set(scale);
+          rc.x = (previewW - bw * scale) / 2 - bounds.x * scale;
+          rc.y = (previewH - bh * scale) / 2 - bounds.y * scale;
+        }
+
+        // Only show if there's enough room (screen wider than ~700px)
+        this._buildingContainer.visible = sw > 700;
+      }
     }
 
     if (this._screen2?.visible) {

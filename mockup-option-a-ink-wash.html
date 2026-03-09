@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option A: Ink-Wash Map Buildings</title>
+<style>
+  body { margin: 0; background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Georgia', serif; }
+  .container { text-align: center; }
+  h2 { color: #d4a862; margin-bottom: 20px; font-style: italic; letter-spacing: 2px; }
+  .subtitle { color: #a08050; font-size: 14px; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto; }
+  canvas { border: 4px solid #8b6914; border-radius: 8px; box-shadow: 0 0 40px rgba(139,105,20,0.3); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Option A: Enhanced Ink-Wash Map Buildings</h2>
+  <p class="subtitle">Map buildings get subtle ink-wash fills, cross-hatching, and stipple shading to feel more illustrated. The tooltip preview stays as the full animated renderer.</p>
+  <canvas id="c" width="700" height="500"></canvas>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// Parchment background
+function drawParchment() {
+  const grad = ctx.createRadialGradient(350, 250, 50, 350, 250, 400);
+  grad.addColorStop(0, '#e8d5a3');
+  grad.addColorStop(0.7, '#d4b87a');
+  grad.addColorStop(1, '#c4a060');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 700, 500);
+
+  // Parchment texture noise
+  ctx.globalAlpha = 0.04;
+  for (let i = 0; i < 3000; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? '#5a3a10' : '#8b7355';
+    ctx.fillRect(Math.random() * 700, Math.random() * 500, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Cross-hatching fill
+function crossHatch(x, y, w, h, density, angle1, angle2) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(60, 30, 5, 0.25)';
+  ctx.lineWidth = 0.6;
+
+  const step = density;
+  // First direction
+  for (let i = -Math.max(w, h); i < Math.max(w, h) * 2; i += step) {
+    ctx.beginPath();
+    ctx.moveTo(x + i, y);
+    ctx.lineTo(x + i + Math.cos(angle1) * h * 2, y + Math.sin(angle1) * h * 2);
+    ctx.stroke();
+  }
+  // Second direction
+  if (angle2 !== undefined) {
+    for (let i = -Math.max(w, h); i < Math.max(w, h) * 2; i += step) {
+      ctx.beginPath();
+      ctx.moveTo(x + i, y);
+      ctx.lineTo(x + i + Math.cos(angle2) * h * 2, y + Math.sin(angle2) * h * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// Stipple shading
+function stipple(x, y, w, h, count, color) {
+  ctx.fillStyle = color || 'rgba(60, 30, 5, 0.2)';
+  for (let i = 0; i < count; i++) {
+    const px = x + Math.random() * w;
+    const py = y + Math.random() * h;
+    ctx.beginPath();
+    ctx.arc(px, py, 0.5 + Math.random() * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Ink wash (watercolor-like fill)
+function inkWash(x, y, w, h, color, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha || 0.15;
+  ctx.fillStyle = color;
+  // Multiple overlapping soft shapes for watercolor feel
+  for (let i = 0; i < 5; i++) {
+    const ox = (Math.random() - 0.5) * 4;
+    const oy = (Math.random() - 0.5) * 4;
+    const sw = w + (Math.random() - 0.5) * 6;
+    const sh = h + (Math.random() - 0.5) * 6;
+    ctx.beginPath();
+    ctx.roundRect(x + ox, y + oy, sw, sh, 3);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Draw a castle with ink-wash treatment
+function drawCastleInkWash(cx, cy) {
+  const x = cx - 50, y = cy - 55;
+
+  // Ink wash fill for main body
+  inkWash(x + 10, y + 30, 80, 50, '#6b5c3e', 0.18);
+  inkWash(x + 5, y + 20, 20, 60, '#5a4a2e', 0.15);
+  inkWash(x + 75, y + 20, 20, 60, '#5a4a2e', 0.15);
+
+  // Cross-hatching on shadowed side
+  crossHatch(x + 55, y + 30, 35, 50, 4, 1.2, 2.0);
+
+  // Stipple on lighter areas
+  stipple(x + 10, y + 35, 40, 40, 40);
+
+  // Ink outlines (the original style)
+  ctx.strokeStyle = '#3a2010';
+  ctx.lineWidth = 1.8;
+  ctx.lineJoin = 'round';
+
+  // Main keep
+  ctx.beginPath();
+  ctx.rect(x + 15, y + 30, 70, 50);
+  ctx.stroke();
+
+  // Left tower
+  ctx.beginPath();
+  ctx.rect(x + 5, y + 20, 20, 60);
+  ctx.stroke();
+  // Battlement
+  ctx.beginPath();
+  ctx.rect(x + 5, y + 15, 6, 8);
+  ctx.rect(x + 14, y + 15, 6, 8);
+  ctx.stroke();
+
+  // Right tower
+  ctx.beginPath();
+  ctx.rect(x + 75, y + 20, 20, 60);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.rect(x + 75, y + 15, 6, 8);
+  ctx.rect(x + 84, y + 15, 6, 8);
+  ctx.stroke();
+
+  // Central tower / spire
+  ctx.beginPath();
+  ctx.moveTo(x + 42, y + 2);
+  ctx.lineTo(x + 35, y + 30);
+  ctx.lineTo(x + 55, y + 30);
+  ctx.closePath();
+  ctx.stroke();
+  // Wash on spire
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = '#4a3a1e';
+  ctx.fill();
+  ctx.restore();
+
+  // Gate arch
+  ctx.beginPath();
+  ctx.arc(x + 50, y + 65, 8, Math.PI, 0);
+  ctx.lineTo(x + 58, y + 80);
+  ctx.lineTo(x + 42, y + 80);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Flag
+  ctx.beginPath();
+  ctx.moveTo(x + 42, y + 2);
+  ctx.lineTo(x + 42, y - 8);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 42, y - 8);
+  ctx.lineTo(x + 52, y - 5);
+  ctx.lineTo(x + 42, y - 2);
+  ctx.stroke();
+  inkWash(x + 42, y - 8, 10, 6, '#8b2020', 0.25);
+
+  // Label
+  ctx.fillStyle = '#3a2010';
+  ctx.font = 'italic 11px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('Castle', cx, cy + 38);
+}
+
+// Draw a temple/church with ink-wash treatment
+function drawTempleInkWash(cx, cy) {
+  const x = cx - 35, y = cy - 45;
+
+  // Ink wash fills
+  inkWash(x + 5, y + 25, 60, 45, '#5a5040', 0.15);
+  crossHatch(x + 35, y + 30, 30, 35, 5, 1.3);
+  stipple(x + 8, y + 30, 25, 35, 30);
+
+  ctx.strokeStyle = '#3a2010';
+  ctx.lineWidth = 1.8;
+
+  // Main body
+  ctx.beginPath();
+  ctx.rect(x + 5, y + 25, 60, 45);
+  ctx.stroke();
+
+  // Pointed roof
+  ctx.beginPath();
+  ctx.moveTo(x, y + 25);
+  ctx.lineTo(x + 35, y + 8);
+  ctx.lineTo(x + 70, y + 25);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.save();
+  ctx.globalAlpha = 0.1;
+  ctx.fillStyle = '#4a3a2a';
+  ctx.fill();
+  ctx.restore();
+
+  // Bell tower
+  ctx.beginPath();
+  ctx.rect(x + 25, y + 2, 20, 25);
+  ctx.stroke();
+  inkWash(x + 25, y + 2, 20, 25, '#5a4a30', 0.12);
+
+  // Steeple
+  ctx.beginPath();
+  ctx.moveTo(x + 35, y - 12);
+  ctx.lineTo(x + 25, y + 2);
+  ctx.lineTo(x + 45, y + 2);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Cross
+  ctx.beginPath();
+  ctx.moveTo(x + 35, y - 18);
+  ctx.lineTo(x + 35, y - 10);
+  ctx.moveTo(x + 31, y - 14);
+  ctx.lineTo(x + 39, y - 14);
+  ctx.stroke();
+
+  // Rose window
+  ctx.beginPath();
+  ctx.arc(x + 35, y + 38, 7, 0, Math.PI * 2);
+  ctx.stroke();
+  stipple(x + 29, y + 32, 12, 12, 15, 'rgba(100, 50, 20, 0.15)');
+
+  // Door
+  ctx.beginPath();
+  ctx.arc(x + 35, y + 58, 8, Math.PI, 0);
+  ctx.lineTo(x + 43, y + 70);
+  ctx.lineTo(x + 27, y + 70);
+  ctx.closePath();
+  ctx.stroke();
+
+  ctx.fillStyle = '#3a2010';
+  ctx.font = 'italic 11px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('Cathedral', cx, cy + 38);
+}
+
+// Draw a market with ink-wash treatment
+function drawMarketInkWash(cx, cy) {
+  const x = cx - 35, y = cy - 35;
+
+  // Ink wash for stall roof
+  inkWash(x - 5, y + 5, 75, 15, '#6b4020', 0.2);
+  // Cross-hatching on right side wall
+  crossHatch(x + 35, y + 20, 30, 35, 4, 1.1, 2.2);
+  stipple(x + 5, y + 25, 25, 25, 25);
+
+  ctx.strokeStyle = '#3a2010';
+  ctx.lineWidth = 1.8;
+
+  // Awning/roof
+  ctx.beginPath();
+  ctx.moveTo(x - 5, y + 20);
+  ctx.lineTo(x + 10, y + 5);
+  ctx.lineTo(x + 55, y + 5);
+  ctx.lineTo(x + 70, y + 20);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Scalloped edge
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.arc(x + 5 + i * 14, y + 20, 7, 0, Math.PI);
+    ctx.stroke();
+  }
+
+  // Counter
+  ctx.beginPath();
+  ctx.rect(x, y + 20, 65, 35);
+  ctx.stroke();
+
+  // Goods on counter (small circles)
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(x + 12 + i * 14, y + 32, 4, 0, Math.PI * 2);
+    ctx.stroke();
+    stipple(x + 9 + i * 14, y + 29, 6, 6, 8, 'rgba(80, 50, 10, 0.2)');
+  }
+
+  // Posts
+  ctx.beginPath();
+  ctx.moveTo(x, y + 20);
+  ctx.lineTo(x, y + 55);
+  ctx.moveTo(x + 65, y + 20);
+  ctx.lineTo(x + 65, y + 55);
+  ctx.stroke();
+
+  ctx.fillStyle = '#3a2010';
+  ctx.font = 'italic 11px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('Market', cx, cy + 38);
+}
+
+// Tooltip with animated preview (represented as a rich colored box)
+function drawTooltip(x, y) {
+  // Tooltip background
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 15;
+  ctx.fillStyle = '#1a1520';
+  ctx.beginPath();
+  ctx.roundRect(x, y, 190, 170, 6);
+  ctx.fill();
+  ctx.restore();
+
+  // Border
+  ctx.strokeStyle = '#8b6914';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, 190, 170, 6);
+  ctx.stroke();
+
+  // Preview area (dark sky + green ground)
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(x + 5, y + 5, 180, 130, 4);
+  ctx.clip();
+
+  // Sky
+  const skyGrad = ctx.createLinearGradient(x + 5, y + 5, x + 5, y + 100);
+  skyGrad.addColorStop(0, '#0a0a18');
+  skyGrad.addColorStop(1, '#151530');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(x + 5, y + 5, 180, 95);
+
+  // Ground
+  const gndGrad = ctx.createLinearGradient(x + 5, y + 100, x + 5, y + 135);
+  gndGrad.addColorStop(0, '#2a5a1a');
+  gndGrad.addColorStop(1, '#1a3a0a');
+  ctx.fillStyle = gndGrad;
+  ctx.fillRect(x + 5, y + 100, 180, 35);
+
+  // Ambient particles (gold dots)
+  for (let i = 0; i < 15; i++) {
+    const px = x + 10 + Math.random() * 170;
+    const py = y + 10 + Math.random() * 85;
+    ctx.fillStyle = `rgba(255, 215, 0, ${0.2 + Math.random() * 0.5})`;
+    ctx.beginPath();
+    ctx.arc(px, py, 1 + Math.random() * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Simplified building preview (represents animated renderer)
+  ctx.fillStyle = '#8b7355';
+  ctx.fillRect(x + 65, y + 55, 60, 50);
+  ctx.fillStyle = '#6b5a40';
+  ctx.beginPath();
+  ctx.moveTo(x + 60, y + 55);
+  ctx.lineTo(x + 95, y + 30);
+  ctx.lineTo(x + 130, y + 55);
+  ctx.closePath();
+  ctx.fill();
+  // Windows
+  ctx.fillStyle = '#ffdd44';
+  ctx.fillRect(x + 75, y + 65, 6, 8);
+  ctx.fillRect(x + 85, y + 65, 6, 8);
+  ctx.fillRect(x + 105, y + 65, 6, 8);
+
+  ctx.restore();
+
+  // Title
+  ctx.fillStyle = '#d4a862';
+  ctx.font = 'bold 13px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('Castle', x + 95, y + 153);
+  ctx.fillStyle = '#a08050';
+  ctx.font = '10px Georgia';
+  ctx.fillText('Full animated renderer preview', x + 95, y + 166);
+}
+
+// Render
+drawParchment();
+
+// Decorative border
+ctx.strokeStyle = '#8b6914';
+ctx.lineWidth = 3;
+ctx.strokeRect(10, 10, 680, 480);
+ctx.strokeStyle = '#a0802080';
+ctx.lineWidth = 1;
+ctx.strokeRect(16, 16, 668, 468);
+
+// Compass rose (simplified)
+ctx.save();
+ctx.translate(620, 60);
+ctx.strokeStyle = '#5a3a10';
+ctx.lineWidth = 1.5;
+ctx.beginPath();
+ctx.moveTo(0, -20); ctx.lineTo(0, 20);
+ctx.moveTo(-20, 0); ctx.lineTo(20, 0);
+ctx.stroke();
+ctx.fillStyle = '#3a2010';
+ctx.font = 'italic 10px Georgia';
+ctx.textAlign = 'center';
+ctx.fillText('N', 0, -24);
+ctx.fillText('S', 0, 30);
+ctx.fillText('E', 24, 4);
+ctx.fillText('W', -24, 4);
+ctx.restore();
+
+// Title
+ctx.fillStyle = '#3a2010';
+ctx.font = 'italic 18px Georgia';
+ctx.textAlign = 'center';
+ctx.fillText('~ The Realm of Camelot ~', 350, 45);
+
+// Draw the buildings with ink-wash style
+drawCastleInkWash(150, 200);
+drawTempleInkWash(380, 190);
+drawMarketInkWash(550, 280);
+
+// Draw tooltip
+drawTooltip(200, 280);
+
+// Annotation
+ctx.fillStyle = '#3a2010';
+ctx.font = '12px Georgia';
+ctx.textAlign = 'left';
+ctx.fillText('Ink-wash fills, cross-hatching,', 30, 460);
+ctx.fillText('and stipple shading on map buildings', 30, 475);
+</script>
+</body>
+</html>

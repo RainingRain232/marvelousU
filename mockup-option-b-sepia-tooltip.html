@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Option B: Sepia-Toned Tooltip Preview</title>
+<style>
+  body { margin: 0; background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Georgia', serif; }
+  .container { text-align: center; }
+  h2 { color: #d4a862; margin-bottom: 20px; font-style: italic; letter-spacing: 2px; }
+  .subtitle { color: #a08050; font-size: 14px; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto; }
+  canvas { border: 4px solid #8b6914; border-radius: 8px; box-shadow: 0 0 40px rgba(139,105,20,0.3); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Option B: Sepia-Toned Manuscript Tooltip</h2>
+  <p class="subtitle">The tooltip preview renders in a parchment/sepia style matching the map's illuminated manuscript aesthetic. Map buildings stay as simple ink outlines.</p>
+  <canvas id="c" width="700" height="500"></canvas>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// Parchment background
+function drawParchment() {
+  const grad = ctx.createRadialGradient(350, 250, 50, 350, 250, 400);
+  grad.addColorStop(0, '#e8d5a3');
+  grad.addColorStop(0.7, '#d4b87a');
+  grad.addColorStop(1, '#c4a060');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 700, 500);
+
+  ctx.globalAlpha = 0.04;
+  for (let i = 0; i < 3000; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? '#5a3a10' : '#8b7355';
+    ctx.fillRect(Math.random() * 700, Math.random() * 500, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Simple ink outline castle (current map style - no fills)
+function drawCastleOutline(cx, cy) {
+  const x = cx - 50, y = cy - 55;
+  ctx.strokeStyle = '#3a2010';
+  ctx.lineWidth = 1.8;
+  ctx.lineJoin = 'round';
+
+  // Main keep
+  ctx.beginPath(); ctx.rect(x + 15, y + 30, 70, 50); ctx.stroke();
+  // Left tower
+  ctx.beginPath(); ctx.rect(x + 5, y + 20, 20, 60); ctx.stroke();
+  ctx.beginPath(); ctx.rect(x + 5, y + 15, 6, 8); ctx.rect(x + 14, y + 15, 6, 8); ctx.stroke();
+  // Right tower
+  ctx.beginPath(); ctx.rect(x + 75, y + 20, 20, 60); ctx.stroke();
+  ctx.beginPath(); ctx.rect(x + 75, y + 15, 6, 8); ctx.rect(x + 84, y + 15, 6, 8); ctx.stroke();
+  // Spire
+  ctx.beginPath(); ctx.moveTo(x + 42, y + 2); ctx.lineTo(x + 35, y + 30); ctx.lineTo(x + 55, y + 30); ctx.closePath(); ctx.stroke();
+  // Gate
+  ctx.beginPath(); ctx.arc(x + 50, y + 65, 8, Math.PI, 0); ctx.lineTo(x + 58, y + 80); ctx.lineTo(x + 42, y + 80); ctx.closePath(); ctx.stroke();
+  // Flag
+  ctx.beginPath(); ctx.moveTo(x + 42, y + 2); ctx.lineTo(x + 42, y - 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 42, y - 8); ctx.lineTo(x + 52, y - 5); ctx.lineTo(x + 42, y - 2); ctx.stroke();
+
+  ctx.fillStyle = '#3a2010';
+  ctx.font = 'italic 11px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('Castle', cx, cy + 38);
+}
+
+// Simple ink outline temple
+function drawTempleOutline(cx, cy) {
+  const x = cx - 35, y = cy - 45;
+  ctx.strokeStyle = '#3a2010';
+  ctx.lineWidth = 1.8;
+
+  ctx.beginPath(); ctx.rect(x + 5, y + 25, 60, 45); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y + 25); ctx.lineTo(x + 35, y + 8); ctx.lineTo(x + 70, y + 25); ctx.closePath(); ctx.stroke();
+  ctx.beginPath(); ctx.rect(x + 25, y + 2, 20, 25); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 35, y - 12); ctx.lineTo(x + 25, y + 2); ctx.lineTo(x + 45, y + 2); ctx.closePath(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 35, y - 18); ctx.lineTo(x + 35, y - 10); ctx.moveTo(x + 31, y - 14); ctx.lineTo(x + 39, y - 14); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x + 35, y + 38, 7, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x + 35, y + 58, 8, Math.PI, 0); ctx.lineTo(x + 43, y + 70); ctx.lineTo(x + 27, y + 70); ctx.closePath(); ctx.stroke();
+
+  ctx.fillStyle = '#3a2010';
+  ctx.font = 'italic 11px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('Cathedral', cx, cy + 38);
+}
+
+// Simple ink outline market
+function drawMarketOutline(cx, cy) {
+  const x = cx - 35, y = cy - 35;
+  ctx.strokeStyle = '#3a2010';
+  ctx.lineWidth = 1.8;
+
+  ctx.beginPath(); ctx.moveTo(x - 5, y + 20); ctx.lineTo(x + 10, y + 5); ctx.lineTo(x + 55, y + 5); ctx.lineTo(x + 70, y + 20); ctx.closePath(); ctx.stroke();
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(x + 5 + i * 14, y + 20, 7, 0, Math.PI); ctx.stroke(); }
+  ctx.beginPath(); ctx.rect(x, y + 20, 65, 35); ctx.stroke();
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(x + 12 + i * 14, y + 32, 4, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(x, y + 20); ctx.lineTo(x, y + 55); ctx.moveTo(x + 65, y + 20); ctx.lineTo(x + 65, y + 55); ctx.stroke();
+
+  ctx.fillStyle = '#3a2010';
+  ctx.font = 'italic 11px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('Market', cx, cy + 38);
+}
+
+// SEPIA MANUSCRIPT-STYLE TOOLTIP
+function drawSepiaTooltip(x, y) {
+  const tw = 200, th = 190;
+
+  // Tooltip parchment background
+  ctx.save();
+  ctx.shadowColor = 'rgba(60, 30, 5, 0.6)';
+  ctx.shadowBlur = 20;
+
+  const parchGrad = ctx.createRadialGradient(x + tw/2, y + th/2, 10, x + tw/2, y + th/2, 120);
+  parchGrad.addColorStop(0, '#eedcb0');
+  parchGrad.addColorStop(0.8, '#dcc898');
+  parchGrad.addColorStop(1, '#c8b080');
+  ctx.fillStyle = parchGrad;
+  ctx.beginPath();
+  ctx.roundRect(x, y, tw, th, 4);
+  ctx.fill();
+  ctx.restore();
+
+  // Parchment texture in tooltip
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(x, y, tw, th, 4);
+  ctx.clip();
+
+  ctx.globalAlpha = 0.05;
+  for (let i = 0; i < 400; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? '#5a3a10' : '#8b7355';
+    ctx.fillRect(x + Math.random() * tw, y + Math.random() * th, 1 + Math.random(), 1 + Math.random());
+  }
+  ctx.globalAlpha = 1;
+
+  // Decorative border inside
+  ctx.strokeStyle = '#8b6914';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x + 2, y + 2, tw - 4, th - 4, 3);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#b8941880';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.roundRect(x + 6, y + 6, tw - 12, th - 12, 2);
+  ctx.stroke();
+
+  // Preview area with sepia tone
+  const px = x + 10, py = y + 10, pw = 180, ph = 130;
+
+  // Warm sepia background instead of dark sky
+  const sepiaGrad = ctx.createLinearGradient(px, py, px, py + ph);
+  sepiaGrad.addColorStop(0, '#d4b878');
+  sepiaGrad.addColorStop(0.5, '#c8a860');
+  sepiaGrad.addColorStop(0.7, '#bfa058');
+  sepiaGrad.addColorStop(1, '#a08840');
+  ctx.fillStyle = sepiaGrad;
+  ctx.fillRect(px, py, pw, ph);
+
+  // Manuscript-style building rendering in sepia
+  // All in brown/amber tones - looks like an illuminated manuscript illustration
+
+  const bx = px + pw/2, by = py + ph * 0.85;
+
+  // Ground line - ink stroke
+  ctx.strokeStyle = '#5a3a10';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(px + 20, by);
+  ctx.lineTo(px + pw - 20, by);
+  ctx.stroke();
+
+  // Castle in manuscript style with warm washes
+  // Main keep - filled with warm wash
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = '#8b6530';
+  ctx.fillRect(bx - 25, by - 45, 50, 45);
+  ctx.restore();
+
+  // Tower fills
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = '#7a5828';
+  ctx.fillRect(bx - 35, by - 55, 15, 55);
+  ctx.fillRect(bx + 20, by - 55, 15, 55);
+  ctx.restore();
+
+  // Gold/vermillion accents (like illuminated manuscript)
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  // Roof accents in warm red/gold
+  ctx.fillStyle = '#9b3020';
+  ctx.beginPath();
+  ctx.moveTo(bx, by - 75);
+  ctx.lineTo(bx - 8, by - 55);
+  ctx.lineTo(bx + 8, by - 55);
+  ctx.closePath();
+  ctx.fill();
+
+  // Gold leaf on towers
+  ctx.fillStyle = '#c8a030';
+  ctx.fillRect(bx - 35, by - 60, 15, 5);
+  ctx.fillRect(bx + 20, by - 60, 15, 5);
+  ctx.restore();
+
+  // Ink outlines
+  ctx.strokeStyle = '#4a2810';
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+
+  // Main keep
+  ctx.beginPath(); ctx.rect(bx - 25, by - 45, 50, 45); ctx.stroke();
+  // Towers
+  ctx.beginPath(); ctx.rect(bx - 35, by - 55, 15, 55); ctx.stroke();
+  ctx.beginPath(); ctx.rect(bx + 20, by - 55, 15, 55); ctx.stroke();
+  // Spire
+  ctx.beginPath(); ctx.moveTo(bx, by - 75); ctx.lineTo(bx - 8, by - 55); ctx.lineTo(bx + 8, by - 55); ctx.closePath(); ctx.stroke();
+  // Battlements
+  ctx.beginPath();
+  ctx.rect(bx - 35, by - 62, 5, 7);
+  ctx.rect(bx - 27, by - 62, 5, 7);
+  ctx.rect(bx + 22, by - 62, 5, 7);
+  ctx.rect(bx + 30, by - 62, 5, 7);
+  ctx.stroke();
+
+  // Gate
+  ctx.beginPath();
+  ctx.arc(bx, by - 8, 7, Math.PI, 0);
+  ctx.lineTo(bx + 7, by);
+  ctx.lineTo(bx - 7, by);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Windows (gold illumination)
+  ctx.fillStyle = '#c8a030';
+  ctx.globalAlpha = 0.6;
+  ctx.fillRect(bx - 15, by - 35, 5, 6);
+  ctx.fillRect(bx + 10, by - 35, 5, 6);
+  ctx.fillRect(bx - 30, by - 40, 4, 5);
+  ctx.fillRect(bx + 25, by - 40, 4, 5);
+  ctx.globalAlpha = 1;
+
+  // Floating gold manuscript dots (like gold leaf flecks)
+  for (let i = 0; i < 12; i++) {
+    const dx = px + 15 + Math.random() * (pw - 30);
+    const dy = py + 10 + Math.random() * (ph - 30);
+    ctx.fillStyle = `rgba(200, 160, 48, ${0.15 + Math.random() * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(dx, dy, 0.8 + Math.random() * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Flag (red manuscript accent)
+  ctx.strokeStyle = '#4a2810';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(bx, by - 75);
+  ctx.lineTo(bx, by - 85);
+  ctx.stroke();
+  ctx.fillStyle = '#9b3020';
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(bx, by - 85);
+  ctx.lineTo(bx + 8, by - 82);
+  ctx.lineTo(bx, by - 79);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+
+  // Title in manuscript style
+  ctx.fillStyle = '#4a2810';
+  ctx.font = 'bold italic 13px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('Castle', x + tw/2, y + 158);
+
+  // Decorative text treatment
+  ctx.fillStyle = '#8b6530';
+  ctx.font = '9px Georgia';
+  ctx.fillText('Seat of the King', x + tw/2, y + 172);
+
+  // Corner flourishes
+  ctx.strokeStyle = '#8b6914';
+  ctx.lineWidth = 1;
+  const corners = [[x + 8, y + 8], [x + tw - 8, y + 8], [x + 8, y + th - 8], [x + tw - 8, y + th - 8]];
+  for (const [cx2, cy2] of corners) {
+    ctx.beginPath();
+    ctx.arc(cx2, cy2, 3, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Small ornamental lines near corners
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 14, y + 8); ctx.lineTo(x + 28, y + 8);
+  ctx.moveTo(x + 8, y + 14); ctx.lineTo(x + 8, y + 28);
+  ctx.moveTo(x + tw - 14, y + 8); ctx.lineTo(x + tw - 28, y + 8);
+  ctx.moveTo(x + tw - 8, y + 14); ctx.lineTo(x + tw - 8, y + 28);
+  ctx.stroke();
+}
+
+// Render
+drawParchment();
+
+// Decorative border
+ctx.strokeStyle = '#8b6914';
+ctx.lineWidth = 3;
+ctx.strokeRect(10, 10, 680, 480);
+ctx.strokeStyle = '#a0802080';
+ctx.lineWidth = 1;
+ctx.strokeRect(16, 16, 668, 468);
+
+// Compass rose
+ctx.save();
+ctx.translate(620, 60);
+ctx.strokeStyle = '#5a3a10';
+ctx.lineWidth = 1.5;
+ctx.beginPath();
+ctx.moveTo(0, -20); ctx.lineTo(0, 20);
+ctx.moveTo(-20, 0); ctx.lineTo(20, 0);
+ctx.stroke();
+ctx.fillStyle = '#3a2010';
+ctx.font = 'italic 10px Georgia';
+ctx.textAlign = 'center';
+ctx.fillText('N', 0, -24);
+ctx.fillText('S', 0, 30);
+ctx.fillText('E', 24, 4);
+ctx.fillText('W', -24, 4);
+ctx.restore();
+
+// Title
+ctx.fillStyle = '#3a2010';
+ctx.font = 'italic 18px Georgia';
+ctx.textAlign = 'center';
+ctx.fillText('~ The Realm of Camelot ~', 350, 45);
+
+// Draw simple outline buildings (current style)
+drawCastleOutline(150, 200);
+drawTempleOutline(380, 190);
+drawMarketOutline(550, 280);
+
+// Draw sepia manuscript tooltip
+drawSepiaTooltip(210, 260);
+
+// Annotation
+ctx.fillStyle = '#3a2010';
+ctx.font = '12px Georgia';
+ctx.textAlign = 'left';
+ctx.fillText('Tooltip renders in parchment/manuscript', 30, 460);
+ctx.fillText('sepia style with gold-leaf accents', 30, 475);
+</script>
+</body>
+</html>

@@ -106,9 +106,20 @@ const STYLE_TOOLTIP_MODE = new TextStyle({
   fontStyle: "italic",
 });
 
-// ---------------------------------------------------------------------------
-// Color helpers
-// ---------------------------------------------------------------------------
+// "Coming Soon" gets a dimmer, silver-tinted style
+const STYLE_TOOLTIP_MODE_COMING_SOON = new TextStyle({
+  fontFamily: "Georgia, serif",
+  fontSize: 11,
+  fill: 0x888899,
+  fontStyle: "italic",
+});
+
+const STYLE_TOOLTIP_TITLE_COMING_SOON = new TextStyle({
+  fontFamily: "Georgia, serif",
+  fontSize: 14,
+  fill: 0x999999,
+  fontWeight: "bold",
+});
 
 // ---------------------------------------------------------------------------
 // Map data
@@ -223,6 +234,52 @@ function generateTrees(): TreeData[] {
 }
 
 // ---------------------------------------------------------------------------
+// Constellation data (seeded for consistency)
+// ---------------------------------------------------------------------------
+
+interface StarData { x: number; y: number; size: number; brightness: number; }
+
+function generateConstellations(): { stars: StarData[]; lines: [number, number][] } {
+  const rng = seededRandom(777);
+  const stars: StarData[] = [];
+  const lines: [number, number][] = [];
+
+  // Scatter 60 background stars
+  for (let i = 0; i < 60; i++) {
+    stars.push({
+      x: rng(), y: rng(),
+      size: 0.5 + rng() * 1.5,
+      brightness: 0.15 + rng() * 0.35,
+    });
+  }
+
+  // 3 constellation patterns (groups of connected stars)
+  const constellations = [
+    // Top-left: Orion-like
+    [[0.08, 0.12], [0.12, 0.08], [0.15, 0.14], [0.11, 0.18], [0.14, 0.22]],
+    // Top-right: Crown
+    [[0.82, 0.06], [0.86, 0.04], [0.90, 0.06], [0.92, 0.10], [0.88, 0.12], [0.84, 0.12]],
+    // Bottom-left: Sword
+    [[0.06, 0.82], [0.08, 0.86], [0.10, 0.90], [0.09, 0.94], [0.12, 0.88]],
+  ];
+
+  for (const cons of constellations) {
+    const startIdx = stars.length;
+    for (const [x, y] of cons) {
+      stars.push({ x, y, size: 1.5 + rng() * 1.0, brightness: 0.4 + rng() * 0.3 });
+    }
+    // Connect sequentially
+    for (let i = 0; i < cons.length - 1; i++) {
+      lines.push([startIdx + i, startIdx + i + 1]);
+    }
+  }
+
+  return { stars, lines };
+}
+
+const CONSTELLATION_DATA = generateConstellations();
+
+// ---------------------------------------------------------------------------
 // Wall towers
 // ---------------------------------------------------------------------------
 
@@ -241,6 +298,18 @@ function getWallTowers(): TowerData[] {
 }
 
 // ---------------------------------------------------------------------------
+// LRU Renderer Cache
+// ---------------------------------------------------------------------------
+
+interface RendererEntry {
+  type: string;
+  renderer: { container: Container; tick(dt: number, phase: GamePhase): void };
+  lastUsed: number;
+}
+
+const LRU_MAX = 4;
+
+// ---------------------------------------------------------------------------
 // CamelotHubScreen
 // ---------------------------------------------------------------------------
 
@@ -249,27 +318,40 @@ export class CamelotHubScreen {
 
   private _vm!: ViewManager;
   private _bg!: Graphics;
+  private _constellationGfx!: Graphics;
   private _particles!: AmbientParticles;
   private _runes!: RuneCorners;
   private _mapContainer!: Container;  // holds the parchment map (scaled to fit)
   private _mapGfx!: Graphics;
+  private _mapAnimGfx!: Graphics;     // animated overlay (river ripples, torches)
   private _hoveredBuilding: MapBuilding | null = null;
   private _tooltip!: Container;
   private _tooltipTitle!: Text;
   private _tooltipMode!: Text;
   private _tooltipPreview!: Graphics;
   private _tooltipBg!: Graphics;
+  private _tooltipDivider!: Graphics;
+  private _tooltipVignette!: Graphics;
   private _compassContainer!: Container;
   private _compassGlow!: Graphics;
   private _compassTime = 0;
   private _tickerFn: ((ticker: Ticker) => void) | null = null;
   private _onKeyDown: ((e: KeyboardEvent) => void) | null = null;
 
+  // Tooltip fade-in animation
+  private _tooltipFadeT = 0;
+  private _tooltipFading = false;
+  private static readonly TOOLTIP_FADE_DURATION = 0.15; // seconds
+
   // Animated building preview in tooltip
   private _previewRenderer: { container: Container; tick(dt: number, phase: GamePhase): void } | null = null;
   private _previewContainer!: Container;
   private _previewParticles!: AmbientParticles;
   private _previewMask!: Graphics;
+
+  // LRU renderer cache
+  private _rendererCache: RendererEntry[] = [];
+  private _cacheCounter = 0;
 
   private _treesData: TreeData[] = [];
   private _wallTowers: TowerData[] = [];
@@ -295,6 +377,10 @@ export class CamelotHubScreen {
     this._bg = new Graphics();
     this.container.addChild(this._bg);
 
+    // Constellation patterns in the dark border area
+    this._constellationGfx = new Graphics();
+    this.container.addChild(this._constellationGfx);
+
     // Ambient floating particles (same as menu screen)
     this._particles = new AmbientParticles(120);
     this.container.addChild(this._particles.container);
@@ -312,9 +398,14 @@ export class CamelotHubScreen {
     this._mapGfx = new Graphics();
     this._mapContainer.addChild(this._mapGfx);
 
+    // Animated map overlay (river ripples, torch flickers, flag waving)
+    this._mapAnimGfx = new Graphics();
+    this._mapContainer.addChild(this._mapAnimGfx);
+
     // Tooltip (on the map container so it scales with it)
     this._tooltip = new Container();
     this._tooltip.visible = false;
+    this._tooltip.alpha = 0;
     this._tooltipBg = new Graphics();
     this._tooltip.addChild(this._tooltipBg);
     this._tooltipTitle = new Text({ text: "", style: STYLE_TOOLTIP_TITLE });
@@ -323,20 +414,32 @@ export class CamelotHubScreen {
     this._tooltipMode = new Text({ text: "", style: STYLE_TOOLTIP_MODE });
     this._tooltipMode.position.set(10, 28);
     this._tooltip.addChild(this._tooltipMode);
+
+    // Gold divider line between text and preview
+    this._tooltipDivider = new Graphics();
+    this._tooltipDivider.position.set(10, 46);
+    this._tooltip.addChild(this._tooltipDivider);
+
     this._tooltipPreview = new Graphics();
-    this._tooltipPreview.position.set(10, 48);
+    this._tooltipPreview.position.set(10, 52);
     this._tooltip.addChild(this._tooltipPreview);
     this._previewContainer = new Container();
-    this._previewContainer.position.set(10, 48);
+    this._previewContainer.position.set(10, 52);
     // Mask so particles + building don't overflow the preview area
-    this._previewMask = new Graphics().rect(0, 0, 180, 140).fill({ color: 0xffffff });
+    this._previewMask = new Graphics().rect(0, 0, 180, 136).fill({ color: 0xffffff });
     this._previewContainer.addChild(this._previewMask);
     this._previewContainer.mask = this._previewMask;
     // Ambient particles inside preview — only in the dark sky area (top 70%)
     this._previewParticles = new AmbientParticles(20);
-    this._previewParticles.resize(180, 140 * 0.7);
+    this._previewParticles.resize(180, 136 * 0.7);
     this._previewContainer.addChild(this._previewParticles.container);
     this._tooltip.addChild(this._previewContainer);
+
+    // Inner vignette overlay on the preview area
+    this._tooltipVignette = new Graphics();
+    this._tooltipVignette.position.set(10, 52);
+    this._tooltip.addChild(this._tooltipVignette);
+
     this._mapContainer.addChild(this._tooltip);
 
     // Compass rose interactive area (on map container)
@@ -361,8 +464,24 @@ export class CamelotHubScreen {
       const dt = ticker.deltaMS / 1000;
       this._compassTime += dt;
       this._drawCompassGlow();
+      this._drawMapAnimations();
+      this._drawConstellations();
       this._particles.update(dt);
       this._runes.update(dt);
+
+      // Tooltip fade-in animation
+      if (this._tooltipFading && this._tooltip.visible) {
+        this._tooltipFadeT += dt;
+        const progress = Math.min(this._tooltipFadeT / CamelotHubScreen.TOOLTIP_FADE_DURATION, 1);
+        // Ease out quad
+        const ease = 1 - (1 - progress) * (1 - progress);
+        this._tooltip.alpha = ease;
+        this._tooltip.scale.set(0.95 + 0.05 * ease);
+        if (progress >= 1) {
+          this._tooltipFading = false;
+        }
+      }
+
       if (this._tooltip.visible) {
         this._previewParticles.update(dt);
         if (this._previewRenderer) {
@@ -394,11 +513,12 @@ export class CamelotHubScreen {
     this.container.visible = false;
     this._tooltip.visible = false;
     this._hoveredBuilding = null;
-    this._clearPreviewRenderer();
+    this._detachPreviewRenderer();
   }
 
   destroy(): void {
-    this._clearPreviewRenderer();
+    this._detachPreviewRenderer();
+    this._destroyRendererCache();
     if (this._tickerFn) this._vm.app.ticker.remove(this._tickerFn);
     if (this._onKeyDown) window.removeEventListener("keydown", this._onKeyDown);
     this.container.removeFromParent();
@@ -443,6 +563,40 @@ export class CamelotHubScreen {
     // Redraw compass glow
     this._compassGlow.clear();
     this._drawCompassGlow();
+
+    // Draw constellations
+    this._drawConstellations();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Constellation patterns in the dark border
+  // ---------------------------------------------------------------------------
+
+  private _drawConstellations(): void {
+    const g = this._constellationGfx;
+    g.clear();
+
+    const sw = this._vm.screenWidth;
+    const sh = this._vm.screenHeight;
+    const t = this._compassTime;
+
+    const { stars, lines } = CONSTELLATION_DATA;
+
+    // Draw constellation lines first (behind stars)
+    for (const [a, b] of lines) {
+      const sa = stars[a], sb = stars[b];
+      const twinkleA = 0.06 + 0.04 * Math.sin(t * 0.5 + a * 1.3);
+      g.moveTo(sa.x * sw, sa.y * sh).lineTo(sb.x * sw, sb.y * sh)
+        .stroke({ color: 0x6688cc, width: 0.5, alpha: twinkleA });
+    }
+
+    // Draw stars
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      // Subtle twinkle
+      const twinkle = s.brightness * (0.6 + 0.4 * Math.sin(t * (1.0 + i * 0.17) + i * 2.1));
+      g.circle(s.x * sw, s.y * sh, s.size).fill({ color: 0xccddff, alpha: twinkle });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -470,6 +624,13 @@ export class CamelotHubScreen {
     const { mx, my } = this._getMapCoords(e);
     const hit = this._hitTestBuilding(mx, my);
 
+    // Update cursor based on what we're hovering
+    if (hit) {
+      this._mapContainer.cursor = hit.mode ? "pointer" : "help";
+    } else {
+      this._mapContainer.cursor = "default";
+    }
+
     if (hit !== this._hoveredBuilding) {
       this._hoveredBuilding = hit;
       this._drawMap();
@@ -477,7 +638,8 @@ export class CamelotHubScreen {
         this._showTooltip(hit, mx, my);
       } else {
         this._tooltip.visible = false;
-        this._clearPreviewRenderer();
+        this._tooltipFading = false;
+        this._detachPreviewRenderer();
       }
     } else if (hit) {
       this._positionTooltip(mx, my);
@@ -497,19 +659,56 @@ export class CamelotHubScreen {
   // ---------------------------------------------------------------------------
 
   private _showTooltip(b: MapBuilding, mx: number, my: number): void {
+    const isComingSoon = !b.mode;
+
     this._tooltipTitle.text = b.label;
+    this._tooltipTitle.style = isComingSoon ? STYLE_TOOLTIP_TITLE_COMING_SOON : STYLE_TOOLTIP_TITLE;
     this._tooltipMode.text = b.mode ? "\u25b6 " + this._modeLabel(b.mode) : "Coming Soon";
+    this._tooltipMode.style = isComingSoon ? STYLE_TOOLTIP_MODE_COMING_SOON : STYLE_TOOLTIP_MODE;
     this._drawBuildingPreview(b);
 
     const tw = 200, th = 200;
+    const borderColor = isComingSoon ? 0x888899 : 0xdaa520;
+    const bgAlpha = isComingSoon ? 0.88 : 0.95;
     this._tooltipBg.clear()
       .roundRect(0, 0, tw, th, 6)
-      .fill({ color: 0x1e190f, alpha: 0.95 })
+      .fill({ color: 0x1e190f, alpha: bgAlpha })
       .roundRect(0, 0, tw, th, 6)
-      .stroke({ color: 0xdaa520, width: 2 });
+      .stroke({ color: borderColor, width: 2 });
+
+    // Gold divider line between text area and preview
+    const dividerColor = isComingSoon ? 0x666677 : 0xdaa520;
+    this._tooltipDivider.clear()
+      .moveTo(0, 0).lineTo(180, 0)
+      .stroke({ color: dividerColor, width: 1, alpha: 0.5 });
+
+    // Inner vignette overlay on preview
+    this._drawPreviewVignette();
+
+    // Fade-in animation: start from alpha=0, scale=0.95
+    this._tooltip.alpha = 0;
+    this._tooltip.scale.set(0.95);
+    this._tooltipFadeT = 0;
+    this._tooltipFading = true;
 
     this._tooltip.visible = true;
     this._positionTooltip(mx, my);
+  }
+
+  private _drawPreviewVignette(): void {
+    const g = this._tooltipVignette;
+    g.clear();
+    const pw = 180, ph = 136;
+    // Dark edges (top, bottom, left, right) — subtle inner shadow
+    const vigSize = 18;
+    // Top
+    g.rect(0, 0, pw, vigSize).fill({ color: 0x000000, alpha: 0.3 });
+    // Bottom
+    g.rect(0, ph - vigSize, pw, vigSize).fill({ color: 0x000000, alpha: 0.25 });
+    // Left
+    g.rect(0, 0, vigSize, ph).fill({ color: 0x000000, alpha: 0.2 });
+    // Right
+    g.rect(pw - vigSize, 0, vigSize, ph).fill({ color: 0x000000, alpha: 0.2 });
   }
 
   private _positionTooltip(mx: number, my: number): void {
@@ -544,20 +743,48 @@ export class CamelotHubScreen {
   private _drawBuildingPreview(b: MapBuilding): void {
     const g = this._tooltipPreview;
     g.clear();
-    const pw = 180, ph = 140;
+    const pw = 180, ph = 136;
 
     // Dark background matching the menu's night sky
     g.rect(0, 0, pw, ph).fill({ color: 0x0a0a18 });
 
-    // Ground plane (30% at the bottom)
-    g.rect(0, ph * 0.7, pw, ph * 0.3).fill({ color: 0x2a3a1a, alpha: 0.7 });
-    g.moveTo(0, ph * 0.7).lineTo(pw, ph * 0.7).stroke({ color: 0x3a5a2a, width: 1, alpha: 0.5 });
+    // Ground plane with gradient effect (multiple strips fading from dark to green)
+    const groundY = ph * 0.7;
+    const groundH = ph * 0.3;
+    const strips = 6;
+    for (let i = 0; i < strips; i++) {
+      const t = i / strips;
+      const stripY = groundY + groundH * t;
+      const stripH = groundH / strips + 1;
+      // Blend from dark earth to green
+      const alpha = 0.5 + t * 0.3;
+      g.rect(0, stripY, pw, stripH).fill({ color: 0x2a3a1a, alpha });
+    }
+    // Subtle horizon line
+    g.moveTo(0, groundY).lineTo(pw, groundY).stroke({ color: 0x4a6a2a, width: 1, alpha: 0.6 });
 
-    // Clear previous renderer
-    this._clearPreviewRenderer();
+    // Grass blade strokes
+    const grassRng = seededRandom(b.id.length * 13 + 99);
+    for (let i = 0; i < 30; i++) {
+      const gx = grassRng() * pw;
+      const gy = groundY + grassRng() * groundH * 0.5;
+      const gh = 3 + grassRng() * 5;
+      const lean = (grassRng() - 0.5) * 4;
+      g.moveTo(gx, gy).lineTo(gx + lean, gy - gh)
+        .stroke({ color: 0x4a7a2a, width: 0.5, alpha: 0.4 + grassRng() * 0.3 });
+    }
+    // Ground dots (pebbles/texture)
+    for (let i = 0; i < 12; i++) {
+      const dx = grassRng() * pw;
+      const dy = groundY + 4 + grassRng() * (groundH - 8);
+      g.circle(dx, dy, 0.5 + grassRng() * 1).fill({ color: 0x1a2a0a, alpha: 0.3 });
+    }
 
-    // Create appropriate animated renderer
-    const renderer = this._createRendererForType(b.type);
+    // Detach previous renderer (back to cache)
+    this._detachPreviewRenderer();
+
+    // Get renderer from cache or create new one
+    const renderer = this._getOrCreateRenderer(b.type);
     if (renderer) {
       this._previewRenderer = renderer;
       const rc = renderer.container;
@@ -604,14 +831,52 @@ export class CamelotHubScreen {
     }
   }
 
-  private _clearPreviewRenderer(): void {
+  // --- LRU renderer cache ---
+
+  private _getOrCreateRenderer(type: string): { container: Container; tick(dt: number, phase: GamePhase): void } | null {
+    // Check cache first
+    const cached = this._rendererCache.find(e => e.type === type);
+    if (cached) {
+      cached.lastUsed = ++this._cacheCounter;
+      return cached.renderer;
+    }
+
+    // Create new
+    const renderer = this._createRendererForType(type);
+    if (!renderer) return null;
+
+    // Evict LRU if at capacity
+    if (this._rendererCache.length >= LRU_MAX) {
+      // Find least recently used
+      let lruIdx = 0;
+      for (let i = 1; i < this._rendererCache.length; i++) {
+        if (this._rendererCache[i].lastUsed < this._rendererCache[lruIdx].lastUsed) {
+          lruIdx = i;
+        }
+      }
+      const evicted = this._rendererCache.splice(lruIdx, 1)[0];
+      evicted.renderer.container.removeFromParent();
+      evicted.renderer.container.destroy({ children: true });
+    }
+
+    this._rendererCache.push({ type, renderer, lastUsed: ++this._cacheCounter });
+    return renderer;
+  }
+
+  private _detachPreviewRenderer(): void {
     if (this._previewRenderer) {
       this._previewRenderer.container.removeFromParent();
-      this._previewRenderer.container.destroy({ children: true });
       this._previewRenderer = null;
     }
   }
 
+  private _destroyRendererCache(): void {
+    for (const entry of this._rendererCache) {
+      entry.renderer.container.removeFromParent();
+      entry.renderer.container.destroy({ children: true });
+    }
+    this._rendererCache = [];
+  }
 
   // ---------------------------------------------------------------------------
   // Compass glow (flickers)
@@ -629,6 +894,67 @@ export class CamelotHubScreen {
 
     // Hit area (invisible)
     g.circle(0, 0, 40).fill({ color: 0x000000, alpha: 0.001 });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Animated map overlay (river ripples, torch flickers, castle flag)
+  // ---------------------------------------------------------------------------
+
+  private _drawMapAnimations(): void {
+    const g = this._mapAnimGfx;
+    g.clear();
+    const t = this._compassTime;
+
+    // --- Animated river wave lines ---
+    for (let wy = 785; wy < 900; wy += 12) {
+      for (let wx = 0; wx < 1200; wx += 20) {
+        const phase = t * 1.5; // slow drift
+        const y = wy + Math.sin(wx * 0.04 + wy * 0.1 + phase) * 3;
+        const y2 = wy + Math.sin((wx + 10) * 0.04 + wy * 0.1 + phase) * 3;
+        g.moveTo(wx, y).lineTo(wx + 10, y2);
+      }
+      g.stroke({ color: 0x3c5078, width: 0.5, alpha: 0.15 + 0.05 * Math.sin(t * 0.8 + wy * 0.01) });
+    }
+
+    // --- Flickering torches near gates ---
+    const torchPositions = [
+      { x: GATES.south.x - 35, y: GATES.south.y - 10 },
+      { x: GATES.south.x + 35, y: GATES.south.y - 10 },
+      { x: GATES.north.x - 30, y: GATES.north.y + 5 },
+      { x: GATES.north.x + 30, y: GATES.north.y + 5 },
+    ];
+
+    for (let i = 0; i < torchPositions.length; i++) {
+      const tp = torchPositions[i];
+      const flicker = 0.5 + 0.3 * Math.sin(t * 8 + i * 2.3) + 0.2 * Math.sin(t * 13 + i * 4.1);
+      // Flame glow
+      g.circle(tp.x, tp.y - 6, 6).fill({ color: 0xff8800, alpha: flicker * 0.12 });
+      g.circle(tp.x, tp.y - 6, 3).fill({ color: 0xffcc00, alpha: flicker * 0.2 });
+      // Torch body (small line)
+      g.moveTo(tp.x, tp.y).lineTo(tp.x, tp.y - 4).stroke({ color: 0x2a1a0a, width: 1.5 });
+      // Flame tip
+      g.circle(tp.x, tp.y - 5, 1.5).fill({ color: 0xffdd44, alpha: flicker * 0.6 });
+    }
+
+    // --- Tiny flag on castle ---
+    const flagX = 600, flagBaseY = 155;
+    const flagWave = Math.sin(t * 3.5) * 4;
+    const flagWave2 = Math.sin(t * 3.5 + 0.5) * 3;
+    // Pole
+    g.moveTo(flagX, flagBaseY).lineTo(flagX, flagBaseY - 18).stroke({ color: 0x2a1a0a, width: 1 });
+    // Flag shape (waving pennant)
+    g.moveTo(flagX, flagBaseY - 18)
+      .lineTo(flagX + 12 + flagWave, flagBaseY - 15 + flagWave2 * 0.3)
+      .lineTo(flagX + 10 + flagWave * 0.7, flagBaseY - 12)
+      .lineTo(flagX, flagBaseY - 12)
+      .closePath()
+      .fill({ color: 0xaa2222, alpha: 0.7 });
+    g.moveTo(flagX, flagBaseY - 18)
+      .lineTo(flagX + 12 + flagWave, flagBaseY - 15 + flagWave2 * 0.3)
+      .lineTo(flagX + 10 + flagWave * 0.7, flagBaseY - 12)
+      .lineTo(flagX, flagBaseY - 12)
+      .closePath()
+      .stroke({ color: 0x2a1a0a, width: 0.5 });
   }
 
   // ---------------------------------------------------------------------------
@@ -664,7 +990,7 @@ export class CamelotHubScreen {
       g.rect(f.x, f.y, f.w, f.h).stroke({ color: 0x2a1a0a, width: 1, alpha: 0.4 });
     }
 
-    // --- River ---
+    // --- River (static part — bank line and fill) ---
     const rp = RIVER;
     g.moveTo(rp[0].x, rp[0].y);
     for (let i = 1; i < rp.length; i++) g.lineTo(rp[i].x, rp[i].y);
@@ -676,14 +1002,7 @@ export class CamelotHubScreen {
     for (let i = 1; i < rp.length; i++) g.lineTo(rp[i].x, rp[i].y);
     g.stroke({ color: 0x2a1a0a, width: 2 });
 
-    // Wave lines in river
-    for (let wy = 785; wy < 900; wy += 12) {
-      for (let wx = 0; wx < 1200; wx += 20) {
-        const y = wy + Math.sin(wx * 0.04 + wy * 0.1) * 3;
-        g.moveTo(wx, y).lineTo(wx + 10, y + Math.sin((wx + 10) * 0.04 + wy * 0.1) * 3);
-      }
-      g.stroke({ color: 0x2a1a0a, width: 0.5, alpha: 0.2 });
-    }
+    // Static wave lines removed — now animated in _drawMapAnimations
 
     // --- Roads ---
     for (const road of ROADS) {
@@ -803,28 +1122,39 @@ export class CamelotHubScreen {
   private _drawBuildings(g: Graphics, rng: () => number): void {
     const ink = 0x2a1a0a;
     const gold = 0xdaa520;
+    const t = this._compassTime;
 
     for (const b of MAP_BUILDINGS) {
       const isHovered = this._hoveredBuilding?.id === b.id;
       const lineW = isHovered ? 3 : 2;
 
-      // Hover glow
+      // Hover glow — pulsing breathing animation
       if (isHovered) {
-        g.circle(b.x + b.w / 2, b.y + b.h / 2, Math.max(b.w, b.h) * 0.6)
-          .fill({ color: gold, alpha: 0.15 });
+        const pulse = 0.12 + 0.06 * Math.sin(t * 3.0);
+        const glowRadius = Math.max(b.w, b.h) * 0.65;
+        g.circle(b.x + b.w / 2, b.y + b.h / 2, glowRadius)
+          .fill({ color: gold, alpha: pulse });
+        g.circle(b.x + b.w / 2, b.y + b.h / 2, glowRadius * 0.7)
+          .fill({ color: gold, alpha: pulse * 0.5 });
       }
 
+      // --- Ink-wash fills for all buildings ---
       if (b.type === "colosseum") {
-        g.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2).stroke({ color: ink, width: lineW });
-        g.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2 - 15, b.h / 2 - 12).stroke({ color: ink, width: 1 });
-        g.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2 - 30, b.h / 2 - 25).fill({ color: 0xb4a078, alpha: 0.3 });
+        // Stipple fill inside colosseum
+        const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+        this._drawStippleFill(g, cx, cy, b.w / 2 - 5, b.h / 2 - 5, rng, 0.06);
+        g.ellipse(cx, cy, b.w / 2, b.h / 2).stroke({ color: ink, width: lineW });
+        g.ellipse(cx, cy, b.w / 2 - 15, b.h / 2 - 12).stroke({ color: ink, width: 1 });
+        g.ellipse(cx, cy, b.w / 2 - 30, b.h / 2 - 25).fill({ color: 0xb4a078, alpha: 0.3 });
         // Arches
         for (let a = 0; a < 12; a++) {
           const ang = a * Math.PI * 2 / 12;
-          g.circle(b.x + b.w / 2 + Math.cos(ang) * (b.w / 2 - 7), b.y + b.h / 2 + Math.sin(ang) * (b.h / 2 - 6), 3)
+          g.circle(cx + Math.cos(ang) * (b.w / 2 - 7), cy + Math.sin(ang) * (b.h / 2 - 6), 3)
             .fill({ color: ink });
         }
       } else if (b.type === "castle") {
+        // Cross-hatching fill for the keep
+        this._drawCrossHatchRect(g, b.x + 3, b.y + 3, b.w - 6, b.h - 6, 8, 0.08);
         g.rect(b.x, b.y, b.w, b.h).stroke({ color: ink, width: lineW });
         g.rect(b.x + b.w / 2 - 50, b.y + 20, 100, 80).stroke({ color: ink, width: 1 });
         g.rect(b.x + b.w / 2 - 50, b.y + 20, 100, 80).fill({ color: 0xb4a078, alpha: 0.15 });
@@ -834,45 +1164,66 @@ export class CamelotHubScreen {
           g.circle(tx, ty, 8).fill({ color: gold });
         }
       } else if (b.type === "tower") {
+        // Watercolor wash fill for towers
+        g.circle(b.x + b.w / 2, b.y + b.h / 2, b.w / 2 - 2)
+          .fill({ color: 0x8a7a5a, alpha: 0.12 });
         g.circle(b.x + b.w / 2, b.y + b.h / 2, b.w / 2).stroke({ color: ink, width: lineW });
         // Cone
         g.moveTo(b.x + b.w / 2, b.y - 5).lineTo(b.x, b.y + b.h / 2).stroke({ color: ink, width: 1 });
         g.moveTo(b.x + b.w / 2, b.y - 5).lineTo(b.x + b.w, b.y + b.h / 2).stroke({ color: ink, width: 1 });
         g.circle(b.x + b.w / 2, b.y - 5, 4).fill({ color: gold });
       } else if (b.type === "gate") {
+        // Light wash fill
+        g.rect(b.x + 1, b.y + 1, 28, b.h - 2).fill({ color: 0x8a7a5a, alpha: 0.1 });
+        g.rect(b.x + b.w - 29, b.y + 1, 28, b.h - 2).fill({ color: 0x8a7a5a, alpha: 0.1 });
         g.rect(b.x, b.y, 30, b.h).stroke({ color: ink, width: lineW });
         g.rect(b.x + b.w - 30, b.y, 30, b.h).stroke({ color: ink, width: lineW });
-        // moveTo before arc to prevent stray line from previous path position
         g.moveTo(b.x + b.w / 2 - 20, b.y + b.h * 0.6)
           .arc(b.x + b.w / 2, b.y + b.h * 0.6, 20, Math.PI, 0)
           .stroke({ color: ink, width: lineW });
       } else if (b.type === "market") {
+        // Stipple fill for market plaza
+        this._drawStippleRect(g, b.x + 2, b.y + 2, b.w - 4, b.h - 4, rng, 0.05);
         g.rect(b.x, b.y, b.w, b.h).stroke({ color: ink, width: lineW });
         // Stall outlines
         for (let sx = b.x + 15; sx < b.x + b.w - 15; sx += 40) {
           for (let sy = b.y + 15; sy < b.y + b.h - 15; sy += 50) {
+            g.rect(sx, sy, 30, 20).fill({ color: 0x9a8a6a, alpha: 0.08 });
             g.rect(sx, sy, 30, 20).stroke({ color: ink, width: 0.8 });
           }
         }
         g.circle(b.x + b.w / 2, b.y + b.h / 2, 15).stroke({ color: ink, width: 1.5 });
       } else if (b.type === "church") {
+        // Cross-hatching for cathedral
+        this._drawCrossHatchRect(g, b.x + 2, b.y + 2, b.w - 4, b.h - 4, 6, 0.06);
         g.rect(b.x, b.y, b.w, b.h).stroke({ color: ink, width: lineW });
         g.poly([b.x + b.w / 2, b.y - 25, b.x + b.w / 2 - 12, b.y, b.x + b.w / 2 + 12, b.y]).stroke({ color: ink, width: 1.5 });
+        // Stained glass wash
+        g.circle(b.x + b.w / 2, b.y + 30, 10).fill({ color: 0x4466aa, alpha: 0.12 });
+        g.circle(b.x + b.w / 2, b.y + 30, 10).stroke({ color: ink, width: 1 });
         // Cross
         g.moveTo(b.x + b.w / 2, b.y - 35).lineTo(b.x + b.w / 2, b.y - 25).stroke({ color: ink, width: 2 });
         g.moveTo(b.x + b.w / 2 - 5, b.y - 32).lineTo(b.x + b.w / 2 + 5, b.y - 32).stroke({ color: ink, width: 2 });
-        g.circle(b.x + b.w / 2, b.y + 30, 10).stroke({ color: ink, width: 1 });
       } else if (b.type === "garden") {
+        // Watercolor wash for gardens
+        g.rect(b.x + 1, b.y + 1, b.w - 2, b.h - 2).fill({ color: 0x5a7a3a, alpha: 0.08 });
         g.rect(b.x, b.y, b.w, b.h).stroke({ color: ink, width: lineW });
         for (let i = 0; i < 5; i++) {
-          g.circle(b.x + 15 + rng() * 60, b.y + 15 + rng() * 40, 6 + rng() * 4).stroke({ color: ink, width: 0.8 });
+          const cx = b.x + 15 + rng() * 60, cy = b.y + 15 + rng() * 40;
+          const cr = 6 + rng() * 4;
+          g.circle(cx, cy, cr).fill({ color: 0x5a8a3a, alpha: 0.1 });
+          g.circle(cx, cy, cr).stroke({ color: ink, width: 0.8 });
         }
       } else if (b.type === "training") {
+        // Stipple fill
+        this._drawStippleRect(g, b.x + 2, b.y + 2, b.w - 4, b.h - 4, rng, 0.04);
         g.rect(b.x, b.y, b.w, b.h).stroke({ color: ink, width: lineW });
         for (let fx = b.x + 8; fx < b.x + b.w - 5; fx += 12) {
           g.moveTo(fx, b.y).lineTo(fx, b.y + 8).stroke({ color: ink, width: 0.5 });
         }
       } else {
+        // Default: light wash + divider
+        g.rect(b.x + 1, b.y + 1, b.w - 2, b.h - 2).fill({ color: 0x9a8a6a, alpha: 0.08 });
         g.rect(b.x, b.y, b.w, b.h).stroke({ color: ink, width: lineW });
         g.moveTo(b.x, b.y + b.h * 0.35).lineTo(b.x + b.w, b.y + b.h * 0.35).stroke({ color: ink, width: 0.8 });
       }
@@ -881,6 +1232,56 @@ export class CamelotHubScreen {
       if (b.mode) {
         g.circle(b.x + b.w / 2, b.y - 8, 5).fill({ color: gold }).circle(b.x + b.w / 2, b.y - 8, 5).stroke({ color: ink, width: 0.5 });
       }
+    }
+  }
+
+  // --- Ink-wash helpers ---
+
+  /** Draw cross-hatching lines inside a rectangle */
+  private _drawCrossHatchRect(g: Graphics, x: number, y: number, w: number, h: number, spacing: number, alpha: number): void {
+    const ink = 0x2a1a0a;
+    // Diagonal lines (top-left to bottom-right)
+    for (let d = -h; d < w; d += spacing) {
+      const x1 = Math.max(0, d) + x;
+      const y1 = Math.max(0, -d) + y;
+      const x2 = Math.min(w, d + h) + x;
+      const y2 = Math.min(h, -d + w) + y;
+      g.moveTo(x1, y1).lineTo(x2, y2);
+    }
+    g.stroke({ color: ink, width: 0.3, alpha });
+
+    // Opposite diagonal (top-right to bottom-left)
+    for (let d = -h; d < w; d += spacing) {
+      const x1 = x + w - Math.max(0, d);
+      const y1 = y + Math.max(0, -d);
+      const x2 = x + w - Math.min(w, d + h);
+      const y2 = y + Math.min(h, -d + w);
+      g.moveTo(x1, y1).lineTo(x2, y2);
+    }
+    g.stroke({ color: ink, width: 0.3, alpha });
+  }
+
+  /** Draw stipple dots inside a rectangle */
+  private _drawStippleRect(g: Graphics, x: number, y: number, w: number, h: number, rng: () => number, alpha: number): void {
+    const ink = 0x2a1a0a;
+    const count = Math.floor(w * h / 80);
+    for (let i = 0; i < count; i++) {
+      const dx = x + rng() * w;
+      const dy = y + rng() * h;
+      g.circle(dx, dy, 0.5 + rng() * 0.8).fill({ color: ink, alpha: alpha + rng() * 0.04 });
+    }
+  }
+
+  /** Draw stipple dots inside an ellipse */
+  private _drawStippleFill(g: Graphics, cx: number, cy: number, rx: number, ry: number, rng: () => number, alpha: number): void {
+    const ink = 0x2a1a0a;
+    const count = Math.floor(rx * ry * Math.PI / 100);
+    for (let i = 0; i < count; i++) {
+      const angle = rng() * Math.PI * 2;
+      const r = Math.sqrt(rng()); // uniform distribution in circle
+      const dx = cx + Math.cos(angle) * r * rx;
+      const dy = cy + Math.sin(angle) * r * ry;
+      g.circle(dx, dy, 0.5 + rng() * 0.8).fill({ color: ink, alpha: alpha + rng() * 0.04 });
     }
   }
 
@@ -959,13 +1360,23 @@ export class CamelotHubScreen {
       lbl.position.set(b.x + b.w / 2, labelY);
       this._titleContainer.addChild(lbl);
 
+      // Hover underline decoration
+      if (isHovered) {
+        const underGfx = new Graphics();
+        const tw = lbl.width;
+        underGfx.moveTo(b.x + b.w / 2 - tw / 2, labelY + 14)
+          .lineTo(b.x + b.w / 2 + tw / 2, labelY + 14)
+          .stroke({ color: 0xdaa520, width: 1, alpha: 0.6 });
+        this._titleContainer.addChild(underGfx);
+      }
+
       if (b.mode) {
         const mLbl = new Text({
           text: "[ " + this._modeLabel(b.mode) + " ]",
           style: isHovered ? STYLE_MODE_HOVER : STYLE_MODE,
         });
         mLbl.anchor.set(0.5, 0);
-        mLbl.position.set(b.x + b.w / 2, labelY + 12);
+        mLbl.position.set(b.x + b.w / 2, labelY + (isHovered ? 16 : 12));
         this._titleContainer.addChild(mLbl);
       }
     }

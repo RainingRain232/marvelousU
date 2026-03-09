@@ -327,6 +327,12 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
 
+  // Menu screen: back to map returns to the hub
+  menuScreen.onBackToMap = () => {
+    menuScreen.hide();
+    camelotHubScreen.show();
+  };
+
   // ---------------------------------------------------------------------------
   // Leader selection screen
   // ---------------------------------------------------------------------------
