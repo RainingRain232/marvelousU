@@ -106,24 +106,22 @@ export class DuelArenaRenderer {
     if (!this._arena) return;
 
     switch (arenaId) {
-      case "camelot":
-        this._buildCamelot(this._arena, sw, sh);
-        break;
-      case "avalon":
-        this._buildAvalon(this._arena, sw, sh);
-        break;
-      case "excalibur":
-        this._buildExcalibur(this._arena, sw, sh);
-        break;
-      case "broceliande":
-        this._buildBroceliande(this._arena, sw, sh);
-        break;
-      case "tintagel":
-        this._buildTintagel(this._arena, sw, sh);
-        break;
-      default:
-        this._buildGeneric(this._arena, sw, sh);
-        break;
+      case "camelot": this._build_camelot(this._arena, sw, sh); break;
+      case "avalon": this._build_avalon(this._arena, sw, sh); break;
+      case "excalibur": this._build_excalibur(this._arena, sw, sh); break;
+      case "broceliande": this._build_broceliande(this._arena, sw, sh); break;
+      case "tintagel": this._build_tintagel(this._arena, sw, sh); break;
+      case "round_table": this._build_round_table(this._arena, sw, sh); break;
+      case "mordred_throne": this._build_mordred_throne(this._arena, sw, sh); break;
+      case "glastonbury": this._build_glastonbury(this._arena, sw, sh); break;
+      case "orkney": this._build_orkney(this._arena, sw, sh); break;
+      case "lake": this._build_lake(this._arena, sw, sh); break;
+      case "dragon_peak": this._build_dragon_peak(this._arena, sw, sh); break;
+      case "grail_chapel": this._build_grail_chapel(this._arena, sw, sh); break;
+      case "cornwall": this._build_cornwall(this._arena, sw, sh); break;
+      case "shadow_keep": this._build_shadow_keep(this._arena, sw, sh); break;
+      case "camlann": this._build_camlann(this._arena, sw, sh); break;
+      default: this._buildGeneric(this._arena, sw, sh); break;
     }
 
     this.container.addChild(this._staticGfx);
@@ -134,24 +132,22 @@ export class DuelArenaRenderer {
     if (!this._arena) return;
     this._animGfx.clear();
     switch (this._arenaId) {
-      case "camelot":
-        this._updateCamelot(time);
-        break;
-      case "avalon":
-        this._updateAvalon(time);
-        break;
-      case "excalibur":
-        this._updateExcalibur(time);
-        break;
-      case "broceliande":
-        this._updateBroceliande(time);
-        break;
-      case "tintagel":
-        this._updateTintagel(time);
-        break;
-      default:
-        this._updateGeneric(time);
-        break;
+      case "camelot": this._update_camelot(time); break;
+      case "avalon": this._update_avalon(time); break;
+      case "excalibur": this._update_excalibur(time); break;
+      case "broceliande": this._update_broceliande(time); break;
+      case "tintagel": this._update_tintagel(time); break;
+      case "round_table": this._update_round_table(time); break;
+      case "mordred_throne": this._update_mordred_throne(time); break;
+      case "glastonbury": this._update_glastonbury(time); break;
+      case "orkney": this._update_orkney(time); break;
+      case "lake": this._update_lake(time); break;
+      case "dragon_peak": this._update_dragon_peak(time); break;
+      case "grail_chapel": this._update_grail_chapel(time); break;
+      case "cornwall": this._update_cornwall(time); break;
+      case "shadow_keep": this._update_shadow_keep(time); break;
+      case "camlann": this._update_camlann(time); break;
+      default: this._updateGeneric(time); break;
     }
   }
 
@@ -163,7 +159,7 @@ export class DuelArenaRenderer {
   // CAMELOT COURTYARD
   // =========================================================================
 
-  private _buildCamelot(a: DuelArenaDef, sw: number, sh: number): void {
+  private _build_camelot(a: DuelArenaDef, sw: number, sh: number): void {
     const g = this._staticGfx;
     const floorY = this._floorY;
 
@@ -414,7 +410,7 @@ export class DuelArenaRenderer {
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
-  private _updateCamelot(time: number): void {
+  private _update_camelot(time: number): void {
     const g = this._animGfx;
 
     // Animated banners (gentle sway)
@@ -482,7 +478,7 @@ export class DuelArenaRenderer {
   // AVALON SHORE
   // =========================================================================
 
-  private _buildAvalon(a: DuelArenaDef, sw: number, sh: number): void {
+  private _build_avalon(a: DuelArenaDef, sw: number, sh: number): void {
     const g = this._staticGfx;
     const floorY = this._floorY;
 
@@ -743,7 +739,7 @@ export class DuelArenaRenderer {
     g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
   }
 
-  private _updateAvalon(time: number): void {
+  private _update_avalon(time: number): void {
     const g = this._animGfx;
     const sw = this._sw;
 
@@ -809,7 +805,7 @@ export class DuelArenaRenderer {
   // EXCALIBUR'S STONE
   // =========================================================================
 
-  private _buildExcalibur(a: DuelArenaDef, sw: number, sh: number): void {
+  private _build_excalibur(a: DuelArenaDef, sw: number, sh: number): void {
     const g = this._staticGfx;
     const floorY = this._floorY;
 
@@ -1162,7 +1158,7 @@ export class DuelArenaRenderer {
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
   }
 
-  private _updateExcalibur(time: number): void {
+  private _update_excalibur(time: number): void {
     const g = this._animGfx;
     const sw = this._sw;
     const floorY = this._floorY;
@@ -1247,6 +1243,1585 @@ export class DuelArenaRenderer {
   }
 
   // =========================================================================
+  // Helper: draw a sky gradient from arena palette
+  // =========================================================================
+
+  private _drawSkyGradient(g: Graphics, a: DuelArenaDef, sw: number, floorY: number, bands = 12): void {
+    for (let i = 0; i < bands; i++) {
+      const t = i / bands;
+      const r1 = (a.skyTop >> 16) & 0xff, g1 = (a.skyTop >> 8) & 0xff, b1 = a.skyTop & 0xff;
+      const r2 = (a.skyBottom >> 16) & 0xff, g2 = (a.skyBottom >> 8) & 0xff, b2 = a.skyBottom & 0xff;
+      const col = (Math.round(r1 + (r2 - r1) * t) << 16) |
+                  (Math.round(g1 + (g2 - g1) * t) << 8) |
+                   Math.round(b1 + (b2 - b1) * t);
+      g.rect(0, floorY * t, sw, floorY / bands + 1);
+      g.fill({ color: col });
+    }
+  }
+
+  // =========================================================================
+  // THE ROUND TABLE — Grand hall interior, circular table, candles, tapestries
+  // =========================================================================
+
+  private _build_round_table(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    // Dark interior ceiling (no sky – indoors)
+    g.rect(0, 0, sw, floorY);
+    g.fill({ color: a.skyTop });
+    // Warm ambient light gradient from below
+    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    g.fill({ color: 0x332211, alpha: 0.3 });
+
+    // Vaulted ceiling arches
+    for (let i = 0; i < 6; i++) {
+      const cx = sw * (0.1 + i * 0.16);
+      g.arc(cx, floorY * 0.08, sw * 0.09, 0, Math.PI);
+      g.stroke({ color: 0x3a2a22, width: 8 });
+      g.arc(cx, floorY * 0.08, sw * 0.09, 0, Math.PI);
+      g.stroke({ color: 0x4a3a30, width: 4 });
+    }
+    // Ceiling keystone line
+    g.moveTo(0, floorY * 0.08);
+    g.lineTo(sw, floorY * 0.08);
+    g.stroke({ color: 0x4a3a30, width: 3 });
+
+    // Back wall
+    const wallY = floorY * 0.15;
+    g.rect(0, wallY, sw, floorY - wallY);
+    g.fill({ color: 0x443322 });
+    // Stone texture
+    for (let y = wallY + 10; y < floorY; y += 16) {
+      g.moveTo(0, y).lineTo(sw, y);
+      g.stroke({ color: 0x3a2a1a, width: 0.6, alpha: 0.4 });
+    }
+    let sRow = 0;
+    for (let y = wallY; y < floorY; y += 16) {
+      const off = (sRow % 2) * 20;
+      for (let x = off; x < sw; x += 40) {
+        g.moveTo(x, y).lineTo(x, y + 16);
+        g.stroke({ color: 0x3a2a1a, width: 0.5, alpha: 0.3 });
+      }
+      sRow++;
+    }
+
+    // Large tapestries on back wall
+    const tapestryXs = [sw * 0.12, sw * 0.32, sw * 0.68, sw * 0.88];
+    const tapColors = [0xaa2222, 0x2244aa, 0xaa2222, 0x2244aa];
+    for (let i = 0; i < tapestryXs.length; i++) {
+      const tx = tapestryXs[i];
+      const ty = wallY + 20;
+      const tw = 40;
+      const th = 80;
+      // Rod
+      g.rect(tx - tw / 2 - 4, ty - 4, tw + 8, 4);
+      g.fill({ color: 0x8b7355 });
+      // Tapestry body
+      g.rect(tx - tw / 2, ty, tw, th);
+      g.fill({ color: tapColors[i] });
+      // Gold border
+      g.rect(tx - tw / 2, ty, tw, th);
+      g.stroke({ color: a.accentColor, width: 2 });
+      // Central emblem (shield shape)
+      g.moveTo(tx, ty + 15);
+      g.lineTo(tx - 10, ty + 25);
+      g.lineTo(tx - 10, ty + 45);
+      g.lineTo(tx, ty + 55);
+      g.lineTo(tx + 10, ty + 45);
+      g.lineTo(tx + 10, ty + 25);
+      g.closePath();
+      g.fill({ color: a.accentColor, alpha: 0.5 });
+      // Fringe at bottom
+      for (let fx = tx - tw / 2 + 3; fx < tx + tw / 2; fx += 5) {
+        g.moveTo(fx, ty + th);
+        g.lineTo(fx, ty + th + 6);
+        g.stroke({ color: a.accentColor, width: 1, alpha: 0.6 });
+      }
+      // Register for banner sway animation
+      this._banners.push({
+        x: tx - tw / 2, y: ty, width: tw, height: th,
+        phase: i * 1.5, color: tapColors[i], trimColor: a.accentColor,
+      });
+    }
+
+    // Round table in background (perspective ellipse)
+    const tableX = sw * 0.5;
+    const tableY = floorY * 0.72;
+    const tableRX = sw * 0.22;
+    const tableRY = 18;
+    // Table shadow
+    g.ellipse(tableX, tableY + 6, tableRX + 4, tableRY + 2);
+    g.fill({ color: 0x000000, alpha: 0.2 });
+    // Table body (thick wooden ring)
+    g.ellipse(tableX, tableY, tableRX, tableRY);
+    g.fill({ color: 0x5a3a1a });
+    g.ellipse(tableX, tableY, tableRX, tableRY);
+    g.stroke({ color: 0x4a2a0a, width: 3 });
+    // Inner gap (the round table's open center)
+    g.ellipse(tableX, tableY, tableRX * 0.65, tableRY * 0.6);
+    g.fill({ color: 0x443322 });
+    // Table highlight
+    g.ellipse(tableX, tableY - 2, tableRX * 0.9, tableRY * 0.5);
+    g.stroke({ color: 0x7a5a3a, width: 1, alpha: 0.4 });
+
+    // Chairs around the table (small rectangles)
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2;
+      const cx = tableX + Math.cos(angle) * (tableRX + 14);
+      const cy = tableY + Math.sin(angle) * (tableRY + 10);
+      g.roundRect(cx - 4, cy - 6, 8, 12, 2);
+      g.fill({ color: 0x4a2a12 });
+    }
+
+    // Candelabras on table
+    const candleXs = [tableX - tableRX * 0.4, tableX, tableX + tableRX * 0.4];
+    for (const cx of candleXs) {
+      // Base
+      g.rect(cx - 3, tableY - 10, 6, 10);
+      g.fill({ color: 0x8b7355 });
+      // Candle
+      g.rect(cx - 1.5, tableY - 20, 3, 10);
+      g.fill({ color: 0xeeddcc });
+      this._flames.push({ x: cx, y: tableY - 24, baseRadius: 4, phase: cx * 0.2 });
+    }
+
+    // Wall sconce torches
+    const sconces = [sw * 0.04, sw * 0.22, sw * 0.5, sw * 0.78, sw * 0.96];
+    for (const sx of sconces) {
+      const sy = wallY + 50;
+      g.rect(sx - 2, sy, 4, 15);
+      g.fill({ color: 0x3a3a3a });
+      g.rect(sx - 5, sy + 10, 10, 3);
+      g.fill({ color: 0x3a3a3a });
+      g.rect(sx - 1.5, sy - 8, 3, 12);
+      g.fill({ color: 0x6b4c2a });
+      this._flames.push({ x: sx, y: sy - 12, baseRadius: 5, phase: sx * 0.15 });
+      // Glow
+      for (let r = 35; r > 0; r -= 5) {
+        g.circle(sx, sy - 12, r);
+        g.fill({ color: 0xff8833, alpha: 0.006 });
+      }
+    }
+
+    // Stone floor with rich tiles
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 3);
+    g.fill({ color: a.groundHighlight, alpha: 0.5 });
+    // Tile pattern
+    let tRow = 0;
+    for (let y = floorY + 2; y < sh; y += 20) {
+      const off = (tRow % 2) * 20;
+      for (let x = off; x < sw; x += 40) {
+        g.roundRect(x + 1, y + 1, 38, 18, 1);
+        g.stroke({ color: a.groundHighlight, width: 0.5, alpha: 0.2 });
+        // Alternating dark tiles
+        if ((Math.floor(x / 40) + tRow) % 2 === 0) {
+          g.roundRect(x + 1, y + 1, 38, 18, 1);
+          g.fill({ color: 0x000000, alpha: 0.06 });
+        }
+      }
+      tRow++;
+    }
+
+    // Fog / warm ambient
+    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+  }
+
+  private _update_round_table(time: number): void {
+    const g = this._animGfx;
+    // Flames
+    for (const f of this._flames) {
+      const flicker = Math.sin(time * 8 + f.phase) * 2;
+      const flicker2 = Math.cos(time * 12 + f.phase * 1.7) * 1.5;
+      g.circle(f.x + flicker2 * 0.3, f.y - 2, f.baseRadius + 3 + Math.sin(time * 5 + f.phase) * 1);
+      g.fill({ color: 0xff6600, alpha: 0.12 });
+      g.ellipse(f.x + flicker2 * 0.5, f.y - flicker * 0.5, f.baseRadius, f.baseRadius + 2 + flicker);
+      g.fill({ color: 0xff6611, alpha: 0.7 });
+      g.ellipse(f.x, f.y - 1, f.baseRadius * 0.5, f.baseRadius + flicker * 0.3);
+      g.fill({ color: 0xffdd44, alpha: 0.9 });
+      g.circle(f.x, f.y + 1, 1.5);
+      g.fill({ color: 0xffffcc, alpha: 0.9 });
+    }
+    // Subtle tapestry sway
+    for (const b of this._banners) {
+      const sway = Math.sin(time * 0.8 + b.phase) * 1.5;
+      // Just re-draw slight highlight shift
+      g.rect(b.x + sway * 0.3, b.y + b.height * 0.3, b.width * 0.3, b.height * 0.4);
+      g.fill({ color: 0xffffff, alpha: 0.02 + Math.sin(time + b.phase) * 0.01 });
+    }
+  }
+
+  // =========================================================================
+  // MORDRED'S THRONE — Dark corrupted throne room, purple flames, cracked floor
+  // =========================================================================
+
+  private _build_mordred_throne(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    // Very dark interior
+    this._drawSkyGradient(g, a, sw, floorY, 10);
+
+    // Back wall — dark stone with purple veins
+    const wallY = floorY * 0.2;
+    g.rect(0, wallY, sw, floorY - wallY);
+    g.fill({ color: 0x1a1122 });
+    // Stone texture
+    for (let y = wallY + 12; y < floorY; y += 14) {
+      g.moveTo(0, y).lineTo(sw, y);
+      g.stroke({ color: 0x151020, width: 0.7, alpha: 0.5 });
+    }
+    // Purple corruption veins on walls
+    const veins = [
+      [sw * 0.1, wallY + 30, sw * 0.15, floorY - 10],
+      [sw * 0.3, wallY + 50, sw * 0.28, floorY - 20],
+      [sw * 0.7, wallY + 20, sw * 0.72, floorY - 15],
+      [sw * 0.9, wallY + 40, sw * 0.88, floorY - 10],
+    ];
+    for (const [x1, y1, x2, y2] of veins) {
+      g.moveTo(x1, y1);
+      g.quadraticCurveTo(x1 + 20, (y1 + y2) / 2, x2, y2);
+      g.stroke({ color: 0x6622aa, width: 2, alpha: 0.3 });
+      g.moveTo(x1 + 2, y1 + 5);
+      g.quadraticCurveTo(x1 + 18, (y1 + y2) / 2 + 10, x2 - 5, y2);
+      g.stroke({ color: 0x8833cc, width: 1, alpha: 0.2 });
+    }
+
+    // Massive dark throne in center background
+    const throneX = sw * 0.5;
+    const throneY = wallY + 20;
+    // Throne back (tall, pointed)
+    g.moveTo(throneX - 35, floorY - 5);
+    g.lineTo(throneX - 30, throneY + 30);
+    g.lineTo(throneX - 20, throneY);
+    g.lineTo(throneX - 8, throneY - 20);
+    g.lineTo(throneX, throneY - 30);
+    g.lineTo(throneX + 8, throneY - 20);
+    g.lineTo(throneX + 20, throneY);
+    g.lineTo(throneX + 30, throneY + 30);
+    g.lineTo(throneX + 35, floorY - 5);
+    g.closePath();
+    g.fill({ color: 0x1a1025 });
+    g.moveTo(throneX - 35, floorY - 5);
+    g.lineTo(throneX - 30, throneY + 30);
+    g.lineTo(throneX - 20, throneY);
+    g.lineTo(throneX - 8, throneY - 20);
+    g.lineTo(throneX, throneY - 30);
+    g.lineTo(throneX + 8, throneY - 20);
+    g.lineTo(throneX + 20, throneY);
+    g.lineTo(throneX + 30, throneY + 30);
+    g.lineTo(throneX + 35, floorY - 5);
+    g.stroke({ color: 0x331155, width: 2 });
+    // Throne seat
+    g.rect(throneX - 22, floorY * 0.6, 44, 14);
+    g.fill({ color: 0x221133 });
+    // Skull motifs
+    for (const sx of [throneX - 15, throneX + 15]) {
+      g.circle(sx, throneY + 40, 5);
+      g.fill({ color: 0x443355 });
+      g.circle(sx - 2, throneY + 38, 1.2);
+      g.fill({ color: 0x220033 });
+      g.circle(sx + 2, throneY + 38, 1.2);
+      g.fill({ color: 0x220033 });
+    }
+    // Glowing eye on throne top
+    g.circle(throneX, throneY - 22, 4);
+    g.fill({ color: a.accentColor, alpha: 0.6 });
+    for (let r = 15; r > 0; r -= 3) {
+      g.circle(throneX, throneY - 22, r);
+      g.fill({ color: a.accentColor, alpha: 0.01 });
+    }
+
+    // Pillars
+    for (const px of [sw * 0.15, sw * 0.85]) {
+      g.rect(px - 12, wallY, 24, floorY - wallY);
+      g.fill({ color: 0x1a1025 });
+      g.rect(px - 14, wallY, 28, 10);
+      g.fill({ color: 0x221133 });
+      g.rect(px - 14, floorY - 10, 28, 10);
+      g.fill({ color: 0x221133 });
+      // Purple rune on pillar
+      g.circle(px, wallY + (floorY - wallY) * 0.4, 6);
+      g.fill({ color: a.accentColor, alpha: 0.2 });
+      g.circle(px, wallY + (floorY - wallY) * 0.4, 3);
+      g.fill({ color: a.accentColor, alpha: 0.4 });
+    }
+
+    // Purple flame braziers
+    for (const bx of [sw * 0.25, sw * 0.75]) {
+      // Brazier stand
+      g.moveTo(bx - 8, floorY);
+      g.lineTo(bx - 5, floorY - 30);
+      g.lineTo(bx + 5, floorY - 30);
+      g.lineTo(bx + 8, floorY);
+      g.closePath();
+      g.fill({ color: 0x2a1a33 });
+      // Bowl
+      g.arc(bx, floorY - 30, 10, Math.PI, 0);
+      g.fill({ color: 0x331144 });
+      this._flames.push({ x: bx, y: floorY - 38, baseRadius: 7, phase: bx * 0.1 });
+    }
+
+    // Cracked floor
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 3);
+    g.fill({ color: a.groundHighlight, alpha: 0.5 });
+    // Cracks
+    const cracks = [
+      [sw * 0.15, floorY + 3, sw * 0.25, floorY + 15, sw * 0.2, floorY + 25],
+      [sw * 0.4, floorY + 5, sw * 0.5, floorY + 12, sw * 0.55, floorY + 20],
+      [sw * 0.65, floorY + 2, sw * 0.7, floorY + 18, sw * 0.75, floorY + 10],
+      [sw * 0.85, floorY + 8, sw * 0.9, floorY + 20, sw * 0.88, floorY + 28],
+    ];
+    for (const [x1, y1, x2, y2, x3, y3] of cracks) {
+      g.moveTo(x1, y1);
+      g.lineTo(x2, y2);
+      g.lineTo(x3, y3);
+      g.stroke({ color: 0x110015, width: 1.5, alpha: 0.6 });
+      // Purple glow in cracks
+      g.moveTo(x1, y1);
+      g.lineTo(x2, y2);
+      g.stroke({ color: a.accentColor, width: 0.8, alpha: 0.2 });
+    }
+
+    // Register purple smoke particles
+    for (let i = 0; i < 20; i++) {
+      this._particles.push({
+        x: Math.random() * sw, y: floorY * 0.5 + Math.random() * floorY * 0.4,
+        vx: (Math.random() - 0.5) * 0.15, vy: -0.1 - Math.random() * 0.15,
+        radius: 1.5 + Math.random() * 2, alpha: 0.15 + Math.random() * 0.2,
+        phase: Math.random() * Math.PI * 2, color: a.accentColor,
+      });
+    }
+    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+  }
+
+  private _update_mordred_throne(time: number): void {
+    const g = this._animGfx;
+    // Purple flames
+    for (const f of this._flames) {
+      const flicker = Math.sin(time * 7 + f.phase) * 2.5;
+      const flicker2 = Math.cos(time * 11 + f.phase * 1.5) * 1.5;
+      g.circle(f.x + flicker2 * 0.3, f.y - 2, f.baseRadius + 5 + Math.sin(time * 4 + f.phase) * 2);
+      g.fill({ color: 0x6622cc, alpha: 0.12 });
+      g.ellipse(f.x + flicker2 * 0.5, f.y - flicker * 0.4, f.baseRadius, f.baseRadius + 3 + flicker);
+      g.fill({ color: 0x7733dd, alpha: 0.65 });
+      g.ellipse(f.x, f.y, f.baseRadius * 0.5, f.baseRadius + flicker * 0.3);
+      g.fill({ color: 0xcc66ff, alpha: 0.85 });
+      g.circle(f.x, f.y + 1, 2);
+      g.fill({ color: 0xeeccff, alpha: 0.9 });
+    }
+    // Floating purple particles
+    for (const p of this._particles) {
+      p.x += p.vx + Math.sin(time * 1.2 + p.phase) * 0.15;
+      p.y += p.vy;
+      if (p.y < this._floorY * 0.2) { p.y = this._floorY * 0.9; p.x = Math.random() * this._sw; }
+      const pulse = p.alpha * (0.4 + Math.sin(time * 2 + p.phase) * 0.4);
+      g.circle(p.x, p.y, p.radius + 2);
+      g.fill({ color: p.color, alpha: pulse * 0.15 });
+      g.circle(p.x, p.y, p.radius);
+      g.fill({ color: p.color, alpha: pulse });
+    }
+    // Pulsing throne eye
+    const eyePulse = 0.3 + Math.sin(time * 1.5) * 0.2;
+    g.circle(this._sw * 0.5, this._floorY * 0.2 + 20 - 22, 6);
+    g.fill({ color: 0xcc44ff, alpha: eyePulse });
+  }
+
+  // =========================================================================
+  // GLASTONBURY ABBEY — Ruined abbey, broken arches, holy light
+  // =========================================================================
+
+  private _build_glastonbury(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    this._drawSkyGradient(g, a, sw, floorY);
+    // Hazy golden horizon
+    g.rect(0, floorY * 0.7, sw, floorY * 0.3);
+    g.fill({ color: 0xddcc88, alpha: 0.08 });
+
+    // Rolling green hills in background
+    g.moveTo(0, floorY * 0.6);
+    g.quadraticCurveTo(sw * 0.15, floorY * 0.5, sw * 0.3, floorY * 0.55);
+    g.quadraticCurveTo(sw * 0.5, floorY * 0.48, sw * 0.7, floorY * 0.53);
+    g.quadraticCurveTo(sw * 0.85, floorY * 0.5, sw, floorY * 0.58);
+    g.lineTo(sw, floorY * 0.7);
+    g.lineTo(0, floorY * 0.7);
+    g.closePath();
+    g.fill({ color: 0x557744, alpha: 0.35 });
+
+    // Abbey ruins — tall broken arches
+    const archPositions = [sw * 0.15, sw * 0.35, sw * 0.55, sw * 0.75];
+    for (let i = 0; i < archPositions.length; i++) {
+      const ax = archPositions[i];
+      const archH = 100 + (i % 2) * 20;
+      const pillarW = 12;
+      // Left pillar
+      g.rect(ax - 20, floorY - archH, pillarW, archH);
+      g.fill({ color: 0x8a8a7a });
+      // Right pillar
+      g.rect(ax + 8, floorY - archH + (i % 2) * 15, pillarW, archH - (i % 2) * 15);
+      g.fill({ color: 0x8a8a7a });
+      // Pointed gothic arch (if not broken)
+      if (i % 2 === 0) {
+        g.moveTo(ax - 20, floorY - archH);
+        g.quadraticCurveTo(ax - 6, floorY - archH - 25, ax + 8, floorY - archH);
+        g.stroke({ color: 0x8a8a7a, width: 10 });
+      }
+      // Stone texture on pillars
+      for (let y = floorY - archH + 5; y < floorY; y += 12) {
+        g.moveTo(ax - 20, y).lineTo(ax - 20 + pillarW, y);
+        g.stroke({ color: 0x7a7a6a, width: 0.5, alpha: 0.4 });
+      }
+    }
+
+    // Rose window (circular, broken) in center
+    const wX = sw * 0.5;
+    const wY = floorY * 0.35;
+    g.circle(wX, wY, 28);
+    g.stroke({ color: 0x8a8a7a, width: 6 });
+    g.circle(wX, wY, 25);
+    g.fill({ color: 0x4466aa, alpha: 0.2 });
+    // Radial spokes
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      g.moveTo(wX, wY);
+      g.lineTo(wX + Math.cos(angle) * 24, wY + Math.sin(angle) * 24);
+      g.stroke({ color: 0x8a8a7a, width: 2 });
+    }
+    // Colored glass fragments
+    const glassColors = [0xaa3333, 0x3355aa, 0xddaa33, 0x33aa55];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + 0.2;
+      const gx = wX + Math.cos(angle) * 14;
+      const gy = wY + Math.sin(angle) * 14;
+      g.circle(gx, gy, 6);
+      g.fill({ color: glassColors[i % glassColors.length], alpha: 0.25 });
+    }
+
+    // Gravestones scattered
+    const graves = [sw * 0.08, sw * 0.22, sw * 0.42, sw * 0.62, sw * 0.82, sw * 0.92];
+    for (const gx of graves) {
+      g.roundRect(gx - 5, floorY - 16, 10, 16, 3);
+      g.fill({ color: 0x777768 });
+      g.roundRect(gx - 5, floorY - 16, 10, 16, 3);
+      g.stroke({ color: 0x666658, width: 1 });
+      // Cross
+      g.rect(gx - 1, floorY - 14, 2, 8);
+      g.fill({ color: 0x888878, alpha: 0.5 });
+      g.rect(gx - 3, floorY - 12, 6, 2);
+      g.fill({ color: 0x888878, alpha: 0.5 });
+    }
+
+    // Overgrown ivy on ruins
+    for (let i = 0; i < 8; i++) {
+      const ix = sw * 0.1 + i * sw * 0.1 + Math.sin(i * 2) * 20;
+      const iy = floorY - 40 - Math.sin(i * 3) * 30;
+      g.moveTo(ix, iy);
+      g.quadraticCurveTo(ix + 5, iy + 15, ix - 3, iy + 25);
+      g.stroke({ color: 0x336622, width: 2, alpha: 0.4 });
+      // Leaf clusters
+      g.circle(ix - 1, iy + 8, 4);
+      g.fill({ color: 0x447733, alpha: 0.35 });
+    }
+
+    // Ground — old stone and grass
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 3);
+    g.fill({ color: a.groundHighlight, alpha: 0.5 });
+    // Grass patches
+    for (let x = 0; x < sw; x += 15) {
+      const blades = 2 + (Math.sin(x * 0.6) > 0 ? 1 : 0);
+      for (let b = 0; b < blades; b++) {
+        g.moveTo(x + b * 3, floorY + 2);
+        g.lineTo(x + b * 3 + (b - 1) * 2, floorY - 4 - b * 2);
+        g.stroke({ color: 0x558844, width: 1, alpha: 0.4 });
+      }
+    }
+
+    // Holy light beams through window
+    g.moveTo(wX - 15, wY + 25);
+    g.lineTo(wX + 15, wY + 25);
+    g.lineTo(wX + 50, floorY);
+    g.lineTo(wX - 50, floorY);
+    g.closePath();
+    g.fill({ color: 0xeedd88, alpha: 0.04 });
+
+    // Particles
+    for (let i = 0; i < 15; i++) {
+      this._particles.push({
+        x: wX - 30 + Math.random() * 60, y: wY + Math.random() * (floorY - wY),
+        vx: (Math.random() - 0.5) * 0.1, vy: 0.05 + Math.random() * 0.1,
+        radius: 0.8 + Math.random() * 1.5, alpha: 0.2 + Math.random() * 0.3,
+        phase: Math.random() * Math.PI * 2, color: 0xeedd88,
+      });
+    }
+    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+  }
+
+  private _update_glastonbury(time: number): void {
+    const g = this._animGfx;
+    // Dust motes in light beams
+    for (const p of this._particles) {
+      p.x += p.vx + Math.sin(time * 0.5 + p.phase) * 0.1;
+      p.y += p.vy;
+      if (p.y > this._floorY) { p.y = this._floorY * 0.35; p.x = this._sw * 0.5 - 30 + Math.random() * 60; }
+      const pulse = p.alpha * (0.5 + Math.sin(time * 1.5 + p.phase) * 0.5);
+      g.circle(p.x, p.y, p.radius + 1);
+      g.fill({ color: p.color, alpha: pulse * 0.2 });
+      g.circle(p.x, p.y, p.radius);
+      g.fill({ color: 0xffffff, alpha: pulse });
+    }
+    // Pulsing window glow
+    const wX = this._sw * 0.5;
+    const wY = this._floorY * 0.35;
+    const pulse = 0.15 + Math.sin(time * 0.8) * 0.05;
+    g.circle(wX, wY, 26);
+    g.fill({ color: 0xeedd88, alpha: pulse });
+  }
+
+  // =========================================================================
+  // ORKNEY WASTES — Desolate windswept wasteland, fog, dead trees
+  // =========================================================================
+
+  private _build_orkney(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    this._drawSkyGradient(g, a, sw, floorY);
+    // Heavy overcast
+    for (let i = 0; i < 12; i++) {
+      const cx = sw * (Math.sin(i * 2.3) * 0.4 + 0.5);
+      const cy = floorY * (0.05 + Math.sin(i * 1.7) * 0.06);
+      const cr = 40 + (i % 4) * 15;
+      g.circle(cx, cy, cr);
+      g.fill({ color: 0x556666, alpha: 0.35 });
+      g.circle(cx + cr * 0.3, cy + 5, cr * 0.7);
+      g.fill({ color: 0x667777, alpha: 0.25 });
+    }
+
+    // Distant barren hills
+    g.moveTo(0, floorY * 0.55);
+    for (let x = 0; x <= sw; x += sw / 8) {
+      g.lineTo(x, floorY * (0.45 + Math.sin(x * 0.005 + 1) * 0.06));
+    }
+    g.lineTo(sw, floorY * 0.65);
+    g.lineTo(0, floorY * 0.65);
+    g.closePath();
+    g.fill({ color: 0x445544, alpha: 0.35 });
+
+    // Closer hills
+    g.moveTo(0, floorY * 0.68);
+    for (let x = 0; x <= sw; x += sw / 10) {
+      g.lineTo(x, floorY * (0.58 + Math.sin(x * 0.008 + 3) * 0.05));
+    }
+    g.lineTo(sw, floorY * 0.75);
+    g.lineTo(0, floorY * 0.75);
+    g.closePath();
+    g.fill({ color: 0x554e40, alpha: 0.45 });
+
+    // Dead trees (skeletal, leafless)
+    const deadTrees = [
+      { x: sw * 0.05, h: 100 }, { x: sw * 0.18, h: 80 },
+      { x: sw * 0.4, h: 60 }, { x: sw * 0.6, h: 70 },
+      { x: sw * 0.82, h: 90 }, { x: sw * 0.95, h: 85 },
+    ];
+    for (const t of deadTrees) {
+      // Trunk
+      g.moveTo(t.x - 3, floorY);
+      g.lineTo(t.x - 1, floorY - t.h);
+      g.lineTo(t.x + 1, floorY - t.h);
+      g.lineTo(t.x + 3, floorY);
+      g.closePath();
+      g.fill({ color: 0x3a3028 });
+      // Branches (crooked, bare)
+      const branchCount = 3 + Math.floor(Math.sin(t.x) * 2);
+      for (let b = 0; b < branchCount; b++) {
+        const by = floorY - t.h + b * (t.h * 0.2);
+        const dir = b % 2 === 0 ? 1 : -1;
+        const bLen = 20 + b * 8;
+        const ex = t.x + dir * bLen;
+        const ey = by - 10 + b * 3;
+        g.moveTo(t.x, by);
+        g.quadraticCurveTo(t.x + dir * bLen * 0.5, by - 15, ex, ey);
+        g.stroke({ color: 0x3a3028, width: 2 - b * 0.3, cap: "round" });
+        // Sub-branches
+        g.moveTo(ex, ey);
+        g.lineTo(ex + dir * 10, ey - 8);
+        g.stroke({ color: 0x3a3028, width: 1, cap: "round", alpha: 0.6 });
+      }
+    }
+
+    // Standing stones (circle of menhirs)
+    const stoneXs = [sw * 0.3, sw * 0.45, sw * 0.55, sw * 0.7];
+    for (const sx of stoneXs) {
+      const sh2 = 25 + Math.sin(sx * 0.1) * 10;
+      g.moveTo(sx - 8, floorY);
+      g.lineTo(sx - 5, floorY - sh2);
+      g.quadraticCurveTo(sx, floorY - sh2 - 5, sx + 5, floorY - sh2);
+      g.lineTo(sx + 8, floorY);
+      g.closePath();
+      g.fill({ color: 0x666655 });
+      g.stroke({ color: 0x555544, width: 1 });
+    }
+
+    // Scattered bones/debris
+    for (let i = 0; i < 8; i++) {
+      const bx = sw * (0.1 + i * 0.1) + Math.sin(i * 5) * 15;
+      const by = floorY + 3;
+      g.moveTo(bx, by);
+      g.lineTo(bx + 8 + i % 3 * 3, by + 1);
+      g.stroke({ color: 0xaaa899, width: 1.5, cap: "round", alpha: 0.4 });
+    }
+
+    // Ground — muddy, barren
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 3);
+    g.fill({ color: a.groundHighlight, alpha: 0.4 });
+    // Muddy puddle patches
+    for (let i = 0; i < 5; i++) {
+      const px = sw * (0.15 + i * 0.18);
+      g.ellipse(px, floorY + 8, 18 + i * 3, 4);
+      g.fill({ color: 0x444435, alpha: 0.3 });
+    }
+
+    // Heavy fog
+    for (let i = 0; i < 5; i++) {
+      this._mistLayers.push({
+        y: floorY - 15 + i * 12, speed: 0.3 + i * 0.1,
+        offset: i * 80, alpha: 0.06 - i * 0.005, height: 30 + i * 8,
+      });
+    }
+    // Wind-blown particles
+    for (let i = 0; i < 15; i++) {
+      this._particles.push({
+        x: Math.random() * sw, y: floorY * 0.5 + Math.random() * floorY * 0.4,
+        vx: 0.5 + Math.random() * 0.5, vy: (Math.random() - 0.5) * 0.2,
+        radius: 0.5 + Math.random() * 1, alpha: 0.1 + Math.random() * 0.15,
+        phase: Math.random() * Math.PI * 2, color: 0x998877,
+      });
+    }
+    g.rect(0, floorY * 0.4, sw, floorY * 0.6);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+  }
+
+  private _update_orkney(time: number): void {
+    const g = this._animGfx;
+    const sw = this._sw;
+    // Wind-blown dust
+    for (const p of this._particles) {
+      p.x += p.vx + Math.sin(time * 2 + p.phase) * 0.3;
+      p.y += p.vy + Math.cos(time * 1.5 + p.phase) * 0.1;
+      if (p.x > sw + 10) { p.x = -10; p.y = this._floorY * 0.5 + Math.random() * this._floorY * 0.4; }
+      const fade = p.alpha * (0.5 + Math.sin(time * 3 + p.phase) * 0.3);
+      g.circle(p.x, p.y, p.radius);
+      g.fill({ color: p.color, alpha: fade });
+    }
+    // Fog drift
+    for (const m of this._mistLayers) {
+      const offset = (time * m.speed * 30 + m.offset) % (sw + 200) - 100;
+      for (let x = -100; x < sw + 100; x += 70) {
+        const mx = (x + offset) % (sw + 200) - 100;
+        g.ellipse(mx, m.y + Math.sin(time * 0.4 + x * 0.01) * 5, 55, m.height / 2);
+        g.fill({ color: 0x998877, alpha: m.alpha });
+      }
+    }
+  }
+
+  // =========================================================================
+  // LAKE SANCTUARY — Serene lake, platforms, waterfalls, willows
+  // =========================================================================
+
+  private _build_lake(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    this._drawSkyGradient(g, a, sw, floorY);
+    // Soft clouds
+    for (let i = 0; i < 8; i++) {
+      const cx = sw * (0.1 + i * 0.12);
+      const cy = floorY * (0.08 + Math.sin(i * 1.5) * 0.04);
+      g.ellipse(cx, cy, 35 + i * 5, 12);
+      g.fill({ color: 0xddeeff, alpha: 0.15 });
+    }
+
+    // Distant mountains
+    g.moveTo(0, floorY * 0.45);
+    g.lineTo(sw * 0.15, floorY * 0.32);
+    g.lineTo(sw * 0.3, floorY * 0.38);
+    g.lineTo(sw * 0.5, floorY * 0.28);
+    g.lineTo(sw * 0.7, floorY * 0.35);
+    g.lineTo(sw * 0.85, floorY * 0.3);
+    g.lineTo(sw, floorY * 0.4);
+    g.lineTo(sw, floorY * 0.5);
+    g.lineTo(0, floorY * 0.5);
+    g.closePath();
+    g.fill({ color: 0x445566, alpha: 0.3 });
+
+    // Lake water body
+    const waterY = floorY * 0.55;
+    g.rect(0, waterY, sw, floorY - waterY);
+    g.fill({ color: 0x2a5577 });
+    // Water surface shimmer
+    g.rect(0, waterY, sw, 4);
+    g.fill({ color: 0x5599bb, alpha: 0.4 });
+
+    // Willow trees on edges
+    for (const tx of [-5, sw * 0.06, sw * 0.92, sw + 5]) {
+      const th = 110 + Math.sin(tx * 0.1) * 20;
+      g.rect(tx - 6, floorY - th, 12, th);
+      g.fill({ color: 0x3a2a18 });
+      g.ellipse(tx, floorY - th, 35, 25);
+      g.fill({ color: 0x336633, alpha: 0.5 });
+      // Drooping branches
+      for (let b = 0; b < 8; b++) {
+        const bx = tx - 30 + b * 8;
+        g.moveTo(bx, floorY - th + 10);
+        g.quadraticCurveTo(bx + 3, floorY - th + 40, bx + 1, floorY - 15);
+        g.stroke({ color: 0x448833, width: 1.2, alpha: 0.35 });
+      }
+    }
+
+    // Stone platform / bridge
+    g.rect(sw * 0.08, floorY - 5, sw * 0.84, 8);
+    g.fill({ color: 0x667766 });
+    g.rect(sw * 0.08, floorY - 5, sw * 0.84, 2);
+    g.fill({ color: 0x778877, alpha: 0.5 });
+    // Pillars under platform
+    for (const px of [sw * 0.2, sw * 0.5, sw * 0.8]) {
+      g.rect(px - 5, floorY + 3, 10, 25);
+      g.fill({ color: 0x667766 });
+    }
+
+    // Lily pads on water
+    for (let i = 0; i < 8; i++) {
+      const lx = sw * (0.1 + i * 0.11);
+      const ly = waterY + 10 + (i % 3) * 8;
+      g.ellipse(lx, ly, 6, 3);
+      g.fill({ color: 0x337733, alpha: 0.5 });
+      if (i % 3 === 0) {
+        g.circle(lx, ly - 3, 2);
+        g.fill({ color: 0xeeddff, alpha: 0.5 });
+      }
+    }
+
+    // Water reflections
+    for (let y = waterY + 8; y < floorY; y += 6) {
+      const alpha = 0.08 - (y - waterY) * 0.001;
+      g.moveTo(0, y);
+      g.lineTo(sw, y);
+      g.stroke({ color: 0x88bbcc, width: 0.8, alpha: Math.max(0.02, alpha) });
+    }
+
+    // Ground
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 3);
+    g.fill({ color: a.groundHighlight, alpha: 0.5 });
+
+    // Ripples
+    for (let i = 0; i < 10; i++) {
+      this._ripples.push({
+        y: waterY + 3 + i * 5, amplitude: 1 + Math.random() * 1.5,
+        frequency: 0.03 + Math.random() * 0.02, speed: 0.6 + Math.random() * 0.4,
+        phase: Math.random() * Math.PI * 2, alpha: 0.1 + Math.random() * 0.08,
+      });
+    }
+    // Sparkle particles
+    for (let i = 0; i < 12; i++) {
+      this._particles.push({
+        x: Math.random() * sw, y: waterY + Math.random() * (floorY - waterY),
+        vx: (Math.random() - 0.5) * 0.1, vy: 0,
+        radius: 1 + Math.random() * 1.5, alpha: 0.2 + Math.random() * 0.3,
+        phase: Math.random() * Math.PI * 2, color: a.accentColor,
+      });
+    }
+    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
+  }
+
+  private _update_lake(time: number): void {
+    const g = this._animGfx;
+    const sw = this._sw;
+    // Water ripples
+    for (const r of this._ripples) {
+      g.moveTo(0, r.y);
+      for (let x = 0; x < sw; x += 4) {
+        g.lineTo(x, r.y + Math.sin(x * r.frequency + time * r.speed + r.phase) * r.amplitude);
+      }
+      g.stroke({ color: 0x88ccdd, width: 0.8, alpha: r.alpha * (0.7 + Math.sin(time * 0.5 + r.phase) * 0.3) });
+    }
+    // Water sparkles
+    for (const p of this._particles) {
+      p.x += Math.sin(time * 0.3 + p.phase) * 0.2;
+      const pulse = p.alpha * (0.3 + Math.sin(time * 3 + p.phase) * 0.7);
+      if (pulse > 0.15) {
+        g.circle(p.x, p.y, p.radius);
+        g.fill({ color: 0xffffff, alpha: pulse });
+      }
+    }
+  }
+
+  // =========================================================================
+  // DRAGON'S PEAK — Volcanic mountain, lava flows, dragon bones, embers
+  // =========================================================================
+
+  private _build_dragon_peak(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    this._drawSkyGradient(g, a, sw, floorY, 10);
+    // Red glow at horizon
+    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
+    g.fill({ color: 0xff4400, alpha: 0.06 });
+
+    // Volcanic mountain background
+    g.moveTo(0, floorY * 0.7);
+    g.lineTo(sw * 0.2, floorY * 0.45);
+    g.lineTo(sw * 0.35, floorY * 0.22);
+    g.lineTo(sw * 0.5, floorY * 0.15);
+    g.lineTo(sw * 0.65, floorY * 0.22);
+    g.lineTo(sw * 0.8, floorY * 0.4);
+    g.lineTo(sw, floorY * 0.65);
+    g.lineTo(sw, floorY);
+    g.lineTo(0, floorY);
+    g.closePath();
+    g.fill({ color: 0x2a1a0a });
+    // Lava glow at peak
+    g.circle(sw * 0.5, floorY * 0.12, 20);
+    g.fill({ color: 0xff4400, alpha: 0.15 });
+    g.circle(sw * 0.5, floorY * 0.12, 10);
+    g.fill({ color: 0xff6622, alpha: 0.25 });
+    // Smoke from peak
+    for (let i = 0; i < 5; i++) {
+      g.circle(sw * 0.5 + i * 8 - 16, floorY * 0.08 - i * 5, 12 + i * 3);
+      g.fill({ color: 0x332222, alpha: 0.2 - i * 0.03 });
+    }
+
+    // Lava rivers flowing down mountain
+    const lavaStreams = [
+      { x1: sw * 0.45, y1: floorY * 0.2, x2: sw * 0.3, y2: floorY * 0.65 },
+      { x1: sw * 0.55, y1: floorY * 0.2, x2: sw * 0.68, y2: floorY * 0.6 },
+    ];
+    for (const ls of lavaStreams) {
+      g.moveTo(ls.x1, ls.y1);
+      g.quadraticCurveTo((ls.x1 + ls.x2) / 2 + 10, (ls.y1 + ls.y2) / 2, ls.x2, ls.y2);
+      g.stroke({ color: 0xff4400, width: 4, alpha: 0.3 });
+      g.moveTo(ls.x1, ls.y1);
+      g.quadraticCurveTo((ls.x1 + ls.x2) / 2 + 10, (ls.y1 + ls.y2) / 2, ls.x2, ls.y2);
+      g.stroke({ color: 0xff8844, width: 2, alpha: 0.4 });
+    }
+
+    // Dragon bones (ribs and skull)
+    const boneX = sw * 0.2;
+    const boneY = floorY - 5;
+    // Spine
+    g.moveTo(boneX - 40, boneY);
+    g.quadraticCurveTo(boneX, boneY - 15, boneX + 50, boneY - 5);
+    g.stroke({ color: 0xccbb99, width: 4, cap: "round" });
+    // Ribs
+    for (let i = 0; i < 5; i++) {
+      const rx = boneX - 20 + i * 15;
+      const ry = boneY - 10 - Math.sin(i * 0.5) * 3;
+      g.moveTo(rx, ry);
+      g.quadraticCurveTo(rx + 5, ry - 25, rx + 2, ry - 35);
+      g.stroke({ color: 0xccbb99, width: 2.5, cap: "round", alpha: 0.7 });
+    }
+    // Skull
+    const skullX = sw * 0.78;
+    g.ellipse(skullX, floorY - 12, 18, 12);
+    g.fill({ color: 0xccbb99 });
+    g.ellipse(skullX, floorY - 12, 18, 12);
+    g.stroke({ color: 0xaa9977, width: 1 });
+    // Eye sockets
+    g.circle(skullX - 6, floorY - 14, 4);
+    g.fill({ color: 0x331100 });
+    g.circle(skullX + 6, floorY - 14, 4);
+    g.fill({ color: 0x331100 });
+    // Horns
+    g.moveTo(skullX - 12, floorY - 20);
+    g.quadraticCurveTo(skullX - 22, floorY - 35, skullX - 18, floorY - 40);
+    g.stroke({ color: 0xaa9977, width: 3, cap: "round" });
+    g.moveTo(skullX + 12, floorY - 20);
+    g.quadraticCurveTo(skullX + 22, floorY - 35, skullX + 18, floorY - 40);
+    g.stroke({ color: 0xaa9977, width: 3, cap: "round" });
+
+    // Rocky ground with lava cracks
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 3);
+    g.fill({ color: a.groundHighlight, alpha: 0.4 });
+    // Lava cracks in ground
+    for (let i = 0; i < 6; i++) {
+      const cx = sw * (0.1 + i * 0.15);
+      g.moveTo(cx, floorY + 2);
+      g.lineTo(cx + 10, floorY + 12);
+      g.lineTo(cx + 5, floorY + 20);
+      g.stroke({ color: 0xff4400, width: 1.5, alpha: 0.3 });
+    }
+
+    // Ember particles
+    for (let i = 0; i < 25; i++) {
+      this._particles.push({
+        x: Math.random() * sw, y: floorY * 0.3 + Math.random() * floorY * 0.6,
+        vx: (Math.random() - 0.5) * 0.3, vy: -0.3 - Math.random() * 0.5,
+        radius: 1 + Math.random() * 2, alpha: 0.3 + Math.random() * 0.5,
+        phase: Math.random() * Math.PI * 2, color: i % 3 === 0 ? 0xff8844 : 0xff4422,
+      });
+    }
+    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+  }
+
+  private _update_dragon_peak(time: number): void {
+    const g = this._animGfx;
+    const sw = this._sw;
+    // Rising embers
+    for (const p of this._particles) {
+      p.x += p.vx + Math.sin(time * 2 + p.phase) * 0.3;
+      p.y += p.vy;
+      if (p.y < this._floorY * 0.1) { p.y = this._floorY; p.x = Math.random() * sw; }
+      const fade = p.alpha * (0.3 + Math.sin(time * 4 + p.phase) * 0.5);
+      g.circle(p.x, p.y, p.radius + 1);
+      g.fill({ color: p.color, alpha: fade * 0.2 });
+      g.circle(p.x, p.y, p.radius * 0.6);
+      g.fill({ color: 0xffcc44, alpha: fade });
+    }
+    // Lava glow pulse at peak
+    const pulse = 0.1 + Math.sin(time * 1.5) * 0.05;
+    g.circle(sw * 0.5, this._floorY * 0.12, 25);
+    g.fill({ color: 0xff4400, alpha: pulse });
+    // Heat shimmer above lava
+    for (let x = 0; x < sw; x += 20) {
+      const shimmer = Math.sin(time * 3 + x * 0.05) * 2;
+      g.moveTo(x, this._floorY * 0.65 + shimmer);
+      g.lineTo(x + 15, this._floorY * 0.65 - shimmer);
+      g.stroke({ color: 0xff6633, width: 1, alpha: 0.03 });
+    }
+  }
+
+  // =========================================================================
+  // GRAIL CHAPEL — Sacred interior, stained glass, altar, divine light
+  // =========================================================================
+
+  private _build_grail_chapel(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    // Dark interior with golden ambient
+    this._drawSkyGradient(g, a, sw, floorY, 8);
+
+    // Vaulted ceiling with pointed arches
+    for (let i = 0; i < 5; i++) {
+      const cx = sw * (0.1 + i * 0.2);
+      g.moveTo(cx - sw * 0.1, floorY * 0.12);
+      g.quadraticCurveTo(cx, -floorY * 0.05, cx + sw * 0.1, floorY * 0.12);
+      g.stroke({ color: 0x5a5544, width: 6 });
+      g.moveTo(cx - sw * 0.1, floorY * 0.12);
+      g.quadraticCurveTo(cx, -floorY * 0.04, cx + sw * 0.1, floorY * 0.12);
+      g.stroke({ color: 0x6a6554, width: 3 });
+    }
+
+    // Stone walls
+    const wallY = floorY * 0.12;
+    g.rect(0, wallY, sw, floorY - wallY);
+    g.fill({ color: 0x665544 });
+    for (let y = wallY + 14; y < floorY; y += 14) {
+      g.moveTo(0, y).lineTo(sw, y);
+      g.stroke({ color: 0x5a4a3a, width: 0.6, alpha: 0.35 });
+    }
+
+    // Stained glass windows
+    const windowXs = [sw * 0.15, sw * 0.38, sw * 0.62, sw * 0.85];
+    const windowColors = [
+      [0xaa3333, 0x3344aa, 0xddaa33],
+      [0x3366cc, 0xdd8833, 0x33aa55],
+      [0xcc3355, 0x44aa88, 0xddcc44],
+      [0x5533aa, 0xaa4422, 0x44ccaa],
+    ];
+    for (let i = 0; i < windowXs.length; i++) {
+      const wx = windowXs[i];
+      const wy = wallY + 20;
+      const ww = 30;
+      const wh = 60;
+      // Window frame
+      g.rect(wx - ww / 2 - 3, wy - 3, ww + 6, wh + 6);
+      g.fill({ color: 0x5a5544 });
+      // Pointed top
+      g.moveTo(wx - ww / 2 - 3, wy - 3);
+      g.quadraticCurveTo(wx, wy - 25, wx + ww / 2 + 3, wy - 3);
+      g.fill({ color: 0x5a5544 });
+      // Glass
+      g.rect(wx - ww / 2, wy, ww, wh);
+      g.fill({ color: 0x222244, alpha: 0.3 });
+      // Colored glass sections
+      const cols = windowColors[i];
+      g.rect(wx - ww / 2, wy, ww / 3, wh / 2);
+      g.fill({ color: cols[0], alpha: 0.2 });
+      g.rect(wx - ww / 2 + ww / 3, wy, ww / 3, wh / 2);
+      g.fill({ color: cols[1], alpha: 0.2 });
+      g.rect(wx - ww / 2 + ww * 2 / 3, wy, ww / 3, wh / 2);
+      g.fill({ color: cols[2], alpha: 0.2 });
+      g.rect(wx - ww / 2, wy + wh / 2, ww, wh / 2);
+      g.fill({ color: cols[1], alpha: 0.15 });
+      // Dividers
+      g.moveTo(wx, wy).lineTo(wx, wy + wh);
+      g.stroke({ color: 0x5a5544, width: 2 });
+      g.moveTo(wx - ww / 2, wy + wh / 2).lineTo(wx + ww / 2, wy + wh / 2);
+      g.stroke({ color: 0x5a5544, width: 2 });
+      // Light beam from window
+      g.moveTo(wx - ww / 2, wy + wh);
+      g.lineTo(wx + ww / 2, wy + wh);
+      g.lineTo(wx + ww / 2 + 20, floorY);
+      g.lineTo(wx - ww / 2 - 10, floorY);
+      g.closePath();
+      g.fill({ color: a.accentColor, alpha: 0.03 });
+    }
+
+    // Central altar with grail
+    const altarX = sw * 0.5;
+    const altarY = floorY - 8;
+    // Altar table
+    g.rect(altarX - 28, altarY - 25, 56, 25);
+    g.fill({ color: 0x776655 });
+    g.rect(altarX - 28, altarY - 25, 56, 25);
+    g.stroke({ color: 0x665544, width: 1.5 });
+    // Altar cloth
+    g.rect(altarX - 25, altarY - 25, 50, 6);
+    g.fill({ color: 0xeeddcc });
+    g.rect(altarX - 25, altarY - 25, 50, 6);
+    g.stroke({ color: a.accentColor, width: 1 });
+    // Grail cup
+    g.moveTo(altarX - 6, altarY - 32);
+    g.lineTo(altarX - 8, altarY - 25);
+    g.lineTo(altarX + 8, altarY - 25);
+    g.lineTo(altarX + 6, altarY - 32);
+    g.closePath();
+    g.fill({ color: 0xddaa33 });
+    g.stroke({ color: 0xbb8822, width: 1 });
+    // Grail stem
+    g.rect(altarX - 2, altarY - 25, 4, 6);
+    g.fill({ color: 0xddaa33 });
+    // Grail base
+    g.ellipse(altarX, altarY - 19, 6, 2);
+    g.fill({ color: 0xddaa33 });
+    // Grail glow
+    for (let r = 20; r > 0; r -= 3) {
+      g.circle(altarX, altarY - 30, r);
+      g.fill({ color: a.accentColor, alpha: 0.008 });
+    }
+    // Candles on altar
+    for (const cx of [altarX - 18, altarX + 18]) {
+      g.rect(cx - 1.5, altarY - 35, 3, 10);
+      g.fill({ color: 0xeeddcc });
+      this._flames.push({ x: cx, y: altarY - 38, baseRadius: 3.5, phase: cx * 0.2 });
+    }
+
+    // Floor — polished stone tiles
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 3);
+    g.fill({ color: a.groundHighlight, alpha: 0.5 });
+    // Checkered floor
+    let tRow = 0;
+    for (let y = floorY + 2; y < sh; y += 18) {
+      for (let x = 0; x < sw; x += 36) {
+        if ((Math.floor(x / 36) + tRow) % 2 === 0) {
+          g.rect(x, y, 36, 18);
+          g.fill({ color: 0x000000, alpha: 0.08 });
+        }
+      }
+      tRow++;
+    }
+
+    // Dust particles in light beams
+    for (let i = 0; i < 18; i++) {
+      this._particles.push({
+        x: Math.random() * sw, y: wallY + Math.random() * (floorY - wallY),
+        vx: (Math.random() - 0.5) * 0.05, vy: 0.03 + Math.random() * 0.05,
+        radius: 0.5 + Math.random() * 1, alpha: 0.15 + Math.random() * 0.25,
+        phase: Math.random() * Math.PI * 2, color: a.accentColor,
+      });
+    }
+    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+  }
+
+  private _update_grail_chapel(time: number): void {
+    const g = this._animGfx;
+    // Candle flames
+    for (const f of this._flames) {
+      const flicker = Math.sin(time * 8 + f.phase) * 1.5;
+      const flicker2 = Math.cos(time * 11 + f.phase * 1.5) * 1;
+      g.ellipse(f.x + flicker2 * 0.3, f.y - flicker * 0.3, f.baseRadius * 0.7, f.baseRadius + 1.5 + flicker);
+      g.fill({ color: 0xff8833, alpha: 0.6 });
+      g.ellipse(f.x, f.y, f.baseRadius * 0.4, f.baseRadius * 0.7 + flicker * 0.3);
+      g.fill({ color: 0xffdd44, alpha: 0.9 });
+      g.circle(f.x, f.y + 1, 1.5);
+      g.fill({ color: 0xffffcc, alpha: 0.9 });
+    }
+    // Dust motes
+    for (const p of this._particles) {
+      p.x += p.vx + Math.sin(time * 0.4 + p.phase) * 0.08;
+      p.y += p.vy;
+      if (p.y > this._floorY) { p.y = this._floorY * 0.12; }
+      const pulse = p.alpha * (0.3 + Math.sin(time * 1.5 + p.phase) * 0.5);
+      g.circle(p.x, p.y, p.radius);
+      g.fill({ color: 0xffffff, alpha: pulse });
+    }
+    // Grail glow pulse
+    const altarX = this._sw * 0.5;
+    const altarY = this._floorY - 8;
+    const pulse = 0.06 + Math.sin(time * 1.2) * 0.03;
+    g.circle(altarX, altarY - 30, 18);
+    g.fill({ color: 0xffee88, alpha: pulse });
+  }
+
+  // =========================================================================
+  // CORNWALL COAST — Sunny coastal beach, waves, cliffs, lighthouse
+  // =========================================================================
+
+  private _build_cornwall(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    this._drawSkyGradient(g, a, sw, floorY);
+    // Bright fluffy clouds
+    for (let i = 0; i < 6; i++) {
+      const cx = sw * (0.08 + i * 0.17);
+      const cy = floorY * (0.1 + Math.sin(i * 1.8) * 0.04);
+      for (let j = 0; j < 3; j++) {
+        g.ellipse(cx + j * 18 - 18, cy + j * 3, 25 + j * 5, 12 + j * 2);
+        g.fill({ color: 0xffffff, alpha: 0.2 - j * 0.04 });
+      }
+    }
+
+    // Sun
+    const sunX = sw * 0.8;
+    const sunY = floorY * 0.12;
+    for (let r = 50; r > 0; r -= 4) {
+      g.circle(sunX, sunY, r);
+      g.fill({ color: 0xffdd88, alpha: 0.006 });
+    }
+    g.circle(sunX, sunY, 18);
+    g.fill({ color: 0xffee99, alpha: 0.7 });
+
+    // Ocean
+    const seaY = floorY * 0.5;
+    g.rect(0, seaY, sw, floorY - seaY);
+    g.fill({ color: 0x3366aa });
+    g.rect(0, seaY, sw, 3);
+    g.fill({ color: 0x5588cc, alpha: 0.5 });
+    // Ocean color variation
+    g.rect(0, seaY + (floorY - seaY) * 0.5, sw, (floorY - seaY) * 0.5);
+    g.fill({ color: 0x225588, alpha: 0.3 });
+
+    // Lighthouse on distant cliff (right side)
+    const lhX = sw * 0.88;
+    const lhCliffY = seaY + 20;
+    // Cliff
+    g.moveTo(lhX - 30, floorY * 0.75);
+    g.lineTo(lhX - 20, lhCliffY);
+    g.lineTo(lhX + 25, lhCliffY + 5);
+    g.lineTo(lhX + 35, floorY * 0.75);
+    g.closePath();
+    g.fill({ color: 0x667766 });
+    // Lighthouse tower
+    g.rect(lhX - 5, lhCliffY - 50, 10, 50);
+    g.fill({ color: 0xeeeedd });
+    // Red stripe
+    g.rect(lhX - 5, lhCliffY - 35, 10, 10);
+    g.fill({ color: 0xcc3333 });
+    // Lamp room
+    g.rect(lhX - 7, lhCliffY - 55, 14, 8);
+    g.fill({ color: 0xffee88, alpha: 0.6 });
+    g.rect(lhX - 7, lhCliffY - 55, 14, 8);
+    g.stroke({ color: 0x333333, width: 1 });
+    // Roof
+    g.moveTo(lhX - 8, lhCliffY - 55);
+    g.lineTo(lhX, lhCliffY - 62);
+    g.lineTo(lhX + 8, lhCliffY - 55);
+    g.closePath();
+    g.fill({ color: 0x444444 });
+
+    // Coastal cliffs (left foreground)
+    g.moveTo(-10, floorY * 0.6);
+    g.lineTo(-10, seaY + 10);
+    g.lineTo(sw * 0.12, seaY + 5);
+    g.lineTo(sw * 0.18, floorY * 0.7);
+    g.lineTo(sw * 0.15, floorY);
+    g.lineTo(-10, floorY);
+    g.closePath();
+    g.fill({ color: 0x778877 });
+    // Cliff face detail
+    for (let y = seaY + 15; y < floorY; y += 10) {
+      g.moveTo(0, y).lineTo(sw * 0.12, y + 2);
+      g.stroke({ color: 0x667766, width: 0.6, alpha: 0.3 });
+    }
+
+    // Beach / sand ground
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 3);
+    g.fill({ color: a.groundHighlight, alpha: 0.5 });
+    // Sand texture
+    for (let i = 0; i < 20; i++) {
+      const sx = Math.sin(i * 7.7) * sw * 0.45 + sw * 0.5;
+      g.ellipse(sx, floorY + 5 + (i % 4) * 3, 4 + i % 3, 1.5);
+      g.fill({ color: a.groundHighlight, alpha: 0.15 });
+    }
+    // Shells
+    for (let i = 0; i < 6; i++) {
+      const sx = sw * (0.15 + i * 0.14);
+      g.ellipse(sx, floorY + 4, 3, 2);
+      g.fill({ color: 0xeeddcc, alpha: 0.4 });
+    }
+
+    // Register wave ripples
+    for (let i = 0; i < 8; i++) {
+      this._ripples.push({
+        y: seaY + 4 + i * 6, amplitude: 1.5 + Math.random() * 2,
+        frequency: 0.03 + Math.random() * 0.02, speed: 0.8 + Math.random() * 0.5,
+        phase: Math.random() * Math.PI * 2, alpha: 0.12 + Math.random() * 0.08,
+      });
+    }
+    // Seagull-like particles
+    for (let i = 0; i < 6; i++) {
+      this._particles.push({
+        x: Math.random() * sw, y: floorY * (0.15 + Math.random() * 0.25),
+        vx: 0.3 + Math.random() * 0.4, vy: Math.sin(i) * 0.1,
+        radius: 1.5, alpha: 0.5, phase: Math.random() * Math.PI * 2, color: 0xffffff,
+      });
+    }
+    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
+  }
+
+  private _update_cornwall(time: number): void {
+    const g = this._animGfx;
+    const sw = this._sw;
+    // Ocean waves
+    for (const r of this._ripples) {
+      g.moveTo(0, r.y);
+      for (let x = 0; x < sw; x += 4) {
+        g.lineTo(x, r.y + Math.sin(x * r.frequency + time * r.speed + r.phase) * r.amplitude);
+      }
+      g.stroke({ color: 0x88bbdd, width: 1, alpha: r.alpha * (0.7 + Math.sin(time * 0.5 + r.phase) * 0.3) });
+    }
+    // Wave foam
+    const seaY = this._floorY * 0.5;
+    for (let i = 0; i < 3; i++) {
+      const fy = seaY + 10 + i * 15;
+      for (let x = 0; x < sw; x += 50) {
+        const fx = x + Math.sin(time * (1 + i * 0.3) + x * 0.01) * 15;
+        g.moveTo(fx, fy);
+        g.lineTo(fx + 14, fy - 1);
+        g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.12 + Math.sin(time * 2 + i) * 0.05 });
+      }
+    }
+    // Seagulls — simple V shapes drifting
+    for (const p of this._particles) {
+      p.x += p.vx;
+      p.y += p.vy + Math.sin(time * 2 + p.phase) * 0.15;
+      if (p.x > sw + 20) { p.x = -20; p.y = this._floorY * (0.15 + Math.random() * 0.2); }
+      // V shape (wings)
+      g.moveTo(p.x - 4, p.y + 2);
+      g.lineTo(p.x, p.y);
+      g.lineTo(p.x + 4, p.y + 2);
+      g.stroke({ color: 0xffffff, width: 1.2, alpha: p.alpha });
+    }
+  }
+
+  // =========================================================================
+  // SHADOW KEEP — Ultra dark fortress, purple runes, floating chains, dark fog
+  // =========================================================================
+
+  private _build_shadow_keep(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    // Near-black background
+    this._drawSkyGradient(g, a, sw, floorY, 8);
+
+    // Massive dark fortress wall
+    const wallY = floorY * 0.18;
+    g.rect(0, wallY, sw, floorY - wallY);
+    g.fill({ color: 0x0a0a18 });
+    // Faint stone lines
+    for (let y = wallY + 18; y < floorY; y += 18) {
+      g.moveTo(0, y).lineTo(sw, y);
+      g.stroke({ color: 0x0e0e20, width: 0.7, alpha: 0.5 });
+    }
+
+    // Massive pillars
+    for (const px of [sw * 0.1, sw * 0.3, sw * 0.5, sw * 0.7, sw * 0.9]) {
+      g.rect(px - 14, wallY, 28, floorY - wallY);
+      g.fill({ color: 0x0c0c1a });
+      g.rect(px - 16, wallY, 32, 12);
+      g.fill({ color: 0x101028 });
+      g.rect(px - 16, floorY - 12, 32, 12);
+      g.fill({ color: 0x101028 });
+    }
+
+    // Glowing rune circles on walls
+    const runeXs = [sw * 0.2, sw * 0.4, sw * 0.6, sw * 0.8];
+    for (let i = 0; i < runeXs.length; i++) {
+      const rx = runeXs[i];
+      const ry = wallY + (floorY - wallY) * 0.35;
+      // Outer circle
+      g.circle(rx, ry, 14);
+      g.stroke({ color: a.accentColor, width: 1.5, alpha: 0.2 });
+      // Inner rune (triangle)
+      g.moveTo(rx, ry - 8);
+      g.lineTo(rx - 7, ry + 5);
+      g.lineTo(rx + 7, ry + 5);
+      g.closePath();
+      g.stroke({ color: a.accentColor, width: 1, alpha: 0.3 });
+      // Center dot
+      g.circle(rx, ry, 2.5);
+      g.fill({ color: a.accentColor, alpha: 0.3 });
+    }
+
+    // Hanging chains (static base)
+    for (let i = 0; i < 8; i++) {
+      const cx = sw * (0.05 + i * 0.12);
+      const cy1 = wallY + 5;
+      const cy2 = wallY + 40 + (i % 3) * 20;
+      g.moveTo(cx, cy1);
+      g.lineTo(cx, cy2);
+      g.stroke({ color: 0x333344, width: 2 });
+      // Chain links
+      for (let y = cy1; y < cy2; y += 8) {
+        g.ellipse(cx, y, 2.5, 4);
+        g.stroke({ color: 0x444455, width: 1 });
+      }
+    }
+
+    // Dark floor
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 2);
+    g.fill({ color: a.groundHighlight, alpha: 0.3 });
+    // Rune lines on floor
+    for (let x = sw * 0.2; x < sw * 0.8; x += 40) {
+      g.moveTo(x, floorY + 4);
+      g.lineTo(x + 20, floorY + 4);
+      g.stroke({ color: a.accentColor, width: 0.8, alpha: 0.15 });
+    }
+
+    // Purple mist particles
+    for (let i = 0; i < 20; i++) {
+      this._particles.push({
+        x: Math.random() * sw, y: floorY * 0.4 + Math.random() * floorY * 0.5,
+        vx: (Math.random() - 0.5) * 0.2, vy: -0.05 - Math.random() * 0.1,
+        radius: 2 + Math.random() * 2.5, alpha: 0.1 + Math.random() * 0.15,
+        phase: Math.random() * Math.PI * 2, color: a.accentColor,
+      });
+    }
+    // Mist layers
+    for (let i = 0; i < 4; i++) {
+      this._mistLayers.push({
+        y: floorY - 10 + i * 8, speed: 0.2 + i * 0.08,
+        offset: i * 60, alpha: 0.05, height: 25 + i * 6,
+      });
+    }
+    g.rect(0, floorY * 0.3, sw, floorY * 0.7);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+  }
+
+  private _update_shadow_keep(time: number): void {
+    const g = this._animGfx;
+    const sw = this._sw;
+    // Pulsing runes
+    const runeXs = [sw * 0.2, sw * 0.4, sw * 0.6, sw * 0.8];
+    const wallY = this._floorY * 0.18;
+    for (let i = 0; i < runeXs.length; i++) {
+      const rx = runeXs[i];
+      const ry = wallY + (this._floorY - wallY) * 0.35;
+      const pulse = 0.15 + Math.sin(time * 1.5 + i * 1.2) * 0.1;
+      g.circle(rx, ry, 16);
+      g.fill({ color: 0x8844cc, alpha: pulse * 0.3 });
+      g.circle(rx, ry, 3);
+      g.fill({ color: 0xaa66ee, alpha: pulse });
+    }
+    // Floating shadow particles
+    for (const p of this._particles) {
+      p.x += p.vx + Math.sin(time * 0.8 + p.phase) * 0.15;
+      p.y += p.vy;
+      if (p.y < this._floorY * 0.15) { p.y = this._floorY * 0.85; p.x = Math.random() * sw; }
+      const fade = p.alpha * (0.4 + Math.sin(time * 1.5 + p.phase) * 0.4);
+      g.circle(p.x, p.y, p.radius + 2);
+      g.fill({ color: p.color, alpha: fade * 0.15 });
+      g.circle(p.x, p.y, p.radius);
+      g.fill({ color: p.color, alpha: fade });
+    }
+    // Dark fog drift
+    for (const m of this._mistLayers) {
+      const offset = (time * m.speed * 20 + m.offset) % (sw + 200) - 100;
+      for (let x = -100; x < sw + 100; x += 80) {
+        g.ellipse((x + offset) % (sw + 200) - 100, m.y, 55, m.height / 2);
+        g.fill({ color: 0x110022, alpha: m.alpha });
+      }
+    }
+  }
+
+  // =========================================================================
+  // CAMLANN BATTLEFIELD — War-torn, broken weapons, siege fires, red sky
+  // =========================================================================
+
+  private _build_camlann(a: DuelArenaDef, sw: number, sh: number): void {
+    const g = this._staticGfx;
+    const floorY = this._floorY;
+
+    this._drawSkyGradient(g, a, sw, floorY);
+    // Red/orange glow at horizon (fires)
+    g.rect(0, floorY * 0.6, sw, floorY * 0.4);
+    g.fill({ color: 0xcc4422, alpha: 0.08 });
+    g.rect(0, floorY * 0.75, sw, floorY * 0.25);
+    g.fill({ color: 0xff6633, alpha: 0.05 });
+
+    // Smoke clouds
+    for (let i = 0; i < 10; i++) {
+      const cx = sw * (Math.sin(i * 2.1) * 0.4 + 0.5);
+      const cy = floorY * (0.05 + i * 0.04);
+      g.circle(cx, cy, 30 + i * 4);
+      g.fill({ color: 0x443333, alpha: 0.25 - i * 0.02 });
+    }
+
+    // Distant burning buildings
+    for (const bx of [sw * 0.15, sw * 0.4, sw * 0.7, sw * 0.9]) {
+      const bh = 30 + Math.sin(bx) * 15;
+      const by = floorY * 0.55;
+      // Building silhouette
+      g.rect(bx - 12, by - bh, 24, bh + 10);
+      g.fill({ color: 0x2a2020, alpha: 0.5 });
+      // Fire glow on top
+      g.circle(bx, by - bh, 10);
+      g.fill({ color: 0xff4400, alpha: 0.15 });
+      this._flames.push({ x: bx, y: by - bh - 5, baseRadius: 5, phase: bx * 0.1 });
+    }
+
+    // Broken siege equipment
+    // Broken wagon wheel (left)
+    const wheelX = sw * 0.2;
+    g.circle(wheelX, floorY - 5, 15);
+    g.stroke({ color: 0x4a3a2a, width: 3 });
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2 + 0.3;
+      g.moveTo(wheelX, floorY - 5);
+      g.lineTo(wheelX + Math.cos(angle) * 13, floorY - 5 + Math.sin(angle) * 13);
+      g.stroke({ color: 0x4a3a2a, width: 1.5 });
+    }
+
+    // Broken spears / weapons stuck in ground
+    const weaponXs = [sw * 0.12, sw * 0.28, sw * 0.45, sw * 0.58, sw * 0.72, sw * 0.88];
+    for (let i = 0; i < weaponXs.length; i++) {
+      const wx = weaponXs[i];
+      const angle = -0.15 + (i % 3) * 0.1;
+      const wLen = 35 + (i % 2) * 15;
+      const topX = wx + Math.sin(angle) * wLen;
+      const topY = floorY - Math.cos(angle) * wLen;
+      // Shaft
+      g.moveTo(wx, floorY + 2);
+      g.lineTo(topX, topY);
+      g.stroke({ color: 0x5a4a3a, width: 2.5, cap: "round" });
+      // Point or broken top
+      if (i % 2 === 0) {
+        g.moveTo(topX - 3, topY + 2);
+        g.lineTo(topX, topY - 6);
+        g.lineTo(topX + 3, topY + 2);
+        g.closePath();
+        g.fill({ color: 0x888899 });
+      }
+    }
+
+    // Shields scattered on ground
+    for (const sx of [sw * 0.35, sw * 0.65]) {
+      g.ellipse(sx, floorY + 2, 12, 5);
+      g.fill({ color: 0x883322 });
+      g.ellipse(sx, floorY + 2, 12, 5);
+      g.stroke({ color: 0x5a2a1a, width: 1 });
+      g.circle(sx, floorY + 2, 3);
+      g.fill({ color: 0x888899 });
+    }
+
+    // Trenches / disturbed earth
+    for (let i = 0; i < 4; i++) {
+      const tx = sw * (0.15 + i * 0.22);
+      g.ellipse(tx, floorY + 4, 25, 5);
+      g.fill({ color: 0x3a2a1a, alpha: 0.4 });
+    }
+
+    // Ground — muddy, scarred earth
+    g.rect(0, floorY, sw, sh - floorY);
+    g.fill({ color: a.groundColor });
+    g.rect(0, floorY, sw, 3);
+    g.fill({ color: a.groundHighlight, alpha: 0.4 });
+    // Blood/mud stains
+    for (let i = 0; i < 8; i++) {
+      const sx = sw * (0.08 + i * 0.11);
+      g.ellipse(sx, floorY + 6 + (i % 3) * 4, 8 + i % 4 * 3, 3);
+      g.fill({ color: 0x4a2020, alpha: 0.2 });
+    }
+
+    // Smoke / fire particles
+    for (let i = 0; i < 20; i++) {
+      this._particles.push({
+        x: Math.random() * sw, y: floorY * 0.4 + Math.random() * floorY * 0.5,
+        vx: (Math.random() - 0.5) * 0.3, vy: -0.15 - Math.random() * 0.25,
+        radius: 1.5 + Math.random() * 2, alpha: 0.15 + Math.random() * 0.2,
+        phase: Math.random() * Math.PI * 2,
+        color: i % 3 === 0 ? 0xff6633 : 0x664444,
+      });
+    }
+    g.rect(0, floorY * 0.4, sw, floorY * 0.6);
+    g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+  }
+
+  private _update_camlann(time: number): void {
+    const g = this._animGfx;
+    const sw = this._sw;
+    // Distant fires
+    for (const f of this._flames) {
+      const flicker = Math.sin(time * 6 + f.phase) * 2;
+      const flicker2 = Math.cos(time * 9 + f.phase) * 1.5;
+      g.circle(f.x + flicker2 * 0.3, f.y, f.baseRadius + 3 + flicker);
+      g.fill({ color: 0xff4400, alpha: 0.15 });
+      g.ellipse(f.x + flicker2 * 0.5, f.y - flicker * 0.3, f.baseRadius, f.baseRadius + 2 + flicker);
+      g.fill({ color: 0xff6622, alpha: 0.5 });
+      g.ellipse(f.x, f.y, f.baseRadius * 0.4, f.baseRadius * 0.7);
+      g.fill({ color: 0xffcc44, alpha: 0.7 });
+    }
+    // Smoke and ember particles
+    for (const p of this._particles) {
+      p.x += p.vx + Math.sin(time * 1.5 + p.phase) * 0.2;
+      p.y += p.vy;
+      if (p.y < this._floorY * 0.1) { p.y = this._floorY; p.x = Math.random() * sw; }
+      const fade = p.alpha * (0.3 + Math.sin(time * 2.5 + p.phase) * 0.4);
+      if (p.color === 0x664444) {
+        // Smoke — larger, more diffuse
+        g.circle(p.x, p.y, p.radius + 3);
+        g.fill({ color: p.color, alpha: fade * 0.3 });
+      } else {
+        // Ember — small bright
+        g.circle(p.x, p.y, p.radius);
+        g.fill({ color: p.color, alpha: fade });
+        g.circle(p.x, p.y, p.radius * 0.5);
+        g.fill({ color: 0xffcc44, alpha: fade * 0.8 });
+      }
+    }
+  }
+
+  // =========================================================================
   // GENERIC FALLBACK
   // =========================================================================
 
@@ -1254,7 +2829,7 @@ export class DuelArenaRenderer {
   // BROCÉLIANDE FOREST — enchanted woodland, ancient oaks, fireflies, roots
   // =========================================================================
 
-  private _buildBroceliande(a: DuelArenaDef, sw: number, sh: number): void {
+  private _build_broceliande(a: DuelArenaDef, sw: number, sh: number): void {
     const g = this._staticGfx;
     const floorY = this._floorY;
 
@@ -1430,7 +3005,7 @@ export class DuelArenaRenderer {
     }
   }
 
-  private _updateBroceliande(time: number): void {
+  private _update_broceliande(time: number): void {
     const g = this._animGfx;
     const sw = this._sw;
 
@@ -1470,7 +3045,7 @@ export class DuelArenaRenderer {
   // TINTAGEL CLIFFS — windswept coastal cliffs, crashing waves, ruins, gulls
   // =========================================================================
 
-  private _buildTintagel(a: DuelArenaDef, sw: number, sh: number): void {
+  private _build_tintagel(a: DuelArenaDef, sw: number, sh: number): void {
     const g = this._staticGfx;
     const floorY = this._floorY;
 
@@ -1675,7 +3250,7 @@ export class DuelArenaRenderer {
     }
   }
 
-  private _updateTintagel(time: number): void {
+  private _update_tintagel(time: number): void {
     const g = this._animGfx;
     const sw = this._sw;
     const floorY = this._floorY;
