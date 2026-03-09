@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camelot Hub — Parchment Map Iterations</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1410; color: #ccc; font-family: 'Georgia', serif; }
+  .section { padding: 40px 20px; text-align: center; }
+  .section h2 { color: #DAA520; font-size: 26px; letter-spacing: 4px; margin-bottom: 8px; }
+  .section p { color: #8899AA; font-size: 14px; margin-bottom: 20px; max-width: 700px; margin-left: auto; margin-right: auto; }
+  .canvas-wrap { position: relative; display: inline-block; }
+  canvas { display: block; margin: 0 auto; border: 3px solid #8B7355; border-radius: 4px; cursor: pointer; }
+  .divider { height: 1px; max-width: 600px; margin: 0 auto; background: linear-gradient(90deg, transparent, #8B7355, transparent); }
+  .tooltip { position: absolute; pointer-events: none; background: rgba(30,25,15,0.95); border: 2px solid #DAA520; border-radius: 6px; padding: 8px; color: #E8D5A3; font-size: 13px; z-index: 10; display: none; }
+  .tooltip .tt-title { font-size: 16px; font-weight: bold; color: #DAA520; margin-bottom: 4px; }
+  .tooltip .tt-mode { font-size: 12px; color: #AAA; font-style: italic; }
+  .tooltip canvas { border: 1px solid #665533; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="section">
+  <h2>— PARCHMENT MAP ITERATIONS —</h2>
+  <p>Four variations on the parchment/cartography theme with hover previews showing actual building renders from the game.</p>
+</div>
+<div class="divider"></div>
+
+<!-- Iteration A: Classic Ink Cartography -->
+<div class="section">
+  <h2>A · CLASSIC INK CARTOGRAPHY</h2>
+  <p>Clean parchment with fine ink drawings. Sepia tones. Buildings outlined with cross-hatching. Elegant calligraphy labels.</p>
+  <div class="canvas-wrap" id="wrap-a">
+    <canvas id="cA" width="1200" height="900"></canvas>
+  </div>
+</div>
+<div class="divider"></div>
+
+<!-- Iteration B: Worn Treasure Map -->
+<div class="section">
+  <h2>B · WORN TREASURE MAP</h2>
+  <p>Aged and stained parchment with burned edges. Darker ink, compass rose, decorative borders. X marks key locations.</p>
+  <div class="canvas-wrap" id="wrap-b">
+    <canvas id="cB" width="1200" height="900"></canvas>
+  </div>
+</div>
+<div class="divider"></div>
+
+<!-- Iteration C: Illuminated Manuscript -->
+<div class="section">
+  <h2>C · ILLUMINATED MANUSCRIPT</h2>
+  <p>Gold leaf accents, ornate borders, decorated initial letters. Richer colors on parchment. A royal cartographer's masterwork.</p>
+  <div class="canvas-wrap" id="wrap-c">
+    <canvas id="cC" width="1200" height="900"></canvas>
+  </div>
+</div>
+<div class="divider"></div>
+
+<!-- Iteration D: Dark Vellum -->
+<div class="section">
+  <h2>D · DARK VELLUM</h2>
+  <p>Dark aged leather background with gold and silver ink. Mysterious and atmospheric. Buildings glow softly on hover.</p>
+  <div class="canvas-wrap" id="wrap-d">
+    <canvas id="cD" width="1200" height="900"></canvas>
+  </div>
+</div>
+
+<script>
+// =========================================================================
+// SHARED UTILITIES
+// =========================================================================
+
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// =========================================================================
+// MAP LAYOUT DATA
+// =========================================================================
+
+const MAP = {
+  W: 1200, H: 900,
+  city: { x: 250, y: 150, w: 700, h: 580 },
+  wallThickness: 14,
+  gates: {
+    north: { x: 600, y: 150, w: 70 },
+    south: { x: 600, y: 730, w: 80 },
+    east:  { x: 950, y: 420, w: 70 },
+    west:  { x: 250, y: 440, w: 70 },
+  },
+  river: [
+    { x: 0, y: 800 }, { x: 100, y: 780 }, { x: 250, y: 760 },
+    { x: 400, y: 770 }, { x: 550, y: 800 }, { x: 700, y: 830 },
+    { x: 850, y: 810 }, { x: 1000, y: 780 }, { x: 1100, y: 790 }, { x: 1200, y: 770 },
+  ],
+  buildings: [
+    { id:'castle', x:480, y:160, w:240, h:180, label:'Castle Keep', mode:'Standard / Battlefield', type:'castle' },
+    { id:'barracks', x:740, y:180, w:170, h:120, label:'Royal Barracks', mode:'Duel', type:'barracks' },
+    { id:'market', x:420, y:420, w:200, h:160, label:'Market Square', mode:'Medieval GTA', type:'market' },
+    { id:'library', x:270, y:200, w:150, h:130, label:'Grand Library', mode:'Campaign', type:'library' },
+    { id:'colosseum', x:980, y:500, w:180, h:170, label:'The Colosseum', mode:'Colosseum', type:'colosseum' },
+    { id:'gate', x:540, y:680, w:120, h:70, label:'Southern Gate', mode:'RPG', type:'gate' },
+    { id:'mage_tower', x:870, y:300, w:70, h:90, label:'Mage Tower', mode:'Wave', type:'tower' },
+    { id:'tavern', x:640, y:500, w:140, h:100, label:'The Prancing Pony', mode:'Survivor', type:'tavern' },
+    { id:'docks', x:850, y:750, w:160, h:70, label:'River Docks', mode:'World', type:'docks' },
+    { id:'training', x:1000, y:300, w:140, h:110, label:'Training Grounds', mode:'Roguelike', type:'training' },
+    { id:'church', x:300, y:400, w:100, h:150, label:'Cathedral', mode:'—', type:'church' },
+    { id:'stable', x:750, y:580, w:130, h:90, label:'Royal Stables', mode:'—', type:'stable' },
+    { id:'prison', x:270, y:560, w:110, h:90, label:'The Dungeon', mode:'—', type:'prison' },
+    { id:'forge', x:660, y:340, w:100, h:80, label:"Blacksmith's Forge", mode:'—', type:'forge' },
+    { id:'observatory', x:100, y:280, w:80, h:80, label:'Observatory', mode:'—', type:'tower' },
+    { id:'garden', x:420, y:340, w:90, h:70, label:'Royal Gardens', mode:'—', type:'garden' },
+    { id:'harbor', x:1050, y:700, w:100, h:80, label:'Harbor Master', mode:'—', type:'harbor' },
+    { id:'farm', x:80, y:600, w:120, h:90, label:'Farmstead', mode:'—', type:'farm' },
+  ],
+  houses: [
+    { x:530, y:350, w:45, h:35 }, { x:580, y:345, w:40, h:40 },
+    { x:500, y:600, w:50, h:35 }, { x:780, y:450, w:45, h:40 },
+    { x:825, y:440, w:35, h:35 }, { x:810, y:490, w:40, h:35 },
+    { x:350, y:500, w:40, h:45 }, { x:400, y:510, w:35, h:35 },
+    { x:690, y:620, w:45, h:35 }, { x:300, y:350, w:35, h:30 },
+    { x:770, y:350, w:40, h:30 },
+    { x:120, y:450, w:50, h:40 }, { x:180, y:480, w:40, h:35 },
+    { x:1060, y:200, w:45, h:40 }, { x:1100, y:250, w:40, h:35 },
+    { x:150, y:700, w:45, h:40 }, { x:1000, y:650, w:40, h:35 },
+  ],
+  roads: [
+    [{x:600,y:0},{x:600,y:150},{x:600,y:420},{x:600,y:730},{x:600,y:900}],
+    [{x:0,y:440},{x:250,y:440},{x:600,y:420},{x:950,y:420},{x:1200,y:420}],
+    [{x:600,y:340},{x:600,y:160}],
+    [{x:950,y:420},{x:980,y:500},{x:1060,y:580}],
+    [{x:950,y:580},{x:930,y:750}],
+    [{x:950,y:350},{x:1060,y:350}],
+    [{x:420,y:500},{x:520,y:580},{x:620,y:500},{x:520,y:420},{x:420,y:500}],
+  ],
+};
+
+// Generate trees
+const treesData = [];
+(function() {
+  const rng = seededRandom(42);
+  const areas = [
+    { cx:100, cy:150, r:120, count:30 }, { cx:1100, cy:130, r:100, count:25 },
+    { cx:60, cy:500, r:80, count:15 }, { cx:150, cy:800, r:100, count:20 },
+    { cx:1100, cy:850, r:80, count:15 }, { cx:1150, cy:450, r:60, count:10 },
+    { cx:455, cy:370, r:30, count:6 }, { cx:320, cy:480, r:20, count:4 },
+    { cx:680, cy:260, r:25, count:5 },
+  ];
+  for (const a of areas) {
+    for (let i = 0; i < a.count; i++) {
+      const ang = rng() * Math.PI * 2, d = rng() * a.r;
+      treesData.push({ x: a.cx + Math.cos(ang)*d, y: a.cy + Math.sin(ang)*d, size: 8+rng()*10, shade: rng()*0.3 });
+    }
+  }
+  for (let i = 0; i < 40; i++) {
+    const tx = rng()*1200, ty = rng()*900;
+    if (tx > 260 && tx < 940 && ty > 160 && ty < 720) continue;
+    treesData.push({ x: tx, y: ty, size: 6+rng()*8, shade: rng()*0.3 });
+  }
+})();
+
+// Wall towers
+const wallTowers = (function() {
+  const c = MAP.city, t = [];
+  t.push({x:c.x,y:c.y,s:22},{x:c.x+c.w,y:c.y,s:22},{x:c.x,y:c.y+c.h,s:22},{x:c.x+c.w,y:c.y+c.h,s:22});
+  t.push({x:c.x+c.w*0.3,y:c.y,s:16},{x:c.x+c.w*0.7,y:c.y,s:16});
+  t.push({x:c.x+c.w*0.3,y:c.y+c.h,s:16},{x:c.x+c.w*0.7,y:c.y+c.h,s:16});
+  t.push({x:c.x+c.w,y:c.y+c.h*0.3,s:16},{x:c.x+c.w,y:c.y+c.h*0.7,s:16});
+  t.push({x:c.x,y:c.y+c.h*0.3,s:16},{x:c.x,y:c.y+c.h*0.7,s:16});
+  return t;
+})();
+
+// =========================================================================
+// BUILDING PREVIEW RENDERER — draws game-style building on a small canvas
+// =========================================================================
+
+function renderBuildingPreview(type, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+
+  // Dark background
+  ctx.fillStyle = '#1a1a2a';
+  ctx.fillRect(0, 0, w, h);
+
+  // Ground
+  ctx.fillStyle = '#3a5a2a';
+  ctx.fillRect(0, h * 0.6, w, h * 0.4);
+
+  // Cobble near building
+  const rng = seededRandom(type.charCodeAt(0) * 137);
+  for (let i = 0; i < 60; i++) {
+    const gx = rng() * w, gy = h*0.55 + rng()*h*0.45;
+    ctx.fillStyle = `rgba(120,115,100,${0.15 + rng()*0.15})`;
+    ctx.fillRect(gx, gy, 4+rng()*4, 3+rng()*3);
+  }
+
+  const cx = w / 2, cy = h / 2;
+
+  switch(type) {
+    case 'castle': {
+      // Grand castle keep
+      const bw = 120, bh = 90;
+      const bx = cx - bw/2, by = cy - bh/2 + 10;
+      // Outer walls
+      ctx.fillStyle = '#667788';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#445566';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      // Inner courtyard
+      ctx.fillStyle = '#556677';
+      ctx.fillRect(bx+15, by+15, bw-30, bh-30);
+      // Keep center
+      ctx.fillStyle = '#778899';
+      ctx.fillRect(cx-25, by+10, 50, 45);
+      ctx.strokeStyle = '#556677';
+      ctx.strokeRect(cx-25, by+10, 50, 45);
+      // Roof highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(cx-23, by+12, 46, 12);
+      // Corner turrets
+      const turrets = [[bx+6,by+6],[bx+bw-6,by+6],[bx+6,by+bh-6],[bx+bw-6,by+bh-6]];
+      for (const [tx,ty] of turrets) {
+        ctx.beginPath(); ctx.arc(tx,ty,12,0,Math.PI*2);
+        ctx.fillStyle = '#778899'; ctx.fill();
+        ctx.strokeStyle = '#556677'; ctx.lineWidth = 1.5; ctx.stroke();
+        // Turret cone roof
+        ctx.beginPath(); ctx.arc(tx,ty,7,0,Math.PI*2);
+        ctx.fillStyle = '#993333'; ctx.fill();
+        // Flag
+        ctx.fillStyle = '#DAA520';
+        ctx.fillRect(tx-1, ty-15, 2, 12);
+        ctx.fillRect(tx+1, ty-15, 7, 4);
+      }
+      // Gate
+      ctx.fillStyle = '#443322';
+      roundRect(ctx, cx-12, by+bh-3, 24, 8, 4);
+      ctx.fill();
+      // Portcullis
+      ctx.strokeStyle = '#332211'; ctx.lineWidth = 1;
+      for (let lx = cx-10; lx <= cx+10; lx += 4) {
+        ctx.beginPath(); ctx.moveTo(lx, by+bh-2); ctx.lineTo(lx, by+bh+4); ctx.stroke();
+      }
+      // Banner
+      ctx.fillStyle = '#DAA520';
+      ctx.fillRect(cx-1, by+15, 2, 18);
+      ctx.fillRect(cx+1, by+15, 10, 6);
+      break;
+    }
+    case 'barracks': {
+      const bw = 110, bh = 70;
+      const bx = cx-bw/2, by = cy-bh/2+10;
+      // Main building
+      ctx.fillStyle = '#776655';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#554433'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      // Roof — slanted
+      ctx.fillStyle = '#884433';
+      ctx.beginPath();
+      ctx.moveTo(bx-5, by+bh*0.4);
+      ctx.lineTo(bx+bw/2, by-8);
+      ctx.lineTo(bx+bw+5, by+bh*0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#663322'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Roof ridge
+      ctx.strokeStyle = '#AA5533'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(bx+bw/2, by-8); ctx.lineTo(bx+bw/2, by-8); ctx.stroke();
+      // Windows
+      for (let i = 0; i < 4; i++) {
+        const wx = bx + 15 + i * 25, wy = by + bh*0.5;
+        ctx.fillStyle = '#FFCC44';
+        ctx.fillRect(wx, wy, 8, 10);
+        ctx.strokeStyle = '#554433'; ctx.lineWidth = 1;
+        ctx.strokeRect(wx, wy, 8, 10);
+        // Window cross
+        ctx.beginPath(); ctx.moveTo(wx+4,wy); ctx.lineTo(wx+4,wy+10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wx,wy+5); ctx.lineTo(wx+8,wy+5); ctx.stroke();
+      }
+      // Training dummies outside
+      for (let d = 0; d < 2; d++) {
+        const dx = bx + bw + 15 + d*20, dy = by + bh - 15;
+        ctx.strokeStyle = '#887766'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(dx, dy-20); ctx.lineTo(dx, dy+5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(dx-8, dy-10); ctx.lineTo(dx+8, dy-10); ctx.stroke();
+        ctx.beginPath(); ctx.arc(dx, dy-24, 5, 0, Math.PI*2);
+        ctx.fillStyle = '#AA9977'; ctx.fill(); ctx.stroke();
+      }
+      // Weapon rack
+      ctx.fillStyle = '#665544';
+      ctx.fillRect(bx-15, by+20, 8, 40);
+      // Swords on rack
+      ctx.strokeStyle = '#AABBCC'; ctx.lineWidth = 1.5;
+      for (let s = 0; s < 3; s++) {
+        ctx.beginPath(); ctx.moveTo(bx-18, by+25+s*12); ctx.lineTo(bx-3, by+25+s*12); ctx.stroke();
+      }
+      // Flag
+      ctx.fillStyle = '#CC4444';
+      ctx.fillRect(bx+bw/2-1, by-22, 2, 16);
+      ctx.fillRect(bx+bw/2+1, by-22, 10, 6);
+      break;
+    }
+    case 'market': {
+      // Market square with stalls
+      // Ground — cobblestone square
+      ctx.fillStyle = '#AA9977';
+      ctx.fillRect(cx-60, cy-40, 120, 80);
+      ctx.strokeStyle = '#887755'; ctx.lineWidth = 1;
+      // Cobble detail
+      for (let gy = cy-38; gy < cy+38; gy += 6) {
+        for (let gx = cx-58; gx < cx+58; gx += 7) {
+          const off = (Math.floor(gy/6)%2)*3;
+          ctx.strokeRect(gx+off, gy, 6, 5);
+        }
+      }
+      // Market stalls (colorful awnings)
+      const stallColors = ['#CC4444','#4488CC','#44AA44','#CC8844','#8844AA','#CCAA44'];
+      const stalls = [
+        {x:cx-55,y:cy-35,w:30,h:20},{x:cx-15,y:cy-35,w:30,h:20},{x:cx+25,y:cy-35,w:30,h:20},
+        {x:cx-55,y:cy+18,w:30,h:20},{x:cx-15,y:cy+18,w:30,h:20},{x:cx+25,y:cy+18,w:30,h:20},
+      ];
+      for (let i = 0; i < stalls.length; i++) {
+        const s = stalls[i];
+        // Table
+        ctx.fillStyle = '#887766';
+        ctx.fillRect(s.x, s.y+8, s.w, s.h-8);
+        // Awning
+        ctx.fillStyle = stallColors[i];
+        ctx.fillRect(s.x-2, s.y, s.w+4, 10);
+        // Awning stripes
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        for (let sx = s.x; sx < s.x+s.w; sx += 8) {
+          ctx.fillRect(sx, s.y, 4, 10);
+        }
+        // Posts
+        ctx.fillStyle = '#665544';
+        ctx.fillRect(s.x, s.y, 2, s.h);
+        ctx.fillRect(s.x+s.w-2, s.y, 2, s.h);
+        // Goods on table
+        for (let g = 0; g < 3; g++) {
+          ctx.fillStyle = ['#EECC44','#CC6633','#88AA44'][g%3];
+          ctx.fillRect(s.x+4+g*9, s.y+10, 6, 5);
+        }
+      }
+      // Fountain in center
+      ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI*2);
+      ctx.fillStyle = '#667788'; ctx.fill();
+      ctx.strokeStyle = '#556677'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2);
+      ctx.fillStyle = '#4488BB'; ctx.fill();
+      // Water spray
+      ctx.strokeStyle = '#88CCFF'; ctx.lineWidth = 1;
+      for (let a = 0; a < 6; a++) {
+        const ang = a * Math.PI/3;
+        ctx.beginPath(); ctx.moveTo(cx, cy-3);
+        ctx.lineTo(cx+Math.cos(ang)*4, cy-8+Math.sin(ang)*2);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'library': {
+      const bw = 90, bh = 80;
+      const bx = cx-bw/2, by = cy-bh/2+5;
+      // Main building
+      ctx.fillStyle = '#556677';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#445566'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      // Domed roof
+      ctx.beginPath();
+      ctx.arc(cx, by+5, bw*0.45, Math.PI, 0);
+      ctx.fillStyle = '#445566';
+      ctx.fill();
+      ctx.strokeStyle = '#334455'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Dome highlight
+      ctx.beginPath();
+      ctx.arc(cx-5, by-5, bw*0.25, Math.PI*1.2, Math.PI*1.8);
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 3; ctx.stroke();
+      // Columns at front
+      for (let i = 0; i < 5; i++) {
+        const px = bx + 10 + i * 18;
+        ctx.fillStyle = '#778899';
+        ctx.fillRect(px, by+bh*0.3, 6, bh*0.7);
+        ctx.fillStyle = '#8899AA';
+        ctx.fillRect(px-1, by+bh*0.3, 8, 4);
+        ctx.fillRect(px-1, by+bh-3, 8, 4);
+      }
+      // Windows (stained glass effect)
+      ctx.fillStyle = '#88AACC';
+      ctx.fillRect(bx+15, by+15, 12, 18);
+      ctx.fillRect(bx+bw-27, by+15, 12, 18);
+      // Arched tops
+      ctx.beginPath(); ctx.arc(bx+21, by+15, 6, Math.PI, 0);
+      ctx.fillStyle = '#88AACC'; ctx.fill();
+      ctx.beginPath(); ctx.arc(bx+bw-21, by+15, 6, Math.PI, 0);
+      ctx.fill();
+      // Books visible through window
+      ctx.fillStyle = '#CC6633';
+      ctx.fillRect(bx+17, by+25, 3, 6);
+      ctx.fillStyle = '#4466AA';
+      ctx.fillRect(bx+21, by+24, 3, 7);
+      // Door
+      ctx.fillStyle = '#443322';
+      roundRect(ctx, cx-10, by+bh-3, 20, 8, 4);
+      ctx.fill();
+      // Lantern
+      ctx.fillStyle = '#FFCC44';
+      ctx.beginPath(); ctx.arc(cx, by+bh-10, 3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,204,68,0.2)';
+      ctx.beginPath(); ctx.arc(cx, by+bh-10, 10, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'colosseum': {
+      const rx = 70, ry = 55;
+      // Outer ring
+      ctx.beginPath(); ctx.ellipse(cx, cy+5, rx, ry, 0, 0, Math.PI*2);
+      ctx.fillStyle = '#887766'; ctx.fill();
+      ctx.strokeStyle = '#665544'; ctx.lineWidth = 2; ctx.stroke();
+      // Inner ring
+      ctx.beginPath(); ctx.ellipse(cx, cy+5, rx-12, ry-10, 0, 0, Math.PI*2);
+      ctx.fillStyle = '#AA9977'; ctx.fill();
+      ctx.strokeStyle = '#887755'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Arena floor
+      ctx.beginPath(); ctx.ellipse(cx, cy+5, rx-25, ry-20, 0, 0, Math.PI*2);
+      ctx.fillStyle = '#CCBB88'; ctx.fill();
+      // Arches around ring
+      for (let a = 0; a < 16; a++) {
+        const ang = a * Math.PI * 2 / 16;
+        const ax = cx + Math.cos(ang) * (rx-6);
+        const ay = cy + 5 + Math.sin(ang) * (ry-5);
+        ctx.beginPath(); ctx.arc(ax, ay, 4, 0, Math.PI*2);
+        ctx.fillStyle = '#776655'; ctx.fill();
+        ctx.fillStyle = '#554433';
+        ctx.fillRect(ax-1.5, ay-1.5, 3, 3);
+      }
+      // Seating tiers (lines)
+      for (let t = 0; t < 3; t++) {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy+5, rx-14-t*5, ry-11-t*4, 0, 0, Math.PI*2);
+        ctx.strokeStyle = `rgba(100,80,60,${0.4+t*0.1})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      // Fighters in arena
+      // Fighter 1
+      ctx.beginPath(); ctx.arc(cx-15, cy+5, 4, 0, Math.PI*2);
+      ctx.fillStyle = '#CC4444'; ctx.fill();
+      ctx.strokeStyle = '#AA3333'; ctx.lineWidth = 1; ctx.stroke();
+      // Sword
+      ctx.strokeStyle = '#CCCCDD'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx-15, cy+1); ctx.lineTo(cx-8, cy-4); ctx.stroke();
+      // Fighter 2
+      ctx.beginPath(); ctx.arc(cx+15, cy+5, 4, 0, Math.PI*2);
+      ctx.fillStyle = '#4444CC'; ctx.fill();
+      ctx.strokeStyle = '#3333AA'; ctx.lineWidth = 1; ctx.stroke();
+      // Shield
+      ctx.beginPath(); ctx.arc(cx+12, cy+5, 5, 0, Math.PI*2);
+      ctx.strokeStyle = '#CCCCDD'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Flags on top
+      const flags = [[cx-rx+5,cy+5-ry+5],[cx+rx-5,cy+5-ry+5],[cx,cy+5-ry]];
+      for (const [fx,fy] of flags) {
+        ctx.fillStyle = '#CC8844';
+        ctx.fillRect(fx-1, fy-12, 2, 12);
+        ctx.fillRect(fx+1, fy-12, 7, 4);
+      }
+      break;
+    }
+    case 'gate': {
+      // Southern gate with portcullis
+      const gw = 80, gh = 60;
+      const gx = cx-gw/2, gy = cy-gh/2+10;
+      // Left tower
+      ctx.fillStyle = '#776655';
+      ctx.fillRect(gx, gy, 25, gh);
+      ctx.strokeStyle = '#554433'; ctx.lineWidth = 1.5; ctx.strokeRect(gx, gy, 25, gh);
+      // Crenellations left
+      for (let cr = 0; cr < 4; cr++) {
+        ctx.fillStyle = '#887766';
+        ctx.fillRect(gx+cr*7, gy-5, 5, 6);
+      }
+      // Right tower
+      ctx.fillRect(gx+gw-25, gy, 25, gh);
+      ctx.strokeRect(gx+gw-25, gy, 25, gh);
+      for (let cr = 0; cr < 4; cr++) {
+        ctx.fillStyle = '#887766';
+        ctx.fillRect(gx+gw-25+cr*7, gy-5, 5, 6);
+      }
+      // Arch
+      ctx.beginPath();
+      ctx.arc(cx, gy+gh-5, 15, Math.PI, 0);
+      ctx.lineTo(cx+15, gy+gh);
+      ctx.lineTo(cx-15, gy+gh);
+      ctx.closePath();
+      ctx.fillStyle = '#332211'; ctx.fill();
+      // Portcullis
+      ctx.strokeStyle = '#887766'; ctx.lineWidth = 1.5;
+      for (let px = cx-12; px <= cx+12; px += 5) {
+        ctx.beginPath(); ctx.moveTo(px, gy+gh-18); ctx.lineTo(px, gy+gh); ctx.stroke();
+      }
+      for (let py = gy+gh-15; py < gy+gh; py += 5) {
+        ctx.beginPath(); ctx.moveTo(cx-12, py); ctx.lineTo(cx+12, py); ctx.stroke();
+      }
+      // Wall extending
+      ctx.fillStyle = '#776655';
+      ctx.fillRect(gx-40, gy+10, 40, 12);
+      ctx.fillRect(gx+gw, gy+10, 40, 12);
+      // Road going through
+      ctx.fillStyle = '#998866';
+      ctx.fillRect(cx-12, gy+gh, 24, h-gy-gh);
+      // Torch on each tower
+      for (const tx of [gx+12, gx+gw-12]) {
+        ctx.fillStyle = '#FFAA33';
+        ctx.beginPath(); ctx.arc(tx, gy+25, 3, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,170,50,0.15)';
+        ctx.beginPath(); ctx.arc(tx, gy+25, 12, 0, Math.PI*2); ctx.fill();
+      }
+      break;
+    }
+    case 'tower': {
+      // Mage tower — tall circular
+      const tr = 22;
+      // Tower shadow
+      ctx.beginPath(); ctx.ellipse(cx+4, cy+40, tr+2, 8, 0, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
+      // Tower body
+      ctx.fillStyle = '#556688';
+      ctx.fillRect(cx-tr, cy-25, tr*2, 70);
+      ctx.strokeStyle = '#445577'; ctx.lineWidth = 2;
+      ctx.strokeRect(cx-tr, cy-25, tr*2, 70);
+      // Stone lines
+      ctx.strokeStyle = 'rgba(40,40,60,0.3)'; ctx.lineWidth = 0.5;
+      for (let sy = cy-23; sy < cy+43; sy += 8) {
+        ctx.beginPath(); ctx.moveTo(cx-tr+2, sy); ctx.lineTo(cx+tr-2, sy); ctx.stroke();
+      }
+      // Conical roof
+      ctx.beginPath();
+      ctx.moveTo(cx, cy-55);
+      ctx.lineTo(cx-tr-5, cy-22);
+      ctx.lineTo(cx+tr+5, cy-22);
+      ctx.closePath();
+      ctx.fillStyle = '#4455AA';
+      ctx.fill();
+      ctx.strokeStyle = '#334499'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Roof shimmer
+      ctx.fillStyle = 'rgba(150,150,255,0.15)';
+      ctx.beginPath();
+      ctx.moveTo(cx-3, cy-50);
+      ctx.lineTo(cx-tr-2, cy-23);
+      ctx.lineTo(cx-3, cy-23);
+      ctx.closePath();
+      ctx.fill();
+      // Windows (glowing)
+      const wins = [[cx-8,cy-10],[cx+4,cy-10],[cx-2,cy+10],[cx-8,cy+25],[cx+4,cy+25]];
+      for (const [wx,wy] of wins) {
+        ctx.fillStyle = '#AACCFF';
+        ctx.fillRect(wx, wy, 8, 10);
+        ctx.fillStyle = 'rgba(150,200,255,0.3)';
+        ctx.beginPath(); ctx.arc(wx+4, wy+5, 8, 0, Math.PI*2); ctx.fill();
+      }
+      // Magic orb on top
+      ctx.beginPath(); ctx.arc(cx, cy-55, 5, 0, Math.PI*2);
+      ctx.fillStyle = '#8888FF'; ctx.fill();
+      ctx.fillStyle = 'rgba(120,120,255,0.4)';
+      ctx.beginPath(); ctx.arc(cx, cy-55, 12, 0, Math.PI*2); ctx.fill();
+      // Stars around orb
+      ctx.fillStyle = '#CCCCFF';
+      for (let s = 0; s < 5; s++) {
+        const sa = s*Math.PI*2/5 + 0.3, sd = 15+s*2;
+        ctx.fillRect(cx+Math.cos(sa)*sd-1, cy-55+Math.sin(sa)*sd-1, 2, 2);
+      }
+      break;
+    }
+    case 'tavern': {
+      const bw = 100, bh = 65;
+      const bx = cx-bw/2, by = cy-bh/2+10;
+      // Main building
+      ctx.fillStyle = '#776644';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#554422'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      // Timber framing
+      ctx.strokeStyle = '#443311'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(bx, by+bh/2); ctx.lineTo(bx+bw, by+bh/2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx+bw/3, by); ctx.lineTo(bx+bw/3, by+bh); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx+2*bw/3, by); ctx.lineTo(bx+2*bw/3, by+bh); ctx.stroke();
+      // Diagonals
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx+bw/3, by+bh/2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx+bw/3, by); ctx.lineTo(bx, by+bh/2); ctx.stroke();
+      // Roof
+      ctx.fillStyle = '#885533';
+      ctx.beginPath();
+      ctx.moveTo(bx-8, by);
+      ctx.lineTo(cx, by-20);
+      ctx.lineTo(bx+bw+8, by);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#663322'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Sign hanging
+      ctx.fillStyle = '#665533';
+      ctx.fillRect(bx+bw+5, by+15, 25, 18);
+      ctx.strokeStyle = '#443311'; ctx.lineWidth = 1;
+      ctx.strokeRect(bx+bw+5, by+15, 25, 18);
+      // Sign pole
+      ctx.strokeStyle = '#443311'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(bx+bw, by+12); ctx.lineTo(bx+bw+30, by+12); ctx.stroke();
+      // Horse icon on sign
+      ctx.fillStyle = '#DDCC88';
+      ctx.font = '10px serif';
+      ctx.fillText('🍺', bx+bw+8, by+29);
+      // Windows (warm glow)
+      for (let i = 0; i < 3; i++) {
+        const wx = bx+12+i*32, wy = by+bh/2+8;
+        ctx.fillStyle = '#FFCC44';
+        ctx.fillRect(wx, wy, 14, 12);
+        ctx.strokeStyle = '#554422'; ctx.lineWidth = 1;
+        ctx.strokeRect(wx, wy, 14, 12);
+        ctx.beginPath(); ctx.moveTo(wx+7,wy); ctx.lineTo(wx+7,wy+12); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wx,wy+6); ctx.lineTo(wx+14,wy+6); ctx.stroke();
+        // Glow
+        ctx.fillStyle = 'rgba(255,204,68,0.1)';
+        ctx.beginPath(); ctx.arc(wx+7, wy+6, 15, 0, Math.PI*2); ctx.fill();
+      }
+      // Door
+      ctx.fillStyle = '#553311';
+      roundRect(ctx, cx-8, by+bh-3, 16, 8, 3);
+      ctx.fill();
+      // Chimney
+      ctx.fillStyle = '#665544';
+      ctx.fillRect(bx+bw*0.7, by-25, 10, 12);
+      // Smoke
+      ctx.fillStyle = 'rgba(150,150,150,0.3)';
+      for (let s = 0; s < 3; s++) {
+        ctx.beginPath();
+        ctx.arc(bx+bw*0.7+5 + s*3, by-30-s*8, 4+s*2, 0, Math.PI*2);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'docks': {
+      // Wooden docks over water
+      ctx.fillStyle = '#336699';
+      ctx.fillRect(0, cy-10, w, h-cy+10);
+      // Water ripples
+      ctx.strokeStyle = 'rgba(100,180,255,0.2)'; ctx.lineWidth = 1;
+      for (let ry = cy; ry < h; ry += 8) {
+        ctx.beginPath();
+        for (let rx = 0; rx < w; rx += 3) {
+          const y = ry + Math.sin(rx*0.05+ry*0.1)*2;
+          rx === 0 ? ctx.moveTo(rx, y) : ctx.lineTo(rx, y);
+        }
+        ctx.stroke();
+      }
+      // Main pier
+      ctx.fillStyle = '#887755';
+      ctx.fillRect(cx-40, cy-20, 80, 60);
+      // Planks
+      ctx.strokeStyle = '#665533'; ctx.lineWidth = 0.5;
+      for (let py = cy-18; py < cy+38; py += 5) {
+        ctx.beginPath(); ctx.moveTo(cx-38, py); ctx.lineTo(cx+38, py); ctx.stroke();
+      }
+      // Posts
+      ctx.fillStyle = '#665533';
+      for (const px of [cx-35, cx-15, cx+15, cx+35]) {
+        ctx.fillRect(px-3, cy-25, 6, 8);
+      }
+      // Boat
+      ctx.fillStyle = '#885533';
+      ctx.beginPath();
+      ctx.moveTo(cx+50, cy+10);
+      ctx.lineTo(cx+90, cy+20);
+      ctx.lineTo(cx+50, cy+30);
+      ctx.lineTo(cx+45, cy+20);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#663322'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Mast
+      ctx.strokeStyle = '#776644'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx+60, cy+5); ctx.lineTo(cx+60, cy+30); ctx.stroke();
+      // Sail
+      ctx.fillStyle = 'rgba(220,210,180,0.8)';
+      ctx.beginPath();
+      ctx.moveTo(cx+62, cy+8);
+      ctx.lineTo(cx+80, cy+18);
+      ctx.lineTo(cx+62, cy+25);
+      ctx.closePath();
+      ctx.fill();
+      // Crates on pier
+      ctx.fillStyle = '#AA8844';
+      ctx.fillRect(cx-30, cy-10, 12, 12);
+      ctx.fillRect(cx-15, cy-12, 10, 14);
+      ctx.strokeStyle = '#886633'; ctx.lineWidth = 1;
+      ctx.strokeRect(cx-30, cy-10, 12, 12);
+      ctx.strokeRect(cx-15, cy-12, 10, 14);
+      break;
+    }
+    case 'training': {
+      // Training field
+      ctx.fillStyle = '#6B8E23';
+      ctx.fillRect(cx-65, cy-40, 130, 80);
+      ctx.strokeStyle = '#556B2F'; ctx.lineWidth = 2;
+      ctx.strokeRect(cx-65, cy-40, 130, 80);
+      // Fence
+      ctx.strokeStyle = '#887755'; ctx.lineWidth = 2;
+      for (let fx = cx-60; fx <= cx+60; fx += 15) {
+        ctx.fillStyle = '#776644';
+        ctx.fillRect(fx-1.5, cy-38, 3, 10);
+      }
+      ctx.beginPath(); ctx.moveTo(cx-60, cy-33); ctx.lineTo(cx+60, cy-33); ctx.stroke();
+      // Archery targets
+      for (let t = 0; t < 3; t++) {
+        const tx = cx-40+t*40, ty = cy-25;
+        ctx.beginPath(); ctx.arc(tx, ty, 8, 0, Math.PI*2);
+        ctx.fillStyle = '#EEEECC'; ctx.fill();
+        ctx.beginPath(); ctx.arc(tx, ty, 6, 0, Math.PI*2);
+        ctx.fillStyle = '#CC4444'; ctx.fill();
+        ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI*2);
+        ctx.fillStyle = '#EECC44'; ctx.fill();
+        ctx.beginPath(); ctx.arc(tx, ty, 1, 0, Math.PI*2);
+        ctx.fillStyle = '#CC4444'; ctx.fill();
+      }
+      // Dummies
+      for (let d = 0; d < 4; d++) {
+        const dx = cx-45+d*30, dy = cy+15;
+        ctx.strokeStyle = '#887766'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(dx, dy-15); ctx.lineTo(dx, dy+10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(dx-8, dy-5); ctx.lineTo(dx+8, dy-5); ctx.stroke();
+        ctx.beginPath(); ctx.arc(dx, dy-19, 5, 0, Math.PI*2);
+        ctx.fillStyle = '#BBAA88'; ctx.fill(); ctx.stroke();
+      }
+      // Weapon stand
+      ctx.fillStyle = '#665544';
+      ctx.fillRect(cx+45, cy-10, 15, 30);
+      ctx.strokeStyle = '#AABBCC'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx+47, cy-5); ctx.lineTo(cx+47, cy+15); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+52, cy-8); ctx.lineTo(cx+52, cy+12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+57, cy-3); ctx.lineTo(cx+57, cy+17); ctx.stroke();
+      break;
+    }
+    case 'church': {
+      const bw = 70, bh = 90;
+      const bx = cx-bw/2, by = cy-bh/2+5;
+      ctx.fillStyle = '#778888';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#556666'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      // Steeple
+      ctx.fillStyle = '#667777';
+      ctx.fillRect(cx-12, by-30, 24, 35);
+      ctx.beginPath();
+      ctx.moveTo(cx, by-55);
+      ctx.lineTo(cx-15, by-28);
+      ctx.lineTo(cx+15, by-28);
+      ctx.closePath();
+      ctx.fillStyle = '#556666'; ctx.fill();
+      // Cross on top
+      ctx.fillStyle = '#DAA520';
+      ctx.fillRect(cx-1.5, by-65, 3, 12);
+      ctx.fillRect(cx-5, by-60, 10, 3);
+      // Rose window
+      ctx.beginPath(); ctx.arc(cx, by+20, 10, 0, Math.PI*2);
+      ctx.fillStyle = '#8899BB'; ctx.fill();
+      ctx.strokeStyle = '#667799'; ctx.lineWidth = 1; ctx.stroke();
+      // Window spokes
+      for (let a = 0; a < 8; a++) {
+        const ang = a*Math.PI/4;
+        ctx.beginPath(); ctx.moveTo(cx, by+20);
+        ctx.lineTo(cx+Math.cos(ang)*9, by+20+Math.sin(ang)*9);
+        ctx.strokeStyle = '#556688'; ctx.lineWidth = 0.5; ctx.stroke();
+      }
+      // Door
+      ctx.beginPath(); ctx.arc(cx, by+bh-15, 10, Math.PI, 0);
+      ctx.lineTo(cx+10, by+bh); ctx.lineTo(cx-10, by+bh);
+      ctx.closePath();
+      ctx.fillStyle = '#443322'; ctx.fill();
+      break;
+    }
+    case 'forge': {
+      const bw = 80, bh = 55;
+      const bx = cx-bw/2, by = cy-bh/2+10;
+      ctx.fillStyle = '#664433';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#553322'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      // Roof
+      ctx.fillStyle = '#553322';
+      ctx.beginPath();
+      ctx.moveTo(bx-5, by); ctx.lineTo(cx, by-15); ctx.lineTo(bx+bw+5, by);
+      ctx.closePath(); ctx.fill();
+      // Chimney with smoke & fire glow
+      ctx.fillStyle = '#554433';
+      ctx.fillRect(bx+bw-20, by-25, 14, 20);
+      ctx.fillStyle = '#FF6633';
+      ctx.beginPath(); ctx.arc(bx+bw-13, by-8, 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,100,50,0.2)';
+      ctx.beginPath(); ctx.arc(bx+bw-13, by-8, 15, 0, Math.PI*2); ctx.fill();
+      // Smoke
+      ctx.fillStyle = 'rgba(100,100,100,0.3)';
+      for (let s = 0; s < 4; s++) {
+        ctx.beginPath(); ctx.arc(bx+bw-13+s*2, by-30-s*8, 4+s*2, 0, Math.PI*2); ctx.fill();
+      }
+      // Anvil
+      ctx.fillStyle = '#555555';
+      ctx.fillRect(bx+bw+10, by+bh-20, 20, 8);
+      ctx.fillRect(bx+bw+15, by+bh-25, 10, 8);
+      // Hammer
+      ctx.strokeStyle = '#776655'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(bx+bw+25, by+bh-35); ctx.lineTo(bx+bw+20, by+bh-22); ctx.stroke();
+      ctx.fillStyle = '#777777';
+      ctx.fillRect(bx+bw+23, by+bh-38, 8, 6);
+      // Open front (forge visible)
+      ctx.fillStyle = '#332211';
+      ctx.fillRect(bx+5, by+bh-20, 25, 20);
+      ctx.fillStyle = '#FF4411';
+      ctx.beginPath(); ctx.arc(bx+17, by+bh-10, 6, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#FFAA33';
+      ctx.beginPath(); ctx.arc(bx+17, by+bh-10, 3, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+    default: {
+      // Generic building
+      const bw = 60, bh = 50;
+      ctx.fillStyle = '#776655';
+      ctx.fillRect(cx-bw/2, cy-bh/2, bw, bh);
+      ctx.strokeStyle = '#554433'; ctx.lineWidth = 2;
+      ctx.strokeRect(cx-bw/2, cy-bh/2, bw, bh);
+      ctx.fillStyle = '#885533';
+      ctx.beginPath();
+      ctx.moveTo(cx-bw/2-5, cy-bh/2);
+      ctx.lineTo(cx, cy-bh/2-15);
+      ctx.lineTo(cx+bw/2+5, cy-bh/2);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#443322';
+      ctx.fillRect(cx-6, cy+bh/2-8, 12, 8);
+      break;
+    }
+  }
+  return c;
+}
+
+// =========================================================================
+// HOVER SYSTEM — shared across iterations
+// =========================================================================
+
+function setupHover(canvasId, wrapId, drawFn) {
+  const canvas = document.getElementById(canvasId);
+  const wrap = document.getElementById(wrapId);
+
+  // Create tooltip
+  const tooltip = document.createElement('div');
+  tooltip.className = 'tooltip';
+  tooltip.innerHTML = '<div class="tt-title"></div><div class="tt-mode"></div>';
+  wrap.appendChild(tooltip);
+
+  let hoveredBuilding = null;
+  let previewCache = {};
+
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = 1200 / rect.width;
+    const scaleY = 900 / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
+
+    let found = null;
+    for (const b of MAP.buildings) {
+      if (b.type === 'colosseum') {
+        const dx = mx - (b.x + b.w/2), dy = my - (b.y + b.h/2);
+        if (dx*dx/(b.w*b.w/4) + dy*dy/(b.h*b.h/4) <= 1) { found = b; break; }
+      } else {
+        if (mx >= b.x && mx <= b.x+b.w && my >= b.y && my <= b.y+b.h) { found = b; break; }
+      }
+    }
+
+    if (found !== hoveredBuilding) {
+      hoveredBuilding = found;
+      if (found) {
+        // Update tooltip
+        tooltip.querySelector('.tt-title').textContent = found.label;
+        tooltip.querySelector('.tt-mode').textContent = found.mode === '—' ? 'Coming Soon' : '▶ ' + found.mode;
+
+        // Get or create preview
+        if (!previewCache[found.id]) {
+          const preview = renderBuildingPreview(found.type, 180, 140);
+          previewCache[found.id] = preview;
+        }
+        // Remove old preview canvas
+        const oldPrev = tooltip.querySelector('canvas');
+        if (oldPrev) oldPrev.remove();
+        tooltip.appendChild(previewCache[found.id].cloneNode(false));
+        // Copy pixel data
+        const cloned = tooltip.querySelector('canvas');
+        cloned.width = 180; cloned.height = 140;
+        cloned.getContext('2d').drawImage(previewCache[found.id], 0, 0);
+
+        tooltip.style.display = 'block';
+      } else {
+        tooltip.style.display = 'none';
+      }
+      // Redraw with highlight
+      drawFn(hoveredBuilding);
+    }
+
+    if (found) {
+      const tx = (e.clientX - rect.left) + 15;
+      const ty = (e.clientY - rect.top) - 10;
+      // Keep tooltip in bounds
+      const ttW = 210, ttH = 200;
+      tooltip.style.left = Math.min(tx, rect.width - ttW) + 'px';
+      tooltip.style.top = Math.min(ty, rect.height - ttH) + 'px';
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    if (hoveredBuilding) {
+      hoveredBuilding = null;
+      tooltip.style.display = 'none';
+      drawFn(null);
+    }
+  });
+}
+
+
+// =========================================================================
+// SHARED PARCHMENT DRAWING HELPERS
+// =========================================================================
+
+function drawParchmentBackground(ctx, W, H, rng, style) {
+  // Base parchment color
+  let baseColor, darkColor, edgeColor;
+  if (style === 'dark') {
+    baseColor = '#2a2218';
+    darkColor = '#1a1510';
+    edgeColor = '#0a0805';
+  } else if (style === 'worn') {
+    baseColor = '#D4C4A0';
+    darkColor = '#B8A880';
+    edgeColor = '#8B7355';
+  } else if (style === 'illuminated') {
+    baseColor = '#E8D8B8';
+    darkColor = '#D4C4A0';
+    edgeColor = '#AA8855';
+  } else {
+    baseColor = '#E0D0B0';
+    darkColor = '#C8B890';
+    edgeColor = '#A08860';
+  }
+
+  // Fill base
+  ctx.fillStyle = baseColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Vignette
+  const grad = ctx.createRadialGradient(W/2, H/2, W*0.25, W/2, H/2, W*0.7);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, style === 'dark' ? 'rgba(0,0,0,0.5)' : 'rgba(80,60,30,0.2)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Paper texture — random spots
+  for (let i = 0; i < 2000; i++) {
+    const x = rng() * W, y = rng() * H;
+    const a = 0.02 + rng() * 0.04;
+    ctx.fillStyle = style === 'dark' ? `rgba(60,50,30,${a})` : `rgba(120,100,60,${a})`;
+    ctx.fillRect(x, y, 2 + rng()*4, 2 + rng()*3);
+  }
+
+  // Age stains
+  for (let i = 0; i < 8; i++) {
+    const sx = rng() * W, sy = rng() * H, sr = 30 + rng() * 80;
+    const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+    const stainAlpha = style === 'dark' ? 0.08 : 0.06;
+    sg.addColorStop(0, `rgba(100,80,40,${stainAlpha})`);
+    sg.addColorStop(1, 'rgba(100,80,40,0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(sx-sr, sy-sr, sr*2, sr*2);
+  }
+
+  return { baseColor, darkColor, edgeColor };
+}
+
+function drawInkRiver(ctx, rng, inkColor, fillColor) {
+  const rp = MAP.river;
+  // River fill
+  ctx.beginPath();
+  ctx.moveTo(rp[0].x, rp[0].y);
+  for (let i = 1; i < rp.length - 1; i++) {
+    const xc = (rp[i].x + rp[i+1].x)/2, yc = (rp[i].y + rp[i+1].y)/2;
+    ctx.quadraticCurveTo(rp[i].x, rp[i].y, xc, yc);
+  }
+  ctx.lineTo(rp[rp.length-1].x, rp[rp.length-1].y);
+  ctx.lineTo(1200, 900); ctx.lineTo(0, 900); ctx.closePath();
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+
+  // Wave lines
+  ctx.strokeStyle = inkColor;
+  ctx.lineWidth = 0.5;
+  for (let wy = 785; wy < 900; wy += 12) {
+    ctx.beginPath();
+    for (let wx = 0; wx < 1200; wx += 4) {
+      const y = wy + Math.sin(wx*0.04 + wy*0.1)*3;
+      wx === 0 ? ctx.moveTo(wx, y) : ctx.lineTo(wx, y);
+    }
+    ctx.stroke();
+  }
+
+  // Bank line
+  ctx.beginPath();
+  ctx.moveTo(rp[0].x, rp[0].y);
+  for (let i = 1; i < rp.length - 1; i++) {
+    const xc = (rp[i].x + rp[i+1].x)/2, yc = (rp[i].y + rp[i+1].y)/2;
+    ctx.quadraticCurveTo(rp[i].x, rp[i].y, xc, yc);
+  }
+  ctx.lineTo(rp[rp.length-1].x, rp[rp.length-1].y);
+  ctx.strokeStyle = inkColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawInkRoads(ctx, inkColor, dashColor) {
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const road of MAP.roads) {
+    ctx.beginPath();
+    ctx.moveTo(road[0].x, road[0].y);
+    for (let i = 1; i < road.length; i++) ctx.lineTo(road[i].x, road[i].y);
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // Dashed center
+    ctx.beginPath();
+    ctx.moveTo(road[0].x, road[0].y);
+    for (let i = 1; i < road.length; i++) ctx.lineTo(road[i].x, road[i].y);
+    ctx.strokeStyle = dashColor;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4,6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function drawInkWalls(ctx, inkColor, fillColor, crenColor) {
+  const c = MAP.city, wt = MAP.wallThickness;
+  const gN = MAP.gates.north, gS = MAP.gates.south;
+  const gE = MAP.gates.east, gW = MAP.gates.west;
+
+  ctx.fillStyle = fillColor;
+  // N
+  ctx.fillRect(c.x, c.y, gN.x-gN.w/2-c.x, wt);
+  ctx.fillRect(gN.x+gN.w/2, c.y, c.x+c.w-gN.x-gN.w/2, wt);
+  // S
+  ctx.fillRect(c.x, c.y+c.h-wt, gS.x-gS.w/2-c.x, wt);
+  ctx.fillRect(gS.x+gS.w/2, c.y+c.h-wt, c.x+c.w-gS.x-gS.w/2, wt);
+  // W
+  ctx.fillRect(c.x, c.y, wt, gW.y-gW.w/2-c.y);
+  ctx.fillRect(c.x, gW.y+gW.w/2, wt, c.y+c.h-gW.y-gW.w/2);
+  // E
+  ctx.fillRect(c.x+c.w-wt, c.y, wt, gE.y-gE.w/2-c.y);
+  ctx.fillRect(c.x+c.w-wt, gE.y+gE.w/2, wt, c.y+c.h-gE.y-gE.w/2);
+
+  // Outline
+  ctx.strokeStyle = inkColor;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(c.x, c.y, c.w, c.h);
+
+  // Crenellations
+  ctx.fillStyle = crenColor;
+  for (let x = c.x; x < c.x+c.w; x += 12) {
+    if (x > gN.x-gN.w/2-8 && x < gN.x+gN.w/2+8) continue;
+    ctx.fillRect(x, c.y-4, 6, 5);
+  }
+  for (let x = c.x; x < c.x+c.w; x += 12) {
+    if (x > gS.x-gS.w/2-8 && x < gS.x+gS.w/2+8) continue;
+    ctx.fillRect(x, c.y+c.h-1, 6, 5);
+  }
+  for (let y = c.y; y < c.y+c.h; y += 12) {
+    if (y > gW.y-gW.w/2-8 && y < gW.y+gW.w/2+8) continue;
+    ctx.fillRect(c.x-4, y, 5, 6);
+  }
+  for (let y = c.y; y < c.y+c.h; y += 12) {
+    if (y > gE.y-gE.w/2-8 && y < gE.y+gE.w/2+8) continue;
+    ctx.fillRect(c.x+c.w-1, y, 5, 6);
+  }
+
+  // Wall towers
+  for (const t of wallTowers) {
+    ctx.beginPath(); ctx.arc(t.x, t.y, t.s, 0, Math.PI*2);
+    ctx.fillStyle = fillColor; ctx.fill();
+    ctx.strokeStyle = inkColor; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(t.x, t.y, t.s*0.6, 0, Math.PI*2);
+    ctx.strokeStyle = inkColor; ctx.lineWidth = 0.8; ctx.stroke();
+  }
+}
+
+function drawInkTrees(ctx, rng, trunkColor, canopyColor, isStylized) {
+  for (const tree of treesData) {
+    if (isStylized) {
+      // Hand-drawn style — little triangles or circles with hatching
+      ctx.strokeStyle = trunkColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tree.x, tree.y + tree.size * 0.5);
+      ctx.lineTo(tree.x, tree.y - tree.size * 0.3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(tree.x, tree.y - tree.size*0.2, tree.size*0.5, 0, Math.PI*2);
+      ctx.fillStyle = canopyColor;
+      ctx.fill();
+      ctx.strokeStyle = trunkColor;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(tree.x, tree.y, tree.size*0.6, 0, Math.PI*2);
+      ctx.fillStyle = canopyColor;
+      ctx.fill();
+      ctx.strokeStyle = trunkColor;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+  }
+}
+
+function drawInkHouses(ctx, inkColor, fillColor) {
+  for (const h of MAP.houses) {
+    ctx.fillStyle = fillColor;
+    ctx.fillRect(h.x, h.y, h.w, h.h);
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(h.x, h.y, h.w, h.h);
+    // Roof line
+    ctx.beginPath();
+    ctx.moveTo(h.x, h.y + h.h*0.4);
+    ctx.lineTo(h.x + h.w, h.y + h.h*0.4);
+    ctx.stroke();
+  }
+}
+
+function drawInkBuildings(ctx, rng, inkColor, labelColor, accentColor, hovered, style) {
+  for (const b of MAP.buildings) {
+    const isHovered = hovered && hovered.id === b.id;
+    const alpha = isHovered ? 1.0 : 0.85;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Hover glow
+    if (isHovered) {
+      if (style === 'dark') {
+        const glow = ctx.createRadialGradient(b.x+b.w/2, b.y+b.h/2, 0, b.x+b.w/2, b.y+b.h/2, Math.max(b.w,b.h)*0.8);
+        glow.addColorStop(0, 'rgba(218,165,32,0.3)');
+        glow.addColorStop(1, 'rgba(218,165,32,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(b.x-40, b.y-40, b.w+80, b.h+80);
+      } else {
+        ctx.shadowColor = 'rgba(180,140,50,0.6)';
+        ctx.shadowBlur = 20;
+      }
+    }
+
+    if (b.type === 'colosseum') {
+      ctx.beginPath();
+      ctx.ellipse(b.x+b.w/2, b.y+b.h/2, b.w/2, b.h/2, 0, 0, Math.PI*2);
+      ctx.strokeStyle = inkColor; ctx.lineWidth = isHovered ? 3 : 2;
+      ctx.stroke();
+      // Inner ring
+      ctx.beginPath();
+      ctx.ellipse(b.x+b.w/2, b.y+b.h/2, b.w/2-15, b.h/2-12, 0, 0, Math.PI*2);
+      ctx.strokeStyle = inkColor; ctx.lineWidth = 1; ctx.stroke();
+      // Arena floor
+      ctx.beginPath();
+      ctx.ellipse(b.x+b.w/2, b.y+b.h/2, b.w/2-30, b.h/2-25, 0, 0, Math.PI*2);
+      if (style === 'dark') {
+        ctx.fillStyle = 'rgba(180,160,120,0.15)';
+      } else {
+        ctx.fillStyle = 'rgba(180,160,120,0.3)';
+      }
+      ctx.fill();
+      // Arches
+      for (let a = 0; a < 12; a++) {
+        const ang = a*Math.PI*2/12;
+        const ax = b.x+b.w/2+Math.cos(ang)*(b.w/2-7);
+        const ay = b.y+b.h/2+Math.sin(ang)*(b.h/2-6);
+        ctx.beginPath(); ctx.arc(ax, ay, 3, 0, Math.PI*2);
+        ctx.fillStyle = inkColor; ctx.fill();
+      }
+    } else if (b.type === 'castle') {
+      // Castle outline with turrets
+      ctx.strokeStyle = inkColor; ctx.lineWidth = isHovered ? 3 : 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Inner keep
+      ctx.strokeRect(b.x+b.w/2-50, b.y+20, 100, 80);
+      if (style === 'dark') {
+        ctx.fillStyle = 'rgba(180,160,120,0.1)';
+      } else {
+        ctx.fillStyle = 'rgba(180,160,120,0.15)';
+      }
+      ctx.fillRect(b.x+b.w/2-50, b.y+20, 100, 80);
+      // Turrets (circles at corners)
+      const turrets = [[b.x,b.y],[b.x+b.w,b.y],[b.x,b.y+b.h],[b.x+b.w,b.y+b.h]];
+      for (const [tx,ty] of turrets) {
+        ctx.beginPath(); ctx.arc(tx, ty, 14, 0, Math.PI*2);
+        ctx.strokeStyle = inkColor; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.beginPath(); ctx.arc(tx, ty, 8, 0, Math.PI*2);
+        ctx.fillStyle = accentColor; ctx.fill();
+      }
+      // Cross-hatching inside
+      if (style !== 'dark') {
+        ctx.strokeStyle = inkColor; ctx.lineWidth = 0.3; ctx.globalAlpha = 0.2;
+        for (let hx = b.x+5; hx < b.x+b.w; hx += 8) {
+          ctx.beginPath(); ctx.moveTo(hx, b.y); ctx.lineTo(hx, b.y+b.h); ctx.stroke();
+        }
+        ctx.globalAlpha = alpha;
+      }
+    } else if (b.type === 'tower') {
+      ctx.beginPath(); ctx.arc(b.x+b.w/2, b.y+b.h/2, b.w/2, 0, Math.PI*2);
+      ctx.strokeStyle = inkColor; ctx.lineWidth = isHovered ? 3 : 2; ctx.stroke();
+      // Conical roof lines
+      ctx.beginPath();
+      ctx.moveTo(b.x+b.w/2, b.y-5);
+      ctx.lineTo(b.x, b.y+b.h/2);
+      ctx.moveTo(b.x+b.w/2, b.y-5);
+      ctx.lineTo(b.x+b.w, b.y+b.h/2);
+      ctx.strokeStyle = inkColor; ctx.lineWidth = 1; ctx.stroke();
+      // Dot at top
+      ctx.beginPath(); ctx.arc(b.x+b.w/2, b.y-5, 4, 0, Math.PI*2);
+      ctx.fillStyle = accentColor; ctx.fill();
+    } else if (b.type === 'gate') {
+      ctx.strokeStyle = inkColor; ctx.lineWidth = isHovered ? 3 : 2;
+      // Two towers
+      ctx.strokeRect(b.x, b.y, 30, b.h);
+      ctx.strokeRect(b.x+b.w-30, b.y, 30, b.h);
+      // Arch
+      ctx.beginPath();
+      ctx.arc(b.x+b.w/2, b.y+b.h*0.6, 20, Math.PI, 0);
+      ctx.stroke();
+      // Portcullis hash
+      ctx.lineWidth = 0.5;
+      for (let px = b.x+b.w/2-15; px < b.x+b.w/2+15; px += 5) {
+        ctx.beginPath(); ctx.moveTo(px, b.y+b.h*0.4); ctx.lineTo(px, b.y+b.h); ctx.stroke();
+      }
+    } else if (b.type === 'market') {
+      ctx.strokeStyle = inkColor; ctx.lineWidth = isHovered ? 3 : 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Stall outlines inside
+      ctx.lineWidth = 0.8;
+      for (let sx = b.x+15; sx < b.x+b.w-15; sx += 40) {
+        for (let sy = b.y+15; sy < b.y+b.h-15; sy += 50) {
+          ctx.strokeRect(sx, sy, 30, 20);
+        }
+      }
+      // Fountain circle
+      ctx.beginPath(); ctx.arc(b.x+b.w/2, b.y+b.h/2, 15, 0, Math.PI*2);
+      ctx.strokeStyle = inkColor; ctx.lineWidth = 1.5; ctx.stroke();
+    } else if (b.type === 'church') {
+      ctx.strokeStyle = inkColor; ctx.lineWidth = isHovered ? 3 : 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Steeple
+      ctx.beginPath();
+      ctx.moveTo(b.x+b.w/2, b.y-25);
+      ctx.lineTo(b.x+b.w/2-12, b.y);
+      ctx.lineTo(b.x+b.w/2+12, b.y);
+      ctx.closePath(); ctx.stroke();
+      // Cross
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(b.x+b.w/2, b.y-35); ctx.lineTo(b.x+b.w/2, b.y-25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x+b.w/2-5, b.y-32); ctx.lineTo(b.x+b.w/2+5, b.y-32); ctx.stroke();
+      // Rose window
+      ctx.beginPath(); ctx.arc(b.x+b.w/2, b.y+30, 10, 0, Math.PI*2);
+      ctx.strokeStyle = inkColor; ctx.lineWidth = 1; ctx.stroke();
+    } else {
+      // Generic rectangle building
+      ctx.strokeStyle = inkColor; ctx.lineWidth = isHovered ? 3 : 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      // Roof line
+      if (b.type !== 'garden' && b.type !== 'training') {
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y + b.h*0.35);
+        ctx.lineTo(b.x+b.w, b.y + b.h*0.35);
+        ctx.strokeStyle = inkColor; ctx.lineWidth = 0.8; ctx.stroke();
+      }
+      // Cross-hatching for non-garden
+      if (b.type === 'training') {
+        // Fence marks
+        ctx.lineWidth = 0.5;
+        for (let fx = b.x+8; fx < b.x+b.w-5; fx += 12) {
+          ctx.beginPath(); ctx.moveTo(fx, b.y); ctx.lineTo(fx, b.y+8); ctx.stroke();
+        }
+      }
+      if (b.type === 'garden') {
+        // Tree circles inside
+        ctx.lineWidth = 0.8;
+        for (let i = 0; i < 5; i++) {
+          const gx = b.x+15+rng()*60, gy = b.y+15+rng()*40;
+          ctx.beginPath(); ctx.arc(gx, gy, 6+rng()*4, 0, Math.PI*2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Label
+    const labelY = b.type === 'church' ? b.y + b.h + 18 : b.y + b.h + 14;
+    ctx.font = isHovered ? 'bold 12px Georgia' : '11px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = isHovered ? accentColor : labelColor;
+    ctx.fillText(b.label, b.x + b.w/2, labelY);
+
+    // Mode label if active
+    if (b.mode !== '—') {
+      ctx.font = '9px Georgia';
+      ctx.fillStyle = isHovered ? accentColor : (style === 'dark' ? 'rgba(200,180,140,0.5)' : 'rgba(80,60,30,0.5)');
+      ctx.fillText('[ ' + b.mode + ' ]', b.x + b.w/2, labelY + 12);
+    }
+  }
+}
+
+function drawCompassRose(ctx, x, y, size, inkColor, accentColor) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Outer circle
+  ctx.beginPath(); ctx.arc(0, 0, size, 0, Math.PI*2);
+  ctx.strokeStyle = inkColor; ctx.lineWidth = 2; ctx.stroke();
+
+  // Inner circle
+  ctx.beginPath(); ctx.arc(0, 0, size*0.3, 0, Math.PI*2);
+  ctx.strokeStyle = inkColor; ctx.lineWidth = 1; ctx.stroke();
+
+  // Cardinal points
+  const dirs = ['N','E','S','W'];
+  for (let i = 0; i < 4; i++) {
+    ctx.save();
+    ctx.rotate(i * Math.PI/2);
+    // Main point
+    ctx.beginPath();
+    ctx.moveTo(0, -size*0.95);
+    ctx.lineTo(-size*0.12, -size*0.3);
+    ctx.lineTo(0, -size*0.35);
+    ctx.lineTo(size*0.12, -size*0.3);
+    ctx.closePath();
+    ctx.fillStyle = i % 2 === 0 ? accentColor : inkColor;
+    ctx.fill();
+    ctx.strokeStyle = inkColor; ctx.lineWidth = 0.8; ctx.stroke();
+    // Secondary point
+    ctx.beginPath();
+    ctx.moveTo(0, -size*0.35);
+    ctx.lineTo(-size*0.06, -size*0.15);
+    ctx.lineTo(size*0.06, -size*0.15);
+    ctx.closePath();
+    ctx.fillStyle = inkColor; ctx.fill();
+    ctx.restore();
+  }
+
+  // Intercardinal lines
+  for (let i = 0; i < 4; i++) {
+    ctx.save();
+    ctx.rotate(i * Math.PI/2 + Math.PI/4);
+    ctx.beginPath();
+    ctx.moveTo(0, -size*0.7);
+    ctx.lineTo(-size*0.05, -size*0.2);
+    ctx.lineTo(size*0.05, -size*0.2);
+    ctx.closePath();
+    ctx.fillStyle = inkColor; ctx.globalAlpha = 0.5; ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // Labels
+  ctx.font = `bold ${size*0.3}px Georgia`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = accentColor;
+  ctx.fillText('N', 0, -size-12);
+  ctx.fillStyle = inkColor;
+  ctx.font = `${size*0.22}px Georgia`;
+  ctx.fillText('S', 0, size+12);
+  ctx.fillText('E', size+12, 2);
+  ctx.fillText('W', -size-12, 2);
+
+  ctx.restore();
+}
+
+function drawTitleBanner(ctx, x, y, text, inkColor, bgColor, accentColor) {
+  ctx.font = 'bold 22px Georgia';
+  const tw = ctx.measureText(text).width;
+  const bw = tw + 60, bh = 40;
+
+  // Banner shape
+  ctx.beginPath();
+  ctx.moveTo(x - bw/2 + 10, y - bh/2);
+  ctx.lineTo(x + bw/2 - 10, y - bh/2);
+  ctx.lineTo(x + bw/2, y);
+  ctx.lineTo(x + bw/2 - 10, y + bh/2);
+  ctx.lineTo(x - bw/2 + 10, y + bh/2);
+  ctx.lineTo(x - bw/2, y);
+  ctx.closePath();
+  ctx.fillStyle = bgColor;
+  ctx.fill();
+  ctx.strokeStyle = accentColor; ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = accentColor;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y + 1);
+}
+
+// =========================================================================
+// ITERATION A: CLASSIC INK CARTOGRAPHY
+// =========================================================================
+
+function drawIterationA(hovered) {
+  const canvas = document.getElementById('cA');
+  const ctx = canvas.getContext('2d');
+  const W = 1200, H = 900;
+  const rng = seededRandom(200);
+
+  drawParchmentBackground(ctx, W, H, rng, 'classic');
+
+  const ink = '#3a2a1a';
+  const accent = '#8B4513';
+  const label = '#4a3a2a';
+
+  // Farmland outside walls (hatch patterns)
+  const farms = [{x:30,y:580,w:160,h:120},{x:50,y:720,w:120,h:80},{x:1020,y:100,w:130,h:90}];
+  ctx.strokeStyle = ink; ctx.lineWidth = 0.3;
+  for (const f of farms) {
+    for (let row = 0; row < f.h; row += 4) {
+      ctx.beginPath(); ctx.moveTo(f.x, f.y+row); ctx.lineTo(f.x+f.w, f.y+row); ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeRect(f.x, f.y, f.w, f.h);
+    ctx.lineWidth = 0.3;
+  }
+
+  drawInkRiver(ctx, rng, ink, 'rgba(60,80,120,0.15)');
+  drawInkRoads(ctx, 'rgba(60,40,20,0.4)', 'rgba(60,40,20,0.2)');
+
+  // City interior — light wash
+  const c = MAP.city;
+  ctx.fillStyle = 'rgba(200,180,140,0.2)';
+  ctx.fillRect(c.x+14, c.y+14, c.w-28, c.h-28);
+
+  drawInkWalls(ctx, ink, 'rgba(60,50,40,0.3)', 'rgba(80,70,50,0.4)');
+  drawInkTrees(ctx, rng, ink, 'rgba(60,80,40,0.2)', true);
+  drawInkHouses(ctx, ink, 'rgba(180,160,120,0.15)');
+  drawInkBuildings(ctx, rng, ink, label, accent, hovered, 'classic');
+
+  // Compass rose
+  drawCompassRose(ctx, 100, 80, 35, ink, accent);
+
+  // Title
+  drawTitleBanner(ctx, 600, 35, 'CAMELOT', ink, 'rgba(224,208,176,0.9)', accent);
+
+  // Decorative corner flourishes
+  ctx.strokeStyle = accent; ctx.lineWidth = 1.5;
+  // Top-left
+  ctx.beginPath();
+  ctx.moveTo(15, 60); ctx.quadraticCurveTo(15, 15, 60, 15);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(15, 50); ctx.quadraticCurveTo(20, 20, 50, 15);
+  ctx.stroke();
+  // Top-right
+  ctx.beginPath();
+  ctx.moveTo(W-15, 60); ctx.quadraticCurveTo(W-15, 15, W-60, 15);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(W-15, 50); ctx.quadraticCurveTo(W-20, 20, W-50, 15);
+  ctx.stroke();
+  // Bottom-left
+  ctx.beginPath();
+  ctx.moveTo(15, H-60); ctx.quadraticCurveTo(15, H-15, 60, H-15);
+  ctx.stroke();
+  // Bottom-right
+  ctx.beginPath();
+  ctx.moveTo(W-15, H-60); ctx.quadraticCurveTo(W-15, H-15, W-60, H-15);
+  ctx.stroke();
+
+  // Border
+  ctx.strokeStyle = ink; ctx.lineWidth = 2;
+  ctx.strokeRect(8, 8, W-16, H-16);
+  ctx.strokeStyle = accent; ctx.lineWidth = 0.5;
+  ctx.strokeRect(12, 12, W-24, H-24);
+}
+
+drawIterationA(null);
+setupHover('cA', 'wrap-a', drawIterationA);
+
+
+// =========================================================================
+// ITERATION B: WORN TREASURE MAP
+// =========================================================================
+
+function drawIterationB(hovered) {
+  const canvas = document.getElementById('cB');
+  const ctx = canvas.getContext('2d');
+  const W = 1200, H = 900;
+  const rng = seededRandom(300);
+
+  drawParchmentBackground(ctx, W, H, rng, 'worn');
+
+  const ink = '#2a1a0a';
+  const accent = '#AA4411';
+  const label = '#3a2a1a';
+
+  // Burned/torn edges
+  ctx.save();
+  for (let i = 0; i < 80; i++) {
+    const edge = Math.floor(rng() * 4);
+    let bx, by, bw, bh;
+    if (edge === 0) { bx = rng()*W; by = 0; bw = 10+rng()*30; bh = 5+rng()*15; }
+    else if (edge === 1) { bx = rng()*W; by = H-5-rng()*15; bw = 10+rng()*30; bh = 5+rng()*15; }
+    else if (edge === 2) { bx = 0; by = rng()*H; bw = 5+rng()*15; bh = 10+rng()*30; }
+    else { bx = W-5-rng()*15; by = rng()*H; bw = 5+rng()*15; bh = 10+rng()*30; }
+    ctx.fillStyle = `rgba(40,25,10,${0.3+rng()*0.4})`;
+    ctx.fillRect(bx, by, bw, bh);
+  }
+  ctx.restore();
+
+  // Stain rings (coffee cup marks)
+  for (let i = 0; i < 3; i++) {
+    const rx = 100+rng()*1000, ry = 100+rng()*700, rr = 25+rng()*20;
+    ctx.beginPath(); ctx.arc(rx, ry, rr, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(120,90,50,0.08)'; ctx.lineWidth = 8; ctx.stroke();
+  }
+
+  drawInkRiver(ctx, rng, ink, 'rgba(50,70,110,0.2)');
+  drawInkRoads(ctx, 'rgba(50,30,15,0.5)', 'rgba(50,30,15,0.25)');
+
+  const c = MAP.city;
+  ctx.fillStyle = 'rgba(190,170,130,0.25)';
+  ctx.fillRect(c.x+14, c.y+14, c.w-28, c.h-28);
+
+  drawInkWalls(ctx, ink, 'rgba(50,40,25,0.35)', 'rgba(70,55,35,0.45)');
+  drawInkTrees(ctx, rng, ink, 'rgba(50,70,35,0.25)', false);
+  drawInkHouses(ctx, ink, 'rgba(170,150,110,0.2)');
+  drawInkBuildings(ctx, rng, ink, label, accent, hovered, 'worn');
+
+  // X marks on game-mode buildings
+  for (const b of MAP.buildings) {
+    if (b.mode !== '—') {
+      const xc = b.x + b.w/2, yc = b.y + b.h/2;
+      ctx.strokeStyle = accent; ctx.lineWidth = 2.5;
+      ctx.globalAlpha = 0.4;
+      ctx.beginPath();
+      ctx.moveTo(xc-8, yc-8); ctx.lineTo(xc+8, yc+8);
+      ctx.moveTo(xc+8, yc-8); ctx.lineTo(xc-8, yc+8);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Compass rose (larger, more ornate)
+  drawCompassRose(ctx, 1080, 100, 45, ink, accent);
+
+  // Title banner — hand-written style
+  ctx.font = 'italic bold 28px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = accent;
+  ctx.fillText('~ Camelot ~', 600, 50);
+  ctx.font = '12px Georgia';
+  ctx.fillStyle = label;
+  ctx.fillText('A Map of the Kingdom', 600, 70);
+
+  // Decorative border — rope pattern
+  ctx.strokeStyle = ink; ctx.lineWidth = 3;
+  ctx.strokeRect(10, 10, W-20, H-20);
+  ctx.strokeStyle = 'rgba(100,80,50,0.3)'; ctx.lineWidth = 6;
+  ctx.strokeRect(6, 6, W-12, H-12);
+
+  // Legend box
+  ctx.fillStyle = 'rgba(200,180,140,0.7)';
+  roundRect(ctx, 20, H-130, 180, 115, 5);
+  ctx.fill();
+  ctx.strokeStyle = ink; ctx.lineWidth = 1;
+  roundRect(ctx, 20, H-130, 180, 115, 5);
+  ctx.stroke();
+
+  ctx.font = 'bold 12px Georgia';
+  ctx.fillStyle = ink;
+  ctx.textAlign = 'left';
+  ctx.fillText('Legend', 35, H-112);
+  ctx.font = '10px Georgia';
+  ctx.fillStyle = label;
+
+  // X mark
+  ctx.strokeStyle = accent; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(35, H-95); ctx.lineTo(43, H-87);
+  ctx.moveTo(43, H-95); ctx.lineTo(35, H-87);
+  ctx.stroke();
+  ctx.fillText('Game Mode', 55, H-88);
+
+  // Circle
+  ctx.beginPath(); ctx.arc(39, H-72, 5, 0, Math.PI*2);
+  ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillText('Tower', 55, H-68);
+
+  // Square
+  ctx.strokeRect(34, H-60, 10, 10);
+  ctx.fillText('Building', 55, H-52);
+
+  // Tree
+  ctx.beginPath(); ctx.arc(39, H-38, 5, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(50,70,35,0.4)'; ctx.fill();
+  ctx.fillStyle = label;
+  ctx.fillText('Forest', 55, H-35);
+}
+
+drawIterationB(null);
+setupHover('cB', 'wrap-b', drawIterationB);
+
+
+// =========================================================================
+// ITERATION C: ILLUMINATED MANUSCRIPT
+// =========================================================================
+
+function drawIterationC(hovered) {
+  const canvas = document.getElementById('cC');
+  const ctx = canvas.getContext('2d');
+  const W = 1200, H = 900;
+  const rng = seededRandom(400);
+
+  drawParchmentBackground(ctx, W, H, rng, 'illuminated');
+
+  const ink = '#2a1a0a';
+  const gold = '#DAA520';
+  const blue = '#2244AA';
+  const red = '#AA2222';
+  const label = '#2a1a0a';
+
+  // Ornate gold border
+  // Outer border
+  ctx.strokeStyle = gold; ctx.lineWidth = 4;
+  ctx.strokeRect(12, 12, W-24, H-24);
+  // Inner border
+  ctx.strokeStyle = gold; ctx.lineWidth = 2;
+  ctx.strokeRect(20, 20, W-40, H-40);
+  // Fill between borders
+  ctx.fillStyle = 'rgba(218,165,32,0.08)';
+  ctx.fillRect(12, 12, W-24, 10);
+  ctx.fillRect(12, H-22, W-24, 10);
+  ctx.fillRect(12, 12, 10, H-24);
+  ctx.fillRect(W-22, 12, 10, H-24);
+
+  // Corner medallions
+  const corners = [[30,30],[W-30,30],[30,H-30],[W-30,H-30]];
+  for (const [cx2,cy2] of corners) {
+    ctx.beginPath(); ctx.arc(cx2, cy2, 14, 0, Math.PI*2);
+    ctx.fillStyle = gold; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx2, cy2, 10, 0, Math.PI*2);
+    ctx.fillStyle = red; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx2, cy2, 6, 0, Math.PI*2);
+    ctx.fillStyle = gold; ctx.fill();
+    // Cross in center
+    ctx.fillStyle = red;
+    ctx.fillRect(cx2-1, cy2-4, 2, 8);
+    ctx.fillRect(cx2-4, cy2-1, 8, 2);
+  }
+
+  // Side medallions
+  const sides = [[W/2,18],[W/2,H-18],[18,H/2],[W-18,H/2]];
+  for (const [sx,sy] of sides) {
+    ctx.beginPath(); ctx.arc(sx, sy, 10, 0, Math.PI*2);
+    ctx.fillStyle = gold; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI*2);
+    ctx.fillStyle = blue; ctx.fill();
+  }
+
+  // Vine patterns along top border
+  ctx.strokeStyle = 'rgba(40,100,40,0.3)'; ctx.lineWidth = 1.5;
+  for (let vx = 60; vx < W-60; vx += 30) {
+    const vy = 16;
+    ctx.beginPath();
+    ctx.moveTo(vx, vy);
+    ctx.quadraticCurveTo(vx+10, vy-8, vx+15, vy);
+    ctx.quadraticCurveTo(vx+20, vy+8, vx+30, vy);
+    ctx.stroke();
+  }
+
+  drawInkRiver(ctx, rng, ink, 'rgba(40,60,120,0.15)');
+  drawInkRoads(ctx, 'rgba(50,30,15,0.4)', 'rgba(50,30,15,0.2)');
+
+  const c = MAP.city;
+  // City interior — warm wash
+  ctx.fillStyle = 'rgba(218,185,140,0.2)';
+  ctx.fillRect(c.x+14, c.y+14, c.w-28, c.h-28);
+
+  drawInkWalls(ctx, ink, 'rgba(50,40,25,0.3)', 'rgba(218,165,32,0.4)');
+  drawInkTrees(ctx, rng, ink, 'rgba(50,80,30,0.2)', true);
+  drawInkHouses(ctx, ink, 'rgba(190,170,130,0.15)');
+  drawInkBuildings(ctx, rng, ink, label, gold, hovered, 'illuminated');
+
+  // Gold dots on game mode buildings
+  for (const b of MAP.buildings) {
+    if (b.mode !== '—') {
+      ctx.beginPath(); ctx.arc(b.x+b.w/2, b.y-8, 5, 0, Math.PI*2);
+      ctx.fillStyle = gold; ctx.fill();
+      ctx.strokeStyle = ink; ctx.lineWidth = 0.5; ctx.stroke();
+    }
+  }
+
+  // Compass rose with gold
+  drawCompassRose(ctx, 100, 100, 40, ink, gold);
+
+  // Title — illuminated initial
+  ctx.font = 'bold 36px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = gold;
+  ctx.fillText('C', 530, 65);
+
+  // Red box behind initial C
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.fillStyle = red;
+  roundRect(ctx, 515, 35, 30, 38, 3);
+  ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+
+  ctx.font = 'bold 22px Georgia';
+  ctx.fillStyle = ink;
+  ctx.fillText('AMELOT', 600, 60);
+
+  ctx.font = '11px Georgia';
+  ctx.fillStyle = 'rgba(60,40,20,0.6)';
+  ctx.fillText('Kingdom of Arthur Pendragon', 600, 80);
+
+  // Decorative divider under title
+  ctx.strokeStyle = gold; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(450, 88); ctx.lineTo(550, 88);
+  ctx.moveTo(500, 85); ctx.lineTo(500, 91);
+  ctx.moveTo(650, 88); ctx.lineTo(750, 88);
+  ctx.moveTo(700, 85); ctx.lineTo(700, 91);
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(600, 88, 3, 0, Math.PI*2);
+  ctx.fillStyle = gold; ctx.fill();
+}
+
+drawIterationC(null);
+setupHover('cC', 'wrap-c', drawIterationC);
+
+
+// =========================================================================
+// ITERATION D: DARK VELLUM
+// =========================================================================
+
+function drawIterationD(hovered) {
+  const canvas = document.getElementById('cD');
+  const ctx = canvas.getContext('2d');
+  const W = 1200, H = 900;
+  const rng = seededRandom(500);
+
+  drawParchmentBackground(ctx, W, H, rng, 'dark');
+
+  const ink = '#8B7355';
+  const gold = '#DAA520';
+  const silver = '#A0A0B0';
+  const label = '#9B8365';
+
+  // Subtle grid pattern in background
+  ctx.strokeStyle = 'rgba(80,65,40,0.08)'; ctx.lineWidth = 0.5;
+  for (let gx = 0; gx < W; gx += 30) {
+    ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+  }
+  for (let gy = 0; gy < H; gy += 30) {
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+  }
+
+  drawInkRiver(ctx, rng, ink, 'rgba(30,50,80,0.2)');
+  drawInkRoads(ctx, 'rgba(139,115,85,0.4)', 'rgba(139,115,85,0.2)');
+
+  const c = MAP.city;
+  // City interior glow
+  const cityGlow = ctx.createRadialGradient(c.x+c.w/2, c.y+c.h/2, 50, c.x+c.w/2, c.y+c.h/2, c.w*0.6);
+  cityGlow.addColorStop(0, 'rgba(218,165,32,0.06)');
+  cityGlow.addColorStop(1, 'rgba(218,165,32,0)');
+  ctx.fillStyle = cityGlow;
+  ctx.fillRect(c.x, c.y, c.w, c.h);
+
+  drawInkWalls(ctx, ink, 'rgba(100,85,60,0.25)', 'rgba(139,115,85,0.3)');
+  drawInkTrees(ctx, rng, 'rgba(80,65,40,0.4)', 'rgba(60,80,40,0.12)', false);
+  drawInkHouses(ctx, 'rgba(100,85,60,0.3)', 'rgba(50,40,25,0.15)');
+  drawInkBuildings(ctx, rng, ink, label, gold, hovered, 'dark');
+
+  // Glowing markers on game mode buildings
+  for (const b of MAP.buildings) {
+    if (b.mode !== '—') {
+      const bxc = b.x+b.w/2, byc = b.y+b.h/2;
+      const glow = ctx.createRadialGradient(bxc, byc, 0, bxc, byc, 25);
+      glow.addColorStop(0, 'rgba(218,165,32,0.15)');
+      glow.addColorStop(1, 'rgba(218,165,32,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(bxc, byc, 25, 0, Math.PI*2); ctx.fill();
+
+      // Small golden dot
+      ctx.beginPath(); ctx.arc(bxc, b.y-6, 3, 0, Math.PI*2);
+      ctx.fillStyle = gold; ctx.fill();
+    }
+  }
+
+  // Compass rose
+  drawCompassRose(ctx, 1080, 100, 40, ink, gold);
+
+  // Title
+  ctx.font = 'bold 28px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = gold;
+  ctx.fillText('CAMELOT', 600, 50);
+  // Underline
+  ctx.strokeStyle = gold; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(520, 57); ctx.lineTo(680, 57); ctx.stroke();
+  ctx.font = '11px Georgia';
+  ctx.fillStyle = silver;
+  ctx.fillText('The Eternal City', 600, 72);
+
+  // Gold border
+  ctx.strokeStyle = gold; ctx.lineWidth = 2;
+  ctx.strokeRect(10, 10, W-20, H-20);
+  // Silver inner
+  ctx.strokeStyle = 'rgba(160,160,176,0.3)'; ctx.lineWidth = 0.5;
+  ctx.strokeRect(16, 16, W-32, H-32);
+
+  // Corner emblems
+  const crnrs = [[24,24],[W-24,24],[24,H-24],[W-24,H-24]];
+  for (const [cx2,cy2] of crnrs) {
+    ctx.beginPath(); ctx.arc(cx2, cy2, 8, 0, Math.PI*2);
+    ctx.strokeStyle = gold; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx2, cy2, 3, 0, Math.PI*2);
+    ctx.fillStyle = gold; ctx.fill();
+  }
+
+  // Legend
+  ctx.fillStyle = 'rgba(30,25,15,0.8)';
+  roundRect(ctx, 20, H-110, 170, 95, 5);
+  ctx.fill();
+  ctx.strokeStyle = gold; ctx.lineWidth = 1;
+  roundRect(ctx, 20, H-110, 170, 95, 5);
+  ctx.stroke();
+
+  ctx.font = 'bold 11px Georgia';
+  ctx.fillStyle = gold;
+  ctx.textAlign = 'left';
+  ctx.fillText('Map Legend', 35, H-92);
+
+  ctx.font = '10px Georgia';
+  // Glow dot
+  ctx.beginPath(); ctx.arc(39, H-75, 4, 0, Math.PI*2);
+  ctx.fillStyle = gold; ctx.fill();
+  ctx.fillStyle = label;
+  ctx.fillText('Active Mode', 55, H-72);
+
+  // Building
+  ctx.strokeStyle = ink; ctx.lineWidth = 1;
+  ctx.strokeRect(34, H-62, 10, 8);
+  ctx.fillStyle = label;
+  ctx.fillText('Building', 55, H-55);
+
+  ctx.fillStyle = 'rgba(139,115,85,0.3)';
+  ctx.fillText('Hover buildings to preview', 35, H-30);
+}
+
+drawIterationD(null);
+setupHover('cD', 'wrap-d', drawIterationD);
+
+</script>
+</body>
+</html>
