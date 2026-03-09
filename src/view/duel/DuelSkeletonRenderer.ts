@@ -110,6 +110,30 @@ export function head(x: number, y: number, r = 24): PoseHead {
   return { x, y, radius: r };
 }
 
+// ---- Color helpers --------------------------------------------------------
+
+/** Lighten a color by mixing with white. amount 0..1 */
+function lighten(color: number, amount: number): number {
+  const r = (color >> 16) & 0xff;
+  const gr = (color >> 8) & 0xff;
+  const b = color & 0xff;
+  const lr = Math.min(255, r + (255 - r) * amount) | 0;
+  const lg = Math.min(255, gr + (255 - gr) * amount) | 0;
+  const lb = Math.min(255, b + (255 - b) * amount) | 0;
+  return (lr << 16) | (lg << 8) | lb;
+}
+
+/** Darken a color by mixing with black. amount 0..1 */
+function darken(color: number, amount: number): number {
+  const r = (color >> 16) & 0xff;
+  const gr = (color >> 8) & 0xff;
+  const b = color & 0xff;
+  const dr = (r * (1 - amount)) | 0;
+  const dg = (gr * (1 - amount)) | 0;
+  const db = (b * (1 - amount)) | 0;
+  return (dr << 16) | (dg << 8) | db;
+}
+
 // ---- Skeleton renderer ----------------------------------------------------
 
 const OUTLINE_EXTRA = 4; // how many pixels wider the outline is
@@ -135,6 +159,17 @@ function drawLimb(
   g.moveTo(x1, y1);
   g.lineTo(x2, y2);
   g.stroke({ color, width: thickness, cap: "round", join: "round" });
+
+  // Highlight edge — subtle light strip along one side of the limb
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx = -dy / len; // perpendicular
+  const ny = dx / len;
+  const off = thickness * 0.25;
+  g.moveTo(x1 + nx * off, y1 + ny * off);
+  g.lineTo(x2 + nx * off, y2 + ny * off);
+  g.stroke({ color: lighten(color, 0.2), width: thickness * 0.3, cap: "round", alpha: 0.35 });
 }
 
 /**
@@ -156,6 +191,25 @@ function drawCircle(
 }
 
 /**
+ * Draw a joint circle (smaller, subtle, at articulation points).
+ */
+function drawJoint(
+  g: Graphics,
+  x: number, y: number,
+  radius: number,
+  color: number,
+  outlineColor: number,
+): void {
+  g.circle(x, y, radius + 1.5);
+  g.fill({ color: outlineColor });
+  g.circle(x, y, radius);
+  g.fill({ color });
+  // Small highlight
+  g.circle(x - radius * 0.25, y - radius * 0.3, radius * 0.35);
+  g.fill({ color: lighten(color, 0.25), alpha: 0.4 });
+}
+
+/**
  * Draw a fist/hand with outline.
  */
 function drawFist(
@@ -167,19 +221,50 @@ function drawFist(
   isOpen: boolean,
 ): void {
   if (isOpen) {
+    // Open hand with finger suggestions
     drawCircle(g, x, y, size * 0.8, color, outlineColor);
+    // Finger lines radiating outward
+    for (let i = -1; i <= 1; i++) {
+      const angle = -Math.PI / 2 + i * 0.4;
+      const fx = x + Math.cos(angle) * size * 1.4;
+      const fy = y + Math.sin(angle) * size * 1.4;
+      g.moveTo(x + Math.cos(angle) * size * 0.6, y + Math.sin(angle) * size * 0.6);
+      g.lineTo(fx, fy);
+      g.stroke({ color: outlineColor, width: 3.5, cap: "round" });
+      g.moveTo(x + Math.cos(angle) * size * 0.6, y + Math.sin(angle) * size * 0.6);
+      g.lineTo(fx, fy);
+      g.stroke({ color, width: 2, cap: "round" });
+    }
+    // Thumb
+    const thumbAngle = -Math.PI / 2 - 1.0;
+    const tx = x + Math.cos(thumbAngle) * size * 1.1;
+    const ty = y + Math.sin(thumbAngle) * size * 1.1;
+    g.moveTo(x, y);
+    g.lineTo(tx, ty);
+    g.stroke({ color: outlineColor, width: 3.5, cap: "round" });
+    g.moveTo(x, y);
+    g.lineTo(tx, ty);
+    g.stroke({ color, width: 2, cap: "round" });
   } else {
+    // Closed fist
     // Outline
     g.roundRect(x - size - 1, y - size - 1, size * 2 + 2, size * 2 + 2, 3);
     g.fill({ color: outlineColor });
     // Fill
     g.roundRect(x - size, y - size, size * 2, size * 2, 3);
     g.fill({ color });
+    // Knuckle bumps
+    g.moveTo(x - size * 0.6, y - size);
+    g.lineTo(x + size * 0.6, y - size);
+    g.stroke({ color: darken(color, 0.15), width: 1.5, cap: "round", alpha: 0.5 });
+    // Highlight on fist
+    g.roundRect(x - size + 1, y - size + 1, size * 1.2, size * 0.8, 2);
+    g.fill({ color: lighten(color, 0.15), alpha: 0.3 });
   }
 }
 
 /**
- * Draw a foot/shoe with outline.
+ * Draw a foot/shoe with outline, sole, and heel detail.
  */
 function drawFoot(
   g: Graphics,
@@ -190,12 +275,32 @@ function drawFoot(
 ): void {
   // Always draw "forward" (right-facing; flip is done at container level)
   const fx = x - 4;
+  const soleH = height * 0.3;
+
   // Outline
   g.roundRect(fx - 1, y - height / 2 - 1, width + 2, height + 2, 4);
   g.fill({ color: outlineColor });
-  // Fill
-  g.roundRect(fx, y - height / 2, width, height, 4);
+
+  // Boot upper
+  g.roundRect(fx, y - height / 2, width, height - soleH, 4);
   g.fill({ color });
+
+  // Sole (darker)
+  g.roundRect(fx, y - height / 2 + height - soleH, width, soleH, 2);
+  g.fill({ color: darken(color, 0.35) });
+
+  // Heel bump at the back
+  g.roundRect(fx, y - height / 2 + height - soleH - 1, 5, soleH + 1, 2);
+  g.fill({ color: darken(color, 0.3) });
+
+  // Toe cap line
+  g.moveTo(fx + width - 7, y - height / 2 + 2);
+  g.lineTo(fx + width - 7, y + height / 2 - soleH);
+  g.stroke({ color: darken(color, 0.12), width: 1, cap: "round", alpha: 0.5 });
+
+  // Boot highlight
+  g.roundRect(fx + 2, y - height / 2 + 1, width * 0.5, height * 0.35, 2);
+  g.fill({ color: lighten(color, 0.12), alpha: 0.3 });
 }
 
 // ---- Main draw function ---------------------------------------------------
@@ -239,47 +344,99 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
 
   // Draw order: back arm → back leg → torso → front leg → front arm → head
 
-  // Back arm
+  // Back arm (slightly darker to convey depth)
   if (p.backArm) {
+    const backBody = flashing ? fColor : darken(pal.body, 0.15);
+    const backSkin = flashing ? fColor : darken(pal.skin, 0.1);
+    const backHand = flashing ? fColor : darken(pal.gloves ?? pal.skin, 0.1);
+
     drawLimb(g, p.backArm.shoulderX, p.backArm.shoulderY,
-      p.backArm.elbowX, p.backArm.elbowY, 14, bodyColor, outline);
+      p.backArm.elbowX, p.backArm.elbowY, 14, backBody, outline);
+    // Elbow joint
+    drawJoint(g, p.backArm.elbowX, p.backArm.elbowY, 5, backBody, outline);
     drawLimb(g, p.backArm.elbowX, p.backArm.elbowY,
-      p.backArm.handX, p.backArm.handY, 12, skinColor, outline);
-    drawFist(g, p.backArm.handX, p.backArm.handY, 7, handColor, outline, !!p.backArm.open);
+      p.backArm.handX, p.backArm.handY, 12, backSkin, outline);
+    drawFist(g, p.backArm.handX, p.backArm.handY, 7, backHand, outline, !!p.backArm.open);
   }
 
-  // Back leg
+  // Back leg (slightly darker)
   if (p.backLeg) {
+    const backPants = flashing ? fColor : darken(pal.pants, 0.12);
+    const backShoe = flashing ? fColor : darken(pal.shoes, 0.1);
+
     drawLimb(g, p.backLeg.hipX, p.backLeg.hipY,
-      p.backLeg.kneeX, p.backLeg.kneeY, 18, pantsColor, outline);
+      p.backLeg.kneeX, p.backLeg.kneeY, 18, backPants, outline);
+    // Knee joint
+    drawJoint(g, p.backLeg.kneeX, p.backLeg.kneeY, 6, backPants, outline);
     drawLimb(g, p.backLeg.kneeX, p.backLeg.kneeY,
-      p.backLeg.footX, p.backLeg.footY, 14, pantsColor, outline);
-    drawFoot(g, p.backLeg.footX, p.backLeg.footY, 22, 11, shoeColor, outline);
+      p.backLeg.footX, p.backLeg.footY, 14, backPants, outline);
+    drawFoot(g, p.backLeg.footX, p.backLeg.footY, 22, 11, backShoe, outline);
   }
 
-  // Torso
+  // Torso — curved trapezoidal shape with detail
   if (p.torso) {
     const t = p.torso;
-    // Outline
-    g.moveTo(-t.topWidth / 2 - 2 + t.x, -t.height / 2 - 2 + t.y);
-    g.lineTo(t.topWidth / 2 + 2 + t.x, -t.height / 2 - 2 + t.y);
-    g.lineTo(t.bottomWidth / 2 + 2 + t.x, t.height / 2 + 2 + t.y);
-    g.lineTo(-t.bottomWidth / 2 - 2 + t.x, t.height / 2 + 2 + t.y);
+    const tl = -t.topWidth / 2 + t.x;
+    const tr = t.topWidth / 2 + t.x;
+    const bl = -t.bottomWidth / 2 + t.x;
+    const br = t.bottomWidth / 2 + t.x;
+    const top = -t.height / 2 + t.y;
+    const bot = t.height / 2 + t.y;
+    const midY = t.y;
+
+    // Outline (slightly curved sides via quadratic)
+    g.moveTo(tl - 2, top - 2);
+    g.lineTo(tr + 2, top - 2);
+    g.quadraticCurveTo(br + 4, midY, br + 2, bot + 2);
+    g.lineTo(bl - 2, bot + 2);
+    g.quadraticCurveTo(bl - 4, midY, tl - 2, top - 2);
     g.closePath();
     g.fill({ color: outline });
 
-    // Body fill
-    g.moveTo(-t.topWidth / 2 + t.x, -t.height / 2 + t.y);
-    g.lineTo(t.topWidth / 2 + t.x, -t.height / 2 + t.y);
-    g.lineTo(t.bottomWidth / 2 + t.x, t.height / 2 + t.y);
-    g.lineTo(-t.bottomWidth / 2 + t.x, t.height / 2 + t.y);
+    // Body fill (curved)
+    g.moveTo(tl, top);
+    g.lineTo(tr, top);
+    g.quadraticCurveTo(br + 2, midY, br, bot);
+    g.lineTo(bl, bot);
+    g.quadraticCurveTo(bl - 2, midY, tl, top);
     g.closePath();
     g.fill({ color: bodyColor });
 
+    // Chest/collar highlight — subtle curved line at top
+    g.moveTo(tl + 4, top + 3);
+    g.quadraticCurveTo(t.x, top + 8, tr - 4, top + 3);
+    g.stroke({ color: lighten(bodyColor, 0.18), width: 2, cap: "round", alpha: 0.45 });
+
+    // Vertical center seam (subtle)
+    g.moveTo(t.x, top + 6);
+    g.lineTo(t.x, bot - 4);
+    g.stroke({ color: darken(bodyColor, 0.1), width: 0.8, cap: "round", alpha: 0.3 });
+
+    // Side shading — darker strip on the back side
+    g.moveTo(tl, top + 2);
+    g.quadraticCurveTo(bl - 1, midY, bl, bot - 2);
+    g.lineTo(bl + 5, bot - 2);
+    g.quadraticCurveTo(bl + 4, midY, tl + 5, top + 2);
+    g.closePath();
+    g.fill({ color: darken(bodyColor, 0.12), alpha: 0.4 });
+
     // Belt
     if (pal.belt) {
-      g.rect(-t.bottomWidth / 2 + t.x, t.height / 2 - 8 + t.y, t.bottomWidth, 8);
-      g.fill({ color: pal.belt });
+      const beltColor = flashing ? fColor : pal.belt;
+      // Belt outline
+      g.rect(bl - 1, bot - 9, t.bottomWidth + 2, 10);
+      g.fill({ color: outline });
+      // Belt fill
+      g.rect(bl, bot - 8, t.bottomWidth, 8);
+      g.fill({ color: beltColor });
+      // Belt highlight
+      g.rect(bl + 2, bot - 8, t.bottomWidth - 4, 3);
+      g.fill({ color: lighten(beltColor, 0.15), alpha: 0.3 });
+    }
+
+    // Shoulder joints (round circles at arm attachment points)
+    if (p.frontArm) {
+      drawJoint(g, p.frontArm.shoulderX, p.frontArm.shoulderY, 7, bodyColor, outline);
     }
   }
 
@@ -287,6 +444,8 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
   if (p.frontLeg) {
     drawLimb(g, p.frontLeg.hipX, p.frontLeg.hipY,
       p.frontLeg.kneeX, p.frontLeg.kneeY, 20, pantsColor, outline);
+    // Knee joint
+    drawJoint(g, p.frontLeg.kneeX, p.frontLeg.kneeY, 7, pantsColor, outline);
     drawLimb(g, p.frontLeg.kneeX, p.frontLeg.kneeY,
       p.frontLeg.footX, p.frontLeg.footY, 16, pantsColor, outline);
     drawFoot(g, p.frontLeg.footX, p.frontLeg.footY, 24, 13, shoeColor, outline);
@@ -296,6 +455,8 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
   if (p.frontArm) {
     drawLimb(g, p.frontArm.shoulderX, p.frontArm.shoulderY,
       p.frontArm.elbowX, p.frontArm.elbowY, 16, bodyColor, outline);
+    // Elbow joint
+    drawJoint(g, p.frontArm.elbowX, p.frontArm.elbowY, 6, bodyColor, outline);
     drawLimb(g, p.frontArm.elbowX, p.frontArm.elbowY,
       p.frontArm.handX, p.frontArm.handY, 13, skinColor, outline);
     drawFist(g, p.frontArm.handX, p.frontArm.handY, 8, handColor, outline, !!p.frontArm.open);
@@ -318,9 +479,16 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       // Helm shape (slightly taller than head)
       drawCircle(g, hx, hy - 1, hr + 2, helmCol, outline);
 
+      // Helm shading — darker on back side
+      g.arc(hx, hy - 1, hr + 1, Math.PI * 0.5, Math.PI * 1.5);
+      g.fill({ color: darken(helmCol, 0.2), alpha: 0.3 });
+
       // Visor slit
       g.roundRect(hx - 4, hy - 5, 16, 5, 2);
       g.fill({ color: 0x111118 });
+      // Subtle eye glint in visor
+      g.circle(hx + 7, hy - 3, 1);
+      g.fill({ color: 0x334455, alpha: 0.5 });
 
       // Helm ridge on top
       g.moveTo(hx - 8, hy - hr + 2);
@@ -328,64 +496,134 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       g.stroke({ color: helmCol, width: 4, cap: "round" });
       g.moveTo(hx - 7, hy - hr + 2);
       g.lineTo(hx + 9, hy - hr + 2);
-      g.stroke({ color: 0xaaaabb, width: 2, cap: "round" });
+      g.stroke({ color: lighten(helmCol, 0.25), width: 2, cap: "round" });
 
       // Breather holes (small dots)
       for (let i = 0; i < 3; i++) {
         g.circle(hx + 4 + i * 4, hy + 6, 1.2);
         g.fill({ color: 0x111118 });
       }
+
+      // Chin guard
+      g.moveTo(hx - 2, hy + hr - 6);
+      g.quadraticCurveTo(hx + 6, hy + hr + 2, hx + 14, hy + hr - 6);
+      g.stroke({ color: helmCol, width: 3, cap: "round" });
+      g.moveTo(hx - 1, hy + hr - 6);
+      g.quadraticCurveTo(hx + 6, hy + hr + 1, hx + 13, hy + hr - 6);
+      g.stroke({ color: lighten(helmCol, 0.1), width: 1.5, cap: "round", alpha: 0.5 });
     } else {
       // Normal head with face
-      drawLimb(g, neckFromX, neckFromY, hx, hy + 16, 9, skinColor, outline);
+      // Neck with muscle suggestion
+      drawLimb(g, neckFromX, neckFromY, hx, hy + 16, 10, skinColor, outline);
+      // Subtle neck tendon lines
+      g.moveTo(neckFromX + 2, neckFromY + 2);
+      g.lineTo(hx + 3, hy + 14);
+      g.stroke({ color: darken(skinColor, 0.08), width: 0.8, cap: "round", alpha: 0.3 });
 
-      // Hair (behind head)
-      drawCircle(g, hx, hy - 3, hr + 3, hairColor, outline);
+      // Hair (behind head) — more dimensional with side coverage
+      g.circle(hx, hy - 3, hr + 4);
+      g.fill({ color: outline });
+      g.circle(hx, hy - 3, hr + 3);
+      g.fill({ color: hairColor });
+      // Hair side coverage (wraps around head more)
+      g.arc(hx, hy, hr + 2, Math.PI * 0.55, Math.PI * 1.45);
+      g.fill({ color: hairColor });
+      // Hair texture strands
+      g.moveTo(hx - hr, hy - 8);
+      g.quadraticCurveTo(hx - hr - 4, hy - 2, hx - hr + 1, hy + 4);
+      g.stroke({ color: darken(hairColor, 0.15), width: 1, cap: "round", alpha: 0.4 });
+      g.moveTo(hx - hr + 3, hy - 12);
+      g.quadraticCurveTo(hx - hr - 1, hy - 6, hx - hr + 4, hy);
+      g.stroke({ color: lighten(hairColor, 0.15), width: 1, cap: "round", alpha: 0.35 });
+
+      // Ear (visible between hair and head, on the back side)
+      const earX = hx - 6;
+      const earY = hy + 1;
+      g.ellipse(earX, earY, 4, 6);
+      g.fill({ color: outline });
+      g.ellipse(earX, earY, 3, 5);
+      g.fill({ color: skinColor });
+      // Inner ear
+      g.ellipse(earX, earY - 0.5, 1.5, 3);
+      g.fill({ color: darken(skinColor, 0.12), alpha: 0.5 });
 
       // Head circle
       drawCircle(g, hx, hy, hr, skinColor, outline);
 
-      // Nose (subtle wedge)
-      g.moveTo(hx + 8, hy - 4);
-      g.lineTo(hx + 12, hy + 2);
-      g.lineTo(hx + 8, hy + 3);
-      g.stroke({ color: outline, width: 1.2, cap: "round", join: "round", alpha: 0.4 });
+      // Subtle cheek/face contour shading
+      g.arc(hx, hy, hr - 1, -Math.PI * 0.3, Math.PI * 0.3);
+      g.fill({ color: lighten(skinColor, 0.08), alpha: 0.3 });
+
+      // Jaw/chin definition
+      g.moveTo(hx + 2, hy + hr - 8);
+      g.quadraticCurveTo(hx + 8, hy + hr + 1, hx + 14, hy + hr - 6);
+      g.stroke({ color: darken(skinColor, 0.1), width: 1.2, cap: "round", alpha: 0.35 });
+
+      // Nose (subtle wedge with bridge)
+      g.moveTo(hx + 6, hy - 8);
+      g.quadraticCurveTo(hx + 10, hy - 2, hx + 13, hy + 2);
+      g.lineTo(hx + 9, hy + 4);
+      g.stroke({ color: outline, width: 1.2, cap: "round", join: "round", alpha: 0.35 });
+      // Nostril dot
+      g.circle(hx + 10, hy + 3, 0.8);
+      g.fill({ color: outline, alpha: 0.25 });
 
       // Eyes — proportional, slightly narrowed for serious look
       const eyeY = hy - 4;
 
       // Back eye (further, slightly smaller for 3/4 perspective)
+      // Eye white with subtle lid shape
       g.ellipse(hx - 2, eyeY, 3.5, 2.5);
-      g.fill({ color: 0xffffff });
+      g.fill({ color: 0xf8f4f0 });
+      // Upper eyelid shadow
+      g.ellipse(hx - 2, eyeY - 1.5, 3.5, 1.2);
+      g.fill({ color: darken(skinColor, 0.06), alpha: 0.3 });
+      // Iris
       g.circle(hx - 1, eyeY, 1.8);
       g.fill({ color: pal.eyes });
+      // Pupil
       g.circle(hx - 0.5, eyeY - 0.3, 0.8);
-      g.fill({ color: 0x111111 }); // pupil
+      g.fill({ color: 0x111111 });
+      // Eye catchlight
+      g.circle(hx - 1.5, eyeY - 0.8, 0.5);
+      g.fill({ color: 0xffffff, alpha: 0.7 });
 
       // Front eye (closer, slightly larger)
       g.ellipse(hx + 8, eyeY, 4.5, 2.8);
-      g.fill({ color: 0xffffff });
+      g.fill({ color: 0xf8f4f0 });
+      // Upper eyelid shadow
+      g.ellipse(hx + 8, eyeY - 1.8, 4.5, 1.3);
+      g.fill({ color: darken(skinColor, 0.06), alpha: 0.3 });
+      // Iris
       g.circle(hx + 8.5, eyeY, 2);
       g.fill({ color: pal.eyes });
+      // Pupil
       g.circle(hx + 9, eyeY - 0.3, 0.9);
-      g.fill({ color: 0x111111 }); // pupil
+      g.fill({ color: 0x111111 });
+      // Eye catchlight
+      g.circle(hx + 7.5, eyeY - 1, 0.6);
+      g.fill({ color: 0xffffff, alpha: 0.7 });
 
-      // Eyebrows — angled slightly for determined look
+      // Eyebrows — thicker, more defined with shape
       g.moveTo(hx - 5, eyeY - 5);
-      g.lineTo(hx + 1, eyeY - 6);
-      g.stroke({ color: hairColor, width: 2.5, cap: "round" });
-      g.moveTo(hx + 4, eyeY - 6);
-      g.lineTo(hx + 13, eyeY - 5.5);
-      g.stroke({ color: hairColor, width: 2.5, cap: "round" });
+      g.quadraticCurveTo(hx - 2, eyeY - 7, hx + 1, eyeY - 6);
+      g.stroke({ color: hairColor, width: 2.8, cap: "round" });
+      g.moveTo(hx + 4, eyeY - 6.5);
+      g.quadraticCurveTo(hx + 8, eyeY - 7.5, hx + 13, eyeY - 5.5);
+      g.stroke({ color: hairColor, width: 2.8, cap: "round" });
 
-      // Mouth — firm, slightly downturned line
+      // Mouth — firm with lip definition
       g.moveTo(hx + 2, hy + 8);
-      g.lineTo(hx + 10, hy + 7.5);
-      g.stroke({ color: 0x553333, width: 1.8, cap: "round" });
-      // Slight lower lip shadow
-      g.moveTo(hx + 3, hy + 10);
-      g.lineTo(hx + 9, hy + 9.5);
-      g.stroke({ color: 0x553333, width: 1, cap: "round", alpha: 0.3 });
+      g.quadraticCurveTo(hx + 6, hy + 8.5, hx + 10, hy + 7.5);
+      g.stroke({ color: 0x774444, width: 1.8, cap: "round" });
+      // Upper lip shadow
+      g.moveTo(hx + 3, hy + 7.5);
+      g.lineTo(hx + 9, hy + 7);
+      g.stroke({ color: 0x553333, width: 0.8, cap: "round", alpha: 0.25 });
+      // Lower lip highlight
+      g.moveTo(hx + 3, hy + 9.5);
+      g.quadraticCurveTo(hx + 6, hy + 10.5, hx + 9, hy + 9);
+      g.stroke({ color: lighten(skinColor, 0.05), width: 1.2, cap: "round", alpha: 0.3 });
     }
   }
 
@@ -397,6 +635,15 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
 
 export function drawFighterShadow(g: Graphics, x: number, floorY: number, grounded: boolean): void {
   const scale = grounded ? 1.0 : 0.6;
-  g.ellipse(x, floorY + 2, 40 * scale, 8 * scale);
-  g.fill({ color: 0x000000, alpha: 0.3 });
+  const w = 40 * scale;
+  const h = 8 * scale;
+  // Outer soft shadow
+  g.ellipse(x, floorY + 2, w * 1.3, h * 1.3);
+  g.fill({ color: 0x000000, alpha: 0.12 });
+  // Core shadow
+  g.ellipse(x, floorY + 2, w, h);
+  g.fill({ color: 0x000000, alpha: 0.25 });
+  // Inner dark spot
+  g.ellipse(x, floorY + 2, w * 0.5, h * 0.5);
+  g.fill({ color: 0x000000, alpha: 0.1 });
 }
