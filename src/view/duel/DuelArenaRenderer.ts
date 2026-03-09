@@ -149,6 +149,9 @@ export class DuelArenaRenderer {
       case "tintagel":
         this._updateTintagel(time);
         break;
+      default:
+        this._updateGeneric(time);
+        break;
     }
   }
 
@@ -1731,13 +1734,77 @@ export class DuelArenaRenderer {
   private _buildGeneric(a: DuelArenaDef, sw: number, sh: number): void {
     const g = this._staticGfx;
     const floorY = this._floorY;
-    // Simple sky
-    g.rect(0, 0, sw, floorY);
-    g.fill({ color: a.skyTop });
-    g.rect(0, floorY * 0.5, sw, floorY * 0.5);
-    g.fill({ color: a.skyBottom, alpha: 0.4 });
+
+    // Sky gradient bands
+    const skyBands = 8;
+    for (let i = 0; i < skyBands; i++) {
+      const t = i / skyBands;
+      const bandY = floorY * t;
+      const bandH = floorY / skyBands + 1;
+      const r1 = (a.skyTop >> 16) & 0xff, g1 = (a.skyTop >> 8) & 0xff, b1 = a.skyTop & 0xff;
+      const r2 = (a.skyBottom >> 16) & 0xff, g2 = (a.skyBottom >> 8) & 0xff, b2 = a.skyBottom & 0xff;
+      const r = Math.round(r1 + (r2 - r1) * t);
+      const gc = Math.round(g1 + (g2 - g1) * t);
+      const b = Math.round(b1 + (b2 - b1) * t);
+      g.rect(0, bandY, sw, bandH);
+      g.fill({ color: (r << 16) | (gc << 8) | b });
+    }
+
     // Ground
     g.rect(0, floorY, sw, sh - floorY);
     g.fill({ color: a.groundColor });
+    // Ground highlight strip
+    g.rect(0, floorY, sw, 4);
+    g.fill({ color: a.groundHighlight });
+
+    // Accent line on horizon
+    g.moveTo(0, floorY);
+    g.lineTo(sw, floorY);
+    g.stroke({ color: a.accentColor, width: 2, alpha: 0.3 });
+
+    // Fog layer
+    if (a.fogAlpha > 0) {
+      g.rect(0, floorY - 40, sw, 60);
+      g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
+    }
+
+    // Initialize particles for animation
+    this._particles = [];
+    for (let i = 0; i < 12; i++) {
+      this._particles.push({
+        x: Math.random() * sw,
+        y: Math.random() * floorY,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: -0.1 - Math.random() * 0.2,
+        radius: 1 + Math.random() * 2,
+        alpha: 0.1 + Math.random() * 0.2,
+        phase: Math.random() * Math.PI * 2,
+        color: a.accentColor,
+      });
+    }
+  }
+
+  private _updateGeneric(time: number): void {
+    if (!this._arena) return;
+    const g = this._animGfx;
+
+    // Animate floating particles
+    for (const p of this._particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.y < -10) { p.y = this._floorY; p.x = Math.random() * this._sw; }
+      if (p.x < -10) p.x = this._sw;
+      if (p.x > this._sw + 10) p.x = 0;
+      const flicker = Math.sin(time * 2 + p.phase) * 0.1;
+      g.circle(p.x, p.y, p.radius);
+      g.fill({ color: p.color, alpha: Math.max(0.05, p.alpha + flicker) });
+    }
+
+    // Subtle fog drift
+    if (this._arena.fogAlpha > 0) {
+      const fogDrift = Math.sin(time * 0.3) * 20;
+      g.rect(fogDrift, this._floorY - 30, this._sw, 40);
+      g.fill({ color: this._arena.fogColor, alpha: this._arena.fogAlpha * 0.15 });
+    }
   }
 }
