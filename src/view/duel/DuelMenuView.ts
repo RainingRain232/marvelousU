@@ -10,6 +10,7 @@ import { duelAudio } from "../../duel/systems/DuelAudioSystem";
 
 const MENU_ITEMS = [
   "ARCADE",
+  "WAVE",
   "VS MODE",
   "VS CPU",
   "TRAINING",

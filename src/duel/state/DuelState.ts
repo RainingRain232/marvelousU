@@ -154,7 +154,7 @@ export interface DuelRound {
 
 // ---- Top-level state -------------------------------------------------------
 
-export type DuelGameMode = "vs_cpu" | "vs_mode" | "arcade" | "training";
+export type DuelGameMode = "vs_cpu" | "vs_mode" | "arcade" | "training" | "wave";
 
 export type TrainingDummyMode = "stand" | "crouch" | "jump" | "cpu";
 
@@ -184,6 +184,12 @@ export interface DuelState {
   stageFloorY: number;
   stageLeft: number;
   stageRight: number;
+  // Wave mode
+  waveNumber: number;
+  waveEnemies: string[];       // character IDs for this wave (last = boss)
+  waveEnemyIndex: number;      // which enemy we're currently fighting
+  waveDefeated: number;        // total enemies defeated across all waves
+  waveSpawnTimer: number;      // countdown frames before next enemy spawns
 }
 
 // ---- Factory ---------------------------------------------------------------
@@ -281,5 +287,11 @@ export function createDuelState(
     stageLeft,
     stageRight,
     trainingDummyMode: "stand",
+    // Wave mode defaults
+    waveNumber: 1,
+    waveEnemies: [],
+    waveEnemyIndex: 0,
+    waveDefeated: 0,
+    waveSpawnTimer: 0,
   };
 }

@@ -7,7 +7,7 @@ import { DuelPhase, DuelFighterState } from "../types";
 import { viewManager } from "../view/ViewManager";
 import { DuelStateMachine } from "./DuelStateMachine";
 import { DuelBalance } from "./config/DuelBalanceConfig";
-import { DUEL_CHARACTERS } from "./config/DuelCharacterDefs";
+import { DUEL_CHARACTERS, DUEL_CHARACTER_IDS } from "./config/DuelCharacterDefs";
 import { DuelInputSystem } from "./systems/DuelInputSystem";
 import { DuelFightingSystem } from "./systems/DuelFightingSystem";
 import { DuelProjectileSystem } from "./systems/DuelProjectileSystem";
@@ -61,6 +61,9 @@ export class DuelGame {
   private _matchP2Id = "";
   private _matchArenaId = "";
 
+  // Wave mode
+  private _waveEnemies: string[] = [];
+
   async boot(): Promise<void> {
     viewManager.clearWorld();
 
@@ -91,6 +94,10 @@ export class DuelGame {
     switch (choice) {
       case "ARCADE":
         this._gameMode = "arcade";
+        this._showCharacterSelect();
+        break;
+      case "WAVE":
+        this._gameMode = "wave";
         this._showCharacterSelect();
         break;
       case "VS MODE":
@@ -165,22 +172,45 @@ export class DuelGame {
     const sh = viewManager.screenHeight;
 
     const isAI = this._gameMode !== "vs_mode";
+
+    // Wave mode: generate wave and override P2 to first enemy with 20% HP
+    let actualP2Id = p2Id;
+    let p2Hp = p2Def.maxHp;
+    if (this._gameMode === "wave") {
+      const waveEnemies = this._generateWave(1, p1Id);
+      actualP2Id = waveEnemies[0];
+      const enemyDef = DUEL_CHARACTERS[actualP2Id];
+      p2Hp = Math.round(enemyDef.maxHp * 0.2); // 20% HP for regular enemies
+      this._waveEnemies = waveEnemies;
+    }
+
+    const actualP2Def = DUEL_CHARACTERS[actualP2Id];
+
     this._state = createDuelState(
-      p1Id, p2Id,
-      p1Def.maxHp, p2Def.maxHp,
+      p1Id, actualP2Id,
+      p1Def.maxHp, p2Hp,
       arenaId, isAI,
       sw, sh,
       this._gameMode,
     );
 
-    this._prevHp = [p1Def.maxHp, p2Def.maxHp];
+    // Wave mode: set up wave state
+    if (this._gameMode === "wave") {
+      this._state.waveNumber = 1;
+      this._state.waveEnemies = this._waveEnemies;
+      this._state.waveEnemyIndex = 0;
+      this._state.waveDefeated = 0;
+      this._state.bestOf = 1; // single round per enemy
+    }
+
+    this._prevHp = [p1Def.maxHp, p2Hp];
     this._prevBlockstun = [0, 0];
 
     // Build views
     this._arenaRenderer.build(arenaId, sw, sh);
     this._fightView.init(sw, sh);
     this._fightView.arenaLayer.addChild(this._arenaRenderer.container);
-    this._hud.build(sw, sh, p1Def.name, p2Def.name);
+    this._hud.build(sw, sh, p1Def.name, actualP2Def.name);
 
     viewManager.addToLayer("background", this._fightView.container);
     viewManager.addToLayer("ui", this._hud.container);
@@ -196,7 +226,7 @@ export class DuelGame {
     this._stateMachine.transition(DuelPhase.ARENA_SELECT);
     this._stateMachine.transition(DuelPhase.INTRO);
 
-    this._introView.show(sw, sh, p1Id, p2Id, () => {
+    this._introView.show(sw, sh, p1Id, actualP2Id, () => {
       this._beginFighting();
     });
     viewManager.addToLayer("ui", this._introView.container);
@@ -237,7 +267,11 @@ export class DuelGame {
 
     // Round announcement
     duelAudio.playRoundStart();
-    this._announce(`ROUND ${this._state.round.roundNumber}`, 60);
+    if (this._state.gameMode === "wave") {
+      this._announce(`WAVE ${this._state.waveNumber}`, 60);
+    } else {
+      this._announce(`ROUND ${this._state.round.roundNumber}`, 60);
+    }
     setTimeout(() => {
       this._announce("FIGHT!", 40);
     }, 1000);
@@ -507,6 +541,12 @@ export class DuelGame {
     this._state.fighters[winner].state = DuelFighterState.VICTORY;
     this._state.fighters[winner === 0 ? 1 : 0].state = DuelFighterState.DEFEAT;
 
+    // Wave mode: special handling
+    if (this._state.gameMode === "wave") {
+      this._handleWaveRoundEnd(winner);
+      return;
+    }
+
     // Check match end
     const winsNeeded = Math.ceil(this._state.bestOf / 2);
     const p1Wins = this._state.roundResults.filter((w) => w === 0).length;
@@ -551,6 +591,160 @@ export class DuelGame {
     setTimeout(() => {
       this._announce("FIGHT!", 40);
     }, 1000);
+  }
+
+  // ---- Wave mode -------------------------------------------------------------
+
+  private _generateWave(waveNumber: number, p1Id: string): string[] {
+    const available = DUEL_CHARACTER_IDS.filter((id) => id !== p1Id);
+    const enemyCount = Math.min(3 + waveNumber, 8);
+    const enemies: string[] = [];
+
+    // Pick random regular enemies
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
+    for (let i = 0; i < enemyCount && i < shuffled.length; i++) {
+      enemies.push(shuffled[i]);
+    }
+
+    // Boss: pick a random character not already in the wave and not the player
+    const bossPool = available.filter((id) => !enemies.includes(id));
+    const bossId = bossPool.length > 0
+      ? bossPool[Math.floor(Math.random() * bossPool.length)]
+      : shuffled[0]; // fallback
+    enemies.push(bossId);
+
+    return enemies;
+  }
+
+  private _handleWaveRoundEnd(winner: 0 | 1): void {
+    if (!this._state) return;
+
+    if (winner === 1) {
+      // Player lost — game over
+      duelAudio.playKO();
+      const defeated = this._state.waveDefeated;
+      const wave = this._state.waveNumber;
+      this._announce(`DEFEATED! WAVE ${wave} - ${defeated} KILLS`, 180);
+      setTimeout(() => {
+        this._endMatch();
+      }, 3000);
+      return;
+    }
+
+    // Player won — advance
+    duelAudio.playKO();
+    this._state.waveDefeated++;
+    this._state.waveEnemyIndex++;
+
+    const isBoss = this._state.waveEnemyIndex >= this._state.waveEnemies.length;
+
+    if (isBoss) {
+      // Wave complete!
+      this._announce(`WAVE ${this._state.waveNumber} CLEAR!`, 120);
+      setTimeout(() => {
+        this._startNextWave();
+      }, 2000);
+    } else {
+      // Next enemy in this wave
+      this._announce("K.O.!", 50);
+      setTimeout(() => {
+        this._spawnNextWaveEnemy();
+      }, 1000);
+    }
+  }
+
+  private _startNextWave(): void {
+    if (!this._state) return;
+
+    this._state.waveNumber++;
+    const p1Id = this._state.fighters[0].characterId;
+    this._state.waveEnemies = this._generateWave(this._state.waveNumber, p1Id);
+    this._state.waveEnemyIndex = 0;
+
+    this._spawnNextWaveEnemy();
+  }
+
+  private _spawnNextWaveEnemy(): void {
+    if (!this._state) return;
+
+    const enemyId = this._state.waveEnemies[this._state.waveEnemyIndex];
+    const enemyDef = DUEL_CHARACTERS[enemyId];
+    const isBoss = this._state.waveEnemyIndex === this._state.waveEnemies.length - 1;
+    const enemyHp = isBoss ? enemyDef.maxHp : Math.round(enemyDef.maxHp * 0.2);
+
+    // Reset P2 fighter
+    const p2X = Math.round(this._state.screenW * DuelBalance.P2_START_RATIO);
+    const p2 = this._state.fighters[1];
+    p2.characterId = enemyId;
+    p2.hp = enemyHp;
+    p2.maxHp = enemyHp;
+    p2.position.x = p2X;
+    p2.position.y = this._state.stageFloorY;
+    p2.velocity.x = 0;
+    p2.velocity.y = 0;
+    p2.state = DuelFighterState.IDLE;
+    p2.stateTimer = 0;
+    p2.currentMove = null;
+    p2.moveFrame = 0;
+    p2.moveHasHit = false;
+    p2.canCancelMove = false;
+    p2.comboChain = 0;
+    p2.hitstunFrames = 0;
+    p2.blockstunFrames = 0;
+    p2.comboCount = 0;
+    p2.comboDamage = 0;
+    p2.comboDamageScaling = 1;
+    p2.grounded = true;
+    p2.invincibleFrames = 0;
+    p2.dashFrames = 0;
+    p2.facingRight = false;
+    p2.zealGauge = 0;
+    p2.inputBuffer = [];
+
+    // Reset P1 state (keep HP and zeal) but reset combat state
+    const p1 = this._state.fighters[0];
+    p1.state = DuelFighterState.IDLE;
+    p1.stateTimer = 0;
+    p1.currentMove = null;
+    p1.moveFrame = 0;
+    p1.moveHasHit = false;
+    p1.canCancelMove = false;
+    p1.comboChain = 0;
+    p1.hitstunFrames = 0;
+    p1.blockstunFrames = 0;
+    p1.comboCount = 0;
+    p1.comboDamage = 0;
+    p1.comboDamageScaling = 1;
+    p1.velocity.x = 0;
+    p1.velocity.y = 0;
+    p1.invincibleFrames = 0;
+    p1.dashFrames = 0;
+
+    // Clear projectiles and reset round state
+    this._state.projectiles = [];
+    this._state.slowdownFrames = 0;
+    this._state.round.timeRemaining = DuelBalance.ROUND_TIME_FRAMES;
+    this._state.round.winnerId = null;
+    this._state.roundResults = [];
+
+    // Update HUD P2 name
+    this._hud.setP2Name(isBoss ? `${enemyDef.name} [BOSS]` : enemyDef.name);
+
+    // Resume fighting
+    this._state.phase = DuelPhase.FIGHTING;
+    this._stateMachine.transition(DuelPhase.FIGHTING);
+    DuelAISystem.reset();
+
+    this._prevHp = [p1.hp, p2.hp];
+    this._prevBlockstun = [0, 0];
+
+    // Announce
+    const label = isBoss ? `BOSS: ${enemyDef.name.toUpperCase()}!` : "NEXT!";
+    duelAudio.playRoundStart();
+    this._announce(label, 50);
+    setTimeout(() => {
+      this._announce("FIGHT!", 40);
+    }, 800);
   }
 
   private _endMatch(): void {

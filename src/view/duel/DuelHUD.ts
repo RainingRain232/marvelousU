@@ -83,6 +83,9 @@ export class DuelHUD {
   // Training mode display
   private _trainingInfo: Text;
 
+  // Wave mode display
+  private _waveInfo: Text;
+
   // Announcement animation
   private _announcementScale = 1;
 
@@ -146,6 +149,15 @@ export class DuelHUD {
     });
     this._trainingInfo.visible = false;
 
+    // Wave info
+    this._waveInfo = new Text({
+      text: "",
+      style: { fontFamily: 'Impact, "Segoe UI", sans-serif', fontSize: 22, fill: 0xe94560, fontWeight: "bold",
+        stroke: { color: 0x000000, width: 2 } },
+    });
+    this._waveInfo.anchor.set(0.5, 0);
+    this._waveInfo.visible = false;
+
     this._p1ComboHit.anchor.set(0.5);
     this._p1ComboLabel.anchor.set(0.5);
     this._p1ComboDmg.anchor.set(0.5);
@@ -182,7 +194,12 @@ export class DuelHUD {
       this._p2ComboDmg,
       this._announcementText,
       this._trainingInfo,
+      this._waveInfo,
     );
+  }
+
+  setP2Name(name: string): void {
+    this._p2Name.text = name;
   }
 
   build(sw: number, sh: number, p1Name: string, p2Name: string): void {
@@ -318,6 +335,19 @@ export class DuelHUD {
       this._timerText.style.fill = 0x888888;
     } else {
       this._trainingInfo.visible = false;
+    }
+
+    // ===== Wave mode info =====
+    if (state.gameMode === "wave") {
+      this._waveInfo.visible = true;
+      const enemyNum = state.waveEnemyIndex + 1;
+      const totalEnemies = state.waveEnemies.length;
+      const isBoss = state.waveEnemyIndex === totalEnemies - 1;
+      const bossLabel = isBoss ? "  [BOSS]" : "";
+      this._waveInfo.text = `WAVE ${state.waveNumber}  |  ${enemyNum}/${totalEnemies}${bossLabel}  |  KILLS: ${state.waveDefeated}`;
+      this._waveInfo.position.set(sw / 2, sh - 30);
+    } else {
+      this._waveInfo.visible = false;
     }
   }
 
