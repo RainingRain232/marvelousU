@@ -32,6 +32,10 @@ export class GTAHUDView {
   private dialogBox = new Container();
   private questLogOverlay = new Container();
   private gameOverOverlay = new Container();
+  private pauseMenuOverlay = new Container();
+
+  // Exit callback
+  private _onExit: (() => void) | null = null;
 
   // Cached elements
   private hpBarBg!: Graphics;
@@ -50,8 +54,9 @@ export class GTAHUDView {
   private lastLocation = "";
   private locationFadeTimer = 0;
 
-  init(screenW: number, screenH: number): void {
+  init(screenW: number, screenH: number, onExit?: () => void): void {
     this.container.removeChildren();
+    this._onExit = onExit ?? null;
 
     this.buildStatusPanel();
     this.buildWantedPanel(screenW);
@@ -60,6 +65,7 @@ export class GTAHUDView {
     this.buildDialogBox(screenW, screenH);
     this.buildQuestLogOverlay(screenW, screenH);
     this.buildGameOverOverlay(screenW, screenH);
+    this.buildPauseMenu(screenW, screenH);
 
     this.container.addChild(this.statusPanel);
     this.container.addChild(this.wantedPanel);
@@ -69,6 +75,7 @@ export class GTAHUDView {
     this.container.addChild(this.dialogBox);
     this.container.addChild(this.questLogOverlay);
     this.container.addChild(this.gameOverOverlay);
+    this.container.addChild(this.pauseMenuOverlay);
   }
 
   // ===================== BUILD UI =====================
@@ -357,6 +364,172 @@ export class GTAHUDView {
     this.gameOverOverlay.addChild(restartText);
   }
 
+  private buildPauseMenu(screenW: number, screenH: number): void {
+    this.pauseMenuOverlay.removeChildren();
+    this.pauseMenuOverlay.visible = false;
+
+    // Dark overlay
+    const overlay = new Graphics();
+    overlay.rect(0, 0, screenW, screenH).fill({ color: 0x000011, alpha: 0.7 });
+    this.pauseMenuOverlay.addChild(overlay);
+
+    // Panel
+    const panelW = 420, panelH = 560;
+    const px = (screenW - panelW) / 2;
+    const py = (screenH - panelH) / 2;
+
+    const panel = new Graphics();
+    panel.roundRect(px, py, panelW, panelH, 8).fill({ color: 0x12122a, alpha: 0.95 });
+    panel.roundRect(px, py, panelW, panelH, 8).stroke({ color: GOLD_COLOR, width: 2 });
+    // Inner border
+    panel.roundRect(px + 4, py + 4, panelW - 8, panelH - 8, 6).stroke({ color: GOLD_COLOR, width: 0.5, alpha: 0.3 });
+    this.pauseMenuOverlay.addChild(panel);
+
+    // Title
+    const title = new Text({
+      text: "PAUSED",
+      style: new TextStyle({
+        fontFamily: FONT, fontSize: 28, fill: GOLD_COLOR,
+        fontWeight: "bold", letterSpacing: 6,
+      }),
+    });
+    title.anchor.set(0.5, 0);
+    title.position.set(screenW / 2, py + 16);
+    this.pauseMenuOverlay.addChild(title);
+
+    // Divider
+    const divider = new Graphics();
+    divider.rect(px + 20, py + 52, panelW - 40, 1).fill({ color: GOLD_COLOR, alpha: 0.3 });
+    this.pauseMenuOverlay.addChild(divider);
+
+    // Controls section
+    const controls = [
+      ["WASD", "Move"],
+      ["Shift", "Run (uses stamina)"],
+      ["Space", "Dodge roll"],
+      ["Left Click", "Attack"],
+      ["Right Click", "Block"],
+      ["E", "Interact / Mount horse"],
+      ["F", "Steal horse"],
+      ["Q / Tab", "Quest log"],
+      ["1 / 2 / 3", "Switch weapon"],
+      ["Esc", "Pause menu"],
+    ];
+
+    const controlsTitle = new Text({
+      text: "CONTROLS",
+      style: medievalStyle(13, GOLD_COLOR, true),
+    });
+    controlsTitle.position.set(px + 20, py + 64);
+    this.pauseMenuOverlay.addChild(controlsTitle);
+
+    let cy = py + 85;
+    for (const [key, desc] of controls) {
+      const keyText = new Text({
+        text: key,
+        style: medievalStyle(10, 0xCCBB88, true),
+      });
+      keyText.position.set(px + 24, cy);
+      this.pauseMenuOverlay.addChild(keyText);
+
+      const descText = new Text({
+        text: desc,
+        style: medievalStyle(10, 0x99AABB),
+      });
+      descText.position.set(px + 130, cy);
+      this.pauseMenuOverlay.addChild(descText);
+      cy += 18;
+    }
+
+    // Quest guide divider
+    cy += 6;
+    const div2 = new Graphics();
+    div2.rect(px + 20, cy, panelW - 40, 1).fill({ color: GOLD_COLOR, alpha: 0.3 });
+    this.pauseMenuOverlay.addChild(div2);
+    cy += 8;
+
+    const questTitle = new Text({
+      text: "QUESTS",
+      style: medievalStyle(13, GOLD_COLOR, true),
+    });
+    questTitle.position.set(px + 20, cy);
+    this.pauseMenuOverlay.addChild(questTitle);
+    cy += 18;
+
+    const questHints: Array<[string, string]> = [
+      ["The Missing Merchant", "Talk to Margaret at market, find Edmund near south gate"],
+      ["Bandit Trouble", "Captain Gareth (barracks) — kill 3 criminals near prison"],
+      ["The Holy Relic", "Priest at church — pick up key near the tavern"],
+      ["Royal Escort", "Knight at barracks — escort him safely to the castle"],
+      ["Tax Collection", "Steward at castle — talk to 3 merchants at market"],
+      ["Horse Thief", "Stable master — find horse outside south gate, ride it back"],
+    ];
+
+    for (const [name, hint] of questHints) {
+      const nameText = new Text({
+        text: `\u2022 ${name}`,
+        style: medievalStyle(9, 0xCCBB88, true),
+      });
+      nameText.position.set(px + 24, cy);
+      this.pauseMenuOverlay.addChild(nameText);
+
+      const hintText = new Text({
+        text: hint,
+        style: medievalStyle(8, 0x8899AA),
+      });
+      hintText.position.set(px + 30, cy + 12);
+      this.pauseMenuOverlay.addChild(hintText);
+      cy += 26;
+    }
+
+    // Buttons
+    const btnW = 200, btnH = 32;
+    const btnX = screenW / 2 - btnW / 2;
+
+    // Resume button
+    const resumeBtn = new Container();
+    resumeBtn.eventMode = "static";
+    resumeBtn.cursor = "pointer";
+    const resumeBg = new Graphics();
+    resumeBg.roundRect(0, 0, btnW, btnH, 5).fill({ color: 0x224422 });
+    resumeBg.roundRect(0, 0, btnW, btnH, 5).stroke({ color: 0x44AA44, width: 1.5 });
+    resumeBtn.addChild(resumeBg);
+    const resumeLbl = new Text({ text: "RESUME", style: medievalStyle(13, 0x88FF88, true) });
+    resumeLbl.anchor.set(0.5, 0.5);
+    resumeLbl.position.set(btnW / 2, btnH / 2);
+    resumeBtn.addChild(resumeLbl);
+    resumeBtn.position.set(btnX, py + panelH - 90);
+    resumeBtn.on("pointerover", () => { resumeBg.tint = 0xAAFFAA; });
+    resumeBtn.on("pointerout", () => { resumeBg.tint = 0xFFFFFF; });
+    resumeBtn.on("pointerdown", () => {
+      this._resumeCallback?.();
+    });
+    this.pauseMenuOverlay.addChild(resumeBtn);
+
+    // Back to Main Menu button
+    const exitBtn = new Container();
+    exitBtn.eventMode = "static";
+    exitBtn.cursor = "pointer";
+    const exitBg = new Graphics();
+    exitBg.roundRect(0, 0, btnW, btnH, 5).fill({ color: 0x442222 });
+    exitBg.roundRect(0, 0, btnW, btnH, 5).stroke({ color: 0xAA4444, width: 1.5 });
+    exitBtn.addChild(exitBg);
+    const exitLbl = new Text({ text: "BACK TO MAIN MENU", style: medievalStyle(13, 0xFF8888, true) });
+    exitLbl.anchor.set(0.5, 0.5);
+    exitLbl.position.set(btnW / 2, btnH / 2);
+    exitBtn.addChild(exitLbl);
+    exitBtn.position.set(btnX, py + panelH - 50);
+    exitBtn.on("pointerover", () => { exitBg.tint = 0xFFAAAA; });
+    exitBtn.on("pointerout", () => { exitBg.tint = 0xFFFFFF; });
+    exitBtn.on("pointerdown", () => {
+      if (this._onExit) this._onExit();
+    });
+    this.pauseMenuOverlay.addChild(exitBtn);
+  }
+
+  // Resume callback — set by update when pause menu is visible
+  private _resumeCallback: (() => void) | null = null;
+
   // ===================== UPDATE =====================
 
   update(state: MedievalGTAState, screenW: number, screenH: number): void {
@@ -388,6 +561,13 @@ export class GTAHUDView {
 
     // --- Game Over ---
     this.gameOverOverlay.visible = state.gameOver;
+
+    // --- Pause Menu ---
+    this.pauseMenuOverlay.visible = !!state.showPauseMenu;
+    this._resumeCallback = () => {
+      state.paused = false;
+      state.showPauseMenu = false;
+    };
   }
 
   private updateBars(hp: number, maxHp: number, stamina: number): void {

@@ -197,6 +197,7 @@ export interface MedievalGTAState {
   paused: boolean;
   gameOver: boolean;
   showQuestLog: boolean;
+  showPauseMenu: boolean;
   dialogNpcId: string | null;
   dialogText: string;
   dialogOptions: Array<{ text: string; action: string }>;
@@ -269,6 +270,7 @@ export function createMedievalGTAState(): MedievalGTAState {
     paused: false,
     gameOver: false,
     showQuestLog: false,
+    showPauseMenu: false,
     dialogNpcId: null,
     dialogText: '',
     dialogOptions: [],

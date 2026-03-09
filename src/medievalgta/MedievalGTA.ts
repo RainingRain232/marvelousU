@@ -262,12 +262,10 @@ function populateItems(state: MedievalGTAState): void {
     { type: "health_potion", x: 2250, y: 1350, amount: 1 },
     { type: "health_potion", x: 1050, y: 1250, amount: 1 },
     { type: "health_potion", x: 1800, y: 800, amount: 1 },
-    // Quest-related items (stolen sword, tax ledger, supply crates)
-    { type: "sword", x: 1750, y: 1400, amount: 1 },
-    { type: "letter", x: 1680, y: 1360, amount: 1 },
-    { type: "supply_crate", x: 1700, y: 1500, amount: 1 },
-    { type: "supply_crate", x: 3300, y: 1800, amount: 1 },
-    { type: "supply_crate", x: 2000, y: 2800, amount: 1 },
+    // Quest item: holy key for "The Holy Relic" quest (near tavern)
+    { type: "key", x: 2350, y: 1350, amount: 1 },
+    // Bow — near the barracks training yard
+    { type: "bow", x: 1650, y: 700, amount: 1 },
   ];
 
   for (const it of items) {
@@ -502,7 +500,7 @@ export class MedievalGTA {
     const sh = viewManager.app.screen.height;
     this._cityRenderer.init();
     this._charRenderer.init();
-    this._hudView.init(sw, sh);
+    this._hudView.init(sw, sh, () => this.destroy());
     this._minimapView.init(sw, sh);
 
     this._cityContainer = this._cityRenderer.container;
@@ -511,8 +509,15 @@ export class MedievalGTA {
     this._minimapContainer = this._minimapView.container;
 
     // Use a dedicated GTA world container on the stage (bypasses ViewManager camera)
+    // Insert BEFORE the UI layer so UI renders on top of the game world
     this._gtaWorld = new Container();
-    viewManager.app.stage.addChild(this._gtaWorld);
+    const stage = viewManager.app.stage;
+    const uiLayerIdx = stage.children.indexOf(viewManager.layers.ui);
+    if (uiLayerIdx >= 0) {
+      stage.addChildAt(this._gtaWorld, uiLayerIdx);
+    } else {
+      stage.addChild(this._gtaWorld);
+    }
     this._gtaWorld.addChild(this._cityContainer);
     this._gtaWorld.addChild(this._charContainer);
 
@@ -597,7 +602,7 @@ export class MedievalGTA {
         state.showQuestLog = !state.showQuestLog;
       }
 
-      // Escape: exit mode or unpause
+      // Escape: toggle pause menu (or close overlays first)
       if (key === "escape") {
         if (state.showQuestLog) {
           state.showQuestLog = false;
@@ -605,17 +610,16 @@ export class MedievalGTA {
           state.dialogNpcId = null;
           state.dialogText = "";
           state.dialogOptions = [];
-        } else if (state.paused) {
-          state.paused = false;
         } else {
-          // Exit to menu
-          this.destroy();
+          state.paused = !state.paused;
+          state.showPauseMenu = state.paused;
         }
       }
 
-      // Pause
+      // P also toggles pause
       if (key === "p") {
         state.paused = !state.paused;
+        state.showPauseMenu = state.paused;
       }
     };
 
