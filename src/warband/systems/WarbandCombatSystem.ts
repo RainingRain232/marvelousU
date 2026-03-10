@@ -388,7 +388,7 @@ export class WarbandCombatSystem {
       ownerTeam: fighter.team,
       position: {
         x: fighter.position.x + Math.sin(fighter.rotation) * 0.5,
-        y: fighter.position.y + WB.FIGHTER_HEIGHT * 0.75,
+        y: fighter.position.y + (fighter.isMounted ? WB.HORSE_HEIGHT : 0) + WB.FIGHTER_HEIGHT * 0.75,
         z: fighter.position.z + Math.cos(fighter.rotation) * 0.5,
       },
       velocity: {

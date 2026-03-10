@@ -437,7 +437,7 @@ export class WarbandGame {
             false,
             vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
           );
-          this._equipUnitType(enemy, UNIT_TYPES[t]);
+          this._equipUnitType(enemy, UNIT_TYPES[t], this._state!);
           this._state.fighters.push(enemy);
           enemyIdx++;
         }
@@ -705,6 +705,20 @@ export class WarbandGame {
 
     this._state.phase = WarbandPhase.BATTLE;
 
+    // Handle player's shop horse purchase
+    if (this._shop.pendingHorse) {
+      const player = this._state.fighters.find(f => f.id === this._state!.playerId);
+      if (player) {
+        const horseId = `horse_${player.id}`;
+        const horse = createHorse(horseId, this._shop.pendingHorse, { ...player.position }, player.id);
+        horse.rotation = player.rotation;
+        this._state.horses.push(horse);
+        player.mountId = horseId;
+        player.isMounted = true;
+      }
+      this._shop.pendingHorse = null;
+    }
+
     // Create fighter meshes
     let playerIdx = 0;
     let enemyIdx = 0;
@@ -714,6 +728,13 @@ export class WarbandGame {
       mesh.updateArmorVisuals(fighter);
       this._sceneManager.scene.add(mesh.group);
       this._fighterMeshes.set(fighter.id, mesh);
+    }
+
+    // Create horse meshes
+    for (const horse of this._state.horses) {
+      const hMesh = new HorseMesh(horse);
+      this._sceneManager.scene.add(hMesh.group);
+      this._horseMeshes.set(horse.id, hMesh);
     }
 
     // Init input
@@ -828,6 +849,26 @@ export class WarbandGame {
       if (mesh) {
         mesh.update(fighter, dt, this._sceneManager.camera);
       }
+    }
+
+    // Update horse meshes
+    for (const horse of this._state.horses) {
+      let hMesh = this._horseMeshes.get(horse.id);
+      if (!hMesh) {
+        // Horse was created mid-battle (shouldn't normally happen but be safe)
+        hMesh = new HorseMesh(horse);
+        this._sceneManager.scene.add(hMesh.group);
+        this._horseMeshes.set(horse.id, hMesh);
+      }
+      // Calculate rider speed for animation
+      let riderSpeed = 0;
+      if (horse.riderId) {
+        const rider = this._state.fighters.find(f => f.id === horse.riderId);
+        if (rider) {
+          riderSpeed = Math.sqrt(rider.velocity.x ** 2 + rider.velocity.z ** 2);
+        }
+      }
+      hMesh.update(horse, riderSpeed, dt, this._sceneManager.camera);
     }
 
     // Update projectile visuals
@@ -1056,6 +1097,16 @@ export class WarbandGame {
     // Remove old AI fighters
     this._state.fighters = this._state.fighters.filter((f) => f.isPlayer);
 
+    // Clear all horses (will be re-created)
+    this._state.horses = [];
+
+    // Reset player mount state
+    const playerF = this._state.fighters.find(f => f.isPlayer);
+    if (playerF) {
+      playerF.mountId = null;
+      playerF.isMounted = false;
+    }
+
     const isDuel = this._state.battleType === BattleType.DUEL;
     const isArmyBattle = this._state.battleType === BattleType.ARMY_BATTLE;
 
@@ -1100,7 +1151,7 @@ export class WarbandGame {
             false,
             vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
           );
-          this._equipUnitType(enemy, UNIT_TYPES[t]);
+          this._equipUnitType(enemy, UNIT_TYPES[t], this._state!);
           if (enemy.ai) {
             enemy.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);
             enemy.ai.reactionDelay = Math.max(6, WB.AI_REACTION_TICKS_NORMAL - this._state.round * 2);
@@ -1427,6 +1478,13 @@ export class WarbandGame {
       mesh.dispose();
     }
     this._fighterMeshes.clear();
+
+    // Remove horse meshes
+    for (const [, hMesh] of this._horseMeshes) {
+      this._sceneManager.scene.remove(hMesh.group);
+      hMesh.dispose();
+    }
+    this._horseMeshes.clear();
 
     // Remove projectile meshes
     for (const [, mesh] of this._projectileMeshes) {
