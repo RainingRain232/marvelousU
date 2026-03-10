@@ -223,6 +223,15 @@ export class WarbandCombatSystem {
         }
       }
 
+      // Charge bonus for mounted attackers
+      let chargeMult = 1;
+      if (attacker.isMounted) {
+        const speed = Math.sqrt(attacker.velocity.x ** 2 + attacker.velocity.z ** 2);
+        if (speed > WB.HORSE_CHARGE_MIN_SPEED) {
+          chargeMult = WB.HORSE_CHARGE_MULT;
+        }
+      }
+
       if (blocked) {
         // Blocked: stagger attacker, drain target stamina
         attacker.combatState = FighterCombatState.STAGGERED;
@@ -248,11 +257,51 @@ export class WarbandCombatSystem {
           },
         });
       } else {
-        // Hit landed
+        // Hit landed — check if hitting the horse instead (30% for stab/swing on mounted target)
+        if (target.isMounted && target.mountId) {
+          const hitHorse = (attacker.attackDirection === CombatDirection.STAB ||
+            attacker.attackDirection === CombatDirection.LEFT_SWING ||
+            attacker.attackDirection === CombatDirection.RIGHT_SWING) && Math.random() < 0.3;
+          if (hitHorse) {
+            const horse = state.horses.find(h => h.id === target.mountId);
+            if (horse && horse.alive) {
+              const horseDef = horse.armorTier === "heavy" ? WB.HORSE_DEF_HEAVY
+                : horse.armorTier === "medium" ? WB.HORSE_DEF_MEDIUM : WB.HORSE_DEF_LIGHT;
+              const horseDmg = Math.max(1, Math.round(wpn.damage * chargeMult - horseDef));
+              horse.hp -= horseDmg;
+              attacker.damage_dealt += horseDmg;
+
+              this.hits.push({
+                attacker: attacker.id,
+                target: target.id,
+                damage: horseDmg,
+                zone: ArmorSlot.TORSO,
+                blocked: false,
+                position: {
+                  x: target.position.x,
+                  y: target.position.y + 0.5,
+                  z: target.position.z,
+                },
+              });
+
+              if (horse.hp <= 0) {
+                horse.hp = 0;
+                horse.alive = false;
+                horse.riderId = null;
+                target.mountId = null;
+                target.isMounted = false;
+                target.combatState = FighterCombatState.STAGGERED;
+                target.stateTimer = WB.STAGGER_TICKS;
+              }
+              continue; // skip rider damage
+            }
+          }
+        }
+
         const hitZone = attackHitZone(attacker.attackDirection);
         const zoneMult = hitZoneMultiplier(hitZone);
         const armorDef = target.equipment.armor[hitZone]?.defense ?? 0;
-        const rawDamage = wpn.damage * zoneMult;
+        const rawDamage = wpn.damage * zoneMult * chargeMult;
         const finalDamage = Math.max(1, Math.round(rawDamage - armorDef));
 
         target.hp -= finalDamage;
@@ -293,6 +342,14 @@ export class WarbandCombatSystem {
           attacker.gold += WB.GOLD_PER_KILL;
           if (hitZone === ArmorSlot.HEAD) {
             attacker.gold += WB.GOLD_HEADSHOT_BONUS;
+          }
+
+          // Dismount on death
+          if (target.isMounted && target.mountId) {
+            const horse = state.horses.find(h => h.id === target.mountId);
+            if (horse) horse.riderId = null;
+            target.mountId = null;
+            target.isMounted = false;
           }
 
           this.kills.push({
@@ -378,20 +435,75 @@ export class WarbandCombatSystem {
         continue;
       }
 
+      // Hit detection against horses (riderless)
+      for (const horse of state.horses) {
+        if (!horse.alive || horse.riderId) continue;
+        const dx = proj.position.x - horse.position.x;
+        const dy = proj.position.y - (horse.position.y + WB.HORSE_HEIGHT * 0.5);
+        const dz = proj.position.z - horse.position.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist < WB.HORSE_RADIUS) {
+          const horseDef = horse.armorTier === "heavy" ? WB.HORSE_DEF_HEAVY
+            : horse.armorTier === "medium" ? WB.HORSE_DEF_MEDIUM : WB.HORSE_DEF_LIGHT;
+          const damage = Math.max(1, Math.round(proj.damage - horseDef));
+          horse.hp -= damage;
+          if (horse.hp <= 0) { horse.hp = 0; horse.alive = false; }
+          proj.alive = false;
+          break;
+        }
+      }
+      if (!proj.alive) continue;
+
       // Hit detection against fighters
       for (const target of state.fighters) {
         if (target.id === proj.ownerId) continue;
         if (target.team === proj.ownerTeam) continue;
         if (target.combatState === FighterCombatState.DEAD) continue;
 
+        // Mounted fighters are higher and wider targets
+        const mountOffset = target.isMounted ? WB.HORSE_HEIGHT : 0;
+        const hitRadius = target.isMounted ? WB.HORSE_RADIUS : WB.FIGHTER_RADIUS + 0.15;
+
         const dx = proj.position.x - target.position.x;
-        const dy = proj.position.y - (target.position.y + WB.FIGHTER_HEIGHT * 0.5);
+        const dy = proj.position.y - (target.position.y + mountOffset + WB.FIGHTER_HEIGHT * 0.5);
         const dz = proj.position.z - target.position.z;
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        if (dist < WB.FIGHTER_RADIUS + 0.15) {
+        if (dist < hitRadius) {
+          // Check if projectile hits horse body (below rider)
+          const projRelY = proj.position.y - target.position.y;
+          if (target.isMounted && target.mountId && projRelY < mountOffset * 0.8) {
+            // Hit the horse
+            const horse = state.horses.find(h => h.id === target.mountId);
+            if (horse && horse.alive) {
+              const horseDef = horse.armorTier === "heavy" ? WB.HORSE_DEF_HEAVY
+                : horse.armorTier === "medium" ? WB.HORSE_DEF_MEDIUM : WB.HORSE_DEF_LIGHT;
+              const damage = Math.max(1, Math.round(proj.damage - horseDef));
+              horse.hp -= damage;
+              const owner = state.fighters.find(f => f.id === proj.ownerId);
+              if (owner) owner.damage_dealt += damage;
+
+              this.hits.push({
+                attacker: proj.ownerId, target: target.id, damage, zone: ArmorSlot.LEGS,
+                blocked: false, position: { ...proj.position },
+              });
+
+              if (horse.hp <= 0) {
+                horse.hp = 0;
+                horse.alive = false;
+                horse.riderId = null;
+                target.mountId = null;
+                target.isMounted = false;
+                target.combatState = FighterCombatState.STAGGERED;
+                target.stateTimer = WB.STAGGER_TICKS;
+              }
+              proj.alive = false;
+              break;
+            }
+          }
+
           // Determine hit zone by projectile height relative to target
-          const relHeight = (proj.position.y - target.position.y) / WB.FIGHTER_HEIGHT;
+          const relHeight = (proj.position.y - target.position.y - mountOffset) / WB.FIGHTER_HEIGHT;
           let hitZone: ArmorSlot;
           if (relHeight > 0.85) hitZone = ArmorSlot.HEAD;
           else if (relHeight > 0.45) hitZone = ArmorSlot.TORSO;
@@ -445,6 +557,14 @@ export class WarbandCombatSystem {
                 if (hitZone === ArmorSlot.HEAD) {
                   owner.gold += WB.GOLD_HEADSHOT_BONUS;
                 }
+              }
+
+              // Dismount on death
+              if (target.isMounted && target.mountId) {
+                const horse = state.horses.find(h => h.id === target.mountId);
+                if (horse) horse.riderId = null;
+                target.mountId = null;
+                target.isMounted = false;
               }
 
               this.kills.push({

@@ -12,6 +12,7 @@ import {
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
 import { isMeleeWeapon, isRangedWeapon } from "../config/WeaponDefs";
+import { HORSE_SADDLE_Y } from "./WarbandHorseRenderer";
 
 // ---- Colors ---------------------------------------------------------------
 
@@ -2754,10 +2755,11 @@ export class FighterMesh {
 
   /** Main update: animate skeleton based on fighter state */
   update(fighter: WarbandFighter, dt: number, camera: THREE.Camera): void {
-    // Position and rotation
+    // Position and rotation — raise Y if mounted
+    const mountY = fighter.isMounted ? HORSE_SADDLE_Y : 0;
     this.group.position.set(
       fighter.position.x,
-      fighter.position.y,
+      fighter.position.y + mountY,
       fighter.position.z,
     );
     this.group.rotation.y = fighter.rotation;
@@ -2811,11 +2813,26 @@ export class FighterMesh {
 
     // Walk cycle (if moving and not dead)
     if (fighter.combatState !== FighterCombatState.DEAD) {
-      const speed = Math.sqrt(
-        fighter.velocity.x ** 2 + fighter.velocity.z ** 2,
-      );
-      if (speed > 0.5) {
-        this._animateWalkCycle(fighter.walkCycle, speed);
+      if (fighter.isMounted) {
+        // Straddling pose: legs spread and bent around horse
+        this._leftThigh.rotation.x = 0.15;
+        this._leftThigh.rotation.z = 0.5;
+        this._leftShin.rotation.x = -0.7;
+        this._leftFoot.rotation.x = 0.25;
+        this._rightThigh.rotation.x = 0.15;
+        this._rightThigh.rotation.z = -0.5;
+        this._rightShin.rotation.x = -0.7;
+        this._rightFoot.rotation.x = 0.25;
+        // Sit slightly lower in saddle
+        this._hips.position.y = -0.05;
+      } else {
+        const speed = Math.sqrt(
+          fighter.velocity.x ** 2 + fighter.velocity.z ** 2,
+        );
+        if (speed > 0.5) {
+          this._animateWalkCycle(fighter.walkCycle, speed);
+        }
+        this._hips.position.y = 0;
       }
     }
 

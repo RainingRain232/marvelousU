@@ -113,23 +113,29 @@ export class WarbandAISystem {
 
     const wpn = fighter.equipment.mainHand;
     const isRanged = wpn ? isRangedWeapon(wpn) : false;
-    const idealRange = isRanged ? 10 : ai.preferredRange;
+    const mounted = fighter.isMounted;
+    const idealRange = isRanged
+      ? (mounted ? 15 : 10)
+      : (mounted ? 4.0 : ai.preferredRange);
 
-    // Movement
+    // Movement — mounted fighters are faster
     const sinR = Math.sin(fighter.rotation);
     const cosR = Math.cos(fighter.rotation);
+    const baseWalk = mounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED;
+    const baseBack = mounted ? WB.HORSE_BACK_SPEED : WB.BACK_SPEED;
+    const baseStrafe = mounted ? WB.HORSE_STRAFE_SPEED : WB.STRAFE_SPEED;
 
     if (dist > idealRange + 1) {
       // Move toward target
-      const speed = WB.WALK_SPEED * 0.9;
+      const speed = baseWalk * 0.9;
       fighter.velocity.x = sinR * speed;
       fighter.velocity.z = cosR * speed;
       fighter.walkCycle = (fighter.walkCycle + speed * 0.02) % 1;
     } else if (dist < idealRange - 1 && isRanged) {
       // Ranged fighters back away if too close
-      fighter.velocity.x = -sinR * WB.BACK_SPEED;
-      fighter.velocity.z = -cosR * WB.BACK_SPEED;
-      fighter.walkCycle = (fighter.walkCycle + WB.BACK_SPEED * 0.02) % 1;
+      fighter.velocity.x = -sinR * baseBack;
+      fighter.velocity.z = -cosR * baseBack;
+      fighter.walkCycle = (fighter.walkCycle + baseBack * 0.02) % 1;
     } else {
       // Strafe around target
       ai.strafeTimer--;
@@ -137,7 +143,7 @@ export class WarbandAISystem {
         ai.strafeDir = Math.random() < 0.5 ? -1 : 1;
         ai.strafeTimer = 30 + Math.floor(Math.random() * 60);
       }
-      const strafeSpeed = WB.STRAFE_SPEED * 0.7;
+      const strafeSpeed = baseStrafe * 0.7;
       fighter.velocity.x = cosR * strafeSpeed * ai.strafeDir;
       fighter.velocity.z = -sinR * strafeSpeed * ai.strafeDir;
       fighter.walkCycle = (fighter.walkCycle + strafeSpeed * 0.02) % 1;

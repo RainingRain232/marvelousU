@@ -10,6 +10,7 @@ import {
   FighterCombatState,
   CameraMode,
   WarbandPhase,
+  vec3DistXZ,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
 import { isRangedWeapon } from "../config/WeaponDefs";
@@ -26,6 +27,7 @@ export interface InputState {
   block: boolean; // RMB
   pickup: boolean; // E key
   loot: boolean; // F key
+  mount: boolean; // B key
   escape: boolean; // ESC key
   toggleCamera: boolean; // V key
   toggleOrbit: boolean; // C key – free orbit camera
@@ -52,6 +54,7 @@ export class WarbandInputSystem {
     block: false,
     pickup: false,
     loot: false,
+    mount: false,
     escape: false,
     toggleCamera: false,
     toggleOrbit: false,
@@ -73,6 +76,7 @@ export class WarbandInputSystem {
   // Track which arrow key initiated the current windup
   private _windupKey: "left" | "right" | "up" | "down" | null = null;
   private _lootTriggered = false;
+  private _mountTriggered = false;
 
   // Bound handlers for cleanup
   private _onKeyDown: (e: KeyboardEvent) => void;
@@ -187,6 +191,15 @@ export class WarbandInputSystem {
       this._lootTriggered = false;
     }
 
+    // Mount/Dismount (B key, one-shot)
+    if (this._input.mount && !this._mountTriggered) {
+      this._mountTriggered = true;
+      this._tryMountDismount(player, state);
+    }
+    if (!this._input.mount) {
+      this._mountTriggered = false;
+    }
+
     // Reset mouse deltas
     this._input.mouseDX = 0;
     this._input.mouseDY = 0;
@@ -275,9 +288,12 @@ export class WarbandInputSystem {
       this._input.forward &&
       player.stamina > WB.STAMINA_SPRINT_COST * 2;
 
-    const speed = isSprinting ? WB.RUN_SPEED : WB.WALK_SPEED;
-    const strafeSpeed = WB.STRAFE_SPEED;
-    const backSpeed = WB.BACK_SPEED;
+    const mounted = player.isMounted;
+    const speed = isSprinting
+      ? (mounted ? WB.HORSE_RUN_SPEED : WB.RUN_SPEED)
+      : (mounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED);
+    const strafeSpeed = mounted ? WB.HORSE_STRAFE_SPEED : WB.STRAFE_SPEED;
+    const backSpeed = mounted ? WB.HORSE_BACK_SPEED : WB.BACK_SPEED;
 
     let moveX = 0;
     let moveZ = 0;
@@ -320,8 +336,8 @@ export class WarbandInputSystem {
     player.velocity.x = moveX * weightPenalty;
     player.velocity.z = moveZ * weightPenalty;
 
-    // Jump
-    if (this._input.jump && player.onGround) {
+    // Jump (not when mounted)
+    if (this._input.jump && player.onGround && !mounted) {
       player.velocity.y = WB.JUMP_VELOCITY;
       player.onGround = false;
     }
@@ -391,6 +407,44 @@ export class WarbandInputSystem {
     }
   }
 
+  private _tryMountDismount(player: WarbandFighter, state: WarbandState): void {
+    if (player.isMounted && player.mountId) {
+      // Dismount
+      const horse = state.horses.find(h => h.id === player.mountId);
+      if (horse) {
+        horse.riderId = null;
+        // Place horse at current pos, offset player behind
+        horse.position = { ...player.position };
+        horse.rotation = player.rotation;
+      }
+      player.mountId = null;
+      player.isMounted = false;
+      // Offset player slightly behind the horse
+      player.position.x -= Math.sin(player.rotation) * 1.5;
+      player.position.z -= Math.cos(player.rotation) * 1.5;
+    } else {
+      // Try to mount nearest riderless alive horse
+      let bestHorse = null;
+      let bestDist = WB.MOUNT_RANGE + 1;
+      for (const horse of state.horses) {
+        if (!horse.alive || horse.riderId) continue;
+        const d = vec3DistXZ(player.position, horse.position);
+        if (d < bestDist) {
+          bestDist = d;
+          bestHorse = horse;
+        }
+      }
+      if (bestHorse) {
+        player.mountId = bestHorse.id;
+        player.isMounted = true;
+        bestHorse.riderId = player.id;
+        // Snap player to horse position
+        player.position.x = bestHorse.position.x;
+        player.position.z = bestHorse.position.z;
+      }
+    }
+  }
+
   // ---- Raw input handlers -------------------------------------------------
 
   private _handleKeyDown(e: KeyboardEvent): void {
@@ -420,6 +474,9 @@ export class WarbandInputSystem {
         break;
       case "KeyF":
         this._input.loot = true;
+        break;
+      case "KeyB":
+        this._input.mount = true;
         break;
       case "Escape":
         this._input.escape = true;
@@ -475,6 +532,9 @@ export class WarbandInputSystem {
         break;
       case "KeyF":
         this._input.loot = false;
+        break;
+      case "KeyB":
+        this._input.mount = false;
         break;
       case "Escape":
         this._input.escape = false;

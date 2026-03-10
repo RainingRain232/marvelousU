@@ -3,13 +3,17 @@
 // Buy weapons and armor before battle
 // ---------------------------------------------------------------------------
 
-import type { WarbandFighter } from "../state/WarbandState";
+import type { WarbandFighter, HorseArmorTier } from "../state/WarbandState";
 import { WEAPON_DEFS, type WeaponDef } from "../config/WeaponDefs";
 import { ARMOR_DEFS, ArmorSlot, type ArmorDef } from "../config/ArmorDefs";
+import { WB } from "../config/WarbandBalanceConfig";
 
 export class WarbandShopView {
   private _container!: HTMLDivElement;
   private _onStart: (() => void) | null = null;
+
+  /** Pending horse purchase — read by WarbandGame on battle start */
+  pendingHorse: HorseArmorTier | null = null;
 
   init(): void {
     this._container = document.createElement("div");
@@ -74,7 +78,8 @@ export class WarbandShopView {
           Torso: ${player.equipment.armor.torso?.name ?? "None"} |
           Hands: ${player.equipment.armor.gauntlets?.name ?? "None"} |
           Legs: ${player.equipment.armor.legs?.name ?? "None"} |
-          Boots: ${player.equipment.armor.boots?.name ?? "None"}
+          Boots: ${player.equipment.armor.boots?.name ?? "None"} |
+          Horse: ${this.pendingHorse ? this.pendingHorse.charAt(0).toUpperCase() + this.pendingHorse.slice(1) + " Horse" : "None"}
         </div>
 
         <h2 style="color:#ccc;border-bottom:1px solid #444;padding-bottom:5px">Weapons</h2>
@@ -82,6 +87,13 @@ export class WarbandShopView {
 
         <h2 style="color:#ccc;border-bottom:1px solid #444;padding-bottom:5px;margin-top:20px">Armor</h2>
         ${armorSlots.map((slot) => this._renderCategory(slot.label, slot.items, player, "armor")).join("")}
+
+        <h2 style="color:#ccc;border-bottom:1px solid #444;padding-bottom:5px;margin-top:20px">Mounts</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:15px">
+          ${this._renderHorseCard("light", "Light Horse", WB.HORSE_COST_LIGHT, WB.HORSE_HP_LIGHT, WB.HORSE_DEF_LIGHT, player)}
+          ${this._renderHorseCard("medium", "Medium Horse", WB.HORSE_COST_MEDIUM, WB.HORSE_HP_MEDIUM, WB.HORSE_DEF_MEDIUM, player)}
+          ${this._renderHorseCard("heavy", "Heavy Horse", WB.HORSE_COST_HEAVY, WB.HORSE_HP_HEAVY, WB.HORSE_DEF_HEAVY, player)}
+        </div>
 
         <div style="text-align:center;margin-top:30px">
           <button id="warband-start-battle" style="
@@ -110,6 +122,14 @@ export class WarbandShopView {
       btn.addEventListener("click", () => {
         const id = (btn as HTMLElement).dataset.buyArmor!;
         this._buyArmor(player, id);
+      });
+    });
+
+    this._container.querySelectorAll("[data-buy-horse]").forEach((btn) => {
+      (btn as HTMLElement).style.pointerEvents = "auto";
+      btn.addEventListener("click", () => {
+        const tier = (btn as HTMLElement).dataset.buyHorse! as HorseArmorTier;
+        this._buyHorse(player, tier);
       });
     });
 
@@ -214,6 +234,56 @@ export class WarbandShopView {
       }
     }
 
+    this._render(player);
+  }
+
+  private _renderHorseCard(
+    tier: HorseArmorTier,
+    name: string,
+    cost: number,
+    hp: number,
+    def: number,
+    player: WarbandFighter,
+  ): string {
+    const isOwned = this.pendingHorse === tier;
+    const canAfford = player.gold >= cost;
+    return `
+      <div style="
+        background: ${isOwned ? "rgba(34,170,68,0.15)" : "rgba(255,255,255,0.03)"};
+        border: 1px solid ${isOwned ? "#22aa44" : "#444"};
+        border-radius: 4px; padding: 8px;
+      ">
+        <div style="font-weight:bold;color:${isOwned ? "#44cc66" : "#ddd"}">\uD83D\uDC0E ${name}</div>
+        <div style="font-size:12px;color:#999;margin:3px 0">HP: ${hp} | Def: ${def} | +60% speed</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px">
+          <span style="color:#ffd700;font-size:13px">${cost}g</span>
+          ${isOwned
+            ? '<span style="color:#44cc66;font-size:12px">Purchased</span>'
+            : `<button data-buy-horse="${tier}" style="
+                padding:3px 10px;font-size:12px;
+                background:${canAfford ? "#8b6914" : "#444"};
+                color:${canAfford ? "#fff" : "#888"};
+                border:1px solid ${canAfford ? "#daa520" : "#555"};
+                border-radius:3px;cursor:${canAfford ? "pointer" : "default"};
+              ">${canAfford ? "Buy" : "Can't afford"}</button>`
+          }
+        </div>
+      </div>
+    `;
+  }
+
+  private _buyHorse(player: WarbandFighter, tier: HorseArmorTier): void {
+    const costMap = { light: WB.HORSE_COST_LIGHT, medium: WB.HORSE_COST_MEDIUM, heavy: WB.HORSE_COST_HEAVY };
+    const cost = costMap[tier];
+    if (player.gold < cost) return;
+
+    // Refund previous horse if upgrading
+    if (this.pendingHorse) {
+      player.gold += costMap[this.pendingHorse];
+    }
+
+    player.gold -= cost;
+    this.pendingHorse = tier;
     this._render(player);
   }
 

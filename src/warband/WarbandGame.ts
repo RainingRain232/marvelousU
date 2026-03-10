@@ -12,7 +12,9 @@ import {
   FighterCombatState,
   createWarbandState,
   createDefaultFighter,
+  createHorse,
   vec3,
+  type HorseArmorTier,
 } from "./state/WarbandState";
 import { WB } from "./config/WarbandBalanceConfig";
 import { WEAPON_DEFS } from "./config/WeaponDefs";
@@ -21,6 +23,7 @@ import { ARMOR_DEFS, ArmorSlot } from "./config/ArmorDefs";
 import { WarbandSceneManager } from "./view/WarbandSceneManager";
 import { WarbandCameraController } from "./view/WarbandCameraController";
 import { FighterMesh } from "./view/WarbandFighterRenderer";
+import { HorseMesh } from "./view/WarbandHorseRenderer";
 import { WarbandHUD } from "./view/WarbandHUD";
 import { WarbandShopView } from "./view/WarbandShopView";
 import { WarbandFX } from "./view/WarbandFX";
@@ -59,6 +62,7 @@ interface UnitTypeDef {
   gauntlets: string;
   legs: string;
   boots: string;
+  horseArmor?: HorseArmorTier;
 }
 
 const UNIT_TYPES: UnitTypeDef[] = [
@@ -127,6 +131,48 @@ const UNIT_TYPES: UnitTypeDef[] = [
     legs: "plate_greaves",
     boots: "plate_sabatons",
   },
+  {
+    id: "scout_cavalry",
+    name: "Scout",
+    icon: "\uD83D\uDC0E",
+    description: "Pike, light armor, light horse",
+    mainHand: "pike",
+    offHand: null,
+    head: "leather_cap",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    horseArmor: "light",
+  },
+  {
+    id: "horse_archer",
+    name: "Horse Archer",
+    icon: "\uD83C\uDFC7",
+    description: "Longbow, medium armor, medium horse",
+    mainHand: "long_bow",
+    offHand: null,
+    head: "mail_coif",
+    torso: "mail_shirt",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    horseArmor: "medium",
+  },
+  {
+    id: "lancer",
+    name: "Lancer",
+    icon: "\u265E",
+    description: "Heavy armor, pike & shield, heavy horse",
+    mainHand: "lance",
+    offHand: "kite_shield",
+    head: "bascinet",
+    torso: "brigandine",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    horseArmor: "heavy",
+  },
 ];
 
 export class WarbandGame {
@@ -142,6 +188,7 @@ export class WarbandGame {
   private _sceneManager = new WarbandSceneManager();
   private _cameraController!: WarbandCameraController;
   private _fighterMeshes: Map<string, FighterMesh> = new Map();
+  private _horseMeshes: Map<string, HorseMesh> = new Map();
   private _hud = new WarbandHUD();
   private _shop = new WarbandShopView();
   private _fx!: WarbandFX;
@@ -164,9 +211,9 @@ export class WarbandGame {
   private _inventoryContainer: HTMLDivElement | null = null;
   private _armySetupContainer: HTMLDivElement | null = null;
 
-  // Army battle composition
-  private _playerArmy: number[] = [0, 0, 0, 0, 0]; // count per unit type
-  private _enemyArmy: number[] = [0, 0, 0, 0, 0];
+  // Army battle composition (8 unit types: 5 infantry + 3 cavalry)
+  private _playerArmy: number[] = [0, 0, 0, 0, 0, 0, 0, 0];
+  private _enemyArmy: number[] = [0, 0, 0, 0, 0, 0, 0, 0];
 
   // ESC handler
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -370,7 +417,7 @@ export class WarbandGame {
             false,
             vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
           );
-          this._equipUnitType(ally, UNIT_TYPES[t]);
+          this._equipUnitType(ally, UNIT_TYPES[t], this._state!);
           this._state.fighters.push(ally);
           allyIdx++;
         }
@@ -497,8 +544,8 @@ export class WarbandGame {
   // ---- Army setup screen ---------------------------------------------------
 
   private _showArmySetup(): void {
-    this._playerArmy = [0, 0, 0, 0, 0];
-    this._enemyArmy = [0, 0, 0, 0, 0];
+    this._playerArmy = new Array(UNIT_TYPES.length).fill(0);
+    this._enemyArmy = new Array(UNIT_TYPES.length).fill(0);
 
     this._armySetupContainer = document.createElement("div");
     this._armySetupContainer.style.cssText = `
@@ -623,7 +670,7 @@ export class WarbandGame {
     }
   }
 
-  private _equipUnitType(fighter: WarbandFighter, unitType: UnitTypeDef): void {
+  private _equipUnitType(fighter: WarbandFighter, unitType: UnitTypeDef, state?: WarbandState): void {
     fighter.equipment.mainHand = WEAPON_DEFS[unitType.mainHand] ?? null;
     fighter.equipment.offHand = unitType.offHand ? (WEAPON_DEFS[unitType.offHand] ?? null) : null;
     fighter.equipment.armor = {
@@ -638,6 +685,16 @@ export class WarbandGame {
     if (fighter.equipment.mainHand?.ammo) {
       fighter.ammo = fighter.equipment.mainHand.ammo;
       fighter.maxAmmo = fighter.equipment.mainHand.ammo;
+    }
+
+    // Create horse if cavalry unit
+    if (unitType.horseArmor && state) {
+      const horseId = `horse_${fighter.id}`;
+      const horse = createHorse(horseId, unitType.horseArmor, { ...fighter.position }, fighter.id);
+      horse.rotation = fighter.rotation;
+      state.horses.push(horse);
+      fighter.mountId = horseId;
+      fighter.isMounted = true;
     }
   }
 
@@ -1019,7 +1076,7 @@ export class WarbandGame {
             false,
             vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
           );
-          this._equipUnitType(ally, UNIT_TYPES[t]);
+          this._equipUnitType(ally, UNIT_TYPES[t], this._state!);
           if (ally.ai) {
             ally.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);
             ally.ai.aggressiveness = Math.min(0.9, 0.5 + this._state.round * 0.05);

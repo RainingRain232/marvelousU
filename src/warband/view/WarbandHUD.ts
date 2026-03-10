@@ -12,6 +12,7 @@ import {
   CameraMode,
   vec3DistXZ,
 } from "../state/WarbandState";
+import { WB } from "../config/WarbandBalanceConfig";
 
 export class WarbandHUD {
   private _container!: HTMLDivElement;
@@ -28,6 +29,9 @@ export class WarbandHUD {
   private _centerMsg!: HTMLDivElement;
   private _controlsHint!: HTMLDivElement;
   private _lootPrompt!: HTMLDivElement;
+  private _mountPrompt!: HTMLDivElement;
+  private _horseHpBar!: HTMLDivElement;
+  private _horseHpFill!: HTMLDivElement;
 
   private _killFeedEntries: { text: string; time: number }[] = [];
 
@@ -126,7 +130,7 @@ export class WarbandHUD {
       font-size: 12px; opacity: 0.5;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     `;
-    this._controlsHint.textContent = "WASD: Move | Arrows: Attack | RMB: Block | F: Loot | V: Camera | ESC: Menu";
+    this._controlsHint.textContent = "WASD: Move | Arrows: Attack | RMB: Block | F: Loot | B: Mount | V: Camera | ESC: Menu";
     this._container.appendChild(this._controlsHint);
 
     // Loot prompt
@@ -141,6 +145,25 @@ export class WarbandHUD {
       border: 1px solid rgba(255,215,0,0.4); border-radius: 4px;
     `;
     this._container.appendChild(this._lootPrompt);
+
+    // Mount prompt
+    this._mountPrompt = document.createElement("div");
+    this._mountPrompt.style.cssText = `
+      position: absolute; bottom: 170px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 16px; font-weight: bold;
+      text-shadow: 1px 1px 4px rgba(0,0,0,0.9);
+      color: #88ccff; display: none;
+      background: rgba(0,0,0,0.5); padding: 6px 16px;
+      border: 1px solid rgba(136,204,255,0.4); border-radius: 4px;
+    `;
+    this._container.appendChild(this._mountPrompt);
+
+    // Horse HP bar (below player HP bar)
+    this._horseHpBar = this._makeBar("bottom: 80px; left: 50%; transform: translateX(-50%); width: 200px;", "#cc8800");
+    this._horseHpFill = this._horseHpBar.querySelector(".fill") as HTMLDivElement;
+    this._horseHpBar.style.display = "none";
+    this._container.appendChild(this._horseHpBar);
 
     const pixiContainer = document.getElementById("pixi-container");
     if (pixiContainer) {
@@ -246,6 +269,41 @@ export class WarbandHUD {
       this._lootPrompt.style.display = "block";
     } else {
       this._lootPrompt.style.display = "none";
+    }
+
+    // Mount prompt — check for nearby riderless horses
+    if (player.isMounted) {
+      this._mountPrompt.textContent = "[B] Dismount";
+      this._mountPrompt.style.display = "block";
+    } else {
+      let nearHorse = false;
+      for (const horse of state.horses) {
+        if (!horse.alive || horse.riderId) continue;
+        if (vec3DistXZ(player.position, horse.position) < WB.MOUNT_RANGE) {
+          nearHorse = true;
+          break;
+        }
+      }
+      if (nearHorse) {
+        this._mountPrompt.textContent = "[B] Mount Horse";
+        this._mountPrompt.style.display = "block";
+      } else {
+        this._mountPrompt.style.display = "none";
+      }
+    }
+
+    // Horse HP bar
+    if (player.isMounted && player.mountId) {
+      const horse = state.horses.find(h => h.id === player.mountId);
+      if (horse) {
+        this._horseHpBar.style.display = "block";
+        const horsePct = Math.max(0, (horse.hp / horse.maxHp) * 100);
+        this._horseHpFill.style.width = `${horsePct}%`;
+      } else {
+        this._horseHpBar.style.display = "none";
+      }
+    } else {
+      this._horseHpBar.style.display = "none";
     }
   }
 

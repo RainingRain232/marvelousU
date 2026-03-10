@@ -163,6 +163,10 @@ export interface WarbandFighter {
   ammo: number;
   maxAmmo: number;
 
+  // Mount
+  mountId: string | null; // horse id if mounted
+  isMounted: boolean;
+
   // Animation
   walkCycle: number; // 0-1 walk animation phase
   animBlend: number; // blend factor for animation transitions
@@ -202,6 +206,43 @@ export interface WarbandProjectile {
   age: number; // ticks since launched
 }
 
+// ---- Horse ----------------------------------------------------------------
+
+export type HorseArmorTier = "light" | "medium" | "heavy";
+
+export interface HorseState {
+  id: string;
+  hp: number;
+  maxHp: number;
+  armorTier: HorseArmorTier;
+  riderId: string | null;
+  position: Vec3;
+  rotation: number;
+  alive: boolean;
+  walkCycle: number;
+}
+
+export function createHorse(
+  id: string,
+  armorTier: HorseArmorTier,
+  position: Vec3,
+  riderId: string | null,
+): HorseState {
+  const hpMap = { light: WB.HORSE_HP_LIGHT, medium: WB.HORSE_HP_MEDIUM, heavy: WB.HORSE_HP_HEAVY };
+  const hp = hpMap[armorTier];
+  return {
+    id,
+    hp,
+    maxHp: hp,
+    armorTier,
+    riderId,
+    position: { ...position },
+    rotation: riderId ? 0 : Math.PI,
+    alive: true,
+    walkCycle: 0,
+  };
+}
+
 // ---- Weapon Pickup --------------------------------------------------------
 
 export interface WeaponPickup {
@@ -219,6 +260,7 @@ export interface WarbandState {
   cameraMode: CameraMode;
 
   fighters: WarbandFighter[];
+  horses: HorseState[];
   projectiles: WarbandProjectile[];
   pickups: WeaponPickup[];
 
@@ -286,6 +328,9 @@ export function createDefaultFighter(
     ammo: 0,
     maxAmmo: 0,
 
+    mountId: null,
+    isMounted: false,
+
     walkCycle: 0,
     animBlend: 0,
 
@@ -318,6 +363,7 @@ export function createWarbandState(
     cameraMode: CameraMode.THIRD_PERSON,
 
     fighters: [],
+    horses: [],
     projectiles: [],
     pickups: [],
 

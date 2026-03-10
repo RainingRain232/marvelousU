@@ -111,9 +111,11 @@ export class WarbandCameraController {
 
   /** Update camera position/rotation each frame */
   update(state: WarbandState, player: WarbandFighter): void {
+    // Add mount height offset so camera follows the rider, not the ground
+    const mountOffset = player.isMounted ? WB.HORSE_HEIGHT : 0;
     const targetPos = new THREE.Vector3(
       player.position.x,
-      player.position.y,
+      player.position.y + mountOffset,
       player.position.z,
     );
 
