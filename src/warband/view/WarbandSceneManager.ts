@@ -328,6 +328,13 @@ export class WarbandSceneManager {
     this._addTrees(rng);
     this._addBushes(rng);
     this._addFlowers(rng);
+    this._addClouds(rng);
+    this._addFallenLogs(rng);
+    this._addMushrooms(rng);
+    this._addPond(rng);
+    this._addGroundLeaves(rng);
+    this._addFenceRow(rng);
+    this._addBirds(rng);
   }
 
   // ---- Rocks: varied shapes, partially embedded, moss and lichen ----------
@@ -818,6 +825,449 @@ export class WarbandSceneManager {
         centre.rotation.x = -Math.PI / 2;
         this.scene.add(centre);
       }
+    }
+  }
+
+  // ---- Clouds: soft translucent shapes drifting in the sky ----------------
+
+  private _addClouds(rng: () => number): void {
+    const cloudMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.55,
+      fog: false,
+    });
+    const cloudMat2 = new THREE.MeshBasicMaterial({
+      color: 0xeee8dd,
+      transparent: true,
+      opacity: 0.4,
+      fog: false,
+    });
+
+    for (let i = 0; i < 18; i++) {
+      const cloudGroup = new THREE.Group();
+      const lobeCount = 4 + Math.floor(rng() * 5);
+      const baseR = 5 + rng() * 10;
+      const mat = rng() < 0.6 ? cloudMat : cloudMat2;
+
+      for (let l = 0; l < lobeCount; l++) {
+        const lr = baseR * (0.4 + rng() * 0.6);
+        const geo = new THREE.SphereGeometry(lr, 6, 5);
+        const lobe = new THREE.Mesh(geo, mat);
+        lobe.position.set(
+          (rng() - 0.5) * baseR * 1.5,
+          (rng() - 0.3) * baseR * 0.3,
+          (rng() - 0.5) * baseR * 0.8,
+        );
+        lobe.scale.set(1, 0.35 + rng() * 0.2, 1);
+        cloudGroup.add(lobe);
+      }
+
+      const angle = rng() * Math.PI * 2;
+      const dist = 60 + rng() * 120;
+      cloudGroup.position.set(
+        Math.cos(angle) * dist,
+        50 + rng() * 40,
+        Math.sin(angle) * dist,
+      );
+      cloudGroup.rotation.y = rng() * Math.PI;
+      this.scene.add(cloudGroup);
+    }
+  }
+
+  // ---- Fallen logs: decaying tree trunks on the ground -------------------
+
+  private _addFallenLogs(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+    const halfD = WB.ARENA_DEPTH / 2;
+
+    const barkMat = new THREE.MeshStandardMaterial({ color: 0x3a2810, roughness: 0.98 });
+    const darkBark = new THREE.MeshStandardMaterial({ color: 0x2a1c08, roughness: 1.0 });
+    const mossMat = new THREE.MeshStandardMaterial({ color: 0x4a6b2a, roughness: 1.0 });
+
+    for (let i = 0; i < 5; i++) {
+      const x = (rng() - 0.5) * halfW * 1.6;
+      const z = (rng() - 0.5) * halfD * 1.6;
+      const h = getTerrainHeight(x, z);
+      const logLen = 1.5 + rng() * 2.5;
+      const logR = 0.08 + rng() * 0.14;
+      const logGroup = new THREE.Group();
+
+      // Main log body
+      const logGeo = new THREE.CylinderGeometry(logR * 0.8, logR, logLen, 7);
+      const log = new THREE.Mesh(logGeo, barkMat);
+      log.rotation.z = Math.PI / 2;
+      log.castShadow = true;
+      log.receiveShadow = true;
+      logGroup.add(log);
+
+      // Cross-section at broken end (lighter inner wood)
+      const endMat = new THREE.MeshStandardMaterial({ color: 0x9a8060, roughness: 0.9 });
+      for (const side of [-1, 1]) {
+        const endGeo = new THREE.CircleGeometry(logR * (side === 1 ? 0.8 : 1.0), 6);
+        const end = new THREE.Mesh(endGeo, endMat);
+        end.position.set(side * logLen / 2, 0, 0);
+        end.rotation.y = side * Math.PI / 2;
+        logGroup.add(end);
+      }
+
+      // Bark strips peeling off
+      for (let b = 0; b < 3; b++) {
+        const stripLen = logLen * (0.15 + rng() * 0.2);
+        const stripGeo = new THREE.BoxGeometry(stripLen, 0.005, 0.04 + rng() * 0.03);
+        const strip = new THREE.Mesh(stripGeo, darkBark);
+        strip.position.set(
+          (rng() - 0.5) * logLen * 0.6,
+          logR * 0.85 + rng() * 0.02,
+          (rng() - 0.5) * logR * 0.8,
+        );
+        strip.rotation.x = (rng() - 0.5) * 0.3;
+        logGroup.add(strip);
+      }
+
+      // Moss patches on top
+      if (rng() < 0.7) {
+        const mCt = 2 + Math.floor(rng() * 3);
+        for (let m = 0; m < mCt; m++) {
+          const mGeo = new THREE.SphereGeometry(logR * (0.6 + rng() * 0.4), 4, 3, 0, Math.PI * 2, 0, Math.PI * 0.4);
+          const moss = new THREE.Mesh(mGeo, mossMat);
+          moss.position.set(
+            (rng() - 0.5) * logLen * 0.6,
+            logR * 0.6,
+            0,
+          );
+          moss.scale.set(1.5, 0.25, 1);
+          logGroup.add(moss);
+        }
+      }
+
+      // Small broken branch stubs
+      for (let s = 0; s < 2; s++) {
+        const stubGeo = new THREE.CylinderGeometry(0.01, 0.03, 0.15 + rng() * 0.1, 4);
+        const stub = new THREE.Mesh(stubGeo, barkMat);
+        stub.position.set(
+          (rng() - 0.5) * logLen * 0.5,
+          logR * 0.7,
+          0,
+        );
+        stub.rotation.z = (rng() - 0.5) * 0.4;
+        logGroup.add(stub);
+      }
+
+      logGroup.position.set(x, h + logR * 0.5, z);
+      logGroup.rotation.y = rng() * Math.PI;
+      logGroup.rotation.z = (rng() - 0.5) * 0.15; // slight tilt
+      this.scene.add(logGroup);
+    }
+  }
+
+  // ---- Mushrooms: clusters growing on logs, near trees, damp areas ------
+
+  private _addMushrooms(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+    const halfD = WB.ARENA_DEPTH / 2;
+
+    const mushSpecs = [
+      { cap: 0xcc8844, stem: 0xe8dcc0, capR: 0.045, stemH: 0.05 },  // brown toadstool
+      { cap: 0xdd3322, stem: 0xeee8d8, capR: 0.04, stemH: 0.06 },   // red amanita
+      { cap: 0xeedd88, stem: 0xddd8c0, capR: 0.035, stemH: 0.04 },  // chanterelle
+      { cap: 0xeeeeee, stem: 0xddddcc, capR: 0.03, stemH: 0.045 },  // white button
+    ];
+
+    for (let i = 0; i < 14; i++) {
+      const x = (rng() - 0.5) * halfW * 1.8;
+      const z = (rng() - 0.5) * halfD * 1.8;
+      const spec = mushSpecs[Math.floor(rng() * mushSpecs.length)];
+
+      const count = 2 + Math.floor(rng() * 5);
+      for (let m = 0; m < count; m++) {
+        const mx = x + (rng() - 0.5) * 0.4;
+        const mz = z + (rng() - 0.5) * 0.4;
+        const mh = getTerrainHeight(mx, mz);
+        const scale = 0.6 + rng() * 0.8;
+
+        // Stem
+        const stemMat = new THREE.MeshStandardMaterial({ color: spec.stem, roughness: 0.85 });
+        const stemGeo = new THREE.CylinderGeometry(spec.capR * 0.3 * scale, spec.capR * 0.4 * scale, spec.stemH * scale, 5);
+        const stem = new THREE.Mesh(stemGeo, stemMat);
+        stem.position.set(mx, mh + spec.stemH * scale * 0.5, mz);
+        this.scene.add(stem);
+
+        // Cap — half-sphere on top
+        const capMat = new THREE.MeshStandardMaterial({ color: spec.cap, roughness: 0.75, metalness: 0.02 });
+        const capGeo = new THREE.SphereGeometry(spec.capR * scale, 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.55);
+        const cap = new THREE.Mesh(capGeo, capMat);
+        cap.position.set(mx, mh + spec.stemH * scale, mz);
+        cap.scale.set(1, 0.55, 1);
+        this.scene.add(cap);
+
+        // White spots on red mushrooms
+        if (spec.cap === 0xdd3322 && rng() < 0.7) {
+          const spotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
+          for (let s = 0; s < 4; s++) {
+            const sa = rng() * Math.PI * 2;
+            const sd = spec.capR * scale * 0.5;
+            const spotGeo = new THREE.CircleGeometry(0.006 * scale, 4);
+            const spot = new THREE.Mesh(spotGeo, spotMat);
+            spot.position.set(
+              mx + Math.cos(sa) * sd,
+              mh + spec.stemH * scale + 0.005,
+              mz + Math.sin(sa) * sd,
+            );
+            spot.rotation.x = -Math.PI / 2;
+            this.scene.add(spot);
+          }
+        }
+      }
+    }
+  }
+
+  // ---- Pond: a small still-water area with reeds and lily pads ----------
+
+  private _addPond(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+    const halfD = WB.ARENA_DEPTH / 2;
+
+    // Place pond near one edge of the arena, offset
+    const px = halfW * 0.6 + rng() * 4;
+    const pz = -halfD * 0.5 + rng() * 4;
+    const ph = getTerrainHeight(px, pz);
+    const pondR = 2.5 + rng() * 1.5;
+
+    // Water surface — slightly reflective dark blue-green
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x2a4a4a,
+      roughness: 0.15,
+      metalness: 0.4,
+      transparent: true,
+      opacity: 0.82,
+    });
+    const waterGeo = new THREE.CircleGeometry(pondR, 14);
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.rotation.x = -Math.PI / 2;
+    water.position.set(px, ph - 0.06, pz);
+    water.receiveShadow = true;
+    this.scene.add(water);
+
+    // Muddy bank around the edge
+    const bankMat = new THREE.MeshStandardMaterial({ color: 0x5a4a30, roughness: 1.0 });
+    const bankGeo = new THREE.RingGeometry(pondR * 0.85, pondR * 1.15, 14);
+    const bank = new THREE.Mesh(bankGeo, bankMat);
+    bank.rotation.x = -Math.PI / 2;
+    bank.position.set(px, ph - 0.04, pz);
+    bank.receiveShadow = true;
+    this.scene.add(bank);
+
+    // Lily pads — flat green discs on the water surface
+    const lilyMat = new THREE.MeshStandardMaterial({
+      color: 0x3a6a28,
+      roughness: 0.8,
+      side: THREE.DoubleSide,
+    });
+    for (let i = 0; i < 6; i++) {
+      const la = rng() * Math.PI * 2;
+      const ld = pondR * (0.2 + rng() * 0.55);
+      const lilyR = 0.12 + rng() * 0.12;
+      // Lily pad with a notch cut — approximated as a circle
+      const lilyGeo = new THREE.CircleGeometry(lilyR, 8, 0, Math.PI * 1.8);
+      const lily = new THREE.Mesh(lilyGeo, lilyMat);
+      lily.rotation.x = -Math.PI / 2;
+      lily.rotation.z = rng() * Math.PI * 2;
+      lily.position.set(
+        px + Math.cos(la) * ld,
+        ph - 0.045,
+        pz + Math.sin(la) * ld,
+      );
+      this.scene.add(lily);
+
+      // Tiny flower on some lily pads
+      if (rng() < 0.4) {
+        const fMat = new THREE.MeshStandardMaterial({ color: rng() < 0.5 ? 0xffccdd : 0xffffff, roughness: 0.7 });
+        const fGeo = new THREE.SphereGeometry(0.03, 5, 3);
+        const flower = new THREE.Mesh(fGeo, fMat);
+        flower.position.set(
+          px + Math.cos(la) * ld,
+          ph - 0.02,
+          pz + Math.sin(la) * ld,
+        );
+        flower.scale.set(1, 0.5, 1);
+        this.scene.add(flower);
+      }
+    }
+
+    // Reeds / cattails growing around the pond edge
+    const reedMat = new THREE.MeshStandardMaterial({ color: 0x3a5a20, roughness: 0.95 });
+    const reedTopMat = new THREE.MeshStandardMaterial({ color: 0x6a4a20, roughness: 0.9 });
+    for (let i = 0; i < 12; i++) {
+      const ra = rng() * Math.PI * 2;
+      const rd = pondR * (0.75 + rng() * 0.35);
+      const rx = px + Math.cos(ra) * rd;
+      const rz = pz + Math.sin(ra) * rd;
+      const rh = getTerrainHeight(rx, rz);
+      const reedH = 0.5 + rng() * 0.6;
+
+      const rGeo = new THREE.CylinderGeometry(0.006, 0.01, reedH, 3);
+      const reed = new THREE.Mesh(rGeo, reedMat);
+      reed.position.set(rx, rh + reedH / 2, rz);
+      reed.rotation.x = (rng() - 0.5) * 0.15;
+      reed.rotation.z = (rng() - 0.5) * 0.15;
+      this.scene.add(reed);
+
+      // Cattail head on some reeds
+      if (rng() < 0.5) {
+        const topGeo = new THREE.CylinderGeometry(0.014, 0.016, 0.06, 4);
+        const rTop = new THREE.Mesh(topGeo, reedTopMat);
+        rTop.position.set(rx, rh + reedH + 0.02, rz);
+        this.scene.add(rTop);
+      }
+    }
+
+    // Pebbles around shore
+    const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x888878, roughness: 1.0 });
+    for (let i = 0; i < 15; i++) {
+      const pa2 = rng() * Math.PI * 2;
+      const pd = pondR * (0.9 + rng() * 0.3);
+      const pGeo = new THREE.SphereGeometry(0.03 + rng() * 0.04, 4, 3);
+      const pebble = new THREE.Mesh(pGeo, pebbleMat);
+      pebble.position.set(
+        px + Math.cos(pa2) * pd,
+        ph - 0.04,
+        pz + Math.sin(pa2) * pd,
+      );
+      pebble.scale.set(1, 0.5, 1 + rng() * 0.5);
+      this.scene.add(pebble);
+    }
+  }
+
+  // ---- Ground leaves: scattered fallen leaves adding color & texture ----
+
+  private _addGroundLeaves(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+    const halfD = WB.ARENA_DEPTH / 2;
+
+    const leafColors = [0x7a5020, 0x8a6030, 0x6a4018, 0x9a7030, 0xaa8040, 0x5a6020, 0x887722];
+    const leafMats = leafColors.map(c =>
+      new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, side: THREE.DoubleSide }),
+    );
+
+    for (let i = 0; i < 80; i++) {
+      const x = (rng() - 0.5) * halfW * 1.8;
+      const z = (rng() - 0.5) * halfD * 1.8;
+      const h = getTerrainHeight(x, z);
+      const mat = leafMats[Math.floor(rng() * leafMats.length)];
+
+      const lGeo = new THREE.CircleGeometry(0.04 + rng() * 0.04, 5);
+      const leaf = new THREE.Mesh(lGeo, mat);
+      leaf.position.set(x, h + 0.01, z);
+      leaf.rotation.x = -Math.PI / 2 + (rng() - 0.5) * 0.3;
+      leaf.rotation.z = rng() * Math.PI * 2;
+      leaf.scale.set(1, 0.6 + rng() * 0.4, 1);
+      this.scene.add(leaf);
+    }
+  }
+
+  // ---- Fence row: wooden split-rail fence segment in midground ----------
+
+  private _addFenceRow(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+
+    // Place along one side of the arena perimeter
+    const fenceZ = halfW * 0.7 + 3;
+    const fenceStartX = -8 + rng() * 4;
+    const fenceLen = 12 + rng() * 6;
+    const postSpacing = 2.5;
+
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x6a4820, roughness: 0.95 });
+    const oldWoodMat = new THREE.MeshStandardMaterial({ color: 0x5a4018, roughness: 0.98 });
+
+    const postCount = Math.floor(fenceLen / postSpacing) + 1;
+    for (let i = 0; i < postCount; i++) {
+      const fx = fenceStartX + i * postSpacing;
+      const fh = getTerrainHeight(fx, fenceZ);
+      const postH = 1.0 + rng() * 0.3;
+
+      // Post — slightly irregular
+      const postGeo = new THREE.BoxGeometry(0.08 + rng() * 0.03, postH, 0.08 + rng() * 0.03);
+      const post = new THREE.Mesh(postGeo, woodMat);
+      post.position.set(fx, fh + postH / 2, fenceZ);
+      post.rotation.y = rng() * 0.15;
+      post.castShadow = true;
+      this.scene.add(post);
+
+      // Top chamfer
+      const capGeo = new THREE.ConeGeometry(0.055, 0.08, 4);
+      const cap = new THREE.Mesh(capGeo, woodMat);
+      cap.position.set(fx, fh + postH + 0.03, fenceZ);
+      cap.rotation.y = Math.PI / 4;
+      this.scene.add(cap);
+
+      // Rails connecting to next post
+      if (i < postCount - 1) {
+        const nfx = fenceStartX + (i + 1) * postSpacing;
+        const nfh = getTerrainHeight(nfx, fenceZ);
+        const midX = (fx + nfx) / 2;
+        const midH = (fh + nfh) / 2;
+        const railLen = postSpacing * 1.05;
+
+        for (let r = 0; r < 2; r++) {
+          const railH = 0.35 + r * 0.35;
+          const railGeo = new THREE.BoxGeometry(railLen, 0.05 + rng() * 0.02, 0.04);
+          const rail = new THREE.Mesh(railGeo, r === 0 ? oldWoodMat : woodMat);
+          rail.position.set(midX, midH + railH, fenceZ);
+          // Slight angle if terrain differs
+          rail.rotation.z = Math.atan2(nfh - fh, postSpacing) * 0.5;
+          rail.castShadow = true;
+          this.scene.add(rail);
+        }
+      }
+    }
+  }
+
+  // ---- Birds: distant silhouettes circling in the sky -------------------
+
+  private _addBirds(rng: () => number): void {
+    const birdMat = new THREE.MeshBasicMaterial({ color: 0x222222, fog: true });
+
+    for (let i = 0; i < 8; i++) {
+      // Each bird is 2 small triangles (wings) in a V shape
+      const birdGroup = new THREE.Group();
+      const wingSpan = 0.15 + rng() * 0.1;
+      const wingGeo = new THREE.BufferGeometry();
+
+      // Left wing triangle
+      const lv = new Float32Array([
+        0, 0, 0,
+        -wingSpan, 0.02, -wingSpan * 0.25,
+        -wingSpan * 0.5, 0, -wingSpan * 0.15,
+      ]);
+      wingGeo.setAttribute("position", new THREE.BufferAttribute(lv, 3));
+      wingGeo.computeVertexNormals();
+      const lWing = new THREE.Mesh(wingGeo, birdMat);
+      birdGroup.add(lWing);
+
+      // Right wing triangle
+      const rwGeo = new THREE.BufferGeometry();
+      const rv = new Float32Array([
+        0, 0, 0,
+        wingSpan, 0.02, -wingSpan * 0.25,
+        wingSpan * 0.5, 0, -wingSpan * 0.15,
+      ]);
+      rwGeo.setAttribute("position", new THREE.BufferAttribute(rv, 3));
+      rwGeo.computeVertexNormals();
+      const rWing = new THREE.Mesh(rwGeo, birdMat);
+      birdGroup.add(rWing);
+
+      // Position birds at various heights circling in the distance
+      const angle = rng() * Math.PI * 2;
+      const dist = 30 + rng() * 50;
+      birdGroup.position.set(
+        Math.cos(angle) * dist,
+        20 + rng() * 25,
+        Math.sin(angle) * dist,
+      );
+      birdGroup.rotation.y = angle + Math.PI / 2;
+      birdGroup.scale.setScalar(3 + rng() * 4);
+      this.scene.add(birdGroup);
     }
   }
 
