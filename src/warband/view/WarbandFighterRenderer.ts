@@ -1288,113 +1288,133 @@ export class FighterMesh {
     } else if (isRangedWeapon(wpn)) {
       this._isRangedWeapon = true;
       const isCrossbow = wpn.category === "crossbow";
-      const bowR = wpn.length * 0.55; // larger radius = gentler curve
-      const bowArc = Math.PI * 0.65; // ~117° arc — realistic bow curve, not semicircle
+      const bowR = wpn.length * 0.55;
+      this._bowR = bowR;
+      const bowArc = Math.PI * 0.65;
 
-      // Bow: gentle curve facing forward (+Z in hand space)
-      const bowGeo = new THREE.TorusGeometry(bowR, 0.012, 5, 12, bowArc);
-      const bowMat = new THREE.MeshStandardMaterial({
-        color: wpn.color,
-        roughness: 0.7,
-      });
-      this._weaponMesh = new THREE.Mesh(bowGeo, bowMat);
-      // Wood (belly) faces forward toward target, limbs vertical
-      this._weaponMesh.rotation.set(Math.PI / 2, 0, Math.PI / 2);
-      this._weaponMesh.position.y = 0.1;
-      this._weaponMesh.castShadow = true;
-      this._rightHand.add(this._weaponMesh);
-
-      // Bow limb tips (slightly thinner ends)
-      for (const side of [-1, 1]) {
-        const tipAngle = side === 1 ? bowArc : 0;
-        const tipX = bowR * Math.cos(tipAngle - bowArc / 2);
-        const tipY = bowR * Math.sin(tipAngle - bowArc / 2);
-        const tipGeo = new THREE.CylinderGeometry(0.006, 0.01, 0.04, 4);
-        const tip = new THREE.Mesh(tipGeo, bowMat);
-        tip.position.set(tipX, tipY, 0);
-        tip.rotation.z = tipAngle - bowArc / 2 - Math.PI / 2;
-        this._weaponMesh.add(tip);
-      }
-
-      // Bow grip (thicker wrapped middle section)
+      const bowMat = new THREE.MeshStandardMaterial({ color: wpn.color, roughness: 0.7 });
       const gripMat = new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 });
+
+      // ---------------------------------------------------------------
+      // Bow coordinate system (bowGroup local):
+      //   +X = forward (toward enemy, where wood/belly faces)
+      //   +Y = up (upper limb)
+      //   -Y = down (lower limb)
+      //   -X = toward archer (where string is)
+      //
+      // GRIP is at the ORIGIN so the hand holds the center of the bow.
+      //
+      // Mapping to hand space:
+      //   In hand space -Y = forward (same as melee weapons).
+      //   So we rotate bowGroup: +X → -Y  via rotation.z = +π/2
+      //   And we want +Y (limbs) to stay vertical → need +Y → +Z
+      //   rotation.z = π/2 maps: X→Y, Y→-X  (wrong for limbs)
+      //   Instead use rotation order: first Rx=π/2 (Y→Z, Z→-Y),
+      //   then Rz=-π/2 (X→-Y stays.. let's just compute)
+      //
+      // Euler XYZ with (x=π/2, y=0, z=-π/2):
+      //   Matrix = Rz(-π/2) · Ry(0) · Rx(π/2)
+      //   (1,0,0) → Rx:(1,0,0) → Rz:(0,-1,0)   X→-Y (forward) ✓
+      //   (0,1,0) → Rx:(0,0,1) → Rz:(0,0,1)     Y→+Z (up)     ✓
+      //   (0,0,1) → Rx:(0,-1,0) → Rz:(1,0,0)    Z→+X           ✓
+      // ---------------------------------------------------------------
+      const bowGroup = new THREE.Group();
+
+      // Torus default: arc in XY plane, outer edge at +X.
+      // Center the arc by rotating stave around Z by -bowArc/2.
+      // Then outer edge center is at +X, limbs go ±Y symmetrically.
+      // Shift stave so outer edge (at x=+bowR) lands at origin (grip).
+      const staveGeo = new THREE.TorusGeometry(bowR, 0.012, 5, 12, bowArc);
+      const stave = new THREE.Mesh(staveGeo, bowMat);
+      stave.rotation.z = -bowArc / 2; // center arc symmetrically
+      stave.position.x = -bowR;       // outer edge (wood) at origin = grip
+      stave.castShadow = true;
+      bowGroup.add(stave);
+
+      // Grip wrap at origin
       const gripGeo = new THREE.CylinderGeometry(0.02, 0.018, 0.06, 5);
       const grip = new THREE.Mesh(gripGeo, gripMat);
-      // Grip at the belly (outer edge) of the bow, centered
-      grip.position.set(bowR, 0, 0);
-      this._weaponMesh.add(grip);
+      bowGroup.add(grip);
 
-      // Bow string (straight line between limb tips)
+      // String — connects the two nock points (tips of the arc)
       const halfSpan = bowR * Math.sin(bowArc / 2);
+      // Nock X in bowGroup = bowR * cos(bowArc/2) - bowR  (negative, toward archer)
+      const stringX = bowR * Math.cos(bowArc / 2) - bowR;
+      this._bowStringRestX = stringX;
+
       const stringGeo = new THREE.CylinderGeometry(0.002, 0.002, halfSpan * 2, 2);
       const stringMat = new THREE.MeshBasicMaterial({ color: 0xddddcc });
-      const string = new THREE.Mesh(stringGeo, stringMat);
-      const stringX = bowR * Math.cos(bowArc / 2); // string sits inside the curve
-      string.position.set(stringX, 0, 0);
-      this._weaponMesh.add(string);
+      const bowString = new THREE.Mesh(stringGeo, stringMat);
+      bowString.position.set(stringX, 0, 0);
+      bowGroup.add(bowString);
+      this._bowStringMesh = bowString;
 
-      // String nocks at tips
+      // Nocks at limb tips
       for (const side of [-1, 1]) {
         const nockGeo = new THREE.SphereGeometry(0.006, 3, 3);
         const nock = new THREE.Mesh(nockGeo, bowMat);
         nock.position.set(stringX, side * halfSpan, 0);
-        this._weaponMesh.add(nock);
+        bowGroup.add(nock);
       }
 
-      // Arrow / bolt
+      // Arrow — along +X (forward), starting at the string rest position
       const arrowLen = isCrossbow ? 0.2 : 0.35;
       const arrowMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.8 });
       const arrowGeo = new THREE.CylinderGeometry(0.004, 0.004, arrowLen, 3);
       const arrow = new THREE.Mesh(arrowGeo, arrowMat);
-      // Arrow rests along the bow, pointing forward (+X in weaponMesh local = +Z in hand)
-      arrow.position.set(bowR + 0.01, 0, 0);
-      arrow.rotation.z = Math.PI / 2;
-      this._weaponMesh.add(arrow);
+      arrow.rotation.z = -Math.PI / 2; // cylinder Y → +X
+      arrow.position.set(stringX + arrowLen * 0.5, 0, 0);
+      bowGroup.add(arrow);
 
       // Arrowhead
       const aHeadMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.7 });
       const aHeadGeo = new THREE.ConeGeometry(0.009, 0.03, 4);
       const arrowHead = new THREE.Mesh(aHeadGeo, aHeadMat);
-      arrowHead.position.set(bowR + arrowLen * 0.5 + 0.02, 0, 0);
-      arrowHead.rotation.z = -Math.PI / 2;
-      this._weaponMesh.add(arrowHead);
+      arrowHead.rotation.z = -Math.PI / 2; // cone tip → +X
+      arrowHead.position.set(stringX + arrowLen + 0.02, 0, 0);
+      bowGroup.add(arrowHead);
 
-      // Arrow fletching
+      // Fletching
       const fletchMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 });
       for (let f = 0; f < 3; f++) {
         const fAngle = (f / 3) * Math.PI * 2;
-        const fletchGeo = new THREE.BoxGeometry(0.001, 0.015, 0.04);
+        const fletchGeo = new THREE.BoxGeometry(0.04, 0.015, 0.001);
         const fletch = new THREE.Mesh(fletchGeo, fletchMat);
-        const fBaseX = bowR + 0.01 - arrowLen * 0.4;
-        fletch.position.set(fBaseX, Math.cos(fAngle) * 0.008, Math.sin(fAngle) * 0.008);
-        fletch.rotation.z = Math.PI / 2;
-        fletch.rotation.y = fAngle;
-        this._weaponMesh.add(fletch);
+        fletch.position.set(
+          stringX + 0.03,
+          Math.cos(fAngle) * 0.008,
+          Math.sin(fAngle) * 0.008,
+        );
+        fletch.rotation.x = fAngle;
+        bowGroup.add(fletch);
       }
 
       // Arrow nock
       const nockMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8 });
       const arrowNockGeo = new THREE.SphereGeometry(0.005, 3, 3);
       const arrowNock = new THREE.Mesh(arrowNockGeo, nockMat);
-      arrowNock.position.set(bowR + 0.01 - arrowLen * 0.5, 0, 0);
-      this._weaponMesh.add(arrowNock);
+      arrowNock.position.set(stringX, 0, 0);
+      bowGroup.add(arrowNock);
 
-      // Crossbow stock (for crossbows)
+      // Crossbow stock
       if (isCrossbow) {
         const stockMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.8 });
-        const stockGeo = new THREE.BoxGeometry(0.03, 0.04, 0.25);
+        const stockGeo = new THREE.BoxGeometry(0.25, 0.04, 0.03);
         const stock = new THREE.Mesh(stockGeo, stockMat);
-        stock.position.set(wpn.length * 0.4, -0.02, 0);
-        stock.rotation.z = Math.PI / 2;
-        this._weaponMesh.add(stock);
-
-        // Trigger mechanism
-        const triggerMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.6 });
-        const triggerGeo = new THREE.BoxGeometry(0.008, 0.02, 0.015);
-        const trigger = new THREE.Mesh(triggerGeo, triggerMat);
-        trigger.position.set(wpn.length * 0.4, -0.04, -0.03);
-        this._weaponMesh.add(trigger);
+        stock.position.set(-0.12, -0.02, 0);
+        bowGroup.add(stock);
       }
+
+      // Map bowGroup into hand space:
+      // Euler XYZ (π/2, 0, -π/2): X→-Y(forward), Y→+Z(up)
+      bowGroup.rotation.set(Math.PI, Math.PI / 2, -Math.PI / 2);
+
+      // Wrapper mesh (same pattern as melee weapons)
+      const dummyGeo = new THREE.BufferGeometry();
+      const dummyMat = new THREE.MeshBasicMaterial({ visible: false });
+      this._weaponMesh = new THREE.Mesh(dummyGeo, dummyMat);
+      this._weaponMesh.add(bowGroup);
+      this._rightHand.add(this._weaponMesh);
     }
 
     // Shield on left hand
@@ -2198,14 +2218,12 @@ export class FighterMesh {
       this._leftForearm.rotation.x = -0.6;
     }
 
-    // Bow: right arm steady holding bow, left arm relaxed near string
+    // Bow: right arm holds bow forward, left arm hangs naturally
     if (this._isRangedWeapon) {
       this._rightUpperArm.rotation.x = -1.0;
       this._rightUpperArm.rotation.z = -0.2;
       this._rightForearm.rotation.x = -0.1;
-      this._leftUpperArm.rotation.x = -0.6;
-      this._leftUpperArm.rotation.z = 0.3;
-      this._leftForearm.rotation.x = -1.2;
+      // Left arm just rests at side (no bow involvement)
     } else if (this._weaponMesh) {
       // Melee weapon ready position — arm pushed outward to clear torso
       this._rightUpperArm.rotation.x = -0.4;
@@ -2236,7 +2254,7 @@ export class FighterMesh {
     this._rightShin.rotation.x = Math.max(0, Math.sin(t) * amplitude * 0.8) - 0.1;
 
     // Arms counter-swing (if not attacking) — skip left arm if holding shield
-    if (!this._shieldMesh && !this._isRangedWeapon) {
+    if (!this._shieldMesh) {
       this._leftUpperArm.rotation.x = -Math.sin(t) * amplitude * 0.5 + 0.1;
       this._leftUpperArm.rotation.z = 0.35;
     }
@@ -2410,14 +2428,39 @@ export class FighterMesh {
     this._leftUpperArm.rotation.z = 0.35;
   }
 
-  private _animateDrawBow(_fighter: WarbandFighter): void {
-    // Right arm steady holding bow forward, left arm pulling string back
+  private _animateDrawBow(fighter: WarbandFighter): void {
+    // Right arm holds bow forward — always the same pose
     this._rightUpperArm.rotation.x = -1.4;
     this._rightUpperArm.rotation.z = -0.2;
     this._rightForearm.rotation.x = -0.1;
-    this._leftUpperArm.rotation.x = -1.4;
-    this._leftUpperArm.rotation.z = 0.3;
-    this._leftForearm.rotation.x = -2.0;
+
+    // Left arm hangs naturally — just slight raise, no bow involvement
+    this._leftUpperArm.rotation.x = -0.3;
+    this._leftUpperArm.rotation.z = 0.35;
+    this._leftForearm.rotation.x = -0.3;
+
+    // Animate the bow string mesh (moves along X in bowGroup local = toward/away from archer)
+    if (this._bowStringMesh && this._bowR > 0) {
+      const restX = this._bowStringRestX; // rest position (negative = toward archer)
+      const pullX = restX - this._bowR * 0.45; // pulled back toward the body
+
+      if (
+        fighter.combatState === FighterCombatState.DRAWING ||
+        fighter.combatState === FighterCombatState.AIMING
+      ) {
+        const t =
+          fighter.combatState === FighterCombatState.AIMING
+            ? 1
+            : Math.min(1, 1 - fighter.stateTimer / 20);
+        this._bowStringMesh.position.x = restX + (pullX - restX) * t;
+      } else if (fighter.combatState === FighterCombatState.RELEASING) {
+        const t = Math.min(1, (1 - fighter.stateTimer / 8));
+        const overshoot = restX + (restX - pullX) * 0.15 * Math.max(0, 1 - t * 3);
+        this._bowStringMesh.position.x = pullX + (overshoot - pullX) * t;
+      } else {
+        this._bowStringMesh.position.x = restX;
+      }
+    }
   }
 
   private _animateDead(): void {
