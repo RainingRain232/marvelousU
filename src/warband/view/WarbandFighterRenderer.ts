@@ -385,24 +385,24 @@ export class FighterMesh {
     this._headBone.position.y = NECK_LEN * 0.8;
     this._neck.add(this._headBone);
 
-    // Cranium (upper skull — wider at temples, slightly flatter front-back)
-    const craniumGeo = new THREE.SphereGeometry(HEAD_RADIUS, 10, 8);
+    // Cranium — egg-shaped using overlapping spheres (no cylinder cap seams)
+    // Main cranium sphere — tall and slightly narrow front-to-back
+    const craniumGeo = new THREE.SphereGeometry(HEAD_RADIUS, 12, 9);
     const craniumMesh = new THREE.Mesh(craniumGeo, skinMat);
-    craniumMesh.position.y = HEAD_RADIUS * 1.1;
-    craniumMesh.scale.set(1, 1.0, 0.88);
+    craniumMesh.position.y = HEAD_RADIUS * 0.95;
+    craniumMesh.scale.set(1, 1.1, 0.88);
     craniumMesh.castShadow = true;
     this._headBone.add(craniumMesh);
 
-    // Temple flats (slightly flatten the sides for a less round profile)
+    // Temple flats (flatten the sides for angular profile)
     for (const side of [-1, 1]) {
-      const templeGeo = new THREE.SphereGeometry(HEAD_RADIUS * 0.35, 5, 4);
+      const templeGeo = new THREE.BoxGeometry(0.01, HEAD_RADIUS * 0.7, HEAD_RADIUS * 0.65);
       const temple = new THREE.Mesh(templeGeo, skinMat);
       temple.position.set(
-        side * HEAD_RADIUS * 0.8,
-        HEAD_RADIUS * 1.05,
-        HEAD_RADIUS * 0.15,
+        side * HEAD_RADIUS * 0.88,
+        HEAD_RADIUS * 1.0,
+        HEAD_RADIUS * 0.05,
       );
-      temple.scale.set(0.3, 0.8, 0.7);
       this._headBone.add(temple);
     }
 
@@ -414,58 +414,51 @@ export class FighterMesh {
     this._headBone.add(facePlane);
     this._faceMeshes.push(facePlane);
 
-    // Jaw bone (angular, wider at back, narrower at chin — V-shape)
-    const jawGeo = new THREE.CylinderGeometry(
-      HEAD_RADIUS * 0.7, HEAD_RADIUS * 0.35, HEAD_RADIUS * 0.55, 6,
-    );
+    // Jaw — sphere scaled wide and flat to fill the lower face without seam rings
+    const jawGeo = new THREE.SphereGeometry(HEAD_RADIUS * 0.7, 8, 6);
     const jawMesh = new THREE.Mesh(jawGeo, skinMat);
-    jawMesh.position.set(0, HEAD_RADIUS * 0.35, HEAD_RADIUS * 0.2);
-    jawMesh.scale.set(1, 1, 0.72);
+    jawMesh.position.set(0, HEAD_RADIUS * 0.38, HEAD_RADIUS * 0.12);
+    jawMesh.scale.set(1.0, 0.55, 0.68);
     this._headBone.add(jawMesh);
     this._faceMeshes.push(jawMesh);
 
     // Jaw angles (wider mandible corners for a strong jaw)
     for (const side of [-1, 1]) {
-      const jawAngleGeo = new THREE.SphereGeometry(HEAD_RADIUS * 0.18, 4, 3);
+      const jawAngleGeo = new THREE.BoxGeometry(HEAD_RADIUS * 0.22, HEAD_RADIUS * 0.3, HEAD_RADIUS * 0.25);
       const jawAngle = new THREE.Mesh(jawAngleGeo, skinMat);
       jawAngle.position.set(
-        side * HEAD_RADIUS * 0.6,
-        HEAD_RADIUS * 0.5,
+        side * HEAD_RADIUS * 0.58,
+        HEAD_RADIUS * 0.48,
         HEAD_RADIUS * 0.05,
       );
-      jawAngle.scale.set(0.7, 0.6, 0.6);
       this._headBone.add(jawAngle);
       this._faceMeshes.push(jawAngle);
     }
 
     // Cheekbones (prominent, angled outward)
     for (const side of [-1, 1]) {
-      const cheekGeo = new THREE.SphereGeometry(HEAD_RADIUS * 0.22, 5, 4);
+      const cheekGeo = new THREE.BoxGeometry(HEAD_RADIUS * 0.25, HEAD_RADIUS * 0.2, HEAD_RADIUS * 0.35);
       const cheek = new THREE.Mesh(cheekGeo, skinMat);
       cheek.position.set(
-        side * HEAD_RADIUS * 0.65,
+        side * HEAD_RADIUS * 0.62,
         HEAD_RADIUS * 0.88,
-        HEAD_RADIUS * 0.5,
+        HEAD_RADIUS * 0.42,
       );
-      cheek.scale.set(0.6, 0.45, 0.55);
       this._headBone.add(cheek);
       this._faceMeshes.push(cheek);
     }
 
     // Brow ridge (prominent overhang, gives shadow over eyes)
-    const browRidgeGeo = new THREE.CylinderGeometry(0.01, 0.012, HEAD_RADIUS * 1.2, 6);
+    const browRidgeGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.2, 0.025, 0.03);
     const browRidge = new THREE.Mesh(browRidgeGeo, skinMat);
-    browRidge.position.set(0, HEAD_RADIUS * 1.12, HEAD_RADIUS * 0.7);
-    browRidge.rotation.z = Math.PI / 2;
-    browRidge.scale.set(1, 1, 1.2);
+    browRidge.position.set(0, HEAD_RADIUS * 1.12, HEAD_RADIUS * 0.65);
     this._headBone.add(browRidge);
     this._faceMeshes.push(browRidge);
 
     // Chin (angular, projects forward)
-    const chinGeo = new THREE.SphereGeometry(HEAD_RADIUS * 0.16, 5, 4);
+    const chinGeo = new THREE.BoxGeometry(HEAD_RADIUS * 0.3, HEAD_RADIUS * 0.2, HEAD_RADIUS * 0.2);
     const chin = new THREE.Mesh(chinGeo, skinMat);
-    chin.position.set(0, HEAD_RADIUS * 0.18, HEAD_RADIUS * 0.55);
-    chin.scale.set(0.9, 0.7, 0.7);
+    chin.position.set(0, HEAD_RADIUS * 0.18, HEAD_RADIUS * 0.5);
     this._headBone.add(chin);
     this._faceMeshes.push(chin);
 
@@ -476,37 +469,23 @@ export class FighterMesh {
     this._headBone.add(philtrum);
     this._faceMeshes.push(philtrum);
 
-    // Nasolabial folds (creases from nose to mouth corners)
-    for (const side of [-1, 1]) {
-      const foldGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.04, 3);
-      const fold = new THREE.Mesh(foldGeo, skinMat);
-      fold.position.set(
-        side * 0.022,
-        HEAD_RADIUS * 0.68,
-        HEAD_RADIUS * 0.82,
-      );
-      fold.rotation.z = side * 0.2;
-      fold.rotation.x = 0.1;
-      this._headBone.add(fold);
-      this._faceMeshes.push(fold);
-    }
 
-    // Back of skull (occipital bone — slight bump)
-    const occipitalGeo = new THREE.SphereGeometry(HEAD_RADIUS * 0.5, 5, 4);
+    // Back of skull (occipital bone — pronounced bump, extends further back)
+    const occipitalGeo = new THREE.SphereGeometry(HEAD_RADIUS * 0.55, 6, 5);
     const occipital = new THREE.Mesh(occipitalGeo, skinMat);
-    occipital.position.set(0, HEAD_RADIUS * 0.85, -HEAD_RADIUS * 0.55);
-    occipital.scale.set(1, 0.9, 0.7);
+    occipital.position.set(0, HEAD_RADIUS * 0.85, -HEAD_RADIUS * 0.5);
+    occipital.scale.set(1, 1.0, 0.75);
     this._headBone.add(occipital);
 
-    // Hair (full cap on top)
+    // Hair — single sphere matching cranium shape, slightly larger
     const hairMat = new THREE.MeshStandardMaterial({
       color: this._colors.hair,
       roughness: 0.9,
     });
-    const hairGeo = new THREE.SphereGeometry(HEAD_RADIUS * 1.08, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const hairGeo = new THREE.SphereGeometry(HEAD_RADIUS * 1.06, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.58);
     const hairMesh = new THREE.Mesh(hairGeo, hairMat);
-    hairMesh.position.y = HEAD_RADIUS;
-    hairMesh.scale.set(1, 1.12, 0.95);
+    hairMesh.position.y = HEAD_RADIUS * 0.95;
+    hairMesh.scale.set(1, 1.1, 0.88);
     this._headBone.add(hairMesh);
     this._hairMeshes.push(hairMesh);
 
@@ -1532,162 +1511,383 @@ export class FighterMesh {
     // Face features: hidden by full helms (defense >= 22)
     for (const m of this._faceMeshes) m.visible = helmDef < 22;
 
-    // Head armor — full dome with eye holes
+    // Head armor — conical/angular shapes matching historical helmet profiles
     if (armor.head) {
+      const helmColor = new THREE.Color(armor.head.color);
       const helmMat = new THREE.MeshStandardMaterial({
         color: armor.head.color,
         roughness: 0.4,
         metalness: 0.6,
       });
+      const helmDarkMat = new THREE.MeshStandardMaterial({
+        color: helmColor.clone().multiplyScalar(0.7).getHex(),
+        roughness: 0.5,
+        metalness: 0.55,
+      });
       const darkMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+      const rivetMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
 
-      // Full helm dome — complete sphere covering the whole head equally on all sides
+      // helmR used for positioning reference
       const helmR = HEAD_RADIUS * 1.18;
-      const helmGeo = new THREE.SphereGeometry(helmR, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.7);
-      const helm = new THREE.Mesh(helmGeo, helmMat);
-      helm.position.y = HEAD_RADIUS;
-      helm.scale.set(1, 1.12, 0.95);
-      helm.castShadow = true;
-      this._headBone.add(helm);
-      this._armorMeshes.push(helm);
+
+      // Wrap all helmet geometry in a group scaled up 10% so it fully covers the head
+      const helmGroup = new THREE.Group();
+      helmGroup.scale.setScalar(1.1);
+      this._headBone.add(helmGroup);
+      // Helper: adds to helmGroup and tracks in _armorMeshes
+      const addHelm = (mesh: THREE.Mesh) => {
+        helmGroup.add(mesh);
+        this._armorMeshes.push(mesh);
+      };
+
+      // --- Helm skull: multi-section conical shape instead of sphere ---
+      // Lower band (brow to temples) — widest part
+      const helmBandGeo = new THREE.CylinderGeometry(
+        HEAD_RADIUS * 1.08, HEAD_RADIUS * 1.15, HEAD_RADIUS * 0.45, 8,
+      );
+      const helmBand = new THREE.Mesh(helmBandGeo, helmMat);
+      helmBand.position.y = HEAD_RADIUS * 0.82;
+      helmBand.scale.set(1, 1, 0.92);
+      helmBand.castShadow = true;
+      addHelm(helmBand);
+
+      // Mid section — tapers inward toward crown
+      const helmMidGeo = new THREE.CylinderGeometry(
+        HEAD_RADIUS * 0.88, HEAD_RADIUS * 1.08, HEAD_RADIUS * 0.5, 8,
+      );
+      const helmMid = new THREE.Mesh(helmMidGeo, helmMat);
+      helmMid.position.y = HEAD_RADIUS * 1.28;
+      helmMid.scale.set(1, 1, 0.92);
+      helmMid.castShadow = true;
+      addHelm(helmMid);
+
+      // Crown — conical top (pointed or rounded depending on defense)
+      const crownTopR = helmDef >= 14 ? HEAD_RADIUS * 0.15 : HEAD_RADIUS * 0.45;
+      const helmCrownGeo = new THREE.CylinderGeometry(
+        crownTopR, HEAD_RADIUS * 0.88, HEAD_RADIUS * 0.45, 8,
+      );
+      const helmCrown = new THREE.Mesh(helmCrownGeo, helmMat);
+      helmCrown.position.y = HEAD_RADIUS * 1.74;
+      helmCrown.scale.set(1, 1, 0.92);
+      helmCrown.castShadow = true;
+      addHelm(helmCrown);
+
+      // Crown cap (small flattened tip)
+      if (crownTopR > HEAD_RADIUS * 0.2) {
+        const capGeo = new THREE.SphereGeometry(crownTopR, 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.4);
+        const cap = new THREE.Mesh(capGeo, helmMat);
+        cap.position.y = HEAD_RADIUS * 1.95;
+        cap.scale.set(1, 0.5, 0.92);
+        addHelm(cap);
+      } else {
+        // Pointed finial for conical helms
+        const finialGeo = new THREE.ConeGeometry(HEAD_RADIUS * 0.08, HEAD_RADIUS * 0.12, 5);
+        const finial = new THREE.Mesh(finialGeo, helmMat);
+        finial.position.y = HEAD_RADIUS * 2.0;
+        addHelm(finial);
+      }
+
+      // Vertical spangenhelm ribs (structural bands running brow to crown)
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2 + Math.PI / 8;
+        const ribGeo = new THREE.BoxGeometry(0.008, HEAD_RADIUS * 1.35, 0.008);
+        const rib = new THREE.Mesh(ribGeo, helmDarkMat);
+        const ribX = Math.sin(angle) * HEAD_RADIUS * 0.95;
+        const ribZ = Math.cos(angle) * HEAD_RADIUS * 0.88;
+        rib.position.set(ribX, HEAD_RADIUS * 1.25, ribZ);
+        // Tilt ribs inward toward the top
+        rib.rotation.set(0, 0, -Math.sin(angle) * 0.15);
+        addHelm(rib);
+      }
 
       // Eye holes — two dark ellipses on the front of the helm
       for (const side of [-1, 1]) {
         const eyeGeo = new THREE.CircleGeometry(0.022, 8);
         const eye = new THREE.Mesh(eyeGeo, darkMat);
-        eye.scale.set(1.3, 0.6, 1); // wider than tall
-        eye.position.set(side * HEAD_RADIUS * 0.45, HEAD_RADIUS * 1.02, helmR * 0.94);
-        this._headBone.add(eye);
-        this._armorMeshes.push(eye);
+        eye.scale.set(1.3, 0.6, 1);
+        eye.position.set(side * HEAD_RADIUS * 0.45, HEAD_RADIUS * 1.02, helmR * 0.90);
+        addHelm(eye);
       }
 
-      // Neck guard (extends down the back of the head/neck)
-      const neckGuardGeo = new THREE.CylinderGeometry(HEAD_RADIUS * 1.1, HEAD_RADIUS * 1.25, HEAD_RADIUS * 0.75, 10, 1, true, Math.PI * 0.35, Math.PI * 1.3);
-      const neckGuard = new THREE.Mesh(neckGuardGeo, helmMat);
-      neckGuard.position.set(0, HEAD_RADIUS * 0.4, -HEAD_RADIUS * 0.1);
-      neckGuard.castShadow = true;
-      this._headBone.add(neckGuard);
-      this._armorMeshes.push(neckGuard);
+      // Brow band — reinforcing strip around the widest part
+      const browBandGeo = new THREE.TorusGeometry(HEAD_RADIUS * 1.1, 0.007, 4, 8);
+      const browBand = new THREE.Mesh(browBandGeo, helmDarkMat);
+      browBand.position.y = HEAD_RADIUS * 0.62;
+      browBand.rotation.x = Math.PI / 2;
+      browBand.scale.set(1, 0.92, 1);
+      addHelm(browBand);
 
-      // Helm rivets (small dots around the brow line)
-      const rivetMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const rivetGeo = new THREE.SphereGeometry(0.005, 3, 3);
+      // Neck guard (extends down the back of the head/neck — flared)
+      const neckGuardGeo = new THREE.CylinderGeometry(HEAD_RADIUS * 1.1, HEAD_RADIUS * 1.3, HEAD_RADIUS * 0.75, 10, 1, true, Math.PI * 0.35, Math.PI * 1.3);
+      const neckGuard = new THREE.Mesh(neckGuardGeo, helmMat);
+      neckGuard.position.set(0, HEAD_RADIUS * 0.35, -HEAD_RADIUS * 0.1);
+      neckGuard.castShadow = true;
+      addHelm(neckGuard);
+
+      // Neck guard rolled edge
+      const neckRollGeo = new THREE.TorusGeometry(HEAD_RADIUS * 1.22, 0.005, 4, 10, Math.PI * 1.3);
+      const neckRoll = new THREE.Mesh(neckRollGeo, helmDarkMat);
+      neckRoll.position.set(0, HEAD_RADIUS * 0.0, -HEAD_RADIUS * 0.1);
+      neckRoll.rotation.set(Math.PI / 2, 0, Math.PI * 0.35);
+      addHelm(neckRoll);
+
+      // Helm rivets (along brow band)
+      for (let i = 0; i < 10; i++) {
+        const angle = (i / 10) * Math.PI * 2;
+        const rivetGeo = new THREE.SphereGeometry(0.005, 4, 4);
         const rivet = new THREE.Mesh(rivetGeo, rivetMat);
         rivet.position.set(
-          Math.sin(angle) * helmR * 0.98,
-          HEAD_RADIUS * 0.92,
-          Math.cos(angle) * helmR * 0.93,
+          Math.sin(angle) * HEAD_RADIUS * 1.12,
+          HEAD_RADIUS * 0.62,
+          Math.cos(angle) * HEAD_RADIUS * 1.03,
         );
-        this._headBone.add(rivet);
-        this._armorMeshes.push(rivet);
+        addHelm(rivet);
       }
 
       // Cheek guards (side plates) — for defense >= 10
       if (helmDef >= 10) {
         for (const side of [-1, 1]) {
-          const cheekGeo = new THREE.BoxGeometry(0.02, HEAD_RADIUS * 0.7, HEAD_RADIUS * 0.55);
+          // Cheek plate — tapers toward chin, contoured
+          const cheekGeo = new THREE.CylinderGeometry(
+            HEAD_RADIUS * 0.18, HEAD_RADIUS * 0.28, HEAD_RADIUS * 0.7, 5,
+          );
           const cheek = new THREE.Mesh(cheekGeo, helmMat);
-          cheek.position.set(side * HEAD_RADIUS * 1.05, HEAD_RADIUS * 0.65, HEAD_RADIUS * 0.15);
-          this._headBone.add(cheek);
-          this._armorMeshes.push(cheek);
+          cheek.position.set(side * HEAD_RADIUS * 1.0, HEAD_RADIUS * 0.55, HEAD_RADIUS * 0.2);
+          cheek.scale.set(0.35, 1, 1);
+          addHelm(cheek);
+
+          // Cheek plate hinge rivet
+          const hingeGeo = new THREE.SphereGeometry(0.006, 4, 4);
+          const hinge = new THREE.Mesh(hingeGeo, rivetMat);
+          hinge.position.set(side * HEAD_RADIUS * 1.02, HEAD_RADIUS * 0.85, HEAD_RADIUS * 0.25);
+          addHelm(hinge);
+
+          // Cheek plate edge roll (bottom)
+          const cheekEdgeGeo = new THREE.CylinderGeometry(0.004, 0.004, HEAD_RADIUS * 0.4, 4);
+          const cheekEdge = new THREE.Mesh(cheekEdgeGeo, helmDarkMat);
+          cheekEdge.position.set(side * HEAD_RADIUS * 1.0, HEAD_RADIUS * 0.25, HEAD_RADIUS * 0.3);
+          cheekEdge.rotation.z = Math.PI / 2;
+          cheekEdge.scale.set(1, 0.35, 1);
+          addHelm(cheekEdge);
         }
+
+        // Chin strap detail
+        const strapMat = new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.8, metalness: 0.1 });
+        const strapGeo = new THREE.CylinderGeometry(0.003, 0.003, HEAD_RADIUS * 0.9, 4);
+        const strap = new THREE.Mesh(strapGeo, strapMat);
+        strap.position.set(0, HEAD_RADIUS * 0.3, HEAD_RADIUS * 0.6);
+        strap.rotation.z = Math.PI / 2;
+        addHelm(strap);
 
         // Aventail (chain mail curtain hanging from helm)
         const aventailMat = new THREE.MeshStandardMaterial({
           color: 0x999999, roughness: 0.7, metalness: 0.4,
         });
         const aventailGeo = new THREE.CylinderGeometry(
-          HEAD_RADIUS * 1.05, HEAD_RADIUS * 1.25, HEAD_RADIUS * 0.5,
+          HEAD_RADIUS * 1.05, HEAD_RADIUS * 1.3, HEAD_RADIUS * 0.5,
           10, 1, true, Math.PI * 0.3, Math.PI * 1.4,
         );
         const aventail = new THREE.Mesh(aventailGeo, aventailMat);
-        aventail.position.set(0, HEAD_RADIUS * 0.25, 0);
-        this._headBone.add(aventail);
-        this._armorMeshes.push(aventail);
+        aventail.position.set(0, HEAD_RADIUS * 0.2, 0);
+        addHelm(aventail);
+
+        // Aventail mail texture rings
+        const aventailRingMat = new THREE.MeshStandardMaterial({
+          color: 0x888888, roughness: 0.75, metalness: 0.35,
+        });
+        for (let r = 0; r < 3; r++) {
+          const ringY = HEAD_RADIUS * 0.35 - r * 0.025;
+          const ringR = HEAD_RADIUS * (1.08 + r * 0.07);
+          const avRingGeo = new THREE.TorusGeometry(ringR, 0.003, 3, 10, Math.PI * 1.4);
+          const avRing = new THREE.Mesh(avRingGeo, aventailRingMat);
+          avRing.position.set(0, ringY, 0);
+          avRing.rotation.set(Math.PI / 2, 0, Math.PI * 0.3);
+          addHelm(avRing);
+        }
       }
 
       // Nose guard for nasal helms and above
       if (helmDef >= 14) {
-        const noseGuardGeo = new THREE.BoxGeometry(0.018, 0.09, 0.02);
+        // Nose guard — tapers downward
+        const noseGuardGeo = new THREE.BoxGeometry(0.016, 0.1, 0.015);
         const noseGuard = new THREE.Mesh(noseGuardGeo, helmMat);
-        noseGuard.position.set(0, HEAD_RADIUS * 0.85, helmR * 0.95);
-        this._headBone.add(noseGuard);
-        this._armorMeshes.push(noseGuard);
+        noseGuard.position.set(0, HEAD_RADIUS * 0.75, helmR * 0.92);
+        addHelm(noseGuard);
 
-        // Helm crest / ridge along the top
-        const crestGeo = new THREE.BoxGeometry(0.015, 0.02, HEAD_RADIUS * 1.4);
-        const crest = new THREE.Mesh(crestGeo, helmMat);
-        crest.position.set(0, HEAD_RADIUS * 1.32, -HEAD_RADIUS * 0.15);
-        this._headBone.add(crest);
-        this._armorMeshes.push(crest);
-      }
+        // Nose guard raised center ridge
+        const noseRidgeGeo = new THREE.BoxGeometry(0.006, 0.095, 0.006);
+        const noseRidge = new THREE.Mesh(noseRidgeGeo, helmDarkMat);
+        noseRidge.position.set(0, HEAD_RADIUS * 0.75, helmR * 0.935);
+        addHelm(noseRidge);
 
-      // Bascinet visor (defense >= 18): replace eye holes with a narrow slit
-      if (helmDef >= 18 && helmDef < 22) {
-        // Cover the eye holes with a visor plate
-        const visorGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.6, HEAD_RADIUS * 0.7, 0.015);
-        const visor = new THREE.Mesh(visorGeo, helmMat);
-        visor.position.set(0, HEAD_RADIUS * 0.95, helmR * 0.96);
-        this._headBone.add(visor);
-        this._armorMeshes.push(visor);
+        // Helm crest / ridge along the top (front to back)
+        const crestGeo = new THREE.BoxGeometry(0.015, 0.025, HEAD_RADIUS * 1.6);
+        const crest = new THREE.Mesh(crestGeo, helmDarkMat);
+        crest.position.set(0, HEAD_RADIUS * 1.72, -HEAD_RADIUS * 0.1);
+        addHelm(crest);
 
-        // Eye slit (dark strip across visor)
-        const slitGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.4, 0.012, 0.005);
-        const slit = new THREE.Mesh(slitGeo, darkMat);
-        slit.position.set(0, HEAD_RADIUS * 1.0, helmR * 0.97);
-        this._headBone.add(slit);
-        this._armorMeshes.push(slit);
-
-        // Breathing holes below slit
-        for (let i = 0; i < 4; i++) {
-          const holeGeo = new THREE.CircleGeometry(0.004, 4);
-          const hole = new THREE.Mesh(holeGeo, darkMat);
-          hole.position.set((i - 1.5) * 0.018, HEAD_RADIUS * 0.82, helmR * 0.97);
-          this._headBone.add(hole);
-          this._armorMeshes.push(hole);
+        // Temple reinforcement plates
+        for (const side of [-1, 1]) {
+          const templeGeo = new THREE.BoxGeometry(0.008, HEAD_RADIUS * 0.5, HEAD_RADIUS * 0.65);
+          const temple = new THREE.Mesh(templeGeo, helmDarkMat);
+          temple.position.set(side * HEAD_RADIUS * 1.06, HEAD_RADIUS * 1.05, HEAD_RADIUS * 0.0);
+          addHelm(temple);
         }
       }
 
-      // Great helm (defense >= 22): fully enclosed with flat top
-      if (helmDef >= 22) {
-        // Cover the eye holes with a full face plate
-        const facePlateGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.8, HEAD_RADIUS * 1.2, 0.015);
-        const facePlate = new THREE.Mesh(facePlateGeo, helmMat);
-        facePlate.position.set(0, HEAD_RADIUS * 0.8, helmR * 0.96);
-        facePlate.castShadow = true;
-        this._headBone.add(facePlate);
-        this._armorMeshes.push(facePlate);
+      // Bascinet visor (defense >= 18): pointed snout visor (hounskull / pig-face)
+      if (helmDef >= 18 && helmDef < 22) {
+        // Visor — angular pointed snout made from wedge-shaped plates
+        // Upper visor plate (angled forward and down)
+        const visorUpperGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.5, HEAD_RADIUS * 0.35, HEAD_RADIUS * 0.6);
+        const visorUpper = new THREE.Mesh(visorUpperGeo, helmMat);
+        visorUpper.position.set(0, HEAD_RADIUS * 1.05, helmR * 0.85);
+        visorUpper.rotation.x = -0.25; // angled forward
+        visorUpper.castShadow = true;
+        addHelm(visorUpper);
 
-        // Eye slit (horizontal dark strip)
-        const slitGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.6, 0.015, 0.005);
+        // Lower visor plate (angled forward and up — forms pointed snout)
+        const visorLowerGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.4, HEAD_RADIUS * 0.35, HEAD_RADIUS * 0.55);
+        const visorLower = new THREE.Mesh(visorLowerGeo, helmMat);
+        visorLower.position.set(0, HEAD_RADIUS * 0.72, helmR * 0.82);
+        visorLower.rotation.x = 0.2; // angled up
+        visorLower.castShadow = true;
+        addHelm(visorLower);
+
+        // Visor center ridge (runs down the snout)
+        const visorRidgeGeo = new THREE.BoxGeometry(0.008, HEAD_RADIUS * 0.7, 0.008);
+        const visorRidge = new THREE.Mesh(visorRidgeGeo, helmDarkMat);
+        visorRidge.position.set(0, HEAD_RADIUS * 0.88, helmR * 1.08);
+        addHelm(visorRidge);
+
+        // Visor pivot rivets
+        for (const side of [-1, 1]) {
+          const pivotGeo = new THREE.SphereGeometry(0.007, 4, 4);
+          const pivot = new THREE.Mesh(pivotGeo, rivetMat);
+          pivot.position.set(side * HEAD_RADIUS * 0.9, HEAD_RADIUS * 1.1, helmR * 0.5);
+          addHelm(pivot);
+        }
+
+        // Eye slit (dark strip where upper and lower visor meet)
+        const slitGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.35, 0.012, 0.005);
         const slit = new THREE.Mesh(slitGeo, darkMat);
-        slit.position.set(0, HEAD_RADIUS * 1.02, helmR * 0.97);
-        this._headBone.add(slit);
-        this._armorMeshes.push(slit);
+        slit.position.set(0, HEAD_RADIUS * 0.9, helmR * 1.06);
+        addHelm(slit);
 
-        // Breathing holes (cross pattern below eye slit)
-        for (let row = 0; row < 2; row++) {
-          for (let col = 0; col < 4; col++) {
-            const holeGeo = new THREE.CircleGeometry(0.004, 4);
+        // Breathing holes on lower visor (one side only, historically accurate)
+        for (let row = 0; row < 3; row++) {
+          for (let i = 0; i < 4; i++) {
+            const holeGeo = new THREE.CircleGeometry(0.003, 4);
             const hole = new THREE.Mesh(holeGeo, darkMat);
             hole.position.set(
-              (col - 1.5) * 0.018,
-              HEAD_RADIUS * 0.78 - row * 0.02,
-              helmR * 0.97,
+              HEAD_RADIUS * 0.15 + i * 0.015,
+              HEAD_RADIUS * 0.72 - row * 0.016,
+              helmR * 1.02,
             );
-            this._headBone.add(hole);
-            this._armorMeshes.push(hole);
+            addHelm(hole);
+          }
+        }
+      }
+
+      // Great helm (defense >= 22): cylindrical/barrel with flat top
+      if (helmDef >= 22) {
+        // Great helm is a barrel shape — cylindrical sides, not a dome
+        // Front face plate (flat, covers entire face)
+        const facePlateGeo = new THREE.BoxGeometry(HEAD_RADIUS * 2.0, HEAD_RADIUS * 1.4, 0.018);
+        const facePlate = new THREE.Mesh(facePlateGeo, helmMat);
+        facePlate.position.set(0, HEAD_RADIUS * 0.75, helmR * 0.92);
+        facePlate.castShadow = true;
+        addHelm(facePlate);
+
+        // Side plates (extend face plate around the sides, forming barrel)
+        for (const side of [-1, 1]) {
+          const sidePlateGeo = new THREE.BoxGeometry(0.018, HEAD_RADIUS * 1.4, HEAD_RADIUS * 1.2);
+          const sidePlate = new THREE.Mesh(sidePlateGeo, helmMat);
+          sidePlate.position.set(side * HEAD_RADIUS * 1.08, HEAD_RADIUS * 0.75, HEAD_RADIUS * 0.25);
+          sidePlate.castShadow = true;
+          addHelm(sidePlate);
+        }
+
+        // Face plate vertical reinforcement bars
+        for (const side of [-1, 1]) {
+          const barGeo = new THREE.BoxGeometry(0.008, HEAD_RADIUS * 1.3, 0.008);
+          const bar = new THREE.Mesh(barGeo, helmDarkMat);
+          bar.position.set(side * HEAD_RADIUS * 0.55, HEAD_RADIUS * 0.75, helmR * 0.935);
+          addHelm(bar);
+        }
+
+        // Cross-shaped reinforcement on face plate
+        const crossVGeo = new THREE.BoxGeometry(0.008, HEAD_RADIUS * 0.7, 0.008);
+        const crossV = new THREE.Mesh(crossVGeo, helmDarkMat);
+        crossV.position.set(0, HEAD_RADIUS * 0.85, helmR * 0.935);
+        addHelm(crossV);
+
+        // Horizontal reinforcement across face
+        const crossHGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.8, 0.008, 0.008);
+        const crossH = new THREE.Mesh(crossHGeo, helmDarkMat);
+        crossH.position.set(0, HEAD_RADIUS * 0.75, helmR * 0.935);
+        addHelm(crossH);
+
+        // Eye slit (horizontal dark strip)
+        const slitGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.7, 0.018, 0.005);
+        const slit = new THREE.Mesh(slitGeo, darkMat);
+        slit.position.set(0, HEAD_RADIUS * 1.02, helmR * 0.94);
+        addHelm(slit);
+
+        // Breathing holes (clustered on right side, historically accurate)
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 5; col++) {
+            const holeGeo = new THREE.CircleGeometry(0.003, 4);
+            const hole = new THREE.Mesh(holeGeo, darkMat);
+            hole.position.set(
+              HEAD_RADIUS * 0.1 + col * 0.014,
+              HEAD_RADIUS * 0.72 - row * 0.018,
+              helmR * 0.94,
+            );
+            addHelm(hole);
           }
         }
 
-        // Great helm flat top plate
-        const topGeo = new THREE.CylinderGeometry(HEAD_RADIUS * 0.6, HEAD_RADIUS * 0.8, 0.015, 8);
+        // Great helm flat top plate (flat, not domed)
+        const topGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.8, 0.018, HEAD_RADIUS * 1.8);
         const top = new THREE.Mesh(topGeo, helmMat);
-        top.position.y = HEAD_RADIUS * 1.35;
-        this._headBone.add(top);
-        this._armorMeshes.push(top);
+        top.position.set(0, HEAD_RADIUS * 1.44, HEAD_RADIUS * 0.15);
+        top.castShadow = true;
+        addHelm(top);
+
+        // Top plate cross reinforcement
+        for (let a = 0; a < 2; a++) {
+          const topBarGeo = new THREE.BoxGeometry(
+            a === 0 ? HEAD_RADIUS * 1.6 : 0.008,
+            0.01,
+            a === 0 ? 0.008 : HEAD_RADIUS * 1.6,
+          );
+          const topBar = new THREE.Mesh(topBarGeo, helmDarkMat);
+          topBar.position.set(0, HEAD_RADIUS * 1.45, HEAD_RADIUS * 0.15);
+          addHelm(topBar);
+        }
+
+        // Corner rivets on top plate
+        for (const sx of [-1, 1]) {
+          for (const sz of [-1, 1]) {
+            const cRivGeo = new THREE.SphereGeometry(0.005, 4, 4);
+            const cRiv = new THREE.Mesh(cRivGeo, rivetMat);
+            cRiv.position.set(sx * HEAD_RADIUS * 0.65, HEAD_RADIUS * 1.46, HEAD_RADIUS * 0.15 + sz * HEAD_RADIUS * 0.65);
+            addHelm(cRiv);
+          }
+        }
+
+        // Edge rivets along front face plate
+        for (let i = 0; i < 5; i++) {
+          const frGeo = new THREE.SphereGeometry(0.005, 4, 4);
+          const fr = new THREE.Mesh(frGeo, rivetMat);
+          fr.position.set(
+            HEAD_RADIUS * 0.85,
+            HEAD_RADIUS * 0.2 + i * 0.08,
+            helmR * 0.935,
+          );
+          addHelm(fr);
+        }
       }
     }
 
@@ -1696,10 +1896,16 @@ export class FighterMesh {
       const tDef = armor.torso.defense;
       const isPlate = tDef >= 25;
       const isMail = tDef >= 12 && tDef < 25;
+      const torsoColor = new THREE.Color(armor.torso.color);
       const armorMat = new THREE.MeshStandardMaterial({
         color: armor.torso.color,
         roughness: isPlate ? 0.3 : isMail ? 0.55 : 0.5,
         metalness: isPlate ? 0.65 : isMail ? 0.45 : 0.3,
+      });
+      const armorDarkMat = new THREE.MeshStandardMaterial({
+        color: torsoColor.clone().multiplyScalar(0.72).getHex(),
+        roughness: isPlate ? 0.35 : isMail ? 0.6 : 0.55,
+        metalness: isPlate ? 0.6 : isMail ? 0.4 : 0.25,
       });
       const rivetMat = new THREE.MeshStandardMaterial({
         color: 0xccccaa, roughness: 0.3, metalness: 0.8,
@@ -1715,7 +1921,7 @@ export class FighterMesh {
 
       // Lower armor / waist section
       const aWaistGeo = new THREE.CylinderGeometry(
-        TORSO_WIDTH * 0.48 + aOff, aWaistW * 0.46 + aOff, aWaistH + 0.01, 8,
+        TORSO_WIDTH * 0.48 + aOff, aWaistW * 0.46 + aOff, aWaistH + 0.01, 10,
       );
       const aWaist = new THREE.Mesh(aWaistGeo, armorMat);
       aWaist.position.y = aWaistH / 2;
@@ -1726,7 +1932,7 @@ export class FighterMesh {
 
       // Ribcage armor section
       const aRibGeo = new THREE.CylinderGeometry(
-        TORSO_WIDTH * 0.52 + aOff, TORSO_WIDTH * 0.48 + aOff, aRibH + 0.01, 10,
+        TORSO_WIDTH * 0.52 + aOff, TORSO_WIDTH * 0.48 + aOff, aRibH + 0.01, 12,
       );
       const aRib = new THREE.Mesh(aRibGeo, armorMat);
       aRib.position.y = aWaistH + aRibH / 2;
@@ -1737,7 +1943,7 @@ export class FighterMesh {
 
       // Upper chest / shoulder armor section
       const aChestGeo = new THREE.CylinderGeometry(
-        TORSO_WIDTH * 0.4 + aOff, TORSO_WIDTH * 0.53 + aOff, aChestH + 0.01, 10,
+        TORSO_WIDTH * 0.4 + aOff, TORSO_WIDTH * 0.53 + aOff, aChestH + 0.01, 12,
       );
       const aChest = new THREE.Mesh(aChestGeo, armorMat);
       aChest.position.y = aWaistH + aRibH + aChestH / 2;
@@ -1746,10 +1952,26 @@ export class FighterMesh {
       this._chest.add(aChest);
       this._armorMeshes.push(aChest);
 
+      // Section join lines (subtle darker seam between armor sections)
+      for (const joinY of [aWaistH, aWaistH + aRibH]) {
+        const t = joinY / TORSO_HEIGHT;
+        let joinR: number;
+        if (t < 0.35) joinR = TORSO_WIDTH * (0.46 + (0.48 - 0.46) * (t / 0.35));
+        else if (t < 0.7) joinR = TORSO_WIDTH * (0.48 + (0.52 - 0.48) * ((t - 0.35) / 0.35));
+        else joinR = TORSO_WIDTH * (0.53 + (0.4 - 0.53) * ((t - 0.7) / 0.3));
+        const joinGeo = new THREE.TorusGeometry(joinR + 0.022, 0.003, 3, 12);
+        const join = new THREE.Mesh(joinGeo, armorDarkMat);
+        join.position.y = joinY;
+        join.rotation.x = Math.PI / 2;
+        join.scale.set(1, TORSO_DEPTH / TORSO_WIDTH * 1.05, 1);
+        this._chest.add(join);
+        this._armorMeshes.push(join);
+      }
+
       // Front seam / split line for lighter armors (padded, leather)
       if (tDef < 12) {
         const splitMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(armor.torso.color).multiplyScalar(0.7).getHex(),
+          color: torsoColor.clone().multiplyScalar(0.7).getHex(),
           roughness: 0.9,
         });
         const splitGeo = new THREE.CylinderGeometry(0.003, 0.003, TORSO_HEIGHT * 0.85, 4);
@@ -1759,31 +1981,48 @@ export class FighterMesh {
         this._armorMeshes.push(split);
 
         // Lacing/ties across the front split
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 5; i++) {
           const tieGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.025, 4);
           const tie = new THREE.Mesh(tieGeo, splitMat);
-          tie.position.set(0, TORSO_HEIGHT * 0.25 + i * 0.08, TORSO_DEPTH * 0.45 + 0.026);
+          tie.position.set(0, TORSO_HEIGHT * 0.2 + i * 0.065, TORSO_DEPTH * 0.45 + 0.026);
           tie.rotation.z = Math.PI / 2;
           this._chest.add(tie);
           this._armorMeshes.push(tie);
         }
+
+        // Stitching lines (parallel to seam)
+        for (const sx of [-1, 1]) {
+          const stitchGeo = new THREE.CylinderGeometry(0.002, 0.002, TORSO_HEIGHT * 0.7, 4);
+          const stitch = new THREE.Mesh(stitchGeo, splitMat);
+          stitch.position.set(sx * 0.015, TORSO_HEIGHT * 0.5, TORSO_DEPTH * 0.45 + 0.024);
+          this._chest.add(stitch);
+          this._armorMeshes.push(stitch);
+        }
+
+        // Collar fold for cloth/leather
+        const collarGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.38 + 0.02, 0.01, 4, 10, Math.PI * 1.2);
+        const collar = new THREE.Mesh(collarGeo, splitMat);
+        collar.position.set(0, TORSO_HEIGHT + 0.005, 0);
+        collar.rotation.set(Math.PI / 2, 0, Math.PI * 0.4);
+        this._chest.add(collar);
+        this._armorMeshes.push(collar);
       }
 
       // Chainmail texture for mail armor (horizontal ring pattern)
       if (isMail) {
         const mailMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(armor.torso.color).multiplyScalar(0.85).getHex(),
+          color: torsoColor.clone().multiplyScalar(0.85).getHex(),
           roughness: 0.6, metalness: 0.5,
         });
         // Horizontal mail rings (torus rings following body contour)
-        for (let row = 0; row < 6; row++) {
-          const t = 0.15 + row * 0.13; // normalized height along torso
+        for (let row = 0; row < 8; row++) {
+          const t = 0.1 + row * 0.1; // normalized height along torso
           // Interpolate radius to match the 3-section body shape
           let ringR: number;
           if (t < 0.35) ringR = TORSO_WIDTH * (0.46 + (0.48 - 0.46) * (t / 0.35));
           else if (t < 0.7) ringR = TORSO_WIDTH * (0.48 + (0.52 - 0.48) * ((t - 0.35) / 0.35));
           else ringR = TORSO_WIDTH * (0.53 + (0.4 - 0.53) * ((t - 0.7) / 0.3));
-          const ringRowGeo = new THREE.TorusGeometry(ringR + 0.015, 0.004, 4, 10);
+          const ringRowGeo = new THREE.TorusGeometry(ringR + 0.015, 0.003, 4, 12);
           const ringRow = new THREE.Mesh(ringRowGeo, mailMat);
           ringRow.position.y = TORSO_HEIGHT * t;
           ringRow.rotation.x = Math.PI / 2;
@@ -1791,9 +2030,21 @@ export class FighterMesh {
           this._chest.add(ringRow);
           this._armorMeshes.push(ringRow);
         }
+
+        // Vertical mail columns (front only, gives woven texture look)
+        for (let col = 0; col < 4; col++) {
+          const angle = (-0.3 + col * 0.2) * Math.PI;
+          const colGeo = new THREE.CylinderGeometry(0.003, 0.003, TORSO_HEIGHT * 0.75, 3);
+          const colMesh = new THREE.Mesh(colGeo, mailMat);
+          const rx = Math.sin(angle) * (TORSO_WIDTH * 0.5 + 0.018);
+          const rz = Math.cos(angle) * (TORSO_DEPTH * 0.5 * 1.05 + 0.018);
+          colMesh.position.set(rx, TORSO_HEIGHT * 0.45, rz);
+          this._chest.add(colMesh);
+          this._armorMeshes.push(colMesh);
+        }
       }
 
-      // Chest plate center ridge (for plate armor)
+      // Chest plate details (for plate armor)
       if (isPlate) {
         const ridgeMat = new THREE.MeshStandardMaterial({
           color: armor.torso.accentColor ?? armor.torso.color,
@@ -1801,31 +2052,90 @@ export class FighterMesh {
           metalness: 0.7,
         });
         // Center ridge running down the breastplate (follows chest curve)
-        const ridgeGeo = new THREE.CylinderGeometry(0.012, 0.008, TORSO_HEIGHT * 0.7, 4);
+        const ridgeGeo = new THREE.CylinderGeometry(0.012, 0.008, TORSO_HEIGHT * 0.7, 5);
         const ridge = new THREE.Mesh(ridgeGeo, ridgeMat);
         ridge.position.set(0, TORSO_HEIGHT * 0.55, TORSO_DEPTH * 0.35 + 0.025);
         this._chest.add(ridge);
         this._armorMeshes.push(ridge);
 
-        // Plate rivets along edges (front and sides)
-        for (let i = 0; i < 4; i++) {
+        // Breastplate musculature lines (subtle raised curves suggesting pectorals)
+        for (const side of [-1, 1]) {
+          const muscGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.22, 0.004, 3, 8, Math.PI * 0.6);
+          const musc = new THREE.Mesh(muscGeo, armorDarkMat);
+          musc.position.set(side * TORSO_WIDTH * 0.18, TORSO_HEIGHT * 0.72, TORSO_DEPTH * 0.42 + 0.02);
+          musc.rotation.set(0, 0, side * Math.PI * 0.15);
+          this._chest.add(musc);
+          this._armorMeshes.push(musc);
+        }
+
+        // Back plate spine ridge
+        const backRidgeGeo = new THREE.CylinderGeometry(0.008, 0.006, TORSO_HEIGHT * 0.6, 4);
+        const backRidge = new THREE.Mesh(backRidgeGeo, armorDarkMat);
+        backRidge.position.set(0, TORSO_HEIGHT * 0.5, -(TORSO_DEPTH * 0.35 + 0.025));
+        this._chest.add(backRidge);
+        this._armorMeshes.push(backRidge);
+
+        // Plate rivets along edges (front and sides) — more rivets
+        for (let i = 0; i < 5; i++) {
           for (const sideX of [-1, 1]) {
-            const rGeo = new THREE.SphereGeometry(0.005, 3, 3);
+            const rGeo = new THREE.SphereGeometry(0.005, 4, 4);
             const r = new THREE.Mesh(rGeo, rivetMat);
             r.position.set(
               sideX * (TORSO_WIDTH / 2 + 0.015),
-              TORSO_HEIGHT * 0.2 + i * 0.1,
+              TORSO_HEIGHT * 0.15 + i * 0.085,
               TORSO_DEPTH / 2 + 0.02,
             );
             this._chest.add(r);
             this._armorMeshes.push(r);
           }
         }
+
+        // Side buckle/strap details
+        const strapMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.8, metalness: 0.1 });
+        for (const side of [-1, 1]) {
+          for (let i = 0; i < 2; i++) {
+            // Strap
+            const sGeo = new THREE.BoxGeometry(0.008, 0.04, 0.015);
+            const s = new THREE.Mesh(sGeo, strapMat);
+            s.position.set(side * (TORSO_WIDTH * 0.52 + 0.02), TORSO_HEIGHT * 0.35 + i * 0.25, 0);
+            this._chest.add(s);
+            this._armorMeshes.push(s);
+            // Buckle
+            const bGeo = new THREE.TorusGeometry(0.008, 0.002, 3, 4);
+            const b = new THREE.Mesh(bGeo, rivetMat);
+            b.position.set(side * (TORSO_WIDTH * 0.52 + 0.022), TORSO_HEIGHT * 0.35 + i * 0.25, 0);
+            b.rotation.y = Math.PI / 2;
+            this._chest.add(b);
+            this._armorMeshes.push(b);
+          }
+        }
+      }
+
+      // Belt / waist cinch for all torso armor
+      {
+        const beltMat = tDef < 12
+          ? new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.8, metalness: 0.1 })
+          : armorDarkMat;
+        const beltGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.46 + 0.024, 0.008, 4, 12);
+        const belt = new THREE.Mesh(beltGeo, beltMat);
+        belt.position.y = aWaistH * 0.85;
+        belt.rotation.x = Math.PI / 2;
+        belt.scale.set(1, TORSO_DEPTH / TORSO_WIDTH * 0.9, 1);
+        this._chest.add(belt);
+        this._armorMeshes.push(belt);
+
+        // Belt buckle (front)
+        const buckleGeo = new THREE.BoxGeometry(0.02, 0.022, 0.008);
+        const buckleMat = new THREE.MeshStandardMaterial({ color: 0xaa9955, roughness: 0.35, metalness: 0.7 });
+        const buckle = new THREE.Mesh(buckleGeo, buckleMat);
+        buckle.position.set(0, aWaistH * 0.85, TORSO_DEPTH * 0.45 + 0.03);
+        this._chest.add(buckle);
+        this._armorMeshes.push(buckle);
       }
 
       // Gorget (neck protection) for defense >= 15
       if (tDef >= 15) {
-        const gorgetGeo = new THREE.CylinderGeometry(NECK_RADIUS * 1.8, TORSO_WIDTH * 0.45, 0.06, 8);
+        const gorgetGeo = new THREE.CylinderGeometry(NECK_RADIUS * 1.8, TORSO_WIDTH * 0.45, 0.06, 10);
         const gorget = new THREE.Mesh(gorgetGeo, armorMat);
         gorget.position.y = TORSO_HEIGHT + 0.02;
         gorget.castShadow = true;
@@ -1833,19 +2143,43 @@ export class FighterMesh {
         this._armorMeshes.push(gorget);
 
         // Gorget rim
-        const gorgetRimGeo = new THREE.TorusGeometry(NECK_RADIUS * 1.7, 0.006, 3, 8);
+        const gorgetRimGeo = new THREE.TorusGeometry(NECK_RADIUS * 1.7, 0.006, 4, 10);
         const gorgetRim = new THREE.Mesh(gorgetRimGeo, rivetMat);
         gorgetRim.position.y = TORSO_HEIGHT + 0.05;
         gorgetRim.rotation.x = Math.PI / 2;
         this._chest.add(gorgetRim);
         this._armorMeshes.push(gorgetRim);
+
+        // Gorget overlap lames
+        for (let i = 0; i < 2; i++) {
+          const gLameGeo = new THREE.TorusGeometry(NECK_RADIUS * 1.75 + i * 0.01, 0.004, 3, 10);
+          const gLame = new THREE.Mesh(gLameGeo, armorDarkMat);
+          gLame.position.y = TORSO_HEIGHT + 0.025 + i * 0.015;
+          gLame.rotation.x = Math.PI / 2;
+          this._chest.add(gLame);
+          this._armorMeshes.push(gLame);
+        }
+
+        // Gorget rivets
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const grGeo = new THREE.SphereGeometry(0.004, 3, 3);
+          const gr = new THREE.Mesh(grGeo, rivetMat);
+          gr.position.set(
+            Math.sin(angle) * TORSO_WIDTH * 0.42,
+            TORSO_HEIGHT + 0.04,
+            Math.cos(angle) * TORSO_WIDTH * 0.42,
+          );
+          this._chest.add(gr);
+          this._armorMeshes.push(gr);
+        }
       }
 
       // Fauld (armored skirt below waist) for defense >= 10
       if (tDef >= 10) {
         const fauldH = 0.08;
         const fauldGeo = new THREE.CylinderGeometry(
-          TORSO_WIDTH * 0.48, TORSO_WIDTH * 0.55, fauldH, 8,
+          TORSO_WIDTH * 0.48, TORSO_WIDTH * 0.55, fauldH, 10,
         );
         const fauld = new THREE.Mesh(fauldGeo, armorMat);
         fauld.position.y = -fauldH * 0.3;
@@ -1854,15 +2188,29 @@ export class FighterMesh {
         this._armorMeshes.push(fauld);
 
         // Fauld lames (overlapping curved strips)
-        for (let i = 0; i < 3; i++) {
-          const lameR = TORSO_WIDTH * 0.48 + 0.01 - i * 0.005;
-          const lameGeo = new THREE.TorusGeometry(lameR, 0.005, 4, 10);
-          const lame = new THREE.Mesh(lameGeo, armorMat);
-          lame.position.y = -0.01 - i * 0.025;
+        for (let i = 0; i < 4; i++) {
+          const lameR = TORSO_WIDTH * 0.48 + 0.01 - i * 0.004;
+          const lameGeo = new THREE.TorusGeometry(lameR, 0.005, 4, 12);
+          const lame = new THREE.Mesh(lameGeo, i % 2 === 0 ? armorMat : armorDarkMat);
+          lame.position.y = -0.01 - i * 0.02;
           lame.rotation.x = Math.PI / 2;
           lame.scale.set(1, TORSO_DEPTH / TORSO_WIDTH, 1);
           this._chest.add(lame);
           this._armorMeshes.push(lame);
+        }
+
+        // Fauld rivets along bottom edge
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          const frGeo = new THREE.SphereGeometry(0.004, 3, 3);
+          const fr = new THREE.Mesh(frGeo, rivetMat);
+          fr.position.set(
+            Math.sin(angle) * (TORSO_WIDTH * 0.48 + 0.012),
+            -0.01,
+            Math.cos(angle) * (TORSO_WIDTH * 0.48 + 0.012) * (TORSO_DEPTH / TORSO_WIDTH),
+          );
+          this._chest.add(fr);
+          this._armorMeshes.push(fr);
         }
       }
 
@@ -1870,20 +2218,42 @@ export class FighterMesh {
       if (tDef >= 18) {
         for (const side of [-1, 1]) {
           // Main pauldron dome
-          const pauldronGeo = new THREE.SphereGeometry(SHOULDER_CAP_RADIUS * 1.5, 6, 5, 0, Math.PI * 2, 0, Math.PI * 0.6);
+          const pauldronGeo = new THREE.SphereGeometry(SHOULDER_CAP_RADIUS * 1.5, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.6);
           const pauldron = new THREE.Mesh(pauldronGeo, armorMat);
           pauldron.position.set(side * SHOULDER_WIDTH, TORSO_HEIGHT, 0);
           pauldron.castShadow = true;
           this._chest.add(pauldron);
           this._armorMeshes.push(pauldron);
 
-          // Pauldron rim (raised edge)
-          const pauldronRimGeo = new THREE.TorusGeometry(SHOULDER_CAP_RADIUS * 1.4, 0.005, 3, 8);
+          // Pauldron rim (raised edge with rolled edge detail)
+          const pauldronRimGeo = new THREE.TorusGeometry(SHOULDER_CAP_RADIUS * 1.4, 0.006, 4, 10);
           const pauldronRim = new THREE.Mesh(pauldronRimGeo, rivetMat);
           pauldronRim.position.set(side * SHOULDER_WIDTH, TORSO_HEIGHT - 0.01, 0);
           pauldronRim.rotation.x = Math.PI / 2;
           this._chest.add(pauldronRim);
           this._armorMeshes.push(pauldronRim);
+
+          // Pauldron fluting (raised ridge down center of pauldron)
+          const fluteGeo = new THREE.CylinderGeometry(0.004, 0.004, SHOULDER_CAP_RADIUS * 2.2, 3);
+          const flute = new THREE.Mesh(fluteGeo, armorDarkMat);
+          flute.position.set(side * SHOULDER_WIDTH, TORSO_HEIGHT + 0.01, 0);
+          flute.rotation.x = Math.PI / 2;
+          this._chest.add(flute);
+          this._armorMeshes.push(flute);
+
+          // Pauldron rivets
+          for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI + Math.PI * 0.25;
+            const prGeo = new THREE.SphereGeometry(0.004, 3, 3);
+            const pr = new THREE.Mesh(prGeo, rivetMat);
+            pr.position.set(
+              side * SHOULDER_WIDTH + Math.sin(angle) * SHOULDER_CAP_RADIUS * 1.2,
+              TORSO_HEIGHT - 0.005,
+              Math.cos(angle) * SHOULDER_CAP_RADIUS * 1.2,
+            );
+            this._chest.add(pr);
+            this._armorMeshes.push(pr);
+          }
 
           // Layered pauldron lames (overlapping curved plates below the dome)
           for (let i = 0; i < 3; i++) {
@@ -1891,7 +2261,7 @@ export class FighterMesh {
             const lameGeo = new THREE.CylinderGeometry(
               lameR, lameR + 0.005, 0.018, 8, 1, true, 0, Math.PI,
             );
-            const lame = new THREE.Mesh(lameGeo, armorMat);
+            const lame = new THREE.Mesh(lameGeo, i % 2 === 0 ? armorMat : armorDarkMat);
             lame.position.set(
               side * SHOULDER_WIDTH,
               TORSO_HEIGHT - 0.035 - i * 0.025,
@@ -1902,28 +2272,54 @@ export class FighterMesh {
             this._armorMeshes.push(lame);
           }
 
+          // Besagew (armpit guard disc)
+          const besagewGeo = new THREE.CircleGeometry(SHOULDER_CAP_RADIUS * 0.7, 8);
+          const besagew = new THREE.Mesh(besagewGeo, armorMat);
+          besagew.position.set(side * (SHOULDER_WIDTH - 0.01), TORSO_HEIGHT - 0.06, 0);
+          besagew.rotation.y = side * Math.PI / 2;
+          this._chest.add(besagew);
+          this._armorMeshes.push(besagew);
+
           // Upper arm guard (rerebrace) — cylinder wrapping the upper arm
           const rebraceGeo = new THREE.CylinderGeometry(
             LIMB_THICKNESS + 0.015, LIMB_THICKNESS + 0.01,
-            UPPER_ARM_LEN * 0.55, 6,
+            UPPER_ARM_LEN * 0.55, 7,
           );
           const rebrace = new THREE.Mesh(rebraceGeo, armorMat);
           rebrace.position.y = -UPPER_ARM_LEN * 0.25;
           const armBone = side === 1 ? this._leftUpperArm : this._rightUpperArm;
           armBone.add(rebrace);
           this._armorMeshes.push(rebrace);
+
+          // Rerebrace edge rolls
+          for (const ey of [-UPPER_ARM_LEN * 0.5, -UPPER_ARM_LEN * 0.01]) {
+            const reGeo = new THREE.TorusGeometry(LIMB_THICKNESS + 0.016, 0.003, 3, 6);
+            const re = new THREE.Mesh(reGeo, armorDarkMat);
+            re.position.y = ey;
+            re.rotation.x = Math.PI / 2;
+            armBone.add(re);
+            this._armorMeshes.push(re);
+          }
         }
       }
 
       // Lighter shoulder caps (defense 10-17) — small plates over shoulders
       if (tDef >= 10 && tDef < 18) {
         for (const side of [-1, 1]) {
-          const capGeo = new THREE.SphereGeometry(SHOULDER_CAP_RADIUS * 1.2, 5, 4, 0, Math.PI * 2, 0, Math.PI * 0.5);
+          const capGeo = new THREE.SphereGeometry(SHOULDER_CAP_RADIUS * 1.2, 6, 5, 0, Math.PI * 2, 0, Math.PI * 0.5);
           const cap = new THREE.Mesh(capGeo, armorMat);
           cap.position.set(side * SHOULDER_WIDTH, TORSO_HEIGHT, 0);
           cap.castShadow = true;
           this._chest.add(cap);
           this._armorMeshes.push(cap);
+
+          // Lighter shoulder cap edge
+          const capEdgeGeo = new THREE.TorusGeometry(SHOULDER_CAP_RADIUS * 1.1, 0.004, 3, 8);
+          const capEdge = new THREE.Mesh(capEdgeGeo, armorDarkMat);
+          capEdge.position.set(side * SHOULDER_WIDTH, TORSO_HEIGHT - 0.005, 0);
+          capEdge.rotation.x = Math.PI / 2;
+          this._chest.add(capEdge);
+          this._armorMeshes.push(capEdge);
         }
       }
 
@@ -1935,7 +2331,7 @@ export class FighterMesh {
           metalness: 0.6,
         });
         // Bottom trim ring (follows waist contour)
-        const trimGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.46 + 0.025, 0.008, 4, 10);
+        const trimGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.46 + 0.025, 0.008, 4, 12);
         const trim = new THREE.Mesh(trimGeo, trimMat);
         trim.position.y = 0.02;
         trim.rotation.x = Math.PI / 2;
@@ -1944,48 +2340,102 @@ export class FighterMesh {
         this._armorMeshes.push(trim);
 
         // Top trim ring along neckline
-        const topTrimGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.4 + 0.02, 0.007, 4, 10);
+        const topTrimGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.4 + 0.02, 0.007, 4, 12);
         const topTrim = new THREE.Mesh(topTrimGeo, trimMat);
         topTrim.position.y = TORSO_HEIGHT;
         topTrim.rotation.x = Math.PI / 2;
         topTrim.scale.set(1, TORSO_DEPTH / TORSO_WIDTH, 1);
         this._chest.add(topTrim);
         this._armorMeshes.push(topTrim);
+
+        // Mid-chest accent line
+        const midTrimGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.5 + 0.02, 0.005, 4, 12);
+        const midTrim = new THREE.Mesh(midTrimGeo, trimMat);
+        midTrim.position.y = TORSO_HEIGHT * 0.5;
+        midTrim.rotation.x = Math.PI / 2;
+        midTrim.scale.set(1, TORSO_DEPTH / TORSO_WIDTH * 1.05, 1);
+        this._chest.add(midTrim);
+        this._armorMeshes.push(midTrim);
       }
     }
 
     // Gauntlets (cover forearm and hand)
     if (armor.gauntlets) {
+      const gColor = new THREE.Color(armor.gauntlets.color);
+      const gDef = armor.gauntlets.defense;
       const gMat = new THREE.MeshStandardMaterial({
         color: armor.gauntlets.color,
-        roughness: 0.4,
+        roughness: gDef >= 8 ? 0.35 : 0.5,
+        metalness: gDef >= 8 ? 0.55 : 0.4,
+      });
+      const gDarkMat = new THREE.MeshStandardMaterial({
+        color: gColor.clone().multiplyScalar(0.72).getHex(),
+        roughness: 0.45,
         metalness: 0.5,
       });
+      const gRivetMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
+
       for (const [forearm, hand] of [[this._leftForearm, this._leftHand], [this._rightForearm, this._rightHand]]) {
         // Forearm guard (vambrace)
-        const fGeo = new THREE.CylinderGeometry(LIMB_THICKNESS + 0.012, LIMB_THICKNESS + 0.008, FOREARM_LEN * 0.7, 6);
+        const fGeo = new THREE.CylinderGeometry(LIMB_THICKNESS + 0.012, LIMB_THICKNESS + 0.008, FOREARM_LEN * 0.7, 7);
         const fMesh = new THREE.Mesh(fGeo, gMat);
         fMesh.position.y = -FOREARM_LEN * 0.35;
         forearm.add(fMesh);
         this._armorMeshes.push(fMesh);
 
+        // Vambrace center ridge (for plate gauntlets)
+        if (gDef >= 8) {
+          const vRidgeGeo = new THREE.BoxGeometry(0.008, FOREARM_LEN * 0.55, 0.006);
+          const vRidge = new THREE.Mesh(vRidgeGeo, gDarkMat);
+          vRidge.position.set(0, -FOREARM_LEN * 0.35, LIMB_THICKNESS + 0.012);
+          forearm.add(vRidge);
+          this._armorMeshes.push(vRidge);
+        }
+
+        // Vambrace edge rolls
+        for (const ey of [-FOREARM_LEN * 0.02, -FOREARM_LEN * 0.68]) {
+          const veGeo = new THREE.TorusGeometry(LIMB_THICKNESS + 0.013, 0.003, 3, 6);
+          const ve = new THREE.Mesh(veGeo, gDarkMat);
+          ve.position.y = ey;
+          ve.rotation.x = Math.PI / 2;
+          forearm.add(ve);
+          this._armorMeshes.push(ve);
+        }
+
         // Elbow cop (couter) — protection at elbow joint
-        const couterGeo = new THREE.SphereGeometry(LIMB_THICKNESS * 1.2, 5, 4, 0, Math.PI * 2, 0, Math.PI * 0.55);
+        const couterGeo = new THREE.SphereGeometry(LIMB_THICKNESS * 1.25, 6, 5, 0, Math.PI * 2, 0, Math.PI * 0.55);
         const couter = new THREE.Mesh(couterGeo, gMat);
         couter.position.set(0, 0.005, -LIMB_THICKNESS * 0.2);
         couter.rotation.x = Math.PI / 2;
         forearm.add(couter);
         this._armorMeshes.push(couter);
 
+        // Couter center rivet
+        const couterRivet = new THREE.Mesh(new THREE.SphereGeometry(0.005, 4, 4), gRivetMat);
+        couterRivet.position.set(0, 0.005, -LIMB_THICKNESS * 0.45);
+        forearm.add(couterRivet);
+        this._armorMeshes.push(couterRivet);
+
+        // Couter wing flares (side extensions for plate)
+        if (gDef >= 8) {
+          for (const side of [-1, 1]) {
+            const wingGeo = new THREE.BoxGeometry(LIMB_THICKNESS * 0.6, 0.025, 0.012);
+            const wing = new THREE.Mesh(wingGeo, gMat);
+            wing.position.set(side * LIMB_THICKNESS * 0.9, 0.005, -LIMB_THICKNESS * 0.15);
+            forearm.add(wing);
+            this._armorMeshes.push(wing);
+          }
+        }
+
         // Wrist flare (widened end of vambrace)
-        const wristGeo = new THREE.CylinderGeometry(LIMB_THICKNESS + 0.015, LIMB_THICKNESS + 0.012, 0.02, 6);
+        const wristGeo = new THREE.CylinderGeometry(LIMB_THICKNESS + 0.016, LIMB_THICKNESS + 0.012, 0.025, 7);
         const wrist = new THREE.Mesh(wristGeo, gMat);
         wrist.position.y = -FOREARM_LEN * 0.68;
         forearm.add(wrist);
         this._armorMeshes.push(wrist);
 
         // Hand cover (gauntlet plate)
-        const hGeo = new THREE.SphereGeometry(HAND_SIZE * 1.25, 5, 4);
+        const hGeo = new THREE.SphereGeometry(HAND_SIZE * 1.25, 6, 5);
         const hMesh = new THREE.Mesh(hGeo, gMat);
         hMesh.position.y = -HAND_SIZE * 0.3;
         hMesh.scale.set(1, 0.7, 1.1);
@@ -1993,45 +2443,125 @@ export class FighterMesh {
         hand.add(hMesh);
         this._armorMeshes.push(hMesh);
 
+        // Knuckle guard ridge
+        const knuckleGeo = new THREE.CylinderGeometry(0.004, 0.004, HAND_SIZE * 1.8, 3);
+        const knuckle = new THREE.Mesh(knuckleGeo, gDarkMat);
+        knuckle.position.set(0, -HAND_SIZE * 0.15, HAND_SIZE * 0.9);
+        knuckle.rotation.z = Math.PI / 2;
+        hand.add(knuckle);
+        this._armorMeshes.push(knuckle);
+
         // Finger plates (for heavier gauntlets defense >= 8)
-        if (armor.gauntlets.defense >= 8) {
+        if (gDef >= 8) {
           for (let i = 0; i < 4; i++) {
-            const fpGeo = new THREE.BoxGeometry(0.014, 0.008, 0.035);
+            // Main finger plate
+            const fpGeo = new THREE.BoxGeometry(0.013, 0.008, 0.035);
             const fp = new THREE.Mesh(fpGeo, gMat);
             fp.position.set((i - 1.5) * 0.016, -HAND_SIZE * 0.45, 0.03);
             hand.add(fp);
             this._armorMeshes.push(fp);
+
+            // Finger plate articulation gap (darker strip between plates)
+            if (i < 3) {
+              const gapGeo = new THREE.BoxGeometry(0.002, 0.007, 0.03);
+              const gap = new THREE.Mesh(gapGeo, gDarkMat);
+              gap.position.set((i - 1) * 0.016, -HAND_SIZE * 0.45, 0.03);
+              hand.add(gap);
+              this._armorMeshes.push(gap);
+            }
           }
+
+          // Thumb guard
+          const thumbGeo = new THREE.BoxGeometry(0.018, 0.01, 0.02);
+          const thumb = new THREE.Mesh(thumbGeo, gMat);
+          thumb.position.set(-HAND_SIZE * 0.75, -HAND_SIZE * 0.2, 0.02);
+          thumb.rotation.z = Math.PI * 0.15;
+          hand.add(thumb);
+          this._armorMeshes.push(thumb);
         }
       }
     }
 
     // Leg armor (thigh + shin guards + knee cops)
     if (armor.legs) {
+      const legColor = new THREE.Color(armor.legs.color);
+      const legDef = armor.legs.defense;
       const lMat = new THREE.MeshStandardMaterial({
         color: armor.legs.color,
-        roughness: 0.4,
+        roughness: legDef >= 12 ? 0.35 : 0.45,
+        metalness: legDef >= 12 ? 0.55 : 0.45,
+      });
+      const lDarkMat = new THREE.MeshStandardMaterial({
+        color: legColor.clone().multiplyScalar(0.72).getHex(),
+        roughness: 0.45,
         metalness: 0.5,
       });
+      const lRivetMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
+
       for (const thigh of [this._leftThigh, this._rightThigh]) {
-        const lGeo = new THREE.CylinderGeometry(LIMB_THICKNESS * 1.2 + 0.01, LIMB_THICKNESS + 0.008, THIGH_LEN * 0.85, 7);
+        // Cuisse (thigh guard)
+        const lGeo = new THREE.CylinderGeometry(LIMB_THICKNESS * 1.2 + 0.01, LIMB_THICKNESS + 0.008, THIGH_LEN * 0.85, 8);
         const lMesh = new THREE.Mesh(lGeo, lMat);
         lMesh.position.y = -THIGH_LEN * 0.45;
         thigh.add(lMesh);
         this._armorMeshes.push(lMesh);
+
+        // Cuisse edge rolls (top and bottom)
+        for (const ey of [-THIGH_LEN * 0.04, -THIGH_LEN * 0.85]) {
+          const edgeR = ey > -THIGH_LEN * 0.5 ? LIMB_THICKNESS * 1.2 + 0.011 : LIMB_THICKNESS + 0.009;
+          const ceGeo = new THREE.TorusGeometry(edgeR, 0.003, 3, 6);
+          const ce = new THREE.Mesh(ceGeo, lDarkMat);
+          ce.position.y = ey;
+          ce.rotation.x = Math.PI / 2;
+          thigh.add(ce);
+          this._armorMeshes.push(ce);
+        }
+
+        // Front ridge on cuisse for plate (defense >= 12)
+        if (legDef >= 12) {
+          const cRidgeGeo = new THREE.BoxGeometry(0.008, THIGH_LEN * 0.65, 0.006);
+          const cRidge = new THREE.Mesh(cRidgeGeo, lDarkMat);
+          cRidge.position.set(0, -THIGH_LEN * 0.4, LIMB_THICKNESS * 1.2 + 0.01);
+          thigh.add(cRidge);
+          this._armorMeshes.push(cRidge);
+        }
+
+        // Side lacing for lighter leg armor (defense < 12)
+        if (legDef < 12) {
+          const laceMat = new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.8, metalness: 0.1 });
+          for (let i = 0; i < 4; i++) {
+            const laceGeo = new THREE.CylinderGeometry(0.002, 0.002, 0.02, 3);
+            const lace = new THREE.Mesh(laceGeo, laceMat);
+            lace.position.set(LIMB_THICKNESS + 0.005, -THIGH_LEN * 0.2 - i * 0.06, 0);
+            lace.rotation.z = Math.PI / 2;
+            thigh.add(lace);
+            this._armorMeshes.push(lace);
+          }
+        }
       }
 
       // Knee cops (poleyns) — rounded protectors at the knee joint
       for (const shin of [this._leftShin, this._rightShin]) {
-        // Shin guard
-        const sGeo = new THREE.CylinderGeometry(LIMB_THICKNESS + 0.008, LIMB_THICKNESS * 0.85 + 0.006, SHIN_LEN * 0.8, 7);
+        // Shin guard (greave)
+        const sGeo = new THREE.CylinderGeometry(LIMB_THICKNESS + 0.008, LIMB_THICKNESS * 0.85 + 0.006, SHIN_LEN * 0.8, 8);
         const sMesh = new THREE.Mesh(sGeo, lMat);
         sMesh.position.y = -SHIN_LEN * 0.4;
         shin.add(sMesh);
         this._armorMeshes.push(sMesh);
 
+        // Greave edge rolls
+        for (const ey of [-SHIN_LEN * 0.02, -SHIN_LEN * 0.78]) {
+          const geR = ey > -SHIN_LEN * 0.5 ? LIMB_THICKNESS + 0.009 : LIMB_THICKNESS * 0.85 + 0.007;
+          const geGeo = new THREE.TorusGeometry(geR, 0.003, 3, 6);
+          const ge = new THREE.Mesh(geGeo, lDarkMat);
+          ge.position.y = ey;
+          ge.rotation.x = Math.PI / 2;
+          shin.add(ge);
+          this._armorMeshes.push(ge);
+        }
+
         // Knee cop (dome on front of knee)
-        const kneeCopGeo = new THREE.SphereGeometry(LIMB_THICKNESS * 1.3, 5, 4, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        const kneeCopGeo = new THREE.SphereGeometry(LIMB_THICKNESS * 1.35, 6, 5, 0, Math.PI * 2, 0, Math.PI * 0.5);
         const kneeCop = new THREE.Mesh(kneeCopGeo, lMat);
         kneeCop.position.set(0, -0.01, LIMB_THICKNESS * 0.3);
         kneeCop.rotation.x = -Math.PI / 2;
@@ -2039,24 +2569,72 @@ export class FighterMesh {
         shin.add(kneeCop);
         this._armorMeshes.push(kneeCop);
 
+        // Knee cop center rivet
+        const kcRivet = new THREE.Mesh(new THREE.SphereGeometry(0.005, 4, 4), lRivetMat);
+        kcRivet.position.set(0, -0.01, LIMB_THICKNESS * 0.65);
+        shin.add(kcRivet);
+        this._armorMeshes.push(kcRivet);
+
+        // Knee cop wing extensions (side flares for plate)
+        if (legDef >= 12) {
+          for (const side of [-1, 1]) {
+            const wingGeo = new THREE.BoxGeometry(LIMB_THICKNESS * 0.5, 0.03, 0.01);
+            const wing = new THREE.Mesh(wingGeo, lMat);
+            wing.position.set(side * LIMB_THICKNESS * 1.0, -0.01, LIMB_THICKNESS * 0.25);
+            shin.add(wing);
+            this._armorMeshes.push(wing);
+          }
+        }
+
         // Shin guard ridge (raised center line on front)
-        if (armor.legs.defense >= 12) {
-          const ridgeGeo = new THREE.BoxGeometry(0.012, SHIN_LEN * 0.6, 0.01);
-          const ridge = new THREE.Mesh(ridgeGeo, lMat);
+        if (legDef >= 12) {
+          const ridgeGeo = new THREE.BoxGeometry(0.01, SHIN_LEN * 0.6, 0.008);
+          const ridge = new THREE.Mesh(ridgeGeo, lDarkMat);
           ridge.position.set(0, -SHIN_LEN * 0.4, LIMB_THICKNESS + 0.01);
           shin.add(ridge);
           this._armorMeshes.push(ridge);
+
+          // Side fluting on greave
+          for (const side of [-1, 1]) {
+            const fluteGeo = new THREE.BoxGeometry(0.006, SHIN_LEN * 0.5, 0.005);
+            const flute = new THREE.Mesh(fluteGeo, lDarkMat);
+            flute.position.set(side * LIMB_THICKNESS * 0.6, -SHIN_LEN * 0.4, LIMB_THICKNESS * 0.7 + 0.008);
+            shin.add(flute);
+            this._armorMeshes.push(flute);
+          }
+        }
+
+        // Greave rivets along sides for plate
+        if (legDef >= 12) {
+          for (let i = 0; i < 3; i++) {
+            for (const side of [-1, 1]) {
+              const grGeo = new THREE.SphereGeometry(0.004, 3, 3);
+              const gr = new THREE.Mesh(grGeo, lRivetMat);
+              gr.position.set(side * (LIMB_THICKNESS + 0.005), -SHIN_LEN * 0.2 - i * 0.08, 0);
+              shin.add(gr);
+              this._armorMeshes.push(gr);
+            }
+          }
         }
       }
     }
 
     // Boots (armored footwear overlay)
     if (armor.boots) {
+      const bootColor = new THREE.Color(armor.boots.color);
+      const bootDef = armor.boots.defense;
       const bMat = new THREE.MeshStandardMaterial({
         color: armor.boots.color,
-        roughness: 0.5,
-        metalness: 0.4,
+        roughness: bootDef >= 8 ? 0.35 : 0.5,
+        metalness: bootDef >= 8 ? 0.5 : 0.35,
       });
+      const bDarkMat = new THREE.MeshStandardMaterial({
+        color: bootColor.clone().multiplyScalar(0.72).getHex(),
+        roughness: 0.45,
+        metalness: 0.45,
+      });
+      const bRivetMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
+
       for (const foot of [this._leftFoot, this._rightFoot]) {
         // Armored boot — slopes down toward toes matching foot shape
         const bootGeo = new THREE.BufferGeometry();
@@ -2080,25 +2658,95 @@ export class FighterMesh {
         foot.add(bootMesh);
         this._armorMeshes.push(bootMesh);
 
-        // Ankle guard
-        const ankleGeo = new THREE.CylinderGeometry(0.048, 0.046, 0.04, 6);
+        // Ankle guard with flared collar
+        const ankleGeo = new THREE.CylinderGeometry(0.052, 0.046, 0.045, 8);
         const ankle = new THREE.Mesh(ankleGeo, bMat);
         ankle.position.set(0, 0.01, 0);
         foot.add(ankle);
         this._armorMeshes.push(ankle);
 
+        // Ankle guard top rim (flared edge roll)
+        const ankleRimGeo = new THREE.TorusGeometry(0.052, 0.004, 3, 8);
+        const ankleRim = new THREE.Mesh(ankleRimGeo, bDarkMat);
+        ankleRim.position.set(0, 0.032, 0);
+        ankleRim.rotation.x = Math.PI / 2;
+        foot.add(ankleRim);
+        this._armorMeshes.push(ankleRim);
+
+        // Toe cap reinforcement
+        const toeCapGeo = new THREE.SphereGeometry(bw * 0.85, 5, 4, 0, Math.PI * 2, 0, Math.PI * 0.4);
+        const toeCap = new THREE.Mesh(toeCapGeo, bMat);
+        toeCap.position.set(0, -bh + bt * 0.5, bfl * 0.85);
+        toeCap.rotation.x = Math.PI * 0.6;
+        toeCap.scale.set(1, 0.6, 1);
+        foot.add(toeCap);
+        this._armorMeshes.push(toeCap);
+
+        // Boot tongue/instep line
+        const tongueGeo = new THREE.BoxGeometry(0.015, 0.006, FOOT_LEN * 0.4);
+        const tongue = new THREE.Mesh(tongueGeo, bDarkMat);
+        tongue.position.set(0, -bh + bt + 0.005, FOOT_LEN * 0.25);
+        foot.add(tongue);
+        this._armorMeshes.push(tongue);
+
+        // Buckle straps across instep
+        const strapMat = new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.8, metalness: 0.1 });
+        for (let i = 0; i < 2; i++) {
+          const bsGeo = new THREE.BoxGeometry(bw * 1.5, 0.005, 0.012);
+          const bs = new THREE.Mesh(bsGeo, bootDef >= 8 ? bDarkMat : strapMat);
+          bs.position.set(0, -bh * 0.3 + i * 0.025, FOOT_LEN * 0.15 + i * 0.08);
+          foot.add(bs);
+          this._armorMeshes.push(bs);
+
+          // Small buckle on each strap
+          const buckGeo = new THREE.TorusGeometry(0.006, 0.002, 3, 4);
+          const buck = new THREE.Mesh(buckGeo, bRivetMat);
+          buck.position.set(bw * 0.8, -bh * 0.3 + i * 0.025, FOOT_LEN * 0.15 + i * 0.08);
+          buck.rotation.y = Math.PI / 2;
+          foot.add(buck);
+          this._armorMeshes.push(buck);
+        }
+
+        // Articulated foot plates (for heavy boots)
+        if (bootDef >= 8) {
+          for (let i = 0; i < 3; i++) {
+            const plateGeo = new THREE.BoxGeometry(bw * 1.7, 0.006, 0.018);
+            const plate = new THREE.Mesh(plateGeo, i % 2 === 0 ? bMat : bDarkMat);
+            plate.position.set(0, -bh + bt * 0.8 - i * 0.005, bfl * 0.3 + i * 0.06);
+            foot.add(plate);
+            this._armorMeshes.push(plate);
+          }
+        }
+
         // Sole plate (hardened sole)
-        if (armor.boots.defense >= 8) {
+        if (bootDef >= 8) {
           const soleMat = new THREE.MeshStandardMaterial({
             color: 0x333333, roughness: 0.6, metalness: 0.3,
           });
-          const soleGeo = new THREE.CylinderGeometry(0.048, 0.05, FOOT_LEN + 0.04, 6);
+          const soleGeo = new THREE.CylinderGeometry(0.048, 0.05, FOOT_LEN + 0.04, 7);
           const sole = new THREE.Mesh(soleGeo, soleMat);
           sole.position.set(0, -FOOT_HEIGHT - 0.01, FOOT_LEN * 0.2);
           sole.rotation.x = Math.PI / 2;
           sole.scale.set(1, 1, 0.15);
           foot.add(sole);
           this._armorMeshes.push(sole);
+
+          // Heel reinforcement
+          const heelGeo = new THREE.BoxGeometry(bw * 1.6, 0.015, 0.025);
+          const heel = new THREE.Mesh(heelGeo, soleMat);
+          heel.position.set(0, -bh - 0.005, -bbl * 0.5);
+          foot.add(heel);
+          this._armorMeshes.push(heel);
+        }
+
+        // Spur mount for plate sabatons (defense >= 14)
+        if (bootDef >= 14) {
+          const spurGeo = new THREE.CylinderGeometry(0.004, 0.006, 0.025, 4);
+          const spur = new THREE.Mesh(spurGeo, bRivetMat);
+          spur.position.set(0, -bh * 0.5, -bbl * 0.8);
+          spur.rotation.x = Math.PI * 0.3;
+          foot.add(spur);
+          this._armorMeshes.push(spur);
         }
       }
     }
