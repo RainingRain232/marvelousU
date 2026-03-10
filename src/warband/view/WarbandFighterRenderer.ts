@@ -55,7 +55,7 @@ const SHIN_LEN = 0.36;
 const FOOT_LEN = 0.18;
 const FOOT_HEIGHT = 0.06;
 const LIMB_THICKNESS = 0.048;
-const JOINT_RADIUS = 0.038;
+const JOINT_RADIUS = 0.028;
 const SHOULDER_WIDTH = TORSO_WIDTH * 0.56;
 const SHOULDER_CAP_RADIUS = 0.055;
 const HIP_WIDTH = TORSO_WIDTH * 0.32;
@@ -137,24 +137,12 @@ export class FighterMesh {
     this._chest = this._makeBoneGroup();
     this._spine.add(this._chest);
 
-    // ---- Torso: tapered shape (wider at shoulders, narrower at waist) ----
-    // Use a custom geometry for a more natural shape
-    const torsoGeo = new THREE.CylinderGeometry(
-      TORSO_WIDTH * 0.52, // top radius (shoulders)
-      TORSO_WIDTH * 0.4,  // bottom radius (waist)
-      TORSO_HEIGHT, 8,
-    );
+    // ---- Torso: box shape (wider at shoulders, narrower at waist) ----
+    const torsoGeo = new THREE.BoxGeometry(TORSO_WIDTH, TORSO_HEIGHT, TORSO_DEPTH);
     const torsoMesh = new THREE.Mesh(torsoGeo, tunicMat);
     torsoMesh.position.y = TORSO_HEIGHT / 2;
     torsoMesh.castShadow = true;
     this._chest.add(torsoMesh);
-
-    // Chest detail: slight front pectoral bulge
-    const chestDetailGeo = new THREE.SphereGeometry(TORSO_WIDTH * 0.38, 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.5);
-    const chestDetailMesh = new THREE.Mesh(chestDetailGeo, tunicMat);
-    chestDetailMesh.position.set(0, TORSO_HEIGHT * 0.7, TORSO_DEPTH * 0.15);
-    chestDetailMesh.scale.set(1, 0.6, 0.5);
-    this._chest.add(chestDetailMesh);
 
     // Shoulder caps (rounded balls at shoulder joints)
     for (const side of [-1, 1]) {
@@ -591,12 +579,12 @@ export class FighterMesh {
       }
     }
 
-    // Torso armor (cylindrical, slightly larger than body)
+    // Torso armor (box, slightly larger than body)
     if (armor.torso) {
-      const armorGeo = new THREE.CylinderGeometry(
-        TORSO_WIDTH * 0.56, // top (shoulders)
-        TORSO_WIDTH * 0.44, // bottom (waist)
-        TORSO_HEIGHT + 0.02, 8,
+      const armorGeo = new THREE.BoxGeometry(
+        TORSO_WIDTH + 0.04,
+        TORSO_HEIGHT + 0.02,
+        TORSO_DEPTH + 0.04,
       );
       const armorMat = new THREE.MeshStandardMaterial({
         color: armor.torso.color,

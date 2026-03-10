@@ -41,7 +41,7 @@ export const WB = {
   // Economy
   GOLD_PER_KILL: 50,
   GOLD_HEADSHOT_BONUS: 25,
-  STARTING_GOLD: 200,
+  STARTING_GOLD: 500,
 
   // Arena size
   ARENA_WIDTH: 80,

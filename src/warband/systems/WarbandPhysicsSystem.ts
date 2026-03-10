@@ -9,6 +9,7 @@ import {
   vec3DistXZ,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
+import { getTerrainHeight } from "../view/WarbandSceneManager";
 
 export class WarbandPhysicsSystem {
   update(state: WarbandState): void {
@@ -29,9 +30,10 @@ export class WarbandPhysicsSystem {
         fighter.velocity.y += WB.GRAVITY * dt;
       }
 
-      // Ground collision (simple flat ground at y=0)
-      if (fighter.position.y <= 0) {
-        fighter.position.y = 0;
+      // Ground collision (terrain-following)
+      const groundY = getTerrainHeight(fighter.position.x, fighter.position.z);
+      if (fighter.position.y <= groundY) {
+        fighter.position.y = groundY;
         fighter.velocity.y = 0;
         fighter.onGround = true;
       }

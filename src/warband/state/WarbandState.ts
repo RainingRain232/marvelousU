@@ -18,6 +18,7 @@ export enum WarbandPhase {
 export enum BattleType {
   OPEN_FIELD = "open_field",
   SIEGE = "siege",
+  DUEL = "duel",
 }
 
 export enum CombatDirection {
@@ -320,8 +321,8 @@ export function createWarbandState(
 
     playerId: "player_0",
 
-    playerTeamAlive: WB.TEAM_SIZE,
-    enemyTeamAlive: WB.TEAM_SIZE,
+    playerTeamAlive: battleType === BattleType.DUEL ? 1 : WB.TEAM_SIZE,
+    enemyTeamAlive: battleType === BattleType.DUEL ? 1 : WB.TEAM_SIZE,
 
     round: 1,
     playerWins: 0,

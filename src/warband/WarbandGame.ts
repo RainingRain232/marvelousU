@@ -138,6 +138,11 @@ export class WarbandGame {
         <span style="display:block;font-size:12px;color:#999;margin-top:4px">Storm the castle walls</span>
       </button>
 
+      <button id="wb-duel" style="${this._menuBtnStyle()}">
+        🤺 Duel
+        <span style="display:block;font-size:12px;color:#999;margin-top:4px">1v1 single combat</span>
+      </button>
+
       <button id="wb-back" style="${this._menuBtnStyle("#555", "#888")}">
         ← Back to Hub
       </button>
@@ -154,6 +159,11 @@ export class WarbandGame {
     document.getElementById("wb-siege")?.addEventListener("click", () => {
       this._removeMenu();
       this._startGame(BattleType.SIEGE);
+    });
+
+    document.getElementById("wb-duel")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._startGame(BattleType.DUEL);
     });
 
     document.getElementById("wb-back")?.addEventListener("click", () => {
@@ -202,29 +212,34 @@ export class WarbandGame {
     );
     this._state.fighters.push(player);
 
-    // Create player allies
-    for (let i = 1; i < WB.TEAM_SIZE; i++) {
-      const ally = createDefaultFighter(
-        `ally_${i}`,
-        AI_NAMES_PLAYER[i % AI_NAMES_PLAYER.length],
-        "player",
-        false,
-        vec3(-6 + i * 3, 0, 12),
-      );
-      // Give allies random equipment
-      this._equipRandomLoadout(ally, "medium");
-      this._state.fighters.push(ally);
+    const isDuel = battleType === BattleType.DUEL;
+
+    // Create player allies (skip in duel mode)
+    if (!isDuel) {
+      for (let i = 1; i < WB.TEAM_SIZE; i++) {
+        const ally = createDefaultFighter(
+          `ally_${i}`,
+          AI_NAMES_PLAYER[i % AI_NAMES_PLAYER.length],
+          "player",
+          false,
+          vec3(-6 + i * 3, 0, 12),
+        );
+        // Give allies random equipment
+        this._equipRandomLoadout(ally, "medium");
+        this._state.fighters.push(ally);
+      }
     }
 
     // Create enemies
-    for (let i = 0; i < WB.TEAM_SIZE; i++) {
-      const spawnZ = battleType === BattleType.SIEGE ? -20 : -10;
+    const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
+    for (let i = 0; i < enemyCount; i++) {
+      const spawnZ = battleType === BattleType.SIEGE ? -20 : -5;
       const enemy = createDefaultFighter(
         `enemy_${i}`,
         AI_NAMES_ENEMY[i % AI_NAMES_ENEMY.length],
         "enemy",
         false,
-        vec3(-6 + i * 3, 0, spawnZ),
+        vec3(isDuel ? 0 : -6 + i * 3, 0, spawnZ),
       );
       this._equipRandomLoadout(enemy, "medium");
       this._state.fighters.push(enemy);
@@ -637,29 +652,34 @@ export class WarbandGame {
     // Remove old AI fighters
     this._state.fighters = this._state.fighters.filter((f) => f.isPlayer);
 
-    // Create new allies
-    for (let i = 1; i < WB.TEAM_SIZE; i++) {
-      const ally = createDefaultFighter(
-        `ally_r${this._state.round}_${i}`,
-        AI_NAMES_PLAYER[i % AI_NAMES_PLAYER.length],
-        "player",
-        false,
-        vec3(-6 + i * 3, 0, 12),
-      );
-      this._equipRandomLoadout(ally, this._state.round > 3 ? "heavy" : "medium");
-      this._state.fighters.push(ally);
+    const isDuel = this._state.battleType === BattleType.DUEL;
+
+    // Create new allies (skip in duel mode)
+    if (!isDuel) {
+      for (let i = 1; i < WB.TEAM_SIZE; i++) {
+        const ally = createDefaultFighter(
+          `ally_r${this._state.round}_${i}`,
+          AI_NAMES_PLAYER[i % AI_NAMES_PLAYER.length],
+          "player",
+          false,
+          vec3(-6 + i * 3, 0, 12),
+        );
+        this._equipRandomLoadout(ally, this._state.round > 3 ? "heavy" : "medium");
+        this._state.fighters.push(ally);
+      }
     }
 
     // Create new enemies (scale difficulty)
     const enemyTier = this._state.round <= 2 ? "medium" : "heavy";
-    for (let i = 0; i < WB.TEAM_SIZE; i++) {
-      const spawnZ = this._state.battleType === BattleType.SIEGE ? -20 : -10;
+    const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
+    for (let i = 0; i < enemyCount; i++) {
+      const spawnZ = this._state.battleType === BattleType.SIEGE ? -20 : -5;
       const enemy = createDefaultFighter(
         `enemy_r${this._state.round}_${i}`,
         AI_NAMES_ENEMY[i % AI_NAMES_ENEMY.length],
         "enemy",
         false,
-        vec3(-6 + i * 3, 0, spawnZ),
+        vec3(isDuel ? 0 : -6 + i * 3, 0, spawnZ),
       );
       this._equipRandomLoadout(enemy, enemyTier);
       // Scale AI difficulty with rounds
@@ -672,8 +692,8 @@ export class WarbandGame {
     }
 
     // Reset counts
-    this._state.playerTeamAlive = WB.TEAM_SIZE;
-    this._state.enemyTeamAlive = WB.TEAM_SIZE;
+    this._state.playerTeamAlive = isDuel ? 1 : WB.TEAM_SIZE;
+    this._state.enemyTeamAlive = isDuel ? 1 : WB.TEAM_SIZE;
     this._state.projectiles = [];
     this._state.pickups = [];
     this._state.battleTimer = 60 * WB.TICKS_PER_SEC;
