@@ -143,6 +143,11 @@ export class WarbandGame {
         <span style="display:block;font-size:12px;color:#999;margin-top:4px">1v1 single combat</span>
       </button>
 
+      <button id="wb-camera" style="${this._menuBtnStyle("#2a4a2a", "#88aa66")}">
+        📷 Camera View
+        <span style="display:block;font-size:12px;color:#999;margin-top:4px">Inspect character model (C to toggle orbit, IJKL to orbit)</span>
+      </button>
+
       <button id="wb-back" style="${this._menuBtnStyle("#555", "#888")}">
         ← Back to Hub
       </button>
@@ -164,6 +169,11 @@ export class WarbandGame {
     document.getElementById("wb-duel")?.addEventListener("click", () => {
       this._removeMenu();
       this._startGame(BattleType.DUEL);
+    });
+
+    document.getElementById("wb-camera")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._startGame(BattleType.CAMERA_VIEW);
     });
 
     document.getElementById("wb-back")?.addEventListener("click", () => {
@@ -213,6 +223,20 @@ export class WarbandGame {
     this._state.fighters.push(player);
 
     const isDuel = battleType === BattleType.DUEL;
+    const isCameraView = battleType === BattleType.CAMERA_VIEW;
+
+    if (isCameraView) {
+      // Camera view: give player default equipment, no enemies, go straight to battle
+      player.equipment.mainHand = WEAPON_DEFS["arming_sword"];
+      const shields = Object.values(WEAPON_DEFS).filter((w) => w.category === "shield");
+      player.equipment.offHand = shields[1] ?? shields[0]; // round shield
+      this._state.playerTeamAlive = 1;
+      this._state.enemyTeamAlive = 0;
+      this._state.battleTimer = 999999;
+      this._cameraController.setFreeOrbit(true);
+      this._startBattle();
+      return;
+    }
 
     // Create player allies (skip in duel mode)
     if (!isDuel) {
@@ -365,48 +389,54 @@ export class WarbandGame {
 
     this._state.tick++;
 
+    const isCameraView = this._state.battleType === BattleType.CAMERA_VIEW;
+
     // Input → player
     this._inputSystem.update(this._state);
 
-    // AI
-    this._aiSystem.update(this._state);
+    if (!isCameraView) {
+      // AI
+      this._aiSystem.update(this._state);
 
-    // Combat (attacks, blocks, damage)
-    this._combatSystem.update(this._state);
+      // Combat (attacks, blocks, damage)
+      this._combatSystem.update(this._state);
 
-    // Process combat events
-    for (const hit of this._combatSystem.hits) {
-      if (hit.blocked) {
-        this._fx.spawnHitSparks(hit.position.x, hit.position.y, hit.position.z, true);
-      } else {
-        this._fx.spawnBlood(hit.position.x, hit.position.y, hit.position.z, hit.damage);
-        this._fx.spawnHitSparks(hit.position.x, hit.position.y, hit.position.z, false);
+      // Process combat events
+      for (const hit of this._combatSystem.hits) {
+        if (hit.blocked) {
+          this._fx.spawnHitSparks(hit.position.x, hit.position.y, hit.position.z, true);
+        } else {
+          this._fx.spawnBlood(hit.position.x, hit.position.y, hit.position.z, hit.damage);
+          this._fx.spawnHitSparks(hit.position.x, hit.position.y, hit.position.z, false);
+        }
       }
-    }
 
-    for (const kill of this._combatSystem.kills) {
-      const killer = this._state.fighters.find((f) => f.id === kill.killerId);
-      const victim = this._state.fighters.find((f) => f.id === kill.victimId);
-      if (killer && victim) {
-        this._hud.addKill(killer.name, victim.name);
+      for (const kill of this._combatSystem.kills) {
+        const killer = this._state.fighters.find((f) => f.id === kill.killerId);
+        const victim = this._state.fighters.find((f) => f.id === kill.victimId);
+        if (killer && victim) {
+          this._hud.addKill(killer.name, victim.name);
+        }
       }
     }
 
     // Physics (movement, gravity, collisions)
     this._physicsSystem.update(this._state);
 
-    // Check win/loss
-    if (this._state.playerTeamAlive <= 0) {
-      this._endBattle(false);
-    } else if (this._state.enemyTeamAlive <= 0) {
-      this._endBattle(true);
-    }
+    if (!isCameraView) {
+      // Check win/loss
+      if (this._state.playerTeamAlive <= 0) {
+        this._endBattle(false);
+      } else if (this._state.enemyTeamAlive <= 0) {
+        this._endBattle(true);
+      }
 
-    // Battle timer
-    this._state.battleTimer--;
-    if (this._state.battleTimer <= 0) {
-      // Time's up - team with more alive wins
-      this._endBattle(this._state.playerTeamAlive > this._state.enemyTeamAlive);
+      // Battle timer
+      this._state.battleTimer--;
+      if (this._state.battleTimer <= 0) {
+        // Time's up - team with more alive wins
+        this._endBattle(this._state.playerTeamAlive > this._state.enemyTeamAlive);
+      }
     }
   }
 
@@ -741,6 +771,7 @@ export class WarbandGame {
     cancelAnimationFrame(this._rafId);
     this._cleanupBattleVisuals();
     this._inputSystem.destroy();
+    this._cameraController.setFreeOrbit(false);
     this._state = null;
   }
 

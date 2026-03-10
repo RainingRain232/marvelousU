@@ -199,11 +199,30 @@ export class WarbandCombatSystem {
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       if (Math.abs(angleDiff) > Math.PI * 0.6) continue;
 
-      // Check block
+      // Check block — directional match OR shield covers the angle
       const isBlocking =
         target.combatState === FighterCombatState.BLOCKING;
-      const blocked =
-        isBlocking && isBlockMatched(attacker.attackDirection, target.blockDirection);
+      let blocked = false;
+      if (isBlocking) {
+        // Directional weapon block (no shield needed)
+        if (isBlockMatched(attacker.attackDirection, target.blockDirection)) {
+          blocked = true;
+        }
+        // Shield block: covers a frontal arc regardless of direction
+        const shield = target.equipment.offHand;
+        if (shield && shield.blockArc) {
+          const angleToAttacker = Math.atan2(
+            attacker.position.x - target.position.x,
+            attacker.position.z - target.position.z,
+          );
+          let shieldAngleDiff = angleToAttacker - target.rotation;
+          while (shieldAngleDiff > Math.PI) shieldAngleDiff -= Math.PI * 2;
+          while (shieldAngleDiff < -Math.PI) shieldAngleDiff += Math.PI * 2;
+          if (Math.abs(shieldAngleDiff) < shield.blockArc / 2) {
+            blocked = true;
+          }
+        }
+      }
 
       if (blocked) {
         // Blocked: stagger attacker, drain target stamina

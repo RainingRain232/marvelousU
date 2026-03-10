@@ -25,6 +25,7 @@ export interface InputState {
   block: boolean; // RMB
   pickup: boolean; // E key
   toggleCamera: boolean; // V key
+  toggleOrbit: boolean; // C key – free orbit camera
   mouseX: number;
   mouseY: number;
   mouseDX: number;
@@ -48,6 +49,7 @@ export class WarbandInputSystem {
     block: false,
     pickup: false,
     toggleCamera: false,
+    toggleOrbit: false,
     mouseX: 0,
     mouseY: 0,
     mouseDX: 0,
@@ -61,6 +63,7 @@ export class WarbandInputSystem {
   private _pointerLocked = false;
   private _canvas: HTMLCanvasElement | null = null;
   private _cameraModeToggled = false;
+  private _orbitToggled = false;
 
   // Track which arrow key initiated the current windup
   private _windupKey: "left" | "right" | "up" | "down" | null = null;
@@ -127,6 +130,16 @@ export class WarbandInputSystem {
     }
     if (!this._input.toggleCamera) {
       this._cameraModeToggled = false;
+    }
+
+    // Free orbit toggle (C key)
+    if (this._input.toggleOrbit && !this._orbitToggled && this._cameraController) {
+      this._orbitToggled = true;
+      const nowOrbit = !this._cameraController.freeOrbit;
+      this._cameraController.setFreeOrbit(nowOrbit);
+    }
+    if (!this._input.toggleOrbit) {
+      this._orbitToggled = false;
     }
 
     // Player facing direction follows camera yaw
@@ -360,6 +373,9 @@ export class WarbandInputSystem {
       case "KeyV":
         this._input.toggleCamera = true;
         break;
+      case "KeyC":
+        this._input.toggleOrbit = true;
+        break;
       case "ArrowLeft":
         this._input.attackLeft = true;
         e.preventDefault();
@@ -405,6 +421,9 @@ export class WarbandInputSystem {
         break;
       case "KeyV":
         this._input.toggleCamera = false;
+        break;
+      case "KeyC":
+        this._input.toggleOrbit = false;
         break;
       case "ArrowLeft":
         this._input.attackLeft = false;

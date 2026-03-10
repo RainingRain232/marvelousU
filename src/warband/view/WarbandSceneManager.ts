@@ -101,10 +101,10 @@ export class WarbandSceneManager {
   }
 
   private _setupLighting(): void {
-    this._ambientLight = new THREE.AmbientLight(0x404060, 0.4);
+    this._ambientLight = new THREE.AmbientLight(0x606878, 0.7);
     this.scene.add(this._ambientLight);
 
-    this._hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x556b2f, 0.5);
+    this._hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x556b2f, 0.8);
     this.scene.add(this._hemiLight);
 
     this._sunLight = new THREE.DirectionalLight(0xfff4e0, 1.5);
@@ -120,6 +120,7 @@ export class WarbandSceneManager {
     this._sunLight.shadow.camera.bottom = -50;
     this._sunLight.shadow.bias = -0.001;
     this.scene.add(this._sunLight);
+    this.scene.add(this._sunLight.target);
   }
 
   private _setupGround(): void {

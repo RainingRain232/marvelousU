@@ -19,6 +19,7 @@ export enum BattleType {
   OPEN_FIELD = "open_field",
   SIEGE = "siege",
   DUEL = "duel",
+  CAMERA_VIEW = "camera_view",
 }
 
 export enum CombatDirection {
