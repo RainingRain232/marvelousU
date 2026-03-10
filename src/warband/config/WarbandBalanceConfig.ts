@@ -11,7 +11,7 @@ export const WB = {
   WALK_SPEED: 3.5,
   RUN_SPEED: 6.0,
   STRAFE_SPEED: 3.0,
-  BACK_SPEED: 2.5,
+  BACK_SPEED: 1.8,
   TURN_SPEED: 0.06, // radians per frame (mouse sensitivity base)
   GRAVITY: -20,
   JUMP_VELOCITY: 8,

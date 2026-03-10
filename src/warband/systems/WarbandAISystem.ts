@@ -113,7 +113,7 @@ export class WarbandAISystem {
 
     const wpn = fighter.equipment.mainHand;
     const isRanged = wpn ? isRangedWeapon(wpn) : false;
-    const idealRange = isRanged ? 15 : ai.preferredRange;
+    const idealRange = isRanged ? 10 : ai.preferredRange;
 
     // Movement
     const sinR = Math.sin(fighter.rotation);
@@ -149,6 +149,20 @@ export class WarbandAISystem {
         this._handleRangedAI(fighter, target, dist);
       } else {
         this._handleMeleeAI(fighter, target, dist);
+      }
+    }
+
+    // AI releases ranged shot after brief aiming period
+    if (
+      fighter.combatState === FighterCombatState.AIMING &&
+      isRanged &&
+      dist <= 30
+    ) {
+      // Aim for a short time then release
+      fighter.stateTimer--;
+      if (fighter.stateTimer <= 990) {
+        fighter.combatState = FighterCombatState.RELEASING;
+        fighter.stateTimer = WB.RELEASE_TICKS_BASE;
       }
     }
 
@@ -230,8 +244,8 @@ export class WarbandAISystem {
 
     if (dist > 30) return; // Too far
 
-    // Start drawing
-    if (Math.random() < ai.aggressiveness * 0.05) {
+    // Start drawing — fire frequently when in range
+    if (Math.random() < ai.aggressiveness * 0.15) {
       fighter.combatState = FighterCombatState.DRAWING;
       fighter.stateTimer = fighter.equipment.mainHand?.drawTime ?? 30;
     }
