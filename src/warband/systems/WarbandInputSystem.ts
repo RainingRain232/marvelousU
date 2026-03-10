@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Warband mode – input system
-// WASD movement, mouse look, LMB attack, RMB block, directional combat
+// WASD movement, mouse look, arrow keys for directional attacks, RMB block
 // ---------------------------------------------------------------------------
 
 import {
@@ -22,14 +22,19 @@ export interface InputState {
   right: boolean;
   sprint: boolean;
   jump: boolean;
-  attack: boolean; // LMB
   block: boolean; // RMB
   pickup: boolean; // E key
   toggleCamera: boolean; // V key
-  mouseX: number; // screen-space mouse X
-  mouseY: number; // screen-space mouse Y
-  mouseDX: number; // mouse delta X
-  mouseDY: number; // mouse delta Y
+  mouseX: number;
+  mouseY: number;
+  mouseDX: number;
+  mouseDY: number;
+
+  // Arrow key attacks (hold = windup, release = swing)
+  attackLeft: boolean;
+  attackRight: boolean;
+  attackUp: boolean;
+  attackDown: boolean;
 }
 
 export class WarbandInputSystem {
@@ -40,7 +45,6 @@ export class WarbandInputSystem {
     right: false,
     sprint: false,
     jump: false,
-    attack: false,
     block: false,
     pickup: false,
     toggleCamera: false,
@@ -48,11 +52,18 @@ export class WarbandInputSystem {
     mouseY: 0,
     mouseDX: 0,
     mouseDY: 0,
+    attackLeft: false,
+    attackRight: false,
+    attackUp: false,
+    attackDown: false,
   };
 
   private _pointerLocked = false;
   private _canvas: HTMLCanvasElement | null = null;
   private _cameraModeToggled = false;
+
+  // Track which arrow key initiated the current windup
+  private _windupKey: "left" | "right" | "up" | "down" | null = null;
 
   // Bound handlers for cleanup
   private _onKeyDown: (e: KeyboardEvent) => void;
@@ -126,47 +137,17 @@ export class WarbandInputSystem {
     // Movement
     this._applyMovement(player, state);
 
-    // Combat direction from mouse position relative to screen center
-    this._updateCombatDirection(player, state);
+    // Arrow key attack: hold to windup, release to swing
+    this._handleArrowAttacks(player);
 
-    // Attack
-    if (this._input.attack && player.combatState === FighterCombatState.IDLE) {
-      const wpn = player.equipment.mainHand;
-      if (wpn && isRangedWeapon(wpn)) {
-        // Start drawing bow
-        player.combatState = FighterCombatState.DRAWING;
-        player.stateTimer = wpn.drawTime ?? 30;
-      } else {
-        // Start melee attack windup
-        player.combatState = FighterCombatState.WINDING;
-        const speedMult = wpn?.speed ?? 1;
-        player.stateTimer = Math.round(WB.WINDUP_TICKS_BASE / speedMult);
-        if (player.stamina >= WB.STAMINA_ATTACK_COST) {
-          player.stamina -= WB.STAMINA_ATTACK_COST;
-        }
-      }
-    }
-
-    // Release ranged weapon
-    if (!this._input.attack && player.combatState === FighterCombatState.DRAWING) {
-      if (player.stateTimer <= 0) {
-        player.combatState = FighterCombatState.RELEASING;
-        player.stateTimer = 3; // quick release
-      } else {
-        // Cancelled draw
-        player.combatState = FighterCombatState.IDLE;
-        player.stateTimer = 0;
-      }
-    }
-
-    // Block
+    // Block (RMB)
     if (this._input.block) {
       if (
         player.combatState === FighterCombatState.IDLE ||
         player.combatState === FighterCombatState.RECOVERY
       ) {
         player.combatState = FighterCombatState.BLOCKING;
-        player.stateTimer = 999; // hold as long as button is held
+        player.stateTimer = 999;
       }
     } else if (player.combatState === FighterCombatState.BLOCKING) {
       player.combatState = FighterCombatState.IDLE;
@@ -181,6 +162,83 @@ export class WarbandInputSystem {
     // Reset mouse deltas
     this._input.mouseDX = 0;
     this._input.mouseDY = 0;
+  }
+
+  private _handleArrowAttacks(player: WarbandFighter): void {
+    const wpn = player.equipment.mainHand;
+
+    // Determine which arrow key is pressed (priority: most recent)
+    let activeKey: "left" | "right" | "up" | "down" | null = null;
+    if (this._input.attackLeft) activeKey = "left";
+    if (this._input.attackRight) activeKey = "right";
+    if (this._input.attackUp) activeKey = "up";
+    if (this._input.attackDown) activeKey = "down";
+
+    const dirMap: Record<string, CombatDirection> = {
+      left: CombatDirection.LEFT_SWING,
+      right: CombatDirection.RIGHT_SWING,
+      up: CombatDirection.OVERHEAD,
+      down: CombatDirection.STAB,
+    };
+
+    // Start windup when arrow key pressed and idle
+    if (activeKey && player.combatState === FighterCombatState.IDLE) {
+      if (wpn && isRangedWeapon(wpn)) {
+        // Ranged: start drawing
+        player.combatState = FighterCombatState.DRAWING;
+        player.stateTimer = wpn.drawTime ?? 30;
+        player.attackDirection = dirMap[activeKey];
+      } else {
+        // Melee: enter windup (held)
+        player.combatState = FighterCombatState.WINDING;
+        player.attackDirection = dirMap[activeKey];
+        player.stateTimer = 999; // hold indefinitely until released
+        if (player.stamina >= WB.STAMINA_ATTACK_COST) {
+          player.stamina -= WB.STAMINA_ATTACK_COST;
+        }
+      }
+      this._windupKey = activeKey;
+    }
+
+    // While winding, update direction if a different arrow is pressed
+    if (
+      player.combatState === FighterCombatState.WINDING &&
+      activeKey &&
+      activeKey !== this._windupKey
+    ) {
+      player.attackDirection = dirMap[activeKey];
+      this._windupKey = activeKey;
+    }
+
+    // Release: when the windup key is released, trigger the swing
+    if (player.combatState === FighterCombatState.WINDING && this._windupKey) {
+      const keyStillHeld =
+        (this._windupKey === "left" && this._input.attackLeft) ||
+        (this._windupKey === "right" && this._input.attackRight) ||
+        (this._windupKey === "up" && this._input.attackUp) ||
+        (this._windupKey === "down" && this._input.attackDown);
+
+      if (!keyStillHeld) {
+        // Release the swing
+        player.combatState = FighterCombatState.RELEASING;
+        const speedMult = wpn?.speed ?? 1;
+        player.stateTimer = Math.round(WB.RELEASE_TICKS_BASE / speedMult);
+        this._windupKey = null;
+      }
+    }
+
+    // Ranged: release on key up
+    if (player.combatState === FighterCombatState.DRAWING && !activeKey) {
+      if (player.stateTimer <= 0) {
+        player.combatState = FighterCombatState.RELEASING;
+        player.stateTimer = 3;
+      } else {
+        // Cancelled draw
+        player.combatState = FighterCombatState.IDLE;
+        player.stateTimer = 0;
+      }
+      this._windupKey = null;
+    }
   }
 
   private _applyMovement(player: WarbandFighter, _state: WarbandState): void {
@@ -251,34 +309,6 @@ export class WarbandInputSystem {
     }
   }
 
-  private _updateCombatDirection(
-    player: WarbandFighter,
-    state: WarbandState,
-  ): void {
-    const cx = state.screenW / 2;
-    const cy = state.screenH / 2;
-    const dx = this._input.mouseX - cx;
-    const dy = this._input.mouseY - cy;
-
-    let dir: CombatDirection;
-    if (dy < 0) {
-      // Mouse above center
-      dir = dx < 0 ? CombatDirection.TOP_LEFT : CombatDirection.TOP_RIGHT;
-    } else {
-      // Mouse below center
-      dir = dx < 0 ? CombatDirection.BOTTOM_LEFT : CombatDirection.BOTTOM_RIGHT;
-    }
-
-    // Only update direction when idle or blocking (not mid-swing)
-    if (
-      player.combatState === FighterCombatState.IDLE ||
-      player.combatState === FighterCombatState.BLOCKING
-    ) {
-      player.attackDirection = dir;
-      player.blockDirection = dir;
-    }
-  }
-
   private _tryPickup(player: WarbandFighter, state: WarbandState): void {
     const pickupRange = 2.0;
     for (let i = state.pickups.length - 1; i >= 0; i--) {
@@ -330,6 +360,22 @@ export class WarbandInputSystem {
       case "KeyV":
         this._input.toggleCamera = true;
         break;
+      case "ArrowLeft":
+        this._input.attackLeft = true;
+        e.preventDefault();
+        break;
+      case "ArrowRight":
+        this._input.attackRight = true;
+        e.preventDefault();
+        break;
+      case "ArrowUp":
+        this._input.attackUp = true;
+        e.preventDefault();
+        break;
+      case "ArrowDown":
+        this._input.attackDown = true;
+        e.preventDefault();
+        break;
     }
   }
 
@@ -360,16 +406,26 @@ export class WarbandInputSystem {
       case "KeyV":
         this._input.toggleCamera = false;
         break;
+      case "ArrowLeft":
+        this._input.attackLeft = false;
+        break;
+      case "ArrowRight":
+        this._input.attackRight = false;
+        break;
+      case "ArrowUp":
+        this._input.attackUp = false;
+        break;
+      case "ArrowDown":
+        this._input.attackDown = false;
+        break;
     }
   }
 
   private _handleMouseDown(e: MouseEvent): void {
-    if (e.button === 0) this._input.attack = true;
     if (e.button === 2) this._input.block = true;
   }
 
   private _handleMouseUp(e: MouseEvent): void {
-    if (e.button === 0) this._input.attack = false;
     if (e.button === 2) this._input.block = false;
   }
 

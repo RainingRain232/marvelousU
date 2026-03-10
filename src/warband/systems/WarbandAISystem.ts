@@ -14,10 +14,10 @@ import { WB } from "../config/WarbandBalanceConfig";
 import { isRangedWeapon } from "../config/WeaponDefs";
 
 const COMBAT_DIRS = [
-  CombatDirection.TOP_LEFT,
-  CombatDirection.TOP_RIGHT,
-  CombatDirection.BOTTOM_LEFT,
-  CombatDirection.BOTTOM_RIGHT,
+  CombatDirection.LEFT_SWING,
+  CombatDirection.RIGHT_SWING,
+  CombatDirection.OVERHEAD,
+  CombatDirection.STAB,
 ];
 
 function randomDir(): CombatDirection {
@@ -26,14 +26,14 @@ function randomDir(): CombatDirection {
 
 function mirrorDir(dir: CombatDirection): CombatDirection {
   switch (dir) {
-    case CombatDirection.TOP_LEFT:
-      return CombatDirection.TOP_RIGHT;
-    case CombatDirection.TOP_RIGHT:
-      return CombatDirection.TOP_LEFT;
-    case CombatDirection.BOTTOM_LEFT:
-      return CombatDirection.BOTTOM_RIGHT;
-    case CombatDirection.BOTTOM_RIGHT:
-      return CombatDirection.BOTTOM_LEFT;
+    case CombatDirection.LEFT_SWING:
+      return CombatDirection.RIGHT_SWING;
+    case CombatDirection.RIGHT_SWING:
+      return CombatDirection.LEFT_SWING;
+    case CombatDirection.OVERHEAD:
+      return CombatDirection.OVERHEAD;
+    case CombatDirection.STAB:
+      return CombatDirection.STAB;
   }
 }
 

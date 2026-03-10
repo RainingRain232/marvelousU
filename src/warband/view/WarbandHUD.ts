@@ -216,10 +216,10 @@ export class WarbandHUD {
     const dir = isBlocking ? player.blockDirection : player.attackDirection;
 
     const quadrants = [
-      { label: "↖", active: dir === CombatDirection.TOP_LEFT },
-      { label: "↗", active: dir === CombatDirection.TOP_RIGHT },
-      { label: "↙", active: dir === CombatDirection.BOTTOM_LEFT },
-      { label: "↘", active: dir === CombatDirection.BOTTOM_RIGHT },
+      { label: "←", active: dir === CombatDirection.LEFT_SWING },
+      { label: "→", active: dir === CombatDirection.RIGHT_SWING },
+      { label: "↓", active: dir === CombatDirection.OVERHEAD },
+      { label: "⊕", active: dir === CombatDirection.STAB },
     ];
 
     const color = isBlocking ? "#4488ff" : isAttacking ? "#ff6644" : "#ffffff";

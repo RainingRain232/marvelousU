@@ -20,14 +20,16 @@ import { isRangedWeapon } from "../config/WeaponDefs";
 
 function attackHitZone(dir: CombatDirection): ArmorSlot {
   switch (dir) {
-    case CombatDirection.TOP_LEFT:
-    case CombatDirection.TOP_RIGHT:
-      // Top attacks hit head or torso
-      return Math.random() < 0.3 ? ArmorSlot.HEAD : ArmorSlot.TORSO;
-    case CombatDirection.BOTTOM_LEFT:
-      return Math.random() < 0.5 ? ArmorSlot.LEGS : ArmorSlot.BOOTS;
-    case CombatDirection.BOTTOM_RIGHT:
-      return Math.random() < 0.5 ? ArmorSlot.LEGS : ArmorSlot.GAUNTLETS;
+    case CombatDirection.LEFT_SWING:
+    case CombatDirection.RIGHT_SWING:
+      // Horizontal swings hit torso or arms
+      return Math.random() < 0.7 ? ArmorSlot.TORSO : ArmorSlot.GAUNTLETS;
+    case CombatDirection.OVERHEAD:
+      // Overhead chop hits head or torso
+      return Math.random() < 0.5 ? ArmorSlot.HEAD : ArmorSlot.TORSO;
+    case CombatDirection.STAB:
+      // Stab hits torso mostly, sometimes legs
+      return Math.random() < 0.75 ? ArmorSlot.TORSO : ArmorSlot.LEGS;
   }
 }
 
@@ -51,22 +53,22 @@ function isBlockMatched(
   attackDir: CombatDirection,
   blockDir: CombatDirection,
 ): boolean {
-  // You must block in the same direction the attack is coming from
-  // Mirror: attacker's TOP_LEFT comes at defender's TOP_RIGHT, etc.
+  // Block must match the attack: left swing blocked with right swing (mirror),
+  // overhead blocked with overhead, stab blocked with stab
   const mirrored = mirrorDirection(attackDir);
   return blockDir === mirrored;
 }
 
 function mirrorDirection(dir: CombatDirection): CombatDirection {
   switch (dir) {
-    case CombatDirection.TOP_LEFT:
-      return CombatDirection.TOP_RIGHT;
-    case CombatDirection.TOP_RIGHT:
-      return CombatDirection.TOP_LEFT;
-    case CombatDirection.BOTTOM_LEFT:
-      return CombatDirection.BOTTOM_RIGHT;
-    case CombatDirection.BOTTOM_RIGHT:
-      return CombatDirection.BOTTOM_LEFT;
+    case CombatDirection.LEFT_SWING:
+      return CombatDirection.RIGHT_SWING; // block left swing from right side
+    case CombatDirection.RIGHT_SWING:
+      return CombatDirection.LEFT_SWING; // block right swing from left side
+    case CombatDirection.OVERHEAD:
+      return CombatDirection.OVERHEAD; // block overhead with overhead guard
+    case CombatDirection.STAB:
+      return CombatDirection.STAB; // block stab with center guard
   }
 }
 

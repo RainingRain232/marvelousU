@@ -22,10 +22,10 @@ export enum BattleType {
 }
 
 export enum CombatDirection {
-  TOP_LEFT = 0,
-  TOP_RIGHT = 1,
-  BOTTOM_LEFT = 2,
-  BOTTOM_RIGHT = 3,
+  LEFT_SWING = 0,   // swing from left to right
+  RIGHT_SWING = 1,  // swing from right to left
+  OVERHEAD = 2,     // overhead downward swing
+  STAB = 3,         // forward thrust
 }
 
 export enum FighterCombatState {
@@ -255,7 +255,7 @@ export function createDefaultFighter(
     team,
     isPlayer,
     position,
-    rotation: team === "player" ? 0 : Math.PI,
+    rotation: team === "player" ? Math.PI : 0,
     velocity: vec3(),
     onGround: true,
 
@@ -265,8 +265,8 @@ export function createDefaultFighter(
     maxStamina: WB.STAMINA_MAX,
 
     combatState: FighterCombatState.IDLE,
-    attackDirection: CombatDirection.TOP_RIGHT,
-    blockDirection: CombatDirection.TOP_RIGHT,
+    attackDirection: CombatDirection.RIGHT_SWING,
+    blockDirection: CombatDirection.RIGHT_SWING,
     stateTimer: 0,
     lastHitBy: null,
 

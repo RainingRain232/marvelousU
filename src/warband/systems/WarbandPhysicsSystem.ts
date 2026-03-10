@@ -48,7 +48,7 @@ export class WarbandPhysicsSystem {
         if (other.combatState === FighterCombatState.DEAD) continue;
 
         const dist = vec3DistXZ(fighter.position, other.position);
-        const minDist = WB.FIGHTER_RADIUS * 2;
+        const minDist = WB.FIGHTER_RADIUS * 2 + 0.3; // extra gap to prevent weapon clipping
 
         if (dist < minDist && dist > 0.001) {
           const overlap = minDist - dist;

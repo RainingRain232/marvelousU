@@ -98,6 +98,10 @@ export class FighterMesh {
   // Armor overlays
   private _armorMeshes: THREE.Mesh[] = [];
 
+  // Animation blend: smoothly ramps from 0→1 when entering a new combat pose
+  private _poseBlend = 0;
+  private _lastCombatState: FighterCombatState = FighterCombatState.IDLE;
+
   private _colors: FighterColors;
 
   constructor(fighter: WarbandFighter, index: number) {
@@ -117,7 +121,7 @@ export class FighterMesh {
     // Build skeleton hierarchy
     this._hips = this._makeBoneGroup();
     this._root.add(this._hips);
-    this._hips.position.y = THIGH_LEN + SHIN_LEN + FOOT_HEIGHT; // hip height
+    this._hips.position.y = THIGH_LEN + SHIN_LEN + FOOT_HEIGHT + 0.015; // hip height (includes sole)
 
     // Pelvis (rounded box connecting to legs)
     const pelvisGeo = new THREE.CylinderGeometry(
@@ -278,7 +282,7 @@ export class FighterMesh {
 
     this._leftFoot = this._makeBoneGroup();
     this._leftFoot.position.y = -SHIN_LEN;
-    this._leftThigh.add(this._leftFoot);
+    this._leftShin.add(this._leftFoot);
     this._addFoot(this._leftFoot, this._colors.boots);
 
     // Right leg
@@ -296,7 +300,7 @@ export class FighterMesh {
 
     this._rightFoot = this._makeBoneGroup();
     this._rightFoot.position.y = -SHIN_LEN;
-    this._rightThigh.add(this._rightFoot);
+    this._rightShin.add(this._rightFoot);
     this._addFoot(this._rightFoot, this._colors.boots);
 
     // ---- HP bar ----
@@ -488,6 +492,10 @@ export class FighterMesh {
         weaponGroup.add(guard);
       }
 
+      // Flip weapon so blade extends forward (away from elbow) when arm is raised
+      weaponGroup.rotation.x = Math.PI;
+      weaponGroup.position.y = 0.05; // offset grip into hand
+
       // Use the group as a single mesh wrapper
       const dummyGeo = new THREE.BufferGeometry();
       const dummyMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -517,7 +525,7 @@ export class FighterMesh {
 
     // Shield on left hand
     if (this._shieldMesh) {
-      this._leftHand.remove(this._shieldMesh);
+      this._shieldMesh.parent?.remove(this._shieldMesh);
       this._shieldMesh.geometry.dispose();
       (this._shieldMesh.material as THREE.Material).dispose();
       this._shieldMesh = null;
@@ -533,9 +541,9 @@ export class FighterMesh {
         side: THREE.DoubleSide,
       });
       this._shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
-      this._shieldMesh.position.set(0, 0, 0.1);
+      this._shieldMesh.position.set(-0.08, 0, 0.18);
       this._shieldMesh.castShadow = true;
-      this._leftHand.add(this._shieldMesh);
+      this._leftForearm.add(this._shieldMesh);
 
       // Shield boss
       if (shield.accentColor) {
@@ -546,7 +554,7 @@ export class FighterMesh {
           metalness: 0.7,
         });
         const boss = new THREE.Mesh(bossGeo, bossMat);
-        boss.position.z = 0.1;
+        boss.position.z = 0.02;
         this._shieldMesh.add(boss);
       }
     }
@@ -564,20 +572,39 @@ export class FighterMesh {
 
     const armor = fighter.equipment.armor;
 
-    // Head armor (helm wraps over the oval head)
+    // Head armor (helm covers top and back, leaves face open)
     if (armor.head) {
-      const helmGeo = new THREE.SphereGeometry(HEAD_RADIUS * 1.18, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.7);
       const helmMat = new THREE.MeshStandardMaterial({
         color: armor.head.color,
         roughness: 0.4,
         metalness: 0.6,
       });
+
+      // Main helm dome (top of head) — open at the front
+      const helmGeo = new THREE.SphereGeometry(HEAD_RADIUS * 1.18, 10, 8, Math.PI * 0.15, Math.PI * 1.7, 0, Math.PI * 0.6);
       const helm = new THREE.Mesh(helmGeo, helmMat);
       helm.position.y = HEAD_RADIUS;
-      helm.scale.set(1, 1.12, 0.95); // match head oval
+      helm.scale.set(1, 1.12, 0.95);
       helm.castShadow = true;
       this._headBone.add(helm);
       this._armorMeshes.push(helm);
+
+      // Neck guard (extends down the back of the head/neck)
+      const neckGuardGeo = new THREE.CylinderGeometry(HEAD_RADIUS * 1.1, HEAD_RADIUS * 1.2, HEAD_RADIUS * 0.7, 8, 1, true, Math.PI * 0.2, Math.PI * 0.6);
+      const neckGuard = new THREE.Mesh(neckGuardGeo, helmMat);
+      neckGuard.position.set(0, HEAD_RADIUS * 0.5, -HEAD_RADIUS * 0.15);
+      neckGuard.castShadow = true;
+      this._headBone.add(neckGuard);
+      this._armorMeshes.push(neckGuard);
+
+      // Cheek guards (side plates that frame the face)
+      for (const side of [-1, 1]) {
+        const cheekGeo = new THREE.BoxGeometry(0.02, HEAD_RADIUS * 0.6, HEAD_RADIUS * 0.5);
+        const cheek = new THREE.Mesh(cheekGeo, helmMat);
+        cheek.position.set(side * HEAD_RADIUS * 1.05, HEAD_RADIUS * 0.7, HEAD_RADIUS * 0.15);
+        this._headBone.add(cheek);
+        this._armorMeshes.push(cheek);
+      }
 
       // Nose guard for heavier helms
       if (armor.head.defense >= 14) {
@@ -696,6 +723,16 @@ export class FighterMesh {
       fighter.position.z,
     );
     this.group.rotation.y = fighter.rotation;
+
+    // Track combat state changes to reset blend
+    if (fighter.combatState !== this._lastCombatState) {
+      this._poseBlend = 0;
+      this._lastCombatState = fighter.combatState;
+    }
+    // Ramp blend toward 1 over ~8 frames (0.125 per tick)
+    if (this._poseBlend < 1) {
+      this._poseBlend = Math.min(1, this._poseBlend + 0.125);
+    }
 
     // Animate based on state
     switch (fighter.combatState) {
@@ -816,35 +853,41 @@ export class FighterMesh {
 
   private _animateWindup(fighter: WarbandFighter): void {
     const dir = fighter.attackDirection;
-    const progress = 1 - fighter.stateTimer / WB.WINDUP_TICKS_BASE;
+    // For AI, stateTimer counts down from WINDUP_TICKS_BASE; for player hold, stateTimer=999
+    const rawProgress = fighter.stateTimer > 100 ? 1 : 1 - fighter.stateTimer / WB.WINDUP_TICKS_BASE;
+    // Smooth blend-in so arms don't snap instantly to windup pose
+    const progress = rawProgress * this._poseBlend;
 
-    // Torso twist for windup
+    // Idle pose values (what the arm looks like at rest with weapon)
+    const idleArmX = this._weaponMesh ? -0.4 : 0.1;
+    const idleArmZ = this._weaponMesh ? -0.3 : -0.15;
+    const idleForearmX = this._weaponMesh ? -0.8 : -0.3;
+
+    // Arm pulled back ready to swing — lerp from idle to target
     switch (dir) {
-      case CombatDirection.TOP_LEFT:
-        this._spine.rotation.y = -0.4 * progress;
-        this._rightUpperArm.rotation.x = -1.5 * progress;
-        this._rightUpperArm.rotation.z = -0.8 * progress;
-        this._rightForearm.rotation.x = -1.0 * progress;
+      case CombatDirection.LEFT_SWING:
+        this._spine.rotation.y = 0.5 * progress;
+        this._rightUpperArm.rotation.x = idleArmX + (-1.2 - idleArmX) * progress;
+        this._rightUpperArm.rotation.z = idleArmZ + (0.6 - idleArmZ) * progress;
+        this._rightForearm.rotation.x = idleForearmX + (-1.2 - idleForearmX) * progress;
         break;
-      case CombatDirection.TOP_RIGHT:
-        this._spine.rotation.y = 0.4 * progress;
-        this._rightUpperArm.rotation.x = -1.5 * progress;
-        this._rightUpperArm.rotation.z = 0.4 * progress;
-        this._rightForearm.rotation.x = -1.0 * progress;
+      case CombatDirection.RIGHT_SWING:
+        this._spine.rotation.y = -0.5 * progress;
+        this._rightUpperArm.rotation.x = idleArmX + (-1.2 - idleArmX) * progress;
+        this._rightUpperArm.rotation.z = idleArmZ + (-0.8 - idleArmZ) * progress;
+        this._rightForearm.rotation.x = idleForearmX + (-1.2 - idleForearmX) * progress;
         break;
-      case CombatDirection.BOTTOM_LEFT:
-        this._spine.rotation.y = -0.3 * progress;
-        this._spine.rotation.x = 0.2 * progress;
-        this._rightUpperArm.rotation.x = 0.5 * progress;
-        this._rightUpperArm.rotation.z = -0.6 * progress;
-        this._rightForearm.rotation.x = -0.5 * progress;
+      case CombatDirection.OVERHEAD:
+        this._spine.rotation.x = -0.1 * progress;
+        this._rightUpperArm.rotation.x = idleArmX + (-2.8 - idleArmX) * progress;
+        this._rightUpperArm.rotation.z = idleArmZ + (-0.2 - idleArmZ) * progress;
+        this._rightForearm.rotation.x = idleForearmX + (-0.6 - idleForearmX) * progress;
         break;
-      case CombatDirection.BOTTOM_RIGHT:
-        this._spine.rotation.y = 0.3 * progress;
-        this._spine.rotation.x = 0.2 * progress;
-        this._rightUpperArm.rotation.x = 0.5 * progress;
-        this._rightUpperArm.rotation.z = 0.6 * progress;
-        this._rightForearm.rotation.x = -0.5 * progress;
+      case CombatDirection.STAB:
+        this._spine.rotation.y = 0.2 * progress;
+        this._rightUpperArm.rotation.x = idleArmX + (-0.6 - idleArmX) * progress;
+        this._rightUpperArm.rotation.z = idleArmZ + (-0.3 - idleArmZ) * progress;
+        this._rightForearm.rotation.x = idleForearmX + (-2.0 - idleForearmX) * progress;
         break;
     }
   }
@@ -853,31 +896,34 @@ export class FighterMesh {
     const dir = fighter.attackDirection;
     const progress = 1 - fighter.stateTimer / WB.RELEASE_TICKS_BASE;
 
-    // Fast swing in attack direction
     switch (dir) {
-      case CombatDirection.TOP_LEFT:
-        this._spine.rotation.y = -0.4 + 1.0 * progress;
-        this._rightUpperArm.rotation.x = -1.5 + 2.5 * progress;
-        this._rightUpperArm.rotation.z = -0.8 + 1.2 * progress;
-        this._rightForearm.rotation.x = -1.0 + 1.5 * progress;
+      case CombatDirection.LEFT_SWING:
+        // Swing from right to left (left swing from attacker's perspective)
+        this._spine.rotation.y = 0.5 - 1.2 * progress;
+        this._rightUpperArm.rotation.x = -1.2 + 1.8 * progress;
+        this._rightUpperArm.rotation.z = 0.6 - 1.6 * progress;
+        this._rightForearm.rotation.x = -1.2 + 1.0 * progress;
         break;
-      case CombatDirection.TOP_RIGHT:
-        this._spine.rotation.y = 0.4 - 1.0 * progress;
-        this._rightUpperArm.rotation.x = -1.5 + 2.5 * progress;
-        this._rightUpperArm.rotation.z = 0.4 - 1.2 * progress;
-        this._rightForearm.rotation.x = -1.0 + 1.5 * progress;
+      case CombatDirection.RIGHT_SWING:
+        // Swing from left to right
+        this._spine.rotation.y = -0.5 + 1.2 * progress;
+        this._rightUpperArm.rotation.x = -1.2 + 1.8 * progress;
+        this._rightUpperArm.rotation.z = -0.8 + 1.6 * progress;
+        this._rightForearm.rotation.x = -1.2 + 1.0 * progress;
         break;
-      case CombatDirection.BOTTOM_LEFT:
-        this._spine.rotation.y = -0.3 + 0.8 * progress;
-        this._rightUpperArm.rotation.x = 0.5 - 1.5 * progress;
-        this._rightUpperArm.rotation.z = -0.6 + 1.0 * progress;
-        this._rightForearm.rotation.x = -0.5 - 0.5 * progress;
+      case CombatDirection.OVERHEAD:
+        // Chop downward
+        this._spine.rotation.x = -0.1 + 0.4 * progress;
+        this._rightUpperArm.rotation.x = -2.8 + 3.4 * progress;
+        this._rightUpperArm.rotation.z = -0.2;
+        this._rightForearm.rotation.x = -0.6 - 0.3 * progress;
         break;
-      case CombatDirection.BOTTOM_RIGHT:
-        this._spine.rotation.y = 0.3 - 0.8 * progress;
-        this._rightUpperArm.rotation.x = 0.5 - 1.5 * progress;
-        this._rightUpperArm.rotation.z = 0.6 - 1.0 * progress;
-        this._rightForearm.rotation.x = -0.5 - 0.5 * progress;
+      case CombatDirection.STAB:
+        // Thrust forward
+        this._spine.rotation.y = 0.2 - 0.2 * progress;
+        this._rightUpperArm.rotation.x = -0.6 - 0.8 * progress;
+        this._rightUpperArm.rotation.z = -0.3 + 0.3 * progress;
+        this._rightForearm.rotation.x = -2.0 + 1.5 * progress;
         break;
     }
   }
@@ -895,36 +941,45 @@ export class FighterMesh {
 
   private _animateBlock(fighter: WarbandFighter): void {
     const dir = fighter.blockDirection;
+    const b = this._poseBlend; // smooth blend-in
+
+    // Idle reference values
+    const lArmXIdle = 0.1, lArmZIdle = 0.15, lForeXIdle = -0.3;
+    const rArmXIdle = this._weaponMesh ? -0.4 : 0.1;
+    const rArmZIdle = this._weaponMesh ? -0.3 : -0.15;
+    const rForeXIdle = this._weaponMesh ? -0.8 : -0.3;
+
+    const lerp = (from: number, to: number) => from + (to - from) * b;
 
     // Raise shield/weapon to block in direction
     switch (dir) {
-      case CombatDirection.TOP_LEFT:
-        this._leftUpperArm.rotation.x = -1.3;
-        this._leftUpperArm.rotation.z = 0.5;
-        this._leftForearm.rotation.x = -0.8;
-        this._rightUpperArm.rotation.x = -1.0;
-        this._rightForearm.rotation.x = -1.2;
+      case CombatDirection.LEFT_SWING:
+        this._leftUpperArm.rotation.x = lerp(lArmXIdle, -1.3);
+        this._leftUpperArm.rotation.z = lerp(lArmZIdle, 0.5);
+        this._leftForearm.rotation.x = lerp(lForeXIdle, -0.8);
+        this._rightUpperArm.rotation.x = lerp(rArmXIdle, -1.0);
+        this._rightForearm.rotation.x = lerp(rForeXIdle, -1.2);
         break;
-      case CombatDirection.TOP_RIGHT:
-        this._leftUpperArm.rotation.x = -1.0;
-        this._leftForearm.rotation.x = -1.2;
-        this._rightUpperArm.rotation.x = -1.3;
-        this._rightUpperArm.rotation.z = -0.5;
-        this._rightForearm.rotation.x = -0.8;
+      case CombatDirection.RIGHT_SWING:
+        this._leftUpperArm.rotation.x = lerp(lArmXIdle, -1.0);
+        this._leftForearm.rotation.x = lerp(lForeXIdle, -1.2);
+        this._rightUpperArm.rotation.x = lerp(rArmXIdle, -1.3);
+        this._rightUpperArm.rotation.z = lerp(rArmZIdle, -0.5);
+        this._rightForearm.rotation.x = lerp(rForeXIdle, -0.8);
         break;
-      case CombatDirection.BOTTOM_LEFT:
-        this._leftUpperArm.rotation.x = 0.3;
-        this._leftUpperArm.rotation.z = 0.4;
-        this._leftForearm.rotation.x = -0.5;
-        this._rightUpperArm.rotation.x = 0.2;
-        this._rightForearm.rotation.x = -0.5;
+      case CombatDirection.OVERHEAD:
+        this._leftUpperArm.rotation.x = lerp(lArmXIdle, -2.0);
+        this._leftUpperArm.rotation.z = lerp(lArmZIdle, 0.3);
+        this._leftForearm.rotation.x = lerp(lForeXIdle, -0.5);
+        this._rightUpperArm.rotation.x = lerp(rArmXIdle, -2.0);
+        this._rightUpperArm.rotation.z = lerp(rArmZIdle, -0.3);
+        this._rightForearm.rotation.x = lerp(rForeXIdle, -0.5);
         break;
-      case CombatDirection.BOTTOM_RIGHT:
-        this._leftUpperArm.rotation.x = 0.2;
-        this._leftForearm.rotation.x = -0.5;
-        this._rightUpperArm.rotation.x = 0.3;
-        this._rightUpperArm.rotation.z = -0.4;
-        this._rightForearm.rotation.x = -0.5;
+      case CombatDirection.STAB:
+        this._leftUpperArm.rotation.x = lerp(lArmXIdle, -1.2);
+        this._leftForearm.rotation.x = lerp(lForeXIdle, -0.8);
+        this._rightUpperArm.rotation.x = lerp(rArmXIdle, -1.2);
+        this._rightForearm.rotation.x = lerp(rForeXIdle, -0.8);
         break;
     }
   }
