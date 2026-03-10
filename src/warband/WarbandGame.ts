@@ -72,6 +72,8 @@ export class WarbandGame {
   // Menu
   private _menuContainer: HTMLDivElement | null = null;
   private _resultsContainer: HTMLDivElement | null = null;
+  private _pauseMenuContainer: HTMLDivElement | null = null;
+  private _inventoryContainer: HTMLDivElement | null = null;
 
   // ESC handler
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -92,17 +94,23 @@ export class WarbandGame {
     // Init shop
     this._shop.init();
 
-    // ESC to exit
+    // ESC handler
     this._escHandler = (e: KeyboardEvent) => {
-      if (e.code === "Escape") {
-        if (this._state?.phase === WarbandPhase.BATTLE) {
-          // Exit pointer lock
-          if (document.pointerLockElement) {
-            document.exitPointerLock();
-          }
-        } else if (this._state?.phase === WarbandPhase.MENU) {
-          this._exit();
-        }
+      if (e.code !== "Escape") return;
+      if (!this._state) return;
+
+      if (this._inventoryContainer) {
+        // Close inventory back to pause menu
+        this._removeInventory();
+        this._showPauseMenu();
+      } else if (this._state.phase === WarbandPhase.BATTLE && this._state.paused) {
+        // Resume
+        this._resumeGame();
+      } else if (this._state.phase === WarbandPhase.BATTLE && !this._state.paused) {
+        // Pause
+        this._pauseGame();
+      } else if (this._state.phase === WarbandPhase.MENU) {
+        this._exit();
       }
     };
     window.addEventListener("keydown", this._escHandler);
@@ -366,7 +374,7 @@ export class WarbandGame {
     const dt = Math.min(rawDt, 100);
     const dtSec = dt / 1000;
 
-    if (!this._state || this._state.phase !== WarbandPhase.BATTLE) {
+    if (!this._state || this._state.phase !== WarbandPhase.BATTLE || this._state.paused) {
       this._sceneManager.render();
       return;
     }
@@ -734,6 +742,254 @@ export class WarbandGame {
     this._shop.show(player, () => {
       this._startBattle();
     });
+  }
+
+  // ---- Pause menu ---------------------------------------------------------
+
+  private _pauseGame(): void {
+    if (!this._state) return;
+    this._state.paused = true;
+    if (document.pointerLockElement) document.exitPointerLock();
+    this._showPauseMenu();
+  }
+
+  private _resumeGame(): void {
+    if (!this._state) return;
+    this._state.paused = false;
+    this._removePauseMenu();
+    this._removeInventory();
+  }
+
+  private _showPauseMenu(): void {
+    this._removePauseMenu();
+    this._pauseMenuContainer = document.createElement("div");
+    this._pauseMenuContainer.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 30; background: rgba(10, 8, 5, 0.85);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Segoe UI', sans-serif; color: #e0d5c0;
+    `;
+    this._pauseMenuContainer.innerHTML = `
+      <h1 style="font-size:36px;color:#daa520;margin-bottom:30px">PAUSED</h1>
+      <button id="wb-resume" style="${this._menuBtnStyle("#2a4a2a", "#88aa66")}">Resume</button>
+      <button id="wb-inventory" style="${this._menuBtnStyle("#2a2a4a", "#6688cc")}">Inventory</button>
+      <button id="wb-quit-menu" style="${this._menuBtnStyle("#555", "#888")}">Quit to Menu</button>
+    `;
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._pauseMenuContainer);
+
+    document.getElementById("wb-resume")?.addEventListener("click", () => this._resumeGame());
+    document.getElementById("wb-inventory")?.addEventListener("click", () => {
+      this._removePauseMenu();
+      this._showInventory();
+    });
+    document.getElementById("wb-quit-menu")?.addEventListener("click", () => {
+      this._removePauseMenu();
+      this._cleanup();
+      this._showMenu();
+    });
+  }
+
+  private _removePauseMenu(): void {
+    if (this._pauseMenuContainer?.parentNode) {
+      this._pauseMenuContainer.parentNode.removeChild(this._pauseMenuContainer);
+      this._pauseMenuContainer = null;
+    }
+  }
+
+  // ---- Inventory UI -------------------------------------------------------
+
+  private _showInventory(): void {
+    if (!this._state) return;
+    const player = this._state.fighters.find(f => f.id === this._state!.playerId);
+    if (!player) return;
+
+    this._removeInventory();
+    this._inventoryContainer = document.createElement("div");
+    this._inventoryContainer.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 30; background: rgba(10, 8, 5, 0.92);
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Segoe UI', sans-serif; color: #e0d5c0;
+      padding-top: 30px; overflow-y: auto;
+    `;
+    this._renderInventory(player);
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._inventoryContainer);
+  }
+
+  private _renderInventory(player: WarbandFighter): void {
+    if (!this._inventoryContainer) return;
+
+    const isArmor = (item: unknown): item is import("./config/ArmorDefs").ArmorDef =>
+      typeof item === "object" && item !== null && "slot" in item && "defense" in item;
+
+    const itemCard = (label: string, item: { name: string; color: number; weight: number } | null, slotId: string) => {
+      const bg = item ? `#${item.color.toString(16).padStart(6, "0")}33` : "rgba(255,255,255,0.05)";
+      const text = item ? item.name : "Empty";
+      const weight = item ? `${item.weight}kg` : "";
+      return `
+        <div style="background:${bg};border:1px solid rgba(255,255,255,0.2);border-radius:4px;
+          padding:8px 12px;margin:3px;min-width:180px;cursor:${item ? "pointer" : "default"}"
+          data-slot="${slotId}">
+          <div style="font-size:11px;color:#aa9977;text-transform:uppercase">${label}</div>
+          <div style="font-size:14px;font-weight:bold;color:${item ? "#e0d5c0" : "#555"}">${text}</div>
+          ${weight ? `<div style="font-size:11px;color:#888">${weight}</div>` : ""}
+        </div>
+      `;
+    };
+
+    const invItemCard = (item: { name: string; color: number; weight: number }, idx: number) => {
+      const bg = `#${item.color.toString(16).padStart(6, "0")}33`;
+      const extra = isArmor(item)
+        ? `Def: ${(item as import("./config/ArmorDefs").ArmorDef).defense}`
+        : `category` in item ? `Dmg: ${(item as import("./config/WeaponDefs").WeaponDef).damage}` : "";
+      return `
+        <div style="background:${bg};border:1px solid rgba(255,255,255,0.2);border-radius:4px;
+          padding:8px 12px;margin:3px;min-width:160px;display:flex;flex-direction:column;gap:2px"
+          data-inv-idx="${idx}">
+          <div style="font-size:14px;font-weight:bold">${item.name}</div>
+          <div style="font-size:11px;color:#888">${extra} | ${item.weight}kg</div>
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <button data-equip="${idx}" style="font-size:11px;padding:2px 8px;background:#2a4a2a;color:#88aa66;border:1px solid #88aa66;border-radius:3px;cursor:pointer">Equip</button>
+            <button data-drop="${idx}" style="font-size:11px;padding:2px 8px;background:#4a2a2a;color:#aa6666;border:1px solid #aa6666;border-radius:3px;cursor:pointer">Drop</button>
+          </div>
+        </div>
+      `;
+    };
+
+    this._inventoryContainer.innerHTML = `
+      <h1 style="font-size:28px;color:#daa520;margin-bottom:20px">Inventory</h1>
+
+      <div style="display:flex;gap:40px;flex-wrap:wrap;justify-content:center;max-width:900px">
+        <div>
+          <h2 style="font-size:16px;color:#aa9977;margin-bottom:8px;text-align:center">Equipped</h2>
+          <div style="display:flex;flex-direction:column;align-items:center">
+            ${itemCard("Main Hand", player.equipment.mainHand, "mainHand")}
+            ${itemCard("Off Hand", player.equipment.offHand, "offHand")}
+            ${itemCard("Head", player.equipment.armor.head ?? null, "head")}
+            ${itemCard("Torso", player.equipment.armor.torso ?? null, "torso")}
+            ${itemCard("Gauntlets", player.equipment.armor.gauntlets ?? null, "gauntlets")}
+            ${itemCard("Legs", player.equipment.armor.legs ?? null, "legs")}
+            ${itemCard("Boots", player.equipment.armor.boots ?? null, "boots")}
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:300px">
+          <h2 style="font-size:16px;color:#aa9977;margin-bottom:8px;text-align:center">
+            Backpack (${player.inventory.length} items)
+          </h2>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;max-height:400px;overflow-y:auto">
+            ${player.inventory.length === 0
+              ? '<div style="color:#555;padding:20px">Empty — loot corpses with [F] during battle</div>'
+              : player.inventory.map((item, i) => invItemCard(item as { name: string; color: number; weight: number }, i)).join("")}
+          </div>
+        </div>
+      </div>
+
+      <button id="wb-inv-close" style="${this._menuBtnStyle("#555", "#888")};margin-top:20px">
+        Back
+      </button>
+    `;
+
+    // Wire events
+    document.getElementById("wb-inv-close")?.addEventListener("click", () => {
+      this._removeInventory();
+      this._showPauseMenu();
+    });
+
+    // Equip buttons
+    this._inventoryContainer.querySelectorAll("[data-equip]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const idx = parseInt((btn as HTMLElement).dataset.equip!, 10);
+        this._equipFromInventory(player, idx);
+        this._renderInventory(player);
+      });
+    });
+
+    // Drop buttons
+    this._inventoryContainer.querySelectorAll("[data-drop]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const idx = parseInt((btn as HTMLElement).dataset.drop!, 10);
+        player.inventory.splice(idx, 1);
+        this._renderInventory(player);
+      });
+    });
+
+    // Click equipped slot to unequip
+    this._inventoryContainer.querySelectorAll("[data-slot]").forEach(el => {
+      el.addEventListener("click", () => {
+        const slot = (el as HTMLElement).dataset.slot!;
+        if (slot === "mainHand" && player.equipment.mainHand) {
+          player.inventory.push(player.equipment.mainHand);
+          player.equipment.mainHand = null;
+        } else if (slot === "offHand" && player.equipment.offHand) {
+          player.inventory.push(player.equipment.offHand);
+          player.equipment.offHand = null;
+        } else {
+          const armorSlot = slot as ArmorSlot;
+          const piece = player.equipment.armor[armorSlot];
+          if (piece) {
+            player.inventory.push(piece);
+            player.equipment.armor[armorSlot] = null;
+          }
+        }
+        this._renderInventory(player);
+      });
+    });
+  }
+
+  private _equipFromInventory(player: WarbandFighter, idx: number): void {
+    const item = player.inventory[idx];
+    if (!item) return;
+
+    const isArmor = (i: unknown): i is import("./config/ArmorDefs").ArmorDef =>
+      typeof i === "object" && i !== null && "slot" in i && "defense" in i;
+
+    if (isArmor(item)) {
+      // Swap with current armor in that slot
+      const slot = item.slot as ArmorSlot;
+      const current = player.equipment.armor[slot];
+      player.equipment.armor[slot] = item;
+      player.inventory.splice(idx, 1);
+      if (current) player.inventory.push(current);
+    } else {
+      // It's a weapon
+      const wpn = item as import("./config/WeaponDefs").WeaponDef;
+      if (wpn.category === "shield") {
+        const current = player.equipment.offHand;
+        player.equipment.offHand = wpn;
+        player.inventory.splice(idx, 1);
+        if (current) player.inventory.push(current);
+      } else {
+        const current = player.equipment.mainHand;
+        player.equipment.mainHand = wpn;
+        player.inventory.splice(idx, 1);
+        if (current) player.inventory.push(current);
+        // Update ammo for ranged
+        if (wpn.ammo) {
+          player.ammo = wpn.ammo;
+          player.maxAmmo = wpn.ammo;
+        }
+      }
+    }
+
+    // Update weapon/armor visuals
+    const mesh = this._fighterMeshes.get(player.id);
+    if (mesh) {
+      mesh._updateWeaponMesh(player);
+      mesh.updateArmorVisuals(player);
+    }
+  }
+
+  private _removeInventory(): void {
+    if (this._inventoryContainer?.parentNode) {
+      this._inventoryContainer.parentNode.removeChild(this._inventoryContainer);
+      this._inventoryContainer = null;
+    }
   }
 
   // ---- Cleanup ------------------------------------------------------------

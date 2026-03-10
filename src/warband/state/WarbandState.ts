@@ -236,6 +236,9 @@ export interface WarbandState {
   playerWins: number;
   enemyWins: number;
 
+  // Pause
+  paused: boolean;
+
   // Screen dimensions (for input mapping)
   screenW: number;
   screenH: number;
@@ -328,6 +331,8 @@ export function createWarbandState(
     round: 1,
     playerWins: 0,
     enemyWins: 0,
+
+    paused: false,
 
     screenW,
     screenH,

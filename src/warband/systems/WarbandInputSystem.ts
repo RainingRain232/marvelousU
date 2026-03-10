@@ -13,6 +13,7 @@ import {
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
 import { isRangedWeapon } from "../config/WeaponDefs";
+import { ArmorSlot } from "../config/ArmorDefs";
 import type { WarbandCameraController } from "../view/WarbandCameraController";
 
 export interface InputState {
@@ -24,6 +25,8 @@ export interface InputState {
   jump: boolean;
   block: boolean; // RMB
   pickup: boolean; // E key
+  loot: boolean; // F key
+  escape: boolean; // ESC key
   toggleCamera: boolean; // V key
   toggleOrbit: boolean; // C key – free orbit camera
   mouseX: number;
@@ -48,6 +51,8 @@ export class WarbandInputSystem {
     jump: false,
     block: false,
     pickup: false,
+    loot: false,
+    escape: false,
     toggleCamera: false,
     toggleOrbit: false,
     mouseX: 0,
@@ -67,6 +72,7 @@ export class WarbandInputSystem {
 
   // Track which arrow key initiated the current windup
   private _windupKey: "left" | "right" | "up" | "down" | null = null;
+  private _lootTriggered = false;
 
   // Bound handlers for cleanup
   private _onKeyDown: (e: KeyboardEvent) => void;
@@ -170,6 +176,15 @@ export class WarbandInputSystem {
     // Pickup
     if (this._input.pickup) {
       this._tryPickup(player, state);
+    }
+
+    // Loot corpse (F key, one-shot)
+    if (this._input.loot && !this._lootTriggered) {
+      this._lootTriggered = true;
+      this._tryLootCorpse(player, state);
+    }
+    if (!this._input.loot) {
+      this._lootTriggered = false;
     }
 
     // Reset mouse deltas
@@ -343,6 +358,39 @@ export class WarbandInputSystem {
     }
   }
 
+  private _tryLootCorpse(player: WarbandFighter, state: WarbandState): void {
+    const lootRange = 2.5;
+    for (const target of state.fighters) {
+      if (target.combatState !== FighterCombatState.DEAD) continue;
+      if (target.team === player.team) continue;
+
+      const dx = player.position.x - target.position.x;
+      const dz = player.position.z - target.position.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist > lootRange) continue;
+
+      // Loot weapon
+      if (target.equipment.mainHand) {
+        player.inventory.push(target.equipment.mainHand);
+        target.equipment.mainHand = null;
+      }
+      // Loot shield
+      if (target.equipment.offHand) {
+        player.inventory.push(target.equipment.offHand);
+        target.equipment.offHand = null;
+      }
+      // Loot armor pieces
+      for (const slot of Object.keys(target.equipment.armor) as ArmorSlot[]) {
+        const piece = target.equipment.armor[slot];
+        if (piece) {
+          player.inventory.push(piece);
+          target.equipment.armor[slot] = null;
+        }
+      }
+      break; // loot one corpse at a time
+    }
+  }
+
   // ---- Raw input handlers -------------------------------------------------
 
   private _handleKeyDown(e: KeyboardEvent): void {
@@ -369,6 +417,12 @@ export class WarbandInputSystem {
         break;
       case "KeyE":
         this._input.pickup = true;
+        break;
+      case "KeyF":
+        this._input.loot = true;
+        break;
+      case "Escape":
+        this._input.escape = true;
         break;
       case "KeyV":
         this._input.toggleCamera = true;
@@ -418,6 +472,12 @@ export class WarbandInputSystem {
         break;
       case "KeyE":
         this._input.pickup = false;
+        break;
+      case "KeyF":
+        this._input.loot = false;
+        break;
+      case "Escape":
+        this._input.escape = false;
         break;
       case "KeyV":
         this._input.toggleCamera = false;

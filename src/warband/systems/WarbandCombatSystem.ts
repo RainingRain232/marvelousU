@@ -7,7 +7,6 @@ import {
   type WarbandState,
   type WarbandFighter,
   type WarbandProjectile,
-  type WeaponPickup,
   FighterCombatState,
   CombatDirection,
   vec3DistXZ,
@@ -296,17 +295,6 @@ export class WarbandCombatSystem {
             attacker.gold += WB.GOLD_HEADSHOT_BONUS;
           }
 
-          // Drop weapon as pickup
-          if (target.equipment.mainHand) {
-            const pickup: WeaponPickup = {
-              id: `pickup_${state.tick}_${target.id}`,
-              position: { ...target.position },
-              weapon: target.equipment.mainHand,
-              age: 0,
-            };
-            state.pickups.push(pickup);
-          }
-
           this.kills.push({
             killerId: attacker.id,
             victimId: target.id,
@@ -457,15 +445,6 @@ export class WarbandCombatSystem {
                 if (hitZone === ArmorSlot.HEAD) {
                   owner.gold += WB.GOLD_HEADSHOT_BONUS;
                 }
-              }
-
-              if (target.equipment.mainHand) {
-                state.pickups.push({
-                  id: `pickup_${state.tick}_${target.id}`,
-                  position: { ...target.position },
-                  weapon: target.equipment.mainHand,
-                  age: 0,
-                });
               }
 
               this.kills.push({

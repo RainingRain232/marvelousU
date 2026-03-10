@@ -10,6 +10,7 @@ import {
   FighterCombatState,
   WarbandPhase,
   CameraMode,
+  vec3DistXZ,
 } from "../state/WarbandState";
 
 export class WarbandHUD {
@@ -26,6 +27,7 @@ export class WarbandHUD {
   private _killFeed!: HTMLDivElement;
   private _centerMsg!: HTMLDivElement;
   private _controlsHint!: HTMLDivElement;
+  private _lootPrompt!: HTMLDivElement;
 
   private _killFeedEntries: { text: string; time: number }[] = [];
 
@@ -124,8 +126,21 @@ export class WarbandHUD {
       font-size: 12px; opacity: 0.5;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     `;
-    this._controlsHint.textContent = "WASD: Move | LMB: Attack | RMB: Block | V: Camera | E: Pickup | Shift: Sprint | ESC: Menu";
+    this._controlsHint.textContent = "WASD: Move | Arrows: Attack | RMB: Block | F: Loot | V: Camera | ESC: Menu";
     this._container.appendChild(this._controlsHint);
+
+    // Loot prompt
+    this._lootPrompt = document.createElement("div");
+    this._lootPrompt.style.cssText = `
+      position: absolute; bottom: 140px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 16px; font-weight: bold;
+      text-shadow: 1px 1px 4px rgba(0,0,0,0.9);
+      color: #ffd700; display: none;
+      background: rgba(0,0,0,0.5); padding: 6px 16px;
+      border: 1px solid rgba(255,215,0,0.4); border-radius: 4px;
+    `;
+    this._container.appendChild(this._lootPrompt);
 
     const pixiContainer = document.getElementById("pixi-container");
     if (pixiContainer) {
@@ -206,6 +221,32 @@ export class WarbandHUD {
 
     // Crosshair visibility
     this._crosshair.style.display = state.cameraMode === CameraMode.FIRST_PERSON ? "block" : "block";
+
+    // Loot prompt — check for nearby dead enemies
+    let lootTarget: WarbandFighter | null = null;
+    for (const f of state.fighters) {
+      if (f.combatState !== FighterCombatState.DEAD) continue;
+      if (f.team === player.team) continue;
+      const dist = vec3DistXZ(player.position, f.position);
+      if (dist < 2.5) {
+        // Only show if they still have something to loot
+        if (f.equipment.mainHand || f.equipment.offHand || Object.values(f.equipment.armor).some(a => a)) {
+          lootTarget = f;
+          break;
+        }
+      }
+    }
+    if (lootTarget) {
+      const items: string[] = [];
+      if (lootTarget.equipment.mainHand) items.push(lootTarget.equipment.mainHand.name);
+      if (lootTarget.equipment.offHand) items.push(lootTarget.equipment.offHand.name);
+      const armorCount = Object.values(lootTarget.equipment.armor).filter(a => a).length;
+      if (armorCount > 0) items.push(`${armorCount} armor`);
+      this._lootPrompt.textContent = `[F] Loot ${lootTarget.name} — ${items.join(", ")}`;
+      this._lootPrompt.style.display = "block";
+    } else {
+      this._lootPrompt.style.display = "none";
+    }
   }
 
   private _updateDirectionIndicator(player: WarbandFighter): void {

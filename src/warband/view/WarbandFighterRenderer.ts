@@ -58,7 +58,7 @@ const LIMB_THICKNESS = 0.048;
 const JOINT_RADIUS = 0.028;
 const SHOULDER_WIDTH = TORSO_WIDTH * 0.65;
 const SHOULDER_CAP_RADIUS = 0.055;
-const HIP_WIDTH = TORSO_WIDTH * 0.32;
+const HIP_WIDTH = TORSO_WIDTH * 0.26;
 const PELVIS_HEIGHT = 0.1;
 
 // ---- Fighter mesh group ---------------------------------------------------
@@ -90,6 +90,9 @@ export class FighterMesh {
   // Weapon mesh attached to right hand
   private _weaponMesh: THREE.Mesh | null = null;
   private _isRangedWeapon = false;
+  private _bowStringMesh: THREE.Mesh | null = null;
+  private _bowStringRestX = 0; // string X position at rest (torus local)
+  private _bowR = 0; // bow radius for string animation
   private _shieldMesh: THREE.Mesh | null = null;
 
   // Face feature meshes (for helm visibility toggling)
@@ -131,7 +134,7 @@ export class FighterMesh {
 
     // Pelvis (rounded box connecting to legs)
     const pelvisGeo = new THREE.CylinderGeometry(
-      TORSO_WIDTH * 0.45, HIP_WIDTH + 0.04, PELVIS_HEIGHT, 8,
+      TORSO_WIDTH * 0.45, HIP_WIDTH + LIMB_THICKNESS * 1.4 + 0.01, PELVIS_HEIGHT, 8,
     );
     const pantsMat2 = new THREE.MeshStandardMaterial({ color: this._colors.pants, roughness: 0.8 });
     const pelvisMesh = new THREE.Mesh(pelvisGeo, pantsMat2);
@@ -155,6 +158,16 @@ export class FighterMesh {
     gusset.position.set(0, PELVIS_HEIGHT * 0.05, 0);
     gusset.rotation.x = Math.PI;
     this._hips.add(gusset);
+
+    // Buttocks (two rounded masses bridging pelvis to thighs)
+    for (const side of [-1, 1]) {
+      const gluteGeo = new THREE.SphereGeometry(LIMB_THICKNESS * 1.5, 6, 5);
+      const glute = new THREE.Mesh(gluteGeo, pantsMat2);
+      glute.position.set(side * HIP_WIDTH, -PELVIS_HEIGHT * 0.1, -LIMB_THICKNESS * 0.4);
+      glute.scale.set(1.0, 0.7, 0.8);
+      glute.castShadow = true;
+      this._hips.add(glute);
+    }
 
     // Spine
     this._spine = this._makeBoneGroup();
@@ -879,47 +892,51 @@ export class FighterMesh {
 
   /** Add a tapered limb segment (cylinder wider at top, narrower at bottom) */
   private _addLimb(parent: THREE.Group, length: number, color: number, thicker = false): void {
-    const topR = thicker ? LIMB_THICKNESS * 1.15 : LIMB_THICKNESS;
-    const botR = thicker ? LIMB_THICKNESS * 0.95 : LIMB_THICKNESS * 0.82;
-    const geo = new THREE.CylinderGeometry(topR, botR, length, 7);
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = -length / 2;
-    mesh.castShadow = true;
-    parent.add(mesh);
+    if (thicker) {
+      // Thigh: wider at hip, tapering naturally to knee
+      const topR = LIMB_THICKNESS * 1.4;
+      const botR = LIMB_THICKNESS * 1.0;
+      const geo = new THREE.CylinderGeometry(topR, botR, length, 7);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.y = -length / 2;
+      mesh.castShadow = true;
+      parent.add(mesh);
+    } else {
+      const topR = LIMB_THICKNESS;
+      const botR = LIMB_THICKNESS * 0.82;
+      const geo = new THREE.CylinderGeometry(topR, botR, length, 7);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.y = -length / 2;
+      mesh.castShadow = true;
+      parent.add(mesh);
+    }
   }
 
   private _addHand(parent: THREE.Group, color: number): void {
-    // Palm (flattened sphere)
-    const geo = new THREE.SphereGeometry(HAND_SIZE, 6, 5);
+    const hs = HAND_SIZE * 0.75; // smaller hands
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.scale.set(0.9, 0.6, 1.1); // flattened hand shape
-    mesh.position.y = -HAND_SIZE * 0.3;
-    mesh.castShadow = true;
-    parent.add(mesh);
 
-    // Fingers (tiny cylinder group) with knuckle joints
-    const fingerMat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
+    // Palm (flat box, not a ball)
+    const palmGeo = new THREE.BoxGeometry(hs * 1.4, hs * 0.5, hs * 1.6);
+    const palm = new THREE.Mesh(palmGeo, mat);
+    palm.position.set(0, -hs * 0.2, 0.01);
+    palm.castShadow = true;
+    parent.add(palm);
+
+    // Fingers (4 small cylinders, slightly curled)
     for (let i = 0; i < 4; i++) {
-      // Knuckle
-      const knuckleGeo = new THREE.SphereGeometry(0.009, 3, 3);
-      const knuckle = new THREE.Mesh(knuckleGeo, fingerMat);
-      knuckle.position.set((i - 1.5) * 0.016, -HAND_SIZE * 0.4, 0.03);
-      parent.add(knuckle);
-
-      // Finger segment
-      const fingerGeo = new THREE.CylinderGeometry(0.007, 0.005, 0.038, 3);
-      const finger = new THREE.Mesh(fingerGeo, fingerMat);
-      finger.position.set((i - 1.5) * 0.016, -HAND_SIZE * 0.55, 0.035);
-      finger.rotation.x = 0.4;
+      const fingerGeo = new THREE.CylinderGeometry(0.005, 0.004, 0.032, 3);
+      const finger = new THREE.Mesh(fingerGeo, mat);
+      finger.position.set((i - 1.5) * 0.012, -hs * 0.45, 0.02);
+      finger.rotation.x = 0.5;
       parent.add(finger);
     }
 
-    // Thumb (offset to the side)
-    const thumbGeo = new THREE.CylinderGeometry(0.008, 0.006, 0.03, 3);
-    const thumb = new THREE.Mesh(thumbGeo, fingerMat);
-    thumb.position.set(HAND_SIZE * 0.55, -HAND_SIZE * 0.25, 0.025);
+    // Thumb (offset to side)
+    const thumbGeo = new THREE.CylinderGeometry(0.006, 0.005, 0.025, 3);
+    const thumb = new THREE.Mesh(thumbGeo, mat);
+    thumb.position.set(hs * 0.55, -hs * 0.15, 0.02);
     thumb.rotation.x = 0.2;
     thumb.rotation.z = 0.5;
     parent.add(thumb);
@@ -929,40 +946,66 @@ export class FighterMesh {
     // Ankle joint
     this._addJoint(parent, color);
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.85 });
-
-    // Shoe upper (covers the top of the foot)
-    const upperGeo = new THREE.BoxGeometry(0.08, FOOT_HEIGHT, FOOT_LEN * 0.85);
-    const upper = new THREE.Mesh(upperGeo, mat);
-    upper.position.set(0, -FOOT_HEIGHT / 2, FOOT_LEN * 0.15);
-    upper.castShadow = true;
-    parent.add(upper);
-
-    // Ankle cuff (top of the boot)
-    const cuffGeo = new THREE.CylinderGeometry(0.044, 0.042, 0.025, 6);
-    const cuff = new THREE.Mesh(cuffGeo, mat);
-    cuff.position.set(0, -0.01, 0);
-    parent.add(cuff);
-
-    // Sole (slightly wider/longer, darker)
     const soleMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.95 });
-    const soleGeo = new THREE.BoxGeometry(0.09, 0.025, FOOT_LEN);
+
+    // Main foot — tapers down toward the toes using a wedge shape
+    // Back (heel area) is taller, front (toe area) slopes down
+    const footGeo = new THREE.BufferGeometry();
+    const hw = 0.04; // half width
+    const hh = FOOT_HEIGHT; // heel height
+    const th = FOOT_HEIGHT * 0.35; // toe height (much lower)
+    const bl = FOOT_LEN * 0.2; // back length from ankle
+    const fl = FOOT_LEN * 0.7; // front length from ankle
+    // 8 vertices: back-bottom, back-top, front-bottom, front-top (left and right)
+    const verts = new Float32Array([
+      // back-left-bottom, back-left-top
+      -hw, -hh, -bl,   -hw, 0, -bl,
+      // back-right-bottom, back-right-top
+       hw, -hh, -bl,    hw, 0, -bl,
+      // front-left-bottom, front-left-top
+      -hw * 0.85, -hh, fl,   -hw * 0.85, -hh + th, fl,
+      // front-right-bottom, front-right-top
+       hw * 0.85, -hh, fl,    hw * 0.85, -hh + th, fl,
+    ]);
+    const indices = [
+      // bottom
+      0,4,2, 2,4,6,
+      // top (slopes from back-top to front-top)
+      1,3,5, 3,7,5,
+      // left side
+      0,1,5, 0,5,4,
+      // right side
+      2,6,7, 2,7,3,
+      // back
+      0,2,3, 0,3,1,
+      // front
+      4,5,7, 4,7,6,
+    ];
+    footGeo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+    footGeo.setIndex(indices);
+    footGeo.computeVertexNormals();
+    const foot = new THREE.Mesh(footGeo, mat);
+    foot.castShadow = true;
+    parent.add(foot);
+
+    // Sole (flat bottom, slightly wider)
+    const soleGeo = new THREE.BoxGeometry(0.085, 0.015, FOOT_LEN * 0.95);
     const sole = new THREE.Mesh(soleGeo, soleMat);
-    sole.position.set(0, -FOOT_HEIGHT, FOOT_LEN * 0.2);
+    sole.position.set(0, -hh - 0.005, fl * 0.35);
     sole.castShadow = true;
     parent.add(sole);
 
-    // Heel (raised back section)
-    const heelGeo = new THREE.BoxGeometry(0.07, 0.03, 0.04);
+    // Heel (raised back)
+    const heelGeo = new THREE.BoxGeometry(0.065, 0.02, 0.035);
     const heel = new THREE.Mesh(heelGeo, soleMat);
-    heel.position.set(0, -FOOT_HEIGHT - 0.01, -FOOT_LEN * 0.15);
+    heel.position.set(0, -hh - 0.008, -bl * 0.6);
     parent.add(heel);
 
-    // Toe cap (rounded front)
-    const toeGeo = new THREE.SphereGeometry(0.038, 5, 3, 0, Math.PI * 2, 0, Math.PI * 0.5);
-    const toeMesh = new THREE.Mesh(toeGeo, mat);
-    toeMesh.rotation.x = -Math.PI / 2;
-    toeMesh.position.set(0, -FOOT_HEIGHT * 0.4, FOOT_LEN * 0.55);
-    parent.add(toeMesh);
+    // Ankle cuff
+    const cuffGeo = new THREE.CylinderGeometry(0.042, 0.04, 0.02, 6);
+    const cuff = new THREE.Mesh(cuffGeo, mat);
+    cuff.position.set(0, -0.005, 0);
+    parent.add(cuff);
   }
 
   /** Update weapon visuals when equipment changes */
@@ -1975,30 +2018,34 @@ export class FighterMesh {
         metalness: 0.4,
       });
       for (const foot of [this._leftFoot, this._rightFoot]) {
-        // Main boot covering (rounded capsule shape)
-        const bGeo = new THREE.CylinderGeometry(0.048, 0.045, FOOT_LEN + 0.02, 6);
-        const bMesh = new THREE.Mesh(bGeo, bMat);
-        bMesh.position.set(0, -FOOT_HEIGHT / 2, FOOT_LEN * 0.2);
-        bMesh.rotation.x = Math.PI / 2;
-        bMesh.scale.set(1, 1, (FOOT_HEIGHT + 0.02) / (FOOT_LEN + 0.02));
-        bMesh.castShadow = true;
-        foot.add(bMesh);
-        this._armorMeshes.push(bMesh);
+        // Armored boot — slopes down toward toes matching foot shape
+        const bootGeo = new THREE.BufferGeometry();
+        const bw = 0.046; // half width
+        const bh = FOOT_HEIGHT + 0.01; // heel height
+        const bt = FOOT_HEIGHT * 0.4; // toe height
+        const bbl = FOOT_LEN * 0.22; // back
+        const bfl = FOOT_LEN * 0.73; // front
+        const bv = new Float32Array([
+          -bw, -bh, -bbl,   -bw, 0.01, -bbl,
+           bw, -bh, -bbl,    bw, 0.01, -bbl,
+          -bw * 0.9, -bh, bfl,   -bw * 0.9, -bh + bt, bfl,
+           bw * 0.9, -bh, bfl,    bw * 0.9, -bh + bt, bfl,
+        ]);
+        const bi = [0,4,2, 2,4,6, 1,3,5, 3,7,5, 0,1,5, 0,5,4, 2,6,7, 2,7,3, 0,2,3, 0,3,1, 4,5,7, 4,7,6];
+        bootGeo.setAttribute("position", new THREE.BufferAttribute(bv, 3));
+        bootGeo.setIndex(bi);
+        bootGeo.computeVertexNormals();
+        const bootMesh = new THREE.Mesh(bootGeo, bMat);
+        bootMesh.castShadow = true;
+        foot.add(bootMesh);
+        this._armorMeshes.push(bootMesh);
 
-        // Ankle guard (raised ankle protection)
+        // Ankle guard
         const ankleGeo = new THREE.CylinderGeometry(0.048, 0.046, 0.04, 6);
         const ankle = new THREE.Mesh(ankleGeo, bMat);
         ankle.position.set(0, 0.01, 0);
         foot.add(ankle);
         this._armorMeshes.push(ankle);
-
-        // Armored toe cap
-        const toeCapGeo = new THREE.SphereGeometry(0.042, 5, 3, 0, Math.PI * 2, 0, Math.PI * 0.5);
-        const toeCap = new THREE.Mesh(toeCapGeo, bMat);
-        toeCap.rotation.x = -Math.PI / 2;
-        toeCap.position.set(0, -FOOT_HEIGHT * 0.35, FOOT_LEN * 0.55);
-        foot.add(toeCap);
-        this._armorMeshes.push(toeCap);
 
         // Sole plate (hardened sole)
         if (armor.boots.defense >= 8) {
@@ -2102,6 +2149,30 @@ export class FighterMesh {
     if (fighter.combatState === FighterCombatState.DEAD) {
       this._hpBarBg.visible = false;
       this._hpBarFill.visible = false;
+
+      // Remove weapon mesh if looted
+      if (!fighter.equipment.mainHand && this._weaponMesh) {
+        this._rightHand.remove(this._weaponMesh);
+        this._weaponMesh.traverse((obj) => {
+          if (obj instanceof THREE.Mesh) {
+            obj.geometry.dispose();
+            (obj.material as THREE.Material).dispose();
+          }
+        });
+        this._weaponMesh = null;
+        this._isRangedWeapon = false;
+      }
+      // Remove shield if looted
+      if (!fighter.equipment.offHand && this._shieldMesh) {
+        this._leftForearm.remove(this._shieldMesh);
+        this._shieldMesh.traverse((obj) => {
+          if (obj instanceof THREE.Mesh) {
+            obj.geometry.dispose();
+            (obj.material as THREE.Material).dispose();
+          }
+        });
+        this._shieldMesh = null;
+      }
     }
   }
 
