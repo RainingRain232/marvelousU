@@ -382,18 +382,28 @@ export class FighterMesh {
   private _addFoot(parent: THREE.Group, color: number): void {
     // Ankle joint
     this._addJoint(parent, color);
-    // Boot shape: rounded box, slightly pointed at front
-    const geo = new THREE.BoxGeometry(0.075, FOOT_HEIGHT, FOOT_LEN);
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.85 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(0, -FOOT_HEIGHT / 2, FOOT_LEN * 0.2);
-    mesh.castShadow = true;
-    parent.add(mesh);
+
+    // Shoe upper (covers the top of the foot)
+    const upperGeo = new THREE.BoxGeometry(0.08, FOOT_HEIGHT, FOOT_LEN * 0.85);
+    const upper = new THREE.Mesh(upperGeo, mat);
+    upper.position.set(0, -FOOT_HEIGHT / 2, FOOT_LEN * 0.15);
+    upper.castShadow = true;
+    parent.add(upper);
+
+    // Sole (slightly wider/longer, darker)
+    const soleMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.95 });
+    const soleGeo = new THREE.BoxGeometry(0.09, 0.025, FOOT_LEN);
+    const sole = new THREE.Mesh(soleGeo, soleMat);
+    sole.position.set(0, -FOOT_HEIGHT, FOOT_LEN * 0.2);
+    sole.castShadow = true;
+    parent.add(sole);
+
     // Toe cap (rounded front)
-    const toeGeo = new THREE.SphereGeometry(0.035, 5, 3, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const toeGeo = new THREE.SphereGeometry(0.038, 5, 3, 0, Math.PI * 2, 0, Math.PI * 0.5);
     const toeMesh = new THREE.Mesh(toeGeo, mat);
     toeMesh.rotation.x = -Math.PI / 2;
-    toeMesh.position.set(0, -FOOT_HEIGHT * 0.4, FOOT_LEN * 0.58);
+    toeMesh.position.set(0, -FOOT_HEIGHT * 0.4, FOOT_LEN * 0.55);
     parent.add(toeMesh);
   }
 

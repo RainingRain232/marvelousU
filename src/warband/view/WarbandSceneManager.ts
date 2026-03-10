@@ -356,6 +356,7 @@ export class WarbandSceneManager {
       const leavesMat = new THREE.MeshStandardMaterial({
         color: leafColor,
         roughness: 0.85,
+        side: THREE.DoubleSide,
       });
 
       // Main canopy (large sphere)
