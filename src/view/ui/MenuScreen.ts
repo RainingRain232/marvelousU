@@ -234,6 +234,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Open-world Camelot sandbox",
     skipSetup: true,
   },
+  {
+    mode: GameMode.WARBAND,
+    label: "WARBAND",
+    desc: "Mount & Blade style 3D combat",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

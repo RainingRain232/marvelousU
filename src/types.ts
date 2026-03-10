@@ -663,6 +663,7 @@ export enum GameMode {
   COLOSSEUM = "colosseum",
   DUEL = "duel",
   MEDIEVAL_GTA = "medieval_gta",
+  WARBAND = "warband",
 }
 
 // ---------------------------------------------------------------------------

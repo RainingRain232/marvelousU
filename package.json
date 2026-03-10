@@ -13,8 +13,10 @@
     "server:dev": "npm run server:build && node server/dist/index.mjs"
   },
   "dependencies": {
+    "@types/three": "^0.183.1",
     "gsap": "^3.12.7",
     "pixi.js": "^8.8.1",
+    "three": "^0.183.2",
     "ws": "^8.19.0"
   },
   "devDependencies": {

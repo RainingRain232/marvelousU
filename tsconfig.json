@@ -33,6 +33,7 @@
       "@input/*": ["src/input/*"],
       "@audio/*": ["src/audio/*"],
       "@net/*": ["src/net/*"],
+      "@warband/*": ["src/warband/*"],
       "@/*": ["src/*"],
     },
   },

@@ -121,6 +121,7 @@ import { SurvivorGame } from "@/survivor/SurvivorGame";
 import { ColosseumGame } from "@rpg/colosseum/ColosseumGame";
 import { DuelGame } from "./duel/DuelGame";
 import { MedievalGTA } from "./medievalgta/MedievalGTA";
+import { WarbandGame } from "./warband/WarbandGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -366,6 +367,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.DUEL) {
       menuScreen.hide();
       _bootDuelGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.WARBAND) {
+      menuScreen.hide();
+      _bootWarbandGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2534,6 +2540,32 @@ async function _bootMedievalGTA(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("medievalGTAExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Warband mode boot
+// ---------------------------------------------------------------------------
+
+let _warbandGame: WarbandGame | null = null;
+
+async function _bootWarbandGame(): Promise<void> {
+  if (_warbandGame) {
+    _warbandGame.destroy();
+    _warbandGame = null;
+  }
+
+  _warbandGame = new WarbandGame();
+  await _warbandGame.boot();
+
+  const _onExit = () => {
+    window.removeEventListener("warbandExit", _onExit);
+    if (_warbandGame) {
+      _warbandGame.destroy();
+      _warbandGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("warbandExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

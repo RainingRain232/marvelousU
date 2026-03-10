@@ -1,0 +1,269 @@
+// ---------------------------------------------------------------------------
+// Warband mode – HUD overlay (HTML-based, overlaid on Three.js canvas)
+// Shows HP, stamina, crosshair, direction indicator, team status, ammo, gold
+// ---------------------------------------------------------------------------
+
+import {
+  type WarbandState,
+  type WarbandFighter,
+  CombatDirection,
+  FighterCombatState,
+  WarbandPhase,
+  CameraMode,
+} from "../state/WarbandState";
+
+export class WarbandHUD {
+  private _container!: HTMLDivElement;
+  private _crosshair!: HTMLDivElement;
+  private _hpBar!: HTMLDivElement;
+  private _hpFill!: HTMLDivElement;
+  private _staminaBar!: HTMLDivElement;
+  private _staminaFill!: HTMLDivElement;
+  private _dirIndicator!: HTMLDivElement;
+  private _teamStatus!: HTMLDivElement;
+  private _ammoDisplay!: HTMLDivElement;
+  private _goldDisplay!: HTMLDivElement;
+  private _killFeed!: HTMLDivElement;
+  private _centerMsg!: HTMLDivElement;
+  private _controlsHint!: HTMLDivElement;
+
+  private _killFeedEntries: { text: string; time: number }[] = [];
+
+  init(): void {
+    this._container = document.createElement("div");
+    this._container.id = "warband-hud";
+    this._container.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 20; pointer-events: none; font-family: 'Segoe UI', sans-serif;
+      color: white; user-select: none;
+    `;
+
+    // Crosshair
+    this._crosshair = document.createElement("div");
+    this._crosshair.style.cssText = `
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 24px; height: 24px;
+    `;
+    this._crosshair.innerHTML = `
+      <div style="position:absolute;top:50%;left:0;right:0;height:2px;background:rgba(255,255,255,0.7);transform:translateY(-50%)"></div>
+      <div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.7);transform:translateX(-50%)"></div>
+      <div style="position:absolute;top:50%;left:50%;width:4px;height:4px;background:rgba(255,100,100,0.9);border-radius:50%;transform:translate(-50%,-50%)"></div>
+    `;
+    this._container.appendChild(this._crosshair);
+
+    // HP Bar
+    this._hpBar = this._makeBar("bottom: 60px; left: 50%; transform: translateX(-50%); width: 300px;");
+    this._hpFill = this._hpBar.querySelector(".fill") as HTMLDivElement;
+    this._container.appendChild(this._hpBar);
+
+    // Stamina bar
+    this._staminaBar = this._makeBar("bottom: 40px; left: 50%; transform: translateX(-50%); width: 250px;", "#4488cc");
+    this._staminaFill = this._staminaBar.querySelector(".fill") as HTMLDivElement;
+    this._container.appendChild(this._staminaBar);
+
+    // Direction indicator (shows which direction you're attacking/blocking)
+    this._dirIndicator = document.createElement("div");
+    this._dirIndicator.style.cssText = `
+      position: absolute; bottom: 100px; left: 50%;
+      transform: translateX(-50%);
+      width: 80px; height: 80px;
+    `;
+    this._container.appendChild(this._dirIndicator);
+
+    // Team status (top left)
+    this._teamStatus = document.createElement("div");
+    this._teamStatus.style.cssText = `
+      position: absolute; top: 20px; left: 20px;
+      font-size: 16px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    `;
+    this._container.appendChild(this._teamStatus);
+
+    // Ammo (bottom right)
+    this._ammoDisplay = document.createElement("div");
+    this._ammoDisplay.style.cssText = `
+      position: absolute; bottom: 60px; right: 30px;
+      font-size: 20px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    `;
+    this._container.appendChild(this._ammoDisplay);
+
+    // Gold (top right)
+    this._goldDisplay = document.createElement("div");
+    this._goldDisplay.style.cssText = `
+      position: absolute; top: 20px; right: 30px;
+      font-size: 18px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+      color: #ffd700;
+    `;
+    this._container.appendChild(this._goldDisplay);
+
+    // Kill feed (top right, below gold)
+    this._killFeed = document.createElement("div");
+    this._killFeed.style.cssText = `
+      position: absolute; top: 60px; right: 30px;
+      font-size: 14px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+      max-width: 300px;
+    `;
+    this._container.appendChild(this._killFeed);
+
+    // Center message
+    this._centerMsg = document.createElement("div");
+    this._centerMsg.style.cssText = `
+      position: absolute; top: 25%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 36px; font-weight: bold;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.9);
+      opacity: 0; transition: opacity 0.3s;
+    `;
+    this._container.appendChild(this._centerMsg);
+
+    // Controls hint
+    this._controlsHint = document.createElement("div");
+    this._controlsHint.style.cssText = `
+      position: absolute; bottom: 10px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px; opacity: 0.5;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    `;
+    this._controlsHint.textContent = "WASD: Move | LMB: Attack | RMB: Block | V: Camera | E: Pickup | Shift: Sprint | ESC: Menu";
+    this._container.appendChild(this._controlsHint);
+
+    const pixiContainer = document.getElementById("pixi-container");
+    if (pixiContainer) {
+      pixiContainer.appendChild(this._container);
+    }
+  }
+
+  private _makeBar(posStyle: string, color = "#22aa44"): HTMLDivElement {
+    const bar = document.createElement("div");
+    bar.style.cssText = `
+      position: absolute; ${posStyle}
+      height: 14px; background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 2px; overflow: hidden;
+    `;
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    fill.style.cssText = `
+      width: 100%; height: 100%;
+      background: ${color};
+      transition: width 0.1s;
+    `;
+    bar.appendChild(fill);
+    return bar;
+  }
+
+  update(state: WarbandState): void {
+    if (state.phase !== WarbandPhase.BATTLE) {
+      this._container.style.display = "none";
+      return;
+    }
+    this._container.style.display = "block";
+
+    const player = state.fighters.find((f) => f.id === state.playerId);
+    if (!player) return;
+
+    // HP
+    const hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
+    this._hpFill.style.width = `${hpPct}%`;
+    if (hpPct < 25) this._hpFill.style.background = "#cc2222";
+    else if (hpPct < 50) this._hpFill.style.background = "#ccaa22";
+    else this._hpFill.style.background = "#22aa44";
+
+    // Stamina
+    const stamPct = Math.max(0, (player.stamina / player.maxStamina) * 100);
+    this._staminaFill.style.width = `${stamPct}%`;
+
+    // Direction indicator
+    this._updateDirectionIndicator(player);
+
+    // Team status
+    this._teamStatus.innerHTML = `
+      <div style="color:#4488ff">Allies: ${state.playerTeamAlive}/${Math.ceil(state.fighters.filter(f => f.team === "player").length)}</div>
+      <div style="color:#ff4444">Enemies: ${state.enemyTeamAlive}/${Math.ceil(state.fighters.filter(f => f.team === "enemy").length)}</div>
+      <div style="margin-top:8px">Kills: ${player.kills}</div>
+      <div>Round: ${state.round}</div>
+    `;
+
+    // Ammo
+    if (player.maxAmmo > 0) {
+      this._ammoDisplay.style.display = "block";
+      this._ammoDisplay.textContent = `🏹 ${player.ammo}/${player.maxAmmo}`;
+    } else {
+      this._ammoDisplay.style.display = "none";
+    }
+
+    // Gold
+    this._goldDisplay.textContent = `⚜ ${player.gold} gold`;
+
+    // Kill feed cleanup
+    const now = Date.now();
+    this._killFeedEntries = this._killFeedEntries.filter(
+      (e) => now - e.time < 5000,
+    );
+    this._killFeed.innerHTML = this._killFeedEntries
+      .map((e) => `<div style="margin-bottom:2px">${e.text}</div>`)
+      .join("");
+
+    // Crosshair visibility
+    this._crosshair.style.display = state.cameraMode === CameraMode.FIRST_PERSON ? "block" : "block";
+  }
+
+  private _updateDirectionIndicator(player: WarbandFighter): void {
+    const isBlocking = player.combatState === FighterCombatState.BLOCKING;
+    const isAttacking =
+      player.combatState === FighterCombatState.WINDING ||
+      player.combatState === FighterCombatState.RELEASING;
+    const dir = isBlocking ? player.blockDirection : player.attackDirection;
+
+    const quadrants = [
+      { label: "↖", active: dir === CombatDirection.TOP_LEFT },
+      { label: "↗", active: dir === CombatDirection.TOP_RIGHT },
+      { label: "↙", active: dir === CombatDirection.BOTTOM_LEFT },
+      { label: "↘", active: dir === CombatDirection.BOTTOM_RIGHT },
+    ];
+
+    const color = isBlocking ? "#4488ff" : isAttacking ? "#ff6644" : "#ffffff";
+
+    this._dirIndicator.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;width:100%;height:100%">
+        ${quadrants
+          .map(
+            (q) =>
+              `<div style="
+                display:flex;align-items:center;justify-content:center;
+                font-size:${q.active ? "24px" : "16px"};
+                background:${q.active ? `${color}33` : "rgba(0,0,0,0.2)"};
+                border:1px solid ${q.active ? color : "rgba(255,255,255,0.15)"};
+                border-radius:3px;
+                color:${q.active ? color : "rgba(255,255,255,0.3)"};
+              ">${q.label}</div>`,
+          )
+          .join("")}
+      </div>
+      <div style="text-align:center;font-size:11px;margin-top:2px;color:${color}">
+        ${isBlocking ? "BLOCKING" : isAttacking ? "ATTACKING" : "READY"}
+      </div>
+    `;
+  }
+
+  addKill(killerName: string, victimName: string): void {
+    this._killFeedEntries.push({
+      text: `<span style="color:#ffcc00">${killerName}</span> killed <span style="color:#ff6644">${victimName}</span>`,
+      time: Date.now(),
+    });
+  }
+
+  showCenterMessage(text: string, duration = 2000): void {
+    this._centerMsg.textContent = text;
+    this._centerMsg.style.opacity = "1";
+    setTimeout(() => {
+      this._centerMsg.style.opacity = "0";
+    }, duration);
+  }
+
+  destroy(): void {
+    if (this._container.parentNode) {
+      this._container.parentNode.removeChild(this._container);
+    }
+  }
+}

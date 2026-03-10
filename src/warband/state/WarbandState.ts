@@ -1,0 +1,333 @@
+// ---------------------------------------------------------------------------
+// Warband mode – central game state
+// ---------------------------------------------------------------------------
+
+import type { WeaponDef } from "../config/WeaponDefs";
+import type { ArmorDef, ArmorSlot } from "../config/ArmorDefs";
+import { WB } from "../config/WarbandBalanceConfig";
+
+// ---- Enums ----------------------------------------------------------------
+
+export enum WarbandPhase {
+  MENU = "menu",
+  SHOP = "shop",
+  BATTLE = "battle",
+  RESULTS = "results",
+}
+
+export enum BattleType {
+  OPEN_FIELD = "open_field",
+  SIEGE = "siege",
+}
+
+export enum CombatDirection {
+  TOP_LEFT = 0,
+  TOP_RIGHT = 1,
+  BOTTOM_LEFT = 2,
+  BOTTOM_RIGHT = 3,
+}
+
+export enum FighterCombatState {
+  IDLE = "idle",
+  WINDING = "winding",
+  RELEASING = "releasing",
+  RECOVERY = "recovery",
+  BLOCKING = "blocking",
+  STAGGERED = "staggered",
+  DRAWING = "drawing", // bow draw / crossbow reload
+  AIMING = "aiming",
+  DEAD = "dead",
+}
+
+export enum CameraMode {
+  FIRST_PERSON = "first_person",
+  THIRD_PERSON = "third_person",
+}
+
+export type Team = "player" | "enemy";
+
+// ---- Vec3 -----------------------------------------------------------------
+
+export interface Vec3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export function vec3(x = 0, y = 0, z = 0): Vec3 {
+  return { x, y, z };
+}
+
+export function vec3Dist(a: Vec3, b: Vec3): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+export function vec3DistXZ(a: Vec3, b: Vec3): number {
+  const dx = a.x - b.x;
+  const dz = a.z - b.z;
+  return Math.sqrt(dx * dx + dz * dz);
+}
+
+export function vec3Add(a: Vec3, b: Vec3): Vec3 {
+  return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
+}
+
+export function vec3Scale(v: Vec3, s: number): Vec3 {
+  return { x: v.x * s, y: v.y * s, z: v.z * s };
+}
+
+export function vec3Normalize(v: Vec3): Vec3 {
+  const len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  if (len < 0.0001) return { x: 0, y: 0, z: 0 };
+  return { x: v.x / len, y: v.y / len, z: v.z / len };
+}
+
+// ---- Skeleton Bone State --------------------------------------------------
+
+export interface BoneTransform {
+  x: number;
+  y: number;
+  z: number;
+  rotX: number;
+  rotY: number;
+  rotZ: number;
+}
+
+export interface SkeletonPose {
+  hips: BoneTransform;
+  spine: BoneTransform;
+  chest: BoneTransform;
+  neck: BoneTransform;
+  head: BoneTransform;
+  leftUpperArm: BoneTransform;
+  leftForearm: BoneTransform;
+  leftHand: BoneTransform;
+  rightUpperArm: BoneTransform;
+  rightForearm: BoneTransform;
+  rightHand: BoneTransform;
+  leftThigh: BoneTransform;
+  leftShin: BoneTransform;
+  leftFoot: BoneTransform;
+  rightThigh: BoneTransform;
+  rightShin: BoneTransform;
+  rightFoot: BoneTransform;
+}
+
+// ---- Equipment Loadout ----------------------------------------------------
+
+export interface EquipmentLoadout {
+  mainHand: WeaponDef | null;
+  offHand: WeaponDef | null; // shield or secondary weapon
+  armor: Partial<Record<ArmorSlot, ArmorDef | null>>;
+}
+
+// ---- Fighter Entity -------------------------------------------------------
+
+export interface WarbandFighter {
+  id: string;
+  name: string;
+  team: Team;
+  isPlayer: boolean;
+
+  // Transform
+  position: Vec3;
+  rotation: number; // Y-axis facing angle (radians)
+  velocity: Vec3;
+  onGround: boolean;
+
+  // Stats
+  hp: number;
+  maxHp: number;
+  stamina: number;
+  maxStamina: number;
+
+  // Combat
+  combatState: FighterCombatState;
+  attackDirection: CombatDirection;
+  blockDirection: CombatDirection;
+  stateTimer: number; // ticks remaining in current combat state
+  lastHitBy: string | null; // fighter id
+
+  // Equipment
+  equipment: EquipmentLoadout;
+  inventory: (WeaponDef | ArmorDef)[];
+  gold: number;
+
+  // Ranged
+  ammo: number;
+  maxAmmo: number;
+
+  // Animation
+  walkCycle: number; // 0-1 walk animation phase
+  animBlend: number; // blend factor for animation transitions
+
+  // AI state (null for player)
+  ai: AIState | null;
+
+  // Stats tracking
+  kills: number;
+  damage_dealt: number;
+}
+
+// ---- AI State -------------------------------------------------------------
+
+export interface AIState {
+  targetId: string | null;
+  decisionTimer: number;
+  reactionDelay: number;
+  blockChance: number;
+  aggressiveness: number; // 0-1
+  preferredRange: number; // ideal distance from target
+  strafeDir: number; // -1 or 1
+  strafeTimer: number;
+}
+
+// ---- Projectile -----------------------------------------------------------
+
+export interface WarbandProjectile {
+  id: string;
+  ownerId: string;
+  ownerTeam: Team;
+  position: Vec3;
+  velocity: Vec3;
+  damage: number;
+  gravity: number;
+  alive: boolean;
+  age: number; // ticks since launched
+}
+
+// ---- Weapon Pickup --------------------------------------------------------
+
+export interface WeaponPickup {
+  id: string;
+  position: Vec3;
+  weapon: WeaponDef;
+  age: number;
+}
+
+// ---- Game State -----------------------------------------------------------
+
+export interface WarbandState {
+  phase: WarbandPhase;
+  battleType: BattleType;
+  cameraMode: CameraMode;
+
+  fighters: WarbandFighter[];
+  projectiles: WarbandProjectile[];
+  pickups: WeaponPickup[];
+
+  tick: number;
+  battleTimer: number; // ticks remaining
+
+  // Player reference
+  playerId: string;
+
+  // Score
+  playerTeamAlive: number;
+  enemyTeamAlive: number;
+
+  // Round
+  round: number;
+  playerWins: number;
+  enemyWins: number;
+
+  // Screen dimensions (for input mapping)
+  screenW: number;
+  screenH: number;
+}
+
+// ---- Factory --------------------------------------------------------------
+
+export function createDefaultFighter(
+  id: string,
+  name: string,
+  team: Team,
+  isPlayer: boolean,
+  position: Vec3,
+): WarbandFighter {
+  return {
+    id,
+    name,
+    team,
+    isPlayer,
+    position,
+    rotation: team === "player" ? 0 : Math.PI,
+    velocity: vec3(),
+    onGround: true,
+
+    hp: 100,
+    maxHp: 100,
+    stamina: WB.STAMINA_MAX,
+    maxStamina: WB.STAMINA_MAX,
+
+    combatState: FighterCombatState.IDLE,
+    attackDirection: CombatDirection.TOP_RIGHT,
+    blockDirection: CombatDirection.TOP_RIGHT,
+    stateTimer: 0,
+    lastHitBy: null,
+
+    equipment: {
+      mainHand: null,
+      offHand: null,
+      armor: {},
+    },
+    inventory: [],
+    gold: WB.STARTING_GOLD,
+
+    ammo: 0,
+    maxAmmo: 0,
+
+    walkCycle: 0,
+    animBlend: 0,
+
+    ai: isPlayer
+      ? null
+      : {
+          targetId: null,
+          decisionTimer: 0,
+          reactionDelay: WB.AI_REACTION_TICKS_NORMAL,
+          blockChance: WB.AI_BLOCK_CHANCE_NORMAL,
+          aggressiveness: 0.5,
+          preferredRange: 2.0,
+          strafeDir: 1,
+          strafeTimer: 0,
+        },
+
+    kills: 0,
+    damage_dealt: 0,
+  };
+}
+
+export function createWarbandState(
+  battleType: BattleType,
+  screenW: number,
+  screenH: number,
+): WarbandState {
+  return {
+    phase: WarbandPhase.SHOP,
+    battleType,
+    cameraMode: CameraMode.THIRD_PERSON,
+
+    fighters: [],
+    projectiles: [],
+    pickups: [],
+
+    tick: 0,
+    battleTimer: 60 * WB.TICKS_PER_SEC, // 60 seconds
+
+    playerId: "player_0",
+
+    playerTeamAlive: WB.TEAM_SIZE,
+    enemyTeamAlive: WB.TEAM_SIZE,
+
+    round: 1,
+    playerWins: 0,
+    enemyWins: 0,
+
+    screenW,
+    screenH,
+  };
+}

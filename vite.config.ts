@@ -11,6 +11,7 @@ export default defineConfig({
       "@input": resolve(__dirname, "src/input"),
       "@audio": resolve(__dirname, "src/audio"),
       "@net": resolve(__dirname, "src/net"),
+      "@warband": resolve(__dirname, "src/warband"),
       "@": resolve(__dirname, "src"),
     },
   },
