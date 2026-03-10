@@ -90,7 +90,7 @@ export class FighterMesh {
   // Weapon mesh attached to right hand
   private _weaponMesh: THREE.Mesh | null = null;
   private _isRangedWeapon = false;
-  private _bowStringMesh: THREE.Mesh | null = null;
+  private _bowStringLine: THREE.Line | null = null;
   private _bowStringRestX = 0; // string X position at rest (torus local)
   private _bowR = 0; // bow radius for string animation
   private _shieldMesh: THREE.Mesh | null = null;
@@ -1342,12 +1342,20 @@ export class FighterMesh {
       const stringX = bowR * Math.cos(bowArc / 2) - bowR;
       this._bowStringRestX = stringX;
 
-      const stringGeo = new THREE.CylinderGeometry(0.002, 0.002, halfSpan * 2, 2);
-      const stringMat = new THREE.MeshBasicMaterial({ color: 0xddddcc });
-      const bowString = new THREE.Mesh(stringGeo, stringMat);
-      bowString.position.set(stringX, 0, 0);
-      bowGroup.add(bowString);
-      this._bowStringMesh = bowString;
+      // V-shape string: two segments meeting at center pull point.
+      // Vertices: upper nock → center → lower nock.
+      // Only the center X moves during draw animation.
+      const strPositions = new Float32Array([
+        stringX,  halfSpan, 0,  // upper nock (fixed)
+        stringX,  0,        0,  // center pull point (animated)
+        stringX, -halfSpan, 0,  // lower nock (fixed)
+      ]);
+      const strBufGeo = new THREE.BufferGeometry();
+      strBufGeo.setAttribute("position", new THREE.BufferAttribute(strPositions, 3));
+      const stringMat = new THREE.LineBasicMaterial({ color: 0xddddcc });
+      const bowStringLine = new THREE.Line(strBufGeo, stringMat);
+      bowGroup.add(bowStringLine);
+      this._bowStringLine = bowStringLine;
 
       // Nocks at limb tips
       for (const side of [-1, 1]) {
@@ -1405,9 +1413,21 @@ export class FighterMesh {
         bowGroup.add(stock);
       }
 
-      // Map bowGroup into hand space:
-      // Euler XYZ (π/2, 0, -π/2): X→-Y(forward), Y→+Z(up)
-      bowGroup.rotation.set(Math.PI, Math.PI / 2, -Math.PI / 2);
+      // ---------------------------------------------------------------
+      // !! DO NOT CHANGE THIS ROTATION WITHOUT READING THIS FIRST !!
+      //
+      // CORRECT BOW ORIENTATION: (Math.PI, Math.PI/2, Math.PI/2)
+      //   - One limb points UP, one limb points DOWN
+      //   - WOOD (belly/outer curve) faces the ENEMY (forward)
+      //   - STRING faces the ARCHER (backward, toward body)
+      //   - Arrow points toward enemy
+      //
+      // This was reached after many failed attempts. The key is the
+      // POSITIVE Math.PI/2 on Z (not negative). Negating Z flips wood
+      // and string. Changing Y rotates the limbs away from vertical.
+      // Changing X tilts the whole bow off-axis.
+      // ---------------------------------------------------------------
+      bowGroup.rotation.set(Math.PI, Math.PI / 2, Math.PI / 2);
 
       // Wrapper mesh (same pattern as melee weapons)
       const dummyGeo = new THREE.BufferGeometry();
@@ -2180,6 +2200,7 @@ export class FighterMesh {
           }
         });
         this._weaponMesh = null;
+        this._bowStringLine = null;
         this._isRangedWeapon = false;
       }
       // Remove shield if looted
@@ -2439,27 +2460,29 @@ export class FighterMesh {
     this._leftUpperArm.rotation.z = 0.35;
     this._leftForearm.rotation.x = -0.3;
 
-    // Animate the bow string mesh (moves along X in bowGroup local = toward/away from archer)
-    if (this._bowStringMesh && this._bowR > 0) {
-      const restX = this._bowStringRestX; // rest position (negative = toward archer)
-      const pullX = restX - this._bowR * 0.45; // pulled back toward the body
+    // Animate the bow string V-shape: only the center vertex (index 1) moves along X
+    if (this._bowStringLine && this._bowR > 0) {
+      const restX = this._bowStringRestX;
+      const pullX = restX - this._bowR * 0.45;
 
+      let centerX = restX;
       if (
         fighter.combatState === FighterCombatState.DRAWING ||
         fighter.combatState === FighterCombatState.AIMING
       ) {
-        const t =
-          fighter.combatState === FighterCombatState.AIMING
-            ? 1
-            : Math.min(1, 1 - fighter.stateTimer / 20);
-        this._bowStringMesh.position.x = restX + (pullX - restX) * t;
+        const t = fighter.combatState === FighterCombatState.AIMING
+          ? 1
+          : Math.min(1, 1 - fighter.stateTimer / 20);
+        centerX = restX + (pullX - restX) * t;
       } else if (fighter.combatState === FighterCombatState.RELEASING) {
-        const t = Math.min(1, (1 - fighter.stateTimer / 8));
+        const t = Math.min(1, 1 - fighter.stateTimer / 8);
         const overshoot = restX + (restX - pullX) * 0.15 * Math.max(0, 1 - t * 3);
-        this._bowStringMesh.position.x = pullX + (overshoot - pullX) * t;
-      } else {
-        this._bowStringMesh.position.x = restX;
+        centerX = pullX + (overshoot - pullX) * t;
       }
+
+      const pos = this._bowStringLine.geometry.attributes.position as THREE.BufferAttribute;
+      pos.setX(1, centerX); // only move the center vertex
+      pos.needsUpdate = true;
     }
   }
 
