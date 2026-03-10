@@ -1605,7 +1605,7 @@ export class FighterMesh {
         const eyeGeo = new THREE.CircleGeometry(0.022, 8);
         const eye = new THREE.Mesh(eyeGeo, darkMat);
         eye.scale.set(1.3, 0.6, 1);
-        eye.position.set(side * HEAD_RADIUS * 0.45, HEAD_RADIUS * 1.02, helmR * 0.90);
+        eye.position.set(side * HEAD_RADIUS * 0.45, HEAD_RADIUS * 1.02, HEAD_RADIUS * 0.92);
         addHelm(eye);
       }
 
