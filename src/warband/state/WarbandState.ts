@@ -20,6 +20,7 @@ export enum BattleType {
   SIEGE = "siege",
   DUEL = "duel",
   CAMERA_VIEW = "camera_view",
+  ARMY_BATTLE = "army_battle",
 }
 
 export enum CombatDirection {

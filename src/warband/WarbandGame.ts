@@ -35,10 +35,98 @@ import { WarbandAISystem } from "./systems/WarbandAISystem";
 const AI_NAMES_PLAYER = [
   "Sir Gareth", "Sir Bors", "Lady Elaine", "Sir Percival",
   "Dame Isolde", "Sir Tristan", "Lady Morgana", "Sir Galahad",
+  "Sir Lancelot", "Dame Vivienne", "Sir Kay", "Lady Guinevere",
+  "Sir Bedivere", "Dame Lynet", "Sir Gawain", "Lady Nimue",
 ];
 const AI_NAMES_ENEMY = [
   "Black Knight", "Raider Ulric", "Bandit Thorne", "Dark Warden",
   "Marauder Kael", "Pillager Varn", "Rogue Aldric", "Brigand Hask",
+  "Reaver Drak", "Scourge Mord", "Warlord Grenn", "Ravager Surt",
+  "Despoiler Orm", "Plunderer Rask", "Corsair Vex", "Destroyer Bane",
+];
+
+// ---- Army unit type presets -----------------------------------------------
+
+interface UnitTypeDef {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  mainHand: string;    // weapon id
+  offHand: string | null; // shield id or null
+  head: string;
+  torso: string;
+  gauntlets: string;
+  legs: string;
+  boots: string;
+}
+
+const UNIT_TYPES: UnitTypeDef[] = [
+  {
+    id: "swordsman",
+    name: "Swordsman",
+    icon: "\u2694\uFE0F",
+    description: "Sword & shield, medium armor",
+    mainHand: "arming_sword",
+    offHand: "heater_shield",
+    head: "mail_coif",
+    torso: "chain_hauberk",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "leather_boots",
+  },
+  {
+    id: "archer",
+    name: "Archer",
+    icon: "\uD83C\uDFF9",
+    description: "Longbow, light armor",
+    mainHand: "long_bow",
+    offHand: null,
+    head: "leather_cap",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+  },
+  {
+    id: "pikeman",
+    name: "Pikeman",
+    icon: "\uD83D\uDD31",
+    description: "Pike, medium armor",
+    mainHand: "pike",
+    offHand: null,
+    head: "nasal_helm",
+    torso: "mail_shirt",
+    gauntlets: "leather_gloves",
+    legs: "mail_chausses",
+    boots: "leather_boots",
+  },
+  {
+    id: "shock",
+    name: "Shock",
+    icon: "\uD83D\uDDE1\uFE0F",
+    description: "Two-handed weapon, medium armor",
+    mainHand: "greatsword",
+    offHand: null,
+    head: "nasal_helm",
+    torso: "chain_hauberk",
+    gauntlets: "mail_gauntlets",
+    legs: "leather_leggings",
+    boots: "mail_boots",
+  },
+  {
+    id: "knight",
+    name: "Knight",
+    icon: "\uD83D\uDEE1\uFE0F",
+    description: "Heavy armor, sword & shield",
+    mainHand: "arming_sword",
+    offHand: "kite_shield",
+    head: "bascinet",
+    torso: "brigandine",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+  },
 ];
 
 export class WarbandGame {
@@ -74,6 +162,11 @@ export class WarbandGame {
   private _resultsContainer: HTMLDivElement | null = null;
   private _pauseMenuContainer: HTMLDivElement | null = null;
   private _inventoryContainer: HTMLDivElement | null = null;
+  private _armySetupContainer: HTMLDivElement | null = null;
+
+  // Army battle composition
+  private _playerArmy: number[] = [0, 0, 0, 0, 0]; // count per unit type
+  private _enemyArmy: number[] = [0, 0, 0, 0, 0];
 
   // ESC handler
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -146,6 +239,11 @@ export class WarbandGame {
         <span style="display:block;font-size:12px;color:#999;margin-top:4px">Storm the castle walls</span>
       </button>
 
+      <button id="wb-army" style="${this._menuBtnStyle("#4a2a0a", "#daa520")}">
+        \u{1F451} Army Battle
+        <span style="display:block;font-size:12px;color:#999;margin-top:4px">Up to 100v100 — choose your army</span>
+      </button>
+
       <button id="wb-duel" style="${this._menuBtnStyle()}">
         🤺 Duel
         <span style="display:block;font-size:12px;color:#999;margin-top:4px">1v1 single combat</span>
@@ -172,6 +270,11 @@ export class WarbandGame {
     document.getElementById("wb-siege")?.addEventListener("click", () => {
       this._removeMenu();
       this._startGame(BattleType.SIEGE);
+    });
+
+    document.getElementById("wb-army")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._showArmySetup();
     });
 
     document.getElementById("wb-duel")?.addEventListener("click", () => {
@@ -232,6 +335,7 @@ export class WarbandGame {
 
     const isDuel = battleType === BattleType.DUEL;
     const isCameraView = battleType === BattleType.CAMERA_VIEW;
+    const isArmyBattle = battleType === BattleType.ARMY_BATTLE;
 
     if (isCameraView) {
       // Camera view: give player default equipment, no enemies, go straight to battle
@@ -243,6 +347,64 @@ export class WarbandGame {
       this._state.battleTimer = 999999;
       this._cameraController.setFreeOrbit(true);
       this._startBattle();
+      return;
+    }
+
+    if (isArmyBattle) {
+      // Spawn player allies from army composition
+      const playerTotal = this._playerArmy.reduce((a, b) => a + b, 0);
+      const enemyTotal = this._enemyArmy.reduce((a, b) => a + b, 0);
+      const halfW = WB.ARENA_WIDTH / 2;
+
+      let allyIdx = 0;
+      for (let t = 0; t < UNIT_TYPES.length; t++) {
+        for (let n = 0; n < this._playerArmy[t]; n++) {
+          const row = Math.floor(allyIdx / 10);
+          const col = allyIdx % 10;
+          const x = (col - 4.5) * 2.5;
+          const z = 10 + row * 2.5;
+          const ally = createDefaultFighter(
+            `ally_${allyIdx}`,
+            AI_NAMES_PLAYER[allyIdx % AI_NAMES_PLAYER.length],
+            "player",
+            false,
+            vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
+          );
+          this._equipUnitType(ally, UNIT_TYPES[t]);
+          this._state.fighters.push(ally);
+          allyIdx++;
+        }
+      }
+
+      let enemyIdx = 0;
+      for (let t = 0; t < UNIT_TYPES.length; t++) {
+        for (let n = 0; n < this._enemyArmy[t]; n++) {
+          const row = Math.floor(enemyIdx / 10);
+          const col = enemyIdx % 10;
+          const x = (col - 4.5) * 2.5;
+          const z = -10 - row * 2.5;
+          const enemy = createDefaultFighter(
+            `enemy_${enemyIdx}`,
+            AI_NAMES_ENEMY[enemyIdx % AI_NAMES_ENEMY.length],
+            "enemy",
+            false,
+            vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
+          );
+          this._equipUnitType(enemy, UNIT_TYPES[t]);
+          this._state.fighters.push(enemy);
+          enemyIdx++;
+        }
+      }
+
+      this._state.playerTeamAlive = playerTotal + 1; // +1 for player
+      this._state.enemyTeamAlive = enemyTotal;
+      this._state.battleTimer = 180 * WB.TICKS_PER_SEC; // 3 minutes for army battles
+
+      // Show shop for player equipment
+      this._state.phase = WarbandPhase.SHOP;
+      this._shop.show(player, () => {
+        this._startBattle();
+      });
       return;
     }
 
@@ -329,6 +491,153 @@ export class WarbandGame {
       const maxIdx = Math.min(available.length - 1, tierIdx + 1);
       const idx = Math.floor(Math.random() * (maxIdx + 1));
       fighter.equipment.armor[slot] = available[idx];
+    }
+  }
+
+  // ---- Army setup screen ---------------------------------------------------
+
+  private _showArmySetup(): void {
+    this._playerArmy = [0, 0, 0, 0, 0];
+    this._enemyArmy = [0, 0, 0, 0, 0];
+
+    this._armySetupContainer = document.createElement("div");
+    this._armySetupContainer.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 30; background: rgba(10, 8, 5, 0.97);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Segoe UI', sans-serif; color: #e0d5c0;
+      user-select: none;
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._armySetupContainer);
+
+    this._renderArmySetup();
+  }
+
+  private _renderArmySetup(): void {
+    if (!this._armySetupContainer) return;
+
+    const MAX_ARMY = 100;
+    const playerTotal = this._playerArmy.reduce((a, b) => a + b, 0);
+    const enemyTotal = this._enemyArmy.reduce((a, b) => a + b, 0);
+
+    const unitCard = (ut: UnitTypeDef, idx: number, count: number, side: "player" | "enemy") => {
+      const borderColor = side === "player" ? "#4488ff" : "#ff4444";
+      return `
+        <div style="background:rgba(255,255,255,0.05);border:2px solid ${borderColor};border-radius:8px;
+          padding:12px;margin:6px;width:120px;text-align:center;cursor:pointer;transition:background 0.15s"
+          data-unit="${idx}" data-side="${side}"
+          onmouseover="this.style.background='rgba(255,255,255,0.12)'"
+          onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+          <div style="font-size:28px">${ut.icon}</div>
+          <div style="font-size:14px;font-weight:bold;margin:4px 0">${ut.name}</div>
+          <div style="font-size:11px;color:#888;margin-bottom:6px">${ut.description}</div>
+          <div style="font-size:24px;font-weight:bold;color:${borderColor}">${count}</div>
+        </div>
+      `;
+    };
+
+    const playerCards = UNIT_TYPES.map((ut, i) => unitCard(ut, i, this._playerArmy[i], "player")).join("");
+    const enemyCards = UNIT_TYPES.map((ut, i) => unitCard(ut, i, this._enemyArmy[i], "enemy")).join("");
+
+    const canStart = playerTotal > 0 && enemyTotal > 0;
+
+    this._armySetupContainer.innerHTML = `
+      <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 15px rgba(218,165,32,0.3);margin-bottom:5px">
+        \u{1F451} ARMY BATTLE
+      </h1>
+      <p style="color:#888;font-size:13px;margin-bottom:20px">
+        Click +1 &nbsp;|&nbsp; Shift+Click +5 &nbsp;|&nbsp; Ctrl+Click +10 &nbsp;|&nbsp; Right-click to remove
+      </p>
+
+      <div style="margin-bottom:16px">
+        <h2 style="font-size:18px;color:#4488ff;margin-bottom:8px">
+          Your Army <span style="font-size:14px;color:#888">(${playerTotal} / ${MAX_ARMY})</span>
+        </h2>
+        <div style="display:flex;justify-content:center;flex-wrap:wrap">
+          ${playerCards}
+        </div>
+      </div>
+
+      <div style="width:60%;height:1px;background:#333;margin:10px 0"></div>
+
+      <div style="margin-bottom:20px">
+        <h2 style="font-size:18px;color:#ff4444;margin-bottom:8px">
+          Enemy Army <span style="font-size:14px;color:#888">(${enemyTotal} / ${MAX_ARMY})</span>
+        </h2>
+        <div style="display:flex;justify-content:center;flex-wrap:wrap">
+          ${enemyCards}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px">
+        <button id="wb-army-start" style="${this._menuBtnStyle(canStart ? "#2a6a2a" : "#333", canStart ? "#88cc66" : "#555")}"
+          ${canStart ? "" : "disabled"}>
+          \u2694\uFE0F Start Battle (${playerTotal} vs ${enemyTotal})
+        </button>
+        <button id="wb-army-back" style="${this._menuBtnStyle("#555", "#888")}">
+          \u2190 Back
+        </button>
+      </div>
+    `;
+
+    // Wire up unit card clicks
+    this._armySetupContainer.querySelectorAll("[data-unit]").forEach((el) => {
+      const htmlEl = el as HTMLElement;
+      const idx = parseInt(htmlEl.dataset.unit!, 10);
+      const side = htmlEl.dataset.side as "player" | "enemy";
+      const army = side === "player" ? this._playerArmy : this._enemyArmy;
+
+      htmlEl.addEventListener("click", (e: MouseEvent) => {
+        e.preventDefault();
+        const total = army.reduce((a, b) => a + b, 0);
+        const add = e.ctrlKey ? 10 : e.shiftKey ? 5 : 1;
+        army[idx] = Math.min(army[idx] + add, MAX_ARMY - (total - army[idx]));
+        this._renderArmySetup();
+      });
+
+      htmlEl.addEventListener("contextmenu", (e: MouseEvent) => {
+        e.preventDefault();
+        const sub = e.ctrlKey ? 10 : e.shiftKey ? 5 : 1;
+        army[idx] = Math.max(0, army[idx] - sub);
+        this._renderArmySetup();
+      });
+    });
+
+    document.getElementById("wb-army-start")?.addEventListener("click", () => {
+      this._removeArmySetup();
+      this._startGame(BattleType.ARMY_BATTLE);
+    });
+
+    document.getElementById("wb-army-back")?.addEventListener("click", () => {
+      this._removeArmySetup();
+      this._showMenu();
+    });
+  }
+
+  private _removeArmySetup(): void {
+    if (this._armySetupContainer?.parentNode) {
+      this._armySetupContainer.parentNode.removeChild(this._armySetupContainer);
+      this._armySetupContainer = null;
+    }
+  }
+
+  private _equipUnitType(fighter: WarbandFighter, unitType: UnitTypeDef): void {
+    fighter.equipment.mainHand = WEAPON_DEFS[unitType.mainHand] ?? null;
+    fighter.equipment.offHand = unitType.offHand ? (WEAPON_DEFS[unitType.offHand] ?? null) : null;
+    fighter.equipment.armor = {
+      [ArmorSlot.HEAD]: ARMOR_DEFS[unitType.head] ?? null,
+      [ArmorSlot.TORSO]: ARMOR_DEFS[unitType.torso] ?? null,
+      [ArmorSlot.GAUNTLETS]: ARMOR_DEFS[unitType.gauntlets] ?? null,
+      [ArmorSlot.LEGS]: ARMOR_DEFS[unitType.legs] ?? null,
+      [ArmorSlot.BOOTS]: ARMOR_DEFS[unitType.boots] ?? null,
+    };
+
+    // Set ammo for ranged units
+    if (fighter.equipment.mainHand?.ammo) {
+      fighter.ammo = fighter.equipment.mainHand.ammo;
+      fighter.maxAmmo = fighter.equipment.mainHand.ammo;
     }
   }
 
@@ -691,47 +1000,107 @@ export class WarbandGame {
     this._state.fighters = this._state.fighters.filter((f) => f.isPlayer);
 
     const isDuel = this._state.battleType === BattleType.DUEL;
+    const isArmyBattle = this._state.battleType === BattleType.ARMY_BATTLE;
 
-    // Create new allies (skip in duel mode)
-    if (!isDuel) {
-      for (let i = 1; i < WB.TEAM_SIZE; i++) {
-        const ally = createDefaultFighter(
-          `ally_r${this._state.round}_${i}`,
-          AI_NAMES_PLAYER[i % AI_NAMES_PLAYER.length],
-          "player",
+    if (isArmyBattle) {
+      // Re-spawn from saved army composition
+      const halfW = WB.ARENA_WIDTH / 2;
+      let allyIdx = 0;
+      for (let t = 0; t < UNIT_TYPES.length; t++) {
+        for (let n = 0; n < this._playerArmy[t]; n++) {
+          const row = Math.floor(allyIdx / 10);
+          const col = allyIdx % 10;
+          const x = (col - 4.5) * 2.5;
+          const z = 10 + row * 2.5;
+          const ally = createDefaultFighter(
+            `ally_r${this._state.round}_${allyIdx}`,
+            AI_NAMES_PLAYER[allyIdx % AI_NAMES_PLAYER.length],
+            "player",
+            false,
+            vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
+          );
+          this._equipUnitType(ally, UNIT_TYPES[t]);
+          if (ally.ai) {
+            ally.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);
+            ally.ai.aggressiveness = Math.min(0.9, 0.5 + this._state.round * 0.05);
+          }
+          this._state.fighters.push(ally);
+          allyIdx++;
+        }
+      }
+
+      let enemyIdx = 0;
+      for (let t = 0; t < UNIT_TYPES.length; t++) {
+        for (let n = 0; n < this._enemyArmy[t]; n++) {
+          const row = Math.floor(enemyIdx / 10);
+          const col = enemyIdx % 10;
+          const x = (col - 4.5) * 2.5;
+          const z = -10 - row * 2.5;
+          const enemy = createDefaultFighter(
+            `enemy_r${this._state.round}_${enemyIdx}`,
+            AI_NAMES_ENEMY[enemyIdx % AI_NAMES_ENEMY.length],
+            "enemy",
+            false,
+            vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
+          );
+          this._equipUnitType(enemy, UNIT_TYPES[t]);
+          if (enemy.ai) {
+            enemy.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);
+            enemy.ai.reactionDelay = Math.max(6, WB.AI_REACTION_TICKS_NORMAL - this._state.round * 2);
+            enemy.ai.aggressiveness = Math.min(0.9, 0.5 + this._state.round * 0.05);
+          }
+          this._state.fighters.push(enemy);
+          enemyIdx++;
+        }
+      }
+
+      const playerTotal = this._playerArmy.reduce((a, b) => a + b, 0);
+      const enemyTotal = this._enemyArmy.reduce((a, b) => a + b, 0);
+      this._state.playerTeamAlive = playerTotal + 1;
+      this._state.enemyTeamAlive = enemyTotal;
+      this._state.battleTimer = 180 * WB.TICKS_PER_SEC;
+    } else {
+      // Create new allies (skip in duel mode)
+      if (!isDuel) {
+        for (let i = 1; i < WB.TEAM_SIZE; i++) {
+          const ally = createDefaultFighter(
+            `ally_r${this._state.round}_${i}`,
+            AI_NAMES_PLAYER[i % AI_NAMES_PLAYER.length],
+            "player",
+            false,
+            vec3(-6 + i * 3, 0, 12),
+          );
+          this._equipRandomLoadout(ally, this._state.round > 3 ? "heavy" : "medium");
+          this._state.fighters.push(ally);
+        }
+      }
+
+      // Create new enemies (scale difficulty)
+      const enemyTier = this._state.round <= 2 ? "medium" : "heavy";
+      const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
+      for (let i = 0; i < enemyCount; i++) {
+        const spawnZ = this._state.battleType === BattleType.SIEGE ? -20 : -5;
+        const enemy = createDefaultFighter(
+          `enemy_r${this._state.round}_${i}`,
+          AI_NAMES_ENEMY[i % AI_NAMES_ENEMY.length],
+          "enemy",
           false,
-          vec3(-6 + i * 3, 0, 12),
+          vec3(isDuel ? 0 : -6 + i * 3, 0, spawnZ),
         );
-        this._equipRandomLoadout(ally, this._state.round > 3 ? "heavy" : "medium");
-        this._state.fighters.push(ally);
+        this._equipRandomLoadout(enemy, enemyTier);
+        // Scale AI difficulty with rounds
+        if (enemy.ai) {
+          enemy.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);
+          enemy.ai.reactionDelay = Math.max(6, WB.AI_REACTION_TICKS_NORMAL - this._state.round * 2);
+          enemy.ai.aggressiveness = Math.min(0.9, 0.5 + this._state.round * 0.05);
+        }
+        this._state.fighters.push(enemy);
       }
-    }
 
-    // Create new enemies (scale difficulty)
-    const enemyTier = this._state.round <= 2 ? "medium" : "heavy";
-    const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
-    for (let i = 0; i < enemyCount; i++) {
-      const spawnZ = this._state.battleType === BattleType.SIEGE ? -20 : -5;
-      const enemy = createDefaultFighter(
-        `enemy_r${this._state.round}_${i}`,
-        AI_NAMES_ENEMY[i % AI_NAMES_ENEMY.length],
-        "enemy",
-        false,
-        vec3(isDuel ? 0 : -6 + i * 3, 0, spawnZ),
-      );
-      this._equipRandomLoadout(enemy, enemyTier);
-      // Scale AI difficulty with rounds
-      if (enemy.ai) {
-        enemy.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);
-        enemy.ai.reactionDelay = Math.max(6, WB.AI_REACTION_TICKS_NORMAL - this._state.round * 2);
-        enemy.ai.aggressiveness = Math.min(0.9, 0.5 + this._state.round * 0.05);
-      }
-      this._state.fighters.push(enemy);
+      // Reset counts
+      this._state.playerTeamAlive = isDuel ? 1 : WB.TEAM_SIZE;
+      this._state.enemyTeamAlive = isDuel ? 1 : WB.TEAM_SIZE;
     }
-
-    // Reset counts
-    this._state.playerTeamAlive = isDuel ? 1 : WB.TEAM_SIZE;
-    this._state.enemyTeamAlive = isDuel ? 1 : WB.TEAM_SIZE;
     this._state.projectiles = [];
     this._state.pickups = [];
     this._state.battleTimer = 60 * WB.TICKS_PER_SEC;
@@ -1028,6 +1397,7 @@ export class WarbandGame {
     this._cleanupBattleVisuals();
     this._inputSystem.destroy();
     this._cameraController.setFreeOrbit(false);
+    this._removeArmySetup();
     this._state = null;
   }
 
