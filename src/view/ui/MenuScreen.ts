@@ -11,7 +11,7 @@ import { Difficulty, DIFFICULTY_SETTINGS, setDifficulty } from "@sim/config/Diff
 import { AmbientParticles } from "@view/fx/AmbientParticles";
 import { RuneCorners } from "@view/fx/RuneCorners";
 import { t } from "@/i18n/i18n";
-import { CastleRenderer } from "@view/entities/CastleRenderer";
+import { House1Renderer } from "@view/entities/House1Renderer";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -404,7 +404,7 @@ export class MenuScreen {
   private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
 
   // Building renderer decoration (castle on screen 1)
-  private _buildingRenderer: CastleRenderer | null = null;
+  private _buildingRenderer: House1Renderer | null = null;
   private _buildingContainer!: Container;
   private _buildingPreviewGfx!: Graphics;
 
@@ -803,7 +803,7 @@ export class MenuScreen {
     this._buildingContainer.addChild(this._buildingPreviewGfx);
 
     // Create the castle renderer
-    this._buildingRenderer = new CastleRenderer(null);
+    this._buildingRenderer = new House1Renderer(null);
     this._buildingContainer.addChild(this._buildingRenderer.container);
 
     // Keyboard listener

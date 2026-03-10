@@ -24,6 +24,7 @@ import { CreatureDenRenderer } from "@view/entities/CreatureDenRenderer";
 import { BlacksmithRenderer } from "@view/entities/BlacksmithRenderer";
 import { FarmRenderer } from "@view/entities/FarmRenderer";
 import { EmbassyRenderer } from "@view/entities/EmbassyRenderer";
+import { House1Renderer } from "@view/entities/House1Renderer";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -335,6 +336,7 @@ export class CamelotHubScreen {
   private _compassContainer!: Container;
   private _compassGlow!: Graphics;
   private _compassTime = 0;
+  private _compassHovered = false;
   private _tickerFn: ((ticker: Ticker) => void) | null = null;
   private _onKeyDown: ((e: KeyboardEvent) => void) | null = null;
 
@@ -450,6 +452,21 @@ export class CamelotHubScreen {
     this._compassContainer.addChild(this._compassGlow);
     this._compassContainer.on("pointerdown", () => {
       this.onOpenMenu?.();
+    });
+    this._compassContainer.on("pointerover", () => {
+      this._compassHovered = true;
+      // Clear any building hover
+      if (this._hoveredBuilding) {
+        this._hoveredBuilding = null;
+        this._drawMap();
+      }
+      this._showCompassTooltip();
+    });
+    this._compassContainer.on("pointerout", () => {
+      this._compassHovered = false;
+      this._tooltip.visible = false;
+      this._tooltipFading = false;
+      this._detachPreviewRenderer();
     });
     this._mapContainer.addChild(this._compassContainer);
 
@@ -636,7 +653,8 @@ export class CamelotHubScreen {
       this._drawMap();
       if (hit) {
         this._showTooltip(hit, mx, my);
-      } else {
+      } else if (!this._compassHovered) {
+        // Don't hide tooltip if the compass hover is active
         this._tooltip.visible = false;
         this._tooltipFading = false;
         this._detachPreviewRenderer();
@@ -709,6 +727,92 @@ export class CamelotHubScreen {
     g.rect(0, 0, vigSize, ph).fill({ color: 0x000000, alpha: 0.2 });
     // Right
     g.rect(pw - vigSize, 0, vigSize, ph).fill({ color: 0x000000, alpha: 0.2 });
+  }
+
+  private _showCompassTooltip(): void {
+    this._tooltipTitle.text = "House";
+    this._tooltipTitle.style = STYLE_TOOLTIP_TITLE;
+    this._tooltipMode.text = "\u25b6 Main Menu";
+    this._tooltipMode.style = STYLE_TOOLTIP_MODE;
+
+    // Draw preview with the hamlet (house) renderer
+    this._drawCompassPreview();
+
+    const tw = 200, th = 200;
+    this._tooltipBg.clear()
+      .roundRect(0, 0, tw, th, 6)
+      .fill({ color: 0x1e190f, alpha: 0.95 })
+      .roundRect(0, 0, tw, th, 6)
+      .stroke({ color: 0xdaa520, width: 2 });
+
+    this._tooltipDivider.clear()
+      .moveTo(0, 0).lineTo(180, 0)
+      .stroke({ color: 0xdaa520, width: 1, alpha: 0.5 });
+
+    this._drawPreviewVignette();
+
+    // Fade-in
+    this._tooltip.alpha = 0;
+    this._tooltip.scale.set(0.95);
+    this._tooltipFadeT = 0;
+    this._tooltipFading = true;
+
+    this._tooltip.visible = true;
+    // Position to the left of the compass
+    const compassX = this.MW - 70;
+    const compassY = 70;
+    this._tooltip.position.set(compassX - 220, compassY - 10);
+  }
+
+  private _drawCompassPreview(): void {
+    const g = this._tooltipPreview;
+    g.clear();
+    const pw = 180, ph = 136;
+
+    g.rect(0, 0, pw, ph).fill({ color: 0x0a0a18 });
+
+    // Ground plane with gradient
+    const groundY = ph * 0.7;
+    const groundH = ph * 0.3;
+    const strips = 6;
+    for (let i = 0; i < strips; i++) {
+      const t = i / strips;
+      const stripY = groundY + groundH * t;
+      const stripH = groundH / strips + 1;
+      const alpha = 0.5 + t * 0.3;
+      g.rect(0, stripY, pw, stripH).fill({ color: 0x2a3a1a, alpha });
+    }
+    g.moveTo(0, groundY).lineTo(pw, groundY).stroke({ color: 0x4a6a2a, width: 1, alpha: 0.6 });
+
+    // Grass blades
+    const grassRng = seededRandom(999);
+    for (let i = 0; i < 30; i++) {
+      const gx = grassRng() * pw;
+      const gy = groundY + grassRng() * groundH * 0.5;
+      const gh = 3 + grassRng() * 5;
+      const lean = (grassRng() - 0.5) * 4;
+      g.moveTo(gx, gy).lineTo(gx + lean, gy - gh)
+        .stroke({ color: 0x4a7a2a, width: 0.5, alpha: 0.4 + grassRng() * 0.3 });
+    }
+
+    this._detachPreviewRenderer();
+
+    // Use House1Renderer (Peasant's Cottage)
+    const renderer = this._getOrCreateRenderer("house1");
+    if (renderer) {
+      this._previewRenderer = renderer;
+      const rc = renderer.container;
+      const bounds = rc.getLocalBounds();
+      const bw = bounds.width || 128;
+      const bh = bounds.height || 128;
+      const fitW = pw - 10;
+      const fitH = ph - 10;
+      const scale = Math.min(fitW / bw, fitH / bh, 1.2);
+      rc.scale.set(scale);
+      rc.x = (pw - bw * scale) / 2 - bounds.x * scale;
+      rc.y = (ph - bh * scale) / 2 - bounds.y * scale;
+      this._previewContainer.addChild(rc);
+    }
   }
 
   private _positionTooltip(mx: number, my: number): void {
@@ -827,6 +931,7 @@ export class CamelotHubScreen {
       case "garden":    return new FarmRenderer(null);
       case "harbor":    return new EmbassyRenderer(null);
       case "farm":      return new FarmRenderer(null);
+      case "house1":    return new House1Renderer(null);
       default:          return null;
     }
   }
@@ -888,9 +993,8 @@ export class CamelotHubScreen {
     const t = this._compassTime;
     const flicker = 0.4 + 0.3 * Math.sin(t * 2.5) + 0.15 * Math.sin(t * 7.3) + 0.1 * Math.sin(t * 13.1);
 
-    // Outer glow
-    g.circle(0, 0, 45).fill({ color: 0xdaa520, alpha: flicker * 0.1 });
-    g.circle(0, 0, 35).fill({ color: 0xdaa520, alpha: flicker * 0.15 });
+    // Subtle shimmer ring (no big yellow circles)
+    g.circle(0, 0, 42).stroke({ color: 0xdaa520, width: 0.5, alpha: flicker * 0.15 });
 
     // Hit area (invisible)
     g.circle(0, 0, 40).fill({ color: 0x000000, alpha: 0.001 });
@@ -955,6 +1059,14 @@ export class CamelotHubScreen {
       .lineTo(flagX, flagBaseY - 12)
       .closePath()
       .stroke({ color: 0x2a1a0a, width: 0.5 });
+
+    // --- Castle Keep subtle blink (ambient glow breathing) ---
+    const castleB = MAP_BUILDINGS[0]; // Castle Keep
+    const castleCx = castleB.x + castleB.w / 2;
+    const castleCy = castleB.y + castleB.h / 2;
+    const blink = 0.03 + 0.025 * Math.sin(t * 1.8) + 0.015 * Math.sin(t * 4.3);
+    g.circle(castleCx, castleCy, 90).fill({ color: 0xdaa520, alpha: blink });
+    g.circle(castleCx, castleCy, 55).fill({ color: 0xdaa520, alpha: blink * 0.6 });
   }
 
   // ---------------------------------------------------------------------------
