@@ -3731,48 +3731,56 @@ export class CreatureMesh {
       this._head.add(spike);
     }
 
-    // ---- Wings — bat-like, larger ----
+    // ---- Wings — massive bat-like ----
     for (const side of [-1, 1]) {
       const wing = side === -1 ? this._leftArm : this._rightArm;
-      wing.position.set(side * 0.78, 3.2, -0.2);
+      wing.position.set(side * 0.85, 3.2, -0.2);
       this._body.add(wing);
 
       // Shoulder joint
-      const shoulderGeo = new THREE.SphereGeometry(0.15, 7, 6);
+      const shoulderGeo = new THREE.SphereGeometry(0.2, 7, 6);
       const shoulder = new THREE.Mesh(shoulderGeo, scaleMat);
       wing.add(shoulder);
 
       // Upper arm bone
-      const upperBoneGeo = cyl(0.07, 0.05, 0.96, 6);
+      const upperBoneGeo = cyl(0.09, 0.065, 1.6, 6);
       const upperBone = new THREE.Mesh(upperBoneGeo, darkScaleMat);
-      upperBone.position.set(side * 0.36, 0.12, -0.15);
+      upperBone.position.set(side * 0.6, 0.15, -0.2);
       upperBone.rotation.z = side * 0.8;
       wing.add(upperBone);
 
       // Forearm bone
-      const foreBoneGeo = cyl(0.05, 0.036, 0.84, 6);
+      const foreBoneGeo = cyl(0.065, 0.045, 1.4, 6);
       const foreBone = new THREE.Mesh(foreBoneGeo, darkScaleMat);
-      foreBone.position.set(side * 0.84, -0.12, -0.2);
+      foreBone.position.set(side * 1.4, -0.15, -0.25);
       foreBone.rotation.z = side * 1.2;
       wing.add(foreBone);
 
-      // Wing finger bones (three)
-      for (let f = 0; f < 3; f++) {
-        const fingerGeo = cyl(0.03, 0.012, 0.72 - f * 0.12, 5);
+      // Wing finger bones (four, longer)
+      for (let f = 0; f < 4; f++) {
+        const fingerGeo = cyl(0.04, 0.015, 1.2 - f * 0.18, 5);
         const finger = new THREE.Mesh(fingerGeo, darkScaleMat);
-        const fAngle = side * (0.9 + f * 0.35);
-        finger.position.set(side * 1.2 + Math.sin(fAngle) * 0.24, -0.18 - f * 0.24, -0.25);
+        const fAngle = side * (0.8 + f * 0.3);
+        finger.position.set(side * 2.0 + Math.sin(fAngle) * 0.4, -0.2 - f * 0.35, -0.3);
         finger.rotation.z = fAngle;
         wing.add(finger);
       }
 
-      // Wing membrane — dark crimson semi-transparent
-      const membraneGeo = new THREE.PlaneGeometry(1.44, 1.2, 3, 2);
+      // Wing membrane — large dark crimson semi-transparent
+      const membraneGeo = new THREE.PlaneGeometry(2.8, 2.2, 4, 3);
       const membrane = new THREE.Mesh(membraneGeo, membraneMat);
-      membrane.position.set(side * 0.72, -0.18, -0.22);
+      membrane.position.set(side * 1.2, -0.3, -0.25);
       membrane.rotation.y = side * 0.2;
       membrane.rotation.x = -0.15;
       wing.add(membrane);
+
+      // Secondary lower membrane
+      const lowerMemGeo = new THREE.PlaneGeometry(1.8, 1.0, 3, 2);
+      const lowerMem = new THREE.Mesh(lowerMemGeo, membraneMat);
+      lowerMem.position.set(side * 0.6, -1.1, -0.2);
+      lowerMem.rotation.y = side * 0.15;
+      lowerMem.rotation.x = -0.1;
+      wing.add(lowerMem);
     }
 
     // ---- Legs — digitigrade, thicker ----
@@ -4001,54 +4009,62 @@ export class CreatureMesh {
       this._head.add(spike);
     }
 
-    // ---- Wings — bat-like, larger, with icicles on edges ----
+    // ---- Wings — massive glacial bat-like, with icicles ----
     for (const side of [-1, 1]) {
       const wing = side === -1 ? this._leftArm : this._rightArm;
-      wing.position.set(side * 0.78, 3.2, -0.2);
+      wing.position.set(side * 0.85, 3.2, -0.2);
       this._body.add(wing);
 
       // Shoulder joint
-      const shoulderGeo = new THREE.SphereGeometry(0.15, 7, 6);
+      const shoulderGeo = new THREE.SphereGeometry(0.2, 7, 6);
       const shoulder = new THREE.Mesh(shoulderGeo, scaleMat);
       wing.add(shoulder);
 
       // Upper arm bone
-      const upperBoneGeo = cyl(0.07, 0.05, 0.96, 6);
+      const upperBoneGeo = cyl(0.09, 0.065, 1.6, 6);
       const upperBone = new THREE.Mesh(upperBoneGeo, darkScaleMat);
-      upperBone.position.set(side * 0.36, 0.12, -0.15);
+      upperBone.position.set(side * 0.6, 0.15, -0.2);
       upperBone.rotation.z = side * 0.8;
       wing.add(upperBone);
 
       // Forearm bone
-      const foreBoneGeo = cyl(0.05, 0.036, 0.84, 6);
+      const foreBoneGeo = cyl(0.065, 0.045, 1.4, 6);
       const foreBone = new THREE.Mesh(foreBoneGeo, darkScaleMat);
-      foreBone.position.set(side * 0.84, -0.12, -0.2);
+      foreBone.position.set(side * 1.4, -0.15, -0.25);
       foreBone.rotation.z = side * 1.2;
       wing.add(foreBone);
 
-      // Wing finger bones (three)
-      for (let f = 0; f < 3; f++) {
-        const fingerGeo = cyl(0.03, 0.012, 0.72 - f * 0.12, 5);
+      // Wing finger bones (four, longer)
+      for (let f = 0; f < 4; f++) {
+        const fingerGeo = cyl(0.04, 0.015, 1.2 - f * 0.18, 5);
         const finger = new THREE.Mesh(fingerGeo, darkScaleMat);
-        const fAngle = side * (0.9 + f * 0.35);
-        finger.position.set(side * 1.2 + Math.sin(fAngle) * 0.24, -0.18 - f * 0.24, -0.25);
+        const fAngle = side * (0.8 + f * 0.3);
+        finger.position.set(side * 2.0 + Math.sin(fAngle) * 0.4, -0.2 - f * 0.35, -0.3);
         finger.rotation.z = fAngle;
         wing.add(finger);
       }
 
-      // Wing membrane — pale translucent
-      const membraneGeo = new THREE.PlaneGeometry(1.44, 1.2, 3, 2);
+      // Wing membrane — large pale translucent
+      const membraneGeo = new THREE.PlaneGeometry(2.8, 2.2, 4, 3);
       const membrane = new THREE.Mesh(membraneGeo, membraneMat);
-      membrane.position.set(side * 0.72, -0.18, -0.22);
+      membrane.position.set(side * 1.2, -0.3, -0.25);
       membrane.rotation.y = side * 0.2;
       membrane.rotation.x = -0.15;
       wing.add(membrane);
 
-      // Icicles on wing edges
-      for (let ic = 0; ic < 3; ic++) {
-        const iceGeo = new THREE.ConeGeometry(0.015, 0.1 + ic * 0.015, 5);
+      // Secondary lower membrane
+      const lowerMemGeo = new THREE.PlaneGeometry(1.8, 1.0, 3, 2);
+      const lowerMem = new THREE.Mesh(lowerMemGeo, membraneMat);
+      lowerMem.position.set(side * 0.6, -1.1, -0.2);
+      lowerMem.rotation.y = side * 0.15;
+      lowerMem.rotation.x = -0.1;
+      wing.add(lowerMem);
+
+      // Icicles on wing edges (more, larger)
+      for (let ic = 0; ic < 5; ic++) {
+        const iceGeo = new THREE.ConeGeometry(0.02, 0.15 + ic * 0.02, 5);
         const ice = new THREE.Mesh(iceGeo, icicleMat);
-        ice.position.set(side * (0.3 + ic * 0.35), -0.6 - ic * 0.1, -0.22);
+        ice.position.set(side * (0.3 + ic * 0.45), -1.0 - ic * 0.12, -0.25);
         ice.rotation.x = Math.PI;
         wing.add(ice);
       }
