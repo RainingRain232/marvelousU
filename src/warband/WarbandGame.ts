@@ -3137,6 +3137,9 @@ export class WarbandGame {
 
   // Pickup visuals
   private _pickupMeshes: Map<string, THREE.Group> = new Map();
+  private _sharedPickupGeo: THREE.BoxGeometry | null = null;
+  private _sharedPickupRingGeo: THREE.RingGeometry | null = null;
+  private _sharedPickupRingMat: THREE.MeshBasicMaterial | null = null;
 
   // Game loop
   private _rafId = 0;
@@ -4470,7 +4473,11 @@ export class WarbandGame {
   private _updateVisuals(dt: number): void {
     if (!this._state) return;
 
-    const player = this._state.fighters.find((f) => f.id === this._state!.playerId);
+    // Build fighter lookup map once per frame (avoids repeated .find() calls)
+    const fighterById = new Map<string, typeof this._state.fighters[0]>();
+    for (const f of this._state.fighters) fighterById.set(f.id, f);
+
+    const player = fighterById.get(this._state.playerId);
     if (player) {
       this._cameraController.update(this._state, player);
     }
@@ -4502,7 +4509,7 @@ export class WarbandGame {
       // Calculate rider speed for animation
       let riderSpeed = 0;
       if (horse.riderId) {
-        const rider = this._state.fighters.find(f => f.id === horse.riderId);
+        const rider = fighterById.get(horse.riderId);
         if (rider) {
           riderSpeed = Math.sqrt(rider.velocity.x ** 2 + rider.velocity.z ** 2);
         }
@@ -4553,8 +4560,8 @@ export class WarbandGame {
       }
       mesh.position.set(proj.position.x, proj.position.y, proj.position.z);
       // Orient along velocity
-      const vel = new THREE.Vector3(proj.velocity.x, proj.velocity.y, proj.velocity.z);
-      if (vel.lengthSq() > 0.01) {
+      const vLenSq = proj.velocity.x ** 2 + proj.velocity.y ** 2 + proj.velocity.z ** 2;
+      if (vLenSq > 0.01) {
         mesh.lookAt(
           proj.position.x + proj.velocity.x,
           proj.position.y + proj.velocity.y,
@@ -4565,8 +4572,9 @@ export class WarbandGame {
     }
 
     // Remove dead projectile meshes
+    const liveProjectileIds = new Set(this._state.projectiles.map((p) => p.id));
     for (const [id, mesh] of this._projectileMeshes) {
-      if (!this._state.projectiles.find((p) => p.id === id)) {
+      if (!liveProjectileIds.has(id)) {
         this._sceneManager.scene.remove(mesh);
         if ((mesh as unknown as THREE.Group).isGroup) {
           // Magic ray group — dispose only per-instance materials (geometries are shared)
@@ -4588,25 +4596,28 @@ export class WarbandGame {
       let group = this._pickupMeshes.get(pickup.id);
       if (!group) {
         group = new THREE.Group();
-        // Floating weapon indicator
-        const geo = new THREE.BoxGeometry(0.3, 0.1, 0.1);
+        // Shared pickup geometries (lazy init)
+        if (!this._sharedPickupGeo) {
+          this._sharedPickupGeo = new THREE.BoxGeometry(0.3, 0.1, 0.1);
+          this._sharedPickupRingGeo = new THREE.RingGeometry(0.3, 0.4, 16);
+          this._sharedPickupRingMat = new THREE.MeshBasicMaterial({
+            color: 0xffdd44,
+            transparent: true,
+            opacity: 0.4,
+            side: THREE.DoubleSide,
+          });
+        }
+        // Floating weapon indicator (per-pickup color material)
         const mat = new THREE.MeshStandardMaterial({
           color: pickup.weapon.color,
           emissive: 0x444400,
           emissiveIntensity: 0.3,
         });
-        const mesh = new THREE.Mesh(geo, mat);
+        const mesh = new THREE.Mesh(this._sharedPickupGeo, mat);
         group.add(mesh);
 
-        // Glow ring
-        const ringGeo = new THREE.RingGeometry(0.3, 0.4, 16);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: 0xffdd44,
-          transparent: true,
-          opacity: 0.4,
-          side: THREE.DoubleSide,
-        });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
+        // Glow ring (shared geometry + material)
+        const ring = new THREE.Mesh(this._sharedPickupRingGeo!, this._sharedPickupRingMat!);
         ring.rotation.x = -Math.PI / 2;
         ring.position.y = 0.02;
         group.add(ring);
@@ -4624,13 +4635,15 @@ export class WarbandGame {
     }
 
     // Remove dead pickup meshes
+    const livePickupIds = new Set(this._state.pickups.map((p) => p.id));
     for (const [id, group] of this._pickupMeshes) {
-      if (!this._state.pickups.find((p) => p.id === id)) {
+      if (!livePickupIds.has(id)) {
         this._sceneManager.scene.remove(group);
         group.traverse((obj) => {
           if (obj instanceof THREE.Mesh) {
-            obj.geometry.dispose();
-            (obj.material as THREE.Material).dispose();
+            // Only dispose per-instance materials; shared geo/mat handled in destroy()
+            const mat = obj.material as THREE.Material;
+            if (mat !== this._sharedPickupRingMat) mat.dispose();
           }
         });
         this._pickupMeshes.delete(id);

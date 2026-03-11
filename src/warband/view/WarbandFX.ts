@@ -24,6 +24,7 @@ export class WarbandFX {
   private _sparkMat: THREE.MeshBasicMaterial;
   private _bloodMat: THREE.MeshBasicMaterial;
   private _blockMat: THREE.MeshBasicMaterial;
+  private _dustMat: THREE.MeshBasicMaterial;
 
   constructor(scene: THREE.Scene) {
     this._scene = scene;
@@ -32,6 +33,11 @@ export class WarbandFX {
     this._sparkMat = new THREE.MeshBasicMaterial({ color: 0xffcc44 });
     this._bloodMat = new THREE.MeshBasicMaterial({ color: 0xaa0000 });
     this._blockMat = new THREE.MeshBasicMaterial({ color: 0x4488ff });
+    this._dustMat = new THREE.MeshBasicMaterial({
+      color: 0xaa9966,
+      transparent: true,
+      opacity: 0.4,
+    });
   }
 
   /** Spawn hit sparks at a world position */
@@ -88,12 +94,7 @@ export class WarbandFX {
 
   /** Spawn arrow trail dust */
   spawnDust(x: number, y: number, z: number): void {
-    const dustMat = new THREE.MeshBasicMaterial({
-      color: 0xaa9966,
-      transparent: true,
-      opacity: 0.4,
-    });
-    const mesh = this._getMesh(this._sparkGeo, dustMat);
+    const mesh = this._getMesh(this._sparkGeo, this._dustMat);
     mesh.position.set(x, y, z);
     mesh.scale.set(2, 2, 2);
 
@@ -125,7 +126,9 @@ export class WarbandFX {
 
       // Physics
       p.velocity.y += p.gravity * dt;
-      p.mesh.position.add(p.velocity.clone().multiplyScalar(dt));
+      p.mesh.position.x += p.velocity.x * dt;
+      p.mesh.position.y += p.velocity.y * dt;
+      p.mesh.position.z += p.velocity.z * dt;
 
       // Fade out
       const alpha = p.life / p.maxLife;
@@ -185,5 +188,6 @@ export class WarbandFX {
     this._sparkMat.dispose();
     this._bloodMat.dispose();
     this._blockMat.dispose();
+    this._dustMat.dispose();
   }
 }
