@@ -109,6 +109,30 @@ const SALLET: ArmorDef = {
   accentColor: 0xcccccc,
 };
 
+// ---- New Head Armor ----
+
+const SPANGENHELM: ArmorDef = {
+  id: "spangenhelm",
+  name: "Spangenhelm",
+  slot: ArmorSlot.HEAD,
+  defense: 8,
+  weight: 1.5,
+  cost: 80,
+  color: 0x998877,
+  accentColor: 0xbbaa88,
+};
+
+const ARMET: ArmorDef = {
+  id: "armet",
+  name: "Armet",
+  slot: ArmorSlot.HEAD,
+  defense: 22,
+  weight: 4.5,
+  cost: 440,
+  color: 0xaaaaaa,
+  accentColor: 0xdddddd,
+};
+
 // ---- Torso Armor ----
 
 const PADDED_VEST: ArmorDef = {
@@ -205,6 +229,39 @@ const SURCOAT_OVER_MAIL: ArmorDef = {
   accentColor: 0xdaa520,
 };
 
+const STUDDED_LEATHER: ArmorDef = {
+  id: "studded_leather",
+  name: "Studded Leather",
+  slot: ArmorSlot.TORSO,
+  defense: 12,
+  weight: 3.5,
+  cost: 100,
+  color: 0x7a4422,
+  accentColor: 0xaaaaaa,
+};
+
+const LAMELLAR: ArmorDef = {
+  id: "lamellar",
+  name: "Lamellar",
+  slot: ArmorSlot.TORSO,
+  defense: 20,
+  weight: 6.5,
+  cost: 250,
+  color: 0x886644,
+  accentColor: 0xaa8855,
+};
+
+const HALF_PLATE: ArmorDef = {
+  id: "half_plate",
+  name: "Half Plate",
+  slot: ArmorSlot.TORSO,
+  defense: 34,
+  weight: 12.0,
+  cost: 650,
+  color: 0xaaaaaa,
+  accentColor: 0xcccccc,
+};
+
 // ---- Gauntlets ----
 
 const CLOTH_WRAPS: ArmorDef = {
@@ -257,6 +314,17 @@ const SPLINTED_GAUNTLETS: ArmorDef = {
   cost: 70,
   color: 0x8b4513,
   accentColor: 0x999999,
+};
+
+const BRIGANDINE_GAUNTLETS: ArmorDef = {
+  id: "brigandine_gauntlets",
+  name: "Brigandine Gauntlets",
+  slot: ArmorSlot.GAUNTLETS,
+  defense: 10,
+  weight: 2.0,
+  cost: 150,
+  color: 0x882222,
+  accentColor: 0xaaaaaa,
 };
 
 // ---- Legs ----
@@ -323,6 +391,17 @@ const SPLINTED_GREAVES: ArmorDef = {
   accentColor: 0x999999,
 };
 
+const CUISSES: ArmorDef = {
+  id: "cuisses",
+  name: "Cuisses",
+  slot: ArmorSlot.LEGS,
+  defense: 10,
+  weight: 3.0,
+  cost: 100,
+  color: 0x8b4513,
+  accentColor: 0xaaaaaa,
+};
+
 // ---- Boots ----
 
 const SANDALS: ArmorDef = {
@@ -385,6 +464,17 @@ const ARMORED_BOOTS: ArmorDef = {
   cost: 70,
   color: 0x888888,
   accentColor: 0x654321,
+};
+
+const CHAIN_SABATONS: ArmorDef = {
+  id: "chain_sabatons",
+  name: "Chain Sabatons",
+  slot: ArmorSlot.BOOTS,
+  defense: 10,
+  weight: 2.5,
+  cost: 150,
+  color: 0x999999,
+  accentColor: 0xaaaaaa,
 };
 
 // ---- Pointy Mage Hats (cloth, school-colored) ----
@@ -652,22 +742,27 @@ export const ARMOR_DEFS: Record<string, ArmorDef> = {
   // Head
   cloth_hood: CLOTH_HOOD,
   leather_cap: LEATHER_CAP,
+  spangenhelm: SPANGENHELM,
   mail_coif: MAIL_COIF,
   kettle_hat: KETTLE_HAT,
   nasal_helm: NASAL_HELM,
   bascinet: BASCINET,
   sallet: SALLET,
+  armet: ARMET,
   great_helm: GREAT_HELM,
 
   // Torso
   padded_vest: PADDED_VEST,
   leather_jerkin: LEATHER_JERKIN,
+  studded_leather: STUDDED_LEATHER,
   gambeson: GAMBESON,
   mail_shirt: MAIL_SHIRT,
+  lamellar: LAMELLAR,
   surcoat_over_mail: SURCOAT_OVER_MAIL,
   chain_hauberk: CHAIN_HAUBERK,
   coat_of_plates: COAT_OF_PLATES,
   brigandine: BRIGANDINE,
+  half_plate: HALF_PLATE,
   plate_cuirass: PLATE_CUIRASS,
 
   // Gauntlets
@@ -675,12 +770,14 @@ export const ARMOR_DEFS: Record<string, ArmorDef> = {
   leather_gloves: LEATHER_GLOVES,
   splinted_gauntlets: SPLINTED_GAUNTLETS,
   mail_gauntlets: MAIL_GAUNTLETS,
+  brigandine_gauntlets: BRIGANDINE_GAUNTLETS,
   plate_gauntlets: PLATE_GAUNTLETS,
 
   // Legs
   cloth_trousers: CLOTH_TROUSERS,
   padded_leggings: PADDED_LEGGINGS,
   leather_leggings: LEATHER_LEGGINGS,
+  cuisses: CUISSES,
   mail_chausses: MAIL_CHAUSSES,
   splinted_greaves: SPLINTED_GREAVES,
   plate_greaves: PLATE_GREAVES,
@@ -691,6 +788,7 @@ export const ARMOR_DEFS: Record<string, ArmorDef> = {
   leather_boots: LEATHER_BOOTS,
   armored_boots: ARMORED_BOOTS,
   mail_boots: MAIL_BOOTS,
+  chain_sabatons: CHAIN_SABATONS,
   plate_sabatons: PLATE_SABATONS,
 
   // Pointy Mage Hats
