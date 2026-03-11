@@ -175,6 +175,94 @@ export class CreatureMesh {
       case "bat":
         this._buildBat();
         break;
+      // Faction creatures
+      case "treant":
+        this._buildTreant();
+        break;
+      case "siege_troll":
+        this._buildSiegeTroll();
+        break;
+      case "mana_wraith":
+        this._buildManaWraith();
+        break;
+      case "elemental_avatar":
+        this._buildElementalAvatar();
+        break;
+      case "storm_conduit":
+        this._buildStormConduit();
+        break;
+      case "frost_wyrm":
+        this._buildFrostWyrm();
+        break;
+      case "magma_titan":
+        this._buildMagmaTitan();
+        break;
+      case "stone_fist":
+        this._buildStoneFist();
+        break;
+      case "magma_golem":
+        this._buildMagmaGolem();
+        break;
+      case "obsidian_sentinel":
+        this._buildObsidianSentinel();
+        break;
+      case "cinder_wraith":
+        this._buildCinderWraith();
+        break;
+      case "volcanic_behemoth":
+        this._buildVolcanicBehemoth();
+        break;
+      case "bone_colossus":
+        this._buildBoneColossus();
+        break;
+      case "wraith_lord":
+        this._buildWraithLord();
+        break;
+      case "banshee":
+        this._buildBanshee();
+        break;
+      case "pit_lord":
+        this._buildPitLord();
+        break;
+      case "doom_guard":
+        this._buildDoomGuard();
+        break;
+      case "succubus":
+        this._buildSuccubus();
+        break;
+      case "imp_overlord":
+        this._buildImpOverlord();
+        break;
+      case "seraphim":
+        this._buildSeraphim();
+        break;
+      case "archon":
+        this._buildArchon();
+        break;
+      case "alpha_wolf":
+        this._buildAlphaWolf();
+        break;
+      case "thunderhawk":
+        this._buildThunderhawk();
+        break;
+      case "dire_bear":
+        this._buildDireBear();
+        break;
+      case "war_golem":
+        this._buildWarGolem();
+        break;
+      case "rune_core":
+        this._buildRuneCore();
+        break;
+      case "siege_automaton":
+        this._buildSiegeAutomaton();
+        break;
+      case "crystal_golem":
+        this._buildCrystalGolem();
+        break;
+      case "iron_colossus":
+        this._buildIronColossus();
+        break;
     }
 
     // ---- HP bar ----
@@ -7579,6 +7667,2559 @@ export class CreatureMesh {
         hub.position.set(xOff, 0.35, zOff);
         this._body.add(hub);
       }
+    }
+  }
+
+  // ---- Treant builder --------------------------------------------------------
+
+  private _buildTreant(): void {
+    const barkMat = mat(0x4a3520);
+    const darkBarkMat = mat(0x2e2015);
+    const leafMat = mat(0x2d6e1e, { emissive: 0x0a2208 });
+    const eyeMat = mat(0x88cc44, { emissive: 0x446622 });
+    const rootMat = mat(0x3a2a18);
+
+    // Trunk body
+    const trunkGeo = cyl(0.35, 0.55, 2.5, 8);
+    const trunk = new THREE.Mesh(trunkGeo, barkMat);
+    trunk.position.y = 1.8;
+    this._body.add(trunk);
+
+    // Bark texture bumps
+    for (let i = 0; i < 8; i++) {
+      const bumpGeo = new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 5, 5);
+      const bump = new THREE.Mesh(bumpGeo, darkBarkMat);
+      const angle = Math.random() * Math.PI * 2;
+      bump.position.set(Math.cos(angle) * 0.4, 1.0 + Math.random() * 2.0, Math.sin(angle) * 0.4);
+      this._body.add(bump);
+    }
+
+    // Canopy / head — cluster of leaf spheres
+    this._head.position.set(0, 3.4, 0);
+    this._body.add(this._head);
+    for (let i = 0; i < 5; i++) {
+      const lGeo = new THREE.SphereGeometry(0.4 + Math.random() * 0.25, 6, 5);
+      const leaf = new THREE.Mesh(lGeo, leafMat);
+      leaf.position.set((Math.random() - 0.5) * 0.5, Math.random() * 0.4, (Math.random() - 0.5) * 0.5);
+      this._head.add(leaf);
+    }
+
+    // Eyes — glowing green knotholes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.06, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.15, 2.9, 0.35);
+      this._body.add(eye);
+    }
+
+    // Branch arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.45, 2.6, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.1, 0.08, 1.0, 6);
+      const upper = new THREE.Mesh(upperGeo, barkMat);
+      upper.position.y = -0.5;
+      upper.rotation.z = side * 0.3;
+      arm.add(upper);
+      const foreGeo = cyl(0.08, 0.05, 0.8, 6);
+      const fore = new THREE.Mesh(foreGeo, barkMat);
+      fore.position.set(side * 0.2, -1.1, 0);
+      arm.add(fore);
+      // Twig fingers
+      for (let t = 0; t < 3; t++) {
+        const twigGeo = cyl(0.02, 0.01, 0.3, 4);
+        const twig = new THREE.Mesh(twigGeo, darkBarkMat);
+        twig.position.set(side * (0.25 + t * 0.05), -1.5 + t * 0.05, (t - 1) * 0.05);
+        twig.rotation.z = side * (0.4 + t * 0.2);
+        arm.add(twig);
+      }
+    }
+
+    // Root legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.3, 0.6, 0);
+      this._body.add(leg);
+      const rootGeo = cyl(0.15, 0.1, 0.8, 6);
+      const root = new THREE.Mesh(rootGeo, rootMat);
+      root.position.y = -0.4;
+      leg.add(root);
+      const footGeo = new THREE.SphereGeometry(0.15, 6, 5);
+      const foot = new THREE.Mesh(footGeo, rootMat);
+      foot.scale.set(1, 0.5, 1.3);
+      foot.position.set(0, -0.85, 0.05);
+      leg.add(foot);
+    }
+  }
+
+  // ---- Siege Troll builder ---------------------------------------------------
+
+  private _buildSiegeTroll(): void {
+    const skinMat = mat(0x6a5b3a);
+    const darkMat = mat(0x4a3a2a);
+    const boneMat = mat(0xc8b890);
+    const eyeMat = mat(0xcc4400, { emissive: 0x662200 });
+    const rockMat = mat(0x666666);
+
+    // Barrel torso
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, skinMat);
+    torso.scale.set(0.65, 0.75, 0.55);
+    torso.position.y = 2.4;
+    this._body.add(torso);
+
+    // Belly
+    const bellyGeo = new THREE.SphereGeometry(1, 8, 6);
+    const belly = new THREE.Mesh(bellyGeo, darkMat);
+    belly.scale.set(0.55, 0.55, 0.48);
+    belly.position.set(0, 2.0, 0.18);
+    this._body.add(belly);
+
+    // Head
+    this._head.position.set(0, 3.1, 0.25);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(1, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, skinMat);
+    headMesh.scale.set(0.25, 0.28, 0.26);
+    this._head.add(headMesh);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.05, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.12, 0.08, 0.2);
+      this._head.add(eye);
+    }
+
+    // Tusks
+    for (const side of [-1, 1]) {
+      const tGeo = new THREE.ConeGeometry(0.03, 0.14, 5);
+      const tusk = new THREE.Mesh(tGeo, boneMat);
+      tusk.position.set(side * 0.12, -0.1, 0.2);
+      tusk.rotation.x = -0.3;
+      this._head.add(tusk);
+    }
+
+    // Arms — massive
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.7, 2.7, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.18, 0.14, 0.8, 7);
+      const upper = new THREE.Mesh(upperGeo, skinMat);
+      upper.position.y = -0.4;
+      arm.add(upper);
+      const foreGeo = cyl(0.14, 0.12, 0.7, 7);
+      const fore = new THREE.Mesh(foreGeo, skinMat);
+      fore.position.y = -1.0;
+      arm.add(fore);
+      const fistGeo = new THREE.SphereGeometry(0.16, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, darkMat);
+      fist.position.y = -1.4;
+      arm.add(fist);
+    }
+
+    // Boulder in right hand
+    const boulderGeo = new THREE.SphereGeometry(0.3, 7, 6);
+    const boulder = new THREE.Mesh(boulderGeo, rockMat);
+    boulder.position.y = -1.8;
+    this._rightArm.add(boulder);
+
+    // Legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.32, 1.4, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.2, 0.16, 0.7, 7);
+      const thigh = new THREE.Mesh(thighGeo, skinMat);
+      thigh.position.y = -0.35;
+      leg.add(thigh);
+      const shinGeo = cyl(0.16, 0.12, 0.6, 7);
+      const shin = new THREE.Mesh(shinGeo, skinMat);
+      shin.position.y = -0.85;
+      leg.add(shin);
+      const footGeo = new THREE.SphereGeometry(1, 6, 5);
+      const foot = new THREE.Mesh(footGeo, darkMat);
+      foot.scale.set(0.15, 0.08, 0.2);
+      foot.position.set(0, -1.2, 0.06);
+      leg.add(foot);
+    }
+  }
+
+  // ---- Mana Wraith builder ---------------------------------------------------
+
+  private _buildManaWraith(): void {
+    const ghostMat = mat(0x6644aa, { transparent: true, opacity: 0.6, emissive: 0x332266 });
+    const coreMat = mat(0xaa88ff, { emissive: 0x6644cc });
+    const eyeMat = mat(0xeeddff, { emissive: 0xaa88ff });
+
+    // Spectral body — tapered column
+    const bodyGeo = cyl(0.15, 0.4, 2.0, 8);
+    const body = new THREE.Mesh(bodyGeo, ghostMat);
+    body.position.y = 1.2;
+    this._body.add(body);
+
+    // Core orb
+    const coreGeo = new THREE.SphereGeometry(0.2, 8, 8);
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    core.position.y = 1.8;
+    this._body.add(core);
+
+    // Head — hooded shape
+    this._head.position.set(0, 2.4, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.22, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, ghostMat);
+    this._head.add(headMesh);
+
+    // Hood
+    const hoodGeo = new THREE.ConeGeometry(0.28, 0.3, 8);
+    const hood = new THREE.Mesh(hoodGeo, ghostMat);
+    hood.position.y = 0.15;
+    this._head.add(hood);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.08, 0, 0.18);
+      this._head.add(eye);
+    }
+
+    // Spectral arms — wispy
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.3, 2.0, 0);
+      this._body.add(arm);
+      const armGeo = cyl(0.06, 0.03, 0.9, 6);
+      const armMesh = new THREE.Mesh(armGeo, ghostMat);
+      armMesh.position.y = -0.45;
+      arm.add(armMesh);
+      // Wispy fingers
+      for (let t = 0; t < 3; t++) {
+        const fGeo = cyl(0.015, 0.005, 0.2, 4);
+        const finger = new THREE.Mesh(fGeo, ghostMat);
+        finger.position.set((t - 1) * 0.03, -0.95, 0);
+        finger.rotation.z = (t - 1) * 0.2;
+        arm.add(finger);
+      }
+    }
+
+    // Trailing tail instead of legs
+    this._leftLeg.position.set(-0.1, 0.3, 0);
+    this._body.add(this._leftLeg);
+    this._rightLeg.position.set(0.1, 0.3, 0);
+    this._body.add(this._rightLeg);
+    const tailGeo = cyl(0.25, 0.02, 0.6, 6);
+    const tail = new THREE.Mesh(tailGeo, ghostMat);
+    tail.position.y = -0.1;
+    this._leftLeg.add(tail);
+
+    // Floating rune particles
+    for (let i = 0; i < 4; i++) {
+      const pGeo = new THREE.SphereGeometry(0.03, 5, 5);
+      const p = new THREE.Mesh(pGeo, coreMat);
+      const a = (i / 4) * Math.PI * 2;
+      p.position.set(Math.cos(a) * 0.5, 1.5 + Math.sin(a) * 0.3, Math.sin(a) * 0.5);
+      this._body.add(p);
+    }
+  }
+
+  // ---- Elemental Avatar builder ----------------------------------------------
+
+  private _buildElementalAvatar(): void {
+    const fireMat = mat(0xff4400, { emissive: 0xcc2200 });
+    const coreMat = mat(0xffaa00, { emissive: 0xff6600 });
+    const darkMat = mat(0x661100, { emissive: 0x330800 });
+    const eyeMat = mat(0xffffaa, { emissive: 0xffff88 });
+
+    // Massive fire core body
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, fireMat);
+    torso.scale.set(0.7, 0.9, 0.6);
+    torso.position.y = 2.8;
+    this._body.add(torso);
+
+    // Inner core glow
+    const coreGeo = new THREE.SphereGeometry(0.4, 8, 8);
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    core.position.y = 2.8;
+    this._body.add(core);
+
+    // Head — flame crown
+    this._head.position.set(0, 3.8, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.3, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, fireMat);
+    this._head.add(headMesh);
+
+    // Crown flames
+    for (let i = 0; i < 6; i++) {
+      const fGeo = new THREE.ConeGeometry(0.08, 0.35, 5);
+      const flame = new THREE.Mesh(fGeo, coreMat);
+      const a = (i / 6) * Math.PI * 2;
+      flame.position.set(Math.cos(a) * 0.2, 0.3, Math.sin(a) * 0.2);
+      flame.rotation.z = Math.cos(a) * 0.3;
+      this._head.add(flame);
+    }
+
+    // Eyes — blazing white
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.06, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.12, 0.0, 0.25);
+      this._head.add(eye);
+    }
+
+    // Massive flame arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.75, 3.2, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.18, 0.14, 1.0, 7);
+      const upper = new THREE.Mesh(upperGeo, fireMat);
+      upper.position.y = -0.5;
+      arm.add(upper);
+      const foreGeo = cyl(0.14, 0.1, 0.9, 7);
+      const fore = new THREE.Mesh(foreGeo, darkMat);
+      fore.position.y = -1.2;
+      arm.add(fore);
+      // Flame fists
+      const fistGeo = new THREE.SphereGeometry(0.18, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, coreMat);
+      fist.position.y = -1.7;
+      arm.add(fist);
+    }
+
+    // Legs — molten columns
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.35, 1.5, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.2, 0.16, 0.8, 7);
+      const thigh = new THREE.Mesh(thighGeo, fireMat);
+      thigh.position.y = -0.4;
+      leg.add(thigh);
+      const shinGeo = cyl(0.16, 0.2, 0.7, 7);
+      const shin = new THREE.Mesh(shinGeo, darkMat);
+      shin.position.y = -1.0;
+      leg.add(shin);
+    }
+
+    // Floating embers
+    for (let i = 0; i < 6; i++) {
+      const eGeo = new THREE.SphereGeometry(0.04, 5, 5);
+      const ember = new THREE.Mesh(eGeo, coreMat);
+      ember.position.set((Math.random() - 0.5) * 1.2, 1.5 + Math.random() * 2.5, (Math.random() - 0.5) * 1.0);
+      this._body.add(ember);
+    }
+  }
+
+  // ---- Storm Conduit builder -------------------------------------------------
+
+  private _buildStormConduit(): void {
+    const boltMat = mat(0x4488ff, { emissive: 0x2266dd });
+    const coreMat = mat(0xaaccff, { emissive: 0x88aaff });
+    const darkMat = mat(0x222244, { emissive: 0x111133 });
+    const sparkMat = mat(0xeeeeff, { emissive: 0xeeeeff });
+
+    // Crackling energy body
+    const torsoGeo = cyl(0.25, 0.35, 2.2, 8);
+    const torso = new THREE.Mesh(torsoGeo, boltMat);
+    torso.position.y = 2.2;
+    this._body.add(torso);
+
+    // Core
+    const coreGeo = new THREE.SphereGeometry(0.25, 8, 8);
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    core.position.y = 2.4;
+    this._body.add(core);
+
+    // Head — crackling sphere
+    this._head.position.set(0, 3.3, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.25, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, boltMat);
+    this._head.add(headMesh);
+
+    // Lightning horns
+    for (const side of [-1, 1]) {
+      const hGeo = cyl(0.03, 0.01, 0.4, 4);
+      const horn = new THREE.Mesh(hGeo, sparkMat);
+      horn.position.set(side * 0.15, 0.25, 0);
+      horn.rotation.z = side * -0.4;
+      this._head.add(horn);
+    }
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, sparkMat);
+      eye.position.set(side * 0.1, 0, 0.2);
+      this._head.add(eye);
+    }
+
+    // Arc arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.4, 2.8, 0);
+      this._body.add(arm);
+      const aGeo = cyl(0.08, 0.05, 0.9, 6);
+      const armMesh = new THREE.Mesh(aGeo, boltMat);
+      armMesh.position.y = -0.45;
+      arm.add(armMesh);
+      const orbGeo = new THREE.SphereGeometry(0.1, 6, 6);
+      const orb = new THREE.Mesh(orbGeo, sparkMat);
+      orb.position.y = -1.0;
+      arm.add(orb);
+    }
+
+    // Energy legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.2, 1.0, 0);
+      this._body.add(leg);
+      const lGeo = cyl(0.1, 0.08, 0.8, 6);
+      const legMesh = new THREE.Mesh(lGeo, darkMat);
+      legMesh.position.y = -0.4;
+      leg.add(legMesh);
+    }
+
+    // Floating sparks
+    for (let i = 0; i < 8; i++) {
+      const sGeo = new THREE.SphereGeometry(0.02, 4, 4);
+      const spark = new THREE.Mesh(sGeo, sparkMat);
+      spark.position.set((Math.random() - 0.5) * 1.0, 1.0 + Math.random() * 2.5, (Math.random() - 0.5) * 1.0);
+      this._body.add(spark);
+    }
+  }
+
+  // ---- War Golem builder -----------------------------------------------------
+
+  private _buildWarGolem(): void {
+    const stoneMat = mat(0x6a6a5a, { metalness: 0.2 });
+    const darkStoneMat = mat(0x4a4a3a);
+    const runeMat = mat(0x44aaff, { emissive: 0x2266cc });
+    const eyeMat = mat(0x44ccff, { emissive: 0x2288aa });
+
+    // Massive blocky torso
+    const torsoGeo = new THREE.BoxGeometry(1.0, 1.5, 0.8);
+    const torso = new THREE.Mesh(torsoGeo, stoneMat);
+    torso.position.y = 2.8;
+    this._body.add(torso);
+
+    // Rune on chest
+    const runeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.02);
+    const rune = new THREE.Mesh(runeGeo, runeMat);
+    rune.position.set(0, 2.8, 0.42);
+    this._body.add(rune);
+
+    // Head — blocky, small
+    this._head.position.set(0, 3.8, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.BoxGeometry(0.4, 0.35, 0.35);
+    const headMesh = new THREE.Mesh(headGeo, stoneMat);
+    this._head.add(headMesh);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.05, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.1, 0.02, 0.18);
+      this._head.add(eye);
+    }
+
+    // Massive arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.6, 3.2, 0);
+      this._body.add(arm);
+      const upperGeo = new THREE.BoxGeometry(0.25, 0.9, 0.25);
+      const upper = new THREE.Mesh(upperGeo, stoneMat);
+      upper.position.y = -0.45;
+      arm.add(upper);
+      const foreGeo = new THREE.BoxGeometry(0.28, 0.8, 0.28);
+      const fore = new THREE.Mesh(foreGeo, darkStoneMat);
+      fore.position.y = -1.2;
+      arm.add(fore);
+      const fistGeo = new THREE.SphereGeometry(0.2, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, stoneMat);
+      fist.position.y = -1.7;
+      arm.add(fist);
+    }
+
+    // Legs — pillar blocks
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.3, 1.8, 0);
+      this._body.add(leg);
+      const thighGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25);
+      const thigh = new THREE.Mesh(thighGeo, stoneMat);
+      thigh.position.y = -0.4;
+      leg.add(thigh);
+      const shinGeo = new THREE.BoxGeometry(0.28, 0.75, 0.28);
+      const shin = new THREE.Mesh(shinGeo, darkStoneMat);
+      shin.position.y = -1.05;
+      leg.add(shin);
+      const footGeo = new THREE.BoxGeometry(0.32, 0.15, 0.38);
+      const foot = new THREE.Mesh(footGeo, stoneMat);
+      foot.position.set(0, -1.48, 0.04);
+      leg.add(foot);
+    }
+
+    // Rune accents on body
+    for (let i = 0; i < 4; i++) {
+      const rGeo = new THREE.SphereGeometry(0.04, 5, 5);
+      const r = new THREE.Mesh(rGeo, runeMat);
+      r.position.set((Math.random() - 0.5) * 0.7, 2.2 + i * 0.3, (Math.random() > 0.5 ? 0.42 : -0.42));
+      this._body.add(r);
+    }
+  }
+
+  // ---- Rune Core builder -----------------------------------------------------
+
+  private _buildRuneCore(): void {
+    const shellMat = mat(0x5555aa, { transparent: true, opacity: 0.7, emissive: 0x222255 });
+    const coreMat = mat(0xaa88ff, { emissive: 0x8866dd });
+    const runeMat = mat(0xddbbff, { emissive: 0xaa88ff });
+    const ringMat = mat(0x6666aa, { transparent: true, opacity: 0.5 });
+
+    // Central orb
+    const orbGeo = new THREE.SphereGeometry(0.4, 10, 8);
+    const orb = new THREE.Mesh(orbGeo, coreMat);
+    orb.position.y = 1.5;
+    this._body.add(orb);
+
+    // Outer shell — icosahedron
+    const shellGeo = new THREE.IcosahedronGeometry(0.55, 0);
+    const shell = new THREE.Mesh(shellGeo, shellMat);
+    shell.position.y = 1.5;
+    this._body.add(shell);
+
+    // Orbiting rune rings
+    for (let r = 0; r < 2; r++) {
+      const ringGeo = new THREE.TorusGeometry(0.7 + r * 0.2, 0.02, 6, 16);
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.y = 1.5;
+      ring.rotation.x = r * Math.PI / 3;
+      ring.rotation.y = r * Math.PI / 4;
+      this._body.add(ring);
+    }
+
+    // Floating rune nodes
+    for (let i = 0; i < 6; i++) {
+      const nGeo = new THREE.SphereGeometry(0.04, 5, 5);
+      const node = new THREE.Mesh(nGeo, runeMat);
+      const a = (i / 6) * Math.PI * 2;
+      node.position.set(Math.cos(a) * 0.65, 1.5 + Math.sin(a * 2) * 0.3, Math.sin(a) * 0.65);
+      this._body.add(node);
+    }
+
+    // Head group — top of orb (for animation compatibility)
+    this._head.position.set(0, 2.1, 0);
+    this._body.add(this._head);
+    const crownGeo = new THREE.ConeGeometry(0.15, 0.2, 5);
+    const crown = new THREE.Mesh(crownGeo, coreMat);
+    this._head.add(crown);
+
+    // Arms — energy tendrils
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.5, 1.5, 0);
+      this._body.add(arm);
+      const tGeo = cyl(0.04, 0.02, 0.6, 5);
+      const tendril = new THREE.Mesh(tGeo, runeMat);
+      tendril.position.y = -0.3;
+      tendril.rotation.z = side * 0.3;
+      arm.add(tendril);
+    }
+
+    // Legs — energy pillars (minimal)
+    this._leftLeg.position.set(-0.15, 0.6, 0);
+    this._body.add(this._leftLeg);
+    this._rightLeg.position.set(0.15, 0.6, 0);
+    this._body.add(this._rightLeg);
+    const pillarGeo = cyl(0.06, 0.04, 0.5, 5);
+    const pillar = new THREE.Mesh(pillarGeo, shellMat);
+    pillar.position.y = -0.15;
+    this._leftLeg.add(pillar);
+    const pillar2Geo = cyl(0.06, 0.04, 0.5, 5);
+    const pillar2 = new THREE.Mesh(pillar2Geo, shellMat);
+    pillar2.position.y = -0.15;
+    this._rightLeg.add(pillar2);
+  }
+
+  // ---- Siege Automaton builder -----------------------------------------------
+
+  private _buildSiegeAutomaton(): void {
+    const ironMat = mat(0x555566, { metalness: 0.7, roughness: 0.3 });
+    const darkIronMat = mat(0x333344, { metalness: 0.6 });
+    const brassMAT = mat(0xaa8833, { metalness: 0.5 });
+    const eyeMat = mat(0xff4400, { emissive: 0xcc2200 });
+    const pipeMat = mat(0x444444, { metalness: 0.5 });
+
+    // Massive iron torso
+    const torsoGeo = new THREE.BoxGeometry(1.2, 1.8, 0.9);
+    const torso = new THREE.Mesh(torsoGeo, ironMat);
+    torso.position.y = 3.5;
+    this._body.add(torso);
+
+    // Boiler on back
+    const boilerGeo = cyl(0.35, 0.35, 1.0, 8);
+    const boiler = new THREE.Mesh(boilerGeo, darkIronMat);
+    boiler.position.set(0, 3.8, -0.5);
+    this._body.add(boiler);
+
+    // Smokestack
+    const stackGeo = cyl(0.08, 0.06, 0.6, 6);
+    const stack = new THREE.Mesh(stackGeo, pipeMat);
+    stack.position.set(0, 4.5, -0.5);
+    this._body.add(stack);
+
+    // Head — mechanical
+    this._head.position.set(0, 4.7, 0.1);
+    this._body.add(this._head);
+    const headGeo = new THREE.BoxGeometry(0.4, 0.3, 0.35);
+    const headMesh = new THREE.Mesh(headGeo, ironMat);
+    this._head.add(headMesh);
+
+    // Eyes — glowing vents
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.BoxGeometry(0.08, 0.04, 0.02);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.1, 0.02, 0.18);
+      this._head.add(eye);
+    }
+
+    // Arms — pistons
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.7, 3.8, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.14, 0.12, 1.1, 8);
+      const upper = new THREE.Mesh(upperGeo, ironMat);
+      upper.position.y = -0.55;
+      arm.add(upper);
+      const pistonGeo = cyl(0.08, 0.08, 0.3, 6);
+      const piston = new THREE.Mesh(pistonGeo, brassMAT);
+      piston.position.y = -0.9;
+      arm.add(piston);
+      const foreGeo = cyl(0.12, 0.15, 1.0, 8);
+      const fore = new THREE.Mesh(foreGeo, darkIronMat);
+      fore.position.y = -1.5;
+      arm.add(fore);
+      const fistGeo = new THREE.SphereGeometry(0.2, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, ironMat);
+      fist.position.y = -2.1;
+      arm.add(fist);
+    }
+
+    // Legs — mechanical pillars
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.35, 2.3, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.15, 0.12, 1.0, 8);
+      const thigh = new THREE.Mesh(thighGeo, ironMat);
+      thigh.position.y = -0.5;
+      leg.add(thigh);
+      const kneeGeo = new THREE.SphereGeometry(0.12, 6, 6);
+      const knee = new THREE.Mesh(kneeGeo, brassMAT);
+      knee.position.y = -1.0;
+      leg.add(knee);
+      const shinGeo = cyl(0.12, 0.14, 0.9, 8);
+      const shin = new THREE.Mesh(shinGeo, darkIronMat);
+      shin.position.y = -1.6;
+      leg.add(shin);
+      const footGeo = new THREE.BoxGeometry(0.3, 0.12, 0.35);
+      const foot = new THREE.Mesh(footGeo, ironMat);
+      foot.position.set(0, -2.1, 0.04);
+      leg.add(foot);
+    }
+
+    // Gears/rivets detail
+    for (let i = 0; i < 6; i++) {
+      const gGeo = new THREE.SphereGeometry(0.03, 5, 5);
+      const gear = new THREE.Mesh(gGeo, brassMAT);
+      gear.position.set((Math.random() - 0.5) * 0.8, 2.8 + Math.random() * 1.2, 0.47);
+      this._body.add(gear);
+    }
+  }
+
+  // ---- Crystal Golem builder -------------------------------------------------
+
+  private _buildCrystalGolem(): void {
+    const crystalMat = mat(0x88aadd, { transparent: true, opacity: 0.75, emissive: 0x334466 });
+    const darkCrystalMat = mat(0x5577aa, { transparent: true, opacity: 0.8, emissive: 0x223344 });
+    const coreMat = mat(0xaaddff, { emissive: 0x6699cc });
+    const sparkMat = mat(0xeeeeff, { emissive: 0xccddff });
+
+    // Crystalline torso — angular
+    const torsoGeo = new THREE.BoxGeometry(0.7, 1.1, 0.6);
+    const torso = new THREE.Mesh(torsoGeo, crystalMat);
+    torso.position.y = 2.2;
+    torso.rotation.y = Math.PI / 6;
+    this._body.add(torso);
+
+    // Crystal shards on body
+    for (let i = 0; i < 5; i++) {
+      const shardGeo = new THREE.ConeGeometry(0.06 + Math.random() * 0.04, 0.25 + Math.random() * 0.15, 4);
+      const shard = new THREE.Mesh(shardGeo, darkCrystalMat);
+      const a = Math.random() * Math.PI * 2;
+      shard.position.set(Math.cos(a) * 0.35, 1.8 + Math.random() * 1.0, Math.sin(a) * 0.3);
+      shard.rotation.z = (Math.random() - 0.5) * 0.8;
+      this._body.add(shard);
+    }
+
+    // Head — faceted
+    this._head.position.set(0, 3.0, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.OctahedronGeometry(0.22, 0);
+    const headMesh = new THREE.Mesh(headGeo, crystalMat);
+    this._head.add(headMesh);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, sparkMat);
+      eye.position.set(side * 0.08, 0.02, 0.16);
+      this._head.add(eye);
+    }
+
+    // Arms — angular crystal
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.45, 2.6, 0);
+      this._body.add(arm);
+      const upperGeo = new THREE.BoxGeometry(0.14, 0.7, 0.14);
+      const upper = new THREE.Mesh(upperGeo, crystalMat);
+      upper.position.y = -0.35;
+      upper.rotation.y = Math.PI / 6;
+      arm.add(upper);
+      const foreGeo = new THREE.BoxGeometry(0.12, 0.6, 0.12);
+      const fore = new THREE.Mesh(foreGeo, darkCrystalMat);
+      fore.position.y = -0.85;
+      arm.add(fore);
+      // Crystal blade hand
+      const bladeGeo = new THREE.ConeGeometry(0.06, 0.3, 4);
+      const blade = new THREE.Mesh(bladeGeo, coreMat);
+      blade.position.y = -1.25;
+      blade.rotation.x = Math.PI;
+      arm.add(blade);
+    }
+
+    // Legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.22, 1.5, 0);
+      this._body.add(leg);
+      const thighGeo = new THREE.BoxGeometry(0.15, 0.65, 0.15);
+      const thigh = new THREE.Mesh(thighGeo, crystalMat);
+      thigh.position.y = -0.32;
+      leg.add(thigh);
+      const shinGeo = new THREE.BoxGeometry(0.13, 0.6, 0.13);
+      const shin = new THREE.Mesh(shinGeo, darkCrystalMat);
+      shin.position.y = -0.8;
+      leg.add(shin);
+    }
+
+    // Inner core glow
+    const cGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    const core = new THREE.Mesh(cGeo, coreMat);
+    core.position.y = 2.2;
+    this._body.add(core);
+  }
+
+  // ---- Iron Colossus builder -------------------------------------------------
+
+  private _buildIronColossus(): void {
+    const ironMat = mat(0x4a4a4a, { metalness: 0.8, roughness: 0.25 });
+    const darkIronMat = mat(0x2a2a2a, { metalness: 0.7, roughness: 0.3 });
+    const rivetMat = mat(0x888888, { metalness: 0.6 });
+    const eyeMat = mat(0xff6600, { emissive: 0xcc4400 });
+    const steamMat = mat(0xcccccc, { transparent: true, opacity: 0.3 });
+
+    // Massive iron torso
+    const torsoGeo = new THREE.BoxGeometry(1.3, 2.0, 1.0);
+    const torso = new THREE.Mesh(torsoGeo, ironMat);
+    torso.position.y = 3.8;
+    this._body.add(torso);
+
+    // Riveted plates
+    for (let i = 0; i < 8; i++) {
+      const rGeo = new THREE.SphereGeometry(0.04, 5, 5);
+      const rivet = new THREE.Mesh(rGeo, rivetMat);
+      rivet.position.set((Math.random() - 0.5) * 1.0, 3.0 + Math.random() * 1.6, 0.52);
+      this._body.add(rivet);
+    }
+
+    // Head — small armored
+    this._head.position.set(0, 5.0, 0.1);
+    this._body.add(this._head);
+    const headGeo = new THREE.BoxGeometry(0.4, 0.35, 0.35);
+    const headMesh = new THREE.Mesh(headGeo, ironMat);
+    this._head.add(headMesh);
+
+    // Eyes — furnace slits
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.BoxGeometry(0.1, 0.04, 0.02);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.1, 0.02, 0.18);
+      this._head.add(eye);
+    }
+
+    // Massive arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.8, 4.2, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.2, 0.18, 1.3, 8);
+      const upper = new THREE.Mesh(upperGeo, ironMat);
+      upper.position.y = -0.65;
+      arm.add(upper);
+      const jointGeo = new THREE.SphereGeometry(0.18, 6, 6);
+      const joint = new THREE.Mesh(jointGeo, darkIronMat);
+      joint.position.y = -1.3;
+      arm.add(joint);
+      const foreGeo = cyl(0.18, 0.22, 1.2, 8);
+      const fore = new THREE.Mesh(foreGeo, darkIronMat);
+      fore.position.y = -2.0;
+      arm.add(fore);
+      const fistGeo = new THREE.SphereGeometry(0.25, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, ironMat);
+      fist.position.y = -2.7;
+      arm.add(fist);
+    }
+
+    // Legs — heavy iron pillars
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.4, 2.5, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.22, 0.18, 1.1, 8);
+      const thigh = new THREE.Mesh(thighGeo, ironMat);
+      thigh.position.y = -0.55;
+      leg.add(thigh);
+      const kneeGeo = new THREE.SphereGeometry(0.18, 6, 6);
+      const knee = new THREE.Mesh(kneeGeo, darkIronMat);
+      knee.position.y = -1.1;
+      leg.add(knee);
+      const shinGeo = cyl(0.18, 0.22, 1.0, 8);
+      const shin = new THREE.Mesh(shinGeo, darkIronMat);
+      shin.position.y = -1.8;
+      leg.add(shin);
+      const footGeo = new THREE.BoxGeometry(0.35, 0.15, 0.4);
+      const foot = new THREE.Mesh(footGeo, ironMat);
+      foot.position.set(0, -2.35, 0.04);
+      leg.add(foot);
+    }
+
+    // Steam vents
+    for (let i = 0; i < 3; i++) {
+      const vGeo = new THREE.SphereGeometry(0.08, 5, 5);
+      const vent = new THREE.Mesh(vGeo, steamMat);
+      vent.position.set((i - 1) * 0.3, 4.8, -0.3);
+      this._body.add(vent);
+    }
+  }
+
+  // ---- Bone Colossus builder --------------------------------------------------
+
+  private _buildBoneColossus(): void {
+    const boneMat = mat(0xd8c8a0);
+    const darkBoneMat = mat(0xa89870);
+    const eyeMat = mat(0x44ff44, { emissive: 0x22aa22 });
+    const jointMat = mat(0x887760);
+
+    // Ribcage torso
+    const torsoGeo = cyl(0.5, 0.6, 2.0, 8);
+    const torso = new THREE.Mesh(torsoGeo, boneMat);
+    torso.position.y = 3.5;
+    this._body.add(torso);
+
+    // Ribs
+    for (let i = 0; i < 4; i++) {
+      for (const side of [-1, 1]) {
+        const ribGeo = cyl(0.04, 0.03, 0.6, 5);
+        const rib = new THREE.Mesh(ribGeo, darkBoneMat);
+        rib.position.set(side * 0.35, 3.0 + i * 0.35, 0.1);
+        rib.rotation.z = side * 0.8;
+        this._body.add(rib);
+      }
+    }
+
+    // Skull head
+    this._head.position.set(0, 4.8, 0.1);
+    this._body.add(this._head);
+    const skullGeo = new THREE.SphereGeometry(0.35, 8, 6);
+    const skull = new THREE.Mesh(skullGeo, boneMat);
+    skull.scale.set(1, 0.9, 0.9);
+    this._head.add(skull);
+
+    // Eye sockets
+    for (const side of [-1, 1]) {
+      const socketGeo = new THREE.SphereGeometry(0.08, 6, 6);
+      const socket = new THREE.Mesh(socketGeo, mat(0x111111));
+      socket.position.set(side * 0.12, 0.05, 0.28);
+      this._head.add(socket);
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.12, 0.05, 0.3);
+      this._head.add(eye);
+    }
+
+    // Jaw
+    const jawGeo = new THREE.SphereGeometry(0.2, 6, 4);
+    const jaw = new THREE.Mesh(jawGeo, boneMat);
+    jaw.scale.set(1, 0.5, 0.8);
+    jaw.position.set(0, -0.2, 0.1);
+    this._head.add(jaw);
+
+    // Arms — bone segments
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.65, 4.2, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.1, 0.08, 1.1, 6);
+      const upper = new THREE.Mesh(upperGeo, boneMat);
+      upper.position.y = -0.55;
+      arm.add(upper);
+      const jointGeo = new THREE.SphereGeometry(0.1, 6, 6);
+      const joint = new THREE.Mesh(jointGeo, jointMat);
+      joint.position.y = -1.1;
+      arm.add(joint);
+      const foreGeo = cyl(0.08, 0.06, 1.0, 6);
+      const fore = new THREE.Mesh(foreGeo, boneMat);
+      fore.position.y = -1.7;
+      arm.add(fore);
+      // Claw hand
+      for (let t = 0; t < 3; t++) {
+        const clawGeo = new THREE.ConeGeometry(0.02, 0.15, 4);
+        const claw = new THREE.Mesh(clawGeo, darkBoneMat);
+        claw.position.set((t - 1) * 0.04, -2.25, 0);
+        claw.rotation.x = Math.PI;
+        arm.add(claw);
+      }
+    }
+
+    // Legs — bone pillars
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.35, 2.2, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.12, 0.1, 1.0, 6);
+      const thigh = new THREE.Mesh(thighGeo, boneMat);
+      thigh.position.y = -0.5;
+      leg.add(thigh);
+      const kGeo = new THREE.SphereGeometry(0.1, 6, 6);
+      const knee = new THREE.Mesh(kGeo, jointMat);
+      knee.position.y = -1.0;
+      leg.add(knee);
+      const shinGeo = cyl(0.1, 0.08, 0.9, 6);
+      const shin = new THREE.Mesh(shinGeo, boneMat);
+      shin.position.y = -1.6;
+      leg.add(shin);
+    }
+  }
+
+  // ---- Wraith Lord builder ---------------------------------------------------
+
+  private _buildWraithLord(): void {
+    const ghostMat = mat(0x334455, { transparent: true, opacity: 0.55, emissive: 0x112233 });
+    const darkMat = mat(0x1a2233, { transparent: true, opacity: 0.7, emissive: 0x0a1122 });
+    const eyeMat = mat(0x44ddff, { emissive: 0x22aacc });
+    const crownMat = mat(0x8888aa, { metalness: 0.6 });
+
+    // Spectral body
+    const bodyGeo = cyl(0.2, 0.45, 2.0, 8);
+    const body = new THREE.Mesh(bodyGeo, ghostMat);
+    body.position.y = 1.4;
+    this._body.add(body);
+
+    // Dark cloak
+    const cloakGeo = cyl(0.25, 0.5, 2.2, 8);
+    const cloak = new THREE.Mesh(cloakGeo, darkMat);
+    cloak.position.y = 1.5;
+    this._body.add(cloak);
+
+    // Head
+    this._head.position.set(0, 2.8, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.22, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, ghostMat);
+    this._head.add(headMesh);
+
+    // Crown
+    for (let i = 0; i < 5; i++) {
+      const spGeo = new THREE.ConeGeometry(0.03, 0.12, 4);
+      const spike = new THREE.Mesh(spGeo, crownMat);
+      const a = (i / 5) * Math.PI * 2;
+      spike.position.set(Math.cos(a) * 0.18, 0.2, Math.sin(a) * 0.18);
+      this._head.add(spike);
+    }
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.08, 0, 0.18);
+      this._head.add(eye);
+    }
+
+    // Arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.35, 2.3, 0);
+      this._body.add(arm);
+      const aGeo = cyl(0.07, 0.04, 0.9, 6);
+      const armMesh = new THREE.Mesh(aGeo, ghostMat);
+      armMesh.position.y = -0.45;
+      arm.add(armMesh);
+      const handGeo = new THREE.SphereGeometry(0.06, 6, 6);
+      const hand = new THREE.Mesh(handGeo, eyeMat);
+      hand.position.y = -1.0;
+      arm.add(hand);
+    }
+
+    // Trailing lower body
+    this._leftLeg.position.set(-0.1, 0.4, 0);
+    this._body.add(this._leftLeg);
+    this._rightLeg.position.set(0.1, 0.4, 0);
+    this._body.add(this._rightLeg);
+    const tailGeo = cyl(0.3, 0.02, 0.7, 6);
+    const tail = new THREE.Mesh(tailGeo, ghostMat);
+    tail.position.y = -0.15;
+    this._leftLeg.add(tail);
+  }
+
+  // ---- Banshee builder -------------------------------------------------------
+
+  private _buildBanshee(): void {
+    const ghostMat = mat(0x9999bb, { transparent: true, opacity: 0.5, emissive: 0x445566 });
+    const hairMat = mat(0xaaaacc, { transparent: true, opacity: 0.6 });
+    const eyeMat = mat(0xffffff, { emissive: 0xccccff });
+    const mouthMat = mat(0x222244);
+
+    // Ethereal body — flowing shape
+    const bodyGeo = cyl(0.12, 0.35, 1.6, 8);
+    const body = new THREE.Mesh(bodyGeo, ghostMat);
+    body.position.y = 1.0;
+    this._body.add(body);
+
+    // Head
+    this._head.position.set(0, 2.0, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.2, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, ghostMat);
+    this._head.add(headMesh);
+
+    // Flowing hair
+    for (let i = 0; i < 5; i++) {
+      const hGeo = cyl(0.02, 0.01, 0.4 + Math.random() * 0.3, 4);
+      const hair = new THREE.Mesh(hGeo, hairMat);
+      hair.position.set((Math.random() - 0.5) * 0.15, -0.1, -0.1 + (Math.random() - 0.5) * 0.1);
+      hair.rotation.x = 0.3 + Math.random() * 0.3;
+      hair.rotation.z = (Math.random() - 0.5) * 0.4;
+      this._head.add(hair);
+    }
+
+    // Eyes — hollow white
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.08, 0, 0.16);
+      this._head.add(eye);
+    }
+
+    // Open mouth — wailing
+    const mGeo = new THREE.SphereGeometry(0.06, 6, 6);
+    const mouth = new THREE.Mesh(mGeo, mouthMat);
+    mouth.scale.set(1, 1.5, 0.8);
+    mouth.position.set(0, -0.1, 0.14);
+    this._head.add(mouth);
+
+    // Arms — outstretched, wispy
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.2, 1.7, 0);
+      this._body.add(arm);
+      const aGeo = cyl(0.04, 0.02, 0.7, 6);
+      const armMesh = new THREE.Mesh(aGeo, ghostMat);
+      armMesh.position.y = -0.35;
+      armMesh.rotation.z = side * 0.3;
+      arm.add(armMesh);
+    }
+
+    // Trailing lower body
+    this._leftLeg.position.set(0, 0.3, 0);
+    this._body.add(this._leftLeg);
+    this._rightLeg.position.set(0, 0.3, 0);
+    this._body.add(this._rightLeg);
+    const tailGeo = cyl(0.22, 0.01, 0.5, 6);
+    const tail = new THREE.Mesh(tailGeo, ghostMat);
+    tail.position.y = -0.1;
+    this._leftLeg.add(tail);
+  }
+
+  // ---- Pit Lord builder ------------------------------------------------------
+
+  private _buildPitLord(): void {
+    const skinMat = mat(0x661122);
+    const darkMat = mat(0x3a0a11);
+    const hornMat = mat(0x222222);
+    const eyeMat = mat(0xff4400, { emissive: 0xcc2200 });
+    const wingMat = mat(0x440a0a, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+
+    // Massive demon torso
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, skinMat);
+    torso.scale.set(0.7, 0.9, 0.6);
+    torso.position.y = 3.2;
+    this._body.add(torso);
+
+    // Head — horned
+    this._head.position.set(0, 4.2, 0.2);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.3, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, skinMat);
+    this._head.add(headMesh);
+
+    // Horns
+    for (const side of [-1, 1]) {
+      const hGeo = new THREE.ConeGeometry(0.06, 0.5, 5);
+      const horn = new THREE.Mesh(hGeo, hornMat);
+      horn.position.set(side * 0.2, 0.25, -0.05);
+      horn.rotation.z = side * -0.5;
+      horn.rotation.x = -0.2;
+      this._head.add(horn);
+    }
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.05, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.12, 0.02, 0.24);
+      this._head.add(eye);
+    }
+
+    // Wings (on arms)
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.8, 3.8, -0.2);
+      this._body.add(arm);
+      const wingBoneGeo = cyl(0.06, 0.04, 1.4, 6);
+      const wingBone = new THREE.Mesh(wingBoneGeo, darkMat);
+      wingBone.position.y = -0.5;
+      wingBone.rotation.z = side * 0.6;
+      arm.add(wingBone);
+      const memGeo = new THREE.PlaneGeometry(1.2, 1.0);
+      const membrane = new THREE.Mesh(memGeo, wingMat);
+      membrane.position.set(side * 0.5, -0.5, 0);
+      arm.add(membrane);
+    }
+
+    // Tail
+    const tailGeo = cyl(0.08, 0.03, 1.2, 6);
+    const tail = new THREE.Mesh(tailGeo, darkMat);
+    tail.position.set(0, 2.5, -0.5);
+    tail.rotation.x = 0.8;
+    this._body.add(tail);
+
+    // Legs — cloven hooves
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.4, 2.0, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.2, 0.16, 0.9, 7);
+      const thigh = new THREE.Mesh(thighGeo, skinMat);
+      thigh.position.y = -0.45;
+      leg.add(thigh);
+      const shinGeo = cyl(0.14, 0.08, 0.8, 7);
+      const shin = new THREE.Mesh(shinGeo, darkMat);
+      shin.position.y = -1.15;
+      leg.add(shin);
+      // Hooves
+      const hoofGeo = new THREE.SphereGeometry(0.1, 6, 5);
+      const hoof = new THREE.Mesh(hoofGeo, hornMat);
+      hoof.scale.set(1, 0.5, 1.3);
+      hoof.position.set(0, -1.6, 0.04);
+      leg.add(hoof);
+    }
+  }
+
+  // ---- Doom Guard builder ----------------------------------------------------
+
+  private _buildDoomGuard(): void {
+    const armorMat = mat(0x2a1a1a, { metalness: 0.5, roughness: 0.4 });
+    const skinMat = mat(0x551122);
+    const spikeMat = mat(0x333333, { metalness: 0.7 });
+    const eyeMat = mat(0xff2200, { emissive: 0xcc0000 });
+
+    // Armored demon torso
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, armorMat);
+    torso.scale.set(0.6, 0.8, 0.5);
+    torso.position.y = 2.8;
+    this._body.add(torso);
+
+    // Shoulder spikes
+    for (const side of [-1, 1]) {
+      const sGeo = new THREE.ConeGeometry(0.08, 0.35, 5);
+      const spike = new THREE.Mesh(sGeo, spikeMat);
+      spike.position.set(side * 0.6, 3.3, 0);
+      spike.rotation.z = side * 0.4;
+      this._body.add(spike);
+    }
+
+    // Head — horned helm
+    this._head.position.set(0, 3.7, 0.1);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.25, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, armorMat);
+    this._head.add(headMesh);
+
+    // Horns
+    for (const side of [-1, 1]) {
+      const hGeo = new THREE.ConeGeometry(0.04, 0.3, 5);
+      const horn = new THREE.Mesh(hGeo, spikeMat);
+      horn.position.set(side * 0.18, 0.18, 0);
+      horn.rotation.z = side * -0.4;
+      this._head.add(horn);
+    }
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.1, 0, 0.2);
+      this._head.add(eye);
+    }
+
+    // Arms — armored
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.65, 3.2, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.14, 0.12, 0.9, 7);
+      const upper = new THREE.Mesh(upperGeo, armorMat);
+      upper.position.y = -0.45;
+      arm.add(upper);
+      const foreGeo = cyl(0.12, 0.1, 0.8, 7);
+      const fore = new THREE.Mesh(foreGeo, skinMat);
+      fore.position.y = -1.1;
+      arm.add(fore);
+      const fistGeo = new THREE.SphereGeometry(0.14, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, armorMat);
+      fist.position.y = -1.55;
+      arm.add(fist);
+    }
+
+    // Greatsword in right hand
+    const bladeGeo = new THREE.BoxGeometry(0.06, 1.2, 0.02);
+    const blade = new THREE.Mesh(bladeGeo, mat(0x444444, { metalness: 0.8 }));
+    blade.position.y = -2.2;
+    this._rightArm.add(blade);
+
+    // Legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.3, 1.8, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.16, 0.13, 0.8, 7);
+      const thigh = new THREE.Mesh(thighGeo, armorMat);
+      thigh.position.y = -0.4;
+      leg.add(thigh);
+      const shinGeo = cyl(0.13, 0.1, 0.7, 7);
+      const shin = new THREE.Mesh(shinGeo, skinMat);
+      shin.position.y = -1.0;
+      leg.add(shin);
+      const hoofGeo = new THREE.SphereGeometry(0.1, 6, 5);
+      const hoof = new THREE.Mesh(hoofGeo, spikeMat);
+      hoof.scale.set(1, 0.5, 1.3);
+      hoof.position.set(0, -1.4, 0.04);
+      leg.add(hoof);
+    }
+  }
+
+  // ---- Succubus builder ------------------------------------------------------
+
+  private _buildSuccubus(): void {
+    const skinMat = mat(0x8844aa);
+    const wingMat = mat(0x552266, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+    const hairMat = mat(0x220022);
+    const eyeMat = mat(0xff44ff, { emissive: 0xcc22cc });
+    const hornMat = mat(0x222222);
+
+    // Slender body
+    const torsoGeo = cyl(0.15, 0.2, 1.4, 8);
+    const torso = new THREE.Mesh(torsoGeo, skinMat);
+    torso.position.y = 1.8;
+    this._body.add(torso);
+
+    // Head
+    this._head.position.set(0, 2.6, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.16, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, skinMat);
+    this._head.add(headMesh);
+
+    // Small horns
+    for (const side of [-1, 1]) {
+      const hGeo = new THREE.ConeGeometry(0.02, 0.12, 4);
+      const horn = new THREE.Mesh(hGeo, hornMat);
+      horn.position.set(side * 0.1, 0.14, 0);
+      horn.rotation.z = side * -0.3;
+      this._head.add(horn);
+    }
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.03, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.06, 0.02, 0.13);
+      this._head.add(eye);
+    }
+
+    // Hair
+    for (let i = 0; i < 4; i++) {
+      const hGeo = cyl(0.015, 0.008, 0.3, 4);
+      const hair = new THREE.Mesh(hGeo, hairMat);
+      hair.position.set((Math.random() - 0.5) * 0.12, -0.05, -0.08);
+      hair.rotation.x = 0.3;
+      this._head.add(hair);
+    }
+
+    // Wing arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.25, 2.2, -0.1);
+      this._body.add(arm);
+      const wingBoneGeo = cyl(0.03, 0.02, 0.7, 5);
+      const wingBone = new THREE.Mesh(wingBoneGeo, skinMat);
+      wingBone.position.y = -0.2;
+      wingBone.rotation.z = side * 0.5;
+      arm.add(wingBone);
+      const memGeo = new THREE.PlaneGeometry(0.6, 0.5);
+      const membrane = new THREE.Mesh(memGeo, wingMat);
+      membrane.position.set(side * 0.25, -0.3, 0);
+      arm.add(membrane);
+    }
+
+    // Tail
+    const tailGeo = cyl(0.03, 0.015, 0.8, 5);
+    const tail = new THREE.Mesh(tailGeo, skinMat);
+    tail.position.set(0, 1.2, -0.2);
+    tail.rotation.x = 0.6;
+    this._body.add(tail);
+    // Tail tip
+    const tipGeo = new THREE.ConeGeometry(0.04, 0.08, 4);
+    const tip = new THREE.Mesh(tipGeo, hornMat);
+    tip.position.set(0, 0.8, -0.65);
+    this._body.add(tip);
+
+    // Legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.12, 1.0, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.08, 0.06, 0.55, 6);
+      const thigh = new THREE.Mesh(thighGeo, skinMat);
+      thigh.position.y = -0.28;
+      leg.add(thigh);
+      const shinGeo = cyl(0.06, 0.04, 0.5, 6);
+      const shin = new THREE.Mesh(shinGeo, skinMat);
+      shin.position.y = -0.7;
+      leg.add(shin);
+    }
+  }
+
+  // ---- Imp Overlord builder --------------------------------------------------
+
+  private _buildImpOverlord(): void {
+    const skinMat = mat(0xcc4422);
+    const darkMat = mat(0x882211);
+    const hornMat = mat(0x222222);
+    const eyeMat = mat(0xffcc00, { emissive: 0xff8800 });
+    const wingMat = mat(0x993311, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+
+    // Stocky imp body — larger than regular imp
+    const torsoGeo = new THREE.SphereGeometry(1, 8, 6);
+    const torso = new THREE.Mesh(torsoGeo, skinMat);
+    torso.scale.set(0.25, 0.3, 0.22);
+    torso.position.y = 1.0;
+    this._body.add(torso);
+
+    // Head — large relative to body
+    this._head.position.set(0, 1.4, 0.05);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.18, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, skinMat);
+    this._head.add(headMesh);
+
+    // Large horns
+    for (const side of [-1, 1]) {
+      const hGeo = new THREE.ConeGeometry(0.03, 0.2, 5);
+      const horn = new THREE.Mesh(hGeo, hornMat);
+      horn.position.set(side * 0.12, 0.16, 0);
+      horn.rotation.z = side * -0.4;
+      this._head.add(horn);
+    }
+
+    // Eyes — glowing
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.035, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.07, 0.03, 0.14);
+      this._head.add(eye);
+    }
+
+    // Ears — pointed
+    for (const side of [-1, 1]) {
+      const earGeo = new THREE.ConeGeometry(0.04, 0.1, 4);
+      const ear = new THREE.Mesh(earGeo, skinMat);
+      ear.position.set(side * 0.16, 0.06, 0);
+      ear.rotation.z = side * 0.5;
+      this._head.add(ear);
+    }
+
+    // Small bat wings
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.22, 1.2, -0.05);
+      this._body.add(arm);
+      const wingBoneGeo = cyl(0.02, 0.015, 0.4, 5);
+      const wingBone = new THREE.Mesh(wingBoneGeo, darkMat);
+      wingBone.position.y = -0.1;
+      wingBone.rotation.z = side * 0.5;
+      arm.add(wingBone);
+      const memGeo = new THREE.PlaneGeometry(0.35, 0.25);
+      const membrane = new THREE.Mesh(memGeo, wingMat);
+      membrane.position.set(side * 0.15, -0.15, 0);
+      arm.add(membrane);
+    }
+
+    // Tail
+    const tailGeo = cyl(0.025, 0.01, 0.4, 5);
+    const tail = new THREE.Mesh(tailGeo, darkMat);
+    tail.position.set(0, 0.7, -0.15);
+    tail.rotation.x = 0.6;
+    this._body.add(tail);
+
+    // Legs — short, clawed
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.1, 0.6, 0);
+      this._body.add(leg);
+      const lGeo = cyl(0.05, 0.04, 0.35, 6);
+      const legMesh = new THREE.Mesh(lGeo, skinMat);
+      legMesh.position.y = -0.18;
+      leg.add(legMesh);
+      const footGeo = new THREE.SphereGeometry(0.05, 5, 5);
+      const foot = new THREE.Mesh(footGeo, darkMat);
+      foot.scale.set(1, 0.5, 1.3);
+      foot.position.set(0, -0.38, 0.02);
+      leg.add(foot);
+    }
+
+    // Fire orb in front (commanding)
+    const orbGeo = new THREE.SphereGeometry(0.08, 6, 6);
+    const orb = new THREE.Mesh(orbGeo, mat(0xff6600, { emissive: 0xcc4400 }));
+    orb.position.set(0, 1.2, 0.3);
+    this._body.add(orb);
+  }
+
+  // ---- Seraphim builder ------------------------------------------------------
+
+  private _buildSeraphim(): void {
+    const glowMat = mat(0xffffcc, { emissive: 0xccaa44 });
+    const robeMat = mat(0xeeeecc);
+    const wingMat = mat(0xffffee, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+    const eyeMat = mat(0xffffaa, { emissive: 0xffff66 });
+    const haloMat = mat(0xffdd44, { emissive: 0xccaa22 });
+
+    // Robed body
+    const bodyGeo = cyl(0.15, 0.35, 2.0, 8);
+    const body = new THREE.Mesh(bodyGeo, robeMat);
+    body.position.y = 1.4;
+    this._body.add(body);
+
+    // Inner glow
+    const coreGeo = new THREE.SphereGeometry(0.18, 8, 8);
+    const core = new THREE.Mesh(coreGeo, glowMat);
+    core.position.y = 2.2;
+    this._body.add(core);
+
+    // Head
+    this._head.position.set(0, 2.8, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.2, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, robeMat);
+    this._head.add(headMesh);
+
+    // Halo
+    const haloGeo = new THREE.TorusGeometry(0.22, 0.025, 8, 16);
+    const halo = new THREE.Mesh(haloGeo, haloMat);
+    halo.position.y = 0.3;
+    halo.rotation.x = Math.PI / 2;
+    this._head.add(halo);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.03, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.07, 0.02, 0.16);
+      this._head.add(eye);
+    }
+
+    // Three pairs of wings (6 total — seraphim style)
+    for (let pair = 0; pair < 3; pair++) {
+      const yOff = 2.4 - pair * 0.4;
+      const wingSize = 0.7 - pair * 0.1;
+      for (const side of [-1, 1]) {
+        const arm = pair === 0 ? (side === -1 ? this._leftArm : this._rightArm) : new THREE.Group();
+        if (pair === 0) {
+          arm.position.set(side * 0.25, yOff, -0.1);
+          this._body.add(arm);
+        } else {
+          arm.position.set(side * 0.2, yOff, -0.1);
+          this._body.add(arm);
+        }
+        const boneGeo = cyl(0.02, 0.015, wingSize * 0.8, 5);
+        const bone = new THREE.Mesh(boneGeo, robeMat);
+        bone.rotation.z = side * 0.6;
+        bone.position.set(side * 0.15, 0, 0);
+        arm.add(bone);
+        const memGeo = new THREE.PlaneGeometry(wingSize, wingSize * 0.6);
+        const mem = new THREE.Mesh(memGeo, wingMat);
+        mem.position.set(side * (wingSize * 0.4), -0.05, 0);
+        arm.add(mem);
+      }
+    }
+
+    // Floating lower body (no legs visible — robed)
+    this._leftLeg.position.set(-0.08, 0.4, 0);
+    this._body.add(this._leftLeg);
+    this._rightLeg.position.set(0.08, 0.4, 0);
+    this._body.add(this._rightLeg);
+    const hemGeo = cyl(0.3, 0.05, 0.5, 6);
+    const hem = new THREE.Mesh(hemGeo, robeMat);
+    hem.position.y = -0.1;
+    this._leftLeg.add(hem);
+  }
+
+  // ---- Archon builder --------------------------------------------------------
+
+  private _buildArchon(): void {
+    const armorMat = mat(0xddddaa, { metalness: 0.6, roughness: 0.3 });
+    const skinMat = mat(0xeeddbb);
+    const wingMat = mat(0xeeeeee, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+    const eyeMat = mat(0xffffaa, { emissive: 0xffff66 });
+    const swordMat = mat(0xccccaa, { metalness: 0.8, roughness: 0.2 });
+    const haloMat = mat(0xffdd44, { emissive: 0xccaa22 });
+
+    // Armored torso
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, armorMat);
+    torso.scale.set(0.45, 0.6, 0.35);
+    torso.position.y = 2.5;
+    this._body.add(torso);
+
+    // Shoulder guards
+    for (const side of [-1, 1]) {
+      const sGeo = new THREE.SphereGeometry(0.15, 6, 5);
+      const shoulder = new THREE.Mesh(sGeo, armorMat);
+      shoulder.position.set(side * 0.45, 2.9, 0);
+      this._body.add(shoulder);
+    }
+
+    // Head
+    this._head.position.set(0, 3.2, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.2, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, skinMat);
+    this._head.add(headMesh);
+
+    // Helm
+    const helmGeo = new THREE.SphereGeometry(0.22, 8, 6);
+    const helm = new THREE.Mesh(helmGeo, armorMat);
+    helm.scale.set(1, 1.1, 1);
+    helm.position.y = 0.03;
+    this._head.add(helm);
+
+    // Halo
+    const haloGeo = new THREE.TorusGeometry(0.24, 0.02, 8, 16);
+    const halo = new THREE.Mesh(haloGeo, haloMat);
+    halo.position.y = 0.32;
+    halo.rotation.x = Math.PI / 2;
+    this._head.add(halo);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.03, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.08, 0.02, 0.18);
+      this._head.add(eye);
+    }
+
+    // Wing arms — large feathered
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.5, 2.8, -0.15);
+      this._body.add(arm);
+      // Wing bone
+      const bGeo = cyl(0.04, 0.03, 1.0, 6);
+      const bone = new THREE.Mesh(bGeo, skinMat);
+      bone.rotation.z = side * 0.5;
+      bone.position.set(side * 0.2, 0, 0);
+      arm.add(bone);
+      // Wing membrane
+      const memGeo = new THREE.PlaneGeometry(1.0, 0.8);
+      const mem = new THREE.Mesh(memGeo, wingMat);
+      mem.position.set(side * 0.45, -0.1, 0);
+      arm.add(mem);
+      // Feather details
+      for (let i = 0; i < 4; i++) {
+        const fGeo = new THREE.PlaneGeometry(0.15, 0.4);
+        const feather = new THREE.Mesh(fGeo, wingMat);
+        feather.position.set(side * (0.25 + i * 0.15), -0.35, 0.01);
+        feather.rotation.z = side * (0.1 + i * 0.08);
+        arm.add(feather);
+      }
+    }
+
+    // Sword in right
+    const bladeGeo = new THREE.BoxGeometry(0.04, 0.9, 0.015);
+    const blade = new THREE.Mesh(bladeGeo, swordMat);
+    blade.position.set(0.3, -0.6, 0.2);
+    this._rightArm.add(blade);
+
+    // Legs — armored
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.2, 1.8, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.1, 0.08, 0.7, 6);
+      const thigh = new THREE.Mesh(thighGeo, armorMat);
+      thigh.position.y = -0.35;
+      leg.add(thigh);
+      const shinGeo = cyl(0.08, 0.09, 0.65, 6);
+      const shin = new THREE.Mesh(shinGeo, armorMat);
+      shin.position.y = -0.9;
+      leg.add(shin);
+      const footGeo = new THREE.SphereGeometry(0.1, 6, 5);
+      const foot = new THREE.Mesh(footGeo, armorMat);
+      foot.scale.set(1, 0.5, 1.3);
+      foot.position.set(0, -1.3, 0.03);
+      leg.add(foot);
+    }
+  }
+
+  // ---- Alpha Wolf builder ----------------------------------------------------
+
+  private _buildAlphaWolf(): void {
+    const furMat = mat(0x555555);
+    const darkFurMat = mat(0x333333);
+    const bellyMat = mat(0x888888);
+    const eyeMat = mat(0xffcc00, { emissive: 0xcc8800 });
+    const noseMat = mat(0x111111);
+
+    // Elongated body — quadruped
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, furMat);
+    torso.scale.set(0.25, 0.22, 0.45);
+    torso.position.y = 0.8;
+    this._body.add(torso);
+
+    // Belly
+    const bGeo = new THREE.SphereGeometry(1, 8, 6);
+    const belly = new THREE.Mesh(bGeo, bellyMat);
+    belly.scale.set(0.18, 0.15, 0.35);
+    belly.position.set(0, 0.65, 0);
+    this._body.add(belly);
+
+    // Head
+    this._head.position.set(0, 1.0, 0.4);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(1, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, furMat);
+    headMesh.scale.set(0.14, 0.12, 0.16);
+    this._head.add(headMesh);
+
+    // Snout
+    const snoutGeo = new THREE.SphereGeometry(1, 6, 5);
+    const snout = new THREE.Mesh(snoutGeo, darkFurMat);
+    snout.scale.set(0.08, 0.06, 0.12);
+    snout.position.set(0, -0.02, 0.14);
+    this._head.add(snout);
+
+    // Nose
+    const nGeo = new THREE.SphereGeometry(0.025, 5, 5);
+    const nose = new THREE.Mesh(nGeo, noseMat);
+    nose.position.set(0, 0, 0.22);
+    this._head.add(nose);
+
+    // Ears — pointed
+    for (const side of [-1, 1]) {
+      const earGeo = new THREE.ConeGeometry(0.04, 0.1, 4);
+      const ear = new THREE.Mesh(earGeo, furMat);
+      ear.position.set(side * 0.08, 0.12, -0.02);
+      this._head.add(ear);
+    }
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.02, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.07, 0.04, 0.1);
+      this._head.add(eye);
+    }
+
+    // Front legs (arms)
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.15, 0.55, 0.25);
+      this._body.add(arm);
+      const upperGeo = cyl(0.05, 0.04, 0.35, 6);
+      const upper = new THREE.Mesh(upperGeo, furMat);
+      upper.position.y = -0.18;
+      arm.add(upper);
+      const lowerGeo = cyl(0.04, 0.03, 0.3, 6);
+      const lower = new THREE.Mesh(lowerGeo, furMat);
+      lower.position.y = -0.45;
+      arm.add(lower);
+      const pawGeo = new THREE.SphereGeometry(0.04, 5, 5);
+      const paw = new THREE.Mesh(pawGeo, darkFurMat);
+      paw.scale.set(1, 0.5, 1.2);
+      paw.position.set(0, -0.6, 0.01);
+      arm.add(paw);
+    }
+
+    // Hind legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.15, 0.6, -0.25);
+      this._body.add(leg);
+      const upperGeo = cyl(0.06, 0.05, 0.35, 6);
+      const upper = new THREE.Mesh(upperGeo, furMat);
+      upper.position.y = -0.18;
+      leg.add(upper);
+      const lowerGeo = cyl(0.04, 0.035, 0.3, 6);
+      const lower = new THREE.Mesh(lowerGeo, furMat);
+      lower.position.y = -0.45;
+      leg.add(lower);
+      const pawGeo = new THREE.SphereGeometry(0.045, 5, 5);
+      const paw = new THREE.Mesh(pawGeo, darkFurMat);
+      paw.scale.set(1, 0.5, 1.2);
+      paw.position.set(0, -0.6, 0.01);
+      leg.add(paw);
+    }
+
+    // Bushy tail
+    const tailGeo = cyl(0.06, 0.03, 0.4, 6);
+    const tail = new THREE.Mesh(tailGeo, darkFurMat);
+    tail.position.set(0, 0.85, -0.45);
+    tail.rotation.x = 0.8;
+    this._body.add(tail);
+  }
+
+  // ---- Thunderhawk builder ---------------------------------------------------
+
+  private _buildThunderhawk(): void {
+    const featherMat = mat(0x554422);
+    const darkMat = mat(0x332211);
+    const breastMat = mat(0xaa9966);
+    const beakMat = mat(0xccaa33);
+    const eyeMat = mat(0xffcc00, { emissive: 0xcc8800 });
+    const talonMat = mat(0x333333);
+    const wingMat = mat(0x443322, { side: THREE.DoubleSide });
+
+    // Compact body
+    const torsoGeo = new THREE.SphereGeometry(1, 8, 6);
+    const torso = new THREE.Mesh(torsoGeo, featherMat);
+    torso.scale.set(0.2, 0.22, 0.3);
+    torso.position.y = 1.2;
+    this._body.add(torso);
+
+    // Breast
+    const bGeo = new THREE.SphereGeometry(1, 8, 6);
+    const breast = new THREE.Mesh(bGeo, breastMat);
+    breast.scale.set(0.15, 0.16, 0.22);
+    breast.position.set(0, 1.1, 0.08);
+    this._body.add(breast);
+
+    // Head
+    this._head.position.set(0, 1.5, 0.15);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.12, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, featherMat);
+    this._head.add(headMesh);
+
+    // Beak
+    const beakGeo = new THREE.ConeGeometry(0.03, 0.12, 4);
+    const beak = new THREE.Mesh(beakGeo, beakMat);
+    beak.position.set(0, -0.02, 0.12);
+    beak.rotation.x = Math.PI / 2;
+    this._head.add(beak);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.02, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.06, 0.03, 0.08);
+      this._head.add(eye);
+    }
+
+    // Wings (arms)
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.2, 1.3, 0);
+      this._body.add(arm);
+      const boneGeo = cyl(0.03, 0.02, 0.6, 5);
+      const bone = new THREE.Mesh(boneGeo, darkMat);
+      bone.rotation.z = side * 0.5;
+      bone.position.set(side * 0.15, 0, 0);
+      arm.add(bone);
+      const memGeo = new THREE.PlaneGeometry(0.7, 0.4);
+      const mem = new THREE.Mesh(memGeo, wingMat);
+      mem.position.set(side * 0.3, -0.05, 0);
+      arm.add(mem);
+      // Flight feathers
+      for (let i = 0; i < 5; i++) {
+        const fGeo = new THREE.PlaneGeometry(0.08, 0.25);
+        const feather = new THREE.Mesh(fGeo, wingMat);
+        feather.position.set(side * (0.15 + i * 0.1), -0.2, 0.01);
+        feather.rotation.z = side * (0.05 + i * 0.05);
+        arm.add(feather);
+      }
+    }
+
+    // Tail feathers
+    for (let i = 0; i < 3; i++) {
+      const fGeo = new THREE.PlaneGeometry(0.06, 0.2);
+      const feather = new THREE.Mesh(fGeo, darkMat);
+      feather.position.set((i - 1) * 0.04, 1.0, -0.3);
+      feather.rotation.x = 0.5;
+      this._body.add(feather);
+    }
+
+    // Taloned legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.1, 0.85, 0);
+      this._body.add(leg);
+      const lGeo = cyl(0.025, 0.02, 0.4, 5);
+      const legMesh = new THREE.Mesh(lGeo, beakMat);
+      legMesh.position.y = -0.2;
+      leg.add(legMesh);
+      // Talons
+      for (let t = -1; t <= 1; t++) {
+        const clGeo = new THREE.ConeGeometry(0.008, 0.06, 4);
+        const claw = new THREE.Mesh(clGeo, talonMat);
+        claw.position.set(t * 0.015, -0.43, 0.02);
+        claw.rotation.x = 0.3;
+        leg.add(claw);
+      }
+    }
+
+    // Lightning sparks around body
+    for (let i = 0; i < 4; i++) {
+      const sGeo = new THREE.SphereGeometry(0.015, 4, 4);
+      const spark = new THREE.Mesh(sGeo, mat(0x88ccff, { emissive: 0x4488ff }));
+      spark.position.set((Math.random() - 0.5) * 0.4, 1.0 + Math.random() * 0.5, (Math.random() - 0.5) * 0.4);
+      this._body.add(spark);
+    }
+  }
+
+  // ---- Dire Bear builder -----------------------------------------------------
+
+  private _buildDireBear(): void {
+    const furMat = mat(0x4a3322);
+    const darkFurMat = mat(0x2a1a11);
+    const snoutMat = mat(0x5a4433);
+    const eyeMat = mat(0x332211);
+    const noseMat = mat(0x111111);
+    const clawMat = mat(0xccccbb);
+
+    // Massive body — quadruped/semi-upright
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, furMat);
+    torso.scale.set(0.55, 0.6, 0.7);
+    torso.position.y = 1.5;
+    this._body.add(torso);
+
+    // Hump (shoulder mass)
+    const humpGeo = new THREE.SphereGeometry(0.35, 8, 6);
+    const hump = new THREE.Mesh(humpGeo, darkFurMat);
+    hump.position.set(0, 2.0, 0.1);
+    this._body.add(hump);
+
+    // Head
+    this._head.position.set(0, 2.1, 0.5);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(1, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, furMat);
+    headMesh.scale.set(0.22, 0.2, 0.22);
+    this._head.add(headMesh);
+
+    // Snout
+    const sGeo = new THREE.SphereGeometry(1, 6, 5);
+    const snout = new THREE.Mesh(sGeo, snoutMat);
+    snout.scale.set(0.12, 0.1, 0.14);
+    snout.position.set(0, -0.04, 0.18);
+    this._head.add(snout);
+
+    // Nose
+    const nGeo = new THREE.SphereGeometry(0.04, 5, 5);
+    const nose = new THREE.Mesh(nGeo, noseMat);
+    nose.position.set(0, 0, 0.28);
+    this._head.add(nose);
+
+    // Small ears
+    for (const side of [-1, 1]) {
+      const earGeo = new THREE.SphereGeometry(0.05, 5, 5);
+      const ear = new THREE.Mesh(earGeo, furMat);
+      ear.position.set(side * 0.14, 0.14, -0.02);
+      this._head.add(ear);
+    }
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.025, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.1, 0.06, 0.14);
+      this._head.add(eye);
+    }
+
+    // Front legs (arms) — massive
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.35, 1.0, 0.3);
+      this._body.add(arm);
+      const upperGeo = cyl(0.12, 0.1, 0.5, 7);
+      const upper = new THREE.Mesh(upperGeo, furMat);
+      upper.position.y = -0.25;
+      arm.add(upper);
+      const lowerGeo = cyl(0.1, 0.08, 0.45, 7);
+      const lower = new THREE.Mesh(lowerGeo, furMat);
+      lower.position.y = -0.6;
+      arm.add(lower);
+      const pawGeo = new THREE.SphereGeometry(0.1, 6, 5);
+      const paw = new THREE.Mesh(pawGeo, darkFurMat);
+      paw.scale.set(1.2, 0.5, 1.3);
+      paw.position.set(0, -0.85, 0.02);
+      arm.add(paw);
+      // Claws
+      for (let t = -1; t <= 1; t++) {
+        const clGeo = new THREE.ConeGeometry(0.012, 0.06, 4);
+        const claw = new THREE.Mesh(clGeo, clawMat);
+        claw.position.set(t * 0.03, -0.9, 0.06);
+        claw.rotation.x = 0.3;
+        arm.add(claw);
+      }
+    }
+
+    // Hind legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.3, 1.0, -0.3);
+      this._body.add(leg);
+      const upperGeo = cyl(0.11, 0.09, 0.45, 7);
+      const upper = new THREE.Mesh(upperGeo, furMat);
+      upper.position.y = -0.22;
+      leg.add(upper);
+      const lowerGeo = cyl(0.09, 0.08, 0.4, 7);
+      const lower = new THREE.Mesh(lowerGeo, furMat);
+      lower.position.y = -0.55;
+      leg.add(lower);
+      const pawGeo = new THREE.SphereGeometry(0.09, 6, 5);
+      const paw = new THREE.Mesh(pawGeo, darkFurMat);
+      paw.scale.set(1.1, 0.5, 1.2);
+      paw.position.set(0, -0.8, 0.02);
+      leg.add(paw);
+    }
+  }
+
+  // ---- Magma Titan builder ----------------------------------------------------
+
+  private _buildMagmaTitan(): void {
+    const rockMat = mat(0x3a2a1a);
+    const lavaMat = mat(0xff4400, { emissive: 0xcc2200 });
+    const darkRockMat = mat(0x221510);
+    const eyeMat = mat(0xffaa00, { emissive: 0xff6600 });
+
+    // Massive rocky torso
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, rockMat);
+    torso.scale.set(0.8, 1.0, 0.7);
+    torso.position.y = 3.5;
+    this._body.add(torso);
+
+    // Lava cracks on torso
+    for (let i = 0; i < 5; i++) {
+      const crackGeo = new THREE.BoxGeometry(0.04, 0.3 + Math.random() * 0.2, 0.02);
+      const crack = new THREE.Mesh(crackGeo, lavaMat);
+      const a = Math.random() * Math.PI * 2;
+      crack.position.set(Math.cos(a) * 0.6, 3.0 + Math.random() * 1.2, Math.sin(a) * 0.5);
+      crack.rotation.z = (Math.random() - 0.5) * 0.5;
+      this._body.add(crack);
+    }
+
+    // Head — craggy
+    this._head.position.set(0, 4.6, 0.2);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.35, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, rockMat);
+    this._head.add(headMesh);
+
+    // Eyes — molten
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.06, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.15, 0.05, 0.28);
+      this._head.add(eye);
+    }
+
+    // Massive arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.9, 3.8, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.22, 0.18, 1.2, 7);
+      const upper = new THREE.Mesh(upperGeo, rockMat);
+      upper.position.y = -0.6;
+      arm.add(upper);
+      const foreGeo = cyl(0.18, 0.2, 1.0, 7);
+      const fore = new THREE.Mesh(foreGeo, darkRockMat);
+      fore.position.y = -1.4;
+      arm.add(fore);
+      const fistGeo = new THREE.SphereGeometry(0.25, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, lavaMat);
+      fist.position.y = -2.0;
+      arm.add(fist);
+    }
+
+    // Legs — pillar-like
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.45, 2.2, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.25, 0.2, 1.0, 7);
+      const thigh = new THREE.Mesh(thighGeo, rockMat);
+      thigh.position.y = -0.5;
+      leg.add(thigh);
+      const shinGeo = cyl(0.2, 0.25, 0.9, 7);
+      const shin = new THREE.Mesh(shinGeo, darkRockMat);
+      shin.position.y = -1.2;
+      leg.add(shin);
+      const footGeo = new THREE.SphereGeometry(0.3, 6, 5);
+      const foot = new THREE.Mesh(footGeo, rockMat);
+      foot.scale.set(1, 0.4, 1.2);
+      foot.position.set(0, -1.75, 0.05);
+      leg.add(foot);
+    }
+  }
+
+  // ---- Stone Fist builder ----------------------------------------------------
+
+  private _buildStoneFist(): void {
+    const stoneMat = mat(0x7a7a6a);
+    const darkStoneMat = mat(0x555548);
+    const mossMat = mat(0x4a6a3a);
+    const eyeMat = mat(0x88cc44, { emissive: 0x446622 });
+
+    // Blocky stone torso
+    const torsoGeo = new THREE.BoxGeometry(0.9, 1.2, 0.7);
+    const torso = new THREE.Mesh(torsoGeo, stoneMat);
+    torso.position.y = 2.0;
+    this._body.add(torso);
+
+    // Shoulder boulders
+    for (const side of [-1, 1]) {
+      const sGeo = new THREE.SphereGeometry(0.25, 6, 5);
+      const shoulder = new THREE.Mesh(sGeo, darkStoneMat);
+      shoulder.position.set(side * 0.55, 2.5, 0);
+      this._body.add(shoulder);
+    }
+
+    // Head — blocky
+    this._head.position.set(0, 2.8, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.BoxGeometry(0.35, 0.3, 0.3);
+    const headMesh = new THREE.Mesh(headGeo, stoneMat);
+    this._head.add(headMesh);
+
+    // Eyes — green glow
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.1, 0, 0.15);
+      this._head.add(eye);
+    }
+
+    // Massive stone fist arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.55, 2.3, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.12, 0.1, 0.7, 6);
+      const upper = new THREE.Mesh(upperGeo, stoneMat);
+      upper.position.y = -0.35;
+      arm.add(upper);
+      const foreGeo = cyl(0.1, 0.14, 0.6, 6);
+      const fore = new THREE.Mesh(foreGeo, darkStoneMat);
+      fore.position.y = -0.85;
+      arm.add(fore);
+      // Oversized stone fists
+      const fistGeo = new THREE.SphereGeometry(0.2, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, stoneMat);
+      fist.position.y = -1.2;
+      arm.add(fist);
+    }
+
+    // Legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.25, 1.2, 0);
+      this._body.add(leg);
+      const lGeo = cyl(0.14, 0.12, 0.7, 6);
+      const legMesh = new THREE.Mesh(lGeo, stoneMat);
+      legMesh.position.y = -0.35;
+      leg.add(legMesh);
+      const footGeo = new THREE.BoxGeometry(0.25, 0.12, 0.3);
+      const foot = new THREE.Mesh(footGeo, darkStoneMat);
+      foot.position.set(0, -0.75, 0.03);
+      leg.add(foot);
+    }
+
+    // Moss patches
+    for (let i = 0; i < 4; i++) {
+      const mGeo = new THREE.SphereGeometry(0.06, 5, 5);
+      const moss = new THREE.Mesh(mGeo, mossMat);
+      moss.position.set((Math.random() - 0.5) * 0.6, 1.5 + Math.random() * 1.2, (Math.random() - 0.5) * 0.4);
+      this._body.add(moss);
+    }
+  }
+
+  // ---- Magma Golem builder ---------------------------------------------------
+
+  private _buildMagmaGolem(): void {
+    const rockMat = mat(0x4a3020);
+    const lavaMat = mat(0xff5500, { emissive: 0xcc3300 });
+    const darkMat = mat(0x2a1a10);
+    const eyeMat = mat(0xffcc00, { emissive: 0xff8800 });
+
+    // Rocky body with lava veins
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, rockMat);
+    torso.scale.set(0.55, 0.7, 0.5);
+    torso.position.y = 2.2;
+    this._body.add(torso);
+
+    // Lava veins
+    for (let i = 0; i < 4; i++) {
+      const vGeo = new THREE.BoxGeometry(0.03, 0.25, 0.02);
+      const vein = new THREE.Mesh(vGeo, lavaMat);
+      const a = (i / 4) * Math.PI * 2;
+      vein.position.set(Math.cos(a) * 0.45, 1.8 + Math.random() * 0.8, Math.sin(a) * 0.4);
+      vein.rotation.z = (Math.random() - 0.5) * 0.5;
+      this._body.add(vein);
+    }
+
+    // Head
+    this._head.position.set(0, 3.0, 0.1);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.25, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, rockMat);
+    this._head.add(headMesh);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.1, 0.02, 0.2);
+      this._head.add(eye);
+    }
+
+    // Arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.6, 2.6, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.14, 0.12, 0.8, 7);
+      const upper = new THREE.Mesh(upperGeo, rockMat);
+      upper.position.y = -0.4;
+      arm.add(upper);
+      const foreGeo = cyl(0.12, 0.14, 0.7, 7);
+      const fore = new THREE.Mesh(foreGeo, darkMat);
+      fore.position.y = -1.0;
+      arm.add(fore);
+      const fistGeo = new THREE.SphereGeometry(0.16, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, lavaMat);
+      fist.position.y = -1.4;
+      arm.add(fist);
+    }
+
+    // Legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.28, 1.3, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.16, 0.14, 0.65, 7);
+      const thigh = new THREE.Mesh(thighGeo, rockMat);
+      thigh.position.y = -0.32;
+      leg.add(thigh);
+      const shinGeo = cyl(0.14, 0.16, 0.55, 7);
+      const shin = new THREE.Mesh(shinGeo, darkMat);
+      shin.position.y = -0.8;
+      leg.add(shin);
+    }
+  }
+
+  // ---- Obsidian Sentinel builder ---------------------------------------------
+
+  private _buildObsidianSentinel(): void {
+    const obsidianMat = mat(0x1a1a2a, { metalness: 0.8, roughness: 0.15 });
+    const edgeMat = mat(0x3a3a5a, { metalness: 0.6 });
+    const glowMat = mat(0x6644aa, { emissive: 0x4422aa });
+    const eyeMat = mat(0xaa66ff, { emissive: 0x8844dd });
+
+    // Angular torso — faceted
+    const torsoGeo = new THREE.BoxGeometry(0.8, 1.4, 0.6);
+    const torso = new THREE.Mesh(torsoGeo, obsidianMat);
+    torso.position.y = 2.4;
+    torso.rotation.y = Math.PI / 8;
+    this._body.add(torso);
+
+    // Crystal shards on shoulders
+    for (const side of [-1, 1]) {
+      const shardGeo = new THREE.ConeGeometry(0.1, 0.4, 4);
+      const shard = new THREE.Mesh(shardGeo, edgeMat);
+      shard.position.set(side * 0.5, 3.0, 0);
+      shard.rotation.z = side * 0.3;
+      this._body.add(shard);
+    }
+
+    // Head — angular
+    this._head.position.set(0, 3.3, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.BoxGeometry(0.3, 0.35, 0.3);
+    const headMesh = new THREE.Mesh(headGeo, obsidianMat);
+    headMesh.rotation.y = Math.PI / 6;
+    this._head.add(headMesh);
+
+    // Visor glow
+    const visorGeo = new THREE.BoxGeometry(0.25, 0.06, 0.02);
+    const visor = new THREE.Mesh(visorGeo, eyeMat);
+    visor.position.set(0, 0.02, 0.16);
+    this._head.add(visor);
+
+    // Arms — segmented obsidian
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.5, 2.8, 0);
+      this._body.add(arm);
+      const upperGeo = new THREE.BoxGeometry(0.15, 0.7, 0.15);
+      const upper = new THREE.Mesh(upperGeo, obsidianMat);
+      upper.position.y = -0.35;
+      arm.add(upper);
+      const foreGeo = new THREE.BoxGeometry(0.13, 0.6, 0.13);
+      const fore = new THREE.Mesh(foreGeo, edgeMat);
+      fore.position.y = -0.9;
+      arm.add(fore);
+      // Blade hand
+      const bladeGeo = new THREE.BoxGeometry(0.06, 0.4, 0.15);
+      const blade = new THREE.Mesh(bladeGeo, obsidianMat);
+      blade.position.y = -1.3;
+      arm.add(blade);
+    }
+
+    // Legs
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.25, 1.5, 0);
+      this._body.add(leg);
+      const thighGeo = new THREE.BoxGeometry(0.16, 0.7, 0.16);
+      const thigh = new THREE.Mesh(thighGeo, obsidianMat);
+      thigh.position.y = -0.35;
+      leg.add(thigh);
+      const shinGeo = new THREE.BoxGeometry(0.14, 0.6, 0.14);
+      const shin = new THREE.Mesh(shinGeo, edgeMat);
+      shin.position.y = -0.85;
+      leg.add(shin);
+    }
+
+    // Glow runes
+    for (let i = 0; i < 3; i++) {
+      const rGeo = new THREE.SphereGeometry(0.03, 5, 5);
+      const rune = new THREE.Mesh(rGeo, glowMat);
+      rune.position.set((Math.random() - 0.5) * 0.5, 1.8 + i * 0.4, 0.35);
+      this._body.add(rune);
+    }
+  }
+
+  // ---- Cinder Wraith builder -------------------------------------------------
+
+  private _buildCinderWraith(): void {
+    const fireMat = mat(0xff6600, { emissive: 0xcc4400, transparent: true, opacity: 0.7 });
+    const coreMat = mat(0xffaa00, { emissive: 0xff6600 });
+    const smokeMat = mat(0x333333, { transparent: true, opacity: 0.4 });
+    const eyeMat = mat(0xffffaa, { emissive: 0xffff66 });
+
+    // Burning spectral body
+    const bodyGeo = cyl(0.1, 0.3, 1.5, 8);
+    const body = new THREE.Mesh(bodyGeo, fireMat);
+    body.position.y = 1.0;
+    this._body.add(body);
+
+    // Core ember
+    const coreGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    core.position.y = 1.5;
+    this._body.add(core);
+
+    // Head
+    this._head.position.set(0, 2.0, 0);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.18, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, fireMat);
+    this._head.add(headMesh);
+
+    // Flame wisps on head
+    for (let i = 0; i < 3; i++) {
+      const fGeo = new THREE.ConeGeometry(0.04, 0.2, 4);
+      const flame = new THREE.Mesh(fGeo, coreMat);
+      flame.position.set((Math.random() - 0.5) * 0.15, 0.15 + i * 0.05, (Math.random() - 0.5) * 0.1);
+      this._head.add(flame);
+    }
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.03, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.07, 0, 0.14);
+      this._head.add(eye);
+    }
+
+    // Wispy arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.2, 1.6, 0);
+      this._body.add(arm);
+      const aGeo = cyl(0.05, 0.02, 0.7, 6);
+      const armMesh = new THREE.Mesh(aGeo, fireMat);
+      armMesh.position.y = -0.35;
+      arm.add(armMesh);
+    }
+
+    // Smoke trail legs
+    this._leftLeg.position.set(-0.08, 0.3, 0);
+    this._body.add(this._leftLeg);
+    this._rightLeg.position.set(0.08, 0.3, 0);
+    this._body.add(this._rightLeg);
+    const tailGeo = cyl(0.2, 0.01, 0.5, 6);
+    const tail = new THREE.Mesh(tailGeo, smokeMat);
+    tail.position.y = -0.1;
+    this._leftLeg.add(tail);
+  }
+
+  // ---- Volcanic Behemoth builder ---------------------------------------------
+
+  private _buildVolcanicBehemoth(): void {
+    const rockMat = mat(0x3a2210);
+    const lavaMat = mat(0xff4400, { emissive: 0xdd2200 });
+    const darkMat = mat(0x1a1108);
+    const eyeMat = mat(0xff6600, { emissive: 0xcc4400 });
+
+    // Massive rocky body
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, rockMat);
+    torso.scale.set(0.9, 1.1, 0.8);
+    torso.position.y = 3.8;
+    this._body.add(torso);
+
+    // Lava vents
+    for (let i = 0; i < 4; i++) {
+      const vGeo = new THREE.SphereGeometry(0.12, 6, 6);
+      const vent = new THREE.Mesh(vGeo, lavaMat);
+      const a = (i / 4) * Math.PI * 2;
+      vent.position.set(Math.cos(a) * 0.7, 3.5 + Math.random() * 0.8, Math.sin(a) * 0.6);
+      this._body.add(vent);
+    }
+
+    // Head — small relative to body
+    this._head.position.set(0, 5.0, 0.3);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(0.3, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, rockMat);
+    this._head.add(headMesh);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.05, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.13, 0.02, 0.24);
+      this._head.add(eye);
+    }
+
+    // Horn crags
+    for (const side of [-1, 1]) {
+      const hGeo = new THREE.ConeGeometry(0.08, 0.3, 5);
+      const horn = new THREE.Mesh(hGeo, darkMat);
+      horn.position.set(side * 0.2, 0.2, -0.05);
+      horn.rotation.z = side * -0.3;
+      this._head.add(horn);
+    }
+
+    // Arms — massive
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 1.0, 4.2, 0);
+      this._body.add(arm);
+      const upperGeo = cyl(0.25, 0.2, 1.3, 7);
+      const upper = new THREE.Mesh(upperGeo, rockMat);
+      upper.position.y = -0.65;
+      arm.add(upper);
+      const foreGeo = cyl(0.2, 0.22, 1.1, 7);
+      const fore = new THREE.Mesh(foreGeo, darkMat);
+      fore.position.y = -1.5;
+      arm.add(fore);
+      const fistGeo = new THREE.SphereGeometry(0.28, 6, 6);
+      const fist = new THREE.Mesh(fistGeo, lavaMat);
+      fist.position.y = -2.1;
+      arm.add(fist);
+    }
+
+    // Legs — pillars
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.5, 2.5, 0);
+      this._body.add(leg);
+      const thighGeo = cyl(0.28, 0.22, 1.1, 7);
+      const thigh = new THREE.Mesh(thighGeo, rockMat);
+      thigh.position.y = -0.55;
+      leg.add(thigh);
+      const shinGeo = cyl(0.22, 0.28, 1.0, 7);
+      const shin = new THREE.Mesh(shinGeo, darkMat);
+      shin.position.y = -1.3;
+      leg.add(shin);
+      const footGeo = new THREE.SphereGeometry(0.32, 6, 5);
+      const foot = new THREE.Mesh(footGeo, rockMat);
+      foot.scale.set(1, 0.4, 1.2);
+      foot.position.set(0, -1.9, 0.05);
+      leg.add(foot);
+    }
+  }
+
+  // ---- Frost Wyrm builder ----------------------------------------------------
+
+  private _buildFrostWyrm(): void {
+    const scaleMat = mat(0x88aacc);
+    const bellyMat = mat(0xaaccdd);
+    const iceMat = mat(0xccddff, { emissive: 0x4466aa, transparent: true, opacity: 0.8 });
+    const eyeMat = mat(0x88ddff, { emissive: 0x44aadd });
+    const fangMat = mat(0xeeeeff);
+
+    // Serpentine body — elongated
+    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torso = new THREE.Mesh(torsoGeo, scaleMat);
+    torso.scale.set(0.45, 0.7, 0.8);
+    torso.position.y = 2.2;
+    this._body.add(torso);
+
+    // Belly scales
+    const bGeo = new THREE.SphereGeometry(1, 8, 6);
+    const belly = new THREE.Mesh(bGeo, bellyMat);
+    belly.scale.set(0.35, 0.5, 0.65);
+    belly.position.set(0, 1.8, 0.2);
+    this._body.add(belly);
+
+    // Head — dragon snout
+    this._head.position.set(0, 3.0, 0.4);
+    this._body.add(this._head);
+    const headGeo = new THREE.SphereGeometry(1, 8, 6);
+    const headMesh = new THREE.Mesh(headGeo, scaleMat);
+    headMesh.scale.set(0.22, 0.18, 0.28);
+    this._head.add(headMesh);
+
+    // Snout
+    const snoutGeo = new THREE.SphereGeometry(1, 6, 5);
+    const snout = new THREE.Mesh(snoutGeo, scaleMat);
+    snout.scale.set(0.14, 0.1, 0.18);
+    snout.position.set(0, -0.04, 0.22);
+    this._head.add(snout);
+
+    // Ice horns
+    for (const side of [-1, 1]) {
+      const hGeo = new THREE.ConeGeometry(0.04, 0.3, 5);
+      const horn = new THREE.Mesh(hGeo, iceMat);
+      horn.position.set(side * 0.15, 0.15, -0.05);
+      horn.rotation.z = side * -0.3;
+      this._head.add(horn);
+    }
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eye = new THREE.Mesh(eGeo, eyeMat);
+      eye.position.set(side * 0.12, 0.05, 0.2);
+      this._head.add(eye);
+    }
+
+    // Fangs
+    for (const side of [-1, 1]) {
+      const fGeo = new THREE.ConeGeometry(0.015, 0.08, 4);
+      const fang = new THREE.Mesh(fGeo, fangMat);
+      fang.position.set(side * 0.06, -0.12, 0.28);
+      fang.rotation.x = Math.PI;
+      this._head.add(fang);
+    }
+
+    // Wing arms
+    for (const side of [-1, 1]) {
+      const arm = side === -1 ? this._leftArm : this._rightArm;
+      arm.position.set(side * 0.5, 2.6, 0);
+      this._body.add(arm);
+      const wingBoneGeo = cyl(0.06, 0.04, 1.2, 6);
+      const wingBone = new THREE.Mesh(wingBoneGeo, scaleMat);
+      wingBone.position.y = -0.4;
+      wingBone.rotation.z = side * 0.5;
+      arm.add(wingBone);
+      const membraneGeo = new THREE.PlaneGeometry(1.0, 0.8);
+      const membrane = new THREE.Mesh(membraneGeo, mat(0x7799bb, { side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
+      membrane.position.set(side * 0.4, -0.6, 0);
+      arm.add(membrane);
+    }
+
+    // Tail
+    const tailGeo = cyl(0.2, 0.04, 1.5, 6);
+    const tail = new THREE.Mesh(tailGeo, scaleMat);
+    tail.position.set(0, 1.5, -0.6);
+    tail.rotation.x = 0.8;
+    this._body.add(tail);
+
+    // Legs — short, reptilian
+    for (const side of [-1, 1]) {
+      const leg = side === -1 ? this._leftLeg : this._rightLeg;
+      leg.position.set(side * 0.3, 1.2, 0.1);
+      this._body.add(leg);
+      const lGeo = cyl(0.12, 0.08, 0.7, 6);
+      const legMesh = new THREE.Mesh(lGeo, scaleMat);
+      legMesh.position.y = -0.35;
+      leg.add(legMesh);
+      const clawGeo = new THREE.SphereGeometry(0.1, 5, 5);
+      const claw = new THREE.Mesh(clawGeo, bellyMat);
+      claw.scale.set(1, 0.5, 1.3);
+      claw.position.set(0, -0.75, 0.05);
+      leg.add(claw);
+    }
+
+    // Ice crystals on back
+    for (let i = 0; i < 4; i++) {
+      const cGeo = new THREE.ConeGeometry(0.05, 0.2 + Math.random() * 0.15, 4);
+      const crystal = new THREE.Mesh(cGeo, iceMat);
+      crystal.position.set((Math.random() - 0.5) * 0.3, 2.5 + i * 0.2, -0.2);
+      this._body.add(crystal);
     }
   }
 
