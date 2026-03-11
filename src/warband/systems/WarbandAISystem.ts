@@ -6,6 +6,7 @@
 import {
   type WarbandState,
   type WarbandFighter,
+  BattleType,
   FighterCombatState,
   CombatDirection,
   vec3DistXZ,
@@ -125,7 +126,50 @@ export class WarbandAISystem {
     const baseBack = mounted ? WB.HORSE_BACK_SPEED : WB.BACK_SPEED;
     const baseStrafe = mounted ? WB.HORSE_STRAFE_SPEED : WB.STRAFE_SPEED;
 
-    if (dist > idealRange + 1) {
+    // Siege mode objective movement: if no nearby enemies, move toward objective
+    const isSiege = _state.battleType === BattleType.SIEGE;
+    if (isSiege && dist > idealRange + 6) {
+      // Far from target — move toward capture zone (attackers) or hold zone (defenders)
+      const capCenter = { x: WB.SIEGE_CAPTURE_X, y: 0, z: WB.SIEGE_CAPTURE_Z };
+      const distToZone = vec3DistXZ(fighter.position, capCenter);
+      const isAttacker = fighter.team === "player";
+
+      if (isAttacker && distToZone > WB.SIEGE_CAPTURE_RADIUS) {
+        // Attacker: prioritize moving to the capture zone
+        const angleToZone = Math.atan2(
+          capCenter.x - fighter.position.x,
+          capCenter.z - fighter.position.z,
+        );
+        let zDiff = angleToZone - fighter.rotation;
+        while (zDiff > Math.PI) zDiff -= Math.PI * 2;
+        while (zDiff < -Math.PI) zDiff += Math.PI * 2;
+        fighter.rotation += zDiff * 0.08;
+        const speed = baseWalk * 0.9;
+        fighter.velocity.x = Math.sin(fighter.rotation) * speed;
+        fighter.velocity.z = Math.cos(fighter.rotation) * speed;
+        fighter.walkCycle = (fighter.walkCycle + speed * 0.02) % 1;
+      } else if (!isAttacker && distToZone > WB.SIEGE_CAPTURE_RADIUS + 2) {
+        // Defender: return to capture zone if strayed too far
+        const angleToZone = Math.atan2(
+          capCenter.x - fighter.position.x,
+          capCenter.z - fighter.position.z,
+        );
+        let zDiff = angleToZone - fighter.rotation;
+        while (zDiff > Math.PI) zDiff -= Math.PI * 2;
+        while (zDiff < -Math.PI) zDiff += Math.PI * 2;
+        fighter.rotation += zDiff * 0.08;
+        const speed = baseWalk * 0.8;
+        fighter.velocity.x = Math.sin(fighter.rotation) * speed;
+        fighter.velocity.z = Math.cos(fighter.rotation) * speed;
+        fighter.walkCycle = (fighter.walkCycle + speed * 0.02) % 1;
+      } else {
+        // Default: move toward target
+        const speed = baseWalk * 0.9;
+        fighter.velocity.x = sinR * speed;
+        fighter.velocity.z = cosR * speed;
+        fighter.walkCycle = (fighter.walkCycle + speed * 0.02) % 1;
+      }
+    } else if (dist > idealRange + 1) {
       // Move toward target
       const speed = baseWalk * 0.9;
       fighter.velocity.x = sinR * speed;

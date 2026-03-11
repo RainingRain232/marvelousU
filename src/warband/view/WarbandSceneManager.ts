@@ -1278,50 +1278,261 @@ export class WarbandSceneManager {
       roughness: 0.95,
       metalness: 0.05,
     });
+    const darkStoneMat = new THREE.MeshStandardMaterial({
+      color: 0x666655,
+      roughness: 0.95,
+      metalness: 0.05,
+    });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.9 });
+    const flagMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.7, side: THREE.DoubleSide });
 
-    const wallGeo = new THREE.BoxGeometry(40, 8, 2);
-    const wall = new THREE.Mesh(wallGeo, wallMat);
-    wall.position.set(0, 4, -15);
-    wall.castShadow = true;
-    wall.receiveShadow = true;
-    this.scene.add(wall);
+    const wallH = 8;
+    const wallThick = 2;
 
-    const towerGeo = new THREE.CylinderGeometry(2, 2.2, 12, 8);
-    for (const xPos of [-20, 20]) {
-      const tower = new THREE.Mesh(towerGeo, wallMat);
-      tower.position.set(xPos, 6, -15);
-      tower.castShadow = true;
-      tower.receiveShadow = true;
-      this.scene.add(tower);
+    // Helper to add a wall box
+    const addWall = (w: number, h: number, d: number, x: number, y: number, z: number, mat = wallMat) => {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.scene.add(mesh);
+      return mesh;
+    };
 
-      const topGeo = new THREE.CylinderGeometry(2.4, 2.4, 1, 8);
-      const top = new THREE.Mesh(topGeo, wallMat);
-      top.position.set(xPos, 12.5, -15);
-      top.castShadow = true;
-      this.scene.add(top);
+    // ---- Front wall (two sections with gate gap) ----
+    // Left section: x from -20 to -2.5
+    addWall(17.5, wallH, wallThick, -11.25, wallH / 2, -15);
+    // Right section: x from 2.5 to 20
+    addWall(17.5, wallH, wallThick, 11.25, wallH / 2, -15);
+    // Gate arch (above the opening)
+    addWall(5, 3, wallThick, 0, wallH - 1.5, -15);
+
+    // Gate doors (wooden, on either side of opening)
+    addWall(1.2, 5, 0.3, -1.8, 2.5, -14.5, woodMat);
+    addWall(1.2, 5, 0.3, 1.8, 2.5, -14.5, woodMat);
+    // Gate portcullis bars (iron grate above gate)
+    const barMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5, metalness: 0.6 });
+    for (let bx = -2; bx <= 2; bx += 0.8) {
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5, 4), barMat);
+      bar.position.set(bx, 2.5, -15);
+      this.scene.add(bar);
     }
 
-    const gateGeo = new THREE.BoxGeometry(4, 5, 2.5);
-    const gateMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.9 });
-    const gate = new THREE.Mesh(gateGeo, gateMat);
-    gate.position.set(0, 2.5, -15);
-    this.scene.add(gate);
-
-    const crenGeo = new THREE.BoxGeometry(1.5, 1.5, 0.5);
-    for (let x = -18; x <= 18; x += 3) {
+    // Front wall crenellations
+    const crenGeo = new THREE.BoxGeometry(1.2, 1.5, 0.6);
+    for (let x = -19; x <= 19; x += 2.5) {
+      if (Math.abs(x) < 3) continue; // skip gate area
       const cren = new THREE.Mesh(crenGeo, wallMat);
-      cren.position.set(x, 8.75, -14);
+      cren.position.set(x, wallH + 0.75, -14);
       cren.castShadow = true;
       this.scene.add(cren);
     }
 
-    const courtGeo = new THREE.PlaneGeometry(30, 20);
+    // ---- Side walls ----
+    // Left wall: x=-20, z from -15 to -35
+    addWall(wallThick, wallH, 20, -20, wallH / 2, -25);
+    // Right wall: x=20, z from -15 to -35
+    addWall(wallThick, wallH, 20, 20, wallH / 2, -25);
+
+    // Side wall crenellations
+    for (let z = -17; z >= -33; z -= 2.5) {
+      const crenL = new THREE.Mesh(crenGeo, wallMat);
+      crenL.position.set(-19, wallH + 0.75, z);
+      crenL.rotation.y = Math.PI / 2;
+      crenL.castShadow = true;
+      this.scene.add(crenL);
+      const crenR = new THREE.Mesh(crenGeo, wallMat);
+      crenR.position.set(19, wallH + 0.75, z);
+      crenR.rotation.y = Math.PI / 2;
+      crenR.castShadow = true;
+      this.scene.add(crenR);
+    }
+
+    // ---- Back wall ----
+    addWall(42, wallH, wallThick, 0, wallH / 2, -35);
+    // Back wall crenellations
+    for (let x = -19; x <= 19; x += 2.5) {
+      const cren = new THREE.Mesh(crenGeo, wallMat);
+      cren.position.set(x, wallH + 0.75, -34);
+      cren.castShadow = true;
+      this.scene.add(cren);
+    }
+
+    // ---- Corner towers (4 corners) ----
+    const towerGeo = new THREE.CylinderGeometry(2.2, 2.5, 12, 8);
+    const towerTopGeo = new THREE.CylinderGeometry(2.7, 2.7, 1, 8);
+    const towerPositions = [
+      [-20, -15], [-20, -35], [20, -15], [20, -35],
+    ];
+    for (const [tx, tz] of towerPositions) {
+      const tower = new THREE.Mesh(towerGeo, wallMat);
+      tower.position.set(tx, 6, tz);
+      tower.castShadow = true;
+      tower.receiveShadow = true;
+      this.scene.add(tower);
+      const top = new THREE.Mesh(towerTopGeo, wallMat);
+      top.position.set(tx, 12.5, tz);
+      top.castShadow = true;
+      this.scene.add(top);
+      // Tower crenellations (small blocks on top ring)
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+        const tc = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.5), wallMat);
+        tc.position.set(tx + Math.cos(a) * 2.5, 13.5, tz + Math.sin(a) * 2.5);
+        tc.rotation.y = a;
+        tc.castShadow = true;
+        this.scene.add(tc);
+      }
+    }
+
+    // ---- Inner walls (create three routes) ----
+    // Left inner wall: x=-10, z from -30 to -20
+    addWall(wallThick, 5, 10, -10, 2.5, -25, darkStoneMat);
+    // Right inner wall: x=10, z from -30 to -20
+    addWall(wallThick, 5, 10, 10, 2.5, -25, darkStoneMat);
+    // Centre barricade: blocks direct centre route, forces flanking
+    addWall(6, 3, 1, 0, 1.5, -22, darkStoneMat);
+    // Wooden barricade details on centre blockade
+    addWall(5.5, 0.15, 0.3, 0, 2.8, -21.7, woodMat);
+    addWall(5.5, 0.15, 0.3, 0, 1.5, -21.7, woodMat);
+
+    // ---- Keep / centre structure ----
+    // Raised platform for the capture zone
+    const platformGeo = new THREE.CylinderGeometry(5, 5.5, 0.4, 16);
+    const platformMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.9 });
+    const platform = new THREE.Mesh(platformGeo, platformMat);
+    platform.position.set(0, 0.2, -28);
+    platform.receiveShadow = true;
+    this.scene.add(platform);
+
+    // Capture zone ring marker (glowing ring on the ground)
+    const ringGeo = new THREE.TorusGeometry(5, 0.15, 6, 32);
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: 0xffaa00,
+      emissive: 0xffaa00,
+      emissiveIntensity: 0.5,
+      roughness: 0.3,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(0, 0.45, -28);
+    this.scene.add(ring);
+
+    // Central banner pole
+    const poleGeo = new THREE.CylinderGeometry(0.06, 0.06, 6, 6);
+    const pole = new THREE.Mesh(poleGeo, woodMat);
+    pole.position.set(0, 3, -28);
+    pole.castShadow = true;
+    this.scene.add(pole);
+    // Banner flag
+    const flagGeo = new THREE.PlaneGeometry(1.5, 1);
+    const flag = new THREE.Mesh(flagGeo, flagMat);
+    flag.position.set(0.8, 5.5, -28);
+    this.scene.add(flag);
+
+    // Keep low walls (short walls around the capture zone)
+    addWall(4, 2, 0.5, -5, 1, -28, darkStoneMat);
+    addWall(4, 2, 0.5, 5, 1, -28, darkStoneMat);
+    addWall(0.5, 2, 6, 0, 1, -31.5, darkStoneMat);
+
+    // ---- Courtyard ground ----
+    const courtGeo = new THREE.PlaneGeometry(40, 22);
     const courtMat = new THREE.MeshStandardMaterial({ color: 0x9a8a6a, roughness: 0.95 });
     const court = new THREE.Mesh(courtGeo, courtMat);
     court.rotation.x = -Math.PI / 2;
     court.position.set(0, 0.02, -25);
     court.receiveShadow = true;
     this.scene.add(court);
+
+    // Cobblestone path from gate to centre (darker strip)
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0x7a7060, roughness: 0.98 });
+    const pathGeo = new THREE.PlaneGeometry(5, 14);
+    const path = new THREE.Mesh(pathGeo, pathMat);
+    path.rotation.x = -Math.PI / 2;
+    path.position.set(0, 0.03, -22);
+    path.receiveShadow = true;
+    this.scene.add(path);
+
+    // Side corridor floors (left and right routes)
+    const sidePathGeo = new THREE.PlaneGeometry(7, 18);
+    for (const sx of [-14.5, 14.5]) {
+      const sp = new THREE.Mesh(sidePathGeo, pathMat);
+      sp.rotation.x = -Math.PI / 2;
+      sp.position.set(sx, 0.03, -25);
+      sp.receiveShadow = true;
+      this.scene.add(sp);
+    }
+
+    // ---- Decorative details ----
+    // Wooden crates and barrels near inner walls
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0x7a5c2e, roughness: 0.85 });
+    const crateGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+    const barrelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.9, 8);
+    const cratePositions = [
+      [-8, -20], [-8, -22], [8, -20], [8, -22],
+      [-14, -18], [14, -18], [-14, -30], [14, -30],
+    ];
+    for (const [cx, cz] of cratePositions) {
+      if (Math.random() < 0.5) {
+        const crate = new THREE.Mesh(crateGeo, crateMat);
+        crate.position.set(cx, 0.4, cz);
+        crate.rotation.y = Math.random() * 0.3;
+        crate.castShadow = true;
+        this.scene.add(crate);
+      } else {
+        const barrel = new THREE.Mesh(barrelGeo, crateMat);
+        barrel.position.set(cx, 0.45, cz);
+        barrel.castShadow = true;
+        this.scene.add(barrel);
+      }
+    }
+
+    // Torches on inner walls (emissive light sources)
+    const torchMat = new THREE.MeshStandardMaterial({
+      color: 0xff6600,
+      emissive: 0xff4400,
+      emissiveIntensity: 0.8,
+    });
+    const torchGeo = new THREE.SphereGeometry(0.15, 4, 4);
+    const torchPositions = [
+      [-9, 3.5, -23], [9, 3.5, -23],
+      [-9, 3.5, -27], [9, 3.5, -27],
+      [-18, 5, -20], [18, 5, -20],
+      [-18, 5, -30], [18, 5, -30],
+    ];
+    for (const [tx, ty, tz] of torchPositions) {
+      const torch = new THREE.Mesh(torchGeo, torchMat);
+      torch.position.set(tx, ty, tz);
+      this.scene.add(torch);
+      // Torch bracket
+      const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 4), woodMat);
+      bracket.position.set(tx, ty - 0.3, tz);
+      this.scene.add(bracket);
+      // Point light for torch glow
+      const light = new THREE.PointLight(0xff6622, 0.6, 8);
+      light.position.set(tx, ty + 0.2, tz);
+      this.scene.add(light);
+    }
+
+    // Arrow slits in side walls
+    const slitMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
+    const slitGeo = new THREE.BoxGeometry(0.15, 1.2, 0.5);
+    for (let z = -18; z >= -32; z -= 4) {
+      for (const wx of [-19.5, 19.5]) {
+        const slit = new THREE.Mesh(slitGeo, slitMat);
+        slit.position.set(wx, 4, z);
+        this.scene.add(slit);
+      }
+    }
+
+    // Siege approach ramp (slight slope in front of gate)
+    const rampGeo = new THREE.BoxGeometry(6, 0.3, 4);
+    const rampMat = new THREE.MeshStandardMaterial({ color: 0x8a7a5a, roughness: 0.95 });
+    const ramp = new THREE.Mesh(rampGeo, rampMat);
+    ramp.position.set(0, 0.15, -12.5);
+    ramp.rotation.x = 0.05;
+    ramp.receiveShadow = true;
+    this.scene.add(ramp);
   }
 
   render(): void {

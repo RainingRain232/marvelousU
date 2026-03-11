@@ -14,6 +14,7 @@ import {
   createDefaultFighter,
   createHorse,
   vec3,
+  vec3DistXZ,
   type HorseArmorTier,
 } from "./state/WarbandState";
 import { WB } from "./config/WarbandBalanceConfig";
@@ -283,7 +284,7 @@ export class WarbandGame {
 
       <button id="wb-siege" style="${this._menuBtnStyle()}">
         🏰 Siege Battle
-        <span style="display:block;font-size:12px;color:#999;margin-top:4px">Storm the castle walls</span>
+        <span style="display:block;font-size:12px;color:#999;margin-top:4px">Storm the castle, capture the centre</span>
       </button>
 
       <button id="wb-army" style="${this._menuBtnStyle("#4a2a0a", "#daa520")}">
@@ -474,13 +475,22 @@ export class WarbandGame {
     // Create enemies
     const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
     for (let i = 0; i < enemyCount; i++) {
-      const spawnZ = battleType === BattleType.SIEGE ? -20 : -5;
+      let spawnX: number, spawnZ: number;
+      if (battleType === BattleType.SIEGE) {
+        // Defenders spawn inside the castle, spread around the capture zone
+        const angle = (i / enemyCount) * Math.PI * 2;
+        spawnX = Math.cos(angle) * 4;
+        spawnZ = WB.SIEGE_CAPTURE_Z + Math.sin(angle) * 4;
+      } else {
+        spawnX = isDuel ? 0 : -6 + i * 3;
+        spawnZ = -5;
+      }
       const enemy = createDefaultFighter(
         `enemy_${i}`,
         AI_NAMES_ENEMY[i % AI_NAMES_ENEMY.length],
         "enemy",
         false,
-        vec3(isDuel ? 0 : -6 + i * 3, 0, spawnZ),
+        vec3(spawnX, 0, spawnZ),
       );
       this._equipRandomLoadout(enemy, "medium");
       this._state.fighters.push(enemy);
@@ -819,18 +829,59 @@ export class WarbandGame {
     this._physicsSystem.update(this._state);
 
     if (!isCameraView) {
-      // Check win/loss
+      const isSiege = this._state.battleType === BattleType.SIEGE;
+
+      // Check win/loss — all attackers dead = defenders win
       if (this._state.playerTeamAlive <= 0) {
         this._endBattle(false);
       } else if (this._state.enemyTeamAlive <= 0) {
         this._endBattle(true);
       }
 
+      // Siege capture zone logic
+      if (isSiege) {
+        const capX = WB.SIEGE_CAPTURE_X;
+        const capZ = WB.SIEGE_CAPTURE_Z;
+        const capR = WB.SIEGE_CAPTURE_RADIUS;
+        const capCenter = { x: capX, y: 0, z: capZ };
+
+        let attackersIn = 0;
+        let defendersIn = 0;
+        for (const f of this._state.fighters) {
+          if (f.combatState === FighterCombatState.DEAD) continue;
+          if (vec3DistXZ(f.position, capCenter) <= capR) {
+            if (f.team === "player") attackersIn++;
+            else defendersIn++;
+          }
+        }
+        this._state.siegeAttackersInZone = attackersIn;
+        this._state.siegeDefendersInZone = defendersIn;
+
+        if (attackersIn > 0 && defendersIn === 0) {
+          // Attackers holding uncontested — progress increases
+          this._state.siegeCaptureProgress += attackersIn; // more attackers = faster capture
+        } else if (defendersIn > 0 && attackersIn === 0) {
+          // Defenders retaking — slowly drain progress
+          this._state.siegeCaptureProgress = Math.max(0, this._state.siegeCaptureProgress - 1);
+        }
+        // Contested (both present) — no progress change
+
+        // Attackers win by holding the centre long enough
+        if (this._state.siegeCaptureProgress >= WB.SIEGE_CAPTURE_TICKS) {
+          this._endBattle(true);
+        }
+      }
+
       // Battle timer
       this._state.battleTimer--;
       if (this._state.battleTimer <= 0) {
-        // Time's up - team with more alive wins
-        this._endBattle(this._state.playerTeamAlive > this._state.enemyTeamAlive);
+        if (isSiege) {
+          // Time's up — defenders win (attackers failed to capture)
+          this._endBattle(false);
+        } else {
+          // Time's up - team with more alive wins
+          this._endBattle(this._state.playerTeamAlive > this._state.enemyTeamAlive);
+        }
       }
     }
   }
@@ -1184,16 +1235,25 @@ export class WarbandGame {
       }
 
       // Create new enemies (scale difficulty)
+      const isSiege = this._state.battleType === BattleType.SIEGE;
       const enemyTier = this._state.round <= 2 ? "medium" : "heavy";
       const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
       for (let i = 0; i < enemyCount; i++) {
-        const spawnZ = this._state.battleType === BattleType.SIEGE ? -20 : -5;
+        let spawnX: number, spawnZ: number;
+        if (isSiege) {
+          const angle = (i / enemyCount) * Math.PI * 2;
+          spawnX = Math.cos(angle) * 4;
+          spawnZ = WB.SIEGE_CAPTURE_Z + Math.sin(angle) * 4;
+        } else {
+          spawnX = isDuel ? 0 : -6 + i * 3;
+          spawnZ = -5;
+        }
         const enemy = createDefaultFighter(
           `enemy_r${this._state.round}_${i}`,
           AI_NAMES_ENEMY[i % AI_NAMES_ENEMY.length],
           "enemy",
           false,
-          vec3(isDuel ? 0 : -6 + i * 3, 0, spawnZ),
+          vec3(spawnX, 0, spawnZ),
         );
         this._equipRandomLoadout(enemy, enemyTier);
         // Scale AI difficulty with rounds
@@ -1211,7 +1271,12 @@ export class WarbandGame {
     }
     this._state.projectiles = [];
     this._state.pickups = [];
-    this._state.battleTimer = 60 * WB.TICKS_PER_SEC;
+    this._state.battleTimer = this._state.battleType === BattleType.SIEGE
+      ? WB.SIEGE_BATTLE_TICKS
+      : 60 * WB.TICKS_PER_SEC;
+    this._state.siegeCaptureProgress = 0;
+    this._state.siegeAttackersInZone = 0;
+    this._state.siegeDefendersInZone = 0;
     this._state.tick = 0;
 
     // Show shop
