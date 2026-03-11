@@ -41,7 +41,14 @@ export type CreatureType =
   | "ballista"
   // Elite Siege Workshop
   | "cannon"
-  | "giant_siege";
+  | "giant_siege"
+  // Extra Siege
+  | "bolt_thrower"
+  | "siege_catapult"
+  | "war_wagon"
+  | "bombard"
+  | "siege_tower"
+  | "hellfire_mortar";
 
 export interface CreatureDef {
   type: CreatureType;
@@ -522,5 +529,86 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 4.0,
     attackTicks: 35,
     releaseTicks: 14,
+  },
+
+  // ---- Extra Siege ----
+
+  bolt_thrower: {
+    type: "bolt_thrower",
+    name: "Bolt Thrower",
+    hp: 200,
+    radius: 0.9,
+    height: 2.2,
+    scale: 1.8,
+    speed: 0.9,
+    damage: 65,
+    reach: 7.0,
+    attackTicks: 28,
+    releaseTicks: 8,
+  },
+  siege_catapult: {
+    type: "siege_catapult",
+    name: "Siege Catapult",
+    hp: 300,
+    radius: 1.2,
+    height: 2.8,
+    scale: 2.2,
+    speed: 0.6,
+    damage: 75,
+    reach: 6.0,
+    attackTicks: 45,
+    releaseTicks: 10,
+  },
+  war_wagon: {
+    type: "war_wagon",
+    name: "War Wagon",
+    hp: 600,
+    radius: 1.2,
+    height: 2.5,
+    scale: 2.2,
+    speed: 1.2,
+    damage: 50,
+    reach: 5.5,
+    attackTicks: 22,
+    releaseTicks: 8,
+  },
+  bombard: {
+    type: "bombard",
+    name: "Bombard",
+    hp: 350,
+    radius: 1.0,
+    height: 2.0,
+    scale: 2.0,
+    speed: 0.5,
+    damage: 120,
+    reach: 7.5,
+    attackTicks: 70,
+    releaseTicks: 8,
+  },
+  siege_tower: {
+    type: "siege_tower",
+    name: "Siege Tower",
+    hp: 900,
+    radius: 1.5,
+    height: 7.0,
+    scale: 3.5,
+    speed: 0.5,
+    damage: 80,
+    reach: 2.5,
+    attackTicks: 30,
+    releaseTicks: 12,
+  },
+  hellfire_mortar: {
+    type: "hellfire_mortar",
+    name: "Hellfire Mortar",
+    hp: 450,
+    radius: 1.0,
+    height: 2.0,
+    scale: 2.0,
+    speed: 0.4,
+    damage: 140,
+    reach: 9.0,
+    attackTicks: 80,
+    releaseTicks: 8,
   },
 };

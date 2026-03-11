@@ -130,6 +130,24 @@ export class CreatureMesh {
       case "giant_siege":
         this._buildGiantSiege();
         break;
+      case "bolt_thrower":
+        this._buildBoltThrowerSiege();
+        break;
+      case "siege_catapult":
+        this._buildSiegeCatapult();
+        break;
+      case "war_wagon":
+        this._buildWarWagon();
+        break;
+      case "bombard":
+        this._buildBombard();
+        break;
+      case "siege_tower":
+        this._buildSiegeTower();
+        break;
+      case "hellfire_mortar":
+        this._buildHellfireMortar();
+        break;
       case "fire_imp":
         this._buildFireImp();
         break;
@@ -6890,6 +6908,678 @@ export class CreatureMesh {
     this._hpBarFill.position.x = -(1 - hpPct) * (CREATURE_DEFS[this._creatureType].radius - 0.02);
     this._hpBarBg.visible = true;
     this._hpBarFill.visible = true;
+  }
+
+  // ---- Bolt Thrower --------------------------------------------------------
+
+  private _buildBoltThrowerSiege(): void {
+    const woodMat = mat(0x5a3a18);
+    const ironMat = mat(0x3a3a3a, { metalness: 0.7, roughness: 0.3 });
+    const stringMat = mat(0x998866);
+    const wheelMat = mat(0x3a2810);
+
+    // Base carriage — long and heavy
+    const basGeo = new THREE.BoxGeometry(1.8, 0.3, 1.0);
+    const bas = new THREE.Mesh(basGeo, woodMat);
+    bas.position.set(0, 0.6, 0);
+    this._body.add(bas);
+
+    // Iron reinforcement bands (4 bands along carriage length)
+    for (let i = -1; i <= 1; i += 0.66) {
+      const bandGeo = new THREE.BoxGeometry(0.04, 0.35, 1.05);
+      const band = new THREE.Mesh(bandGeo, ironMat);
+      band.position.set(i * 0.75, 0.6, 0);
+      this._body.add(band);
+    }
+
+    // Central trough / channel for bolt
+    const troughGeo = new THREE.BoxGeometry(1.9, 0.1, 0.16);
+    const trough = new THREE.Mesh(troughGeo, woodMat);
+    trough.position.set(0, 0.84, 0);
+    this._body.add(trough);
+
+    // Iron channel lips
+    for (const s of [-1, 1]) {
+      const lipGeo = new THREE.BoxGeometry(1.9, 0.06, 0.025);
+      const lip = new THREE.Mesh(lipGeo, ironMat);
+      lip.position.set(0, 0.87, s * 0.09);
+      this._body.add(lip);
+    }
+
+    // Double bow arms (two stacked crossbow arms)
+    for (const yOff of [0.88, 1.05]) {
+      for (const s of [-1, 1]) {
+        const armGeo = new THREE.BoxGeometry(0.08, 0.06, 0.85);
+        const arm = new THREE.Mesh(armGeo, woodMat);
+        arm.position.set(0.55, yOff, s * 0.38);
+        arm.rotation.z = s * 0.12;
+        this._body.add(arm);
+        // Iron arm tip caps
+        const capGeo = new THREE.BoxGeometry(0.06, 0.1, 0.06);
+        const cap = new THREE.Mesh(capGeo, ironMat);
+        cap.position.set(0.55, yOff + 0.04, s * 0.76);
+        this._body.add(cap);
+      }
+      // Bowstrings
+      const strGeo = new THREE.CylinderGeometry(0.009, 0.009, 1.55, 4);
+      const str = new THREE.Mesh(strGeo, stringMat);
+      str.rotation.x = Math.PI / 2;
+      str.position.set(0.55, yOff, 0);
+      this._body.add(str);
+    }
+
+    // Heavy bolt loaded in channel
+    const boltGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.5, 6);
+    const bolt = new THREE.Mesh(boltGeo, mat(0x5a4020));
+    bolt.rotation.z = Math.PI / 2;
+    bolt.position.set(0.1, 0.9, 0);
+    this._body.add(bolt);
+    const tipGeo = new THREE.ConeGeometry(0.06, 0.2, 6);
+    const tip = new THREE.Mesh(tipGeo, ironMat);
+    tip.rotation.z = -Math.PI / 2;
+    tip.position.set(1.0, 0.9, 0);
+    this._body.add(tip);
+
+    // Pivot post
+    const postGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.3, 8);
+    const post = new THREE.Mesh(postGeo, ironMat);
+    post.position.set(0.2, 0.72, 0);
+    this._body.add(post);
+
+    // Four wheels
+    for (const xOff of [-0.7, 0.7]) {
+      for (const zOff of [-0.55, 0.55]) {
+        const wheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.09, 12);
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.x = Math.PI / 2;
+        wheel.position.set(xOff, 0.28, zOff);
+        this._body.add(wheel);
+        const hubGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.12, 8);
+        const hub = new THREE.Mesh(hubGeo, ironMat);
+        hub.rotation.x = Math.PI / 2;
+        hub.position.set(xOff, 0.28, zOff);
+        this._body.add(hub);
+      }
+    }
+  }
+
+  // ---- Siege Catapult ------------------------------------------------------
+
+  private _buildSiegeCatapult(): void {
+    const woodMat = mat(0x5a3010, { roughness: 0.9 });
+    const darkWoodMat = mat(0x3a2008, { roughness: 0.9 });
+    const ironMat = mat(0x333333, { metalness: 0.55, roughness: 0.4 });
+    const ropeMat = mat(0x998855);
+    const boulderMat = mat(0x777777, { roughness: 0.95 });
+    const wheelMat = mat(0x3a2010);
+
+    // Wide reinforced base platform
+    const baseGeo = new THREE.BoxGeometry(2.4, 0.25, 2.8);
+    const base = new THREE.Mesh(baseGeo, woodMat);
+    base.position.set(0, 0.55, 0);
+    this._body.add(base);
+
+    // Heavy cross-planks
+    for (let i = -1; i <= 1; i++) {
+      const plankGeo = new THREE.BoxGeometry(2.4, 0.1, 0.16);
+      const plank = new THREE.Mesh(plankGeo, darkWoodMat);
+      plank.position.set(0, 0.45, i * 1.0);
+      this._body.add(plank);
+    }
+
+    // Vertical A-frame uprights (left and right, two pairs)
+    for (const side of [-1, 1]) {
+      for (const fb of [-0.4, 0.4]) {
+        const upGeo = new THREE.BoxGeometry(0.18, 2.2, 0.18);
+        const up = new THREE.Mesh(upGeo, darkWoodMat);
+        up.position.set(side * 0.4, 1.75, fb);
+        up.rotation.z = side * -0.04;
+        this._body.add(up);
+      }
+    }
+
+    // Horizontal axle brace at top of frame
+    const axleGeo = new THREE.CylinderGeometry(0.07, 0.07, 1.2, 8);
+    const axle = new THREE.Mesh(axleGeo, ironMat);
+    axle.rotation.z = Math.PI / 2;
+    axle.position.set(0, 2.85, 0);
+    this._body.add(axle);
+
+    // Cross-braces at mid height
+    for (const s of [-1, 1]) {
+      const braceGeo = new THREE.BoxGeometry(0.85, 0.12, 0.12);
+      const brace = new THREE.Mesh(braceGeo, woodMat);
+      brace.position.set(0, 1.6, s * 0.35);
+      this._body.add(brace);
+    }
+
+    // Throwing arm (on _rightArm group)
+    this._rightArm.position.set(0, 2.85, 0);
+    this._body.add(this._rightArm);
+
+    const armGeo = new THREE.BoxGeometry(0.15, 0.18, 3.8);
+    const arm = new THREE.Mesh(armGeo, darkWoodMat);
+    arm.position.set(0, 0, 0.4);
+    this._rightArm.add(arm);
+
+    // Counterweight box on short end
+    const cwGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+    const cw = new THREE.Mesh(cwGeo, ironMat);
+    cw.position.set(0, -0.35, -1.2);
+    this._rightArm.add(cw);
+    // Counterweight chain/rope
+    for (let i = 0; i < 3; i++) {
+      const chainGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.2, 4);
+      const chain = new THREE.Mesh(chainGeo, ironMat);
+      chain.position.set(0, -0.05 - i * 0.18, -1.2);
+      this._rightArm.add(chain);
+    }
+
+    // Sling rope on long end
+    const slingGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.7, 4);
+    const sling = new THREE.Mesh(slingGeo, ropeMat);
+    sling.position.set(0, -0.35, 2.3);
+    this._rightArm.add(sling);
+
+    // Boulder in sling cup
+    const boulderGeo = new THREE.SphereGeometry(0.32, 8, 6);
+    const boulder = new THREE.Mesh(boulderGeo, boulderMat);
+    boulder.position.set(0, -0.9, 2.3);
+    this._rightArm.add(boulder);
+
+    // Iron pivot brackets
+    for (const s of [-1, 1]) {
+      const bracketGeo = new THREE.BoxGeometry(0.05, 0.22, 0.14);
+      const bracket = new THREE.Mesh(bracketGeo, ironMat);
+      bracket.position.set(s * 0.4, 2.9, 0);
+      this._body.add(bracket);
+    }
+
+    // Iron reinforcement bands on base
+    for (const zOff of [-1.0, 0, 1.0]) {
+      const bandGeo = new THREE.BoxGeometry(2.45, 0.07, 0.055);
+      const band = new THREE.Mesh(bandGeo, ironMat);
+      band.position.set(0, 0.67, zOff);
+      this._body.add(band);
+    }
+
+    // Six large wheels (3 axles)
+    for (const zOff of [-1.1, 0, 1.1]) {
+      for (const xOff of [-1.4, 1.4]) {
+        const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.1, 14);
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.x = Math.PI / 2;
+        wheel.position.set(xOff, 0.38, zOff);
+        this._body.add(wheel);
+        // Spokes (4 planks)
+        for (let s = 0; s < 4; s++) {
+          const spokeGeo = new THREE.BoxGeometry(0.04, 0.65, 0.04);
+          const spoke = new THREE.Mesh(spokeGeo, darkWoodMat);
+          spoke.rotation.z = (s * Math.PI) / 4;
+          spoke.position.set(xOff, 0.38, zOff + (xOff < 0 ? -0.06 : 0.06));
+          this._body.add(spoke);
+        }
+        const hubGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.14, 8);
+        const hub = new THREE.Mesh(hubGeo, ironMat);
+        hub.rotation.x = Math.PI / 2;
+        hub.position.set(xOff, 0.38, zOff);
+        this._body.add(hub);
+      }
+    }
+  }
+
+  // ---- War Wagon -----------------------------------------------------------
+
+  private _buildWarWagon(): void {
+    const woodMat = mat(0x5a3810);
+    const darkWoodMat = mat(0x3a2208);
+    const ironMat = mat(0x3a3a3a, { metalness: 0.65, roughness: 0.35 });
+    const wheelMat = mat(0x3a2810);
+
+    // Main wagon body — tall armored box
+    const bodyGeo = new THREE.BoxGeometry(1.8, 1.4, 2.6);
+    const body = new THREE.Mesh(bodyGeo, woodMat);
+    body.position.set(0, 1.3, 0);
+    this._body.add(body);
+
+    // Iron plating on sides (overlapping bands)
+    for (let y = 0.7; y <= 1.9; y += 0.35) {
+      for (const s of [-1, 1]) {
+        const plateGeo = new THREE.BoxGeometry(0.04, 0.3, 2.65);
+        const plate = new THREE.Mesh(plateGeo, ironMat);
+        plate.position.set(s * 0.92, y, 0);
+        this._body.add(plate);
+      }
+    }
+    // Iron plating on front/back
+    for (let y = 0.7; y <= 1.9; y += 0.35) {
+      for (const s of [-1, 1]) {
+        const plateGeo = new THREE.BoxGeometry(1.85, 0.3, 0.04);
+        const plate = new THREE.Mesh(plateGeo, ironMat);
+        plate.position.set(0, y, s * 1.32);
+        this._body.add(plate);
+      }
+    }
+
+    // Roof with slight overhang
+    const roofGeo = new THREE.BoxGeometry(2.0, 0.14, 2.8);
+    const roof = new THREE.Mesh(roofGeo, darkWoodMat);
+    roof.position.set(0, 2.07, 0);
+    this._body.add(roof);
+
+    // Bolt launcher protruding from front
+    const launcherBaseGeo = new THREE.BoxGeometry(0.5, 0.3, 0.14);
+    const launcherBase = new THREE.Mesh(launcherBaseGeo, ironMat);
+    launcherBase.position.set(0, 1.2, 1.45);
+    this._body.add(launcherBase);
+
+    for (const xOff of [-0.15, 0.15]) {
+      const barrelGeo = new THREE.CylinderGeometry(0.045, 0.055, 0.7, 8);
+      const barrel = new THREE.Mesh(barrelGeo, ironMat);
+      barrel.rotation.x = Math.PI / 2;
+      barrel.position.set(xOff, 1.2, 1.82);
+      this._body.add(barrel);
+    }
+
+    // Embrasure slits on sides (narrow iron-framed openings)
+    for (const s of [-1, 1]) {
+      for (const zOff of [-0.7, 0, 0.7]) {
+        const slitGeo = new THREE.BoxGeometry(0.04, 0.12, 0.22);
+        const slit = new THREE.Mesh(slitGeo, mat(0x111111));
+        slit.position.set(s * 0.91, 1.3, zOff);
+        this._body.add(slit);
+      }
+    }
+
+    // Corner iron straps
+    for (const xs of [-1, 1]) {
+      for (const zs of [-1, 1]) {
+        const strapGeo = new THREE.BoxGeometry(0.06, 1.5, 0.06);
+        const strap = new THREE.Mesh(strapGeo, ironMat);
+        strap.position.set(xs * 0.88, 1.3, zs * 1.27);
+        this._body.add(strap);
+      }
+    }
+
+    // Axles and four large wheels
+    for (const zOff of [-1.0, 1.0]) {
+      const axleGeo = new THREE.CylinderGeometry(0.05, 0.05, 2.5, 8);
+      const axle = new THREE.Mesh(axleGeo, ironMat);
+      axle.rotation.z = Math.PI / 2;
+      axle.position.set(0, 0.42, zOff);
+      this._body.add(axle);
+
+      for (const xOff of [-1.15, 1.15]) {
+        const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.12, 14);
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.x = Math.PI / 2;
+        wheel.position.set(xOff, 0.42, zOff);
+        this._body.add(wheel);
+        for (let s = 0; s < 6; s++) {
+          const spokeGeo = new THREE.BoxGeometry(0.04, 0.76, 0.04);
+          const spoke = new THREE.Mesh(spokeGeo, darkWoodMat);
+          spoke.rotation.z = (s * Math.PI) / 6;
+          spoke.position.set(xOff, 0.42, zOff + (xOff < 0 ? -0.07 : 0.07));
+          this._body.add(spoke);
+        }
+        const hubGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.16, 8);
+        const hub = new THREE.Mesh(hubGeo, ironMat);
+        hub.rotation.x = Math.PI / 2;
+        hub.position.set(xOff, 0.42, zOff);
+        this._body.add(hub);
+      }
+    }
+  }
+
+  // ---- Bombard -------------------------------------------------------------
+
+  private _buildBombard(): void {
+    const bronzeMat = mat(0x7a5800, { metalness: 0.75, roughness: 0.28 });
+    const woodMat = mat(0x5a3210);
+    const ironMat = mat(0x2e2e2e, { metalness: 0.65, roughness: 0.35 });
+    const wheelMat = mat(0x3a2010);
+    const cannonballMat = mat(0x1a1a1a, { metalness: 0.4 });
+
+    // Very wide, massive bronze barrel — fat and short
+    const barrelGeo = new THREE.CylinderGeometry(0.45, 0.6, 1.8, 14);
+    const barrel = new THREE.Mesh(barrelGeo, bronzeMat);
+    barrel.rotation.x = -Math.PI / 2;
+    barrel.rotation.z = -0.18; // slight elevation angle
+    barrel.position.set(0.3, 1.1, 0);
+    this._body.add(barrel);
+
+    // Muzzle ring (wide decorative iron band at muzzle)
+    const muzzleGeo = new THREE.CylinderGeometry(0.52, 0.52, 0.12, 14);
+    const muzzle = new THREE.Mesh(muzzleGeo, ironMat);
+    muzzle.rotation.x = Math.PI / 2;
+    muzzle.position.set(1.2, 1.1, 0);
+    this._body.add(muzzle);
+
+    // Reinforcement rings along barrel (3 rings)
+    for (let i = 0; i < 3; i++) {
+      const ringGeo = new THREE.CylinderGeometry(0.52 - i * 0.04, 0.52 - i * 0.04, 0.09, 14);
+      const ring = new THREE.Mesh(ringGeo, ironMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(0.4 + i * 0.32, 1.05, 0);
+      this._body.add(ring);
+    }
+
+    // Touch hole and priming pan on top
+    const panGeo = new THREE.BoxGeometry(0.1, 0.06, 0.14);
+    const pan = new THREE.Mesh(panGeo, ironMat);
+    pan.position.set(-0.1, 1.55, 0);
+    this._body.add(pan);
+
+    // Iron cascabel (knob at breech end)
+    const cascGeo = new THREE.SphereGeometry(0.18, 8, 6);
+    const casc = new THREE.Mesh(cascGeo, bronzeMat);
+    casc.position.set(-0.72, 1.05, 0);
+    this._body.add(casc);
+
+    // Massive wooden bed carriage
+    const bedGeo = new THREE.BoxGeometry(2.0, 0.3, 1.0);
+    const bed = new THREE.Mesh(bedGeo, woodMat);
+    bed.position.set(0, 0.55, 0);
+    this._body.add(bed);
+
+    // Side cheeks of carriage (tall iron-banded walls)
+    for (const s of [-1, 1]) {
+      const cheekGeo = new THREE.BoxGeometry(1.9, 0.65, 0.1);
+      const cheek = new THREE.Mesh(cheekGeo, woodMat);
+      cheek.position.set(0, 0.88, s * 0.48);
+      this._body.add(cheek);
+      // Iron band on cheek
+      const bandGeo = new THREE.BoxGeometry(1.92, 0.08, 0.04);
+      const band = new THREE.Mesh(bandGeo, ironMat);
+      band.position.set(0, 1.05, s * 0.49);
+      this._body.add(band);
+    }
+
+    // Iron trunnion brackets holding barrel
+    for (const s of [-1, 1]) {
+      const trunGeo = new THREE.BoxGeometry(0.06, 0.4, 0.2);
+      const trun = new THREE.Mesh(trunGeo, ironMat);
+      trun.position.set(-0.1, 0.95, s * 0.45);
+      this._body.add(trun);
+    }
+
+    // Cannonball stack beside carriage
+    for (const [x, z] of [[-0.6, 0.7], [0, 0.72], [0.6, 0.7], [-0.3, 0.65]]) {
+      const cbGeo = new THREE.SphereGeometry(0.16, 8, 6);
+      const cb = new THREE.Mesh(cbGeo, cannonballMat);
+      cb.position.set(x, 0.55, z);
+      this._body.add(cb);
+    }
+
+    // Two very large wheels
+    for (const s of [-1, 1]) {
+      const wheelGeo = new THREE.CylinderGeometry(0.52, 0.52, 0.14, 14);
+      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+      wheel.rotation.x = Math.PI / 2;
+      wheel.position.set(0, 0.52, s * 0.6);
+      this._body.add(wheel);
+      for (let sp = 0; sp < 8; sp++) {
+        const spokeGeo = new THREE.BoxGeometry(0.04, 0.9, 0.04);
+        const spoke = new THREE.Mesh(spokeGeo, woodMat);
+        spoke.rotation.z = (sp * Math.PI) / 8;
+        spoke.position.set(0, 0.52, s * 0.6 + (s > 0 ? 0.08 : -0.08));
+        this._body.add(spoke);
+      }
+      const hubGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.18, 8);
+      const hub = new THREE.Mesh(hubGeo, ironMat);
+      hub.rotation.x = Math.PI / 2;
+      hub.position.set(0, 0.52, s * 0.6);
+      this._body.add(hub);
+    }
+
+    // Front trail spade
+    const spadeGeo = new THREE.BoxGeometry(0.12, 0.3, 0.3);
+    const spade = new THREE.Mesh(spadeGeo, ironMat);
+    spade.position.set(-1.0, 0.38, 0);
+    this._body.add(spade);
+  }
+
+  // ---- Siege Tower ---------------------------------------------------------
+
+  private _buildSiegeTower(): void {
+    const woodMat = mat(0x5a3a10, { roughness: 0.9 });
+    const darkWoodMat = mat(0x3a2408, { roughness: 0.9 });
+    const ironMat = mat(0x333333, { metalness: 0.55, roughness: 0.4 });
+    const wheelMat = mat(0x3a2810);
+
+    // ---- Massive base platform ----
+    const basGeo = new THREE.BoxGeometry(2.6, 0.3, 2.6);
+    const bas = new THREE.Mesh(basGeo, darkWoodMat);
+    bas.position.set(0, 0.55, 0);
+    this._body.add(bas);
+
+    // Iron-shod base skirt
+    for (const s of [-1, 1]) {
+      const skirtXGeo = new THREE.BoxGeometry(2.65, 0.22, 0.07);
+      const skirtX = new THREE.Mesh(skirtXGeo, ironMat);
+      skirtX.position.set(0, 0.42, s * 1.32);
+      this._body.add(skirtX);
+      const skirtZGeo = new THREE.BoxGeometry(0.07, 0.22, 2.65);
+      const skirtZ = new THREE.Mesh(skirtZGeo, ironMat);
+      skirtZ.position.set(s * 1.32, 0.42, 0);
+      this._body.add(skirtZ);
+    }
+
+    // Main tower body — 4 vertical corner posts running full height
+    for (const xs of [-1, 1]) {
+      for (const zs of [-1, 1]) {
+        const postGeo = new THREE.BoxGeometry(0.22, 6.2, 0.22);
+        const post = new THREE.Mesh(postGeo, darkWoodMat);
+        post.position.set(xs * 1.1, 3.75, zs * 1.1);
+        this._body.add(post);
+      }
+    }
+
+    // Floor panels at 3 levels
+    for (const yFloor of [1.0, 2.8, 4.6]) {
+      const floorGeo = new THREE.BoxGeometry(2.2, 0.14, 2.2);
+      const floor = new THREE.Mesh(floorGeo, woodMat);
+      floor.position.set(0, yFloor, 0);
+      this._body.add(floor);
+    }
+
+    // Wall panels (plank walls between floors, gaps for arrow slits)
+    for (const [y, h] of [[1.9, 1.6], [3.7, 1.6]]) {
+      for (const s of [-1, 1]) {
+        // Side walls (z-facing)
+        const wallGeo = new THREE.BoxGeometry(2.2, h, 0.12);
+        const wall = new THREE.Mesh(wallGeo, woodMat);
+        wall.position.set(0, y, s * 1.1);
+        this._body.add(wall);
+        // Arrow slits in side walls
+        for (const xOff of [-0.55, 0, 0.55]) {
+          const slitGeo = new THREE.BoxGeometry(0.12, 0.35, 0.14);
+          const slit = new THREE.Mesh(slitGeo, mat(0x0a0a0a));
+          slit.position.set(xOff, y, s * 1.1);
+          this._body.add(slit);
+        }
+        // Front/back walls (x-facing)
+        const wallXGeo = new THREE.BoxGeometry(0.12, h, 2.2);
+        const wallX = new THREE.Mesh(wallXGeo, woodMat);
+        wallX.position.set(s * 1.1, y, 0);
+        this._body.add(wallX);
+        for (const zOff of [-0.55, 0, 0.55]) {
+          const slitXGeo = new THREE.BoxGeometry(0.14, 0.35, 0.12);
+          const slitX = new THREE.Mesh(slitXGeo, mat(0x0a0a0a));
+          slitX.position.set(s * 1.1, y, zOff);
+          this._body.add(slitX);
+        }
+      }
+    }
+
+    // Iron cross-braces at mid height on exterior
+    for (const ys of [-1, 1]) {
+      const braceGeo = new THREE.BoxGeometry(2.4, 0.08, 0.07);
+      const brace = new THREE.Mesh(braceGeo, ironMat);
+      brace.position.set(0, 2.8 + ys * 0.8, 1.14);
+      this._body.add(brace);
+      const braceZGeo = new THREE.BoxGeometry(0.07, 0.08, 2.4);
+      const braceZ = new THREE.Mesh(braceZGeo, ironMat);
+      braceZ.position.set(1.14, 2.8 + ys * 0.8, 0);
+      this._body.add(braceZ);
+    }
+
+    // Top battle platform with crenellations
+    const topPlatGeo = new THREE.BoxGeometry(2.4, 0.16, 2.4);
+    const topPlat = new THREE.Mesh(topPlatGeo, darkWoodMat);
+    topPlat.position.set(0, 6.5, 0);
+    this._body.add(topPlat);
+
+    // Crenellations (merlons) around top
+    for (let i = -1; i <= 1; i++) {
+      for (const s of [-1, 1]) {
+        const merlonXGeo = new THREE.BoxGeometry(0.35, 0.45, 0.18);
+        const merlonX = new THREE.Mesh(merlonXGeo, darkWoodMat);
+        merlonX.position.set(i * 0.7, 6.8, s * 1.12);
+        this._body.add(merlonX);
+        const merlonZGeo = new THREE.BoxGeometry(0.18, 0.45, 0.35);
+        const merlonZ = new THREE.Mesh(merlonZGeo, darkWoodMat);
+        merlonZ.position.set(s * 1.12, 6.8, i * 0.7);
+        this._body.add(merlonZ);
+      }
+    }
+
+    // Iron-shod wheels (6 large wheels, 3 axles)
+    for (const zOff of [-1.1, 0, 1.1]) {
+      for (const xOff of [-1.45, 1.45]) {
+        const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.14, 14);
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.x = Math.PI / 2;
+        wheel.position.set(xOff, 0.45, zOff);
+        this._body.add(wheel);
+        // Iron rim
+        const rimGeo = new THREE.CylinderGeometry(0.46, 0.46, 0.06, 14);
+        const rim = new THREE.Mesh(rimGeo, ironMat);
+        rim.rotation.x = Math.PI / 2;
+        rim.position.set(xOff, 0.45, zOff);
+        this._body.add(rim);
+        for (let sp = 0; sp < 6; sp++) {
+          const spokeGeo = new THREE.BoxGeometry(0.04, 0.78, 0.04);
+          const spoke = new THREE.Mesh(spokeGeo, darkWoodMat);
+          spoke.rotation.z = (sp * Math.PI) / 6;
+          spoke.position.set(xOff, 0.45, zOff + (xOff < 0 ? -0.08 : 0.08));
+          this._body.add(spoke);
+        }
+        const hubGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.18, 8);
+        const hub = new THREE.Mesh(hubGeo, ironMat);
+        hub.rotation.x = Math.PI / 2;
+        hub.position.set(xOff, 0.45, zOff);
+        this._body.add(hub);
+      }
+    }
+  }
+
+  // ---- Hellfire Mortar -----------------------------------------------------
+
+  private _buildHellfireMortar(): void {
+    const ironMat = mat(0x2a2a2a, { metalness: 0.7, roughness: 0.3 });
+    const hotIronMat = mat(0x8b3300, { metalness: 0.5, roughness: 0.4, emissive: 0x3a1000 });
+    const woodMat = mat(0x4a2e0e);
+    const wheelMat = mat(0x3a2010);
+    const coalMat = mat(0x1a1010);
+
+    // Low squat wheeled platform base
+    const platGeo = new THREE.BoxGeometry(2.0, 0.25, 1.8);
+    const plat = new THREE.Mesh(platGeo, woodMat);
+    plat.position.set(0, 0.5, 0);
+    this._body.add(plat);
+
+    // Iron plating on base
+    for (const s of [-1, 1]) {
+      const plateGeo = new THREE.BoxGeometry(0.05, 0.3, 1.82);
+      const plate = new THREE.Mesh(plateGeo, ironMat);
+      plate.position.set(s * 1.0, 0.5, 0);
+      this._body.add(plate);
+    }
+
+    // Mortar breech block — thick squat iron cylinder
+    const breechGeo = new THREE.CylinderGeometry(0.55, 0.65, 0.55, 14);
+    const breech = new THREE.Mesh(breechGeo, ironMat);
+    breech.position.set(0, 0.93, 0);
+    this._body.add(breech);
+
+    // Reinforcement bands on breech (2 rings)
+    for (const yOff of [0.72, 1.08]) {
+      const ringGeo = new THREE.CylinderGeometry(0.67, 0.67, 0.09, 14);
+      const ring = new THREE.Mesh(ringGeo, ironMat);
+      ring.position.set(0, yOff, 0);
+      this._body.add(ring);
+    }
+
+    // Main mortar barrel — very wide, angled upward sharply
+    const barrelGeo = new THREE.CylinderGeometry(0.38, 0.5, 0.9, 14);
+    const barrel = new THREE.Mesh(barrelGeo, ironMat);
+    barrel.rotation.x = -0.7; // steep angle
+    barrel.position.set(0, 1.45, -0.2);
+    this._body.add(barrel);
+
+    // Massive muzzle ring
+    const muzzleGeo = new THREE.CylinderGeometry(0.44, 0.44, 0.1, 14);
+    const muzzle = new THREE.Mesh(muzzleGeo, hotIronMat);
+    muzzle.rotation.x = -0.7;
+    muzzle.position.set(0, 1.92, -0.52);
+    this._body.add(muzzle);
+
+    // Glowing interior (the mouth)
+    const glowGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.05, 12);
+    const glow = new THREE.Mesh(glowGeo, mat(0xff4400, { emissive: 0xcc2200 }));
+    glow.rotation.x = -0.7;
+    glow.position.set(0, 1.95, -0.55);
+    this._body.add(glow);
+
+    // Iron trunnion pins on sides
+    for (const s of [-1, 1]) {
+      const trunGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.3, 8);
+      const trun = new THREE.Mesh(trunGeo, ironMat);
+      trun.rotation.z = Math.PI / 2;
+      trun.position.set(s * 0.68, 1.2, 0);
+      this._body.add(trun);
+    }
+
+    // Coal/ember pile under mortar on base
+    for (let i = 0; i < 5; i++) {
+      const coalGeo = new THREE.SphereGeometry(0.07 + Math.random() * 0.04, 5, 4);
+      const coal = new THREE.Mesh(coalGeo, coalMat);
+      coal.position.set((i - 2) * 0.12, 0.65, 0.3 + i * 0.04);
+      this._body.add(coal);
+    }
+
+    // Rope/chain lashing on sides (iron loops)
+    for (const s of [-1, 1]) {
+      for (const yOff of [0.7, 1.0]) {
+        const loopGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.22, 6);
+        const loop = new THREE.Mesh(loopGeo, ironMat);
+        loop.rotation.z = Math.PI / 2;
+        loop.position.set(s * 0.55, yOff, 0.3);
+        this._body.add(loop);
+      }
+    }
+
+    // Four squat heavy wheels
+    for (const xOff of [-0.95, 0.95]) {
+      for (const zOff of [-0.75, 0.75]) {
+        const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.14, 12);
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.x = Math.PI / 2;
+        wheel.position.set(xOff, 0.35, zOff);
+        this._body.add(wheel);
+        const rimGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.06, 12);
+        const rim = new THREE.Mesh(rimGeo, ironMat);
+        rim.rotation.x = Math.PI / 2;
+        rim.position.set(xOff, 0.35, zOff);
+        this._body.add(rim);
+        const hubGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.18, 8);
+        const hub = new THREE.Mesh(hubGeo, ironMat);
+        hub.rotation.x = Math.PI / 2;
+        hub.position.set(xOff, 0.35, zOff);
+        this._body.add(hub);
+      }
+    }
   }
 
   dispose(): void {
