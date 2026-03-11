@@ -3127,6 +3127,13 @@ export class WarbandGame {
 
   // Projectile visuals
   private _projectileMeshes: Map<string, THREE.Mesh> = new Map();
+  // Shared projectile geometries/materials to reduce allocations
+  private _sharedArrowGeo: THREE.CylinderGeometry | null = null;
+  private _sharedArrowMat: THREE.MeshBasicMaterial | null = null;
+  private _sharedRayOuterGeo: THREE.CylinderGeometry | null = null;
+  private _sharedRayInnerGeo: THREE.CylinderGeometry | null = null;
+  private _sharedRayTipGeo: THREE.SphereGeometry | null = null;
+  private _sharedRayCoreMat: THREE.MeshBasicMaterial | null = null;
 
   // Pickup visuals
   private _pickupMeshes: Map<string, THREE.Group> = new Map();
@@ -4503,50 +4510,43 @@ export class WarbandGame {
       hMesh.update(horse, riderSpeed, dt, this._sceneManager.camera);
     }
 
-    // Update projectile visuals
+    // Update projectile visuals (shared geometries to reduce allocations)
     for (const proj of this._state.projectiles) {
       let mesh = this._projectileMeshes.get(proj.id);
       if (!mesh) {
         if (proj.projectileColor != null) {
-          // Magic ray: glowing elongated beam with bright core
+          // Magic ray: glowing elongated beam with bright core (no PointLight for performance)
           const group = new THREE.Group();
           // Outer glow
-          const outerGeo = new THREE.CylinderGeometry(0.06, 0.02, 0.8, 6);
+          if (!this._sharedRayOuterGeo) {
+            this._sharedRayOuterGeo = new THREE.CylinderGeometry(0.06, 0.02, 0.8, 5);
+            this._sharedRayInnerGeo = new THREE.CylinderGeometry(0.025, 0.01, 0.7, 5);
+            this._sharedRayTipGeo = new THREE.SphereGeometry(0.07, 4, 4);
+            this._sharedRayCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+          }
           const outerMat = new THREE.MeshBasicMaterial({
             color: proj.projectileColor,
             transparent: true,
             opacity: 0.35,
           });
-          const outerMesh = new THREE.Mesh(outerGeo, outerMat);
-          group.add(outerMesh);
-          // Inner bright core
-          const innerGeo = new THREE.CylinderGeometry(0.025, 0.01, 0.7, 6);
-          const innerMat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-          });
-          const innerMesh = new THREE.Mesh(innerGeo, innerMat);
-          group.add(innerMesh);
+          group.add(new THREE.Mesh(this._sharedRayOuterGeo, outerMat));
+          // Inner bright core (shared white material)
+          group.add(new THREE.Mesh(this._sharedRayInnerGeo!, this._sharedRayCoreMat!));
           // Bright tip orb
-          const tipGeo = new THREE.SphereGeometry(0.07, 6, 6);
-          const tipMat = new THREE.MeshBasicMaterial({
-            color: proj.projectileColor,
-          });
-          const tipMesh = new THREE.Mesh(tipGeo, tipMat);
+          const tipMat = new THREE.MeshBasicMaterial({ color: proj.projectileColor });
+          const tipMesh = new THREE.Mesh(this._sharedRayTipGeo!, tipMat);
           tipMesh.position.y = 0.4;
           group.add(tipMesh);
-          // Point light for glow effect
-          const light = new THREE.PointLight(proj.projectileColor, 0.6, 3);
-          light.position.y = 0.4;
-          group.add(light);
           this._sceneManager.scene.add(group);
-          // Store group as mesh (we'll cast it)
           mesh = group as unknown as THREE.Mesh;
           this._projectileMeshes.set(proj.id, mesh);
         } else {
-          // Arrow: standard brown cylinder
-          const geo = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4);
-          const mat = new THREE.MeshBasicMaterial({ color: 0x8b6914 });
-          mesh = new THREE.Mesh(geo, mat);
+          // Arrow: standard brown cylinder (shared geometry)
+          if (!this._sharedArrowGeo) {
+            this._sharedArrowGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4);
+            this._sharedArrowMat = new THREE.MeshBasicMaterial({ color: 0x8b6914 });
+          }
+          mesh = new THREE.Mesh(this._sharedArrowGeo, this._sharedArrowMat!);
           this._sceneManager.scene.add(mesh);
           this._projectileMeshes.set(proj.id, mesh);
         }
@@ -4569,18 +4569,16 @@ export class WarbandGame {
       if (!this._state.projectiles.find((p) => p.id === id)) {
         this._sceneManager.scene.remove(mesh);
         if ((mesh as unknown as THREE.Group).isGroup) {
-          // Magic ray group — dispose children
+          // Magic ray group — dispose only per-instance materials (geometries are shared)
           const group = mesh as unknown as THREE.Group;
           group.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
-              (child as THREE.Mesh).geometry.dispose();
-              ((child as THREE.Mesh).material as THREE.Material).dispose();
+              const mat = (child as THREE.Mesh).material as THREE.Material;
+              if (mat !== this._sharedRayCoreMat) mat.dispose();
             }
           });
-        } else {
-          mesh.geometry.dispose();
-          (mesh.material as THREE.Material).dispose();
         }
+        // Arrow meshes share geometry+material, no disposal needed per instance
         this._projectileMeshes.delete(id);
       }
     }
@@ -5187,23 +5185,27 @@ export class WarbandGame {
     }
     this._creatureMeshes.clear();
 
-    // Remove projectile meshes
+    // Remove projectile meshes (per-instance materials only; shared geo/mat disposed below)
     for (const [, mesh] of this._projectileMeshes) {
       this._sceneManager.scene.remove(mesh);
       if ((mesh as unknown as THREE.Group).isGroup) {
         const group = mesh as unknown as THREE.Group;
         group.traverse((child) => {
           if ((child as THREE.Mesh).isMesh) {
-            (child as THREE.Mesh).geometry.dispose();
-            ((child as THREE.Mesh).material as THREE.Material).dispose();
+            const mat = (child as THREE.Mesh).material as THREE.Material;
+            if (mat !== this._sharedRayCoreMat) mat.dispose();
           }
         });
-      } else {
-        mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();
       }
     }
     this._projectileMeshes.clear();
+    // Dispose shared projectile resources
+    this._sharedArrowGeo?.dispose(); this._sharedArrowGeo = null;
+    this._sharedArrowMat?.dispose(); this._sharedArrowMat = null;
+    this._sharedRayOuterGeo?.dispose(); this._sharedRayOuterGeo = null;
+    this._sharedRayInnerGeo?.dispose(); this._sharedRayInnerGeo = null;
+    this._sharedRayTipGeo?.dispose(); this._sharedRayTipGeo = null;
+    this._sharedRayCoreMat?.dispose(); this._sharedRayCoreMat = null;
 
     // Remove pickup meshes
     for (const [, group] of this._pickupMeshes) {
