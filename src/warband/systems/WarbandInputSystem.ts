@@ -594,8 +594,11 @@ export class WarbandInputSystem {
     this._pointerLocked = document.pointerLockElement === this._canvas;
   }
 
+  /** Set to true to prevent pointer lock requests (e.g. during results/menus) */
+  pointerLockEnabled = true;
+
   private _handleClick(): void {
-    if (!this._pointerLocked && this._canvas) {
+    if (!this._pointerLocked && this._canvas && this.pointerLockEnabled) {
       this._canvas.requestPointerLock();
     }
   }

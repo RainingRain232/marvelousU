@@ -4297,6 +4297,7 @@ export class WarbandGame {
     if (!this._state) return;
 
     this._state.phase = WarbandPhase.BATTLE;
+    this._inputSystem.pointerLockEnabled = true;
 
     // Handle player's shop horse purchase
     if (this._shop.pendingHorse) {
@@ -4689,7 +4690,8 @@ export class WarbandGame {
       this._hud.showCenterMessage("DEFEAT!", 3000);
     }
 
-    // Exit pointer lock
+    // Exit pointer lock and prevent re-locking during results
+    this._inputSystem.pointerLockEnabled = false;
     if (document.pointerLockElement) {
       document.exitPointerLock();
     }
@@ -4702,6 +4704,11 @@ export class WarbandGame {
 
   private _showResults(won: boolean): void {
     if (!this._state) return;
+
+    // Ensure pointer is unlocked so buttons are clickable
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
 
     const player = this._state.fighters.find((f) => f.id === this._state!.playerId);
     if (!player) return;
