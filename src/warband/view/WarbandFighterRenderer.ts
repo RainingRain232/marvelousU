@@ -113,6 +113,9 @@ export class FighterMesh {
   private _lastCombatState: FighterCombatState = FighterCombatState.IDLE;
 
   private _colors: FighterColors;
+  private _isCaster = false;
+  private _casterRobeMat: THREE.MeshStandardMaterial | null = null;
+  private _casterRobeAccentMat: THREE.MeshStandardMaterial | null = null;
 
   constructor(fighter: WarbandFighter, index: number) {
     this.fighterId = fighter.id;
@@ -120,6 +123,10 @@ export class FighterMesh {
       fighter.team === "player"
         ? PLAYER_TEAM_COLORS[index % PLAYER_TEAM_COLORS.length]
         : ENEMY_TEAM_COLORS[index % ENEMY_TEAM_COLORS.length];
+
+    // Detect caster units (mages, priests, etc.) by robe torso armor
+    const _torsoArmorId = fighter.equipment.armor.torso?.id ?? "";
+    this._isCaster = _torsoArmorId.includes("robes");
 
     this.group = new THREE.Group();
     this._root = new THREE.Group();
@@ -137,6 +144,7 @@ export class FighterMesh {
     this._root.add(this._hips);
     this._hips.position.y = THIGH_LEN + SHIN_LEN + FOOT_HEIGHT + 0.015; // hip height (includes sole)
 
+    if (!this._isCaster) {
     // Pelvis (rounded box connecting to legs)
     const pelvisGeo = new THREE.CylinderGeometry(
       TORSO_WIDTH * 0.45, HIP_WIDTH + LIMB_THICKNESS * 1.4 + 0.01, PELVIS_HEIGHT, 8,
@@ -173,6 +181,7 @@ export class FighterMesh {
       glute.castShadow = true;
       this._hips.add(glute);
     }
+    } // end non-caster pelvis
 
     // Spine
     this._spine = this._makeBoneGroup();
@@ -183,6 +192,10 @@ export class FighterMesh {
     this._chest = this._makeBoneGroup();
     this._spine.add(this._chest);
 
+    if (this._isCaster) {
+      this._buildCasterRobe(skinMat);
+    }
+    if (!this._isCaster) {
     // ---- Torso: organic shape built from multiple sections ----
     const seamMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(this._colors.tunic).multiplyScalar(0.75).getHex(),
@@ -357,6 +370,7 @@ export class FighterMesh {
     const flap = new THREE.Mesh(flapGeo, pouchMat);
     flap.position.set(TORSO_WIDTH * 0.32, 0.035, TORSO_DEPTH * 0.38);
     this._chest.add(flap);
+    } // end non-caster torso
 
     // ---- Neck: visible cylinder connecting torso to head ----
     this._neck = this._makeBoneGroup();
@@ -688,8 +702,10 @@ export class FighterMesh {
     this._leftUpperArm = this._makeBoneGroup();
     this._leftUpperArm.position.set(SHOULDER_WIDTH, TORSO_HEIGHT - 0.02, 0);
     this._chest.add(this._leftUpperArm);
-    this._addLimb(this._leftUpperArm, UPPER_ARM_LEN, this._colors.tunic);
-    this._addSleeveCuff(this._leftUpperArm, this._colors.tunic);
+    if (!this._isCaster) {
+      this._addLimb(this._leftUpperArm, UPPER_ARM_LEN, this._colors.tunic);
+      this._addSleeveCuff(this._leftUpperArm, this._colors.tunic);
+    }
 
     this._leftForearm = this._makeBoneGroup();
     this._leftForearm.position.y = -UPPER_ARM_LEN;
@@ -708,8 +724,10 @@ export class FighterMesh {
     this._rightUpperArm = this._makeBoneGroup();
     this._rightUpperArm.position.set(-SHOULDER_WIDTH, TORSO_HEIGHT - 0.02, 0);
     this._chest.add(this._rightUpperArm);
-    this._addLimb(this._rightUpperArm, UPPER_ARM_LEN, this._colors.tunic);
-    this._addSleeveCuff(this._rightUpperArm, this._colors.tunic);
+    if (!this._isCaster) {
+      this._addLimb(this._rightUpperArm, UPPER_ARM_LEN, this._colors.tunic);
+      this._addSleeveCuff(this._rightUpperArm, this._colors.tunic);
+    }
 
     this._rightForearm = this._makeBoneGroup();
     this._rightForearm.position.y = -UPPER_ARM_LEN;
@@ -724,6 +742,11 @@ export class FighterMesh {
     this._addJoint(this._rightHand, this._colors.skin); // wrist
     this._addHand(this._rightHand, this._colors.skin);
 
+    // Caster sleeves (must be after arm bones are created)
+    if (this._isCaster) {
+      this._buildCasterSleeves();
+    }
+
     // ---- Legs ----
     const pantsSeamColor = new THREE.Color(this._colors.pants).multiplyScalar(0.8).getHex();
     const pantsSeamMat = new THREE.MeshStandardMaterial({ color: pantsSeamColor, roughness: 0.9 });
@@ -732,16 +755,20 @@ export class FighterMesh {
     this._leftThigh = this._makeBoneGroup();
     this._leftThigh.position.set(-HIP_WIDTH, 0, 0);
     this._hips.add(this._leftThigh);
-    this._addJoint(this._leftThigh, this._colors.pants); // hip joint
-    this._addLimb(this._leftThigh, THIGH_LEN, this._colors.pants, true);
-    this._addPantsDetail(this._leftThigh, pantsSeamMat);
+    if (!this._isCaster) {
+      this._addJoint(this._leftThigh, this._colors.pants);
+      this._addLimb(this._leftThigh, THIGH_LEN, this._colors.pants, true);
+      this._addPantsDetail(this._leftThigh, pantsSeamMat);
+    }
 
     this._leftShin = this._makeBoneGroup();
     this._leftShin.position.y = -THIGH_LEN;
     this._leftThigh.add(this._leftShin);
-    this._addJoint(this._leftShin, this._colors.pants); // knee joint
-    this._addLimb(this._leftShin, SHIN_LEN, this._colors.pants);
-    this._addCalfMuscle(this._leftShin, this._colors.pants);
+    if (!this._isCaster) {
+      this._addJoint(this._leftShin, this._colors.pants);
+      this._addLimb(this._leftShin, SHIN_LEN, this._colors.pants);
+      this._addCalfMuscle(this._leftShin, this._colors.pants);
+    }
 
     this._leftFoot = this._makeBoneGroup();
     this._leftFoot.position.y = -SHIN_LEN;
@@ -752,16 +779,20 @@ export class FighterMesh {
     this._rightThigh = this._makeBoneGroup();
     this._rightThigh.position.set(HIP_WIDTH, 0, 0);
     this._hips.add(this._rightThigh);
-    this._addJoint(this._rightThigh, this._colors.pants); // hip joint
-    this._addLimb(this._rightThigh, THIGH_LEN, this._colors.pants, true);
-    this._addPantsDetail(this._rightThigh, pantsSeamMat);
+    if (!this._isCaster) {
+      this._addJoint(this._rightThigh, this._colors.pants);
+      this._addLimb(this._rightThigh, THIGH_LEN, this._colors.pants, true);
+      this._addPantsDetail(this._rightThigh, pantsSeamMat);
+    }
 
     this._rightShin = this._makeBoneGroup();
     this._rightShin.position.y = -THIGH_LEN;
     this._rightThigh.add(this._rightShin);
-    this._addJoint(this._rightShin, this._colors.pants); // knee joint
-    this._addLimb(this._rightShin, SHIN_LEN, this._colors.pants);
-    this._addCalfMuscle(this._rightShin, this._colors.pants);
+    if (!this._isCaster) {
+      this._addJoint(this._rightShin, this._colors.pants);
+      this._addLimb(this._rightShin, SHIN_LEN, this._colors.pants);
+      this._addCalfMuscle(this._rightShin, this._colors.pants);
+    }
 
     this._rightFoot = this._makeBoneGroup();
     this._rightFoot.position.y = -SHIN_LEN;
@@ -873,6 +904,109 @@ export class FighterMesh {
     muscle.position.set(0, -SHIN_LEN * 0.25, -LIMB_THICKNESS * 0.35);
     muscle.scale.set(0.9, 1.6, 0.8);
     parent.add(muscle);
+  }
+
+  /** Build caster model: long flowing robe covering the body */
+  private _buildCasterRobe(_skinMat: THREE.MeshStandardMaterial): void {
+    // Use a neutral dark color initially; updateArmorVisuals will set the proper school color
+    this._casterRobeMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.85, metalness: 0.05 });
+    this._casterRobeAccentMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.8, metalness: 0.1 });
+    const robeMat = this._casterRobeMat;
+    const accentMat = this._casterRobeAccentMat;
+
+    // The robe is attached to the chest bone and extends from shoulders down to near the feet.
+    const robeDropBelow = THIGH_LEN + SHIN_LEN + FOOT_HEIGHT * 0.3;
+    const chestToHips = PELVIS_HEIGHT * 0.5;
+    const robeBottomY = -(chestToHips + robeDropBelow);
+    const robeTopY = TORSO_HEIGHT;
+    const robeHeight = robeTopY - robeBottomY;
+
+    // Main robe body — tapered cylinder, wide at bottom (A-line silhouette)
+    const robeTopRadius = TORSO_WIDTH * 0.5;
+    const robeBottomRadius = TORSO_WIDTH * 1.3;
+    const robeGeo = new THREE.CylinderGeometry(robeTopRadius, robeBottomRadius, robeHeight, 12);
+    const robeMesh = new THREE.Mesh(robeGeo, robeMat);
+    robeMesh.position.y = (robeTopY + robeBottomY) / 2;
+    robeMesh.castShadow = true;
+    this._chest.add(robeMesh);
+
+    // Robe hem (thicker ring at bottom)
+    const hemGeo = new THREE.TorusGeometry(robeBottomRadius - 0.01, 0.012, 4, 14);
+    const hemMesh = new THREE.Mesh(hemGeo, accentMat);
+    hemMesh.position.y = robeBottomY + 0.01;
+    hemMesh.rotation.x = Math.PI / 2;
+    this._chest.add(hemMesh);
+
+    // Robe collar (raised ring at neckline)
+    const collarGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.38, 0.018, 5, 10);
+    const collarMesh = new THREE.Mesh(collarGeo, accentMat);
+    collarMesh.position.y = TORSO_HEIGHT + 0.01;
+    collarMesh.rotation.x = Math.PI / 2;
+    this._chest.add(collarMesh);
+
+    // Robe vertical seam line (center front)
+    const seamGeo = new THREE.BoxGeometry(0.008, robeHeight * 0.8, 0.003);
+    const seamMat = new THREE.MeshStandardMaterial({
+      color: 0x333333, roughness: 0.9,
+    });
+    const seam = new THREE.Mesh(seamGeo, seamMat);
+    seam.position.set(0, (robeTopY + robeBottomY) / 2 + robeHeight * 0.05, TORSO_DEPTH * 0.5 + 0.02);
+    this._chest.add(seam);
+
+    // Belt / rope sash around waist
+    const sashGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.48, 0.014, 4, 10);
+    const sashMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.85 });
+    const sash = new THREE.Mesh(sashGeo, sashMat);
+    sash.position.y = 0.03;
+    sash.rotation.x = Math.PI / 2;
+    sash.scale.set(1, TORSO_DEPTH / TORSO_WIDTH * 0.9, 1);
+    this._chest.add(sash);
+
+    // Sash knot (dangling tassels on the side)
+    const knotGeo = new THREE.CylinderGeometry(0.012, 0.008, 0.12, 4);
+    const knot = new THREE.Mesh(knotGeo, sashMat);
+    knot.position.set(TORSO_WIDTH * 0.45, -0.04, TORSO_DEPTH * 0.25);
+    knot.rotation.z = 0.3;
+    this._chest.add(knot);
+
+    // Accent trim lines across the robe (horizontal bands)
+    for (let i = 0; i < 3; i++) {
+      const trimY = robeBottomY + robeHeight * (0.15 + i * 0.25);
+      const t = (trimY - robeBottomY) / robeHeight;
+      const trimR = robeBottomRadius + (robeTopRadius - robeBottomRadius) * t;
+      const trimGeo = new THREE.TorusGeometry(trimR - 0.005, 0.005, 3, 12);
+      const trim = new THREE.Mesh(trimGeo, accentMat);
+      trim.position.y = trimY;
+      trim.rotation.x = Math.PI / 2;
+      this._chest.add(trim);
+    }
+
+  }
+
+  /** Add flowing robe sleeves to caster upper arms (called after arm bones exist) */
+  private _buildCasterSleeves(): void {
+    if (!this._casterRobeMat || !this._casterRobeAccentMat) return;
+    const robeMat = this._casterRobeMat;
+    const accentMat = this._casterRobeAccentMat;
+
+    for (const arm of [this._leftUpperArm, this._rightUpperArm]) {
+      const sleeveGeo = new THREE.CylinderGeometry(
+        LIMB_THICKNESS * 1.2,
+        LIMB_THICKNESS * 2.0,
+        UPPER_ARM_LEN * 1.05, 8,
+      );
+      const sleeve = new THREE.Mesh(sleeveGeo, robeMat);
+      sleeve.position.y = -UPPER_ARM_LEN / 2;
+      sleeve.castShadow = true;
+      arm.add(sleeve);
+
+      // Sleeve cuff (accent colored ring at opening)
+      const cuffGeo = new THREE.TorusGeometry(LIMB_THICKNESS * 1.9, 0.008, 3, 7);
+      const cuff = new THREE.Mesh(cuffGeo, accentMat);
+      cuff.position.y = -UPPER_ARM_LEN - 0.01;
+      cuff.rotation.x = Math.PI / 2;
+      arm.add(cuff);
+    }
   }
 
   /** Add a tapered limb segment (cylinder wider at top, narrower at bottom) */
@@ -1053,7 +1187,80 @@ export class FighterMesh {
       weaponGroup.add(pommel);
 
       // Blade
-      if (wpn.category === "polearm") {
+      if (wpn.category === "polearm" && wpn.id.includes("staff")) {
+        // ---- Caster Staff: wooden shaft with diamond crystal on top ----
+        // Wooden shaft (extends from handle upward)
+        const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85, metalness: 0.0 });
+        const shaftGeo = new THREE.CylinderGeometry(0.014, 0.02, bladeLen * 0.85, 6);
+        const shaft = new THREE.Mesh(shaftGeo, woodMat);
+        shaft.position.y = handleLen + bladeLen * 0.425;
+        weaponGroup.add(shaft);
+
+        // Wood grain rings along shaft
+        const grainMat = new THREE.MeshStandardMaterial({ color: 0x543018, roughness: 0.9 });
+        for (let i = 0; i < 4; i++) {
+          const ringGeo = new THREE.TorusGeometry(0.017, 0.003, 3, 6);
+          const ring = new THREE.Mesh(ringGeo, grainMat);
+          ring.position.y = handleLen + bladeLen * (0.15 + i * 0.2);
+          ring.rotation.x = Math.PI / 2;
+          weaponGroup.add(ring);
+        }
+
+        // Gnarled knot near the top
+        const knotGeo = new THREE.SphereGeometry(0.022, 5, 4);
+        const knot = new THREE.Mesh(knotGeo, woodMat);
+        knot.position.set(0.008, handleLen + bladeLen * 0.7, 0.005);
+        knot.scale.set(0.8, 0.6, 0.8);
+        weaponGroup.add(knot);
+
+        // Diamond crystal cradle (wooden prongs holding the diamond)
+        const cradleY = handleLen + bladeLen * 0.85;
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
+          const prongGeo = new THREE.CylinderGeometry(0.004, 0.006, bladeLen * 0.12, 4);
+          const prong = new THREE.Mesh(prongGeo, woodMat);
+          prong.position.set(
+            Math.sin(angle) * 0.012,
+            cradleY,
+            Math.cos(angle) * 0.012,
+          );
+          prong.rotation.set(
+            Math.cos(angle) * -0.3,
+            0,
+            Math.sin(angle) * 0.3,
+          );
+          weaponGroup.add(prong);
+        }
+
+        // Diamond crystal on top (octahedron shape, school-colored)
+        const diamondColor = wpn.accentColor ?? 0xffffff;
+        const diamondMat = new THREE.MeshStandardMaterial({
+          color: diamondColor,
+          roughness: 0.1,
+          metalness: 0.3,
+          emissive: diamondColor,
+          emissiveIntensity: 0.3,
+        });
+        const diamondGeo = new THREE.OctahedronGeometry(0.04, 0);
+        const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+        diamond.position.y = cradleY + 0.04;
+        diamond.rotation.y = Math.PI / 4;
+        diamond.castShadow = true;
+        weaponGroup.add(diamond);
+
+        // Diamond glow (slightly larger transparent sphere)
+        const glowMat = new THREE.MeshStandardMaterial({
+          color: diamondColor,
+          transparent: true,
+          opacity: 0.15,
+          emissive: diamondColor,
+          emissiveIntensity: 0.5,
+        });
+        const glowGeo = new THREE.SphereGeometry(0.055, 8, 6);
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        glow.position.y = cradleY + 0.04;
+        weaponGroup.add(glow);
+      } else if (wpn.category === "polearm") {
         // Long shaft + small head
         const shaftGeo = new THREE.CylinderGeometry(0.016, 0.018, bladeLen * 0.8, 6);
         const shaft = new THREE.Mesh(shaftGeo, handleMat);
@@ -1533,6 +1740,104 @@ export class FighterMesh {
     this._armorMeshes = [];
 
     const armor = fighter.equipment.armor;
+
+    // ---- Caster-specific visuals ----
+    if (this._isCaster) {
+      // Update robe material colors to match school
+      if (armor.torso && this._casterRobeMat) {
+        this._casterRobeMat.color.set(armor.torso.color);
+        if (armor.torso.accentColor) {
+          this._casterRobeAccentMat?.color.set(armor.torso.accentColor);
+        } else {
+          this._casterRobeAccentMat?.color.set(
+            new THREE.Color(armor.torso.color).multiplyScalar(0.7).getHex()
+          );
+        }
+      }
+
+      // Pointy wizard hat (replaces normal helm)
+      if (armor.head) {
+        // Hide hair under hat
+        for (const m of this._hairMeshes) m.visible = false;
+
+        const hatColor = armor.head.color;
+        const hatMat = new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.8, metalness: 0.05 });
+        const hatDarkMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(hatColor).multiplyScalar(0.7).getHex(),
+          roughness: 0.85,
+        });
+
+        const hatGroup = new THREE.Group();
+        this._headBone.add(hatGroup);
+
+        // Wide brim (flat disc)
+        const brimGeo = new THREE.CylinderGeometry(HEAD_RADIUS * 2.2, HEAD_RADIUS * 2.3, 0.02, 14);
+        const brim = new THREE.Mesh(brimGeo, hatMat);
+        brim.position.y = HEAD_RADIUS * 1.4;
+        brim.castShadow = true;
+        hatGroup.add(brim);
+        this._armorMeshes.push(brim);
+
+        // Brim underside (slightly darker)
+        const brimUnderGeo = new THREE.CylinderGeometry(HEAD_RADIUS * 2.15, HEAD_RADIUS * 2.25, 0.008, 14);
+        const brimUnder = new THREE.Mesh(brimUnderGeo, hatDarkMat);
+        brimUnder.position.y = HEAD_RADIUS * 1.38;
+        hatGroup.add(brimUnder);
+        this._armorMeshes.push(brimUnder);
+
+        // Tall cone (the pointy part)
+        const coneHeight = HEAD_RADIUS * 4.5;
+        const coneGeo = new THREE.ConeGeometry(HEAD_RADIUS * 1.3, coneHeight, 10);
+        const cone = new THREE.Mesh(coneGeo, hatMat);
+        cone.position.y = HEAD_RADIUS * 1.4 + coneHeight / 2;
+        cone.castShadow = true;
+        hatGroup.add(cone);
+        this._armorMeshes.push(cone);
+
+        // Slightly bent tip (wizardly crooked hat)
+        const tipGeo = new THREE.ConeGeometry(HEAD_RADIUS * 0.3, HEAD_RADIUS * 1.2, 6);
+        const tip = new THREE.Mesh(tipGeo, hatMat);
+        tip.position.set(HEAD_RADIUS * 0.15, HEAD_RADIUS * 1.4 + coneHeight * 0.9, HEAD_RADIUS * 0.1);
+        tip.rotation.z = 0.25;
+        tip.rotation.x = 0.15;
+        hatGroup.add(tip);
+        this._armorMeshes.push(tip);
+
+        // Hat band (accent strip around base of cone)
+        const bandGeo = new THREE.TorusGeometry(HEAD_RADIUS * 1.25, 0.015, 4, 12);
+        const bandMat = new THREE.MeshStandardMaterial({
+          color: armor.head.accentColor ?? new THREE.Color(hatColor).multiplyScalar(0.6).getHex(),
+          roughness: 0.75,
+        });
+        const band = new THREE.Mesh(bandGeo, bandMat);
+        band.position.y = HEAD_RADIUS * 1.5;
+        band.rotation.x = Math.PI / 2;
+        hatGroup.add(band);
+        this._armorMeshes.push(band);
+
+        // Small buckle on the hat band
+        const buckleGeo = new THREE.BoxGeometry(0.025, 0.025, 0.01);
+        const buckleMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.3, metalness: 0.7 });
+        const buckle = new THREE.Mesh(buckleGeo, buckleMat);
+        buckle.position.set(0, HEAD_RADIUS * 1.5, HEAD_RADIUS * 1.3);
+        hatGroup.add(buckle);
+        this._armorMeshes.push(buckle);
+      }
+
+      // Simple foot covering for casters (sandals/simple boots)
+      if (armor.boots) {
+        const bMat = new THREE.MeshStandardMaterial({ color: armor.boots.color, roughness: 0.7, metalness: 0.2 });
+        for (const foot of [this._leftFoot, this._rightFoot]) {
+          const bootGeo = new THREE.CylinderGeometry(0.05, 0.048, 0.04, 8);
+          const bootMesh = new THREE.Mesh(bootGeo, bMat);
+          bootMesh.position.y = 0.01;
+          foot.add(bootMesh);
+          this._armorMeshes.push(bootMesh);
+        }
+      }
+
+      return; // Skip all normal armor rendering
+    }
 
     // Toggle face/hair visibility based on helm coverage
     const helmDef = armor.head?.defense ?? 0;
