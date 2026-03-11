@@ -698,6 +698,109 @@ const NORMAN_SHIELD: WeaponDef = {
   shieldShape: "rect",
 };
 
+// ---- Staves (mages & clergy) ----
+
+const FIRE_STAFF: WeaponDef = {
+  id: "fire_staff", name: "Fire Staff", category: "polearm",
+  damage: 15, speed: 0.8, reach: 1.5, weight: 2.0, cost: 80,
+  length: 1.6, color: 0x8b4513, accentColor: 0xff3300,
+};
+const STORM_STAFF: WeaponDef = {
+  id: "storm_staff", name: "Storm Staff", category: "polearm",
+  damage: 15, speed: 0.8, reach: 1.5, weight: 2.0, cost: 80,
+  length: 1.6, color: 0x8b4513, accentColor: 0x66ccff,
+};
+const COLD_STAFF: WeaponDef = {
+  id: "cold_staff", name: "Cold Staff", category: "polearm",
+  damage: 15, speed: 0.8, reach: 1.5, weight: 2.0, cost: 80,
+  length: 1.6, color: 0x8b4513, accentColor: 0x88ddff,
+};
+const DISTORTION_STAFF: WeaponDef = {
+  id: "distortion_staff", name: "Distortion Staff", category: "polearm",
+  damage: 15, speed: 0.8, reach: 1.5, weight: 2.0, cost: 80,
+  length: 1.6, color: 0x8b4513, accentColor: 0xaa44ff,
+};
+const HEALING_STAFF: WeaponDef = {
+  id: "healing_staff", name: "Healing Staff", category: "polearm",
+  damage: 10, speed: 0.7, reach: 1.5, weight: 1.5, cost: 60,
+  length: 1.6, color: 0x8b4513, accentColor: 0xffffff,
+};
+const FIRE_ADEPT_STAFF: WeaponDef = {
+  id: "fire_adept_staff", name: "Fire Adept Staff", category: "polearm",
+  damage: 22, speed: 0.75, reach: 1.6, weight: 2.5, cost: 180,
+  length: 1.7, color: 0x654321, accentColor: 0xff3300,
+};
+const COLD_ADEPT_STAFF: WeaponDef = {
+  id: "cold_adept_staff", name: "Cold Adept Staff", category: "polearm",
+  damage: 22, speed: 0.75, reach: 1.6, weight: 2.5, cost: 180,
+  length: 1.7, color: 0x654321, accentColor: 0x88ddff,
+};
+const LIGHTNING_ADEPT_STAFF: WeaponDef = {
+  id: "lightning_adept_staff", name: "Lightning Adept Staff", category: "polearm",
+  damage: 22, speed: 0.75, reach: 1.6, weight: 2.5, cost: 180,
+  length: 1.7, color: 0x654321, accentColor: 0x66ccff,
+};
+const DISTORTION_ADEPT_STAFF: WeaponDef = {
+  id: "distortion_adept_staff", name: "Distortion Adept Staff", category: "polearm",
+  damage: 22, speed: 0.75, reach: 1.6, weight: 2.5, cost: 180,
+  length: 1.7, color: 0x654321, accentColor: 0xaa44ff,
+};
+const FIRE_MASTER_STAFF: WeaponDef = {
+  id: "fire_master_staff", name: "Fire Master Staff", category: "polearm",
+  damage: 30, speed: 0.7, reach: 1.7, weight: 3.0, cost: 350,
+  length: 1.8, color: 0x4a3520, accentColor: 0xff3300,
+};
+const COLD_MASTER_STAFF: WeaponDef = {
+  id: "cold_master_staff", name: "Cold Master Staff", category: "polearm",
+  damage: 30, speed: 0.7, reach: 1.7, weight: 3.0, cost: 350,
+  length: 1.8, color: 0x4a3520, accentColor: 0x88ddff,
+};
+const LIGHTNING_MASTER_STAFF: WeaponDef = {
+  id: "lightning_master_staff", name: "Lightning Master Staff", category: "polearm",
+  damage: 30, speed: 0.7, reach: 1.7, weight: 3.0, cost: 350,
+  length: 1.8, color: 0x4a3520, accentColor: 0x66ccff,
+};
+const DISTORTION_MASTER_STAFF: WeaponDef = {
+  id: "distortion_master_staff", name: "Distortion Master Staff", category: "polearm",
+  damage: 30, speed: 0.7, reach: 1.7, weight: 3.0, cost: 350,
+  length: 1.8, color: 0x4a3520, accentColor: 0xaa44ff,
+};
+const CLERIC_STAFF: WeaponDef = {
+  id: "cleric_staff", name: "Cleric Staff", category: "polearm",
+  damage: 18, speed: 0.75, reach: 1.5, weight: 2.0, cost: 120,
+  length: 1.6, color: 0xccccbb, accentColor: 0xffffff,
+};
+const SAINT_STAFF: WeaponDef = {
+  id: "saint_staff", name: "Saint Staff", category: "polearm",
+  damage: 25, speed: 0.7, reach: 1.6, weight: 2.5, cost: 300,
+  length: 1.7, color: 0xeeeedd, accentColor: 0xffffff,
+};
+const SUMMONER_STAFF: WeaponDef = {
+  id: "summoner_staff", name: "Summoner Staff", category: "polearm",
+  damage: 12, speed: 0.8, reach: 1.5, weight: 2.0, cost: 70,
+  length: 1.6, color: 0x442266, accentColor: 0x8866aa,
+};
+const WARLOCK_STAFF: WeaponDef = {
+  id: "warlock_staff", name: "Warlock Staff", category: "polearm",
+  damage: 20, speed: 0.75, reach: 1.6, weight: 2.5, cost: 150,
+  length: 1.7, color: 0x332244, accentColor: 0xaa44ff,
+};
+const DARK_SAVANT_STAFF: WeaponDef = {
+  id: "dark_savant_staff", name: "Dark Savant Staff", category: "polearm",
+  damage: 35, speed: 0.65, reach: 1.7, weight: 3.5, cost: 450,
+  length: 1.8, color: 0x110000, accentColor: 0xff4422,
+};
+const BATTLEMAGE_STAFF: WeaponDef = {
+  id: "battlemage_staff", name: "Battlemage Staff", category: "polearm",
+  damage: 45, speed: 0.6, reach: 1.8, weight: 4.0, cost: 600,
+  length: 1.9, color: 0x441111, accentColor: 0xff6600,
+};
+const CONSTRUCTIONIST_STAFF: WeaponDef = {
+  id: "constructionist_staff", name: "Constructionist Staff", category: "polearm",
+  damage: 18, speed: 0.8, reach: 1.5, weight: 2.5, cost: 100,
+  length: 1.6, color: 0x886644, accentColor: 0xffaa00,
+};
+
 // ---- Oversized weapons (large units only, not in shop) ----
 
 const ANCIENT_SWORD: WeaponDef = {
@@ -1002,6 +1105,36 @@ const GIANT_LANCE: WeaponDef = {
   oversized: true,
 };
 
+const ANGEL_SWORD: WeaponDef = {
+  id: "angel_sword",
+  name: "Angel Sword",
+  category: "two_handed",
+  damage: 85,
+  speed: 0.8,
+  reach: 2.2,
+  weight: 5.0,
+  cost: 0,
+  length: 2.0,
+  color: 0xffffee,
+  accentColor: 0xdaa520,
+  oversized: true,
+};
+
+const GIANT_STAFF: WeaponDef = {
+  id: "giant_staff",
+  name: "Giant Staff",
+  category: "polearm",
+  damage: 80,
+  speed: 0.5,
+  reach: 3.5,
+  weight: 10.0,
+  cost: 0,
+  length: 3.2,
+  color: 0x443355,
+  accentColor: 0x8866aa,
+  oversized: true,
+};
+
 // ---- All weapons map ----
 
 export const WEAPON_DEFS: Record<string, WeaponDef> = {
@@ -1061,6 +1194,28 @@ export const WEAPON_DEFS: Record<string, WeaponDef> = {
   tower_shield: TOWER_SHIELD,
   pavise: PAVISE,
 
+  // Staves
+  fire_staff: FIRE_STAFF,
+  storm_staff: STORM_STAFF,
+  cold_staff: COLD_STAFF,
+  distortion_staff: DISTORTION_STAFF,
+  healing_staff: HEALING_STAFF,
+  fire_adept_staff: FIRE_ADEPT_STAFF,
+  cold_adept_staff: COLD_ADEPT_STAFF,
+  lightning_adept_staff: LIGHTNING_ADEPT_STAFF,
+  distortion_adept_staff: DISTORTION_ADEPT_STAFF,
+  fire_master_staff: FIRE_MASTER_STAFF,
+  cold_master_staff: COLD_MASTER_STAFF,
+  lightning_master_staff: LIGHTNING_MASTER_STAFF,
+  distortion_master_staff: DISTORTION_MASTER_STAFF,
+  cleric_staff: CLERIC_STAFF,
+  saint_staff: SAINT_STAFF,
+  summoner_staff: SUMMONER_STAFF,
+  warlock_staff: WARLOCK_STAFF,
+  dark_savant_staff: DARK_SAVANT_STAFF,
+  battlemage_staff: BATTLEMAGE_STAFF,
+  constructionist_staff: CONSTRUCTIONIST_STAFF,
+
   // Oversized (large units only)
   ancient_sword: ANCIENT_SWORD,
   ancient_tower_shield: ANCIENT_TOWER_SHIELD,
@@ -1080,6 +1235,8 @@ export const WEAPON_DEFS: Record<string, WeaponDef> = {
   elder_javelins: ELDER_JAVELINS,
   giant_bow: GIANT_BOW,
   giant_lance: GIANT_LANCE,
+  angel_sword: ANGEL_SWORD,
+  giant_staff: GIANT_STAFF,
 };
 
 export const WEAPON_IDS = Object.keys(WEAPON_DEFS);

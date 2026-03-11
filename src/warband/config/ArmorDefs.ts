@@ -387,6 +387,61 @@ const ARMORED_BOOTS: ArmorDef = {
   accentColor: 0x654321,
 };
 
+// ---- Robes (mages & clergy, covers most of the body) ----
+
+const NOVICE_ROBES: ArmorDef = {
+  id: "novice_robes", name: "Novice Robes", slot: ArmorSlot.TORSO,
+  defense: 2, weight: 1.0, cost: 20, color: 0x998877,
+};
+const MAGE_ROBES: ArmorDef = {
+  id: "mage_robes", name: "Mage Robes", slot: ArmorSlot.TORSO,
+  defense: 4, weight: 1.5, cost: 60, color: 0x334488,
+};
+const ADEPT_ROBES: ArmorDef = {
+  id: "adept_robes", name: "Adept Robes", slot: ArmorSlot.TORSO,
+  defense: 8, weight: 2.0, cost: 150, color: 0x223366,
+};
+const MASTER_ROBES: ArmorDef = {
+  id: "master_robes", name: "Master Robes", slot: ArmorSlot.TORSO,
+  defense: 12, weight: 2.5, cost: 300, color: 0x112244, accentColor: 0xdaa520,
+};
+const PRIEST_ROBES: ArmorDef = {
+  id: "priest_robes", name: "Priest Robes", slot: ArmorSlot.TORSO,
+  defense: 3, weight: 1.0, cost: 30, color: 0xccccbb,
+};
+const CLERIC_ROBES: ArmorDef = {
+  id: "cleric_robes", name: "Cleric Robes", slot: ArmorSlot.TORSO,
+  defense: 8, weight: 2.0, cost: 140, color: 0xeeeedd, accentColor: 0xdaa520,
+};
+const SAINT_ROBES: ArmorDef = {
+  id: "saint_robes", name: "Saint Robes", slot: ArmorSlot.TORSO,
+  defense: 14, weight: 2.0, cost: 400, color: 0xffffee, accentColor: 0xdaa520,
+};
+const WARLOCK_ROBES: ArmorDef = {
+  id: "warlock_robes", name: "Warlock Robes", slot: ArmorSlot.TORSO,
+  defense: 6, weight: 1.5, cost: 100, color: 0x332244,
+};
+const SUMMONER_ROBES: ArmorDef = {
+  id: "summoner_robes", name: "Summoner Robes", slot: ArmorSlot.TORSO,
+  defense: 5, weight: 1.5, cost: 80, color: 0x442266, accentColor: 0x8866aa,
+};
+const BATTLEMAGE_ROBES: ArmorDef = {
+  id: "battlemage_robes", name: "Battlemage Robes", slot: ArmorSlot.TORSO,
+  defense: 20, weight: 4.0, cost: 600, color: 0x441111, accentColor: 0xdaa520,
+};
+const DARK_SAVANT_ROBES: ArmorDef = {
+  id: "dark_savant_robes", name: "Dark Savant Robes", slot: ArmorSlot.TORSO,
+  defense: 16, weight: 3.0, cost: 450, color: 0x110000, accentColor: 0xff4422,
+};
+const ROBE_LEGGINGS: ArmorDef = {
+  id: "robe_leggings", name: "Robe Leggings", slot: ArmorSlot.LEGS,
+  defense: 2, weight: 0.5, cost: 15, color: 0x998877,
+};
+const ROBE_BOOTS: ArmorDef = {
+  id: "robe_boots", name: "Robe Boots", slot: ArmorSlot.BOOTS,
+  defense: 1, weight: 0.3, cost: 10, color: 0x665544,
+};
+
 // ---- Oversized armor (large units only, not in shop) ----
 
 const ANCIENT_HELM: ArmorDef = {
@@ -519,6 +574,21 @@ export const ARMOR_DEFS: Record<string, ArmorDef> = {
   armored_boots: ARMORED_BOOTS,
   mail_boots: MAIL_BOOTS,
   plate_sabatons: PLATE_SABATONS,
+
+  // Robes
+  novice_robes: NOVICE_ROBES,
+  mage_robes: MAGE_ROBES,
+  adept_robes: ADEPT_ROBES,
+  master_robes: MASTER_ROBES,
+  priest_robes: PRIEST_ROBES,
+  cleric_robes: CLERIC_ROBES,
+  saint_robes: SAINT_ROBES,
+  warlock_robes: WARLOCK_ROBES,
+  summoner_robes: SUMMONER_ROBES,
+  battlemage_robes: BATTLEMAGE_ROBES,
+  dark_savant_robes: DARK_SAVANT_ROBES,
+  robe_leggings: ROBE_LEGGINGS,
+  robe_boots: ROBE_BOOTS,
 
   // Oversized (large units only)
   ancient_helm: ANCIENT_HELM,
