@@ -171,11 +171,11 @@ export const IGRAINE_DEF: DuelCharacterDef = {
       { x: 50, y: -100, width: 35, height: 35 },
       { isProjectile: true, projectileSpeed: 8, projectileHeight: AttackHeight.MID },
     ),
-    // W+E — Divine Strike: overhead holy pillar descending from above
+    // W+E — Sacred Descent: holy pillar descends directly overhead — close anti-jump, extreme vertical
     divine_strike: special(
-      "divine_strike", "Divine Strike", AttackHeight.OVERHEAD,
-      17, 6, 18, 105, 21, 24, 16, 45,
-      { x: 150, y: -190, width: 55, height: 190 },
+      "divine_strike", "Sacred Descent", AttackHeight.OVERHEAD,
+      15, 8, 20, 108, 22, 24, 16, 44,
+      { x: 0, y: -232, width: 92, height: 235 },
     ),
     // A+S — Sacred Wave: low holy ground projectile
     sacred_wave: special(
@@ -191,11 +191,11 @@ export const IGRAINE_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 10 },
     ),
-    // Q+D — Heaven Storm: overhead area holy rain
+    // Q+D — Heaven's Grace: holy rain descends far across the arena — far zone control
     heaven_storm: special(
-      "heaven_storm", "Heaven Storm", AttackHeight.OVERHEAD,
-      15, 10, 19, 115, 23, 25, 17, 42,
-      { x: 90, y: -200, width: 85, height: 200 },
+      "heaven_storm", "Heaven's Grace", AttackHeight.OVERHEAD,
+      14, 10, 20, 118, 24, 25, 17, 42,
+      { x: 205, y: -205, width: 165, height: 208 },
     ),
     // E+A — Divine Barrier: barrier that reflects, invincibility
     divine_barrier: special(
@@ -204,11 +204,11 @@ export const IGRAINE_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 12 },
     ),
-    // E+D — Smite: mid-range holy blast
+    // E+D — Divine Judgment: heaven condemns the entire arena — full-screen overhead judgment
     smite: special(
-      "smite", "Smite", AttackHeight.MID,
-      12, 8, 17, 100, 20, 23, 15, 38,
-      { x: 110, y: -140, width: 65, height: 140 },
+      "smite", "Divine Judgment", AttackHeight.OVERHEAD,
+      22, 8, 20, 98, 20, 22, 15, 38,
+      { x: 48, y: -208, width: 628, height: 212 },
     ),
     // W+S — Prayer Counter: counter stance with invincibility
     prayer_counter: special(
@@ -226,11 +226,11 @@ export const IGRAINE_DEF: DuelCharacterDef = {
       8, 6, 22, 140, 28, 26, 16, 48,
       { x: 0, y: -130, width: 550, height: 90 },
     ),
-    // Zeal 2 — Cornwall Judgment: launcher, ~270 damage
+    // Zeal 2 — Cornwall's Awakening: holy eruption directly at Igraine's feet — close-range upward geyser
     cornwall_judgment: zeal(
-      "cornwall_judgment", "Cornwall Judgment", AttackHeight.MID,
-      15, 10, 28, 270, 54, 36, 22, 72,
-      { x: 15, y: -155, width: 180, height: 130 },
+      "cornwall_judgment", "Cornwall's Awakening", AttackHeight.MID,
+      12, 12, 30, 272, 54, 38, 24, 74,
+      { x: -32, y: -238, width: 188, height: 248 },
       { isLauncher: true },
     ),
   },

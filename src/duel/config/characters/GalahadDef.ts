@@ -197,19 +197,19 @@ export const GALAHAD_DEF: DuelCharacterDef = {
       { x: 20, y: -100, width: 72, height: 60 },
       { movesForward: 150, hasInvincibility: true, invincibleStartup: 3 },
     ),
-    // E+A — Grail Strike: massive holy downward slash, invincibility
+    // E+A — Grail Light: narrow column of holy light descends straight down — catches any jump
     grail_strike: special(
-      "grail_strike", "Grail Strike", AttackHeight.MID,
-      11, 8, 24, 155, 31, 30, 20, 68,
-      { x: 10, y: -200, width: 82, height: 118 },
+      "grail_strike", "Grail Light", AttackHeight.MID,
+      10, 10, 26, 158, 32, 30, 20, 68,
+      { x: 14, y: -258, width: 52, height: 262 },
       { isAntiAir: true, hasInvincibility: true, invincibleStartup: 6 },
     ),
-    // E+D — Radiant Cross: wide cross-shaped slash pattern
+    // E+D — Radiant Barrier: wall of radiant energy covers close-to-long range vertically — forces opponents back
     radiant_cross: special(
-      "radiant_cross", "Radiant Cross", AttackHeight.MID,
-      10, 8, 18, 135, 27, 26, 16, 52,
-      { x: 20, y: -140, width: 105, height: 82 },
-      { movesForward: 55 },
+      "radiant_cross", "Radiant Barrier", AttackHeight.MID,
+      10, 8, 20, 138, 28, 26, 16, 52,
+      { x: 0, y: -205, width: 208, height: 210 },
+      { movesForward: 35 },
     ),
     // W+S — Aegis Counter: counter stance with long invincibility
     aegis_counter: special(
@@ -221,11 +221,11 @@ export const GALAHAD_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Holy Radiance: area denial burst of holy energy
+    // Zeal 1 — Shield of Faith: holy energy bursts outward protectively — covers all range around Galahad
     holy_radiance: zeal(
-      "holy_radiance", "Holy Radiance", AttackHeight.MID,
-      8, 10, 20, 145, 29, 28, 18, 48,
-      { x: 0, y: -130, width: 160, height: 100 },
+      "holy_radiance", "Shield of Faith", AttackHeight.MID,
+      6, 12, 22, 148, 30, 28, 18, 48,
+      { x: -52, y: -205, width: 218, height: 228 },
     ),
     // Zeal 2 — Grail Ascension: launcher, massive rising holy strike
     grail_ascension: zeal(

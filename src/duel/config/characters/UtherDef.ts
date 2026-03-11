@@ -171,11 +171,11 @@ export const UTHER_DEF: DuelCharacterDef = {
       { x: 50, y: -105, width: 35, height: 25 },
       { isProjectile: true, projectileSpeed: 10, projectileHeight: AttackHeight.MID },
     ),
-    // W+E — Fire Rain: raining fire bolts from above
+    // W+E — Dragon's Breath: the Pendragon's dragon scorches a massive area — widest overhead in the game
     fire_rain: special(
-      "fire_rain", "Fire Rain", AttackHeight.OVERHEAD,
-      18, 8, 18, 85, 17, 22, 16, 35,
-      { x: 120, y: -190, width: 110, height: 190 },
+      "fire_rain", "Dragon's Breath", AttackHeight.OVERHEAD,
+      18, 8, 20, 88, 18, 22, 16, 35,
+      { x: 48, y: -195, width: 258, height: 198 },
     ),
     // A+S — Low Shot: ground-skimming bolt
     low_shot: special(
@@ -198,11 +198,11 @@ export const UTHER_DEF: DuelCharacterDef = {
       { x: 50, y: -110, width: 35, height: 25 },
       { isProjectile: true, projectileSpeed: 12, projectileHeight: AttackHeight.MID },
     ),
-    // E+A — Dragon Trap: ground trap placement
+    // E+A — Pendragon Seal: royal seal planted at extreme range — maximum distance zone denial
     dragon_trap: special(
-      "dragon_trap", "Dragon Trap", AttackHeight.LOW,
-      12, 15, 18, 65, 13, 22, 14, 12,
-      { x: 80, y: -20, width: 65, height: 30 },
+      "dragon_trap", "Pendragon Seal", AttackHeight.LOW,
+      12, 18, 16, 68, 14, 22, 14, 12,
+      { x: 135, y: -22, width: 88, height: 32 },
     ),
     // E+D — Dragon Bolt Heavy: slow piercing bolt, massive damage
     dragon_bolt_heavy: special(
@@ -221,18 +221,17 @@ export const UTHER_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Pendragon Barrage: rapid multi-hit forward volley
+    // Zeal 1 — Dragon's Onslaught: the dragon's fire sweeps across the entire arena at ground level
     pendragon_barrage: zeal(
-      "pendragon_barrage", "Pendragon Barrage", AttackHeight.MID,
-      8, 10, 20, 150, 30, 28, 18, 48,
-      { x: 30, y: -125, width: 150, height: 85 },
-      { movesForward: 60 },
+      "pendragon_barrage", "Dragon's Onslaught", AttackHeight.MID,
+      6, 8, 24, 152, 30, 28, 18, 48,
+      { x: 0, y: -82, width: 700, height: 68 },
     ),
-    // Zeal 2 — Dragon Fury: explosive launcher, ~290 damage
+    // Zeal 2 — Dragon Fury: the Pendragon's ultimate — explosive launcher with dragon's full wingspan
     dragon_fury: zeal(
       "dragon_fury", "Dragon Fury", AttackHeight.MID,
-      14, 10, 28, 290, 58, 38, 22, 75,
-      { x: 20, y: -150, width: 180, height: 110 },
+      14, 10, 28, 292, 58, 40, 24, 76,
+      { x: -15, y: -155, width: 228, height: 118 },
       { isLauncher: true },
     ),
   },

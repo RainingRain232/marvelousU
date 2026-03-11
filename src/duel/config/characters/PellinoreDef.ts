@@ -171,17 +171,17 @@ export const PELLINORE_DEF: DuelCharacterDef = {
       { x: 35, y: -110, width: 110, height: 50 },
       { movesForward: 100 },
     ),
-    // W+E — Beast Slam: massive overhead slam, must block standing
+    // W+E — Wild Crash: beastly overhead crashes with wild ferocity — wider than any other overhead
     beast_slam: special(
-      "beast_slam", "Beast Slam", AttackHeight.OVERHEAD,
-      18, 7, 22, 140, 28, 30, 20, 70,
-      { x: 15, y: -170, width: 90, height: 100 },
+      "beast_slam", "Wild Crash", AttackHeight.OVERHEAD,
+      18, 7, 22, 142, 28, 30, 20, 70,
+      { x: -12, y: -175, width: 188, height: 105 },
     ),
-    // A+S — Ground Smash: axe slammed into the ground, shockwave
+    // A+S — Earth Shatter: axe smashes the ground so hard shockwave travels the full arena length
     ground_smash: special(
-      "ground_smash", "Ground Smash", AttackHeight.LOW,
-      12, 6, 18, 75, 15, 20, 14, 28,
-      { x: 25, y: -20, width: 120, height: 40 },
+      "ground_smash", "Earth Shatter", AttackHeight.LOW,
+      14, 6, 20, 78, 15, 20, 14, 28,
+      { x: 0, y: -18, width: 285, height: 30 },
     ),
     // S+D — Savage Rise: anti-air rising axe uppercut
     savage_rise: special(
@@ -204,12 +204,11 @@ export const PELLINORE_DEF: DuelCharacterDef = {
       { x: 10, y: -160, width: 100, height: 110 },
       { hasInvincibility: true, invincibleStartup: 6 },
     ),
-    // E+D — Wild Swing: wide arc horizontal sweep
+    // E+D — Frenzied Arc: wild spinning that hits everything around Pellinore — full 360 range
     wild_swing: special(
-      "wild_swing", "Wild Swing", AttackHeight.MID,
-      12, 8, 20, 120, 24, 26, 18, 55,
-      { x: 20, y: -130, width: 120, height: 80 },
-      { movesForward: 60 },
+      "wild_swing", "Frenzied Arc", AttackHeight.MID,
+      12, 9, 22, 122, 24, 26, 18, 55,
+      { x: -58, y: -188, width: 245, height: 205 },
     ),
     // W+S — Beast Guard: counter stance, absorbs and retaliates
     beast_guard: special(
@@ -221,12 +220,11 @@ export const PELLINORE_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Questing Beast: charges forward like the beast itself
+    // Zeal 1 — Beast Stampede: the beast runs through the entire arena — ground-level full-screen shockwave
     questing_beast: zeal(
-      "questing_beast", "Questing Beast", AttackHeight.MID,
-      10, 8, 22, 160, 32, 30, 20, 60,
-      { x: 30, y: -130, width: 140, height: 90 },
-      { movesForward: 120 },
+      "questing_beast", "Beast Stampede", AttackHeight.MID,
+      8, 8, 24, 162, 32, 30, 20, 60,
+      { x: 0, y: -82, width: 700, height: 88 },
     ),
     // Zeal 2 — Primal Fury: ultimate launcher, HIGHEST damage in the game
     primal_fury: zeal(

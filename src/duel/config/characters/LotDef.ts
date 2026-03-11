@@ -198,12 +198,12 @@ export const LOT_DEF: DuelCharacterDef = {
       { x: 22, y: -105, width: 80, height: 65 },
       { movesForward: 175, hasInvincibility: true, invincibleStartup: 4 },
     ),
-    // E+A — Soul Reap: massive single hit with dark energy
+    // E+A — Reaper's Toll: soul is reaped from ACROSS the arena — long-range energy grab
     soul_reap: special(
-      "soul_reap", "Soul Reap", AttackHeight.MID,
-      12, 9, 26, 165, 33, 32, 22, 75,
-      { x: 12, y: -200, width: 85, height: 125 },
-      { isAntiAir: true, hasInvincibility: true, invincibleStartup: 7 },
+      "soul_reap", "Reaper's Toll", AttackHeight.MID,
+      12, 10, 26, 168, 34, 32, 22, 75,
+      { x: 135, y: -205, width: 82, height: 208 },
+      { hasInvincibility: true, invincibleStartup: 7 },
     ),
     // E+D — Doom Cross: wide X-pattern slash
     doom_cross: special(
@@ -222,12 +222,11 @@ export const LOT_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Orkney Doom: forward rushing dark energy blast
+    // Zeal 1 — King's Doom: darkness sweeps across the entire arena — the curse of Orkney
     orkney_doom: zeal(
-      "orkney_doom", "Orkney Doom", AttackHeight.MID,
-      11, 9, 22, 160, 32, 30, 20, 55,
-      { x: 32, y: -135, width: 130, height: 95 },
-      { movesForward: 90 },
+      "orkney_doom", "King's Doom", AttackHeight.MID,
+      8, 9, 26, 162, 32, 30, 20, 55,
+      { x: 0, y: -105, width: 700, height: 105 },
     ),
     // Zeal 2 — Death Sentence: launcher, ~300 damage
     death_sentence: zeal(

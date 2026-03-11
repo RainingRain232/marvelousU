@@ -175,11 +175,11 @@ export const BORS_DEF: DuelCharacterDef = {
       18, 7, 22, 125, 25, 28, 20, 65,
       { x: 15, y: -165, width: 85, height: 95 },
     ),
-    // A+S — Low Chop: low sweeping axe at ankles
+    // A+S — Ground Cleave: axe sweeps the entire floor forward — covers maximum ground distance
     low_chop: special(
-      "low_chop", "Low Chop", AttackHeight.LOW,
-      10, 5, 16, 70, 14, 18, 12, 24,
-      { x: 25, y: -20, width: 115, height: 38 },
+      "low_chop", "Ground Cleave", AttackHeight.LOW,
+      10, 6, 16, 72, 14, 18, 12, 24,
+      { x: 0, y: -22, width: 205, height: 40 },
     ),
     // S+D — Rising Axe: anti-air upward axe swing
     rising_axe: special(
@@ -202,12 +202,11 @@ export const BORS_DEF: DuelCharacterDef = {
       { x: 10, y: -140, width: 95, height: 100 },
       { hasInvincibility: true, invincibleStartup: 6 },
     ),
-    // E+D — Whirlwind Axe: wide spinning axe swing
+    // E+D — Cyclone: spinning axe sweeps in a complete circle — hits everything around Bors
     whirlwind_axe: special(
-      "whirlwind_axe", "Whirlwind Axe", AttackHeight.MID,
-      11, 9, 20, 115, 23, 26, 17, 50,
-      { x: 15, y: -130, width: 130, height: 90 },
-      { movesForward: 50 },
+      "whirlwind_axe", "Cyclone", AttackHeight.MID,
+      11, 10, 22, 118, 24, 26, 17, 50,
+      { x: -68, y: -188, width: 265, height: 208 },
     ),
     // W+S — Iron Resolve: counter stance, absorbs a hit and retaliates
     iron_resolve: special(
@@ -219,12 +218,11 @@ export const BORS_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Steadfast Fury: charging forward rush with devastating axe combo
+    // Zeal 1 — Wall of Steel: Bors plants his feet and erupts outward — not a rush, an expansion of force
     steadfast_fury: zeal(
-      "steadfast_fury", "Steadfast Fury", AttackHeight.MID,
-      10, 8, 22, 155, 31, 28, 18, 55,
-      { x: 25, y: -130, width: 130, height: 95 },
-      { movesForward: 100 },
+      "steadfast_fury", "Wall of Steel", AttackHeight.MID,
+      8, 10, 24, 158, 32, 28, 18, 55,
+      { x: -38, y: -188, width: 212, height: 198 },
     ),
     // Zeal 2 — Unbreakable Will: massive rising axe blow, launcher
     unbreakable_will: zeal(

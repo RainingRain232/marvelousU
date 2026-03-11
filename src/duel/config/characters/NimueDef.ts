@@ -171,11 +171,11 @@ export const NIMUE_DEF: DuelCharacterDef = {
       { x: 50, y: -100, width: 35, height: 35 },
       { isProjectile: true, projectileSpeed: 8, projectileHeight: AttackHeight.MID },
     ),
-    // W+E — Tidal Strike: overhead water crash
+    // W+E — Distant Surge: tidal surge crashes down at maximum range — punishes full-screen positioning
     tidal_strike: special(
-      "tidal_strike", "Tidal Strike", AttackHeight.OVERHEAD,
-      16, 6, 18, 105, 21, 24, 16, 48,
-      { x: 150, y: -190, width: 55, height: 190 },
+      "tidal_strike", "Distant Surge", AttackHeight.OVERHEAD,
+      14, 6, 18, 108, 22, 24, 16, 46,
+      { x: 235, y: -195, width: 58, height: 195 },
     ),
     // A+S — Frost Wave: low ice projectile along ground
     frost_wave: special(
@@ -191,11 +191,11 @@ export const NIMUE_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 10 },
     ),
-    // Q+D — Lake Storm: overhead area water pillar
+    // Q+D — Close Vortex: water vortex erupts right at Nimue's position — tall close anti-jump
     lake_storm: special(
-      "lake_storm", "Lake Storm", AttackHeight.OVERHEAD,
-      14, 10, 19, 115, 23, 25, 17, 42,
-      { x: 100, y: -200, width: 80, height: 200 },
+      "lake_storm", "Close Vortex", AttackHeight.MID,
+      12, 10, 20, 118, 24, 25, 17, 40,
+      { x: 2, y: -188, width: 78, height: 190 },
     ),
     // E+A — Water Shield: barrier with invincibility
     water_shield: special(
@@ -204,11 +204,11 @@ export const NIMUE_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 12 },
     ),
-    // E+D — Whirlpool: mid-range pulling vortex
+    // E+D — Tidal Pull: whirlpool reaches across the arena to drag opponents in
     whirlpool: special(
-      "whirlpool", "Whirlpool", AttackHeight.MID,
-      13, 10, 17, 95, 19, 22, 15, 32,
-      { x: 110, y: -140, width: 75, height: 140 },
+      "whirlpool", "Tidal Pull", AttackHeight.MID,
+      12, 10, 18, 98, 20, 22, 15, 32,
+      { x: 185, y: -165, width: 58, height: 162 },
     ),
     // W+S — Ice Counter: counter stance with invincibility
     ice_counter: special(
@@ -226,11 +226,11 @@ export const NIMUE_DEF: DuelCharacterDef = {
       8, 6, 22, 140, 28, 26, 16, 48,
       { x: 0, y: -120, width: 580, height: 85 },
     ),
-    // Zeal 2 — Lake Judgment: rising water column launcher
+    // Zeal 2 — Avalon's Tide: geyser erupts directly beneath Nimue — close-range upward surge
     lake_judgment: zeal(
-      "lake_judgment", "Lake Judgment", AttackHeight.MID,
-      14, 10, 28, 275, 55, 36, 22, 72,
-      { x: 15, y: -160, width: 180, height: 130 },
+      "lake_judgment", "Avalon's Tide", AttackHeight.MID,
+      12, 12, 30, 278, 56, 38, 24, 74,
+      { x: -22, y: -215, width: 158, height: 220 },
       { isLauncher: true },
     ),
   },

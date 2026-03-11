@@ -183,11 +183,11 @@ export const KAY_DEF: DuelCharacterDef = {
       10, 5, 16, 70, 14, 18, 12, 22,
       { x: 30, y: -18, width: 125, height: 35 },
     ),
-    // S+D — Pike Vault: anti-air vault kick off pike
+    // S+D — Vault Strike: pole-vaults over the opponent — wide vertical hitbox reaches from ground to apex
     pike_vault: special(
-      "pike_vault", "Pike Vault", AttackHeight.MID,
-      6, 8, 22, 108, 22, 24, 16, 50,
-      { x: 18, y: -180, width: 65, height: 110 },
+      "pike_vault", "Vault Strike", AttackHeight.MID,
+      6, 9, 24, 112, 22, 25, 16, 50,
+      { x: -12, y: -215, width: 115, height: 218 },
       { isAntiAir: true, hasInvincibility: true, invincibleStartup: 4 },
     ),
     // Q+D — Bull Rush: charging forward rush with pike
@@ -204,12 +204,12 @@ export const KAY_DEF: DuelCharacterDef = {
       { x: 55, y: -100, width: 40, height: 28 },
       { isProjectile: true, projectileSpeed: 10, projectileHeight: AttackHeight.MID },
     ),
-    // E+D — Cross Pike: wide lunging cross-body thrust
+    // E+D — Formation Break: phalanx formation explodes outward — wide area covering sides and front
     cross_pike: special(
-      "cross_pike", "Cross Pike", AttackHeight.MID,
-      10, 8, 18, 135, 27, 26, 16, 52,
-      { x: 25, y: -130, width: 125, height: 78 },
-      { movesForward: 70 },
+      "cross_pike", "Formation Break", AttackHeight.MID,
+      10, 8, 20, 138, 28, 26, 16, 52,
+      { x: -32, y: -138, width: 208, height: 82 },
+      { movesForward: 45 },
     ),
     // W+S — Stern Guard: counter stance, pike shaft parry
     stern_guard: special(
@@ -221,12 +221,11 @@ export const KAY_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Seneschal's Fury: forward rushing pike assault
+    // Zeal 1 — Order of the Realm: pike slams down with authority — vertical zone pressing from sky to ground
     seneschal_fury: zeal(
-      "seneschal_fury", "Seneschal's Fury", AttackHeight.MID,
-      10, 8, 20, 155, 31, 28, 18, 52,
-      { x: 35, y: -130, width: 140, height: 85 },
-      { movesForward: 100 },
+      "seneschal_fury", "Order of the Realm", AttackHeight.MID,
+      8, 10, 22, 158, 32, 28, 18, 52,
+      { x: 0, y: -215, width: 188, height: 218 },
     ),
     // Zeal 2 — Martial Authority: launcher, ~280 damage
     martial_authority: zeal(

@@ -171,11 +171,11 @@ export const MORGAN_DEF: DuelCharacterDef = {
       { x: 50, y: -100, width: 35, height: 35 },
       { isProjectile: true, projectileSpeed: 9, projectileHeight: AttackHeight.MID },
     ),
-    // W+E — Hex Strike: overhead curse that must be blocked standing
+    // W+E — Curse Mark: curse drops directly on Morgan — rewards aggressive close pressure
     hex_strike: special(
-      "hex_strike", "Hex Strike", AttackHeight.OVERHEAD,
-      18, 6, 18, 95, 19, 24, 16, 42,
-      { x: 150, y: -190, width: 55, height: 190 },
+      "hex_strike", "Curse Mark", AttackHeight.OVERHEAD,
+      16, 6, 20, 98, 20, 24, 16, 40,
+      { x: -12, y: -188, width: 105, height: 192 },
     ),
     // A+S — Dark Wave: low shadow wave projectile along the ground
     dark_wave: special(
@@ -191,11 +191,11 @@ export const MORGAN_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 10 },
     ),
-    // Q+D — Curse Storm: overhead multi-hit spell column
+    // Q+D — Doom Cloud: massive overhead shroud covering close-to-mid range
     curse_storm: special(
-      "curse_storm", "Curse Storm", AttackHeight.OVERHEAD,
-      14, 10, 20, 115, 23, 26, 18, 38,
-      { x: 100, y: -200, width: 80, height: 200 },
+      "curse_storm", "Doom Cloud", AttackHeight.OVERHEAD,
+      14, 10, 22, 118, 24, 26, 18, 38,
+      { x: 0, y: -205, width: 205, height: 208 },
     ),
     // E+A — Fay Barrier: counter/reflect stance with invincibility
     fay_barrier: special(
@@ -204,11 +204,11 @@ export const MORGAN_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 12 },
     ),
-    // E+D — Soul Drain: mid-range pull, draws opponent in
+    // E+D — Soul Shatter: close-range implosion of dark energy — high damage, must be close
     soul_drain: special(
-      "soul_drain", "Soul Drain", AttackHeight.MID,
-      14, 10, 18, 100, 20, 24, 16, 32,
-      { x: 120, y: -150, width: 70, height: 150 },
+      "soul_drain", "Soul Shatter", AttackHeight.MID,
+      8, 8, 22, 115, 23, 26, 18, 45,
+      { x: -8, y: -168, width: 82, height: 168 },
     ),
     // W+S — Dark Counter: counter stance with invincibility burst
     dark_counter: special(
@@ -220,17 +220,17 @@ export const MORGAN_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Shadow Apocalypse: wide area dark explosion
+    // Zeal 1 — Calamity Hex: dark energy erupts all around Morgan — circular 360 range
     shadow_apocalypse: zeal(
-      "shadow_apocalypse", "Shadow Apocalypse", AttackHeight.MID,
-      6, 4, 22, 125, 25, 26, 16, 44,
-      { x: 0, y: -120, width: 600, height: 80 },
+      "shadow_apocalypse", "Calamity Hex", AttackHeight.MID,
+      6, 8, 24, 128, 26, 26, 16, 44,
+      { x: -58, y: -168, width: 228, height: 180 },
     ),
-    // Zeal 2 — Fay Eclipse: launcher, ~280 damage
+    // Zeal 2 — Eclipse Convergence: darkness descends from above in a massive pillar
     fay_eclipse: zeal(
-      "fay_eclipse", "Fay Eclipse", AttackHeight.MID,
-      16, 12, 30, 280, 56, 38, 22, 68,
-      { x: 10, y: -160, width: 200, height: 140 },
+      "fay_eclipse", "Eclipse Convergence", AttackHeight.MID,
+      14, 12, 32, 282, 56, 40, 24, 70,
+      { x: 0, y: -265, width: 105, height: 268 },
       { isLauncher: true },
     ),
   },
