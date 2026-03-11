@@ -35,6 +35,10 @@ import { WarbandCombatSystem } from "./systems/WarbandCombatSystem";
 import { WarbandPhysicsSystem } from "./systems/WarbandPhysicsSystem";
 import { WarbandAISystem } from "./systems/WarbandAISystem";
 import { CREATURE_DEFS, type CreatureType } from "./config/CreatureDefs";
+import { LEADER_DEFINITIONS } from "@sim/config/LeaderDefs";
+import type { LeaderId } from "@sim/config/LeaderDefs";
+import { RACE_DEFINITIONS } from "@sim/config/RaceDefs";
+import type { RaceId } from "@sim/config/RaceDefs";
 
 // ---- Random AI names ------------------------------------------------------
 
@@ -1585,6 +1589,1172 @@ const UNIT_TYPES: UnitTypeDef[] = [
     head: "", torso: "", gauntlets: "", legs: "", boots: "",
     creatureType: "giant_siege",
   },
+
+  // ===========================================================================
+  // FACTION UNITS
+  // ===========================================================================
+
+  // ---- Man ---- (halberdier already defined above)
+  {
+    id: "royal_arbalestier",
+    name: "Royal Arbalestier",
+    icon: "🎯",
+    description: "Elite crossbowman in full plate, heavy pavise",
+    mainHand: "arbalest",
+    offHand: "pavise",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 140,
+  },
+  {
+    id: "knight_commander",
+    name: "Knight Commander",
+    icon: "⚜️",
+    description: "Inspiring leader in gilded plate, heals nearby allies",
+    mainHand: "healing_staff",
+    offHand: "kite_shield",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 150,
+    scale: 1.3,
+  },
+  {
+    id: "war_chaplain",
+    name: "War Chaplain",
+    icon: "📿",
+    description: "Battlefield healer in surcoat over mail",
+    mainHand: "healing_staff",
+    offHand: null,
+    head: "kettle_hat",
+    torso: "surcoat_over_mail",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "leather_boots",
+    hpOverride: 120,
+  },
+  {
+    id: "shield_captain",
+    name: "Shield Captain",
+    icon: "🛡️",
+    description: "Immovable tank with tower shield, full plate",
+    mainHand: "arming_sword",
+    offHand: "tower_shield",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 280,
+  },
+
+  // ---- Elves ----
+  {
+    id: "elven_archer",
+    name: "Elven Archer",
+    icon: "🏹",
+    description: "Swift forest archer with war bow",
+    mainHand: "war_bow",
+    offHand: null,
+    head: "cloth_hood",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+  },
+  {
+    id: "bladedancer",
+    name: "Bladedancer",
+    icon: "💃",
+    description: "Lightning-fast elven swordfighter",
+    mainHand: "sabre",
+    offHand: null,
+    head: "cloth_hood",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    speedMultiplier: 1.3,
+  },
+  {
+    id: "treant_guardian",
+    name: "Treant Guardian",
+    icon: "🌳",
+    description: "Massive tree warrior, slow but regenerating",
+    mainHand: "maul",
+    offHand: null,
+    head: "cloth_hood",
+    torso: "padded_vest",
+    gauntlets: "cloth_wraps",
+    legs: "cloth_trousers",
+    boots: "leather_boots",
+    hpOverride: 350,
+    scale: 2.0,
+    speedMultiplier: 0.6,
+  },
+  {
+    id: "moonweaver",
+    name: "Moonweaver",
+    icon: "🌙",
+    description: "Elven distortion mage, warps reality",
+    mainHand: "distortion_adept_staff",
+    offHand: null,
+    head: "distortion_mage_hat",
+    torso: "distortion_adept_robes",
+    gauntlets: "cloth_wraps",
+    legs: "distortion_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 65,
+    speedMultiplier: 0.8,
+  },
+
+  // ---- The Horde ----
+  {
+    id: "warchief",
+    name: "Warchief",
+    icon: "⚔️",
+    description: "Brutal horde leader with battle axe",
+    mainHand: "battle_axe",
+    offHand: null,
+    head: "nasal_helm",
+    torso: "chain_hauberk",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "mail_boots",
+    hpOverride: 160,
+  },
+  {
+    id: "boar_rider",
+    name: "Boar Rider",
+    icon: "🐗",
+    description: "Charging horde cavalry on a war boar",
+    mainHand: "lance",
+    offHand: "round_shield",
+    head: "nasal_helm",
+    torso: "mail_shirt",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    horseArmor: "light",
+    hpOverride: 180,
+  },
+  {
+    id: "siege_troll",
+    name: "Siege Troll",
+    icon: "🪨",
+    description: "Massive troll that hurls boulders at walls",
+    mainHand: "maul",
+    offHand: null,
+    head: "cloth_hood",
+    torso: "padded_vest",
+    gauntlets: "cloth_wraps",
+    legs: "cloth_trousers",
+    boots: "leather_boots",
+    hpOverride: 250,
+    scale: 2.0,
+    speedMultiplier: 0.5,
+  },
+  {
+    id: "blood_berserker",
+    name: "Blood Berserker",
+    icon: "🩸",
+    description: "Frenzied fighter, fast attacks, life steal",
+    mainHand: "zweihander",
+    offHand: null,
+    head: "leather_cap",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    hpOverride: 110,
+    speedMultiplier: 1.3,
+  },
+  {
+    id: "horde_archer",
+    name: "Horde Archer",
+    icon: "🏹",
+    description: "Cheap horde ranged unit with short bow",
+    mainHand: "short_bow",
+    offHand: null,
+    head: "cloth_hood",
+    torso: "padded_vest",
+    gauntlets: "cloth_wraps",
+    legs: "cloth_trousers",
+    boots: "leather_boots",
+  },
+  {
+    id: "horde_healer",
+    name: "Horde Healer",
+    icon: "💚",
+    description: "Tribal healer with healing staff",
+    mainHand: "healing_staff",
+    offHand: null,
+    head: "healing_hat",
+    torso: "priest_robes",
+    gauntlets: "cloth_wraps",
+    legs: "healing_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 70,
+    speedMultiplier: 0.7,
+  },
+
+  // ---- The Adept ----
+  {
+    id: "archmage",
+    name: "Archmage",
+    icon: "🔥",
+    description: "Master pyromancer with regenerating mana",
+    mainHand: "fire_master_staff",
+    offHand: null,
+    head: "fire_mage_hat",
+    torso: "fire_master_robes",
+    gauntlets: "cloth_wraps",
+    legs: "fire_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 80,
+    speedMultiplier: 0.75,
+  },
+  {
+    id: "chronomancer",
+    name: "Chronomancer",
+    icon: "⏳",
+    description: "Time-bending mage, distortion and ice magic",
+    mainHand: "distortion_adept_staff",
+    offHand: null,
+    head: "distortion_mage_hat",
+    torso: "distortion_adept_robes",
+    gauntlets: "cloth_wraps",
+    legs: "distortion_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 70,
+    speedMultiplier: 0.75,
+  },
+  {
+    id: "spell_weaver",
+    name: "Spell Weaver",
+    icon: "✨",
+    description: "Multi-element mage, fire and lightning",
+    mainHand: "fire_adept_staff",
+    offHand: null,
+    head: "fire_mage_hat",
+    torso: "fire_adept_robes",
+    gauntlets: "cloth_wraps",
+    legs: "fire_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 75,
+    speedMultiplier: 0.75,
+  },
+  {
+    id: "mana_wraith",
+    name: "Mana Wraith",
+    icon: "👻",
+    description: "Fast distortion spirit, drains enemy magic",
+    mainHand: "distortion_staff",
+    offHand: null,
+    head: "distortion_mage_hat",
+    torso: "distortion_mage_robes",
+    gauntlets: "cloth_wraps",
+    legs: "distortion_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 50,
+    speedMultiplier: 1.1,
+  },
+  {
+    id: "blade_adept",
+    name: "Blade Adept",
+    icon: "⚔️",
+    description: "Sword-wielding mage with critical strikes",
+    mainHand: "longsword",
+    offHand: "buckler",
+    head: "leather_cap",
+    torso: "mail_shirt",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+  },
+
+  // ---- The Elements ----
+  {
+    id: "elemental_avatar",
+    name: "Elemental Avatar",
+    icon: "🔥",
+    description: "Incarnation of fire, massive elemental power",
+    mainHand: "fire_master_staff",
+    offHand: null,
+    head: "fire_mage_hat",
+    torso: "fire_master_robes",
+    gauntlets: "cloth_wraps",
+    legs: "fire_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 250,
+    scale: 1.5,
+    speedMultiplier: 0.8,
+  },
+  {
+    id: "storm_conduit",
+    name: "Storm Conduit",
+    icon: "⚡",
+    description: "Living lightning storm, chain attacks",
+    mainHand: "lightning_master_staff",
+    offHand: null,
+    head: "storm_mage_hat",
+    torso: "lightning_master_robes",
+    gauntlets: "cloth_wraps",
+    legs: "storm_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 200,
+    scale: 1.5,
+    speedMultiplier: 0.9,
+  },
+  {
+    id: "frost_wyrm",
+    name: "Frost Wyrm",
+    icon: "🐉",
+    description: "Ancient ice serpent, frost breath",
+    mainHand: "cold_master_staff",
+    offHand: null,
+    head: "cold_mage_hat",
+    torso: "cold_master_robes",
+    gauntlets: "cloth_wraps",
+    legs: "cold_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 220,
+    scale: 2.0,
+    speedMultiplier: 0.8,
+  },
+  {
+    id: "magma_titan",
+    name: "Magma Titan",
+    icon: "🌋",
+    description: "Colossal molten giant, fire aura",
+    mainHand: "fire_master_staff",
+    offHand: null,
+    head: "fire_mage_hat",
+    torso: "fire_master_robes",
+    gauntlets: "cloth_wraps",
+    legs: "fire_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 400,
+    scale: 2.5,
+    speedMultiplier: 0.4,
+  },
+  {
+    id: "stone_fist",
+    name: "Stone Fist",
+    icon: "✊",
+    description: "Earth elemental warrior, tough and blocking",
+    mainHand: "warhammer",
+    offHand: "tower_shield",
+    head: "nasal_helm",
+    torso: "chain_hauberk",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 180,
+    scale: 1.3,
+    speedMultiplier: 0.6,
+  },
+
+  // ---- Halflings ----
+  {
+    id: "halfling_slinger",
+    name: "Halfling Slinger",
+    icon: "🪨",
+    description: "Nimble halfling with deadly sling stones",
+    mainHand: "throwing_axes",
+    offHand: null,
+    head: "cloth_hood",
+    torso: "padded_vest",
+    gauntlets: "cloth_wraps",
+    legs: "cloth_trousers",
+    boots: "leather_boots",
+    scale: 0.7,
+    speedMultiplier: 1.2,
+  },
+  {
+    id: "halfling_chef",
+    name: "Halfling Chef",
+    icon: "🍳",
+    description: "Heals allies with hearty meals",
+    mainHand: "healing_staff",
+    offHand: null,
+    head: "healing_hat",
+    torso: "priest_robes",
+    gauntlets: "cloth_wraps",
+    legs: "healing_robe_skirt",
+    boots: "robe_boots",
+    scale: 0.7,
+    hpOverride: 90,
+    speedMultiplier: 0.9,
+  },
+  {
+    id: "halfling_burglar",
+    name: "Halfling Burglar",
+    icon: "🗡️",
+    description: "Lightning-fast rogue with daggers",
+    mainHand: "short_sword",
+    offHand: null,
+    head: "cloth_hood",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    scale: 0.7,
+    speedMultiplier: 1.4,
+  },
+  {
+    id: "halfling_rider",
+    name: "Halfling Rider",
+    icon: "🐴",
+    description: "Halfling pony rider, fast charge",
+    mainHand: "lance",
+    offHand: "round_shield",
+    head: "leather_cap",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "riding_boots",
+    horseArmor: "light",
+    scale: 0.7,
+  },
+  {
+    id: "halfling_alchemist",
+    name: "Halfling Alchemist",
+    icon: "🧪",
+    description: "Throws explosive fire potions",
+    mainHand: "fire_staff",
+    offHand: null,
+    head: "fire_mage_hat",
+    torso: "fire_mage_robes",
+    gauntlets: "cloth_wraps",
+    legs: "fire_robe_skirt",
+    boots: "robe_boots",
+    scale: 0.7,
+    hpOverride: 50,
+    speedMultiplier: 0.9,
+  },
+
+  // ---- Lava Children ----
+  {
+    id: "magma_golem",
+    name: "Magma Golem",
+    icon: "🌋",
+    description: "Molten rock construct, fire aura, regenerates",
+    mainHand: "warhammer",
+    offHand: null,
+    head: "nasal_helm",
+    torso: "chain_hauberk",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 280,
+    scale: 1.5,
+    speedMultiplier: 0.6,
+  },
+  {
+    id: "lava_shaman",
+    name: "Lava Shaman",
+    icon: "🔥",
+    description: "Fire caster born of the molten deep",
+    mainHand: "fire_adept_staff",
+    offHand: null,
+    head: "fire_mage_hat",
+    torso: "fire_adept_robes",
+    gauntlets: "cloth_wraps",
+    legs: "fire_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 100,
+    speedMultiplier: 0.75,
+  },
+  {
+    id: "obsidian_sentinel",
+    name: "Obsidian Sentinel",
+    icon: "🪨",
+    description: "Volcanic glass warrior, extremely tough",
+    mainHand: "greatsword",
+    offHand: null,
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 300,
+    scale: 1.3,
+    speedMultiplier: 0.5,
+  },
+  {
+    id: "cinder_wraith",
+    name: "Cinder Wraith",
+    icon: "💨",
+    description: "Fast burning spirit, hit and run",
+    mainHand: "sabre",
+    offHand: null,
+    head: "cloth_hood",
+    torso: "leather_jerkin",
+    gauntlets: "cloth_wraps",
+    legs: "cloth_trousers",
+    boots: "leather_boots",
+    speedMultiplier: 1.3,
+  },
+  {
+    id: "volcanic_behemoth",
+    name: "Volcanic Behemoth",
+    icon: "🌋",
+    description: "Colossal lava beast, siege breaker",
+    mainHand: "giant_war_club",
+    offHand: null,
+    head: "giant_helm",
+    torso: "giant_plate",
+    gauntlets: "giant_gauntlets",
+    legs: "giant_greaves",
+    boots: "giant_sabatons",
+    hpOverride: 450,
+    scale: 2.5,
+    speedMultiplier: 0.35,
+  },
+
+  // ---- Dwarves ----
+  {
+    id: "dwarven_guardian",
+    name: "Dwarven Guardian",
+    icon: "🛡️",
+    description: "Stout shield-bearer, heavy dwarven plate",
+    mainHand: "war_axe",
+    offHand: "tower_shield",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 160,
+    scale: 0.85,
+    speedMultiplier: 0.7,
+  },
+  {
+    id: "runesmith",
+    name: "Runesmith",
+    icon: "⚡",
+    description: "Dwarven lightning mage, rune-powered",
+    mainHand: "lightning_adept_staff",
+    offHand: null,
+    head: "storm_mage_hat",
+    torso: "lightning_adept_robes",
+    gauntlets: "cloth_wraps",
+    legs: "storm_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 110,
+    scale: 0.85,
+    speedMultiplier: 0.7,
+  },
+  {
+    id: "dwarven_cannon",
+    name: "Dwarven Cannon",
+    icon: "💥",
+    description: "Slow-firing but devastating dwarven artillery",
+    mainHand: "arbalest",
+    offHand: "pavise",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 150,
+    scale: 0.85,
+    speedMultiplier: 0.4,
+  },
+  {
+    id: "ironbreaker",
+    name: "Ironbreaker",
+    icon: "🔨",
+    description: "Elite dwarven tank, nearly unbreakable",
+    mainHand: "warhammer",
+    offHand: "tower_shield",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 250,
+    scale: 0.85,
+    speedMultiplier: 0.65,
+  },
+  {
+    id: "thunderer",
+    name: "Thunderer",
+    icon: "🔫",
+    description: "Dwarven handgunner, long range, slow fire",
+    mainHand: "heavy_crossbow",
+    offHand: null,
+    head: "sallet",
+    torso: "brigandine",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "mail_boots",
+    hpOverride: 100,
+    scale: 0.85,
+    speedMultiplier: 0.7,
+  },
+
+  // ---- Orcs ----
+  {
+    id: "orc_brute",
+    name: "Orc Brute",
+    icon: "💪",
+    description: "Hulking orc warrior, charges into battle",
+    mainHand: "battle_axe",
+    offHand: null,
+    head: "nasal_helm",
+    torso: "chain_hauberk",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "mail_boots",
+    hpOverride: 160,
+    scale: 1.2,
+  },
+  {
+    id: "orc_drummer",
+    name: "Orc Drummer",
+    icon: "🥁",
+    description: "War drummer that rallies nearby orcs",
+    mainHand: "mace",
+    offHand: "round_shield",
+    head: "leather_cap",
+    torso: "gambeson",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    hpOverride: 120,
+    scale: 1.1,
+  },
+  {
+    id: "orc_shaman",
+    name: "Orc Shaman",
+    icon: "🔥",
+    description: "Tribal fire caster with primitive staff",
+    mainHand: "fire_staff",
+    offHand: null,
+    head: "fire_mage_hat",
+    torso: "fire_mage_robes",
+    gauntlets: "cloth_wraps",
+    legs: "fire_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 90,
+    scale: 1.1,
+    speedMultiplier: 0.8,
+  },
+  {
+    id: "wyvern_rider",
+    name: "Wyvern Rider",
+    icon: "🐉",
+    description: "Orc on a wyvern, devastating charge",
+    mainHand: "lance",
+    offHand: null,
+    head: "nasal_helm",
+    torso: "mail_shirt",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    horseArmor: "medium",
+    hpOverride: 160,
+    scale: 1.2,
+  },
+  {
+    id: "pit_fighter",
+    name: "Pit Fighter",
+    icon: "⚔️",
+    description: "Fast gladiatorial orc, dual weapon style",
+    mainHand: "falchion",
+    offHand: null,
+    head: "leather_cap",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    scale: 1.1,
+    speedMultiplier: 1.2,
+  },
+
+  // ---- Undead ----
+  {
+    id: "death_knight",
+    name: "Death Knight",
+    icon: "💀",
+    description: "Undead heavy cavalry, regenerates health",
+    mainHand: "greatsword",
+    offHand: null,
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 220,
+  },
+  {
+    id: "necromancer",
+    name: "Necromancer",
+    icon: "☠️",
+    description: "Dark summoner that raises the dead",
+    mainHand: "summoner_staff",
+    offHand: null,
+    head: "summoner_hat",
+    torso: "summoner_robes",
+    gauntlets: "cloth_wraps",
+    legs: "summoner_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 75,
+    speedMultiplier: 0.75,
+  },
+  {
+    id: "banshee",
+    name: "Banshee",
+    icon: "👻",
+    description: "Wailing spirit, freezing cold attacks",
+    mainHand: "cold_staff",
+    offHand: null,
+    head: "cold_mage_hat",
+    torso: "cold_mage_robes",
+    gauntlets: "cloth_wraps",
+    legs: "cold_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 60,
+    speedMultiplier: 1.1,
+  },
+  {
+    id: "bone_colossus",
+    name: "Bone Colossus",
+    icon: "💀",
+    description: "Towering skeleton construct, siege breaker",
+    mainHand: "giant_war_club",
+    offHand: null,
+    head: "giant_helm",
+    torso: "giant_plate",
+    gauntlets: "giant_gauntlets",
+    legs: "giant_greaves",
+    boots: "giant_sabatons",
+    hpOverride: 380,
+    scale: 2.5,
+    speedMultiplier: 0.35,
+  },
+  {
+    id: "wraith_lord",
+    name: "Wraith Lord",
+    icon: "👤",
+    description: "Spectral lord, cold aura, life drain",
+    mainHand: "cold_adept_staff",
+    offHand: null,
+    head: "cold_mage_hat",
+    torso: "cold_adept_robes",
+    gauntlets: "cloth_wraps",
+    legs: "cold_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 130,
+    speedMultiplier: 1.0,
+  },
+
+  // ---- Demons ----
+  {
+    id: "pit_lord",
+    name: "Pit Lord",
+    icon: "😈",
+    description: "Massive demon lord, fire breath, regenerates",
+    mainHand: "greatsword",
+    offHand: null,
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 320,
+    scale: 2.0,
+    speedMultiplier: 0.6,
+  },
+  {
+    id: "hellfire_warlock",
+    name: "Hellfire Warlock",
+    icon: "🔥",
+    description: "Demonic fire caster, summons fire imps",
+    mainHand: "fire_master_staff",
+    offHand: null,
+    head: "warlock_hat",
+    torso: "warlock_robes",
+    gauntlets: "cloth_wraps",
+    legs: "warlock_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 85,
+    speedMultiplier: 0.75,
+  },
+  {
+    id: "succubus",
+    name: "Succubus",
+    icon: "😈",
+    description: "Charming demon, entangles enemies",
+    mainHand: "distortion_staff",
+    offHand: null,
+    head: "distortion_mage_hat",
+    torso: "distortion_mage_robes",
+    gauntlets: "cloth_wraps",
+    legs: "distortion_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 90,
+    speedMultiplier: 1.0,
+  },
+  {
+    id: "doom_guard",
+    name: "Doom Guard",
+    icon: "⚔️",
+    description: "Towering demon warrior, heavy melee",
+    mainHand: "greatsword",
+    offHand: null,
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 220,
+    scale: 1.5,
+  },
+  {
+    id: "imp_overlord",
+    name: "Imp Overlord",
+    icon: "👹",
+    description: "Commands hordes of fire imps",
+    mainHand: "summoner_staff",
+    offHand: null,
+    head: "summoner_hat",
+    torso: "summoner_robes",
+    gauntlets: "cloth_wraps",
+    legs: "summoner_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 80,
+    speedMultiplier: 0.75,
+  },
+
+  // ---- Angels ----
+  {
+    id: "seraphim",
+    name: "Seraphim",
+    icon: "👼",
+    description: "Radiant angelic healer, powerful restoration",
+    mainHand: "saint_staff",
+    offHand: null,
+    head: "healing_hat",
+    torso: "saint_robes",
+    gauntlets: "cloth_wraps",
+    legs: "healing_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 150,
+    speedMultiplier: 1.0,
+  },
+  {
+    id: "divine_champion",
+    name: "Divine Champion",
+    icon: "⚔️",
+    description: "Holy warrior in shining armor",
+    mainHand: "angel_sword",
+    offHand: "heater_shield",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 140,
+  },
+  {
+    id: "valkyrie",
+    name: "Valkyrie",
+    icon: "⚔️",
+    description: "Charging angelic warrior, swift and deadly",
+    mainHand: "lance",
+    offHand: "kite_shield",
+    head: "bascinet",
+    torso: "brigandine",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 130,
+    speedMultiplier: 1.2,
+  },
+  {
+    id: "archon",
+    name: "Archon",
+    icon: "✨",
+    description: "Supreme angelic warrior, regenerates",
+    mainHand: "angel_sword",
+    offHand: "kite_shield",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 180,
+    scale: 1.3,
+  },
+  {
+    id: "celestial_archer",
+    name: "Celestial Archer",
+    icon: "🏹",
+    description: "Angelic bowman with divine arrows",
+    mainHand: "war_bow",
+    offHand: null,
+    head: "sallet",
+    torso: "brigandine",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "mail_boots",
+    hpOverride: 90,
+  },
+
+  // ---- Beastkin ----
+  {
+    id: "alpha_wolf",
+    name: "Alpha Wolf",
+    icon: "🐺",
+    description: "Pack leader, fast charging strikes",
+    mainHand: "falchion",
+    offHand: null,
+    head: "leather_cap",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    hpOverride: 130,
+    speedMultiplier: 1.4,
+  },
+  {
+    id: "beast_shaman",
+    name: "Beast Shaman",
+    icon: "🐾",
+    description: "Nature summoner, calls wild beasts",
+    mainHand: "summoner_staff",
+    offHand: null,
+    head: "summoner_hat",
+    torso: "summoner_robes",
+    gauntlets: "cloth_wraps",
+    legs: "summoner_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 95,
+    speedMultiplier: 0.85,
+  },
+  {
+    id: "thunderhawk",
+    name: "Thunderhawk",
+    icon: "🦅",
+    description: "Extremely fast aerial striker",
+    mainHand: "throwing_axes",
+    offHand: null,
+    head: "cloth_hood",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    hpOverride: 80,
+    speedMultiplier: 1.6,
+  },
+  {
+    id: "dire_bear",
+    name: "Dire Bear",
+    icon: "🐻",
+    description: "Massive bear warrior, slow but devastating",
+    mainHand: "maul",
+    offHand: null,
+    head: "leather_cap",
+    torso: "gambeson",
+    gauntlets: "leather_gloves",
+    legs: "padded_leggings",
+    boots: "leather_boots",
+    hpOverride: 300,
+    scale: 1.8,
+    speedMultiplier: 0.7,
+  },
+  {
+    id: "serpent_priest",
+    name: "Serpent Priest",
+    icon: "🐍",
+    description: "Venomous nature caster, debuffs enemies",
+    mainHand: "cold_staff",
+    offHand: null,
+    head: "cold_mage_hat",
+    torso: "cold_mage_robes",
+    gauntlets: "cloth_wraps",
+    legs: "cold_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 75,
+    speedMultiplier: 0.8,
+  },
+
+  // ---- Golem Collective ----
+  {
+    id: "war_golem",
+    name: "War Golem",
+    icon: "🤖",
+    description: "Massive stone construct, nearly indestructible",
+    mainHand: "warhammer",
+    offHand: null,
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 350,
+    scale: 1.8,
+    speedMultiplier: 0.5,
+  },
+  {
+    id: "rune_core",
+    name: "Rune Core",
+    icon: "💎",
+    description: "Floating rune construct, distortion blasts",
+    mainHand: "distortion_staff",
+    offHand: null,
+    head: "distortion_mage_hat",
+    torso: "distortion_mage_robes",
+    gauntlets: "cloth_wraps",
+    legs: "distortion_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 120,
+    speedMultiplier: 0.7,
+  },
+  {
+    id: "siege_automaton",
+    name: "Siege Automaton",
+    icon: "⚙️",
+    description: "Giant mechanical siege engine",
+    mainHand: "giant_war_club",
+    offHand: null,
+    head: "giant_helm",
+    torso: "giant_plate",
+    gauntlets: "giant_gauntlets",
+    legs: "giant_greaves",
+    boots: "giant_sabatons",
+    hpOverride: 400,
+    scale: 2.5,
+    speedMultiplier: 0.35,
+  },
+  {
+    id: "crystal_golem",
+    name: "Crystal Golem",
+    icon: "💠",
+    description: "Crystalline construct, lightning attacks",
+    mainHand: "lightning_adept_staff",
+    offHand: null,
+    head: "storm_mage_hat",
+    torso: "lightning_adept_robes",
+    gauntlets: "cloth_wraps",
+    legs: "storm_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 200,
+    scale: 1.3,
+    speedMultiplier: 0.6,
+  },
+  {
+    id: "iron_colossus",
+    name: "Iron Colossus",
+    icon: "🦾",
+    description: "Towering iron war machine, unstoppable",
+    mainHand: "giant_war_club",
+    offHand: null,
+    head: "giant_helm",
+    torso: "giant_plate",
+    gauntlets: "giant_gauntlets",
+    legs: "giant_greaves",
+    boots: "giant_sabatons",
+    hpOverride: 500,
+    scale: 2.5,
+    speedMultiplier: 0.4,
+  },
+
+  // ---- Pirates ----
+  {
+    id: "pirate_captain",
+    name: "Pirate Captain",
+    icon: "🏴‍☠️",
+    description: "Swashbuckling leader with net and sabre",
+    mainHand: "sabre",
+    offHand: "buckler",
+    head: "leather_cap",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "riding_boots",
+    hpOverride: 140,
+  },
+  {
+    id: "corsair_gunner",
+    name: "Corsair Gunner",
+    icon: "🔫",
+    description: "Ship's gunner, heavy crossbow, devastating shots",
+    mainHand: "heavy_crossbow",
+    offHand: null,
+    head: "leather_cap",
+    torso: "gambeson",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    hpOverride: 80,
+  },
+  {
+    id: "powder_monkey",
+    name: "Powder Monkey",
+    icon: "💣",
+    description: "Explosive expert, throws fire bombs",
+    mainHand: "fire_staff",
+    offHand: null,
+    head: "fire_mage_hat",
+    torso: "fire_mage_robes",
+    gauntlets: "cloth_wraps",
+    legs: "fire_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 60,
+    speedMultiplier: 1.0,
+  },
+  {
+    id: "sea_witch",
+    name: "Sea Witch",
+    icon: "🌊",
+    description: "Storm and ice sorceress of the seas",
+    mainHand: "lightning_adept_staff",
+    offHand: null,
+    head: "storm_mage_hat",
+    torso: "lightning_adept_robes",
+    gauntlets: "cloth_wraps",
+    legs: "storm_robe_skirt",
+    boots: "robe_boots",
+    hpOverride: 70,
+    speedMultiplier: 0.8,
+  },
+  {
+    id: "boarding_master",
+    name: "Boarding Master",
+    icon: "⚔️",
+    description: "Lightning-fast melee fighter, dual blades",
+    mainHand: "falchion",
+    offHand: null,
+    head: "leather_cap",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "riding_boots",
+    speedMultiplier: 1.2,
+  },
+  {
+    id: "buccaneer",
+    name: "Buccaneer",
+    icon: "🏴‍☠️",
+    description: "Tough pirate defender with cutlass and shield",
+    mainHand: "arming_sword",
+    offHand: "heater_shield",
+    head: "kettle_hat",
+    torso: "brigandine",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "mail_boots",
+    hpOverride: 160,
+  },
 ];
 
 export class WarbandGame {
@@ -1624,9 +2794,16 @@ export class WarbandGame {
   private _inventoryContainer: HTMLDivElement | null = null;
   private _armySetupContainer: HTMLDivElement | null = null;
 
-  // Army battle composition (8 unit types: 5 infantry + 3 cavalry)
+  // Army battle composition (indexed by UNIT_TYPES)
   private _playerArmy: number[] = [0, 0, 0, 0, 0, 0, 0, 0];
   private _enemyArmy: number[] = [0, 0, 0, 0, 0, 0, 0, 0];
+
+  // Pre-battle selection screens
+  private _leaderSelectContainer: HTMLDivElement | null = null;
+  private _raceSelectContainer: HTMLDivElement | null = null;
+  private _raceOverviewContainer: HTMLDivElement | null = null;
+  private _selectedLeaderId: LeaderId = LEADER_DEFINITIONS[0].id;
+  private _selectedRaceId: RaceId = RACE_DEFINITIONS[0].id;
 
   // ESC handler
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -1734,7 +2911,7 @@ export class WarbandGame {
 
     document.getElementById("wb-army")?.addEventListener("click", () => {
       this._removeMenu();
-      this._showArmySetup();
+      this._showLeaderSelect();
     });
 
     document.getElementById("wb-duel")?.addEventListener("click", () => {
@@ -1923,6 +3100,368 @@ export class WarbandGame {
     this._equipUnitType(fighter, pick, state);
   }
 
+  // ---- Leader selection screen ----------------------------------------------
+
+  private _showLeaderSelect(): void {
+    this._leaderSelectContainer = document.createElement("div");
+    this._leaderSelectContainer.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 30; background: rgba(10, 8, 5, 0.97);
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Segoe UI', sans-serif; color: #e0d5c0;
+      user-select: none; overflow-y: auto;
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._leaderSelectContainer);
+    this._renderLeaderSelect();
+  }
+
+  private _renderLeaderSelect(): void {
+    if (!this._leaderSelectContainer) return;
+
+    const selected = LEADER_DEFINITIONS.find(l => l.id === this._selectedLeaderId) ?? LEADER_DEFINITIONS[0];
+
+    const leaderCards = LEADER_DEFINITIONS.map(l => {
+      const isSelected = l.id === this._selectedLeaderId;
+      return `
+        <div data-leader="${l.id}" style="
+          background: ${isSelected ? "rgba(218,165,32,0.15)" : "rgba(255,255,255,0.05)"};
+          border: 2px solid ${isSelected ? "#daa520" : "#334455"};
+          border-radius: 8px; padding: 10px 14px; margin: 5px; width: 140px;
+          text-align: center; cursor: pointer; transition: background 0.15s;
+        " onmouseover="if(!${isSelected})this.style.background='rgba(255,255,255,0.1)'"
+           onmouseout="if(!${isSelected})this.style.background='rgba(255,255,255,0.05)'">
+          <div style="font-size:15px;font-weight:bold;color:${isSelected ? "#ffd700" : "#ddd"}">${l.name}</div>
+          <div style="font-size:11px;color:#8899bb;margin-top:2px">${l.title}</div>
+        </div>
+      `;
+    }).join("");
+
+    this._leaderSelectContainer.innerHTML = `
+      <div style="padding:30px 0 20px;text-align:center">
+        <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 15px rgba(218,165,32,0.3);margin:0">
+          CHOOSE YOUR LEADER
+        </h1>
+        <p style="color:#888;font-size:13px;margin-top:8px">Select a leader for your warband</p>
+      </div>
+
+      <div style="display:flex;max-width:1400px;width:100%;gap:20px;padding:0 30px;flex:1;min-height:0">
+        <!-- Leader Grid -->
+        <div style="flex:0 0 680px;display:flex;flex-wrap:wrap;align-content:flex-start;overflow-y:auto;max-height:calc(100vh - 220px)">
+          ${leaderCards}
+        </div>
+
+        <!-- Detail Panel -->
+        <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid #334455;border-radius:8px;padding:24px;overflow-y:auto;max-height:calc(100vh - 220px)">
+          <div style="font-size:24px;font-weight:bold;color:#ffd700;letter-spacing:2px">${selected.name.toUpperCase()}</div>
+          <div style="font-size:14px;color:#99aabb;margin-top:4px">${selected.title}</div>
+          <div style="width:100%;height:1px;background:#334455;margin:14px 0"></div>
+          <div style="font-size:10px;color:#556677;letter-spacing:2px;margin-bottom:6px">LORE</div>
+          <div style="font-size:12px;color:#aabbcc;line-height:1.6">${selected.flavor}</div>
+          <div style="width:100%;height:1px;background:#334455;margin:14px 0"></div>
+          <div style="font-size:11px;color:#88ff88;font-weight:bold;letter-spacing:1px;margin-bottom:6px">BONUS</div>
+          <div style="font-size:12px;color:#88ffaa">${selected.bonusLabel}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;padding:20px 0 30px">
+        <button id="wb-leader-back" style="${this._menuBtnStyle("#555", "#888")}">
+          \u2190 Back
+        </button>
+        <button id="wb-leader-next" style="${this._menuBtnStyle("#2a6a2a", "#88cc66")}">
+          Select Race \u2192
+        </button>
+      </div>
+    `;
+
+    // Wire leader card clicks
+    this._leaderSelectContainer.querySelectorAll("[data-leader]").forEach(el => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.addEventListener("click", () => {
+        this._selectedLeaderId = htmlEl.dataset.leader!;
+        this._renderLeaderSelect();
+      });
+    });
+
+    document.getElementById("wb-leader-next")?.addEventListener("click", () => {
+      this._removeLeaderSelect();
+      this._showRaceSelect();
+    });
+
+    document.getElementById("wb-leader-back")?.addEventListener("click", () => {
+      this._removeLeaderSelect();
+      this._showMenu();
+    });
+  }
+
+  private _removeLeaderSelect(): void {
+    if (this._leaderSelectContainer?.parentNode) {
+      this._leaderSelectContainer.parentNode.removeChild(this._leaderSelectContainer);
+      this._leaderSelectContainer = null;
+    }
+  }
+
+  // ---- Race selection screen ------------------------------------------------
+
+  private _showRaceSelect(): void {
+    this._raceSelectContainer = document.createElement("div");
+    this._raceSelectContainer.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 30; background: rgba(10, 8, 5, 0.97);
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Segoe UI', sans-serif; color: #e0d5c0;
+      user-select: none; overflow-y: auto;
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._raceSelectContainer);
+    this._renderRaceSelect();
+  }
+
+  private _renderRaceSelect(): void {
+    if (!this._raceSelectContainer) return;
+
+    const selected = RACE_DEFINITIONS.find(r => r.id === this._selectedRaceId) ?? RACE_DEFINITIONS[0];
+    const implementedRaces = RACE_DEFINITIONS.filter(r => r.implemented);
+
+    const raceCards = implementedRaces.map(r => {
+      const isSelected = r.id === this._selectedRaceId;
+      const accentHex = "#" + r.accentColor.toString(16).padStart(6, "0");
+      return `
+        <div data-race="${r.id}" style="
+          background: ${isSelected ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.03)"};
+          border: 2px solid ${isSelected ? accentHex : "#334455"};
+          border-radius: 8px; padding: 12px 16px; margin: 5px; width: 170px;
+          text-align: center; cursor: pointer; transition: background 0.15s;
+        " onmouseover="if(!${isSelected})this.style.background='rgba(255,255,255,0.08)'"
+           onmouseout="if(!${isSelected})this.style.background='rgba(255,255,255,0.03)'">
+          <div style="font-size:15px;font-weight:bold;color:${isSelected ? accentHex : "#ddd"}">${r.name}</div>
+          <div style="font-size:11px;color:#8899bb;margin-top:3px">${r.title}</div>
+        </div>
+      `;
+    }).join("");
+
+    // Tier bars for detail panel
+    const tierCategories: Array<{ key: string; label: string; color: string }> = [
+      { key: "melee", label: "Melee", color: "#ff6644" },
+      { key: "ranged", label: "Ranged", color: "#66cc44" },
+      { key: "siege", label: "Siege", color: "#8888aa" },
+      { key: "creature", label: "Creature", color: "#cc66cc" },
+      { key: "magic", label: "Magic", color: "#6688ff" },
+      { key: "heal", label: "Heal", color: "#ffdd88" },
+    ];
+
+    const tierBars = selected.tiers ? tierCategories.map(tc => {
+      const val = (selected.tiers as unknown as Record<string, number>)[tc.key] ?? 0;
+      const pct = (val / 7) * 100;
+      return `
+        <div style="display:flex;align-items:center;margin:3px 0">
+          <div style="width:70px;font-size:11px;color:#888">${tc.label}</div>
+          <div style="flex:1;height:8px;background:#1a1a2a;border-radius:4px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${tc.color};border-radius:4px"></div>
+          </div>
+          <div style="width:20px;text-align:right;font-size:11px;color:#aaa;margin-left:6px">${val}</div>
+        </div>
+      `;
+    }).join("") : '<div style="color:#556677;font-size:12px">No tier data</div>';
+
+    this._raceSelectContainer.innerHTML = `
+      <div style="padding:30px 0 20px;text-align:center">
+        <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 15px rgba(218,165,32,0.3);margin:0">
+          SELECT YOUR RACE
+        </h1>
+        <p style="color:#888;font-size:13px;margin-top:8px">Choose a faction for your warband</p>
+      </div>
+
+      <div style="display:flex;max-width:1400px;width:100%;gap:20px;padding:0 30px;flex:1;min-height:0">
+        <!-- Race Grid -->
+        <div style="flex:0 0 580px;display:flex;flex-wrap:wrap;align-content:flex-start;overflow-y:auto;max-height:calc(100vh - 220px)">
+          ${raceCards}
+        </div>
+
+        <!-- Detail Panel -->
+        <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid #334455;border-radius:8px;padding:24px;overflow-y:auto;max-height:calc(100vh - 220px)">
+          <div style="font-size:24px;font-weight:bold;color:#${ selected.accentColor.toString(16).padStart(6, "0")};letter-spacing:2px">${selected.name.toUpperCase()}</div>
+          <div style="font-size:14px;color:#99aabb;margin-top:4px">${selected.title}</div>
+          <div style="width:100%;height:1px;background:#334455;margin:14px 0"></div>
+          <div style="font-size:12px;color:#aabbcc;line-height:1.6">${selected.flavor}</div>
+          <div style="width:100%;height:1px;background:#334455;margin:14px 0"></div>
+          <div style="font-size:11px;color:#88ff88;font-weight:bold;letter-spacing:1px;margin-bottom:8px">FACTION UNIT</div>
+          <div style="font-size:12px;color:#88ffaa;margin-bottom:14px">${selected.factionUnitLabel}</div>
+          <div style="font-size:11px;color:#ccaa44;font-weight:bold;letter-spacing:1px;margin-bottom:8px">TIER RATINGS</div>
+          ${tierBars}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;padding:20px 0 30px">
+        <button id="wb-race-back" style="${this._menuBtnStyle("#555", "#888")}">
+          \u2190 Back
+        </button>
+        <button id="wb-race-next" style="${this._menuBtnStyle("#2a6a2a", "#88cc66")}">
+          Race Overview \u2192
+        </button>
+      </div>
+    `;
+
+    // Wire race card clicks
+    this._raceSelectContainer.querySelectorAll("[data-race]").forEach(el => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.addEventListener("click", () => {
+        this._selectedRaceId = htmlEl.dataset.race!;
+        this._renderRaceSelect();
+      });
+    });
+
+    document.getElementById("wb-race-next")?.addEventListener("click", () => {
+      this._removeRaceSelect();
+      this._showRaceOverview();
+    });
+
+    document.getElementById("wb-race-back")?.addEventListener("click", () => {
+      this._removeRaceSelect();
+      this._showLeaderSelect();
+    });
+  }
+
+  private _removeRaceSelect(): void {
+    if (this._raceSelectContainer?.parentNode) {
+      this._raceSelectContainer.parentNode.removeChild(this._raceSelectContainer);
+      this._raceSelectContainer = null;
+    }
+  }
+
+  // ---- Race overview screen -------------------------------------------------
+
+  private _showRaceOverview(): void {
+    this._raceOverviewContainer = document.createElement("div");
+    this._raceOverviewContainer.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 30; background: rgba(10, 8, 5, 0.97);
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Segoe UI', sans-serif; color: #e0d5c0;
+      user-select: none; overflow-y: auto;
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._raceOverviewContainer);
+    this._renderRaceOverview();
+  }
+
+  private _renderRaceOverview(): void {
+    if (!this._raceOverviewContainer) return;
+
+    const race = RACE_DEFINITIONS.find(r => r.id === this._selectedRaceId) ?? RACE_DEFINITIONS[0];
+    const leader = LEADER_DEFINITIONS.find(l => l.id === this._selectedLeaderId) ?? LEADER_DEFINITIONS[0];
+    const accentHex = "#" + race.accentColor.toString(16).padStart(6, "0");
+
+    // All tier categories for the full overview
+    const allTiers: Array<{ key: string; label: string; color: string }> = [
+      { key: "melee", label: "Melee", color: "#ff6644" },
+      { key: "ranged", label: "Ranged", color: "#66cc44" },
+      { key: "siege", label: "Siege", color: "#8888aa" },
+      { key: "creature", label: "Creature", color: "#cc66cc" },
+      { key: "magic", label: "Magic", color: "#6688ff" },
+      { key: "heal", label: "Heal", color: "#ffdd88" },
+      { key: "fire", label: "Fire", color: "#ff4422" },
+      { key: "cold", label: "Cold", color: "#4488ff" },
+      { key: "lightning", label: "Lightning", color: "#ffdd22" },
+      { key: "distortion", label: "Distortion", color: "#aa44cc" },
+      { key: "summon", label: "Summon", color: "#66aa44" },
+      { key: "nature", label: "Nature", color: "#22cc44" },
+    ];
+
+    const tierBars = race.tiers ? allTiers.map(tc => {
+      const val = (race.tiers as unknown as Record<string, number>)[tc.key] ?? 0;
+      const pct = (val / 7) * 100;
+      return `
+        <div style="display:flex;align-items:center;margin:3px 0">
+          <div style="width:80px;font-size:11px;color:#888">${tc.label}</div>
+          <div style="flex:1;height:10px;background:#1a1a2a;border-radius:5px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${tc.color};border-radius:5px"></div>
+          </div>
+          <div style="width:20px;text-align:right;font-size:11px;color:#aaa;margin-left:6px">${val}</div>
+        </div>
+      `;
+    }).join("") : "";
+
+    // Faction units list
+    const factionUnitNames = race.factionUnits.map(ut =>
+      (ut as string).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+    );
+    const factionList = factionUnitNames.length > 0
+      ? factionUnitNames.map(n => `<div style="font-size:12px;color:#88ffaa;margin:2px 0">\u2022 ${n}</div>`).join("")
+      : '<div style="font-size:12px;color:#556677">No exclusive units</div>';
+
+    this._raceOverviewContainer.innerHTML = `
+      <div style="padding:30px 0 20px;text-align:center">
+        <h1 style="font-size:36px;color:${accentHex};text-shadow:0 0 15px ${accentHex}44;margin:0">
+          ${race.name.toUpperCase()}
+        </h1>
+        <p style="color:#99aabb;font-size:15px;margin-top:6px">${race.title}</p>
+      </div>
+
+      <div style="display:flex;max-width:1200px;width:100%;gap:30px;padding:0 30px;flex:1;min-height:0">
+        <!-- Left: Lore + Leader -->
+        <div style="flex:1;overflow-y:auto;max-height:calc(100vh - 240px)">
+          <div style="background:rgba(255,255,255,0.03);border:1px solid #334455;border-radius:8px;padding:20px;margin-bottom:16px">
+            <div style="font-size:10px;color:#556677;letter-spacing:2px;margin-bottom:8px">LORE</div>
+            <div style="font-size:13px;color:#aabbcc;line-height:1.7">${race.flavor}</div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid #334455;border-radius:8px;padding:20px;margin-bottom:16px">
+            <div style="font-size:10px;color:#556677;letter-spacing:2px;margin-bottom:8px">YOUR LEADER</div>
+            <div style="font-size:18px;font-weight:bold;color:#ffd700">${leader.name}</div>
+            <div style="font-size:12px;color:#99aabb;margin-top:2px">${leader.title}</div>
+            <div style="width:100%;height:1px;background:#334455;margin:10px 0"></div>
+            <div style="font-size:11px;color:#88ff88;font-weight:bold;margin-bottom:4px">BONUS</div>
+            <div style="font-size:12px;color:#88ffaa">${leader.bonusLabel}</div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid ${accentHex}44;border-radius:8px;padding:20px">
+            <div style="font-size:10px;color:#556677;letter-spacing:2px;margin-bottom:8px">FACTION UNITS</div>
+            <div style="font-size:12px;color:#88ffaa;margin-bottom:8px">${race.factionUnitLabel}</div>
+            ${factionList}
+          </div>
+        </div>
+
+        <!-- Right: Tier Ratings -->
+        <div style="flex:0 0 380px;overflow-y:auto;max-height:calc(100vh - 240px)">
+          <div style="background:rgba(255,255,255,0.03);border:1px solid #334455;border-radius:8px;padding:20px">
+            <div style="font-size:10px;color:#556677;letter-spacing:2px;margin-bottom:12px">TIER RATINGS</div>
+            ${tierBars}
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;padding:20px 0 30px">
+        <button id="wb-overview-back" style="${this._menuBtnStyle("#555", "#888")}">
+          \u2190 Back
+        </button>
+        <button id="wb-overview-next" style="${this._menuBtnStyle("#4a2a0a", "#daa520")}">
+          \u{1F451} Recruit Army \u2192
+        </button>
+      </div>
+    `;
+
+    document.getElementById("wb-overview-next")?.addEventListener("click", () => {
+      this._removeRaceOverview();
+      this._showArmySetup();
+    });
+
+    document.getElementById("wb-overview-back")?.addEventListener("click", () => {
+      this._removeRaceOverview();
+      this._showRaceSelect();
+    });
+  }
+
+  private _removeRaceOverview(): void {
+    if (this._raceOverviewContainer?.parentNode) {
+      this._raceOverviewContainer.parentNode.removeChild(this._raceOverviewContainer);
+      this._raceOverviewContainer = null;
+    }
+  }
+
   // ---- Army setup screen ---------------------------------------------------
 
   private _showArmySetup(): void {
@@ -2041,7 +3580,7 @@ export class WarbandGame {
 
     document.getElementById("wb-army-back")?.addEventListener("click", () => {
       this._removeArmySetup();
-      this._showMenu();
+      this._showRaceOverview();
     });
   }
 
