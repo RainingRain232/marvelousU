@@ -13,7 +13,7 @@ import {
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
 import { ArmorSlot } from "../config/ArmorDefs";
-import { isRangedWeapon } from "../config/WeaponDefs";
+import { isRangedWeapon, isStaffWeapon } from "../config/WeaponDefs";
 import { CREATURE_DEFS } from "../config/CreatureDefs";
 
 // ---- Hitbox zone from attack direction ------------------------------------
@@ -392,9 +392,10 @@ export class WarbandCombatSystem {
     const accuracy = wpn.accuracy ?? 0.85;
     const spread = (1 - accuracy) * 0.15;
 
+    const isStaff = isStaffWeapon(wpn);
     const dirX = Math.sin(fighter.rotation) + (Math.random() - 0.5) * spread;
     const dirZ = Math.cos(fighter.rotation) + (Math.random() - 0.5) * spread;
-    const dirY = 0.1 + (Math.random() - 0.5) * spread; // slight upward arc
+    const dirY = isStaff ? (Math.random() - 0.5) * spread * 0.5 : 0.1 + (Math.random() - 0.5) * spread; // staff rays fly flat
 
     const proj: WarbandProjectile = {
       id: `proj_${state.tick}_${fighter.id}`,
@@ -411,9 +412,10 @@ export class WarbandCombatSystem {
         z: dirZ * speed,
       },
       damage: wpn.damage,
-      gravity: WB.ARROW_GRAVITY,
+      gravity: isStaff ? 0 : WB.ARROW_GRAVITY, // magic rays fly straight
       alive: true,
       age: 0,
+      projectileColor: isStaff ? (wpn.accentColor ?? 0xffffff) : undefined,
     };
 
     state.projectiles.push(proj);

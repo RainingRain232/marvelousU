@@ -210,6 +210,7 @@ export interface WarbandProjectile {
   gravity: number;
   alive: boolean;
   age: number; // ticks since launched
+  projectileColor?: number; // magic ray color (set for staff projectiles)
 }
 
 // ---- Horse ----------------------------------------------------------------

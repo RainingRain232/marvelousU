@@ -11,7 +11,7 @@ import {
   CombatDirection,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
-import { isMeleeWeapon, isRangedWeapon } from "../config/WeaponDefs";
+import { isMeleeWeapon, isRangedWeapon, isStaffWeapon } from "../config/WeaponDefs";
 import { HORSE_SADDLE_Y } from "./WarbandHorseRenderer";
 
 // ---- Colors ---------------------------------------------------------------
@@ -91,6 +91,7 @@ export class FighterMesh {
   // Weapon mesh attached to right hand
   private _weaponMesh: THREE.Mesh | null = null;
   private _isRangedWeapon = false;
+  private _isStaffWeapon = false;
   private _bowStringLine: THREE.Line | null = null;
   private _bowStringRestX = 0; // string X position at rest (torus local)
   private _bowR = 0; // bow radius for string animation
@@ -1140,7 +1141,7 @@ export class FighterMesh {
     const wpn = fighter.equipment.mainHand;
     if (!wpn) return;
 
-    if (isMeleeWeapon(wpn) || wpn.category === "thrown") {
+    if (isMeleeWeapon(wpn) || wpn.category === "thrown" || wpn.category === "staff") {
       // Melee / thrown weapon: cylinder/box for blade + handle
       const bladeLen = wpn.length * 0.65;
       const handleLen = wpn.length * 0.35;
@@ -1187,7 +1188,7 @@ export class FighterMesh {
       weaponGroup.add(pommel);
 
       // Blade
-      if (wpn.category === "polearm" && wpn.id.includes("staff")) {
+      if (wpn.category === "staff") {
         // ---- Caster Staff: wooden shaft with diamond crystal on top ----
         // Wooden shaft (extends from handle upward)
         const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85, metalness: 0.0 });
@@ -1477,6 +1478,9 @@ export class FighterMesh {
       this._weaponMesh = new THREE.Mesh(dummyGeo, dummyMat);
       this._weaponMesh.add(weaponGroup);
       this._rightHand.add(this._weaponMesh);
+      if (isStaffWeapon(wpn)) {
+        this._isStaffWeapon = true;
+      }
     } else if (isRangedWeapon(wpn)) {
       this._isRangedWeapon = true;
       const isCrossbow = wpn.category === "crossbow";
@@ -3119,14 +3123,18 @@ export class FighterMesh {
         this._animateWindup(fighter);
         break;
       case FighterCombatState.RELEASING:
-        if (this._isRangedWeapon) {
+        if (this._isStaffWeapon) {
+          this._animateStaffChannel(fighter);
+        } else if (this._isRangedWeapon) {
           this._animateDrawBow(fighter);
         } else {
           this._animateRelease(fighter);
         }
         break;
       case FighterCombatState.RECOVERY:
-        if (this._isRangedWeapon) {
+        if (this._isStaffWeapon) {
+          this._animateStaffChannel(fighter);
+        } else if (this._isRangedWeapon) {
           this._animateDrawBow(fighter);
         } else {
           this._animateRecovery(fighter);
@@ -3140,7 +3148,11 @@ export class FighterMesh {
         break;
       case FighterCombatState.DRAWING:
       case FighterCombatState.AIMING:
-        this._animateDrawBow(fighter);
+        if (this._isStaffWeapon) {
+          this._animateStaffChannel(fighter);
+        } else {
+          this._animateDrawBow(fighter);
+        }
         break;
       case FighterCombatState.DEAD:
         this._animateDead();
@@ -3203,6 +3215,7 @@ export class FighterMesh {
         this._weaponMesh = null;
         this._bowStringLine = null;
         this._isRangedWeapon = false;
+        this._isStaffWeapon = false;
       }
       // Remove shield if looted
       if (!fighter.equipment.offHand && this._shieldMesh) {
@@ -3485,6 +3498,21 @@ export class FighterMesh {
       pos.setX(1, centerX); // only move the center vertex
       pos.needsUpdate = true;
     }
+  }
+
+  private _animateStaffChannel(_fighter: WarbandFighter): void {
+    // Staff raised forward, channeling magic through it
+    this._rightUpperArm.rotation.x = -1.6;
+    this._rightUpperArm.rotation.z = -0.15;
+    this._rightForearm.rotation.x = -0.3;
+
+    // Left arm raised slightly as if channeling energy
+    this._leftUpperArm.rotation.x = -0.8;
+    this._leftUpperArm.rotation.z = 0.4;
+    this._leftForearm.rotation.x = -0.6;
+
+    // Slight spine lean forward
+    this._spine.rotation.x = -0.1;
   }
 
   private _animateDead(): void {

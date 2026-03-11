@@ -50,6 +50,7 @@ export class WarbandShopView {
       { label: "🏹 Bows", items: weapons.filter((w) => w.category === "bow") },
       { label: "⚙ Crossbows", items: weapons.filter((w) => w.category === "crossbow") },
       { label: "🎯 Thrown", items: weapons.filter((w) => w.category === "thrown") },
+      { label: "🪄 Staves", items: weapons.filter((w) => w.category === "staff") },
       { label: "🛡 Shields", items: weapons.filter((w) => w.category === "shield") },
     ];
 

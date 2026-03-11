@@ -9,7 +9,8 @@ export type WeaponCategory =
   | "bow"
   | "crossbow"
   | "thrown"
-  | "shield";
+  | "shield"
+  | "staff";
 
 export interface WeaponDef {
   id: string;
@@ -701,103 +702,123 @@ const NORMAN_SHIELD: WeaponDef = {
 // ---- Staves (mages & clergy) ----
 
 const FIRE_STAFF: WeaponDef = {
-  id: "fire_staff", name: "Fire Staff", category: "polearm",
+  id: "fire_staff", name: "Fire Staff", category: "staff",
   damage: 15, speed: 0.8, reach: 1.5, weight: 2.0, cost: 80,
+  projectileSpeed: 40, ammo: 20, accuracy: 0.9, drawTime: 25,
   length: 1.6, color: 0x8b4513, accentColor: 0xff3300,
 };
 const STORM_STAFF: WeaponDef = {
-  id: "storm_staff", name: "Storm Staff", category: "polearm",
+  id: "storm_staff", name: "Storm Staff", category: "staff",
   damage: 15, speed: 0.8, reach: 1.5, weight: 2.0, cost: 80,
+  projectileSpeed: 40, ammo: 20, accuracy: 0.9, drawTime: 25,
   length: 1.6, color: 0x8b4513, accentColor: 0x66ccff,
 };
 const COLD_STAFF: WeaponDef = {
-  id: "cold_staff", name: "Cold Staff", category: "polearm",
+  id: "cold_staff", name: "Cold Staff", category: "staff",
   damage: 15, speed: 0.8, reach: 1.5, weight: 2.0, cost: 80,
+  projectileSpeed: 40, ammo: 20, accuracy: 0.9, drawTime: 25,
   length: 1.6, color: 0x8b4513, accentColor: 0x88ddff,
 };
 const DISTORTION_STAFF: WeaponDef = {
-  id: "distortion_staff", name: "Distortion Staff", category: "polearm",
+  id: "distortion_staff", name: "Distortion Staff", category: "staff",
   damage: 15, speed: 0.8, reach: 1.5, weight: 2.0, cost: 80,
+  projectileSpeed: 40, ammo: 20, accuracy: 0.9, drawTime: 25,
   length: 1.6, color: 0x8b4513, accentColor: 0xaa44ff,
 };
 const HEALING_STAFF: WeaponDef = {
-  id: "healing_staff", name: "Healing Staff", category: "polearm",
+  id: "healing_staff", name: "Healing Staff", category: "staff",
   damage: 10, speed: 0.7, reach: 1.5, weight: 1.5, cost: 60,
+  projectileSpeed: 38, ammo: 18, accuracy: 0.88, drawTime: 28,
   length: 1.6, color: 0x8b4513, accentColor: 0xffffff,
 };
 const FIRE_ADEPT_STAFF: WeaponDef = {
-  id: "fire_adept_staff", name: "Fire Adept Staff", category: "polearm",
+  id: "fire_adept_staff", name: "Fire Adept Staff", category: "staff",
   damage: 22, speed: 0.75, reach: 1.6, weight: 2.5, cost: 180,
+  projectileSpeed: 44, ammo: 22, accuracy: 0.92, drawTime: 22,
   length: 1.7, color: 0x654321, accentColor: 0xff3300,
 };
 const COLD_ADEPT_STAFF: WeaponDef = {
-  id: "cold_adept_staff", name: "Cold Adept Staff", category: "polearm",
+  id: "cold_adept_staff", name: "Cold Adept Staff", category: "staff",
   damage: 22, speed: 0.75, reach: 1.6, weight: 2.5, cost: 180,
+  projectileSpeed: 44, ammo: 22, accuracy: 0.92, drawTime: 22,
   length: 1.7, color: 0x654321, accentColor: 0x88ddff,
 };
 const LIGHTNING_ADEPT_STAFF: WeaponDef = {
-  id: "lightning_adept_staff", name: "Lightning Adept Staff", category: "polearm",
+  id: "lightning_adept_staff", name: "Lightning Adept Staff", category: "staff",
   damage: 22, speed: 0.75, reach: 1.6, weight: 2.5, cost: 180,
+  projectileSpeed: 44, ammo: 22, accuracy: 0.92, drawTime: 22,
   length: 1.7, color: 0x654321, accentColor: 0x66ccff,
 };
 const DISTORTION_ADEPT_STAFF: WeaponDef = {
-  id: "distortion_adept_staff", name: "Distortion Adept Staff", category: "polearm",
+  id: "distortion_adept_staff", name: "Distortion Adept Staff", category: "staff",
   damage: 22, speed: 0.75, reach: 1.6, weight: 2.5, cost: 180,
+  projectileSpeed: 44, ammo: 22, accuracy: 0.92, drawTime: 22,
   length: 1.7, color: 0x654321, accentColor: 0xaa44ff,
 };
 const FIRE_MASTER_STAFF: WeaponDef = {
-  id: "fire_master_staff", name: "Fire Master Staff", category: "polearm",
+  id: "fire_master_staff", name: "Fire Master Staff", category: "staff",
   damage: 30, speed: 0.7, reach: 1.7, weight: 3.0, cost: 350,
+  projectileSpeed: 48, ammo: 25, accuracy: 0.94, drawTime: 20,
   length: 1.8, color: 0x4a3520, accentColor: 0xff3300,
 };
 const COLD_MASTER_STAFF: WeaponDef = {
-  id: "cold_master_staff", name: "Cold Master Staff", category: "polearm",
+  id: "cold_master_staff", name: "Cold Master Staff", category: "staff",
   damage: 30, speed: 0.7, reach: 1.7, weight: 3.0, cost: 350,
+  projectileSpeed: 48, ammo: 25, accuracy: 0.94, drawTime: 20,
   length: 1.8, color: 0x4a3520, accentColor: 0x88ddff,
 };
 const LIGHTNING_MASTER_STAFF: WeaponDef = {
-  id: "lightning_master_staff", name: "Lightning Master Staff", category: "polearm",
+  id: "lightning_master_staff", name: "Lightning Master Staff", category: "staff",
   damage: 30, speed: 0.7, reach: 1.7, weight: 3.0, cost: 350,
+  projectileSpeed: 48, ammo: 25, accuracy: 0.94, drawTime: 20,
   length: 1.8, color: 0x4a3520, accentColor: 0x66ccff,
 };
 const DISTORTION_MASTER_STAFF: WeaponDef = {
-  id: "distortion_master_staff", name: "Distortion Master Staff", category: "polearm",
+  id: "distortion_master_staff", name: "Distortion Master Staff", category: "staff",
   damage: 30, speed: 0.7, reach: 1.7, weight: 3.0, cost: 350,
+  projectileSpeed: 48, ammo: 25, accuracy: 0.94, drawTime: 20,
   length: 1.8, color: 0x4a3520, accentColor: 0xaa44ff,
 };
 const CLERIC_STAFF: WeaponDef = {
-  id: "cleric_staff", name: "Cleric Staff", category: "polearm",
+  id: "cleric_staff", name: "Cleric Staff", category: "staff",
   damage: 18, speed: 0.75, reach: 1.5, weight: 2.0, cost: 120,
+  projectileSpeed: 42, ammo: 20, accuracy: 0.9, drawTime: 24,
   length: 1.6, color: 0xccccbb, accentColor: 0xffffff,
 };
 const SAINT_STAFF: WeaponDef = {
-  id: "saint_staff", name: "Saint Staff", category: "polearm",
+  id: "saint_staff", name: "Saint Staff", category: "staff",
   damage: 25, speed: 0.7, reach: 1.6, weight: 2.5, cost: 300,
+  projectileSpeed: 46, ammo: 24, accuracy: 0.93, drawTime: 20,
   length: 1.7, color: 0xeeeedd, accentColor: 0xffffff,
 };
 const SUMMONER_STAFF: WeaponDef = {
-  id: "summoner_staff", name: "Summoner Staff", category: "polearm",
+  id: "summoner_staff", name: "Summoner Staff", category: "staff",
   damage: 12, speed: 0.8, reach: 1.5, weight: 2.0, cost: 70,
+  projectileSpeed: 38, ammo: 18, accuracy: 0.88, drawTime: 28,
   length: 1.6, color: 0x442266, accentColor: 0x8866aa,
 };
 const WARLOCK_STAFF: WeaponDef = {
-  id: "warlock_staff", name: "Warlock Staff", category: "polearm",
+  id: "warlock_staff", name: "Warlock Staff", category: "staff",
   damage: 20, speed: 0.75, reach: 1.6, weight: 2.5, cost: 150,
+  projectileSpeed: 42, ammo: 20, accuracy: 0.9, drawTime: 24,
   length: 1.7, color: 0x332244, accentColor: 0xaa44ff,
 };
 const DARK_SAVANT_STAFF: WeaponDef = {
-  id: "dark_savant_staff", name: "Dark Savant Staff", category: "polearm",
+  id: "dark_savant_staff", name: "Dark Savant Staff", category: "staff",
   damage: 35, speed: 0.65, reach: 1.7, weight: 3.5, cost: 450,
+  projectileSpeed: 50, ammo: 28, accuracy: 0.95, drawTime: 18,
   length: 1.8, color: 0x110000, accentColor: 0xff4422,
 };
 const BATTLEMAGE_STAFF: WeaponDef = {
-  id: "battlemage_staff", name: "Battlemage Staff", category: "polearm",
+  id: "battlemage_staff", name: "Battlemage Staff", category: "staff",
   damage: 45, speed: 0.6, reach: 1.8, weight: 4.0, cost: 600,
+  projectileSpeed: 52, ammo: 30, accuracy: 0.95, drawTime: 16,
   length: 1.9, color: 0x441111, accentColor: 0xff6600,
 };
 const CONSTRUCTIONIST_STAFF: WeaponDef = {
-  id: "constructionist_staff", name: "Constructionist Staff", category: "polearm",
+  id: "constructionist_staff", name: "Constructionist Staff", category: "staff",
   damage: 18, speed: 0.8, reach: 1.5, weight: 2.5, cost: 100,
+  projectileSpeed: 40, ammo: 20, accuracy: 0.9, drawTime: 25,
   length: 1.6, color: 0x886644, accentColor: 0xffaa00,
 };
 
@@ -1123,12 +1144,13 @@ const ANGEL_SWORD: WeaponDef = {
 const GIANT_STAFF: WeaponDef = {
   id: "giant_staff",
   name: "Giant Staff",
-  category: "polearm",
+  category: "staff",
   damage: 80,
   speed: 0.5,
   reach: 3.5,
   weight: 10.0,
   cost: 0,
+  projectileSpeed: 55, ammo: 30, accuracy: 0.92, drawTime: 22,
   length: 3.2,
   color: 0x443355,
   accentColor: 0x8866aa,
@@ -1248,7 +1270,12 @@ export function getWeaponsByCategory(cat: WeaponCategory): WeaponDef[] {
 
 /** Check if weapon is ranged */
 export function isRangedWeapon(w: WeaponDef): boolean {
-  return w.category === "bow" || w.category === "crossbow" || w.category === "thrown";
+  return w.category === "bow" || w.category === "crossbow" || w.category === "thrown" || w.category === "staff";
+}
+
+/** Check if weapon is a magic staff */
+export function isStaffWeapon(w: WeaponDef): boolean {
+  return w.category === "staff";
 }
 
 /** Check if weapon is melee */

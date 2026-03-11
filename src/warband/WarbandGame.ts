@@ -3900,6 +3900,25 @@ export class WarbandGame {
     else this._shopEnemyGoldSpent = spent;
   }
 
+  private _fillOneOfEach(): void {
+    const army = this._shopActiveSide === "player" ? this._playerArmy : this._enemyArmy;
+    for (let i = 0; i < army.length; i++) army[i] = 0;
+    if (this._shopActiveSide === "player") this._shopPlayerGoldSpent = 0;
+    else this._shopEnemyGoldSpent = 0;
+
+    const available = _getAllAvailableUnits(this._selectedRaceId, this._shopMercIndices);
+    let spent = 0;
+    for (const idx of available) {
+      const cost = UNIT_TYPES[idx].cost ?? 100;
+      if (spent + cost <= WARBAND_SHOP_GOLD) {
+        army[idx] = 1;
+        spent += cost;
+      }
+    }
+    if (this._shopActiveSide === "player") this._shopPlayerGoldSpent = spent;
+    else this._shopEnemyGoldSpent = spent;
+  }
+
   private _renderArmySetup(): void {
     if (!this._armySetupContainer) return;
 
@@ -4043,9 +4062,14 @@ export class WarbandGame {
             scrollbar-width:thin;scrollbar-color:#334 #111">
             <div style="padding:4px 0">
               <!-- Random army toggle -->
-              <div id="wb-random-toggle" style="padding:6px;margin:2px 0 4px;border-radius:4px;
-                background:${randBg};border:1.5px solid ${randBorder};text-align:center;cursor:pointer;
-                font-size:12px;font-weight:bold;color:${randColor}">${randLabel}</div>
+              <div style="display:flex;gap:4px;margin:2px 0 4px">
+                <div id="wb-random-toggle" style="flex:1;padding:6px;border-radius:4px;
+                  background:${randBg};border:1.5px solid ${randBorder};text-align:center;cursor:pointer;
+                  font-size:12px;font-weight:bold;color:${randColor}">${randLabel}</div>
+                <div id="wb-one-each" style="padding:6px 12px;border-radius:4px;
+                  background:#1a1a2a;border:1.5px solid #6666aa;text-align:center;cursor:pointer;
+                  font-size:12px;font-weight:bold;color:#aaaaff;white-space:nowrap">1 OF EACH</div>
+              </div>
               <!-- Gold adjustment -->
               <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:2px 0 6px">
                 <span style="font-size:10px;color:#997722;font-weight:bold">GOLD TO SPEND:</span>
@@ -4115,6 +4139,13 @@ export class WarbandGame {
         if (this._shopActiveSide === "player") this._shopPlayerGoldSpent = 0;
         else this._shopEnemyGoldSpent = 0;
       }
+      this._renderArmySetup();
+    });
+
+    // Wire up 1 of each button
+    document.getElementById("wb-one-each")?.addEventListener("click", () => {
+      this._shopRandomOn = false;
+      this._fillOneOfEach();
       this._renderArmySetup();
     });
 
@@ -4476,14 +4507,52 @@ export class WarbandGame {
     for (const proj of this._state.projectiles) {
       let mesh = this._projectileMeshes.get(proj.id);
       if (!mesh) {
-        const geo = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4);
-        const mat = new THREE.MeshBasicMaterial({ color: 0x8b6914 });
-        mesh = new THREE.Mesh(geo, mat);
-        this._sceneManager.scene.add(mesh);
-        this._projectileMeshes.set(proj.id, mesh);
+        if (proj.projectileColor != null) {
+          // Magic ray: glowing elongated beam with bright core
+          const group = new THREE.Group();
+          // Outer glow
+          const outerGeo = new THREE.CylinderGeometry(0.06, 0.02, 0.8, 6);
+          const outerMat = new THREE.MeshBasicMaterial({
+            color: proj.projectileColor,
+            transparent: true,
+            opacity: 0.35,
+          });
+          const outerMesh = new THREE.Mesh(outerGeo, outerMat);
+          group.add(outerMesh);
+          // Inner bright core
+          const innerGeo = new THREE.CylinderGeometry(0.025, 0.01, 0.7, 6);
+          const innerMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+          });
+          const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+          group.add(innerMesh);
+          // Bright tip orb
+          const tipGeo = new THREE.SphereGeometry(0.07, 6, 6);
+          const tipMat = new THREE.MeshBasicMaterial({
+            color: proj.projectileColor,
+          });
+          const tipMesh = new THREE.Mesh(tipGeo, tipMat);
+          tipMesh.position.y = 0.4;
+          group.add(tipMesh);
+          // Point light for glow effect
+          const light = new THREE.PointLight(proj.projectileColor, 0.6, 3);
+          light.position.y = 0.4;
+          group.add(light);
+          this._sceneManager.scene.add(group);
+          // Store group as mesh (we'll cast it)
+          mesh = group as unknown as THREE.Mesh;
+          this._projectileMeshes.set(proj.id, mesh);
+        } else {
+          // Arrow: standard brown cylinder
+          const geo = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4);
+          const mat = new THREE.MeshBasicMaterial({ color: 0x8b6914 });
+          mesh = new THREE.Mesh(geo, mat);
+          this._sceneManager.scene.add(mesh);
+          this._projectileMeshes.set(proj.id, mesh);
+        }
       }
       mesh.position.set(proj.position.x, proj.position.y, proj.position.z);
-      // Orient arrow along velocity
+      // Orient along velocity
       const vel = new THREE.Vector3(proj.velocity.x, proj.velocity.y, proj.velocity.z);
       if (vel.lengthSq() > 0.01) {
         mesh.lookAt(
@@ -4499,8 +4568,19 @@ export class WarbandGame {
     for (const [id, mesh] of this._projectileMeshes) {
       if (!this._state.projectiles.find((p) => p.id === id)) {
         this._sceneManager.scene.remove(mesh);
-        mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();
+        if ((mesh as unknown as THREE.Group).isGroup) {
+          // Magic ray group — dispose children
+          const group = mesh as unknown as THREE.Group;
+          group.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              (child as THREE.Mesh).geometry.dispose();
+              ((child as THREE.Mesh).material as THREE.Material).dispose();
+            }
+          });
+        } else {
+          mesh.geometry.dispose();
+          (mesh.material as THREE.Material).dispose();
+        }
         this._projectileMeshes.delete(id);
       }
     }
@@ -5110,8 +5190,18 @@ export class WarbandGame {
     // Remove projectile meshes
     for (const [, mesh] of this._projectileMeshes) {
       this._sceneManager.scene.remove(mesh);
-      mesh.geometry.dispose();
-      (mesh.material as THREE.Material).dispose();
+      if ((mesh as unknown as THREE.Group).isGroup) {
+        const group = mesh as unknown as THREE.Group;
+        group.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            (child as THREE.Mesh).geometry.dispose();
+            ((child as THREE.Mesh).material as THREE.Material).dispose();
+          }
+        });
+      } else {
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      }
     }
     this._projectileMeshes.clear();
 
