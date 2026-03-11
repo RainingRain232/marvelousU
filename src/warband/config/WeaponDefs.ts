@@ -871,6 +871,137 @@ const ROYAL_SWORD: WeaponDef = {
   oversized: true,
 };
 
+// ---- Oversized ranged weapons (large units only, not in shop) ----
+
+const ANCIENT_BOW: WeaponDef = {
+  id: "ancient_bow",
+  name: "Ancient Bow",
+  category: "bow",
+  damage: 40,
+  speed: 0.7,
+  reach: 0.5,
+  weight: 3.0,
+  cost: 0,
+  projectileSpeed: 48,
+  ammo: 20,
+  accuracy: 0.88,
+  drawTime: 40,
+  length: 1.8,
+  color: 0x555555,
+  accentColor: 0x333333,
+  oversized: true,
+};
+
+const ANCIENT_CROSSBOW: WeaponDef = {
+  id: "ancient_crossbow",
+  name: "Ancient Crossbow",
+  category: "crossbow",
+  damage: 60,
+  speed: 0.3,
+  reach: 0.5,
+  weight: 6.0,
+  cost: 0,
+  projectileSpeed: 58,
+  ammo: 15,
+  accuracy: 0.95,
+  drawTime: 70,
+  length: 1.0,
+  color: 0x555555,
+  accentColor: 0x333333,
+  oversized: true,
+};
+
+const ELDER_BOW: WeaponDef = {
+  id: "elder_bow",
+  name: "Elder Bow",
+  category: "bow",
+  damage: 55,
+  speed: 0.6,
+  reach: 0.5,
+  weight: 4.0,
+  cost: 0,
+  projectileSpeed: 55,
+  ammo: 18,
+  accuracy: 0.92,
+  drawTime: 45,
+  length: 2.2,
+  color: 0x1a1a1a,
+  accentColor: 0x111111,
+  oversized: true,
+};
+
+const ELDER_CROSSBOW: WeaponDef = {
+  id: "elder_crossbow",
+  name: "Elder Crossbow",
+  category: "crossbow",
+  damage: 75,
+  speed: 0.25,
+  reach: 0.5,
+  weight: 8.0,
+  cost: 0,
+  projectileSpeed: 65,
+  ammo: 12,
+  accuracy: 0.97,
+  drawTime: 90,
+  length: 1.2,
+  color: 0x1a1a1a,
+  accentColor: 0x111111,
+  oversized: true,
+};
+
+const ELDER_JAVELINS: WeaponDef = {
+  id: "elder_javelins",
+  name: "Elder Javelins",
+  category: "thrown",
+  damage: 65,
+  speed: 0.7,
+  reach: 1.5,
+  weight: 4.0,
+  cost: 0,
+  projectileSpeed: 35,
+  ammo: 4,
+  accuracy: 0.8,
+  drawTime: 18,
+  length: 2.2,
+  color: 0x1a1a1a,
+  accentColor: 0x111111,
+  oversized: true,
+};
+
+const GIANT_BOW: WeaponDef = {
+  id: "giant_bow",
+  name: "Giant Bow",
+  category: "bow",
+  damage: 70,
+  speed: 0.5,
+  reach: 0.5,
+  weight: 6.0,
+  cost: 0,
+  projectileSpeed: 60,
+  ammo: 15,
+  accuracy: 0.85,
+  drawTime: 50,
+  length: 2.8,
+  color: 0x554433,
+  accentColor: 0x888888,
+  oversized: true,
+};
+
+const GIANT_LANCE: WeaponDef = {
+  id: "giant_lance",
+  name: "Giant Lance",
+  category: "polearm",
+  damage: 90,
+  speed: 0.4,
+  reach: 4.5,
+  weight: 12.0,
+  cost: 0,
+  length: 4.0,
+  color: 0x554433,
+  accentColor: 0x888888,
+  oversized: true,
+};
+
 // ---- All weapons map ----
 
 export const WEAPON_DEFS: Record<string, WeaponDef> = {
@@ -942,6 +1073,13 @@ export const WEAPON_DEFS: Record<string, WeaponDef> = {
   giant_war_club: GIANT_WAR_CLUB,
   royal_tower_shield: ROYAL_TOWER_SHIELD,
   royal_sword: ROYAL_SWORD,
+  ancient_bow: ANCIENT_BOW,
+  ancient_crossbow: ANCIENT_CROSSBOW,
+  elder_bow: ELDER_BOW,
+  elder_crossbow: ELDER_CROSSBOW,
+  elder_javelins: ELDER_JAVELINS,
+  giant_bow: GIANT_BOW,
+  giant_lance: GIANT_LANCE,
 };
 
 export const WEAPON_IDS = Object.keys(WEAPON_DEFS);
