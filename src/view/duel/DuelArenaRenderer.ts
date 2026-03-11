@@ -67,6 +67,18 @@ interface Ripple {
   alpha: number;
 }
 
+interface Critter {
+  x: number;
+  y: number;
+  baseX: number;     // origin X for patrol/loop
+  baseY: number;     // origin Y
+  phase: number;     // animation phase offset
+  type: string;      // critter type identifier
+  dir: number;       // 1 = right, -1 = left
+  speed: number;     // movement speed
+  state: number;     // generic state counter
+}
+
 // ---------------------------------------------------------------------------
 // Main renderer
 // ---------------------------------------------------------------------------
@@ -88,6 +100,7 @@ export class DuelArenaRenderer {
   private _mistLayers: MistLayer[] = [];
   private _stars: Star[] = [];
   private _ripples: Ripple[] = [];
+  private _critters: Critter[] = [];
 
   build(arenaId: string, sw: number, sh: number): void {
     this.container.removeChildren();
@@ -99,6 +112,7 @@ export class DuelArenaRenderer {
     this._mistLayers = [];
     this._stars = [];
     this._ripples = [];
+    this._critters = [];
     this._sw = sw;
     this._floorY = Math.round(sh * 0.82);
     this._arenaId = arenaId;
@@ -410,6 +424,11 @@ export class DuelArenaRenderer {
     // --- Atmospheric fog overlay ---
     g.rect(0, floorY * 0.6, sw, floorY * 0.4);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: castle cat patrolling the wall base ---
+    this._critters.push({
+      x: sw * 0.2, y: floorY - 3, baseX: sw * 0.4, baseY: floorY - 3,
+      phase: 0, type: "cat", dir: 1, speed: 0.35, state: 0,
+    });
   }
 
   private _update_camelot(time: number): void {
@@ -474,6 +493,7 @@ export class DuelArenaRenderer {
       g.circle(f.x, f.y + 1, 2);
       g.fill({ color: 0xffffcc, alpha: 0.9 });
     }
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -739,6 +759,11 @@ export class DuelArenaRenderer {
     // --- Fog overlay ---
     g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
+    // --- Unique critter: ghostly swan gliding across the water ---
+    this._critters.push({
+      x: sw * 0.1, y: floorY + 8, baseX: sw * 0.5, baseY: floorY + 8,
+      phase: 0, type: "swan", dir: 1, speed: 0.25, state: 0,
+    });
   }
 
   private _update_avalon(time: number): void {
@@ -801,6 +826,7 @@ export class DuelArenaRenderer {
       g.circle(p.x, p.y, p.radius);
       g.fill({ color: 0xffffff, alpha: pulseAlpha });
     }
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -1158,6 +1184,11 @@ export class DuelArenaRenderer {
     // --- Fog overlay ---
     g.rect(0, floorY * 0.55, sw, floorY * 0.45);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: owl perched on a high branch ---
+    this._critters.push({
+      x: sw * 0.15, y: floorY * 0.45, baseX: sw * 0.15, baseY: floorY * 0.45,
+      phase: 0, type: "owl", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_excalibur(time: number): void {
@@ -1242,6 +1273,7 @@ export class DuelArenaRenderer {
       g.circle(p.x, p.y, p.radius);
       g.fill({ color: p.color, alpha: pulseAlpha });
     }
+    this._drawCritters(g, time);
   }
 
 
@@ -1563,6 +1595,11 @@ export class DuelArenaRenderer {
     // Warm fog
     g.rect(0, floorY * 0.5, sw, floorY * 0.5);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: tiny mouse scurrying along the floor ---
+    this._critters.push({
+      x: sw * 0.8, y: floorY - 1, baseX: sw * 0.5, baseY: floorY - 1,
+      phase: 0, type: "mouse", dir: -1, speed: 0.4, state: 0,
+    });
   }
 
   private _update_round_table(time: number): void {
@@ -1596,6 +1633,7 @@ export class DuelArenaRenderer {
     const pulse = 0.04 + Math.sin(time * 1.2) * 0.02;
     g.circle(fpX, fpY - 15, 35);
     g.fill({ color: 0xff6622, alpha: pulse });
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -1860,6 +1898,11 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: raven circling ominously overhead ---
+    this._critters.push({
+      x: sw * 0.5, y: floorY * 0.2, baseX: sw * 0.5, baseY: floorY * 0.2,
+      phase: 0, type: "raven", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_mordred_throne(time: number): void {
@@ -1902,6 +1945,7 @@ export class DuelArenaRenderer {
         g.fill({ color: 0x220033, alpha: m.alpha });
       }
     }
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -2131,6 +2175,15 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.55, sw, floorY * 0.45);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: white dove perched on the abbey wall ---
+    this._critters.push({
+      x: sw * 0.18, y: floorY * 0.42, baseX: sw * 0.18, baseY: floorY * 0.42,
+      phase: 0, type: "dove", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.82, y: floorY * 0.38, baseX: sw * 0.82, baseY: floorY * 0.38,
+      phase: 2.0, type: "dove", dir: -1, speed: 0, state: 0,
+    });
   }
 
   private _update_glastonbury(time: number): void {
@@ -2154,6 +2207,7 @@ export class DuelArenaRenderer {
     g.fill({ color: 0xeedd88, alpha: pulse });
     g.circle(wX, wY, 18);
     g.fill({ color: 0xffeeaa, alpha: pulse * 0.5 });
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -2333,6 +2387,11 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.35, sw, floorY * 0.65);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: lone wolf silhouette on a distant hilltop ---
+    this._critters.push({
+      x: sw * 0.85, y: floorY * 0.42, baseX: sw * 0.85, baseY: floorY * 0.42,
+      phase: 0, type: "wolf", dir: -1, speed: 0, state: 0,
+    });
   }
 
   private _update_orkney(time: number): void {
@@ -2356,6 +2415,7 @@ export class DuelArenaRenderer {
         g.fill({ color: 0x998877, alpha: m.alpha });
       }
     }
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -2554,6 +2614,15 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.45, sw, floorY * 0.55);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
+    // --- Unique critter: koi fish swimming beneath the surface ---
+    this._critters.push({
+      x: sw * 0.3, y: floorY + 18, baseX: sw * 0.3, baseY: floorY + 18,
+      phase: 0, type: "fish", dir: 1, speed: 0.3, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.6, y: floorY + 28, baseX: sw * 0.6, baseY: floorY + 28,
+      phase: 1.5, type: "fish", dir: -1, speed: 0.22, state: 1,
+    });
   }
 
   private _update_lake(time: number): void {
@@ -2594,6 +2663,7 @@ export class DuelArenaRenderer {
         }
       }
     }
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -2808,6 +2878,11 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: tiny dragon circling the mountain ---
+    this._critters.push({
+      x: sw * 0.5, y: floorY * 0.18, baseX: sw * 0.5, baseY: floorY * 0.18,
+      phase: 0, type: "mini_dragon", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_dragon_peak(time: number): void {
@@ -2846,6 +2921,7 @@ export class DuelArenaRenderer {
     g.fill({ color: 0xff4400, alpha: eyeGlow });
     g.circle(skullX + 6, this._floorY - 16, 3);
     g.fill({ color: 0xff4400, alpha: eyeGlow });
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -3111,6 +3187,15 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: moth drawn to the candle light ---
+    this._critters.push({
+      x: sw * 0.5, y: floorY * 0.35, baseX: sw * 0.5, baseY: floorY * 0.35,
+      phase: 0, type: "moth", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.35, y: floorY * 0.4, baseX: sw * 0.35, baseY: floorY * 0.4,
+      phase: 1.8, type: "moth", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_grail_chapel(time: number): void {
@@ -3150,6 +3235,7 @@ export class DuelArenaRenderer {
     g.fill({ color: 0xffee88, alpha: pulse });
     g.circle(altarX, altarY - 35, 10);
     g.fill({ color: 0xffffcc, alpha: pulse * 0.8 });
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -3371,6 +3457,15 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.55, sw, floorY * 0.45);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.4 });
+    // --- Unique critter: crabs skittering across the sand ---
+    this._critters.push({
+      x: sw * 0.25, y: floorY + 10, baseX: sw * 0.3, baseY: floorY + 10,
+      phase: 0, type: "crab", dir: 1, speed: 0.3, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.7, y: floorY + 15, baseX: sw * 0.65, baseY: floorY + 15,
+      phase: 1.5, type: "crab", dir: -1, speed: 0.25, state: 0,
+    });
   }
 
   private _update_cornwall(time: number): void {
@@ -3425,6 +3520,7 @@ export class DuelArenaRenderer {
       g.circle(f.x, f.y, 6 + Math.sin(time * 3) * 1);
       g.fill({ color: 0xffee88, alpha: 0.3 });
     }
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -3630,6 +3726,19 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.25, sw, floorY * 0.75);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: bats fluttering from the keep windows ---
+    this._critters.push({
+      x: sw * 0.3, y: floorY * 0.3, baseX: sw * 0.3, baseY: floorY * 0.3,
+      phase: 0, type: "bat", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.55, y: floorY * 0.25, baseX: sw * 0.55, baseY: floorY * 0.25,
+      phase: 1.3, type: "bat", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.75, y: floorY * 0.35, baseX: sw * 0.75, baseY: floorY * 0.35,
+      phase: 2.7, type: "bat", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_shadow_keep(time: number): void {
@@ -3678,6 +3787,7 @@ export class DuelArenaRenderer {
       g.lineTo(cx + sway, this._floorY * 0.15 + 40 + (i % 4) * 18);
       g.stroke({ color: 0x444455, width: 1, alpha: 0.3 });
     }
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -3881,6 +3991,11 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.35, sw, floorY * 0.65);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+    // --- Unique critter: crow pecking at the battlefield ---
+    this._critters.push({
+      x: sw * 0.2, y: floorY - 3, baseX: sw * 0.3, baseY: floorY - 3,
+      phase: 0, type: "crow", dir: 1, speed: 0.2, state: 0,
+    });
   }
 
   private _update_camlann(time: number): void {
@@ -3931,6 +4046,7 @@ export class DuelArenaRenderer {
         g.fill({ color: 0x443333, alpha: m.alpha });
       }
     }
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -4116,6 +4232,15 @@ export class DuelArenaRenderer {
         height: 30 + i * 10,
       });
     }
+    // --- Unique critter: glowing fairy dancing through the trees ---
+    this._critters.push({
+      x: sw * 0.7, y: floorY * 0.5, baseX: sw * 0.7, baseY: floorY * 0.5,
+      phase: 0, type: "fairy", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.3, y: floorY * 0.4, baseX: sw * 0.3, baseY: floorY * 0.4,
+      phase: 2.5, type: "fairy", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_broceliande(time: number): void {
@@ -4152,6 +4277,7 @@ export class DuelArenaRenderer {
         g.fill({ color: 0x446644, alpha: m.alpha });
       }
     }
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -4362,6 +4488,15 @@ export class DuelArenaRenderer {
         height: 25 + i * 8,
       });
     }
+    // --- Unique critter: seagulls soaring on the coastal wind ---
+    this._critters.push({
+      x: sw * 0.2, y: floorY * 0.15, baseX: sw * 0.5, baseY: floorY * 0.15,
+      phase: 0, type: "seagull", dir: 1, speed: 0.5, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.7, y: floorY * 0.25, baseX: sw * 0.5, baseY: floorY * 0.25,
+      phase: 1.8, type: "seagull", dir: -1, speed: 0.4, state: 0,
+    });
   }
 
   private _update_tintagel(time: number): void {
@@ -4417,6 +4552,540 @@ export class DuelArenaRenderer {
         g.ellipse(mx, m.y + wave, 70, m.height / 2);
         g.fill({ color: 0x889999, alpha: m.alpha });
       }
+    }
+    this._drawCritters(g, time);
+  }
+
+  // =========================================================================
+  // Critter drawing helpers — each draws a tiny animated creature
+  // =========================================================================
+
+  private _drawCritters(g: Graphics, time: number): void {
+    for (const c of this._critters) {
+      switch (c.type) {
+        case "cat": this._drawCat(g, c, time); break;
+        case "swan": this._drawSwan(g, c, time); break;
+        case "owl": this._drawOwl(g, c, time); break;
+        case "fairy": this._drawFairy(g, c, time); break;
+        case "seagull": this._drawSeagull(g, c, time); break;
+        case "mouse": this._drawMouse(g, c, time); break;
+        case "raven": this._drawRaven(g, c, time); break;
+        case "dove": this._drawDove(g, c, time); break;
+        case "wolf": this._drawWolf(g, c, time); break;
+        case "fish": this._drawFish(g, c, time); break;
+        case "mini_dragon": this._drawMiniDragon(g, c, time); break;
+        case "moth": this._drawMoth(g, c, time); break;
+        case "crab": this._drawCrab(g, c, time); break;
+        case "bat": this._drawBat(g, c, time); break;
+        case "crow": this._drawCrow(g, c, time); break;
+      }
+    }
+  }
+
+  // Cat: walks back and forth, tail swishes, ears poke up
+  private _drawCat(g: Graphics, c: Critter, time: number): void {
+    // Patrol back and forth
+    c.x += c.speed * c.dir;
+    if (c.x > c.baseX + 120) c.dir = -1;
+    if (c.x < c.baseX - 120) c.dir = 1;
+    const x = c.x, y = c.y;
+    const d = c.dir;
+    const walk = Math.sin(time * 4 + c.phase) * 1.5; // bobbing
+    const tailSwish = Math.sin(time * 2.5 + c.phase) * 6;
+    // Body (oval)
+    g.ellipse(x, y - 5 + walk * 0.3, 10, 6);
+    g.fill({ color: 0x885533 });
+    // Head
+    g.circle(x + 9 * d, y - 9 + walk * 0.2, 5);
+    g.fill({ color: 0x885533 });
+    // Ears (triangles)
+    g.moveTo(x + 7 * d, y - 14 + walk * 0.2);
+    g.lineTo(x + 5 * d, y - 8 + walk * 0.2);
+    g.lineTo(x + 10 * d, y - 9 + walk * 0.2);
+    g.closePath();
+    g.fill({ color: 0x885533 });
+    g.moveTo(x + 12 * d, y - 13 + walk * 0.2);
+    g.lineTo(x + 10 * d, y - 8 + walk * 0.2);
+    g.lineTo(x + 14 * d, y - 8 + walk * 0.2);
+    g.closePath();
+    g.fill({ color: 0x885533 });
+    // Eyes (tiny dots)
+    g.circle(x + 11 * d, y - 10 + walk * 0.2, 1);
+    g.fill({ color: 0x44ff44, alpha: 0.9 });
+    // Tail (curved line)
+    g.moveTo(x - 10 * d, y - 5);
+    g.lineTo(x - 16 * d + tailSwish * d * 0.3, y - 12);
+    g.stroke({ color: 0x885533, width: 2 });
+    // Legs (small lines)
+    const legBob1 = Math.sin(time * 4 + c.phase) * 2;
+    const legBob2 = Math.sin(time * 4 + c.phase + Math.PI) * 2;
+    g.moveTo(x - 5, y).lineTo(x - 5 + legBob1, y + 4);
+    g.stroke({ color: 0x774422, width: 1.5 });
+    g.moveTo(x + 5, y).lineTo(x + 5 + legBob2, y + 4);
+    g.stroke({ color: 0x774422, width: 1.5 });
+  }
+
+  // Swan: glides gracefully across water
+  private _drawSwan(g: Graphics, c: Critter, time: number): void {
+    c.x += c.speed * c.dir;
+    if (c.x > this._sw + 30) { c.x = -30; }
+    if (c.x < -30) { c.x = this._sw + 30; }
+    const x = c.x, y = c.y;
+    const bob = Math.sin(time * 1.2 + c.phase) * 2;
+    // Body (white oval)
+    g.ellipse(x, y + bob, 14, 8);
+    g.fill({ color: 0xeeeeff, alpha: 0.85 });
+    // Neck (curved upward)
+    g.moveTo(x + 10 * c.dir, y - 2 + bob);
+    g.quadraticCurveTo(x + 14 * c.dir, y - 18 + bob, x + 8 * c.dir, y - 22 + bob);
+    g.stroke({ color: 0xeeeeff, width: 3 });
+    // Head
+    g.circle(x + 8 * c.dir, y - 23 + bob, 3);
+    g.fill({ color: 0xeeeeff });
+    // Beak
+    g.moveTo(x + 8 * c.dir, y - 23 + bob);
+    g.lineTo(x + 14 * c.dir, y - 22 + bob);
+    g.stroke({ color: 0xdd8833, width: 1.5 });
+    // Reflection in water (faint)
+    g.ellipse(x, y + 10 + bob * 0.3, 12, 4);
+    g.fill({ color: 0xccccdd, alpha: 0.12 });
+  }
+
+  // Owl: perched, occasionally blinks, head sways gently
+  private _drawOwl(g: Graphics, c: Critter, time: number): void {
+    const x = c.x, y = c.y;
+    const headTilt = Math.sin(time * 0.6 + c.phase) * 2;
+    // Body (round)
+    g.ellipse(x, y, 8, 10);
+    g.fill({ color: 0x886644 });
+    // Chest (lighter)
+    g.ellipse(x, y + 2, 5, 7);
+    g.fill({ color: 0xbbaa88 });
+    // Head
+    g.circle(x + headTilt, y - 12, 7);
+    g.fill({ color: 0x886644 });
+    // Ear tufts
+    g.moveTo(x - 5 + headTilt, y - 18);
+    g.lineTo(x - 3 + headTilt, y - 12);
+    g.lineTo(x - 7 + headTilt, y - 13);
+    g.closePath();
+    g.fill({ color: 0x886644 });
+    g.moveTo(x + 5 + headTilt, y - 18);
+    g.lineTo(x + 3 + headTilt, y - 12);
+    g.lineTo(x + 7 + headTilt, y - 13);
+    g.closePath();
+    g.fill({ color: 0x886644 });
+    // Eyes — blink every ~4 seconds
+    const blink = Math.sin(time * 1.6 + c.phase);
+    const eyeH = blink > 0.92 ? 0.5 : 2.5;
+    g.ellipse(x - 3 + headTilt, y - 13, 2.5, eyeH);
+    g.fill({ color: 0xffdd00 });
+    g.ellipse(x + 3 + headTilt, y - 13, 2.5, eyeH);
+    g.fill({ color: 0xffdd00 });
+    // Pupils
+    if (eyeH > 1) {
+      g.circle(x - 3 + headTilt, y - 13, 1);
+      g.fill({ color: 0x111100 });
+      g.circle(x + 3 + headTilt, y - 13, 1);
+      g.fill({ color: 0x111100 });
+    }
+  }
+
+  // Fairy: glowing orb with wings, moves in figure-eight
+  private _drawFairy(g: Graphics, c: Critter, time: number): void {
+    const t = time * 0.8 + c.phase;
+    c.x = c.baseX + Math.sin(t) * 40;
+    c.y = c.baseY + Math.sin(t * 2) * 20;
+    const x = c.x, y = c.y;
+    // Outer glow
+    g.circle(x, y, 10);
+    g.fill({ color: 0x88ffaa, alpha: 0.08 + Math.sin(time * 3) * 0.03 });
+    g.circle(x, y, 6);
+    g.fill({ color: 0xaaffcc, alpha: 0.15 });
+    // Core
+    g.circle(x, y, 2.5);
+    g.fill({ color: 0xeeffee, alpha: 0.9 });
+    // Wings (fluttering)
+    const wingFlap = Math.sin(time * 12 + c.phase) * 3;
+    g.ellipse(x - 4, y - 1 - wingFlap, 4, 2.5);
+    g.fill({ color: 0xccffdd, alpha: 0.5 });
+    g.ellipse(x + 4, y - 1 + wingFlap, 4, 2.5);
+    g.fill({ color: 0xccffdd, alpha: 0.5 });
+    // Trail sparkle
+    const trailX = c.baseX + Math.sin(t - 0.3) * 40;
+    const trailY = c.baseY + Math.sin((t - 0.3) * 2) * 20;
+    g.circle(trailX, trailY, 1.5);
+    g.fill({ color: 0xaaffbb, alpha: 0.3 });
+  }
+
+  // Seagull: soars across the sky with wing flaps
+  private _drawSeagull(g: Graphics, c: Critter, time: number): void {
+    c.x += c.speed * c.dir;
+    if (c.x > this._sw + 40) c.x = -40;
+    if (c.x < -40) c.x = this._sw + 40;
+    const x = c.x, y = c.y + Math.sin(time * 1.0 + c.phase) * 8;
+    const wingAngle = Math.sin(time * 3 + c.phase) * 0.4;
+    // Body
+    g.ellipse(x, y, 6, 3);
+    g.fill({ color: 0xdddddd });
+    // Wings (V shape that flaps)
+    g.moveTo(x, y);
+    g.lineTo(x - 14, y - 8 - wingAngle * 12);
+    g.lineTo(x - 18, y - 4 - wingAngle * 8);
+    g.stroke({ color: 0xdddddd, width: 2 });
+    g.moveTo(x, y);
+    g.lineTo(x + 14, y - 8 - wingAngle * 12);
+    g.lineTo(x + 18, y - 4 - wingAngle * 8);
+    g.stroke({ color: 0xdddddd, width: 2 });
+  }
+
+  // Mouse: tiny, scurries fast, pauses to sniff
+  private _drawMouse(g: Graphics, c: Critter, time: number): void {
+    // Scurry behavior: run, pause, run
+    const cycle = (time * 0.5 + c.phase) % 6;
+    if (cycle < 4) { // running
+      c.x += c.speed * c.dir * 1.8;
+    }
+    // else paused (sniffing)
+    if (c.x > c.baseX + 140) c.dir = -1;
+    if (c.x < c.baseX - 140) c.dir = 1;
+    const x = c.x, y = c.y;
+    const d = c.dir;
+    const scurry = cycle < 4 ? Math.sin(time * 12) * 1 : 0;
+    // Body
+    g.ellipse(x, y - 2 + scurry * 0.3, 5, 3);
+    g.fill({ color: 0x887766 });
+    // Head
+    g.circle(x + 5 * d, y - 3 + scurry * 0.2, 3);
+    g.fill({ color: 0x887766 });
+    // Ears
+    g.circle(x + 4 * d, y - 6 + scurry * 0.2, 2);
+    g.fill({ color: 0xccaa99 });
+    g.circle(x + 7 * d, y - 5 + scurry * 0.2, 2);
+    g.fill({ color: 0xccaa99 });
+    // Eye
+    g.circle(x + 6 * d, y - 3 + scurry * 0.2, 0.8);
+    g.fill({ color: 0x111111 });
+    // Tail
+    g.moveTo(x - 5 * d, y - 2);
+    g.quadraticCurveTo(x - 10 * d, y - 6, x - 13 * d, y - 3);
+    g.stroke({ color: 0xaa9988, width: 1 });
+  }
+
+  // Raven: circles overhead ominously
+  private _drawRaven(g: Graphics, c: Critter, time: number): void {
+    const t = time * 0.4 + c.phase;
+    c.x = c.baseX + Math.cos(t) * 80;
+    c.y = c.baseY + Math.sin(t) * 25 + Math.sin(time * 0.7) * 5;
+    const x = c.x, y = c.y;
+    const wingBeat = Math.sin(time * 2.5 + c.phase) * 0.5;
+    // Body
+    g.ellipse(x, y, 7, 4);
+    g.fill({ color: 0x222233 });
+    // Wings
+    g.moveTo(x - 3, y);
+    g.lineTo(x - 16, y - 6 - wingBeat * 10);
+    g.lineTo(x - 20, y - 2 - wingBeat * 6);
+    g.lineTo(x - 5, y + 1);
+    g.closePath();
+    g.fill({ color: 0x1a1a2a });
+    g.moveTo(x + 3, y);
+    g.lineTo(x + 16, y - 6 - wingBeat * 10);
+    g.lineTo(x + 20, y - 2 - wingBeat * 6);
+    g.lineTo(x + 5, y + 1);
+    g.closePath();
+    g.fill({ color: 0x1a1a2a });
+    // Beak
+    const bDir = Math.cos(t) > 0 ? 1 : -1;
+    g.moveTo(x + 7 * bDir, y - 1);
+    g.lineTo(x + 11 * bDir, y);
+    g.stroke({ color: 0x444444, width: 1.5 });
+  }
+
+  // Dove: perched, occasionally flutters wings
+  private _drawDove(g: Graphics, c: Critter, time: number): void {
+    const x = c.x, y = c.y;
+    const flutter = Math.sin(time * 1.8 + c.phase);
+    const wingUp = flutter > 0.85 ? (flutter - 0.85) * 40 : 0;
+    // Body
+    g.ellipse(x, y, 7, 5);
+    g.fill({ color: 0xeeeeff });
+    // Head
+    g.circle(x + 6 * c.dir, y - 5, 4);
+    g.fill({ color: 0xeeeeff });
+    // Eye
+    g.circle(x + 7 * c.dir, y - 6, 1);
+    g.fill({ color: 0x222222 });
+    // Beak
+    g.moveTo(x + 9 * c.dir, y - 5);
+    g.lineTo(x + 12 * c.dir, y - 4);
+    g.stroke({ color: 0xddaa55, width: 1 });
+    // Wings (flutter occasionally)
+    if (wingUp > 0) {
+      g.moveTo(x - 3, y - 2);
+      g.lineTo(x - 12, y - 8 - wingUp);
+      g.lineTo(x - 6, y - 1);
+      g.closePath();
+      g.fill({ color: 0xddddee });
+      g.moveTo(x + 3, y - 2);
+      g.lineTo(x + 12, y - 8 - wingUp);
+      g.lineTo(x + 6, y - 1);
+      g.closePath();
+      g.fill({ color: 0xddddee });
+    }
+    // Tail feathers
+    g.moveTo(x - 6 * c.dir, y + 1);
+    g.lineTo(x - 12 * c.dir, y + 3);
+    g.lineTo(x - 10 * c.dir, y - 1);
+    g.closePath();
+    g.fill({ color: 0xddddee });
+  }
+
+  // Wolf: silhouette sitting on a distant hill, head tilts up to howl periodically
+  private _drawWolf(g: Graphics, c: Critter, time: number): void {
+    const x = c.x, y = c.y;
+    // Howl cycle: every ~8 seconds, head tilts up
+    const howlCycle = (time * 0.8 + c.phase) % 8;
+    const howling = howlCycle > 6.5;
+    // Body silhouette (sitting pose)
+    g.ellipse(x, y - 4, 8, 10);
+    g.fill({ color: 0x222233, alpha: 0.7 });
+    // Head
+    const hx = x + 4 * c.dir;
+    const hy = y - 16 + (howling ? -3 : 0);
+    g.circle(hx, hy, 5);
+    g.fill({ color: 0x222233, alpha: 0.7 });
+    // Snout
+    g.moveTo(hx, hy);
+    g.lineTo(hx + 7 * c.dir, hy + (howling ? -4 : 1));
+    g.stroke({ color: 0x222233, width: 3, alpha: 0.7 });
+    // Ears
+    g.moveTo(hx - 3, hy - 4);
+    g.lineTo(hx - 2, hy - 9);
+    g.lineTo(hx + 1, hy - 4);
+    g.closePath();
+    g.fill({ color: 0x222233, alpha: 0.7 });
+    g.moveTo(hx + 3, hy - 4);
+    g.lineTo(hx + 4, hy - 9);
+    g.lineTo(hx + 6, hy - 4);
+    g.closePath();
+    g.fill({ color: 0x222233, alpha: 0.7 });
+    // Howl lines (when howling)
+    if (howling) {
+      for (let i = 0; i < 3; i++) {
+        const arc = 6 + i * 4;
+        const aAlpha = 0.2 - i * 0.06;
+        g.arc(hx + 7 * c.dir, hy - 4, arc, -0.8, -0.2);
+        g.stroke({ color: 0xaabbcc, width: 1, alpha: aAlpha });
+      }
+    }
+  }
+
+  // Fish: koi swimming under water surface
+  private _drawFish(g: Graphics, c: Critter, time: number): void {
+    c.x += c.speed * c.dir;
+    if (c.x > this._sw + 20) c.x = -20;
+    if (c.x < -20) c.x = this._sw + 20;
+    const x = c.x;
+    const y = c.y + Math.sin(time * 1.5 + c.phase) * 4;
+    const d = c.dir;
+    const tailWag = Math.sin(time * 4 + c.phase) * 3;
+    // Body (oval)
+    g.ellipse(x, y, 8, 4);
+    g.fill({ color: c.state === 0 ? 0xee6622 : 0xeedddd, alpha: 0.55 });
+    // Tail
+    g.moveTo(x - 7 * d, y);
+    g.lineTo(x - 13 * d, y - 4 + tailWag);
+    g.lineTo(x - 13 * d, y + 4 + tailWag);
+    g.closePath();
+    g.fill({ color: c.state === 0 ? 0xcc4411 : 0xddcccc, alpha: 0.45 });
+    // Eye
+    g.circle(x + 4 * d, y - 1, 1);
+    g.fill({ color: 0x111111, alpha: 0.5 });
+  }
+
+  // Mini dragon: circles a point in the background sky
+  private _drawMiniDragon(g: Graphics, c: Critter, time: number): void {
+    const t = time * 0.6 + c.phase;
+    c.x = c.baseX + Math.cos(t) * 55;
+    c.y = c.baseY + Math.sin(t) * 20 + Math.sin(time * 1.2) * 5;
+    const x = c.x, y = c.y;
+    const d = Math.cos(t) > 0 ? 1 : -1;
+    const wingFlap = Math.sin(time * 4 + c.phase) * 0.6;
+    // Body
+    g.ellipse(x, y, 9, 5);
+    g.fill({ color: 0xaa3311, alpha: 0.7 });
+    // Wings
+    g.moveTo(x - 4, y - 2);
+    g.lineTo(x - 18, y - 10 - wingFlap * 15);
+    g.lineTo(x - 8, y + 1);
+    g.closePath();
+    g.fill({ color: 0xcc4422, alpha: 0.5 });
+    g.moveTo(x + 4, y - 2);
+    g.lineTo(x + 18, y - 10 - wingFlap * 15);
+    g.lineTo(x + 8, y + 1);
+    g.closePath();
+    g.fill({ color: 0xcc4422, alpha: 0.5 });
+    // Head
+    g.circle(x + 8 * d, y - 4, 4);
+    g.fill({ color: 0xaa3311, alpha: 0.7 });
+    // Tail
+    g.moveTo(x - 8 * d, y + 1);
+    g.quadraticCurveTo(x - 16 * d, y + 8, x - 20 * d, y + 3);
+    g.stroke({ color: 0xaa3311, width: 2, alpha: 0.6 });
+    // Fire puff (small)
+    const firePuff = Math.sin(time * 3) > 0.7;
+    if (firePuff) {
+      g.circle(x + 13 * d, y - 5, 3);
+      g.fill({ color: 0xff6600, alpha: 0.4 });
+      g.circle(x + 15 * d, y - 4, 2);
+      g.fill({ color: 0xffaa00, alpha: 0.3 });
+    }
+  }
+
+  // Moth: flutters erratically around a light source
+  private _drawMoth(g: Graphics, c: Critter, time: number): void {
+    const t = time * 2.5 + c.phase;
+    c.x = c.baseX + Math.sin(t) * 14 + Math.sin(t * 2.3) * 8;
+    c.y = c.baseY + Math.cos(t * 1.7) * 10 + Math.sin(t * 0.9) * 5;
+    const x = c.x, y = c.y;
+    const wingFlap = Math.sin(time * 15 + c.phase) * 3;
+    // Wings
+    g.ellipse(x - 3, y - wingFlap * 0.3, 3, 2 + Math.abs(wingFlap) * 0.3);
+    g.fill({ color: 0xccbb99, alpha: 0.6 });
+    g.ellipse(x + 3, y + wingFlap * 0.3, 3, 2 + Math.abs(wingFlap) * 0.3);
+    g.fill({ color: 0xccbb99, alpha: 0.6 });
+    // Body
+    g.ellipse(x, y, 1.5, 3);
+    g.fill({ color: 0xaa9977, alpha: 0.7 });
+  }
+
+  // Crab: scuttles sideways across the sand
+  private _drawCrab(g: Graphics, c: Critter, time: number): void {
+    // Scuttle sideways
+    c.x += c.speed * c.dir;
+    if (c.x > c.baseX + 100) c.dir = -1;
+    if (c.x < c.baseX - 100) c.dir = 1;
+    const x = c.x, y = c.y;
+    const scuttle = Math.sin(time * 6 + c.phase) * 1;
+    // Shell (wide oval)
+    g.ellipse(x, y - 3 + scuttle, 7, 4);
+    g.fill({ color: 0xcc5533 });
+    // Eye stalks
+    g.moveTo(x - 3, y - 6 + scuttle);
+    g.lineTo(x - 4, y - 9 + scuttle);
+    g.stroke({ color: 0xcc5533, width: 1 });
+    g.circle(x - 4, y - 9 + scuttle, 1);
+    g.fill({ color: 0x111111 });
+    g.moveTo(x + 3, y - 6 + scuttle);
+    g.lineTo(x + 4, y - 9 + scuttle);
+    g.stroke({ color: 0xcc5533, width: 1 });
+    g.circle(x + 4, y - 9 + scuttle, 1);
+    g.fill({ color: 0x111111 });
+    // Claws
+    const clawOpen = Math.sin(time * 2 + c.phase) * 2;
+    g.moveTo(x - 7, y - 2 + scuttle);
+    g.lineTo(x - 13, y - 4 + scuttle - clawOpen);
+    g.stroke({ color: 0xcc5533, width: 2 });
+    g.moveTo(x - 13, y - 4 + scuttle - clawOpen);
+    g.lineTo(x - 11, y - 6 + scuttle - clawOpen);
+    g.stroke({ color: 0xcc5533, width: 1.5 });
+    g.moveTo(x + 7, y - 2 + scuttle);
+    g.lineTo(x + 13, y - 4 + scuttle + clawOpen);
+    g.stroke({ color: 0xcc5533, width: 2 });
+    g.moveTo(x + 13, y - 4 + scuttle + clawOpen);
+    g.lineTo(x + 11, y - 6 + scuttle + clawOpen);
+    g.stroke({ color: 0xcc5533, width: 1.5 });
+    // Legs (3 per side, wiggling)
+    for (let i = 0; i < 3; i++) {
+      const legPhase = Math.sin(time * 6 + c.phase + i * 1.2) * 2;
+      g.moveTo(x - 4 - i * 2, y + scuttle);
+      g.lineTo(x - 7 - i * 2 + legPhase, y + 4 + scuttle);
+      g.stroke({ color: 0xbb4422, width: 1 });
+      g.moveTo(x + 4 + i * 2, y + scuttle);
+      g.lineTo(x + 7 + i * 2 - legPhase, y + 4 + scuttle);
+      g.stroke({ color: 0xbb4422, width: 1 });
+    }
+  }
+
+  // Bat: erratic fluttering from a window
+  private _drawBat(g: Graphics, c: Critter, time: number): void {
+    const t = time * 1.5 + c.phase;
+    c.x = c.baseX + Math.sin(t * 0.7) * 60 + Math.sin(t * 1.3) * 20;
+    c.y = c.baseY + Math.sin(t * 0.5) * 25 + Math.cos(t * 1.1) * 10;
+    const x = c.x, y = c.y;
+    const wingFlap = Math.sin(time * 8 + c.phase);
+    // Body (tiny)
+    g.ellipse(x, y, 3, 4);
+    g.fill({ color: 0x222222, alpha: 0.8 });
+    // Wings (jagged membrane)
+    const wSpan = 12 + wingFlap * 6;
+    g.moveTo(x - 2, y - 1);
+    g.lineTo(x - wSpan, y - 4 - wingFlap * 4);
+    g.lineTo(x - wSpan * 0.7, y);
+    g.lineTo(x - wSpan * 0.4, y - 2 - wingFlap * 2);
+    g.lineTo(x - 2, y + 2);
+    g.closePath();
+    g.fill({ color: 0x1a1a1a, alpha: 0.7 });
+    g.moveTo(x + 2, y - 1);
+    g.lineTo(x + wSpan, y - 4 - wingFlap * 4);
+    g.lineTo(x + wSpan * 0.7, y);
+    g.lineTo(x + wSpan * 0.4, y - 2 - wingFlap * 2);
+    g.lineTo(x + 2, y + 2);
+    g.closePath();
+    g.fill({ color: 0x1a1a1a, alpha: 0.7 });
+    // Ears
+    g.moveTo(x - 2, y - 4);
+    g.lineTo(x - 3, y - 7);
+    g.lineTo(x, y - 4);
+    g.closePath();
+    g.fill({ color: 0x222222, alpha: 0.8 });
+    g.moveTo(x + 2, y - 4);
+    g.lineTo(x + 3, y - 7);
+    g.lineTo(x, y - 4);
+    g.closePath();
+    g.fill({ color: 0x222222, alpha: 0.8 });
+  }
+
+  // Crow: walks on ground, hops occasionally, pecks
+  private _drawCrow(g: Graphics, c: Critter, time: number): void {
+    // Hop/peck behavior
+    const cycle = (time * 0.6 + c.phase) % 5;
+    const hopping = cycle > 3.5 && cycle < 4.2;
+    const pecking = cycle > 4.2;
+    const hopY = hopping ? -6 : 0;
+    c.x += c.speed * c.dir * (hopping ? 2 : 0.5);
+    if (c.x > c.baseX + 100) c.dir = -1;
+    if (c.x < c.baseX - 100) c.dir = 1;
+    const x = c.x, y = c.y + hopY;
+    const d = c.dir;
+    // Body
+    g.ellipse(x, y - 4, 7, 5);
+    g.fill({ color: 0x111118 });
+    // Head
+    const headY = pecking ? y - 4 : y - 10;
+    const headX = pecking ? x + 8 * d : x + 5 * d;
+    g.circle(headX, headY, 4);
+    g.fill({ color: 0x111118 });
+    // Beak
+    g.moveTo(headX + 3 * d, headY);
+    g.lineTo(headX + 8 * d, headY + (pecking ? 2 : 1));
+    g.stroke({ color: 0x444400, width: 1.5 });
+    // Eye
+    g.circle(headX + 2 * d, headY - 1, 1);
+    g.fill({ color: 0x444444 });
+    // Tail feathers
+    g.moveTo(x - 6 * d, y - 5);
+    g.lineTo(x - 12 * d, y - 8);
+    g.lineTo(x - 10 * d, y - 3);
+    g.closePath();
+    g.fill({ color: 0x0a0a12 });
+    // Legs
+    if (!hopping) {
+      g.moveTo(x - 2, y).lineTo(x - 2, y + 5);
+      g.stroke({ color: 0x333333, width: 1 });
+      g.moveTo(x + 2, y).lineTo(x + 2, y + 5);
+      g.stroke({ color: 0x333333, width: 1 });
     }
   }
 
