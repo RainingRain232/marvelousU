@@ -40,8 +40,8 @@ export class WarbandShopView {
   }
 
   private _render(player: WarbandFighter): void {
-    const weapons = Object.values(WEAPON_DEFS);
-    const armors = Object.values(ARMOR_DEFS);
+    const weapons = Object.values(WEAPON_DEFS).filter((w) => !w.oversized);
+    const armors = Object.values(ARMOR_DEFS).filter((a) => !a.oversized);
 
     const categories = [
       { label: "⚔ One-Handed", items: weapons.filter((w) => w.category === "one_handed") },

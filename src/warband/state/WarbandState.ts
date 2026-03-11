@@ -171,6 +171,7 @@ export interface WarbandFighter {
   // Creature (null for humanoid fighters)
   creatureType: CreatureType | null;
   creatureRadius: number; // effective collision radius
+  scale: number; // visual & collision scale (1.0 = normal human)
 
   // Animation
   walkCycle: number; // 0-1 walk animation phase
@@ -343,6 +344,7 @@ export function createDefaultFighter(
 
     creatureType: null,
     creatureRadius: WB.FIGHTER_RADIUS,
+    scale: 1.0,
 
     walkCycle: 0,
     animBlend: 0,

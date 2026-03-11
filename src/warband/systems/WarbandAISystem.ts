@@ -124,9 +124,10 @@ export class WarbandAISystem {
     const sinR = Math.sin(fighter.rotation);
     const cosR = Math.cos(fighter.rotation);
     const creatureDef = fighter.creatureType ? CREATURE_DEFS[fighter.creatureType] : null;
-    const baseWalk = creatureDef ? creatureDef.speed : (mounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED);
-    const baseBack = creatureDef ? creatureDef.speed * 0.5 : (mounted ? WB.HORSE_BACK_SPEED : WB.BACK_SPEED);
-    const baseStrafe = creatureDef ? creatureDef.speed * 0.7 : (mounted ? WB.HORSE_STRAFE_SPEED : WB.STRAFE_SPEED);
+    const scaleMult = (fighter.scale !== 1.0 && !creatureDef) ? fighter.scale * 0.6 : 1.0; // larger units are slower proportionally
+    const baseWalk = creatureDef ? creatureDef.speed : (mounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED * scaleMult);
+    const baseBack = creatureDef ? creatureDef.speed * 0.5 : (mounted ? WB.HORSE_BACK_SPEED : WB.BACK_SPEED * scaleMult);
+    const baseStrafe = creatureDef ? creatureDef.speed * 0.7 : (mounted ? WB.HORSE_STRAFE_SPEED : WB.STRAFE_SPEED * scaleMult);
 
     // Siege mode objective movement: if no nearby enemies, move toward objective
     const isSiege = _state.battleType === BattleType.SIEGE;

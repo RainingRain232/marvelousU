@@ -478,7 +478,7 @@ export class WarbandCombatSystem {
         const mountOffset = target.isMounted ? WB.HORSE_HEIGHT : 0;
         const hitRadius = target.isMounted ? WB.HORSE_RADIUS : target.creatureRadius + 0.15;
 
-        const targetHeight = target.creatureType ? CREATURE_DEFS[target.creatureType].height : WB.FIGHTER_HEIGHT;
+        const targetHeight = target.creatureType ? CREATURE_DEFS[target.creatureType].height : WB.FIGHTER_HEIGHT * (target.scale || 1.0);
         const dx = proj.position.x - target.position.x;
         const dy = proj.position.y - (target.position.y + mountOffset + targetHeight * 0.5);
         const dz = proj.position.z - target.position.z;

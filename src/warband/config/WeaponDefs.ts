@@ -36,6 +36,9 @@ export interface WeaponDef {
   color: number; // primary color
   accentColor?: number;
   shieldShape?: "round" | "rect"; // shield face shape (default round)
+
+  // Oversized (for large units only, not available in shop)
+  oversized?: boolean;
 }
 
 // ---- Melee: One-Handed Swords ----
@@ -695,6 +698,179 @@ const NORMAN_SHIELD: WeaponDef = {
   shieldShape: "rect",
 };
 
+// ---- Oversized weapons (large units only, not in shop) ----
+
+const ANCIENT_SWORD: WeaponDef = {
+  id: "ancient_sword",
+  name: "Ancient Sword",
+  category: "one_handed",
+  damage: 40,
+  speed: 0.8,
+  reach: 1.4,
+  weight: 4.0,
+  cost: 0,
+  length: 1.1,
+  color: 0x555555,
+  accentColor: 0x333333,
+  oversized: true,
+};
+
+const ANCIENT_TOWER_SHIELD: WeaponDef = {
+  id: "ancient_tower_shield",
+  name: "Ancient Tower Shield",
+  category: "shield",
+  damage: 18,
+  speed: 0.55,
+  reach: 0.6,
+  weight: 10.0,
+  cost: 0,
+  blockArc: Math.PI * 1.0,
+  shieldHp: 500,
+  length: 1.1,
+  color: 0x3a3a3a,
+  accentColor: 0x666666,
+  oversized: true,
+};
+
+const ANCIENT_PIKE: WeaponDef = {
+  id: "ancient_pike",
+  name: "Ancient Pike",
+  category: "polearm",
+  damage: 38,
+  speed: 0.65,
+  reach: 3.2,
+  weight: 6.0,
+  cost: 0,
+  length: 3.0,
+  color: 0x555555,
+  accentColor: 0x333333,
+  oversized: true,
+};
+
+const ANCIENT_BATTLE_AXE: WeaponDef = {
+  id: "ancient_battle_axe",
+  name: "Ancient Battle Axe",
+  category: "two_handed",
+  damage: 60,
+  speed: 0.6,
+  reach: 1.6,
+  weight: 7.0,
+  cost: 0,
+  length: 1.4,
+  color: 0x444444,
+  accentColor: 0x333333,
+  oversized: true,
+};
+
+const ELDER_SWORD: WeaponDef = {
+  id: "elder_sword",
+  name: "Elder Sword",
+  category: "one_handed",
+  damage: 55,
+  speed: 0.7,
+  reach: 1.6,
+  weight: 5.0,
+  cost: 0,
+  length: 1.3,
+  color: 0x222222,
+  accentColor: 0x111111,
+  oversized: true,
+};
+
+const ELDER_TOWER_SHIELD: WeaponDef = {
+  id: "elder_tower_shield",
+  name: "Elder Tower Shield",
+  category: "shield",
+  damage: 22,
+  speed: 0.5,
+  reach: 0.7,
+  weight: 14.0,
+  cost: 0,
+  blockArc: Math.PI * 1.1,
+  shieldHp: 700,
+  length: 1.3,
+  color: 0x1a1a1a,
+  accentColor: 0x444444,
+  oversized: true,
+};
+
+const ELDER_LANCE: WeaponDef = {
+  id: "elder_lance",
+  name: "Elder Lance",
+  category: "polearm",
+  damage: 52,
+  speed: 0.55,
+  reach: 4.0,
+  weight: 8.0,
+  cost: 0,
+  length: 3.6,
+  color: 0x222222,
+  accentColor: 0x111111,
+  oversized: true,
+};
+
+const ELDER_GREAT_AXE: WeaponDef = {
+  id: "elder_great_axe",
+  name: "Elder Great Axe",
+  category: "two_handed",
+  damage: 80,
+  speed: 0.5,
+  reach: 2.0,
+  weight: 10.0,
+  cost: 0,
+  length: 1.8,
+  color: 0x1a1a1a,
+  accentColor: 0x111111,
+  oversized: true,
+};
+
+const GIANT_WAR_CLUB: WeaponDef = {
+  id: "giant_war_club",
+  name: "Giant War Club",
+  category: "two_handed",
+  damage: 100,
+  speed: 0.4,
+  reach: 2.4,
+  weight: 14.0,
+  cost: 0,
+  length: 2.2,
+  color: 0x554433,
+  accentColor: 0x888888,
+  oversized: true,
+};
+
+const ROYAL_TOWER_SHIELD: WeaponDef = {
+  id: "royal_tower_shield",
+  name: "Royal Tower Shield",
+  category: "shield",
+  damage: 16,
+  speed: 0.55,
+  reach: 0.55,
+  weight: 9.0,
+  cost: 0,
+  blockArc: Math.PI * 1.0,
+  shieldHp: 500,
+  length: 0.95,
+  color: 0xdaa520,
+  accentColor: 0xeedd55,
+  oversized: true,
+};
+
+const ROYAL_SWORD: WeaponDef = {
+  id: "royal_sword",
+  name: "Royal Sword",
+  category: "one_handed",
+  damage: 45,
+  speed: 0.9,
+  reach: 1.2,
+  weight: 2.5,
+  cost: 0,
+  length: 0.95,
+  color: 0xe8e8e8,
+  accentColor: 0xdaa520,
+  oversized: true,
+};
+
 // ---- All weapons map ----
 
 export const WEAPON_DEFS: Record<string, WeaponDef> = {
@@ -753,6 +929,19 @@ export const WEAPON_DEFS: Record<string, WeaponDef> = {
   scutum: SCUTUM,
   tower_shield: TOWER_SHIELD,
   pavise: PAVISE,
+
+  // Oversized (large units only)
+  ancient_sword: ANCIENT_SWORD,
+  ancient_tower_shield: ANCIENT_TOWER_SHIELD,
+  ancient_pike: ANCIENT_PIKE,
+  ancient_battle_axe: ANCIENT_BATTLE_AXE,
+  elder_sword: ELDER_SWORD,
+  elder_tower_shield: ELDER_TOWER_SHIELD,
+  elder_lance: ELDER_LANCE,
+  elder_great_axe: ELDER_GREAT_AXE,
+  giant_war_club: GIANT_WAR_CLUB,
+  royal_tower_shield: ROYAL_TOWER_SHIELD,
+  royal_sword: ROYAL_SWORD,
 };
 
 export const WEAPON_IDS = Object.keys(WEAPON_DEFS);

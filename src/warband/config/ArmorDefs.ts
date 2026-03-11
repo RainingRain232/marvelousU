@@ -19,6 +19,7 @@ export interface ArmorDef {
   cost: number;
   color: number;
   accentColor?: number;
+  oversized?: boolean; // for large units only, not available in shop
 }
 
 // ---- Head Armor ----
@@ -386,6 +387,92 @@ const ARMORED_BOOTS: ArmorDef = {
   accentColor: 0x654321,
 };
 
+// ---- Oversized armor (large units only, not in shop) ----
+
+const ANCIENT_HELM: ArmorDef = {
+  id: "ancient_helm", name: "Ancient Helm", slot: ArmorSlot.HEAD,
+  defense: 28, weight: 6.0, cost: 0, color: 0x555555, accentColor: 0x666666, oversized: true,
+};
+const ANCIENT_PLATE: ArmorDef = {
+  id: "ancient_plate", name: "Ancient Plate", slot: ArmorSlot.TORSO,
+  defense: 45, weight: 18.0, cost: 0, color: 0x555555, accentColor: 0x666666, oversized: true,
+};
+const ANCIENT_GAUNTLETS: ArmorDef = {
+  id: "ancient_gauntlets", name: "Ancient Gauntlets", slot: ArmorSlot.GAUNTLETS,
+  defense: 16, weight: 3.0, cost: 0, color: 0x555555, accentColor: 0x666666, oversized: true,
+};
+const ANCIENT_GREAVES: ArmorDef = {
+  id: "ancient_greaves", name: "Ancient Greaves", slot: ArmorSlot.LEGS,
+  defense: 24, weight: 8.0, cost: 0, color: 0x555555, accentColor: 0x666666, oversized: true,
+};
+const ANCIENT_SABATONS: ArmorDef = {
+  id: "ancient_sabatons", name: "Ancient Sabatons", slot: ArmorSlot.BOOTS,
+  defense: 16, weight: 4.0, cost: 0, color: 0x555555, accentColor: 0x666666, oversized: true,
+};
+
+const ELDER_HELM: ArmorDef = {
+  id: "elder_helm", name: "Elder Helm", slot: ArmorSlot.HEAD,
+  defense: 36, weight: 8.0, cost: 0, color: 0x1a1a1a, accentColor: 0x333333, oversized: true,
+};
+const ELDER_PLATE: ArmorDef = {
+  id: "elder_plate", name: "Elder Plate", slot: ArmorSlot.TORSO,
+  defense: 55, weight: 22.0, cost: 0, color: 0x1a1a1a, accentColor: 0x333333, oversized: true,
+};
+const ELDER_GAUNTLETS: ArmorDef = {
+  id: "elder_gauntlets", name: "Elder Gauntlets", slot: ArmorSlot.GAUNTLETS,
+  defense: 20, weight: 4.0, cost: 0, color: 0x1a1a1a, accentColor: 0x333333, oversized: true,
+};
+const ELDER_GREAVES: ArmorDef = {
+  id: "elder_greaves", name: "Elder Greaves", slot: ArmorSlot.LEGS,
+  defense: 30, weight: 10.0, cost: 0, color: 0x1a1a1a, accentColor: 0x333333, oversized: true,
+};
+const ELDER_SABATONS: ArmorDef = {
+  id: "elder_sabatons", name: "Elder Sabatons", slot: ArmorSlot.BOOTS,
+  defense: 20, weight: 5.0, cost: 0, color: 0x1a1a1a, accentColor: 0x333333, oversized: true,
+};
+
+const GIANT_HELM: ArmorDef = {
+  id: "giant_helm", name: "Giant Helm", slot: ArmorSlot.HEAD,
+  defense: 40, weight: 10.0, cost: 0, color: 0x777777, accentColor: 0x999999, oversized: true,
+};
+const GIANT_PLATE: ArmorDef = {
+  id: "giant_plate", name: "Giant Plate", slot: ArmorSlot.TORSO,
+  defense: 60, weight: 28.0, cost: 0, color: 0x777777, accentColor: 0x999999, oversized: true,
+};
+const GIANT_GAUNTLETS: ArmorDef = {
+  id: "giant_gauntlets", name: "Giant Gauntlets", slot: ArmorSlot.GAUNTLETS,
+  defense: 24, weight: 5.0, cost: 0, color: 0x777777, accentColor: 0x999999, oversized: true,
+};
+const GIANT_GREAVES: ArmorDef = {
+  id: "giant_greaves", name: "Giant Greaves", slot: ArmorSlot.LEGS,
+  defense: 34, weight: 12.0, cost: 0, color: 0x777777, accentColor: 0x999999, oversized: true,
+};
+const GIANT_SABATONS: ArmorDef = {
+  id: "giant_sabatons", name: "Giant Sabatons", slot: ArmorSlot.BOOTS,
+  defense: 24, weight: 6.0, cost: 0, color: 0x777777, accentColor: 0x999999, oversized: true,
+};
+
+const ROYAL_GUARD_HELM: ArmorDef = {
+  id: "royal_guard_helm", name: "Royal Guard Helm", slot: ArmorSlot.HEAD,
+  defense: 26, weight: 5.5, cost: 0, color: 0xdaa520, accentColor: 0xeedd55, oversized: true,
+};
+const ROYAL_GUARD_PLATE: ArmorDef = {
+  id: "royal_guard_plate", name: "Royal Guard Plate", slot: ArmorSlot.TORSO,
+  defense: 42, weight: 16.0, cost: 0, color: 0xdaa520, accentColor: 0xeedd55, oversized: true,
+};
+const ROYAL_GUARD_GAUNTLETS: ArmorDef = {
+  id: "royal_guard_gauntlets", name: "Royal Guard Gauntlets", slot: ArmorSlot.GAUNTLETS,
+  defense: 16, weight: 3.0, cost: 0, color: 0xdaa520, accentColor: 0xeedd55, oversized: true,
+};
+const ROYAL_GUARD_GREAVES: ArmorDef = {
+  id: "royal_guard_greaves", name: "Royal Guard Greaves", slot: ArmorSlot.LEGS,
+  defense: 22, weight: 7.0, cost: 0, color: 0xdaa520, accentColor: 0xeedd55, oversized: true,
+};
+const ROYAL_GUARD_SABATONS: ArmorDef = {
+  id: "royal_guard_sabatons", name: "Royal Guard Sabatons", slot: ArmorSlot.BOOTS,
+  defense: 16, weight: 4.0, cost: 0, color: 0xdaa520, accentColor: 0xeedd55, oversized: true,
+};
+
 // ---- All armor map ----
 
 export const ARMOR_DEFS: Record<string, ArmorDef> = {
@@ -432,6 +519,28 @@ export const ARMOR_DEFS: Record<string, ArmorDef> = {
   armored_boots: ARMORED_BOOTS,
   mail_boots: MAIL_BOOTS,
   plate_sabatons: PLATE_SABATONS,
+
+  // Oversized (large units only)
+  ancient_helm: ANCIENT_HELM,
+  ancient_plate: ANCIENT_PLATE,
+  ancient_gauntlets: ANCIENT_GAUNTLETS,
+  ancient_greaves: ANCIENT_GREAVES,
+  ancient_sabatons: ANCIENT_SABATONS,
+  elder_helm: ELDER_HELM,
+  elder_plate: ELDER_PLATE,
+  elder_gauntlets: ELDER_GAUNTLETS,
+  elder_greaves: ELDER_GREAVES,
+  elder_sabatons: ELDER_SABATONS,
+  giant_helm: GIANT_HELM,
+  giant_plate: GIANT_PLATE,
+  giant_gauntlets: GIANT_GAUNTLETS,
+  giant_greaves: GIANT_GREAVES,
+  giant_sabatons: GIANT_SABATONS,
+  royal_guard_helm: ROYAL_GUARD_HELM,
+  royal_guard_plate: ROYAL_GUARD_PLATE,
+  royal_guard_gauntlets: ROYAL_GUARD_GAUNTLETS,
+  royal_guard_greaves: ROYAL_GUARD_GREAVES,
+  royal_guard_sabatons: ROYAL_GUARD_SABATONS,
 };
 
 export const ARMOR_IDS = Object.keys(ARMOR_DEFS);

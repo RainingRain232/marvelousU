@@ -67,6 +67,9 @@ interface UnitTypeDef {
   boots: string;
   horseArmor?: HorseArmorTier;
   creatureType?: CreatureType;
+  scale?: number;        // visual & collision scale (default 1.0)
+  hpOverride?: number;   // override default 100 HP
+  speedMultiplier?: number; // movement speed multiplier
 }
 
 const UNIT_TYPES: UnitTypeDef[] = [
@@ -301,6 +304,271 @@ const UNIT_TYPES: UnitTypeDef[] = [
     offHand: null,
     head: "", torso: "", gauntlets: "", legs: "", boots: "",
     creatureType: "cyclops",
+  },
+  // ---- Barracks units ----
+  {
+    id: "assassin",
+    name: "Assassin",
+    icon: "\uD83D\uDDE1",
+    description: "Fast and lethal, sword & dagger, light armor",
+    mainHand: "sabre",
+    offHand: null,
+    head: "leather_cap",
+    torso: "leather_jerkin",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "riding_boots",
+    hpOverride: 65,
+    speedMultiplier: 1.3,
+  },
+  {
+    id: "mage_hunter",
+    name: "Mage Hunter",
+    icon: "\uD83D\uDD2E",
+    description: "Fast melee striker, medium armor",
+    mainHand: "falchion",
+    offHand: "buckler",
+    head: "mail_coif",
+    torso: "gambeson",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "leather_boots",
+    hpOverride: 80,
+    speedMultiplier: 1.15,
+  },
+  {
+    id: "gladiator",
+    name: "Gladiator",
+    icon: "\uD83C\uDFDB",
+    description: "Net & trident fighter, medium armor",
+    mainHand: "spear",
+    offHand: "round_shield",
+    head: "nasal_helm",
+    torso: "gambeson",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "sandals",
+    hpOverride: 140,
+  },
+  {
+    id: "defender",
+    name: "Defender",
+    icon: "\uD83D\uDEE1\uFE0F",
+    description: "Tower shield, heavy armor, very slow",
+    mainHand: "arming_sword",
+    offHand: "tower_shield",
+    head: "bascinet",
+    torso: "brigandine",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 250,
+    speedMultiplier: 0.7,
+  },
+  {
+    id: "phalanx",
+    name: "Phalanx",
+    icon: "\uD83D\uDD31",
+    description: "Long spear & tower shield, slow but impenetrable",
+    mainHand: "pike",
+    offHand: "tower_shield",
+    head: "bascinet",
+    torso: "chain_hauberk",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "mail_boots",
+    hpOverride: 220,
+    speedMultiplier: 0.7,
+  },
+  {
+    id: "royal_phalanx",
+    name: "Royal Phalanx",
+    icon: "\uD83D\uDC51",
+    description: "Elite pikeman in gilded armor, enormous pike",
+    mainHand: "pike",
+    offHand: "kite_shield",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 300,
+    speedMultiplier: 0.65,
+  },
+  {
+    id: "royal_defender",
+    name: "Royal Defender",
+    icon: "\uD83C\uDFF0",
+    description: "Heavily armored royal guard with massive shield",
+    mainHand: "morning_star",
+    offHand: "tower_shield",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    hpOverride: 450,
+    speedMultiplier: 0.6,
+  },
+  {
+    id: "axeman",
+    name: "Axeman",
+    icon: "\uD83E\uDE93",
+    description: "Battle axe, heavy armor, devastating power",
+    mainHand: "battle_axe",
+    offHand: null,
+    head: "nasal_helm",
+    torso: "chain_hauberk",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "mail_boots",
+    hpOverride: 350,
+    speedMultiplier: 0.9,
+  },
+  {
+    id: "war_drummer",
+    name: "War Drummer",
+    icon: "\uD83E\uDD41",
+    description: "Inspires allies, weak in combat",
+    mainHand: "mace",
+    offHand: "buckler",
+    head: "cloth_hood",
+    torso: "gambeson",
+    gauntlets: "cloth_wraps",
+    legs: "cloth_trousers",
+    boots: "leather_boots",
+    hpOverride: 90,
+    speedMultiplier: 0.7,
+  },
+  // ---- Ancient units (larger than human, armored) ----
+  {
+    id: "ancient_defender",
+    name: "Ancient Defender",
+    icon: "\uD83D\uDDFF",
+    description: "Undying sentinel, blackened armor, tower shield",
+    mainHand: "ancient_sword",
+    offHand: "ancient_tower_shield",
+    head: "ancient_helm",
+    torso: "ancient_plate",
+    gauntlets: "ancient_gauntlets",
+    legs: "ancient_greaves",
+    boots: "ancient_sabatons",
+    hpOverride: 700,
+    speedMultiplier: 0.55,
+    scale: 1.5,
+  },
+  {
+    id: "ancient_phalanx",
+    name: "Ancient Phalanx",
+    icon: "\uD83D\uDDFF",
+    description: "Grey-skinned spearman with a corroded pike",
+    mainHand: "ancient_pike",
+    offHand: "ancient_tower_shield",
+    head: "ancient_helm",
+    torso: "ancient_plate",
+    gauntlets: "ancient_gauntlets",
+    legs: "ancient_greaves",
+    boots: "ancient_sabatons",
+    hpOverride: 500,
+    speedMultiplier: 0.55,
+    scale: 1.5,
+  },
+  {
+    id: "ancient_axeman",
+    name: "Ancient Axeman",
+    icon: "\uD83D\uDDFF",
+    description: "Hulking relic swinging a pitted black axe",
+    mainHand: "ancient_battle_axe",
+    offHand: null,
+    head: "ancient_helm",
+    torso: "ancient_plate",
+    gauntlets: "ancient_gauntlets",
+    legs: "ancient_greaves",
+    boots: "ancient_sabatons",
+    hpOverride: 600,
+    speedMultiplier: 0.75,
+    scale: 1.5,
+  },
+  // ---- Elder units (even larger, void-dark armor) ----
+  {
+    id: "elder_defender",
+    name: "Elder Defender",
+    icon: "\u2620\uFE0F",
+    description: "Towering monolith of fused black iron",
+    mainHand: "elder_sword",
+    offHand: "elder_tower_shield",
+    head: "elder_helm",
+    torso: "elder_plate",
+    gauntlets: "elder_gauntlets",
+    legs: "elder_greaves",
+    boots: "elder_sabatons",
+    hpOverride: 1200,
+    speedMultiplier: 0.45,
+    scale: 2.0,
+  },
+  {
+    id: "elder_phalanx",
+    name: "Elder Phalanx",
+    icon: "\u2620\uFE0F",
+    description: "Impossibly tall sentinel with barbed lance",
+    mainHand: "elder_lance",
+    offHand: "elder_tower_shield",
+    head: "elder_helm",
+    torso: "elder_plate",
+    gauntlets: "elder_gauntlets",
+    legs: "elder_greaves",
+    boots: "elder_sabatons",
+    hpOverride: 900,
+    speedMultiplier: 0.45,
+    scale: 2.0,
+  },
+  {
+    id: "elder_axeman",
+    name: "Elder Axeman",
+    icon: "\u2620\uFE0F",
+    description: "Nightmarish executioner with a jagged black cleaver",
+    mainHand: "elder_great_axe",
+    offHand: null,
+    head: "elder_helm",
+    torso: "elder_plate",
+    gauntlets: "elder_gauntlets",
+    legs: "elder_greaves",
+    boots: "elder_sabatons",
+    hpOverride: 1000,
+    speedMultiplier: 0.6,
+    scale: 2.0,
+  },
+  // ---- Elite Barracks units ----
+  {
+    id: "royal_guard",
+    name: "Royal Guard",
+    icon: "\uD83D\uDC51",
+    description: "Elite tower-shield soldier in gilded plate",
+    mainHand: "royal_sword",
+    offHand: "royal_tower_shield",
+    head: "royal_guard_helm",
+    torso: "royal_guard_plate",
+    gauntlets: "royal_guard_gauntlets",
+    legs: "royal_guard_greaves",
+    boots: "royal_guard_sabatons",
+    hpOverride: 1100,
+    speedMultiplier: 0.5,
+  },
+  {
+    id: "giant_warrior",
+    name: "Giant Warrior",
+    icon: "\uD83D\uDCAA",
+    description: "Towering war giant in heavy plate, massive club",
+    mainHand: "giant_war_club",
+    offHand: null,
+    head: "giant_helm",
+    torso: "giant_plate",
+    gauntlets: "giant_gauntlets",
+    legs: "giant_greaves",
+    boots: "giant_sabatons",
+    hpOverride: 1200,
+    speedMultiplier: 0.45,
+    scale: 2.5,
   },
 ];
 
@@ -595,8 +863,7 @@ export class WarbandGame {
           false,
           vec3(-6 + i * 3, 0, 12),
         );
-        // Give allies random equipment
-        this._equipRandomLoadout(ally, "medium");
+        this._equipRandomUnitType(ally, false, this._state!);
         this._state.fighters.push(ally);
       }
     }
@@ -621,7 +888,7 @@ export class WarbandGame {
         false,
         vec3(spawnX, 0, spawnZ),
       );
-      this._equipRandomLoadout(enemy, "medium");
+      this._equipRandomUnitType(enemy, isDuel, this._state!);
       this._state.fighters.push(enemy);
     }
 
@@ -632,52 +899,13 @@ export class WarbandGame {
     });
   }
 
-  private _equipRandomLoadout(fighter: WarbandFighter, tier: "light" | "medium" | "heavy"): void {
-    // Random weapon
-    const meleeWeapons = Object.values(WEAPON_DEFS).filter(
-      (w) => w.category === "one_handed" || w.category === "two_handed" || w.category === "polearm",
-    );
-    const rangedWeapons = Object.values(WEAPON_DEFS).filter(
-      (w) => w.category === "bow" || w.category === "crossbow" || w.category === "thrown",
-    );
-
-    // 70% melee, 30% ranged
-    if (Math.random() < 0.7) {
-      fighter.equipment.mainHand = meleeWeapons[Math.floor(Math.random() * meleeWeapons.length)];
-
-      // Maybe a shield
-      if (fighter.equipment.mainHand.category === "one_handed" && Math.random() < 0.6) {
-        const shields = Object.values(WEAPON_DEFS).filter((w) => w.category === "shield");
-        fighter.equipment.offHand = shields[Math.floor(Math.random() * shields.length)];
-      }
-    } else {
-      fighter.equipment.mainHand = rangedWeapons[Math.floor(Math.random() * rangedWeapons.length)];
-      if (fighter.equipment.mainHand.ammo) {
-        fighter.ammo = fighter.equipment.mainHand.ammo;
-        fighter.maxAmmo = fighter.equipment.mainHand.ammo;
-      }
-    }
-
-    // Random armor based on tier
-    const armorsBySlot = {
-      [ArmorSlot.HEAD]: Object.values(ARMOR_DEFS).filter((a) => a.slot === ArmorSlot.HEAD),
-      [ArmorSlot.TORSO]: Object.values(ARMOR_DEFS).filter((a) => a.slot === ArmorSlot.TORSO),
-      [ArmorSlot.GAUNTLETS]: Object.values(ARMOR_DEFS).filter((a) => a.slot === ArmorSlot.GAUNTLETS),
-      [ArmorSlot.LEGS]: Object.values(ARMOR_DEFS).filter((a) => a.slot === ArmorSlot.LEGS),
-      [ArmorSlot.BOOTS]: Object.values(ARMOR_DEFS).filter((a) => a.slot === ArmorSlot.BOOTS),
-    };
-
-    const tierIdx = tier === "light" ? 0 : tier === "medium" ? 1 : 2;
-
-    for (const slot of Object.values(ArmorSlot)) {
-      const available = armorsBySlot[slot];
-      if (available.length === 0) continue;
-
-      // Pick armor roughly matching tier
-      const maxIdx = Math.min(available.length - 1, tierIdx + 1);
-      const idx = Math.floor(Math.random() * (maxIdx + 1));
-      fighter.equipment.armor[slot] = available[idx];
-    }
+  private _equipRandomUnitType(fighter: WarbandFighter, dueling: boolean, state: WarbandState): void {
+    // Filter to human-scale units for duels, allow all for open battles
+    const pool = dueling
+      ? UNIT_TYPES.filter((u) => !u.creatureType && !u.scale)
+      : UNIT_TYPES.filter((u) => !u.creatureType);
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    this._equipUnitType(fighter, pick, state);
   }
 
   // ---- Army setup screen ---------------------------------------------------
@@ -837,6 +1065,18 @@ export class WarbandGame {
       [ArmorSlot.LEGS]: ARMOR_DEFS[unitType.legs] ?? null,
       [ArmorSlot.BOOTS]: ARMOR_DEFS[unitType.boots] ?? null,
     };
+
+    // Apply HP override
+    if (unitType.hpOverride) {
+      fighter.hp = unitType.hpOverride;
+      fighter.maxHp = unitType.hpOverride;
+    }
+
+    // Apply scale for oversized units
+    if (unitType.scale && unitType.scale !== 1.0) {
+      fighter.scale = unitType.scale;
+      fighter.creatureRadius = WB.FIGHTER_RADIUS * unitType.scale;
+    }
 
     // Set ammo for ranged units
     if (fighter.equipment.mainHand?.ammo) {
@@ -1389,14 +1629,13 @@ export class WarbandGame {
             false,
             vec3(-6 + i * 3, 0, 12),
           );
-          this._equipRandomLoadout(ally, this._state.round > 3 ? "heavy" : "medium");
+          this._equipRandomUnitType(ally, false, this._state!);
           this._state.fighters.push(ally);
         }
       }
 
       // Create new enemies (scale difficulty)
       const isSiege = this._state.battleType === BattleType.SIEGE;
-      const enemyTier = this._state.round <= 2 ? "medium" : "heavy";
       const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
       for (let i = 0; i < enemyCount; i++) {
         let spawnX: number, spawnZ: number;
@@ -1415,7 +1654,7 @@ export class WarbandGame {
           false,
           vec3(spawnX, 0, spawnZ),
         );
-        this._equipRandomLoadout(enemy, enemyTier);
+        this._equipRandomUnitType(enemy, isDuel, this._state!);
         // Scale AI difficulty with rounds
         if (enemy.ai) {
           enemy.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);

@@ -123,6 +123,10 @@ export class FighterMesh {
 
     this.group = new THREE.Group();
     this._root = new THREE.Group();
+    // Apply scale for oversized units
+    if (fighter.scale && fighter.scale !== 1.0) {
+      this._root.scale.setScalar(fighter.scale);
+    }
     this.group.add(this._root);
 
     const skinMat = new THREE.MeshStandardMaterial({ color: this._colors.skin, roughness: 0.7 });
@@ -772,8 +776,9 @@ export class FighterMesh {
       color: 0x333333,
       side: THREE.DoubleSide,
     });
+    const hpBarY = (WB.FIGHTER_HEIGHT + 0.3) * (fighter.scale || 1.0);
     this._hpBarBg = new THREE.Mesh(hpBgGeo, hpBgMat);
-    this._hpBarBg.position.y = WB.FIGHTER_HEIGHT + 0.3;
+    this._hpBarBg.position.y = hpBarY;
     this.group.add(this._hpBarBg);
 
     const hpFillGeo = new THREE.PlaneGeometry(hpW - 0.02, hpH - 0.02);
@@ -782,7 +787,7 @@ export class FighterMesh {
       side: THREE.DoubleSide,
     });
     this._hpBarFill = new THREE.Mesh(hpFillGeo, hpFillMat);
-    this._hpBarFill.position.y = WB.FIGHTER_HEIGHT + 0.3;
+    this._hpBarFill.position.y = hpBarY;
     this._hpBarFill.position.z = 0.001;
     this.group.add(this._hpBarFill);
 
