@@ -32,9 +32,8 @@ export interface SpellDef {
   aoeDamagePerTier: number;
 }
 
-/** Map staff accent color → spell definition. Easily extensible for new spell types. */
+/** AoE spell definitions */
 const SPELL_DEFS: Record<string, SpellDef> = {
-  // fire (0xff3300)
   default: {
     id: "arcane_blast",
     cooldownTicks: 600, // 10 seconds at 60 tps
@@ -45,8 +44,41 @@ const SPELL_DEFS: Record<string, SpellDef> = {
   },
 };
 
+/** Chain spell config */
+export interface ChainSpellDef {
+  id: string;
+  cooldownTicks: number;
+  /** Base damage multiplier on weapon damage */
+  damageMult: number;
+  /** Extra damage mult per tier */
+  damagePerTier: number;
+  /** Base number of jumps (minimum 1 = hits initial target only) */
+  baseJumps: number;
+  /** Extra jumps per tier */
+  jumpsPerTier: number;
+  /** Max distance a chain can jump to the next target */
+  jumpRange: number;
+  /** Damage decay per jump (multiplied each hop) */
+  decayPerJump: number;
+}
+
+const CHAIN_SPELL_DEF: ChainSpellDef = {
+  id: "chain_bolt",
+  cooldownTicks: 600,
+  damageMult: 0.6,
+  damagePerTier: 0.15,
+  baseJumps: 1,
+  jumpsPerTier: 1,
+  jumpRange: 5,
+  decayPerJump: 0.8,
+};
+
+/** Returns true if the staff uses a chain spell instead of AoE */
+function isChainStaff(staffId: string): boolean {
+  return staffId.includes("storm") || staffId.includes("lightning") || staffId.includes("distortion");
+}
+
 function getSpellDef(_staffId: string): SpellDef {
-  // For now all staves use the same spell; later we can key by staff id
   return SPELL_DEFS["default"];
 }
 
@@ -137,10 +169,18 @@ export class WarbandCombatSystem {
     color: number;
   }[] = [];
 
+  /** Chain spell segments that happened this tick (for FX) */
+  readonly chainSegments: {
+    from: { x: number; y: number; z: number };
+    to: { x: number; y: number; z: number };
+    color: number;
+  }[] = [];
+
   update(state: WarbandState): void {
     this.hits.length = 0;
     this.kills.length = 0;
     this.aoeExplosions.length = 0;
+    this.chainSegments.length = 0;
 
     for (const fighter of state.fighters) {
       if (fighter.combatState === FighterCombatState.DEAD) continue;
@@ -480,11 +520,11 @@ export class WarbandCombatSystem {
     state.projectiles.push(proj);
   }
 
-  /** Try to cast a spell (cooldown-gated). Fires a spell projectile that explodes on impact. */
+  /** Try to cast a spell (cooldown-gated). Routes to AoE or chain depending on staff type. */
   private _trySpellCast(fighter: WarbandFighter, state: WarbandState): void {
     const wpn = fighter.equipment.mainHand!;
-    const spell = getSpellDef(wpn.id);
-    if (state.tick - fighter.lastSpellTick < spell.cooldownTicks) return;
+    const cooldown = isChainStaff(wpn.id) ? CHAIN_SPELL_DEF.cooldownTicks : getSpellDef(wpn.id).cooldownTicks;
+    if (state.tick - fighter.lastSpellTick < cooldown) return;
 
     // Need a target in range
     if (!fighter.ai?.targetId) return;
@@ -496,14 +536,23 @@ export class WarbandCombatSystem {
 
     fighter.lastSpellTick = state.tick;
 
-    // Fire spell projectile (reuses normal projectile, but flagged as spell)
+    if (isChainStaff(wpn.id)) {
+      this._castChainSpell(fighter, target, state);
+    } else {
+      this._castAoeSpell(fighter, target, state);
+    }
+  }
+
+  /** Fire an AoE spell projectile that explodes on impact */
+  private _castAoeSpell(fighter: WarbandFighter, target: WarbandFighter, state: WarbandState): void {
+    const wpn = fighter.equipment.mainHand!;
+    const spell = getSpellDef(wpn.id);
     const tier = getSpellTier(wpn.id);
     const color = wpn.accentColor ?? 0xffffff;
     const speed = wpn.projectileSpeed ?? WB.ARROW_SPEED;
     const accuracy = wpn.accuracy ?? 0.85;
     const spread = (1 - accuracy) * 0.1;
 
-    // Aim at target
     const dx = target.position.x - fighter.position.x;
     const dz = target.position.z - fighter.position.z;
     const len = Math.sqrt(dx * dx + dz * dz);
@@ -520,11 +569,7 @@ export class WarbandCombatSystem {
         y: fighter.position.y + (fighter.isMounted ? WB.HORSE_HEIGHT : 0) + WB.FIGHTER_HEIGHT * 0.75,
         z: fighter.position.z + Math.cos(fighter.rotation) * 0.5,
       },
-      velocity: {
-        x: dirX * speed,
-        y: dirY * speed,
-        z: dirZ * speed,
-      },
+      velocity: { x: dirX * speed, y: dirY * speed, z: dirZ * speed },
       damage: wpn.damage,
       gravity: 0,
       alive: true,
@@ -537,6 +582,91 @@ export class WarbandCombatSystem {
     };
 
     state.projectiles.push(proj);
+  }
+
+  /** Cast an instant chain spell that jumps between enemies */
+  private _castChainSpell(fighter: WarbandFighter, firstTarget: WarbandFighter, state: WarbandState): void {
+    const wpn = fighter.equipment.mainHand!;
+    const chain = CHAIN_SPELL_DEF;
+    const tier = getSpellTier(wpn.id);
+    const color = wpn.accentColor ?? 0xffffff;
+    const totalJumps = chain.baseJumps + chain.jumpsPerTier * tier;
+    let dmgMult = chain.damageMult + chain.damagePerTier * tier;
+
+    const casterPos = {
+      x: fighter.position.x,
+      y: fighter.position.y + (fighter.isMounted ? WB.HORSE_HEIGHT : 0) + WB.FIGHTER_HEIGHT * 0.75,
+      z: fighter.position.z,
+    };
+
+    const hitSet = new Set<string>();
+    let prevPos = casterPos;
+    let currentTarget: WarbandFighter | undefined = firstTarget;
+
+    for (let jump = 0; jump <= totalJumps && currentTarget; jump++) {
+      hitSet.add(currentTarget.id);
+
+      const targetPos = {
+        x: currentTarget.position.x,
+        y: currentTarget.position.y + WB.FIGHTER_HEIGHT * 0.6,
+        z: currentTarget.position.z,
+      };
+
+      // Visual segment
+      this.chainSegments.push({ from: { ...prevPos }, to: { ...targetPos }, color });
+
+      // Deal damage
+      const damage = Math.max(1, Math.round(wpn.damage * dmgMult));
+      currentTarget.hp -= damage;
+      currentTarget.lastHitBy = fighter.id;
+      fighter.damage_dealt += damage;
+
+      this.hits.push({
+        attacker: fighter.id,
+        target: currentTarget.id,
+        damage,
+        zone: ArmorSlot.TORSO,
+        blocked: false,
+        position: { ...targetPos },
+      });
+
+      if (currentTarget.hp <= 0) {
+        currentTarget.hp = 0;
+        currentTarget.combatState = FighterCombatState.DEAD;
+        fighter.kills++;
+        fighter.gold += WB.GOLD_PER_KILL;
+
+        if (currentTarget.isMounted && currentTarget.mountId) {
+          const horse = state.horses.find(h => h.id === currentTarget!.mountId);
+          if (horse) horse.riderId = null;
+          currentTarget.mountId = null;
+          currentTarget.isMounted = false;
+        }
+
+        this.kills.push({ killerId: fighter.id, victimId: currentTarget.id });
+        if (currentTarget.team === "player") state.playerTeamAlive--;
+        else state.enemyTeamAlive--;
+      }
+
+      // Decay damage for next jump
+      dmgMult *= chain.decayPerJump;
+      prevPos = targetPos;
+
+      // Find next closest enemy that hasn't been hit yet
+      let bestDist = chain.jumpRange;
+      let bestTarget: WarbandFighter | undefined;
+      for (const candidate of state.fighters) {
+        if (candidate.team === fighter.team) continue;
+        if (candidate.combatState === FighterCombatState.DEAD) continue;
+        if (hitSet.has(candidate.id)) continue;
+        const d = vec3DistXZ(currentTarget.position, candidate.position);
+        if (d < bestDist) {
+          bestDist = d;
+          bestTarget = candidate;
+        }
+      }
+      currentTarget = bestTarget;
+    }
   }
 
   private _updateProjectiles(state: WarbandState): void {

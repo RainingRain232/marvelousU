@@ -4410,6 +4410,11 @@ export class WarbandGame {
         this._fx.spawnAoeExplosion(aoe.x, aoe.y, aoe.z, aoe.radius, aoe.color);
       }
 
+      // Chain spell bolts
+      for (const seg of this._combatSystem.chainSegments) {
+        this._fx.spawnChainBolt(seg.from, seg.to, seg.color);
+      }
+
       for (const kill of this._combatSystem.kills) {
         const killer = this._state.fighters.find((f) => f.id === kill.killerId);
         const victim = this._state.fighters.find((f) => f.id === kill.victimId);

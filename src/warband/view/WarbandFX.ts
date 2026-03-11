@@ -21,12 +21,19 @@ interface AoeRing {
   duration: number; // total lifetime in seconds
 }
 
+interface ChainBolt {
+  mesh: THREE.Mesh;
+  age: number;
+  duration: number;
+}
+
 export class WarbandFX {
   private _scene: THREE.Scene;
   private _particles: Particle[] = [];
   private _pool: THREE.Mesh[] = [];
   private _maxParticles = 200;
   private _aoeRings: AoeRing[] = [];
+  private _chainBolts: ChainBolt[] = [];
 
   // Shared geometries/materials
   private _sparkGeo: THREE.BufferGeometry;
@@ -147,6 +154,47 @@ export class WarbandFX {
     });
   }
 
+  /** Spawn a chain bolt segment – a broad colored beam between two points */
+  spawnChainBolt(
+    from: { x: number; y: number; z: number },
+    to: { x: number; y: number; z: number },
+    color: number,
+  ): void {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dz = to.z - from.z;
+    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (length < 0.01) return;
+
+    // Wide flat box stretched along the bolt direction
+    const geo = new THREE.BoxGeometry(0.25, 0.15, 1);
+    const brightColor = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.3).getHex();
+    const mat = new THREE.MeshBasicMaterial({
+      color: brightColor,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+
+    // Position at midpoint
+    mesh.position.set(
+      (from.x + to.x) / 2,
+      (from.y + to.y) / 2,
+      (from.z + to.z) / 2,
+    );
+
+    // Scale Z to match distance
+    mesh.scale.set(1, 1, length);
+
+    // Orient toward target
+    mesh.lookAt(to.x, to.y, to.z);
+
+    this._scene.add(mesh);
+    this._chainBolts.push({ mesh, age: 0, duration: 0.35 });
+  }
+
   /** Update all particles and AoE rings */
   update(dt: number): void {
     // Update AoE expanding rings
@@ -171,6 +219,29 @@ export class WarbandFX {
       // Opacity: full at start, fade out in the second half
       const mat = ring.mesh.material as THREE.MeshBasicMaterial;
       mat.opacity = t < 0.5 ? 0.7 : 0.7 * (1 - (t - 0.5) / 0.5);
+    }
+
+    // Update chain bolts – fade out and thicken briefly then disappear
+    for (let i = this._chainBolts.length - 1; i >= 0; i--) {
+      const bolt = this._chainBolts[i];
+      bolt.age += dt;
+
+      if (bolt.age >= bolt.duration) {
+        this._scene.remove(bolt.mesh);
+        bolt.mesh.geometry.dispose();
+        (bolt.mesh.material as THREE.Material).dispose();
+        this._chainBolts.splice(i, 1);
+        continue;
+      }
+
+      const t = bolt.age / bolt.duration;
+      const mat = bolt.mesh.material as THREE.MeshBasicMaterial;
+      // Bright flash at start, then fade
+      mat.opacity = t < 0.15 ? 0.95 : 0.95 * (1 - (t - 0.15) / 0.85);
+      // Slightly expand then shrink for a pulse feel
+      const pulse = t < 0.1 ? 1 + t * 8 : 1.8 * (1 - (t - 0.1) / 0.9);
+      bolt.mesh.scale.x = Math.max(0.1, pulse);
+      bolt.mesh.scale.y = Math.max(0.1, pulse);
     }
 
     for (let i = this._particles.length - 1; i >= 0; i--) {
@@ -246,9 +317,15 @@ export class WarbandFX {
       ring.mesh.geometry.dispose();
       (ring.mesh.material as THREE.Material).dispose();
     }
+    for (const bolt of this._chainBolts) {
+      this._scene.remove(bolt.mesh);
+      bolt.mesh.geometry.dispose();
+      (bolt.mesh.material as THREE.Material).dispose();
+    }
     this._particles.length = 0;
     this._pool.length = 0;
     this._aoeRings.length = 0;
+    this._chainBolts.length = 0;
     this._sparkGeo.dispose();
     this._bloodGeo.dispose();
     this._sparkMat.dispose();
