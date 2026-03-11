@@ -2,6 +2,32 @@
 // Warband mode – balance constants
 // ---------------------------------------------------------------------------
 
+/** Axis-aligned wall rectangle for siege collision */
+export interface SiegeWallRect {
+  minX: number; maxX: number;
+  minZ: number; maxZ: number;
+}
+
+/** All siege wall collision segments (XZ plane AABBs) */
+export const SIEGE_WALLS: SiegeWallRect[] = [
+  // Front wall — left of gate
+  { minX: -21, maxX: -2.5, minZ: -16, maxZ: -14 },
+  // Front wall — right of gate
+  { minX: 2.5, maxX: 21, minZ: -16, maxZ: -14 },
+  // Left side wall
+  { minX: -21, maxX: -19, minZ: -36, maxZ: -15 },
+  // Right side wall
+  { minX: 19, maxX: 21, minZ: -36, maxZ: -15 },
+  // Back wall
+  { minX: -21, maxX: 21, minZ: -36, maxZ: -34 },
+  // Left inner wall (creates left corridor)
+  { minX: -11, maxX: -9, minZ: -30, maxZ: -20 },
+  // Right inner wall (creates right corridor)
+  { minX: 9, maxX: 11, minZ: -30, maxZ: -20 },
+  // Centre barricade (forces flanking in middle route)
+  { minX: -3, maxX: 3, minZ: -22.5, maxZ: -21.5 },
+];
+
 export const WB = {
   // Tick / timing
   SIM_TICK_MS: 16.667, // 60 FPS fixed timestep
@@ -85,6 +111,21 @@ export const WB = {
   MOUNT_RANGE: 3.0,
   HORSE_HEIGHT: 1.3,
   HORSE_RADIUS: 0.8,
+
+  // Siege layout
+  SIEGE_FRONT_Z: -15,
+  SIEGE_BACK_Z: -35,
+  SIEGE_LEFT_X: -20,
+  SIEGE_RIGHT_X: 20,
+  SIEGE_WALL_THICK: 2,
+  SIEGE_WALL_HEIGHT: 8,
+  SIEGE_GATE_HALF_W: 2.5,
+  SIEGE_GATE_HEIGHT: 5,
+  SIEGE_CAPTURE_X: 0,
+  SIEGE_CAPTURE_Z: -28,
+  SIEGE_CAPTURE_RADIUS: 5,
+  SIEGE_CAPTURE_TICKS: 60 * 60, // 60 seconds to capture
+  SIEGE_BATTLE_TICKS: 300 * 60, // 5 minute time limit
 
   // AI
   AI_REACTION_TICKS_EASY: 30,

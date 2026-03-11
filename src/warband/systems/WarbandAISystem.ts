@@ -6,12 +6,14 @@
 import {
   type WarbandState,
   type WarbandFighter,
+  BattleType,
   FighterCombatState,
   CombatDirection,
   vec3DistXZ,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
 import { isRangedWeapon } from "../config/WeaponDefs";
+import { CREATURE_DEFS } from "../config/CreatureDefs";
 
 const COMBAT_DIRS = [
   CombatDirection.LEFT_SWING,
@@ -118,14 +120,58 @@ export class WarbandAISystem {
       ? (mounted ? 15 : 10)
       : (mounted ? 4.0 : ai.preferredRange);
 
-    // Movement — mounted fighters are faster
+    // Movement — mounted fighters are faster, creatures use their own speed
     const sinR = Math.sin(fighter.rotation);
     const cosR = Math.cos(fighter.rotation);
-    const baseWalk = mounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED;
-    const baseBack = mounted ? WB.HORSE_BACK_SPEED : WB.BACK_SPEED;
-    const baseStrafe = mounted ? WB.HORSE_STRAFE_SPEED : WB.STRAFE_SPEED;
+    const creatureDef = fighter.creatureType ? CREATURE_DEFS[fighter.creatureType] : null;
+    const baseWalk = creatureDef ? creatureDef.speed : (mounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED);
+    const baseBack = creatureDef ? creatureDef.speed * 0.5 : (mounted ? WB.HORSE_BACK_SPEED : WB.BACK_SPEED);
+    const baseStrafe = creatureDef ? creatureDef.speed * 0.7 : (mounted ? WB.HORSE_STRAFE_SPEED : WB.STRAFE_SPEED);
 
-    if (dist > idealRange + 1) {
+    // Siege mode objective movement: if no nearby enemies, move toward objective
+    const isSiege = _state.battleType === BattleType.SIEGE;
+    if (isSiege && dist > idealRange + 6) {
+      // Far from target — move toward capture zone (attackers) or hold zone (defenders)
+      const capCenter = { x: WB.SIEGE_CAPTURE_X, y: 0, z: WB.SIEGE_CAPTURE_Z };
+      const distToZone = vec3DistXZ(fighter.position, capCenter);
+      const isAttacker = fighter.team === "player";
+
+      if (isAttacker && distToZone > WB.SIEGE_CAPTURE_RADIUS) {
+        // Attacker: prioritize moving to the capture zone
+        const angleToZone = Math.atan2(
+          capCenter.x - fighter.position.x,
+          capCenter.z - fighter.position.z,
+        );
+        let zDiff = angleToZone - fighter.rotation;
+        while (zDiff > Math.PI) zDiff -= Math.PI * 2;
+        while (zDiff < -Math.PI) zDiff += Math.PI * 2;
+        fighter.rotation += zDiff * 0.08;
+        const speed = baseWalk * 0.9;
+        fighter.velocity.x = Math.sin(fighter.rotation) * speed;
+        fighter.velocity.z = Math.cos(fighter.rotation) * speed;
+        fighter.walkCycle = (fighter.walkCycle + speed * 0.02) % 1;
+      } else if (!isAttacker && distToZone > WB.SIEGE_CAPTURE_RADIUS + 2) {
+        // Defender: return to capture zone if strayed too far
+        const angleToZone = Math.atan2(
+          capCenter.x - fighter.position.x,
+          capCenter.z - fighter.position.z,
+        );
+        let zDiff = angleToZone - fighter.rotation;
+        while (zDiff > Math.PI) zDiff -= Math.PI * 2;
+        while (zDiff < -Math.PI) zDiff += Math.PI * 2;
+        fighter.rotation += zDiff * 0.08;
+        const speed = baseWalk * 0.8;
+        fighter.velocity.x = Math.sin(fighter.rotation) * speed;
+        fighter.velocity.z = Math.cos(fighter.rotation) * speed;
+        fighter.walkCycle = (fighter.walkCycle + speed * 0.02) % 1;
+      } else {
+        // Default: move toward target
+        const speed = baseWalk * 0.9;
+        fighter.velocity.x = sinR * speed;
+        fighter.velocity.z = cosR * speed;
+        fighter.walkCycle = (fighter.walkCycle + speed * 0.02) % 1;
+      }
+    } else if (dist > idealRange + 1) {
       // Move toward target
       const speed = baseWalk * 0.9;
       fighter.velocity.x = sinR * speed;
@@ -205,9 +251,10 @@ export class WarbandAISystem {
     dist: number,
   ): void {
     const ai = fighter.ai!;
-    const reach = fighter.equipment.mainHand?.reach ?? 1;
+    const cDef = fighter.creatureType ? CREATURE_DEFS[fighter.creatureType] : null;
+    const reach = cDef ? cDef.reach : (fighter.equipment.mainHand?.reach ?? 1);
 
-    if (dist > reach + WB.FIGHTER_RADIUS + 0.5) return;
+    if (dist > reach + target.creatureRadius + 0.5) return;
 
     // Decide to attack
     if (Math.random() < ai.aggressiveness * 0.1) {
@@ -225,8 +272,12 @@ export class WarbandAISystem {
       }
 
       fighter.combatState = FighterCombatState.WINDING;
-      const speedMult = fighter.equipment.mainHand?.speed ?? 1;
-      fighter.stateTimer = Math.round(WB.WINDUP_TICKS_BASE / speedMult);
+      if (cDef) {
+        fighter.stateTimer = cDef.attackTicks;
+      } else {
+        const speedMult = fighter.equipment.mainHand?.speed ?? 1;
+        fighter.stateTimer = Math.round(WB.WINDUP_TICKS_BASE / speedMult);
+      }
 
       if (fighter.stamina >= WB.STAMINA_ATTACK_COST) {
         fighter.stamina -= WB.STAMINA_ATTACK_COST;

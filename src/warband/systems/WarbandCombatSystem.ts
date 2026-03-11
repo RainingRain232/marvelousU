@@ -14,6 +14,7 @@ import {
 import { WB } from "../config/WarbandBalanceConfig";
 import { ArmorSlot } from "../config/ArmorDefs";
 import { isRangedWeapon } from "../config/WeaponDefs";
+import { CREATURE_DEFS } from "../config/CreatureDefs";
 
 // ---- Hitbox zone from attack direction ------------------------------------
 
@@ -112,8 +113,12 @@ export class WarbandCombatSystem {
         case FighterCombatState.WINDING:
           if (fighter.stateTimer <= 0) {
             fighter.combatState = FighterCombatState.RELEASING;
-            const speedMult = fighter.equipment.mainHand?.speed ?? 1;
-            fighter.stateTimer = Math.round(WB.RELEASE_TICKS_BASE / speedMult);
+            if (fighter.creatureType && !fighter.equipment.mainHand) {
+              fighter.stateTimer = CREATURE_DEFS[fighter.creatureType].releaseTicks;
+            } else {
+              const speedMult = fighter.equipment.mainHand?.speed ?? 1;
+              fighter.stateTimer = Math.round(WB.RELEASE_TICKS_BASE / speedMult);
+            }
           }
           break;
 
@@ -171,14 +176,21 @@ export class WarbandCombatSystem {
 
   private _checkMeleeHits(attacker: WarbandFighter, state: WarbandState): void {
     // Only check on the first tick of release (hit once per attack)
-    const speedMult = attacker.equipment.mainHand?.speed ?? 1;
-    const maxReleaseTicks = Math.round(WB.RELEASE_TICKS_BASE / speedMult);
+    let maxReleaseTicks: number;
+    if (attacker.creatureType && !attacker.equipment.mainHand) {
+      maxReleaseTicks = CREATURE_DEFS[attacker.creatureType].releaseTicks;
+    } else {
+      const speedMult = attacker.equipment.mainHand?.speed ?? 1;
+      maxReleaseTicks = Math.round(WB.RELEASE_TICKS_BASE / speedMult);
+    }
     if (attacker.stateTimer !== maxReleaseTicks - 1) return;
 
     const wpn = attacker.equipment.mainHand;
-    if (!wpn) return;
+    // Creatures attack bare-handed using their creature def stats
+    const creatureDef = attacker.creatureType ? CREATURE_DEFS[attacker.creatureType] : null;
+    if (!wpn && !creatureDef) return;
 
-    const reach = wpn.reach;
+    const reach = wpn ? wpn.reach : creatureDef!.reach;
 
     for (const target of state.fighters) {
       if (target.id === attacker.id) continue;
@@ -186,7 +198,7 @@ export class WarbandCombatSystem {
       if (target.combatState === FighterCombatState.DEAD) continue;
 
       const dist = vec3DistXZ(attacker.position, target.position);
-      if (dist > reach + WB.FIGHTER_RADIUS) continue;
+      if (dist > reach + target.creatureRadius) continue;
 
       // Check facing (must face target within ~120 degrees)
       const angleToTarget = Math.atan2(
@@ -257,6 +269,8 @@ export class WarbandCombatSystem {
           },
         });
       } else {
+        const baseDamage = wpn ? wpn.damage : creatureDef!.damage;
+
         // Hit landed — check if hitting the horse instead (30% for stab/swing on mounted target)
         if (target.isMounted && target.mountId) {
           const hitHorse = (attacker.attackDirection === CombatDirection.STAB ||
@@ -267,7 +281,7 @@ export class WarbandCombatSystem {
             if (horse && horse.alive) {
               const horseDef = horse.armorTier === "heavy" ? WB.HORSE_DEF_HEAVY
                 : horse.armorTier === "medium" ? WB.HORSE_DEF_MEDIUM : WB.HORSE_DEF_LIGHT;
-              const horseDmg = Math.max(1, Math.round(wpn.damage * chargeMult - horseDef));
+              const horseDmg = Math.max(1, Math.round(baseDamage * chargeMult - horseDef));
               horse.hp -= horseDmg;
               attacker.damage_dealt += horseDmg;
 
@@ -301,7 +315,7 @@ export class WarbandCombatSystem {
         const hitZone = attackHitZone(attacker.attackDirection);
         const zoneMult = hitZoneMultiplier(hitZone);
         const armorDef = target.equipment.armor[hitZone]?.defense ?? 0;
-        const rawDamage = wpn.damage * zoneMult * chargeMult;
+        const rawDamage = baseDamage * zoneMult * chargeMult;
         const finalDamage = Math.max(1, Math.round(rawDamage - armorDef));
 
         target.hp -= finalDamage;
@@ -462,10 +476,11 @@ export class WarbandCombatSystem {
 
         // Mounted fighters are higher and wider targets
         const mountOffset = target.isMounted ? WB.HORSE_HEIGHT : 0;
-        const hitRadius = target.isMounted ? WB.HORSE_RADIUS : WB.FIGHTER_RADIUS + 0.15;
+        const hitRadius = target.isMounted ? WB.HORSE_RADIUS : target.creatureRadius + 0.15;
 
+        const targetHeight = target.creatureType ? CREATURE_DEFS[target.creatureType].height : WB.FIGHTER_HEIGHT;
         const dx = proj.position.x - target.position.x;
-        const dy = proj.position.y - (target.position.y + mountOffset + WB.FIGHTER_HEIGHT * 0.5);
+        const dy = proj.position.y - (target.position.y + mountOffset + targetHeight * 0.5);
         const dz = proj.position.z - target.position.z;
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
@@ -503,7 +518,7 @@ export class WarbandCombatSystem {
           }
 
           // Determine hit zone by projectile height relative to target
-          const relHeight = (proj.position.y - target.position.y - mountOffset) / WB.FIGHTER_HEIGHT;
+          const relHeight = (proj.position.y - target.position.y - mountOffset) / targetHeight;
           let hitZone: ArmorSlot;
           if (relHeight > 0.85) hitZone = ArmorSlot.HEAD;
           else if (relHeight > 0.45) hitZone = ArmorSlot.TORSO;

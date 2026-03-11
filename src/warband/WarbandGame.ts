@@ -14,6 +14,7 @@ import {
   createDefaultFighter,
   createHorse,
   vec3,
+  vec3DistXZ,
   type HorseArmorTier,
 } from "./state/WarbandState";
 import { WB } from "./config/WarbandBalanceConfig";
@@ -24,6 +25,7 @@ import { WarbandSceneManager } from "./view/WarbandSceneManager";
 import { WarbandCameraController } from "./view/WarbandCameraController";
 import { FighterMesh } from "./view/WarbandFighterRenderer";
 import { HorseMesh } from "./view/WarbandHorseRenderer";
+import { CreatureMesh } from "./view/WarbandCreatureRenderer";
 import { WarbandHUD } from "./view/WarbandHUD";
 import { WarbandShopView } from "./view/WarbandShopView";
 import { WarbandFX } from "./view/WarbandFX";
@@ -32,6 +34,7 @@ import { WarbandInputSystem } from "./systems/WarbandInputSystem";
 import { WarbandCombatSystem } from "./systems/WarbandCombatSystem";
 import { WarbandPhysicsSystem } from "./systems/WarbandPhysicsSystem";
 import { WarbandAISystem } from "./systems/WarbandAISystem";
+import { CREATURE_DEFS, type CreatureType } from "./config/CreatureDefs";
 
 // ---- Random AI names ------------------------------------------------------
 
@@ -63,6 +66,7 @@ interface UnitTypeDef {
   legs: string;
   boots: string;
   horseArmor?: HorseArmorTier;
+  creatureType?: CreatureType;
 }
 
 const UNIT_TYPES: UnitTypeDef[] = [
@@ -173,6 +177,131 @@ const UNIT_TYPES: UnitTypeDef[] = [
     boots: "plate_sabatons",
     horseArmor: "heavy",
   },
+  {
+    id: "crossbowman",
+    name: "Crossbowman",
+    icon: "\uD83C\uDFAF",
+    description: "Arbalest, pavise, medium armor",
+    mainHand: "arbalest",
+    offHand: "pavise",
+    head: "kettle_hat",
+    torso: "surcoat_over_mail",
+    gauntlets: "leather_gloves",
+    legs: "mail_chausses",
+    boots: "leather_boots",
+  },
+  {
+    id: "skirmisher",
+    name: "Skirmisher",
+    icon: "\uD83D\uDCA8",
+    description: "Javelins, light & fast",
+    mainHand: "javelins",
+    offHand: "buckler",
+    head: "leather_cap",
+    torso: "gambeson",
+    gauntlets: "leather_gloves",
+    legs: "leather_leggings",
+    boots: "riding_boots",
+  },
+  {
+    id: "man_at_arms",
+    name: "Man-at-Arms",
+    icon: "\uD83D\uDD28",
+    description: "Mace & scutum, heavy armor",
+    mainHand: "flanged_mace",
+    offHand: "scutum",
+    head: "sallet",
+    torso: "coat_of_plates",
+    gauntlets: "splinted_gauntlets",
+    legs: "splinted_greaves",
+    boots: "armored_boots",
+  },
+  {
+    id: "halberdier",
+    name: "Halberdier",
+    icon: "\uD83E\uDE93",
+    description: "Halberd, coat of plates",
+    mainHand: "halberd",
+    offHand: null,
+    head: "sallet",
+    torso: "coat_of_plates",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "mail_boots",
+  },
+  {
+    id: "berserker",
+    name: "Berserker",
+    icon: "\uD83D\uDD25",
+    description: "Zweihander, light armor, high damage",
+    mainHand: "zweihander",
+    offHand: null,
+    head: "leather_cap",
+    torso: "gambeson",
+    gauntlets: "leather_gloves",
+    legs: "padded_leggings",
+    boots: "leather_boots",
+  },
+  {
+    id: "militia",
+    name: "Militia",
+    icon: "\uD83E\uDE96",
+    description: "Hand axe & shield, cheap",
+    mainHand: "hand_axe",
+    offHand: "round_shield",
+    head: "cloth_hood",
+    torso: "padded_vest",
+    gauntlets: "cloth_wraps",
+    legs: "cloth_trousers",
+    boots: "sandals",
+  },
+  {
+    id: "sergeant",
+    name: "Sergeant",
+    icon: "\u2694",
+    description: "Sabre & norman shield, good armor",
+    mainHand: "sabre",
+    offHand: "norman_shield",
+    head: "nasal_helm",
+    torso: "brigandine",
+    gauntlets: "mail_gauntlets",
+    legs: "mail_chausses",
+    boots: "mail_boots",
+  },
+  {
+    id: "mounted_knight",
+    name: "Mounted Knight",
+    icon: "\uD83D\uDC51",
+    description: "Full plate, sword & shield, heavy horse",
+    mainHand: "arming_sword",
+    offHand: "kite_shield",
+    head: "great_helm",
+    torso: "plate_cuirass",
+    gauntlets: "plate_gauntlets",
+    legs: "plate_greaves",
+    boots: "plate_sabatons",
+    horseArmor: "heavy",
+  },
+  {
+    id: "troll",
+    name: "Troll",
+    icon: "\uD83E\uDDD4",
+    description: "Huge brute, high HP, slow but devastating",
+    mainHand: "",
+    offHand: null,
+    head: "", torso: "", gauntlets: "", legs: "", boots: "",
+    creatureType: "troll",
+  },
+  {
+    id: "cyclops",
+    name: "Cyclops",
+    icon: "\uD83D\uDC41\uFE0F",
+    description: "Massive one-eyed giant, immense damage",
+    mainHand: "",
+    offHand: null,
+    head: "", torso: "", gauntlets: "", legs: "", boots: "",
+    creatureType: "cyclops",
+  },
 ];
 
 export class WarbandGame {
@@ -189,6 +318,7 @@ export class WarbandGame {
   private _cameraController!: WarbandCameraController;
   private _fighterMeshes: Map<string, FighterMesh> = new Map();
   private _horseMeshes: Map<string, HorseMesh> = new Map();
+  private _creatureMeshes: Map<string, CreatureMesh> = new Map();
   private _hud = new WarbandHUD();
   private _shop = new WarbandShopView();
   private _fx!: WarbandFX;
@@ -283,7 +413,7 @@ export class WarbandGame {
 
       <button id="wb-siege" style="${this._menuBtnStyle()}">
         🏰 Siege Battle
-        <span style="display:block;font-size:12px;color:#999;margin-top:4px">Storm the castle walls</span>
+        <span style="display:block;font-size:12px;color:#999;margin-top:4px">Storm the castle, capture the centre</span>
       </button>
 
       <button id="wb-army" style="${this._menuBtnStyle("#4a2a0a", "#daa520")}">
@@ -474,13 +604,22 @@ export class WarbandGame {
     // Create enemies
     const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
     for (let i = 0; i < enemyCount; i++) {
-      const spawnZ = battleType === BattleType.SIEGE ? -20 : -5;
+      let spawnX: number, spawnZ: number;
+      if (battleType === BattleType.SIEGE) {
+        // Defenders spawn inside the castle, spread around the capture zone
+        const angle = (i / enemyCount) * Math.PI * 2;
+        spawnX = Math.cos(angle) * 4;
+        spawnZ = WB.SIEGE_CAPTURE_Z + Math.sin(angle) * 4;
+      } else {
+        spawnX = isDuel ? 0 : -6 + i * 3;
+        spawnZ = -5;
+      }
       const enemy = createDefaultFighter(
         `enemy_${i}`,
         AI_NAMES_ENEMY[i % AI_NAMES_ENEMY.length],
         "enemy",
         false,
-        vec3(isDuel ? 0 : -6 + i * 3, 0, spawnZ),
+        vec3(spawnX, 0, spawnZ),
       );
       this._equipRandomLoadout(enemy, "medium");
       this._state.fighters.push(enemy);
@@ -671,6 +810,24 @@ export class WarbandGame {
   }
 
   private _equipUnitType(fighter: WarbandFighter, unitType: UnitTypeDef, state?: WarbandState): void {
+    // Creature units — override stats from CreatureDef, no equipment
+    if (unitType.creatureType) {
+      const cDef = CREATURE_DEFS[unitType.creatureType];
+      fighter.creatureType = unitType.creatureType;
+      fighter.creatureRadius = cDef.radius;
+      fighter.hp = cDef.hp;
+      fighter.maxHp = cDef.hp;
+      fighter.equipment.mainHand = null;
+      fighter.equipment.offHand = null;
+      fighter.equipment.armor = {};
+      if (fighter.ai) {
+        fighter.ai.preferredRange = cDef.reach * 0.8;
+        fighter.ai.aggressiveness = 0.7;
+        fighter.ai.blockChance = 0.15; // creatures don't block well
+      }
+      return;
+    }
+
     fighter.equipment.mainHand = WEAPON_DEFS[unitType.mainHand] ?? null;
     fighter.equipment.offHand = unitType.offHand ? (WEAPON_DEFS[unitType.offHand] ?? null) : null;
     fighter.equipment.armor = {
@@ -723,6 +880,12 @@ export class WarbandGame {
     let playerIdx = 0;
     let enemyIdx = 0;
     for (const fighter of this._state.fighters) {
+      if (fighter.creatureType) {
+        const cMesh = new CreatureMesh(fighter);
+        this._sceneManager.scene.add(cMesh.group);
+        this._creatureMeshes.set(fighter.id, cMesh);
+        continue;
+      }
       const idx = fighter.team === "player" ? playerIdx++ : enemyIdx++;
       const mesh = new FighterMesh(fighter, idx);
       mesh.updateArmorVisuals(fighter);
@@ -819,18 +982,59 @@ export class WarbandGame {
     this._physicsSystem.update(this._state);
 
     if (!isCameraView) {
-      // Check win/loss
+      const isSiege = this._state.battleType === BattleType.SIEGE;
+
+      // Check win/loss — all attackers dead = defenders win
       if (this._state.playerTeamAlive <= 0) {
         this._endBattle(false);
       } else if (this._state.enemyTeamAlive <= 0) {
         this._endBattle(true);
       }
 
+      // Siege capture zone logic
+      if (isSiege) {
+        const capX = WB.SIEGE_CAPTURE_X;
+        const capZ = WB.SIEGE_CAPTURE_Z;
+        const capR = WB.SIEGE_CAPTURE_RADIUS;
+        const capCenter = { x: capX, y: 0, z: capZ };
+
+        let attackersIn = 0;
+        let defendersIn = 0;
+        for (const f of this._state.fighters) {
+          if (f.combatState === FighterCombatState.DEAD) continue;
+          if (vec3DistXZ(f.position, capCenter) <= capR) {
+            if (f.team === "player") attackersIn++;
+            else defendersIn++;
+          }
+        }
+        this._state.siegeAttackersInZone = attackersIn;
+        this._state.siegeDefendersInZone = defendersIn;
+
+        if (attackersIn > 0 && defendersIn === 0) {
+          // Attackers holding uncontested — progress increases
+          this._state.siegeCaptureProgress += attackersIn; // more attackers = faster capture
+        } else if (defendersIn > 0 && attackersIn === 0) {
+          // Defenders retaking — slowly drain progress
+          this._state.siegeCaptureProgress = Math.max(0, this._state.siegeCaptureProgress - 1);
+        }
+        // Contested (both present) — no progress change
+
+        // Attackers win by holding the centre long enough
+        if (this._state.siegeCaptureProgress >= WB.SIEGE_CAPTURE_TICKS) {
+          this._endBattle(true);
+        }
+      }
+
       // Battle timer
       this._state.battleTimer--;
       if (this._state.battleTimer <= 0) {
-        // Time's up - team with more alive wins
-        this._endBattle(this._state.playerTeamAlive > this._state.enemyTeamAlive);
+        if (isSiege) {
+          // Time's up — defenders win (attackers failed to capture)
+          this._endBattle(false);
+        } else {
+          // Time's up - team with more alive wins
+          this._endBattle(this._state.playerTeamAlive > this._state.enemyTeamAlive);
+        }
       }
     }
   }
@@ -845,6 +1049,13 @@ export class WarbandGame {
 
     // Update fighter meshes
     for (const fighter of this._state.fighters) {
+      // Creature mesh
+      const cMesh = this._creatureMeshes.get(fighter.id);
+      if (cMesh) {
+        cMesh.update(fighter, dt, this._sceneManager.camera);
+        continue;
+      }
+      // Humanoid mesh
       const mesh = this._fighterMeshes.get(fighter.id);
       if (mesh) {
         mesh.update(fighter, dt, this._sceneManager.camera);
@@ -1184,16 +1395,25 @@ export class WarbandGame {
       }
 
       // Create new enemies (scale difficulty)
+      const isSiege = this._state.battleType === BattleType.SIEGE;
       const enemyTier = this._state.round <= 2 ? "medium" : "heavy";
       const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
       for (let i = 0; i < enemyCount; i++) {
-        const spawnZ = this._state.battleType === BattleType.SIEGE ? -20 : -5;
+        let spawnX: number, spawnZ: number;
+        if (isSiege) {
+          const angle = (i / enemyCount) * Math.PI * 2;
+          spawnX = Math.cos(angle) * 4;
+          spawnZ = WB.SIEGE_CAPTURE_Z + Math.sin(angle) * 4;
+        } else {
+          spawnX = isDuel ? 0 : -6 + i * 3;
+          spawnZ = -5;
+        }
         const enemy = createDefaultFighter(
           `enemy_r${this._state.round}_${i}`,
           AI_NAMES_ENEMY[i % AI_NAMES_ENEMY.length],
           "enemy",
           false,
-          vec3(isDuel ? 0 : -6 + i * 3, 0, spawnZ),
+          vec3(spawnX, 0, spawnZ),
         );
         this._equipRandomLoadout(enemy, enemyTier);
         // Scale AI difficulty with rounds
@@ -1211,7 +1431,12 @@ export class WarbandGame {
     }
     this._state.projectiles = [];
     this._state.pickups = [];
-    this._state.battleTimer = 60 * WB.TICKS_PER_SEC;
+    this._state.battleTimer = this._state.battleType === BattleType.SIEGE
+      ? WB.SIEGE_BATTLE_TICKS
+      : 60 * WB.TICKS_PER_SEC;
+    this._state.siegeCaptureProgress = 0;
+    this._state.siegeAttackersInZone = 0;
+    this._state.siegeDefendersInZone = 0;
     this._state.tick = 0;
 
     // Show shop
@@ -1485,6 +1710,13 @@ export class WarbandGame {
       hMesh.dispose();
     }
     this._horseMeshes.clear();
+
+    // Remove creature meshes
+    for (const [, cMesh] of this._creatureMeshes) {
+      this._sceneManager.scene.remove(cMesh.group);
+      cMesh.dispose();
+    }
+    this._creatureMeshes.clear();
 
     // Remove projectile meshes
     for (const [, mesh] of this._projectileMeshes) {
