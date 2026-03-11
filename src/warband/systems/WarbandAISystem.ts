@@ -13,6 +13,7 @@ import {
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
 import { isRangedWeapon } from "../config/WeaponDefs";
+import { CREATURE_DEFS } from "../config/CreatureDefs";
 
 const COMBAT_DIRS = [
   CombatDirection.LEFT_SWING,
@@ -119,12 +120,13 @@ export class WarbandAISystem {
       ? (mounted ? 15 : 10)
       : (mounted ? 4.0 : ai.preferredRange);
 
-    // Movement — mounted fighters are faster
+    // Movement — mounted fighters are faster, creatures use their own speed
     const sinR = Math.sin(fighter.rotation);
     const cosR = Math.cos(fighter.rotation);
-    const baseWalk = mounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED;
-    const baseBack = mounted ? WB.HORSE_BACK_SPEED : WB.BACK_SPEED;
-    const baseStrafe = mounted ? WB.HORSE_STRAFE_SPEED : WB.STRAFE_SPEED;
+    const creatureDef = fighter.creatureType ? CREATURE_DEFS[fighter.creatureType] : null;
+    const baseWalk = creatureDef ? creatureDef.speed : (mounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED);
+    const baseBack = creatureDef ? creatureDef.speed * 0.5 : (mounted ? WB.HORSE_BACK_SPEED : WB.BACK_SPEED);
+    const baseStrafe = creatureDef ? creatureDef.speed * 0.7 : (mounted ? WB.HORSE_STRAFE_SPEED : WB.STRAFE_SPEED);
 
     // Siege mode objective movement: if no nearby enemies, move toward objective
     const isSiege = _state.battleType === BattleType.SIEGE;
@@ -249,9 +251,10 @@ export class WarbandAISystem {
     dist: number,
   ): void {
     const ai = fighter.ai!;
-    const reach = fighter.equipment.mainHand?.reach ?? 1;
+    const cDef = fighter.creatureType ? CREATURE_DEFS[fighter.creatureType] : null;
+    const reach = cDef ? cDef.reach : (fighter.equipment.mainHand?.reach ?? 1);
 
-    if (dist > reach + WB.FIGHTER_RADIUS + 0.5) return;
+    if (dist > reach + target.creatureRadius + 0.5) return;
 
     // Decide to attack
     if (Math.random() < ai.aggressiveness * 0.1) {
@@ -269,8 +272,12 @@ export class WarbandAISystem {
       }
 
       fighter.combatState = FighterCombatState.WINDING;
-      const speedMult = fighter.equipment.mainHand?.speed ?? 1;
-      fighter.stateTimer = Math.round(WB.WINDUP_TICKS_BASE / speedMult);
+      if (cDef) {
+        fighter.stateTimer = cDef.attackTicks;
+      } else {
+        const speedMult = fighter.equipment.mainHand?.speed ?? 1;
+        fighter.stateTimer = Math.round(WB.WINDUP_TICKS_BASE / speedMult);
+      }
 
       if (fighter.stamina >= WB.STAMINA_ATTACK_COST) {
         fighter.stamina -= WB.STAMINA_ATTACK_COST;

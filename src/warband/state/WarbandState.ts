@@ -4,6 +4,7 @@
 
 import type { WeaponDef } from "../config/WeaponDefs";
 import type { ArmorDef, ArmorSlot } from "../config/ArmorDefs";
+import type { CreatureType } from "../config/CreatureDefs";
 import { WB } from "../config/WarbandBalanceConfig";
 
 // ---- Enums ----------------------------------------------------------------
@@ -166,6 +167,10 @@ export interface WarbandFighter {
   // Mount
   mountId: string | null; // horse id if mounted
   isMounted: boolean;
+
+  // Creature (null for humanoid fighters)
+  creatureType: CreatureType | null;
+  creatureRadius: number; // effective collision radius
 
   // Animation
   walkCycle: number; // 0-1 walk animation phase
@@ -335,6 +340,9 @@ export function createDefaultFighter(
 
     mountId: null,
     isMounted: false,
+
+    creatureType: null,
+    creatureRadius: WB.FIGHTER_RADIUS,
 
     walkCycle: 0,
     animBlend: 0,

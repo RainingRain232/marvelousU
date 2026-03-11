@@ -45,7 +45,7 @@ export class WarbandPhysicsSystem {
 
       // Siege wall collision
       if (state.battleType === BattleType.SIEGE) {
-        const r = WB.FIGHTER_RADIUS;
+        const r = fighter.creatureRadius;
         for (const wall of SIEGE_WALLS) {
           this._pushOutOfWall(fighter.position, r, wall);
         }
@@ -57,7 +57,7 @@ export class WarbandPhysicsSystem {
         if (other.combatState === FighterCombatState.DEAD) continue;
 
         const dist = vec3DistXZ(fighter.position, other.position);
-        const minDist = WB.FIGHTER_RADIUS * 2 + 0.3; // extra gap to prevent weapon clipping
+        const minDist = fighter.creatureRadius + other.creatureRadius + 0.3; // extra gap to prevent weapon clipping
 
         if (dist < minDist && dist > 0.001) {
           const overlap = minDist - dist;

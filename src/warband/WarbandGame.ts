@@ -25,6 +25,7 @@ import { WarbandSceneManager } from "./view/WarbandSceneManager";
 import { WarbandCameraController } from "./view/WarbandCameraController";
 import { FighterMesh } from "./view/WarbandFighterRenderer";
 import { HorseMesh } from "./view/WarbandHorseRenderer";
+import { CreatureMesh } from "./view/WarbandCreatureRenderer";
 import { WarbandHUD } from "./view/WarbandHUD";
 import { WarbandShopView } from "./view/WarbandShopView";
 import { WarbandFX } from "./view/WarbandFX";
@@ -33,6 +34,7 @@ import { WarbandInputSystem } from "./systems/WarbandInputSystem";
 import { WarbandCombatSystem } from "./systems/WarbandCombatSystem";
 import { WarbandPhysicsSystem } from "./systems/WarbandPhysicsSystem";
 import { WarbandAISystem } from "./systems/WarbandAISystem";
+import { CREATURE_DEFS, type CreatureType } from "./config/CreatureDefs";
 
 // ---- Random AI names ------------------------------------------------------
 
@@ -64,6 +66,7 @@ interface UnitTypeDef {
   legs: string;
   boots: string;
   horseArmor?: HorseArmorTier;
+  creatureType?: CreatureType;
 }
 
 const UNIT_TYPES: UnitTypeDef[] = [
@@ -279,6 +282,26 @@ const UNIT_TYPES: UnitTypeDef[] = [
     boots: "plate_sabatons",
     horseArmor: "heavy",
   },
+  {
+    id: "troll",
+    name: "Troll",
+    icon: "\uD83E\uDDD4",
+    description: "Huge brute, high HP, slow but devastating",
+    mainHand: "",
+    offHand: null,
+    head: "", torso: "", gauntlets: "", legs: "", boots: "",
+    creatureType: "troll",
+  },
+  {
+    id: "cyclops",
+    name: "Cyclops",
+    icon: "\uD83D\uDC41\uFE0F",
+    description: "Massive one-eyed giant, immense damage",
+    mainHand: "",
+    offHand: null,
+    head: "", torso: "", gauntlets: "", legs: "", boots: "",
+    creatureType: "cyclops",
+  },
 ];
 
 export class WarbandGame {
@@ -295,6 +318,7 @@ export class WarbandGame {
   private _cameraController!: WarbandCameraController;
   private _fighterMeshes: Map<string, FighterMesh> = new Map();
   private _horseMeshes: Map<string, HorseMesh> = new Map();
+  private _creatureMeshes: Map<string, CreatureMesh> = new Map();
   private _hud = new WarbandHUD();
   private _shop = new WarbandShopView();
   private _fx!: WarbandFX;
@@ -786,6 +810,24 @@ export class WarbandGame {
   }
 
   private _equipUnitType(fighter: WarbandFighter, unitType: UnitTypeDef, state?: WarbandState): void {
+    // Creature units — override stats from CreatureDef, no equipment
+    if (unitType.creatureType) {
+      const cDef = CREATURE_DEFS[unitType.creatureType];
+      fighter.creatureType = unitType.creatureType;
+      fighter.creatureRadius = cDef.radius;
+      fighter.hp = cDef.hp;
+      fighter.maxHp = cDef.hp;
+      fighter.equipment.mainHand = null;
+      fighter.equipment.offHand = null;
+      fighter.equipment.armor = {};
+      if (fighter.ai) {
+        fighter.ai.preferredRange = cDef.reach * 0.8;
+        fighter.ai.aggressiveness = 0.7;
+        fighter.ai.blockChance = 0.15; // creatures don't block well
+      }
+      return;
+    }
+
     fighter.equipment.mainHand = WEAPON_DEFS[unitType.mainHand] ?? null;
     fighter.equipment.offHand = unitType.offHand ? (WEAPON_DEFS[unitType.offHand] ?? null) : null;
     fighter.equipment.armor = {
@@ -838,6 +880,12 @@ export class WarbandGame {
     let playerIdx = 0;
     let enemyIdx = 0;
     for (const fighter of this._state.fighters) {
+      if (fighter.creatureType) {
+        const cMesh = new CreatureMesh(fighter);
+        this._sceneManager.scene.add(cMesh.group);
+        this._creatureMeshes.set(fighter.id, cMesh);
+        continue;
+      }
       const idx = fighter.team === "player" ? playerIdx++ : enemyIdx++;
       const mesh = new FighterMesh(fighter, idx);
       mesh.updateArmorVisuals(fighter);
@@ -1001,6 +1049,13 @@ export class WarbandGame {
 
     // Update fighter meshes
     for (const fighter of this._state.fighters) {
+      // Creature mesh
+      const cMesh = this._creatureMeshes.get(fighter.id);
+      if (cMesh) {
+        cMesh.update(fighter, dt, this._sceneManager.camera);
+        continue;
+      }
+      // Humanoid mesh
       const mesh = this._fighterMeshes.get(fighter.id);
       if (mesh) {
         mesh.update(fighter, dt, this._sceneManager.camera);
@@ -1655,6 +1710,13 @@ export class WarbandGame {
       hMesh.dispose();
     }
     this._horseMeshes.clear();
+
+    // Remove creature meshes
+    for (const [, cMesh] of this._creatureMeshes) {
+      this._sceneManager.scene.remove(cMesh.group);
+      cMesh.dispose();
+    }
+    this._creatureMeshes.clear();
 
     // Remove projectile meshes
     for (const [, mesh] of this._projectileMeshes) {
