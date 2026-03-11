@@ -18,6 +18,28 @@ function cyl(rTop: number, rBot: number, h: number, seg = 8): THREE.CylinderGeom
   return new THREE.CylinderGeometry(rTop, rBot, h, seg);
 }
 
+/** Create a bat-wing–shaped membrane geometry (scalloped outer edge, tapered). */
+function wingShape(width: number, height: number): THREE.ShapeGeometry {
+  const w = width / 2;
+  const h = height / 2;
+  const s = new THREE.Shape();
+  // Start near body (top-inner)
+  s.moveTo(-w * 0.9, h * 0.7);
+  // Top edge – rises toward wing tip
+  s.quadraticCurveTo(-w * 0.2, h * 1.05, w * 0.5, h * 0.8);
+  s.quadraticCurveTo(w * 0.85, h * 0.6, w, h * 0.35);
+  // Outer scalloped edge (3 scallops between finger bones)
+  s.quadraticCurveTo(w * 1.05, h * 0.05, w * 0.82, -h * 0.15);
+  s.quadraticCurveTo(w * 0.95, -h * 0.35, w * 0.65, -h * 0.5);
+  s.quadraticCurveTo(w * 0.75, -h * 0.7, w * 0.4, -h * 0.8);
+  // Bottom edge – curves back toward body
+  s.quadraticCurveTo(w * 0.1, -h * 0.95, -w * 0.4, -h * 0.6);
+  s.quadraticCurveTo(-w * 0.7, -h * 0.45, -w * 0.9, -h * 0.2);
+  // Close along body side
+  s.lineTo(-w * 0.9, h * 0.7);
+  return new THREE.ShapeGeometry(s, 8);
+}
+
 // ---- CreatureMesh class ----------------------------------------------------
 
 export class CreatureMesh {
@@ -263,6 +285,15 @@ export class CreatureMesh {
       case "iron_colossus":
         this._buildIronColossus();
         break;
+    }
+
+    // ---- Scale large creatures 2× ----
+    const _bigCreatures: CreatureType[] = [
+      "red_dragon", "frost_dragon", "fire_dragon", "ice_dragon",
+      "troll", "siege_troll", "cyclops", "giant_siege",
+    ];
+    if (_bigCreatures.includes(this._creatureType)) {
+      this._body.scale.set(2, 2, 2);
     }
 
     // ---- HP bar ----
@@ -4533,12 +4564,13 @@ export class CreatureMesh {
         wing.add(fClaw);
       }
 
-      // Wing membrane — semi-transparent deep red
-      const membraneGeo = new THREE.PlaneGeometry(1.2, 1.0, 3, 2);
+      // Wing membrane — semi-transparent deep red (bat-wing shape)
+      const membraneGeo = wingShape(1.2, 1.0);
       const membrane = new THREE.Mesh(membraneGeo, membraneMat);
       membrane.position.set(side * 0.6, -0.15, -0.22);
       membrane.rotation.y = side * 0.2;
       membrane.rotation.x = -0.15;
+      membrane.scale.x = side;
       wing.add(membrane);
 
       // Wing membrane veins — thin cylinders
@@ -4875,12 +4907,13 @@ export class CreatureMesh {
         wing.add(finger);
       }
 
-      // Wing membrane — pale blue semi-transparent
-      const membraneGeo = new THREE.PlaneGeometry(1.2, 1.0, 3, 2);
+      // Wing membrane — pale blue semi-transparent (bat-wing shape)
+      const membraneGeo = wingShape(1.2, 1.0);
       const membrane = new THREE.Mesh(membraneGeo, membraneMat);
       membrane.position.set(side * 0.6, -0.15, -0.22);
       membrane.rotation.y = side * 0.2;
       membrane.rotation.x = -0.15;
+      membrane.scale.x = side;
       wing.add(membrane);
 
       // Wing membrane veins — thin cylinders
@@ -5240,12 +5273,13 @@ export class CreatureMesh {
         wing.add(finger);
       }
 
-      // Wing membrane — large dark crimson semi-transparent
-      const membraneGeo = new THREE.PlaneGeometry(2.8, 2.2, 4, 3);
+      // Wing membrane — large dark crimson (bat-wing shape)
+      const membraneGeo = wingShape(2.8, 2.2);
       const membrane = new THREE.Mesh(membraneGeo, membraneMat);
       membrane.position.set(side * 1.2, -0.3, -0.25);
       membrane.rotation.y = side * 0.2;
       membrane.rotation.x = -0.15;
+      membrane.scale.x = side;
       wing.add(membrane);
 
       // Wing membrane veins — thin cylinders
@@ -5257,12 +5291,13 @@ export class CreatureMesh {
         wing.add(vein);
       }
 
-      // Secondary lower membrane
-      const lowerMemGeo = new THREE.PlaneGeometry(1.8, 1.0, 3, 2);
+      // Secondary lower membrane (bat-wing shape)
+      const lowerMemGeo = wingShape(1.8, 1.0);
       const lowerMem = new THREE.Mesh(lowerMemGeo, membraneMat);
       lowerMem.position.set(side * 0.6, -1.1, -0.2);
       lowerMem.rotation.y = side * 0.15;
       lowerMem.rotation.x = -0.1;
+      lowerMem.scale.x = side;
       wing.add(lowerMem);
     }
 
@@ -5609,12 +5644,13 @@ export class CreatureMesh {
         wing.add(finger);
       }
 
-      // Wing membrane — large pale translucent
-      const membraneGeo = new THREE.PlaneGeometry(2.8, 2.2, 4, 3);
+      // Wing membrane — large pale translucent (bat-wing shape)
+      const membraneGeo = wingShape(2.8, 2.2);
       const membrane = new THREE.Mesh(membraneGeo, membraneMat);
       membrane.position.set(side * 1.2, -0.3, -0.25);
       membrane.rotation.y = side * 0.2;
       membrane.rotation.x = -0.15;
+      membrane.scale.x = side;
       wing.add(membrane);
 
       // Wing membrane veins — thin cylinders
@@ -5626,12 +5662,13 @@ export class CreatureMesh {
         wing.add(vein);
       }
 
-      // Secondary lower membrane
-      const lowerMemGeo = new THREE.PlaneGeometry(1.8, 1.0, 3, 2);
+      // Secondary lower membrane (bat-wing shape)
+      const lowerMemGeo = wingShape(1.8, 1.0);
       const lowerMem = new THREE.Mesh(lowerMemGeo, membraneMat);
       lowerMem.position.set(side * 0.6, -1.1, -0.2);
       lowerMem.rotation.y = side * 0.15;
       lowerMem.rotation.x = -0.1;
+      lowerMem.scale.x = side;
       wing.add(lowerMem);
 
       // Icicles on wing edges (more, larger)
