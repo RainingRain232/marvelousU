@@ -37,8 +37,8 @@ import { WarbandAISystem } from "./systems/WarbandAISystem";
 import { CREATURE_DEFS, type CreatureType } from "./config/CreatureDefs";
 import { LEADER_DEFINITIONS } from "@sim/config/LeaderDefs";
 import type { LeaderId } from "@sim/config/LeaderDefs";
-import { RACE_DEFINITIONS } from "@sim/config/RaceDefs";
-import type { RaceId } from "@sim/config/RaceDefs";
+import { RACE_DEFINITIONS, getRace } from "@sim/config/RaceDefs";
+import type { RaceId, RaceTiers } from "@sim/config/RaceDefs";
 
 // ---- Random AI names ------------------------------------------------------
 
@@ -74,6 +74,12 @@ interface UnitTypeDef {
   scale?: number;        // visual & collision scale (default 1.0)
   hpOverride?: number;   // override default 100 HP
   speedMultiplier?: number; // movement speed multiplier
+  // --- Shop classification (assigned after array) ---
+  building?: string;     // "barracks"|"archery"|"stables"|"siege"|"creatures"|"mages"|"temple"
+  tier?: number;         // power tier 1–7
+  cost?: number;         // gold cost
+  isElite?: boolean;     // appears in elite section of building tab
+  faction?: string;      // race id for faction-exclusive units
 }
 
 const UNIT_TYPES: UnitTypeDef[] = [
@@ -2814,6 +2820,263 @@ const UNIT_TYPES: UnitTypeDef[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Shop classification – assigns building, tier, cost, faction to each unit
+// ---------------------------------------------------------------------------
+
+const WARBAND_SHOP_TABS = [
+  { id: "barracks", label: "BARRACKS", color: "#ff6644", desc: "Military training grounds for infantry and specialized warriors. Swordsmen, pikemen, assassins, and heavy defenders are forged here." },
+  { id: "archery", label: "ARCHERY", color: "#66cc44", desc: "Training grounds for marksmen who strike from distance with deadly precision. Archers, crossbowmen, and longbowmen hone their aim here." },
+  { id: "stables", label: "STABLES", color: "#ddaa44", desc: "Houses and trains mounted cavalry units for swift battlefield mobility. Knights and lancers charge forth to break enemy lines." },
+  { id: "siege", label: "SIEGE", color: "#8888aa", desc: "Forge where devastating siege weapons are crafted for destroying fortifications. Ballistae, catapults, and trebuchets rain destruction." },
+  { id: "creatures", label: "CREATURES", color: "#cc66cc", desc: "Mystical habitat where legendary creatures are tamed for battle. Dragons, trolls, elementals, and other beasts answer the call." },
+  { id: "mages", label: "MAGES", color: "#6688ff", desc: "Arcane academy where elemental mages master fire, ice, lightning, and distortion. Their devastating spells turn the tide of war." },
+  { id: "temple", label: "TEMPLE", color: "#ffdd88", desc: "Sacred sanctuary where healers and holy warriors train to support allies. Monks, clerics, and angels channel divine power." },
+];
+
+// Maps unit id → [building, isElite?]
+const UNIT_BUILDING_MAP: Record<string, [string, boolean?]> = {
+  // Basic
+  swordsman: ["barracks"], archer: ["archery"], pikeman: ["barracks"], knight: ["barracks"],
+  scout_cavalry: ["stables"], horse_archer: ["stables"], lancer: ["stables"],
+  crossbowman: ["archery"], skirmisher: ["archery"], halberdier: ["barracks"], berserker: ["barracks"],
+  // Creatures (generic)
+  troll: ["creatures"], cyclops: ["creatures"],
+  // Barracks specialized
+  assassin: ["barracks"], mage_hunter: ["barracks"], gladiator: ["barracks"],
+  defender: ["barracks"], phalanx: ["barracks"], royal_phalanx: ["barracks"],
+  royal_defender: ["barracks"], axeman: ["barracks"], war_drummer: ["barracks"], troubadour: ["barracks"],
+  // Ancient & Elder (elite barracks)
+  ancient_defender: ["barracks", true], ancient_phalanx: ["barracks", true], ancient_axeman: ["barracks", true],
+  elder_defender: ["barracks", true], elder_phalanx: ["barracks", true], elder_axeman: ["barracks", true],
+  // Elite Barracks
+  royal_guard: ["barracks", true], giant_warrior: ["barracks", true], giant_court_jester: ["barracks", true],
+  questing_knight: ["stables", true],
+  // Archery Range
+  shortbow: ["archery"], longbowman: ["archery"], repeater: ["archery"],
+  javelineer: ["archery"], arbalestier: ["archery"],
+  // Ancient & Elder Archery (elite)
+  ancient_archer: ["archery", true], ancient_longbowman: ["archery", true], ancient_crossbowman: ["archery", true],
+  elder_archer: ["archery", true], elder_repeater: ["archery", true], elder_javelineer: ["archery", true],
+  marksman: ["archery", true], giant_archer: ["archery", true],
+  // Stables
+  siege_hunter: ["stables"], elite_lancer: ["stables"], knight_lancer: ["stables"], royal_lancer: ["stables"],
+  // Elite Stables
+  elder_horse_archer: ["stables", true], cataphract: ["stables", true],
+  heavy_lancer: ["stables", true], giant_cavalry: ["stables", true],
+  // Temple
+  novice_priest: ["temple"], monk: ["temple"], cleric: ["temple"],
+  saint: ["temple"], templar: ["temple"], angel: ["temple", true],
+  // Mage Tower
+  fire_mage: ["mages"], storm_mage: ["mages"], cold_mage: ["mages"], distortion_mage: ["mages"],
+  fire_adept_mage: ["mages"], cold_adept_mage: ["mages"],
+  lightning_adept_mage: ["mages"], distortion_adept_mage: ["mages"],
+  fire_master_mage: ["mages"], cold_master_mage: ["mages"],
+  lightning_master_mage: ["mages"], distortion_master_mage: ["mages"],
+  summoner: ["mages"], debuffer_warlock: ["mages"], constructionist: ["mages"], dark_savant: ["mages"],
+  // Elite Mage Tower
+  battlemage: ["mages", true], giant_mage: ["mages", true],
+  // Creature Den
+  spider: ["creatures"], giant_frog: ["creatures"], rhino: ["creatures"], vampire_bat: ["creatures"],
+  red_dragon: ["creatures"], fire_elemental: ["creatures"], ice_elemental: ["creatures"],
+  earth_elemental: ["creatures"], frost_dragon: ["creatures"],
+  fire_dragon: ["creatures", true], ice_dragon: ["creatures", true],
+  lightning_elemental: ["creatures"], distortion_elemental: ["creatures"],
+  minor_fire_elemental: ["creatures"], minor_ice_elemental: ["creatures"],
+  minor_lightning_elemental: ["creatures"], minor_distortion_elemental: ["creatures"],
+  minor_earth_elemental: ["creatures"],
+  fire_imp: ["creatures"], ice_imp: ["creatures"], lightning_imp: ["creatures"], distortion_imp: ["creatures"],
+  void_snail: ["creatures"], faery_queen: ["creatures"], devourer: ["creatures"],
+  pixie: ["creatures"], bat: ["creatures"],
+  // Siege Workshop
+  battering_ram: ["siege"], catapult: ["siege"], trebuchet: ["siege"], ballista: ["siege"],
+  // Elite Siege Workshop
+  cannon: ["siege", true], giant_siege: ["siege", true], bolt_thrower: ["siege", true],
+  siege_catapult: ["siege", true], war_wagon: ["siege", true], bombard: ["siege", true],
+  siege_tower: ["siege", true], hellfire_mortar: ["siege", true],
+};
+
+// Maps unit id → faction race id
+const UNIT_FACTION_MAP: Record<string, string> = {
+  // Man
+  halberdier: "man", royal_arbalestier: "man", knight_commander: "man",
+  war_chaplain: "man", shield_captain: "man",
+  // Elves
+  elven_archer: "elf", bladedancer: "elf", treant_guardian: "elf", moonweaver: "elf",
+  // The Horde
+  warchief: "horde", boar_rider: "horde", siege_troll: "horde",
+  blood_berserker: "horde", horde_archer: "horde", horde_healer: "horde",
+  // The Adept
+  archmage: "adept", chronomancer: "adept", spell_weaver: "adept",
+  mana_wraith: "adept", blade_adept: "adept",
+  // Elements
+  elemental_avatar: "elements", storm_conduit: "elements", frost_wyrm: "elements",
+  magma_titan: "elements", stone_fist: "elements",
+  // Halflings
+  halfling_slinger: "halfling", halfling_chef: "halfling", halfling_burglar: "halfling",
+  halfling_rider: "halfling", halfling_alchemist: "halfling",
+  // Lava Children
+  magma_golem: "lava", lava_shaman: "lava", obsidian_sentinel: "lava",
+  cinder_wraith: "lava", volcanic_behemoth: "lava",
+  // Dwarves
+  dwarven_guardian: "dwarf", runesmith: "dwarf", dwarven_cannon: "dwarf",
+  ironbreaker: "dwarf", thunderer: "dwarf",
+  // Orcs
+  orc_brute: "orc", orc_drummer: "orc", orc_shaman: "orc",
+  wyvern_rider: "orc", pit_fighter: "orc",
+  // Undead
+  death_knight: "undead", necromancer: "undead", banshee: "undead",
+  bone_colossus: "undead", wraith_lord: "undead",
+  // Demons
+  pit_lord: "demon", hellfire_warlock: "demon", succubus: "demon",
+  doom_guard: "demon", imp_overlord: "demon",
+  // Angels
+  seraphim: "angel", divine_champion: "angel", valkyrie: "angel",
+  archon: "angel", celestial_archer: "angel",
+  // Beastkin
+  alpha_wolf: "beast", beast_shaman: "beast", thunderhawk: "beast",
+  dire_bear: "beast", serpent_priest: "beast",
+  // Golem Collective
+  war_golem: "golem", rune_core: "golem", siege_automaton: "golem",
+  crystal_golem: "golem", iron_colossus: "golem",
+  // Pirates
+  pirate_captain: "pirate", corsair_gunner: "pirate", powder_monkey: "pirate",
+  sea_witch: "pirate", boarding_master: "pirate", buccaneer: "pirate",
+};
+
+// Faction name lookup for display
+const FACTION_NAMES: Record<string, string> = {
+  man: "Man", elf: "Elves", horde: "The Horde", adept: "The Adept",
+  elements: "The Elements", halfling: "Halflings", lava: "Lava Children",
+  dwarf: "Dwarves", orc: "Orcs", undead: "Undead", demon: "Demons",
+  angel: "Angels", beast: "Beastkin", golem: "Golem Collective", pirate: "Pirates",
+};
+
+const FACTION_COLORS: Record<string, string> = {
+  man: "#4466cc", elf: "#44aa44", horde: "#884422", adept: "#7744cc",
+  elements: "#cc8844", halfling: "#88aa44", lava: "#cc4400",
+  dwarf: "#aa8855", orc: "#558822", undead: "#667788", demon: "#cc2222",
+  angel: "#ddcc44", beast: "#668844", golem: "#8888aa", pirate: "#aa6633",
+};
+
+function _computeWarbandCost(ut: UnitTypeDef): number {
+  if (ut.creatureType) {
+    const cDef = CREATURE_DEFS[ut.creatureType];
+    if (cDef) {
+      const base = cDef.hp * 0.6 + cDef.damage * 4;
+      return Math.max(50, Math.round(base / 25) * 25);
+    }
+  }
+  const hp = ut.hpOverride ?? 100;
+  const scale = ut.scale ?? 1.0;
+  const horseCost = ut.horseArmor === "heavy" ? 200 : ut.horseArmor === "medium" ? 150 : ut.horseArmor === "light" ? 80 : 0;
+  let base = hp * (scale > 1.2 ? scale * 0.6 : 1.0) + horseCost;
+  return Math.max(50, Math.round(base / 25) * 25);
+}
+
+function _computeWarbandTier(cost: number): number {
+  if (cost < 125) return 1;
+  if (cost < 225) return 2;
+  if (cost < 375) return 3;
+  if (cost < 575) return 4;
+  if (cost < 925) return 5;
+  if (cost < 1500) return 6;
+  return 7;
+}
+
+// Apply classification to all units
+for (const ut of UNIT_TYPES) {
+  const cls = UNIT_BUILDING_MAP[ut.id];
+  if (cls) {
+    ut.building = cls[0];
+    if (cls[1]) ut.isElite = true;
+  }
+  const fac = UNIT_FACTION_MAP[ut.id];
+  if (fac) ut.faction = fac;
+  ut.cost = _computeWarbandCost(ut);
+  ut.tier = _computeWarbandTier(ut.cost);
+}
+
+let WARBAND_SHOP_GOLD = 30000;
+
+// Building → RaceTiers category mapping (same as battlefield mode)
+const WARBAND_BUILDING_TIER_KEY: Record<string, keyof RaceTiers> = {
+  barracks: "melee",
+  stables: "melee",
+  archery: "ranged",
+  siege: "siege",
+  creatures: "creature",
+  mages: "magic",
+  temple: "heal",
+};
+
+function _getWarbandTierLimit(raceId: string, building: string): number {
+  const race = getRace(raceId as RaceId);
+  if (!race?.tiers) return 7; // no tiers defined → allow all
+  const key = WARBAND_BUILDING_TIER_KEY[building];
+  if (!key) return 7;
+  return race.tiers[key];
+}
+
+
+function _generateWarbandMercenaries(selectedRaceId: string): number[] {
+  const candidates: number[] = [];
+  for (let i = 0; i < UNIT_TYPES.length; i++) {
+    const fac = UNIT_TYPES[i].faction;
+    if (fac && fac !== selectedRaceId) candidates.push(i);
+  }
+  // Shuffle
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  return candidates.slice(0, 10);
+}
+
+function _getUnitsForTab(tabId: string, selectedRaceId: string, mercIndices: number[]): { regular: number[]; elite: number[] } {
+  if (tabId === "faction") {
+    const units: number[] = [];
+    for (let i = 0; i < UNIT_TYPES.length; i++) {
+      if (UNIT_TYPES[i].faction === selectedRaceId) units.push(i);
+    }
+    units.sort((a, b) => (UNIT_TYPES[a].cost ?? 0) - (UNIT_TYPES[b].cost ?? 0));
+    return { regular: units, elite: [] };
+  }
+  if (tabId === "mercenaries") {
+    const sorted = [...mercIndices].sort((a, b) => (UNIT_TYPES[a].cost ?? 0) - (UNIT_TYPES[b].cost ?? 0));
+    return { regular: sorted, elite: [] };
+  }
+  const maxTier = _getWarbandTierLimit(selectedRaceId, tabId);
+  const regular: number[] = [];
+  const elite: number[] = [];
+  for (let i = 0; i < UNIT_TYPES.length; i++) {
+    const ut = UNIT_TYPES[i];
+    if (ut.building !== tabId) continue;
+    if ((ut.tier ?? 1) > maxTier) continue; // race tier limit
+    if (ut.isElite) elite.push(i);
+    else regular.push(i);
+  }
+  regular.sort((a, b) => (UNIT_TYPES[a].cost ?? 0) - (UNIT_TYPES[b].cost ?? 0));
+  elite.sort((a, b) => (UNIT_TYPES[a].cost ?? 0) - (UNIT_TYPES[b].cost ?? 0));
+  return { regular, elite };
+}
+
+function _getAllAvailableUnits(raceId: string, mercIndices: number[]): number[] {
+  const seen = new Set<number>();
+  const result: number[] = [];
+  for (const tab of WARBAND_SHOP_TABS) {
+    const { regular, elite } = _getUnitsForTab(tab.id, raceId, mercIndices);
+    for (const i of regular) { if (!seen.has(i)) { seen.add(i); result.push(i); } }
+    for (const i of elite) { if (!seen.has(i)) { seen.add(i); result.push(i); } }
+  }
+  // Faction
+  const { regular: fac } = _getUnitsForTab("faction", raceId, mercIndices);
+  for (const i of fac) { if (!seen.has(i)) { seen.add(i); result.push(i); } }
+  // Mercs
+  for (const i of mercIndices) { if (!seen.has(i)) { seen.add(i); result.push(i); } }
+  return result;
+}
+
 export class WarbandGame {
   private _state: WarbandState | null = null;
 
@@ -2852,8 +3115,14 @@ export class WarbandGame {
   private _armySetupContainer: HTMLDivElement | null = null;
 
   // Army battle composition (indexed by UNIT_TYPES)
-  private _playerArmy: number[] = [0, 0, 0, 0, 0, 0, 0, 0];
-  private _enemyArmy: number[] = [0, 0, 0, 0, 0, 0, 0, 0];
+  private _playerArmy: number[] = [];
+  private _enemyArmy: number[] = [];
+  private _shopActiveTab = 0;
+  private _shopActiveSide: "player" | "enemy" = "player";
+  private _shopPlayerGoldSpent = 0;
+  private _shopEnemyGoldSpent = 0;
+  private _shopMercIndices: number[] = [];
+  private _shopRandomOn = false;
 
   // Pre-battle selection screens
   private _leaderSelectContainer: HTMLDivElement | null = null;
@@ -3524,14 +3793,20 @@ export class WarbandGame {
   private _showArmySetup(): void {
     this._playerArmy = new Array(UNIT_TYPES.length).fill(0);
     this._enemyArmy = new Array(UNIT_TYPES.length).fill(0);
+    this._shopActiveTab = 0;
+    this._shopActiveSide = "player";
+    this._shopPlayerGoldSpent = 0;
+    this._shopEnemyGoldSpent = 0;
+    this._shopMercIndices = _generateWarbandMercenaries(this._selectedRaceId);
+    this._shopRandomOn = false;
 
     this._armySetupContainer = document.createElement("div");
     this._armySetupContainer.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       z-index: 30; background: rgba(10, 8, 5, 0.97);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-family: 'Segoe UI', sans-serif; color: #e0d5c0;
-      user-select: none;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: monospace, 'Courier New', monospace; color: #e0d5c0;
+      user-select: none; overflow: hidden;
     `;
 
     const container = document.getElementById("pixi-container");
@@ -3540,101 +3815,336 @@ export class WarbandGame {
     this._renderArmySetup();
   }
 
+  private _buildShopTabs(): Array<{ id: string; label: string; color: string; desc: string }> {
+    const tabs = [...WARBAND_SHOP_TABS];
+    // Add faction tab for selected race
+    const raceName = FACTION_NAMES[this._selectedRaceId] ?? this._selectedRaceId;
+    const raceColor = FACTION_COLORS[this._selectedRaceId] ?? "#ffaa44";
+    const hasFaction = UNIT_TYPES.some((ut) => ut.faction === this._selectedRaceId);
+    if (hasFaction) {
+      tabs.push({
+        id: "faction",
+        label: raceName.toUpperCase(),
+        color: raceColor,
+        desc: `Elite warriors unique to the ${raceName}. These faction-exclusive units are only available to this race.`,
+      });
+    }
+    // Add mercenary tab
+    if (this._shopMercIndices.length > 0) {
+      const mercRaces = [...new Set(this._shopMercIndices.map((i) => FACTION_NAMES[UNIT_TYPES[i].faction ?? ""] ?? ""))].filter(Boolean);
+      tabs.push({
+        id: "mercenaries",
+        label: "MERCS",
+        color: "#ffaa00",
+        desc: `Hired swords from foreign lands. These mercenaries from the ${mercRaces.join(" & ")} offer their services for gold.`,
+      });
+    }
+    return tabs;
+  }
+
+  private _fillRandomArmy(): void {
+    const army = this._shopActiveSide === "player" ? this._playerArmy : this._enemyArmy;
+    // Clear current side
+    for (let i = 0; i < army.length; i++) army[i] = 0;
+    if (this._shopActiveSide === "player") this._shopPlayerGoldSpent = 0;
+    else this._shopEnemyGoldSpent = 0;
+
+    const MAX_ARMY = 100;
+    const available = _getAllAvailableUnits(this._selectedRaceId, this._shopMercIndices)
+      .filter((i) => (UNIT_TYPES[i].cost ?? 100) <= WARBAND_SHOP_GOLD);
+    if (available.length === 0) return;
+
+    let remaining = WARBAND_SHOP_GOLD;
+    let total = 0;
+    let safety = 500;
+    while (remaining > 0 && total < MAX_ARMY && safety-- > 0) {
+      const affordable = available.filter((i) => (UNIT_TYPES[i].cost ?? 100) <= remaining);
+      if (affordable.length === 0) break;
+      const pick = affordable[Math.floor(Math.random() * affordable.length)];
+      const cost = UNIT_TYPES[pick].cost ?? 100;
+      army[pick]++;
+      remaining -= cost;
+      total++;
+    }
+    const spent = WARBAND_SHOP_GOLD - remaining;
+    if (this._shopActiveSide === "player") this._shopPlayerGoldSpent = spent;
+    else this._shopEnemyGoldSpent = spent;
+  }
+
   private _renderArmySetup(): void {
     if (!this._armySetupContainer) return;
 
     const MAX_ARMY = 100;
     const playerTotal = this._playerArmy.reduce((a, b) => a + b, 0);
     const enemyTotal = this._enemyArmy.reduce((a, b) => a + b, 0);
+    const tabs = this._buildShopTabs();
+    const activeTab = tabs[this._shopActiveTab] ?? tabs[0];
+    const isPlayer = this._shopActiveSide === "player";
+    const army = isPlayer ? this._playerArmy : this._enemyArmy;
+    const goldSpent = isPlayer ? this._shopPlayerGoldSpent : this._shopEnemyGoldSpent;
+    const goldRemaining = WARBAND_SHOP_GOLD - goldSpent;
+    const sideColor = isPlayer ? "#4488ff" : "#ff4444";
+    const sideLabel = isPlayer ? "YOUR ARMY" : "ENEMY ARMY";
 
-    const unitCard = (ut: UnitTypeDef, idx: number, count: number, side: "player" | "enemy") => {
-      const borderColor = side === "player" ? "#4488ff" : "#ff4444";
+    const { regular, elite } = _getUnitsForTab(activeTab.id, this._selectedRaceId, this._shopMercIndices);
+
+    // Build unit row HTML
+    const unitRow = (idx: number): string => {
+      const ut = UNIT_TYPES[idx];
+      const cost = ut.cost ?? 100;
+      const tier = ut.tier ?? 1;
+      const count = army[idx] ?? 0;
+      const canAfford = goldRemaining >= cost;
+      const tierColors = ["", "#aabbcc", "#88cc88", "#44aaee", "#ccaa44", "#ee8844", "#ee4488", "#ff44ff"];
+      const tierColor = tierColors[tier] ?? "#aabbcc";
       return `
-        <div style="background:rgba(255,255,255,0.05);border:2px solid ${borderColor};border-radius:8px;
-          padding:12px;margin:6px;width:120px;text-align:center;cursor:pointer;transition:background 0.15s"
-          data-unit="${idx}" data-side="${side}"
-          onmouseover="this.style.background='rgba(255,255,255,0.12)'"
-          onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-          <div style="font-size:28px">${ut.icon}</div>
-          <div style="font-size:14px;font-weight:bold;margin:4px 0">${ut.name}</div>
-          <div style="font-size:11px;color:#888;margin-bottom:6px">${ut.description}</div>
-          <div style="font-size:24px;font-weight:bold;color:${borderColor}">${count}</div>
+        <div class="wb-unit-row" data-idx="${idx}" style="display:flex;align-items:center;padding:4px 8px;
+          margin:2px 0;background:rgba(255,255,255,0.03);border-radius:4px;cursor:pointer;min-height:34px;
+          transition:background 0.1s"
+          onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+          onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+          <span style="color:${tierColor};font-weight:bold;width:28px;font-size:11px;flex-shrink:0">T${tier}</span>
+          <span style="font-size:16px;width:24px;text-align:center;flex-shrink:0">${ut.icon}</span>
+          <div style="flex:1;min-width:0;padding:0 8px">
+            <div style="font-size:13px;color:#ccddee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ut.name}</div>
+            <div style="font-size:10px;color:#aabb88">${cost}g</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <button data-action="sub" data-idx="${idx}" style="width:26px;height:26px;border:1px solid #555;
+              border-radius:4px;background:#1a1122;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;
+              font-family:monospace;display:flex;align-items:center;justify-content:center">-</button>
+            <span style="width:30px;text-align:center;font-size:15px;font-weight:bold;color:#fff">${count}</span>
+            <button data-action="add" data-idx="${idx}" style="width:26px;height:26px;border:1px solid ${canAfford ? "#555" : "#333"};
+              border-radius:4px;background:${canAfford ? "#1a1122" : "#0a0a10"};color:${canAfford ? "#fff" : "#444"};
+              font-size:16px;font-weight:bold;cursor:${canAfford ? "pointer" : "not-allowed"};
+              font-family:monospace;display:flex;align-items:center;justify-content:center">+</button>
+          </div>
         </div>
       `;
     };
 
-    const playerCards = UNIT_TYPES.map((ut, i) => unitCard(ut, i, this._playerArmy[i], "player")).join("");
-    const enemyCards = UNIT_TYPES.map((ut, i) => unitCard(ut, i, this._enemyArmy[i], "enemy")).join("");
+    let unitListHTML = regular.map((idx) => unitRow(idx)).join("");
+    if (elite.length > 0) {
+      unitListHTML += `
+        <div style="display:flex;align-items:center;margin:8px 0;gap:8px">
+          <div style="flex:1;height:1px;background:#ddaa44;opacity:0.5"></div>
+          <span style="font-size:10px;font-weight:bold;color:#ddaa44;letter-spacing:2px">ELITE</span>
+          <div style="flex:1;height:1px;background:#ddaa44;opacity:0.5"></div>
+        </div>
+      `;
+      unitListHTML += elite.map((idx) => unitRow(idx)).join("");
+    }
+    if (regular.length === 0 && elite.length === 0) {
+      unitListHTML = `<div style="padding:20px;text-align:center;color:#666">No units available in this category.</div>`;
+    }
+
+    // Build tab bar HTML
+    const tabBarHTML = tabs.map((tab, i) => {
+      const isActive = i === this._shopActiveTab;
+      const bgStyle = isActive
+        ? `background:${tab.color}33;border:2px solid ${tab.color};border-bottom:3px solid ${tab.color}`
+        : `background:rgba(17,17,34,0.5);border:1px solid #334455`;
+      const textColor = isActive ? tab.color : "#888899";
+      return `<button data-tab="${i}" style="${bgStyle};border-radius:4px 4px 0 0;padding:6px 8px;
+        font-size:11px;font-weight:bold;color:${textColor};cursor:pointer;font-family:monospace;
+        letter-spacing:1px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tab.label}</button>`;
+    }).join("");
+
+    // Build roster summary
+    const rosterSummary = (armyArr: number[], label: string, color: string): string => {
+      const entries: string[] = [];
+      for (let i = 0; i < armyArr.length; i++) {
+        if (armyArr[i] > 0) entries.push(`${UNIT_TYPES[i].name} x${armyArr[i]}`);
+      }
+      const total = armyArr.reduce((a, b) => a + b, 0);
+      const text = entries.length > 0 ? entries.join(", ") : "No units";
+      return `<div style="font-size:10px;color:#99aabb;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+        <span style="color:${color};font-weight:bold">${label}</span> (${total}): ${text}
+      </div>`;
+    };
 
     const canStart = playerTotal > 0 && enemyTotal > 0;
 
+    // Random toggle styling
+    const randOn = this._shopRandomOn;
+    const randBg = randOn ? "#1a3a1a" : "#2a1a1a";
+    const randBorder = randOn ? "#44aa66" : "#aa4444";
+    const randColor = randOn ? "#88ffaa" : "#ff8888";
+    const randLabel = randOn ? "RANDOM ARMY: ON  [click to disable]" : "RANDOM ARMY: OFF  [click to enable]";
+
+    // Gold adjustment button style
+    const goldBtnStyle = `padding:4px 10px;border:1px solid #997722;border-radius:4px;
+      background:#1a1a0a;color:#ffcc00;font-size:11px;font-weight:bold;cursor:pointer;font-family:monospace`;
+
     this._armySetupContainer.innerHTML = `
-      <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 15px rgba(218,165,32,0.3);margin-bottom:5px">
-        \u{1F451} ARMY BATTLE
-      </h1>
-      <p style="color:#888;font-size:13px;margin-bottom:20px">
-        Click +1 &nbsp;|&nbsp; Shift+Click +5 &nbsp;|&nbsp; Ctrl+Click +10 &nbsp;|&nbsp; Right-click to remove
-      </p>
-
-      <div style="margin-bottom:16px">
-        <h2 style="font-size:18px;color:#4488ff;margin-bottom:8px">
-          Your Army <span style="font-size:14px;color:#888">(${playerTotal} / ${MAX_ARMY})</span>
-        </h2>
-        <div style="display:flex;justify-content:center;flex-wrap:wrap">
-          ${playerCards}
+      <div style="width:100%;max-width:960px;height:100%;display:flex;flex-direction:column;padding:10px 20px;box-sizing:border-box">
+        <!-- Title -->
+        <div style="text-align:center;padding:6px 0">
+          <div style="font-size:22px;color:#ffd700;font-weight:bold;letter-spacing:2px">UNIT SHOP</div>
+          <div style="font-size:16px;color:#ffcc00;font-weight:bold;letter-spacing:1px;margin-top:2px">
+            GOLD: ${goldRemaining} / ${WARBAND_SHOP_GOLD}
+          </div>
         </div>
-      </div>
 
-      <div style="width:60%;height:1px;background:#333;margin:10px 0"></div>
-
-      <div style="margin-bottom:20px">
-        <h2 style="font-size:18px;color:#ff4444;margin-bottom:8px">
-          Enemy Army <span style="font-size:14px;color:#888">(${enemyTotal} / ${MAX_ARMY})</span>
-        </h2>
-        <div style="display:flex;justify-content:center;flex-wrap:wrap">
-          ${enemyCards}
+        <!-- Side toggle + roster summary -->
+        <div style="background:rgba(13,13,32,0.7);border:1px solid #99772233;border-radius:5px;padding:6px 8px;margin:4px 0">
+          <div style="display:flex;gap:8px;margin-bottom:4px">
+            <button id="wb-side-player" style="flex:1;padding:6px;border:2px solid ${isPlayer ? "#4488ff" : "#333"};
+              border-radius:4px;background:${isPlayer ? "rgba(68,136,255,0.15)" : "transparent"};
+              color:${isPlayer ? "#4488ff" : "#666"};font-weight:bold;font-size:13px;cursor:pointer;font-family:monospace">
+              YOUR ARMY (${playerTotal})
+            </button>
+            <button id="wb-side-enemy" style="flex:1;padding:6px;border:2px solid ${!isPlayer ? "#ff4444" : "#333"};
+              border-radius:4px;background:${!isPlayer ? "rgba(255,68,68,0.15)" : "transparent"};
+              color:${!isPlayer ? "#ff4444" : "#666"};font-weight:bold;font-size:13px;cursor:pointer;font-family:monospace">
+              ENEMY ARMY (${enemyTotal})
+            </button>
+          </div>
+          ${rosterSummary(this._playerArmy, "Your Army", "#4488ff")}
+          ${rosterSummary(this._enemyArmy, "Enemy Army", "#ff4444")}
         </div>
-      </div>
 
-      <div style="display:flex;gap:12px">
-        <button id="wb-army-start" style="${this._menuBtnStyle(canStart ? "#2a6a2a" : "#333", canStart ? "#88cc66" : "#555")}"
-          ${canStart ? "" : "disabled"}>
-          \u2694\uFE0F Start Battle (${playerTotal} vs ${enemyTotal})
-        </button>
-        <button id="wb-army-back" style="${this._menuBtnStyle("#555", "#888")}">
-          \u2190 Back
-        </button>
+        <!-- Tab bar -->
+        <div style="display:flex;gap:3px;margin-top:4px">${tabBarHTML}</div>
+
+        <!-- Content: unit list + detail panel -->
+        <div style="flex:1;display:flex;gap:16px;margin-top:2px;min-height:0;overflow:hidden">
+          <!-- Left: unit list -->
+          <div style="flex:1.4;overflow-y:auto;padding-right:4px;
+            scrollbar-width:thin;scrollbar-color:#334 #111">
+            <div style="padding:4px 0">
+              <!-- Random army toggle -->
+              <div id="wb-random-toggle" style="padding:6px;margin:2px 0 4px;border-radius:4px;
+                background:${randBg};border:1.5px solid ${randBorder};text-align:center;cursor:pointer;
+                font-size:12px;font-weight:bold;color:${randColor}">${randLabel}</div>
+              <!-- Gold adjustment -->
+              <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:2px 0 6px">
+                <span style="font-size:10px;color:#997722;font-weight:bold">GOLD TO SPEND:</span>
+                <button id="wb-gold-sub" style="${goldBtnStyle}">-</button>
+                <span style="font-size:13px;color:#ffcc00;font-weight:bold;min-width:60px;text-align:center">${WARBAND_SHOP_GOLD}</span>
+                <button id="wb-gold-add" style="${goldBtnStyle}">+</button>
+                <span style="font-size:9px;color:#665;margin-left:4px">Shift \u00b15k, Ctrl \u00b1100k</span>
+              </div>
+              <div style="font-size:10px;color:#888;margin-bottom:4px;padding:0 8px">
+                Editing: <span style="color:${sideColor};font-weight:bold">${sideLabel}</span>
+                &nbsp;|&nbsp; Shift+click \u00b15 &nbsp;|&nbsp; Ctrl+click \u00b110
+              </div>
+              ${unitListHTML}
+            </div>
+          </div>
+          <!-- Right: detail panel -->
+          <div style="flex:1;display:flex;flex-direction:column;padding:12px;
+            background:rgba(16,16,42,0.6);border:1px solid ${activeTab.color}44;border-radius:6px">
+            <div style="font-size:16px;font-weight:bold;color:${activeTab.color};letter-spacing:1px;margin-bottom:6px">
+              ${activeTab.label}
+            </div>
+            <div style="width:50%;height:2px;background:${activeTab.color};opacity:0.5;margin-bottom:8px;border-radius:1px"></div>
+            <div style="font-size:11px;color:#aabbcc;line-height:1.6">${activeTab.desc}</div>
+          </div>
+        </div>
+
+        <!-- Bottom bar -->
+        <div style="display:flex;gap:10px;padding:8px 0;justify-content:center;flex-shrink:0">
+          <button id="wb-army-start" style="${this._menuBtnStyle(canStart ? "#2a6a2a" : "#333", canStart ? "#88cc66" : "#555")};
+            padding:10px 24px;font-size:15px" ${canStart ? "" : "disabled"}>
+            \u2694\uFE0F Start Battle (${playerTotal} vs ${enemyTotal})
+          </button>
+          <button id="wb-army-back" style="${this._menuBtnStyle("#555", "#888")};padding:10px 24px;font-size:15px">
+            \u2190 Back
+          </button>
+        </div>
       </div>
     `;
 
-    // Wire up unit card clicks
-    this._armySetupContainer.querySelectorAll("[data-unit]").forEach((el) => {
-      const htmlEl = el as HTMLElement;
-      const idx = parseInt(htmlEl.dataset.unit!, 10);
-      const side = htmlEl.dataset.side as "player" | "enemy";
-      const army = side === "player" ? this._playerArmy : this._enemyArmy;
-
-      htmlEl.addEventListener("click", (e: MouseEvent) => {
-        e.preventDefault();
-        const total = army.reduce((a, b) => a + b, 0);
-        const add = e.ctrlKey ? 10 : e.shiftKey ? 5 : 1;
-        army[idx] = Math.min(army[idx] + add, MAX_ARMY - (total - army[idx]));
-        this._renderArmySetup();
-      });
-
-      htmlEl.addEventListener("contextmenu", (e: MouseEvent) => {
-        e.preventDefault();
-        const sub = e.ctrlKey ? 10 : e.shiftKey ? 5 : 1;
-        army[idx] = Math.max(0, army[idx] - sub);
+    // Wire up tab clicks
+    this._armySetupContainer.querySelectorAll("[data-tab]").forEach((el) => {
+      (el as HTMLElement).addEventListener("click", () => {
+        this._shopActiveTab = parseInt((el as HTMLElement).dataset.tab!, 10);
         this._renderArmySetup();
       });
     });
 
+    // Wire up side toggles
+    document.getElementById("wb-side-player")?.addEventListener("click", () => {
+      this._shopActiveSide = "player";
+      this._renderArmySetup();
+    });
+    document.getElementById("wb-side-enemy")?.addEventListener("click", () => {
+      this._shopActiveSide = "enemy";
+      this._renderArmySetup();
+    });
+
+    // Wire up random army toggle
+    document.getElementById("wb-random-toggle")?.addEventListener("click", () => {
+      this._shopRandomOn = !this._shopRandomOn;
+      if (this._shopRandomOn) {
+        this._fillRandomArmy();
+      } else {
+        // Clear current side
+        const a = this._shopActiveSide === "player" ? this._playerArmy : this._enemyArmy;
+        for (let i = 0; i < a.length; i++) a[i] = 0;
+        if (this._shopActiveSide === "player") this._shopPlayerGoldSpent = 0;
+        else this._shopEnemyGoldSpent = 0;
+      }
+      this._renderArmySetup();
+    });
+
+    // Wire up gold adjustment buttons
+    document.getElementById("wb-gold-sub")?.addEventListener("click", (e: MouseEvent) => {
+      const amount = e.ctrlKey ? 100000 : e.shiftKey ? 5000 : 1000;
+      WARBAND_SHOP_GOLD = Math.max(1000, WARBAND_SHOP_GOLD - amount);
+      this._renderArmySetup();
+    });
+    document.getElementById("wb-gold-add")?.addEventListener("click", (e: MouseEvent) => {
+      const amount = e.ctrlKey ? 100000 : e.shiftKey ? 5000 : 1000;
+      WARBAND_SHOP_GOLD += amount;
+      this._renderArmySetup();
+    });
+
+    // Wire up +/- buttons
+    this._armySetupContainer.querySelectorAll("[data-action]").forEach((el) => {
+      const btn = el as HTMLElement;
+      const action = btn.dataset.action!;
+      const idx = parseInt(btn.dataset.idx!, 10);
+
+      btn.addEventListener("click", (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentArmy = this._shopActiveSide === "player" ? this._playerArmy : this._enemyArmy;
+        const cost = UNIT_TYPES[idx].cost ?? 100;
+        const currentGoldSpent = this._shopActiveSide === "player" ? this._shopPlayerGoldSpent : this._shopEnemyGoldSpent;
+        const currentTotal = currentArmy.reduce((a, b) => a + b, 0);
+        const amount = e.ctrlKey ? 10 : e.shiftKey ? 5 : 1;
+
+        if (action === "add") {
+          let toAdd = amount;
+          for (let n = 0; n < toAdd; n++) {
+            if (currentGoldSpent + cost * (n + 1) > WARBAND_SHOP_GOLD) { toAdd = n; break; }
+            if (currentTotal + n + 1 > MAX_ARMY) { toAdd = n; break; }
+          }
+          if (toAdd > 0) {
+            currentArmy[idx] += toAdd;
+            if (this._shopActiveSide === "player") this._shopPlayerGoldSpent += cost * toAdd;
+            else this._shopEnemyGoldSpent += cost * toAdd;
+            this._renderArmySetup();
+          }
+        } else {
+          const toRemove = Math.min(amount, currentArmy[idx]);
+          if (toRemove > 0) {
+            currentArmy[idx] -= toRemove;
+            if (this._shopActiveSide === "player") this._shopPlayerGoldSpent -= cost * toRemove;
+            else this._shopEnemyGoldSpent -= cost * toRemove;
+            this._renderArmySetup();
+          }
+        }
+      });
+    });
+
+    // Wire up start / back
     document.getElementById("wb-army-start")?.addEventListener("click", () => {
       this._removeArmySetup();
       this._startGame(BattleType.ARMY_BATTLE);
     });
-
     document.getElementById("wb-army-back")?.addEventListener("click", () => {
       this._removeArmySetup();
       this._showRaceOverview();
