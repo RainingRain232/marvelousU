@@ -5,10 +5,11 @@
 
 import {
   type WarbandState,
+  BattleType,
   FighterCombatState,
   vec3DistXZ,
 } from "../state/WarbandState";
-import { WB } from "../config/WarbandBalanceConfig";
+import { WB, SIEGE_WALLS, type SiegeWallRect } from "../config/WarbandBalanceConfig";
 import { getTerrainHeight } from "../view/WarbandSceneManager";
 
 export class WarbandPhysicsSystem {
@@ -42,13 +43,21 @@ export class WarbandPhysicsSystem {
       fighter.position.x = Math.max(-halfW, Math.min(halfW, fighter.position.x));
       fighter.position.z = Math.max(-halfD, Math.min(halfD, fighter.position.z));
 
+      // Siege wall collision
+      if (state.battleType === BattleType.SIEGE) {
+        const r = fighter.creatureRadius;
+        for (const wall of SIEGE_WALLS) {
+          this._pushOutOfWall(fighter.position, r, wall);
+        }
+      }
+
       // Fighter-fighter collision (push apart)
       for (const other of state.fighters) {
         if (other.id === fighter.id) continue;
         if (other.combatState === FighterCombatState.DEAD) continue;
 
         const dist = vec3DistXZ(fighter.position, other.position);
-        const minDist = WB.FIGHTER_RADIUS * 2 + 0.3; // extra gap to prevent weapon clipping
+        const minDist = fighter.creatureRadius + other.creatureRadius + 0.3; // extra gap to prevent weapon clipping
 
         if (dist < minDist && dist > 0.001) {
           const overlap = minDist - dist;
@@ -90,6 +99,14 @@ export class WarbandPhysicsSystem {
         horse.position.x = Math.max(-halfW, Math.min(halfW, horse.position.x));
         horse.position.z = Math.max(-halfD, Math.min(halfD, horse.position.z));
       }
+
+      // Siege wall collision for horses
+      if (state.battleType === BattleType.SIEGE) {
+        const r = WB.HORSE_RADIUS;
+        for (const wall of SIEGE_WALLS) {
+          this._pushOutOfWall(horse.position, r, wall);
+        }
+      }
     }
 
     // Mounted fighters have larger collision radius
@@ -126,5 +143,32 @@ export class WarbandPhysicsSystem {
         state.pickups.splice(i, 1);
       }
     }
+  }
+
+  /** Push a position out of a wall AABB (resolve smallest overlap axis) */
+  private _pushOutOfWall(
+    pos: { x: number; z: number },
+    radius: number,
+    wall: SiegeWallRect,
+  ): void {
+    // Expand wall by radius for circle-vs-AABB
+    const minX = wall.minX - radius;
+    const maxX = wall.maxX + radius;
+    const minZ = wall.minZ - radius;
+    const maxZ = wall.maxZ + radius;
+
+    if (pos.x <= minX || pos.x >= maxX || pos.z <= minZ || pos.z >= maxZ) return;
+
+    // Inside — push out along shortest overlap axis
+    const dLeft = pos.x - minX;
+    const dRight = maxX - pos.x;
+    const dFront = pos.z - minZ;
+    const dBack = maxZ - pos.z;
+    const minOverlap = Math.min(dLeft, dRight, dFront, dBack);
+
+    if (minOverlap === dLeft) pos.x = minX;
+    else if (minOverlap === dRight) pos.x = maxX;
+    else if (minOverlap === dFront) pos.z = minZ;
+    else pos.z = maxZ;
   }
 }

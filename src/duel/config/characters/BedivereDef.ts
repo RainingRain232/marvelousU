@@ -172,11 +172,11 @@ export const BEDIVERE_DEF: DuelCharacterDef = {
       { x: 25, y: -100, width: 70, height: 55 },
       { movesForward: 90 },
     ),
-    // W+E — Tower Slam: overhead shield slam, must block standing
+    // W+E — Avalanche: shield crashes down like an avalanche — crushing width covers entire front arc
     tower_slam: special(
-      "tower_slam", "Tower Slam", AttackHeight.OVERHEAD,
-      18, 6, 22, 140, 28, 30, 20, 65,
-      { x: 12, y: -160, width: 70, height: 95 },
+      "tower_slam", "Avalanche", AttackHeight.OVERHEAD,
+      18, 7, 22, 142, 28, 30, 20, 65,
+      { x: -22, y: -165, width: 155, height: 98 },
     ),
     // A+S — Low Bash: low shield sweep along ground
     low_bash: special(
@@ -198,11 +198,11 @@ export const BEDIVERE_DEF: DuelCharacterDef = {
       { x: 15, y: -100, width: 65, height: 65 },
       { movesForward: 180, hasInvincibility: true, invincibleStartup: 4 },
     ),
-    // E+A — Last Stand: big committed hit with invincibility
+    // E+A — Immovable Object: Bedivere erupts with force in all directions — 360 burst
     last_stand: special(
-      "last_stand", "Last Stand", AttackHeight.MID,
-      12, 8, 26, 170, 34, 32, 22, 70,
-      { x: 10, y: -140, width: 75, height: 100 },
+      "last_stand", "Immovable Object", AttackHeight.MID,
+      10, 10, 28, 172, 34, 32, 22, 72,
+      { x: -58, y: -205, width: 222, height: 228 },
       { hasInvincibility: true, invincibleStartup: 6 },
     ),
     // E+D — Shield Cross: wide horizontal shield sweep
@@ -212,22 +212,21 @@ export const BEDIVERE_DEF: DuelCharacterDef = {
       { x: 15, y: -120, width: 90, height: 70 },
       { movesForward: 50 },
     ),
-    // W+S — Iron Wall: counter stance with LONG invincibility window
+    // W+S — Iron Curtain: raises shield to ceiling height — tall narrow wall catches any jump-in
     iron_wall: special(
-      "iron_wall", "Iron Wall", AttackHeight.MID,
-      4, 14, 18, 100, 20, 24, 16, 45,
-      { x: 12, y: -120, width: 65, height: 80 },
+      "iron_wall", "Iron Curtain", AttackHeight.MID,
+      5, 14, 18, 102, 20, 24, 16, 45,
+      { x: 0, y: -258, width: 42, height: 262 },
       { hasInvincibility: true, invincibleStartup: 12 },
     ),
   },
 
   zeals: {
-    // Zeal 1 — Bulwark Crash: devastating forward charge behind shield
+    // Zeal 1 — Fortress Wall: a wall of force erupts outward from Bedivere — not a charge, an expansion
     bulwark_crash: zeal(
-      "bulwark_crash", "Bulwark Crash", AttackHeight.MID,
-      12, 8, 22, 160, 32, 30, 20, 60,
-      { x: 20, y: -130, width: 110, height: 90 },
-      { movesForward: 120 },
+      "bulwark_crash", "Fortress Wall", AttackHeight.MID,
+      10, 10, 24, 162, 32, 30, 20, 60,
+      { x: -28, y: -205, width: 212, height: 218 },
     ),
     // Zeal 2 — Loyal Sacrifice: launcher, enormous upward shield smash
     loyal_sacrifice: zeal(

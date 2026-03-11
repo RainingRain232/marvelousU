@@ -183,12 +183,12 @@ export const PERCIVAL_DEF: DuelCharacterDef = {
       10, 5, 16, 68, 14, 18, 12, 20,
       { x: 25, y: -18, width: 108, height: 34 },
     ),
-    // S+D — Grail Rise: anti-air rising slash with invincibility
+    // S+D — Seeker's Leap: leaping anti-air — dashes forward while rising to catch jump-ins
     grail_rise: special(
-      "grail_rise", "Grail Rise", AttackHeight.MID,
-      6, 8, 22, 108, 22, 24, 16, 48,
-      { x: 15, y: -178, width: 64, height: 98 },
-      { isAntiAir: true, hasInvincibility: true, invincibleStartup: 4 },
+      "grail_rise", "Seeker's Leap", AttackHeight.MID,
+      5, 9, 23, 110, 22, 24, 16, 48,
+      { x: 12, y: -175, width: 65, height: 102 },
+      { isAntiAir: true, hasInvincibility: true, invincibleStartup: 4, movesForward: 68 },
     ),
     // Q+D — Zealous Charge: forward rush with shield and sword
     zealous_charge: special(
@@ -197,19 +197,18 @@ export const PERCIVAL_DEF: DuelCharacterDef = {
       { x: 20, y: -100, width: 72, height: 58 },
       { movesForward: 155, hasInvincibility: true, invincibleStartup: 3 },
     ),
-    // E+A — Quest Strike: massive empowered sword swing
+    // E+A — Grail Revelation: holy light descends from heaven across the entire arena
     quest_strike: special(
-      "quest_strike", "Quest Strike", AttackHeight.MID,
-      10, 8, 24, 155, 31, 30, 20, 68,
-      { x: 10, y: -195, width: 78, height: 118 },
-      { isAntiAir: true, hasInvincibility: true, invincibleStartup: 6 },
+      "quest_strike", "Grail Revelation", AttackHeight.OVERHEAD,
+      20, 8, 26, 152, 30, 30, 20, 68,
+      { x: 48, y: -235, width: 625, height: 238 },
+      { hasInvincibility: true, invincibleStartup: 6 },
     ),
-    // E+D — Cross Blade: wide two-hit cross pattern
+    // E+D — Pilgrim's Cross: tight cross-cut right at point blank — ideal combo ender
     cross_blade: special(
-      "cross_blade", "Cross Blade", AttackHeight.MID,
-      10, 8, 18, 135, 27, 26, 16, 52,
-      { x: 20, y: -138, width: 98, height: 78 },
-      { movesForward: 55 },
+      "cross_blade", "Pilgrim's Cross", AttackHeight.MID,
+      8, 8, 18, 138, 28, 26, 16, 52,
+      { x: 2, y: -142, width: 58, height: 85 },
     ),
     // W+S — Pilgrim Guard: counter stance with invincibility
     pilgrim_guard: special(
@@ -221,12 +220,12 @@ export const PERCIVAL_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Grail Quest: forward multi-hit crusader combo
+    // Zeal 1 — Seeker's Journey: Percival vanishes and reappears at the opponent — teleport strike
     grail_quest: zeal(
-      "grail_quest", "Grail Quest", AttackHeight.MID,
-      10, 8, 20, 148, 30, 28, 18, 48,
-      { x: 30, y: -128, width: 118, height: 88 },
-      { movesForward: 85 },
+      "grail_quest", "Seeker's Journey", AttackHeight.MID,
+      4, 8, 22, 150, 30, 28, 18, 48,
+      { x: 25, y: -185, width: 138, height: 192 },
+      { movesForward: 265, hasInvincibility: true, invincibleStartup: 8 },
     ),
     // Zeal 2 — Sacred Revelation: launcher, divine upward strike
     sacred_revelation: zeal(

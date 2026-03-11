@@ -171,11 +171,11 @@ export const TRISTAN_DEF: DuelCharacterDef = {
       { x: 42, y: -100, width: 135, height: 34 },
       { movesForward: 130 },
     ),
-    // W+E — Sorrow Impale: overhead downward impale
+    // W+E — Melancholy Rain: sorrow descends across the front area — wide overhead coverage
     sorrow_impale: special(
-      "sorrow_impale", "Sorrow Impale", AttackHeight.OVERHEAD,
-      15, 6, 19, 118, 24, 26, 18, 52,
-      { x: 20, y: -158, width: 88, height: 82 },
+      "sorrow_impale", "Melancholy Rain", AttackHeight.OVERHEAD,
+      14, 7, 20, 120, 24, 26, 18, 50,
+      { x: 5, y: -168, width: 198, height: 95 },
     ),
     // A+S — Lance Trip: low sweeping lance trip
     lance_trip: special(
@@ -204,12 +204,12 @@ export const TRISTAN_DEF: DuelCharacterDef = {
       { x: 55, y: -100, width: 34, height: 24 },
       { isProjectile: true, projectileSpeed: 11, projectileHeight: AttackHeight.MID },
     ),
-    // E+D — Cross Lance: wide cross-body thrust
+    // E+D — Sorrow's Embrace: wide cross-body sweep with rear catch — grief reaches in all directions
     cross_lance: special(
-      "cross_lance", "Cross Lance", AttackHeight.MID,
-      9, 8, 17, 125, 25, 26, 16, 48,
-      { x: 25, y: -128, width: 125, height: 72 },
-      { movesForward: 65 },
+      "cross_lance", "Sorrow's Embrace", AttackHeight.MID,
+      9, 8, 18, 128, 26, 26, 16, 48,
+      { x: -22, y: -132, width: 155, height: 75 },
+      { movesForward: 55 },
     ),
     // W+S — Sorrow Counter: counter stance with lance shaft, invincibility
     sorrow_counter: special(
@@ -221,19 +221,17 @@ export const TRISTAN_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Sorrow Tempest: forward rush with lance whirlwind
+    // Zeal 1 — Tempest of Tears: sorrow swirls in a circle around Tristan — not a rush, a spiral
     sorrow_tempest: zeal(
-      "sorrow_tempest", "Sorrow Tempest", AttackHeight.MID,
-      9, 8, 19, 148, 30, 28, 18, 50,
-      { x: 35, y: -128, width: 145, height: 82 },
-      { movesForward: 90 },
+      "sorrow_tempest", "Tempest of Tears", AttackHeight.MID,
+      8, 10, 22, 150, 30, 28, 18, 50,
+      { x: -48, y: -165, width: 215, height: 158 },
     ),
-    // Zeal 2 — Lament Drive: upward lance thrust launcher
+    // Zeal 2 — Lament's End: Tristan drives his lance full-force across the entire arena — no launcher, extreme hitstun
     lament_drive: zeal(
-      "lament_drive", "Lament Drive", AttackHeight.MID,
-      13, 10, 27, 285, 57, 38, 22, 72,
-      { x: 18, y: -148, width: 165, height: 125 },
-      { isLauncher: true },
+      "lament_drive", "Lament's End", AttackHeight.MID,
+      10, 8, 28, 295, 58, 52, 24, 72,
+      { x: 0, y: -102, width: 700, height: 58 },
     ),
   },
 

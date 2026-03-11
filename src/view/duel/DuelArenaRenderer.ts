@@ -67,6 +67,18 @@ interface Ripple {
   alpha: number;
 }
 
+interface Critter {
+  x: number;
+  y: number;
+  baseX: number;     // origin X for patrol/loop
+  baseY: number;     // origin Y
+  phase: number;     // animation phase offset
+  type: string;      // critter type identifier
+  dir: number;       // 1 = right, -1 = left
+  speed: number;     // movement speed
+  state: number;     // generic state counter
+}
+
 // ---------------------------------------------------------------------------
 // Main renderer
 // ---------------------------------------------------------------------------
@@ -88,6 +100,7 @@ export class DuelArenaRenderer {
   private _mistLayers: MistLayer[] = [];
   private _stars: Star[] = [];
   private _ripples: Ripple[] = [];
+  private _critters: Critter[] = [];
 
   build(arenaId: string, sw: number, sh: number): void {
     this.container.removeChildren();
@@ -99,6 +112,7 @@ export class DuelArenaRenderer {
     this._mistLayers = [];
     this._stars = [];
     this._ripples = [];
+    this._critters = [];
     this._sw = sw;
     this._floorY = Math.round(sh * 0.82);
     this._arenaId = arenaId;
@@ -410,6 +424,66 @@ export class DuelArenaRenderer {
     // --- Atmospheric fog overlay ---
     g.rect(0, floorY * 0.6, sw, floorY * 0.4);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Puddle reflections on cobblestones ---
+    const puddlePositions = [
+      { x: sw * 0.18, y: floorY + 14, rx: 16, ry: 5 },
+      { x: sw * 0.52, y: floorY + 20, rx: 12, ry: 4 },
+      { x: sw * 0.74, y: floorY + 10, rx: 18, ry: 5 },
+      { x: sw * 0.38, y: floorY + 22, rx: 10, ry: 3 },
+    ];
+    for (const pd of puddlePositions) {
+      g.ellipse(pd.x, pd.y, pd.rx, pd.ry);
+      g.fill({ color: 0x889baa, alpha: 0.12 });
+      g.ellipse(pd.x - pd.rx * 0.2, pd.y - pd.ry * 0.3, pd.rx * 0.4, pd.ry * 0.4);
+      g.fill({ color: 0xaabbcc, alpha: 0.08 });
+    }
+
+    // --- Hanging flower baskets on the wall ---
+    for (const bx of [sw * 0.2, sw * 0.8]) {
+      const by = wallY + wallH * 0.32;
+      // Basket semi-circle
+      g.moveTo(bx - 10, by);
+      g.arc(bx, by, 10, Math.PI, 0);
+      g.fill({ color: 0x5a4a30 });
+      g.moveTo(bx - 12, by);
+      g.arc(bx, by, 12, Math.PI, 0);
+      g.stroke({ color: 0x6b5535, width: 1.5 });
+      // Colorful flower dots
+      const flowerColors = [0xff6688, 0xffaa44, 0xff5577, 0xffcc55, 0xee7799];
+      for (let fi = 0; fi < 5; fi++) {
+        const fx = bx - 8 + fi * 4;
+        const fy = by - 3 - Math.sin(fi * 1.5) * 4;
+        g.circle(fx, fy, 2.5);
+        g.fill({ color: flowerColors[fi], alpha: 0.7 });
+      }
+      // Green leaves underneath
+      g.ellipse(bx, by + 4, 10, 3);
+      g.fill({ color: 0x447733, alpha: 0.5 });
+    }
+
+    // --- Warm golden light pools under each torch ---
+    for (const tx of torchXs) {
+      g.ellipse(tx, floorY + 5, 30, 7);
+      g.fill({ color: 0xffaa44, alpha: 0.04 });
+      g.ellipse(tx, floorY + 5, 20, 5);
+      g.fill({ color: 0xffcc66, alpha: 0.03 });
+    }
+
+    // --- Pigeon droppings on battlements ---
+    const dropSeeds = [12, 47, 78, 115, 156, 193, 234, 267, 310, 345, 378, 410];
+    for (const ds of dropSeeds) {
+      const dx = (ds * 2.7) % sw;
+      const dy = wallY - merlonH + 2 + Math.sin(ds) * 6;
+      g.circle(dx, dy, 1.2 + Math.sin(ds * 3) * 0.5);
+      g.fill({ color: 0xddddcc, alpha: 0.25 });
+    }
+
+    // --- Unique critter: castle cat patrolling the wall base ---
+    this._critters.push({
+      x: sw * 0.2, y: floorY - 3, baseX: sw * 0.4, baseY: floorY - 3,
+      phase: 0, type: "cat", dir: 1, speed: 0.35, state: 0,
+    });
   }
 
   private _update_camelot(time: number): void {
@@ -474,6 +548,34 @@ export class DuelArenaRenderer {
       g.circle(f.x, f.y + 1, 2);
       g.fill({ color: 0xffffcc, alpha: 0.9 });
     }
+
+    // --- Slow-drifting clouds in the sky ---
+    const sw = this._sw;
+    const floorY = this._floorY;
+    for (let ci = 0; ci < 3; ci++) {
+      const cloudSpeed = 0.008 + ci * 0.003;
+      const cloudX = ((time * cloudSpeed * sw + ci * sw * 0.4) % (sw + 160)) - 80;
+      const cloudY = floorY * (0.08 + ci * 0.06);
+      const cloudW = 50 + ci * 15;
+      const cloudH = 10 + ci * 3;
+      g.ellipse(cloudX, cloudY, cloudW, cloudH);
+      g.fill({ color: 0xccbbaa, alpha: 0.06 - ci * 0.01 });
+      g.ellipse(cloudX + cloudW * 0.3, cloudY - cloudH * 0.3, cloudW * 0.6, cloudH * 0.7);
+      g.fill({ color: 0xddccbb, alpha: 0.04 });
+    }
+
+    // --- Occasional falling leaves ---
+    for (let li = 0; li < 4; li++) {
+      const leafPhase = time * 0.4 + li * 2.5;
+      const leafX = (sw * 0.15 + li * sw * 0.22 + Math.sin(leafPhase * 1.3) * 20) % sw;
+      const leafY = ((leafPhase * 25) % (floorY + 20)) - 10;
+      const leafSway = Math.sin(leafPhase * 2.5) * 3;
+      const leafAlpha = 0.4 + Math.sin(leafPhase) * 0.15;
+      g.ellipse(leafX + leafSway, leafY, 3, 1.5);
+      g.fill({ color: li % 2 === 0 ? 0x885522 : 0x996633, alpha: leafAlpha });
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -739,6 +841,66 @@ export class DuelArenaRenderer {
     // --- Fog overlay ---
     g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
+
+    // --- Aurora / northern lights in the sky ---
+    const auroraColors = [
+      { color: 0x22cc88, y: floorY * 0.06, h: floorY * 0.08 },
+      { color: 0x8844cc, y: floorY * 0.12, h: floorY * 0.06 },
+      { color: 0x44cccc, y: floorY * 0.02, h: floorY * 0.05 },
+      { color: 0x66dd66, y: floorY * 0.17, h: floorY * 0.04 },
+    ];
+    for (const ab of auroraColors) {
+      g.rect(sw * 0.1, ab.y, sw * 0.8, ab.h);
+      g.fill({ color: ab.color, alpha: 0.04 });
+      g.ellipse(sw * 0.5, ab.y + ab.h * 0.5, sw * 0.35, ab.h * 0.6);
+      g.fill({ color: ab.color, alpha: 0.025 });
+    }
+
+    // --- Glowing runes carved on standing stones/rocks ---
+    const runePositions = [
+      { x: sw * 0.15, y: floorY * 0.76 }, { x: sw * 0.85, y: floorY * 0.75 },
+      { x: sw * 0.72, y: floorY + 1 }, { x: sw * 0.38, y: floorY + 3 },
+    ];
+    for (const rp of runePositions) {
+      // Small glowing rune mark (vertical line with crossbar)
+      g.moveTo(rp.x, rp.y - 4);
+      g.lineTo(rp.x, rp.y + 4);
+      g.stroke({ color: 0x88ddff, width: 1.2, alpha: 0.5 });
+      g.moveTo(rp.x - 3, rp.y - 1);
+      g.lineTo(rp.x + 3, rp.y + 1);
+      g.stroke({ color: 0x88ddff, width: 1, alpha: 0.4 });
+      // Rune glow halo
+      g.circle(rp.x, rp.y, 6);
+      g.fill({ color: 0x88ddff, alpha: 0.06 });
+    }
+
+    // --- More detailed lily pad flowers (extra petals) ---
+    const lilyPositions = [
+      { x: sw * 0.3, y: floorY + 22 }, { x: sw * 0.55, y: floorY + 28 },
+      { x: sw * 0.75, y: floorY + 18 },
+    ];
+    for (const lp of lilyPositions) {
+      // Lily pad base
+      g.ellipse(lp.x, lp.y, 8, 4);
+      g.fill({ color: 0x336644, alpha: 0.35 });
+      // Flower petals (5 small ellipses in a ring)
+      for (let pi = 0; pi < 5; pi++) {
+        const pa = (pi / 5) * Math.PI * 2;
+        const px = lp.x + Math.cos(pa) * 3;
+        const py = lp.y - 2 + Math.sin(pa) * 1.5;
+        g.ellipse(px, py, 2.5, 1.5);
+        g.fill({ color: 0xffaacc, alpha: 0.4 });
+      }
+      // Flower center
+      g.circle(lp.x, lp.y - 2, 1.5);
+      g.fill({ color: 0xffdd66, alpha: 0.5 });
+    }
+
+    // --- Unique critter: ghostly swan gliding across the water ---
+    this._critters.push({
+      x: sw * 0.1, y: floorY + 8, baseX: sw * 0.5, baseY: floorY + 8,
+      phase: 0, type: "swan", dir: 1, speed: 0.25, state: 0,
+    });
   }
 
   private _update_avalon(time: number): void {
@@ -801,6 +963,31 @@ export class DuelArenaRenderer {
       g.circle(p.x, p.y, p.radius);
       g.fill({ color: 0xffffff, alpha: pulseAlpha });
     }
+
+    // --- Aurora shimmer (slowly shifting color bands) ---
+    const floorY = this._floorY;
+    const auroraShimmerColors = [0x22cc88, 0x8844cc, 0x44cccc];
+    for (let ai = 0; ai < 3; ai++) {
+      const aShift = Math.sin(time * 0.15 + ai * 1.8) * sw * 0.08;
+      const aAlpha = 0.025 + Math.sin(time * 0.3 + ai * 2.2) * 0.012;
+      const aY = floorY * (0.04 + ai * 0.05) + Math.sin(time * 0.2 + ai) * 3;
+      g.ellipse(sw * 0.5 + aShift, aY, sw * 0.38 + Math.sin(time * 0.25 + ai) * 15, floorY * 0.03);
+      g.fill({ color: auroraShimmerColors[ai], alpha: aAlpha });
+    }
+
+    // --- Falling cherry blossom petals ---
+    for (let bi = 0; bi < 6; bi++) {
+      const bPhase = time * 0.35 + bi * 1.7;
+      const bX = (sw * 0.1 + bi * sw * 0.16 + Math.sin(bPhase * 1.8) * 25) % sw;
+      const bY = ((bPhase * 18) % (floorY * 1.1 + 30)) - 15;
+      const bSway = Math.sin(bPhase * 3) * 4;
+      const bAlpha = 0.35 + Math.sin(bPhase * 2) * 0.15;
+      const bColor = bi % 2 === 0 ? 0xffaacc : 0xffbbdd;
+      g.ellipse(bX + bSway, bY, 2.5, 1.5);
+      g.fill({ color: bColor, alpha: bAlpha });
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -1158,6 +1345,83 @@ export class DuelArenaRenderer {
     // --- Fog overlay ---
     g.rect(0, floorY * 0.55, sw, floorY * 0.45);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Glowing mushrooms on the forest floor ---
+    const mushrooms = [
+      { x: sw * 0.08, y: floorY + 4, color: 0x44aaff },
+      { x: sw * 0.22, y: floorY + 6, color: 0x33dd88 },
+      { x: sw * 0.42, y: floorY + 3, color: 0x44bbff },
+      { x: sw * 0.58, y: floorY + 5, color: 0x33cc77 },
+      { x: sw * 0.78, y: floorY + 4, color: 0x55aaee },
+      { x: sw * 0.92, y: floorY + 7, color: 0x44dd99 },
+    ];
+    for (const m of mushrooms) {
+      // Mushroom stem
+      g.rect(m.x - 1.5, m.y - 5, 3, 6);
+      g.fill({ color: 0xccccaa, alpha: 0.4 });
+      // Mushroom cap (semi-circle)
+      g.moveTo(m.x - 6, m.y - 5);
+      g.arc(m.x, m.y - 5, 6, Math.PI, 0);
+      g.fill({ color: m.color, alpha: 0.45 });
+      // Bio-luminescent glow
+      g.circle(m.x, m.y - 5, 10);
+      g.fill({ color: m.color, alpha: 0.06 });
+      g.circle(m.x, m.y - 5, 5);
+      g.fill({ color: m.color, alpha: 0.1 });
+    }
+
+    // --- Spider web between trees (top-left corner area) ---
+    const webCX = sw * 0.12;
+    const webCY = floorY * 0.55;
+    const webR = 22;
+    // Radial threads
+    for (let wi = 0; wi < 8; wi++) {
+      const wAngle = (wi / 8) * Math.PI * 2;
+      g.moveTo(webCX, webCY);
+      g.lineTo(webCX + Math.cos(wAngle) * webR, webCY + Math.sin(wAngle) * webR);
+      g.stroke({ color: 0xcccccc, width: 0.4, alpha: 0.18 });
+    }
+    // Concentric rings
+    for (let wr = 6; wr <= webR; wr += 7) {
+      g.moveTo(webCX + wr, webCY);
+      g.arc(webCX, webCY, wr, 0, Math.PI * 2);
+      g.stroke({ color: 0xcccccc, width: 0.3, alpha: 0.12 });
+    }
+
+    // --- Detailed tree bark texture on nearest trees ---
+    for (const tx of [sw * 0.04, sw * 0.94]) {
+      const barkY = floorY * 0.5;
+      for (let bi = 0; bi < 8; bi++) {
+        const by = barkY + bi * 12;
+        const bw = 8 + Math.sin(bi * 2.3) * 3;
+        g.moveTo(tx - bw, by);
+        g.lineTo(tx + bw, by);
+        g.stroke({ color: 0x2a1a0a, width: 1.2, alpha: 0.25 });
+      }
+    }
+
+    // --- Owl pellets / scattered bones near the owl ---
+    const boneX = sw * 0.15;
+    const boneY = floorY + 2;
+    for (let bi = 0; bi < 5; bi++) {
+      const ox = boneX - 8 + bi * 4 + Math.sin(bi * 4) * 3;
+      const oy = boneY + Math.sin(bi * 3) * 2;
+      g.ellipse(ox, oy, 2, 0.8);
+      g.fill({ color: 0xccccbb, alpha: 0.2 });
+    }
+    // Small skull shape
+    g.circle(boneX + 2, boneY - 1, 2);
+    g.fill({ color: 0xccccbb, alpha: 0.18 });
+    g.circle(boneX + 1, boneY - 2, 0.6);
+    g.fill({ color: 0x222211, alpha: 0.15 });
+    g.circle(boneX + 3, boneY - 2, 0.6);
+    g.fill({ color: 0x222211, alpha: 0.15 });
+
+    // --- Unique critter: owl perched on a high branch ---
+    this._critters.push({
+      x: sw * 0.15, y: floorY * 0.45, baseX: sw * 0.15, baseY: floorY * 0.45,
+      phase: 0, type: "owl", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_excalibur(time: number): void {
@@ -1242,6 +1506,36 @@ export class DuelArenaRenderer {
       g.circle(p.x, p.y, p.radius);
       g.fill({ color: p.color, alpha: pulseAlpha });
     }
+
+    // --- Slow pulsing mushroom glow ---
+    const mushroomSpots = [
+      { x: sw * 0.08, y: floorY + 4, color: 0x44aaff },
+      { x: sw * 0.22, y: floorY + 6, color: 0x33dd88 },
+      { x: sw * 0.42, y: floorY + 3, color: 0x44bbff },
+      { x: sw * 0.58, y: floorY + 5, color: 0x33cc77 },
+      { x: sw * 0.78, y: floorY + 4, color: 0x55aaee },
+      { x: sw * 0.92, y: floorY + 7, color: 0x44dd99 },
+    ];
+    for (let mi = 0; mi < mushroomSpots.length; mi++) {
+      const ms = mushroomSpots[mi];
+      const mPulse = 0.04 + Math.sin(time * 0.8 + mi * 1.3) * 0.03;
+      g.circle(ms.x, ms.y - 5, 12 + Math.sin(time * 1.2 + mi) * 2);
+      g.fill({ color: ms.color, alpha: mPulse });
+    }
+
+    // --- Drifting pollen / spores floating up ---
+    for (let si = 0; si < 8; si++) {
+      const sPhase = time * 0.5 + si * 1.1;
+      const sX = (sw * 0.05 + si * sw * 0.12 + Math.sin(sPhase * 0.8) * 15) % sw;
+      const sY = floorY - ((sPhase * 12) % (floorY * 0.5));
+      const sAlpha = 0.25 + Math.sin(sPhase * 2.5) * 0.12;
+      g.circle(sX, sY, 1);
+      g.fill({ color: 0xddeeaa, alpha: sAlpha });
+      g.circle(sX, sY, 3);
+      g.fill({ color: 0xddeeaa, alpha: sAlpha * 0.15 });
+    }
+
+    this._drawCritters(g, time);
   }
 
 
@@ -1563,6 +1857,123 @@ export class DuelArenaRenderer {
     // Warm fog
     g.rect(0, floorY * 0.5, sw, floorY * 0.5);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Iron chandelier hanging from ceiling ---
+    const chanX = sw * 0.5;
+    const chanY = floorY * 0.14;
+    // Chains going up to ceiling
+    for (const cx of [chanX - 25, chanX + 25]) {
+      g.moveTo(cx, 0);
+      g.lineTo(cx, chanY - 4);
+      g.stroke({ color: 0x4a4a4a, width: 1.5, alpha: 0.6 });
+    }
+    g.moveTo(chanX, 0);
+    g.lineTo(chanX, chanY - 8);
+    g.stroke({ color: 0x4a4a4a, width: 1.5, alpha: 0.6 });
+    // Circular iron ring
+    g.moveTo(chanX + 30, chanY);
+    g.arc(chanX, chanY, 30, 0, Math.PI * 2);
+    g.stroke({ color: 0x555555, width: 3 });
+    g.moveTo(chanX + 30, chanY);
+    g.arc(chanX, chanY, 30, 0, Math.PI * 2);
+    g.stroke({ color: 0x666666, width: 1.5 });
+    // Candle holders on the ring
+    for (let ci = 0; ci < 8; ci++) {
+      const cAngle = (ci / 8) * Math.PI * 2;
+      const ccx = chanX + Math.cos(cAngle) * 30;
+      const ccy = chanY + Math.sin(cAngle) * 8;
+      g.rect(ccx - 1, ccy - 6, 2, 6);
+      g.fill({ color: 0xeeddcc, alpha: 0.7 });
+      this._flames.push({ x: ccx, y: ccy - 8, baseRadius: 2.5, phase: ci * 0.9 });
+    }
+
+    // --- Scattered goblets and plates on the round table ---
+    const tableX2 = sw * 0.5;
+    const tableY2 = floorY * 0.74;
+    const gobletPositions = [
+      { x: tableX2 - sw * 0.14, y: tableY2 - 3 },
+      { x: tableX2 + sw * 0.08, y: tableY2 - 5 },
+      { x: tableX2 - sw * 0.04, y: tableY2 - 4 },
+      { x: tableX2 + sw * 0.18, y: tableY2 - 2 },
+    ];
+    for (const gp of gobletPositions) {
+      // Goblet body
+      g.moveTo(gp.x - 2, gp.y);
+      g.lineTo(gp.x - 3, gp.y - 6);
+      g.lineTo(gp.x + 3, gp.y - 6);
+      g.lineTo(gp.x + 2, gp.y);
+      g.closePath();
+      g.fill({ color: 0x887744, alpha: 0.5 });
+      // Goblet rim
+      g.moveTo(gp.x - 3.5, gp.y - 6);
+      g.lineTo(gp.x + 3.5, gp.y - 6);
+      g.stroke({ color: 0xaa9955, width: 1, alpha: 0.5 });
+    }
+    // Plates
+    for (const px of [tableX2 - sw * 0.1, tableX2 + sw * 0.13]) {
+      g.ellipse(px, tableY2 - 2, 6, 2.5);
+      g.stroke({ color: 0x998866, width: 0.8, alpha: 0.35 });
+    }
+
+    // --- Coat of arms shield above fireplace ---
+    const coaX = sw * 0.5;
+    const coaY = floorY * 0.3;
+    // Shield shape
+    g.moveTo(coaX, coaY - 14);
+    g.lineTo(coaX - 14, coaY - 8);
+    g.lineTo(coaX - 14, coaY + 6);
+    g.lineTo(coaX, coaY + 16);
+    g.lineTo(coaX + 14, coaY + 6);
+    g.lineTo(coaX + 14, coaY - 8);
+    g.closePath();
+    g.fill({ color: 0xbb2222 });
+    g.moveTo(coaX, coaY - 14);
+    g.lineTo(coaX - 14, coaY - 8);
+    g.lineTo(coaX - 14, coaY + 6);
+    g.lineTo(coaX, coaY + 16);
+    g.lineTo(coaX + 14, coaY + 6);
+    g.lineTo(coaX + 14, coaY - 8);
+    g.closePath();
+    g.stroke({ color: 0xddaa33, width: 2 });
+    // Dragon emblem on shield
+    g.moveTo(coaX - 6, coaY + 4);
+    g.lineTo(coaX, coaY - 8);
+    g.lineTo(coaX + 6, coaY + 4);
+    g.lineTo(coaX + 2, coaY);
+    g.lineTo(coaX - 2, coaY);
+    g.closePath();
+    g.fill({ color: 0xddaa33, alpha: 0.6 });
+
+    // --- Stone gargoyle waterspouts on walls ---
+    for (const gx of [sw * 0.06, sw * 0.94]) {
+      const gy = wallY + 30;
+      // Gargoyle head
+      g.circle(gx, gy, 7);
+      g.fill({ color: 0x555544 });
+      // Snout
+      const dir = gx < sw * 0.5 ? 1 : -1;
+      g.moveTo(gx + dir * 7, gy - 2);
+      g.lineTo(gx + dir * 14, gy);
+      g.lineTo(gx + dir * 7, gy + 3);
+      g.closePath();
+      g.fill({ color: 0x555544 });
+      // Eyes
+      g.circle(gx + dir * 2, gy - 3, 1.5);
+      g.fill({ color: 0x222211 });
+      // Horns
+      g.moveTo(gx - 3, gy - 6);
+      g.lineTo(gx - 5, gy - 12);
+      g.stroke({ color: 0x555544, width: 1.5 });
+      g.moveTo(gx + 3, gy - 6);
+      g.lineTo(gx + 5, gy - 12);
+      g.stroke({ color: 0x555544, width: 1.5 });
+    }
+
+    // --- Unique critter: tiny mouse scurrying along the floor ---
+    this._critters.push({
+      x: sw * 0.8, y: floorY - 1, baseX: sw * 0.5, baseY: floorY - 1,
+      phase: 0, type: "mouse", dir: -1, speed: 0.4, state: 0,
+    });
   }
 
   private _update_round_table(time: number): void {
@@ -1596,6 +2007,33 @@ export class DuelArenaRenderer {
     const pulse = 0.04 + Math.sin(time * 1.2) * 0.02;
     g.circle(fpX, fpY - 15, 35);
     g.fill({ color: 0xff6622, alpha: pulse });
+
+    // --- Dust motes floating in the fireplace light ---
+    for (let di = 0; di < 10; di++) {
+      const dPhase = time * 0.3 + di * 0.9;
+      const dX = fpX - 30 + (di * 7) + Math.sin(dPhase * 1.3) * 8;
+      const dY = fpY - 40 + Math.sin(dPhase * 0.7 + di) * 25;
+      const dAlpha = 0.12 + Math.sin(dPhase * 2) * 0.06;
+      g.circle(dX, dY, 0.8);
+      g.fill({ color: 0xffddaa, alpha: dAlpha });
+    }
+
+    // --- Subtle smoke wisps rising from fireplace ---
+    for (let si = 0; si < 3; si++) {
+      const sPhase = time * 0.4 + si * 2.1;
+      const sBaseX = fpX - 5 + si * 5;
+      const sY1 = fpY - 30 - ((sPhase * 10) % 50);
+      const sY2 = sY1 - 15;
+      const sSway = Math.sin(sPhase * 1.5) * 8;
+      const sAlpha = 0.04 - ((sPhase * 10) % 50) * 0.0006;
+      if (sAlpha > 0) {
+        g.moveTo(sBaseX, sY1);
+        g.quadraticCurveTo(sBaseX + sSway, (sY1 + sY2) / 2, sBaseX + sSway * 1.3, sY2);
+        g.stroke({ color: 0x887766, width: 3, alpha: sAlpha });
+      }
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -1860,6 +2298,106 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Dripping corruption stains on walls ---
+    const stainXs = [sw * 0.16, sw * 0.38, sw * 0.55, sw * 0.72, sw * 0.86];
+    for (const sx of stainXs) {
+      const stainTop = wallY + 20 + Math.sin(sx * 0.1) * 15;
+      const stainH = 30 + Math.sin(sx * 0.3) * 15;
+      // Vertical drip streaks
+      g.moveTo(sx, stainTop);
+      g.lineTo(sx + 2, stainTop + stainH);
+      g.stroke({ color: 0x330044, width: 3, alpha: 0.25 });
+      g.moveTo(sx - 3, stainTop + 5);
+      g.lineTo(sx - 1, stainTop + stainH * 0.7);
+      g.stroke({ color: 0x220033, width: 2, alpha: 0.18 });
+      // Droplet at the bottom
+      g.circle(sx + 1, stainTop + stainH + 2, 2);
+      g.fill({ color: 0x440066, alpha: 0.2 });
+    }
+
+    // --- Skull piles at base of throne ---
+    const throneBaseX = sw * 0.5;
+    const skullClusters = [
+      { x: throneBaseX - 30, y: floorY - 2 },
+      { x: throneBaseX + 28, y: floorY - 1 },
+    ];
+    for (const sc of skullClusters) {
+      // Bottom row skulls
+      for (let si = 0; si < 4; si++) {
+        const skx = sc.x - 8 + si * 5;
+        const sky = sc.y - 1;
+        g.circle(skx, sky, 3);
+        g.fill({ color: 0x554455, alpha: 0.35 });
+        g.circle(skx - 1, sky - 1, 0.7);
+        g.fill({ color: 0x220022, alpha: 0.25 });
+        g.circle(skx + 1, sky - 1, 0.7);
+        g.fill({ color: 0x220022, alpha: 0.25 });
+      }
+      // Top row skulls
+      for (let si = 0; si < 2; si++) {
+        const skx = sc.x - 4 + si * 6;
+        const sky = sc.y - 6;
+        g.circle(skx, sky, 2.5);
+        g.fill({ color: 0x665566, alpha: 0.3 });
+      }
+    }
+
+    // --- Cracked mirror on wall ---
+    const mirrorX = sw * 0.75;
+    const mirrorY = wallY + 40;
+    // Mirror frame (irregular polygon)
+    g.moveTo(mirrorX - 12, mirrorY - 16);
+    g.lineTo(mirrorX + 11, mirrorY - 15);
+    g.lineTo(mirrorX + 13, mirrorY + 14);
+    g.lineTo(mirrorX - 10, mirrorY + 16);
+    g.closePath();
+    g.fill({ color: 0x334455, alpha: 0.3 });
+    g.moveTo(mirrorX - 12, mirrorY - 16);
+    g.lineTo(mirrorX + 11, mirrorY - 15);
+    g.lineTo(mirrorX + 13, mirrorY + 14);
+    g.lineTo(mirrorX - 10, mirrorY + 16);
+    g.closePath();
+    g.stroke({ color: 0x443344, width: 2, alpha: 0.5 });
+    // Cracks across the mirror
+    g.moveTo(mirrorX - 5, mirrorY - 12);
+    g.lineTo(mirrorX + 3, mirrorY + 10);
+    g.stroke({ color: 0x111122, width: 0.8, alpha: 0.4 });
+    g.moveTo(mirrorX + 8, mirrorY - 10);
+    g.lineTo(mirrorX - 4, mirrorY + 5);
+    g.stroke({ color: 0x111122, width: 0.6, alpha: 0.35 });
+    g.moveTo(mirrorX - 2, mirrorY - 3);
+    g.lineTo(mirrorX + 10, mirrorY + 2);
+    g.stroke({ color: 0x111122, width: 0.5, alpha: 0.3 });
+
+    // --- Blood-red carpet leading to throne ---
+    g.moveTo(sw * 0.42, floorY);
+    g.lineTo(sw * 0.58, floorY);
+    g.lineTo(sw * 0.56, floorY + 40);
+    g.lineTo(sw * 0.44, floorY + 40);
+    g.closePath();
+    g.fill({ color: 0x661111, alpha: 0.2 });
+    // Carpet edges with gold trim
+    g.moveTo(sw * 0.42, floorY);
+    g.lineTo(sw * 0.44, floorY + 40);
+    g.stroke({ color: 0x886622, width: 1, alpha: 0.15 });
+    g.moveTo(sw * 0.58, floorY);
+    g.lineTo(sw * 0.56, floorY + 40);
+    g.stroke({ color: 0x886622, width: 1, alpha: 0.15 });
+    // Tattered edge at far end
+    for (let ti = 0; ti < 5; ti++) {
+      const tx = sw * 0.44 + ti * (sw * 0.12 / 5);
+      g.moveTo(tx, floorY + 40);
+      g.lineTo(tx + sw * 0.012, floorY + 44 + (ti % 2) * 3);
+      g.lineTo(tx + sw * 0.024, floorY + 40);
+      g.fill({ color: 0x661111, alpha: 0.18 });
+    }
+
+    // --- Unique critter: raven circling ominously overhead ---
+    this._critters.push({
+      x: sw * 0.5, y: floorY * 0.2, baseX: sw * 0.5, baseY: floorY * 0.2,
+      phase: 0, type: "raven", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_mordred_throne(time: number): void {
@@ -1902,6 +2440,47 @@ export class DuelArenaRenderer {
         g.fill({ color: 0x220033, alpha: m.alpha });
       }
     }
+
+    // --- Dripping liquid drops from ceiling ---
+    const floorY = this._floorY;
+    for (let di = 0; di < 4; di++) {
+      const dPhase = time * 0.25 + di * 3.5;
+      const dCycle = dPhase % 4.0; // 4-second cycle per drop
+      const dX = sw * (0.15 + di * 0.22) + Math.sin(di * 5) * 10;
+      if (dCycle < 3.0) {
+        // Drop falling
+        const dProgress = dCycle / 3.0;
+        const dY = dProgress * floorY;
+        const dAlpha = 0.45 - dProgress * 0.2;
+        // Drop shape (teardrop)
+        g.circle(dX, dY, 1.5);
+        g.fill({ color: 0x7733aa, alpha: dAlpha });
+        g.moveTo(dX, dY - 3);
+        g.lineTo(dX - 1.5, dY);
+        g.lineTo(dX + 1.5, dY);
+        g.closePath();
+        g.fill({ color: 0x8844bb, alpha: dAlpha * 0.8 });
+      }
+    }
+
+    // --- Floating dark energy orbs orbiting the throne ---
+    for (let oi = 0; oi < 3; oi++) {
+      const orbAngle = time * 0.35 + (oi / 3) * Math.PI * 2;
+      const orbR = 45 + Math.sin(time * 0.5 + oi) * 8;
+      const orbX = sw * 0.5 + Math.cos(orbAngle) * orbR;
+      const orbY = floorY * 0.35 + Math.sin(orbAngle) * orbR * 0.4;
+      const orbAlpha = 0.2 + Math.sin(time * 1.5 + oi * 2) * 0.08;
+      // Purple halo
+      g.circle(orbX, orbY, 8);
+      g.fill({ color: 0x8833cc, alpha: orbAlpha * 0.25 });
+      g.circle(orbX, orbY, 5);
+      g.fill({ color: 0x6622aa, alpha: orbAlpha * 0.4 });
+      // Dark core
+      g.circle(orbX, orbY, 3);
+      g.fill({ color: 0x220033, alpha: orbAlpha });
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -2131,6 +2710,95 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.55, sw, floorY * 0.45);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Fallen rose petals scattered on the ground ---
+    const petalColors = [0xcc4466, 0xdd5577, 0xee6688, 0xbb3355, 0xdd7799];
+    for (let i = 0; i < 18; i++) {
+      const px = sw * (0.05 + i * 0.05) + Math.sin(i * 3.1) * 12;
+      const py = floorY + 2 + (i % 3) * 3;
+      const pc = petalColors[i % petalColors.length];
+      g.ellipse(px, py, 2.5 + (i % 2), 1.2);
+      g.fill({ color: pc, alpha: 0.3 + (i % 3) * 0.05 });
+    }
+
+    // --- Ivy growing up the ruins (green vine lines with leaf clusters) ---
+    const ivyPositions = [sw * 0.12, sw * 0.3, sw * 0.66, sw * 0.84];
+    for (const ix of ivyPositions) {
+      const ivyBaseY = floorY;
+      const ivyTopY = floorY - 70 - Math.sin(ix * 0.1) * 20;
+      // Main vine stem
+      g.moveTo(ix, ivyBaseY);
+      g.quadraticCurveTo(ix + 3, (ivyBaseY + ivyTopY) / 2, ix - 1, ivyTopY);
+      g.stroke({ color: 0x2a5522, width: 2, alpha: 0.5 });
+      // Secondary vine
+      g.moveTo(ix + 2, ivyBaseY - 10);
+      g.quadraticCurveTo(ix + 8, ivyBaseY - 40, ix + 5, ivyTopY + 15);
+      g.stroke({ color: 0x336622, width: 1.2, alpha: 0.4 });
+      // Leaf clusters along the vine
+      for (let l = 0; l < 6; l++) {
+        const ly = ivyBaseY - 10 - l * 10;
+        const lx = ix + Math.sin(l * 1.8) * 5;
+        g.ellipse(lx - 3, ly, 3, 2);
+        g.fill({ color: 0x448833, alpha: 0.35 });
+        g.ellipse(lx + 3, ly - 1, 2.5, 1.8);
+        g.fill({ color: 0x55aa44, alpha: 0.3 });
+        g.ellipse(lx, ly + 2, 2, 1.5);
+        g.fill({ color: 0x3a7728, alpha: 0.3 });
+      }
+    }
+
+    // --- Holy water font/basin near the entrance ---
+    const fontX = sw * 0.22;
+    const fontY = floorY - 2;
+    // Pedestal
+    g.rect(fontX - 5, fontY - 18, 10, 18);
+    g.fill({ color: 0x8a8a7a });
+    g.rect(fontX - 7, fontY - 2, 14, 4);
+    g.fill({ color: 0x8a8a7a });
+    // Bowl (arc shape)
+    g.moveTo(fontX - 12, fontY - 20);
+    g.arc(fontX, fontY - 20, 12, Math.PI, 0);
+    g.fill({ color: 0x9a9a8a });
+    g.moveTo(fontX - 12, fontY - 20);
+    g.arc(fontX, fontY - 20, 12, Math.PI, 0);
+    g.stroke({ color: 0x7a7a6a, width: 1.5 });
+    // Water surface in bowl
+    g.ellipse(fontX, fontY - 21, 9, 3);
+    g.fill({ color: 0x6688aa, alpha: 0.3 });
+    // Subtle holy water glow
+    g.ellipse(fontX, fontY - 21, 7, 2);
+    g.fill({ color: 0xaaccee, alpha: 0.15 });
+
+    // --- Prayer candles arranged at the base of a ruin ---
+    const candleBaseX = sw * 0.7;
+    const candleBaseY = floorY;
+    for (let i = 0; i < 7; i++) {
+      const cx = candleBaseX - 15 + i * 5;
+      const ch = 5 + (i % 3) * 2;
+      // Candle body
+      g.rect(cx - 1.5, candleBaseY - ch, 3, ch);
+      g.fill({ color: 0xeeddbb });
+      g.rect(cx - 1.5, candleBaseY - ch, 3, ch);
+      g.stroke({ color: 0xccbb99, width: 0.5, alpha: 0.5 });
+      // Yellow flame tip
+      g.ellipse(cx, candleBaseY - ch - 2, 1.5, 2.5);
+      g.fill({ color: 0xffdd44, alpha: 0.5 });
+      g.ellipse(cx, candleBaseY - ch - 1.5, 0.8, 1.5);
+      g.fill({ color: 0xffffaa, alpha: 0.6 });
+    }
+    // Warm glow around candle cluster
+    g.ellipse(candleBaseX, candleBaseY - 10, 22, 12);
+    g.fill({ color: 0xffdd66, alpha: 0.03 });
+
+    // --- Unique critter: white dove perched on the abbey wall ---
+    this._critters.push({
+      x: sw * 0.18, y: floorY * 0.42, baseX: sw * 0.18, baseY: floorY * 0.42,
+      phase: 0, type: "dove", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.82, y: floorY * 0.38, baseX: sw * 0.82, baseY: floorY * 0.38,
+      phase: 2.0, type: "dove", dir: -1, speed: 0, state: 0,
+    });
   }
 
   private _update_glastonbury(time: number): void {
@@ -2154,6 +2822,34 @@ export class DuelArenaRenderer {
     g.fill({ color: 0xeedd88, alpha: pulse });
     g.circle(wX, wY, 18);
     g.fill({ color: 0xffeeaa, alpha: pulse * 0.5 });
+
+    // --- Floating rose petals drifting on the wind ---
+    for (let rp = 0; rp < 5; rp++) {
+      const rpPhase = time * 0.6 + rp * 1.8;
+      const rpX = ((rpPhase * 18 + rp * 80) % (this._sw + 40)) - 20;
+      const rpY = this._floorY * 0.5 + Math.sin(rpPhase * 1.2 + rp) * 30 + rp * 15;
+      const rpRot = Math.sin(rpPhase * 2) * 0.5;
+      const rpAlpha = 0.25 + Math.sin(rpPhase * 0.8) * 0.1;
+      const rpColor = rp % 2 === 0 ? 0xdd6688 : 0xcc4466;
+      g.ellipse(rpX, rpY, 2.5 + Math.sin(rpPhase) * 0.5, 1.5 + rpRot);
+      g.fill({ color: rpColor, alpha: rpAlpha });
+    }
+
+    // --- Golden light rays pulsing through the rose window ---
+    for (let lr = 0; lr < 3; lr++) {
+      const lrPhase = time * 0.5 + lr * 2.1;
+      const lrAlpha = 0.02 + Math.sin(lrPhase) * 0.015;
+      const lrSpread = 8 + lr * 12;
+      const lrBaseX = wX - 10 + lr * 10;
+      g.moveTo(lrBaseX - lrSpread * 0.3, wY + 30);
+      g.lineTo(lrBaseX + lrSpread * 0.3, wY + 30);
+      g.lineTo(lrBaseX + lrSpread, this._floorY + 5);
+      g.lineTo(lrBaseX - lrSpread * 0.8, this._floorY + 5);
+      g.closePath();
+      g.fill({ color: 0xeedd77, alpha: lrAlpha });
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -2333,6 +3029,100 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.35, sw, floorY * 0.65);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Broken sword stuck in the cairn ---
+    const swordX = sw * 0.88;
+    const swordBaseY = floorY - 32;
+    // Blade
+    g.moveTo(swordX - 1.5, swordBaseY);
+    g.lineTo(swordX, swordBaseY - 28);
+    g.lineTo(swordX + 1.5, swordBaseY);
+    g.closePath();
+    g.fill({ color: 0x8899aa });
+    g.moveTo(swordX - 1.5, swordBaseY);
+    g.lineTo(swordX, swordBaseY - 28);
+    g.lineTo(swordX + 1.5, swordBaseY);
+    g.stroke({ color: 0x99aabb, width: 0.5, alpha: 0.6 });
+    // Broken jagged edge at top
+    g.moveTo(swordX - 1, swordBaseY - 26);
+    g.lineTo(swordX - 2, swordBaseY - 28);
+    g.lineTo(swordX + 1, swordBaseY - 27);
+    g.stroke({ color: 0x8899aa, width: 1 });
+    // Crossguard
+    g.rect(swordX - 6, swordBaseY - 1, 12, 2);
+    g.fill({ color: 0x665544 });
+    // Grip sticking out
+    g.rect(swordX - 1.5, swordBaseY + 1, 3, 6);
+    g.fill({ color: 0x553322 });
+
+    // --- Raven nests in dead trees (dark bundles of sticks) ---
+    const nestPositions = [
+      { x: sw * 0.03, y: floorY - 95 },
+      { x: sw * 0.82, y: floorY - 80 },
+      { x: sw * 0.95, y: floorY - 85 },
+    ];
+    for (const nest of nestPositions) {
+      // Messy bundle of sticks
+      for (let s = 0; s < 6; s++) {
+        const sx1 = nest.x - 8 + s * 3;
+        const sy1 = nest.y - 2 + Math.sin(s * 2) * 2;
+        const sx2 = nest.x + 8 - s * 2;
+        const sy2 = nest.y + 2 + Math.cos(s * 1.5) * 2;
+        g.moveTo(sx1, sy1);
+        g.lineTo(sx2, sy2);
+        g.stroke({ color: 0x2a2018, width: 1.2, alpha: 0.5 });
+      }
+      // Nest bowl shape
+      g.ellipse(nest.x, nest.y + 1, 9, 4);
+      g.fill({ color: 0x2a2018, alpha: 0.4 });
+      // Tiny eggs
+      g.ellipse(nest.x - 2, nest.y, 2, 1.5);
+      g.fill({ color: 0x334433, alpha: 0.3 });
+      g.ellipse(nest.x + 2, nest.y - 0.5, 1.8, 1.3);
+      g.fill({ color: 0x334433, alpha: 0.3 });
+    }
+
+    // --- Distant lightning-struck tree (split trunk silhouette) ---
+    const lstX = sw * 0.56;
+    const lstBaseY = floorY;
+    const lstH = 50;
+    // Main trunk (split)
+    g.moveTo(lstX - 3, lstBaseY);
+    g.lineTo(lstX - 1, lstBaseY - lstH * 0.6);
+    g.lineTo(lstX - 4, lstBaseY - lstH);
+    g.stroke({ color: 0x1a1008, width: 3, alpha: 0.5 });
+    g.moveTo(lstX + 1, lstBaseY - lstH * 0.6);
+    g.lineTo(lstX + 6, lstBaseY - lstH * 0.85);
+    g.stroke({ color: 0x1a1008, width: 2.5, alpha: 0.5 });
+    // Charred mark down the split
+    g.moveTo(lstX - 0.5, lstBaseY - lstH * 0.6);
+    g.lineTo(lstX, lstBaseY - lstH * 0.3);
+    g.stroke({ color: 0x111108, width: 1.5, alpha: 0.4 });
+    // Scorched base
+    g.ellipse(lstX, lstBaseY + 1, 6, 2);
+    g.fill({ color: 0x111108, alpha: 0.2 });
+
+    // --- Pools of dark stagnant water ---
+    const poolPositions = [sw * 0.2, sw * 0.44, sw * 0.74];
+    for (let pi = 0; pi < poolPositions.length; pi++) {
+      const ppx = poolPositions[pi];
+      const ppy = floorY + 5 + (pi % 2) * 3;
+      // Dark water
+      g.ellipse(ppx, ppy, 18 + pi * 4, 5 + pi);
+      g.fill({ color: 0x2a2a22, alpha: 0.35 });
+      // Sickly green tint on surface
+      g.ellipse(ppx, ppy - 1, 14 + pi * 3, 3.5 + pi * 0.5);
+      g.fill({ color: 0x445533, alpha: 0.15 });
+      // Subtle reflection
+      g.ellipse(ppx + 3, ppy - 1, 5, 1.5);
+      g.fill({ color: 0x667755, alpha: 0.08 });
+    }
+
+    // --- Unique critter: lone wolf silhouette on a distant hilltop ---
+    this._critters.push({
+      x: sw * 0.85, y: floorY * 0.42, baseX: sw * 0.85, baseY: floorY * 0.42,
+      phase: 0, type: "wolf", dir: -1, speed: 0, state: 0,
+    });
   }
 
   private _update_orkney(time: number): void {
@@ -2356,6 +3146,51 @@ export class DuelArenaRenderer {
         g.fill({ color: 0x998877, alpha: m.alpha });
       }
     }
+
+    // --- Tumbleweeds rolling across the ground ---
+    for (let tw = 0; tw < 3; tw++) {
+      const twSpeed = 0.8 + tw * 0.3;
+      const twPhase = tw * 120;
+      const twX = ((time * twSpeed * 20 + twPhase) % (sw + 60)) - 30;
+      const twY = this._floorY - 5 + Math.sin(time * 3 + tw * 2) * 2;
+      const twR = 5 + tw * 1.5;
+      const twRot = time * twSpeed * 3;
+      // Tumbleweed body (circle of tangled lines)
+      g.circle(twX, twY, twR);
+      g.stroke({ color: 0x887755, width: 1.2, alpha: 0.3 });
+      // Internal tangle
+      for (let tl = 0; tl < 4; tl++) {
+        const angle1 = twRot + tl * 1.6;
+        const angle2 = angle1 + 1.2;
+        g.moveTo(twX + Math.cos(angle1) * twR * 0.7, twY + Math.sin(angle1) * twR * 0.7);
+        g.lineTo(twX + Math.cos(angle2) * twR * 0.5, twY + Math.sin(angle2) * twR * 0.5);
+        g.stroke({ color: 0x776644, width: 0.8, alpha: 0.25 });
+      }
+    }
+
+    // --- Distant lightning flashes (rare, very brief) ---
+    const lightningChance = Math.sin(time * 0.2) * Math.sin(time * 0.37) * Math.sin(time * 0.53);
+    if (lightningChance > 0.92) {
+      const lx = sw * (0.2 + Math.sin(time * 7.3) * 0.3);
+      const ly = this._floorY * 0.08;
+      // Sky flash
+      g.rect(0, 0, sw, this._floorY * 0.3);
+      g.fill({ color: 0xccccdd, alpha: 0.06 });
+      // Lightning bolt
+      g.moveTo(lx, ly);
+      g.lineTo(lx + 5, ly + 15);
+      g.lineTo(lx - 2, ly + 15);
+      g.lineTo(lx + 3, ly + 30);
+      g.stroke({ color: 0xddddef, width: 1.5, alpha: 0.5 });
+      // Glow around bolt
+      g.moveTo(lx, ly);
+      g.lineTo(lx + 5, ly + 15);
+      g.lineTo(lx - 2, ly + 15);
+      g.lineTo(lx + 3, ly + 30);
+      g.stroke({ color: 0xaaaacc, width: 4, alpha: 0.08 });
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -2554,6 +3389,110 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.45, sw, floorY * 0.55);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.5 });
+
+    // --- Small wooden rowboat moored at the shore ---
+    const boatX = sw * 0.15;
+    const boatY = floorY - 2;
+    // Hull
+    g.moveTo(boatX - 18, boatY);
+    g.quadraticCurveTo(boatX - 22, boatY + 6, boatX - 15, boatY + 9);
+    g.lineTo(boatX + 15, boatY + 9);
+    g.quadraticCurveTo(boatX + 22, boatY + 6, boatX + 18, boatY);
+    g.closePath();
+    g.fill({ color: 0x6a4a2a });
+    g.moveTo(boatX - 18, boatY);
+    g.quadraticCurveTo(boatX - 22, boatY + 6, boatX - 15, boatY + 9);
+    g.lineTo(boatX + 15, boatY + 9);
+    g.quadraticCurveTo(boatX + 22, boatY + 6, boatX + 18, boatY);
+    g.stroke({ color: 0x5a3a1a, width: 1.5 });
+    // Plank lines
+    g.moveTo(boatX - 14, boatY + 3);
+    g.lineTo(boatX + 14, boatY + 3);
+    g.stroke({ color: 0x5a3a1a, width: 0.6, alpha: 0.4 });
+    g.moveTo(boatX - 13, boatY + 6);
+    g.lineTo(boatX + 13, boatY + 6);
+    g.stroke({ color: 0x5a3a1a, width: 0.6, alpha: 0.4 });
+    // Oar (left, resting across)
+    g.moveTo(boatX - 24, boatY - 3);
+    g.lineTo(boatX + 5, boatY + 4);
+    g.stroke({ color: 0x7a5a3a, width: 1.5, cap: "round" });
+    // Oar blade
+    g.ellipse(boatX - 26, boatY - 4, 4, 1.8);
+    g.fill({ color: 0x7a5a3a, alpha: 0.6 });
+    // Mooring rope
+    g.moveTo(boatX + 16, boatY + 1);
+    g.quadraticCurveTo(boatX + 22, boatY - 5, boatX + 20, boatY - 8);
+    g.stroke({ color: 0x887766, width: 1, alpha: 0.4 });
+
+    // --- Stepping stones across shallow water ---
+    const stoneYBase = floorY * 0.52;
+    const steppingStones = [sw * 0.3, sw * 0.38, sw * 0.45, sw * 0.53, sw * 0.6, sw * 0.68];
+    for (let si = 0; si < steppingStones.length; si++) {
+      const ssx = steppingStones[si];
+      const ssy = stoneYBase + 12 + Math.sin(si * 1.8) * 4;
+      g.ellipse(ssx, ssy, 6 + (si % 2) * 2, 3);
+      g.fill({ color: 0x778877, alpha: 0.5 });
+      g.ellipse(ssx, ssy, 6 + (si % 2) * 2, 3);
+      g.stroke({ color: 0x667766, width: 0.8, alpha: 0.3 });
+      // Moss on stone
+      g.ellipse(ssx + 1, ssy - 1, 3, 1.5);
+      g.fill({ color: 0x447733, alpha: 0.15 });
+    }
+
+    // --- Hanging lanterns on willow branches ---
+    const lanternPositions = [
+      { x: sw * 0.05 - 10, y: floorY - 35 },
+      { x: sw * 0.05 + 15, y: floorY - 28 },
+      { x: sw * 0.93 - 12, y: floorY - 32 },
+      { x: sw * 0.93 + 10, y: floorY - 25 },
+    ];
+    for (const lan of lanternPositions) {
+      // Chain/string
+      g.moveTo(lan.x, lan.y - 8);
+      g.lineTo(lan.x, lan.y);
+      g.stroke({ color: 0x665544, width: 0.6, alpha: 0.4 });
+      // Lantern body
+      g.rect(lan.x - 3, lan.y, 6, 7);
+      g.fill({ color: 0xddaa44, alpha: 0.4 });
+      g.rect(lan.x - 3, lan.y, 6, 7);
+      g.stroke({ color: 0xaa7733, width: 0.8, alpha: 0.5 });
+      // Warm glow
+      g.circle(lan.x, lan.y + 3, 8);
+      g.fill({ color: 0xffcc55, alpha: 0.04 });
+    }
+
+    // --- Stone shrine / small torii gate in the water ---
+    const toriiX = sw * 0.78;
+    const toriiY = floorY * 0.52 + 8;
+    // Vertical pillars
+    g.rect(toriiX - 12, toriiY - 22, 3, 24);
+    g.fill({ color: 0x888877 });
+    g.rect(toriiX + 9, toriiY - 22, 3, 24);
+    g.fill({ color: 0x888877 });
+    // Top beam (horizontal)
+    g.rect(toriiX - 15, toriiY - 24, 30, 3);
+    g.fill({ color: 0x888877 });
+    // Second beam
+    g.rect(toriiX - 12, toriiY - 19, 24, 2);
+    g.fill({ color: 0x7a7a6a });
+    // Stone base in water
+    g.ellipse(toriiX - 10, toriiY + 2, 4, 2);
+    g.fill({ color: 0x778877, alpha: 0.4 });
+    g.ellipse(toriiX + 10, toriiY + 2, 4, 2);
+    g.fill({ color: 0x778877, alpha: 0.4 });
+    // Subtle water disturbance around pillars
+    g.ellipse(toriiX, toriiY + 1, 16, 3);
+    g.fill({ color: 0x88bbcc, alpha: 0.06 });
+
+    // --- Unique critter: koi fish swimming beneath the surface ---
+    this._critters.push({
+      x: sw * 0.3, y: floorY + 18, baseX: sw * 0.3, baseY: floorY + 18,
+      phase: 0, type: "fish", dir: 1, speed: 0.3, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.6, y: floorY + 28, baseX: sw * 0.6, baseY: floorY + 28,
+      phase: 1.5, type: "fish", dir: -1, speed: 0.22, state: 1,
+    });
   }
 
   private _update_lake(time: number): void {
@@ -2594,6 +3533,59 @@ export class DuelArenaRenderer {
         }
       }
     }
+
+    // --- Fish jumping out of water (small arcs appearing briefly) ---
+    const waterSurface = this._floorY * 0.52;
+    for (let fj = 0; fj < 3; fj++) {
+      const fjPhase = time * 0.3 + fj * 3.7;
+      const fjCycle = fjPhase % 6;
+      if (fjCycle < 0.8) {
+        const fjProgress = fjCycle / 0.8;
+        const fjX = sw * (0.25 + fj * 0.22);
+        const fjY = waterSurface + 5 - Math.sin(fjProgress * Math.PI) * 14;
+        const fjAlpha = Math.sin(fjProgress * Math.PI) * 0.5;
+        // Fish body
+        g.ellipse(fjX, fjY, 3, 1.5);
+        g.fill({ color: 0xdd8844, alpha: fjAlpha });
+        // Tail fin
+        g.moveTo(fjX - 3, fjY);
+        g.lineTo(fjX - 6, fjY - 2);
+        g.lineTo(fjX - 6, fjY + 2);
+        g.closePath();
+        g.fill({ color: 0xcc7733, alpha: fjAlpha * 0.7 });
+      }
+    }
+
+    // --- Cherry blossom petals on water surface ---
+    for (let cb = 0; cb < 6; cb++) {
+      const cbPhase = time * 0.15 + cb * 1.4;
+      const cbX = ((cbPhase * 12 + cb * 60) % (sw + 30)) - 15;
+      const cbY = waterSurface + 6 + cb * 5 + Math.sin(time * 0.5 + cb) * 2;
+      const cbAlpha = 0.3 + Math.sin(time * 0.8 + cb * 0.5) * 0.1;
+      g.ellipse(cbX, cbY, 2, 1);
+      g.fill({ color: 0xffaacc, alpha: cbAlpha });
+    }
+
+    // --- Ripple rings expanding from fish jumps ---
+    for (let rr = 0; rr < 3; rr++) {
+      const rrPhase = time * 0.3 + rr * 3.7;
+      const rrCycle = rrPhase % 6;
+      if (rrCycle > 0.3 && rrCycle < 2.5) {
+        const rrProgress = (rrCycle - 0.3) / 2.2;
+        const rrX = sw * (0.25 + rr * 0.22);
+        const rrY = waterSurface + 5;
+        const rrRadius = 3 + rrProgress * 18;
+        const rrAlpha = 0.15 * (1 - rrProgress);
+        g.ellipse(rrX, rrY, rrRadius, rrRadius * 0.35);
+        g.stroke({ color: 0x88ccdd, width: 0.8, alpha: rrAlpha });
+        if (rrProgress < 0.6) {
+          g.ellipse(rrX, rrY, rrRadius * 0.6, rrRadius * 0.2);
+          g.stroke({ color: 0x99ddee, width: 0.5, alpha: rrAlpha * 0.6 });
+        }
+      }
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -2808,6 +3800,105 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Dragon eggs in a nest ---
+    const nestX = sw * 0.62;
+    const nestY = floorY - 3;
+    // Nest (pile of sticks)
+    for (let ns = 0; ns < 8; ns++) {
+      const nsx1 = nestX - 14 + ns * 3;
+      const nsy1 = nestY + 1 + Math.sin(ns * 1.5) * 2;
+      const nsx2 = nestX + 14 - ns * 2;
+      const nsy2 = nestY + 3 + Math.cos(ns * 2) * 1.5;
+      g.moveTo(nsx1, nsy1);
+      g.lineTo(nsx2, nsy2);
+      g.stroke({ color: 0x3a2a18, width: 1.5, alpha: 0.4 });
+    }
+    g.ellipse(nestX, nestY + 2, 16, 5);
+    g.fill({ color: 0x2a1a08, alpha: 0.3 });
+    // Three eggs
+    const eggColors = [0x443355, 0x554422, 0x335544];
+    const eggPositions = [
+      { x: nestX - 5, y: nestY - 3 },
+      { x: nestX + 4, y: nestY - 4 },
+      { x: nestX, y: nestY - 6 },
+    ];
+    for (let ei = 0; ei < 3; ei++) {
+      const egg = eggPositions[ei];
+      g.ellipse(egg.x, egg.y, 4, 5.5);
+      g.fill({ color: eggColors[ei] });
+      g.ellipse(egg.x, egg.y, 4, 5.5);
+      g.stroke({ color: 0x221111, width: 0.8, alpha: 0.4 });
+      // Warm speckles on eggs
+      g.circle(egg.x - 1, egg.y - 2, 0.8);
+      g.fill({ color: 0xff6633, alpha: 0.15 });
+      g.circle(egg.x + 1.5, egg.y + 1, 0.6);
+      g.fill({ color: 0xff8844, alpha: 0.12 });
+    }
+    // Faint warmth glow under eggs
+    g.ellipse(nestX, nestY - 3, 10, 6);
+    g.fill({ color: 0xff4400, alpha: 0.04 });
+
+    // --- Ancient dwarvish runes carved into rock faces ---
+    const runePositions = [
+      { x: sw * 0.18, y: floorY * 0.45 },
+      { x: sw * 0.35, y: floorY * 0.38 },
+      { x: sw * 0.65, y: floorY * 0.42 },
+      { x: sw * 0.8, y: floorY * 0.5 },
+    ];
+    for (const rn of runePositions) {
+      // Rune mark (angular lines)
+      g.moveTo(rn.x, rn.y - 5);
+      g.lineTo(rn.x + 3, rn.y + 5);
+      g.stroke({ color: 0xff8844, width: 1.2, alpha: 0.2 });
+      g.moveTo(rn.x - 3, rn.y);
+      g.lineTo(rn.x + 3, rn.y);
+      g.stroke({ color: 0xff8844, width: 1, alpha: 0.18 });
+      g.moveTo(rn.x + 1, rn.y - 3);
+      g.lineTo(rn.x - 2, rn.y + 2);
+      g.stroke({ color: 0xffaa55, width: 0.8, alpha: 0.15 });
+      // Subtle glow around rune
+      g.circle(rn.x, rn.y, 6);
+      g.fill({ color: 0xff6633, alpha: 0.03 });
+    }
+
+    // --- Chains hanging from cliffs (broken shackle chains) ---
+    for (const cx of [sw * 0.08, sw * 0.92]) {
+      const chainTopY = floorY * 0.35;
+      const chainLen = 8;
+      for (let cl = 0; cl < chainLen; cl++) {
+        const cy = chainTopY + cl * 6;
+        const sway = Math.sin(cl * 0.8) * 2;
+        g.ellipse(cx + sway, cy, 2.5, 3.5);
+        g.stroke({ color: 0x665544, width: 1.5, alpha: 0.35 });
+      }
+      // Broken link at bottom
+      const bottomY = chainTopY + chainLen * 6;
+      g.moveTo(cx + 1, bottomY);
+      g.lineTo(cx + 3, bottomY + 4);
+      g.stroke({ color: 0x665544, width: 1.5, alpha: 0.25 });
+    }
+
+    // --- Pools of cooled obsidian glass (dark reflective patches) ---
+    const obsidianPositions = [sw * 0.35, sw * 0.48, sw * 0.7];
+    for (let oi = 0; oi < obsidianPositions.length; oi++) {
+      const ox = obsidianPositions[oi];
+      const oy = floorY + 4 + (oi % 2) * 3;
+      // Dark glass pool
+      g.ellipse(ox, oy, 12 + oi * 3, 4);
+      g.fill({ color: 0x0a0a12, alpha: 0.4 });
+      // Glossy reflection highlight
+      g.ellipse(ox - 2, oy - 1, 6, 1.5);
+      g.fill({ color: 0x334455, alpha: 0.12 });
+      g.ellipse(ox + 3, oy, 3, 1);
+      g.fill({ color: 0x445566, alpha: 0.08 });
+    }
+
+    // --- Unique critter: tiny dragon circling the mountain ---
+    this._critters.push({
+      x: sw * 0.5, y: floorY * 0.18, baseX: sw * 0.5, baseY: floorY * 0.18,
+      phase: 0, type: "mini_dragon", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_dragon_peak(time: number): void {
@@ -2846,6 +3937,65 @@ export class DuelArenaRenderer {
     g.fill({ color: 0xff4400, alpha: eyeGlow });
     g.circle(skullX + 6, this._floorY - 16, 3);
     g.fill({ color: 0xff4400, alpha: eyeGlow });
+
+    // --- Lava bubbles popping in the lava pool ---
+    const lavaPoolX = sw * 0.3;
+    const lavaPoolY = this._floorY * 0.68;
+    for (let lb = 0; lb < 4; lb++) {
+      const lbPhase = time * 1.2 + lb * 2.3;
+      const lbCycle = lbPhase % 3;
+      if (lbCycle < 1.5) {
+        const lbProgress = lbCycle / 1.5;
+        const lbX = lavaPoolX - 10 + lb * 7;
+        const lbY = lavaPoolY - lbProgress * 5;
+        const lbR = 2 + Math.sin(lbProgress * Math.PI) * 2;
+        const lbAlpha = 0.3 * Math.sin(lbProgress * Math.PI);
+        g.circle(lbX, lbY, lbR);
+        g.fill({ color: 0xff6622, alpha: lbAlpha });
+        g.circle(lbX, lbY, lbR * 0.5);
+        g.fill({ color: 0xffaa44, alpha: lbAlpha * 1.2 });
+        // Pop burst at peak
+        if (lbProgress > 0.8) {
+          const burstAlpha = (lbProgress - 0.8) / 0.2 * 0.15;
+          g.circle(lbX, lbY, lbR + 3);
+          g.stroke({ color: 0xff8833, width: 0.8, alpha: burstAlpha });
+        }
+      }
+    }
+
+    // --- Ash/cinder fall from the sky ---
+    for (let ash = 0; ash < 12; ash++) {
+      const ashPhase = time * 0.4 + ash * 1.1;
+      const ashX = (ash * sw / 12 + Math.sin(ashPhase * 0.8) * 15) % sw;
+      const ashY = ((ashPhase * 15 + ash * 30) % (this._floorY * 0.9));
+      const ashAlpha = 0.12 + Math.sin(ashPhase) * 0.05;
+      const ashSize = 0.8 + (ash % 3) * 0.3;
+      g.circle(ashX, ashY, ashSize);
+      g.fill({ color: 0x888888, alpha: ashAlpha });
+    }
+
+    // --- Volcanic steam vents (white puffs rising from cracks) ---
+    const ventPositions = [sw * 0.22, sw * 0.5, sw * 0.75];
+    for (let vi = 0; vi < ventPositions.length; vi++) {
+      const ventX = ventPositions[vi];
+      const ventBaseY = this._floorY - 2;
+      for (let puff = 0; puff < 3; puff++) {
+        const puffPhase = time * 0.8 + vi * 1.5 + puff * 1.2;
+        const puffRise = (puffPhase * 8) % 35;
+        const puffX = ventX + Math.sin(puffPhase * 1.5) * 5;
+        const puffY = ventBaseY - puffRise;
+        const puffR = 3 + puffRise * 0.15;
+        const puffAlpha = 0.08 * (1 - puffRise / 35);
+        if (puffAlpha > 0.01) {
+          g.circle(puffX, puffY, puffR);
+          g.fill({ color: 0xccbbaa, alpha: puffAlpha });
+          g.circle(puffX + 2, puffY - 1, puffR * 0.7);
+          g.fill({ color: 0xddccbb, alpha: puffAlpha * 0.6 });
+        }
+      }
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -3111,6 +4261,132 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.4, sw, floorY * 0.6);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Open holy book on the altar ---
+    const bookX = sw * 0.5 + 12;
+    const bookY = floorY - 32;
+    // Left page
+    g.rect(bookX - 10, bookY, 9, 7);
+    g.fill({ color: 0xeeddcc });
+    g.rect(bookX - 10, bookY, 9, 7);
+    g.stroke({ color: 0xccbb99, width: 0.5 });
+    // Right page
+    g.rect(bookX + 1, bookY, 9, 7);
+    g.fill({ color: 0xeeddcc });
+    g.rect(bookX + 1, bookY, 9, 7);
+    g.stroke({ color: 0xccbb99, width: 0.5 });
+    // Spine
+    g.rect(bookX - 1, bookY - 0.5, 2, 8);
+    g.fill({ color: 0x6a3a1a });
+    // Text lines (left page)
+    for (let tl = 0; tl < 4; tl++) {
+      g.moveTo(bookX - 9, bookY + 1.5 + tl * 1.5);
+      g.lineTo(bookX - 2, bookY + 1.5 + tl * 1.5);
+      g.stroke({ color: 0x886644, width: 0.3, alpha: 0.25 });
+    }
+    // Text lines (right page)
+    for (let tl = 0; tl < 4; tl++) {
+      g.moveTo(bookX + 2, bookY + 1.5 + tl * 1.5);
+      g.lineTo(bookX + 9, bookY + 1.5 + tl * 1.5);
+      g.stroke({ color: 0x886644, width: 0.3, alpha: 0.25 });
+    }
+    // Illuminated letter on left page
+    g.rect(bookX - 9, bookY + 1, 2, 2);
+    g.fill({ color: 0xcc3333, alpha: 0.2 });
+
+    // --- Scattered prayer beads on the pew ---
+    const beadPewY = floorY * 0.65;
+    const beadBaseX = sw * 0.5 + sw * 0.22 - 10;
+    for (let bi = 0; bi < 10; bi++) {
+      const bAngle = bi * 0.6 + 0.3;
+      const bRad = 6 + bi * 0.8;
+      const bx = beadBaseX + Math.cos(bAngle) * bRad;
+      const by = beadPewY - 3 + Math.sin(bAngle) * 2;
+      g.circle(bx, by, 1);
+      g.fill({ color: 0x554433, alpha: 0.35 });
+    }
+    // Connecting thread
+    g.moveTo(beadBaseX + Math.cos(0.3) * 6, beadPewY - 3 + Math.sin(0.3) * 2);
+    for (let bi = 1; bi < 10; bi++) {
+      const bAngle = bi * 0.6 + 0.3;
+      const bRad = 6 + bi * 0.8;
+      g.lineTo(beadBaseX + Math.cos(bAngle) * bRad, beadPewY - 3 + Math.sin(bAngle) * 2);
+    }
+    g.stroke({ color: 0x554433, width: 0.4, alpha: 0.2 });
+    // Cross at end of beads
+    const crossBx = beadBaseX + Math.cos(9 * 0.6 + 0.3) * (6 + 9 * 0.8) + 3;
+    const crossBy = beadPewY - 2;
+    g.rect(crossBx - 1, crossBy - 3, 2, 5);
+    g.fill({ color: 0x665544, alpha: 0.3 });
+    g.rect(crossBx - 2, crossBy - 1, 4, 1.5);
+    g.fill({ color: 0x665544, alpha: 0.3 });
+
+    // --- Ornate floor mosaic pattern (geometric shapes in the checkered floor center) ---
+    const mosaicCX = sw * 0.5;
+    const mosaicCY = floorY + 20;
+    // Outer circle border
+    g.circle(mosaicCX, mosaicCY, 22);
+    g.stroke({ color: 0xddaa33, width: 1.5, alpha: 0.12 });
+    // Inner circle
+    g.circle(mosaicCX, mosaicCY, 15);
+    g.stroke({ color: 0xddaa33, width: 1, alpha: 0.1 });
+    // Diamond/cross pattern
+    g.moveTo(mosaicCX, mosaicCY - 18);
+    g.lineTo(mosaicCX + 18, mosaicCY);
+    g.lineTo(mosaicCX, mosaicCY + 18);
+    g.lineTo(mosaicCX - 18, mosaicCY);
+    g.closePath();
+    g.stroke({ color: 0xddaa33, width: 1, alpha: 0.1 });
+    // Colored tiles inside
+    const mosaicColors = [0xaa3333, 0x3355aa, 0xddaa33, 0x33aa55];
+    for (let mi = 0; mi < 8; mi++) {
+      const mAngle = (mi / 8) * Math.PI * 2;
+      const mx = mosaicCX + Math.cos(mAngle) * 10;
+      const my = mosaicCY + Math.sin(mAngle) * 10;
+      g.circle(mx, my, 2.5);
+      g.fill({ color: mosaicColors[mi % mosaicColors.length], alpha: 0.08 });
+    }
+    // Center star
+    g.circle(mosaicCX, mosaicCY, 4);
+    g.fill({ color: 0xddaa33, alpha: 0.1 });
+
+    // --- Hanging censer/incense holder ---
+    const censerX = sw * 0.5;
+    const censerY = floorY * 0.25;
+    // Chain links going up to ceiling
+    for (let ci = 0; ci < 5; ci++) {
+      const cy = censerY - 12 - ci * 6;
+      g.ellipse(censerX, cy, 1.5, 3);
+      g.stroke({ color: 0x8b7355, width: 1, alpha: 0.35 });
+    }
+    // Censer body (ornate ball shape)
+    g.circle(censerX, censerY, 6);
+    g.fill({ color: 0x8b7355, alpha: 0.5 });
+    g.circle(censerX, censerY, 6);
+    g.stroke({ color: 0x7a6244, width: 1, alpha: 0.4 });
+    // Ornate band around middle
+    g.ellipse(censerX, censerY, 7, 2);
+    g.stroke({ color: 0xddaa33, width: 0.8, alpha: 0.25 });
+    // Holes in censer (for smoke)
+    g.circle(censerX - 3, censerY - 1, 1);
+    g.fill({ color: 0x443322, alpha: 0.3 });
+    g.circle(censerX + 3, censerY - 1, 1);
+    g.fill({ color: 0x443322, alpha: 0.3 });
+    g.circle(censerX, censerY + 2, 1);
+    g.fill({ color: 0x443322, alpha: 0.3 });
+    // Bottom finial
+    g.circle(censerX, censerY + 7, 2);
+    g.fill({ color: 0x8b7355, alpha: 0.4 });
+
+    // --- Unique critter: moth drawn to the candle light ---
+    this._critters.push({
+      x: sw * 0.5, y: floorY * 0.35, baseX: sw * 0.5, baseY: floorY * 0.35,
+      phase: 0, type: "moth", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.35, y: floorY * 0.4, baseX: sw * 0.35, baseY: floorY * 0.4,
+      phase: 1.8, type: "moth", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_grail_chapel(time: number): void {
@@ -3150,6 +4426,67 @@ export class DuelArenaRenderer {
     g.fill({ color: 0xffee88, alpha: pulse });
     g.circle(altarX, altarY - 35, 10);
     g.fill({ color: 0xffffcc, alpha: pulse * 0.8 });
+
+    // --- Swaying incense smoke (thin wispy curves rising) ---
+    const censerAnimX = this._sw * 0.5;
+    const censerAnimY = this._floorY * 0.25;
+    for (let si = 0; si < 4; si++) {
+      const sPhase = time * 0.5 + si * 1.3;
+      const sRise = (sPhase * 6) % 45;
+      const sBaseX = censerAnimX + (si - 1.5) * 3;
+      const sY1 = censerAnimY - 8 - sRise;
+      const sY2 = sY1 - 12;
+      const sSway = Math.sin(sPhase * 1.8) * 8 + Math.cos(sPhase * 0.7) * 4;
+      const sAlpha = 0.06 * (1 - sRise / 45);
+      if (sAlpha > 0.005) {
+        g.moveTo(sBaseX, sY1);
+        g.quadraticCurveTo(sBaseX + sSway, (sY1 + sY2) / 2, sBaseX + sSway * 1.2, sY2);
+        g.stroke({ color: 0xccccbb, width: 2.5, alpha: sAlpha });
+        g.moveTo(sBaseX + 1, sY1 + 2);
+        g.quadraticCurveTo(sBaseX + sSway * 0.8 + 2, (sY1 + sY2) / 2, sBaseX + sSway * 1.1 + 2, sY2 + 3);
+        g.stroke({ color: 0xddddcc, width: 1.5, alpha: sAlpha * 0.5 });
+      }
+    }
+
+    // --- Stained glass light color shifting (colored light patches on floor cycling hue) ---
+    const windowXPositions = [this._sw * 0.15, this._sw * 0.38, this._sw * 0.62, this._sw * 0.85];
+    const sgColors = [0xaa3333, 0x3355aa, 0xddaa33, 0x33aa55, 0xcc3366, 0x44aacc];
+    for (let wi = 0; wi < windowXPositions.length; wi++) {
+      const sgPhase = time * 0.3 + wi * 1.5;
+      const colorIdx = Math.floor((sgPhase * 0.5) % sgColors.length);
+      const nextColorIdx = (colorIdx + 1) % sgColors.length;
+      const sgAlpha = 0.025 + Math.sin(sgPhase * 0.8) * 0.01;
+      const wx = windowXPositions[wi];
+      // Colored light patch on floor
+      g.ellipse(wx + 8, this._floorY + 6, 20, 6);
+      g.fill({ color: sgColors[colorIdx], alpha: sgAlpha });
+      g.ellipse(wx + 8, this._floorY + 6, 14, 4);
+      g.fill({ color: sgColors[nextColorIdx], alpha: sgAlpha * 0.5 });
+    }
+
+    // --- Flickering prayer candle row (small flames along the pews) ---
+    const pewYPositions = [this._floorY * 0.65, this._floorY * 0.73, this._floorY * 0.81];
+    for (let pr = 0; pr < pewYPositions.length; pr++) {
+      for (const side of [-1, 1]) {
+        const pcx = this._sw * 0.5 + side * this._sw * 0.22 + side * 20;
+        const pcy = pewYPositions[pr] - 10;
+        const pcFlicker = Math.sin(time * 7 + pr * 2.5 + side * 1.3) * 1.2;
+        const pcAlpha = 0.35 + Math.sin(time * 5 + pr + side) * 0.15;
+        // Tiny candle
+        g.rect(pcx - 0.8, pcy, 1.6, 3);
+        g.fill({ color: 0xeeddcc, alpha: 0.4 });
+        // Flame
+        g.ellipse(pcx, pcy - 1 - pcFlicker * 0.2, 1.2, 2 + pcFlicker * 0.3);
+        g.fill({ color: 0xff8833, alpha: pcAlpha * 0.5 });
+        g.ellipse(pcx, pcy - 0.5, 0.6, 1 + pcFlicker * 0.1);
+        g.fill({ color: 0xffdd44, alpha: pcAlpha * 0.7 });
+        // Warm glow
+        g.circle(pcx, pcy - 1, 5);
+        g.fill({ color: 0xffcc44, alpha: 0.015 + Math.sin(time * 6 + pr * 3) * 0.005 });
+      }
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -3371,6 +4708,120 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.55, sw, floorY * 0.45);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha * 0.4 });
+    // --- Colorful beach umbrellas stuck in sand ---
+    const umbrellaPositions = [
+      { x: sw * 0.32, color: 0xff4455 },
+      { x: sw * 0.58, color: 0x44aaff },
+    ];
+    for (const umb of umbrellaPositions) {
+      // Pole
+      g.moveTo(umb.x, floorY + 6);
+      g.lineTo(umb.x, floorY - 28);
+      g.stroke({ color: 0x888888, width: 2 });
+      // Umbrella canopy (semi-circle)
+      g.moveTo(umb.x - 18, floorY - 28);
+      g.arc(umb.x, floorY - 28, 18, Math.PI, 0);
+      g.closePath();
+      g.fill({ color: umb.color, alpha: 0.6 });
+      // Stripe
+      g.moveTo(umb.x - 12, floorY - 28);
+      g.arc(umb.x, floorY - 28, 12, Math.PI, 0);
+      g.closePath();
+      g.fill({ color: 0xffffff, alpha: 0.15 });
+    }
+
+    // --- Sandcastle with flag ---
+    const castleX = sw * 0.44;
+    const castleY = floorY + 2;
+    // Base block
+    g.rect(castleX - 10, castleY - 12, 20, 12);
+    g.fill({ color: 0xddcc88, alpha: 0.7 });
+    // Top block
+    g.rect(castleX - 6, castleY - 18, 12, 6);
+    g.fill({ color: 0xddcc88, alpha: 0.65 });
+    // Turret
+    g.rect(castleX - 3, castleY - 23, 6, 5);
+    g.fill({ color: 0xddcc88, alpha: 0.6 });
+    // Crenellations
+    g.rect(castleX - 3, castleY - 25, 2, 2);
+    g.fill({ color: 0xddcc88, alpha: 0.6 });
+    g.rect(castleX + 1, castleY - 25, 2, 2);
+    g.fill({ color: 0xddcc88, alpha: 0.6 });
+    // Flag on top
+    g.moveTo(castleX, castleY - 25);
+    g.lineTo(castleX, castleY - 33);
+    g.stroke({ color: 0x7a6a4a, width: 1 });
+    g.moveTo(castleX, castleY - 33);
+    g.lineTo(castleX + 7, castleY - 31);
+    g.lineTo(castleX, castleY - 29);
+    g.closePath();
+    g.fill({ color: 0xff3344, alpha: 0.6 });
+
+    // --- Tide pools with starfish and anemones ---
+    const tidePools = [
+      { x: sw * 0.36, y: floorY + 5 },
+      { x: sw * 0.64, y: floorY + 4 },
+    ];
+    for (const tp of tidePools) {
+      // Water puddle
+      g.ellipse(tp.x, tp.y, 14, 5);
+      g.fill({ color: 0x3388aa, alpha: 0.25 });
+      g.ellipse(tp.x, tp.y, 14, 5);
+      g.stroke({ color: 0x667766, width: 0.8, alpha: 0.25 });
+      // Starfish
+      for (let arm = 0; arm < 5; arm++) {
+        const sa = (arm / 5) * Math.PI * 2 - Math.PI / 2;
+        g.moveTo(tp.x - 4, tp.y);
+        g.lineTo(tp.x - 4 + Math.cos(sa) * 4, tp.y + Math.sin(sa) * 3);
+        g.stroke({ color: 0xff6644, width: 1.5, alpha: 0.4 });
+      }
+      // Anemone (small colored blobs)
+      g.circle(tp.x + 6, tp.y - 1, 2);
+      g.fill({ color: 0xcc55cc, alpha: 0.35 });
+      g.circle(tp.x + 6, tp.y - 1, 1);
+      g.fill({ color: 0xff88ff, alpha: 0.25 });
+    }
+
+    // --- Message in a bottle on shore ---
+    const bottleX = sw * 0.52;
+    const bottleY = floorY + 3;
+    // Bottle body
+    g.ellipse(bottleX, bottleY, 4, 2);
+    g.fill({ color: 0x88cc88, alpha: 0.4 });
+    g.ellipse(bottleX, bottleY, 4, 2);
+    g.stroke({ color: 0x66aa66, width: 0.8, alpha: 0.3 });
+    // Bottle neck
+    g.rect(bottleX + 3, bottleY - 2, 3, 2);
+    g.fill({ color: 0x88cc88, alpha: 0.35 });
+    // Cork
+    g.rect(bottleX + 6, bottleY - 2, 1.5, 2);
+    g.fill({ color: 0xaa8855, alpha: 0.4 });
+
+    // --- Fishing net draped over rocks ---
+    for (const rpx of [sw * 0.3, sw * 0.7]) {
+      for (let nx = -8; nx <= 8; nx += 4) {
+        // Vertical net lines
+        g.moveTo(rpx + nx, floorY - 2);
+        g.quadraticCurveTo(rpx + nx + 1, floorY + 4, rpx + nx - 1, floorY + 8);
+        g.stroke({ color: 0x887766, width: 0.6, alpha: 0.25 });
+      }
+      for (let ny = 0; ny < 3; ny++) {
+        // Horizontal net lines
+        g.moveTo(rpx - 8, floorY + ny * 4);
+        g.lineTo(rpx + 8, floorY + ny * 4 + 1);
+        g.stroke({ color: 0x887766, width: 0.6, alpha: 0.2 });
+      }
+    }
+
+    // --- Unique critter: crabs skittering across the sand ---
+    this._critters.push({
+      x: sw * 0.25, y: floorY + 10, baseX: sw * 0.3, baseY: floorY + 10,
+      phase: 0, type: "crab", dir: 1, speed: 0.3, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.7, y: floorY + 15, baseX: sw * 0.65, baseY: floorY + 15,
+      phase: 1.5, type: "crab", dir: -1, speed: 0.25, state: 0,
+    });
   }
 
   private _update_cornwall(time: number): void {
@@ -3425,6 +4876,54 @@ export class DuelArenaRenderer {
       g.circle(f.x, f.y, 6 + Math.sin(time * 3) * 1);
       g.fill({ color: 0xffee88, alpha: 0.3 });
     }
+
+    // --- Cloud shadows drifting across the beach ---
+    for (let cs = 0; cs < 3; cs++) {
+      const csPhase = time * 0.08 + cs * 2.5;
+      const csX = ((csPhase * 40 + cs * sw * 0.35) % (sw + 120)) - 60;
+      const csY = this._floorY * 0.6 + cs * 18 + Math.sin(time * 0.2 + cs) * 8;
+      g.ellipse(csX, csY, 60 + cs * 15, 18 + cs * 4);
+      g.fill({ color: 0x000000, alpha: 0.03 + Math.sin(time * 0.3 + cs) * 0.01 });
+    }
+
+    // --- Bobbing distant ship on waves ---
+    {
+      const shipX = sw * 0.65;
+      const shipBaseY = seaY + 6;
+      const shipBob = Math.sin(time * 0.8) * 2;
+      const shipRock = Math.sin(time * 0.6) * 0.04;
+      const sy = shipBaseY + shipBob;
+      // Hull
+      g.moveTo(shipX - 8, sy);
+      g.quadraticCurveTo(shipX - 10, sy + 3, shipX - 6, sy + 4);
+      g.lineTo(shipX + 6, sy + 4);
+      g.quadraticCurveTo(shipX + 10, sy + 3, shipX + 8, sy);
+      g.closePath();
+      g.fill({ color: 0x4a3a2a, alpha: 0.4 });
+      // Mast
+      g.moveTo(shipX, sy);
+      g.lineTo(shipX + shipRock * 20, sy - 12);
+      g.stroke({ color: 0x5a4a3a, width: 1, alpha: 0.35 });
+      // Sail
+      g.moveTo(shipX + shipRock * 20, sy - 12);
+      g.lineTo(shipX + 5 + shipRock * 10, sy - 4);
+      g.lineTo(shipX + shipRock * 15, sy - 3);
+      g.closePath();
+      g.fill({ color: 0xeeddcc, alpha: 0.25 });
+    }
+
+    // --- Beach flag/pennant fluttering ---
+    {
+      const flagX = sw * 0.44;
+      const flagY = this._floorY - 28;
+      const flutter = Math.sin(time * 4) * 3 + Math.sin(time * 7) * 1.5;
+      const flutter2 = Math.sin(time * 4.5 + 0.5) * 2;
+      g.moveTo(flagX + 7, flagY - 5);
+      g.quadraticCurveTo(flagX + 7 + flutter * 0.5, flagY - 3 + flutter2 * 0.3, flagX + 7 + flutter, flagY - 1);
+      g.stroke({ color: 0xff3344, width: 1.5, alpha: 0.4 });
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -3630,6 +5129,128 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.25, sw, floorY * 0.75);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Spectral faces faintly visible in walls ---
+    const facePositions = [
+      { x: sw * 0.2, y: wallY + (floorY - wallY) * 0.35 },
+      { x: sw * 0.65, y: wallY + (floorY - wallY) * 0.5 },
+      { x: sw * 0.85, y: wallY + (floorY - wallY) * 0.28 },
+    ];
+    for (const fp of facePositions) {
+      // Very faint ghostly face outline
+      g.ellipse(fp.x, fp.y, 8, 10);
+      g.stroke({ color: 0x8866aa, width: 0.8, alpha: 0.04 });
+      // Eye sockets
+      g.circle(fp.x - 3, fp.y - 2, 1.5);
+      g.fill({ color: 0x6644aa, alpha: 0.04 });
+      g.circle(fp.x + 3, fp.y - 2, 1.5);
+      g.fill({ color: 0x6644aa, alpha: 0.04 });
+      // Mouth
+      g.ellipse(fp.x, fp.y + 4, 3, 1.5);
+      g.fill({ color: 0x5533aa, alpha: 0.03 });
+    }
+
+    // --- Dripping water stains on walls ---
+    const stainPositions = [sw * 0.12, sw * 0.35, sw * 0.52, sw * 0.78, sw * 0.95];
+    for (const sx of stainPositions) {
+      const stainTop = wallY + 10 + Math.sin(sx * 0.3) * 15;
+      const stainLen = 30 + Math.sin(sx * 0.7) * 15;
+      g.moveTo(sx, stainTop);
+      g.quadraticCurveTo(sx + 1, stainTop + stainLen * 0.5, sx - 1, stainTop + stainLen);
+      g.stroke({ color: 0x040410, width: 2.5, alpha: 0.15 });
+      g.moveTo(sx + 1, stainTop + 3);
+      g.quadraticCurveTo(sx + 2, stainTop + stainLen * 0.4, sx, stainTop + stainLen * 0.8);
+      g.stroke({ color: 0x060618, width: 1.5, alpha: 0.1 });
+    }
+
+    // --- Torture rack in background ---
+    const rackX = sw * 0.42;
+    const rackY = wallY + (floorY - wallY) * 0.55;
+    // Wooden frame (A-shape)
+    g.moveTo(rackX - 12, rackY + 20);
+    g.lineTo(rackX - 8, rackY - 18);
+    g.lineTo(rackX + 8, rackY - 18);
+    g.lineTo(rackX + 12, rackY + 20);
+    g.stroke({ color: 0x2a1a10, width: 2.5, alpha: 0.3 });
+    // Crossbar
+    g.moveTo(rackX - 10, rackY);
+    g.lineTo(rackX + 10, rackY);
+    g.stroke({ color: 0x2a1a10, width: 2, alpha: 0.3 });
+    // Top beam
+    g.moveTo(rackX - 9, rackY - 15);
+    g.lineTo(rackX + 9, rackY - 15);
+    g.stroke({ color: 0x2a1a10, width: 2, alpha: 0.25 });
+    // Ropes dangling
+    g.moveTo(rackX - 5, rackY - 15);
+    g.quadraticCurveTo(rackX - 6, rackY - 5, rackX - 4, rackY + 5);
+    g.stroke({ color: 0x443322, width: 1, alpha: 0.2 });
+    g.moveTo(rackX + 5, rackY - 15);
+    g.quadraticCurveTo(rackX + 6, rackY - 5, rackX + 4, rackY + 5);
+    g.stroke({ color: 0x443322, width: 1, alpha: 0.2 });
+
+    // --- Cobwebs in corners ---
+    const cobwebCorners = [
+      { x: 0, y: wallY, dx: 1, dy: 1 },
+      { x: sw, y: wallY, dx: -1, dy: 1 },
+    ];
+    for (const cw of cobwebCorners) {
+      // Radial lines
+      for (let r = 0; r < 6; r++) {
+        const angle = (r / 6) * (Math.PI * 0.5) + (cw.dx > 0 ? 0 : Math.PI * 0.5);
+        const endX = cw.x + Math.cos(angle) * 30 * cw.dx;
+        const endY = cw.y + Math.sin(angle) * 30;
+        g.moveTo(cw.x, cw.y);
+        g.lineTo(endX, endY);
+        g.stroke({ color: 0x444466, width: 0.5, alpha: 0.12 });
+      }
+      // Connecting arcs (2 rings)
+      for (let ring = 1; ring <= 2; ring++) {
+        const rDist = ring * 12;
+        for (let r = 0; r < 5; r++) {
+          const a1 = (r / 6) * (Math.PI * 0.5) + (cw.dx > 0 ? 0 : Math.PI * 0.5);
+          const a2 = ((r + 1) / 6) * (Math.PI * 0.5) + (cw.dx > 0 ? 0 : Math.PI * 0.5);
+          g.moveTo(cw.x + Math.cos(a1) * rDist * cw.dx, cw.y + Math.sin(a1) * rDist);
+          g.lineTo(cw.x + Math.cos(a2) * rDist * cw.dx, cw.y + Math.sin(a2) * rDist);
+          g.stroke({ color: 0x444466, width: 0.4, alpha: 0.08 });
+        }
+      }
+    }
+
+    // --- Scattered bones on floor ---
+    const bonePositions = [sw * 0.18, sw * 0.34, sw * 0.58, sw * 0.74, sw * 0.88];
+    for (const bx of bonePositions) {
+      const bAngle = Math.sin(bx * 0.5) * 0.5;
+      // Bone shaft
+      g.moveTo(bx - Math.cos(bAngle) * 6, floorY + 3 - Math.sin(bAngle) * 2);
+      g.lineTo(bx + Math.cos(bAngle) * 6, floorY + 3 + Math.sin(bAngle) * 2);
+      g.stroke({ color: 0xbbaa88, width: 1.5, alpha: 0.2 });
+      // Knobs at ends
+      g.circle(bx - Math.cos(bAngle) * 6, floorY + 3 - Math.sin(bAngle) * 2, 1.5);
+      g.fill({ color: 0xbbaa88, alpha: 0.18 });
+      g.circle(bx + Math.cos(bAngle) * 6, floorY + 3 + Math.sin(bAngle) * 2, 1.5);
+      g.fill({ color: 0xbbaa88, alpha: 0.18 });
+    }
+    // Skull
+    g.circle(sw * 0.45, floorY + 4, 3.5);
+    g.fill({ color: 0xbbaa88, alpha: 0.15 });
+    g.circle(sw * 0.45 - 1.2, floorY + 3.5, 0.8);
+    g.fill({ color: 0x0a0a18, alpha: 0.12 });
+    g.circle(sw * 0.45 + 1.2, floorY + 3.5, 0.8);
+    g.fill({ color: 0x0a0a18, alpha: 0.12 });
+
+    // --- Unique critter: bats fluttering from the keep windows ---
+    this._critters.push({
+      x: sw * 0.3, y: floorY * 0.3, baseX: sw * 0.3, baseY: floorY * 0.3,
+      phase: 0, type: "bat", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.55, y: floorY * 0.25, baseX: sw * 0.55, baseY: floorY * 0.25,
+      phase: 1.3, type: "bat", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.75, y: floorY * 0.35, baseX: sw * 0.75, baseY: floorY * 0.35,
+      phase: 2.7, type: "bat", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_shadow_keep(time: number): void {
@@ -3678,6 +5299,58 @@ export class DuelArenaRenderer {
       g.lineTo(cx + sway, this._floorY * 0.15 + 40 + (i % 4) * 18);
       g.stroke({ color: 0x444455, width: 1, alpha: 0.3 });
     }
+
+    // --- Dripping water drops from ceiling ---
+    for (let wd = 0; wd < 3; wd++) {
+      const wdX = sw * (0.22 + wd * 0.28);
+      const wdPhase = (time * 0.4 + wd * 2.3) % 4;
+      if (wdPhase < 1.5) {
+        // Drop falling
+        const wdProgress = wdPhase / 1.5;
+        const wallTop = this._floorY * 0.15;
+        const wdY = wallTop + wdProgress * (this._floorY - wallTop - 5);
+        const wdAlpha = 0.35 * (1 - wdProgress * 0.5);
+        g.circle(wdX, wdY, 1.5);
+        g.fill({ color: 0x6688aa, alpha: wdAlpha });
+        // Tiny tail streak
+        g.moveTo(wdX, wdY - 4);
+        g.lineTo(wdX, wdY);
+        g.stroke({ color: 0x6688aa, width: 0.8, alpha: wdAlpha * 0.5 });
+      } else if (wdPhase < 2.2) {
+        // Splash
+        const splashProgress = (wdPhase - 1.5) / 0.7;
+        const splashAlpha = 0.2 * (1 - splashProgress);
+        g.ellipse(wdX, this._floorY + 2, 3 + splashProgress * 5, 1 + splashProgress * 2);
+        g.stroke({ color: 0x6688aa, width: 0.5, alpha: splashAlpha });
+      }
+    }
+
+    // --- Spectral wisps drifting ---
+    for (let sw2 = 0; sw2 < 4; sw2++) {
+      const wispX = ((time * 8 + sw2 * sw * 0.27) % (sw + 60)) - 30;
+      const wispY = this._floorY * (0.3 + sw2 * 0.12) + Math.sin(time * 0.7 + sw2 * 1.5) * 15;
+      const wispAlpha = 0.04 + Math.sin(time * 1.2 + sw2 * 2) * 0.02;
+      // Wisp body
+      g.ellipse(wispX, wispY, 8, 4);
+      g.fill({ color: 0x8866cc, alpha: wispAlpha });
+      // Wisp tail
+      g.moveTo(wispX - 8, wispY);
+      g.quadraticCurveTo(wispX - 16, wispY + Math.sin(time * 2 + sw2) * 3, wispX - 22, wispY + 2);
+      g.stroke({ color: 0x8866cc, width: 1.5, alpha: wispAlpha * 0.6 });
+    }
+
+    // --- Flickering torch shadows on walls ---
+    for (let ts = 0; ts < 4; ts++) {
+      const tsX = sw * (0.15 + ts * 0.22);
+      const tsFlicker = Math.sin(time * 5 + ts * 1.7) * 0.5 + Math.sin(time * 8 + ts * 3.1) * 0.3;
+      const tsAlpha = 0.04 + tsFlicker * 0.02;
+      const tsHeight = 30 + tsFlicker * 8;
+      const tsWidth = 14 + tsFlicker * 4;
+      g.ellipse(tsX, this._floorY * 0.5, tsWidth, tsHeight);
+      g.fill({ color: 0x000000, alpha: Math.max(0, tsAlpha) });
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -3881,6 +5554,133 @@ export class DuelArenaRenderer {
     }
     g.rect(0, floorY * 0.35, sw, floorY * 0.65);
     g.fill({ color: a.fogColor, alpha: a.fogAlpha });
+
+    // --- Broken siege catapult ---
+    const catX = sw * 0.82;
+    const catY = floorY;
+    // Base frame
+    g.rect(catX - 16, catY - 14, 32, 14);
+    g.fill({ color: 0x3a2a1a, alpha: 0.5 });
+    g.rect(catX - 16, catY - 14, 32, 14);
+    g.stroke({ color: 0x2a1a0a, width: 1.5, alpha: 0.4 });
+    // Crossbeam
+    g.moveTo(catX - 16, catY - 10);
+    g.lineTo(catX + 16, catY - 10);
+    g.stroke({ color: 0x2a1a0a, width: 2, alpha: 0.4 });
+    // Broken throwing arm (tilted, snapped)
+    g.moveTo(catX - 2, catY - 14);
+    g.lineTo(catX - 18, catY - 40);
+    g.stroke({ color: 0x4a3a2a, width: 3, cap: "round", alpha: 0.45 });
+    // Splintered end of arm
+    g.moveTo(catX - 18, catY - 40);
+    g.lineTo(catX - 22, catY - 44);
+    g.stroke({ color: 0x5a4a3a, width: 1.5, alpha: 0.3 });
+    g.moveTo(catX - 18, catY - 40);
+    g.lineTo(catX - 16, catY - 45);
+    g.stroke({ color: 0x5a4a3a, width: 1, alpha: 0.25 });
+    // Wheels (broken)
+    g.circle(catX - 12, catY, 5);
+    g.stroke({ color: 0x3a2a1a, width: 2, alpha: 0.4 });
+    g.circle(catX + 12, catY, 5);
+    g.stroke({ color: 0x3a2a1a, width: 2, alpha: 0.4 });
+
+    // --- Abandoned war drums ---
+    for (const drumX of [sw * 0.14, sw * 0.88]) {
+      // Drum body (cylinder, side view)
+      g.ellipse(drumX, floorY - 4, 8, 5);
+      g.fill({ color: 0x553322, alpha: 0.4 });
+      g.ellipse(drumX, floorY - 4, 8, 5);
+      g.stroke({ color: 0x442211, width: 1.2, alpha: 0.35 });
+      // Drum skin (top)
+      g.ellipse(drumX, floorY - 8, 8, 3);
+      g.fill({ color: 0xbbaa77, alpha: 0.3 });
+      g.ellipse(drumX, floorY - 8, 8, 3);
+      g.stroke({ color: 0x664422, width: 0.8, alpha: 0.3 });
+      // Drumstick
+      g.moveTo(drumX + 5, floorY - 10);
+      g.lineTo(drumX + 12, floorY - 16);
+      g.stroke({ color: 0x7a6a4a, width: 1.2, cap: "round", alpha: 0.3 });
+    }
+
+    // --- Torn war map on ground ---
+    const mapX = sw * 0.55;
+    const mapY = floorY + 3;
+    g.rect(mapX - 10, mapY - 2, 20, 14);
+    g.fill({ color: 0xccbb88, alpha: 0.2 });
+    g.rect(mapX - 10, mapY - 2, 20, 14);
+    g.stroke({ color: 0x887755, width: 0.6, alpha: 0.2 });
+    // Map markings
+    g.moveTo(mapX - 6, mapY + 2);
+    g.lineTo(mapX + 4, mapY + 5);
+    g.stroke({ color: 0x664433, width: 0.5, alpha: 0.15 });
+    g.moveTo(mapX - 3, mapY + 7);
+    g.lineTo(mapX + 7, mapY + 4);
+    g.stroke({ color: 0x664433, width: 0.5, alpha: 0.12 });
+    g.circle(mapX + 2, mapY + 6, 2);
+    g.stroke({ color: 0xcc3322, width: 0.5, alpha: 0.15 });
+
+    // --- Fallen standard/flag pole with tattered cloth ---
+    const stdX = sw * 0.68;
+    g.moveTo(stdX, floorY + 2);
+    g.lineTo(stdX + 35, floorY - 15);
+    g.stroke({ color: 0x5a4a3a, width: 2.5, cap: "round", alpha: 0.4 });
+    // Tattered cloth
+    g.moveTo(stdX + 28, floorY - 13);
+    g.lineTo(stdX + 38, floorY - 10);
+    g.lineTo(stdX + 35, floorY - 5);
+    g.lineTo(stdX + 40, floorY - 3);
+    g.lineTo(stdX + 33, floorY);
+    g.stroke({ color: 0x882222, width: 1.5, alpha: 0.3 });
+
+    // --- Crows on dead trees ---
+    // Dead tree (right background)
+    const dtX = sw * 0.78;
+    const dtY = floorY * 0.48;
+    g.moveTo(dtX, floorY * 0.6);
+    g.lineTo(dtX - 2, dtY);
+    g.stroke({ color: 0x2a1a10, width: 3, alpha: 0.35 });
+    g.moveTo(dtX - 2, dtY);
+    g.lineTo(dtX - 12, dtY - 10);
+    g.stroke({ color: 0x2a1a10, width: 2, alpha: 0.3 });
+    g.moveTo(dtX - 2, dtY + 5);
+    g.lineTo(dtX + 10, dtY - 2);
+    g.stroke({ color: 0x2a1a10, width: 1.5, alpha: 0.3 });
+    // Crows perched (small dark shapes)
+    for (const crowPos of [{ x: dtX - 10, y: dtY - 11 }, { x: dtX + 8, y: dtY - 3 }]) {
+      g.ellipse(crowPos.x, crowPos.y, 3, 2);
+      g.fill({ color: 0x111111, alpha: 0.4 });
+      // Beak
+      g.moveTo(crowPos.x + 3, crowPos.y - 0.5);
+      g.lineTo(crowPos.x + 5, crowPos.y);
+      g.stroke({ color: 0x222222, width: 0.8, alpha: 0.35 });
+    }
+
+    // --- Funeral pyre smoldering ---
+    const pyreX = sw * 0.38;
+    const pyreY = floorY;
+    // Log pile
+    for (let pl = 0; pl < 4; pl++) {
+      g.moveTo(pyreX - 12 + pl * 3, pyreY);
+      g.lineTo(pyreX - 10 + pl * 3, pyreY - 6 - pl);
+      g.lineTo(pyreX + 10 - pl * 2, pyreY - 5 - pl);
+      g.lineTo(pyreX + 12 - pl * 2, pyreY);
+      g.closePath();
+      g.fill({ color: 0x2a1a0a, alpha: 0.3 + pl * 0.05 });
+    }
+    // Charred remains
+    g.ellipse(pyreX, pyreY - 4, 10, 3);
+    g.fill({ color: 0x1a0a00, alpha: 0.3 });
+    // Subtle smoke wisps (static)
+    g.circle(pyreX - 2, pyreY - 12, 6);
+    g.fill({ color: 0x555544, alpha: 0.05 });
+    g.circle(pyreX + 3, pyreY - 18, 8);
+    g.fill({ color: 0x555544, alpha: 0.03 });
+
+    // --- Unique critter: crow pecking at the battlefield ---
+    this._critters.push({
+      x: sw * 0.2, y: floorY - 3, baseX: sw * 0.3, baseY: floorY - 3,
+      phase: 0, type: "crow", dir: 1, speed: 0.2, state: 0,
+    });
   }
 
   private _update_camlann(time: number): void {
@@ -3931,6 +5731,57 @@ export class DuelArenaRenderer {
         g.fill({ color: 0x443333, alpha: m.alpha });
       }
     }
+
+    // --- Drifting ash/paper scraps ---
+    for (let ash = 0; ash < 8; ash++) {
+      const ashPhase = time * 0.3 + ash * 1.7;
+      const ashX = ((ashPhase * 15 + ash * 80) % (sw + 40)) - 20;
+      const ashY = this._floorY * 0.15 + ((ashPhase * 8 + ash * 50) % (this._floorY * 0.75));
+      const ashSpin = Math.sin(time * 2 + ash * 2.3) * 0.5;
+      const ashAlpha = 0.12 + Math.sin(time * 0.8 + ash) * 0.04;
+      const ashColor = ash % 3 === 0 ? 0xbbbbaa : ash % 3 === 1 ? 0x999988 : 0x776666;
+      // Tumbling rectangle
+      g.rect(ashX - 1.5 + ashSpin, ashY - 1, 3, 2);
+      g.fill({ color: ashColor, alpha: ashAlpha });
+    }
+
+    // --- Distant smoke plumes rising ---
+    for (let sp = 0; sp < 3; sp++) {
+      const spX = sw * (0.2 + sp * 0.3);
+      const spBaseY = this._floorY * 0.45;
+      for (let seg = 0; seg < 5; seg++) {
+        const segY = spBaseY - seg * 12 - Math.sin(time * 0.5 + sp + seg * 0.5) * 3;
+        const segX = spX + Math.sin(time * 0.3 + sp * 2 + seg * 0.8) * (4 + seg * 2);
+        const segSize = 6 + seg * 4;
+        const segAlpha = 0.06 - seg * 0.008;
+        g.circle(segX, segY, segSize);
+        g.fill({ color: 0x443333, alpha: Math.max(0.01, segAlpha) });
+      }
+    }
+
+    // --- Crows taking flight occasionally ---
+    for (let cf = 0; cf < 2; cf++) {
+      const cfPhase = time * 0.2 + cf * 4.5;
+      const cfCycle = cfPhase % 8;
+      if (cfCycle < 2.0) {
+        const cfProgress = cfCycle / 2.0;
+        const cfX = sw * (0.6 + cf * 0.2) + cfProgress * 40 * (cf === 0 ? 1 : -1);
+        const cfY = this._floorY * 0.4 - cfProgress * this._floorY * 0.2;
+        const cfAlpha = 0.4 * (1 - cfProgress * 0.5);
+        const wingFlap = Math.sin(time * 12 + cf * 3) * 3;
+        // Body
+        g.ellipse(cfX, cfY, 2.5, 1.5);
+        g.fill({ color: 0x111111, alpha: cfAlpha });
+        // Wings
+        g.moveTo(cfX - 4, cfY + wingFlap * 0.3);
+        g.lineTo(cfX - 1, cfY);
+        g.lineTo(cfX + 1, cfY);
+        g.lineTo(cfX + 4, cfY + wingFlap * 0.3);
+        g.stroke({ color: 0x111111, width: 1, alpha: cfAlpha * 0.8 });
+      }
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -4116,6 +5967,117 @@ export class DuelArenaRenderer {
         height: 30 + i * 10,
       });
     }
+
+    // --- Fairy ring of mushrooms ---
+    const ringCenterX = sw * 0.42;
+    const ringCenterY = floorY + 2;
+    const ringRadius = 22;
+    for (let fm = 0; fm < 8; fm++) {
+      const fmAngle = (fm / 8) * Math.PI * 2;
+      const fmX = ringCenterX + Math.cos(fmAngle) * ringRadius;
+      const fmY = ringCenterY + Math.sin(fmAngle) * ringRadius * 0.35;
+      // Tiny mushroom stem
+      g.rect(fmX - 1, fmY - 4, 2, 4);
+      g.fill({ color: 0xddccaa, alpha: 0.4 });
+      // Tiny mushroom cap
+      g.moveTo(fmX - 3, fmY - 4);
+      g.arc(fmX, fmY - 4, 3, Math.PI, 0);
+      g.fill({ color: 0xee8844, alpha: 0.35 });
+    }
+    // Faint magic circle glow
+    g.ellipse(ringCenterX, ringCenterY, ringRadius, ringRadius * 0.35);
+    g.stroke({ color: 0x88ff66, width: 0.8, alpha: 0.04 });
+
+    // --- Ancient carved face in tree trunk ---
+    const faceTreeX = sw * 0.03;
+    const faceTreeY = floorY * 0.45;
+    // Subtle face features on the left oak
+    g.ellipse(faceTreeX + 8, faceTreeY, 6, 8);
+    g.stroke({ color: 0x1a0f06, width: 1.2, alpha: 0.15 });
+    // Eyes (knotholes)
+    g.ellipse(faceTreeX + 5, faceTreeY - 2, 2, 1.5);
+    g.fill({ color: 0x0f0804, alpha: 0.2 });
+    g.ellipse(faceTreeX + 11, faceTreeY - 2, 2, 1.5);
+    g.fill({ color: 0x0f0804, alpha: 0.2 });
+    // Mouth (bark crevice)
+    g.moveTo(faceTreeX + 5, faceTreeY + 4);
+    g.quadraticCurveTo(faceTreeX + 8, faceTreeY + 6, faceTreeX + 11, faceTreeY + 4);
+    g.stroke({ color: 0x1a0f06, width: 1, alpha: 0.12 });
+    // Nose ridge
+    g.moveTo(faceTreeX + 8, faceTreeY - 1);
+    g.lineTo(faceTreeX + 8, faceTreeY + 2);
+    g.stroke({ color: 0x1a0f06, width: 0.8, alpha: 0.1 });
+
+    // --- Hanging dreamcatchers/wind chimes in branches ---
+    const chimePosns = [
+      { x: sw * 0.06, y: floorY * 0.28 },
+      { x: sw * 0.92, y: floorY * 0.24 },
+    ];
+    for (const ch of chimePosns) {
+      // String from branch
+      g.moveTo(ch.x, ch.y - 10);
+      g.lineTo(ch.x, ch.y);
+      g.stroke({ color: 0x887766, width: 0.5, alpha: 0.3 });
+      // Ring
+      g.circle(ch.x, ch.y + 5, 5);
+      g.stroke({ color: 0x886644, width: 0.8, alpha: 0.25 });
+      // Cross threads
+      g.moveTo(ch.x - 4, ch.y + 3);
+      g.lineTo(ch.x + 4, ch.y + 7);
+      g.stroke({ color: 0x887766, width: 0.4, alpha: 0.15 });
+      g.moveTo(ch.x + 4, ch.y + 3);
+      g.lineTo(ch.x - 4, ch.y + 7);
+      g.stroke({ color: 0x887766, width: 0.4, alpha: 0.15 });
+      // Dangling feathers/chimes
+      for (let dc = 0; dc < 3; dc++) {
+        const dcX = ch.x - 3 + dc * 3;
+        g.moveTo(dcX, ch.y + 10);
+        g.lineTo(dcX, ch.y + 16 + dc);
+        g.stroke({ color: 0x887766, width: 0.4, alpha: 0.2 });
+        g.ellipse(dcX, ch.y + 17 + dc, 1, 2);
+        g.fill({ color: 0x557744, alpha: 0.2 });
+      }
+    }
+
+    // --- Small stream/brook crossing the floor ---
+    g.moveTo(sw * 0.3, floorY + 6);
+    g.quadraticCurveTo(sw * 0.4, floorY + 4, sw * 0.5, floorY + 7);
+    g.quadraticCurveTo(sw * 0.6, floorY + 5, sw * 0.7, floorY + 6);
+    g.stroke({ color: 0x4488aa, width: 2.5, alpha: 0.2 });
+    // Highlight on stream
+    g.moveTo(sw * 0.32, floorY + 5);
+    g.quadraticCurveTo(sw * 0.42, floorY + 3, sw * 0.52, floorY + 6);
+    g.quadraticCurveTo(sw * 0.62, floorY + 4, sw * 0.68, floorY + 5);
+    g.stroke({ color: 0x66bbdd, width: 1, alpha: 0.12 });
+    // Stepping stones in stream
+    for (const stx of [sw * 0.36, sw * 0.48, sw * 0.58, sw * 0.66]) {
+      g.ellipse(stx, floorY + 6, 3, 1.5);
+      g.fill({ color: 0x667755, alpha: 0.3 });
+    }
+
+    // --- Animal tracks in the mud ---
+    for (let at = 0; at < 4; at++) {
+      const atX = sw * (0.2 + at * 0.18);
+      const atY = floorY + 8 + Math.sin(at * 2.1) * 2;
+      // Two-toed hoof print
+      g.circle(atX - 1, atY, 1.2);
+      g.fill({ color: 0x2a1a10, alpha: 0.12 });
+      g.circle(atX + 1, atY, 1.2);
+      g.fill({ color: 0x2a1a10, alpha: 0.12 });
+      // Heel
+      g.circle(atX, atY + 2, 0.8);
+      g.fill({ color: 0x2a1a10, alpha: 0.08 });
+    }
+
+    // --- Unique critter: glowing fairy dancing through the trees ---
+    this._critters.push({
+      x: sw * 0.7, y: floorY * 0.5, baseX: sw * 0.7, baseY: floorY * 0.5,
+      phase: 0, type: "fairy", dir: 1, speed: 0, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.3, y: floorY * 0.4, baseX: sw * 0.3, baseY: floorY * 0.4,
+      phase: 2.5, type: "fairy", dir: 1, speed: 0, state: 0,
+    });
   }
 
   private _update_broceliande(time: number): void {
@@ -4152,6 +6114,55 @@ export class DuelArenaRenderer {
         g.fill({ color: 0x446644, alpha: m.alpha });
       }
     }
+
+    // --- Floating dandelion seeds ---
+    for (let ds = 0; ds < 6; ds++) {
+      const dsPhase = time * 0.15 + ds * 1.8;
+      const dsX = ((dsPhase * 10 + ds * 70) % (sw + 40)) - 20;
+      const dsY = this._floorY * 0.25 + ds * 20 - (time * 3 + ds * 30) % (this._floorY * 0.6);
+      const dsWobble = Math.sin(time * 1.5 + ds * 2.1) * 4;
+      const dsAlpha = 0.3 + Math.sin(time * 0.6 + ds) * 0.1;
+      // Seed puff (tiny white dot with radiating lines)
+      g.circle(dsX + dsWobble, dsY, 1);
+      g.fill({ color: 0xffffff, alpha: dsAlpha * 0.7 });
+      // Fuzzy lines
+      for (let fl = 0; fl < 4; fl++) {
+        const flAngle = (fl / 4) * Math.PI * 2 + time * 0.5 + ds;
+        g.moveTo(dsX + dsWobble, dsY);
+        g.lineTo(dsX + dsWobble + Math.cos(flAngle) * 3, dsY + Math.sin(flAngle) * 3);
+        g.stroke({ color: 0xffffff, width: 0.4, alpha: dsAlpha * 0.35 });
+      }
+    }
+
+    // --- Gentle light shaft movement ---
+    for (let ls = 0; ls < 2; ls++) {
+      const lsBaseX = sw * (0.3 + ls * 0.4);
+      const lsSway = Math.sin(time * 0.15 + ls * 3) * sw * 0.08;
+      const lsX = lsBaseX + lsSway;
+      const lsAlpha = 0.015 + Math.sin(time * 0.3 + ls * 2) * 0.005;
+      // Light beam (tapered from top)
+      g.moveTo(lsX - 5, 0);
+      g.lineTo(lsX - 25, this._floorY);
+      g.lineTo(lsX + 25, this._floorY);
+      g.lineTo(lsX + 5, 0);
+      g.closePath();
+      g.fill({ color: 0xffeeaa, alpha: lsAlpha });
+    }
+
+    // --- Small water stream sparkle ---
+    for (let ss = 0; ss < 8; ss++) {
+      const ssPhase = time * 2 + ss * 1.3;
+      const ssT = (ssPhase * 0.1 + ss * 0.12) % 1;
+      const ssX = sw * (0.3 + ssT * 0.4);
+      const ssY = this._floorY + 5 + Math.sin(ssX * 0.05) * 2;
+      const ssAlpha = 0.3 * (0.5 + Math.sin(time * 5 + ss * 2) * 0.5);
+      if (ssAlpha > 0.1) {
+        g.circle(ssX, ssY, 0.8);
+        g.fill({ color: 0xffffff, alpha: ssAlpha });
+      }
+    }
+
+    this._drawCritters(g, time);
   }
 
   // =========================================================================
@@ -4362,6 +6373,127 @@ export class DuelArenaRenderer {
         height: 25 + i * 8,
       });
     }
+
+    // --- Shipwreck hull on rocks below ---
+    const wreckX = sw * 0.35;
+    const wreckY = floorY * 0.65;
+    // Broken hull frame
+    g.moveTo(wreckX - 20, wreckY + 8);
+    g.quadraticCurveTo(wreckX - 25, wreckY + 2, wreckX - 15, wreckY - 4);
+    g.lineTo(wreckX + 18, wreckY - 6);
+    g.quadraticCurveTo(wreckX + 25, wreckY, wreckX + 20, wreckY + 8);
+    g.closePath();
+    g.fill({ color: 0x3a2a18, alpha: 0.35 });
+    g.moveTo(wreckX - 20, wreckY + 8);
+    g.quadraticCurveTo(wreckX - 25, wreckY + 2, wreckX - 15, wreckY - 4);
+    g.lineTo(wreckX + 18, wreckY - 6);
+    g.quadraticCurveTo(wreckX + 25, wreckY, wreckX + 20, wreckY + 8);
+    g.stroke({ color: 0x2a1a08, width: 1.5, alpha: 0.3 });
+    // Ribs (exposed frame)
+    for (let rib = 0; rib < 5; rib++) {
+      const ribX = wreckX - 12 + rib * 7;
+      g.moveTo(ribX, wreckY + 6);
+      g.quadraticCurveTo(ribX + 1, wreckY - 2, ribX - 1, wreckY - 10 - rib);
+      g.stroke({ color: 0x4a3a28, width: 1.5, alpha: 0.25 });
+    }
+    // Broken mast stump
+    g.moveTo(wreckX, wreckY - 5);
+    g.lineTo(wreckX + 2, wreckY - 18);
+    g.stroke({ color: 0x3a2a18, width: 2.5, cap: "round", alpha: 0.3 });
+
+    // --- Hanging rope bridge remains between ruins ---
+    const ropeLX = sw * 0.15;
+    const ropeRX = sw * 0.82;
+    const ropeSag = 25;
+    // Main rope lines (sagging)
+    for (let rl = 0; rl < 2; rl++) {
+      const ropeYOff = rl * 5;
+      g.moveTo(ropeLX, cliffTop - 50 + ropeYOff);
+      g.quadraticCurveTo(sw * 0.5, cliffTop - 50 + ropeSag + ropeYOff, ropeRX, cliffTop - 45 + ropeYOff);
+      g.stroke({ color: 0x665544, width: 1.2, alpha: 0.15 });
+    }
+    // Broken planks dangling
+    for (let pl = 0; pl < 6; pl++) {
+      const plT = (pl + 0.5) / 7;
+      const plX = ropeLX + (ropeRX - ropeLX) * plT;
+      const plSag = Math.sin(plT * Math.PI) * ropeSag;
+      const plY = cliffTop - 50 + plSag;
+      if (pl % 2 === 0) {
+        // Plank present
+        g.rect(plX - 3, plY, 6, 2);
+        g.fill({ color: 0x6a5a3a, alpha: 0.15 });
+      }
+      // Rope segment
+      g.moveTo(plX, plY);
+      g.lineTo(plX, plY + 5 + pl);
+      g.stroke({ color: 0x665544, width: 0.6, alpha: 0.1 });
+    }
+
+    // --- Barnacles on cliff face ---
+    const barnacleZones = [
+      { x: sw * 0.05, y: cliffTop + 20 }, { x: sw * 0.2, y: cliffTop + 35 },
+      { x: sw * 0.6, y: cliffTop + 25 }, { x: sw * 0.85, y: cliffTop + 30 },
+      { x: sw * 0.45, y: cliffTop + 40 },
+    ];
+    for (const bz of barnacleZones) {
+      for (let bn = 0; bn < 5; bn++) {
+        const bnX = bz.x + (bn - 2) * 3 + Math.sin(bn * 1.5) * 2;
+        const bnY = bz.y + Math.cos(bn * 2) * 3;
+        g.circle(bnX, bnY, 1.5 + Math.sin(bn) * 0.5);
+        g.fill({ color: 0x777770, alpha: 0.25 });
+        g.circle(bnX, bnY, 1.5 + Math.sin(bn) * 0.5);
+        g.stroke({ color: 0x666660, width: 0.5, alpha: 0.2 });
+      }
+    }
+
+    // --- Memorial stone with celtic knotwork ---
+    const memX = sw * 0.62;
+    const memY = floorY - 18;
+    // Stone slab
+    g.moveTo(memX - 8, floorY);
+    g.lineTo(memX - 6, memY);
+    g.quadraticCurveTo(memX, memY - 5, memX + 6, memY);
+    g.lineTo(memX + 8, floorY);
+    g.closePath();
+    g.fill({ color: 0x666660, alpha: 0.5 });
+    g.stroke({ color: 0x555550, width: 1, alpha: 0.4 });
+    // Celtic knotwork (interlocking loops)
+    g.ellipse(memX, memY + 6, 4, 4);
+    g.stroke({ color: 0x889988, width: 0.8, alpha: 0.25 });
+    g.ellipse(memX - 2, memY + 6, 3, 3);
+    g.stroke({ color: 0x889988, width: 0.6, alpha: 0.2 });
+    g.ellipse(memX + 2, memY + 6, 3, 3);
+    g.stroke({ color: 0x889988, width: 0.6, alpha: 0.2 });
+    // Cross at top
+    g.moveTo(memX, memY);
+    g.lineTo(memX, memY + 5);
+    g.stroke({ color: 0x889988, width: 0.8, alpha: 0.2 });
+    g.moveTo(memX - 3, memY + 2);
+    g.lineTo(memX + 3, memY + 2);
+    g.stroke({ color: 0x889988, width: 0.8, alpha: 0.2 });
+
+    // --- Nesting holes in cliff face ---
+    const nestingHoles = [
+      { x: sw * 0.12, y: cliffTop + 15 }, { x: sw * 0.32, y: cliffTop + 22 },
+      { x: sw * 0.55, y: cliffTop + 12 }, { x: sw * 0.78, y: cliffTop + 18 },
+      { x: sw * 0.92, y: cliffTop + 28 },
+    ];
+    for (const nh of nestingHoles) {
+      g.ellipse(nh.x, nh.y, 4, 3);
+      g.fill({ color: 0x333330, alpha: 0.3 });
+      g.ellipse(nh.x, nh.y, 4, 3);
+      g.stroke({ color: 0x4a4a44, width: 0.6, alpha: 0.25 });
+    }
+
+    // --- Unique critter: seagulls soaring on the coastal wind ---
+    this._critters.push({
+      x: sw * 0.2, y: floorY * 0.15, baseX: sw * 0.5, baseY: floorY * 0.15,
+      phase: 0, type: "seagull", dir: 1, speed: 0.5, state: 0,
+    });
+    this._critters.push({
+      x: sw * 0.7, y: floorY * 0.25, baseX: sw * 0.5, baseY: floorY * 0.25,
+      phase: 1.8, type: "seagull", dir: -1, speed: 0.4, state: 0,
+    });
   }
 
   private _update_tintagel(time: number): void {
@@ -4417,6 +6549,605 @@ export class DuelArenaRenderer {
         g.ellipse(mx, m.y + wave, 70, m.height / 2);
         g.fill({ color: 0x889999, alpha: m.alpha });
       }
+    }
+
+    // --- Lightning flashes during storm ---
+    {
+      const ltPhase = (time * 0.15) % 12;
+      if (ltPhase < 0.12) {
+        // Brief full-screen flash
+        const flashAlpha = 0.08 * (1 - ltPhase / 0.12);
+        g.rect(0, 0, sw, floorY);
+        g.fill({ color: 0xccddff, alpha: flashAlpha });
+        // Lightning bolt
+        const boltX = sw * 0.45;
+        g.moveTo(boltX, floorY * 0.05);
+        g.lineTo(boltX - 8, floorY * 0.2);
+        g.lineTo(boltX + 4, floorY * 0.22);
+        g.lineTo(boltX - 5, floorY * 0.38);
+        g.lineTo(boltX + 2, floorY * 0.35);
+        g.lineTo(boltX - 10, floorY * 0.55);
+        g.stroke({ color: 0xccddff, width: 2, alpha: flashAlpha * 3 });
+        // Thinner bright core
+        g.moveTo(boltX, floorY * 0.05);
+        g.lineTo(boltX - 8, floorY * 0.2);
+        g.lineTo(boltX + 4, floorY * 0.22);
+        g.lineTo(boltX - 5, floorY * 0.38);
+        g.stroke({ color: 0xeeeeff, width: 1, alpha: flashAlpha * 4 });
+      }
+      // Second bolt at different timing
+      const lt2Phase = (time * 0.15 + 5.5) % 12;
+      if (lt2Phase < 0.1) {
+        const flash2Alpha = 0.06 * (1 - lt2Phase / 0.1);
+        g.rect(0, 0, sw, floorY);
+        g.fill({ color: 0xccddff, alpha: flash2Alpha });
+        const bolt2X = sw * 0.72;
+        g.moveTo(bolt2X, floorY * 0.03);
+        g.lineTo(bolt2X + 6, floorY * 0.18);
+        g.lineTo(bolt2X - 3, floorY * 0.22);
+        g.lineTo(bolt2X + 8, floorY * 0.4);
+        g.stroke({ color: 0xccddff, width: 1.5, alpha: flash2Alpha * 3 });
+      }
+    }
+
+    // --- Rain effect ---
+    for (let ri = 0; ri < 40; ri++) {
+      const rainSeed = ri * 137.5 + time * 200;
+      const rainX = ((rainSeed * 0.37) % sw);
+      const rainY = ((rainSeed * 0.53 + ri * 47) % (floorY * 0.9));
+      const rainLen = 6 + (ri % 4) * 2;
+      const rainAlpha = 0.08 + (ri % 5) * 0.01;
+      // Thin vertical line with slight wind angle
+      g.moveTo(rainX, rainY);
+      g.lineTo(rainX + 2, rainY + rainLen);
+      g.stroke({ color: 0xaabbcc, width: 0.7, alpha: rainAlpha });
+    }
+
+    // --- Stronger gusting wind particles ---
+    for (let wp = 0; wp < 10; wp++) {
+      const wpPhase = time * 1.2 + wp * 2.7;
+      const wpX = ((wpPhase * 50 + wp * 80) % (sw + 60)) - 30;
+      const wpY = floorY * (0.2 + (wp % 5) * 0.15) + Math.sin(time * 2 + wp * 1.3) * 8;
+      const wpAlpha = 0.1 + Math.sin(time * 3 + wp) * 0.04;
+      // Wind streak
+      g.moveTo(wpX, wpY);
+      g.lineTo(wpX + 12 + Math.sin(time * 4 + wp) * 3, wpY + Math.sin(time * 2 + wp * 0.5) * 2);
+      g.stroke({ color: 0xccddee, width: 0.8, alpha: wpAlpha });
+    }
+
+    this._drawCritters(g, time);
+  }
+
+  // =========================================================================
+  // Critter drawing helpers — each draws a tiny animated creature
+  // =========================================================================
+
+  private _drawCritters(g: Graphics, time: number): void {
+    for (const c of this._critters) {
+      switch (c.type) {
+        case "cat": this._drawCat(g, c, time); break;
+        case "swan": this._drawSwan(g, c, time); break;
+        case "owl": this._drawOwl(g, c, time); break;
+        case "fairy": this._drawFairy(g, c, time); break;
+        case "seagull": this._drawSeagull(g, c, time); break;
+        case "mouse": this._drawMouse(g, c, time); break;
+        case "raven": this._drawRaven(g, c, time); break;
+        case "dove": this._drawDove(g, c, time); break;
+        case "wolf": this._drawWolf(g, c, time); break;
+        case "fish": this._drawFish(g, c, time); break;
+        case "mini_dragon": this._drawMiniDragon(g, c, time); break;
+        case "moth": this._drawMoth(g, c, time); break;
+        case "crab": this._drawCrab(g, c, time); break;
+        case "bat": this._drawBat(g, c, time); break;
+        case "crow": this._drawCrow(g, c, time); break;
+      }
+    }
+  }
+
+  // Cat: walks back and forth, tail swishes, ears poke up
+  private _drawCat(g: Graphics, c: Critter, time: number): void {
+    // Patrol back and forth
+    c.x += c.speed * c.dir;
+    if (c.x > c.baseX + 120) c.dir = -1;
+    if (c.x < c.baseX - 120) c.dir = 1;
+    const x = c.x, y = c.y;
+    const d = c.dir;
+    const walk = Math.sin(time * 4 + c.phase) * 1.5; // bobbing
+    const tailSwish = Math.sin(time * 2.5 + c.phase) * 6;
+    // Body (oval)
+    g.ellipse(x, y - 5 + walk * 0.3, 10, 6);
+    g.fill({ color: 0x885533 });
+    // Head
+    g.circle(x + 9 * d, y - 9 + walk * 0.2, 5);
+    g.fill({ color: 0x885533 });
+    // Ears (triangles)
+    g.moveTo(x + 7 * d, y - 14 + walk * 0.2);
+    g.lineTo(x + 5 * d, y - 8 + walk * 0.2);
+    g.lineTo(x + 10 * d, y - 9 + walk * 0.2);
+    g.closePath();
+    g.fill({ color: 0x885533 });
+    g.moveTo(x + 12 * d, y - 13 + walk * 0.2);
+    g.lineTo(x + 10 * d, y - 8 + walk * 0.2);
+    g.lineTo(x + 14 * d, y - 8 + walk * 0.2);
+    g.closePath();
+    g.fill({ color: 0x885533 });
+    // Eyes (tiny dots)
+    g.circle(x + 11 * d, y - 10 + walk * 0.2, 1);
+    g.fill({ color: 0x44ff44, alpha: 0.9 });
+    // Tail (curved line)
+    g.moveTo(x - 10 * d, y - 5);
+    g.lineTo(x - 16 * d + tailSwish * d * 0.3, y - 12);
+    g.stroke({ color: 0x885533, width: 2 });
+    // Legs (small lines)
+    const legBob1 = Math.sin(time * 4 + c.phase) * 2;
+    const legBob2 = Math.sin(time * 4 + c.phase + Math.PI) * 2;
+    g.moveTo(x - 5, y).lineTo(x - 5 + legBob1, y + 4);
+    g.stroke({ color: 0x774422, width: 1.5 });
+    g.moveTo(x + 5, y).lineTo(x + 5 + legBob2, y + 4);
+    g.stroke({ color: 0x774422, width: 1.5 });
+  }
+
+  // Swan: glides gracefully across water
+  private _drawSwan(g: Graphics, c: Critter, time: number): void {
+    c.x += c.speed * c.dir;
+    if (c.x > this._sw + 30) { c.x = -30; }
+    if (c.x < -30) { c.x = this._sw + 30; }
+    const x = c.x, y = c.y;
+    const bob = Math.sin(time * 1.2 + c.phase) * 2;
+    // Body (white oval)
+    g.ellipse(x, y + bob, 14, 8);
+    g.fill({ color: 0xeeeeff, alpha: 0.85 });
+    // Neck (curved upward)
+    g.moveTo(x + 10 * c.dir, y - 2 + bob);
+    g.quadraticCurveTo(x + 14 * c.dir, y - 18 + bob, x + 8 * c.dir, y - 22 + bob);
+    g.stroke({ color: 0xeeeeff, width: 3 });
+    // Head
+    g.circle(x + 8 * c.dir, y - 23 + bob, 3);
+    g.fill({ color: 0xeeeeff });
+    // Beak
+    g.moveTo(x + 8 * c.dir, y - 23 + bob);
+    g.lineTo(x + 14 * c.dir, y - 22 + bob);
+    g.stroke({ color: 0xdd8833, width: 1.5 });
+    // Reflection in water (faint)
+    g.ellipse(x, y + 10 + bob * 0.3, 12, 4);
+    g.fill({ color: 0xccccdd, alpha: 0.12 });
+  }
+
+  // Owl: perched, occasionally blinks, head sways gently
+  private _drawOwl(g: Graphics, c: Critter, time: number): void {
+    const x = c.x, y = c.y;
+    const headTilt = Math.sin(time * 0.6 + c.phase) * 2;
+    // Body (round)
+    g.ellipse(x, y, 8, 10);
+    g.fill({ color: 0x886644 });
+    // Chest (lighter)
+    g.ellipse(x, y + 2, 5, 7);
+    g.fill({ color: 0xbbaa88 });
+    // Head
+    g.circle(x + headTilt, y - 12, 7);
+    g.fill({ color: 0x886644 });
+    // Ear tufts
+    g.moveTo(x - 5 + headTilt, y - 18);
+    g.lineTo(x - 3 + headTilt, y - 12);
+    g.lineTo(x - 7 + headTilt, y - 13);
+    g.closePath();
+    g.fill({ color: 0x886644 });
+    g.moveTo(x + 5 + headTilt, y - 18);
+    g.lineTo(x + 3 + headTilt, y - 12);
+    g.lineTo(x + 7 + headTilt, y - 13);
+    g.closePath();
+    g.fill({ color: 0x886644 });
+    // Eyes — blink every ~4 seconds
+    const blink = Math.sin(time * 1.6 + c.phase);
+    const eyeH = blink > 0.92 ? 0.5 : 2.5;
+    g.ellipse(x - 3 + headTilt, y - 13, 2.5, eyeH);
+    g.fill({ color: 0xffdd00 });
+    g.ellipse(x + 3 + headTilt, y - 13, 2.5, eyeH);
+    g.fill({ color: 0xffdd00 });
+    // Pupils
+    if (eyeH > 1) {
+      g.circle(x - 3 + headTilt, y - 13, 1);
+      g.fill({ color: 0x111100 });
+      g.circle(x + 3 + headTilt, y - 13, 1);
+      g.fill({ color: 0x111100 });
+    }
+  }
+
+  // Fairy: glowing orb with wings, moves in figure-eight
+  private _drawFairy(g: Graphics, c: Critter, time: number): void {
+    const t = time * 0.8 + c.phase;
+    c.x = c.baseX + Math.sin(t) * 40;
+    c.y = c.baseY + Math.sin(t * 2) * 20;
+    const x = c.x, y = c.y;
+    // Outer glow
+    g.circle(x, y, 10);
+    g.fill({ color: 0x88ffaa, alpha: 0.08 + Math.sin(time * 3) * 0.03 });
+    g.circle(x, y, 6);
+    g.fill({ color: 0xaaffcc, alpha: 0.15 });
+    // Core
+    g.circle(x, y, 2.5);
+    g.fill({ color: 0xeeffee, alpha: 0.9 });
+    // Wings (fluttering)
+    const wingFlap = Math.sin(time * 12 + c.phase) * 3;
+    g.ellipse(x - 4, y - 1 - wingFlap, 4, 2.5);
+    g.fill({ color: 0xccffdd, alpha: 0.5 });
+    g.ellipse(x + 4, y - 1 + wingFlap, 4, 2.5);
+    g.fill({ color: 0xccffdd, alpha: 0.5 });
+    // Trail sparkle
+    const trailX = c.baseX + Math.sin(t - 0.3) * 40;
+    const trailY = c.baseY + Math.sin((t - 0.3) * 2) * 20;
+    g.circle(trailX, trailY, 1.5);
+    g.fill({ color: 0xaaffbb, alpha: 0.3 });
+  }
+
+  // Seagull: soars across the sky with wing flaps
+  private _drawSeagull(g: Graphics, c: Critter, time: number): void {
+    c.x += c.speed * c.dir;
+    if (c.x > this._sw + 40) c.x = -40;
+    if (c.x < -40) c.x = this._sw + 40;
+    const x = c.x, y = c.y + Math.sin(time * 1.0 + c.phase) * 8;
+    const wingAngle = Math.sin(time * 3 + c.phase) * 0.4;
+    // Body
+    g.ellipse(x, y, 6, 3);
+    g.fill({ color: 0xdddddd });
+    // Wings (V shape that flaps)
+    g.moveTo(x, y);
+    g.lineTo(x - 14, y - 8 - wingAngle * 12);
+    g.lineTo(x - 18, y - 4 - wingAngle * 8);
+    g.stroke({ color: 0xdddddd, width: 2 });
+    g.moveTo(x, y);
+    g.lineTo(x + 14, y - 8 - wingAngle * 12);
+    g.lineTo(x + 18, y - 4 - wingAngle * 8);
+    g.stroke({ color: 0xdddddd, width: 2 });
+  }
+
+  // Mouse: tiny, scurries fast, pauses to sniff
+  private _drawMouse(g: Graphics, c: Critter, time: number): void {
+    // Scurry behavior: run, pause, run
+    const cycle = (time * 0.5 + c.phase) % 6;
+    if (cycle < 4) { // running
+      c.x += c.speed * c.dir * 1.8;
+    }
+    // else paused (sniffing)
+    if (c.x > c.baseX + 140) c.dir = -1;
+    if (c.x < c.baseX - 140) c.dir = 1;
+    const x = c.x, y = c.y;
+    const d = c.dir;
+    const scurry = cycle < 4 ? Math.sin(time * 12) * 1 : 0;
+    // Body
+    g.ellipse(x, y - 2 + scurry * 0.3, 5, 3);
+    g.fill({ color: 0x887766 });
+    // Head
+    g.circle(x + 5 * d, y - 3 + scurry * 0.2, 3);
+    g.fill({ color: 0x887766 });
+    // Ears
+    g.circle(x + 4 * d, y - 6 + scurry * 0.2, 2);
+    g.fill({ color: 0xccaa99 });
+    g.circle(x + 7 * d, y - 5 + scurry * 0.2, 2);
+    g.fill({ color: 0xccaa99 });
+    // Eye
+    g.circle(x + 6 * d, y - 3 + scurry * 0.2, 0.8);
+    g.fill({ color: 0x111111 });
+    // Tail
+    g.moveTo(x - 5 * d, y - 2);
+    g.quadraticCurveTo(x - 10 * d, y - 6, x - 13 * d, y - 3);
+    g.stroke({ color: 0xaa9988, width: 1 });
+  }
+
+  // Raven: circles overhead ominously
+  private _drawRaven(g: Graphics, c: Critter, time: number): void {
+    const t = time * 0.4 + c.phase;
+    c.x = c.baseX + Math.cos(t) * 80;
+    c.y = c.baseY + Math.sin(t) * 25 + Math.sin(time * 0.7) * 5;
+    const x = c.x, y = c.y;
+    const wingBeat = Math.sin(time * 2.5 + c.phase) * 0.5;
+    // Body
+    g.ellipse(x, y, 7, 4);
+    g.fill({ color: 0x222233 });
+    // Wings
+    g.moveTo(x - 3, y);
+    g.lineTo(x - 16, y - 6 - wingBeat * 10);
+    g.lineTo(x - 20, y - 2 - wingBeat * 6);
+    g.lineTo(x - 5, y + 1);
+    g.closePath();
+    g.fill({ color: 0x1a1a2a });
+    g.moveTo(x + 3, y);
+    g.lineTo(x + 16, y - 6 - wingBeat * 10);
+    g.lineTo(x + 20, y - 2 - wingBeat * 6);
+    g.lineTo(x + 5, y + 1);
+    g.closePath();
+    g.fill({ color: 0x1a1a2a });
+    // Beak
+    const bDir = Math.cos(t) > 0 ? 1 : -1;
+    g.moveTo(x + 7 * bDir, y - 1);
+    g.lineTo(x + 11 * bDir, y);
+    g.stroke({ color: 0x444444, width: 1.5 });
+  }
+
+  // Dove: perched, occasionally flutters wings
+  private _drawDove(g: Graphics, c: Critter, time: number): void {
+    const x = c.x, y = c.y;
+    const flutter = Math.sin(time * 1.8 + c.phase);
+    const wingUp = flutter > 0.85 ? (flutter - 0.85) * 40 : 0;
+    // Body
+    g.ellipse(x, y, 7, 5);
+    g.fill({ color: 0xeeeeff });
+    // Head
+    g.circle(x + 6 * c.dir, y - 5, 4);
+    g.fill({ color: 0xeeeeff });
+    // Eye
+    g.circle(x + 7 * c.dir, y - 6, 1);
+    g.fill({ color: 0x222222 });
+    // Beak
+    g.moveTo(x + 9 * c.dir, y - 5);
+    g.lineTo(x + 12 * c.dir, y - 4);
+    g.stroke({ color: 0xddaa55, width: 1 });
+    // Wings (flutter occasionally)
+    if (wingUp > 0) {
+      g.moveTo(x - 3, y - 2);
+      g.lineTo(x - 12, y - 8 - wingUp);
+      g.lineTo(x - 6, y - 1);
+      g.closePath();
+      g.fill({ color: 0xddddee });
+      g.moveTo(x + 3, y - 2);
+      g.lineTo(x + 12, y - 8 - wingUp);
+      g.lineTo(x + 6, y - 1);
+      g.closePath();
+      g.fill({ color: 0xddddee });
+    }
+    // Tail feathers
+    g.moveTo(x - 6 * c.dir, y + 1);
+    g.lineTo(x - 12 * c.dir, y + 3);
+    g.lineTo(x - 10 * c.dir, y - 1);
+    g.closePath();
+    g.fill({ color: 0xddddee });
+  }
+
+  // Wolf: silhouette sitting on a distant hill, head tilts up to howl periodically
+  private _drawWolf(g: Graphics, c: Critter, time: number): void {
+    const x = c.x, y = c.y;
+    // Howl cycle: every ~8 seconds, head tilts up
+    const howlCycle = (time * 0.8 + c.phase) % 8;
+    const howling = howlCycle > 6.5;
+    // Body silhouette (sitting pose)
+    g.ellipse(x, y - 4, 8, 10);
+    g.fill({ color: 0x222233, alpha: 0.7 });
+    // Head
+    const hx = x + 4 * c.dir;
+    const hy = y - 16 + (howling ? -3 : 0);
+    g.circle(hx, hy, 5);
+    g.fill({ color: 0x222233, alpha: 0.7 });
+    // Snout
+    g.moveTo(hx, hy);
+    g.lineTo(hx + 7 * c.dir, hy + (howling ? -4 : 1));
+    g.stroke({ color: 0x222233, width: 3, alpha: 0.7 });
+    // Ears
+    g.moveTo(hx - 3, hy - 4);
+    g.lineTo(hx - 2, hy - 9);
+    g.lineTo(hx + 1, hy - 4);
+    g.closePath();
+    g.fill({ color: 0x222233, alpha: 0.7 });
+    g.moveTo(hx + 3, hy - 4);
+    g.lineTo(hx + 4, hy - 9);
+    g.lineTo(hx + 6, hy - 4);
+    g.closePath();
+    g.fill({ color: 0x222233, alpha: 0.7 });
+    // Howl lines (when howling)
+    if (howling) {
+      for (let i = 0; i < 3; i++) {
+        const arc = 6 + i * 4;
+        const aAlpha = 0.2 - i * 0.06;
+        g.arc(hx + 7 * c.dir, hy - 4, arc, -0.8, -0.2);
+        g.stroke({ color: 0xaabbcc, width: 1, alpha: aAlpha });
+      }
+    }
+  }
+
+  // Fish: koi swimming under water surface
+  private _drawFish(g: Graphics, c: Critter, time: number): void {
+    c.x += c.speed * c.dir;
+    if (c.x > this._sw + 20) c.x = -20;
+    if (c.x < -20) c.x = this._sw + 20;
+    const x = c.x;
+    const y = c.y + Math.sin(time * 1.5 + c.phase) * 4;
+    const d = c.dir;
+    const tailWag = Math.sin(time * 4 + c.phase) * 3;
+    // Body (oval)
+    g.ellipse(x, y, 8, 4);
+    g.fill({ color: c.state === 0 ? 0xee6622 : 0xeedddd, alpha: 0.55 });
+    // Tail
+    g.moveTo(x - 7 * d, y);
+    g.lineTo(x - 13 * d, y - 4 + tailWag);
+    g.lineTo(x - 13 * d, y + 4 + tailWag);
+    g.closePath();
+    g.fill({ color: c.state === 0 ? 0xcc4411 : 0xddcccc, alpha: 0.45 });
+    // Eye
+    g.circle(x + 4 * d, y - 1, 1);
+    g.fill({ color: 0x111111, alpha: 0.5 });
+  }
+
+  // Mini dragon: circles a point in the background sky
+  private _drawMiniDragon(g: Graphics, c: Critter, time: number): void {
+    const t = time * 0.6 + c.phase;
+    c.x = c.baseX + Math.cos(t) * 55;
+    c.y = c.baseY + Math.sin(t) * 20 + Math.sin(time * 1.2) * 5;
+    const x = c.x, y = c.y;
+    const d = Math.cos(t) > 0 ? 1 : -1;
+    const wingFlap = Math.sin(time * 4 + c.phase) * 0.6;
+    // Body
+    g.ellipse(x, y, 9, 5);
+    g.fill({ color: 0xaa3311, alpha: 0.7 });
+    // Wings
+    g.moveTo(x - 4, y - 2);
+    g.lineTo(x - 18, y - 10 - wingFlap * 15);
+    g.lineTo(x - 8, y + 1);
+    g.closePath();
+    g.fill({ color: 0xcc4422, alpha: 0.5 });
+    g.moveTo(x + 4, y - 2);
+    g.lineTo(x + 18, y - 10 - wingFlap * 15);
+    g.lineTo(x + 8, y + 1);
+    g.closePath();
+    g.fill({ color: 0xcc4422, alpha: 0.5 });
+    // Head
+    g.circle(x + 8 * d, y - 4, 4);
+    g.fill({ color: 0xaa3311, alpha: 0.7 });
+    // Tail
+    g.moveTo(x - 8 * d, y + 1);
+    g.quadraticCurveTo(x - 16 * d, y + 8, x - 20 * d, y + 3);
+    g.stroke({ color: 0xaa3311, width: 2, alpha: 0.6 });
+    // Fire puff (small)
+    const firePuff = Math.sin(time * 3) > 0.7;
+    if (firePuff) {
+      g.circle(x + 13 * d, y - 5, 3);
+      g.fill({ color: 0xff6600, alpha: 0.4 });
+      g.circle(x + 15 * d, y - 4, 2);
+      g.fill({ color: 0xffaa00, alpha: 0.3 });
+    }
+  }
+
+  // Moth: flutters erratically around a light source
+  private _drawMoth(g: Graphics, c: Critter, time: number): void {
+    const t = time * 2.5 + c.phase;
+    c.x = c.baseX + Math.sin(t) * 14 + Math.sin(t * 2.3) * 8;
+    c.y = c.baseY + Math.cos(t * 1.7) * 10 + Math.sin(t * 0.9) * 5;
+    const x = c.x, y = c.y;
+    const wingFlap = Math.sin(time * 15 + c.phase) * 3;
+    // Wings
+    g.ellipse(x - 3, y - wingFlap * 0.3, 3, 2 + Math.abs(wingFlap) * 0.3);
+    g.fill({ color: 0xccbb99, alpha: 0.6 });
+    g.ellipse(x + 3, y + wingFlap * 0.3, 3, 2 + Math.abs(wingFlap) * 0.3);
+    g.fill({ color: 0xccbb99, alpha: 0.6 });
+    // Body
+    g.ellipse(x, y, 1.5, 3);
+    g.fill({ color: 0xaa9977, alpha: 0.7 });
+  }
+
+  // Crab: scuttles sideways across the sand
+  private _drawCrab(g: Graphics, c: Critter, time: number): void {
+    // Scuttle sideways
+    c.x += c.speed * c.dir;
+    if (c.x > c.baseX + 100) c.dir = -1;
+    if (c.x < c.baseX - 100) c.dir = 1;
+    const x = c.x, y = c.y;
+    const scuttle = Math.sin(time * 6 + c.phase) * 1;
+    // Shell (wide oval)
+    g.ellipse(x, y - 3 + scuttle, 7, 4);
+    g.fill({ color: 0xcc5533 });
+    // Eye stalks
+    g.moveTo(x - 3, y - 6 + scuttle);
+    g.lineTo(x - 4, y - 9 + scuttle);
+    g.stroke({ color: 0xcc5533, width: 1 });
+    g.circle(x - 4, y - 9 + scuttle, 1);
+    g.fill({ color: 0x111111 });
+    g.moveTo(x + 3, y - 6 + scuttle);
+    g.lineTo(x + 4, y - 9 + scuttle);
+    g.stroke({ color: 0xcc5533, width: 1 });
+    g.circle(x + 4, y - 9 + scuttle, 1);
+    g.fill({ color: 0x111111 });
+    // Claws
+    const clawOpen = Math.sin(time * 2 + c.phase) * 2;
+    g.moveTo(x - 7, y - 2 + scuttle);
+    g.lineTo(x - 13, y - 4 + scuttle - clawOpen);
+    g.stroke({ color: 0xcc5533, width: 2 });
+    g.moveTo(x - 13, y - 4 + scuttle - clawOpen);
+    g.lineTo(x - 11, y - 6 + scuttle - clawOpen);
+    g.stroke({ color: 0xcc5533, width: 1.5 });
+    g.moveTo(x + 7, y - 2 + scuttle);
+    g.lineTo(x + 13, y - 4 + scuttle + clawOpen);
+    g.stroke({ color: 0xcc5533, width: 2 });
+    g.moveTo(x + 13, y - 4 + scuttle + clawOpen);
+    g.lineTo(x + 11, y - 6 + scuttle + clawOpen);
+    g.stroke({ color: 0xcc5533, width: 1.5 });
+    // Legs (3 per side, wiggling)
+    for (let i = 0; i < 3; i++) {
+      const legPhase = Math.sin(time * 6 + c.phase + i * 1.2) * 2;
+      g.moveTo(x - 4 - i * 2, y + scuttle);
+      g.lineTo(x - 7 - i * 2 + legPhase, y + 4 + scuttle);
+      g.stroke({ color: 0xbb4422, width: 1 });
+      g.moveTo(x + 4 + i * 2, y + scuttle);
+      g.lineTo(x + 7 + i * 2 - legPhase, y + 4 + scuttle);
+      g.stroke({ color: 0xbb4422, width: 1 });
+    }
+  }
+
+  // Bat: erratic fluttering from a window
+  private _drawBat(g: Graphics, c: Critter, time: number): void {
+    const t = time * 1.5 + c.phase;
+    c.x = c.baseX + Math.sin(t * 0.7) * 60 + Math.sin(t * 1.3) * 20;
+    c.y = c.baseY + Math.sin(t * 0.5) * 25 + Math.cos(t * 1.1) * 10;
+    const x = c.x, y = c.y;
+    const wingFlap = Math.sin(time * 8 + c.phase);
+    // Body (tiny)
+    g.ellipse(x, y, 3, 4);
+    g.fill({ color: 0x222222, alpha: 0.8 });
+    // Wings (jagged membrane)
+    const wSpan = 12 + wingFlap * 6;
+    g.moveTo(x - 2, y - 1);
+    g.lineTo(x - wSpan, y - 4 - wingFlap * 4);
+    g.lineTo(x - wSpan * 0.7, y);
+    g.lineTo(x - wSpan * 0.4, y - 2 - wingFlap * 2);
+    g.lineTo(x - 2, y + 2);
+    g.closePath();
+    g.fill({ color: 0x1a1a1a, alpha: 0.7 });
+    g.moveTo(x + 2, y - 1);
+    g.lineTo(x + wSpan, y - 4 - wingFlap * 4);
+    g.lineTo(x + wSpan * 0.7, y);
+    g.lineTo(x + wSpan * 0.4, y - 2 - wingFlap * 2);
+    g.lineTo(x + 2, y + 2);
+    g.closePath();
+    g.fill({ color: 0x1a1a1a, alpha: 0.7 });
+    // Ears
+    g.moveTo(x - 2, y - 4);
+    g.lineTo(x - 3, y - 7);
+    g.lineTo(x, y - 4);
+    g.closePath();
+    g.fill({ color: 0x222222, alpha: 0.8 });
+    g.moveTo(x + 2, y - 4);
+    g.lineTo(x + 3, y - 7);
+    g.lineTo(x, y - 4);
+    g.closePath();
+    g.fill({ color: 0x222222, alpha: 0.8 });
+  }
+
+  // Crow: walks on ground, hops occasionally, pecks
+  private _drawCrow(g: Graphics, c: Critter, time: number): void {
+    // Hop/peck behavior
+    const cycle = (time * 0.6 + c.phase) % 5;
+    const hopping = cycle > 3.5 && cycle < 4.2;
+    const pecking = cycle > 4.2;
+    const hopY = hopping ? -6 : 0;
+    c.x += c.speed * c.dir * (hopping ? 2 : 0.5);
+    if (c.x > c.baseX + 100) c.dir = -1;
+    if (c.x < c.baseX - 100) c.dir = 1;
+    const x = c.x, y = c.y + hopY;
+    const d = c.dir;
+    // Body
+    g.ellipse(x, y - 4, 7, 5);
+    g.fill({ color: 0x111118 });
+    // Head
+    const headY = pecking ? y - 4 : y - 10;
+    const headX = pecking ? x + 8 * d : x + 5 * d;
+    g.circle(headX, headY, 4);
+    g.fill({ color: 0x111118 });
+    // Beak
+    g.moveTo(headX + 3 * d, headY);
+    g.lineTo(headX + 8 * d, headY + (pecking ? 2 : 1));
+    g.stroke({ color: 0x444400, width: 1.5 });
+    // Eye
+    g.circle(headX + 2 * d, headY - 1, 1);
+    g.fill({ color: 0x444444 });
+    // Tail feathers
+    g.moveTo(x - 6 * d, y - 5);
+    g.lineTo(x - 12 * d, y - 8);
+    g.lineTo(x - 10 * d, y - 3);
+    g.closePath();
+    g.fill({ color: 0x0a0a12 });
+    // Legs
+    if (!hopping) {
+      g.moveTo(x - 2, y).lineTo(x - 2, y + 5);
+      g.stroke({ color: 0x333333, width: 1 });
+      g.moveTo(x + 2, y).lineTo(x + 2, y + 5);
+      g.stroke({ color: 0x333333, width: 1 });
     }
   }
 

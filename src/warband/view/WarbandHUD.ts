@@ -6,6 +6,7 @@
 import {
   type WarbandState,
   type WarbandFighter,
+  BattleType,
   CombatDirection,
   FighterCombatState,
   WarbandPhase,
@@ -32,6 +33,10 @@ export class WarbandHUD {
   private _mountPrompt!: HTMLDivElement;
   private _horseHpBar!: HTMLDivElement;
   private _horseHpFill!: HTMLDivElement;
+  private _siegeCapture!: HTMLDivElement;
+  private _siegeCaptureFill!: HTMLDivElement;
+  private _siegeCaptureLabel!: HTMLDivElement;
+  private _siegeTimer!: HTMLDivElement;
 
   private _killFeedEntries: { text: string; time: number }[] = [];
 
@@ -165,6 +170,45 @@ export class WarbandHUD {
     this._horseHpBar.style.display = "none";
     this._container.appendChild(this._horseHpBar);
 
+    // Siege capture progress (top centre)
+    this._siegeCapture = document.createElement("div");
+    this._siegeCapture.style.cssText = `
+      position: absolute; top: 20px; left: 50%;
+      transform: translateX(-50%);
+      width: 300px; height: 24px;
+      background: rgba(0,0,0,0.7);
+      border: 2px solid rgba(255,170,0,0.6);
+      border-radius: 4px; overflow: hidden;
+      display: none;
+    `;
+    this._siegeCaptureFill = document.createElement("div");
+    this._siegeCaptureFill.style.cssText = `
+      width: 0%; height: 100%;
+      background: linear-gradient(90deg, #ff6600, #ffaa00);
+      transition: width 0.2s;
+    `;
+    this._siegeCapture.appendChild(this._siegeCaptureFill);
+    this._siegeCaptureLabel = document.createElement("div");
+    this._siegeCaptureLabel.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+    `;
+    this._siegeCapture.appendChild(this._siegeCaptureLabel);
+    this._container.appendChild(this._siegeCapture);
+
+    // Siege timer (below capture bar)
+    this._siegeTimer = document.createElement("div");
+    this._siegeTimer.style.cssText = `
+      position: absolute; top: 50px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 16px; font-weight: bold;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+      color: #e0d5c0; display: none;
+    `;
+    this._container.appendChild(this._siegeTimer);
+
     const pixiContainer = document.getElementById("pixi-container");
     if (pixiContainer) {
       pixiContainer.appendChild(this._container);
@@ -232,6 +276,34 @@ export class WarbandHUD {
 
     // Gold
     this._goldDisplay.textContent = `⚜ ${player.gold} gold`;
+
+    // Siege capture progress
+    if (state.battleType === BattleType.SIEGE) {
+      this._siegeCapture.style.display = "block";
+      this._siegeTimer.style.display = "block";
+
+      const capPct = Math.min(100, (state.siegeCaptureProgress / WB.SIEGE_CAPTURE_TICKS) * 100);
+      this._siegeCaptureFill.style.width = `${capPct}%`;
+
+      const atkIn = state.siegeAttackersInZone;
+      const defIn = state.siegeDefendersInZone;
+      let label = "CAPTURE THE CENTRE";
+      if (atkIn > 0 && defIn === 0) label = `CAPTURING (${atkIn} in zone)`;
+      else if (atkIn > 0 && defIn > 0) label = "CONTESTED";
+      else if (defIn > 0 && atkIn === 0 && capPct > 0) label = "DEFENDERS RETAKING";
+      this._siegeCaptureLabel.textContent = label;
+
+      // Timer
+      const secsLeft = Math.ceil(state.battleTimer / WB.TICKS_PER_SEC);
+      const mins = Math.floor(secsLeft / 60);
+      const secs = secsLeft % 60;
+      this._siegeTimer.textContent = `Time: ${mins}:${secs.toString().padStart(2, "0")}`;
+      if (secsLeft < 60) this._siegeTimer.style.color = "#ff4444";
+      else this._siegeTimer.style.color = "#e0d5c0";
+    } else {
+      this._siegeCapture.style.display = "none";
+      this._siegeTimer.style.display = "none";
+    }
 
     // Kill feed cleanup
     const now = Date.now();

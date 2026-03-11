@@ -171,11 +171,11 @@ export const MORDRED_DEF: DuelCharacterDef = {
       { x: 38, y: -100, width: 115, height: 42 },
       { movesForward: 110 },
     ),
-    // W+E — Treachery Cleave: devastating overhead
+    // W+E — Treachery Cleave: sweeping overhead that punishes backdash — wider than any other sword overhead
     treachery_cleave: special(
       "treachery_cleave", "Treachery Cleave", AttackHeight.OVERHEAD,
-      17, 6, 21, 140, 28, 30, 19, 65,
-      { x: 18, y: -158, width: 82, height: 92 },
+      17, 7, 21, 142, 28, 30, 19, 65,
+      { x: -42, y: -162, width: 202, height: 96 },
     ),
     // A+S — Shadow Sweep: ground-level dark sweep
     shadow_sweep: special(
@@ -197,12 +197,12 @@ export const MORDRED_DEF: DuelCharacterDef = {
       { x: 22, y: -100, width: 75, height: 62 },
       { movesForward: 170, hasInvincibility: true, invincibleStartup: 4 },
     ),
-    // E+A — Betrayal Blade: massive single hit with invincibility
+    // E+A — Coup de Grâce: point-blank dark explosion — highest single-hit damage in normals/specials
     betrayal_blade: special(
-      "betrayal_blade", "Betrayal Blade", AttackHeight.MID,
-      11, 8, 25, 170, 34, 32, 21, 72,
-      { x: 12, y: -195, width: 82, height: 118 },
-      { isAntiAir: true, hasInvincibility: true, invincibleStartup: 7 },
+      "betrayal_blade", "Coup de Grace", AttackHeight.MID,
+      9, 8, 26, 182, 36, 32, 22, 74,
+      { x: -12, y: -202, width: 96, height: 208 },
+      { hasInvincibility: true, invincibleStartup: 7 },
     ),
     // E+D — Doom Slash: wide cross pattern slash
     doom_slash: special(
@@ -221,12 +221,11 @@ export const MORDRED_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1 — Usurper's Wrath: forward rushing multi-hit dark slash combo
+    // Zeal 1 — Usurper's Onslaught: dark energy wave sweeps the entire arena at mid height
     usurper_wrath: zeal(
-      "usurper_wrath", "Usurper's Wrath", AttackHeight.MID,
-      10, 10, 21, 160, 32, 30, 19, 55,
-      { x: 32, y: -128, width: 125, height: 92 },
-      { movesForward: 90 },
+      "usurper_wrath", "Usurper's Onslaught", AttackHeight.MID,
+      8, 8, 24, 162, 32, 30, 19, 55,
+      { x: 0, y: -132, width: 700, height: 88 },
     ),
     // Zeal 2 — Treachery Unleashed: launcher, highest damage in the game (~310)
     treachery_unleashed: zeal(

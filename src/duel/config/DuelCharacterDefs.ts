@@ -167,8 +167,8 @@ export const ARTHUR_DEF: DuelCharacterDef = {
     sword_thrust: special(
       "sword_thrust", "Sword Thrust", AttackHeight.MID,
       8, 5, 14, 80, 16, 20, 14, 38,
-      { x: 35, y: -100, width: 110, height: 40 },
-      { movesForward: 100 },
+      { x: 40, y: -100, width: 148, height: 40 },
+      { movesForward: 158 },
     ),
     // W+E — Overhead Cleave: slow overhead, must block standing
     overhead_cleave: special(
@@ -196,19 +196,18 @@ export const ARTHUR_DEF: DuelCharacterDef = {
       { x: 20, y: -100, width: 70, height: 60 },
       { movesForward: 160, hasInvincibility: true, invincibleStartup: 3 },
     ),
-    // E+A — Excalibur: massive upward swing (super)
+    // E+A — Excalibur Beam: full-screen horizontal slash of golden light
     excalibur: special(
-      "excalibur", "Excalibur", AttackHeight.MID,
-      10, 8, 24, 160, 32, 30, 20, 70,
-      { x: 10, y: -200, width: 80, height: 120 },
-      { isAntiAir: true, hasInvincibility: true, invincibleStartup: 6 },
+      "excalibur", "Excalibur Beam", AttackHeight.MID,
+      16, 6, 28, 110, 22, 18, 14, 44,
+      { x: 30, y: -95, width: 648, height: 44 },
+      { hasInvincibility: true, invincibleStartup: 4 },
     ),
-    // E+D — Cross Slash: wide two-hit cross pattern, high damage
+    // E+D — Close Cross: tight two-hit cross right at sword range — combo ender
     cross_slash: special(
-      "cross_slash", "Cross Slash", AttackHeight.MID,
-      10, 8, 18, 140, 28, 26, 16, 55,
-      { x: 20, y: -140, width: 100, height: 80 },
-      { movesForward: 60 },
+      "cross_slash", "Close Cross", AttackHeight.MID,
+      8, 8, 16, 148, 30, 28, 18, 58,
+      { x: 4, y: -148, width: 62, height: 88 },
     ),
     // W+S — Parry Counter: quick defensive stance with counter strike
     parry_counter: special(
@@ -222,15 +221,14 @@ export const ARTHUR_DEF: DuelCharacterDef = {
   zeals: {
     royal_judgment: zeal(
       "royal_judgment", "Royal Judgment", AttackHeight.MID,
-      10, 8, 20, 150, 30, 28, 18, 50,
-      { x: 30, y: -130, width: 120, height: 90 },
-      { movesForward: 80 },
+      8, 10, 22, 148, 30, 28, 18, 50,
+      { x: -85, y: -175, width: 268, height: 195 },
     ),
     excalibur_unleashed: zeal(
       "excalibur_unleashed", "Excalibur Unleashed", AttackHeight.MID,
-      14, 10, 28, 300, 60, 40, 24, 80,
-      { x: 20, y: -150, width: 160, height: 120 },
-      { movesForward: 60, isLauncher: true },
+      14, 10, 28, 305, 60, 40, 24, 82,
+      { x: 8, y: -235, width: 145, height: 210 },
+      { movesForward: 50, isLauncher: true },
     ),
   },
 
@@ -310,11 +308,11 @@ export const MERLIN_DEF: DuelCharacterDef = {
       { x: 50, y: -100, width: 35, height: 35 },
       { isProjectile: true, projectileSpeed: 9, projectileHeight: AttackHeight.MID },
     ),
-    // W+E — Thunder Strike: overhead lightning at mid-range
+    // W+E — Distant Thunder: lightning bolt strikes at maximum range — forces specific spacing
     thunder_strike: special(
-      "thunder_strike", "Thunder Strike", AttackHeight.OVERHEAD,
-      18, 6, 18, 100, 20, 24, 16, 45,
-      { x: 160, y: -190, width: 50, height: 190 },
+      "thunder_strike", "Distant Thunder", AttackHeight.OVERHEAD,
+      16, 6, 18, 105, 21, 24, 16, 44,
+      { x: 275, y: -195, width: 36, height: 195 },
     ),
     // A+S — Frost Wave: low ground projectile
     frost_wave: special(
@@ -330,11 +328,11 @@ export const MERLIN_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 10 },
     ),
-    // Q+D — Arcane Storm: multi-hit overhead spell column
+    // Q+D — Arcane Wall: conjures a wall of force right in front — catches jumps, extreme vertical coverage
     arcane_storm: special(
-      "arcane_storm", "Arcane Storm", AttackHeight.OVERHEAD,
-      14, 10, 20, 120, 24, 26, 18, 40,
-      { x: 100, y: -200, width: 80, height: 200 },
+      "arcane_storm", "Arcane Wall", AttackHeight.MID,
+      12, 10, 22, 118, 24, 26, 18, 38,
+      { x: 4, y: -235, width: 48, height: 238 },
     ),
     // E+A — Mystic Barrier: counter stance, reflects projectiles
     mystic_barrier: special(
@@ -343,31 +341,30 @@ export const MERLIN_DEF: DuelCharacterDef = {
       { x: 0, y: 0, width: 0, height: 0 },
       { hasInvincibility: true, invincibleStartup: 12 },
     ),
-    // E+D — Void Rift: tears open a rift at mid-range, pulls opponent in
+    // E+D — Void Crush: implodes space right at Merlin's position — enormous damage at close range only
     void_rift: special(
-      "void_rift", "Void Rift", AttackHeight.MID,
-      14, 10, 18, 105, 21, 24, 16, 35,
-      { x: 120, y: -150, width: 70, height: 150 },
+      "void_rift", "Void Crush", AttackHeight.MID,
+      10, 8, 20, 118, 24, 26, 18, 42,
+      { x: 5, y: -148, width: 58, height: 148 },
     ),
-    // W+S — Mana Shield: absorbs a hit and retaliates with a burst
+    // W+S — Arcane Lance: fires a narrow concentrated beam of pure mana — long range poke
     mana_shield: special(
-      "mana_shield", "Mana Shield", AttackHeight.MID,
-      4, 14, 12, 75, 15, 20, 12, 30,
-      { x: 20, y: -120, width: 60, height: 80 },
-      { hasInvincibility: true, invincibleStartup: 10 },
+      "mana_shield", "Arcane Lance", AttackHeight.MID,
+      8, 5, 18, 78, 16, 14, 10, 28,
+      { x: 58, y: -108, width: 198, height: 26 },
     ),
   },
 
   zeals: {
     thunder_wrath: zeal(
-      "thunder_wrath", "Thunder Wrath", AttackHeight.MID,
-      6, 4, 22, 130, 26, 26, 16, 45,
-      { x: 0, y: -120, width: 600, height: 80 },
+      "thunder_wrath", "Thunder God's Wrath", AttackHeight.MID,
+      4, 6, 24, 128, 26, 22, 14, 44,
+      { x: 0, y: -112, width: 700, height: 34 },
     ),
     arcane_apocalypse: zeal(
-      "arcane_apocalypse", "Arcane Apocalypse", AttackHeight.MID,
-      16, 12, 30, 280, 56, 38, 22, 70,
-      { x: 10, y: -160, width: 200, height: 140 },
+      "arcane_apocalypse", "Arcane Singularity", AttackHeight.MID,
+      14, 12, 32, 285, 57, 40, 24, 72,
+      { x: -32, y: -188, width: 168, height: 210 },
       { isLauncher: true },
     ),
   },
@@ -448,11 +445,11 @@ export const ELAINE_DEF: DuelCharacterDef = {
       { x: 50, y: -100, width: 30, height: 20 },
       { isProjectile: true, projectileSpeed: 12, projectileHeight: AttackHeight.MID },
     ),
-    // W+E — Rain of Arrows: arcing overhead at set distance
+    // W+E — Overhead Rain: arrows rain directly above Elaine — anti-jump, punishes close approaches
     rain_of_arrows: special(
-      "rain_of_arrows", "Rain of Arrows", AttackHeight.OVERHEAD,
-      16, 8, 16, 70, 14, 20, 14, 30,
-      { x: 130, y: -180, width: 100, height: 180 },
+      "rain_of_arrows", "Overhead Rain", AttackHeight.OVERHEAD,
+      14, 8, 18, 72, 14, 22, 15, 28,
+      { x: 0, y: -205, width: 108, height: 205 },
     ),
     // A+S — Leg Sweep: quick trip, combo starter
     leg_sweep: special(
@@ -467,25 +464,25 @@ export const ELAINE_DEF: DuelCharacterDef = {
       { x: 35, y: -110, width: 30, height: 25 },
       { isProjectile: true, projectileSpeed: 10, projectileHeight: AttackHeight.MID, movesBack: 130 },
     ),
-    // Q+D — Triple Shot: three rapid arrows
+    // Q+D — High Volley: three rapid arrows fired at head height — punishes jumps from afar
     triple_shot: special(
-      "triple_shot", "Triple Shot", AttackHeight.MID,
-      6, 8, 14, 75, 15, 18, 12, 20,
-      { x: 50, y: -100, width: 30, height: 20 },
-      { isProjectile: true, projectileSpeed: 14, projectileHeight: AttackHeight.MID },
+      "triple_shot", "High Volley", AttackHeight.MID,
+      6, 8, 14, 78, 16, 18, 12, 20,
+      { x: 50, y: -132, width: 30, height: 20 },
+      { isProjectile: true, projectileSpeed: 14, projectileHeight: AttackHeight.HIGH },
     ),
-    // E+A — Hunter's Trap: low ground snare
+    // E+A — Far Snare: trap placed at maximum reach — far zone denial
     hunters_trap: special(
-      "hunters_trap", "Hunter's Trap", AttackHeight.LOW,
-      10, 15, 16, 60, 12, 20, 14, 10,
-      { x: 80, y: -20, width: 60, height: 30 },
+      "hunters_trap", "Far Snare", AttackHeight.LOW,
+      10, 20, 14, 62, 12, 22, 14, 10,
+      { x: 155, y: -20, width: 85, height: 30 },
     ),
-    // E+D — Piercing Arrow: charged long-range arrow that goes through block
+    // E+D — Sky Cleaver: charged beam arrow spanning the arena — thin hitbox, hard to duck
     piercing_arrow: special(
-      "piercing_arrow", "Piercing Arrow", AttackHeight.MID,
-      16, 4, 14, 100, 20, 22, 14, 35,
-      { x: 50, y: -100, width: 30, height: 20 },
-      { isProjectile: true, projectileSpeed: 16, projectileHeight: AttackHeight.MID },
+      "piercing_arrow", "Sky Cleaver", AttackHeight.MID,
+      18, 5, 16, 98, 20, 20, 14, 35,
+      { x: 48, y: -98, width: 26, height: 18 },
+      { isProjectile: true, projectileSpeed: 19, projectileHeight: AttackHeight.MID },
     ),
     // W+S — Evasive Roll: quick dodge forward with a rising kick at the end
     evasive_strike: special(
@@ -498,10 +495,9 @@ export const ELAINE_DEF: DuelCharacterDef = {
 
   zeals: {
     storm_volley: zeal(
-      "storm_volley", "Storm Volley", AttackHeight.MID,
-      8, 10, 18, 140, 28, 26, 16, 45,
-      { x: 30, y: -120, width: 140, height: 80 },
-      { movesForward: 40 },
+      "storm_volley", "Skyfall", AttackHeight.OVERHEAD,
+      10, 12, 20, 142, 28, 26, 16, 44,
+      { x: -52, y: -225, width: 265, height: 225 },
     ),
     celestial_arrow: zeal(
       "celestial_arrow", "Celestial Arrow", AttackHeight.MID,
@@ -599,11 +595,11 @@ export const LANCELOT_DEF: DuelCharacterDef = {
       16, 6, 20, 120, 24, 26, 18, 55,
       { x: 20, y: -160, width: 90, height: 85 },
     ),
-    // A+S — Lance Sweep: spinning low sweep with spear
+    // A+S — Full Sweep: spinning low sweep covering forward and slight rear — 270° coverage
     lance_sweep: special(
-      "lance_sweep", "Lance Sweep", AttackHeight.LOW,
-      10, 5, 16, 65, 13, 18, 12, 20,
-      { x: 30, y: -18, width: 120, height: 35 },
+      "lance_sweep", "Full Sweep", AttackHeight.LOW,
+      10, 6, 16, 68, 14, 18, 12, 22,
+      { x: -18, y: -18, width: 165, height: 35 },
     ),
     // S+D — Rising Lance: anti-air upward thrust
     rising_lance: special(
@@ -626,12 +622,12 @@ export const LANCELOT_DEF: DuelCharacterDef = {
       { x: 55, y: -100, width: 35, height: 25 },
       { isProjectile: true, projectileSpeed: 11, projectileHeight: AttackHeight.MID },
     ),
-    // E+D — Cross Spear: lunging cross-body thrust, wide hitbox
+    // E+D — Constellation: soaring cross pattern reaching from ground to sky
     cross_spear: special(
-      "cross_spear", "Cross Spear", AttackHeight.MID,
-      10, 8, 18, 130, 26, 26, 16, 50,
-      { x: 25, y: -130, width: 120, height: 75 },
-      { movesForward: 70 },
+      "cross_spear", "Constellation", AttackHeight.MID,
+      12, 8, 20, 132, 26, 26, 16, 50,
+      { x: 10, y: -205, width: 138, height: 208 },
+      { movesForward: 55 },
     ),
     // W+S — Counter Stance: parry with spear shaft, riposte
     counter_stance: special(
@@ -645,14 +641,13 @@ export const LANCELOT_DEF: DuelCharacterDef = {
   zeals: {
     dragon_lance: zeal(
       "dragon_lance", "Dragon Lance", AttackHeight.MID,
-      10, 8, 20, 155, 31, 28, 18, 52,
-      { x: 35, y: -130, width: 140, height: 85 },
-      { movesForward: 100 },
+      8, 6, 24, 158, 32, 28, 18, 52,
+      { x: 0, y: -102, width: 700, height: 45 },
     ),
     spear_whirlwind: zeal(
       "spear_whirlwind", "Spear Whirlwind", AttackHeight.MID,
-      14, 12, 28, 290, 58, 38, 22, 75,
-      { x: 15, y: -150, width: 170, height: 130 },
+      14, 12, 28, 292, 58, 38, 22, 76,
+      { x: -35, y: -158, width: 230, height: 142 },
       { isLauncher: true },
     ),
   },

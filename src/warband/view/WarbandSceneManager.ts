@@ -1278,50 +1278,748 @@ export class WarbandSceneManager {
       roughness: 0.95,
       metalness: 0.05,
     });
+    const darkStoneMat = new THREE.MeshStandardMaterial({
+      color: 0x666655,
+      roughness: 0.95,
+      metalness: 0.05,
+    });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.9 });
+    const flagMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.7, side: THREE.DoubleSide });
 
-    const wallGeo = new THREE.BoxGeometry(40, 8, 2);
-    const wall = new THREE.Mesh(wallGeo, wallMat);
-    wall.position.set(0, 4, -15);
-    wall.castShadow = true;
-    wall.receiveShadow = true;
-    this.scene.add(wall);
+    const wallH = 8;
+    const wallThick = 2;
 
-    const towerGeo = new THREE.CylinderGeometry(2, 2.2, 12, 8);
-    for (const xPos of [-20, 20]) {
-      const tower = new THREE.Mesh(towerGeo, wallMat);
-      tower.position.set(xPos, 6, -15);
-      tower.castShadow = true;
-      tower.receiveShadow = true;
-      this.scene.add(tower);
+    // Helper to add a wall box
+    const addWall = (w: number, h: number, d: number, x: number, y: number, z: number, mat = wallMat) => {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.scene.add(mesh);
+      return mesh;
+    };
 
-      const topGeo = new THREE.CylinderGeometry(2.4, 2.4, 1, 8);
-      const top = new THREE.Mesh(topGeo, wallMat);
-      top.position.set(xPos, 12.5, -15);
-      top.castShadow = true;
-      this.scene.add(top);
+    // ---- Front wall (two sections with gate gap) ----
+    // Left section: x from -20 to -2.5
+    addWall(17.5, wallH, wallThick, -11.25, wallH / 2, -15);
+    // Right section: x from 2.5 to 20
+    addWall(17.5, wallH, wallThick, 11.25, wallH / 2, -15);
+    // Gate arch (above the opening)
+    addWall(5, 3, wallThick, 0, wallH - 1.5, -15);
+
+    // Gate doors (wooden, on either side of opening)
+    addWall(1.2, 5, 0.3, -1.8, 2.5, -14.5, woodMat);
+    addWall(1.2, 5, 0.3, 1.8, 2.5, -14.5, woodMat);
+    // Gate portcullis bars (iron grate above gate)
+    const barMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5, metalness: 0.6 });
+    for (let bx = -2; bx <= 2; bx += 0.8) {
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5, 4), barMat);
+      bar.position.set(bx, 2.5, -15);
+      this.scene.add(bar);
     }
 
-    const gateGeo = new THREE.BoxGeometry(4, 5, 2.5);
-    const gateMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.9 });
-    const gate = new THREE.Mesh(gateGeo, gateMat);
-    gate.position.set(0, 2.5, -15);
-    this.scene.add(gate);
-
-    const crenGeo = new THREE.BoxGeometry(1.5, 1.5, 0.5);
-    for (let x = -18; x <= 18; x += 3) {
+    // Front wall crenellations
+    const crenGeo = new THREE.BoxGeometry(1.2, 1.5, 0.6);
+    for (let x = -19; x <= 19; x += 2.5) {
+      if (Math.abs(x) < 3) continue; // skip gate area
       const cren = new THREE.Mesh(crenGeo, wallMat);
-      cren.position.set(x, 8.75, -14);
+      cren.position.set(x, wallH + 0.75, -14);
       cren.castShadow = true;
       this.scene.add(cren);
     }
 
-    const courtGeo = new THREE.PlaneGeometry(30, 20);
+    // ---- Side walls ----
+    // Left wall: x=-20, z from -15 to -35
+    addWall(wallThick, wallH, 20, -20, wallH / 2, -25);
+    // Right wall: x=20, z from -15 to -35
+    addWall(wallThick, wallH, 20, 20, wallH / 2, -25);
+
+    // Side wall crenellations
+    for (let z = -17; z >= -33; z -= 2.5) {
+      const crenL = new THREE.Mesh(crenGeo, wallMat);
+      crenL.position.set(-19, wallH + 0.75, z);
+      crenL.rotation.y = Math.PI / 2;
+      crenL.castShadow = true;
+      this.scene.add(crenL);
+      const crenR = new THREE.Mesh(crenGeo, wallMat);
+      crenR.position.set(19, wallH + 0.75, z);
+      crenR.rotation.y = Math.PI / 2;
+      crenR.castShadow = true;
+      this.scene.add(crenR);
+    }
+
+    // ---- Back wall ----
+    addWall(42, wallH, wallThick, 0, wallH / 2, -35);
+    // Back wall crenellations
+    for (let x = -19; x <= 19; x += 2.5) {
+      const cren = new THREE.Mesh(crenGeo, wallMat);
+      cren.position.set(x, wallH + 0.75, -34);
+      cren.castShadow = true;
+      this.scene.add(cren);
+    }
+
+    // ---- Corner towers (4 corners) ----
+    const towerGeo = new THREE.CylinderGeometry(2.2, 2.5, 12, 8);
+    const towerTopGeo = new THREE.CylinderGeometry(2.7, 2.7, 1, 8);
+    const towerPositions = [
+      [-20, -15], [-20, -35], [20, -15], [20, -35],
+    ];
+    for (const [tx, tz] of towerPositions) {
+      const tower = new THREE.Mesh(towerGeo, wallMat);
+      tower.position.set(tx, 6, tz);
+      tower.castShadow = true;
+      tower.receiveShadow = true;
+      this.scene.add(tower);
+      const top = new THREE.Mesh(towerTopGeo, wallMat);
+      top.position.set(tx, 12.5, tz);
+      top.castShadow = true;
+      this.scene.add(top);
+      // Tower crenellations (small blocks on top ring)
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+        const tc = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.5), wallMat);
+        tc.position.set(tx + Math.cos(a) * 2.5, 13.5, tz + Math.sin(a) * 2.5);
+        tc.rotation.y = a;
+        tc.castShadow = true;
+        this.scene.add(tc);
+      }
+    }
+
+    // ---- Inner walls (create three routes) ----
+    // Left inner wall: x=-10, z from -30 to -20
+    addWall(wallThick, 5, 10, -10, 2.5, -25, darkStoneMat);
+    // Right inner wall: x=10, z from -30 to -20
+    addWall(wallThick, 5, 10, 10, 2.5, -25, darkStoneMat);
+    // Centre barricade: blocks direct centre route, forces flanking
+    addWall(6, 3, 1, 0, 1.5, -22, darkStoneMat);
+    // Wooden barricade details on centre blockade
+    addWall(5.5, 0.15, 0.3, 0, 2.8, -21.7, woodMat);
+    addWall(5.5, 0.15, 0.3, 0, 1.5, -21.7, woodMat);
+
+    // Inner wall crenellations (tops of inner walls)
+    for (let z = -29; z <= -21; z += 2) {
+      for (const ix of [-10, 10]) {
+        const ic = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.5), darkStoneMat);
+        ic.position.set(ix, 5.4, z);
+        ic.castShadow = true;
+        this.scene.add(ic);
+      }
+    }
+
+    // ---- Wall interior stone block detail (mortar lines) ----
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 1.0 });
+    // Horizontal mortar lines on inner face of outer walls
+    // Front wall interior (z = -14, facing +z inside)
+    for (let y = 1; y < wallH; y += 1.0) {
+      // Left section
+      const lineL = new THREE.Mesh(new THREE.PlaneGeometry(17, 0.04), mortarMat);
+      lineL.position.set(-11.25, y, -14.0);
+      this.scene.add(lineL);
+      // Right section
+      const lineR = new THREE.Mesh(new THREE.PlaneGeometry(17, 0.04), mortarMat);
+      lineR.position.set(11.25, y, -14.0);
+      this.scene.add(lineR);
+    }
+
+    // Side walls interior mortar lines
+    for (let y = 1; y < wallH; y += 1.0) {
+      // Left wall inner face (x = -19, facing +x)
+      const lineL = new THREE.Mesh(new THREE.PlaneGeometry(20, 0.04), mortarMat);
+      lineL.rotation.y = Math.PI / 2;
+      lineL.position.set(-19.0, y, -25);
+      this.scene.add(lineL);
+      // Right wall inner face (x = 19, facing -x)
+      const lineR = new THREE.Mesh(new THREE.PlaneGeometry(20, 0.04), mortarMat);
+      lineR.rotation.y = Math.PI / 2;
+      lineR.position.set(19.0, y, -25);
+      this.scene.add(lineR);
+    }
+
+    // Back wall interior mortar lines
+    for (let y = 1; y < wallH; y += 1.0) {
+      const lineB = new THREE.Mesh(new THREE.PlaneGeometry(40, 0.04), mortarMat);
+      lineB.position.set(0, y, -34.0);
+      lineB.rotation.y = Math.PI;
+      this.scene.add(lineB);
+    }
+
+    // Vertical mortar lines (block separators) on front wall interior
+    for (let x = -19; x <= 19; x += 2.5) {
+      if (Math.abs(x) < 3) continue;
+      for (let yOff = 0; yOff < wallH; yOff += 1.0) {
+        // Offset every other row for brick pattern
+        const xShift = (Math.floor(yOff) % 2 === 0) ? 0 : 1.25;
+        const vLine = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 1.0), mortarMat);
+        vLine.position.set(x + xShift, yOff + 0.5, -14.0);
+        this.scene.add(vLine);
+      }
+    }
+
+    // Vertical mortar on side walls interior
+    for (let z = -16; z >= -34; z -= 2.5) {
+      for (let yOff = 0; yOff < wallH; yOff += 1.0) {
+        const xShift = (Math.floor(yOff) % 2 === 0) ? 0 : 1.25;
+        // Left wall
+        const vL = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 1.0), mortarMat);
+        vL.rotation.y = Math.PI / 2;
+        vL.position.set(-19.0, yOff + 0.5, z + xShift);
+        this.scene.add(vL);
+        // Right wall
+        const vR = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 1.0), mortarMat);
+        vR.rotation.y = Math.PI / 2;
+        vR.position.set(19.0, yOff + 0.5, z + xShift);
+        this.scene.add(vR);
+      }
+    }
+
+    // ---- Wall walkway / rampart (interior ledge along outer walls) ----
+    const walkwayMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6a, roughness: 0.9 });
+    const walkwayH = 5.5; // ledge height
+    const walkwayW = 1.5; // ledge depth from wall
+
+    // Front wall walkway (behind the wall, z slightly > -14)
+    addWall(36, 0.3, walkwayW, 0, walkwayH, -13.2, walkwayMat);
+    // Left wall walkway
+    addWall(walkwayW, 0.3, 18, -18.2, walkwayH, -25, walkwayMat);
+    // Right wall walkway
+    addWall(walkwayW, 0.3, 18, 18.2, walkwayH, -25, walkwayMat);
+    // Back wall walkway
+    addWall(36, 0.3, walkwayW, 0, walkwayH, -33.8, walkwayMat);
+
+    // Walkway support brackets (corbels) along front wall
+    const corbelGeo = new THREE.BoxGeometry(0.4, 0.6, walkwayW);
+    for (let x = -17; x <= 17; x += 4) {
+      if (Math.abs(x) < 3) continue;
+      const corbel = new THREE.Mesh(corbelGeo, wallMat);
+      corbel.position.set(x, walkwayH - 0.3, -13.2);
+      corbel.castShadow = true;
+      this.scene.add(corbel);
+    }
+    // Brackets along side walls
+    for (let z = -17; z >= -33; z -= 4) {
+      const cL = new THREE.Mesh(new THREE.BoxGeometry(walkwayW, 0.6, 0.4), wallMat);
+      cL.position.set(-18.2, walkwayH - 0.3, z);
+      cL.castShadow = true;
+      this.scene.add(cL);
+      const cR = new THREE.Mesh(new THREE.BoxGeometry(walkwayW, 0.6, 0.4), wallMat);
+      cR.position.set(18.2, walkwayH - 0.3, z);
+      cR.castShadow = true;
+      this.scene.add(cR);
+    }
+    // Brackets along back wall
+    for (let x = -17; x <= 17; x += 4) {
+      const cb = new THREE.Mesh(corbelGeo, wallMat);
+      cb.position.set(x, walkwayH - 0.3, -33.8);
+      cb.castShadow = true;
+      this.scene.add(cb);
+    }
+
+    // ---- Stairs to walkway (left and right, near front wall) ----
+    const stairMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.95 });
+    const stairCount = 8;
+    const stairW = 1.5;
+    const stairStepH = walkwayH / stairCount;
+    const stairStepD = 0.6;
+    // Left stair (x ~ -17, z ~ -16 going back)
+    for (let s = 0; s < stairCount; s++) {
+      const step = new THREE.Mesh(
+        new THREE.BoxGeometry(stairW, stairStepH, stairStepD),
+        stairMat,
+      );
+      step.position.set(-17, stairStepH * (s + 0.5), -16.5 - s * stairStepD);
+      step.castShadow = true;
+      step.receiveShadow = true;
+      this.scene.add(step);
+    }
+    // Right stair
+    for (let s = 0; s < stairCount; s++) {
+      const step = new THREE.Mesh(
+        new THREE.BoxGeometry(stairW, stairStepH, stairStepD),
+        stairMat,
+      );
+      step.position.set(17, stairStepH * (s + 0.5), -16.5 - s * stairStepD);
+      step.castShadow = true;
+      step.receiveShadow = true;
+      this.scene.add(step);
+    }
+
+    // ---- Buttresses / pilasters along inner faces of outer walls ----
+    const buttressMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6a, roughness: 0.95 });
+    const buttressGeo = new THREE.BoxGeometry(0.6, wallH * 0.8, 0.8);
+    // Left wall buttresses (inside face, x = -18.5)
+    for (let z = -18; z >= -32; z -= 4.5) {
+      const b = new THREE.Mesh(buttressGeo, buttressMat);
+      b.position.set(-18.6, wallH * 0.4, z);
+      b.castShadow = true;
+      this.scene.add(b);
+    }
+    // Right wall buttresses
+    for (let z = -18; z >= -32; z -= 4.5) {
+      const b = new THREE.Mesh(buttressGeo, buttressMat);
+      b.position.set(18.6, wallH * 0.4, z);
+      b.castShadow = true;
+      this.scene.add(b);
+    }
+    // Back wall buttresses
+    for (let x = -15; x <= 15; x += 6) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, wallH * 0.8, 0.6), buttressMat);
+      b.position.set(x, wallH * 0.4, -33.6);
+      b.castShadow = true;
+      this.scene.add(b);
+    }
+    // Front wall buttresses (inside)
+    for (let x = -16; x <= 16; x += 8) {
+      if (Math.abs(x) < 4) continue;
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, wallH * 0.7, 0.6), buttressMat);
+      b.position.set(x, wallH * 0.35, -13.6);
+      b.castShadow = true;
+      this.scene.add(b);
+    }
+
+    // ---- Lean-to / guard shelters along inside walls ----
+    const leantoRoofMat = new THREE.MeshStandardMaterial({
+      color: 0x5a4a30,
+      roughness: 0.9,
+      side: THREE.DoubleSide,
+    });
+    // Left wall shelter
+    const roofGeoL = new THREE.PlaneGeometry(3, 2.5);
+    const roofL = new THREE.Mesh(roofGeoL, leantoRoofMat);
+    roofL.position.set(-17.5, 3.2, -20);
+    roofL.rotation.z = -0.3;
+    roofL.castShadow = true;
+    this.scene.add(roofL);
+    // Shelter post
+    const postGeo = new THREE.CylinderGeometry(0.06, 0.06, 3, 4);
+    const post1 = new THREE.Mesh(postGeo, woodMat);
+    post1.position.set(-16.5, 1.5, -19);
+    this.scene.add(post1);
+    const post2 = new THREE.Mesh(postGeo, woodMat);
+    post2.position.set(-16.5, 1.5, -21);
+    this.scene.add(post2);
+
+    // Right wall shelter
+    const roofR = new THREE.Mesh(roofGeoL, leantoRoofMat);
+    roofR.position.set(17.5, 3.2, -20);
+    roofR.rotation.z = 0.3;
+    roofR.castShadow = true;
+    this.scene.add(roofR);
+    const post3 = new THREE.Mesh(postGeo, woodMat);
+    post3.position.set(16.5, 1.5, -19);
+    this.scene.add(post3);
+    const post4 = new THREE.Mesh(postGeo, woodMat);
+    post4.position.set(16.5, 1.5, -21);
+    this.scene.add(post4);
+
+    // ---- Wall-mounted shields / decoration on inner walls ----
+    const shieldDecoMat = new THREE.MeshStandardMaterial({ color: 0xaa2222, roughness: 0.6, metalness: 0.2 });
+    const shieldDecoGeo = new THREE.CircleGeometry(0.35, 8);
+    const shieldPositions = [
+      [-19.0, 4.5, -22, Math.PI / 2],
+      [-19.0, 4.5, -28, Math.PI / 2],
+      [19.0, 4.5, -22, -Math.PI / 2],
+      [19.0, 4.5, -28, -Math.PI / 2],
+      [0, 5.5, -34.0, Math.PI],
+      [-8, 5.5, -34.0, Math.PI],
+      [8, 5.5, -34.0, Math.PI],
+    ];
+    for (const [sx, sy, sz, ry] of shieldPositions) {
+      const sd = new THREE.Mesh(shieldDecoGeo, shieldDecoMat);
+      sd.position.set(sx, sy, sz);
+      sd.rotation.y = ry;
+      this.scene.add(sd);
+      // Shield boss
+      const boss = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 4, 3, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: 0xdaa520, roughness: 0.3, metalness: 0.6 }),
+      );
+      boss.position.set(sx, sy, sz);
+      boss.rotation.y = ry;
+      this.scene.add(boss);
+    }
+
+    // ---- Weapon racks along back wall ----
+    // Rack frame
+    for (const rx of [-5, 5]) {
+      addWall(2, 0.1, 0.3, rx, 2.5, -33.8, woodMat);
+      addWall(2, 0.1, 0.3, rx, 1.5, -33.8, woodMat);
+      addWall(0.1, 1.2, 0.3, rx - 1, 2, -33.8, woodMat);
+      addWall(0.1, 1.2, 0.3, rx + 1, 2, -33.8, woodMat);
+      // Weapons on rack (angled sticks)
+      for (let i = -0.7; i <= 0.7; i += 0.35) {
+        const wpnGeo = new THREE.CylinderGeometry(0.02, 0.02, 1.4, 4);
+        const wpn = new THREE.Mesh(wpnGeo, barMat);
+        wpn.position.set(rx + i, 2, -33.6);
+        wpn.rotation.z = 0.15 * (i > 0 ? 1 : -1);
+        this.scene.add(wpn);
+      }
+    }
+
+    // ---- Well in the courtyard (left side) ----
+    const wellMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.95 });
+    const wellGeo = new THREE.CylinderGeometry(0.8, 0.9, 0.8, 8, 1, true);
+    const well = new THREE.Mesh(wellGeo, wellMat);
+    well.position.set(-6, 0.4, -18);
+    well.castShadow = true;
+    this.scene.add(well);
+    // Well rim
+    const wellRimGeo = new THREE.TorusGeometry(0.85, 0.1, 4, 8);
+    const wellRim = new THREE.Mesh(wellRimGeo, wellMat);
+    wellRim.rotation.x = -Math.PI / 2;
+    wellRim.position.set(-6, 0.85, -18);
+    this.scene.add(wellRim);
+    // Well water (dark circle inside)
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.2, metalness: 0.3 });
+    const waterGeo = new THREE.CircleGeometry(0.7, 8);
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.rotation.x = -Math.PI / 2;
+    water.position.set(-6, 0.3, -18);
+    this.scene.add(water);
+    // Well roof frame
+    const wellPostGeo = new THREE.CylinderGeometry(0.05, 0.05, 2, 4);
+    const wp1 = new THREE.Mesh(wellPostGeo, woodMat);
+    wp1.position.set(-6.6, 1.8, -18);
+    this.scene.add(wp1);
+    const wp2 = new THREE.Mesh(wellPostGeo, woodMat);
+    wp2.position.set(-5.4, 1.8, -18);
+    this.scene.add(wp2);
+    const wellBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 4), woodMat);
+    wellBeam.rotation.z = Math.PI / 2;
+    wellBeam.position.set(-6, 2.8, -18);
+    this.scene.add(wellBeam);
+
+    // ---- Hay bales near shelters ----
+    const hayMat = new THREE.MeshStandardMaterial({ color: 0xc4a84a, roughness: 0.95 });
+    const hayPositions = [
+      [-16, 0.3, -22.5], [-15.5, 0.3, -22.8],
+      [16, 0.3, -22.5], [15.5, 0.3, -22.8],
+      [-15, 0.3, -32], [15, 0.3, -32],
+    ];
+    for (const [hx, hy, hz] of hayPositions) {
+      const hay = new THREE.Mesh(new THREE.BoxGeometry(1, 0.6, 0.7), hayMat);
+      hay.position.set(hx, hy, hz);
+      hay.rotation.y = Math.random() * 0.5;
+      hay.castShadow = true;
+      this.scene.add(hay);
+    }
+
+    // ---- Stacked logs near back wall ----
+    const logMat = new THREE.MeshStandardMaterial({ color: 0x5a3d1e, roughness: 0.9 });
+    for (let row = 0; row < 3; row++) {
+      for (let i = 0; i < 4 - row; i++) {
+        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2, 6), logMat);
+        log.rotation.z = Math.PI / 2;
+        log.position.set(
+          12 + i * 0.32 + row * 0.16,
+          0.15 + row * 0.3,
+          -33,
+        );
+        log.castShadow = true;
+        this.scene.add(log);
+      }
+    }
+
+    // ---- Hanging banners on inner walls (tapestries) ----
+    const bannerMat1 = new THREE.MeshStandardMaterial({ color: 0x882222, roughness: 0.7, side: THREE.DoubleSide });
+    const bannerMat2 = new THREE.MeshStandardMaterial({ color: 0x222288, roughness: 0.7, side: THREE.DoubleSide });
+    const bannerGeo = new THREE.PlaneGeometry(1.2, 2.5);
+    // Back wall banners
+    const bPositions: [number, number, number, THREE.Material][] = [
+      [-12, 5, -33.9, bannerMat1],
+      [-4, 5, -33.9, bannerMat2],
+      [4, 5, -33.9, bannerMat1],
+      [12, 5, -33.9, bannerMat2],
+    ];
+    for (const [bx, by, bz, bmat] of bPositions) {
+      const banner = new THREE.Mesh(bannerGeo, bmat);
+      banner.position.set(bx, by, bz);
+      banner.rotation.y = Math.PI;
+      this.scene.add(banner);
+      // Banner rod
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 4), barMat);
+      rod.rotation.z = Math.PI / 2;
+      rod.position.set(bx, by + 1.3, bz);
+      this.scene.add(rod);
+    }
+    // Side wall banners
+    const sideBannerGeo = new THREE.PlaneGeometry(1, 2);
+    for (const [sbx, sby, sbz, sbry] of [
+      [-18.9, 5, -25, Math.PI / 2],
+      [18.9, 5, -25, -Math.PI / 2],
+    ] as [number, number, number, number][]) {
+      const sb = new THREE.Mesh(sideBannerGeo, bannerMat1);
+      sb.position.set(sbx, sby, sbz);
+      sb.rotation.y = sbry;
+      this.scene.add(sb);
+    }
+
+    // ---- Gate arch detail (keystone + voussoirs) ----
+    const keystoneMat = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.85 });
+    // Keystone at top centre of gate arch
+    const keystone = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.3), keystoneMat);
+    keystone.position.set(0, wallH - 0.1, -13.8);
+    this.scene.add(keystone);
+    // Voussoir stones (arch blocks flanking keystone)
+    for (let i = 1; i <= 2; i++) {
+      for (const side of [-1, 1]) {
+        const vs = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.25), keystoneMat);
+        vs.position.set(side * i * 0.7, wallH - 0.2 - i * 0.3, -13.8);
+        vs.rotation.z = side * i * 0.15;
+        this.scene.add(vs);
+      }
+    }
+
+    // ---- Inner wall stone block detail ----
+    // Mortar lines on inner walls
+    for (let y = 0.8; y < 5; y += 0.8) {
+      for (const ix of [-10, 10]) {
+        // Both sides of each inner wall
+        const lineA = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 10), mortarMat);
+        lineA.rotation.y = Math.PI / 2;
+        lineA.rotation.x = Math.PI / 2;
+        lineA.position.set(ix - 0.5, y, -25);
+        this.scene.add(lineA);
+        const lineB = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 10), mortarMat);
+        lineB.rotation.y = Math.PI / 2;
+        lineB.rotation.x = Math.PI / 2;
+        lineB.position.set(ix + 0.5, y, -25);
+        this.scene.add(lineB);
+      }
+    }
+
+    // ---- Keep / centre structure ----
+    // Raised platform for the capture zone
+    const platformGeo = new THREE.CylinderGeometry(5, 5.5, 0.4, 16);
+    const platformMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.9 });
+    const platform = new THREE.Mesh(platformGeo, platformMat);
+    platform.position.set(0, 0.2, -28);
+    platform.receiveShadow = true;
+    this.scene.add(platform);
+
+    // Platform edge ring (stone border)
+    const platEdge = new THREE.Mesh(new THREE.TorusGeometry(5.2, 0.2, 4, 16), wallMat);
+    platEdge.rotation.x = -Math.PI / 2;
+    platEdge.position.set(0, 0.42, -28);
+    this.scene.add(platEdge);
+
+    // Capture zone ring marker (glowing ring on the ground)
+    const ringGeo = new THREE.TorusGeometry(5, 0.15, 6, 32);
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: 0xffaa00,
+      emissive: 0xffaa00,
+      emissiveIntensity: 0.5,
+      roughness: 0.3,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(0, 0.45, -28);
+    this.scene.add(ring);
+
+    // Central banner pole
+    const poleGeo = new THREE.CylinderGeometry(0.06, 0.06, 6, 6);
+    const pole = new THREE.Mesh(poleGeo, woodMat);
+    pole.position.set(0, 3, -28);
+    pole.castShadow = true;
+    this.scene.add(pole);
+    // Banner flag
+    const flagGeo = new THREE.PlaneGeometry(1.5, 1);
+    const flag = new THREE.Mesh(flagGeo, flagMat);
+    flag.position.set(0.8, 5.5, -28);
+    this.scene.add(flag);
+    // Second flag (opposite side, different color)
+    const flag2Mat = new THREE.MeshStandardMaterial({ color: 0x2244aa, roughness: 0.7, side: THREE.DoubleSide });
+    const flag2 = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), flag2Mat);
+    flag2.position.set(-0.7, 5.1, -28);
+    this.scene.add(flag2);
+
+    // Keep low walls (short walls around the capture zone)
+    addWall(4, 2, 0.5, -5, 1, -28, darkStoneMat);
+    addWall(4, 2, 0.5, 5, 1, -28, darkStoneMat);
+    addWall(0.5, 2, 6, 0, 1, -31.5, darkStoneMat);
+    // Keep pillars at wall junctions
+    const pillarGeo = new THREE.CylinderGeometry(0.2, 0.25, 2.5, 6);
+    const pillarPositions = [
+      [-7, -28], [-3, -28], [3, -28], [7, -28],
+      [0, -34], [0, -28.5],
+    ];
+    for (const [px, pz] of pillarPositions) {
+      const pillar = new THREE.Mesh(pillarGeo, wallMat);
+      pillar.position.set(px, 1.25, pz);
+      pillar.castShadow = true;
+      this.scene.add(pillar);
+    }
+
+    // ---- Courtyard ground ----
+    const courtGeo = new THREE.PlaneGeometry(40, 22);
     const courtMat = new THREE.MeshStandardMaterial({ color: 0x9a8a6a, roughness: 0.95 });
     const court = new THREE.Mesh(courtGeo, courtMat);
     court.rotation.x = -Math.PI / 2;
     court.position.set(0, 0.02, -25);
     court.receiveShadow = true;
     this.scene.add(court);
+
+    // Cobblestone path from gate to centre (darker strip)
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0x7a7060, roughness: 0.98 });
+    const pathGeo = new THREE.PlaneGeometry(5, 14);
+    const path = new THREE.Mesh(pathGeo, pathMat);
+    path.rotation.x = -Math.PI / 2;
+    path.position.set(0, 0.03, -22);
+    path.receiveShadow = true;
+    this.scene.add(path);
+
+    // Cobblestone circle around keep platform
+    const cobbleRing = new THREE.Mesh(
+      new THREE.RingGeometry(5.5, 7, 24),
+      new THREE.MeshStandardMaterial({ color: 0x6a6050, roughness: 0.98 }),
+    );
+    cobbleRing.rotation.x = -Math.PI / 2;
+    cobbleRing.position.set(0, 0.025, -28);
+    this.scene.add(cobbleRing);
+
+    // Side corridor floors (left and right routes)
+    const sidePathGeo = new THREE.PlaneGeometry(7, 18);
+    for (const sx of [-14.5, 14.5]) {
+      const sp = new THREE.Mesh(sidePathGeo, pathMat);
+      sp.rotation.x = -Math.PI / 2;
+      sp.position.set(sx, 0.03, -25);
+      sp.receiveShadow = true;
+      this.scene.add(sp);
+    }
+
+    // Drain gutter along base of side walls
+    const gutterMat = new THREE.MeshStandardMaterial({ color: 0x555544, roughness: 0.9 });
+    const gutterGeo = new THREE.BoxGeometry(0.3, 0.1, 18);
+    for (const gx of [-18.5, 18.5]) {
+      const gutter = new THREE.Mesh(gutterGeo, gutterMat);
+      gutter.position.set(gx, 0.06, -25);
+      this.scene.add(gutter);
+    }
+
+    // ---- Decorative details ----
+    // Wooden crates and barrels near inner walls
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0x7a5c2e, roughness: 0.85 });
+    const crateGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+    const barrelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.9, 8);
+    const cratePositions = [
+      [-8, -20], [-8, -22], [8, -20], [8, -22],
+      [-14, -18], [14, -18], [-14, -30], [14, -30],
+      [-16, -25], [16, -25], [-7, -32], [7, -32],
+    ];
+    for (const [cx, cz] of cratePositions) {
+      if (Math.random() < 0.5) {
+        const crate = new THREE.Mesh(crateGeo, crateMat);
+        crate.position.set(cx, 0.4, cz);
+        crate.rotation.y = Math.random() * 0.3;
+        crate.castShadow = true;
+        this.scene.add(crate);
+      } else {
+        const barrel = new THREE.Mesh(barrelGeo, crateMat);
+        barrel.position.set(cx, 0.45, cz);
+        barrel.castShadow = true;
+        this.scene.add(barrel);
+      }
+    }
+    // Barrel clusters (stacked)
+    for (const [bsx, bsz] of [[-15, -26], [15, -26]] as [number, number][]) {
+      const b1 = new THREE.Mesh(barrelGeo, crateMat);
+      b1.position.set(bsx, 0.45, bsz);
+      b1.castShadow = true;
+      this.scene.add(b1);
+      const b2 = new THREE.Mesh(barrelGeo, crateMat);
+      b2.position.set(bsx + 0.6, 0.45, bsz);
+      b2.castShadow = true;
+      this.scene.add(b2);
+      const b3 = new THREE.Mesh(barrelGeo, crateMat);
+      b3.position.set(bsx + 0.3, 1.35, bsz);
+      b3.castShadow = true;
+      this.scene.add(b3);
+    }
+
+    // Torches on inner walls (emissive light sources)
+    const torchMat = new THREE.MeshStandardMaterial({
+      color: 0xff6600,
+      emissive: 0xff4400,
+      emissiveIntensity: 0.8,
+    });
+    const torchGeo = new THREE.SphereGeometry(0.15, 4, 4);
+    const torchPositions = [
+      [-9, 3.5, -23], [9, 3.5, -23],
+      [-9, 3.5, -27], [9, 3.5, -27],
+      [-18, 5, -18], [18, 5, -18],
+      [-18, 5, -22], [18, 5, -22],
+      [-18, 5, -28], [18, 5, -28],
+      [-18, 5, -32], [18, 5, -32],
+      // Front wall interior
+      [-12, 5.5, -13.5], [12, 5.5, -13.5],
+      // Back wall interior
+      [-10, 5.5, -33.5], [10, 5.5, -33.5], [0, 5.5, -33.5],
+    ];
+    for (const [tx, ty, tz] of torchPositions) {
+      const torch = new THREE.Mesh(torchGeo, torchMat);
+      torch.position.set(tx, ty, tz);
+      this.scene.add(torch);
+      // Torch bracket (iron arm + mounting plate)
+      const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 4), barMat);
+      bracket.position.set(tx, ty - 0.3, tz);
+      this.scene.add(bracket);
+      const mountPlate = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), barMat);
+      mountPlate.position.set(tx, ty - 0.1, tz);
+      this.scene.add(mountPlate);
+      // Point light for torch glow
+      const light = new THREE.PointLight(0xff6622, 0.5, 8);
+      light.position.set(tx, ty + 0.2, tz);
+      this.scene.add(light);
+    }
+
+    // Arrow slits in side walls (with stone frame)
+    const slitMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
+    const slitGeo = new THREE.BoxGeometry(0.15, 1.2, 0.5);
+    const slitFrameGeo = new THREE.BoxGeometry(0.5, 1.5, 0.1);
+    for (let z = -18; z >= -32; z -= 4) {
+      for (const [wx, frameX] of [
+        [-19.5, -18.9],
+        [19.5, 18.9],
+      ] as [number, number][]) {
+        const slit = new THREE.Mesh(slitGeo, slitMat);
+        slit.position.set(wx, 4, z);
+        this.scene.add(slit);
+        // Stone frame around slit (interior side)
+        const frame = new THREE.Mesh(slitFrameGeo, keystoneMat);
+        frame.position.set(frameX, 4, z);
+        frame.rotation.y = Math.PI / 2;
+        this.scene.add(frame);
+      }
+    }
+
+    // Arrow slits in back wall
+    for (let x = -15; x <= 15; x += 6) {
+      const slit = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.5), slitMat);
+      slit.position.set(x, 4, -34.5);
+      slit.rotation.y = Math.PI / 2;
+      this.scene.add(slit);
+    }
+
+    // ---- Siege approach ramp (slight slope in front of gate) ----
+    const rampGeo = new THREE.BoxGeometry(6, 0.3, 4);
+    const rampMat = new THREE.MeshStandardMaterial({ color: 0x8a7a5a, roughness: 0.95 });
+    const ramp = new THREE.Mesh(rampGeo, rampMat);
+    ramp.position.set(0, 0.15, -12.5);
+    ramp.rotation.x = 0.05;
+    ramp.receiveShadow = true;
+    this.scene.add(ramp);
+
+    // ---- Scattered ground debris inside castle ----
+    const debrisMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 1.0 });
+    for (let i = 0; i < 20; i++) {
+      const dx = (Math.random() - 0.5) * 34;
+      const dz = -16 - Math.random() * 18;
+      const size = 0.1 + Math.random() * 0.25;
+      const debris = new THREE.Mesh(new THREE.BoxGeometry(size, size * 0.5, size * 0.8), debrisMat);
+      debris.position.set(dx, size * 0.25, dz);
+      debris.rotation.y = Math.random() * Math.PI;
+      debris.rotation.z = Math.random() * 0.3;
+      this.scene.add(debris);
+    }
   }
 
   render(): void {

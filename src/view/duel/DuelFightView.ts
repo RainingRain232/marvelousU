@@ -1037,6 +1037,7 @@ export class DuelFightView {
       palette,
       isFlashing: isHitFlash,
       flashColor: 0xffffff,
+      isHurt: fighter.state === DuelFighterState.HIT_STUN || fighter.state === DuelFighterState.KNOCKDOWN,
       helmeted: charId === "arthur" || charId === "lancelot" || charId === "mordred" || charId === "percival" || charId === "kay" || charId === "bedivere" || charId === "lot" || charId === "pellinore",
       helmColor: charId === "lancelot" ? 0x7788aa : charId === "mordred" ? 0x222233 : charId === "percival" ? 0x6688aa : charId === "lot" ? 0x333344 : charId === "bedivere" ? 0x777788 : charId === "pellinore" ? 0x886644 : charId === "kay" ? 0x776655 : 0x888899,
       drawBackExtras: backExtras,

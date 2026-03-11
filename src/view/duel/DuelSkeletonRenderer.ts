@@ -314,6 +314,8 @@ export interface DrawFighterOptions {
   helmeted?: boolean;
   /** Helm color (used when helmeted is true). */
   helmColor?: number;
+  /** When true, draw a pain/hurt expression on the face. */
+  isHurt?: boolean;
   /** Draw behind body (capes, cloaks, etc.). Called before back arm. */
   drawBackExtras?: (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void;
   /** Custom draw function for character-specific details (weapon, accessories). */
@@ -571,62 +573,118 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       g.circle(hx + 10, hy + 3, 0.8);
       g.fill({ color: outline, alpha: 0.25 });
 
-      // Eyes — proportional, slightly narrowed for serious look
       const eyeY = hy - 4;
+      const hurt = !!opts.isHurt;
 
-      // Back eye (further, slightly smaller for 3/4 perspective)
-      // Eye white with subtle lid shape
-      g.ellipse(hx - 2, eyeY, 3.5, 2.5);
-      g.fill({ color: 0xf8f4f0 });
-      // Upper eyelid shadow
-      g.ellipse(hx - 2, eyeY - 1.5, 3.5, 1.2);
-      g.fill({ color: darken(skinColor, 0.06), alpha: 0.3 });
-      // Iris
-      g.circle(hx - 1, eyeY, 1.8);
-      g.fill({ color: pal.eyes });
-      // Pupil
-      g.circle(hx - 0.5, eyeY - 0.3, 0.8);
-      g.fill({ color: 0x111111 });
-      // Eye catchlight
-      g.circle(hx - 1.5, eyeY - 0.8, 0.5);
-      g.fill({ color: 0xffffff, alpha: 0.7 });
+      if (hurt) {
+        // --- HURT EXPRESSION ---
+        // Back eye — squinted shut (tight line)
+        g.moveTo(hx - 4.5, eyeY - 0.5);
+        g.quadraticCurveTo(hx - 2, eyeY + 2, hx + 0.5, eyeY - 0.5);
+        g.stroke({ color: outline, width: 1.8, cap: "round", alpha: 0.7 });
+        // Upper squeeze line
+        g.moveTo(hx - 4, eyeY - 2);
+        g.quadraticCurveTo(hx - 2, eyeY - 0.5, hx + 0, eyeY - 2);
+        g.stroke({ color: darken(skinColor, 0.12), width: 1.2, cap: "round", alpha: 0.5 });
 
-      // Front eye (closer, slightly larger)
-      g.ellipse(hx + 8, eyeY, 4.5, 2.8);
-      g.fill({ color: 0xf8f4f0 });
-      // Upper eyelid shadow
-      g.ellipse(hx + 8, eyeY - 1.8, 4.5, 1.3);
-      g.fill({ color: darken(skinColor, 0.06), alpha: 0.3 });
-      // Iris
-      g.circle(hx + 8.5, eyeY, 2);
-      g.fill({ color: pal.eyes });
-      // Pupil
-      g.circle(hx + 9, eyeY - 0.3, 0.9);
-      g.fill({ color: 0x111111 });
-      // Eye catchlight
-      g.circle(hx + 7.5, eyeY - 1, 0.6);
-      g.fill({ color: 0xffffff, alpha: 0.7 });
+        // Front eye — squinted, barely open with tiny iris visible
+        g.ellipse(hx + 8, eyeY, 4.5, 1.2);
+        g.fill({ color: 0xf8f4f0 });
+        // Heavy upper lid pressing down
+        g.ellipse(hx + 8, eyeY - 1, 4.5, 1.5);
+        g.fill({ color: darken(skinColor, 0.08), alpha: 0.5 });
+        // Lower lid pushing up
+        g.ellipse(hx + 8, eyeY + 0.8, 4.2, 1);
+        g.fill({ color: darken(skinColor, 0.05), alpha: 0.3 });
+        // Tiny iris barely visible
+        g.circle(hx + 8.5, eyeY, 1.2);
+        g.fill({ color: pal.eyes });
+        g.circle(hx + 8.5, eyeY, 0.5);
+        g.fill({ color: 0x111111 });
 
-      // Eyebrows — thicker, more defined with shape
-      g.moveTo(hx - 5, eyeY - 5);
-      g.quadraticCurveTo(hx - 2, eyeY - 7, hx + 1, eyeY - 6);
-      g.stroke({ color: hairColor, width: 2.8, cap: "round" });
-      g.moveTo(hx + 4, eyeY - 6.5);
-      g.quadraticCurveTo(hx + 8, eyeY - 7.5, hx + 13, eyeY - 5.5);
-      g.stroke({ color: hairColor, width: 2.8, cap: "round" });
+        // Eyebrows — knitted together, angled inward (pain)
+        g.moveTo(hx - 4, eyeY - 4);
+        g.quadraticCurveTo(hx - 2, eyeY - 7.5, hx + 1, eyeY - 7);
+        g.stroke({ color: hairColor, width: 2.8, cap: "round" });
+        g.moveTo(hx + 4, eyeY - 7.5);
+        g.quadraticCurveTo(hx + 8, eyeY - 8.5, hx + 13, eyeY - 4.5);
+        g.stroke({ color: hairColor, width: 2.8, cap: "round" });
 
-      // Mouth — firm with lip definition
-      g.moveTo(hx + 2, hy + 8);
-      g.quadraticCurveTo(hx + 6, hy + 8.5, hx + 10, hy + 7.5);
-      g.stroke({ color: 0x774444, width: 1.8, cap: "round" });
-      // Upper lip shadow
-      g.moveTo(hx + 3, hy + 7.5);
-      g.lineTo(hx + 9, hy + 7);
-      g.stroke({ color: 0x553333, width: 0.8, cap: "round", alpha: 0.25 });
-      // Lower lip highlight
-      g.moveTo(hx + 3, hy + 9.5);
-      g.quadraticCurveTo(hx + 6, hy + 10.5, hx + 9, hy + 9);
-      g.stroke({ color: lighten(skinColor, 0.05), width: 1.2, cap: "round", alpha: 0.3 });
+        // Forehead crease between brows
+        g.moveTo(hx + 1.5, eyeY - 7);
+        g.lineTo(hx + 2.5, eyeY - 5);
+        g.stroke({ color: darken(skinColor, 0.12), width: 0.8, cap: "round", alpha: 0.4 });
+
+        // Mouth — open grimace
+        // Outer mouth shape
+        g.moveTo(hx + 2, hy + 7);
+        g.quadraticCurveTo(hx + 6, hy + 12, hx + 10, hy + 7.5);
+        g.stroke({ color: 0x774444, width: 2, cap: "round" });
+        // Dark open mouth interior
+        g.moveTo(hx + 3.5, hy + 8);
+        g.quadraticCurveTo(hx + 6, hy + 11, hx + 8.5, hy + 8);
+        g.lineTo(hx + 8.5, hy + 8);
+        g.quadraticCurveTo(hx + 6, hy + 10.5, hx + 3.5, hy + 8);
+        g.fill({ color: 0x331111, alpha: 0.7 });
+        // Teeth line (upper)
+        g.moveTo(hx + 4, hy + 8.2);
+        g.lineTo(hx + 8, hy + 8);
+        g.stroke({ color: 0xeeeedd, width: 1, cap: "round", alpha: 0.6 });
+      } else {
+        // --- NORMAL EXPRESSION ---
+        // Back eye (further, slightly smaller for 3/4 perspective)
+        g.ellipse(hx - 2, eyeY, 3.5, 2.5);
+        g.fill({ color: 0xf8f4f0 });
+        // Upper eyelid shadow
+        g.ellipse(hx - 2, eyeY - 1.5, 3.5, 1.2);
+        g.fill({ color: darken(skinColor, 0.06), alpha: 0.3 });
+        // Iris
+        g.circle(hx - 1, eyeY, 1.8);
+        g.fill({ color: pal.eyes });
+        // Pupil
+        g.circle(hx - 0.5, eyeY - 0.3, 0.8);
+        g.fill({ color: 0x111111 });
+        // Eye catchlight
+        g.circle(hx - 1.5, eyeY - 0.8, 0.5);
+        g.fill({ color: 0xffffff, alpha: 0.7 });
+
+        // Front eye (closer, slightly larger)
+        g.ellipse(hx + 8, eyeY, 4.5, 2.8);
+        g.fill({ color: 0xf8f4f0 });
+        // Upper eyelid shadow
+        g.ellipse(hx + 8, eyeY - 1.8, 4.5, 1.3);
+        g.fill({ color: darken(skinColor, 0.06), alpha: 0.3 });
+        // Iris
+        g.circle(hx + 8.5, eyeY, 2);
+        g.fill({ color: pal.eyes });
+        // Pupil
+        g.circle(hx + 9, eyeY - 0.3, 0.9);
+        g.fill({ color: 0x111111 });
+        // Eye catchlight
+        g.circle(hx + 7.5, eyeY - 1, 0.6);
+        g.fill({ color: 0xffffff, alpha: 0.7 });
+
+        // Eyebrows — thicker, more defined with shape
+        g.moveTo(hx - 5, eyeY - 5);
+        g.quadraticCurveTo(hx - 2, eyeY - 7, hx + 1, eyeY - 6);
+        g.stroke({ color: hairColor, width: 2.8, cap: "round" });
+        g.moveTo(hx + 4, eyeY - 6.5);
+        g.quadraticCurveTo(hx + 8, eyeY - 7.5, hx + 13, eyeY - 5.5);
+        g.stroke({ color: hairColor, width: 2.8, cap: "round" });
+
+        // Mouth — firm with lip definition
+        g.moveTo(hx + 2, hy + 8);
+        g.quadraticCurveTo(hx + 6, hy + 8.5, hx + 10, hy + 7.5);
+        g.stroke({ color: 0x774444, width: 1.8, cap: "round" });
+        // Upper lip shadow
+        g.moveTo(hx + 3, hy + 7.5);
+        g.lineTo(hx + 9, hy + 7);
+        g.stroke({ color: 0x553333, width: 0.8, cap: "round", alpha: 0.25 });
+        // Lower lip highlight
+        g.moveTo(hx + 3, hy + 9.5);
+        g.quadraticCurveTo(hx + 6, hy + 10.5, hx + 9, hy + 9);
+        g.stroke({ color: lighten(skinColor, 0.05), width: 1.2, cap: "round", alpha: 0.3 });
+      }
     }
   }
 

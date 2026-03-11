@@ -4,6 +4,7 @@
 
 import type { WeaponDef } from "../config/WeaponDefs";
 import type { ArmorDef, ArmorSlot } from "../config/ArmorDefs";
+import type { CreatureType } from "../config/CreatureDefs";
 import { WB } from "../config/WarbandBalanceConfig";
 
 // ---- Enums ----------------------------------------------------------------
@@ -167,6 +168,10 @@ export interface WarbandFighter {
   mountId: string | null; // horse id if mounted
   isMounted: boolean;
 
+  // Creature (null for humanoid fighters)
+  creatureType: CreatureType | null;
+  creatureRadius: number; // effective collision radius
+
   // Animation
   walkCycle: number; // 0-1 walk animation phase
   animBlend: number; // blend factor for animation transitions
@@ -279,6 +284,11 @@ export interface WarbandState {
   playerWins: number;
   enemyWins: number;
 
+  // Siege capture
+  siegeCaptureProgress: number; // ticks of capture accumulated
+  siegeAttackersInZone: number; // count of attackers in capture zone
+  siegeDefendersInZone: number; // count of defenders in capture zone
+
   // Pause
   paused: boolean;
 
@@ -331,6 +341,9 @@ export function createDefaultFighter(
     mountId: null,
     isMounted: false,
 
+    creatureType: null,
+    creatureRadius: WB.FIGHTER_RADIUS,
+
     walkCycle: 0,
     animBlend: 0,
 
@@ -368,7 +381,9 @@ export function createWarbandState(
     pickups: [],
 
     tick: 0,
-    battleTimer: 60 * WB.TICKS_PER_SEC, // 60 seconds
+    battleTimer: battleType === BattleType.SIEGE
+      ? WB.SIEGE_BATTLE_TICKS
+      : 60 * WB.TICKS_PER_SEC,
 
     playerId: "player_0",
 
@@ -378,6 +393,10 @@ export function createWarbandState(
     round: 1,
     playerWins: 0,
     enemyWins: 0,
+
+    siegeCaptureProgress: 0,
+    siegeAttackersInZone: 0,
+    siegeDefendersInZone: 0,
 
     paused: false,
 

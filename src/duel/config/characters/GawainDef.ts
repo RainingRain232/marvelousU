@@ -171,11 +171,11 @@ export const GAWAIN_DEF: DuelCharacterDef = {
       { x: 50, y: -100, width: 30, height: 22 },
       { isProjectile: true, projectileSpeed: 13, projectileHeight: AttackHeight.MID },
     ),
-    // W+E — Blazing Rain: overhead arcing shot
+    // W+E — Blazing Rain: overhead fire arrows saturate a specific mid-range zone
     blazing_rain: special(
       "blazing_rain", "Blazing Rain", AttackHeight.OVERHEAD,
-      15, 8, 16, 75, 15, 22, 14, 32,
-      { x: 120, y: -180, width: 110, height: 180 },
+      14, 8, 18, 78, 16, 22, 14, 32,
+      { x: 185, y: -185, width: 65, height: 185 },
     ),
     // A+S — Low Kick: quick combo starter
     low_kick: special(
@@ -197,11 +197,11 @@ export const GAWAIN_DEF: DuelCharacterDef = {
       { x: 50, y: -102, width: 32, height: 22 },
       { isProjectile: true, projectileSpeed: 15, projectileHeight: AttackHeight.MID },
     ),
-    // E+A — Sun Trap: ground snare
+    // E+A — Solar Snare: sun trap placed at extreme distance — maximum zone denial
     sun_trap: special(
-      "sun_trap", "Sun Trap", AttackHeight.LOW,
-      10, 15, 16, 55, 11, 20, 14, 10,
-      { x: 80, y: -20, width: 60, height: 30 },
+      "sun_trap", "Solar Snare", AttackHeight.LOW,
+      10, 20, 14, 58, 12, 22, 14, 10,
+      { x: 162, y: -20, width: 88, height: 30 },
     ),
     // E+D — Radiant Shot: piercing charged arrow
     radiant_shot: special(
@@ -210,28 +210,27 @@ export const GAWAIN_DEF: DuelCharacterDef = {
       { x: 50, y: -100, width: 32, height: 22 },
       { isProjectile: true, projectileSpeed: 17, projectileHeight: AttackHeight.MID },
     ),
-    // W+S — Dawn Strike: forward evasive strike with invincibility
+    // W+S — Dawn Burst: explosive sun detonation — close-range radial burst of solar energy
     dawn_strike: special(
-      "dawn_strike", "Dawn Strike", AttackHeight.MID,
-      5, 5, 12, 68, 14, 18, 10, 26,
-      { x: 28, y: -125, width: 66, height: 58 },
-      { movesForward: 115, hasInvincibility: true, invincibleStartup: 6 },
+      "dawn_strike", "Dawn Burst", AttackHeight.MID,
+      6, 8, 16, 72, 14, 20, 12, 28,
+      { x: -45, y: -175, width: 205, height: 188 },
+      { hasInvincibility: true, invincibleStartup: 5 },
     ),
   },
 
   zeals: {
-    // Zeal 1 — Solar Barrage: multi-hit forward volley
+    // Zeal 1 — Solar Flare: concentrated beam of solar energy spans the entire arena
     solar_barrage: zeal(
-      "solar_barrage", "Solar Barrage", AttackHeight.MID,
-      8, 10, 18, 145, 29, 26, 16, 48,
-      { x: 30, y: -120, width: 145, height: 82 },
-      { movesForward: 50 },
+      "solar_barrage", "Solar Flare", AttackHeight.MID,
+      6, 6, 22, 148, 30, 26, 16, 48,
+      { x: 0, y: -105, width: 700, height: 42 },
     ),
-    // Zeal 2 — Sunburst Arrow: launcher, massive damage
+    // Zeal 2 — Sunburst Nova: sun explodes at close range — enormous vertical pillar launcher
     sunburst_arrow: zeal(
-      "sunburst_arrow", "Sunburst Arrow", AttackHeight.MID,
-      13, 8, 26, 285, 57, 38, 22, 76,
-      { x: 22, y: -142, width: 195, height: 105 },
+      "sunburst_arrow", "Sunburst Nova", AttackHeight.MID,
+      12, 10, 28, 288, 58, 40, 24, 78,
+      { x: -25, y: -245, width: 158, height: 252 },
       { isLauncher: true },
     ),
   },

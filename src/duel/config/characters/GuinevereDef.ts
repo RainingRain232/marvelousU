@@ -184,11 +184,11 @@ export const GUINEVERE_DEF: DuelCharacterDef = {
       9, 5, 15, 68, 14, 17, 12, 20,
       { x: 25, y: -18, width: 108, height: 34 },
     ),
-    // S+D -- Radiant Rise: anti-air rising slash with holy light
+    // S+D -- Holy Ascension: rising pillar of holy light — extreme vertical range, hits airborne opponents anywhere overhead
     radiant_rise: special(
-      "radiant_rise", "Radiant Rise", AttackHeight.MID,
-      5, 8, 21, 105, 21, 23, 15, 48,
-      { x: 15, y: -178, width: 62, height: 98 },
+      "radiant_rise", "Holy Ascension", AttackHeight.MID,
+      5, 10, 23, 108, 22, 24, 16, 48,
+      { x: 5, y: -238, width: 72, height: 242 },
       { isAntiAir: true, hasInvincibility: true, invincibleStartup: 4 },
     ),
     // Q+D -- Royal Charge: rushing forward with blade leading, invincible startup
@@ -198,12 +198,12 @@ export const GUINEVERE_DEF: DuelCharacterDef = {
       { x: 20, y: -100, width: 72, height: 58 },
       { movesForward: 155, hasInvincibility: true, invincibleStartup: 3 },
     ),
-    // E+A -- Blessed Blade: massive empowered swing with holy energy
+    // E+A -- Radiant Explosion: holy light erupts in all directions from Guinevere — punishes close-range
     blessed_blade: special(
-      "blessed_blade", "Blessed Blade", AttackHeight.MID,
-      9, 8, 23, 155, 31, 29, 19, 68,
-      { x: 10, y: -195, width: 78, height: 118 },
-      { isAntiAir: true, hasInvincibility: true, invincibleStartup: 5 },
+      "blessed_blade", "Radiant Explosion", AttackHeight.MID,
+      10, 8, 24, 158, 32, 30, 20, 68,
+      { x: -38, y: -168, width: 168, height: 175 },
+      { hasInvincibility: true, invincibleStartup: 5 },
     ),
     // E+D -- Cross Judgment: wide cross-pattern slash
     cross_judgment: special(
@@ -222,19 +222,18 @@ export const GUINEVERE_DEF: DuelCharacterDef = {
   },
 
   zeals: {
-    // Zeal 1: Divine Retribution -- forward rushing multi-hit holy combo
+    // Zeal 1: Divine Retribution -- holy light explodes outward in all directions from Guinevere
     divine_retribution: zeal(
       "divine_retribution", "Divine Retribution", AttackHeight.MID,
-      9, 8, 19, 145, 29, 27, 17, 48,
-      { x: 30, y: -128, width: 118, height: 88 },
-      { movesForward: 75 },
+      8, 10, 22, 148, 30, 28, 18, 48,
+      { x: -65, y: -205, width: 228, height: 218 },
     ),
-    // Zeal 2: Queen's Judgment -- massive launcher with devastating damage
+    // Zeal 2: Queen's Judgment -- the sky opens up, holy light descends across the entire arena
     queens_judgment: zeal(
-      "queens_judgment", "Queen's Judgment", AttackHeight.MID,
-      13, 10, 27, 290, 58, 39, 23, 78,
-      { x: 20, y: -148, width: 155, height: 118 },
-      { movesForward: 55, isLauncher: true },
+      "queens_judgment", "Queen's Judgment", AttackHeight.OVERHEAD,
+      16, 10, 30, 292, 58, 40, 24, 78,
+      { x: 0, y: -255, width: 700, height: 258 },
+      { isLauncher: true },
     ),
   },
 

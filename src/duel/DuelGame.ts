@@ -226,7 +226,7 @@ export class DuelGame {
     this._stateMachine.transition(DuelPhase.ARENA_SELECT);
     this._stateMachine.transition(DuelPhase.INTRO);
 
-    this._introView.show(sw, sh, p1Id, actualP2Id, () => {
+    this._introView.show(sw, sh, p1Id, actualP2Id, arenaId, () => {
       this._beginFighting();
     });
     viewManager.addToLayer("ui", this._introView.container);
