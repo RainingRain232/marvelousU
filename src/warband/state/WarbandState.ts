@@ -180,6 +180,9 @@ export interface WarbandFighter {
   // AI state (null for player)
   ai: AIState | null;
 
+  // Spell cooldown
+  lastSpellTick: number;
+
   // Stats tracking
   kills: number;
   damage_dealt: number;
@@ -211,6 +214,12 @@ export interface WarbandProjectile {
   alive: boolean;
   age: number; // ticks since launched
   projectileColor?: number; // magic ray color (set for staff projectiles)
+
+  // Spell projectile (AoE on impact)
+  isSpell?: boolean;
+  aoeRadius?: number;
+  aoeDamage?: number;
+  aoeColor?: number;
 }
 
 // ---- Horse ----------------------------------------------------------------
@@ -362,6 +371,8 @@ export function createDefaultFighter(
           strafeDir: 1,
           strafeTimer: 0,
         },
+
+    lastSpellTick: -9999,
 
     kills: 0,
     damage_dealt: 0,

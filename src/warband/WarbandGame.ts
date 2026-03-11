@@ -3000,6 +3000,8 @@ function _computeWarbandCost(ut: UnitTypeDef): number {
   const scale = ut.scale ?? 1.0;
   const horseCost = ut.horseArmor === "heavy" ? 200 : ut.horseArmor === "medium" ? 150 : ut.horseArmor === "light" ? 80 : 0;
   let base = hp * (scale > 1.2 ? scale * 0.6 : 1.0) + horseCost;
+  // Mages are more expensive due to spell AoE capability
+  if (ut.building === "mages") base *= 1.8;
   return Math.max(50, Math.round(base / 25) * 25);
 }
 
@@ -4229,6 +4231,9 @@ export class WarbandGame {
   }
 
   private _equipUnitType(fighter: WarbandFighter, unitType: UnitTypeDef, state?: WarbandState): void {
+    // Use unit type name for kill feed
+    fighter.name = unitType.name;
+
     // Creature units — override stats from CreatureDef, no equipment
     if (unitType.creatureType) {
       const cDef = CREATURE_DEFS[unitType.creatureType];
@@ -4398,6 +4403,11 @@ export class WarbandGame {
           this._fx.spawnBlood(hit.position.x, hit.position.y, hit.position.z, hit.damage);
           this._fx.spawnHitSparks(hit.position.x, hit.position.y, hit.position.z, false);
         }
+      }
+
+      // AoE spell explosions
+      for (const aoe of this._combatSystem.aoeExplosions) {
+        this._fx.spawnAoeExplosion(aoe.x, aoe.y, aoe.z, aoe.radius, aoe.color);
       }
 
       for (const kill of this._combatSystem.kills) {

@@ -16,6 +16,48 @@ import { ArmorSlot } from "../config/ArmorDefs";
 import { isRangedWeapon, isStaffWeapon } from "../config/WeaponDefs";
 import { CREATURE_DEFS } from "../config/CreatureDefs";
 
+// ---- Spell definitions (extensible – add new spells here) -------------------
+
+export interface SpellDef {
+  id: string;
+  /** Cooldown in ticks between casts */
+  cooldownTicks: number;
+  /** Damage multiplier applied to weapon damage for the AoE */
+  aoeDamageMult: number;
+  /** Base AoE radius (world units) */
+  aoeRadius: number;
+  /** Extra radius per tier (tier 1 = base mage, tier 2 = adept, tier 3 = master) */
+  aoeRadiusPerTier: number;
+  /** Extra damage multiplier per tier */
+  aoeDamagePerTier: number;
+}
+
+/** Map staff accent color → spell definition. Easily extensible for new spell types. */
+const SPELL_DEFS: Record<string, SpellDef> = {
+  // fire (0xff3300)
+  default: {
+    id: "arcane_blast",
+    cooldownTicks: 600, // 10 seconds at 60 tps
+    aoeDamageMult: 0.5,
+    aoeRadius: 1.5,
+    aoeRadiusPerTier: 0.5,
+    aoeDamagePerTier: 0.15,
+  },
+};
+
+function getSpellDef(_staffId: string): SpellDef {
+  // For now all staves use the same spell; later we can key by staff id
+  return SPELL_DEFS["default"];
+}
+
+/** Determine mage "spell tier" from staff id: base=0, adept=1, master=2, elite=3 */
+function getSpellTier(staffId: string): number {
+  if (staffId.includes("master") || staffId.includes("dark_savant")) return 2;
+  if (staffId.includes("adept") || staffId.includes("warlock")) return 1;
+  if (staffId.includes("battlemage") || staffId.includes("archmage")) return 3;
+  return 0;
+}
+
 // ---- Hitbox zone from attack direction ------------------------------------
 
 function attackHitZone(dir: CombatDirection): ArmorSlot {
@@ -88,9 +130,17 @@ export class WarbandCombatSystem {
   /** Kills that happened this tick */
   readonly kills: { killerId: string; victimId: string }[] = [];
 
+  /** AoE explosions that happened this tick (for FX) */
+  readonly aoeExplosions: {
+    x: number; y: number; z: number;
+    radius: number;
+    color: number;
+  }[] = [];
+
   update(state: WarbandState): void {
     this.hits.length = 0;
     this.kills.length = 0;
+    this.aoeExplosions.length = 0;
 
     for (const fighter of state.fighters) {
       if (fighter.combatState === FighterCombatState.DEAD) continue;
@@ -167,6 +217,15 @@ export class WarbandCombatSystem {
         this._fireProjectile(fighter, state);
         fighter.combatState = FighterCombatState.RECOVERY;
         fighter.stateTimer = WB.RECOVERY_TICKS_BASE;
+      }
+
+      // Spell casting (staff wielders only, on cooldown)
+      if (
+        fighter.equipment.mainHand &&
+        isStaffWeapon(fighter.equipment.mainHand) &&
+        fighter.ai // only AI casts spells for now
+      ) {
+        this._trySpellCast(fighter, state);
       }
     }
 
@@ -421,6 +480,65 @@ export class WarbandCombatSystem {
     state.projectiles.push(proj);
   }
 
+  /** Try to cast a spell (cooldown-gated). Fires a spell projectile that explodes on impact. */
+  private _trySpellCast(fighter: WarbandFighter, state: WarbandState): void {
+    const wpn = fighter.equipment.mainHand!;
+    const spell = getSpellDef(wpn.id);
+    if (state.tick - fighter.lastSpellTick < spell.cooldownTicks) return;
+
+    // Need a target in range
+    if (!fighter.ai?.targetId) return;
+    const target = state.fighters.find(f => f.id === fighter.ai!.targetId);
+    if (!target || target.combatState === FighterCombatState.DEAD) return;
+
+    const dist = vec3DistXZ(fighter.position, target.position);
+    if (dist > 25) return; // max spell range
+
+    fighter.lastSpellTick = state.tick;
+
+    // Fire spell projectile (reuses normal projectile, but flagged as spell)
+    const tier = getSpellTier(wpn.id);
+    const color = wpn.accentColor ?? 0xffffff;
+    const speed = wpn.projectileSpeed ?? WB.ARROW_SPEED;
+    const accuracy = wpn.accuracy ?? 0.85;
+    const spread = (1 - accuracy) * 0.1;
+
+    // Aim at target
+    const dx = target.position.x - fighter.position.x;
+    const dz = target.position.z - fighter.position.z;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    const dirX = (dx / len) + (Math.random() - 0.5) * spread;
+    const dirZ = (dz / len) + (Math.random() - 0.5) * spread;
+    const dirY = (Math.random() - 0.5) * spread * 0.3;
+
+    const proj: WarbandProjectile = {
+      id: `spell_${state.tick}_${fighter.id}`,
+      ownerId: fighter.id,
+      ownerTeam: fighter.team,
+      position: {
+        x: fighter.position.x + Math.sin(fighter.rotation) * 0.5,
+        y: fighter.position.y + (fighter.isMounted ? WB.HORSE_HEIGHT : 0) + WB.FIGHTER_HEIGHT * 0.75,
+        z: fighter.position.z + Math.cos(fighter.rotation) * 0.5,
+      },
+      velocity: {
+        x: dirX * speed,
+        y: dirY * speed,
+        z: dirZ * speed,
+      },
+      damage: wpn.damage,
+      gravity: 0,
+      alive: true,
+      age: 0,
+      projectileColor: color,
+      isSpell: true,
+      aoeRadius: spell.aoeRadius + spell.aoeRadiusPerTier * tier,
+      aoeDamage: Math.round(wpn.damage * (spell.aoeDamageMult + spell.aoeDamagePerTier * tier)),
+      aoeColor: color,
+    };
+
+    state.projectiles.push(proj);
+  }
+
   private _updateProjectiles(state: WarbandState): void {
     const dt = WB.SIM_TICK_MS / 1000;
 
@@ -441,6 +559,7 @@ export class WarbandCombatSystem {
 
       // Ground collision
       if (proj.position.y <= 0) {
+        if (proj.isSpell) this._detonateSpell(proj, state);
         proj.alive = false;
         continue;
       }
@@ -464,6 +583,7 @@ export class WarbandCombatSystem {
           const damage = Math.max(1, Math.round(proj.damage - horseDef));
           horse.hp -= damage;
           if (horse.hp <= 0) { horse.hp = 0; horse.alive = false; }
+          if (proj.isSpell) this._detonateSpell(proj, state);
           proj.alive = false;
           break;
         }
@@ -594,9 +714,75 @@ export class WarbandCombatSystem {
             }
           }
 
+          if (proj.isSpell) this._detonateSpell(proj, state);
           proj.alive = false;
           break;
         }
+      }
+    }
+  }
+
+  /** Detonate a spell projectile: deal AoE damage to all enemies in radius */
+  private _detonateSpell(proj: WarbandProjectile, state: WarbandState): void {
+    const radius = proj.aoeRadius ?? 1.5;
+    const aoeDmg = proj.aoeDamage ?? 5;
+    const color = proj.aoeColor ?? 0xffffff;
+
+    this.aoeExplosions.push({
+      x: proj.position.x,
+      y: Math.max(0.1, proj.position.y),
+      z: proj.position.z,
+      radius,
+      color,
+    });
+
+    const owner = state.fighters.find(f => f.id === proj.ownerId);
+
+    for (const target of state.fighters) {
+      if (target.team === proj.ownerTeam) continue;
+      if (target.combatState === FighterCombatState.DEAD) continue;
+
+      const dx = proj.position.x - target.position.x;
+      const dz = proj.position.z - target.position.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist > radius) continue;
+
+      // Damage falls off linearly with distance
+      const falloff = 1 - (dist / radius) * 0.5;
+      const damage = Math.max(1, Math.round(aoeDmg * falloff));
+
+      target.hp -= damage;
+      target.lastHitBy = proj.ownerId;
+      if (owner) owner.damage_dealt += damage;
+
+      this.hits.push({
+        attacker: proj.ownerId,
+        target: target.id,
+        damage,
+        zone: ArmorSlot.TORSO,
+        blocked: false,
+        position: { x: target.position.x, y: target.position.y + 0.8, z: target.position.z },
+      });
+
+      if (target.hp <= 0) {
+        target.hp = 0;
+        target.combatState = FighterCombatState.DEAD;
+        if (owner) {
+          owner.kills++;
+          owner.gold += WB.GOLD_PER_KILL;
+        }
+
+        if (target.isMounted && target.mountId) {
+          const horse = state.horses.find(h => h.id === target.mountId);
+          if (horse) horse.riderId = null;
+          target.mountId = null;
+          target.isMounted = false;
+        }
+
+        this.kills.push({ killerId: proj.ownerId, victimId: target.id });
+
+        if (target.team === "player") state.playerTeamAlive--;
+        else state.enemyTeamAlive--;
       }
     }
   }

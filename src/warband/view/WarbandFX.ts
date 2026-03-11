@@ -12,11 +12,21 @@ interface Particle {
   gravity: number;
 }
 
+interface AoeRing {
+  mesh: THREE.Mesh;
+  x: number;
+  z: number;
+  maxRadius: number;
+  age: number;
+  duration: number; // total lifetime in seconds
+}
+
 export class WarbandFX {
   private _scene: THREE.Scene;
   private _particles: Particle[] = [];
   private _pool: THREE.Mesh[] = [];
   private _maxParticles = 200;
+  private _aoeRings: AoeRing[] = [];
 
   // Shared geometries/materials
   private _sparkGeo: THREE.BufferGeometry;
@@ -111,8 +121,58 @@ export class WarbandFX {
     });
   }
 
-  /** Update all particles */
+  /** Spawn an AoE spell explosion – filled disc that expands outward then fades */
+  spawnAoeExplosion(x: number, _y: number, z: number, radius: number, color: number): void {
+    // Create a flat filled circle (high-segment disc) that will scale up
+    const geo = new THREE.CircleGeometry(1, 48); // unit circle, we scale it
+    const mat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2; // lay flat on ground
+    mesh.position.set(x, 0.08, z);
+    mesh.scale.set(0.01, 0.01, 0.01); // start tiny
+    this._scene.add(mesh);
+
+    this._aoeRings.push({
+      mesh,
+      x, z,
+      maxRadius: radius,
+      age: 0,
+      duration: 0.6,
+    });
+  }
+
+  /** Update all particles and AoE rings */
   update(dt: number): void {
+    // Update AoE expanding rings
+    for (let i = this._aoeRings.length - 1; i >= 0; i--) {
+      const ring = this._aoeRings[i];
+      ring.age += dt;
+
+      if (ring.age >= ring.duration) {
+        this._scene.remove(ring.mesh);
+        ring.mesh.geometry.dispose();
+        (ring.mesh.material as THREE.Material).dispose();
+        this._aoeRings.splice(i, 1);
+        continue;
+      }
+
+      const t = ring.age / ring.duration; // 0→1
+      // Expand: fast ease-out (sqrt curve)
+      const expandT = Math.sqrt(t);
+      const r = ring.maxRadius * expandT;
+      ring.mesh.scale.set(r, r, r);
+
+      // Opacity: full at start, fade out in the second half
+      const mat = ring.mesh.material as THREE.MeshBasicMaterial;
+      mat.opacity = t < 0.5 ? 0.7 : 0.7 * (1 - (t - 0.5) / 0.5);
+    }
+
     for (let i = this._particles.length - 1; i >= 0; i--) {
       const p = this._particles[i];
       p.life -= dt;
@@ -181,8 +241,14 @@ export class WarbandFX {
     for (const m of this._pool) {
       this._scene.remove(m);
     }
+    for (const ring of this._aoeRings) {
+      this._scene.remove(ring.mesh);
+      ring.mesh.geometry.dispose();
+      (ring.mesh.material as THREE.Material).dispose();
+    }
     this._particles.length = 0;
     this._pool.length = 0;
+    this._aoeRings.length = 0;
     this._sparkGeo.dispose();
     this._bloodGeo.dispose();
     this._sparkMat.dispose();
