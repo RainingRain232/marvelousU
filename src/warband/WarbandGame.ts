@@ -4415,6 +4415,11 @@ export class WarbandGame {
         this._fx.spawnChainBolt(seg.from, seg.to, seg.color);
       }
 
+      // Heal AoE rings
+      for (const heal of this._combatSystem.healExplosions) {
+        this._fx.spawnHealAoe(heal.x, heal.z, heal.radius);
+      }
+
       for (const kill of this._combatSystem.kills) {
         const killer = this._state.fighters.find((f) => f.id === kill.killerId);
         const victim = this._state.fighters.find((f) => f.id === kill.victimId);

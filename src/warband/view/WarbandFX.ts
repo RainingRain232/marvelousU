@@ -27,6 +27,15 @@ interface ChainBolt {
   duration: number;
 }
 
+interface HealRing {
+  mesh: THREE.Mesh;
+  x: number;
+  z: number;
+  radius: number;
+  age: number;
+  duration: number;
+}
+
 export class WarbandFX {
   private _scene: THREE.Scene;
   private _particles: Particle[] = [];
@@ -34,6 +43,7 @@ export class WarbandFX {
   private _maxParticles = 200;
   private _aoeRings: AoeRing[] = [];
   private _chainBolts: ChainBolt[] = [];
+  private _healRings: HealRing[] = [];
 
   // Shared geometries/materials
   private _sparkGeo: THREE.BufferGeometry;
@@ -195,6 +205,31 @@ export class WarbandFX {
     this._chainBolts.push({ mesh, age: 0, duration: 0.35 });
   }
 
+  /** Spawn a healing AoE – a ring outline that rises upward from the ground */
+  spawnHealAoe(x: number, z: number, radius: number): void {
+    // Torus ring (visible ring outline, not filled)
+    const geo = new THREE.TorusGeometry(radius, 0.08, 8, 48);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x66ff88,
+      transparent: true,
+      opacity: 0.8,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2; // lay flat
+    mesh.position.set(x, 0.1, z);
+    this._scene.add(mesh);
+
+    this._healRings.push({
+      mesh,
+      x, z,
+      radius,
+      age: 0,
+      duration: 0.9,
+    });
+  }
+
   /** Update all particles and AoE rings */
   update(dt: number): void {
     // Update AoE expanding rings
@@ -242,6 +277,27 @@ export class WarbandFX {
       const pulse = t < 0.1 ? 1 + t * 8 : 1.8 * (1 - (t - 0.1) / 0.9);
       bolt.mesh.scale.x = Math.max(0.1, pulse);
       bolt.mesh.scale.y = Math.max(0.1, pulse);
+    }
+
+    // Update heal rings – rise upward while fading
+    for (let i = this._healRings.length - 1; i >= 0; i--) {
+      const hr = this._healRings[i];
+      hr.age += dt;
+
+      if (hr.age >= hr.duration) {
+        this._scene.remove(hr.mesh);
+        hr.mesh.geometry.dispose();
+        (hr.mesh.material as THREE.Material).dispose();
+        this._healRings.splice(i, 1);
+        continue;
+      }
+
+      const t = hr.age / hr.duration;
+      // Rise from ground to ~2 units high
+      hr.mesh.position.y = 0.1 + t * 2.5;
+      // Fade out smoothly
+      const mat = hr.mesh.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.8 * (1 - t * t);
     }
 
     for (let i = this._particles.length - 1; i >= 0; i--) {
@@ -322,10 +378,16 @@ export class WarbandFX {
       bolt.mesh.geometry.dispose();
       (bolt.mesh.material as THREE.Material).dispose();
     }
+    for (const hr of this._healRings) {
+      this._scene.remove(hr.mesh);
+      hr.mesh.geometry.dispose();
+      (hr.mesh.material as THREE.Material).dispose();
+    }
     this._particles.length = 0;
     this._pool.length = 0;
     this._aoeRings.length = 0;
     this._chainBolts.length = 0;
+    this._healRings.length = 0;
     this._sparkGeo.dispose();
     this._bloodGeo.dispose();
     this._sparkMat.dispose();

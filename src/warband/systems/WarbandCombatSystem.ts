@@ -78,6 +78,20 @@ function isChainStaff(staffId: string): boolean {
   return staffId.includes("storm") || staffId.includes("lightning") || staffId.includes("distortion");
 }
 
+/** Returns true if the staff is a healing staff (heals allies in AoE) */
+function isHealStaff(staffId: string): boolean {
+  return staffId.includes("healing") || staffId.includes("cleric") || staffId.includes("saint");
+}
+
+/** Heal AoE config */
+const HEAL_SPELL_DEF = {
+  cooldownTicks: 600,
+  healMult: 0.6,       // base heal as fraction of weapon damage
+  healPerTier: 0.2,
+  aoeRadius: 2.0,
+  aoeRadiusPerTier: 0.5,
+};
+
 function getSpellDef(_staffId: string): SpellDef {
   return SPELL_DEFS["default"];
 }
@@ -176,11 +190,18 @@ export class WarbandCombatSystem {
     color: number;
   }[] = [];
 
+  /** Heal AoE events this tick (for FX – visually distinct from damage AoE) */
+  readonly healExplosions: {
+    x: number; y: number; z: number;
+    radius: number;
+  }[] = [];
+
   update(state: WarbandState): void {
     this.hits.length = 0;
     this.kills.length = 0;
     this.aoeExplosions.length = 0;
     this.chainSegments.length = 0;
+    this.healExplosions.length = 0;
 
     for (const fighter of state.fighters) {
       if (fighter.combatState === FighterCombatState.DEAD) continue;
@@ -523,6 +544,15 @@ export class WarbandCombatSystem {
   /** Try to cast a spell (cooldown-gated). Routes to AoE or chain depending on staff type. */
   private _trySpellCast(fighter: WarbandFighter, state: WarbandState): void {
     const wpn = fighter.equipment.mainHand!;
+
+    // Heal spell: centered on self, doesn't need an enemy target
+    if (isHealStaff(wpn.id)) {
+      if (state.tick - fighter.lastSpellTick < HEAL_SPELL_DEF.cooldownTicks) return;
+      fighter.lastSpellTick = state.tick;
+      this._castHealSpell(fighter, state);
+      return;
+    }
+
     const cooldown = isChainStaff(wpn.id) ? CHAIN_SPELL_DEF.cooldownTicks : getSpellDef(wpn.id).cooldownTicks;
     if (state.tick - fighter.lastSpellTick < cooldown) return;
 
@@ -666,6 +696,34 @@ export class WarbandCombatSystem {
         }
       }
       currentTarget = bestTarget;
+    }
+  }
+
+  /** Cast a healing AoE centered on the caster, healing nearby allies */
+  private _castHealSpell(fighter: WarbandFighter, state: WarbandState): void {
+    const wpn = fighter.equipment.mainHand!;
+    const tier = getSpellTier(wpn.id);
+    const radius = HEAL_SPELL_DEF.aoeRadius + HEAL_SPELL_DEF.aoeRadiusPerTier * tier;
+    const healAmount = Math.round(wpn.damage * (HEAL_SPELL_DEF.healMult + HEAL_SPELL_DEF.healPerTier * tier));
+
+    this.healExplosions.push({
+      x: fighter.position.x,
+      y: fighter.position.y,
+      z: fighter.position.z,
+      radius,
+    });
+
+    for (const ally of state.fighters) {
+      if (ally.team !== fighter.team) continue;
+      if (ally.combatState === FighterCombatState.DEAD) continue;
+      if (ally.hp >= ally.maxHp) continue;
+
+      const dist = vec3DistXZ(fighter.position, ally.position);
+      if (dist > radius) continue;
+
+      const falloff = 1 - (dist / radius) * 0.5;
+      const heal = Math.max(1, Math.round(healAmount * falloff));
+      ally.hp = Math.min(ally.maxHp, ally.hp + heal);
     }
   }
 
