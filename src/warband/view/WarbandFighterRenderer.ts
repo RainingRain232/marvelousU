@@ -1427,10 +1427,19 @@ export class FighterMesh {
 
     const shield = fighter.equipment.offHand;
     if (shield && shield.category === "shield") {
-      // Scale down shield radius so large shields don't look oversized
+      const isRect = shield.shieldShape === "rect";
+      // Scale down shield so large shields don't look oversized
       const shieldRadius = Math.min(shield.length * 0.55, 0.35);
-      // Slightly convex disc — CircleGeometry for flat face + slight z-scale for curvature
-      const shieldGeo = new THREE.CircleGeometry(shieldRadius, 16);
+      const shieldW = isRect ? shieldRadius * 1.3 : shieldRadius; // width
+      const shieldH = isRect ? shieldRadius * 1.8 : shieldRadius; // height
+
+      let shieldGeo: THREE.BufferGeometry;
+      if (isRect) {
+        // Rectangular shield — rounded-corner look via PlaneGeometry
+        shieldGeo = new THREE.PlaneGeometry(shieldW * 2, shieldH * 2, 1, 1);
+      } else {
+        shieldGeo = new THREE.CircleGeometry(shieldRadius, 16);
+      }
       const shieldMat = new THREE.MeshStandardMaterial({
         color: shield.color,
         roughness: 0.6,
@@ -1438,8 +1447,6 @@ export class FighterMesh {
         side: THREE.DoubleSide,
       });
       this._shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
-      // Shield face points in +Z (forward from the forearm)
-      // Positioned to cover the hand, counter-rotate on X to stay vertical
       this._shieldMesh.position.set(0, -FOREARM_LEN * 0.99, LIMB_THICKNESS + 0.01);
       this._shieldMesh.rotation.x = 0.6;
       this._shieldMesh.castShadow = true;
@@ -1451,10 +1458,29 @@ export class FighterMesh {
         roughness: 0.35,
         metalness: 0.6,
       });
-      const rimGeo = new THREE.TorusGeometry(shieldRadius, 0.012, 4, 16);
-      const rim = new THREE.Mesh(rimGeo, rimMat);
-      rim.position.z = 0.005;
-      this._shieldMesh.add(rim);
+      if (isRect) {
+        // Rectangular rim — four edge bars
+        const rimThick = 0.012;
+        const topGeo = new THREE.BoxGeometry(shieldW * 2 + rimThick * 2, rimThick * 2, rimThick);
+        const sideGeo = new THREE.BoxGeometry(rimThick * 2, shieldH * 2, rimThick);
+        const topRim = new THREE.Mesh(topGeo, rimMat);
+        topRim.position.set(0, shieldH, 0.005);
+        this._shieldMesh.add(topRim);
+        const botRim = new THREE.Mesh(topGeo, rimMat);
+        botRim.position.set(0, -shieldH, 0.005);
+        this._shieldMesh.add(botRim);
+        const leftRim = new THREE.Mesh(sideGeo, rimMat);
+        leftRim.position.set(-shieldW, 0, 0.005);
+        this._shieldMesh.add(leftRim);
+        const rightRim = new THREE.Mesh(sideGeo, rimMat);
+        rightRim.position.set(shieldW, 0, 0.005);
+        this._shieldMesh.add(rightRim);
+      } else {
+        const rimGeo = new THREE.TorusGeometry(shieldRadius, 0.012, 4, 16);
+        const rim = new THREE.Mesh(rimGeo, rimMat);
+        rim.position.z = 0.005;
+        this._shieldMesh.add(rim);
+      }
 
       // Shield boss (center dome) — faces outward (+Z)
       const bossGeo = new THREE.SphereGeometry(shieldRadius * 0.22, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2);
@@ -1467,22 +1493,22 @@ export class FighterMesh {
       boss.position.z = 0.01;
       this._shieldMesh.add(boss);
 
-      // Shield cross / reinforcing strips (two crossing bars)
+      // Shield cross / reinforcing strips
       const stripMat = new THREE.MeshStandardMaterial({
         color: shield.accentColor ?? 0x888888,
         roughness: 0.4,
         metalness: 0.5,
       });
-      const hStripGeo = new THREE.BoxGeometry(shieldRadius * 1.6, 0.02, 0.008);
+      const hStripGeo = new THREE.BoxGeometry(shieldW * 1.6, 0.02, 0.008);
       const hStrip = new THREE.Mesh(hStripGeo, stripMat);
       hStrip.position.z = 0.008;
       this._shieldMesh.add(hStrip);
-      const vStripGeo = new THREE.BoxGeometry(0.02, shieldRadius * 1.6, 0.008);
+      const vStripGeo = new THREE.BoxGeometry(0.02, shieldH * 1.6, 0.008);
       const vStrip = new THREE.Mesh(vStripGeo, stripMat);
       vStrip.position.z = 0.008;
       this._shieldMesh.add(vStrip);
 
-      // Shield back handle (visible from behind, against arm)
+      // Shield back handle
       const handleMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.8 });
       const shieldHandleGeo = new THREE.BoxGeometry(0.02, shieldRadius * 0.6, 0.02);
       const shieldHandle = new THREE.Mesh(shieldHandleGeo, handleMat);
