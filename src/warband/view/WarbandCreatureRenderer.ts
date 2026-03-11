@@ -286,39 +286,65 @@ export class CreatureMesh {
     const darkMat = mat(0x3a4a2a);
     const boneMat = mat(0xc8b890);
     const eyeMat = mat(0xcc2200, { emissive: 0x441100 });
+    const scarMat = mat(0x4a5a2a);
+    const veinMat = mat(0x4e5c34);
 
     // Torso — hunched, barrel-shaped
-    const torsoGeo = new THREE.SphereGeometry(1, 10, 8);
+    const torsoGeo = new THREE.SphereGeometry(1, 20, 16);
     const torso = new THREE.Mesh(torsoGeo, skinMat);
     torso.scale.set(0.55, 0.7, 0.45);
     torso.position.y = 2.2;
     this._body.add(torso);
 
     // Belly — potbelly
-    const bellyGeo = new THREE.SphereGeometry(1, 8, 6);
+    const bellyGeo = new THREE.SphereGeometry(1, 18, 14);
     const belly = new THREE.Mesh(bellyGeo, skinMat);
     belly.scale.set(0.5, 0.5, 0.42);
     belly.position.set(0, 1.8, 0.15);
     this._body.add(belly);
 
+    // Belly fold detail — skin crease under the gut
+    const bellyFoldGeo = new THREE.SphereGeometry(1, 16, 12);
+    const bellyFold = new THREE.Mesh(bellyFoldGeo, darkMat);
+    bellyFold.scale.set(0.48, 0.06, 0.4);
+    bellyFold.position.set(0, 1.55, 0.18);
+    this._body.add(bellyFold);
+
     // Hunch / upper back
-    const hunchGeo = new THREE.SphereGeometry(1, 8, 6);
+    const hunchGeo = new THREE.SphereGeometry(1, 18, 14);
     const hunch = new THREE.Mesh(hunchGeo, skinMat);
     hunch.scale.set(0.48, 0.35, 0.4);
     hunch.position.set(0, 2.7, -0.15);
     this._body.add(hunch);
 
+    // Spine bumps along back
+    for (let i = 0; i < 4; i++) {
+      const spineGeo = new THREE.SphereGeometry(0.04 + i * 0.005, 10, 8);
+      const spine = new THREE.Mesh(spineGeo, darkMat);
+      spine.position.set(0, 2.8 - i * 0.25, -0.25);
+      this._body.add(spine);
+    }
+
+    // Chest muscle definition
+    for (const side of [-1, 1]) {
+      const pectGeo = new THREE.SphereGeometry(1, 16, 12);
+      const pect = new THREE.Mesh(pectGeo, veinMat);
+      pect.scale.set(0.18, 0.12, 0.1);
+      pect.position.set(side * 0.2, 2.35, 0.3);
+      this._body.add(pect);
+    }
+
     // Head — small relative to body, jutting forward
     this._head.position.set(0, 2.8, 0.25);
     this._body.add(this._head);
 
-    const headGeo = new THREE.SphereGeometry(1, 8, 6);
+    const headGeo = new THREE.SphereGeometry(1, 18, 14);
     const headMesh = new THREE.Mesh(headGeo, skinMat);
     headMesh.scale.set(0.22, 0.25, 0.24);
     this._head.add(headMesh);
 
     // Brow ridge
-    const browGeo = new THREE.SphereGeometry(1, 6, 4);
+    const browGeo = new THREE.SphereGeometry(1, 16, 12);
     const brow = new THREE.Mesh(browGeo, darkMat);
     brow.scale.set(0.24, 0.08, 0.12);
     brow.position.set(0, 0.12, 0.14);
@@ -326,22 +352,36 @@ export class CreatureMesh {
 
     // Eyes — small, red
     for (const side of [-1, 1]) {
-      const eyeGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eyeGeo = new THREE.SphereGeometry(0.04, 12, 10);
       const eye = new THREE.Mesh(eyeGeo, eyeMat);
       eye.position.set(side * 0.1, 0.08, 0.2);
       this._head.add(eye);
     }
 
+    // Nostrils — dark pits on face
+    for (const side of [-1, 1]) {
+      const nostrilGeo = new THREE.SphereGeometry(0.02, 10, 8);
+      const nostril = new THREE.Mesh(nostrilGeo, darkMat);
+      nostril.position.set(side * 0.04, 0.0, 0.23);
+      this._head.add(nostril);
+    }
+
     // Jaw / underbite
-    const jawGeo = new THREE.SphereGeometry(1, 6, 4);
+    const jawGeo = new THREE.SphereGeometry(1, 16, 12);
     const jaw = new THREE.Mesh(jawGeo, skinMat);
     jaw.scale.set(0.2, 0.12, 0.16);
     jaw.position.set(0, -0.1, 0.12);
     this._head.add(jaw);
 
+    // Chin wart
+    const chinWartGeo = new THREE.SphereGeometry(0.025, 10, 8);
+    const chinWart = new THREE.Mesh(chinWartGeo, darkMat);
+    chinWart.position.set(0.03, -0.16, 0.15);
+    this._head.add(chinWart);
+
     // Tusks
     for (const side of [-1, 1]) {
-      const tuskGeo = new THREE.ConeGeometry(0.025, 0.1, 5);
+      const tuskGeo = new THREE.ConeGeometry(0.025, 0.1, 12);
       const tusk = new THREE.Mesh(tuskGeo, boneMat);
       tusk.position.set(side * 0.1, -0.08, 0.18);
       tusk.rotation.x = -0.3;
@@ -350,7 +390,7 @@ export class CreatureMesh {
 
     // Ears — ragged, pointed
     for (const side of [-1, 1]) {
-      const earGeo = new THREE.ConeGeometry(0.06, 0.15, 4);
+      const earGeo = new THREE.ConeGeometry(0.06, 0.15, 12);
       const ear = new THREE.Mesh(earGeo, skinMat);
       ear.position.set(side * 0.22, 0.05, 0.0);
       ear.rotation.z = side * 0.6;
@@ -363,33 +403,61 @@ export class CreatureMesh {
       arm.position.set(side * 0.6, 2.5, 0.0);
       this._body.add(arm);
 
+      // Shoulder muscle
+      const shoulderGeo = new THREE.SphereGeometry(0.16, 16, 12);
+      const shoulder = new THREE.Mesh(shoulderGeo, skinMat);
+      shoulder.position.set(0, 0.05, 0);
+      arm.add(shoulder);
+
       // Upper arm
-      const upperGeo = cyl(0.14, 0.12, 0.7, 7);
+      const upperGeo = cyl(0.14, 0.12, 0.7, 14);
       const upper = new THREE.Mesh(upperGeo, skinMat);
       upper.position.y = -0.35;
       arm.add(upper);
 
+      // Bicep bulge
+      const bicepGeo = new THREE.SphereGeometry(0.08, 12, 10);
+      const bicep = new THREE.Mesh(bicepGeo, veinMat);
+      bicep.scale.set(1.0, 0.7, 0.8);
+      bicep.position.set(0, -0.25, 0.06);
+      arm.add(bicep);
+
       // Forearm — thicker
-      const foreGeo = cyl(0.12, 0.1, 0.65, 7);
+      const foreGeo = cyl(0.12, 0.1, 0.65, 14);
       const fore = new THREE.Mesh(foreGeo, skinMat);
       fore.position.y = -0.9;
       arm.add(fore);
 
+      // Tendon detail on forearm
+      const tendonGeo = new THREE.SphereGeometry(1, 12, 10);
+      const tendon = new THREE.Mesh(tendonGeo, veinMat);
+      tendon.scale.set(0.04, 0.2, 0.03);
+      tendon.position.set(side * 0.06, -0.85, 0.05);
+      arm.add(tendon);
+
       // Fist — large, clublike
-      const fistGeo = new THREE.SphereGeometry(0.14, 6, 6);
+      const fistGeo = new THREE.SphereGeometry(0.14, 16, 12);
       const fist = new THREE.Mesh(fistGeo, darkMat);
       fist.position.y = -1.3;
       arm.add(fist);
+
+      // Knuckle bumps
+      for (let k = -1; k <= 1; k++) {
+        const knuckleGeo = new THREE.SphereGeometry(0.03, 10, 8);
+        const knuckle = new THREE.Mesh(knuckleGeo, darkMat);
+        knuckle.position.set(k * 0.05, -1.35, 0.1);
+        arm.add(knuckle);
+      }
     }
 
     // Club in right hand
-    const clubGeo = cyl(0.06, 0.1, 1.0, 6);
+    const clubGeo = cyl(0.06, 0.1, 1.0, 12);
     const club = new THREE.Mesh(clubGeo, mat(0x5c3317));
     club.position.y = -1.7;
     this._rightArm.add(club);
 
     // Club knob
-    const knobGeo = new THREE.SphereGeometry(0.13, 6, 6);
+    const knobGeo = new THREE.SphereGeometry(0.13, 16, 12);
     const knob = new THREE.Mesh(knobGeo, mat(0x4a2810));
     knob.position.y = -2.2;
     this._rightArm.add(knob);
@@ -401,19 +469,32 @@ export class CreatureMesh {
       this._body.add(leg);
 
       // Thigh
-      const thighGeo = cyl(0.18, 0.14, 0.65, 7);
+      const thighGeo = cyl(0.18, 0.14, 0.65, 14);
       const thigh = new THREE.Mesh(thighGeo, skinMat);
       thigh.position.y = -0.32;
       leg.add(thigh);
 
+      // Knee bump
+      const kneeGeo = new THREE.SphereGeometry(0.09, 12, 10);
+      const knee = new THREE.Mesh(kneeGeo, skinMat);
+      knee.position.set(0, -0.6, 0.06);
+      leg.add(knee);
+
       // Shin
-      const shinGeo = cyl(0.14, 0.1, 0.55, 7);
+      const shinGeo = cyl(0.14, 0.1, 0.55, 14);
       const shin = new THREE.Mesh(shinGeo, skinMat);
       shin.position.y = -0.8;
       leg.add(shin);
 
+      // Calf muscle
+      const calfGeo = new THREE.SphereGeometry(0.07, 12, 10);
+      const calf = new THREE.Mesh(calfGeo, veinMat);
+      calf.scale.set(0.8, 1.2, 0.8);
+      calf.position.set(0, -0.75, -0.06);
+      leg.add(calf);
+
       // Foot
-      const footGeo = new THREE.SphereGeometry(1, 6, 5);
+      const footGeo = new THREE.SphereGeometry(1, 16, 12);
       const foot = new THREE.Mesh(footGeo, darkMat);
       foot.scale.set(0.13, 0.08, 0.18);
       foot.position.set(0, -1.12, 0.06);
@@ -422,7 +503,7 @@ export class CreatureMesh {
 
     // Warts / skin detail
     for (let i = 0; i < 6; i++) {
-      const wartGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 5, 5);
+      const wartGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 10, 8);
       const wart = new THREE.Mesh(wartGeo, darkMat);
       const angle = Math.random() * Math.PI * 2;
       wart.position.set(
@@ -431,6 +512,17 @@ export class CreatureMesh {
         Math.sin(angle) * (0.3 + Math.random() * 0.1),
       );
       this._body.add(wart);
+    }
+
+    // Scar lines on torso — color-shifted overlays for depth
+    for (let i = 0; i < 3; i++) {
+      const scarGeo = new THREE.SphereGeometry(1, 12, 10);
+      const scar = new THREE.Mesh(scarGeo, scarMat);
+      scar.scale.set(0.03, 0.15, 0.02);
+      const ang = -0.4 + i * 0.4;
+      scar.position.set(Math.sin(ang) * 0.4, 2.0 + i * 0.2, Math.cos(ang) * 0.35);
+      scar.rotation.z = 0.3 + i * 0.2;
+      this._body.add(scar);
     }
   }
 
@@ -441,9 +533,11 @@ export class CreatureMesh {
     const darkMat = mat(0x6b5335);
     const boneMat = mat(0xd4c4a0);
     const eyeMat = mat(0xffcc00, { emissive: 0x884400 });
+    const wrinkleMat = mat(0x7a6345);
+    const veinMat = mat(0x7b6040);
 
     // Torso — massive, broad-shouldered
-    const torsoGeo = new THREE.SphereGeometry(1, 12, 10);
+    const torsoGeo = new THREE.SphereGeometry(1, 22, 18);
     const torso = new THREE.Mesh(torsoGeo, skinMat);
     torso.scale.set(0.75, 0.9, 0.6);
     torso.position.y = 3.0;
@@ -451,15 +545,26 @@ export class CreatureMesh {
 
     // Chest muscles
     for (const side of [-1, 1]) {
-      const pectGeo = new THREE.SphereGeometry(1, 6, 5);
+      const pectGeo = new THREE.SphereGeometry(1, 18, 14);
       const pect = new THREE.Mesh(pectGeo, skinMat);
       pect.scale.set(0.3, 0.2, 0.2);
       pect.position.set(side * 0.25, 3.2, 0.4);
       this._body.add(pect);
     }
 
+    // Abdominal muscle ridges
+    for (let i = 0; i < 3; i++) {
+      for (const side of [-1, 1]) {
+        const abGeo = new THREE.SphereGeometry(1, 14, 10);
+        const ab = new THREE.Mesh(abGeo, wrinkleMat);
+        ab.scale.set(0.12, 0.08, 0.06);
+        ab.position.set(side * 0.12, 2.7 - i * 0.2, 0.42);
+        this._body.add(ab);
+      }
+    }
+
     // Belly
-    const bellyGeo = new THREE.SphereGeometry(1, 8, 6);
+    const bellyGeo = new THREE.SphereGeometry(1, 18, 14);
     const belly = new THREE.Mesh(bellyGeo, skinMat);
     belly.scale.set(0.6, 0.55, 0.5);
     belly.position.set(0, 2.4, 0.1);
@@ -469,45 +574,62 @@ export class CreatureMesh {
     this._head.position.set(0, 4.0, 0.15);
     this._body.add(this._head);
 
-    const headGeo = new THREE.SphereGeometry(1, 10, 8);
+    const headGeo = new THREE.SphereGeometry(1, 20, 16);
     const headMesh = new THREE.Mesh(headGeo, skinMat);
     headMesh.scale.set(0.35, 0.38, 0.33);
     this._head.add(headMesh);
 
     // Single great eye — centered
-    const eyeSocketGeo = new THREE.SphereGeometry(1, 8, 6);
+    const eyeSocketGeo = new THREE.SphereGeometry(1, 18, 14);
     const eyeSocket = new THREE.Mesh(eyeSocketGeo, darkMat);
     eyeSocket.scale.set(0.15, 0.12, 0.08);
     eyeSocket.position.set(0, 0.08, 0.28);
     this._head.add(eyeSocket);
 
-    const eyeGeo = new THREE.SphereGeometry(0.09, 8, 8);
+    const eyeGeo = new THREE.SphereGeometry(0.09, 18, 14);
     const eye = new THREE.Mesh(eyeGeo, eyeMat);
     eye.position.set(0, 0.08, 0.3);
     this._head.add(eye);
 
     // Pupil
-    const pupilGeo = new THREE.SphereGeometry(0.04, 6, 6);
+    const pupilGeo = new THREE.SphereGeometry(0.04, 14, 12);
     const pupil = new THREE.Mesh(pupilGeo, mat(0x111111));
     pupil.position.set(0, 0.08, 0.38);
     this._head.add(pupil);
 
     // Brow ridge — heavy
-    const browGeo = new THREE.SphereGeometry(1, 8, 4);
+    const browGeo = new THREE.SphereGeometry(1, 18, 12);
     const brow = new THREE.Mesh(browGeo, skinMat);
     brow.scale.set(0.36, 0.1, 0.15);
     brow.position.set(0, 0.2, 0.2);
     this._head.add(brow);
 
+    // Brow wrinkle lines
+    for (let i = 0; i < 3; i++) {
+      const wrinkleGeo = new THREE.SphereGeometry(1, 12, 10);
+      const wrinkle = new THREE.Mesh(wrinkleGeo, wrinkleMat);
+      wrinkle.scale.set(0.28 - i * 0.04, 0.015, 0.04);
+      wrinkle.position.set(0, 0.26 + i * 0.04, 0.22);
+      this._head.add(wrinkle);
+    }
+
     // Nose — broad
-    const noseGeo = new THREE.SphereGeometry(1, 5, 5);
+    const noseGeo = new THREE.SphereGeometry(1, 16, 12);
     const nose = new THREE.Mesh(noseGeo, skinMat);
     nose.scale.set(0.08, 0.1, 0.1);
     nose.position.set(0, -0.05, 0.3);
     this._head.add(nose);
 
+    // Nostrils
+    for (const side of [-1, 1]) {
+      const nostrilGeo = new THREE.SphereGeometry(0.02, 10, 8);
+      const nostril = new THREE.Mesh(nostrilGeo, darkMat);
+      nostril.position.set(side * 0.04, -0.08, 0.35);
+      this._head.add(nostril);
+    }
+
     // Jaw — heavy, wide
-    const jawGeo = new THREE.SphereGeometry(1, 7, 5);
+    const jawGeo = new THREE.SphereGeometry(1, 18, 14);
     const jaw = new THREE.Mesh(jawGeo, skinMat);
     jaw.scale.set(0.32, 0.18, 0.22);
     jaw.position.set(0, -0.2, 0.1);
@@ -515,7 +637,7 @@ export class CreatureMesh {
 
     // Teeth
     for (let i = -2; i <= 2; i++) {
-      const toothGeo = new THREE.ConeGeometry(0.02, 0.06, 4);
+      const toothGeo = new THREE.ConeGeometry(0.02, 0.06, 10);
       const tooth = new THREE.Mesh(toothGeo, boneMat);
       tooth.position.set(i * 0.06, -0.28, 0.18);
       tooth.rotation.x = Math.PI;
@@ -524,7 +646,7 @@ export class CreatureMesh {
 
     // Ears
     for (const side of [-1, 1]) {
-      const earGeo = new THREE.SphereGeometry(1, 5, 4);
+      const earGeo = new THREE.SphereGeometry(1, 16, 12);
       const ear = new THREE.Mesh(earGeo, skinMat);
       ear.scale.set(0.06, 0.12, 0.1);
       ear.position.set(side * 0.33, 0.05, 0.0);
@@ -538,34 +660,72 @@ export class CreatureMesh {
       this._body.add(arm);
 
       // Shoulder
-      const shoulderGeo = new THREE.SphereGeometry(0.2, 7, 6);
+      const shoulderGeo = new THREE.SphereGeometry(0.2, 16, 14);
       const shoulder = new THREE.Mesh(shoulderGeo, skinMat);
       arm.add(shoulder);
 
       // Upper arm
-      const upperGeo = cyl(0.18, 0.15, 0.9, 8);
+      const upperGeo = cyl(0.18, 0.15, 0.9, 14);
       const upper = new THREE.Mesh(upperGeo, skinMat);
       upper.position.y = -0.45;
       arm.add(upper);
 
+      // Bicep muscle bulge
+      const bicepGeo = new THREE.SphereGeometry(0.1, 14, 12);
+      const bicep = new THREE.Mesh(bicepGeo, veinMat);
+      bicep.scale.set(1.0, 0.7, 0.8);
+      bicep.position.set(0, -0.35, 0.08);
+      arm.add(bicep);
+
       // Forearm
-      const foreGeo = cyl(0.15, 0.12, 0.85, 7);
+      const foreGeo = cyl(0.15, 0.12, 0.85, 14);
       const fore = new THREE.Mesh(foreGeo, skinMat);
       fore.position.y = -1.2;
       arm.add(fore);
 
+      // Forearm vein detail
+      const foreVeinGeo = new THREE.SphereGeometry(1, 12, 10);
+      const foreVein = new THREE.Mesh(foreVeinGeo, veinMat);
+      foreVein.scale.set(0.03, 0.25, 0.02);
+      foreVein.position.set(side * 0.07, -1.1, 0.06);
+      arm.add(foreVein);
+
+      // Elbow bump
+      const elbowGeo = new THREE.SphereGeometry(0.08, 12, 10);
+      const elbow = new THREE.Mesh(elbowGeo, skinMat);
+      elbow.position.set(0, -0.85, -0.06);
+      arm.add(elbow);
+
       // Hand
-      const handGeo = new THREE.SphereGeometry(0.16, 6, 6);
+      const handGeo = new THREE.SphereGeometry(0.16, 16, 12);
       const hand = new THREE.Mesh(handGeo, darkMat);
       hand.position.y = -1.7;
       arm.add(hand);
+
+      // Knuckle ridges
+      for (let k = -1; k <= 1; k++) {
+        const knuckleGeo = new THREE.SphereGeometry(0.035, 10, 8);
+        const knuckle = new THREE.Mesh(knuckleGeo, darkMat);
+        knuckle.position.set(k * 0.06, -1.76, 0.1);
+        arm.add(knuckle);
+      }
     }
 
     // Boulder in right hand
-    const boulderGeo = new THREE.SphereGeometry(0.25, 8, 6);
+    const boulderGeo = new THREE.SphereGeometry(0.25, 18, 14);
     const boulder = new THREE.Mesh(boulderGeo, mat(0x888888, { roughness: 0.9 }));
     boulder.position.y = -1.95;
     this._rightArm.add(boulder);
+
+    // Boulder cracks / texture detail
+    for (let i = 0; i < 4; i++) {
+      const crackGeo = new THREE.SphereGeometry(1, 10, 8);
+      const crack = new THREE.Mesh(crackGeo, mat(0x666666, { roughness: 1.0 }));
+      const a = (i / 4) * Math.PI * 2;
+      crack.scale.set(0.02, 0.08, 0.02);
+      crack.position.set(Math.cos(a) * 0.15, -1.95 + Math.sin(a) * 0.1, Math.sin(a) * 0.15);
+      this._rightArm.add(crack);
+    }
 
     // ---- Legs — tree-trunk thick ----
     for (const side of [-1, 1]) {
@@ -574,19 +734,39 @@ export class CreatureMesh {
       this._body.add(leg);
 
       // Thigh
-      const thighGeo = cyl(0.22, 0.18, 0.85, 8);
+      const thighGeo = cyl(0.22, 0.18, 0.85, 14);
       const thigh = new THREE.Mesh(thighGeo, skinMat);
       thigh.position.y = -0.42;
       leg.add(thigh);
 
+      // Quad muscle bulge
+      const quadGeo = new THREE.SphereGeometry(0.1, 14, 10);
+      const quad = new THREE.Mesh(quadGeo, veinMat);
+      quad.scale.set(1.0, 0.8, 0.7);
+      quad.position.set(0, -0.35, 0.1);
+      leg.add(quad);
+
+      // Knee cap
+      const kneeGeo = new THREE.SphereGeometry(0.1, 12, 10);
+      const knee = new THREE.Mesh(kneeGeo, skinMat);
+      knee.position.set(0, -0.8, 0.08);
+      leg.add(knee);
+
       // Shin
-      const shinGeo = cyl(0.18, 0.13, 0.75, 7);
+      const shinGeo = cyl(0.18, 0.13, 0.75, 14);
       const shin = new THREE.Mesh(shinGeo, skinMat);
       shin.position.y = -1.1;
       leg.add(shin);
 
+      // Calf muscle
+      const calfGeo = new THREE.SphereGeometry(0.09, 14, 10);
+      const calfMuscle = new THREE.Mesh(calfGeo, veinMat);
+      calfMuscle.scale.set(0.8, 1.2, 0.8);
+      calfMuscle.position.set(0, -1.0, -0.08);
+      leg.add(calfMuscle);
+
       // Foot
-      const footGeo = new THREE.SphereGeometry(1, 6, 5);
+      const footGeo = new THREE.SphereGeometry(1, 18, 14);
       const foot = new THREE.Mesh(footGeo, darkMat);
       foot.scale.set(0.16, 0.1, 0.24);
       foot.position.set(0, -1.55, 0.08);
@@ -594,7 +774,7 @@ export class CreatureMesh {
 
       // Toes
       for (let t = -1; t <= 1; t++) {
-        const toeGeo = new THREE.SphereGeometry(0.04, 4, 4);
+        const toeGeo = new THREE.SphereGeometry(0.04, 10, 8);
         const toe = new THREE.Mesh(toeGeo, darkMat);
         toe.position.set(t * 0.06, -1.58, 0.22);
         leg.add(toe);
@@ -614,11 +794,22 @@ export class CreatureMesh {
     // Necklace of bones
     for (let i = 0; i < 5; i++) {
       const angle = -0.4 + i * 0.2;
-      const boneGeo = new THREE.ConeGeometry(0.025, 0.12, 4);
+      const boneGeo = new THREE.ConeGeometry(0.025, 0.12, 10);
       const bone = new THREE.Mesh(boneGeo, boneMat);
       bone.position.set(Math.sin(angle) * 0.55, 3.6, Math.cos(angle) * 0.45);
       bone.rotation.z = Math.sin(angle) * 0.3;
       this._body.add(bone);
+    }
+
+    // Skin wrinkle folds on sides
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const foldGeo = new THREE.SphereGeometry(1, 12, 10);
+        const fold = new THREE.Mesh(foldGeo, wrinkleMat);
+        fold.scale.set(0.04, 0.18, 0.02);
+        fold.position.set(side * 0.6, 2.6 + i * 0.25, 0.0);
+        this._body.add(fold);
+      }
     }
   }
 
@@ -631,17 +822,28 @@ export class CreatureMesh {
     const eyeMat = mat(0xcc1111, { emissive: 0x881111 });
     const fangMat = mat(0x332211);
     const bristleMat = mat(0x111118);
+    const glossMat = mat(0x252540);
+    const textureMat = mat(0x1e1e30);
 
     // ---- Abdomen — large, bulbous rear section ----
-    const abdomenGeo = new THREE.SphereGeometry(1, 12, 10);
+    const abdomenGeo = new THREE.SphereGeometry(1, 22, 18);
     const abdomen = new THREE.Mesh(abdomenGeo, blackMat);
     abdomen.scale.set(0.55, 0.45, 0.7);
     abdomen.position.set(0, 1.2, -0.6);
     this._body.add(abdomen);
 
+    // Abdomen surface gloss highlights — slight color-shifted overlays
+    for (const side of [-1, 1]) {
+      const glossGeo = new THREE.SphereGeometry(1, 16, 12);
+      const gloss = new THREE.Mesh(glossGeo, glossMat);
+      gloss.scale.set(0.25, 0.2, 0.35);
+      gloss.position.set(side * 0.2, 1.3, -0.6);
+      this._body.add(gloss);
+    }
+
     // Abdomen markings (hourglass / chevron shapes)
     for (let i = 0; i < 3; i++) {
-      const markGeo = new THREE.SphereGeometry(1, 5, 4);
+      const markGeo = new THREE.SphereGeometry(1, 16, 12);
       const mark = new THREE.Mesh(markGeo, purpleMat);
       mark.scale.set(0.12 - i * 0.02, 0.04, 0.06);
       mark.position.set(0, 1.38, -0.45 - i * 0.22);
@@ -649,15 +851,28 @@ export class CreatureMesh {
     }
 
     // Abdomen underside pattern
-    const underMarkGeo = new THREE.SphereGeometry(1, 5, 4);
+    const underMarkGeo = new THREE.SphereGeometry(1, 16, 12);
     const underMark = new THREE.Mesh(underMarkGeo, mat(0x441133));
     underMark.scale.set(0.15, 0.03, 0.12);
     underMark.position.set(0, 0.88, -0.6);
     this._body.add(underMark);
 
+    // Abdomen texture dimples — subtle surface variation
+    for (let i = 0; i < 6; i++) {
+      const ang = (i / 6) * Math.PI * 2;
+      const dimpleGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const dimple = new THREE.Mesh(dimpleGeo, textureMat);
+      dimple.position.set(
+        Math.cos(ang) * 0.35,
+        1.2 + Math.sin(ang) * 0.15,
+        -0.6 + Math.sin(ang) * 0.4,
+      );
+      this._body.add(dimple);
+    }
+
     // Spinnerets at back
     for (let i = -1; i <= 1; i++) {
-      const spinGeo = new THREE.ConeGeometry(0.03, 0.1, 5);
+      const spinGeo = new THREE.ConeGeometry(0.03, 0.1, 12);
       const spin = new THREE.Mesh(spinGeo, purpleMat);
       spin.position.set(i * 0.06, 1.0, -1.22);
       spin.rotation.x = Math.PI * 0.6;
@@ -665,14 +880,21 @@ export class CreatureMesh {
     }
 
     // ---- Cephalothorax — front body section ----
-    const cephGeo = new THREE.SphereGeometry(1, 10, 8);
+    const cephGeo = new THREE.SphereGeometry(1, 20, 16);
     const ceph = new THREE.Mesh(cephGeo, blackMat);
     ceph.scale.set(0.4, 0.32, 0.4);
     ceph.position.set(0, 1.3, 0.2);
     this._body.add(ceph);
 
+    // Cephalothorax carapace ridge — dorsal line
+    const carapaceGeo = new THREE.SphereGeometry(1, 14, 10);
+    const carapace = new THREE.Mesh(carapaceGeo, textureMat);
+    carapace.scale.set(0.05, 0.06, 0.3);
+    carapace.position.set(0, 1.48, 0.2);
+    this._body.add(carapace);
+
     // Narrow waist connecting cephalothorax and abdomen
-    const waistGeo = cyl(0.1, 0.12, 0.2, 6);
+    const waistGeo = cyl(0.1, 0.12, 0.2, 14);
     const waist = new THREE.Mesh(waistGeo, blackMat);
     waist.position.set(0, 1.2, -0.15);
     waist.rotation.x = Math.PI / 2;
@@ -682,7 +904,7 @@ export class CreatureMesh {
     this._head.position.set(0, 1.5, 0.5);
     this._body.add(this._head);
 
-    const headGeo = new THREE.SphereGeometry(1, 8, 6);
+    const headGeo = new THREE.SphereGeometry(1, 18, 14);
     const headMesh = new THREE.Mesh(headGeo, blackMat);
     headMesh.scale.set(0.18, 0.16, 0.18);
     this._head.add(headMesh);
@@ -699,7 +921,7 @@ export class CreatureMesh {
       { x: 0.04, y: 0.14, z: 0.08, r: 0.015 },
     ];
     for (const ep of eyePositions) {
-      const eGeo = new THREE.SphereGeometry(ep.r, 6, 6);
+      const eGeo = new THREE.SphereGeometry(ep.r, 14, 12);
       const eMesh = new THREE.Mesh(eGeo, eyeMat);
       eMesh.position.set(ep.x, ep.y, ep.z);
       this._head.add(eMesh);
@@ -711,34 +933,47 @@ export class CreatureMesh {
 
     for (const side of [-1, 1]) {
       // Fang base segment
-      const baseGeo = cyl(0.04, 0.035, 0.15, 6);
+      const baseGeo = cyl(0.04, 0.035, 0.15, 12);
       const base = new THREE.Mesh(baseGeo, blackMat);
       base.position.set(side * 0.08, -0.05, 0.05);
       base.rotation.x = 0.3;
       this._rightArm.add(base);
 
       // Fang tip — curved, pointed
-      const tipGeo = new THREE.ConeGeometry(0.025, 0.14, 5);
+      const tipGeo = new THREE.ConeGeometry(0.025, 0.14, 12);
       const tip = new THREE.Mesh(tipGeo, fangMat);
       tip.position.set(side * 0.08, -0.18, 0.08);
       tip.rotation.x = 0.2;
       this._rightArm.add(tip);
 
       // Fang venom drop — tiny glowing bead
-      const venomGeo = new THREE.SphereGeometry(0.012, 5, 5);
+      const venomGeo = new THREE.SphereGeometry(0.012, 12, 10);
       const venom = new THREE.Mesh(venomGeo, mat(0x33cc33, { emissive: 0x115511, transparent: true, opacity: 0.8 }));
       venom.position.set(side * 0.08, -0.26, 0.09);
       this._rightArm.add(venom);
+
+      // Fang ridge / serration detail
+      const ridgeGeo = new THREE.SphereGeometry(1, 10, 8);
+      const ridge = new THREE.Mesh(ridgeGeo, fangMat);
+      ridge.scale.set(0.008, 0.04, 0.008);
+      ridge.position.set(side * 0.08, -0.12, 0.09);
+      this._rightArm.add(ridge);
     }
 
     // Pedipalps (small feelers beside fangs)
     for (const side of [-1, 1]) {
-      const palpGeo = cyl(0.015, 0.02, 0.1, 5);
+      const palpGeo = cyl(0.015, 0.02, 0.1, 10);
       const palp = new THREE.Mesh(palpGeo, darkLegMat);
       palp.position.set(side * 0.14, -0.02, 0.08);
       palp.rotation.x = 0.5;
       palp.rotation.z = side * 0.3;
       this._rightArm.add(palp);
+
+      // Pedipalp tip bulb
+      const palpTipGeo = new THREE.SphereGeometry(0.018, 10, 8);
+      const palpTip = new THREE.Mesh(palpTipGeo, darkLegMat);
+      palpTip.position.set(side * 0.15, -0.1, 0.12);
+      this._rightArm.add(palpTip);
     }
 
     // ---- Left arm (not used visually, park it inside body) ----
@@ -772,7 +1007,7 @@ export class CreatureMesh {
         sideData.group.add(legGroup);
 
         // Coxa — short segment near body
-        const coxaGeo = cyl(0.04, 0.035, 0.2, 6);
+        const coxaGeo = cyl(0.04, 0.035, 0.2, 12);
         const coxa = new THREE.Mesh(coxaGeo, darkLegMat);
         coxa.rotation.z = lp.spreadX * 0.8;
         coxa.rotation.x = lp.spreadZ * 0.3;
@@ -780,15 +1015,21 @@ export class CreatureMesh {
         legGroup.add(coxa);
 
         // Femur — long, angled outward and upward
-        const femurGeo = cyl(0.032, 0.025, 0.55, 6);
+        const femurGeo = cyl(0.032, 0.025, 0.55, 12);
         const femur = new THREE.Mesh(femurGeo, blackMat);
         femur.position.set(sideData.side * 0.35, 0.25, lp.spreadZ * 0.25);
         femur.rotation.z = lp.spreadX * 0.55;
         femur.rotation.x = lp.spreadZ * 0.4;
         legGroup.add(femur);
 
+        // Joint knob between femur and tibia
+        const jointGeo = new THREE.SphereGeometry(0.028, 10, 8);
+        const joint = new THREE.Mesh(jointGeo, darkLegMat);
+        joint.position.set(sideData.side * 0.48, 0.02, lp.spreadZ * 0.35);
+        legGroup.add(joint);
+
         // Tibia — angled downward to ground
-        const tibiaGeo = cyl(0.022, 0.01, 0.65, 6);
+        const tibiaGeo = cyl(0.022, 0.01, 0.65, 12);
         const tibia = new THREE.Mesh(tibiaGeo, darkLegMat);
         tibia.position.set(sideData.side * 0.6, -0.2, lp.spreadZ * 0.45);
         tibia.rotation.z = -sideData.side * 0.6;
@@ -796,7 +1037,7 @@ export class CreatureMesh {
         legGroup.add(tibia);
 
         // Pointed tip
-        const tipGeo = new THREE.ConeGeometry(0.015, 0.06, 4);
+        const tipGeo = new THREE.ConeGeometry(0.015, 0.06, 10);
         const tip = new THREE.Mesh(tipGeo, fangMat);
         tip.position.set(sideData.side * 0.7, -0.55, lp.spreadZ * 0.55);
         tip.rotation.z = -sideData.side * 0.3;
@@ -804,7 +1045,7 @@ export class CreatureMesh {
 
         // Bristles / hair on femur and tibia
         for (let b = 0; b < 3; b++) {
-          const bristleGeo = new THREE.ConeGeometry(0.006, 0.05, 3);
+          const bristleGeo = new THREE.ConeGeometry(0.006, 0.05, 6);
           const bristle = new THREE.Mesh(bristleGeo, bristleMat);
           bristle.position.set(
             sideData.side * (0.3 + b * 0.12),
@@ -814,13 +1055,26 @@ export class CreatureMesh {
           bristle.rotation.z = -sideData.side * 0.8;
           legGroup.add(bristle);
         }
+
+        // Extra bristle pairs for more hairy appearance
+        for (let b = 0; b < 2; b++) {
+          const extraBristleGeo = new THREE.ConeGeometry(0.005, 0.04, 5);
+          const extraBristle = new THREE.Mesh(extraBristleGeo, bristleMat);
+          extraBristle.position.set(
+            sideData.side * (0.25 + b * 0.2),
+            0.1 - b * 0.25,
+            lp.spreadZ * (0.15 + b * 0.12) + 0.03,
+          );
+          extraBristle.rotation.z = -sideData.side * 1.0;
+          legGroup.add(extraBristle);
+        }
       }
     }
 
     // Abdomen bristles — scattered tiny spines
     for (let i = 0; i < 8; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const bGeo = new THREE.ConeGeometry(0.008, 0.06, 3);
+      const bGeo = new THREE.ConeGeometry(0.008, 0.06, 6);
       const b = new THREE.Mesh(bGeo, bristleMat);
       b.position.set(
         Math.cos(angle) * (0.25 + Math.random() * 0.2),
@@ -829,6 +1083,15 @@ export class CreatureMesh {
       );
       b.rotation.set(Math.cos(angle) * 0.5, 0, Math.sin(angle) * 0.5);
       this._body.add(b);
+    }
+
+    // Silk gland bumps on abdomen rear
+    for (let i = 0; i < 3; i++) {
+      const glandGeo = new THREE.SphereGeometry(0.025, 10, 8);
+      const gland = new THREE.Mesh(glandGeo, purpleMat);
+      const a = -0.3 + i * 0.3;
+      gland.position.set(Math.sin(a) * 0.15, 0.95, -1.1 + Math.cos(a) * 0.05);
+      this._body.add(gland);
     }
   }
 
@@ -842,33 +1105,53 @@ export class CreatureMesh {
     const pupilMat = mat(0x111111);
     const tongueMat = mat(0xcc5566);
     const mouthMat = mat(0x3a1a1a);
+    const moistMat = mat(0x357a2f);
+    const veinMat = mat(0x245220);
 
     // ---- Body — wide, squat, flattened sphere ----
-    const bodyGeo = new THREE.SphereGeometry(1, 14, 10);
+    const bodyGeo = new THREE.SphereGeometry(1, 22, 18);
     const body = new THREE.Mesh(bodyGeo, skinMat);
     body.scale.set(0.7, 0.45, 0.6);
     body.position.set(0, 1.0, 0.0);
     this._body.add(body);
 
     // Belly — lighter underside
-    const bellyGeo = new THREE.SphereGeometry(1, 10, 8);
+    const bellyGeo = new THREE.SphereGeometry(1, 20, 16);
     const belly = new THREE.Mesh(bellyGeo, bellyMat);
     belly.scale.set(0.6, 0.35, 0.5);
     belly.position.set(0, 0.85, 0.08);
     this._body.add(belly);
 
+    // Belly fold wrinkles — skin creases
+    for (let i = 0; i < 3; i++) {
+      const foldGeo = new THREE.SphereGeometry(1, 14, 10);
+      const fold = new THREE.Mesh(foldGeo, veinMat);
+      fold.scale.set(0.4, 0.015, 0.3);
+      fold.position.set(0, 0.72 + i * 0.06, 0.05 + i * 0.03);
+      this._body.add(fold);
+    }
+
     // Throat pouch — bulging underneath
-    const throatGeo = new THREE.SphereGeometry(1, 8, 6);
+    const throatGeo = new THREE.SphereGeometry(1, 18, 14);
     const throat = new THREE.Mesh(throatGeo, mat(0x9aaa4b));
     throat.scale.set(0.3, 0.2, 0.28);
     throat.position.set(0, 0.6, 0.35);
     this._body.add(throat);
 
+    // Throat pouch wrinkle lines
+    for (let i = 0; i < 4; i++) {
+      const twGeo = new THREE.SphereGeometry(1, 12, 10);
+      const tw = new THREE.Mesh(twGeo, mat(0x889a3b));
+      tw.scale.set(0.2 - i * 0.03, 0.01, 0.02);
+      tw.position.set(0, 0.52 + i * 0.04, 0.42);
+      this._body.add(tw);
+    }
+
     // Bumpy / warty skin texture — random warts on body
     for (let i = 0; i < 18; i++) {
       const angle = Math.random() * Math.PI * 2;
       const yOff = Math.random() * 0.5;
-      const wartGeo = new THREE.SphereGeometry(0.025 + Math.random() * 0.025, 5, 5);
+      const wartGeo = new THREE.SphereGeometry(0.025 + Math.random() * 0.025, 10, 8);
       const wart = new THREE.Mesh(wartGeo, darkSkinMat);
       wart.position.set(
         Math.cos(angle) * (0.45 + Math.random() * 0.2),
@@ -878,9 +1161,23 @@ export class CreatureMesh {
       this._body.add(wart);
     }
 
+    // Moisture sheen spots — slight color-shifted overlays for wet look
+    for (let i = 0; i < 5; i++) {
+      const ang = (i / 5) * Math.PI * 2;
+      const moistGeo = new THREE.SphereGeometry(1, 14, 10);
+      const moist = new THREE.Mesh(moistGeo, moistMat);
+      moist.scale.set(0.12, 0.04, 0.1);
+      moist.position.set(
+        Math.cos(ang) * 0.4,
+        1.05 + Math.sin(ang) * 0.1,
+        Math.sin(ang) * 0.35,
+      );
+      this._body.add(moist);
+    }
+
     // Back ridges — line of bumps along spine
     for (let i = 0; i < 5; i++) {
-      const ridgeGeo = new THREE.SphereGeometry(0.03 + i * 0.005, 5, 4);
+      const ridgeGeo = new THREE.SphereGeometry(0.03 + i * 0.005, 10, 8);
       const ridge = new THREE.Mesh(ridgeGeo, darkSkinMat);
       ridge.position.set(0, 1.3, -0.1 + i * -0.1);
       this._body.add(ridge);
@@ -890,7 +1187,7 @@ export class CreatureMesh {
     this._head.position.set(0, 1.15, 0.55);
     this._body.add(this._head);
 
-    const headGeo = new THREE.SphereGeometry(1, 10, 8);
+    const headGeo = new THREE.SphereGeometry(1, 20, 16);
     const headMesh = new THREE.Mesh(headGeo, skinMat);
     headMesh.scale.set(0.35, 0.2, 0.25);
     this._head.add(headMesh);
@@ -902,42 +1199,66 @@ export class CreatureMesh {
     mouth.rotation.x = -0.1;
     this._head.add(mouth);
 
+    // Jawline ridges — subtle muscle definition
+    for (const side of [-1, 1]) {
+      const jawRidgeGeo = new THREE.SphereGeometry(1, 14, 10);
+      const jawRidge = new THREE.Mesh(jawRidgeGeo, darkSkinMat);
+      jawRidge.scale.set(0.08, 0.03, 0.12);
+      jawRidge.position.set(side * 0.15, -0.06, 0.1);
+      this._head.add(jawRidge);
+    }
+
     // Nostrils — two small bumps
     for (const side of [-1, 1]) {
-      const nostrilGeo = new THREE.SphereGeometry(0.02, 5, 5);
+      const nostrilGeo = new THREE.SphereGeometry(0.02, 10, 8);
       const nostril = new THREE.Mesh(nostrilGeo, darkSkinMat);
       nostril.position.set(side * 0.06, 0.06, 0.22);
       this._head.add(nostril);
     }
 
+    // Head warts
+    for (let i = 0; i < 3; i++) {
+      const hwGeo = new THREE.SphereGeometry(0.015, 8, 6);
+      const hw = new THREE.Mesh(hwGeo, darkSkinMat);
+      hw.position.set(-0.1 + i * 0.1, 0.12, 0.18 - i * 0.04);
+      this._head.add(hw);
+    }
+
     // ---- Eyes — large, bulging, on top of head ----
     for (const side of [-1, 1]) {
       // Eye dome — protruding bump
-      const eyeDomeGeo = new THREE.SphereGeometry(1, 8, 6);
+      const eyeDomeGeo = new THREE.SphereGeometry(1, 18, 14);
       const eyeDome = new THREE.Mesh(eyeDomeGeo, skinMat);
       eyeDome.scale.set(0.1, 0.1, 0.1);
       eyeDome.position.set(side * 0.18, 0.18, 0.1);
       this._head.add(eyeDome);
 
       // Eyeball
-      const eyeGeo = new THREE.SphereGeometry(0.075, 8, 8);
+      const eyeGeo = new THREE.SphereGeometry(0.075, 18, 14);
       const eye = new THREE.Mesh(eyeGeo, eyeMat);
       eye.position.set(side * 0.18, 0.22, 0.13);
       this._head.add(eye);
 
       // Pupil — horizontal slit
-      const pupilGeo = new THREE.SphereGeometry(0.03, 6, 6);
+      const pupilGeo = new THREE.SphereGeometry(0.03, 14, 12);
       const pupil = new THREE.Mesh(pupilGeo, pupilMat);
       pupil.scale.set(0.4, 1.0, 0.5);
       pupil.position.set(side * 0.18, 0.22, 0.2);
       this._head.add(pupil);
 
       // Eyelid ridge
-      const lidGeo = new THREE.SphereGeometry(1, 6, 4);
+      const lidGeo = new THREE.SphereGeometry(1, 16, 12);
       const lid = new THREE.Mesh(lidGeo, darkSkinMat);
       lid.scale.set(0.1, 0.04, 0.08);
       lid.position.set(side * 0.18, 0.28, 0.12);
       this._head.add(lid);
+
+      // Lower eyelid crease
+      const lowerLidGeo = new THREE.SphereGeometry(1, 12, 10);
+      const lowerLid = new THREE.Mesh(lowerLidGeo, veinMat);
+      lowerLid.scale.set(0.08, 0.02, 0.06);
+      lowerLid.position.set(side * 0.18, 0.16, 0.14);
+      this._head.add(lowerLid);
     }
 
     // Tongue — long cylinder from mouth, on _head so it extends with head motion
@@ -946,13 +1267,13 @@ export class CreatureMesh {
     tongueBase.rotation.x = 0.25;
     this._head.add(tongueBase);
 
-    const tongueCylGeo = cyl(0.025, 0.015, 0.6, 6);
+    const tongueCylGeo = cyl(0.025, 0.015, 0.6, 12);
     const tongueCyl = new THREE.Mesh(tongueCylGeo, tongueMat);
     tongueCyl.position.y = -0.3;
     tongueBase.add(tongueCyl);
 
     // Tongue tip — forked / sticky blob
-    const tongueTipGeo = new THREE.SphereGeometry(0.03, 6, 6);
+    const tongueTipGeo = new THREE.SphereGeometry(0.03, 14, 12);
     const tongueTip = new THREE.Mesh(tongueTipGeo, mat(0xdd6677));
     tongueTip.scale.set(1.5, 0.8, 1.0);
     tongueTip.position.y = -0.6;
@@ -965,28 +1286,42 @@ export class CreatureMesh {
       this._body.add(leg);
 
       // Thigh — thick, angled back
-      const thighGeo = cyl(0.16, 0.12, 0.5, 8);
+      const thighGeo = cyl(0.16, 0.12, 0.5, 14);
       const thigh = new THREE.Mesh(thighGeo, skinMat);
       thigh.position.set(side * 0.1, -0.15, -0.1);
       thigh.rotation.z = side * 0.3;
       thigh.rotation.x = -0.4;
       leg.add(thigh);
 
+      // Thigh muscle bulge
+      const thighMuscleGeo = new THREE.SphereGeometry(0.08, 14, 10);
+      const thighMuscle = new THREE.Mesh(thighMuscleGeo, moistMat);
+      thighMuscle.scale.set(1.0, 0.7, 0.8);
+      thighMuscle.position.set(side * 0.12, -0.1, -0.05);
+      leg.add(thighMuscle);
+
       // Knee joint — bulge
-      const kneeGeo = new THREE.SphereGeometry(0.1, 6, 6);
+      const kneeGeo = new THREE.SphereGeometry(0.1, 16, 12);
       const knee = new THREE.Mesh(kneeGeo, skinMat);
       knee.position.set(side * 0.2, -0.4, -0.3);
       leg.add(knee);
 
       // Shin — bent down from knee
-      const shinGeo = cyl(0.1, 0.07, 0.5, 7);
+      const shinGeo = cyl(0.1, 0.07, 0.5, 14);
       const shin = new THREE.Mesh(shinGeo, skinMat);
       shin.position.set(side * 0.2, -0.7, -0.15);
       shin.rotation.x = 0.5;
       leg.add(shin);
 
+      // Shin tendon ridge
+      const tendonGeo = new THREE.SphereGeometry(1, 12, 10);
+      const tendon = new THREE.Mesh(tendonGeo, veinMat);
+      tendon.scale.set(0.02, 0.15, 0.02);
+      tendon.position.set(side * 0.2, -0.65, -0.2);
+      leg.add(tendon);
+
       // Foot — wide, webbed disc
-      const footGeo = new THREE.SphereGeometry(1, 8, 5);
+      const footGeo = new THREE.SphereGeometry(1, 18, 12);
       const foot = new THREE.Mesh(footGeo, darkSkinMat);
       foot.scale.set(0.14, 0.04, 0.2);
       foot.position.set(side * 0.2, -1.0, -0.02);
@@ -994,7 +1329,7 @@ export class CreatureMesh {
 
       // Webbed toes
       for (let t = -1; t <= 1; t++) {
-        const toeGeo = new THREE.SphereGeometry(1, 5, 4);
+        const toeGeo = new THREE.SphereGeometry(1, 12, 10);
         const toe = new THREE.Mesh(toeGeo, darkSkinMat);
         toe.scale.set(0.04, 0.02, 0.1);
         toe.position.set(side * 0.2 + t * 0.06, -1.02, 0.12);
@@ -1010,7 +1345,7 @@ export class CreatureMesh {
 
       // Warts on thigh
       for (let w = 0; w < 3; w++) {
-        const wGeo = new THREE.SphereGeometry(0.018 + Math.random() * 0.01, 4, 4);
+        const wGeo = new THREE.SphereGeometry(0.018 + Math.random() * 0.01, 8, 6);
         const wart = new THREE.Mesh(wGeo, darkSkinMat);
         wart.position.set(
           side * (0.08 + Math.random() * 0.15),
@@ -1028,20 +1363,26 @@ export class CreatureMesh {
       this._body.add(arm);
 
       // Upper arm — short
-      const upperGeo = cyl(0.08, 0.065, 0.3, 6);
+      const upperGeo = cyl(0.08, 0.065, 0.3, 12);
       const upper = new THREE.Mesh(upperGeo, skinMat);
       upper.position.set(side * 0.05, -0.15, 0.0);
       upper.rotation.z = side * 0.25;
       arm.add(upper);
 
       // Forearm
-      const foreGeo = cyl(0.06, 0.045, 0.28, 6);
+      const foreGeo = cyl(0.06, 0.045, 0.28, 12);
       const fore = new THREE.Mesh(foreGeo, skinMat);
       fore.position.set(side * 0.1, -0.42, 0.0);
       arm.add(fore);
 
+      // Elbow bump
+      const elbowGeo = new THREE.SphereGeometry(0.04, 10, 8);
+      const elbow = new THREE.Mesh(elbowGeo, skinMat);
+      elbow.position.set(side * 0.08, -0.3, -0.03);
+      arm.add(elbow);
+
       // Small webbed foot
-      const footGeo = new THREE.SphereGeometry(1, 6, 4);
+      const footGeo = new THREE.SphereGeometry(1, 16, 12);
       const foot = new THREE.Mesh(footGeo, darkSkinMat);
       foot.scale.set(0.08, 0.025, 0.1);
       foot.position.set(side * 0.1, -0.6, 0.03);
@@ -1049,7 +1390,7 @@ export class CreatureMesh {
 
       // Small toes
       for (let t = -1; t <= 1; t++) {
-        const toeGeo = new THREE.SphereGeometry(0.015, 4, 4);
+        const toeGeo = new THREE.SphereGeometry(0.015, 10, 8);
         const toe = new THREE.Mesh(toeGeo, darkSkinMat);
         toe.position.set(side * 0.1 + t * 0.03, -0.61, 0.08);
         arm.add(toe);
@@ -1066,7 +1407,7 @@ export class CreatureMesh {
     // Spots / color variation on back
     for (let i = 0; i < 8; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const spotGeo = new THREE.SphereGeometry(0.035 + Math.random() * 0.03, 5, 4);
+      const spotGeo = new THREE.SphereGeometry(0.035 + Math.random() * 0.03, 12, 10);
       const spot = new THREE.Mesh(spotGeo, mat(0x1e4a1a));
       spot.position.set(
         Math.cos(angle) * (0.3 + Math.random() * 0.25),
@@ -1075,6 +1416,17 @@ export class CreatureMesh {
       );
       spot.scale.y = 0.4;
       this._body.add(spot);
+    }
+
+    // Flank skin folds — lateral wrinkle detail
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 2; i++) {
+        const flankGeo = new THREE.SphereGeometry(1, 12, 10);
+        const flank = new THREE.Mesh(flankGeo, veinMat);
+        flank.scale.set(0.04, 0.12, 0.02);
+        flank.position.set(side * 0.55, 0.9 + i * 0.12, -0.1);
+        this._body.add(flank);
+      }
     }
   }
 
@@ -1087,39 +1439,59 @@ export class CreatureMesh {
     const armorMat = mat(0x4a4a4a);        // darker armor plates
     const eyeMat = mat(0x221100);          // dark beady eyes
     const hoofMat = mat(0x2a2a2a);         // dark hooves
+    const wrinkleMat = mat(0x505050);      // wrinkle fold color
+    const scarMat = mat(0x525258);         // battle scar overlay
 
     // ---- Main body — massive barrel torso ----
-    const torsoGeo = new THREE.SphereGeometry(1, 12, 10);
+    const torsoGeo = new THREE.SphereGeometry(1, 22, 18);
     const torso = new THREE.Mesh(torsoGeo, hideMat);
     torso.scale.set(0.75, 0.6, 1.1);
     torso.position.set(0, 1.4, 0);
     this._body.add(torso);
 
     // Belly — lighter underside, slightly protruding
-    const bellyGeo = new THREE.SphereGeometry(1, 10, 8);
+    const bellyGeo = new THREE.SphereGeometry(1, 20, 16);
     const belly = new THREE.Mesh(bellyGeo, bellyMat);
     belly.scale.set(0.6, 0.4, 0.9);
     belly.position.set(0, 1.1, 0.05);
     this._body.add(belly);
 
+    // Rib cage hints — subtle surface bumps along flanks
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 4; i++) {
+        const ribGeo = new THREE.SphereGeometry(1, 12, 10);
+        const rib = new THREE.Mesh(ribGeo, wrinkleMat);
+        rib.scale.set(0.04, 0.08, 0.18);
+        rib.position.set(side * 0.55, 1.3 + i * 0.08, 0.2 - i * 0.15);
+        this._body.add(rib);
+      }
+    }
+
     // Rear haunch — heavy rump
-    const haunchGeo = new THREE.SphereGeometry(1, 8, 6);
+    const haunchGeo = new THREE.SphereGeometry(1, 18, 14);
     const haunch = new THREE.Mesh(haunchGeo, hideMat);
     haunch.scale.set(0.65, 0.55, 0.5);
     haunch.position.set(0, 1.5, -0.7);
     this._body.add(haunch);
 
     // Shoulder hump — muscular mass above forelegs
-    const shoulderGeo = new THREE.SphereGeometry(1, 8, 6);
+    const shoulderGeo = new THREE.SphereGeometry(1, 18, 14);
     const shoulderMesh = new THREE.Mesh(shoulderGeo, hideMat);
     shoulderMesh.scale.set(0.65, 0.5, 0.5);
     shoulderMesh.position.set(0, 1.7, 0.65);
     this._body.add(shoulderMesh);
 
+    // Shoulder muscle definition — trapezius overlay
+    const trapGeo = new THREE.SphereGeometry(1, 16, 12);
+    const trap = new THREE.Mesh(trapGeo, wrinkleMat);
+    trap.scale.set(0.5, 0.15, 0.3);
+    trap.position.set(0, 1.9, 0.65);
+    this._body.add(trap);
+
     // ---- Armor plates — overlapping on shoulders and flanks ----
     for (const side of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
-        const plateGeo = new THREE.SphereGeometry(1, 6, 4);
+        const plateGeo = new THREE.SphereGeometry(1, 16, 12);
         const plate = new THREE.Mesh(plateGeo, armorMat);
         plate.scale.set(0.22, 0.12, 0.2);
         plate.position.set(side * 0.5, 1.8 - i * 0.15, 0.55 - i * 0.2);
@@ -1129,7 +1501,7 @@ export class CreatureMesh {
 
     // Spine ridges — armored crest along the back
     for (let i = 0; i < 5; i++) {
-      const ridgeGeo = new THREE.SphereGeometry(1, 5, 4);
+      const ridgeGeo = new THREE.SphereGeometry(1, 16, 12);
       const ridge = new THREE.Mesh(ridgeGeo, armorMat);
       ridge.scale.set(0.35, 0.08, 0.12);
       ridge.position.set(0, 2.0, 0.5 - i * 0.3);
@@ -1138,7 +1510,7 @@ export class CreatureMesh {
 
     // ---- Skin detail — bumps and wrinkles ----
     for (let i = 0; i < 10; i++) {
-      const bumpGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 4, 4);
+      const bumpGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 10, 8);
       const bump = new THREE.Mesh(bumpGeo, armorMat);
       const angle = Math.random() * Math.PI * 2;
       const zOff = -0.8 + Math.random() * 1.6;
@@ -1153,7 +1525,7 @@ export class CreatureMesh {
     // Wrinkle folds on sides
     for (const side of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
-        const foldGeo = cyl(0.02, 0.02, 0.3, 4);
+        const foldGeo = cyl(0.02, 0.02, 0.3, 10);
         const fold = new THREE.Mesh(foldGeo, armorMat);
         fold.position.set(side * 0.6, 1.3 + i * 0.15, 0.1 - i * 0.1);
         fold.rotation.z = Math.PI / 2;
@@ -1162,45 +1534,97 @@ export class CreatureMesh {
       }
     }
 
+    // Battle scars — color-shifted surface marks
+    for (let i = 0; i < 4; i++) {
+      const scarGeo = new THREE.SphereGeometry(1, 12, 10);
+      const scar = new THREE.Mesh(scarGeo, scarMat);
+      scar.scale.set(0.03, 0.12, 0.02);
+      const ang = (i / 4) * Math.PI * 2;
+      scar.position.set(
+        Math.cos(ang) * 0.55,
+        1.4 + Math.sin(ang) * 0.2,
+        0.1 + i * 0.15,
+      );
+      scar.rotation.z = 0.2 + i * 0.3;
+      this._body.add(scar);
+    }
+
     // ---- Neck — thick, angled forward ----
-    const neckGeo = cyl(0.35, 0.4, 0.5, 8);
+    const neckGeo = cyl(0.35, 0.4, 0.5, 14);
     const neck = new THREE.Mesh(neckGeo, hideMat);
     neck.position.set(0, 1.6, 0.9);
     neck.rotation.x = 0.5;
     this._body.add(neck);
 
+    // Neck skin folds
+    for (let i = 0; i < 3; i++) {
+      const nfGeo = new THREE.SphereGeometry(1, 14, 10);
+      const nf = new THREE.Mesh(nfGeo, wrinkleMat);
+      nf.scale.set(0.3, 0.02, 0.25);
+      nf.position.set(0, 1.5 + i * 0.08, 0.85 + i * 0.05);
+      this._body.add(nf);
+    }
+
     // ---- Head — heavy, elongated ----
     this._head.position.set(0, 1.4, 1.3);
     this._body.add(this._head);
 
-    const headGeo = new THREE.SphereGeometry(1, 8, 6);
+    const headGeo = new THREE.SphereGeometry(1, 20, 16);
     const headMesh = new THREE.Mesh(headGeo, hideMat);
     headMesh.scale.set(0.3, 0.25, 0.4);
     this._head.add(headMesh);
 
     // Snout — elongated front of the face
-    const snoutGeo = new THREE.SphereGeometry(1, 7, 5);
+    const snoutGeo = new THREE.SphereGeometry(1, 18, 14);
     const snout = new THREE.Mesh(snoutGeo, hideMat);
     snout.scale.set(0.22, 0.18, 0.25);
     snout.position.set(0, -0.05, 0.3);
     this._head.add(snout);
 
     // Jaw — heavy underjaw
-    const jawGeo = new THREE.SphereGeometry(1, 6, 4);
+    const jawGeo = new THREE.SphereGeometry(1, 16, 12);
     const jaw = new THREE.Mesh(jawGeo, hideMat);
     jaw.scale.set(0.2, 0.1, 0.28);
     jaw.position.set(0, -0.15, 0.15);
     this._head.add(jaw);
 
+    // Cheek / jowl bulges
+    for (const side of [-1, 1]) {
+      const cheekGeo = new THREE.SphereGeometry(1, 14, 10);
+      const cheek = new THREE.Mesh(cheekGeo, hideMat);
+      cheek.scale.set(0.08, 0.08, 0.12);
+      cheek.position.set(side * 0.2, -0.08, 0.2);
+      this._head.add(cheek);
+    }
+
+    // Snout wrinkle lines
+    for (let i = 0; i < 3; i++) {
+      const swGeo = new THREE.SphereGeometry(1, 12, 10);
+      const sw = new THREE.Mesh(swGeo, wrinkleMat);
+      sw.scale.set(0.16 - i * 0.03, 0.01, 0.03);
+      sw.position.set(0, 0.02 + i * 0.04, 0.4 + i * 0.04);
+      this._head.add(sw);
+    }
+
     // ---- Great horn — large cone on the nose (attack weapon) ----
-    const mainHornGeo = new THREE.ConeGeometry(0.1, 0.55, 6);
+    const mainHornGeo = new THREE.ConeGeometry(0.1, 0.55, 14);
     const mainHorn = new THREE.Mesh(mainHornGeo, hornMat);
     mainHorn.position.set(0, 0.2, 0.5);
     mainHorn.rotation.x = -0.6;
     this._head.add(mainHorn);
 
+    // Horn texture ridges — growth ring lines
+    for (let i = 0; i < 3; i++) {
+      const ringGeo = new THREE.SphereGeometry(1, 12, 10);
+      const ring = new THREE.Mesh(ringGeo, mat(0xc4b898));
+      ring.scale.set(0.06 - i * 0.01, 0.01, 0.06 - i * 0.01);
+      ring.position.set(0, 0.08 + i * 0.1, 0.52 - i * 0.03);
+      ring.rotation.x = -0.6;
+      this._head.add(ring);
+    }
+
     // Second smaller horn behind the main one
-    const smallHornGeo = new THREE.ConeGeometry(0.06, 0.25, 5);
+    const smallHornGeo = new THREE.ConeGeometry(0.06, 0.25, 12);
     const smallHorn = new THREE.Mesh(smallHornGeo, hornMat);
     smallHorn.position.set(0, 0.22, 0.2);
     smallHorn.rotation.x = -0.4;
@@ -1208,15 +1632,22 @@ export class CreatureMesh {
 
     // ---- Eyes — small, beady, on sides of head ----
     for (const side of [-1, 1]) {
-      const eyeGeo = new THREE.SphereGeometry(0.035, 6, 6);
+      const eyeGeo = new THREE.SphereGeometry(0.035, 14, 12);
       const eye = new THREE.Mesh(eyeGeo, eyeMat);
       eye.position.set(side * 0.22, 0.05, 0.18);
       this._head.add(eye);
+
+      // Eyelid fold
+      const eyeLidGeo = new THREE.SphereGeometry(1, 12, 10);
+      const eyeLid = new THREE.Mesh(eyeLidGeo, hideMat);
+      eyeLid.scale.set(0.04, 0.02, 0.04);
+      eyeLid.position.set(side * 0.22, 0.08, 0.19);
+      this._head.add(eyeLid);
     }
 
     // ---- Ears — small, thick stubs ----
     for (const side of [-1, 1]) {
-      const earGeo = new THREE.ConeGeometry(0.04, 0.1, 4);
+      const earGeo = new THREE.ConeGeometry(0.04, 0.1, 10);
       const ear = new THREE.Mesh(earGeo, hideMat);
       ear.position.set(side * 0.2, 0.2, -0.05);
       ear.rotation.z = side * 0.3;
@@ -1225,7 +1656,7 @@ export class CreatureMesh {
 
     // Nostrils — dark pits at snout tip
     for (const side of [-1, 1]) {
-      const nostrilGeo = new THREE.SphereGeometry(0.03, 4, 4);
+      const nostrilGeo = new THREE.SphereGeometry(0.03, 10, 8);
       const nostril = new THREE.Mesh(nostrilGeo, armorMat);
       nostril.position.set(side * 0.07, -0.06, 0.5);
       this._head.add(nostril);
@@ -1240,63 +1671,86 @@ export class CreatureMesh {
       this._body.add(leg);
 
       // Front leg — upper
-      const frontUpperGeo = cyl(0.16, 0.14, 0.5, 7);
+      const frontUpperGeo = cyl(0.16, 0.14, 0.5, 14);
       const frontUpper = new THREE.Mesh(frontUpperGeo, hideMat);
       frontUpper.position.set(0, -0.15, 0.55);
       leg.add(frontUpper);
 
       // Front leg — lower
-      const frontLowerGeo = cyl(0.14, 0.12, 0.45, 7);
+      const frontLowerGeo = cyl(0.14, 0.12, 0.45, 14);
       const frontLower = new THREE.Mesh(frontLowerGeo, hideMat);
       frontLower.position.set(0, -0.55, 0.55);
       leg.add(frontLower);
 
       // Front knee joint
-      const frontKneeGeo = new THREE.SphereGeometry(0.13, 5, 5);
+      const frontKneeGeo = new THREE.SphereGeometry(0.13, 14, 12);
       const frontKnee = new THREE.Mesh(frontKneeGeo, hideMat);
       frontKnee.position.set(0, -0.38, 0.55);
       leg.add(frontKnee);
 
       // Front hoof — flat cylinder
-      const frontHoofGeo = cyl(0.14, 0.15, 0.06, 6);
+      const frontHoofGeo = cyl(0.14, 0.15, 0.06, 14);
       const frontHoof = new THREE.Mesh(frontHoofGeo, hoofMat);
       frontHoof.position.set(0, -0.8, 0.55);
       leg.add(frontHoof);
 
+      // Front leg muscle bulge
+      const frontMuscleGeo = new THREE.SphereGeometry(0.07, 12, 10);
+      const frontMuscle = new THREE.Mesh(frontMuscleGeo, wrinkleMat);
+      frontMuscle.scale.set(1.0, 0.8, 0.8);
+      frontMuscle.position.set(0, -0.22, 0.6);
+      leg.add(frontMuscle);
+
       // Back leg — upper (thicker haunches)
-      const backUpperGeo = cyl(0.18, 0.15, 0.5, 7);
+      const backUpperGeo = cyl(0.18, 0.15, 0.5, 14);
       const backUpper = new THREE.Mesh(backUpperGeo, hideMat);
       backUpper.position.set(0, -0.15, -0.5);
       leg.add(backUpper);
 
       // Back leg — lower
-      const backLowerGeo = cyl(0.15, 0.13, 0.45, 7);
+      const backLowerGeo = cyl(0.15, 0.13, 0.45, 14);
       const backLower = new THREE.Mesh(backLowerGeo, hideMat);
       backLower.position.set(0, -0.55, -0.5);
       leg.add(backLower);
 
       // Back knee joint
-      const backKneeGeo = new THREE.SphereGeometry(0.14, 5, 5);
+      const backKneeGeo = new THREE.SphereGeometry(0.14, 14, 12);
       const backKnee = new THREE.Mesh(backKneeGeo, hideMat);
       backKnee.position.set(0, -0.38, -0.5);
       leg.add(backKnee);
 
       // Back hoof
-      const backHoofGeo = cyl(0.15, 0.16, 0.06, 6);
+      const backHoofGeo = cyl(0.15, 0.16, 0.06, 14);
       const backHoof = new THREE.Mesh(backHoofGeo, hoofMat);
       backHoof.position.set(0, -0.8, -0.5);
       leg.add(backHoof);
+
+      // Back leg haunch muscle
+      const haunchMuscleGeo = new THREE.SphereGeometry(0.08, 12, 10);
+      const haunchMuscle = new THREE.Mesh(haunchMuscleGeo, wrinkleMat);
+      haunchMuscle.scale.set(1.0, 0.8, 0.9);
+      haunchMuscle.position.set(0, -0.1, -0.45);
+      leg.add(haunchMuscle);
+
+      // Ankle wrinkle folds
+      for (const zPos of [0.55, -0.5]) {
+        const ankleGeo = new THREE.SphereGeometry(1, 10, 8);
+        const ankle = new THREE.Mesh(ankleGeo, wrinkleMat);
+        ankle.scale.set(0.1, 0.015, 0.1);
+        ankle.position.set(0, -0.7, zPos);
+        leg.add(ankle);
+      }
     }
 
     // ---- Tail — short with tuft ----
-    const tailGeo = cyl(0.06, 0.03, 0.35, 5);
+    const tailGeo = cyl(0.06, 0.03, 0.35, 12);
     const tail = new THREE.Mesh(tailGeo, hideMat);
     tail.position.set(0, 1.5, -1.15);
     tail.rotation.x = -0.7;
     this._body.add(tail);
 
     // Tail tuft
-    const tuftGeo = new THREE.SphereGeometry(0.06, 5, 5);
+    const tuftGeo = new THREE.SphereGeometry(0.06, 12, 10);
     const tuft = new THREE.Mesh(tuftGeo, armorMat);
     tuft.position.set(0, 1.35, -1.35);
     this._body.add(tuft);
