@@ -2850,6 +2850,41 @@ const UNIT_TYPES: UnitTypeDef[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Leader → spawn unit mapping (determines what the player spawns as in battle)
+// ---------------------------------------------------------------------------
+
+const LEADER_SPAWN_UNIT: Record<string, string> = {
+  arthur: "cataphract",
+  merlin: "lightning_adept_mage",
+  guinevere: "royal_guard",
+  lancelot: "heavy_lancer",
+  morgan: "distortion_adept_mage",
+  gawain: "royal_defender",
+  galahad: "questing_knight",
+  percival: "knight_lancer",
+  tristan: "assassin",
+  nimue: "cold_adept_mage",
+  kay: "royal_phalanx",
+  bedivere: "axeman",
+  elaine: "marksman",
+  mordred: "elder_axeman",
+  igraine: "saint",
+  pellinore: "giant_warrior",
+  ector: "cataphract",
+  bors: "royal_defender",
+  uther: "giant_cavalry",
+  lot: "defender",
+  isolde: "saint",
+  gareth: "elite_lancer",
+  agravain: "royal_guard",
+};
+
+function _getLeaderSpawnUnit(leaderId: string): UnitTypeDef {
+  const unitId = LEADER_SPAWN_UNIT[leaderId] ?? "cataphract";
+  return UNIT_TYPES.find(u => u.id === unitId) ?? UNIT_TYPES.find(u => u.id === "cataphract")!;
+}
+
+// ---------------------------------------------------------------------------
 // Shop classification – assigns building, tier, cost, faction to each unit
 // ---------------------------------------------------------------------------
 
@@ -3176,9 +3211,15 @@ export class WarbandGame {
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
 
   async boot(): Promise<void> {
-    // Hide PixiJS
-    const pixiCanvas = document.querySelector("#pixi-container canvas:not(#warband-canvas)") as HTMLCanvasElement | null;
-    if (pixiCanvas) pixiCanvas.style.display = "none";
+    // Hide all PixiJS elements (canvas, webgpu, or any child except warband canvas)
+    const pixiContainer = document.getElementById("pixi-container");
+    if (pixiContainer) {
+      for (const child of Array.from(pixiContainer.children)) {
+        if (child.id !== "warband-canvas" && child.id !== "warband-hud") {
+          (child as HTMLElement).style.display = "none";
+        }
+      }
+    }
 
     // Init Three.js scene
     this._sceneManager.init();
@@ -3228,39 +3269,47 @@ export class WarbandGame {
     `;
 
     this._menuContainer.innerHTML = `
-      <h1 style="font-size:48px;color:#daa520;text-shadow:0 0 20px rgba(218,165,32,0.4);margin-bottom:10px">
-        ⚔ WARBAND ⚔
-      </h1>
-      <p style="color:#aa9977;margin-bottom:40px;font-size:16px">Mount & Blade style combat</p>
+      <div style="position:absolute;top:0;left:0;width:100%;height:100%;
+        background:radial-gradient(ellipse at center,rgba(40,25,10,0.4) 0%,transparent 70%);pointer-events:none"></div>
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%">
+        <div style="font-size:11px;letter-spacing:6px;color:#665533;margin-bottom:8px">MARVELOUS U PRESENTS</div>
+        <h1 style="font-size:56px;color:#daa520;text-shadow:0 0 30px rgba(218,165,32,0.5),0 2px 4px rgba(0,0,0,0.8);margin-bottom:4px;letter-spacing:4px">
+          WARBAND
+        </h1>
+        <div style="width:200px;height:2px;background:linear-gradient(90deg,transparent,#daa520,transparent);margin-bottom:6px"></div>
+        <p style="color:#887755;margin-bottom:35px;font-size:14px;letter-spacing:2px">MEDIEVAL COMBAT</p>
 
-      <button id="wb-open-field" style="${this._menuBtnStyle()}">
-        🏕 Open Field Battle
-        <span style="display:block;font-size:12px;color:#999;margin-top:4px">5v5 on open terrain</span>
-      </button>
+        <button id="wb-open-field" style="${this._menuBtnStyle()}">
+          Open Field Battle
+          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">5v5 on open terrain</span>
+        </button>
 
-      <button id="wb-siege" style="${this._menuBtnStyle()}">
-        🏰 Siege Battle
-        <span style="display:block;font-size:12px;color:#999;margin-top:4px">Storm the castle, capture the centre</span>
-      </button>
+        <button id="wb-siege" style="${this._menuBtnStyle()}">
+          Siege Battle
+          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Storm the castle, capture the centre</span>
+        </button>
 
-      <button id="wb-army" style="${this._menuBtnStyle("#4a2a0a", "#daa520")}">
-        \u{1F451} Army Battle
-        <span style="display:block;font-size:12px;color:#999;margin-top:4px">Up to 100v100 — choose your army</span>
-      </button>
+        <button id="wb-army" style="${this._menuBtnStyle("#3a2008", "#daa520")}">
+          Army Battle
+          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Up to 100v100 — choose your army</span>
+        </button>
 
-      <button id="wb-duel" style="${this._menuBtnStyle()}">
-        🤺 Duel
-        <span style="display:block;font-size:12px;color:#999;margin-top:4px">1v1 single combat</span>
-      </button>
+        <button id="wb-duel" style="${this._menuBtnStyle()}">
+          Duel
+          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">1v1 single combat</span>
+        </button>
 
-      <button id="wb-camera" style="${this._menuBtnStyle("#2a4a2a", "#88aa66")}">
-        📷 Camera View
-        <span style="display:block;font-size:12px;color:#999;margin-top:4px">Inspect character model (C to toggle orbit, IJKL to orbit)</span>
-      </button>
+        <button id="wb-camera" style="${this._menuBtnStyle("#1a2a1a", "#668855")}">
+          Camera View
+          <span style="display:block;font-size:11px;color:#778877;margin-top:4px;font-weight:normal">Inspect character model</span>
+        </button>
 
-      <button id="wb-back" style="${this._menuBtnStyle("#555", "#888")}">
-        ← Back to Hub
-      </button>
+        <div style="width:120px;height:1px;background:linear-gradient(90deg,transparent,#44443a,transparent);margin:12px 0"></div>
+
+        <button id="wb-back" style="${this._menuBtnStyle("#2a2a2a", "#555")}">
+          Back to Hub
+        </button>
+      </div>
     `;
 
     const container = document.getElementById("pixi-container");
@@ -3296,14 +3345,17 @@ export class WarbandGame {
     });
   }
 
-  private _menuBtnStyle(bg = "#8b0000", border = "#daa520"): string {
+  private _menuBtnStyle(bg = "#5a1010", border = "#daa520"): string {
     return `
-      display: block; width: 300px; padding: 15px 20px;
-      margin: 8px 0; font-size: 18px; font-weight: bold;
-      background: ${bg}; color: #e0d5c0;
-      border: 2px solid ${border}; border-radius: 6px;
+      display: block; width: 320px; padding: 14px 24px;
+      margin: 5px 0; font-size: 17px; font-weight: bold;
+      background: linear-gradient(180deg, ${bg}, ${bg}cc);
+      color: #e0d5c0; letter-spacing: 1px;
+      border: 1px solid ${border}88; border-radius: 4px;
       cursor: pointer; text-align: center;
       font-family: inherit;
+      transition: all 0.15s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     `;
   }
 
@@ -3404,11 +3456,11 @@ export class WarbandGame {
       this._state.enemyTeamAlive = enemyTotal;
       this._state.battleTimer = 180 * WB.TICKS_PER_SEC; // 3 minutes for army battles
 
-      // Show shop for player equipment
-      this._state.phase = WarbandPhase.SHOP;
-      this._shop.show(player, () => {
-        this._startBattle();
-      });
+      // Auto-equip player based on leader — no loadout selection
+      const armySpawnUnit = _getLeaderSpawnUnit(this._selectedLeaderId);
+      this._equipUnitType(player, armySpawnUnit, this._state!);
+      player.name = "You";
+      this._startBattle();
       return;
     }
 
@@ -3451,11 +3503,16 @@ export class WarbandGame {
       this._state.fighters.push(enemy);
     }
 
-    // Show shop
-    this._state.phase = WarbandPhase.SHOP;
-    this._shop.show(player, () => {
-      this._startBattle();
-    });
+    // Auto-equip player based on leader — no loadout selection in battle mode
+    const spawnUnit = _getLeaderSpawnUnit(this._selectedLeaderId);
+    this._equipUnitType(player, spawnUnit, this._state!);
+    player.name = "You";
+
+    this._state.playerTeamAlive = isDuel ? 1 : WB.TEAM_SIZE;
+    this._state.enemyTeamAlive = enemyCount;
+    this._state.battleTimer = 120 * WB.TICKS_PER_SEC;
+
+    this._startBattle();
   }
 
   private _equipRandomUnitType(fighter: WarbandFighter, dueling: boolean, state: WarbandState): void {
@@ -3491,26 +3548,33 @@ export class WarbandGame {
 
     const leaderCards = LEADER_DEFINITIONS.map(l => {
       const isSelected = l.id === this._selectedLeaderId;
+      const spawnUnit = _getLeaderSpawnUnit(l.id);
       return `
         <div data-leader="${l.id}" style="
-          background: ${isSelected ? "rgba(218,165,32,0.15)" : "rgba(255,255,255,0.05)"};
-          border: 2px solid ${isSelected ? "#daa520" : "#334455"};
-          border-radius: 8px; padding: 10px 14px; margin: 5px; width: 140px;
-          text-align: center; cursor: pointer; transition: background 0.15s;
-        " onmouseover="if(!${isSelected})this.style.background='rgba(255,255,255,0.1)'"
-           onmouseout="if(!${isSelected})this.style.background='rgba(255,255,255,0.05)'">
-          <div style="font-size:15px;font-weight:bold;color:${isSelected ? "#ffd700" : "#ddd"}">${l.name}</div>
-          <div style="font-size:11px;color:#8899bb;margin-top:2px">${l.title}</div>
+          background: ${isSelected ? "rgba(218,165,32,0.12)" : "rgba(255,255,255,0.03)"};
+          border: 1px solid ${isSelected ? "#daa520" : "#2a3344"};
+          border-radius: 6px; padding: 10px 14px; margin: 4px; width: 145px;
+          text-align: center; cursor: pointer; transition: all 0.15s;
+          ${isSelected ? "box-shadow: 0 0 12px rgba(218,165,32,0.15)" : ""}
+        " onmouseover="if(!${isSelected})this.style.background='rgba(255,255,255,0.07)';if(!${isSelected})this.style.borderColor='#445566'"
+           onmouseout="if(!${isSelected})this.style.background='rgba(255,255,255,0.03)';if(!${isSelected})this.style.borderColor='#2a3344'">
+          <div style="font-size:14px;font-weight:bold;color:${isSelected ? "#ffd700" : "#ccccbb"};letter-spacing:0.5px">${l.name}</div>
+          <div style="font-size:10px;color:#778899;margin-top:3px">${l.title}</div>
+          <div style="font-size:9px;color:#667744;margin-top:4px">Spawns as: ${spawnUnit.name}</div>
         </div>
       `;
     }).join("");
 
+    const leaderSpawnUnit = _getLeaderSpawnUnit(selected.id);
+
     this._leaderSelectContainer.innerHTML = `
-      <div style="padding:30px 0 20px;text-align:center">
-        <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 15px rgba(218,165,32,0.3);margin:0">
+      <div style="padding:24px 0 16px;text-align:center">
+        <div style="font-size:10px;letter-spacing:4px;color:#556;margin-bottom:6px">STEP 1 OF 3</div>
+        <h1 style="font-size:32px;color:#daa520;text-shadow:0 0 15px rgba(218,165,32,0.3);margin:0;letter-spacing:3px">
           CHOOSE YOUR LEADER
         </h1>
-        <p style="color:#888;font-size:13px;margin-top:8px">Select a leader for your warband</p>
+        <div style="width:180px;height:1px;background:linear-gradient(90deg,transparent,#daa520,transparent);margin:8px auto 0"></div>
+        <p style="color:#778;font-size:12px;margin-top:8px">Your leader determines your battlefield role and passive bonus</p>
       </div>
 
       <div style="display:flex;max-width:1400px;width:100%;gap:20px;padding:0 30px;flex:1;min-height:0">
@@ -3520,7 +3584,8 @@ export class WarbandGame {
         </div>
 
         <!-- Detail Panel -->
-        <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid #334455;border-radius:8px;padding:24px;overflow-y:auto;max-height:calc(100vh - 220px)">
+        <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid #334455;border-radius:8px;padding:24px;overflow-y:auto;max-height:calc(100vh - 220px);
+          box-shadow:inset 0 1px 0 rgba(255,255,255,0.03)">
           <div style="font-size:24px;font-weight:bold;color:#ffd700;letter-spacing:2px">${selected.name.toUpperCase()}</div>
           <div style="font-size:14px;color:#99aabb;margin-top:4px">${selected.title}</div>
           <div style="width:100%;height:1px;background:#334455;margin:14px 0"></div>
@@ -3529,6 +3594,19 @@ export class WarbandGame {
           <div style="width:100%;height:1px;background:#334455;margin:14px 0"></div>
           <div style="font-size:11px;color:#88ff88;font-weight:bold;letter-spacing:1px;margin-bottom:6px">BONUS</div>
           <div style="font-size:12px;color:#88ffaa">${selected.bonusLabel}</div>
+          <div style="width:100%;height:1px;background:#334455;margin:14px 0"></div>
+          <div style="font-size:11px;color:#ccaa44;font-weight:bold;letter-spacing:1px;margin-bottom:6px">BATTLE SPAWN</div>
+          <div style="background:rgba(255,255,255,0.03);border:1px solid #445533;border-radius:6px;padding:10px 14px">
+            <div style="font-size:13px;color:#ddddcc">
+              ${leaderSpawnUnit.icon} <span style="color:#eeffdd;font-weight:bold">${leaderSpawnUnit.name}</span>
+            </div>
+            <div style="font-size:11px;color:#889988;margin-top:4px">${leaderSpawnUnit.description}</div>
+            <div style="font-size:10px;color:#778877;margin-top:4px">
+              HP: ${leaderSpawnUnit.hpOverride ?? 100}
+              ${leaderSpawnUnit.horseArmor ? ` | Mount: ${leaderSpawnUnit.horseArmor}` : ""}
+              ${leaderSpawnUnit.scale ? ` | Scale: ${leaderSpawnUnit.scale}x` : ""}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3634,11 +3712,13 @@ export class WarbandGame {
     }).join("") : '<div style="color:#556677;font-size:12px">No tier data</div>';
 
     this._raceSelectContainer.innerHTML = `
-      <div style="padding:30px 0 20px;text-align:center">
-        <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 15px rgba(218,165,32,0.3);margin:0">
+      <div style="padding:24px 0 16px;text-align:center">
+        <div style="font-size:10px;letter-spacing:4px;color:#556;margin-bottom:6px">STEP 2 OF 3</div>
+        <h1 style="font-size:32px;color:#daa520;text-shadow:0 0 15px rgba(218,165,32,0.3);margin:0;letter-spacing:3px">
           SELECT YOUR RACE
         </h1>
-        <p style="color:#888;font-size:13px;margin-top:8px">Choose a faction for your warband</p>
+        <div style="width:180px;height:1px;background:linear-gradient(90deg,transparent,#daa520,transparent);margin:8px auto 0"></div>
+        <p style="color:#778;font-size:12px;margin-top:8px">Choose a faction for your warband</p>
       </div>
 
       <div style="display:flex;max-width:1400px;width:100%;gap:20px;padding:0 30px;flex:1;min-height:0">
@@ -3761,11 +3841,13 @@ export class WarbandGame {
       : '<div style="font-size:12px;color:#556677">No exclusive units</div>';
 
     this._raceOverviewContainer.innerHTML = `
-      <div style="padding:30px 0 20px;text-align:center">
-        <h1 style="font-size:36px;color:${accentHex};text-shadow:0 0 15px ${accentHex}44;margin:0">
+      <div style="padding:24px 0 16px;text-align:center">
+        <div style="font-size:10px;letter-spacing:4px;color:#556;margin-bottom:6px">STEP 3 OF 3</div>
+        <h1 style="font-size:32px;color:${accentHex};text-shadow:0 0 15px ${accentHex}44;margin:0;letter-spacing:3px">
           ${race.name.toUpperCase()}
         </h1>
-        <p style="color:#99aabb;font-size:15px;margin-top:6px">${race.title}</p>
+        <div style="width:180px;height:1px;background:linear-gradient(90deg,transparent,${accentHex},transparent);margin:8px auto 0"></div>
+        <p style="color:#99aabb;font-size:13px;margin-top:8px">${race.title}</p>
       </div>
 
       <div style="display:flex;max-width:1200px;width:100%;gap:30px;padding:0 30px;flex:1;min-height:0">
@@ -3948,6 +4030,56 @@ export class WarbandGame {
 
     const { regular, elite } = _getUnitsForTab(activeTab.id, this._selectedRaceId, this._shopMercIndices);
 
+    // Build unit tooltip HTML
+    const unitTooltip = (ut: UnitTypeDef): string => {
+      const lines: string[] = [];
+      const hp = ut.creatureType
+        ? CREATURE_DEFS[ut.creatureType].hp
+        : (ut.hpOverride ?? 100);
+      lines.push(`<span style="color:#ff8866">HP: ${hp}</span>`);
+
+      if (ut.creatureType) {
+        const cd = CREATURE_DEFS[ut.creatureType];
+        lines.push(`<span style="color:#ff6644">Damage: ${cd.damage}</span>`);
+        lines.push(`<span style="color:#aabbcc">Reach: ${cd.reach.toFixed(1)}</span>`);
+        lines.push(`<span style="color:#88bbff">Speed: ${cd.speed.toFixed(1)}</span>`);
+        lines.push(`<span style="color:#ccaa88">Scale: ${cd.scale.toFixed(1)}x</span>`);
+      } else {
+        const w = WEAPON_DEFS[ut.mainHand];
+        if (w) {
+          let wLine = `<span style="color:#ff6644">Weapon: ${w.name} (${w.damage} dmg, ${w.speed.toFixed(1)} spd, ${w.reach.toFixed(1)} rng)`;
+          if (w.ammo) wLine += ` [${w.ammo} ammo]`;
+          wLine += `</span>`;
+          lines.push(wLine);
+        }
+        const off = ut.offHand ? WEAPON_DEFS[ut.offHand] : null;
+        if (off) {
+          let oLine = `<span style="color:#6699cc">Off-hand: ${off.name}`;
+          if (off.shieldHp) oLine += ` (${off.shieldHp} HP)`;
+          oLine += `</span>`;
+          lines.push(oLine);
+        }
+        // Total armor defense
+        let totalDef = 0;
+        let totalWeight = 0;
+        for (const slot of [ut.head, ut.torso, ut.gauntlets, ut.legs, ut.boots]) {
+          const a = ARMOR_DEFS[slot];
+          if (a) { totalDef += a.defense; totalWeight += a.weight; }
+        }
+        if (totalDef > 0) lines.push(`<span style="color:#88cc88">Armor: ${totalDef} def, ${totalWeight} wgt</span>`);
+        if (ut.speedMultiplier && ut.speedMultiplier !== 1.0) {
+          lines.push(`<span style="color:#88bbff">Speed: ${(ut.speedMultiplier * 100).toFixed(0)}%</span>`);
+        }
+        if (ut.scale && ut.scale !== 1.0) {
+          lines.push(`<span style="color:#ccaa88">Scale: ${ut.scale.toFixed(1)}x</span>`);
+        }
+        if (ut.horseArmor) {
+          lines.push(`<span style="color:#ddaa44">Mount: ${ut.horseArmor} horse</span>`);
+        }
+      }
+      return lines.join("<br>");
+    };
+
     // Build unit row HTML
     const unitRow = (idx: number): string => {
       const ut = UNIT_TYPES[idx];
@@ -3957,27 +4089,38 @@ export class WarbandGame {
       const canAfford = goldRemaining >= cost;
       const tierColors = ["", "#aabbcc", "#88cc88", "#44aaee", "#ccaa44", "#ee8844", "#ee4488", "#ff44ff"];
       const tierColor = tierColors[tier] ?? "#aabbcc";
+      const tooltip = unitTooltip(ut);
       return `
-        <div class="wb-unit-row" data-idx="${idx}" style="display:flex;align-items:center;padding:4px 8px;
-          margin:2px 0;background:rgba(255,255,255,0.03);border-radius:4px;cursor:pointer;min-height:34px;
-          transition:background 0.1s"
-          onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-          onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+        <div class="wb-unit-row" data-idx="${idx}" style="display:flex;align-items:center;padding:6px 10px;
+          margin:2px 0;background:rgba(255,255,255,0.03);border:1px solid transparent;border-radius:6px;cursor:pointer;min-height:38px;
+          transition:all 0.15s;position:relative"
+          onmouseover="this.style.background='rgba(255,255,255,0.08)';this.style.borderColor='${tierColor}44';var t=this.querySelector('.wb-tip');if(t)t.style.display='block'"
+          onmouseout="this.style.background='rgba(255,255,255,0.03)';this.style.borderColor='transparent';var t=this.querySelector('.wb-tip');if(t)t.style.display='none'">
           <span style="color:${tierColor};font-weight:bold;width:28px;font-size:11px;flex-shrink:0">T${tier}</span>
           <span style="font-size:16px;width:24px;text-align:center;flex-shrink:0">${ut.icon}</span>
           <div style="flex:1;min-width:0;padding:0 8px">
             <div style="font-size:13px;color:#ccddee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ut.name}</div>
-            <div style="font-size:10px;color:#aabb88">${cost}g</div>
+            <div style="font-size:10px;color:#778877">${ut.description}</div>
           </div>
+          <div style="font-size:11px;color:#aabb88;font-weight:bold;margin-right:8px;flex-shrink:0">${cost}g</div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-            <button data-action="sub" data-idx="${idx}" style="width:26px;height:26px;border:1px solid #555;
-              border-radius:4px;background:#1a1122;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;
+            <button data-action="sub" data-idx="${idx}" style="width:28px;height:28px;border:1px solid #555;
+              border-radius:5px;background:linear-gradient(180deg,#2a1a2a,#1a0a1a);color:#fff;font-size:16px;font-weight:bold;cursor:pointer;
               font-family:monospace;display:flex;align-items:center;justify-content:center">-</button>
             <span style="width:30px;text-align:center;font-size:15px;font-weight:bold;color:#fff">${count}</span>
-            <button data-action="add" data-idx="${idx}" style="width:26px;height:26px;border:1px solid ${canAfford ? "#555" : "#333"};
-              border-radius:4px;background:${canAfford ? "#1a1122" : "#0a0a10"};color:${canAfford ? "#fff" : "#444"};
+            <button data-action="add" data-idx="${idx}" style="width:28px;height:28px;border:1px solid ${canAfford ? "#555" : "#333"};
+              border-radius:5px;background:${canAfford ? "linear-gradient(180deg,#2a1a2a,#1a0a1a)" : "#0a0a10"};color:${canAfford ? "#fff" : "#444"};
               font-size:16px;font-weight:bold;cursor:${canAfford ? "pointer" : "not-allowed"};
               font-family:monospace;display:flex;align-items:center;justify-content:center">+</button>
+          </div>
+          <!-- Tooltip -->
+          <div class="wb-tip" style="display:none;position:absolute;right:100%;top:50%;transform:translateY(-50%);
+            margin-right:8px;background:rgba(10,8,18,0.97);border:1px solid ${tierColor}88;border-radius:6px;
+            padding:10px 14px;width:280px;z-index:50;pointer-events:none;
+            box-shadow:0 4px 20px rgba(0,0,0,0.6);font-size:11px;line-height:1.7">
+            <div style="font-size:14px;font-weight:bold;color:${tierColor};margin-bottom:4px">${ut.icon} ${ut.name}</div>
+            <div style="color:#889;font-size:10px;margin-bottom:6px;border-bottom:1px solid #334;padding-bottom:4px">${ut.description}</div>
+            ${tooltip}
           </div>
         </div>
       `;
@@ -4039,10 +4182,14 @@ export class WarbandGame {
     this._armySetupContainer.innerHTML = `
       <div style="width:100%;max-width:960px;height:100%;display:flex;flex-direction:column;padding:10px 20px;box-sizing:border-box">
         <!-- Title -->
-        <div style="text-align:center;padding:6px 0">
-          <div style="font-size:22px;color:#ffd700;font-weight:bold;letter-spacing:2px">UNIT SHOP</div>
-          <div style="font-size:16px;color:#ffcc00;font-weight:bold;letter-spacing:1px;margin-top:2px">
-            GOLD: ${goldRemaining} / ${WARBAND_SHOP_GOLD}
+        <div style="text-align:center;padding:8px 0;border-bottom:1px solid #332a1a">
+          <div style="font-size:20px;color:#daa520;font-weight:bold;letter-spacing:3px;text-shadow:0 0 10px rgba(218,165,32,0.2)">RECRUIT ARMY</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:4px">
+            <div style="width:40px;height:1px;background:linear-gradient(90deg,transparent,#997722)"></div>
+            <div style="font-size:15px;color:#ffcc00;font-weight:bold;letter-spacing:1px">
+              ${goldRemaining} <span style="color:#997722;font-size:11px">/ ${WARBAND_SHOP_GOLD} gold</span>
+            </div>
+            <div style="width:40px;height:1px;background:linear-gradient(90deg,#997722,transparent)"></div>
           </div>
         </div>
 
@@ -4098,13 +4245,21 @@ export class WarbandGame {
             </div>
           </div>
           <!-- Right: detail panel -->
-          <div style="flex:1;display:flex;flex-direction:column;padding:12px;
-            background:rgba(16,16,42,0.6);border:1px solid ${activeTab.color}44;border-radius:6px">
+          <div style="flex:1;display:flex;flex-direction:column;padding:16px;
+            background:rgba(16,16,42,0.6);border:1px solid ${activeTab.color}44;border-radius:8px;
+            box-shadow:inset 0 1px 0 rgba(255,255,255,0.03)">
             <div style="font-size:16px;font-weight:bold;color:${activeTab.color};letter-spacing:1px;margin-bottom:6px">
               ${activeTab.label}
             </div>
             <div style="width:50%;height:2px;background:${activeTab.color};opacity:0.5;margin-bottom:8px;border-radius:1px"></div>
-            <div style="font-size:11px;color:#aabbcc;line-height:1.6">${activeTab.desc}</div>
+            <div style="font-size:11px;color:#aabbcc;line-height:1.6;margin-bottom:12px">${activeTab.desc}</div>
+            <div style="font-size:10px;color:#667;letter-spacing:1px;margin-bottom:6px">LEADER SPAWN</div>
+            <div style="font-size:12px;color:#ccddee;padding:8px;background:rgba(255,255,255,0.03);border:1px solid #334455;border-radius:4px">
+              Your leader <span style="color:#ffd700;font-weight:bold">${(LEADER_DEFINITIONS.find(l => l.id === this._selectedLeaderId) ?? LEADER_DEFINITIONS[0]).name}</span>
+              spawns you as: <span style="color:#88ffaa;font-weight:bold">${_getLeaderSpawnUnit(this._selectedLeaderId).name}</span>
+            </div>
+            <div style="font-size:10px;color:#667;letter-spacing:1px;margin-top:14px;margin-bottom:4px">HOVER UNIT FOR DETAILS</div>
+            <div style="font-size:10px;color:#556">Hover over any unit row to see full stats</div>
           </div>
         </div>
 
@@ -4946,11 +5101,19 @@ export class WarbandGame {
     this._state.siegeDefendersInZone = 0;
     this._state.tick = 0;
 
-    // Show shop
-    this._state.phase = WarbandPhase.SHOP;
-    this._shop.show(player, () => {
+    if (isArmyBattle) {
+      // Show shop for army battles
+      this._state.phase = WarbandPhase.SHOP;
+      this._shop.show(player, () => {
+        this._startBattle();
+      });
+    } else {
+      // Auto-equip player based on leader, go straight to battle
+      const spawnUnit = _getLeaderSpawnUnit(this._selectedLeaderId);
+      this._equipUnitType(player, spawnUnit, this._state!);
+      player.name = "You";
       this._startBattle();
-    });
+    }
   }
 
   // ---- Pause menu ---------------------------------------------------------

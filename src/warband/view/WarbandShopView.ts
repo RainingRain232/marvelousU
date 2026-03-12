@@ -25,6 +25,8 @@ export class WarbandShopView {
       overflow-y: auto;
     `;
 
+    this._container.style.display = "none";
+
     const pixiContainer = document.getElementById("pixi-container");
     if (pixiContainer) pixiContainer.appendChild(this._container);
   }
