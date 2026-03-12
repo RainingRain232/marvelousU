@@ -69,9 +69,9 @@ export class TekkenGame {
   // Training mode key handler
   private _trainingKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
-  // Pause menu
+  // Pause menu (DOM-based to overlay the Three.js canvas)
   private _pauseKeyHandler: ((e: KeyboardEvent) => void) | null = null;
-  private _pauseContainer: Container | null = null;
+  private _pauseDiv: HTMLDivElement | null = null;
   private _pauseSelection = 0;
   private _pauseSubScreen: "main" | "controls" = "main";
 
@@ -103,10 +103,9 @@ export class TekkenGame {
       window.removeEventListener("keydown", this._pauseKeyHandler);
       this._pauseKeyHandler = null;
     }
-    if (this._pauseContainer) {
-      viewManager.removeFromLayer("ui", this._pauseContainer);
-      this._pauseContainer.destroy({ children: true });
-      this._pauseContainer = null;
+    if (this._pauseDiv) {
+      this._pauseDiv.remove();
+      this._pauseDiv = null;
     }
     if (this._inputSystem) this._inputSystem.destroy();
     if (this._sceneManager) this._sceneManager.destroy();
@@ -741,7 +740,7 @@ export class TekkenGame {
     this._pauseKeyHandler = (e: KeyboardEvent) => {
       if (!this._state) return;
       if (e.key === "Escape") {
-        if (!this._pauseContainer) {
+        if (!this._pauseDiv) {
           this._pauseSelection = 0;
           this._pauseSubScreen = "main";
           this._showPauseMenu();
@@ -753,7 +752,7 @@ export class TekkenGame {
         }
         return;
       }
-      if (!this._pauseContainer) return;
+      if (!this._pauseDiv) return;
       if (this._pauseSubScreen === "controls") {
         // Any key goes back to main pause
         if (e.key === "Enter" || e.key === "Backspace") {
@@ -1205,219 +1204,136 @@ export class TekkenGame {
     return null;
   }
 
-  // ---- Pause Menu ----
+  // ---- Pause Menu (DOM overlay to appear above Three.js canvas) ----
 
   private _showPauseMenu(): void {
-    if (!this._state || this._pauseContainer) return;
+    if (!this._state || this._pauseDiv) return;
     this._state.isPaused = true;
     this._buildPauseUI();
   }
 
   private _refreshPauseMenu(): void {
-    if (this._pauseContainer) {
-      viewManager.removeFromLayer("ui", this._pauseContainer);
-      this._pauseContainer.destroy({ children: true });
-      this._pauseContainer = null;
+    if (this._pauseDiv) {
+      this._pauseDiv.remove();
+      this._pauseDiv = null;
     }
     this._buildPauseUI();
   }
 
   private _buildPauseUI(): void {
-    const sw = viewManager.app.screen.width;
-    const sh = viewManager.app.screen.height;
-    const container = new Container();
-
-    // Dim overlay
-    const bg = new Graphics();
-    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.7 });
-    container.addChild(bg);
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);font-family:Georgia,serif;";
 
     if (this._pauseSubScreen === "controls") {
-      this._buildControlsScreen(container, sw, sh);
+      this._buildControlsScreen(overlay);
     } else {
-      this._buildPauseMainScreen(container, sw, sh);
+      this._buildPauseMainScreen(overlay);
     }
 
-    this._pauseContainer = container;
-    viewManager.addToLayer("ui", container);
+    document.body.appendChild(overlay);
+    this._pauseDiv = overlay;
   }
 
-  private _buildPauseMainScreen(container: Container, sw: number, sh: number): void {
-    const panelW = 320;
-    const panelH = 260;
-    const px = (sw - panelW) / 2;
-    const py = (sh - panelH) / 2;
-    const panel = new Graphics();
-    panel.roundRect(px, py, panelW, panelH, 8).fill({ color: 0x1a1a2e, alpha: 0.95 });
-    panel.roundRect(px, py, panelW, panelH, 8).stroke({ color: 0xdaa520, width: 2 });
-    container.addChild(panel);
+  private _buildPauseMainScreen(overlay: HTMLDivElement): void {
+    const panel = document.createElement("div");
+    panel.style.cssText = "background:rgba(26,26,46,0.95);border:2px solid #daa520;border-radius:8px;padding:24px 40px 20px;min-width:280px;text-align:center;";
 
-    // Title
-    const title = new Text({
-      text: "PAUSED",
-      style: { fontFamily: "Georgia, serif", fontSize: 32, fill: 0xdaa520, fontWeight: "bold", letterSpacing: 3 },
-    });
-    title.anchor.set(0.5, 0);
-    title.x = sw / 2;
-    title.y = py + 20;
-    container.addChild(title);
+    const title = document.createElement("div");
+    title.textContent = "PAUSED";
+    title.style.cssText = "color:#daa520;font-size:32px;font-weight:bold;letter-spacing:3px;margin-bottom:24px;";
+    panel.appendChild(title);
 
-    // Menu items
     const items = ["Controls", "Pick Fighter", "Return to Menu"];
-    const itemStartY = py + 80;
-    const itemSpacing = 48;
-
     for (let i = 0; i < items.length; i++) {
       const selected = i === this._pauseSelection;
-      const iy = itemStartY + i * itemSpacing;
-
-      if (selected) {
-        const selBg = new Graphics();
-        selBg.roundRect(px + 20, iy - 6, panelW - 40, 36, 4).fill({ color: 0xdaa520, alpha: 0.15 });
-        selBg.roundRect(px + 20, iy - 6, panelW - 40, 36, 4).stroke({ color: 0xdaa520, width: 1, alpha: 0.5 });
-        container.addChild(selBg);
-
-        // Arrow indicator
-        const arrow = new Text({
-          text: "\u25B6",
-          style: { fontFamily: "Georgia, serif", fontSize: 16, fill: 0xdaa520 },
-        });
-        arrow.x = px + 30;
-        arrow.y = iy + 2;
-        container.addChild(arrow);
-      }
-
-      const label = new Text({
-        text: items[i],
-        style: {
-          fontFamily: "Georgia, serif",
-          fontSize: 20,
-          fill: selected ? 0xffffff : 0x888888,
-          fontWeight: selected ? "bold" : "normal",
-          letterSpacing: 1,
-        },
-      });
-      label.anchor.set(0.5, 0);
-      label.x = sw / 2;
-      label.y = iy;
-      container.addChild(label);
+      const row = document.createElement("div");
+      row.style.cssText = `padding:10px 20px;margin:6px 0;border-radius:4px;font-size:20px;letter-spacing:1px;cursor:pointer;transition:background 0.1s;${
+        selected
+          ? "background:rgba(218,165,32,0.15);border:1px solid rgba(218,165,32,0.5);color:#fff;font-weight:bold;"
+          : "border:1px solid transparent;color:#888;"
+      }`;
+      row.textContent = (selected ? "\u25B6  " : "    ") + items[i];
+      panel.appendChild(row);
     }
 
-    // Navigation hint
-    const hint = new Text({
-      text: "\u2191\u2193 Navigate    Enter Select    Esc Resume",
-      style: { fontFamily: "Georgia, serif", fontSize: 12, fill: 0x666666, letterSpacing: 1 },
-    });
-    hint.anchor.set(0.5, 0);
-    hint.x = sw / 2;
-    hint.y = py + panelH - 30;
-    container.addChild(hint);
+    const hint = document.createElement("div");
+    hint.textContent = "\u2191\u2193 Navigate    Enter Select    Esc Resume";
+    hint.style.cssText = "color:#666;font-size:12px;letter-spacing:1px;margin-top:20px;";
+    panel.appendChild(hint);
+
+    overlay.appendChild(panel);
   }
 
-  private _buildControlsScreen(container: Container, sw: number, sh: number): void {
-    const panelW = 440;
-    const panelH = 480;
-    const px = (sw - panelW) / 2;
-    const py = (sh - panelH) / 2;
-    const panel = new Graphics();
-    panel.roundRect(px, py, panelW, panelH, 8).fill({ color: 0x1a1a2e, alpha: 0.95 });
-    panel.roundRect(px, py, panelW, panelH, 8).stroke({ color: 0xdaa520, width: 2 });
-    container.addChild(panel);
+  private _buildControlsScreen(overlay: HTMLDivElement): void {
+    const panel = document.createElement("div");
+    panel.style.cssText = "background:rgba(26,26,46,0.95);border:2px solid #daa520;border-radius:8px;padding:20px 32px;min-width:400px;";
 
-    // Title
-    const title = new Text({
-      text: "CONTROLS",
-      style: { fontFamily: "Georgia, serif", fontSize: 28, fill: 0xdaa520, fontWeight: "bold", letterSpacing: 3 },
-    });
-    title.anchor.set(0.5, 0);
-    title.x = sw / 2;
-    title.y = py + 16;
-    container.addChild(title);
+    const title = document.createElement("div");
+    title.textContent = "CONTROLS";
+    title.style.cssText = "color:#daa520;font-size:28px;font-weight:bold;letter-spacing:3px;text-align:center;margin-bottom:16px;";
+    panel.appendChild(title);
 
-    const controls: [string, string, boolean][] = [
-      ["MOVEMENT", "", true],
-      ["Arrow Keys", "Move / Crouch / Jump", false],
-      ["", "", false],
-      ["ATTACKS", "", true],
-      ["U", "Left Punch (LP)", false],
-      ["I", "Right Punch (RP)", false],
-      ["J", "Left Kick (LK)", false],
-      ["K", "Right Kick (RK)", false],
-      ["O", "Rage Art (when rage active)", false],
-      ["", "", false],
-      ["COMMANDS", "", true],
-      ["\u2192 + LP", "Forward Punch", false],
-      ["\u2193\u2198 + RP", "Uppercut Launcher (d/f+2)", false],
-      ["\u2191\u2197 + LK", "Hop Kick (u/f+3)", false],
-      ["\u2193\u2198 + RK", "Mid Kick (d/f+4)", false],
-      ["", "", false],
-      ["GENERAL", "", true],
-      ["Escape", "Pause / Resume", false],
+    const sections: { header: string; rows: [string, string][] }[] = [
+      { header: "MOVEMENT", rows: [["Arrow Keys", "Move / Crouch / Jump"]] },
+      { header: "ATTACKS", rows: [
+        ["U", "Left Punch (LP)"],
+        ["I", "Right Punch (RP)"],
+        ["J", "Left Kick (LK)"],
+        ["K", "Right Kick (RK)"],
+        ["O", "Rage Art (when rage active)"],
+      ]},
+      { header: "COMMANDS", rows: [
+        ["\u2192 + U", "Forward Punch (f+1)"],
+        ["\u2193\u2198 + I", "Uppercut Launcher (d/f+2)"],
+        ["\u2191\u2197 + J", "Hop Kick (u/f+3)"],
+        ["\u2193\u2198 + K", "Mid Kick (d/f+4)"],
+      ]},
+      { header: "GENERAL", rows: [["Escape", "Pause / Resume"]] },
     ];
 
     if (this._state?.gameMode === "training") {
-      controls.push(
-        ["", "", false],
-        ["TRAINING", "", true],
-        ["H", "Toggle Hitboxes", false],
-        ["A", "Toggle AI", false],
-        ["R", "Reset Positions / HP", false],
-      );
+      sections.push({ header: "TRAINING", rows: [
+        ["H", "Toggle Hitboxes"],
+        ["A", "Toggle AI"],
+        ["R", "Reset Positions / HP"],
+      ]});
     }
 
-    let cy = py + 54;
-    for (const [key, desc, isHeader] of controls) {
-      if (key === "" && desc === "") {
-        cy += 6;
-        continue;
-      }
-      if (isHeader) {
-        const header = new Text({
-          text: key,
-          style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0xdaa520, fontWeight: "bold", letterSpacing: 2 },
-        });
-        header.x = px + 24;
-        header.y = cy;
-        container.addChild(header);
-        cy += 20;
-        continue;
-      }
-      const keyText = new Text({
-        text: key,
-        style: { fontFamily: "monospace", fontSize: 13, fill: 0xffffff, fontWeight: "bold" },
-      });
-      keyText.x = px + 32;
-      keyText.y = cy;
-      container.addChild(keyText);
+    for (const sec of sections) {
+      const h = document.createElement("div");
+      h.textContent = sec.header;
+      h.style.cssText = "color:#daa520;font-size:13px;font-weight:bold;letter-spacing:2px;margin:12px 0 6px;";
+      panel.appendChild(h);
 
-      const descText = new Text({
-        text: desc,
-        style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0xcccccc },
-      });
-      descText.x = px + 180;
-      descText.y = cy;
-      container.addChild(descText);
-      cy += 19;
+      for (const [key, desc] of sec.rows) {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;gap:12px;padding:3px 8px;";
+        const k = document.createElement("span");
+        k.textContent = key;
+        k.style.cssText = "color:#fff;font-family:monospace;font-weight:bold;font-size:13px;min-width:140px;";
+        const d = document.createElement("span");
+        d.textContent = desc;
+        d.style.cssText = "color:#ccc;font-size:13px;";
+        row.appendChild(k);
+        row.appendChild(d);
+        panel.appendChild(row);
+      }
     }
 
-    // Back hint
-    const hint = new Text({
-      text: "Esc / Enter  Back",
-      style: { fontFamily: "Georgia, serif", fontSize: 12, fill: 0x666666, letterSpacing: 1 },
-    });
-    hint.anchor.set(0.5, 0);
-    hint.x = sw / 2;
-    hint.y = py + panelH - 28;
-    container.addChild(hint);
+    const hint = document.createElement("div");
+    hint.textContent = "Esc / Enter  Back";
+    hint.style.cssText = "color:#666;font-size:12px;letter-spacing:1px;text-align:center;margin-top:16px;";
+    panel.appendChild(hint);
+
+    overlay.appendChild(panel);
   }
 
   private _hidePauseMenu(): void {
     if (!this._state) return;
     this._state.isPaused = false;
-    if (this._pauseContainer) {
-      viewManager.removeFromLayer("ui", this._pauseContainer);
-      this._pauseContainer.destroy({ children: true });
-      this._pauseContainer = null;
+    if (this._pauseDiv) {
+      this._pauseDiv.remove();
+      this._pauseDiv = null;
     }
   }
 
