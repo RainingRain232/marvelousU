@@ -53,8 +53,8 @@ export const TDBalance = {
   POWERUP_MAGNET_SPEED: 25,
 
   // 3D world bounds
-  WORLD_X_MIN: -25,
-  WORLD_X_MAX: 25,
+  WORLD_X_MIN: -40,
+  WORLD_X_MAX: 40,
   WORLD_Y_MIN: 2,
   WORLD_Y_MAX: 22,
 } as const;

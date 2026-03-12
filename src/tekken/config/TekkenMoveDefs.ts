@@ -86,7 +86,8 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       damage: 22,
       chipDamage: 3,
       knockback: 0.5,
-      hitbox: { x: 0.3, y: 1.5, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 1.5, z: 0, w: 0.75, h: 0.3, d: 0.4 },
+      advanceDistance: 0.2,
     }),
   },
   {
@@ -151,7 +152,8 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       damage: 17,
       chipDamage: 2,
       knockback: 0.3,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.7, h: 0.3, d: 0.4 },
+      advanceDistance: 0.2,
     }),
   },
   {
@@ -198,7 +200,8 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       damage: 20,
       chipDamage: 2,
       knockback: 0.35,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.65, h: 0.3, d: 0.4 },
+      advanceDistance: 0.15,
     }),
   },
   {
@@ -216,7 +219,8 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       launchHeight: 0.24,
       hasLowCrush: true,
       knockback: 0.45,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.7, h: 0.3, d: 0.4 },
+      advanceDistance: 0.25,
     }),
   },
   {
@@ -233,7 +237,8 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       chipDamage: 4,
       isPowerCrush: true,
       knockback: 0.5,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.65, h: 0.3, d: 0.4 },
+      advanceDistance: 0.25,
     }),
   },
   {
@@ -249,7 +254,8 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       chipDamage: 2,
       isScrew: true,
       knockback: 0.3,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.65, h: 0.3, d: 0.4 },
+      advanceDistance: 0.15,
     }),
   },
 
@@ -266,7 +272,7 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       damage: 12,
       chipDamage: 1,
       knockback: 0.15,
-      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.65, h: 0.3, d: 0.4 },
     }),
   },
   {
@@ -297,7 +303,7 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       damage: 18,
       chipDamage: 2,
       knockback: 0.4,
-      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.75, h: 0.3, d: 0.4 },
     }),
   },
   {
@@ -335,8 +341,8 @@ const knightSignatureMoves: TekkenMoveEntry[] = [
       damage: 18,
       chipDamage: 2,
       knockback: 0.35,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.7, h: 0.3, d: 0.4 },
-      advanceDistance: 0.2,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.9, h: 0.3, d: 0.4 },
+      advanceDistance: 0.3,
     }),
   },
   {
@@ -404,7 +410,8 @@ const knightSignatureMoves: TekkenMoveEntry[] = [
       damage: 20,
       chipDamage: 2,
       knockback: 0.45,
-      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.65, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.85, h: 0.3, d: 0.4 },
+      advanceDistance: 0.15,
     }),
   },
 ];
@@ -472,8 +479,8 @@ const berserkerSignatureMoves: TekkenMoveEntry[] = [
       damage: 22,
       chipDamage: 3,
       knockback: 0.55,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.4, d: 0.4 },
-      advanceDistance: 0.4,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.7, h: 0.4, d: 0.4 },
+      advanceDistance: 0.55,
     }),
   },
   {
@@ -525,8 +532,8 @@ const monkSignatureMoves: TekkenMoveEntry[] = [
       chipDamage: 2,
       hasHighCrush: true,
       knockback: 0.35,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.3, d: 0.4 },
-      advanceDistance: 0.05,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.7, h: 0.3, d: 0.4 },
+      advanceDistance: 0.15,
     }),
   },
   {
@@ -541,7 +548,8 @@ const monkSignatureMoves: TekkenMoveEntry[] = [
       damage: 14,
       chipDamage: 1,
       knockback: 0.2,
-      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.7, h: 0.3, d: 0.4 },
+      advanceDistance: 0.1,
     }),
   },
   {
@@ -577,8 +585,8 @@ const monkSignatureMoves: TekkenMoveEntry[] = [
       chipDamage: 3,
       wallSplat: true,
       knockback: 0.5,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.4, d: 0.4 },
-      advanceDistance: 0.2,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.65, h: 0.4, d: 0.4 },
+      advanceDistance: 0.3,
     }),
   },
 ];
@@ -649,7 +657,8 @@ const paladinSignatureMoves: TekkenMoveEntry[] = [
       damage: 14,
       chipDamage: 3,
       knockback: 0.2,
-      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.6, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.8, h: 0.3, d: 0.4 },
+      advanceDistance: 0.1,
     }),
   },
   {
@@ -702,7 +711,8 @@ const assassinSignatureMoves: TekkenMoveEntry[] = [
       chipDamage: 2,
       isLauncher: false,
       knockback: 0.25,
-      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.65, h: 0.3, d: 0.4 },
+      advanceDistance: 0.1,
     }),
   },
   {
@@ -754,8 +764,8 @@ const assassinSignatureMoves: TekkenMoveEntry[] = [
       launchHeight: 0.24,
       hasLowCrush: true,
       knockback: 0.4,
-      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.3, d: 0.4 },
-      advanceDistance: 0.2,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.65, h: 0.3, d: 0.4 },
+      advanceDistance: 0.3,
     }),
   },
 ];
@@ -791,7 +801,7 @@ const warlordSignatureMoves: TekkenMoveEntry[] = [
       damage: 28,
       chipDamage: 4,
       knockback: 0.5,
-      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.7, h: 0.4, d: 0.5 },
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.85, h: 0.4, d: 0.5 },
     }),
   },
   {
@@ -844,7 +854,8 @@ const warlordSignatureMoves: TekkenMoveEntry[] = [
       damage: 25,
       chipDamage: 3,
       knockback: 0.35,
-      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.6, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.75, h: 0.3, d: 0.4 },
+      advanceDistance: 0.1,
     }),
   },
 ];

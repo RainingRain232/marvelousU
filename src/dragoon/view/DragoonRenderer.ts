@@ -21,6 +21,11 @@ const GROUND_MID = 0x1a2a18;
 const GROUND_NEAR = 0x0f1a0d;
 const CLOUD_COLORS = [0x2a3366, 0x3a4488, 0x4a5599];
 
+/** Positive modulo — always returns a value in [0, m) even for negative n */
+function pmod(n: number, m: number): number {
+  return ((n % m) + m) % m;
+}
+
 // ---------------------------------------------------------------------------
 // Renderer
 // ---------------------------------------------------------------------------
@@ -165,10 +170,14 @@ export class DragoonRenderer {
     }
   }
 
-  private _drawStars(time: number): void {
+  private _drawStars(time: number, sw: number, dt: number): void {
     const g = this._starField;
     g.clear();
     for (const star of this._stars) {
+      // Slow parallax drift for stars — wrap around screen
+      star.x -= 3 * dt;
+      if (star.x < -10) star.x += sw + 20;
+
       const alpha = 0.3 + 0.7 * Math.abs(Math.sin(time * star.twinkleSpeed + star.phase));
       const colors = [0xffffff, 0xaaccff, 0xffddaa, 0xddddff, 0xffc8e0, 0xc8e0ff];
       const color = colors[Math.floor(star.phase * 3) % colors.length];
@@ -364,7 +373,7 @@ export class DragoonRenderer {
 
     // Mountains with ridges and varied shapes
     for (const f of this._groundFeatures.filter(f => f.layer === 0)) {
-      const x = ((f.x - state.groundOffset * 0.3) % (sw + 200)) - 100;
+      const x = pmod(f.x - state.groundOffset * 0.3, sw + 200) - 100;
       if (x < -150 || x > sw + 50) continue;
       const g = this._groundFar;
       const baseY = groundY + groundH * 0.3;
@@ -427,7 +436,7 @@ export class DragoonRenderer {
     this._groundMid.rect(0, groundY + groundH * 0.42, sw, groundH * 0.05).fill({ color: 0x1a2818, alpha: 0.4 });
 
     for (const f of this._groundFeatures.filter(f => f.layer === 1)) {
-      const x = ((f.x - state.groundOffset * 0.6) % (sw + 200)) - 100;
+      const x = pmod(f.x - state.groundOffset * 0.6, sw + 200) - 100;
       if (x < -50 || x > sw + 50) continue;
       const g = this._groundMid;
       const baseY2 = groundY + groundH * 0.55;
@@ -467,12 +476,12 @@ export class DragoonRenderer {
     this._groundNear.rect(0, roadY + 6, sw, 1).fill({ color: 0x332211, alpha: 0.3 });
     // Dirt texture on road
     for (let rx = 0; rx < sw; rx += 40) {
-      const roff = ((rx * 7 + Math.floor(state.groundOffset)) % 60);
+      const roff = pmod(rx * 7 + Math.floor(state.groundOffset), 60);
       this._groundNear.circle(rx + roff, roadY + 3, 1).fill({ color: 0x554433, alpha: 0.2 });
     }
 
     for (const f of this._groundFeatures.filter(f => f.layer === 2)) {
-      const x = ((f.x - state.groundOffset) % (sw + 200)) - 100;
+      const x = pmod(f.x - state.groundOffset, sw + 200) - 100;
       if (x < -60 || x > sw + 60) continue;
       const g = this._groundNear;
       const baseY3 = groundY + groundH * 0.85;
@@ -1031,7 +1040,7 @@ export class DragoonRenderer {
   // ---------------------------------------------------------------------------
 
   render(state: DragoonState, dt: number): void {
-    this._drawStars(state.gameTime);
+    this._drawStars(state.gameTime, state.screenW, dt);
     this._drawClouds(state.screenW, dt);
     this._drawGround(state, dt);
     this.drawPlayer(state, dt);

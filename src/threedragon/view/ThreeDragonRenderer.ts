@@ -239,7 +239,7 @@ export class ThreeDragonRenderer {
     this._scene.add(this._skyMesh);
 
     // Sun billboard
-    const sunGeo = new THREE.PlaneGeometry(20, 20);
+    const sunGeo = new THREE.CircleGeometry(10, 64);
     const sunMat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -507,7 +507,7 @@ export class ThreeDragonRenderer {
     }
 
     // Water plane — animated shader for shimmering surface
-    const waterGeo = new THREE.PlaneGeometry(500, 500, 64, 64);
+    const waterGeo = new THREE.PlaneGeometry(800, 800, 64, 64);
     waterGeo.rotateX(-Math.PI / 2);
     const waterMat = new THREE.ShaderMaterial({
       transparent: true,
@@ -574,7 +574,7 @@ export class ThreeDragonRenderer {
     this._scene.add(this._waterPlane);
 
     // Mountains (distant backdrop) with snow caps, ridgelines, and foothills
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 45; i++) {
       const h = 15 + Math.random() * 45;
       const w = 10 + Math.random() * 25;
       const mtnGroup = new THREE.Group();
@@ -666,9 +666,9 @@ export class ThreeDragonRenderer {
       }
 
       mtnGroup.position.set(
-        (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 45),
+        (Math.random() < 0.5 ? -1 : 1) * (50 + Math.random() * 50),
         h * 0.4,
-        -Math.random() * 350,
+        -Math.random() * 650,
       );
       mtn.castShadow = true;
       this._scene.add(mtnGroup);
@@ -2043,7 +2043,7 @@ export class ThreeDragonRenderer {
     // Scroll mountains and trees
     for (const mtn of this._mountains) {
       if (mtn.position.z > pz + 50) {
-        mtn.position.z -= 300;
+        mtn.position.z -= 650;
       }
     }
     for (const tree of this._trees) {

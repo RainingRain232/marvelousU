@@ -280,11 +280,53 @@ export class TekkenAISystem {
       this._comboDelayTimer = minDelay + Math.floor(Math.random() * (maxDelay - minDelay + 1));
     }
 
-    // Parse combo step notation (simplified)
-    // Format: "d/f+rp", "n+lk", "d+lp", etc.
+    // Parse combo step notation.
+    // Supports multiple formats:
+    //   Tekken numeric: "d/f+1", "3", "d+2", "u/f+3"
+    //   Button names:   "d/f+rp", "n+lk"
+    //   Move IDs:       "knight_rising_blade", "berserker_hammerfist"
+
+    // Numeric button mapping: Tekken notation -> internal button names
+    const numToBtn: Record<string, string> = { "1": "lp", "2": "rp", "3": "lk", "4": "rk" };
+
+    // First, check if the step is a character-specific move ID (contains underscore
+    // and doesn't start with a standard direction prefix)
+    const isDirectionPrefix = /^(n|f|b|d|u|d\/f|d\/b|u\/f|u\/b)(\+|$)/.test(step);
+    const isBareNumber = /^[1-4]$/.test(step);
+    const isBareNumCombo = /^[1-4]\+[1-4]$/.test(step);
+
+    if (!isDirectionPrefix && !isBareNumber && !isBareNumCombo) {
+      // Treat as a move ID — look it up in the character's move list
+      const charDef = TEKKEN_CHARACTERS.find(c => c.id === fighter.characterId);
+      if (charDef) {
+        const entry = charDef.moveList.find(e => e.move.id === step);
+        if (entry && entry.input.length > 0) {
+          const cmd = entry.input[0];
+          this._doAttack(fighter, cmd.direction, cmd.buttons);
+          return;
+        }
+      }
+      // Move ID not found — skip this step
+      return;
+    }
+
+    if (isBareNumber) {
+      // Bare number like "3" means neutral + that button
+      this._doAttack(fighter, "n", [numToBtn[step]]);
+      return;
+    }
+
+    if (isBareNumCombo) {
+      // e.g. "1+3" means neutral + lp + lk
+      const nums = step.split("+");
+      this._doAttack(fighter, "n", nums.map(n => numToBtn[n]).filter(Boolean));
+      return;
+    }
+
+    // Direction+button format: "d/f+1", "d/f+rp", "d+lp", etc.
     const parts = step.split("+");
     const dir = parts[0] || "n";
-    const btns = parts.slice(1);
+    const btns = parts.slice(1).map(b => numToBtn[b] || b);
 
     this._doAttack(fighter, dir, btns);
   }
