@@ -61,6 +61,42 @@ const ChromaticAberrationShader = {
   `,
 };
 
+// Radial blur / impact distortion shader for heavy hits
+const RadialBlurShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    intensity: { value: 0.0 },
+    center: { value: new THREE.Vector2(0.5, 0.5) },
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform float intensity;
+    uniform vec2 center;
+    varying vec2 vUv;
+    void main() {
+      vec2 dir = vUv - center;
+      float d = length(dir);
+      vec4 color = vec4(0.0);
+      float total = 0.0;
+      for (int i = 0; i < 8; i++) {
+        float scale = 1.0 - intensity * 0.01 * float(i);
+        vec2 uv = center + dir * scale;
+        float weight = 1.0 - float(i) / 8.0;
+        color += texture2D(tDiffuse, uv) * weight;
+        total += weight;
+      }
+      gl_FragColor = color / total;
+    }
+  `,
+};
+
 export class TekkenSceneManager {
   renderer!: THREE.WebGLRenderer;
   scene!: THREE.Scene;
@@ -72,7 +108,8 @@ export class TekkenSceneManager {
   private _bloomPass!: UnrealBloomPass;
   private _vignettePass!: ShaderPass;
   private _chromaticPass!: ShaderPass;
-  private _baseBloomStrength = 0.4;
+  private _radialBlurPass!: ShaderPass;
+  private _baseBloomStrength = 0.5;
   private _rageGlowActive = false;
 
   // Lighting
@@ -81,6 +118,9 @@ export class TekkenSceneManager {
   private _rimLight!: THREE.DirectionalLight;
   private _ambientLight!: THREE.AmbientLight;
   private _hemiLight!: THREE.HemisphereLight;
+
+  // Volumetric light cones (decorative meshes)
+  private _lightCones: THREE.Mesh[] = [];
 
   // Torch point lights (for arena atmosphere)
   private _torchLights: THREE.PointLight[] = [];
@@ -111,6 +151,7 @@ export class TekkenSceneManager {
       canvas: this.canvas,
       antialias: true,
       alpha: false,
+      powerPreference: "high-performance",
     });
     this.renderer.setSize(this._width, this._height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -118,7 +159,7 @@ export class TekkenSceneManager {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.2;
+    this.renderer.toneMappingExposure = 1.3;
 
     // Scene
     this.scene = new THREE.Scene();
@@ -155,13 +196,18 @@ export class TekkenSceneManager {
     this._bloomPass = new UnrealBloomPass(
       new THREE.Vector2(this._width, this._height),
       this._baseBloomStrength, // strength
-      0.5,                     // radius
-      0.7                      // threshold
+      0.6,                     // radius (wider glow spread)
+      0.6                      // threshold (catch more bright areas)
     );
     this._composer.addPass(this._bloomPass);
 
+    // Radial blur for heavy hit screen distortion (starts at 0)
+    this._radialBlurPass = new ShaderPass(RadialBlurShader);
+    this._composer.addPass(this._radialBlurPass);
+
     // Vignette for cinematic framing
     this._vignettePass = new ShaderPass(VignetteShader);
+    this._vignettePass.uniforms["darkness"].value = 1.4;
     this._composer.addPass(this._vignettePass);
 
     // Chromatic aberration for heavy hit impacts (starts at 0)
@@ -175,36 +221,46 @@ export class TekkenSceneManager {
 
   private _setupLighting(): void {
     // Key light: strong warm directional from upper-front-right
-    this._keyLight = new THREE.DirectionalLight(0xffeedd, 2.8);
+    this._keyLight = new THREE.DirectionalLight(0xffeedd, 3.0);
     this._keyLight.position.set(3, 6, 4);
     this._keyLight.castShadow = true;
-    this._keyLight.shadow.mapSize.set(2048, 2048);
+    this._keyLight.shadow.mapSize.set(4096, 4096);
     this._keyLight.shadow.camera.near = 0.5;
     this._keyLight.shadow.camera.far = 20;
     this._keyLight.shadow.camera.left = -6;
     this._keyLight.shadow.camera.right = 6;
     this._keyLight.shadow.camera.top = 4;
     this._keyLight.shadow.camera.bottom = -2;
-    this._keyLight.shadow.bias = -0.001;
-    this._keyLight.shadow.normalBias = 0.02;
+    this._keyLight.shadow.bias = -0.0005;
+    this._keyLight.shadow.normalBias = 0.015;
+    this._keyLight.shadow.radius = 2;
     this.scene.add(this._keyLight);
 
     // Fill light: cool blue from opposite side (creates depth)
-    this._fillLight = new THREE.DirectionalLight(0x6688cc, 0.8);
+    this._fillLight = new THREE.DirectionalLight(0x6688cc, 1.0);
     this._fillLight.position.set(-4, 3, -2);
+    this._fillLight.castShadow = true;
+    this._fillLight.shadow.mapSize.set(1024, 1024);
+    this._fillLight.shadow.camera.near = 0.5;
+    this._fillLight.shadow.camera.far = 15;
+    this._fillLight.shadow.camera.left = -5;
+    this._fillLight.shadow.camera.right = 5;
+    this._fillLight.shadow.camera.top = 4;
+    this._fillLight.shadow.camera.bottom = -1;
+    this._fillLight.shadow.bias = -0.001;
     this.scene.add(this._fillLight);
 
     // Rim/back light: strong backlight for silhouette definition
-    this._rimLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    this._rimLight = new THREE.DirectionalLight(0xffffff, 1.6);
     this._rimLight.position.set(0, 2, -5);
     this.scene.add(this._rimLight);
 
     // Ambient: low, warm, to lift shadows
-    this._ambientLight = new THREE.AmbientLight(0x443344, 0.4);
+    this._ambientLight = new THREE.AmbientLight(0x443344, 0.5);
     this.scene.add(this._ambientLight);
 
     // Hemisphere: subtle color grading (warm from above, cool from below)
-    this._hemiLight = new THREE.HemisphereLight(0x887766, 0x223344, 0.5);
+    this._hemiLight = new THREE.HemisphereLight(0x887766, 0x223344, 0.6);
     this.scene.add(this._hemiLight);
   }
 
@@ -231,7 +287,7 @@ export class TekkenSceneManager {
 
   /** Add flickering torch point lights at given positions */
   addTorchLight(x: number, y: number, z: number): THREE.PointLight {
-    const light = new THREE.PointLight(0xff8833, 1.5, 8, 2);
+    const light = new THREE.PointLight(0xff8833, 1.8, 10, 2);
     light.position.set(x, y, z);
     light.castShadow = false; // perf: skip shadow for point lights
     this.scene.add(light);
@@ -239,11 +295,35 @@ export class TekkenSceneManager {
     return light;
   }
 
-  /** Animate torch flicker - call each frame */
+  /** Add a volumetric light cone (decorative mesh that simulates god rays) */
+  addLightCone(x: number, y: number, z: number, height: number, radius: number, color: number = 0xffeebb): void {
+    const coneGeo = new THREE.CylinderGeometry(0.05, radius, height, 12, 1, true);
+    const coneMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.04,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const cone = new THREE.Mesh(coneGeo, coneMat);
+    cone.position.set(x, y - height / 2, z);
+    this.scene.add(cone);
+    this._lightCones.push(cone);
+  }
+
+  /** Animate torch flicker and light cones - call each frame */
   updateTorches(time: number): void {
     for (let i = 0; i < this._torchLights.length; i++) {
       const t = this._torchLights[i];
-      t.intensity = 1.2 + Math.sin(time * 3.5 + i * 1.7) * 0.3 + Math.sin(time * 7.1 + i * 2.3) * 0.15;
+      t.intensity = 1.4 + Math.sin(time * 3.5 + i * 1.7) * 0.4 + Math.sin(time * 7.1 + i * 2.3) * 0.2
+        + Math.sin(time * 11.3 + i * 3.1) * 0.1;
+    }
+    // Animate light cones (subtle shimmer)
+    for (let i = 0; i < this._lightCones.length; i++) {
+      const cone = this._lightCones[i];
+      const mat = cone.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.03 + Math.sin(time * 1.5 + i * 2.3) * 0.015;
     }
   }
 
@@ -259,18 +339,32 @@ export class TekkenSceneManager {
   render(): void {
     const time = this._clock.getElapsedTime();
     this.updateTorches(time);
+
+    // Decay radial blur each frame
+    const radialIntensity = this._radialBlurPass.uniforms["intensity"].value;
+    if (radialIntensity > 0.001) {
+      this._radialBlurPass.uniforms["intensity"].value *= 0.88;
+    } else {
+      this._radialBlurPass.uniforms["intensity"].value = 0;
+    }
+
     this._composer.render();
   }
 
-  /** Boost bloom and chromatic aberration on heavy hits */
+  /** Boost bloom, chromatic aberration, and radial blur on heavy hits */
   setHitImpactIntensity(intensity: number): void {
     // Boost bloom temporarily based on hit intensity
-    const bloomBoost = Math.min(intensity * 0.15, 1.2);
-    const rageExtra = this._rageGlowActive ? 0.15 : 0;
+    const bloomBoost = Math.min(intensity * 0.18, 1.5);
+    const rageExtra = this._rageGlowActive ? 0.2 : 0;
     this._bloomPass.strength = this._baseBloomStrength + bloomBoost + rageExtra;
 
     // Set chromatic aberration offset
-    this._chromaticPass.uniforms["amount"].value = Math.min(intensity * 0.008, 0.06);
+    this._chromaticPass.uniforms["amount"].value = Math.min(intensity * 0.01, 0.08);
+
+    // Trigger radial blur for heavy hits (intensity > 3)
+    if (intensity > 3) {
+      this._radialBlurPass.uniforms["intensity"].value = Math.min(intensity * 0.4, 3.0);
+    }
   }
 
   /** Subtly increase bloom when rage is active */
@@ -299,6 +393,13 @@ export class TekkenSceneManager {
       t.dispose();
     }
     this._torchLights = [];
+
+    for (const cone of this._lightCones) {
+      this.scene.remove(cone);
+      cone.geometry.dispose();
+      (cone.material as THREE.Material).dispose();
+    }
+    this._lightCones = [];
 
     if (this.canvas.parentNode) {
       this.canvas.parentNode.removeChild(this.canvas);

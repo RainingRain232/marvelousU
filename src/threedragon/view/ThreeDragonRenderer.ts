@@ -35,8 +35,10 @@ export class ThreeDragonRenderer {
   // Sky
   private _skyMesh!: THREE.Mesh;
   private _sunMesh!: THREE.Mesh;
+  private _moonMesh!: THREE.Mesh;
   private _cloudGroup = new THREE.Group();
   private _starField!: THREE.Points;
+  private _godRays!: THREE.Mesh;
 
   // Ground
   private _groundTiles: THREE.Mesh[] = [];
@@ -65,6 +67,14 @@ export class ThreeDragonRenderer {
 
   // Explosion meshes
   private _explosionMeshes: { mesh: THREE.Mesh; timer: number; maxTimer: number }[] = [];
+  // Shockwave ring meshes
+  private _shockwaveRings: { mesh: THREE.Mesh; timer: number; maxTimer: number; maxRadius: number }[] = [];
+
+  // Fireflies / magical floating particles
+  private _fireflyGroup = new THREE.Group();
+
+  // Wildlife silhouettes
+  private _wildlifeGroup = new THREE.Group();
 
   // Reusable geometries
   private _sphereGeo!: THREE.SphereGeometry;
@@ -120,6 +130,8 @@ export class ThreeDragonRenderer {
     this._buildGround();
     this._buildPlayer();
     this._buildTrailSystem();
+    this._buildFireflies();
+    this._buildWildlife();
   }
 
   // ---------------------------------------------------------------------------
@@ -280,38 +292,164 @@ export class ThreeDragonRenderer {
     this._starField = new THREE.Points(starGeo, starMat);
     this._scene.add(this._starField);
 
+    // Moon — crescent on the opposite side of the sun
+    const moonGeo = new THREE.PlaneGeometry(12, 12);
+    const moonMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      uniforms: { uTime: { value: 0 } },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        varying vec2 vUv;
+        void main() {
+          vec2 c = vUv - 0.5;
+          float d = length(c);
+          // Main moon disc
+          float disc = smoothstep(0.28, 0.25, d);
+          // Crescent cutout — shifted circle
+          float cutout = smoothstep(0.22, 0.19, length(c - vec2(0.08, 0.04)));
+          float crescent = disc * (1.0 - cutout * 0.85);
+          // Soft glow
+          float glow = exp(-d * 3.5) * 0.25;
+          float halo = exp(-d * 1.5) * 0.08;
+          vec3 moonCol = vec3(0.8, 0.85, 1.0);
+          vec3 glowCol = vec3(0.5, 0.6, 0.9);
+          vec3 col = moonCol * crescent + glowCol * (glow + halo);
+          float a = crescent * 0.9 + glow + halo;
+          // Subtle surface detail
+          float detail = sin(c.x * 40.0) * sin(c.y * 40.0) * 0.05 * disc;
+          col -= detail;
+          gl_FragColor = vec4(col, a);
+        }
+      `,
+    });
+    this._moonMesh = new THREE.Mesh(moonGeo, moonMat);
+    this._moonMesh.position.set(-90, 70, -80);
+    this._moonMesh.lookAt(0, 0, 0);
+    this._scene.add(this._moonMesh);
+
+    // God ray beams from the sun
+    const godRayGeo = new THREE.PlaneGeometry(60, 80);
+    const godRayMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: { uTime: { value: 0 } },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        varying vec2 vUv;
+        void main() {
+          // Create angled ray beams
+          float rays = 0.0;
+          float x = vUv.x;
+          float y = vUv.y;
+          // Multiple ray bands at different angles
+          for (float i = 0.0; i < 5.0; i++) {
+            float offset = i * 0.18 + 0.1;
+            float width = 0.015 + sin(uTime * 0.3 + i) * 0.005;
+            float ray = smoothstep(width, 0.0, abs(x - offset + sin(y * 2.0 + uTime * 0.2 + i) * 0.03));
+            ray *= smoothstep(0.0, 0.3, y) * smoothstep(1.0, 0.4, y);
+            rays += ray * (0.8 + sin(uTime * 0.5 + i * 1.5) * 0.2);
+          }
+          vec3 col = vec3(1.0, 0.9, 0.6) * rays * 0.12;
+          float a = rays * 0.08;
+          gl_FragColor = vec4(col, a);
+        }
+      `,
+    });
+    this._godRays = new THREE.Mesh(godRayGeo, godRayMat);
+    this._godRays.position.set(60, 35, -100);
+    this._godRays.rotation.y = -0.4;
+    this._godRays.rotation.z = -0.2;
+    this._scene.add(this._godRays);
+
     // Clouds
     this._buildClouds();
   }
 
   private _buildClouds(): void {
-    // Cloud color palette — sunset-lit whites and warm golds
-    const cloudColors = [0x8899bb, 0x99aaca, 0xccaa88, 0xddccaa, 0xaa99bb];
+    // Cloud color palette — sunset-lit with depth layers
+    const cloudLightColors = [0xddccaa, 0xeeddbb, 0xccbb99, 0xddbb88];
+    const cloudDarkColors = [0x556688, 0x667799, 0x445577, 0x778899];
+    const cloudMidColors = [0x99aabb, 0xaabbcc, 0x8899aa, 0xbbaa99];
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 55; i++) {
       const cloudGroup = new THREE.Group();
-      const puffs = 4 + Math.floor(Math.random() * 5);
-      const baseColor = cloudColors[Math.floor(Math.random() * cloudColors.length)];
+      const puffs = 5 + Math.floor(Math.random() * 6);
+      const litFromSun = Math.random() < 0.5; // some clouds are lit, some in shadow
+
       for (let j = 0; j < puffs; j++) {
-        const size = 4 + Math.random() * 10;
+        const size = 4 + Math.random() * 12;
+        const layerIndex = j / puffs; // 0 = bottom, 1 = top
+
+        // Bottom layer: darker; middle: mid tone; top: bright (lit by sun)
+        let color: number;
+        if (layerIndex < 0.33) {
+          color = cloudDarkColors[Math.floor(Math.random() * cloudDarkColors.length)];
+        } else if (layerIndex < 0.66) {
+          color = cloudMidColors[Math.floor(Math.random() * cloudMidColors.length)];
+        } else {
+          color = litFromSun
+            ? cloudLightColors[Math.floor(Math.random() * cloudLightColors.length)]
+            : cloudMidColors[Math.floor(Math.random() * cloudMidColors.length)];
+        }
+
         const mat = new THREE.MeshBasicMaterial({
-          color: baseColor,
+          color,
           transparent: true,
-          opacity: 0.06 + Math.random() * 0.14,
+          opacity: 0.05 + Math.random() * 0.12,
           depthWrite: false,
         });
         const puff = new THREE.Mesh(this._sphereGeo, mat);
-        puff.scale.set(size, size * 0.35, size * 0.7);
+        // Varied aspect ratios for more 3D feel
+        const flatness = 0.25 + Math.random() * 0.15;
+        const depth = 0.5 + Math.random() * 0.4;
+        puff.scale.set(size, size * flatness, size * depth);
         puff.position.set(
           (Math.random() - 0.5) * size * 2.5,
-          (Math.random() - 0.5) * size * 0.25,
+          (j - puffs * 0.5) * size * 0.12, // stack vertically for depth
           (Math.random() - 0.5) * size * 1.2,
         );
+        puff.rotation.y = Math.random() * Math.PI; // rotate for variety
         cloudGroup.add(puff);
       }
+
+      // Add bright highlight puff on top of some clouds
+      if (litFromSun && Math.random() < 0.6) {
+        const highlightMat = new THREE.MeshBasicMaterial({
+          color: 0xffeedd,
+          transparent: true,
+          opacity: 0.04 + Math.random() * 0.06,
+          depthWrite: false,
+        });
+        const hlSize = 3 + Math.random() * 5;
+        const highlight = new THREE.Mesh(this._sphereGeo, highlightMat);
+        highlight.scale.set(hlSize, hlSize * 0.15, hlSize * 0.4);
+        highlight.position.set(
+          (Math.random() - 0.5) * hlSize,
+          hlSize * 0.3,
+          0,
+        );
+        cloudGroup.add(highlight);
+      }
+
       cloudGroup.position.set(
         (Math.random() - 0.5) * 250,
-        20 + Math.random() * 50,
+        18 + Math.random() * 55,
         -Math.random() * 250,
       );
       cloudGroup.userData.speed = 0.3 + Math.random() * 1.5;
@@ -397,8 +535,30 @@ export class ThreeDragonRenderer {
           float shimmer = sin(vUv.x * 80.0 + uTime * 2.0) * cos(vUv.y * 60.0 + uTime * 1.5) * 0.5 + 0.5;
           shimmer = pow(shimmer, 4.0) * 0.3;
           float foam = smoothstep(0.5, 0.8, vWave) * 0.2;
+
+          // Reflective sun/moon highlights
+          float sunReflect = sin(vUv.x * 120.0 + uTime * 3.0) * sin(vUv.y * 100.0 + uTime * 2.5);
+          sunReflect = pow(max(0.0, sunReflect), 8.0) * 0.4;
+          // Concentrate reflection in a band (simulating sun reflection path)
+          float reflBand = exp(-pow((vUv.x - 0.6) * 4.0, 2.0)) * exp(-pow((vUv.y - 0.3) * 3.0, 2.0));
+          sunReflect *= reflBand;
+
+          // Secondary moon reflection (dimmer, on other side)
+          float moonReflect = sin(vUv.x * 90.0 + uTime * 1.5) * sin(vUv.y * 70.0 + uTime * 1.8);
+          moonReflect = pow(max(0.0, moonReflect), 10.0) * 0.15;
+          float moonBand = exp(-pow((vUv.x - 0.3) * 4.0, 2.0)) * exp(-pow((vUv.y - 0.5) * 3.0, 2.0));
+          moonReflect *= moonBand;
+
+          // Caustic ripple pattern
+          float caustic = sin(vUv.x * 200.0 + uTime * 4.0 + sin(vUv.y * 30.0)) *
+                          cos(vUv.y * 150.0 + uTime * 3.0 + sin(vUv.x * 25.0));
+          caustic = pow(max(0.0, caustic), 6.0) * 0.08;
+
           vec3 col = mix(uColor, uHighlight, shimmer + foam);
-          float alpha = 0.65 + shimmer * 0.1;
+          col += vec3(1.0, 0.9, 0.7) * sunReflect;    // warm sun sparkles
+          col += vec3(0.6, 0.7, 1.0) * moonReflect;    // cool moon sparkles
+          col += vec3(0.3, 0.5, 0.7) * caustic;        // underwater caustics
+          float alpha = 0.65 + shimmer * 0.1 + sunReflect * 0.15;
           gl_FragColor = vec4(col, alpha);
         }
       `,
@@ -910,6 +1070,148 @@ export class ThreeDragonRenderer {
     this._trailColors[i * 3 + 2] = b;
     this._trailSizes[i] = size;
     this._trailIndex = (this._trailIndex + 1) % this._maxTrailParticles;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Fireflies / magical floating particles
+  // ---------------------------------------------------------------------------
+
+  private _buildFireflies(): void {
+    const count = 60;
+    for (let i = 0; i < count; i++) {
+      const colors = [0x88ffaa, 0xaaffcc, 0xffee88, 0x88ccff, 0xffaa88, 0xcc88ff];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const size = 0.08 + Math.random() * 0.12;
+
+      const mat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.0, // starts invisible, animated in render
+        depthWrite: false,
+      });
+      const fly = new THREE.Mesh(this._sphereGeo, mat);
+      fly.scale.setScalar(size);
+      fly.position.set(
+        (Math.random() - 0.5) * 50,
+        0.5 + Math.random() * 6,
+        -Math.random() * 200,
+      );
+      // Store animation parameters
+      fly.userData.baseY = fly.position.y;
+      fly.userData.speed = 0.5 + Math.random() * 2;
+      fly.userData.amplitude = 0.3 + Math.random() * 1.5;
+      fly.userData.phase = Math.random() * Math.PI * 2;
+      fly.userData.driftX = (Math.random() - 0.5) * 0.5;
+      fly.userData.blinkSpeed = 1 + Math.random() * 3;
+      fly.userData.blinkPhase = Math.random() * Math.PI * 2;
+      this._fireflyGroup.add(fly);
+    }
+    this._scene.add(this._fireflyGroup);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wildlife silhouettes
+  // ---------------------------------------------------------------------------
+
+  private _buildWildlife(): void {
+    // Distant bird flocks (V-formations)
+    for (let f = 0; f < 4; f++) {
+      const flockGroup = new THREE.Group();
+      const birdCount = 5 + Math.floor(Math.random() * 6);
+      const birdMat = new THREE.MeshBasicMaterial({
+        color: 0x111122,
+        transparent: true,
+        opacity: 0.3 + Math.random() * 0.2,
+        depthWrite: false,
+      });
+
+      for (let b = 0; b < birdCount; b++) {
+        // Simple bird silhouette: two small triangles for wings
+        const wingSpan = 0.4 + Math.random() * 0.3;
+        const birdGeo = new THREE.BufferGeometry();
+        const verts = new Float32Array([
+          0, 0, 0,
+          -wingSpan, 0.1, -0.1,
+          -wingSpan * 0.5, 0, -0.15,
+          0, 0, 0,
+          wingSpan, 0.1, -0.1,
+          wingSpan * 0.5, 0, -0.15,
+        ]);
+        birdGeo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+        birdGeo.computeVertexNormals();
+        const bird = new THREE.Mesh(birdGeo, birdMat);
+
+        // V-formation positioning
+        const side = b % 2 === 0 ? 1 : -1;
+        const rank = Math.floor((b + 1) / 2);
+        bird.position.set(
+          side * rank * 1.5,
+          -rank * 0.3,
+          -rank * 1.2,
+        );
+        bird.userData.flapPhase = Math.random() * Math.PI * 2;
+        bird.userData.flapSpeed = 3 + Math.random() * 2;
+        flockGroup.add(bird);
+      }
+
+      flockGroup.position.set(
+        (Math.random() - 0.5) * 80,
+        25 + Math.random() * 20,
+        -50 - Math.random() * 150,
+      );
+      flockGroup.userData.driftSpeed = 1 + Math.random() * 2;
+      flockGroup.userData.driftDir = Math.random() < 0.5 ? 1 : -1;
+      this._wildlifeGroup.add(flockGroup);
+    }
+
+    // Distant deer/animal silhouettes on hilltops
+    for (let i = 0; i < 3; i++) {
+      const deerGroup = new THREE.Group();
+      const silMat = new THREE.MeshBasicMaterial({
+        color: 0x0a0a0a,
+        transparent: true,
+        opacity: 0.25,
+        depthWrite: false,
+      });
+
+      // Body
+      const bodyGeo = new THREE.BoxGeometry(1.2, 0.5, 0.4);
+      const body = new THREE.Mesh(bodyGeo, silMat);
+      body.position.y = 0.6;
+      deerGroup.add(body);
+      // Head
+      const headGeo = new THREE.SphereGeometry(0.2, 6, 4);
+      const head = new THREE.Mesh(headGeo, silMat);
+      head.position.set(0.7, 0.9, 0);
+      deerGroup.add(head);
+      // Legs
+      const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 4);
+      for (const lx of [-0.4, 0.4]) {
+        const leg = new THREE.Mesh(legGeo, silMat);
+        leg.position.set(lx, 0.25, 0);
+        deerGroup.add(leg);
+      }
+      // Antlers (on some)
+      if (Math.random() < 0.5) {
+        const antlerGeo = new THREE.ConeGeometry(0.04, 0.4, 3);
+        for (const z of [-0.1, 0.1]) {
+          const antler = new THREE.Mesh(antlerGeo, silMat);
+          antler.position.set(0.7, 1.2, z);
+          antler.rotation.z = z < 0 ? 0.3 : -0.3;
+          deerGroup.add(antler);
+        }
+      }
+
+      deerGroup.position.set(
+        (Math.random() < 0.5 ? -1 : 1) * (25 + Math.random() * 30),
+        2 + Math.random() * 3,
+        -80 - Math.random() * 150,
+      );
+      deerGroup.scale.setScalar(0.8 + Math.random() * 0.6);
+      this._wildlifeGroup.add(deerGroup);
+    }
+
+    this._scene.add(this._wildlifeGroup);
   }
 
   // ---------------------------------------------------------------------------
@@ -1701,6 +2003,15 @@ export class ThreeDragonRenderer {
     this._sunMesh.lookAt(this._camera.position);
     this._starField.position.set(0, 0, pz);
 
+    // Moon follows camera on opposite side
+    this._moonMesh.position.set(px * 0.05 - 90, 70, pz - 80);
+    this._moonMesh.lookAt(this._camera.position);
+    (this._moonMesh.material as THREE.ShaderMaterial).uniforms.uTime.value = time;
+
+    // God rays follow sun position
+    this._godRays.position.set(px * 0.1 + 60, 35, pz - 100);
+    (this._godRays.material as THREE.ShaderMaterial).uniforms.uTime.value = time;
+
     // Update clouds
     for (const cloud of this._cloudGroup.children) {
       cloud.position.x += (cloud.userData.speed || 1) * dt;
@@ -1751,6 +2062,64 @@ export class ThreeDragonRenderer {
 
     // Update explosions
     this._updateExplosionMeshes(state, dt);
+
+    // Update fireflies
+    for (const fly of this._fireflyGroup.children) {
+      const mesh = fly as THREE.Mesh;
+      const ud = mesh.userData;
+      // Float up and down with drift
+      mesh.position.y = ud.baseY + Math.sin(time * ud.speed + ud.phase) * ud.amplitude;
+      mesh.position.x += ud.driftX * dt;
+      // Blink in and out
+      const blink = Math.sin(time * ud.blinkSpeed + ud.blinkPhase);
+      (mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, blink * 0.6);
+      // Scale pulse
+      const s = 0.08 + Math.max(0, blink) * 0.06;
+      mesh.scale.setScalar(s);
+      // Scroll with world
+      if (mesh.position.z > pz + 30) {
+        mesh.position.z -= 200;
+        mesh.position.x = px + (Math.random() - 0.5) * 50;
+      }
+    }
+
+    // Update wildlife
+    for (const child of this._wildlifeGroup.children) {
+      const ud = child.userData;
+      if (ud.driftSpeed) {
+        // Bird flocks — drift across sky
+        child.position.x += ud.driftDir * ud.driftSpeed * dt;
+        if (child.position.x > 60) { child.position.x = -60; child.position.z = pz - 50 - Math.random() * 150; }
+        if (child.position.x < -60) { child.position.x = 60; child.position.z = pz - 50 - Math.random() * 150; }
+        // Animate individual bird wing flaps
+        for (const bird of child.children) {
+          if (bird.userData.flapPhase !== undefined) {
+            const flapAngle = Math.sin(time * bird.userData.flapSpeed + bird.userData.flapPhase) * 0.15;
+            bird.rotation.z = flapAngle;
+          }
+        }
+      }
+      // Scroll wildlife with world
+      if (child.position.z > pz + 50) {
+        child.position.z -= 250;
+      }
+    }
+
+    // Update shockwave rings
+    this._shockwaveRings = this._shockwaveRings.filter(ring => {
+      ring.timer += dt;
+      const t = ring.timer / ring.maxTimer;
+      if (t >= 1) {
+        this._scene.remove(ring.mesh);
+        (ring.mesh.material as THREE.Material).dispose();
+        ring.mesh.geometry.dispose();
+        return false;
+      }
+      const scale = t * ring.maxRadius;
+      ring.mesh.scale.set(scale, scale, scale * 0.3);
+      (ring.mesh.material as THREE.MeshBasicMaterial).opacity = 0.5 * (1 - t);
+      return true;
+    });
 
     // Atmospheric magic particles — floating sparkles around player area
     if (Math.random() < 0.3) {
@@ -2045,7 +2414,7 @@ export class ThreeDragonRenderer {
   // ---------------------------------------------------------------------------
 
   addExplosion(x: number, y: number, z: number, radius: number, color: number): void {
-    // Outer shockwave ring
+    // Outer expanding sphere
     const mat = new THREE.MeshBasicMaterial({
       color,
       transparent: true,
@@ -2059,39 +2428,88 @@ export class ThreeDragonRenderer {
     this._scene.add(mesh);
     this._explosionMeshes.push({ mesh, timer: 0, maxTimer: 0.6 });
 
-    // Inner bright core
+    // Inner bright core — hotter, faster
     const coreMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.9,
       depthWrite: false,
     });
     const core = new THREE.Mesh(this._sphereGeo, coreMat);
     core.position.set(x, y, z);
     core.scale.setScalar(0.05);
     this._scene.add(core);
-    this._explosionMeshes.push({ mesh: core, timer: 0, maxTimer: 0.3 });
+    this._explosionMeshes.push({ mesh: core, timer: 0, maxTimer: 0.25 });
 
-    // Flash point light for illumination
-    const flash = new THREE.PointLight(color, 8, radius * 3);
+    // Secondary colored glow layer
+    const glowMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const glowMesh = new THREE.Mesh(this._sphereGeo, glowMat);
+    glowMesh.position.set(x, y, z);
+    glowMesh.scale.setScalar(0.05);
+    this._scene.add(glowMesh);
+    this._explosionMeshes.push({ mesh: glowMesh, timer: 0, maxTimer: 0.8 });
+
+    // Shockwave ring — horizontal expanding torus
+    const ringGeo = new THREE.TorusGeometry(1, 0.15, 8, 24);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.set(x, y, z);
+    ring.rotation.x = Math.PI / 2;
+    ring.scale.setScalar(0.1);
+    this._scene.add(ring);
+    this._shockwaveRings.push({ mesh: ring, timer: 0, maxTimer: 0.5, maxRadius: radius * 1.5 });
+
+    // Second vertical shockwave ring for larger explosions
+    if (radius > 3) {
+      const ring2Geo = new THREE.TorusGeometry(1, 0.1, 8, 20);
+      const ring2Mat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.3).getHex(),
+        transparent: true,
+        opacity: 0.35,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+      ring2.position.set(x, y, z);
+      ring2.rotation.z = Math.PI / 2;
+      ring2.scale.setScalar(0.1);
+      this._scene.add(ring2);
+      this._shockwaveRings.push({ mesh: ring2, timer: 0, maxTimer: 0.6, maxRadius: radius * 1.2 });
+    }
+
+    // Flash point light for illumination — brighter
+    const flash = new THREE.PointLight(color, 12, radius * 4);
     flash.position.set(x, y, z);
     this._scene.add(flash);
-    setTimeout(() => { this._scene.remove(flash); }, 200);
+    setTimeout(() => { this._scene.remove(flash); }, 250);
 
     // Burst trail particles — more of them, varied sizes
     const col = new THREE.Color(color);
     const brightCol = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.4);
-    for (let i = 0; i < 25; i++) {
+    const darkCol = new THREE.Color(color).lerp(new THREE.Color(0x000000), 0.3);
+    for (let i = 0; i < 35; i++) {
       const angle = Math.random() * Math.PI * 2;
       const angleV = Math.random() * Math.PI;
-      const r = radius * (0.2 + Math.random() * 0.4);
-      const useColor = Math.random() < 0.3 ? brightCol : col;
+      const r = radius * (0.2 + Math.random() * 0.5);
+      const useColor = Math.random() < 0.2 ? brightCol : Math.random() < 0.15 ? darkCol : col;
       this._addTrailPoint(
         x + Math.cos(angle) * Math.sin(angleV) * r,
         y + Math.cos(angleV) * r,
         z + Math.sin(angle) * Math.sin(angleV) * r,
         useColor.r, useColor.g, useColor.b,
-        0.4 + Math.random() * 0.8,
+        0.4 + Math.random() * 1.0,
       );
     }
   }
@@ -2105,9 +2523,13 @@ export class ThreeDragonRenderer {
         (ex.mesh.material as THREE.Material).dispose();
         return false;
       }
-      const scale = t * 5; // expand
+      // Ease-out expansion for more natural feel
+      const eased = 1 - Math.pow(1 - t, 3);
+      const scale = eased * 6;
       ex.mesh.scale.setScalar(scale);
-      (ex.mesh.material as THREE.MeshBasicMaterial).opacity = 0.4 * (1 - t);
+      // Faster initial opacity then slow fade
+      const opacity = t < 0.2 ? 0.6 : 0.6 * Math.pow(1 - (t - 0.2) / 0.8, 2);
+      (ex.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
       return true;
     });
   }
@@ -2210,6 +2632,14 @@ export class ThreeDragonRenderer {
       (ex.mesh.material as THREE.Material).dispose();
     }
     this._explosionMeshes = [];
+
+    // Remove shockwave rings
+    for (const ring of this._shockwaveRings) {
+      this._scene.remove(ring.mesh);
+      (ring.mesh.material as THREE.Material).dispose();
+      ring.mesh.geometry.dispose();
+    }
+    this._shockwaveRings = [];
 
     // Remove canvas
     if (this._canvas.parentNode) {

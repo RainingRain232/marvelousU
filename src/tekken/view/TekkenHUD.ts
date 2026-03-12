@@ -35,6 +35,9 @@ export class TekkenHUD {
   private _drainHp: [number, number] = [170, 170];
   private _comboOpacity = 0;
   private _announcementScale = 1;
+  private _comboShake = 0;
+  private _lastComboCount = 0;
+  private _roundWinFlash: number[][] = [[], []]; // flash timers per gem
 
   init(): void {
     const sw = viewManager.screenWidth;
@@ -52,10 +55,14 @@ export class TekkenHUD {
     for (let i = 0; i < 2; i++) {
       const x = i === 0 ? centerX - barGap / 2 - barW : centerX + barGap / 2;
 
-      // Background
+      // Background with beveled border
       const bg = new Graphics();
-      bg.roundRect(x - 2, barY - 2, barW + 4, barH + 4, 4).fill({ color: 0x111111 });
-      bg.roundRect(x, barY, barW, barH, 3).fill({ color: 0x220000 });
+      // Outer glow border
+      bg.roundRect(x - 4, barY - 4, barW + 8, barH + 8, 6).fill({ color: 0x222222, alpha: 0.8 });
+      // Inner border (metallic look)
+      bg.roundRect(x - 2, barY - 2, barW + 4, barH + 4, 4).fill({ color: 0x444444 });
+      bg.roundRect(x - 1, barY - 1, barW + 2, barH + 2, 3).fill({ color: 0x222222 });
+      bg.roundRect(x, barY, barW, barH, 3).fill({ color: 0x1a0000 });
       this._container.addChild(bg);
 
       // Drain bar (red, follows behind actual HP)
@@ -86,14 +93,16 @@ export class TekkenHUD {
 
       // Round indicators (gems)
       this._roundIndicators[i] = [];
+      this._roundWinFlash[i] = [];
       for (let r = 0; r < TB.ROUNDS_TO_WIN; r++) {
         const gemX = i === 0
           ? centerX - barGap / 2 - 20 - r * 22
           : centerX + barGap / 2 + 20 + r * 22;
         const gem = new Graphics();
-        gem.circle(gemX, barY - 12, 6).fill({ color: 0x333333 }).stroke({ color: 0x888888, width: 1 });
+        gem.circle(gemX, barY - 12, 7).fill({ color: 0x333333 }).stroke({ color: 0x888888, width: 1.5 });
         this._container.addChild(gem);
         this._roundIndicators[i].push(gem);
+        this._roundWinFlash[i].push(0);
       }
     }
 
@@ -107,11 +116,18 @@ export class TekkenHUD {
     this._timerText.y = barY + barH / 2;
     this._container.addChild(this._timerText);
 
-    // Combo counter
+    // Combo counter with enhanced styling
     this._comboContainer = new Container();
     this._comboText = new Text({
       text: "",
-      style: { fontFamily: "Georgia, serif", fontSize: 28, fill: 0xffcc00, fontWeight: "bold", stroke: { color: 0x000000, width: 3 } },
+      style: {
+        fontFamily: "Georgia, serif",
+        fontSize: 30,
+        fill: 0xffdd22,
+        fontWeight: "bold",
+        stroke: { color: 0x331100, width: 4 },
+        dropShadow: { color: 0xff6600, alpha: 0.5, blur: 8, distance: 0 },
+      },
     });
     this._comboText.anchor.set(0.5);
     this._comboContainer.addChild(this._comboText);
@@ -238,15 +254,24 @@ export class TekkenHUD {
         drain.roundRect(x, barY, drainW, barH, 3).fill({ color: 0xaa1111 });
       }
 
-      // HP fill
+      // HP fill with gradient-like effect (two-tone layered bars)
       const fill = this._healthBars[i];
       fill.clear();
       const fillW = barW * hpFrac;
       const hpColor = hpFrac > 0.5 ? 0x22aa44 : hpFrac > 0.25 ? 0xddaa00 : 0xdd2222;
+      const hpColorBright = hpFrac > 0.5 ? 0x44dd66 : hpFrac > 0.25 ? 0xffcc22 : 0xff4444;
+      const hpColorDark = hpFrac > 0.5 ? 0x116622 : hpFrac > 0.25 ? 0x886600 : 0x881111;
       if (i === 0) {
-        fill.roundRect(x + barW - fillW, barY, fillW, barH, 3).fill({ color: hpColor });
+        // Base dark layer
+        fill.roundRect(x + barW - fillW, barY, fillW, barH, 3).fill({ color: hpColorDark });
+        // Main color layer
+        fill.roundRect(x + barW - fillW, barY, fillW, barH * 0.7, 3).fill({ color: hpColor });
+        // Bright highlight on top
+        fill.roundRect(x + barW - fillW + 2, barY + 2, Math.max(0, fillW - 4), barH * 0.3, 2).fill({ color: hpColorBright, alpha: 0.5 });
       } else {
-        fill.roundRect(x, barY, fillW, barH, 3).fill({ color: hpColor });
+        fill.roundRect(x, barY, fillW, barH, 3).fill({ color: hpColorDark });
+        fill.roundRect(x, barY, fillW, barH * 0.7, 3).fill({ color: hpColor });
+        fill.roundRect(x + 2, barY + 2, Math.max(0, fillW - 4), barH * 0.3, 2).fill({ color: hpColorBright, alpha: 0.5 });
       }
 
       // Rage glow
@@ -261,7 +286,7 @@ export class TekkenHUD {
       const charDef = TEKKEN_CHARACTERS.find(c => c.id === fighter.characterId);
       if (charDef) this._nameTexts[i].text = charDef.name;
 
-      // Round indicators
+      // Round indicators with shine effects
       const wins = state.roundResults.filter(r => r === i).length;
       for (let r = 0; r < this._roundIndicators[i].length; r++) {
         const gem = this._roundIndicators[i][r];
@@ -270,7 +295,32 @@ export class TekkenHUD {
           ? centerX - barGap / 2 - 20 - r * 22
           : centerX + barGap / 2 + 20 + r * 22;
         const won = r < wins;
-        gem.circle(gemX, barY - 12, 6).fill({ color: won ? 0xffcc00 : 0x333333 }).stroke({ color: won ? 0xffaa00 : 0x888888, width: 1.5 });
+
+        // Detect new win (trigger flash)
+        if (won && this._roundWinFlash[i][r] === 0) {
+          this._roundWinFlash[i][r] = 30;
+        }
+
+        if (won) {
+          // Outer glow
+          const glowPulse = Math.sin(Date.now() * 0.004 + r * 1.2) * 0.15 + 0.2;
+          gem.circle(gemX, barY - 12, 10).fill({ color: 0xffaa00, alpha: glowPulse });
+          // Main gem
+          gem.circle(gemX, barY - 12, 7).fill({ color: 0xffcc00 }).stroke({ color: 0xffee66, width: 1.5 });
+          // Shine highlight
+          gem.circle(gemX - 2, barY - 14, 2.5).fill({ color: 0xffffff, alpha: 0.6 });
+
+          // Flash effect for newly won rounds
+          if (this._roundWinFlash[i][r] > 0) {
+            this._roundWinFlash[i][r]--;
+            const flashAlpha = this._roundWinFlash[i][r] / 30;
+            gem.circle(gemX, barY - 12, 7 + (1 - flashAlpha) * 8).fill({ color: 0xffffff, alpha: flashAlpha * 0.5 });
+          }
+        } else {
+          gem.circle(gemX, barY - 12, 7).fill({ color: 0x333333 }).stroke({ color: 0x666666, width: 1.5 });
+          // Subtle inner shadow
+          gem.circle(gemX, barY - 11, 4).fill({ color: 0x444444, alpha: 0.3 });
+        }
       }
     }
 
@@ -290,14 +340,44 @@ export class TekkenHUD {
     }
 
     if (maxCombo >= 2 && comboPlayer >= 0) {
-      this._comboOpacity = Math.min(1, this._comboOpacity + 0.2);
+      this._comboOpacity = Math.min(1, this._comboOpacity + 0.25);
       const f = state.fighters[comboPlayer];
+
+      // Detect new hit in combo (trigger shake)
+      if (f.comboCount > this._lastComboCount) {
+        this._comboShake = 8;
+      }
+      this._lastComboCount = f.comboCount;
+
       this._comboText!.text = `${f.comboCount} HITS!\n${f.comboDamage} DMG`;
-      this._comboText!.style.fontSize = Math.min(42, 24 + f.comboCount * 2);
-      this._comboContainer!.x = comboPlayer === 0 ? sw * 0.15 : sw * 0.85;
-      this._comboContainer!.y = viewManager.screenHeight * 0.35;
+      const baseSize = Math.min(44, 26 + f.comboCount * 2);
+      this._comboText!.style.fontSize = baseSize;
+
+      // Animated scale pulse on new hits
+      const scalePulse = this._comboShake > 0 ? 1.0 + this._comboShake * 0.03 : 1.0;
+      this._comboContainer!.scale.set(scalePulse, scalePulse);
+
+      // Shake offset
+      const shakeX = this._comboShake > 0 ? (Math.random() - 0.5) * this._comboShake * 0.8 : 0;
+      const shakeY = this._comboShake > 0 ? (Math.random() - 0.5) * this._comboShake * 0.5 : 0;
+
+      this._comboContainer!.x = (comboPlayer === 0 ? sw * 0.15 : sw * 0.85) + shakeX;
+      this._comboContainer!.y = viewManager.screenHeight * 0.35 + shakeY;
+
+      // Color intensifies with combo length
+      if (f.comboCount >= 8) {
+        this._comboText!.style.fill = 0xff4422; // red for high combos
+      } else if (f.comboCount >= 5) {
+        this._comboText!.style.fill = 0xff8833; // orange for medium combos
+      } else {
+        this._comboText!.style.fill = 0xffdd22; // yellow default
+      }
+
+      if (this._comboShake > 0) this._comboShake--;
     } else {
-      this._comboOpacity = Math.max(0, this._comboOpacity - 0.08);
+      this._comboOpacity = Math.max(0, this._comboOpacity - 0.06);
+      this._lastComboCount = 0;
+      this._comboContainer!.scale.set(1, 1);
     }
     this._comboContainer!.alpha = this._comboOpacity;
 

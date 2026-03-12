@@ -172,28 +172,59 @@ export class DragoonHUD {
   update(state: DragoonState, sw: number, sh: number, dt: number): void {
     const p = state.player;
 
-    // HP bar
-    const hpX = 20, hpY = 15, hpW = 180, hpH = 14;
+    // HP bar — gradient fill with shine
+    const hpX = 20, hpY = 15, hpW = 180, hpH = 16;
     this._hpBarBg.clear();
+    // Dark backing with inner shadow
+    this._hpBarBg.roundRect(hpX - 1, hpY - 1, hpW + 2, hpH + 2, 5).fill({ color: 0x110000 });
     this._hpBarBg.roundRect(hpX, hpY, hpW, hpH, 4).fill({ color: 0x220000 });
-    this._hpBarBg.roundRect(hpX, hpY, hpW, hpH, 4).stroke({ color: 0x884444, width: 1 });
+    this._hpBarBg.roundRect(hpX, hpY, hpW, hpH, 4).stroke({ color: 0x884444, width: 1.5 });
+    // Inner shadow at top
+    this._hpBarBg.roundRect(hpX + 1, hpY + 1, hpW - 2, 3, 2).fill({ color: 0x000000, alpha: 0.2 });
     this._hpBarFill.clear();
     const hpPct = p.hp / p.maxHp;
     const hpColor = hpPct > 0.5 ? 0x44cc44 : hpPct > 0.25 ? 0xccaa22 : 0xcc2222;
-    this._hpBarFill.roundRect(hpX + 1, hpY + 1, (hpW - 2) * hpPct, hpH - 2, 3).fill({ color: hpColor });
-    // HP glow when low
-    if (hpPct < 0.25) {
-      this._hpBarFill.roundRect(hpX, hpY - 2, hpW, hpH + 4, 4).fill({ color: 0xff0000, alpha: 0.1 + Math.sin(state.gameTime * 6) * 0.05 });
+    const hpColorBright = hpPct > 0.5 ? 0x66ee66 : hpPct > 0.25 ? 0xeedd44 : 0xee4444;
+    const fillW = (hpW - 2) * hpPct;
+    // Main fill
+    this._hpBarFill.roundRect(hpX + 1, hpY + 1, fillW, hpH - 2, 3).fill({ color: hpColor });
+    // Gradient effect — brighter top half
+    this._hpBarFill.roundRect(hpX + 1, hpY + 1, fillW, (hpH - 2) * 0.45, 3).fill({ color: hpColorBright, alpha: 0.4 });
+    // Shine streak
+    this._hpBarFill.roundRect(hpX + 2, hpY + 2, fillW - 2, 2, 1).fill({ color: 0xffffff, alpha: 0.15 });
+    // Animated shine glint
+    const shineX = ((state.gameTime * 40) % (hpW + 30)) - 15;
+    if (shineX > hpX && shineX < hpX + fillW) {
+      this._hpBarFill.roundRect(shineX, hpY + 2, 12, hpH - 4, 2).fill({ color: 0xffffff, alpha: 0.08 });
     }
+    // HP glow when low — pulsating border
+    if (hpPct < 0.25) {
+      const pulseAlpha = 0.15 + Math.sin(state.gameTime * 6) * 0.08;
+      this._hpBarFill.roundRect(hpX - 2, hpY - 2, hpW + 4, hpH + 4, 6).fill({ color: 0xff0000, alpha: pulseAlpha });
+      this._hpBarFill.roundRect(hpX, hpY, hpW, hpH, 4).stroke({ color: 0xff4444, width: 1, alpha: pulseAlpha * 2 });
+    }
+    // Label icon (heart shape approximation)
+    this._hpBarBg.circle(hpX - 8, hpY + hpH / 2 - 1, 3).fill({ color: 0xff4444, alpha: 0.7 });
+    this._hpBarBg.circle(hpX - 5, hpY + hpH / 2 - 1, 3).fill({ color: 0xff4444, alpha: 0.7 });
+    this._hpBarBg.moveTo(hpX - 10, hpY + hpH / 2).lineTo(hpX - 6.5, hpY + hpH / 2 + 4).lineTo(hpX - 3, hpY + hpH / 2).fill({ color: 0xff4444, alpha: 0.7 });
 
-    // Mana bar
-    const manaX = 20, manaY = hpY + hpH + 4, manaW = 180, manaH = 10;
+    // Mana bar — gradient fill with shine
+    const manaX = 20, manaY = hpY + hpH + 6, manaW = 180, manaH = 12;
     this._manaBarBg.clear();
+    this._manaBarBg.roundRect(manaX - 1, manaY - 1, manaW + 2, manaH + 2, 4).fill({ color: 0x000011 });
     this._manaBarBg.roundRect(manaX, manaY, manaW, manaH, 3).fill({ color: 0x000022 });
-    this._manaBarBg.roundRect(manaX, manaY, manaW, manaH, 3).stroke({ color: 0x4444aa, width: 1 });
+    this._manaBarBg.roundRect(manaX, manaY, manaW, manaH, 3).stroke({ color: 0x4444aa, width: 1.5 });
+    this._manaBarBg.roundRect(manaX + 1, manaY + 1, manaW - 2, 2, 1).fill({ color: 0x000000, alpha: 0.2 });
     this._manaBarFill.clear();
     const manaPct = p.mana / p.maxMana;
-    this._manaBarFill.roundRect(manaX + 1, manaY + 1, (manaW - 2) * manaPct, manaH - 2, 2).fill({ color: 0x4488ff });
+    const manaFillW = (manaW - 2) * manaPct;
+    this._manaBarFill.roundRect(manaX + 1, manaY + 1, manaFillW, manaH - 2, 2).fill({ color: 0x4488ff });
+    // Mana gradient top
+    this._manaBarFill.roundRect(manaX + 1, manaY + 1, manaFillW, (manaH - 2) * 0.4, 2).fill({ color: 0x66aaff, alpha: 0.4 });
+    // Mana shine
+    this._manaBarFill.roundRect(manaX + 2, manaY + 2, manaFillW - 2, 1.5, 1).fill({ color: 0xffffff, alpha: 0.12 });
+    // Mana icon (diamond)
+    this._manaBarBg.moveTo(manaX - 6.5, manaY + manaH / 2).lineTo(manaX - 3, manaY + 1).lineTo(manaX + 0.5, manaY + manaH / 2).lineTo(manaX - 3, manaY + manaH - 1).fill({ color: 0x4488ff, alpha: 0.7 });
 
     // Score
     this._scoreText.text = `${p.score.toLocaleString()}`;
@@ -209,13 +240,25 @@ export class DragoonHUD {
       this._waveText.text = `Wave ${state.wave} / ${state.totalWaves}`;
     }
 
-    // Combo
+    // Combo — with animated scaling and color shift
     if (p.comboCount > 2) {
       this._comboText.text = `${p.comboCount}x COMBO`;
       this._comboText.alpha = Math.min(1, p.comboTimer);
-      this._comboText.scale.set(1 + Math.min(0.3, p.comboCount * 0.02));
+      const comboPulse = Math.sin(state.gameTime * 8) * 0.03;
+      this._comboText.scale.set(1 + Math.min(0.4, p.comboCount * 0.025) + comboPulse);
+      // Color shift: orange -> yellow -> white as combo grows
+      if (p.comboCount > 20) {
+        this._comboText.style.fill = 0xffffff;
+      } else if (p.comboCount > 10) {
+        this._comboText.style.fill = 0xffdd44;
+      } else {
+        this._comboText.style.fill = 0xff8844;
+      }
+      // Rotate slightly for dynamism
+      this._comboText.rotation = Math.sin(state.gameTime * 5) * 0.03;
     } else {
       this._comboText.text = "";
+      this._comboText.rotation = 0;
     }
 
     // Skill bar
@@ -231,54 +274,103 @@ export class DragoonHUD {
     const barY = sh - slotH - 15;
 
     this._skillBg.clear();
-    // Background panel
-    this._skillBg.roundRect(startX - 10, barY - 5, totalW + 20, slotH + 25, 6).fill({ color: 0x0a0a1a, alpha: 0.7 });
-    this._skillBg.roundRect(startX - 10, barY - 5, totalW + 20, slotH + 25, 6).stroke({ color: 0x334466, width: 1 });
+    // Background panel — more polished
+    this._skillBg.roundRect(startX - 12, barY - 7, totalW + 24, slotH + 29, 8).fill({ color: 0x050510, alpha: 0.8 });
+    this._skillBg.roundRect(startX - 12, barY - 7, totalW + 24, slotH + 29, 8).stroke({ color: 0x334466, width: 1.5 });
+    // Inner highlight line at top
+    this._skillBg.roundRect(startX - 10, barY - 6, totalW + 20, 1, 4).fill({ color: 0x556688, alpha: 0.3 });
 
     for (let i = 0; i < skills.length; i++) {
       const skillState = state.skills.find(s => s.id === skills[i])!;
       const cfg = SKILL_CONFIGS[skills[i]];
       const x = startX + i * (slotW + gap);
 
-      // Slot background
+      // Slot background — layered
       const onCooldown = skillState.cooldown > 0;
       const hasEnough = p.mana >= cfg.manaCost;
-      const slotColor = onCooldown ? 0x1a1a2a : (hasEnough ? 0x223344 : 0x1a1a22);
+      const slotColor = onCooldown ? 0x12121f : (hasEnough ? 0x1a2a3a : 0x141418);
+      const borderColor = skillState.active ? 0xffdd44 : (hasEnough && !onCooldown ? cfg.color : 0x3a3a4a);
+      // Outer shadow
+      this._skillBg.roundRect(x - 1, barY - 1, slotW + 2, slotH + 2, 5).fill({ color: 0x000000, alpha: 0.3 });
+      // Slot fill
       this._skillBg.roundRect(x, barY, slotW, slotH, 4).fill({ color: slotColor });
-      this._skillBg.roundRect(x, barY, slotW, slotH, 4).stroke({ color: skillState.active ? 0xffdd44 : (hasEnough ? cfg.color : 0x444444), width: skillState.active ? 2 : 1 });
+      // Inner bevel highlight
+      this._skillBg.roundRect(x + 1, barY + 1, slotW - 2, 2, 2).fill({ color: 0xffffff, alpha: 0.04 });
+      // Border
+      this._skillBg.roundRect(x, barY, slotW, slotH, 4).stroke({ color: borderColor, width: skillState.active ? 2.5 : 1 });
 
-      // Cooldown overlay
+      // Cooldown overlay — with sweep effect
       const cd = this._skillTexts[i].cooldown;
       cd.clear();
       if (onCooldown) {
         const cdPct = skillState.cooldown / skillState.maxCooldown;
-        cd.rect(x + 1, barY + slotH * (1 - cdPct), slotW - 2, slotH * cdPct).fill({ color: 0x000000, alpha: 0.5 });
+        cd.rect(x + 1, barY + slotH * (1 - cdPct), slotW - 2, slotH * cdPct).fill({ color: 0x000000, alpha: 0.55 });
+        // Cooldown edge line
+        cd.rect(x + 1, barY + slotH * (1 - cdPct), slotW - 2, 1.5).fill({ color: 0x8888aa, alpha: 0.3 });
       }
 
-      // Color indicator dot
-      this._skillBg.circle(x + slotW / 2, barY + 12, 5).fill({ color: cfg.color, alpha: onCooldown ? 0.3 : 0.9 });
+      // Color indicator — glowing orb instead of dot
+      const orbAlpha = onCooldown ? 0.25 : 0.9;
+      const orbPulse = hasEnough && !onCooldown ? Math.sin(state.gameTime * 3 + i) * 0.1 : 0;
+      this._skillBg.circle(x + slotW / 2, barY + 12, 8).fill({ color: cfg.color, alpha: (orbAlpha + orbPulse) * 0.15 });
+      this._skillBg.circle(x + slotW / 2, barY + 12, 5).fill({ color: cfg.color, alpha: orbAlpha + orbPulse });
+      this._skillBg.circle(x + slotW / 2, barY + 12, 2.5).fill({ color: 0xffffff, alpha: (orbAlpha + orbPulse) * 0.3 });
 
-      // Active glow
+      // Active glow — pulsating border glow
       if (skillState.active) {
-        this._skillBg.roundRect(x - 2, barY - 2, slotW + 4, slotH + 4, 6).fill({ color: cfg.color, alpha: 0.1 });
+        const activeGlow = 0.12 + Math.sin(state.gameTime * 6) * 0.05;
+        this._skillBg.roundRect(x - 3, barY - 3, slotW + 6, slotH + 6, 7).fill({ color: cfg.color, alpha: activeGlow });
+        this._skillBg.roundRect(x - 1, barY - 1, slotW + 2, slotH + 2, 5).stroke({ color: cfg.color, width: 1, alpha: activeGlow * 2 });
+      }
+
+      // Ready flash for available skills
+      if (hasEnough && !onCooldown && !skillState.active) {
+        const readyGlow = 0.03 + Math.sin(state.gameTime * 2 + i * 1.5) * 0.015;
+        this._skillBg.roundRect(x, barY, slotW, slotH, 4).fill({ color: cfg.color, alpha: readyGlow });
       }
     }
 
-    // Boss HP bar
+    // Boss HP bar — stylized
     const boss = state.enemies.find(e => e.isBoss && e.alive);
     if (boss) {
-      const bw = sw * 0.5;
+      const bw = sw * 0.55;
       const bx = (sw - bw) / 2;
-      const by = 50;
+      const by = 52;
+      const bh = 16;
       this._bossHpBg.clear();
-      this._bossHpBg.roundRect(bx, by, bw, 12, 4).fill({ color: 0x220000 });
-      this._bossHpBg.roundRect(bx, by, bw, 12, 4).stroke({ color: 0xff4444, width: 1 });
-      this._bossHpFill.clear();
-      this._bossHpFill.roundRect(bx + 1, by + 1, (bw - 2) * (boss.hp / boss.maxHp), 10, 3).fill({ color: 0xff2222 });
-      // Glow
-      this._bossHpFill.roundRect(bx, by - 2, bw, 16, 4).fill({ color: 0xff0000, alpha: 0.05 + Math.sin(state.gameTime * 4) * 0.03 });
+      // Decorative backing
+      this._bossHpBg.roundRect(bx - 3, by - 3, bw + 6, bh + 6, 6).fill({ color: 0x110000, alpha: 0.8 });
+      // Main background
+      this._bossHpBg.roundRect(bx, by, bw, bh, 4).fill({ color: 0x220000 });
+      // Inner shadow
+      this._bossHpBg.roundRect(bx + 1, by + 1, bw - 2, 3, 2).fill({ color: 0x000000, alpha: 0.3 });
+      // Border — ornate double border
+      this._bossHpBg.roundRect(bx, by, bw, bh, 4).stroke({ color: 0xaa2222, width: 1.5 });
+      this._bossHpBg.roundRect(bx - 1, by - 1, bw + 2, bh + 2, 5).stroke({ color: 0x661111, width: 0.5, alpha: 0.5 });
+      // Corner ornaments (small diamonds)
+      for (const cx of [bx - 2, bx + bw + 2]) {
+        this._bossHpBg.moveTo(cx, by + bh / 2).lineTo(cx + 3, by + bh / 2 - 3).lineTo(cx + 6, by + bh / 2).lineTo(cx + 3, by + bh / 2 + 3).fill({ color: 0xcc3333, alpha: 0.5 });
+      }
 
-      this._bossNameText.position.set(sw / 2, by - 4);
+      this._bossHpFill.clear();
+      const bossHpPct = boss.hp / boss.maxHp;
+      const bossFillW = (bw - 2) * bossHpPct;
+      // Main fill
+      this._bossHpFill.roundRect(bx + 1, by + 1, bossFillW, bh - 2, 3).fill({ color: 0xcc1111 });
+      // Gradient — brighter top
+      this._bossHpFill.roundRect(bx + 1, by + 1, bossFillW, (bh - 2) * 0.4, 3).fill({ color: 0xff4444, alpha: 0.4 });
+      // Shine streak
+      this._bossHpFill.roundRect(bx + 2, by + 2, bossFillW - 2, 2, 1).fill({ color: 0xffffff, alpha: 0.12 });
+      // Animated damage pulse
+      const bossGlow = 0.06 + Math.sin(state.gameTime * 4) * 0.03;
+      this._bossHpFill.roundRect(bx - 1, by - 2, bw + 2, bh + 4, 5).fill({ color: 0xff0000, alpha: bossGlow });
+      // HP segment markers (every 25%)
+      for (let seg = 1; seg < 4; seg++) {
+        const segX = bx + bw * seg * 0.25;
+        this._bossHpBg.rect(segX - 0.5, by + 1, 1, bh - 2).fill({ color: 0x000000, alpha: 0.3 });
+      }
+
+      this._bossNameText.position.set(sw / 2, by - 6);
       this._bossNameText.text = _getBossDisplayName(boss.type);
       this._bossNameText.alpha = 1;
     } else {

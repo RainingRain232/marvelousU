@@ -299,6 +299,8 @@ export class TekkenArenaRenderer {
     this._buildCourtyardChandelier();
     this._buildCourtyardSkyEnvironment();
     this._buildCourtyardGroundDetails();
+    this._buildCourtyardDecorativeProps();
+    this._buildDustMotes();
   }
 
   private _buildCourtyardFloor(): void {
@@ -1154,6 +1156,7 @@ export class TekkenArenaRenderer {
     this._buildPitCeiling();
     this._buildPitProps();
     this._buildPitEnvironment();
+    this._buildPitEmbers();
   }
 
   private _buildPitFloor(): void {
@@ -1607,6 +1610,8 @@ export class TekkenArenaRenderer {
     this._buildThroneLighting();
     this._buildThroneProps();
     this._buildThroneEnvironment();
+    this._buildThroneLightShafts();
+    this._buildDustMotes();
   }
 
   private _buildThroneFloor(): void {
@@ -2235,6 +2240,233 @@ export class TekkenArenaRenderer {
       beam.position.set(0, 6.85, -5 + i * 2.5);
       this._props.add(beam);
     }
+  }
+
+  /* ================================================================== */
+  /*  DECORATIVE PROPS & ATMOSPHERIC EFFECTS                              */
+  /* ================================================================== */
+
+  /** Add weapon racks, banners with crests, and carved pillars to courtyard */
+  private _buildCourtyardDecorativeProps(): void {
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.9, roughness: 0.2 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 0.85 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xc4a855, roughness: 0.3, metalness: 0.6 });
+
+    // Weapon racks on both sides (between pillars and spectators)
+    for (const side of [-1, 1]) {
+      const rackX = side * (TB.STAGE_HALF_WIDTH + 1.2);
+      const rackZ = 0.5;
+
+      // Rack frame (wooden A-frame)
+      const rackPost1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.6, 0.06), woodMat);
+      rackPost1.position.set(rackX - 0.2, 0.8, rackZ);
+      rackPost1.castShadow = true;
+      this._props.add(rackPost1);
+
+      const rackPost2 = rackPost1.clone();
+      rackPost2.position.x = rackX + 0.2;
+      this._props.add(rackPost2);
+
+      // Cross bars
+      for (const barY of [0.5, 1.0, 1.4]) {
+        const crossBar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.04), woodMat);
+        crossBar.position.set(rackX, barY, rackZ);
+        this._props.add(crossBar);
+      }
+
+      // Weapons on rack
+      // Sword
+      const sword = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.65, 0.015), metalMat);
+      sword.position.set(rackX - 0.08, 0.9, rackZ + 0.04);
+      sword.rotation.z = 0.05;
+      this._props.add(sword);
+      const swordGuard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.02), goldMat);
+      swordGuard.position.set(rackX - 0.08, 1.22, rackZ + 0.04);
+      this._props.add(swordGuard);
+
+      // Axe
+      const axeShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.7, 4), woodMat);
+      axeShaft.position.set(rackX + 0.08, 0.9, rackZ + 0.04);
+      this._props.add(axeShaft);
+      const axeHead = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.015), metalMat);
+      axeHead.position.set(rackX + 0.08, 1.25, rackZ + 0.04);
+      this._props.add(axeHead);
+
+      // Mace
+      const maceShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.55, 4), woodMat);
+      maceShaft.position.set(rackX, 0.85, rackZ + 0.04);
+      maceShaft.rotation.z = -0.08;
+      this._props.add(maceShaft);
+      const maceHead = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 5), metalMat);
+      maceHead.position.set(rackX - 0.04, 1.15, rackZ + 0.04);
+      this._props.add(maceHead);
+    }
+
+    // Pillar carvings (decorative rings and reliefs on courtyard pillars)
+    for (const side of [-1, 1]) {
+      const xBase = side * (TB.STAGE_HALF_WIDTH + 0.3);
+      const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+      for (const zPos of [floorD / 2 - 0.4, -floorD / 2 + 0.4]) {
+        // Carved relief pattern (diamond shapes on pillar face)
+        for (let h = 0; h < 3; h++) {
+          const relief = new THREE.Mesh(
+            new THREE.BoxGeometry(0.05, 0.05, 0.02),
+            goldMat,
+          );
+          relief.position.set(xBase - side * 0.26, 1.5 + h * 1.0, zPos);
+          relief.rotation.z = Math.PI / 4;
+          this._props.add(relief);
+        }
+      }
+    }
+
+    // Heraldic banner crests (decorative emblems on existing banners)
+    // These are small shield shapes attached to the banner poles
+    const bannerColors = [0x2244aa, 0xaa2222, 0x228844];
+    for (let i = 0; i < 3; i++) {
+      for (const side of [-1, 1]) {
+        const crestX = side * (TB.STAGE_HALF_WIDTH + 1.8);
+        const crestY = 3.5 + Math.sin(i * 0.7) * 0.3;
+        const crestZ = -2 - i * 1.3;
+
+        // Small shield crest
+        const crest = new THREE.Mesh(
+          new THREE.CircleGeometry(0.12, 6),
+          new THREE.MeshStandardMaterial({
+            color: bannerColors[i % bannerColors.length],
+            metalness: 0.3,
+            roughness: 0.5,
+          }),
+        );
+        crest.position.set(crestX, crestY, crestZ);
+        crest.rotation.y = side * -0.3;
+        this._props.add(crest);
+
+        // Gold trim on crest
+        const crestRim = new THREE.Mesh(
+          new THREE.TorusGeometry(0.12, 0.008, 4, 6),
+          goldMat,
+        );
+        crestRim.position.set(crestX, crestY, crestZ + side * 0.005);
+        crestRim.rotation.y = side * -0.3;
+        this._props.add(crestRim);
+      }
+    }
+
+    // Volumetric light cones from chandelier and torches
+    this._scene.addLightCone(0, 5.0, -1.5, 4.5, 1.2, 0xffeebb);
+  }
+
+  /** Spawn floating dust motes (shared by courtyard and throne room) */
+  private _buildDustMotes(): void {
+    const dustGeo = new THREE.BufferGeometry();
+    const dustPositions: number[] = [];
+    const dustSizes: number[] = [];
+    for (let i = 0; i < 120; i++) {
+      dustPositions.push(
+        (Math.random() - 0.5) * 14,
+        0.2 + Math.random() * 4.5,
+        (Math.random() - 0.5) * 12,
+      );
+      dustSizes.push(0.02 + Math.random() * 0.04);
+    }
+    dustGeo.setAttribute("position", new THREE.Float32BufferAttribute(dustPositions, 3));
+    dustGeo.setAttribute("size", new THREE.Float32BufferAttribute(dustSizes, 1));
+
+    const dustMat = new THREE.PointsMaterial({
+      color: 0xddccaa,
+      size: 0.04,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.25,
+    });
+    const dustMotes = new THREE.Points(dustGeo, dustMat);
+    this._scene.scene.add(dustMotes);
+  }
+
+  /** Spawn floating ember particles for the underground pit */
+  private _buildPitEmbers(): void {
+    const emberGeo = new THREE.BufferGeometry();
+    const emberPositions: number[] = [];
+    for (let i = 0; i < 80; i++) {
+      emberPositions.push(
+        (Math.random() - 0.5) * 10,
+        0.1 + Math.random() * 3.5,
+        (Math.random() - 0.5) * 8,
+      );
+    }
+    emberGeo.setAttribute("position", new THREE.Float32BufferAttribute(emberPositions, 3));
+
+    const emberMat = new THREE.PointsMaterial({
+      color: 0xff6622,
+      size: 0.05,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.5,
+    });
+    const embers = new THREE.Points(emberGeo, emberMat);
+    this._scene.scene.add(embers);
+
+    // Second layer of dimmer, smaller embers
+    const ember2Geo = new THREE.BufferGeometry();
+    const ember2Positions: number[] = [];
+    for (let i = 0; i < 50; i++) {
+      ember2Positions.push(
+        (Math.random() - 0.5) * 8,
+        0.3 + Math.random() * 2.5,
+        (Math.random() - 0.5) * 6,
+      );
+    }
+    ember2Geo.setAttribute("position", new THREE.Float32BufferAttribute(ember2Positions, 3));
+
+    const ember2Mat = new THREE.PointsMaterial({
+      color: 0xff4400,
+      size: 0.03,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.35,
+    });
+    const embers2 = new THREE.Points(ember2Geo, ember2Mat);
+    this._scene.scene.add(embers2);
+  }
+
+  /** Add volumetric light shafts for the throne room (god rays from stained glass) */
+  private _buildThroneLightShafts(): void {
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+    const windowColors = [0x4466cc, 0xcc4444, 0x44aa44, 0xcc8844];
+
+    for (const side of [-1, 1]) {
+      for (let w = 0; w < 4; w++) {
+        const wz = -floorD / 2 + 2.5 + w * (floorD / 4);
+        const color = windowColors[(w + (side > 0 ? 2 : 0)) % windowColors.length];
+
+        // Light shaft cone from each window
+        const shaftGeo = new THREE.CylinderGeometry(0.1, 0.8, 4.5, 8, 1, true);
+        const shaftMat = new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.025,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+        // Position from window, angled down toward floor
+        shaft.position.set(
+          side * (TB.STAGE_HALF_WIDTH + 0.5),
+          2.0,
+          wz,
+        );
+        shaft.rotation.z = side * 0.6; // angle toward center
+        this._props.add(shaft);
+      }
+    }
+
+    // Volumetric cones from chandeliers
+    this._scene.addLightCone(0, 5.5, -1.5, 5.0, 1.0, 0xffeebb);
+    this._scene.addLightCone(-3, 5.5, -3, 4.5, 0.8, 0xffeebb);
+    this._scene.addLightCone(3, 5.5, -3, 4.5, 0.8, 0xffeebb);
   }
 
   /* ================================================================== */

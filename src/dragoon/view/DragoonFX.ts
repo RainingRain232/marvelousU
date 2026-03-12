@@ -19,6 +19,8 @@ interface ActiveExplosionFX {
   timer: number; maxTimer: number;
   color: number;
   ringColor: number;
+  secondRingDelay: number;
+  debris: { x: number; y: number; vx: number; vy: number; size: number; color: number }[];
 }
 
 interface ActiveDmgNumber {
@@ -33,7 +35,9 @@ interface ActiveDmgNumber {
 interface ActiveLightning {
   x: number; y: number;
   timer: number;
+  maxTimer: number;
   segments: { x1: number; y1: number; x2: number; y2: number }[];
+  branches: { x1: number; y1: number; x2: number; y2: number }[];
 }
 
 interface FeatherParticle {
@@ -114,16 +118,33 @@ export class DragoonFX {
   spawnQueued(): void {
     // Explosions
     for (const e of this.pendingExplosions) {
+      // Generate debris for explosion
+      const debrisCount = Math.floor(e.radius * 0.3) + 4;
+      const debris: ActiveExplosionFX["debris"] = [];
+      for (let i = 0; i < debrisCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 80 + Math.random() * 200;
+        debris.push({
+          x: e.x, y: e.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 1 + Math.random() * 3,
+          color: Math.random() < 0.5 ? e.color : _brighten(e.color, 0.5),
+        });
+      }
       this._explosions.push({
         x: e.x, y: e.y,
         radius: 0, maxRadius: e.radius,
-        timer: 0, maxTimer: 0.5,
+        timer: 0, maxTimer: 0.6,
         color: e.color,
         ringColor: _brighten(e.color, 0.3),
+        secondRingDelay: 0.08,
+        debris,
       });
       // Spawn particles
       this._spawnExplosionParticles(e.x, e.y, e.color, e.radius);
-      this.shake(e.radius > 40 ? 8 : 4, 0.2);
+      this.shake(e.radius > 40 ? 10 : 5, 0.25);
+      this.screenFlash(e.color, 0.06);
     }
     this.pendingExplosions.length = 0;
 
@@ -144,27 +165,34 @@ export class DragoonFX {
     // Lightning
     for (const l of this.pendingLightning) {
       const segments: { x1: number; y1: number; x2: number; y2: number }[] = [];
+      const branches: { x1: number; y1: number; x2: number; y2: number }[] = [];
       // Main bolt from top of screen
       let cx = l.x + (Math.random() - 0.5) * 20;
       let cy = 0;
-      const steps = 8 + Math.floor(Math.random() * 5);
+      const steps = 10 + Math.floor(Math.random() * 6);
       const stepY = l.y / steps;
       for (let i = 0; i < steps; i++) {
-        const nx = cx + (Math.random() - 0.5) * 40;
+        const nx = cx + (Math.random() - 0.5) * 45;
         const ny = cy + stepY;
         segments.push({ x1: cx, y1: cy, x2: nx, y2: ny });
         cx = nx;
         cy = ny;
-        // Branch
-        if (Math.random() < 0.3) {
-          const bx = cx + (Math.random() - 0.5) * 60;
-          const by = cy + stepY * 0.5;
-          segments.push({ x1: cx, y1: cy, x2: bx, y2: by });
+        // Primary branch
+        if (Math.random() < 0.35) {
+          const bx = cx + (Math.random() - 0.5) * 70;
+          const by = cy + stepY * 0.6;
+          branches.push({ x1: cx, y1: cy, x2: bx, y2: by });
+          // Sub-branch
+          if (Math.random() < 0.4) {
+            const sbx = bx + (Math.random() - 0.5) * 40;
+            const sby = by + stepY * 0.3;
+            branches.push({ x1: bx, y1: by, x2: sbx, y2: sby });
+          }
         }
       }
-      this._lightnings.push({ x: l.x, y: l.y, timer: 0.3, segments });
-      this.screenFlash(0x4488ff, 0.08);
-      this.shake(6, 0.15);
+      this._lightnings.push({ x: l.x, y: l.y, timer: 0.4, maxTimer: 0.4, segments, branches });
+      this.screenFlash(0x4488ff, 0.1);
+      this.shake(8, 0.18);
     }
     this.pendingLightning.length = 0;
   }
@@ -242,13 +270,45 @@ export class DragoonFX {
       ex.radius = t * ex.maxRadius;
       const alpha = 1 - t;
 
-      // Shockwave ring
-      eg.circle(ex.x, ex.y, ex.radius).stroke({ color: ex.ringColor, width: 3 + (1 - t) * 4, alpha: alpha * 0.6 });
-      // Inner fill
-      eg.circle(ex.x, ex.y, ex.radius * 0.7).fill({ color: ex.color, alpha: alpha * 0.2 });
-      // Core flash
-      if (t < 0.3) {
-        eg.circle(ex.x, ex.y, ex.radius * 0.3).fill({ color: 0xffffff, alpha: (0.3 - t) * 2 });
+      // Outer shockwave ring (primary)
+      eg.circle(ex.x, ex.y, ex.radius).stroke({ color: ex.ringColor, width: 2 + (1 - t) * 5, alpha: alpha * 0.5 });
+      // Second shockwave ring (delayed, wider)
+      if (t > ex.secondRingDelay / ex.maxTimer) {
+        const t2 = (t - ex.secondRingDelay / ex.maxTimer) * 1.2;
+        const r2 = Math.min(t2, 1) * ex.maxRadius * 1.3;
+        const a2 = Math.max(0, 1 - t2);
+        eg.circle(ex.x, ex.y, r2).stroke({ color: _brighten(ex.ringColor, 0.2), width: 1.5 + a2 * 2, alpha: a2 * 0.3 });
+      }
+      // Third ring (fastest, faintest)
+      if (t > 0.1) {
+        const t3 = (t - 0.1) * 1.5;
+        const r3 = Math.min(t3, 1) * ex.maxRadius * 1.6;
+        const a3 = Math.max(0, 1 - t3);
+        eg.circle(ex.x, ex.y, r3).stroke({ color: ex.color, width: 1, alpha: a3 * 0.15 });
+      }
+      // Inner fill — gradient-like with concentric circles
+      eg.circle(ex.x, ex.y, ex.radius * 0.8).fill({ color: ex.color, alpha: alpha * 0.15 });
+      eg.circle(ex.x, ex.y, ex.radius * 0.5).fill({ color: _brighten(ex.color, 0.2), alpha: alpha * 0.2 });
+      eg.circle(ex.x, ex.y, ex.radius * 0.25).fill({ color: _brighten(ex.color, 0.4), alpha: alpha * 0.25 });
+      // Core flash — brighter, longer
+      if (t < 0.35) {
+        const coreAlpha = (0.35 - t) * 2.5;
+        eg.circle(ex.x, ex.y, ex.radius * 0.2 + 5).fill({ color: 0xffffff, alpha: coreAlpha });
+        eg.circle(ex.x, ex.y, ex.radius * 0.35 + 8).fill({ color: 0xffffff, alpha: coreAlpha * 0.3 });
+      }
+      // Debris particles
+      for (const d of ex.debris) {
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        d.vy += 100 * dt; // gravity
+        d.vx *= 0.97;
+        eg.circle(d.x, d.y, d.size * alpha).fill({ color: d.color, alpha: alpha * 0.7 });
+        // Debris trail
+        eg.circle(d.x - d.vx * dt * 0.5, d.y - d.vy * dt * 0.5, d.size * 0.5 * alpha).fill({ color: d.color, alpha: alpha * 0.3 });
+      }
+      // Heat distortion ring
+      if (t < 0.5) {
+        eg.circle(ex.x, ex.y, ex.radius * 1.5).fill({ color: ex.color, alpha: (0.5 - t) * 0.04 });
       }
     }
     this._explosions = this._explosions.filter(ex => ex.timer < ex.maxTimer);
@@ -278,16 +338,39 @@ export class DragoonFX {
     lg.clear();
     for (const l of this._lightnings) {
       l.timer -= dt;
+      const tNorm = l.timer / l.maxTimer;
       const alpha = Math.min(1, l.timer * 5);
-      // Draw main bolt
+
+      // Outer glow / afterglow (wider, fading)
       for (const seg of l.segments) {
-        lg.moveTo(seg.x1, seg.y1).lineTo(seg.x2, seg.y2).stroke({ color: 0x88ddff, width: 3, alpha });
-        // Inner bright core
-        lg.moveTo(seg.x1, seg.y1).lineTo(seg.x2, seg.y2).stroke({ color: 0xffffff, width: 1.5, alpha: alpha * 0.8 });
+        lg.moveTo(seg.x1, seg.y1).lineTo(seg.x2, seg.y2).stroke({ color: 0x4488cc, width: 8, alpha: alpha * 0.08 });
       }
-      // Impact glow
+      // Main bolt — thick outer
+      for (const seg of l.segments) {
+        lg.moveTo(seg.x1, seg.y1).lineTo(seg.x2, seg.y2).stroke({ color: 0x88ddff, width: 4, alpha: alpha * 0.5 });
+      }
+      // Main bolt — bright core
+      for (const seg of l.segments) {
+        lg.moveTo(seg.x1, seg.y1).lineTo(seg.x2, seg.y2).stroke({ color: 0xccf0ff, width: 2, alpha: alpha * 0.7 });
+      }
+      // Main bolt — white hot center
+      for (const seg of l.segments) {
+        lg.moveTo(seg.x1, seg.y1).lineTo(seg.x2, seg.y2).stroke({ color: 0xffffff, width: 1, alpha: alpha * 0.9 });
+      }
+      // Branches — thinner, bluer
+      for (const br of l.branches) {
+        lg.moveTo(br.x1, br.y1).lineTo(br.x2, br.y2).stroke({ color: 0x66bbee, width: 2, alpha: alpha * 0.35 });
+        lg.moveTo(br.x1, br.y1).lineTo(br.x2, br.y2).stroke({ color: 0xaaddff, width: 0.8, alpha: alpha * 0.5 });
+      }
+      // Impact glow — multi-layered
+      lg.circle(l.x, l.y, 30).fill({ color: 0x2266aa, alpha: alpha * 0.1 });
       lg.circle(l.x, l.y, 20).fill({ color: 0x44aaff, alpha: alpha * 0.2 });
-      lg.circle(l.x, l.y, 10).fill({ color: 0xffffff, alpha: alpha * 0.4 });
+      lg.circle(l.x, l.y, 12).fill({ color: 0x88ddff, alpha: alpha * 0.3 });
+      lg.circle(l.x, l.y, 6).fill({ color: 0xffffff, alpha: alpha * 0.5 });
+      // Ground scorch ring (if near bottom)
+      if (tNorm < 0.7) {
+        lg.circle(l.x, l.y, 15 + (1 - tNorm) * 10).stroke({ color: 0x88ddff, width: 1.5, alpha: alpha * 0.2 });
+      }
     }
     this._lightnings = this._lightnings.filter(l => l.timer > 0);
 
@@ -301,20 +384,41 @@ export class DragoonFX {
       f.vx *= 0.98;
       f.rotation += f.rotSpeed * dt;
       f.life -= dt;
-      const alpha = Math.max(0, f.life / f.maxLife);
-      const sz = f.size * (0.5 + alpha * 0.5);
-      // Draw as elongated diamond (feather-like)
-      fg.ellipse(f.x, f.y, sz * 1.5, sz * 0.5).fill({ color: f.color, alpha });
+      const lifeRatio = Math.max(0, f.life / f.maxLife);
+      const sz = f.size * (0.5 + lifeRatio * 0.5);
+
+      // Color gradient: fade toward darker/different hue as life decreases
+      const fadeColor = lifeRatio > 0.5 ? f.color : _brighten(f.color, -0.2 * (1 - lifeRatio));
+
+      // Outer glow for larger particles
+      if (sz > 2) {
+        fg.ellipse(f.x, f.y, sz * 2, sz).fill({ color: f.color, alpha: lifeRatio * 0.08 });
+      }
+      // Draw as elongated diamond (feather-like) with rotation hint
+      const rx = Math.cos(f.rotation) * sz * 1.5;
+      const ry = Math.sin(f.rotation) * sz * 0.5;
+      fg.ellipse(f.x, f.y, Math.abs(rx) + 0.5, Math.abs(ry) + 0.5).fill({ color: fadeColor, alpha: lifeRatio });
+      // Bright core for fresh particles
+      if (lifeRatio > 0.7) {
+        fg.ellipse(f.x, f.y, sz * 0.4, sz * 0.2).fill({ color: 0xffffff, alpha: (lifeRatio - 0.7) * 1.5 });
+      }
     }
     this._feathers = this._feathers.filter(f => f.life > 0);
 
-    // Screen flash
+    // Screen flash — with color tinting and vignette
     const sf = this._screenFlashGfx;
     sf.clear();
     if (this._screenFlashTimer > 0) {
       this._screenFlashTimer -= dt;
-      const alpha = Math.max(0, this._screenFlashTimer * 4);
-      sf.rect(0, 0, state.screenW, state.screenH).fill({ color: this._screenFlashColor, alpha: alpha * 0.15 });
+      const flashAlpha = Math.max(0, this._screenFlashTimer * 5);
+      // Full screen color wash
+      sf.rect(0, 0, state.screenW, state.screenH).fill({ color: this._screenFlashColor, alpha: flashAlpha * 0.12 });
+      // Brighter center flash
+      sf.ellipse(state.screenW / 2, state.screenH / 2, state.screenW * 0.4, state.screenH * 0.4)
+        .fill({ color: 0xffffff, alpha: flashAlpha * 0.06 });
+      // Edge vignette tint
+      sf.rect(0, 0, state.screenW, 3).fill({ color: this._screenFlashColor, alpha: flashAlpha * 0.15 });
+      sf.rect(0, state.screenH - 3, state.screenW, 3).fill({ color: this._screenFlashColor, alpha: flashAlpha * 0.15 });
     }
 
     // Camera shake

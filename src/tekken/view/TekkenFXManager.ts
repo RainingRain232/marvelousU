@@ -13,6 +13,13 @@ interface Particle {
   maxLife: number;
   gravity: number;
   shrink: boolean;
+  rotationSpeed?: THREE.Vector3;
+}
+
+interface GroundCrack {
+  mesh: THREE.Mesh;
+  life: number;
+  maxLife: number;
 }
 
 interface TrailPoint {
@@ -37,6 +44,9 @@ export class TekkenFXManager {
   private _counterFlashMesh: THREE.Mesh | null = null;
   private _counterFlashLife = 0;
 
+  // Ground cracks for knockdowns
+  private _groundCracks: GroundCrack[] = [];
+
   // Weapon trails (one per fighter)
   private _trails: WeaponTrail[] = [];
 
@@ -45,6 +55,8 @@ export class TekkenFXManager {
   private _blockSparkMat: THREE.MeshBasicMaterial;
   private _counterSparkMat: THREE.MeshBasicMaterial;
   private _dustMat: THREE.MeshBasicMaterial;
+  private _emberMat: THREE.MeshBasicMaterial;
+  private _hotSparkMat: THREE.MeshBasicMaterial;
 
   constructor(sceneManager: TekkenSceneManager) {
     this._scene = sceneManager;
@@ -53,10 +65,12 @@ export class TekkenFXManager {
     this._blockSparkMat = new THREE.MeshBasicMaterial({ color: 0x88bbff, transparent: true, opacity: 1 });
     this._counterSparkMat = new THREE.MeshBasicMaterial({ color: 0xff2200, transparent: true, opacity: 1 });
     this._dustMat = new THREE.MeshBasicMaterial({ color: 0x998877, transparent: true, opacity: 0.6 });
+    this._emberMat = new THREE.MeshBasicMaterial({ color: 0xff6622, transparent: true, opacity: 0.8 });
+    this._hotSparkMat = new THREE.MeshBasicMaterial({ color: 0xffffaa, transparent: true, opacity: 1 });
 
-    // Pre-allocate particle pool
+    // Pre-allocate particle pool (larger pool for more effects)
     const geo = new THREE.SphereGeometry(0.03, 4, 3);
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 160; i++) {
       const mesh = new THREE.Mesh(geo, this._sparkMat.clone());
       mesh.visible = false;
       sceneManager.scene.add(mesh);
@@ -127,20 +141,26 @@ export class TekkenFXManager {
 
   spawnHitSpark(x: number, y: number, z: number, count: number, isCounterHit: boolean): void {
     const mat = isCounterHit ? this._counterSparkMat : this._sparkMat;
+    // Spawn extra sparks for more dramatic effect
+    const totalCount = Math.floor(count * 1.5);
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < totalCount; i++) {
       const mesh = this._getParticleMesh();
       if (!mesh) break;
 
       mesh.visible = true;
       mesh.position.set(x, y, z);
-      mesh.scale.setScalar(0.8 + Math.random() * 0.8);
-      (mesh.material as THREE.MeshBasicMaterial).color.copy(mat.color);
+      // Hot-white center sparks for first few, colored for the rest
+      const isCenter = i < Math.ceil(totalCount * 0.25);
+      mesh.scale.setScalar(isCenter ? 1.2 + Math.random() * 0.8 : 0.6 + Math.random() * 1.0);
+      (mesh.material as THREE.MeshBasicMaterial).color.copy(
+        isCenter ? this._hotSparkMat.color : mat.color,
+      );
       (mesh.material as THREE.MeshBasicMaterial).opacity = 1;
 
       const angle = Math.random() * Math.PI * 2;
-      const speed = 0.02 + Math.random() * 0.06;
-      const upSpeed = 0.01 + Math.random() * 0.04;
+      const speed = 0.025 + Math.random() * 0.08;
+      const upSpeed = 0.015 + Math.random() * 0.05;
 
       this._particles.push({
         mesh,
@@ -150,11 +170,117 @@ export class TekkenFXManager {
           Math.sin(angle) * speed * 0.5,
         ),
         life: 0,
-        maxLife: 8 + Math.random() * 12,
-        gravity: 0.002,
+        maxLife: 10 + Math.random() * 15,
+        gravity: 0.0025,
         shrink: true,
+        rotationSpeed: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.3,
+          0,
+        ),
       });
     }
+
+    // Spawn lingering embers on hits
+    this._spawnEmbers(x, y, z, isCounterHit ? 6 : 3);
+  }
+
+  /** Spawn lingering ember particles that float upward slowly */
+  private _spawnEmbers(x: number, y: number, z: number, count: number): void {
+    for (let i = 0; i < count; i++) {
+      const mesh = this._getParticleMesh();
+      if (!mesh) break;
+
+      mesh.visible = true;
+      mesh.position.set(
+        x + (Math.random() - 0.5) * 0.15,
+        y + (Math.random() - 0.5) * 0.1,
+        z + (Math.random() - 0.5) * 0.1,
+      );
+      mesh.scale.setScalar(0.3 + Math.random() * 0.4);
+      (mesh.material as THREE.MeshBasicMaterial).color.copy(this._emberMat.color);
+      (mesh.material as THREE.MeshBasicMaterial).opacity = 0.8;
+
+      this._particles.push({
+        mesh,
+        velocity: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.005,
+          0.003 + Math.random() * 0.008,
+          (Math.random() - 0.5) * 0.003,
+        ),
+        life: 0,
+        maxLife: 30 + Math.random() * 40,
+        gravity: -0.0002, // float up
+        shrink: false,
+      });
+    }
+  }
+
+  /** Spawn ground crack decal on knockdown impact */
+  spawnGroundCrack(x: number, z: number): void {
+    const crackGroup = new THREE.Group();
+    const crackMat = new THREE.MeshBasicMaterial({
+      color: 0x222222,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false,
+    });
+
+    // Create radial crack lines
+    const crackCount = 5 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < crackCount; i++) {
+      const angle = (i / crackCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+      const length = 0.15 + Math.random() * 0.25;
+      const width = 0.008 + Math.random() * 0.008;
+
+      const crackGeo = new THREE.PlaneGeometry(width, length);
+      const crackLine = new THREE.Mesh(crackGeo, crackMat);
+      crackLine.rotation.x = -Math.PI / 2;
+      crackLine.rotation.z = angle;
+      crackLine.position.set(
+        Math.cos(angle) * length * 0.4,
+        0.004,
+        Math.sin(angle) * length * 0.4,
+      );
+      crackGroup.add(crackLine);
+
+      // Sub-cracks branching off
+      if (Math.random() > 0.4) {
+        const branchAngle = angle + (Math.random() - 0.5) * 1.2;
+        const branchLen = 0.05 + Math.random() * 0.12;
+        const branchGeo = new THREE.PlaneGeometry(width * 0.7, branchLen);
+        const branch = new THREE.Mesh(branchGeo, crackMat);
+        branch.rotation.x = -Math.PI / 2;
+        branch.rotation.z = branchAngle;
+        branch.position.set(
+          Math.cos(angle) * length * 0.7 + Math.cos(branchAngle) * branchLen * 0.3,
+          0.004,
+          Math.sin(angle) * length * 0.7 + Math.sin(branchAngle) * branchLen * 0.3,
+        );
+        crackGroup.add(branch);
+      }
+    }
+
+    // Impact crater (dark circle)
+    const craterGeo = new THREE.CircleGeometry(0.06 + Math.random() * 0.04, 8);
+    const crater = new THREE.Mesh(craterGeo, new THREE.MeshBasicMaterial({
+      color: 0x1a1a1a, transparent: true, opacity: 0.4, depthWrite: false,
+    }));
+    crater.rotation.x = -Math.PI / 2;
+    crater.position.y = 0.003;
+    crackGroup.add(crater);
+
+    crackGroup.position.set(x, 0, z);
+    this._scene.scene.add(crackGroup);
+
+    // Create a single Mesh reference for the crack (use crater for tracking)
+    this._groundCracks.push({
+      mesh: crater,
+      life: 0,
+      maxLife: 120,
+    });
+    // Store the group on the mesh for cleanup
+    (crater as any).__crackGroup = crackGroup;
   }
 
   spawnBlockSpark(x: number, y: number, z: number): void {
@@ -183,7 +309,7 @@ export class TekkenFXManager {
   }
 
   spawnCounterFlash(): void {
-    this._counterFlashLife = 8;
+    this._counterFlashLife = 12; // Longer, more dramatic flash
   }
 
   spawnDust(x: number, y: number, z: number): void {
@@ -312,8 +438,14 @@ export class TekkenFXManager {
       p.mesh.position.add(p.velocity);
       p.velocity.y -= p.gravity;
 
+      // Rotation for sparks
+      if (p.rotationSpeed) {
+        p.mesh.rotation.x += p.rotationSpeed.x;
+        p.mesh.rotation.y += p.rotationSpeed.y;
+      }
+
       const t = p.life / p.maxLife;
-      (p.mesh.material as THREE.MeshBasicMaterial).opacity = 1 - t;
+      (p.mesh.material as THREE.MeshBasicMaterial).opacity = (1 - t) * (1 - t); // quadratic fade for softer decay
 
       if (p.shrink) {
         const scale = (1 - t) * 0.8;
@@ -326,11 +458,50 @@ export class TekkenFXManager {
       }
     }
 
-    // Update counter-hit flash
+    // Update ground cracks (fade out over time)
+    for (let i = this._groundCracks.length - 1; i >= 0; i--) {
+      const crack = this._groundCracks[i];
+      crack.life++;
+      if (crack.life >= crack.maxLife) {
+        const group = (crack.mesh as any).__crackGroup as THREE.Group | undefined;
+        if (group) {
+          group.traverse((obj: THREE.Object3D) => {
+            if (obj instanceof THREE.Mesh) {
+              obj.geometry.dispose();
+              (obj.material as THREE.Material).dispose();
+            }
+          });
+          this._scene.scene.remove(group);
+        }
+        this._groundCracks.splice(i, 1);
+      } else if (crack.life > crack.maxLife * 0.6) {
+        // Start fading out at 60% life
+        const fadeT = (crack.life - crack.maxLife * 0.6) / (crack.maxLife * 0.4);
+        const group = (crack.mesh as any).__crackGroup as THREE.Group | undefined;
+        if (group) {
+          group.traverse((obj: THREE.Object3D) => {
+            if (obj instanceof THREE.Mesh) {
+              (obj.material as THREE.MeshBasicMaterial).opacity *= (1 - fadeT);
+            }
+          });
+        }
+      }
+    }
+
+    // Update counter-hit flash (two-phase: bright white then red tint)
     if (this._counterFlashMesh && this._counterFlashLife > 0) {
       this._counterFlashLife--;
-      const t = this._counterFlashLife / 8;
-      (this._counterFlashMesh.material as THREE.MeshBasicMaterial).opacity = t * 0.7;
+      const t = this._counterFlashLife / 12;
+      const flashMat = this._counterFlashMesh.material as THREE.MeshBasicMaterial;
+      if (t > 0.5) {
+        // Bright white phase
+        flashMat.color.setHex(0xffffff);
+        flashMat.opacity = (t - 0.5) * 2 * 0.8;
+      } else {
+        // Red tint phase
+        flashMat.color.setHex(0xff4422);
+        flashMat.opacity = t * 2 * 0.4;
+      }
       // Keep flash in front of camera
       this._counterFlashMesh.position.copy(this._scene.camera.position);
       this._counterFlashMesh.position.add(
@@ -359,5 +530,18 @@ export class TekkenFXManager {
       trail.mesh.geometry.dispose();
       trail.material.dispose();
     }
+    for (const crack of this._groundCracks) {
+      const group = (crack.mesh as any).__crackGroup as THREE.Group | undefined;
+      if (group) {
+        group.traverse((obj: THREE.Object3D) => {
+          if (obj instanceof THREE.Mesh) {
+            obj.geometry.dispose();
+            (obj.material as THREE.Material).dispose();
+          }
+        });
+        this._scene.scene.remove(group);
+      }
+    }
+    this._groundCracks = [];
   }
 }
