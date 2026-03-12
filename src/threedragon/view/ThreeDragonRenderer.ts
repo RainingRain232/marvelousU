@@ -15,8 +15,7 @@ import { TDEnemyType } from "../state/ThreeDragonState";
 const FOG_COLOR = 0x1a1833;
 const AMBIENT_COLOR = 0x334466;
 const SUN_COLOR = 0xffeedd;
-const GROUND_COLOR = 0x1a3318;
-const WATER_COLOR = 0x1a2844;
+const GROUND_COLOR = 0x1e4a1e;
 
 // ---------------------------------------------------------------------------
 // ThreeDragonRenderer
@@ -55,6 +54,7 @@ export class ThreeDragonRenderer {
   private _arthurGroup = new THREE.Group();
   private _wandLight!: THREE.PointLight;
   private _wandGlow!: THREE.Mesh;
+  private _capeMesh!: THREE.Mesh;
   private _shieldMesh!: THREE.Mesh;
 
   // Enemy meshes
@@ -77,7 +77,7 @@ export class ThreeDragonRenderer {
   private _trailColors: Float32Array = new Float32Array(0);
   private _trailSizes: Float32Array = new Float32Array(0);
   private _trailIndex = 0;
-  private _maxTrailParticles = 600;
+  private _maxTrailParticles = 900;
 
   get canvas(): HTMLCanvasElement { return this._canvas; }
 
@@ -102,12 +102,12 @@ export class ThreeDragonRenderer {
 
     // Scene
     this._scene = new THREE.Scene();
-    this._scene.fog = new THREE.FogExp2(FOG_COLOR, 0.008);
+    this._scene.fog = new THREE.FogExp2(FOG_COLOR, 0.006);
 
-    // Camera
-    this._camera = new THREE.PerspectiveCamera(65, sw / sh, 0.5, 500);
-    this._camera.position.set(0, 14, 12);
-    this._camera.lookAt(0, 8, -30);
+    // Camera — wider FOV for dramatic perspective, slightly higher and further back
+    this._camera = new THREE.PerspectiveCamera(70, sw / sh, 0.5, 600);
+    this._camera.position.set(0, 16, 18);
+    this._camera.lookAt(0, 6, -35);
 
     // Reusable geometries
     this._sphereGeo = new THREE.SphereGeometry(1, 12, 8);
@@ -127,30 +127,37 @@ export class ThreeDragonRenderer {
   // ---------------------------------------------------------------------------
 
   private _buildLighting(): void {
-    // Ambient
-    this._ambientLight = new THREE.AmbientLight(AMBIENT_COLOR, 0.6);
+    // Ambient — warm tinted for golden hour feel
+    this._ambientLight = new THREE.AmbientLight(AMBIENT_COLOR, 0.5);
     this._scene.add(this._ambientLight);
 
-    // Sun directional
-    this._sunLight = new THREE.DirectionalLight(SUN_COLOR, 1.4);
+    // Sun directional — warm golden light from ahead-right
+    this._sunLight = new THREE.DirectionalLight(SUN_COLOR, 1.6);
     this._sunLight.position.set(30, 50, -40);
     this._sunLight.castShadow = true;
-    this._sunLight.shadow.mapSize.set(1024, 1024);
+    this._sunLight.shadow.mapSize.set(2048, 2048);
     this._sunLight.shadow.camera.near = 1;
-    this._sunLight.shadow.camera.far = 200;
-    this._sunLight.shadow.camera.left = -50;
-    this._sunLight.shadow.camera.right = 50;
-    this._sunLight.shadow.camera.top = 50;
-    this._sunLight.shadow.camera.bottom = -50;
+    this._sunLight.shadow.camera.far = 250;
+    this._sunLight.shadow.camera.left = -60;
+    this._sunLight.shadow.camera.right = 60;
+    this._sunLight.shadow.camera.top = 60;
+    this._sunLight.shadow.camera.bottom = -60;
+    this._sunLight.shadow.bias = -0.001;
     this._scene.add(this._sunLight);
+    this._scene.add(this._sunLight.target);
 
-    // Player wand light
-    this._pointLight = new THREE.PointLight(0x88ccff, 2, 15);
+    // Player wand light — bright magic glow
+    this._pointLight = new THREE.PointLight(0x88ccff, 3, 20);
     this._scene.add(this._pointLight);
 
-    // Hemisphere light for ambient sky color
-    const hemiLight = new THREE.HemisphereLight(0x6688cc, 0x223311, 0.4);
+    // Hemisphere light — blue sky above, green ground below
+    const hemiLight = new THREE.HemisphereLight(0x7799dd, 0x224422, 0.5);
     this._scene.add(hemiLight);
+
+    // Rim light from behind — creates silhouette edge glow
+    const rimLight = new THREE.DirectionalLight(0xff9966, 0.4);
+    rimLight.position.set(-20, 30, 60);
+    this._scene.add(rimLight);
   }
 
   // ---------------------------------------------------------------------------
@@ -185,7 +192,8 @@ export class ThreeDragonRenderer {
         uniform float uTime;
         varying vec3 vWorldPos;
         void main() {
-          float h = normalize(vWorldPos).y;
+          vec3 n = normalize(vWorldPos);
+          float h = n.y;
           vec3 col;
           if (h > 0.3) {
             col = mix(uMidColor, uTopColor, (h - 0.3) / 0.7);
@@ -194,11 +202,17 @@ export class ThreeDragonRenderer {
           } else {
             col = mix(vec3(0.05, 0.08, 0.12), uHorizonColor, (h + 0.3) / 0.3);
           }
-          // Sun glow
+          // Sun glow with multiple layers
           vec3 sunDir = normalize(vec3(0.5, 0.3, -0.7));
-          float sunDot = max(0.0, dot(normalize(vWorldPos), sunDir));
-          col += uSunColor * pow(sunDot, 32.0) * 0.8;
-          col += uSunColor * pow(sunDot, 8.0) * 0.15;
+          float sunDot = max(0.0, dot(n, sunDir));
+          col += uSunColor * pow(sunDot, 64.0) * 1.2;
+          col += uSunColor * pow(sunDot, 16.0) * 0.25;
+          col += vec3(1.0, 0.6, 0.2) * pow(sunDot, 4.0) * 0.08;
+          // Subtle aurora/nebula near zenith
+          float aurora = sin(n.x * 3.0 + uTime * 0.2) * cos(n.z * 2.0 + uTime * 0.15);
+          aurora = max(0.0, aurora) * smoothstep(0.4, 0.8, h) * 0.06;
+          col += vec3(0.2, 0.4, 0.8) * aurora;
+          col += vec3(0.5, 0.2, 0.6) * aurora * sin(n.x * 5.0 + uTime * 0.3) * 0.5;
           gl_FragColor = vec4(col, 1.0);
         }
       `,
@@ -257,10 +271,10 @@ export class ThreeDragonRenderer {
     starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
     starGeo.setAttribute("size", new THREE.BufferAttribute(starSizes, 1));
     const starMat = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.8,
+      color: 0xeeeeff,
+      size: 1.0,
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.7,
       sizeAttenuation: false,
     });
     this._starField = new THREE.Points(starGeo, starMat);
@@ -271,34 +285,36 @@ export class ThreeDragonRenderer {
   }
 
   private _buildClouds(): void {
-    const cloudMat = new THREE.MeshBasicMaterial({
-      color: 0x4466aa,
-      transparent: true,
-      opacity: 0.15,
-      depthWrite: false,
-    });
+    // Cloud color palette — sunset-lit whites and warm golds
+    const cloudColors = [0x8899bb, 0x99aaca, 0xccaa88, 0xddccaa, 0xaa99bb];
 
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 50; i++) {
       const cloudGroup = new THREE.Group();
-      const puffs = 3 + Math.floor(Math.random() * 4);
+      const puffs = 4 + Math.floor(Math.random() * 5);
+      const baseColor = cloudColors[Math.floor(Math.random() * cloudColors.length)];
       for (let j = 0; j < puffs; j++) {
-        const size = 3 + Math.random() * 8;
-        const puff = new THREE.Mesh(this._sphereGeo, cloudMat.clone());
-        puff.scale.set(size, size * 0.4, size * 0.6);
+        const size = 4 + Math.random() * 10;
+        const mat = new THREE.MeshBasicMaterial({
+          color: baseColor,
+          transparent: true,
+          opacity: 0.06 + Math.random() * 0.14,
+          depthWrite: false,
+        });
+        const puff = new THREE.Mesh(this._sphereGeo, mat);
+        puff.scale.set(size, size * 0.35, size * 0.7);
         puff.position.set(
-          (Math.random() - 0.5) * size * 2,
-          (Math.random() - 0.5) * size * 0.3,
-          (Math.random() - 0.5) * size,
+          (Math.random() - 0.5) * size * 2.5,
+          (Math.random() - 0.5) * size * 0.25,
+          (Math.random() - 0.5) * size * 1.2,
         );
-        (puff.material as THREE.MeshBasicMaterial).opacity = 0.08 + Math.random() * 0.12;
         cloudGroup.add(puff);
       }
       cloudGroup.position.set(
-        (Math.random() - 0.5) * 200,
-        25 + Math.random() * 40,
-        -Math.random() * 200,
+        (Math.random() - 0.5) * 250,
+        20 + Math.random() * 50,
+        -Math.random() * 250,
       );
-      cloudGroup.userData.speed = 0.5 + Math.random() * 2;
+      cloudGroup.userData.speed = 0.3 + Math.random() * 1.5;
       this._cloudGroup.add(cloudGroup);
     }
     this._scene.add(this._cloudGroup);
@@ -329,10 +345,15 @@ export class ThreeDragonRenderer {
       }
       geo.computeVertexNormals();
 
-      // Gradient ground material
+      // Gradient ground material with vertex colors for variation
       const mat = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(GROUND_COLOR).offsetHSL(0, 0, (Math.random() - 0.5) * 0.05),
+        color: new THREE.Color(GROUND_COLOR).offsetHSL(
+          (Math.random() - 0.5) * 0.03,
+          (Math.random() - 0.5) * 0.1,
+          (Math.random() - 0.5) * 0.06,
+        ),
         flatShading: true,
+        shininess: 5,
       });
       const tile = new THREE.Mesh(geo, mat);
       tile.position.z = -i * tileSize;
@@ -341,65 +362,136 @@ export class ThreeDragonRenderer {
       this._groundTiles.push(tile);
     }
 
-    // Water plane (far below)
-    const waterGeo = new THREE.PlaneGeometry(500, 500);
+    // Water plane — animated shader for shimmering surface
+    const waterGeo = new THREE.PlaneGeometry(500, 500, 64, 64);
     waterGeo.rotateX(-Math.PI / 2);
-    const waterMat = new THREE.MeshPhongMaterial({
-      color: WATER_COLOR,
+    const waterMat = new THREE.ShaderMaterial({
       transparent: true,
-      opacity: 0.7,
-      shininess: 100,
-      specular: new THREE.Color(0x4488cc),
+      depthWrite: false,
+      uniforms: {
+        uTime: { value: 0 },
+        uColor: { value: new THREE.Color(0x0d1f3c) },
+        uHighlight: { value: new THREE.Color(0x3388bb) },
+      },
+      vertexShader: `
+        uniform float uTime;
+        varying vec2 vUv;
+        varying float vWave;
+        void main() {
+          vUv = uv;
+          vec3 p = position;
+          float w = sin(p.x * 0.15 + uTime * 0.8) * cos(p.z * 0.12 + uTime * 0.6) * 0.8;
+          w += sin(p.x * 0.3 + p.z * 0.2 + uTime * 1.2) * 0.3;
+          p.y += w;
+          vWave = w;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        uniform vec3 uHighlight;
+        uniform float uTime;
+        varying vec2 vUv;
+        varying float vWave;
+        void main() {
+          float shimmer = sin(vUv.x * 80.0 + uTime * 2.0) * cos(vUv.y * 60.0 + uTime * 1.5) * 0.5 + 0.5;
+          shimmer = pow(shimmer, 4.0) * 0.3;
+          float foam = smoothstep(0.5, 0.8, vWave) * 0.2;
+          vec3 col = mix(uColor, uHighlight, shimmer + foam);
+          float alpha = 0.65 + shimmer * 0.1;
+          gl_FragColor = vec4(col, alpha);
+        }
+      `,
     });
     this._waterPlane = new THREE.Mesh(waterGeo, waterMat);
     this._waterPlane.position.y = -3;
     this._scene.add(this._waterPlane);
 
-    // Mountains (distant backdrop)
+    // Mountains (distant backdrop) with snow caps
     for (let i = 0; i < 20; i++) {
-      const h = 15 + Math.random() * 30;
+      const h = 15 + Math.random() * 35;
       const w = 10 + Math.random() * 20;
+      const mtnGroup = new THREE.Group();
+
       const mtnGeo = new THREE.ConeGeometry(w, h, 6);
       const mtnMat = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(0x2a3a2a).offsetHSL(0, 0, (Math.random() - 0.5) * 0.1),
+        color: new THREE.Color(0x2a3a2a).offsetHSL(
+          (Math.random() - 0.5) * 0.02,
+          0,
+          (Math.random() - 0.5) * 0.12,
+        ),
         flatShading: true,
       });
       const mtn = new THREE.Mesh(mtnGeo, mtnMat);
-      mtn.position.set(
-        (Math.random() < 0.5 ? -1 : 1) * (35 + Math.random() * 30),
+      mtnGroup.add(mtn);
+
+      // Snow cap on tall mountains
+      if (h > 25) {
+        const snowGeo = new THREE.ConeGeometry(w * 0.35, h * 0.2, 6);
+        const snowMat = new THREE.MeshPhongMaterial({
+          color: 0xddeeff,
+          emissive: 0x223344,
+          emissiveIntensity: 0.1,
+        });
+        const snow = new THREE.Mesh(snowGeo, snowMat);
+        snow.position.y = h * 0.4;
+        mtnGroup.add(snow);
+      }
+
+      mtnGroup.position.set(
+        (Math.random() < 0.5 ? -1 : 1) * (35 + Math.random() * 35),
         h * 0.4,
         -Math.random() * 300,
       );
       mtn.castShadow = true;
-      this._scene.add(mtn);
-      this._mountains.push(mtn);
+      this._scene.add(mtnGroup);
+      this._mountains.push(mtnGroup as any);
     }
 
-    // Trees scattered on ground
-    for (let i = 0; i < 60; i++) {
+    // Trees scattered on ground — mixed forest with autumn colors
+    const canopyColors = [0x225522, 0x2a5e2a, 0x4a7a2a, 0x886622, 0x994422, 0x553322];
+    for (let i = 0; i < 80; i++) {
       const treeGroup = new THREE.Group();
-      const trunkH = 1.5 + Math.random() * 2;
+      const trunkH = 1.5 + Math.random() * 2.5;
       const trunkGeo = new THREE.CylinderGeometry(0.2, 0.35, trunkH, 6);
-      const trunkMat = new THREE.MeshPhongMaterial({ color: 0x553311 });
+      const trunkMat = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(0x553311).offsetHSL(0, 0, (Math.random() - 0.5) * 0.1),
+      });
       const trunk = new THREE.Mesh(trunkGeo, trunkMat);
       trunk.position.y = trunkH * 0.5;
       treeGroup.add(trunk);
 
-      const canopyH = 2 + Math.random() * 3;
-      const canopyGeo = new THREE.ConeGeometry(1.5 + Math.random(), canopyH, 7);
+      const canopyH = 2 + Math.random() * 3.5;
+      const baseColor = canopyColors[Math.floor(Math.random() * canopyColors.length)];
+      const canopyGeo = new THREE.ConeGeometry(1.2 + Math.random() * 1.5, canopyH, 7);
       const canopyMat = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(0x225522).offsetHSL(Math.random() * 0.05, 0, (Math.random() - 0.5) * 0.1),
+        color: new THREE.Color(baseColor).offsetHSL(
+          (Math.random() - 0.5) * 0.04,
+          (Math.random() - 0.5) * 0.1,
+          (Math.random() - 0.5) * 0.08,
+        ),
+        flatShading: true,
       });
       const canopy = new THREE.Mesh(canopyGeo, canopyMat);
       canopy.position.y = trunkH + canopyH * 0.4;
       canopy.castShadow = true;
       treeGroup.add(canopy);
 
+      // Some trees get a second canopy layer
+      if (Math.random() < 0.3) {
+        const layer2H = canopyH * 0.6;
+        const layer2Geo = new THREE.ConeGeometry((1.2 + Math.random()) * 0.7, layer2H, 7);
+        const layer2 = new THREE.Mesh(layer2Geo, canopyMat.clone());
+        layer2.position.y = trunkH + canopyH * 0.7 + layer2H * 0.3;
+        treeGroup.add(layer2);
+      }
+
       treeGroup.position.set(
         (Math.random() - 0.5) * 60,
         0,
         -Math.random() * 300,
       );
+      treeGroup.scale.setScalar(0.8 + Math.random() * 0.5);
       this._scene.add(treeGroup);
       this._trees.push(treeGroup as any);
     }
@@ -494,6 +586,10 @@ export class ThreeDragonRenderer {
     this._shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
     this._eagleGroup.add(this._shieldMesh);
 
+    // Rotate entire eagle to face forward (-Z direction)
+    // The eagle is built facing +X, so rotate -90 degrees around Y
+    this._eagleGroup.rotation.y = -Math.PI / 2;
+
     this._scene.add(this._eagleGroup);
   }
 
@@ -566,11 +662,11 @@ export class ThreeDragonRenderer {
       color: 0xcc2222,
       side: THREE.DoubleSide,
     });
-    const cape = new THREE.Mesh(capeGeo, capeMat);
-    cape.position.set(-0.3, 1.2, 0);
-    cape.rotation.y = Math.PI / 2;
-    cape.rotation.x = 0.3;
-    this._arthurGroup.add(cape);
+    this._capeMesh = new THREE.Mesh(capeGeo, capeMat);
+    this._capeMesh.position.set(-0.3, 1.2, 0);
+    this._capeMesh.rotation.y = Math.PI / 2;
+    this._capeMesh.rotation.x = 0.3;
+    this._arthurGroup.add(this._capeMesh);
 
     // Right arm (wand arm)
     const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6);
@@ -1055,12 +1151,20 @@ export class ThreeDragonRenderer {
 
     const time = state.gameTime;
 
-    // Update camera to follow player
+    // Update camera — smooth cinematic follow
     const px = state.player.position.x;
     const py = state.player.position.y;
     const pz = state.player.position.z;
-    this._camera.position.set(px * 0.3, py + 6, pz + 15);
-    this._camera.lookAt(px * 0.5, py - 2, pz - 30);
+    // Camera trails behind and slightly above, with smooth lerp
+    const camTargetX = px * 0.25;
+    const camTargetY = py + 7;
+    const camTargetZ = pz + 18;
+    this._camera.position.x += (camTargetX - this._camera.position.x) * 3 * dt;
+    this._camera.position.y += (camTargetY - this._camera.position.y) * 3 * dt;
+    this._camera.position.z += (camTargetZ - this._camera.position.z) * 4 * dt;
+    // Look ahead of the player
+    const lookTarget = new THREE.Vector3(px * 0.4, py - 3, pz - 35);
+    this._camera.lookAt(lookTarget);
 
     // Update sun light to follow
     this._sunLight.position.set(px + 30, 50, pz - 40);
@@ -1091,8 +1195,11 @@ export class ThreeDragonRenderer {
       }
     }
 
-    // Water follows
+    // Water follows + animate
     this._waterPlane.position.z = pz;
+    if ((this._waterPlane.material as THREE.ShaderMaterial).uniforms) {
+      (this._waterPlane.material as THREE.ShaderMaterial).uniforms.uTime.value = time;
+    }
 
     // Scroll mountains and trees
     for (const mtn of this._mountains) {
@@ -1123,6 +1230,23 @@ export class ThreeDragonRenderer {
     // Update explosions
     this._updateExplosionMeshes(state, dt);
 
+    // Atmospheric magic particles — floating sparkles around player area
+    if (Math.random() < 0.3) {
+      const colors = [
+        { r: 0.5, g: 0.7, b: 1.0 },   // soft blue
+        { r: 1.0, g: 0.9, b: 0.5 },   // warm gold
+        { r: 0.7, g: 0.5, b: 1.0 },   // purple
+      ];
+      const c = colors[Math.floor(Math.random() * colors.length)];
+      this._addTrailPoint(
+        state.player.position.x + (Math.random() - 0.5) * 30,
+        state.player.position.y + (Math.random() - 0.5) * 15 + 5,
+        state.player.position.z + (Math.random() - 0.5) * 40 - 10,
+        c.r, c.g, c.b,
+        0.08 + Math.random() * 0.12,
+      );
+    }
+
     // Fade trail particles
     for (let i = 0; i < this._maxTrailParticles; i++) {
       this._trailSizes[i] *= 0.97;
@@ -1146,17 +1270,23 @@ export class ThreeDragonRenderer {
     const pz = p.position.z;
 
     this._eagleGroup.position.set(px, py, pz);
-    this._eagleGroup.rotation.z = p.eagleBankAngle;
+    // Base rotation faces -Z; bank tilts on the Z axis (roll)
+    // Since the group is rotated -PI/2 on Y, banking maps to local Z
+    this._eagleGroup.rotation.set(0, -Math.PI / 2, p.eagleBankAngle);
 
-    // Wing flap
-    const flapAngle = Math.sin(p.eagleFlapPhase) * 0.4;
+    // Wing flap — animate around local X axis (up/down relative to the bird)
+    const flapAngle = Math.sin(p.eagleFlapPhase) * 0.45;
     this._eagleWingL.rotation.x = flapAngle;
     this._eagleWingR.rotation.x = flapAngle;
 
     // Gentle bob
-    const bob = Math.sin(time * 2) * 0.2;
+    const bob = Math.sin(time * 2) * 0.25;
     this._eagleBody.position.y = bob;
     this._eagleHead.position.y = 0.4 + bob * 0.5;
+
+    // Slight pitch when moving up/down
+    const pitchTarget = state.input.up ? 0.15 : state.input.down ? -0.15 : 0;
+    this._eagleGroup.rotation.x += (pitchTarget - this._eagleGroup.rotation.x) * 0.05;
 
     // Invincibility flicker
     if (p.invincTimer > 0) {
@@ -1169,38 +1299,58 @@ export class ThreeDragonRenderer {
     const glowPulse = 0.7 + Math.sin(time * 4) * 0.3;
     this._wandGlow.scale.setScalar(0.15 * (1 + glowPulse * 0.3));
     this._wandLight.intensity = 2 + glowPulse * 2;
+    this._wandLight.color.setHex(
+      p.shieldActive ? 0xffdd88 : 0x88ccff,
+    );
 
     // Point light follows wand
     const wandWorldPos = new THREE.Vector3();
     this._wandGlow.getWorldPosition(wandWorldPos);
     this._pointLight.position.copy(wandWorldPos);
+    this._pointLight.color.copy(this._wandLight.color);
 
     // Shield
     if (p.shieldActive) {
-      (this._shieldMesh.material as THREE.MeshBasicMaterial).opacity = 0.15 + Math.sin(time * 6) * 0.05;
+      const shieldPulse = 0.15 + Math.sin(time * 6) * 0.05;
+      (this._shieldMesh.material as THREE.MeshBasicMaterial).opacity = shieldPulse;
       this._shieldMesh.scale.setScalar(1 + Math.sin(time * 3) * 0.05);
+      this._shieldMesh.rotation.y += 0.02;
     } else {
       (this._shieldMesh.material as THREE.MeshBasicMaterial).opacity = 0;
     }
 
-    // Eagle feather trail
-    if (Math.random() < 0.3) {
+    // Cape billowing animation
+    this._capeMesh.rotation.x = 0.3 + Math.sin(time * 3) * 0.1 + Math.sin(time * 7) * 0.05;
+    this._capeMesh.rotation.z = Math.sin(time * 2.5) * 0.08;
+
+    // Eagle feather trail — behind the bird (positive Z in world = behind)
+    if (Math.random() < 0.4) {
       const col = new THREE.Color(0xf0ead0);
       this._addTrailPoint(
-        px - 2 + Math.random() * 0.5,
+        px + (Math.random() - 0.5) * 1.5,
         py - 0.5 + Math.random() * 0.5,
-        pz + 1 + Math.random(),
+        pz + 2 + Math.random() * 1.5,
         col.r, col.g, col.b, 0.3 + Math.random() * 0.3,
       );
     }
-    // Wand magic trail
-    if (Math.random() < 0.5) {
+    // Wand magic trail — sparkles around wand tip
+    if (Math.random() < 0.6) {
       const col = new THREE.Color(0x88ccff);
       this._addTrailPoint(
-        wandWorldPos.x + (Math.random() - 0.5) * 0.3,
-        wandWorldPos.y + (Math.random() - 0.5) * 0.3,
-        wandWorldPos.z + (Math.random() - 0.5) * 0.3,
-        col.r, col.g, col.b, 0.2 + Math.random() * 0.2,
+        wandWorldPos.x + (Math.random() - 0.5) * 0.5,
+        wandWorldPos.y + (Math.random() - 0.5) * 0.5,
+        wandWorldPos.z + (Math.random() - 0.5) * 0.5,
+        col.r, col.g, col.b, 0.2 + Math.random() * 0.3,
+      );
+    }
+    // Golden sparkle trail from crown
+    if (Math.random() < 0.15) {
+      const col = new THREE.Color(0xffdd44);
+      this._addTrailPoint(
+        px + (Math.random() - 0.5) * 0.3,
+        py + 2.2 + Math.random() * 0.3,
+        pz + 0.5 + Math.random() * 0.5,
+        col.r, col.g, col.b, 0.15 + Math.random() * 0.15,
       );
     }
   }
@@ -1373,10 +1523,11 @@ export class ThreeDragonRenderer {
   // ---------------------------------------------------------------------------
 
   addExplosion(x: number, y: number, z: number, radius: number, color: number): void {
+    // Outer shockwave ring
     const mat = new THREE.MeshBasicMaterial({
       color,
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.5,
       depthWrite: false,
       side: THREE.DoubleSide,
     });
@@ -1384,20 +1535,41 @@ export class ThreeDragonRenderer {
     mesh.position.set(x, y, z);
     mesh.scale.setScalar(0.1);
     this._scene.add(mesh);
-    this._explosionMeshes.push({ mesh, timer: 0, maxTimer: 0.5 });
+    this._explosionMeshes.push({ mesh, timer: 0, maxTimer: 0.6 });
 
-    // Burst trail particles
+    // Inner bright core
+    const coreMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.8,
+      depthWrite: false,
+    });
+    const core = new THREE.Mesh(this._sphereGeo, coreMat);
+    core.position.set(x, y, z);
+    core.scale.setScalar(0.05);
+    this._scene.add(core);
+    this._explosionMeshes.push({ mesh: core, timer: 0, maxTimer: 0.3 });
+
+    // Flash point light for illumination
+    const flash = new THREE.PointLight(color, 8, radius * 3);
+    flash.position.set(x, y, z);
+    this._scene.add(flash);
+    setTimeout(() => { this._scene.remove(flash); }, 200);
+
+    // Burst trail particles — more of them, varied sizes
     const col = new THREE.Color(color);
-    for (let i = 0; i < 15; i++) {
+    const brightCol = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.4);
+    for (let i = 0; i < 25; i++) {
       const angle = Math.random() * Math.PI * 2;
       const angleV = Math.random() * Math.PI;
-      const r = radius * 0.3;
+      const r = radius * (0.2 + Math.random() * 0.4);
+      const useColor = Math.random() < 0.3 ? brightCol : col;
       this._addTrailPoint(
         x + Math.cos(angle) * Math.sin(angleV) * r,
         y + Math.cos(angleV) * r,
         z + Math.sin(angle) * Math.sin(angleV) * r,
-        col.r, col.g, col.b,
-        0.5 + Math.random() * 0.5,
+        useColor.r, useColor.g, useColor.b,
+        0.4 + Math.random() * 0.8,
       );
     }
   }
