@@ -407,26 +407,56 @@ export class ThreeDragonRenderer {
     this._waterPlane.position.y = -3;
     this._scene.add(this._waterPlane);
 
-    // Mountains (distant backdrop) with snow caps
-    for (let i = 0; i < 20; i++) {
-      const h = 15 + Math.random() * 35;
-      const w = 10 + Math.random() * 20;
+    // Mountains (distant backdrop) with snow caps, ridgelines, and foothills
+    for (let i = 0; i < 30; i++) {
+      const h = 15 + Math.random() * 45;
+      const w = 10 + Math.random() * 25;
       const mtnGroup = new THREE.Group();
 
-      const mtnGeo = new THREE.ConeGeometry(w, h, 6);
+      // Main peak — varied polygon counts for organic shapes
+      const mtnGeo = new THREE.ConeGeometry(w, h, 5 + Math.floor(Math.random() * 4));
+      const baseHue = 0.28 + (Math.random() - 0.5) * 0.06;
       const mtnMat = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(0x2a3a2a).offsetHSL(
-          (Math.random() - 0.5) * 0.02,
-          0,
-          (Math.random() - 0.5) * 0.12,
-        ),
+        color: new THREE.Color().setHSL(baseHue, 0.25 + Math.random() * 0.15, 0.15 + Math.random() * 0.12),
         flatShading: true,
       });
       const mtn = new THREE.Mesh(mtnGeo, mtnMat);
       mtnGroup.add(mtn);
 
-      // Snow cap on tall mountains
-      if (h > 25) {
+      // Secondary ridge/shoulder peak
+      if (Math.random() < 0.6) {
+        const ridgeH = h * (0.4 + Math.random() * 0.3);
+        const ridgeW = w * (0.3 + Math.random() * 0.4);
+        const ridgeGeo = new THREE.ConeGeometry(ridgeW, ridgeH, 5);
+        const ridge = new THREE.Mesh(ridgeGeo, mtnMat.clone());
+        ridge.position.set(
+          (Math.random() < 0.5 ? -1 : 1) * w * 0.5,
+          -h * 0.15,
+          (Math.random() - 0.5) * w * 0.3,
+        );
+        mtnGroup.add(ridge);
+      }
+
+      // Foothills — smaller bumps at the base
+      for (let f = 0; f < 2 + Math.floor(Math.random() * 3); f++) {
+        const fh = h * (0.1 + Math.random() * 0.15);
+        const fw = w * (0.2 + Math.random() * 0.3);
+        const footGeo = new THREE.ConeGeometry(fw, fh, 5);
+        const footMat = new THREE.MeshPhongMaterial({
+          color: new THREE.Color().setHSL(baseHue + 0.02, 0.3, 0.18 + Math.random() * 0.08),
+          flatShading: true,
+        });
+        const foot = new THREE.Mesh(footGeo, footMat);
+        foot.position.set(
+          (Math.random() - 0.5) * w * 1.5,
+          -h * 0.35,
+          (Math.random() - 0.5) * w * 0.5,
+        );
+        mtnGroup.add(foot);
+      }
+
+      // Snow cap on tall mountains — layered snow
+      if (h > 22) {
         const snowGeo = new THREE.ConeGeometry(w * 0.35, h * 0.2, 6);
         const snowMat = new THREE.MeshPhongMaterial({
           color: 0xddeeff,
@@ -436,16 +466,132 @@ export class ThreeDragonRenderer {
         const snow = new THREE.Mesh(snowGeo, snowMat);
         snow.position.y = h * 0.4;
         mtnGroup.add(snow);
+
+        // Secondary snow streak
+        if (h > 32) {
+          const streak = new THREE.Mesh(
+            new THREE.ConeGeometry(w * 0.2, h * 0.12, 5),
+            snowMat.clone(),
+          );
+          streak.position.set(w * 0.15, h * 0.32, 0);
+          mtnGroup.add(streak);
+        }
+      }
+
+      // Rocky outcrops on some mountains
+      if (Math.random() < 0.4) {
+        const rockMat = new THREE.MeshPhongMaterial({
+          color: new THREE.Color(0x555566).offsetHSL(0, 0, (Math.random() - 0.5) * 0.1),
+          flatShading: true,
+        });
+        for (let r = 0; r < 2 + Math.floor(Math.random() * 3); r++) {
+          const rockGeo = new THREE.DodecahedronGeometry(w * 0.06 + Math.random() * w * 0.08, 0);
+          const rock = new THREE.Mesh(rockGeo, rockMat);
+          const angle = Math.random() * Math.PI * 2;
+          const rDist = w * (0.3 + Math.random() * 0.4);
+          rock.position.set(
+            Math.cos(angle) * rDist,
+            -h * 0.2 + Math.random() * h * 0.3,
+            Math.sin(angle) * rDist,
+          );
+          rock.rotation.set(Math.random(), Math.random(), Math.random());
+          mtnGroup.add(rock);
+        }
       }
 
       mtnGroup.position.set(
-        (Math.random() < 0.5 ? -1 : 1) * (35 + Math.random() * 35),
+        (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 45),
         h * 0.4,
-        -Math.random() * 300,
+        -Math.random() * 350,
       );
       mtn.castShadow = true;
       this._scene.add(mtnGroup);
       this._mountains.push(mtnGroup as any);
+    }
+
+    // Scattered ground rocks and boulders
+    const rockMat = new THREE.MeshPhongMaterial({ color: 0x445544, flatShading: true });
+    for (let i = 0; i < 60; i++) {
+      const rSize = 0.3 + Math.random() * 1.2;
+      const rockGeo = new THREE.DodecahedronGeometry(rSize, 0);
+      const rock = new THREE.Mesh(rockGeo, rockMat.clone());
+      (rock.material as THREE.MeshPhongMaterial).color.setHSL(
+        0.28 + (Math.random() - 0.5) * 0.05,
+        0.15 + Math.random() * 0.1,
+        0.15 + Math.random() * 0.15,
+      );
+      rock.position.set(
+        (Math.random() - 0.5) * 70,
+        rSize * 0.3,
+        -Math.random() * 300,
+      );
+      rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+      rock.castShadow = true;
+      this._scene.add(rock);
+      this._trees.push(rock); // reuse trees array for scrolling
+    }
+
+    // Grass tufts — small cone clusters on the ground
+    const grassColors = [0x2a6e2a, 0x337733, 0x448833, 0x557722];
+    for (let i = 0; i < 120; i++) {
+      const tuftGroup = new THREE.Group();
+      const blades = 3 + Math.floor(Math.random() * 4);
+      const gColor = grassColors[Math.floor(Math.random() * grassColors.length)];
+      for (let b = 0; b < blades; b++) {
+        const bladeH = 0.3 + Math.random() * 0.6;
+        const bladeGeo = new THREE.ConeGeometry(0.06 + Math.random() * 0.05, bladeH, 3);
+        const bladeMat = new THREE.MeshPhongMaterial({
+          color: new THREE.Color(gColor).offsetHSL(
+            (Math.random() - 0.5) * 0.03, 0, (Math.random() - 0.5) * 0.08
+          ),
+        });
+        const blade = new THREE.Mesh(bladeGeo, bladeMat);
+        blade.position.set(
+          (Math.random() - 0.5) * 0.4,
+          bladeH * 0.5,
+          (Math.random() - 0.5) * 0.4,
+        );
+        blade.rotation.z = (Math.random() - 0.5) * 0.3;
+        tuftGroup.add(blade);
+      }
+      tuftGroup.position.set(
+        (Math.random() - 0.5) * 65,
+        0,
+        -Math.random() * 300,
+      );
+      this._scene.add(tuftGroup);
+      this._trees.push(tuftGroup as any);
+    }
+
+    // Wildflowers — small colorful dots scattered on the ground
+    const flowerColors = [0xff6688, 0xffaa44, 0xcc88ff, 0x88ccff, 0xffff66, 0xff4466];
+    for (let i = 0; i < 80; i++) {
+      const flowerGroup = new THREE.Group();
+      const fColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      // Stem
+      const stemGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.3 + Math.random() * 0.3, 4);
+      const stemMat = new THREE.MeshPhongMaterial({ color: 0x336633 });
+      const stem = new THREE.Mesh(stemGeo, stemMat);
+      stem.position.y = 0.15;
+      flowerGroup.add(stem);
+      // Petals
+      const petalGeo = new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 6, 4);
+      const petalMat = new THREE.MeshPhongMaterial({
+        color: fColor,
+        emissive: fColor,
+        emissiveIntensity: 0.15,
+      });
+      const petal = new THREE.Mesh(petalGeo, petalMat);
+      petal.position.y = 0.35 + Math.random() * 0.2;
+      flowerGroup.add(petal);
+
+      flowerGroup.position.set(
+        (Math.random() - 0.5) * 50,
+        0,
+        -Math.random() * 300,
+      );
+      this._scene.add(flowerGroup);
+      this._trees.push(flowerGroup as any);
     }
 
     // Trees scattered on ground — mixed forest with autumn colors
@@ -587,8 +733,8 @@ export class ThreeDragonRenderer {
     this._eagleGroup.add(this._shieldMesh);
 
     // Rotate entire eagle to face forward (-Z direction)
-    // The eagle is built facing +X, so rotate -90 degrees around Y
-    this._eagleGroup.rotation.y = -Math.PI / 2;
+    // The eagle is built facing +X, so rotate +90 degrees around Y
+    this._eagleGroup.rotation.y = Math.PI / 2;
 
     this._scene.add(this._eagleGroup);
   }
@@ -788,78 +934,272 @@ export class ThreeDragonRenderer {
     switch (enemy.type) {
       case TDEnemyType.SHADOW_RAVEN:
       case TDEnemyType.STORM_HARPY: {
-        // Bird-like body
+        const isHarpy = enemy.type === TDEnemyType.STORM_HARPY;
+        // Bird-like body with neck
         const bodyMat = new THREE.MeshPhongMaterial({
           color: enemy.color,
           emissive: enemy.glowColor,
-          emissiveIntensity: 0.2,
+          emissiveIntensity: 0.25,
+          specular: isHarpy ? 0x4488ff : 0x331111,
+          shininess: 40,
         });
         const body = new THREE.Mesh(this._sphereGeo, bodyMat);
-        body.scale.set(s * 1.2, s * 0.5, s * 0.8);
+        body.scale.set(s * 1.3, s * 0.55, s * 0.85);
         group.add(body);
+        // Neck
+        const neckGeo = new THREE.CylinderGeometry(s * 0.15, s * 0.25, s * 0.5, 6);
+        const neck = new THREE.Mesh(neckGeo, bodyMat.clone());
+        neck.position.set(s * 0.8, s * 0.25, 0);
+        neck.rotation.z = -0.5;
+        group.add(neck);
+        // Head
+        const headMat = new THREE.MeshPhongMaterial({
+          color: isHarpy ? 0x334466 : 0x221122,
+          emissive: enemy.glowColor,
+          emissiveIntensity: 0.15,
+        });
+        const head = new THREE.Mesh(this._sphereGeo, headMat);
+        head.scale.set(s * 0.35, s * 0.3, s * 0.3);
+        head.position.set(s * 1.1, s * 0.4, 0);
+        group.add(head);
+        // Beak
+        const beakGeo = new THREE.ConeGeometry(s * 0.08, s * 0.35, 4);
+        beakGeo.rotateZ(-Math.PI / 2);
+        const beakMat = new THREE.MeshPhongMaterial({ color: isHarpy ? 0x88aacc : 0x553322 });
+        const beak = new THREE.Mesh(beakGeo, beakMat);
+        beak.position.set(s * 1.45, s * 0.35, 0);
+        group.add(beak);
         // Wings
-        const wingMat = new THREE.MeshPhongMaterial({ color: enemy.color - 0x111111, side: THREE.DoubleSide });
+        const wingMat = new THREE.MeshPhongMaterial({
+          color: enemy.color - 0x111111,
+          side: THREE.DoubleSide,
+          emissive: enemy.glowColor,
+          emissiveIntensity: 0.1,
+        });
         const wL = new THREE.Mesh(this._createWingGeometry(), wingMat);
-        wL.scale.set(s * 0.5, s * 0.5, s * 0.8);
+        wL.scale.set(s * 0.6, s * 0.6, s * 0.9);
         wL.position.set(0, 0.2 * s, -s * 0.5);
         wL.name = "wingL";
         group.add(wL);
         const wR = new THREE.Mesh(this._createWingGeometry(), wingMat.clone());
-        wR.scale.set(s * 0.5, s * 0.5, -s * 0.8);
+        wR.scale.set(s * 0.6, s * 0.6, -s * 0.9);
         wR.position.set(0, 0.2 * s, s * 0.5);
         wR.name = "wingR";
         group.add(wR);
-        // Eyes
-        const eyeMat = new THREE.MeshBasicMaterial({ color: enemy.type === TDEnemyType.STORM_HARPY ? 0x00ffff : 0xff0000 });
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(s * 0.15, 6, 4), eyeMat);
-        eye.position.set(s * 0.9, s * 0.2, 0);
-        group.add(eye);
+        // Tail feathers
+        const tailGeo = new THREE.ConeGeometry(s * 0.2, s * 0.8, 4);
+        tailGeo.rotateZ(Math.PI / 2);
+        const tailMat = new THREE.MeshPhongMaterial({ color: enemy.color - 0x080808 });
+        const tail = new THREE.Mesh(tailGeo, tailMat);
+        tail.position.set(-s * 1.1, 0, 0);
+        group.add(tail);
+        // Eyes — glowing
+        const eyeColor = isHarpy ? 0x00ffff : 0xff0000;
+        const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
+        for (const z of [-s * 0.15, s * 0.15]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(s * 0.08, 6, 4), eyeMat);
+          eye.position.set(s * 1.2, s * 0.45, z);
+          group.add(eye);
+        }
+        // Harpy: lightning crackling around body
+        if (isHarpy) {
+          const sparkMat = new THREE.MeshBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.5 });
+          for (let i = 0; i < 3; i++) {
+            const spark = new THREE.Mesh(new THREE.SphereGeometry(s * 0.06, 4, 3), sparkMat);
+            spark.position.set(
+              (Math.random() - 0.5) * s * 1.5,
+              (Math.random() - 0.5) * s * 0.5,
+              (Math.random() - 0.5) * s * 0.8,
+            );
+            group.add(spark);
+          }
+        }
+        // Raven: shadow wisps
+        if (!isHarpy) {
+          const wispMat = new THREE.MeshBasicMaterial({ color: 0x220022, transparent: true, opacity: 0.3, depthWrite: false });
+          for (let i = 0; i < 2; i++) {
+            const wisp = new THREE.Mesh(this._sphereGeo, wispMat);
+            wisp.scale.set(s * 0.4, s * 0.15, s * 0.3);
+            wisp.position.set(-s * 0.5 - i * s * 0.4, -s * 0.1, (Math.random() - 0.5) * s * 0.4);
+            group.add(wisp);
+          }
+        }
+        // Claws
+        const clawMat = new THREE.MeshPhongMaterial({ color: isHarpy ? 0x667788 : 0x332211 });
+        for (const z of [-s * 0.3, s * 0.3]) {
+          const claw = new THREE.Mesh(new THREE.ConeGeometry(s * 0.05, s * 0.25, 3), clawMat);
+          claw.position.set(s * 0.2, -s * 0.45, z);
+          group.add(claw);
+        }
         break;
       }
 
       case TDEnemyType.CRYSTAL_WYVERN: {
-        // Dragon-like
+        // Dragon-like with crystalline armor
         const bodyMat = new THREE.MeshPhongMaterial({
           color: enemy.color,
           specular: 0x88ccff,
-          shininess: 60,
+          shininess: 80,
           emissive: enemy.glowColor,
-          emissiveIntensity: 0.15,
+          emissiveIntensity: 0.2,
         });
         const body = new THREE.Mesh(this._sphereGeo, bodyMat);
-        body.scale.set(s * 1.8, s * 0.7, s);
+        body.scale.set(s * 2, s * 0.75, s * 1.1);
         group.add(body);
-        // Crystal spines
-        const spineMat = new THREE.MeshPhongMaterial({ color: 0x88ddff, transparent: true, opacity: 0.7 });
-        for (let i = 0; i < 4; i++) {
-          const spine = new THREE.Mesh(this._coneGeo, spineMat);
-          spine.scale.set(s * 0.2, s * 0.6, s * 0.2);
-          spine.position.set(-s * 0.5 + i * s * 0.4, s * 0.6, 0);
+        // Neck
+        const neckGeo = new THREE.CylinderGeometry(s * 0.2, s * 0.35, s * 0.8, 6);
+        const neck = new THREE.Mesh(neckGeo, bodyMat.clone());
+        neck.position.set(s * 1.5, s * 0.3, 0);
+        neck.rotation.z = -0.6;
+        group.add(neck);
+        // Head
+        const headMat = new THREE.MeshPhongMaterial({
+          color: enemy.color,
+          specular: 0xaaddff,
+          shininess: 90,
+          emissive: enemy.glowColor,
+          emissiveIntensity: 0.25,
+        });
+        const head = new THREE.Mesh(this._sphereGeo, headMat);
+        head.scale.set(s * 0.5, s * 0.35, s * 0.4);
+        head.position.set(s * 2, s * 0.5, 0);
+        group.add(head);
+        // Jaw
+        const jawGeo = new THREE.ConeGeometry(s * 0.15, s * 0.4, 4);
+        jawGeo.rotateZ(-Math.PI / 2);
+        const jaw = new THREE.Mesh(jawGeo, headMat.clone());
+        jaw.position.set(s * 2.4, s * 0.35, 0);
+        group.add(jaw);
+        // Crystal spines — more detailed with varying sizes
+        const spineMat = new THREE.MeshPhongMaterial({
+          color: 0x88ddff,
+          transparent: true,
+          opacity: 0.75,
+          specular: 0xffffff,
+          shininess: 100,
+          emissive: 0x2266aa,
+          emissiveIntensity: 0.2,
+        });
+        for (let i = 0; i < 6; i++) {
+          const spineH = s * (0.3 + Math.random() * 0.4);
+          const spine = new THREE.Mesh(this._coneGeo, spineMat.clone());
+          spine.scale.set(s * 0.12, spineH, s * 0.12);
+          spine.position.set(-s * 0.6 + i * s * 0.4, s * 0.5 + Math.sin(i) * s * 0.1, 0);
+          spine.rotation.z = (Math.random() - 0.5) * 0.3;
           group.add(spine);
+        }
+        // Crystal wing membranes
+        const wingMat = new THREE.MeshPhongMaterial({
+          color: 0x6699cc,
+          transparent: true,
+          opacity: 0.5,
+          side: THREE.DoubleSide,
+          emissive: 0x224488,
+          emissiveIntensity: 0.15,
+        });
+        const wL = new THREE.Mesh(this._createWingGeometry(), wingMat);
+        wL.scale.set(s * 0.5, s * 0.5, s * 0.7);
+        wL.position.set(0, s * 0.3, -s * 0.6);
+        wL.name = "wingL";
+        group.add(wL);
+        const wR = new THREE.Mesh(this._createWingGeometry(), wingMat.clone());
+        wR.scale.set(s * 0.5, s * 0.5, -s * 0.7);
+        wR.position.set(0, s * 0.3, s * 0.6);
+        wR.name = "wingR";
+        group.add(wR);
+        // Tail
+        const tailMat = new THREE.MeshPhongMaterial({ color: enemy.color, specular: 0x88ccff, shininess: 60 });
+        const tail = new THREE.Mesh(this._coneGeo, tailMat);
+        tail.scale.set(s * 0.2, s * 1.5, s * 0.2);
+        tail.rotation.z = Math.PI / 2;
+        tail.position.set(-s * 2, 0, 0);
+        group.add(tail);
+        // Eyes
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x44eeff });
+        for (const z of [-s * 0.15, s * 0.15]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(s * 0.08, 6, 4), eyeMat);
+          eye.position.set(s * 2.2, s * 0.55, z);
+          group.add(eye);
         }
         break;
       }
 
       case TDEnemyType.EMBER_PHOENIX: {
-        // Fiery bird
-        const bodyMat = new THREE.MeshBasicMaterial({
-          color: 0xff6600,
-        });
+        // Fiery bird with blazing plumage
+        const bodyMat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
         const body = new THREE.Mesh(this._sphereGeo, bodyMat);
-        body.scale.set(s, s * 0.6, s * 0.6);
+        body.scale.set(s * 1.1, s * 0.65, s * 0.65);
         body.name = "phoenixBody";
         group.add(body);
-        // Inner glow
-        const innerMat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+        // Inner white-hot core
+        const innerMat = new THREE.MeshBasicMaterial({ color: 0xffee88 });
         const inner = new THREE.Mesh(this._sphereGeo, innerMat);
-        inner.scale.set(s * 0.6, s * 0.35, s * 0.35);
+        inner.scale.set(s * 0.55, s * 0.3, s * 0.3);
         group.add(inner);
+        // Head
+        const headMat = new THREE.MeshBasicMaterial({ color: 0xff8800 });
+        const head = new THREE.Mesh(this._sphereGeo, headMat);
+        head.scale.set(s * 0.3, s * 0.25, s * 0.25);
+        head.position.set(s * 0.9, s * 0.2, 0);
+        group.add(head);
+        // Beak
+        const beakGeo = new THREE.ConeGeometry(s * 0.06, s * 0.25, 3);
+        beakGeo.rotateZ(-Math.PI / 2);
+        const beak = new THREE.Mesh(beakGeo, new THREE.MeshBasicMaterial({ color: 0xffcc00 }));
+        beak.position.set(s * 1.15, s * 0.15, 0);
+        group.add(beak);
+        // Fire wings
+        const fireWingMat = new THREE.MeshBasicMaterial({
+          color: 0xff4400,
+          transparent: true,
+          opacity: 0.7,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        });
+        const fwL = new THREE.Mesh(this._createWingGeometry(), fireWingMat);
+        fwL.scale.set(s * 0.5, s * 0.5, s * 0.7);
+        fwL.position.set(0, s * 0.2, -s * 0.4);
+        fwL.name = "wingL";
+        group.add(fwL);
+        const fwR = new THREE.Mesh(this._createWingGeometry(), fireWingMat.clone());
+        fwR.scale.set(s * 0.5, s * 0.5, -s * 0.7);
+        fwR.position.set(0, s * 0.2, s * 0.4);
+        fwR.name = "wingR";
+        group.add(fwR);
+        // Tail flame plumes
+        const flameMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.6, depthWrite: false });
+        for (let i = 0; i < 3; i++) {
+          const flame = new THREE.Mesh(this._coneGeo, flameMat.clone());
+          flame.scale.set(s * 0.15, s * (0.5 + i * 0.2), s * 0.15);
+          flame.rotation.z = Math.PI / 2 + (i - 1) * 0.2;
+          flame.position.set(-s * 0.9 - i * s * 0.15, (i - 1) * s * 0.15, 0);
+          group.add(flame);
+        }
+        // Ember particles (static decorative spheres)
+        const emberMat = new THREE.MeshBasicMaterial({ color: 0xffaa22 });
+        for (let i = 0; i < 5; i++) {
+          const ember = new THREE.Mesh(new THREE.SphereGeometry(s * 0.04, 4, 3), emberMat);
+          ember.position.set(
+            (Math.random() - 0.5) * s * 2,
+            (Math.random() - 0.5) * s * 0.8,
+            (Math.random() - 0.5) * s * 0.8,
+          );
+          group.add(ember);
+        }
+        // Eyes
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffff88 });
+        for (const z of [-s * 0.1, s * 0.1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(s * 0.06, 4, 3), eyeMat);
+          eye.position.set(s * 1.0, s * 0.25, z);
+          group.add(eye);
+        }
         break;
       }
 
       case TDEnemyType.VOID_WRAITH:
       case TDEnemyType.SPECTRAL_KNIGHT: {
-        // Ghostly robed figure
+        const isKnight = enemy.type === TDEnemyType.SPECTRAL_KNIGHT;
+        // Ghostly robed figure with details
         const bodyMat = new THREE.MeshPhongMaterial({
           color: enemy.color,
           emissive: enemy.glowColor,
@@ -868,72 +1208,254 @@ export class ThreeDragonRenderer {
           opacity: 0.8,
         });
         const body = new THREE.Mesh(this._coneGeo, bodyMat);
-        body.scale.set(s * 0.8, s * 1.5, s * 0.8);
+        body.scale.set(s * 0.85, s * 1.6, s * 0.85);
         body.position.y = s * 0.5;
         group.add(body);
-        // Head
-        const headMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor });
-        const head = new THREE.Mesh(this._sphereGeo, headMat);
-        head.scale.set(s * 0.4, s * 0.4, s * 0.4);
-        head.position.y = s * 1.5;
-        group.add(head);
+        // Shoulders (wider for knight)
+        if (isKnight) {
+          const shoulderMat = new THREE.MeshPhongMaterial({
+            color: enemy.color + 0x111111,
+            emissive: enemy.glowColor,
+            emissiveIntensity: 0.2,
+            transparent: true,
+            opacity: 0.85,
+          });
+          for (const z of [-1, 1]) {
+            const shoulder = new THREE.Mesh(this._boxGeo, shoulderMat);
+            shoulder.scale.set(s * 0.35, s * 0.25, s * 0.4);
+            shoulder.position.set(0, s * 1.2, z * s * 0.55);
+            group.add(shoulder);
+          }
+          // Shield
+          const shieldGeo = new THREE.PlaneGeometry(s * 0.6, s * 0.8);
+          const shieldMat = new THREE.MeshPhongMaterial({
+            color: 0x334455,
+            emissive: enemy.glowColor,
+            emissiveIntensity: 0.1,
+            side: THREE.DoubleSide,
+          });
+          const shield = new THREE.Mesh(shieldGeo, shieldMat);
+          shield.position.set(s * 0.3, s * 0.9, -s * 0.6);
+          shield.rotation.y = 0.3;
+          group.add(shield);
+          // Sword
+          const swordGeo = new THREE.BoxGeometry(s * 0.05, s * 1.2, s * 0.1);
+          const swordMat = new THREE.MeshPhongMaterial({ color: 0x8899aa, specular: 0xffffff, shininess: 100 });
+          const sword = new THREE.Mesh(swordGeo, swordMat);
+          sword.position.set(s * 0.3, s * 1.0, s * 0.5);
+          sword.rotation.x = -0.3;
+          group.add(sword);
+        }
+        // Head with hood
+        const hoodMat = new THREE.MeshPhongMaterial({
+          color: enemy.color - 0x050505,
+          transparent: true,
+          opacity: 0.85,
+        });
+        const hood = new THREE.Mesh(this._sphereGeo, hoodMat);
+        hood.scale.set(s * 0.45, s * 0.5, s * 0.45);
+        hood.position.y = s * 1.5;
+        group.add(hood);
+        // Glowing face/eyes
+        const faceMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor });
+        for (const z of [-s * 0.12, s * 0.12]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(s * 0.06, 4, 3), faceMat);
+          eye.position.set(s * 0.2, s * 1.55, z);
+          group.add(eye);
+        }
+        // Wispy trailing robe edges
+        const wispMat = new THREE.MeshBasicMaterial({
+          color: enemy.glowColor,
+          transparent: true,
+          opacity: 0.2,
+          depthWrite: false,
+        });
+        for (let i = 0; i < 3; i++) {
+          const wisp = new THREE.Mesh(this._sphereGeo, wispMat);
+          wisp.scale.set(s * 0.25, s * 0.6, s * 0.25);
+          wisp.position.set(
+            -s * 0.2 + (Math.random() - 0.5) * s * 0.3,
+            -s * 0.3 - i * s * 0.15,
+            (Math.random() - 0.5) * s * 0.4,
+          );
+          group.add(wisp);
+        }
         break;
       }
 
       case TDEnemyType.ARCANE_ORB: {
-        const orbMat = new THREE.MeshBasicMaterial({
-          color: enemy.glowColor,
-        });
+        // Core orb with layered glow
+        const orbMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor });
         const orb = new THREE.Mesh(this._sphereGeo, orbMat);
-        orb.scale.set(s * 0.6, s * 0.6, s * 0.6);
+        orb.scale.set(s * 0.5, s * 0.5, s * 0.5);
         group.add(orb);
-        // Rings
-        const ringGeo = new THREE.TorusGeometry(s * 0.8, 0.05, 8, 16);
+        // Inner bright core
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const core = new THREE.Mesh(this._sphereGeo, coreMat);
+        core.scale.set(s * 0.2, s * 0.2, s * 0.2);
+        group.add(core);
+        // Outer translucent shell
+        const shellMat = new THREE.MeshPhongMaterial({
+          color: enemy.glowColor,
+          transparent: true,
+          opacity: 0.2,
+          depthWrite: false,
+          specular: 0xffffff,
+          shininess: 100,
+        });
+        const shell = new THREE.Mesh(this._sphereGeo, shellMat);
+        shell.scale.set(s * 0.75, s * 0.75, s * 0.75);
+        group.add(shell);
+        // Multiple orbiting rings
         const ringMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor, transparent: true, opacity: 0.4 });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.name = "ring";
-        group.add(ring);
+        const ring1 = new THREE.Mesh(new THREE.TorusGeometry(s * 0.8, 0.04, 8, 20), ringMat);
+        ring1.name = "ring";
+        group.add(ring1);
+        const ring2 = new THREE.Mesh(new THREE.TorusGeometry(s * 0.65, 0.03, 8, 16), ringMat.clone());
+        ring2.rotation.x = Math.PI / 2;
+        ring2.name = "ring2";
+        group.add(ring2);
+        // Orbiting motes
+        for (let i = 0; i < 4; i++) {
+          const mote = new THREE.Mesh(new THREE.SphereGeometry(s * 0.06, 4, 3), new THREE.MeshBasicMaterial({ color: enemy.glowColor }));
+          const angle = (i / 4) * Math.PI * 2;
+          mote.position.set(Math.cos(angle) * s * 0.8, Math.sin(angle) * s * 0.3, Math.sin(angle) * s * 0.8);
+          group.add(mote);
+        }
         break;
       }
 
       case TDEnemyType.DARK_TOWER:
       case TDEnemyType.CANNON_FORT: {
-        // Tower structure
+        const isFort = enemy.type === TDEnemyType.CANNON_FORT;
+        // Tower base — tapered
         const towerMat = new THREE.MeshPhongMaterial({ color: enemy.color, flatShading: true });
+        const baseMat = new THREE.MeshPhongMaterial({ color: enemy.color - 0x080808, flatShading: true });
+        // Foundation
+        const foundation = new THREE.Mesh(this._boxGeo, baseMat);
+        foundation.scale.set(s * 1.3, s * 0.5, s * 1.3);
+        foundation.position.y = s * 0.25;
+        group.add(foundation);
+        // Main tower body
         const tower = new THREE.Mesh(this._boxGeo, towerMat);
-        tower.scale.set(s, s * 3, s);
-        tower.position.y = s * 1.5;
+        tower.scale.set(s * 0.9, s * 2.5, s * 0.9);
+        tower.position.y = s * 1.75;
         group.add(tower);
-        // Top orb
+        // Battlements / crenellations at top
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2;
+          const merlon = new THREE.Mesh(this._boxGeo, towerMat.clone());
+          merlon.scale.set(s * 0.2, s * 0.3, s * 0.2);
+          merlon.position.set(
+            Math.cos(angle) * s * 0.4,
+            s * 3.15,
+            Math.sin(angle) * s * 0.4,
+          );
+          group.add(merlon);
+        }
+        // Window slits
+        const windowMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor });
+        for (let i = 0; i < 2; i++) {
+          const win = new THREE.Mesh(this._boxGeo, windowMat);
+          win.scale.set(s * 0.06, s * 0.2, s * 0.01);
+          win.position.set(s * 0.46, s * 1.5 + i * s * 0.7, 0);
+          group.add(win);
+        }
+        // Top orb — magical energy
         const topMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor });
         const top = new THREE.Mesh(this._sphereGeo, topMat);
-        top.scale.set(s * 0.4, s * 0.4, s * 0.4);
-        top.position.y = s * 3.2;
+        top.scale.set(s * 0.35, s * 0.35, s * 0.35);
+        top.position.y = s * 3.4;
         top.name = "topOrb";
         group.add(top);
+        // Fort: cannon barrels
+        if (isFort) {
+          const cannonMat = new THREE.MeshPhongMaterial({ color: 0x333333, shininess: 60 });
+          for (const z of [-s * 0.3, s * 0.3]) {
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.08, s * 0.1, s * 0.8, 8), cannonMat);
+            barrel.rotation.z = Math.PI / 2;
+            barrel.position.set(s * 0.8, s * 1.5, z);
+            group.add(barrel);
+          }
+        }
+        // Dark tower: ominous floating runes around it
+        if (!isFort) {
+          const runeMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor, transparent: true, opacity: 0.4 });
+          for (let i = 0; i < 3; i++) {
+            const rune = new THREE.Mesh(new THREE.TorusGeometry(s * 0.15, s * 0.02, 4, 6), runeMat);
+            const angle = (i / 3) * Math.PI * 2;
+            rune.position.set(Math.cos(angle) * s * 0.7, s * 1.5 + i * s * 0.5, Math.sin(angle) * s * 0.7);
+            rune.rotation.set(Math.random(), Math.random(), Math.random());
+            group.add(rune);
+          }
+        }
         break;
       }
 
       case TDEnemyType.SIEGE_GOLEM: {
-        // Blocky golem
+        // Blocky golem with armored plates and rune markings
         const bodyMat = new THREE.MeshPhongMaterial({ color: enemy.color, flatShading: true });
-        const body = new THREE.Mesh(this._boxGeo, bodyMat);
-        body.scale.set(s * 1.5, s * 2, s * 1.2);
-        body.position.y = s;
-        group.add(body);
-        const headMat = new THREE.MeshPhongMaterial({ color: enemy.color + 0x111111 });
+        // Legs
+        for (const z of [-s * 0.3, s * 0.3]) {
+          const legGeo = new THREE.BoxGeometry(1, 1, 1);
+          const leg = new THREE.Mesh(legGeo, bodyMat.clone());
+          leg.scale.set(s * 0.4, s * 0.8, s * 0.4);
+          leg.position.set(0, s * 0.4, z);
+          group.add(leg);
+          // Knee joint
+          const knee = new THREE.Mesh(this._sphereGeo, bodyMat.clone());
+          knee.scale.set(s * 0.2, s * 0.2, s * 0.2);
+          knee.position.set(0, s * 0.8, z);
+          group.add(knee);
+        }
+        // Torso — chunky
+        const torso = new THREE.Mesh(this._boxGeo, bodyMat);
+        torso.scale.set(s * 1.6, s * 1.4, s * 1.3);
+        torso.position.y = s * 1.5;
+        group.add(torso);
+        // Chest plate — slightly different shade
+        const plateMat = new THREE.MeshPhongMaterial({
+          color: enemy.color + 0x0a0a0a,
+          flatShading: true,
+          specular: 0x333333,
+          shininess: 30,
+        });
+        const plate = new THREE.Mesh(this._boxGeo, plateMat);
+        plate.scale.set(s * 1.2, s * 1.0, s * 0.1);
+        plate.position.set(0, s * 1.6, s * 0.65);
+        group.add(plate);
+        // Arms
+        const armMat = new THREE.MeshPhongMaterial({ color: enemy.color - 0x050505, flatShading: true });
+        for (const z of [-1, 1]) {
+          const upperArm = new THREE.Mesh(this._boxGeo, armMat);
+          upperArm.scale.set(s * 0.35, s * 0.8, s * 0.35);
+          upperArm.position.set(0, s * 1.6, z * s * 0.85);
+          group.add(upperArm);
+          const fist = new THREE.Mesh(this._sphereGeo, armMat.clone());
+          fist.scale.set(s * 0.25, s * 0.25, s * 0.25);
+          fist.position.set(0, s * 1.0, z * s * 0.85);
+          group.add(fist);
+        }
+        // Head
+        const headMat = new THREE.MeshPhongMaterial({ color: enemy.color + 0x111111, flatShading: true });
         const head = new THREE.Mesh(this._boxGeo, headMat);
-        head.scale.set(s * 0.8, s * 0.8, s * 0.8);
-        head.position.y = s * 2.5;
+        head.scale.set(s * 0.75, s * 0.65, s * 0.7);
+        head.position.y = s * 2.55;
         group.add(head);
-        // Eyes
+        // Eyes — glowing slits
         const eyeMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor });
-        for (const z of [-0.2, 0.2]) {
-          const eye = new THREE.Mesh(this._sphereGeo, eyeMat);
-          eye.scale.set(0.15, 0.15, 0.15);
-          eye.position.set(s * 0.4, s * 2.6, z * s);
+        for (const z of [-0.18, 0.18]) {
+          const eye = new THREE.Mesh(this._boxGeo, eyeMat);
+          eye.scale.set(s * 0.08, s * 0.04, s * 0.15);
+          eye.position.set(s * 0.38, s * 2.6, z * s);
           group.add(eye);
         }
+        // Rune markings — glowing symbols on chest
+        const runeMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor, transparent: true, opacity: 0.5 });
+        const rune = new THREE.Mesh(new THREE.TorusGeometry(s * 0.2, s * 0.025, 4, 6), runeMat);
+        rune.position.set(0, s * 1.7, s * 0.72);
+        rune.rotation.y = Math.PI / 2;
+        group.add(rune);
         break;
       }
 
@@ -1271,8 +1793,8 @@ export class ThreeDragonRenderer {
 
     this._eagleGroup.position.set(px, py, pz);
     // Base rotation faces -Z; bank tilts on the Z axis (roll)
-    // Since the group is rotated -PI/2 on Y, banking maps to local Z
-    this._eagleGroup.rotation.set(0, -Math.PI / 2, p.eagleBankAngle);
+    // Since the group is rotated +PI/2 on Y, banking maps to local Z
+    this._eagleGroup.rotation.set(0, Math.PI / 2, p.eagleBankAngle);
 
     // Wing flap — animate around local X axis (up/down relative to the bird)
     const flapAngle = Math.sin(p.eagleFlapPhase) * 0.45;
