@@ -2,6 +2,14 @@
 // Tekken mode – Arena/Stage definitions
 // ---------------------------------------------------------------------------
 
+export interface TekkenArenaHazardDef {
+  id: string;
+  type: "fire_brazier" | "acid_patch" | "breakable_pillar";
+  position: { x: number; y: number; z: number };
+  damage: number;
+  radius: number;
+}
+
 export interface TekkenArenaDef {
   id: string;
   name: string;
@@ -14,6 +22,7 @@ export interface TekkenArenaDef {
   keyLightIntensity: number;
   fillLightColor: number;
   torchColor: number;
+  hazards: TekkenArenaHazardDef[];
 }
 
 export const TEKKEN_ARENAS: TekkenArenaDef[] = [
@@ -29,6 +38,10 @@ export const TEKKEN_ARENAS: TekkenArenaDef[] = [
     keyLightIntensity: 2.8,
     fillLightColor: 0x6688cc,
     torchColor: 0xff8833,
+    hazards: [
+      { id: "fire_left", type: "fire_brazier", position: { x: -6, y: 0, z: 0 }, damage: 5, radius: 0.5 },
+      { id: "fire_right", type: "fire_brazier", position: { x: 6, y: 0, z: 0 }, damage: 5, radius: 0.5 },
+    ],
   },
   {
     id: "underground_pit",
@@ -42,6 +55,10 @@ export const TEKKEN_ARENAS: TekkenArenaDef[] = [
     keyLightIntensity: 1.8,
     fillLightColor: 0x446633,
     torchColor: 0x44ff44,
+    hazards: [
+      { id: "acid_left", type: "acid_patch", position: { x: -2.5, y: 0, z: 0 }, damage: 2, radius: 0.6 },
+      { id: "acid_right", type: "acid_patch", position: { x: 2.5, y: 0, z: 0 }, damage: 2, radius: 0.6 },
+    ],
   },
   {
     id: "throne_room",
@@ -55,5 +72,9 @@ export const TEKKEN_ARENAS: TekkenArenaDef[] = [
     keyLightIntensity: 3.0,
     fillLightColor: 0x8866aa,
     torchColor: 0xffaa44,
+    hazards: [
+      { id: "pillar_left", type: "breakable_pillar", position: { x: -3.0, y: 0, z: 0 }, damage: 10, radius: 0.4 },
+      { id: "pillar_right", type: "breakable_pillar", position: { x: 3.0, y: 0, z: 0 }, damage: 10, radius: 0.4 },
+    ],
   },
 ];

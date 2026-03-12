@@ -29,6 +29,7 @@ export const DragoonInputSystem = {
         case "Digit2": inp.skill2 = true; break;
         case "Digit3": inp.skill3 = true; break;
         case "Digit4": inp.skill4 = true; break;
+        case "Digit5": inp.skill5 = true; break;
         case "Escape":
           state.paused = !state.paused;
           _pauseCallback?.(state.paused);
@@ -46,6 +47,7 @@ export const DragoonInputSystem = {
         case "Digit2": inp.skill2 = false; break;
         case "Digit3": inp.skill3 = false; break;
         case "Digit4": inp.skill4 = false; break;
+        case "Digit5": inp.skill5 = false; break;
       }
     };
 

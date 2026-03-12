@@ -334,6 +334,76 @@ export class TekkenFXManager {
     }
   }
 
+  /** Spawn dramatic KO impact burst: extra-large sparks and an expanding shockwave ring */
+  spawnKOImpact(x: number, y: number, z: number, color: number): void {
+    // Extra-large burst of sparks (2-3x normal)
+    const burstCount = 50;
+    const burstColor = new THREE.Color(color);
+    for (let i = 0; i < burstCount; i++) {
+      const mesh = this._getParticleMesh();
+      if (!mesh) break;
+
+      mesh.visible = true;
+      mesh.position.set(x, y, z);
+      const isCenter = i < Math.ceil(burstCount * 0.3);
+      mesh.scale.setScalar(isCenter ? 1.8 + Math.random() * 1.2 : 1.0 + Math.random() * 1.5);
+      (mesh.material as THREE.MeshBasicMaterial).color.copy(
+        isCenter ? this._hotSparkMat.color : burstColor,
+      );
+      (mesh.material as THREE.MeshBasicMaterial).opacity = 1;
+
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.04 + Math.random() * 0.12;
+      const upSpeed = 0.02 + Math.random() * 0.08;
+
+      this._particles.push({
+        mesh,
+        velocity: new THREE.Vector3(
+          Math.cos(angle) * speed,
+          upSpeed,
+          Math.sin(angle) * speed * 0.5,
+        ),
+        life: 0,
+        maxLife: 15 + Math.random() * 25,
+        gravity: 0.003,
+        shrink: true,
+        rotationSpeed: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.4,
+          (Math.random() - 0.5) * 0.4,
+          0,
+        ),
+      });
+    }
+
+    // Shockwave ring (expanding torus that fades out)
+    const ringGeo = new THREE.TorusGeometry(0.05, 0.02, 8, 32);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.set(x, y, z);
+    ring.rotation.x = Math.PI / 2;
+    this._scene.scene.add(ring);
+
+    // Track the ring as a particle-like entity for cleanup via ground cracks array
+    this._groundCracks.push({
+      mesh: ring,
+      life: 0,
+      maxLife: 30,
+    });
+    // Override update: expand and fade the ring each frame using the crack group trick
+    (ring as any).__crackGroup = undefined;
+    (ring as any).__isShockwave = true;
+
+    // Spawn extra embers
+    this._spawnEmbers(x, y, z, 12);
+  }
+
   // ---- Weapon Trail API ----
 
   startTrail(fighterIndex: number, color: number): void {
@@ -458,10 +528,26 @@ export class TekkenFXManager {
       }
     }
 
-    // Update ground cracks (fade out over time)
+    // Update ground cracks and shockwave rings (fade out over time)
     for (let i = this._groundCracks.length - 1; i >= 0; i--) {
       const crack = this._groundCracks[i];
       crack.life++;
+
+      // Handle shockwave ring expansion
+      if ((crack.mesh as any).__isShockwave) {
+        const t = crack.life / crack.maxLife;
+        const scale = 1 + t * 40; // Expand rapidly
+        crack.mesh.scale.set(scale, scale, scale);
+        (crack.mesh.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.9;
+        if (crack.life >= crack.maxLife) {
+          this._scene.scene.remove(crack.mesh);
+          crack.mesh.geometry.dispose();
+          (crack.mesh.material as THREE.Material).dispose();
+          this._groundCracks.splice(i, 1);
+        }
+        continue;
+      }
+
       if (crack.life >= crack.maxLife) {
         const group = (crack.mesh as any).__crackGroup as THREE.Group | undefined;
         if (group) {

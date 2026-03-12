@@ -70,6 +70,12 @@ export class ThreeDragonRenderer {
   // Shockwave ring meshes
   private _shockwaveRings: { mesh: THREE.Mesh; timer: number; maxTimer: number; maxRadius: number }[] = [];
 
+  // Power-up meshes
+  private _powerUpMeshes = new Map<number, THREE.Group>();
+
+  // Screen flash overlays
+  private _screenFlashes: { mesh: THREE.Mesh; timer: number; maxTimer: number }[] = [];
+
   // Fireflies / magical floating particles
   private _fireflyGroup = new THREE.Group();
 
@@ -2063,6 +2069,12 @@ export class ThreeDragonRenderer {
     // Update explosions
     this._updateExplosionMeshes(state, dt);
 
+    // Update power-ups
+    this._updatePowerUpMeshes(state, dt, time);
+
+    // Update screen flashes
+    this._updateScreenFlashes(dt);
+
     // Update fireflies
     for (const fly of this._fireflyGroup.children) {
       const mesh = fly as THREE.Mesh;
@@ -2267,9 +2279,11 @@ export class ThreeDragonRenderer {
       group.rotation.y = enemy.rotationY;
 
       if (!enemy.alive) {
-        // Death: scale up and fade
+        // Death: scale up, fade, and tumble
         const t = 1 - enemy.deathTimer / 0.5;
         group.scale.setScalar(1 + t * 0.5);
+        group.rotation.x += (Math.random() - 0.5) * 8 * t;
+        group.rotation.z += (Math.random() - 0.5) * 6 * t;
         group.traverse(child => {
           if ((child as THREE.Mesh).material) {
             const mat = (child as THREE.Mesh).material as THREE.Material;
@@ -2581,6 +2595,226 @@ export class ThreeDragonRenderer {
   }
 
   // ---------------------------------------------------------------------------
+  // Enemy death effects
+  // ---------------------------------------------------------------------------
+
+  addEnemyDeathEffect(x: number, y: number, z: number, size: number, color: number, glowColor: number, isBoss: boolean): void {
+    const debrisCount = isBoss ? 30 : 15 + Math.floor(Math.random() * 6);
+
+    for (let i = 0; i < debrisCount; i++) {
+      const debrisMat = new THREE.MeshBasicMaterial({
+        color: Math.random() < 0.5 ? color : glowColor,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+      });
+      const debris = new THREE.Mesh(this._sphereGeo, debrisMat);
+      const debrisSize = (isBoss ? 0.3 : 0.15) + Math.random() * 0.25;
+      debris.scale.setScalar(debrisSize);
+
+      const angle = Math.random() * Math.PI * 2;
+      const angleV = Math.random() * Math.PI;
+      const speed = (isBoss ? 15 : 8) + Math.random() * 10;
+      const vx = Math.cos(angle) * Math.sin(angleV) * speed;
+      const vy = Math.cos(angleV) * speed;
+      const vz = Math.sin(angle) * Math.sin(angleV) * speed;
+
+      debris.position.set(x, y, z);
+      this._scene.add(debris);
+
+      const startTime = performance.now();
+      const duration = 400 + Math.random() * 400;
+
+      const animate = () => {
+        const elapsed = performance.now() - startTime;
+        const t = elapsed / duration;
+        if (t >= 1) {
+          this._scene.remove(debris);
+          debrisMat.dispose();
+          return;
+        }
+        debris.position.x += vx * 0.016;
+        debris.position.y += (vy - 15 * (elapsed / 1000)) * 0.016;
+        debris.position.z += vz * 0.016;
+        debrisMat.opacity = Math.max(0, 0.9 * (1 - t));
+        debris.scale.setScalar(debrisSize * (1 - t * 0.5));
+        requestAnimationFrame(animate);
+      };
+      requestAnimationFrame(animate);
+    }
+
+    // Flash point light
+    const flashIntensity = isBoss ? 20 : 8;
+    const flashRange = isBoss ? size * 10 : size * 5;
+    const flash = new THREE.PointLight(glowColor, flashIntensity, flashRange);
+    flash.position.set(x, y, z);
+    this._scene.add(flash);
+    setTimeout(() => { this._scene.remove(flash); }, isBoss ? 400 : 200);
+
+    // Boss: extra large explosion with screen flash
+    if (isBoss) {
+      // Large bright core
+      const coreMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+      });
+      const core = new THREE.Mesh(this._sphereGeo, coreMat);
+      core.position.set(x, y, z);
+      core.scale.setScalar(0.5);
+      this._scene.add(core);
+      this._explosionMeshes.push({ mesh: core, timer: 0, maxTimer: 0.8 });
+
+      // Extra glow layers
+      for (let i = 0; i < 3; i++) {
+        const glowMat = new THREE.MeshBasicMaterial({
+          color: glowColor,
+          transparent: true,
+          opacity: 0.4 - i * 0.1,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const glow = new THREE.Mesh(this._sphereGeo, glowMat);
+        glow.position.set(x, y, z);
+        glow.scale.setScalar(0.3);
+        this._scene.add(glow);
+        this._explosionMeshes.push({ mesh: glow, timer: 0, maxTimer: 1.0 + i * 0.2 });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Screen flash
+  // ---------------------------------------------------------------------------
+
+  addScreenFlash(color: number, duration: number): void {
+    const geo = new THREE.PlaneGeometry(2, 2);
+    const mat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false,
+      depthTest: false,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 9999;
+    mesh.frustumCulled = false;
+
+    // Place in front of camera using camera's NDC space
+    this._camera.add(mesh);
+    mesh.position.set(0, 0, -0.5);
+
+    if (!this._camera.parent) {
+      this._scene.add(this._camera);
+    }
+
+    this._screenFlashes.push({ mesh, timer: 0, maxTimer: duration });
+  }
+
+  private _updateScreenFlashes(dt: number): void {
+    this._screenFlashes = this._screenFlashes.filter(sf => {
+      sf.timer += dt;
+      const t = sf.timer / sf.maxTimer;
+      if (t >= 1) {
+        this._camera.remove(sf.mesh);
+        (sf.mesh.material as THREE.Material).dispose();
+        sf.mesh.geometry.dispose();
+        return false;
+      }
+      // Fade opacity from 0.6 to 0
+      (sf.mesh.material as THREE.MeshBasicMaterial).opacity = 0.6 * (1 - t);
+      return true;
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Power-up meshes
+  // ---------------------------------------------------------------------------
+
+  private _updatePowerUpMeshes(state: ThreeDragonState, _dt: number, time: number): void {
+    const seen = new Set<number>();
+
+    for (const pu of state.powerUps) {
+      seen.add(pu.id);
+      let group = this._powerUpMeshes.get(pu.id);
+
+      if (!group) {
+        group = new THREE.Group();
+
+        const isHealth = pu.type === "health";
+        const orbColor = isHealth ? 0x44ff66 : 0x4488ff;
+        const glowColor = isHealth ? 0x22cc44 : 0x2266dd;
+
+        // Inner orb
+        const orbMat = new THREE.MeshBasicMaterial({
+          color: orbColor,
+          transparent: true,
+          opacity: 0.9,
+        });
+        const orb = new THREE.Mesh(this._sphereGeo, orbMat);
+        orb.scale.setScalar(0.5);
+        orb.name = "orb";
+        group.add(orb);
+
+        // Outer glow
+        const glowMat = new THREE.MeshBasicMaterial({
+          color: glowColor,
+          transparent: true,
+          opacity: 0.3,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const glow = new THREE.Mesh(this._sphereGeo, glowMat);
+        glow.scale.setScalar(0.9);
+        glow.name = "glow";
+        group.add(glow);
+
+        // Point light
+        const light = new THREE.PointLight(orbColor, 2, 6);
+        light.name = "light";
+        group.add(light);
+
+        this._scene.add(group);
+        this._powerUpMeshes.set(pu.id, group);
+      }
+
+      // Position
+      group.position.set(pu.position.x, pu.position.y, pu.position.z);
+
+      // Bob with sine wave
+      group.position.y += Math.sin(time * 3 + pu.id) * 0.5;
+
+      // Rotate
+      group.rotation.y = time * 2 + pu.id;
+
+      // Pulse scale
+      const pulse = 1 + Math.sin(time * 5 + pu.id * 1.7) * 0.15;
+      const orb = group.getObjectByName("orb") as THREE.Mesh;
+      if (orb) orb.scale.setScalar(0.5 * pulse);
+      const glow = group.getObjectByName("glow") as THREE.Mesh;
+      if (glow) glow.scale.setScalar(0.9 * pulse);
+    }
+
+    // Cleanup removed power-ups
+    for (const [id, group] of this._powerUpMeshes) {
+      if (!seen.has(id)) {
+        this._scene.remove(group);
+        group.traverse(child => {
+          if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
+          if ((child as THREE.Mesh).material) {
+            const mat = (child as THREE.Mesh).material;
+            if (Array.isArray(mat)) mat.forEach(m => m.dispose());
+            else (mat as THREE.Material).dispose();
+          }
+        });
+        this._powerUpMeshes.delete(id);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Screen effects
   // ---------------------------------------------------------------------------
 
@@ -2640,6 +2874,28 @@ export class ThreeDragonRenderer {
       ring.mesh.geometry.dispose();
     }
     this._shockwaveRings = [];
+
+    // Remove power-up meshes
+    for (const [, group] of this._powerUpMeshes) {
+      this._scene.remove(group);
+      group.traverse(child => {
+        if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
+        if ((child as THREE.Mesh).material) {
+          const mat = (child as THREE.Mesh).material;
+          if (Array.isArray(mat)) mat.forEach(m => m.dispose());
+          else (mat as THREE.Material).dispose();
+        }
+      });
+    }
+    this._powerUpMeshes.clear();
+
+    // Remove screen flashes
+    for (const sf of this._screenFlashes) {
+      this._camera.remove(sf.mesh);
+      (sf.mesh.material as THREE.Material).dispose();
+      sf.mesh.geometry.dispose();
+    }
+    this._screenFlashes = [];
 
     // Remove canvas
     if (this._canvas.parentNode) {

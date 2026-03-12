@@ -2118,22 +2118,142 @@ export class TekkenFighterRenderer {
   }
 
   private _animateVictory(): void {
+    const poseType = this._charDef.victoryPoseType || "fist_pump";
+    switch (poseType) {
+      case "weapon_flourish":
+        this._animateVictoryWeaponFlourish();
+        break;
+      case "flex":
+        this._animateVictoryFlex();
+        break;
+      case "bow":
+        this._animateVictoryBow();
+        break;
+      case "kneel":
+        this._animateVictoryKneel();
+        break;
+      case "taunt":
+        this._animateVictoryTaunt();
+        break;
+      case "fist_pump":
+      default:
+        this._animateVictoryFistPump();
+        break;
+    }
+  }
+
+  private _animateVictoryWeaponFlourish(): void {
     const t = this._idleTime;
-    // Triumphant pose - arms raised
+    const sweep = Math.sin(t * 3) * 0.5;
+    this._lerpBone(this._spineLower, -0.05, 0, 0, 0.08);
+    this._lerpBone(this._spineUpper, -0.1, 0, 0, 0.08);
+    this._lerpBone(this._chest, -0.15, 0, 0, 0.08);
+    this._lerpBone(this._head, -0.05, 0, Math.sin(t * 2) * 0.03, 0.08);
+    // Right arm sweeps in an arc
+    this._lerpBone(this._rightUpperArm, -2.2 + sweep, 0, -0.5, 0.08);
+    this._lerpBone(this._rightForearm, -0.6 + sweep * 0.3, 0, 0, 0.08);
+    this._lerpBone(this._rightFingers, -0.5, 0, 0, 0.08);
+    // Left arm at hip
+    this._lerpBone(this._leftUpperArm, 0.2, 0, 0.8, 0.08);
+    this._lerpBone(this._leftForearm, -1.6, 0, 0, 0.08);
+    // Legs planted
+    this._lerpBone(this._leftThigh, -0.05, 0, 0.15, 0.08);
+    this._lerpBone(this._leftShin, 0.1, 0, 0, 0.08);
+    this._lerpBone(this._rightThigh, -0.05, 0, -0.15, 0.08);
+    this._lerpBone(this._rightShin, 0.1, 0, 0, 0.08);
+  }
+
+  private _animateVictoryFlex(): void {
+    const t = this._idleTime;
+    const bounce = Math.abs(Math.sin(t * 4)) * 0.04;
+    this._lerpBone(this._spineLower, -0.1, 0, 0, 0.08);
+    this._lerpBone(this._spineUpper, -0.15, 0, 0, 0.08);
+    this._lerpBone(this._chest, -0.2, 0, 0, 0.08);
+    this._lerpBone(this._head, -0.1, 0, 0, 0.08);
+    // Both arms curl up
+    this._lerpBone(this._rightUpperArm, -1.8, 0, -0.6, 0.08);
+    this._lerpBone(this._rightForearm, -2.0, 0, 0, 0.08);
+    this._lerpBone(this._rightFingers, -1.0, 0, 0, 0.08);
+    this._lerpBone(this._leftUpperArm, -1.8, 0, 0.6, 0.08);
+    this._lerpBone(this._leftForearm, -2.0, 0, 0, 0.08);
+    this._lerpBone(this._leftFingers, -1.0, 0, 0, 0.08);
+    // Slight bounce
+    this._lerpBone(this._leftThigh, -0.05 - bounce, 0, 0.15, 0.08);
+    this._lerpBone(this._leftShin, 0.1 + bounce * 2, 0, 0, 0.08);
+    this._lerpBone(this._rightThigh, -0.05 - bounce, 0, -0.15, 0.08);
+    this._lerpBone(this._rightShin, 0.1 + bounce * 2, 0, 0, 0.08);
+  }
+
+  private _animateVictoryBow(): void {
+    this._lerpBone(this._spineLower, 0.4, 0, 0, 0.06);
+    this._lerpBone(this._spineUpper, 0.3, 0, 0, 0.06);
+    this._lerpBone(this._chest, 0.2, 0, 0, 0.06);
+    this._lerpBone(this._head, 0.15, 0, 0, 0.06);
+    // Arms at sides
+    this._lerpBone(this._rightUpperArm, 0.2, 0, -0.1, 0.06);
+    this._lerpBone(this._rightForearm, -0.1, 0, 0, 0.06);
+    this._lerpBone(this._leftUpperArm, 0.2, 0, 0.1, 0.06);
+    this._lerpBone(this._leftForearm, -0.1, 0, 0, 0.06);
+    // Legs straight
+    this._lerpBone(this._leftThigh, -0.05, 0, 0.1, 0.06);
+    this._lerpBone(this._leftShin, 0.05, 0, 0, 0.06);
+    this._lerpBone(this._rightThigh, -0.05, 0, -0.1, 0.06);
+    this._lerpBone(this._rightShin, 0.05, 0, 0, 0.06);
+  }
+
+  private _animateVictoryKneel(): void {
+    this._lerpBone(this._spineLower, 0.1, 0, 0, 0.06);
+    this._lerpBone(this._spineUpper, 0.15, 0, 0, 0.06);
+    this._lerpBone(this._chest, 0.1, 0, 0, 0.06);
+    this._lerpBone(this._head, 0.2, 0, 0, 0.06);
+    // Arms down
+    this._lerpBone(this._rightUpperArm, 0.3, 0, -0.2, 0.06);
+    this._lerpBone(this._rightForearm, -0.3, 0, 0, 0.06);
+    this._lerpBone(this._leftUpperArm, 0.3, 0, 0.2, 0.06);
+    this._lerpBone(this._leftForearm, -0.3, 0, 0, 0.06);
+    // One leg bends down (right kneels)
+    this._lerpBone(this._leftThigh, -0.3, 0, 0.15, 0.06);
+    this._lerpBone(this._leftShin, 0.4, 0, 0, 0.06);
+    this._lerpBone(this._rightThigh, -1.2, 0, -0.1, 0.06);
+    this._lerpBone(this._rightShin, 1.8, 0, 0, 0.06);
+  }
+
+  private _animateVictoryTaunt(): void {
+    const t = this._idleTime;
+    // Slight turn away
+    this._lerpBone(this._spineLower, 0, 0.3, 0, 0.08);
+    this._lerpBone(this._spineUpper, 0, 0.2, 0, 0.08);
+    this._lerpBone(this._chest, -0.05, 0.15, 0, 0.08);
+    this._lerpBone(this._head, 0, -0.3, Math.sin(t * 2) * 0.05, 0.08);
+    // Dismissive arm wave
+    const wave = Math.sin(t * 5) * 0.3;
+    this._lerpBone(this._rightUpperArm, -1.2, 0, -0.4, 0.08);
+    this._lerpBone(this._rightForearm, -0.8 + wave, 0, 0, 0.08);
+    this._lerpBone(this._rightHand, wave * 0.5, 0, 0, 0.08);
+    // Left arm relaxed
+    this._lerpBone(this._leftUpperArm, 0.1, 0, 0.5, 0.08);
+    this._lerpBone(this._leftForearm, -0.8, 0, 0, 0.08);
+    // Casual stance
+    this._lerpBone(this._leftThigh, -0.05, 0, 0.15, 0.08);
+    this._lerpBone(this._leftShin, 0.1, 0, 0, 0.08);
+    this._lerpBone(this._rightThigh, -0.1, 0, -0.2, 0.08);
+    this._lerpBone(this._rightShin, 0.15, 0, 0, 0.08);
+  }
+
+  private _animateVictoryFistPump(): void {
+    const t = this._idleTime;
+    const pump = Math.abs(Math.sin(t * 4)) * 0.3;
     this._lerpBone(this._spineLower, -0.05, 0, 0, 0.08);
     this._lerpBone(this._spineUpper, -0.1, 0, 0, 0.08);
     this._lerpBone(this._chest, -0.15, 0, 0, 0.08);
     this._lerpBone(this._head, -0.1, 0, Math.sin(t * 2) * 0.05, 0.08);
-
-    // Right fist raised high
-    this._lerpBone(this._rightUpperArm, -2.8, 0, -0.3, 0.08);
+    // Both arms pump upward
+    this._lerpBone(this._rightUpperArm, -2.8 - pump, 0, -0.3, 0.08);
     this._lerpBone(this._rightForearm, -0.4, 0, 0, 0.08);
     this._lerpBone(this._rightFingers, -0.8, 0, 0, 0.08);
-
-    // Left arm on hip
-    this._lerpBone(this._leftUpperArm, 0, 0, 0.8, 0.08);
-    this._lerpBone(this._leftForearm, -1.8, 0, 0, 0.08);
-
+    this._lerpBone(this._leftUpperArm, -2.8 - pump, 0, 0.3, 0.08);
+    this._lerpBone(this._leftForearm, -0.4, 0, 0, 0.08);
+    this._lerpBone(this._leftFingers, -0.8, 0, 0, 0.08);
     // Standing tall
     this._lerpBone(this._leftThigh, -0.05, 0, 0.15, 0.08);
     this._lerpBone(this._leftShin, 0.1, 0, 0, 0.08);

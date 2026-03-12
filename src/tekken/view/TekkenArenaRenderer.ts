@@ -1,12 +1,20 @@
 import * as THREE from "three";
 import type { TekkenSceneManager } from "./TekkenSceneManager";
 import { TB } from "../config/TekkenBalanceConfig";
+import type { StageHazard } from "../state/TekkenState";
 
 interface SpectatorAnim {
   mesh: THREE.Mesh;
   baseY: number;
   animTimer: number;
   animType: "idle" | "cheer" | "gasp";
+}
+
+interface HazardVisual {
+  id: string;
+  group: THREE.Group;
+  type: "fire_brazier" | "acid_patch" | "breakable_pillar";
+  animMeshes: THREE.Mesh[];
 }
 
 export class TekkenArenaRenderer {
@@ -17,6 +25,7 @@ export class TekkenArenaRenderer {
   private _spectatorGroup: THREE.Group;
   private _props: THREE.Group;
   private _spectatorAnims: SpectatorAnim[] = [];
+  private _hazardVisuals: HazardVisual[] = [];
 
   constructor(sceneManager: TekkenSceneManager) {
     this._scene = sceneManager;
@@ -2493,6 +2502,123 @@ export class TekkenArenaRenderer {
           bMat.emissiveIntensity = glow * 1.5;
         }
       }
+    }
+  }
+
+  /* ================================================================== */
+  /*  STAGE HAZARDS                                                       */
+  /* ================================================================== */
+
+  /** Build visual representations for stage hazards */
+  buildHazards(hazards: StageHazard[]): void {
+    // Clean up old hazard visuals
+    for (const hv of this._hazardVisuals) {
+      hv.group.traverse((obj: THREE.Object3D) => {
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry.dispose();
+          if (obj.material instanceof THREE.Material) obj.material.dispose();
+        }
+      });
+      this._scene.scene.remove(hv.group);
+    }
+    this._hazardVisuals = [];
+
+    for (const hazard of hazards) {
+      const group = new THREE.Group();
+      group.position.set(hazard.position.x, hazard.position.y, hazard.position.z);
+      const animMeshes: THREE.Mesh[] = [];
+
+      switch (hazard.type) {
+        case "fire_brazier": {
+          // Iron brazier base
+          const brazierMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 });
+          const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.22, 0.35, 10), brazierMat);
+          basin.position.y = 0.175;
+          group.add(basin);
+          // Fire glow sphere
+          const fireMat = new THREE.MeshStandardMaterial({
+            color: 0xff4400, emissive: 0xff3300, emissiveIntensity: 3.0,
+            transparent: true, opacity: 0.8,
+          });
+          const fire = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), fireMat);
+          fire.position.y = 0.4;
+          group.add(fire);
+          animMeshes.push(fire);
+          break;
+        }
+        case "acid_patch": {
+          // Glowing green puddle on the floor
+          const acidMat = new THREE.MeshStandardMaterial({
+            color: 0x33ff33, emissive: 0x22aa22, emissiveIntensity: 1.5,
+            transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false,
+          });
+          const acidPatch = new THREE.Mesh(new THREE.CircleGeometry(hazard.radius, 16), acidMat);
+          acidPatch.rotation.x = -Math.PI / 2;
+          acidPatch.position.y = 0.005;
+          group.add(acidPatch);
+          animMeshes.push(acidPatch);
+          break;
+        }
+        case "breakable_pillar": {
+          // Stone pillar
+          const pillarMat = new THREE.MeshStandardMaterial({ color: 0x6a6060, roughness: 0.8, metalness: 0.1 });
+          const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 1.8, 8), pillarMat);
+          pillar.position.y = 0.9;
+          group.add(pillar);
+          // Pillar cap
+          const capMat = new THREE.MeshStandardMaterial({ color: 0x8a7a60, roughness: 0.6, metalness: 0.2 });
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 0.12, 8), capMat);
+          cap.position.y = 1.8;
+          group.add(cap);
+          animMeshes.push(pillar);
+          break;
+        }
+      }
+
+      this._scene.scene.add(group);
+      this._hazardVisuals.push({ id: hazard.id, group, type: hazard.type, animMeshes });
+    }
+  }
+
+  /** Update hazard visuals each frame (pulsing, glowing) */
+  updateHazards(hazards: StageHazard[]): void {
+    const time = Date.now() * 0.001;
+    for (const hv of this._hazardVisuals) {
+      const hazardState = hazards.find(h => h.id === hv.id);
+      if (!hazardState || hazardState.broken || !hazardState.active) {
+        hv.group.visible = false;
+        continue;
+      }
+      hv.group.visible = true;
+
+      switch (hv.type) {
+        case "fire_brazier":
+          for (const mesh of hv.animMeshes) {
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            mat.emissiveIntensity = 2.5 + Math.sin(time * 8) * 0.8;
+            mesh.position.y = 0.4 + Math.sin(time * 6) * 0.02;
+            mesh.scale.setScalar(1.0 + Math.sin(time * 10) * 0.1);
+          }
+          break;
+        case "acid_patch":
+          for (const mesh of hv.animMeshes) {
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            mat.opacity = 0.5 + Math.sin(time * 3) * 0.15;
+            mat.emissiveIntensity = 1.2 + Math.sin(time * 4) * 0.4;
+          }
+          break;
+        case "breakable_pillar":
+          // Pillars are static, no animation needed
+          break;
+      }
+    }
+  }
+
+  /** Remove a hazard's visual (e.g. when a pillar breaks) */
+  breakHazard(hazardId: string): void {
+    const hv = this._hazardVisuals.find(h => h.id === hazardId);
+    if (hv) {
+      hv.group.visible = false;
     }
   }
 

@@ -77,6 +77,20 @@ export class ThreeDragonGame {
       this._renderer.addLightning(x, y, z);
       this._shake(0.5, 0.15);
     });
+    ThreeDragonCombatSystem.setEnemyDeathCallback((x, y, z, size, color, glowColor, isBoss) => {
+      this._renderer.addEnemyDeathEffect(x, y, z, size, color, glowColor, isBoss);
+    });
+    ThreeDragonCombatSystem.setBossKillCallback((x, y, z, size, color, glowColor) => {
+      this._renderer.addEnemyDeathEffect(x, y, z, size * 2, color, glowColor, true);
+      this._renderer.addScreenFlash(glowColor, 0.8);
+      this._shake(3.0, 0.6);
+      this._hud.showNotification("BOSS DEFEATED!", "#ffd700");
+    });
+    ThreeDragonCombatSystem.setPowerUpCollectCallback((_x, _y, _z, type) => {
+      const flashColor = type === "health" ? 0x44ff66 : 0x4488ff;
+      this._renderer.addScreenFlash(flashColor, 0.2);
+      this._shake(0.3, 0.1);
+    });
 
     // Music
     audioManager.switchTrack("battle");
@@ -118,12 +132,28 @@ export class ThreeDragonGame {
       this._simAccumulator += rawDt;
       while (this._simAccumulator >= DT) {
         this._simAccumulator -= DT;
-        this._state.gameTime += DT;
-        this._state.dayPhase += DT * 0.01;
 
-        ThreeDragonInputSystem.update(this._state, DT);
-        ThreeDragonWaveSystem.update(this._state, DT);
-        ThreeDragonCombatSystem.update(this._state, DT);
+        // Slow-mo: use real DT for timer, simDt for simulation
+        let simDt = DT;
+        if (this._state.slowMoTimer > 0) {
+          simDt = DT * this._state.slowMoFactor;
+          this._state.slowMoTimer -= DT;
+          if (this._state.slowMoTimer <= 0) {
+            this._state.slowMoTimer = 0;
+            this._state.slowMoFactor = 1;
+          } else {
+            // Lerp slowMoFactor back toward 1.0 as timer approaches 0
+            const remaining = this._state.slowMoTimer / 1.5;
+            this._state.slowMoFactor = 0.2 + (1 - 0.2) * (1 - remaining);
+          }
+        }
+
+        this._state.gameTime += simDt;
+        this._state.dayPhase += simDt * 0.01;
+
+        ThreeDragonInputSystem.update(this._state, simDt);
+        ThreeDragonWaveSystem.update(this._state, simDt);
+        ThreeDragonCombatSystem.update(this._state, simDt);
       }
     }
 
@@ -240,6 +270,9 @@ export class ThreeDragonGame {
     ThreeDragonCombatSystem.setHitCallback(null);
     ThreeDragonCombatSystem.setPlayerHitCallback(null);
     ThreeDragonCombatSystem.setLightningCallback(null);
+    ThreeDragonCombatSystem.setEnemyDeathCallback(null);
+    ThreeDragonCombatSystem.setBossKillCallback(null);
+    ThreeDragonCombatSystem.setPowerUpCollectCallback(null);
     ThreeDragonWaveSystem.reset();
 
     if (this._rafId !== null) {

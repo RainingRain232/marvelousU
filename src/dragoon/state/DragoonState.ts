@@ -14,6 +14,7 @@ export enum DragoonSkillId {
   THUNDERSTORM = "thunderstorm",     // AoE lightning strike at cursor
   FROST_NOVA = "frost_nova",         // Radial slow + damage burst
   METEOR_SHOWER = "meteor_shower",   // Heavy damage rain from above
+  DIVINE_SHIELD = "divine_shield",   // Holy barrier blocks all damage
 }
 
 export interface DragoonSkillState {
@@ -39,6 +40,10 @@ export interface DragoonPlayer {
   comboCount: number;
   comboTimer: number;
   score: number;
+  shieldActive: boolean;
+  shieldTimer: number;
+  scoreMultiplier: number;
+  scoreMultTimer: number;
 }
 
 export interface DragoonEnemy {
@@ -78,6 +83,9 @@ export enum DragoonEnemyType {
   STORM_HAWK = "storm_hawk",
   FLOATING_EYE = "floating_eye",
   DARK_ANGEL = "dark_angel",
+  SHADOW_WRAITH = "shadow_wraith",
+  SKY_VIPER = "sky_viper",
+  DARK_FALCON_SQUAD = "dark_falcon_squad",
   // Ground enemies
   GROUND_CATAPULT = "ground_catapult",
   GROUND_MAGE_TOWER = "ground_mage_tower",
@@ -98,6 +106,29 @@ export enum EnemyPattern {
   HOVER = "hover",             // hover and shoot
   GROUND = "ground",           // scroll along bottom
   BOSS_PATTERN = "boss",       // boss-specific AI
+  ZIGZAG = "zigzag",           // zigzag left with alternating Y
+  V_FORMATION = "v_formation", // V-shape formation flight
+  TELEPORT = "teleport",       // slow drift, teleport periodically
+}
+
+// ---------------------------------------------------------------------------
+// Pickups
+// ---------------------------------------------------------------------------
+
+export enum DragoonPickupType {
+  HEALTH_ORB = "health_orb",
+  MANA_ORB = "mana_orb",
+  SCORE_MULTIPLIER = "score_multiplier",
+}
+
+export interface DragoonPickup {
+  id: number;
+  position: Vec2;
+  velocity: Vec2;
+  type: DragoonPickupType;
+  lifetime: number;
+  bobTimer: number;
+  collected: boolean;
 }
 
 export interface DragoonProjectile {
@@ -166,6 +197,7 @@ export interface DragoonState {
   projectiles: DragoonProjectile[];
   explosions: DragoonExplosion[];
   particles: DragoonParticle[];
+  pickups: DragoonPickup[];
 
   skills: DragoonSkillState[];
 
@@ -180,6 +212,8 @@ export interface DragoonState {
   bossActive: boolean;
   bossWaveInterval: number; // boss every N waves
   totalWaves: number;
+  bossEntranceTimer: number;
+  bossEntranceName: string;
 
   // Scrolling
   scrollSpeed: number;
@@ -197,6 +231,7 @@ export interface DragoonState {
     skill2: boolean;
     skill3: boolean;
     skill4: boolean;
+    skill5: boolean;
     mouseX: number;
     mouseY: number;
   };
@@ -231,12 +266,17 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
       comboCount: 0,
       comboTimer: 0,
       score: 0,
+      shieldActive: false,
+      shieldTimer: 0,
+      scoreMultiplier: 1,
+      scoreMultTimer: 0,
     },
 
     enemies: [],
     projectiles: [],
     explosions: [],
     particles: [],
+    pickups: [],
 
     skills: [
       { id: DragoonSkillId.ARCANE_BOLT, cooldown: 0, maxCooldown: 0.12, active: false, activeTimer: 0 },
@@ -244,6 +284,7 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
       { id: DragoonSkillId.THUNDERSTORM, cooldown: 0, maxCooldown: 6, active: false, activeTimer: 0 },
       { id: DragoonSkillId.FROST_NOVA, cooldown: 0, maxCooldown: 8, active: false, activeTimer: 0 },
       { id: DragoonSkillId.METEOR_SHOWER, cooldown: 0, maxCooldown: 14, active: false, activeTimer: 0 },
+      { id: DragoonSkillId.DIVINE_SHIELD, cooldown: 0, maxCooldown: 18, active: false, activeTimer: 0 },
     ],
 
     wave: 0,
@@ -256,6 +297,8 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     bossActive: false,
     bossWaveInterval: 4,
     totalWaves: 20,
+    bossEntranceTimer: 0,
+    bossEntranceName: "",
 
     scrollSpeed: 60,
     groundOffset: 0,
@@ -268,7 +311,7 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     input: {
       left: false, right: false, up: false, down: false,
       fire: false,
-      skill1: false, skill2: false, skill3: false, skill4: false,
+      skill1: false, skill2: false, skill3: false, skill4: false, skill5: false,
       mouseX: screenW * 0.5, mouseY: screenH * 0.5,
     },
 

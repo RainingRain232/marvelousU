@@ -251,12 +251,29 @@ export class DragoonFX {
     });
   }
 
+  // Boss entrance effect
+  private _bossEntranceTriggered = false;
+
+  triggerBossEntrance(): void {
+    this.screenFlash(0xffdd44, 0.3);
+    this.shake(20, 0.5);
+  }
+
   // ---------------------------------------------------------------------------
   // Update
   // ---------------------------------------------------------------------------
 
   update(state: DragoonState, dt: number): void {
     this.spawnQueued();
+
+    // Boss entrance FX
+    if (state.bossEntranceTimer > 0 && !this._bossEntranceTriggered) {
+      this._bossEntranceTriggered = true;
+      this.triggerBossEntrance();
+    }
+    if (state.bossEntranceTimer <= 0) {
+      this._bossEntranceTriggered = false;
+    }
 
     // Eagle trail particles
     this.emitEagleFeathers(state.player.position.x, state.player.position.y);

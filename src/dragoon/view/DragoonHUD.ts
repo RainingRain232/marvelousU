@@ -76,6 +76,16 @@ export class DragoonHUD {
   private _bossWarningText = new Text({ text: "BOSS INCOMING!", style: STYLE_BOSS_WARNING });
   private _bossWarningTimer = 0;
 
+  // Boss entrance overlay
+  private _bossEntranceText = new Text({ text: "", style: STYLE_BOSS_WARNING });
+  private _bossEntranceNameText = new Text({ text: "", style: STYLE_NOTIFICATION });
+
+  // Score multiplier indicator
+  private _scoreMultText = new Text({ text: "x2 SCORE", style: new TextStyle({
+    fontFamily: "Georgia, serif", fontSize: 16, fill: 0xffdd44,
+    fontWeight: "bold", dropShadow: { color: 0x000000, distance: 1, alpha: 0.8 },
+  }) });
+
   // Between waves text
   private _betweenWaveText = new Text({ text: "", style: STYLE_BETWEEN_WAVE });
 
@@ -121,6 +131,22 @@ export class DragoonHUD {
     this._bossWarningText.alpha = 0;
     this.container.addChild(this._bossWarningText);
 
+    // Boss entrance overlay
+    this._bossEntranceText.anchor.set(0.5, 0.5);
+    this._bossEntranceText.position.set(sw / 2, sh / 2 - 80);
+    this._bossEntranceText.alpha = 0;
+    this.container.addChild(this._bossEntranceText);
+    this._bossEntranceNameText.anchor.set(0.5, 0.5);
+    this._bossEntranceNameText.position.set(sw / 2, sh / 2 - 40);
+    this._bossEntranceNameText.alpha = 0;
+    this.container.addChild(this._bossEntranceNameText);
+
+    // Score multiplier indicator
+    this._scoreMultText.anchor.set(1, 0);
+    this._scoreMultText.position.set(sw - 20, 42);
+    this._scoreMultText.alpha = 0;
+    this.container.addChild(this._scoreMultText);
+
     // Between wave text
     this._betweenWaveText.anchor.set(0.5, 0.5);
     this._betweenWaveText.position.set(sw / 2, sh / 2);
@@ -133,6 +159,7 @@ export class DragoonHUD {
       DragoonSkillId.THUNDERSTORM,
       DragoonSkillId.FROST_NOVA,
       DragoonSkillId.METEOR_SHOWER,
+      DragoonSkillId.DIVINE_SHIELD,
     ];
 
     const slotW = 60;
@@ -267,6 +294,7 @@ export class DragoonHUD {
       DragoonSkillId.THUNDERSTORM,
       DragoonSkillId.FROST_NOVA,
       DragoonSkillId.METEOR_SHOWER,
+      DragoonSkillId.DIVINE_SHIELD,
     ];
     const slotW = 60, slotH = 50, gap = 8;
     const totalW = skills.length * slotW + (skills.length - 1) * gap;
@@ -408,6 +436,28 @@ export class DragoonHUD {
       this._betweenWaveText.alpha = 1;
     } else {
       this._betweenWaveText.alpha = 0;
+    }
+
+    // Boss entrance overlay
+    if (state.bossEntranceTimer > 0) {
+      const pulse = Math.sin(state.gameTime * 8);
+      this._bossEntranceText.text = "WARNING";
+      this._bossEntranceText.alpha = Math.min(1, state.bossEntranceTimer);
+      this._bossEntranceText.scale.set(1 + pulse * 0.05);
+      this._bossEntranceNameText.text = state.bossEntranceName;
+      this._bossEntranceNameText.alpha = Math.min(1, state.bossEntranceTimer * 0.8);
+    } else {
+      this._bossEntranceText.alpha = 0;
+      this._bossEntranceNameText.alpha = 0;
+    }
+
+    // Score multiplier indicator
+    if (p.scoreMultTimer > 0) {
+      const multPulse = Math.sin(state.gameTime * 5) * 0.05;
+      this._scoreMultText.alpha = Math.min(1, p.scoreMultTimer);
+      this._scoreMultText.scale.set(1 + multPulse);
+    } else {
+      this._scoreMultText.alpha = 0;
     }
 
     // Notifications

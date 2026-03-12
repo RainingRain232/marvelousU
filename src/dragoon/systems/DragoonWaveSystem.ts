@@ -77,7 +77,11 @@ function _startWave(state: DragoonState): void {
   if (isBossWave) {
     // Spawn boss
     const bossIdx = Math.floor((state.wave / state.bossWaveInterval) - 1) % BOSS_ORDER.length;
-    _spawnBoss(state, BOSS_ORDER[bossIdx]);
+    const bossType = BOSS_ORDER[bossIdx];
+    _spawnBoss(state, bossType);
+    // Set boss entrance announcement
+    state.bossEntranceTimer = 3.0;
+    state.bossEntranceName = _getBossDisplayName(bossType);
     // Reduce normal enemy count during boss wave
     state.waveEnemiesTotal = Math.floor(state.waveEnemiesTotal * 0.5);
   }
@@ -152,7 +156,7 @@ function _spawnEnemy(state: DragoonState): void {
     scoreValue: template.scoreValue,
     pattern: template.pattern,
     patternTimer: Math.random() * Math.PI * 2,
-    patternParam: 0,
+    patternParam: template.pattern === EnemyPattern.TELEPORT ? (2.5 + Math.random() * 1.5) : (template.pattern === EnemyPattern.V_FORMATION ? (Math.floor(Math.random() * 5) - 2) : 0),
     fireRate: template.fireRate,
     color: template.color,
     glowColor: template.glowColor,
@@ -195,4 +199,15 @@ function _spawnBoss(state: DragoonState, type: DragoonEnemyType): void {
   };
 
   state.enemies.push(boss);
+}
+
+function _getBossDisplayName(type: DragoonEnemyType): string {
+  const names: Record<string, string> = {
+    boss_drake: "Ignis the Fire Drake",
+    boss_chimera: "The Chimera of Dread",
+    boss_lich_king: "Mordrath the Lich King",
+    boss_storm_titan: "Thalassor, Storm Titan",
+    boss_void_serpent: "Nyx, the Void Serpent",
+  };
+  return names[type] || "Boss";
 }

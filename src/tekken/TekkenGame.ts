@@ -18,6 +18,8 @@ import { TekkenPhysicsSystem } from "./systems/TekkenPhysicsSystem";
 import { TekkenAISystem } from "./systems/TekkenAISystem";
 import { TekkenAudioManager } from "./audio/TekkenAudioManager";
 import { TEKKEN_CHARACTERS } from "./config/TekkenCharacterDefs";
+import { TEKKEN_ARENAS } from "./config/TekkenArenaDefs";
+// StageHazard type used indirectly via TekkenState
 
 export class TekkenGame {
   private _state: TekkenState | null = null;
@@ -65,6 +67,18 @@ export class TekkenGame {
     phase: "zoom_in" | "impact" | "zoom_out";
     timer: number;
   } | null = null;
+
+  // KO Cinematic state
+  private _koCinematic = {
+    active: false,
+    phase: "freeze" as string,
+    timer: 0,
+    loserIdx: 0,
+    hitPos: { x: 0, y: 0, z: 0 },
+  };
+
+  // Acid damage accumulator per fighter
+  private _acidDamageAccum: number[] = [0, 0];
 
   // Training mode key handler
   private _trainingKeyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -720,6 +734,10 @@ export class TekkenGame {
       this._setupTrainingKeyHandler();
     }
 
+    // Init stage hazards
+    this._initStageHazards(this._state);
+    this._arenaRenderer.buildHazards(this._state.stageHazards);
+
     // Init audio
     this._audio = new TekkenAudioManager();
     this._audio.init();
@@ -730,6 +748,7 @@ export class TekkenGame {
     this._lastMovePhase = ["none", "none"];
     this._lastAnnouncement = null;
     this._koSoundPlayed = false;
+    this._koCinematic = { active: false, phase: "freeze", timer: 0, loserIdx: 0, hitPos: { x: 0, y: 0, z: 0 } };
 
     // Start intro then fight
     this._sm.transition(TekkenPhase.INTRO);
@@ -843,6 +862,13 @@ export class TekkenGame {
         this.destroy();
         this._showCharSelect();
       }
+      this._render();
+      return;
+    }
+
+    // Handle KO cinematic (runs independently of sim tick)
+    if (this._koCinematic.active) {
+      this._updateKOCinematic(dtSec);
       this._render();
       return;
     }
@@ -988,19 +1014,29 @@ export class TekkenGame {
     }
 
     // Check round end
-    if (s.round.winnerId === null) {
+    if (s.round.winnerId === null && !this._koCinematic.active) {
       for (let i = 0; i < 2; i++) {
         if (s.fighters[i].hp <= 0) {
-          s.round.winnerId = 1 - i;
-          s.roundResults.push((1 - i) as 0 | 1);
+          // Activate KO cinematic instead of immediately transitioning
+          const midX = (s.fighters[0].position.x + s.fighters[1].position.x) / 2;
+          const midY = (s.fighters[0].position.y + s.fighters[1].position.y) / 2 + 0.8;
+          const midZ = 0;
+          this._koCinematic = {
+            active: true,
+            phase: "freeze",
+            timer: TB.KO_FREEZE_FRAMES,
+            loserIdx: i,
+            hitPos: { x: midX, y: midY, z: midZ },
+          };
+          // Spawn KO impact VFX
+          const charDef = TEKKEN_CHARACTERS.find(c => c.id === s.fighters[1 - i].characterId);
+          const impactColor = charDef?.colors.accent ?? 0xffaa33;
+          this._fxManager.spawnKOImpact(midX, midY, midZ, impactColor);
+          // Set freeze (total stop)
+          s.slowdownFrames = 999;
+          s.slowdownScale = 0;
           s.announcement = "K.O.!";
-          s.announcementTimer = TB.ROUND_END_DELAY;
-          s.slowdownFrames = TB.KO_SLOWDOWN_FRAMES;
-          s.slowdownScale = TB.KO_SLOWDOWN_SCALE;
-          s.fighters[i].state = TekkenFighterState.DEFEAT;
-          s.fighters[1 - i].state = TekkenFighterState.VICTORY;
-          this._sm.transition(TekkenPhase.ROUND_END);
-          s.phase = TekkenPhase.ROUND_END;
+          s.cameraState.shakeIntensity = TB.CAMERA_SHAKE_HEAVY * 2;
           break;
         }
       }
@@ -1018,6 +1054,9 @@ export class TekkenGame {
         s.phase = TekkenPhase.ROUND_END;
       }
     }
+
+    // Stage hazard checks
+    this._updateStageHazards(s);
 
     // Process audio triggers based on state changes
     this._processAudioTriggers(s);
@@ -1112,14 +1151,163 @@ export class TekkenGame {
       this._lastRageState[i] = f.rageActive;
     }
 
-    // --- KO sound (once per round) ---
-    if (s.phase === TekkenPhase.ROUND_END && !this._koSoundPlayed) {
+    // --- KO sound (once per round, triggered during cinematic or round end) ---
+    if ((s.phase === TekkenPhase.ROUND_END || this._koCinematic.active) && !this._koSoundPlayed) {
       for (let i = 0; i < 2; i++) {
         if (s.fighters[i].hp <= 0) {
           this._audio.playKO();
           this._audio.playCrowdReaction("ko");
           this._koSoundPlayed = true;
           break;
+        }
+      }
+    }
+  }
+
+  // ---- KO Cinematic ----
+
+  private _updateKOCinematic(_dtSec: number): void {
+    const s = this._state!;
+    const kc = this._koCinematic;
+
+    kc.timer--;
+
+    // Boost bloom/chromatic aberration during cinematic
+    const cinematicIntensity = kc.phase === "freeze" ? 4.0
+      : kc.phase === "slowmo_zoom" ? 3.0
+      : kc.phase === "ragdoll_fall" ? 1.5
+      : 0.5;
+    this._sceneManager.setHitImpactIntensity(cinematicIntensity);
+
+    if (kc.phase === "freeze") {
+      // Total freeze
+      s.slowdownScale = 0;
+      s.slowdownFrames = 999;
+      if (kc.timer <= 0) {
+        kc.phase = "slowmo_zoom";
+        kc.timer = TB.KO_SLOWMO_FRAMES;
+      }
+    } else if (kc.phase === "slowmo_zoom") {
+      // Slow motion, camera zooms toward hit position
+      s.slowdownScale = TB.KO_SLOWMO_SCALE;
+      s.slowdownFrames = 999;
+      const cam = s.cameraState;
+      // Lerp camera position closer to hit point
+      const zoomT = 1 - kc.timer / TB.KO_SLOWMO_FRAMES;
+      const targetZ = TB.CAMERA_BASE_Z * (0.8 - zoomT * 0.2);
+      cam.z += (targetZ - cam.z) * 0.05;
+      cam.x += (kc.hitPos.x - cam.x) * 0.04;
+      cam.y += (kc.hitPos.y + 0.3 - cam.y) * 0.03;
+      this._sceneManager.camera.position.set(cam.x, cam.y, cam.z);
+      this._sceneManager.camera.lookAt(kc.hitPos.x, kc.hitPos.y, kc.hitPos.z);
+      if (kc.timer <= 0) {
+        kc.phase = "ragdoll_fall";
+        kc.timer = TB.KO_RAGDOLL_FRAMES;
+      }
+    } else if (kc.phase === "ragdoll_fall") {
+      // Resume normal speed
+      s.slowdownScale = 1;
+      s.slowdownFrames = 0;
+      if (kc.timer <= 0) {
+        kc.phase = "settle";
+        kc.timer = TB.KO_SETTLE_FRAMES;
+      }
+    } else if (kc.phase === "settle") {
+      if (kc.timer <= 0) {
+        // Deactivate cinematic, proceed to normal round_end
+        kc.active = false;
+        const loserIdx = kc.loserIdx;
+        s.round.winnerId = 1 - loserIdx;
+        s.roundResults.push((1 - loserIdx) as 0 | 1);
+        s.announcementTimer = TB.ROUND_END_DELAY;
+        s.slowdownFrames = 0;
+        s.slowdownScale = 1;
+        s.fighters[loserIdx].state = TekkenFighterState.DEFEAT;
+        s.fighters[1 - loserIdx].state = TekkenFighterState.VICTORY;
+        this._sm.transition(TekkenPhase.ROUND_END);
+        s.phase = TekkenPhase.ROUND_END;
+        this._sceneManager.setHitImpactIntensity(0);
+      }
+    }
+
+    // Update FX during cinematic
+    this._fxManager.update();
+    this._arenaRenderer.updateSpectators();
+  }
+
+  // ---- Stage Hazards ----
+
+  private _initStageHazards(s: TekkenState): void {
+    const arenaDef = TEKKEN_ARENAS.find(a => a.id === s.arenaId);
+    if (!arenaDef) return;
+    s.stageHazards = arenaDef.hazards.map(h => ({
+      id: h.id,
+      type: h.type,
+      active: true,
+      cooldownTimer: 0,
+      broken: false,
+      position: { ...h.position },
+      damage: h.damage,
+      radius: h.radius,
+    }));
+    this._acidDamageAccum = [0, 0];
+  }
+
+  private _updateStageHazards(s: TekkenState): void {
+    if (s.stageHazards.length === 0) return;
+    if (s.round.winnerId !== null) return;
+
+    for (const hazard of s.stageHazards) {
+      if (!hazard.active || hazard.broken) continue;
+
+      // Decrement cooldown
+      if (hazard.cooldownTimer > 0) {
+        hazard.cooldownTimer--;
+      }
+
+      for (let i = 0; i < 2; i++) {
+        const f = s.fighters[i];
+        const dx = Math.abs(f.position.x - hazard.position.x);
+        const dz = Math.abs(f.position.z - hazard.position.z);
+        const inRange = dx < hazard.radius && dz < hazard.radius + 0.3;
+
+        if (!inRange) continue;
+
+        switch (hazard.type) {
+          case "fire_brazier":
+            if (hazard.cooldownTimer <= 0) {
+              f.hp = Math.max(0, f.hp - hazard.damage);
+              f.hitstunFrames = Math.max(f.hitstunFrames, 10);
+              hazard.cooldownTimer = 60; // 1 second cooldown
+              s.cameraState.shakeIntensity = Math.max(s.cameraState.shakeIntensity, TB.CAMERA_SHAKE_LIGHT);
+              this._fxManager.spawnHitSpark(hazard.position.x, hazard.position.y + 0.5, hazard.position.z, 8, false);
+            }
+            break;
+
+          case "acid_patch":
+            // Accumulate damage over time (2 damage per second = 2/60 per frame)
+            this._acidDamageAccum[i] += hazard.damage / TB.TPS;
+            if (this._acidDamageAccum[i] >= 1) {
+              const dmg = Math.floor(this._acidDamageAccum[i]);
+              f.hp = Math.max(0, f.hp - dmg);
+              this._acidDamageAccum[i] -= dmg;
+              this._fxManager.spawnDust(f.position.x, 0.05, f.position.z);
+            }
+            break;
+
+          case "breakable_pillar":
+            // Only triggers when fighter is knocked into it (airborne or launched)
+            if (f.juggle.isAirborne || f.hitstunFrames > 0) {
+              f.hp = Math.max(0, f.hp - hazard.damage);
+              hazard.broken = true;
+              hazard.active = false;
+              s.cameraState.shakeIntensity = Math.max(s.cameraState.shakeIntensity, TB.CAMERA_SHAKE_HEAVY);
+              this._fxManager.spawnHitSpark(hazard.position.x, hazard.position.y + 0.8, hazard.position.z, 20, false);
+              this._fxManager.spawnGroundCrack(hazard.position.x, hazard.position.z);
+              // Notify arena renderer to remove pillar visual
+              this._arenaRenderer.breakHazard(hazard.id);
+            }
+            break;
         }
       }
     }
@@ -1184,6 +1372,11 @@ export class TekkenGame {
     this._walkFootstepTimer = [0, 0];
     this._lastMovePhase = ["none", "none"];
     this._koSoundPlayed = false;
+    this._koCinematic = { active: false, phase: "freeze", timer: 0, loserIdx: 0, hitPos: { x: 0, y: 0, z: 0 } };
+
+    // Re-initialize stage hazards for next round
+    this._initStageHazards(s);
+    this._arenaRenderer.buildHazards(s.stageHazards);
 
     s.announcement = `ROUND ${s.round.roundNumber}`;
     s.announcementTimer = TB.ROUND_START_DELAY;
@@ -1525,6 +1718,9 @@ export class TekkenGame {
 
     // Update spectator animations
     this._arenaRenderer.updateSpectators();
+
+    // Update hazard visuals
+    this._arenaRenderer.updateHazards(s.stageHazards);
 
     // Update FX
     this._fxManager.update();

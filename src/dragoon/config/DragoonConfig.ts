@@ -22,6 +22,15 @@ export const DragoonBalance = {
   MANA_COST_THUNDERSTORM: 30,
   MANA_COST_FROST_NOVA: 25,
   MANA_COST_METEOR: 50,
+  MANA_COST_DIVINE_SHIELD: 35,
+
+  PICKUP_DROP_CHANCE: 0.20,
+  PICKUP_HEALTH_AMOUNT: 15,
+  PICKUP_MANA_AMOUNT: 20,
+  PICKUP_SCORE_MULT: 2.0,
+  PICKUP_SCORE_MULT_DURATION: 8,
+  PICKUP_LIFETIME: 10,
+  PICKUP_COLLECT_RADIUS: 35,
 
   SCROLL_SPEED_BASE: 60,
   SCROLL_SPEED_WAVE_MULT: 2,    // scroll gets slightly faster each wave
@@ -98,6 +107,21 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
     pattern: EnemyPattern.SINE_WAVE, fireRate: 1.5,
     color: 0x220033, glowColor: 0xaa00ff, scoreValue: 200, isBoss: false, isGround: false,
   },
+  [DragoonEnemyType.SHADOW_WRAITH]: {
+    type: DragoonEnemyType.SHADOW_WRAITH, hp: 40, speed: 80, size: 1.1,
+    pattern: EnemyPattern.TELEPORT, fireRate: 2.0,
+    color: 0x220044, glowColor: 0xaa00ff, scoreValue: 130, isBoss: false, isGround: false,
+  },
+  [DragoonEnemyType.SKY_VIPER]: {
+    type: DragoonEnemyType.SKY_VIPER, hp: 30, speed: 200, size: 0.9,
+    pattern: EnemyPattern.ZIGZAG, fireRate: 0,
+    color: 0x336600, glowColor: 0x66ff00, scoreValue: 90, isBoss: false, isGround: false,
+  },
+  [DragoonEnemyType.DARK_FALCON_SQUAD]: {
+    type: DragoonEnemyType.DARK_FALCON_SQUAD, hp: 25, speed: 160, size: 0.85,
+    pattern: EnemyPattern.V_FORMATION, fireRate: 2.5,
+    color: 0x333344, glowColor: 0x6666aa, scoreValue: 70, isBoss: false, isGround: false,
+  },
   // --- Ground enemies ---
   [DragoonEnemyType.GROUND_CATAPULT]: {
     type: DragoonEnemyType.GROUND_CATAPULT, hp: 50, speed: 40, size: 1.4,
@@ -147,13 +171,13 @@ export const WAVE_ENEMY_POOL: DragoonEnemyType[][] = [
   // Waves 1-4
   [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT],
   // Waves 5-8
-  [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT, DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.GROUND_CATAPULT],
+  [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT, DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD],
   // Waves 9-12
-  [DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.GROUND_BALLISTA],
+  [DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.GROUND_BALLISTA, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD],
   // Waves 13-16
-  [DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.GROUND_MAGE_TOWER, DragoonEnemyType.GROUND_BALLISTA],
+  [DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.GROUND_MAGE_TOWER, DragoonEnemyType.GROUND_BALLISTA, DragoonEnemyType.SHADOW_WRAITH],
   // Waves 17-20
-  [DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.WYVERN, DragoonEnemyType.GROUND_MAGE_TOWER],
+  [DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.WYVERN, DragoonEnemyType.GROUND_MAGE_TOWER, DragoonEnemyType.SHADOW_WRAITH],
 ];
 
 // Boss order (cycles if needed)
@@ -236,5 +260,16 @@ export const SKILL_CONFIGS: Record<DragoonSkillId, SkillConfig> = {
     duration: 3,
     color: 0xff4400,
     key: "4",
+  },
+  [DragoonSkillId.DIVINE_SHIELD]: {
+    id: DragoonSkillId.DIVINE_SHIELD,
+    name: "Divine Shield",
+    description: "Holy barrier blocks all damage",
+    damage: 0,
+    manaCost: 35,
+    cooldown: 18,
+    duration: 2.5,
+    color: 0xffdd88,
+    key: "5",
   },
 };

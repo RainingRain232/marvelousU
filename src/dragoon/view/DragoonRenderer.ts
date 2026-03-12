@@ -5,7 +5,7 @@
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { DragoonState, DragoonEnemy } from "../state/DragoonState";
-import { DragoonEnemyType } from "../state/DragoonState";
+import { DragoonEnemyType, DragoonPickupType, EnemyPattern } from "../state/DragoonState";
 
 // ---------------------------------------------------------------------------
 // Colour palettes
@@ -57,6 +57,10 @@ export class DragoonRenderer {
   // Projectile view cache
   private _projViews = new Map<number, Graphics>();
 
+  // Shield / pickups
+  private _shieldGfx = new Graphics();
+  private _pickupContainer = new Container();
+
   // Eagle animation
   private _eagleTime = 0;
   private _eagleGfx = new Graphics();
@@ -76,9 +80,11 @@ export class DragoonRenderer {
     this._groundContainer.addChild(this._groundFar);
     this._groundContainer.addChild(this._groundMid);
     this._groundContainer.addChild(this._groundNear);
+    this.worldLayer.addChild(this._pickupContainer);
     this.worldLayer.addChild(this._enemyContainer);
     this.worldLayer.addChild(this._projectileContainer);
     this.worldLayer.addChild(this._playerContainer);
+    this._playerContainer.addChild(this._shieldGfx);
 
     // Draw static sky gradient
     this._drawSkyGradient(sw, sh);
@@ -542,6 +548,17 @@ export class DragoonRenderer {
     const alpha = inv > 0 ? (Math.sin(state.gameTime * 20) > 0 ? 0.4 : 0.9) : 1.0;
     this._playerContainer.alpha = alpha;
 
+    // Divine Shield glow
+    this._shieldGfx.clear();
+    if (state.player.shieldActive) {
+      const pulse = Math.sin(state.gameTime * 6) * 0.1;
+      const shieldR = 40 + Math.sin(state.gameTime * 4) * 4;
+      this._shieldGfx.circle(0, 0, shieldR + 8).fill({ color: 0xffdd88, alpha: 0.05 + pulse * 0.5 });
+      this._shieldGfx.circle(0, 0, shieldR).fill({ color: 0xffdd88, alpha: 0.12 + pulse });
+      this._shieldGfx.circle(0, 0, shieldR).stroke({ color: 0xffeeaa, width: 2.5, alpha: 0.5 + pulse });
+      this._shieldGfx.circle(0, 0, shieldR - 4).stroke({ color: 0xffffff, width: 1, alpha: 0.3 + pulse });
+    }
+
     // --- EAGLE ---
     const eg = this._eagleGfx;
     eg.clear();
@@ -915,6 +932,20 @@ export class DragoonRenderer {
       gfx.alpha = enemy.hitTimer > 0 ? 0.5 : 1;
       gfx.scale.set(1);
       gfx.position.set(enemy.position.x, enemy.position.y);
+
+      // Teleport enemies: flickering alpha
+      if (enemy.pattern === EnemyPattern.TELEPORT) {
+        const flicker = enemy.patternParam < 0.5 ? (Math.sin(state.gameTime * 30) * 0.3 + 0.5) : 1;
+        gfx.alpha = Math.min(gfx.alpha, flicker);
+      }
+
+      // Zigzag enemies: afterimage trail
+      if (enemy.pattern === EnemyPattern.ZIGZAG) {
+        const trailAlpha = 0.15;
+        gfx.circle(-12, 0, enemy.size * 10).fill({ color: enemy.glowColor, alpha: trailAlpha });
+        gfx.circle(-24, 0, enemy.size * 8).fill({ color: enemy.glowColor, alpha: trailAlpha * 0.5 });
+      }
+
       _drawEnemyShape(gfx, enemy, state.gameTime);
 
       // HP bar
@@ -1004,8 +1035,71 @@ export class DragoonRenderer {
     this._drawClouds(state.screenW, dt);
     this._drawGround(state, dt);
     this.drawPlayer(state, dt);
+    this._drawPickups(state);
     this.drawEnemies(state, dt);
     this.drawProjectiles(state, dt);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pickups
+  // ---------------------------------------------------------------------------
+
+  private _pickupGfx = new Graphics();
+
+  private _drawPickups(state: DragoonState): void {
+    // Lazily add to container
+    if (!this._pickupGfx.parent) {
+      this._pickupContainer.addChild(this._pickupGfx);
+    }
+    const g = this._pickupGfx;
+    g.clear();
+
+    for (const pickup of state.pickups) {
+      if (pickup.collected) continue;
+      const px = pickup.position.x;
+      const py = pickup.position.y + Math.sin(pickup.bobTimer * 3) * 5; // bob
+      const fadeAlpha = pickup.lifetime < 2 ? pickup.lifetime / 2 : 1;
+
+      switch (pickup.type) {
+        case DragoonPickupType.HEALTH_ORB:
+          // Green circle
+          g.circle(px, py, 10).fill({ color: 0x44ff44, alpha: 0.15 * fadeAlpha });
+          g.circle(px, py, 7).fill({ color: 0x22cc22, alpha: 0.8 * fadeAlpha });
+          g.circle(px, py, 3).fill({ color: 0xaaffaa, alpha: 0.6 * fadeAlpha });
+          // Cross shape
+          g.rect(px - 1, py - 4, 2, 8).fill({ color: 0xffffff, alpha: 0.7 * fadeAlpha });
+          g.rect(px - 4, py - 1, 8, 2).fill({ color: 0xffffff, alpha: 0.7 * fadeAlpha });
+          break;
+        case DragoonPickupType.MANA_ORB:
+          // Blue circle
+          g.circle(px, py, 10).fill({ color: 0x4488ff, alpha: 0.15 * fadeAlpha });
+          g.circle(px, py, 7).fill({ color: 0x2266dd, alpha: 0.8 * fadeAlpha });
+          g.circle(px, py, 3).fill({ color: 0xaaddff, alpha: 0.6 * fadeAlpha });
+          // Diamond shape
+          g.moveTo(px, py - 5).lineTo(px + 3, py).lineTo(px, py + 5).lineTo(px - 3, py).fill({ color: 0xffffff, alpha: 0.6 * fadeAlpha });
+          break;
+        case DragoonPickupType.SCORE_MULTIPLIER: {
+          // Gold star
+          g.circle(px, py, 12).fill({ color: 0xffdd44, alpha: 0.12 * fadeAlpha });
+          const points = 5;
+          const outerR = 8;
+          const innerR = 4;
+          for (let i = 0; i < points; i++) {
+            const a1 = (i / points) * Math.PI * 2 - Math.PI / 2;
+            const a2 = ((i + 0.5) / points) * Math.PI * 2 - Math.PI / 2;
+            const ox = px + Math.cos(a1) * outerR;
+            const oy = py + Math.sin(a1) * outerR;
+            const ix = px + Math.cos(a2) * innerR;
+            const iy = py + Math.sin(a2) * innerR;
+            g.circle(ox, oy, 1.5).fill({ color: 0xffdd44, alpha: 0.9 * fadeAlpha });
+            g.circle(ix, iy, 1).fill({ color: 0xffdd44, alpha: 0.7 * fadeAlpha });
+          }
+          g.circle(px, py, 5).fill({ color: 0xffdd44, alpha: 0.9 * fadeAlpha });
+          g.circle(px, py, 2.5).fill({ color: 0xffffff, alpha: 0.5 * fadeAlpha });
+          break;
+        }
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1060,6 +1154,42 @@ function _drawEnemyShape(g: Graphics, enemy: DragoonEnemy, time: number): void {
     case DragoonEnemyType.GROUND_MAGE_TOWER:
       _drawMageTower(g, s, time);
       break;
+    case DragoonEnemyType.SHADOW_WRAITH:
+      // Ghostly wraith shape
+      g.circle(0, 0, s * 14).fill({ color: 0xaa00ff, alpha: 0.08 });
+      g.ellipse(0, 0, s * 10, s * 14).fill({ color: enemy.color });
+      g.ellipse(0, -4 * s, s * 7, s * 5).fill({ color: 0x330066 });
+      g.circle(-3 * s, -5 * s, 2 * s).fill({ color: 0xaa00ff, alpha: 0.8 });
+      g.circle(3 * s, -5 * s, 2 * s).fill({ color: 0xaa00ff, alpha: 0.8 });
+      // Wispy tail
+      g.ellipse(0, 10 * s, s * 6, s * 4).fill({ color: enemy.color, alpha: 0.4 + Math.sin(time * 5) * 0.2 });
+      break;
+    case DragoonEnemyType.SKY_VIPER: {
+      // Serpentine viper shape
+      const viperWave = Math.sin(time * 8) * 3 * s;
+      g.ellipse(0, viperWave, s * 12, s * 5).fill({ color: enemy.color });
+      g.ellipse(6 * s, viperWave, s * 4, s * 3).fill({ color: 0x448800 });
+      // Eyes
+      g.circle(8 * s, viperWave - 2 * s, 1.5 * s).fill({ color: 0x66ff00, alpha: 0.9 });
+      // Tail segments
+      for (let i = 1; i <= 3; i++) {
+        const tailOff = Math.sin(time * 8 + i * 0.8) * 3 * s;
+        g.ellipse(-i * 6 * s, tailOff, s * (5 - i), s * (3 - i * 0.5)).fill({ color: enemy.color, alpha: 1 - i * 0.2 });
+      }
+      break;
+    }
+    case DragoonEnemyType.DARK_FALCON_SQUAD: {
+      // Small falcon shape
+      const fWing = Math.sin(time * 12) * 6 * s;
+      g.ellipse(0, 0, s * 8, s * 5).fill({ color: enemy.color });
+      // Wings
+      g.moveTo(-3 * s, 0).lineTo(-10 * s, -fWing).lineTo(-5 * s, 0).fill({ color: 0x444466, alpha: 0.8 });
+      g.moveTo(-3 * s, 0).lineTo(-10 * s, fWing).lineTo(-5 * s, 0).fill({ color: 0x444466, alpha: 0.8 });
+      // Head
+      g.ellipse(6 * s, 0, s * 3, s * 2.5).fill({ color: 0x555577 });
+      g.circle(7 * s, -1 * s, 1 * s).fill({ color: 0x6666aa, alpha: 0.9 });
+      break;
+    }
     default:
       // Bosses
       if (enemy.isBoss) {

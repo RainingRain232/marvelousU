@@ -2,7 +2,7 @@
 // 3Dragon mode — combat system (projectiles, collisions, skills)
 // ---------------------------------------------------------------------------
 
-import type { ThreeDragonState, TDProjectile, TDEnemy, TDExplosion, Vec3 } from "../state/ThreeDragonState";
+import type { ThreeDragonState, TDProjectile, TDEnemy, TDExplosion, TDPowerUp, Vec3 } from "../state/ThreeDragonState";
 import { TDSkillId, TDEnemyPattern } from "../state/ThreeDragonState";
 import { TDBalance, TD_SKILL_CONFIGS } from "../config/ThreeDragonConfig";
 
@@ -11,12 +11,18 @@ let _onExplosion: ((x: number, y: number, z: number, radius: number, color: numb
 let _onHit: ((x: number, y: number, z: number, damage: number, isCrit: boolean) => void) | null = null;
 let _onPlayerHit: (() => void) | null = null;
 let _onLightningStrike: ((x: number, y: number, z: number) => void) | null = null;
+let _onEnemyDeath: ((x: number, y: number, z: number, size: number, color: number, glowColor: number, isBoss: boolean) => void) | null = null;
+let _onBossKill: ((x: number, y: number, z: number, size: number, color: number, glowColor: number) => void) | null = null;
+let _onPowerUpCollect: ((x: number, y: number, z: number, type: "health" | "mana") => void) | null = null;
 
 export const ThreeDragonCombatSystem = {
   setExplosionCallback(cb: typeof _onExplosion): void { _onExplosion = cb; },
   setHitCallback(cb: typeof _onHit): void { _onHit = cb; },
   setPlayerHitCallback(cb: typeof _onPlayerHit): void { _onPlayerHit = cb; },
   setLightningCallback(cb: typeof _onLightningStrike): void { _onLightningStrike = cb; },
+  setEnemyDeathCallback(cb: typeof _onEnemyDeath): void { _onEnemyDeath = cb; },
+  setBossKillCallback(cb: typeof _onBossKill): void { _onBossKill = cb; },
+  setPowerUpCollectCallback(cb: typeof _onPowerUpCollect): void { _onPowerUpCollect = cb; },
 
   update(state: ThreeDragonState, dt: number): void {
     _updateSkillCooldowns(state, dt);
@@ -30,6 +36,7 @@ export const ThreeDragonCombatSystem = {
     _updateCombo(state, dt);
     _updateInvincibility(state, dt);
     _updateShield(state, dt);
+    _updatePowerUps(state, dt);
     _cleanupDead(state);
   },
 };
@@ -702,6 +709,36 @@ function _damageEnemy(state: ThreeDragonState, enemy: TDEnemy, damage: number): 
     const comboMult = 1 + state.player.comboCount * TDBalance.COMBO_SCORE_MULT;
     state.player.score += Math.floor(enemy.scoreValue * comboMult);
     _onExplosion?.(enemy.position.x, enemy.position.y, enemy.position.z, enemy.size * 3, enemy.glowColor);
+
+    // Enemy death callback
+    _onEnemyDeath?.(enemy.position.x, enemy.position.y, enemy.position.z, enemy.size, enemy.color, enemy.glowColor, enemy.isBoss);
+
+    // Boss kill: callback + slow-mo
+    if (enemy.isBoss) {
+      _onBossKill?.(enemy.position.x, enemy.position.y, enemy.position.z, enemy.size, enemy.color, enemy.glowColor);
+      state.slowMoTimer = 1.5;
+      state.slowMoFactor = 0.2;
+    }
+
+    // Roll for power-up drop
+    if (Math.random() < TDBalance.POWERUP_DROP_CHANCE) {
+      const isHealth = Math.random() < TDBalance.POWERUP_HEALTH_RATIO;
+      const powerUp: TDPowerUp = {
+        id: state.nextId++,
+        position: { x: enemy.position.x, y: enemy.position.y, z: enemy.position.z },
+        velocity: {
+          x: (Math.random() - 0.5) * 8,
+          y: 5 + Math.random() * 5,
+          z: (Math.random() - 0.5) * 8,
+        },
+        type: isHealth ? "health" : "mana",
+        value: isHealth ? TDBalance.POWERUP_HEALTH_VALUE : TDBalance.POWERUP_MANA_VALUE,
+        lifetime: TDBalance.POWERUP_LIFETIME,
+        collected: false,
+        magnetTimer: 0.5,
+      };
+      state.powerUps.push(powerUp);
+    }
   }
 }
 
@@ -727,6 +764,71 @@ function _updateShield(state: ThreeDragonState, dt: number): void {
       state.player.shieldActive = false;
     }
   }
+}
+
+function _updatePowerUps(state: ThreeDragonState, dt: number): void {
+  const p = state.player;
+
+  for (const pu of state.powerUps) {
+    if (pu.collected) continue;
+
+    // Apply gravity
+    pu.velocity.y -= 15 * dt;
+
+    // Move
+    pu.position.x += pu.velocity.x * dt;
+    pu.position.y += pu.velocity.y * dt;
+    pu.position.z += pu.velocity.z * dt;
+
+    // Floor bounce
+    if (pu.position.y < 1) {
+      pu.position.y = 1;
+      pu.velocity.y = Math.abs(pu.velocity.y) * 0.3;
+      pu.velocity.x *= 0.5;
+      pu.velocity.z *= 0.5;
+    }
+
+    // Decrement lifetime
+    pu.lifetime -= dt;
+
+    // Magnet timer
+    if (pu.magnetTimer > 0) {
+      pu.magnetTimer -= dt;
+      continue;
+    }
+
+    // Magnet: accelerate toward player if within radius
+    const dx = p.position.x - pu.position.x;
+    const dy = p.position.y - pu.position.y;
+    const dz = p.position.z - pu.position.z;
+    const distSq = dx * dx + dy * dy + dz * dz;
+    const magnetR = TDBalance.POWERUP_MAGNET_RADIUS;
+
+    if (distSq < magnetR * magnetR) {
+      const dist = Math.sqrt(distSq);
+      if (dist > 0.1) {
+        const speed = TDBalance.POWERUP_MAGNET_SPEED;
+        pu.velocity.x = (dx / dist) * speed;
+        pu.velocity.y = (dy / dist) * speed;
+        pu.velocity.z = (dz / dist) * speed;
+      }
+    }
+
+    // Collect if within radius
+    const collectR = TDBalance.POWERUP_COLLECT_RADIUS;
+    if (distSq < collectR * collectR) {
+      pu.collected = true;
+      if (pu.type === "health") {
+        p.hp = Math.min(p.maxHp, p.hp + pu.value);
+      } else {
+        p.mana = Math.min(p.maxMana, p.mana + pu.value);
+      }
+      _onPowerUpCollect?.(pu.position.x, pu.position.y, pu.position.z, pu.type);
+    }
+  }
+
+  // Filter out collected or expired
+  state.powerUps = state.powerUps.filter(pu => !pu.collected && pu.lifetime > 0);
 }
 
 function _cleanupDead(state: ThreeDragonState): void {

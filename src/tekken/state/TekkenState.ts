@@ -80,6 +80,9 @@ export interface TekkenCharacterDef {
   colors: { primary: number; secondary: number; accent: number; skin: number; hair: number };
   moveList: TekkenMoveEntry[];
   comboRoutes: string[][];
+  advancedComboRoutes?: string[][];
+  expertComboRoutes?: string[][];
+  victoryPoseType?: string;
   rageArt: TekkenMoveDef;
   walkSpeed: number;
   dashSpeed: number;
@@ -141,6 +144,17 @@ export interface TrainingModeState {
   frameAdvantage: number;
 }
 
+export interface StageHazard {
+  id: string;
+  type: "fire_brazier" | "acid_patch" | "breakable_pillar";
+  active: boolean;
+  cooldownTimer: number;
+  broken: boolean;
+  position: { x: number; y: number; z: number };
+  damage: number;
+  radius: number;
+}
+
 export interface TekkenState {
   phase: TekkenPhase;
   gameMode: TekkenGameMode;
@@ -160,6 +174,7 @@ export interface TekkenState {
   cameraState: CameraState;
   trainingMode: TrainingModeState;
   difficulty: number; // 0=easy, 1=medium, 2=hard
+  stageHazards: StageHazard[];
 }
 
 export function createDefaultInput(): TekkenInputState {
@@ -239,5 +254,6 @@ export function createTekkenState(gameMode: TekkenGameMode, arenaId: string, p1C
       frameAdvantage: 0,
     },
     difficulty: 1,
+    stageHazards: [],
   };
 }

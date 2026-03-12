@@ -157,6 +157,17 @@ export interface TDParticle {
   type: "spark" | "cloud" | "star" | "feather" | "ember" | "holy" | "ice";
 }
 
+export interface TDPowerUp {
+  id: number;
+  position: Vec3;
+  velocity: Vec3;
+  type: "health" | "mana";
+  value: number;
+  lifetime: number;
+  collected: boolean;
+  magnetTimer: number;
+}
+
 // ---------------------------------------------------------------------------
 // Game state
 // ---------------------------------------------------------------------------
@@ -172,6 +183,7 @@ export interface ThreeDragonState {
   projectiles: TDProjectile[];
   explosions: TDExplosion[];
   particles: TDParticle[];
+  powerUps: TDPowerUp[];
 
   skills: TDSkillState[];
 
@@ -186,6 +198,10 @@ export interface ThreeDragonState {
   bossActive: boolean;
   bossWaveInterval: number;
   totalWaves: number;
+
+  // Slow-motion effect
+  slowMoTimer: number;
+  slowMoFactor: number;
 
   // World scrolling
   scrollSpeed: number;
@@ -247,6 +263,7 @@ export function createThreeDragonState(screenW: number, screenH: number): ThreeD
     projectiles: [],
     explosions: [],
     particles: [],
+    powerUps: [],
 
     skills: [
       { id: TDSkillId.ARCANE_BOLT, cooldown: 0, maxCooldown: 0.12, active: false, activeTimer: 0 },
@@ -267,6 +284,9 @@ export function createThreeDragonState(screenW: number, screenH: number): ThreeD
     bossActive: false,
     bossWaveInterval: 4,
     totalWaves: 20,
+
+    slowMoTimer: 0,
+    slowMoFactor: 1,
 
     scrollSpeed: 20,
     worldZ: 0,

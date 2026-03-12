@@ -2,8 +2,8 @@
 // Panzer Dragoon mode — combat system (projectiles, collisions, skills)
 // ---------------------------------------------------------------------------
 
-import type { DragoonState, DragoonProjectile, DragoonEnemy, DragoonExplosion } from "../state/DragoonState";
-import { DragoonSkillId, EnemyPattern } from "../state/DragoonState";
+import type { DragoonState, DragoonProjectile, DragoonEnemy, DragoonExplosion, DragoonPickup } from "../state/DragoonState";
+import { DragoonSkillId, EnemyPattern, DragoonPickupType } from "../state/DragoonState";
 import { DragoonBalance, SKILL_CONFIGS } from "../config/DragoonConfig";
 
 // Callbacks for FX
@@ -21,14 +21,18 @@ export const DragoonCombatSystem = {
   update(state: DragoonState, dt: number): void {
     _updateSkillCooldowns(state, dt);
     _handleSkillActivation(state, dt);
+    _updateShield(state, dt);
     _updatePlayerProjectiles(state, dt);
     _updateEnemyBehavior(state, dt);
     _updateEnemyProjectiles(state, dt);
     _updateExplosions(state, dt);
     _checkPlayerCollisions(state);
+    _updatePickups(state, dt);
+    _updateScoreMult(state, dt);
     _updateMana(state, dt);
     _updateCombo(state, dt);
     _updateInvincibility(state, dt);
+    _updateBossEntrance(state, dt);
     _cleanupDead(state);
   },
 };
@@ -124,6 +128,20 @@ function _handleSkillActivation(state: DragoonState, dt: number): void {
     const strikes = Math.floor(tPrev / strikeInterval) - Math.floor(meteorSkill.activeTimer / strikeInterval);
     for (let i = 0; i < strikes; i++) {
       _meteorStrike(state);
+    }
+  }
+
+  // Divine Shield (key 5)
+  if (inp.skill5) {
+    inp.skill5 = false;
+    const skill = state.skills.find(s => s.id === DragoonSkillId.DIVINE_SHIELD)!;
+    if (skill.cooldown <= 0 && p.mana >= SKILL_CONFIGS[DragoonSkillId.DIVINE_SHIELD].manaCost) {
+      skill.cooldown = skill.maxCooldown;
+      skill.active = true;
+      skill.activeTimer = SKILL_CONFIGS[DragoonSkillId.DIVINE_SHIELD].duration;
+      p.mana -= SKILL_CONFIGS[DragoonSkillId.DIVINE_SHIELD].manaCost;
+      p.shieldActive = true;
+      p.shieldTimer = SKILL_CONFIGS[DragoonSkillId.DIVINE_SHIELD].duration;
     }
   }
 
@@ -422,6 +440,41 @@ function _updateEnemyBehavior(state: DragoonState, dt: number): void {
         e.position.x += e.velocity.x * sf * dt;
         break;
 
+      case EnemyPattern.ZIGZAG: {
+        // Move left, alternate Y direction every 0.8s
+        e.position.x += e.velocity.x * sf * dt;
+        const zigPhase = Math.floor(e.patternTimer / 0.8);
+        const zigDir = zigPhase % 2 === 0 ? 1 : -1;
+        e.position.y += zigDir * e.velocity.x * -0.6 * sf * dt;
+        break;
+      }
+
+      case EnemyPattern.V_FORMATION: {
+        // Move left, maintain V-shape offset using patternParam as formation index
+        e.position.x += e.velocity.x * sf * dt;
+        const formIdx = e.patternParam;
+        const vOffsetY = Math.abs(formIdx) * 25;
+        const targetY = (state.screenH * 0.4) + vOffsetY * Math.sign(formIdx);
+        const yDiff = targetY - e.position.y;
+        e.position.y += Math.sign(yDiff) * Math.min(Math.abs(yDiff), 120 * sf * dt);
+        break;
+      }
+
+      case EnemyPattern.TELEPORT: {
+        // Slow drift
+        e.position.x += e.velocity.x * sf * dt * 0.3;
+        e.position.y += Math.sin(e.patternTimer * 1.5) * 20 * dt;
+        // Teleport when countdown reaches 0
+        e.patternParam -= dt;
+        if (e.patternParam <= 0) {
+          e.patternParam = 2.5 + Math.random() * 1.5; // Reset to 2.5-4s
+          // Teleport to random position on right half of screen
+          e.position.x = state.screenW * 0.4 + Math.random() * state.screenW * 0.5;
+          e.position.y = 60 + Math.random() * (state.screenH * 0.7);
+        }
+        break;
+      }
+
       case EnemyPattern.BOSS_PATTERN:
         _updateBoss(state, e, dt);
         break;
@@ -580,8 +633,9 @@ function _checkPlayerCollisions(state: DragoonState): void {
     const dx = proj.position.x - p.position.x;
     const dy = proj.position.y - p.position.y;
     if (dx * dx + dy * dy < (hitR + proj.radius) * (hitR + proj.radius)) {
-      p.hp -= proj.damage;
       proj.lifetime = -1;
+      if (p.shieldActive) continue; // Shield blocks damage
+      p.hp -= proj.damage;
       p.invincTimer = DragoonBalance.PLAYER_INVINCIBILITY;
       p.comboCount = 0;
       _onPlayerHit?.();
@@ -600,6 +654,7 @@ function _checkPlayerCollisions(state: DragoonState): void {
     const dy = e.position.y - p.position.y;
     const contactDist = hitR + e.size * 12;
     if (dx * dx + dy * dy < contactDist * contactDist) {
+      if (p.shieldActive) continue; // Shield blocks contact damage
       const contactDmg = e.isBoss ? 20 : 10;
       p.hp -= contactDmg;
       p.invincTimer = DragoonBalance.PLAYER_INVINCIBILITY;
@@ -639,6 +694,117 @@ function _updateExplosions(state: DragoonState, dt: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Shield
+// ---------------------------------------------------------------------------
+
+function _updateShield(state: DragoonState, dt: number): void {
+  const p = state.player;
+  if (p.shieldActive) {
+    p.shieldTimer -= dt;
+    if (p.shieldTimer <= 0) {
+      p.shieldActive = false;
+      p.shieldTimer = 0;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boss entrance
+// ---------------------------------------------------------------------------
+
+function _updateBossEntrance(state: DragoonState, dt: number): void {
+  if (state.bossEntranceTimer > 0) {
+    state.bossEntranceTimer -= dt;
+    if (state.bossEntranceTimer <= 0) {
+      state.bossEntranceTimer = 0;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pickups
+// ---------------------------------------------------------------------------
+
+function _spawnPickup(state: DragoonState, x: number, y: number): void {
+  if (Math.random() >= DragoonBalance.PICKUP_DROP_CHANCE) return;
+
+  const rand = Math.random();
+  let type: DragoonPickupType;
+  if (rand < 0.4) {
+    type = DragoonPickupType.HEALTH_ORB;
+  } else if (rand < 0.75) {
+    type = DragoonPickupType.MANA_ORB;
+  } else {
+    type = DragoonPickupType.SCORE_MULTIPLIER;
+  }
+
+  const pickup: DragoonPickup = {
+    id: state.nextId++,
+    position: { x, y },
+    velocity: { x: -20 + (Math.random() - 0.5) * 30, y: (Math.random() - 0.5) * 40 },
+    type,
+    lifetime: DragoonBalance.PICKUP_LIFETIME,
+    bobTimer: Math.random() * Math.PI * 2,
+    collected: false,
+  };
+  state.pickups.push(pickup);
+}
+
+function _updatePickups(state: DragoonState, dt: number): void {
+  const p = state.player;
+  const collectR = DragoonBalance.PICKUP_COLLECT_RADIUS;
+
+  for (const pickup of state.pickups) {
+    if (pickup.collected) continue;
+
+    // Move
+    pickup.position.x += pickup.velocity.x * dt;
+    pickup.position.y += pickup.velocity.y * dt;
+    pickup.velocity.x *= 0.98;
+    pickup.velocity.y *= 0.98;
+    pickup.bobTimer += dt;
+    pickup.lifetime -= dt;
+
+    if (pickup.lifetime <= 0) {
+      pickup.collected = true;
+      continue;
+    }
+
+    // Check player distance for collection
+    const dx = pickup.position.x - p.position.x;
+    const dy = pickup.position.y - p.position.y;
+    if (dx * dx + dy * dy < collectR * collectR) {
+      pickup.collected = true;
+      switch (pickup.type) {
+        case DragoonPickupType.HEALTH_ORB:
+          p.hp = Math.min(p.maxHp, p.hp + DragoonBalance.PICKUP_HEALTH_AMOUNT);
+          break;
+        case DragoonPickupType.MANA_ORB:
+          p.mana = Math.min(p.maxMana, p.mana + DragoonBalance.PICKUP_MANA_AMOUNT);
+          break;
+        case DragoonPickupType.SCORE_MULTIPLIER:
+          p.scoreMultiplier = DragoonBalance.PICKUP_SCORE_MULT;
+          p.scoreMultTimer = DragoonBalance.PICKUP_SCORE_MULT_DURATION;
+          break;
+      }
+    }
+  }
+
+  state.pickups = state.pickups.filter(pk => !pk.collected);
+}
+
+function _updateScoreMult(state: DragoonState, dt: number): void {
+  const p = state.player;
+  if (p.scoreMultTimer > 0) {
+    p.scoreMultTimer -= dt;
+    if (p.scoreMultTimer <= 0) {
+      p.scoreMultTimer = 0;
+      p.scoreMultiplier = 1;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -658,8 +824,9 @@ function _damageEnemy(state: DragoonState, enemy: DragoonEnemy, damage: number):
     enemy.alive = false;
     enemy.deathTimer = 0.5;
     const comboMult = 1 + state.player.comboCount * DragoonBalance.COMBO_SCORE_MULT;
-    state.player.score += Math.floor(enemy.scoreValue * comboMult);
+    state.player.score += Math.floor(enemy.scoreValue * comboMult * state.player.scoreMultiplier);
     _onExplosion?.(enemy.position.x, enemy.position.y, enemy.size * 25, enemy.glowColor);
+    _spawnPickup(state, enemy.position.x, enemy.position.y);
   }
 }
 

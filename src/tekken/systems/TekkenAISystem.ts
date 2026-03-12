@@ -15,6 +15,8 @@ export class TekkenAISystem {
   private _comboIndex = 0;
   private _isExecutingCombo = false;
   private _enabled = true;
+  private _comboDelayTimer = 0;
+  private _comboDropped = false;
 
   get difficulty(): number { return this._difficulty; }
 
@@ -125,11 +127,31 @@ export class TekkenAISystem {
     // After landing a launcher, try to execute a combo
     if (opponent.juggle.isAirborne && fighter.comboCount >= 1 && !this._isExecutingCombo) {
       const charDef = TEKKEN_CHARACTERS.find(c => c.id === fighter.characterId);
-      if (charDef && charDef.comboRoutes.length > 0) {
-        this._comboRoute = charDef.comboRoutes[Math.floor(Math.random() * charDef.comboRoutes.length)];
-        this._comboIndex = 0;
-        this._isExecutingCombo = true;
+      if (charDef) {
+        // Select combo routes based on difficulty tier
+        let routes: string[][] = charDef.comboRoutes;
+        if (this._difficulty > 0.7 && charDef.expertComboRoutes && charDef.expertComboRoutes.length > 0) {
+          routes = charDef.expertComboRoutes;
+        } else if (this._difficulty >= 0.4 && charDef.advancedComboRoutes && charDef.advancedComboRoutes.length > 0) {
+          routes = charDef.advancedComboRoutes;
+        }
+
+        if (routes.length > 0) {
+          this._comboRoute = routes[Math.floor(Math.random() * routes.length)];
+          this._comboIndex = 0;
+          this._isExecutingCombo = true;
+          this._comboDropped = false;
+          this._comboDelayTimer = 0;
+        }
       }
+    }
+
+    // Increase launcher attempt probability on hard difficulty when opponent whiffed
+    if (this._difficulty > 0.7 && dist > 0.8 && dist < 2.0 &&
+        opponent.state === TekkenFighterState.ATTACK && opponent.movePhase === "recovery") {
+      // Punish whiffed move with launcher
+      this._doAttack(fighter, "d/f", ["rp"]);
+      this._actionCooldown = 15;
     }
   }
 
@@ -208,7 +230,7 @@ export class TekkenAISystem {
   }
 
   private _executeComboStep(fighter: TekkenFighter): void {
-    if (this._comboIndex >= this._comboRoute.length) {
+    if (this._comboDropped || this._comboIndex >= this._comboRoute.length) {
       this._isExecutingCombo = false;
       return;
     }
@@ -216,8 +238,47 @@ export class TekkenAISystem {
     // Wait for previous attack to finish
     if (fighter.state === TekkenFighterState.ATTACK) return;
 
+    // Add random delay frames between combo steps based on difficulty
+    if (this._comboDelayTimer > 0) {
+      this._comboDelayTimer--;
+      return;
+    }
+
+    // Determine drop chance and delay based on difficulty
+    let dropChance = 0.05;
+    let minDelay = 0;
+    let maxDelay = 0;
+    if (this._difficulty < 0.4) {
+      // Easy: 40% drop chance, 3-8 extra frames delay
+      dropChance = 0.40;
+      minDelay = 3;
+      maxDelay = 8;
+    } else if (this._difficulty <= 0.7) {
+      // Medium: 15% drop chance, 1-3 extra frames delay
+      dropChance = 0.15;
+      minDelay = 1;
+      maxDelay = 3;
+    } else {
+      // Hard: 5% drop chance, 0 extra frames delay
+      dropChance = 0.05;
+      minDelay = 0;
+      maxDelay = 0;
+    }
+
+    // Check for combo drop
+    if (Math.random() < dropChance) {
+      this._comboDropped = true;
+      this._isExecutingCombo = false;
+      return;
+    }
+
     const step = this._comboRoute[this._comboIndex];
     this._comboIndex++;
+
+    // Set delay for next step
+    if (maxDelay > 0) {
+      this._comboDelayTimer = minDelay + Math.floor(Math.random() * (maxDelay - minDelay + 1));
+    }
 
     // Parse combo step notation (simplified)
     // Format: "d/f+rp", "n+lk", "d+lp", etc.
