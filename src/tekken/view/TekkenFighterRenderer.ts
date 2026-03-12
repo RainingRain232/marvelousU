@@ -1460,7 +1460,7 @@ export class TekkenFighterRenderer {
   update(fighter: TekkenFighter): void {
     // Position and facing
     this.group.position.set(fighter.position.x, fighter.position.y, fighter.position.z);
-    this.group.rotation.y = fighter.facingRight ? -Math.PI / 2 : Math.PI / 2;
+    this.group.rotation.y = fighter.facingRight ? Math.PI / 2 : -Math.PI / 2;
 
     // State change detection with combo blend tracking
     if (fighter.state !== this._lastState) {

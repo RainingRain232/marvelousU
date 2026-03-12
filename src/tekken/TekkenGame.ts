@@ -69,6 +69,10 @@ export class TekkenGame {
   // Training mode key handler
   private _trainingKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
+  // Pause menu
+  private _pauseKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _pauseContainer: Container | null = null;
+
   async boot(): Promise<void> {
     viewManager.clearWorld();
     this._sm = new TekkenStateMachine(TekkenPhase.MAIN_MENU);
@@ -92,6 +96,15 @@ export class TekkenGame {
     if (this._trainingKeyHandler) {
       window.removeEventListener("keydown", this._trainingKeyHandler);
       this._trainingKeyHandler = null;
+    }
+    if (this._pauseKeyHandler) {
+      window.removeEventListener("keydown", this._pauseKeyHandler);
+      this._pauseKeyHandler = null;
+    }
+    if (this._pauseContainer) {
+      viewManager.removeFromLayer("ui", this._pauseContainer);
+      this._pauseContainer.destroy({ children: true });
+      this._pauseContainer = null;
     }
     if (this._inputSystem) this._inputSystem.destroy();
     if (this._sceneManager) this._sceneManager.destroy();
@@ -373,8 +386,8 @@ export class TekkenGame {
 
         // Head
         g.circle(cx, cy - 34, 18).fill({ color: skinColor });
-        // Hair
-        g.arc(cx, cy - 36, 18, Math.PI, 0, false);
+        // Hair (moveTo arc start to avoid stray line from previous path position)
+        g.moveTo(cx - 18, cy - 36).arc(cx, cy - 36, 18, Math.PI, 0, false);
         g.fill({ color: ch.colors.hair });
         // Eyes (simple dots)
         g.circle(cx - 6, cy - 36, 2).fill({ color: 0x222222 });
@@ -722,6 +735,18 @@ export class TekkenGame {
     this._state.announcement = "ROUND 1";
     this._state.announcementTimer = 90;
 
+    // Pause key handler
+    this._pauseKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && this._state) {
+        if (this._pauseContainer) {
+          this._hidePauseMenu();
+        } else {
+          this._showPauseMenu();
+        }
+      }
+    };
+    window.addEventListener("keydown", this._pauseKeyHandler);
+
     // Start game loop
     this._tickerCb = (ticker: Ticker) => this._update(ticker.deltaMS / 1000);
     viewManager.app.ticker.add(this._tickerCb);
@@ -731,6 +756,9 @@ export class TekkenGame {
 
   private _update(dtSec: number): void {
     if (!this._state) return;
+    if (this._state.isPaused) {
+      return;
+    }
 
     // Handle intro countdown
     if (this._state.phase === TekkenPhase.INTRO) {
@@ -1133,6 +1161,127 @@ export class TekkenGame {
       if (entry.move.id === fighter.currentMove) return entry.move;
     }
     return null;
+  }
+
+  // ---- Pause Menu ----
+
+  private _showPauseMenu(): void {
+    if (!this._state || this._pauseContainer) return;
+    this._state.isPaused = true;
+
+    const sw = viewManager.app.screen.width;
+    const sh = viewManager.app.screen.height;
+    const container = new Container();
+
+    // Dim overlay
+    const bg = new Graphics();
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.7 });
+    container.addChild(bg);
+
+    // Panel
+    const panelW = 420;
+    const panelH = 460;
+    const px = (sw - panelW) / 2;
+    const py = (sh - panelH) / 2;
+    const panel = new Graphics();
+    panel.roundRect(px, py, panelW, panelH, 8).fill({ color: 0x1a1a2e, alpha: 0.95 });
+    panel.roundRect(px, py, panelW, panelH, 8).stroke({ color: 0xdaa520, width: 2 });
+    container.addChild(panel);
+
+    // Title
+    const title = new Text({
+      text: "PAUSED",
+      style: { fontFamily: "Georgia, serif", fontSize: 32, fill: 0xdaa520, fontWeight: "bold", letterSpacing: 3 },
+    });
+    title.anchor.set(0.5, 0);
+    title.x = sw / 2;
+    title.y = py + 18;
+    container.addChild(title);
+
+    // Controls list
+    const controls = [
+      ["MOVEMENT", ""],
+      ["Arrow Keys", "Move / Crouch / Jump"],
+      ["", ""],
+      ["ATTACKS", ""],
+      ["U", "Left Punch"],
+      ["I", "Right Punch"],
+      ["J", "Left Kick"],
+      ["K", "Right Kick"],
+      ["O", "Rage Art (when rage active)"],
+      ["", ""],
+      ["GENERAL", ""],
+      ["Escape", "Pause / Resume"],
+      ["", ""],
+    ];
+
+    if (this._state.gameMode === "training") {
+      controls.push(
+        ["TRAINING MODE", ""],
+        ["H", "Toggle Hitboxes"],
+        ["A", "Toggle AI"],
+        ["R", "Reset Positions / HP"],
+      );
+    }
+
+    let cy = py + 60;
+    for (const [key, desc] of controls) {
+      if (key === "" && desc === "") {
+        cy += 6;
+        continue;
+      }
+      if (desc === "") {
+        // Section header
+        const header = new Text({
+          text: key,
+          style: { fontFamily: "Georgia, serif", fontSize: 14, fill: 0xdaa520, fontWeight: "bold", letterSpacing: 2 },
+        });
+        header.x = px + 24;
+        header.y = cy;
+        container.addChild(header);
+        cy += 22;
+        continue;
+      }
+      const keyText = new Text({
+        text: key,
+        style: { fontFamily: "monospace", fontSize: 13, fill: 0xffffff, fontWeight: "bold" },
+      });
+      keyText.x = px + 30;
+      keyText.y = cy;
+      container.addChild(keyText);
+
+      const descText = new Text({
+        text: desc,
+        style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0xcccccc },
+      });
+      descText.x = px + 160;
+      descText.y = cy;
+      container.addChild(descText);
+      cy += 20;
+    }
+
+    // Resume hint
+    const hint = new Text({
+      text: "Press ESC to resume",
+      style: { fontFamily: "Georgia, serif", fontSize: 14, fill: 0x999999, fontStyle: "italic" },
+    });
+    hint.anchor.set(0.5, 0);
+    hint.x = sw / 2;
+    hint.y = py + panelH - 32;
+    container.addChild(hint);
+
+    this._pauseContainer = container;
+    viewManager.addToLayer("ui", container);
+  }
+
+  private _hidePauseMenu(): void {
+    if (!this._state) return;
+    this._state.isPaused = false;
+    if (this._pauseContainer) {
+      viewManager.removeFromLayer("ui", this._pauseContainer);
+      this._pauseContainer.destroy({ children: true });
+      this._pauseContainer = null;
+    }
   }
 
   // ---- Training Mode ----
