@@ -1826,6 +1826,141 @@ export class ThreeDragonRenderer {
         tail.rotation.z = Math.PI / 2;
         tail.position.set(-s * 2.5, 0, 0);
         group.add(tail);
+
+        // --- Detailed dragon wings ---
+        // Wing membrane material: semi-transparent with boss glow color
+        const membraneMat = new THREE.MeshPhongMaterial({
+          color: enemy.color,
+          emissive: enemy.glowColor,
+          emissiveIntensity: 0.25,
+          transparent: true,
+          opacity: 0.55,
+          side: THREE.DoubleSide,
+          flatShading: true,
+        });
+        // Wing bone material
+        const boneMat = new THREE.MeshPhongMaterial({
+          color: 0x553300,
+          emissive: 0xff4400,
+          emissiveIntensity: 0.1,
+        });
+
+        // Build each wing (left = -z, right = +z)
+        for (const side of [-1, 1]) {
+          const wingRoot = new THREE.Group();
+          wingRoot.position.set(s * 0.2, s * 0.5, side * s * 0.9);
+          wingRoot.name = side < 0 ? "dragonWingL" : "dragonWingR";
+
+          // Upper arm bone
+          const upperArm = new THREE.Group();
+          upperArm.name = side < 0 ? "upperArmL" : "upperArmR";
+          const upperBone = new THREE.Mesh(
+            new THREE.CylinderGeometry(s * 0.08, s * 0.12, s * 2.5, 6),
+            boneMat.clone()
+          );
+          upperBone.rotation.x = side * 0.2;
+          upperBone.rotation.z = Math.PI / 2;
+          upperBone.position.set(0, 0, side * s * 1.2);
+          upperArm.add(upperBone);
+
+          // Forearm bone
+          const forearm = new THREE.Group();
+          forearm.position.set(0, 0, side * s * 2.4);
+          forearm.name = side < 0 ? "forearmL" : "forearmR";
+          const forearmBone = new THREE.Mesh(
+            new THREE.CylinderGeometry(s * 0.06, s * 0.09, s * 2.0, 6),
+            boneMat.clone()
+          );
+          forearmBone.rotation.x = side * 0.3;
+          forearmBone.rotation.z = Math.PI / 2;
+          forearmBone.position.set(0, 0, side * s * 1.0);
+          forearm.add(forearmBone);
+
+          // 4 finger bones extending from the forearm tip
+          const fingerAngles = [0.0, 0.25, 0.55, 0.85];
+          const fingerLengths = [s * 2.8, s * 2.4, s * 1.8, s * 1.2];
+
+          for (let f = 0; f < 4; f++) {
+            const angle = fingerAngles[f] * side;
+            const len = fingerLengths[f];
+            const fingerBone = new THREE.Mesh(
+              new THREE.CylinderGeometry(s * 0.03, s * 0.05, len, 5),
+              boneMat.clone()
+            );
+            fingerBone.rotation.z = Math.PI / 2;
+            fingerBone.rotation.x = angle;
+            fingerBone.position.set(
+              -len * 0.3,
+              Math.sin(angle) * len * 0.4,
+              side * (s * 1.8 + Math.cos(angle) * len * 0.4)
+            );
+            fingerBone.name = `finger${f}`;
+            forearm.add(fingerBone);
+          }
+
+          // Wing membrane: triangular fan panels stretched between finger bones
+          // Build as a single BufferGeometry with multiple triangles
+          const memVerts: number[] = [];
+          // Shoulder (root) position in wing-local space
+          const rootX = 0, rootY = 0, rootZ = 0;
+          // Points along fingers (tips)
+          const fingerTips: [number, number, number][] = [];
+          for (let f = 0; f < 4; f++) {
+            const angle = fingerAngles[f] * side;
+            const len = fingerLengths[f];
+            fingerTips.push([
+              -len * 0.7,
+              Math.sin(angle) * len * 0.8,
+              side * (s * 3.5 + Math.cos(angle) * len * 0.5)
+            ]);
+          }
+          // Also add the forearm elbow and tip as anchor points
+          const elbowPt: [number, number, number] = [0, 0, side * s * 0.3];
+          const forearmTip: [number, number, number] = [0, 0, side * s * 2.0];
+
+          // Membrane from root to first finger tip, through each finger
+          // Panel: root -> elbow -> forearmTip
+          memVerts.push(rootX, rootY, rootZ);
+          memVerts.push(...elbowPt);
+          memVerts.push(...forearmTip);
+
+          // Panel: forearmTip -> first finger tip -> root (inner membrane)
+          memVerts.push(...forearmTip);
+          memVerts.push(...fingerTips[0]);
+          memVerts.push(rootX, rootY, rootZ);
+
+          // Panels between consecutive finger tips
+          for (let f = 0; f < fingerTips.length - 1; f++) {
+            // Triangle: forearmTip -> fingerTip[f] -> fingerTip[f+1]
+            memVerts.push(...forearmTip);
+            memVerts.push(...fingerTips[f]);
+            memVerts.push(...fingerTips[f + 1]);
+            // Extra triangle to fill: fingerTip[f] -> fingerTip[f+1] -> midpoint
+            const midX = (fingerTips[f][0] + fingerTips[f + 1][0]) * 0.5;
+            const midY = (fingerTips[f][1] + fingerTips[f + 1][1]) * 0.5 - s * 0.3;
+            const midZ = (fingerTips[f][2] + fingerTips[f + 1][2]) * 0.5;
+            memVerts.push(...fingerTips[f]);
+            memVerts.push(...fingerTips[f + 1]);
+            memVerts.push(midX, midY, midZ);
+          }
+
+          // Trailing membrane from last finger back to body
+          const lastTip = fingerTips[fingerTips.length - 1];
+          memVerts.push(...lastTip);
+          memVerts.push(rootX, rootY - s * 0.3, rootZ);
+          memVerts.push(rootX, rootY, rootZ);
+
+          const memGeo = new THREE.BufferGeometry();
+          memGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(memVerts), 3));
+          memGeo.computeVertexNormals();
+          const membrane = new THREE.Mesh(memGeo, membraneMat.clone());
+          membrane.name = `membrane${side < 0 ? "L" : "R"}`;
+          forearm.add(membrane);
+
+          upperArm.add(forearm);
+          wingRoot.add(upperArm);
+          group.add(wingRoot);
+        }
         break;
       }
 
@@ -2320,6 +2455,34 @@ export class ThreeDragonRenderer {
         const flapSpeed = enemy.isBoss ? 3 : 8;
         wingL.rotation.x = Math.sin(time * flapSpeed + enemy.id) * 0.5;
         wingR.rotation.x = Math.sin(time * flapSpeed + enemy.id) * 0.5;
+      }
+
+      // Animate detailed dragon wings (Ancient Dragon boss)
+      if (enemy.type === TDEnemyType.BOSS_ANCIENT_DRAGON) {
+        const dragonWingL = group.getObjectByName("dragonWingL") as THREE.Group;
+        const dragonWingR = group.getObjectByName("dragonWingR") as THREE.Group;
+        if (dragonWingL && dragonWingR) {
+          const flapBase = Math.sin(time * 2.0 + enemy.id) * 0.4;
+          // Upper arm flap
+          dragonWingL.rotation.x = flapBase;
+          dragonWingR.rotation.x = -flapBase;
+          // Forearm follows with a delay
+          const forearmL = group.getObjectByName("forearmL") as THREE.Group;
+          const forearmR = group.getObjectByName("forearmR") as THREE.Group;
+          if (forearmL && forearmR) {
+            const forearmFlap = Math.sin(time * 2.0 + enemy.id - 0.4) * 0.3;
+            forearmL.rotation.x = forearmFlap * 0.5;
+            forearmR.rotation.x = -forearmFlap * 0.5;
+          }
+          // Slight folding on the upstroke
+          const upperArmL = group.getObjectByName("upperArmL") as THREE.Group;
+          const upperArmR = group.getObjectByName("upperArmR") as THREE.Group;
+          if (upperArmL && upperArmR) {
+            const fold = Math.sin(time * 2.0 + enemy.id + 0.3) * 0.15;
+            upperArmL.rotation.z = fold;
+            upperArmR.rotation.z = -fold;
+          }
+        }
       }
 
       // Animate rings

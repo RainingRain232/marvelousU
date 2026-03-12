@@ -473,8 +473,9 @@ export class DragoonFX {
 // ---------------------------------------------------------------------------
 
 function _brighten(color: number, amount: number): number {
-  const r = Math.min(255, ((color >> 16) & 0xff) + Math.floor(255 * amount));
-  const g = Math.min(255, ((color >> 8) & 0xff) + Math.floor(255 * amount));
-  const b = Math.min(255, (color & 0xff) + Math.floor(255 * amount));
+  const delta = Math.floor(255 * amount);
+  const r = Math.max(0, Math.min(255, ((color >> 16) & 0xff) + delta));
+  const g = Math.max(0, Math.min(255, ((color >> 8) & 0xff) + delta));
+  const b = Math.max(0, Math.min(255, (color & 0xff) + delta));
   return (r << 16) | (g << 8) | b;
 }
