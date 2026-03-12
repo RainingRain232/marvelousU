@@ -665,6 +665,7 @@ export enum GameMode {
   MEDIEVAL_GTA = "medieval_gta",
   WARBAND = "warband",
   TEKKEN = "tekken",
+  DRAGOON = "dragoon",
 }
 
 // ---------------------------------------------------------------------------

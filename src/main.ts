@@ -123,6 +123,7 @@ import { DuelGame } from "./duel/DuelGame";
 import { MedievalGTA } from "./medievalgta/MedievalGTA";
 import { WarbandGame } from "./warband/WarbandGame";
 import { TekkenGame } from "./tekken/TekkenGame";
+import { DragoonGame } from "./dragoon/DragoonGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -305,6 +306,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.WAVE]: 6, [GameMode.RPG]: 7, [GameMode.SURVIVOR]: 8,
     [GameMode.COLOSSEUM]: 9, [GameMode.DUEL]: 10, [GameMode.MEDIEVAL_GTA]: 11,
     [GameMode.TEKKEN]: 13,
+    [GameMode.DRAGOON]: 14,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -379,6 +381,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.TEKKEN) {
       menuScreen.hide();
       _bootTekkenGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.DRAGOON) {
+      menuScreen.hide();
+      _bootDragoonGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2597,6 +2604,30 @@ async function _bootTekkenGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("tekkenExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Panzer Dragoon mode boot
+// ---------------------------------------------------------------------------
+
+let _dragoonGame: DragoonGame | null = null;
+
+async function _bootDragoonGame(): Promise<void> {
+  if (_dragoonGame) {
+    _dragoonGame.destroy();
+    _dragoonGame = null;
+  }
+  _dragoonGame = new DragoonGame();
+  await _dragoonGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("dragoonExit", _onExit);
+    if (_dragoonGame) {
+      _dragoonGame.destroy();
+      _dragoonGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("dragoonExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

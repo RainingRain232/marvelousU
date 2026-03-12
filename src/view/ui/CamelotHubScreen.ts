@@ -155,6 +155,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "farm", x: 80, y: 600, w: 120, h: 90, label: "Farmstead", mode: null, type: "farm" },
   { id: "tourney", x: 100, y: 380, w: 150, h: 120, label: "Tournament Grounds", mode: GameMode.WARBAND, type: "training" },
   { id: "fighting_pit", x: 130, y: 680, w: 120, h: 110, label: "The Fighting Pit", mode: GameMode.TEKKEN, type: "colosseum" },
+  { id: "eagle_roost", x: 950, y: 160, w: 140, h: 120, label: "The Eagle Roost", mode: GameMode.DRAGOON, type: "tower" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };
@@ -839,6 +840,7 @@ export class CamelotHubScreen {
       [GameMode.WORLD]: "World",
       [GameMode.ROGUELIKE]: "Roguelike",
       [GameMode.WARBAND]: "Warband",
+      [GameMode.DRAGOON]: "Panzer Dragoon",
     };
     return labels[mode] || mode;
   }

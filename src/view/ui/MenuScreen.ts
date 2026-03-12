@@ -246,6 +246,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Tekken-style 3D fighting game",
     skipSetup: true,
   },
+  {
+    mode: GameMode.DRAGOON,
+    label: "DRAGOON",
+    desc: "Panzer Dragoon: Arthur & the White Eagle",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
