@@ -5,7 +5,7 @@ import { viewManager } from "../view/ViewManager";
 import { TekkenStateMachine } from "./TekkenStateMachine";
 import { TB } from "./config/TekkenBalanceConfig";
 import { createTekkenState } from "./state/TekkenState";
-import type { TekkenState, TekkenGameMode } from "./state/TekkenState";
+import type { TekkenState, TekkenGameMode, TekkenMoveDef } from "./state/TekkenState";
 import { TekkenSceneManager } from "./view/TekkenSceneManager";
 import { TekkenFighterRenderer } from "./view/TekkenFighterRenderer";
 import { TekkenArenaRenderer } from "./view/TekkenArenaRenderer";
@@ -16,6 +16,7 @@ import { TekkenFightingSystem } from "./systems/TekkenFightingSystem";
 import { TekkenComboSystem } from "./systems/TekkenComboSystem";
 import { TekkenPhysicsSystem } from "./systems/TekkenPhysicsSystem";
 import { TekkenAISystem } from "./systems/TekkenAISystem";
+import { TekkenAudioManager } from "./audio/TekkenAudioManager";
 import { TEKKEN_CHARACTERS } from "./config/TekkenCharacterDefs";
 
 export class TekkenGame {
@@ -38,10 +39,35 @@ export class TekkenGame {
   private _physicsSystem!: TekkenPhysicsSystem;
   private _aiSystem!: TekkenAISystem;
 
+  // Audio
+  private _audio!: TekkenAudioManager;
+
+  // Audio state tracking (for edge detection)
+  private _lastHitFrame: number[] = [-999, -999];
+  private _lastBlockFrame: number[] = [-999, -999];
+  private _lastRageState: boolean[] = [false, false];
+  private _walkFootstepTimer: number[] = [0, 0];
+  private _lastMovePhase: string[] = ["none", "none"];
+  private _lastAnnouncement: string | null = null;
+  private _koSoundPlayed = false;
+
   // Keyboard handler for menu/char select
   private _menuKeyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _selectedChars: [string, string] = ["knight", "berserker"];
   private _charSelectContainer: Container | null = null;
+  private _selectedDifficulty = 1; // 0=easy, 1=medium, 2=hard
+  private _selectedGameMode: TekkenGameMode = "vs_cpu";
+
+  // Rage Art cinematic state
+  private _rageArtCinematic: {
+    active: boolean;
+    attackerIdx: number;
+    phase: "zoom_in" | "impact" | "zoom_out";
+    timer: number;
+  } | null = null;
+
+  // Training mode key handler
+  private _trainingKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -63,10 +89,16 @@ export class TekkenGame {
       this._charSelectContainer.destroy({ children: true });
       this._charSelectContainer = null;
     }
+    if (this._trainingKeyHandler) {
+      window.removeEventListener("keydown", this._trainingKeyHandler);
+      this._trainingKeyHandler = null;
+    }
     if (this._inputSystem) this._inputSystem.destroy();
     if (this._sceneManager) this._sceneManager.destroy();
     if (this._hud) this._hud.destroy();
+    if (this._audio) this._audio.destroy();
     this._fighterRenderers = [];
+    this._rageArtCinematic = null;
     this._state = null;
   }
 
@@ -521,10 +553,10 @@ export class TekkenGame {
 
       // Controls hint text
       const hint = new Text({
-        text: "\u2190 \u2192  P1 Select    \u2191 \u2193  CPU Select    Enter  Fight    Esc  Exit",
+        text: "\u2190\u2192 P1  \u2191\u2193 CPU  1/2/3 Difficulty  T Training  Enter Fight  Esc Exit",
         style: {
           fontFamily: "Georgia, serif",
-          fontSize: 16,
+          fontSize: 14,
           fill: 0x999999,
           letterSpacing: 1,
         },
@@ -532,6 +564,40 @@ export class TekkenGame {
       hint.anchor.set(0.5);
       hint.x = sw / 2;
       hint.y = barY + barH / 2 - 1;
+
+      // Difficulty label (above bottom bar)
+      const diffLabels = ["EASY", "MEDIUM", "HARD"];
+      const diffColors = [0x44cc44, 0xddaa00, 0xff4444];
+      const diffText = new Text({
+        text: `Difficulty: ${diffLabels[this._selectedDifficulty]}`,
+        style: {
+          fontFamily: "Georgia, serif",
+          fontSize: 16,
+          fill: diffColors[this._selectedDifficulty],
+          fontWeight: "bold",
+        },
+      });
+      diffText.anchor.set(0, 1);
+      diffText.x = 50;
+      diffText.y = barY - 8;
+      container.addChild(diffText);
+
+      // Game mode label
+      const modeLabel = this._selectedGameMode === "training" ? "TRAINING" : "VS CPU";
+      const modeColor = this._selectedGameMode === "training" ? 0x00ffcc : 0xaaaaaa;
+      const modeText = new Text({
+        text: `Mode: ${modeLabel}`,
+        style: {
+          fontFamily: "Georgia, serif",
+          fontSize: 16,
+          fill: modeColor,
+          fontWeight: "bold",
+        },
+      });
+      modeText.anchor.set(1, 1);
+      modeText.x = sw - 50;
+      modeText.y = barY - 8;
+      container.addChild(modeText);
 
       // Add base graphics first, then text layers are already added
       container.addChildAt(g, 0);
@@ -558,6 +624,18 @@ export class TekkenGame {
         p2Idx = (p2Idx + 1) % charIds.length;
         if (p2Idx === p1Idx) p2Idx = (p2Idx + 1) % charIds.length;
         drawSelect();
+      } else if (e.key === "1") {
+        this._selectedDifficulty = 0;
+        drawSelect();
+      } else if (e.key === "2") {
+        this._selectedDifficulty = 1;
+        drawSelect();
+      } else if (e.key === "3") {
+        this._selectedDifficulty = 2;
+        drawSelect();
+      } else if (e.key === "t" || e.key === "T") {
+        this._selectedGameMode = this._selectedGameMode === "training" ? "vs_cpu" : "training";
+        drawSelect();
       } else if (e.key === "Enter") {
         confirmed = true;
         this._selectedChars = [charIds[p1Idx], charIds[p2Idx]];
@@ -566,7 +644,7 @@ export class TekkenGame {
         viewManager.removeFromLayer("ui", container);
         container.destroy({ children: true });
         this._charSelectContainer = null;
-        this._startMatch("vs_cpu");
+        this._startMatch(this._selectedGameMode);
       } else if (e.key === "Escape") {
         window.removeEventListener("keydown", this._menuKeyHandler!);
         this._menuKeyHandler = null;
@@ -582,7 +660,12 @@ export class TekkenGame {
   // ---- Match Start ----
 
   private _startMatch(gameMode: TekkenGameMode): void {
-    this._state = createTekkenState(gameMode, "castle_courtyard", this._selectedChars[0], this._selectedChars[1]);
+    // Randomly pick an arena
+    const arenaIds = ["castle_courtyard", "underground_pit", "throne_room"];
+    const arenaId = arenaIds[Math.floor(Math.random() * arenaIds.length)];
+
+    this._state = createTekkenState(gameMode, arenaId, this._selectedChars[0], this._selectedChars[1]);
+    this._state.difficulty = this._selectedDifficulty;
 
     // Init 3D scene
     this._sceneManager = new TekkenSceneManager();
@@ -590,7 +673,7 @@ export class TekkenGame {
 
     // Init arena
     this._arenaRenderer = new TekkenArenaRenderer(this._sceneManager);
-    this._arenaRenderer.build();
+    this._arenaRenderer.build(arenaId);
 
     // Init fighters
     this._fighterRenderers = [];
@@ -615,6 +698,24 @@ export class TekkenGame {
     this._comboSystem = new TekkenComboSystem();
     this._physicsSystem = new TekkenPhysicsSystem();
     this._aiSystem = new TekkenAISystem();
+    this._aiSystem.setDifficultyLevel(this._selectedDifficulty);
+
+    // Training mode setup
+    if (gameMode === "training") {
+      this._state.trainingMode.aiEnabled = true;
+      this._setupTrainingKeyHandler();
+    }
+
+    // Init audio
+    this._audio = new TekkenAudioManager();
+    this._audio.init();
+    this._lastHitFrame = [-999, -999];
+    this._lastBlockFrame = [-999, -999];
+    this._lastRageState = [false, false];
+    this._walkFootstepTimer = [0, 0];
+    this._lastMovePhase = ["none", "none"];
+    this._lastAnnouncement = null;
+    this._koSoundPlayed = false;
 
     // Start intro then fight
     this._sm.transition(TekkenPhase.INTRO);
@@ -637,8 +738,18 @@ export class TekkenGame {
       if (this._state.announcementTimer <= 60 && this._state.announcement === `ROUND ${this._state.round.roundNumber}`) {
         this._state.announcement = "FIGHT!";
       }
+      // Audio: detect announcement changes
+      if (this._state.announcement !== this._lastAnnouncement) {
+        if (this._state.announcement && this._state.announcement.startsWith("ROUND")) {
+          this._audio.playRoundAnnounce();
+        } else if (this._state.announcement === "FIGHT!") {
+          this._audio.playFightAnnounce();
+        }
+        this._lastAnnouncement = this._state.announcement;
+      }
       if (this._state.announcementTimer <= 0) {
         this._state.announcement = null;
+        this._lastAnnouncement = null;
         this._sm.transition(TekkenPhase.FIGHTING);
         this._state.phase = TekkenPhase.FIGHTING;
       }
@@ -716,7 +827,18 @@ export class TekkenGame {
     }
 
     // Fighting (attacks, blocking, hit detection)
+    const shakeBeforeHit = s.cameraState.shakeIntensity;
     this._fightingSystem.update(s, this._fxManager);
+
+    // Trigger spectator reactions based on hit intensity
+    const shakeDelta = s.cameraState.shakeIntensity - shakeBeforeHit;
+    if (shakeDelta > 0) {
+      const koHappened = s.fighters[0].hp <= 0 || s.fighters[1].hp <= 0;
+      const intensity = koHappened ? "ko" as const
+        : shakeDelta >= TB.CAMERA_SHAKE_HEAVY ? "heavy" as const
+        : "light" as const;
+      this._arenaRenderer.triggerSpectatorReaction(intensity);
+    }
 
     // Combos
     this._comboSystem.update(s);
@@ -735,6 +857,65 @@ export class TekkenGame {
       if (!f.rageActive && f.hp > 0 && f.hp <= f.maxHp * TB.RAGE_THRESHOLD) {
         f.rageActive = true;
       }
+    }
+
+    // Detect Rage Art activation and trigger cinematic
+    for (let i = 0; i < 2; i++) {
+      const f = s.fighters[i];
+      if (f.state === TekkenFighterState.RAGE_ART || (f.state === TekkenFighterState.ATTACK && f.currentMove)) {
+        const charDef = TEKKEN_CHARACTERS.find(c => c.id === f.characterId);
+        if (charDef && f.currentMove === charDef.rageArt.id && !this._rageArtCinematic?.active) {
+          this._rageArtCinematic = {
+            active: true,
+            attackerIdx: i,
+            phase: "zoom_in",
+            timer: 0,
+          };
+          s.slowdownFrames = TB.RAGE_ART_ZOOM_IN_FRAMES + TB.RAGE_ART_IMPACT_FRAMES;
+          s.slowdownScale = TB.RAGE_ART_SLOWDOWN_SCALE;
+        }
+      }
+    }
+
+    // Update rage art cinematic timer
+    if (this._rageArtCinematic?.active) {
+      this._rageArtCinematic.timer++;
+      const rc = this._rageArtCinematic;
+      if (rc.phase === "zoom_in" && rc.timer >= TB.RAGE_ART_ZOOM_IN_FRAMES) {
+        rc.phase = "impact";
+        rc.timer = 0;
+        s.cameraState.shakeIntensity = TB.CAMERA_SHAKE_HEAVY * 2;
+      } else if (rc.phase === "impact" && rc.timer >= TB.RAGE_ART_IMPACT_FRAMES) {
+        rc.phase = "zoom_out";
+        rc.timer = 0;
+      } else if (rc.phase === "zoom_out" && rc.timer >= TB.RAGE_ART_ZOOM_OUT_FRAMES) {
+        this._rageArtCinematic = null;
+      }
+    }
+
+    // Training mode: track frame data and infinite HP
+    if (s.gameMode === "training") {
+      const p1 = s.fighters[0];
+      if (p1.state === TekkenFighterState.ATTACK && p1.currentMove) {
+        const moveDef = this._getActiveMoveDefForFighter(p1);
+        if (moveDef) {
+          s.trainingMode.lastMoveName = moveDef.name;
+          s.trainingMode.lastMoveStartup = moveDef.startup;
+          s.trainingMode.lastMoveActive = moveDef.active;
+          s.trainingMode.lastMoveRecovery = moveDef.recovery;
+          s.trainingMode.frameAdvantage = moveDef.onHit;
+        }
+      }
+
+      // Infinite HP: reset to full when combo drops
+      for (const f of s.fighters) {
+        if (f.comboCount === 0 && f.hp < f.maxHp && f.hitstunFrames <= 0 && !f.juggle.isAirborne) {
+          f.hp = f.maxHp;
+        }
+      }
+
+      // No round timer in training
+      s.round.timeRemaining = TB.ROUND_TIME * TB.TPS;
     }
 
     // Check round end
@@ -766,6 +947,111 @@ export class TekkenGame {
         s.fighters[w].state = TekkenFighterState.VICTORY;
         this._sm.transition(TekkenPhase.ROUND_END);
         s.phase = TekkenPhase.ROUND_END;
+      }
+    }
+
+    // Process audio triggers based on state changes
+    this._processAudioTriggers(s);
+  }
+
+  // ---- Audio Triggers ----
+
+  private _processAudioTriggers(s: TekkenState): void {
+    const frame = s.frameCount;
+
+    for (let i = 0; i < 2; i++) {
+      const f = s.fighters[i];
+      const opp = s.fighters[1 - i];
+
+      // --- Hit detection: fighter just got hit (entered hitstun this frame) ---
+      if (
+        (f.state === TekkenFighterState.HIT_STUN_HIGH ||
+         f.state === TekkenFighterState.HIT_STUN_MID ||
+         f.state === TekkenFighterState.HIT_STUN_LOW ||
+         f.state === TekkenFighterState.JUGGLE) &&
+        frame - this._lastHitFrame[i] > 3 // debounce: at least 3 frames between hit sounds
+      ) {
+        // Check if opponent's move just connected (moveHasHit became true)
+        if (opp.moveHasHit && opp.state === TekkenFighterState.ATTACK) {
+          this._lastHitFrame[i] = frame;
+
+          const moveDef = this._getActiveMoveDefForFighter(opp);
+          const damage = moveDef ? moveDef.damage : 15;
+
+          // Check for counter hit
+          if (f.counterHitWindow) {
+            this._audio.playCounterHit();
+            this._audio.playCrowdReaction("heavy");
+          }
+          // Check for launcher
+          else if (moveDef && moveDef.isLauncher) {
+            this._audio.playLaunch();
+            this._audio.playCrowdReaction("heavy");
+          }
+          // Heavy vs light hit based on damage
+          else if (damage >= 25) {
+            this._audio.playHeavyHit();
+            this._audio.playCrowdReaction("heavy");
+          } else {
+            this._audio.playLightHit();
+            this._audio.playCrowdReaction("light");
+          }
+        }
+      }
+
+      // --- Block detection: fighter just entered block state ---
+      if (
+        (f.state === TekkenFighterState.BLOCK_STAND ||
+         f.state === TekkenFighterState.BLOCK_CROUCH) &&
+        f.blockstunFrames > 0 &&
+        frame - this._lastBlockFrame[i] > 3
+      ) {
+        if (opp.moveHasHit) {
+          this._lastBlockFrame[i] = frame;
+          this._audio.playBlock();
+        }
+      }
+
+      // --- Whoosh: fighter enters "active" movePhase ---
+      if (
+        f.state === TekkenFighterState.ATTACK &&
+        f.movePhase === "active" &&
+        this._lastMovePhase[i] !== "active"
+      ) {
+        this._audio.playWhoosh();
+      }
+      this._lastMovePhase[i] = f.movePhase;
+
+      // --- Footsteps: walking forward/back ---
+      if (
+        f.state === TekkenFighterState.WALK_FORWARD ||
+        f.state === TekkenFighterState.WALK_BACK
+      ) {
+        this._walkFootstepTimer[i]++;
+        if (this._walkFootstepTimer[i] >= 10) {
+          this._audio.playFootstep();
+          this._walkFootstepTimer[i] = 0;
+        }
+      } else {
+        this._walkFootstepTimer[i] = 0;
+      }
+
+      // --- Rage activation moment ---
+      if (f.rageActive && !this._lastRageState[i]) {
+        this._audio.playRageActivation();
+      }
+      this._lastRageState[i] = f.rageActive;
+    }
+
+    // --- KO sound (once per round) ---
+    if (s.phase === TekkenPhase.ROUND_END && !this._koSoundPlayed) {
+      for (let i = 0; i < 2; i++) {
+        if (s.fighters[i].hp <= 0) {
+          this._audio.playKO();
+          this._audio.playCrowdReaction("ko");
+          this._koSoundPlayed = true;
+          break;
+        }
       }
     }
   }
@@ -822,10 +1108,105 @@ export class TekkenGame {
       f.facingRight = i === 0;
     }
 
+    // Reset audio tracking for new round
+    this._lastHitFrame = [-999, -999];
+    this._lastBlockFrame = [-999, -999];
+    this._lastRageState = [false, false];
+    this._walkFootstepTimer = [0, 0];
+    this._lastMovePhase = ["none", "none"];
+    this._koSoundPlayed = false;
+
     s.announcement = `ROUND ${s.round.roundNumber}`;
     s.announcementTimer = TB.ROUND_START_DELAY;
     this._sm.transition(TekkenPhase.INTRO);
     s.phase = TekkenPhase.INTRO;
+  }
+
+  // ---- Move Lookup ----
+
+  private _getActiveMoveDefForFighter(fighter: { characterId: string; currentMove: string | null }): TekkenMoveDef | null {
+    if (!fighter.currentMove) return null;
+    const charDef = TEKKEN_CHARACTERS.find(c => c.id === fighter.characterId);
+    if (!charDef) return null;
+    if (fighter.currentMove === charDef.rageArt.id) return charDef.rageArt;
+    for (const entry of charDef.moveList) {
+      if (entry.move.id === fighter.currentMove) return entry.move;
+    }
+    return null;
+  }
+
+  // ---- Training Mode ----
+
+  private _setupTrainingKeyHandler(): void {
+    this._trainingKeyHandler = (e: KeyboardEvent) => {
+      if (!this._state || this._state.gameMode !== "training") return;
+      const tm = this._state.trainingMode;
+      if (e.key === "F1") {
+        e.preventDefault();
+        tm.aiEnabled = !tm.aiEnabled;
+        this._aiSystem.enabled = tm.aiEnabled;
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        // Reset positions and HP
+        for (let i = 0; i < 2; i++) {
+          const f = this._state.fighters[i];
+          f.hp = f.maxHp;
+          f.position.x = i === 0 ? -2.0 : 2.0;
+          f.position.y = 0;
+          f.velocity = { x: 0, y: 0, z: 0 };
+          f.state = TekkenFighterState.IDLE;
+          f.stateTimer = 0;
+          f.currentMove = null;
+          f.moveFrame = 0;
+          f.movePhase = "none";
+          f.rageActive = false;
+          f.comboCount = 0;
+          f.comboDamage = 0;
+          f.comboDamageScaling = 1;
+          f.hitstunFrames = 0;
+          f.blockstunFrames = 0;
+          f.juggle = { isAirborne: false, velocity: { x: 0, y: 0, z: 0 }, hitCount: 0, screwUsed: false, boundUsed: false, gravityScale: 1, wallSplatActive: false, wallSplatTimer: 0 };
+          f.grounded = true;
+          f.facingRight = i === 0;
+        }
+      } else if (e.key === "F3") {
+        e.preventDefault();
+        tm.showHitboxes = !tm.showHitboxes;
+      }
+    };
+    window.addEventListener("keydown", this._trainingKeyHandler);
+  }
+
+  // ---- Intro Camera Sweep ----
+
+  private _introCameraUpdate(): void {
+    const s = this._state!;
+    const introFrame = TB.ROUND_START_DELAY - s.announcementTimer; // 0 to 90
+    const midX = (s.fighters[0].position.x + s.fighters[1].position.x) / 2;
+
+    if (introFrame < TB.INTRO_ORBIT_FRAMES) {
+      // Orbit camera from behind to side view
+      const t = introFrame / TB.INTRO_ORBIT_FRAMES;
+      const angle = Math.PI * (1 - t) + (Math.PI / 2) * t;
+      const radius = TB.INTRO_ORBIT_RADIUS_START + t * (TB.INTRO_ORBIT_RADIUS_END - TB.INTRO_ORBIT_RADIUS_START);
+      const camX = midX + Math.sin(angle * 0.5) * radius;
+      const camZ = Math.cos(angle * 0.5) * radius;
+      const camY = TB.INTRO_ORBIT_Y_START - t * (TB.INTRO_ORBIT_Y_START - TB.INTRO_ORBIT_Y_END);
+      this._sceneManager.camera.position.set(camX, camY, camZ);
+      this._sceneManager.camera.lookAt(midX, 0.9, 0);
+    } else {
+      // Ease to final position using smoothstep
+      const t = (introFrame - TB.INTRO_ORBIT_FRAMES) / TB.INTRO_EASE_FRAMES;
+      const eased = t * t * (3 - 2 * t);
+      const curPos = this._sceneManager.camera.position;
+      const targetZ = TB.CAMERA_BASE_Z;
+      this._sceneManager.camera.position.set(
+        curPos.x + (midX - curPos.x) * eased * 0.1,
+        curPos.y + (TB.CAMERA_Y - curPos.y) * eased * 0.1,
+        curPos.z + (targetZ - curPos.z) * eased * 0.1,
+      );
+      this._sceneManager.camera.lookAt(midX, TB.CAMERA_LOOK_Y, 0);
+    }
   }
 
   // ---- Render ----
@@ -834,37 +1215,133 @@ export class TekkenGame {
     if (!this._state) return;
     const s = this._state;
 
-    // Update camera
     const midX = (s.fighters[0].position.x + s.fighters[1].position.x) / 2;
-    const dist = Math.abs(s.fighters[0].position.x - s.fighters[1].position.x);
-    const targetZ = TB.CAMERA_BASE_Z + Math.max(0, dist - 3) * 0.5;
 
-    const cam = s.cameraState;
-    cam.targetX = midX;
-    cam.x += (cam.targetX - cam.x) * TB.CAMERA_LERP;
-    cam.z += (targetZ + cam.zoomOffset - cam.z) * TB.CAMERA_LERP;
+    // --- Feature 4: Intro Camera Sweep ---
+    if (s.phase === TekkenPhase.INTRO) {
+      this._introCameraUpdate();
+    } else {
+      // --- Feature 1: Rage Art Cinematic Camera ---
+      let rageArtCameraHandled = false;
+      if (this._rageArtCinematic?.active) {
+        const rc = this._rageArtCinematic;
+        const attacker = s.fighters[rc.attackerIdx];
+        const cam = s.cameraState;
 
-    // Apply camera shake
-    let shakeX = 0, shakeY = 0;
-    if (cam.shakeIntensity > 0.001) {
-      shakeX = (Math.random() - 0.5) * cam.shakeIntensity * 2;
-      shakeY = (Math.random() - 0.5) * cam.shakeIntensity * 2;
-      cam.shakeIntensity *= cam.shakeDecay;
+        if (rc.phase === "zoom_in") {
+          // Camera zooms in close to the attacker with 3/4 view offset
+          const t = rc.timer / TB.RAGE_ART_ZOOM_IN_FRAMES;
+          const eased = t * t;
+          const targetZ = TB.RAGE_ART_ZOOM_Z;
+          const targetY = TB.RAGE_ART_ZOOM_Y;
+          const offsetX = (rc.attackerIdx === 0 ? 0.5 : -0.5); // 3/4 view shift
+          cam.z += (targetZ - cam.z) * eased * 0.3;
+          cam.y += (targetY - cam.y) * eased * 0.3;
+          cam.x += (attacker.position.x + offsetX - cam.x) * eased * 0.2;
+          this._sceneManager.camera.position.set(cam.x, cam.y, cam.z);
+          this._sceneManager.camera.lookAt(attacker.position.x, 1.0, 0);
+          rageArtCameraHandled = true;
+        } else if (rc.phase === "impact") {
+          // Screen flash effect via bloom boost, camera holds close
+          cam.z += (TB.RAGE_ART_ZOOM_Z - cam.z) * 0.1;
+          this._sceneManager.camera.position.set(cam.x, cam.y, cam.z);
+          this._sceneManager.camera.lookAt(attacker.position.x, 1.0, 0);
+          // Flash effect through bloom
+          this._sceneManager.setHitImpactIntensity(5.0 - rc.timer * 0.4);
+          rageArtCameraHandled = true;
+        } else if (rc.phase === "zoom_out") {
+          // Camera returns to normal
+          const t = rc.timer / TB.RAGE_ART_ZOOM_OUT_FRAMES;
+          const eased = t * t * (3 - 2 * t);
+          const dist = Math.abs(s.fighters[0].position.x - s.fighters[1].position.x);
+          const normalZ = TB.CAMERA_BASE_Z + Math.max(0, dist - 3) * 0.5;
+          cam.z += (normalZ - cam.z) * eased * 0.15;
+          cam.y += (TB.CAMERA_Y - cam.y) * eased * 0.15;
+          cam.x += (midX - cam.x) * eased * 0.15;
+          this._sceneManager.camera.position.set(cam.x, cam.y, cam.z);
+          this._sceneManager.camera.lookAt(cam.x, TB.CAMERA_LOOK_Y, 0);
+          rageArtCameraHandled = true;
+        }
+      }
+
+      if (!rageArtCameraHandled) {
+        // Normal camera update
+        const dist = Math.abs(s.fighters[0].position.x - s.fighters[1].position.x);
+        const targetZ = TB.CAMERA_BASE_Z + Math.max(0, dist - 3) * 0.5;
+
+        const cam = s.cameraState;
+        cam.targetX = midX;
+        cam.x += (cam.targetX - cam.x) * TB.CAMERA_LERP;
+        cam.z += (targetZ + cam.zoomOffset - cam.z) * TB.CAMERA_LERP;
+
+        // --- Feature 5: KO Slow-Motion Camera ---
+        if (s.phase === TekkenPhase.ROUND_END && s.round.winnerId !== null) {
+          const koTimer = TB.ROUND_END_DELAY - s.announcementTimer;
+          if (koTimer < 60) {
+            const winner = s.fighters[s.round.winnerId];
+            const t = koTimer / 60;
+            const zoom = 1 - t * TB.KO_ZOOM_AMOUNT;
+            cam.z = TB.CAMERA_BASE_Z * zoom;
+            cam.targetX = midX + (winner.position.x - midX) * TB.KO_CAMERA_SHIFT * t;
+            cam.x += (cam.targetX - cam.x) * TB.CAMERA_LERP * 2;
+          }
+        }
+
+        // Apply camera shake
+        let shakeX = 0, shakeY = 0;
+        if (cam.shakeIntensity > 0.001) {
+          shakeX = (Math.random() - 0.5) * cam.shakeIntensity * 2;
+          shakeY = (Math.random() - 0.5) * cam.shakeIntensity * 2;
+          cam.shakeIntensity *= cam.shakeDecay;
+        }
+
+        this._sceneManager.camera.position.set(cam.x + shakeX, cam.y + shakeY, cam.z);
+        this._sceneManager.camera.lookAt(cam.x, TB.CAMERA_LOOK_Y, 0);
+      }
     }
-
-    this._sceneManager.camera.position.set(cam.x + shakeX, cam.y + shakeY, cam.z);
-    this._sceneManager.camera.lookAt(cam.x, TB.CAMERA_LOOK_Y, 0);
 
     // Update fighter meshes
     for (let i = 0; i < 2; i++) {
       this._fighterRenderers[i].update(s.fighters[i]);
     }
 
+    // Weapon trails
+    for (let i = 0; i < 2; i++) {
+      const f = s.fighters[i];
+      const moveDef = this._getActiveMoveDefForFighter(f);
+      if (f.state === TekkenFighterState.ATTACK && f.movePhase === "active" && moveDef) {
+        if (!this._fxManager.isTrailActive(i)) {
+          const charDef = TEKKEN_CHARACTERS.find(c => c.id === f.characterId);
+          this._fxManager.startTrail(i, charDef?.colors.accent ?? 0xffaa33);
+        }
+        const limbPos = this._fighterRenderers[i].getAttackLimbWorldPos(moveDef.limb);
+        this._fxManager.updateTrailPoint(i, limbPos);
+      } else if (this._fxManager.isTrailActive(i)) {
+        this._fxManager.stopTrail(i);
+      }
+    }
+
+    // Update spectator animations
+    this._arenaRenderer.updateSpectators();
+
     // Update FX
     this._fxManager.update();
 
     // Update HUD
     this._hud.update(s);
+
+    // Post-processing impact effects
+    const maxShake = Math.max(s.cameraState.shakeIntensity, 0);
+    this._sceneManager.setHitImpactIntensity(maxShake * 10);
+
+    // Rage glow
+    const anyRage = s.fighters[0].rageActive || s.fighters[1].rageActive;
+    this._sceneManager.setRageGlow(anyRage);
+
+    // --- Feature 7: Dynamic Arena Lighting ---
+    const maxCombo = Math.max(s.fighters[0].comboCount, s.fighters[1].comboCount);
+    const comboIntensity = Math.min(1, maxCombo / TB.COMBO_INTENSITY_DIVISOR);
+    this._sceneManager.setComboIntensity(comboIntensity);
 
     // Render 3D
     this._sceneManager.render();

@@ -14,10 +14,25 @@ export class TekkenAISystem {
   private _comboRoute: string[] = [];
   private _comboIndex = 0;
   private _isExecutingCombo = false;
+  private _enabled = true;
+
+  get difficulty(): number { return this._difficulty; }
+
+  /** Set difficulty: 0 = easy (0.3), 1 = medium (0.6), 2 = hard (0.9) */
+  setDifficultyLevel(level: number): void {
+    const mapping = [0.3, 0.6, 0.9];
+    this._difficulty = mapping[Math.min(level, 2)] ?? 0.6;
+  }
+
+  get enabled(): boolean { return this._enabled; }
+  set enabled(v: boolean) { this._enabled = v; }
 
   update(fighter: TekkenFighter, opponent: TekkenFighter, _state: TekkenState): void {
     // Clear input each frame
     fighter.input = createDefaultInput();
+
+    // If AI is disabled (training mode toggle), do nothing
+    if (!this._enabled) return;
 
     if (fighter.state === TekkenFighterState.DEFEAT ||
         fighter.state === TekkenFighterState.VICTORY ||

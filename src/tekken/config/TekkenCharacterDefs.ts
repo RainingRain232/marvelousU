@@ -1,6 +1,13 @@
 import type { TekkenCharacterDef, TekkenMoveDef } from "../state/TekkenState";
 import { TekkenAttackHeight, TekkenLimb } from "../../types";
-import { UNIVERSAL_MOVES } from "./TekkenMoveDefs";
+import {
+  KNIGHT_MOVES,
+  BERSERKER_MOVES,
+  MONK_MOVES,
+  PALADIN_MOVES,
+  ASSASSIN_MOVES,
+  WARLORD_MOVES,
+} from "./TekkenMoveDefs";
 
 function rageArt(id: string, name: string, damage: number): TekkenMoveDef {
   return {
@@ -46,10 +53,10 @@ export const TEKKEN_CHARACTERS: TekkenCharacterDef[] = [
       skin: 0xe8c4a0,
       hair: 0x4a3520,
     },
-    moveList: UNIVERSAL_MOVES,
+    moveList: KNIGHT_MOVES,
     comboRoutes: [
-      ["d/f+2", "d/f+1", "d/f+1", "d/f+4", "3"],
-      ["u/f+3", "d/f+1", "d/f+4", "4"],
+      ["knight_rising_blade", "d/f+1", "knight_cross_slash_1", "d/f+4", "3"],
+      ["u/f+3", "d/f+1", "knight_sword_thrust", "d/f+4", "4"],
     ],
     rageArt: rageArt("knight_rage_art", "Iron Judgment", 55),
     walkSpeed: 0.035,
@@ -70,10 +77,10 @@ export const TEKKEN_CHARACTERS: TekkenCharacterDef[] = [
       skin: 0xd4a574,
       hair: 0x883322,
     },
-    moveList: UNIVERSAL_MOVES,
+    moveList: BERSERKER_MOVES,
     comboRoutes: [
-      ["d/f+2", "2", "d/f+1", "d/f+4", "4"],
-      ["d+2", "d/f+1", "d/f+1", "d/f+4", "3"],
+      ["d/f+2", "berserker_hammerfist", "berserker_gut_punch", "d/f+4", "4"],
+      ["berserker_skull_crusher", "berserker_gut_punch", "d/f+1", "d/f+4", "3"],
     ],
     rageArt: rageArt("berserker_rage_art", "Berserker Rampage", 55),
     walkSpeed: 0.04,
@@ -94,10 +101,10 @@ export const TEKKEN_CHARACTERS: TekkenCharacterDef[] = [
       skin: 0xf0d0b0,
       hair: 0x222222,
     },
-    moveList: UNIVERSAL_MOVES,
+    moveList: MONK_MOVES,
     comboRoutes: [
-      ["d/f+2", "1", "d/f+1", "d/f+4", "d/f+3"],
-      ["u/f+3", "d/f+1", "d/f+4", "3"],
+      ["monk_sky_fist", "monk_palm_strike", "d/f+1", "d/f+4", "d/f+3"],
+      ["d/f+2", "monk_palm_strike", "monk_flowing_palm", "d/f+4", "3"],
     ],
     rageArt: rageArt("monk_rage_art", "Thousand Palm Strike", 55),
     walkSpeed: 0.038,
@@ -118,9 +125,10 @@ export const TEKKEN_CHARACTERS: TekkenCharacterDef[] = [
       skin: 0xf0d0b0,
       hair: 0xaa8844,
     },
-    moveList: UNIVERSAL_MOVES,
+    moveList: PALADIN_MOVES,
     comboRoutes: [
-      ["d/f+2", "d/f+1", "d/f+4", "3"],
+      ["paladin_divine_smite", "d/f+1", "paladin_holy_strike", "d/f+4", "3"],
+      ["d/f+2", "paladin_holy_strike", "d/f+1", "d/f+4", "4"],
     ],
     rageArt: rageArt("paladin_rage_art", "Divine Retribution", 55),
     walkSpeed: 0.032,
@@ -141,10 +149,10 @@ export const TEKKEN_CHARACTERS: TekkenCharacterDef[] = [
       skin: 0xc49060,
       hair: 0x111111,
     },
-    moveList: UNIVERSAL_MOVES,
+    moveList: ASSASSIN_MOVES,
     comboRoutes: [
-      ["d/f+2", "1", "d/f+1", "d/f+4", "4"],
-      ["u/f+3", "d/f+1", "d/f+1", "d/f+4", "3"],
+      ["assassin_death_from_above", "assassin_shadow_stab", "d/f+1", "d/f+4", "4"],
+      ["d/f+2", "assassin_phantom_slash", "d/f+1", "d/f+4", "3"],
     ],
     rageArt: rageArt("assassin_rage_art", "Shadow Execution", 55),
     walkSpeed: 0.042,
@@ -165,9 +173,10 @@ export const TEKKEN_CHARACTERS: TekkenCharacterDef[] = [
       skin: 0xd4a574,
       hair: 0x664422,
     },
-    moveList: UNIVERSAL_MOVES,
+    moveList: WARLORD_MOVES,
     comboRoutes: [
-      ["d/f+2", "d/f+1", "d/f+4", "4"],
+      ["warlord_execution_chop", "d/f+1", "warlord_axe_cleave", "d/f+4", "4"],
+      ["d/f+2", "d/f+1", "warlord_axe_cleave", "d/f+4", "3"],
     ],
     rageArt: rageArt("warlord_rage_art", "Crushing Devastation", 55),
     walkSpeed: 0.03,

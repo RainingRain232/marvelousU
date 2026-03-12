@@ -21,6 +21,15 @@ export class TekkenHUD {
   private _announcementText: Text | null = null;
   private _roundIndicators: Graphics[][] = [[], []];
 
+  // Training mode overlay elements
+  private _trainingContainer: Container | null = null;
+  private _trainingFrameData: Text | null = null;
+  private _trainingComboCounter: Text | null = null;
+  private _trainingAdvantage: Text | null = null;
+  private _trainingControls: Text | null = null;
+  private _trainingAIStatus: Text | null = null;
+  private _trainingHitboxLabel: Text | null = null;
+
   // Cached values for animation
   private _displayHp: [number, number] = [170, 170];
   private _drainHp: [number, number] = [170, 170];
@@ -119,6 +128,82 @@ export class TekkenHUD {
     this._announcementText.y = viewManager.screenHeight * 0.4;
     this._announcementText.alpha = 0;
     this._container.addChild(this._announcementText);
+
+    // Training mode overlay (hidden by default, shown when gameMode === "training")
+    this._trainingContainer = new Container();
+    this._trainingContainer.visible = false;
+    this._container.addChild(this._trainingContainer);
+
+    const trainingStyle = { fontFamily: "Courier New, monospace", fontSize: 16, fill: 0x00ff88 };
+    const trainingStyleBold = { fontFamily: "Courier New, monospace", fontSize: 20, fill: 0x00ffaa, fontWeight: "bold" as const };
+
+    // "TRAINING" label
+    const trainingLabel = new Text({
+      text: "TRAINING MODE",
+      style: { fontFamily: "Georgia, serif", fontSize: 22, fill: 0x00ffcc, fontWeight: "bold", letterSpacing: 4 },
+    });
+    trainingLabel.anchor.set(0.5, 0);
+    trainingLabel.x = centerX;
+    trainingLabel.y = 70;
+    this._trainingContainer.addChild(trainingLabel);
+
+    // Frame data panel (left side)
+    this._trainingFrameData = new Text({
+      text: "Move: ---\nStartup: -- Active: -- Recovery: --",
+      style: trainingStyle,
+    });
+    this._trainingFrameData.x = 20;
+    this._trainingFrameData.y = viewManager.screenHeight - 160;
+    this._trainingContainer.addChild(this._trainingFrameData);
+
+    // Combo counter (prominent, center-left)
+    this._trainingComboCounter = new Text({
+      text: "",
+      style: { fontFamily: "Georgia, serif", fontSize: 36, fill: 0xffcc00, fontWeight: "bold", stroke: { color: 0x000000, width: 3 } },
+    });
+    this._trainingComboCounter.anchor.set(0.5);
+    this._trainingComboCounter.x = sw * 0.15;
+    this._trainingComboCounter.y = viewManager.screenHeight * 0.3;
+    this._trainingContainer.addChild(this._trainingComboCounter);
+
+    // Frame advantage display
+    this._trainingAdvantage = new Text({
+      text: "Advantage: +0",
+      style: trainingStyleBold,
+    });
+    this._trainingAdvantage.x = 20;
+    this._trainingAdvantage.y = viewManager.screenHeight - 100;
+    this._trainingContainer.addChild(this._trainingAdvantage);
+
+    // AI status
+    this._trainingAIStatus = new Text({
+      text: "AI: ON",
+      style: { ...trainingStyle, fill: 0x88ff88 },
+    });
+    this._trainingAIStatus.anchor.set(1, 0);
+    this._trainingAIStatus.x = sw - 20;
+    this._trainingAIStatus.y = viewManager.screenHeight - 160;
+    this._trainingContainer.addChild(this._trainingAIStatus);
+
+    // Hitbox status
+    this._trainingHitboxLabel = new Text({
+      text: "Hitboxes: OFF",
+      style: { ...trainingStyle, fill: 0x8888ff },
+    });
+    this._trainingHitboxLabel.anchor.set(1, 0);
+    this._trainingHitboxLabel.x = sw - 20;
+    this._trainingHitboxLabel.y = viewManager.screenHeight - 135;
+    this._trainingContainer.addChild(this._trainingHitboxLabel);
+
+    // Controls hint
+    this._trainingControls = new Text({
+      text: "F1: Toggle AI   F2: Reset Pos   F3: Hitboxes",
+      style: { fontFamily: "Courier New, monospace", fontSize: 13, fill: 0x666666 },
+    });
+    this._trainingControls.anchor.set(0.5, 1);
+    this._trainingControls.x = centerX;
+    this._trainingControls.y = viewManager.screenHeight - 10;
+    this._trainingContainer.addChild(this._trainingControls);
   }
 
   update(state: TekkenState): void {
@@ -224,6 +309,51 @@ export class TekkenHUD {
       this._announcementText!.scale.set(this._announcementScale);
     } else {
       this._announcementText!.alpha = Math.max(0, (this._announcementText!.alpha || 0) - 0.08);
+    }
+
+    // Training mode overlay
+    if (this._trainingContainer) {
+      const isTraining = state.gameMode === "training";
+      this._trainingContainer.visible = isTraining;
+
+      if (isTraining) {
+        const tm = state.trainingMode;
+
+        // Frame data
+        if (tm.lastMoveName) {
+          this._trainingFrameData!.text =
+            `Move: ${tm.lastMoveName}\nStartup: ${tm.lastMoveStartup}f  Active: ${tm.lastMoveActive}f  Recovery: ${tm.lastMoveRecovery}f`;
+        } else {
+          this._trainingFrameData!.text = "Move: ---\nStartup: --  Active: --  Recovery: --";
+        }
+
+        // Combo counter (prominent)
+        const p1Combo = state.fighters[0].comboCount;
+        if (p1Combo >= 1) {
+          this._trainingComboCounter!.text = `${p1Combo} HITS\n${state.fighters[0].comboDamage} DMG`;
+        } else {
+          this._trainingComboCounter!.text = "";
+        }
+
+        // Frame advantage
+        const adv = tm.frameAdvantage;
+        const advSign = adv >= 0 ? "+" : "";
+        const advColor = adv > 0 ? 0x00ff00 : adv < 0 ? 0xff4444 : 0xffffff;
+        this._trainingAdvantage!.text = `Advantage: ${advSign}${adv}`;
+        this._trainingAdvantage!.style.fill = advColor;
+
+        // AI status
+        this._trainingAIStatus!.text = `AI: ${tm.aiEnabled ? "ON" : "OFF"}`;
+        this._trainingAIStatus!.style.fill = tm.aiEnabled ? 0x88ff88 : 0xff8888;
+
+        // Hitbox status
+        this._trainingHitboxLabel!.text = `Hitboxes: ${tm.showHitboxes ? "ON" : "OFF"}`;
+        this._trainingHitboxLabel!.style.fill = tm.showHitboxes ? 0x8888ff : 0x666666;
+
+        // Hide round timer in training mode
+        this._timerText!.text = "\u221E";
+        this._timerText!.style.fill = 0x888888;
+      }
     }
   }
 

@@ -131,6 +131,16 @@ export interface TekkenFighter {
 
 export type TekkenGameMode = "vs_cpu" | "vs_mode" | "arcade" | "training";
 
+export interface TrainingModeState {
+  aiEnabled: boolean;
+  showHitboxes: boolean;
+  lastMoveName: string;
+  lastMoveStartup: number;
+  lastMoveActive: number;
+  lastMoveRecovery: number;
+  frameAdvantage: number;
+}
+
 export interface TekkenState {
   phase: TekkenPhase;
   gameMode: TekkenGameMode;
@@ -148,6 +158,8 @@ export interface TekkenState {
   stageWidth: number;
   stageDepth: number;
   cameraState: CameraState;
+  trainingMode: TrainingModeState;
+  difficulty: number; // 0=easy, 1=medium, 2=hard
 }
 
 export function createDefaultInput(): TekkenInputState {
@@ -217,5 +229,15 @@ export function createTekkenState(gameMode: TekkenGameMode, arenaId: string, p1C
       targetX: 0, targetY: 0.9,
       shakeIntensity: 0, shakeDecay: 0.9, zoomOffset: 0,
     },
+    trainingMode: {
+      aiEnabled: true,
+      showHitboxes: false,
+      lastMoveName: "",
+      lastMoveStartup: 0,
+      lastMoveActive: 0,
+      lastMoveRecovery: 0,
+      frameAdvantage: 0,
+    },
+    difficulty: 1,
   };
 }

@@ -1,10 +1,79 @@
 import * as THREE from "three";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+
+// Vignette shader definition
+const VignetteShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    offset: { value: 1.0 },
+    darkness: { value: 1.2 },
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform float offset;
+    uniform float darkness;
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    void main() {
+      vec4 texel = texture2D(tDiffuse, vUv);
+      vec2 uv = (vUv - vec2(0.5)) * vec2(offset);
+      gl_FragColor = vec4(mix(texel.rgb, vec3(1.0 - darkness), dot(uv, uv)), texel.a);
+    }
+  `,
+};
+
+// Chromatic aberration shader definition
+const ChromaticAberrationShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    amount: { value: 0.0 },
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform float amount;
+    varying vec2 vUv;
+    void main() {
+      vec2 dir = vUv - vec2(0.5);
+      float d = length(dir);
+      vec2 offset = dir * d * amount;
+      float r = texture2D(tDiffuse, vUv + offset).r;
+      float g = texture2D(tDiffuse, vUv).g;
+      float b = texture2D(tDiffuse, vUv - offset).b;
+      gl_FragColor = vec4(r, g, b, 1.0);
+    }
+  `,
+};
 
 export class TekkenSceneManager {
   renderer!: THREE.WebGLRenderer;
   scene!: THREE.Scene;
   camera!: THREE.PerspectiveCamera;
   canvas!: HTMLCanvasElement;
+
+  // Post-processing
+  private _composer!: EffectComposer;
+  private _bloomPass!: UnrealBloomPass;
+  private _vignettePass!: ShaderPass;
+  private _chromaticPass!: ShaderPass;
+  private _baseBloomStrength = 0.4;
+  private _rageGlowActive = false;
 
   // Lighting
   private _keyLight!: THREE.DirectionalLight;
@@ -68,8 +137,40 @@ export class TekkenSceneManager {
     // Environment map for metallic reflections
     this._setupEnvironmentMap();
 
+    // Post-processing composer
+    this._setupPostProcessing();
+
     // Handle resize
     window.addEventListener("resize", this._onResize);
+  }
+
+  private _setupPostProcessing(): void {
+    this._composer = new EffectComposer(this.renderer);
+
+    // Base scene render
+    const renderPass = new RenderPass(this.scene, this.camera);
+    this._composer.addPass(renderPass);
+
+    // Bloom for hit effects, rage glow, and torch flames
+    this._bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(this._width, this._height),
+      this._baseBloomStrength, // strength
+      0.5,                     // radius
+      0.7                      // threshold
+    );
+    this._composer.addPass(this._bloomPass);
+
+    // Vignette for cinematic framing
+    this._vignettePass = new ShaderPass(VignetteShader);
+    this._composer.addPass(this._vignettePass);
+
+    // Chromatic aberration for heavy hit impacts (starts at 0)
+    this._chromaticPass = new ShaderPass(ChromaticAberrationShader);
+    this._composer.addPass(this._chromaticPass);
+
+    // Output pass (tone mapping / color space conversion)
+    const outputPass = new OutputPass();
+    this._composer.addPass(outputPass);
   }
 
   private _setupLighting(): void {
@@ -146,10 +247,39 @@ export class TekkenSceneManager {
     }
   }
 
+  /** Intensify torch and key lighting based on combo count (0-1) */
+  setComboIntensity(intensity: number): void {
+    for (const torch of this._torchLights) {
+      torch.intensity = 1.5 + intensity * 2.0;
+      torch.distance = 8 + intensity * 4;
+    }
+    this._keyLight.intensity = 2.8 + intensity * 0.5;
+  }
+
   render(): void {
     const time = this._clock.getElapsedTime();
     this.updateTorches(time);
-    this.renderer.render(this.scene, this.camera);
+    this._composer.render();
+  }
+
+  /** Boost bloom and chromatic aberration on heavy hits */
+  setHitImpactIntensity(intensity: number): void {
+    // Boost bloom temporarily based on hit intensity
+    const bloomBoost = Math.min(intensity * 0.15, 1.2);
+    const rageExtra = this._rageGlowActive ? 0.15 : 0;
+    this._bloomPass.strength = this._baseBloomStrength + bloomBoost + rageExtra;
+
+    // Set chromatic aberration offset
+    this._chromaticPass.uniforms["amount"].value = Math.min(intensity * 0.008, 0.06);
+  }
+
+  /** Subtly increase bloom when rage is active */
+  setRageGlow(active: boolean): void {
+    this._rageGlowActive = active;
+    if (!active) {
+      // Reset bloom to base if no hit impact is boosting it
+      // (hit impact will re-set it each frame anyway)
+    }
   }
 
   private _onResize = (): void => {
@@ -158,6 +288,8 @@ export class TekkenSceneManager {
     this.camera.aspect = this._width / this._height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(this._width, this._height);
+    this._composer.setSize(this._width, this._height);
+    this._bloomPass.resolution.set(this._width, this._height);
   };
 
   destroy(): void {
@@ -171,6 +303,7 @@ export class TekkenSceneManager {
     if (this.canvas.parentNode) {
       this.canvas.parentNode.removeChild(this.canvas);
     }
+    this._composer.dispose();
     this.renderer.dispose();
   }
 }

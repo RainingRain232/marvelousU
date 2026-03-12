@@ -5,10 +5,24 @@
 // ---------------------------------------------------------------------------
 
 import * as THREE from "three";
-import { TekkenFighterState } from "../../types";
+import { TekkenFighterState, TekkenLimb } from "../../types";
 import type { TekkenFighter } from "../state/TekkenState";
 import type { TekkenCharacterDef } from "../state/TekkenState";
 import type { TekkenSceneManager } from "./TekkenSceneManager";
+
+// ---- Cloth physics types --------------------------------------------------
+
+interface ClothParticle {
+  position: THREE.Vector3;
+  prevPosition: THREE.Vector3;
+  pinned: boolean;
+}
+
+interface ClothConstraint {
+  p1: number;
+  p2: number;
+  restLength: number;
+}
 
 // ---- Bone constants -------------------------------------------------------
 
@@ -109,6 +123,9 @@ export class TekkenFighterRenderer {
   private _hairMat: THREE.MeshStandardMaterial;
   private _leatherMat: THREE.MeshStandardMaterial;
 
+  // Character definition
+  private _charDef: TekkenCharacterDef;
+
   // Animation state
   private _blendSpeed = 0.15;
   private _lastState: TekkenFighterState = TekkenFighterState.IDLE;
@@ -116,8 +133,17 @@ export class TekkenFighterRenderer {
   private _walkCycle = 0;
   private _attackFrame = 0;
 
+  // Cloth physics (cape/cloak simulation)
+  private _capeParticles: ClothParticle[] = [];
+  private _capeConstraints: ClothConstraint[] = [];
+  private _capeMesh: THREE.Mesh | null = null;
+  private _capeGeo: THREE.BufferGeometry | null = null;
+  private _stateTransitionFrame = 0;
+  private _comboBlendActive = false;
+
   constructor(sceneManager: TekkenSceneManager, charDef: TekkenCharacterDef, _playerIndex: number) {
     this.group = new THREE.Group();
+    this._charDef = charDef;
 
     // Create materials based on character colors
     this._skinMat = makeMat(charDef.colors.skin, 0, 0.55);
@@ -268,6 +294,7 @@ export class TekkenFighterRenderer {
 
     // ---- Build meshes on bones ----
     this._buildMeshes();
+    this._buildArchetypeDetails();
 
     sceneManager.scene.add(this.group);
   }
@@ -600,14 +627,831 @@ export class TekkenFighterRenderer {
     buckleMesh.castShadow = true;
     this._hips.add(buckleMesh);
 
-    // Short cape / cloak (2-3 flat planes hanging from back of chest)
-    for (let c = 0; c < 3; c++) {
-      const capeGeo = new THREE.PlaneGeometry(CHEST_WIDTH * 0.5 - c * 0.03, 0.15 + c * 0.06);
-      const capeMesh = new THREE.Mesh(capeGeo, this._clothMat);
-      capeMesh.position.set(0, CHEST_HEIGHT * 0.3 - c * 0.1, -CHEST_DEPTH * 0.5 - 0.01 - c * 0.005);
-      capeMesh.rotation.x = 0.1 + c * 0.05;
-      capeMesh.castShadow = true;
-      this._chest.add(capeMesh);
+    // Cloth-simulated cape / cloak (built per archetype)
+    this._buildClothCape();
+  }
+
+  // ---- ARCHETYPE VISUAL IDENTITY ------------------------------------------
+
+  private _buildArchetypeDetails(): void {
+    const arch = this._charDef.archetype;
+    const colors = this._charDef.colors;
+
+    // Shared metallic material for weapons/armor pieces
+    const metalMat = new THREE.MeshStandardMaterial({
+      color: 0x888899, metalness: 0.9, roughness: 0.2,
+    });
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xddaa22, metalness: 0.85, roughness: 0.25,
+    });
+    const darkMat = makeMat(0x111111, 0.1, 0.9);
+    const skinTone = makeMat(colors.skin, 0, 0.55);
+
+    switch (arch) {
+      // ── Knight (balanced) ────────────────────────────────────────────────
+      case "balanced": {
+        // Sword on right hip – flat box blade
+        const swordBlade = new THREE.Mesh(
+          new THREE.BoxGeometry(0.04, 0.7, 0.02),
+          metalMat,
+        );
+        swordBlade.position.set(-0.18, -0.15, 0.05);
+        swordBlade.rotation.z = 0.15;
+        swordBlade.castShadow = true;
+        this._hips.add(swordBlade);
+
+        // Sword guard (cross-piece)
+        const swordGuard = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.02, 0.03),
+          goldMat,
+        );
+        swordGuard.position.set(-0.18, 0.2, 0.05);
+        swordGuard.rotation.z = 0.15;
+        swordGuard.castShadow = true;
+        this._hips.add(swordGuard);
+
+        // Sword pommel
+        const swordPommel = new THREE.Mesh(
+          new THREE.SphereGeometry(0.02, 6, 4),
+          goldMat,
+        );
+        swordPommel.position.set(-0.16, 0.32, 0.05);
+        swordPommel.castShadow = true;
+        this._hips.add(swordPommel);
+
+        // Shield on back – rounded rectangle
+        const shieldGeo = new THREE.BoxGeometry(0.28, 0.35, 0.03);
+        const shieldMesh = new THREE.Mesh(shieldGeo, this._accentMat);
+        shieldMesh.position.set(0, CHEST_HEIGHT * 0.5, -CHEST_DEPTH * 0.5 - 0.04);
+        shieldMesh.castShadow = true;
+        this._chest.add(shieldMesh);
+        // Shield rim
+        const shieldRim = new THREE.Mesh(
+          new THREE.TorusGeometry(0.16, 0.012, 6, 16),
+          metalMat,
+        );
+        shieldRim.position.set(0, CHEST_HEIGHT * 0.5, -CHEST_DEPTH * 0.5 - 0.055);
+        shieldRim.castShadow = true;
+        this._chest.add(shieldRim);
+
+        // Helmet visor – small box in front of face
+        const visor = new THREE.Mesh(
+          new THREE.BoxGeometry(HEAD_RADIUS * 1.4, 0.03, 0.04),
+          metalMat,
+        );
+        visor.position.set(0, HEAD_RADIUS * 0.7, HEAD_RADIUS * 0.95);
+        visor.castShadow = true;
+        this._head.add(visor);
+
+        // Shoulder pauldrons – enlarged on each clavicle
+        for (const clav of [this._leftClavicle, this._rightClavicle]) {
+          const pauldron = new THREE.Mesh(
+            new THREE.BoxGeometry(0.09, 0.05, 0.08),
+            metalMat,
+          );
+          pauldron.position.set(0, 0.03, 0);
+          pauldron.castShadow = true;
+          clav.add(pauldron);
+        }
+        break;
+      }
+
+      // ── Berserker (rushdown) ─────────────────────────────────────────────
+      case "rushdown": {
+        // Spiked knuckles on each hand – small cone meshes
+        for (const hand of [this._leftHand, this._rightHand]) {
+          for (let k = 0; k < 3; k++) {
+            const spike = new THREE.Mesh(
+              new THREE.ConeGeometry(0.01, 0.04, 4),
+              metalMat,
+            );
+            spike.position.set(
+              -0.015 + k * 0.015,
+              -HAND_LEN * 0.15,
+              HAND_LEN * 0.45,
+            );
+            spike.rotation.x = -Math.PI / 2;
+            spike.castShadow = true;
+            hand.add(spike);
+          }
+        }
+
+        // Shoulder spikes – 2-3 cones on each shoulder area
+        for (const clav of [this._leftClavicle, this._rightClavicle]) {
+          for (let s = 0; s < 3; s++) {
+            const shoulderSpike = new THREE.Mesh(
+              new THREE.ConeGeometry(0.015, 0.08, 4),
+              metalMat,
+            );
+            shoulderSpike.position.set(
+              -0.02 + s * 0.02,
+              0.05 + s * 0.01,
+              -0.01 + (s % 2) * 0.02,
+            );
+            shoulderSpike.castShadow = true;
+            clav.add(shoulderSpike);
+          }
+        }
+
+        // War paint stripes on face – thin colored boxes on head
+        const warPaintMat = makeMat(0xcc2200, 0, 0.9);
+        for (let i = 0; i < 3; i++) {
+          const stripe = new THREE.Mesh(
+            new THREE.BoxGeometry(0.005, HEAD_RADIUS * 0.5, 0.005),
+            warPaintMat,
+          );
+          stripe.position.set(
+            -0.03 + i * 0.03,
+            HEAD_RADIUS * 0.65,
+            HEAD_RADIUS * 0.9,
+          );
+          this._head.add(stripe);
+        }
+
+        // Bare chest – make torso skin-colored overlay
+        const bareTorso = new THREE.Mesh(
+          new THREE.CylinderGeometry(
+            CHEST_WIDTH * 0.47,
+            CHEST_WIDTH * 0.37,
+            CHEST_HEIGHT * 0.95,
+            8,
+          ),
+          skinTone,
+        );
+        bareTorso.position.y = CHEST_HEIGHT * 0.5;
+        bareTorso.castShadow = true;
+        this._chest.add(bareTorso);
+
+        // Chest strap / belt across torso
+        const strapMat = makeMat(0x553322, 0.1, 0.7);
+        const strap = new THREE.Mesh(
+          new THREE.BoxGeometry(CHEST_WIDTH * 0.9, 0.04, CHEST_DEPTH * 0.7),
+          strapMat,
+        );
+        strap.position.set(0, CHEST_HEIGHT * 0.6, 0);
+        strap.rotation.z = 0.4;
+        strap.castShadow = true;
+        this._chest.add(strap);
+
+        // Fur collar around neck
+        const furMat = makeMat(0x664422, 0, 0.95);
+        for (let i = 0; i < 8; i++) {
+          const tuft = new THREE.Mesh(
+            new THREE.SphereGeometry(0.025, 5, 4),
+            furMat,
+          );
+          const angle = (i / 8) * Math.PI * 2;
+          tuft.position.set(
+            Math.cos(angle) * NECK_RADIUS * 2,
+            -NECK_LEN * 0.1,
+            Math.sin(angle) * NECK_RADIUS * 2,
+          );
+          tuft.scale.set(1, 0.6, 1);
+          tuft.castShadow = true;
+          this._neck.add(tuft);
+        }
+        break;
+      }
+
+      // ── Monk (mixup) ────────────────────────────────────────────────────
+      case "mixup": {
+        // Prayer beads – ring of small spheres around neck
+        const beadMat = makeMat(0x884422, 0.2, 0.5);
+        for (let i = 0; i < 12; i++) {
+          const bead = new THREE.Mesh(
+            new THREE.SphereGeometry(0.012, 5, 4),
+            beadMat,
+          );
+          const angle = (i / 12) * Math.PI * 2;
+          bead.position.set(
+            Math.cos(angle) * NECK_RADIUS * 2.2,
+            -NECK_LEN * 0.5,
+            Math.sin(angle) * NECK_RADIUS * 2.2,
+          );
+          bead.castShadow = true;
+          this._neck.add(bead);
+        }
+
+        // Sash hanging from waist
+        const sashMat = makeMat(colors.accent, 0, 0.85);
+        const sash = new THREE.Mesh(
+          new THREE.BoxGeometry(0.06, 0.35, 0.015),
+          sashMat,
+        );
+        sash.position.set(0.1, -0.15, LOWER_TORSO_WIDTH * 0.35);
+        sash.rotation.x = 0.15;
+        sash.castShadow = true;
+        this._hips.add(sash);
+
+        // Sash tail (hanging further)
+        const sashTail = new THREE.Mesh(
+          new THREE.BoxGeometry(0.05, 0.2, 0.012),
+          sashMat,
+        );
+        sashTail.position.set(0.1, -0.38, LOWER_TORSO_WIDTH * 0.32);
+        sashTail.rotation.x = 0.25;
+        sashTail.castShadow = true;
+        this._hips.add(sashTail);
+
+        // Wrapped hands – slightly larger forearm wraps in cloth color
+        const wrapMat = makeMat(0xeeddcc, 0, 0.85);
+        for (const forearm of [this._leftForearm, this._rightForearm]) {
+          const wrap = new THREE.Mesh(
+            new THREE.CylinderGeometry(
+              LIMB_THICKNESS * 1.15,
+              LIMB_THICKNESS * 1.05,
+              FOREARM_LEN * 0.7,
+              8,
+            ),
+            wrapMat,
+          );
+          wrap.position.y = -FOREARM_LEN * 0.4;
+          wrap.castShadow = true;
+          forearm.add(wrap);
+        }
+        for (const hand of [this._leftHand, this._rightHand]) {
+          const handWrap = new THREE.Mesh(
+            new THREE.BoxGeometry(HAND_LEN * 0.9, HAND_LEN * 1.05, HAND_LEN * 0.75),
+            wrapMat,
+          );
+          handWrap.position.y = -HAND_LEN * 0.4;
+          handWrap.castShadow = true;
+          hand.add(handWrap);
+        }
+
+        // Bald head – override hair with skin-colored sphere (covers hair)
+        const baldCap = new THREE.Mesh(
+          new THREE.SphereGeometry(HEAD_RADIUS * 1.06, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+          skinTone,
+        );
+        baldCap.position.y = HEAD_RADIUS * 0.75;
+        baldCap.castShadow = true;
+        this._head.add(baldCap);
+
+        // Robe skirt extension – wider lower mesh
+        const robeMat = makeMat(colors.primary, 0, 0.85);
+        const robeSkirt = new THREE.Mesh(
+          new THREE.CylinderGeometry(
+            LOWER_TORSO_WIDTH * 0.5,
+            LOWER_TORSO_WIDTH * 0.6,
+            LOWER_TORSO_HEIGHT * 1.3,
+            8,
+          ),
+          robeMat,
+        );
+        robeSkirt.position.y = -0.05;
+        robeSkirt.castShadow = true;
+        this._hips.add(robeSkirt);
+        break;
+      }
+
+      // ── Paladin (defensive) ─────────────────────────────────────────────
+      case "defensive": {
+        // Tower shield on left forearm
+        const towerShieldMat = new THREE.MeshStandardMaterial({
+          color: colors.accent, metalness: 0.7, roughness: 0.3,
+        });
+        const towerShield = new THREE.Mesh(
+          new THREE.BoxGeometry(0.3, 0.5, 0.04),
+          towerShieldMat,
+        );
+        towerShield.position.set(0.06, -FOREARM_LEN * 0.5, 0.08);
+        towerShield.castShadow = true;
+        this._leftForearm.add(towerShield);
+
+        // Shield cross emblem
+        const shieldCrossV = new THREE.Mesh(
+          new THREE.BoxGeometry(0.02, 0.15, 0.005),
+          goldMat,
+        );
+        shieldCrossV.position.set(0.06, -FOREARM_LEN * 0.5, 0.105);
+        shieldCrossV.castShadow = true;
+        this._leftForearm.add(shieldCrossV);
+        const shieldCrossH = new THREE.Mesh(
+          new THREE.BoxGeometry(0.1, 0.02, 0.005),
+          goldMat,
+        );
+        shieldCrossH.position.set(0.06, -FOREARM_LEN * 0.5, 0.105);
+        shieldCrossH.castShadow = true;
+        this._leftForearm.add(shieldCrossH);
+
+        // Holy symbol on chest – diamond shape (rotated box)
+        const holySymbol = new THREE.Mesh(
+          new THREE.BoxGeometry(0.05, 0.05, 0.008),
+          goldMat,
+        );
+        holySymbol.position.set(0, CHEST_HEIGHT * 0.7, CHEST_DEPTH * 0.5 + 0.03);
+        holySymbol.rotation.z = Math.PI / 4;
+        holySymbol.castShadow = true;
+        this._chest.add(holySymbol);
+
+        // Crown / circlet on head
+        const circlet = new THREE.Mesh(
+          new THREE.TorusGeometry(HEAD_RADIUS * 0.8, 0.015, 6, 16),
+          goldMat,
+        );
+        circlet.position.y = HEAD_RADIUS * 1.2;
+        circlet.rotation.x = Math.PI / 2;
+        circlet.castShadow = true;
+        this._head.add(circlet);
+
+        // Full plate armor layers on shoulders and chest
+        for (const clav of [this._leftClavicle, this._rightClavicle]) {
+          const plateLayer = new THREE.Mesh(
+            new THREE.SphereGeometry(0.07, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5),
+            metalMat,
+          );
+          plateLayer.position.set(0, 0.02, 0);
+          plateLayer.scale.set(1.4, 0.9, 1.1);
+          plateLayer.castShadow = true;
+          clav.add(plateLayer);
+        }
+        // Extra chest plate
+        const fullPlate = new THREE.Mesh(
+          new THREE.BoxGeometry(CHEST_WIDTH * 0.75, CHEST_HEIGHT * 0.85, 0.025),
+          metalMat,
+        );
+        fullPlate.position.set(0, CHEST_HEIGHT * 0.5, CHEST_DEPTH * 0.5 + 0.015);
+        fullPlate.castShadow = true;
+        this._chest.add(fullPlate);
+
+        // Longer flowing hair behind head
+        const longHairMat = makeMat(colors.hair, 0, 0.9);
+        const longHair = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.3, 0.04),
+          longHairMat,
+        );
+        longHair.position.set(0, HEAD_RADIUS * 0.2, -HEAD_RADIUS * 0.7);
+        longHair.rotation.x = 0.15;
+        longHair.castShadow = true;
+        this._head.add(longHair);
+        // Hair taper
+        const hairTaper = new THREE.Mesh(
+          new THREE.BoxGeometry(0.09, 0.2, 0.03),
+          longHairMat,
+        );
+        hairTaper.position.set(0, HEAD_RADIUS * -0.1, -HEAD_RADIUS * 0.75);
+        hairTaper.rotation.x = 0.2;
+        hairTaper.castShadow = true;
+        this._head.add(hairTaper);
+        break;
+      }
+
+      // ── Assassin (evasive) ──────────────────────────────────────────────
+      case "evasive": {
+        // Hood – half-sphere / cone covering top-back of head
+        const hoodMat = makeMat(colors.secondary, 0, 0.9);
+        const hood = new THREE.Mesh(
+          new THREE.SphereGeometry(HEAD_RADIUS * 1.3, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6),
+          hoodMat,
+        );
+        hood.position.set(0, HEAD_RADIUS * 0.8, -HEAD_RADIUS * 0.15);
+        hood.castShadow = true;
+        this._head.add(hood);
+
+        // Hood drape (back part hangs down)
+        const hoodDrape = new THREE.Mesh(
+          new THREE.BoxGeometry(0.16, 0.14, 0.02),
+          hoodMat,
+        );
+        hoodDrape.position.set(0, HEAD_RADIUS * 0.1, -HEAD_RADIUS * 1.0);
+        hoodDrape.rotation.x = 0.2;
+        hoodDrape.castShadow = true;
+        this._head.add(hoodDrape);
+
+        // Face mask – small box covering lower face
+        const maskMat = makeMat(0x222222, 0, 0.85);
+        const faceMask = new THREE.Mesh(
+          new THREE.BoxGeometry(HEAD_RADIUS * 1.1, HEAD_RADIUS * 0.45, 0.04),
+          maskMat,
+        );
+        faceMask.position.set(0, HEAD_RADIUS * 0.45, HEAD_RADIUS * 0.82);
+        faceMask.castShadow = true;
+        this._head.add(faceMask);
+
+        // Dual daggers on each thigh – thin flat boxes
+        for (const [thigh, side] of [[this._leftThigh, 1], [this._rightThigh, -1]] as [THREE.Group, number][]) {
+          const dagger = new THREE.Mesh(
+            new THREE.BoxGeometry(0.02, 0.25, 0.01),
+            metalMat,
+          );
+          dagger.position.set(side * LIMB_THICKNESS * 1.8, -THIGH_LEN * 0.4, 0.02);
+          dagger.castShadow = true;
+          thigh.add(dagger);
+
+          // Dagger handle
+          const handle = new THREE.Mesh(
+            new THREE.BoxGeometry(0.025, 0.06, 0.015),
+            darkMat,
+          );
+          handle.position.set(side * LIMB_THICKNESS * 1.8, -THIGH_LEN * 0.22, 0.02);
+          handle.castShadow = true;
+          thigh.add(handle);
+        }
+
+        // Slim build – scale down chest/torso width
+        this._chest.scale.set(0.9, 1, 0.92);
+        this._spineLower.scale.set(0.9, 1, 0.92);
+
+        // Cloak / cape edges hanging from shoulders
+        const cloakMat = makeMat(colors.secondary, 0, 0.9);
+        for (const [clav, sx] of [[this._leftClavicle, 1], [this._rightClavicle, -1]] as [THREE.Group, number][]) {
+          const cloakEdge = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.12, 0.35),
+            cloakMat,
+          );
+          cloakEdge.position.set(sx * 0.04, -0.12, -0.04);
+          cloakEdge.rotation.x = 0.1;
+          cloakEdge.rotation.y = sx * 0.15;
+          cloakEdge.castShadow = true;
+          clav.add(cloakEdge);
+        }
+
+        // Longer back cloak piece
+        const backCloak = new THREE.Mesh(
+          new THREE.PlaneGeometry(CHEST_WIDTH * 0.7, 0.5),
+          cloakMat,
+        );
+        backCloak.position.set(0, CHEST_HEIGHT * 0.1, -CHEST_DEPTH * 0.5 - 0.02);
+        backCloak.rotation.x = 0.08;
+        backCloak.castShadow = true;
+        this._chest.add(backCloak);
+        break;
+      }
+
+      // ── Warlord (power) ─────────────────────────────────────────────────
+      case "power": {
+        // Battle axe on back – shaft + blade
+        const axeShaft = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.015, 0.015, 0.8, 6),
+          makeMat(0x553311, 0.1, 0.7),
+        );
+        axeShaft.position.set(0.05, CHEST_HEIGHT * 0.1, -CHEST_DEPTH * 0.5 - 0.05);
+        axeShaft.castShadow = true;
+        this._chest.add(axeShaft);
+
+        // Axe blade (flattened box)
+        const axeBlade = new THREE.Mesh(
+          new THREE.BoxGeometry(0.18, 0.14, 0.02),
+          metalMat,
+        );
+        axeBlade.position.set(0.05, CHEST_HEIGHT * 0.1 + 0.4, -CHEST_DEPTH * 0.5 - 0.05);
+        axeBlade.castShadow = true;
+        this._chest.add(axeBlade);
+
+        // Second blade (double-headed axe)
+        const axeBlade2 = new THREE.Mesh(
+          new THREE.BoxGeometry(0.15, 0.12, 0.02),
+          metalMat,
+        );
+        axeBlade2.position.set(0.05, CHEST_HEIGHT * 0.1 - 0.38, -CHEST_DEPTH * 0.5 - 0.05);
+        axeBlade2.castShadow = true;
+        this._chest.add(axeBlade2);
+
+        // Horned helmet – two cone meshes pointing up and out
+        for (const side of [-1, 1]) {
+          const horn = new THREE.Mesh(
+            new THREE.ConeGeometry(0.02, 0.14, 6),
+            makeMat(0xccbb88, 0.3, 0.5),
+          );
+          horn.position.set(
+            side * HEAD_RADIUS * 0.7,
+            HEAD_RADIUS * 1.35,
+            -HEAD_RADIUS * 0.1,
+          );
+          horn.rotation.z = side * -0.4;
+          horn.castShadow = true;
+          this._head.add(horn);
+        }
+
+        // Helmet base (covers top of head)
+        const helmetBase = new THREE.Mesh(
+          new THREE.SphereGeometry(HEAD_RADIUS * 1.1, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+          metalMat,
+        );
+        helmetBase.position.y = HEAD_RADIUS * 0.75;
+        helmetBase.castShadow = true;
+        this._head.add(helmetBase);
+
+        // Helmet nose guard
+        const noseGuard = new THREE.Mesh(
+          new THREE.BoxGeometry(0.02, 0.1, 0.04),
+          metalMat,
+        );
+        noseGuard.position.set(0, HEAD_RADIUS * 0.7, HEAD_RADIUS * 0.95);
+        noseGuard.castShadow = true;
+        this._head.add(noseGuard);
+
+        // Fur mantle on shoulders – series of small stretched spheres
+        const furMantleMat = makeMat(0x775533, 0, 0.95);
+        for (const clav of [this._leftClavicle, this._rightClavicle]) {
+          for (let i = 0; i < 5; i++) {
+            const tuft = new THREE.Mesh(
+              new THREE.SphereGeometry(0.03, 5, 4),
+              furMantleMat,
+            );
+            tuft.position.set(
+              -0.03 + i * 0.015,
+              0.02 + (i % 2) * 0.01,
+              -0.02 + (i % 3) * 0.015,
+            );
+            tuft.scale.set(1.2, 0.6, 1.4);
+            tuft.castShadow = true;
+            clav.add(tuft);
+          }
+        }
+        // Fur draping down back of neck
+        for (let i = 0; i < 6; i++) {
+          const furBack = new THREE.Mesh(
+            new THREE.SphereGeometry(0.025, 5, 4),
+            furMantleMat,
+          );
+          furBack.position.set(
+            -0.04 + i * 0.016,
+            -NECK_LEN * 0.3,
+            -NECK_RADIUS * 1.5 - (i % 2) * 0.01,
+          );
+          furBack.scale.set(1, 0.7, 1.3);
+          furBack.castShadow = true;
+          this._neck.add(furBack);
+        }
+
+        // Broader build – scale up chest and shoulders
+        this._chest.scale.set(1.15, 1.05, 1.1);
+        this._spineLower.scale.set(1.1, 1.0, 1.05);
+
+        // Prominent belt buckle at waist
+        const bigBuckle = new THREE.Mesh(
+          new THREE.BoxGeometry(0.07, 0.06, 0.025),
+          goldMat,
+        );
+        bigBuckle.position.set(0, 0.01, LOWER_TORSO_WIDTH * 0.38 + 0.02);
+        bigBuckle.castShadow = true;
+        this._hips.add(bigBuckle);
+
+        // Buckle emblem (smaller centered piece)
+        const buckleEmblem = new THREE.Mesh(
+          new THREE.SphereGeometry(0.018, 6, 4),
+          metalMat,
+        );
+        buckleEmblem.position.set(0, 0.01, LOWER_TORSO_WIDTH * 0.38 + 0.035);
+        buckleEmblem.scale.set(1, 1, 0.4);
+        buckleEmblem.castShadow = true;
+        this._hips.add(buckleEmblem);
+        break;
+      }
+    }
+  }
+
+  // ---- CLOTH CAPE PHYSICS --------------------------------------------------
+
+  /**
+   * Build a Verlet-integrated cloth strip attached to the chest bone.
+   * Grid size and material vary per archetype:
+   *   balanced (knight), defensive (paladin), power (warlord) => full cape (4x6)
+   *   evasive (assassin) => shorter cloak (4x4)
+   *   rushdown (berserker) => fur mantle (4x3, rough material)
+   *   mixup (monk) => cloth sash (2x5, attached at waist instead)
+   */
+  private _buildClothCape(): void {
+    const arch = this._charDef.archetype;
+
+    // Determine grid dimensions and material per archetype
+    let cols: number;
+    let rows: number;
+    let spacing: number;
+    let color: number;
+    let roughness: number;
+    let metalness: number;
+    let attachBone: THREE.Group;
+    let attachOffsetY: number;  // vertical offset from bone origin
+    let attachOffsetZ: number;  // depth offset (behind body)
+
+    switch (arch) {
+      // Knight / Paladin / Warlord => full flowing cape
+      case "balanced":
+      case "defensive":
+      case "power":
+        cols = 4;
+        rows = 6;
+        spacing = 0.08;
+        color = this._charDef.colors.primary;
+        roughness = 0.8;
+        metalness = 0.1;
+        attachBone = this._chest;
+        attachOffsetY = CHEST_HEIGHT * 0.85;
+        attachOffsetZ = -CHEST_DEPTH / 2 - 0.02;
+        break;
+
+      // Assassin => shorter cloak
+      case "evasive":
+        cols = 4;
+        rows = 4;
+        spacing = 0.08;
+        color = this._charDef.colors.secondary;
+        roughness = 0.9;
+        metalness = 0.0;
+        attachBone = this._chest;
+        attachOffsetY = CHEST_HEIGHT * 0.85;
+        attachOffsetZ = -CHEST_DEPTH / 2 - 0.02;
+        break;
+
+      // Berserker => short fur mantle
+      case "rushdown":
+        cols = 4;
+        rows = 3;
+        spacing = 0.07;
+        color = 0x664422;
+        roughness = 0.95;
+        metalness = 0.0;
+        attachBone = this._chest;
+        attachOffsetY = CHEST_HEIGHT * 0.85;
+        attachOffsetZ = -CHEST_DEPTH / 2 - 0.02;
+        break;
+
+      // Monk => cloth sash from waist
+      case "mixup":
+        cols = 2;
+        rows = 5;
+        spacing = 0.07;
+        color = this._charDef.colors.accent;
+        roughness = 0.85;
+        metalness = 0.0;
+        attachBone = this._hips;
+        attachOffsetY = 0.0;
+        attachOffsetZ = -LOWER_TORSO_WIDTH * 0.35 - 0.02;
+        break;
+
+      default:
+        // Unknown archetype — no cape
+        return;
+    }
+
+    // Create particles
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = (c - (cols - 1) / 2) * spacing;
+        const y = attachOffsetY - r * spacing;
+        const z = attachOffsetZ;
+        this._capeParticles.push({
+          position: new THREE.Vector3(x, y, z),
+          prevPosition: new THREE.Vector3(x, y, z),
+          pinned: r === 0, // top row pinned to bone
+        });
+      }
+    }
+
+    // Create constraints (structural + shear for stability)
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+
+        // Right neighbor (structural horizontal)
+        if (c < cols - 1) {
+          this._capeConstraints.push({ p1: idx, p2: idx + 1, restLength: spacing });
+        }
+        // Bottom neighbor (structural vertical)
+        if (r < rows - 1) {
+          this._capeConstraints.push({ p1: idx, p2: idx + cols, restLength: spacing });
+        }
+        // Diagonal bottom-right (shear)
+        if (c < cols - 1 && r < rows - 1) {
+          this._capeConstraints.push({ p1: idx, p2: idx + cols + 1, restLength: spacing * Math.SQRT2 });
+        }
+        // Diagonal bottom-left (shear)
+        if (c > 0 && r < rows - 1) {
+          this._capeConstraints.push({ p1: idx, p2: idx + cols - 1, restLength: spacing * Math.SQRT2 });
+        }
+      }
+    }
+
+    // Build mesh geometry (indexed triangles)
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(cols * rows * 3);
+    const indices: number[] = [];
+
+    for (let r = 0; r < rows - 1; r++) {
+      for (let c = 0; c < cols - 1; c++) {
+        const tl = r * cols + c;
+        const tr = tl + 1;
+        const bl = tl + cols;
+        const br = bl + 1;
+        indices.push(tl, bl, tr, tr, bl, br);
+      }
+    }
+
+    // Initialize vertex positions from particles
+    for (let i = 0; i < this._capeParticles.length; i++) {
+      const p = this._capeParticles[i];
+      positions[i * 3] = p.position.x;
+      positions[i * 3 + 1] = p.position.y;
+      positions[i * 3 + 2] = p.position.z;
+    }
+
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    const mat = new THREE.MeshStandardMaterial({
+      color,
+      side: THREE.DoubleSide,
+      roughness,
+      metalness,
+    });
+
+    this._capeMesh = new THREE.Mesh(geo, mat);
+    this._capeMesh.castShadow = true;
+    this._capeGeo = geo;
+
+    // Attach to the correct bone
+    attachBone.add(this._capeMesh);
+  }
+
+  /**
+   * Step the Verlet cloth simulation each frame.
+   * Applies gravity, wind from fighter movement / attacks, integrates positions,
+   * then satisfies distance constraints and syncs the mesh geometry.
+   */
+  private _updateClothPhysics(fighter: TekkenFighter): void {
+    if (this._capeParticles.length === 0) return;
+
+    const gravity = new THREE.Vector3(0, -0.0004, 0);
+    const damping = 0.97;
+
+    // Wind derived from fighter movement (oppose velocity so cape trails behind)
+    const windX = -fighter.velocity.x * 0.3;
+    const windZ = -0.0002; // slight constant backward push
+
+    const wind = new THREE.Vector3(windX, 0, windZ);
+
+    // Attacks create dramatic turbulence
+    if (fighter.state === TekkenFighterState.ATTACK) {
+      wind.x += (Math.random() - 0.5) * 0.001;
+      wind.z -= 0.0004;
+    }
+
+    // Dashes intensify wind
+    if (fighter.state === TekkenFighterState.DASH_FORWARD) {
+      wind.z -= 0.0006;
+    } else if (fighter.state === TekkenFighterState.DASH_BACK) {
+      wind.z += 0.0004;
+    }
+
+    // Juggle / knockdown — extra gravity
+    if (fighter.state === TekkenFighterState.JUGGLE || fighter.state === TekkenFighterState.KNOCKDOWN) {
+      gravity.y -= 0.0002;
+      wind.x += (Math.random() - 0.5) * 0.0008;
+    }
+
+    // Hit-stun reactions — cape flings outward
+    if (
+      fighter.state === TekkenFighterState.HIT_STUN_HIGH ||
+      fighter.state === TekkenFighterState.HIT_STUN_MID ||
+      fighter.state === TekkenFighterState.HIT_STUN_LOW
+    ) {
+      wind.x += (Math.random() - 0.5) * 0.0012;
+      wind.z -= 0.0003;
+    }
+
+    // Verlet integration
+    for (const p of this._capeParticles) {
+      if (p.pinned) continue;
+
+      const vel = p.position.clone().sub(p.prevPosition).multiplyScalar(damping);
+      p.prevPosition.copy(p.position);
+      p.position.add(vel);
+      p.position.add(gravity);
+      p.position.add(wind);
+    }
+
+    // Satisfy distance constraints (3 iterations for stability)
+    for (let iter = 0; iter < 3; iter++) {
+      for (const c of this._capeConstraints) {
+        const p1 = this._capeParticles[c.p1];
+        const p2 = this._capeParticles[c.p2];
+
+        const diff = p2.position.clone().sub(p1.position);
+        const dist = diff.length();
+        if (dist === 0) continue;
+
+        const correction = diff.multiplyScalar((dist - c.restLength) / dist * 0.5);
+
+        if (!p1.pinned) p1.position.add(correction);
+        if (!p2.pinned) p2.position.sub(correction);
+      }
+    }
+
+    // Sync mesh geometry from particle positions
+    if (this._capeGeo) {
+      const posArr = this._capeGeo.attributes.position.array as Float32Array;
+      for (let i = 0; i < this._capeParticles.length; i++) {
+        const p = this._capeParticles[i];
+        posArr[i * 3] = p.position.x;
+        posArr[i * 3 + 1] = p.position.y;
+        posArr[i * 3 + 2] = p.position.z;
+      }
+      this._capeGeo.attributes.position.needsUpdate = true;
+      this._capeGeo.computeVertexNormals();
     }
   }
 
@@ -616,12 +1460,24 @@ export class TekkenFighterRenderer {
   update(fighter: TekkenFighter): void {
     // Position and facing
     this.group.position.set(fighter.position.x, fighter.position.y, fighter.position.z);
-    this.group.rotation.y = fighter.facingRight ? 0 : Math.PI;
+    this.group.rotation.y = fighter.facingRight ? -Math.PI / 2 : Math.PI / 2;
 
-    // State change detection
+    // State change detection with combo blend tracking
     if (fighter.state !== this._lastState) {
+      const wasAttack = this._lastState === TekkenFighterState.ATTACK;
+      const isAttack = fighter.state === TekkenFighterState.ATTACK;
+      this._comboBlendActive = wasAttack && isAttack;
+      this._stateTransitionFrame = 0;
       this._lastState = fighter.state;
       this._attackFrame = 0;
+    }
+    this._stateTransitionFrame++;
+
+    // Adaptive blend speed: faster during combo transitions (first 4 frames)
+    if (this._comboBlendActive && this._stateTransitionFrame <= 4) {
+      this._blendSpeed = 0.35;
+    } else {
+      this._blendSpeed = 0.15;
     }
 
     this._idleTime += 0.016;
@@ -684,6 +1540,9 @@ export class TekkenFighterRenderer {
         this._animateIdle();
         break;
     }
+
+    // Step cloth physics after all bone animation has been applied
+    this._updateClothPhysics(fighter);
   }
 
   // ---- ANIMATION METHODS ----
@@ -1141,6 +2000,19 @@ export class TekkenFighterRenderer {
     this._lerpBone(this._leftShin, 1.6, 0, 0, 0.05);
     this._lerpBone(this._rightThigh, -0.8, 0, -0.2, 0.05);
     this._lerpBone(this._rightShin, 1.5, 0, 0, 0.05);
+  }
+
+  getAttackLimbWorldPos(limb: TekkenLimb): THREE.Vector3 {
+    const pos = new THREE.Vector3();
+    let bone: THREE.Object3D | null = null;
+    switch (limb) {
+      case TekkenLimb.LEFT_PUNCH: bone = this._leftHand; break;
+      case TekkenLimb.RIGHT_PUNCH: bone = this._rightHand; break;
+      case TekkenLimb.LEFT_KICK: bone = this._leftFoot; break;
+      case TekkenLimb.RIGHT_KICK: bone = this._rightFoot; break;
+    }
+    if (bone) bone.getWorldPosition(pos);
+    return pos;
   }
 
   dispose(): void {
