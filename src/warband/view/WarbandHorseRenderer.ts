@@ -471,14 +471,35 @@ export class HorseMesh {
       this._body.add(peytral);
       this._armorMeshes.push(peytral);
 
-      // Flanchards – side plates that drape over the barrel flanks
+      // Flanchards – segmented plates that drape over the barrel flanks
       for (const side of [-1, 1]) {
-        const flGeo = new THREE.SphereGeometry(1, 8, 6);
+        // Use a half-cylinder shell that wraps around the horse's side
+        const flGeo = new THREE.CylinderGeometry(
+          BODY_RADIUS * 0.98, BODY_RADIUS * 1.02, BODY_LEN * 0.7, 8, 1, true,
+          side === 1 ? -Math.PI * 0.45 : Math.PI * 0.55, Math.PI * 0.45,
+        );
         const fl = new THREE.Mesh(flGeo, armorMat(0xaaaaaa, 0.5));
-        fl.scale.set(0.05, BODY_RADIUS * 1.0, BODY_LEN * 0.38);
-        fl.position.set(BODY_RADIUS * 0.92 * side, bodyY - BODY_RADIUS * 0.1, 0);
+        fl.position.set(0, bodyY, 0);
+        fl.rotation.x = Math.PI / 2;
         this._body.add(fl);
         this._armorMeshes.push(fl);
+
+        // Horizontal bands across flanchard for segmented look
+        for (let b = 0; b < 3; b++) {
+          const bandZ = -BODY_LEN * 0.22 + b * BODY_LEN * 0.22;
+          const bandGeo = new THREE.TorusGeometry(
+            BODY_RADIUS * 1.0, 0.005, 3, 8,
+            Math.PI * 0.45,
+          );
+          const band = new THREE.Mesh(bandGeo, armorMat(0x888888, 0.55));
+          band.position.set(0, bodyY, bandZ);
+          band.rotation.set(
+            Math.PI / 2, 0,
+            side === 1 ? -Math.PI * 0.45 : Math.PI * 0.55,
+          );
+          this._body.add(band);
+          this._armorMeshes.push(band);
+        }
       }
 
       // Crupper (rump guard) – for medium too

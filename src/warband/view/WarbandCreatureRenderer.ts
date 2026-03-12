@@ -2553,10 +2553,11 @@ export class CreatureMesh {
     const wheelMat = mat(0x4a3018, { roughness: 0.9 });
     const ropeMat = mat(0x8b7355, { roughness: 0.95 });
 
-    // ---- Body — rectangular wooden frame ----
-    const frameGeo = new THREE.BoxGeometry(1.2, 0.3, 2.4);
+    // ---- Body — rounded wooden frame ----
+    const frameGeo = cyl(0.6, 0.6, 0.3, 16);
     const frame = new THREE.Mesh(frameGeo, woodMat);
     frame.position.set(0, 0.8, 0);
+    frame.scale.set(1.0, 1.0, 2.4 / 1.2); // stretch along Z to match original proportions
     this._body.add(frame);
 
     // Wood grain planks on frame top
@@ -2567,11 +2568,12 @@ export class CreatureMesh {
       this._body.add(plank);
     }
 
-    // Side rails — left and right
+    // Side rails — left and right (round timber beams)
     for (const side of [-1, 1]) {
-      const railGeo = new THREE.BoxGeometry(0.1, 0.8, 2.4);
+      const railGeo = cyl(0.05, 0.05, 2.4, 8);
       const rail = new THREE.Mesh(railGeo, woodMat);
       rail.position.set(side * 0.6, 1.2, 0);
+      rail.rotation.x = Math.PI / 2;
       this._body.add(rail);
 
       // Wood grain lines on side rails
@@ -2583,98 +2585,110 @@ export class CreatureMesh {
       }
     }
 
-    // Crossbeams on the frame
+    // Crossbeams on the frame (round timber)
     for (let i = -1; i <= 1; i++) {
-      const crossGeo = new THREE.BoxGeometry(1.2, 0.08, 0.08);
+      const crossGeo = cyl(0.04, 0.04, 1.2, 6);
       const cross = new THREE.Mesh(crossGeo, woodMat);
       cross.position.set(0, 0.95, i * 0.9);
+      cross.rotation.z = Math.PI / 2;
       this._body.add(cross);
     }
 
-    // ---- Overhead A-frame canopy/roof ----
-    // Vertical posts at front and back corners
+    // ---- Enclosed box housing (plank shed) ----
+    const housingW = 1.3; // width
+    const housingH = 1.1; // height of walls
+    const housingD = 2.2; // depth (front to back)
+    const wallY = 1.55; // center Y of walls
+    const plankMat = mat(0x6b4226, { side: THREE.DoubleSide, roughness: 0.9 });
+    const darkPlankMat = mat(0x5a3518, { side: THREE.DoubleSide, roughness: 0.9 });
+
+    // Corner posts (vertical round timber at each corner)
     for (const side of [-1, 1]) {
       for (const fb of [-1, 1]) {
-        const postGeo = cyl(0.04, 0.04, 1.0, 12);
+        const postGeo = cyl(0.05, 0.05, housingH, 10);
         const post = new THREE.Mesh(postGeo, woodMat);
-        post.position.set(side * 0.55, 1.6, fb * 1.0);
+        post.position.set(side * housingW * 0.5, wallY, fb * housingD * 0.5);
         this._body.add(post);
 
         // Rope binding at post base
-        const bindingGeo = new THREE.TorusGeometry(0.05, 0.008, 8, 12);
+        const bindingGeo = new THREE.TorusGeometry(0.06, 0.008, 8, 12);
         const binding = new THREE.Mesh(bindingGeo, ropeMat);
-        binding.position.set(side * 0.55, 1.15, fb * 1.0);
+        binding.position.set(side * housingW * 0.5, wallY - housingH * 0.45, fb * housingD * 0.5);
         this._body.add(binding);
       }
     }
 
-    // A-frame angled roof beams (left slope and right slope)
+    // Side walls — vertical planks on left and right
     for (const side of [-1, 1]) {
-      const roofBeamGeo = new THREE.BoxGeometry(0.06, 0.06, 2.2);
-      const roofBeam = new THREE.Mesh(roofBeamGeo, woodMat);
-      roofBeam.position.set(side * 0.3, 2.25, 0);
-      roofBeam.rotation.z = side * -0.45;
-      this._body.add(roofBeam);
+      for (let p = 0; p < 6; p++) {
+        const pw = housingD / 6;
+        const plankGeo = new THREE.PlaneGeometry(pw - 0.02, housingH);
+        const plank = new THREE.Mesh(plankGeo, p % 2 === 0 ? plankMat : darkPlankMat);
+        plank.rotation.y = Math.PI / 2;
+        plank.position.set(side * housingW * 0.5, wallY, -housingD * 0.5 + pw * 0.5 + p * pw);
+        this._body.add(plank);
+      }
+
+      // Iron reinforcement band across side wall
+      const bandGeo = cyl(0.02, 0.02, housingD, 8);
+      const band = new THREE.Mesh(bandGeo, ironMat);
+      band.rotation.x = Math.PI / 2;
+      band.position.set(side * (housingW * 0.5 + 0.01), wallY, 0);
+      this._body.add(band);
     }
 
-    // Ridge beam along the top
-    const ridgeGeo = new THREE.BoxGeometry(0.06, 0.06, 2.4);
-    const ridge = new THREE.Mesh(ridgeGeo, woodMat);
-    ridge.position.set(0, 2.35, 0);
-    this._body.add(ridge);
+    // Back wall — vertical planks across the back
+    for (let p = 0; p < 4; p++) {
+      const pw = housingW / 4;
+      const plankGeo = new THREE.PlaneGeometry(pw - 0.02, housingH);
+      const plank = new THREE.Mesh(plankGeo, p % 2 === 0 ? plankMat : darkPlankMat);
+      plank.position.set(-housingW * 0.5 + pw * 0.5 + p * pw, wallY, -housingD * 0.5);
+      this._body.add(plank);
+    }
 
-    // Iron rivets along ridge beam
-    for (let r = 0; r < 5; r++) {
+    // Front wall — planks with opening for the ram beam
+    for (let p = 0; p < 4; p++) {
+      const pw = housingW / 4;
+      const cx = -housingW * 0.5 + pw * 0.5 + p * pw;
+      // Skip center planks to leave a gap for the ram
+      if (Math.abs(cx) < 0.2) continue;
+      const plankGeo = new THREE.PlaneGeometry(pw - 0.02, housingH);
+      const plank = new THREE.Mesh(plankGeo, p % 2 === 0 ? plankMat : darkPlankMat);
+      plank.position.set(cx, wallY, housingD * 0.5);
+      this._body.add(plank);
+    }
+
+    // Iron ring around front opening for the ram
+    const ringGeo = new THREE.TorusGeometry(0.18, 0.02, 10, 16);
+    const ring = new THREE.Mesh(ringGeo, ironMat);
+    ring.position.set(0, wallY - 0.05, housingD * 0.5 + 0.01);
+    this._body.add(ring);
+
+    // Flat roof — planks across the top
+    for (let p = 0; p < 6; p++) {
+      const pw = housingD / 6;
+      const roofPlankGeo = new THREE.PlaneGeometry(housingW, pw - 0.02);
+      const roofPlank = new THREE.Mesh(roofPlankGeo, p % 2 === 0 ? plankMat : darkPlankMat);
+      roofPlank.rotation.x = -Math.PI / 2;
+      roofPlank.position.set(0, wallY + housingH * 0.5, -housingD * 0.5 + pw * 0.5 + p * pw);
+      this._body.add(roofPlank);
+    }
+
+    // Iron bands across the roof
+    for (let i = 0; i < 3; i++) {
+      const roofBandGeo = cyl(0.02, 0.02, housingW, 8);
+      const roofBand = new THREE.Mesh(roofBandGeo, ironMat);
+      roofBand.rotation.z = Math.PI / 2;
+      roofBand.position.set(0, wallY + housingH * 0.5 + 0.01, -0.7 + i * 0.7);
+      this._body.add(roofBand);
+    }
+
+    // Iron rivets on roof bands
+    for (let r = 0; r < 6; r++) {
       const rivetGeo = new THREE.SphereGeometry(0.012, 8, 8);
       const rivet = new THREE.Mesh(rivetGeo, ironMat);
-      rivet.position.set(0, 2.39, -1.0 + r * 0.5);
+      rivet.position.set(-0.5 + r * 0.2, wallY + housingH * 0.5 + 0.02, 0);
       this._body.add(rivet);
-    }
-
-    // Roof panels (angled planes forming A-frame)
-    for (const side of [-1, 1]) {
-      const roofPanelGeo = new THREE.PlaneGeometry(0.7, 2.3);
-      const roofPanel = new THREE.Mesh(
-        roofPanelGeo,
-        mat(0x7b5230, { side: THREE.DoubleSide, roughness: 0.9 }),
-      );
-      roofPanel.position.set(side * 0.28, 2.2, 0);
-      roofPanel.rotation.z = side * -0.45;
-      this._body.add(roofPanel);
-    }
-
-    // Side shields (plane geometry along sides)
-    for (const side of [-1, 1]) {
-      const shieldGeo = new THREE.PlaneGeometry(2.2, 0.7);
-      const shield = new THREE.Mesh(
-        shieldGeo,
-        mat(0x6b4226, { side: THREE.DoubleSide }),
-      );
-      shield.rotation.y = Math.PI / 2;
-      shield.position.set(side * 0.62, 1.5, 0);
-      this._body.add(shield);
-
-      // Iron reinforcement band on shield
-      const shieldBandGeo = new THREE.BoxGeometry(0.02, 0.04, 2.0);
-      const shieldBand = new THREE.Mesh(shieldBandGeo, ironMat);
-      shieldBand.position.set(side * 0.63, 1.5, 0);
-      this._body.add(shieldBand);
-    }
-
-    // Iron bands across the frame (thin dark cylinders)
-    for (let i = -1; i <= 1; i++) {
-      const bandGeo = new THREE.BoxGeometry(1.24, 0.04, 0.04);
-      const band = new THREE.Mesh(bandGeo, ironMat);
-      band.position.set(0, 0.82, i * 0.8);
-      this._body.add(band);
-
-      // Rivets on iron bands
-      for (const side of [-1, 1]) {
-        const rivetGeo = new THREE.SphereGeometry(0.012, 8, 8);
-        const rivet = new THREE.Mesh(rivetGeo, ironMat);
-        rivet.position.set(side * 0.5, 0.85, i * 0.8);
-        this._body.add(rivet);
-      }
     }
 
     // ---- The ram — on _rightArm so it swings for attack ----
@@ -2834,38 +2848,41 @@ export class CreatureMesh {
     const boulderMat = mat(0x888888, { roughness: 0.95 });
     const darkWoodMat = mat(0x5a3a1e, { roughness: 0.9 });
 
-    // ---- Body — sturdy wooden base frame ----
-    const baseGeo = new THREE.BoxGeometry(1.4, 0.25, 2.0);
+    // ---- Body — sturdy wooden base frame (rounded) ----
+    const baseGeo = cyl(0.7, 0.7, 0.25, 16);
     const baseMesh = new THREE.Mesh(baseGeo, woodMat);
     baseMesh.position.set(0, 0.6, 0);
+    baseMesh.scale.set(1.0, 1.0, 2.0 / 1.4); // stretch along Z to match original proportions
     this._body.add(baseMesh);
 
-    // Side beams (raised rails for the arm track)
+    // Side beams (raised rails for the arm track, round timber)
     for (const side of [-1, 1]) {
-      const sideBeamGeo = new THREE.BoxGeometry(0.12, 0.5, 2.0);
+      const sideBeamGeo = cyl(0.06, 0.06, 2.0, 6);
       const sideBeam = new THREE.Mesh(sideBeamGeo, woodMat);
       sideBeam.position.set(side * 0.6, 0.85, 0);
+      sideBeam.rotation.x = Math.PI / 2;
       this._body.add(sideBeam);
     }
 
-    // Crossbeams for structural support
+    // Crossbeams for structural support (round timber)
     for (let i = -1; i <= 1; i++) {
-      const crossGeo = new THREE.BoxGeometry(1.2, 0.08, 0.1);
+      const crossGeo = cyl(0.04, 0.04, 1.2, 6);
       const cross = new THREE.Mesh(crossGeo, woodMat);
       cross.position.set(0, 0.55, i * 0.8);
+      cross.rotation.z = Math.PI / 2;
       this._body.add(cross);
     }
 
-    // Vertical pivot uprights (the A-frame that holds the pivot)
+    // Vertical pivot uprights (the A-frame that holds the pivot, round timber)
     for (const side of [-1, 1]) {
-      const uprightGeo = new THREE.BoxGeometry(0.1, 1.2, 0.1);
+      const uprightGeo = cyl(0.05, 0.05, 1.2, 6);
       const upright = new THREE.Mesh(uprightGeo, darkWoodMat);
       upright.position.set(side * 0.45, 1.5, 0);
       upright.rotation.z = side * -0.1; // slight angle inward
       this._body.add(upright);
 
-      // Iron bracket at upright top
-      const bracketGeo = new THREE.BoxGeometry(0.14, 0.06, 0.14);
+      // Iron bracket at upright top (small cylinder)
+      const bracketGeo = cyl(0.07, 0.07, 0.06, 8);
       const bracket = new THREE.Mesh(bracketGeo, ironMat);
       bracket.position.set(side * 0.42, 2.05, 0);
       this._body.add(bracket);
@@ -2884,10 +2901,10 @@ export class CreatureMesh {
     pivotBar.position.set(0, 2.0, 0);
     this._body.add(pivotBar);
 
-    // Support struts (diagonal braces from base to uprights)
+    // Support struts (diagonal braces from base to uprights, round timber)
     for (const side of [-1, 1]) {
       for (const fb of [-1, 1]) {
-        const strutGeo = new THREE.BoxGeometry(0.05, 0.8, 0.05);
+        const strutGeo = cyl(0.025, 0.025, 0.8, 6);
         const strut = new THREE.Mesh(strutGeo, woodMat);
         strut.position.set(side * 0.4, 1.1, fb * 0.25);
         strut.rotation.z = side * 0.35;
@@ -3362,17 +3379,19 @@ export class CreatureMesh {
     const stringMat = mat(0x8b7355);
     const wheelMat = mat(0x4a3018);
 
-    // ---- Body: wooden frame / carriage ----
-    const frameGeo = new THREE.BoxGeometry(1.4, 0.3, 0.8);
+    // ---- Body: wooden frame / carriage (rounded) ----
+    const frameGeo = cyl(0.4, 0.4, 0.3, 16);
     const frame = new THREE.Mesh(frameGeo, woodMat);
     frame.position.set(0, 0.6, 0);
+    frame.scale.set(1.4 / 0.8, 1.0, 1.0); // stretch along X to match original proportions
     this._body.add(frame);
 
-    // Side rails of the carriage
+    // Side rails of the carriage (round timber)
     for (const side of [-1, 1]) {
-      const railGeo = new THREE.BoxGeometry(1.6, 0.15, 0.08);
+      const railGeo = cyl(0.04, 0.04, 1.6, 6);
       const rail = new THREE.Mesh(railGeo, woodMat);
       rail.position.set(0, 0.72, side * 0.38);
+      rail.rotation.z = Math.PI / 2;
       this._body.add(rail);
     }
 
@@ -3393,17 +3412,19 @@ export class CreatureMesh {
       }
     }
 
-    // Central channel / rail for the bolt (long narrow box on top)
-    const channelGeo = new THREE.BoxGeometry(1.5, 0.08, 0.12);
+    // Central channel / rail for the bolt (half-cylinder trough on top)
+    const channelGeo = cyl(0.06, 0.06, 1.5, 8);
     const channel = new THREE.Mesh(channelGeo, woodMat);
     channel.position.set(0.05, 0.82, 0);
+    channel.rotation.z = Math.PI / 2;
     this._body.add(channel);
 
-    // Channel side lips
+    // Channel side lips (thin cylinders)
     for (const side of [-1, 1]) {
-      const lipGeo = new THREE.BoxGeometry(1.5, 0.06, 0.02);
+      const lipGeo = cyl(0.01, 0.01, 1.5, 6);
       const lip = new THREE.Mesh(lipGeo, ironMat);
       lip.position.set(0.05, 0.85, side * 0.07);
+      lip.rotation.z = Math.PI / 2;
       this._body.add(lip);
     }
 
@@ -6080,17 +6101,19 @@ export class CreatureMesh {
     const frostMistMat = mat(0xccddee, { transparent: true, opacity: 0.2 });
 
     // ---- Core body — angular crystalline cluster ----
-    const coreGeo = new THREE.BoxGeometry(0.9, 1.2, 0.7, 1, 1, 1);
+    const coreGeo = new THREE.OctahedronGeometry(0.6);
     const core = new THREE.Mesh(coreGeo, iceMat);
     core.position.y = 2.5;
     core.rotation.y = 0.15;
+    core.scale.set(0.75, 1.0, 0.58);
     this._body.add(core);
 
     // Dark inner core visible through translucent ice
-    const innerGeo = new THREE.BoxGeometry(0.5, 0.8, 0.4);
+    const innerGeo = new THREE.OctahedronGeometry(0.4);
     const inner = new THREE.Mesh(innerGeo, darkCoreMat);
     inner.position.y = 2.5;
     inner.rotation.y = 0.4;
+    inner.scale.set(0.63, 1.0, 0.5);
     this._body.add(inner);
 
     // Inner glow layer — blue energy at center
@@ -6100,23 +6123,26 @@ export class CreatureMesh {
     this._body.add(innerGlow);
 
     // Upper chest crystal slab
-    const upperChestGeo = new THREE.BoxGeometry(0.8, 0.5, 0.6);
+    const upperChestGeo = new THREE.OctahedronGeometry(0.4);
     const upperChest = new THREE.Mesh(upperChestGeo, deepBlueMat);
     upperChest.position.set(0, 3.1, 0.05);
     upperChest.rotation.z = 0.05;
+    upperChest.scale.set(1.0, 0.63, 0.75);
     this._body.add(upperChest);
 
     // Lower torso crystal
-    const lowerTorsoGeo = new THREE.BoxGeometry(0.7, 0.5, 0.55);
+    const lowerTorsoGeo = new THREE.OctahedronGeometry(0.35);
     const lowerTorso = new THREE.Mesh(lowerTorsoGeo, iceMat);
     lowerTorso.position.set(0, 1.85, 0.0);
     lowerTorso.rotation.y = -0.2;
+    lowerTorso.scale.set(1.0, 0.71, 0.79);
     this._body.add(lowerTorso);
 
     // Side crystal facets
     for (const side of [-1, 1]) {
-      const facetGeo = new THREE.BoxGeometry(0.2, 0.6, 0.4);
+      const facetGeo = new THREE.TetrahedronGeometry(0.3);
       const facet = new THREE.Mesh(facetGeo, deepBlueMat);
+      facet.scale.set(0.33, 1.0, 0.67);
       facet.position.set(side * 0.5, 2.5, 0.0);
       facet.rotation.z = side * 0.2;
       this._body.add(facet);
@@ -6131,7 +6157,8 @@ export class CreatureMesh {
     // Crackling ice detail — small angular shards on body surface
     for (let i = 0; i < 6; i++) {
       const angle = (i / 6) * Math.PI * 2;
-      const crackGeo = new THREE.BoxGeometry(0.03, 0.15 + Math.random() * 0.1, 0.02);
+      const crackSize = 0.06 + Math.random() * 0.04;
+      const crackGeo = new THREE.TetrahedronGeometry(crackSize);
       const crack = new THREE.Mesh(crackGeo, whiteMat);
       crack.position.set(
         Math.cos(angle) * 0.45,
@@ -6147,8 +6174,9 @@ export class CreatureMesh {
     this._body.add(this._head);
 
     // Head block
-    const headGeo = new THREE.BoxGeometry(0.4, 0.35, 0.35);
+    const headGeo = new THREE.OctahedronGeometry(0.22);
     const headMesh = new THREE.Mesh(headGeo, iceMat);
+    headMesh.scale.set(0.91, 0.8, 0.8);
     this._head.add(headMesh);
 
     // Crown spikes — large upward ice crystals
@@ -6223,20 +6251,20 @@ export class CreatureMesh {
       this._body.add(arm);
 
       // Shoulder joint — angular
-      const shoulderGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+      const shoulderGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.2, 5);
       const shoulder = new THREE.Mesh(shoulderGeo, deepBlueMat);
       shoulder.rotation.y = 0.3;
       arm.add(shoulder);
 
       // Upper arm segment
-      const upperArmGeo = new THREE.BoxGeometry(0.16, 0.65, 0.14);
+      const upperArmGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.65, 5);
       const upperArm = new THREE.Mesh(upperArmGeo, iceMat);
       upperArm.position.set(0, -0.4, 0);
       upperArm.rotation.z = side * 0.1;
       arm.add(upperArm);
 
       // Elbow crystal
-      const elbowGeo = new THREE.BoxGeometry(0.18, 0.18, 0.16);
+      const elbowGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.18, 5);
       const elbow = new THREE.Mesh(elbowGeo, deepBlueMat);
       elbow.position.y = -0.8;
       elbow.rotation.y = 0.5;
@@ -6250,14 +6278,14 @@ export class CreatureMesh {
       arm.add(elbowSpike);
 
       // Forearm
-      const foreGeo = new THREE.BoxGeometry(0.14, 0.6, 0.12);
+      const foreGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.6, 5);
       const fore = new THREE.Mesh(foreGeo, iceMat);
       fore.position.y = -1.2;
       fore.rotation.z = side * -0.08;
       arm.add(fore);
 
       // Forearm frost ridge
-      const frostRidgeGeo = new THREE.BoxGeometry(0.04, 0.3, 0.02);
+      const frostRidgeGeo = new THREE.ConeGeometry(0.02, 0.3, 4);
       const frostRidge = new THREE.Mesh(frostRidgeGeo, whiteMat);
       frostRidge.position.set(0, -1.1, 0.07);
       arm.add(frostRidge);
@@ -6296,28 +6324,29 @@ export class CreatureMesh {
       this._body.add(leg);
 
       // Upper leg block
-      const thighGeo = new THREE.BoxGeometry(0.24, 0.6, 0.22);
+      const thighGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.6, 6);
       const thigh = new THREE.Mesh(thighGeo, iceMat);
       thigh.position.y = -0.3;
       leg.add(thigh);
 
       // Knee facet
-      const kneeGeo = new THREE.BoxGeometry(0.26, 0.2, 0.24);
+      const kneeGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.2, 6);
       const knee = new THREE.Mesh(kneeGeo, deepBlueMat);
       knee.position.y = -0.65;
       knee.rotation.y = 0.2;
       leg.add(knee);
 
       // Shin block
-      const shinGeo = new THREE.BoxGeometry(0.22, 0.55, 0.2);
+      const shinGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.55, 6);
       const shin = new THREE.Mesh(shinGeo, iceMat);
       shin.position.y = -1.0;
       leg.add(shin);
 
-      // Foot — flat ice slab
-      const footGeo = new THREE.BoxGeometry(0.28, 0.1, 0.35);
+      // Foot — flat hexagonal ice slab
+      const footGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.1, 6);
       const foot = new THREE.Mesh(footGeo, deepBlueMat);
       foot.position.set(0, -1.32, 0.05);
+      foot.scale.set(0.88, 1.0, 1.09);
       leg.add(foot);
 
       // Small ice spike on knee
@@ -6328,7 +6357,7 @@ export class CreatureMesh {
       leg.add(kneeSpike);
 
       // Shin frost ridge detail
-      const shinRidgeGeo = new THREE.BoxGeometry(0.04, 0.25, 0.02);
+      const shinRidgeGeo = new THREE.ConeGeometry(0.02, 0.25, 4);
       const shinRidge = new THREE.Mesh(shinRidgeGeo, whiteMat);
       shinRidge.position.set(0, -0.9, 0.11);
       leg.add(shinRidge);
@@ -6337,7 +6366,7 @@ export class CreatureMesh {
     // ---- Frost details — small floating ice shards (tiny rotated cubes) ----
     for (let i = 0; i < 10; i++) {
       const size = 0.03 + Math.random() * 0.04;
-      const shardGeo = new THREE.BoxGeometry(size, size, size);
+      const shardGeo = new THREE.OctahedronGeometry(size * 0.7);
       const shard = new THREE.Mesh(shardGeo, shardMat);
       const sAngle = Math.random() * Math.PI * 2;
       const sRadius = 0.6 + Math.random() * 0.7;
@@ -6358,8 +6387,10 @@ export class CreatureMesh {
     for (let i = 0; i < 4; i++) {
       const dAngle = Math.random() * Math.PI * 2;
       const dSize = 0.04 + Math.random() * 0.03;
-      const debrisGeo = new THREE.BoxGeometry(dSize, dSize * 1.3, dSize * 0.8);
+      const debrisGeo = new THREE.OctahedronGeometry(dSize * 0.7);
+      // scale applied after mesh to get elongated shape
       const debris = new THREE.Mesh(debrisGeo, deepBlueMat);
+      debris.scale.set(1.0, 1.3, 0.8);
       debris.position.set(
         Math.cos(dAngle) * (0.8 + Math.random() * 0.5),
         1.8 + Math.random() * 2.0,
@@ -8616,22 +8647,25 @@ export class CreatureMesh {
     const shardMat = mat(0x8ec8d8, { transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.5 });
 
     // ---- Core body — angular crystalline cluster ----
-    const coreGeo = new THREE.BoxGeometry(0.9 * s, 1.2 * s, 0.7 * s, 2, 2, 2);
+    const coreGeo = new THREE.DodecahedronGeometry(0.5 * s, 0);
     const core = new THREE.Mesh(coreGeo, iceMat);
+    core.scale.set(0.9, 1.2, 0.7);
     core.position.y = 2.5 * s;
     core.rotation.y = 0.15;
     this._body.add(core);
 
     // Dark inner core
-    const innerGeo = new THREE.BoxGeometry(0.5 * s, 0.8 * s, 0.4 * s);
+    const innerGeo = new THREE.OctahedronGeometry(0.3 * s, 0);
     const inner = new THREE.Mesh(innerGeo, darkCoreMat);
+    inner.scale.set(0.85, 1.35, 0.7);
     inner.position.y = 2.5 * s;
     inner.rotation.y = 0.4;
     this._body.add(inner);
 
     // Upper chest slab
-    const upperChestGeo = new THREE.BoxGeometry(0.8 * s, 0.5 * s, 0.6 * s);
+    const upperChestGeo = new THREE.OctahedronGeometry(0.35 * s, 0);
     const upperChest = new THREE.Mesh(upperChestGeo, deepBlueMat);
+    upperChest.scale.set(1.15, 0.7, 0.85);
     upperChest.position.set(0, 3.1 * s, 0.05 * s);
     this._body.add(upperChest);
 
@@ -8648,8 +8682,9 @@ export class CreatureMesh {
     this._head.position.set(0, 3.7 * s, 0.1 * s);
     this._body.add(this._head);
 
-    const headGeo = new THREE.BoxGeometry(0.4 * s, 0.35 * s, 0.35 * s);
+    const headGeo = new THREE.OctahedronGeometry(0.2 * s, 1);
     const headMesh = new THREE.Mesh(headGeo, iceMat);
+    headMesh.scale.set(1.0, 0.88, 0.88);
     this._head.add(headMesh);
 
     // Crown spikes — 3 instead of 5
@@ -8687,16 +8722,16 @@ export class CreatureMesh {
       arm.position.set(side * 0.6 * s, 3.1 * s, 0.0);
       this._body.add(arm);
 
-      const shoulderGeo = new THREE.BoxGeometry(0.18 * s, 0.18 * s, 0.18 * s);
+      const shoulderGeo = new THREE.OctahedronGeometry(0.09 * s, 0);
       const shoulder = new THREE.Mesh(shoulderGeo, deepBlueMat);
       arm.add(shoulder);
 
-      const upperArmGeo = new THREE.BoxGeometry(0.14 * s, 0.55 * s, 0.12 * s);
+      const upperArmGeo = cyl(0.07 * s, 0.06 * s, 0.55 * s, 6);
       const upperArm = new THREE.Mesh(upperArmGeo, iceMat);
       upperArm.position.set(0, -0.35 * s, 0);
       arm.add(upperArm);
 
-      const foreGeo = new THREE.BoxGeometry(0.12 * s, 0.5 * s, 0.1 * s);
+      const foreGeo = cyl(0.06 * s, 0.05 * s, 0.5 * s, 6);
       const fore = new THREE.Mesh(foreGeo, iceMat);
       fore.position.y = -0.8 * s;
       arm.add(fore);
@@ -8715,18 +8750,19 @@ export class CreatureMesh {
       leg.position.set(side * 0.3 * s, 1.55 * s, 0.0);
       this._body.add(leg);
 
-      const thighGeo = new THREE.BoxGeometry(0.22 * s, 0.5 * s, 0.2 * s);
+      const thighGeo = cyl(0.11 * s, 0.09 * s, 0.5 * s, 6);
       const thigh = new THREE.Mesh(thighGeo, iceMat);
       thigh.position.y = -0.25 * s;
       leg.add(thigh);
 
-      const shinGeo = new THREE.BoxGeometry(0.2 * s, 0.45 * s, 0.18 * s);
+      const shinGeo = cyl(0.1 * s, 0.08 * s, 0.45 * s, 6);
       const shin = new THREE.Mesh(shinGeo, iceMat);
       shin.position.y = -0.7 * s;
       leg.add(shin);
 
-      const footGeo = new THREE.BoxGeometry(0.25 * s, 0.08 * s, 0.3 * s);
+      const footGeo = new THREE.OctahedronGeometry(0.12 * s, 0);
       const foot = new THREE.Mesh(footGeo, deepBlueMat);
+      foot.scale.set(1.05, 0.35, 1.25);
       foot.position.set(0, -1.0 * s, 0.04 * s);
       leg.add(foot);
     }
@@ -8734,7 +8770,7 @@ export class CreatureMesh {
     // ---- Floating ice shards — fewer (5 instead of 10) ----
     for (let i = 0; i < 5; i++) {
       const size = (0.025 + Math.random() * 0.035) * s;
-      const fShardGeo = new THREE.BoxGeometry(size, size, size);
+      const fShardGeo = new THREE.OctahedronGeometry(size * 0.7, 0);
       const fShard = new THREE.Mesh(fShardGeo, shardMat);
       const sAngle = Math.random() * Math.PI * 2;
       const sRadius = (0.5 + Math.random() * 0.6) * s;
@@ -9214,6 +9250,7 @@ export class CreatureMesh {
     const isDead = fighter.combatState === FighterCombatState.DEAD;
 
     // Walk animation
+    const isSiegeRam = this._creatureType === "battering_ram";
     const speed = Math.sqrt(fighter.velocity.x ** 2 + fighter.velocity.z ** 2);
     if (speed > 0.3 && !isDead) {
       fighter.walkCycle = (fighter.walkCycle + speed * 0.012 * dt * 60) % 1;
@@ -9223,7 +9260,9 @@ export class CreatureMesh {
       this._leftLeg.rotation.x = Math.sin(t) * amp;
       this._rightLeg.rotation.x = -Math.sin(t) * amp;
       this._leftArm.rotation.x = -Math.sin(t) * amp * 0.6;
-      this._rightArm.rotation.x = Math.sin(t) * amp * 0.6;
+      if (!isSiegeRam) {
+        this._rightArm.rotation.x = Math.sin(t) * amp * 0.6;
+      }
 
       // Body sway
       this._body.rotation.z = Math.sin(t) * 0.03;
@@ -9236,11 +9275,24 @@ export class CreatureMesh {
       this._leftLeg.rotation.x = 0;
       this._rightLeg.rotation.x = 0;
       this._leftArm.rotation.x = 0;
-      this._rightArm.rotation.x = 0;
+      if (!isSiegeRam) {
+        this._rightArm.rotation.x = 0;
+      }
     }
 
     // Attack animation
-    if (fighter.combatState === FighterCombatState.WINDING) {
+    if (isSiegeRam) {
+      // Battering ram: horizontal thrust along Z axis
+      if (fighter.combatState === FighterCombatState.WINDING) {
+        this._rightArm.position.z = -0.6; // pull ram back
+      } else if (fighter.combatState === FighterCombatState.RELEASING) {
+        this._rightArm.position.z = 0.8; // thrust ram forward
+      } else if (fighter.combatState === FighterCombatState.RECOVERY) {
+        this._rightArm.position.z *= 0.9; // ease back to center
+      } else if (fighter.combatState === FighterCombatState.STAGGERED) {
+        this._body.rotation.z = Math.sin(Date.now() * 0.01) * 0.15;
+      }
+    } else if (fighter.combatState === FighterCombatState.WINDING) {
       // Wind up — raise right arm
       this._rightArm.rotation.x = -1.2;
       this._body.rotation.z = 0.1;
@@ -10736,10 +10788,11 @@ export class CreatureMesh {
     const eyeMat = mat(0x44ccff, { emissive: 0x2288aa });
     const crackMat = mat(0x3a3a2a);
 
-    // Massive blocky torso
-    const torsoGeo = new THREE.BoxGeometry(1.0, 1.5, 0.8);
+    // Massive rounded torso
+    const torsoGeo = cyl(0.5, 0.45, 1.5, 16);
     const torso = new THREE.Mesh(torsoGeo, stoneMat);
     torso.position.y = 2.8;
+    torso.scale.set(1.0, 1.0, 0.8);
     this._body.add(torso);
 
     // Stone crack lines on torso
@@ -10763,11 +10816,12 @@ export class CreatureMesh {
     runeFrame.position.set(0, 2.8, 0.42);
     this._body.add(runeFrame);
 
-    // Head — blocky, small
+    // Head — carved stone
     this._head.position.set(0, 3.8, 0);
     this._body.add(this._head);
-    const headGeo = new THREE.BoxGeometry(0.4, 0.35, 0.35);
+    const headGeo = new THREE.SphereGeometry(0.22, 14, 12);
     const headMesh = new THREE.Mesh(headGeo, stoneMat);
+    headMesh.scale.set(0.9, 0.8, 0.8);
     this._head.add(headMesh);
 
     // Eyes
@@ -10783,11 +10837,11 @@ export class CreatureMesh {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       arm.position.set(side * 0.6, 3.2, 0);
       this._body.add(arm);
-      const upperGeo = new THREE.BoxGeometry(0.25, 0.9, 0.25);
+      const upperGeo = cyl(0.13, 0.11, 0.9, 12);
       const upper = new THREE.Mesh(upperGeo, stoneMat);
       upper.position.y = -0.45;
       arm.add(upper);
-      const foreGeo = new THREE.BoxGeometry(0.28, 0.8, 0.28);
+      const foreGeo = cyl(0.12, 0.14, 0.8, 12);
       const fore = new THREE.Mesh(foreGeo, darkStoneMat);
       fore.position.y = -1.2;
       arm.add(fore);
@@ -10802,12 +10856,12 @@ export class CreatureMesh {
       arm.add(fist);
     }
 
-    // Legs — pillar blocks
+    // Legs — stone pillars
     for (const side of [-1, 1]) {
       const leg = side === -1 ? this._leftLeg : this._rightLeg;
       leg.position.set(side * 0.3, 1.8, 0);
       this._body.add(leg);
-      const thighGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25);
+      const thighGeo = cyl(0.13, 0.11, 0.8, 12);
       const thigh = new THREE.Mesh(thighGeo, stoneMat);
       thigh.position.y = -0.4;
       leg.add(thigh);
@@ -10816,12 +10870,13 @@ export class CreatureMesh {
       const kn = new THREE.Mesh(knGeo, darkStoneMat);
       kn.position.y = -0.8;
       leg.add(kn);
-      const shinGeo = new THREE.BoxGeometry(0.28, 0.75, 0.28);
+      const shinGeo = cyl(0.12, 0.14, 0.75, 12);
       const shin = new THREE.Mesh(shinGeo, darkStoneMat);
       shin.position.y = -1.05;
       leg.add(shin);
-      const footGeo = new THREE.BoxGeometry(0.32, 0.15, 0.38);
+      const footGeo = new THREE.SphereGeometry(0.2, 12, 10);
       const foot = new THREE.Mesh(footGeo, stoneMat);
+      foot.scale.set(0.8, 0.38, 1.0);
       foot.position.set(0, -1.48, 0.04);
       leg.add(foot);
     }
@@ -10929,9 +10984,10 @@ export class CreatureMesh {
     const pipeMat = mat(0x444444, { metalness: 0.5 });
 
     // Massive iron torso
-    const torsoGeo = new THREE.BoxGeometry(1.2, 1.8, 0.9);
+    const torsoGeo = cyl(0.6, 0.55, 1.8, 16);
     const torso = new THREE.Mesh(torsoGeo, ironMat);
     torso.position.y = 3.5;
+    torso.scale.set(1.0, 1.0, 0.75);
     this._body.add(torso);
 
     // Boiler on back
@@ -10963,15 +11019,17 @@ export class CreatureMesh {
     // Head — mechanical
     this._head.position.set(0, 4.7, 0.1);
     this._body.add(this._head);
-    const headGeo = new THREE.BoxGeometry(0.4, 0.3, 0.35);
+    const headGeo = cyl(0.2, 0.18, 0.3, 14);
     const headMesh = new THREE.Mesh(headGeo, ironMat);
+    headMesh.scale.set(1.0, 1.0, 0.88);
     this._head.add(headMesh);
 
     // Eyes — glowing vents
     for (const side of [-1, 1]) {
-      const eGeo = new THREE.BoxGeometry(0.08, 0.04, 0.02);
+      const eGeo = cyl(0.02, 0.02, 0.08, 8);
       const eye = new THREE.Mesh(eGeo, eyeMat);
       eye.position.set(side * 0.1, 0.02, 0.18);
+      eye.rotation.y = Math.PI / 2;
       this._head.add(eye);
     }
 
@@ -11025,8 +11083,9 @@ export class CreatureMesh {
       const sp = new THREE.Mesh(spGeo, brassMAT);
       sp.position.set(side * 0.08, -1.4, 0.1);
       leg.add(sp);
-      const footGeo = new THREE.BoxGeometry(0.3, 0.12, 0.35);
+      const footGeo = new THREE.SphereGeometry(0.18, 12, 10);
       const foot = new THREE.Mesh(footGeo, ironMat);
+      foot.scale.set(0.85, 0.35, 1.0);
       foot.position.set(0, -2.1, 0.04);
       leg.add(foot);
     }
@@ -11061,10 +11120,11 @@ export class CreatureMesh {
     const internalMat = mat(0x6699cc, { transparent: true, opacity: 0.4, emissive: 0x445577 });
 
     // --- Torso (geode-like chest with visible interior) ---
-    // Main crystalline body
-    const torsoGeo = new THREE.BoxGeometry(0.7, 1.1, 0.6);
+    // Main crystalline body — faceted dodecahedron
+    const torsoGeo = new THREE.DodecahedronGeometry(0.5, 0);
     const torso = new THREE.Mesh(torsoGeo, crystalMat);
     torso.position.y = 2.2;
+    torso.scale.set(0.7, 1.1, 0.6);
     torso.rotation.y = Math.PI / 6;
     this._body.add(torso);
 
@@ -11167,8 +11227,8 @@ export class CreatureMesh {
       ss.position.set(side * 0.06, 0.1, 0);
       arm.add(ss);
 
-      // Upper arm (hexagonal prism approximation)
-      const upperGeo = new THREE.BoxGeometry(0.14, 0.7, 0.14);
+      // Upper arm (hexagonal prism)
+      const upperGeo = cyl(0.07, 0.07, 0.7, 6);
       const upper = new THREE.Mesh(upperGeo, crystalMat);
       upper.position.y = -0.38;
       upper.rotation.y = Math.PI / 6;
@@ -11192,13 +11252,13 @@ export class CreatureMesh {
       arm.add(ej);
 
       // Forearm
-      const foreGeo = new THREE.BoxGeometry(0.12, 0.55, 0.12);
+      const foreGeo = cyl(0.06, 0.06, 0.55, 6);
       const fore = new THREE.Mesh(foreGeo, darkCrystalMat);
       fore.position.y = -1.0;
       fore.rotation.y = -Math.PI / 6;
       arm.add(fore);
       // Forearm crystal vein
-      const fvGeo = new THREE.BoxGeometry(0.01, 0.3, 0.008);
+      const fvGeo = cyl(0.005, 0.005, 0.3, 4);
       const fv = new THREE.Mesh(fvGeo, veinMat);
       fv.position.set(0.05, -0.95, 0.06);
       arm.add(fv);
@@ -11227,7 +11287,7 @@ export class CreatureMesh {
       this._body.add(leg);
 
       // Thigh
-      const thighGeo = new THREE.BoxGeometry(0.16, 0.65, 0.16);
+      const thighGeo = cyl(0.08, 0.08, 0.65, 6);
       const thigh = new THREE.Mesh(thighGeo, crystalMat);
       thigh.position.y = -0.32;
       thigh.rotation.y = side * Math.PI / 8;
@@ -11246,7 +11306,7 @@ export class CreatureMesh {
       leg.add(ks);
 
       // Shin
-      const shinGeo = new THREE.BoxGeometry(0.14, 0.6, 0.14);
+      const shinGeo = cyl(0.07, 0.07, 0.6, 6);
       const shin = new THREE.Mesh(shinGeo, darkCrystalMat);
       shin.position.y = -0.9;
       shin.rotation.y = -side * Math.PI / 8;
@@ -11259,8 +11319,9 @@ export class CreatureMesh {
       leg.add(sf);
 
       // Foot (crystal slab with small growth cluster)
-      const footGeo = new THREE.BoxGeometry(0.2, 0.08, 0.25);
+      const footGeo = new THREE.OctahedronGeometry(0.12, 0);
       const foot = new THREE.Mesh(footGeo, darkCrystalMat);
+      foot.scale.set(0.85, 0.35, 1.05);
       foot.position.set(0, -1.25, 0.03);
       leg.add(foot);
       // Toe crystal growth
@@ -11310,25 +11371,29 @@ export class CreatureMesh {
     const brassMat = mat(0x7a6a2a, { metalness: 0.65, roughness: 0.35 });
 
     // --- Torso (layered armor plates) ---
-    // Core torso
-    const torsoGeo = new THREE.BoxGeometry(1.2, 1.8, 0.9);
+    // Core torso — rounded barrel shape
+    const torsoGeo = cyl(0.6, 0.55, 1.8, 16);
     const torso = new THREE.Mesh(torsoGeo, ironMat);
     torso.position.y = 3.8;
+    torso.scale.set(1.0, 1.0, 0.75);
     this._body.add(torso);
 
-    // Chest armor plate (front overlay)
-    const chestGeo = new THREE.BoxGeometry(1.1, 1.0, 0.08);
+    // Chest armor plate (curved front overlay)
+    const chestGeo = new THREE.SphereGeometry(0.6, 14, 10);
     const chest = new THREE.Mesh(chestGeo, darkIronMat);
+    chest.scale.set(0.92, 0.85, 0.12);
     chest.position.set(0, 4.0, 0.5);
     this._body.add(chest);
     // Belly plate
-    const bellyGeo = new THREE.BoxGeometry(0.9, 0.7, 0.06);
+    const bellyGeo = new THREE.SphereGeometry(0.5, 12, 10);
     const belly = new THREE.Mesh(bellyGeo, wornIronMat);
+    belly.scale.set(0.9, 0.7, 0.1);
     belly.position.set(0, 3.2, 0.48);
     this._body.add(belly);
     // Back plate
-    const backGeo = new THREE.BoxGeometry(1.0, 1.4, 0.06);
+    const backGeo = new THREE.SphereGeometry(0.55, 12, 10);
     const back = new THREE.Mesh(backGeo, darkIronMat);
+    back.scale.set(0.9, 1.3, 0.1);
     back.position.set(0, 3.7, -0.48);
     this._body.add(back);
 
@@ -11407,42 +11472,54 @@ export class CreatureMesh {
     // --- Head (armored helm with furnace interior) ---
     this._head.position.set(0, 5.1, 0.1);
     this._body.add(this._head);
-    // Helm base
-    const helmGeo = new THREE.BoxGeometry(0.45, 0.4, 0.4);
+    // Helm base — barrel shape
+    const helmGeo = cyl(0.22, 0.2, 0.4, 14);
     const helm = new THREE.Mesh(helmGeo, ironMat);
+    helm.scale.set(1.0, 1.0, 0.9);
     this._head.add(helm);
+    // Helm dome top
+    const domeGeo = new THREE.SphereGeometry(0.22, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+    const dome = new THREE.Mesh(domeGeo, ironMat);
+    dome.position.y = 0.2;
+    this._head.add(dome);
     // Helm crest/ridge
-    const crestGeo = new THREE.BoxGeometry(0.06, 0.15, 0.35);
+    const crestGeo = cyl(0.03, 0.03, 0.35, 6);
     const crest = new THREE.Mesh(crestGeo, darkIronMat);
-    crest.position.y = 0.25;
+    crest.position.set(0, 0.25, 0);
+    crest.rotation.x = Math.PI / 2;
     this._head.add(crest);
-    // Visor plate
-    const visorGeo = new THREE.BoxGeometry(0.4, 0.2, 0.05);
+    // Visor plate — curved
+    const visorGeo = new THREE.SphereGeometry(0.22, 12, 8, -Math.PI / 2.5, Math.PI / 1.25, Math.PI / 3, Math.PI / 5);
     const visor = new THREE.Mesh(visorGeo, darkIronMat);
-    visor.position.set(0, -0.02, 0.22);
+    visor.position.set(0, -0.02, 0.02);
     this._head.add(visor);
-    // Visor slit cavity
-    const slitBgGeo = new THREE.BoxGeometry(0.34, 0.06, 0.02);
+    // Visor slit — horizontal eye slot
+    const slitBgGeo = new THREE.TorusGeometry(0.17, 0.015, 6, 16, Math.PI * 0.8);
     const slitBg = new THREE.Mesh(slitBgGeo, mat(0x0a0500));
-    slitBg.position.set(0, 0.0, 0.24);
+    slitBg.position.set(0, 0.0, 0.2);
+    slitBg.rotation.y = Math.PI;
+    slitBg.rotation.z = Math.PI / 2;
     this._head.add(slitBg);
     // Eyes — furnace glow behind visor
     for (const side of [-1, 1]) {
-      const eGeo = new THREE.BoxGeometry(0.1, 0.04, 0.02);
+      const eGeo = new THREE.SphereGeometry(0.03, 10, 10);
       const eye = new THREE.Mesh(eGeo, eyeMat);
-      eye.position.set(side * 0.1, 0.0, 0.26);
+      eye.scale.set(1.6, 0.6, 0.5);
+      eye.position.set(side * 0.1, 0.0, 0.22);
       this._head.add(eye);
     }
     // Chin guard
-    const chinGeo = new THREE.BoxGeometry(0.3, 0.1, 0.08);
+    const chinGeo = new THREE.SphereGeometry(0.16, 10, 8);
     const chinG = new THREE.Mesh(chinGeo, wornIronMat);
-    chinG.position.set(0, -0.2, 0.16);
+    chinG.scale.set(0.95, 0.35, 0.5);
+    chinG.position.set(0, -0.2, 0.12);
     this._head.add(chinG);
     // Helm cheek plates
     for (const side of [-1, 1]) {
-      const cpGeo = new THREE.BoxGeometry(0.06, 0.25, 0.15);
+      const cpGeo = cyl(0.08, 0.06, 0.25, 10);
       const cp = new THREE.Mesh(cpGeo, darkIronMat);
-      cp.position.set(side * 0.24, -0.05, 0.1);
+      cp.scale.set(0.5, 1.0, 0.8);
+      cp.position.set(side * 0.2, -0.05, 0.1);
       this._head.add(cp);
     }
 
@@ -11517,14 +11594,15 @@ export class CreatureMesh {
       arm.add(wrist);
 
       // Mechanical fist (articulated clamp fingers)
-      const palmGeo = new THREE.BoxGeometry(0.2, 0.15, 0.15);
+      const palmGeo = new THREE.SphereGeometry(0.1, 12, 10);
       const palm = new THREE.Mesh(palmGeo, ironMat);
+      palm.scale.set(1.0, 0.75, 0.75);
       palm.position.y = -2.7;
       arm.add(palm);
       // Fingers (3 mechanical digits)
       for (let f = -1; f <= 1; f++) {
         // Proximal segment
-        const f1Geo = new THREE.BoxGeometry(0.05, 0.12, 0.05);
+        const f1Geo = cyl(0.025, 0.02, 0.12, 8);
         const f1 = new THREE.Mesh(f1Geo, darkIronMat);
         f1.position.set(f * 0.07, -2.85, 0.03);
         arm.add(f1);
@@ -11534,13 +11612,13 @@ export class CreatureMesh {
         fk.position.set(f * 0.07, -2.91, 0.06);
         arm.add(fk);
         // Distal segment
-        const f2Geo = new THREE.BoxGeometry(0.04, 0.1, 0.04);
+        const f2Geo = cyl(0.02, 0.015, 0.1, 8);
         const f2 = new THREE.Mesh(f2Geo, wornIronMat);
         f2.position.set(f * 0.07, -2.98, 0.04);
         arm.add(f2);
       }
       // Thumb
-      const thGeo = new THREE.BoxGeometry(0.05, 0.1, 0.05);
+      const thGeo = cyl(0.025, 0.02, 0.1, 8);
       const th = new THREE.Mesh(thGeo, darkIronMat);
       th.position.set(side * 0.12, -2.78, 0.06);
       th.rotation.z = side * 0.5;
@@ -11577,8 +11655,9 @@ export class CreatureMesh {
       knee.position.y = -1.0;
       leg.add(knee);
       // Knee cap plate
-      const kcGeo = new THREE.BoxGeometry(0.15, 0.15, 0.06);
+      const kcGeo = new THREE.SphereGeometry(0.08, 10, 8);
       const kc = new THREE.Mesh(kcGeo, ironMat);
+      kc.scale.set(0.95, 0.95, 0.4);
       kc.position.set(0, -1.0, 0.15);
       leg.add(kc);
       // Knee gear
@@ -11606,13 +11685,15 @@ export class CreatureMesh {
       leg.add(ank);
 
       // Heavy armored foot
-      const footGeo = new THREE.BoxGeometry(0.35, 0.15, 0.45);
+      const footGeo = new THREE.SphereGeometry(0.22, 12, 10);
       const foot = new THREE.Mesh(footGeo, ironMat);
+      foot.scale.set(0.8, 0.35, 1.05);
       foot.position.set(0, -2.3, 0.06);
       leg.add(foot);
       // Toe cap plate
-      const tcGeo = new THREE.BoxGeometry(0.3, 0.12, 0.06);
+      const tcGeo = new THREE.SphereGeometry(0.16, 10, 8);
       const tc = new THREE.Mesh(tcGeo, darkIronMat);
+      tc.scale.set(0.95, 0.4, 0.3);
       tc.position.set(0, -2.3, 0.3);
       leg.add(tc);
       // Sole rivets
@@ -13721,20 +13802,23 @@ export class CreatureMesh {
     const crackMat = mat(0x444438);
     const dirtMat = mat(0x5a4a3a);
 
-    // --- Torso (layered sedimentary stone blocks) ---
-    // Lower torso block
-    const lowerGeo = new THREE.BoxGeometry(0.85, 0.55, 0.65);
+    // --- Torso (layered sedimentary stone) ---
+    // Lower torso — rounded stone mass
+    const lowerGeo = cyl(0.42, 0.4, 0.55, 14);
     const lower = new THREE.Mesh(lowerGeo, stoneMat);
+    lower.scale.set(1.0, 1.0, 0.77);
     lower.position.y = 1.6;
     this._body.add(lower);
-    // Middle torso block (slightly offset for natural look)
-    const midGeo = new THREE.BoxGeometry(0.9, 0.5, 0.7);
+    // Middle torso (slightly offset for natural look)
+    const midGeo = cyl(0.45, 0.43, 0.5, 14);
     const mid = new THREE.Mesh(midGeo, darkStoneMat);
+    mid.scale.set(1.0, 1.0, 0.78);
     mid.position.set(0.02, 2.1, 0);
     this._body.add(mid);
-    // Upper torso block
-    const upperGeo = new THREE.BoxGeometry(0.8, 0.45, 0.6);
+    // Upper torso
+    const upperGeo = cyl(0.4, 0.38, 0.45, 14);
     const upper = new THREE.Mesh(upperGeo, lightStoneMat);
+    upper.scale.set(1.0, 1.0, 0.75);
     upper.position.set(-0.02, 2.55, 0);
     this._body.add(upper);
 
@@ -13823,18 +13907,20 @@ export class CreatureMesh {
     // --- Head (weathered stone block with carved face) ---
     this._head.position.set(0, 2.9, 0);
     this._body.add(this._head);
-    // Main head block
-    const headGeo = new THREE.BoxGeometry(0.38, 0.32, 0.32);
+    // Main head — weathered stone
+    const headGeo = new THREE.SphereGeometry(0.2, 14, 12);
     const headMesh = new THREE.Mesh(headGeo, stoneMat);
+    headMesh.scale.set(0.95, 0.8, 0.8);
     this._head.add(headMesh);
     // Brow ridge
-    const browGeo = new THREE.BoxGeometry(0.4, 0.06, 0.1);
+    const browGeo = new THREE.SphereGeometry(0.2, 12, 8);
     const brow = new THREE.Mesh(browGeo, darkStoneMat);
+    brow.scale.set(1.0, 0.3, 0.5);
     brow.position.set(0, 0.1, 0.14);
     this._head.add(brow);
     // Eye sockets (carved recesses)
     for (const side of [-1, 1]) {
-      const sockGeo = new THREE.BoxGeometry(0.08, 0.06, 0.04);
+      const sockGeo = new THREE.SphereGeometry(0.04, 8, 6);
       const sock = new THREE.Mesh(sockGeo, crackMat);
       sock.position.set(side * 0.1, 0.02, 0.15);
       this._head.add(sock);
@@ -14183,9 +14269,10 @@ export class CreatureMesh {
     const glowMat = mat(0x6644aa, { emissive: 0x4422aa });
     const eyeMat = mat(0xaa66ff, { emissive: 0x8844dd });
 
-    // Angular torso — faceted
-    const torsoGeo = new THREE.BoxGeometry(0.8, 1.4, 0.6);
+    // Angular torso — faceted obsidian
+    const torsoGeo = new THREE.DodecahedronGeometry(0.55, 0);
     const torso = new THREE.Mesh(torsoGeo, obsidianMat);
+    torso.scale.set(0.73, 1.27, 0.55);
     torso.position.y = 2.4;
     torso.rotation.y = Math.PI / 8;
     this._body.add(torso);
@@ -14204,18 +14291,21 @@ export class CreatureMesh {
       this._body.add(s2);
     }
 
-    // Head — angular
+    // Head — angular faceted
     this._head.position.set(0, 3.3, 0);
     this._body.add(this._head);
-    const headGeo = new THREE.BoxGeometry(0.3, 0.35, 0.3);
+    const headGeo = new THREE.OctahedronGeometry(0.2, 0);
     const headMesh = new THREE.Mesh(headGeo, obsidianMat);
+    headMesh.scale.set(0.75, 0.88, 0.75);
     headMesh.rotation.y = Math.PI / 6;
     this._head.add(headMesh);
 
     // Visor glow
-    const visorGeo = new THREE.BoxGeometry(0.25, 0.06, 0.02);
+    const visorGeo = new THREE.TorusGeometry(0.12, 0.015, 6, 12, Math.PI * 0.7);
     const visor = new THREE.Mesh(visorGeo, eyeMat);
-    visor.position.set(0, 0.02, 0.16);
+    visor.position.set(0, 0.02, 0.12);
+    visor.rotation.y = Math.PI;
+    visor.rotation.z = Math.PI / 2;
     this._head.add(visor);
 
     // Arms — segmented obsidian
@@ -14223,17 +14313,18 @@ export class CreatureMesh {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       arm.position.set(side * 0.5, 2.8, 0);
       this._body.add(arm);
-      const upperGeo = new THREE.BoxGeometry(0.15, 0.7, 0.15);
+      const upperGeo = cyl(0.075, 0.065, 0.7, 6);
       const upper = new THREE.Mesh(upperGeo, obsidianMat);
       upper.position.y = -0.35;
       arm.add(upper);
-      const foreGeo = new THREE.BoxGeometry(0.13, 0.6, 0.13);
+      const foreGeo = cyl(0.065, 0.06, 0.6, 6);
       const fore = new THREE.Mesh(foreGeo, edgeMat);
       fore.position.y = -0.9;
       arm.add(fore);
-      // Blade hand
-      const bladeGeo = new THREE.BoxGeometry(0.06, 0.4, 0.15);
+      // Blade hand — angular shard
+      const bladeGeo = new THREE.TetrahedronGeometry(0.15, 0);
       const blade = new THREE.Mesh(bladeGeo, obsidianMat);
+      blade.scale.set(0.4, 1.4, 1.0);
       blade.position.y = -1.3;
       arm.add(blade);
     }
@@ -14243,11 +14334,11 @@ export class CreatureMesh {
       const leg = side === -1 ? this._leftLeg : this._rightLeg;
       leg.position.set(side * 0.25, 1.5, 0);
       this._body.add(leg);
-      const thighGeo = new THREE.BoxGeometry(0.16, 0.7, 0.16);
+      const thighGeo = cyl(0.08, 0.07, 0.7, 6);
       const thigh = new THREE.Mesh(thighGeo, obsidianMat);
       thigh.position.y = -0.35;
       leg.add(thigh);
-      const shinGeo = new THREE.BoxGeometry(0.14, 0.6, 0.14);
+      const shinGeo = cyl(0.07, 0.065, 0.6, 6);
       const shin = new THREE.Mesh(shinGeo, edgeMat);
       shin.position.y = -0.85;
       leg.add(shin);
