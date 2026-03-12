@@ -149,7 +149,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "stable", x: 750, y: 580, w: 130, h: 90, label: "Royal Stables", mode: null, type: "stable" },
   { id: "prison", x: 270, y: 560, w: 110, h: 90, label: "The Dungeon", mode: null, type: "prison" },
   { id: "forge", x: 660, y: 340, w: 100, h: 80, label: "Blacksmith's Forge", mode: null, type: "forge" },
-  { id: "observatory", x: 100, y: 280, w: 80, h: 80, label: "Observatory", mode: null, type: "tower" },
+  { id: "observatory", x: 100, y: 280, w: 80, h: 80, label: "Observatory — 3Dragon", mode: GameMode.THREE_DRAGON, type: "tower" },
   { id: "garden", x: 420, y: 340, w: 90, h: 70, label: "Royal Gardens", mode: null, type: "garden" },
   { id: "harbor", x: 1050, y: 700, w: 100, h: 80, label: "Harbor Master", mode: null, type: "harbor" },
   { id: "farm", x: 80, y: 600, w: 120, h: 90, label: "Farmstead", mode: null, type: "farm" },
@@ -841,6 +841,7 @@ export class CamelotHubScreen {
       [GameMode.ROGUELIKE]: "Roguelike",
       [GameMode.WARBAND]: "Warband",
       [GameMode.DRAGOON]: "Panzer Dragoon",
+      [GameMode.THREE_DRAGON]: "3Dragon",
     };
     return labels[mode] || mode;
   }

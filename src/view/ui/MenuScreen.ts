@@ -252,6 +252,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Panzer Dragoon: Arthur & the White Eagle",
     skipSetup: true,
   },
+  {
+    mode: GameMode.THREE_DRAGON,
+    label: "3DRAGON",
+    desc: "3D Panzer Dragoon: soar through stunning skies",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

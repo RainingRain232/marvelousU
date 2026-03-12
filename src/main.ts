@@ -124,6 +124,7 @@ import { MedievalGTA } from "./medievalgta/MedievalGTA";
 import { WarbandGame } from "./warband/WarbandGame";
 import { TekkenGame } from "./tekken/TekkenGame";
 import { DragoonGame } from "./dragoon/DragoonGame";
+import { ThreeDragonGame } from "./threedragon/ThreeDragonGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -307,6 +308,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.COLOSSEUM]: 9, [GameMode.DUEL]: 10, [GameMode.MEDIEVAL_GTA]: 11,
     [GameMode.TEKKEN]: 13,
     [GameMode.DRAGOON]: 14,
+    [GameMode.THREE_DRAGON]: 15,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -386,6 +388,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.DRAGOON) {
       menuScreen.hide();
       _bootDragoonGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.THREE_DRAGON) {
+      menuScreen.hide();
+      _bootThreeDragonGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2628,6 +2635,31 @@ async function _bootDragoonGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("dragoonExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// 3Dragon mode boot
+// ---------------------------------------------------------------------------
+
+let _threeDragonGame: ThreeDragonGame | null = null;
+
+async function _bootThreeDragonGame(): Promise<void> {
+  if (_threeDragonGame) {
+    _threeDragonGame.destroy();
+    _threeDragonGame = null;
+  }
+  viewManager.clearWorld();
+  _threeDragonGame = new ThreeDragonGame();
+  await _threeDragonGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("threeDragonExit", _onExit);
+    if (_threeDragonGame) {
+      _threeDragonGame.destroy();
+      _threeDragonGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("threeDragonExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
