@@ -664,6 +664,62 @@ export enum GameMode {
   DUEL = "duel",
   MEDIEVAL_GTA = "medieval_gta",
   WARBAND = "warband",
+  TEKKEN = "tekken",
+}
+
+// ---------------------------------------------------------------------------
+// Tekken fighter mode enums
+// ---------------------------------------------------------------------------
+
+export enum TekkenPhase {
+  MAIN_MENU = "tekken_main_menu",
+  CHAR_SELECT = "tekken_char_select",
+  INTRO = "tekken_intro",
+  FIGHTING = "tekken_fighting",
+  ROUND_END = "tekken_round_end",
+  MATCH_END = "tekken_match_end",
+}
+
+export enum TekkenFighterState {
+  IDLE = "idle",
+  WALK_FORWARD = "walk_forward",
+  WALK_BACK = "walk_back",
+  CROUCH = "crouch",
+  CROUCH_IDLE = "crouch_idle",
+  SIDESTEP_UP = "sidestep_up",
+  SIDESTEP_DOWN = "sidestep_down",
+  ATTACK = "attack",
+  BLOCK_STAND = "block_stand",
+  BLOCK_CROUCH = "block_crouch",
+  HIT_STUN_HIGH = "hit_stun_high",
+  HIT_STUN_MID = "hit_stun_mid",
+  HIT_STUN_LOW = "hit_stun_low",
+  JUGGLE = "juggle",
+  KNOCKDOWN = "knockdown",
+  GROUND_ROLL = "ground_roll",
+  GET_UP = "get_up",
+  GET_UP_ATTACK = "get_up_attack",
+  DASH_FORWARD = "dash_forward",
+  DASH_BACK = "dash_back",
+  GRAB = "grab",
+  GRABBED = "grabbed",
+  RAGE_ART = "rage_art",
+  VICTORY = "victory",
+  DEFEAT = "defeat",
+}
+
+export enum TekkenAttackHeight {
+  HIGH = "high",
+  MID = "mid",
+  LOW = "low",
+  OVERHEAD = "overhead",
+}
+
+export enum TekkenLimb {
+  LEFT_PUNCH = "left_punch",
+  RIGHT_PUNCH = "right_punch",
+  LEFT_KICK = "left_kick",
+  RIGHT_KICK = "right_kick",
 }
 
 // ---------------------------------------------------------------------------

@@ -154,6 +154,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "harbor", x: 1050, y: 700, w: 100, h: 80, label: "Harbor Master", mode: null, type: "harbor" },
   { id: "farm", x: 80, y: 600, w: 120, h: 90, label: "Farmstead", mode: null, type: "farm" },
   { id: "tourney", x: 100, y: 380, w: 150, h: 120, label: "Tournament Grounds", mode: GameMode.WARBAND, type: "training" },
+  { id: "fighting_pit", x: 130, y: 680, w: 120, h: 110, label: "The Fighting Pit", mode: GameMode.TEKKEN, type: "colosseum" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };

@@ -240,6 +240,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Mount & Blade style 3D combat",
     skipSetup: true,
   },
+  {
+    mode: GameMode.TEKKEN,
+    label: "FIGHTER",
+    desc: "Tekken-style 3D fighting game",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

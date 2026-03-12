@@ -122,6 +122,7 @@ import { ColosseumGame } from "@rpg/colosseum/ColosseumGame";
 import { DuelGame } from "./duel/DuelGame";
 import { MedievalGTA } from "./medievalgta/MedievalGTA";
 import { WarbandGame } from "./warband/WarbandGame";
+import { TekkenGame } from "./tekken/TekkenGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -303,6 +304,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.BATTLEFIELD]: 3, [GameMode.ROGUELIKE]: 4, [GameMode.WORLD]: 5,
     [GameMode.WAVE]: 6, [GameMode.RPG]: 7, [GameMode.SURVIVOR]: 8,
     [GameMode.COLOSSEUM]: 9, [GameMode.DUEL]: 10, [GameMode.MEDIEVAL_GTA]: 11,
+    [GameMode.TEKKEN]: 13,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -372,6 +374,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.WARBAND) {
       menuScreen.hide();
       _bootWarbandGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.TEKKEN) {
+      menuScreen.hide();
+      _bootTekkenGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2566,6 +2573,30 @@ async function _bootWarbandGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("warbandExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Tekken fighter mode boot
+// ---------------------------------------------------------------------------
+
+let _tekkenGame: TekkenGame | null = null;
+
+async function _bootTekkenGame(): Promise<void> {
+  if (_tekkenGame) {
+    _tekkenGame.destroy();
+    _tekkenGame = null;
+  }
+  _tekkenGame = new TekkenGame();
+  await _tekkenGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("tekkenExit", _onExit);
+    if (_tekkenGame) {
+      _tekkenGame.destroy();
+      _tekkenGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("tekkenExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
