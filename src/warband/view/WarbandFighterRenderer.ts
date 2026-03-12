@@ -2078,27 +2078,32 @@ export class FighterMesh {
 
       // Bascinet visor (defense >= 18): pointed snout visor (hounskull / pig-face)
       if (helmDef >= 18 && helmDef < 22) {
-        // Visor — angular pointed snout made from wedge-shaped plates
-        // Upper visor plate (angled forward and down)
-        const visorUpperGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.5, HEAD_RADIUS * 0.35, HEAD_RADIUS * 0.6);
+        // Visor — rounded conical snout (hounskull shape)
+        // Upper visor: half-sphere tapered forward
+        const visorUpperGeo = new THREE.SphereGeometry(
+          HEAD_RADIUS * 0.95, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.45,
+        );
         const visorUpper = new THREE.Mesh(visorUpperGeo, helmMat);
-        visorUpper.position.set(0, HEAD_RADIUS * 1.05, helmR * 0.85);
-        visorUpper.rotation.x = -0.25; // angled forward
+        visorUpper.position.set(0, HEAD_RADIUS * 1.0, HEAD_RADIUS * 0.15);
+        visorUpper.rotation.x = -1.15; // tilt forward to form snout
+        visorUpper.scale.set(1.1, 1, 1.3);
         visorUpper.castShadow = true;
         addHelm(visorUpper);
 
-        // Lower visor plate (angled forward and up — forms pointed snout)
-        const visorLowerGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.4, HEAD_RADIUS * 0.35, HEAD_RADIUS * 0.55);
+        // Lower visor: cone tapering to a pointed chin
+        const visorLowerGeo = new THREE.ConeGeometry(HEAD_RADIUS * 0.85, HEAD_RADIUS * 0.9, 10, 1, true);
         const visorLower = new THREE.Mesh(visorLowerGeo, helmMat);
-        visorLower.position.set(0, HEAD_RADIUS * 0.72, helmR * 0.82);
-        visorLower.rotation.x = 0.2; // angled up
+        visorLower.position.set(0, HEAD_RADIUS * 0.55, HEAD_RADIUS * 0.55);
+        visorLower.rotation.x = 0.5;
+        visorLower.scale.set(1.1, 0.7, 1.0);
         visorLower.castShadow = true;
         addHelm(visorLower);
 
         // Visor center ridge (runs down the snout)
-        const visorRidgeGeo = new THREE.BoxGeometry(0.008, HEAD_RADIUS * 0.7, 0.008);
+        const visorRidgeGeo = new THREE.CylinderGeometry(0.005, 0.003, HEAD_RADIUS * 0.8, 4);
         const visorRidge = new THREE.Mesh(visorRidgeGeo, helmDarkMat);
-        visorRidge.position.set(0, HEAD_RADIUS * 0.88, helmR * 1.08);
+        visorRidge.position.set(0, HEAD_RADIUS * 0.88, helmR * 1.0);
+        visorRidge.rotation.x = 0.15;
         addHelm(visorRidge);
 
         // Visor pivot rivets
@@ -2109,125 +2114,129 @@ export class FighterMesh {
           addHelm(pivot);
         }
 
-        // Eye slit (dark strip where upper and lower visor meet)
-        const slitGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.35, 0.012, 0.005);
+        // Eye slit (curved dark strip)
+        const slitGeo = new THREE.TorusGeometry(HEAD_RADIUS * 0.7, 0.006, 3, 12, Math.PI * 0.85);
         const slit = new THREE.Mesh(slitGeo, darkMat);
-        slit.position.set(0, HEAD_RADIUS * 0.9, helmR * 1.06);
+        slit.position.set(0, HEAD_RADIUS * 0.95, HEAD_RADIUS * 0.6);
+        slit.rotation.set(Math.PI / 2, 0, Math.PI * 0.075);
+        slit.scale.set(1, 1, 0.3);
         addHelm(slit);
 
-        // Breathing holes on lower visor (one side only, historically accurate)
+        // Breathing holes on lower visor
         for (let row = 0; row < 3; row++) {
           for (let i = 0; i < 4; i++) {
             const holeGeo = new THREE.CircleGeometry(0.003, 4);
             const hole = new THREE.Mesh(holeGeo, darkMat);
             hole.position.set(
               HEAD_RADIUS * 0.15 + i * 0.015,
-              HEAD_RADIUS * 0.72 - row * 0.016,
-              helmR * 1.02,
+              HEAD_RADIUS * 0.68 - row * 0.016,
+              helmR * 0.98,
             );
             addHelm(hole);
           }
         }
       }
 
-      // Great helm (defense >= 22): cylindrical/barrel with flat top
+      // Great helm (defense >= 22): cylindrical barrel with rounded top
       if (helmDef >= 22) {
-        // Great helm is a barrel shape — cylindrical sides, not a dome
-        // Front face plate (flat, covers entire face)
-        const facePlateGeo = new THREE.BoxGeometry(HEAD_RADIUS * 2.0, HEAD_RADIUS * 1.4, 0.018);
-        const facePlate = new THREE.Mesh(facePlateGeo, helmMat);
-        facePlate.position.set(0, HEAD_RADIUS * 0.75, helmR * 0.92);
-        facePlate.castShadow = true;
-        addHelm(facePlate);
+        // Great helm — cylindrical barrel enclosing the entire head
+        // Main barrel cylinder (front half visible, back covered by skull)
+        const barrelGeo = new THREE.CylinderGeometry(
+          HEAD_RADIUS * 1.12, HEAD_RADIUS * 1.15, HEAD_RADIUS * 1.5, 12, 1, false,
+        );
+        const barrel = new THREE.Mesh(barrelGeo, helmMat);
+        barrel.position.set(0, HEAD_RADIUS * 0.75, HEAD_RADIUS * 0.05);
+        barrel.scale.set(1, 1, 0.95);
+        barrel.castShadow = true;
+        addHelm(barrel);
 
-        // Side plates (extend face plate around the sides, forming barrel)
-        for (const side of [-1, 1]) {
-          const sidePlateGeo = new THREE.BoxGeometry(0.018, HEAD_RADIUS * 1.4, HEAD_RADIUS * 1.2);
-          const sidePlate = new THREE.Mesh(sidePlateGeo, helmMat);
-          sidePlate.position.set(side * HEAD_RADIUS * 1.08, HEAD_RADIUS * 0.75, HEAD_RADIUS * 0.25);
-          sidePlate.castShadow = true;
-          addHelm(sidePlate);
+        // Rounded top cap (slightly domed, not flat)
+        const topCapGeo = new THREE.SphereGeometry(
+          HEAD_RADIUS * 1.12, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.35,
+        );
+        const topCap = new THREE.Mesh(topCapGeo, helmMat);
+        topCap.position.set(0, HEAD_RADIUS * 1.48, HEAD_RADIUS * 0.05);
+        topCap.scale.set(1, 0.5, 0.95);
+        topCap.castShadow = true;
+        addHelm(topCap);
+
+        // Vertical reinforcement ribs (evenly spaced around barrel)
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const ribGeo = new THREE.CylinderGeometry(0.005, 0.005, HEAD_RADIUS * 1.55, 3);
+          const rib = new THREE.Mesh(ribGeo, helmDarkMat);
+          rib.position.set(
+            Math.sin(angle) * HEAD_RADIUS * 1.13,
+            HEAD_RADIUS * 0.75,
+            Math.cos(angle) * HEAD_RADIUS * 1.07 + HEAD_RADIUS * 0.05,
+          );
+          addHelm(rib);
         }
 
-        // Face plate vertical reinforcement bars
-        for (const side of [-1, 1]) {
-          const barGeo = new THREE.BoxGeometry(0.008, HEAD_RADIUS * 1.3, 0.008);
-          const bar = new THREE.Mesh(barGeo, helmDarkMat);
-          bar.position.set(side * HEAD_RADIUS * 0.55, HEAD_RADIUS * 0.75, helmR * 0.935);
-          addHelm(bar);
+        // Horizontal banding (two bands around barrel)
+        for (const bandY of [HEAD_RADIUS * 0.4, HEAD_RADIUS * 1.15]) {
+          const bandGeo = new THREE.TorusGeometry(HEAD_RADIUS * 1.13, 0.006, 4, 12);
+          const band = new THREE.Mesh(bandGeo, helmDarkMat);
+          band.position.set(0, bandY, HEAD_RADIUS * 0.05);
+          band.rotation.x = Math.PI / 2;
+          band.scale.set(1, 0.95, 1);
+          addHelm(band);
         }
 
-        // Cross-shaped reinforcement on face plate
-        const crossVGeo = new THREE.BoxGeometry(0.008, HEAD_RADIUS * 0.7, 0.008);
-        const crossV = new THREE.Mesh(crossVGeo, helmDarkMat);
-        crossV.position.set(0, HEAD_RADIUS * 0.85, helmR * 0.935);
-        addHelm(crossV);
-
-        // Horizontal reinforcement across face
-        const crossHGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.8, 0.008, 0.008);
-        const crossH = new THREE.Mesh(crossHGeo, helmDarkMat);
-        crossH.position.set(0, HEAD_RADIUS * 0.75, helmR * 0.935);
-        addHelm(crossH);
-
-        // Eye slit (horizontal dark strip)
-        const slitGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.7, 0.018, 0.005);
+        // Eye slit (horizontal dark strip on front)
+        const slitGeo = new THREE.TorusGeometry(HEAD_RADIUS * 1.14, 0.009, 3, 10, Math.PI * 0.65);
         const slit = new THREE.Mesh(slitGeo, darkMat);
-        slit.position.set(0, HEAD_RADIUS * 1.02, helmR * 0.94);
+        slit.position.set(0, HEAD_RADIUS * 1.0, HEAD_RADIUS * 0.05);
+        slit.rotation.set(Math.PI / 2, 0, -Math.PI * 0.325);
+        slit.scale.set(1, 0.95, 1);
         addHelm(slit);
 
-        // Breathing holes (clustered on right side, historically accurate)
+        // Breathing holes (clustered below eye slit on right side)
         for (let row = 0; row < 3; row++) {
           for (let col = 0; col < 5; col++) {
-            const holeGeo = new THREE.CircleGeometry(0.003, 4);
+            const holeGeo = new THREE.CircleGeometry(0.004, 4);
             const hole = new THREE.Mesh(holeGeo, darkMat);
+            const angle = (col - 2) * 0.08 + 0.12;
             hole.position.set(
-              HEAD_RADIUS * 0.1 + col * 0.014,
-              HEAD_RADIUS * 0.72 - row * 0.018,
-              helmR * 0.94,
+              Math.sin(angle) * helmR * 1.02,
+              HEAD_RADIUS * 0.72 - row * 0.02,
+              Math.cos(angle) * helmR * 0.97,
             );
+            hole.lookAt(0, HEAD_RADIUS * 0.72 - row * 0.02, 0);
             addHelm(hole);
           }
         }
 
-        // Great helm flat top plate (flat, not domed)
-        const topGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.8, 0.018, HEAD_RADIUS * 1.8);
-        const top = new THREE.Mesh(topGeo, helmMat);
-        top.position.set(0, HEAD_RADIUS * 1.44, HEAD_RADIUS * 0.15);
-        top.castShadow = true;
-        addHelm(top);
+        // Cross reinforcement on face (raised ridges on the cylinder surface)
+        const crossVGeo = new THREE.CylinderGeometry(0.005, 0.005, HEAD_RADIUS * 0.8, 3);
+        const crossV = new THREE.Mesh(crossVGeo, helmDarkMat);
+        crossV.position.set(0, HEAD_RADIUS * 0.85, helmR * 1.05);
+        addHelm(crossV);
 
-        // Top plate cross reinforcement
-        for (let a = 0; a < 2; a++) {
-          const topBarGeo = new THREE.BoxGeometry(
-            a === 0 ? HEAD_RADIUS * 1.6 : 0.008,
-            0.01,
-            a === 0 ? 0.008 : HEAD_RADIUS * 1.6,
+        // Rivets along top edge
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          const rivGeo = new THREE.SphereGeometry(0.005, 4, 4);
+          const riv = new THREE.Mesh(rivGeo, rivetMat);
+          riv.position.set(
+            Math.sin(angle) * HEAD_RADIUS * 1.08,
+            HEAD_RADIUS * 1.48,
+            Math.cos(angle) * HEAD_RADIUS * 1.03 + HEAD_RADIUS * 0.05,
           );
-          const topBar = new THREE.Mesh(topBarGeo, helmDarkMat);
-          topBar.position.set(0, HEAD_RADIUS * 1.45, HEAD_RADIUS * 0.15);
-          addHelm(topBar);
+          addHelm(riv);
         }
 
-        // Corner rivets on top plate
-        for (const sx of [-1, 1]) {
-          for (const sz of [-1, 1]) {
-            const cRivGeo = new THREE.SphereGeometry(0.005, 4, 4);
-            const cRiv = new THREE.Mesh(cRivGeo, rivetMat);
-            cRiv.position.set(sx * HEAD_RADIUS * 0.65, HEAD_RADIUS * 1.46, HEAD_RADIUS * 0.15 + sz * HEAD_RADIUS * 0.65);
-            addHelm(cRiv);
-          }
-        }
-
-        // Edge rivets along front face plate
-        for (let i = 0; i < 5; i++) {
-          const frGeo = new THREE.SphereGeometry(0.005, 4, 4);
-          const fr = new THREE.Mesh(frGeo, rivetMat);
-          fr.position.set(
-            HEAD_RADIUS * 0.85,
-            HEAD_RADIUS * 0.2 + i * 0.08,
-            helmR * 0.935,
+        // Rivets along bottom edge
+        for (let i = 0; i < 10; i++) {
+          const angle = (i / 10) * Math.PI * 2;
+          const rivGeo = new THREE.SphereGeometry(0.005, 4, 4);
+          const riv = new THREE.Mesh(rivGeo, rivetMat);
+          riv.position.set(
+            Math.sin(angle) * HEAD_RADIUS * 1.14,
+            HEAD_RADIUS * 0.02,
+            Math.cos(angle) * HEAD_RADIUS * 1.08 + HEAD_RADIUS * 0.05,
           );
-          addHelm(fr);
+          addHelm(riv);
         }
       }
     }
