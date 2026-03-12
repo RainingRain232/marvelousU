@@ -72,6 +72,8 @@ export class TekkenGame {
   // Pause menu
   private _pauseKeyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _pauseContainer: Container | null = null;
+  private _pauseSelection = 0;
+  private _pauseSubScreen: "main" | "controls" = "main";
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -737,11 +739,51 @@ export class TekkenGame {
 
     // Pause key handler
     this._pauseKeyHandler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && this._state) {
-        if (this._pauseContainer) {
-          this._hidePauseMenu();
-        } else {
+      if (!this._state) return;
+      if (e.key === "Escape") {
+        if (!this._pauseContainer) {
+          this._pauseSelection = 0;
+          this._pauseSubScreen = "main";
           this._showPauseMenu();
+        } else if (this._pauseSubScreen === "controls") {
+          this._pauseSubScreen = "main";
+          this._refreshPauseMenu();
+        } else {
+          this._hidePauseMenu();
+        }
+        return;
+      }
+      if (!this._pauseContainer) return;
+      if (this._pauseSubScreen === "controls") {
+        // Any key goes back to main pause
+        if (e.key === "Enter" || e.key === "Backspace") {
+          this._pauseSubScreen = "main";
+          this._refreshPauseMenu();
+        }
+        return;
+      }
+      const menuItems = 3; // Controls, Pick Fighter, Return to Menu
+      if (e.key === "ArrowUp") {
+        this._pauseSelection = (this._pauseSelection - 1 + menuItems) % menuItems;
+        this._refreshPauseMenu();
+      } else if (e.key === "ArrowDown") {
+        this._pauseSelection = (this._pauseSelection + 1) % menuItems;
+        this._refreshPauseMenu();
+      } else if (e.key === "Enter") {
+        if (this._pauseSelection === 0) {
+          // Controls
+          this._pauseSubScreen = "controls";
+          this._refreshPauseMenu();
+        } else if (this._pauseSelection === 1) {
+          // Pick Fighter
+          this._hidePauseMenu();
+          this.destroy();
+          this._showCharSelect();
+        } else if (this._pauseSelection === 2) {
+          // Return to Menu
+          this._hidePauseMenu();
+          this.destroy();
+          window.dispatchEvent(new Event("tekkenExit"));
         }
       }
     };
@@ -1168,7 +1210,19 @@ export class TekkenGame {
   private _showPauseMenu(): void {
     if (!this._state || this._pauseContainer) return;
     this._state.isPaused = true;
+    this._buildPauseUI();
+  }
 
+  private _refreshPauseMenu(): void {
+    if (this._pauseContainer) {
+      viewManager.removeFromLayer("ui", this._pauseContainer);
+      this._pauseContainer.destroy({ children: true });
+      this._pauseContainer = null;
+    }
+    this._buildPauseUI();
+  }
+
+  private _buildPauseUI(): void {
     const sw = viewManager.app.screen.width;
     const sh = viewManager.app.screen.height;
     const container = new Container();
@@ -1178,9 +1232,19 @@ export class TekkenGame {
     bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.7 });
     container.addChild(bg);
 
-    // Panel
-    const panelW = 420;
-    const panelH = 460;
+    if (this._pauseSubScreen === "controls") {
+      this._buildControlsScreen(container, sw, sh);
+    } else {
+      this._buildPauseMainScreen(container, sw, sh);
+    }
+
+    this._pauseContainer = container;
+    viewManager.addToLayer("ui", container);
+  }
+
+  private _buildPauseMainScreen(container: Container, sw: number, sh: number): void {
+    const panelW = 320;
+    const panelH = 260;
     const px = (sw - panelW) / 2;
     const py = (sh - panelH) / 2;
     const panel = new Graphics();
@@ -1195,58 +1259,134 @@ export class TekkenGame {
     });
     title.anchor.set(0.5, 0);
     title.x = sw / 2;
-    title.y = py + 18;
+    title.y = py + 20;
     container.addChild(title);
 
-    // Controls list
-    const controls = [
-      ["MOVEMENT", ""],
-      ["Arrow Keys", "Move / Crouch / Jump"],
-      ["", ""],
-      ["ATTACKS", ""],
-      ["U", "Left Punch"],
-      ["I", "Right Punch"],
-      ["J", "Left Kick"],
-      ["K", "Right Kick"],
-      ["O", "Rage Art (when rage active)"],
-      ["", ""],
-      ["GENERAL", ""],
-      ["Escape", "Pause / Resume"],
-      ["", ""],
+    // Menu items
+    const items = ["Controls", "Pick Fighter", "Return to Menu"];
+    const itemStartY = py + 80;
+    const itemSpacing = 48;
+
+    for (let i = 0; i < items.length; i++) {
+      const selected = i === this._pauseSelection;
+      const iy = itemStartY + i * itemSpacing;
+
+      if (selected) {
+        const selBg = new Graphics();
+        selBg.roundRect(px + 20, iy - 6, panelW - 40, 36, 4).fill({ color: 0xdaa520, alpha: 0.15 });
+        selBg.roundRect(px + 20, iy - 6, panelW - 40, 36, 4).stroke({ color: 0xdaa520, width: 1, alpha: 0.5 });
+        container.addChild(selBg);
+
+        // Arrow indicator
+        const arrow = new Text({
+          text: "\u25B6",
+          style: { fontFamily: "Georgia, serif", fontSize: 16, fill: 0xdaa520 },
+        });
+        arrow.x = px + 30;
+        arrow.y = iy + 2;
+        container.addChild(arrow);
+      }
+
+      const label = new Text({
+        text: items[i],
+        style: {
+          fontFamily: "Georgia, serif",
+          fontSize: 20,
+          fill: selected ? 0xffffff : 0x888888,
+          fontWeight: selected ? "bold" : "normal",
+          letterSpacing: 1,
+        },
+      });
+      label.anchor.set(0.5, 0);
+      label.x = sw / 2;
+      label.y = iy;
+      container.addChild(label);
+    }
+
+    // Navigation hint
+    const hint = new Text({
+      text: "\u2191\u2193 Navigate    Enter Select    Esc Resume",
+      style: { fontFamily: "Georgia, serif", fontSize: 12, fill: 0x666666, letterSpacing: 1 },
+    });
+    hint.anchor.set(0.5, 0);
+    hint.x = sw / 2;
+    hint.y = py + panelH - 30;
+    container.addChild(hint);
+  }
+
+  private _buildControlsScreen(container: Container, sw: number, sh: number): void {
+    const panelW = 440;
+    const panelH = 480;
+    const px = (sw - panelW) / 2;
+    const py = (sh - panelH) / 2;
+    const panel = new Graphics();
+    panel.roundRect(px, py, panelW, panelH, 8).fill({ color: 0x1a1a2e, alpha: 0.95 });
+    panel.roundRect(px, py, panelW, panelH, 8).stroke({ color: 0xdaa520, width: 2 });
+    container.addChild(panel);
+
+    // Title
+    const title = new Text({
+      text: "CONTROLS",
+      style: { fontFamily: "Georgia, serif", fontSize: 28, fill: 0xdaa520, fontWeight: "bold", letterSpacing: 3 },
+    });
+    title.anchor.set(0.5, 0);
+    title.x = sw / 2;
+    title.y = py + 16;
+    container.addChild(title);
+
+    const controls: [string, string, boolean][] = [
+      ["MOVEMENT", "", true],
+      ["Arrow Keys", "Move / Crouch / Jump", false],
+      ["", "", false],
+      ["ATTACKS", "", true],
+      ["U", "Left Punch (LP)", false],
+      ["I", "Right Punch (RP)", false],
+      ["J", "Left Kick (LK)", false],
+      ["K", "Right Kick (RK)", false],
+      ["O", "Rage Art (when rage active)", false],
+      ["", "", false],
+      ["COMMANDS", "", true],
+      ["\u2192 + LP", "Forward Punch", false],
+      ["\u2193\u2198 + RP", "Uppercut Launcher (d/f+2)", false],
+      ["\u2191\u2197 + LK", "Hop Kick (u/f+3)", false],
+      ["\u2193\u2198 + RK", "Mid Kick (d/f+4)", false],
+      ["", "", false],
+      ["GENERAL", "", true],
+      ["Escape", "Pause / Resume", false],
     ];
 
-    if (this._state.gameMode === "training") {
+    if (this._state?.gameMode === "training") {
       controls.push(
-        ["TRAINING MODE", ""],
-        ["H", "Toggle Hitboxes"],
-        ["A", "Toggle AI"],
-        ["R", "Reset Positions / HP"],
+        ["", "", false],
+        ["TRAINING", "", true],
+        ["H", "Toggle Hitboxes", false],
+        ["A", "Toggle AI", false],
+        ["R", "Reset Positions / HP", false],
       );
     }
 
-    let cy = py + 60;
-    for (const [key, desc] of controls) {
+    let cy = py + 54;
+    for (const [key, desc, isHeader] of controls) {
       if (key === "" && desc === "") {
         cy += 6;
         continue;
       }
-      if (desc === "") {
-        // Section header
+      if (isHeader) {
         const header = new Text({
           text: key,
-          style: { fontFamily: "Georgia, serif", fontSize: 14, fill: 0xdaa520, fontWeight: "bold", letterSpacing: 2 },
+          style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0xdaa520, fontWeight: "bold", letterSpacing: 2 },
         });
         header.x = px + 24;
         header.y = cy;
         container.addChild(header);
-        cy += 22;
+        cy += 20;
         continue;
       }
       const keyText = new Text({
         text: key,
         style: { fontFamily: "monospace", fontSize: 13, fill: 0xffffff, fontWeight: "bold" },
       });
-      keyText.x = px + 30;
+      keyText.x = px + 32;
       keyText.y = cy;
       container.addChild(keyText);
 
@@ -1254,24 +1394,21 @@ export class TekkenGame {
         text: desc,
         style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0xcccccc },
       });
-      descText.x = px + 160;
+      descText.x = px + 180;
       descText.y = cy;
       container.addChild(descText);
-      cy += 20;
+      cy += 19;
     }
 
-    // Resume hint
+    // Back hint
     const hint = new Text({
-      text: "Press ESC to resume",
-      style: { fontFamily: "Georgia, serif", fontSize: 14, fill: 0x999999, fontStyle: "italic" },
+      text: "Esc / Enter  Back",
+      style: { fontFamily: "Georgia, serif", fontSize: 12, fill: 0x666666, letterSpacing: 1 },
     });
     hint.anchor.set(0.5, 0);
     hint.x = sw / 2;
-    hint.y = py + panelH - 32;
+    hint.y = py + panelH - 28;
     container.addChild(hint);
-
-    this._pauseContainer = container;
-    viewManager.addToLayer("ui", container);
   }
 
   private _hidePauseMenu(): void {
