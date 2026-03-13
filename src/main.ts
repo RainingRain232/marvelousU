@@ -125,6 +125,7 @@ import { WarbandGame } from "./warband/WarbandGame";
 import { TekkenGame } from "./tekken/TekkenGame";
 import { DragoonGame } from "./dragoon/DragoonGame";
 import { ThreeDragonGame } from "./threedragon/ThreeDragonGame";
+import { MedievalGTA3DGame } from "./medievalgta3d/MedievalGTA3DGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -309,6 +310,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.TEKKEN]: 13,
     [GameMode.DRAGOON]: 14,
     [GameMode.THREE_DRAGON]: 15,
+    [GameMode.MEDIEVAL_GTA_3D]: 16,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -393,6 +395,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.THREE_DRAGON) {
       menuScreen.hide();
       _bootThreeDragonGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.MEDIEVAL_GTA_3D) {
+      menuScreen.hide();
+      _bootMedievalGTA3D();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2561,6 +2568,32 @@ async function _bootMedievalGTA(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("medievalGTAExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Medieval GTA 3D mode boot
+// ---------------------------------------------------------------------------
+
+let _medievalGTA3D: MedievalGTA3DGame | null = null;
+
+async function _bootMedievalGTA3D(): Promise<void> {
+  if (_medievalGTA3D) {
+    _medievalGTA3D.destroy();
+    _medievalGTA3D = null;
+  }
+
+  _medievalGTA3D = new MedievalGTA3DGame();
+  await _medievalGTA3D.boot();
+
+  const _onExit = () => {
+    window.removeEventListener("medievalGTA3DExit", _onExit);
+    if (_medievalGTA3D) {
+      _medievalGTA3D.destroy();
+      _medievalGTA3D = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("medievalGTA3DExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

@@ -258,6 +258,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "3D Panzer Dragoon: soar through stunning skies",
     skipSetup: true,
   },
+  {
+    mode: GameMode.MEDIEVAL_GTA_3D,
+    label: "GTA 3D",
+    desc: "3D Medieval GTA: steal horses in Camelot",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
