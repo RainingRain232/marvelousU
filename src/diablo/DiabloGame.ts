@@ -55,6 +55,8 @@ const MAP_KILL_TARGET: Record<DiabloMapId, number> = {
   [DiabloMapId.VOLCANIC_WASTES]: 70,
   [DiabloMapId.ABYSSAL_RIFT]: 80,
   [DiabloMapId.DRAGONS_SANCTUM]: 100,
+  [DiabloMapId.SUNSCORCH_DESERT]: 35,
+  [DiabloMapId.EMERALD_GRASSLANDS]: 30,
   [DiabloMapId.CAMELOT]: 0,
 };
 
@@ -68,6 +70,8 @@ const BOSS_NAMES: Record<DiabloMapId, string[]> = {
   [DiabloMapId.VOLCANIC_WASTES]: ["Ignis the Unquenched", "Emberlord Pyraxis", "Magma King Volrath"],
   [DiabloMapId.ABYSSAL_RIFT]: ["Xal'thuun the Void Maw", "Entropy Incarnate", "Riftlord Nihilus"],
   [DiabloMapId.DRAGONS_SANCTUM]: ["Vyrathion the Ancient", "Drakemaw the Endless", "Scorchfather Pyranax"],
+  [DiabloMapId.SUNSCORCH_DESERT]: ["Sandclaw the Burrower", "Dune Reaver Kassim", "Mirage Serpent"],
+  [DiabloMapId.EMERALD_GRASSLANDS]: ["Thunderhoof the Wild", "Warchief Garon", "Skytalon the Fierce"],
   [DiabloMapId.CAMELOT]: [],
 };
 
@@ -78,6 +82,8 @@ const NIGHT_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
   [DiabloMapId.VOLCANIC_WASTES]: EnemyType.NIGHT_VOLCANIC_INFERNO_TITAN,
   [DiabloMapId.ABYSSAL_RIFT]: EnemyType.NIGHT_RIFT_VOID_EMPEROR,
   [DiabloMapId.DRAGONS_SANCTUM]: EnemyType.NIGHT_DRAGON_SHADOW_WYRM,
+  [DiabloMapId.SUNSCORCH_DESERT]: EnemyType.NIGHT_DESERT_SANDSTORM_DJINN,
+  [DiabloMapId.EMERALD_GRASSLANDS]: EnemyType.NIGHT_GRASSLAND_STAMPEDE_KING,
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -547,6 +553,20 @@ export class DiabloGame {
         desc: "The great citadel. Visit merchants, manage your gear, and prepare for adventure.",
         difficulty: "Safe Zone",
         isSafe: true,
+      },
+      {
+        id: DiabloMapId.SUNSCORCH_DESERT,
+        icon: "\uD83C\uDFDC\uFE0F",
+        name: "Sunscorch Desert",
+        desc: "Sun-blasted dunes and ancient ruins half-buried in sand. Scorpions and bandits prey on travelers.",
+        difficulty: "\u2B50",
+      },
+      {
+        id: DiabloMapId.EMERALD_GRASSLANDS,
+        icon: "\uD83C\uDF3F",
+        name: "Emerald Grasslands",
+        desc: "Rolling green hills dotted with wildflowers. Raiders and wild beasts roam the open plains.",
+        difficulty: "\u2B50",
       },
       {
         id: DiabloMapId.FOREST,
@@ -3209,6 +3229,13 @@ export class DiabloGame {
 
     this._state.enemies.push(enemy);
     this._state.totalEnemiesSpawned++;
+
+    // Announce the night boss spawn
+    const px = this._state.player.x;
+    const py = this._state.player.y;
+    const pz = this._state.player.z;
+    this._addFloatingText(px, py + 4, pz, `${def.name} has awoken!`, "#ff44ff");
+    this._addFloatingText(px, py + 3, pz, "A creature of the night stalks this land...", "#cc88ff");
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -3780,9 +3807,10 @@ export class DiabloGame {
       }
     } else {
       // Combat maps: draw enemies, loot, chests
-      // Enemies
+      // Enemies (night bosses are hidden from minimap)
       for (const enemy of this._state.enemies) {
         if (enemy.state === EnemyState.DEAD) continue;
+        if (enemy.type && (enemy.type as string).startsWith("NIGHT_")) continue;
         const mx = toMx(enemy.x);
         const my = toMy(enemy.z);
         ctx.fillStyle = "#ff3333";

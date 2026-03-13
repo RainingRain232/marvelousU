@@ -141,6 +141,12 @@ export class DiabloRenderer {
       case DiabloMapId.DRAGONS_SANCTUM:
         this._buildDragonsSanctum(cfg.width, cfg.depth);
         break;
+      case DiabloMapId.SUNSCORCH_DESERT:
+        this._buildSunscorchDesert(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.EMERALD_GRASSLANDS:
+        this._buildEmeraldGrasslands(cfg.width, cfg.depth);
+        break;
       case DiabloMapId.CAMELOT:
         this._buildCamelot(cfg.width, cfg.depth);
         break;
@@ -8005,6 +8011,598 @@ export class DiabloRenderer {
     return null;
   }
 
+  // ────────────────────────────────────────────────────────────────────────
+  //  SUNSCORCH DESERT
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildSunscorchDesert(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0xddcc99, 0.008);
+    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0xccaa66);
+    this._dirLight.color.setHex(0xffeebb);
+    this._dirLight.intensity = 1.8;
+    this._ambientLight.color.setHex(0x665533);
+    this._ambientLight.intensity = 0.7;
+    this._hemiLight.color.setHex(0xeedd99);
+    this._hemiLight.groundColor.setHex(0x886644);
+    const hw = w / 2, hd = d / 2;
+
+    const sandMat = new THREE.MeshStandardMaterial({ color: 0xd4b87a, roughness: 0.95 });
+    const darkSandMat = new THREE.MeshStandardMaterial({ color: 0xb89960, roughness: 0.9 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.85 });
+    const ruinMat = new THREE.MeshStandardMaterial({ color: 0xaa9970, roughness: 0.8 });
+    const cactusMat = new THREE.MeshStandardMaterial({ color: 0x447733, roughness: 0.7 });
+    const cactusFlowerMat = new THREE.MeshStandardMaterial({ color: 0xff5577, roughness: 0.5 });
+    const oasisWaterMat = new THREE.MeshStandardMaterial({ color: 0x3399cc, roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.7 });
+    const palmTrunkMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 });
+    const palmLeafMat = new THREE.MeshStandardMaterial({ color: 0x339922, roughness: 0.6, side: THREE.DoubleSide });
+    const boneMat = new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.7 });
+    const flagMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6, side: THREE.DoubleSide });
+    const tentMat = new THREE.MeshStandardMaterial({ color: 0xaa7744, roughness: 0.8, side: THREE.DoubleSide });
+
+    // ── Sand dunes (rolling hills of various sizes) ──
+    for (let i = 0; i < 35; i++) {
+      const sx = 8 + Math.random() * 20;
+      const sy = 2 + Math.random() * 5;
+      const sz = 8 + Math.random() * 20;
+      const geo = new THREE.SphereGeometry(1, 12, 8);
+      geo.scale(sx, sy, sz);
+      const dune = new THREE.Mesh(geo, i % 3 === 0 ? darkSandMat : sandMat);
+      dune.position.set(
+        (Math.random() - 0.5) * w * 0.9,
+        sy * 0.3,
+        (Math.random() - 0.5) * d * 0.9,
+      );
+      this._scene.add(dune);
+    }
+
+    // ── Cacti scattered around ──
+    for (let i = 0; i < 40; i++) {
+      const cactus = new THREE.Group();
+      const h = 1.5 + Math.random() * 3;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, h, 6), cactusMat);
+      trunk.position.y = h / 2;
+      cactus.add(trunk);
+      // Arms
+      if (Math.random() > 0.4) {
+        const armH = 0.8 + Math.random() * 1.2;
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, armH, 5), cactusMat);
+        arm.position.set(0.4, h * 0.5 + armH * 0.3, 0);
+        arm.rotation.z = -0.6;
+        cactus.add(arm);
+        const armUp = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, armH * 0.7, 5), cactusMat);
+        armUp.position.set(0.65, h * 0.5 + armH * 0.6, 0);
+        cactus.add(armUp);
+      }
+      if (Math.random() > 0.5) {
+        const armH = 0.6 + Math.random();
+        const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, armH, 5), cactusMat);
+        arm2.position.set(-0.35, h * 0.4, 0);
+        arm2.rotation.z = 0.7;
+        cactus.add(arm2);
+      }
+      // Flower on top
+      if (Math.random() > 0.6) {
+        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 6), cactusFlowerMat);
+        flower.position.y = h + 0.1;
+        cactus.add(flower);
+      }
+      cactus.position.set(
+        (Math.random() - 0.5) * w * 0.85,
+        0,
+        (Math.random() - 0.5) * d * 0.85,
+      );
+      this._scene.add(cactus);
+    }
+
+    // ── Ancient ruins (broken pillars, walls, arches) ──
+    for (let i = 0; i < 8; i++) {
+      const ruin = new THREE.Group();
+      const cx = (Math.random() - 0.5) * w * 0.7;
+      const cz = (Math.random() - 0.5) * d * 0.7;
+      // Broken pillars
+      const pillarCount = 3 + Math.floor(Math.random() * 5);
+      for (let p = 0; p < pillarCount; p++) {
+        const ph = 2 + Math.random() * 4;
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, ph, 8), ruinMat);
+        pillar.position.set(
+          (Math.random() - 0.5) * 8,
+          ph / 2,
+          (Math.random() - 0.5) * 8,
+        );
+        pillar.rotation.x = (Math.random() - 0.5) * 0.15;
+        pillar.rotation.z = (Math.random() - 0.5) * 0.15;
+        ruin.add(pillar);
+        // Broken top cap
+        if (Math.random() > 0.5) {
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 0.3, 8), ruinMat);
+          cap.position.set(pillar.position.x, ph + 0.15, pillar.position.z);
+          ruin.add(cap);
+        }
+      }
+      // Stone slabs on ground
+      for (let s = 0; s < 4; s++) {
+        const slab = new THREE.Mesh(
+          new THREE.BoxGeometry(1 + Math.random() * 2, 0.3, 1 + Math.random() * 2),
+          stoneMat,
+        );
+        slab.position.set(
+          (Math.random() - 0.5) * 10,
+          0.15,
+          (Math.random() - 0.5) * 10,
+        );
+        slab.rotation.y = Math.random() * Math.PI;
+        ruin.add(slab);
+      }
+      // Arch (sometimes)
+      if (Math.random() > 0.5) {
+        const archL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 5, 0.6), ruinMat);
+        archL.position.set(-2, 2.5, 0);
+        ruin.add(archL);
+        const archR = new THREE.Mesh(new THREE.BoxGeometry(0.6, 5, 0.6), ruinMat);
+        archR.position.set(2, 2.5, 0);
+        ruin.add(archR);
+        const archTop = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.6, 0.8), ruinMat);
+        archTop.position.set(0, 5.3, 0);
+        ruin.add(archTop);
+      }
+      ruin.position.set(cx, 0, cz);
+      this._scene.add(ruin);
+    }
+
+    // ── Oasis (water pool with palm trees) ──
+    const oasisX = -hw * 0.3, oasisZ = -hd * 0.3;
+    const oasisPool = new THREE.Mesh(new THREE.CircleGeometry(8, 24), oasisWaterMat);
+    oasisPool.rotation.x = -Math.PI / 2;
+    oasisPool.position.set(oasisX, 0.05, oasisZ);
+    this._scene.add(oasisPool);
+    // Green ring around oasis
+    const grassRing = new THREE.Mesh(
+      new THREE.RingGeometry(7, 10, 24),
+      new THREE.MeshStandardMaterial({ color: 0x558833, roughness: 0.8 }),
+    );
+    grassRing.rotation.x = -Math.PI / 2;
+    grassRing.position.set(oasisX, 0.02, oasisZ);
+    this._scene.add(grassRing);
+    // Palm trees around oasis
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const palm = new THREE.Group();
+      const trunkH = 4 + Math.random() * 3;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, trunkH, 6), palmTrunkMat);
+      trunk.position.y = trunkH / 2;
+      trunk.rotation.x = (Math.random() - 0.5) * 0.2;
+      trunk.rotation.z = (Math.random() - 0.5) * 0.2;
+      palm.add(trunk);
+      // Leaves (flat planes angled outward)
+      for (let l = 0; l < 6; l++) {
+        const leafAngle = (l / 6) * Math.PI * 2;
+        const leaf = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.6), palmLeafMat);
+        leaf.position.set(Math.cos(leafAngle) * 1.0, trunkH + 0.2, Math.sin(leafAngle) * 1.0);
+        leaf.rotation.x = -0.5;
+        leaf.rotation.y = leafAngle;
+        palm.add(leaf);
+      }
+      // Coconuts
+      if (Math.random() > 0.5) {
+        const coconut = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), new THREE.MeshStandardMaterial({ color: 0x885522 }));
+        coconut.position.y = trunkH - 0.2;
+        palm.add(coconut);
+      }
+      palm.position.set(
+        oasisX + Math.cos(angle) * (8 + Math.random() * 2),
+        0,
+        oasisZ + Math.sin(angle) * (8 + Math.random() * 2),
+      );
+      this._scene.add(palm);
+    }
+
+    // ── Bones and skulls (scattered) ──
+    for (let i = 0; i < 25; i++) {
+      const bone = new THREE.Group();
+      const boneLen = 0.5 + Math.random() * 1.5;
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, boneLen, 4), boneMat);
+      shaft.rotation.z = Math.PI / 2;
+      shaft.position.y = 0.1;
+      bone.add(shaft);
+      const end1 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 4), boneMat);
+      end1.position.set(boneLen / 2, 0.1, 0);
+      bone.add(end1);
+      const end2 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 4), boneMat);
+      end2.position.set(-boneLen / 2, 0.1, 0);
+      bone.add(end2);
+      bone.position.set(
+        (Math.random() - 0.5) * w * 0.8,
+        0,
+        (Math.random() - 0.5) * d * 0.8,
+      );
+      bone.rotation.y = Math.random() * Math.PI;
+      this._scene.add(bone);
+    }
+    // Skulls
+    for (let i = 0; i < 12; i++) {
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 6), boneMat);
+      skull.scale.set(1, 0.8, 1.1);
+      skull.position.set(
+        (Math.random() - 0.5) * w * 0.8,
+        0.15,
+        (Math.random() - 0.5) * d * 0.8,
+      );
+      this._scene.add(skull);
+    }
+
+    // ── Bandit camp (tents, fire pit, flags) ──
+    const campX = hw * 0.35, campZ = hd * 0.3;
+    // Tents
+    for (let t = 0; t < 3; t++) {
+      const tent = new THREE.Group();
+      const tShape = new THREE.ConeGeometry(2.5, 3, 4);
+      const tMesh = new THREE.Mesh(tShape, tentMat);
+      tMesh.position.y = 1.5;
+      tent.add(tMesh);
+      // Pole
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.5, 4), new THREE.MeshStandardMaterial({ color: 0x664422 }));
+      pole.position.y = 1.75;
+      tent.add(pole);
+      tent.position.set(
+        campX + (t - 1) * 6,
+        0,
+        campZ + (Math.random() - 0.5) * 4,
+      );
+      this._scene.add(tent);
+    }
+    // Fire pit
+    const pitRing = new THREE.Mesh(new THREE.TorusGeometry(1, 0.25, 6, 12), stoneMat);
+    pitRing.rotation.x = Math.PI / 2;
+    pitRing.position.set(campX, 0.25, campZ);
+    this._scene.add(pitRing);
+    // Ember glow
+    const campFire = new THREE.PointLight(0xff6622, 1.5, 12);
+    campFire.position.set(campX, 1.5, campZ);
+    this._scene.add(campFire);
+    // Flag poles
+    for (let f = 0; f < 2; f++) {
+      const flagGroup = new THREE.Group();
+      const poleH = 5;
+      const fPole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, poleH, 4), new THREE.MeshStandardMaterial({ color: 0x664422 }));
+      fPole.position.y = poleH / 2;
+      flagGroup.add(fPole);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.8), flagMat);
+      flag.position.set(0.75, poleH - 0.5, 0);
+      flagGroup.add(flag);
+      flagGroup.position.set(
+        campX + (f === 0 ? -8 : 8),
+        0,
+        campZ,
+      );
+      this._scene.add(flagGroup);
+    }
+
+    // ── Rock formations ──
+    for (let i = 0; i < 18; i++) {
+      const rockGroup = new THREE.Group();
+      const count = 2 + Math.floor(Math.random() * 4);
+      for (let r = 0; r < count; r++) {
+        const rh = 1 + Math.random() * 3;
+        const rock = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(rh, 0),
+          stoneMat,
+        );
+        rock.scale.set(0.8 + Math.random() * 0.5, 0.6 + Math.random() * 0.8, 0.8 + Math.random() * 0.5);
+        rock.position.set((Math.random() - 0.5) * 3, rh * 0.3, (Math.random() - 0.5) * 3);
+        rock.rotation.set(Math.random(), Math.random(), Math.random());
+        rockGroup.add(rock);
+      }
+      rockGroup.position.set(
+        (Math.random() - 0.5) * w * 0.85,
+        0,
+        (Math.random() - 0.5) * d * 0.85,
+      );
+      this._scene.add(rockGroup);
+    }
+
+    // ── Quicksand patches (dark circles) ──
+    const qsMat = new THREE.MeshStandardMaterial({ color: 0x997744, roughness: 1.0, transparent: true, opacity: 0.6 });
+    for (let i = 0; i < 6; i++) {
+      const qs = new THREE.Mesh(new THREE.CircleGeometry(2 + Math.random() * 3, 16), qsMat);
+      qs.rotation.x = -Math.PI / 2;
+      qs.position.set(
+        (Math.random() - 0.5) * w * 0.7,
+        0.03,
+        (Math.random() - 0.5) * d * 0.7,
+      );
+      this._scene.add(qs);
+    }
+
+    // ── Desert sand trails (paths) ──
+    const trailMat = new THREE.MeshStandardMaterial({ color: 0xc8a55a, roughness: 0.9 });
+    for (let i = 0; i < 5; i++) {
+      const trail = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.5 + Math.random(), 20 + Math.random() * 30),
+        trailMat,
+      );
+      trail.rotation.x = -Math.PI / 2;
+      trail.rotation.z = Math.random() * Math.PI;
+      trail.position.set(
+        (Math.random() - 0.5) * w * 0.6,
+        0.01,
+        (Math.random() - 0.5) * d * 0.6,
+      );
+      this._scene.add(trail);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  EMERALD GRASSLANDS
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildEmeraldGrasslands(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0xaaccaa, 0.006);
+    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x55aa33);
+    this._dirLight.color.setHex(0xfff5dd);
+    this._dirLight.intensity = 1.6;
+    this._ambientLight.color.setHex(0x336622);
+    this._ambientLight.intensity = 0.7;
+    this._hemiLight.color.setHex(0xbbdd88);
+    this._hemiLight.groundColor.setHex(0x445522);
+    const hw = w / 2, hd = d / 2;
+
+    const grassDarkMat = new THREE.MeshStandardMaterial({ color: 0x448822, roughness: 0.85 });
+    const grassLightMat = new THREE.MeshStandardMaterial({ color: 0x66bb44, roughness: 0.85 });
+    const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.9 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.8 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.7 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x44aa22, roughness: 0.5 });
+    const flowerColors = [0xff6688, 0xffdd44, 0xcc88ff, 0xff8844, 0x88ddff, 0xffaacc];
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x4488bb, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.65 });
+    const fenceMat = new THREE.MeshStandardMaterial({ color: 0x9B7653, roughness: 0.8 });
+    const hayMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.8 });
+
+    // ── Gently rolling hills ──
+    for (let i = 0; i < 25; i++) {
+      const sx = 10 + Math.random() * 18;
+      const sy = 1 + Math.random() * 3;
+      const sz = 10 + Math.random() * 18;
+      const hill = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 12, 8),
+        i % 2 === 0 ? grassDarkMat : grassLightMat,
+      );
+      hill.scale.set(sx, sy, sz);
+      hill.position.set(
+        (Math.random() - 0.5) * w * 0.9,
+        sy * 0.4,
+        (Math.random() - 0.5) * d * 0.9,
+      );
+      this._scene.add(hill);
+    }
+
+    // ── Wildflower patches ──
+    for (let i = 0; i < 80; i++) {
+      const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      const flower = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12 + Math.random() * 0.15, 5, 5),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.4 }),
+      );
+      flower.position.set(
+        (Math.random() - 0.5) * w * 0.85,
+        0.15 + Math.random() * 0.1,
+        (Math.random() - 0.5) * d * 0.85,
+      );
+      this._scene.add(flower);
+      // Stem
+      const stem = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.015, 0.02, 0.2, 3),
+        new THREE.MeshStandardMaterial({ color: 0x337722 }),
+      );
+      stem.position.set(flower.position.x, 0.05, flower.position.z);
+      this._scene.add(stem);
+    }
+
+    // ── Deciduous trees (scattered) ──
+    for (let i = 0; i < 30; i++) {
+      const tree = new THREE.Group();
+      const trunkH = 3 + Math.random() * 3;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.35, trunkH, 6), woodMat);
+      trunk.position.y = trunkH / 2;
+      tree.add(trunk);
+      // Canopy (multiple spheres)
+      const canopyR = 1.5 + Math.random() * 2;
+      for (let c = 0; c < 3; c++) {
+        const canopy = new THREE.Mesh(
+          new THREE.SphereGeometry(canopyR * (0.7 + Math.random() * 0.4), 8, 6),
+          leafMat,
+        );
+        canopy.position.set(
+          (Math.random() - 0.5) * canopyR * 0.6,
+          trunkH + canopyR * 0.3 + (Math.random() - 0.5) * canopyR * 0.3,
+          (Math.random() - 0.5) * canopyR * 0.6,
+        );
+        tree.add(canopy);
+      }
+      tree.position.set(
+        (Math.random() - 0.5) * w * 0.85,
+        0,
+        (Math.random() - 0.5) * d * 0.85,
+      );
+      this._scene.add(tree);
+    }
+
+    // ── Creek / stream (winding water) ──
+    const streamParts = 12;
+    for (let i = 0; i < streamParts; i++) {
+      const seg = new THREE.Mesh(
+        new THREE.PlaneGeometry(3 + Math.random() * 2, 12),
+        waterMat,
+      );
+      seg.rotation.x = -Math.PI / 2;
+      const t = i / streamParts;
+      seg.position.set(
+        -hw * 0.5 + t * w * 0.7 + Math.sin(t * 6) * 8,
+        0.04,
+        -hd * 0.2 + Math.cos(t * 4) * 15,
+      );
+      seg.rotation.z = Math.atan2(Math.cos(t * 6) * 8, w * 0.7 / streamParts);
+      this._scene.add(seg);
+    }
+
+    // ── Stone bridge over stream ──
+    const bridgeX = 0, bridgeZ = -hd * 0.15;
+    const bridgeDeck = new THREE.Mesh(new THREE.BoxGeometry(5, 0.4, 3), stoneMat);
+    bridgeDeck.position.set(bridgeX, 1.2, bridgeZ);
+    this._scene.add(bridgeDeck);
+    const rail1 = new THREE.Mesh(new THREE.BoxGeometry(5, 0.8, 0.2), stoneMat);
+    rail1.position.set(bridgeX, 1.8, bridgeZ - 1.4);
+    this._scene.add(rail1);
+    const rail2 = new THREE.Mesh(new THREE.BoxGeometry(5, 0.8, 0.2), stoneMat);
+    rail2.position.set(bridgeX, 1.8, bridgeZ + 1.4);
+    this._scene.add(rail2);
+    // Arched support
+    const archSupport = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.25, 6, 8, Math.PI), stoneMat);
+    archSupport.rotation.y = Math.PI / 2;
+    archSupport.position.set(bridgeX, 0.2, bridgeZ);
+    this._scene.add(archSupport);
+
+    // ── Hay bales ──
+    for (let i = 0; i < 15; i++) {
+      const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.2, 8), hayMat);
+      hay.rotation.x = Math.PI / 2;
+      hay.position.set(
+        (Math.random() - 0.5) * w * 0.7,
+        0.7,
+        (Math.random() - 0.5) * d * 0.7,
+      );
+      hay.rotation.z = Math.random() * Math.PI;
+      this._scene.add(hay);
+    }
+
+    // ── Farmstead (small hut + fences) ──
+    const farmX = hw * 0.3, farmZ = -hd * 0.35;
+    // Hut
+    const hutWalls = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 4), new THREE.MeshStandardMaterial({ color: 0xbb9966, roughness: 0.8 }));
+    hutWalls.position.set(farmX, 1.5, farmZ);
+    this._scene.add(hutWalls);
+    const hutRoof = new THREE.Mesh(new THREE.ConeGeometry(3.5, 2, 4), roofMat);
+    hutRoof.position.set(farmX, 4, farmZ);
+    hutRoof.rotation.y = Math.PI / 4;
+    this._scene.add(hutRoof);
+    // Door
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(1, 2), new THREE.MeshStandardMaterial({ color: 0x553311 }));
+    door.position.set(farmX, 1, farmZ + 2.01);
+    this._scene.add(door);
+    // Fences around farm
+    for (let i = 0; i < 20; i++) {
+      const angle = (i / 20) * Math.PI * 2;
+      const fenceR = 10;
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.15), fenceMat);
+      post.position.set(
+        farmX + Math.cos(angle) * fenceR,
+        0.6,
+        farmZ + Math.sin(angle) * fenceR,
+      );
+      this._scene.add(post);
+      // Horizontal rail
+      if (i < 19) {
+        const nextAngle = ((i + 1) / 20) * Math.PI * 2;
+        const midX = farmX + Math.cos((angle + nextAngle) / 2) * fenceR;
+        const midZ = farmZ + Math.sin((angle + nextAngle) / 2) * fenceR;
+        const railLen = 2 * fenceR * Math.sin(Math.PI / 20);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(railLen, 0.08, 0.08), fenceMat);
+        rail.position.set(midX, 0.8, midZ);
+        rail.rotation.y = -(angle + nextAngle) / 2 + Math.PI / 2;
+        this._scene.add(rail);
+      }
+    }
+
+    // ── Rock outcrops ──
+    for (let i = 0; i < 12; i++) {
+      const rockGroup = new THREE.Group();
+      const cnt = 1 + Math.floor(Math.random() * 3);
+      for (let r = 0; r < cnt; r++) {
+        const rh = 0.6 + Math.random() * 2;
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rh, 0), stoneMat);
+        rock.scale.set(0.7 + Math.random() * 0.6, 0.5 + Math.random() * 0.5, 0.7 + Math.random() * 0.6);
+        rock.position.set((Math.random() - 0.5) * 2, rh * 0.3, (Math.random() - 0.5) * 2);
+        rockGroup.add(rock);
+      }
+      rockGroup.position.set(
+        (Math.random() - 0.5) * w * 0.85,
+        0,
+        (Math.random() - 0.5) * d * 0.85,
+      );
+      this._scene.add(rockGroup);
+    }
+
+    // ── Dirt paths ──
+    for (let i = 0; i < 4; i++) {
+      const path = new THREE.Mesh(
+        new THREE.PlaneGeometry(2, 25 + Math.random() * 20),
+        dirtMat,
+      );
+      path.rotation.x = -Math.PI / 2;
+      path.rotation.z = Math.random() * Math.PI;
+      path.position.set(
+        (Math.random() - 0.5) * w * 0.5,
+        0.01,
+        (Math.random() - 0.5) * d * 0.5,
+      );
+      this._scene.add(path);
+    }
+
+    // ── Windmill ──
+    const wmX = -hw * 0.35, wmZ = hd * 0.3;
+    const wmBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 6, 8), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
+    wmBase.position.set(wmX, 3, wmZ);
+    this._scene.add(wmBase);
+    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2, 8), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
+    wmRoof.position.set(wmX, 7, wmZ);
+    this._scene.add(wmRoof);
+    // Blades
+    for (let b = 0; b < 4; b++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.05), woodMat);
+      blade.position.set(
+        wmX + Math.cos(b * Math.PI / 2) * 2,
+        6 + Math.sin(b * Math.PI / 2) * 2,
+        wmZ - 1.6,
+      );
+      blade.rotation.z = b * Math.PI / 2;
+      this._scene.add(blade);
+    }
+
+    // ── Campfire in open field ──
+    const cfX = hw * 0.1, cfZ = hd * 0.2;
+    const fireRing = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.2, 6, 10), stoneMat);
+    fireRing.rotation.x = Math.PI / 2;
+    fireRing.position.set(cfX, 0.2, cfZ);
+    this._scene.add(fireRing);
+    const fieldFire = new THREE.PointLight(0xff8833, 1.2, 10);
+    fieldFire.position.set(cfX, 1.5, cfZ);
+    this._scene.add(fieldFire);
+    // Log seats
+    for (let i = 0; i < 3; i++) {
+      const logAngle = (i / 3) * Math.PI * 2 + 0.3;
+      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.8, 6), woodMat);
+      log.rotation.z = Math.PI / 2;
+      log.position.set(
+        cfX + Math.cos(logAngle) * 2.5,
+        0.2,
+        cfZ + Math.sin(logAngle) * 2.5,
+      );
+      log.rotation.y = logAngle;
+      this._scene.add(log);
+    }
+
+    // ── Tall grass tufts ──
+    const tGrassMat = new THREE.MeshStandardMaterial({ color: 0x77cc44, roughness: 0.6, side: THREE.DoubleSide });
+    for (let i = 0; i < 60; i++) {
+      const tuft = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.8 + Math.random() * 0.5), tGrassMat);
+      tuft.position.set(
+        (Math.random() - 0.5) * w * 0.85,
+        0.3,
+        (Math.random() - 0.5) * d * 0.85,
+      );
+      tuft.rotation.y = Math.random() * Math.PI;
+      this._scene.add(tuft);
+    }
+  }
+
   dispose(): void {
     if (this.canvas && this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
@@ -8345,6 +8943,106 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.2;
           (this._scene.fog as THREE.FogExp2).color.setHex(0x080400);
           (this._scene.fog as THREE.FogExp2).density = 0.025;
+          this._renderer.toneMappingExposure = 0.6;
+          break;
+      }
+    } else if (mapId === DiabloMapId.SUNSCORCH_DESERT) {
+      switch (tod) {
+        case TimeOfDay.DAY:
+          this._dirLight.color.setHex(0xffeebb);
+          this._dirLight.intensity = 1.8;
+          this._ambientLight.color.setHex(0x665533);
+          this._ambientLight.intensity = 0.7;
+          this._hemiLight.color.setHex(0xeedd99);
+          this._hemiLight.groundColor.setHex(0x886644);
+          (this._scene.fog as THREE.FogExp2).color.setHex(0xddcc99);
+          (this._scene.fog as THREE.FogExp2).density = 0.008;
+          this._renderer.toneMappingExposure = 1.1;
+          break;
+        case TimeOfDay.DAWN:
+          this._dirLight.color.setHex(0xffaa77);
+          this._dirLight.intensity = 1.2;
+          this._ambientLight.color.setHex(0x553322);
+          this._ambientLight.intensity = 0.55;
+          this._hemiLight.color.setHex(0xcc9966);
+          this._hemiLight.groundColor.setHex(0x553322);
+          (this._scene.fog as THREE.FogExp2).color.setHex(0xbb9966);
+          (this._scene.fog as THREE.FogExp2).density = 0.01;
+          groundMat.color.setHex(0xb89960);
+          this._renderer.toneMappingExposure = 0.95;
+          break;
+        case TimeOfDay.DUSK:
+          this._dirLight.color.setHex(0xff6633);
+          this._dirLight.intensity = 0.9;
+          this._ambientLight.color.setHex(0x442211);
+          this._ambientLight.intensity = 0.45;
+          this._hemiLight.color.setHex(0x995533);
+          this._hemiLight.groundColor.setHex(0x331a10);
+          (this._scene.fog as THREE.FogExp2).color.setHex(0x885533);
+          (this._scene.fog as THREE.FogExp2).density = 0.012;
+          groundMat.color.setHex(0xa08850);
+          this._renderer.toneMappingExposure = 0.85;
+          break;
+        case TimeOfDay.NIGHT:
+          this._dirLight.color.setHex(0x4466aa);
+          this._dirLight.intensity = 0.4;
+          this._ambientLight.color.setHex(0x111122);
+          this._ambientLight.intensity = 0.3;
+          this._hemiLight.color.setHex(0x223355);
+          this._hemiLight.groundColor.setHex(0x111108);
+          (this._scene.fog as THREE.FogExp2).color.setHex(0x151525);
+          (this._scene.fog as THREE.FogExp2).density = 0.015;
+          groundMat.color.setHex(0x665540);
+          this._renderer.toneMappingExposure = 0.6;
+          break;
+      }
+    } else if (mapId === DiabloMapId.EMERALD_GRASSLANDS) {
+      switch (tod) {
+        case TimeOfDay.DAY:
+          this._dirLight.color.setHex(0xfff5dd);
+          this._dirLight.intensity = 1.6;
+          this._ambientLight.color.setHex(0x336622);
+          this._ambientLight.intensity = 0.7;
+          this._hemiLight.color.setHex(0xbbdd88);
+          this._hemiLight.groundColor.setHex(0x445522);
+          (this._scene.fog as THREE.FogExp2).color.setHex(0xaaccaa);
+          (this._scene.fog as THREE.FogExp2).density = 0.006;
+          this._renderer.toneMappingExposure = 1.1;
+          break;
+        case TimeOfDay.DAWN:
+          this._dirLight.color.setHex(0xffbb88);
+          this._dirLight.intensity = 1.1;
+          this._ambientLight.color.setHex(0x443322);
+          this._ambientLight.intensity = 0.55;
+          this._hemiLight.color.setHex(0xcc9966);
+          this._hemiLight.groundColor.setHex(0x332211);
+          (this._scene.fog as THREE.FogExp2).color.setHex(0x889966);
+          (this._scene.fog as THREE.FogExp2).density = 0.008;
+          groundMat.color.setHex(0x4a8a2a);
+          this._renderer.toneMappingExposure = 0.95;
+          break;
+        case TimeOfDay.DUSK:
+          this._dirLight.color.setHex(0xff7744);
+          this._dirLight.intensity = 0.8;
+          this._ambientLight.color.setHex(0x332211);
+          this._ambientLight.intensity = 0.4;
+          this._hemiLight.color.setHex(0x996633);
+          this._hemiLight.groundColor.setHex(0x221a10);
+          (this._scene.fog as THREE.FogExp2).color.setHex(0x554433);
+          (this._scene.fog as THREE.FogExp2).density = 0.01;
+          groundMat.color.setHex(0x3a7a2a);
+          this._renderer.toneMappingExposure = 0.85;
+          break;
+        case TimeOfDay.NIGHT:
+          this._dirLight.color.setHex(0x3355aa);
+          this._dirLight.intensity = 0.35;
+          this._ambientLight.color.setHex(0x0a0a1a);
+          this._ambientLight.intensity = 0.25;
+          this._hemiLight.color.setHex(0x223355);
+          this._hemiLight.groundColor.setHex(0x0a0a08);
+          (this._scene.fog as THREE.FogExp2).color.setHex(0x0a1a0a);
+          (this._scene.fog as THREE.FogExp2).density = 0.012;
+          groundMat.color.setHex(0x1a3a15);
           this._renderer.toneMappingExposure = 0.6;
           break;
       }

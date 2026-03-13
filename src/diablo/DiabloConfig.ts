@@ -399,6 +399,50 @@ export const MAP_CONFIGS: Record<DiabloMapId, DiabloMapConfig> = {
     fogColor: '#554422',
     backgroundMusic: 'dragons_sanctum',
   },
+  [DiabloMapId.SUNSCORCH_DESERT]: {
+    id: DiabloMapId.SUNSCORCH_DESERT,
+    name: 'Sunscorch Desert',
+    description: 'A vast expanse of sun-blasted dunes and ancient ruins half-buried in sand.',
+    width: 140,
+    depth: 140,
+    enemyTypes: [
+      EnemyType.SAND_SCORPION,
+      EnemyType.DESERT_BANDIT,
+      EnemyType.SAND_WURM,
+      EnemyType.DUST_WRAITH,
+      EnemyType.SAND_GOLEM,
+    ],
+    maxEnemies: 22,
+    spawnInterval: 5,
+    treasureCount: 4,
+    ambientColor: '#665533',
+    groundColor: '#ccaa66',
+    fogDensity: 0.008,
+    fogColor: '#ddcc99',
+    backgroundMusic: 'desert_winds',
+  },
+  [DiabloMapId.EMERALD_GRASSLANDS]: {
+    id: DiabloMapId.EMERALD_GRASSLANDS,
+    name: 'Emerald Grasslands',
+    description: 'Rolling green hills dotted with wildflowers. Raiders and wild beasts roam the open plains.',
+    width: 150,
+    depth: 150,
+    enemyTypes: [
+      EnemyType.WILD_BOAR,
+      EnemyType.PLAINS_RAIDER,
+      EnemyType.GIANT_HAWK,
+      EnemyType.BISON_BEAST,
+      EnemyType.CENTAUR_WARCHIEF,
+    ],
+    maxEnemies: 20,
+    spawnInterval: 6,
+    treasureCount: 3,
+    ambientColor: '#336622',
+    groundColor: '#55aa33',
+    fogDensity: 0.006,
+    fogColor: '#aaccaa',
+    backgroundMusic: 'grassland_breeze',
+  },
   [DiabloMapId.CAMELOT]: {
     id: DiabloMapId.CAMELOT,
     name: 'Camelot',
@@ -863,6 +907,84 @@ export const ENEMY_DEFS: Record<
     hp: 15000, damage: 200, armor: 90, speed: 4.5,
     attackRange: 6.0, aggroRange: 45, xpReward: 8000,
     isBoss: true, scale: 4.0, level: 38,
+  },
+
+  // -- Desert enemies (easy) --
+  [EnemyType.SAND_SCORPION]: {
+    name: 'Sand Scorpion',
+    hp: 60, damage: 10, armor: 5, speed: 4.0,
+    attackRange: 1.5, aggroRange: 10, xpReward: 18,
+    isBoss: false, scale: 0.7, level: 1,
+  },
+  [EnemyType.DESERT_BANDIT]: {
+    name: 'Desert Bandit',
+    hp: 90, damage: 14, armor: 6, speed: 3.2,
+    attackRange: 2.0, aggroRange: 11, xpReward: 25,
+    isBoss: false, scale: 1.0, level: 2,
+  },
+  [EnemyType.SAND_WURM]: {
+    name: 'Sand Wurm',
+    hp: 150, damage: 20, armor: 10, speed: 2.5,
+    attackRange: 2.5, aggroRange: 8, xpReward: 35,
+    isBoss: false, scale: 1.3, level: 3,
+  },
+  [EnemyType.DUST_WRAITH]: {
+    name: 'Dust Wraith',
+    hp: 70, damage: 16, armor: 2, speed: 5.0,
+    attackRange: 2.0, aggroRange: 14, xpReward: 28,
+    isBoss: false, scale: 1.1, level: 2,
+  },
+  [EnemyType.SAND_GOLEM]: {
+    name: 'Sand Golem',
+    hp: 220, damage: 25, armor: 18, speed: 2.0,
+    attackRange: 2.5, aggroRange: 9, xpReward: 45,
+    isBoss: false, scale: 1.6, level: 4,
+  },
+
+  // -- Grassland enemies (easy) --
+  [EnemyType.WILD_BOAR]: {
+    name: 'Wild Boar',
+    hp: 70, damage: 12, armor: 4, speed: 4.5,
+    attackRange: 1.5, aggroRange: 10, xpReward: 20,
+    isBoss: false, scale: 0.8, level: 1,
+  },
+  [EnemyType.PLAINS_RAIDER]: {
+    name: 'Plains Raider',
+    hp: 100, damage: 15, armor: 7, speed: 3.5,
+    attackRange: 2.0, aggroRange: 12, xpReward: 28,
+    isBoss: false, scale: 1.0, level: 2,
+  },
+  [EnemyType.GIANT_HAWK]: {
+    name: 'Giant Hawk',
+    hp: 55, damage: 18, armor: 2, speed: 6.0,
+    attackRange: 2.0, aggroRange: 16, xpReward: 22,
+    isBoss: false, scale: 0.9, level: 2,
+  },
+  [EnemyType.BISON_BEAST]: {
+    name: 'Bison Beast',
+    hp: 200, damage: 22, armor: 14, speed: 2.8,
+    attackRange: 2.5, aggroRange: 9, xpReward: 40,
+    isBoss: false, scale: 1.5, level: 3,
+  },
+  [EnemyType.CENTAUR_WARCHIEF]: {
+    name: 'Centaur Warchief',
+    hp: 180, damage: 20, armor: 12, speed: 4.0,
+    attackRange: 3.0, aggroRange: 14, xpReward: 50,
+    isBoss: false, scale: 1.4, level: 4,
+  },
+
+  // -- Night bosses (desert & grassland) --
+  [EnemyType.NIGHT_DESERT_SANDSTORM_DJINN]: {
+    name: 'Sandstorm Djinn Kharazim',
+    hp: 3000, damage: 55, armor: 25, speed: 5.5,
+    attackRange: 4.0, aggroRange: 35, xpReward: 1500,
+    isBoss: true, scale: 2.5, level: 12,
+  },
+  [EnemyType.NIGHT_GRASSLAND_STAMPEDE_KING]: {
+    name: 'Stampede King Thorrax',
+    hp: 3500, damage: 50, armor: 30, speed: 5.0,
+    attackRange: 3.5, aggroRange: 35, xpReward: 1500,
+    isBoss: true, scale: 2.8, level: 12,
   },
 };
 
@@ -1703,6 +1825,73 @@ export const LOOT_TABLES: Record<EnemyType, { rarity: ItemRarity; chance: number
     { rarity: ItemRarity.LEGENDARY, chance: 0.8 },
     { rarity: ItemRarity.MYTHIC, chance: 0.3 },
   ],
+
+  // -- Desert enemies --
+  [EnemyType.SAND_SCORPION]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.1 },
+  ],
+  [EnemyType.DESERT_BANDIT]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.15 },
+    { rarity: ItemRarity.RARE, chance: 0.02 },
+  ],
+  [EnemyType.SAND_WURM]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.2 },
+    { rarity: ItemRarity.RARE, chance: 0.04 },
+  ],
+  [EnemyType.DUST_WRAITH]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.15 },
+    { rarity: ItemRarity.RARE, chance: 0.03 },
+  ],
+  [EnemyType.SAND_GOLEM]: [
+    { rarity: ItemRarity.COMMON, chance: 0.55 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.25 },
+    { rarity: ItemRarity.RARE, chance: 0.06 },
+    { rarity: ItemRarity.EPIC, chance: 0.01 },
+  ],
+
+  // -- Grassland enemies --
+  [EnemyType.WILD_BOAR]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.1 },
+  ],
+  [EnemyType.PLAINS_RAIDER]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.15 },
+    { rarity: ItemRarity.RARE, chance: 0.02 },
+  ],
+  [EnemyType.GIANT_HAWK]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.12 },
+    { rarity: ItemRarity.RARE, chance: 0.02 },
+  ],
+  [EnemyType.BISON_BEAST]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.2 },
+    { rarity: ItemRarity.RARE, chance: 0.05 },
+    { rarity: ItemRarity.EPIC, chance: 0.008 },
+  ],
+  [EnemyType.CENTAUR_WARCHIEF]: [
+    { rarity: ItemRarity.COMMON, chance: 0.55 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.25 },
+    { rarity: ItemRarity.RARE, chance: 0.06 },
+    { rarity: ItemRarity.EPIC, chance: 0.01 },
+  ],
+
+  // -- Desert & Grassland night bosses --
+  [EnemyType.NIGHT_DESERT_SANDSTORM_DJINN]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.5 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.15 },
+  ],
+  [EnemyType.NIGHT_GRASSLAND_STAMPEDE_KING]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.5 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.15 },
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -1851,6 +2040,20 @@ export const ENEMY_SPAWN_WEIGHTS: Record<DiabloMapId, { type: EnemyType; weight:
     { type: EnemyType.DRAKE_GUARDIAN, weight: 18 },
     { type: EnemyType.DRAGON_WHELP, weight: 25 },
     { type: EnemyType.ELDER_DRAGON, weight: 14 },
+  ],
+  [DiabloMapId.SUNSCORCH_DESERT]: [
+    { type: EnemyType.SAND_SCORPION, weight: 30 },
+    { type: EnemyType.DESERT_BANDIT, weight: 25 },
+    { type: EnemyType.DUST_WRAITH, weight: 20 },
+    { type: EnemyType.SAND_WURM, weight: 15 },
+    { type: EnemyType.SAND_GOLEM, weight: 10 },
+  ],
+  [DiabloMapId.EMERALD_GRASSLANDS]: [
+    { type: EnemyType.WILD_BOAR, weight: 30 },
+    { type: EnemyType.PLAINS_RAIDER, weight: 25 },
+    { type: EnemyType.GIANT_HAWK, weight: 20 },
+    { type: EnemyType.BISON_BEAST, weight: 15 },
+    { type: EnemyType.CENTAUR_WARCHIEF, weight: 10 },
   ],
   [DiabloMapId.CAMELOT]: [],
 };
