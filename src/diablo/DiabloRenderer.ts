@@ -44,6 +44,7 @@ export class DiabloRenderer {
   private _ambientLight!: THREE.AmbientLight;
   private _hemiLight!: THREE.HemisphereLight;
   private _torchLights: THREE.PointLight[] = [];
+  private _playerLantern: THREE.PointLight | null = null;
   private _weaponArmGroup: THREE.Group | null = null;
   private _raycaster: THREE.Raycaster = new THREE.Raycaster();
   private _shieldMeshes: Map<string, THREE.Mesh> = new Map();
@@ -5606,6 +5607,12 @@ export class DiabloRenderer {
     }
 
     this._playerGroup.castShadow = true;
+
+    // Player lantern – warm point light for dark maps
+    const lantern = new THREE.PointLight(0xffaa55, 0, 12, 2);
+    lantern.position.set(0, 1.8, 0);
+    this._playerGroup.add(lantern);
+    this._playerLantern = lantern;
   }
 
   private _createEnemyMesh(type: EnemyType, scale: number): THREE.Group {
@@ -7497,48 +7504,112 @@ export class DiabloRenderer {
 
   private _createChest(rarity: ItemRarity, opened: boolean): THREE.Group {
     const group = new THREE.Group();
-    const color = RARITY_COLORS[rarity];
+    const rarityColor = RARITY_COLORS[rarity];
 
-    const baseMat = new THREE.MeshStandardMaterial({
-      color: color,
-      roughness: 0.5,
-      metalness: 0.3,
-    });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x6B3A1F, roughness: 0.8, metalness: 0.05 });
+    const woodDarkMat = new THREE.MeshStandardMaterial({ color: 0x4A2810, roughness: 0.85 });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7, roughness: 0.3 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: rarityColor, metalness: 0.6, roughness: 0.25 });
+    const hingeMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.2 });
 
-    // Box base
-    const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.6), baseMat);
+    // Wooden base body
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 0.65), woodMat);
     base.position.y = 0.25;
     base.castShadow = true;
     group.add(base);
 
-    // Half-cylinder lid
-    const lidGeo = new THREE.CylinderGeometry(0.41, 0.41, 0.82, 10, 1, false, 0, Math.PI);
-    const lid = new THREE.Mesh(lidGeo, baseMat);
+    // Darker bottom trim
+    const bottomTrim = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.08, 0.69), woodDarkMat);
+    bottomTrim.position.y = 0.04;
+    group.add(bottomTrim);
+
+    // Wooden planks (horizontal lines on front/back)
+    for (let i = 0; i < 3; i++) {
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(1.01, 0.015, 0.01), woodDarkMat);
+      plank.position.set(0, 0.12 + i * 0.14, 0.326);
+      group.add(plank);
+      const plankB = new THREE.Mesh(new THREE.BoxGeometry(1.01, 0.015, 0.01), woodDarkMat);
+      plankB.position.set(0, 0.12 + i * 0.14, -0.326);
+      group.add(plankB);
+    }
+
+    // Metal corner brackets (4 bottom corners)
+    for (let sx = -1; sx <= 1; sx += 2) {
+      for (let sz = -1; sz <= 1; sz += 2) {
+        const corner = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.2, 0.1), metalMat);
+        corner.position.set(sx * 0.47, 0.1, sz * 0.29);
+        group.add(corner);
+      }
+    }
+
+    // Metal bands across front and back
+    const band1 = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.06, 0.015), metalMat);
+    band1.position.set(0, 0.3, 0.33);
+    group.add(band1);
+    const band2 = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.06, 0.015), metalMat);
+    band2.position.set(0, 0.3, -0.33);
+    group.add(band2);
+    // Side bands
+    const bandL = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.06, 0.68), metalMat);
+    bandL.position.set(-0.505, 0.3, 0);
+    group.add(bandL);
+    const bandR = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.06, 0.68), metalMat);
+    bandR.position.set(0.505, 0.3, 0);
+    group.add(bandR);
+
+    // Half-cylinder lid (arched top)
+    const lidGeo = new THREE.CylinderGeometry(0.38, 0.38, 1.02, 12, 1, false, 0, Math.PI);
+    const lid = new THREE.Mesh(lidGeo, woodMat);
     lid.rotation.z = Math.PI / 2;
     lid.position.y = 0.5;
 
     if (opened) {
       lid.rotation.x = -Math.PI * 0.6;
-      lid.position.z = -0.25;
+      lid.position.z = -0.28;
       lid.position.y = 0.7;
     }
-
     lid.castShadow = true;
     group.add(lid);
 
-    // Metal bands
-    const bandMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7, roughness: 0.3 });
-    const band1 = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.06, 0.02), bandMat);
-    band1.position.set(0, 0.3, 0.3);
-    group.add(band1);
-    const band2 = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.06, 0.02), bandMat);
-    band2.position.set(0, 0.3, -0.3);
-    group.add(band2);
+    // Lid metal band
+    const lidBand = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.04, 0.015), metalMat);
+    if (opened) {
+      lidBand.position.set(0, 0.75, -0.35);
+      lidBand.rotation.x = -Math.PI * 0.6;
+    } else {
+      lidBand.position.set(0, 0.63, 0.33);
+    }
+    group.add(lidBand);
 
-    // Lock
-    const lock = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.05), bandMat);
-    lock.position.set(0, 0.5, 0.32);
-    group.add(lock);
+    // Hinges on back
+    for (let hx = -0.3; hx <= 0.3; hx += 0.6) {
+      const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 6), hingeMat);
+      hinge.rotation.x = Math.PI / 2;
+      hinge.position.set(hx, 0.5, -0.34);
+      group.add(hinge);
+    }
+
+    // Front lock plate (rarity-colored)
+    const lockPlate = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 0.04), goldMat);
+    lockPlate.position.set(0, 0.42, 0.34);
+    group.add(lockPlate);
+    // Keyhole
+    const keyhole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.02, 6), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    keyhole.rotation.x = Math.PI / 2;
+    keyhole.position.set(0, 0.41, 0.36);
+    group.add(keyhole);
+
+    // Rarity-colored gem on front center
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), new THREE.MeshStandardMaterial({ color: rarityColor, emissive: rarityColor, emissiveIntensity: 0.4 }));
+    gem.position.set(0, 0.46, 0.36);
+    group.add(gem);
+
+    // Interior glow when opened
+    if (opened) {
+      const glow = new THREE.PointLight(rarityColor, 0.8, 3);
+      glow.position.set(0, 0.4, 0);
+      group.add(glow);
+    }
 
     return group;
   }
@@ -9448,6 +9519,35 @@ export class DiabloRenderer {
           groundMat.color.setHex(0x1a3a15);
           this._renderer.toneMappingExposure = 0.6;
           break;
+      }
+    }
+
+    // Player lantern – enable on dark maps/times so the player can see their proximity
+    if (this._playerLantern) {
+      const darkMaps = [
+        DiabloMapId.NECROPOLIS_DUNGEON,
+        DiabloMapId.ABYSSAL_RIFT,
+        DiabloMapId.VOLCANIC_WASTES,
+        DiabloMapId.DRAGONS_SANCTUM,
+      ];
+      const isDarkMap = darkMaps.includes(mapId);
+      if (tod === TimeOfDay.NIGHT) {
+        // All maps get a lantern at night
+        this._playerLantern.intensity = isDarkMap ? 2.5 : 1.5;
+        this._playerLantern.color.setHex(0xffaa55);
+        this._playerLantern.distance = isDarkMap ? 14 : 10;
+      } else if (tod === TimeOfDay.DUSK && isDarkMap) {
+        // Dark maps also get a lantern at dusk
+        this._playerLantern.intensity = 1.8;
+        this._playerLantern.color.setHex(0xffaa55);
+        this._playerLantern.distance = 12;
+      } else if (tod === TimeOfDay.DAWN && (mapId === DiabloMapId.NECROPOLIS_DUNGEON || mapId === DiabloMapId.ABYSSAL_RIFT)) {
+        // Darkest maps get a dim lantern even at dawn
+        this._playerLantern.intensity = 1.0;
+        this._playerLantern.color.setHex(0xffbb66);
+        this._playerLantern.distance = 10;
+      } else {
+        this._playerLantern.intensity = 0;
       }
     }
   }

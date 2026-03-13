@@ -25,6 +25,7 @@ import {
   MAP_COMPLETION_REWARDS,
   CRAFTING_RECIPES,
   SALVAGE_MATERIAL_YIELDS,
+  LANTERN_CONFIGS,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -86,6 +87,100 @@ const BOSS_NAMES: Record<DiabloMapId, string[]> = {
   [DiabloMapId.CAMELOT]: [],
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// Main quest: The Fall of Excalibur — hints per map
+// ────────────────────────────────────────────────────────────────────────────
+const EXCALIBUR_QUEST_INFO: Partial<Record<DiabloMapId, { fragment: string; hint: string; lore: string }>> = {
+  [DiabloMapId.SUNSCORCH_DESERT]: {
+    fragment: "The Pommel of Excalibur",
+    hint: "Sir Bedivere's tomb lies among the southern ruins. Seek the Sandsworn Revenant that guards it.",
+    lore: "Bedivere carried the Pommel into the desert but fell to Mordred's curse. His body still clutches the shard.",
+  },
+  [DiabloMapId.EMERALD_GRASSLANDS]: {
+    fragment: "The Crossguard of Excalibur",
+    hint: "The raider camp to the northeast holds what Sir Percival died to protect. Look for Warchief Garon.",
+    lore: "Percival sheltered refugees here, but Mordred's Oathbreaker found him. The Crossguard was taken as a trophy.",
+  },
+  [DiabloMapId.FOREST]: {
+    fragment: "The Lower Blade of Excalibur",
+    hint: "Morgan le Fay planted the shard in the Great Oak at the forest's heart. The corruption spreads from there.",
+    lore: "The forest itself has become the guardian. Cut through the Blighted Heartwood to claim what was stolen.",
+  },
+  [DiabloMapId.ELVEN_VILLAGE]: {
+    fragment: "The Upper Blade of Excalibur",
+    hint: "Archon Sylvaris has gone mad with the fragment's power. He lurks in the central crystal spire.",
+    lore: "The elves meant well when they kept the blade, but its unsheathed power shattered the Archon's mind.",
+  },
+  [DiabloMapId.NECROPOLIS_DUNGEON]: {
+    fragment: "The Blade Core of Excalibur",
+    hint: "Deep in the catacombs, a death knight waits — one who was once Sir Lancelot. Steel yourself.",
+    lore: "Lancelot descended alone to reclaim the Core. Mordred's necromancers slew him and raised his corpse as a guardian.",
+  },
+  [DiabloMapId.VOLCANIC_WASTES]: {
+    fragment: "The Enchantment Rune of Excalibur",
+    hint: "The demon Balor consumed Merlin's essence along with the Rune. He burns in the deepest caldera.",
+    lore: "Merlin's binding magic gave Excalibur its power. Without the Rune, the blade is but common steel.",
+  },
+  [DiabloMapId.ABYSSAL_RIFT]: {
+    fragment: "The Scabbard of Excalibur",
+    hint: "Morgan le Fay fled into the void with the Scabbard. She prepares a ritual to destroy it — hurry.",
+    lore: "The Scabbard grants invulnerability to its bearer. Morgan knows that without it, Mordred can still be slain.",
+  },
+  [DiabloMapId.DRAGONS_SANCTUM]: {
+    fragment: "The Soul of the Blade",
+    hint: "Aurelion the Eternal bonded with Excalibur's sentient core. Prove your worth to the gold dragon.",
+    lore: "The Soul chose the dragon to survive. It will not yield to the unworthy — but it yearns to be whole again.",
+  },
+};
+
+const CAMELOT_FIRST_VISIT_TEXT = [
+  "Mordred has betrayed Camelot and shattered Excalibur.",
+  "Eight fragments lie scattered across the corrupted lands.",
+  "Speak to the merchants for guidance. Recover the shards.",
+  "Reforge the blade. End Mordred's reign.",
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Merchant dialogue lines (story flavor)
+// ────────────────────────────────────────────────────────────────────────────
+const VENDOR_DIALOGUE: Record<VendorType, string[]> = {
+  [VendorType.BLACKSMITH]: [
+    "I forged arms for the Round Table once. Now I forge them for you — the last hope of Camelot.",
+    "Mordred's forces grow bolder each day. The patrols have stopped returning from the Necropolis.",
+    "Excalibur... I held it once, to sharpen the edge. There was a hum in the steel, like a heartbeat. We must make it whole.",
+    "Sir Lancelot was the finest swordsman I ever knew. If he truly fell in the catacombs... be careful down there.",
+    "The desert traders say Bedivere's tomb glows at night. The Pommel still calls out for the blade.",
+  ],
+  [VendorType.ARCANIST]: [
+    "I sense the fragments scattered across the land — each one pulses with Merlin's residual magic.",
+    "Morgan le Fay was my teacher once, before the darkness took her. She hides in the Rift now, the coward.",
+    "The elves of Aelindor sealed their village after the Archon went mad. Whatever he found, it broke him.",
+    "When Excalibur shattered, I felt it in my bones. Every mage did. The world's magic... fractured.",
+    "The Enchantment Rune is the key. Without Merlin's binding, the blade is just metal. The demon Balor must fall.",
+  ],
+  [VendorType.ALCHEMIST]: [
+    "I've been brewing restoratives day and night. The wounded keep coming, and the dead... the dead keep rising.",
+    "Brother monks in the Necropolis fell silent weeks ago. I fear the worst for their relics — and their souls.",
+    "The volcanic wastes reek of brimstone and stolen magic. Something terrible feeds on Merlin's power there.",
+    "Stock up on potions before the Abyssal Rift. The void drains life from the unwary.",
+    "I pray for Arthur's return from Avalon. Until then, you carry Camelot's hope on your shoulders.",
+  ],
+  [VendorType.JEWELER]: [
+    "These gems once adorned the crowns of Camelot. Now I sell them to fund the resistance.",
+    "The grasslands were peaceful once. Now raiders ride under Mordred's black banner.",
+    "I've heard whispers of a dragon in the eastern sanctum — old as the world, guarding something precious.",
+    "If you find the Scabbard of Excalibur, bring it here. I can verify its authenticity by the gemwork.",
+    "Mordred wears a crown of black iron. When you face him, aim for the arrogance.",
+  ],
+  [VendorType.GENERAL_MERCHANT]: [
+    "I've traveled every road in this kingdom. They're all dangerous now. Mordred's patrols are everywhere.",
+    "The forest has gone wrong — trees moving, shadows with teeth. It wasn't like that before the blade shattered.",
+    "I sell a bit of everything because everyone needs a bit of everything these days. Dark times.",
+    "A merchant from the desert told me he saw a tomb glowing blue at night. That's unnatural, that is.",
+    "You look like you can handle yourself. Good. Camelot needs fighters, not merchants. ...Don't tell anyone I said that.",
+  ],
+};
+
 const NIGHT_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
   [DiabloMapId.FOREST]: EnemyType.NIGHT_FOREST_WENDIGO,
   [DiabloMapId.ELVEN_VILLAGE]: EnemyType.NIGHT_ELVEN_BANSHEE_QUEEN,
@@ -142,6 +237,9 @@ export class DiabloGame {
 
   // Vendor interaction hint
   private _vendorHint!: HTMLDivElement;
+
+  // Quest popup element
+  private _questPopup!: HTMLDivElement;
 
   // Death overlay (ac6cb424)
   private _deathOverlay!: HTMLDivElement;
@@ -826,6 +924,26 @@ export class DiabloGame {
     this._menuEl.innerHTML = "";
     this._hud.style.display = "block";
     this._recalculatePlayerStats();
+
+    // Main quest popup on map entry
+    if (mapId === DiabloMapId.CAMELOT) {
+      this._showQuestPopup(
+        "\u2694\uFE0F The Fall of Excalibur",
+        CAMELOT_FIRST_VISIT_TEXT.join("<br>"),
+        null,
+        8000,
+      );
+    } else {
+      const questInfo = EXCALIBUR_QUEST_INFO[mapId];
+      if (questInfo) {
+        this._showQuestPopup(
+          `\u2694\uFE0F ${questInfo.fragment}`,
+          questInfo.hint,
+          questInfo.lore,
+          7000,
+        );
+      }
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -1868,6 +1986,20 @@ export class DiabloGame {
     `;
     this._hud.appendChild(this._vendorHint);
 
+    // Quest popup (centered, semi-transparent parchment style)
+    this._questPopup = document.createElement("div");
+    this._questPopup.style.cssText = `
+      position:absolute;top:12%;left:50%;transform:translateX(-50%);
+      max-width:550px;width:90%;padding:20px 30px;
+      background:linear-gradient(180deg, rgba(35,28,15,0.95) 0%, rgba(25,20,10,0.95) 100%);
+      border:2px solid #5a4a2a;border-radius:10px;
+      box-shadow:0 0 30px rgba(200,168,78,0.15), inset 0 0 20px rgba(0,0,0,0.3);
+      color:#ccbb99;font-family:'Georgia',serif;text-align:center;
+      display:none;z-index:5;pointer-events:none;
+      transition:opacity 0.8s ease-out;
+    `;
+    this._hud.appendChild(this._questPopup);
+
     this._deathOverlay = document.createElement("div");
     this._deathOverlay.style.cssText = `
       position:absolute;top:0;left:0;width:100%;height:100%;
@@ -2006,6 +2138,18 @@ export class DiabloGame {
         this._updateFloatingText(dt);
         this._checkMapClear();
         this._revealAroundPlayer(this._state.player.x, this._state.player.z);
+
+        // Quest popup fade
+        if (this._questPopupTimer > 0) {
+          this._questPopupTimer -= dt * 1000;
+          if (this._questPopupTimer <= 1500) {
+            this._questPopup.style.opacity = String(Math.max(0, this._questPopupTimer / 1500));
+          }
+          if (this._questPopupTimer <= 0) {
+            this._questPopup.style.display = "none";
+            this._questPopupTimer = 0;
+          }
+        }
       }
       this._updateHUD();
     }
@@ -3350,6 +3494,23 @@ export class DiabloGame {
     });
   }
 
+  private _questPopupTimer: number = 0;
+
+  private _showQuestPopup(title: string, body: string, lore: string | null, duration: number): void {
+    const loreHtml = lore
+      ? `<div style="margin-top:10px;font-size:12px;color:#887755;font-style:italic;line-height:1.5;">${lore}</div>`
+      : "";
+    this._questPopup.innerHTML = `
+      <div style="font-size:11px;color:#665533;letter-spacing:3px;margin-bottom:6px;">THE FALL OF EXCALIBUR</div>
+      <div style="font-size:20px;color:#ffd700;font-weight:bold;margin-bottom:10px;text-shadow:0 0 8px rgba(255,215,0,0.3);">${title}</div>
+      <div style="font-size:14px;color:#ccbb99;line-height:1.7;">${body}</div>
+      ${loreHtml}
+    `;
+    this._questPopup.style.display = "block";
+    this._questPopup.style.opacity = "1";
+    this._questPopupTimer = duration;
+  }
+
   // ──────────────────────────────────────────────────────────────
   //  HELPER: Distance
   // ──────────────────────────────────────────────────────────────
@@ -3702,11 +3863,14 @@ export class DiabloGame {
       const halfD = mapD / 2 - 5;
       const cx = (Math.random() * 2 - 1) * halfW;
       const cz = (Math.random() * 2 - 1) * halfD;
-      const rarity = Math.random() < 0.1
+      const roll = Math.random();
+      const rarity = roll < 0.02
         ? ItemRarity.EPIC
-        : Math.random() < 0.3
+        : roll < 0.12
           ? ItemRarity.RARE
-          : ItemRarity.UNCOMMON;
+          : roll < 0.45
+            ? ItemRarity.UNCOMMON
+            : ItemRarity.COMMON;
       const chestItems = this._generateChestLoot(rarity);
       const chest: DiabloTreasureChest = {
         id: this._genId(),
@@ -4000,6 +4164,8 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   //  VENDOR SHOP
   // ──────────────────────────────────────────────────────────────
+  private _vendorDialogueIdx: Record<string, number> = {};
+
   private _showVendorShop(vendor: DiabloVendor): void {
     const p = this._state.player;
     this._phaseBeforeOverlay = DiabloPhase.PLAYING;
@@ -4083,6 +4249,21 @@ export class DiabloGame {
                 ${vendor.icon} ${vendor.name}
               </div>
               <div style="font-size:14px;color:#888;margin-top:4px;">${(VENDOR_DEFS.find(vd => vd.type === vendor.type) || { description: "" }).description}</div>
+            </div>
+
+            <!-- Dialogue box -->
+            <div style="margin-bottom:14px;background:rgba(30,25,15,0.9);border:1px solid #3a3a2a;border-radius:8px;padding:12px 18px;display:flex;align-items:center;gap:14px;">
+              <div style="font-size:36px;flex-shrink:0;">${vendor.icon}</div>
+              <div style="flex:1;">
+                <div id="vendor-dialogue-text" style="font-size:13px;color:#ccbb99;font-style:italic;line-height:1.5;font-family:'Georgia',serif;min-height:36px;">
+                  "${(VENDOR_DIALOGUE[vendor.type] || ["..."])[this._vendorDialogueIdx[vendor.type] || 0]}"
+                </div>
+              </div>
+              <button id="vendor-talk-btn" style="
+                padding:8px 16px;font-size:12px;background:rgba(40,35,20,0.9);border:1px solid #5a4a2a;
+                border-radius:6px;color:#c8a84e;cursor:pointer;font-family:'Georgia',serif;
+                pointer-events:auto;white-space:nowrap;transition:border-color 0.2s;
+              ">Talk</button>
             </div>
 
             <!-- Two panels side by side -->
@@ -4241,6 +4422,27 @@ export class DiabloGame {
         this._state.phase = DiabloPhase.PLAYING;
         this._menuEl.innerHTML = "";
       });
+
+      // Talk button — cycle dialogue
+      const talkBtn = this._menuEl.querySelector("#vendor-talk-btn") as HTMLButtonElement | null;
+      if (talkBtn) {
+        talkBtn.addEventListener("click", () => {
+          const lines = VENDOR_DIALOGUE[vendor.type] || [];
+          if (lines.length === 0) return;
+          const idx = ((this._vendorDialogueIdx[vendor.type] || 0) + 1) % lines.length;
+          this._vendorDialogueIdx[vendor.type] = idx;
+          const textEl = this._menuEl.querySelector("#vendor-dialogue-text") as HTMLDivElement | null;
+          if (textEl) textEl.textContent = `"${lines[idx]}"`;
+        });
+        talkBtn.addEventListener("mouseenter", () => {
+          talkBtn.style.borderColor = "#c8a84e";
+          talkBtn.style.background = "rgba(50,40,20,0.95)";
+        });
+        talkBtn.addEventListener("mouseleave", () => {
+          talkBtn.style.borderColor = "#5a4a2a";
+          talkBtn.style.background = "rgba(40,35,20,0.9)";
+        });
+      }
     };
 
     renderShop();

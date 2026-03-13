@@ -1574,7 +1574,59 @@ export const ITEM_DATABASE: DiabloItem[] = [
     description: 'These boots have walked across every realm in existence.',
     legendaryAbility: 'Movement speed doubled. Dodging an attack grants 100% critical chance for 2 seconds.',
   },
+  // ── Lanterns ──────────────────────────────────────────────────────
+  {
+    id: nextId(), name: 'Rusty Lantern', icon: '🏮',
+    rarity: ItemRarity.COMMON, type: ItemType.LANTERN, slot: ItemSlot.LANTERN,
+    level: 1, value: 15, stats: {},
+    description: 'A battered tin lantern. Barely holds a flame, but better than nothing.',
+  },
+  {
+    id: nextId(), name: 'Traveler\'s Lantern', icon: '🏮',
+    rarity: ItemRarity.UNCOMMON, type: ItemType.LANTERN, slot: ItemSlot.LANTERN,
+    level: 5, value: 80, stats: {},
+    description: 'A sturdy brass lantern favored by merchants on the old roads.',
+  },
+  {
+    id: nextId(), name: 'Miner\'s Headlamp', icon: '🏮',
+    rarity: ItemRarity.RARE, type: ItemType.LANTERN, slot: ItemSlot.LANTERN,
+    level: 12, value: 250, stats: {},
+    description: 'Focused beam cuts deep into the dark. Dwarven engineering at its finest.',
+  },
+  {
+    id: nextId(), name: 'Enchanted Brazier', icon: '🏮',
+    rarity: ItemRarity.EPIC, type: ItemType.LANTERN, slot: ItemSlot.LANTERN,
+    level: 20, value: 800, stats: {},
+    description: 'Burns with arcane fire that never dies. Illuminates even magical darkness.',
+  },
+  {
+    id: nextId(), name: 'Sunstone Beacon', icon: '🏮',
+    rarity: ItemRarity.LEGENDARY, type: ItemType.LANTERN, slot: ItemSlot.LANTERN,
+    level: 30, value: 3000, stats: {},
+    description: 'A shard of captured sunlight. Banishes all shadow in a wide radius.',
+    legendaryAbility: 'Nearby enemies are blinded, reducing their accuracy by 15%.',
+  },
+  {
+    id: nextId(), name: 'The Undying Flame', icon: '🏮',
+    rarity: ItemRarity.MYTHIC, type: ItemType.LANTERN, slot: ItemSlot.LANTERN,
+    level: 40, value: 10000, stats: {},
+    description: 'Forged from the last ember of a dying star. Its warmth can be felt across realms.',
+    legendaryAbility: 'Regenerate 2% max HP per second while the lantern is lit.',
+  },
 ];
+
+// ---------------------------------------------------------------------------
+//  LANTERN LIGHT CONFIGS  (keyed by item name)
+// ---------------------------------------------------------------------------
+
+export const LANTERN_CONFIGS: Record<string, { intensity: number; distance: number; color: number }> = {
+  'Rusty Lantern':        { intensity: 1.0, distance: 7,  color: 0xcc8833 },
+  'Traveler\'s Lantern':  { intensity: 1.5, distance: 10, color: 0xffaa55 },
+  'Miner\'s Headlamp':    { intensity: 2.0, distance: 13, color: 0xeeddaa },
+  'Enchanted Brazier':    { intensity: 2.5, distance: 16, color: 0x88aaff },
+  'Sunstone Beacon':      { intensity: 3.0, distance: 20, color: 0xfff5cc },
+  'The Undying Flame':    { intensity: 3.5, distance: 24, color: 0xffcc44 },
+};
 
 // ---------------------------------------------------------------------------
 //  5. SET BONUSES
@@ -2202,7 +2254,7 @@ export function generateVendorInventory(type: VendorType, playerLevel: number): 
     [VendorType.ARCANIST]: [ItemType.STAFF, ItemType.WAND, ItemType.CHEST_ARMOR],
     [VendorType.ALCHEMIST]: [ItemType.RING, ItemType.AMULET, ItemType.NECKLACE],
     [VendorType.JEWELER]: [ItemType.RING, ItemType.AMULET, ItemType.NECKLACE],
-    [VendorType.GENERAL_MERCHANT]: [ItemType.SWORD, ItemType.BOW, ItemType.STAFF, ItemType.CHEST_ARMOR, ItemType.BOOTS, ItemType.HELMET],
+    [VendorType.GENERAL_MERCHANT]: [ItemType.SWORD, ItemType.BOW, ItemType.STAFF, ItemType.CHEST_ARMOR, ItemType.BOOTS, ItemType.HELMET, ItemType.LANTERN],
   };
 
   const allowedTypes = typeFilters[type];

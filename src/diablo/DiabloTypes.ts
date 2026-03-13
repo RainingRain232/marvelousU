@@ -67,6 +67,7 @@ export enum ItemSlot {
   ACCESSORY_1 = 'ACCESSORY_1',
   ACCESSORY_2 = 'ACCESSORY_2',
   WEAPON = 'WEAPON',
+  LANTERN = 'LANTERN',
 }
 
 export enum ItemType {
@@ -86,6 +87,7 @@ export enum ItemType {
   RING = 'RING',
   AMULET = 'AMULET',
   NECKLACE = 'NECKLACE',
+  LANTERN = 'LANTERN',
 }
 
 export enum EnemyType {
@@ -453,6 +455,7 @@ export interface DiabloEquipment {
   accessory1: DiabloItem | null;
   accessory2: DiabloItem | null;
   weapon: DiabloItem | null;
+  lantern: DiabloItem | null;
 }
 
 export interface DiabloInventorySlot {
@@ -501,6 +504,7 @@ export interface DiabloPlayerState {
   potionCooldown: number;
   activePotionBuffs: { type: PotionType; value: number; remaining: number }[];
   salvageMaterials: number;
+  lanternOn: boolean;
 }
 
 export interface DiabloEnemy {
@@ -720,6 +724,7 @@ function createEmptyEquipment(): DiabloEquipment {
     accessory1: null,
     accessory2: null,
     weapon: null,
+    lantern: null,
   };
 }
 
@@ -852,6 +857,7 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     potionCooldown: 0,
     activePotionBuffs: [],
     salvageMaterials: 0,
+    lanternOn: false,
   };
 }
 
