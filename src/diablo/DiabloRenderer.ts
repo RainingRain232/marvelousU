@@ -1692,14 +1692,14 @@ export class DiabloRenderer {
         new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.7, side: THREE.DoubleSide })
       );
       roofLeft.position.set(0, bh + roofH * 0.4, -roofD * 0.15);
-      roofLeft.rotation.x = -0.75;
+      roofLeft.rotation.x = 0.75;
       buildGroup.add(roofLeft);
       const roofRight = new THREE.Mesh(
         new THREE.PlaneGeometry(roofW, Math.sqrt(roofD * roofD / 4 + roofH * roofH)),
         new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.7, side: THREE.DoubleSide })
       );
       roofRight.position.set(0, bh + roofH * 0.4, roofD * 0.15);
-      roofRight.rotation.x = 0.75;
+      roofRight.rotation.x = -0.75;
       buildGroup.add(roofRight);
 
       // Windows (emissive warm yellow)
