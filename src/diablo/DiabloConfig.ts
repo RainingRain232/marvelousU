@@ -12,6 +12,7 @@ import {
   DamageType,
   DiabloMapId,
   StatusEffect,
+  VendorType,
 } from './DiabloTypes';
 
 // ---------------------------------------------------------------------------
@@ -330,6 +331,22 @@ export const MAP_CONFIGS: Record<DiabloMapId, DiabloMapConfig> = {
     fogDensity: 0.04,
     fogColor: '#443355',
     backgroundMusic: 'dungeon_depths',
+  },
+  [DiabloMapId.CAMELOT]: {
+    id: DiabloMapId.CAMELOT,
+    name: 'Camelot',
+    description: 'The great citadel of Camelot. A safe haven with merchants and artisans.',
+    width: 100,
+    depth: 100,
+    enemyTypes: [],
+    maxEnemies: 0,
+    spawnInterval: 999,
+    treasureCount: 0,
+    ambientColor: '#445566',
+    groundColor: '#887766',
+    fogDensity: 0.008,
+    fogColor: '#99aabb',
+    backgroundMusic: 'camelot_hub',
   },
 };
 
@@ -1377,4 +1394,56 @@ export const ENEMY_SPAWN_WEIGHTS: Record<DiabloMapId, { type: EnemyType; weight:
     { type: EnemyType.NECROMANCER, weight: 15 },
     { type: EnemyType.BONE_GOLEM, weight: 12 },
   ],
+  [DiabloMapId.CAMELOT]: [],
 };
+
+// ---------------------------------------------------------------------------
+//  VENDOR DEFINITIONS
+// ---------------------------------------------------------------------------
+
+export const VENDOR_DEFS: { type: VendorType; name: string; icon: string; x: number; z: number; description: string }[] = [
+  { type: VendorType.BLACKSMITH, name: "Godric the Blacksmith", icon: "⚒️", x: -15, z: -10, description: "Weapons and heavy armor" },
+  { type: VendorType.ARCANIST, name: "Morgana the Arcanist", icon: "🔮", x: 15, z: -10, description: "Staves, wands, and enchanted robes" },
+  { type: VendorType.ALCHEMIST, name: "Brother Aldric", icon: "⚗️", x: -15, z: 12, description: "Potions, rings, and amulets" },
+  { type: VendorType.JEWELER, name: "Elara Gemwright", icon: "💎", x: 15, z: 12, description: "Accessories and rare gems" },
+  { type: VendorType.GENERAL_MERCHANT, name: "Old Tom", icon: "🏪", x: 0, z: -20, description: "A bit of everything" },
+];
+
+export function generateVendorInventory(type: VendorType, playerLevel: number): DiabloItem[] {
+  const items: DiabloItem[] = [];
+  const db = ITEM_DATABASE;
+
+  // Filter items by vendor type and add appropriate ones
+  const typeFilters: Record<VendorType, ItemType[]> = {
+    [VendorType.BLACKSMITH]: [ItemType.SWORD, ItemType.AXE, ItemType.MACE, ItemType.DAGGER, ItemType.SHIELD, ItemType.CHEST_ARMOR, ItemType.LEG_ARMOR, ItemType.HELMET, ItemType.GAUNTLETS, ItemType.BOOTS],
+    [VendorType.ARCANIST]: [ItemType.STAFF, ItemType.WAND, ItemType.CHEST_ARMOR],
+    [VendorType.ALCHEMIST]: [ItemType.RING, ItemType.AMULET, ItemType.NECKLACE],
+    [VendorType.JEWELER]: [ItemType.RING, ItemType.AMULET, ItemType.NECKLACE],
+    [VendorType.GENERAL_MERCHANT]: [ItemType.SWORD, ItemType.BOW, ItemType.STAFF, ItemType.CHEST_ARMOR, ItemType.BOOTS, ItemType.HELMET],
+  };
+
+  const allowedTypes = typeFilters[type];
+  const maxRarity = playerLevel < 5 ? ItemRarity.UNCOMMON
+    : playerLevel < 10 ? ItemRarity.RARE
+    : playerLevel < 20 ? ItemRarity.EPIC
+    : playerLevel < 30 ? ItemRarity.LEGENDARY
+    : ItemRarity.MYTHIC;
+
+  const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
+  const maxIdx = rarityOrder.indexOf(maxRarity);
+
+  const eligible = db.filter(item =>
+    allowedTypes.includes(item.type) &&
+    rarityOrder.indexOf(item.rarity) <= maxIdx &&
+    item.level <= playerLevel + 5
+  );
+
+  // Pick 8-12 random items
+  const count = 8 + Math.floor(Math.random() * 5);
+  const shuffled = [...eligible].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+    items.push({ ...shuffled[i], id: `vendor_${type}_${i}` });
+  }
+
+  return items;
+}

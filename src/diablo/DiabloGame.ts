@@ -5,12 +5,14 @@ import {
   DiabloClass, DiabloMapId, DiabloPhase, ItemRarity,
   SkillId, EnemyState, StatusEffect, TimeOfDay,
   DiabloItem, DiabloEquipment,
+  VendorType, DiabloVendor,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
 import {
   SKILL_DEFS, MAP_CONFIGS, ENEMY_DEFS, ITEM_DATABASE, SET_BONUSES,
   LOOT_TABLES, RARITY_NAMES, XP_TABLE,
-  ENEMY_SPAWN_WEIGHTS
+  ENEMY_SPAWN_WEIGHTS,
+  VENDOR_DEFS, generateVendorInventory
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -49,6 +51,7 @@ const MAP_KILL_TARGET: Record<DiabloMapId, number> = {
   [DiabloMapId.FOREST]: 50,
   [DiabloMapId.ELVEN_VILLAGE]: 40,
   [DiabloMapId.NECROPOLIS_DUNGEON]: 60,
+  [DiabloMapId.CAMELOT]: 0,
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -58,6 +61,7 @@ const BOSS_NAMES: Record<DiabloMapId, string[]> = {
   [DiabloMapId.FOREST]: ["Oakrot the Ancient", "Grimfang Alpha", "Bandit King Varros"],
   [DiabloMapId.ELVEN_VILLAGE]: ["Shadowlord Ael'thar", "Corrupted Archon", "Darkstalker Prime"],
   [DiabloMapId.NECROPOLIS_DUNGEON]: ["Lich Overlord Morthis", "Bonecrusher", "Wraith King Null"],
+  [DiabloMapId.CAMELOT]: [],
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -98,6 +102,13 @@ export class DiabloGame {
   private _mpText!: HTMLDivElement;
   private _skillSlots: HTMLDivElement[] = [];
   private _skillCooldownOverlays: HTMLDivElement[] = [];
+
+  // Minimap
+  private _minimapCanvas!: HTMLCanvasElement;
+  private _minimapCtx!: CanvasRenderingContext2D;
+
+  // Vendor interaction hint
+  private _vendorHint!: HTMLDivElement;
 
   // ──────────────────────────────────────────────────────────────
   //  BOOT
@@ -187,6 +198,21 @@ export class DiabloGame {
       } else if (e.code === "Escape") {
         this._state.phase = DiabloPhase.PAUSED;
         this._showPauseMenu();
+      } else if (e.code === "KeyE" && this._state.currentMap === DiabloMapId.CAMELOT) {
+        // Vendor interaction on E key
+        const p = this._state.player;
+        let nearestVendor: DiabloVendor | null = null;
+        let nearestDist = 4;
+        for (const v of this._state.vendors) {
+          const d = this._dist(p.x, p.z, v.x, v.z);
+          if (d < nearestDist) {
+            nearestDist = d;
+            nearestVendor = v;
+          }
+        }
+        if (nearestVendor) {
+          this._showVendorShop(nearestVendor);
+        }
       } else if (e.code === "Space") {
         this._doDodgeRoll();
       }
@@ -196,6 +222,8 @@ export class DiabloGame {
       } else if (e.code === "KeyS") {
         this._showStash();
       }
+    } else if (this._state.phase === DiabloPhase.CLASS_SELECT) {
+      // no-op: class select handles its own UI
     } else if (this._state.phase === DiabloPhase.PAUSED) {
       if (e.code === "Escape") {
         this._state.phase = DiabloPhase.PLAYING;
@@ -217,6 +245,24 @@ export class DiabloGame {
     if (e.button === 0) {
       this._mouseDown = true;
       if (this._state.phase === DiabloPhase.PLAYING) {
+        // Check vendor interaction on Camelot
+        if (this._state.currentMap === DiabloMapId.CAMELOT) {
+          const p = this._state.player;
+          let nearestVendor: DiabloVendor | null = null;
+          let nearestDist = 3;
+          for (const v of this._state.vendors) {
+            const d = this._dist(p.x, p.z, v.x, v.z);
+            if (d < nearestDist) {
+              nearestDist = d;
+              nearestVendor = v;
+            }
+          }
+          if (nearestVendor) {
+            this._showVendorShop(nearestVendor);
+            return;
+          }
+        }
+
         const target = this._renderer.getClickTarget(this._mouseX, this._mouseY, this._state);
         if (target) {
           if (target.type === "enemy") {
@@ -383,7 +429,7 @@ export class DiabloGame {
       if (el) el.addEventListener("click", fn);
     };
     csClick("#diablo-cs-load", () => this._loadGame());
-    csClick("#diablo-cs-controls", () => { this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT; this._showControls(); });
+    csClick("#diablo-cs-controls", () => { this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT; this._state.phase = DiabloPhase.INVENTORY; this._showControls(); });
     csClick("#diablo-cs-exit", () => window.dispatchEvent(new CustomEvent("diabloExit")));
 
     // Stash/Inventory/Character need a loaded save to have meaningful data
@@ -397,6 +443,7 @@ export class DiabloGame {
           this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
           this._state.persistentGold = save.persistentGold;
         }
+        this._state.phase = DiabloPhase.INVENTORY;
         this._showStash();
       });
       csClick("#diablo-cs-inventory", () => {
@@ -407,6 +454,7 @@ export class DiabloGame {
           this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
           this._state.persistentGold = save.persistentGold;
         }
+        this._state.phase = DiabloPhase.INVENTORY;
         this._showInventory();
       });
       csClick("#diablo-cs-character", () => {
@@ -416,6 +464,7 @@ export class DiabloGame {
           const save = JSON.parse(raw);
           this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
         }
+        this._state.phase = DiabloPhase.INVENTORY;
         this._showCharacterOverview();
       });
     }
@@ -431,7 +480,16 @@ export class DiabloGame {
       name: string;
       desc: string;
       difficulty: string;
+      isSafe?: boolean;
     }[] = [
+      {
+        id: DiabloMapId.CAMELOT,
+        icon: "\uD83C\uDFF0",
+        name: "Camelot",
+        desc: "The great citadel. Visit merchants, manage your gear, and prepare for adventure.",
+        difficulty: "Safe Zone",
+        isSafe: true,
+      },
       {
         id: DiabloMapId.FOREST,
         icon: "\uD83C\uDF32",
@@ -466,7 +524,7 @@ export class DiabloGame {
           <div style="font-size:64px;margin-bottom:12px;">${m.icon}</div>
           <div style="font-size:22px;color:#c8a84e;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">${m.name}</div>
           <p style="color:#aaa;font-size:14px;line-height:1.5;margin-bottom:16px;">${m.desc}</p>
-          <div style="font-size:20px;color:#ff8;">Difficulty: ${m.difficulty}</div>
+          <div style="font-size:20px;color:${m.isSafe ? '#44ff44' : '#ff8'};">Difficulty: ${m.difficulty}</div>
         </div>`;
     }
 
@@ -561,8 +619,27 @@ export class DiabloGame {
     this._renderer.buildPlayer(this._state.player.class);
     this._renderer.applyTimeOfDay(this._state.timeOfDay, mapId);
 
-    this._spawnInitialEnemies();
-    this._spawnInitialChests();
+    if (mapId === DiabloMapId.CAMELOT) {
+      // Camelot is a safe hub: no enemies or chests, spawn vendors instead
+      this._state.vendors = VENDOR_DEFS.map((vd) => ({
+        id: this._genId(),
+        type: vd.type,
+        name: vd.name,
+        x: vd.x,
+        z: vd.z,
+        inventory: generateVendorInventory(vd.type, this._state.player.level),
+        icon: vd.icon,
+      }));
+      if ((this._renderer as any).syncVendors) {
+        (this._renderer as any).syncVendors(
+          this._state.vendors.map((v) => ({ x: v.x, z: v.z, type: v.type, name: v.name, icon: v.icon }))
+        );
+      }
+    } else {
+      this._state.vendors = [];
+      this._spawnInitialEnemies();
+      this._spawnInitialChests();
+    }
 
     this._state.phase = DiabloPhase.PLAYING;
     this._menuEl.innerHTML = "";
@@ -1505,6 +1582,27 @@ export class DiabloGame {
     topRight.appendChild(this._levelText);
     topRight.appendChild(this._killText);
     this._hud.appendChild(topRight);
+
+    // Minimap canvas — top-left corner
+    this._minimapCanvas = document.createElement("canvas");
+    this._minimapCanvas.width = 180;
+    this._minimapCanvas.height = 180;
+    this._minimapCanvas.style.cssText = `
+      position:absolute;top:16px;left:16px;width:180px;height:180px;
+      border:2px solid #5a4a2a;border-radius:4px;background:rgba(0,0,0,0.6);
+    `;
+    this._minimapCtx = this._minimapCanvas.getContext("2d")!;
+    this._hud.appendChild(this._minimapCanvas);
+
+    // Vendor interaction hint
+    this._vendorHint = document.createElement("div");
+    this._vendorHint.style.cssText = `
+      position:absolute;bottom:100px;left:50%;transform:translateX(-50%);
+      padding:8px 20px;background:rgba(10,8,4,0.85);border:1px solid #5a4a2a;
+      border-radius:6px;color:#c8a84e;font-size:14px;font-weight:bold;
+      letter-spacing:1px;display:none;white-space:nowrap;
+    `;
+    this._hud.appendChild(this._vendorHint);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -1550,6 +1648,30 @@ export class DiabloGame {
     this._goldText.textContent = `\uD83E\uDE99 ${p.gold}`;
     this._levelText.textContent = `Lv. ${p.level}`;
     this._killText.textContent = `Kills: ${this._state.killCount}`;
+
+    // Minimap
+    this._updateMinimap();
+
+    // Vendor hint (Camelot only)
+    if (this._state.currentMap === DiabloMapId.CAMELOT) {
+      let nearestVendor: DiabloVendor | null = null;
+      let nearestDist = 4;
+      for (const v of this._state.vendors) {
+        const d = this._dist(p.x, p.z, v.x, v.z);
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearestVendor = v;
+        }
+      }
+      if (nearestVendor) {
+        this._vendorHint.style.display = "block";
+        this._vendorHint.textContent = `Press [E] to trade with ${nearestVendor.name}`;
+      } else {
+        this._vendorHint.style.display = "none";
+      }
+    } else {
+      this._vendorHint.style.display = "none";
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -2279,6 +2401,8 @@ export class DiabloGame {
   //  UPDATE SPAWNING
   // ──────────────────────────────────────────────────────────────
   private _updateSpawning(dt: number): void {
+    if (this._state.currentMap === DiabloMapId.CAMELOT) return;
+
     const mapCfg = MAP_CONFIGS[this._state.currentMap];
     const spawnInterval = (mapCfg as any).spawnInterval || 4;
 
@@ -2380,6 +2504,7 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _checkMapClear(): void {
     if (this._state.phase !== DiabloPhase.PLAYING) return;
+    if (this._state.currentMap === DiabloMapId.CAMELOT) return;
     const target = MAP_KILL_TARGET[this._state.currentMap] || 50;
     if (this._state.killCount >= target) {
       const aliveEnemies = this._state.enemies.filter(
@@ -3041,7 +3166,7 @@ export class DiabloGame {
     this._renderer.buildMap(this._state.currentMap);
     this._renderer.buildPlayer(this._state.player.class);
     this._renderer.applyTimeOfDay(this._state.timeOfDay, this._state.currentMap);
-    // Spawn fresh enemies and chests
+    // Spawn fresh enemies and chests (or vendors for Camelot)
     this._state.enemies = [];
     this._state.projectiles = [];
     this._state.loot = [];
@@ -3049,8 +3174,26 @@ export class DiabloGame {
     this._state.aoeEffects = [];
     this._state.floatingTexts = [];
     this._state.particles = [];
-    this._spawnInitialEnemies();
-    this._spawnInitialChests();
+    this._state.vendors = [];
+    if (this._state.currentMap === DiabloMapId.CAMELOT) {
+      this._state.vendors = VENDOR_DEFS.map((vd) => ({
+        id: this._genId(),
+        type: vd.type,
+        name: vd.name,
+        x: vd.x,
+        z: vd.z,
+        inventory: generateVendorInventory(vd.type, this._state.player.level),
+        icon: vd.icon,
+      }));
+      if ((this._renderer as any).syncVendors) {
+        (this._renderer as any).syncVendors(
+          this._state.vendors.map((v) => ({ x: v.x, z: v.z, type: v.type, name: v.name, icon: v.icon }))
+        );
+      }
+    } else {
+      this._spawnInitialEnemies();
+      this._spawnInitialChests();
+    }
     // Set to playing
     this._state.phase = DiabloPhase.PLAYING;
     this._menuEl.innerHTML = "";
@@ -3203,5 +3346,348 @@ export class DiabloGame {
     backBtn.addEventListener("click", () => {
       this._backToMenu();
     });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  VENDOR SHOP
+  // ──────────────────────────────────────────────────────────────
+  private _showVendorShop(vendor: DiabloVendor): void {
+    const p = this._state.player;
+    this._phaseBeforeOverlay = DiabloPhase.PLAYING;
+    this._state.phase = DiabloPhase.INVENTORY;
+
+    const renderShop = () => {
+      // Vendor wares grid
+      let waresHtml = "";
+      for (let i = 0; i < vendor.inventory.length; i++) {
+        const item = vendor.inventory[i];
+        const rarityColor = RARITY_CSS[item.rarity];
+        const canAfford = p.gold >= item.value;
+        const priceColor = canAfford ? "#ffd700" : "#ff4444";
+        waresHtml += `
+          <div class="vendor-ware" data-ware-idx="${i}" style="
+            width:120px;height:120px;background:rgba(15,10,5,0.9);border:2px solid ${rarityColor};
+            border-radius:6px;display:flex;flex-direction:column;align-items:center;
+            justify-content:center;cursor:pointer;pointer-events:auto;position:relative;
+            transition:border-color 0.2s,box-shadow 0.2s;
+          ">
+            <div style="font-size:32px;">${item.icon}</div>
+            <div style="font-size:11px;color:${rarityColor};margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;text-align:center;">${item.name}</div>
+            <div style="font-size:12px;color:${priceColor};margin-top:2px;">\uD83E\uDE99 ${item.value}</div>
+          </div>`;
+      }
+      if (vendor.inventory.length === 0) {
+        waresHtml = `<div style="color:#888;font-size:14px;grid-column:1/-1;text-align:center;padding:30px;">Sold out!</div>`;
+      }
+
+      // Player inventory grid for selling
+      let invHtml = "";
+      for (let i = 0; i < p.inventory.length; i++) {
+        const slot = p.inventory[i];
+        const item = slot.item;
+        const borderColor = item ? RARITY_CSS[item.rarity] : "#3a3a3a";
+        const content = item
+          ? `<div style="font-size:20px;">${item.icon}</div>`
+          : "";
+        invHtml += `
+          <div class="vendor-inv-slot" data-inv-idx="${i}" style="
+            width:55px;height:55px;background:rgba(15,10,5,0.85);border:1px solid ${borderColor};
+            border-radius:4px;display:flex;align-items:center;justify-content:center;
+            cursor:pointer;pointer-events:auto;position:relative;
+          ">${content}</div>`;
+      }
+
+      this._menuEl.innerHTML = `
+        <div style="
+          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        ">
+          <div style="
+            max-width:900px;width:92%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+            border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
+          ">
+            <!-- Title -->
+            <div style="text-align:center;margin-bottom:16px;">
+              <div style="font-size:32px;color:#c8a84e;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">
+                ${vendor.icon} ${vendor.name}
+              </div>
+              <div style="font-size:14px;color:#888;margin-top:4px;">${(VENDOR_DEFS.find(vd => vd.type === vendor.type) || { description: "" }).description}</div>
+            </div>
+
+            <!-- Two panels side by side -->
+            <div style="display:flex;gap:24px;align-items:flex-start;">
+              <!-- Left: Vendor's Wares -->
+              <div style="flex:1;min-width:0;">
+                <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:8px;text-align:center;">VENDOR'S WARES</div>
+                <div style="display:grid;grid-template-columns:repeat(4,120px);gap:6px;max-height:420px;overflow-y:auto;justify-content:center;">
+                  ${waresHtml}
+                </div>
+              </div>
+
+              <!-- Right: Player's Items to Sell -->
+              <div style="flex:0 0 auto;">
+                <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:8px;text-align:center;">YOUR ITEMS (click to sell)</div>
+                <div style="display:grid;grid-template-columns:repeat(8,55px);grid-template-rows:repeat(5,55px);gap:3px;">
+                  ${invHtml}
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom bar -->
+            <div style="margin-top:16px;display:flex;justify-content:center;align-items:center;gap:30px;">
+              <div style="font-size:18px;color:#ffd700;">\uD83E\uDE99 ${p.gold} gold</div>
+              <button id="vendor-close-btn" style="
+                padding:12px 40px;font-size:18px;letter-spacing:3px;font-weight:bold;
+                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+              ">CLOSE</button>
+            </div>
+            <div id="vendor-status" style="margin-top:8px;text-align:center;color:#ff4444;font-size:14px;min-height:20px;"></div>
+            <!-- Tooltip container -->
+            <div id="inv-tooltip" style="
+              display:none;position:fixed;z-index:100;background:rgba(10,5,2,0.96);border:2px solid #5a4a2a;
+              border-radius:8px;padding:14px;max-width:280px;pointer-events:none;color:#ccc;font-size:13px;
+            "></div>
+          </div>
+        </div>`;
+
+      const statusEl = this._menuEl.querySelector("#vendor-status") as HTMLDivElement;
+      const showStatus = (msg: string, color: string) => {
+        statusEl.textContent = msg;
+        statusEl.style.color = color;
+        setTimeout(() => { statusEl.textContent = ""; }, 1500);
+      };
+
+      // Wire up vendor ware clicks (buy)
+      const wareSlots = this._menuEl.querySelectorAll(".vendor-ware") as NodeListOf<HTMLDivElement>;
+      wareSlots.forEach((el) => {
+        const idx = parseInt(el.getAttribute("data-ware-idx")!, 10);
+        el.addEventListener("mouseenter", (ev) => {
+          el.style.boxShadow = "0 0 12px rgba(200,168,78,0.3)";
+          this._showItemTooltip(ev, vendor.inventory[idx]);
+        });
+        el.addEventListener("mouseleave", () => {
+          el.style.boxShadow = "none";
+          this._hideItemTooltip();
+        });
+        el.addEventListener("click", () => {
+          const item = vendor.inventory[idx];
+          if (!item) return;
+          if (p.gold < item.value) {
+            showStatus("Not enough gold!", "#ff4444");
+            return;
+          }
+          const emptyIdx = p.inventory.findIndex((s) => s.item === null);
+          if (emptyIdx < 0) {
+            showStatus("Inventory Full!", "#ff4444");
+            return;
+          }
+          p.gold -= item.value;
+          p.inventory[emptyIdx].item = { ...item, id: this._genId() };
+          vendor.inventory.splice(idx, 1);
+          showStatus(`Purchased ${item.name}!`, "#44ff44");
+          renderShop();
+        });
+      });
+
+      // Wire up player inventory slots (sell)
+      const invSlots = this._menuEl.querySelectorAll(".vendor-inv-slot") as NodeListOf<HTMLDivElement>;
+      invSlots.forEach((el) => {
+        const idx = parseInt(el.getAttribute("data-inv-idx")!, 10);
+        el.addEventListener("mouseenter", (ev) => this._showItemTooltip(ev, p.inventory[idx].item));
+        el.addEventListener("mouseleave", () => this._hideItemTooltip());
+        el.addEventListener("click", () => {
+          const item = p.inventory[idx].item;
+          if (!item) return;
+          const sellValue = Math.max(1, Math.floor(item.value * 0.5));
+          p.gold += sellValue;
+          p.inventory[idx].item = null;
+          showStatus(`Sold ${item.name} for ${sellValue} gold`, "#ffd700");
+          renderShop();
+        });
+      });
+
+      // Close button
+      const closeBtn = this._menuEl.querySelector("#vendor-close-btn") as HTMLButtonElement;
+      closeBtn.addEventListener("mouseenter", () => {
+        closeBtn.style.borderColor = "#c8a84e";
+        closeBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+        closeBtn.style.background = "rgba(50,40,20,0.95)";
+      });
+      closeBtn.addEventListener("mouseleave", () => {
+        closeBtn.style.borderColor = "#5a4a2a";
+        closeBtn.style.boxShadow = "none";
+        closeBtn.style.background = "rgba(40,30,15,0.9)";
+      });
+      closeBtn.addEventListener("click", () => {
+        this._state.phase = DiabloPhase.PLAYING;
+        this._menuEl.innerHTML = "";
+      });
+    };
+
+    renderShop();
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  MINIMAP
+  // ──────────────────────────────────────────────────────────────
+  private _updateMinimap(): void {
+    const ctx = this._minimapCtx;
+    const W = 180;
+    const H = 180;
+    const p = this._state.player;
+    const mapId = this._state.currentMap;
+    const mapCfg = MAP_CONFIGS[mapId];
+    const mapW = mapCfg.width;
+    const mapD = (mapCfg as any).depth || (mapCfg as any).height || mapCfg.width;
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    // Background color by map
+    const bgColors: Record<string, string> = {
+      [DiabloMapId.FOREST]: "rgba(10,30,10,0.85)",
+      [DiabloMapId.ELVEN_VILLAGE]: "rgba(10,25,30,0.85)",
+      [DiabloMapId.NECROPOLIS_DUNGEON]: "rgba(20,10,30,0.85)",
+      [DiabloMapId.CAMELOT]: "rgba(30,22,12,0.85)",
+    };
+    ctx.fillStyle = bgColors[mapId] || "rgba(15,15,15,0.85)";
+    ctx.fillRect(0, 0, W, H);
+
+    // Scale
+    const scale = Math.min(W / mapW, H / mapD) * 0.85;
+    const cx = W / 2;
+    const cy = H / 2;
+
+    // Helper: world to minimap coords
+    const toMx = (wx: number) => cx + wx * scale;
+    const toMy = (wz: number) => cy + wz * scale;
+
+    // Draw terrain boundary
+    ctx.strokeStyle = "rgba(90,74,42,0.6)";
+    ctx.lineWidth = 1;
+    const halfW = mapW / 2;
+    const halfD = mapD / 2;
+    ctx.strokeRect(toMx(-halfW), toMy(-halfD), mapW * scale, mapD * scale);
+
+    if (mapId === DiabloMapId.CAMELOT) {
+      // Draw walls as dark grey perimeter
+      ctx.strokeStyle = "rgba(80,80,80,0.7)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(toMx(-halfW + 1), toMy(-halfD + 1), (mapW - 2) * scale, (mapD - 2) * scale);
+
+      // Draw roads as brown lines (cross pattern through center)
+      ctx.strokeStyle = "rgba(100,70,40,0.5)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(toMx(-halfW), toMy(0));
+      ctx.lineTo(toMx(halfW), toMy(0));
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(toMx(0), toMy(-halfD));
+      ctx.lineTo(toMx(0), toMy(halfD));
+      ctx.stroke();
+
+      // Draw castle at back as larger grey rect
+      ctx.fillStyle = "rgba(70,65,55,0.5)";
+      ctx.fillRect(toMx(-10), toMy(-halfD + 2), 20 * scale, 8 * scale);
+
+      // Draw building outlines (approximate)
+      ctx.strokeStyle = "rgba(90,85,75,0.5)";
+      ctx.lineWidth = 1;
+      const bldgs = [
+        { x: -20, z: -15, w: 8, h: 6 },
+        { x: 12, z: -15, w: 8, h: 6 },
+        { x: -20, z: 8, w: 8, h: 6 },
+        { x: 12, z: 8, w: 8, h: 6 },
+        { x: -5, z: -22, w: 10, h: 5 },
+      ];
+      for (const b of bldgs) {
+        ctx.strokeRect(toMx(b.x), toMy(b.z), b.w * scale, b.h * scale);
+      }
+
+      // Draw vendor dots and labels
+      const vendorColors: Record<string, string> = {
+        [VendorType.BLACKSMITH]: "#ff8800",
+        [VendorType.ARCANIST]: "#aa44ff",
+        [VendorType.ALCHEMIST]: "#44ff44",
+        [VendorType.JEWELER]: "#00cccc",
+        [VendorType.GENERAL_MERCHANT]: "#ffdd00",
+      };
+      ctx.font = "8px sans-serif";
+      for (const v of this._state.vendors) {
+        const mx = toMx(v.x);
+        const my = toMy(v.z);
+        ctx.fillStyle = vendorColors[v.type] || "#ffffff";
+        ctx.beginPath();
+        ctx.arc(mx, my, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Name label
+        ctx.fillStyle = "rgba(200,190,170,0.8)";
+        ctx.fillText(v.name.split(" ")[0], mx + 5, my + 3);
+      }
+    } else {
+      // Combat maps: draw enemies, loot, chests
+      // Enemies
+      for (const enemy of this._state.enemies) {
+        if (enemy.state === EnemyState.DEAD) continue;
+        const mx = toMx(enemy.x);
+        const my = toMy(enemy.z);
+        ctx.fillStyle = "#ff3333";
+        const r = enemy.isBoss ? 4 : 2;
+        ctx.beginPath();
+        ctx.arc(mx, my, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Loot as yellow dots
+      for (const loot of this._state.loot) {
+        ctx.fillStyle = "#ffff00";
+        ctx.beginPath();
+        ctx.arc(toMx(loot.x), toMy(loot.z), 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Treasure chests as orange squares
+      for (const chest of this._state.treasureChests) {
+        if (chest.opened) continue;
+        ctx.fillStyle = "#ff8800";
+        ctx.fillRect(toMx(chest.x) - 1.5, toMy(chest.z) - 1.5, 3, 3);
+      }
+    }
+
+    // Draw player as bright dot
+    const pmx = toMx(p.x);
+    const pmy = toMy(p.z);
+    ctx.fillStyle = "#ffe066";
+    ctx.beginPath();
+    ctx.arc(pmx, pmy, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Player facing direction line
+    const dirLen = 8;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(pmx, pmy);
+    ctx.lineTo(pmx + Math.sin(p.angle) * dirLen, pmy + Math.cos(p.angle) * dirLen);
+    ctx.stroke();
+
+    // Map name label at bottom
+    const mapNames: Record<string, string> = {
+      [DiabloMapId.FOREST]: "Darkwood Forest",
+      [DiabloMapId.ELVEN_VILLAGE]: "Aelindor",
+      [DiabloMapId.NECROPOLIS_DUNGEON]: "Necropolis Depths",
+      [DiabloMapId.CAMELOT]: "Camelot",
+    };
+    ctx.fillStyle = "rgba(200,168,78,0.7)";
+    ctx.font = "9px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(mapNames[mapId] || mapId, W / 2, H - 4);
+    ctx.textAlign = "start"; // reset
   }
 }

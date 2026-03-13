@@ -14,6 +14,7 @@ export enum DiabloMapId {
   FOREST = 'FOREST',
   ELVEN_VILLAGE = 'ELVEN_VILLAGE',
   NECROPOLIS_DUNGEON = 'NECROPOLIS_DUNGEON',
+  CAMELOT = 'CAMELOT',
 }
 
 export enum DiabloPhase {
@@ -137,6 +138,14 @@ export enum EnemyState {
   HURT = 'HURT',
   DYING = 'DYING',
   DEAD = 'DEAD',
+}
+
+export enum VendorType {
+  BLACKSMITH = 'BLACKSMITH',
+  ARCANIST = 'ARCANIST',
+  ALCHEMIST = 'ALCHEMIST',
+  JEWELER = 'JEWELER',
+  GENERAL_MERCHANT = 'GENERAL_MERCHANT',
 }
 
 export enum StatusEffect {
@@ -336,6 +345,16 @@ export interface DiabloTreasureChest {
   items: DiabloItem[];
 }
 
+export interface DiabloVendor {
+  id: string;
+  type: VendorType;
+  name: string;
+  x: number;
+  z: number;
+  inventory: DiabloItem[];
+  icon: string;
+}
+
 export interface DiabloAOE {
   id: string;
   x: number;
@@ -403,6 +422,7 @@ export interface DiabloState {
   aoeEffects: DiabloAOE[];
   floatingTexts: DiabloFloatingText[];
   particles: DiabloParticle[];
+  vendors: DiabloVendor[];
   currentMap: DiabloMapId;
   camera: {
     x: number;
@@ -593,6 +613,7 @@ export function createDefaultState(): DiabloState {
     aoeEffects: [],
     floatingTexts: [],
     particles: [],
+    vendors: [],
     currentMap: DiabloMapId.FOREST,
     camera: {
       x: 0,
@@ -617,6 +638,6 @@ export function createDefaultState(): DiabloState {
     persistentXp: 0,
     timeOfDay: TimeOfDay.DAY,
     persistentStash: Array.from({ length: 100 }, () => ({ item: null })),
-    mapCleared: [false, false, false],
+    mapCleared: [false, false, false, false],
   };
 }
