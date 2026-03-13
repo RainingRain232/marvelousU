@@ -1234,6 +1234,7 @@ export class DiabloGame {
         <button id="diablo-controls-btn" style="${btnBase}">CONTROLS</button>
         <button id="diablo-inventory-btn" style="${btnBase}">INVENTORY</button>
         <button id="diablo-character-btn" style="${btnBase}">CHARACTER</button>
+        <button id="diablo-skilltree-btn" style="${btnBase}">SKILL TREE</button>
         <button id="diablo-stash-btn" style="${btnBase}">STASH</button>
         <button id="diablo-save-btn" style="${saveBtn}">SAVE GAME</button>
         ${loadBtnHtml}
@@ -1242,7 +1243,7 @@ export class DiabloGame {
       </div>`;
 
     // Hover effects for standard buttons
-    const stdBtns = this._menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-stash-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
+    const stdBtns = this._menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-stash-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
     stdBtns.forEach((btn) => {
       btn.addEventListener("mouseenter", () => {
         btn.style.borderColor = "#c8a84e";
@@ -1315,6 +1316,11 @@ export class DiabloGame {
     this._menuEl.querySelector("#diablo-character-btn")!.addEventListener("click", () => {
       this._phaseBeforeOverlay = DiabloPhase.PAUSED;
       this._showCharacterOverview();
+    });
+    this._menuEl.querySelector("#diablo-skilltree-btn")!.addEventListener("click", () => {
+      this._phaseBeforeOverlay = DiabloPhase.PAUSED;
+      this._state.phase = DiabloPhase.INVENTORY;
+      this._showSkillTreeScreen();
     });
     this._menuEl.querySelector("#diablo-stash-btn")!.addEventListener("click", () => {
       this._phaseBeforeOverlay = DiabloPhase.PAUSED;
@@ -1685,7 +1691,12 @@ export class DiabloGame {
           <h1 style="color:#c8a84e;font-size:36px;letter-spacing:4px;margin:0 0 10px 0;text-align:center;
             font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">CHARACTER OVERVIEW</h1>
           ${sec1}${sec2}${sec3}${sec4}${sec5}${sec6}
-          <div style="text-align:center;margin-top:30px;">
+          <div style="text-align:center;margin-top:30px;display:flex;gap:16px;justify-content:center;">
+            <button id="diablo-char-skilltree" style="
+              width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
+              background:rgba(40,30,15,0.9);border:2px solid #5a8a2a;border-radius:8px;color:#8c8;
+              cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+            ">SKILL TREE</button>
             <button id="diablo-char-back" style="
               width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
               background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
@@ -1708,6 +1719,21 @@ export class DiabloGame {
     });
     backBtn.addEventListener("click", () => {
       this._backToMenu();
+    });
+
+    const stBtn = this._menuEl.querySelector("#diablo-char-skilltree") as HTMLButtonElement;
+    stBtn.addEventListener("mouseenter", () => {
+      stBtn.style.borderColor = "#8c8";
+      stBtn.style.boxShadow = "0 0 15px rgba(100,200,100,0.3)";
+      stBtn.style.background = "rgba(30,50,30,0.95)";
+    });
+    stBtn.addEventListener("mouseleave", () => {
+      stBtn.style.borderColor = "#5a8a2a";
+      stBtn.style.boxShadow = "none";
+      stBtn.style.background = "rgba(40,30,15,0.9)";
+    });
+    stBtn.addEventListener("click", () => {
+      this._showSkillTreeScreen();
     });
   }
 
@@ -1873,6 +1899,14 @@ export class DiabloGame {
         background:rgba(0,0,0,0.65);transition:height 0.1s;pointer-events:none;
       `;
 
+      const cdText = document.createElement("div");
+      cdText.style.cssText = `
+        position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        font-size:16px;font-weight:bold;color:#fff;z-index:3;
+        text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none;display:none;
+      `;
+      cdText.className = "skill-cd-text";
+
       const keyLabel = document.createElement("div");
       keyLabel.style.cssText = `
         position:absolute;bottom:2px;right:4px;font-size:10px;color:#888;z-index:2;
@@ -1885,6 +1919,7 @@ export class DiabloGame {
 
       slot.appendChild(cdOverlay);
       slot.appendChild(iconEl);
+      slot.appendChild(cdText);
       slot.appendChild(keyLabel);
       skillBar.appendChild(slot);
       this._skillSlots.push(slot);
@@ -2056,11 +2091,17 @@ export class DiabloGame {
 
       const cd = p.skillCooldowns.get(skillId) || 0;
       const maxCd = def.cooldown;
+      const cdTextEl = this._skillSlots[i].querySelector(".skill-cd-text") as HTMLDivElement | null;
       if (cd > 0) {
         const pct = Math.min(100, (cd / maxCd) * 100);
         this._skillCooldownOverlays[i].style.height = pct + "%";
+        if (cdTextEl) {
+          cdTextEl.style.display = "block";
+          cdTextEl.textContent = cd >= 1 ? Math.ceil(cd).toString() : cd.toFixed(1);
+        }
       } else {
         this._skillCooldownOverlays[i].style.height = "0%";
+        if (cdTextEl) cdTextEl.style.display = "none";
       }
     }
 
@@ -4940,6 +4981,163 @@ export class DiabloGame {
       }
     }
     return total;
+  }
+
+  private _showSkillTreeScreen(): void {
+    const p = this._state.player;
+
+    // All skills for the player's class, ordered by unlock level
+    const SKILL_UNLOCK_LEVELS: Record<SkillId, number> = {
+      // Warrior
+      [SkillId.CLEAVE]: 1, [SkillId.SHIELD_BASH]: 3, [SkillId.WHIRLWIND]: 6,
+      [SkillId.BATTLE_CRY]: 10, [SkillId.GROUND_SLAM]: 15, [SkillId.BLADE_FURY]: 20,
+      // Mage
+      [SkillId.FIREBALL]: 1, [SkillId.LIGHTNING_BOLT]: 3, [SkillId.ICE_NOVA]: 6,
+      [SkillId.ARCANE_SHIELD]: 10, [SkillId.METEOR]: 15, [SkillId.CHAIN_LIGHTNING]: 20,
+      // Ranger
+      [SkillId.MULTI_SHOT]: 1, [SkillId.POISON_ARROW]: 3, [SkillId.EVASIVE_ROLL]: 6,
+      [SkillId.EXPLOSIVE_TRAP]: 10, [SkillId.RAIN_OF_ARROWS]: 15, [SkillId.PIERCING_SHOT]: 20,
+    };
+
+    // Skill upgrade descriptions per level tier
+    const SKILL_UPGRADES: Record<number, string> = {
+      5: "+10% damage",
+      10: "+15% damage, -1s cooldown",
+      15: "+20% damage, -10% mana cost",
+      20: "+25% damage, -2s cooldown",
+      25: "+30% damage, +1 range",
+      30: "+40% damage, -15% mana cost",
+      35: "+50% damage, +AOE radius",
+      40: "+60% damage, -3s cooldown",
+    };
+
+    // Get all skills for current class
+    const classSkills = Object.values(SKILL_DEFS).filter((s) => s.class === p.class);
+    classSkills.sort((a, b) => (SKILL_UNLOCK_LEVELS[a.id] || 99) - (SKILL_UNLOCK_LEVELS[b.id] || 99));
+
+    let skillsHtml = "";
+    for (const def of classSkills) {
+      const unlockLvl = SKILL_UNLOCK_LEVELS[def.id] || 1;
+      const unlocked = p.level >= unlockLvl;
+      const isActive = p.skills.includes(def.id);
+      const borderColor = isActive ? "#c8a84e" : unlocked ? "#5a8a2a" : "#3a3a3a";
+      const opacity = unlocked ? "1" : "0.5";
+
+      const statusText = isActive
+        ? `<span style="color:#ffd700;font-weight:bold;">EQUIPPED</span>`
+        : unlocked
+          ? `<span style="color:#5a5;">UNLOCKED</span>`
+          : `<span style="color:#888;">Unlocks at Level ${unlockLvl}</span>`;
+
+      // Status effect info
+      let statusEffHtml = "";
+      if (def.statusEffect) {
+        statusEffHtml = `<span style="color:#f84;">Applies: ${def.statusEffect}</span>`;
+      }
+
+      // AOE info
+      let aoeHtml = "";
+      if (def.aoeRadius) {
+        aoeHtml = `<span style="color:#8af;">AOE: ${def.aoeRadius} radius</span>`;
+      }
+
+      // Build upgrade progression
+      let upgradeHtml = "";
+      const upgradeLevels = [5, 10, 15, 20, 25, 30, 35, 40];
+      for (const uLvl of upgradeLevels) {
+        if (uLvl <= unlockLvl) continue; // skip upgrades below unlock level
+        const reached = p.level >= uLvl;
+        const color = reached ? "#6c6" : "#555";
+        const check = reached ? "+" : "-";
+        upgradeHtml += `<div style="color:${color};font-size:11px;margin-left:8px;">${check} Lv.${uLvl}: ${SKILL_UPGRADES[uLvl]}</div>`;
+      }
+
+      skillsHtml += `
+        <div style="
+          background:rgba(15,10,5,0.9);border:2px solid ${borderColor};border-radius:8px;
+          padding:14px;opacity:${opacity};transition:border-color 0.2s;margin-bottom:10px;
+        ">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="font-size:28px;">${def.icon}</span>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="color:#c8a84e;font-weight:bold;font-size:16px;">${def.name}</span>
+                ${statusText}
+              </div>
+              <div style="color:#aaa;font-size:12px;margin-top:2px;">${def.description}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#999;margin-bottom:6px;">
+            <span>Cooldown: ${def.cooldown}s</span>
+            <span style="color:#48f;">Mana: ${def.manaCost}</span>
+            <span style="color:#fa8;">Type: ${def.damageType}</span>
+            <span>Dmg: x${def.damageMultiplier}</span>
+            ${statusEffHtml}
+            ${aoeHtml}
+          </div>
+          ${upgradeHtml ? `<div style="border-top:1px solid #333;padding-top:4px;margin-top:4px;">
+            <div style="font-size:11px;color:#888;margin-bottom:2px;">Level Upgrades:</div>
+            ${upgradeHtml}
+          </div>` : ""}
+        </div>`;
+    }
+
+    // Talent summary
+    const talentBonuses = this._getTalentBonuses();
+    const cdr = talentBonuses[TalentEffectType.SKILL_COOLDOWN_REDUCTION] || 0;
+    const bonusDmg = talentBonuses[TalentEffectType.BONUS_DAMAGE_PERCENT] || 0;
+    let talentSummary = "";
+    if (cdr > 0) talentSummary += `<span style="color:#8af;margin-right:12px;">CDR: ${cdr}%</span>`;
+    if (bonusDmg > 0) talentSummary += `<span style="color:#fa8;margin-right:12px;">+${bonusDmg}% Damage</span>`;
+    if (!talentSummary) talentSummary = `<span style="color:#555;">No talent bonuses yet</span>`;
+
+    this._menuEl.innerHTML = `
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+      ">
+        <h2 style="color:#c8a84e;font-size:32px;letter-spacing:3px;margin-bottom:4px;font-family:'Georgia',serif;
+          text-shadow:0 0 15px rgba(200,168,78,0.4);">SKILL TREE</h2>
+        <div style="font-size:14px;color:#888;margin-bottom:12px;">Level ${p.level} ${p.class.charAt(0).toUpperCase() + p.class.slice(1).toLowerCase()} — Talent Points: <span style="color:#ffd700;">${p.talentPoints}</span></div>
+        <div style="display:flex;gap:12px;margin-bottom:16px;">
+          <button id="st-tab-skills" style="
+            padding:8px 24px;font-size:14px;letter-spacing:2px;font-weight:bold;
+            background:rgba(60,50,20,0.9);border:2px solid #c8a84e;border-radius:6px;color:#ffd700;
+            cursor:pointer;font-family:'Georgia',serif;pointer-events:auto;
+          ">SKILLS</button>
+          <button id="st-tab-talents" style="
+            padding:8px 24px;font-size:14px;letter-spacing:2px;font-weight:bold;
+            background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;border-radius:6px;color:#888;
+            cursor:pointer;font-family:'Georgia',serif;pointer-events:auto;
+          ">TALENTS</button>
+        </div>
+        <div style="max-width:600px;width:90%;max-height:60vh;overflow-y:auto;padding:4px;">
+          ${skillsHtml}
+        </div>
+        <div style="margin-top:12px;padding:8px 16px;background:rgba(20,15,10,0.9);border:1px solid #5a4a2a;border-radius:8px;font-size:13px;">
+          Talent Bonuses: ${talentSummary}
+        </div>
+        <div style="margin-top:10px;color:#888;font-size:12px;">Press Escape to close</div>
+      </div>`;
+
+    // Tab switching
+    this._menuEl.querySelector("#st-tab-talents")!.addEventListener("click", () => {
+      this._showTalentTree();
+    });
+    this._menuEl.querySelector("#st-tab-skills")!.addEventListener("mouseenter", (ev) => {
+      (ev.target as HTMLElement).style.boxShadow = "0 0 12px rgba(200,168,78,0.3)";
+    });
+    this._menuEl.querySelector("#st-tab-skills")!.addEventListener("mouseleave", (ev) => {
+      (ev.target as HTMLElement).style.boxShadow = "none";
+    });
+    this._menuEl.querySelector("#st-tab-talents")!.addEventListener("mouseenter", (ev) => {
+      (ev.target as HTMLElement).style.borderColor = "#c8a84e";
+      (ev.target as HTMLElement).style.boxShadow = "0 0 12px rgba(200,168,78,0.3)";
+    });
+    this._menuEl.querySelector("#st-tab-talents")!.addEventListener("mouseleave", (ev) => {
+      (ev.target as HTMLElement).style.borderColor = "#3a3a2a";
+      (ev.target as HTMLElement).style.boxShadow = "none";
+    });
   }
 
   private _showTalentTree(): void {
