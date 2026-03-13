@@ -14,7 +14,19 @@ export enum DiabloMapId {
   FOREST = 'FOREST',
   ELVEN_VILLAGE = 'ELVEN_VILLAGE',
   NECROPOLIS_DUNGEON = 'NECROPOLIS_DUNGEON',
+  VOLCANIC_WASTES = 'VOLCANIC_WASTES',
+  ABYSSAL_RIFT = 'ABYSSAL_RIFT',
+  DRAGONS_SANCTUM = 'DRAGONS_SANCTUM',
   CAMELOT = 'CAMELOT',
+}
+
+export enum DiabloDifficulty {
+  DAGGER = 'DAGGER',
+  CLEAVER = 'CLEAVER',
+  LONGSWORD = 'LONGSWORD',
+  BASTARD_SWORD = 'BASTARD_SWORD',
+  CLAYMORE = 'CLAYMORE',
+  FLAMBERGE = 'FLAMBERGE',
 }
 
 export enum DiabloPhase {
@@ -91,6 +103,24 @@ export enum EnemyType {
   NECROMANCER = 'NECROMANCER',
   BONE_GOLEM = 'BONE_GOLEM',
   WRAITH = 'WRAITH',
+  // Volcanic Wastes enemies
+  FIRE_IMP = 'FIRE_IMP',
+  LAVA_ELEMENTAL = 'LAVA_ELEMENTAL',
+  INFERNAL_KNIGHT = 'INFERNAL_KNIGHT',
+  MAGMA_SERPENT = 'MAGMA_SERPENT',
+  MOLTEN_COLOSSUS = 'MOLTEN_COLOSSUS',
+  // Abyssal Rift enemies
+  VOID_STALKER = 'VOID_STALKER',
+  SHADOW_WEAVER = 'SHADOW_WEAVER',
+  ABYSSAL_HORROR = 'ABYSSAL_HORROR',
+  RIFT_WALKER = 'RIFT_WALKER',
+  ENTROPY_LORD = 'ENTROPY_LORD',
+  // Dragon's Sanctum enemies
+  DRAGONKIN_WARRIOR = 'DRAGONKIN_WARRIOR',
+  WYRM_PRIEST = 'WYRM_PRIEST',
+  DRAKE_GUARDIAN = 'DRAKE_GUARDIAN',
+  DRAGON_WHELP = 'DRAGON_WHELP',
+  ELDER_DRAGON = 'ELDER_DRAGON',
   // Special
   TREASURE_MIMIC = 'TREASURE_MIMIC',
 }
@@ -448,6 +478,7 @@ export interface DiabloState {
   timeOfDay: TimeOfDay;
   persistentStash: DiabloInventorySlot[];
   mapCleared: boolean[];
+  difficulty: DiabloDifficulty;
 }
 
 // ── Rarity color map (for UI rendering) ──────────────────────
@@ -638,6 +669,7 @@ export function createDefaultState(): DiabloState {
     persistentXp: 0,
     timeOfDay: TimeOfDay.DAY,
     persistentStash: Array.from({ length: 100 }, () => ({ item: null })),
-    mapCleared: [false, false, false, false],
+    mapCleared: [false, false, false, false, false, false, false],
+    difficulty: DiabloDifficulty.DAGGER,
   };
 }

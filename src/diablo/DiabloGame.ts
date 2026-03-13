@@ -2,7 +2,7 @@ import { DiabloRenderer } from "./DiabloRenderer";
 import {
   DiabloState, DiabloEnemy, DiabloProjectile, DiabloLoot,
   DiabloTreasureChest, DiabloAOE,
-  DiabloClass, DiabloMapId, DiabloPhase, ItemRarity,
+  DiabloClass, DiabloMapId, DiabloPhase, ItemRarity, DiabloDifficulty,
   SkillId, EnemyState, StatusEffect, TimeOfDay,
   DiabloItem, DiabloEquipment,
   VendorType, DiabloVendor,
@@ -12,7 +12,8 @@ import {
   SKILL_DEFS, MAP_CONFIGS, ENEMY_DEFS, ITEM_DATABASE, SET_BONUSES,
   LOOT_TABLES, RARITY_NAMES, XP_TABLE,
   ENEMY_SPAWN_WEIGHTS,
-  VENDOR_DEFS, generateVendorInventory
+  VENDOR_DEFS, generateVendorInventory,
+  DIFFICULTY_CONFIGS,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -51,6 +52,9 @@ const MAP_KILL_TARGET: Record<DiabloMapId, number> = {
   [DiabloMapId.FOREST]: 50,
   [DiabloMapId.ELVEN_VILLAGE]: 40,
   [DiabloMapId.NECROPOLIS_DUNGEON]: 60,
+  [DiabloMapId.VOLCANIC_WASTES]: 70,
+  [DiabloMapId.ABYSSAL_RIFT]: 80,
+  [DiabloMapId.DRAGONS_SANCTUM]: 100,
   [DiabloMapId.CAMELOT]: 0,
 };
 
@@ -61,6 +65,9 @@ const BOSS_NAMES: Record<DiabloMapId, string[]> = {
   [DiabloMapId.FOREST]: ["Oakrot the Ancient", "Grimfang Alpha", "Bandit King Varros"],
   [DiabloMapId.ELVEN_VILLAGE]: ["Shadowlord Ael'thar", "Corrupted Archon", "Darkstalker Prime"],
   [DiabloMapId.NECROPOLIS_DUNGEON]: ["Lich Overlord Morthis", "Bonecrusher", "Wraith King Null"],
+  [DiabloMapId.VOLCANIC_WASTES]: ["Ignis the Unquenched", "Emberlord Pyraxis", "Magma King Volrath"],
+  [DiabloMapId.ABYSSAL_RIFT]: ["Xal'thuun the Void Maw", "Entropy Incarnate", "Riftlord Nihilus"],
+  [DiabloMapId.DRAGONS_SANCTUM]: ["Vyrathion the Ancient", "Drakemaw the Endless", "Scorchfather Pyranax"],
   [DiabloMapId.CAMELOT]: [],
 };
 
@@ -350,6 +357,28 @@ export class DiabloGame {
         </div>`;
     }
 
+    // Build difficulty selector
+    const difficulties = [
+      DiabloDifficulty.DAGGER,
+      DiabloDifficulty.CLEAVER,
+      DiabloDifficulty.LONGSWORD,
+      DiabloDifficulty.BASTARD_SWORD,
+      DiabloDifficulty.CLAYMORE,
+      DiabloDifficulty.FLAMBERGE,
+    ];
+    let diffHtml = "";
+    for (const diff of difficulties) {
+      const cfg = DIFFICULTY_CONFIGS[diff];
+      const isActive = this._state.difficulty === diff;
+      diffHtml += `<button class="diff-btn" data-diff="${diff}" style="
+        cursor:pointer;padding:8px 16px;font-size:14px;border-radius:6px;transition:0.2s;
+        background:${isActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)"};
+        border:2px solid ${isActive ? cfg.color : "#3a3a2a"};
+        color:${isActive ? cfg.color : "#666"};
+        font-family:'Georgia',serif;font-weight:bold;
+      ">${cfg.icon} ${cfg.label}<br><span style="font-size:11px;font-weight:normal;opacity:0.7;">${cfg.subtitle}</span></button>`;
+    }
+
     const hasSave = this._hasSave();
     const menuBtnStyle =
       "padding:12px 28px;font-size:15px;letter-spacing:2px;font-weight:bold;" +
@@ -381,6 +410,10 @@ export class DiabloGame {
           text-shadow:0 0 20px rgba(200,168,78,0.5),0 2px 4px rgba(0,0,0,0.8);
           font-family:'Georgia',serif;
         ">CHOOSE YOUR CLASS</h1>
+        <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;justify-content:center;">
+          <span style="color:#888;font-size:14px;align-self:center;margin-right:8px;font-family:'Georgia',serif;">DIFFICULTY:</span>
+          ${diffHtml}
+        </div>
         <div style="display:flex;gap:30px;">${cardsHtml}</div>
         <div style="display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;justify-content:center;">
           ${saveBtns}
@@ -403,6 +436,22 @@ export class DiabloGame {
         const cls = card.getAttribute("data-class") as DiabloClass;
         this._state.player = createDefaultPlayer(cls);
         this._showMapSelect();
+      });
+    });
+
+    // Wire up difficulty buttons
+    const diffBtns = this._menuEl.querySelectorAll(".diff-btn") as NodeListOf<HTMLButtonElement>;
+    diffBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this._state.difficulty = btn.getAttribute("data-diff") as DiabloDifficulty;
+        diffBtns.forEach((b) => {
+          const bDiff = b.getAttribute("data-diff") as DiabloDifficulty;
+          const bCfg = DIFFICULTY_CONFIGS[bDiff];
+          const isNowActive = bDiff === this._state.difficulty;
+          b.style.background = isNowActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)";
+          b.style.borderColor = isNowActive ? bCfg.color : "#3a3a2a";
+          b.style.color = isNowActive ? bCfg.color : "#666";
+        });
       });
     });
 
@@ -511,6 +560,27 @@ export class DiabloGame {
         desc: "The catacombs beneath a fallen fortress. The dead do not rest here.",
         difficulty: "\u2B50\u2B50\u2B50",
       },
+      {
+        id: DiabloMapId.VOLCANIC_WASTES,
+        icon: "\uD83C\uDF0B",
+        name: "Volcanic Wastes",
+        desc: "A scorched hellscape of molten rivers and ash storms. Demons forged in flame roam the ruins.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.ABYSSAL_RIFT,
+        icon: "\uD83C\uDF0C",
+        name: "Abyssal Rift",
+        desc: "A tear in reality. Eldritch horrors drift between shattered islands of stone above the void.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.DRAGONS_SANCTUM,
+        icon: "\uD83D\uDC09",
+        name: "Dragon's Sanctum",
+        desc: "The ancient lair of the Elder Dragons. Gold-encrusted caverns echo with primordial fury.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50\u2B50",
+      },
     ];
 
     let cardsHtml = "";
@@ -556,8 +626,11 @@ export class DiabloGame {
           text-shadow:0 0 20px rgba(200,168,78,0.5),0 2px 4px rgba(0,0,0,0.8);
           font-family:'Georgia',serif;
         ">SELECT YOUR DESTINATION</h1>
-        <div style="display:flex;gap:8px;margin-bottom:30px;">${todHtml}</div>
-        <div style="display:flex;gap:30px;">${cardsHtml}</div>
+        <div style="font-size:16px;color:${DIFFICULTY_CONFIGS[this._state.difficulty].color};margin-bottom:12px;font-family:'Georgia',serif;">
+          ${DIFFICULTY_CONFIGS[this._state.difficulty].icon} ${DIFFICULTY_CONFIGS[this._state.difficulty].label} Difficulty
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:20px;">${todHtml}</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:95vw;overflow-y:auto;max-height:60vh;padding:10px;">${cardsHtml}</div>
       </div>`;
 
     // Wire up time-of-day buttons
@@ -2407,7 +2480,8 @@ export class DiabloGame {
     const spawnInterval = (mapCfg as any).spawnInterval || 4;
 
     this._state.spawnTimer += dt;
-    if (this._state.spawnTimer >= spawnInterval && this._state.enemies.length < mapCfg.maxEnemies) {
+    const effectiveMaxEnemies = Math.round(mapCfg.maxEnemies * DIFFICULTY_CONFIGS[this._state.difficulty].maxEnemiesMult);
+    if (this._state.spawnTimer >= spawnInterval && this._state.enemies.length < effectiveMaxEnemies) {
       this._spawnEnemy();
       this._state.spawnTimer = 0;
     }
@@ -2597,8 +2671,10 @@ export class DiabloGame {
     ex = Math.max(-halfW, Math.min(halfW, ex));
     ez = Math.max(-halfD, Math.min(halfD, ez));
 
-    const hpMult = isBossSpawn ? 5 : 1;
-    const dmgMult = isBossSpawn ? 2 : 1;
+    const diffCfg = DIFFICULTY_CONFIGS[this._state.difficulty];
+    const hpMult = (isBossSpawn ? 5 : 1) * diffCfg.hpMult;
+    const dmgMult = (isBossSpawn ? 2 : 1) * diffCfg.damageMult;
+    const armorMult = (isBossSpawn ? 1.5 : 1) * diffCfg.armorMult;
     const bossNames = BOSS_NAMES[this._state.currentMap] || ["Dark Champion"];
     const bossName = bossNames[Math.floor(Math.random() * bossNames.length)];
 
@@ -2612,14 +2688,14 @@ export class DiabloGame {
       hp: def.hp * hpMult,
       maxHp: def.hp * hpMult,
       damage: def.damage * dmgMult,
-      armor: def.armor * (isBossSpawn ? 1.5 : 1),
-      speed: def.speed,
+      armor: def.armor * armorMult,
+      speed: def.speed * diffCfg.speedMult,
       state: EnemyState.IDLE,
       targetId: null,
       attackTimer: 1.0,
       attackRange: def.attackRange,
       aggroRange: def.aggroRange * (isBossSpawn ? 1.3 : 1),
-      xpReward: def.xpReward * (isBossSpawn ? 5 : 1),
+      xpReward: Math.round(def.xpReward * (isBossSpawn ? 5 : 1) * diffCfg.xpMult),
       lootTable: [],
       deathTimer: 0,
       stateTimer: 0,
@@ -2646,7 +2722,7 @@ export class DiabloGame {
 
     const p = this._state.player;
     p.xp += enemy.xpReward;
-    p.gold += Math.floor(5 + Math.random() * 10 * enemy.level);
+    p.gold += Math.floor((5 + Math.random() * 10 * enemy.level) * DIFFICULTY_CONFIGS[this._state.difficulty].goldMult);
     this._state.killCount++;
 
     // Roll loot
@@ -3121,6 +3197,7 @@ export class DiabloGame {
       persistentXp: this._state.persistentXp,
       persistentStash: this._state.persistentStash,
       mapCleared: this._state.mapCleared,
+      difficulty: this._state.difficulty,
     };
     localStorage.setItem("diablo_save", JSON.stringify(save));
 
@@ -3162,6 +3239,7 @@ export class DiabloGame {
     this._state.persistentXp = save.persistentXp;
     this._state.persistentStash = save.persistentStash || Array.from({ length: 100 }, () => ({ item: null }));
     this._state.mapCleared = save.mapCleared;
+    this._state.difficulty = save.difficulty || DiabloDifficulty.DAGGER;
     // Rebuild the map
     this._renderer.buildMap(this._state.currentMap);
     this._renderer.buildPlayer(this._state.player.class);
