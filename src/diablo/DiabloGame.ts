@@ -1,4 +1,4 @@
-import { DiabloRenderer } from "./DiabloRenderer";
+import { DiabloRenderer, getTerrainHeight } from "./DiabloRenderer";
 import {
   DiabloState, DiabloEnemy, DiabloProjectile, DiabloLoot,
   DiabloTreasureChest, DiabloAOE,
@@ -900,7 +900,7 @@ export class DiabloGame {
     this._revealAroundPlayer(0, 0);
 
     this._state.player.x = 0;
-    this._state.player.y = 0;
+    this._state.player.y = getTerrainHeight(0, 0);
     this._state.player.z = 0;
     this._state.player.hp = this._state.player.maxHp;
     this._state.player.mana = this._state.player.maxMana;
@@ -2479,6 +2479,7 @@ export class DiabloGame {
     const halfD = ((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / 2;
     p.x = Math.max(-halfW, Math.min(halfW, p.x));
     p.z = Math.max(-halfD, Math.min(halfD, p.z));
+    p.y = getTerrainHeight(p.x, p.z);
 
     // Face mouse direction
     const worldMouse = this._getMouseWorldPos();

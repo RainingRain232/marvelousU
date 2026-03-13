@@ -21,9 +21,10 @@ function seededRandom(seed: number): () => number {
 /** Get terrain height at world coordinates (x, z). */
 export function getTerrainHeight(x: number, z: number): number {
   return (
-    Math.sin(x * 0.1) * 0.3 +
-    Math.cos(z * 0.08) * 0.2 +
-    Math.sin(x * 0.05 + z * 0.05) * 0.5
+    Math.sin(x * 0.1) * 0.8 +
+    Math.cos(z * 0.08) * 0.5 +
+    Math.sin(x * 0.05 + z * 0.05) * 1.2 +
+    Math.sin(x * 0.03 - z * 0.04) * 0.4
   );
 }
 
@@ -258,16 +259,24 @@ export class WarbandSceneManager {
     for (let i = 0; i < posAttr.count; i++) {
       const x = posAttr.getX(i);
       const y = posAttr.getY(i);
-      posAttr.setZ(i, getTerrainHeight(x, y));
+      const h = getTerrainHeight(x, y);
+      posAttr.setZ(i, h);
 
-      // Mix grass shades based on position noise
-      const n = (Math.sin(x * 0.3) * Math.cos(y * 0.25) + 1) * 0.5;
-      const n2 = (Math.sin(x * 0.7 + y * 0.4) + 1) * 0.5;
+      // Height-based color interpolation (like MageWars)
+      // Normalize height: terrain range is roughly -2.9 to +2.9
+      const maxAmp = 2.9;
+      const t = Math.min(1, Math.max(0, (h / maxAmp) * 0.5 + 0.5));
+
+      // Low areas -> darker grass, high areas -> lighter grass
       const col = new THREE.Color();
-      col.lerpColors(grassDark, grassMid, n);
-      col.lerpColors(col, grassLight, n2 * 0.4);
-      // Occasional dirt tint
-      const dirtT = Math.max(0, Math.sin(x * 0.15) * Math.cos(y * 0.18) - 0.5) * 0.4;
+      col.lerpColors(grassDark, grassLight, t);
+
+      // Add position-based noise for natural variation
+      const n = (Math.sin(x * 0.3) * Math.cos(y * 0.25) + 1) * 0.5;
+      col.lerpColors(col, grassMid, n * 0.3);
+
+      // Occasional dirt tint in valleys
+      const dirtT = Math.max(0, 0.3 - t) * 0.6;
       col.lerpColors(col, dirtColor, dirtT);
       gColors.push(col.r, col.g, col.b);
     }

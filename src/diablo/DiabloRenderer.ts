@@ -18,6 +18,13 @@ import {
 import { ENEMY_DEFS, MAP_CONFIGS, VENDOR_DEFS } from './DiabloConfig';
 import { RARITY_COLORS } from './DiabloTypes';
 
+/** Compute terrain elevation at world (x, z). Amplitude kept moderate for isometric view. */
+export function getTerrainHeight(x: number, z: number, amplitude: number = 1.4): number {
+  return Math.sin(x * 0.04) * amplitude * 0.6 +
+    Math.cos(z * 0.04 * 1.3) * amplitude * 0.4 +
+    Math.sin((x + z) * 0.04 * 0.7) * amplitude * 0.3;
+}
+
 export class DiabloRenderer {
   public canvas!: HTMLCanvasElement;
   private _renderer!: THREE.WebGLRenderer;
@@ -127,10 +134,25 @@ export class DiabloRenderer {
     this._playerGroup = new THREE.Group();
     this._scene.add(this._playerGroup);
 
-    const groundGeo = new THREE.PlaneGeometry(200, 200);
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x557733, roughness: 0.9, metalness: 0.0 });
+    const groundGeo = new THREE.PlaneGeometry(200, 200, 128, 128);
+    groundGeo.rotateX(-Math.PI / 2);
+    const posAttr = groundGeo.attributes.position;
+    const defaultColors: number[] = [];
+    const c1 = new THREE.Color(0x446622);
+    const c2 = new THREE.Color(0x668833);
+    for (let i = 0; i < posAttr.count; i++) {
+      const gx = posAttr.getX(i);
+      const gz = posAttr.getZ(i);
+      const h = getTerrainHeight(gx, gz);
+      posAttr.setY(i, h);
+      const t = THREE.MathUtils.clamp((h / 1.6) * 0.5 + 0.5, 0, 1);
+      const col = new THREE.Color().lerpColors(c1, c2, t);
+      defaultColors.push(col.r, col.g, col.b);
+    }
+    groundGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(defaultColors), 3));
+    groundGeo.computeVertexNormals();
+    const groundMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.0 });
     this._groundPlane = new THREE.Mesh(groundGeo, groundMat);
-    this._groundPlane.rotation.x = -Math.PI / 2;
     this._groundPlane.receiveShadow = true;
     this._scene.add(this._groundPlane);
 
@@ -150,6 +172,29 @@ export class DiabloRenderer {
       this._scene.add(mesh);
       this._particleMeshPool.push(mesh);
     }
+  }
+
+  /** Re-color the terrain mesh with height-based blending between two colors.
+   *  For indoor/dungeon maps, pass a lower amplitude to flatten terrain. */
+  private _applyTerrainColors(baseColor: number, secondaryColor: number, amplitude: number = 1.4): void {
+    const geo = this._groundPlane.geometry as THREE.BufferGeometry;
+    const posAttr = geo.attributes.position;
+    const c1 = new THREE.Color(baseColor);
+    const c2 = new THREE.Color(secondaryColor);
+    const colors: number[] = [];
+    for (let i = 0; i < posAttr.count; i++) {
+      const gx = posAttr.getX(i);
+      const gz = posAttr.getZ(i);
+      const h = getTerrainHeight(gx, gz, amplitude);
+      posAttr.setY(i, h);
+      const t = THREE.MathUtils.clamp((h / (amplitude * 1.15)) * 0.5 + 0.5, 0, 1);
+      const col = new THREE.Color().lerpColors(c1, c2, t);
+      colors.push(col.r, col.g, col.b);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+    geo.computeVertexNormals();
+    (geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    (geo.attributes.color as THREE.BufferAttribute).needsUpdate = true;
   }
 
   buildMap(mapId: DiabloMapId): void {
@@ -201,7 +246,7 @@ export class DiabloRenderer {
 
   private _buildForest(w: number, d: number, propMult: number = 1.0): void {
     this._scene.fog = new THREE.FogExp2(0x2a4a2a, 0.018);
-    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x3b5a2b);
+    this._applyTerrainColors(0x2a4a1a, 0x4b6a3b);
     this._dirLight.color.setHex(0xffe8b0);
     this._dirLight.intensity = 1.4;
     this._ambientLight.color.setHex(0x304020);
@@ -210,33 +255,76 @@ export class DiabloRenderer {
 
     const hw = w / 2;
 
-    // Trees (85 * propMult)
+    // Trees (85 * propMult) - multi-layered with bark rings and roots
     for (let i = 0; i < Math.round(85 * propMult); i++) {
       const tree = new THREE.Group();
       const trunkH = 1.5 + Math.random() * 2.5;
       const trunkR = 0.15 + Math.random() * 0.15;
       const trunkGeo = new THREE.CylinderGeometry(trunkR, trunkR * 1.3, trunkH, 8);
-      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.9 });
+      const barkColor = 0x5c3a1e + Math.floor(Math.random() * 0x111100);
+      const trunkMat = new THREE.MeshStandardMaterial({ color: barkColor, roughness: 0.9 });
       const trunk = new THREE.Mesh(trunkGeo, trunkMat);
       trunk.position.y = trunkH / 2;
       trunk.castShadow = true;
       tree.add(trunk);
 
-      const crownH = 2.0 + Math.random() * 2.0;
-      const crownR = 1.0 + Math.random() * 1.2;
-      const greenShade = 0x228b22 + Math.floor(Math.random() * 0x224400);
-      const crownGeo = new THREE.ConeGeometry(crownR, crownH, 8);
-      const crownMat = new THREE.MeshStandardMaterial({ color: greenShade, roughness: 0.8 });
-      const crown = new THREE.Mesh(crownGeo, crownMat);
-      crown.position.y = trunkH + crownH / 2 - 0.3;
-      crown.castShadow = true;
-      tree.add(crown);
+      // Bark rings along trunk
+      const barkRingCount = 2 + Math.floor(Math.random() * 2);
+      for (let br = 0; br < barkRingCount; br++) {
+        const ringY = 0.4 + (br / barkRingCount) * trunkH * 0.6;
+        const ringGeo = new THREE.TorusGeometry(trunkR * 1.15, trunkR * 0.2, 6, 8);
+        const ring = new THREE.Mesh(ringGeo, trunkMat);
+        ring.position.y = ringY;
+        ring.rotation.x = Math.PI / 2;
+        tree.add(ring);
+      }
 
-      tree.position.set(
-        (Math.random() - 0.5) * w,
-        0,
-        (Math.random() - 0.5) * d
-      );
+      // Exposed roots at base
+      const rootCount = 2 + Math.floor(Math.random() * 3);
+      for (let r = 0; r < rootCount; r++) {
+        const rootAngle = (r / rootCount) * Math.PI * 2 + Math.random() * 0.5;
+        const rootLen = 0.3 + Math.random() * 0.4;
+        const rootGeo = new THREE.CylinderGeometry(trunkR * 0.3, trunkR * 0.15, rootLen, 5);
+        const root = new THREE.Mesh(rootGeo, trunkMat);
+        root.position.set(
+          Math.cos(rootAngle) * trunkR * 0.8,
+          rootLen * 0.2,
+          Math.sin(rootAngle) * trunkR * 0.8
+        );
+        root.rotation.z = Math.cos(rootAngle) * 0.8;
+        root.rotation.x = Math.sin(rootAngle) * 0.8;
+        tree.add(root);
+      }
+
+      // Multi-layered foliage (3 cone layers)
+      const baseGreenShade = 0x228b22 + Math.floor(Math.random() * 0x224400);
+      const leafColors = [
+        baseGreenShade,
+        baseGreenShade + 0x112200,
+        baseGreenShade - 0x001100,
+      ];
+      const layerConfigs = [
+        { rMult: 1.0, hMult: 0.9, yOff: -0.3 },   // wide bottom
+        { rMult: 0.75, hMult: 0.8, yOff: 0.4 },    // medium middle
+        { rMult: 0.5, hMult: 0.65, yOff: 1.0 },    // narrow top
+      ];
+      const crownR = 1.0 + Math.random() * 1.2;
+      const crownH = 2.0 + Math.random() * 2.0;
+      for (let li = 0; li < 3; li++) {
+        const lc = layerConfigs[li];
+        const layerR = crownR * lc.rMult;
+        const layerH = crownH * lc.hMult;
+        const layerGeo = new THREE.ConeGeometry(layerR, layerH, 8);
+        const layerMat = new THREE.MeshStandardMaterial({ color: leafColors[li], roughness: 0.8 });
+        const layer = new THREE.Mesh(layerGeo, layerMat);
+        layer.position.y = trunkH + crownH * 0.3 + lc.yOff;
+        layer.castShadow = true;
+        tree.add(layer);
+      }
+
+      const tx = (Math.random() - 0.5) * w;
+      const tz = (Math.random() - 0.5) * d;
+      tree.position.set(tx, getTerrainHeight(tx, tz), tz);
       this._envGroup.add(tree);
     }
 
@@ -246,11 +334,9 @@ export class DiabloRenderer {
       const greyBrown = 0x666655 + Math.floor(Math.random() * 0x222211);
       const rockMat = new THREE.MeshStandardMaterial({ color: greyBrown, roughness: 0.95, metalness: 0.05 });
       const rock = new THREE.Mesh(rockGeo, rockMat);
-      rock.position.set(
-        (Math.random() - 0.5) * w,
-        0.1 + Math.random() * 0.1,
-        (Math.random() - 0.5) * d
-      );
+      const rx = (Math.random() - 0.5) * w;
+      const rz = (Math.random() - 0.5) * d;
+      rock.position.set(rx, getTerrainHeight(rx, rz) + 0.1 + Math.random() * 0.1, rz);
       rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
       rock.castShadow = true;
       this._envGroup.add(rock);
@@ -261,11 +347,9 @@ export class DiabloRenderer {
       const segGeo = new THREE.BoxGeometry(2.5, 0.05, 3.0);
       const segMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 1.0 });
       const seg = new THREE.Mesh(segGeo, segMat);
-      seg.position.set(
-        i * 2.4 - 24,
-        0.02,
-        Math.sin(i * 0.4) * 3
-      );
+      const sx = i * 2.4 - 24;
+      const sz = Math.sin(i * 0.4) * 3;
+      seg.position.set(sx, getTerrainHeight(sx, sz) + 0.02, sz);
       seg.rotation.y = Math.sin(i * 0.3) * 0.15;
       this._envGroup.add(seg);
     }
@@ -281,11 +365,9 @@ export class DiabloRenderer {
         blade.rotation.z = (Math.random() - 0.5) * 0.4;
         tuft.add(blade);
       }
-      tuft.position.set(
-        (Math.random() - 0.5) * w,
-        0,
-        (Math.random() - 0.5) * d
-      );
+      const tuftX = (Math.random() - 0.5) * w;
+      const tuftZ = (Math.random() - 0.5) * d;
+      tuft.position.set(tuftX, getTerrainHeight(tuftX, tuftZ), tuftZ);
       this._envGroup.add(tuft);
     }
 
@@ -295,11 +377,9 @@ export class DiabloRenderer {
       const logMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.95 });
       const log = new THREE.Mesh(logGeo, logMat);
       log.rotation.z = Math.PI / 2;
-      log.position.set(
-        (Math.random() - 0.5) * w,
-        0.2,
-        (Math.random() - 0.5) * d
-      );
+      const logX = (Math.random() - 0.5) * w;
+      const logZ = (Math.random() - 0.5) * d;
+      log.position.set(logX, getTerrainHeight(logX, logZ) + 0.2, logZ);
       log.rotation.y = Math.random() * Math.PI;
       log.castShadow = true;
       this._envGroup.add(log);
@@ -318,11 +398,9 @@ export class DiabloRenderer {
       const cap = new THREE.Mesh(capGeo, capMat);
       cap.position.y = 0.2;
       mush.add(cap);
-      mush.position.set(
-        (Math.random() - 0.5) * w,
-        0,
-        (Math.random() - 0.5) * d
-      );
+      const mushX = (Math.random() - 0.5) * w;
+      const mushZ = (Math.random() - 0.5) * d;
+      mush.position.set(mushX, getTerrainHeight(mushX, mushZ), mushZ);
       this._envGroup.add(mush);
     }
 
@@ -337,7 +415,7 @@ export class DiabloRenderer {
     });
     const stream = new THREE.Mesh(streamGeo, streamMat);
     stream.rotation.x = -Math.PI / 2;
-    stream.position.set(hw * 0.4, 0.03, 0);
+    stream.position.set(hw * 0.4, getTerrainHeight(hw * 0.4, 0) + 0.03, 0);
     this._envGroup.add(stream);
 
     // Flower patches (20)
@@ -357,7 +435,9 @@ export class DiabloRenderer {
         petal.position.set(fStem.position.x, 0.32, fStem.position.z);
         patch.add(petal);
       }
-      patch.position.set((Math.random() - 0.5) * w, 0, (Math.random() - 0.5) * d);
+      const patchX = (Math.random() - 0.5) * w;
+      const patchZ = (Math.random() - 0.5) * d;
+      patch.position.set(patchX, getTerrainHeight(patchX, patchZ), patchZ);
       this._envGroup.add(patch);
     }
 
@@ -377,7 +457,9 @@ export class DiabloRenderer {
       const moss = new THREE.Mesh(mossGeo, mossMat);
       moss.position.y = bRadius * 0.4;
       boulderGroup.add(moss);
-      boulderGroup.position.set((Math.random() - 0.5) * w, 0, (Math.random() - 0.5) * d);
+      const bx2 = (Math.random() - 0.5) * w;
+      const bz2 = (Math.random() - 0.5) * d;
+      boulderGroup.position.set(bx2, getTerrainHeight(bx2, bz2), bz2);
       this._envGroup.add(boulderGroup);
     }
 
@@ -393,7 +475,9 @@ export class DiabloRenderer {
         ab.rotation.y = Math.random() * Math.PI;
         bonesGroup.add(ab);
       }
-      bonesGroup.position.set((Math.random() - 0.5) * w, 0, (Math.random() - 0.5) * d);
+      const boneX = (Math.random() - 0.5) * w;
+      const boneZ = (Math.random() - 0.5) * d;
+      bonesGroup.position.set(boneX, getTerrainHeight(boneX, boneZ), boneZ);
       this._envGroup.add(bonesGroup);
     }
 
@@ -401,7 +485,7 @@ export class DiabloRenderer {
     const wBridgeGeo = new THREE.BoxGeometry(3, 0.15, 1.5);
     const wBridgeMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.9 });
     const wBridge = new THREE.Mesh(wBridgeGeo, wBridgeMat);
-    wBridge.position.set(hw * 0.4, 0.1, 0);
+    wBridge.position.set(hw * 0.4, getTerrainHeight(hw * 0.4, 0) + 0.1, 0);
     wBridge.castShadow = true;
     this._envGroup.add(wBridge);
     for (let side = -1; side <= 1; side += 2) {
@@ -437,7 +521,9 @@ export class DiabloRenderer {
       hLog.rotation.z = Math.PI / 2;
       hLog.position.y = 0.08;
       campfire.add(hLog);
-      campfire.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const cfX = (Math.random() - 0.5) * w * 0.7;
+      const cfZ = (Math.random() - 0.5) * d * 0.7;
+      campfire.position.set(cfX, getTerrainHeight(cfX, cfZ), cfZ);
       this._envGroup.add(campfire);
     }
 
@@ -525,7 +611,9 @@ export class DiabloRenderer {
         antler.rotation.z = ax < 0 ? 0.4 : -0.4;
         deerGrp.add(antler);
       }
-      deerGrp.position.set((Math.random() - 0.5) * w * 0.8, 0, (Math.random() - 0.5) * d * 0.8);
+      const deerX = (Math.random() - 0.5) * w * 0.8;
+      const deerZ = (Math.random() - 0.5) * d * 0.8;
+      deerGrp.position.set(deerX, getTerrainHeight(deerX, deerZ), deerZ);
       deerGrp.rotation.y = Math.random() * Math.PI * 2;
       this._envGroup.add(deerGrp);
     }
@@ -545,7 +633,9 @@ export class DiabloRenderer {
         berry.position.set(Math.cos(bAngle) * 0.3, 0.25 + Math.random() * 0.15, Math.sin(bAngle) * 0.3);
         bushGrp.add(berry);
       }
-      bushGrp.position.set((Math.random() - 0.5) * w * 0.85, 0, (Math.random() - 0.5) * d * 0.85);
+      const bushX = (Math.random() - 0.5) * w * 0.85;
+      const bushZ = (Math.random() - 0.5) * d * 0.85;
+      bushGrp.position.set(bushX, getTerrainHeight(bushX, bushZ), bushZ);
       this._envGroup.add(bushGrp);
     }
 
@@ -568,7 +658,9 @@ export class DiabloRenderer {
         cap.position.set(mx, stemH, mz);
         toadGrp.add(cap);
       }
-      toadGrp.position.set((Math.random() - 0.5) * w * 0.8, 0, (Math.random() - 0.5) * d * 0.8);
+      const toadX = (Math.random() - 0.5) * w * 0.8;
+      const toadZ = (Math.random() - 0.5) * d * 0.8;
+      toadGrp.position.set(toadX, getTerrainHeight(toadX, toadZ), toadZ);
       this._envGroup.add(toadGrp);
     }
 
@@ -587,7 +679,9 @@ export class DiabloRenderer {
         board.rotation.z = (Math.random() - 0.5) * 0.15;
         signGrp.add(board);
       }
-      signGrp.position.set((Math.random() - 0.5) * w * 0.5, 0, (Math.random() - 0.5) * d * 0.5);
+      const signX = (Math.random() - 0.5) * w * 0.5;
+      const signZ = (Math.random() - 0.5) * d * 0.5;
+      signGrp.position.set(signX, getTerrainHeight(signX, signZ), signZ);
       signGrp.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(signGrp);
     }
@@ -604,7 +698,9 @@ export class DiabloRenderer {
         frond.rotation.x = -0.6;
         fernGrp.add(frond);
       }
-      fernGrp.position.set((Math.random() - 0.5) * w * 0.9, 0, (Math.random() - 0.5) * d * 0.9);
+      const fernX = (Math.random() - 0.5) * w * 0.9;
+      const fernZ = (Math.random() - 0.5) * d * 0.9;
+      fernGrp.position.set(fernX, getTerrainHeight(fernX, fernZ), fernZ);
       this._envGroup.add(fernGrp);
     }
 
@@ -619,7 +715,9 @@ export class DiabloRenderer {
         new THREE.MeshStandardMaterial({ color: 0x1a0a00, roughness: 1.0 }));
       hollow.position.y = 0.5;
       stumpGrp.add(hollow);
-      stumpGrp.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const stumpX = (Math.random() - 0.5) * w * 0.7;
+      const stumpZ = (Math.random() - 0.5) * d * 0.7;
+      stumpGrp.position.set(stumpX, getTerrainHeight(stumpX, stumpZ), stumpZ);
       this._envGroup.add(stumpGrp);
     }
 
@@ -653,7 +751,9 @@ export class DiabloRenderer {
         mossPatch.position.set((Math.random() - 0.5) * logLen * 0.6, logR * 1.5, (Math.random() - 0.5) * 0.1);
         logGrp.add(mossPatch);
       }
-      logGrp.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const logGX = (Math.random() - 0.5) * w * 0.7;
+      const logGZ = (Math.random() - 0.5) * d * 0.7;
+      logGrp.position.set(logGX, getTerrainHeight(logGX, logGZ), logGZ);
       logGrp.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(logGrp);
     }
@@ -672,7 +772,9 @@ export class DiabloRenderer {
       petalMesh.scale.y = 0.5;
       petalMesh.position.y = 0.16;
       flGrp.add(petalMesh);
-      flGrp.position.set((Math.random() - 0.5) * w * 0.9, 0, (Math.random() - 0.5) * d * 0.9);
+      const flGX = (Math.random() - 0.5) * w * 0.9;
+      const flGZ = (Math.random() - 0.5) * d * 0.9;
+      flGrp.position.set(flGX, getTerrainHeight(flGX, flGZ), flGZ);
       this._envGroup.add(flGrp);
     }
 
@@ -714,14 +816,16 @@ export class DiabloRenderer {
       const leafPile = new THREE.Mesh(new THREE.CircleGeometry(0.2 + Math.random() * 0.3, 6),
         new THREE.MeshStandardMaterial({ color: leafColors[i % leafColors.length], roughness: 1.0, side: THREE.DoubleSide }));
       leafPile.rotation.x = -Math.PI / 2;
-      leafPile.position.set((Math.random() - 0.5) * w * 0.9, 0.02, (Math.random() - 0.5) * d * 0.9);
+      const lpX = (Math.random() - 0.5) * w * 0.9;
+      const lpZ = (Math.random() - 0.5) * d * 0.9;
+      leafPile.position.set(lpX, getTerrainHeight(lpX, lpZ) + 0.02, lpZ);
       this._envGroup.add(leafPile);
     }
   }
 
   private _buildElvenVillage(w: number, d: number): void {
     this._scene.fog = new THREE.FogExp2(0x334466, 0.012);
-    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x4a6a4a);
+    this._applyTerrainColors(0x3a5a3a, 0x5a7a5a);
     this._dirLight.color.setHex(0xaabbdd);
     this._dirLight.intensity = 0.8;
     this._ambientLight.color.setHex(0x334466);
@@ -769,7 +873,7 @@ export class DiabloRenderer {
 
       const bx = (Math.random() - 0.5) * w * 0.8;
       const bz = (Math.random() - 0.5) * d * 0.8;
-      building.position.set(bx, 0, bz);
+      building.position.set(bx, getTerrainHeight(bx, bz), bz);
       this._envGroup.add(building);
     }
 
@@ -798,11 +902,9 @@ export class DiabloRenderer {
       ptLight.position.y = 2.6;
       lantern.add(ptLight);
 
-      lantern.position.set(
-        (Math.random() - 0.5) * w * 0.9,
-        0,
-        (Math.random() - 0.5) * d * 0.9
-      );
+      const lanX = (Math.random() - 0.5) * w * 0.9;
+      const lanZ = (Math.random() - 0.5) * d * 0.9;
+      lantern.position.set(lanX, getTerrainHeight(lanX, lanZ), lanZ);
       this._envGroup.add(lantern);
     }
 
@@ -824,11 +926,9 @@ export class DiabloRenderer {
       crown.castShadow = true;
       tree.add(crown);
 
-      tree.position.set(
-        (Math.random() - 0.5) * w,
-        0,
-        (Math.random() - 0.5) * d
-      );
+      const etX = (Math.random() - 0.5) * w;
+      const etZ = (Math.random() - 0.5) * d;
+      tree.position.set(etX, getTerrainHeight(etX, etZ), etZ);
       this._envGroup.add(tree);
     }
 
@@ -843,13 +943,13 @@ export class DiabloRenderer {
     });
     const pond = new THREE.Mesh(pondGeo, pondMat);
     pond.rotation.x = -Math.PI / 2;
-    pond.position.set(5, 0.02, -5);
+    pond.position.set(5, getTerrainHeight(5, -5) + 0.02, -5);
     this._envGroup.add(pond);
 
     const bridgeGeo = new THREE.BoxGeometry(2, 0.3, 8);
     const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.7 });
     const bridge = new THREE.Mesh(bridgeGeo, bridgeMat);
-    bridge.position.set(5, 0.5, -5);
+    bridge.position.set(5, getTerrainHeight(5, -5) + 0.5, -5);
     bridge.castShadow = true;
     this._envGroup.add(bridge);
 
@@ -886,11 +986,9 @@ export class DiabloRenderer {
         ruin.add(moss);
       }
 
-      ruin.position.set(
-        -15 + (Math.random() - 0.5) * 10,
-        0,
-        10 + (Math.random() - 0.5) * 8
-      );
+      const ruinX = -15 + (Math.random() - 0.5) * 10;
+      const ruinZ = 10 + (Math.random() - 0.5) * 8;
+      ruin.position.set(ruinX, getTerrainHeight(ruinX, ruinZ), ruinZ);
       this._envGroup.add(ruin);
     }
 
@@ -912,7 +1010,9 @@ export class DiabloRenderer {
         glow.position.set(fStem.position.x, 0.27, fStem.position.z);
         flowerGroup.add(glow);
       }
-      flowerGroup.position.set((Math.random() - 0.5) * w * 0.8, 0, (Math.random() - 0.5) * d * 0.8);
+      const fgX = (Math.random() - 0.5) * w * 0.8;
+      const fgZ = (Math.random() - 0.5) * d * 0.8;
+      flowerGroup.position.set(fgX, getTerrainHeight(fgX, fgZ), fgZ);
       this._envGroup.add(flowerGroup);
     }
 
@@ -941,7 +1041,9 @@ export class DiabloRenderer {
         ivy.position.set(Math.cos(ivAng) * 1.2, 3.5 - Math.sin(ivAng) * 1.2 * (Math.random() > 0.5 ? 1 : 0.5), (Math.random() - 0.5) * 0.3);
         archGroup.add(ivy);
       }
-      archGroup.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
+      const archX = (Math.random() - 0.5) * w * 0.6;
+      const archZ = (Math.random() - 0.5) * d * 0.6;
+      archGroup.position.set(archX, getTerrainHeight(archX, archZ), archZ);
       archGroup.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(archGroup);
     }
@@ -965,7 +1067,7 @@ export class DiabloRenderer {
     const jet = new THREE.Mesh(jetGeo, jetMat);
     jet.position.y = 1.3;
     fountainGroup.add(jet);
-    fountainGroup.position.set(0, 0, 0);
+    fountainGroup.position.set(0, getTerrainHeight(0, 0), 0);
     this._envGroup.add(fountainGroup);
 
     // Statues (3)
@@ -990,7 +1092,9 @@ export class DiabloRenderer {
       stArm.position.set(0.3, 1.5, 0.1);
       stArm.rotation.z = -0.8;
       statueGroup.add(stArm);
-      statueGroup.position.set((Math.random() - 0.5) * w * 0.5, 0, (Math.random() - 0.5) * d * 0.5);
+      const stX = (Math.random() - 0.5) * w * 0.5;
+      const stZ = (Math.random() - 0.5) * d * 0.5;
+      statueGroup.position.set(stX, getTerrainHeight(stX, stZ), stZ);
       this._envGroup.add(statueGroup);
     }
 
@@ -1023,7 +1127,9 @@ export class DiabloRenderer {
       mCap.position.set(Math.cos(mAng) * 1.5, 0.15, Math.sin(mAng) * 1.5);
       fairyRingGroup.add(mCap);
     }
-    fairyRingGroup.position.set((Math.random() - 0.5) * w * 0.4, 0, (Math.random() - 0.5) * d * 0.4);
+    const frX = (Math.random() - 0.5) * w * 0.4;
+    const frZ = (Math.random() - 0.5) * d * 0.4;
+    fairyRingGroup.position.set(frX, getTerrainHeight(frX, frZ), frZ);
     this._envGroup.add(fairyRingGroup);
 
     // Fallen leaves (15)
@@ -1034,7 +1140,9 @@ export class DiabloRenderer {
       const leaf = new THREE.Mesh(leafGeo, leafMat);
       leaf.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       leaf.rotation.z = Math.random() * Math.PI * 2;
-      leaf.position.set((Math.random() - 0.5) * w * 0.8, 0.02, (Math.random() - 0.5) * d * 0.8);
+      const lfX = (Math.random() - 0.5) * w * 0.8;
+      const lfZ = (Math.random() - 0.5) * d * 0.8;
+      leaf.position.set(lfX, getTerrainHeight(lfX, lfZ) + 0.02, lfZ);
       this._envGroup.add(leaf);
     }
 
@@ -1052,7 +1160,9 @@ export class DiabloRenderer {
         legM.position.set(leg * 0.5, 0.2, 0);
         benchGroup.add(legM);
       }
-      benchGroup.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
+      const benchX = (Math.random() - 0.5) * w * 0.6;
+      const benchZ = (Math.random() - 0.5) * d * 0.6;
+      benchGroup.position.set(benchX, getTerrainHeight(benchX, benchZ), benchZ);
       benchGroup.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(benchGroup);
     }
@@ -1067,7 +1177,9 @@ export class DiabloRenderer {
         const ssGeo = new THREE.CylinderGeometry(0.2 + Math.random() * 0.1, 0.22 + Math.random() * 0.1, 0.06, 7);
         const ssMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.85 });
         const ss = new THREE.Mesh(ssGeo, ssMat);
-        ss.position.set(startX + dirX * s * 1.2, 0.03, startZ + dirZ * s * 1.2);
+        const ssX = startX + dirX * s * 1.2;
+        const ssZ = startZ + dirZ * s * 1.2;
+        ss.position.set(ssX, getTerrainHeight(ssX, ssZ) + 0.03, ssZ);
         this._envGroup.add(ss);
       }
     }
@@ -1094,7 +1206,9 @@ export class DiabloRenderer {
       fallen.position.set(0.3, 0.05, 0.3);
       fallen.rotation.z = Math.PI / 2;
       shelfGroup.add(fallen);
-      shelfGroup.position.set((Math.random() - 0.5) * w * 0.5, 0, (Math.random() - 0.5) * d * 0.5);
+      const shX = (Math.random() - 0.5) * w * 0.5;
+      const shZ = (Math.random() - 0.5) * d * 0.5;
+      shelfGroup.position.set(shX, getTerrainHeight(shX, shZ), shZ);
       shelfGroup.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(shelfGroup);
     }
@@ -1112,7 +1226,9 @@ export class DiabloRenderer {
       const cloth = new THREE.Mesh(clothGeo, clothMat);
       cloth.position.set(0.32, 3.2, 0);
       bannerGroup.add(cloth);
-      bannerGroup.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const bnX = (Math.random() - 0.5) * w * 0.7;
+      const bnZ = (Math.random() - 0.5) * d * 0.7;
+      bannerGroup.position.set(bnX, getTerrainHeight(bnX, bnZ), bnZ);
       this._envGroup.add(bannerGroup);
     }
 
@@ -1141,7 +1257,7 @@ export class DiabloRenderer {
       rune.lookAt(new THREE.Vector3(0, 0.35, 0));
       moonwellGrp.add(rune);
     }
-    moonwellGrp.position.set(w * 0.15, 0, -d * 0.15);
+    moonwellGrp.position.set(w * 0.15, getTerrainHeight(w * 0.15, -d * 0.15), -d * 0.15);
     this._envGroup.add(moonwellGrp);
 
     // Glowing vines on trees (10)
@@ -1241,7 +1357,7 @@ export class DiabloRenderer {
 
   private _buildNecropolis(w: number, d: number): void {
     this._scene.fog = new THREE.FogExp2(0x110815, 0.03);
-    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x1a1a22);
+    this._applyTerrainColors(0x121218, 0x22222c, 0.4);
     this._dirLight.color.setHex(0x554466);
     this._dirLight.intensity = 0.3;
     this._ambientLight.color.setHex(0x110815);
@@ -1296,11 +1412,9 @@ export class DiabloRenderer {
         );
         pile.add(skull);
       }
-      pile.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const pileX = (Math.random() - 0.5) * w * 0.8;
+      const pileZ = (Math.random() - 0.5) * d * 0.8;
+      pile.position.set(pileX, getTerrainHeight(pileX, pileZ, 0.4), pileZ);
       this._envGroup.add(pile);
     }
 
@@ -1315,11 +1429,9 @@ export class DiabloRenderer {
       });
       const torus = new THREE.Mesh(torusGeo, torusMat);
       torus.rotation.x = -Math.PI / 2;
-      torus.position.set(
-        (Math.random() - 0.5) * w * 0.7,
-        0.05,
-        (Math.random() - 0.5) * d * 0.7
-      );
+      const torusX = (Math.random() - 0.5) * w * 0.7;
+      const torusZ = (Math.random() - 0.5) * d * 0.7;
+      torus.position.set(torusX, getTerrainHeight(torusX, torusZ, 0.4) + 0.05, torusZ);
       this._envGroup.add(torus);
     }
 
@@ -1339,11 +1451,9 @@ export class DiabloRenderer {
         bone.rotation.y = Math.random() * Math.PI;
         bonePile.add(bone);
       }
-      bonePile.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const bpX = (Math.random() - 0.5) * w * 0.8;
+      const bpZ = (Math.random() - 0.5) * d * 0.8;
+      bonePile.position.set(bpX, getTerrainHeight(bpX, bpZ, 0.4), bpZ);
       this._envGroup.add(bonePile);
     }
 
@@ -1366,11 +1476,9 @@ export class DiabloRenderer {
       }
       coffin.add(lid);
 
-      coffin.position.set(
-        (Math.random() - 0.5) * w * 0.7,
-        0,
-        (Math.random() - 0.5) * d * 0.7
-      );
+      const cofX = (Math.random() - 0.5) * w * 0.7;
+      const cofZ = (Math.random() - 0.5) * d * 0.7;
+      coffin.position.set(cofX, getTerrainHeight(cofX, cofZ, 0.4), cofZ);
       coffin.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(coffin);
     }
@@ -1403,7 +1511,7 @@ export class DiabloRenderer {
       this._scene.add(tLight);
       this._torchLights.push(tLight);
 
-      torch.position.set(tLight.position.x, 0, tLight.position.z);
+      torch.position.set(tLight.position.x, getTerrainHeight(tLight.position.x, tLight.position.z, 0.4), tLight.position.z);
       this._envGroup.add(torch);
     }
 
@@ -1428,7 +1536,9 @@ export class DiabloRenderer {
         spike.rotation.x = Math.PI / 2;
         imGroup.add(spike);
       }
-      imGroup.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
+      const imX = (Math.random() - 0.5) * w * 0.6;
+      const imZ = (Math.random() - 0.5) * d * 0.6;
+      imGroup.position.set(imX, getTerrainHeight(imX, imZ, 0.4), imZ);
       imGroup.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(imGroup);
     }
@@ -1446,7 +1556,9 @@ export class DiabloRenderer {
         link.position.y = 6 - s * segH;
         chainGroup.add(link);
       }
-      chainGroup.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const chX = (Math.random() - 0.5) * w * 0.7;
+      const chZ = (Math.random() - 0.5) * d * 0.7;
+      chainGroup.position.set(chX, getTerrainHeight(chX, chZ, 0.4), chZ);
       this._envGroup.add(chainGroup);
     }
 
@@ -1462,7 +1574,9 @@ export class DiabloRenderer {
         rat.position.set((Math.random() - 0.5) * 0.5, 0.04, (Math.random() - 0.5) * 0.5);
         ratGroup.add(rat);
       }
-      ratGroup.position.set((Math.random() - 0.5) * w * 0.8, 0, (Math.random() - 0.5) * d * 0.8);
+      const ratX = (Math.random() - 0.5) * w * 0.8;
+      const ratZ = (Math.random() - 0.5) * d * 0.8;
+      ratGroup.position.set(ratX, getTerrainHeight(ratX, ratZ, 0.4), ratZ);
       this._envGroup.add(ratGroup);
     }
 
@@ -1473,7 +1587,9 @@ export class DiabloRenderer {
       const bpMat = new THREE.MeshStandardMaterial({ color: 0x880000, transparent: true, opacity: 0.3, roughness: 0.8 });
       const bp = new THREE.Mesh(bpGeo, bpMat);
       bp.rotation.x = -Math.PI / 2;
-      bp.position.set((Math.random() - 0.5) * w * 0.7, 0.02, (Math.random() - 0.5) * d * 0.7);
+      const bpX2 = (Math.random() - 0.5) * w * 0.7;
+      const bpZ2 = (Math.random() - 0.5) * d * 0.7;
+      bp.position.set(bpX2, getTerrainHeight(bpX2, bpZ2, 0.4) + 0.02, bpZ2);
       this._envGroup.add(bp);
     }
 
@@ -1499,7 +1615,9 @@ export class DiabloRenderer {
         bnM.rotation.z = Math.random() * Math.PI;
         skelGroup.add(bnM);
       }
-      skelGroup.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const skX = (Math.random() - 0.5) * w * 0.7;
+      const skZ = (Math.random() - 0.5) * d * 0.7;
+      skelGroup.position.set(skX, getTerrainHeight(skX, skZ, 0.4), skZ);
       this._envGroup.add(skelGroup);
     }
 
@@ -1514,7 +1632,9 @@ export class DiabloRenderer {
         cw.rotation.y = (Math.random() - 0.5) * 0.3;
         cwGroup.add(cw);
       }
-      cwGroup.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const cwX = (Math.random() - 0.5) * w * 0.7;
+      const cwZ = (Math.random() - 0.5) * d * 0.7;
+      cwGroup.position.set(cwX, getTerrainHeight(cwX, cwZ, 0.4), cwZ);
       cwGroup.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(cwGroup);
     }
@@ -1540,7 +1660,7 @@ export class DiabloRenderer {
       brazierGroup.add(ember);
       const bx = (Math.random() - 0.5) * w * 0.7;
       const bz = (Math.random() - 0.5) * d * 0.7;
-      brazierGroup.position.set(bx, 0, bz);
+      brazierGroup.position.set(bx, getTerrainHeight(bx, bz, 0.4), bz);
       this._envGroup.add(brazierGroup);
       const bLight = new THREE.PointLight(0xff4422, 1.0, 10);
       bLight.position.set(bx, 1.2, bz);
@@ -1572,7 +1692,9 @@ export class DiabloRenderer {
       const darkInside = new THREE.Mesh(darkGeo, darkMat);
       darkInside.position.y = 0.55;
       sarcGroup.add(darkInside);
-      sarcGroup.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
+      const sarcX = (Math.random() - 0.5) * w * 0.6;
+      const sarcZ = (Math.random() - 0.5) * d * 0.6;
+      sarcGroup.position.set(sarcX, getTerrainHeight(sarcX, sarcZ, 0.4), sarcZ);
       sarcGroup.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(sarcGroup);
     }
@@ -1602,7 +1724,7 @@ export class DiabloRenderer {
     const dagger = new THREE.Mesh(daggerGeo, daggerMat);
     dagger.position.set(0, 1.02, 0.3);
     altarGroup.add(dagger);
-    altarGroup.position.set(0, 0, 0);
+    altarGroup.position.set(0, getTerrainHeight(0, 0, 0.4), 0);
     this._envGroup.add(altarGroup);
 
     // Crumbling archways (3)
@@ -1630,7 +1752,9 @@ export class DiabloRenderer {
         rub.rotation.y = Math.random() * Math.PI;
         caGroup.add(rub);
       }
-      caGroup.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
+      const caX = (Math.random() - 0.5) * w * 0.6;
+      const caZ = (Math.random() - 0.5) * d * 0.6;
+      caGroup.position.set(caX, getTerrainHeight(caX, caZ, 0.4), caZ);
       caGroup.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(caGroup);
     }
@@ -1652,7 +1776,9 @@ export class DiabloRenderer {
         bar.position.set(-0.3 + b * 0.2, 0.02, 0);
         grateGroup.add(bar);
       }
-      grateGroup.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const grX = (Math.random() - 0.5) * w * 0.7;
+      const grZ = (Math.random() - 0.5) * d * 0.7;
+      grateGroup.position.set(grX, getTerrainHeight(grX, grZ, 0.4), grZ);
       this._envGroup.add(grateGroup);
     }
 
@@ -1669,7 +1795,9 @@ export class DiabloRenderer {
       const gas = new THREE.Mesh(gasGeo, gasMat);
       gas.position.y = 0.5;
       ventGroup.add(gas);
-      ventGroup.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const ventX = (Math.random() - 0.5) * w * 0.7;
+      const ventZ = (Math.random() - 0.5) * d * 0.7;
+      ventGroup.position.set(ventX, getTerrainHeight(ventX, ventZ, 0.4), ventZ);
       this._envGroup.add(ventGroup);
     }
 
@@ -1697,7 +1825,9 @@ export class DiabloRenderer {
         cBone.rotation.z = Math.random() * Math.PI;
         cageGroup.add(cBone);
       }
-      cageGroup.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
+      const cgX = (Math.random() - 0.5) * w * 0.6;
+      const cgZ = (Math.random() - 0.5) * d * 0.6;
+      cageGroup.position.set(cgX, getTerrainHeight(cgX, cgZ, 0.4), cgZ);
       this._envGroup.add(cageGroup);
     }
 
@@ -1720,7 +1850,7 @@ export class DiabloRenderer {
         wtGroup.add(wtFlame);
         const wtx = (Math.random() - 0.5) * w * 0.8;
         const wtz = (Math.random() - 0.5) * d * 0.8;
-        wtGroup.position.set(wtx, 0, wtz);
+        wtGroup.position.set(wtx, getTerrainHeight(wtx, wtz, 0.4), wtz);
         const wtLight = new THREE.PointLight(0xff6622, 0.8, 8);
         wtLight.position.set(wtx, wallY + 0.25, wtz);
         this._scene.add(wtLight);
@@ -1731,7 +1861,9 @@ export class DiabloRenderer {
         const wtChar = new THREE.Mesh(wtCharGeo, wtCharMat);
         wtChar.position.y = wallY + 0.2;
         wtGroup.add(wtChar);
-        wtGroup.position.set((Math.random() - 0.5) * w * 0.8, 0, (Math.random() - 0.5) * d * 0.8);
+        const wtx2 = (Math.random() - 0.5) * w * 0.8;
+        const wtz2 = (Math.random() - 0.5) * d * 0.8;
+        wtGroup.position.set(wtx2, getTerrainHeight(wtx2, wtz2, 0.4), wtz2);
       }
       this._envGroup.add(wtGroup);
     }
@@ -1748,7 +1880,9 @@ export class DiabloRenderer {
         wisp.position.set(s * 0.3, 1.5 + Math.sin(s) * 0.3, s * 0.1);
         wispGrp.add(wisp);
       }
-      wispGrp.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
+      const wiX = (Math.random() - 0.5) * w * 0.7;
+      const wiZ = (Math.random() - 0.5) * d * 0.7;
+      wispGrp.position.set(wiX, getTerrainHeight(wiX, wiZ, 0.4), wiZ);
       wispGrp.rotation.y = Math.random() * Math.PI * 2;
       this._envGroup.add(wispGrp);
     }
@@ -1859,7 +1993,7 @@ export class DiabloRenderer {
   private _buildCamelot(w: number, d: number): void {
     // ── Lighting / Atmosphere ──
     this._scene.fog = new THREE.FogExp2(0x8899aa, 0.008);
-    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x998877);
+    this._applyTerrainColors(0x887766, 0xaa9988, 0.8);
     this._dirLight.color.setHex(0xffeedd);
     this._dirLight.intensity = 1.3;
     this._ambientLight.color.setHex(0x556677);
@@ -3614,7 +3748,7 @@ export class DiabloRenderer {
   // ════════════════════════════════════════════════════════════════════
   private _buildVolcanicWastes(w: number, d: number): void {
     this._scene.fog = new THREE.FogExp2(0x331100, 0.02);
-    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x2a1a0a);
+    this._applyTerrainColors(0x1a0a00, 0x3a2a1a, 1.6);
     this._dirLight.color.setHex(0xff6633);
     this._dirLight.intensity = 1.0;
     this._ambientLight.color.setHex(0x441100);
@@ -3632,11 +3766,9 @@ export class DiabloRenderer {
       const riverL = 20 + Math.random() * 30;
       const river = new THREE.Mesh(new THREE.PlaneGeometry(riverW, riverL), lavaMat);
       river.rotation.x = -Math.PI / 2;
-      river.position.set(
-        (Math.random() - 0.5) * w * 0.7,
-        0.05,
-        (Math.random() - 0.5) * d * 0.7
-      );
+      const rvX = (Math.random() - 0.5) * w * 0.7;
+      const rvZ = (Math.random() - 0.5) * d * 0.7;
+      river.position.set(rvX, getTerrainHeight(rvX, rvZ, 1.6) + 0.05, rvZ);
       river.rotation.z = Math.random() * Math.PI;
       this._envGroup.add(river);
 
@@ -3654,11 +3786,9 @@ export class DiabloRenderer {
       const mat = Math.random() < 0.3 ? obsidianMat : rockMat;
       const rSize = 0.3 + Math.random() * 1.5;
       const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rSize, 0), mat);
-      rock.position.set(
-        (Math.random() - 0.5) * w * 0.9,
-        rSize * 0.3,
-        (Math.random() - 0.5) * d * 0.9
-      );
+      const vrX = (Math.random() - 0.5) * w * 0.9;
+      const vrZ = (Math.random() - 0.5) * d * 0.9;
+      rock.position.set(vrX, getTerrainHeight(vrX, vrZ, 1.6) + rSize * 0.3, vrZ);
       rock.rotation.set(Math.random(), Math.random(), Math.random());
       rock.castShadow = true;
       this._envGroup.add(rock);
@@ -3709,11 +3839,9 @@ export class DiabloRenderer {
       breakMesh.position.set(0.5, wallH + 0.1, 0);
       breakMesh.rotation.z = 0.3;
       ruinGroup.add(breakMesh);
-      ruinGroup.position.set(
-        (Math.random() - 0.5) * w * 0.7,
-        0,
-        (Math.random() - 0.5) * d * 0.7
-      );
+      const ruX = (Math.random() - 0.5) * w * 0.7;
+      const ruZ = (Math.random() - 0.5) * d * 0.7;
+      ruinGroup.position.set(ruX, getTerrainHeight(ruX, ruZ, 1.6), ruZ);
       ruinGroup.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(ruinGroup);
     }
@@ -3732,11 +3860,9 @@ export class DiabloRenderer {
         puff.scale.set(1 + s * 0.3, 1, 1 + s * 0.3);
         ventGroup.add(puff);
       }
-      ventGroup.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const svX = (Math.random() - 0.5) * w * 0.8;
+      const svZ = (Math.random() - 0.5) * d * 0.8;
+      ventGroup.position.set(svX, getTerrainHeight(svX, svZ, 1.6), svZ);
       this._envGroup.add(ventGroup);
     }
 
@@ -3750,11 +3876,9 @@ export class DiabloRenderer {
         bone.rotation.set(Math.random(), Math.random(), Math.random());
         boneGroup.add(bone);
       }
-      boneGroup.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const bgX = (Math.random() - 0.5) * w * 0.8;
+      const bgZ = (Math.random() - 0.5) * d * 0.8;
+      boneGroup.position.set(bgX, getTerrainHeight(bgX, bgZ, 1.6), bgZ);
       this._envGroup.add(boneGroup);
     }
 
@@ -3797,11 +3921,9 @@ export class DiabloRenderer {
         branch.rotation.x = (Math.random() - 0.5) * 0.5;
         treeGrp.add(branch);
       }
-      treeGrp.position.set(
-        (Math.random() - 0.5) * w * 0.85,
-        0,
-        (Math.random() - 0.5) * d * 0.85
-      );
+      const ctX = (Math.random() - 0.5) * w * 0.85;
+      const ctZ = (Math.random() - 0.5) * d * 0.85;
+      treeGrp.position.set(ctX, getTerrainHeight(ctX, ctZ, 1.6), ctZ);
       this._envGroup.add(treeGrp);
     }
 
@@ -3838,11 +3960,9 @@ export class DiabloRenderer {
       poolLight.position.y = 1;
       poolGrp.add(poolLight);
       this._torchLights.push(poolLight);
-      poolGrp.position.set(
-        (Math.random() - 0.5) * w * 0.65,
-        0,
-        (Math.random() - 0.5) * d * 0.65
-      );
+      const plX = (Math.random() - 0.5) * w * 0.65;
+      const plZ = (Math.random() - 0.5) * d * 0.65;
+      poolGrp.position.set(plX, getTerrainHeight(plX, plZ, 1.6), plZ);
       this._envGroup.add(poolGrp);
     }
 
@@ -3862,7 +3982,7 @@ export class DiabloRenderer {
     calderaLight.position.y = 2;
     calderaGrp.add(calderaLight);
     this._torchLights.push(calderaLight);
-    calderaGrp.position.set(w * 0.15, 0, -d * 0.15);
+    calderaGrp.position.set(w * 0.15, getTerrainHeight(w * 0.15, -d * 0.15, 1.6), -d * 0.15);
     this._envGroup.add(calderaGrp);
 
     // Obsidian shards (sharp crystals) (20)
@@ -4004,7 +4124,7 @@ export class DiabloRenderer {
   // ════════════════════════════════════════════════════════════════════
   private _buildAbyssalRift(w: number, d: number): void {
     this._scene.fog = new THREE.FogExp2(0x0a0020, 0.035);
-    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x0d0a1e);
+    this._applyTerrainColors(0x080616, 0x120e26, 0.5);
     this._dirLight.color.setHex(0x6644aa);
     this._dirLight.intensity = 0.6;
     this._ambientLight.color.setHex(0x110033);
@@ -4050,11 +4170,9 @@ export class DiabloRenderer {
       const fissureL = 5 + Math.random() * 15;
       const fissure = new THREE.Mesh(new THREE.PlaneGeometry(fissureW, fissureL), voidMat);
       fissure.rotation.x = -Math.PI / 2;
-      fissure.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0.03,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const fiX = (Math.random() - 0.5) * w * 0.8;
+      const fiZ = (Math.random() - 0.5) * d * 0.8;
+      fissure.position.set(fiX, getTerrainHeight(fiX, fiZ, 0.5) + 0.03, fiZ);
       fissure.rotation.z = Math.random() * Math.PI;
       this._envGroup.add(fissure);
     }
@@ -4083,11 +4201,9 @@ export class DiabloRenderer {
       spire.rotation.x = (Math.random() - 0.5) * 0.3;
       spire.castShadow = true;
       spireGroup.add(spire);
-      spireGroup.position.set(
-        (Math.random() - 0.5) * w * 0.85,
-        0,
-        (Math.random() - 0.5) * d * 0.85
-      );
+      const spX = (Math.random() - 0.5) * w * 0.85;
+      const spZ = (Math.random() - 0.5) * d * 0.85;
+      spireGroup.position.set(spX, getTerrainHeight(spX, spZ, 0.5), spZ);
       this._envGroup.add(spireGroup);
     }
 
@@ -4102,11 +4218,9 @@ export class DiabloRenderer {
         runeMat
       );
       rune.rotation.x = -Math.PI / 2;
-      rune.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0.02,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const rnX = (Math.random() - 0.5) * w * 0.8;
+      const rnZ = (Math.random() - 0.5) * d * 0.8;
+      rune.position.set(rnX, getTerrainHeight(rnX, rnZ, 0.5) + 0.02, rnZ);
       this._envGroup.add(rune);
     }
 
@@ -4123,11 +4237,9 @@ export class DiabloRenderer {
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 8), pillarMat);
       cap.position.y = pH;
       pillarGroup.add(cap);
-      pillarGroup.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const piX = (Math.random() - 0.5) * w * 0.8;
+      const piZ = (Math.random() - 0.5) * d * 0.8;
+      pillarGroup.position.set(piX, getTerrainHeight(piX, piZ, 0.5), piZ);
       pillarGroup.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(pillarGroup);
     }
@@ -4202,11 +4314,9 @@ export class DiabloRenderer {
         seg.position.set(tx, ty, tz);
         tentGrp.add(seg);
       }
-      tentGrp.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const tnX = (Math.random() - 0.5) * w * 0.8;
+      const tnZ = (Math.random() - 0.5) * d * 0.8;
+      tentGrp.position.set(tnX, getTerrainHeight(tnX, tnZ, 0.5), tnZ);
       this._envGroup.add(tentGrp);
     }
 
@@ -4461,7 +4571,7 @@ export class DiabloRenderer {
   // ════════════════════════════════════════════════════════════════════
   private _buildDragonsSanctum(w: number, d: number): void {
     this._scene.fog = new THREE.FogExp2(0x221100, 0.015);
-    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x3a2a1a);
+    this._applyTerrainColors(0x2a1a0a, 0x4a3a2a, 1.2);
     this._dirLight.color.setHex(0xffaa44);
     this._dirLight.intensity = 1.2;
     this._ambientLight.color.setHex(0x332200);
@@ -4492,11 +4602,9 @@ export class DiabloRenderer {
         coin.rotation.x = Math.random() * 0.5;
         pileGroup.add(coin);
       }
-      pileGroup.position.set(
-        (Math.random() - 0.5) * w * 0.85,
-        0,
-        (Math.random() - 0.5) * d * 0.85
-      );
+      const gpX = (Math.random() - 0.5) * w * 0.85;
+      const gpZ = (Math.random() - 0.5) * d * 0.85;
+      pileGroup.position.set(gpX, getTerrainHeight(gpX, gpZ, 1.2), gpZ);
       this._envGroup.add(pileGroup);
     }
 
@@ -4515,11 +4623,9 @@ export class DiabloRenderer {
       const cap = new THREE.Mesh(capGeo, cavernMat);
       cap.position.y = cH;
       colGroup.add(cap);
-      colGroup.position.set(
-        (Math.random() - 0.5) * w * 0.85,
-        0,
-        (Math.random() - 0.5) * d * 0.85
-      );
+      const clX = (Math.random() - 0.5) * w * 0.85;
+      const clZ = (Math.random() - 0.5) * d * 0.85;
+      colGroup.position.set(clX, getTerrainHeight(clX, clZ, 1.2), clZ);
       this._envGroup.add(colGroup);
     }
 
@@ -4534,11 +4640,9 @@ export class DiabloRenderer {
         })
       );
       egg.scale.y = 1.3;
-      egg.position.set(
-        (Math.random() - 0.5) * w * 0.6,
-        0.2,
-        (Math.random() - 0.5) * d * 0.6
-      );
+      const egX = (Math.random() - 0.5) * w * 0.6;
+      const egZ = (Math.random() - 0.5) * d * 0.6;
+      egg.position.set(egX, getTerrainHeight(egX, egZ, 1.2) + 0.2, egZ);
       egg.castShadow = true;
       this._envGroup.add(egg);
     }
@@ -4594,11 +4698,9 @@ export class DiabloRenderer {
       bGroup.add(fireLight);
       this._torchLights.push(fireLight);
 
-      bGroup.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const brX = (Math.random() - 0.5) * w * 0.8;
+      const brZ = (Math.random() - 0.5) * d * 0.8;
+      bGroup.position.set(brX, getTerrainHeight(brX, brZ, 1.2), brZ);
       this._envGroup.add(bGroup);
     }
 
@@ -4627,11 +4729,9 @@ export class DiabloRenderer {
         eye.position.set(ex, 0.15, 0.55);
         skullGroup.add(eye);
       }
-      skullGroup.position.set(
-        (Math.random() - 0.5) * w * 0.7,
-        0.3,
-        (Math.random() - 0.5) * d * 0.7
-      );
+      const dsX = (Math.random() - 0.5) * w * 0.7;
+      const dsZ = (Math.random() - 0.5) * d * 0.7;
+      skullGroup.position.set(dsX, getTerrainHeight(dsX, dsZ, 1.2) + 0.3, dsZ);
       skullGroup.rotation.y = Math.random() * Math.PI * 2;
       this._envGroup.add(skullGroup);
     }
@@ -4646,11 +4746,9 @@ export class DiabloRenderer {
         sword.rotation.set(Math.random() * 0.5, Math.random(), Math.random() * 0.5);
         wpGroup.add(sword);
       }
-      wpGroup.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8
-      );
+      const wpX = (Math.random() - 0.5) * w * 0.8;
+      const wpZ = (Math.random() - 0.5) * d * 0.8;
+      wpGroup.position.set(wpX, getTerrainHeight(wpX, wpZ, 1.2), wpZ);
       this._envGroup.add(wpGroup);
     }
 
@@ -4694,11 +4792,9 @@ export class DiabloRenderer {
       const lock = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.06), chestMetalMat);
       lock.position.set(0, 0.2, 0.22);
       chestGrp.add(lock);
-      chestGrp.position.set(
-        (Math.random() - 0.5) * w * 0.7,
-        0,
-        (Math.random() - 0.5) * d * 0.7
-      );
+      const tcX = (Math.random() - 0.5) * w * 0.7;
+      const tcZ = (Math.random() - 0.5) * d * 0.7;
+      chestGrp.position.set(tcX, getTerrainHeight(tcX, tcZ, 1.2), tcZ);
       chestGrp.rotation.y = Math.random() * Math.PI * 2;
       this._envGroup.add(chestGrp);
     }
@@ -4747,11 +4843,9 @@ export class DiabloRenderer {
         rune.lookAt(new THREE.Vector3(0, runeY, 0));
         rpGrp.add(rune);
       }
-      rpGrp.position.set(
-        (Math.random() - 0.5) * w * 0.75,
-        0,
-        (Math.random() - 0.5) * d * 0.75
-      );
+      const rpX = (Math.random() - 0.5) * w * 0.75;
+      const rpZ = (Math.random() - 0.5) * d * 0.75;
+      rpGrp.position.set(rpX, getTerrainHeight(rpX, rpZ, 1.2), rpZ);
       this._envGroup.add(rpGrp);
     }
 
@@ -4807,11 +4901,9 @@ export class DiabloRenderer {
       helmet.scale.y = 0.7;
       helmet.position.set(0.2, 0.08, 0.15);
       armorGrp.add(helmet);
-      armorGrp.position.set(
-        (Math.random() - 0.5) * w * 0.75,
-        0,
-        (Math.random() - 0.5) * d * 0.75
-      );
+      const arX = (Math.random() - 0.5) * w * 0.75;
+      const arZ = (Math.random() - 0.5) * d * 0.75;
+      armorGrp.position.set(arX, getTerrainHeight(arX, arZ, 1.2), arZ);
       armorGrp.rotation.y = Math.random() * Math.PI * 2;
       this._envGroup.add(armorGrp);
     }
@@ -4867,7 +4959,7 @@ export class DiabloRenderer {
       smoke.position.set(7.2 + s * 0.3, 2.5 + s * 0.3, 0);
       moundGrp.add(smoke);
     }
-    moundGrp.position.set(-w * 0.15, 0, d * 0.15);
+    moundGrp.position.set(-w * 0.15, getTerrainHeight(-w * 0.15, d * 0.15, 1.2), d * 0.15);
     this._envGroup.add(moundGrp);
 
     // Jeweled goblets (10)
@@ -11262,7 +11354,7 @@ export class DiabloRenderer {
   // ────────────────────────────────────────────────────────────────────────
   private _buildSunscorchDesert(w: number, d: number): void {
     this._scene.fog = new THREE.FogExp2(0xddcc99, 0.008);
-    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0xccaa66);
+    this._applyTerrainColors(0xbb9955, 0xddbb77, 1.4);
     this._dirLight.color.setHex(0xffeebb);
     this._dirLight.intensity = 1.8;
     this._ambientLight.color.setHex(0x665533);
@@ -11331,11 +11423,9 @@ export class DiabloRenderer {
         flower.position.y = h + 0.1;
         cactus.add(flower);
       }
-      cactus.position.set(
-        (Math.random() - 0.5) * w * 0.85,
-        0,
-        (Math.random() - 0.5) * d * 0.85,
-      );
+      const cacX = (Math.random() - 0.5) * w * 0.85;
+      const cacZ = (Math.random() - 0.5) * d * 0.85;
+      cactus.position.set(cacX, getTerrainHeight(cacX, cacZ, 1.4), cacZ);
       this._scene.add(cactus);
     }
 
@@ -11390,7 +11480,7 @@ export class DiabloRenderer {
         archTop.position.set(0, 5.3, 0);
         ruin.add(archTop);
       }
-      ruin.position.set(cx, 0, cz);
+      ruin.position.set(cx, getTerrainHeight(cx, cz, 1.4), cz);
       this._scene.add(ruin);
     }
 
@@ -11398,7 +11488,7 @@ export class DiabloRenderer {
     const oasisX = -hw * 0.3, oasisZ = -hd * 0.3;
     const oasisPool = new THREE.Mesh(new THREE.CircleGeometry(8, 24), oasisWaterMat);
     oasisPool.rotation.x = -Math.PI / 2;
-    oasisPool.position.set(oasisX, 0.05, oasisZ);
+    oasisPool.position.set(oasisX, getTerrainHeight(oasisX, oasisZ, 1.4) + 0.05, oasisZ);
     this._scene.add(oasisPool);
     // Green ring around oasis
     const grassRing = new THREE.Mesh(
@@ -11406,7 +11496,7 @@ export class DiabloRenderer {
       new THREE.MeshStandardMaterial({ color: 0x558833, roughness: 0.8 }),
     );
     grassRing.rotation.x = -Math.PI / 2;
-    grassRing.position.set(oasisX, 0.02, oasisZ);
+    grassRing.position.set(oasisX, getTerrainHeight(oasisX, oasisZ, 1.4) + 0.02, oasisZ);
     this._scene.add(grassRing);
     // Palm trees around oasis
     for (let i = 0; i < 8; i++) {
@@ -11433,11 +11523,9 @@ export class DiabloRenderer {
         coconut.position.y = trunkH - 0.2;
         palm.add(coconut);
       }
-      palm.position.set(
-        oasisX + Math.cos(angle) * (8 + Math.random() * 2),
-        0,
-        oasisZ + Math.sin(angle) * (8 + Math.random() * 2),
-      );
+      const palmX = oasisX + Math.cos(angle) * (8 + Math.random() * 2);
+      const palmZ = oasisZ + Math.sin(angle) * (8 + Math.random() * 2);
+      palm.position.set(palmX, getTerrainHeight(palmX, palmZ, 1.4), palmZ);
       this._scene.add(palm);
     }
 
@@ -11455,11 +11543,9 @@ export class DiabloRenderer {
       const end2 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 4), boneMat);
       end2.position.set(-boneLen / 2, 0.1, 0);
       bone.add(end2);
-      bone.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8,
-      );
+      const bnX2 = (Math.random() - 0.5) * w * 0.8;
+      const bnZ2 = (Math.random() - 0.5) * d * 0.8;
+      bone.position.set(bnX2, getTerrainHeight(bnX2, bnZ2, 1.4), bnZ2);
       bone.rotation.y = Math.random() * Math.PI;
       this._scene.add(bone);
     }
@@ -11488,11 +11574,9 @@ export class DiabloRenderer {
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.5, 4), new THREE.MeshStandardMaterial({ color: 0x664422 }));
       pole.position.y = 1.75;
       tent.add(pole);
-      tent.position.set(
-        campX + (t - 1) * 6,
-        0,
-        campZ + (Math.random() - 0.5) * 4,
-      );
+      const tentX = campX + (t - 1) * 6;
+      const tentZ = campZ + (Math.random() - 0.5) * 4;
+      tent.position.set(tentX, getTerrainHeight(tentX, tentZ, 1.4), tentZ);
       this._scene.add(tent);
     }
     // Fire pit
@@ -11514,11 +11598,8 @@ export class DiabloRenderer {
       const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.8), flagMat);
       flag.position.set(0.75, poleH - 0.5, 0);
       flagGroup.add(flag);
-      flagGroup.position.set(
-        campX + (f === 0 ? -8 : 8),
-        0,
-        campZ,
-      );
+      const fgX2 = campX + (f === 0 ? -8 : 8);
+      flagGroup.position.set(fgX2, getTerrainHeight(fgX2, campZ, 1.4), campZ);
       this._scene.add(flagGroup);
     }
 
@@ -11537,11 +11618,9 @@ export class DiabloRenderer {
         rock.rotation.set(Math.random(), Math.random(), Math.random());
         rockGroup.add(rock);
       }
-      rockGroup.position.set(
-        (Math.random() - 0.5) * w * 0.85,
-        0,
-        (Math.random() - 0.5) * d * 0.85,
-      );
+      const rgX = (Math.random() - 0.5) * w * 0.85;
+      const rgZ = (Math.random() - 0.5) * d * 0.85;
+      rockGroup.position.set(rgX, getTerrainHeight(rgX, rgZ, 1.4), rgZ);
       this._scene.add(rockGroup);
     }
 
@@ -11597,11 +11676,9 @@ export class DiabloRenderer {
         ripple.position.set(0, 0.01, r * 0.3);
         rippleGroup.add(ripple);
       }
-      rippleGroup.position.set(
-        (Math.random() - 0.5) * w * 0.7,
-        0,
-        (Math.random() - 0.5) * d * 0.7,
-      );
+      const riX = (Math.random() - 0.5) * w * 0.7;
+      const riZ = (Math.random() - 0.5) * d * 0.7;
+      rippleGroup.position.set(riX, getTerrainHeight(riX, riZ, 1.4), riZ);
       rippleGroup.rotation.y = Math.random() * Math.PI;
       this._scene.add(rippleGroup);
     }
@@ -11631,11 +11708,9 @@ export class DiabloRenderer {
         vHead.position.set(0, stumpH + 0.2, 0.12);
         perch.add(vHead);
       }
-      perch.position.set(
-        (Math.random() - 0.5) * w * 0.8,
-        0,
-        (Math.random() - 0.5) * d * 0.8,
-      );
+      const prX = (Math.random() - 0.5) * w * 0.8;
+      const prZ = (Math.random() - 0.5) * d * 0.8;
+      perch.position.set(prX, getTerrainHeight(prX, prZ, 1.4), prZ);
       this._scene.add(perch);
     }
 
@@ -11655,11 +11730,9 @@ export class DiabloRenderer {
         urnBase.position.y = 0.1;
         shardGroup.add(urnBase);
       }
-      shardGroup.position.set(
-        (Math.random() - 0.5) * w * 0.7,
-        0,
-        (Math.random() - 0.5) * d * 0.7,
-      );
+      const sdX = (Math.random() - 0.5) * w * 0.7;
+      const sdZ = (Math.random() - 0.5) * d * 0.7;
+      shardGroup.position.set(sdX, getTerrainHeight(sdX, sdZ, 1.4), sdZ);
       this._scene.add(shardGroup);
     }
 
@@ -11755,7 +11828,7 @@ export class DiabloRenderer {
   // ────────────────────────────────────────────────────────────────────────
   private _buildEmeraldGrasslands(w: number, d: number): void {
     this._scene.fog = new THREE.FogExp2(0xaaccaa, 0.006);
-    (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x55aa33);
+    this._applyTerrainColors(0x449922, 0x66bb44, 1.4);
     this._dirLight.color.setHex(0xfff5dd);
     this._dirLight.intensity = 1.6;
     this._ambientLight.color.setHex(0x336622);
@@ -11837,11 +11910,9 @@ export class DiabloRenderer {
         );
         tree.add(canopy);
       }
-      tree.position.set(
-        (Math.random() - 0.5) * w * 0.85,
-        0,
-        (Math.random() - 0.5) * d * 0.85,
-      );
+      const trX = (Math.random() - 0.5) * w * 0.85;
+      const trZ = (Math.random() - 0.5) * d * 0.85;
+      tree.position.set(trX, getTerrainHeight(trX, trZ, 1.4), trZ);
       this._scene.add(tree);
     }
 
@@ -11884,11 +11955,9 @@ export class DiabloRenderer {
     for (let i = 0; i < 15; i++) {
       const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 8), hayMat);
       hay.rotation.x = Math.PI / 2;
-      hay.position.set(
-        (Math.random() - 0.5) * w * 0.7,
-        0.4,
-        (Math.random() - 0.5) * d * 0.7,
-      );
+      const hayX = (Math.random() - 0.5) * w * 0.7;
+      const hayZ = (Math.random() - 0.5) * d * 0.7;
+      hay.position.set(hayX, getTerrainHeight(hayX, hayZ, 1.4) + 0.4, hayZ);
       hay.rotation.z = Math.random() * Math.PI;
       this._scene.add(hay);
     }
@@ -11942,11 +12011,9 @@ export class DiabloRenderer {
         rock.position.set((Math.random() - 0.5) * 2, rh * 0.3, (Math.random() - 0.5) * 2);
         rockGroup.add(rock);
       }
-      rockGroup.position.set(
-        (Math.random() - 0.5) * w * 0.85,
-        0,
-        (Math.random() - 0.5) * d * 0.85,
-      );
+      const roX = (Math.random() - 0.5) * w * 0.85;
+      const roZ = (Math.random() - 0.5) * d * 0.85;
+      rockGroup.position.set(roX, getTerrainHeight(roX, roZ, 1.4), roZ);
       this._scene.add(rockGroup);
     }
 
