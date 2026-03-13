@@ -1629,6 +1629,201 @@ export const LANTERN_CONFIGS: Record<string, { intensity: number; distance: numb
 };
 
 // ---------------------------------------------------------------------------
+//  SKILL BRANCH / SPECIALIZATION SYSTEM
+// ---------------------------------------------------------------------------
+
+export interface SkillBranchOption {
+  name: string;
+  icon: string;
+  description: string;
+  damageMult?: number;
+  cooldownMult?: number;
+  manaCostMult?: number;
+  aoeRadiusMult?: number;
+  extraProjectiles?: number;
+  statusOverride?: string;
+  bonusEffect?: string;
+}
+
+export interface SkillBranchDef {
+  skillId: string;
+  tier: 1 | 2;
+  talentReq: number;
+  optionA: SkillBranchOption;
+  optionB: SkillBranchOption;
+}
+
+export const SKILL_BRANCHES: SkillBranchDef[] = [
+  // ── WARRIOR ──────────────────────────────────────────────────
+  // Cleave
+  { skillId: 'CLEAVE', tier: 1, talentReq: 5,
+    optionA: { name: 'Rending Cleave', icon: '🩸', description: 'Tears flesh open, leaving enemies bleeding', damageMult: 1.3, statusOverride: 'BLEEDING' },
+    optionB: { name: 'Sweeping Arc', icon: '🌊', description: 'Widens the arc to engulf everything', aoeRadiusMult: 2.0, damageMult: 0.9 },
+  },
+  { skillId: 'CLEAVE', tier: 2, talentReq: 15,
+    optionA: { name: "Executioner's Edge", icon: '⚰️', description: 'Devastating against wounded foes', damageMult: 1.8, bonusEffect: 'EXECUTE_LOW_HP' },
+    optionB: { name: 'Whirlcleave', icon: '🌪️', description: 'A full 360° arc of destruction', aoeRadiusMult: 1.5, damageMult: 1.3 },
+  },
+  // Shield Bash
+  { skillId: 'SHIELD_BASH', tier: 1, talentReq: 5,
+    optionA: { name: 'Concussive Blow', icon: '💫', description: 'The impact rattles skulls in a wide radius', aoeRadiusMult: 1.8, bonusEffect: 'STUN_AOE' },
+    optionB: { name: 'Shield Charge', icon: '🏃', description: 'Rush forward shield-first, bowling over everything', damageMult: 1.5, bonusEffect: 'DASH_FORWARD' },
+  },
+  { skillId: 'SHIELD_BASH', tier: 2, talentReq: 15,
+    optionA: { name: 'Iron Fortress', icon: '🏰', description: 'Each bash hardens your defense', bonusEffect: 'GRANT_ARMOR', manaCostMult: 1.3 },
+    optionB: { name: 'Shattering Impact', icon: '💥', description: 'Cracks through even the thickest armor', damageMult: 1.4, bonusEffect: 'ARMOR_SHRED' },
+  },
+  // Whirlwind
+  { skillId: 'WHIRLWIND', tier: 1, talentReq: 6,
+    optionA: { name: 'Vortex Pull', icon: '🌀', description: 'Enemies are sucked into the blade storm', aoeRadiusMult: 1.5, bonusEffect: 'PULL_ENEMIES' },
+    optionB: { name: 'Bloodletter Spin', icon: '🩸', description: 'Each rotation steals life from the wounded', damageMult: 1.2, bonusEffect: 'LIFE_STEAL_AOE' },
+  },
+  { skillId: 'WHIRLWIND', tier: 2, talentReq: 16,
+    optionA: { name: 'Eternal Cyclone', icon: '♾️', description: 'The spin persists, shredding all who approach', aoeRadiusMult: 1.3, cooldownMult: 0.5 },
+    optionB: { name: 'Razor Tempest', icon: '🗡️', description: 'Each revolution hits harder than the last', damageMult: 1.8, manaCostMult: 1.4 },
+  },
+  // Battle Cry
+  { skillId: 'BATTLE_CRY', tier: 1, talentReq: 7,
+    optionA: { name: 'War Drums', icon: '🥁', description: 'The thunderous cry quickens your blade arm', bonusEffect: 'BUFF_ATTACK_SPEED' },
+    optionB: { name: 'Demoralizing Shout', icon: '😱', description: 'Enemies cower, their strikes weakened', bonusEffect: 'DEBUFF_ENEMIES' },
+  },
+  { skillId: 'BATTLE_CRY', tier: 2, talentReq: 17,
+    optionA: { name: 'Rallying Cry', icon: '💚', description: 'Your war cry mends wounds with sheer willpower', bonusEffect: 'HEAL_ON_CRY' },
+    optionB: { name: 'Berserker Rage', icon: '🔥', description: 'Trade safety for overwhelming power', bonusEffect: 'BERSERKER_MODE' },
+  },
+  // Ground Slam
+  { skillId: 'GROUND_SLAM', tier: 1, talentReq: 8,
+    optionA: { name: 'Fissure', icon: '🌋', description: 'The earth cracks open, leaving scorching ground', bonusEffect: 'LAVA_GROUND', damageMult: 1.2 },
+    optionB: { name: 'Seismic Lance', icon: '🔱', description: 'A focused shockwave that pierces through all', aoeRadiusMult: 0.5, damageMult: 2.0, bonusEffect: 'PIERCING_WAVE' },
+  },
+  { skillId: 'GROUND_SLAM', tier: 2, talentReq: 18,
+    optionA: { name: 'Tectonic Upheaval', icon: '🏔️', description: 'The ground itself rises to crush your foes', damageMult: 1.6, aoeRadiusMult: 1.5, cooldownMult: 1.3 },
+    optionB: { name: 'Petrifying Slam', icon: '🪨', description: 'Turns enemies to stone on impact', statusOverride: 'FROZEN', damageMult: 1.3 },
+  },
+  // Blade Fury
+  { skillId: 'BLADE_FURY', tier: 1, talentReq: 9,
+    optionA: { name: 'Thousand Cuts', icon: '✂️', description: 'A blur of slashes — more hits, relentless pressure', damageMult: 0.6, cooldownMult: 0.4, manaCostMult: 0.5 },
+    optionB: { name: 'Mortal Strike', icon: '💀', description: 'Fewer swings, but each one is absolutely devastating', damageMult: 2.5, cooldownMult: 1.5, bonusEffect: 'GUARANTEED_CRIT' },
+  },
+  { skillId: 'BLADE_FURY', tier: 2, talentReq: 19,
+    optionA: { name: 'Blood Frenzy', icon: '🩸', description: 'Each cut feeds your vitality', bonusEffect: 'LIFE_STEAL_AOE', damageMult: 1.2 },
+    optionB: { name: 'Tempest Blades', icon: '⚔️', description: 'Slashes become projectiles that fly outward', bonusEffect: 'BLADE_PROJECTILES', damageMult: 1.0, extraProjectiles: 4 },
+  },
+
+  // ── MAGE ─────────────────────────────────────────────────────
+  // Fireball
+  { skillId: 'FIREBALL', tier: 1, talentReq: 5,
+    optionA: { name: 'Inferno Orb', icon: '☀️', description: 'A massive sphere of fire that engulfs everything', aoeRadiusMult: 2.0, damageMult: 1.3, cooldownMult: 1.4 },
+    optionB: { name: 'Pyroclasm', icon: '🔥', description: 'Splits into three smaller fireballs mid-flight', damageMult: 0.7, extraProjectiles: 2 },
+  },
+  { skillId: 'FIREBALL', tier: 2, talentReq: 15,
+    optionA: { name: 'Phoenix Fire', icon: '🦅', description: 'The flames heal you as they burn others', bonusEffect: 'HEAL_ON_BURN', damageMult: 1.2 },
+    optionB: { name: 'Hellfire', icon: '🌋', description: 'Leaves a pool of eternal flame on the ground', bonusEffect: 'BURNING_GROUND', damageMult: 1.1 },
+  },
+  // Lightning Bolt
+  { skillId: 'LIGHTNING_BOLT', tier: 1, talentReq: 5,
+    optionA: { name: 'Ball Lightning', icon: '⚡', description: 'A slow, crackling sphere that electrocutes a wide area', aoeRadiusMult: 3.0, damageMult: 0.8, bonusEffect: 'SLOW_PROJECTILE' },
+    optionB: { name: 'Thunderstrike', icon: '🌩️', description: 'Instant devastation on a single target', damageMult: 2.2, cooldownMult: 1.5 },
+  },
+  { skillId: 'LIGHTNING_BOLT', tier: 2, talentReq: 15,
+    optionA: { name: 'Overcharge', icon: '🔋', description: 'Each bolt empowers your next spell', bonusEffect: 'OVERCHARGE_NEXT', damageMult: 1.1 },
+    optionB: { name: 'Static Field', icon: '⚡', description: 'Deals damage based on enemy max HP', bonusEffect: 'PERCENT_HP_DAMAGE', damageMult: 0.5 },
+  },
+  // Ice Nova
+  { skillId: 'ICE_NOVA', tier: 1, talentReq: 6,
+    optionA: { name: 'Glacial Expanse', icon: '❄️', description: 'The frost reaches far, coating the entire battlefield', aoeRadiusMult: 2.5, damageMult: 0.8, cooldownMult: 1.3 },
+    optionB: { name: 'Flash Freeze', icon: '🧊', description: 'An instant, inescapable deep freeze in a small area', aoeRadiusMult: 0.6, damageMult: 1.8, bonusEffect: 'DEEP_FREEZE' },
+  },
+  { skillId: 'ICE_NOVA', tier: 2, talentReq: 16,
+    optionA: { name: 'Permafrost', icon: '🥶', description: 'Frozen enemies shatter for massive bonus damage', bonusEffect: 'SHATTER_DAMAGE', damageMult: 1.4 },
+    optionB: { name: 'Crystalline Barrier', icon: '💎', description: 'The nova leaves a ring of ice that blocks enemies', bonusEffect: 'ICE_WALL', aoeRadiusMult: 1.2 },
+  },
+  // Arcane Shield
+  { skillId: 'ARCANE_SHIELD', tier: 1, talentReq: 7,
+    optionA: { name: 'Mana Fortress', icon: '🏛️', description: 'Absorbs far more damage but drains mana over time', bonusEffect: 'MANA_DRAIN_SHIELD', damageMult: 0 },
+    optionB: { name: 'Mirror Shield', icon: '🪞', description: 'Reflects a portion of all damage back to attackers', bonusEffect: 'REFLECT_DAMAGE' },
+  },
+  { skillId: 'ARCANE_SHIELD', tier: 2, talentReq: 17,
+    optionA: { name: 'Temporal Rewind', icon: '⏪', description: 'When the shield breaks, rewind your HP to before', bonusEffect: 'HP_REWIND' },
+    optionB: { name: 'Arcane Detonation', icon: '💥', description: 'The shield explodes violently when it expires', bonusEffect: 'EXPLODE_ON_EXPIRE', damageMult: 3.0 },
+  },
+  // Meteor
+  { skillId: 'METEOR', tier: 1, talentReq: 8,
+    optionA: { name: 'Meteor Shower', icon: '🌠', description: 'Three smaller meteors rain down across a wider area', aoeRadiusMult: 0.6, damageMult: 0.6, bonusEffect: 'TRIPLE_METEOR' },
+    optionB: { name: 'Extinction Event', icon: '☄️', description: 'One colossal impact. Slower. Utterly devastating.', damageMult: 3.0, aoeRadiusMult: 1.5, cooldownMult: 2.0, manaCostMult: 2.0 },
+  },
+  { skillId: 'METEOR', tier: 2, talentReq: 18,
+    optionA: { name: 'Molten Core', icon: '🌋', description: 'Leaves a persistent lava pool that burns for 8 seconds', bonusEffect: 'LAVA_GROUND', damageMult: 1.2 },
+    optionB: { name: 'Cosmic Impact', icon: '🌌', description: 'The meteor freezes and burns simultaneously', statusOverride: 'FROZEN', damageMult: 1.5 },
+  },
+  // Chain Lightning
+  { skillId: 'CHAIN_LIGHTNING', tier: 1, talentReq: 9,
+    optionA: { name: 'Storm Surge', icon: '🌊', description: 'Bounces to twice as many targets', damageMult: 0.7, bonusEffect: 'EXTRA_BOUNCES' },
+    optionB: { name: 'Focused Conduit', icon: '🔌', description: 'Fewer bounces but devastating power per hit', damageMult: 2.0, bonusEffect: 'FEWER_BOUNCES' },
+  },
+  { skillId: 'CHAIN_LIGHTNING', tier: 2, talentReq: 19,
+    optionA: { name: 'Thunderstorm Aura', icon: '⛈️', description: 'Passively zaps nearby enemies while on cooldown', bonusEffect: 'PASSIVE_LIGHTNING_AURA' },
+    optionB: { name: 'Lightning Rod', icon: '🎯', description: 'Marks the target — all future lightning hits them', bonusEffect: 'LIGHTNING_MARK', damageMult: 1.5 },
+  },
+
+  // ── RANGER ───────────────────────────────────────────────────
+  // Multi Shot
+  { skillId: 'MULTI_SHOT', tier: 1, talentReq: 5,
+    optionA: { name: 'Barrage', icon: '🎯', description: 'Fires 8 arrows in a tight pattern for focused damage', extraProjectiles: 3, damageMult: 0.9 },
+    optionB: { name: 'Scatter Shot', icon: '💨', description: 'A wide fan of arrows that knocks enemies back', aoeRadiusMult: 1.5, bonusEffect: 'KNOCKBACK', damageMult: 0.8 },
+  },
+  { skillId: 'MULTI_SHOT', tier: 2, talentReq: 15,
+    optionA: { name: 'Elemental Volley', icon: '🌈', description: 'Each arrow carries a random element', bonusEffect: 'RANDOM_ELEMENT', damageMult: 1.2 },
+    optionB: { name: 'Seeking Arrows', icon: '🏹', description: 'Arrows curve toward the nearest enemy', bonusEffect: 'HOMING', damageMult: 1.1 },
+  },
+  // Poison Arrow
+  { skillId: 'POISON_ARROW', tier: 1, talentReq: 5,
+    optionA: { name: 'Plague Arrow', icon: '🦠', description: 'Poison spreads to nearby enemies on hit', bonusEffect: 'SPREADING_POISON', damageMult: 0.9 },
+    optionB: { name: 'Viper Strike', icon: '🐍', description: 'Concentrated venom deals massive initial poison damage', damageMult: 2.5, cooldownMult: 1.5 },
+  },
+  { skillId: 'POISON_ARROW', tier: 2, talentReq: 15,
+    optionA: { name: 'Necrotic Arrow', icon: '☠️', description: 'Poisoned enemies cannot heal', bonusEffect: 'ANTI_HEAL', damageMult: 1.2 },
+    optionB: { name: 'Toxic Cloud', icon: '☁️', description: 'Impact creates a lingering poison zone', bonusEffect: 'POISON_GROUND', aoeRadiusMult: 3.0 },
+  },
+  // Evasive Roll
+  { skillId: 'EVASIVE_ROLL', tier: 1, talentReq: 6,
+    optionA: { name: 'Shadow Step', icon: '👤', description: 'Teleport through the shadows instead of rolling', bonusEffect: 'TELEPORT', damageMult: 0 },
+    optionB: { name: 'Combat Roll', icon: '⚔️', description: 'The roll damages enemies you pass through', damageMult: 1.5, bonusEffect: 'DAMAGE_ON_ROLL' },
+  },
+  { skillId: 'EVASIVE_ROLL', tier: 2, talentReq: 16,
+    optionA: { name: 'Smoke Bomb', icon: '💨', description: 'Leave behind a blinding cloud of smoke', bonusEffect: 'SMOKE_CLOUD' },
+    optionB: { name: 'Afterimage', icon: '👻', description: 'Leave a decoy behind that draws enemy attention', bonusEffect: 'SPAWN_DECOY' },
+  },
+  // Explosive Trap
+  { skillId: 'EXPLOSIVE_TRAP', tier: 1, talentReq: 7,
+    optionA: { name: 'Cluster Mines', icon: '💣', description: 'Places 3 smaller traps in a triangle formation', bonusEffect: 'TRIPLE_TRAP', damageMult: 0.6 },
+    optionB: { name: 'Mega Charge', icon: '🧨', description: 'One enormous explosion with devastating power', damageMult: 2.5, aoeRadiusMult: 1.8, cooldownMult: 1.5 },
+  },
+  { skillId: 'EXPLOSIVE_TRAP', tier: 2, talentReq: 17,
+    optionA: { name: 'Frost Trap', icon: '❄️', description: 'The trap freezes instead of burning', statusOverride: 'FROZEN', damageMult: 1.1 },
+    optionB: { name: 'Chain Reaction', icon: '🔗', description: 'Explosions trigger nearby traps to also detonate', bonusEffect: 'CHAIN_DETONATION', damageMult: 1.3 },
+  },
+  // Rain of Arrows
+  { skillId: 'RAIN_OF_ARROWS', tier: 1, talentReq: 8,
+    optionA: { name: 'Hailstorm', icon: '🧊', description: 'Icy arrows that slow and freeze the battlefield', statusOverride: 'FROZEN', damageMult: 1.1 },
+    optionB: { name: 'Fire Rain', icon: '🔥', description: 'Flaming arrows leave the ground ablaze', statusOverride: 'BURNING', bonusEffect: 'BURNING_GROUND', damageMult: 1.2 },
+  },
+  { skillId: 'RAIN_OF_ARROWS', tier: 2, talentReq: 18,
+    optionA: { name: 'Carpet Bombing', icon: '💣', description: 'Covers a massive area', aoeRadiusMult: 2.0, damageMult: 0.7 },
+    optionB: { name: 'Focused Volley', icon: '🎯', description: 'Precise, devastating barrage on a small area', aoeRadiusMult: 0.5, damageMult: 2.5 },
+  },
+  // Piercing Shot
+  { skillId: 'PIERCING_SHOT', tier: 1, talentReq: 9,
+    optionA: { name: 'Railgun', icon: '🔫', description: 'Punches through with absurd force', damageMult: 3.0, cooldownMult: 2.0, manaCostMult: 2.0 },
+    optionB: { name: 'Ricochet', icon: '🔄', description: 'The arrow bounces between enemies', bonusEffect: 'RICOCHET', damageMult: 0.8, extraProjectiles: 3 },
+  },
+  { skillId: 'PIERCING_SHOT', tier: 2, talentReq: 19,
+    optionA: { name: 'Armor Breaker', icon: '🛡️', description: 'Strips 50% armor from everything it hits', bonusEffect: 'ARMOR_SHRED', damageMult: 1.3 },
+    optionB: { name: 'Heart Seeker', icon: '❤️', description: 'Guaranteed critical hit on the first target', bonusEffect: 'GUARANTEED_CRIT', damageMult: 1.5 },
+  },
+];
+
+// ---------------------------------------------------------------------------
 //  5. SET BONUSES
 // ---------------------------------------------------------------------------
 

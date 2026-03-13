@@ -8817,17 +8817,17 @@ export class DiabloRenderer {
     const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.9 });
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.8 });
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.7 });
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0x44aa22, roughness: 0.5 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x44aa22, roughness: 0.5, transparent: true, opacity: 0.7, depthWrite: false });
     const flowerColors = [0xff6688, 0xffdd44, 0xcc88ff, 0xff8844, 0x88ddff, 0xffaacc];
     const waterMat = new THREE.MeshStandardMaterial({ color: 0x4488bb, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.65 });
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0x9B7653, roughness: 0.8 });
     const hayMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 });
     const roofMat = new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.8 });
 
-    // ── Gently rolling hills ──
+    // ── Gently rolling hills (low enough to walk over) ──
     for (let i = 0; i < 25; i++) {
       const sx = 10 + Math.random() * 18;
-      const sy = 1 + Math.random() * 3;
+      const sy = 0.3 + Math.random() * 0.7;
       const sz = 10 + Math.random() * 18;
       const hill = new THREE.Mesh(
         new THREE.SphereGeometry(1, 12, 8),
@@ -8836,7 +8836,7 @@ export class DiabloRenderer {
       hill.scale.set(sx, sy, sz);
       hill.position.set(
         (Math.random() - 0.5) * w * 0.9,
-        sy * 0.4,
+        sy * 0.3,
         (Math.random() - 0.5) * d * 0.9,
       );
       this._scene.add(hill);
@@ -8930,11 +8930,11 @@ export class DiabloRenderer {
 
     // ── Hay bales ──
     for (let i = 0; i < 15; i++) {
-      const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.2, 8), hayMat);
+      const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 8), hayMat);
       hay.rotation.x = Math.PI / 2;
       hay.position.set(
         (Math.random() - 0.5) * w * 0.7,
-        0.7,
+        0.4,
         (Math.random() - 0.5) * d * 0.7,
       );
       hay.rotation.z = Math.random() * Math.PI;

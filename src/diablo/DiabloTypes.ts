@@ -505,6 +505,7 @@ export interface DiabloPlayerState {
   activePotionBuffs: { type: PotionType; value: number; remaining: number }[];
   salvageMaterials: number;
   lanternOn: boolean;
+  skillBranches: Record<string, number>; // keys like "CLEAVE_b1" → 1 or 2 (0 = not chosen)
 }
 
 export interface DiabloEnemy {
@@ -872,6 +873,7 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     activePotionBuffs: [],
     salvageMaterials: 0,
     lanternOn: false,
+    skillBranches: {},
   };
 }
 

@@ -26,6 +26,7 @@ import {
   CRAFTING_RECIPES,
   SALVAGE_MATERIAL_YIELDS,
   LANTERN_CONFIGS,
+  SKILL_BRANCHES,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1989,7 +1990,7 @@ export class DiabloGame {
     // Potion bar (ad1a2850)
     const potionBar = document.createElement("div");
     potionBar.style.cssText = `
-      position:absolute;bottom:20px;left:50%;transform:translateX(calc(-50% + 230px));display:flex;gap:4px;
+      position:absolute;bottom:28px;left:50%;transform:translateX(205px);display:flex;gap:4px;
     `;
     this._potionHudSlots = [];
     const potionLabels = ["F1", "F2", "F3", "F4"];
@@ -2691,6 +2692,37 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
+  //  SKILL BRANCH MODIFIERS
+  // ──────────────────────────────────────────────────────────────
+  private _getSkillBranchModifiers(skillId: SkillId): {
+    damageMult: number; cooldownMult: number; manaCostMult: number;
+    aoeRadiusMult: number; extraProjectiles: number;
+    statusOverride: string | null; bonusEffects: Set<string>;
+  } {
+    const result = {
+      damageMult: 1, cooldownMult: 1, manaCostMult: 1,
+      aoeRadiusMult: 1, extraProjectiles: 0,
+      statusOverride: null as string | null, bonusEffects: new Set<string>(),
+    };
+    const branches = this._state.player.skillBranches;
+    for (const bd of SKILL_BRANCHES) {
+      if (bd.skillId !== skillId) continue;
+      const key = `${skillId}_b${bd.tier}`;
+      const choice = branches[key];
+      if (!choice) continue;
+      const opt = choice === 1 ? bd.optionA : bd.optionB;
+      if (opt.damageMult) result.damageMult *= opt.damageMult;
+      if (opt.cooldownMult) result.cooldownMult *= opt.cooldownMult;
+      if (opt.manaCostMult) result.manaCostMult *= opt.manaCostMult;
+      if (opt.aoeRadiusMult) result.aoeRadiusMult *= opt.aoeRadiusMult;
+      if (opt.extraProjectiles) result.extraProjectiles += opt.extraProjectiles;
+      if (opt.statusOverride) result.statusOverride = opt.statusOverride;
+      if (opt.bonusEffect) result.bonusEffects.add(opt.bonusEffect);
+    }
+    return result;
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  ACTIVATE SKILL
   // ──────────────────────────────────────────────────────────────
   private _activateSkill(idx: number): void {
@@ -2702,12 +2734,13 @@ export class DiabloGame {
 
     const cd = p.skillCooldowns.get(skillId) || 0;
     if (cd > 0) return;
-    if (p.mana < def.manaCost) return;
+    const branchMods = this._getSkillBranchModifiers(skillId);
+    if (p.mana < Math.ceil(def.manaCost * branchMods.manaCostMult)) return;
 
-    p.mana -= def.manaCost;
+    p.mana -= Math.ceil(def.manaCost * branchMods.manaCostMult);
     const talentBonusesCd = this._getTalentBonuses();
     const cdReduction = talentBonusesCd[TalentEffectType.SKILL_COOLDOWN_REDUCTION] || 0;
-    const effectiveCooldown = def.cooldown * (1 - cdReduction / 100);
+    const effectiveCooldown = def.cooldown * branchMods.cooldownMult * (1 - cdReduction / 100);
     p.skillCooldowns.set(skillId, effectiveCooldown);
     p.activeSkillId = skillId;
     p.activeSkillAnimTimer = 0.5;
@@ -2715,6 +2748,11 @@ export class DiabloGame {
     const worldMouse = this._getMouseWorldPos();
     const angle = Math.atan2(worldMouse.x - p.x, worldMouse.z - p.z);
     const baseDmg = this._getSkillDamage(def);
+    const modDmg = baseDmg * branchMods.damageMult;
+    const modRadius = (r: number) => r * branchMods.aoeRadiusMult;
+    const modStatus = branchMods.statusOverride
+      ? branchMods.statusOverride as StatusEffect
+      : def.statusEffect;
 
     switch (skillId) {
       // ── PROJECTILE SKILLS ──
@@ -2722,21 +2760,40 @@ export class DiabloGame {
       case SkillId.LIGHTNING_BOLT:
       case SkillId.POISON_ARROW:
       case SkillId.PIERCING_SHOT: {
-        this._createProjectile(p.x, p.y + 1, p.z, angle, baseDmg, def, skillId);
+        this._createProjectile(p.x, p.y + 1, p.z, angle, modDmg, def, skillId);
+        // Branch effect: extra projectiles for projectile skills
+        if (branchMods.extraProjectiles > 0) {
+          for (let i = 1; i <= branchMods.extraProjectiles; i++) {
+            const offsetAngle = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * 0.15;
+            this._createProjectile(p.x, p.y + 1, p.z, angle + offsetAngle, modDmg, def, skillId);
+          }
+        }
+        // Branch effect: HEAL_ON_BURN
+        if (branchMods.bonusEffects.has('HEAL_ON_BURN')) {
+          p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.10));
+          this._addFloatingText(p.x, p.y + 3, p.z, `+${Math.round(p.maxHp * 0.10)} HP`, "#44ff44");
+        }
+        // Branch effect: GUARANTEED_CRIT
+        if (branchMods.bonusEffects.has('GUARANTEED_CRIT')) {
+          // Damage already boosted via damageMult; add visual cue
+          this._addFloatingText(p.x, p.y + 3, p.z, "CRITICAL!", "#ff4444");
+        }
         break;
       }
 
       case SkillId.MULTI_SHOT: {
         const spread = 0.3;
-        for (let i = -2; i <= 2; i++) {
-          this._createProjectile(p.x, p.y + 1, p.z, angle + i * spread, baseDmg * 0.8, def, skillId);
+        const arrowCount = 5 + branchMods.extraProjectiles;
+        const half = Math.floor(arrowCount / 2);
+        for (let i = -half; i <= half; i++) {
+          this._createProjectile(p.x, p.y + 1, p.z, angle + i * spread, modDmg * 0.8, def, skillId);
         }
         break;
       }
 
       case SkillId.CHAIN_LIGHTNING: {
         // Fires a projectile that, on hit, chains to nearby enemies
-        this._createProjectile(p.x, p.y + 1, p.z, angle, baseDmg, def, skillId);
+        this._createProjectile(p.x, p.y + 1, p.z, angle, modDmg, def, skillId);
         break;
       }
 
@@ -2747,86 +2804,102 @@ export class DiabloGame {
       case SkillId.GROUND_SLAM:
       case SkillId.BLADE_FURY:
       case SkillId.SHIELD_BASH: {
-        const radius = def.aoeRadius || 3;
+        const radius = modRadius(def.aoeRadius || 3);
         const aoe: DiabloAOE = {
           id: this._genId(),
           x: p.x,
           y: 0,
           z: p.z,
           radius,
-          damage: baseDmg,
+          damage: modDmg,
           damageType: def.damageType,
           duration: 0.3,
           timer: 0,
           ownerId: "player",
           tickInterval: 0.3,
           lastTickTimer: 0,
-          statusEffect: def.statusEffect,
+          statusEffect: modStatus,
         };
         this._state.aoeEffects.push(aoe);
         // Immediate damage tick for melee AOE
         this._tickAOEDamage(aoe);
+        // Branch effect: LIFE_STEAL_AOE — heal 15% of damage dealt
+        if (branchMods.bonusEffects.has('LIFE_STEAL_AOE')) {
+          const healAmt = Math.round(modDmg * 0.15);
+          p.hp = Math.min(p.maxHp, p.hp + healAmt);
+          this._addFloatingText(p.x, p.y + 3, p.z, `+${healAmt} HP`, "#44ff44");
+        }
+        // Branch effect: GUARANTEED_CRIT — multiply by crit damage
+        if (branchMods.bonusEffects.has('GUARANTEED_CRIT')) {
+          this._addFloatingText(p.x, p.y + 3, p.z, "CRITICAL!", "#ff4444");
+        }
+        // Branch effect: EXECUTE_LOW_HP
+        if (branchMods.bonusEffects.has('EXECUTE_LOW_HP')) {
+          this._addFloatingText(p.x, p.y + 3.5, p.z, "EXECUTE!", "#ff2222");
+        }
         break;
       }
 
       // ── AOE AT TARGET ──
       case SkillId.METEOR: {
-        const radius = def.aoeRadius || 6;
+        const radius = modRadius(def.aoeRadius || 6);
         const aoe: DiabloAOE = {
           id: this._genId(),
           x: worldMouse.x,
           y: 0,
           z: worldMouse.z,
           radius,
-          damage: baseDmg,
+          damage: modDmg,
           damageType: def.damageType,
           duration: 1.5,
           timer: 0,
           ownerId: "player",
           tickInterval: 0.5,
           lastTickTimer: 0,
-          statusEffect: def.statusEffect,
+          statusEffect: modStatus,
         };
         this._state.aoeEffects.push(aoe);
         break;
       }
 
       case SkillId.RAIN_OF_ARROWS: {
-        const radius = def.aoeRadius || 6;
+        const radius = modRadius(def.aoeRadius || 6);
         const aoe: DiabloAOE = {
           id: this._genId(),
           x: worldMouse.x,
           y: 0,
           z: worldMouse.z,
           radius,
-          damage: baseDmg,
+          damage: modDmg,
           damageType: def.damageType,
           duration: 2.0,
           timer: 0,
           ownerId: "player",
           tickInterval: 0.4,
           lastTickTimer: 0,
+          statusEffect: modStatus,
         };
         this._state.aoeEffects.push(aoe);
         break;
       }
 
       case SkillId.EXPLOSIVE_TRAP: {
-        const radius = def.aoeRadius || 4;
+        const radius = modRadius(def.aoeRadius || 4);
+        const trapStatus = modStatus || StatusEffect.BURNING;
         const aoe: DiabloAOE = {
           id: this._genId(),
           x: worldMouse.x,
           y: 0,
           z: worldMouse.z,
           radius,
-          damage: baseDmg,
+          damage: modDmg,
           damageType: def.damageType,
           duration: 10.0, // trap lasts 10 seconds
           timer: 0,
           ownerId: "player",
           tickInterval: 10.0, // only triggers once
           lastTickTimer: 0,
-          statusEffect: StatusEffect.BURNING,
+          statusEffect: trapStatus,
         };
         this._state.aoeEffects.push(aoe);
         break;
@@ -2840,6 +2913,25 @@ export class DiabloGame {
           source: "BATTLE_CRY",
         });
         this._addFloatingText(p.x, p.y + 3, p.z, "BATTLE CRY!", "#ffd700");
+        // Branch effect: BUFF_ATTACK_SPEED
+        if (branchMods.bonusEffects.has('BUFF_ATTACK_SPEED')) {
+          p.attackSpeed *= 1.3;
+          this._addFloatingText(p.x, p.y + 3.5, p.z, "Attack Speed UP!", "#88ff88");
+        }
+        // Branch effect: DEBUFF_ENEMIES
+        if (branchMods.bonusEffects.has('DEBUFF_ENEMIES')) {
+          this._addFloatingText(p.x, p.y + 3.5, p.z, "Enemies Weakened!", "#ff8844");
+        }
+        // Branch effect: HEAL_ON_CRY
+        if (branchMods.bonusEffects.has('HEAL_ON_CRY')) {
+          const healAmt = Math.round(p.maxHp * 0.10);
+          p.hp = Math.min(p.maxHp, p.hp + healAmt);
+          this._addFloatingText(p.x, p.y + 4, p.z, `+${healAmt} HP`, "#44ff44");
+        }
+        // Branch effect: BERSERKER_MODE
+        if (branchMods.bonusEffects.has('BERSERKER_MODE')) {
+          this._addFloatingText(p.x, p.y + 4, p.z, "BERSERKER!", "#ff2222");
+        }
         break;
       }
 
@@ -4014,6 +4106,7 @@ export class DiabloGame {
       potionCooldown: 0,
       activePotionBuffs: [],
       lanternOn: save.player.lanternOn || false,
+      skillBranches: save.player.skillBranches || {},
     };
     // Restore lantern light if it was on
     if (this._state.player.lanternOn && this._state.player.equipment.lantern) {
@@ -5052,6 +5145,61 @@ export class DiabloGame {
         upgradeHtml += `<div style="color:${color};font-size:11px;margin-left:8px;">${check} Lv.${uLvl}: ${SKILL_UPGRADES[uLvl]}</div>`;
       }
 
+      // Build specialization / branch choices
+      const skillBranches = SKILL_BRANCHES.filter((b) => b.skillId === def.id);
+      const totalTalentSpent = Object.values(p.talents).reduce((sum, v) => sum + v, 0);
+      let branchHtml = "";
+      for (const bd of skillBranches) {
+        const key = `${bd.skillId}_b${bd.tier}`;
+        const choice = p.skillBranches[key] || 0;
+        const meetsReq = totalTalentSpent >= bd.talentReq;
+
+        const renderOption = (opt: typeof bd.optionA, optIdx: 1 | 2) => {
+          const isChosen = choice === optIdx;
+          const isOther = choice > 0 && !isChosen;
+          let modifiers = "";
+          if (opt.damageMult && opt.damageMult !== 1) modifiers += `<span style="color:#fa8;">Dmg x${opt.damageMult}</span> `;
+          if (opt.cooldownMult && opt.cooldownMult !== 1) modifiers += `<span style="color:#8af;">CD x${opt.cooldownMult}</span> `;
+          if (opt.manaCostMult && opt.manaCostMult !== 1) modifiers += `<span style="color:#48f;">Mana x${opt.manaCostMult}</span> `;
+          if (opt.aoeRadiusMult && opt.aoeRadiusMult !== 1) modifiers += `<span style="color:#8af;">AoE x${opt.aoeRadiusMult}</span> `;
+          if (opt.extraProjectiles) modifiers += `<span style="color:#ff8;">+${opt.extraProjectiles} proj</span> `;
+          if (opt.statusOverride) modifiers += `<span style="color:#f84;">${opt.statusOverride}</span> `;
+
+          const borderCol = isChosen ? "#ffd700" : isOther ? "#2a2a2a" : meetsReq ? "#5a8a2a" : "#3a3a3a";
+          const opac = isOther ? "0.4" : (!meetsReq && !isChosen) ? "0.5" : "1";
+          const canChoose = !choice && meetsReq;
+
+          return `<div class="branch-opt" data-branch-key="${key}" data-branch-choice="${optIdx}" style="
+            flex:1;background:rgba(10,8,4,0.9);border:2px solid ${borderCol};border-radius:6px;
+            padding:8px;opacity:${opac};cursor:${canChoose ? "pointer" : "default"};
+            pointer-events:auto;transition:border-color 0.2s;min-width:0;
+          ">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+              <span style="font-size:18px;">${opt.icon}</span>
+              <span style="color:${isChosen ? "#ffd700" : "#c8a84e"};font-weight:bold;font-size:12px;">${opt.name}</span>
+            </div>
+            <div style="color:#aaa;font-size:10px;margin-bottom:4px;">${opt.description}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;font-size:10px;">${modifiers}</div>
+            ${isChosen ? '<div style="color:#ffd700;font-size:10px;margin-top:4px;font-weight:bold;">CHOSEN</div>' : ""}
+            ${canChoose ? '<div style="color:#5a5;font-size:10px;margin-top:4px;font-weight:bold;">CHOOSE</div>' : ""}
+          </div>`;
+        };
+
+        const reqText = meetsReq
+          ? ""
+          : `<div style="color:#888;font-size:10px;margin-bottom:4px;">Requires ${bd.talentReq} talent points invested (${totalTalentSpent} / ${bd.talentReq})</div>`;
+
+        branchHtml += `
+          <div style="margin-top:6px;">
+            <div style="font-size:11px;color:#c8a84e;margin-bottom:4px;">Tier ${bd.tier} Specialization</div>
+            ${reqText}
+            <div style="display:flex;gap:8px;">
+              ${renderOption(bd.optionA, 1)}
+              ${renderOption(bd.optionB, 2)}
+            </div>
+          </div>`;
+      }
+
       skillsHtml += `
         <div style="
           background:rgba(15,10,5,0.9);border:2px solid ${borderColor};border-radius:8px;
@@ -5078,6 +5226,10 @@ export class DiabloGame {
           ${upgradeHtml ? `<div style="border-top:1px solid #333;padding-top:4px;margin-top:4px;">
             <div style="font-size:11px;color:#888;margin-bottom:2px;">Level Upgrades:</div>
             ${upgradeHtml}
+          </div>` : ""}
+          ${branchHtml ? `<div style="border-top:1px solid #444;padding-top:6px;margin-top:6px;">
+            <div style="font-size:12px;color:#c8a84e;font-weight:bold;margin-bottom:4px;">Specializations</div>
+            ${branchHtml}
           </div>` : ""}
         </div>`;
     }
@@ -5137,6 +5289,33 @@ export class DiabloGame {
     this._menuEl.querySelector("#st-tab-talents")!.addEventListener("mouseleave", (ev) => {
       (ev.target as HTMLElement).style.borderColor = "#3a3a2a";
       (ev.target as HTMLElement).style.boxShadow = "none";
+    });
+
+    // Wire up branch specialization choice buttons
+    const branchOpts = this._menuEl.querySelectorAll(".branch-opt") as NodeListOf<HTMLDivElement>;
+    branchOpts.forEach((el) => {
+      const key = el.getAttribute("data-branch-key")!;
+      const choiceVal = parseInt(el.getAttribute("data-branch-choice")!, 10);
+      const currentChoice = p.skillBranches[key] || 0;
+      const bd = SKILL_BRANCHES.find((b) => `${b.skillId}_b${b.tier}` === key);
+      if (!bd) return;
+      const totalSpent = Object.values(p.talents).reduce((sum, v) => sum + v, 0);
+      const canChoose = !currentChoice && totalSpent >= bd.talentReq;
+
+      if (canChoose) {
+        el.addEventListener("mouseenter", () => {
+          el.style.borderColor = "#c8a84e";
+          el.style.boxShadow = "0 0 12px rgba(200,168,78,0.3)";
+        });
+        el.addEventListener("mouseleave", () => {
+          el.style.borderColor = "#5a8a2a";
+          el.style.boxShadow = "none";
+        });
+        el.addEventListener("click", () => {
+          p.skillBranches[key] = choiceVal;
+          this._showSkillTreeScreen(); // refresh to show chosen state
+        });
+      }
     });
   }
 
