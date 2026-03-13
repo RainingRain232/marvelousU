@@ -1,0 +1,501 @@
+// ---------------------------------------------------------------------------
+// Mage Wars FPS – Configuration: wands, characters, vehicles, maps
+// ---------------------------------------------------------------------------
+
+// ---- Wand (gun) definitions ------------------------------------------------
+
+export interface WandDef {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  damage: number;
+  fireRate: number;      // shots per second
+  projectileSpeed: number;
+  range: number;
+  magicCost: number;     // mana per shot
+  spread: number;        // radians of inaccuracy
+  projectileColor: number;
+  projectileTrailColor: number;
+  projectileSize: number;
+  isAuto: boolean;
+  splashRadius: number;  // 0 = no splash
+  headshotMult: number;
+  reloadTime: number;    // seconds
+  magPerReload: number;  // shots per magazine
+  category: "primary" | "secondary" | "heavy";
+}
+
+export const WAND_DEFS: WandDef[] = [
+  // --- Primary wands ---
+  {
+    id: "arcane_bolt", name: "Arcane Bolt Wand", icon: "\u2728",
+    desc: "Reliable semi-auto arcane bolts. Balanced all-rounder.",
+    damage: 22, fireRate: 4, projectileSpeed: 120, range: 100,
+    magicCost: 3, spread: 0.015, projectileColor: 0x8888ff,
+    projectileTrailColor: 0x6666cc, projectileSize: 0.12,
+    isAuto: false, splashRadius: 0, headshotMult: 2.0,
+    reloadTime: 1.5, magPerReload: 12, category: "primary",
+  },
+  {
+    id: "fire_stream", name: "Flame Stream Staff", icon: "\uD83D\uDD25",
+    desc: "Full-auto stream of fire. Short range, high DPS.",
+    damage: 8, fireRate: 15, projectileSpeed: 80, range: 40,
+    magicCost: 1, spread: 0.06, projectileColor: 0xff6600,
+    projectileTrailColor: 0xff3300, projectileSize: 0.08,
+    isAuto: true, splashRadius: 0, headshotMult: 1.3,
+    reloadTime: 2.0, magPerReload: 60, category: "primary",
+  },
+  {
+    id: "frost_rifle", name: "Frost Shard Rifle", icon: "\u2744\uFE0F",
+    desc: "Precision ice shards. Slow fire, high damage, long range.",
+    damage: 55, fireRate: 1.2, projectileSpeed: 160, range: 150,
+    magicCost: 8, spread: 0.005, projectileColor: 0x88ddff,
+    projectileTrailColor: 0x44aadd, projectileSize: 0.15,
+    isAuto: false, splashRadius: 0, headshotMult: 2.5,
+    reloadTime: 2.5, magPerReload: 5, category: "primary",
+  },
+  {
+    id: "lightning_arc", name: "Lightning Arc Caster", icon: "\u26A1",
+    desc: "Burst-fire lightning. Three bolts per trigger pull.",
+    damage: 18, fireRate: 8, projectileSpeed: 200, range: 80,
+    magicCost: 4, spread: 0.03, projectileColor: 0xffff44,
+    projectileTrailColor: 0xcccc00, projectileSize: 0.1,
+    isAuto: true, splashRadius: 0, headshotMult: 1.8,
+    reloadTime: 1.8, magPerReload: 24, category: "primary",
+  },
+  {
+    id: "shadow_repeater", name: "Shadow Repeater", icon: "\uD83C\uDF11",
+    desc: "Rapid shadow bolts. SMG of the arcane world.",
+    damage: 12, fireRate: 10, projectileSpeed: 100, range: 60,
+    magicCost: 2, spread: 0.04, projectileColor: 0x8833aa,
+    projectileTrailColor: 0x551188, projectileSize: 0.09,
+    isAuto: true, splashRadius: 0, headshotMult: 1.5,
+    reloadTime: 1.4, magPerReload: 30, category: "primary",
+  },
+  {
+    id: "nature_thorns", name: "Thornlash Wand", icon: "\uD83C\uDF3F",
+    desc: "Shoots thorn bursts that ricochet. Medium range.",
+    damage: 16, fireRate: 6, projectileSpeed: 90, range: 70,
+    magicCost: 3, spread: 0.025, projectileColor: 0x44aa22,
+    projectileTrailColor: 0x228800, projectileSize: 0.1,
+    isAuto: true, splashRadius: 0, headshotMult: 1.6,
+    reloadTime: 1.6, magPerReload: 20, category: "primary",
+  },
+  // --- Secondary wands ---
+  {
+    id: "arcane_pistol", name: "Arcane Sidearm", icon: "\uD83D\uDD2E",
+    desc: "Quick-draw arcane pistol. Reliable backup.",
+    damage: 18, fireRate: 5, projectileSpeed: 110, range: 50,
+    magicCost: 2, spread: 0.025, projectileColor: 0xaa88ff,
+    projectileTrailColor: 0x8866dd, projectileSize: 0.08,
+    isAuto: false, splashRadius: 0, headshotMult: 2.0,
+    reloadTime: 1.0, magPerReload: 8, category: "secondary",
+  },
+  {
+    id: "fire_burst", name: "Flameburst Orb", icon: "\u2604\uFE0F",
+    desc: "Short-range fire shotgun blast. Devastating up close.",
+    damage: 9, fireRate: 1.5, projectileSpeed: 70, range: 25,
+    magicCost: 5, spread: 0.12, projectileColor: 0xff4400,
+    projectileTrailColor: 0xcc2200, projectileSize: 0.06,
+    isAuto: false, splashRadius: 0, headshotMult: 1.5,
+    reloadTime: 1.8, magPerReload: 6, category: "secondary",
+  },
+  {
+    id: "void_dagger", name: "Void Dagger", icon: "\uD83D\uDDE1\uFE0F",
+    desc: "Extremely fast void bolts. Low damage, high fire rate.",
+    damage: 10, fireRate: 12, projectileSpeed: 140, range: 40,
+    magicCost: 1, spread: 0.035, projectileColor: 0x220044,
+    projectileTrailColor: 0x110022, projectileSize: 0.06,
+    isAuto: true, splashRadius: 0, headshotMult: 1.8,
+    reloadTime: 0.8, magPerReload: 20, category: "secondary",
+  },
+  // --- Heavy wands ---
+  {
+    id: "meteor_launcher", name: "Meteor Launcher", icon: "\u2604\uFE0F",
+    desc: "Fires explosive meteors. Slow but devastating AoE.",
+    damage: 80, fireRate: 0.5, projectileSpeed: 50, range: 120,
+    magicCost: 20, spread: 0.02, projectileColor: 0xff4400,
+    projectileTrailColor: 0xff8800, projectileSize: 0.35,
+    isAuto: false, splashRadius: 5, headshotMult: 1.0,
+    reloadTime: 3.5, magPerReload: 3, category: "heavy",
+  },
+  {
+    id: "ice_cannon", name: "Glacial Cannon", icon: "\uD83E\uDDCA",
+    desc: "Massive ice boulder. Freezes on impact. Huge AoE.",
+    damage: 60, fireRate: 0.4, projectileSpeed: 45, range: 100,
+    magicCost: 25, spread: 0.03, projectileColor: 0x88eeff,
+    projectileTrailColor: 0x44ccee, projectileSize: 0.4,
+    isAuto: false, splashRadius: 6, headshotMult: 1.0,
+    reloadTime: 4.0, magPerReload: 2, category: "heavy",
+  },
+  {
+    id: "thunder_staff", name: "Thunderstrike Staff", icon: "\uD83C\uDF29\uFE0F",
+    desc: "Calls lightning from sky on target area. Massive AoE.",
+    damage: 70, fireRate: 0.6, projectileSpeed: 200, range: 130,
+    magicCost: 18, spread: 0.01, projectileColor: 0xffffaa,
+    projectileTrailColor: 0xffff44, projectileSize: 0.25,
+    isAuto: false, splashRadius: 4, headshotMult: 1.0,
+    reloadTime: 3.0, magPerReload: 4, category: "heavy",
+  },
+];
+
+// ---- Mage character classes ------------------------------------------------
+
+export interface MageClassDef {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  hp: number;
+  mana: number;
+  manaRegen: number;   // per second
+  speed: number;        // movement speed multiplier
+  armor: number;        // damage reduction %
+  ability: string;      // special ability name
+  abilityDesc: string;
+  abilityCooldown: number; // seconds
+  robeColor: number;
+  accentColor: number;
+  hatStyle: "pointy" | "hood" | "crown" | "circlet" | "skull" | "helm";
+  defaultPrimary: string;
+  defaultSecondary: string;
+}
+
+export const MAGE_CLASSES: MageClassDef[] = [
+  {
+    id: "battlemage", name: "Battlemage", icon: "\u2694\uFE0F",
+    desc: "Balanced fighter. Good HP and damage. Shield ability.",
+    hp: 120, mana: 80, manaRegen: 5, speed: 1.0, armor: 15,
+    ability: "Arcane Shield", abilityDesc: "Absorbs 50 damage for 4s",
+    abilityCooldown: 15,
+    robeColor: 0x334488, accentColor: 0x6688cc, hatStyle: "helm",
+    defaultPrimary: "arcane_bolt", defaultSecondary: "arcane_pistol",
+  },
+  {
+    id: "pyromancer", name: "Pyromancer", icon: "\uD83D\uDD25",
+    desc: "Fire specialist. High damage, lower HP. Fireball ability.",
+    hp: 90, mana: 100, manaRegen: 6, speed: 1.05, armor: 5,
+    ability: "Inferno Burst", abilityDesc: "AoE fire explosion around self",
+    abilityCooldown: 12,
+    robeColor: 0x881100, accentColor: 0xff6600, hatStyle: "pointy",
+    defaultPrimary: "fire_stream", defaultSecondary: "fire_burst",
+  },
+  {
+    id: "cryomancer", name: "Cryomancer", icon: "\u2744\uFE0F",
+    desc: "Ice specialist. Precision damage. Freeze ability.",
+    hp: 95, mana: 90, manaRegen: 5, speed: 1.0, armor: 10,
+    ability: "Flash Freeze", abilityDesc: "Freezes nearby enemies for 2s",
+    abilityCooldown: 18,
+    robeColor: 0x114466, accentColor: 0x88ddff, hatStyle: "circlet",
+    defaultPrimary: "frost_rifle", defaultSecondary: "arcane_pistol",
+  },
+  {
+    id: "stormcaller", name: "Stormcaller", icon: "\u26A1",
+    desc: "Lightning mage. Fast attacks. Chain lightning ability.",
+    hp: 100, mana: 95, manaRegen: 7, speed: 1.1, armor: 8,
+    ability: "Chain Lightning", abilityDesc: "Lightning bounces to 3 targets",
+    abilityCooldown: 14,
+    robeColor: 0x444400, accentColor: 0xffff44, hatStyle: "hood",
+    defaultPrimary: "lightning_arc", defaultSecondary: "void_dagger",
+  },
+  {
+    id: "shadowmancer", name: "Shadowmancer", icon: "\uD83C\uDF11",
+    desc: "Stealth and shadow magic. Can go invisible.",
+    hp: 85, mana: 110, manaRegen: 8, speed: 1.15, armor: 5,
+    ability: "Shadow Veil", abilityDesc: "Invisible for 5s. Breaks on attack",
+    abilityCooldown: 20,
+    robeColor: 0x1a0a2e, accentColor: 0x8833aa, hatStyle: "skull",
+    defaultPrimary: "shadow_repeater", defaultSecondary: "void_dagger",
+  },
+  {
+    id: "druid", name: "Druid", icon: "\uD83C\uDF3F",
+    desc: "Nature mage. Heals allies. Tanky with nature armor.",
+    hp: 130, mana: 100, manaRegen: 6, speed: 0.95, armor: 12,
+    ability: "Nature's Embrace", abilityDesc: "Heal self and nearby allies 40hp",
+    abilityCooldown: 16,
+    robeColor: 0x225511, accentColor: 0x44aa22, hatStyle: "crown",
+    defaultPrimary: "nature_thorns", defaultSecondary: "arcane_pistol",
+  },
+  {
+    id: "warlock", name: "Warlock", icon: "\uD83D\uDC80",
+    desc: "Dark mage. Life steal attacks. Summons a damage aura.",
+    hp: 95, mana: 120, manaRegen: 7, speed: 1.0, armor: 8,
+    ability: "Soul Drain", abilityDesc: "Drain 30hp from nearest enemy",
+    abilityCooldown: 13,
+    robeColor: 0x2a0a0a, accentColor: 0xcc2244, hatStyle: "skull",
+    defaultPrimary: "shadow_repeater", defaultSecondary: "fire_burst",
+  },
+  {
+    id: "archmage", name: "Archmage", icon: "\uD83C\uDF1F",
+    desc: "Master of all. High mana. Teleport ability.",
+    hp: 100, mana: 130, manaRegen: 9, speed: 1.0, armor: 10,
+    ability: "Blink", abilityDesc: "Teleport forward 15m instantly",
+    abilityCooldown: 10,
+    robeColor: 0x553388, accentColor: 0xddaaff, hatStyle: "pointy",
+    defaultPrimary: "arcane_bolt", defaultSecondary: "arcane_pistol",
+  },
+];
+
+// ---- Vehicle (mount) definitions -------------------------------------------
+
+export interface VehicleDef {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  type: "ground" | "air_hover" | "air_fly";
+  hp: number;
+  speed: number;
+  turnSpeed: number;
+  weaponDamage: number;
+  weaponFireRate: number;
+  weaponRange: number;
+  weaponProjectileColor: number;
+  weaponSplashRadius: number;
+  seats: number;           // including driver
+  bodyColor: number;
+  accentColor: number;
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
+  altitude: number;        // flight altitude for air vehicles
+  spawnWeight: number;     // how many spawn per map (0 = team-only)
+}
+
+export const VEHICLE_DEFS: VehicleDef[] = [
+  // --- Ground vehicles (tanks) ---
+  {
+    id: "war_rhino", name: "War Rhino", icon: "\uD83E\uDD8F",
+    desc: "Armored rhino. Slow, tough, devastating horn cannon. The tank.",
+    type: "ground", hp: 800, speed: 8, turnSpeed: 1.2,
+    weaponDamage: 100, weaponFireRate: 0.4, weaponRange: 100,
+    weaponProjectileColor: 0xffaa00, weaponSplashRadius: 6,
+    seats: 2, bodyColor: 0x666666, accentColor: 0x888888,
+    scaleX: 2.5, scaleY: 1.8, scaleZ: 4.0, altitude: 0, spawnWeight: 1,
+  },
+  {
+    id: "iron_tortoise", name: "Iron Tortoise", icon: "\uD83D\uDC22",
+    desc: "Massive armored turtle. Extremely tough. Slow siege platform.",
+    type: "ground", hp: 1200, speed: 5, turnSpeed: 0.8,
+    weaponDamage: 120, weaponFireRate: 0.3, weaponRange: 120,
+    weaponProjectileColor: 0x44ff44, weaponSplashRadius: 8,
+    seats: 3, bodyColor: 0x445544, accentColor: 0x336633,
+    scaleX: 3.0, scaleY: 2.0, scaleZ: 4.5, altitude: 0, spawnWeight: 1,
+  },
+  {
+    id: "dire_boar", name: "Dire Boar", icon: "\uD83D\uDC17",
+    desc: "Fast armored boar. Light tank / APC. Quick but less armor.",
+    type: "ground", hp: 500, speed: 14, turnSpeed: 2.0,
+    weaponDamage: 40, weaponFireRate: 1.5, weaponRange: 60,
+    weaponProjectileColor: 0xcc8844, weaponSplashRadius: 3,
+    seats: 2, bodyColor: 0x553322, accentColor: 0x884422,
+    scaleX: 1.8, scaleY: 1.4, scaleZ: 3.0, altitude: 0, spawnWeight: 2,
+  },
+  {
+    id: "war_elephant", name: "War Elephant", icon: "\uD83D\uDC18",
+    desc: "Massive war elephant. Mobile fortress. Mounted ballista.",
+    type: "ground", hp: 1000, speed: 7, turnSpeed: 1.0,
+    weaponDamage: 90, weaponFireRate: 0.5, weaponRange: 110,
+    weaponProjectileColor: 0xddddaa, weaponSplashRadius: 5,
+    seats: 4, bodyColor: 0x777766, accentColor: 0xaa9955,
+    scaleX: 3.5, scaleY: 3.0, scaleZ: 5.0, altitude: 0, spawnWeight: 1,
+  },
+  // --- Air vehicles (helicopters / hover) ---
+  {
+    id: "drake", name: "War Drake", icon: "\uD83D\uDC09",
+    desc: "Hovering drake. Attack helicopter of the skies. Agile & deadly.",
+    type: "air_hover", hp: 400, speed: 18, turnSpeed: 2.5,
+    weaponDamage: 25, weaponFireRate: 4, weaponRange: 80,
+    weaponProjectileColor: 0xff4444, weaponSplashRadius: 2,
+    seats: 2, bodyColor: 0x882222, accentColor: 0xcc4444,
+    scaleX: 2.5, scaleY: 1.5, scaleZ: 4.0, altitude: 12, spawnWeight: 1,
+  },
+  {
+    id: "wyvern", name: "Wyvern", icon: "\uD83E\uDD85",
+    desc: "Smaller wyvern. Scout helicopter. Fast, light weapons.",
+    type: "air_hover", hp: 250, speed: 22, turnSpeed: 3.0,
+    weaponDamage: 15, weaponFireRate: 6, weaponRange: 70,
+    weaponProjectileColor: 0x44ccff, weaponSplashRadius: 1,
+    seats: 1, bodyColor: 0x335577, accentColor: 0x5588aa,
+    scaleX: 2.0, scaleY: 1.2, scaleZ: 3.5, altitude: 15, spawnWeight: 2,
+  },
+  {
+    id: "giant_bat", name: "Giant Bat", icon: "\uD83E\uDD87",
+    desc: "Stealth flyer. Low profile, fast, weak armor.",
+    type: "air_hover", hp: 200, speed: 24, turnSpeed: 3.5,
+    weaponDamage: 12, weaponFireRate: 5, weaponRange: 50,
+    weaponProjectileColor: 0x8833aa, weaponSplashRadius: 0,
+    seats: 1, bodyColor: 0x221133, accentColor: 0x443366,
+    scaleX: 2.2, scaleY: 0.8, scaleZ: 2.5, altitude: 10, spawnWeight: 2,
+  },
+  // --- Air vehicles (jets / fast flyers) ---
+  {
+    id: "dragon", name: "Elder Dragon", icon: "\uD83D\uDC32",
+    desc: "The jet fighter. Blazing fast, fire breath, hard to control.",
+    type: "air_fly", hp: 600, speed: 35, turnSpeed: 1.5,
+    weaponDamage: 50, weaponFireRate: 2, weaponRange: 120,
+    weaponProjectileColor: 0xff8800, weaponSplashRadius: 7,
+    seats: 1, bodyColor: 0x881100, accentColor: 0xff4400,
+    scaleX: 3.5, scaleY: 2.0, scaleZ: 6.0, altitude: 25, spawnWeight: 1,
+  },
+  {
+    id: "phoenix", name: "Phoenix", icon: "\uD83D\uDD25",
+    desc: "Blazing bird of fire. Fast bomber. Drops fire trails.",
+    type: "air_fly", hp: 350, speed: 30, turnSpeed: 2.0,
+    weaponDamage: 40, weaponFireRate: 1.5, weaponRange: 100,
+    weaponProjectileColor: 0xffaa00, weaponSplashRadius: 5,
+    seats: 1, bodyColor: 0xff4400, accentColor: 0xffcc00,
+    scaleX: 3.0, scaleY: 1.5, scaleZ: 5.0, altitude: 22, spawnWeight: 1,
+  },
+  {
+    id: "griffin", name: "Royal Griffin", icon: "\uD83E\uDD85",
+    desc: "Balanced flyer. Good speed, good weapons. Fighter-bomber.",
+    type: "air_fly", hp: 450, speed: 28, turnSpeed: 1.8,
+    weaponDamage: 35, weaponFireRate: 2.5, weaponRange: 90,
+    weaponProjectileColor: 0xffddaa, weaponSplashRadius: 4,
+    seats: 2, bodyColor: 0xaa8844, accentColor: 0xddcc88,
+    scaleX: 3.0, scaleY: 1.8, scaleZ: 5.0, altitude: 20, spawnWeight: 1,
+  },
+];
+
+// ---- Map definitions -------------------------------------------------------
+
+export interface MapDef {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  size: number;              // half-extent of playable area
+  groundColor: number;
+  groundColor2: number;
+  fogColor: number;
+  fogDensity: number;
+  skyTopColor: number;
+  skyMidColor: number;
+  skyHorizonColor: number;
+  sunColor: number;
+  sunIntensity: number;
+  ambientIntensity: number;
+  treeCount: number;
+  rockCount: number;
+  bushCount: number;
+  hillAmplitude: number;
+  hillFrequency: number;
+  waterLevel: number;        // -999 = no water
+  treeColor: number;
+  treeColor2: number;
+  spawnDistance: number;     // distance between team spawns
+  vehicleSpawnPoints: number;
+}
+
+export const MAP_DEFS: MapDef[] = [
+  {
+    id: "enchanted_forest", name: "Enchanted Forest", icon: "\uD83C\uDF32",
+    desc: "Dense magical forest. Close-quarters combat. Lots of cover.",
+    size: 100,
+    groundColor: 0x2d4a1e, groundColor2: 0x3a5c2a,
+    fogColor: 0x4a6a3a, fogDensity: 0.018,
+    skyTopColor: 0x1a4420, skyMidColor: 0x3a6a3a, skyHorizonColor: 0x8aaa7a,
+    sunColor: 0xddeeaa, sunIntensity: 1.5, ambientIntensity: 0.7,
+    treeCount: 120, rockCount: 40, bushCount: 80,
+    hillAmplitude: 2.0, hillFrequency: 0.05,
+    waterLevel: -999,
+    treeColor: 0x225511, treeColor2: 0x337722,
+    spawnDistance: 140, vehicleSpawnPoints: 3,
+  },
+  {
+    id: "golden_grasslands", name: "Golden Grasslands", icon: "\uD83C\uDF3E",
+    desc: "Wide open grasslands. Long sight lines. Vehicle warfare.",
+    size: 140,
+    groundColor: 0x8a7a3a, groundColor2: 0x9a8a4a,
+    fogColor: 0xc8c090, fogDensity: 0.008,
+    skyTopColor: 0x3a78c9, skyMidColor: 0x7ab4d8, skyHorizonColor: 0xc8dde8,
+    sunColor: 0xffecc0, sunIntensity: 2.0, ambientIntensity: 0.65,
+    treeCount: 15, rockCount: 20, bushCount: 30,
+    hillAmplitude: 1.0, hillFrequency: 0.03,
+    waterLevel: -0.5,
+    treeColor: 0x557733, treeColor2: 0x668844,
+    spawnDistance: 200, vehicleSpawnPoints: 5,
+  },
+  {
+    id: "mystic_hills", name: "Mystic Hills", icon: "\u26F0\uFE0F",
+    desc: "Rolling hills and valleys. Elevation advantage matters.",
+    size: 120,
+    groundColor: 0x5a6a4a, groundColor2: 0x4a5a3a,
+    fogColor: 0x8a9aaa, fogDensity: 0.012,
+    skyTopColor: 0x2a5599, skyMidColor: 0x6a99bb, skyHorizonColor: 0xaabbcc,
+    sunColor: 0xffdda0, sunIntensity: 1.8, ambientIntensity: 0.6,
+    treeCount: 40, rockCount: 60, bushCount: 50,
+    hillAmplitude: 5.0, hillFrequency: 0.04,
+    waterLevel: -999,
+    treeColor: 0x3a6633, treeColor2: 0x4a7744,
+    spawnDistance: 170, vehicleSpawnPoints: 4,
+  },
+];
+
+// ---- Game balance constants ------------------------------------------------
+
+export const MW = {
+  TEAM_SIZE: 5,
+  RESPAWN_TIME: 5,
+  MATCH_TIME: 300,           // 5 minutes
+  SCORE_TO_WIN: 50,
+  KILL_SCORE: 2,
+  VEHICLE_KILL_SCORE: 5,
+
+  PLAYER_HEIGHT: 1.7,
+  PLAYER_RADIUS: 0.4,
+  EYE_HEIGHT: 1.55,
+  CROUCH_HEIGHT: 1.0,
+  CROUCH_EYE_HEIGHT: 0.85,
+
+  GRAVITY: -20,
+  JUMP_VELOCITY: 8,
+  MOVE_SPEED: 8,
+  SPRINT_MULT: 1.5,
+  CROUCH_MULT: 0.5,
+  AIR_CONTROL: 0.3,
+
+  MOUSE_SENSITIVITY: 0.002,
+  ADS_SENSITIVITY_MULT: 0.5,
+  ADS_FOV: 45,
+  DEFAULT_FOV: 75,
+
+  // AI
+  AI_REACTION_TIME: 0.3,
+  AI_AIM_ERROR: 0.06,
+  AI_FIRE_RANGE: 60,
+  AI_VEHICLE_RANGE: 80,
+  AI_WANDER_RADIUS: 30,
+  AI_REPOSITION_TIME: 4,
+  AI_VEHICLE_ENTER_DIST: 5,
+
+  // Stamina
+  STAMINA_MAX: 100,
+  STAMINA_DRAIN: 25,
+  STAMINA_REGEN: 15,
+  STAMINA_REGEN_DELAY: 2,
+
+  // Fall damage
+  FALL_DAMAGE_THRESHOLD: 5,
+  FALL_DAMAGE_MULT: 8,
+
+  // Capture points
+  CAPTURE_RADIUS: 4,
+  CAPTURE_TIME: 2,
+  CAPTURE_SCORE_INTERVAL: 5,
+
+  // Spawn protection
+  SPAWN_PROTECTION_TIME: 3,
+
+  // Warmup
+  WARMUP_TIME: 3,
+
+  // Kill streak / multikill
+  MULTIKILL_WINDOW: 4,
+  ASSIST_WINDOW: 10,
+
+  // Tick
+  SIM_RATE: 1 / 60,
+};

@@ -156,6 +156,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "tourney", x: 100, y: 380, w: 150, h: 120, label: "Tournament Grounds", mode: GameMode.WARBAND, type: "training" },
   { id: "fighting_pit", x: 130, y: 680, w: 120, h: 110, label: "The Fighting Pit", mode: GameMode.TEKKEN, type: "colosseum" },
   { id: "eagle_roost", x: 950, y: 160, w: 140, h: 120, label: "The Eagle Roost", mode: GameMode.DRAGOON, type: "tower" },
+  { id: "arcane_arena", x: 180, y: 480, w: 140, h: 110, label: "Arcane Battlegrounds", mode: GameMode.MAGE_WARS, type: "tower" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };

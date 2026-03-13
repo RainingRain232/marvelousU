@@ -270,6 +270,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "3D ARPG: loot, skills & glory in dark medieval lands",
     skipSetup: true,
   },
+  {
+    mode: GameMode.MAGE_WARS,
+    label: "MAGE WARS",
+    desc: "FPS: arcane warfare with wands, mounts & dragons",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

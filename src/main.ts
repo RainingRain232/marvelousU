@@ -127,6 +127,7 @@ import { DragoonGame } from "./dragoon/DragoonGame";
 import { ThreeDragonGame } from "./threedragon/ThreeDragonGame";
 import { MedievalGTA3DGame } from "./medievalgta3d/MedievalGTA3DGame";
 import { DiabloGame } from "./diablo/DiabloGame";
+import { MageWarsGame } from "./magewars/MageWarsGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -313,6 +314,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.THREE_DRAGON]: 15,
     [GameMode.MEDIEVAL_GTA_3D]: 16,
     [GameMode.DIABLO]: 17,
+    [GameMode.MAGE_WARS]: 18,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -407,6 +409,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.DIABLO) {
       menuScreen.hide();
       _bootDiabloGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.MAGE_WARS) {
+      menuScreen.hide();
+      _bootMageWarsGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2627,6 +2634,32 @@ async function _bootDiabloGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("diabloExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Mage Wars FPS mode boot
+// ---------------------------------------------------------------------------
+
+let _mageWarsGame: MageWarsGame | null = null;
+
+async function _bootMageWarsGame(): Promise<void> {
+  if (_mageWarsGame) {
+    _mageWarsGame.destroy();
+    _mageWarsGame = null;
+  }
+
+  _mageWarsGame = new MageWarsGame();
+  await _mageWarsGame.boot();
+
+  const _onExit = () => {
+    window.removeEventListener("mageWarsExit", _onExit);
+    if (_mageWarsGame) {
+      _mageWarsGame.destroy();
+      _mageWarsGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("mageWarsExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
