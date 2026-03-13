@@ -172,6 +172,27 @@ export enum SkillId {
   EVASIVE_ROLL = 'EVASIVE_ROLL',
   EXPLOSIVE_TRAP = 'EXPLOSIVE_TRAP',
   PIERCING_SHOT = 'PIERCING_SHOT',
+  // Warrior unlockable skills
+  LEAP = 'LEAP',
+  IRON_SKIN = 'IRON_SKIN',
+  TAUNT = 'TAUNT',
+  CRUSHING_BLOW = 'CRUSHING_BLOW',
+  INTIMIDATING_ROAR = 'INTIMIDATING_ROAR',
+  EARTHQUAKE = 'EARTHQUAKE',
+  // Mage unlockable skills
+  SUMMON_ELEMENTAL = 'SUMMON_ELEMENTAL',
+  BLINK = 'BLINK',
+  FROST_BARRIER = 'FROST_BARRIER',
+  ARCANE_MISSILES = 'ARCANE_MISSILES',
+  MANA_SIPHON = 'MANA_SIPHON',
+  TIME_WARP = 'TIME_WARP',
+  // Ranger unlockable skills
+  GRAPPLING_HOOK = 'GRAPPLING_HOOK',
+  CAMOUFLAGE = 'CAMOUFLAGE',
+  NET_TRAP = 'NET_TRAP',
+  FIRE_VOLLEY = 'FIRE_VOLLEY',
+  WIND_WALK = 'WIND_WALK',
+  SHADOW_STRIKE = 'SHADOW_STRIKE',
 }
 
 export enum DamageType {
@@ -506,6 +527,7 @@ export interface DiabloPlayerState {
   salvageMaterials: number;
   lanternOn: boolean;
   skillBranches: Record<string, number>; // keys like "CLEAVE_b1" → 1 or 2 (0 = not chosen)
+  unlockedSkills: SkillId[]; // bonus skills unlocked via leveling
 }
 
 export interface DiabloEnemy {
@@ -874,6 +896,7 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     salvageMaterials: 0,
     lanternOn: false,
     skillBranches: {},
+    unlockedSkills: [],
   };
 }
 

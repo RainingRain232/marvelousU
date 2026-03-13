@@ -27,6 +27,7 @@ import {
   SALVAGE_MATERIAL_YIELDS,
   LANTERN_CONFIGS,
   SKILL_BRANCHES,
+  UNLOCKABLE_SKILLS,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -239,6 +240,7 @@ export class DiabloGame {
 
   // Vendor interaction hint
   private _vendorHint!: HTMLDivElement;
+  private _chestHint!: HTMLDivElement;
 
   // Quest popup element
   private _questPopup!: HTMLDivElement;
@@ -400,6 +402,12 @@ export class DiabloGame {
         this._doDodgeRoll();
       } else if (e.code === "KeyP") {
         this._toggleLantern();
+      } else if (e.code === "KeyK") {
+        this._phaseBeforeOverlay = DiabloPhase.PLAYING;
+        this._state.phase = DiabloPhase.INVENTORY;
+        this._showSkillSwapMenu();
+      } else if (e.code === "KeyF") {
+        this._openNearestChest();
       }
     } else if (this._state.phase === DiabloPhase.INVENTORY) {
       if (e.code === "Escape" || e.code === "KeyI" || e.code === "KeyT") {
@@ -1236,6 +1244,7 @@ export class DiabloGame {
         <button id="diablo-inventory-btn" style="${btnBase}">INVENTORY</button>
         <button id="diablo-character-btn" style="${btnBase}">CHARACTER</button>
         <button id="diablo-skilltree-btn" style="${btnBase}">SKILL TREE</button>
+        <button id="diablo-skillswap-btn" style="${btnBase}">SWAP SKILLS</button>
         <button id="diablo-stash-btn" style="${btnBase}">STASH</button>
         <button id="diablo-save-btn" style="${saveBtn}">SAVE GAME</button>
         ${loadBtnHtml}
@@ -1244,7 +1253,7 @@ export class DiabloGame {
       </div>`;
 
     // Hover effects for standard buttons
-    const stdBtns = this._menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-stash-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
+    const stdBtns = this._menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
     stdBtns.forEach((btn) => {
       btn.addEventListener("mouseenter", () => {
         btn.style.borderColor = "#c8a84e";
@@ -1322,6 +1331,11 @@ export class DiabloGame {
       this._phaseBeforeOverlay = DiabloPhase.PAUSED;
       this._state.phase = DiabloPhase.INVENTORY;
       this._showSkillTreeScreen();
+    });
+    this._menuEl.querySelector("#diablo-skillswap-btn")!.addEventListener("click", () => {
+      this._phaseBeforeOverlay = DiabloPhase.PAUSED;
+      this._state.phase = DiabloPhase.INVENTORY;
+      this._showSkillSwapMenu();
     });
     this._menuEl.querySelector("#diablo-stash-btn")!.addEventListener("click", () => {
       this._phaseBeforeOverlay = DiabloPhase.PAUSED;
@@ -1418,12 +1432,16 @@ export class DiabloGame {
           ${row("E", "Quick-use Mana Potion (outside Camelot)")}
           ${row("F1-F4", "Use Potion from Quick Slots")}
 
+          ${sectionHeader("INTERACTION")}
+          ${row("F", "Open nearby Chest")}
+          ${row("E", "Interact (Vendors / Crafting in Camelot)")}
+
           ${sectionHeader("INTERFACE")}
           ${row("I", "Open Inventory")}
           ${row("T", "Open Talent Tree")}
+          ${row("K", "Swap Skills Menu")}
           ${row("J", "Quest Journal")}
           ${row("M", "Toggle Fullscreen Map")}
-          ${row("E", "Interact (Vendors / Crafting in Camelot)")}
           ${row("ESC", "Pause Menu")}
 
           <div style="text-align:center;margin-top:30px;">
@@ -1450,6 +1468,198 @@ export class DiabloGame {
     backBtn.addEventListener("click", () => {
       this._backToMenu();
     });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  SKILL SWAP MENU
+  // ──────────────────────────────────────────────────────────────
+  private _showSkillSwapMenu(): void {
+    const p = this._state.player;
+    const allAvailable = [...p.skills, ...p.unlockedSkills.filter(s => !p.skills.includes(s))];
+    let selectedSlot = -1;
+
+    const render = () => {
+      // Build active skill slots
+      let activeHtml = "";
+      for (let i = 0; i < 6; i++) {
+        const skillId = p.skills[i];
+        const def = skillId ? SKILL_DEFS[skillId] : null;
+        const isSelected = selectedSlot === i;
+        activeHtml += `<div class="swap-active-slot" data-slot="${i}" style="
+          width:80px;height:80px;background:rgba(15,10,5,0.9);border:2px solid ${isSelected ? '#ffd700' : '#5a4a2a'};
+          border-radius:8px;display:flex;flex-direction:column;align-items:center;
+          justify-content:center;cursor:pointer;transition:all 0.2s;position:relative;
+          ${isSelected ? 'box-shadow:0 0 15px rgba(255,215,0,0.4);' : ''}
+        ">
+          <div style="font-size:28px;">${def ? def.icon : '—'}</div>
+          <div style="font-size:10px;color:#c8a84e;margin-top:4px;">${def ? def.name : 'Empty'}</div>
+          <div style="position:absolute;top:2px;left:6px;font-size:10px;color:#888;">${i + 1}</div>
+        </div>`;
+      }
+
+      // Build available skills pool
+      let poolHtml = "";
+      for (const skillId of allAvailable) {
+        const def = SKILL_DEFS[skillId];
+        if (!def) continue;
+        const isEquipped = p.skills.includes(skillId);
+        const unlockEntry = UNLOCKABLE_SKILLS[p.class].find(e => e.skillId === skillId);
+        const levelLabel = unlockEntry ? `Lv.${unlockEntry.level}` : "Base";
+        poolHtml += `<div class="swap-pool-skill" data-skill="${skillId}" style="
+          width:100%;padding:8px 12px;background:rgba(15,10,5,${isEquipped ? '0.6' : '0.9'});
+          border:1px solid ${isEquipped ? '#5a5a2a' : '#5a4a2a'};border-radius:6px;
+          display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.2s;
+          ${isEquipped ? 'opacity:0.6;' : ''}
+        ">
+          <div style="font-size:24px;">${def.icon}</div>
+          <div style="flex:1;">
+            <div style="color:#c8a84e;font-weight:bold;font-size:14px;">${def.name}
+              <span style="color:#888;font-weight:normal;font-size:11px;margin-left:6px;">[${levelLabel}]</span>
+              ${isEquipped ? '<span style="color:#5a5;font-size:11px;margin-left:6px;">EQUIPPED</span>' : ''}
+            </div>
+            <div style="color:#999;font-size:12px;">${def.description}</div>
+            <div style="color:#666;font-size:11px;margin-top:2px;">
+              CD: ${def.cooldown}s · Mana: ${def.manaCost} · DMG: ${def.damageMultiplier}x
+            </div>
+          </div>
+        </div>`;
+      }
+
+      // No unlocked skills message
+      if (p.unlockedSkills.length === 0) {
+        poolHtml += `<div style="color:#888;text-align:center;padding:20px;font-style:italic;">
+          No bonus skills unlocked yet. New skills unlock every 3 levels.
+        </div>`;
+      }
+
+      this._menuEl.innerHTML = `
+        <div style="
+          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        ">
+          <div style="
+            max-width:600px;width:90%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+            border-radius:12px;padding:30px;max-height:85vh;overflow-y:auto;
+          ">
+            <h1 style="color:#c8a84e;font-size:32px;letter-spacing:4px;margin:0 0 8px 0;text-align:center;
+              font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">SWAP SKILLS</h1>
+            <p style="color:#888;font-size:13px;text-align:center;margin:0 0 20px 0;">
+              Click a slot, then click a skill to assign it. Press [K] to close.
+            </p>
+
+            <div style="margin-bottom:20px;">
+              <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;letter-spacing:2px;">ACTIVE SKILLS</div>
+              <div style="display:flex;gap:6px;justify-content:center;">${activeHtml}</div>
+            </div>
+
+            <div>
+              <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;letter-spacing:2px;">AVAILABLE SKILLS</div>
+              <div style="display:flex;flex-direction:column;gap:4px;">${poolHtml}</div>
+            </div>
+
+            <div style="text-align:center;margin-top:20px;">
+              <button id="diablo-swapskill-back" style="
+                width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
+                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+              ">BACK</button>
+            </div>
+          </div>
+        </div>`;
+
+      // Wire active slot clicks
+      const slotEls = this._menuEl.querySelectorAll(".swap-active-slot") as NodeListOf<HTMLDivElement>;
+      slotEls.forEach(el => {
+        el.addEventListener("mouseenter", () => {
+          if (selectedSlot !== parseInt(el.getAttribute("data-slot")!)) {
+            el.style.borderColor = "#c8a84e";
+            el.style.boxShadow = "0 0 10px rgba(200,168,78,0.2)";
+          }
+        });
+        el.addEventListener("mouseleave", () => {
+          if (selectedSlot !== parseInt(el.getAttribute("data-slot")!)) {
+            el.style.borderColor = "#5a4a2a";
+            el.style.boxShadow = "none";
+          }
+        });
+        el.addEventListener("click", () => {
+          selectedSlot = parseInt(el.getAttribute("data-slot")!);
+          render();
+        });
+      });
+
+      // Wire pool skill clicks
+      const poolEls = this._menuEl.querySelectorAll(".swap-pool-skill") as NodeListOf<HTMLDivElement>;
+      poolEls.forEach(el => {
+        el.addEventListener("mouseenter", () => {
+          el.style.borderColor = "#c8a84e";
+          el.style.background = "rgba(30,20,10,0.9)";
+        });
+        el.addEventListener("mouseleave", () => {
+          const sid = el.getAttribute("data-skill") as SkillId;
+          const equipped = p.skills.includes(sid);
+          el.style.borderColor = equipped ? "#5a5a2a" : "#5a4a2a";
+          el.style.background = `rgba(15,10,5,${equipped ? '0.6' : '0.9'})`;
+        });
+        el.addEventListener("click", () => {
+          if (selectedSlot < 0) {
+            // Auto-select first slot
+            selectedSlot = 0;
+            render();
+            return;
+          }
+          const newSkillId = el.getAttribute("data-skill") as SkillId;
+          // Check if this skill is already in another slot
+          const existingIdx = p.skills.indexOf(newSkillId);
+          if (existingIdx >= 0 && existingIdx !== selectedSlot) {
+            // Swap: put the old skill from selectedSlot into existingIdx
+            const oldSkill = p.skills[selectedSlot];
+            p.skills[existingIdx] = oldSkill;
+          }
+          p.skills[selectedSlot] = newSkillId;
+          selectedSlot = -1;
+          render();
+        });
+      });
+
+      // Back button
+      const backBtn = this._menuEl.querySelector("#diablo-swapskill-back") as HTMLButtonElement;
+      backBtn.addEventListener("mouseenter", () => {
+        backBtn.style.borderColor = "#c8a84e";
+        backBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+        backBtn.style.background = "rgba(50,40,20,0.95)";
+      });
+      backBtn.addEventListener("mouseleave", () => {
+        backBtn.style.borderColor = "#5a4a2a";
+        backBtn.style.boxShadow = "none";
+        backBtn.style.background = "rgba(40,30,15,0.9)";
+      });
+      backBtn.addEventListener("click", () => {
+        this._backToMenu();
+      });
+    };
+
+    render();
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  HELPER: Open nearest chest (F key)
+  // ──────────────────────────────────────────────────────────────
+  private _openNearestChest(): void {
+    const p = this._state.player;
+    let nearest: DiabloTreasureChest | null = null;
+    let nearestDist = 3;
+    for (const chest of this._state.treasureChests) {
+      if (chest.opened) continue;
+      const d = this._dist(p.x, p.z, chest.x, chest.z);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = chest;
+      }
+    }
+    if (nearest) {
+      this._openChest(nearest.id);
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -2035,6 +2245,16 @@ export class DiabloGame {
     `;
     this._hud.appendChild(this._vendorHint);
 
+    // Chest interaction hint
+    this._chestHint = document.createElement("div");
+    this._chestHint.style.cssText = `
+      position:absolute;bottom:120px;left:50%;transform:translateX(-50%);
+      padding:8px 20px;background:rgba(10,8,4,0.85);border:1px solid #5a4a2a;
+      border-radius:6px;color:#ffd700;font-size:14px;font-weight:bold;
+      letter-spacing:1px;display:none;white-space:nowrap;
+    `;
+    this._hud.appendChild(this._chestHint);
+
     // Quest popup (centered, semi-transparent parchment style)
     this._questPopup = document.createElement("div");
     this._questPopup.style.cssText = `
@@ -2166,6 +2386,23 @@ export class DiabloGame {
       }
     } else {
       this._vendorHint.style.display = "none";
+    }
+
+    // Chest proximity hint
+    let nearestChest = false;
+    for (const chest of this._state.treasureChests) {
+      if (chest.opened) continue;
+      const d = this._dist(p.x, p.z, chest.x, chest.z);
+      if (d < 4) {
+        nearestChest = true;
+        break;
+      }
+    }
+    if (nearestChest) {
+      this._chestHint.style.display = "block";
+      this._chestHint.textContent = "Press [F] to open chest";
+    } else {
+      this._chestHint.style.display = "none";
     }
   }
 
@@ -2328,6 +2565,16 @@ export class DiabloGame {
       this._renderer.spawnParticles(ParticleType.LEVEL_UP, p.x, p.y + 0.5, p.z, 20 + Math.floor(Math.random() * 11), this._state.particles);
       this._renderer.shakeCamera(0.2, 0.3);
       this._recalculatePlayerStats();
+
+      // Check for new skill unlocks (every 3 levels)
+      const unlockList = UNLOCKABLE_SKILLS[p.class];
+      for (const entry of unlockList) {
+        if (p.level >= entry.level && !p.unlockedSkills.includes(entry.skillId)) {
+          p.unlockedSkills.push(entry.skillId);
+          const def = SKILL_DEFS[entry.skillId];
+          this._addFloatingText(p.x, p.y + 4, p.z, `NEW SKILL: ${def.name}!`, "#44ffff");
+        }
+      }
     }
 
     // Increment global time
@@ -2948,6 +3195,260 @@ export class DiabloGame {
         p.z += Math.cos(angle) * dashDist;
         p.invulnTimer = 0.8;
         this._addFloatingText(p.x, p.y + 2, p.z, "DODGE!", "#44ff44");
+        break;
+      }
+
+      // ── WARRIOR UNLOCKABLE SKILLS ──
+      case SkillId.LEAP: {
+        // Leap to target location, AOE on landing
+        const leapDist = Math.min(12, Math.sqrt((worldMouse.x - p.x) ** 2 + (worldMouse.z - p.z) ** 2));
+        p.x += Math.sin(angle) * leapDist;
+        p.z += Math.cos(angle) * leapDist;
+        p.invulnTimer = 0.5;
+        const radius = modRadius(def.aoeRadius || 4);
+        const aoe: DiabloAOE = {
+          id: this._genId(), x: p.x, y: 0, z: p.z, radius,
+          damage: modDmg, damageType: def.damageType, duration: 0.3, timer: 0,
+          ownerId: "player", tickInterval: 0.3, lastTickTimer: 0, statusEffect: modStatus,
+        };
+        this._state.aoeEffects.push(aoe);
+        this._tickAOEDamage(aoe);
+        this._addFloatingText(p.x, p.y + 3, p.z, "LEAP!", "#ffd700");
+        this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 10, this._state.particles);
+        // Clamp to map bounds
+        const mapLeap = MAP_CONFIGS[this._state.currentMap];
+        p.x = Math.max(-mapLeap.width / 2, Math.min(mapLeap.width / 2, p.x));
+        p.z = Math.max(-((mapLeap as any).depth || mapLeap.width) / 2, Math.min(((mapLeap as any).depth || mapLeap.width) / 2, p.z));
+        break;
+      }
+
+      case SkillId.IRON_SKIN: {
+        p.statusEffects.push({ effect: StatusEffect.STUNNED, duration: 8, source: "IRON_SKIN" });
+        this._addFloatingText(p.x, p.y + 3, p.z, "IRON SKIN!", "#aaaaff");
+        // Temporary armor boost handled via source check in damage calc
+        break;
+      }
+
+      case SkillId.TAUNT: {
+        const tauntRadius = modRadius(def.aoeRadius || 8);
+        for (const enemy of this._state.enemies) {
+          const d = this._dist(p.x, p.z, enemy.x, enemy.z);
+          if (d < tauntRadius && enemy.state !== EnemyState.DEAD && enemy.state !== EnemyState.DYING) {
+            enemy.state = EnemyState.CHASE;
+            enemy.targetId = "player";
+          }
+        }
+        this._addFloatingText(p.x, p.y + 3, p.z, "TAUNT!", "#ff8844");
+        break;
+      }
+
+      case SkillId.CRUSHING_BLOW: {
+        // Single target melee — use AOE with tiny radius
+        const cbRadius = modRadius(2.5);
+        const cbAoe: DiabloAOE = {
+          id: this._genId(), x: p.x + Math.sin(angle) * 2, y: 0, z: p.z + Math.cos(angle) * 2,
+          radius: cbRadius, damage: modDmg, damageType: def.damageType, duration: 0.2, timer: 0,
+          ownerId: "player", tickInterval: 0.2, lastTickTimer: 0, statusEffect: modStatus,
+        };
+        this._state.aoeEffects.push(cbAoe);
+        this._tickAOEDamage(cbAoe);
+        this._addFloatingText(p.x, p.y + 3, p.z, "CRUSH!", "#ff4444");
+        break;
+      }
+
+      case SkillId.INTIMIDATING_ROAR:
+      case SkillId.EARTHQUAKE:
+      case SkillId.FROST_BARRIER:
+      case SkillId.MANA_SIPHON:
+      case SkillId.TIME_WARP:
+      case SkillId.NET_TRAP: {
+        // AOE centered on player (or target for NET_TRAP)
+        const aoeCenterX = skillId === SkillId.NET_TRAP ? worldMouse.x : p.x;
+        const aoeCenterZ = skillId === SkillId.NET_TRAP ? worldMouse.z : p.z;
+        const aoeR = modRadius(def.aoeRadius || 6);
+        const bigAoe: DiabloAOE = {
+          id: this._genId(), x: aoeCenterX, y: 0, z: aoeCenterZ, radius: aoeR,
+          damage: modDmg, damageType: def.damageType,
+          duration: def.duration || 1.0, timer: 0,
+          ownerId: "player", tickInterval: 0.5, lastTickTimer: 0, statusEffect: modStatus,
+        };
+        this._state.aoeEffects.push(bigAoe);
+        this._tickAOEDamage(bigAoe);
+        const labels: Partial<Record<SkillId, string>> = {
+          [SkillId.INTIMIDATING_ROAR]: "ROAR!",
+          [SkillId.EARTHQUAKE]: "EARTHQUAKE!",
+          [SkillId.FROST_BARRIER]: "FROST BARRIER!",
+          [SkillId.MANA_SIPHON]: "SIPHON!",
+          [SkillId.TIME_WARP]: "TIME WARP!",
+          [SkillId.NET_TRAP]: "TRAPPED!",
+        };
+        this._addFloatingText(p.x, p.y + 3, p.z, labels[skillId] || "!", "#44ffff");
+        // Mana Siphon: restore mana
+        if (skillId === SkillId.MANA_SIPHON) {
+          const manaGain = Math.round(p.maxMana * 0.25);
+          p.mana = Math.min(p.maxMana, p.mana + manaGain);
+          const hpGain = Math.round(p.maxHp * 0.10);
+          p.hp = Math.min(p.maxHp, p.hp + hpGain);
+          this._addFloatingText(p.x, p.y + 3.5, p.z, `+${manaGain} Mana +${hpGain} HP`, "#4488ff");
+        }
+        if (skillId === SkillId.EARTHQUAKE) {
+          this._renderer.shakeCamera(0.5, 0.8);
+          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 20, this._state.particles);
+        }
+        break;
+      }
+
+      // ── MAGE UNLOCKABLE SKILLS ──
+      case SkillId.SUMMON_ELEMENTAL: {
+        // Spawn a temporary allied "elemental" enemy that fights for the player
+        // Implemented as a series of AOE ticks around a projected point
+        const summonX = p.x + Math.sin(angle) * 3;
+        const summonZ = p.z + Math.cos(angle) * 3;
+        const elemAoe: DiabloAOE = {
+          id: this._genId(), x: summonX, y: 0, z: summonZ,
+          radius: modRadius(3), damage: modDmg,
+          damageType: def.damageType, duration: 15, timer: 0,
+          ownerId: "player", tickInterval: 1.5, lastTickTimer: 0,
+          statusEffect: modStatus || StatusEffect.BURNING,
+        };
+        this._state.aoeEffects.push(elemAoe);
+        this._addFloatingText(summonX, 2, summonZ, "ELEMENTAL!", "#ff8844");
+        this._renderer.spawnParticles(ParticleType.FIRE, summonX, 0.5, summonZ, 12, this._state.particles);
+        break;
+      }
+
+      case SkillId.BLINK: {
+        // Teleport to target location
+        const blinkDist = Math.min(15, Math.sqrt((worldMouse.x - p.x) ** 2 + (worldMouse.z - p.z) ** 2));
+        // Damage at departure point
+        if (modDmg > 0) {
+          const departAoe: DiabloAOE = {
+            id: this._genId(), x: p.x, y: 0, z: p.z,
+            radius: modRadius(def.aoeRadius || 2), damage: modDmg,
+            damageType: DamageType.ARCANE, duration: 0.3, timer: 0,
+            ownerId: "player", tickInterval: 0.3, lastTickTimer: 0,
+          };
+          this._state.aoeEffects.push(departAoe);
+          this._tickAOEDamage(departAoe);
+        }
+        this._renderer.spawnParticles(ParticleType.SPARK, p.x, 1, p.z, 8, this._state.particles);
+        p.x += Math.sin(angle) * blinkDist;
+        p.z += Math.cos(angle) * blinkDist;
+        p.invulnTimer = 0.3;
+        // Clamp to map bounds
+        const mapBlink = MAP_CONFIGS[this._state.currentMap];
+        p.x = Math.max(-mapBlink.width / 2, Math.min(mapBlink.width / 2, p.x));
+        p.z = Math.max(-((mapBlink as any).depth || mapBlink.width) / 2, Math.min(((mapBlink as any).depth || mapBlink.width) / 2, p.z));
+        this._renderer.spawnParticles(ParticleType.SPARK, p.x, 1, p.z, 8, this._state.particles);
+        this._addFloatingText(p.x, p.y + 3, p.z, "BLINK!", "#aa44ff");
+        break;
+      }
+
+      case SkillId.ARCANE_MISSILES: {
+        // Fire multiple projectiles in a spread
+        const missileCount = 5 + branchMods.extraProjectiles;
+        const spread = 0.2;
+        const half = Math.floor(missileCount / 2);
+        for (let i = -half; i <= half; i++) {
+          if (missileCount % 2 === 0 && i === 0) continue;
+          this._createProjectile(p.x, p.y + 1, p.z, angle + i * spread, modDmg * 0.6, def, skillId);
+        }
+        this._addFloatingText(p.x, p.y + 3, p.z, "ARCANE MISSILES!", "#aa44ff");
+        break;
+      }
+
+      // ── RANGER UNLOCKABLE SKILLS ──
+      case SkillId.GRAPPLING_HOOK: {
+        // Dash to target location
+        const hookDist = Math.min(15, Math.sqrt((worldMouse.x - p.x) ** 2 + (worldMouse.z - p.z) ** 2));
+        p.x += Math.sin(angle) * hookDist;
+        p.z += Math.cos(angle) * hookDist;
+        p.invulnTimer = 0.3;
+        // Clamp to map bounds
+        const mapHook = MAP_CONFIGS[this._state.currentMap];
+        p.x = Math.max(-mapHook.width / 2, Math.min(mapHook.width / 2, p.x));
+        p.z = Math.max(-((mapHook as any).depth || mapHook.width) / 2, Math.min(((mapHook as any).depth || mapHook.width) / 2, p.z));
+        // Damage on arrival
+        if (modDmg > 0) {
+          const hookAoe: DiabloAOE = {
+            id: this._genId(), x: p.x, y: 0, z: p.z,
+            radius: 2, damage: modDmg,
+            damageType: def.damageType, duration: 0.2, timer: 0,
+            ownerId: "player", tickInterval: 0.2, lastTickTimer: 0,
+          };
+          this._state.aoeEffects.push(hookAoe);
+          this._tickAOEDamage(hookAoe);
+        }
+        this._addFloatingText(p.x, p.y + 2, p.z, "HOOK!", "#88ff44");
+        break;
+      }
+
+      case SkillId.CAMOUFLAGE: {
+        p.invulnTimer = 5;
+        p.statusEffects.push({ effect: StatusEffect.STUNNED, duration: 5, source: "CAMOUFLAGE" });
+        // Drop aggro from all enemies
+        for (const enemy of this._state.enemies) {
+          if (enemy.state === EnemyState.CHASE) {
+            enemy.state = EnemyState.IDLE;
+            enemy.stateTimer = 0;
+          }
+        }
+        this._addFloatingText(p.x, p.y + 3, p.z, "CAMOUFLAGE!", "#44aa44");
+        break;
+      }
+
+      case SkillId.FIRE_VOLLEY: {
+        const arrowCount = 7 + branchMods.extraProjectiles;
+        const fvSpread = 0.25;
+        const fvHalf = Math.floor(arrowCount / 2);
+        for (let i = -fvHalf; i <= fvHalf; i++) {
+          this._createProjectile(p.x, p.y + 1, p.z, angle + i * fvSpread, modDmg * 0.7, def, skillId);
+        }
+        this._addFloatingText(p.x, p.y + 3, p.z, "FIRE VOLLEY!", "#ff6622");
+        break;
+      }
+
+      case SkillId.WIND_WALK: {
+        p.statusEffects.push({ effect: StatusEffect.STUNNED, duration: 5, source: "WIND_WALK" });
+        p.moveSpeed *= 1.8;
+        p.invulnTimer = 0.5;
+        this._addFloatingText(p.x, p.y + 3, p.z, "WIND WALK!", "#88ffff");
+        break;
+      }
+
+      case SkillId.SHADOW_STRIKE: {
+        // Find nearest enemy and teleport behind them
+        let nearestEnemy: DiabloEnemy | null = null;
+        let nearestDist = 12;
+        for (const enemy of this._state.enemies) {
+          if (enemy.state === EnemyState.DEAD || enemy.state === EnemyState.DYING) continue;
+          const d = this._dist(p.x, p.z, enemy.x, enemy.z);
+          if (d < nearestDist) {
+            nearestDist = d;
+            nearestEnemy = enemy;
+          }
+        }
+        if (nearestEnemy) {
+          const behindAngle = Math.atan2(p.x - nearestEnemy.x, p.z - nearestEnemy.z);
+          p.x = nearestEnemy.x + Math.sin(behindAngle) * 1.5;
+          p.z = nearestEnemy.z + Math.cos(behindAngle) * 1.5;
+          // Deal damage
+          const ssAoe: DiabloAOE = {
+            id: this._genId(), x: nearestEnemy.x, y: 0, z: nearestEnemy.z,
+            radius: modRadius(2), damage: modDmg,
+            damageType: def.damageType, duration: 0.2, timer: 0,
+            ownerId: "player", tickInterval: 0.2, lastTickTimer: 0,
+          };
+          this._state.aoeEffects.push(ssAoe);
+          this._tickAOEDamage(ssAoe);
+          this._addFloatingText(nearestEnemy.x, 3, nearestEnemy.z, "BACKSTAB!", "#ff44ff");
+          this._renderer.spawnParticles(ParticleType.SPARK, nearestEnemy.x, 1, nearestEnemy.z, 8, this._state.particles);
+        } else {
+          this._addFloatingText(p.x, p.y + 2, p.z, "No target!", "#ff4444");
+          // Refund mana
+          p.mana = Math.min(p.maxMana, p.mana + Math.ceil(def.manaCost * branchMods.manaCostMult));
+          p.skillCooldowns.set(skillId, 0);
+        }
         break;
       }
     }
@@ -4107,6 +4608,7 @@ export class DiabloGame {
       activePotionBuffs: [],
       lanternOn: save.player.lanternOn || false,
       skillBranches: save.player.skillBranches || {},
+      unlockedSkills: save.player.unlockedSkills || [],
     };
     // Restore lantern light if it was on
     if (this._state.player.lanternOn && this._state.player.equipment.lantern) {
@@ -5080,16 +5582,22 @@ export class DiabloGame {
     const p = this._state.player;
 
     // All skills for the player's class, ordered by unlock level
-    const SKILL_UNLOCK_LEVELS: Record<SkillId, number> = {
+    const SKILL_UNLOCK_LEVELS: Partial<Record<SkillId, number>> = {
       // Warrior
       [SkillId.CLEAVE]: 1, [SkillId.SHIELD_BASH]: 3, [SkillId.WHIRLWIND]: 6,
       [SkillId.BATTLE_CRY]: 10, [SkillId.GROUND_SLAM]: 15, [SkillId.BLADE_FURY]: 20,
+      [SkillId.LEAP]: 3, [SkillId.IRON_SKIN]: 6, [SkillId.TAUNT]: 9,
+      [SkillId.CRUSHING_BLOW]: 12, [SkillId.INTIMIDATING_ROAR]: 15, [SkillId.EARTHQUAKE]: 18,
       // Mage
       [SkillId.FIREBALL]: 1, [SkillId.LIGHTNING_BOLT]: 3, [SkillId.ICE_NOVA]: 6,
       [SkillId.ARCANE_SHIELD]: 10, [SkillId.METEOR]: 15, [SkillId.CHAIN_LIGHTNING]: 20,
+      [SkillId.SUMMON_ELEMENTAL]: 3, [SkillId.BLINK]: 6, [SkillId.FROST_BARRIER]: 9,
+      [SkillId.ARCANE_MISSILES]: 12, [SkillId.MANA_SIPHON]: 15, [SkillId.TIME_WARP]: 18,
       // Ranger
       [SkillId.MULTI_SHOT]: 1, [SkillId.POISON_ARROW]: 3, [SkillId.EVASIVE_ROLL]: 6,
       [SkillId.EXPLOSIVE_TRAP]: 10, [SkillId.RAIN_OF_ARROWS]: 15, [SkillId.PIERCING_SHOT]: 20,
+      [SkillId.GRAPPLING_HOOK]: 3, [SkillId.CAMOUFLAGE]: 6, [SkillId.NET_TRAP]: 9,
+      [SkillId.FIRE_VOLLEY]: 12, [SkillId.WIND_WALK]: 15, [SkillId.SHADOW_STRIKE]: 18,
     };
 
     // Skill upgrade descriptions per level tier
