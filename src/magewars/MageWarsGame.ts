@@ -83,6 +83,8 @@ interface MWVehicle {
   respawnTimer: number;
   spawnX: number; spawnY: number; spawnZ: number;
   fireTimer: number;
+  secondaryFireTimer: number;
+  activeWeapon: 0 | 1;  // 0 = primary, 1 = secondary
   mesh: THREE.Group | null;
 }
 
@@ -289,7 +291,7 @@ function createVehicle(defId: string, team: 0 | 1 | -1, x: number, z: number, ma
     driverId: null, passengers: [],
     alive: true, respawnTimer: 0,
     spawnX: x, spawnY: y, spawnZ: z,
-    fireTimer: 0, mesh: null,
+    fireTimer: 0, secondaryFireTimer: 0, activeWeapon: 0, mesh: null,
   };
 }
 
@@ -349,6 +351,7 @@ export class MageWarsGame {
   private _wantReload = false;
   private _wantAbility = false;
   private _wantInteract = false;
+  private _wantWeaponSwitch = false;
   private _wantSlot = -1;
 
   // ---- HUD / UI -----------
@@ -1989,6 +1992,7 @@ export class MageWarsGame {
       if (e.code === "KeyR") this._wantReload = true;
       if (e.code === "KeyQ") this._wantAbility = true;
       if (e.code === "KeyE") this._wantInteract = true;
+      if (e.code === "KeyF") this._wantWeaponSwitch = true;
       if (e.code === "Digit1") this._wantSlot = 0;
       if (e.code === "Digit2") this._wantSlot = 1;
       if (e.code === "Digit3") this._wantSlot = 2;
@@ -2752,28 +2756,45 @@ export class MageWarsGame {
     // Floating texts container
     const floatDiv = `<div id="mw-float-texts" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden"></div>`;
 
-    // Vehicle weapon info panel (left side, above HP)
+    // Vehicle weapon info panel (left side, above HP) — shows both weapons + switch hint
     const vehWeaponPanel = `<div id="mw-veh-weapon" style="position:absolute;bottom:100px;left:20px;display:none;pointer-events:none">` +
-      `<div style="background:rgba(0,0,0,0.55);border:1px solid #665520;border-radius:5px;padding:8px 12px;min-width:180px">` +
-        `<div id="mw-veh-weapon-name" style="font-size:13px;color:#daa520;font-weight:bold;margin-bottom:4px"></div>` +
-        `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">` +
-          `<span style="font-size:10px;color:#999">DMG</span>` +
-          `<span id="mw-veh-weapon-dmg" style="font-size:12px;color:#e0d5c0"></span>` +
-          `<span style="font-size:10px;color:#999;margin-left:6px">RATE</span>` +
-          `<span id="mw-veh-weapon-rate" style="font-size:12px;color:#e0d5c0"></span>` +
-        `</div>` +
-        `<div style="display:flex;align-items:center;gap:6px">` +
-          `<span style="font-size:10px;color:#999">COOLDOWN</span>` +
-          `<div style="flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:3px">` +
-            `<div id="mw-veh-weapon-cd-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#cc8822,#ffaa44);border-radius:3px;transition:width 0.05s"></div>` +
+      `<div style="background:rgba(0,0,0,0.55);border:1px solid #665520;border-radius:5px;padding:8px 12px;min-width:200px">` +
+        `<div style="font-size:10px;color:#888;margin-bottom:6px;text-align:center;letter-spacing:1px">[F] SWITCH WEAPON</div>` +
+        // Primary weapon row
+        `<div id="mw-veh-w0" style="padding:4px 6px;border-radius:3px;margin-bottom:4px">` +
+          `<div style="display:flex;align-items:center;justify-content:space-between">` +
+            `<span id="mw-veh-w0-name" style="font-size:12px;font-weight:bold"></span>` +
+            `<span style="font-size:9px;color:#888">PRIMARY</span>` +
           `</div>` +
-          `<span id="mw-veh-weapon-cd-text" style="font-size:11px;color:#ffaa44;min-width:28px;text-align:right"></span>` +
+          `<div style="display:flex;align-items:center;gap:6px;margin-top:2px">` +
+            `<span style="font-size:9px;color:#999">DMG</span><span id="mw-veh-w0-dmg" style="font-size:11px;color:#e0d5c0"></span>` +
+            `<span style="font-size:9px;color:#999;margin-left:4px">RATE</span><span id="mw-veh-w0-rate" style="font-size:11px;color:#e0d5c0"></span>` +
+            `<span style="font-size:9px;color:#999;margin-left:4px">RNG</span><span id="mw-veh-w0-range" style="font-size:11px;color:#e0d5c0"></span>` +
+          `</div>` +
+          `<div style="display:flex;align-items:center;gap:4px;margin-top:2px">` +
+            `<div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px">` +
+              `<div id="mw-veh-w0-cd" style="height:100%;width:100%;border-radius:2px;transition:width 0.05s"></div>` +
+            `</div>` +
+            `<span id="mw-veh-w0-cd-text" style="font-size:10px;min-width:26px;text-align:right"></span>` +
+          `</div>` +
         `</div>` +
-        `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">` +
-          `<span style="font-size:10px;color:#999">RANGE</span>` +
-          `<span id="mw-veh-weapon-range" style="font-size:11px;color:#e0d5c0"></span>` +
-          `<span style="font-size:10px;color:#999;margin-left:8px">SPLASH</span>` +
-          `<span id="mw-veh-weapon-splash" style="font-size:11px;color:#e0d5c0"></span>` +
+        // Secondary weapon row
+        `<div id="mw-veh-w1" style="padding:4px 6px;border-radius:3px">` +
+          `<div style="display:flex;align-items:center;justify-content:space-between">` +
+            `<span id="mw-veh-w1-name" style="font-size:12px;font-weight:bold"></span>` +
+            `<span style="font-size:9px;color:#888">SECONDARY</span>` +
+          `</div>` +
+          `<div style="display:flex;align-items:center;gap:6px;margin-top:2px">` +
+            `<span style="font-size:9px;color:#999">DMG</span><span id="mw-veh-w1-dmg" style="font-size:11px;color:#e0d5c0"></span>` +
+            `<span style="font-size:9px;color:#999;margin-left:4px">RATE</span><span id="mw-veh-w1-rate" style="font-size:11px;color:#e0d5c0"></span>` +
+            `<span style="font-size:9px;color:#999;margin-left:4px">RNG</span><span id="mw-veh-w1-range" style="font-size:11px;color:#e0d5c0"></span>` +
+          `</div>` +
+          `<div style="display:flex;align-items:center;gap:4px;margin-top:2px">` +
+            `<div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px">` +
+              `<div id="mw-veh-w1-cd" style="height:100%;width:100%;border-radius:2px;transition:width 0.05s"></div>` +
+            `</div>` +
+            `<span id="mw-veh-w1-cd-text" style="font-size:10px;min-width:26px;text-align:right"></span>` +
+          `</div>` +
         `</div>` +
       `</div>` +
     `</div>`;
@@ -3005,7 +3026,7 @@ export class MageWarsGame {
       if (vehHpEl) vehHpEl.style.display = "none";
     }
 
-    // Vehicle weapon info panel
+    // Vehicle weapon info panel — both primary & secondary
     const vehWeaponEl = document.getElementById("mw-veh-weapon") as HTMLElement;
     if (vehWeaponEl) {
       if (p.vehicleId) {
@@ -3013,29 +3034,56 @@ export class MageWarsGame {
         if (veh) {
           const vDef = getVehicleDef(veh.defId);
           vehWeaponEl.style.display = "block";
-          const nameEl = document.getElementById("mw-veh-weapon-name") as HTMLElement;
-          const dmgEl = document.getElementById("mw-veh-weapon-dmg") as HTMLElement;
-          const rateEl = document.getElementById("mw-veh-weapon-rate") as HTMLElement;
-          const cdBar = document.getElementById("mw-veh-weapon-cd-bar") as HTMLElement;
-          const cdText = document.getElementById("mw-veh-weapon-cd-text") as HTMLElement;
-          const rangeEl = document.getElementById("mw-veh-weapon-range") as HTMLElement;
-          const splashEl = document.getElementById("mw-veh-weapon-splash") as HTMLElement;
-          if (nameEl) nameEl.textContent = `${vDef.icon} ${vDef.name} Weapon`;
-          if (dmgEl) dmgEl.textContent = `${vDef.weaponDamage}`;
-          if (rateEl) rateEl.textContent = `${vDef.weaponFireRate.toFixed(1)}/s`;
-          if (rangeEl) rangeEl.textContent = `${vDef.weaponRange}`;
-          if (splashEl) splashEl.textContent = vDef.weaponSplashRadius > 0 ? `${vDef.weaponSplashRadius}` : "—";
-          const interval = 1 / vDef.weaponFireRate;
-          if (cdBar && cdText) {
-            if (veh.fireTimer > 0) {
-              const progress = clamp(1 - veh.fireTimer / interval, 0, 1);
-              cdBar.style.width = `${progress * 100}%`;
-              cdText.textContent = `${veh.fireTimer.toFixed(1)}s`;
-            } else {
-              cdBar.style.width = "100%";
-              cdText.textContent = "RDY";
-            }
+
+          // Highlight active weapon row
+          const w0Row = document.getElementById("mw-veh-w0") as HTMLElement;
+          const w1Row = document.getElementById("mw-veh-w1") as HTMLElement;
+          if (w0Row) {
+            w0Row.style.background = veh.activeWeapon === 0 ? "rgba(218,165,32,0.15)" : "transparent";
+            w0Row.style.border = veh.activeWeapon === 0 ? "1px solid rgba(218,165,32,0.4)" : "1px solid transparent";
           }
+          if (w1Row) {
+            w1Row.style.background = veh.activeWeapon === 1 ? "rgba(100,180,255,0.15)" : "transparent";
+            w1Row.style.border = veh.activeWeapon === 1 ? "1px solid rgba(100,180,255,0.4)" : "1px solid transparent";
+          }
+
+          // Primary weapon stats
+          const w0Name = document.getElementById("mw-veh-w0-name") as HTMLElement;
+          const w0Dmg = document.getElementById("mw-veh-w0-dmg") as HTMLElement;
+          const w0Rate = document.getElementById("mw-veh-w0-rate") as HTMLElement;
+          const w0Range = document.getElementById("mw-veh-w0-range") as HTMLElement;
+          const w0Cd = document.getElementById("mw-veh-w0-cd") as HTMLElement;
+          const w0CdText = document.getElementById("mw-veh-w0-cd-text") as HTMLElement;
+          if (w0Name) { w0Name.textContent = `${vDef.icon} Main Cannon`; w0Name.style.color = veh.activeWeapon === 0 ? "#daa520" : "#888"; }
+          if (w0Dmg) w0Dmg.textContent = `${vDef.weaponDamage}`;
+          if (w0Rate) w0Rate.textContent = `${vDef.weaponFireRate.toFixed(1)}/s`;
+          if (w0Range) w0Range.textContent = `${vDef.weaponRange}`;
+          if (w0Cd) {
+            const interval = 1 / vDef.weaponFireRate;
+            const prog = veh.fireTimer > 0 ? clamp(1 - veh.fireTimer / interval, 0, 1) : 1;
+            w0Cd.style.width = `${prog * 100}%`;
+            w0Cd.style.background = "linear-gradient(90deg,#cc8822,#ffaa44)";
+          }
+          if (w0CdText) { w0CdText.textContent = veh.fireTimer > 0 ? `${veh.fireTimer.toFixed(1)}s` : "RDY"; w0CdText.style.color = "#ffaa44"; }
+
+          // Secondary weapon stats
+          const w1Name = document.getElementById("mw-veh-w1-name") as HTMLElement;
+          const w1Dmg = document.getElementById("mw-veh-w1-dmg") as HTMLElement;
+          const w1Rate = document.getElementById("mw-veh-w1-rate") as HTMLElement;
+          const w1Range = document.getElementById("mw-veh-w1-range") as HTMLElement;
+          const w1Cd = document.getElementById("mw-veh-w1-cd") as HTMLElement;
+          const w1CdText = document.getElementById("mw-veh-w1-cd-text") as HTMLElement;
+          if (w1Name) { w1Name.textContent = `${vDef.secondaryName}`; w1Name.style.color = veh.activeWeapon === 1 ? "#66aaff" : "#888"; }
+          if (w1Dmg) w1Dmg.textContent = `${vDef.secondaryDamage}`;
+          if (w1Rate) w1Rate.textContent = `${vDef.secondaryFireRate.toFixed(1)}/s`;
+          if (w1Range) w1Range.textContent = `${vDef.secondaryRange}`;
+          if (w1Cd) {
+            const interval2 = 1 / vDef.secondaryFireRate;
+            const prog2 = veh.secondaryFireTimer > 0 ? clamp(1 - veh.secondaryFireTimer / interval2, 0, 1) : 1;
+            w1Cd.style.width = `${prog2 * 100}%`;
+            w1Cd.style.background = "linear-gradient(90deg,#2266cc,#66aaff)";
+          }
+          if (w1CdText) { w1CdText.textContent = veh.secondaryFireTimer > 0 ? `${veh.secondaryFireTimer.toFixed(1)}s` : "RDY"; w1CdText.style.color = "#66aaff"; }
         }
       } else {
         vehWeaponEl.style.display = "none";
@@ -3831,10 +3879,23 @@ export class MageWarsGame {
     veh.yaw += turn * def.turnSpeed * dt;
     veh.speed = lerp(veh.speed, throttle * def.speed, dt * 3);
 
-    // Fire vehicle weapon
-    if (this._mouseDown && veh.fireTimer <= 0) {
-      this._fireVehicleWeapon(veh, p, mapDef);
-      veh.fireTimer = 1 / def.weaponFireRate;
+    // Switch vehicle weapon with F
+    if (this._wantWeaponSwitch) {
+      veh.activeWeapon = veh.activeWeapon === 0 ? 1 : 0;
+      this._wantWeaponSwitch = false;
+    }
+
+    // Fire active vehicle weapon
+    if (veh.activeWeapon === 0) {
+      if (this._mouseDown && veh.fireTimer <= 0) {
+        this._fireVehicleWeapon(veh, p, mapDef);
+        veh.fireTimer = 1 / def.weaponFireRate;
+      }
+    } else {
+      if (this._mouseDown && veh.secondaryFireTimer <= 0) {
+        this._fireVehicleSecondary(veh, p, mapDef);
+        veh.secondaryFireTimer = 1 / def.secondaryFireRate;
+      }
     }
 
     // Exit vehicle
@@ -3920,6 +3981,7 @@ export class MageWarsGame {
     const def = getVehicleDef(v.defId);
 
     if (v.fireTimer > 0) v.fireTimer -= dt;
+    if (v.secondaryFireTimer > 0) v.secondaryFireTimer -= dt;
 
     const sinY = Math.sin(v.yaw);
     const cosY = Math.cos(v.yaw);
@@ -4083,6 +4145,53 @@ export class MageWarsGame {
     flash.position.set(proj.x, proj.y, proj.z);
     this._scene.add(flash);
     this._muzzleFlashes.push({ mesh: flash, timer: 0.1, maxTime: 0.1 });
+
+    this._projectiles.push(proj);
+  }
+
+  private _fireVehicleSecondary(v: MWVehicle, driver: MWPlayer, _mapDef: MapDef): void {
+    const def = getVehicleDef(v.defId);
+    const yaw = v.yaw;
+    const pitch = v.pitch;
+
+    const dx = -Math.sin(yaw) * Math.cos(pitch);
+    const dy = Math.sin(pitch);
+    const dz = -Math.cos(yaw) * Math.cos(pitch);
+
+    const proj: MWProjectile = {
+      id: nextProjId(), ownerId: driver.id, team: driver.team,
+      x: v.x + dx * 2, y: v.y + def.scaleY * 0.3 + dy * 2, z: v.z + dz * 2,
+      dx, dy, dz,
+      speed: def.secondaryProjectileSpeed,
+      damage: def.secondaryDamage,
+      splashRadius: def.secondarySplashRadius,
+      range: def.secondaryRange, traveled: 0,
+      color: def.secondaryProjectileColor, size: def.secondaryProjectileSize,
+      mesh: null, fromVehicle: true,
+    };
+
+    const geo = new THREE.SphereGeometry(def.secondaryProjectileSize, 6, 6);
+    const mat = new THREE.MeshBasicMaterial({ color: def.secondaryProjectileColor });
+    proj.mesh = new THREE.Mesh(geo, mat);
+    proj.mesh.position.set(proj.x, proj.y, proj.z);
+    this._scene.add(proj.mesh);
+
+    const trailGeo = new THREE.CylinderGeometry(def.secondaryProjectileSize * 0.3, def.secondaryProjectileSize * 0.6, 1.0, 4);
+    const trailMat = new THREE.MeshBasicMaterial({ color: def.secondaryProjectileColor, transparent: true, opacity: 0.5 });
+    const trail = new THREE.Mesh(trailGeo, trailMat);
+    this._scene.add(trail);
+    this._projectileTrails.set(proj.id, trail);
+
+    const light = new THREE.PointLight(def.secondaryProjectileColor, 0.4, 4);
+    this._scene.add(light);
+    this._projectileLights.set(proj.id, light);
+
+    const flashGeo = new THREE.SphereGeometry(def.secondaryProjectileSize * 0.8, 6, 6);
+    const flashMat = new THREE.MeshBasicMaterial({ color: def.secondaryProjectileColor, transparent: true, opacity: 0.9 });
+    const flash = new THREE.Mesh(flashGeo, flashMat);
+    flash.position.set(proj.x, proj.y, proj.z);
+    this._scene.add(flash);
+    this._muzzleFlashes.push({ mesh: flash, timer: 0.08, maxTime: 0.08 });
 
     this._projectiles.push(proj);
   }
@@ -5134,6 +5243,14 @@ export class MageWarsGame {
           veh.fireTimer = 1 / def.weaponFireRate;
         }
       }
+      // AI also fires secondary at close range
+      if (d < def.secondaryRange && veh.secondaryFireTimer <= 0) {
+        const angleDiff = Math.abs(veh.yaw - desiredYaw);
+        if (angleDiff < 0.5 || angleDiff > Math.PI * 2 - 0.5) {
+          this._fireVehicleSecondary(veh, p, mapDef);
+          veh.secondaryFireTimer = 1 / def.secondaryFireRate;
+        }
+      }
     } else {
       veh.speed = lerp(veh.speed, 0, dt * 3);
     }
@@ -5215,9 +5332,11 @@ export class MageWarsGame {
       const veh = this._vehicles.find(v => v.id === human.vehicleId);
       if (veh) {
         const def = getVehicleDef(veh.defId);
-        camX = veh.x;
-        camY = veh.y + def.scaleY;
-        camZ = veh.z;
+        // Offset camera forward along vehicle facing so target is more visible
+        const fwdOff = def.scaleZ * 0.35;
+        camX = veh.x - Math.sin(veh.yaw) * fwdOff;
+        camY = veh.y + def.scaleY * 1.1;
+        camZ = veh.z - Math.cos(veh.yaw) * fwdOff;
       }
     }
 

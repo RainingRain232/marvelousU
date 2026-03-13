@@ -261,6 +261,15 @@ export interface VehicleDef {
   scaleZ: number;
   altitude: number;        // flight altitude for air vehicles
   spawnWeight: number;     // how many spawn per map (0 = team-only)
+  // Secondary weapon — distinct from primary (e.g. rapid-fire vs slow cannon)
+  secondaryName: string;
+  secondaryDamage: number;
+  secondaryFireRate: number;
+  secondaryRange: number;
+  secondaryProjectileColor: number;
+  secondarySplashRadius: number;
+  secondaryProjectileSpeed: number;
+  secondaryProjectileSize: number;
 }
 
 export const VEHICLE_DEFS: VehicleDef[] = [
@@ -273,6 +282,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0xffaa00, weaponSplashRadius: 6,
     seats: 2, bodyColor: 0x666666, accentColor: 0x888888,
     scaleX: 2.5, scaleY: 1.8, scaleZ: 4.0, altitude: 0, spawnWeight: 1,
+    secondaryName: "Chain Lightning", secondaryDamage: 20, secondaryFireRate: 3.0,
+    secondaryRange: 50, secondaryProjectileColor: 0x44ddff, secondarySplashRadius: 0,
+    secondaryProjectileSpeed: 120, secondaryProjectileSize: 0.15,
   },
   {
     id: "iron_tortoise", name: "Iron Tortoise", icon: "\uD83D\uDC22",
@@ -282,6 +294,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0x44ff44, weaponSplashRadius: 8,
     seats: 3, bodyColor: 0x445544, accentColor: 0x336633,
     scaleX: 3.0, scaleY: 2.0, scaleZ: 4.5, altitude: 0, spawnWeight: 1,
+    secondaryName: "Toxic Spray", secondaryDamage: 8, secondaryFireRate: 8.0,
+    secondaryRange: 30, secondaryProjectileColor: 0x88ff44, secondarySplashRadius: 1,
+    secondaryProjectileSpeed: 60, secondaryProjectileSize: 0.12,
   },
   {
     id: "dire_boar", name: "Dire Boar", icon: "\uD83D\uDC17",
@@ -291,6 +306,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0xcc8844, weaponSplashRadius: 3,
     seats: 2, bodyColor: 0x553322, accentColor: 0x884422,
     scaleX: 1.8, scaleY: 1.4, scaleZ: 3.0, altitude: 0, spawnWeight: 2,
+    secondaryName: "Tusk Barrage", secondaryDamage: 60, secondaryFireRate: 0.6,
+    secondaryRange: 40, secondaryProjectileColor: 0xffee88, secondarySplashRadius: 4,
+    secondaryProjectileSpeed: 70, secondaryProjectileSize: 0.25,
   },
   {
     id: "war_elephant", name: "War Elephant", icon: "\uD83D\uDC18",
@@ -300,6 +318,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0xddddaa, weaponSplashRadius: 5,
     seats: 4, bodyColor: 0x777766, accentColor: 0xaa9955,
     scaleX: 3.5, scaleY: 3.0, scaleZ: 5.0, altitude: 0, spawnWeight: 1,
+    secondaryName: "War Drum Pulse", secondaryDamage: 30, secondaryFireRate: 1.0,
+    secondaryRange: 25, secondaryProjectileColor: 0xffcc66, secondarySplashRadius: 10,
+    secondaryProjectileSpeed: 40, secondaryProjectileSize: 0.5,
   },
   // --- Air vehicles (helicopters / hover) ---
   {
@@ -310,6 +331,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0xff4444, weaponSplashRadius: 2,
     seats: 2, bodyColor: 0x882222, accentColor: 0xcc4444,
     scaleX: 2.5, scaleY: 1.5, scaleZ: 4.0, altitude: 12, spawnWeight: 1,
+    secondaryName: "Inferno Bomb", secondaryDamage: 80, secondaryFireRate: 0.3,
+    secondaryRange: 60, secondaryProjectileColor: 0xff6600, secondarySplashRadius: 8,
+    secondaryProjectileSpeed: 50, secondaryProjectileSize: 0.4,
   },
   {
     id: "wyvern", name: "Wyvern", icon: "\uD83E\uDD85",
@@ -319,6 +343,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0x44ccff, weaponSplashRadius: 1,
     seats: 1, bodyColor: 0x335577, accentColor: 0x5588aa,
     scaleX: 2.0, scaleY: 1.2, scaleZ: 3.5, altitude: 15, spawnWeight: 2,
+    secondaryName: "Frost Shard", secondaryDamage: 45, secondaryFireRate: 0.8,
+    secondaryRange: 90, secondaryProjectileColor: 0xaaeeff, secondarySplashRadius: 0,
+    secondaryProjectileSpeed: 100, secondaryProjectileSize: 0.2,
   },
   {
     id: "giant_bat", name: "Giant Bat", icon: "\uD83E\uDD87",
@@ -328,6 +355,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0x8833aa, weaponSplashRadius: 0,
     seats: 1, bodyColor: 0x221133, accentColor: 0x443366,
     scaleX: 2.2, scaleY: 0.8, scaleZ: 2.5, altitude: 10, spawnWeight: 2,
+    secondaryName: "Sonic Screech", secondaryDamage: 35, secondaryFireRate: 0.5,
+    secondaryRange: 35, secondaryProjectileColor: 0xcc66ff, secondarySplashRadius: 6,
+    secondaryProjectileSpeed: 45, secondaryProjectileSize: 0.35,
   },
   // --- Air vehicles (jets / fast flyers) ---
   {
@@ -338,6 +368,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0xff8800, weaponSplashRadius: 7,
     seats: 1, bodyColor: 0x881100, accentColor: 0xff4400,
     scaleX: 3.5, scaleY: 2.0, scaleZ: 6.0, altitude: 25, spawnWeight: 1,
+    secondaryName: "Dragon Breath", secondaryDamage: 15, secondaryFireRate: 10.0,
+    secondaryRange: 40, secondaryProjectileColor: 0xff4400, secondarySplashRadius: 2,
+    secondaryProjectileSpeed: 55, secondaryProjectileSize: 0.18,
   },
   {
     id: "phoenix", name: "Phoenix", icon: "\uD83D\uDD25",
@@ -347,6 +380,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0xffaa00, weaponSplashRadius: 5,
     seats: 1, bodyColor: 0xff4400, accentColor: 0xffcc00,
     scaleX: 3.0, scaleY: 1.5, scaleZ: 5.0, altitude: 22, spawnWeight: 1,
+    secondaryName: "Ash Cloud", secondaryDamage: 25, secondaryFireRate: 0.6,
+    secondaryRange: 50, secondaryProjectileColor: 0x885533, secondarySplashRadius: 12,
+    secondaryProjectileSpeed: 35, secondaryProjectileSize: 0.6,
   },
   {
     id: "griffin", name: "Royal Griffin", icon: "\uD83E\uDD85",
@@ -356,6 +392,9 @@ export const VEHICLE_DEFS: VehicleDef[] = [
     weaponProjectileColor: 0xffddaa, weaponSplashRadius: 4,
     seats: 2, bodyColor: 0xaa8844, accentColor: 0xddcc88,
     scaleX: 3.0, scaleY: 1.8, scaleZ: 5.0, altitude: 20, spawnWeight: 1,
+    secondaryName: "Talon Rockets", secondaryDamage: 55, secondaryFireRate: 0.7,
+    secondaryRange: 80, secondaryProjectileColor: 0xffaa66, secondarySplashRadius: 5,
+    secondaryProjectileSpeed: 90, secondaryProjectileSize: 0.22,
   },
 ];
 
