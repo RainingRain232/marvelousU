@@ -3,7 +3,7 @@ import {
   DiabloState, DiabloEnemy, DiabloProjectile, DiabloLoot,
   DiabloTreasureChest, DiabloAOE,
   DiabloClass, DiabloMapId, DiabloPhase, ItemRarity, DiabloDifficulty,
-  SkillId, EnemyState, StatusEffect, TimeOfDay,
+  SkillId, EnemyState, EnemyType, StatusEffect, TimeOfDay,
   DiabloItem, DiabloEquipment,
   VendorType, DiabloVendor,
   createDefaultPlayer, createDefaultState
@@ -69,6 +69,15 @@ const BOSS_NAMES: Record<DiabloMapId, string[]> = {
   [DiabloMapId.ABYSSAL_RIFT]: ["Xal'thuun the Void Maw", "Entropy Incarnate", "Riftlord Nihilus"],
   [DiabloMapId.DRAGONS_SANCTUM]: ["Vyrathion the Ancient", "Drakemaw the Endless", "Scorchfather Pyranax"],
   [DiabloMapId.CAMELOT]: [],
+};
+
+const NIGHT_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
+  [DiabloMapId.FOREST]: EnemyType.NIGHT_FOREST_WENDIGO,
+  [DiabloMapId.ELVEN_VILLAGE]: EnemyType.NIGHT_ELVEN_BANSHEE_QUEEN,
+  [DiabloMapId.NECROPOLIS_DUNGEON]: EnemyType.NIGHT_NECRO_DEATH_KNIGHT,
+  [DiabloMapId.VOLCANIC_WASTES]: EnemyType.NIGHT_VOLCANIC_INFERNO_TITAN,
+  [DiabloMapId.ABYSSAL_RIFT]: EnemyType.NIGHT_RIFT_VOID_EMPEROR,
+  [DiabloMapId.DRAGONS_SANCTUM]: EnemyType.NIGHT_DRAGON_SHADOW_WYRM,
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -998,11 +1007,12 @@ export class DiabloGame {
         <button id="diablo-stash-btn" style="${btnBase}">STASH</button>
         <button id="diablo-save-btn" style="${saveBtn}">SAVE GAME</button>
         ${loadBtnHtml}
+        <button id="diablo-charselect-btn" style="${btnBase}">CHARACTER SELECT</button>
         <button id="diablo-exit-btn" style="${exitBtn}">EXIT</button>
       </div>`;
 
     // Hover effects for standard buttons
-    const stdBtns = this._menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-stash-btn") as NodeListOf<HTMLButtonElement>;
+    const stdBtns = this._menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-stash-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
     stdBtns.forEach((btn) => {
       btn.addEventListener("mouseenter", () => {
         btn.style.borderColor = "#c8a84e";
@@ -1079,6 +1089,10 @@ export class DiabloGame {
     this._menuEl.querySelector("#diablo-stash-btn")!.addEventListener("click", () => {
       this._phaseBeforeOverlay = DiabloPhase.PAUSED;
       this._showStash();
+    });
+    this._menuEl.querySelector("#diablo-charselect-btn")!.addEventListener("click", () => {
+      this._state.phase = DiabloPhase.CLASS_SELECT;
+      this._showClassSelect();
     });
     this._menuEl.querySelector("#diablo-save-btn")!.addEventListener("click", () => {
       this._saveGame();
@@ -2648,6 +2662,11 @@ export class DiabloGame {
       }
     }
 
+    // Night boss re-spawn check (once per 10 kills at night)
+    if (this._state.timeOfDay === TimeOfDay.NIGHT && this._state.killCount > 0 && this._state.killCount % 10 === 0) {
+      this._spawnNightBoss();
+    }
+
     // Boss spawn every 20 kills
     let isBossSpawn = false;
     if (this._state.killCount > 0 && this._state.killCount % 20 === 0 && this._state.totalEnemiesSpawned > 0) {
@@ -3136,6 +3155,60 @@ export class DiabloGame {
     for (let i = 0; i < initialCount; i++) {
       this._spawnEnemy();
     }
+    // Spawn special night boss if time is NIGHT
+    if (this._state.timeOfDay === TimeOfDay.NIGHT) {
+      this._spawnNightBoss();
+    }
+  }
+
+  private _spawnNightBoss(): void {
+    const nightBossType = NIGHT_BOSS_MAP[this._state.currentMap];
+    if (!nightBossType) return;
+    // Check if night boss already exists
+    const existingNightBoss = this._state.enemies.find(
+      (e) => e.type === nightBossType && e.state !== EnemyState.DEAD && e.state !== EnemyState.DYING
+    );
+    if (existingNightBoss) return;
+
+    const def = ENEMY_DEFS[nightBossType];
+    if (!def) return;
+
+    const mapCfg = MAP_CONFIGS[this._state.currentMap];
+    const halfW = mapCfg.width / 2 - 5;
+    const halfD = ((mapCfg as any).depth || mapCfg.width) / 2 - 5;
+    const diffCfg = DIFFICULTY_CONFIGS[this._state.difficulty];
+
+    const enemy: DiabloEnemy = {
+      id: this._genId(),
+      type: nightBossType,
+      x: (Math.random() - 0.5) * halfW * 1.2,
+      y: 0,
+      z: (Math.random() - 0.5) * halfD * 1.2,
+      angle: Math.random() * Math.PI * 2,
+      hp: def.hp * diffCfg.hpMult,
+      maxHp: def.hp * diffCfg.hpMult,
+      damage: def.damage * diffCfg.damageMult,
+      armor: def.armor * diffCfg.armorMult,
+      speed: def.speed * diffCfg.speedMult,
+      state: EnemyState.IDLE,
+      targetId: null,
+      attackTimer: 1.0,
+      attackRange: def.attackRange,
+      aggroRange: def.aggroRange,
+      xpReward: Math.round(def.xpReward * diffCfg.xpMult),
+      lootTable: [],
+      deathTimer: 0,
+      stateTimer: 0,
+      patrolTarget: null,
+      statusEffects: [],
+      isBoss: true,
+      bossName: def.name,
+      scale: def.scale,
+      level: def.level,
+    };
+
+    this._state.enemies.push(enemy);
+    this._state.totalEnemiesSpawned++;
   }
 
   // ──────────────────────────────────────────────────────────────

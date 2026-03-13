@@ -827,6 +827,43 @@ export const ENEMY_DEFS: Record<
     scale: 1.0,
     level: 8,
   },
+  // Night bosses (one per map, only spawn at night)
+  [EnemyType.NIGHT_FOREST_WENDIGO]: {
+    name: 'Wendigo of the Pale Moon',
+    hp: 4000, damage: 95, armor: 55, speed: 5.5,
+    attackRange: 3.5, aggroRange: 30, xpReward: 2000,
+    isBoss: true, scale: 3.0, level: 18,
+  },
+  [EnemyType.NIGHT_ELVEN_BANSHEE_QUEEN]: {
+    name: 'Banshee Queen Seraphiel',
+    hp: 5000, damage: 110, armor: 40, speed: 5.0,
+    attackRange: 4.0, aggroRange: 35, xpReward: 2500,
+    isBoss: true, scale: 2.8, level: 22,
+  },
+  [EnemyType.NIGHT_NECRO_DEATH_KNIGHT]: {
+    name: 'Death Knight Malachar',
+    hp: 6000, damage: 120, armor: 75, speed: 4.0,
+    attackRange: 3.5, aggroRange: 30, xpReward: 3000,
+    isBoss: true, scale: 3.2, level: 25,
+  },
+  [EnemyType.NIGHT_VOLCANIC_INFERNO_TITAN]: {
+    name: 'Inferno Titan Surtr',
+    hp: 8000, damage: 140, armor: 80, speed: 3.5,
+    attackRange: 5.0, aggroRange: 35, xpReward: 4000,
+    isBoss: true, scale: 3.5, level: 28,
+  },
+  [EnemyType.NIGHT_RIFT_VOID_EMPEROR]: {
+    name: 'Void Emperor Azathol',
+    hp: 10000, damage: 160, armor: 60, speed: 5.0,
+    attackRange: 5.0, aggroRange: 40, xpReward: 5000,
+    isBoss: true, scale: 3.0, level: 32,
+  },
+  [EnemyType.NIGHT_DRAGON_SHADOW_WYRM]: {
+    name: 'Shadow Wyrm Netharious',
+    hp: 15000, damage: 200, armor: 90, speed: 4.5,
+    attackRange: 6.0, aggroRange: 45, xpReward: 8000,
+    isBoss: true, scale: 4.0, level: 38,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -1634,6 +1671,37 @@ export const LOOT_TABLES: Record<EnemyType, { rarity: ItemRarity; chance: number
     { rarity: ItemRarity.EPIC, chance: 0.15 },
     { rarity: ItemRarity.LEGENDARY, chance: 0.05 },
     { rarity: ItemRarity.MYTHIC, chance: 0.01 },
+  ],
+  // Night bosses drop guaranteed epic+ loot
+  [EnemyType.NIGHT_FOREST_WENDIGO]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.4 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.08 },
+  ],
+  [EnemyType.NIGHT_ELVEN_BANSHEE_QUEEN]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.45 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.1 },
+  ],
+  [EnemyType.NIGHT_NECRO_DEATH_KNIGHT]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.5 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.12 },
+  ],
+  [EnemyType.NIGHT_VOLCANIC_INFERNO_TITAN]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.6 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.15 },
+  ],
+  [EnemyType.NIGHT_RIFT_VOID_EMPEROR]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.7 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.2 },
+  ],
+  [EnemyType.NIGHT_DRAGON_SHADOW_WYRM]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.8 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.3 },
   ],
 };
 
