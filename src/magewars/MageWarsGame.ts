@@ -1342,6 +1342,13 @@ export class MageWarsGame {
     rightBoot.position.set(0.15, 0.09, 0);
     group.add(rightBoot);
 
+    // Neck
+    const neckGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.2, 6);
+    const neckMat = new THREE.MeshStandardMaterial({ color: 0xdebb99, roughness: 0.6 });
+    const neck = new THREE.Mesh(neckGeo, neckMat);
+    neck.position.y = 1.45;
+    group.add(neck);
+
     // Head (sphere)
     const headGeo = new THREE.SphereGeometry(0.2, 8, 8);
     const headMat = new THREE.MeshStandardMaterial({ color: 0xdebb99, roughness: 0.6 });
@@ -2745,6 +2752,32 @@ export class MageWarsGame {
     // Floating texts container
     const floatDiv = `<div id="mw-float-texts" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden"></div>`;
 
+    // Vehicle weapon info panel (left side, above HP)
+    const vehWeaponPanel = `<div id="mw-veh-weapon" style="position:absolute;bottom:100px;left:20px;display:none;pointer-events:none">` +
+      `<div style="background:rgba(0,0,0,0.55);border:1px solid #665520;border-radius:5px;padding:8px 12px;min-width:180px">` +
+        `<div id="mw-veh-weapon-name" style="font-size:13px;color:#daa520;font-weight:bold;margin-bottom:4px"></div>` +
+        `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">` +
+          `<span style="font-size:10px;color:#999">DMG</span>` +
+          `<span id="mw-veh-weapon-dmg" style="font-size:12px;color:#e0d5c0"></span>` +
+          `<span style="font-size:10px;color:#999;margin-left:6px">RATE</span>` +
+          `<span id="mw-veh-weapon-rate" style="font-size:12px;color:#e0d5c0"></span>` +
+        `</div>` +
+        `<div style="display:flex;align-items:center;gap:6px">` +
+          `<span style="font-size:10px;color:#999">COOLDOWN</span>` +
+          `<div style="flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:3px">` +
+            `<div id="mw-veh-weapon-cd-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#cc8822,#ffaa44);border-radius:3px;transition:width 0.05s"></div>` +
+          `</div>` +
+          `<span id="mw-veh-weapon-cd-text" style="font-size:11px;color:#ffaa44;min-width:28px;text-align:right"></span>` +
+        `</div>` +
+        `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">` +
+          `<span style="font-size:10px;color:#999">RANGE</span>` +
+          `<span id="mw-veh-weapon-range" style="font-size:11px;color:#e0d5c0"></span>` +
+          `<span style="font-size:10px;color:#999;margin-left:8px">SPLASH</span>` +
+          `<span id="mw-veh-weapon-splash" style="font-size:11px;color:#e0d5c0"></span>` +
+        `</div>` +
+      `</div>` +
+    `</div>`;
+
     // Vehicle proximity prompt
     const vehPrompt = `<div id="mw-veh-prompt" style="position:absolute;bottom:140px;left:50%;transform:translateX(-50%);padding:8px 16px;background:rgba(0,0,0,0.6);border:1px solid #555;border-radius:4px;font-size:14px;color:#e0d5c0;display:none;pointer-events:none"></div>`;
 
@@ -2754,7 +2787,7 @@ export class MageWarsGame {
     // Center notification (streaks, multikills)
     const centerNotif = `<div id="mw-center-notif" style="position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);font-weight:bold;text-shadow:0 0 15px rgba(255,200,0,0.5);opacity:0;pointer-events:none;letter-spacing:2px;transition:opacity 0.3s"></div>`;
 
-    this._hudDiv.innerHTML = ch + vch + hm + vig + lowHpVig + hitDir + hp + mana + staminaBar + ammo + wandSlots + kf + scores + cpHud + capMsg + mm + ab + respawn + headshot + vhp + floatDiv + vehPrompt + eliminated + centerNotif;
+    this._hudDiv.innerHTML = ch + vch + hm + vig + lowHpVig + hitDir + hp + mana + staminaBar + ammo + wandSlots + kf + scores + cpHud + capMsg + mm + ab + respawn + headshot + vhp + vehWeaponPanel + floatDiv + vehPrompt + eliminated + centerNotif;
 
     const container = document.getElementById("pixi-container");
     if (container) container.appendChild(this._hudDiv);
@@ -2970,6 +3003,43 @@ export class MageWarsGame {
       if (vehCH) vehCH.style.display = "none";
       if (normalCH) normalCH.style.display = "block";
       if (vehHpEl) vehHpEl.style.display = "none";
+    }
+
+    // Vehicle weapon info panel
+    const vehWeaponEl = document.getElementById("mw-veh-weapon") as HTMLElement;
+    if (vehWeaponEl) {
+      if (p.vehicleId) {
+        const veh = this._vehicles.find(v => v.id === p.vehicleId);
+        if (veh) {
+          const vDef = getVehicleDef(veh.defId);
+          vehWeaponEl.style.display = "block";
+          const nameEl = document.getElementById("mw-veh-weapon-name") as HTMLElement;
+          const dmgEl = document.getElementById("mw-veh-weapon-dmg") as HTMLElement;
+          const rateEl = document.getElementById("mw-veh-weapon-rate") as HTMLElement;
+          const cdBar = document.getElementById("mw-veh-weapon-cd-bar") as HTMLElement;
+          const cdText = document.getElementById("mw-veh-weapon-cd-text") as HTMLElement;
+          const rangeEl = document.getElementById("mw-veh-weapon-range") as HTMLElement;
+          const splashEl = document.getElementById("mw-veh-weapon-splash") as HTMLElement;
+          if (nameEl) nameEl.textContent = `${vDef.icon} ${vDef.name} Weapon`;
+          if (dmgEl) dmgEl.textContent = `${vDef.weaponDamage}`;
+          if (rateEl) rateEl.textContent = `${vDef.weaponFireRate.toFixed(1)}/s`;
+          if (rangeEl) rangeEl.textContent = `${vDef.weaponRange}`;
+          if (splashEl) splashEl.textContent = vDef.weaponSplashRadius > 0 ? `${vDef.weaponSplashRadius}` : "—";
+          const interval = 1 / vDef.weaponFireRate;
+          if (cdBar && cdText) {
+            if (veh.fireTimer > 0) {
+              const progress = clamp(1 - veh.fireTimer / interval, 0, 1);
+              cdBar.style.width = `${progress * 100}%`;
+              cdText.textContent = `${veh.fireTimer.toFixed(1)}s`;
+            } else {
+              cdBar.style.width = "100%";
+              cdText.textContent = "RDY";
+            }
+          }
+        }
+      } else {
+        vehWeaponEl.style.display = "none";
+      }
     }
 
     // Stamina bar
