@@ -11,6 +11,9 @@ import {
   DiabloPhase,
   TimeOfDay,
   VendorType,
+  ParticleType,
+  DiabloParticle,
+  Weather,
 } from './DiabloTypes';
 import { ENEMY_DEFS, MAP_CONFIGS, VENDOR_DEFS } from './DiabloConfig';
 import { RARITY_COLORS } from './DiabloTypes';
@@ -43,6 +46,28 @@ export class DiabloRenderer {
   private _torchLights: THREE.PointLight[] = [];
   private _weaponArmGroup: THREE.Group | null = null;
   private _raycaster: THREE.Raycaster = new THREE.Raycaster();
+  private _shieldMeshes: Map<string, THREE.Mesh> = new Map();
+  private _healBeams: Map<string, THREE.Line> = new Map();
+  private _invulnMesh: THREE.Mesh | null = null;
+
+  private _particleMeshPool: THREE.Mesh[] = [];
+  private _particlePoolSize: number = 500;
+  private _particleMat!: THREE.MeshStandardMaterial;
+
+  private _shakeIntensity: number = 0;
+  private _shakeDuration: number = 0;
+  private _shakeTimer: number = 0;
+  private _shakeOffsetX: number = 0;
+  private _shakeOffsetY: number = 0;
+  private _shakeOffsetZ: number = 0;
+
+  private _rngSeed: number = 0;
+  private _currentWeather: Weather = Weather.NORMAL;
+  private _stormFlashTimer: number = 0;
+  private _stormFlashActive: boolean = false;
+  private _baseFogDensity: number = 0;
+  private _baseAmbientIntensity: number = 0;
+  private _baseDirIntensity: number = 0;
 
   init(w: number, h: number): void {
     this._renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -107,6 +132,23 @@ export class DiabloRenderer {
     this._groundPlane.rotation.x = -Math.PI / 2;
     this._groundPlane.receiveShadow = true;
     this._scene.add(this._groundPlane);
+
+    const particleGeo = new THREE.SphereGeometry(1, 4, 3);
+    this._particleMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 1.0,
+      transparent: true,
+      opacity: 1.0,
+    });
+    this._particleMeshPool = [];
+    for (let i = 0; i < this._particlePoolSize; i++) {
+      const mat = this._particleMat.clone();
+      const mesh = new THREE.Mesh(particleGeo, mat);
+      mesh.visible = false;
+      this._scene.add(mesh);
+      this._particleMeshPool.push(mesh);
+    }
   }
 
   buildMap(mapId: DiabloMapId): void {
@@ -120,11 +162,14 @@ export class DiabloRenderer {
     this._torchLights = [];
     this._currentMap = mapId;
 
+    this._rngSeed = Date.now();
+    const propVariation = 0.7 + this._seededRandom() * 0.6;
+
     const cfg = MAP_CONFIGS[mapId];
 
     switch (mapId) {
       case DiabloMapId.FOREST:
-        this._buildForest(cfg.width, cfg.depth);
+        this._buildForest(cfg.width, cfg.depth, propVariation);
         break;
       case DiabloMapId.ELVEN_VILLAGE:
         this._buildElvenVillage(cfg.width, cfg.depth);
@@ -153,7 +198,7 @@ export class DiabloRenderer {
     }
   }
 
-  private _buildForest(w: number, d: number): void {
+  private _buildForest(w: number, d: number, propMult: number = 1.0): void {
     this._scene.fog = new THREE.FogExp2(0x2a4a2a, 0.018);
     (this._groundPlane.material as THREE.MeshStandardMaterial).color.setHex(0x3b5a2b);
     this._dirLight.color.setHex(0xffe8b0);
@@ -164,8 +209,8 @@ export class DiabloRenderer {
 
     const hw = w / 2;
 
-    // Trees (85)
-    for (let i = 0; i < 85; i++) {
+    // Trees (85 * propMult)
+    for (let i = 0; i < Math.round(85 * propMult); i++) {
       const tree = new THREE.Group();
       const trunkH = 1.5 + Math.random() * 2.5;
       const trunkR = 0.15 + Math.random() * 0.15;
@@ -7498,6 +7543,218 @@ export class DiabloRenderer {
     return group;
   }
 
+  private _seededRandom(): number {
+    this._rngSeed = (this._rngSeed + 0x6D2B79F5) | 0;
+    let t = Math.imul(this._rngSeed ^ (this._rngSeed >>> 15), 1 | this._rngSeed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  spawnParticles(type: ParticleType, x: number, y: number, z: number, count: number, particles: DiabloParticle[]): void {
+    for (let i = 0; i < count; i++) {
+      if (particles.length >= this._particlePoolSize) return;
+      const p = this._createParticle(type, x, y, z);
+      particles.push(p);
+    }
+  }
+
+  private _createParticle(type: ParticleType, x: number, y: number, z: number): DiabloParticle {
+    let vx = 0, vy = 0, vz = 0;
+    let color = 0xffffff;
+    let size = 0.1;
+    let life = 0.5;
+
+    const rr = () => Math.random();
+    const spread = () => (rr() - 0.5) * 2;
+
+    switch (type) {
+      case ParticleType.BLOOD:
+        color = 0x880000 + Math.floor(rr() * 0x440000);
+        vx = spread() * 3; vy = rr() * 2 + 1; vz = spread() * 3;
+        size = 0.08 + rr() * 0.07;
+        life = 0.4;
+        break;
+      case ParticleType.SPARK:
+        color = 0xffff44 + Math.floor(rr() * 0x0000bb);
+        vx = spread() * 6; vy = rr() * 4 + 2; vz = spread() * 6;
+        size = 0.06 + rr() * 0.06;
+        life = 0.3;
+        break;
+      case ParticleType.FIRE:
+        color = 0xff4400 + Math.floor(rr() * 0x004400);
+        vx = spread() * 1.5; vy = rr() * 3 + 2; vz = spread() * 1.5;
+        size = 0.1 + rr() * 0.1;
+        life = 0.6;
+        break;
+      case ParticleType.ICE:
+        color = 0x88ccff + Math.floor(rr() * 0x773300);
+        vx = spread() * 4; vy = rr() * 3 + 1; vz = spread() * 4;
+        size = 0.08 + rr() * 0.08;
+        life = 0.5;
+        break;
+      case ParticleType.POISON:
+        color = 0x44ff00 + Math.floor(rr() * 0x440044);
+        vx = spread() * 1.5; vy = -rr() * 1.5; vz = spread() * 1.5;
+        size = 0.08 + rr() * 0.06;
+        life = 0.5;
+        break;
+      case ParticleType.DUST:
+        color = 0x886644 + Math.floor(rr() * 0x222222);
+        vx = spread() * 3; vy = rr() * 2 + 0.5; vz = spread() * 3;
+        size = 0.1 + rr() * 0.12;
+        life = 0.8;
+        break;
+      case ParticleType.GOLD:
+        color = 0xffd700 - Math.floor(rr() * 0x002d00);
+        vx = spread() * 2; vy = rr() * 4 + 2; vz = spread() * 2;
+        size = 0.06 + rr() * 0.06;
+        life = 0.5;
+        break;
+      case ParticleType.HEAL:
+        color = 0x44ff44 + Math.floor(rr() * 0x440044);
+        vx = spread() * 1; vy = rr() * 3 + 2; vz = spread() * 1;
+        size = 0.07 + rr() * 0.05;
+        life = 0.6;
+        break;
+      case ParticleType.LIGHTNING:
+        color = 0xffff88 + Math.floor(rr() * 0x000077);
+        vx = spread() * 8; vy = rr() * 5 + 3; vz = spread() * 8;
+        size = 0.05 + rr() * 0.05;
+        life = 0.2;
+        break;
+      case ParticleType.LEVEL_UP:
+        color = 0xffd700 + Math.floor(rr() * 0x002800);
+        const ang = rr() * Math.PI * 2;
+        const rad = rr() * 2 + 1;
+        vx = Math.cos(ang) * rad; vy = rr() * 6 + 4; vz = Math.sin(ang) * rad;
+        size = 0.1 + rr() * 0.1;
+        life = 1.0;
+        break;
+    }
+
+    return {
+      x, y: y + rr() * 0.3, z,
+      vx, vy, vz,
+      color, size, life, maxLife: life, type,
+    };
+  }
+
+  private _updateParticles(particles: DiabloParticle[], dt: number): void {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.z += p.vz * dt;
+
+      if (p.type === ParticleType.BLOOD || p.type === ParticleType.POISON || p.type === ParticleType.DUST) {
+        p.vy -= 6 * dt;
+      } else if (p.type === ParticleType.FIRE || p.type === ParticleType.HEAL || p.type === ParticleType.LEVEL_UP) {
+        p.vy -= 1.5 * dt;
+      } else {
+        p.vy -= 3 * dt;
+      }
+
+      p.vx *= (1 - 2 * dt);
+      p.vz *= (1 - 2 * dt);
+    }
+  }
+
+  private _renderParticles(particles: DiabloParticle[]): void {
+    let poolIdx = 0;
+    for (let i = 0; i < particles.length && poolIdx < this._particlePoolSize; i++) {
+      const p = particles[i];
+      const mesh = this._particleMeshPool[poolIdx];
+      mesh.visible = true;
+      mesh.position.set(p.x, Math.max(0.05, p.y), p.z);
+      mesh.scale.setScalar(p.size);
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      mat.color.setHex(p.color);
+      mat.emissive.setHex(p.color);
+      const lifeFrac = p.life / p.maxLife;
+      mat.opacity = lifeFrac;
+      mat.emissiveIntensity = lifeFrac * 1.5;
+      poolIdx++;
+    }
+    for (let i = poolIdx; i < this._particlePoolSize; i++) {
+      this._particleMeshPool[i].visible = false;
+    }
+  }
+
+  shakeCamera(intensity: number, duration: number): void {
+    this._shakeIntensity = intensity;
+    this._shakeDuration = duration;
+    this._shakeTimer = 0;
+  }
+
+  private _updateShake(dt: number): void {
+    if (this._shakeDuration <= 0) {
+      this._shakeOffsetX = 0;
+      this._shakeOffsetY = 0;
+      this._shakeOffsetZ = 0;
+      return;
+    }
+    this._shakeTimer += dt;
+    if (this._shakeTimer >= this._shakeDuration) {
+      this._shakeDuration = 0;
+      this._shakeOffsetX = 0;
+      this._shakeOffsetY = 0;
+      this._shakeOffsetZ = 0;
+      return;
+    }
+    const decay = 1 - this._shakeTimer / this._shakeDuration;
+    const mag = this._shakeIntensity * decay;
+    this._shakeOffsetX = (Math.random() - 0.5) * 2 * mag;
+    this._shakeOffsetY = (Math.random() - 0.5) * 2 * mag;
+    this._shakeOffsetZ = (Math.random() - 0.5) * 2 * mag;
+  }
+
+  applyWeather(weather: Weather): void {
+    this._currentWeather = weather;
+    if (!this._scene.fog) return;
+    const fog = this._scene.fog as THREE.FogExp2;
+    this._baseFogDensity = fog.density;
+    this._baseAmbientIntensity = this._ambientLight.intensity;
+    this._baseDirIntensity = this._dirLight.intensity;
+
+    switch (weather) {
+      case Weather.FOGGY:
+        fog.density = this._baseFogDensity * 2;
+        break;
+      case Weather.CLEAR:
+        fog.density = this._baseFogDensity * 0.5;
+        this._dirLight.intensity = this._baseDirIntensity * 1.2;
+        break;
+      case Weather.STORMY:
+        this._ambientLight.intensity = this._baseAmbientIntensity * 0.6;
+        this._dirLight.intensity = this._baseDirIntensity * 0.7;
+        this._stormFlashTimer = 5 + Math.random() * 10;
+        break;
+      case Weather.NORMAL:
+        break;
+    }
+  }
+
+  private _updateWeather(dt: number): void {
+    if (this._currentWeather !== Weather.STORMY) return;
+    this._stormFlashTimer -= dt;
+    if (this._stormFlashTimer <= 0) {
+      if (!this._stormFlashActive) {
+        this._stormFlashActive = true;
+        this._ambientLight.intensity = this._baseAmbientIntensity * 3;
+        this._stormFlashTimer = 0.1;
+      } else {
+        this._stormFlashActive = false;
+        this._ambientLight.intensity = this._baseAmbientIntensity * 0.6;
+        this._stormFlashTimer = 5 + Math.random() * 10;
+      }
+    }
+  }
+
   update(state: DiabloState, dt: number): void {
     if (state.phase !== DiabloPhase.PLAYING) {
       return;
@@ -7505,10 +7762,15 @@ export class DiabloRenderer {
 
     this._time += dt;
 
+    this._updateShake(dt);
+    this._updateWeather(dt);
+    this._updateParticles(state.particles, dt);
+    this._renderParticles(state.particles);
+
     // -- Camera: smooth lerp to player + isometric offset --
-    const camTargetX = state.player.x + 12;
-    const camTargetY = 18;
-    const camTargetZ = state.player.z + 12;
+    const camTargetX = state.player.x + 12 + this._shakeOffsetX;
+    const camTargetY = 18 + this._shakeOffsetY;
+    const camTargetZ = state.player.z + 12 + this._shakeOffsetZ;
     const lerpSpeed = 3.0 * dt;
     this._camera.position.x += (camTargetX - this._camera.position.x) * Math.min(lerpSpeed, 1);
     this._camera.position.y += (camTargetY - this._camera.position.y) * Math.min(lerpSpeed, 1);
@@ -7518,6 +7780,31 @@ export class DiabloRenderer {
     // -- Player --
     this._playerGroup.position.set(state.player.x, state.player.y, state.player.z);
     this._playerGroup.rotation.y = state.player.angle;
+
+    // Invulnerability glow
+    if (state.player.invulnTimer > 0) {
+      if (!this._invulnMesh) {
+        const iGeo = new THREE.SphereGeometry(1.5, 16, 12);
+        const iMat = new THREE.MeshStandardMaterial({
+          color: 0xffd700,
+          emissive: 0xffa500,
+          emissiveIntensity: 1.5,
+          transparent: true,
+          opacity: 0.3,
+          side: THREE.DoubleSide,
+        });
+        this._invulnMesh = new THREE.Mesh(iGeo, iMat);
+        this._scene.add(this._invulnMesh);
+      }
+      this._invulnMesh.position.set(state.player.x, state.player.y + 1, state.player.z);
+      const iPulse = 0.3 + Math.sin(this._time * 8) * 0.1;
+      if (this._invulnMesh.material instanceof THREE.MeshStandardMaterial) {
+        this._invulnMesh.material.opacity = iPulse;
+      }
+      this._invulnMesh.visible = true;
+    } else if (this._invulnMesh) {
+      this._invulnMesh.visible = false;
+    }
 
     // Attack animation: rotate weapon arm
     if (state.player.isAttacking && this._weaponArmGroup) {
@@ -7620,6 +7907,113 @@ export class DiabloRenderer {
 
       // Status effect visuals
       this._applyStatusTint(mesh, enemy.statusEffects);
+
+      // Boss enrage glow
+      if (enemy.bossEnraged) {
+        const pulse = 0.5 + Math.sin(this._time * 6) * 0.5;
+        mesh.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+            child.material.emissive.setHex(0xff0000);
+            child.material.emissiveIntensity = 0.5 + pulse * 0.8;
+          }
+        });
+      }
+
+      // Boss shield sphere
+      if (enemy.bossShieldTimer && enemy.bossShieldTimer > 0) {
+        let shieldMesh = this._shieldMeshes.get(enemy.id + "_boss");
+        if (!shieldMesh) {
+          const sGeo = new THREE.SphereGeometry(enemy.scale * 1.8, 16, 12);
+          const sMat = new THREE.MeshStandardMaterial({
+            color: 0x4488ff,
+            emissive: 0x2244aa,
+            emissiveIntensity: 1.0,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide,
+          });
+          shieldMesh = new THREE.Mesh(sGeo, sMat);
+          this._scene.add(shieldMesh);
+          this._shieldMeshes.set(enemy.id + "_boss", shieldMesh);
+        }
+        shieldMesh.position.set(enemy.x, enemy.y + 1, enemy.z);
+        const sPulse = 1.0 + Math.sin(this._time * 4) * 0.05;
+        shieldMesh.scale.setScalar(sPulse);
+      } else {
+        const existing = this._shieldMeshes.get(enemy.id + "_boss");
+        if (existing) {
+          this._scene.remove(existing);
+          this._shieldMeshes.delete(enemy.id + "_boss");
+        }
+      }
+
+      // Shielded enemy behavior shield
+      if (enemy.shieldActive) {
+        let shieldMesh = this._shieldMeshes.get(enemy.id + "_shield");
+        if (!shieldMesh) {
+          const sGeo = new THREE.SphereGeometry(enemy.scale * 1.5, 12, 10);
+          const sMat = new THREE.MeshStandardMaterial({
+            color: 0x88aaff,
+            emissive: 0x4466cc,
+            emissiveIntensity: 0.8,
+            transparent: true,
+            opacity: 0.25,
+            side: THREE.DoubleSide,
+          });
+          shieldMesh = new THREE.Mesh(sGeo, sMat);
+          this._scene.add(shieldMesh);
+          this._shieldMeshes.set(enemy.id + "_shield", shieldMesh);
+        }
+        shieldMesh.position.set(enemy.x, enemy.y + 0.8, enemy.z);
+      } else {
+        const existing = this._shieldMeshes.get(enemy.id + "_shield");
+        if (existing) {
+          this._scene.remove(existing);
+          this._shieldMeshes.delete(enemy.id + "_shield");
+        }
+      }
+
+      // Healer heal beam
+      if (enemy.healTarget) {
+        const target = state.enemies.find((e) => e.id === enemy.healTarget);
+        if (target) {
+          let beam = this._healBeams.get(enemy.id);
+          if (!beam) {
+            const bGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(6);
+            bGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+            const bMat = new THREE.LineBasicMaterial({ color: 0x44ff44, linewidth: 2 });
+            beam = new THREE.Line(bGeo, bMat);
+            this._scene.add(beam);
+            this._healBeams.set(enemy.id, beam);
+          }
+          const posAttr = beam.geometry.getAttribute("position") as THREE.BufferAttribute;
+          posAttr.setXYZ(0, enemy.x, enemy.y + 1.5, enemy.z);
+          posAttr.setXYZ(1, target.x, target.y + 1.5, target.z);
+          posAttr.needsUpdate = true;
+        }
+      } else {
+        const existing = this._healBeams.get(enemy.id);
+        if (existing) {
+          this._scene.remove(existing);
+          this._healBeams.delete(enemy.id);
+        }
+      }
+    }
+
+    // Cleanup shields and beams for removed enemies
+    for (const [key, mesh] of this._shieldMeshes) {
+      const eid = key.split("_")[0];
+      if (!currentIds.has(eid)) {
+        this._scene.remove(mesh);
+        this._shieldMeshes.delete(key);
+      }
+    }
+    for (const [key, beam] of this._healBeams) {
+      if (!currentIds.has(key)) {
+        this._scene.remove(beam);
+        this._healBeams.delete(key);
+      }
     }
   }
 
@@ -7699,7 +8093,10 @@ export class DiabloRenderer {
       if (!mesh) {
         let color = 0xffaa00;
         let emissive = 0xff6600;
-        if (proj.skillId) {
+        if (!proj.isPlayerOwned) {
+          color = 0xff2222;
+          emissive = 0xcc0000;
+        } else if (proj.skillId) {
           switch (proj.skillId) {
             case SkillId.FIREBALL:
               color = 0xff4400;
@@ -8652,6 +9049,12 @@ export class DiabloRenderer {
       this._scene.remove(mesh);
     }
     this._vendorMeshes.clear();
+
+    for (const mesh of this._particleMeshPool) {
+      this._scene.remove(mesh);
+      (mesh.material as THREE.MeshStandardMaterial).dispose();
+    }
+    this._particleMeshPool = [];
 
     this._renderer.dispose();
   }

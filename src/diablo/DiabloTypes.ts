@@ -201,6 +201,48 @@ export enum VendorType {
   GENERAL_MERCHANT = 'GENERAL_MERCHANT',
 }
 
+export enum BossAbility {
+  GROUND_SLAM = 'GROUND_SLAM',
+  CHARGE = 'CHARGE',
+  SUMMON_ADDS = 'SUMMON_ADDS',
+  ENRAGE = 'ENRAGE',
+  SHIELD = 'SHIELD',
+  METEOR_RAIN = 'METEOR_RAIN',
+}
+
+export interface BossPhaseConfig {
+  hpThreshold: number;
+  name: string;
+  damageMultiplier: number;
+  speedMultiplier: number;
+  abilities: BossAbility[];
+}
+
+export enum EnemyBehavior {
+  MELEE_BASIC = 'MELEE_BASIC',
+  RANGED = 'RANGED',
+  SHIELDED = 'SHIELDED',
+  HEALER = 'HEALER',
+  FLANKER = 'FLANKER',
+}
+
+export enum QuestType {
+  KILL_COUNT = 'KILL_COUNT',
+  KILL_SPECIFIC = 'KILL_SPECIFIC',
+  CLEAR_MAP = 'CLEAR_MAP',
+  BOSS_KILL = 'BOSS_KILL',
+  NIGHT_BOSS = 'NIGHT_BOSS',
+  COLLECT_GOLD = 'COLLECT_GOLD',
+  TREASURE_HUNT = 'TREASURE_HUNT',
+}
+
+export enum CraftType {
+  UPGRADE_RARITY = 'UPGRADE_RARITY',
+  REROLL_STATS = 'REROLL_STATS',
+  SOCKET_GEM = 'SOCKET_GEM',
+  SALVAGE = 'SALVAGE',
+}
+
 export enum StatusEffect {
   BURNING = 'BURNING',
   FROZEN = 'FROZEN',
@@ -210,6 +252,129 @@ export enum StatusEffect {
   STUNNED = 'STUNNED',
   BLEEDING = 'BLEEDING',
   WEAKENED = 'WEAKENED',
+}
+
+export enum TalentEffectType {
+  BONUS_DAMAGE_PERCENT = 'BONUS_DAMAGE_PERCENT',
+  BONUS_HP_PERCENT = 'BONUS_HP_PERCENT',
+  BONUS_MANA_PERCENT = 'BONUS_MANA_PERCENT',
+  BONUS_ARMOR = 'BONUS_ARMOR',
+  BONUS_CRIT_CHANCE = 'BONUS_CRIT_CHANCE',
+  BONUS_CRIT_DAMAGE = 'BONUS_CRIT_DAMAGE',
+  BONUS_ATTACK_SPEED = 'BONUS_ATTACK_SPEED',
+  BONUS_MOVE_SPEED = 'BONUS_MOVE_SPEED',
+  SKILL_COOLDOWN_REDUCTION = 'SKILL_COOLDOWN_REDUCTION',
+  LIFE_STEAL_PERCENT = 'LIFE_STEAL_PERCENT',
+  MANA_REGEN = 'MANA_REGEN',
+  BONUS_AOE_RADIUS = 'BONUS_AOE_RADIUS',
+  RESISTANCE_ALL = 'RESISTANCE_ALL',
+}
+
+export enum PotionType {
+  HEALTH = 'HEALTH',
+  MANA = 'MANA',
+  REJUVENATION = 'REJUVENATION',
+  STRENGTH = 'STRENGTH',
+  SPEED = 'SPEED',
+}
+
+export enum ParticleType {
+  BLOOD = 'BLOOD',
+  SPARK = 'SPARK',
+  FIRE = 'FIRE',
+  ICE = 'ICE',
+  POISON = 'POISON',
+  DUST = 'DUST',
+  GOLD = 'GOLD',
+  HEAL = 'HEAL',
+  LIGHTNING = 'LIGHTNING',
+  LEVEL_UP = 'LEVEL_UP',
+}
+
+export enum Weather {
+  NORMAL = 'NORMAL',
+  FOGGY = 'FOGGY',
+  CLEAR = 'CLEAR',
+  STORMY = 'STORMY',
+}
+
+// ── Talent & Potion interfaces ──────────────────────────────
+
+export interface TalentEffect {
+  type: TalentEffectType;
+  value: number;
+}
+
+export interface TalentNode {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  maxRank: number;
+  currentRank: number;
+  requires?: string;
+  branch: number;
+  tier: number;
+  effects: TalentEffect[];
+}
+
+export interface DiabloPotion {
+  id: string;
+  name: string;
+  icon: string;
+  type: PotionType;
+  value: number;
+  duration?: number;
+  cooldown: number;
+  cost: number;
+}
+
+// ── Quest & Crafting Interfaces ──────────────────────────────
+
+export interface QuestTarget {
+  enemyType?: EnemyType;
+  mapId?: DiabloMapId;
+  timeOfDay?: TimeOfDay;
+}
+
+export interface QuestReward {
+  gold: number;
+  xp: number;
+  itemRarity?: ItemRarity;
+}
+
+export interface DiabloQuest {
+  id: string;
+  name: string;
+  description: string;
+  type: QuestType;
+  target: QuestTarget;
+  progress: number;
+  required: number;
+  mapId?: DiabloMapId;
+  rewards: QuestReward;
+  isComplete: boolean;
+  isActive: boolean;
+}
+
+export interface MapCompletionReward {
+  gold: number;
+  xp: number;
+  guaranteedDropRarity: ItemRarity;
+  bonusMessage: string;
+}
+
+export interface CraftingRecipe {
+  id: string;
+  name: string;
+  description: string;
+  type: CraftType;
+  cost: number;
+  inputRarity?: ItemRarity;
+  inputCount?: number;
+  outputRarity?: ItemRarity;
+  successChance: number;
+  materialCost?: number;
 }
 
 // ── Interfaces ───────────────────────────────────────────────
@@ -329,6 +494,13 @@ export interface DiabloPlayerState {
   invulnTimer: number;
   activeSkillAnimTimer: number;
   activeSkillId: SkillId | null;
+  talentPoints: number;
+  talents: Record<string, number>;
+  potions: DiabloPotion[];
+  potionSlots: [DiabloPotion | null, DiabloPotion | null, DiabloPotion | null, DiabloPotion | null];
+  potionCooldown: number;
+  activePotionBuffs: { type: PotionType; value: number; remaining: number }[];
+  salvageMaterials: number;
 }
 
 export interface DiabloEnemy {
@@ -341,6 +513,7 @@ export interface DiabloEnemy {
   hp: number;
   maxHp: number;
   damage: number;
+  damageType: DamageType;
   armor: number;
   speed: number;
   state: EnemyState;
@@ -358,6 +531,16 @@ export interface DiabloEnemy {
   bossName?: string;
   scale: number;
   level: number;
+  behavior?: EnemyBehavior;
+  bossPhase?: number;
+  bossAbilityCooldown?: number;
+  bossEnraged?: boolean;
+  bossShieldTimer?: number;
+  rangedCooldown?: number;
+  shieldCooldown?: number;
+  shieldActive?: boolean;
+  healTarget?: string | null;
+  flankerAngle?: number;
 }
 
 export interface DiabloProjectile {
@@ -444,8 +627,9 @@ export interface DiabloParticle {
   vz: number;
   life: number;
   maxLife: number;
-  color: string;
+  color: number;
   size: number;
+  type: ParticleType;
 }
 
 export interface DiabloMapConfig {
@@ -502,6 +686,14 @@ export interface DiabloState {
   persistentStash: DiabloInventorySlot[];
   mapCleared: boolean[];
   difficulty: DiabloDifficulty;
+  deathCount: number;
+  respawnTimer: number;
+  deathGoldLoss: number;
+  weather: Weather;
+  exploredGrid: boolean[][];
+  activeQuests: DiabloQuest[];
+  completedQuestIds: string[];
+  completedMaps: Record<string, boolean>;
 }
 
 // ── Rarity color map (for UI rendering) ──────────────────────
@@ -653,6 +845,13 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     invulnTimer: 0,
     activeSkillAnimTimer: 0,
     activeSkillId: null,
+    talentPoints: 0,
+    talents: {},
+    potions: [],
+    potionSlots: [null, null, null, null],
+    potionCooldown: 0,
+    activePotionBuffs: [],
+    salvageMaterials: 0,
   };
 }
 
@@ -694,5 +893,13 @@ export function createDefaultState(): DiabloState {
     persistentStash: Array.from({ length: 100 }, () => ({ item: null })),
     mapCleared: [false, false, false, false, false, false, false],
     difficulty: DiabloDifficulty.DAGGER,
+    deathCount: 0,
+    respawnTimer: 0,
+    deathGoldLoss: 0,
+    weather: Weather.NORMAL,
+    exploredGrid: [],
+    activeQuests: [],
+    completedQuestIds: [],
+    completedMaps: {},
   };
 }
