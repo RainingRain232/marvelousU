@@ -4028,6 +4028,60 @@ export class MageWarsGame {
   // FIRING / PROJECTILES
   // =====================================================================
 
+  private _buildProjectileMesh(color: number, size: number): THREE.Group {
+    const group = new THREE.Group();
+
+    // Core: glowing inner sphere
+    const coreGeo = new THREE.SphereGeometry(size * 0.6, 10, 10);
+    const coreMat = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 2.0,
+    });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    group.add(core);
+
+    // Outer shell: transparent sphere
+    const shellGeo = new THREE.SphereGeometry(size * 1.0, 10, 10);
+    const shellMat = new THREE.MeshStandardMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.3,
+    });
+    const shell = new THREE.Mesh(shellGeo, shellMat);
+    group.add(shell);
+
+    // Energy ring: thin torus rotating around the core
+    const ringGeo = new THREE.TorusGeometry(size * 0.8, size * 0.12, 8, 16);
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 1.5,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    group.add(ring);
+
+    // Spark points: 3-4 small spheres at random offsets
+    const sparkCount = 3 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < sparkCount; i++) {
+      const sparkGeo = new THREE.SphereGeometry(size * 0.15, 4, 4);
+      const sparkMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: color,
+        emissiveIntensity: 3.0,
+      });
+      const spark = new THREE.Mesh(sparkGeo, sparkMat);
+      spark.position.set(
+        (Math.random() - 0.5) * size * 1.4,
+        (Math.random() - 0.5) * size * 1.4,
+        (Math.random() - 0.5) * size * 1.4,
+      );
+      group.add(spark);
+    }
+
+    return group;
+  }
+
   private _fireWand(p: MWPlayer, wand: WandDef, _mapDef: MapDef): void {
     p.ammo[p.activeWandSlot]--;
     p.mana -= wand.magicCost;
@@ -4063,11 +4117,10 @@ export class MageWarsGame {
       };
 
       // Create mesh
-      const geo = new THREE.SphereGeometry(wand.projectileSize, 6, 6);
-      const mat = new THREE.MeshBasicMaterial({ color: wand.projectileColor });
-      proj.mesh = new THREE.Mesh(geo, mat);
-      proj.mesh.position.set(proj.x, proj.y, proj.z);
-      this._scene.add(proj.mesh);
+      const projGroup = this._buildProjectileMesh(wand.projectileColor, wand.projectileSize);
+      projGroup.position.set(proj.x, proj.y, proj.z);
+      proj.mesh = projGroup as any;
+      this._scene.add(projGroup);
 
       // Projectile trail
       const trailGeo = new THREE.CylinderGeometry(wand.projectileSize * 0.3, wand.projectileSize * 0.5, 0.8, 4);
@@ -4120,11 +4173,10 @@ export class MageWarsGame {
       mesh: null, fromVehicle: true,
     };
 
-    const geo = new THREE.SphereGeometry(0.3, 6, 6);
-    const mat = new THREE.MeshBasicMaterial({ color: def.weaponProjectileColor });
-    proj.mesh = new THREE.Mesh(geo, mat);
-    proj.mesh.position.set(proj.x, proj.y, proj.z);
-    this._scene.add(proj.mesh);
+    const projGroup = this._buildProjectileMesh(def.weaponProjectileColor, 0.3);
+    projGroup.position.set(proj.x, proj.y, proj.z);
+    proj.mesh = projGroup as any;
+    this._scene.add(projGroup);
 
     // Trail for vehicle projectile
     const trailGeo = new THREE.CylinderGeometry(0.1, 0.2, 1.2, 4);
@@ -4170,11 +4222,10 @@ export class MageWarsGame {
       mesh: null, fromVehicle: true,
     };
 
-    const geo = new THREE.SphereGeometry(def.secondaryProjectileSize, 6, 6);
-    const mat = new THREE.MeshBasicMaterial({ color: def.secondaryProjectileColor });
-    proj.mesh = new THREE.Mesh(geo, mat);
-    proj.mesh.position.set(proj.x, proj.y, proj.z);
-    this._scene.add(proj.mesh);
+    const projGroup = this._buildProjectileMesh(def.secondaryProjectileColor, def.secondaryProjectileSize);
+    projGroup.position.set(proj.x, proj.y, proj.z);
+    proj.mesh = projGroup as any;
+    this._scene.add(projGroup);
 
     const trailGeo = new THREE.CylinderGeometry(def.secondaryProjectileSize * 0.3, def.secondaryProjectileSize * 0.6, 1.0, 4);
     const trailMat = new THREE.MeshBasicMaterial({ color: def.secondaryProjectileColor, transparent: true, opacity: 0.5 });
@@ -4220,7 +4271,12 @@ export class MageWarsGame {
       proj.z += proj.dz * step;
       proj.traveled += step;
 
-      if (proj.mesh) proj.mesh.position.set(proj.x, proj.y, proj.z);
+      if (proj.mesh) {
+        proj.mesh.position.set(proj.x, proj.y, proj.z);
+        // Spin the energy ring
+        proj.mesh.rotation.x += dt * 8;
+        proj.mesh.rotation.z += dt * 5;
+      }
 
       // Update trail position and orientation
       const trail = this._projectileTrails.get(proj.id);
@@ -4365,8 +4421,10 @@ export class MageWarsGame {
       const proj = this._projectiles[idx];
       if (proj.mesh) {
         this._scene.remove(proj.mesh);
-        proj.mesh.geometry.dispose();
-        (proj.mesh.material as THREE.Material).dispose();
+        proj.mesh.traverse((child: THREE.Object3D) => {
+          if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
+          if ((child as THREE.Mesh).material) ((child as THREE.Mesh).material as THREE.Material).dispose();
+        });
       }
       // Clean up trail
       const trail = this._projectileTrails.get(proj.id);

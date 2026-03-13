@@ -33,7 +33,7 @@ export class DiabloRenderer {
   private _playerGroup!: THREE.Group;
   private _weaponMesh: THREE.Mesh | null = null;
   private _enemyMeshes: Map<string, THREE.Group> = new Map();
-  private _projectileMeshes: Map<string, THREE.Mesh> = new Map();
+  private _projectileMeshes: Map<string, THREE.Object3D> = new Map();
   private _lootMeshes: Map<string, THREE.Group> = new Map();
   private _chestMeshes: Map<string, THREE.Group> = new Map();
   private _aoeMeshes: Map<string, THREE.Mesh> = new Map();
@@ -11024,6 +11024,10 @@ export class DiabloRenderer {
     for (const [id, mesh] of this._projectileMeshes) {
       if (!currentIds.has(id)) {
         this._scene.remove(mesh);
+        mesh.traverse((child: THREE.Object3D) => {
+          if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
+          if ((child as THREE.Mesh).material) ((child as THREE.Mesh).material as THREE.Material).dispose();
+        });
         this._projectileMeshes.delete(id);
       }
     }
@@ -11032,55 +11036,225 @@ export class DiabloRenderer {
     for (const proj of state.projectiles) {
       let mesh = this._projectileMeshes.get(proj.id);
       if (!mesh) {
-        let color = 0xffaa00;
-        let emissive = 0xff6600;
+        const r = proj.radius || 0.15;
+        const group = new THREE.Group();
+
         if (!proj.isPlayerOwned) {
-          color = 0xff2222;
-          emissive = 0xcc0000;
+          // Enemy projectile: red core with spikes
+          const core = new THREE.Mesh(
+            new THREE.SphereGeometry(r * 0.6, 8, 6),
+            new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xcc0000, emissiveIntensity: 1.5 })
+          );
+          group.add(core);
+          for (let i = 0; i < 3; i++) {
+            const spike = new THREE.Mesh(
+              new THREE.ConeGeometry(r * 0.15, r * 0.4, 4),
+              new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0x880000, emissiveIntensity: 1.2 })
+            );
+            const angle = (i / 3) * Math.PI * 2;
+            spike.position.set(Math.cos(angle) * r * 0.5, 0, Math.sin(angle) * r * 0.5);
+            spike.rotation.z = -Math.cos(angle) * Math.PI * 0.4;
+            spike.rotation.x = Math.sin(angle) * Math.PI * 0.4;
+            group.add(spike);
+          }
         } else if (proj.skillId) {
           switch (proj.skillId) {
-            case SkillId.FIREBALL:
-              color = 0xff4400;
-              emissive = 0xff2200;
+            case SkillId.FIREBALL: {
+              // Core orange sphere
+              const core = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 0.7, 10, 8),
+                new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 2.0 })
+              );
+              group.add(core);
+              // Outer transparent glow
+              const outer = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 1.3, 10, 8),
+                new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8, transparent: true, opacity: 0.25 })
+              );
+              group.add(outer);
+              // Flame wisps
+              for (let i = 0; i < 3; i++) {
+                const wisp = new THREE.Mesh(
+                  new THREE.ConeGeometry(r * 0.3, r * 0.6, 5),
+                  new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: i % 2 === 0 ? 0xff0000 : 0xffaa00, emissiveIntensity: 1.8 })
+                );
+                wisp.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                wisp.position.set((Math.random() - 0.5) * r, (Math.random() - 0.5) * r, (Math.random() - 0.5) * r);
+                group.add(wisp);
+              }
               break;
-            case SkillId.ICE_NOVA:
-              color = 0x88ccff;
-              emissive = 0x4488cc;
+            }
+            case SkillId.ICE_NOVA: {
+              // Core ice crystal
+              const core = new THREE.Mesh(
+                new THREE.IcosahedronGeometry(r * 0.8, 0),
+                new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x44ccff, emissiveIntensity: 1.5 })
+              );
+              group.add(core);
+              // Crystal shards
+              for (let i = 0; i < 4; i++) {
+                const shard = new THREE.Mesh(
+                  new THREE.OctahedronGeometry(r * 0.3, 0),
+                  new THREE.MeshStandardMaterial({ color: 0xeeffff, emissive: 0x88bbff, emissiveIntensity: 1.0, transparent: true, opacity: 0.7 })
+                );
+                const angle = (i / 4) * Math.PI * 2;
+                shard.position.set(Math.cos(angle) * r * 0.9, 0, Math.sin(angle) * r * 0.9);
+                shard.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+                group.add(shard);
+              }
               break;
+            }
             case SkillId.LIGHTNING_BOLT:
-            case SkillId.CHAIN_LIGHTNING:
-              color = 0xffff44;
-              emissive = 0xaaaa00;
+            case SkillId.CHAIN_LIGHTNING: {
+              // Bright yellow core
+              const core = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 0.5, 8, 6),
+                new THREE.MeshStandardMaterial({ color: 0xffff66, emissive: 0xffff00, emissiveIntensity: 3.0 })
+              );
+              group.add(core);
+              // Electric sparks - thin elongated boxes
+              for (let i = 0; i < 5; i++) {
+                const spark = new THREE.Mesh(
+                  new THREE.BoxGeometry(r * 0.05, r * 0.6, r * 0.05),
+                  new THREE.MeshStandardMaterial({ color: 0xffffee, emissive: 0xffff88, emissiveIntensity: 2.5 })
+                );
+                spark.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                spark.position.set((Math.random() - 0.5) * r * 0.8, (Math.random() - 0.5) * r * 0.8, (Math.random() - 0.5) * r * 0.8);
+                group.add(spark);
+              }
+              // Outer glow
+              const glow = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 1.2, 8, 6),
+                new THREE.MeshStandardMaterial({ color: 0xffff44, emissive: 0xaaaa00, emissiveIntensity: 0.5, transparent: true, opacity: 0.2 })
+              );
+              group.add(glow);
               break;
-            case SkillId.POISON_ARROW:
-              color = 0x44ff44;
-              emissive = 0x22aa22;
+            }
+            case SkillId.POISON_ARROW: {
+              // Green core
+              const core = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 0.6, 8, 6),
+                new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x228822, emissiveIntensity: 1.5 })
+              );
+              group.add(core);
+              // Drip particles trailing below
+              for (let i = 0; i < 3; i++) {
+                const drip = new THREE.Mesh(
+                  new THREE.SphereGeometry(r * 0.15, 6, 4),
+                  new THREE.MeshStandardMaterial({ color: 0x228822, emissive: 0x115511, emissiveIntensity: 1.0, transparent: true, opacity: 0.6 })
+                );
+                drip.position.set((Math.random() - 0.5) * r * 0.3, -r * 0.4 - i * r * 0.25, (Math.random() - 0.5) * r * 0.3);
+                group.add(drip);
+              }
+              // Outer mist
+              const mist = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 1.1, 8, 6),
+                new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.4, transparent: true, opacity: 0.2 })
+              );
+              group.add(mist);
               break;
+            }
             case SkillId.MULTI_SHOT:
-            case SkillId.PIERCING_SHOT:
-              color = 0xaa8844;
-              emissive = 0x664422;
+            case SkillId.PIERCING_SHOT: {
+              // Arrow shaft - thin brown cylinder
+              const shaft = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.03, r * 3, 6),
+                new THREE.MeshStandardMaterial({ color: 0x8b6914, emissive: 0x442200, emissiveIntensity: 0.3 })
+              );
+              shaft.rotation.z = Math.PI / 2; // Point forward
+              group.add(shaft);
+              // Arrow head - metallic cone
+              const head = new THREE.Mesh(
+                new THREE.ConeGeometry(r * 0.3, r * 0.4, 4),
+                new THREE.MeshStandardMaterial({ color: 0xaaaaaa, emissive: 0x444444, emissiveIntensity: 0.5, metalness: 0.8, roughness: 0.3 })
+              );
+              head.rotation.z = -Math.PI / 2;
+              head.position.x = r * 1.7;
+              group.add(head);
+              // Feathered tail - 2 small flat boxes
+              for (let i = 0; i < 2; i++) {
+                const feather = new THREE.Mesh(
+                  new THREE.BoxGeometry(r * 0.4, r * 0.3, 0.02),
+                  new THREE.MeshStandardMaterial({ color: 0xddccaa, emissive: 0x554433, emissiveIntensity: 0.2 })
+                );
+                feather.position.set(-r * 1.3, (i === 0 ? 1 : -1) * r * 0.15, 0);
+                feather.rotation.z = (i === 0 ? 0.2 : -0.2);
+                group.add(feather);
+              }
               break;
-            default:
-              color = 0xffaa00;
-              emissive = 0xff6600;
+            }
+            case SkillId.ARCANE_MISSILES: {
+              // Purple core
+              const core = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 0.6, 8, 6),
+                new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x8822cc, emissiveIntensity: 2.0 })
+              );
+              group.add(core);
+              // Arcane ring
+              const ring = new THREE.Mesh(
+                new THREE.TorusGeometry(r * 0.7, r * 0.08, 8, 16),
+                new THREE.MeshStandardMaterial({ color: 0xcc66ff, emissive: 0xaa44ee, emissiveIntensity: 1.8 })
+              );
+              group.add(ring);
+              // Sparkles - 3 tiny orbiting white spheres
+              for (let i = 0; i < 3; i++) {
+                const sparkle = new THREE.Mesh(
+                  new THREE.SphereGeometry(r * 0.1, 6, 4),
+                  new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xddddff, emissiveIntensity: 2.0 })
+                );
+                const angle = (i / 3) * Math.PI * 2;
+                sparkle.position.set(Math.cos(angle) * r * 0.9, Math.sin(angle) * r * 0.3, Math.sin(angle) * r * 0.9);
+                group.add(sparkle);
+              }
               break;
+            }
+            case SkillId.FIRE_VOLLEY: {
+              // Red-orange core
+              const core = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 0.5, 8, 6),
+                new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xcc0000, emissiveIntensity: 2.0 })
+              );
+              group.add(core);
+              // Flame tail cone
+              const tail = new THREE.Mesh(
+                new THREE.ConeGeometry(r * 0.4, r * 1.0, 6),
+                new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 1.5, transparent: true, opacity: 0.6 })
+              );
+              tail.position.x = -r * 0.6;
+              tail.rotation.z = Math.PI / 2;
+              group.add(tail);
+              break;
+            }
+            default: {
+              // Default player projectile
+              const core = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 0.7, 8, 6),
+                new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff6600, emissiveIntensity: 1.5 })
+              );
+              group.add(core);
+              break;
+            }
           }
+        } else {
+          // No skillId, default
+          const core = new THREE.Mesh(
+            new THREE.SphereGeometry(r * 0.7, 8, 6),
+            new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff6600, emissiveIntensity: 1.5 })
+          );
+          group.add(core);
         }
 
-        const geo = new THREE.SphereGeometry(proj.radius || 0.15, 8, 6);
-        const mat = new THREE.MeshStandardMaterial({
-          color,
-          emissive,
-          emissiveIntensity: 1.5,
+        group.traverse((child: THREE.Object3D) => {
+          if ((child as THREE.Mesh).isMesh) (child as THREE.Mesh).castShadow = true;
         });
-        mesh = new THREE.Mesh(geo, mat);
-        mesh.castShadow = true;
+        mesh = group;
         this._scene.add(mesh);
         this._projectileMeshes.set(proj.id, mesh);
       }
 
       mesh.position.set(proj.x, proj.y, proj.z);
+      mesh.rotation.y += 0.05;
+      mesh.rotation.x += 0.03;
     }
   }
 
@@ -12130,6 +12304,13 @@ export class DiabloRenderer {
     }
     this._weaponMesh = null;
     this._enemyMeshes.clear();
+    for (const [, mesh] of this._projectileMeshes) {
+      this._scene.remove(mesh);
+      mesh.traverse((child: THREE.Object3D) => {
+        if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
+        if ((child as THREE.Mesh).material) ((child as THREE.Mesh).material as THREE.Material).dispose();
+      });
+    }
     this._projectileMeshes.clear();
     this._lootMeshes.clear();
     this._chestMeshes.clear();
