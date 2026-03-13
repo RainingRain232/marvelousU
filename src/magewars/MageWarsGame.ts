@@ -2663,17 +2663,37 @@ export class MageWarsGame {
       `<div id="mw-mana-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#2244cc,#4488ff);border-radius:2px;transition:width 0.15s"></div></div>` +
       `<div id="mw-mana-text" style="font-size:11px;color:#ddd;margin-top:1px">100 / 100</div></div>`;
 
-    // Ammo (bottom right)
+    // Ammo (bottom right) with reload progress bar and timer
     const ammo = `<div style="position:absolute;bottom:40px;right:20px;text-align:right">` +
       `<div id="mw-wand-name" style="font-size:14px;color:#daa520;margin-bottom:4px">Arcane Bolt Wand</div>` +
       `<div id="mw-ammo-text" style="font-size:28px;color:#fff;font-weight:bold">12</div>` +
-      `<div id="mw-reload-text" style="font-size:12px;color:#ff8844;margin-top:2px;opacity:0">RELOADING</div></div>`;
+      `<div id="mw-reload-container" style="opacity:0;margin-top:4px;transition:opacity 0.15s">` +
+        `<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">` +
+          `<span id="mw-reload-text" style="font-size:12px;color:#ff8844;font-weight:bold">RELOADING</span>` +
+          `<span id="mw-reload-timer" style="font-size:14px;color:#ffaa44;font-weight:bold;min-width:30px">1.2s</span>` +
+        `</div>` +
+        `<div style="width:160px;height:6px;background:rgba(0,0,0,0.6);border:1px solid #555;border-radius:3px;margin-top:3px;margin-left:auto">` +
+          `<div id="mw-reload-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#ff6622,#ffaa44);border-radius:2px;transition:width 0.05s"></div>` +
+        `</div>` +
+      `</div>` +
+      `<div id="mw-firerate-bar-container" style="margin-top:4px;opacity:0;transition:opacity 0.1s">` +
+        `<div style="width:160px;height:3px;background:rgba(0,0,0,0.4);border-radius:2px;margin-left:auto">` +
+          `<div id="mw-firerate-bar" style="height:100%;width:0%;background:rgba(255,255,255,0.5);border-radius:2px"></div>` +
+        `</div>` +
+      `</div>` +
+    `</div>`;
 
-    // Wand slot indicators (bottom center)
+    // Wand slot indicators (bottom center) with cooldown overlays
+    const makeSlot = (i: number) => {
+      return `<div id="mw-slot-${i}" class="mw-slot" style="width:50px;height:50px;border:2px solid ${i === 0 ? '#daa520' : '#555'};border-radius:4px;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:10px;flex-direction:column;position:relative;overflow:hidden">` +
+        `<div id="mw-slot-cd-${i}" style="position:absolute;bottom:0;left:0;width:100%;height:0%;background:rgba(255,136,0,0.35);transition:height 0.05s;pointer-events:none"></div>` +
+        `<span style="font-size:16px;position:relative;z-index:1" id="mw-slot-icon-${i}"></span>` +
+        `<span style="font-size:8px;color:#888;position:relative;z-index:1">${i + 1}</span>` +
+        `<span id="mw-slot-cd-text-${i}" style="position:absolute;font-size:9px;color:#ffaa44;font-weight:bold;bottom:2px;right:3px;z-index:2;opacity:0"></span>` +
+      `</div>`;
+    };
     const wandSlots = `<div id="mw-wand-slots" style="position:absolute;bottom:15px;left:50%;transform:translateX(-50%);display:flex;gap:8px">` +
-      `<div id="mw-slot-0" class="mw-slot" style="width:50px;height:50px;border:2px solid #daa520;border-radius:4px;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:10px;flex-direction:column"><span style="font-size:16px" id="mw-slot-icon-0"></span><span style="font-size:8px;color:#888">1</span></div>` +
-      `<div id="mw-slot-1" class="mw-slot" style="width:50px;height:50px;border:2px solid #555;border-radius:4px;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:10px;flex-direction:column"><span style="font-size:16px" id="mw-slot-icon-1"></span><span style="font-size:8px;color:#888">2</span></div>` +
-      `<div id="mw-slot-2" class="mw-slot" style="width:50px;height:50px;border:2px solid #555;border-radius:4px;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-size:10px;flex-direction:column"><span style="font-size:16px" id="mw-slot-icon-2"></span><span style="font-size:8px;color:#888">3</span></div>` +
+      makeSlot(0) + makeSlot(1) + makeSlot(2) +
       `</div>`;
 
     // Kill feed (top right)
@@ -2772,15 +2792,44 @@ export class MageWarsGame {
     const wand = this._getPlayerActiveWand(p);
     const wandName = document.getElementById("mw-wand-name") as HTMLElement;
     const ammoText = document.getElementById("mw-ammo-text") as HTMLElement;
-    const reloadText = document.getElementById("mw-reload-text") as HTMLElement;
     if (wandName) wandName.textContent = `${wand.icon} ${wand.name}`;
     if (ammoText) ammoText.textContent = `${p.ammo[p.activeWandSlot]}`;
-    if (reloadText) reloadText.style.opacity = p.reloading[p.activeWandSlot] ? "1" : "0";
 
-    // Wand slot indicators
+    // Reload progress bar + timer
+    const reloadContainer = document.getElementById("mw-reload-container") as HTMLElement;
+    const reloadTimerEl = document.getElementById("mw-reload-timer") as HTMLElement;
+    const reloadBar = document.getElementById("mw-reload-bar") as HTMLElement;
+    const isReloading = p.reloading[p.activeWandSlot];
+    if (reloadContainer) reloadContainer.style.opacity = isReloading ? "1" : "0";
+    if (isReloading) {
+      const wandForSlot = getWandDef(this._getPlayerWandId(p, p.activeWandSlot));
+      const totalReload = wandForSlot.reloadTime;
+      const remaining = p.reloadTimer[p.activeWandSlot];
+      const progress = clamp(1 - remaining / totalReload, 0, 1);
+      if (reloadTimerEl) reloadTimerEl.textContent = `${remaining.toFixed(1)}s`;
+      if (reloadBar) reloadBar.style.width = `${progress * 100}%`;
+    }
+
+    // Fire rate cooldown bar (visible for slow weapons, fireRate < 3)
+    const fireRateContainer = document.getElementById("mw-firerate-bar-container") as HTMLElement;
+    const fireRateBar = document.getElementById("mw-firerate-bar") as HTMLElement;
+    if (fireRateContainer && fireRateBar) {
+      const interval = 1 / wand.fireRate;
+      if (this._fireTimer > 0 && interval > 0.35) {
+        fireRateContainer.style.opacity = "1";
+        const progress = clamp(1 - this._fireTimer / interval, 0, 1);
+        fireRateBar.style.width = `${progress * 100}%`;
+      } else {
+        fireRateContainer.style.opacity = "0";
+      }
+    }
+
+    // Wand slot indicators with cooldown overlays
     for (let si = 0; si < 3; si++) {
       const slotEl = document.getElementById(`mw-slot-${si}`) as HTMLElement;
       const iconEl = document.getElementById(`mw-slot-icon-${si}`) as HTMLElement;
+      const cdOverlay = document.getElementById(`mw-slot-cd-${si}`) as HTMLElement;
+      const cdText = document.getElementById(`mw-slot-cd-text-${si}`) as HTMLElement;
       if (slotEl) {
         slotEl.style.borderColor = si === p.activeWandSlot ? "#daa520" : "#555";
         slotEl.style.background = si === p.activeWandSlot ? "rgba(80,50,10,0.6)" : "rgba(0,0,0,0.6)";
@@ -2788,6 +2837,28 @@ export class MageWarsGame {
       if (iconEl) {
         const w = getWandDef(this._getPlayerWandId(p, si));
         iconEl.textContent = w.icon;
+      }
+      // Show reload cooldown sweep on slot
+      if (cdOverlay && cdText) {
+        if (p.reloading[si]) {
+          const slotWand = getWandDef(this._getPlayerWandId(p, si));
+          const totalReload = slotWand.reloadTime;
+          const remaining = p.reloadTimer[si];
+          const progress = clamp(remaining / totalReload, 0, 1);
+          cdOverlay.style.height = `${progress * 100}%`;
+          cdOverlay.style.background = "rgba(255,136,0,0.35)";
+          cdText.style.opacity = "1";
+          cdText.textContent = remaining.toFixed(1);
+        } else if (p.ammo[si] <= 0) {
+          // Empty mag indicator
+          cdOverlay.style.height = "100%";
+          cdOverlay.style.background = "rgba(255,50,50,0.25)";
+          cdText.style.opacity = "1";
+          cdText.textContent = "0";
+        } else {
+          cdOverlay.style.height = "0%";
+          cdText.style.opacity = "0";
+        }
       }
     }
 
@@ -2942,8 +3013,11 @@ export class MageWarsGame {
         for (const v of this._vehicles) {
           if (!v.alive) continue;
           if (v.team !== -1 && v.team !== p.team) continue;
-          const d = dist3(p.x, p.y, p.z, v.x, v.y, v.z);
-          if (d < MW.AI_VEHICLE_ENTER_DIST) {
+          const vDef = getVehicleDef(v.defId);
+          const isFlying = vDef.type === "air_fly" || vDef.type === "air_hover";
+          const d = isFlying ? dist2(p.x, p.z, v.x, v.z) : dist3(p.x, p.y, p.z, v.x, v.y, v.z);
+          const maxRange = isFlying ? MW.AI_VEHICLE_ENTER_DIST * 3 : MW.AI_VEHICLE_ENTER_DIST;
+          if (d < maxRange) {
             nearVeh = v;
             break;
           }
@@ -3675,7 +3749,7 @@ export class MageWarsGame {
     if (this._pointerLocked) {
       const sens = MW.MOUSE_SENSITIVITY;
       veh.yaw -= this._mouseDX * sens;
-      veh.pitch = clamp(veh.pitch - this._mouseDY * sens, -0.5, 0.5);
+      veh.pitch = clamp(veh.pitch - this._mouseDY * sens, -Math.PI / 2 * 0.98, Math.PI / 2 * 0.98);
     }
     this._mouseDX = 0;
     this._mouseDY = 0;
@@ -3805,6 +3879,7 @@ export class MageWarsGame {
         driver.y = v.y + def.scaleY * 0.5;
         driver.z = v.z;
         driver.yaw = v.yaw;
+        driver.pitch = v.pitch;
       }
     }
     for (let i = 0; i < v.passengers.length; i++) {
@@ -4509,12 +4584,22 @@ export class MageWarsGame {
     }
 
     let bestVeh: MWVehicle | null = null;
-    let bestDist = MW.AI_VEHICLE_ENTER_DIST;
+    let bestDist = Infinity;
     for (const v of this._vehicles) {
       if (!v.alive) continue;
       if (v.team !== -1 && v.team !== p.team) continue;
-      const d = dist3(p.x, p.y, p.z, v.x, v.y, v.z);
-      if (d < bestDist) {
+      const vDef = getVehicleDef(v.defId);
+      // For flying/hovering vehicles, use horizontal distance so players can board from below
+      let d: number;
+      let maxRange: number;
+      if (vDef.type === "air_fly" || vDef.type === "air_hover") {
+        d = dist2(p.x, p.z, v.x, v.z);
+        maxRange = MW.AI_VEHICLE_ENTER_DIST * 3;
+      } else {
+        d = dist3(p.x, p.y, p.z, v.x, v.y, v.z);
+        maxRange = MW.AI_VEHICLE_ENTER_DIST;
+      }
+      if (d < maxRange && d < bestDist) {
         bestDist = d;
         bestVeh = v;
       }
@@ -5219,10 +5304,24 @@ export class MageWarsGame {
     this._fpWand.visible = !human.vehicleId && human.alive;
     if (!this._fpWand.visible) return;
 
-    // Update tip color
+    // Reload state
+    const isReloading = human.reloading[human.activeWandSlot];
+    const wandDef = this._getPlayerActiveWand(human);
+    const reloadFrac = isReloading ? clamp(1 - human.reloadTimer[human.activeWandSlot] / wandDef.reloadTime, 0, 1) : 0;
+
+    // Update tip color - dim during reload
     if (this._fpWandTipMesh) {
-      const wand = this._getPlayerActiveWand(human);
-      (this._fpWandTipMesh.material as THREE.MeshBasicMaterial).color.setHex(wand.projectileColor);
+      if (isReloading) {
+        // Pulsing dim glow during reload
+        const pulse = 0.2 + Math.sin(this._gameTime * 8) * 0.15;
+        (this._fpWandTipMesh.material as THREE.MeshBasicMaterial).color.setHex(0x444444);
+        (this._fpWandTipMesh.material as THREE.MeshBasicMaterial).opacity = pulse;
+        (this._fpWandTipMesh.material as THREE.MeshBasicMaterial).transparent = true;
+      } else {
+        (this._fpWandTipMesh.material as THREE.MeshBasicMaterial).color.setHex(wandDef.projectileColor);
+        (this._fpWandTipMesh.material as THREE.MeshBasicMaterial).opacity = 1;
+        (this._fpWandTipMesh.material as THREE.MeshBasicMaterial).transparent = false;
+      }
     }
 
     // Movement bob
@@ -5242,14 +5341,39 @@ export class MageWarsGame {
     // Recoil
     this._fpWandRecoil = lerp(this._fpWandRecoil, 0, dt * 12);
 
+    // Reload animation: wand tilts down then back up, with a spin
+    let reloadOffsetY = 0;
+    let reloadTilt = 0;
+    let reloadSpin = 0;
+    if (isReloading) {
+      // Phase 1 (0-0.4): tilt wand down
+      // Phase 2 (0.4-0.8): spin while charging
+      // Phase 3 (0.8-1.0): snap back up
+      if (reloadFrac < 0.4) {
+        const t = reloadFrac / 0.4;
+        reloadOffsetY = -0.08 * t;
+        reloadTilt = 0.6 * t;
+      } else if (reloadFrac < 0.8) {
+        const t = (reloadFrac - 0.4) / 0.4;
+        reloadOffsetY = -0.08;
+        reloadTilt = 0.6;
+        reloadSpin = t * Math.PI * 2;
+      } else {
+        const t = (reloadFrac - 0.8) / 0.2;
+        reloadOffsetY = -0.08 * (1 - t);
+        reloadTilt = 0.6 * (1 - t);
+        reloadSpin = Math.PI * 2;
+      }
+    }
+
     this._fpWand.position.set(
       0.3 + bobX + strafeTilt,
-      -0.25 + bobY - this._fpWandRecoil * 0.3,
+      -0.25 + bobY - this._fpWandRecoil * 0.3 + reloadOffsetY,
       -0.5 + this._fpWandRecoil * 0.15
     );
     this._fpWand.rotation.set(
-      0.1 - this._fpWandRecoil * 0.5,
-      strafeTilt * 2,
+      0.1 - this._fpWandRecoil * 0.5 + reloadTilt,
+      strafeTilt * 2 + reloadSpin,
       -0.1
     );
   }
