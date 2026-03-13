@@ -126,6 +126,7 @@ import { TekkenGame } from "./tekken/TekkenGame";
 import { DragoonGame } from "./dragoon/DragoonGame";
 import { ThreeDragonGame } from "./threedragon/ThreeDragonGame";
 import { MedievalGTA3DGame } from "./medievalgta3d/MedievalGTA3DGame";
+import { DiabloGame } from "./diablo/DiabloGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -311,6 +312,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.DRAGOON]: 14,
     [GameMode.THREE_DRAGON]: 15,
     [GameMode.MEDIEVAL_GTA_3D]: 16,
+    [GameMode.DIABLO]: 17,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -400,6 +402,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.MEDIEVAL_GTA_3D) {
       menuScreen.hide();
       _bootMedievalGTA3D();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.DIABLO) {
+      menuScreen.hide();
+      _bootDiabloGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2594,6 +2601,32 @@ async function _bootMedievalGTA3D(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("medievalGTA3DExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Diablo ARPG mode boot
+// ---------------------------------------------------------------------------
+
+let _diabloGame: DiabloGame | null = null;
+
+async function _bootDiabloGame(): Promise<void> {
+  if (_diabloGame) {
+    _diabloGame.destroy();
+    _diabloGame = null;
+  }
+
+  _diabloGame = new DiabloGame();
+  await _diabloGame.boot();
+
+  const _onExit = () => {
+    window.removeEventListener("diabloExit", _onExit);
+    if (_diabloGame) {
+      _diabloGame.destroy();
+      _diabloGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("diabloExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

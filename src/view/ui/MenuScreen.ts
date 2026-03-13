@@ -264,6 +264,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "3D Medieval GTA: steal horses in Camelot",
     skipSetup: true,
   },
+  {
+    mode: GameMode.DIABLO,
+    label: "DIABLO",
+    desc: "3D ARPG: loot, skills & glory in dark medieval lands",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
