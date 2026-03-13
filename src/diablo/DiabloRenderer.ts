@@ -9522,33 +9522,16 @@ export class DiabloRenderer {
       }
     }
 
-    // Player lantern – enable on dark maps/times so the player can see their proximity
-    if (this._playerLantern) {
-      const darkMaps = [
-        DiabloMapId.NECROPOLIS_DUNGEON,
-        DiabloMapId.ABYSSAL_RIFT,
-        DiabloMapId.VOLCANIC_WASTES,
-        DiabloMapId.DRAGONS_SANCTUM,
-      ];
-      const isDarkMap = darkMaps.includes(mapId);
-      if (tod === TimeOfDay.NIGHT) {
-        // All maps get a lantern at night
-        this._playerLantern.intensity = isDarkMap ? 2.5 : 1.5;
-        this._playerLantern.color.setHex(0xffaa55);
-        this._playerLantern.distance = isDarkMap ? 14 : 10;
-      } else if (tod === TimeOfDay.DUSK && isDarkMap) {
-        // Dark maps also get a lantern at dusk
-        this._playerLantern.intensity = 1.8;
-        this._playerLantern.color.setHex(0xffaa55);
-        this._playerLantern.distance = 12;
-      } else if (tod === TimeOfDay.DAWN && (mapId === DiabloMapId.NECROPOLIS_DUNGEON || mapId === DiabloMapId.ABYSSAL_RIFT)) {
-        // Darkest maps get a dim lantern even at dawn
-        this._playerLantern.intensity = 1.0;
-        this._playerLantern.color.setHex(0xffbb66);
-        this._playerLantern.distance = 10;
-      } else {
-        this._playerLantern.intensity = 0;
-      }
+  }
+
+  setPlayerLantern(on: boolean, intensity = 0, distance = 0, color = 0xffaa55): void {
+    if (!this._playerLantern) return;
+    if (on) {
+      this._playerLantern.intensity = intensity;
+      this._playerLantern.distance = distance;
+      this._playerLantern.color.setHex(color);
+    } else {
+      this._playerLantern.intensity = 0;
     }
   }
 }

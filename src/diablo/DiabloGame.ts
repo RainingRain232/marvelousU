@@ -53,6 +53,7 @@ function resolveEquipKey(slot: string): keyof DiabloEquipment | null {
   if (s === "ACCESSORY_1" || s === "RING" || s === "AMULET") return "accessory1";
   if (s === "ACCESSORY_2") return "accessory2";
   if (s === "WEAPON" || s === "MAIN_HAND") return "weapon";
+  if (s === "LANTERN") return "lantern";
   if (s === "OFF_HAND" || s === "BELT" || s === "QUIVER" || s === "ORB") return null;
   return null;
 }
@@ -396,6 +397,8 @@ export class DiabloGame {
         this._fullmapCanvas.style.display = this._fullmapVisible ? "block" : "none";
       } else if (e.code === "Space") {
         this._doDodgeRoll();
+      } else if (e.code === "KeyP") {
+        this._toggleLantern();
       }
     } else if (this._state.phase === DiabloPhase.INVENTORY) {
       if (e.code === "Escape" || e.code === "KeyI" || e.code === "KeyT") {
@@ -961,6 +964,7 @@ export class DiabloGame {
       { key: "legs", label: "Legs", gridArea: "3/2/4/3" },
       { key: "accessory2", label: "Accessory 2", gridArea: "3/3/4/4" },
       { key: "feet", label: "Feet", gridArea: "4/2/5/3" },
+      { key: "lantern", label: "Lantern [P]", gridArea: "4/3/5/4" },
     ];
 
     let equipHtml = "";
@@ -1068,6 +1072,10 @@ export class DiabloGame {
         if (emptyIdx < 0) return;
         p.inventory[emptyIdx].item = item;
         (p.equipment as any)[key] = null;
+        if (key === "lantern" && p.lanternOn) {
+          p.lanternOn = false;
+          this._renderer.setPlayerLantern(false);
+        }
         this._recalculatePlayerStats();
         this._showInventory();
       });
@@ -1087,6 +1095,10 @@ export class DiabloGame {
         const existing = p.equipment[ek];
         (p.equipment as any)[ek] = item;
         p.inventory[idx].item = existing;
+        if (ek === "lantern" && p.lanternOn) {
+          const cfg = LANTERN_CONFIGS[item.name];
+          if (cfg) this._renderer.setPlayerLantern(true, cfg.intensity, cfg.distance, cfg.color);
+        }
         this._recalculatePlayerStats();
         this._showInventory();
       });
@@ -1479,7 +1491,7 @@ export class DiabloGame {
     let fireResist = 0, iceResist = 0, lightningResist = 0, poisonResist = 0;
     let lifeSteal = 0, manaRegen = 0;
     const equipKeys: (keyof DiabloEquipment)[] = [
-      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon",
+      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon", "lantern",
     ];
     for (const key of equipKeys) {
       const item = p.equipment[key];
@@ -1630,6 +1642,7 @@ export class DiabloGame {
       { key: "feet", label: "Feet" },
       { key: "accessory1", label: "Accessory 1" },
       { key: "accessory2", label: "Accessory 2" },
+      { key: "lantern", label: "Lantern" },
     ];
     let equipListHtml = "";
     for (const sl of slotLabels) {
@@ -3548,7 +3561,7 @@ export class DiabloGame {
 
     // Apply equipment stats
     const equipKeys: (keyof DiabloEquipment)[] = [
-      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon",
+      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon", "lantern",
     ];
     const equippedNames: string[] = [];
 
@@ -3676,7 +3689,7 @@ export class DiabloGame {
   private _getLifeSteal(): number {
     let ls = 0;
     const equipKeys: (keyof DiabloEquipment)[] = [
-      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon",
+      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon", "lantern",
     ];
     for (const key of equipKeys) {
       const item = this._state.player.equipment[key];
@@ -3716,7 +3729,7 @@ export class DiabloGame {
     // Apply equipped bonus damage
     let bonusDmg = 0;
     const equipKeys: (keyof DiabloEquipment)[] = [
-      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon",
+      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon", "lantern",
     ];
     for (const key of equipKeys) {
       const item = p.equipment[key];
@@ -3959,7 +3972,13 @@ export class DiabloGame {
       potionSlots: save.playerPotionSlots || save.player.potionSlots || [null, null, null, null],
       potionCooldown: 0,
       activePotionBuffs: [],
+      lanternOn: save.player.lanternOn || false,
     };
+    // Restore lantern light if it was on
+    if (this._state.player.lanternOn && this._state.player.equipment.lantern) {
+      const cfg = LANTERN_CONFIGS[this._state.player.equipment.lantern.name];
+      if (cfg) this._renderer.setPlayerLantern(true, cfg.intensity, cfg.distance, cfg.color);
+    }
     this._state.currentMap = save.currentMap;
     this._state.timeOfDay = save.timeOfDay || TimeOfDay.DAY;
     this._state.killCount = save.killCount;
@@ -5052,6 +5071,27 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
+  //  LANTERN TOGGLE
+  // ──────────────────────────────────────────────────────────────
+  private _toggleLantern(): void {
+    const p = this._state.player;
+    if (!p.equipment.lantern) {
+      this._addFloatingText(p.x, p.y + 2, p.z, "No lantern equipped!", "#ff4444");
+      return;
+    }
+    p.lanternOn = !p.lanternOn;
+    const cfg = LANTERN_CONFIGS[p.equipment.lantern.name];
+    if (p.lanternOn && cfg) {
+      this._renderer.setPlayerLantern(true, cfg.intensity, cfg.distance, cfg.color);
+      this._addFloatingText(p.x, p.y + 2, p.z, "Lantern lit", "#ffcc44");
+    } else {
+      this._renderer.setPlayerLantern(false);
+      this._addFloatingText(p.x, p.y + 2, p.z, "Lantern doused", "#888888");
+      p.lanternOn = false;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  POTION SYSTEM
   // ──────────────────────────────────────────────────────────────
   private _useQuickPotion(type: PotionType.HEALTH | PotionType.MANA): void {
@@ -5137,7 +5177,7 @@ export class DiabloGame {
     const p = this._state.player;
     let fire = 0, ice = 0, lightning = 0, poison = 0;
     const equipKeys: (keyof DiabloEquipment)[] = [
-      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon",
+      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon", "lantern",
     ];
     for (const key of equipKeys) {
       const item = p.equipment[key];
