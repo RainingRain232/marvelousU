@@ -3,7 +3,7 @@ import {
   DiabloState, DiabloEnemy, DiabloProjectile, DiabloLoot,
   DiabloTreasureChest, DiabloAOE,
   DiabloClass, DiabloMapId, DiabloPhase, ItemRarity,
-  SkillId, EnemyState, StatusEffect,
+  SkillId, EnemyState, StatusEffect, TimeOfDay,
   DiabloItem, DiabloEquipment,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
@@ -76,6 +76,7 @@ export class DiabloGame {
   private _mouseDown: boolean = false;
   private _nextId: number = 1;
   private _targetEnemyId: string | null = null;
+  private _phaseBeforeOverlay: DiabloPhase = DiabloPhase.CLASS_SELECT;
 
   // Bound event handlers
   private _boundKeyDown!: (e: KeyboardEvent) => void;
@@ -180,6 +181,7 @@ export class DiabloGame {
       else if (e.code === "Digit5") this._activateSkill(4);
       else if (e.code === "Digit6") this._activateSkill(5);
       else if (e.code === "KeyI") {
+        this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
         this._showInventory();
       } else if (e.code === "Escape") {
@@ -190,8 +192,9 @@ export class DiabloGame {
       }
     } else if (this._state.phase === DiabloPhase.INVENTORY) {
       if (e.code === "Escape" || e.code === "KeyI") {
-        this._state.phase = DiabloPhase.PLAYING;
-        this._menuEl.innerHTML = "";
+        this._closeOverlay();
+      } else if (e.code === "KeyS") {
+        this._showStash();
       }
     } else if (this._state.phase === DiabloPhase.PAUSED) {
       if (e.code === "Escape") {
@@ -301,6 +304,27 @@ export class DiabloGame {
         </div>`;
     }
 
+    const hasSave = this._hasSave();
+    const menuBtnStyle =
+      "padding:12px 28px;font-size:15px;letter-spacing:2px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;";
+    const loadBtnStyle =
+      "padding:12px 28px;font-size:15px;letter-spacing:2px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #44a;border-radius:8px;color:#68f;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;";
+    const exitBtnStyle =
+      "padding:12px 28px;font-size:15px;letter-spacing:2px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #a44;border-radius:8px;color:#e66;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;";
+
+    const saveBtns = hasSave
+      ? `<button id="diablo-cs-load" style="${loadBtnStyle}">LOAD GAME</button>
+         <button id="diablo-cs-stash" style="${menuBtnStyle}">STASH</button>
+         <button id="diablo-cs-inventory" style="${menuBtnStyle}">INVENTORY</button>
+         <button id="diablo-cs-character" style="${menuBtnStyle}">CHARACTER</button>`
+      : "";
+
     this._menuEl.innerHTML = `
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
@@ -312,6 +336,11 @@ export class DiabloGame {
           font-family:'Georgia',serif;
         ">CHOOSE YOUR CLASS</h1>
         <div style="display:flex;gap:30px;">${cardsHtml}</div>
+        <div style="display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;justify-content:center;">
+          ${saveBtns}
+          <button id="diablo-cs-controls" style="${menuBtnStyle}">CONTROLS</button>
+          <button id="diablo-cs-exit" style="${exitBtnStyle}">EXIT</button>
+        </div>
       </div>`;
 
     const cards = this._menuEl.querySelectorAll(".diablo-class-card") as NodeListOf<HTMLDivElement>;
@@ -330,6 +359,66 @@ export class DiabloGame {
         this._showMapSelect();
       });
     });
+
+    // Hover helper for class-select menu buttons
+    const csHover = (id: string, hBorder: string, hShadow: string, hBg: string, rBorder: string, rBg: string) => {
+      const el = this._menuEl.querySelector(id) as HTMLButtonElement | null;
+      if (!el) return;
+      el.addEventListener("mouseenter", () => { el.style.borderColor = hBorder; el.style.boxShadow = `0 0 15px ${hShadow}`; el.style.background = hBg; });
+      el.addEventListener("mouseleave", () => { el.style.borderColor = rBorder; el.style.boxShadow = "none"; el.style.background = rBg; });
+    };
+    // Standard gold buttons
+    csHover("#diablo-cs-controls", "#c8a84e", "rgba(200,168,78,0.3)", "rgba(50,40,20,0.95)", "#5a4a2a", "rgba(40,30,15,0.9)");
+    csHover("#diablo-cs-stash", "#c8a84e", "rgba(200,168,78,0.3)", "rgba(50,40,20,0.95)", "#5a4a2a", "rgba(40,30,15,0.9)");
+    csHover("#diablo-cs-inventory", "#c8a84e", "rgba(200,168,78,0.3)", "rgba(50,40,20,0.95)", "#5a4a2a", "rgba(40,30,15,0.9)");
+    csHover("#diablo-cs-character", "#c8a84e", "rgba(200,168,78,0.3)", "rgba(50,40,20,0.95)", "#5a4a2a", "rgba(40,30,15,0.9)");
+    // Load button (blue)
+    csHover("#diablo-cs-load", "#68f", "rgba(100,100,255,0.3)", "rgba(30,30,50,0.95)", "#44a", "rgba(40,30,15,0.9)");
+    // Exit button (red)
+    csHover("#diablo-cs-exit", "#e44", "rgba(255,80,80,0.3)", "rgba(50,20,20,0.95)", "#a44", "rgba(40,30,15,0.9)");
+
+    // Click handlers
+    const csClick = (id: string, fn: () => void) => {
+      const el = this._menuEl.querySelector(id);
+      if (el) el.addEventListener("click", fn);
+    };
+    csClick("#diablo-cs-load", () => this._loadGame());
+    csClick("#diablo-cs-controls", () => { this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT; this._showControls(); });
+    csClick("#diablo-cs-exit", () => window.dispatchEvent(new CustomEvent("diabloExit")));
+
+    // Stash/Inventory/Character need a loaded save to have meaningful data
+    if (hasSave) {
+      csClick("#diablo-cs-stash", () => {
+        this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT;
+        const raw = localStorage.getItem("diablo_save");
+        if (raw) {
+          const save = JSON.parse(raw);
+          this._state.persistentStash = save.persistentStash || Array.from({ length: 100 }, () => ({ item: null }));
+          this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
+          this._state.persistentGold = save.persistentGold;
+        }
+        this._showStash();
+      });
+      csClick("#diablo-cs-inventory", () => {
+        this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT;
+        const raw = localStorage.getItem("diablo_save");
+        if (raw) {
+          const save = JSON.parse(raw);
+          this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
+          this._state.persistentGold = save.persistentGold;
+        }
+        this._showInventory();
+      });
+      csClick("#diablo-cs-character", () => {
+        this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT;
+        const raw = localStorage.getItem("diablo_save");
+        if (raw) {
+          const save = JSON.parse(raw);
+          this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
+        }
+        this._showCharacterOverview();
+      });
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -381,18 +470,52 @@ export class DiabloGame {
         </div>`;
     }
 
+    const todOptions: { value: TimeOfDay; label: string; icon: string }[] = [
+      { value: TimeOfDay.DAY, label: "DAY", icon: "\u2600\uFE0F" },
+      { value: TimeOfDay.DAWN, label: "DAWN", icon: "\uD83C\uDF05" },
+      { value: TimeOfDay.DUSK, label: "DUSK", icon: "\uD83C\uDF07" },
+      { value: TimeOfDay.NIGHT, label: "NIGHT", icon: "\uD83C\uDF19" },
+    ];
+    let todHtml = "";
+    for (const t of todOptions) {
+      const isActive = this._state.timeOfDay === t.value;
+      todHtml += `<button class="tod-btn" data-tod="${t.value}" style="
+        cursor:pointer;padding:10px 20px;font-size:16px;border-radius:6px;transition:0.2s;
+        background:${isActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)"};
+        border:2px solid ${isActive ? "#c8a84e" : "#3a3a2a"};
+        color:${isActive ? "#ffd700" : "#888"};
+        font-family:'Georgia',serif;
+      ">${t.icon} ${t.label}</button>`;
+    }
+
     this._menuEl.innerHTML = `
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;
       ">
         <h1 style="
-          color:#c8a84e;font-size:42px;letter-spacing:4px;margin-bottom:50px;
+          color:#c8a84e;font-size:42px;letter-spacing:4px;margin-bottom:30px;
           text-shadow:0 0 20px rgba(200,168,78,0.5),0 2px 4px rgba(0,0,0,0.8);
           font-family:'Georgia',serif;
         ">SELECT YOUR DESTINATION</h1>
+        <div style="display:flex;gap:8px;margin-bottom:30px;">${todHtml}</div>
         <div style="display:flex;gap:30px;">${cardsHtml}</div>
       </div>`;
+
+    // Wire up time-of-day buttons
+    const todBtns = this._menuEl.querySelectorAll(".tod-btn") as NodeListOf<HTMLButtonElement>;
+    todBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this._state.timeOfDay = btn.getAttribute("data-tod") as TimeOfDay;
+        // Update visual state for all buttons
+        todBtns.forEach((b) => {
+          const isNowActive = b.getAttribute("data-tod") === this._state.timeOfDay;
+          b.style.background = isNowActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)";
+          b.style.borderColor = isNowActive ? "#c8a84e" : "#3a3a2a";
+          b.style.color = isNowActive ? "#ffd700" : "#888";
+        });
+      });
+    });
 
     const cards = this._menuEl.querySelectorAll(".diablo-map-card") as NodeListOf<HTMLDivElement>;
     cards.forEach((card) => {
@@ -428,10 +551,6 @@ export class DiabloGame {
     this._state.spawnTimer = 0;
     this._targetEnemyId = null;
 
-    const mapCfg = MAP_CONFIGS[mapId];
-    const mapW = mapCfg.width;
-    const mapD = (mapCfg as any).depth || (mapCfg as any).height || mapCfg.width;
-
     this._state.player.x = 0;
     this._state.player.y = 0;
     this._state.player.z = 0;
@@ -440,37 +559,10 @@ export class DiabloGame {
 
     this._renderer.buildMap(mapId);
     this._renderer.buildPlayer(this._state.player.class);
+    this._renderer.applyTimeOfDay(this._state.timeOfDay, mapId);
 
-    // Spawn initial enemies
-    const initialCount = 8 + Math.floor(Math.random() * 5);
-    for (let i = 0; i < initialCount; i++) {
-      this._spawnEnemy();
-    }
-
-    // Spawn treasure chests
-    const chestCount = 5 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < chestCount; i++) {
-      const halfW = mapW / 2 - 5;
-      const halfD = mapD / 2 - 5;
-      const cx = (Math.random() * 2 - 1) * halfW;
-      const cz = (Math.random() * 2 - 1) * halfD;
-      const rarity = Math.random() < 0.1
-        ? ItemRarity.EPIC
-        : Math.random() < 0.3
-          ? ItemRarity.RARE
-          : ItemRarity.UNCOMMON;
-      const chestItems = this._generateChestLoot(rarity);
-      const chest: DiabloTreasureChest = {
-        id: this._genId(),
-        x: cx,
-        y: 0,
-        z: cz,
-        opened: false,
-        rarity,
-        items: chestItems,
-      };
-      this._state.treasureChests.push(chest);
-    }
+    this._spawnInitialEnemies();
+    this._spawnInitialChests();
 
     this._state.phase = DiabloPhase.PLAYING;
     this._menuEl.innerHTML = "";
@@ -572,7 +664,15 @@ export class DiabloGame {
             ${statsHtml}
           </div>
         </div>
-        <div style="margin-top:16px;color:#888;font-size:12px;">Press I or Escape to close</div>
+        <div style="margin-top:12px;display:flex;gap:16px;align-items:center;">
+          <button id="inv-stash-btn" style="
+            padding:10px 24px;font-size:15px;letter-spacing:2px;font-weight:bold;
+            background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+            cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+          ">STASH</button>
+          <div style="color:#888;font-size:12px;">Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;color:#fff;">S</span> to open Shared Stash</div>
+        </div>
+        <div style="margin-top:10px;color:#888;font-size:12px;">Press I or Escape to close</div>
         <!-- Tooltip container -->
         <div id="inv-tooltip" style="
           display:none;position:fixed;z-index:100;background:rgba(10,5,2,0.96);border:2px solid #5a4a2a;
@@ -633,6 +733,24 @@ export class DiabloGame {
       el.addEventListener("mouseenter", (ev) => this._showItemTooltip(ev, p.inventory[idx].item));
       el.addEventListener("mouseleave", () => this._hideItemTooltip());
     });
+
+    // Stash button
+    const stashBtn = this._menuEl.querySelector("#inv-stash-btn") as HTMLButtonElement | null;
+    if (stashBtn) {
+      stashBtn.addEventListener("mouseenter", () => {
+        stashBtn.style.borderColor = "#c8a84e";
+        stashBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+        stashBtn.style.background = "rgba(50,40,20,0.95)";
+      });
+      stashBtn.addEventListener("mouseleave", () => {
+        stashBtn.style.borderColor = "#5a4a2a";
+        stashBtn.style.boxShadow = "none";
+        stashBtn.style.background = "rgba(40,30,15,0.9)";
+      });
+      stashBtn.addEventListener("click", () => {
+        this._showStash();
+      });
+    }
   }
 
   private _showItemTooltip(ev: MouseEvent, item: DiabloItem | null): void {
@@ -694,6 +812,28 @@ export class DiabloGame {
   //  PAUSE MENU
   // ──────────────────────────────────────────────────────────────
   private _showPauseMenu(): void {
+    const btnBase =
+      "width:280px;padding:14px 0;margin:8px 0;font-size:18px;letter-spacing:3px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;";
+    const exitBtn =
+      "width:280px;padding:14px 0;margin:8px 0;font-size:18px;letter-spacing:3px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #a44;border-radius:8px;color:#e66;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;";
+
+    const saveBtn =
+      "width:280px;padding:14px 0;margin:8px 0;font-size:18px;letter-spacing:3px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #4a4;border-radius:8px;color:#6c6;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;";
+    const loadBtn =
+      "width:280px;padding:14px 0;margin:8px 0;font-size:18px;letter-spacing:3px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #44a;border-radius:8px;color:#68f;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;";
+
+    const loadBtnHtml = this._hasSave()
+      ? `<button id="diablo-load-btn" style="${loadBtn}">LOAD GAME</button>`
+      : "";
+
     this._menuEl.innerHTML = `
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;flex-direction:column;
@@ -701,24 +841,464 @@ export class DiabloGame {
       ">
         <h1 style="color:#c8a84e;font-size:48px;letter-spacing:6px;margin-bottom:40px;
           font-family:'Georgia',serif;text-shadow:0 0 20px rgba(200,168,78,0.4);">PAUSED</h1>
-        <button id="diablo-resume-btn" style="
-          background:rgba(40,30,15,0.9);border:2px solid #c8a84e;color:#c8a84e;font-size:20px;
-          padding:14px 50px;cursor:pointer;border-radius:8px;margin-bottom:16px;
-          font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
-        ">RESUME</button>
-        <button id="diablo-exit-btn" style="
-          background:rgba(40,15,15,0.9);border:2px solid #a44;color:#e66;font-size:20px;
-          padding:14px 50px;cursor:pointer;border-radius:8px;
-          font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
-        ">EXIT</button>
+        <button id="diablo-resume-btn" style="${btnBase}">RESUME</button>
+        <button id="diablo-controls-btn" style="${btnBase}">CONTROLS</button>
+        <button id="diablo-inventory-btn" style="${btnBase}">INVENTORY</button>
+        <button id="diablo-character-btn" style="${btnBase}">CHARACTER</button>
+        <button id="diablo-stash-btn" style="${btnBase}">STASH</button>
+        <button id="diablo-save-btn" style="${saveBtn}">SAVE GAME</button>
+        ${loadBtnHtml}
+        <button id="diablo-exit-btn" style="${exitBtn}">EXIT</button>
       </div>`;
+
+    // Hover effects for standard buttons
+    const stdBtns = this._menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-stash-btn") as NodeListOf<HTMLButtonElement>;
+    stdBtns.forEach((btn) => {
+      btn.addEventListener("mouseenter", () => {
+        btn.style.borderColor = "#c8a84e";
+        btn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+        btn.style.background = "rgba(50,40,20,0.95)";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.borderColor = "#5a4a2a";
+        btn.style.boxShadow = "none";
+        btn.style.background = "rgba(40,30,15,0.9)";
+      });
+    });
+
+    // Hover for save button
+    const saveBtnEl = this._menuEl.querySelector("#diablo-save-btn") as HTMLButtonElement;
+    saveBtnEl.addEventListener("mouseenter", () => {
+      saveBtnEl.style.borderColor = "#6c6";
+      saveBtnEl.style.boxShadow = "0 0 15px rgba(100,200,100,0.3)";
+      saveBtnEl.style.background = "rgba(30,50,30,0.95)";
+    });
+    saveBtnEl.addEventListener("mouseleave", () => {
+      saveBtnEl.style.borderColor = "#4a4";
+      saveBtnEl.style.boxShadow = "none";
+      saveBtnEl.style.background = "rgba(40,30,15,0.9)";
+    });
+
+    // Hover for load button
+    const loadBtnEl = this._menuEl.querySelector("#diablo-load-btn") as HTMLButtonElement | null;
+    if (loadBtnEl) {
+      loadBtnEl.addEventListener("mouseenter", () => {
+        loadBtnEl.style.borderColor = "#68f";
+        loadBtnEl.style.boxShadow = "0 0 15px rgba(100,100,255,0.3)";
+        loadBtnEl.style.background = "rgba(30,30,50,0.95)";
+      });
+      loadBtnEl.addEventListener("mouseleave", () => {
+        loadBtnEl.style.borderColor = "#44a";
+        loadBtnEl.style.boxShadow = "none";
+        loadBtnEl.style.background = "rgba(40,30,15,0.9)";
+      });
+      loadBtnEl.addEventListener("click", () => {
+        this._loadGame();
+      });
+    }
+
+    // Hover effects for exit button
+    const exitBtnEl = this._menuEl.querySelector("#diablo-exit-btn") as HTMLButtonElement;
+    exitBtnEl.addEventListener("mouseenter", () => {
+      exitBtnEl.style.borderColor = "#e44";
+      exitBtnEl.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      exitBtnEl.style.background = "rgba(50,40,20,0.95)";
+    });
+    exitBtnEl.addEventListener("mouseleave", () => {
+      exitBtnEl.style.borderColor = "#a44";
+      exitBtnEl.style.boxShadow = "none";
+      exitBtnEl.style.background = "rgba(40,30,15,0.9)";
+    });
 
     this._menuEl.querySelector("#diablo-resume-btn")!.addEventListener("click", () => {
       this._state.phase = DiabloPhase.PLAYING;
       this._menuEl.innerHTML = "";
     });
+    this._menuEl.querySelector("#diablo-controls-btn")!.addEventListener("click", () => {
+      this._phaseBeforeOverlay = DiabloPhase.PAUSED;
+      this._showControls();
+    });
+    this._menuEl.querySelector("#diablo-inventory-btn")!.addEventListener("click", () => {
+      this._phaseBeforeOverlay = DiabloPhase.PAUSED;
+      this._showInventory();
+    });
+    this._menuEl.querySelector("#diablo-character-btn")!.addEventListener("click", () => {
+      this._phaseBeforeOverlay = DiabloPhase.PAUSED;
+      this._showCharacterOverview();
+    });
+    this._menuEl.querySelector("#diablo-stash-btn")!.addEventListener("click", () => {
+      this._phaseBeforeOverlay = DiabloPhase.PAUSED;
+      this._showStash();
+    });
+    this._menuEl.querySelector("#diablo-save-btn")!.addEventListener("click", () => {
+      this._saveGame();
+    });
     this._menuEl.querySelector("#diablo-exit-btn")!.addEventListener("click", () => {
       window.dispatchEvent(new CustomEvent("diabloExit"));
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  CONTROLS SCREEN
+  // ──────────────────────────────────────────────────────────────
+  private _backToMenu(): void {
+    if (this._phaseBeforeOverlay === DiabloPhase.CLASS_SELECT) {
+      this._state.phase = DiabloPhase.CLASS_SELECT;
+      this._showClassSelect();
+    } else {
+      this._showPauseMenu();
+    }
+  }
+
+  private _closeOverlay(): void {
+    if (this._phaseBeforeOverlay === DiabloPhase.CLASS_SELECT) {
+      this._state.phase = DiabloPhase.CLASS_SELECT;
+      this._showClassSelect();
+    } else {
+      this._state.phase = DiabloPhase.PLAYING;
+      this._menuEl.innerHTML = "";
+    }
+  }
+
+  private _showControls(): void {
+    const p = this._state.player;
+
+    const keyCap = (key: string): string =>
+      `<span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;min-width:40px;text-align:center;color:#fff;">${key}</span>`;
+
+    const row = (key: string, desc: string): string =>
+      `<div style="display:flex;align-items:center;gap:15px;margin:6px 0;">${keyCap(key)}<span style="color:#ccc;">${desc}</span></div>`;
+
+    const sectionHeader = (title: string): string =>
+      `<div style="font-size:20px;color:#c8a84e;border-bottom:1px solid #5a4a2a;padding-bottom:4px;margin-bottom:10px;margin-top:20px;font-weight:bold;">${title}</div>`;
+
+    // Build skills section
+    let skillsHtml = "";
+    for (let i = 0; i < p.skills.length; i++) {
+      const def = SKILL_DEFS[p.skills[i]];
+      if (!def) continue;
+      skillsHtml += `<div style="display:flex;align-items:center;gap:15px;margin:6px 0;">
+        ${keyCap(String(i + 1))}
+        <span style="font-size:18px;">${def.icon}</span>
+        <span style="color:#c8a84e;font-weight:bold;">${def.name}</span>
+        <span style="color:#999;font-size:13px;"> — ${def.description}</span>
+      </div>`;
+    }
+
+    this._menuEl.innerHTML = `
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+      ">
+        <div style="
+          max-width:700px;width:90%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+          border-radius:12px;padding:30px 40px;max-height:85vh;overflow-y:auto;
+        ">
+          <h1 style="color:#c8a84e;font-size:36px;letter-spacing:4px;margin:0 0 20px 0;text-align:center;
+            font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">CONTROLS</h1>
+
+          ${sectionHeader("MOVEMENT")}
+          ${row("W / \u2191", "Move Forward")}
+          ${row("S / \u2193", "Move Backward")}
+          ${row("A / \u2190", "Move Left")}
+          ${row("D / \u2192", "Move Right")}
+          ${row("SPACE", "Dodge Roll (brief invulnerability)")}
+
+          ${sectionHeader("COMBAT")}
+          ${row("Left Click", "Attack / Select Target")}
+          ${row("Right Click", "Block (Warrior/Ranger)")}
+          ${row("1-6", "Activate Skills")}
+
+          ${sectionHeader("SKILLS")}
+          ${skillsHtml}
+
+          ${sectionHeader("INTERFACE")}
+          ${row("I", "Open Inventory")}
+          ${row("ESC", "Pause Menu")}
+          ${row("TAB", "(reserved)")}
+
+          <div style="text-align:center;margin-top:30px;">
+            <button id="diablo-controls-back" style="
+              width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
+              background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+              cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+            ">BACK</button>
+          </div>
+        </div>
+      </div>`;
+
+    const backBtn = this._menuEl.querySelector("#diablo-controls-back") as HTMLButtonElement;
+    backBtn.addEventListener("mouseenter", () => {
+      backBtn.style.borderColor = "#c8a84e";
+      backBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      backBtn.style.background = "rgba(50,40,20,0.95)";
+    });
+    backBtn.addEventListener("mouseleave", () => {
+      backBtn.style.borderColor = "#5a4a2a";
+      backBtn.style.boxShadow = "none";
+      backBtn.style.background = "rgba(40,30,15,0.9)";
+    });
+    backBtn.addEventListener("click", () => {
+      this._backToMenu();
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  CHARACTER OVERVIEW SCREEN
+  // ──────────────────────────────────────────────────────────────
+  private _showCharacterOverview(): void {
+    const p = this._state.player;
+    const stats = this._getEffectiveStats();
+
+    // Class info
+    const classIcons: Record<DiabloClass, string> = {
+      [DiabloClass.WARRIOR]: "\u2694\uFE0F",
+      [DiabloClass.MAGE]: "\uD83D\uDD2E",
+      [DiabloClass.RANGER]: "\uD83C\uDFF9",
+    };
+    const classColors: Record<DiabloClass, string> = {
+      [DiabloClass.WARRIOR]: "#aab",
+      [DiabloClass.MAGE]: "#a4f",
+      [DiabloClass.RANGER]: "#4c4",
+    };
+    const classIcon = classIcons[p.class] || "\u2694\uFE0F";
+    const className = p.class.charAt(0).toUpperCase() + p.class.slice(1).toLowerCase();
+    const classColor = classColors[p.class] || "#ccc";
+
+    // XP bar
+    const xpPct = p.xpToNext > 0 ? Math.min(100, (p.xp / p.xpToNext) * 100) : 100;
+    const xpToGo = Math.max(0, p.xpToNext - p.xp);
+
+    // Stat color coding: high=green, medium=yellow, low=red
+    const baseMaxStats: Record<DiabloClass, { str: number; dex: number; int: number; vit: number }> = {
+      [DiabloClass.WARRIOR]: { str: 25, dex: 8, int: 5, vit: 22 },
+      [DiabloClass.MAGE]: { str: 5, dex: 8, int: 28, vit: 14 },
+      [DiabloClass.RANGER]: { str: 8, dex: 26, int: 7, vit: 16 },
+    };
+    const baseCls = baseMaxStats[p.class];
+    const maxForLevel = (base: number) => base + (p.level - 1) * 3 + 30; // generous ceiling
+    const statColor = (val: number, base: number): string => {
+      const max = maxForLevel(base);
+      const ratio = val / max;
+      if (ratio > 0.7) return "#4f4";
+      if (ratio > 0.4) return "#ff4";
+      return "#f44";
+    };
+
+    // Resists from equipment
+    let fireResist = 0, iceResist = 0, lightningResist = 0, poisonResist = 0;
+    let lifeSteal = 0, manaRegen = 0;
+    const equipKeys: (keyof DiabloEquipment)[] = [
+      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon",
+    ];
+    for (const key of equipKeys) {
+      const item = p.equipment[key];
+      if (!item) continue;
+      const s = item.stats as any;
+      if (s.fireResist) fireResist += s.fireResist;
+      if (s.iceResist) iceResist += s.iceResist;
+      if (s.lightningResist) lightningResist += s.lightningResist;
+      if (s.poisonResist) poisonResist += s.poisonResist;
+      if (s.lifeSteal) lifeSteal += s.lifeSteal;
+      if (s.manaRegen) manaRegen += s.manaRegen;
+    }
+
+    // Section header helper
+    const sectionHeader = (title: string): string =>
+      `<div style="font-size:20px;color:#c8a84e;border-bottom:1px solid #5a4a2a;padding-bottom:4px;margin-bottom:10px;margin-top:24px;font-weight:bold;">${title}</div>`;
+
+    // Section 1: Class & Level
+    const sec1 = `
+      <div style="text-align:center;margin-bottom:10px;">
+        <div style="font-size:48px;">${classIcon}</div>
+        <div style="font-size:28px;color:${classColor};font-weight:bold;letter-spacing:2px;margin:4px 0;">${className.toUpperCase()}</div>
+        <div style="font-size:18px;color:#ccc;">Level ${p.level}</div>
+        <div style="font-size:14px;color:#999;margin-top:6px;">${p.xp} / ${p.xpToNext} XP</div>
+        <div style="width:300px;height:12px;background:rgba(30,25,15,0.9);border:1px solid #5a4a2a;border-radius:6px;margin:6px auto 0;overflow:hidden;">
+          <div style="width:${xpPct}%;height:100%;background:linear-gradient(90deg,#c8a84e,#ffd700);border-radius:5px;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:4px;">${xpToGo} XP to next level</div>
+      </div>`;
+
+    // Section 2: Base Stats (2x grid)
+    const sec2 = `
+      ${sectionHeader("BASE STATS")}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
+        <div>STR: <span style="color:${statColor(stats.strength, baseCls.str)};font-weight:bold;">${stats.strength}</span></div>
+        <div>DEX: <span style="color:${statColor(stats.dexterity, baseCls.dex)};font-weight:bold;">${stats.dexterity}</span></div>
+        <div>INT: <span style="color:${statColor(stats.intelligence, baseCls.int)};font-weight:bold;">${stats.intelligence}</span></div>
+        <div>VIT: <span style="color:${statColor(stats.vitality, baseCls.vit)};font-weight:bold;">${stats.vitality}</span></div>
+        <div style="color:#aaa;">Armor: <span style="color:#fff;">${stats.armor}</span></div>
+        <div style="color:#aaa;">Crit Chance: <span style="color:#ff8;">${(stats.critChance * 100).toFixed(1)}%</span></div>
+        <div style="color:#aaa;">Crit Damage: <span style="color:#ff8;">${(stats.critDamage * 100).toFixed(0)}%</span></div>
+        <div style="color:#aaa;">Move Speed: <span style="color:#fff;">${stats.moveSpeed.toFixed(1)}</span></div>
+        <div style="color:#aaa;">Attack Speed: <span style="color:#fff;">${stats.attackSpeed.toFixed(2)}</span></div>
+      </div>`;
+
+    // Section 3: Defensive Stats
+    const sec3 = `
+      ${sectionHeader("DEFENSIVE STATS")}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
+        <div style="color:#e44;">HP: <span style="color:#fff;">${Math.floor(p.hp)} / ${p.maxHp}</span></div>
+        <div style="color:#48f;">Mana: <span style="color:#fff;">${Math.floor(p.mana)} / ${p.maxMana}</span></div>
+        <div style="color:#f84;">Fire Resist: <span style="color:#fff;">${fireResist}</span></div>
+        <div style="color:#8df;">Ice Resist: <span style="color:#fff;">${iceResist}</span></div>
+        <div style="color:#ff4;">Lightning Resist: <span style="color:#fff;">${lightningResist}</span></div>
+        <div style="color:#4f4;">Poison Resist: <span style="color:#fff;">${poisonResist}</span></div>
+        <div style="color:#f88;">Life Steal: <span style="color:#fff;">${lifeSteal}%</span></div>
+        <div style="color:#8af;">Mana Regen: <span style="color:#fff;">${manaRegen}</span></div>
+      </div>`;
+
+    // Section 4: Skill Details
+    const weaponDmg = this._getWeaponDamage();
+    let skillCardsHtml = "";
+    for (let i = 0; i < p.skills.length; i++) {
+      const def = SKILL_DEFS[p.skills[i]];
+      if (!def) continue;
+
+      // Compute base damage matching _getSkillDamage logic
+      let primaryStat = 0;
+      switch (p.class) {
+        case DiabloClass.WARRIOR: primaryStat = p.strength * 1.5; break;
+        case DiabloClass.MAGE: primaryStat = p.intelligence * 1.2; break;
+        case DiabloClass.RANGER: primaryStat = p.dexterity * 1.3; break;
+      }
+      let bonusDmg = 0;
+      for (const key of equipKeys) {
+        const item = p.equipment[key];
+        if (item) {
+          const s = item.stats as any;
+          if (s.bonusDamage) bonusDmg += s.bonusDamage;
+        }
+      }
+      const baseDamage = (primaryStat + weaponDmg + bonusDmg) * (def.damageMultiplier || 1);
+      const effectiveCd = Math.max(def.cooldown, 1 / stats.attackSpeed);
+      const dps = def.damageMultiplier > 0
+        ? (baseDamage * (1 + stats.critChance * stats.critDamage)) / effectiveCd
+        : 0;
+
+      // Status effect display
+      let statusHtml = "";
+      if (def.statusEffect) {
+        const effectIcons: Record<string, string> = {
+          BURNING: "\uD83D\uDD25", FROZEN: "\u2744\uFE0F", SHOCKED: "\u26A1",
+          POISONED: "\u2620\uFE0F", SLOWED: "\uD83D\uDC22", STUNNED: "\uD83D\uDCAB",
+          BLEEDING: "\uD83E\uDE78", WEAKENED: "\uD83D\uDCA7",
+        };
+        const eIcon = effectIcons[def.statusEffect] || "";
+        statusHtml = `<span style="color:#f84;font-size:12px;margin-left:8px;">${eIcon} ${def.statusEffect}</span>`;
+      }
+
+      // AOE display
+      let aoeHtml = "";
+      if (def.aoeRadius) {
+        aoeHtml = `<span style="color:#8af;font-size:12px;margin-left:8px;">AOE: ${def.aoeRadius} radius</span>`;
+      }
+
+      const keyCap = `<span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;min-width:24px;text-align:center;color:#fff;font-size:14px;">${i + 1}</span>`;
+
+      skillCardsHtml += `
+        <div style="
+          background:rgba(15,10,5,0.9);border-left:4px solid ${classColor};
+          border-radius:6px;padding:12px;margin-bottom:8px;
+        ">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            ${keyCap}
+            <span style="font-size:22px;">${def.icon}</span>
+            <span style="color:#c8a84e;font-weight:bold;font-size:16px;">${def.name}</span>
+          </div>
+          <div style="color:#aaa;font-size:13px;margin-bottom:6px;">${def.description}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#999;">
+            <span>\u23F0 ${def.cooldown}sec</span>
+            <span style="color:#48f;">Mana: ${def.manaCost}</span>
+            <span style="color:#fa8;">Type: ${def.damageType}</span>
+            ${statusHtml}
+            ${aoeHtml}
+          </div>
+          ${def.damageMultiplier > 0 ? `
+          <div style="margin-top:6px;display:flex;gap:16px;font-size:13px;">
+            <span style="color:#c8a84e;font-weight:bold;">Est. DPS: ${dps.toFixed(1)}</span>
+            <span style="color:#ccc;">Damage/Hit: ${baseDamage.toFixed(1)}</span>
+          </div>` : ""}
+        </div>`;
+    }
+    const sec4 = `${sectionHeader("SKILL DETAILS")}${skillCardsHtml}`;
+
+    // Section 5: Equipment Summary
+    const slotLabels: { key: keyof DiabloEquipment; label: string }[] = [
+      { key: "helmet", label: "Helmet" },
+      { key: "body", label: "Body" },
+      { key: "weapon", label: "Weapon" },
+      { key: "gauntlets", label: "Gauntlets" },
+      { key: "legs", label: "Legs" },
+      { key: "feet", label: "Feet" },
+      { key: "accessory1", label: "Accessory 1" },
+      { key: "accessory2", label: "Accessory 2" },
+    ];
+    let equipListHtml = "";
+    for (const sl of slotLabels) {
+      const item = p.equipment[sl.key];
+      if (item) {
+        equipListHtml += `<div style="margin:4px 0;"><span style="color:#888;">${sl.label}:</span> <span style="color:${RARITY_CSS[item.rarity]};font-weight:bold;">${item.name}</span></div>`;
+      } else {
+        equipListHtml += `<div style="margin:4px 0;"><span style="color:#888;">${sl.label}:</span> <span style="color:#555;">Empty</span></div>`;
+      }
+    }
+    const sec5 = `${sectionHeader("EQUIPMENT SUMMARY")}<div style="font-size:14px;">${equipListHtml}</div>`;
+
+    // Section 6: Set Bonuses
+    const equippedNames: string[] = [];
+    for (const key of equipKeys) {
+      const item = p.equipment[key];
+      if (item && item.setName) equippedNames.push(item.setName);
+    }
+    let activeSets = "";
+    for (const sb of SET_BONUSES) {
+      const count = equippedNames.filter((n) => n === sb.setName).length;
+      if (count >= sb.pieces) {
+        activeSets += `<div style="margin:4px 0;color:#4f4;font-size:14px;"><span style="font-weight:bold;">${sb.setName}</span> (${sb.pieces}pc) — ${sb.bonusDescription}</div>`;
+      }
+    }
+    if (!activeSets) {
+      activeSets = `<div style="color:#555;font-size:14px;">No active set bonuses</div>`;
+    }
+    const sec6 = `${sectionHeader("SET BONUSES ACTIVE")}${activeSets}`;
+
+    this._menuEl.innerHTML = `
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+      ">
+        <div style="
+          max-width:800px;width:90%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+          border-radius:12px;padding:30px 40px;max-height:85vh;overflow-y:auto;
+        ">
+          <h1 style="color:#c8a84e;font-size:36px;letter-spacing:4px;margin:0 0 10px 0;text-align:center;
+            font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">CHARACTER OVERVIEW</h1>
+          ${sec1}${sec2}${sec3}${sec4}${sec5}${sec6}
+          <div style="text-align:center;margin-top:30px;">
+            <button id="diablo-char-back" style="
+              width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
+              background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+              cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+            ">BACK</button>
+          </div>
+        </div>
+      </div>`;
+
+    const backBtn = this._menuEl.querySelector("#diablo-char-back") as HTMLButtonElement;
+    backBtn.addEventListener("mouseenter", () => {
+      backBtn.style.borderColor = "#c8a84e";
+      backBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      backBtn.style.background = "rgba(50,40,20,0.95)";
+    });
+    backBtn.addEventListener("mouseleave", () => {
+      backBtn.style.borderColor = "#5a4a2a";
+      backBtn.style.boxShadow = "none";
+      backBtn.style.background = "rgba(40,30,15,0.9)";
+    });
+    backBtn.addEventListener("click", () => {
+      this._backToMenu();
     });
   }
 
@@ -2345,5 +2925,283 @@ export class DiabloGame {
     const worldZ = p.z + dz * scale;
 
     return { x: worldX, z: worldZ };
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  HELPER: Spawn initial enemies (extracted from _startMap)
+  // ──────────────────────────────────────────────────────────────
+  private _spawnInitialEnemies(): void {
+    const initialCount = 8 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < initialCount; i++) {
+      this._spawnEnemy();
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  HELPER: Spawn initial chests (extracted from _startMap)
+  // ──────────────────────────────────────────────────────────────
+  private _spawnInitialChests(): void {
+    const mapCfg = MAP_CONFIGS[this._state.currentMap];
+    const mapW = mapCfg.width;
+    const mapD = (mapCfg as any).depth || (mapCfg as any).height || mapCfg.width;
+    const chestCount = 5 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < chestCount; i++) {
+      const halfW = mapW / 2 - 5;
+      const halfD = mapD / 2 - 5;
+      const cx = (Math.random() * 2 - 1) * halfW;
+      const cz = (Math.random() * 2 - 1) * halfD;
+      const rarity = Math.random() < 0.1
+        ? ItemRarity.EPIC
+        : Math.random() < 0.3
+          ? ItemRarity.RARE
+          : ItemRarity.UNCOMMON;
+      const chestItems = this._generateChestLoot(rarity);
+      const chest: DiabloTreasureChest = {
+        id: this._genId(),
+        x: cx,
+        y: 0,
+        z: cz,
+        opened: false,
+        rarity,
+        items: chestItems,
+      };
+      this._state.treasureChests.push(chest);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  HELPER: Check if save exists
+  // ──────────────────────────────────────────────────────────────
+  private _hasSave(): boolean {
+    return localStorage.getItem("diablo_save") !== null;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  SAVE GAME
+  // ──────────────────────────────────────────────────────────────
+  private _saveGame(): void {
+    const save = {
+      version: 1,
+      timestamp: Date.now(),
+      player: {
+        ...this._state.player,
+        skillCooldowns: Object.fromEntries(this._state.player.skillCooldowns),
+      },
+      currentMap: this._state.currentMap,
+      timeOfDay: this._state.timeOfDay,
+      killCount: this._state.killCount,
+      persistentInventory: this._state.persistentInventory,
+      persistentGold: this._state.persistentGold,
+      persistentLevel: this._state.persistentLevel,
+      persistentXp: this._state.persistentXp,
+      persistentStash: this._state.persistentStash,
+      mapCleared: this._state.mapCleared,
+    };
+    localStorage.setItem("diablo_save", JSON.stringify(save));
+
+    // Show floating notification
+    const notification = document.createElement("div");
+    notification.style.cssText =
+      "position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);" +
+      "color:#4f4;font-size:28px;font-weight:bold;font-family:'Georgia',serif;" +
+      "text-shadow:0 0 15px rgba(0,255,0,0.5);pointer-events:none;" +
+      "transition:opacity 1s;opacity:1;z-index:50;";
+    notification.textContent = "Game Saved!";
+    this._menuEl.appendChild(notification);
+    setTimeout(() => {
+      notification.style.opacity = "0";
+    }, 800);
+    setTimeout(() => {
+      if (notification.parentElement) notification.parentElement.removeChild(notification);
+    }, 2000);
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  LOAD GAME
+  // ──────────────────────────────────────────────────────────────
+  private _loadGame(): void {
+    const raw = localStorage.getItem("diablo_save");
+    if (!raw) return;
+    const save = JSON.parse(raw);
+    // Restore player state
+    this._state.player = {
+      ...save.player,
+      skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)),
+    };
+    this._state.currentMap = save.currentMap;
+    this._state.timeOfDay = save.timeOfDay || TimeOfDay.DAY;
+    this._state.killCount = save.killCount;
+    this._state.persistentInventory = save.persistentInventory;
+    this._state.persistentGold = save.persistentGold;
+    this._state.persistentLevel = save.persistentLevel;
+    this._state.persistentXp = save.persistentXp;
+    this._state.persistentStash = save.persistentStash || Array.from({ length: 100 }, () => ({ item: null }));
+    this._state.mapCleared = save.mapCleared;
+    // Rebuild the map
+    this._renderer.buildMap(this._state.currentMap);
+    this._renderer.buildPlayer(this._state.player.class);
+    this._renderer.applyTimeOfDay(this._state.timeOfDay, this._state.currentMap);
+    // Spawn fresh enemies and chests
+    this._state.enemies = [];
+    this._state.projectiles = [];
+    this._state.loot = [];
+    this._state.treasureChests = [];
+    this._state.aoeEffects = [];
+    this._state.floatingTexts = [];
+    this._state.particles = [];
+    this._spawnInitialEnemies();
+    this._spawnInitialChests();
+    // Set to playing
+    this._state.phase = DiabloPhase.PLAYING;
+    this._menuEl.innerHTML = "";
+    this._hud.style.display = "block";
+    this._recalculatePlayerStats();
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  SHARED STASH SCREEN
+  // ──────────────────────────────────────────────────────────────
+  private _showStash(): void {
+    const p = this._state.player;
+    const stash = this._state.persistentStash;
+
+    // Build inventory grid (8x5 = 40 slots)
+    let invHtml = "";
+    for (let i = 0; i < p.inventory.length; i++) {
+      const slot = p.inventory[i];
+      const item = slot.item;
+      const borderColor = item ? RARITY_CSS[item.rarity] : "#3a3a3a";
+      const content = item
+        ? `<div style="font-size:22px;">${item.icon}</div>`
+        : "";
+      invHtml += `
+        <div class="stash-inv-slot" data-inv-idx="${i}" style="
+          width:55px;height:55px;background:rgba(15,10,5,0.85);border:1px solid ${borderColor};
+          border-radius:4px;display:flex;align-items:center;justify-content:center;
+          cursor:pointer;pointer-events:auto;position:relative;
+        ">${content}</div>`;
+    }
+
+    // Build stash grid (10x10 = 100 slots)
+    let stashHtml = "";
+    for (let i = 0; i < stash.length; i++) {
+      const slot = stash[i];
+      const item = slot.item;
+      const borderColor = item ? RARITY_CSS[item.rarity] : "#3a3a3a";
+      const content = item
+        ? `<div style="font-size:22px;">${item.icon}</div>`
+        : "";
+      stashHtml += `
+        <div class="stash-slot" data-stash-idx="${i}" style="
+          width:55px;height:55px;background:rgba(15,10,5,0.85);border:1px solid ${borderColor};
+          border-radius:4px;display:flex;align-items:center;justify-content:center;
+          cursor:pointer;pointer-events:auto;position:relative;
+        ">${content}</div>`;
+    }
+
+    this._menuEl.innerHTML = `
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+      ">
+        <h2 style="color:#ffd700;font-size:32px;letter-spacing:3px;margin-bottom:16px;font-family:'Georgia',serif;
+          text-shadow:0 0 15px rgba(255,215,0,0.4);">
+          SHARED STASH
+        </h2>
+        <div style="display:flex;gap:30px;align-items:flex-start;">
+          <!-- Inventory Panel -->
+          <div>
+            <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;text-align:center;font-weight:bold;">INVENTORY</div>
+            <div style="display:grid;grid-template-columns:repeat(8,55px);grid-template-rows:repeat(5,55px);gap:3px;">
+              ${invHtml}
+            </div>
+          </div>
+          <!-- Stash Panel -->
+          <div>
+            <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;text-align:center;font-weight:bold;">STASH</div>
+            <div style="display:grid;grid-template-columns:repeat(10,55px);grid-template-rows:repeat(10,55px);gap:3px;max-height:600px;overflow-y:auto;">
+              ${stashHtml}
+            </div>
+          </div>
+        </div>
+        <!-- Bottom bar -->
+        <div style="margin-top:16px;display:flex;gap:30px;align-items:center;">
+          <div style="font-size:16px;color:#ffd700;">\uD83E\uDE99 ${p.gold}</div>
+          <button id="stash-back-btn" style="
+            padding:12px 40px;font-size:18px;letter-spacing:3px;font-weight:bold;
+            background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+            cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+          ">BACK</button>
+        </div>
+        <div id="stash-status" style="margin-top:10px;color:#ff4444;font-size:14px;min-height:20px;"></div>
+        <!-- Tooltip container -->
+        <div id="inv-tooltip" style="
+          display:none;position:fixed;z-index:100;background:rgba(10,5,2,0.96);border:2px solid #5a4a2a;
+          border-radius:8px;padding:14px;max-width:280px;pointer-events:none;color:#ccc;font-size:13px;
+        "></div>
+      </div>`;
+
+    const statusEl = this._menuEl.querySelector("#stash-status") as HTMLDivElement;
+    const showStatus = (msg: string, color: string) => {
+      statusEl.textContent = msg;
+      statusEl.style.color = color;
+      setTimeout(() => { statusEl.textContent = ""; }, 1500);
+    };
+
+    // Wire up inventory slots (click to transfer to stash)
+    const invSlots = this._menuEl.querySelectorAll(".stash-inv-slot") as NodeListOf<HTMLDivElement>;
+    invSlots.forEach((el) => {
+      const idx = parseInt(el.getAttribute("data-inv-idx")!, 10);
+      el.addEventListener("click", () => {
+        const item = p.inventory[idx].item;
+        if (!item) return;
+        const emptyStashIdx = stash.findIndex((s) => s.item === null);
+        if (emptyStashIdx < 0) {
+          showStatus("No space in stash!", "#ff4444");
+          return;
+        }
+        stash[emptyStashIdx].item = item;
+        p.inventory[idx].item = null;
+        this._showStash(); // Re-render
+      });
+      el.addEventListener("mouseenter", (ev) => this._showItemTooltip(ev, p.inventory[idx].item));
+      el.addEventListener("mouseleave", () => this._hideItemTooltip());
+    });
+
+    // Wire up stash slots (click to transfer to inventory)
+    const stashSlots = this._menuEl.querySelectorAll(".stash-slot") as NodeListOf<HTMLDivElement>;
+    stashSlots.forEach((el) => {
+      const idx = parseInt(el.getAttribute("data-stash-idx")!, 10);
+      el.addEventListener("click", () => {
+        const item = stash[idx].item;
+        if (!item) return;
+        const emptyInvIdx = p.inventory.findIndex((s) => s.item === null);
+        if (emptyInvIdx < 0) {
+          showStatus("No space in inventory!", "#ff4444");
+          return;
+        }
+        p.inventory[emptyInvIdx].item = item;
+        stash[idx].item = null;
+        this._showStash(); // Re-render
+      });
+      el.addEventListener("mouseenter", (ev) => this._showItemTooltip(ev, stash[idx].item));
+      el.addEventListener("mouseleave", () => this._hideItemTooltip());
+    });
+
+    // Back button
+    const backBtn = this._menuEl.querySelector("#stash-back-btn") as HTMLButtonElement;
+    backBtn.addEventListener("mouseenter", () => {
+      backBtn.style.borderColor = "#c8a84e";
+      backBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      backBtn.style.background = "rgba(50,40,20,0.95)";
+    });
+    backBtn.addEventListener("mouseleave", () => {
+      backBtn.style.borderColor = "#5a4a2a";
+      backBtn.style.boxShadow = "none";
+      backBtn.style.background = "rgba(40,30,15,0.9)";
+    });
+    backBtn.addEventListener("click", () => {
+      this._backToMenu();
+    });
   }
 }

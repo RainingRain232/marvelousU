@@ -26,6 +26,13 @@ export enum DiabloPhase {
   VICTORY = 'VICTORY',
 }
 
+export enum TimeOfDay {
+  DAY = "day",
+  DAWN = "dawn",
+  DUSK = "dusk",
+  NIGHT = "night",
+}
+
 export enum ItemRarity {
   COMMON = 'COMMON',           // white
   UNCOMMON = 'UNCOMMON',       // green
@@ -418,6 +425,8 @@ export interface DiabloState {
   persistentGold: number;
   persistentLevel: number;
   persistentXp: number;
+  timeOfDay: TimeOfDay;
+  persistentStash: DiabloInventorySlot[];
   mapCleared: boolean[];
 }
 
@@ -606,6 +615,8 @@ export function createDefaultState(): DiabloState {
     persistentGold: 0,
     persistentLevel: 1,
     persistentXp: 0,
+    timeOfDay: TimeOfDay.DAY,
+    persistentStash: Array.from({ length: 100 }, () => ({ item: null })),
     mapCleared: [false, false, false],
   };
 }
