@@ -52,6 +52,22 @@ const MAX_PARTY_SIZE = 80;
 const ROVING_BAND_COUNT = 12;
 const REINFORCEMENT_INTERVAL = 18000; // ~5 minutes, cities spawn new defenders
 const CITY_MAX_GARRISON = 40;
+const UPKEEP_PER_TIER: Record<number, number> = { 1: 2, 2: 4, 3: 7, 4: 12, 5: 18 };
+
+// Hero progression
+const HERO_MAX_LEVEL = 20;
+const HERO_XP_PER_LEVEL = 150; // level N requires N * 150 XP
+
+const HERO_PERKS = [
+  { id: "swift", name: "Swift", desc: "+15% map movement speed", color: "#66ccff" },
+  { id: "commander", name: "Commander", desc: "+5 max party size", color: "#88aa66" },
+  { id: "merchant", name: "Merchant", desc: "+20% city income", color: "#ffcc44" },
+  { id: "veteran", name: "Veteran", desc: "+20 HP for hero in battle", color: "#cc6644" },
+  { id: "intimidate", name: "Intimidate", desc: "10% chance enemies flee", color: "#aa66cc" },
+  { id: "looter", name: "Looter", desc: "+30% loot from battles", color: "#ccaa44" },
+] as const;
+
+type HeroPerkId = typeof HERO_PERKS[number]["id"];
 
 // Factions to use on the campaign map (exclude "op")
 const CAMPAIGN_FACTIONS = RACE_DEFINITIONS.filter(
@@ -133,6 +149,31 @@ for (const race of CAMPAIGN_FACTIONS) {
 // ---------------------------------------------------------------------------
 
 type TerrainKind = "forest" | "mountains" | "desert" | "swamp" | "snow" | "lake" | "hills";
+
+const TERRAIN_SPEED_MULT: Record<TerrainKind, number> = {
+  forest: 0.7,
+  mountains: 0.5,
+  hills: 0.8,
+  desert: 0.75,
+  swamp: 0.5,
+  snow: 0.65,
+  lake: 0.15,
+};
+
+/** Return the worst (lowest) speed multiplier for a point and the terrain name, or null if on plains. */
+function _getTerrainAt(x: number, y: number, terrain: TerrainRegion[]): { mult: number; name: TerrainKind } | null {
+  let worst: { mult: number; name: TerrainKind } | null = null;
+  for (const region of terrain) {
+    const d = Math.hypot(x - region.x, y - region.y);
+    if (d < region.r) {
+      const m = TERRAIN_SPEED_MULT[region.type];
+      if (!worst || m < worst.mult) {
+        worst = { mult: m, name: region.type };
+      }
+    }
+  }
+  return worst;
+}
 
 interface TerrainRegion {
   x: number;
@@ -493,6 +534,10 @@ interface CampaignState {
   selectedCity: CampaignCity | null;
   log: string[];
   speed: number; // 1, 2, 4
+  heroLevel: number;
+  heroXp: number;
+  heroPerks: HeroPerkId[];
+  factionRelations: Map<string, Map<string, number>>; // relation score between factions (-100 hostile to +100 allied)
 }
 
 // ---------------------------------------------------------------------------
@@ -656,6 +701,7 @@ export class WarbandCampaign {
   // UI panels
   private _cityPanel: HTMLDivElement | null = null;
   private _partyPanel: HTMLDivElement | null = null;
+  private _diplomacyPanel: HTMLDivElement | null = null;
   private _logPanel: HTMLDivElement | null = null;
   private _topBar: HTMLDivElement | null = null;
 
@@ -693,6 +739,7 @@ export class WarbandCampaign {
   private _mouseMoveHandler: ((e: MouseEvent) => void) | null = null;
   private _wheelHandler: ((e: WheelEvent) => void) | null = null;
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _perkModal: HTMLDivElement | null = null;
 
   async boot(playerFaction: string): Promise<void> {
     // Hide PixiJS
@@ -755,7 +802,28 @@ export class WarbandCampaign {
       selectedCity: null,
       log: [`Day 1 — Your warband sets out from ${startCity.name}.`],
       speed: 1,
+      heroLevel: 1,
+      heroXp: 0,
+      heroPerks: [],
+      factionRelations: new Map(),
     };
+
+    // Initialize faction relations
+    const factionIds = factionsOnMap.map((f) => f.id);
+    for (const a of factionIds) {
+      const innerMap = new Map<string, number>();
+      for (const b of factionIds) {
+        if (a === b) { innerMap.set(b, 100); continue; }
+        if (b === playerFaction) {
+          innerMap.set(b, a === playerFaction ? 100 : -50);
+        } else if (a === playerFaction) {
+          innerMap.set(b, -50);
+        } else {
+          innerMap.set(b, 0);
+        }
+      }
+      this._state.factionRelations.set(a, innerMap);
+    }
 
     // Center camera on player
     this._camX = px - window.innerWidth / 2;
@@ -837,12 +905,18 @@ export class WarbandCampaign {
     const factionColor = factionDef ? `#${factionDef.accentColor.toString(16).padStart(6, "0")}` : "#daa520";
     const citiesOwned = s.cities.filter((c) => c.factionId === s.playerFaction).length;
     const totalCities = s.cities.length;
+    const topBarTerrain = _getTerrainAt(s.playerParty.x, s.playerParty.y, s.terrain);
+    let dailyUpkeep = 0;
+    for (const slot of s.playerParty.army) {
+      dailyUpkeep += this._getUnitUpkeep(slot.unitId) * slot.count;
+    }
 
     this._topBar.innerHTML = `
       <span style="color:${factionColor};font-weight:bold;letter-spacing:1px">${factionDef?.name ?? s.playerFaction}</span>
       <span style="color:#daa520">Day ${s.day}</span>
-      <span style="color:#ffcc44">Gold: ${s.gold}</span>
-      <span style="color:#88aacc">Army: ${s.playerParty.armyTotal}/${MAX_PARTY_SIZE}</span>
+      <span style="color:#ffcc44">Gold: ${s.gold} <span style="color:#cc8844;font-size:11px">(-${dailyUpkeep}/day)</span></span>
+      <span style="color:#88aacc">Army: ${s.playerParty.armyTotal}/${MAX_PARTY_SIZE + this._getPerkCount("commander") * 5}</span>
+      ${this._renderHeroLevelBar()}
       <span style="color:#88aa66">Cities: ${citiesOwned}/${totalCities}</span>
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
         <span style="color:#777;font-size:11px">Speed:</span>
@@ -939,7 +1013,7 @@ export class WarbandCampaign {
             ${allUnits.map((u) => {
               const cost = Math.round(u.cost * HIRE_COST_MULT);
               const canAfford = this._state!.gold >= cost;
-              const partyFull = this._state!.playerParty.armyTotal >= MAX_PARTY_SIZE;
+              const partyFull = this._state!.playerParty.armyTotal >= MAX_PARTY_SIZE + this._getPerkCount("commander") * 5;
               return `
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;
                   margin-bottom:3px;background:rgba(30,25,15,0.6);border-radius:4px;border:1px solid #332211">
@@ -1034,7 +1108,7 @@ export class WarbandCampaign {
   private _hireUnit(unitId: string, cost: number): void {
     if (!this._state) return;
     if (this._state.gold < cost) return;
-    if (this._state.playerParty.armyTotal >= MAX_PARTY_SIZE) return;
+    if (this._state.playerParty.armyTotal >= MAX_PARTY_SIZE + this._getPerkCount("commander") * 5) return;
 
     this._state.gold -= cost;
     const existing = this._state.playerParty.army.find((a) => a.unitId === unitId);
@@ -1265,13 +1339,30 @@ export class WarbandCampaign {
       s.gold += GOLD_PER_DAY;
       // City income
       const ownedCities = s.cities.filter((c) => c.factionId === s.playerFaction);
-      s.gold += ownedCities.length * 30;
+      const merchantMult = 1 + this._getPerkCount("merchant") * 0.2;
+      s.gold += Math.round(ownedCities.length * 30 * merchantMult);
+      // Army upkeep
+      let totalUpkeep = 0;
+      for (const slot of s.playerParty.army) {
+        totalUpkeep += this._getUnitUpkeep(slot.unitId) * slot.count;
+      }
+      s.gold -= totalUpkeep;
       if (s.day % 5 === 0) {
-        this._addLog(`Day ${s.day} — Income: ${GOLD_PER_DAY + ownedCities.length * 30}g`);
+        this._addLog(`Day ${s.day} — Income: ${GOLD_PER_DAY + ownedCities.length * 30}g, Upkeep: -${totalUpkeep}g`);
+      }
+      // Desertion when gold is negative
+      if (s.gold < 0 && s.playerParty.army.length > 0 && Math.random() < 0.1) {
+        const idx = Math.floor(Math.random() * s.playerParty.army.length);
+        const slot = s.playerParty.army[idx];
+        const unitDef = CAMPAIGN_UNITS.find((u) => u.id === slot.unitId) ?? Object.values(FACTION_ELITES).find((u) => u.id === slot.unitId);
+        slot.count--;
+        s.playerParty.armyTotal--;
+        if (slot.count <= 0) s.playerParty.army.splice(idx, 1);
+        this._addLog(`A ${unitDef?.name ?? slot.unitId} deserted due to lack of pay!`);
       }
     }
 
-    // City reinforcements
+    // City reinforcements & AI faction party spawning
     if (s.tick % REINFORCEMENT_INTERVAL === 0) {
       for (const city of s.cities) {
         if (city.garrisonTotal < CITY_MAX_GARRISON) {
@@ -1282,6 +1373,37 @@ export class WarbandCampaign {
           if (existing) existing.count += count;
           else city.garrison.push({ unitId: unit.id, count });
           city.garrisonTotal += count;
+        }
+      }
+
+      // AI factions spawn new roving bands if they have fewer than 2 active parties
+      for (const faction of CAMPAIGN_FACTIONS) {
+        if (faction.id === s.playerFaction) continue;
+        const factionParties = s.parties.filter((p) => p.factionId === faction.id && !p.isPlayer);
+        const factionCities = s.cities.filter((c) => c.factionId === faction.id);
+        if (factionParties.length < 2 && factionCities.length > 0) {
+          const homeCity = factionCities[Math.floor(Math.random() * factionCities.length)];
+          const size = 4 + Math.floor(Math.random() * 8);
+          const army = _generateGarrison(faction.id, size);
+          const bandNames = [
+            `${faction.name} Raiders`, `${faction.name} Patrol`, `${faction.name} Warband`,
+            `${faction.name} Scouts`, `${faction.name} Marauders`, `${faction.name} Vanguard`,
+          ];
+          const newParty: CampaignParty = {
+            id: `party_ai_${s.tick}_${faction.id}`,
+            name: bandNames[Math.floor(Math.random() * bandNames.length)],
+            x: homeCity.x + (Math.random() - 0.5) * 80,
+            y: homeCity.y + (Math.random() - 0.5) * 80,
+            factionId: faction.id,
+            army,
+            armyTotal: army.reduce((sum, a) => sum + a.count, 0),
+            targetX: homeCity.x,
+            targetY: homeCity.y,
+            isPlayer: false,
+            speed: AI_SPEED * (0.7 + Math.random() * 0.6),
+            homeCity: homeCity.id,
+          };
+          s.parties.push(newParty);
         }
       }
     }
@@ -1300,10 +1422,52 @@ export class WarbandCampaign {
       if (party.factionId === s.playerFaction) continue;
       const dist = Math.hypot(party.x - s.playerParty.x, party.y - s.playerParty.y);
       if (dist < ENGAGEMENT_DIST) {
+        // Intimidate perk: chance enemies flee
+        const intimidateCount = this._getPerkCount("intimidate");
+        if (intimidateCount > 0) {
+          const fleeChance = intimidateCount * 0.1;
+          if (Math.random() < fleeChance) {
+            this._state!.parties = this._state!.parties.filter((p) => p.id !== party.id);
+            this._addLog(`${party.name} fled in fear of your reputation!`);
+            return;
+          }
+        }
         this._startPartyBattle(party);
         return;
       }
     }
+
+    // AI-vs-AI party collisions (auto-resolve)
+    for (let i = s.parties.length - 1; i >= 0; i--) {
+      const a = s.parties[i];
+      if (a.isPlayer) continue;
+      for (let j = i - 1; j >= 0; j--) {
+        const b = s.parties[j];
+        if (b.isPlayer || a.factionId === b.factionId) continue;
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d < ENGAGEMENT_DIST) {
+          this._autoResolvePartyBattle(a, b);
+          break; // a or b may have been removed, move on
+        }
+      }
+    }
+
+    // AI city sieges (auto-resolve)
+    for (let i = s.parties.length - 1; i >= 0; i--) {
+      const party = s.parties[i];
+      if (party.isPlayer) continue;
+      for (const city of s.cities) {
+        if (city.factionId === party.factionId) continue;
+        const d = Math.hypot(party.x - city.x, party.y - city.y);
+        if (d < ENGAGEMENT_DIST) {
+          this._autoResolveCitySiege(party, city);
+          break;
+        }
+      }
+    }
+
+    // Check faction elimination
+    this._checkFactionElimination();
 
     // Check victory: all cities owned by player
     const allOwned = s.cities.every((c) => c.factionId === s.playerFaction);
@@ -1327,7 +1491,13 @@ export class WarbandCampaign {
     const dist = Math.hypot(dx, dy);
     if (dist < 2) return;
 
-    const speed = party.speed;
+    const terrainInfo = this._state ? _getTerrainAt(party.x, party.y, this._state.terrain) : null;
+    const terrainMult = terrainInfo ? terrainInfo.mult : 1.0;
+    let speed = party.speed * terrainMult;
+    if (party.isPlayer && this._state) {
+      const swiftCount = this._getPerkCount("swift");
+      if (swiftCount > 0) speed *= (1 + swiftCount * 0.15);
+    }
     party.x += (dx / dist) * speed;
     party.y += (dy / dist) * speed;
     party.x = Math.max(10, Math.min(MAP_W - 10, party.x));
@@ -1339,25 +1509,64 @@ export class WarbandCampaign {
     const dist = Math.hypot(party.targetX - party.x, party.targetY - party.y);
     if (dist > 5) return; // still moving
 
-    // Pick new target: wander toward enemy cities, player, or home city
+    const s = this._state;
+
+    // Pick new target: enemy faction city, enemy faction party, chase player, return home, or wander
     const roll = Math.random();
-    if (roll < 0.3 && party.homeCity) {
+
+    if (roll < 0.3) {
+      // Move toward nearest enemy faction city
+      let nearest: CampaignCity | null = null;
+      let nearestDist = Infinity;
+      for (const city of s.cities) {
+        if (city.factionId === party.factionId) continue;
+        const d = Math.hypot(city.x - party.x, city.y - party.y);
+        if (d < nearestDist) { nearestDist = d; nearest = city; }
+      }
+      if (nearest) {
+        party.targetX = nearest.x + (Math.random() - 0.5) * 30;
+        party.targetY = nearest.y + (Math.random() - 0.5) * 30;
+        return;
+      }
+    }
+
+    if (roll < 0.5) {
+      // Chase nearest enemy faction party (not same faction)
+      let nearest: CampaignParty | null = null;
+      let nearestDist = Infinity;
+      for (const other of s.parties) {
+        if (other === party || other.factionId === party.factionId) continue;
+        // Skip player faction parties unless hostile (different faction)
+        if (other.isPlayer) continue;
+        const d = Math.hypot(other.x - party.x, other.y - party.y);
+        if (d < nearestDist) { nearestDist = d; nearest = other; }
+      }
+      if (nearest) {
+        party.targetX = nearest.x + (Math.random() - 0.5) * 40;
+        party.targetY = nearest.y + (Math.random() - 0.5) * 40;
+        return;
+      }
+    }
+
+    if (roll < 0.65 && party.homeCity) {
       // Return home
-      const home = this._state.cities.find((c) => c.id === party.homeCity);
+      const home = s.cities.find((c) => c.id === party.homeCity);
       if (home) {
         party.targetX = home.x + (Math.random() - 0.5) * 100;
         party.targetY = home.y + (Math.random() - 0.5) * 100;
         return;
       }
     }
-    if (roll < 0.6) {
+
+    if (roll < 0.8) {
       // Move toward player if hostile
-      if (party.factionId !== this._state.playerFaction) {
-        party.targetX = this._state.playerParty.x + (Math.random() - 0.5) * 200;
-        party.targetY = this._state.playerParty.y + (Math.random() - 0.5) * 200;
+      if (party.factionId !== s.playerFaction) {
+        party.targetX = s.playerParty.x + (Math.random() - 0.5) * 200;
+        party.targetY = s.playerParty.y + (Math.random() - 0.5) * 200;
         return;
       }
     }
+
     // Random wander
     party.targetX = 40 + Math.random() * (MAP_W - 80);
     party.targetY = 40 + Math.random() * (MAP_H - 80);
@@ -1640,6 +1849,15 @@ export class WarbandCampaign {
       ctx.font = "bold 8px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(`${party.armyTotal}`, party.x, party.y - PARTY_RADIUS - 5);
+
+      // Terrain indicator
+      const aiTerrain = _getTerrainAt(party.x, party.y, s.terrain);
+      if (aiTerrain) {
+        ctx.fillStyle = "rgba(10,8,5,0.6)";
+        ctx.font = "7px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(aiTerrain.name, party.x, party.y + PARTY_RADIUS + 10);
+      }
     }
 
     // ---- Player party -------------------------
@@ -1712,6 +1930,21 @@ export class WarbandCampaign {
     ctx.fillStyle = "#ddcc88";
     ctx.font = "bold 9px sans-serif";
     ctx.fillText(`${pp.armyTotal}`, pp.x, pp.y + PARTY_RADIUS + 13);
+
+    // Terrain indicator for player
+    const playerTerrain = _getTerrainAt(pp.x, pp.y, s.terrain);
+    if (playerTerrain) {
+      const terrainLabel = `${playerTerrain.name} (${playerTerrain.mult}x)`;
+      ctx.font = "8px sans-serif";
+      const tw = ctx.measureText(terrainLabel).width + 8;
+      ctx.fillStyle = "rgba(10,8,5,0.75)";
+      ctx.beginPath();
+      ctx.roundRect(pp.x - tw / 2, pp.y + PARTY_RADIUS + 18, tw, 12, 2);
+      ctx.fill();
+      ctx.fillStyle = "#bb9966";
+      ctx.textAlign = "center";
+      ctx.fillText(terrainLabel, pp.x, pp.y + PARTY_RADIUS + 27);
+    }
 
     // ---- Move target indicator ----------------
     const tDist = Math.hypot(pp.targetX - pp.x, pp.targetY - pp.y);
@@ -1947,8 +2180,9 @@ export class WarbandCampaign {
       [ArmorSlot.LEGS]: ARMOR_DEFS["splinted_greaves"] ?? null,
       [ArmorSlot.BOOTS]: ARMOR_DEFS["chain_sabatons"] ?? null,
     };
-    player.hp = 200;
-    player.maxHp = 200;
+    const veteranBonus = this._getPerkCount("veteran") * 20;
+    player.hp = 200 + veteranBonus;
+    player.maxHp = 200 + veteranBonus;
     this._battleState.fighters.push(player);
 
     // Spawn player army units
@@ -2273,7 +2507,8 @@ export class WarbandCampaign {
     const enemiesKilled = this._battleState.fighters.filter(
       (f) => f.team === "enemy" && f.hp <= 0,
     ).length;
-    const loot = enemiesKilled * LOOT_PER_UNIT;
+    const looterMult = 1 + this._getPerkCount("looter") * 0.3;
+    const loot = Math.round(enemiesKilled * LOOT_PER_UNIT * looterMult);
 
     setTimeout(() => {
       this._showBattleResults(playerWon, playerSurvivors, enemySurvivors, loot);
@@ -2356,6 +2591,11 @@ export class WarbandCampaign {
 
     if (won) {
       this._state.gold += loot;
+
+      // Award hero XP (on victory, all enemies are killed)
+      const totalEnemies = this._battleEnemyArmy.reduce((s, a) => s + a.count, 0);
+      const xpGained = 20 + totalEnemies * 3;
+      this._awardHeroXp(xpGained);
 
       // Handle enemy party destruction
       if (this._battleEnemyPartyId) {
@@ -2458,6 +2698,358 @@ export class WarbandCampaign {
     if (!this._state) return;
     this._state.log.push(`Day ${this._state.day} — ${msg}`);
     if (this._state.log.length > 50) this._state.log.shift();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Diplomacy helpers
+  // ---------------------------------------------------------------------------
+
+  /** Get the relation score between two factions (-100 to +100). */
+  private _getRelation(factionA: string, factionB: string): number {
+    if (!this._state || factionA === factionB) return 100;
+    return this._state.factionRelations.get(factionA)?.get(factionB) ?? 0;
+  }
+
+  /** Modify the relation score between two factions by delta, clamped to [-100, +100]. Symmetric. */
+  private _modRelation(factionA: string, factionB: string, delta: number): void {
+    if (!this._state || factionA === factionB) return;
+    const rel = this._state.factionRelations;
+    // A -> B
+    const mapA = rel.get(factionA);
+    if (mapA) {
+      mapA.set(factionB, Math.max(-100, Math.min(100, (mapA.get(factionB) ?? 0) + delta)));
+    }
+    // B -> A
+    const mapB = rel.get(factionB);
+    if (mapB) {
+      mapB.set(factionA, Math.max(-100, Math.min(100, (mapB.get(factionA) ?? 0) + delta)));
+    }
+  }
+
+  /** Returns "hostile" (below -30), "neutral" (-30 to +30), or "friendly" (above +30). */
+  private _getRelationStatus(factionA: string, factionB: string): "hostile" | "neutral" | "friendly" {
+    const r = this._getRelation(factionA, factionB);
+    if (r < -30) return "hostile";
+    if (r > 30) return "friendly";
+    return "neutral";
+  }
+
+  /** Get a CSS color for a relation value: red=hostile, yellow=neutral, green=friendly. */
+  private _relationColor(value: number): string {
+    if (value < -30) {
+      // Red gradient
+      const t = Math.max(0, Math.min(1, (value + 100) / 70));
+      return `rgb(${Math.round(180 + 75 * (1 - t))},${Math.round(40 * t)},${Math.round(40 * t)})`;
+    }
+    if (value > 30) {
+      // Green gradient
+      const t = Math.max(0, Math.min(1, (value - 30) / 70));
+      return `rgb(${Math.round(80 * (1 - t))},${Math.round(160 + 95 * t)},${Math.round(60 + 40 * t)})`;
+    }
+    // Yellow/neutral
+    return "#ccaa44";
+  }
+
+  /** Get all faction IDs on the map (excluding player). */
+  private _getNonPlayerFactions(): string[] {
+    if (!this._state) return [];
+    const ids = new Set<string>();
+    for (const [fId] of this._state.factionRelations) {
+      if (fId !== this._state.playerFaction) ids.add(fId);
+    }
+    return Array.from(ids);
+  }
+
+  /** Get total army strength for a faction (sum of all party armies + garrisons). */
+  private _getFactionArmyTotal(factionId: string): number {
+    if (!this._state) return 0;
+    let total = 0;
+    for (const p of this._state.parties) {
+      if (p.factionId === factionId) total += p.armyTotal;
+    }
+    for (const c of this._state.cities) {
+      if (c.factionId === factionId) total += c.garrisonTotal;
+    }
+    if (this._state.playerFaction === factionId) total += this._state.playerParty.armyTotal;
+    return total;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Diplomacy panel (D key)
+  // ---------------------------------------------------------------------------
+
+  private _showDiplomacyPanel(): void {
+    if (!this._state) return;
+    this._removeDiplomacyPanel();
+    this._state.paused = true;
+
+    const s = this._state;
+    const otherFactions = this._getNonPlayerFactions();
+
+    this._diplomacyPanel = document.createElement("div");
+    this._diplomacyPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:620px;max-height:85vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid #daa520;border-radius:10px;
+      padding:24px;z-index:10;
+    `;
+
+    let factionsHTML = "";
+    for (const fId of otherFactions) {
+      const fDef = CAMPAIGN_FACTIONS.find((f) => f.id === fId);
+      const fColor = fDef ? `#${fDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
+      const rel = this._getRelation(s.playerFaction, fId);
+      const status = this._getRelationStatus(s.playerFaction, fId);
+      const relColor = this._relationColor(rel);
+      const statusLabel = status === "hostile" ? "HOSTILE" : status === "friendly" ? "FRIENDLY" : "NEUTRAL";
+      const citiesCount = s.cities.filter((c) => c.factionId === fId).length;
+      const partiesCount = s.parties.filter((p) => p.factionId === fId).length;
+      const theirArmy = this._getFactionArmyTotal(fId);
+      const ourArmy = this._getFactionArmyTotal(s.playerFaction);
+
+      // Relation bar: -100 to +100 mapped to 0-100% width
+      const barPct = Math.max(0, Math.min(100, (rel + 100) / 2));
+
+      // Button states
+      const canGift = s.gold >= 500;
+      const canDemand = ourArmy >= theirArmy * 2;
+      const canAlliance = rel > 30;
+
+      factionsHTML += `
+        <div style="margin-bottom:14px;padding:12px;background:rgba(30,25,15,0.5);border:1px solid ${fColor};border-radius:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="color:${fColor};font-weight:bold;font-size:14px">${fDef?.name ?? fId}</span>
+            <span style="color:${relColor};font-size:12px;font-weight:bold">${statusLabel} (${rel > 0 ? "+" : ""}${rel})</span>
+          </div>
+          <div style="display:flex;gap:12px;font-size:11px;color:#998877;margin-bottom:8px">
+            <span>Cities: ${citiesCount}</span>
+            <span>Parties: ${partiesCount}</span>
+            <span>Army: ${theirArmy}</span>
+          </div>
+          <!-- Relation bar -->
+          <div style="height:8px;background:rgba(40,30,20,0.8);border-radius:4px;margin-bottom:10px;overflow:hidden;border:1px solid #332211">
+            <div style="height:100%;width:${barPct}%;background:linear-gradient(90deg,#cc3333,#ccaa44 50%,#33cc33);border-radius:3px;transition:width 0.3s"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="diplo-gift-btn" data-faction="${fId}" style="
+              padding:4px 12px;font-size:11px;border:1px solid ${canGift ? "#daa520" : "#444"};
+              border-radius:4px;background:${canGift ? "rgba(218,165,32,0.15)" : "rgba(20,15,10,0.6)"};
+              color:${canGift ? "#daa520" : "#555"};cursor:${canGift ? "pointer" : "not-allowed"};font-family:inherit;
+            " ${canGift ? "" : "disabled"}>Send Gift (500g) +20</button>
+            <button class="diplo-demand-btn" data-faction="${fId}" style="
+              padding:4px 12px;font-size:11px;border:1px solid ${canDemand ? "#cc8844" : "#444"};
+              border-radius:4px;background:${canDemand ? "rgba(204,136,68,0.15)" : "rgba(20,15,10,0.6)"};
+              color:${canDemand ? "#cc8844" : "#555"};cursor:${canDemand ? "pointer" : "not-allowed"};font-family:inherit;
+            " ${canDemand ? "" : "disabled"}>Demand Tribute</button>
+            <button class="diplo-alliance-btn" data-faction="${fId}" style="
+              padding:4px 12px;font-size:11px;border:1px solid ${canAlliance ? "#44cc44" : "#444"};
+              border-radius:4px;background:${canAlliance ? "rgba(68,204,68,0.15)" : "rgba(20,15,10,0.6)"};
+              color:${canAlliance ? "#44cc44" : "#555"};cursor:${canAlliance ? "pointer" : "not-allowed"};font-family:inherit;
+            " ${canAlliance ? "" : "disabled"}>Propose Alliance (+30 req)</button>
+          </div>
+        </div>
+      `;
+    }
+
+    this._diplomacyPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px">DIPLOMACY</h2>
+        <button id="diplo-close" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="font-size:11px;color:#776655;margin-bottom:12px">
+        Hostile &lt; -30 | Neutral -30 to +30 | Friendly &gt; +30
+      </div>
+      ${factionsHTML}
+    `;
+
+    this._container!.appendChild(this._diplomacyPanel);
+
+    // Bind close
+    document.getElementById("diplo-close")?.addEventListener("click", () => {
+      this._removeDiplomacyPanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    // Bind gift buttons
+    this._diplomacyPanel.querySelectorAll(".diplo-gift-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const fId = (btn as HTMLElement).dataset.faction!;
+        if (this._state && this._state.gold >= 500) {
+          this._state.gold -= 500;
+          this._modRelation(this._state.playerFaction, fId, 20);
+          this._addLog(`Sent a gift to ${fId}, improving relations by +20.`);
+          this._showDiplomacyPanel(); // refresh
+        }
+      });
+    });
+
+    // Bind demand buttons
+    this._diplomacyPanel.querySelectorAll(".diplo-demand-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const fId = (btn as HTMLElement).dataset.faction!;
+        if (!this._state) return;
+        const theirArmy = this._getFactionArmyTotal(fId);
+        const ourArmy = this._getFactionArmyTotal(this._state.playerFaction);
+        if (ourArmy >= theirArmy * 2) {
+          if (Math.random() < 0.5) {
+            this._state.gold += 300;
+            this._addLog(`${fId} paid 300g tribute out of fear!`);
+          } else {
+            this._modRelation(this._state.playerFaction, fId, -10);
+            this._addLog(`${fId} refused your demand for tribute! Relations worsened.`);
+          }
+          this._showDiplomacyPanel(); // refresh
+        }
+      });
+    });
+
+    // Bind alliance buttons
+    this._diplomacyPanel.querySelectorAll(".diplo-alliance-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const fId = (btn as HTMLElement).dataset.faction!;
+        if (!this._state) return;
+        const rel = this._getRelation(this._state.playerFaction, fId);
+        if (rel > 30) {
+          // Set relation to +80
+          const currentRel = this._getRelation(this._state.playerFaction, fId);
+          this._modRelation(this._state.playerFaction, fId, 80 - currentRel);
+          this._addLog(`Alliance formed with ${fId}! They will not attack you.`);
+          this._showDiplomacyPanel(); // refresh
+        }
+      });
+    });
+  }
+
+  private _removeDiplomacyPanel(): void {
+    if (this._diplomacyPanel?.parentNode) {
+      this._diplomacyPanel.parentNode.removeChild(this._diplomacyPanel);
+      this._diplomacyPanel = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Hero progression helpers
+  // ---------------------------------------------------------------------------
+
+  private _getPerkCount(perkId: HeroPerkId): number {
+    if (!this._state) return 0;
+    return this._state.heroPerks.filter((p) => p === perkId).length;
+  }
+
+  private _getXpForLevel(level: number): number {
+    return level * HERO_XP_PER_LEVEL;
+  }
+
+  private _awardHeroXp(amount: number): void {
+    if (!this._state) return;
+    if (this._state.heroLevel >= HERO_MAX_LEVEL) return;
+
+    this._state.heroXp += amount;
+    this._addLog(`+${amount} XP`);
+
+    const needed = this._getXpForLevel(this._state.heroLevel);
+    if (this._state.heroXp >= needed) {
+      this._state.heroXp -= needed;
+      this._state.heroLevel++;
+      this._addLog(`LEVEL UP! You are now level ${this._state.heroLevel}!`);
+      this._showPerkSelection();
+    }
+  }
+
+  private _showPerkSelection(): void {
+    if (!this._state) return;
+    this._state.paused = true;
+
+    // Pick 3 random perks
+    const shuffled = [...HERO_PERKS].sort(() => Math.random() - 0.5);
+    const choices = shuffled.slice(0, 3);
+
+    this._perkModal = document.createElement("div");
+    this._perkModal.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;z-index:50;
+      background:rgba(5,3,0,0.88);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+    `;
+
+    const currentCounts = choices.map((p) => this._getPerkCount(p.id));
+
+    this._perkModal.innerHTML = `
+      <div style="text-align:center;margin-bottom:24px">
+        <h2 style="font-size:28px;color:#ffd700;text-shadow:0 0 12px rgba(218,165,32,0.4);margin:0">
+          LEVEL ${this._state.heroLevel}
+        </h2>
+        <div style="color:#aa9977;font-size:14px;margin-top:6px">Choose a perk:</div>
+      </div>
+      <div style="display:flex;gap:16px">
+        ${choices.map((perk, i) => `
+          <div class="camp-perk-btn" data-perk="${perk.id}" style="
+            width:180px;padding:20px;text-align:center;cursor:pointer;
+            border:2px solid ${perk.color}44;border-radius:8px;
+            background:rgba(20,15,10,0.8);transition:border-color 0.2s, background 0.2s;
+          " onmouseover="this.style.borderColor='${perk.color}';this.style.background='rgba(40,30,20,0.9)'"
+             onmouseout="this.style.borderColor='${perk.color}44';this.style.background='rgba(20,15,10,0.8)'">
+            <div style="font-size:18px;color:${perk.color};font-weight:bold;margin-bottom:8px">${perk.name}</div>
+            <div style="font-size:12px;color:#aa9977;margin-bottom:6px">${perk.desc}</div>
+            ${currentCounts[i] > 0 ? `<div style="font-size:11px;color:#666">(owned x${currentCounts[i]})</div>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    `;
+
+    const container = this._container ?? document.getElementById("pixi-container");
+    if (container) container.appendChild(this._perkModal);
+
+    this._perkModal.querySelectorAll(".camp-perk-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const perkId = (btn as HTMLElement).dataset.perk as HeroPerkId;
+        this._selectPerk(perkId);
+      });
+    });
+  }
+
+  private _selectPerk(perkId: HeroPerkId): void {
+    if (!this._state) return;
+    this._state.heroPerks.push(perkId);
+
+    const perkDef = HERO_PERKS.find((p) => p.id === perkId);
+    this._addLog(`Perk acquired: ${perkDef?.name ?? perkId}!`);
+
+    // Remove modal
+    if (this._perkModal?.parentNode) {
+      this._perkModal.parentNode.removeChild(this._perkModal);
+      this._perkModal = null;
+    }
+
+    // Unpause only if not in battle
+    if (!this._inBattle) {
+      this._state.paused = false;
+    }
+  }
+
+  private _renderHeroLevelBar(): string {
+    if (!this._state) return "";
+    const s = this._state;
+    const needed = this._getXpForLevel(s.heroLevel);
+    const pct = s.heroLevel >= HERO_MAX_LEVEL ? 1 : Math.min(1, s.heroXp / needed);
+    const filled = Math.round(pct * 6);
+    const empty = 6 - filled;
+    const bar = "\u2588".repeat(filled) + "\u2591".repeat(empty);
+    return `<span style="color:#daa520;font-size:12px;letter-spacing:1px" title="XP: ${s.heroXp}/${needed}">Lv.${s.heroLevel} <span style="color:#aa8833">[${bar}]</span></span>`;
+  }
+
+  private _addLog(msg: string): void {
+    if (!this._state) return;
+    this._state.log.push(`Day ${this._state.day} — ${msg}`);
+    if (this._state.log.length > 50) this._state.log.shift();
+  }
+
+  private _getUnitUpkeep(unitId: string): number {
+    const def = CAMPAIGN_UNITS.find((u) => u.id === unitId) ?? Object.values(FACTION_ELITES).find((u) => u.id === unitId);
+    const tier = def?.tier ?? 1;
+    return UPKEEP_PER_TIER[tier] ?? UPKEEP_PER_TIER[1];
   }
 
   // ---------------------------------------------------------------------------
