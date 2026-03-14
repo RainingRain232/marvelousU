@@ -50,8 +50,13 @@ export const ThreeDragonWaveSystem = {
     }
 
     if (state.waveTimer >= state.waveDuration + 10) {
-      for (const e of state.enemies) e.alive = false;
-      _endWave(state);
+      for (const e of state.enemies) {
+        if (!e.isBoss) e.alive = false;  // Don't kill bosses
+      }
+      // Only end wave if no boss is alive
+      if (!state.enemies.some(e => e.isBoss && e.alive)) {
+        _endWave(state);
+      }
     }
   },
 };
@@ -66,6 +71,12 @@ function _startWave(state: ThreeDragonState): void {
   state.waveDuration = TDBalance.WAVE_DURATION_BASE + state.wave * TDBalance.WAVE_DURATION_GROWTH;
   state.waveEnemiesTotal = TDBalance.ENEMY_COUNT_BASE + state.wave * TDBalance.ENEMY_COUNT_GROWTH;
 
+  const isSwarmWave = !isBossWave && state.wave % 3 === 0;
+  if (isSwarmWave) {
+    state.waveEnemiesTotal = Math.floor(state.waveEnemiesTotal * 2);
+  }
+  state.swarmWave = isSwarmWave;
+
   state.enemies = state.enemies.filter(e => e.alive);
 
   if (isBossWave) {
@@ -79,6 +90,7 @@ function _endWave(state: ThreeDragonState): void {
   state.betweenWaves = true;
   state.betweenWaveTimer = TDBalance.BETWEEN_WAVE_PAUSE;
   state.bossActive = false;
+  state.swarmWave = false;
 
   state.player.hp = Math.min(state.player.maxHp, state.player.hp + 20);
   state.player.mana = Math.min(state.player.maxMana, state.player.mana + 35);
@@ -132,6 +144,7 @@ function _spawnEnemy(state: ThreeDragonState): void {
     maxHp: Math.floor(template.hp * hpScale),
     alive: true,
     isBoss: false,
+    isElite: false,
     bossPhase: 0,
     attackTimer: template.fireRate + Math.random() * template.fireRate,
     hitTimer: 0,
@@ -149,6 +162,22 @@ function _spawnEnemy(state: ThreeDragonState): void {
     rotationY: 0,
     rotationSpeed: (Math.random() - 0.5) * 2,
   };
+
+  // Swarm wave: halve HP
+  if (state.swarmWave) {
+    enemy.hp = Math.floor(enemy.hp * 0.5);
+    enemy.maxHp = enemy.hp;
+  }
+
+  // Elite chance
+  if (Math.random() < 0.12) {
+    enemy.isElite = true;
+    enemy.hp = Math.floor(enemy.hp * 2);
+    enemy.maxHp = enemy.hp;
+    enemy.size *= 1.5;
+    enemy.scoreValue = Math.floor(enemy.scoreValue * 1.8);
+    enemy.glowColor = 0xffd700;
+  }
 
   state.enemies.push(enemy);
 }
@@ -168,6 +197,7 @@ function _spawnBoss(state: ThreeDragonState, type: TDEnemyType): void {
     maxHp: Math.floor(template.hp * hpScale),
     alive: true,
     isBoss: true,
+    isElite: false,
     bossPhase: 0,
     attackTimer: 2,
     hitTimer: 0,

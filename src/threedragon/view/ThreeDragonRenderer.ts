@@ -7,21 +7,15 @@
 import * as THREE from "three";
 import type { ThreeDragonState, TDEnemy } from "../state/ThreeDragonState";
 import { TDEnemyType } from "../state/ThreeDragonState";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const FOG_COLOR = 0x1a1833;
-const AMBIENT_COLOR = 0x334466;
-const SUN_COLOR = 0xffeedd;
-const GROUND_COLOR = 0x1e4a1e;
+import type { TDMapConfig } from "../config/ThreeDragonConfig";
+import { TD_MAPS } from "../config/ThreeDragonConfig";
 
 // ---------------------------------------------------------------------------
 // ThreeDragonRenderer
 // ---------------------------------------------------------------------------
 
 export class ThreeDragonRenderer {
+  private _mapCfg: TDMapConfig = TD_MAPS[0];
   private _renderer!: THREE.WebGLRenderer;
   private _scene!: THREE.Scene;
   private _camera!: THREE.PerspectiveCamera;
@@ -101,7 +95,8 @@ export class ThreeDragonRenderer {
   // Init
   // ---------------------------------------------------------------------------
 
-  init(sw: number, sh: number): void {
+  init(sw: number, sh: number, mapCfg?: TDMapConfig): void {
+    if (mapCfg) this._mapCfg = mapCfg;
     // Renderer
     this._renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this._renderer.setSize(sw, sh);
@@ -118,7 +113,7 @@ export class ThreeDragonRenderer {
 
     // Scene
     this._scene = new THREE.Scene();
-    this._scene.fog = new THREE.FogExp2(FOG_COLOR, 0.006);
+    this._scene.fog = new THREE.FogExp2(this._mapCfg.fogColor, this._mapCfg.fogDensity);
 
     // Camera — wider FOV for dramatic perspective, slightly higher and further back
     this._camera = new THREE.PerspectiveCamera(70, sw / sh, 0.5, 600);
@@ -145,12 +140,14 @@ export class ThreeDragonRenderer {
   // ---------------------------------------------------------------------------
 
   private _buildLighting(): void {
-    // Ambient — warm tinted for golden hour feel
-    this._ambientLight = new THREE.AmbientLight(AMBIENT_COLOR, 0.5);
+    const mc = this._mapCfg;
+
+    // Ambient
+    this._ambientLight = new THREE.AmbientLight(mc.ambientColor, mc.ambientIntensity);
     this._scene.add(this._ambientLight);
 
-    // Sun directional — warm golden light from ahead-right
-    this._sunLight = new THREE.DirectionalLight(SUN_COLOR, 1.6);
+    // Sun directional
+    this._sunLight = new THREE.DirectionalLight(mc.sunLightColor, mc.sunLightIntensity);
     this._sunLight.position.set(30, 50, -40);
     this._sunLight.castShadow = true;
     this._sunLight.shadow.mapSize.set(2048, 2048);
@@ -164,16 +161,16 @@ export class ThreeDragonRenderer {
     this._scene.add(this._sunLight);
     this._scene.add(this._sunLight.target);
 
-    // Player wand light — bright magic glow
+    // Player wand light
     this._pointLight = new THREE.PointLight(0x88ccff, 3, 20);
     this._scene.add(this._pointLight);
 
-    // Hemisphere light — blue sky above, green ground below
-    const hemiLight = new THREE.HemisphereLight(0x7799dd, 0x224422, 0.5);
+    // Hemisphere light
+    const hemiLight = new THREE.HemisphereLight(mc.hemiSkyColor, mc.hemiGroundColor, 0.5);
     this._scene.add(hemiLight);
 
-    // Rim light from behind — creates silhouette edge glow
-    const rimLight = new THREE.DirectionalLight(0xff9966, 0.4);
+    // Rim light
+    const rimLight = new THREE.DirectionalLight(mc.rimLightColor, 0.4);
     rimLight.position.set(-20, 30, 60);
     this._scene.add(rimLight);
   }
@@ -183,6 +180,8 @@ export class ThreeDragonRenderer {
   // ---------------------------------------------------------------------------
 
   private _buildSky(): void {
+    const mc = this._mapCfg;
+
     // Sky dome
     const skyGeo = new THREE.SphereGeometry(200, 32, 16);
     const skyMat = new THREE.ShaderMaterial({
@@ -190,10 +189,10 @@ export class ThreeDragonRenderer {
       depthWrite: false,
       uniforms: {
         uTime: { value: 0 },
-        uTopColor: { value: new THREE.Color(0x0b0e2a) },
-        uMidColor: { value: new THREE.Color(0x1a2555) },
-        uHorizonColor: { value: new THREE.Color(0xdd6633) },
-        uSunColor: { value: new THREE.Color(0xffcc44) },
+        uTopColor: { value: new THREE.Color(mc.skyTopColor) },
+        uMidColor: { value: new THREE.Color(mc.skyMidColor) },
+        uHorizonColor: { value: new THREE.Color(mc.skyHorizonColor) },
+        uSunColor: { value: new THREE.Color(mc.skySunColor) },
       },
       vertexShader: `
         varying vec3 vWorldPos;
@@ -268,7 +267,7 @@ export class ThreeDragonRenderer {
       `,
     });
     this._sunMesh = new THREE.Mesh(sunGeo, sunMat);
-    this._sunMesh.position.set(80, 60, -120);
+    this._sunMesh.position.set(mc.sunPosition[0], mc.sunPosition[1], mc.sunPosition[2]);
     this._sunMesh.lookAt(0, 0, 0);
     this._scene.add(this._sunMesh);
 
@@ -337,7 +336,7 @@ export class ThreeDragonRenderer {
       `,
     });
     this._moonMesh = new THREE.Mesh(moonGeo, moonMat);
-    this._moonMesh.position.set(-90, 70, -80);
+    this._moonMesh.position.set(mc.moonPosition[0], mc.moonPosition[1], mc.moonPosition[2]);
     this._moonMesh.lookAt(0, 0, 0);
     this._scene.add(this._moonMesh);
 
@@ -388,12 +387,12 @@ export class ThreeDragonRenderer {
   }
 
   private _buildClouds(): void {
-    // Cloud color palette — sunset-lit with depth layers
-    const cloudLightColors = [0xddccaa, 0xeeddbb, 0xccbb99, 0xddbb88];
-    const cloudDarkColors = [0x556688, 0x667799, 0x445577, 0x778899];
-    const cloudMidColors = [0x99aabb, 0xaabbcc, 0x8899aa, 0xbbaa99];
+    const mc = this._mapCfg;
+    const cloudLightColors = mc.cloudLightColors;
+    const cloudDarkColors = mc.cloudDarkColors;
+    const cloudMidColors = mc.cloudMidColors;
 
-    for (let i = 0; i < 55; i++) {
+    for (let i = 0; i < mc.cloudCount; i++) {
       const cloudGroup = new THREE.Group();
       const puffs = 5 + Math.floor(Math.random() * 6);
       const litFromSun = Math.random() < 0.5; // some clouds are lit, some in shadow
@@ -437,7 +436,7 @@ export class ThreeDragonRenderer {
       // Add bright highlight puff on top of some clouds
       if (litFromSun && Math.random() < 0.6) {
         const highlightMat = new THREE.MeshBasicMaterial({
-          color: 0xffeedd,
+          color: mc.cloudHighlightColor,
           transparent: true,
           opacity: 0.04 + Math.random() * 0.06,
           depthWrite: false,
@@ -469,7 +468,9 @@ export class ThreeDragonRenderer {
   // ---------------------------------------------------------------------------
 
   private _buildGround(): void {
-    // Rolling green terrain tiles
+    const mc = this._mapCfg;
+
+    // Rolling terrain tiles
     const tileSize = 80;
     const tileCount = 8;
 
@@ -489,10 +490,10 @@ export class ThreeDragonRenderer {
       }
       geo.computeVertexNormals();
 
-      // Gradient ground material with vertex colors for variation
+      // Ground material colored per map
       const mat = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(GROUND_COLOR).offsetHSL(
-          (Math.random() - 0.5) * 0.03,
+        color: new THREE.Color(mc.groundColor).offsetHSL(
+          (Math.random() - 0.5) * mc.groundHueVariation,
           (Math.random() - 0.5) * 0.1,
           (Math.random() - 0.5) * 0.06,
         ),
@@ -514,8 +515,8 @@ export class ThreeDragonRenderer {
       depthWrite: false,
       uniforms: {
         uTime: { value: 0 },
-        uColor: { value: new THREE.Color(0x0d1f3c) },
-        uHighlight: { value: new THREE.Color(0x3388bb) },
+        uColor: { value: new THREE.Color(mc.waterColor) },
+        uHighlight: { value: new THREE.Color(mc.waterHighlight) },
       },
       vertexShader: `
         uniform float uTime;
@@ -570,7 +571,7 @@ export class ThreeDragonRenderer {
       `,
     });
     this._waterPlane = new THREE.Mesh(waterGeo, waterMat);
-    this._waterPlane.position.y = -3;
+    this._waterPlane.position.y = mc.waterY;
     this._scene.add(this._waterPlane);
 
     // Mountains (distant backdrop) with snow caps, ridgelines, and foothills
@@ -581,9 +582,9 @@ export class ThreeDragonRenderer {
 
       // Main peak — varied polygon counts for organic shapes
       const mtnGeo = new THREE.ConeGeometry(w, h, 5 + Math.floor(Math.random() * 4));
-      const baseHue = 0.28 + (Math.random() - 0.5) * 0.06;
+      const baseHue = mc.mountainBaseHue + (Math.random() - 0.5) * 0.06;
       const mtnMat = new THREE.MeshPhongMaterial({
-        color: new THREE.Color().setHSL(baseHue, 0.25 + Math.random() * 0.15, 0.15 + Math.random() * 0.12),
+        color: new THREE.Color().setHSL(baseHue, mc.mountainSatRange[0] + Math.random() * (mc.mountainSatRange[1] - mc.mountainSatRange[0]), mc.mountainLightRange[0] + Math.random() * (mc.mountainLightRange[1] - mc.mountainLightRange[0])),
         flatShading: true,
       });
       const mtn = new THREE.Mesh(mtnGeo, mtnMat);
@@ -622,10 +623,10 @@ export class ThreeDragonRenderer {
       }
 
       // Snow cap on tall mountains — layered snow
-      if (h > 22) {
+      if (h > mc.snowThreshold) {
         const snowGeo = new THREE.ConeGeometry(w * 0.35, h * 0.2, 6);
         const snowMat = new THREE.MeshPhongMaterial({
-          color: 0xddeeff,
+          color: mc.snowColor,
           emissive: 0x223344,
           emissiveIntensity: 0.1,
         });
@@ -676,7 +677,7 @@ export class ThreeDragonRenderer {
     }
 
     // Scattered ground rocks and boulders
-    const rockMat = new THREE.MeshPhongMaterial({ color: 0x445544, flatShading: true });
+    const rockMat = new THREE.MeshPhongMaterial({ color: mc.rockColor, flatShading: true });
     for (let i = 0; i < 60; i++) {
       const rSize = 0.3 + Math.random() * 1.2;
       const rockGeo = new THREE.DodecahedronGeometry(rSize, 0);
@@ -698,7 +699,7 @@ export class ThreeDragonRenderer {
     }
 
     // Grass tufts — small cone clusters on the ground
-    const grassColors = [0x2a6e2a, 0x337733, 0x448833, 0x557722];
+    const grassColors = mc.grassColors;
     for (let i = 0; i < 120; i++) {
       const tuftGroup = new THREE.Group();
       const blades = 3 + Math.floor(Math.random() * 4);
@@ -730,7 +731,7 @@ export class ThreeDragonRenderer {
     }
 
     // Wildflowers — small colorful dots scattered on the ground
-    const flowerColors = [0xff6688, 0xffaa44, 0xcc88ff, 0x88ccff, 0xffff66, 0xff4466];
+    const flowerColors = mc.flowerColors;
     for (let i = 0; i < 80; i++) {
       const flowerGroup = new THREE.Group();
       const fColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
@@ -760,14 +761,14 @@ export class ThreeDragonRenderer {
       this._trees.push(flowerGroup as any);
     }
 
-    // Trees scattered on ground — mixed forest with autumn colors
-    const canopyColors = [0x225522, 0x2a5e2a, 0x4a7a2a, 0x886622, 0x994422, 0x553322];
+    // Trees scattered on ground
+    const canopyColors = mc.treeCanopyColors;
     for (let i = 0; i < 80; i++) {
       const treeGroup = new THREE.Group();
       const trunkH = 1.5 + Math.random() * 2.5;
       const trunkGeo = new THREE.CylinderGeometry(0.2, 0.35, trunkH, 6);
       const trunkMat = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(0x553311).offsetHSL(0, 0, (Math.random() - 0.5) * 0.1),
+        color: new THREE.Color(mc.trunkColor).offsetHSL(0, 0, (Math.random() - 0.5) * 0.1),
       });
       const trunk = new THREE.Mesh(trunkGeo, trunkMat);
       trunk.position.y = trunkH * 0.5;
@@ -1779,6 +1780,27 @@ export class ThreeDragonRenderer {
         }
     }
 
+    // Elite golden glow
+    if ((enemy as any).isElite) {
+      const eliteLight = new THREE.PointLight(0xffd700, 3, 8);
+      eliteLight.name = "eliteGlow";
+      group.add(eliteLight);
+
+      // Golden ring indicator
+      const ringGeo = new THREE.RingGeometry(enemy.size * 1.2, enemy.size * 1.4, 16);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xffd700,
+        transparent: true,
+        opacity: 0.4,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.name = "eliteRing";
+      group.add(ring);
+    }
+
     return group;
   }
 
@@ -2397,7 +2419,7 @@ export class ThreeDragonRenderer {
   // Update enemies
   // ---------------------------------------------------------------------------
 
-  private _updateEnemies(state: ThreeDragonState, _dt: number, time: number): void {
+  private _updateEnemies(state: ThreeDragonState, dt: number, time: number): void {
     const seen = new Set<number>();
 
     for (const enemy of state.enemies) {
@@ -2514,6 +2536,12 @@ export class ThreeDragonRenderer {
             seg.position.x = i * enemy.size * 0.6 + Math.sin(time + i * 0.4) * 0.5;
           }
         }
+      }
+
+      // Elite ring rotation
+      const eliteRing = group.getObjectByName("eliteRing") as THREE.Mesh;
+      if (eliteRing) {
+        eliteRing.rotation.z += dt * 2;
       }
     }
 
@@ -2998,6 +3026,22 @@ export class ThreeDragonRenderer {
   }
 
   // ---------------------------------------------------------------------------
+  // Dispose helper
+  // ---------------------------------------------------------------------------
+
+  private _disposeObject(obj: THREE.Object3D): void {
+    obj.traverse(child => {
+      if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
+      if ((child as THREE.Mesh).material) {
+        const mat = (child as THREE.Mesh).material;
+        if (Array.isArray(mat)) mat.forEach(m => m.dispose());
+        else (mat as THREE.Material).dispose();
+      }
+    });
+    if (obj.parent) obj.parent.remove(obj);
+  }
+
+  // ---------------------------------------------------------------------------
   // Cleanup
   // ---------------------------------------------------------------------------
 
@@ -3060,11 +3104,61 @@ export class ThreeDragonRenderer {
     }
     this._screenFlashes = [];
 
+    // Dispose ground tiles
+    for (const tile of this._groundTiles) this._disposeObject(tile);
+    this._groundTiles = [];
+
+    // Dispose water
+    if (this._waterPlane) this._disposeObject(this._waterPlane);
+
+    // Dispose mountains
+    for (const mtn of this._mountains) this._disposeObject(mtn);
+    this._mountains = [];
+
+    // Dispose trees/rocks/grass/flowers
+    for (const tree of this._trees) this._disposeObject(tree);
+    this._trees = [];
+
+    // Dispose sky objects
+    if (this._skyMesh) this._disposeObject(this._skyMesh);
+    if (this._sunMesh) this._disposeObject(this._sunMesh);
+    if (this._moonMesh) this._disposeObject(this._moonMesh);
+    if (this._starField) this._disposeObject(this._starField);
+    if (this._godRays) this._disposeObject(this._godRays);
+    this._disposeObject(this._cloudGroup);
+    this._cloudGroup = new THREE.Group();
+
+    // Dispose fireflies and wildlife
+    this._disposeObject(this._fireflyGroup);
+    this._fireflyGroup = new THREE.Group();
+    this._disposeObject(this._wildlifeGroup);
+    this._wildlifeGroup = new THREE.Group();
+
+    // Dispose player
+    this._disposeObject(this._eagleGroup);
+    this._eagleGroup = new THREE.Group();
+
+    // Dispose trail particles
+    if (this._trailParticles) this._disposeObject(this._trailParticles);
+
     // Remove canvas
     if (this._canvas.parentNode) {
       this._canvas.parentNode.removeChild(this._canvas);
     }
 
     this._renderer.dispose();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Project 3D world position to 2D screen coordinates
+  // ---------------------------------------------------------------------------
+
+  projectToScreen(worldPos: { x: number; y: number; z: number }, sw: number, sh: number): { x: number; y: number; visible: boolean } {
+    const vec = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
+    vec.project(this._camera);
+    const x = (vec.x * 0.5 + 0.5) * sw;
+    const y = (-vec.y * 0.5 + 0.5) * sh;
+    const visible = vec.z < 1 && x > -50 && x < sw + 50 && y > -50 && y < sh + 50;
+    return { x, y, visible };
   }
 }

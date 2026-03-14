@@ -65,6 +65,7 @@ export interface TDEnemy {
   maxHp: number;
   alive: boolean;
   isBoss: boolean;
+  isElite: boolean;
   bossPhase: number;
   attackTimer: number;
   hitTimer: number;
@@ -196,6 +197,7 @@ export interface ThreeDragonState {
   betweenWaves: boolean;
   betweenWaveTimer: number;
   bossActive: boolean;
+  swarmWave: boolean;
   bossWaveInterval: number;
   totalWaves: number;
 
@@ -206,6 +208,9 @@ export interface ThreeDragonState {
   // World scrolling
   scrollSpeed: number;
   worldZ: number;
+
+  // Map
+  mapId: string;
 
   // Day/night cycle
   dayPhase: number;
@@ -235,7 +240,7 @@ export interface ThreeDragonState {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createThreeDragonState(screenW: number, screenH: number): ThreeDragonState {
+export function createThreeDragonState(screenW: number, screenH: number, mapId = "enchanted_valley"): ThreeDragonState {
   return {
     gameTime: 0,
     paused: false,
@@ -282,11 +287,14 @@ export function createThreeDragonState(screenW: number, screenH: number): ThreeD
     betweenWaves: true,
     betweenWaveTimer: 4,
     bossActive: false,
+    swarmWave: false,
     bossWaveInterval: 4,
     totalWaves: 20,
 
     slowMoTimer: 0,
     slowMoFactor: 1,
+
+    mapId,
 
     scrollSpeed: 20,
     worldZ: 0,

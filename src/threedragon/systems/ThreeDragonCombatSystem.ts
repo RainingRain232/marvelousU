@@ -14,6 +14,7 @@ let _onLightningStrike: ((x: number, y: number, z: number) => void) | null = nul
 let _onEnemyDeath: ((x: number, y: number, z: number, size: number, color: number, glowColor: number, isBoss: boolean) => void) | null = null;
 let _onBossKill: ((x: number, y: number, z: number, size: number, color: number, glowColor: number) => void) | null = null;
 let _onPowerUpCollect: ((x: number, y: number, z: number, type: "health" | "mana") => void) | null = null;
+let _onDamageNumber: ((x: number, y: number, z: number, damage: number, isCrit: boolean, isElite: boolean) => void) | null = null;
 
 export const ThreeDragonCombatSystem = {
   setExplosionCallback(cb: typeof _onExplosion): void { _onExplosion = cb; },
@@ -23,6 +24,7 @@ export const ThreeDragonCombatSystem = {
   setEnemyDeathCallback(cb: typeof _onEnemyDeath): void { _onEnemyDeath = cb; },
   setBossKillCallback(cb: typeof _onBossKill): void { _onBossKill = cb; },
   setPowerUpCollectCallback(cb: typeof _onPowerUpCollect): void { _onPowerUpCollect = cb; },
+  setDamageNumberCallback(cb: typeof _onDamageNumber): void { _onDamageNumber = cb; },
 
   update(state: ThreeDragonState, dt: number): void {
     _updateSkillCooldowns(state, dt);
@@ -174,14 +176,16 @@ function _fireArcaneBolt(state: ThreeDragonState): void {
   const p = state.player;
   const cfg = TD_SKILL_CONFIGS[TDSkillId.ARCANE_BOLT];
 
-  // Fire forward (negative Z) with slight spread
-  const spread = (Math.random() - 0.5) * 0.8;
-  const spreadY = (Math.random() - 0.5) * 0.4;
+  // Aim toward mouse — convert screen coords to world-space bias
+  const mx = (state.input.mouseX / state.screenW - 0.5) * 2; // -1 to 1
+  const my = -(state.input.mouseY / state.screenH - 0.5) * 2; // -1 to 1 (inverted)
+  const spread = (Math.random() - 0.5) * 0.5;
+  const spreadY = (Math.random() - 0.5) * 0.3;
 
   const proj: TDProjectile = {
     id: state.nextId++,
     position: { x: p.position.x, y: p.position.y, z: p.position.z - 2 },
-    velocity: { x: spread * 10, y: spreadY * 5, z: -60 },
+    velocity: { x: mx * 25 + spread * 10, y: my * 12 + spreadY * 5, z: -55 },
     damage: cfg.damage,
     radius: 0.8,
     lifetime: 3,
@@ -444,6 +448,24 @@ function _updateEnemyBehavior(state: ThreeDragonState, dt: number): void {
         break;
     }
 
+    if (e.isBoss) {
+      const hpPct = e.hp / e.maxHp;
+      // Phase 2: below 50% HP — faster attacks, more aggressive
+      if (hpPct < 0.5 && e.bossPhase < 1) {
+        e.bossPhase = 1;
+        e.fireRate = Math.max(0.2, e.fireRate * 0.6);
+        e.velocity.x *= 1.4;
+        e.velocity.z *= 1.3;
+      }
+      // Phase 3: below 25% HP — enraged, much faster
+      if (hpPct < 0.25 && e.bossPhase < 2) {
+        e.bossPhase = 2;
+        e.fireRate = Math.max(0.15, e.fireRate * 0.5);
+        e.velocity.x *= 1.3;
+        e.velocity.z *= 1.2;
+      }
+    }
+
     // Enemy firing
     if (e.fireRate > 0 && !e.isBoss) {
       e.attackTimer -= dt;
@@ -699,6 +721,7 @@ function _damageEnemy(state: ThreeDragonState, enemy: TDEnemy, damage: number): 
   enemy.hitTimer = 0.1;
 
   _onHit?.(enemy.position.x, enemy.position.y, enemy.position.z, finalDmg, isCrit);
+  _onDamageNumber?.(enemy.position.x, enemy.position.y + enemy.size, enemy.position.z, finalDmg, isCrit, (enemy as any).isElite ?? false);
 
   state.player.comboCount++;
   state.player.comboTimer = TDBalance.COMBO_TIMEOUT;

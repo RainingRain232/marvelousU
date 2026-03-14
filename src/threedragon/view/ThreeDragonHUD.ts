@@ -32,6 +32,15 @@ export class ThreeDragonHUD {
   private _notifTimer = 0;
   private _lastComboCount = 0;
   private _styleEl!: HTMLStyleElement;
+  private _mapNameEl!: HTMLDivElement;
+  private _highScoreEl!: HTMLDivElement;
+  private _dmgNumbers: { el: HTMLDivElement; timer: number; startY: number }[] = [];
+  private _pauseOverlay!: HTMLDivElement;
+  private _pauseMenuVisible = false;
+  private _onPauseResume: (() => void) | null = null;
+  private _onPauseRestart: (() => void) | null = null;
+  private _onPauseQuit: (() => void) | null = null;
+  private _edgeIndicators: HTMLDivElement[] = [];
 
   build(_sw: number, _sh: number): void {
     // Inject keyframe animations
@@ -109,6 +118,15 @@ export class ThreeDragonHUD {
     manaLabel.textContent = "MANA";
     this._root.appendChild(manaLabel);
 
+    // Map name (will be set on first update)
+    this._mapNameEl = document.createElement("div");
+    this._mapNameEl.style.cssText = `
+      position: absolute; left: 22px; top: 62px; font-size: 10px;
+      color: #667788; letter-spacing: 1px; text-transform: uppercase;
+      text-shadow: 1px 1px 2px #000;
+    `;
+    this._root.appendChild(this._mapNameEl);
+
     // Score
     this._scoreEl = document.createElement("div");
     this._scoreEl.style.cssText = `
@@ -129,6 +147,14 @@ export class ThreeDragonHUD {
     `;
     scoreLabel.textContent = "SCORE";
     this._root.appendChild(scoreLabel);
+
+    this._highScoreEl = document.createElement("div");
+    this._highScoreEl.style.cssText = `
+      position: absolute; top: 54px; right: 22px; font-size: 10px;
+      color: #888866; letter-spacing: 1px;
+      text-shadow: 1px 1px 2px #000;
+    `;
+    this._root.appendChild(this._highScoreEl);
 
     // Wave
     this._waveEl = document.createElement("div");
@@ -228,6 +254,70 @@ export class ThreeDragonHUD {
       transition: opacity 0.5s ease-out, color 0.3s;
     `;
     this._root.appendChild(this._centerText);
+
+    // Pause menu overlay
+    this._pauseOverlay = document.createElement("div");
+    this._pauseOverlay.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); display: none;
+      justify-content: center; align-items: center; flex-direction: column;
+      z-index: 50; pointer-events: auto; backdrop-filter: blur(4px);
+      font-family: 'Cinzel', Georgia, serif;
+    `;
+
+    const pauseTitle = document.createElement("div");
+    pauseTitle.style.cssText = `
+      font-size: 36px; color: #ccddff; font-weight: bold; letter-spacing: 4px;
+      text-shadow: 0 0 15px rgba(100,150,255,0.5), 2px 2px 4px rgba(0,0,0,0.8);
+      margin-bottom: 30px; text-transform: uppercase;
+    `;
+    pauseTitle.textContent = "Paused";
+    this._pauseOverlay.appendChild(pauseTitle);
+
+    const btnStyle = `
+      width: 200px; padding: 12px 0; margin: 6px; border-radius: 8px;
+      border: 1px solid rgba(100,150,255,0.3); cursor: pointer;
+      background: linear-gradient(180deg, rgba(20,25,50,0.9) 0%, rgba(10,12,25,0.95) 100%);
+      color: #aabbdd; font-size: 16px; font-weight: bold; letter-spacing: 2px;
+      text-transform: uppercase; text-align: center;
+      font-family: 'Cinzel', Georgia, serif;
+      transition: all 0.2s; pointer-events: auto;
+    `;
+    const btnHover = (el: HTMLDivElement) => {
+      el.addEventListener("mouseenter", () => {
+        el.style.borderColor = "rgba(255,215,0,0.5)";
+        el.style.color = "#ffd700";
+        el.style.boxShadow = "0 0 15px rgba(255,215,0,0.15)";
+      });
+      el.addEventListener("mouseleave", () => {
+        el.style.borderColor = "rgba(100,150,255,0.3)";
+        el.style.color = "#aabbdd";
+        el.style.boxShadow = "none";
+      });
+    };
+
+    const resumeBtn = document.createElement("div");
+    resumeBtn.style.cssText = btnStyle;
+    resumeBtn.textContent = "Resume";
+    btnHover(resumeBtn);
+    resumeBtn.addEventListener("click", () => this._onPauseResume?.());
+    this._pauseOverlay.appendChild(resumeBtn);
+
+    const restartBtn = document.createElement("div");
+    restartBtn.style.cssText = btnStyle;
+    restartBtn.textContent = "Restart";
+    btnHover(restartBtn);
+    restartBtn.addEventListener("click", () => this._onPauseRestart?.());
+    this._pauseOverlay.appendChild(restartBtn);
+
+    const quitBtn = document.createElement("div");
+    quitBtn.style.cssText = btnStyle;
+    quitBtn.textContent = "Quit";
+    btnHover(quitBtn);
+    quitBtn.addEventListener("click", () => this._onPauseQuit?.());
+    this._pauseOverlay.appendChild(quitBtn);
+
+    this._root.appendChild(this._pauseOverlay);
 
     document.body.appendChild(this._root);
   }
@@ -423,6 +513,19 @@ export class ThreeDragonHUD {
       this._manaBar.style.boxShadow = "0 0 8px rgba(50,100,255,0.15), 0 2px 4px rgba(0,0,0,0.3)";
     }
 
+    // Map name
+    if (this._mapNameEl && !this._mapNameEl.textContent) {
+      // Convert mapId to display name
+      const names: Record<string, string> = {
+        enchanted_valley: "Enchanted Valley",
+        frozen_wastes: "Frozen Wastes",
+        volcanic_ashlands: "Volcanic Ashlands",
+        crystal_caverns: "Crystal Caverns",
+        celestial_peaks: "Celestial Peaks",
+      };
+      this._mapNameEl.textContent = names[state.mapId] || state.mapId;
+    }
+
     // Score
     const scoreText = p.score.toLocaleString();
     if (this._scoreEl.textContent !== scoreText) {
@@ -431,6 +534,16 @@ export class ThreeDragonHUD {
       // Force reflow
       void this._scoreEl.offsetWidth;
       this._scoreEl.style.animation = "td-score-bump 0.2s ease-out";
+    }
+
+    // High score
+    const hsKey = `td_highscore_${state.mapId}`;
+    const hs = parseInt(localStorage.getItem(hsKey) || "0");
+    if (hs > 0) {
+      this._highScoreEl.textContent = `Best: ${hs.toLocaleString()}`;
+      this._highScoreEl.style.display = "block";
+    } else {
+      this._highScoreEl.style.display = "none";
     }
 
     // Wave
@@ -567,6 +680,10 @@ export class ThreeDragonHUD {
         this._centerText.textContent = `Next: Wave ${nextWave} - BOSS WAVE!`;
         this._centerText.style.color = "#ff4444";
         this._centerText.style.textShadow = "0 0 15px rgba(255,50,50,0.6), 0 0 30px rgba(255,0,0,0.3), 2px 2px 4px rgba(0,0,0,0.8)";
+      } else if (nextWave % 3 === 0) {
+        this._centerText.textContent = `Next: Wave ${nextWave} - SWARM!`;
+        this._centerText.style.color = "#ffaa44";
+        this._centerText.style.textShadow = "0 0 15px rgba(255,170,68,0.6), 0 0 30px rgba(255,100,0,0.3), 2px 2px 4px rgba(0,0,0,0.8)";
       } else {
         this._centerText.textContent = `Next: Wave ${nextWave}`;
         this._centerText.style.color = "#88ccff";
@@ -581,6 +698,19 @@ export class ThreeDragonHUD {
       this._centerText.style.opacity = "0";
     }
 
+    // Update damage numbers
+    this._dmgNumbers = this._dmgNumbers.filter(dn => {
+      dn.timer -= dt;
+      if (dn.timer <= 0) {
+        if (dn.el.parentNode) dn.el.parentNode.removeChild(dn.el);
+        return false;
+      }
+      const progress = 1 - dn.timer / 1.2;
+      dn.el.style.top = `${dn.startY - progress * 40}px`;
+      dn.el.style.opacity = `${Math.min(1, dn.timer * 2)}`;
+      return true;
+    });
+
     // Notifications
     if (this._notifTimer > 0) {
       this._notifTimer -= dt;
@@ -588,6 +718,66 @@ export class ThreeDragonHUD {
       if (this._notifTimer <= 0) {
         this._notification.style.opacity = "0";
       }
+    }
+  }
+
+  showDamageNumber(screenX: number, screenY: number, damage: number, isCrit: boolean, isElite: boolean): void {
+    const el = document.createElement("div");
+    const color = isElite ? "#ffd700" : isCrit ? "#ff4444" : "#ffffff";
+    const size = isCrit ? 18 : isElite ? 16 : 13;
+    el.style.cssText = `
+      position: absolute; left: ${screenX}px; top: ${screenY}px;
+      font-size: ${size}px; font-weight: bold; color: ${color};
+      text-shadow: 0 0 4px rgba(0,0,0,0.8), 1px 1px 2px #000;
+      pointer-events: none; z-index: 15;
+      transition: opacity 0.3s;
+    `;
+    el.textContent = Math.floor(damage).toString();
+    this._root.appendChild(el);
+    this._dmgNumbers.push({ el, timer: 1.2, startY: screenY });
+  }
+
+  setPauseCallbacks(onResume: () => void, onRestart: () => void, onQuit: () => void): void {
+    this._onPauseResume = onResume;
+    this._onPauseRestart = onRestart;
+    this._onPauseQuit = onQuit;
+  }
+
+  get isPauseMenuVisible(): boolean {
+    return this._pauseMenuVisible;
+  }
+
+  showPauseMenu(): void {
+    this._pauseMenuVisible = true;
+    this._pauseOverlay.style.display = "flex";
+  }
+
+  hidePauseMenu(): void {
+    this._pauseMenuVisible = false;
+    this._pauseOverlay.style.display = "none";
+  }
+
+  updateEdgeIndicators(indicators: { screenX: number; screenY: number; angle: number; isBoss: boolean }[]): void {
+    // Remove old indicators
+    for (const ind of this._edgeIndicators) {
+      if (ind.parentNode) ind.parentNode.removeChild(ind);
+    }
+    this._edgeIndicators = [];
+
+    for (const data of indicators) {
+      const el = document.createElement("div");
+      const color = data.isBoss ? "#ff4444" : "#ffaa44";
+      const size = data.isBoss ? 10 : 7;
+      el.style.cssText = `
+        position: absolute; left: ${data.screenX - size / 2}px; top: ${data.screenY - size / 2}px;
+        width: ${size}px; height: ${size}px;
+        background: ${color}; border-radius: 50%;
+        box-shadow: 0 0 6px ${color};
+        pointer-events: none; z-index: 12;
+        transform: rotate(${data.angle}rad);
+      `;
+      this._root.appendChild(el);
+      this._edgeIndicators.push(el);
     }
   }
 
@@ -602,6 +792,14 @@ export class ThreeDragonHUD {
   }
 
   cleanup(): void {
+    for (const dn of this._dmgNumbers) {
+      if (dn.el.parentNode) dn.el.parentNode.removeChild(dn.el);
+    }
+    this._dmgNumbers = [];
+    for (const ind of this._edgeIndicators) {
+      if (ind.parentNode) ind.parentNode.removeChild(ind);
+    }
+    this._edgeIndicators = [];
     if (this._root.parentNode) {
       this._root.parentNode.removeChild(this._root);
     }

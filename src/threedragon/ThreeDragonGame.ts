@@ -8,7 +8,7 @@
 import { audioManager } from "@audio/AudioManager";
 import { createThreeDragonState } from "./state/ThreeDragonState";
 import type { ThreeDragonState } from "./state/ThreeDragonState";
-import { TDBalance } from "./config/ThreeDragonConfig";
+import { TDBalance, TD_MAPS, TD_MAP_BY_ID } from "./config/ThreeDragonConfig";
 import { ThreeDragonInputSystem } from "./systems/ThreeDragonInputSystem";
 import { ThreeDragonWaveSystem } from "./systems/ThreeDragonWaveSystem";
 import { ThreeDragonCombatSystem } from "./systems/ThreeDragonCombatSystem";
@@ -26,6 +26,7 @@ export class ThreeDragonGame {
   private _rafId: number | null = null;
   private _simAccumulator = 0;
   private _lastTime = 0;
+  private _selectedMapId = "enchanted_valley";
 
   // View delegates
   private _renderer = new ThreeDragonRenderer();
@@ -35,20 +36,33 @@ export class ThreeDragonGame {
   private _shakeTimer = 0;
   private _shakeMag = 0;
 
+  // Wave transition tracking for level-up rewards
+  private _wasBetweenWaves = true;
+
+  // Menu elements
+  private _menuRoot: HTMLDivElement | null = null;
+  private _menuStyle: HTMLStyleElement | null = null;
+
   // ---------------------------------------------------------------------------
-  // Boot
+  // Boot — shows map menu first, then starts the game
   // ---------------------------------------------------------------------------
 
   async boot(): Promise<void> {
+    audioManager.playGameMusic();
+    const mapId = await this._showMapMenu();
+    this._selectedMapId = mapId;
+    this._bootGame(mapId);
+  }
+
+  private _bootGame(mapId: string): void {
     const sw = window.innerWidth;
     const sh = window.innerHeight;
+    const mapCfg = TD_MAP_BY_ID[mapId] ?? TD_MAPS[0];
 
-    audioManager.playGameMusic();
-
-    this._state = createThreeDragonState(sw, sh);
+    this._state = createThreeDragonState(sw, sh, mapId);
 
     // Initialize Three.js renderer
-    this._renderer.init(sw, sh);
+    this._renderer.init(sw, sh, mapCfg);
     document.body.appendChild(this._renderer.canvas);
 
     // Build HUD
@@ -58,20 +72,43 @@ export class ThreeDragonGame {
     ThreeDragonInputSystem.init(this._state);
     ThreeDragonInputSystem.setPauseCallback((paused) => {
       if (paused && !this._state.gameOver && !this._state.victory) {
-        this._hud.showNotification("PAUSED", "#cccccc");
+        this._hud.showPauseMenu();
+      } else {
+        this._hud.hidePauseMenu();
       }
     });
+
+    // Pause menu callbacks
+    this._hud.setPauseCallbacks(
+      () => {
+        // Resume
+        this._state.paused = false;
+        this._hud.hidePauseMenu();
+      },
+      () => {
+        // Restart
+        this._hud.hidePauseMenu();
+        this._restart();
+      },
+      () => {
+        // Quit
+        this._hud.hidePauseMenu();
+        window.dispatchEvent(new Event("threeDragonExit"));
+      },
+    );
 
     // Combat callbacks → 3D FX
     ThreeDragonCombatSystem.setExplosionCallback((x, y, z, radius, color) => {
       this._renderer.addExplosion(x, y, z, radius, color);
       this._shake(radius > 5 ? 0.8 : 0.3, 0.2);
+      // audioManager.playSfx("explosion");
     });
     ThreeDragonCombatSystem.setHitCallback((_x, _y, _z, _damage, _isCrit) => {
       // Hit effects handled by trail particles in renderer
     });
     ThreeDragonCombatSystem.setPlayerHitCallback(() => {
       this._shake(1.5, 0.3);
+      // audioManager.playSfx("player_hit");
     });
     ThreeDragonCombatSystem.setLightningCallback((x, y, z) => {
       this._renderer.addLightning(x, y, z);
@@ -85,11 +122,21 @@ export class ThreeDragonGame {
       this._renderer.addScreenFlash(glowColor, 0.8);
       this._shake(3.0, 0.6);
       this._hud.showNotification("BOSS DEFEATED!", "#ffd700");
+      // audioManager.playSfx("boss_kill");
     });
     ThreeDragonCombatSystem.setPowerUpCollectCallback((_x, _y, _z, type) => {
       const flashColor = type === "health" ? 0x44ff66 : 0x4488ff;
       this._renderer.addScreenFlash(flashColor, 0.2);
       this._shake(0.3, 0.1);
+      // audioManager.playSfx("powerup");
+    });
+
+    // Damage number callback
+    ThreeDragonCombatSystem.setDamageNumberCallback((x, y, z, damage, isCrit, isElite) => {
+      const screen = this._renderer.projectToScreen({ x, y, z }, this._state.screenW, this._state.screenH);
+      if (screen.visible) {
+        this._hud.showDamageNumber(screen.x, screen.y, damage, isCrit, isElite);
+      }
     });
 
     // Music
@@ -154,6 +201,21 @@ export class ThreeDragonGame {
         ThreeDragonInputSystem.update(this._state, simDt);
         ThreeDragonWaveSystem.update(this._state, simDt);
         ThreeDragonCombatSystem.update(this._state, simDt);
+
+        // Detect wave completion for level-up rewards
+        if (this._state.betweenWaves && !this._wasBetweenWaves && this._state.wave > 0) {
+          // Grant scaling bonuses per wave completed
+          const p = this._state.player;
+          p.maxHp += 5;
+          p.hp = Math.min(p.maxHp, p.hp + 10);
+          p.maxMana += 3;
+          p.mana = Math.min(p.maxMana, p.mana + 15);
+          p.manaRegen += 0.3;
+
+          // Show notification
+          this._hud.showNotification(`Level Up! +5 HP, +3 Mana`, "#44ff88");
+        }
+        this._wasBetweenWaves = this._state.betweenWaves;
       }
     }
 
@@ -184,6 +246,24 @@ export class ThreeDragonGame {
     // Render 3D world
     this._renderer.render(state, dt);
 
+    // Edge indicators for off-screen enemies
+    const indicators: { screenX: number; screenY: number; angle: number; isBoss: boolean }[] = [];
+    const margin = 30;
+    for (const e of this._state.enemies) {
+      if (!e.alive) continue;
+      const screen = this._renderer.projectToScreen(e.position, this._state.screenW, this._state.screenH);
+      if (!screen.visible) {
+        // Clamp to screen edges
+        const cx = this._state.screenW / 2;
+        const cy = this._state.screenH / 2;
+        const angle = Math.atan2(screen.y - cy, screen.x - cx);
+        const edgeX = Math.max(margin, Math.min(this._state.screenW - margin, cx + Math.cos(angle) * (cx - margin)));
+        const edgeY = Math.max(margin, Math.min(this._state.screenH - margin, cy + Math.sin(angle) * (cy - margin)));
+        indicators.push({ screenX: edgeX, screenY: edgeY, angle, isBoss: e.isBoss });
+      }
+    }
+    this._hud.updateEdgeIndicators(indicators);
+
     // Update HUD
     this._hud.update(state, state.screenW, state.screenH, dt);
   }
@@ -200,9 +280,20 @@ export class ThreeDragonGame {
   private _gameOverShown = false;
   private _victoryShown = false;
 
+  private _saveHighScore(): void {
+    const key = `td_highscore_${this._selectedMapId}`;
+    const current = parseInt(localStorage.getItem(key) || "0");
+    const score = this._state.player.score;
+    if (score > current) {
+      localStorage.setItem(key, score.toString());
+      this._hud.showNotification("NEW HIGH SCORE!", "#ffd700");
+    }
+  }
+
   private _handleGameOver(): void {
     if (this._gameOverShown) return;
     this._gameOverShown = true;
+    this._saveHighScore();
     audioManager.switchTrack("game_over");
 
     this._hud.showNotification("GAME OVER", "#ff4444");
@@ -215,6 +306,7 @@ export class ThreeDragonGame {
   private _handleVictory(): void {
     if (this._victoryShown) return;
     this._victoryShown = true;
+    this._saveHighScore();
 
     this._hud.showNotification("VICTORY!", "#ffd700");
 
@@ -247,7 +339,257 @@ export class ThreeDragonGame {
     this._cleanup();
     this._gameOverShown = false;
     this._victoryShown = false;
-    this.boot();
+    this._wasBetweenWaves = true;
+    this._bootGame(this._selectedMapId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Map Selection Menu
+  // ---------------------------------------------------------------------------
+
+  private _showMapMenu(): Promise<string> {
+    return new Promise((resolve) => {
+      // Inject animations
+      this._menuStyle = document.createElement("style");
+      this._menuStyle.textContent = `
+        @keyframes tdm-fade-in {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        @keyframes tdm-slide-up {
+          0% { opacity: 0; transform: translateY(30px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes tdm-card-glow {
+          0%, 100% { box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 0 rgba(255,255,255,0); }
+          50% { box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 12px rgba(255,255,255,0.08); }
+        }
+        @keyframes tdm-title-shimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes tdm-stars {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.8; }
+        }
+        .tdm-card {
+          cursor: pointer;
+          transition: transform 0.25s ease-out, box-shadow 0.25s ease-out, border-color 0.25s;
+        }
+        .tdm-card:hover {
+          transform: translateY(-6px) scale(1.03);
+          border-color: rgba(255,215,0,0.6) !important;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 20px rgba(255,215,0,0.15) !important;
+        }
+        .tdm-card:active {
+          transform: translateY(-2px) scale(0.98);
+        }
+      `;
+      document.head.appendChild(this._menuStyle);
+
+      this._menuRoot = document.createElement("div");
+      this._menuRoot.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: radial-gradient(ellipse at 30% 20%, #0e1428 0%, #060a14 60%, #020408 100%);
+        z-index: 1000; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; font-family: 'Cinzel', Georgia, serif;
+        animation: tdm-fade-in 0.5s ease-out; overflow: auto;
+      `;
+
+      // Decorative star dots
+      for (let i = 0; i < 60; i++) {
+        const star = document.createElement("div");
+        const size = 1 + Math.random() * 2;
+        star.style.cssText = `
+          position: absolute; width: ${size}px; height: ${size}px;
+          background: white; border-radius: 50%;
+          left: ${Math.random() * 100}%; top: ${Math.random() * 100}%;
+          opacity: ${0.1 + Math.random() * 0.4};
+          animation: tdm-stars ${2 + Math.random() * 4}s ease-in-out infinite;
+          animation-delay: ${Math.random() * 3}s;
+          pointer-events: none;
+        `;
+        this._menuRoot.appendChild(star);
+      }
+
+      // Title
+      const title = document.createElement("div");
+      title.style.cssText = `
+        font-size: 42px; font-weight: bold; letter-spacing: 6px;
+        text-transform: uppercase; margin-bottom: 8px;
+        background: linear-gradient(90deg, #aa8844, #ffd700, #ffeeaa, #ffd700, #aa8844);
+        background-size: 200% auto;
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: tdm-title-shimmer 4s linear infinite;
+        text-shadow: none;
+        filter: drop-shadow(0 2px 8px rgba(255,215,0,0.3));
+      `;
+      title.textContent = "3Dragon";
+      this._menuRoot.appendChild(title);
+
+      // Subtitle
+      const subtitle = document.createElement("div");
+      subtitle.style.cssText = `
+        font-size: 14px; color: #8899bb; letter-spacing: 3px;
+        text-transform: uppercase; margin-bottom: 36px;
+        animation: tdm-slide-up 0.6s ease-out;
+      `;
+      subtitle.textContent = "Choose Your Battlefield";
+      this._menuRoot.appendChild(subtitle);
+
+      // Cards container
+      const cardsWrap = document.createElement("div");
+      cardsWrap.style.cssText = `
+        display: flex; flex-wrap: wrap; gap: 16px;
+        justify-content: center; max-width: 900px; padding: 0 20px;
+      `;
+
+      // Map-specific accent colors for the card borders/glows
+      const accents: Record<string, string> = {
+        enchanted_valley: "rgba(255,200,68,0.3)",
+        frozen_wastes: "rgba(100,180,255,0.3)",
+        volcanic_ashlands: "rgba(255,68,0,0.3)",
+        crystal_caverns: "rgba(170,68,255,0.3)",
+        celestial_peaks: "rgba(200,200,255,0.3)",
+      };
+      const accentSolid: Record<string, string> = {
+        enchanted_valley: "#ffd700",
+        frozen_wastes: "#66bbff",
+        volcanic_ashlands: "#ff4400",
+        crystal_caverns: "#aa44ff",
+        celestial_peaks: "#ccccff",
+      };
+
+      // Gradient preview backgrounds per map
+      const gradients: Record<string, string> = {
+        enchanted_valley: "linear-gradient(135deg, #1e4a1e 0%, #2a5530 30%, #dd6633 70%, #0b0e2a 100%)",
+        frozen_wastes: "linear-gradient(135deg, #667788 0%, #8899bb 30%, #1a3355 70%, #0a1528 100%)",
+        volcanic_ashlands: "linear-gradient(135deg, #1a1a1a 0%, #441100 30%, #cc4411 70%, #0a0505 100%)",
+        crystal_caverns: "linear-gradient(135deg, #1a1033 0%, #442266 30%, #6633aa 70%, #0a0520 100%)",
+        celestial_peaks: "linear-gradient(135deg, #334433 0%, #334488 30%, #081530 70%, #020510 100%)",
+      };
+
+      for (let i = 0; i < TD_MAPS.length; i++) {
+        const map = TD_MAPS[i];
+        const accent = accents[map.id] || "rgba(255,255,255,0.2)";
+        const solid = accentSolid[map.id] || "#ffffff";
+        const grad = gradients[map.id] || "linear-gradient(135deg, #111 0%, #333 100%)";
+
+        const card = document.createElement("div");
+        card.className = "tdm-card";
+        card.style.cssText = `
+          width: 160px; padding: 0; border-radius: 10px;
+          border: 1px solid ${accent};
+          background: linear-gradient(180deg, rgba(15,15,35,0.95) 0%, rgba(8,8,20,0.98) 100%);
+          overflow: hidden;
+          animation: tdm-slide-up ${0.4 + i * 0.1}s ease-out, tdm-card-glow 4s ease-in-out infinite;
+          animation-delay: ${i * 0.08}s;
+        `;
+
+        // Preview gradient strip
+        const preview = document.createElement("div");
+        preview.style.cssText = `
+          width: 100%; height: 70px;
+          background: ${grad};
+          border-bottom: 1px solid ${accent};
+          position: relative; overflow: hidden;
+        `;
+        // Subtle overlay pattern
+        const overlay = document.createElement("div");
+        overlay.style.cssText = `
+          position: absolute; inset: 0;
+          background: radial-gradient(circle at 70% 30%, rgba(255,255,255,0.08), transparent 60%);
+        `;
+        preview.appendChild(overlay);
+        card.appendChild(preview);
+
+        // Text content area
+        const content = document.createElement("div");
+        content.style.cssText = `padding: 12px;`;
+
+        const nameEl = document.createElement("div");
+        nameEl.style.cssText = `
+          font-size: 13px; font-weight: bold; color: ${solid};
+          letter-spacing: 1px; margin-bottom: 6px;
+          text-shadow: 0 0 8px ${accent};
+        `;
+        nameEl.textContent = map.name;
+        content.appendChild(nameEl);
+
+        const desc = document.createElement("div");
+        desc.style.cssText = `
+          font-size: 9px; color: #8899aa; line-height: 1.4;
+          letter-spacing: 0.5px;
+        `;
+        desc.textContent = map.preview;
+        content.appendChild(desc);
+
+        card.appendChild(content);
+
+        card.addEventListener("click", () => {
+          this._destroyMenu();
+          resolve(map.id);
+        });
+
+        cardsWrap.appendChild(card);
+      }
+
+      this._menuRoot.appendChild(cardsWrap);
+
+      // Controls hint
+      const hint = document.createElement("div");
+      hint.style.cssText = `
+        margin-top: 28px; font-size: 11px; color: #556677;
+        letter-spacing: 2px; text-transform: uppercase;
+        animation: tdm-slide-up 1s ease-out;
+      `;
+      hint.textContent = "Click a map to begin";
+      this._menuRoot.appendChild(hint);
+
+      // ESC to exit
+      const escHint = document.createElement("div");
+      escHint.style.cssText = `
+        margin-top: 10px; font-size: 10px; color: #334455;
+        letter-spacing: 1px;
+      `;
+      escHint.textContent = "ESC to return";
+      this._menuRoot.appendChild(escHint);
+
+      const escHandler = (e: KeyboardEvent) => {
+        if (e.code === "Escape") {
+          window.removeEventListener("keydown", escHandler);
+          this._destroyMenu();
+          window.dispatchEvent(new Event("threeDragonExit"));
+        }
+      };
+      window.addEventListener("keydown", escHandler);
+
+      // Also support keyboard navigation: 1-5 selects map
+      const numHandler = (e: KeyboardEvent) => {
+        const num = parseInt(e.key);
+        if (num >= 1 && num <= TD_MAPS.length) {
+          window.removeEventListener("keydown", numHandler);
+          window.removeEventListener("keydown", escHandler);
+          this._destroyMenu();
+          resolve(TD_MAPS[num - 1].id);
+        }
+      };
+      window.addEventListener("keydown", numHandler);
+
+      document.body.appendChild(this._menuRoot);
+    });
+  }
+
+  private _destroyMenu(): void {
+    if (this._menuRoot?.parentNode) {
+      this._menuRoot.parentNode.removeChild(this._menuRoot);
+      this._menuRoot = null;
+    }
+    if (this._menuStyle?.parentNode) {
+      this._menuStyle.parentNode.removeChild(this._menuStyle);
+      this._menuStyle = null;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -265,6 +607,7 @@ export class ThreeDragonGame {
   // ---------------------------------------------------------------------------
 
   private _cleanup(): void {
+    this._destroyMenu();
     ThreeDragonInputSystem.destroy();
     ThreeDragonCombatSystem.setExplosionCallback(null);
     ThreeDragonCombatSystem.setHitCallback(null);
@@ -273,6 +616,7 @@ export class ThreeDragonGame {
     ThreeDragonCombatSystem.setEnemyDeathCallback(null);
     ThreeDragonCombatSystem.setBossKillCallback(null);
     ThreeDragonCombatSystem.setPowerUpCollectCallback(null);
+    ThreeDragonCombatSystem.setDamageNumberCallback(null);
     ThreeDragonWaveSystem.reset();
 
     if (this._rafId !== null) {
