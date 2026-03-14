@@ -132,35 +132,322 @@ for (const race of CAMPAIGN_FACTIONS) {
 // Terrain
 // ---------------------------------------------------------------------------
 
+type TerrainKind = "forest" | "mountains" | "desert" | "swamp" | "snow" | "lake" | "hills";
+
 interface TerrainRegion {
   x: number;
   y: number;
   r: number;
-  type: "forest" | "mountains" | "desert" | "swamp" | "snow";
+  type: TerrainKind;
+  // Pre-baked scatter features (trees, rocks, etc.)
+  features: { dx: number; dy: number; size: number; variant: number }[];
+}
+
+// Simple value-noise (seeded) for ground variation
+function _hash(x: number, y: number): number {
+  let h = (x * 374761393 + y * 668265263 + 1274126177) | 0;
+  h = ((h ^ (h >> 13)) * 1274126177) | 0;
+  return (h & 0x7fffffff) / 0x7fffffff;
+}
+
+function _noise(px: number, py: number, scale: number): number {
+  const sx = px / scale;
+  const sy = py / scale;
+  const ix = Math.floor(sx);
+  const iy = Math.floor(sy);
+  const fx = sx - ix;
+  const fy = sy - iy;
+  const a = _hash(ix, iy);
+  const b = _hash(ix + 1, iy);
+  const c = _hash(ix, iy + 1);
+  const d = _hash(ix + 1, iy + 1);
+  const ux = fx * fx * (3 - 2 * fx);
+  const uy = fy * fy * (3 - 2 * fy);
+  return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+}
+
+function _generateScatterFeatures(
+  _cx: number, _cy: number, r: number, type: TerrainKind,
+): TerrainRegion["features"] {
+  const features: TerrainRegion["features"] = [];
+  const density = type === "forest" ? 0.012 : type === "mountains" ? 0.006
+    : type === "swamp" ? 0.008 : type === "hills" ? 0.005
+    : type === "snow" ? 0.004 : type === "desert" ? 0.003 : 0;
+  const area = Math.PI * r * r;
+  const count = Math.floor(area * density);
+  for (let i = 0; i < count; i++) {
+    // Random point inside circle
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.sqrt(Math.random()) * r * 0.9;
+    features.push({
+      dx: Math.cos(angle) * dist,
+      dy: Math.sin(angle) * dist,
+      size: 0.5 + Math.random() * 1.0,
+      variant: Math.floor(Math.random() * 4),
+    });
+  }
+  return features;
 }
 
 function _generateTerrain(): TerrainRegion[] {
   const regions: TerrainRegion[] = [];
-  const types: TerrainRegion["type"][] = ["forest", "mountains", "desert", "swamp", "snow"];
-  const count = 15 + Math.floor(Math.random() * 10);
+  const types: TerrainKind[] = ["forest", "forest", "mountains", "hills", "desert", "swamp", "snow", "lake"];
+  const count = 20 + Math.floor(Math.random() * 12);
   for (let i = 0; i < count; i++) {
-    regions.push({
+    const type = types[Math.floor(Math.random() * types.length)];
+    const r = type === "lake" ? 25 + Math.random() * 40
+      : type === "mountains" ? 50 + Math.random() * 70
+      : 40 + Math.random() * 80;
+    const region: TerrainRegion = {
       x: 60 + Math.random() * (MAP_W - 120),
       y: 60 + Math.random() * (MAP_H - 120),
-      r: 40 + Math.random() * 80,
-      type: types[Math.floor(Math.random() * types.length)],
-    });
+      r,
+      type,
+      features: [],
+    };
+    region.features = _generateScatterFeatures(region.x, region.y, region.r, region.type);
+    regions.push(region);
   }
   return regions;
 }
 
-const TERRAIN_COLORS: Record<string, string> = {
-  forest: "rgba(30,80,30,0.35)",
-  mountains: "rgba(100,90,80,0.4)",
-  desert: "rgba(180,160,100,0.3)",
-  swamp: "rgba(50,70,50,0.35)",
-  snow: "rgba(200,210,220,0.3)",
-};
+// Pre-render the static ground texture to an offscreen canvas
+function _bakeGroundTexture(terrain: TerrainRegion[]): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = MAP_W;
+  c.height = MAP_H;
+  const g = c.getContext("2d")!;
+
+  // Base ground: multi-octave noise for natural coloring
+  const imgData = g.createImageData(MAP_W, MAP_H);
+  const d = imgData.data;
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const n1 = _noise(x, y, 120);
+      const n2 = _noise(x + 500, y + 300, 60) * 0.5;
+      const n3 = _noise(x + 1000, y + 800, 30) * 0.25;
+      const v = n1 + n2 + n3;
+      // Green-brown grass palette
+      const r = 32 + v * 28;
+      const gr = 48 + v * 35;
+      const b = 22 + v * 15;
+      const idx = (y * MAP_W + x) * 4;
+      d[idx] = r;
+      d[idx + 1] = gr;
+      d[idx + 2] = b;
+      d[idx + 3] = 255;
+    }
+  }
+  g.putImageData(imgData, 0, 0);
+
+  // Paint terrain regions on top
+  for (const t of terrain) {
+    const grad = g.createRadialGradient(t.x, t.y, 0, t.x, t.y, t.r);
+    switch (t.type) {
+      case "forest":
+        grad.addColorStop(0, "rgba(20,65,18,0.55)");
+        grad.addColorStop(0.7, "rgba(25,55,20,0.35)");
+        grad.addColorStop(1, "rgba(30,50,25,0)");
+        break;
+      case "mountains":
+        grad.addColorStop(0, "rgba(90,80,70,0.6)");
+        grad.addColorStop(0.5, "rgba(75,70,60,0.4)");
+        grad.addColorStop(1, "rgba(60,55,45,0)");
+        break;
+      case "hills":
+        grad.addColorStop(0, "rgba(70,75,45,0.4)");
+        grad.addColorStop(0.7, "rgba(55,60,35,0.2)");
+        grad.addColorStop(1, "rgba(45,50,30,0)");
+        break;
+      case "desert":
+        grad.addColorStop(0, "rgba(170,150,90,0.5)");
+        grad.addColorStop(0.6, "rgba(150,135,80,0.3)");
+        grad.addColorStop(1, "rgba(130,115,70,0)");
+        break;
+      case "swamp":
+        grad.addColorStop(0, "rgba(40,60,35,0.55)");
+        grad.addColorStop(0.5, "rgba(35,55,30,0.35)");
+        grad.addColorStop(1, "rgba(30,50,25,0)");
+        break;
+      case "snow":
+        grad.addColorStop(0, "rgba(210,215,225,0.5)");
+        grad.addColorStop(0.6, "rgba(190,200,210,0.3)");
+        grad.addColorStop(1, "rgba(170,180,190,0)");
+        break;
+      case "lake":
+        grad.addColorStop(0, "rgba(30,55,100,0.7)");
+        grad.addColorStop(0.6, "rgba(35,60,90,0.5)");
+        grad.addColorStop(0.85, "rgba(40,65,80,0.25)");
+        grad.addColorStop(1, "rgba(45,60,65,0)");
+        break;
+    }
+    g.fillStyle = grad;
+    g.beginPath();
+    g.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  // Draw scatter features on the baked texture
+  for (const t of terrain) {
+    for (const f of t.features) {
+      const fx = t.x + f.dx;
+      const fy = t.y + f.dy;
+      switch (t.type) {
+        case "forest":
+          _drawTree(g, fx, fy, f.size, f.variant);
+          break;
+        case "mountains":
+          _drawMountainPeak(g, fx, fy, f.size);
+          break;
+        case "hills":
+          _drawHill(g, fx, fy, f.size);
+          break;
+        case "swamp":
+          _drawSwampReeds(g, fx, fy, f.size);
+          break;
+        case "snow":
+          _drawSnowDrift(g, fx, fy, f.size);
+          break;
+        case "desert":
+          _drawDune(g, fx, fy, f.size);
+          break;
+      }
+    }
+  }
+
+  // Lake surface shine
+  for (const t of terrain) {
+    if (t.type !== "lake") continue;
+    g.save();
+    g.globalAlpha = 0.15;
+    g.fillStyle = "rgba(120,180,255,1)";
+    g.beginPath();
+    g.ellipse(t.x - t.r * 0.15, t.y - t.r * 0.2, t.r * 0.3, t.r * 0.12, -0.3, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
+
+  // Subtle vignette at map edges
+  const edgeGrad = g.createRadialGradient(MAP_W / 2, MAP_H / 2, Math.min(MAP_W, MAP_H) * 0.35, MAP_W / 2, MAP_H / 2, Math.max(MAP_W, MAP_H) * 0.6);
+  edgeGrad.addColorStop(0, "rgba(0,0,0,0)");
+  edgeGrad.addColorStop(1, "rgba(0,0,0,0.25)");
+  g.fillStyle = edgeGrad;
+  g.fillRect(0, 0, MAP_W, MAP_H);
+
+  return c;
+}
+
+function _drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, variant: number): void {
+  const h = 6 * s;
+  // Trunk
+  ctx.fillStyle = "rgba(60,40,20,0.7)";
+  ctx.fillRect(x - 0.8, y, 1.6, h * 0.4);
+  // Canopy — two styles
+  if (variant < 2) {
+    // Conifer (triangle)
+    ctx.fillStyle = variant === 0 ? "rgba(20,60,15,0.8)" : "rgba(30,70,25,0.8)";
+    ctx.beginPath();
+    ctx.moveTo(x, y - h * 0.7);
+    ctx.lineTo(x - h * 0.35, y + h * 0.15);
+    ctx.lineTo(x + h * 0.35, y + h * 0.15);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    // Deciduous (round)
+    ctx.fillStyle = variant === 2 ? "rgba(25,65,20,0.8)" : "rgba(40,80,30,0.8)";
+    ctx.beginPath();
+    ctx.arc(x, y - h * 0.15, h * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function _drawMountainPeak(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
+  const h = 10 * s;
+  const w = 7 * s;
+  ctx.fillStyle = "rgba(80,75,65,0.7)";
+  ctx.beginPath();
+  ctx.moveTo(x, y - h);
+  ctx.lineTo(x - w, y);
+  ctx.lineTo(x + w, y);
+  ctx.closePath();
+  ctx.fill();
+  // Snow cap
+  ctx.fillStyle = "rgba(220,225,235,0.6)";
+  ctx.beginPath();
+  ctx.moveTo(x, y - h);
+  ctx.lineTo(x - w * 0.3, y - h * 0.55);
+  ctx.lineTo(x + w * 0.3, y - h * 0.55);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function _drawHill(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
+  const r = 6 * s;
+  ctx.fillStyle = "rgba(65,70,40,0.35)";
+  ctx.beginPath();
+  ctx.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Highlight
+  ctx.fillStyle = "rgba(90,100,60,0.2)";
+  ctx.beginPath();
+  ctx.ellipse(x - r * 0.2, y - r * 0.15, r * 0.5, r * 0.25, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function _drawSwampReeds(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
+  ctx.strokeStyle = "rgba(50,70,30,0.6)";
+  ctx.lineWidth = 0.8;
+  for (let i = 0; i < 3; i++) {
+    const dx = (i - 1) * 2 * s;
+    const h = 4 * s + i * s;
+    ctx.beginPath();
+    ctx.moveTo(x + dx, y);
+    ctx.quadraticCurveTo(x + dx + s, y - h * 0.5, x + dx + s * 0.5, y - h);
+    ctx.stroke();
+  }
+  // Water puddle
+  ctx.fillStyle = "rgba(35,60,50,0.3)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 1, 3 * s, 1.5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function _drawSnowDrift(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
+  ctx.fillStyle = "rgba(220,225,235,0.4)";
+  ctx.beginPath();
+  ctx.ellipse(x, y, 5 * s, 2.5 * s, Math.random() * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function _drawDune(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
+  ctx.fillStyle = "rgba(180,160,100,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(x, y, 6 * s, 2 * s, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // Wind line
+  ctx.strokeStyle = "rgba(200,180,120,0.2)";
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(x - 4 * s, y);
+  ctx.quadraticCurveTo(x, y - 1.5 * s, x + 5 * s, y + 0.5);
+  ctx.stroke();
+}
+
+// ---------------------------------------------------------------------------
+// Faction color helpers
+// ---------------------------------------------------------------------------
+
+function _factionHex(factionId: string): string {
+  const def = CAMPAIGN_FACTIONS.find((f) => f.id === factionId);
+  return def ? `#${def.accentColor.toString(16).padStart(6, "0")}` : "#888888";
+}
+
+function _factionRGB(factionId: string): [number, number, number] {
+  const def = CAMPAIGN_FACTIONS.find((f) => f.id === factionId);
+  if (!def) return [128, 128, 128];
+  const c = def.accentColor;
+  return [(c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff];
+}
 
 // ---------------------------------------------------------------------------
 // Campaign state types
@@ -355,6 +642,8 @@ export class WarbandCampaign {
   private _lastTime = 0;
 
   // Drag / camera
+  private _groundTexture: HTMLCanvasElement | null = null;
+  private _animTime = 0; // for animated effects
   private _camX = 0;
   private _camY = 0;
   private _isDragging = false;
@@ -423,6 +712,9 @@ export class WarbandCampaign {
     const terrain = _generateTerrain();
     const cities = _generateCities(factionsOnMap);
     const parties = _generateRovingBands(cities, factionsOnMap);
+
+    // Bake static ground texture (only done once)
+    this._groundTexture = _bakeGroundTexture(terrain);
 
     // Player starts near their faction's first city
     const homeCities = cities.filter((c) => c.factionId === playerFaction);
@@ -1081,269 +1373,489 @@ export class WarbandCampaign {
     const w = this._canvas.width = window.innerWidth;
     const h = this._canvas.height = window.innerHeight;
     const s = this._state;
+    this._animTime += 0.016;
+    const t = this._animTime;
 
     ctx.save();
     ctx.scale(this._zoom, this._zoom);
     ctx.translate(-this._camX, -this._camY);
 
-    // Background
-    ctx.fillStyle = "#2a3520";
-    ctx.fillRect(0, 0, MAP_W, MAP_H);
-
-    // Grid lines
-    ctx.strokeStyle = "rgba(50,60,40,0.3)";
-    ctx.lineWidth = 0.5;
-    for (let x = 0; x < MAP_W; x += 50) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, MAP_H); ctx.stroke();
-    }
-    for (let y = 0; y < MAP_H; y += 50) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(MAP_W, y); ctx.stroke();
+    // ---- Ground texture (pre-baked) -----------
+    if (this._groundTexture) {
+      ctx.drawImage(this._groundTexture, 0, 0);
+    } else {
+      ctx.fillStyle = "#2a3520";
+      ctx.fillRect(0, 0, MAP_W, MAP_H);
     }
 
-    // Terrain regions
-    for (const t of s.terrain) {
-      ctx.fillStyle = TERRAIN_COLORS[t.type] ?? "rgba(60,60,60,0.2)";
+    // ---- Faction territory overlays -----------
+    for (const city of s.cities) {
+      const [cr, cg, cb] = _factionRGB(city.factionId);
+      const isOwn = city.factionId === s.playerFaction;
+      const grad = ctx.createRadialGradient(city.x, city.y, 8, city.x, city.y, 70);
+      grad.addColorStop(0, `rgba(${cr},${cg},${cb},${isOwn ? 0.12 : 0.07})`);
+      grad.addColorStop(0.6, `rgba(${cr},${cg},${cb},${isOwn ? 0.06 : 0.03})`);
+      grad.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+      ctx.arc(city.x, city.y, 70, 0, Math.PI * 2);
       ctx.fill();
-
-      // Terrain label
-      ctx.fillStyle = "rgba(150,140,120,0.3)";
-      ctx.font = "9px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(t.type.toUpperCase(), t.x, t.y + 3);
     }
 
-    // Roads between cities of same faction
-    ctx.strokeStyle = "rgba(120,100,70,0.25)";
-    ctx.lineWidth = 2;
+    // ---- Roads between allied cities ----------
+    ctx.lineWidth = 1.8;
     for (let i = 0; i < s.cities.length; i++) {
       for (let j = i + 1; j < s.cities.length; j++) {
-        if (s.cities[i].factionId === s.cities[j].factionId) {
-          const dist = Math.hypot(s.cities[i].x - s.cities[j].x, s.cities[i].y - s.cities[j].y);
-          if (dist < 350) {
-            ctx.beginPath();
-            ctx.moveTo(s.cities[i].x, s.cities[j].y);
-            ctx.setLineDash([4, 4]);
-            ctx.moveTo(s.cities[i].x, s.cities[i].y);
-            ctx.lineTo(s.cities[j].x, s.cities[j].y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-          }
-        }
+        const ci = s.cities[i], cj = s.cities[j];
+        if (ci.factionId !== cj.factionId) continue;
+        const dist = Math.hypot(ci.x - cj.x, ci.y - cj.y);
+        if (dist > 400) continue;
+        const [rr, rg, rb] = _factionRGB(ci.factionId);
+        ctx.strokeStyle = `rgba(${rr},${rg},${rb},0.18)`;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        // Slight curve for visual interest
+        const mx = (ci.x + cj.x) / 2 + (ci.y - cj.y) * 0.08;
+        const my = (ci.y + cj.y) / 2 + (cj.x - ci.x) * 0.08;
+        ctx.moveTo(ci.x, ci.y);
+        ctx.quadraticCurveTo(mx, my, cj.x, cj.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
     }
 
-    // Cities
+    // ---- Cities --------------------------------
     for (const city of s.cities) {
-      const fDef = CAMPAIGN_FACTIONS.find((f) => f.id === city.factionId);
-      const color = fDef ? `#${fDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
-      const isPlayer = city.factionId === s.playerFaction;
+      const color = _factionHex(city.factionId);
+      const [cr, cg, cb] = _factionRGB(city.factionId);
+      const isOwn = city.factionId === s.playerFaction;
 
-      // City territory glow
-      ctx.fillStyle = isPlayer ? "rgba(100,180,100,0.08)" : "rgba(180,100,100,0.06)";
+      // Animated pulsing ring for player cities
+      if (isOwn) {
+        const pulse = 0.3 + Math.sin(t * 2.5) * 0.15;
+        ctx.strokeStyle = `rgba(${cr},${cg},${cb},${pulse})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(city.x, city.y, 28 + Math.sin(t * 2) * 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Shadow
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
       ctx.beginPath();
-      ctx.arc(city.x, city.y, 50, 0, Math.PI * 2);
+      ctx.ellipse(city.x + 2, city.y + 14, 16, 5, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // City body
+      // Castle keep (main body)
       ctx.fillStyle = color;
-      ctx.strokeStyle = isPlayer ? "#aaffaa" : "#887766";
-      ctx.lineWidth = isPlayer ? 2.5 : 1.5;
+      ctx.strokeStyle = isOwn ? `rgba(${cr},${cg},${cb},0.9)` : "rgba(100,90,70,0.7)";
+      ctx.lineWidth = isOwn ? 2.5 : 1.5;
 
-      // Castle shape
+      // Walls
+      ctx.fillStyle = `rgba(${Math.min(255, cr + 40)},${Math.min(255, cg + 30)},${Math.min(255, cb + 20)},0.85)`;
       ctx.beginPath();
-      ctx.rect(city.x - 12, city.y - 10, 24, 20);
+      ctx.rect(city.x - 11, city.y - 8, 22, 16);
       ctx.fill();
       ctx.stroke();
 
-      // Towers
-      ctx.fillRect(city.x - 14, city.y - 14, 6, 6);
-      ctx.fillRect(city.x + 8, city.y - 14, 6, 6);
-      ctx.strokeRect(city.x - 14, city.y - 14, 6, 6);
-      ctx.strokeRect(city.x + 8, city.y - 14, 6, 6);
+      // Left tower
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.rect(city.x - 14, city.y - 14, 7, 22);
+      ctx.fill();
+      ctx.stroke();
+      // Left tower cap
+      ctx.beginPath();
+      ctx.moveTo(city.x - 14, city.y - 14);
+      ctx.lineTo(city.x - 10.5, city.y - 19);
+      ctx.lineTo(city.x - 7, city.y - 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-      // Battlements
-      ctx.fillRect(city.x - 4, city.y - 16, 8, 4);
-      ctx.strokeRect(city.x - 4, city.y - 16, 8, 4);
+      // Right tower
+      ctx.beginPath();
+      ctx.rect(city.x + 7, city.y - 14, 7, 22);
+      ctx.fill();
+      ctx.stroke();
+      // Right tower cap
+      ctx.beginPath();
+      ctx.moveTo(city.x + 7, city.y - 14);
+      ctx.lineTo(city.x + 10.5, city.y - 19);
+      ctx.lineTo(city.x + 14, city.y - 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-      // City name
-      ctx.fillStyle = "#e0d5c0";
-      ctx.font = "bold 11px sans-serif";
+      // Keep tower (center, tallest)
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},0.95)`;
+      ctx.beginPath();
+      ctx.rect(city.x - 5, city.y - 16, 10, 22);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(city.x - 5, city.y - 16);
+      ctx.lineTo(city.x, city.y - 22);
+      ctx.lineTo(city.x + 5, city.y - 16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Battlements (small rectangles on walls)
+      ctx.fillStyle = color;
+      for (let bx = -10; bx <= 8; bx += 4) {
+        ctx.fillRect(city.x + bx, city.y - 10, 2, 2);
+      }
+
+      // Gate
+      ctx.fillStyle = "rgba(20,15,10,0.7)";
+      ctx.beginPath();
+      ctx.arc(city.x, city.y + 8, 3.5, Math.PI, 0);
+      ctx.rect(city.x - 3.5, city.y + 5, 7, 3);
+      ctx.fill();
+
+      // Banner (faction flag)
+      ctx.fillStyle = color;
+      ctx.fillRect(city.x + 1, city.y - 22, 1.2, -8);
+      ctx.beginPath();
+      ctx.moveTo(city.x + 2.2, city.y - 30);
+      ctx.lineTo(city.x + 9, city.y - 27 + Math.sin(t * 3 + city.x) * 0.8);
+      ctx.lineTo(city.x + 2.2, city.y - 24);
+      ctx.closePath();
+      ctx.fill();
+
+      // City name with background
+      const nameWidth = ctx.measureText(city.name).width || city.name.length * 7;
+      ctx.fillStyle = "rgba(10,8,5,0.6)";
+      const nmW = Math.max(nameWidth + 10, 50);
+      ctx.beginPath();
+      ctx.roundRect(city.x - nmW / 2, city.y + 17, nmW, 16, 3);
+      ctx.fill();
+
+      ctx.fillStyle = isOwn ? "#ddeebb" : "#d0c8b0";
+      ctx.font = "bold 11px 'Segoe UI', sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(city.name, city.x, city.y + 26);
+      ctx.fillText(city.name, city.x, city.y + 29);
 
-      // Garrison count
-      ctx.fillStyle = "#998877";
+      // Garrison badge
+      ctx.fillStyle = "rgba(10,8,5,0.7)";
+      ctx.beginPath();
+      ctx.roundRect(city.x - 12, city.y + 34, 24, 12, 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.5)`;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      ctx.fillStyle = city.garrisonTotal > 0 ? "#bbaa88" : "#664444";
       ctx.font = "9px sans-serif";
-      ctx.fillText(`[${city.garrisonTotal}]`, city.x, city.y + 36);
+      ctx.fillText(`${city.garrisonTotal}`, city.x, city.y + 43);
     }
 
-    // Roving parties
+    // ---- Roving parties -----------------------
     for (const party of s.parties) {
-      const fDef = CAMPAIGN_FACTIONS.find((f) => f.id === party.factionId);
-      const color = fDef ? `#${fDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
+      const color = _factionHex(party.factionId);
+      const [cr, cg, cb] = _factionRGB(party.factionId);
       const isAllied = party.factionId === s.playerFaction;
 
-      // Party dot
-      ctx.fillStyle = color;
-      ctx.strokeStyle = isAllied ? "#88ff88" : "#884444";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(party.x, party.y, PARTY_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Direction indicator
+      // Movement trail (fading dots)
       const angle = Math.atan2(party.targetY - party.y, party.targetX - party.x);
+      const moveDist = Math.hypot(party.targetX - party.x, party.targetY - party.y);
+      if (moveDist > 5) {
+        for (let i = 1; i <= 3; i++) {
+          const trailX = party.x - Math.cos(angle) * i * 5;
+          const trailY = party.y - Math.sin(angle) * i * 5;
+          ctx.fillStyle = `rgba(${cr},${cg},${cb},${0.15 - i * 0.04})`;
+          ctx.beginPath();
+          ctx.arc(trailX, trailY, PARTY_RADIUS * (0.6 - i * 0.12), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Shadow
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
       ctx.beginPath();
-      ctx.moveTo(party.x + Math.cos(angle) * PARTY_RADIUS, party.y + Math.sin(angle) * PARTY_RADIUS);
-      ctx.lineTo(party.x + Math.cos(angle) * (PARTY_RADIUS + 5), party.y + Math.sin(angle) * (PARTY_RADIUS + 5));
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.ellipse(party.x + 1, party.y + PARTY_RADIUS + 1, PARTY_RADIUS * 0.8, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Party body (shield shape)
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(party.x, party.y - PARTY_RADIUS);
+      ctx.lineTo(party.x + PARTY_RADIUS, party.y - PARTY_RADIUS * 0.3);
+      ctx.lineTo(party.x + PARTY_RADIUS * 0.7, party.y + PARTY_RADIUS * 0.7);
+      ctx.lineTo(party.x, party.y + PARTY_RADIUS);
+      ctx.lineTo(party.x - PARTY_RADIUS * 0.7, party.y + PARTY_RADIUS * 0.7);
+      ctx.lineTo(party.x - PARTY_RADIUS, party.y - PARTY_RADIUS * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = isAllied ? `rgba(100,255,100,0.6)` : `rgba(255,80,60,0.5)`;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // Party label
-      ctx.fillStyle = "#bbaa99";
-      ctx.font = "9px sans-serif";
+      // Party emblem (cross for allied, swords for enemy)
+      ctx.strokeStyle = `rgba(255,255,255,0.5)`;
+      ctx.lineWidth = 1.2;
+      if (isAllied) {
+        ctx.beginPath();
+        ctx.moveTo(party.x, party.y - 3);
+        ctx.lineTo(party.x, party.y + 3);
+        ctx.moveTo(party.x - 3, party.y);
+        ctx.lineTo(party.x + 3, party.y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(party.x - 2.5, party.y - 2.5);
+        ctx.lineTo(party.x + 2.5, party.y + 2.5);
+        ctx.moveTo(party.x + 2.5, party.y - 2.5);
+        ctx.lineTo(party.x - 2.5, party.y + 2.5);
+        ctx.stroke();
+      }
+
+      // Direction arrow
+      if (moveDist > 5) {
+        const arrowLen = PARTY_RADIUS + 6;
+        const ax = party.x + Math.cos(angle) * arrowLen;
+        const ay = party.y + Math.sin(angle) * arrowLen;
+        ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.6)`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(party.x + Math.cos(angle) * PARTY_RADIUS, party.y + Math.sin(angle) * PARTY_RADIUS);
+        ctx.lineTo(ax, ay);
+        ctx.stroke();
+        // Arrow head
+        const ha = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - Math.cos(angle - ha) * 4, ay - Math.sin(angle - ha) * 4);
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - Math.cos(angle + ha) * 4, ay - Math.sin(angle + ha) * 4);
+        ctx.stroke();
+      }
+
+      // Army size badge
+      ctx.fillStyle = "rgba(10,8,5,0.75)";
+      ctx.beginPath();
+      ctx.roundRect(party.x - 8, party.y - PARTY_RADIUS - 13, 16, 10, 2);
+      ctx.fill();
+      ctx.fillStyle = "#ccbb99";
+      ctx.font = "bold 8px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`${party.armyTotal}`, party.x, party.y - PARTY_RADIUS - 3);
+      ctx.fillText(`${party.armyTotal}`, party.x, party.y - PARTY_RADIUS - 5);
     }
 
-    // Player party
+    // ---- Player party -------------------------
     const pp = s.playerParty;
-    // Selection ring
-    ctx.strokeStyle = "#ffd700";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(pp.x, pp.y, PARTY_RADIUS + 4, 0, Math.PI * 2);
-    ctx.stroke();
+    const pColor = _factionHex(s.playerFaction);
 
-    // Player dot
-    const pfDef = CAMPAIGN_FACTIONS.find((f) => f.id === s.playerFaction);
-    const pColor = pfDef ? `#${pfDef.accentColor.toString(16).padStart(6, "0")}` : "#ffd700";
-    ctx.fillStyle = pColor;
-    ctx.strokeStyle = "#ffd700";
+    // Animated selection ring
+    const ringPulse = 0.5 + Math.sin(t * 3) * 0.3;
+    ctx.strokeStyle = `rgba(255,215,0,${ringPulse})`;
     ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
     ctx.beginPath();
-    ctx.arc(pp.x, pp.y, PARTY_RADIUS + 1, 0, Math.PI * 2);
+    ctx.arc(pp.x, pp.y, PARTY_RADIUS + 6 + Math.sin(t * 2.5) * 1.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(pp.x + 1, pp.y + PARTY_RADIUS + 2, PARTY_RADIUS + 2, 4, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
 
-    // Player direction
-    const pAngle = Math.atan2(pp.targetY - pp.y, pp.targetX - pp.x);
+    // Player shield (larger)
+    const pr = PARTY_RADIUS + 2;
+    ctx.fillStyle = pColor;
     ctx.beginPath();
-    ctx.moveTo(pp.x + Math.cos(pAngle) * (PARTY_RADIUS + 1), pp.y + Math.sin(pAngle) * (PARTY_RADIUS + 1));
-    ctx.lineTo(pp.x + Math.cos(pAngle) * (PARTY_RADIUS + 8), pp.y + Math.sin(pAngle) * (PARTY_RADIUS + 8));
+    ctx.moveTo(pp.x, pp.y - pr);
+    ctx.lineTo(pp.x + pr, pp.y - pr * 0.3);
+    ctx.lineTo(pp.x + pr * 0.7, pp.y + pr * 0.7);
+    ctx.lineTo(pp.x, pp.y + pr);
+    ctx.lineTo(pp.x - pr * 0.7, pp.y + pr * 0.7);
+    ctx.lineTo(pp.x - pr, pp.y - pr * 0.3);
+    ctx.closePath();
+    ctx.fill();
     ctx.strokeStyle = "#ffd700";
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Player label
-    ctx.fillStyle = "#ffd700";
-    ctx.font = "bold 10px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("YOU", pp.x, pp.y - PARTY_RADIUS - 6);
-    ctx.fillStyle = "#ddcc88";
-    ctx.font = "9px sans-serif";
-    ctx.fillText(`${pp.armyTotal}`, pp.x, pp.y + PARTY_RADIUS + 12);
+    // Crown emblem
+    ctx.fillStyle = "rgba(255,215,0,0.8)";
+    ctx.beginPath();
+    ctx.moveTo(pp.x - 4, pp.y + 1);
+    ctx.lineTo(pp.x - 4, pp.y - 3);
+    ctx.lineTo(pp.x - 2, pp.y - 1);
+    ctx.lineTo(pp.x, pp.y - 4);
+    ctx.lineTo(pp.x + 2, pp.y - 1);
+    ctx.lineTo(pp.x + 4, pp.y - 3);
+    ctx.lineTo(pp.x + 4, pp.y + 1);
+    ctx.closePath();
+    ctx.fill();
 
-    // Player move target indicator
+    // "YOU" label
+    ctx.fillStyle = "rgba(10,8,5,0.7)";
+    ctx.beginPath();
+    ctx.roundRect(pp.x - 14, pp.y - PARTY_RADIUS - 18, 28, 12, 3);
+    ctx.fill();
+    ctx.fillStyle = "#ffd700";
+    ctx.font = "bold 9px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("YOU", pp.x, pp.y - PARTY_RADIUS - 9);
+
+    // Army size badge
+    ctx.fillStyle = "rgba(10,8,5,0.7)";
+    ctx.beginPath();
+    ctx.roundRect(pp.x - 10, pp.y + PARTY_RADIUS + 4, 20, 12, 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,215,0,0.4)";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.fillStyle = "#ddcc88";
+    ctx.font = "bold 9px sans-serif";
+    ctx.fillText(`${pp.armyTotal}`, pp.x, pp.y + PARTY_RADIUS + 13);
+
+    // ---- Move target indicator ----------------
     const tDist = Math.hypot(pp.targetX - pp.x, pp.targetY - pp.y);
     if (tDist > 5) {
-      ctx.strokeStyle = "rgba(255,215,0,0.3)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
+      // Dashed path line
+      ctx.strokeStyle = "rgba(255,215,0,0.2)";
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 4]);
       ctx.beginPath();
       ctx.moveTo(pp.x, pp.y);
       ctx.lineTo(pp.targetX, pp.targetY);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Target X
-      ctx.strokeStyle = "rgba(255,215,0,0.5)";
+      // Animated target ring
+      const tPulse = 0.3 + Math.sin(t * 4) * 0.2;
+      ctx.strokeStyle = `rgba(255,215,0,${tPulse})`;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(pp.targetX - 4, pp.targetY - 4);
-      ctx.lineTo(pp.targetX + 4, pp.targetY + 4);
-      ctx.moveTo(pp.targetX + 4, pp.targetY - 4);
-      ctx.lineTo(pp.targetX - 4, pp.targetY + 4);
+      ctx.arc(pp.targetX, pp.targetY, 6 + Math.sin(t * 3) * 1, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Target crosshair
+      ctx.strokeStyle = "rgba(255,215,0,0.45)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pp.targetX - 4, pp.targetY);
+      ctx.lineTo(pp.targetX + 4, pp.targetY);
+      ctx.moveTo(pp.targetX, pp.targetY - 4);
+      ctx.lineTo(pp.targetX, pp.targetY + 4);
       ctx.stroke();
     }
 
-    // Map border
-    ctx.strokeStyle = "#665544";
-    ctx.lineWidth = 3;
+    // ---- Map border (decorative) ---------------
+    ctx.strokeStyle = "rgba(80,65,40,0.6)";
+    ctx.lineWidth = 4;
     ctx.strokeRect(0, 0, MAP_W, MAP_H);
+    ctx.strokeStyle = "rgba(120,100,70,0.3)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(3, 3, MAP_W - 6, MAP_H - 6);
 
-    // Game over overlay
+    // ---- Game over overlay ---------------------
     if (s.gameOver) {
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillStyle = "rgba(0,0,0,0.65)";
       ctx.fillRect(this._camX, this._camY, w / this._zoom, h / this._zoom);
+
+      const cx = this._camX + w / (2 * this._zoom);
+      const cy = this._camY + h / (2 * this._zoom);
+
+      // Decorative frame
+      ctx.strokeStyle = s.winner ? "rgba(218,165,32,0.4)" : "rgba(204,68,68,0.4)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx - 200, cy - 60, 400, 120);
+
       ctx.fillStyle = s.winner ? "#ffd700" : "#cc4444";
-      ctx.font = "bold 48px sans-serif";
+      ctx.font = "bold 48px 'Segoe UI', sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(
-        s.winner ? "VICTORY!" : "DEFEAT",
-        this._camX + w / (2 * this._zoom),
-        this._camY + h / (2 * this._zoom),
-      );
+      ctx.shadowColor = s.winner ? "rgba(218,165,32,0.5)" : "rgba(204,68,68,0.5)";
+      ctx.shadowBlur = 20;
+      ctx.fillText(s.winner ? "VICTORY!" : "DEFEAT", cx, cy);
+      ctx.shadowBlur = 0;
+
       ctx.fillStyle = "#aa9977";
-      ctx.font = "18px sans-serif";
-      ctx.fillText(
-        `Day ${s.day} — Press ESC to exit`,
-        this._camX + w / (2 * this._zoom),
-        this._camY + h / (2 * this._zoom) + 40,
-      );
+      ctx.font = "16px sans-serif";
+      ctx.fillText(`Day ${s.day} — Press ESC to exit`, cx, cy + 35);
     }
 
     ctx.restore();
 
-    // Minimap (bottom-right)
+    // ---- Minimap (bottom-right) ---------------
     this._renderMinimap(ctx, w, h);
   }
 
   private _renderMinimap(ctx: CanvasRenderingContext2D, sw: number, sh: number): void {
     if (!this._state) return;
     const s = this._state;
-    const mmW = 180;
+    const mmW = 200;
     const mmH = Math.round(mmW * (MAP_H / MAP_W));
-    const mx = sw - mmW - 12;
-    const my = sh - mmH - 12;
+    const mx = sw - mmW - 14;
+    const my = sh - mmH - 14;
 
-    ctx.fillStyle = "rgba(10,10,5,0.85)";
-    ctx.strokeStyle = "#443322";
-    ctx.lineWidth = 1;
-    ctx.fillRect(mx, my, mmW, mmH);
-    ctx.strokeRect(mx, my, mmW, mmH);
+    // Background with rounded corners
+    ctx.fillStyle = "rgba(12,10,6,0.88)";
+    ctx.strokeStyle = "rgba(80,65,40,0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(mx - 2, my - 2, mmW + 4, mmH + 4, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // Draw baked ground (scaled)
+    if (this._groundTexture) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(mx, my, mmW, mmH, 4);
+      ctx.clip();
+      ctx.drawImage(this._groundTexture, mx, my, mmW, mmH);
+      // Darken slightly
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(mx, my, mmW, mmH);
+      ctx.restore();
+    }
 
     const scaleX = mmW / MAP_W;
     const scaleY = mmH / MAP_H;
 
+    // Territory blobs on minimap
+    for (const city of s.cities) {
+      const [cr, cg, cb] = _factionRGB(city.factionId);
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},0.25)`;
+      ctx.beginPath();
+      ctx.arc(mx + city.x * scaleX, my + city.y * scaleY, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     // Cities on minimap
     for (const city of s.cities) {
-      const fDef = CAMPAIGN_FACTIONS.find((f) => f.id === city.factionId);
-      ctx.fillStyle = fDef ? `#${fDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
-      ctx.fillRect(mx + city.x * scaleX - 2, my + city.y * scaleY - 2, 4, 4);
+      const color = _factionHex(city.factionId);
+      ctx.fillStyle = color;
+      ctx.strokeStyle = city.factionId === s.playerFaction ? "#ffd700" : "rgba(60,50,35,0.8)";
+      ctx.lineWidth = city.factionId === s.playerFaction ? 1.5 : 0.8;
+      ctx.fillRect(mx + city.x * scaleX - 2.5, my + city.y * scaleY - 2.5, 5, 5);
+      ctx.strokeRect(mx + city.x * scaleX - 2.5, my + city.y * scaleY - 2.5, 5, 5);
     }
 
     // Parties on minimap
     for (const party of s.parties) {
-      const fDef = CAMPAIGN_FACTIONS.find((f) => f.id === party.factionId);
-      ctx.fillStyle = fDef ? `#${fDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
+      const color = _factionHex(party.factionId);
+      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(mx + party.x * scaleX, my + party.y * scaleY, 1.5, 0, Math.PI * 2);
+      ctx.arc(mx + party.x * scaleX, my + party.y * scaleY, 1.8, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Player on minimap
+    // Player on minimap (pulsing)
+    const pp = s.playerParty;
+    const pulse = 2.5 + Math.sin(this._animTime * 4) * 0.8;
     ctx.fillStyle = "#ffd700";
     ctx.beginPath();
-    ctx.arc(mx + s.playerParty.x * scaleX, my + s.playerParty.y * scaleY, 3, 0, Math.PI * 2);
+    ctx.arc(mx + pp.x * scaleX, my + pp.y * scaleY, pulse, 0, Math.PI * 2);
     ctx.fill();
 
     // Camera viewport on minimap
-    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
     ctx.lineWidth = 1;
     ctx.strokeRect(
       mx + this._camX * scaleX,
@@ -1351,6 +1863,12 @@ export class WarbandCampaign {
       (window.innerWidth / this._zoom) * scaleX,
       (window.innerHeight / this._zoom) * scaleY,
     );
+
+    // Minimap label
+    ctx.fillStyle = "rgba(160,140,110,0.5)";
+    ctx.font = "8px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("MAP", mx + 4, my + 10);
   }
 
   // ---------------------------------------------------------------------------
