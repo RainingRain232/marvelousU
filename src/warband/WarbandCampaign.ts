@@ -3244,16 +3244,19 @@ export class WarbandCampaign {
     // Dispose meshes
     for (const [, mesh] of this._battleFighterMeshes) {
       this._battleSceneManager?.scene.remove(mesh.group);
+      mesh.dispose();
     }
     this._battleFighterMeshes.clear();
 
     for (const [, mesh] of this._battleHorseMeshes) {
       this._battleSceneManager?.scene.remove(mesh.group);
+      mesh.dispose();
     }
     this._battleHorseMeshes.clear();
 
     for (const [, mesh] of this._battleCreatureMeshes) {
       this._battleSceneManager?.scene.remove(mesh.group);
+      mesh.dispose();
     }
     this._battleCreatureMeshes.clear();
 

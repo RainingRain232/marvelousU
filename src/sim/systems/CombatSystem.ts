@@ -461,6 +461,14 @@ export function killUnit(unit: Unit, killerUnitId?: string, state?: GameState): 
     }
   }
 
+  // Clean up abilities owned by this unit
+  if (state) {
+    for (const abilityId of unit.abilityIds) {
+      state.abilities.delete(abilityId);
+    }
+    unit.abilityIds.length = 0;
+  }
+
   EventBus.emit("unitDied", {
     unitId: unit.id,
     killerUnitId,

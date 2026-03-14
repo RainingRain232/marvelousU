@@ -18,6 +18,135 @@ function cyl(rTop: number, rBot: number, h: number, seg = 8): THREE.CylinderGeom
   return new THREE.CylinderGeometry(rTop, rBot, h, seg);
 }
 
+/** Create a single feather geometry — elongated rounded shape with a subtle taper. */
+function featherShape(length: number, width: number): THREE.ShapeGeometry {
+  const l = length / 2;
+  const w = width / 2;
+  const s = new THREE.Shape();
+  // Quill base (narrow)
+  s.moveTo(0, -l);
+  // Right edge — curves outward then tapers to tip
+  s.quadraticCurveTo(w * 0.6, -l * 0.6, w, -l * 0.1);
+  s.quadraticCurveTo(w * 1.05, l * 0.3, w * 0.7, l * 0.7);
+  s.quadraticCurveTo(w * 0.3, l * 0.95, 0, l);
+  // Left edge — mirror
+  s.quadraticCurveTo(-w * 0.3, l * 0.95, -w * 0.7, l * 0.7);
+  s.quadraticCurveTo(-w * 1.05, l * 0.3, -w, -l * 0.1);
+  s.quadraticCurveTo(-w * 0.6, -l * 0.6, 0, -l);
+  return new THREE.ShapeGeometry(s, 6);
+}
+
+/**
+ * Build a feathered angel wing as a THREE.Group.
+ * Contains layered rows of individual feather meshes arranged like a real bird wing:
+ * primary flight feathers (long, at the tip), secondaries (mid), coverts (short, near body).
+ * @param span     Total wingspan for one side
+ * @param chord    Wing depth (front-to-back)
+ * @param side     -1 for left, 1 for right
+ * @param wingMat  Material for feathers
+ * @param boneMat  Material for the wing bone / leading edge
+ */
+function buildFeatheredWing(
+  span: number,
+  chord: number,
+  side: number,
+  wingMat: THREE.Material,
+  boneMat: THREE.Material,
+): THREE.Group {
+  const wing = new THREE.Group();
+
+  // Leading-edge bone (humerus + radius analog)
+  const boneLen = span * 0.85;
+  const boneGeo = cyl(0.025 * chord, 0.015 * chord, boneLen, 8);
+  const bone = new THREE.Mesh(boneGeo, boneMat);
+  bone.rotation.z = side * 0.55;
+  bone.position.set(side * boneLen * 0.22, 0.02, 0);
+  wing.add(bone);
+
+  // Secondary bone (ulna analog — angles backward)
+  const ulnaLen = span * 0.45;
+  const ulnaGeo = cyl(0.018 * chord, 0.01 * chord, ulnaLen, 6);
+  const ulna = new THREE.Mesh(ulnaGeo, boneMat);
+  ulna.rotation.z = side * 1.1;
+  ulna.rotation.x = 0.15;
+  ulna.position.set(side * boneLen * 0.55, -0.02, -0.01);
+  wing.add(ulna);
+
+  // --- Primary flight feathers (longest, at wing tip) ---
+  const primaryCount = 7;
+  for (let i = 0; i < primaryCount; i++) {
+    const t = i / (primaryCount - 1); // 0..1 from inner to outer
+    const fLen = chord * (0.95 - t * 0.2);  // slightly shorter at tip
+    const fWid = fLen * 0.18;
+    const fGeo = featherShape(fLen, fWid);
+    const feather = new THREE.Mesh(fGeo, wingMat);
+    // Fan out along the wing span
+    const along = 0.35 + t * 0.65; // position along span
+    feather.position.set(
+      side * span * along,
+      -chord * 0.15 - t * 0.03,
+      -chord * 0.05 + t * 0.02,
+    );
+    // Angle feathers — fan outward from body
+    feather.rotation.z = side * (0.5 + t * 0.35);
+    feather.rotation.y = side * t * 0.12;
+    wing.add(feather);
+  }
+
+  // --- Secondary feathers (mid-wing, shorter) ---
+  const secondaryCount = 5;
+  for (let i = 0; i < secondaryCount; i++) {
+    const t = i / (secondaryCount - 1);
+    const fLen = chord * (0.65 - t * 0.1);
+    const fWid = fLen * 0.2;
+    const fGeo = featherShape(fLen, fWid);
+    const feather = new THREE.Mesh(fGeo, wingMat);
+    const along = 0.1 + t * 0.35;
+    feather.position.set(
+      side * span * along,
+      -chord * 0.05,
+      -chord * 0.12,
+    );
+    feather.rotation.z = side * (0.3 + t * 0.25);
+    wing.add(feather);
+  }
+
+  // --- Covert feathers (short, covering the base near body) ---
+  const covertCount = 6;
+  for (let i = 0; i < covertCount; i++) {
+    const t = i / (covertCount - 1);
+    const fLen = chord * (0.3 - t * 0.05);
+    const fWid = fLen * 0.25;
+    const fGeo = featherShape(fLen, fWid);
+    const feather = new THREE.Mesh(fGeo, wingMat);
+    const along = 0.05 + t * 0.45;
+    feather.position.set(
+      side * span * along,
+      chord * 0.08,
+      -chord * 0.04,
+    );
+    feather.rotation.z = side * (0.2 + t * 0.15);
+    wing.add(feather);
+  }
+
+  // --- Scapular feathers (where wing meets body) ---
+  for (let i = 0; i < 3; i++) {
+    const fLen = chord * 0.22;
+    const fWid = fLen * 0.3;
+    const fGeo = featherShape(fLen, fWid);
+    const feather = new THREE.Mesh(fGeo, wingMat);
+    feather.position.set(
+      side * (0.02 + i * 0.04),
+      0.05 - i * 0.03,
+      -chord * 0.15 - i * 0.02,
+    );
+    feather.rotation.z = side * 0.15;
+    wing.add(feather);
+  }
+
+  return wing;
+}
+
 /** Create a bat-wing–shaped membrane geometry (scalloped outer edge, tapered). */
 function wingShape(width: number, height: number): THREE.ShapeGeometry {
   const w = width / 2;
@@ -12923,28 +13052,25 @@ export class CreatureMesh {
       this._head.add(eye);
     }
 
-    // Three pairs of wings (6 total — seraphim style)
+    // Three pairs of feathered wings (6 total — seraphim style)
+    const boneMat = mat(0xeeddcc);
     for (let pair = 0; pair < 3; pair++) {
       const yOff = 2.4 - pair * 0.4;
-      const wingSize = 0.7 - pair * 0.1;
+      // Upper pair largest, lower pair smallest
+      const span = (0.9 - pair * 0.15);
+      const chord = (0.7 - pair * 0.1);
+      // Tilt each pair slightly differently
+      const tiltZ = [0.1, 0.3, 0.55][pair];
+      const tiltX = [-0.15, 0.0, 0.2][pair];
       for (const side of [-1, 1]) {
         const arm = pair === 0 ? (side === -1 ? this._leftArm : this._rightArm) : new THREE.Group();
-        if (pair === 0) {
-          arm.position.set(side * 0.25, yOff, -0.1);
-          this._body.add(arm);
-        } else {
-          arm.position.set(side * 0.2, yOff, -0.1);
-          this._body.add(arm);
-        }
-        const boneGeo = cyl(0.02, 0.015, wingSize * 0.8, 5);
-        const bone = new THREE.Mesh(boneGeo, robeMat);
-        bone.rotation.z = side * 0.6;
-        bone.position.set(side * 0.15, 0, 0);
-        arm.add(bone);
-        const memGeo = new THREE.PlaneGeometry(wingSize, wingSize * 0.6);
-        const mem = new THREE.Mesh(memGeo, wingMat);
-        mem.position.set(side * (wingSize * 0.4), -0.05, 0);
-        arm.add(mem);
+        arm.position.set(side * 0.2, yOff, -0.1);
+        this._body.add(arm);
+
+        const featheredWing = buildFeatheredWing(span, chord, side, wingMat, boneMat);
+        featheredWing.rotation.z = side * tiltZ;
+        featheredWing.rotation.x = tiltX;
+        arm.add(featheredWing);
       }
     }
 
@@ -13033,38 +13159,16 @@ export class CreatureMesh {
       this._head.add(eye);
     }
 
-    // Wing arms — large feathered with layered feathers
+    // Wing arms — large feathered wings with layered individual feathers
+    const archonBoneMat = mat(0xddccaa, { metalness: 0.2 });
     for (const side of [-1, 1]) {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       arm.position.set(side * 0.5, 2.8, -0.15);
       this._body.add(arm);
-      // Wing bone
-      const bGeo = cyl(0.04, 0.03, 1.0, 12);
-      const bone = new THREE.Mesh(bGeo, skinMat);
-      bone.rotation.z = side * 0.5;
-      bone.position.set(side * 0.2, 0, 0);
-      arm.add(bone);
-      // Wing membrane
-      const memGeo = new THREE.PlaneGeometry(1.0, 0.8);
-      const mem = new THREE.Mesh(memGeo, wingMat);
-      mem.position.set(side * 0.45, -0.1, 0);
-      arm.add(mem);
-      // Primary feather layers
-      for (let i = 0; i < 5; i++) {
-        const fGeo = new THREE.PlaneGeometry(0.12, 0.4);
-        const feather = new THREE.Mesh(fGeo, wingMat);
-        feather.position.set(side * (0.25 + i * 0.12), -0.35, 0.01);
-        feather.rotation.z = side * (0.1 + i * 0.08);
-        arm.add(feather);
-      }
-      // Secondary feather layer (shorter, closer to body)
-      for (let i = 0; i < 3; i++) {
-        const sfGeo = new THREE.PlaneGeometry(0.1, 0.25);
-        const sf = new THREE.Mesh(sfGeo, wingMat);
-        sf.position.set(side * (0.15 + i * 0.12), -0.15, -0.01);
-        sf.rotation.z = side * (0.05 + i * 0.06);
-        arm.add(sf);
-      }
+
+      const featheredWing = buildFeatheredWing(1.2, 0.9, side, wingMat, archonBoneMat);
+      featheredWing.rotation.z = side * 0.15;
+      arm.add(featheredWing);
     }
 
     // Sword in right

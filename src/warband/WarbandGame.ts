@@ -5329,6 +5329,7 @@ export class WarbandGame {
   private _pauseGame(): void {
     if (!this._state) return;
     this._state.paused = true;
+    this._inputSystem.pointerLockEnabled = false;
     if (document.pointerLockElement) document.exitPointerLock();
     this._showPauseMenu();
   }
@@ -5336,6 +5337,7 @@ export class WarbandGame {
   private _resumeGame(): void {
     if (!this._state) return;
     this._state.paused = false;
+    this._inputSystem.pointerLockEnabled = true;
     this._removePauseMenu();
     this._removeInventory();
   }

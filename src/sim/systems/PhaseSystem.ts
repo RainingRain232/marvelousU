@@ -110,6 +110,7 @@ function _enterPrep(state: GameState): void {
   }
   // Hard-clear the unit map so we start fresh immediately
   state.units.clear();
+  state.abilities.clear();
 
   // Reset base health
   for (const base of state.bases.values()) {
