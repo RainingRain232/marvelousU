@@ -122,6 +122,7 @@ import { ColosseumGame } from "@rpg/colosseum/ColosseumGame";
 import { DuelGame } from "./duel/DuelGame";
 import { MedievalGTA } from "./medievalgta/MedievalGTA";
 import { WarbandGame } from "./warband/WarbandGame";
+import { WarbandCampaign } from "./warband/WarbandCampaign";
 import { TekkenGame } from "./tekken/TekkenGame";
 import { DragoonGame } from "./dragoon/DragoonGame";
 import { ThreeDragonGame } from "./threedragon/ThreeDragonGame";
@@ -315,6 +316,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.MEDIEVAL_GTA_3D]: 16,
     [GameMode.DIABLO]: 17,
     [GameMode.MAGE_WARS]: 18,
+    [GameMode.WARBAND_CAMPAIGN]: 19,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -414,6 +416,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.MAGE_WARS) {
       menuScreen.hide();
       _bootMageWarsGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.WARBAND_CAMPAIGN) {
+      menuScreen.hide();
+      _bootWarbandCampaign();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2686,6 +2693,101 @@ async function _bootWarbandGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("warbandExit", _onExit);
+
+  // Listen for campaign launch from within warband menu
+  const _onLaunchCampaign = () => {
+    window.removeEventListener("warbandLaunchCampaign", _onLaunchCampaign);
+    window.removeEventListener("warbandExit", _onExit);
+    if (_warbandGame) {
+      _warbandGame = null; // already exited/destroyed
+    }
+    _bootWarbandCampaign();
+  };
+  window.addEventListener("warbandLaunchCampaign", _onLaunchCampaign);
+}
+
+// ---------------------------------------------------------------------------
+// Warband Campaign mode boot
+// ---------------------------------------------------------------------------
+
+let _warbandCampaign: WarbandCampaign | null = null;
+
+async function _bootWarbandCampaign(): Promise<void> {
+  if (_warbandCampaign) {
+    _warbandCampaign.destroy();
+    _warbandCampaign = null;
+  }
+
+  // Show a quick faction selection before starting the campaign
+  const factionSelectContainer = document.createElement("div");
+  factionSelectContainer.style.cssText = `
+    position:absolute;top:0;left:0;width:100%;height:100%;z-index:30;
+    background:rgba(10,8,5,0.97);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+  `;
+
+  const factions = (await import("@sim/config/RaceDefs")).RACE_DEFINITIONS.filter(
+    (r: any) => r.implemented && r.id !== "op",
+  );
+
+  factionSelectContainer.innerHTML = `
+    <div style="font-size:11px;letter-spacing:6px;color:#665533;margin-bottom:8px">WARBAND</div>
+    <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 20px rgba(218,165,32,0.4);margin-bottom:4px;letter-spacing:3px">
+      CAMPAIGN
+    </h1>
+    <div style="width:200px;height:2px;background:linear-gradient(90deg,transparent,#daa520,transparent);margin-bottom:6px"></div>
+    <p style="color:#887755;margin-bottom:25px;font-size:13px">Choose your faction</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;max-width:700px;justify-content:center">
+      ${factions.map((f: any) => {
+        const color = `#${f.accentColor.toString(16).padStart(6, "0")}`;
+        return `
+          <button class="camp-faction-btn" data-faction="${f.id}" style="
+            width:130px;padding:12px 8px;border:2px solid ${color};border-radius:8px;
+            background:rgba(20,15,10,0.8);color:${color};cursor:pointer;
+            font-family:inherit;font-size:13px;font-weight:bold;
+            transition:background 0.2s;text-align:center;
+          ">
+            ${f.name}
+            <span style="display:block;font-size:9px;color:#887766;margin-top:4px;font-weight:normal">${f.title}</span>
+          </button>
+        `;
+      }).join("")}
+    </div>
+    <button id="camp-back" style="
+      margin-top:25px;padding:8px 24px;font-size:13px;
+      border:1px solid #555;border-radius:6px;
+      background:rgba(20,15,10,0.6);color:#888;cursor:pointer;font-family:inherit;
+    ">Back</button>
+  `;
+
+  const container = document.getElementById("pixi-container");
+  if (container) container.appendChild(factionSelectContainer);
+
+  // Bind faction buttons
+  factionSelectContainer.querySelectorAll(".camp-faction-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const factionId = (btn as HTMLElement).dataset.faction!;
+      factionSelectContainer.parentNode?.removeChild(factionSelectContainer);
+
+      _warbandCampaign = new WarbandCampaign();
+      await _warbandCampaign.boot(factionId);
+
+      const _onExit = () => {
+        window.removeEventListener("warbandCampaignExit", _onExit);
+        if (_warbandCampaign) {
+          _warbandCampaign.destroy();
+          _warbandCampaign = null;
+        }
+        menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+      };
+      window.addEventListener("warbandCampaignExit", _onExit);
+    });
+  });
+
+  document.getElementById("camp-back")?.addEventListener("click", () => {
+    factionSelectContainer.parentNode?.removeChild(factionSelectContainer);
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -670,6 +670,7 @@ export enum GameMode {
   MEDIEVAL_GTA_3D = "medieval_gta_3d",
   DIABLO = "diablo",
   MAGE_WARS = "mage_wars",
+  WARBAND_CAMPAIGN = "warband_campaign",
 }
 
 // ---------------------------------------------------------------------------

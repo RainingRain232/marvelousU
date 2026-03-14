@@ -3305,6 +3305,11 @@ export class WarbandGame {
           <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Up to 250v250 — choose your army</span>
         </button>
 
+        <button id="wb-campaign" style="${this._menuBtnStyle("#1a0830", "#aa66dd")}">
+          Campaign
+          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Overworld map — conquer cities, build your warband</span>
+        </button>
+
         <button id="wb-duel" style="${this._menuBtnStyle()}">
           Duel
           <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">1v1 single combat</span>
@@ -3380,6 +3385,12 @@ export class WarbandGame {
     document.getElementById("wb-army")?.addEventListener("click", () => {
       this._removeMenu();
       this._showLeaderSelect();
+    });
+
+    document.getElementById("wb-campaign")?.addEventListener("click", () => {
+      this._exit();
+      // Launch campaign mode via event
+      window.dispatchEvent(new Event("warbandLaunchCampaign"));
     });
 
     document.getElementById("wb-duel")?.addEventListener("click", () => {
