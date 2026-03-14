@@ -37,8 +37,16 @@ export class WarbandHUD {
   private _siegeCaptureFill!: HTMLDivElement;
   private _siegeCaptureLabel!: HTMLDivElement;
   private _siegeTimer!: HTMLDivElement;
+  private _fleeContainer!: HTMLDivElement;
+  private _fleeTimerBar!: HTMLDivElement;
+  private _fleeTimerFill!: HTMLDivElement;
+  private _fleeTimerLabel!: HTMLDivElement;
+  private _fleeButton!: HTMLButtonElement;
 
   private _killFeedEntries: { text: string; time: number }[] = [];
+
+  /** External callback invoked when the player clicks the FLEE button */
+  onFlee: (() => void) | null = null;
 
   init(): void {
     this._container = document.createElement("div");
@@ -209,6 +217,65 @@ export class WarbandHUD {
     `;
     this._container.appendChild(this._siegeTimer);
 
+    // Flee container (timer bar + button, shown when player is at map edge)
+    this._fleeContainer = document.createElement("div");
+    this._fleeContainer.style.cssText = `
+      position: absolute; bottom: 200px; left: 50%;
+      transform: translateX(-50%);
+      display: none; flex-direction: column; align-items: center; gap: 6px;
+    `;
+
+    // Flee progress bar (shows time remaining until flee is available)
+    this._fleeTimerBar = document.createElement("div");
+    this._fleeTimerBar.style.cssText = `
+      width: 200px; height: 12px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,136,0,0.5);
+      border-radius: 3px; overflow: hidden;
+    `;
+    this._fleeTimerFill = document.createElement("div");
+    this._fleeTimerFill.style.cssText = `
+      width: 0%; height: 100%;
+      background: linear-gradient(90deg, #cc6600, #ff8800);
+      transition: width 0.2s;
+    `;
+    this._fleeTimerBar.appendChild(this._fleeTimerFill);
+    this._fleeContainer.appendChild(this._fleeTimerBar);
+
+    this._fleeTimerLabel = document.createElement("div");
+    this._fleeTimerLabel.style.cssText = `
+      font-size: 13px; color: #ff8800;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+    `;
+    this._fleeTimerLabel.textContent = "Retreating...";
+    this._fleeContainer.appendChild(this._fleeTimerLabel);
+
+    // Flee button (only clickable when timer is full)
+    this._fleeButton = document.createElement("button");
+    this._fleeButton.textContent = "FLEE";
+    this._fleeButton.style.cssText = `
+      pointer-events: auto; cursor: pointer;
+      padding: 8px 32px; font-size: 18px; font-weight: bold;
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff; background: rgba(180, 80, 0, 0.85);
+      border: 2px solid #ff8800; border-radius: 6px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+      display: none;
+      transition: background 0.2s;
+    `;
+    this._fleeButton.addEventListener("mouseenter", () => {
+      this._fleeButton.style.background = "rgba(220, 100, 0, 0.95)";
+    });
+    this._fleeButton.addEventListener("mouseleave", () => {
+      this._fleeButton.style.background = "rgba(180, 80, 0, 0.85)";
+    });
+    this._fleeButton.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (this.onFlee) this.onFlee();
+    });
+    this._fleeContainer.appendChild(this._fleeButton);
+    this._container.appendChild(this._fleeContainer);
+
     const pixiContainer = document.getElementById("pixi-container");
     if (pixiContainer) {
       pixiContainer.appendChild(this._container);
@@ -373,6 +440,29 @@ export class WarbandHUD {
       } else {
         this._mountPrompt.style.display = "none";
       }
+    }
+
+    // Flee UI
+    if (state.fleeTimer > 0 || state.fleeAvailable) {
+      this._fleeContainer.style.display = "flex";
+      if (state.fleeAvailable) {
+        // Flee is ready — show button, hide progress bar
+        this._fleeTimerBar.style.display = "none";
+        this._fleeTimerLabel.textContent = "You can flee!";
+        this._fleeButton.style.display = "block";
+      } else {
+        // Still counting down — show progress bar
+        const fleeTicks = 30 * WB.TICKS_PER_SEC; // 30 seconds
+        const pct = Math.min(100, (state.fleeTimer / fleeTicks) * 100);
+        this._fleeTimerBar.style.display = "block";
+        this._fleeTimerFill.style.width = `${pct}%`;
+        const secsLeft = Math.ceil((fleeTicks - state.fleeTimer) / WB.TICKS_PER_SEC);
+        this._fleeTimerLabel.textContent = `Retreating... ${secsLeft}s`;
+        this._fleeButton.style.display = "none";
+      }
+    } else {
+      this._fleeContainer.style.display = "none";
+      this._fleeButton.style.display = "none";
     }
 
     // Horse HP bar

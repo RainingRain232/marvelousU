@@ -1088,6 +1088,17 @@ export class WarbandCampaign {
   }
 
   // ---------------------------------------------------------------------------
+  // Canvas pointer events helper
+  // ---------------------------------------------------------------------------
+
+  /** Disable pointer events on the map canvas so HTML panel buttons receive clicks. */
+  private _setCanvasPointerEvents(enabled: boolean): void {
+    if (this._canvas) {
+      this._canvas.style.pointerEvents = enabled ? "auto" : "none";
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // City panel
   // ---------------------------------------------------------------------------
 
@@ -1095,6 +1106,7 @@ export class WarbandCampaign {
     if (!this._state) return;
     this._state.selectedCity = city;
     this._state.paused = true;
+    this._setCanvasPointerEvents(false);
 
     this._removeCityPanel();
 
@@ -1226,6 +1238,7 @@ export class WarbandCampaign {
     if (this._cityPanel?.parentNode) {
       this._cityPanel.parentNode.removeChild(this._cityPanel);
       this._cityPanel = null;
+      this._setCanvasPointerEvents(true);
     }
   }
 
@@ -1252,6 +1265,7 @@ export class WarbandCampaign {
   private _showPartyPanel(party: CampaignParty): void {
     if (!this._state) return;
     this._removePartyPanel();
+    this._setCanvasPointerEvents(false);
 
     const factionDef = CAMPAIGN_FACTIONS.find((f) => f.id === party.factionId);
     const factionColor = factionDef ? `#${factionDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
@@ -1315,6 +1329,7 @@ export class WarbandCampaign {
     if (this._partyPanel?.parentNode) {
       this._partyPanel.parentNode.removeChild(this._partyPanel);
       this._partyPanel = null;
+      this._setCanvasPointerEvents(true);
     }
   }
 
@@ -1326,6 +1341,7 @@ export class WarbandCampaign {
     if (!this._state) return;
     this._removeVillagePanel();
     this._state.paused = true;
+    this._setCanvasPointerEvents(false);
 
     const factionDef = CAMPAIGN_FACTIONS.find((f) => f.id === village.factionId);
     const factionColor = factionDef ? `#${factionDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
@@ -1388,6 +1404,7 @@ export class WarbandCampaign {
     if (this._villagePanel?.parentNode) {
       this._villagePanel.parentNode.removeChild(this._villagePanel);
       this._villagePanel = null;
+      this._setCanvasPointerEvents(true);
     }
   }
 
@@ -1399,6 +1416,7 @@ export class WarbandCampaign {
     if (!this._state) return;
     this._removeLocationPanel();
     this._state.paused = true;
+    this._setCanvasPointerEvents(false);
 
     const dist = Math.hypot(loc.x - this._state.playerParty.x, loc.y - this._state.playerParty.y);
     const canExplore = !loc.explored && dist < 60;
@@ -1457,6 +1475,7 @@ export class WarbandCampaign {
       this._locationPanel.parentNode.removeChild(this._locationPanel);
       this._locationPanel = null;
     }
+    this._setCanvasPointerEvents(true);
   }
 
   private _startLocationBattle(loc: SpecialLocation): void {
@@ -3024,6 +3043,15 @@ export class WarbandCampaign {
   ): void {
     if (document.pointerLockElement) document.exitPointerLock();
 
+    // Disable pointer events on the battle canvas so the results overlay buttons work
+    if (this._battleSceneManager) {
+      this._battleSceneManager.setCanvasPointerEvents(false);
+    }
+    // Also disable the battle input system's pointer lock
+    if (this._battleInputSystem) {
+      this._battleInputSystem.pointerLockEnabled = false;
+    }
+
     this._battleResultsContainer = document.createElement("div");
     this._battleResultsContainer.style.cssText = `
       position:absolute;top:0;left:0;width:100%;height:100%;z-index:30;
@@ -3484,6 +3512,7 @@ export class WarbandCampaign {
     if (!this._state) return;
     this._removeDiplomacyPanel();
     this._state.paused = true;
+    this._setCanvasPointerEvents(false);
 
     const s = this._state;
     const otherFactions = this._getNonPlayerFactions();
@@ -3630,6 +3659,7 @@ export class WarbandCampaign {
       this._diplomacyPanel.parentNode.removeChild(this._diplomacyPanel);
       this._diplomacyPanel = null;
     }
+    this._setCanvasPointerEvents(true);
   }
 
   // ---------------------------------------------------------------------------
@@ -3664,6 +3694,7 @@ export class WarbandCampaign {
   private _showPerkSelection(): void {
     if (!this._state) return;
     this._state.paused = true;
+    this._setCanvasPointerEvents(false);
 
     // Pick 3 random perks
     const shuffled = [...HERO_PERKS].sort(() => Math.random() - 0.5);
@@ -3725,8 +3756,9 @@ export class WarbandCampaign {
       this._perkModal = null;
     }
 
-    // Unpause only if not in battle
+    // Restore canvas pointer events only if not in battle
     if (!this._inBattle) {
+      this._setCanvasPointerEvents(true);
       this._state.paused = false;
     }
   }

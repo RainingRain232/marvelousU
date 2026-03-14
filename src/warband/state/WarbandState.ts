@@ -352,6 +352,11 @@ export interface WarbandState {
   troopOrder: TroopOrder;
   selectedGroup: TroopGroup;
 
+  // Flee mechanic
+  fleeTimer: number;      // ticks player has been at map edge without being hit
+  fleeAvailable: boolean; // true when flee button should be shown
+  playerFled: boolean;    // true if player chose to flee this battle
+
   // Screen dimensions (for input mapping)
   screenW: number;
   screenH: number;
@@ -484,6 +489,10 @@ export function createWarbandState(
     formation: FormationType.LINE,
     troopOrder: TroopOrder.CHARGE,
     selectedGroup: TroopGroup.ALL,
+
+    fleeTimer: 0,
+    fleeAvailable: false,
+    playerFled: false,
 
     screenW,
     screenH,

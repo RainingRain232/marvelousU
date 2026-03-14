@@ -100,33 +100,56 @@ export class ThreeDragonGame {
     // Combat callbacks → 3D FX
     ThreeDragonCombatSystem.setExplosionCallback((x, y, z, radius, color) => {
       this._renderer.addExplosion(x, y, z, radius, color);
-      this._shake(radius > 5 ? 0.8 : 0.3, 0.2);
+      this._shake(radius > 5 ? 1.0 : 0.4, 0.25);
       // audioManager.playSfx("explosion");
     });
-    ThreeDragonCombatSystem.setHitCallback((_x, _y, _z, _damage, _isCrit) => {
-      // Hit effects handled by trail particles in renderer
+    ThreeDragonCombatSystem.setHitCallback((x, y, z, damage, isCrit) => {
+      // Visible impact sparks and energy dispersal at hit point
+      this._renderer.addHitEffect(x, y, z, damage, isCrit);
+      if (isCrit) this._shake(0.3, 0.08);
     });
     ThreeDragonCombatSystem.setPlayerHitCallback(() => {
-      this._shake(1.5, 0.3);
+      this._shake(2.0, 0.35);
+      this._renderer.addScreenFlash(0xff0000, 0.35);
+      this._renderer.addPlayerHitEffect(
+        this._state.player.position.x,
+        this._state.player.position.y,
+        this._state.player.position.z,
+      );
       // audioManager.playSfx("player_hit");
     });
     ThreeDragonCombatSystem.setLightningCallback((x, y, z) => {
       this._renderer.addLightning(x, y, z);
-      this._shake(0.5, 0.15);
+      this._shake(0.6, 0.18);
     });
     ThreeDragonCombatSystem.setEnemyDeathCallback((x, y, z, size, color, glowColor, isBoss) => {
       this._renderer.addEnemyDeathEffect(x, y, z, size, color, glowColor, isBoss);
+      if (isBoss) this._shake(1.5, 0.4);
     });
     ThreeDragonCombatSystem.setBossKillCallback((x, y, z, size, color, glowColor) => {
-      this._renderer.addEnemyDeathEffect(x, y, z, size * 2, color, glowColor, true);
-      this._renderer.addScreenFlash(glowColor, 0.8);
-      this._shake(3.0, 0.6);
+      // Epic multi-stage boss kill effect
+      this._renderer.addEnemyDeathEffect(x, y, z, size * 2.5, color, glowColor, true);
+      this._renderer.addScreenFlash(0xffffff, 0.4);
+      this._renderer.addScreenFlash(glowColor, 1.0);
+      this._renderer.addExplosion(x, y, z, size * 4, glowColor);
+      // Delayed secondary explosions
+      setTimeout(() => {
+        this._renderer.addExplosion(x + (Math.random() - 0.5) * 8, y + (Math.random() - 0.5) * 5, z + (Math.random() - 0.5) * 8, size * 2.5, color);
+        this._shake(2.0, 0.3);
+      }, 150);
+      setTimeout(() => {
+        this._renderer.addExplosion(x + (Math.random() - 0.5) * 10, y + (Math.random() - 0.5) * 6, z + (Math.random() - 0.5) * 10, size * 3, 0xffffff);
+        this._renderer.addLightning(x, y, z);
+        this._shake(2.5, 0.3);
+      }, 350);
+      this._shake(4.0, 0.8);
       this._hud.showNotification("BOSS DEFEATED!", "#ffd700");
       // audioManager.playSfx("boss_kill");
     });
-    ThreeDragonCombatSystem.setPowerUpCollectCallback((_x, _y, _z, type) => {
+    ThreeDragonCombatSystem.setPowerUpCollectCallback((x, y, z, type) => {
       const flashColor = type === "health" ? 0x44ff66 : 0x4488ff;
-      this._renderer.addScreenFlash(flashColor, 0.2);
+      this._renderer.addScreenFlash(flashColor, 0.25);
+      this._renderer.addPowerUpCollectEffect(x, y, z, type);
       this._shake(0.3, 0.1);
       // audioManager.playSfx("powerup");
     });

@@ -698,16 +698,24 @@ export class ThreeDragonHUD {
       this._centerText.style.opacity = "0";
     }
 
-    // Update damage numbers
+    // Update damage numbers — improved arc and scale animation
     this._dmgNumbers = this._dmgNumbers.filter(dn => {
       dn.timer -= dt;
       if (dn.timer <= 0) {
         if (dn.el.parentNode) dn.el.parentNode.removeChild(dn.el);
         return false;
       }
-      const progress = 1 - dn.timer / 1.2;
-      dn.el.style.top = `${dn.startY - progress * 40}px`;
-      dn.el.style.opacity = `${Math.min(1, dn.timer * 2)}`;
+      const totalDur = 1.4;
+      const progress = 1 - dn.timer / totalDur;
+      // Ease-out rise (fast start, slow end)
+      const eased = 1 - Math.pow(1 - progress, 2.5);
+      dn.el.style.top = `${dn.startY - eased * 55}px`;
+      // Scale: pop in at start, then shrink slightly
+      const scalePop = progress < 0.1 ? 0.5 + progress * 8 : progress < 0.2 ? 1.3 - (progress - 0.1) * 3 : 1.0;
+      // Opacity: full for most of duration, then fade out
+      const opacity = dn.timer < 0.4 ? dn.timer / 0.4 : 1.0;
+      dn.el.style.opacity = `${opacity}`;
+      dn.el.style.transform = `scale(${scalePop}) translateX(-50%)`;
       return true;
     });
 
@@ -724,17 +732,24 @@ export class ThreeDragonHUD {
   showDamageNumber(screenX: number, screenY: number, damage: number, isCrit: boolean, isElite: boolean): void {
     const el = document.createElement("div");
     const color = isElite ? "#ffd700" : isCrit ? "#ff4444" : "#ffffff";
-    const size = isCrit ? 18 : isElite ? 16 : 13;
+    const size = isCrit ? 26 : isElite ? 22 : 16;
+    const outlineColor = isElite ? "rgba(139,101,8,0.9)" : isCrit ? "rgba(180,0,0,0.9)" : "rgba(0,0,0,0.9)";
+    const glowColor = isElite ? "rgba(255,215,0,0.6)" : isCrit ? "rgba(255,80,80,0.6)" : "rgba(200,200,255,0.3)";
+    // Random horizontal offset for visual variety
+    const offsetX = (Math.random() - 0.5) * 30;
     el.style.cssText = `
-      position: absolute; left: ${screenX}px; top: ${screenY}px;
-      font-size: ${size}px; font-weight: bold; color: ${color};
-      text-shadow: 0 0 4px rgba(0,0,0,0.8), 1px 1px 2px #000;
+      position: absolute; left: ${screenX + offsetX}px; top: ${screenY}px;
+      font-size: ${size}px; font-weight: 900; color: ${color};
+      text-shadow: 0 0 8px ${glowColor}, 0 0 3px ${glowColor}, -1px -1px 0 ${outlineColor}, 1px -1px 0 ${outlineColor}, -1px 1px 0 ${outlineColor}, 1px 1px 0 ${outlineColor}, 0 2px 4px rgba(0,0,0,0.7);
       pointer-events: none; z-index: 15;
-      transition: opacity 0.3s;
+      font-family: 'Impact', 'Arial Black', sans-serif;
+      letter-spacing: 1px;
+      transform: scale(${isCrit ? '1.3' : '1.0'}) translateX(-50%);
+      will-change: transform, opacity;
     `;
-    el.textContent = Math.floor(damage).toString();
+    el.textContent = (isCrit ? "\u2605 " : "") + Math.floor(damage).toString() + (isCrit ? " \u2605" : "");
     this._root.appendChild(el);
-    this._dmgNumbers.push({ el, timer: 1.2, startY: screenY });
+    this._dmgNumbers.push({ el, timer: 1.4, startY: screenY });
   }
 
   setPauseCallbacks(onResume: () => void, onRestart: () => void, onQuit: () => void): void {

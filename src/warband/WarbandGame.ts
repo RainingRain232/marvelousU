@@ -3320,6 +3320,7 @@ export class WarbandGame {
 
     // Init HUD
     this._hud.init();
+    this._hud.onFlee = () => this._playerFlee();
 
     // Init shop
     this._shop.init();
@@ -3359,6 +3360,9 @@ export class WarbandGame {
   // ---- Menu ---------------------------------------------------------------
 
   private _showMenu(): void {
+    // Disable pointer events on the Three.js canvas so HTML menu buttons receive clicks
+    this._sceneManager.setCanvasPointerEvents(false);
+
     this._menuContainer = document.createElement("div");
     this._menuContainer.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -3562,6 +3566,9 @@ export class WarbandGame {
   // ---- Game start ---------------------------------------------------------
 
   private _startGame(battleType: BattleType): void {
+    // Re-enable canvas pointer events for battle
+    this._sceneManager.setCanvasPointerEvents(true);
+
     const sw = window.innerWidth;
     const sh = window.innerHeight;
 
@@ -3739,6 +3746,7 @@ export class WarbandGame {
 
   private _showMapSelect(battleType: BattleType): void {
     this._removeMapSelect();
+    this._sceneManager.setCanvasPointerEvents(false);
     this._mapSelectContainer = document.createElement("div");
     this._mapSelectContainer.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -3846,6 +3854,7 @@ export class WarbandGame {
   // ---- Leader selection screen ----------------------------------------------
 
   private _showLeaderSelect(): void {
+    this._sceneManager.setCanvasPointerEvents(false);
     this._leaderSelectContainer = document.createElement("div");
     this._leaderSelectContainer.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -3969,6 +3978,7 @@ export class WarbandGame {
   // ---- Race selection screen ------------------------------------------------
 
   private _showRaceSelect(): void {
+    this._sceneManager.setCanvasPointerEvents(false);
     this._raceSelectContainer = document.createElement("div");
     this._raceSelectContainer.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -4100,6 +4110,7 @@ export class WarbandGame {
   // ---- Race overview screen -------------------------------------------------
 
   private _showRaceOverview(): void {
+    this._sceneManager.setCanvasPointerEvents(false);
     this._raceOverviewContainer = document.createElement("div");
     this._raceOverviewContainer.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -4233,6 +4244,7 @@ export class WarbandGame {
   // ---- Army setup screen ---------------------------------------------------
 
   private _showArmySetup(): void {
+    this._sceneManager.setCanvasPointerEvents(false);
     this._playerArmy = new Array(UNIT_TYPES.length).fill(0);
     this._enemyArmy = new Array(UNIT_TYPES.length).fill(0);
     this._shopActiveTab = 0;
@@ -5028,6 +5040,9 @@ export class WarbandGame {
         }
       }
 
+      // Flee mechanic: track player at map edge without being hit
+      this._updateFleeTimer(this._state);
+
       // Battle timer
       this._state.battleTimer--;
       if (this._state.battleTimer <= 0) {
@@ -5226,6 +5241,61 @@ export class WarbandGame {
     this._hud.update(this._state);
   }
 
+  // ---- Flee mechanic ------------------------------------------------------
+
+  /** Edge margin: player must be within this many units of the arena boundary */
+  private static readonly FLEE_EDGE_MARGIN = 5;
+  /** Ticks at the edge without being hit before flee becomes available (30 seconds) */
+  private static readonly FLEE_TICKS_REQUIRED = 30 * WB.TICKS_PER_SEC;
+
+  private _updateFleeTimer(state: WarbandState): void {
+    const player = state.fighters.find(f => f.id === state.playerId);
+    if (!player || player.combatState === FighterCombatState.DEAD) {
+      state.fleeAvailable = false;
+      return;
+    }
+
+    // Check if player was hit this tick — reset timer
+    for (const hit of this._combatSystem.hits) {
+      if (hit.target === state.playerId && !hit.blocked) {
+        state.fleeTimer = 0;
+        state.fleeAvailable = false;
+        return;
+      }
+    }
+
+    // Check if player is near map edge
+    const halfW = WB.ARENA_WIDTH / 2 - 1;
+    const halfD = WB.ARENA_DEPTH / 2 - 1;
+    const margin = WarbandGame.FLEE_EDGE_MARGIN;
+    const px = player.position.x;
+    const pz = player.position.z;
+
+    const atEdge =
+      px <= -halfW + margin ||
+      px >= halfW - margin ||
+      pz <= -halfD + margin ||
+      pz >= halfD - margin;
+
+    if (atEdge) {
+      state.fleeTimer++;
+      if (state.fleeTimer >= WarbandGame.FLEE_TICKS_REQUIRED) {
+        state.fleeAvailable = true;
+      }
+    } else {
+      // Moved away from edge — reset
+      state.fleeTimer = 0;
+      state.fleeAvailable = false;
+    }
+  }
+
+  /** Called when the player clicks the FLEE button */
+  private _playerFlee(): void {
+    if (!this._state || !this._state.fleeAvailable) return;
+    this._state.playerFled = true;
+    this._endBattle(false);
+  }
+
   // ---- End battle ---------------------------------------------------------
 
   private _endBattle(playerWon: boolean): void {
@@ -5236,6 +5306,9 @@ export class WarbandGame {
     if (playerWon) {
       this._state.playerWins++;
       this._hud.showCenterMessage("VICTORY!", 3000);
+    } else if (this._state.playerFled) {
+      this._state.enemyWins++;
+      this._hud.showCenterMessage("RETREAT!", 3000);
     } else {
       this._state.enemyWins++;
       this._hud.showCenterMessage("DEFEAT!", 3000);
@@ -5255,6 +5328,7 @@ export class WarbandGame {
 
   private _showResults(won: boolean): void {
     if (!this._state) return;
+    this._sceneManager.setCanvasPointerEvents(false);
 
     // Ensure pointer is unlocked so buttons are clickable
     if (document.pointerLockElement) {
@@ -5308,9 +5382,14 @@ export class WarbandGame {
       )
       .join("");
 
+    const fled = this._state.playerFled;
+    const outcomeLabel = won ? "VICTORY" : fled ? "RETREAT" : "DEFEAT";
+    const outcomeColor = won ? "#ffd700" : fled ? "#ff8800" : "#cc4444";
+    const outcomeShadow = won ? "218,165,32" : fled ? "255,136,0" : "204,68,68";
+
     this._resultsContainer.innerHTML = `
-      <h1 style="font-size:42px;color:${won ? "#ffd700" : "#cc4444"};text-shadow:0 0 15px rgba(${won ? "218,165,32" : "204,68,68"},0.4)">
-        ${won ? "VICTORY" : "DEFEAT"}
+      <h1 style="font-size:42px;color:${outcomeColor};text-shadow:0 0 15px rgba(${outcomeShadow},0.4)">
+        ${outcomeLabel}
       </h1>
       <p style="margin-bottom:10px;color:#aa9977">Round ${this._state!.round}</p>
 
@@ -5393,6 +5472,11 @@ export class WarbandGame {
     player.combatState = FighterCombatState.IDLE;
     player.position = vec3(0, 0, 10);
     player.velocity = vec3();
+
+    // Reset flee state
+    this._state.fleeTimer = 0;
+    this._state.fleeAvailable = false;
+    this._state.playerFled = false;
 
     // Refill ammo
     if (player.equipment.mainHand?.ammo) {
@@ -5557,6 +5641,7 @@ export class WarbandGame {
     if (!this._state) return;
     this._state.paused = true;
     this._inputSystem.pointerLockEnabled = false;
+    this._sceneManager.setCanvasPointerEvents(false);
     if (document.pointerLockElement) document.exitPointerLock();
     this._showPauseMenu();
   }
@@ -5565,6 +5650,7 @@ export class WarbandGame {
     if (!this._state) return;
     this._state.paused = false;
     this._inputSystem.pointerLockEnabled = true;
+    this._sceneManager.setCanvasPointerEvents(true);
     this._removePauseMenu();
     this._removeInventory();
   }
@@ -5749,6 +5835,7 @@ export class WarbandGame {
     if (!player) return;
 
     this._removeInventory();
+    this._sceneManager.setCanvasPointerEvents(false);
     this._inventoryContainer = document.createElement("div");
     this._inventoryContainer.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
