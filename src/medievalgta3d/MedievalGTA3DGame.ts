@@ -6,7 +6,7 @@
 import { createGTA3DState, genId3D } from "./state/GTA3DState";
 import type {
   GTA3DState, NPC3D, NPCType3D, Horse3D, Building3D, Vec3,
-  HorseColor3D,
+  HorseColor3D, Mission3D, Weather3D,
 } from "./state/GTA3DState";
 import { GTA3D } from "./config/GTA3DConfig";
 import { updatePlayer3D } from "./systems/GTA3DPlayerSystem";
@@ -334,6 +334,47 @@ function populateWorld(state: GTA3DState): void {
   addItem("treasure_chest", -28, 28, 30);
   addItem("treasure_chest", 40, -45, 40);
   addItem("treasure_chest", 0, 90, 35);
+
+  // ---- Missions ----
+  state.missions = [
+    {
+      id: "m1", type: "eliminate", title: "Clear the Bandits",
+      description: "Eliminate 3 bandits threatening the farmlands.",
+      state: "available", targetNpcType: "bandit", targetCount: 3, currentCount: 0,
+      reward: { gold: 100 }, giverLocation: { x: 5, y: 0, z: -28 }, giverName: "Captain of the Guard",
+    },
+    {
+      id: "m2", type: "collect", title: "Tax Collection",
+      description: "Collect 80 gold from the marketplace for the crown.",
+      state: "available", targetCount: 80, currentCount: 0,
+      reward: { gold: 50 }, giverLocation: { x: -30, y: 0, z: -28 }, giverName: "Castle Steward",
+    },
+    {
+      id: "m3", type: "deliver", title: "Urgent Message",
+      description: "Deliver a message from the castle to the church.",
+      state: "available", targetLocation: { x: 30, y: 0, z: -25 }, deliverRadius: 5,
+      reward: { gold: 40 }, giverLocation: { x: -30, y: 0, z: -30 }, giverName: "King's Messenger",
+    },
+    {
+      id: "m4", type: "eliminate", title: "The Shadow Assassin",
+      description: "An assassin stalks the outskirts. End the threat.",
+      state: "available", targetNpcType: "assassin", targetCount: 1, currentCount: 0,
+      reward: { gold: 150, hp: 20 }, giverLocation: { x: 0, y: 0, z: -55 }, giverName: "Gate Commander",
+    },
+    {
+      id: "m5", type: "survive", title: "Stand Your Ground",
+      description: "Survive for 60 seconds in the criminal district.",
+      state: "available", surviveTime: 60, surviveTimer: 0,
+      targetLocation: { x: -18, y: 0, z: 28 }, deliverRadius: 15,
+      reward: { gold: 120 }, giverLocation: { x: 30, y: 0, z: 3 }, giverName: "Tavern Keeper",
+    },
+    {
+      id: "m6", type: "eliminate", title: "Knight's Trial",
+      description: "Defeat 2 criminals to prove your worth.",
+      state: "available", targetNpcType: "criminal", targetCount: 2, currentCount: 0,
+      reward: { gold: 75 }, giverLocation: { x: 15, y: 0, z: 10 }, giverName: "Sir Galahad",
+    },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -372,6 +413,7 @@ export class MedievalGTA3DGame {
     // State
     this._state = createGTA3DState(sw, sh);
     populateWorld(this._state);
+    this._prevGold = this._state.player.gold;
 
     // 3D renderer
     this._renderer.init(sw, sh);
@@ -422,7 +464,7 @@ export class MedievalGTA3DGame {
 
     // Render (always)
     this._renderer.update(this._state, rawDt);
-    this._hud.update(this._state, rawDt);
+    this._hud.update(this._state, rawDt, this._showMissionInfo);
 
     this._rafId = requestAnimationFrame((t) => this._gameLoop(t));
   }
@@ -442,6 +484,12 @@ export class MedievalGTA3DGame {
 
     // Item pickup
     this._updateItemPickup(state);
+
+    // Missions
+    this._updateMissions(state, dt);
+
+    // Weather
+    this._updateWeather(state, dt);
   }
 
   private _updateItemPickup(state: GTA3DState): void {
@@ -494,6 +542,170 @@ export class MedievalGTA3DGame {
   }
 
   // ---------------------------------------------------------------------------
+  // Missions
+  // ---------------------------------------------------------------------------
+
+  private _prevGold = 0;
+  private _showMissionInfo = false;
+
+  private _updateMissions(state: GTA3DState, dt: number): void {
+    const p = state.player;
+    const INTERACT_RANGE = GTA3D.INTERACT_RANGE;
+
+    // Track gold changes for collect missions
+    const goldGained = p.gold - this._prevGold;
+    this._prevGold = p.gold;
+
+    // If no active mission, check if player is near a mission giver and presses E
+    if (!state.activeMission) {
+      for (const mission of state.missions) {
+        if (mission.state !== 'available') continue;
+        if (state.completedMissionIds.has(mission.id)) continue;
+
+        const dx = p.pos.x - mission.giverLocation.x;
+        const dz = p.pos.z - mission.giverLocation.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        if (dist <= INTERACT_RANGE && state.keys.has('e')) {
+          // Activate mission
+          mission.state = 'active';
+          mission.currentCount = 0;
+          if (mission.type === 'survive') mission.surviveTimer = 0;
+          state.activeMission = mission;
+          addNotification3D(state, `Mission: ${mission.title}`, 0x44aaff);
+          addNotification3D(state, mission.description, 0x88bbff);
+          state.keys.delete('e'); // consume the key press
+          break;
+        }
+      }
+    }
+
+    // Update active mission progress
+    const m = state.activeMission;
+    if (m && m.state === 'active') {
+      switch (m.type) {
+        case 'eliminate': {
+          // Count dead NPCs of the target type
+          let deadCount = 0;
+          state.npcs.forEach(npc => {
+            if (npc.dead && m.targetNpcType && npc.type === m.targetNpcType) {
+              deadCount++;
+            }
+          });
+          m.currentCount = Math.min(deadCount, m.targetCount ?? 0);
+
+          if (m.currentCount >= (m.targetCount ?? 0)) {
+            this._completeMission(state, m);
+          }
+          break;
+        }
+        case 'collect': {
+          // Track gold collected since mission start
+          if (goldGained > 0) {
+            m.currentCount = (m.currentCount ?? 0) + goldGained;
+          }
+          if ((m.currentCount ?? 0) >= (m.targetCount ?? 0)) {
+            this._completeMission(state, m);
+          }
+          break;
+        }
+        case 'deliver': {
+          if (m.targetLocation) {
+            const dx = p.pos.x - m.targetLocation.x;
+            const dz = p.pos.z - m.targetLocation.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist <= (m.deliverRadius ?? 5)) {
+              this._completeMission(state, m);
+            }
+          }
+          break;
+        }
+        case 'survive': {
+          if (m.targetLocation) {
+            const dx = p.pos.x - m.targetLocation.x;
+            const dz = p.pos.z - m.targetLocation.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist <= (m.deliverRadius ?? 15)) {
+              m.surviveTimer = (m.surviveTimer ?? 0) + dt;
+              if (m.surviveTimer >= (m.surviveTime ?? 60)) {
+                this._completeMission(state, m);
+              }
+            } else {
+              // Reset timer if player leaves zone
+              if ((m.surviveTimer ?? 0) > 0) {
+                addNotification3D(state, 'Return to the zone!', 0xff8844);
+              }
+            }
+          }
+          break;
+        }
+      }
+
+      // Time limit check
+      if (m.timeLimit !== undefined && m.state === 'active') {
+        m.timeLimitTimer = (m.timeLimitTimer ?? 0) + dt;
+        if (m.timeLimitTimer >= m.timeLimit) {
+          m.state = 'failed';
+          state.activeMission = null;
+          addNotification3D(state, `Mission Failed: ${m.title}`, 0xff4444);
+        }
+      }
+    }
+  }
+
+  private _completeMission(state: GTA3DState, mission: Mission3D): void {
+    mission.state = 'completed';
+    state.completedMissionIds.add(mission.id);
+    state.activeMission = null;
+
+    // Grant rewards
+    state.player.gold += mission.reward.gold;
+    addNotification3D(state, `Mission Complete: ${mission.title}!`, 0x44ff44);
+    addNotification3D(state, `+${mission.reward.gold} gold`, 0xffdd44);
+
+    if (mission.reward.hp) {
+      state.player.hp = Math.min(state.player.maxHp, state.player.hp + mission.reward.hp);
+      addNotification3D(state, `+${mission.reward.hp} HP`, 0x44ff44);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Weather
+  // ---------------------------------------------------------------------------
+
+  private _updateWeather(state: GTA3DState, dt: number): void {
+    // Transition fade-in
+    if (state.weatherTransition > 0) {
+      state.weatherTransition = Math.max(0, state.weatherTransition - dt / 2.0);
+    }
+
+    state.weatherTimer -= dt;
+    if (state.weatherTimer <= 0) {
+      const weathers: Weather3D[] = ['clear', 'rain', 'fog', 'storm'];
+      let next: Weather3D;
+      do {
+        next = weathers[Math.floor(Math.random() * weathers.length)];
+      } while (next === state.weather);
+
+      state.weather = next;
+      state.weatherTransition = 1.0;
+
+      // Set timer based on weather type
+      switch (next) {
+        case 'clear': state.weatherTimer = 60 + Math.random() * 60; break;
+        case 'rain':  state.weatherTimer = 30 + Math.random() * 30; break;
+        case 'fog':   state.weatherTimer = 20 + Math.random() * 20; break;
+        case 'storm': state.weatherTimer = 15 + Math.random() * 15; break;
+      }
+
+      const weatherNames: Record<Weather3D, string> = {
+        clear: 'Clear Skies', rain: 'Rain', fog: 'Fog', storm: 'Storm',
+      };
+      addNotification3D(state, `Weather: ${weatherNames[next]}`, 0x88aacc);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Input
   // ---------------------------------------------------------------------------
 
@@ -511,6 +723,11 @@ export class MedievalGTA3DGame {
 
       if (key === "escape" || key === "p") {
         state.paused = !state.paused;
+      }
+
+      // Mission info toggle
+      if (key === 'j') {
+        this._showMissionInfo = !this._showMissionInfo;
       }
 
       // Weapon switching 1-7
@@ -577,6 +794,8 @@ export class MedievalGTA3DGame {
     const sh = this._state.screenH;
     this._state = createGTA3DState(sw, sh);
     populateWorld(this._state);
+    this._prevGold = this._state.player.gold;
+    this._showMissionInfo = false;
     this._simAccumulator = 0;
   }
 

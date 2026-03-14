@@ -67,6 +67,18 @@ export class GTA3DHUD {
   private _lastHp = 100;
   private _damageFlash!: HTMLDivElement;
 
+  // Mission HUD
+  private _missionPanel!: HTMLDivElement;
+  private _missionTitle!: HTMLDivElement;
+  private _missionProgress!: HTMLDivElement;
+  private _missionDetailOverlay!: HTMLDivElement;
+  private _missionDetailContent!: HTMLDivElement;
+  private _missionCompleteNotif!: HTMLDivElement;
+  private _missionCompleteTimer = 0;
+
+  // Weather HUD
+  private _weatherIndicator!: HTMLDivElement;
+
   // Tracking stats for game over
   private _trackedKills = 0;
   private _maxGold = 0;
@@ -119,6 +131,8 @@ export class GTA3DHUD {
     this._buildMinimap();
     this._buildCrosshair();
     this._buildDamageFlash();
+    this._buildMissionHUD();
+    this._buildWeatherIndicator();
     this._buildGameOver();
     this._buildPauseMenu();
   }
@@ -193,7 +207,7 @@ export class GTA3DHUD {
     // Controls hint
     const hint = document.createElement("div");
     hint.style.cssText = `margin-top:6px;font-size:9px;color:#555;font-family:${FONT_MONO};`;
-    hint.textContent = "1-7 weapons | E interact | F steal";
+    hint.textContent = "1-7 weapons | E interact | F steal | J missions";
     inner.appendChild(hint);
   }
 
@@ -341,6 +355,65 @@ export class GTA3DHUD {
     this._root.appendChild(this._damageFlash);
   }
 
+  private _buildMissionHUD(): void {
+    // Active mission panel (bottom-left, above minimap area)
+    this._missionPanel = document.createElement("div");
+    this._missionPanel.style.cssText = `position:absolute;bottom:12px;left:12px;width:260px;padding:10px 14px;background:${PANEL_GRADIENT};border:1px solid rgba(68,170,255,0.4);border-radius:5px;box-shadow:0 4px 12px rgba(0,0,0,0.4);display:none;`;
+    this._root.appendChild(this._missionPanel);
+
+    const missionHeader = document.createElement("div");
+    missionHeader.style.cssText = `font-size:9px;color:rgba(68,170,255,0.7);letter-spacing:2px;font-family:${FONT_LABEL};margin-bottom:4px;`;
+    missionHeader.textContent = "ACTIVE MISSION";
+    this._missionPanel.appendChild(missionHeader);
+
+    this._missionTitle = document.createElement("div");
+    this._missionTitle.style.cssText = `font-size:13px;font-weight:bold;color:#44aaff;font-family:${FONT_LABEL};margin-bottom:4px;`;
+    this._missionPanel.appendChild(this._missionTitle);
+
+    this._missionProgress = document.createElement("div");
+    this._missionProgress.style.cssText = `font-size:11px;color:#88bbdd;font-family:${FONT_MONO};`;
+    this._missionPanel.appendChild(this._missionProgress);
+
+    const missionHint = document.createElement("div");
+    missionHint.style.cssText = `font-size:8px;color:#555;font-family:${FONT_MONO};margin-top:4px;`;
+    missionHint.textContent = "J - mission details";
+    this._missionPanel.appendChild(missionHint);
+
+    // Mission detail overlay (toggled with J)
+    this._missionDetailOverlay = document.createElement("div");
+    this._missionDetailOverlay.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;max-height:500px;padding:20px;background:${PANEL_GRADIENT};border:2px solid rgba(68,170,255,0.5);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:none;pointer-events:auto;overflow-y:auto;`;
+    this._root.appendChild(this._missionDetailOverlay);
+
+    const detailHeader = document.createElement("div");
+    detailHeader.style.cssText = `font-size:20px;font-weight:bold;color:#44aaff;font-family:${FONT_LABEL};letter-spacing:3px;text-align:center;margin-bottom:12px;`;
+    detailHeader.textContent = "MISSIONS";
+    this._missionDetailOverlay.appendChild(detailHeader);
+
+    const detailDivider = document.createElement("div");
+    detailDivider.style.cssText = "width:100%;height:1px;background:linear-gradient(90deg, transparent, rgba(68,170,255,0.4), transparent);margin-bottom:12px;";
+    this._missionDetailOverlay.appendChild(detailDivider);
+
+    this._missionDetailContent = document.createElement("div");
+    this._missionDetailOverlay.appendChild(this._missionDetailContent);
+
+    const closeHint = document.createElement("div");
+    closeHint.style.cssText = `text-align:center;font-size:10px;color:#555;font-family:${FONT_MONO};margin-top:12px;`;
+    closeHint.textContent = "Press J to close";
+    this._missionDetailOverlay.appendChild(closeHint);
+
+    // Mission completion notification (center screen, fades)
+    this._missionCompleteNotif = document.createElement("div");
+    this._missionCompleteNotif.style.cssText = `position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);font-size:28px;font-weight:bold;color:#44ff44;font-family:${FONT_LABEL};letter-spacing:4px;text-shadow:0 0 20px rgba(68,255,68,0.5);opacity:0;pointer-events:none;transition:opacity 0.3s;`;
+    this._root.appendChild(this._missionCompleteNotif);
+  }
+
+  private _buildWeatherIndicator(): void {
+    this._weatherIndicator = document.createElement("div");
+    this._weatherIndicator.style.cssText = `position:absolute;top:85px;right:12px;padding:5px 10px;background:${PANEL_GRADIENT};border:1px solid rgba(136,170,204,0.3);border-radius:4px;font-size:11px;color:#88aacc;font-family:${FONT_LABEL};box-shadow:0 2px 8px rgba(0,0,0,0.3);`;
+    this._weatherIndicator.textContent = "Clear";
+    this._root.appendChild(this._weatherIndicator);
+  }
+
   private _buildGameOver(): void {
     this._gameOverOverlay = document.createElement("div");
     this._gameOverOverlay.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(15,0,0,0.8);display:none;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;`;
@@ -399,6 +472,7 @@ export class GTA3DHUD {
         <tr><td style="color:#CCBB88;font-weight:bold;">E</td><td>Interact / Mount horse</td></tr>
         <tr><td style="color:#CCBB88;font-weight:bold;">F</td><td>Steal horse</td></tr>
         <tr><td style="color:#CCBB88;font-weight:bold;">1-7</td><td>Switch weapon</td></tr>
+        <tr><td style="color:#CCBB88;font-weight:bold;">J</td><td>Mission journal</td></tr>
         <tr><td style="color:#CCBB88;font-weight:bold;">Esc / P</td><td>Pause menu</td></tr>
       </table>
       <div style="border-top:1px solid rgba(218,165,32,0.3);margin:12px 0;"></div>
@@ -442,7 +516,7 @@ export class GTA3DHUD {
 
   // ===================== UPDATE =====================
 
-  update(state: GTA3DState, dt: number): void {
+  update(state: GTA3DState, dt: number, showMissionInfo = false): void {
     const p = state.player;
 
     // Track stats
@@ -505,6 +579,12 @@ export class GTA3DHUD {
 
     // Minimap
     this._updateMinimap(state);
+
+    // Mission HUD
+    this._updateMissionHUD(state, dt, showMissionInfo);
+
+    // Weather indicator
+    this._updateWeatherHUD(state);
 
     // Damage flash
     if (p.hp < this._lastHp) {
@@ -748,6 +828,37 @@ export class GTA3DHUD {
       ctx.fill();
     });
 
+    // Mission markers on minimap
+    for (const mission of state.missions) {
+      if (mission.state === 'available' && !state.completedMissionIds.has(mission.id)) {
+        // Show mission giver as yellow "!" marker
+        const mx = (mission.giverLocation.x + ox) * scale;
+        const mz = (mission.giverLocation.z + oz) * scale;
+        ctx.fillStyle = '#ffdd44';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('!', mx, mz);
+      } else if (mission.state === 'active') {
+        // Show target location for deliver/survive missions
+        if (mission.targetLocation) {
+          const tx = (mission.targetLocation.x + ox) * scale;
+          const tz = (mission.targetLocation.z + oz) * scale;
+          ctx.strokeStyle = '#44aaff';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(tx, tz, (mission.deliverRadius ?? 5) * scale, 0, Math.PI * 2);
+          ctx.stroke();
+          // Target marker
+          ctx.fillStyle = '#44aaff';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('\u2716', tx, tz);
+        }
+      }
+    }
+
     // Player — directional triangle/arrow instead of circle
     const px = (state.player.pos.x + ox) * scale;
     const pz = (state.player.pos.z + oz) * scale;
@@ -771,6 +882,123 @@ export class GTA3DHUD {
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
+  }
+
+  private _updateMissionHUD(state: GTA3DState, dt: number, showMissionInfo: boolean): void {
+    const m = state.activeMission;
+
+    // Active mission panel
+    if (m && m.state === 'active') {
+      this._missionPanel.style.display = 'block';
+      this._missionTitle.textContent = m.title;
+
+      let progressText = '';
+      switch (m.type) {
+        case 'eliminate':
+          progressText = `Defeated: ${m.currentCount ?? 0}/${m.targetCount ?? 0}`;
+          break;
+        case 'collect':
+          progressText = `Collected: ${m.currentCount ?? 0}/${m.targetCount ?? 0} gold`;
+          break;
+        case 'deliver':
+          progressText = 'Deliver to target location';
+          break;
+        case 'survive': {
+          const remaining = Math.max(0, (m.surviveTime ?? 60) - (m.surviveTimer ?? 0));
+          progressText = `Survive: ${Math.ceil(remaining)}s remaining`;
+          break;
+        }
+      }
+      if (m.timeLimit !== undefined) {
+        const timeLeft = Math.max(0, m.timeLimit - (m.timeLimitTimer ?? 0));
+        progressText += ` | Time: ${Math.ceil(timeLeft)}s`;
+      }
+      this._missionProgress.textContent = progressText;
+    } else {
+      this._missionPanel.style.display = 'none';
+    }
+
+    // Mission detail overlay
+    this._missionDetailOverlay.style.display = showMissionInfo ? 'block' : 'none';
+    if (showMissionInfo) {
+      let html = '';
+      for (const mission of state.missions) {
+        if (state.completedMissionIds.has(mission.id)) {
+          html += `<div style="margin-bottom:10px;padding:8px;background:rgba(68,255,68,0.05);border:1px solid rgba(68,255,68,0.2);border-radius:4px;">`;
+          html += `<div style="font-size:12px;font-weight:bold;color:#44ff44;font-family:${FONT_LABEL};">&#10003; ${mission.title}</div>`;
+          html += `<div style="font-size:10px;color:#558855;margin-top:2px;">Completed</div>`;
+          html += `</div>`;
+        } else if (mission.state === 'active') {
+          html += `<div style="margin-bottom:10px;padding:8px;background:rgba(68,170,255,0.08);border:1px solid rgba(68,170,255,0.3);border-radius:4px;">`;
+          html += `<div style="font-size:12px;font-weight:bold;color:#44aaff;font-family:${FONT_LABEL};">&#9654; ${mission.title}</div>`;
+          html += `<div style="font-size:10px;color:#88bbdd;margin-top:2px;">${mission.description}</div>`;
+          html += `<div style="font-size:10px;color:#aa8822;margin-top:4px;">Reward: ${mission.reward.gold} gold${mission.reward.hp ? ` + ${mission.reward.hp} HP` : ''}</div>`;
+          html += `</div>`;
+        } else if (mission.state === 'failed') {
+          html += `<div style="margin-bottom:10px;padding:8px;background:rgba(255,68,68,0.05);border:1px solid rgba(255,68,68,0.2);border-radius:4px;">`;
+          html += `<div style="font-size:12px;font-weight:bold;color:#ff4444;font-family:${FONT_LABEL};">&#10007; ${mission.title}</div>`;
+          html += `<div style="font-size:10px;color:#885555;margin-top:2px;">Failed</div>`;
+          html += `</div>`;
+        } else {
+          html += `<div style="margin-bottom:10px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:4px;">`;
+          html += `<div style="font-size:12px;font-weight:bold;color:#aaaaaa;font-family:${FONT_LABEL};">! ${mission.title}</div>`;
+          html += `<div style="font-size:10px;color:#666;margin-top:2px;">${mission.giverName}</div>`;
+          html += `<div style="font-size:10px;color:#aa8822;margin-top:4px;">Reward: ${mission.reward.gold} gold${mission.reward.hp ? ` + ${mission.reward.hp} HP` : ''}</div>`;
+          html += `</div>`;
+        }
+      }
+      this._missionDetailContent.innerHTML = html;
+    }
+
+    // Mission completion notification
+    if (this._missionCompleteTimer > 0) {
+      this._missionCompleteTimer -= dt;
+      this._missionCompleteNotif.style.opacity = `${Math.min(1, this._missionCompleteTimer / 0.5)}`;
+      if (this._missionCompleteTimer <= 0) {
+        this._missionCompleteNotif.style.opacity = '0';
+      }
+    }
+
+    // Check for newly completed missions to trigger big notification
+    for (const mission of state.missions) {
+      if (mission.state === 'completed' && state.completedMissionIds.has(mission.id)) {
+        // Only show once — use a data attribute to track
+        const key = `shown_${mission.id}`;
+        if (!(this._missionCompleteNotif as any)[key]) {
+          (this._missionCompleteNotif as any)[key] = true;
+          this._missionCompleteNotif.textContent = `MISSION COMPLETE: ${mission.title}`;
+          this._missionCompleteTimer = 3.0;
+          this._missionCompleteNotif.style.opacity = '1';
+        }
+      }
+    }
+  }
+
+  private _updateWeatherHUD(state: GTA3DState): void {
+    const weatherIcons: Record<string, string> = {
+      clear: '\u2600', rain: '\u{1F327}', fog: '\u{1F32B}', storm: '\u26A1',
+    };
+    const weatherNames: Record<string, string> = {
+      clear: 'Clear', rain: 'Rain', fog: 'Fog', storm: 'Storm',
+    };
+    const weatherColors: Record<string, string> = {
+      clear: '#ffdd44', rain: '#6688cc', fog: '#aaaaaa', storm: '#ff8844',
+    };
+    const icon = weatherIcons[state.weather] ?? '';
+    const name = weatherNames[state.weather] ?? state.weather;
+    const color = weatherColors[state.weather] ?? '#88aacc';
+
+    this._weatherIndicator.innerHTML = `<span style="margin-right:4px;">${icon}</span><span style="color:${color};">${name}</span>`;
+
+    // Fade border color to match weather
+    this._weatherIndicator.style.borderColor = `rgba(${this._hexToRgb(color)},0.4)`;
+  }
+
+  private _hexToRgb(hex: string): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `${r},${g},${b}`;
   }
 
   private _updateCompass(rotation: number): void {

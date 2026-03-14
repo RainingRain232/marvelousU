@@ -138,6 +138,31 @@ export interface Notification3D {
   color: number;
 }
 
+export type MissionType = 'eliminate' | 'collect' | 'deliver' | 'survive';
+export type MissionState = 'available' | 'active' | 'completed' | 'failed';
+
+export interface Mission3D {
+  id: string;
+  type: MissionType;
+  title: string;
+  description: string;
+  state: MissionState;
+  targetNpcType?: NPCType3D;  // for eliminate missions
+  targetCount?: number;
+  currentCount?: number;
+  targetLocation?: Vec3;      // for deliver missions
+  deliverRadius?: number;
+  surviveTime?: number;       // for survive missions
+  surviveTimer?: number;
+  reward: { gold: number; hp?: number };
+  giverLocation: Vec3;        // where to pick up mission
+  giverName: string;
+  timeLimit?: number;         // optional time limit
+  timeLimitTimer?: number;
+}
+
+export type Weather3D = 'clear' | 'rain' | 'fog' | 'storm';
+
 export interface GTA3DState {
   tick: number;
   gameTime: number;
@@ -167,6 +192,12 @@ export interface GTA3DState {
   cameraZ: number;
   cameraTargetX: number;
   cameraTargetZ: number;
+  missions: Mission3D[];
+  activeMission: Mission3D | null;
+  completedMissionIds: Set<string>;
+  weather: Weather3D;
+  weatherTimer: number;
+  weatherTransition: number;
 }
 
 export function createGTA3DState(sw: number, sh: number): GTA3DState {
@@ -226,6 +257,12 @@ export function createGTA3DState(sw: number, sh: number): GTA3DState {
     cameraZ: 10,
     cameraTargetX: 0,
     cameraTargetZ: 10,
+    missions: [],
+    activeMission: null,
+    completedMissionIds: new Set(),
+    weather: 'clear',
+    weatherTimer: 60,
+    weatherTransition: 0,
   };
 }
 

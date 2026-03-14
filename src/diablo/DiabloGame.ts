@@ -5,7 +5,7 @@ import {
   DiabloClass, DiabloMapId, DiabloPhase, ItemRarity, DiabloDifficulty,
   SkillId, EnemyState, EnemyType, StatusEffect, TimeOfDay, DamageType,
   DiabloItem, DiabloEquipment, DiabloPotion, PotionType,
-  VendorType, DiabloVendor,
+  VendorType, DiabloVendor, DiabloTownfolk, TownfolkRole,
   BossAbility, EnemyBehavior,
   DiabloQuest, QuestType, CraftType,
   TalentEffectType,
@@ -957,8 +957,11 @@ export class DiabloGame {
           this._state.vendors.map((v) => ({ x: v.x, z: v.z, type: v.type, name: v.name, icon: v.icon }))
         );
       }
+      // Spawn townfolk wandering around Camelot
+      this._spawnCamelotTownfolk();
     } else {
       this._state.vendors = [];
+      this._state.townfolk = [];
       this._spawnInitialEnemies();
       this._spawnInitialChests();
     }
@@ -2485,6 +2488,7 @@ export class DiabloGame {
         this._updateSpawning(dt);
         this._updateStatusEffects(dt);
         this._updateFloatingText(dt);
+        this._updateTownfolk(dt);
         this._checkMapClear();
         this._revealAroundPlayer(this._state.player.x, this._state.player.z);
 
@@ -3870,6 +3874,102 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
+  //  TOWNFOLK
+  // ──────────────────────────────────────────────────────────────
+
+  private _spawnCamelotTownfolk(): void {
+    this._state.townfolk = [];
+    const roles: Array<{ role: TownfolkRole; name: string; x: number; z: number; radius: number }> = [
+      // Market area townsfolk
+      { role: 'peasant', name: 'Peasant', x: -5, z: 5, radius: 12 },
+      { role: 'peasant', name: 'Farmer', x: 8, z: -3, radius: 10 },
+      { role: 'peasant', name: 'Villager', x: 3, z: 12, radius: 10 },
+      { role: 'maiden', name: 'Maiden', x: -8, z: 8, radius: 8 },
+      { role: 'maiden', name: 'Townswoman', x: 12, z: 2, radius: 10 },
+      // Near castle
+      { role: 'noble', name: 'Lord Cedric', x: -18, z: -15, radius: 8 },
+      { role: 'noble', name: 'Lady Eleanor', x: -12, z: -20, radius: 8 },
+      { role: 'guard', name: 'Town Guard', x: 0, z: -10, radius: 15 },
+      { role: 'guard', name: 'Town Guard', x: 15, z: 5, radius: 12 },
+      { role: 'guard', name: 'Gate Guard', x: 0, z: 20, radius: 6 },
+      // Religious & artisan quarter
+      { role: 'monk', name: 'Brother Thomas', x: 18, z: -12, radius: 8 },
+      { role: 'monk', name: 'Sister Mary', x: 20, z: -8, radius: 6 },
+      // Entertainment
+      { role: 'bard', name: 'Lute Player', x: -2, z: 0, radius: 12 },
+      { role: 'bard', name: 'Storyteller', x: 10, z: 10, radius: 10 },
+      // Children playing
+      { role: 'child', name: 'Street Urchin', x: 5, z: 8, radius: 14 },
+      { role: 'child', name: 'Young Squire', x: -10, z: 0, radius: 12 },
+      // More wanderers
+      { role: 'peasant', name: 'Beggar', x: -15, z: 10, radius: 15 },
+      { role: 'peasant', name: 'Woodcutter', x: 20, z: 15, radius: 10 },
+      { role: 'maiden', name: 'Flower Girl', x: 0, z: 15, radius: 12 },
+      { role: 'noble', name: 'Court Jester', x: -5, z: -12, radius: 10 },
+    ];
+
+    for (const def of roles) {
+      const tf: DiabloTownfolk = {
+        id: this._genId(),
+        role: def.role,
+        name: def.name,
+        x: def.x,
+        y: getTerrainHeight(def.x, def.z),
+        z: def.z,
+        angle: Math.random() * Math.PI * 2,
+        speed: def.role === 'child' ? 2.0 : def.role === 'guard' ? 1.8 : def.role === 'noble' ? 1.0 : 1.4,
+        wanderTarget: null,
+        wanderTimer: Math.random() * 5,
+        homeX: def.x,
+        homeZ: def.z,
+        wanderRadius: def.radius,
+      };
+      this._state.townfolk.push(tf);
+    }
+  }
+
+  private _updateTownfolk(dt: number): void {
+    if (this._state.currentMap !== DiabloMapId.CAMELOT) return;
+
+    const mapCfg = MAP_CONFIGS[DiabloMapId.CAMELOT];
+    const halfW = mapCfg.width / 2 - 2;
+    const halfD = mapCfg.depth / 2 - 2;
+
+    for (const tf of this._state.townfolk) {
+      tf.wanderTimer -= dt;
+
+      if (tf.wanderTimer <= 0) {
+        // Pick a new wander target within radius of home
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * tf.wanderRadius;
+        let tx = tf.homeX + Math.cos(angle) * dist;
+        let tz = tf.homeZ + Math.sin(angle) * dist;
+        // Clamp to map bounds
+        tx = Math.max(-halfW, Math.min(halfW, tx));
+        tz = Math.max(-halfD, Math.min(halfD, tz));
+        tf.wanderTarget = { x: tx, z: tz };
+        tf.wanderTimer = 3 + Math.random() * 6; // pause 3-9 seconds between wanders
+      }
+
+      if (tf.wanderTarget) {
+        const dx = tf.wanderTarget.x - tf.x;
+        const dz = tf.wanderTarget.z - tf.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        if (dist < 0.5) {
+          tf.wanderTarget = null;
+        } else {
+          const moveSpeed = tf.speed * dt;
+          tf.x += (dx / dist) * moveSpeed;
+          tf.z += (dz / dist) * moveSpeed;
+          tf.angle = Math.atan2(dx, dz);
+          tf.y = getTerrainHeight(tf.x, tf.z);
+        }
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  CHECK MAP CLEAR
   // ──────────────────────────────────────────────────────────────
   private _checkMapClear(): void {
@@ -4746,6 +4846,7 @@ export class DiabloGame {
     this._state.floatingTexts = [];
     this._state.particles = [];
     this._state.vendors = [];
+    this._state.townfolk = [];
     if (this._state.currentMap === DiabloMapId.CAMELOT) {
       this._state.vendors = VENDOR_DEFS.map((vd) => ({
         id: this._genId(),
@@ -4761,6 +4862,7 @@ export class DiabloGame {
           this._state.vendors.map((v) => ({ x: v.x, z: v.z, type: v.type, name: v.name, icon: v.icon }))
         );
       }
+      this._spawnCamelotTownfolk();
     } else {
       this._spawnInitialEnemies();
       this._spawnInitialChests();

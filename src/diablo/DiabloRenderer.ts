@@ -14,6 +14,8 @@ import {
   ParticleType,
   DiabloParticle,
   Weather,
+  DiabloTownfolk,
+  TownfolkRole,
 } from './DiabloTypes';
 import { ENEMY_DEFS, MAP_CONFIGS, VENDOR_DEFS } from './DiabloConfig';
 import { RARITY_COLORS } from './DiabloTypes';
@@ -38,6 +40,7 @@ export class DiabloRenderer {
   private _chestMeshes: Map<string, THREE.Group> = new Map();
   private _aoeMeshes: Map<string, THREE.Mesh> = new Map();
   private _vendorMeshes: Map<string, THREE.Group> = new Map();
+  private _townfolkMeshes: Map<string, THREE.Group> = new Map();
   private _floatTextSprites: Map<string, THREE.Sprite> = new Map();
   private _envGroup!: THREE.Group;
   private _currentMap: DiabloMapId | null = null;
@@ -5308,6 +5311,238 @@ export class DiabloRenderer {
       // Update position
       mesh.position.set(vendor.x, 0, vendor.z);
     }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  TOWNFOLK (Camelot wandering NPCs)
+  // ──────────────────────────────────────────────────────────────
+
+  private _syncTownfolk(townfolk: DiabloTownfolk[], _dt: number): void {
+    const currentIds = new Set(townfolk.map(t => t.id));
+
+    // Remove old meshes
+    for (const [id, mesh] of this._townfolkMeshes) {
+      if (!currentIds.has(id)) {
+        this._scene.remove(mesh);
+        this._townfolkMeshes.delete(id);
+      }
+    }
+
+    for (const tf of townfolk) {
+      let mesh = this._townfolkMeshes.get(tf.id);
+      if (!mesh) {
+        mesh = this._buildTownfolkMesh(tf.role);
+        this._scene.add(mesh);
+        this._townfolkMeshes.set(tf.id, mesh);
+      }
+
+      mesh.position.set(tf.x, tf.y, tf.z);
+      mesh.rotation.y = tf.angle;
+
+      // Walk animation when moving
+      const isMoving = tf.wanderTarget !== null;
+      const leftLeg = mesh.getObjectByName('tf_left_leg');
+      const rightLeg = mesh.getObjectByName('tf_right_leg');
+      const leftArm = mesh.getObjectByName('tf_left_arm');
+      const rightArm = mesh.getObjectByName('tf_right_arm');
+      if (isMoving) {
+        const swing = Math.sin(this._time * 5 + tf.x * 3) * 0.35;
+        if (leftLeg) leftLeg.rotation.x = swing;
+        if (rightLeg) rightLeg.rotation.x = -swing;
+        if (leftArm) leftArm.rotation.x = -swing * 0.6;
+        if (rightArm) rightArm.rotation.x = swing * 0.6;
+      } else {
+        // Idle gentle sway
+        const sway = Math.sin(this._time * 1.2 + tf.z * 2) * 0.04;
+        if (leftLeg) leftLeg.rotation.x = 0;
+        if (rightLeg) rightLeg.rotation.x = 0;
+        if (leftArm) leftArm.rotation.x = sway;
+        if (rightArm) rightArm.rotation.x = -sway;
+      }
+    }
+  }
+
+  private _buildTownfolkMesh(role: TownfolkRole): THREE.Group {
+    const mesh = new THREE.Group();
+
+    // Colors by role
+    const roleColors: Record<TownfolkRole, { robe: number; hair: number; accent: number }> = {
+      peasant: { robe: 0x8B7355, hair: 0x553322, accent: 0x665544 },
+      noble:   { robe: 0x4422aa, hair: 0x332211, accent: 0xddaa44 },
+      guard:   { robe: 0x556688, hair: 0x443322, accent: 0x888899 },
+      maiden:  { robe: 0xcc6688, hair: 0x885522, accent: 0xeebb88 },
+      monk:    { robe: 0x887755, hair: 0x443322, accent: 0xccbb99 },
+      bard:    { robe: 0xcc4444, hair: 0x664422, accent: 0xddcc44 },
+      child:   { robe: 0x668844, hair: 0x886633, accent: 0x99aa66 },
+    };
+    const colors = roleColors[role];
+    const isChild = role === 'child';
+    const scale = isChild ? 0.65 : 1.0;
+
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.7 });
+    const robeMat = new THREE.MeshStandardMaterial({ color: colors.robe, roughness: 0.7 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: colors.hair, roughness: 0.9 });
+    const accentMat = new THREE.MeshStandardMaterial({ color: colors.accent, roughness: 0.5, metalness: 0.2 });
+
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14 * scale, 8, 6), skinMat);
+    head.position.y = 1.38 * scale;
+    head.castShadow = true;
+    mesh.add(head);
+
+    // Eyes
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+    for (const ex of [-0.04, 0.04]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02 * scale, 5, 4), eyeMat);
+      eye.position.set(ex * scale, 1.41 * scale, 0.12 * scale);
+      mesh.add(eye);
+    }
+
+    // Hair
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.13 * scale, 7, 5), hairMat);
+    hair.position.y = 1.44 * scale;
+    hair.scale.set(1, role === 'maiden' ? 1.0 : 0.6, 1);
+    mesh.add(hair);
+    // Long hair for maiden
+    if (role === 'maiden') {
+      const longHair = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * scale, 0.05 * scale, 0.3 * scale, 6), hairMat);
+      longHair.position.set(0, 1.22 * scale, -0.06 * scale);
+      mesh.add(longHair);
+    }
+
+    // Neck
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * scale, 0.06 * scale, 0.08 * scale, 6), skinMat);
+    neck.position.y = 1.22 * scale;
+    mesh.add(neck);
+
+    // Torso
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.32 * scale, 0.42 * scale, 0.18 * scale), robeMat);
+    torso.position.y = 0.95 * scale;
+    torso.castShadow = true;
+    mesh.add(torso);
+
+    // Belt
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.34 * scale, 0.04 * scale, 0.2 * scale), accentMat);
+    belt.position.y = 0.72 * scale;
+    mesh.add(belt);
+
+    // Legs (as named groups for animation)
+    for (const [side, name] of [[-1, 'tf_left_leg'], [1, 'tf_right_leg']] as const) {
+      const legGroup = new THREE.Group();
+      legGroup.name = name;
+      legGroup.position.set((side as number) * 0.07 * scale, 0.42 * scale, 0);
+
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * scale, 0.045 * scale, 0.42 * scale, 6), robeMat);
+      leg.position.y = -0.21 * scale;
+      leg.castShadow = true;
+      legGroup.add(leg);
+
+      // Boot
+      const bootMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.8 });
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.07 * scale, 0.08 * scale, 0.11 * scale), bootMat);
+      boot.position.set(0, -0.44 * scale, 0.015 * scale);
+      legGroup.add(boot);
+
+      mesh.add(legGroup);
+    }
+
+    // Arms (as named groups for animation)
+    for (const [side, name] of [[-1, 'tf_left_arm'], [1, 'tf_right_arm']] as const) {
+      const armGroup = new THREE.Group();
+      armGroup.name = name;
+      armGroup.position.set((side as number) * 0.2 * scale, 1.1 * scale, 0);
+
+      // Shoulder
+      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.055 * scale, 5, 4), robeMat);
+      armGroup.add(shoulder);
+
+      // Arm
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * scale, 0.035 * scale, 0.3 * scale, 5), robeMat);
+      arm.position.y = -0.18 * scale;
+      armGroup.add(arm);
+
+      // Hand
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.03 * scale, 5, 4), skinMat);
+      hand.position.y = -0.35 * scale;
+      armGroup.add(hand);
+
+      mesh.add(armGroup);
+    }
+
+    // Role-specific accessories
+    if (role === 'guard') {
+      // Helmet
+      const helmetMat = new THREE.MeshStandardMaterial({ color: 0x666677, metalness: 0.6, roughness: 0.3 });
+      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 7, 5), helmetMat);
+      helmet.position.y = 1.44;
+      helmet.scale.set(1, 0.7, 1);
+      mesh.add(helmet);
+      // Spear
+      const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.6, 5),
+        new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 }));
+      spear.position.set(-0.24, 0.9, 0.05);
+      mesh.add(spear);
+      const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 4),
+        new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.7, roughness: 0.2 }));
+      spearTip.position.set(-0.24, 1.75, 0.05);
+      mesh.add(spearTip);
+    } else if (role === 'noble') {
+      // Crown/circlet
+      const crownMat = new THREE.MeshStandardMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.2 });
+      const crown = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.015, 4, 8), crownMat);
+      crown.position.y = 1.48;
+      crown.rotation.x = Math.PI / 2;
+      mesh.add(crown);
+      // Cape
+      const capeMat = new THREE.MeshStandardMaterial({ color: 0x4422aa, roughness: 0.6, side: THREE.DoubleSide });
+      const cape = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.5), capeMat);
+      cape.position.set(0, 0.95, -0.12);
+      mesh.add(cape);
+    } else if (role === 'monk') {
+      // Hood
+      const hoodMat = new THREE.MeshStandardMaterial({ color: 0x776644, roughness: 0.8 });
+      const hood = new THREE.Mesh(new THREE.SphereGeometry(0.16, 7, 5), hoodMat);
+      hood.position.y = 1.42;
+      hood.scale.set(1, 0.8, 1.1);
+      mesh.add(hood);
+      // Book in hand
+      const book = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7 }));
+      book.position.set(0.24, 0.7, 0.06);
+      mesh.add(book);
+    } else if (role === 'bard') {
+      // Feathered cap
+      const capMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6 });
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.12, 7, 5), capMat);
+      cap.position.y = 1.48;
+      cap.scale.y = 0.5;
+      mesh.add(cap);
+      // Feather
+      const feather = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.12, 3),
+        new THREE.MeshStandardMaterial({ color: 0xdddd44, roughness: 0.5 }));
+      feather.position.set(0.08, 1.55, 0);
+      feather.rotation.z = -0.4;
+      mesh.add(feather);
+      // Lute
+      const lute = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4),
+        new THREE.MeshStandardMaterial({ color: 0xAA7744, roughness: 0.6 }));
+      lute.position.set(-0.2, 0.75, 0.1);
+      lute.scale.set(1, 1.3, 0.5);
+      mesh.add(lute);
+    } else if (role === 'maiden') {
+      // Flower in hair
+      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.03, 5, 4),
+        new THREE.MeshStandardMaterial({ color: 0xff6688, emissive: 0xff3355, emissiveIntensity: 0.2 }));
+      flower.position.set(0.1, 1.5, 0.05);
+      mesh.add(flower);
+      // Basket
+      const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.08, 6),
+        new THREE.MeshStandardMaterial({ color: 0xBB9955, roughness: 0.8 }));
+      basket.position.set(0.22, 0.68, 0.06);
+      mesh.add(basket);
+    }
+
+    return mesh;
   }
 
   buildPlayer(cls: DiabloClass): void {
@@ -10878,6 +11113,16 @@ export class DiabloRenderer {
       }
     }
 
+    // -- Townfolk (Camelot map only) --
+    if (state.currentMap === DiabloMapId.CAMELOT && state.townfolk.length > 0) {
+      this._syncTownfolk(state.townfolk, dt);
+    } else if (this._townfolkMeshes.size > 0) {
+      for (const [, mesh] of this._townfolkMeshes) {
+        this._scene.remove(mesh);
+      }
+      this._townfolkMeshes.clear();
+    }
+
     // -- Environment animation --
     this._animateEnvironment();
 
@@ -12496,6 +12741,11 @@ export class DiabloRenderer {
       this._scene.remove(mesh);
     }
     this._vendorMeshes.clear();
+
+    for (const [, mesh] of this._townfolkMeshes) {
+      this._scene.remove(mesh);
+    }
+    this._townfolkMeshes.clear();
 
     for (const mesh of this._particleMeshPool) {
       this._scene.remove(mesh);

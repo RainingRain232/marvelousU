@@ -332,6 +332,14 @@ export class MageWarsGame {
   private _customTimeLimit = MW.MATCH_TIME;
   private _customScoreLimit = MW.SCORE_TO_WIN;
 
+  // ---- Match options -----
+  private _optFriendlyFire = false;
+  private _optVehiclesEnabled = true;
+  private _optAbilitiesEnabled = true;
+  private _optHeadshotsEnabled = true;
+  private _optFallDamage = true;
+  private _optCapturePoints = true;
+
   // ---- Warmup -----
   private _warmupTimer = 0;
   private _warmupCountdownDiv: HTMLDivElement | null = null;
@@ -2331,6 +2339,29 @@ export class MageWarsGame {
           <div><label style="font-size:12px;color:#aaa;margin-right:6px">Score Limit:</label><select id="mw-score-limit" style="${selectStyle}">${scoreLimitOpts}</select></div>
         </div>
       </div>
+      <div style="margin-bottom:15px;max-width:700px;width:100%">
+        <h3 style="color:#daa520;text-align:center;margin-bottom:10px;font-size:16px">Match Options</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+          <div id="mw-opt-ff" style="padding:8px 14px;border:2px solid ${this._optFriendlyFire ? "#cc4444" : "#444"};border-radius:6px;background:${this._optFriendlyFire ? "rgba(204,68,68,0.3)" : "rgba(30,30,30,0.3)"};cursor:pointer;font-size:12px;user-select:none;transition:all 0.15s;">
+            <span style="margin-right:6px">⚔️</span> Friendly Fire
+          </div>
+          <div id="mw-opt-veh" style="padding:8px 14px;border:2px solid ${this._optVehiclesEnabled ? "#44cc44" : "#444"};border-radius:6px;background:${this._optVehiclesEnabled ? "rgba(68,204,68,0.3)" : "rgba(30,30,30,0.3)"};cursor:pointer;font-size:12px;user-select:none;transition:all 0.15s;">
+            <span style="margin-right:6px">🐉</span> Vehicles
+          </div>
+          <div id="mw-opt-abil" style="padding:8px 14px;border:2px solid ${this._optAbilitiesEnabled ? "#aa44cc" : "#444"};border-radius:6px;background:${this._optAbilitiesEnabled ? "rgba(170,68,204,0.3)" : "rgba(30,30,30,0.3)"};cursor:pointer;font-size:12px;user-select:none;transition:all 0.15s;">
+            <span style="margin-right:6px">✨</span> Abilities
+          </div>
+          <div id="mw-opt-hs" style="padding:8px 14px;border:2px solid ${this._optHeadshotsEnabled ? "#cccc44" : "#444"};border-radius:6px;background:${this._optHeadshotsEnabled ? "rgba(204,204,68,0.3)" : "rgba(30,30,30,0.3)"};cursor:pointer;font-size:12px;user-select:none;transition:all 0.15s;">
+            <span style="margin-right:6px">🎯</span> Headshots
+          </div>
+          <div id="mw-opt-fall" style="padding:8px 14px;border:2px solid ${this._optFallDamage ? "#cc8844" : "#444"};border-radius:6px;background:${this._optFallDamage ? "rgba(204,136,68,0.3)" : "rgba(30,30,30,0.3)"};cursor:pointer;font-size:12px;user-select:none;transition:all 0.15s;">
+            <span style="margin-right:6px">💀</span> Fall Damage
+          </div>
+          <div id="mw-opt-cp" style="padding:8px 14px;border:2px solid ${this._optCapturePoints ? "#44cccc" : "#444"};border-radius:6px;background:${this._optCapturePoints ? "rgba(68,204,204,0.3)" : "rgba(30,30,30,0.3)"};cursor:pointer;font-size:12px;user-select:none;transition:all 0.15s;">
+            <span style="margin-right:6px">🚩</span> Capture Points
+          </div>
+        </div>
+      </div>
       <div style="display:flex;gap:12px;margin-top:10px">
         <button id="mw-lo-back" style="${this._menuBtnStyle("#2a2a2a", "#555")}">Back</button>
         <button id="mw-lo-start" style="${this._menuBtnStyle("#1a3a1a", "#44cc44")}">Start Battle</button>
@@ -2368,6 +2399,23 @@ export class MageWarsGame {
     });
     document.getElementById("mw-lo-back")?.addEventListener("click", () => { this._removeMenu(); this._showCharSelect(); });
     document.getElementById("mw-lo-start")?.addEventListener("click", () => { this._removeMenu(); this._startMatch(); });
+
+    // Match option toggles
+    const optToggles: Array<{ id: string; field: "_optFriendlyFire" | "_optVehiclesEnabled" | "_optAbilitiesEnabled" | "_optHeadshotsEnabled" | "_optFallDamage" | "_optCapturePoints" }> = [
+      { id: "mw-opt-ff", field: "_optFriendlyFire" },
+      { id: "mw-opt-veh", field: "_optVehiclesEnabled" },
+      { id: "mw-opt-abil", field: "_optAbilitiesEnabled" },
+      { id: "mw-opt-hs", field: "_optHeadshotsEnabled" },
+      { id: "mw-opt-fall", field: "_optFallDamage" },
+      { id: "mw-opt-cp", field: "_optCapturePoints" },
+    ];
+    for (const opt of optToggles) {
+      document.getElementById(opt.id)?.addEventListener("click", () => {
+        this[opt.field] = !this[opt.field];
+        this._removeMenu();
+        this._showLoadout();
+      });
+    }
   }
 
 
@@ -3285,6 +3333,7 @@ export class MageWarsGame {
     const spawnDist = mapDef.spawnDistance / 2;
 
     // Create capture points (3: left-of-center, center, right-of-center)
+    if (this._optCapturePoints) {
     const cpPositions = [
       { id: "A", x: -mapDef.size * 0.2, z: 0 },
       { id: "B", x: 0, z: 0 },
@@ -3369,6 +3418,7 @@ export class MageWarsGame {
         ringMesh, beamMesh, flagMesh: flagGroup,
       });
     }
+    } // end if _optCapturePoints
 
     // Create human player (team 0, index 0)
     const human = createPlayer(
@@ -3428,16 +3478,18 @@ export class MageWarsGame {
     }
 
     // Spawn vehicles
-    const rng = seededRandom(Date.now() % 10000);
-    for (const vDef of VEHICLE_DEFS) {
-      for (let i = 0; i < vDef.spawnWeight; i++) {
-        const vx = (rng() - 0.5) * spawnDist * 1.2;
-        const vz = (rng() - 0.5) * mapDef.size * 0.8;
-        const veh = createVehicle(vDef.id, -1, vx, vz, mapDef);
-        veh.mesh = this._buildVehicleMesh(veh);
-        veh.mesh.position.set(veh.x, veh.y, veh.z);
-        this._scene.add(veh.mesh);
-        this._vehicles.push(veh);
+    if (this._optVehiclesEnabled) {
+      const rng = seededRandom(Date.now() % 10000);
+      for (const vDef of VEHICLE_DEFS) {
+        for (let i = 0; i < vDef.spawnWeight; i++) {
+          const vx = (rng() - 0.5) * spawnDist * 1.2;
+          const vz = (rng() - 0.5) * mapDef.size * 0.8;
+          const veh = createVehicle(vDef.id, -1, vx, vz, mapDef);
+          veh.mesh = this._buildVehicleMesh(veh);
+          veh.mesh.position.set(veh.x, veh.y, veh.z);
+          this._scene.add(veh.mesh);
+          this._vehicles.push(veh);
+        }
       }
     }
 
@@ -3610,6 +3662,7 @@ export class MageWarsGame {
     }
 
     // Capture points
+    if (this._optCapturePoints)
     for (const cp of this._capturePoints) {
       // Count players on point per team
       let team0Count = 0;
@@ -3928,7 +3981,7 @@ export class MageWarsGame {
     }
 
     // Fall damage: check when transitioning from !grounded to grounded
-    if (!wasGrounded && p.grounded) {
+    if (this._optFallDamage && !wasGrounded && p.grounded) {
       const fallDist = p.lastGroundedY - p.y;
       if (fallDist > MW.FALL_DAMAGE_THRESHOLD) {
         const dmg = (fallDist - MW.FALL_DAMAGE_THRESHOLD) * MW.FALL_DAMAGE_MULT;
@@ -4301,7 +4354,8 @@ export class MageWarsGame {
       // Check collision with players
       let hit = false;
       for (const target of this._players) {
-        if (!target.alive || target.id === proj.ownerId || target.team === proj.team) continue;
+        if (!target.alive || target.id === proj.ownerId) continue;
+        if (!this._optFriendlyFire && target.team === proj.team) continue;
         if (target.vehicleId) continue;
         if (target.invisible) continue;
 
@@ -4319,7 +4373,7 @@ export class MageWarsGame {
             break;
           }
 
-          const isHeadshot = proj.y > target.y + playerH * 0.8;
+          const isHeadshot = this._optHeadshotsEnabled && proj.y > target.y + playerH * 0.8;
           const owner = this._players.find(p => p.id === proj.ownerId);
           const wandDef = owner ? this._getPlayerActiveWand(owner) : null;
           const hsMult = isHeadshot && wandDef ? wandDef.headshotMult : 1;
@@ -4447,7 +4501,8 @@ export class MageWarsGame {
 
   private _applySplashDamage(proj: MWProjectile, _mapDef: MapDef): void {
     for (const target of this._players) {
-      if (!target.alive || target.team === proj.team) continue;
+      if (!target.alive) continue;
+      if (!this._optFriendlyFire && target.team === proj.team) continue;
       const d = dist3(proj.x, proj.y, proj.z, target.x, target.y + MW.PLAYER_HEIGHT * 0.5, target.z);
       if (d < proj.splashRadius) {
         const falloff = 1 - (d / proj.splashRadius);
@@ -4887,6 +4942,7 @@ export class MageWarsGame {
   // =====================================================================
 
   private _useAbility(p: MWPlayer, mapDef: MapDef): void {
+    if (!this._optAbilitiesEnabled) return;
     if (p.abilityCooldown > 0) return;
     const cls = getClassDef(p.classId);
     p.abilityCooldown = cls.abilityCooldown;

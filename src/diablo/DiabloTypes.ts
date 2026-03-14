@@ -618,6 +618,24 @@ export interface DiabloVendor {
   icon: string;
 }
 
+export type TownfolkRole = 'peasant' | 'noble' | 'guard' | 'maiden' | 'monk' | 'bard' | 'child';
+
+export interface DiabloTownfolk {
+  id: string;
+  role: TownfolkRole;
+  name: string;
+  x: number;
+  y: number;
+  z: number;
+  angle: number;
+  speed: number;
+  wanderTarget: { x: number; z: number } | null;
+  wanderTimer: number;
+  homeX: number;
+  homeZ: number;
+  wanderRadius: number;
+}
+
 export interface DiabloAOE {
   id: string;
   x: number;
@@ -687,6 +705,7 @@ export interface DiabloState {
   floatingTexts: DiabloFloatingText[];
   particles: DiabloParticle[];
   vendors: DiabloVendor[];
+  townfolk: DiabloTownfolk[];
   currentMap: DiabloMapId;
   camera: {
     x: number;
@@ -912,6 +931,7 @@ export function createDefaultState(): DiabloState {
     floatingTexts: [],
     particles: [],
     vendors: [],
+    townfolk: [],
     currentMap: DiabloMapId.FOREST,
     camera: {
       x: 0,
