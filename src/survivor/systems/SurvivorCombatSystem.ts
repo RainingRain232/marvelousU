@@ -17,16 +17,18 @@ import type {
 // ---------------------------------------------------------------------------
 
 type DamageCallback = ((x: number, y: number, amount: number, isCrit: boolean) => void) | null;
-type WeaponFxCallback = ((x: number, y: number, color: number, radius: number) => void) | null;
+type WeaponFxCallback = ((x: number, y: number, color: number, radius: number, weaponId?: string) => void) | null;
 type ChainFxCallback = ((points: { x: number; y: number }[], color: number) => void) | null;
 type ArcFxCallback = ((sx: number, sy: number, tx: number, ty: number, color: number, area: number) => void) | null;
 type PlayerHitCallback = (() => void) | null;
+type BossKillCallback = ((enemy: SurvivorEnemy) => void) | null;
 
 let _damageCallback: DamageCallback = null;
 let _weaponFxCallback: WeaponFxCallback = null;
 let _chainFxCallback: ChainFxCallback = null;
 let _arcFxCallback: ArcFxCallback = null;
 let _playerHitCallback: PlayerHitCallback = null;
+let _bossKillCallback: BossKillCallback = null;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -174,7 +176,13 @@ function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number,
     // Victory check — Death boss killed
     if (enemy.isDeathBoss) {
       state.victory = true;
+      _bossKillCallback?.(enemy);
       return;
+    }
+
+    // Boss kill callback
+    if (enemy.isBoss) {
+      _bossKillCallback?.(enemy);
     }
 
     // Chain Explosion arcana: enemies explode on death
@@ -310,7 +318,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
       for (const e of enemies) {
         damageEnemy(state, e, damage, ws.id);
       }
-      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area);
+      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area, ws.id);
       break;
     }
     case "arrow_volley": {
@@ -340,7 +348,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
       const chainHitSet = new Set<number>([first.id]);
       const chainPoints: { x: number; y: number }[] = [{ x: px, y: py }];
       damageEnemy(state, first, damage, ws.id);
-      _weaponFxCallback?.(first.position.x, first.position.y, def.color, 2);
+      _weaponFxCallback?.(first.position.x, first.position.y, def.color, 2, ws.id);
       chainPoints.push({ x: first.position.x, y: first.position.y });
       let prev = first;
       for (let i = 1; i < count; i++) {
@@ -348,7 +356,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         if (!next) break;
         chainHitSet.add(next.id);
         damageEnemy(state, next, damage * 0.8, ws.id);
-        _weaponFxCallback?.(next.position.x, next.position.y, def.color, 1.5);
+        _weaponFxCallback?.(next.position.x, next.position.y, def.color, 1.5, ws.id);
         chainPoints.push({ x: next.position.x, y: next.position.y });
         prev = next;
       }
@@ -362,7 +370,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         e.slowFactor = 0.4;
         e.slowTimer = def.baseDuration + ws.level * 0.3;
       }
-      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area);
+      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area, ws.id);
       break;
     }
     case "holy_circle": {
@@ -370,6 +378,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
       for (const e of enemies) {
         damageEnemy(state, e, damage, ws.id);
       }
+      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area, ws.id);
       break;
     }
     case "catapult_strike": {
@@ -389,7 +398,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
       for (const e of enemies) {
         damageEnemy(state, e, damage, ws.id);
       }
-      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area);
+      if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area, ws.id);
       break;
     }
     case "rune_circle": {
@@ -404,7 +413,7 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
             state.player.hp = Math.min(state.player.maxHp, state.player.hp + damage * 0.15);
           }
         }
-        _weaponFxCallback?.(ox, oy, def.color, area);
+        _weaponFxCallback?.(ox, oy, def.color, area, ws.id);
       }
       break;
     }
@@ -557,6 +566,7 @@ export const SurvivorCombatSystem = {
   setChainFxCallback(cb: ChainFxCallback): void { _chainFxCallback = cb; },
   setArcFxCallback(cb: ArcFxCallback): void { _arcFxCallback = cb; },
   setPlayerHitCallback(cb: PlayerHitCallback): void { _playerHitCallback = cb; },
+  setBossKillCallback(cb: BossKillCallback): void { _bossKillCallback = cb; },
 
   update(state: SurvivorState, dt: number): void {
     if (state.paused || state.levelUpPending || state.gameOver || state.victory) return;

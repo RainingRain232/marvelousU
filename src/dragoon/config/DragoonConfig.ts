@@ -52,6 +52,9 @@ export const DragoonBalance = {
   PROJECTILE_CLEANUP_MARGIN: 100,
 
   SUBCLASS_LEVEL: 20,
+
+  /** World width as a multiplier of screen width (camera range). */
+  WORLD_WIDTH_MULT: 1.5,
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -116,8 +116,9 @@ export class DragoonFX {
   // ---------------------------------------------------------------------------
 
   spawnQueued(): void {
-    // Explosions
+    // Explosions (cap active count)
     for (const e of this.pendingExplosions) {
+      if (this._explosions.length >= DragoonFX.MAX_EXPLOSIONS) break;
       // Generate debris for explosion
       const debrisCount = Math.floor(e.radius * 0.3) + 4;
       const debris: ActiveExplosionFX["debris"] = [];
@@ -148,8 +149,9 @@ export class DragoonFX {
     }
     this.pendingExplosions.length = 0;
 
-    // Hits (damage numbers)
+    // Hits (damage numbers, cap active count)
     for (const h of this.pendingHits) {
+      if (this._dmgNumbers.length >= DragoonFX.MAX_DMG_NUMBERS) break;
       this._dmgNumbers.push({
         x: h.x + (Math.random() - 0.5) * 20,
         y: h.y - 10,
@@ -162,8 +164,9 @@ export class DragoonFX {
     }
     this.pendingHits.length = 0;
 
-    // Lightning
+    // Lightning (cap active count)
     for (const l of this.pendingLightning) {
+      if (this._lightnings.length >= DragoonFX.MAX_LIGHTNINGS) break;
       const segments: { x1: number; y1: number; x2: number; y2: number }[] = [];
       const branches: { x1: number; y1: number; x2: number; y2: number }[] = [];
       // Main bolt from top of screen
@@ -200,6 +203,7 @@ export class DragoonFX {
   private _spawnExplosionParticles(x: number, y: number, color: number, radius: number): void {
     const count = Math.floor(radius * 0.5) + 8;
     for (let i = 0; i < count; i++) {
+      if (this._feathers.length >= DragoonFX.MAX_FEATHERS) break;
       const angle = Math.random() * Math.PI * 2;
       const speed = 50 + Math.random() * 150;
       this._feathers.push({
@@ -216,8 +220,15 @@ export class DragoonFX {
     }
   }
 
+  /** Hard cap on particle counts to prevent unbounded growth. */
+  private static readonly MAX_FEATHERS = 500;
+  private static readonly MAX_DMG_NUMBERS = 200;
+  private static readonly MAX_EXPLOSIONS = 60;
+  private static readonly MAX_LIGHTNINGS = 30;
+
   // Emit eagle feather trail particles
   emitEagleFeathers(x: number, y: number): void {
+    if (this._feathers.length >= DragoonFX.MAX_FEATHERS) return;
     if (Math.random() > 0.3) return; // sparse
     const featherColors = [0xf0ead0, 0xd8d0b8, 0xfaf5e8, 0xccccaa];
     this._feathers.push({
@@ -236,6 +247,7 @@ export class DragoonFX {
 
   // Emit wand magic trail
   emitWandTrail(x: number, y: number): void {
+    if (this._feathers.length >= DragoonFX.MAX_FEATHERS) return;
     if (Math.random() > 0.5) return;
     this._feathers.push({
       x: x + (Math.random() - 0.5) * 8,

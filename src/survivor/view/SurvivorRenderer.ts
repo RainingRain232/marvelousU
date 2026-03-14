@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, AnimatedSprite, Text, TextStyle } from "pixi.js";
-import { UnitType, UnitState, GamePhase } from "@/types";
+import { UnitType, UnitState, GamePhase, MapType } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { animationManager } from "@view/animation/AnimationManager";
@@ -20,6 +20,20 @@ import { StableRenderer } from "@view/entities/StableRenderer";
 
 const TS = BalanceConfig.TILE_SIZE;
 
+interface SpeechBubble {
+  container: Container;
+  lifetime: number;
+  maxLifetime: number;
+}
+
+// ---------------------------------------------------------------------------
+// Environmental detail types
+// ---------------------------------------------------------------------------
+
+interface EnvDetail {
+  gfx: Graphics;
+}
+
 export class SurvivorRenderer {
   readonly worldLayer = new Container();
   readonly enemyContainer = new Container();
@@ -30,8 +44,11 @@ export class SurvivorRenderer {
   readonly dmgNumberContainer = new Container();
   readonly hazardContainer = new Container();
   readonly landmarkContainer = new Container();
+  readonly envDetailContainer = new Container();
 
   playerSprite: AnimatedSprite | null = null;
+  private _speechBubbles: SpeechBubble[] = [];
+  private _envDetails: EnvDetail[] = [];
 
   private _enemyViews = new Map<number, { container: Container; sprite: AnimatedSprite | null; hpBar: Graphics; nameText: Text | null }>();
   private _gemViews = new Map<number, Graphics>();
@@ -48,12 +65,16 @@ export class SurvivorRenderer {
     this.weaponFxContainer.removeChildren();
     this.dmgNumberContainer.removeChildren();
     this.hazardContainer.removeChildren();
+    this.envDetailContainer.removeChildren();
     this._enemyViews.clear();
     this._gemViews.clear();
     this._chestViews.clear();
+    this._speechBubbles = [];
+    this._envDetails = [];
 
     this.landmarkContainer.removeChildren();
     this._landmarkViews.clear();
+    this.worldLayer.addChild(this.envDetailContainer);
     this.worldLayer.addChild(this.landmarkContainer);
     this.worldLayer.addChild(this.hazardContainer);
     this.worldLayer.addChild(this.gemContainer);
@@ -467,12 +488,185 @@ export class SurvivorRenderer {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Speech bubble system
+  // ---------------------------------------------------------------------------
+
+  showSpeechBubble(text: string, worldX: number, worldY: number, duration = 2.5): void {
+    const container = new Container();
+    container.position.set(worldX, worldY - 40);
+
+    // Bubble background
+    const padding = 8;
+    const style = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xffffff, wordWrap: true, wordWrapWidth: 160 });
+    const textObj = new Text({ text, style });
+    textObj.anchor.set(0.5, 1);
+    textObj.position.set(0, -8);
+
+    const textW = Math.min(textObj.width + padding * 2, 180);
+    const textH = textObj.height + padding * 2;
+
+    const bg = new Graphics()
+      .roundRect(-textW / 2, -textH - 8, textW, textH, 6)
+      .fill({ color: 0x111133, alpha: 0.9 })
+      .roundRect(-textW / 2, -textH - 8, textW, textH, 6)
+      .stroke({ color: 0xffd700, width: 1.5, alpha: 0.7 });
+    // Speech bubble tail
+    bg.moveTo(-4, -8).lineTo(0, 0).lineTo(4, -8).fill({ color: 0x111133, alpha: 0.9 });
+
+    container.addChild(bg, textObj);
+    this.dmgNumberContainer.addChild(container);
+    this._speechBubbles.push({ container, lifetime: duration, maxLifetime: duration });
+  }
+
+  updateSpeechBubbles(dt: number): void {
+    for (let i = this._speechBubbles.length - 1; i >= 0; i--) {
+      const sb = this._speechBubbles[i];
+      sb.lifetime -= dt;
+      // Float upward gently
+      sb.container.position.y -= dt * 8;
+      // Fade out in last 0.5s
+      sb.container.alpha = Math.min(1, sb.lifetime / 0.5);
+      if (sb.lifetime <= 0) {
+        this.dmgNumberContainer.removeChild(sb.container);
+        sb.container.destroy({ children: true });
+        this._speechBubbles.splice(i, 1);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Environmental map details
+  // ---------------------------------------------------------------------------
+
+  generateMapDetails(mapWidth: number, mapHeight: number, mapType: MapType): void {
+    this.envDetailContainer.removeChildren();
+    this._envDetails = [];
+
+    // Seed-based pseudo random for consistent placement
+    const count = Math.floor(mapWidth * mapHeight * 0.004); // ~0.4% tile coverage
+
+    for (let i = 0; i < count; i++) {
+      const x = (Math.random() * (mapWidth - 4) + 2) * TS;
+      const y = (Math.random() * (mapHeight - 4) + 2) * TS;
+      const gfx = new Graphics();
+      const detailType = Math.random();
+
+      if (detailType < 0.35) {
+        // Tree
+        this._drawTree(gfx, mapType);
+      } else if (detailType < 0.6) {
+        // Stone/rock
+        this._drawStone(gfx, mapType);
+      } else if (detailType < 0.78) {
+        // Ruins
+        this._drawRuins(gfx, mapType);
+      } else if (detailType < 0.9) {
+        // Grass tuft / bush
+        this._drawBush(gfx, mapType);
+      } else {
+        // Bone pile / misc
+        this._drawMisc(gfx, mapType);
+      }
+
+      gfx.position.set(x, y);
+      gfx.alpha = 0.5 + Math.random() * 0.3;
+      this.envDetailContainer.addChild(gfx);
+      this._envDetails.push({ gfx });
+    }
+  }
+
+  private _drawTree(g: Graphics, mapType: MapType): void {
+    const treeColors: Partial<Record<MapType, { trunk: number; leaf: number }>> = {
+      [MapType.MEADOW]: { trunk: 0x6b3a1f, leaf: 0x2d8a4e },
+      [MapType.FOREST]: { trunk: 0x4a2a0f, leaf: 0x1a5a2e },
+      [MapType.TUNDRA]: { trunk: 0x5a4a3a, leaf: 0x6a8a7a },
+      [MapType.VOLCANIC]: { trunk: 0x3a2a1a, leaf: 0x4a3a2a },
+      [MapType.SWAMP]: { trunk: 0x3a4a2a, leaf: 0x2a5a3a },
+      [MapType.DESERT]: { trunk: 0x8a6a3a, leaf: 0x5a7a3a },
+    };
+    const colors = treeColors[mapType] ?? { trunk: 0x6b3a1f, leaf: 0x2d8a4e };
+    const scale = 0.8 + Math.random() * 0.6;
+    // Trunk
+    g.rect(-2 * scale, -2 * scale, 4 * scale, 12 * scale).fill({ color: colors.trunk });
+    // Canopy
+    g.circle(0, -6 * scale, 8 * scale).fill({ color: colors.leaf, alpha: 0.7 });
+    g.circle(-3 * scale, -4 * scale, 5 * scale).fill({ color: colors.leaf, alpha: 0.5 });
+    g.circle(3 * scale, -4 * scale, 5 * scale).fill({ color: colors.leaf, alpha: 0.5 });
+  }
+
+  private _drawStone(g: Graphics, mapType: MapType): void {
+    const stoneColor = mapType === MapType.VOLCANIC ? 0x3a2a2a : mapType === MapType.TUNDRA ? 0x8a9aaa : mapType === MapType.DESERT ? 0xaa9a7a : 0x6a6a6a;
+    const scale = 0.6 + Math.random() * 0.8;
+    g.ellipse(0, 0, 6 * scale, 4 * scale).fill({ color: stoneColor, alpha: 0.7 });
+    // Highlight
+    g.ellipse(-1 * scale, -1 * scale, 3 * scale, 2 * scale).fill({ color: 0xffffff, alpha: 0.08 });
+    // Smaller rock nearby
+    if (Math.random() > 0.5) {
+      const ox = (Math.random() - 0.5) * 12;
+      g.ellipse(ox, 3 * scale, 3 * scale, 2 * scale).fill({ color: stoneColor, alpha: 0.5 });
+    }
+  }
+
+  private _drawRuins(g: Graphics, _mapType: MapType): void {
+    const stoneColor = 0x6a6a5a;
+    const scale = 0.7 + Math.random() * 0.5;
+    // Broken wall segments
+    g.rect(-8 * scale, -6 * scale, 4 * scale, 12 * scale).fill({ color: stoneColor, alpha: 0.6 });
+    g.rect(2 * scale, -4 * scale, 4 * scale, 8 * scale).fill({ color: stoneColor, alpha: 0.5 });
+    // Rubble
+    g.circle(-2 * scale, 4 * scale, 2 * scale).fill({ color: stoneColor, alpha: 0.4 });
+    g.circle(1 * scale, 5 * scale, 1.5 * scale).fill({ color: stoneColor, alpha: 0.3 });
+    // Vine/moss
+    g.rect(-8 * scale, -2 * scale, 3 * scale, 2 * scale).fill({ color: 0x3a6a3a, alpha: 0.4 });
+  }
+
+  private _drawBush(g: Graphics, mapType: MapType): void {
+    const bushColor = mapType === MapType.TUNDRA ? 0x7a8a7a : mapType === MapType.VOLCANIC ? 0x4a3a2a : mapType === MapType.DESERT ? 0x7a8a4a : 0x3a7a3a;
+    const scale = 0.6 + Math.random() * 0.5;
+    g.circle(0, 0, 5 * scale).fill({ color: bushColor, alpha: 0.5 });
+    g.circle(-3 * scale, 1 * scale, 3 * scale).fill({ color: bushColor, alpha: 0.4 });
+    g.circle(3 * scale, 0, 4 * scale).fill({ color: bushColor, alpha: 0.4 });
+    // Flower spots (meadow/swamp)
+    if (mapType === MapType.MEADOW || mapType === MapType.SWAMP) {
+      const flowerColor = Math.random() > 0.5 ? 0xffaaaa : 0xffffaa;
+      g.circle(2 * scale, -2 * scale, 1.2).fill({ color: flowerColor, alpha: 0.7 });
+      g.circle(-1 * scale, -3 * scale, 1).fill({ color: flowerColor, alpha: 0.6 });
+    }
+  }
+
+  private _drawMisc(g: Graphics, mapType: MapType): void {
+    if (mapType === MapType.VOLCANIC) {
+      // Lava crack
+      g.moveTo(-6, 0).lineTo(-2, -3).lineTo(2, 1).lineTo(6, -1).stroke({ color: 0xff4422, width: 1.5, alpha: 0.4 });
+      g.moveTo(-2, -3).lineTo(0, -6).stroke({ color: 0xff6644, width: 1, alpha: 0.3 });
+    } else if (mapType === MapType.TUNDRA) {
+      // Snow drift
+      g.ellipse(0, 0, 10, 4).fill({ color: 0xddeeff, alpha: 0.3 });
+      g.ellipse(3, -1, 6, 3).fill({ color: 0xeef4ff, alpha: 0.2 });
+    } else if (mapType === MapType.DESERT) {
+      // Cactus
+      g.rect(-1.5, -8, 3, 12).fill({ color: 0x3a7a3a, alpha: 0.6 });
+      g.rect(-5, -5, 3.5, 3).fill({ color: 0x3a7a3a, alpha: 0.5 });
+      g.rect(-5, -5, 1.5, -3).fill({ color: 0x3a7a3a, alpha: 0.5 });
+      g.rect(1.5, -3, 4, 2.5).fill({ color: 0x3a7a3a, alpha: 0.5 });
+      g.rect(4, -3, 1.5, -4).fill({ color: 0x3a7a3a, alpha: 0.5 });
+    } else {
+      // Bone pile / skull
+      g.circle(0, 0, 3).fill({ color: 0xccccaa, alpha: 0.4 });
+      g.rect(-4, 1, 8, 1.5).fill({ color: 0xbbbb99, alpha: 0.3 });
+      g.rect(-1, 2, 5, 1).fill({ color: 0xbbbb99, alpha: 0.25 });
+    }
+  }
+
   cleanup(): void {
     this._enemyViews.clear();
     this._gemViews.clear();
     this._chestViews.clear();
     this._landmarkViews.clear();
     this._tempLandmarkViews.clear();
+    this._speechBubbles = [];
+    this._envDetails = [];
     this.playerSprite = null;
   }
 }

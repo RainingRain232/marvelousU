@@ -6,8 +6,131 @@
 import { Container, Graphics, Text } from "pixi.js";
 import { viewManager } from "../../view/ViewManager";
 import type { TekkenState } from "../state/TekkenState";
+import { TekkenPhase } from "../../types";
 import { TB } from "../config/TekkenBalanceConfig";
 import { TEKKEN_CHARACTERS } from "../config/TekkenCharacterDefs";
+
+// ---- Battle Start Dialogue Data ------------------------------------------
+
+interface DialoguePair {
+  /** Character IDs (order doesn't matter; both permutations are checked) */
+  ids: [string, string];
+  /** Lines spoken: [id1 line, id2 line] */
+  lines: [string, string];
+}
+
+/**
+ * Relationship-based banter shown at the start of round 1.
+ * Each pair references lore connections between the six fighters.
+ */
+const BATTLE_DIALOGUES: DialoguePair[] = [
+  // Knight vs Berserker — rival warriors
+  { ids: ["knight", "berserker"], lines: [
+    "Your rage will be your undoing, Bjorn.",
+    "And your caution will be yours, tin man!",
+  ]},
+  // Knight vs Paladin — fellow holy warriors, mutual respect
+  { ids: ["knight", "paladin"], lines: [
+    "Lady Isolde... I'd hoped we wouldn't meet like this.",
+    "The light will decide who is worthy, Aldric.",
+  ]},
+  // Knight vs Monk — discipline vs duty
+  { ids: ["knight", "monk"], lines: [
+    "Your monastery teachings won't save you on the battlefield.",
+    "A still mind cuts sharper than any sword, Sir Knight.",
+  ]},
+  // Knight vs Assassin — law vs shadow
+  { ids: ["knight", "assassin"], lines: [
+    "Step into the light, Shade. Face me with honor.",
+    "Honor is a luxury the dead can't afford.",
+  ]},
+  // Knight vs Warlord — order vs chaos
+  { ids: ["knight", "warlord"], lines: [
+    "You've burned enough villages, Gorm. This ends now.",
+    "You'll need more than a shiny sword to stop me!",
+  ]},
+  // Berserker vs Monk — brute force vs inner peace
+  { ids: ["berserker", "monk"], lines: [
+    "I'll break every bone in your praying hands!",
+    "Anger clouds the mind. Let me clear it for you.",
+  ]},
+  // Berserker vs Paladin — chaos vs faith
+  { ids: ["berserker", "paladin"], lines: [
+    "Your god can't shield you from these fists!",
+    "Even the wildest storm breaks against the mountain.",
+  ]},
+  // Berserker vs Assassin — loud vs silent
+  { ids: ["berserker", "assassin"], lines: [
+    "Stop skulking and fight me face to face!",
+    "You won't see the blade that finishes you.",
+  ]},
+  // Berserker vs Warlord — kindred spirits, rival warlords
+  { ids: ["berserker", "warlord"], lines: [
+    "Only one of us walks away from this, Gorm!",
+    "Ha! Finally, a worthy opponent! Come, Bjorn!",
+  ]},
+  // Monk vs Paladin — different faiths
+  { ids: ["monk", "paladin"], lines: [
+    "Your faith shines bright, but it blinds you.",
+    "And your silence hides doubt, Brother Cedric.",
+  ]},
+  // Monk vs Assassin — awareness vs stealth
+  { ids: ["monk", "assassin"], lines: [
+    "I can hear your heartbeat, Shade. You cannot hide.",
+    "Then you'll hear it quicken... right before I strike.",
+  ]},
+  // Monk vs Warlord — peace vs war
+  { ids: ["monk", "warlord"], lines: [
+    "Violence begets only suffering, Gorm.",
+    "Suffering? I call it Tuesday! Hah!",
+  ]},
+  // Paladin vs Assassin — light vs darkness
+  { ids: ["paladin", "assassin"], lines: [
+    "The light reveals all shadows, creature of darkness.",
+    "Even light casts shadows, holy woman.",
+  ]},
+  // Paladin vs Warlord — justice vs tyranny
+  { ids: ["paladin", "warlord"], lines: [
+    "By the light, your tyranny ends here!",
+    "Tyranny? I prefer the term 'aggressive leadership'.",
+  ]},
+  // Assassin vs Warlord — blade vs axe
+  { ids: ["assassin", "warlord"], lines: [
+    "A big target is easy to hit.",
+    "A small rat is easy to crush!",
+  ]},
+];
+
+/** Mirror-match quips (fighter vs themselves) */
+const MIRROR_DIALOGUES: Record<string, [string, string]> = {
+  knight:   ["An impostor wearing my armor?!", "I was about to say the same, pretender."],
+  berserker:["Another me?! TWICE THE CARNAGE!", "I'll smash your face in -- wait, MY face?!"],
+  monk:     ["A mirror reveals one's true self.", "Then let us see which reflection is real."],
+  paladin:  ["This is a test of faith... against myself.", "May the worthier vessel prevail."],
+  assassin: ["A shadow of a shadow... interesting.", "There can only be one Shade."],
+  warlord:  ["Hah! Finally someone as ugly as me!", "I'll enjoy caving in that familiar face!"],
+};
+
+function getBattleDialogue(id1: string, id2: string): { p1Line: string; p2Line: string } | null {
+  // Mirror match
+  if (id1 === id2) {
+    const lines = MIRROR_DIALOGUES[id1];
+    if (lines) return { p1Line: lines[0], p2Line: lines[1] };
+    return null;
+  }
+  // Normal matchup
+  for (const dp of BATTLE_DIALOGUES) {
+    if (dp.ids[0] === id1 && dp.ids[1] === id2) {
+      return { p1Line: dp.lines[0], p2Line: dp.lines[1] };
+    }
+    if (dp.ids[0] === id2 && dp.ids[1] === id1) {
+      return { p1Line: dp.lines[1], p2Line: dp.lines[0] };
+    }
+  }
+  return null;
+}
+
+// --------------------------------------------------------------------------
 
 export class TekkenHUD {
   private _container: Container | null = null;
@@ -29,6 +152,14 @@ export class TekkenHUD {
   private _trainingControls: Text | null = null;
   private _trainingAIStatus: Text | null = null;
   private _trainingHitboxLabel: Text | null = null;
+
+  // Battle start dialogue state
+  private _dialogueContainer: Container | null = null;
+  private _dialogueP1Bubble: Container | null = null;
+  private _dialogueP2Bubble: Container | null = null;
+  private _dialogueTimer = 0;
+  private _dialogueActive = false;
+  private _dialogueShown = false; // only show once per match (round 1)
 
   // Cached values for animation
   private _displayHp: [number, number] = [170, 170];
@@ -391,6 +522,12 @@ export class TekkenHUD {
       this._announcementText!.alpha = Math.max(0, (this._announcementText!.alpha || 0) - 0.08);
     }
 
+    // Battle start dialogue (during intro phase)
+    if (state.phase === TekkenPhase.INTRO && !this._dialogueShown) {
+      this.showBattleDialogue(state.fighters[0].characterId, state.fighters[1].characterId);
+    }
+    this._updateDialogue();
+
     // Training mode overlay
     if (this._trainingContainer) {
       const isTraining = state.gameMode === "training";
@@ -437,7 +574,192 @@ export class TekkenHUD {
     }
   }
 
+  // ---- Battle Start Dialogue ------------------------------------------------
+
+  /**
+   * Call once at the start of round 1 to show character banter.
+   * Builds speech bubble containers for both fighters.
+   */
+  showBattleDialogue(p1Id: string, p2Id: string): void {
+    if (this._dialogueShown || !this._container) return;
+    this._dialogueShown = true;
+
+    const dialogue = getBattleDialogue(p1Id, p2Id);
+    if (!dialogue) return;
+
+    const sw = viewManager.screenWidth;
+    const sh = viewManager.screenHeight;
+
+    this._dialogueContainer = new Container();
+    this._container.addChild(this._dialogueContainer);
+
+    // Build P1 bubble (bottom-left)
+    const p1Char = TEKKEN_CHARACTERS.find(c => c.id === p1Id);
+    this._dialogueP1Bubble = this._buildSpeechBubble(
+      p1Char?.name ?? p1Id,
+      dialogue.p1Line,
+      sw * 0.05,
+      sh * 0.68,
+      sw * 0.38,
+      0,   // left-aligned tail
+    );
+    this._dialogueP1Bubble.alpha = 0;
+    this._dialogueContainer.addChild(this._dialogueP1Bubble);
+
+    // Build P2 bubble (bottom-right)
+    const p2Char = TEKKEN_CHARACTERS.find(c => c.id === p2Id);
+    this._dialogueP2Bubble = this._buildSpeechBubble(
+      p2Char?.name ?? p2Id,
+      dialogue.p2Line,
+      sw * 0.57,
+      sh * 0.68,
+      sw * 0.38,
+      1,   // right-aligned tail
+    );
+    this._dialogueP2Bubble.alpha = 0;
+    this._dialogueContainer.addChild(this._dialogueP2Bubble);
+
+    this._dialogueActive = true;
+    this._dialogueTimer = 0;
+  }
+
+  private _buildSpeechBubble(
+    speakerName: string,
+    line: string,
+    x: number,
+    y: number,
+    maxW: number,
+    side: number, // 0 = left tail, 1 = right tail
+  ): Container {
+    const c = new Container();
+    c.x = x;
+    c.y = y;
+
+    const padX = 16;
+    const padY = 12;
+
+    // Name label
+    const nameText = new Text({
+      text: speakerName,
+      style: {
+        fontFamily: "Georgia, serif",
+        fontSize: 16,
+        fill: 0xffdd66,
+        fontWeight: "bold",
+        letterSpacing: 1,
+      },
+    });
+    nameText.x = padX;
+    nameText.y = 6;
+
+    // Dialogue text
+    const lineText = new Text({
+      text: `"${line}"`,
+      style: {
+        fontFamily: "Georgia, serif",
+        fontSize: 18,
+        fill: 0xeeeeee,
+        fontStyle: "italic",
+        wordWrap: true,
+        wordWrapWidth: maxW - padX * 2,
+        lineHeight: 24,
+      },
+    });
+    lineText.x = padX;
+    lineText.y = 28;
+
+    // Compute bubble size
+    const bubbleW = maxW;
+    const bubbleH = lineText.y + lineText.height + padY;
+
+    // Draw background
+    const bg = new Graphics();
+    // Shadow
+    bg.roundRect(3, 3, bubbleW, bubbleH, 10).fill({ color: 0x000000, alpha: 0.4 });
+    // Main bubble
+    bg.roundRect(0, 0, bubbleW, bubbleH, 10).fill({ color: 0x1a1a2e, alpha: 0.92 });
+    // Border
+    bg.roundRect(0, 0, bubbleW, bubbleH, 10).stroke({ color: 0x444466, width: 2, alpha: 0.8 });
+
+    // Speech tail triangle
+    const tailX = side === 0 ? 30 : bubbleW - 30;
+    bg.moveTo(tailX - 8, bubbleH)
+      .lineTo(tailX, bubbleH + 14)
+      .lineTo(tailX + 8, bubbleH)
+      .fill({ color: 0x1a1a2e, alpha: 0.92 });
+
+    c.addChild(bg);
+    c.addChild(nameText);
+    c.addChild(lineText);
+
+    return c;
+  }
+
+  /** Animate dialogue bubbles during intro. Call from update(). */
+  private _updateDialogue(): void {
+    if (!this._dialogueActive || !this._dialogueContainer) return;
+
+    this._dialogueTimer++;
+
+    const FADE_IN_FRAMES = 15;
+    const P1_APPEAR = 10;   // P1 bubble appears at frame 10
+    const P2_APPEAR = 35;   // P2 bubble appears at frame 35
+    const FADE_OUT_START = 75; // start fading both out
+    const DIALOGUE_END = 90;   // fully gone
+
+    // P1 bubble fade in
+    if (this._dialogueP1Bubble) {
+      if (this._dialogueTimer >= P1_APPEAR && this._dialogueTimer < FADE_OUT_START) {
+        const t = Math.min(1, (this._dialogueTimer - P1_APPEAR) / FADE_IN_FRAMES);
+        this._dialogueP1Bubble.alpha = t;
+        // Slide up slightly
+        this._dialogueP1Bubble.y += (0 - 8 * (1 - t)) * 0.1;
+      } else if (this._dialogueTimer >= FADE_OUT_START) {
+        const t = Math.min(1, (this._dialogueTimer - FADE_OUT_START) / (DIALOGUE_END - FADE_OUT_START));
+        this._dialogueP1Bubble.alpha = 1 - t;
+      }
+    }
+
+    // P2 bubble fade in
+    if (this._dialogueP2Bubble) {
+      if (this._dialogueTimer >= P2_APPEAR && this._dialogueTimer < FADE_OUT_START) {
+        const t = Math.min(1, (this._dialogueTimer - P2_APPEAR) / FADE_IN_FRAMES);
+        this._dialogueP2Bubble.alpha = t;
+        this._dialogueP2Bubble.y += (0 - 8 * (1 - t)) * 0.1;
+      } else if (this._dialogueTimer >= FADE_OUT_START) {
+        const t = Math.min(1, (this._dialogueTimer - FADE_OUT_START) / (DIALOGUE_END - FADE_OUT_START));
+        this._dialogueP2Bubble.alpha = 1 - t;
+      }
+    }
+
+    // Clean up when done
+    if (this._dialogueTimer >= DIALOGUE_END) {
+      this._dialogueActive = false;
+      this._dialogueContainer.destroy({ children: true });
+      this._dialogueContainer = null;
+      this._dialogueP1Bubble = null;
+      this._dialogueP2Bubble = null;
+    }
+  }
+
+  /** Reset dialogue state so it can show again on a new match */
+  resetDialogue(): void {
+    this._dialogueShown = false;
+    this._dialogueActive = false;
+    this._dialogueTimer = 0;
+    if (this._dialogueContainer) {
+      this._dialogueContainer.destroy({ children: true });
+      this._dialogueContainer = null;
+      this._dialogueP1Bubble = null;
+      this._dialogueP2Bubble = null;
+    }
+  }
+
   destroy(): void {
+    if (this._dialogueContainer) {
+      this._dialogueContainer.destroy({ children: true });
+      this._dialogueContainer = null;
+    }
     if (this._container) {
       viewManager.removeFromLayer("ui", this._container);
       this._container.destroy({ children: true });

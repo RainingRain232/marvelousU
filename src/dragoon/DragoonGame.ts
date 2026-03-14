@@ -199,7 +199,7 @@ export class DragoonGame {
     // Update screen dims
     state.screenW = sw;
     state.screenH = sh;
-    state.worldWidth = sw * 3;
+    state.worldWidth = sw * DragoonBalance.WORLD_WIDTH_MULT;
 
     // Game over / victory
     if (state.gameOver) {

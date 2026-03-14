@@ -475,6 +475,9 @@ export class ThreeDragonGame {
         volcanic_ashlands: "rgba(255,68,0,0.3)",
         crystal_caverns: "rgba(170,68,255,0.3)",
         celestial_peaks: "rgba(200,200,255,0.3)",
+        sunken_archipelago: "rgba(50,200,170,0.3)",
+        stormspire_crags: "rgba(100,120,160,0.3)",
+        autumn_serpentine: "rgba(255,170,68,0.3)",
       };
       const accentSolid: Record<string, string> = {
         enchanted_valley: "#ffd700",
@@ -482,6 +485,9 @@ export class ThreeDragonGame {
         volcanic_ashlands: "#ff4400",
         crystal_caverns: "#aa44ff",
         celestial_peaks: "#ccccff",
+        sunken_archipelago: "#33ccaa",
+        stormspire_crags: "#8899bb",
+        autumn_serpentine: "#ffaa44",
       };
 
       // Gradient preview backgrounds per map
@@ -491,6 +497,9 @@ export class ThreeDragonGame {
         volcanic_ashlands: "linear-gradient(135deg, #1a1a1a 0%, #441100 30%, #cc4411 70%, #0a0505 100%)",
         crystal_caverns: "linear-gradient(135deg, #1a1033 0%, #442266 30%, #6633aa 70%, #0a0520 100%)",
         celestial_peaks: "linear-gradient(135deg, #334433 0%, #334488 30%, #081530 70%, #020510 100%)",
+        sunken_archipelago: "linear-gradient(135deg, #44886a 0%, #33ccaa 30%, #0a3355 70%, #041833 100%)",
+        stormspire_crags: "linear-gradient(135deg, #222830 0%, #334455 30%, #101828 70%, #050810 100%)",
+        autumn_serpentine: "linear-gradient(135deg, #3a4422 0%, #cc7744 30%, #1e1830 70%, #0a0814 100%)",
       };
 
       for (let i = 0; i < TD_MAPS.length; i++) {

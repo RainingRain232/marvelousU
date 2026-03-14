@@ -19,6 +19,8 @@ export interface SurvivorCharacterDef {
   description: string;
   unlocked: boolean; // unlocked by default (free characters)
   unlockCost: number; // gold cost to unlock (0 = free)
+  spawnQuotes: string[]; // said when spawning
+  bossKillQuotes: string[]; // said when killing a boss
 }
 
 export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
@@ -35,6 +37,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     description: "Balanced fighter with a spinning blade",
     unlocked: true,
     unlockCost: 0,
+    spawnQuotes: ["For honor and glory!", "My blade is ready.", "Let them come."],
+    bossKillQuotes: ["Fall, beast!", "Another victory for the realm!", "That was a worthy foe."],
   },
   {
     id: "archer",
@@ -49,6 +53,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     description: "Fast ranged fighter",
     unlocked: true,
     unlockCost: 0,
+    spawnQuotes: ["Arrows nocked and ready.", "I never miss.", "Swift as the wind."],
+    bossKillQuotes: ["Bullseye.", "Not so tough after all.", "One arrow was all it took."],
   },
   {
     id: "fire_mage",
@@ -63,6 +69,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     description: "Fragile but powerful area damage",
     unlocked: true,
     unlockCost: 0,
+    spawnQuotes: ["Burn them all!", "Fire consumes everything.", "The flames obey me."],
+    bossKillQuotes: ["Reduced to ashes!", "Feel the inferno!", "Nothing survives the flame."],
   },
   {
     id: "cleric",
@@ -77,6 +85,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     description: "Sustained fighter with holy aura and regen",
     unlocked: false,
     unlockCost: 200,
+    spawnQuotes: ["The light protects.", "By the Lady's grace.", "I shall endure."],
+    bossKillQuotes: ["The light prevails!", "Begone, darkness!", "Sanctified and purified."],
   },
   {
     id: "assassin",
@@ -91,6 +101,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     description: "Glass cannon with high crit and speed",
     unlocked: false,
     unlockCost: 300,
+    spawnQuotes: ["From the shadows...", "They won't see me coming.", "Quick and silent."],
+    bossKillQuotes: ["Too slow.", "A clean kill.", "Should have watched your back."],
   },
   {
     id: "knight",
@@ -106,6 +118,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     description: "Tanky but slow, starts with armor",
     unlocked: false,
     unlockCost: 500,
+    spawnQuotes: ["I am the wall.", "None shall pass!", "Steel and resolve."],
+    bossKillQuotes: ["By Camelot's might!", "Your strength means nothing.", "The knight stands victorious."],
   },
   {
     id: "necromancer",
@@ -120,6 +134,8 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     description: "Lifesteal specialist",
     unlocked: false,
     unlockCost: 750,
+    spawnQuotes: ["Death is just the beginning.", "Your soul is mine.", "I feast on the fallen."],
+    bossKillQuotes: ["Your essence empowers me!", "Another soul claimed.", "Death comes for all."],
   },
   {
     id: "pirate",
@@ -134,5 +150,7 @@ export const SURVIVOR_CHARACTERS: SurvivorCharacterDef[] = [
     description: "Explosive area damage dealer",
     unlocked: false,
     unlockCost: 1000,
+    spawnQuotes: ["Anchors aweigh!", "Fire the cannons!", "Yarr, let's plunder!"],
+    bossKillQuotes: ["That's captain to you!", "Sunk to the depths!", "Another treasure claimed!"],
   },
 ];

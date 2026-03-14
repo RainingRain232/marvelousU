@@ -413,7 +413,7 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     subclassUnlocked: false,
 
     player: {
-      position: { x: screenW * 3 * 0.5, y: screenH * 0.5 },
+      position: { x: screenW * 1.5 * 0.5, y: screenH * 0.5 },
       hp: 100,
       maxHp: 100,
       mana: 100,
@@ -491,7 +491,7 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     screenW,
     screenH,
 
-    worldWidth: screenW * 3,
+    worldWidth: screenW * 1.5,
     cameraX: 0,
 
     recentDeadEnemies: [],

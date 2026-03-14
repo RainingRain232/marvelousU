@@ -87,6 +87,10 @@ export class ThreeDragonRenderer {
   private _boxGeo!: THREE.BoxGeometry;
   private _coneGeo!: THREE.ConeGeometry;
 
+  // Boost visual effects
+  private _boostSpeedLines: THREE.Group = new THREE.Group();
+  private _baseFov = 70;
+
   // Trail particles
   private _trailParticles!: THREE.Points;
   private _trailPositions: Float32Array = new Float32Array(0);
@@ -139,6 +143,7 @@ export class ThreeDragonRenderer {
     this._buildTrailSystem();
     this._buildFireflies();
     this._buildWildlife();
+    this._buildBoostEffects();
   }
 
   // ---------------------------------------------------------------------------
@@ -262,13 +267,19 @@ export class ThreeDragonRenderer {
         void main() {
           vec2 c = vUv - 0.5;
           float d = length(c);
-          float glow = exp(-d * 4.0) * 0.9;
-          float core = exp(-d * 12.0) * 1.0;
-          float rays = sin(atan(c.y, c.x) * 8.0 + uTime * 0.5) * 0.5 + 0.5;
-          rays *= exp(-d * 6.0) * 0.15;
-          float a = glow + core + rays;
+          float glow = exp(-d * 5.0) * 0.8;
+          float core = exp(-d * 14.0) * 1.0;
+          // Subtle soft rays — low contrast so no visible stripes
+          float angle = atan(c.y, c.x);
+          float rays = sin(angle * 12.0 + uTime * 0.3) * 0.5 + 0.5;
+          rays = mix(0.85, 1.0, rays); // very subtle variation
+          float rayMask = exp(-d * 3.0) * 0.12;
+          float a = (glow + core) * rays + rayMask * (rays - 0.85);
+          // Smooth circular edge fade to avoid any geometry edge artifacts
+          float edgeFade = smoothstep(0.5, 0.35, d);
+          a *= edgeFade;
           vec3 col = mix(vec3(1.0, 0.85, 0.4), vec3(1.0, 1.0, 0.95), core);
-          gl_FragColor = vec4(col, a);
+          gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
         }
       `,
     });
@@ -327,17 +338,20 @@ export class ThreeDragonRenderer {
           // Crescent cutout — shifted circle
           float cutout = smoothstep(0.22, 0.19, length(c - vec2(0.08, 0.04)));
           float crescent = disc * (1.0 - cutout * 0.85);
-          // Soft glow
-          float glow = exp(-d * 3.5) * 0.25;
-          float halo = exp(-d * 1.5) * 0.08;
+          // Soft glow — falls off well before plane edges
+          float glow = exp(-d * 6.0) * 0.3;
+          float halo = exp(-d * 3.0) * 0.1;
           vec3 moonCol = vec3(0.8, 0.85, 1.0);
           vec3 glowCol = vec3(0.5, 0.6, 0.9);
           vec3 col = moonCol * crescent + glowCol * (glow + halo);
           float a = crescent * 0.9 + glow + halo;
+          // Smooth edge fade to eliminate square plane artifact
+          float edgeFade = smoothstep(0.5, 0.32, d);
+          a *= edgeFade;
           // Subtle surface detail
           float detail = sin(c.x * 40.0) * sin(c.y * 40.0) * 0.05 * disc;
           col -= detail;
-          gl_FragColor = vec4(col, a);
+          gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
         }
       `,
     });
@@ -581,8 +595,12 @@ export class ThreeDragonRenderer {
     this._scene.add(this._waterPlane);
 
     // Mountains (distant backdrop) with snow caps, ridgelines, and foothills
-    for (let i = 0; i < 45; i++) {
-      const h = 15 + Math.random() * 45;
+    const mtnCount = mc.mountainCount ?? 45;
+    const mtnHMin = mc.mountainHeightMin ?? 15;
+    const mtnHMax = mc.mountainHeightMax ?? 60;
+    const mtnSpreadX = mc.mountainSpreadX ?? 100;
+    for (let i = 0; i < mtnCount; i++) {
+      const h = mtnHMin + Math.random() * (mtnHMax - mtnHMin);
       const w = 10 + Math.random() * 25;
       const mtnGroup = new THREE.Group();
 
@@ -673,7 +691,7 @@ export class ThreeDragonRenderer {
       }
 
       mtnGroup.position.set(
-        (Math.random() < 0.5 ? -1 : 1) * (50 + Math.random() * 50),
+        (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * mtnSpreadX),
         h * 0.4,
         -Math.random() * 650,
       );
@@ -1225,6 +1243,85 @@ export class ThreeDragonRenderer {
     }
 
     this._scene.add(this._wildlifeGroup);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Boost speed-line effects
+  // ---------------------------------------------------------------------------
+
+  private _buildBoostEffects(): void {
+    // Create speed-line meshes (hidden until boost activates)
+    const lineMat = new THREE.MeshBasicMaterial({
+      color: 0x88ddff,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    for (let i = 0; i < 40; i++) {
+      const lineGeo = new THREE.CylinderGeometry(0.03, 0.03, 8 + Math.random() * 12, 3);
+      lineGeo.rotateX(Math.PI / 2); // align along Z
+      const line = new THREE.Mesh(lineGeo, lineMat.clone());
+      line.userData.offsetX = (Math.random() - 0.5) * 30;
+      line.userData.offsetY = (Math.random() - 0.5) * 20;
+      line.userData.speedZ = 40 + Math.random() * 40;
+      line.userData.phase = Math.random() * Math.PI * 2;
+      line.visible = false;
+      this._boostSpeedLines.add(line);
+    }
+    this._scene.add(this._boostSpeedLines);
+  }
+
+  private _updateBoostEffects(state: ThreeDragonState, dt: number, time: number): void {
+    const boosting = state.player.boostActive;
+    const px = state.player.position.x;
+    const py = state.player.position.y;
+    const pz = state.player.position.z;
+
+    // Smoothly lerp FOV
+    const targetFov = boosting ? 85 : this._baseFov;
+    this._camera.fov += (targetFov - this._camera.fov) * 5 * dt;
+    this._camera.updateProjectionMatrix();
+
+    // Speed lines
+    for (const child of this._boostSpeedLines.children) {
+      const mesh = child as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshBasicMaterial;
+
+      if (boosting) {
+        mesh.visible = true;
+        // Position lines around the player, streaming backward
+        const ud = mesh.userData;
+        mesh.position.x = px + ud.offsetX;
+        mesh.position.y = py + ud.offsetY;
+        // Cycle Z position
+        const cycleLen = 50;
+        mesh.position.z = pz - 10 - ((time * ud.speedZ + ud.phase * 20) % cycleLen);
+
+        // Fade based on distance to player
+        const distZ = Math.abs(mesh.position.z - pz);
+        const alpha = Math.max(0, 0.4 - distZ * 0.008);
+        mat.opacity = alpha;
+        mat.color.setHex(0x88ddff);
+      } else {
+        // Fade out
+        mat.opacity *= 0.9;
+        if (mat.opacity < 0.01) {
+          mesh.visible = false;
+        }
+      }
+    }
+
+    // Boost particle trail from eagle
+    if (boosting && Math.random() < 0.7) {
+      const col = new THREE.Color(0x44ccff);
+      this._addTrailPoint(
+        px + (Math.random() - 0.5) * 3,
+        py + (Math.random() - 0.5) * 2,
+        pz + 3 + Math.random() * 2,
+        col.r, col.g, col.b, 0.3,
+      );
+    }
+
   }
 
   // ---------------------------------------------------------------------------
@@ -1815,45 +1912,229 @@ export class ThreeDragonRenderer {
 
     switch (enemy.type) {
       case TDEnemyType.BOSS_ANCIENT_DRAGON: {
-        // Massive dragon with detailed body
+        // Massive dragon with detailed body, scales, jaw, and spines
         const bodyMat = new THREE.MeshPhongMaterial({
           color: 0x881100,
           emissive: 0xff4400,
           emissiveIntensity: 0.15,
           flatShading: true,
+          specular: 0x442200,
+          shininess: 30,
         });
-        // Body
+        const underbellyMat = new THREE.MeshPhongMaterial({
+          color: 0xaa4422,
+          emissive: 0xff6600,
+          emissiveIntensity: 0.1,
+          flatShading: true,
+        });
+
+        // Main body — elongated torso
         const body = new THREE.Mesh(this._sphereGeo, bodyMat);
-        body.scale.set(s * 2, s * 0.8, s * 1.2);
+        body.scale.set(s * 2.2, s * 0.85, s * 1.3);
         group.add(body);
-        // Head
-        const head = new THREE.Mesh(this._sphereGeo, bodyMat.clone());
-        head.scale.set(s * 0.8, s * 0.6, s * 0.6);
-        head.position.set(s * 2, s * 0.3, 0);
-        group.add(head);
-        // Horns
-        const hornMat = new THREE.MeshPhongMaterial({ color: 0x553300 });
-        for (const z of [-0.3, 0.3]) {
-          const horn = new THREE.Mesh(this._coneGeo, hornMat);
-          horn.scale.set(s * 0.15, s * 0.8, s * 0.15);
-          horn.position.set(s * 2.2, s * 0.8, z * s);
-          group.add(horn);
+
+        // Underbelly (lighter plate)
+        const belly = new THREE.Mesh(this._sphereGeo, underbellyMat);
+        belly.scale.set(s * 1.8, s * 0.4, s * 1.0);
+        belly.position.set(0, -s * 0.35, 0);
+        group.add(belly);
+
+        // Scale plates along spine — row of overlapping bumps
+        const scaleMat = new THREE.MeshPhongMaterial({
+          color: 0x661000,
+          emissive: 0xff3300,
+          emissiveIntensity: 0.08,
+          flatShading: true,
+          specular: 0x553311,
+          shininess: 50,
+        });
+        for (let i = 0; i < 10; i++) {
+          const scaleGeo = new THREE.SphereGeometry(s * (0.18 + Math.sin(i * 0.5) * 0.05), 5, 3);
+          const scalePlate = new THREE.Mesh(scaleGeo, scaleMat.clone());
+          scalePlate.scale.set(1, 0.5, 1.3);
+          scalePlate.position.set(-s * 1.5 + i * s * 0.35, s * 0.55 + Math.sin(i * 0.6) * s * 0.05, 0);
+          group.add(scalePlate);
         }
-        // Fire eyes
+
+        // Neck — thicker, muscular
+        const neckGeo = new THREE.CylinderGeometry(s * 0.25, s * 0.4, s * 1.2, 8);
+        const neck = new THREE.Mesh(neckGeo, bodyMat.clone());
+        neck.position.set(s * 1.8, s * 0.35, 0);
+        neck.rotation.z = -0.55;
+        group.add(neck);
+
+        // Head — larger, more angular
+        const headMat = new THREE.MeshPhongMaterial({
+          color: 0x771000,
+          emissive: 0xff4400,
+          emissiveIntensity: 0.2,
+          flatShading: true,
+          specular: 0x664422,
+          shininess: 40,
+        });
+        const head = new THREE.Mesh(this._sphereGeo, headMat);
+        head.scale.set(s * 0.9, s * 0.55, s * 0.65);
+        head.position.set(s * 2.5, s * 0.55, 0);
+        group.add(head);
+
+        // Snout / upper jaw — elongated cone
+        const snoutGeo = new THREE.ConeGeometry(s * 0.22, s * 0.7, 5);
+        snoutGeo.rotateZ(-Math.PI / 2);
+        const snout = new THREE.Mesh(snoutGeo, headMat.clone());
+        snout.position.set(s * 3.15, s * 0.52, 0);
+        group.add(snout);
+
+        // Lower jaw — hinged-looking jaw piece
+        const jawMat = new THREE.MeshPhongMaterial({
+          color: 0x881100,
+          emissive: 0xff2200,
+          emissiveIntensity: 0.12,
+          flatShading: true,
+        });
+        const jawGeo = new THREE.ConeGeometry(s * 0.18, s * 0.55, 4);
+        jawGeo.rotateZ(-Math.PI / 2);
+        const jaw = new THREE.Mesh(jawGeo, jawMat);
+        jaw.position.set(s * 3.0, s * 0.22, 0);
+        jaw.name = "dragonJaw";
+        group.add(jaw);
+
+        // Teeth — small spikes along upper and lower jaw
+        const toothMat = new THREE.MeshPhongMaterial({ color: 0xeeddcc, specular: 0xffffff, shininess: 80 });
+        for (let t = 0; t < 5; t++) {
+          const toothSize = s * (0.04 + Math.random() * 0.03);
+          for (const yOff of [0.58, 0.28]) {
+            const tooth = new THREE.Mesh(
+              new THREE.ConeGeometry(toothSize, toothSize * 3, 3),
+              toothMat,
+            );
+            tooth.position.set(
+              s * 2.7 + t * s * 0.12,
+              s * yOff + (yOff < 0.4 ? toothSize * 1.2 : -toothSize * 1.2),
+              (Math.random() - 0.5) * s * 0.15,
+            );
+            tooth.rotation.z = yOff < 0.4 ? 0 : Math.PI;
+            group.add(tooth);
+          }
+        }
+
+        // Fire glow inside mouth
+        const mouthGlowMat = new THREE.MeshBasicMaterial({
+          color: 0xff4400,
+          transparent: true,
+          opacity: 0.6,
+          depthWrite: false,
+        });
+        const mouthGlow = new THREE.Mesh(
+          new THREE.SphereGeometry(s * 0.15, 6, 4),
+          mouthGlowMat,
+        );
+        mouthGlow.position.set(s * 2.8, s * 0.4, 0);
+        mouthGlow.name = "mouthGlow";
+        group.add(mouthGlow);
+
+        // Horns — larger and curved-looking (two pairs)
+        const hornMat = new THREE.MeshPhongMaterial({ color: 0x553300, specular: 0x332211, shininess: 60 });
+        for (const z of [-0.3, 0.3]) {
+          // Main horns
+          const horn = new THREE.Mesh(this._coneGeo, hornMat);
+          horn.scale.set(s * 0.12, s * 0.9, s * 0.12);
+          horn.position.set(s * 2.3, s * 0.9, z * s);
+          horn.rotation.z = z > 0 ? 0.2 : -0.2;
+          horn.rotation.x = z * 0.3;
+          group.add(horn);
+          // Secondary smaller horn
+          const horn2 = new THREE.Mesh(this._coneGeo, hornMat.clone());
+          horn2.scale.set(s * 0.08, s * 0.5, s * 0.08);
+          horn2.position.set(s * 2.0, s * 0.85, z * s * 0.7);
+          horn2.rotation.z = z > 0 ? 0.35 : -0.35;
+          group.add(horn2);
+        }
+
+        // Brow ridges
+        const browMat = new THREE.MeshPhongMaterial({ color: 0x661000, flatShading: true });
+        for (const z of [-0.2, 0.2]) {
+          const brow = new THREE.Mesh(this._boxGeo, browMat);
+          brow.scale.set(s * 0.25, s * 0.08, s * 0.12);
+          brow.position.set(s * 2.6, s * 0.72, z * s);
+          group.add(brow);
+        }
+
+        // Fire eyes — larger with glow
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
         for (const z of [-0.2, 0.2]) {
           const eye = new THREE.Mesh(this._sphereGeo, eyeMat);
-          eye.scale.set(s * 0.15, s * 0.15, s * 0.15);
-          eye.position.set(s * 2.5, s * 0.5, z * s);
+          eye.scale.set(s * 0.12, s * 0.15, s * 0.12);
+          eye.position.set(s * 2.65, s * 0.65, z * s);
           group.add(eye);
+          // Eye glow light
+          const eyeLight = new THREE.PointLight(0xff4400, 1, s * 2);
+          eyeLight.position.copy(eye.position);
+          group.add(eyeLight);
         }
-        // Tail
-        const tailMat = new THREE.MeshPhongMaterial({ color: 0x770a00 });
-        const tail = new THREE.Mesh(this._coneGeo, tailMat);
-        tail.scale.set(s * 0.3, s * 2.5, s * 0.3);
-        tail.rotation.z = Math.PI / 2;
-        tail.position.set(-s * 2.5, 0, 0);
-        group.add(tail);
+
+        // Spines along the back — taller and more aggressive
+        const spineMat = new THREE.MeshPhongMaterial({
+          color: 0x553300,
+          emissive: 0xff2200,
+          emissiveIntensity: 0.05,
+          flatShading: true,
+        });
+        for (let i = 0; i < 8; i++) {
+          const spineH = s * (0.4 + Math.sin(i * 0.7) * 0.15 + (i < 4 ? 0.2 : 0));
+          const spine = new THREE.Mesh(this._coneGeo, spineMat.clone());
+          spine.scale.set(s * 0.06, spineH, s * 0.04);
+          spine.position.set(s * 1.5 - i * s * 0.45, s * 0.7 + Math.sin(i) * s * 0.05, 0);
+          spine.rotation.z = -0.15 + (Math.random() - 0.5) * 0.1;
+          group.add(spine);
+        }
+
+        // Tail — segmented with tail blade
+        const tailMat = new THREE.MeshPhongMaterial({ color: 0x770a00, flatShading: true });
+        // Thick tail base
+        const tailBase = new THREE.Mesh(this._coneGeo, tailMat);
+        tailBase.scale.set(s * 0.35, s * 1.8, s * 0.35);
+        tailBase.rotation.z = Math.PI / 2;
+        tailBase.position.set(-s * 2.0, 0, 0);
+        group.add(tailBase);
+        // Tail mid
+        const tailMid = new THREE.Mesh(this._coneGeo, tailMat.clone());
+        tailMid.scale.set(s * 0.2, s * 1.5, s * 0.2);
+        tailMid.rotation.z = Math.PI / 2;
+        tailMid.position.set(-s * 3.5, -s * 0.1, 0);
+        group.add(tailMid);
+        // Tail blade/spike
+        const bladeMat = new THREE.MeshPhongMaterial({ color: 0x553300, specular: 0x442211, shininess: 60, flatShading: true });
+        const tailBlade = new THREE.Mesh(
+          new THREE.ConeGeometry(s * 0.3, s * 0.6, 3),
+          bladeMat,
+        );
+        tailBlade.rotation.z = Math.PI / 2;
+        tailBlade.position.set(-s * 4.5, -s * 0.15, 0);
+        group.add(tailBlade);
+
+        // Legs / claws — stubby but visible
+        const legMat = new THREE.MeshPhongMaterial({ color: 0x661000, flatShading: true });
+        const clawMat2 = new THREE.MeshPhongMaterial({ color: 0x332200 });
+        for (const side of [-1, 1]) {
+          for (const xOff of [s * 0.8, -s * 0.5]) {
+            const leg = new THREE.Mesh(
+              new THREE.CylinderGeometry(s * 0.12, s * 0.18, s * 0.8, 5),
+              legMat,
+            );
+            leg.position.set(xOff, -s * 0.7, side * s * 0.7);
+            group.add(leg);
+            // Claws
+            for (let c = -1; c <= 1; c++) {
+              const claw = new THREE.Mesh(
+                new THREE.ConeGeometry(s * 0.04, s * 0.2, 3),
+                clawMat2,
+              );
+              claw.position.set(xOff + c * s * 0.06, -s * 1.15, side * s * 0.7);
+              claw.rotation.z = c * 0.3;
+              group.add(claw);
+            }
+          }
+        }
 
         // --- Detailed dragon wings ---
         // Wing membrane material: semi-transparent with boss glow color
@@ -1993,29 +2274,100 @@ export class ThreeDragonRenderer {
       }
 
       case TDEnemyType.BOSS_STORM_COLOSSUS: {
-        // Giant humanoid of storm energy
+        // Giant humanoid of storm energy — more detailed and menacing
         const bodyMat = new THREE.MeshPhongMaterial({
           color: 0x003355,
           emissive: 0x00ccff,
           emissiveIntensity: 0.2,
           transparent: true,
           opacity: 0.85,
+          flatShading: true,
         });
+        // Torso
         const body = new THREE.Mesh(this._sphereGeo, bodyMat);
-        body.scale.set(s * 1.5, s * 2.5, s * 1.2);
+        body.scale.set(s * 1.6, s * 2.5, s * 1.3);
         group.add(body);
-        // Head
-        const head = new THREE.Mesh(this._sphereGeo, bodyMat.clone());
-        head.scale.set(s * 0.7, s * 0.7, s * 0.7);
+
+        // Armored chest plate
+        const armorMat = new THREE.MeshPhongMaterial({
+          color: 0x113355,
+          emissive: 0x0088cc,
+          emissiveIntensity: 0.15,
+          specular: 0x44aaff,
+          shininess: 60,
+          flatShading: true,
+        });
+        const chest = new THREE.Mesh(this._boxGeo, armorMat);
+        chest.scale.set(s * 1.4, s * 1.5, s * 0.5);
+        chest.position.set(0, s * 0.5, s * 0.5);
+        group.add(chest);
+
+        // Arms
+        for (const side of [-1, 1]) {
+          const arm = new THREE.Mesh(
+            new THREE.CylinderGeometry(s * 0.3, s * 0.4, s * 2.5, 6),
+            bodyMat.clone(),
+          );
+          arm.position.set(0, s * 0.5, side * s * 1.5);
+          arm.rotation.x = side * 0.3;
+          group.add(arm);
+          // Fist
+          const fist = new THREE.Mesh(this._sphereGeo, armorMat.clone());
+          fist.scale.set(s * 0.4, s * 0.4, s * 0.4);
+          fist.position.set(0, -s * 0.8, side * s * 1.5);
+          group.add(fist);
+        }
+
+        // Head — skull-like face
+        const headMat3 = bodyMat.clone();
+        const head = new THREE.Mesh(this._sphereGeo, headMat3);
+        head.scale.set(s * 0.75, s * 0.75, s * 0.7);
         head.position.y = s * 2.8;
         group.add(head);
-        // Lightning eyes
+
+        // Jaw
+        const jawGeo3 = new THREE.BoxGeometry(s * 0.5, s * 0.2, s * 0.5);
+        const jaw3 = new THREE.Mesh(jawGeo3, armorMat.clone());
+        jaw3.position.set(s * 0.15, s * 2.4, 0);
+        group.add(jaw3);
+
+        // Lightning eyes — larger, more menacing
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00ccff });
-        for (const z of [-0.3, 0.3]) {
+        for (const z of [-0.25, 0.25]) {
           const eye = new THREE.Mesh(this._sphereGeo, eyeMat);
-          eye.scale.set(s * 0.2, s * 0.2, s * 0.2);
-          eye.position.set(s * 0.3, s * 2.9, z * s);
+          eye.scale.set(s * 0.18, s * 0.22, s * 0.18);
+          eye.position.set(s * 0.35, s * 2.95, z * s);
           group.add(eye);
+          // Eye glow
+          const eLight = new THREE.PointLight(0x00ccff, 1.5, s * 2);
+          eLight.position.copy(eye.position);
+          group.add(eLight);
+        }
+
+        // Storm crown
+        const crownGeo = new THREE.TorusGeometry(s * 0.9, s * 0.08, 6, 12);
+        const crownMat = new THREE.MeshBasicMaterial({
+          color: 0x00ccff,
+          transparent: true,
+          opacity: 0.4,
+          depthWrite: false,
+        });
+        const crown = new THREE.Mesh(crownGeo, crownMat);
+        crown.position.y = s * 3.3;
+        crown.rotation.x = Math.PI / 2;
+        crown.name = "halo";
+        group.add(crown);
+
+        // Lightning crackling arcs
+        const sparkMat2 = new THREE.MeshBasicMaterial({ color: 0x44eeff, transparent: true, opacity: 0.5 });
+        for (let i = 0; i < 6; i++) {
+          const spark = new THREE.Mesh(new THREE.SphereGeometry(s * 0.08, 4, 3), sparkMat2.clone());
+          spark.position.set(
+            (Math.random() - 0.5) * s * 2,
+            s * 0.5 + Math.random() * s * 2.5,
+            (Math.random() - 0.5) * s * 1.5,
+          );
+          group.add(spark);
         }
         break;
       }
@@ -2059,33 +2411,147 @@ export class ThreeDragonRenderer {
       }
 
       case TDEnemyType.BOSS_CELESTIAL_HYDRA: {
-        // Multi-headed serpent
+        // Multi-headed serpent with detailed heads, jaws, and scales
         const bodyMat = new THREE.MeshPhongMaterial({
           color: 0x005533,
           emissive: 0x44ffaa,
           emissiveIntensity: 0.15,
+          flatShading: true,
+          specular: 0x226644,
+          shininess: 35,
         });
+        // Main body — larger, more serpentine
         const body = new THREE.Mesh(this._sphereGeo, bodyMat);
-        body.scale.set(s * 2, s * 1.5, s * 1.5);
+        body.scale.set(s * 2.2, s * 1.6, s * 1.6);
         group.add(body);
-        // Three heads
+
+        // Body scale ridges
+        const scaleRidgeMat = new THREE.MeshPhongMaterial({
+          color: 0x004422,
+          emissive: 0x22aa66,
+          emissiveIntensity: 0.08,
+          flatShading: true,
+        });
+        for (let i = 0; i < 6; i++) {
+          const ridge = new THREE.Mesh(
+            new THREE.SphereGeometry(s * 0.15, 5, 3),
+            scaleRidgeMat.clone(),
+          );
+          ridge.scale.set(1.2, 0.4, 1.5);
+          ridge.position.set(-s * 0.8 + i * s * 0.4, s * 1.1, 0);
+          group.add(ridge);
+        }
+
+        // Three heads with necks, jaws, teeth, and glowing eyes
         for (let i = -1; i <= 1; i++) {
-          const neckGeo = new THREE.CylinderGeometry(s * 0.2, s * 0.3, s * 2, 6);
+          // Neck — segmented feel
+          const neckGeo = new THREE.CylinderGeometry(s * 0.18, s * 0.3, s * 2.2, 6);
           neckGeo.rotateZ(-Math.PI / 4 + i * 0.3);
           const neck = new THREE.Mesh(neckGeo, bodyMat.clone());
-          neck.position.set(s * 1.2, s * 1 + i * s * 0.3, i * s * 0.6);
+          neck.position.set(s * 1.3, s * 1 + i * s * 0.3, i * s * 0.65);
           group.add(neck);
-          const head = new THREE.Mesh(this._sphereGeo, bodyMat.clone());
-          head.scale.set(s * 0.5, s * 0.4, s * 0.4);
-          head.position.set(s * 2.5, s * 1.8 + i * s * 0.5, i * s * 0.8);
-          group.add(head);
-          // Eyes
-          const eyeMat = new THREE.MeshBasicMaterial({ color: 0x44ffaa });
-          const eye = new THREE.Mesh(this._sphereGeo, eyeMat);
-          eye.scale.set(s * 0.1, s * 0.1, s * 0.1);
-          eye.position.set(s * 2.8, s * 1.9 + i * s * 0.5, i * s * 0.8);
-          group.add(eye);
+
+          // Neck rings / bands
+          for (let r = 0; r < 3; r++) {
+            const ring = new THREE.Mesh(
+              new THREE.TorusGeometry(s * 0.22, s * 0.03, 4, 6),
+              scaleRidgeMat.clone(),
+            );
+            const t = r / 3;
+            ring.position.set(
+              s * 0.8 + t * s * 1.2,
+              s * 0.7 + t * s * 0.8 + i * s * (0.15 + t * 0.15),
+              i * s * (0.35 + t * 0.2),
+            );
+            ring.rotation.z = -0.5 + i * 0.2;
+            group.add(ring);
+          }
+
+          // Head
+          const headMat2 = new THREE.MeshPhongMaterial({
+            color: 0x006644,
+            emissive: 0x44ffaa,
+            emissiveIntensity: 0.2,
+            flatShading: true,
+            specular: 0x228866,
+            shininess: 50,
+          });
+          const hydHead = new THREE.Mesh(this._sphereGeo, headMat2);
+          hydHead.scale.set(s * 0.55, s * 0.35, s * 0.4);
+          const headX = s * 2.6;
+          const headY = s * 1.9 + i * s * 0.55;
+          const headZ = i * s * 0.85;
+          hydHead.position.set(headX, headY, headZ);
+          group.add(hydHead);
+
+          // Upper jaw / snout
+          const snoutGeo2 = new THREE.ConeGeometry(s * 0.12, s * 0.4, 4);
+          snoutGeo2.rotateZ(-Math.PI / 2);
+          const snout2 = new THREE.Mesh(snoutGeo2, headMat2.clone());
+          snout2.position.set(headX + s * 0.45, headY + s * 0.05, headZ);
+          group.add(snout2);
+
+          // Lower jaw
+          const jawGeo2 = new THREE.ConeGeometry(s * 0.10, s * 0.35, 4);
+          jawGeo2.rotateZ(-Math.PI / 2);
+          const jawMat2 = new THREE.MeshPhongMaterial({
+            color: 0x005533,
+            emissive: 0x22cc88,
+            emissiveIntensity: 0.1,
+            flatShading: true,
+          });
+          const jaw2 = new THREE.Mesh(jawGeo2, jawMat2);
+          jaw2.position.set(headX + s * 0.35, headY - s * 0.15, headZ);
+          group.add(jaw2);
+
+          // Teeth
+          const hydToothMat = new THREE.MeshPhongMaterial({ color: 0xccddcc, specular: 0xffffff, shininess: 80 });
+          for (let t = 0; t < 3; t++) {
+            const tooth = new THREE.Mesh(
+              new THREE.ConeGeometry(s * 0.025, s * 0.08, 3),
+              hydToothMat,
+            );
+            tooth.position.set(
+              headX + s * 0.3 + t * s * 0.08,
+              headY - s * 0.08,
+              headZ + (Math.random() - 0.5) * s * 0.08,
+            );
+            tooth.rotation.z = Math.PI;
+            group.add(tooth);
+          }
+
+          // Mouth glow
+          const mGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(s * 0.08, 5, 3),
+            new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.5, depthWrite: false }),
+          );
+          mGlow.position.set(headX + s * 0.2, headY - s * 0.05, headZ);
+          group.add(mGlow);
+
+          // Eyes — two per head, glowing
+          const eyeMat2 = new THREE.MeshBasicMaterial({ color: 0x44ffaa });
+          for (const eZ of [-0.08, 0.08]) {
+            const eye = new THREE.Mesh(this._sphereGeo, eyeMat2);
+            eye.scale.set(s * 0.08, s * 0.1, s * 0.08);
+            eye.position.set(headX + s * 0.2, headY + s * 0.12, headZ + eZ * s);
+            group.add(eye);
+          }
+
+          // Head crest / horn
+          const crestMat = new THREE.MeshPhongMaterial({ color: 0x337755, flatShading: true });
+          const crest = new THREE.Mesh(this._coneGeo, crestMat);
+          crest.scale.set(s * 0.06, s * 0.35, s * 0.06);
+          crest.position.set(headX - s * 0.1, headY + s * 0.3, headZ);
+          group.add(crest);
         }
+
+        // Tail
+        const hydTailMat = new THREE.MeshPhongMaterial({ color: 0x004422, flatShading: true });
+        const hydTail = new THREE.Mesh(this._coneGeo, hydTailMat);
+        hydTail.scale.set(s * 0.4, s * 2.5, s * 0.4);
+        hydTail.rotation.z = Math.PI / 2;
+        hydTail.position.set(-s * 2.5, 0, 0);
+        group.add(hydTail);
         break;
       }
 
@@ -2225,6 +2691,9 @@ export class ThreeDragonRenderer {
 
     // Update enemies
     this._updateEnemies(state, dt, time);
+
+    // Update boost visual effects (FOV, speed lines, trail)
+    this._updateBoostEffects(state, dt, time);
 
     // Update projectiles
     this._updateProjectiles(state, dt, time);
@@ -2574,6 +3043,20 @@ export class ThreeDragonRenderer {
             upperArmL.rotation.z = fold;
             upperArmR.rotation.z = -fold;
           }
+        }
+        // Jaw animation — open and close menacingly
+        const dragonJaw = group.getObjectByName("dragonJaw") as THREE.Mesh;
+        if (dragonJaw) {
+          const jawOpen = Math.sin(time * 1.5 + enemy.id) * 0.15 + 0.05;
+          dragonJaw.rotation.x = jawOpen;
+        }
+        // Mouth fire glow pulsing
+        const mouthGlow = group.getObjectByName("mouthGlow") as THREE.Mesh;
+        if (mouthGlow) {
+          const glowPulse = 0.4 + Math.sin(time * 3 + enemy.id) * 0.3;
+          (mouthGlow.material as THREE.MeshBasicMaterial).opacity = glowPulse;
+          const glowScale = 1 + Math.sin(time * 4 + enemy.id) * 0.3;
+          mouthGlow.scale.setScalar(glowScale);
         }
       }
 

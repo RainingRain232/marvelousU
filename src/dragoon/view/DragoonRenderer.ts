@@ -232,9 +232,12 @@ export class DragoonRenderer {
     }
   }
 
+  private _cloudGfx = new Graphics();
+
   private _drawClouds(_sw: number, dt: number): void {
     this._cloudContainer.removeChildren();
-    const g = new Graphics();
+    const g = this._cloudGfx;
+    g.clear();
     const ww = this._worldWidth;
     for (const c of this._clouds) {
       c.x -= c.speed * dt;

@@ -13,9 +13,96 @@ import { WEAPON_DEFS, PASSIVE_DEFS, EVOLUTION_DEFS } from "../config/SurvivorWea
 import type { SurvivorWeaponId, SurvivorPassiveId } from "../config/SurvivorWeaponDefs";
 
 const STYLE_TITLE = new TextStyle({ fontFamily: "monospace", fontSize: 28, fill: 0xffd700, fontWeight: "bold", letterSpacing: 3 });
-const STYLE_CHOICE = new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: 0xffffff, fontWeight: "bold" });
 const STYLE_CHOICE_DESC = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xaabbcc });
 const STYLE_BTN = new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: 0xffffff, fontWeight: "bold" });
+
+// ---------------------------------------------------------------------------
+// Skill icon visual config per weapon/passive type
+// ---------------------------------------------------------------------------
+
+interface SkillIconStyle {
+  symbol: string;
+  bgColor: number;
+  glowColor: number;
+  borderColor: number;
+  shape: "circle" | "diamond" | "hexagon" | "star";
+}
+
+const WEAPON_ICON_STYLES: Record<string, SkillIconStyle> = {
+  fireball_ring: { symbol: "\u{1F525}", bgColor: 0x4a1000, glowColor: 0xff6600, borderColor: 0xff8800, shape: "circle" },
+  arrow_volley: { symbol: "\u{27B3}", bgColor: 0x2a3000, glowColor: 0xddbb77, borderColor: 0xccaa55, shape: "diamond" },
+  lightning_chain: { symbol: "\u{26A1}", bgColor: 0x0a1a3a, glowColor: 0xaaddff, borderColor: 0x88bbff, shape: "hexagon" },
+  ice_nova: { symbol: "\u{2744}", bgColor: 0x0a2a3a, glowColor: 0x44aaff, borderColor: 0x66ccff, shape: "star" },
+  holy_circle: { symbol: "\u{2721}", bgColor: 0x3a3000, glowColor: 0xffd700, borderColor: 0xffee44, shape: "circle" },
+  catapult_strike: { symbol: "\u{25C9}", bgColor: 0x2a1a0a, glowColor: 0x886644, borderColor: 0xaa8855, shape: "diamond" },
+  spinning_blade: { symbol: "\u{2694}", bgColor: 0x1a1a2a, glowColor: 0xcccccc, borderColor: 0xdddddd, shape: "hexagon" },
+  warp_field: { symbol: "\u{2B2E}", bgColor: 0x1a0a2a, glowColor: 0x9944cc, borderColor: 0xbb66ee, shape: "star" },
+  rune_circle: { symbol: "\u{2646}", bgColor: 0x2a0a1a, glowColor: 0xff4488, borderColor: 0xff66aa, shape: "hexagon" },
+  soul_drain: { symbol: "\u{2620}", bgColor: 0x0a2a1a, glowColor: 0x44ff88, borderColor: 0x66ffaa, shape: "diamond" },
+};
+
+const PASSIVE_ICON_STYLES: Record<string, SkillIconStyle> = {
+  plate_armor: { symbol: "\u{1F6E1}", bgColor: 0x1a1a2e, glowColor: 0x8899aa, borderColor: 0xaabbcc, shape: "hexagon" },
+  swift_boots: { symbol: "\u{1F462}", bgColor: 0x1a2a1a, glowColor: 0x44cc88, borderColor: 0x66ddaa, shape: "diamond" },
+  spell_tome: { symbol: "\u{1F4D6}", bgColor: 0x1a1a3a, glowColor: 0x6688ff, borderColor: 0x88aaff, shape: "star" },
+  war_drum: { symbol: "\u{1F941}", bgColor: 0x2a1a0a, glowColor: 0xff8844, borderColor: 0xffaa66, shape: "circle" },
+  lucky_coin: { symbol: "\u{1FA99}", bgColor: 0x2a2a0a, glowColor: 0xffd700, borderColor: 0xffee44, shape: "circle" },
+  magnet: { symbol: "\u{1F9F2}", bgColor: 0x2a0a0a, glowColor: 0xff4444, borderColor: 0xff6666, shape: "diamond" },
+  crown: { symbol: "\u{1F451}", bgColor: 0x3a2a0a, glowColor: 0xffd700, borderColor: 0xffcc00, shape: "star" },
+  chalice: { symbol: "\u{1F3C6}", bgColor: 0x0a2a2a, glowColor: 0x44dddd, borderColor: 0x66eeee, shape: "hexagon" },
+};
+
+function _getSkillIconStyle(choice: UpgradeChoice): SkillIconStyle {
+  if (choice.type === "weapon") {
+    return WEAPON_ICON_STYLES[choice.id] ?? { symbol: "\u{2B24}", bgColor: 0x1a1a2e, glowColor: choice.color, borderColor: choice.color, shape: "circle" };
+  }
+  return PASSIVE_ICON_STYLES[choice.id] ?? { symbol: "\u{2B24}", bgColor: 0x1a1a2e, glowColor: 0x8899aa, borderColor: 0xaabbcc, shape: "circle" };
+}
+
+function _drawSkillShape(g: Graphics, cx: number, cy: number, r: number, shape: SkillIconStyle["shape"], fillColor: number, fillAlpha: number, strokeColor: number, strokeWidth: number): void {
+  switch (shape) {
+    case "circle":
+      g.circle(cx, cy, r).fill({ color: fillColor, alpha: fillAlpha });
+      g.circle(cx, cy, r).stroke({ color: strokeColor, width: strokeWidth });
+      break;
+    case "diamond": {
+      g.moveTo(cx, cy - r).lineTo(cx + r, cy).lineTo(cx, cy + r).lineTo(cx - r, cy).closePath()
+        .fill({ color: fillColor, alpha: fillAlpha });
+      g.moveTo(cx, cy - r).lineTo(cx + r, cy).lineTo(cx, cy + r).lineTo(cx - r, cy).closePath()
+        .stroke({ color: strokeColor, width: strokeWidth });
+      break;
+    }
+    case "hexagon": {
+      const pts: [number, number][] = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i - Math.PI / 2;
+        pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+      }
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < 6; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.closePath().fill({ color: fillColor, alpha: fillAlpha });
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < 6; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.closePath().stroke({ color: strokeColor, width: strokeWidth });
+      break;
+    }
+    case "star": {
+      const pts2: [number, number][] = [];
+      for (let i = 0; i < 10; i++) {
+        const a = (Math.PI / 5) * i - Math.PI / 2;
+        const rad = i % 2 === 0 ? r : r * 0.5;
+        pts2.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad]);
+      }
+      g.moveTo(pts2[0][0], pts2[0][1]);
+      for (let i = 1; i < 10; i++) g.lineTo(pts2[i][0], pts2[i][1]);
+      g.closePath().fill({ color: fillColor, alpha: fillAlpha });
+      g.moveTo(pts2[0][0], pts2[0][1]);
+      for (let i = 1; i < 10; i++) g.lineTo(pts2[i][0], pts2[i][1]);
+      g.closePath().stroke({ color: strokeColor, width: strokeWidth });
+      break;
+    }
+  }
+}
 
 export class SurvivorLevelUpUI {
   readonly levelUpOverlay = new Container();
@@ -51,52 +138,85 @@ export class SurvivorLevelUpUI {
 
     for (let i = 0; i < choices.length; i++) {
       const choice = choices[i];
+      const iconStyle = _getSkillIconStyle(choice);
       const card = new Container();
       card.eventMode = "static";
       card.cursor = "pointer";
       card.position.set(startX + i * (cardW + gap), startY);
 
+      // Outer glow behind the card
+      const outerGlow = new Graphics()
+        .roundRect(-4, -4, cardW + 8, cardH + 8, 12)
+        .fill({ color: iconStyle.glowColor, alpha: 0.08 });
+      card.addChild(outerGlow);
+
       const bg = new Graphics()
         .roundRect(0, 0, cardW, cardH, 8)
-        .fill({ color: 0x1a1a2e, alpha: 0.95 })
+        .fill({ color: iconStyle.bgColor, alpha: 0.95 })
         .roundRect(0, 0, cardW, cardH, 8)
-        .stroke({ color: choice.color, width: 2 });
+        .stroke({ color: iconStyle.borderColor, width: 2.5 });
       card.addChild(bg);
+
+      // Top accent line
+      const accentLine = new Graphics()
+        .roundRect(4, 0, cardW - 8, 3, 2)
+        .fill({ color: iconStyle.glowColor, alpha: 0.6 });
+      card.addChild(accentLine);
+
+      // Skill icon (shaped background + symbol)
+      const iconContainer = new Container();
+      iconContainer.position.set(cardW - 36, 20);
+      const iconBg = new Graphics();
+      _drawSkillShape(iconBg, 0, 0, 18, iconStyle.shape, iconStyle.glowColor, 0.15, iconStyle.borderColor, 1.5);
+      // Inner glow
+      const innerGlow = new Graphics();
+      _drawSkillShape(innerGlow, 0, 0, 10, iconStyle.shape, iconStyle.glowColor, 0.3, iconStyle.glowColor, 0);
+      iconContainer.addChild(iconBg, innerGlow);
+      // Symbol text
+      const symbolText = new Text({
+        text: iconStyle.symbol,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: 0xffffff }),
+      });
+      symbolText.anchor.set(0.5, 0.5);
+      symbolText.position.set(0, 0);
+      iconContainer.addChild(symbolText);
+      card.addChild(iconContainer);
 
       const badge = new Text({
         text: choice.isNew ? "NEW" : `Lv.${choice.level}`,
         style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: choice.isNew ? 0x44ff44 : 0xffd700, fontWeight: "bold" }),
       });
-      badge.anchor.set(1, 0);
-      badge.position.set(cardW - 10, 8);
+      badge.anchor.set(0, 0);
+      badge.position.set(10, 8);
       card.addChild(badge);
 
-      const name = new Text({ text: choice.name, style: STYLE_CHOICE });
-      name.position.set(10, 10);
+      const name = new Text({ text: choice.name, style: new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: iconStyle.glowColor, fontWeight: "bold" }) });
+      name.position.set(10, 24);
       card.addChild(name);
 
       const typeLabel = new Text({
         text: choice.type === "weapon" ? "WEAPON" : "PASSIVE",
         style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: choice.type === "weapon" ? 0xff8844 : 0x44aaff }),
       });
-      typeLabel.position.set(10, 32);
+      typeLabel.position.set(10, 46);
       card.addChild(typeLabel);
 
       const desc = new Text({ text: choice.description, style: STYLE_CHOICE_DESC });
-      desc.position.set(10, 50);
+      desc.position.set(10, 64);
       desc.style.wordWrap = true;
-      desc.style.wordWrapWidth = cardW - 20;
+      desc.style.wordWrapWidth = cardW - 50;
       card.addChild(desc);
 
       card.on("pointerdown", () => this._onUpgrade?.(choice));
       card.on("pointerover", (e) => {
         bg.tint = 0x3366aa;
+        outerGlow.alpha = 2;
         this._showUpgradeTooltip(choice, e.globalX, e.globalY, sw, sh);
       });
       card.on("pointermove", (e) => {
         if (this._tooltip.visible) this._positionLevelUpTooltip(e.globalX, e.globalY, sw, sh);
       });
-      card.on("pointerout", () => { bg.tint = 0xffffff; this._tooltip.visible = false; });
+      card.on("pointerout", () => { bg.tint = 0xffffff; outerGlow.alpha = 1; this._tooltip.visible = false; });
 
       this.levelUpOverlay.addChild(card);
     }

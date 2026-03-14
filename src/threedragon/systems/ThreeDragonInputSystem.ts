@@ -31,6 +31,7 @@ export const ThreeDragonInputSystem = {
         case "Digit3": inp.skill3 = true; break;
         case "Digit4": inp.skill4 = true; break;
         case "Digit5": inp.skill5 = true; break;
+        case "ShiftLeft": case "ShiftRight": case "Space": inp.boost = true; break;
         case "Escape":
           state.paused = !state.paused;
           _pauseCallback?.(state.paused);
@@ -49,6 +50,7 @@ export const ThreeDragonInputSystem = {
         case "Digit3": inp.skill3 = false; break;
         case "Digit4": inp.skill4 = false; break;
         case "Digit5": inp.skill5 = false; break;
+        case "ShiftLeft": case "ShiftRight": case "Space": inp.boost = false; break;
       }
     };
 
@@ -75,7 +77,26 @@ export const ThreeDragonInputSystem = {
   update(state: ThreeDragonState, dt: number): void {
     const p = state.player;
     const inp = state.input;
-    const speed = TDBalance.PLAYER_SPEED;
+
+    // Boost cooldown
+    if (p.boostCooldown > 0) p.boostCooldown -= dt;
+    if (p.boostTimer > 0) {
+      p.boostTimer -= dt;
+      if (p.boostTimer <= 0) {
+        p.boostActive = false;
+      }
+    }
+
+    // Activate boost
+    if (inp.boost && !p.boostActive && p.boostCooldown <= 0) {
+      inp.boost = false;
+      p.boostActive = true;
+      p.boostTimer = 1.5;             // boost lasts 1.5s
+      p.boostCooldown = p.boostMaxCooldown; // 5s cooldown
+    }
+
+    const boostMult = p.boostActive ? 2.0 : 1.0;
+    const speed = TDBalance.PLAYER_SPEED * boostMult;
 
     let dx = 0, dy = 0;
     if (inp.left) dx -= 1;
@@ -91,6 +112,13 @@ export const ThreeDragonInputSystem = {
 
     p.position.x += dx * speed * dt;
     p.position.y += dy * speed * dt;
+
+    // Boost also increases forward scroll speed
+    if (p.boostActive) {
+      state.scrollSpeed = TDBalance.SCROLL_SPEED_BASE * 1.8;
+    } else {
+      state.scrollSpeed = TDBalance.SCROLL_SPEED_BASE;
+    }
 
     // Bank angle for visual tilt
     const targetBank = -dx * 0.4;

@@ -8,7 +8,7 @@ import { gridRenderer } from "@view/GridRenderer";
 import { SurvivorBalance, SURVIVOR_MAPS } from "./config/SurvivorBalanceConfig";
 import type { SurvivorCharacterDef } from "./config/SurvivorCharacterDefs";
 import { createSurvivorState } from "./state/SurvivorState";
-import type { SurvivorState } from "./state/SurvivorState";
+import type { SurvivorState, SurvivorDifficulty } from "./state/SurvivorState";
 import { SurvivorInputSystem } from "./systems/SurvivorInputSystem";
 import { SurvivorWaveSystem } from "./systems/SurvivorWaveSystem";
 import { SurvivorCombatSystem } from "./systems/SurvivorCombatSystem";
@@ -66,9 +66,16 @@ export class SurvivorGame {
   private _showCharacterSelect(): void {
     const sw = viewManager.screenWidth;
     const sh = viewManager.screenHeight;
-    this._charSelect.setStartCallback((charDef, mapIndex) => {
+    this._charSelect.setStartCallback((charDef, mapIndex, difficulty) => {
       viewManager.removeFromLayer("ui", this._charSelect.container);
-      this._startGame(charDef, mapIndex);
+      this._startGame(charDef, mapIndex, difficulty);
+    });
+    this._charSelect.setBackCallback(() => {
+      viewManager.removeFromLayer("ui", this._charSelect.container);
+      this.destroy();
+      // Navigate back to main menu by reloading
+      window.location.hash = "";
+      window.location.reload();
     });
     this._charSelect.show(sw, sh);
     viewManager.addToLayer("ui", this._charSelect.container);
@@ -78,9 +85,9 @@ export class SurvivorGame {
   // Start Game
   // ---------------------------------------------------------------------------
 
-  private _startGame(charDef: SurvivorCharacterDef, mapIndex: number): void {
+  private _startGame(charDef: SurvivorCharacterDef, mapIndex: number, difficulty: SurvivorDifficulty = "normal"): void {
     const mapDef = SURVIVOR_MAPS[mapIndex];
-    this._state = createSurvivorState(charDef, mapDef.mapType, mapDef.width, mapDef.height);
+    this._state = createSurvivorState(charDef, mapDef.mapType, mapDef.width, mapDef.height, difficulty);
 
     // Init renderer
     this._renderer.init();
@@ -97,10 +104,29 @@ export class SurvivorGame {
     gridRenderer.init(viewManager);
     gridRenderer.draw({ grid, width: mapDef.width, height: mapDef.height }, mapDef.mapType);
 
+    // Generate environmental map details
+    this._renderer.generateMapDetails(mapDef.width, mapDef.height, mapDef.mapType);
+
     // Camera
     viewManager.camera.setMapSize(mapDef.width, mapDef.height);
     viewManager.camera.zoom = 1.5;
     this._camera.sync(this._state);
+
+    // Spawn speech bubble (game start quote)
+    {
+      const quotes = charDef.spawnQuotes;
+      if (quotes && quotes.length > 0) {
+        const quote = quotes[Math.floor(Math.random() * quotes.length)];
+        const px = this._state.player.position.x * 64; // TS
+        const py = this._state.player.position.y * 64;
+        // Slight delay so the player sees it
+        setTimeout(() => {
+          if (this._state && !this._state.gameOver) {
+            this._renderer.showSpeechBubble(quote, px, py, 3.0);
+          }
+        }, 500);
+      }
+    }
 
     // HUD
     const sw = viewManager.screenWidth;
@@ -109,8 +135,8 @@ export class SurvivorGame {
     viewManager.addToLayer("ui", this._hud.container);
 
     // Combat callbacks
-    SurvivorCombatSystem.setWeaponFxCallback((x, y, color, radius) => {
-      this._fx.pendingWeaponFx.push({ x, y, color, radius });
+    SurvivorCombatSystem.setWeaponFxCallback((x, y, color, radius, weaponId) => {
+      this._fx.pendingWeaponFx.push({ x, y, color, radius, weaponId });
     });
     SurvivorCombatSystem.setChainFxCallback((points, color) => {
       this._fx.pendingChainFx.push({ points, color });
@@ -124,6 +150,15 @@ export class SurvivorGame {
     SurvivorCombatSystem.setDamageCallback((x, y, amount, isCrit) => {
       this._fx.pendingDmgNumbers.push({ x, y, amount, isCrit, isHeal: false });
       if (isCrit) this._camera.shake(3, 0.1);
+    });
+    SurvivorCombatSystem.setBossKillCallback((_enemy) => {
+      const quotes = charDef.bossKillQuotes;
+      if (quotes && quotes.length > 0) {
+        const quote = quotes[Math.floor(Math.random() * quotes.length)];
+        const px = this._state.player.position.x * 64;
+        const py = this._state.player.position.y * 64;
+        this._renderer.showSpeechBubble(quote, px, py, 3.0);
+      }
     });
 
     // Pickup callbacks
@@ -298,6 +333,11 @@ export class SurvivorGame {
     this._fx.spawnArcFx();
     this._fx.updateArcFx(dt);
     this._fx.updateTrailParticles(dt);
+    this._fx.spawnScreenFlash(viewManager.screenWidth, viewManager.screenHeight);
+    this._fx.updateScreenFlash(dt);
+
+    // Speech bubbles
+    this._renderer.updateSpeechBubbles(dt);
 
     // HUD
     this._hud.update(s, viewManager.screenWidth, viewManager.screenHeight);
@@ -331,6 +371,7 @@ export class SurvivorGame {
     SurvivorCombatSystem.setChainFxCallback(null);
     SurvivorCombatSystem.setArcFxCallback(null);
     SurvivorCombatSystem.setPlayerHitCallback(null);
+    SurvivorCombatSystem.setBossKillCallback(null);
     SurvivorPickupSystem.setChestCallback(null);
     SurvivorPickupSystem.setArcanaCallback(null);
     SurvivorHazardSystem.setEventCallback(null);

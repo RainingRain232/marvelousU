@@ -1642,6 +1642,14 @@ export class TekkenFighterRenderer {
 
     this._idleTime += 0.016;
 
+    // Reset hips to standing height by default; crouch states will override this
+    const isCrouchState = fighter.state === TekkenFighterState.CROUCH ||
+                          fighter.state === TekkenFighterState.CROUCH_IDLE ||
+                          fighter.state === TekkenFighterState.BLOCK_CROUCH;
+    if (!isCrouchState) {
+      this._lerpPositionY(this._hips, TekkenFighterRenderer.STANDING_HIP_Y);
+    }
+
     // Animate based on state
     switch (fighter.state) {
       case TekkenFighterState.IDLE:
@@ -1714,6 +1722,17 @@ export class TekkenFighterRenderer {
     bone.rotation.y += (ty - bone.rotation.y) * s;
     bone.rotation.z += (tz - bone.rotation.z) * s;
   }
+
+  // Helper: smoothly blend a bone's Y position (used for lowering hips during crouch)
+  private _lerpPositionY(bone: THREE.Group, targetY: number, speed?: number): void {
+    const s = speed ?? this._blendSpeed;
+    bone.position.y += (targetY - bone.position.y) * s;
+  }
+
+  // Standing hip height (computed from leg bone lengths)
+  private static readonly STANDING_HIP_Y = THIGH_LEN + SHIN_LEN + ANKLE_LEN + FOOT_HEIGHT;
+  // Crouching hip height - drops significantly so the character visually ducks
+  private static readonly CROUCH_HIP_Y = (THIGH_LEN + SHIN_LEN + ANKLE_LEN + FOOT_HEIGHT) * 0.52;
 
   private _animateIdle(): void {
     const t = this._idleTime;
@@ -1788,25 +1807,32 @@ export class TekkenFighterRenderer {
   }
 
   private _animateCrouch(): void {
-    // Deep crouch - hips drop, knees bend heavily
-    this._lerpBone(this._hips, 0, 0, 0);
-    this._lerpBone(this._spineLower, 0.15, 0, 0);
-    this._lerpBone(this._spineUpper, 0.1, 0, 0);
-    this._lerpBone(this._chest, 0.1, 0, 0);
+    // Drop the hips down so the character visually lowers to duck under attacks
+    this._lerpPositionY(this._hips, TekkenFighterRenderer.CROUCH_HIP_Y);
 
-    // Arms in low guard
-    this._lerpBone(this._leftUpperArm, -0.2, 0, 0.6);
-    this._lerpBone(this._leftForearm, -1.6, 0, 0);
-    this._lerpBone(this._rightUpperArm, -0.3, 0, -0.7);
-    this._lerpBone(this._rightForearm, -1.7, 0, 0);
+    // Torso leans forward into a tight crouch
+    this._lerpBone(this._hips, 0.1, 0, 0);
+    this._lerpBone(this._spineLower, 0.35, 0, 0);
+    this._lerpBone(this._spineUpper, 0.25, 0, 0);
+    this._lerpBone(this._chest, 0.2, 0, 0);
+    this._lerpBone(this._neck, -0.15, 0, 0);
+    this._lerpBone(this._head, -0.2, 0, 0);
 
-    // Deep knee bend
-    this._lerpBone(this._leftThigh, -0.8, 0, 0.2);
-    this._lerpBone(this._leftShin, 1.4, 0, 0);
-    this._lerpBone(this._leftAnkle, -0.4, 0, 0);
-    this._lerpBone(this._rightThigh, -0.7, 0, -0.25);
-    this._lerpBone(this._rightShin, 1.3, 0, 0);
-    this._lerpBone(this._rightAnkle, -0.4, 0, 0);
+    // Arms in low guard, tucked close to body
+    this._lerpBone(this._leftUpperArm, -0.1, 0.2, 0.7);
+    this._lerpBone(this._leftForearm, -1.8, 0, 0);
+    this._lerpBone(this._leftHand, -0.3, 0, 0);
+    this._lerpBone(this._rightUpperArm, -0.2, -0.2, -0.8);
+    this._lerpBone(this._rightForearm, -1.9, 0, 0);
+    this._lerpBone(this._rightHand, -0.3, 0, 0);
+
+    // Deep knee bend - legs spread and bent heavily
+    this._lerpBone(this._leftThigh, -1.2, 0, 0.35);
+    this._lerpBone(this._leftShin, 1.8, 0, 0);
+    this._lerpBone(this._leftAnkle, -0.5, 0, 0);
+    this._lerpBone(this._rightThigh, -1.1, 0, -0.4);
+    this._lerpBone(this._rightShin, 1.7, 0, 0);
+    this._lerpBone(this._rightAnkle, -0.5, 0, 0);
   }
 
   private _animateBlockStand(): void {
@@ -1829,20 +1855,30 @@ export class TekkenFighterRenderer {
   }
 
   private _animateBlockCrouch(): void {
-    // Crouching block
-    this._lerpBone(this._spineLower, 0.2, 0, 0);
-    this._lerpBone(this._spineUpper, 0.05, 0, 0);
+    // Drop the hips to crouching height
+    this._lerpPositionY(this._hips, TekkenFighterRenderer.CROUCH_HIP_Y);
+
+    // Crouching block - torso tucked, leaning back slightly to absorb
+    this._lerpBone(this._hips, 0.05, 0, 0);
+    this._lerpBone(this._spineLower, 0.3, 0, 0);
+    this._lerpBone(this._spineUpper, 0.15, 0, 0);
     this._lerpBone(this._chest, -0.05, 0, 0);
+    this._lerpBone(this._neck, -0.1, 0, 0);
+    this._lerpBone(this._head, -0.15, 0, 0);
 
-    this._lerpBone(this._leftUpperArm, -0.4, 0.2, 0.5);
-    this._lerpBone(this._leftForearm, -1.6, 0, 0);
-    this._lerpBone(this._rightUpperArm, -0.5, -0.2, -0.5);
-    this._lerpBone(this._rightForearm, -1.6, 0, 0);
+    // Arms up in guard while crouched
+    this._lerpBone(this._leftUpperArm, -0.5, 0.3, 0.6);
+    this._lerpBone(this._leftForearm, -1.9, 0, 0);
+    this._lerpBone(this._rightUpperArm, -0.6, -0.3, -0.6);
+    this._lerpBone(this._rightForearm, -1.9, 0, 0);
 
-    this._lerpBone(this._leftThigh, -0.9, 0, 0.2);
-    this._lerpBone(this._leftShin, 1.5, 0, 0);
-    this._lerpBone(this._rightThigh, -0.8, 0, -0.25);
-    this._lerpBone(this._rightShin, 1.4, 0, 0);
+    // Deep knee bend for crouching block
+    this._lerpBone(this._leftThigh, -1.2, 0, 0.3);
+    this._lerpBone(this._leftShin, 1.8, 0, 0);
+    this._lerpBone(this._leftAnkle, -0.5, 0, 0);
+    this._lerpBone(this._rightThigh, -1.1, 0, -0.35);
+    this._lerpBone(this._rightShin, 1.7, 0, 0);
+    this._lerpBone(this._rightAnkle, -0.5, 0, 0);
   }
 
   private _animateAttack(fighter: TekkenFighter): void {

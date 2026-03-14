@@ -95,7 +95,53 @@ export const DragoonInputSystem = {
     };
 
     _mouseDown = (e: MouseEvent) => {
-      if (e.button === 0) inp.fire = true;
+      if (e.button !== 0) return;
+
+      // Class selection: hit-test card areas
+      if (state.classSelectActive) {
+        const mx = e.clientX;
+        const my = e.clientY;
+        const sw = state.screenW;
+        const sh = state.screenH;
+        const cardW = 200;
+        const cardH = 280;
+        const gap = 20;
+        const totalW = CLASS_ORDER.length * cardW + (CLASS_ORDER.length - 1) * gap;
+        const startX = (sw - totalW) / 2;
+        const cardY = sh / 2 - cardH / 2;
+        for (let i = 0; i < CLASS_ORDER.length; i++) {
+          const cx = startX + i * (cardW + gap);
+          if (mx >= cx && mx <= cx + cardW && my >= cardY && my <= cardY + cardH) {
+            _classSelectCallback?.(CLASS_ORDER[i]);
+            return;
+          }
+        }
+        return;
+      }
+
+      // Subclass selection: hit-test card areas
+      if (state.subclassChoiceActive) {
+        const mx = e.clientX;
+        const my = e.clientY;
+        const sw = state.screenW;
+        const sh = state.screenH;
+        const cardW = 280;
+        const cardH = 300;
+        const gap = 40;
+        const totalW = 2 * cardW + gap;
+        const startX = (sw - totalW) / 2;
+        const cardY = sh / 2 - cardH / 2;
+        for (let i = 0; i < 2; i++) {
+          const cx = startX + i * (cardW + gap);
+          if (mx >= cx && mx <= cx + cardW && my >= cardY && my <= cardY + cardH) {
+            _subclassSelectCallback?.(i);
+            return;
+          }
+        }
+        return;
+      }
+
+      inp.fire = true;
     };
 
     _mouseUp = (e: MouseEvent) => {

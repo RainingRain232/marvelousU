@@ -9,6 +9,7 @@ import { WAVE_TABLE, BOSS_DEFS, DEATH_BOSS_DEF } from "../config/SurvivorEnemyDe
 import type { SurvivorEnemyDef } from "../config/SurvivorEnemyDefs";
 import { ELITE_CONFIG, ELITE_DEFS } from "../config/SurvivorEliteDefs";
 import type { EliteType } from "../config/SurvivorEliteDefs";
+import { DIFFICULTY_SETTINGS } from "../state/SurvivorState";
 import type { SurvivorState, SurvivorEnemy } from "../state/SurvivorState";
 
 // Visible area in tiles (approximate)
@@ -122,15 +123,16 @@ function _rollEliteType(minute: number): EliteType | null {
 function _createEnemy(state: SurvivorState, def: SurvivorEnemyDef, pos: { x: number; y: number }, isDeathBoss = false): SurvivorEnemy {
   const unitDef = UNIT_DEFINITIONS[def.type];
   const minute = state.gameTime / 60;
+  const diffMods = DIFFICULTY_SETTINGS[state.difficulty];
   const hpScale = (1 + SurvivorBalance.ENEMY_HP_SCALE_PER_MIN * minute) ** 2;
   const speedScale = Math.min(
     SurvivorBalance.ENEMY_SPEED_CAP,
     1 + SurvivorBalance.ENEMY_SPEED_SCALE_PER_MIN * minute,
   );
 
-  let hp = (unitDef?.hp ?? 50) * def.hpMult * hpScale;
-  let atk = (unitDef?.atk ?? 10) * def.atkMult;
-  let speed = (unitDef?.speed ?? 1) * def.speedMult * speedScale;
+  let hp = (unitDef?.hp ?? 50) * def.hpMult * hpScale * diffMods.enemyHpMultiplier;
+  let atk = (unitDef?.atk ?? 10) * def.atkMult * diffMods.enemyAtkMultiplier;
+  let speed = (unitDef?.speed ?? 1) * def.speedMult * speedScale * diffMods.enemySpeedMultiplier;
 
   if (def.isBoss) {
     hp *= SurvivorBalance.BOSS_HP_MULTIPLIER;
@@ -190,14 +192,15 @@ export const SurvivorWaveSystem = {
       return;
     }
 
-    // Apply event spawn rate multiplier
+    // Apply event spawn rate multiplier + difficulty
     const eventSpawnMult = state.activeEvent?.spawnRateMultiplier ?? 1;
+    const diffSpawnMult = DIFFICULTY_SETTINGS[state.difficulty].spawnRateMultiplier;
 
     // Regular enemy spawning
     const spawnRate = Math.min(
       SurvivorBalance.ENEMY_MAX_SPAWN_RATE,
       SurvivorBalance.ENEMY_BASE_SPAWN_RATE + SurvivorBalance.ENEMY_SPAWN_RATE_SCALE * minute,
-    ) * eventSpawnMult;
+    ) * eventSpawnMult * diffSpawnMult;
     state.spawnAccumulator += spawnRate * dt;
 
     const pool = _getActiveEnemyPool(minute);

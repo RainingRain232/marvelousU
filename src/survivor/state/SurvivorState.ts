@@ -240,7 +240,34 @@ export interface SurvivorState {
   // Meta
   gold: number; // earned this run
   goldMultiplier: number;
+
+  // Difficulty
+  difficulty: SurvivorDifficulty;
 }
+
+// ---------------------------------------------------------------------------
+// Difficulty settings
+// ---------------------------------------------------------------------------
+
+export type SurvivorDifficulty = "easy" | "normal" | "hard" | "nightmare";
+
+export interface DifficultyModifiers {
+  spawnRateMultiplier: number;
+  enemyHpMultiplier: number;
+  enemyAtkMultiplier: number;
+  enemySpeedMultiplier: number;
+  xpMultiplier: number;
+  goldMultiplier: number;
+  label: string;
+  color: number;
+}
+
+export const DIFFICULTY_SETTINGS: Record<SurvivorDifficulty, DifficultyModifiers> = {
+  easy: { spawnRateMultiplier: 0.6, enemyHpMultiplier: 0.7, enemyAtkMultiplier: 0.6, enemySpeedMultiplier: 0.9, xpMultiplier: 0.8, goldMultiplier: 0.7, label: "Easy", color: 0x44cc44 },
+  normal: { spawnRateMultiplier: 1.0, enemyHpMultiplier: 1.0, enemyAtkMultiplier: 1.0, enemySpeedMultiplier: 1.0, xpMultiplier: 1.0, goldMultiplier: 1.0, label: "Normal", color: 0xffffff },
+  hard: { spawnRateMultiplier: 1.5, enemyHpMultiplier: 1.5, enemyAtkMultiplier: 1.4, enemySpeedMultiplier: 1.15, xpMultiplier: 1.3, goldMultiplier: 1.5, label: "Hard", color: 0xff8844 },
+  nightmare: { spawnRateMultiplier: 2.2, enemyHpMultiplier: 2.5, enemyAtkMultiplier: 2.0, enemySpeedMultiplier: 1.3, xpMultiplier: 1.6, goldMultiplier: 2.5, label: "Nightmare", color: 0xff2222 },
+};
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -280,7 +307,7 @@ function _generateLandmarks(mapW: number, mapH: number): SurvivorLandmark[] {
   ];
 }
 
-export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapType, mapWidth: number, mapHeight: number): SurvivorState {
+export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapType, mapWidth: number, mapHeight: number, difficulty: SurvivorDifficulty = "normal"): SurvivorState {
   // Apply meta upgrades from persistence
   const metaLevels = SurvivorPersistence.getMetaUpgrades();
   let metaHpBonus = 0;
@@ -378,6 +405,7 @@ export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapT
     nextEnemyProjId: 1,
     input: { left: false, right: false, up: false, down: false },
     gold: 0,
-    goldMultiplier: metaGoldMult,
+    goldMultiplier: metaGoldMult * (DIFFICULTY_SETTINGS[difficulty]?.goldMultiplier ?? 1),
+    difficulty,
   };
 }

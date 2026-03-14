@@ -34,13 +34,17 @@ export class ThreeDragonHUD {
   private _styleEl!: HTMLStyleElement;
   private _mapNameEl!: HTMLDivElement;
   private _highScoreEl!: HTMLDivElement;
-  private _dmgNumbers: { el: HTMLDivElement; timer: number; startY: number }[] = [];
+  private _dmgNumbers: { el: HTMLDivElement; timer: number; totalDur: number; startY: number; startX: number; driftX: number; driftCurve: number; isCrit: boolean; isElite: boolean }[] = [];
   private _pauseOverlay!: HTMLDivElement;
   private _pauseMenuVisible = false;
   private _onPauseResume: (() => void) | null = null;
   private _onPauseRestart: (() => void) | null = null;
   private _onPauseQuit: (() => void) | null = null;
   private _edgeIndicators: HTMLDivElement[] = [];
+  private _boostBar!: HTMLDivElement;
+  private _boostFill!: HTMLDivElement;
+  private _boostLabel!: HTMLDivElement;
+  private _boostFlash!: HTMLDivElement;
 
   build(_sw: number, _sh: number): void {
     // Inject keyframe animations
@@ -73,6 +77,10 @@ export class ThreeDragonHUD {
       @keyframes td-score-bump {
         0% { transform: scale(1.25); }
         100% { transform: scale(1); }
+      }
+      @keyframes td-boost-pulse {
+        0%, 100% { box-shadow: 0 0 8px rgba(80,200,255,0.3); }
+        50% { box-shadow: 0 0 16px rgba(80,200,255,0.6); }
       }
     `;
     document.head.appendChild(this._styleEl);
@@ -118,10 +126,46 @@ export class ThreeDragonHUD {
     manaLabel.textContent = "MANA";
     this._root.appendChild(manaLabel);
 
+    // Boost bar
+    this._boostBar = document.createElement("div");
+    this._boostBar.style.cssText = `
+      position: absolute; left: 20px; top: 62px; width: 120px; height: 10px;
+      background: linear-gradient(180deg, #0a0a1a 0%, #141428 100%);
+      border: 1px solid rgba(100,200,255,0.3); border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 0 6px rgba(50,150,255,0.15), 0 1px 3px rgba(0,0,0,0.3);
+    `;
+    this._boostFill = document.createElement("div");
+    this._boostFill.style.cssText = `
+      width: 100%; height: 100%; border-radius: 3px;
+      background: linear-gradient(180deg, #44ccff 0%, #2288dd 40%, #1166aa 100%);
+      transition: width 0.1s ease-out;
+    `;
+    this._boostBar.appendChild(this._boostFill);
+    this._root.appendChild(this._boostBar);
+
+    this._boostLabel = document.createElement("div");
+    this._boostLabel.style.cssText = `
+      position: absolute; left: 22px; top: 59px; font-size: 8px; color: #66bbff;
+      text-shadow: 0 0 4px rgba(100,180,255,0.5), 1px 1px 2px #000;
+      letter-spacing: 2px; text-transform: uppercase; font-weight: bold;
+    `;
+    this._boostLabel.textContent = "BOOST [SHIFT]";
+    this._root.appendChild(this._boostLabel);
+
+    // Screen-wide boost flash overlay (hidden initially)
+    this._boostFlash = document.createElement("div");
+    this._boostFlash.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 5; opacity: 0;
+      background: radial-gradient(ellipse at center, rgba(80,180,255,0.08) 0%, transparent 70%);
+    `;
+    this._root.appendChild(this._boostFlash);
+
     // Map name (will be set on first update)
     this._mapNameEl = document.createElement("div");
     this._mapNameEl.style.cssText = `
-      position: absolute; left: 22px; top: 62px; font-size: 10px;
+      position: absolute; left: 22px; top: 78px; font-size: 10px;
       color: #667788; letter-spacing: 1px; text-transform: uppercase;
       text-shadow: 1px 1px 2px #000;
     `;
@@ -513,6 +557,35 @@ export class ThreeDragonHUD {
       this._manaBar.style.boxShadow = "0 0 8px rgba(50,100,255,0.15), 0 2px 4px rgba(0,0,0,0.3)";
     }
 
+    // Boost bar
+    if (p.boostActive) {
+      const pct = (p.boostTimer / 1.5) * 100;
+      this._boostFill.style.width = `${pct}%`;
+      this._boostFill.style.background = "linear-gradient(180deg, #88eeff 0%, #44bbff 40%, #2299ee 100%)";
+      this._boostBar.style.borderColor = "rgba(100,220,255,0.7)";
+      this._boostBar.style.boxShadow = "0 0 12px rgba(80,200,255,0.4), 0 1px 3px rgba(0,0,0,0.3)";
+      this._boostLabel.textContent = "BOOSTING!";
+      this._boostLabel.style.color = "#88eeff";
+      this._boostFlash.style.opacity = `${Math.min(0.6, p.boostTimer * 0.4)}`;
+    } else if (p.boostCooldown > 0) {
+      const pct = (1 - p.boostCooldown / p.boostMaxCooldown) * 100;
+      this._boostFill.style.width = `${pct}%`;
+      this._boostFill.style.background = "linear-gradient(180deg, #445566 0%, #334455 40%, #223344 100%)";
+      this._boostBar.style.borderColor = "rgba(60,80,100,0.3)";
+      this._boostBar.style.boxShadow = "0 0 6px rgba(50,150,255,0.1), 0 1px 3px rgba(0,0,0,0.3)";
+      this._boostLabel.textContent = `BOOST [${Math.ceil(p.boostCooldown)}s]`;
+      this._boostLabel.style.color = "#557788";
+      this._boostFlash.style.opacity = "0";
+    } else {
+      this._boostFill.style.width = "100%";
+      this._boostFill.style.background = "linear-gradient(180deg, #44ccff 0%, #2288dd 40%, #1166aa 100%)";
+      this._boostBar.style.borderColor = "rgba(100,200,255,0.3)";
+      this._boostBar.style.boxShadow = "0 0 6px rgba(50,150,255,0.15), 0 1px 3px rgba(0,0,0,0.3)";
+      this._boostLabel.textContent = "BOOST [SHIFT]";
+      this._boostLabel.style.color = "#66bbff";
+      this._boostFlash.style.opacity = "0";
+    }
+
     // Map name
     if (this._mapNameEl && !this._mapNameEl.textContent) {
       // Convert mapId to display name
@@ -522,6 +595,9 @@ export class ThreeDragonHUD {
         volcanic_ashlands: "Volcanic Ashlands",
         crystal_caverns: "Crystal Caverns",
         celestial_peaks: "Celestial Peaks",
+        sunken_archipelago: "Sunken Archipelago",
+        stormspire_crags: "Stormspire Crags",
+        autumn_serpentine: "Autumn Serpentine",
       };
       this._mapNameEl.textContent = names[state.mapId] || state.mapId;
     }
@@ -691,29 +767,54 @@ export class ThreeDragonHUD {
       }
       this._centerText.style.opacity = `${Math.min(1, state.betweenWaveTimer)}`;
     } else if (state.betweenWaves && state.wave === 0) {
-      this._centerText.textContent = "Arthur & the White Eagle\nWASD to move, LMB to shoot, 1-5 for skills";
+      this._centerText.textContent = "Arthur & the White Eagle\nWASD to move, LMB to shoot, 1-5 for skills, SHIFT to boost";
       this._centerText.style.color = "#ccddff";
       this._centerText.style.opacity = "1";
     } else {
       this._centerText.style.opacity = "0";
     }
 
-    // Update damage numbers — improved arc and scale animation
+    // Update damage numbers — pop-in scale, drift, and fade
     this._dmgNumbers = this._dmgNumbers.filter(dn => {
       dn.timer -= dt;
       if (dn.timer <= 0) {
         if (dn.el.parentNode) dn.el.parentNode.removeChild(dn.el);
         return false;
       }
-      const totalDur = 1.4;
-      const progress = 1 - dn.timer / totalDur;
-      // Ease-out rise (fast start, slow end)
+      const progress = 1 - dn.timer / dn.totalDur;
+
+      // Ease-out rise with slight sine curve for organic drift
       const eased = 1 - Math.pow(1 - progress, 2.5);
-      dn.el.style.top = `${dn.startY - eased * 55}px`;
-      // Scale: pop in at start, then shrink slightly
-      const scalePop = progress < 0.1 ? 0.5 + progress * 8 : progress < 0.2 ? 1.3 - (progress - 0.1) * 3 : 1.0;
-      // Opacity: full for most of duration, then fade out
-      const opacity = dn.timer < 0.4 ? dn.timer / 0.4 : 1.0;
+      const riseHeight = (dn.isCrit || dn.isElite) ? 85 : 60;
+      const yOffset = eased * riseHeight;
+      const xDrift = dn.driftX * eased + Math.sin(progress * Math.PI * dn.driftCurve) * 12;
+
+      dn.el.style.top = `${dn.startY - yOffset}px`;
+      dn.el.style.left = `${dn.startX + xDrift}px`;
+
+      // Scale: big pop on spawn, overshoot, then settle to 1, shrink at end
+      let scalePop: number;
+      if (progress < 0.08) {
+        // Initial burst: scale from 0.3 to peak
+        const peak = dn.isCrit ? 2.2 : dn.isElite ? 1.8 : 1.5;
+        scalePop = 0.3 + (peak - 0.3) * (progress / 0.08);
+      } else if (progress < 0.18) {
+        // Overshoot settle
+        const peak = dn.isCrit ? 2.2 : dn.isElite ? 1.8 : 1.5;
+        const settleProgress = (progress - 0.08) / 0.10;
+        scalePop = peak - (peak - 1.0) * settleProgress;
+      } else if (progress > 0.85) {
+        // Shrink out at end
+        const shrinkProgress = (progress - 0.85) / 0.15;
+        scalePop = 1.0 - shrinkProgress * 0.4;
+      } else {
+        scalePop = 1.0;
+      }
+
+      // Opacity: hold full, then smooth fade
+      const fadeStart = 0.65;
+      const opacity = progress > fadeStart ? 1.0 - ((progress - fadeStart) / (1 - fadeStart)) : 1.0;
+
       dn.el.style.opacity = `${opacity}`;
       dn.el.style.transform = `scale(${scalePop}) translateX(-50%)`;
       return true;
@@ -731,25 +832,68 @@ export class ThreeDragonHUD {
 
   showDamageNumber(screenX: number, screenY: number, damage: number, isCrit: boolean, isElite: boolean): void {
     const el = document.createElement("div");
-    const color = isElite ? "#ffd700" : isCrit ? "#ff4444" : "#ffffff";
-    const size = isCrit ? 26 : isElite ? 22 : 16;
-    const outlineColor = isElite ? "rgba(139,101,8,0.9)" : isCrit ? "rgba(180,0,0,0.9)" : "rgba(0,0,0,0.9)";
-    const glowColor = isElite ? "rgba(255,215,0,0.6)" : isCrit ? "rgba(255,80,80,0.6)" : "rgba(200,200,255,0.3)";
-    // Random horizontal offset for visual variety
-    const offsetX = (Math.random() - 0.5) * 30;
+
+    // Color coding: crits are fiery red-orange, elites are gold, normal is white-blue
+    const color = isElite ? "#ffd700" : isCrit ? "#ff3322" : "#e8eeff";
+    const size = isCrit ? 30 : isElite ? 26 : 17;
+    const duration = isCrit ? 1.8 : isElite ? 1.6 : 1.3;
+
+    // Thick multi-layer outline for readability
+    const outlineColor = isElite ? "rgba(100,70,0,1)" : isCrit ? "rgba(120,0,0,1)" : "rgba(0,0,0,0.95)";
+    const glowColor = isElite ? "rgba(255,215,0,0.8)" : isCrit ? "rgba(255,100,30,0.8)" : "rgba(150,180,255,0.4)";
+    const secondGlow = isElite ? "rgba(255,180,0,0.5)" : isCrit ? "rgba(255,50,0,0.5)" : "rgba(100,140,255,0.2)";
+
+    // Random horizontal offset + drift direction for variety
+    const offsetX = (Math.random() - 0.5) * 40;
+    const driftX = (Math.random() - 0.5) * 30;
+    const driftCurve = 1.5 + Math.random() * 2; // random sine frequency for wavy path
+
+    const startX = screenX + offsetX;
+
     el.style.cssText = `
-      position: absolute; left: ${screenX + offsetX}px; top: ${screenY}px;
+      position: absolute; left: ${startX}px; top: ${screenY}px;
       font-size: ${size}px; font-weight: 900; color: ${color};
-      text-shadow: 0 0 8px ${glowColor}, 0 0 3px ${glowColor}, -1px -1px 0 ${outlineColor}, 1px -1px 0 ${outlineColor}, -1px 1px 0 ${outlineColor}, 1px 1px 0 ${outlineColor}, 0 2px 4px rgba(0,0,0,0.7);
+      text-shadow:
+        0 0 12px ${glowColor},
+        0 0 4px ${secondGlow},
+        -2px -2px 0 ${outlineColor},
+        2px -2px 0 ${outlineColor},
+        -2px 2px 0 ${outlineColor},
+        2px 2px 0 ${outlineColor},
+        -1px 0 0 ${outlineColor},
+        1px 0 0 ${outlineColor},
+        0 -1px 0 ${outlineColor},
+        0 1px 0 ${outlineColor},
+        0 3px 6px rgba(0,0,0,0.8);
       pointer-events: none; z-index: 15;
       font-family: 'Impact', 'Arial Black', sans-serif;
-      letter-spacing: 1px;
-      transform: scale(${isCrit ? '1.3' : '1.0'}) translateX(-50%);
-      will-change: transform, opacity;
+      letter-spacing: ${isCrit ? '2' : '1'}px;
+      transform: scale(0.3) translateX(-50%);
+      will-change: transform, opacity, top, left;
     `;
-    el.textContent = (isCrit ? "\u2605 " : "") + Math.floor(damage).toString() + (isCrit ? " \u2605" : "");
+
+    // Build text content
+    const dmgText = Math.floor(damage).toString();
+    if (isCrit) {
+      el.textContent = `\u2605 ${dmgText} \u2605`;
+    } else if (isElite) {
+      el.textContent = `\u2666 ${dmgText}`;
+    } else {
+      el.textContent = dmgText;
+    }
+
     this._root.appendChild(el);
-    this._dmgNumbers.push({ el, timer: 1.4, startY: screenY });
+    this._dmgNumbers.push({
+      el,
+      timer: duration,
+      totalDur: duration,
+      startY: screenY,
+      startX,
+      driftX,
+      driftCurve,
+      isCrit,
+      isElite,
+    });
   }
 
   setPauseCallbacks(onResume: () => void, onRestart: () => void, onQuit: () => void): void {

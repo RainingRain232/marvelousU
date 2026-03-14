@@ -40,6 +40,11 @@ export const TDBalance = {
   ENEMY_HP_SCALE: 0.12,
   ENEMY_DMG_SCALE: 0.08,
 
+  BOOST_DURATION: 1.5,
+  BOOST_COOLDOWN: 5,
+  BOOST_SPEED_MULT: 2.0,
+  BOOST_SCROLL_MULT: 1.8,
+
   PROJECTILE_CLEANUP_DIST: 80,
 
   // Power-ups
@@ -257,6 +262,12 @@ export interface TDMapConfig {
   cloudMidColors: number[];
   cloudHighlightColor: number;
   cloudCount: number;
+
+  // Terrain shape (optional — defaults applied at runtime)
+  mountainCount?: number;       // how many mountain groups (default 45)
+  mountainHeightMin?: number;   // min peak height (default 15)
+  mountainHeightMax?: number;   // max peak height (default 60)
+  mountainSpreadX?: number;     // how far out to the sides (default 100)
 }
 
 export const TD_MAPS: TDMapConfig[] = [
@@ -529,6 +540,183 @@ export const TD_MAPS: TDMapConfig[] = [
     cloudHighlightColor: 0xffeedd,
     cloudCount: 70,
   },
+
+  // -------------------------------------------------------------------------
+  // 6. Sunken Archipelago — tropical islands with few mountains, lots of water
+  // -------------------------------------------------------------------------
+  {
+    id: "sunken_archipelago",
+    name: "Sunken Archipelago",
+    description: "Scattered tropical islands rising from turquoise shallows",
+    preview: "Coral reefs, palm groves, and warm ocean breezes",
+
+    skyTopColor: 0x041833,
+    skyMidColor: 0x1a4488,
+    skyHorizonColor: 0x55aadd,
+    skySunColor: 0xffee88,
+    sunPosition: [90, 75, -100],
+    moonPosition: [-80, 60, -70],
+
+    fogColor: 0x1a3355,
+    fogDensity: 0.004,
+
+    ambientColor: 0x336688,
+    ambientIntensity: 0.6,
+    sunLightColor: 0xfff4dd,
+    sunLightIntensity: 1.7,
+    hemiSkyColor: 0x88bbee,
+    hemiGroundColor: 0x225544,
+    rimLightColor: 0xffdd88,
+
+    groundColor: 0x44886a,
+    groundHueVariation: 0.04,
+
+    waterColor: 0x0a3355,
+    waterHighlight: 0x33ccaa,
+    waterAlpha: 0.55,
+    waterY: -1,
+
+    mountainBaseHue: 0.32,
+    mountainSatRange: [0.30, 0.50],
+    mountainLightRange: [0.18, 0.32],
+    snowColor: 0xeeffee,
+    snowThreshold: 50, // no snow — tropical
+
+    grassColors: [0x33aa55, 0x44bb66, 0x55cc44, 0x228844],
+    treeCanopyColors: [0x228833, 0x33aa44, 0x55bb33, 0x117722, 0x44cc55, 0x339944],
+    trunkColor: 0x665533,
+    flowerColors: [0xff5588, 0xffaa33, 0xff3366, 0x44ddff, 0xffdd44, 0xff66aa],
+    rockColor: 0x557766,
+
+    cloudLightColors: [0xeeeeff, 0xddeeff, 0xccddee, 0xffffff],
+    cloudDarkColors: [0x446677, 0x557788, 0x335566, 0x668899],
+    cloudMidColors: [0x99bbcc, 0xaaccdd, 0x88aabb, 0xbbddee],
+    cloudHighlightColor: 0xfff8ee,
+    cloudCount: 40,
+
+    mountainCount: 18,
+    mountainHeightMin: 8,
+    mountainHeightMax: 25,
+    mountainSpreadX: 80,
+  },
+
+  // -------------------------------------------------------------------------
+  // 7. Stormspire Crags — jagged, dense mountain maze with dark storms
+  // -------------------------------------------------------------------------
+  {
+    id: "stormspire_crags",
+    name: "Stormspire Crags",
+    description: "A labyrinth of towering stone spires lashed by perpetual storms",
+    preview: "Lightning-scarred pinnacles piercing angry skies",
+
+    skyTopColor: 0x050810,
+    skyMidColor: 0x101828,
+    skyHorizonColor: 0x334455,
+    skySunColor: 0x889aaa,
+    sunPosition: [30, 20, -120],
+    moonPosition: [-60, 40, -80],
+
+    fogColor: 0x0c1018,
+    fogDensity: 0.009,
+
+    ambientColor: 0x222833,
+    ambientIntensity: 0.35,
+    sunLightColor: 0xaabbcc,
+    sunLightIntensity: 0.9,
+    hemiSkyColor: 0x445566,
+    hemiGroundColor: 0x111822,
+    rimLightColor: 0x556688,
+
+    groundColor: 0x222830,
+    groundHueVariation: 0.015,
+
+    waterColor: 0x081018,
+    waterHighlight: 0x224466,
+    waterAlpha: 0.80,
+    waterY: -4,
+
+    mountainBaseHue: 0.58,
+    mountainSatRange: [0.05, 0.12],
+    mountainLightRange: [0.12, 0.22],
+    snowColor: 0x99aabb,
+    snowThreshold: 28,
+
+    grassColors: [0x1a2228, 0x222a33, 0x283038, 0x1e2830],
+    treeCanopyColors: [0x112018, 0x1a281e, 0x223020, 0x0e1814, 0x182820, 0x142018],
+    trunkColor: 0x2a2218,
+    flowerColors: [0x4466aa, 0x5577bb, 0x3355aa, 0x88aaff, 0x6688cc, 0xaaccff],
+    rockColor: 0x333a44,
+
+    cloudLightColors: [0x556677, 0x667788, 0x445566, 0x778899],
+    cloudDarkColors: [0x1a2030, 0x222a38, 0x141c28, 0x2a3240],
+    cloudMidColors: [0x3a4455, 0x445566, 0x334050, 0x556070],
+    cloudHighlightColor: 0x8899aa,
+    cloudCount: 80,
+
+    mountainCount: 75,
+    mountainHeightMin: 20,
+    mountainHeightMax: 70,
+    mountainSpreadX: 70,
+  },
+
+  // -------------------------------------------------------------------------
+  // 8. Autumn Serpentine — winding river valley in fall colors
+  // -------------------------------------------------------------------------
+  {
+    id: "autumn_serpentine",
+    name: "Autumn Serpentine",
+    description: "A winding golden valley where the river carves through ancient hills",
+    preview: "Crimson maples and amber oaks along a meandering river",
+
+    skyTopColor: 0x0a0814,
+    skyMidColor: 0x1e1830,
+    skyHorizonColor: 0xcc7744,
+    skySunColor: 0xffaa55,
+    sunPosition: [70, 45, -100],
+    moonPosition: [-80, 70, -60],
+
+    fogColor: 0x1a1420,
+    fogDensity: 0.005,
+
+    ambientColor: 0x443322,
+    ambientIntensity: 0.5,
+    sunLightColor: 0xffcc88,
+    sunLightIntensity: 1.5,
+    hemiSkyColor: 0x886644,
+    hemiGroundColor: 0x332211,
+    rimLightColor: 0xffaa66,
+
+    groundColor: 0x3a4422,
+    groundHueVariation: 0.05,
+
+    waterColor: 0x0d1a2a,
+    waterHighlight: 0x4488aa,
+    waterAlpha: 0.60,
+    waterY: -2,
+
+    mountainBaseHue: 0.08,
+    mountainSatRange: [0.20, 0.40],
+    mountainLightRange: [0.14, 0.25],
+    snowColor: 0xddd8cc,
+    snowThreshold: 35,
+
+    grassColors: [0x886622, 0x997733, 0xaa8833, 0x665522],
+    treeCanopyColors: [0xcc4422, 0xdd6633, 0xee8844, 0xbb3311, 0xff9944, 0x994422],
+    trunkColor: 0x443322,
+    flowerColors: [0xffcc44, 0xff8833, 0xcc5522, 0xffee66, 0xddaa33, 0xff6644],
+    rockColor: 0x554433,
+
+    cloudLightColors: [0xddbb88, 0xeecc99, 0xccaa77, 0xddaa66],
+    cloudDarkColors: [0x443322, 0x554433, 0x332211, 0x665544],
+    cloudMidColors: [0x887766, 0x998877, 0x776655, 0xaa9977],
+    cloudHighlightColor: 0xffcc88,
+    cloudCount: 50,
+
+    mountainCount: 35,
+    mountainHeightMin: 10,
+    mountainHeightMax: 40,
+    mountainSpreadX: 90,
+  },
 ];
 
 export const TD_MAP_BY_ID: Record<string, TDMapConfig> = {};
@@ -604,5 +792,16 @@ export const TD_SKILL_CONFIGS: Record<TDSkillId, TDSkillConfig> = {
     duration: 3,
     color: 0xffdd88,
     key: "5",
+  },
+  [TDSkillId.BOOST]: {
+    id: TDSkillId.BOOST,
+    name: "Boost",
+    description: "Surge forward at incredible speed",
+    damage: 0,
+    manaCost: 0,
+    cooldown: 5,
+    duration: 1.5,
+    color: 0x44ccff,
+    key: "Shift",
   },
 };

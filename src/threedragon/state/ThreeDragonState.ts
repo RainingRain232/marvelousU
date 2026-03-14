@@ -14,6 +14,7 @@ export enum TDSkillId {
   FROST_NOVA = "td_frost_nova",
   METEOR_SHOWER = "td_meteor_shower",
   DIVINE_SHIELD = "td_divine_shield",
+  BOOST = "td_boost",
 }
 
 export interface TDSkillState {
@@ -51,6 +52,11 @@ export interface TDPlayer {
   score: number;
   shieldActive: boolean;
   shieldTimer: number;
+  // Boost
+  boostTimer: number;
+  boostCooldown: number;
+  boostMaxCooldown: number;
+  boostActive: boolean;
   // Visual
   eagleBankAngle: number;
   eagleFlapPhase: number;
@@ -227,6 +233,7 @@ export interface ThreeDragonState {
     skill3: boolean;
     skill4: boolean;
     skill5: boolean;
+    boost: boolean;
     mouseX: number;
     mouseY: number;
   };
@@ -260,6 +267,10 @@ export function createThreeDragonState(screenW: number, screenH: number, mapId =
       score: 0,
       shieldActive: false,
       shieldTimer: 0,
+      boostTimer: 0,
+      boostCooldown: 0,
+      boostMaxCooldown: 5,
+      boostActive: false,
       eagleBankAngle: 0,
       eagleFlapPhase: 0,
     },
@@ -304,6 +315,7 @@ export function createThreeDragonState(screenW: number, screenH: number, mapId =
       left: false, right: false, up: false, down: false,
       fire: false,
       skill1: false, skill2: false, skill3: false, skill4: false, skill5: false,
+      boost: false,
       mouseX: screenW * 0.5, mouseY: screenH * 0.5,
     },
 

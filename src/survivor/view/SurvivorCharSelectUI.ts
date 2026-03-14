@@ -13,6 +13,8 @@ import type { SurvivorCharacterDef } from "../config/SurvivorCharacterDefs";
 import { WEAPON_DEFS } from "../config/SurvivorWeaponDefs";
 import { META_UPGRADES } from "../config/SurvivorMetaUpgradeDefs";
 import { SurvivorPersistence } from "../state/SurvivorPersistence";
+import { DIFFICULTY_SETTINGS } from "../state/SurvivorState";
+import type { SurvivorDifficulty } from "../state/SurvivorState";
 
 const STYLE_TITLE = new TextStyle({ fontFamily: "monospace", fontSize: 28, fill: 0xffd700, fontWeight: "bold", letterSpacing: 3 });
 const STYLE_CHAR_NAME = new TextStyle({ fontFamily: "monospace", fontSize: 18, fill: 0xffd700, fontWeight: "bold" });
@@ -33,17 +35,26 @@ const SURVIVOR_HINTS = [
   "Spending meta gold on HP upgrades makes every run more forgiving.",
 ];
 
+const DIFFICULTY_ORDER: SurvivorDifficulty[] = ["easy", "normal", "hard", "nightmare"];
+
 export class SurvivorCharSelectUI {
   readonly container = new Container();
   private _selectedMapIndex = 0;
+  private _selectedDifficulty: SurvivorDifficulty = "normal";
   private _survivorHintIndex = 0;
-  private _onStart: ((charDef: SurvivorCharacterDef, mapIndex: number) => void) | null = null;
+  private _onStart: ((charDef: SurvivorCharacterDef, mapIndex: number, difficulty: SurvivorDifficulty) => void) | null = null;
+  private _onBack: (() => void) | null = null;
 
-  setStartCallback(cb: (charDef: SurvivorCharacterDef, mapIndex: number) => void): void {
+  setStartCallback(cb: (charDef: SurvivorCharacterDef, mapIndex: number, difficulty: SurvivorDifficulty) => void): void {
     this._onStart = cb;
   }
 
+  setBackCallback(cb: () => void): void {
+    this._onBack = cb;
+  }
+
   get selectedMapIndex(): number { return this._selectedMapIndex; }
+  get selectedDifficulty(): SurvivorDifficulty { return this._selectedDifficulty; }
 
   show(sw: number, sh: number): void {
     this.container.removeChildren();
@@ -137,8 +148,65 @@ export class SurvivorCharSelectUI {
       this.container.addChild(card);
     }
 
+    // --- Difficulty selector ---
+    const diffSectionY = mapStartY + mapCardH + 16;
+    const diffTitle = new Text({ text: "DIFFICULTY", style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xffd700, fontWeight: "bold" }) });
+    diffTitle.anchor.set(0.5, 0);
+    diffTitle.position.set(sw / 2, diffSectionY);
+    this.container.addChild(diffTitle);
+
+    const diffBtnW = 110;
+    const diffBtnH = 32;
+    const diffGap = 8;
+    const diffTotalW = DIFFICULTY_ORDER.length * diffBtnW + (DIFFICULTY_ORDER.length - 1) * diffGap;
+    const diffStartX = (sw - diffTotalW) / 2;
+    const diffStartY = diffSectionY + 22;
+
+    for (let i = 0; i < DIFFICULTY_ORDER.length; i++) {
+      const diff = DIFFICULTY_ORDER[i];
+      const mods = DIFFICULTY_SETTINGS[diff];
+      const isSelected = diff === this._selectedDifficulty;
+      const btn = new Container();
+      btn.eventMode = "static";
+      btn.cursor = "pointer";
+      btn.position.set(diffStartX + i * (diffBtnW + diffGap), diffStartY);
+
+      const btnBg = new Graphics()
+        .roundRect(0, 0, diffBtnW, diffBtnH, 5)
+        .fill({ color: isSelected ? 0x1a2a3a : 0x111122, alpha: 0.9 })
+        .roundRect(0, 0, diffBtnW, diffBtnH, 5)
+        .stroke({ color: isSelected ? mods.color : 0x333344, width: isSelected ? 2.5 : 1 });
+      btn.addChild(btnBg);
+
+      const label = new Text({
+        text: mods.label,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: isSelected ? mods.color : 0x667788, fontWeight: isSelected ? "bold" : "normal" }),
+      });
+      label.anchor.set(0.5, 0);
+      label.position.set(diffBtnW / 2, 4);
+      btn.addChild(label);
+
+      // Show spawn rate hint
+      const hint = new Text({
+        text: `x${mods.spawnRateMultiplier.toFixed(1)} spawn`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x556677 }),
+      });
+      hint.anchor.set(0.5, 0);
+      hint.position.set(diffBtnW / 2, 20);
+      btn.addChild(hint);
+
+      btn.on("pointerdown", () => {
+        this._selectedDifficulty = diff;
+        this.show(sw, sh);
+      });
+      btn.on("pointerover", () => { if (!isSelected) btnBg.tint = 0x3366aa; });
+      btn.on("pointerout", () => { btnBg.tint = 0xffffff; });
+
+      this.container.addChild(btn);
+    }
+
     // Meta upgrade shop
-    const metaSectionY = mapStartY + mapCardH + 20;
+    const metaSectionY = diffStartY + diffBtnH + 16;
     const metaSection = this._buildMetaUpgradeSection(metaSectionY, sw, sh);
     this.container.addChild(metaSection);
 
@@ -146,6 +214,35 @@ export class SurvivorCharSelectUI {
     const hsPanel = this._buildSurvivorHSPanel(saveData.highScores);
     hsPanel.position.set(sw - 320, 70);
     this.container.addChild(hsPanel);
+
+    // --- Back button (top-left) ---
+    const backBtn = new Container();
+    backBtn.eventMode = "static";
+    backBtn.cursor = "pointer";
+    backBtn.position.set(16, 16);
+
+    const backBg = new Graphics()
+      .roundRect(0, 0, 90, 30, 5)
+      .fill({ color: 0x1a1a2e, alpha: 0.9 })
+      .roundRect(0, 0, 90, 30, 5)
+      .stroke({ color: 0x666688, width: 1.5 });
+    backBtn.addChild(backBg);
+
+    const backArrow = new Text({
+      text: "\u{2190} Back",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xaabbcc, fontWeight: "bold" }),
+    });
+    backArrow.anchor.set(0.5, 0.5);
+    backArrow.position.set(45, 15);
+    backBtn.addChild(backArrow);
+
+    backBtn.on("pointerdown", () => {
+      this._onBack?.();
+    });
+    backBtn.on("pointerover", () => { backBg.tint = 0x4466aa; });
+    backBtn.on("pointerout", () => { backBg.tint = 0xffffff; });
+
+    this.container.addChild(backBtn);
   }
 
   private _getMapSwatchColor(mapType: MapType): number {
@@ -206,7 +303,7 @@ export class SurvivorCharSelectUI {
 
     if (isUnlocked) {
       card.on("pointerdown", () => {
-        this._onStart?.(charDef, this._selectedMapIndex);
+        this._onStart?.(charDef, this._selectedMapIndex, this._selectedDifficulty);
       });
       card.on("pointerover", () => { bg.tint = 0x3366aa; });
       card.on("pointerout", () => { bg.tint = 0xffffff; });
