@@ -11,11 +11,32 @@ import {
   CombatDirection,
   FormationType,
   TroopOrder,
+  TroopGroup,
   vec3DistXZ,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
 import { isRangedWeapon } from "../config/WeaponDefs";
 import { CREATURE_DEFS } from "../config/CreatureDefs";
+
+const SIEGE_CREATURE_TYPES: ReadonlySet<string> = new Set([
+  "battering_ram", "catapult", "trebuchet", "ballista",
+  "cannon", "giant_siege", "bolt_thrower", "siege_catapult",
+  "war_wagon", "bombard", "siege_tower", "hellfire_mortar",
+]);
+
+function classifyFighter(f: WarbandFighter): TroopGroup {
+  // Siege creatures
+  if (f.creatureType && SIEGE_CREATURE_TYPES.has(f.creatureType)) return TroopGroup.SIEGE;
+  // Cavalry
+  if (f.isMounted) return TroopGroup.CAVALRY;
+  // Weapon-based classification
+  const w = f.equipment.mainHand;
+  if (w) {
+    if (w.category === "staff") return TroopGroup.MAGES;
+    if (w.category === "bow" || w.category === "crossbow" || w.category === "thrown") return TroopGroup.ARCHERS;
+  }
+  return TroopGroup.MELEE;
+}
 
 const COMBAT_DIRS = [
   CombatDirection.LEFT_SWING,
@@ -68,9 +89,13 @@ export class WarbandAISystem {
       // Player allies respond to formation/order commands
       const isAlly = fighter.team === "player" && player;
       if (isAlly) {
-        const allyIdx = allyList.indexOf(fighter);
-        const handled = this._handleAllyOrder(fighter, player, allyIdx, allyList.length, state);
-        if (handled) continue;
+        // Only apply orders to fighters matching the selected group (ALL matches everyone)
+        const group = state.selectedGroup;
+        if (group === TroopGroup.ALL || classifyFighter(fighter) === group) {
+          const allyIdx = allyList.indexOf(fighter);
+          const handled = this._handleAllyOrder(fighter, player, allyIdx, allyList.length, state);
+          if (handled) continue;
+        }
       }
 
       const ai = fighter.ai;
@@ -114,6 +139,11 @@ export class WarbandAISystem {
 
     // CHARGE: let normal AI handle everything
     if (order === TroopOrder.CHARGE) return false;
+
+    // HOLD_AND_FIRE: ranged/mage troops hold and fire, melee troops form a shield line
+    if (order === TroopOrder.HOLD_AND_FIRE) {
+      return this._handleHoldAndFire(ally, player, allyIdx, allyCount, state);
+    }
 
     // Compute formation target position relative to player
     const formPos = this._getFormationPosition(
@@ -169,6 +199,151 @@ export class WarbandAISystem {
     ally.velocity.x = Math.sin(angle) * moveSpeed;
     ally.velocity.z = Math.cos(angle) * moveSpeed;
 
+    return true;
+  }
+
+  /**
+   * HOLD_AND_FIRE order:
+   * - Ranged/mage troops stay in formation and use normal combat AI to fire
+   * - Melee troops advance to form a shield line between ranged allies and enemies
+   */
+  private _handleHoldAndFire(
+    ally: WarbandFighter,
+    player: WarbandFighter,
+    allyIdx: number,
+    allyCount: number,
+    state: WarbandState,
+  ): boolean {
+    const wpn = ally.equipment.mainHand;
+    const isRanged = wpn ? isRangedWeapon(wpn) : false;
+
+    const nearestEnemy = this._findNearestEnemy(ally, state);
+
+    if (isRanged) {
+      // Ranged/mage: hold formation position, but let normal AI handle targeting & firing
+      const formPos = this._getFormationPosition(
+        player, allyIdx, allyCount, state.formation,
+      );
+      const dist = vec3DistXZ(ally.position, formPos);
+
+      if (dist < 2.0) {
+        // At position — face enemy and let normal combat AI fire
+        ally.velocity.x *= 0.8;
+        ally.velocity.z *= 0.8;
+        if (nearestEnemy) {
+          const angle = Math.atan2(
+            nearestEnemy.position.x - ally.position.x,
+            nearestEnemy.position.z - ally.position.z,
+          );
+          let diff = angle - ally.rotation;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          ally.rotation += diff * 0.15;
+        }
+        // Return false so normal AI handles the attack/shoot cycle
+        return false;
+      }
+
+      // Move to formation position
+      const angle = Math.atan2(formPos.x - ally.position.x, formPos.z - ally.position.z);
+      let diff = angle - ally.rotation;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      ally.rotation += diff * 0.15;
+      const speed = ally.isMounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED;
+      ally.velocity.x = Math.sin(angle) * speed;
+      ally.velocity.z = Math.cos(angle) * speed;
+      return true;
+    }
+
+    // Melee: advance forward to form a shield line between the player group and enemies
+    if (!nearestEnemy) {
+      // No enemies visible — hold formation
+      const formPos = this._getFormationPosition(
+        player, allyIdx, allyCount, state.formation,
+      );
+      const dist = vec3DistXZ(ally.position, formPos);
+      if (dist < 1.5) {
+        ally.velocity.x *= 0.8;
+        ally.velocity.z *= 0.8;
+        return true;
+      }
+      const angle = Math.atan2(formPos.x - ally.position.x, formPos.z - ally.position.z);
+      let diff = angle - ally.rotation;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      ally.rotation += diff * 0.15;
+      const speed = ally.isMounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED;
+      ally.velocity.x = Math.sin(angle) * speed;
+      ally.velocity.z = Math.cos(angle) * speed;
+      return true;
+    }
+
+    // Compute shield line position: halfway between player and nearest enemy,
+    // spread out perpendicular to the enemy direction
+    const meleeAllies = state.fighters.filter(
+      f => !f.isPlayer && f.team === "player" && f.combatState !== FighterCombatState.DEAD
+        && f.ai && !(f.equipment.mainHand && isRangedWeapon(f.equipment.mainHand)),
+    );
+    const meleeIdx = meleeAllies.indexOf(ally);
+    const meleeCount = meleeAllies.length;
+
+    // Direction from player toward nearest enemy
+    const dirX = nearestEnemy.position.x - player.position.x;
+    const dirZ = nearestEnemy.position.z - player.position.z;
+    const dirLen = Math.sqrt(dirX * dirX + dirZ * dirZ) || 1;
+    const normX = dirX / dirLen;
+    const normZ = dirZ / dirLen;
+
+    // Shield line center: advance a fixed distance ahead of the player toward the enemy
+    const advanceDist = Math.min(dirLen * 0.6, 12);
+    const centerX = player.position.x + normX * advanceDist;
+    const centerZ = player.position.z + normZ * advanceDist;
+
+    // Perpendicular direction for spreading the line
+    const perpX = -normZ;
+    const perpZ = normX;
+    const spacing = 2.5;
+    const half = (meleeCount - 1) / 2;
+    const targetX = centerX + perpX * (meleeIdx - half) * spacing;
+    const targetZ = centerZ + perpZ * (meleeIdx - half) * spacing;
+
+    const distToTarget = Math.sqrt(
+      (ally.position.x - targetX) ** 2 + (ally.position.z - targetZ) ** 2,
+    );
+
+    // If enemy is within melee reach, fight
+    const eDist = vec3DistXZ(ally.position, nearestEnemy.position);
+    const reach = wpn?.reach ?? 2.0;
+    if (eDist < reach + 1.5) {
+      return false; // let normal AI fight
+    }
+
+    if (distToTarget < 1.5) {
+      // At shield line position — face enemy, hold
+      ally.velocity.x *= 0.8;
+      ally.velocity.z *= 0.8;
+      const angle = Math.atan2(
+        nearestEnemy.position.x - ally.position.x,
+        nearestEnemy.position.z - ally.position.z,
+      );
+      let diff = angle - ally.rotation;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      ally.rotation += diff * 0.15;
+      return true;
+    }
+
+    // Move to shield line position
+    const angle = Math.atan2(targetX - ally.position.x, targetZ - ally.position.z);
+    let diff = angle - ally.rotation;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    ally.rotation += diff * 0.15;
+    const speed = ally.isMounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED;
+    const moveSpeed = distToTarget > 5 ? speed * 1.3 : speed;
+    ally.velocity.x = Math.sin(angle) * moveSpeed;
+    ally.velocity.z = Math.cos(angle) * moveSpeed;
     return true;
   }
 

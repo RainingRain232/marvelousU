@@ -12,6 +12,7 @@ import {
   WarbandPhase,
   FormationType,
   TroopOrder,
+  TroopGroup,
   vec3DistXZ,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
@@ -47,6 +48,7 @@ export interface InputState {
   // Formation & order commands (one-shot, consumed after processing)
   formationCommand: FormationType | null;
   orderCommand: TroopOrder | null;
+  groupCommand: TroopGroup | null;
 }
 
 export class WarbandInputSystem {
@@ -74,6 +76,7 @@ export class WarbandInputSystem {
     attackDown: false,
     formationCommand: null,
     orderCommand: null,
+    groupCommand: null,
   };
 
   private _pointerLocked = false;
@@ -529,7 +532,7 @@ export class WarbandInputSystem {
         this._input.formationCommand = FormationType.SCATTER;
         break;
 
-      // Troop orders (F1-F3)
+      // Troop orders (F1-F4)
       case "F1":
         this._input.orderCommand = TroopOrder.CHARGE;
         e.preventDefault();
@@ -540,6 +543,32 @@ export class WarbandInputSystem {
         break;
       case "F3":
         this._input.orderCommand = TroopOrder.FOLLOW;
+        e.preventDefault();
+        break;
+      case "F4":
+        this._input.orderCommand = TroopOrder.HOLD_AND_FIRE;
+        e.preventDefault();
+        break;
+
+      // Troop group selection (F5-F9)
+      case "F5":
+        this._input.groupCommand = TroopGroup.ARCHERS;
+        e.preventDefault();
+        break;
+      case "F6":
+        this._input.groupCommand = TroopGroup.MELEE;
+        e.preventDefault();
+        break;
+      case "F7":
+        this._input.groupCommand = TroopGroup.CAVALRY;
+        e.preventDefault();
+        break;
+      case "F8":
+        this._input.groupCommand = TroopGroup.MAGES;
+        e.preventDefault();
+        break;
+      case "F9":
+        this._input.groupCommand = TroopGroup.SIEGE;
         e.preventDefault();
         break;
     }

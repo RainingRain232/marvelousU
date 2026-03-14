@@ -60,6 +60,16 @@ export enum TroopOrder {
   CHARGE = "charge",
   HOLD = "hold",
   FOLLOW = "follow",
+  HOLD_AND_FIRE = "hold_and_fire",
+}
+
+export enum TroopGroup {
+  ALL = "all",
+  ARCHERS = "archers",
+  MELEE = "melee",
+  CAVALRY = "cavalry",
+  MAGES = "mages",
+  SIEGE = "siege",
 }
 
 export type Team = "player" | "enemy";
@@ -340,6 +350,7 @@ export interface WarbandState {
   // Formations & orders (army battle)
   formation: FormationType;
   troopOrder: TroopOrder;
+  selectedGroup: TroopGroup;
 
   // Screen dimensions (for input mapping)
   screenW: number;
@@ -472,6 +483,7 @@ export function createWarbandState(
 
     formation: FormationType.LINE,
     troopOrder: TroopOrder.CHARGE,
+    selectedGroup: TroopGroup.ALL,
 
     screenW,
     screenH,

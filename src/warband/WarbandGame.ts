@@ -16,6 +16,7 @@ import {
   vec3,
   vec3DistXZ,
   type HorseArmorTier,
+  TroopGroup,
 } from "./state/WarbandState";
 import { WB } from "./config/WarbandBalanceConfig";
 import { WEAPON_DEFS } from "./config/WeaponDefs";
@@ -4904,8 +4905,22 @@ export class WarbandGame {
     }
     if (inp.orderCommand) {
       this._state.troopOrder = inp.orderCommand;
-      this._hud.showCenterMessage(`Order: ${inp.orderCommand.toUpperCase()}!`, 1200);
+      const orderLabel = inp.orderCommand.replace(/_/g, " ").toUpperCase();
+      const groupLabel = this._state.selectedGroup === TroopGroup.ALL
+        ? "" : ` (${this._state.selectedGroup.toUpperCase()})`;
+      this._hud.showCenterMessage(`Order: ${orderLabel}!${groupLabel}`, 1200);
       inp.orderCommand = null;
+    }
+    if (inp.groupCommand) {
+      // Toggle: if already selected, deselect back to ALL
+      if (this._state.selectedGroup === inp.groupCommand) {
+        this._state.selectedGroup = TroopGroup.ALL;
+        this._hud.showCenterMessage("Selected: ALL TROOPS", 1200);
+      } else {
+        this._state.selectedGroup = inp.groupCommand;
+        this._hud.showCenterMessage(`Selected: ${inp.groupCommand.toUpperCase()}`, 1200);
+      }
+      inp.groupCommand = null;
     }
 
     if (!isCameraView) {
@@ -5671,6 +5686,16 @@ export class WarbandGame {
             ${row("F1", "All troops charge enemy")}
             ${row("F2", "All troops hold position")}
             ${row("F3", "All troops follow player")}
+            ${row("F4", "Hold & Fire \u2014 melee shields ranged troops")}
+          `)}
+
+          ${section("TROOP GROUP SELECTION", `
+            ${row("F5", "Select archers (bows, crossbows, thrown)")}
+            ${row("F6", "Select melee infantry")}
+            ${row("F7", "Select cavalry (mounted troops)")}
+            ${row("F8", "Select mages (staff wielders)")}
+            ${row("F9", "Select siege engines")}
+            <div style="color:#999;font-size:11px;padding:4px 8px">Press again to deselect (back to all troops)</div>
           `)}
 
           ${section("MENU", `
