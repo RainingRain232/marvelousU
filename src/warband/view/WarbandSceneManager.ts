@@ -2076,6 +2076,62 @@ export class WarbandSceneManager {
     }
   }
 
+  /**
+   * Apply a map theme — recolors the ground, sky, fog, and lighting.
+   * Call after init() but before applyWeather().
+   */
+  applyMapTheme(theme: {
+    groundColors: { dark: number; mid: number; light: number; dirt: number };
+    skyColor: number;
+    fogColor: number;
+    fogDensity: number;
+    sunColor: number;
+    sunIntensity: number;
+    ambientColor: number;
+    hemiSky: number;
+    hemiGround: number;
+    seed: number;
+  }): void {
+    // Recolor ground vertices
+    if (this._ground) {
+      const geo = this._ground.geometry;
+      const posAttr = geo.attributes.position;
+      const colorAttr = geo.attributes.color;
+      if (colorAttr) {
+        const grassDark = new THREE.Color(theme.groundColors.dark);
+        const grassMid = new THREE.Color(theme.groundColors.mid);
+        const grassLight = new THREE.Color(theme.groundColors.light);
+        const dirtColor = new THREE.Color(theme.groundColors.dirt);
+        const maxAmp = 2.9;
+        for (let i = 0; i < posAttr.count; i++) {
+          const x = posAttr.getX(i);
+          const y = posAttr.getY(i);
+          const h = getTerrainHeight(x, y);
+          const t = Math.min(1, Math.max(0, (h / maxAmp) * 0.5 + 0.5));
+          const col = new THREE.Color();
+          col.lerpColors(grassDark, grassLight, t);
+          const n = (Math.sin(x * 0.3) * Math.cos(y * 0.25) + 1) * 0.5;
+          col.lerpColors(col, grassMid, n * 0.3);
+          const dirtT = Math.max(0, 0.3 - t) * 0.6;
+          col.lerpColors(col, dirtColor, dirtT);
+          colorAttr.setXYZ(i, col.r, col.g, col.b);
+        }
+        colorAttr.needsUpdate = true;
+      }
+    }
+
+    // Sky / fog
+    this.scene.background = new THREE.Color(theme.skyColor);
+    this.scene.fog = new THREE.FogExp2(theme.fogColor, theme.fogDensity);
+
+    // Lighting
+    this._sunLight.color.set(theme.sunColor);
+    this._sunLight.intensity = theme.sunIntensity;
+    this._ambientLight.color.set(theme.ambientColor);
+    this._hemiLight.color.set(theme.hemiSky);
+    this._hemiLight.groundColor.set(theme.hemiGround);
+  }
+
   render(): void {
     this.renderer.render(this.scene, this.camera);
   }

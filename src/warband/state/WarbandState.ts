@@ -48,6 +48,20 @@ export enum CameraMode {
   THIRD_PERSON = "third_person",
 }
 
+export enum FormationType {
+  LINE = "line",
+  COLUMN = "column",
+  WEDGE = "wedge",
+  SQUARE = "square",
+  SCATTER = "scatter",
+}
+
+export enum TroopOrder {
+  CHARGE = "charge",
+  HOLD = "hold",
+  FOLLOW = "follow",
+}
+
 export type Team = "player" | "enemy";
 
 // ---- Vec3 -----------------------------------------------------------------
@@ -323,6 +337,10 @@ export interface WarbandState {
   allCavalry: boolean;
   creatureAbilities: boolean;
 
+  // Formations & orders (army battle)
+  formation: FormationType;
+  troopOrder: TroopOrder;
+
   // Screen dimensions (for input mapping)
   screenW: number;
   screenH: number;
@@ -451,6 +469,9 @@ export function createWarbandState(
     noRanged: false,
     allCavalry: false,
     creatureAbilities: true,
+
+    formation: FormationType.LINE,
+    troopOrder: TroopOrder.CHARGE,
 
     screenW,
     screenH,

@@ -9,6 +9,8 @@ import {
   BattleType,
   FighterCombatState,
   CombatDirection,
+  FormationType,
+  TroopOrder,
   vec3DistXZ,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
@@ -46,6 +48,12 @@ export class WarbandAISystem {
       this._updateMorale(state);
     }
 
+    // Gather player allies for formation positioning
+    const player = state.fighters.find(f => f.isPlayer);
+    const allyList = state.fighters.filter(
+      f => !f.isPlayer && f.team === "player" && f.combatState !== FighterCombatState.DEAD && f.ai,
+    );
+
     for (const fighter of state.fighters) {
       if (fighter.isPlayer) continue;
       if (fighter.combatState === FighterCombatState.DEAD) continue;
@@ -55,6 +63,14 @@ export class WarbandAISystem {
       if (fighter.fleeing) {
         this._executeFleeing(fighter, state);
         continue;
+      }
+
+      // Player allies respond to formation/order commands
+      const isAlly = fighter.team === "player" && player;
+      if (isAlly) {
+        const allyIdx = allyList.indexOf(fighter);
+        const handled = this._handleAllyOrder(fighter, player, allyIdx, allyList.length, state);
+        if (handled) continue;
       }
 
       const ai = fighter.ai;
@@ -81,6 +97,163 @@ export class WarbandAISystem {
 
       this._executeBehavior(fighter, target, state);
     }
+  }
+
+  /**
+   * Handle ally troop orders. Returns true if the ally's movement was overridden
+   * (hold/follow), false if the ally should use normal combat AI (charge).
+   */
+  private _handleAllyOrder(
+    ally: WarbandFighter,
+    player: WarbandFighter,
+    allyIdx: number,
+    allyCount: number,
+    state: WarbandState,
+  ): boolean {
+    const order = state.troopOrder;
+
+    // CHARGE: let normal AI handle everything
+    if (order === TroopOrder.CHARGE) return false;
+
+    // Compute formation target position relative to player
+    const formPos = this._getFormationPosition(
+      player, allyIdx, allyCount, state.formation,
+    );
+
+    const dist = vec3DistXZ(ally.position, formPos);
+
+    // If an enemy is very close (within reach), fight regardless of order
+    const nearestEnemy = this._findNearestEnemy(ally, state);
+    if (nearestEnemy) {
+      const eDist = vec3DistXZ(ally.position, nearestEnemy.position);
+      const reach = ally.equipment.mainHand?.reach ?? 2.0;
+      if (eDist < reach + 1.5) {
+        // Close enough to fight — use normal AI
+        return false;
+      }
+    }
+
+    if (order === TroopOrder.HOLD) {
+      // Hold: if already at formation position, idle. Otherwise move there.
+      if (dist < 1.5) {
+        // Face forward (same direction as player)
+        ally.velocity.x *= 0.8;
+        ally.velocity.z *= 0.8;
+        // Face toward nearest enemy if any
+        if (nearestEnemy) {
+          const angle = Math.atan2(
+            nearestEnemy.position.x - ally.position.x,
+            nearestEnemy.position.z - ally.position.z,
+          );
+          let diff = angle - ally.rotation;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          ally.rotation += diff * 0.1;
+        }
+        return true;
+      }
+    }
+
+    // FOLLOW or HOLD (but not at position yet): move toward formation position
+    const angle = Math.atan2(
+      formPos.x - ally.position.x,
+      formPos.z - ally.position.z,
+    );
+    let diff = angle - ally.rotation;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    ally.rotation += diff * 0.15;
+
+    const speed = ally.isMounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED;
+    const moveSpeed = dist > 5 ? speed * 1.2 : speed * 0.8;
+    ally.velocity.x = Math.sin(angle) * moveSpeed;
+    ally.velocity.z = Math.cos(angle) * moveSpeed;
+
+    return true;
+  }
+
+  private _findNearestEnemy(fighter: WarbandFighter, state: WarbandState): WarbandFighter | null {
+    let nearest: WarbandFighter | null = null;
+    let nearestDist = Infinity;
+    for (const other of state.fighters) {
+      if (other.team === fighter.team) continue;
+      if (other.combatState === FighterCombatState.DEAD) continue;
+      const d = vec3DistXZ(fighter.position, other.position);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = other;
+      }
+    }
+    return nearest;
+  }
+
+  /**
+   * Compute the desired world position for an ally in the current formation.
+   * Positions are computed relative to the player's position and facing.
+   */
+  private _getFormationPosition(
+    player: WarbandFighter,
+    idx: number,
+    count: number,
+    formation: FormationType,
+  ): { x: number; y: number; z: number } {
+    const sin = Math.sin(player.rotation);
+    const cos = Math.cos(player.rotation);
+    const spacing = 2.5;
+
+    let localX = 0;
+    let localZ = 0;
+
+    switch (formation) {
+      case FormationType.LINE: {
+        // Spread in a line perpendicular to player facing, behind the player
+        const half = (count - 1) / 2;
+        localX = (idx - half) * spacing;
+        localZ = -spacing; // one row behind player
+        break;
+      }
+      case FormationType.COLUMN: {
+        // Narrow column behind the player
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        localX = (col - 0.5) * spacing;
+        localZ = -(row + 1) * spacing;
+        break;
+      }
+      case FormationType.WEDGE: {
+        // V-shape — wider as it goes back
+        const row = Math.floor(idx / 2);
+        const side = idx % 2 === 0 ? -1 : 1;
+        localX = side * (row + 1) * spacing;
+        localZ = -(row + 1) * spacing;
+        break;
+      }
+      case FormationType.SQUARE: {
+        // Compact box
+        const cols = Math.max(2, Math.ceil(Math.sqrt(count)));
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const halfC = (cols - 1) / 2;
+        localX = (col - halfC) * spacing;
+        localZ = -(row + 1) * spacing;
+        break;
+      }
+      case FormationType.SCATTER: {
+        // Spread loosely around the player, seeded by index
+        const angle = (idx / Math.max(1, count)) * Math.PI * 2 + idx * 0.7;
+        const radius = spacing * (1.5 + (idx % 3));
+        localX = Math.cos(angle) * radius;
+        localZ = -Math.abs(Math.sin(angle) * radius) - spacing;
+        break;
+      }
+    }
+
+    // Rotate local offset by player facing and add to player position
+    return {
+      x: player.position.x + localX * cos - localZ * sin,
+      y: 0,
+      z: player.position.z + localX * sin + localZ * cos,
+    };
   }
 
   private _pickTarget(

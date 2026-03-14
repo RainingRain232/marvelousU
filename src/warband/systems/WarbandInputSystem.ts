@@ -10,6 +10,8 @@ import {
   FighterCombatState,
   CameraMode,
   WarbandPhase,
+  FormationType,
+  TroopOrder,
   vec3DistXZ,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
@@ -41,6 +43,10 @@ export interface InputState {
   attackRight: boolean;
   attackUp: boolean;
   attackDown: boolean;
+
+  // Formation & order commands (one-shot, consumed after processing)
+  formationCommand: FormationType | null;
+  orderCommand: TroopOrder | null;
 }
 
 export class WarbandInputSystem {
@@ -66,6 +72,8 @@ export class WarbandInputSystem {
     attackRight: false,
     attackUp: false,
     attackDown: false,
+    formationCommand: null,
+    orderCommand: null,
   };
 
   private _pointerLocked = false;
@@ -501,6 +509,37 @@ export class WarbandInputSystem {
         break;
       case "ArrowDown":
         this._input.attackDown = true;
+        e.preventDefault();
+        break;
+
+      // Formation commands (1-5)
+      case "Digit1":
+        this._input.formationCommand = FormationType.LINE;
+        break;
+      case "Digit2":
+        this._input.formationCommand = FormationType.COLUMN;
+        break;
+      case "Digit3":
+        this._input.formationCommand = FormationType.WEDGE;
+        break;
+      case "Digit4":
+        this._input.formationCommand = FormationType.SQUARE;
+        break;
+      case "Digit5":
+        this._input.formationCommand = FormationType.SCATTER;
+        break;
+
+      // Troop orders (F1-F3)
+      case "F1":
+        this._input.orderCommand = TroopOrder.CHARGE;
+        e.preventDefault();
+        break;
+      case "F2":
+        this._input.orderCommand = TroopOrder.HOLD;
+        e.preventDefault();
+        break;
+      case "F3":
+        this._input.orderCommand = TroopOrder.FOLLOW;
         e.preventDefault();
         break;
     }

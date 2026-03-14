@@ -3143,6 +3143,84 @@ function _getAllAvailableUnits(raceId: string, mercIndices: number[]): number[] 
   return result;
 }
 
+// ---- Map definitions -------------------------------------------------------
+
+type WarbandMapId = "green_meadow" | "desert_canyon" | "frozen_tundra" | "volcanic_wastes" | "autumn_forest" | "highland_moor";
+
+interface WarbandMapDef {
+  id: WarbandMapId;
+  name: string;
+  description: string;
+  preview: string; // color hex for preview swatch
+  seed: number;
+  groundColors: { dark: number; mid: number; light: number; dirt: number };
+  skyColor: number;
+  fogColor: number;
+  fogDensity: number;
+  sunColor: number;
+  sunIntensity: number;
+  ambientColor: number;
+  hemiSky: number;
+  hemiGround: number;
+}
+
+const WARBAND_MAPS: WarbandMapDef[] = [
+  {
+    id: "green_meadow", name: "Green Meadow",
+    description: "Lush rolling hills with wildflowers and scattered oaks",
+    preview: "#5e9146", seed: 42,
+    groundColors: { dark: 0x3a6230, mid: 0x4e7d3c, light: 0x5e9146, dirt: 0x7a6a48 },
+    skyColor: 0x7ab4d8, fogColor: 0x9dc8e0, fogDensity: 0.012,
+    sunColor: 0xffecc0, sunIntensity: 2.0,
+    ambientColor: 0x8090a8, hemiSky: 0xc8dff5, hemiGround: 0x3d5220,
+  },
+  {
+    id: "desert_canyon", name: "Desert Canyon",
+    description: "Sun-scorched sands and red rock canyons",
+    preview: "#c4a050", seed: 137,
+    groundColors: { dark: 0x8a7040, mid: 0xb09050, light: 0xc4a050, dirt: 0x6a5530 },
+    skyColor: 0xd4c8a0, fogColor: 0xc8b888, fogDensity: 0.008,
+    sunColor: 0xffe8a0, sunIntensity: 2.6,
+    ambientColor: 0xa89878, hemiSky: 0xf0e0b0, hemiGround: 0x5a4a28,
+  },
+  {
+    id: "frozen_tundra", name: "Frozen Tundra",
+    description: "Wind-swept snowfields beneath a pale grey sky",
+    preview: "#b0c8d8", seed: 271,
+    groundColors: { dark: 0x88a0b0, mid: 0xa0b8c8, light: 0xc8dde8, dirt: 0x6a7a88 },
+    skyColor: 0x8898a8, fogColor: 0x99aabb, fogDensity: 0.015,
+    sunColor: 0xccddee, sunIntensity: 1.4,
+    ambientColor: 0x8090a0, hemiSky: 0xa8b8c8, hemiGround: 0x445566,
+  },
+  {
+    id: "volcanic_wastes", name: "Volcanic Wastes",
+    description: "Charred earth and glowing cracks of molten rock",
+    preview: "#4a3020", seed: 666,
+    groundColors: { dark: 0x2a1a10, mid: 0x3a2818, light: 0x4a3020, dirt: 0x1a1008 },
+    skyColor: 0x3a2020, fogColor: 0x442222, fogDensity: 0.018,
+    sunColor: 0xff8844, sunIntensity: 1.2,
+    ambientColor: 0x553322, hemiSky: 0x664422, hemiGround: 0x221100,
+  },
+  {
+    id: "autumn_forest", name: "Autumn Forest",
+    description: "Golden and crimson foliage in a misty woodland clearing",
+    preview: "#aa7733", seed: 314,
+    groundColors: { dark: 0x5a4420, mid: 0x7a6030, light: 0x8a7030, dirt: 0x4a3818 },
+    skyColor: 0x99aabb, fogColor: 0x9a9080, fogDensity: 0.014,
+    sunColor: 0xffe0a0, sunIntensity: 1.6,
+    ambientColor: 0x887766, hemiSky: 0xccbb99, hemiGround: 0x3a3020,
+  },
+  {
+    id: "highland_moor", name: "Highland Moor",
+    description: "Bleak windswept heathland under brooding clouds",
+    preview: "#556644", seed: 503,
+    groundColors: { dark: 0x3a4430, mid: 0x4a5538, light: 0x556644, dirt: 0x5a5040 },
+    skyColor: 0x667788, fogColor: 0x778888, fogDensity: 0.016,
+    sunColor: 0xccccbb, sunIntensity: 1.3,
+    ambientColor: 0x667766, hemiSky: 0x889988, hemiGround: 0x334433,
+  },
+];
+
 export class WarbandGame {
   private _state: WarbandState | null = null;
 
@@ -3215,8 +3293,10 @@ export class WarbandGame {
   private _leaderSelectContainer: HTMLDivElement | null = null;
   private _raceSelectContainer: HTMLDivElement | null = null;
   private _raceOverviewContainer: HTMLDivElement | null = null;
+  private _mapSelectContainer: HTMLDivElement | null = null;
   private _selectedLeaderId: LeaderId = LEADER_DEFINITIONS[0].id;
   private _selectedRaceId: RaceId = RACE_DEFINITIONS[0].id;
+  private _selectedMapId: WarbandMapId = "green_meadow";
 
   // ESC handler
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -3246,6 +3326,13 @@ export class WarbandGame {
     // ESC handler
     this._escHandler = (e: KeyboardEvent) => {
       if (e.code !== "Escape") return;
+
+      if (this._mapSelectContainer) {
+        this._removeMapSelect();
+        this._showMenu();
+        return;
+      }
+
       if (!this._state) return;
 
       if (this._inventoryContainer) {
@@ -3374,17 +3461,17 @@ export class WarbandGame {
 
     document.getElementById("wb-open-field")?.addEventListener("click", () => {
       this._removeMenu();
-      this._startGame(BattleType.OPEN_FIELD);
+      this._showMapSelect(BattleType.OPEN_FIELD);
     });
 
     document.getElementById("wb-siege")?.addEventListener("click", () => {
       this._removeMenu();
-      this._startGame(BattleType.SIEGE);
+      this._showMapSelect(BattleType.SIEGE);
     });
 
     document.getElementById("wb-army")?.addEventListener("click", () => {
       this._removeMenu();
-      this._showLeaderSelect();
+      this._showMapSelect(BattleType.ARMY_BATTLE);
     });
 
     document.getElementById("wb-campaign")?.addEventListener("click", () => {
@@ -3395,7 +3482,7 @@ export class WarbandGame {
 
     document.getElementById("wb-duel")?.addEventListener("click", () => {
       this._removeMenu();
-      this._startGame(BattleType.DUEL);
+      this._showMapSelect(BattleType.DUEL);
     });
 
     document.getElementById("wb-camera")?.addEventListener("click", () => {
@@ -3488,6 +3575,10 @@ export class WarbandGame {
     this._state.noRanged = this._optNoRanged;
     this._state.allCavalry = this._optAllCavalry;
     this._state.creatureAbilities = this._optCreatureAbilities;
+
+    // Apply selected map theme
+    const mapDef = WARBAND_MAPS.find(m => m.id === this._selectedMapId) ?? WARBAND_MAPS[0];
+    this._sceneManager.applyMapTheme(mapDef);
 
     // Build siege geometry if needed
     if (battleType === BattleType.SIEGE) {
@@ -3641,6 +3732,114 @@ export class WarbandGame {
       : UNIT_TYPES.filter((u) => !u.creatureType);
     const pick = pool[Math.floor(Math.random() * pool.length)];
     this._equipUnitType(fighter, pick, state);
+  }
+
+  // ---- Map selection screen --------------------------------------------------
+
+  private _showMapSelect(battleType: BattleType): void {
+    this._removeMapSelect();
+    this._mapSelectContainer = document.createElement("div");
+    this._mapSelectContainer.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 30; background: rgba(10, 8, 5, 0.97);
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Segoe UI', sans-serif; color: #e0d5c0;
+      user-select: none; overflow-y: auto; padding-top: 30px;
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._mapSelectContainer);
+    this._renderMapSelect(battleType);
+  }
+
+  private _renderMapSelect(battleType: BattleType): void {
+    if (!this._mapSelectContainer) return;
+
+    const selected = WARBAND_MAPS.find(m => m.id === this._selectedMapId) ?? WARBAND_MAPS[0];
+
+    const mapCards = WARBAND_MAPS.map(m => {
+      const isSel = m.id === this._selectedMapId;
+      const gc = m.groundColors;
+      // Mini gradient preview using ground colors
+      const gradCss = `linear-gradient(135deg, #${gc.dark.toString(16).padStart(6, "0")}, #${gc.mid.toString(16).padStart(6, "0")}, #${gc.light.toString(16).padStart(6, "0")})`;
+      return `
+        <div data-map="${m.id}" style="
+          background: ${isSel ? "rgba(218,165,32,0.12)" : "rgba(255,255,255,0.03)"};
+          border: 2px solid ${isSel ? "#daa520" : "#2a2a22"};
+          border-radius: 8px; padding: 0; margin: 6px; width: 170px;
+          cursor: pointer; transition: all 0.15s; overflow: hidden;
+          ${isSel ? "box-shadow: 0 0 16px rgba(218,165,32,0.2)" : ""}
+        ">
+          <div style="height: 60px; background: ${gradCss}; position: relative;">
+            <div style="position:absolute;top:0;left:0;width:100%;height:100%;
+              background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(10,8,5,0.6));"></div>
+            <div style="position:absolute;bottom:4px;right:6px;font-size:9px;color:rgba(255,255,255,0.4);
+              letter-spacing:1px">${m.id.replace(/_/g, " ").toUpperCase()}</div>
+          </div>
+          <div style="padding: 8px 10px;">
+            <div style="font-size: 14px; font-weight: bold; color: ${isSel ? "#daa520" : "#c0b8a0"};
+              margin-bottom: 3px">${m.name}</div>
+            <div style="font-size: 11px; color: #887766; line-height: 1.3">${m.description}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    const modeLabel = battleType === BattleType.ARMY_BATTLE ? "Army Battle"
+      : battleType === BattleType.SIEGE ? "Siege Battle"
+      : battleType === BattleType.DUEL ? "Duel"
+      : "Open Field Battle";
+
+    this._mapSelectContainer.innerHTML = `
+      <div style="font-size:11px;letter-spacing:4px;color:#665533;margin-bottom:6px">${modeLabel.toUpperCase()}</div>
+      <h1 style="font-size:32px;color:#daa520;margin-bottom:4px;letter-spacing:2px">SELECT MAP</h1>
+      <div style="width:160px;height:2px;background:linear-gradient(90deg,transparent,#daa520,transparent);margin-bottom:20px"></div>
+
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:800px;margin-bottom:20px">
+        ${mapCards}
+      </div>
+
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:18px;color:#daa520;font-weight:bold">${selected.name}</div>
+        <div style="font-size:12px;color:#887766;margin-top:4px">${selected.description}</div>
+      </div>
+
+      <div style="display:flex;gap:12px">
+        <button id="wb-map-back" style="${this._menuBtnStyle("#2a2a2a", "#555")}">Back</button>
+        <button id="wb-map-confirm" style="${this._menuBtnStyle("#3a2008", "#daa520")}">Confirm</button>
+      </div>
+    `;
+
+    // Wire card clicks
+    this._mapSelectContainer.querySelectorAll("[data-map]").forEach(el => {
+      el.addEventListener("click", () => {
+        this._selectedMapId = (el as HTMLElement).dataset.map as WarbandMapId;
+        this._renderMapSelect(battleType);
+      });
+    });
+
+    // Back button
+    document.getElementById("wb-map-back")?.addEventListener("click", () => {
+      this._removeMapSelect();
+      this._showMenu();
+    });
+
+    // Confirm button
+    document.getElementById("wb-map-confirm")?.addEventListener("click", () => {
+      this._removeMapSelect();
+      if (battleType === BattleType.ARMY_BATTLE) {
+        this._showLeaderSelect();
+      } else {
+        this._startGame(battleType);
+      }
+    });
+  }
+
+  private _removeMapSelect(): void {
+    if (this._mapSelectContainer?.parentNode) {
+      this._mapSelectContainer.parentNode.removeChild(this._mapSelectContainer);
+      this._mapSelectContainer = null;
+    }
   }
 
   // ---- Leader selection screen ----------------------------------------------
@@ -4696,6 +4895,19 @@ export class WarbandGame {
     // Input → player
     this._inputSystem.update(this._state);
 
+    // Process formation & order commands
+    const inp = this._inputSystem.input;
+    if (inp.formationCommand) {
+      this._state.formation = inp.formationCommand;
+      this._hud.showCenterMessage(`Formation: ${inp.formationCommand.replace("_", " ").toUpperCase()}`, 1200);
+      inp.formationCommand = null;
+    }
+    if (inp.orderCommand) {
+      this._state.troopOrder = inp.orderCommand;
+      this._hud.showCenterMessage(`Order: ${inp.orderCommand.toUpperCase()}!`, 1200);
+      inp.orderCommand = null;
+    }
+
     if (!isCameraView) {
       // AI
       this._aiSystem.update(this._state);
@@ -5342,6 +5554,8 @@ export class WarbandGame {
     this._removeInventory();
   }
 
+  private _pauseTab: "menu" | "controls" = "menu";
+
   private _showPauseMenu(): void {
     this._removePauseMenu();
     this._pauseMenuContainer = document.createElement("div");
@@ -5351,25 +5565,148 @@ export class WarbandGame {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       font-family: 'Segoe UI', sans-serif; color: #e0d5c0;
     `;
-    this._pauseMenuContainer.innerHTML = `
-      <h1 style="font-size:36px;color:#daa520;margin-bottom:30px">PAUSED</h1>
-      <button id="wb-resume" style="${this._menuBtnStyle("#2a4a2a", "#88aa66")}">Resume</button>
-      <button id="wb-inventory" style="${this._menuBtnStyle("#2a2a4a", "#6688cc")}">Inventory</button>
-      <button id="wb-quit-menu" style="${this._menuBtnStyle("#555", "#888")}">Quit to Menu</button>
-    `;
     const container = document.getElementById("pixi-container");
     if (container) container.appendChild(this._pauseMenuContainer);
+    this._renderPauseMenu();
+  }
 
-    document.getElementById("wb-resume")?.addEventListener("click", () => this._resumeGame());
-    document.getElementById("wb-inventory")?.addEventListener("click", () => {
-      this._removePauseMenu();
-      this._showInventory();
+  private _renderPauseMenu(): void {
+    if (!this._pauseMenuContainer) return;
+
+    const tabBtn = (id: string, label: string, active: boolean) =>
+      `<button id="${id}" style="
+        flex:1;padding:8px 16px;font-size:13px;font-weight:bold;
+        border:1px solid ${active ? "#daa520" : "#444"};border-radius:4px 4px 0 0;
+        background:${active ? "rgba(218,165,32,0.2)" : "rgba(20,15,10,0.6)"};
+        color:${active ? "#daa520" : "#666"};cursor:pointer;font-family:inherit;
+        border-bottom:${active ? "2px solid #daa520" : "1px solid #444"};
+      ">${label}</button>`;
+
+    const isMenu = this._pauseTab === "menu";
+
+    const tabBar = `
+      <div style="display:flex;gap:2px;margin-bottom:16px;width:340px">
+        ${tabBtn("wb-tab-menu", "Menu", isMenu)}
+        ${tabBtn("wb-tab-controls", "Controls", !isMenu)}
+      </div>
+    `;
+
+    let content: string;
+
+    if (isMenu) {
+      content = `
+        <h1 style="font-size:36px;color:#daa520;margin-bottom:20px">PAUSED</h1>
+        ${tabBar}
+        <button id="wb-resume" style="${this._menuBtnStyle("#2a4a2a", "#88aa66")}">Resume</button>
+        <button id="wb-inventory" style="${this._menuBtnStyle("#2a2a4a", "#6688cc")}">Inventory</button>
+        <button id="wb-quit-menu" style="${this._menuBtnStyle("#555", "#888")}">Quit to Menu</button>
+      `;
+    } else {
+      const keyStyle = `
+        display:inline-block;min-width:28px;padding:2px 7px;
+        background:rgba(218,165,32,0.15);border:1px solid #665522;border-radius:3px;
+        color:#daa520;font-size:12px;font-weight:bold;text-align:center;
+        font-family:'Consolas','Courier New',monospace;
+      `;
+      const row = (key: string, desc: string) =>
+        `<div style="display:flex;align-items:center;gap:10px;padding:3px 0">
+          <span style="${keyStyle}">${key}</span>
+          <span style="font-size:13px;color:#c0b8a0">${desc}</span>
+        </div>`;
+      const section = (title: string, rows: string) =>
+        `<div style="margin-bottom:14px">
+          <div style="font-size:11px;letter-spacing:2px;color:#887755;margin-bottom:6px;
+            border-bottom:1px solid #333;padding-bottom:3px">${title}</div>
+          ${rows}
+        </div>`;
+
+      content = `
+        <h1 style="font-size:36px;color:#daa520;margin-bottom:20px">PAUSED</h1>
+        ${tabBar}
+        <div style="width:440px;max-height:55vh;overflow-y:auto;padding:0 10px;
+          scrollbar-width:thin;scrollbar-color:#444 transparent">
+
+          ${section("MOVEMENT", `
+            ${row("W", "Move forward")}
+            ${row("A", "Strafe left")}
+            ${row("S", "Move backward")}
+            ${row("D", "Strafe right")}
+            ${row("Shift", "Sprint (consumes stamina)")}
+            ${row("Space", "Jump")}
+          `)}
+
+          ${section("COMBAT", `
+            ${row("\u2190", "Left swing attack (hold to wind up)")}
+            ${row("\u2192", "Right swing attack")}
+            ${row("\u2191", "Overhead attack")}
+            ${row("\u2193", "Stab attack")}
+            ${row("RMB", "Block (hold)")}
+          `)}
+
+          ${section("INTERACTION", `
+            ${row("E", "Pick up weapon from ground")}
+            ${row("F", "Loot corpse (transfers items to inventory)")}
+            ${row("B", "Mount / dismount horse")}
+          `)}
+
+          ${section("CAMERA", `
+            ${row("V", "Toggle first-person / third-person")}
+            ${row("C", "Toggle free orbit camera")}
+            ${row("Scroll", "Zoom in / out")}
+            ${row("Mouse", "Look around (when pointer locked)")}
+          `)}
+
+          ${section("FREE ORBIT CAMERA", `
+            ${row("I / K", "Pitch up / down")}
+            ${row("J / L", "Yaw left / right")}
+            ${row("U / O", "Zoom in / out")}
+          `)}
+
+          ${section("ARMY FORMATIONS (Army Battle)", `
+            ${row("1", "Line formation \u2014 troops spread in a wide line")}
+            ${row("2", "Column formation \u2014 troops in a narrow column")}
+            ${row("3", "Wedge formation \u2014 V-shape, cavalry charge")}
+            ${row("4", "Square formation \u2014 defensive box")}
+            ${row("5", "Scatter \u2014 troops spread out freely")}
+            ${row("F1", "All troops charge enemy")}
+            ${row("F2", "All troops hold position")}
+            ${row("F3", "All troops follow player")}
+          `)}
+
+          ${section("MENU", `
+            ${row("Esc", "Pause / unpause")}
+          `)}
+        </div>
+        <button id="wb-ctrl-back" style="${this._menuBtnStyle("#2a4a2a", "#88aa66")};margin-top:14px">Resume</button>
+      `;
+    }
+
+    this._pauseMenuContainer.innerHTML = content;
+
+    // Wire tab buttons
+    document.getElementById("wb-tab-menu")?.addEventListener("click", () => {
+      this._pauseTab = "menu";
+      this._renderPauseMenu();
     });
-    document.getElementById("wb-quit-menu")?.addEventListener("click", () => {
-      this._removePauseMenu();
-      this._cleanup();
-      this._showMenu();
+    document.getElementById("wb-tab-controls")?.addEventListener("click", () => {
+      this._pauseTab = "controls";
+      this._renderPauseMenu();
     });
+
+    if (isMenu) {
+      document.getElementById("wb-resume")?.addEventListener("click", () => this._resumeGame());
+      document.getElementById("wb-inventory")?.addEventListener("click", () => {
+        this._removePauseMenu();
+        this._showInventory();
+      });
+      document.getElementById("wb-quit-menu")?.addEventListener("click", () => {
+        this._removePauseMenu();
+        this._cleanup();
+        this._showMenu();
+      });
+    } else {
+      document.getElementById("wb-ctrl-back")?.addEventListener("click", () => this._resumeGame());
+    }
   }
 
   private _removePauseMenu(): void {
