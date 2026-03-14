@@ -10974,6 +10974,10 @@ export class DiabloRenderer {
     // -- Camera --
     if (this.firstPerson) {
       // FPS camera: at player eye height, looking in facing direction
+      if (this._camera.fov !== 75) {
+        this._camera.fov = 75;
+        this._camera.updateProjectionMatrix();
+      }
       const eyeH = 1.6;
       const camX = state.player.x + this._shakeOffsetX;
       const camY = state.player.y + eyeH + this._shakeOffsetY;
@@ -10993,6 +10997,10 @@ export class DiabloRenderer {
       if (this._aimLine) this._aimLine.visible = false;
     } else {
       // Isometric camera
+      if (this._camera.fov !== 50) {
+        this._camera.fov = 50;
+        this._camera.updateProjectionMatrix();
+      }
       const camTargetX = state.player.x + 12 + this._shakeOffsetX;
       const camTargetY = 18 + this._shakeOffsetY;
       const camTargetZ = state.player.z + 12 + this._shakeOffsetZ;

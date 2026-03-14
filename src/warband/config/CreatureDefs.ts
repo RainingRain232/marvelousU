@@ -80,6 +80,23 @@ export type CreatureType =
   | "siege_tower"
   | "hellfire_mortar";
 
+export type CreatureAbilityType =
+  | 'fire_breath'
+  | 'stomp'
+  | 'regenerate'
+  | 'explode_on_death'
+  | 'poison_aura'
+  | 'lightning_strike'
+  | 'ice_nova'
+  | 'summon';
+
+export interface CreatureSpecialAbility {
+  type: CreatureAbilityType;
+  cooldownTicks: number;
+  damage: number;
+  radius: number;
+}
+
 export interface CreatureDef {
   type: CreatureType;
   name: string;
@@ -92,6 +109,7 @@ export interface CreatureDef {
   reach: number;        // melee reach
   attackTicks: number;  // windup ticks (slower than humans)
   releaseTicks: number; // release window ticks
+  specialAbility?: CreatureSpecialAbility;
 }
 
 export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
@@ -107,6 +125,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 3.0,
     attackTicks: 24,
     releaseTicks: 10,
+    specialAbility: { type: 'regenerate', cooldownTicks: 60, damage: 5, radius: 0 },
   },
   cyclops: {
     type: "cyclops",
@@ -188,6 +207,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 3.5,
     attackTicks: 26,
     releaseTicks: 10,
+    specialAbility: { type: 'fire_breath', cooldownTicks: 600, damage: 40, radius: 5 },
   },
   fire_elemental: {
     type: "fire_elemental",
@@ -201,6 +221,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 2.5,
     attackTicks: 20,
     releaseTicks: 8,
+    specialAbility: { type: 'explode_on_death', cooldownTicks: 0, damage: 30, radius: 3 },
   },
   ice_elemental: {
     type: "ice_elemental",
@@ -214,6 +235,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 2.8,
     attackTicks: 22,
     releaseTicks: 10,
+    specialAbility: { type: 'ice_nova', cooldownTicks: 900, damage: 20, radius: 4 },
   },
   earth_elemental: {
     type: "earth_elemental",
@@ -227,6 +249,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 2.5,
     attackTicks: 28,
     releaseTicks: 12,
+    specialAbility: { type: 'stomp', cooldownTicks: 480, damage: 25, radius: 3 },
   },
 
   frost_dragon: {
@@ -241,6 +264,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 3.5,
     attackTicks: 26,
     releaseTicks: 10,
+    specialAbility: { type: 'ice_nova', cooldownTicks: 900, damage: 20, radius: 4 },
   },
   fire_dragon: {
     type: "fire_dragon",
@@ -254,6 +278,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 4.0,
     attackTicks: 30,
     releaseTicks: 12,
+    specialAbility: { type: 'fire_breath', cooldownTicks: 600, damage: 40, radius: 5 },
   },
   ice_dragon: {
     type: "ice_dragon",
@@ -267,6 +292,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 4.0,
     attackTicks: 30,
     releaseTicks: 12,
+    specialAbility: { type: 'ice_nova', cooldownTicks: 900, damage: 20, radius: 4 },
   },
   lightning_elemental: {
     type: "lightning_elemental",
@@ -280,6 +306,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 2.5,
     attackTicks: 16,
     releaseTicks: 6,
+    specialAbility: { type: 'lightning_strike', cooldownTicks: 600, damage: 35, radius: 0 },
   },
   distortion_elemental: {
     type: "distortion_elemental",
@@ -504,6 +531,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 3.5,
     attackTicks: 30,
     releaseTicks: 12,
+    specialAbility: { type: 'regenerate', cooldownTicks: 60, damage: 5, radius: 0 },
   },
   mana_wraith: {
     type: "mana_wraith",
@@ -543,6 +571,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 2.8,
     attackTicks: 18,
     releaseTicks: 8,
+    specialAbility: { type: 'lightning_strike', cooldownTicks: 600, damage: 35, radius: 0 },
   },
   frost_wyrm: {
     type: "frost_wyrm",
@@ -556,6 +585,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 3.5,
     attackTicks: 26,
     releaseTicks: 10,
+    specialAbility: { type: 'ice_nova', cooldownTicks: 900, damage: 20, radius: 4 },
   },
   magma_titan: {
     type: "magma_titan",
@@ -595,6 +625,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 2.5,
     attackTicks: 26,
     releaseTicks: 10,
+    specialAbility: { type: 'stomp', cooldownTicks: 600, damage: 30, radius: 3.5 },
   },
   obsidian_sentinel: {
     type: "obsidian_sentinel",
@@ -803,6 +834,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 3.0,
     attackTicks: 28,
     releaseTicks: 12,
+    specialAbility: { type: 'stomp', cooldownTicks: 600, damage: 30, radius: 3.5 },
   },
   rune_core: {
     type: "rune_core",
@@ -842,6 +874,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 2.5,
     attackTicks: 22,
     releaseTicks: 10,
+    specialAbility: { type: 'stomp', cooldownTicks: 600, damage: 30, radius: 3.5 },
   },
   iron_colossus: {
     type: "iron_colossus",
@@ -855,6 +888,7 @@ export const CREATURE_DEFS: Record<CreatureType, CreatureDef> = {
     reach: 4.0,
     attackTicks: 34,
     releaseTicks: 14,
+    specialAbility: { type: 'stomp', cooldownTicks: 600, damage: 30, radius: 3.5 },
   },
 
   // ---- Siege Workshop ----

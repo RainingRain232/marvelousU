@@ -2032,6 +2032,50 @@ export class WarbandSceneManager {
     }
   }
 
+  /** Apply weather visual effects. Call after init(). */
+  applyWeather(weather: string): void {
+    switch (weather) {
+      case "rain":
+        // Reduce sun intensity by 40%
+        this._sunLight.intensity *= 0.6;
+        // Blue-grey fog
+        this.scene.fog = new THREE.FogExp2(0x555566, 0.015);
+        // Darker ambient
+        this._ambientLight.color.set(0x606878);
+        break;
+
+      case "fog":
+        // Heavy fog
+        this.scene.fog = new THREE.FogExp2(0x888888, 0.04);
+        // Reduce sun intensity by 60%
+        this._sunLight.intensity *= 0.4;
+        // Reduce ambient intensity
+        this._ambientLight.intensity = 0.4;
+        break;
+
+      case "night":
+        // Very dark ambient
+        this._ambientLight.color.set(0x1a1a2a);
+        this._ambientLight.intensity = 0.25;
+        // Moonlight instead of sun
+        this._sunLight.color.set(0x6688cc);
+        this._sunLight.intensity = 0.8;
+        this._sunLight.position.set(0, 80, 0); // from above
+        // Dark fog
+        this.scene.fog = new THREE.FogExp2(0x111122, 0.012);
+        // Darken scene background for sky dome
+        this.scene.background = new THREE.Color(0x0a0a18);
+        // Dim hemisphere light
+        this._hemiLight.intensity = 0.15;
+        break;
+
+      case "clear":
+      default:
+        // Default lighting — no changes needed
+        break;
+    }
+  }
+
   render(): void {
     this.renderer.render(this.scene, this.camera);
   }

@@ -487,6 +487,38 @@ export class DiabloGame {
           }
         }
 
+        // First person: left click fires active skill or attacks nearest enemy in look direction
+        if (this._firstPerson && this._pointerLocked) {
+          // Try to fire a skill (use slot 0 by default, or whichever the player has selected)
+          const p = this._state.player;
+          if (p.skills.length > 0) {
+            this._activateSkill(0);
+          }
+          // Also auto-target nearest enemy in look direction for melee
+          const sinY = Math.sin(this._fpYaw);
+          const cosY = Math.cos(this._fpYaw);
+          let bestId: string | null = null;
+          let bestScore = Infinity;
+          for (const enemy of this._state.enemies) {
+            if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
+            const dx = enemy.x - p.x;
+            const dz = enemy.z - p.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist > 15) continue;
+            // Dot product with look direction (higher = more aligned)
+            const dot = (-sinY * dx + -cosY * dz) / (dist || 1);
+            if (dot > 0.5) { // within ~60 degree cone
+              const score = dist * (2 - dot); // prefer close + aligned
+              if (score < bestScore) {
+                bestScore = score;
+                bestId = enemy.id;
+              }
+            }
+          }
+          if (bestId) this._targetEnemyId = bestId;
+          return;
+        }
+
         const target = this._renderer.getClickTarget(this._mouseX, this._mouseY, this._state);
         if (target) {
           if (target.type === "enemy") {
@@ -2526,6 +2558,11 @@ export class DiabloGame {
       this._mouseDY = 0;
 
       p.angle = this._fpYaw;
+
+      // Continuous skill/attack while holding mouse in FPS
+      if (this._mouseDown && p.skills.length > 0) {
+        this._activateSkill(0);
+      }
 
       // WASD relative to facing direction
       let forward = 0;
@@ -4608,8 +4645,18 @@ export class DiabloGame {
   //  HELPER: Get mouse world position
   // ──────────────────────────────────────────────────────────────
   private _getMouseWorldPos(): { x: number; z: number } {
-    // Approximate: map screen coordinates to world using isometric projection
     const p = this._state.player;
+
+    // First person: project forward from player in look direction
+    if (this._firstPerson) {
+      const range = 10;
+      return {
+        x: p.x - Math.sin(this._fpYaw) * range,
+        z: p.z - Math.cos(this._fpYaw) * range,
+      };
+    }
+
+    // Approximate: map screen coordinates to world using isometric projection
     const w = window.innerWidth;
     const h = window.innerHeight;
 

@@ -183,9 +183,19 @@ export interface WarbandFighter {
   // Spell cooldown
   lastSpellTick: number;
 
+  // Morale
+  morale: number;   // 0-100
+  fleeing: boolean;
+
   // Stats tracking
   kills: number;
   damage_dealt: number;
+  damage_taken: number;
+  blocks: number;
+  headshots: number;
+  spellsCast: number;
+  longestStreak: number;
+  currentStreak: number;
 }
 
 // ---- AI State -------------------------------------------------------------
@@ -303,6 +313,16 @@ export interface WarbandState {
   // Pause
   paused: boolean;
 
+  // Match options
+  difficulty: 'easy' | 'normal' | 'hard' | 'brutal';
+  weather: 'clear' | 'rain' | 'fog' | 'night';
+  moraleEnabled: boolean;
+  friendlyFire: boolean;
+  doubleDamage: boolean;
+  noRanged: boolean;
+  allCavalry: boolean;
+  creatureAbilities: boolean;
+
   // Screen dimensions (for input mapping)
   screenW: number;
   screenH: number;
@@ -374,8 +394,17 @@ export function createDefaultFighter(
 
     lastSpellTick: -9999,
 
+    morale: 100,
+    fleeing: false,
+
     kills: 0,
     damage_dealt: 0,
+    damage_taken: 0,
+    blocks: 0,
+    headshots: 0,
+    spellsCast: 0,
+    longestStreak: 0,
+    currentStreak: 0,
   };
 }
 
@@ -413,6 +442,15 @@ export function createWarbandState(
     siegeDefendersInZone: 0,
 
     paused: false,
+
+    difficulty: 'normal',
+    weather: 'clear',
+    moraleEnabled: true,
+    friendlyFire: false,
+    doubleDamage: false,
+    noRanged: false,
+    allCavalry: false,
+    creatureAbilities: true,
 
     screenW,
     screenH,

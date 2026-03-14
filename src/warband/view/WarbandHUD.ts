@@ -259,11 +259,22 @@ export class WarbandHUD {
     this._updateDirectionIndicator(player);
 
     // Team status
+    const fleeingAllies = state.moraleEnabled
+      ? state.fighters.filter(f => f.team === player.team && f.fleeing && f.combatState !== FighterCombatState.DEAD).length
+      : 0;
+    const moraleInfo = state.moraleEnabled
+      ? `<div style="margin-top:4px;color:${player.morale < 20 ? '#ff4444' : player.morale < 50 ? '#ccaa22' : '#44cc44'}">Morale: ${Math.round(player.morale)}</div>`
+      : "";
+    const fleeingInfo = fleeingAllies > 0
+      ? `<div style="color:#ff8800">Fleeing: ${fleeingAllies}</div>`
+      : "";
     this._teamStatus.innerHTML = `
       <div style="color:#4488ff">Allies: ${state.playerTeamAlive}/${Math.ceil(state.fighters.filter(f => f.team === "player").length)}</div>
       <div style="color:#ff4444">Enemies: ${state.enemyTeamAlive}/${Math.ceil(state.fighters.filter(f => f.team === "enemy").length)}</div>
       <div style="margin-top:8px">Kills: ${player.kills}</div>
       <div>Round: ${state.round}</div>
+      ${moraleInfo}${fleeingInfo}
+      ${player.fleeing ? '<div style="color:#ff4444;font-weight:bold;font-size:18px;margin-top:4px">FLEEING!</div>' : ""}
     `;
 
     // Ammo

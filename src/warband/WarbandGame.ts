@@ -3200,6 +3200,17 @@ export class WarbandGame {
   private _shopMercIndices: number[] = [];
   private _shopRandomOn = false;
 
+  // Match options
+  private _optDifficulty: 'easy' | 'normal' | 'hard' | 'brutal' = 'normal';
+  private _optWeather: 'clear' | 'rain' | 'fog' | 'night' = 'clear';
+  private _optMorale = true;
+  private _optFriendlyFire = false;
+  private _optDoubledamage = false;
+  private _optNoRanged = false;
+  private _optAllCavalry = false;
+  private _optCreatureAbilities = true;
+  private _optPersistentGold = false;
+
   // Pre-battle selection screens
   private _leaderSelectContainer: HTMLDivElement | null = null;
   private _raceSelectContainer: HTMLDivElement | null = null;
@@ -3291,7 +3302,7 @@ export class WarbandGame {
 
         <button id="wb-army" style="${this._menuBtnStyle("#3a2008", "#daa520")}">
           Army Battle
-          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Up to 100v100 — choose your army</span>
+          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Up to 250v250 — choose your army</span>
         </button>
 
         <button id="wb-duel" style="${this._menuBtnStyle()}">
@@ -3303,6 +3314,47 @@ export class WarbandGame {
           Camera View
           <span style="display:block;font-size:11px;color:#778877;margin-top:4px;font-weight:normal">Inspect character model</span>
         </button>
+
+        <div style="width:340px;margin-top:15px;padding:12px 16px;background:rgba(30,20,10,0.6);border:1px solid #443322;border-radius:6px">
+          <div style="font-size:13px;color:#daa520;margin-bottom:8px;text-align:center;letter-spacing:1px">MATCH OPTIONS</div>
+
+          <!-- Difficulty selector -->
+          <div style="margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;color:#998877;width:65px">Difficulty:</span>
+            <div style="display:flex;gap:3px;flex:1">
+              ${(['easy', 'normal', 'hard', 'brutal'] as const).map(d => {
+                const sel = this._optDifficulty === d;
+                return `<button class="wb-diff-btn" data-diff="${d}" style="flex:1;padding:4px 6px;font-size:10px;border:1px solid ${sel ? '#daa520' : '#444'};border-radius:3px;background:${sel ? 'rgba(218,165,32,0.25)' : 'rgba(20,15,10,0.6)'};color:${sel ? '#fff' : '#666'};cursor:pointer;text-align:center;font-family:inherit;">${d[0].toUpperCase() + d.slice(1)}</button>`;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Weather selector -->
+          <div style="margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;color:#998877;width:65px">Weather:</span>
+            <div style="display:flex;gap:3px;flex:1">
+              ${([['clear','☀ Clear'],['rain','🌧 Rain'],['fog','🌫 Fog'],['night','🌙 Night']] as const).map(([w, label]) => {
+                const sel = this._optWeather === w;
+                return `<button class="wb-weather-btn" data-weather="${w}" style="flex:1;padding:4px 6px;font-size:10px;border:1px solid ${sel ? '#daa520' : '#444'};border-radius:3px;background:${sel ? 'rgba(218,165,32,0.25)' : 'rgba(20,15,10,0.6)'};color:${sel ? '#fff' : '#666'};cursor:pointer;text-align:center;font-family:inherit;">${label}</button>`;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Toggle checkboxes -->
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+            ${([
+              ['morale', '☠ Morale', this._optMorale],
+              ['abilities', '✨ Creature Abilities', this._optCreatureAbilities],
+              ['friendly', '⚔ Friendly Fire', this._optFriendlyFire],
+              ['doubledmg', '💥 Double Damage', this._optDoubledamage],
+              ['noranged', '🏹 No Ranged', this._optNoRanged],
+              ['allcav', '🐎 All Cavalry', this._optAllCavalry],
+              ['persist', '💰 Persistent Gold', this._optPersistentGold],
+            ] as [string, string, boolean][]).map(([id, label, on]) =>
+              `<div id="wb-opt-${id}" class="wb-opt-toggle" style="padding:4px 8px;font-size:10px;border:1px solid ${on ? '#daa520' : '#444'};border-radius:3px;background:${on ? 'rgba(218,165,32,0.25)' : 'rgba(20,15,10,0.6)'};color:${on ? '#fff' : '#666'};cursor:pointer;font-family:inherit;user-select:none">${label}</div>`
+            ).join('')}
+          </div>
+        </div>
 
         <div style="width:120px;height:1px;background:linear-gradient(90deg,transparent,#44443a,transparent);margin:12px 0"></div>
 
@@ -3343,6 +3395,39 @@ export class WarbandGame {
     document.getElementById("wb-back")?.addEventListener("click", () => {
       this._exit();
     });
+
+    // Difficulty buttons
+    this._menuContainer?.querySelectorAll(".wb-diff-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this._optDifficulty = (btn as HTMLElement).dataset.diff as typeof this._optDifficulty;
+        this._removeMenu(); this._showMenu();
+      });
+    });
+
+    // Weather buttons
+    this._menuContainer?.querySelectorAll(".wb-weather-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this._optWeather = (btn as HTMLElement).dataset.weather as typeof this._optWeather;
+        this._removeMenu(); this._showMenu();
+      });
+    });
+
+    // Option toggles
+    const toggleMap: [string, string][] = [
+      ["wb-opt-morale", "_optMorale"],
+      ["wb-opt-abilities", "_optCreatureAbilities"],
+      ["wb-opt-friendly", "_optFriendlyFire"],
+      ["wb-opt-doubledmg", "_optDoubledamage"],
+      ["wb-opt-noranged", "_optNoRanged"],
+      ["wb-opt-allcav", "_optAllCavalry"],
+      ["wb-opt-persist", "_optPersistentGold"],
+    ];
+    for (const [elId, field] of toggleMap) {
+      document.getElementById(elId)?.addEventListener("click", () => {
+        (this as any)[field] = !(this as any)[field];
+        this._removeMenu(); this._showMenu();
+      });
+    }
   }
 
   private _menuBtnStyle(bg = "#5a1010", border = "#daa520"): string {
@@ -3359,6 +3444,15 @@ export class WarbandGame {
     `;
   }
 
+  private _applyDifficulty(fighter: WarbandFighter): void {
+    if (fighter.ai) {
+      const diff = this._optDifficulty;
+      fighter.ai.reactionDelay = diff === 'easy' ? WB.AI_REACTION_TICKS_EASY : diff === 'hard' ? WB.AI_REACTION_TICKS_HARD : diff === 'brutal' ? 4 : WB.AI_REACTION_TICKS_NORMAL;
+      fighter.ai.blockChance = diff === 'easy' ? WB.AI_BLOCK_CHANCE_EASY : diff === 'hard' ? WB.AI_BLOCK_CHANCE_HARD : diff === 'brutal' ? 0.95 : WB.AI_BLOCK_CHANCE_NORMAL;
+      fighter.ai.aggressiveness = diff === 'brutal' ? 0.85 : diff === 'hard' ? 0.7 : diff === 'easy' ? 0.3 : 0.5;
+    }
+  }
+
   private _removeMenu(): void {
     if (this._menuContainer?.parentNode) {
       this._menuContainer.parentNode.removeChild(this._menuContainer);
@@ -3373,6 +3467,16 @@ export class WarbandGame {
     const sh = window.innerHeight;
 
     this._state = createWarbandState(battleType, sw, sh);
+
+    // Wire match options into state
+    this._state.difficulty = this._optDifficulty;
+    this._state.weather = this._optWeather;
+    this._state.moraleEnabled = this._optMorale;
+    this._state.friendlyFire = this._optFriendlyFire;
+    this._state.doubleDamage = this._optDoubledamage;
+    this._state.noRanged = this._optNoRanged;
+    this._state.allCavalry = this._optAllCavalry;
+    this._state.creatureAbilities = this._optCreatureAbilities;
 
     // Build siege geometry if needed
     if (battleType === BattleType.SIEGE) {
@@ -3427,6 +3531,7 @@ export class WarbandGame {
             vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
           );
           this._equipUnitType(ally, UNIT_TYPES[t], this._state!);
+          this._applyDifficulty(ally);
           this._state.fighters.push(ally);
           allyIdx++;
         }
@@ -3447,6 +3552,7 @@ export class WarbandGame {
             vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
           );
           this._equipUnitType(enemy, UNIT_TYPES[t], this._state!);
+          this._applyDifficulty(enemy);
           this._state.fighters.push(enemy);
           enemyIdx++;
         }
@@ -3475,6 +3581,7 @@ export class WarbandGame {
           vec3(-6 + i * 3, 0, 12),
         );
         this._equipRandomUnitType(ally, false, this._state!);
+        this._applyDifficulty(ally);
         this._state.fighters.push(ally);
       }
     }
@@ -3500,6 +3607,7 @@ export class WarbandGame {
         vec3(spawnX, 0, spawnZ),
       );
       this._equipRandomUnitType(enemy, isDuel, this._state!);
+      this._applyDifficulty(enemy);
       this._state.fighters.push(enemy);
     }
 
@@ -3972,7 +4080,7 @@ export class WarbandGame {
     if (this._shopActiveSide === "player") this._shopPlayerGoldSpent = 0;
     else this._shopEnemyGoldSpent = 0;
 
-    const MAX_ARMY = 100;
+    const MAX_ARMY = 250;
     const available = _getAllAvailableUnits(this._selectedRaceId, this._shopMercIndices)
       .filter((i) => (UNIT_TYPES[i].cost ?? 100) <= WARBAND_SHOP_GOLD);
     if (available.length === 0) return;
@@ -4016,7 +4124,7 @@ export class WarbandGame {
   private _renderArmySetup(): void {
     if (!this._armySetupContainer) return;
 
-    const MAX_ARMY = 100;
+    const MAX_ARMY = 250;
     const playerTotal = this._playerArmy.reduce((a, b) => a + b, 0);
     const enemyTotal = this._enemyArmy.reduce((a, b) => a + b, 0);
     const tabs = this._buildShopTabs();
@@ -4044,6 +4152,21 @@ export class WarbandGame {
         lines.push(`<span style="color:#aabbcc">Reach: ${cd.reach.toFixed(1)}</span>`);
         lines.push(`<span style="color:#88bbff">Speed: ${cd.speed.toFixed(1)}</span>`);
         lines.push(`<span style="color:#ccaa88">Scale: ${cd.scale.toFixed(1)}x</span>`);
+        if (cd.specialAbility) {
+          const ab = cd.specialAbility;
+          const abilityNames: Record<string, string> = {
+            fire_breath: "Fire Breath", stomp: "Stomp", regenerate: "Regenerate",
+            explode_on_death: "Explode on Death", poison_aura: "Poison Aura",
+            lightning_strike: "Lightning Strike", ice_nova: "Ice Nova", summon: "Summon",
+          };
+          const name = abilityNames[ab.type] ?? ab.type;
+          let abLine = `<span style="color:#ff44ff">Ability: ${name}`;
+          if (ab.damage > 0) abLine += ` (${ab.damage} dmg`;
+          else abLine += ` (`;
+          if (ab.radius > 0) abLine += `, ${ab.radius}m radius`;
+          abLine += `, ${(ab.cooldownTicks / 60).toFixed(0)}s cd)</span>`;
+          lines.push(abLine);
+        }
       } else {
         const w = WEAPON_DEFS[ut.mainHand];
         if (w) {
@@ -4075,6 +4198,21 @@ export class WarbandGame {
         }
         if (ut.horseArmor) {
           lines.push(`<span style="color:#ddaa44">Mount: ${ut.horseArmor} horse</span>`);
+        }
+        // Mage spell ability info
+        const w2 = WEAPON_DEFS[ut.mainHand];
+        if (w2 && w2.category === "staff") {
+          let spellType = "Arcane Blast";
+          if (ut.mainHand.includes("fire")) spellType = "Fire AoE";
+          else if (ut.mainHand.includes("cold")) spellType = "Frost AoE";
+          else if (ut.mainHand.includes("storm") || ut.mainHand.includes("lightning")) spellType = "Chain Lightning";
+          else if (ut.mainHand.includes("distortion")) spellType = "Distortion Chain";
+          else if (ut.mainHand.includes("healing") || ut.mainHand.includes("cleric") || ut.mainHand.includes("saint")) spellType = "Healing AoE";
+          let tier = "Base";
+          if (ut.mainHand.includes("master") || ut.mainHand.includes("dark_savant")) tier = "Master";
+          else if (ut.mainHand.includes("adept") || ut.mainHand.includes("warlock")) tier = "Adept";
+          else if (ut.mainHand.includes("battlemage") || ut.mainHand.includes("archmage")) tier = "Elite";
+          lines.push(`<span style="color:#ff44ff">Ability: ${spellType} (${tier} tier)</span>`);
         }
       }
       return lines.join("<br>");
@@ -4503,6 +4641,9 @@ export class WarbandGame {
     this._simAccumulator = 0;
     this._gameLoop(this._lastTime);
 
+    // Apply weather visual effects
+    this._sceneManager.applyWeather(this._state.weather);
+
     this._hud.showCenterMessage("FIGHT!", 2000);
   }
 
@@ -4551,6 +4692,14 @@ export class WarbandGame {
       // Combat (attacks, blocks, damage)
       this._combatSystem.update(this._state);
 
+      // Creature special abilities
+      this._combatSystem.updateCreatureAbilities(this._state);
+
+      // Creature ability explosions (visual FX)
+      for (const aoe of this._combatSystem.creatureAbilityExplosions) {
+        this._fx.spawnAoeExplosion(aoe.x, aoe.y, aoe.z, aoe.radius, aoe.color);
+      }
+
       // Process combat events
       for (const hit of this._combatSystem.hits) {
         if (hit.blocked) {
@@ -4558,6 +4707,11 @@ export class WarbandGame {
         } else {
           this._fx.spawnBlood(hit.position.x, hit.position.y, hit.position.z, hit.damage);
           this._fx.spawnHitSparks(hit.position.x, hit.position.y, hit.position.z, false);
+          // Morale: heavy damage penalty
+          const hitTarget = this._state.fighters.find(f => f.id === hit.target);
+          if (hitTarget) {
+            this._aiSystem.applyDamageMorale(hitTarget, hit.damage, this._state);
+          }
         }
       }
 
@@ -4581,6 +4735,10 @@ export class WarbandGame {
         const victim = this._state.fighters.find((f) => f.id === kill.victimId);
         if (killer && victim) {
           this._hud.addKill(killer.name, victim.name);
+          // Morale: death morale effects on nearby fighters
+          this._aiSystem.applyDeathMorale(victim, this._state);
+          // Handle creature explode-on-death abilities
+          this._combatSystem.handleCreatureDeathAbility(victim, this._state);
         }
       }
     }
@@ -4877,15 +5035,36 @@ export class WarbandGame {
     `;
 
     const allFighters = this._state.fighters;
-    const statsHTML = allFighters
+
+    // Check if any mages present (for spells column)
+    const hasMages = allFighters.some(f => f.spellsCast > 0);
+
+    // Battle duration in seconds
+    const battleDurationSec = Math.round(this._state.tick / WB.TICKS_PER_SEC);
+    const battleMin = Math.floor(battleDurationSec / 60);
+    const battleSec = battleDurationSec % 60;
+
+    // Team kill totals
+    const playerTeamKills = allFighters.filter(f => f.team === "player").reduce((s, f) => s + f.kills, 0);
+    const enemyTeamKills = allFighters.filter(f => f.team === "enemy").reduce((s, f) => s + f.kills, 0);
+
+    // MVP: highest kills + damage
+    const mvp = [...allFighters].sort((a, b) => (b.kills + b.damage_dealt) - (a.kills + a.damage_dealt))[0];
+
+    const statsHTML = [...allFighters]
       .sort((a, b) => b.kills - a.kills)
       .map(
         (f) => `
         <tr style="color:${f.team === "player" ? "#4488ff" : "#ff4444"}${f.isPlayer ? ";font-weight:bold" : ""}">
-          <td style="padding:4px 12px">${f.name}${f.isPlayer ? " (You)" : ""}</td>
-          <td style="padding:4px 12px;text-align:center">${f.kills}</td>
-          <td style="padding:4px 12px;text-align:center">${f.damage_dealt}</td>
-          <td style="padding:4px 12px;text-align:center">${f.hp <= 0 ? "Dead" : `${f.hp} HP`}</td>
+          <td style="padding:4px 8px">${f.name}${f.isPlayer ? " (You)" : ""}${mvp && f.id === mvp.id ? " ★" : ""}</td>
+          <td style="padding:4px 8px;text-align:center">${f.kills}</td>
+          <td style="padding:4px 8px;text-align:center">${f.damage_dealt}</td>
+          <td style="padding:4px 8px;text-align:center">${f.damage_taken}</td>
+          <td style="padding:4px 8px;text-align:center">${f.headshots}</td>
+          <td style="padding:4px 8px;text-align:center">${f.blocks}</td>
+          ${hasMages ? `<td style="padding:4px 8px;text-align:center">${f.spellsCast}</td>` : ""}
+          <td style="padding:4px 8px;text-align:center">${f.longestStreak}</td>
+          <td style="padding:4px 8px;text-align:center">${f.hp <= 0 ? "Dead" : `${f.hp} HP`}</td>
         </tr>
       `,
       )
@@ -4893,19 +5072,33 @@ export class WarbandGame {
 
     this._resultsContainer.innerHTML = `
       <h1 style="font-size:42px;color:${won ? "#ffd700" : "#cc4444"};text-shadow:0 0 15px rgba(${won ? "218,165,32" : "204,68,68"},0.4)">
-        ${won ? "⚔ VICTORY ⚔" : "☠ DEFEAT ☠"}
+        ${won ? "VICTORY" : "DEFEAT"}
       </h1>
-      <p style="margin-bottom:20px;color:#aa9977">Round ${this._state!.round}</p>
+      <p style="margin-bottom:10px;color:#aa9977">Round ${this._state!.round}</p>
 
-      <table style="border-collapse:collapse;margin-bottom:30px">
-        <tr style="color:#daa520;border-bottom:1px solid #444">
-          <th style="padding:8px 12px;text-align:left">Fighter</th>
-          <th style="padding:8px 12px">Kills</th>
-          <th style="padding:8px 12px">Damage</th>
-          <th style="padding:8px 12px">Status</th>
-        </tr>
-        ${statsHTML}
-      </table>
+      <div style="display:flex;gap:30px;margin-bottom:15px;color:#aa9977;font-size:14px">
+        <span>Duration: ${battleMin}m ${battleSec.toString().padStart(2, "0")}s</span>
+        <span style="color:#4488ff">Team Kills: ${playerTeamKills}</span>
+        <span style="color:#ff4444">Enemy Kills: ${enemyTeamKills}</span>
+        ${mvp ? `<span style="color:#ffd700">MVP: ${mvp.name} (${mvp.kills}K / ${mvp.damage_dealt}D)</span>` : ""}
+      </div>
+
+      <div style="max-height:50vh;overflow-y:auto;margin-bottom:20px">
+        <table style="border-collapse:collapse">
+          <tr style="color:#daa520;border-bottom:1px solid #444">
+            <th style="padding:6px 8px;text-align:left">Fighter</th>
+            <th style="padding:6px 8px">Kills</th>
+            <th style="padding:6px 8px">Dmg Dealt</th>
+            <th style="padding:6px 8px">Dmg Taken</th>
+            <th style="padding:6px 8px">Headshots</th>
+            <th style="padding:6px 8px">Blocks</th>
+            ${hasMages ? '<th style="padding:6px 8px">Spells</th>' : ""}
+            <th style="padding:6px 8px">Streak</th>
+            <th style="padding:6px 8px">Status</th>
+          </tr>
+          ${statsHTML}
+        </table>
+      </div>
 
       <p style="color:#ffd700;font-size:18px;margin-bottom:20px">
         Gold: ${player.gold} (+${player.kills * WB.GOLD_PER_KILL} from kills)
@@ -4913,10 +5106,10 @@ export class WarbandGame {
 
       <div>
         <button id="wb-next-round" style="${this._menuBtnStyle()}">
-          ⚔ Next Round
+          Next Round
         </button>
         <button id="wb-back-menu" style="${this._menuBtnStyle("#555", "#888")}">
-          ← Back to Menu
+          Back to Menu
         </button>
       </div>
     `;
@@ -5002,9 +5195,10 @@ export class WarbandGame {
             vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
           );
           this._equipUnitType(ally, UNIT_TYPES[t], this._state!);
+          this._applyDifficulty(ally);
           if (ally.ai) {
-            ally.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);
-            ally.ai.aggressiveness = Math.min(0.9, 0.5 + this._state.round * 0.05);
+            ally.ai.blockChance = Math.min(0.85, ally.ai.blockChance + this._state.round * 0.05);
+            ally.ai.aggressiveness = Math.min(0.9, ally.ai.aggressiveness + this._state.round * 0.05);
           }
           this._state.fighters.push(ally);
           allyIdx++;
@@ -5026,10 +5220,11 @@ export class WarbandGame {
             vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
           );
           this._equipUnitType(enemy, UNIT_TYPES[t], this._state!);
+          this._applyDifficulty(enemy);
           if (enemy.ai) {
-            enemy.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);
-            enemy.ai.reactionDelay = Math.max(6, WB.AI_REACTION_TICKS_NORMAL - this._state.round * 2);
-            enemy.ai.aggressiveness = Math.min(0.9, 0.5 + this._state.round * 0.05);
+            enemy.ai.blockChance = Math.min(0.85, enemy.ai.blockChance + this._state.round * 0.05);
+            enemy.ai.reactionDelay = Math.max(6, enemy.ai.reactionDelay - this._state.round * 2);
+            enemy.ai.aggressiveness = Math.min(0.9, enemy.ai.aggressiveness + this._state.round * 0.05);
           }
           this._state.fighters.push(enemy);
           enemyIdx++;
@@ -5053,6 +5248,7 @@ export class WarbandGame {
             vec3(-6 + i * 3, 0, 12),
           );
           this._equipRandomUnitType(ally, false, this._state!);
+          this._applyDifficulty(ally);
           this._state.fighters.push(ally);
         }
       }
@@ -5078,11 +5274,12 @@ export class WarbandGame {
           vec3(spawnX, 0, spawnZ),
         );
         this._equipRandomUnitType(enemy, isDuel, this._state!);
+        this._applyDifficulty(enemy);
         // Scale AI difficulty with rounds
         if (enemy.ai) {
-          enemy.ai.blockChance = Math.min(0.85, WB.AI_BLOCK_CHANCE_NORMAL + this._state.round * 0.05);
-          enemy.ai.reactionDelay = Math.max(6, WB.AI_REACTION_TICKS_NORMAL - this._state.round * 2);
-          enemy.ai.aggressiveness = Math.min(0.9, 0.5 + this._state.round * 0.05);
+          enemy.ai.blockChance = Math.min(0.85, enemy.ai.blockChance + this._state.round * 0.05);
+          enemy.ai.reactionDelay = Math.max(6, enemy.ai.reactionDelay - this._state.round * 2);
+          enemy.ai.aggressiveness = Math.min(0.9, enemy.ai.aggressiveness + this._state.round * 0.05);
         }
         this._state.fighters.push(enemy);
       }

@@ -41,10 +41,21 @@ function mirrorDir(dir: CombatDirection): CombatDirection {
 
 export class WarbandAISystem {
   update(state: WarbandState): void {
+    // Update morale for all fighters (including player) if enabled
+    if (state.moraleEnabled) {
+      this._updateMorale(state);
+    }
+
     for (const fighter of state.fighters) {
       if (fighter.isPlayer) continue;
       if (fighter.combatState === FighterCombatState.DEAD) continue;
       if (!fighter.ai) continue;
+
+      // Fleeing behavior overrides normal AI
+      if (fighter.fleeing) {
+        this._executeFleeing(fighter, state);
+        continue;
+      }
 
       const ai = fighter.ai;
 
@@ -78,12 +89,15 @@ export class WarbandAISystem {
   ): string | null {
     let closest: WarbandFighter | null = null;
     let closestDist = Infinity;
+    // Fog weather: reduce decision range by 40%
+    const maxDecisionRange = state.weather === "fog" ? 30 * 0.6 : Infinity;
 
     for (const other of state.fighters) {
       if (other.team === fighter.team) continue;
       if (other.combatState === FighterCombatState.DEAD) continue;
 
       const dist = vec3DistXZ(fighter.position, other.position);
+      if (dist > maxDecisionRange) continue; // fog limits detection
       if (dist < closestDist) {
         closestDist = dist;
         closest = other;
@@ -116,9 +130,11 @@ export class WarbandAISystem {
     const wpn = fighter.equipment.mainHand;
     const isRanged = wpn ? isRangedWeapon(wpn) : false;
     const mounted = fighter.isMounted;
-    const idealRange = isRanged
+    // Fog weather: reduce preferred range by 40%
+    const fogMult = _state.weather === "fog" ? 0.6 : 1.0;
+    const idealRange = (isRanged
       ? (mounted ? 15 : 10)
-      : (mounted ? 4.0 : ai.preferredRange);
+      : (mounted ? 4.0 : ai.preferredRange)) * fogMult;
 
     // Movement — mounted fighters are faster, creatures use their own speed
     const sinR = Math.sin(fighter.rotation);
@@ -306,6 +322,129 @@ export class WarbandAISystem {
     if (Math.random() < ai.aggressiveness * 0.15) {
       fighter.combatState = FighterCombatState.DRAWING;
       fighter.stateTimer = fighter.equipment.mainHand?.drawTime ?? 30;
+    }
+  }
+
+  // ---- Fleeing behavior -----------------------------------------------------
+
+  private _executeFleeing(fighter: WarbandFighter, state: WarbandState): void {
+    // Find nearest enemy and run away
+    let nearestEnemy: WarbandFighter | null = null;
+    let nearestDist = Infinity;
+    for (const other of state.fighters) {
+      if (other.team === fighter.team) continue;
+      if (other.combatState === FighterCombatState.DEAD) continue;
+      const d = vec3DistXZ(fighter.position, other.position);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestEnemy = other;
+      }
+    }
+
+    if (nearestEnemy) {
+      // Run away from nearest enemy
+      const awayAngle = Math.atan2(
+        fighter.position.x - nearestEnemy.position.x,
+        fighter.position.z - nearestEnemy.position.z,
+      );
+      let angleDiff = awayAngle - fighter.rotation;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      fighter.rotation += angleDiff * 0.15;
+
+      // Fleeing fighters move at 80% speed (slower from panic)
+      const speed = WB.WALK_SPEED * 0.8;
+      fighter.velocity.x = Math.sin(fighter.rotation) * speed;
+      fighter.velocity.z = Math.cos(fighter.rotation) * speed;
+      fighter.walkCycle = (fighter.walkCycle + speed * 0.02) % 1;
+    }
+
+    // Cancel any combat state while fleeing
+    if (
+      fighter.combatState !== FighterCombatState.IDLE &&
+      fighter.combatState !== FighterCombatState.STAGGERED
+    ) {
+      fighter.combatState = FighterCombatState.IDLE;
+      fighter.stateTimer = 0;
+    }
+  }
+
+  // ---- Morale system --------------------------------------------------------
+
+  private _updateMorale(state: WarbandState): void {
+    const aliveFighters: Record<string, number> = { player: 0, enemy: 0 };
+    for (const f of state.fighters) {
+      if (f.combatState !== FighterCombatState.DEAD) {
+        aliveFighters[f.team]++;
+      }
+    }
+
+    const ticksPerSec = WB.TICKS_PER_SEC;
+    const perTickBase = 1 / ticksPerSec; // base regen per tick (~1/sec)
+
+    for (const fighter of state.fighters) {
+      if (fighter.combatState === FighterCombatState.DEAD) continue;
+
+      const allyAlive = aliveFighters[fighter.team] ?? 0;
+      const enemyAlive = aliveFighters[fighter.team === "player" ? "enemy" : "player"] ?? 0;
+      let moraleDelta = 0;
+
+      // Base regen: +1 per second
+      moraleDelta += perTickBase;
+
+      // Outnumbered penalty: -(enemyAlive - allyAlive) * 3 per second
+      if (enemyAlive > allyAlive) {
+        moraleDelta -= (enemyAlive - allyAlive) * 3 * perTickBase;
+      }
+
+      // Outnumber bonus: +2 per second
+      if (allyAlive > enemyAlive) {
+        moraleDelta += 2 * perTickBase;
+      }
+
+      fighter.morale = Math.max(0, Math.min(100, fighter.morale + moraleDelta));
+
+      // Fleeing state transitions
+      if (!fighter.fleeing && fighter.morale < 20) {
+        fighter.fleeing = true;
+      } else if (fighter.fleeing && fighter.morale > 40) {
+        fighter.fleeing = false;
+      }
+    }
+  }
+
+  /** Call when a fighter dies to apply morale effects to nearby fighters. */
+  applyDeathMorale(deadFighter: WarbandFighter, state: WarbandState): void {
+    if (!state.moraleEnabled) return;
+
+    for (const fighter of state.fighters) {
+      if (fighter.combatState === FighterCombatState.DEAD) continue;
+      if (fighter.id === deadFighter.id) continue;
+
+      const dist = vec3DistXZ(fighter.position, deadFighter.position);
+      if (dist > 10) continue; // only affects fighters within 10 units
+
+      if (fighter.team === deadFighter.team) {
+        // Ally died nearby: -15 morale
+        fighter.morale = Math.max(0, fighter.morale - 15);
+      } else {
+        // Enemy died nearby: +10 morale
+        fighter.morale = Math.min(100, fighter.morale + 10);
+      }
+    }
+  }
+
+  /** Call when a fighter takes heavy damage to apply morale drop. */
+  applyDamageMorale(
+    fighter: WarbandFighter,
+    damage: number,
+    state: WarbandState,
+  ): void {
+    if (!state.moraleEnabled) return;
+
+    // Heavy damage (>30% HP in one hit): -10 morale
+    if (damage > fighter.maxHp * 0.3) {
+      fighter.morale = Math.max(0, fighter.morale - 10);
     }
   }
 }

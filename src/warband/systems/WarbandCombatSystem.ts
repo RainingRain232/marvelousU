@@ -14,7 +14,7 @@ import {
 import { WB } from "../config/WarbandBalanceConfig";
 import { ArmorSlot } from "../config/ArmorDefs";
 import { isRangedWeapon, isStaffWeapon } from "../config/WeaponDefs";
-import { CREATURE_DEFS } from "../config/CreatureDefs";
+import { CREATURE_DEFS, type CreatureSpecialAbility } from "../config/CreatureDefs";
 
 // ---- Spell definitions (extensible – add new spells here) -------------------
 
@@ -369,6 +369,7 @@ export class WarbandCombatSystem {
         attacker.combatState = FighterCombatState.STAGGERED;
         attacker.stateTimer = WB.STAGGER_TICKS;
         target.stamina -= WB.STAMINA_BLOCK_COST;
+        target.blocks++;
 
         // Shield takes damage if applicable
         const shield = target.equipment.offHand;
@@ -441,6 +442,10 @@ export class WarbandCombatSystem {
         target.hp -= finalDamage;
         target.lastHitBy = attacker.id;
         attacker.damage_dealt += finalDamage;
+        target.damage_taken += finalDamage;
+        if (hitZone === ArmorSlot.HEAD) {
+          attacker.headshots++;
+        }
 
         // Interrupt target if they were winding up
         if (
@@ -473,6 +478,11 @@ export class WarbandCombatSystem {
           target.hp = 0;
           target.combatState = FighterCombatState.DEAD;
           attacker.kills++;
+          attacker.currentStreak++;
+          if (attacker.currentStreak > attacker.longestStreak) {
+            attacker.longestStreak = attacker.currentStreak;
+          }
+          target.currentStreak = 0;
           attacker.gold += WB.GOLD_PER_KILL;
           if (hitZone === ArmorSlot.HEAD) {
             attacker.gold += WB.GOLD_HEADSHOT_BONUS;
@@ -510,7 +520,12 @@ export class WarbandCombatSystem {
 
     const speed = wpn.projectileSpeed ?? WB.ARROW_SPEED;
     const accuracy = wpn.accuracy ?? 0.85;
-    const spread = (1 - accuracy) * 0.15;
+    let spread = (1 - accuracy) * 0.15;
+
+    // Rain weather: add 15% extra spread to projectile velocity
+    if (state.weather === "rain") {
+      spread += 0.15;
+    }
 
     const isStaff = isStaffWeapon(wpn);
     const dirX = Math.sin(fighter.rotation) + (Math.random() - 0.5) * spread;
@@ -549,6 +564,7 @@ export class WarbandCombatSystem {
     if (isHealStaff(wpn.id)) {
       if (state.tick - fighter.lastSpellTick < HEAL_SPELL_DEF.cooldownTicks) return;
       fighter.lastSpellTick = state.tick;
+      fighter.spellsCast++;
       this._castHealSpell(fighter, state);
       return;
     }
@@ -565,6 +581,7 @@ export class WarbandCombatSystem {
     if (dist > 25) return; // max spell range
 
     fighter.lastSpellTick = state.tick;
+    fighter.spellsCast++;
 
     if (isChainStaff(wpn.id)) {
       this._castChainSpell(fighter, target, state);
@@ -581,7 +598,12 @@ export class WarbandCombatSystem {
     const color = wpn.accentColor ?? 0xffffff;
     const speed = wpn.projectileSpeed ?? WB.ARROW_SPEED;
     const accuracy = wpn.accuracy ?? 0.85;
-    const spread = (1 - accuracy) * 0.1;
+    let spread = (1 - accuracy) * 0.1;
+
+    // Rain weather: add 15% extra spread to spell projectiles
+    if (state.weather === "rain") {
+      spread += 0.15;
+    }
 
     const dx = target.position.x - fighter.position.x;
     const dz = target.position.z - fighter.position.z;
@@ -650,6 +672,7 @@ export class WarbandCombatSystem {
       currentTarget.hp -= damage;
       currentTarget.lastHitBy = fighter.id;
       fighter.damage_dealt += damage;
+      currentTarget.damage_taken += damage;
 
       this.hits.push({
         attacker: fighter.id,
@@ -664,6 +687,11 @@ export class WarbandCombatSystem {
         currentTarget.hp = 0;
         currentTarget.combatState = FighterCombatState.DEAD;
         fighter.kills++;
+        fighter.currentStreak++;
+        if (fighter.currentStreak > fighter.longestStreak) {
+          fighter.longestStreak = fighter.currentStreak;
+        }
+        currentTarget.currentStreak = 0;
         fighter.gold += WB.GOLD_PER_KILL;
 
         if (currentTarget.isMounted && currentTarget.mountId) {
@@ -852,6 +880,10 @@ export class WarbandCombatSystem {
             }
           }
 
+          if (blocked) {
+            target.blocks++;
+          }
+
           if (!blocked) {
             const zoneMult = hitZoneMultiplier(hitZone);
             const armorDef = target.equipment.armor[hitZone]?.defense ?? 0;
@@ -859,10 +891,16 @@ export class WarbandCombatSystem {
 
             target.hp -= damage;
             target.lastHitBy = proj.ownerId;
+            target.damage_taken += damage;
 
             // Find owner for stats
             const owner = state.fighters.find((f) => f.id === proj.ownerId);
-            if (owner) owner.damage_dealt += damage;
+            if (owner) {
+              owner.damage_dealt += damage;
+              if (hitZone === ArmorSlot.HEAD) {
+                owner.headshots++;
+              }
+            }
 
             this.hits.push({
               attacker: proj.ownerId,
@@ -878,11 +916,16 @@ export class WarbandCombatSystem {
               target.combatState = FighterCombatState.DEAD;
               if (owner) {
                 owner.kills++;
+                owner.currentStreak++;
+                if (owner.currentStreak > owner.longestStreak) {
+                  owner.longestStreak = owner.currentStreak;
+                }
                 owner.gold += WB.GOLD_PER_KILL;
                 if (hitZone === ArmorSlot.HEAD) {
                   owner.gold += WB.GOLD_HEADSHOT_BONUS;
                 }
               }
+              target.currentStreak = 0;
 
               // Dismount on death
               if (target.isMounted && target.mountId) {
@@ -941,6 +984,7 @@ export class WarbandCombatSystem {
 
       target.hp -= damage;
       target.lastHitBy = proj.ownerId;
+      target.damage_taken += damage;
       if (owner) owner.damage_dealt += damage;
 
       this.hits.push({
@@ -957,8 +1001,13 @@ export class WarbandCombatSystem {
         target.combatState = FighterCombatState.DEAD;
         if (owner) {
           owner.kills++;
+          owner.currentStreak++;
+          if (owner.currentStreak > owner.longestStreak) {
+            owner.longestStreak = owner.currentStreak;
+          }
           owner.gold += WB.GOLD_PER_KILL;
         }
+        target.currentStreak = 0;
 
         if (target.isMounted && target.mountId) {
           const horse = state.horses.find(h => h.id === target.mountId);
@@ -969,6 +1018,499 @@ export class WarbandCombatSystem {
 
         this.kills.push({ killerId: proj.ownerId, victimId: target.id });
 
+        if (target.team === "player") state.playerTeamAlive--;
+        else state.enemyTeamAlive--;
+      }
+    }
+  }
+
+  // ---- Creature Special Abilities ------------------------------------------
+
+  /** Creature ability explosions that happened this tick (for FX) */
+  readonly creatureAbilityExplosions: {
+    x: number; y: number; z: number;
+    radius: number;
+    color: number;
+  }[] = [];
+
+  /** Update creature special abilities – call from main combat loop */
+  updateCreatureAbilities(state: WarbandState): void {
+    if (!state.creatureAbilities) return;
+
+    this.creatureAbilityExplosions.length = 0;
+
+    for (const fighter of state.fighters) {
+      if (fighter.combatState === FighterCombatState.DEAD) continue;
+      if (!fighter.creatureType) continue;
+
+      const def = CREATURE_DEFS[fighter.creatureType];
+      if (!def.specialAbility) continue;
+
+      const ability = def.specialAbility;
+
+      // Regenerate is passive – always active
+      if (ability.type === 'regenerate') {
+        if (state.tick % ability.cooldownTicks === 0 && fighter.hp < fighter.maxHp) {
+          fighter.hp = Math.min(fighter.maxHp, fighter.hp + ability.damage);
+        }
+        continue;
+      }
+
+      // Explode on death is handled separately (checked when HP <= 0)
+      if (ability.type === 'explode_on_death') {
+        continue;
+      }
+
+      // Cooldown check
+      if (state.tick - fighter.lastSpellTick < ability.cooldownTicks) continue;
+
+      // Find nearest enemy
+      let nearestEnemy: WarbandFighter | null = null;
+      let nearestDist = Infinity;
+      for (const other of state.fighters) {
+        if (other.team === fighter.team) continue;
+        if (other.combatState === FighterCombatState.DEAD) continue;
+        const d = vec3DistXZ(fighter.position, other.position);
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearestEnemy = other;
+        }
+      }
+
+      if (!nearestEnemy) continue;
+
+      switch (ability.type) {
+        case 'fire_breath':
+          this._executeFireBreath(fighter, ability, state, nearestEnemy, nearestDist);
+          break;
+        case 'stomp':
+          this._executeStomp(fighter, ability, state);
+          break;
+        case 'poison_aura':
+          this._executePoisonAura(fighter, ability, state);
+          break;
+        case 'lightning_strike':
+          this._executeLightningStrike(fighter, ability, state, nearestEnemy, nearestDist);
+          break;
+        case 'ice_nova':
+          this._executeIceNova(fighter, ability, state);
+          break;
+      }
+    }
+  }
+
+  /** Handle explode-on-death abilities – call when a creature dies */
+  handleCreatureDeathAbility(victim: WarbandFighter, state: WarbandState): void {
+    if (!state.creatureAbilities) return;
+    if (!victim.creatureType) return;
+
+    const def = CREATURE_DEFS[victim.creatureType];
+    if (!def.specialAbility || def.specialAbility.type !== 'explode_on_death') return;
+
+    const ability = def.specialAbility;
+    const color = 0xff4400;
+
+    this.creatureAbilityExplosions.push({
+      x: victim.position.x,
+      y: victim.position.y + 0.5,
+      z: victim.position.z,
+      radius: ability.radius,
+      color,
+    });
+
+    for (const target of state.fighters) {
+      if (target.team === victim.team) continue;
+      if (target.combatState === FighterCombatState.DEAD) continue;
+
+      const dist = vec3DistXZ(victim.position, target.position);
+      if (dist > ability.radius) continue;
+
+      const falloff = 1 - (dist / ability.radius) * 0.5;
+      const damage = Math.max(1, Math.round(ability.damage * falloff));
+
+      target.hp -= damage;
+      target.damage_taken += damage;
+      target.lastHitBy = victim.id;
+
+      this.hits.push({
+        attacker: victim.id,
+        target: target.id,
+        damage,
+        zone: ArmorSlot.TORSO,
+        blocked: false,
+        position: { x: target.position.x, y: target.position.y + 0.8, z: target.position.z },
+      });
+
+      if (target.hp <= 0) {
+        target.hp = 0;
+        target.combatState = FighterCombatState.DEAD;
+        target.currentStreak = 0;
+
+        if (target.isMounted && target.mountId) {
+          const horse = state.horses.find(h => h.id === target.mountId);
+          if (horse) horse.riderId = null;
+          target.mountId = null;
+          target.isMounted = false;
+        }
+
+        this.kills.push({ killerId: victim.id, victimId: target.id });
+        if (target.team === "player") state.playerTeamAlive--;
+        else state.enemyTeamAlive--;
+      }
+    }
+  }
+
+  private _executeFireBreath(
+    fighter: WarbandFighter,
+    ability: CreatureSpecialAbility,
+    state: WarbandState,
+    _nearestEnemy: WarbandFighter,
+    nearestDist: number,
+  ): void {
+    // Fire breath: cone damage in front (60 degree arc)
+    if (nearestDist > ability.radius) return;
+
+    fighter.lastSpellTick = state.tick;
+
+    const color = 0xff6600;
+    this.creatureAbilityExplosions.push({
+      x: fighter.position.x + Math.sin(fighter.rotation) * (ability.radius * 0.5),
+      y: fighter.position.y + 1.5,
+      z: fighter.position.z + Math.cos(fighter.rotation) * (ability.radius * 0.5),
+      radius: ability.radius,
+      color,
+    });
+
+    for (const target of state.fighters) {
+      if (target.team === fighter.team) continue;
+      if (target.combatState === FighterCombatState.DEAD) continue;
+
+      const dist = vec3DistXZ(fighter.position, target.position);
+      if (dist > ability.radius) continue;
+
+      // Check cone (60 degree arc = 30 degrees each side)
+      const angleToTarget = Math.atan2(
+        target.position.x - fighter.position.x,
+        target.position.z - fighter.position.z,
+      );
+      let angleDiff = angleToTarget - fighter.rotation;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      if (Math.abs(angleDiff) > Math.PI / 6) continue; // 30 degrees each side
+
+      const falloff = 1 - (dist / ability.radius) * 0.5;
+      const damage = Math.max(1, Math.round(ability.damage * falloff));
+
+      target.hp -= damage;
+      target.damage_taken += damage;
+      target.lastHitBy = fighter.id;
+      fighter.damage_dealt += damage;
+
+      this.hits.push({
+        attacker: fighter.id,
+        target: target.id,
+        damage,
+        zone: ArmorSlot.TORSO,
+        blocked: false,
+        position: { x: target.position.x, y: target.position.y + 0.8, z: target.position.z },
+      });
+
+      if (target.hp <= 0) {
+        target.hp = 0;
+        target.combatState = FighterCombatState.DEAD;
+        fighter.kills++;
+        fighter.currentStreak++;
+        if (fighter.currentStreak > fighter.longestStreak) {
+          fighter.longestStreak = fighter.currentStreak;
+        }
+        target.currentStreak = 0;
+
+        if (target.isMounted && target.mountId) {
+          const horse = state.horses.find(h => h.id === target.mountId);
+          if (horse) horse.riderId = null;
+          target.mountId = null;
+          target.isMounted = false;
+        }
+
+        this.kills.push({ killerId: fighter.id, victimId: target.id });
+        if (target.team === "player") state.playerTeamAlive--;
+        else state.enemyTeamAlive--;
+      }
+    }
+  }
+
+  private _executeStomp(
+    fighter: WarbandFighter,
+    ability: CreatureSpecialAbility,
+    state: WarbandState,
+  ): void {
+    // Stomp: AoE around self, only trigger if an enemy is within range
+    let hasNearby = false;
+    for (const other of state.fighters) {
+      if (other.team === fighter.team || other.combatState === FighterCombatState.DEAD) continue;
+      if (vec3DistXZ(fighter.position, other.position) <= ability.radius) {
+        hasNearby = true;
+        break;
+      }
+    }
+    if (!hasNearby) return;
+
+    fighter.lastSpellTick = state.tick;
+
+    const color = 0x886633;
+    this.creatureAbilityExplosions.push({
+      x: fighter.position.x,
+      y: fighter.position.y + 0.2,
+      z: fighter.position.z,
+      radius: ability.radius,
+      color,
+    });
+
+    for (const target of state.fighters) {
+      if (target.team === fighter.team) continue;
+      if (target.combatState === FighterCombatState.DEAD) continue;
+
+      const dist = vec3DistXZ(fighter.position, target.position);
+      if (dist > ability.radius) continue;
+
+      const falloff = 1 - (dist / ability.radius) * 0.5;
+      const damage = Math.max(1, Math.round(ability.damage * falloff));
+
+      target.hp -= damage;
+      target.damage_taken += damage;
+      target.lastHitBy = fighter.id;
+      fighter.damage_dealt += damage;
+
+      // Stomp staggers targets
+      target.combatState = FighterCombatState.STAGGERED;
+      target.stateTimer = Math.round(WB.STAGGER_TICKS * 0.5);
+
+      this.hits.push({
+        attacker: fighter.id,
+        target: target.id,
+        damage,
+        zone: ArmorSlot.LEGS,
+        blocked: false,
+        position: { x: target.position.x, y: target.position.y + 0.3, z: target.position.z },
+      });
+
+      if (target.hp <= 0) {
+        target.hp = 0;
+        target.combatState = FighterCombatState.DEAD;
+        fighter.kills++;
+        fighter.currentStreak++;
+        if (fighter.currentStreak > fighter.longestStreak) {
+          fighter.longestStreak = fighter.currentStreak;
+        }
+        target.currentStreak = 0;
+
+        if (target.isMounted && target.mountId) {
+          const horse = state.horses.find(h => h.id === target.mountId);
+          if (horse) horse.riderId = null;
+          target.mountId = null;
+          target.isMounted = false;
+        }
+
+        this.kills.push({ killerId: fighter.id, victimId: target.id });
+        if (target.team === "player") state.playerTeamAlive--;
+        else state.enemyTeamAlive--;
+      }
+    }
+  }
+
+  private _executePoisonAura(
+    fighter: WarbandFighter,
+    ability: CreatureSpecialAbility,
+    state: WarbandState,
+  ): void {
+    // Poison aura: slow tick damage to nearby enemies (2 damage per 60 ticks)
+    if (state.tick % 60 !== 0) return;
+
+    let hasNearby = false;
+    for (const other of state.fighters) {
+      if (other.team === fighter.team || other.combatState === FighterCombatState.DEAD) continue;
+      if (vec3DistXZ(fighter.position, other.position) <= ability.radius) {
+        hasNearby = true;
+        break;
+      }
+    }
+    if (!hasNearby) return;
+
+    for (const target of state.fighters) {
+      if (target.team === fighter.team) continue;
+      if (target.combatState === FighterCombatState.DEAD) continue;
+
+      const dist = vec3DistXZ(fighter.position, target.position);
+      if (dist > ability.radius) continue;
+
+      const damage = ability.damage;
+      target.hp -= damage;
+      target.damage_taken += damage;
+      target.lastHitBy = fighter.id;
+      fighter.damage_dealt += damage;
+
+      if (target.hp <= 0) {
+        target.hp = 0;
+        target.combatState = FighterCombatState.DEAD;
+        fighter.kills++;
+        fighter.currentStreak++;
+        if (fighter.currentStreak > fighter.longestStreak) {
+          fighter.longestStreak = fighter.currentStreak;
+        }
+        target.currentStreak = 0;
+
+        if (target.isMounted && target.mountId) {
+          const horse = state.horses.find(h => h.id === target.mountId);
+          if (horse) horse.riderId = null;
+          target.mountId = null;
+          target.isMounted = false;
+        }
+
+        this.kills.push({ killerId: fighter.id, victimId: target.id });
+        if (target.team === "player") state.playerTeamAlive--;
+        else state.enemyTeamAlive--;
+      }
+    }
+  }
+
+  private _executeLightningStrike(
+    fighter: WarbandFighter,
+    ability: CreatureSpecialAbility,
+    state: WarbandState,
+    nearestEnemy: WarbandFighter,
+    nearestDist: number,
+  ): void {
+    // Lightning strike: single-target high damage to nearest enemy
+    const maxRange = 8;
+    if (nearestDist > maxRange) return;
+
+    fighter.lastSpellTick = state.tick;
+
+    const color = 0x88ccff;
+    const target = nearestEnemy;
+    const damage = ability.damage;
+
+    // Visual bolt
+    this.chainSegments.push({
+      from: {
+        x: fighter.position.x,
+        y: fighter.position.y + (CREATURE_DEFS[fighter.creatureType!].height * 0.8),
+        z: fighter.position.z,
+      },
+      to: {
+        x: target.position.x,
+        y: target.position.y + WB.FIGHTER_HEIGHT * 0.6,
+        z: target.position.z,
+      },
+      color,
+    });
+
+    target.hp -= damage;
+    target.damage_taken += damage;
+    target.lastHitBy = fighter.id;
+    fighter.damage_dealt += damage;
+
+    this.hits.push({
+      attacker: fighter.id,
+      target: target.id,
+      damage,
+      zone: ArmorSlot.TORSO,
+      blocked: false,
+      position: { x: target.position.x, y: target.position.y + 0.8, z: target.position.z },
+    });
+
+    if (target.hp <= 0) {
+      target.hp = 0;
+      target.combatState = FighterCombatState.DEAD;
+      fighter.kills++;
+      fighter.currentStreak++;
+      if (fighter.currentStreak > fighter.longestStreak) {
+        fighter.longestStreak = fighter.currentStreak;
+      }
+      target.currentStreak = 0;
+
+      if (target.isMounted && target.mountId) {
+        const horse = state.horses.find(h => h.id === target.mountId);
+        if (horse) horse.riderId = null;
+        target.mountId = null;
+        target.isMounted = false;
+      }
+
+      this.kills.push({ killerId: fighter.id, victimId: target.id });
+      if (target.team === "player") state.playerTeamAlive--;
+      else state.enemyTeamAlive--;
+    }
+  }
+
+  private _executeIceNova(
+    fighter: WarbandFighter,
+    ability: CreatureSpecialAbility,
+    state: WarbandState,
+  ): void {
+    // Ice nova: AoE around self
+    let hasNearby = false;
+    for (const other of state.fighters) {
+      if (other.team === fighter.team || other.combatState === FighterCombatState.DEAD) continue;
+      if (vec3DistXZ(fighter.position, other.position) <= ability.radius) {
+        hasNearby = true;
+        break;
+      }
+    }
+    if (!hasNearby) return;
+
+    fighter.lastSpellTick = state.tick;
+
+    const color = 0x88ddff;
+    this.creatureAbilityExplosions.push({
+      x: fighter.position.x,
+      y: fighter.position.y + 0.5,
+      z: fighter.position.z,
+      radius: ability.radius,
+      color,
+    });
+
+    for (const target of state.fighters) {
+      if (target.team === fighter.team) continue;
+      if (target.combatState === FighterCombatState.DEAD) continue;
+
+      const dist = vec3DistXZ(fighter.position, target.position);
+      if (dist > ability.radius) continue;
+
+      const falloff = 1 - (dist / ability.radius) * 0.5;
+      const damage = Math.max(1, Math.round(ability.damage * falloff));
+
+      target.hp -= damage;
+      target.damage_taken += damage;
+      target.lastHitBy = fighter.id;
+      fighter.damage_dealt += damage;
+
+      this.hits.push({
+        attacker: fighter.id,
+        target: target.id,
+        damage,
+        zone: ArmorSlot.TORSO,
+        blocked: false,
+        position: { x: target.position.x, y: target.position.y + 0.8, z: target.position.z },
+      });
+
+      if (target.hp <= 0) {
+        target.hp = 0;
+        target.combatState = FighterCombatState.DEAD;
+        fighter.kills++;
+        fighter.currentStreak++;
+        if (fighter.currentStreak > fighter.longestStreak) {
+          fighter.longestStreak = fighter.currentStreak;
+        }
+        target.currentStreak = 0;
+
+        if (target.isMounted && target.mountId) {
+          const horse = state.horses.find(h => h.id === target.mountId);
+          if (horse) horse.riderId = null;
+          target.mountId = null;
+          target.isMounted = false;
+        }
+
+        this.kills.push({ killerId: fighter.id, victimId: target.id });
         if (target.team === "player") state.playerTeamAlive--;
         else state.enemyTeamAlive--;
       }
