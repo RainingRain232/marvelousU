@@ -118,6 +118,23 @@ const CAMPAIGN_UNITS: CampaignUnitType[] = [
   { id: "longbowman", name: "Longbowman", mainHand: "long_bow", offHand: null, head: "kettle_hat", torso: "gambeson", gauntlets: "leather_gloves", legs: "leather_leggings", boots: "leather_boots", cost: 175, tier: 2, building: "archery" },
 ];
 
+const UNIT_UPGRADE_PATH: Record<string, string> = {
+  swordsman: "knight", archer: "longbowman", pikeman: "halberdier",
+  crossbowman: "crossbowman", berserker: "berserker", longbowman: "longbowman",
+  knight: "defender", halberdier: "halberdier", scout_cavalry: "lancer",
+  horse_archer: "horse_archer", fire_mage: "fire_mage", storm_mage: "storm_mage",
+  cleric: "cleric", defender: "defender", lancer: "lancer",
+};
+const XP_PROMOTE_THRESHOLD = 100;
+const XP_WIN = 25;
+const XP_LOSS = 10;
+
+function _xpBar(xp: number): string {
+  const filled = Math.floor((xp / XP_PROMOTE_THRESHOLD) * 6);
+  const empty = 6 - filled;
+  return `[${"█".repeat(filled)}${"░".repeat(empty)} ${xp}/${XP_PROMOTE_THRESHOLD}]`;
+}
+
 // Faction-specific elite units (one per faction, added to cities of that faction)
 const FACTION_ELITES: Record<string, CampaignUnitType> = {};
 
@@ -500,8 +517,20 @@ interface CampaignCity {
   x: number;
   y: number;
   factionId: string;
-  garrison: { unitId: string; count: number }[];
+  garrison: { unitId: string; count: number; xp: number }[];
   garrisonTotal: number;
+}
+
+interface CampaignVillage {
+  id: string; name: string; x: number; y: number;
+  factionId: string; income: number; population: number; linkedCityId: string;
+}
+
+interface SpecialLocation {
+  id: string; name: string; x: number; y: number;
+  type: "ruins" | "dungeon" | "lair" | "shrine" | "treasure";
+  explored: boolean; difficulty: number;
+  reward: { gold: number; unitId?: string; unitCount?: number };
 }
 
 interface CampaignParty {
@@ -510,7 +539,7 @@ interface CampaignParty {
   x: number;
   y: number;
   factionId: string;
-  army: { unitId: string; count: number }[];
+  army: { unitId: string; count: number; xp: number }[];
   armyTotal: number;
   targetX: number;
   targetY: number;
@@ -526,6 +555,8 @@ interface CampaignState {
   playerParty: CampaignParty;
   parties: CampaignParty[];
   cities: CampaignCity[];
+  villages: CampaignVillage[];
+  specialLocations: SpecialLocation[];
   terrain: TerrainRegion[];
   paused: boolean;
   gameOver: boolean;
@@ -551,6 +582,23 @@ const CITY_NAMES = [
   "Blackstone", "Liongate", "Moonharbor", "Sunspear", "Deepforge",
   "Hawkhurst", "Willowdale", "Redcliff", "Starfall", "Duskwood",
   "Highgarden", "Ironforge", "Mistwood", "Brimstone", "Greenvale",
+];
+
+const VILLAGE_NAMES = [
+  "Millbrook", "Shepherd's Rest", "Willowfen", "Briarvale", "Dusthaven",
+  "Foxhollow", "Greywater", "Honeyhill", "Ivystead", "Kettlecross",
+  "Larkspur", "Mossglen", "Northmead", "Oakbarrow", "Pinecroft",
+  "Quarrystone", "Rosemoor", "Stonecairn", "Thornfield", "Underhill",
+  "Vinereach", "Whitecreek", "Yarrowfield", "Copperwell", "Duskmeadow",
+  "Eldermarsh", "Fernwick", "Goldwater", "Heatherdale", "Ironbrook",
+];
+
+const SPECIAL_LOCATION_NAMES = [
+  "The Sunken Crypt", "Ruins of Aldenmere", "Dragon's Lair", "The Crystal Shrine",
+  "Bandit Hideout", "Forgotten Temple", "The Shadow Vault", "Ironbound Dungeon",
+  "The Cursed Barrow", "Emerald Cave", "Shrine of Valor", "The Lost Treasury",
+  "Goblin Warrens", "Tomb of the Ancients", "Serpent's Den", "The Hollow Keep",
+  "Moonlit Grotto", "The Bone Pit", "Sanctuary of Light", "The Ashen Gate",
 ];
 
 // ---------------------------------------------------------------------------
@@ -601,15 +649,15 @@ function _generateCities(factions: RaceDef[]): CampaignCity[] {
   return cities;
 }
 
-function _generateGarrison(factionId: string, size: number): { unitId: string; count: number }[] {
+function _generateGarrison(factionId: string, size: number): { unitId: string; count: number; xp: number }[] {
   const pool = CAMPAIGN_UNITS.filter((u) => u.tier <= 4);
-  const result: { unitId: string; count: number }[] = [];
+  const result: { unitId: string; count: number; xp: number }[] = [];
   let remaining = size;
 
   // Add faction elite if available
   if (FACTION_ELITES[factionId] && remaining > 2) {
     const eliteCount = 1 + Math.floor(Math.random() * 3);
-    result.push({ unitId: FACTION_ELITES[factionId].id, count: Math.min(eliteCount, remaining) });
+    result.push({ unitId: FACTION_ELITES[factionId].id, count: Math.min(eliteCount, remaining), xp: 0 });
     remaining -= eliteCount;
   }
 
@@ -620,11 +668,75 @@ function _generateGarrison(factionId: string, size: number): { unitId: string; c
     if (existing) {
       existing.count += count;
     } else {
-      result.push({ unitId: unit.id, count });
+      result.push({ unitId: unit.id, count, xp: 0 });
     }
     remaining -= count;
   }
   return result;
+}
+
+function _generateVillages(cities: CampaignCity[]): CampaignVillage[] {
+  const villages: CampaignVillage[] = [];
+  const usedNames = new Set<string>();
+  for (const city of cities) {
+    const count = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 80 + Math.random() * 120;
+      const vx = Math.max(20, Math.min(MAP_W - 20, city.x + Math.cos(angle) * dist));
+      const vy = Math.max(20, Math.min(MAP_H - 20, city.y + Math.sin(angle) * dist));
+      let name: string;
+      do {
+        name = VILLAGE_NAMES[Math.floor(Math.random() * VILLAGE_NAMES.length)];
+      } while (usedNames.has(name));
+      usedNames.add(name);
+      const population = 20 + Math.floor(Math.random() * 61);
+      villages.push({
+        id: `village_${villages.length}`,
+        name,
+        x: vx, y: vy,
+        factionId: city.factionId,
+        income: Math.floor(population / 4),
+        population,
+        linkedCityId: city.id,
+      });
+    }
+  }
+  return villages;
+}
+
+function _generateSpecialLocations(): SpecialLocation[] {
+  const locations: SpecialLocation[] = [];
+  const types: SpecialLocation["type"][] = ["ruins", "dungeon", "lair", "shrine", "treasure"];
+  const count = 8 + Math.floor(Math.random() * 5);
+  const usedNames = new Set<string>();
+  for (let i = 0; i < count; i++) {
+    let name: string;
+    do {
+      name = SPECIAL_LOCATION_NAMES[Math.floor(Math.random() * SPECIAL_LOCATION_NAMES.length)];
+    } while (usedNames.has(name));
+    usedNames.add(name);
+    const type = types[Math.floor(Math.random() * types.length)];
+    const difficulty = 5 + Math.floor(Math.random() * 31);
+    const reward: SpecialLocation["reward"] = { gold: 100 + difficulty * 20 };
+    if (Math.random() < 0.4) {
+      const pool = CAMPAIGN_UNITS.filter((u) => u.tier <= 3);
+      const unit = pool[Math.floor(Math.random() * pool.length)];
+      reward.unitId = unit.id;
+      reward.unitCount = 1 + Math.floor(Math.random() * 3);
+    }
+    locations.push({
+      id: `loc_${i}`,
+      name,
+      x: 60 + Math.random() * (MAP_W - 120),
+      y: 60 + Math.random() * (MAP_H - 120),
+      type,
+      explored: false,
+      difficulty,
+      reward,
+    });
+  }
+  return locations;
 }
 
 function _generateRovingBands(cities: CampaignCity[], factions: RaceDef[]): CampaignParty[] {
@@ -707,10 +819,15 @@ export class WarbandCampaign {
 
   // Battle state
   private _inBattle = false;
-  private _battlePlayerArmy: { unitId: string; count: number }[] = [];
-  private _battleEnemyArmy: { unitId: string; count: number }[] = [];
+  private _battlePlayerArmy: { unitId: string; count: number; xp: number }[] = [];
+  private _battleEnemyArmy: { unitId: string; count: number; xp: number }[] = [];
   private _battleEnemyPartyId: string | null = null;
   private _battleEnemyCityId: string | null = null;
+  private _battleLocationId: string | null = null;
+
+  // UI panels for villages/locations
+  private _villagePanel: HTMLDivElement | null = null;
+  private _locationPanel: HTMLDivElement | null = null;
 
   // Three.js battle systems (reused from WarbandGame)
   private _battleSceneManager: WarbandSceneManager | null = null;
@@ -759,6 +876,8 @@ export class WarbandCampaign {
     const terrain = _generateTerrain();
     const cities = _generateCities(factionsOnMap);
     const parties = _generateRovingBands(cities, factionsOnMap);
+    const villages = _generateVillages(cities);
+    const specialLocations = _generateSpecialLocations();
 
     // Bake static ground texture (only done once)
     this._groundTexture = _bakeGroundTexture(terrain);
@@ -776,9 +895,9 @@ export class WarbandCampaign {
       y: py,
       factionId: playerFaction,
       army: [
-        { unitId: "swordsman", count: 5 },
-        { unitId: "archer", count: 3 },
-        { unitId: "pikeman", count: 2 },
+        { unitId: "swordsman", count: 5, xp: 0 },
+        { unitId: "archer", count: 3, xp: 0 },
+        { unitId: "pikeman", count: 2, xp: 0 },
       ],
       armyTotal: 10,
       targetX: px,
@@ -794,6 +913,8 @@ export class WarbandCampaign {
       playerParty,
       parties,
       cities,
+      villages,
+      specialLocations,
       terrain,
       paused: false,
       gameOver: false,
@@ -918,6 +1039,7 @@ export class WarbandCampaign {
       <span style="color:#88aacc">Army: ${s.playerParty.armyTotal}/${MAX_PARTY_SIZE + this._getPerkCount("commander") * 5}</span>
       ${this._renderHeroLevelBar()}
       <span style="color:#88aa66">Cities: ${citiesOwned}/${totalCities}</span>
+      ${this._renderFactionRelationIndicators()}
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
         <span style="color:#777;font-size:11px">Speed:</span>
         ${[1, 2, 4].map((sp) => `
@@ -995,7 +1117,8 @@ export class WarbandCampaign {
     // Garrison display
     const garrisonHTML = city.garrison.map((g) => {
       const uDef = CAMPAIGN_UNITS.find((u) => u.id === g.unitId);
-      return `<span style="margin-right:10px">${uDef?.name ?? g.unitId} x${g.count}</span>`;
+      const xpDisplay = city.factionId === this._state!.playerFaction ? ` <span style="color:#aa8833;font-size:10px">${_xpBar(g.xp)}</span>` : "";
+      return `<span style="margin-right:10px">${uDef?.name ?? g.unitId} x${g.count}${xpDisplay}</span>`;
     }).join("");
 
     // Hire list (only if owned and close enough)
@@ -1054,6 +1177,7 @@ export class WarbandCampaign {
         <div>
           <h2 style="font-size:24px;color:${factionColor};margin:0">${city.name}</h2>
           <span style="font-size:12px;color:#887766">${factionDef?.name ?? city.factionId} — ${factionDef?.title ?? ""}</span>
+          ${!isOwned ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:6px;vertical-align:middle;background:${this._relationColor(this._getRelation(this._state!.playerFaction, city.factionId))}" title="Relation: ${this._getRelation(this._state!.playerFaction, city.factionId)} (${this._getRelationStatus(this._state!.playerFaction, city.factionId)})"></span>` : ""}
         </div>
         <button id="camp-close-city" style="
           padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
@@ -1111,11 +1235,11 @@ export class WarbandCampaign {
     if (this._state.playerParty.armyTotal >= MAX_PARTY_SIZE + this._getPerkCount("commander") * 5) return;
 
     this._state.gold -= cost;
-    const existing = this._state.playerParty.army.find((a) => a.unitId === unitId);
+    const existing = this._state.playerParty.army.find((a) => a.unitId === unitId && a.xp === 0);
     if (existing) {
       existing.count++;
     } else {
-      this._state.playerParty.army.push({ unitId, count: 1 });
+      this._state.playerParty.army.push({ unitId, count: 1, xp: 0 });
     }
     this._state.playerParty.armyTotal++;
     this._addLog(`Hired 1 ${unitId.replace(/_/g, " ")} for ${cost}g.`);
@@ -1145,7 +1269,8 @@ export class WarbandCampaign {
 
     const armyHTML = party.army.map((a) => {
       const uDef = CAMPAIGN_UNITS.find((u) => u.id === a.unitId);
-      return `<span style="margin-right:10px">${uDef?.name ?? a.unitId} x${a.count}</span>`;
+      const xpDisplay = party.isPlayer ? ` <span style="color:#aa8833;font-size:10px">${_xpBar(a.xp)}</span>` : "";
+      return `<span style="margin-right:10px">${uDef?.name ?? a.unitId} x${a.count}${xpDisplay}</span>`;
     }).join("");
 
     this._partyPanel.innerHTML = `
@@ -1156,7 +1281,7 @@ export class WarbandCampaign {
           background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
         ">X</button>
       </div>
-      <div style="font-size:12px;color:#998877;margin-bottom:6px">${factionDef?.name ?? party.factionId} | ${party.armyTotal} units</div>
+      <div style="font-size:12px;color:#998877;margin-bottom:6px">${factionDef?.name ?? party.factionId} | ${party.armyTotal} units${!party.isPlayer ? ` <span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:4px;vertical-align:middle;background:${this._relationColor(this._getRelation(this._state!.playerFaction, party.factionId))}" title="Relation: ${this._getRelation(this._state!.playerFaction, party.factionId)} (${this._getRelationStatus(this._state!.playerFaction, party.factionId)})"></span>` : ""}</div>
       <div style="font-size:12px;color:#ccc;line-height:1.6">${armyHTML}</div>
       ${canAttack ? `
         <button id="camp-attack-party" style="
@@ -1194,6 +1319,164 @@ export class WarbandCampaign {
   }
 
   // ---------------------------------------------------------------------------
+  // Village panel
+  // ---------------------------------------------------------------------------
+
+  private _showVillagePanel(village: CampaignVillage): void {
+    if (!this._state) return;
+    this._removeVillagePanel();
+    this._state.paused = true;
+
+    const factionDef = CAMPAIGN_FACTIONS.find((f) => f.id === village.factionId);
+    const factionColor = factionDef ? `#${factionDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
+    const isOwned = village.factionId === this._state.playerFaction;
+    const dist = Math.hypot(village.x - this._state.playerParty.x, village.y - this._state.playerParty.y);
+    const canRaid = !isOwned && dist < 60;
+
+    this._villagePanel = document.createElement("div");
+    this._villagePanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:380px;max-height:60vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid ${factionColor};border-radius:10px;
+      padding:20px;z-index:10;
+    `;
+
+    this._villagePanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="color:${factionColor};margin:0">${village.name}</h3>
+        <button id="camp-close-village" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="font-size:12px;color:#998877;margin-bottom:6px">${factionDef?.name ?? village.factionId} Village</div>
+      <div style="font-size:12px;color:#ccc;margin-bottom:4px">Population: ${village.population}</div>
+      <div style="font-size:12px;color:#ccc;margin-bottom:4px">Income: ${village.income}g/day</div>
+      <div style="font-size:12px;color:#ccc;margin-bottom:8px">Linked City: ${this._state.cities.find((c) => c.id === village.linkedCityId)?.name ?? "Unknown"}</div>
+      ${canRaid ? `
+        <button id="camp-raid-village" style="
+          margin-top:10px;padding:8px 20px;font-size:13px;font-weight:bold;
+          border:2px solid #cc4444;border-radius:6px;
+          background:rgba(204,68,68,0.2);color:#ff6666;
+          cursor:pointer;font-family:inherit;width:100%;
+        ">Raid Village (+${village.population * 2}g)</button>
+      ` : ""}
+    `;
+
+    this._container!.appendChild(this._villagePanel);
+
+    document.getElementById("camp-close-village")?.addEventListener("click", () => {
+      this._removeVillagePanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    document.getElementById("camp-raid-village")?.addEventListener("click", () => {
+      if (!this._state) return;
+      const goldGain = village.population * 2;
+      this._state.gold += goldGain;
+      village.factionId = this._state.playerFaction;
+      const oldPop = village.population;
+      village.population = Math.floor(oldPop * 0.7);
+      village.income = Math.floor(village.population / 4);
+      this._addLog(`Raided ${village.name}! +${goldGain}g. Population dropped from ${oldPop} to ${village.population}.`);
+      this._removeVillagePanel();
+      this._state.paused = false;
+    });
+  }
+
+  private _removeVillagePanel(): void {
+    if (this._villagePanel?.parentNode) {
+      this._villagePanel.parentNode.removeChild(this._villagePanel);
+      this._villagePanel = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Special location panel
+  // ---------------------------------------------------------------------------
+
+  private _showLocationPanel(loc: SpecialLocation): void {
+    if (!this._state) return;
+    this._removeLocationPanel();
+    this._state.paused = true;
+
+    const dist = Math.hypot(loc.x - this._state.playerParty.x, loc.y - this._state.playerParty.y);
+    const canExplore = !loc.explored && dist < 60;
+
+    const typeColor = loc.type === "lair" ? "#cc4444" : loc.type === "shrine" ? "#ffd700" : loc.type === "treasure" ? "#cc8844" : loc.type === "dungeon" ? "#6666cc" : "#aa9977";
+
+    this._locationPanel = document.createElement("div");
+    this._locationPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:400px;max-height:60vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid ${typeColor};border-radius:10px;
+      padding:20px;z-index:10;
+    `;
+
+    const rewardText = loc.reward.unitId
+      ? `${loc.reward.gold}g + ${loc.reward.unitCount} ${loc.reward.unitId.replace(/_/g, " ")}`
+      : `${loc.reward.gold}g`;
+
+    this._locationPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="color:${typeColor};margin:0">${loc.name}</h3>
+        <button id="camp-close-location" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="font-size:12px;color:#998877;margin-bottom:6px;text-transform:capitalize">${loc.type} — Difficulty: ${loc.difficulty}</div>
+      <div style="font-size:12px;color:#ccc;margin-bottom:4px">Status: ${loc.explored ? '<span style="color:#666">Explored</span>' : '<span style="color:#ffcc44">Unexplored</span>'}</div>
+      ${!loc.explored ? `<div style="font-size:12px;color:#aa9977;margin-bottom:8px">Potential reward: ${rewardText}</div>` : ""}
+      ${!canExplore && !loc.explored && dist >= 60 ? `<div style="color:#cc8844;font-size:12px;margin-bottom:8px">Move closer to explore.</div>` : ""}
+      ${canExplore ? `
+        <button id="camp-explore-location" style="
+          margin-top:10px;padding:8px 20px;font-size:13px;font-weight:bold;
+          border:2px solid ${typeColor};border-radius:6px;
+          background:rgba(${loc.type === "lair" ? "204,68,68" : loc.type === "shrine" ? "218,165,32" : "150,130,100"},0.2);color:${typeColor};
+          cursor:pointer;font-family:inherit;width:100%;
+        ">Explore (${loc.difficulty} enemies)</button>
+      ` : ""}
+    `;
+
+    this._container!.appendChild(this._locationPanel);
+
+    document.getElementById("camp-close-location")?.addEventListener("click", () => {
+      this._removeLocationPanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    document.getElementById("camp-explore-location")?.addEventListener("click", () => {
+      this._removeLocationPanel();
+      this._startLocationBattle(loc);
+    });
+  }
+
+  private _removeLocationPanel(): void {
+    if (this._locationPanel?.parentNode) {
+      this._locationPanel.parentNode.removeChild(this._locationPanel);
+      this._locationPanel = null;
+    }
+  }
+
+  private _startLocationBattle(loc: SpecialLocation): void {
+    if (!this._state || this._inBattle) return;
+    this._inBattle = true;
+    this._state.paused = true;
+    this._battleEnemyPartyId = null;
+    this._battleEnemyCityId = null;
+    this._battleLocationId = loc.id;
+    this._battlePlayerArmy = this._state.playerParty.army.map((a) => ({ ...a }));
+
+    // Generate enemies based on difficulty
+    const enemyArmy = _generateGarrison("enemy", loc.difficulty);
+    this._battleEnemyArmy = enemyArmy;
+
+    this._addLog(`Exploring ${loc.name}! (${loc.difficulty} enemies)`);
+    this._launchBattle();
+  }
+
+  // ---------------------------------------------------------------------------
   // Input bindings
   // ---------------------------------------------------------------------------
 
@@ -1206,6 +1489,13 @@ export class WarbandCampaign {
           if (this._state) { this._state.selectedCity = null; this._state.paused = false; }
         } else if (this._partyPanel) {
           this._removePartyPanel();
+          if (this._state) this._state.paused = false;
+        } else if (this._villagePanel) {
+          this._removeVillagePanel();
+          if (this._state) this._state.paused = false;
+        } else if (this._locationPanel) {
+          this._removeLocationPanel();
+          if (this._state) this._state.paused = false;
         } else if (this._state) {
           this._state.paused = !this._state.paused;
           this._updateTopBar();
@@ -1213,6 +1503,14 @@ export class WarbandCampaign {
       }
       if (e.code === "Space") {
         if (this._state) { this._state.paused = !this._state.paused; this._updateTopBar(); }
+      }
+      if (e.code === "KeyD") {
+        if (this._diplomacyPanel) {
+          this._removeDiplomacyPanel();
+          if (this._state) this._state.paused = false;
+        } else if (!this._cityPanel && !this._partyPanel) {
+          this._showDiplomacyPanel();
+        }
       }
     };
     this._keyUpHandler = (e: KeyboardEvent) => {
@@ -1246,6 +1544,22 @@ export class WarbandCampaign {
       if (Math.hypot(pp.x - mx, pp.y - my) < PARTY_RADIUS + 5) {
         this._showPartyPanel(pp);
         return;
+      }
+
+      // Check village clicks
+      for (const village of this._state.villages) {
+        if (Math.hypot(village.x - mx, village.y - my) < 12) {
+          this._showVillagePanel(village);
+          return;
+        }
+      }
+
+      // Check special location clicks
+      for (const loc of this._state.specialLocations) {
+        if (Math.hypot(loc.x - mx, loc.y - my) < 12) {
+          this._showLocationPanel(loc);
+          return;
+        }
       }
 
       // Otherwise set move target
@@ -1341,6 +1655,15 @@ export class WarbandCampaign {
       const ownedCities = s.cities.filter((c) => c.factionId === s.playerFaction);
       const merchantMult = 1 + this._getPerkCount("merchant") * 0.2;
       s.gold += Math.round(ownedCities.length * 30 * merchantMult);
+      // Village income
+      let villageIncome = 0;
+      for (const v of s.villages) {
+        if (v.factionId === s.playerFaction) villageIncome += v.income;
+        // Village population recovery
+        if (v.population < 100) v.population = Math.min(100, v.population + 1);
+        v.income = Math.floor(v.population / 4);
+      }
+      s.gold += Math.round(villageIncome * merchantMult);
       // Army upkeep
       let totalUpkeep = 0;
       for (const slot of s.playerParty.army) {
@@ -1349,6 +1672,19 @@ export class WarbandCampaign {
       s.gold -= totalUpkeep;
       if (s.day % 5 === 0) {
         this._addLog(`Day ${s.day} — Income: ${GOLD_PER_DAY + ownedCities.length * 30}g, Upkeep: -${totalUpkeep}g`);
+      }
+      // Diplomacy: every 10 days, relations drift toward 0 by 2 points (grudges fade)
+      if (s.day % 10 === 0) {
+        for (const [fA, innerMap] of s.factionRelations) {
+          for (const [fB, val] of innerMap) {
+            if (fA === fB) continue;
+            if (val > 0) {
+              innerMap.set(fB, Math.max(0, val - 2));
+            } else if (val < 0) {
+              innerMap.set(fB, Math.min(0, val + 2));
+            }
+          }
+        }
       }
       // Desertion when gold is negative
       if (s.gold < 0 && s.playerParty.army.length > 0 && Math.random() < 0.1) {
@@ -1371,7 +1707,7 @@ export class WarbandCampaign {
           const count = 1 + Math.floor(Math.random() * 3);
           const existing = city.garrison.find((g) => g.unitId === unit.id);
           if (existing) existing.count += count;
-          else city.garrison.push({ unitId: unit.id, count });
+          else city.garrison.push({ unitId: unit.id, count, xp: 0 });
           city.garrisonTotal += count;
         }
       }
@@ -1417,9 +1753,11 @@ export class WarbandCampaign {
       this._moveParty(party);
     }
 
-    // Check collisions (player vs enemy parties)
+    // Check collisions (player vs enemy parties) — respect diplomacy
     for (const party of s.parties) {
       if (party.factionId === s.playerFaction) continue;
+      const relStatus = this._getRelationStatus(party.factionId, s.playerFaction);
+      if (relStatus !== "hostile") continue; // neutral and friendly factions don't attack
       const dist = Math.hypot(party.x - s.playerParty.x, party.y - s.playerParty.y);
       if (dist < ENGAGEMENT_DIST) {
         // Intimidate perk: chance enemies flee
@@ -1515,11 +1853,12 @@ export class WarbandCampaign {
     const roll = Math.random();
 
     if (roll < 0.3) {
-      // Move toward nearest enemy faction city
+      // Move toward nearest hostile faction city
       let nearest: CampaignCity | null = null;
       let nearestDist = Infinity;
       for (const city of s.cities) {
         if (city.factionId === party.factionId) continue;
+        if (this._getRelationStatus(party.factionId, city.factionId) !== "hostile") continue;
         const d = Math.hypot(city.x - party.x, city.y - party.y);
         if (d < nearestDist) { nearestDist = d; nearest = city; }
       }
@@ -1531,13 +1870,13 @@ export class WarbandCampaign {
     }
 
     if (roll < 0.5) {
-      // Chase nearest enemy faction party (not same faction)
+      // Chase nearest hostile faction party
       let nearest: CampaignParty | null = null;
       let nearestDist = Infinity;
       for (const other of s.parties) {
         if (other === party || other.factionId === party.factionId) continue;
-        // Skip player faction parties unless hostile (different faction)
         if (other.isPlayer) continue;
+        if (this._getRelationStatus(party.factionId, other.factionId) !== "hostile") continue;
         const d = Math.hypot(other.x - party.x, other.y - party.y);
         if (d < nearestDist) { nearestDist = d; nearest = other; }
       }
@@ -1559,8 +1898,8 @@ export class WarbandCampaign {
     }
 
     if (roll < 0.8) {
-      // Move toward player if hostile
-      if (party.factionId !== s.playerFaction) {
+      // Move toward player only if hostile
+      if (this._getRelationStatus(party.factionId, s.playerFaction) === "hostile") {
         party.targetX = s.playerParty.x + (Math.random() - 0.5) * 200;
         party.targetY = s.playerParty.y + (Math.random() - 0.5) * 200;
         return;
@@ -1759,6 +2098,141 @@ export class WarbandCampaign {
       ctx.fillText(`${city.garrisonTotal}`, city.x, city.y + 43);
     }
 
+    // ---- Villages --------------------------------
+    for (const village of s.villages) {
+      const vColor = _factionHex(village.factionId);
+      const [vr, vg, vb] = _factionRGB(village.factionId);
+      const isOwnVillage = village.factionId === s.playerFaction;
+
+      // House body (rectangle)
+      ctx.fillStyle = `rgba(${vr},${vg},${vb},0.7)`;
+      ctx.fillRect(village.x - 5, village.y - 2, 10, 8);
+      ctx.strokeStyle = isOwnVillage ? `rgba(${vr},${vg},${vb},0.9)` : "rgba(100,90,70,0.5)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(village.x - 5, village.y - 2, 10, 8);
+
+      // Roof (triangle)
+      ctx.fillStyle = `rgba(${Math.min(255, vr + 60)},${Math.min(255, vg + 40)},${Math.min(255, vb + 20)},0.8)`;
+      ctx.beginPath();
+      ctx.moveTo(village.x - 7, village.y - 2);
+      ctx.lineTo(village.x, village.y - 9);
+      ctx.lineTo(village.x + 7, village.y - 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Door
+      ctx.fillStyle = "rgba(20,15,10,0.6)";
+      ctx.fillRect(village.x - 1.5, village.y + 2, 3, 4);
+
+      // Village name
+      ctx.fillStyle = isOwnVillage ? "#bbcc99" : "#aa9977";
+      ctx.font = "9px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(village.name, village.x, village.y + 16);
+
+      // Population badge
+      ctx.fillStyle = "rgba(10,8,5,0.6)";
+      ctx.beginPath();
+      ctx.roundRect(village.x - 10, village.y + 18, 20, 10, 2);
+      ctx.fill();
+      ctx.fillStyle = "#998877";
+      ctx.font = "8px sans-serif";
+      ctx.fillText(`pop:${village.population}`, village.x, village.y + 26);
+    }
+
+    // ---- Special locations -----------------------
+    for (const loc of s.specialLocations) {
+      const lx = loc.x;
+      const ly = loc.y;
+      const pulse = 0.5 + Math.sin(t * 3 + lx) * 0.3;
+
+      if (loc.explored) {
+        // Grayed out
+        ctx.globalAlpha = 0.35;
+      }
+
+      // Glow effect for unexplored
+      if (!loc.explored) {
+        const glowColor = loc.type === "shrine" ? "rgba(255,215,0," : loc.type === "treasure" ? "rgba(255,200,50," : loc.type === "lair" ? "rgba(200,50,50," : loc.type === "dungeon" ? "rgba(100,100,200," : "rgba(180,160,120,";
+        ctx.fillStyle = glowColor + (pulse * 0.15) + ")";
+        ctx.beginPath();
+        ctx.arc(lx, ly, 14, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (loc.type === "lair") {
+        // Skull icon
+        ctx.fillStyle = "#cc4444";
+        ctx.beginPath();
+        ctx.arc(lx, ly - 3, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(lx - 2, ly - 4, 1.5, 2);
+        ctx.fillRect(lx + 0.5, ly - 4, 1.5, 2);
+        ctx.fillRect(lx - 2, ly + 2, 4, 2);
+      } else if (loc.type === "shrine") {
+        // Star icon
+        ctx.fillStyle = "#ffd700";
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+          const r = i === 0 ? 6 : 6;
+          if (i === 0) ctx.moveTo(lx + Math.cos(a) * r, ly + Math.sin(a) * r);
+          else ctx.lineTo(lx + Math.cos(a) * r, ly + Math.sin(a) * r);
+          const inner = a + (2 * Math.PI) / 10;
+          ctx.lineTo(lx + Math.cos(inner) * 3, ly + Math.sin(inner) * 3);
+        }
+        ctx.closePath();
+        ctx.fill();
+      } else if (loc.type === "treasure") {
+        // Chest icon
+        ctx.fillStyle = "#cc8844";
+        ctx.fillRect(lx - 5, ly - 2, 10, 7);
+        ctx.fillStyle = "#aa6622";
+        ctx.fillRect(lx - 5, ly - 5, 10, 3);
+        ctx.beginPath();
+        ctx.arc(lx, ly - 5, 5, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = "#ffd700";
+        ctx.fillRect(lx - 1, ly, 2, 3);
+      } else if (loc.type === "ruins") {
+        // Pillar icon
+        ctx.fillStyle = "#aa9977";
+        ctx.fillRect(lx - 2, ly - 8, 4, 12);
+        ctx.fillRect(lx - 4, ly - 9, 8, 2);
+        ctx.fillRect(lx - 4, ly + 3, 8, 2);
+        // Broken part
+        ctx.fillStyle = "rgba(10,8,5,0.5)";
+        ctx.fillRect(lx + 1, ly - 6, 2, 4);
+      } else if (loc.type === "dungeon") {
+        // Door icon
+        ctx.fillStyle = "#666688";
+        ctx.fillRect(lx - 4, ly - 7, 8, 12);
+        ctx.strokeStyle = "#444466";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(lx - 4, ly - 7, 8, 12);
+        ctx.beginPath();
+        ctx.arc(lx, ly - 7, 4, Math.PI, 0);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#333344";
+        ctx.fillRect(lx - 2, ly - 4, 4, 9);
+        ctx.fillStyle = "#ffd700";
+        ctx.beginPath();
+        ctx.arc(lx + 1, ly + 1, 0.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1.0;
+
+      // Location name
+      ctx.fillStyle = loc.explored ? "#666" : "#ccbb99";
+      ctx.font = "8px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(loc.name, lx, ly + 14);
+    }
+
     // ---- Roving parties -----------------------
     for (const party of s.parties) {
       const color = _factionHex(party.factionId);
@@ -1796,7 +2270,8 @@ export class WarbandCampaign {
       ctx.lineTo(party.x - PARTY_RADIUS, party.y - PARTY_RADIUS * 0.3);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = isAllied ? `rgba(100,255,100,0.6)` : `rgba(255,80,60,0.5)`;
+      const partyRelStatus = isAllied ? "friendly" : this._getRelationStatus(party.factionId, s.playerFaction);
+      ctx.strokeStyle = partyRelStatus === "friendly" ? `rgba(100,255,100,0.6)` : partyRelStatus === "neutral" ? `rgba(220,200,60,0.5)` : `rgba(255,80,60,0.5)`;
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
@@ -2060,6 +2535,30 @@ export class WarbandCampaign {
       ctx.fill();
     }
 
+    // Villages on minimap (small dots)
+    for (const village of s.villages) {
+      ctx.fillStyle = _factionHex(village.factionId);
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.arc(mx + village.x * scaleX, my + village.y * scaleY, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Special locations on minimap (diamond shapes)
+    for (const loc of s.specialLocations) {
+      ctx.fillStyle = loc.explored ? "#555" : "#ffd700";
+      ctx.beginPath();
+      const lmx = mx + loc.x * scaleX;
+      const lmy = my + loc.y * scaleY;
+      ctx.moveTo(lmx, lmy - 2.5);
+      ctx.lineTo(lmx + 2.5, lmy);
+      ctx.lineTo(lmx, lmy + 2.5);
+      ctx.lineTo(lmx - 2.5, lmy);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     // Cities on minimap
     for (const city of s.cities) {
       const color = _factionHex(city.factionId);
@@ -2114,6 +2613,7 @@ export class WarbandCampaign {
     this._state.paused = true;
     this._battleEnemyPartyId = enemy.id;
     this._battleEnemyCityId = null;
+    this._battleLocationId = null;
     this._battlePlayerArmy = this._state.playerParty.army.map((a) => ({ ...a }));
     this._battleEnemyArmy = enemy.army.map((a) => ({ ...a }));
 
@@ -2128,6 +2628,7 @@ export class WarbandCampaign {
     this._state.paused = true;
     this._battleEnemyPartyId = null;
     this._battleEnemyCityId = city.id;
+    this._battleLocationId = null;
     this._battlePlayerArmy = this._state.playerParty.army.map((a) => ({ ...a }));
     this._battleEnemyArmy = city.garrison.map((g) => ({ ...g }));
 
@@ -2576,18 +3077,53 @@ export class WarbandCampaign {
     }
 
     // Rebuild player army from survivors
-    const newArmy: { unitId: string; count: number }[] = [];
+    const newArmy: { unitId: string; count: number; xp: number }[] = [];
     for (const entry of this._state.playerParty.army) {
       const uDef = this._findCampaignUnit(entry.unitId);
       if (!uDef) continue;
       const survived = survivorNames.get(uDef.name) ?? 0;
       if (survived > 0) {
-        newArmy.push({ unitId: entry.unitId, count: Math.min(survived, entry.count) });
+        newArmy.push({ unitId: entry.unitId, count: Math.min(survived, entry.count), xp: entry.xp });
         survivorNames.set(uDef.name, Math.max(0, survived - entry.count));
       }
     }
-    this._state.playerParty.army = newArmy;
-    this._state.playerParty.armyTotal = newArmy.reduce((s, a) => s + a.count, 0);
+
+    // Award XP to surviving units
+    const xpGain = won ? XP_WIN : XP_LOSS;
+    for (const entry of newArmy) {
+      entry.xp += xpGain;
+    }
+
+    // Check for promotions
+    for (let i = 0; i < newArmy.length; i++) {
+      const entry = newArmy[i];
+      if (entry.xp >= XP_PROMOTE_THRESHOLD) {
+        const upgrade = UNIT_UPGRADE_PATH[entry.unitId];
+        if (upgrade && upgrade !== entry.unitId) {
+          const oldName = entry.unitId;
+          entry.unitId = upgrade;
+          entry.xp = 0;
+          this._addLog(`${oldName.replace(/_/g, " ")} promoted to ${upgrade.replace(/_/g, " ")}!`);
+        } else {
+          // No upgrade path or same unit, just cap xp
+          entry.xp = XP_PROMOTE_THRESHOLD;
+        }
+      }
+    }
+
+    // Merge entries that share unitId+xp after promotions
+    const merged: { unitId: string; count: number; xp: number }[] = [];
+    for (const entry of newArmy) {
+      const existing = merged.find((m) => m.unitId === entry.unitId && m.xp === entry.xp);
+      if (existing) {
+        existing.count += entry.count;
+      } else {
+        merged.push({ ...entry });
+      }
+    }
+
+    this._state.playerParty.army = merged;
+    this._state.playerParty.armyTotal = merged.reduce((s, a) => s + a.count, 0);
 
     if (won) {
       this._state.gold += loot;
@@ -2599,8 +3135,24 @@ export class WarbandCampaign {
 
       // Handle enemy party destruction
       if (this._battleEnemyPartyId) {
+        const defeated = this._state.parties.find((p) => p.id === this._battleEnemyPartyId);
+        const defeatedFaction = defeated?.factionId;
         this._state.parties = this._state.parties.filter((p) => p.id !== this._battleEnemyPartyId);
         this._addLog(`Enemy warband destroyed! +${loot}g`);
+
+        // Diplomacy: attacking a faction's party: -30 with them, -10 with their friends
+        if (defeatedFaction) {
+          this._modRelation(this._state.playerFaction, defeatedFaction, -30);
+          for (const [fId] of this._state.factionRelations) {
+            if (fId === this._state.playerFaction || fId === defeatedFaction) continue;
+            if (this._getRelationStatus(fId, defeatedFaction) === "friendly") {
+              this._modRelation(this._state.playerFaction, fId, -10);
+            }
+            if (this._getRelationStatus(fId, defeatedFaction) === "hostile") {
+              this._modRelation(this._state.playerFaction, fId, 10);
+            }
+          }
+        }
       }
 
       // Handle city capture
@@ -2612,6 +3164,42 @@ export class WarbandCampaign {
           city.garrison = [];
           city.garrisonTotal = 0;
           this._addLog(`${city.name} captured from ${oldFaction}! +${loot}g`);
+
+          // Flip linked villages
+          for (const v of this._state.villages) {
+            if (v.linkedCityId === city.id) {
+              v.factionId = this._state.playerFaction;
+            }
+          }
+
+          // Diplomacy: capturing a city: -40 with that faction, -10 with their friends
+          this._modRelation(this._state.playerFaction, oldFaction, -40);
+          for (const [fId] of this._state.factionRelations) {
+            if (fId === this._state.playerFaction || fId === oldFaction) continue;
+            if (this._getRelationStatus(fId, oldFaction) === "friendly") {
+              this._modRelation(this._state.playerFaction, fId, -10);
+            }
+          }
+        }
+      }
+
+      // Handle special location exploration reward
+      if (this._battleLocationId) {
+        const loc = this._state.specialLocations.find((l) => l.id === this._battleLocationId);
+        if (loc) {
+          loc.explored = true;
+          this._state.gold += loc.reward.gold;
+          this._addLog(`Explored ${loc.name}! Found ${loc.reward.gold}g.`);
+          if (loc.reward.unitId && loc.reward.unitCount) {
+            const existing = this._state.playerParty.army.find((a) => a.unitId === loc.reward.unitId! && a.xp === 0);
+            if (existing) {
+              existing.count += loc.reward.unitCount;
+            } else {
+              this._state.playerParty.army.push({ unitId: loc.reward.unitId, count: loc.reward.unitCount, xp: 0 });
+            }
+            this._state.playerParty.armyTotal += loc.reward.unitCount;
+            this._addLog(`Found ${loc.reward.unitCount} ${loc.reward.unitId.replace(/_/g, " ")}!`);
+          }
         }
       }
     } else {
@@ -2621,6 +3209,7 @@ export class WarbandCampaign {
 
     this._battleEnemyPartyId = null;
     this._battleEnemyCityId = null;
+    this._battleLocationId = null;
 
     // Respawn AI bands if too few left
     if (this._state.parties.length < 6) {
@@ -2701,6 +3290,97 @@ export class WarbandCampaign {
   }
 
   // ---------------------------------------------------------------------------
+  // AI auto-resolve helpers
+  // ---------------------------------------------------------------------------
+
+  private _autoResolvePartyBattle(a: CampaignParty, b: CampaignParty): void {
+    if (!this._state) return;
+    const aTotal = a.armyTotal;
+    const bTotal = b.armyTotal;
+    const total = aTotal + bTotal;
+    if (total === 0) return;
+
+    // Side with more troops wins, proportional survival
+    const aWins = aTotal >= bTotal;
+    const winner = aWins ? a : b;
+    const loser = aWins ? b : a;
+    const ratio = Math.min(winner.armyTotal, loser.armyTotal) / Math.max(winner.armyTotal, loser.armyTotal);
+    const survivalRate = Math.max(0.3, 1 - ratio * 0.7);
+
+    // Reduce winner's army
+    for (const slot of winner.army) {
+      slot.count = Math.max(1, Math.round(slot.count * survivalRate));
+    }
+    winner.armyTotal = winner.army.reduce((s, a) => s + a.count, 0);
+
+    // Remove loser
+    this._state.parties = this._state.parties.filter((p) => p.id !== loser.id);
+
+    // Find nearest city for location context
+    let nearCity = "";
+    let nearDist = Infinity;
+    for (const c of this._state.cities) {
+      const d = Math.hypot(c.x - a.x, c.y - a.y);
+      if (d < nearDist) { nearDist = d; nearCity = c.name; }
+    }
+    this._addLog(`${winner.name} defeated ${loser.name} near ${nearCity}`);
+  }
+
+  private _autoResolveCitySiege(attacker: CampaignParty, city: CampaignCity): void {
+    if (!this._state) return;
+    // Attacker needs 1.5x garrison to capture
+    if (attacker.armyTotal < city.garrisonTotal * 1.5) return;
+
+    const oldFaction = city.factionId;
+    // Reduce attacker proportionally
+    const losses = Math.min(attacker.armyTotal - 1, Math.round(city.garrisonTotal * 0.8));
+    let remaining = losses;
+    for (const slot of attacker.army) {
+      const lose = Math.min(slot.count - 1, Math.round(remaining * slot.count / attacker.armyTotal));
+      slot.count -= lose;
+      remaining -= lose;
+    }
+    attacker.army = attacker.army.filter((s) => s.count > 0);
+    attacker.armyTotal = attacker.army.reduce((s, a) => s + a.count, 0);
+
+    // Capture city
+    city.factionId = attacker.factionId;
+    const newGarrisonSize = Math.min(5, attacker.armyTotal);
+    city.garrison = _generateGarrison(attacker.factionId, newGarrisonSize);
+    city.garrisonTotal = city.garrison.reduce((s, g) => s + g.count, 0);
+
+    // Flip linked villages
+    for (const v of this._state.villages) {
+      if (v.linkedCityId === city.id) {
+        v.factionId = attacker.factionId;
+      }
+    }
+
+    const factionDef = CAMPAIGN_FACTIONS.find((f) => f.id === attacker.factionId);
+    const oldDef = CAMPAIGN_FACTIONS.find((f) => f.id === oldFaction);
+    this._addLog(`${factionDef?.name ?? attacker.factionId} captured ${city.name} from ${oldDef?.name ?? oldFaction}!`);
+
+    // Update diplomacy
+    this._modRelation(attacker.factionId, oldFaction, -40);
+  }
+
+  private _checkFactionElimination(): void {
+    if (!this._state) return;
+    for (const faction of CAMPAIGN_FACTIONS) {
+      if (faction.id === this._state.playerFaction) continue;
+      const hasCities = this._state.cities.some((c) => c.factionId === faction.id);
+      const hasParties = this._state.parties.some((p) => p.factionId === faction.id);
+      if (!hasCities && !hasParties) {
+        // Check if faction was recently eliminated (avoid repeated logs)
+        const elimMsg = `${faction.name} has been eliminated!`;
+        if (!this._state.log.some((l) => l.includes(elimMsg))) {
+          this._addLog(elimMsg);
+        }
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Diplomacy helpers
   // ---------------------------------------------------------------------------
 
@@ -2772,6 +3452,25 @@ export class WarbandCampaign {
     }
     if (this._state.playerFaction === factionId) total += this._state.playerParty.armyTotal;
     return total;
+  }
+
+  /** Render small colored dots next to faction names in the top bar. */
+  private _renderFactionRelationIndicators(): string {
+    if (!this._state) return "";
+    const factions = this._getNonPlayerFactions();
+    return `<span style="display:flex;gap:4px;align-items:center;margin-left:4px">` +
+      factions.map((fId) => {
+        const fDef = CAMPAIGN_FACTIONS.find((f) => f.id === fId);
+        const fColor = fDef ? `#${fDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
+        const rel = this._getRelation(this._state!.playerFaction, fId);
+        const relColor = this._relationColor(rel);
+        const status = this._getRelationStatus(this._state!.playerFaction, fId);
+        const label = status === "hostile" ? "H" : status === "friendly" ? "F" : "N";
+        return `<span title="${fDef?.name ?? fId}: ${rel > 0 ? "+" : ""}${rel} (${status})" style="
+          display:inline-flex;align-items:center;gap:2px;font-size:10px;color:${fColor};cursor:default;
+        "><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${relColor}"></span>${label}</span>`;
+      }).join("") +
+      `<span style="color:#555;font-size:10px;margin-left:2px;cursor:pointer" title="Press D for diplomacy">[D]</span></span>`;
   }
 
   // ---------------------------------------------------------------------------
@@ -3014,7 +3713,7 @@ export class WarbandCampaign {
     if (!this._state) return;
     this._state.heroPerks.push(perkId);
 
-    const perkDef = HERO_PERKS.find((p) => p.id === perkId);
+    const perkDef = (HERO_PERKS as readonly { id: string; name: string; desc: string; color: string }[]).find((p) => p.id === perkId);
     this._addLog(`Perk acquired: ${perkDef?.name ?? perkId}!`);
 
     // Remove modal
@@ -3040,12 +3739,6 @@ export class WarbandCampaign {
     return `<span style="color:#daa520;font-size:12px;letter-spacing:1px" title="XP: ${s.heroXp}/${needed}">Lv.${s.heroLevel} <span style="color:#aa8833">[${bar}]</span></span>`;
   }
 
-  private _addLog(msg: string): void {
-    if (!this._state) return;
-    this._state.log.push(`Day ${this._state.day} — ${msg}`);
-    if (this._state.log.length > 50) this._state.log.shift();
-  }
-
   private _getUnitUpkeep(unitId: string): number {
     const def = CAMPAIGN_UNITS.find((u) => u.id === unitId) ?? Object.values(FACTION_ELITES).find((u) => u.id === unitId);
     const tier = def?.tier ?? 1;
@@ -3062,6 +3755,8 @@ export class WarbandCampaign {
     this._unbindInputs();
     this._removeCityPanel();
     this._removePartyPanel();
+    this._removeVillagePanel();
+    this._removeLocationPanel();
 
     if (this._container?.parentNode) {
       this._container.parentNode.removeChild(this._container);
