@@ -213,6 +213,14 @@ export class DiabloGame {
   private _targetEnemyId: string | null = null;
   private _phaseBeforeOverlay: DiabloPhase = DiabloPhase.CLASS_SELECT;
 
+  // First-person mode
+  private _firstPerson: boolean = false;
+  private _fpYaw: number = 0;
+  private _fpPitch: number = 0;
+  private _pointerLocked: boolean = false;
+  private _mouseDX: number = 0;
+  private _mouseDY: number = 0;
+
   // Bound event handlers
   private _boundKeyDown!: (e: KeyboardEvent) => void;
   private _boundKeyUp!: (e: KeyboardEvent) => void;
@@ -233,6 +241,8 @@ export class DiabloGame {
   private _mpText!: HTMLDivElement;
   private _skillSlots: HTMLDivElement[] = [];
   private _skillCooldownOverlays: HTMLDivElement[] = [];
+  private _fpsCrosshair!: HTMLDivElement;
+  private _viewModeLabel!: HTMLDivElement;
 
   // Minimap
   private _minimapCanvas!: HTMLCanvasElement;
@@ -304,6 +314,13 @@ export class DiabloGame {
     window.addEventListener("mouseup", this._boundMouseUp);
     window.addEventListener("contextmenu", this._boundContextMenu);
     window.addEventListener("resize", this._boundResize);
+    document.addEventListener("pointerlockchange", () => {
+      this._pointerLocked = document.pointerLockElement === this._renderer.canvas;
+      if (!this._pointerLocked && this._firstPerson) {
+        this._firstPerson = false;
+        this._renderer.firstPerson = false;
+      }
+    });
 
     this._buildHUD();
     this._showClassSelect();
@@ -408,6 +425,16 @@ export class DiabloGame {
         this._showSkillSwapMenu();
       } else if (e.code === "KeyF") {
         this._openNearestChest();
+      } else if (e.code === "KeyV") {
+        this._firstPerson = !this._firstPerson;
+        this._renderer.firstPerson = this._firstPerson;
+        if (this._firstPerson) {
+          this._fpYaw = this._state.player.angle;
+          this._fpPitch = 0;
+          this._renderer.canvas.requestPointerLock();
+        } else if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
       }
     } else if (this._state.phase === DiabloPhase.INVENTORY) {
       if (e.code === "Escape" || e.code === "KeyI" || e.code === "KeyT") {
@@ -432,6 +459,10 @@ export class DiabloGame {
   private _onMouseMove(e: MouseEvent): void {
     this._mouseX = e.clientX;
     this._mouseY = e.clientY;
+    if (this._firstPerson && this._pointerLocked) {
+      this._mouseDX += e.movementX;
+      this._mouseDY += e.movementY;
+    }
   }
 
   private _onMouseDown(e: MouseEvent): void {
@@ -2283,6 +2314,28 @@ export class DiabloGame {
       <div id="diablo-gold-loss" style="font-size:16px;color:#ff8888;margin-top:8px;"></div>
     `;
     this._hud.appendChild(this._deathOverlay);
+
+    // FPS crosshair (hidden by default)
+    this._fpsCrosshair = document.createElement("div");
+    this._fpsCrosshair.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;display:none;
+    `;
+    this._fpsCrosshair.innerHTML =
+      `<div style="position:absolute;width:3px;height:3px;border:1px solid rgba(255,255,255,0.9);border-radius:50%;left:-1px;top:-1px"></div>` +
+      `<div style="position:absolute;width:14px;height:2px;background:rgba(255,255,255,0.6);left:5px;top:0"></div>` +
+      `<div style="position:absolute;width:14px;height:2px;background:rgba(255,255,255,0.6);right:5px;top:0;transform:translateX(100%)"></div>` +
+      `<div style="position:absolute;width:2px;height:14px;background:rgba(255,255,255,0.6);left:0;top:5px"></div>` +
+      `<div style="position:absolute;width:2px;height:14px;background:rgba(255,255,255,0.6);left:0;bottom:5px;transform:translateY(100%)"></div>`;
+    this._hud.appendChild(this._fpsCrosshair);
+
+    // View mode indicator (top center)
+    this._viewModeLabel = document.createElement("div");
+    this._viewModeLabel.style.cssText = `
+      position:absolute;top:10px;left:50%;transform:translateX(-50%);
+      font-size:11px;color:#888;letter-spacing:1px;pointer-events:none;
+    `;
+    this._viewModeLabel.textContent = "[V] Toggle First Person";
+    this._hud.appendChild(this._viewModeLabel);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -2290,6 +2343,10 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _updateHUD(): void {
     const p = this._state.player;
+
+    // FPS crosshair + view mode label
+    if (this._fpsCrosshair) this._fpsCrosshair.style.display = this._firstPerson ? "block" : "none";
+    if (this._viewModeLabel) this._viewModeLabel.textContent = this._firstPerson ? "[V] Third Person" : "[V] First Person";
 
     // Health orb
     const hpPct = Math.max(0, p.hp / p.maxHp);
@@ -2455,23 +2512,62 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _processInput(dt: number): void {
     const p = this._state.player;
-    let dx = 0;
-    let dz = 0;
-    if (this._keys.has("KeyW") || this._keys.has("ArrowUp")) dz -= 1;
-    if (this._keys.has("KeyS") || this._keys.has("ArrowDown")) dz += 1;
-    if (this._keys.has("KeyA") || this._keys.has("ArrowLeft")) dx -= 1;
-    if (this._keys.has("KeyD") || this._keys.has("ArrowRight")) dx += 1;
 
-    // Normalize diagonal
-    const len = Math.sqrt(dx * dx + dz * dz);
-    if (len > 0) {
-      dx /= len;
-      dz /= len;
+    if (this._firstPerson && this._pointerLocked) {
+      // FPS mouse look
+      const sens = 0.002;
+      this._fpYaw -= this._mouseDX * sens;
+      this._fpPitch = Math.max(-Math.PI / 2 * 0.95, Math.min(Math.PI / 2 * 0.95, this._fpPitch - this._mouseDY * sens));
+      this._mouseDX = 0;
+      this._mouseDY = 0;
+
+      p.angle = this._fpYaw;
+
+      // WASD relative to facing direction
+      let forward = 0;
+      let strafe = 0;
+      if (this._keys.has("KeyW") || this._keys.has("ArrowUp")) forward = 1;
+      if (this._keys.has("KeyS") || this._keys.has("ArrowDown")) forward = -1;
+      if (this._keys.has("KeyA") || this._keys.has("ArrowLeft")) strafe = -1;
+      if (this._keys.has("KeyD") || this._keys.has("ArrowRight")) strafe = 1;
+
+      const len = Math.sqrt(forward * forward + strafe * strafe);
+      if (len > 0) {
+        forward /= len;
+        strafe /= len;
+      }
+
+      const sinY = Math.sin(this._fpYaw);
+      const cosY = Math.cos(this._fpYaw);
+      const speed = p.moveSpeed;
+      p.x += (-sinY * forward + cosY * strafe) * speed * dt;
+      p.z += (-cosY * forward - sinY * strafe) * speed * dt;
+
+      // Pass pitch to renderer
+      this._renderer.fpPitch = this._fpPitch;
+      this._renderer.fpYaw = this._fpYaw;
+    } else {
+      let dx = 0;
+      let dz = 0;
+      if (this._keys.has("KeyW") || this._keys.has("ArrowUp")) dz -= 1;
+      if (this._keys.has("KeyS") || this._keys.has("ArrowDown")) dz += 1;
+      if (this._keys.has("KeyA") || this._keys.has("ArrowLeft")) dx -= 1;
+      if (this._keys.has("KeyD") || this._keys.has("ArrowRight")) dx += 1;
+
+      const len = Math.sqrt(dx * dx + dz * dz);
+      if (len > 0) {
+        dx /= len;
+        dz /= len;
+      }
+
+      const speed = p.moveSpeed;
+      p.x += dx * speed * dt;
+      p.z += dz * speed * dt;
+
+      // Face mouse direction
+      const worldMouse = this._getMouseWorldPos();
+      p.angle = Math.atan2(worldMouse.x - p.x, worldMouse.z - p.z);
     }
-
-    const speed = p.moveSpeed;
-    p.x += dx * speed * dt;
-    p.z += dz * speed * dt;
 
     // Clamp to map bounds
     const mapCfg = MAP_CONFIGS[this._state.currentMap];
@@ -2480,10 +2576,6 @@ export class DiabloGame {
     p.x = Math.max(-halfW, Math.min(halfW, p.x));
     p.z = Math.max(-halfD, Math.min(halfD, p.z));
     p.y = getTerrainHeight(p.x, p.z);
-
-    // Face mouse direction
-    const worldMouse = this._getMouseWorldPos();
-    p.angle = Math.atan2(worldMouse.x - p.x, worldMouse.z - p.z);
 
     // Update camera target to follow player
     this._state.camera.targetX = p.x;
@@ -2804,6 +2896,9 @@ export class DiabloGame {
           break;
         }
       }
+
+      // Keep enemies on terrain
+      enemy.y = getTerrainHeight(enemy.x, enemy.z);
     }
 
     this._state.enemies = this._state.enemies.filter((e) => !toRemove.includes(e.id));
@@ -3760,8 +3855,15 @@ export class DiabloGame {
     for (let i = this._state.floatingTexts.length - 1; i >= 0; i--) {
       const ft = this._state.floatingTexts[i];
       ft.timer += dt;
-      ft.y += 2 * dt;
-      if (ft.timer > 1.5) {
+      // Lively arc: fast upward initially, decelerating + slight horizontal drift
+      const t = ft.timer;
+      ft.vy = Math.max(0.3, ft.vy - 3.5 * dt); // decelerate
+      ft.y += ft.vy * dt * 3;
+      // Horizontal scatter (seeded by id hash)
+      const idHash = ft.id.charCodeAt(0) + ft.id.charCodeAt(ft.id.length - 1);
+      ft.x += Math.sin(t * 4 + idHash) * 0.3 * dt;
+      ft.z += Math.cos(t * 3 + idHash * 0.7) * 0.2 * dt;
+      if (ft.timer > 1.8) {
         this._state.floatingTexts.splice(i, 1);
       }
     }
@@ -3882,7 +3984,7 @@ export class DiabloGame {
       id: this._genId(),
       type: chosenType,
       x: ex,
-      y: 0,
+      y: getTerrainHeight(ex, ez),
       z: ez,
       angle: Math.random() * Math.PI * 2,
       hp: def.hp * hpMult,

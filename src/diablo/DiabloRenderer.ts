@@ -53,6 +53,20 @@ export class DiabloRenderer {
   private _torchLights: THREE.PointLight[] = [];
   private _playerLantern: THREE.PointLight | null = null;
   private _weaponArmGroup: THREE.Group | null = null;
+  private _leftLegGroup: THREE.Group | null = null;
+  private _rightLegGroup: THREE.Group | null = null;
+  private _leftArmGroup: THREE.Group | null = null;
+  private _walkCycle: number = 0;
+  private _prevPlayerX: number = 0;
+  private _prevPlayerZ: number = 0;
+  private _aimLine: THREE.Line | null = null;
+
+  // First-person mode
+  public firstPerson: boolean = false;
+  public fpYaw: number = 0;
+  public fpPitch: number = 0;
+  private _fpWeapon: THREE.Group | null = null;
+
   private _raycaster: THREE.Raycaster = new THREE.Raycaster();
   private _shieldMeshes: Map<string, THREE.Mesh> = new Map();
   private _healBeams: Map<string, THREE.Line> = new Map();
@@ -5302,6 +5316,10 @@ export class DiabloRenderer {
     }
     this._weaponMesh = null;
     this._weaponArmGroup = null;
+    this._leftLegGroup = null;
+    this._rightLegGroup = null;
+    this._leftArmGroup = null;
+    if (this._aimLine) { this._scene.remove(this._aimLine); this._aimLine = null; }
 
     const skinColor = 0xdeb887;
     const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.7 });
@@ -5411,41 +5429,50 @@ export class DiabloRenderer {
     buckle.position.set(0, 0.92, 0.17);
     this._playerGroup.add(buckle);
 
-    // Legs
+    // Legs — in groups for walk animation (pivot at hip)
     const legMat = torsoMat.clone();
+    const legGroups: THREE.Group[] = [];
     for (let side = -1; side <= 1; side += 2) {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(side * 0.12, 0.9, 0);  // pivot at hip
+
       // Thigh
       const thighGeo = new THREE.CylinderGeometry(0.08, 0.09, 0.4, 8);
       const thigh = new THREE.Mesh(thighGeo, legMat);
-      thigh.position.set(side * 0.12, 0.73, 0);
+      thigh.position.y = -0.17;
       thigh.castShadow = true;
-      this._playerGroup.add(thigh);
+      legGroup.add(thigh);
 
-      // Knee joint (small sphere)
+      // Knee joint
       const kneeGeo = new THREE.SphereGeometry(0.055, 6, 5);
       const knee = new THREE.Mesh(kneeGeo, legMat);
-      knee.position.set(side * 0.12, 0.53, 0);
-      this._playerGroup.add(knee);
+      knee.position.y = -0.37;
+      legGroup.add(knee);
 
       // Shin
       const shinGeo = new THREE.CylinderGeometry(0.07, 0.08, 0.4, 8);
       const shin = new THREE.Mesh(shinGeo, legMat);
-      shin.position.set(side * 0.12, 0.33, 0);
+      shin.position.y = -0.57;
       shin.castShadow = true;
-      this._playerGroup.add(shin);
+      legGroup.add(shin);
 
-      // Ankle joint (small sphere)
+      // Ankle joint
       const ankleGeo = new THREE.SphereGeometry(0.045, 6, 5);
       const ankle = new THREE.Mesh(ankleGeo, legMat);
-      ankle.position.set(side * 0.12, 0.13, 0);
-      this._playerGroup.add(ankle);
+      ankle.position.y = -0.77;
+      legGroup.add(ankle);
 
       // Foot
       const footGeo = new THREE.BoxGeometry(0.12, 0.06, 0.2);
       const foot = new THREE.Mesh(footGeo, legMat);
-      foot.position.set(side * 0.12, 0.05, 0.04);
-      this._playerGroup.add(foot);
+      foot.position.set(0, -0.85, 0.04);
+      legGroup.add(foot);
+
+      this._playerGroup.add(legGroup);
+      legGroups.push(legGroup);
     }
+    this._leftLegGroup = legGroups[0];
+    this._rightLegGroup = legGroups[1];
 
     // Arms
     const rightArmGroup = new THREE.Group();
@@ -5456,6 +5483,7 @@ export class DiabloRenderer {
     const leftArmGroup = new THREE.Group();
     leftArmGroup.position.set(-0.35, 1.35, 0);
     this._playerGroup.add(leftArmGroup);
+    this._leftArmGroup = leftArmGroup;
 
     for (const armGroup of [rightArmGroup, leftArmGroup]) {
       const upperGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.3, 8);
@@ -10708,15 +10736,42 @@ export class DiabloRenderer {
     this._updateParticles(state.particles, dt);
     this._renderParticles(state.particles);
 
-    // -- Camera: smooth lerp to player + isometric offset --
-    const camTargetX = state.player.x + 12 + this._shakeOffsetX;
-    const camTargetY = 18 + this._shakeOffsetY;
-    const camTargetZ = state.player.z + 12 + this._shakeOffsetZ;
-    const lerpSpeed = 3.0 * dt;
-    this._camera.position.x += (camTargetX - this._camera.position.x) * Math.min(lerpSpeed, 1);
-    this._camera.position.y += (camTargetY - this._camera.position.y) * Math.min(lerpSpeed, 1);
-    this._camera.position.z += (camTargetZ - this._camera.position.z) * Math.min(lerpSpeed, 1);
-    this._camera.lookAt(state.player.x, 0, state.player.z);
+    // -- Camera --
+    if (this.firstPerson) {
+      // FPS camera: at player eye height, looking in facing direction
+      const eyeH = 1.6;
+      const camX = state.player.x + this._shakeOffsetX;
+      const camY = state.player.y + eyeH + this._shakeOffsetY;
+      const camZ = state.player.z + this._shakeOffsetZ;
+      this._camera.position.set(camX, camY, camZ);
+
+      const lookX = camX - Math.sin(this.fpYaw) * Math.cos(this.fpPitch);
+      const lookY = camY + Math.sin(this.fpPitch);
+      const lookZ = camZ - Math.cos(this.fpYaw) * Math.cos(this.fpPitch);
+      this._camera.lookAt(lookX, lookY, lookZ);
+
+      // Hide player mesh in FPS, show FP weapon
+      this._playerGroup.visible = false;
+      this._buildFPWeaponIfNeeded();
+      if (this._fpWeapon) this._fpWeapon.visible = true;
+      // Hide aim line in FPS
+      if (this._aimLine) this._aimLine.visible = false;
+    } else {
+      // Isometric camera
+      const camTargetX = state.player.x + 12 + this._shakeOffsetX;
+      const camTargetY = 18 + this._shakeOffsetY;
+      const camTargetZ = state.player.z + 12 + this._shakeOffsetZ;
+      const lerpSpeed = 3.0 * dt;
+      this._camera.position.x += (camTargetX - this._camera.position.x) * Math.min(lerpSpeed, 1);
+      this._camera.position.y += (camTargetY - this._camera.position.y) * Math.min(lerpSpeed, 1);
+      this._camera.position.z += (camTargetZ - this._camera.position.z) * Math.min(lerpSpeed, 1);
+      this._camera.lookAt(state.player.x, 0, state.player.z);
+
+      // Show player mesh, hide FP weapon
+      this._playerGroup.visible = true;
+      if (this._fpWeapon) this._fpWeapon.visible = false;
+      if (this._aimLine) this._aimLine.visible = true;
+    }
 
     // -- Player --
     this._playerGroup.position.set(state.player.x, state.player.y, state.player.z);
@@ -10747,6 +10802,30 @@ export class DiabloRenderer {
       this._invulnMesh.visible = false;
     }
 
+    // Walk animation — swing legs and off-hand arm based on movement
+    const pdx = state.player.x - this._prevPlayerX;
+    const pdz = state.player.z - this._prevPlayerZ;
+    const playerSpeed = Math.sqrt(pdx * pdx + pdz * pdz) / Math.max(dt, 0.001);
+    this._prevPlayerX = state.player.x;
+    this._prevPlayerZ = state.player.z;
+
+    if (playerSpeed > 0.3) {
+      this._walkCycle += dt * playerSpeed * 1.8;
+      const swing = Math.sin(this._walkCycle) * 0.45;
+      const bounce = Math.abs(Math.sin(this._walkCycle * 2)) * 0.03;
+      if (this._leftLegGroup) this._leftLegGroup.rotation.x = swing;
+      if (this._rightLegGroup) this._rightLegGroup.rotation.x = -swing;
+      if (this._leftArmGroup && !state.player.isAttacking) this._leftArmGroup.rotation.x = -swing * 0.6;
+      // Subtle body bob
+      this._playerGroup.position.y = state.player.y + bounce;
+    } else {
+      // Ease back to idle
+      if (this._leftLegGroup) this._leftLegGroup.rotation.x *= 0.85;
+      if (this._rightLegGroup) this._rightLegGroup.rotation.x *= 0.85;
+      if (this._leftArmGroup) this._leftArmGroup.rotation.x *= 0.85;
+      this._playerGroup.position.y = state.player.y;
+    }
+
     // Attack animation: rotate weapon arm
     if (state.player.isAttacking && this._weaponArmGroup) {
       const t = state.player.attackTimer;
@@ -10754,6 +10833,23 @@ export class DiabloRenderer {
     } else if (this._weaponArmGroup) {
       this._weaponArmGroup.rotation.x *= 0.85;
     }
+
+    // Aim line — subtle line from player in facing direction
+    if (!this._aimLine) {
+      const aimGeo = new THREE.BufferGeometry();
+      aimGeo.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, -1], 3));
+      const aimMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 });
+      this._aimLine = new THREE.Line(aimGeo, aimMat);
+      this._scene.add(this._aimLine);
+    }
+    const aimLen = 4.0;
+    const aimY = state.player.y + 0.3;
+    const aimDirX = Math.sin(state.player.angle) * aimLen;
+    const aimDirZ = Math.cos(state.player.angle) * aimLen;
+    const aimPos = this._aimLine.geometry.attributes.position as THREE.BufferAttribute;
+    aimPos.setXYZ(0, state.player.x, aimY, state.player.z);
+    aimPos.setXYZ(1, state.player.x + aimDirX, aimY, state.player.z + aimDirZ);
+    aimPos.needsUpdate = true;
 
     // -- Enemies --
     this._syncEnemies(state);
@@ -11015,6 +11111,69 @@ export class DiabloRenderer {
         }
       });
     }
+  }
+
+  private _buildFPWeaponIfNeeded(): void {
+    if (this._fpWeapon) return;
+
+    this._fpWeapon = new THREE.Group();
+
+    // Sword/weapon handle
+    const handleGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.18, 6);
+    const handleMat = new THREE.MeshStandardMaterial({ color: 0x5a3520, roughness: 0.7 });
+    const handle = new THREE.Mesh(handleGeo, handleMat);
+    handle.position.y = -0.09;
+    this._fpWeapon.add(handle);
+
+    // Grip wrapping
+    const gripGeo = new THREE.TorusGeometry(0.02, 0.004, 4, 8);
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x3a2510, roughness: 0.4 });
+    for (let i = 0; i < 4; i++) {
+      const grip = new THREE.Mesh(gripGeo, gripMat);
+      grip.position.y = -0.06 + i * 0.035;
+      this._fpWeapon.add(grip);
+    }
+
+    // Cross guard
+    const guardGeo = new THREE.BoxGeometry(0.08, 0.012, 0.012);
+    const guardMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.2, metalness: 0.7 });
+    const guard = new THREE.Mesh(guardGeo, guardMat);
+    guard.position.y = 0.01;
+    this._fpWeapon.add(guard);
+
+    // Blade
+    const bladeGeo = new THREE.BoxGeometry(0.025, 0.3, 0.005);
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, roughness: 0.15, metalness: 0.8 });
+    const blade = new THREE.Mesh(bladeGeo, bladeMat);
+    blade.position.y = 0.16;
+    this._fpWeapon.add(blade);
+
+    // Blade edge highlight
+    const edgeGeo = new THREE.BoxGeometry(0.003, 0.28, 0.008);
+    const edgeMat = new THREE.MeshStandardMaterial({ color: 0xeeeeff, roughness: 0.1, metalness: 0.9 });
+    const edge = new THREE.Mesh(edgeGeo, edgeMat);
+    edge.position.y = 0.16;
+    this._fpWeapon.add(edge);
+
+    // Blade tip
+    const tipGeo = new THREE.ConeGeometry(0.014, 0.04, 4);
+    const tip = new THREE.Mesh(tipGeo, bladeMat);
+    tip.position.y = 0.33;
+    this._fpWeapon.add(tip);
+
+    // Pommel gem
+    const gemGeo = new THREE.SphereGeometry(0.01, 6, 6);
+    const gemMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+    const gem = new THREE.Mesh(gemGeo, gemMat);
+    gem.position.y = -0.19;
+    this._fpWeapon.add(gem);
+
+    // Position relative to camera — lower right like MageWars
+    this._fpWeapon.position.set(0.28, -0.2, -0.4);
+    this._fpWeapon.rotation.set(0.15, 0, -0.1);
+
+    this._camera.add(this._fpWeapon);
+    if (!this._camera.parent) this._scene.add(this._camera);
   }
 
   private _syncProjectiles(state: DiabloState): void {
@@ -11403,27 +11562,44 @@ export class DiabloRenderer {
 
       sprite.position.set(ft.x, ft.y, ft.z);
 
+      const t = ft.timer;
+      const isCrit = ft.text.startsWith('CRIT');
+
+      // Scale: pop in then shrink; crits start bigger
+      const baseScale = isCrit ? 3.5 : 2.0;
+      const popScale = t < 0.15 ? 1.0 + (1.0 - t / 0.15) * 0.6 : 1.0;
+      const shrink = t > 1.0 ? Math.max(0.3, 1.0 - (t - 1.0) * 1.2) : 1.0;
+      const s = baseScale * popScale * shrink;
+      sprite.scale.set(s, s * 0.25, 1);
+
       // Fade based on timer
       if (sprite.material instanceof THREE.SpriteMaterial) {
-        sprite.material.opacity = Math.max(0, 1.0 - ft.timer * 0.8);
+        sprite.material.opacity = Math.max(0, 1.0 - t * 0.5);
       }
     }
   }
 
   private _createTextSprite(text: string, color: string): THREE.Sprite {
+    const isCrit = text.startsWith('CRIT');
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 64;
+    canvas.width = isCrit ? 512 : 256;
+    canvas.height = isCrit ? 128 : 64;
     const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, 256, 64);
-    ctx.font = 'bold 32px Arial';
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = isCrit ? 'bold 56px Arial' : 'bold 32px Arial';
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    ctx.strokeText(text, 128, 32);
-    ctx.fillText(text, 128, 32);
+    ctx.lineWidth = isCrit ? 5 : 3;
+    // Glow for crits
+    if (isCrit) {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+    }
+    ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    if (isCrit) { ctx.shadowBlur = 0; }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;

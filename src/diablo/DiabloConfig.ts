@@ -1315,7 +1315,7 @@ export const ITEM_DATABASE: DiabloItem[] = [
   {
     id: nextId(), name: 'Iron Axe', icon: '🪓',
     rarity: ItemRarity.COMMON, type: ItemType.AXE, slot: ItemSlot.WEAPON,
-    level: 1, value: 12, stats: { bonusDamage: 10 },
+    level: 1, value: 12, stats: { bonusDamage: 10, critDamage: 5 },
     description: 'A heavy iron axe with a keen edge.',
   },
   {
@@ -1375,13 +1375,13 @@ export const ITEM_DATABASE: DiabloItem[] = [
   {
     id: nextId(), name: 'Short Sword', icon: '🗡️',
     rarity: ItemRarity.COMMON, type: ItemType.SWORD, slot: ItemSlot.WEAPON,
-    level: 2, value: 12, stats: { bonusDamage: 10 },
+    level: 2, value: 12, stats: { bonusDamage: 10, critChance: 1 },
     description: 'A compact blade favored by scouts.',
   },
   {
     id: nextId(), name: 'Iron Mace', icon: '⚔️',
     rarity: ItemRarity.COMMON, type: ItemType.MACE, slot: ItemSlot.WEAPON,
-    level: 3, value: 14, stats: { bonusDamage: 12 },
+    level: 3, value: 14, stats: { bonusDamage: 12, critDamage: 5 },
     description: 'A heavy iron mace that crunches bones.',
   },
   {
@@ -1393,7 +1393,7 @@ export const ITEM_DATABASE: DiabloItem[] = [
   {
     id: nextId(), name: 'Hunting Bow', icon: '🏹',
     rarity: ItemRarity.COMMON, type: ItemType.BOW, slot: ItemSlot.WEAPON,
-    level: 3, value: 14, stats: { bonusDamage: 11, dexterity: 1 },
+    level: 3, value: 14, stats: { bonusDamage: 11, dexterity: 1, critChance: 1 },
     description: 'A recurve bow used for hunting game.',
   },
   {
@@ -1433,25 +1433,25 @@ export const ITEM_DATABASE: DiabloItem[] = [
   {
     id: nextId(), name: 'Reinforced Longsword', icon: '⚔️',
     rarity: ItemRarity.UNCOMMON, type: ItemType.SWORD, slot: ItemSlot.WEAPON,
-    level: 5, value: 50, stats: { bonusDamage: 18, strength: 3 },
+    level: 5, value: 50, stats: { bonusDamage: 18, strength: 3, critChance: 2 },
     description: 'A longsword with a reinforced crossguard.',
   },
   {
     id: nextId(), name: 'Hardened Battleaxe', icon: '🪓',
     rarity: ItemRarity.UNCOMMON, type: ItemType.AXE, slot: ItemSlot.WEAPON,
-    level: 5, value: 55, stats: { bonusDamage: 22, strength: 2 },
+    level: 5, value: 55, stats: { bonusDamage: 22, strength: 2, critDamage: 8 },
     description: 'An axe tempered in dragonfire coals.',
   },
   {
     id: nextId(), name: 'Composite Bow', icon: '🏹',
     rarity: ItemRarity.UNCOMMON, type: ItemType.BOW, slot: ItemSlot.WEAPON,
-    level: 5, value: 48, stats: { bonusDamage: 16, dexterity: 4 },
+    level: 5, value: 48, stats: { bonusDamage: 16, dexterity: 4, critChance: 3 },
     description: 'A bow of layered wood and horn, powerful and precise.',
   },
   {
     id: nextId(), name: 'Willow Staff', icon: '🔮',
     rarity: ItemRarity.UNCOMMON, type: ItemType.STAFF, slot: ItemSlot.WEAPON,
-    level: 5, value: 45, stats: { bonusDamage: 12, intelligence: 6 },
+    level: 5, value: 45, stats: { bonusDamage: 12, intelligence: 6, critChance: 2 },
     description: 'A staff of living willow that channels nature\'s power.',
   },
   {
@@ -1511,7 +1511,7 @@ export const ITEM_DATABASE: DiabloItem[] = [
   {
     id: nextId(), name: 'Channeling Orb', icon: '🔮',
     rarity: ItemRarity.UNCOMMON, type: ItemType.WAND, slot: ItemSlot.WEAPON,
-    level: 5, value: 38, stats: { intelligence: 5, manaRegen: 1 },
+    level: 5, value: 38, stats: { intelligence: 5, manaRegen: 1, critChance: 2 },
     description: 'A glass orb swirling with arcane mist.',
   },
   {
