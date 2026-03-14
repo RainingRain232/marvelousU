@@ -72,6 +72,16 @@ const MAP_KILL_TARGET: Record<DiabloMapId, number> = {
   [DiabloMapId.DRAGONS_SANCTUM]: 100,
   [DiabloMapId.SUNSCORCH_DESERT]: 35,
   [DiabloMapId.EMERALD_GRASSLANDS]: 30,
+  [DiabloMapId.WHISPERING_MARSH]: 35,
+  [DiabloMapId.CRYSTAL_CAVERNS]: 40,
+  [DiabloMapId.FROZEN_TUNDRA]: 55,
+  [DiabloMapId.HAUNTED_CATHEDRAL]: 60,
+  [DiabloMapId.THORNWOOD_THICKET]: 55,
+  [DiabloMapId.CLOCKWORK_FOUNDRY]: 75,
+  [DiabloMapId.CRIMSON_CITADEL]: 80,
+  [DiabloMapId.STORMSPIRE_PEAK]: 85,
+  [DiabloMapId.SHADOW_REALM]: 90,
+  [DiabloMapId.PRIMORDIAL_ABYSS]: 120,
   [DiabloMapId.CAMELOT]: 0,
 };
 
@@ -87,6 +97,16 @@ const BOSS_NAMES: Record<DiabloMapId, string[]> = {
   [DiabloMapId.DRAGONS_SANCTUM]: ["Vyrathion the Ancient", "Drakemaw the Endless", "Scorchfather Pyranax"],
   [DiabloMapId.SUNSCORCH_DESERT]: ["Sandclaw the Burrower", "Dune Reaver Kassim", "Mirage Serpent"],
   [DiabloMapId.EMERALD_GRASSLANDS]: ["Thunderhoof the Wild", "Warchief Garon", "Skytalon the Fierce"],
+  [DiabloMapId.WHISPERING_MARSH]: ["Murkfang the Bloated", "Swamp Witch Hessia", "Hydra Broodmother"],
+  [DiabloMapId.CRYSTAL_CAVERNS]: ["Geode King Crysanthus", "Shard Weaver", "Prismatic Terror"],
+  [DiabloMapId.FROZEN_TUNDRA]: ["Frostjaw the Undying", "Blizzard Warden Kael", "Glacier Breaker"],
+  [DiabloMapId.HAUNTED_CATHEDRAL]: ["Archbishop Maledict", "The Desecrator", "Doom Gargoyle Grath"],
+  [DiabloMapId.THORNWOOD_THICKET]: ["Thornqueen Brambliss", "Rotfather Mycos", "Blightweaver Nyx"],
+  [DiabloMapId.CLOCKWORK_FOUNDRY]: ["Forgefire Construct VII", "The Brass Overlord", "Titan-Frame Omega"],
+  [DiabloMapId.CRIMSON_CITADEL]: ["Count Sanguinar", "The Crimson Inquisitor", "Blood Archon Vex"],
+  [DiabloMapId.STORMSPIRE_PEAK]: ["Stormcaller Zephyros", "Thunder Wyrm Voltaris", "Gale Lord Tempestus"],
+  [DiabloMapId.SHADOW_REALM]: ["The Dreaming Horror", "Nightmare Sovereign", "Oblivion Incarnate"],
+  [DiabloMapId.PRIMORDIAL_ABYSS]: ["Maw of the Void", "Entropy Colossus", "The Primordial Hunger"],
   [DiabloMapId.CAMELOT]: [],
 };
 
@@ -133,6 +153,31 @@ const EXCALIBUR_QUEST_INFO: Partial<Record<DiabloMapId, { fragment: string; hint
     fragment: "The Soul of the Blade",
     hint: "Aurelion the Eternal bonded with Excalibur's sentient core. Prove your worth to the gold dragon.",
     lore: "The Soul chose the dragon to survive. It will not yield to the unworthy — but it yearns to be whole again.",
+  },
+  [DiabloMapId.WHISPERING_MARSH]: {
+    fragment: "The Hilt Binding of Excalibur",
+    hint: "Deep within the miasma, Sir Galahad's spirit guards the binding. Purify the marsh to reach him.",
+    lore: "Galahad wrapped the Hilt Binding in holy cloth and sank it in the marsh, hoping the corruption would never find it.",
+  },
+  [DiabloMapId.CRYSTAL_CAVERNS]: {
+    fragment: "The Crystal Focus of Excalibur",
+    hint: "The crystal deep in the caverns amplified Excalibur's power. The Prismatic Wyrm has swallowed it whole.",
+    lore: "Merlin embedded a crystal focus in the blade to channel ley lines. When shattered, it fell into the earth.",
+  },
+  [DiabloMapId.FROZEN_TUNDRA]: {
+    fragment: "The Frozen Edge of Excalibur",
+    hint: "The blade fragment lies entombed in eternal ice. Only by slaying the Glacial Titan can the ice be broken.",
+    lore: "Sir Gawain carried the Edge to the tundra's heart, where he froze it in place with his dying breath.",
+  },
+  [DiabloMapId.HAUNTED_CATHEDRAL]: {
+    fragment: "The Sacred Blessing of Excalibur",
+    hint: "The cathedral's altar still holds the blessing. Free the spirits of the corrupted priests to reclaim it.",
+    lore: "The Archbishop was tasked with guarding Excalibur's divine enchantment, but Mordred's curse turned faith to madness.",
+  },
+  [DiabloMapId.THORNWOOD_THICKET]: {
+    fragment: "The Living Heartwood of Excalibur",
+    hint: "The Thornmother has absorbed the heartwood into her being. Slay her to reclaim the shard of living steel.",
+    lore: "The Lady of the Lake embedded life into the blade. The heartwood shard grew roots and became part of the thicket.",
   },
 };
 
@@ -193,6 +238,16 @@ const NIGHT_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
   [DiabloMapId.DRAGONS_SANCTUM]: EnemyType.NIGHT_DRAGON_SHADOW_WYRM,
   [DiabloMapId.SUNSCORCH_DESERT]: EnemyType.NIGHT_DESERT_SANDSTORM_DJINN,
   [DiabloMapId.EMERALD_GRASSLANDS]: EnemyType.NIGHT_GRASSLAND_STAMPEDE_KING,
+  [DiabloMapId.WHISPERING_MARSH]: EnemyType.NIGHT_MARSH_SWAMP_MOTHER,
+  [DiabloMapId.CRYSTAL_CAVERNS]: EnemyType.NIGHT_CAVERNS_CRYSTAL_KING,
+  [DiabloMapId.FROZEN_TUNDRA]: EnemyType.NIGHT_TUNDRA_FROST_EMPRESS,
+  [DiabloMapId.HAUNTED_CATHEDRAL]: EnemyType.NIGHT_CATHEDRAL_ARCH_LICH,
+  [DiabloMapId.THORNWOOD_THICKET]: EnemyType.NIGHT_THORNWOOD_BLIGHT_LORD,
+  [DiabloMapId.CLOCKWORK_FOUNDRY]: EnemyType.NIGHT_FOUNDRY_IRON_TYRANT,
+  [DiabloMapId.CRIMSON_CITADEL]: EnemyType.NIGHT_CITADEL_BLOOD_EMPEROR,
+  [DiabloMapId.STORMSPIRE_PEAK]: EnemyType.NIGHT_STORMSPIRE_THUNDER_GOD,
+  [DiabloMapId.SHADOW_REALM]: EnemyType.NIGHT_SHADOW_DREAM_EATER,
+  [DiabloMapId.PRIMORDIAL_ABYSS]: EnemyType.NIGHT_ABYSS_WORLD_ENDER,
 };
 
 // ────────────────────────────────────────────────────────────────────────────

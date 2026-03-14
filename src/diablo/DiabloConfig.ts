@@ -736,6 +736,106 @@ export const MAP_CONFIGS: Record<DiabloMapId, DiabloMapConfig> = {
     fogColor: '#aaccaa',
     backgroundMusic: 'grassland_breeze',
   },
+  [DiabloMapId.WHISPERING_MARSH]: {
+    id: DiabloMapId.WHISPERING_MARSH,
+    name: 'Whispering Marsh',
+    description: 'A fog-choked swampland where poisonous gases rise from stagnant pools. Ancient horrors lurk beneath the murk.',
+    width: 130, depth: 130,
+    enemyTypes: [EnemyType.BOG_LURKER, EnemyType.MARSH_HAG, EnemyType.TOXIC_TOAD, EnemyType.SWAMP_VINE, EnemyType.HYDRA_MATRIARCH],
+    maxEnemies: 22, spawnInterval: 5, treasureCount: 3,
+    ambientColor: '#2a3a22', groundColor: '#3b4a2b', fogDensity: 0.025, fogColor: '#556644',
+    backgroundMusic: 'marsh_ambient',
+  },
+  [DiabloMapId.CRYSTAL_CAVERNS]: {
+    id: DiabloMapId.CRYSTAL_CAVERNS,
+    name: 'Crystal Caverns',
+    description: 'Vast underground chambers lined with luminous crystals. The refracted light reveals dangers hidden in every shadow.',
+    width: 100, depth: 100,
+    enemyTypes: [EnemyType.CRYSTAL_SPIDER, EnemyType.GEM_GOLEM, EnemyType.CAVE_BAT_SWARM, EnemyType.QUARTZ_ELEMENTAL, EnemyType.PRISMATIC_WYRM],
+    maxEnemies: 24, spawnInterval: 5, treasureCount: 5,
+    ambientColor: '#223355', groundColor: '#334466', fogDensity: 0.02, fogColor: '#445577',
+    backgroundMusic: 'cavern_echoes',
+  },
+  [DiabloMapId.FROZEN_TUNDRA]: {
+    id: DiabloMapId.FROZEN_TUNDRA,
+    name: 'Frozen Tundra',
+    description: 'An endless expanse of ice and snow battered by howling blizzards. Frostbitten beasts prowl the whiteout.',
+    width: 140, depth: 140,
+    enemyTypes: [EnemyType.FROST_WOLF, EnemyType.ICE_WRAITH, EnemyType.YETI, EnemyType.FROZEN_REVENANT, EnemyType.GLACIAL_TITAN],
+    maxEnemies: 26, spawnInterval: 4.5, treasureCount: 4,
+    ambientColor: '#334455', groundColor: '#aabbcc', fogDensity: 0.018, fogColor: '#bbccdd',
+    backgroundMusic: 'tundra_wind',
+  },
+  [DiabloMapId.HAUNTED_CATHEDRAL]: {
+    id: DiabloMapId.HAUNTED_CATHEDRAL,
+    name: 'Haunted Cathedral',
+    description: 'A once-holy cathedral now desecrated by dark rituals. Spectral choirs echo through shattered stained glass.',
+    width: 90, depth: 90,
+    enemyTypes: [EnemyType.PHANTOM_KNIGHT, EnemyType.GARGOYLE, EnemyType.CURSED_PRIEST, EnemyType.SHADOW_ACOLYTE, EnemyType.CATHEDRAL_DEMON],
+    maxEnemies: 28, spawnInterval: 4, treasureCount: 4,
+    ambientColor: '#2a2233', groundColor: '#3a3344', fogDensity: 0.03, fogColor: '#443355',
+    backgroundMusic: 'cathedral_requiem',
+  },
+  [DiabloMapId.THORNWOOD_THICKET]: {
+    id: DiabloMapId.THORNWOOD_THICKET,
+    name: 'Thornwood Thicket',
+    description: 'A twisted maze of thorny brambles and blighted trees. The corruption here runs deeper than root and soil.',
+    width: 110, depth: 110,
+    enemyTypes: [EnemyType.THORN_CRAWLER, EnemyType.BLIGHT_SPRITE, EnemyType.FUNGAL_BRUTE, EnemyType.ROTWOOD_LICH, EnemyType.THORNMOTHER],
+    maxEnemies: 28, spawnInterval: 4.5, treasureCount: 4,
+    ambientColor: '#2a3322', groundColor: '#3a2a22', fogDensity: 0.022, fogColor: '#554433',
+    backgroundMusic: 'thornwood_whispers',
+  },
+  [DiabloMapId.CLOCKWORK_FOUNDRY]: {
+    id: DiabloMapId.CLOCKWORK_FOUNDRY,
+    name: 'Clockwork Foundry',
+    description: 'An ancient dwarven forge overrun by malfunctioning automatons. Steam hisses from cracked pipes as gears grind endlessly.',
+    width: 100, depth: 100,
+    enemyTypes: [EnemyType.CLOCKWORK_SOLDIER, EnemyType.STEAM_GOLEM, EnemyType.GEAR_SPIDER, EnemyType.FORGE_MASTER, EnemyType.IRON_COLOSSUS],
+    maxEnemies: 32, spawnInterval: 3.5, treasureCount: 5,
+    ambientColor: '#3a3322', groundColor: '#4a4433', fogDensity: 0.015, fogColor: '#665544',
+    backgroundMusic: 'foundry_machinery',
+  },
+  [DiabloMapId.CRIMSON_CITADEL]: {
+    id: DiabloMapId.CRIMSON_CITADEL,
+    name: 'Crimson Citadel',
+    description: 'A blood-soaked fortress where vampiric lords feast on the living. The walls weep crimson and the air tastes of iron.',
+    width: 110, depth: 110,
+    enemyTypes: [EnemyType.BLOOD_KNIGHT, EnemyType.CRIMSON_MAGE, EnemyType.GARGOYLE_SENTINEL, EnemyType.BLOOD_FIEND, EnemyType.VAMPIRE_LORD],
+    maxEnemies: 30, spawnInterval: 4, treasureCount: 5,
+    ambientColor: '#3a1122', groundColor: '#4a2233', fogDensity: 0.02, fogColor: '#552233',
+    backgroundMusic: 'citadel_dirge',
+  },
+  [DiabloMapId.STORMSPIRE_PEAK]: {
+    id: DiabloMapId.STORMSPIRE_PEAK,
+    name: 'Stormspire Peak',
+    description: 'The highest summit in the realm, perpetually wracked by lightning storms. Wind elementals guard the peak with fury.',
+    width: 120, depth: 120,
+    enemyTypes: [EnemyType.STORM_HARPY, EnemyType.THUNDER_ELEMENTAL, EnemyType.LIGHTNING_DRAKE, EnemyType.WIND_SHAMAN, EnemyType.TEMPEST_TITAN],
+    maxEnemies: 30, spawnInterval: 4, treasureCount: 5,
+    ambientColor: '#334455', groundColor: '#556677', fogDensity: 0.012, fogColor: '#778899',
+    backgroundMusic: 'stormspire_thunder',
+  },
+  [DiabloMapId.SHADOW_REALM]: {
+    id: DiabloMapId.SHADOW_REALM,
+    name: 'Shadow Realm',
+    description: 'A nightmare dimension where reality fractures and terror takes form. Your deepest fears hunt you here.',
+    width: 100, depth: 100,
+    enemyTypes: [EnemyType.NIGHTMARE_STALKER, EnemyType.DREAD_PHANTOM, EnemyType.SOUL_DEVOURER, EnemyType.SHADOW_COLOSSUS, EnemyType.NIGHTMARE_KING],
+    maxEnemies: 35, spawnInterval: 3, treasureCount: 6,
+    ambientColor: '#110011', groundColor: '#1a0a1a', fogDensity: 0.035, fogColor: '#220022',
+    backgroundMusic: 'shadow_realm_dread',
+  },
+  [DiabloMapId.PRIMORDIAL_ABYSS]: {
+    id: DiabloMapId.PRIMORDIAL_ABYSS,
+    name: 'Primordial Abyss',
+    description: 'The deepest pit of existence where ancient entities slumber. Time and space have no meaning in this void.',
+    width: 90, depth: 90,
+    enemyTypes: [EnemyType.ABYSSAL_LEVIATHAN, EnemyType.VOID_REAPER, EnemyType.CHAOS_SPAWN, EnemyType.ELDER_VOID_FIEND, EnemyType.PRIMORDIAL_ONE],
+    maxEnemies: 38, spawnInterval: 3, treasureCount: 7,
+    ambientColor: '#0a0011', groundColor: '#110a1a', fogDensity: 0.04, fogColor: '#1a0022',
+    backgroundMusic: 'primordial_void',
+  },
   [DiabloMapId.CAMELOT]: {
     id: DiabloMapId.CAMELOT,
     name: 'Camelot',
@@ -1290,6 +1390,367 @@ export const ENEMY_DEFS: Record<
     hp: 3500, damage: 50, armor: 30, speed: 5.0,
     attackRange: 3.5, aggroRange: 35, xpReward: 1500,
     isBoss: true, scale: 2.8, level: 12,
+  },
+
+  // -- Whispering Marsh enemies (easy) --
+  [EnemyType.BOG_LURKER]: {
+    name: 'Bog Lurker', hp: 75, damage: 11, armor: 4, speed: 3.5,
+    attackRange: 2.0, aggroRange: 10, xpReward: 22,
+    isBoss: false, scale: 0.9, level: 2,
+  },
+  [EnemyType.MARSH_HAG]: {
+    name: 'Marsh Hag', hp: 90, damage: 16, armor: 3, speed: 2.8,
+    attackRange: 10, aggroRange: 14, xpReward: 30,
+    isBoss: false, scale: 1.0, level: 3,
+    behavior: EnemyBehavior.RANGED,
+  },
+  [EnemyType.TOXIC_TOAD]: {
+    name: 'Toxic Toad', hp: 55, damage: 8, armor: 2, speed: 4.8,
+    attackRange: 1.5, aggroRange: 8, xpReward: 15,
+    isBoss: false, scale: 0.6, level: 1,
+  },
+  [EnemyType.SWAMP_VINE]: {
+    name: 'Strangling Vine', hp: 130, damage: 14, armor: 8, speed: 1.0,
+    attackRange: 3.0, aggroRange: 6, xpReward: 28,
+    isBoss: false, scale: 1.2, level: 3,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+  [EnemyType.HYDRA_MATRIARCH]: {
+    name: 'Hydra Matriarch', hp: 800, damage: 35, armor: 20, speed: 2.0,
+    attackRange: 3.5, aggroRange: 14, xpReward: 200,
+    isBoss: true, scale: 2.0, level: 8,
+  },
+
+  // -- Crystal Caverns enemies (easy) --
+  [EnemyType.CRYSTAL_SPIDER]: {
+    name: 'Crystal Spider', hp: 65, damage: 12, armor: 6, speed: 5.0,
+    attackRange: 1.5, aggroRange: 10, xpReward: 20,
+    isBoss: false, scale: 0.7, level: 2,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.GEM_GOLEM]: {
+    name: 'Gem Golem', hp: 200, damage: 20, armor: 18, speed: 1.8,
+    attackRange: 2.5, aggroRange: 8, xpReward: 40,
+    isBoss: false, scale: 1.4, level: 4,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+  [EnemyType.CAVE_BAT_SWARM]: {
+    name: 'Cave Bat Swarm', hp: 40, damage: 8, armor: 1, speed: 6.0,
+    attackRange: 1.5, aggroRange: 12, xpReward: 12,
+    isBoss: false, scale: 0.5, level: 1,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.QUARTZ_ELEMENTAL]: {
+    name: 'Quartz Elemental', hp: 160, damage: 22, armor: 12, speed: 2.5,
+    attackRange: 2.0, aggroRange: 10, xpReward: 35,
+    isBoss: false, scale: 1.2, level: 3,
+  },
+  [EnemyType.PRISMATIC_WYRM]: {
+    name: 'Prismatic Wyrm', hp: 1000, damage: 40, armor: 25, speed: 3.0,
+    attackRange: 4.0, aggroRange: 16, xpReward: 250,
+    isBoss: true, scale: 2.2, level: 9,
+  },
+
+  // -- Frozen Tundra enemies (medium) --
+  [EnemyType.FROST_WOLF]: {
+    name: 'Frost Wolf', hp: 120, damage: 20, armor: 8, speed: 5.0,
+    attackRange: 1.5, aggroRange: 14, xpReward: 40,
+    isBoss: false, scale: 1.0, level: 7,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.ICE_WRAITH]: {
+    name: 'Ice Wraith', hp: 100, damage: 28, armor: 3, speed: 4.5,
+    attackRange: 10, aggroRange: 16, xpReward: 50,
+    isBoss: false, scale: 1.1, level: 8,
+    behavior: EnemyBehavior.RANGED,
+  },
+  [EnemyType.YETI]: {
+    name: 'Yeti', hp: 350, damage: 38, armor: 20, speed: 2.5,
+    attackRange: 2.5, aggroRange: 10, xpReward: 80,
+    isBoss: false, scale: 1.5, level: 10,
+  },
+  [EnemyType.FROZEN_REVENANT]: {
+    name: 'Frozen Revenant', hp: 180, damage: 30, armor: 15, speed: 3.0,
+    attackRange: 2.0, aggroRange: 12, xpReward: 60,
+    isBoss: false, scale: 1.1, level: 9,
+  },
+  [EnemyType.GLACIAL_TITAN]: {
+    name: 'Glacial Titan', hp: 2200, damage: 72, armor: 50, speed: 1.5,
+    attackRange: 3.5, aggroRange: 16, xpReward: 450,
+    isBoss: true, scale: 2.5, level: 15,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+
+  // -- Haunted Cathedral enemies (medium) --
+  [EnemyType.PHANTOM_KNIGHT]: {
+    name: 'Phantom Knight', hp: 160, damage: 26, armor: 14, speed: 3.5,
+    attackRange: 2.5, aggroRange: 14, xpReward: 55,
+    isBoss: false, scale: 1.1, level: 9,
+  },
+  [EnemyType.GARGOYLE]: {
+    name: 'Gargoyle', hp: 220, damage: 32, armor: 25, speed: 2.0,
+    attackRange: 2.0, aggroRange: 8, xpReward: 65,
+    isBoss: false, scale: 1.3, level: 10,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+  [EnemyType.CURSED_PRIEST]: {
+    name: 'Cursed Priest', hp: 110, damage: 35, armor: 5, speed: 2.5,
+    attackRange: 12, aggroRange: 18, xpReward: 70,
+    isBoss: false, scale: 1.0, level: 11,
+    behavior: EnemyBehavior.HEALER,
+  },
+  [EnemyType.SHADOW_ACOLYTE]: {
+    name: 'Shadow Acolyte', hp: 130, damage: 22, armor: 8, speed: 4.0,
+    attackRange: 2.0, aggroRange: 12, xpReward: 45,
+    isBoss: false, scale: 0.9, level: 8,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.CATHEDRAL_DEMON]: {
+    name: 'Cathedral Demon', hp: 2500, damage: 80, armor: 45, speed: 2.8,
+    attackRange: 3.5, aggroRange: 18, xpReward: 550,
+    isBoss: true, scale: 2.5, level: 16,
+  },
+
+  // -- Thornwood Thicket enemies (medium) --
+  [EnemyType.THORN_CRAWLER]: {
+    name: 'Thorn Crawler', hp: 140, damage: 18, armor: 12, speed: 4.2,
+    attackRange: 1.5, aggroRange: 10, xpReward: 42,
+    isBoss: false, scale: 0.8, level: 7,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.BLIGHT_SPRITE]: {
+    name: 'Blight Sprite', hp: 70, damage: 24, armor: 2, speed: 5.5,
+    attackRange: 8, aggroRange: 14, xpReward: 38,
+    isBoss: false, scale: 0.6, level: 6,
+    behavior: EnemyBehavior.RANGED,
+  },
+  [EnemyType.FUNGAL_BRUTE]: {
+    name: 'Fungal Brute', hp: 280, damage: 32, armor: 18, speed: 2.2,
+    attackRange: 2.5, aggroRange: 8, xpReward: 70,
+    isBoss: false, scale: 1.4, level: 9,
+  },
+  [EnemyType.ROTWOOD_LICH]: {
+    name: 'Rotwood Lich', hp: 150, damage: 40, armor: 8, speed: 2.5,
+    attackRange: 14, aggroRange: 18, xpReward: 85,
+    isBoss: false, scale: 1.1, level: 11,
+    behavior: EnemyBehavior.HEALER,
+  },
+  [EnemyType.THORNMOTHER]: {
+    name: 'Thornmother', hp: 2000, damage: 65, armor: 40, speed: 1.8,
+    attackRange: 4.0, aggroRange: 16, xpReward: 500,
+    isBoss: true, scale: 2.3, level: 14,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+
+  // -- Clockwork Foundry enemies (hard) --
+  [EnemyType.CLOCKWORK_SOLDIER]: {
+    name: 'Clockwork Soldier', hp: 250, damage: 40, armor: 30, speed: 3.0,
+    attackRange: 2.0, aggroRange: 12, xpReward: 90,
+    isBoss: false, scale: 1.1, level: 16,
+  },
+  [EnemyType.STEAM_GOLEM]: {
+    name: 'Steam Golem', hp: 400, damage: 50, armor: 40, speed: 2.0,
+    attackRange: 2.5, aggroRange: 10, xpReward: 120,
+    isBoss: false, scale: 1.5, level: 18,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+  [EnemyType.GEAR_SPIDER]: {
+    name: 'Gear Spider', hp: 150, damage: 35, armor: 15, speed: 5.5,
+    attackRange: 1.5, aggroRange: 14, xpReward: 75,
+    isBoss: false, scale: 0.8, level: 15,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.FORGE_MASTER]: {
+    name: 'Forge Master', hp: 300, damage: 55, armor: 25, speed: 2.8,
+    attackRange: 3.0, aggroRange: 16, xpReward: 130,
+    isBoss: false, scale: 1.3, level: 20,
+    behavior: EnemyBehavior.RANGED,
+  },
+  [EnemyType.IRON_COLOSSUS]: {
+    name: 'Iron Colossus', hp: 5000, damage: 120, armor: 70, speed: 1.5,
+    attackRange: 4.0, aggroRange: 20, xpReward: 1200,
+    isBoss: true, scale: 3.0, level: 26,
+  },
+
+  // -- Crimson Citadel enemies (hard) --
+  [EnemyType.BLOOD_KNIGHT]: {
+    name: 'Blood Knight', hp: 300, damage: 48, armor: 32, speed: 3.2,
+    attackRange: 2.5, aggroRange: 14, xpReward: 100,
+    isBoss: false, scale: 1.2, level: 18,
+  },
+  [EnemyType.CRIMSON_MAGE]: {
+    name: 'Crimson Mage', hp: 180, damage: 55, armor: 10, speed: 3.0,
+    attackRange: 14, aggroRange: 20, xpReward: 120,
+    isBoss: false, scale: 1.0, level: 20,
+    behavior: EnemyBehavior.RANGED,
+  },
+  [EnemyType.GARGOYLE_SENTINEL]: {
+    name: 'Gargoyle Sentinel', hp: 420, damage: 45, armor: 45, speed: 2.5,
+    attackRange: 2.5, aggroRange: 12, xpReward: 110,
+    isBoss: false, scale: 1.4, level: 19,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+  [EnemyType.BLOOD_FIEND]: {
+    name: 'Blood Fiend', hp: 200, damage: 42, armor: 12, speed: 5.0,
+    attackRange: 2.0, aggroRange: 18, xpReward: 95,
+    isBoss: false, scale: 1.0, level: 17,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.VAMPIRE_LORD]: {
+    name: 'Vampire Lord', hp: 5500, damage: 130, armor: 55, speed: 3.5,
+    attackRange: 4.0, aggroRange: 22, xpReward: 1300,
+    isBoss: true, scale: 2.8, level: 28,
+  },
+
+  // -- Stormspire Peak enemies (hard) --
+  [EnemyType.STORM_HARPY]: {
+    name: 'Storm Harpy', hp: 170, damage: 38, armor: 8, speed: 6.0,
+    attackRange: 2.0, aggroRange: 18, xpReward: 85,
+    isBoss: false, scale: 1.0, level: 17,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.THUNDER_ELEMENTAL]: {
+    name: 'Thunder Elemental', hp: 350, damage: 52, armor: 20, speed: 3.5,
+    attackRange: 3.0, aggroRange: 14, xpReward: 110,
+    isBoss: false, scale: 1.3, level: 20,
+  },
+  [EnemyType.LIGHTNING_DRAKE]: {
+    name: 'Lightning Drake', hp: 280, damage: 60, armor: 18, speed: 5.0,
+    attackRange: 4.0, aggroRange: 20, xpReward: 130,
+    isBoss: false, scale: 1.4, level: 22,
+    behavior: EnemyBehavior.RANGED,
+  },
+  [EnemyType.WIND_SHAMAN]: {
+    name: 'Wind Shaman', hp: 200, damage: 45, armor: 10, speed: 3.5,
+    attackRange: 14, aggroRange: 20, xpReward: 100,
+    isBoss: false, scale: 1.0, level: 19,
+    behavior: EnemyBehavior.HEALER,
+  },
+  [EnemyType.TEMPEST_TITAN]: {
+    name: 'Tempest Titan', hp: 5500, damage: 125, armor: 60, speed: 2.5,
+    attackRange: 5.0, aggroRange: 25, xpReward: 1400,
+    isBoss: true, scale: 3.2, level: 28,
+  },
+
+  // -- Shadow Realm enemies (extreme) --
+  [EnemyType.NIGHTMARE_STALKER]: {
+    name: 'Nightmare Stalker', hp: 400, damage: 60, armor: 20, speed: 6.0,
+    attackRange: 2.0, aggroRange: 22, xpReward: 150,
+    isBoss: false, scale: 1.1, level: 26,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.DREAD_PHANTOM]: {
+    name: 'Dread Phantom', hp: 300, damage: 70, armor: 5, speed: 5.0,
+    attackRange: 12, aggroRange: 24, xpReward: 170,
+    isBoss: false, scale: 1.2, level: 28,
+    behavior: EnemyBehavior.RANGED,
+  },
+  [EnemyType.SOUL_DEVOURER]: {
+    name: 'Soul Devourer', hp: 550, damage: 75, armor: 30, speed: 3.5,
+    attackRange: 3.0, aggroRange: 16, xpReward: 200,
+    isBoss: false, scale: 1.5, level: 30,
+  },
+  [EnemyType.SHADOW_COLOSSUS]: {
+    name: 'Shadow Colossus', hp: 700, damage: 85, armor: 50, speed: 2.0,
+    attackRange: 4.0, aggroRange: 18, xpReward: 250,
+    isBoss: false, scale: 2.0, level: 32,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+  [EnemyType.NIGHTMARE_KING]: {
+    name: 'Nightmare King', hp: 8000, damage: 160, armor: 75, speed: 3.5,
+    attackRange: 5.0, aggroRange: 30, xpReward: 2500,
+    isBoss: true, scale: 3.5, level: 35,
+  },
+
+  // -- Primordial Abyss enemies (extreme) --
+  [EnemyType.ABYSSAL_LEVIATHAN]: {
+    name: 'Abyssal Leviathan', hp: 600, damage: 80, armor: 35, speed: 4.0,
+    attackRange: 4.0, aggroRange: 20, xpReward: 220,
+    isBoss: false, scale: 1.8, level: 30,
+  },
+  [EnemyType.VOID_REAPER]: {
+    name: 'Void Reaper', hp: 450, damage: 90, armor: 15, speed: 5.5,
+    attackRange: 3.0, aggroRange: 22, xpReward: 200,
+    isBoss: false, scale: 1.3, level: 32,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.CHAOS_SPAWN]: {
+    name: 'Chaos Spawn', hp: 350, damage: 75, armor: 10, speed: 6.0,
+    attackRange: 2.0, aggroRange: 18, xpReward: 180,
+    isBoss: false, scale: 1.1, level: 28,
+  },
+  [EnemyType.ELDER_VOID_FIEND]: {
+    name: 'Elder Void Fiend', hp: 800, damage: 100, armor: 45, speed: 3.0,
+    attackRange: 14, aggroRange: 25, xpReward: 300,
+    isBoss: false, scale: 2.0, level: 34,
+    behavior: EnemyBehavior.HEALER,
+  },
+  [EnemyType.PRIMORDIAL_ONE]: {
+    name: 'The Primordial One', hp: 12000, damage: 180, armor: 85, speed: 3.0,
+    attackRange: 6.0, aggroRange: 40, xpReward: 5000,
+    isBoss: true, scale: 4.0, level: 40,
+  },
+
+  // -- Night bosses for new maps --
+  [EnemyType.NIGHT_MARSH_SWAMP_MOTHER]: {
+    name: 'Swamp Mother Muriel',
+    hp: 3200, damage: 58, armor: 28, speed: 4.0,
+    attackRange: 4.0, aggroRange: 35, xpReward: 1600,
+    isBoss: true, scale: 2.8, level: 14,
+  },
+  [EnemyType.NIGHT_CAVERNS_CRYSTAL_KING]: {
+    name: 'Crystal King Adamantus',
+    hp: 3500, damage: 62, armor: 35, speed: 3.5,
+    attackRange: 4.0, aggroRange: 35, xpReward: 1800,
+    isBoss: true, scale: 2.8, level: 16,
+  },
+  [EnemyType.NIGHT_TUNDRA_FROST_EMPRESS]: {
+    name: 'Frost Empress Isolde',
+    hp: 5500, damage: 100, armor: 50, speed: 4.5,
+    attackRange: 4.5, aggroRange: 35, xpReward: 2500,
+    isBoss: true, scale: 3.0, level: 22,
+  },
+  [EnemyType.NIGHT_CATHEDRAL_ARCH_LICH]: {
+    name: 'Arch-Lich Valdris',
+    hp: 6000, damage: 115, armor: 40, speed: 4.0,
+    attackRange: 5.0, aggroRange: 35, xpReward: 3000,
+    isBoss: true, scale: 3.0, level: 24,
+  },
+  [EnemyType.NIGHT_THORNWOOD_BLIGHT_LORD]: {
+    name: 'Blight Lord Morrigan',
+    hp: 5500, damage: 105, armor: 45, speed: 4.5,
+    attackRange: 4.5, aggroRange: 35, xpReward: 2800,
+    isBoss: true, scale: 3.0, level: 22,
+  },
+  [EnemyType.NIGHT_FOUNDRY_IRON_TYRANT]: {
+    name: 'Iron Tyrant Kronos',
+    hp: 9000, damage: 150, armor: 80, speed: 3.5,
+    attackRange: 5.0, aggroRange: 35, xpReward: 4500,
+    isBoss: true, scale: 3.5, level: 30,
+  },
+  [EnemyType.NIGHT_CITADEL_BLOOD_EMPEROR]: {
+    name: 'Blood Emperor Sanguinus',
+    hp: 10000, damage: 165, armor: 65, speed: 5.0,
+    attackRange: 5.0, aggroRange: 40, xpReward: 5000,
+    isBoss: true, scale: 3.2, level: 34,
+  },
+  [EnemyType.NIGHT_STORMSPIRE_THUNDER_GOD]: {
+    name: 'Thunder God Thoraxis',
+    hp: 11000, damage: 170, armor: 70, speed: 5.5,
+    attackRange: 6.0, aggroRange: 40, xpReward: 5500,
+    isBoss: true, scale: 3.5, level: 35,
+  },
+  [EnemyType.NIGHT_SHADOW_DREAM_EATER]: {
+    name: 'Dream Eater Morpheus',
+    hp: 13000, damage: 185, armor: 75, speed: 5.0,
+    attackRange: 6.0, aggroRange: 45, xpReward: 7000,
+    isBoss: true, scale: 3.5, level: 38,
+  },
+  [EnemyType.NIGHT_ABYSS_WORLD_ENDER]: {
+    name: 'World Ender Abraxas',
+    hp: 18000, damage: 220, armor: 95, speed: 4.5,
+    attackRange: 7.0, aggroRange: 50, xpReward: 10000,
+    isBoss: true, scale: 4.5, level: 42,
   },
 };
 
@@ -2612,6 +3073,377 @@ export const LOOT_TABLES: Record<EnemyType, { rarity: ItemRarity; chance: number
     { rarity: ItemRarity.EPIC, chance: 0.5 },
     { rarity: ItemRarity.LEGENDARY, chance: 0.15 },
   ],
+
+  // -- Marsh & Caverns (Easy) --
+  [EnemyType.BOG_LURKER]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.12 },
+    { rarity: ItemRarity.RARE, chance: 0.02 },
+  ],
+  [EnemyType.MARSH_HAG]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.2 },
+    { rarity: ItemRarity.RARE, chance: 0.04 },
+  ],
+  [EnemyType.TOXIC_TOAD]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.1 },
+  ],
+  [EnemyType.SWAMP_VINE]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.15 },
+    { rarity: ItemRarity.RARE, chance: 0.03 },
+  ],
+  [EnemyType.CRYSTAL_SPIDER]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.15 },
+    { rarity: ItemRarity.RARE, chance: 0.03 },
+  ],
+  [EnemyType.GEM_GOLEM]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.2 },
+    { rarity: ItemRarity.RARE, chance: 0.05 },
+  ],
+  [EnemyType.CAVE_BAT_SWARM]: [
+    { rarity: ItemRarity.COMMON, chance: 0.4 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.1 },
+  ],
+  [EnemyType.QUARTZ_ELEMENTAL]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.18 },
+    { rarity: ItemRarity.RARE, chance: 0.04 },
+  ],
+
+  // -- Easy bosses --
+  [EnemyType.HYDRA_MATRIARCH]: [
+    { rarity: ItemRarity.COMMON, chance: 0.6 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.2 },
+    { rarity: ItemRarity.EPIC, chance: 0.06 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.02 },
+  ],
+  [EnemyType.PRISMATIC_WYRM]: [
+    { rarity: ItemRarity.COMMON, chance: 0.6 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.22 },
+    { rarity: ItemRarity.EPIC, chance: 0.08 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.03 },
+  ],
+
+  // -- Tundra, Cathedral & Thornwood (Medium) --
+  [EnemyType.FROST_WOLF]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.25 },
+    { rarity: ItemRarity.RARE, chance: 0.06 },
+    { rarity: ItemRarity.EPIC, chance: 0.01 },
+  ],
+  [EnemyType.ICE_WRAITH]: [
+    { rarity: ItemRarity.COMMON, chance: 0.4 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.28 },
+    { rarity: ItemRarity.RARE, chance: 0.08 },
+    { rarity: ItemRarity.EPIC, chance: 0.015 },
+  ],
+  [EnemyType.YETI]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.12 },
+    { rarity: ItemRarity.EPIC, chance: 0.03 },
+  ],
+  [EnemyType.FROZEN_REVENANT]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.25 },
+    { rarity: ItemRarity.RARE, chance: 0.08 },
+    { rarity: ItemRarity.EPIC, chance: 0.015 },
+  ],
+  [EnemyType.PHANTOM_KNIGHT]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.28 },
+    { rarity: ItemRarity.RARE, chance: 0.08 },
+    { rarity: ItemRarity.EPIC, chance: 0.015 },
+  ],
+  [EnemyType.GARGOYLE]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.35 },
+    { rarity: ItemRarity.RARE, chance: 0.12 },
+    { rarity: ItemRarity.EPIC, chance: 0.03 },
+  ],
+  [EnemyType.CURSED_PRIEST]: [
+    { rarity: ItemRarity.COMMON, chance: 0.4 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.3 },
+    { rarity: ItemRarity.RARE, chance: 0.1 },
+    { rarity: ItemRarity.EPIC, chance: 0.02 },
+  ],
+  [EnemyType.SHADOW_ACOLYTE]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.2 },
+    { rarity: ItemRarity.RARE, chance: 0.06 },
+    { rarity: ItemRarity.EPIC, chance: 0.01 },
+  ],
+  [EnemyType.THORN_CRAWLER]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.22 },
+    { rarity: ItemRarity.RARE, chance: 0.06 },
+    { rarity: ItemRarity.EPIC, chance: 0.01 },
+  ],
+  [EnemyType.BLIGHT_SPRITE]: [
+    { rarity: ItemRarity.COMMON, chance: 0.4 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.2 },
+    { rarity: ItemRarity.RARE, chance: 0.05 },
+  ],
+  [EnemyType.FUNGAL_BRUTE]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.35 },
+    { rarity: ItemRarity.RARE, chance: 0.1 },
+    { rarity: ItemRarity.EPIC, chance: 0.02 },
+  ],
+  [EnemyType.ROTWOOD_LICH]: [
+    { rarity: ItemRarity.COMMON, chance: 0.4 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.3 },
+    { rarity: ItemRarity.RARE, chance: 0.1 },
+    { rarity: ItemRarity.EPIC, chance: 0.02 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.005 },
+  ],
+
+  // -- Medium bosses --
+  [EnemyType.GLACIAL_TITAN]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.5 },
+    { rarity: ItemRarity.RARE, chance: 0.3 },
+    { rarity: ItemRarity.EPIC, chance: 0.15 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.05 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.01 },
+  ],
+  [EnemyType.CATHEDRAL_DEMON]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.5 },
+    { rarity: ItemRarity.RARE, chance: 0.35 },
+    { rarity: ItemRarity.EPIC, chance: 0.18 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.06 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.012 },
+  ],
+  [EnemyType.THORNMOTHER]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.5 },
+    { rarity: ItemRarity.RARE, chance: 0.3 },
+    { rarity: ItemRarity.EPIC, chance: 0.15 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.05 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.01 },
+  ],
+
+  // -- Clockwork, Crimson & Stormspire (Hard) --
+  [EnemyType.CLOCKWORK_SOLDIER]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.15 },
+    { rarity: ItemRarity.EPIC, chance: 0.05 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.01 },
+  ],
+  [EnemyType.STEAM_GOLEM]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.2 },
+    { rarity: ItemRarity.EPIC, chance: 0.08 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.02 },
+  ],
+  [EnemyType.GEAR_SPIDER]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.35 },
+    { rarity: ItemRarity.RARE, chance: 0.12 },
+    { rarity: ItemRarity.EPIC, chance: 0.04 },
+  ],
+  [EnemyType.FORGE_MASTER]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.35 },
+    { rarity: ItemRarity.RARE, chance: 0.2 },
+    { rarity: ItemRarity.EPIC, chance: 0.08 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.02 },
+  ],
+  [EnemyType.BLOOD_KNIGHT]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.18 },
+    { rarity: ItemRarity.EPIC, chance: 0.06 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.015 },
+  ],
+  [EnemyType.CRIMSON_MAGE]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.35 },
+    { rarity: ItemRarity.RARE, chance: 0.2 },
+    { rarity: ItemRarity.EPIC, chance: 0.08 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.02 },
+  ],
+  [EnemyType.GARGOYLE_SENTINEL]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.18 },
+    { rarity: ItemRarity.EPIC, chance: 0.06 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.015 },
+  ],
+  [EnemyType.BLOOD_FIEND]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.38 },
+    { rarity: ItemRarity.RARE, chance: 0.15 },
+    { rarity: ItemRarity.EPIC, chance: 0.05 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.01 },
+  ],
+  [EnemyType.STORM_HARPY]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.38 },
+    { rarity: ItemRarity.RARE, chance: 0.15 },
+    { rarity: ItemRarity.EPIC, chance: 0.05 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.01 },
+  ],
+  [EnemyType.THUNDER_ELEMENTAL]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.18 },
+    { rarity: ItemRarity.EPIC, chance: 0.06 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.015 },
+  ],
+  [EnemyType.LIGHTNING_DRAKE]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.38 },
+    { rarity: ItemRarity.RARE, chance: 0.2 },
+    { rarity: ItemRarity.EPIC, chance: 0.08 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.02 },
+  ],
+  [EnemyType.WIND_SHAMAN]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.35 },
+    { rarity: ItemRarity.RARE, chance: 0.18 },
+    { rarity: ItemRarity.EPIC, chance: 0.06 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.015 },
+  ],
+
+  // -- Hard bosses --
+  [EnemyType.IRON_COLOSSUS]: [
+    { rarity: ItemRarity.RARE, chance: 0.5 },
+    { rarity: ItemRarity.EPIC, chance: 0.3 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.12 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.04 },
+    { rarity: ItemRarity.DIVINE, chance: 0.01 },
+  ],
+  [EnemyType.VAMPIRE_LORD]: [
+    { rarity: ItemRarity.RARE, chance: 0.5 },
+    { rarity: ItemRarity.EPIC, chance: 0.35 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.15 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.05 },
+    { rarity: ItemRarity.DIVINE, chance: 0.012 },
+  ],
+  [EnemyType.TEMPEST_TITAN]: [
+    { rarity: ItemRarity.RARE, chance: 0.5 },
+    { rarity: ItemRarity.EPIC, chance: 0.35 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.15 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.05 },
+    { rarity: ItemRarity.DIVINE, chance: 0.012 },
+  ],
+
+  // -- Shadow Realm & Primordial Abyss (Extreme) --
+  [EnemyType.NIGHTMARE_STALKER]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.22 },
+    { rarity: ItemRarity.EPIC, chance: 0.1 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.03 },
+  ],
+  [EnemyType.DREAD_PHANTOM]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.35 },
+    { rarity: ItemRarity.RARE, chance: 0.25 },
+    { rarity: ItemRarity.EPIC, chance: 0.12 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.04 },
+  ],
+  [EnemyType.SOUL_DEVOURER]: [
+    { rarity: ItemRarity.RARE, chance: 0.35 },
+    { rarity: ItemRarity.EPIC, chance: 0.15 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.05 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.01 },
+  ],
+  [EnemyType.SHADOW_COLOSSUS]: [
+    { rarity: ItemRarity.RARE, chance: 0.4 },
+    { rarity: ItemRarity.EPIC, chance: 0.2 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.08 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.02 },
+  ],
+  [EnemyType.ABYSSAL_LEVIATHAN]: [
+    { rarity: ItemRarity.RARE, chance: 0.35 },
+    { rarity: ItemRarity.EPIC, chance: 0.18 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.06 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.015 },
+  ],
+  [EnemyType.VOID_REAPER]: [
+    { rarity: ItemRarity.RARE, chance: 0.35 },
+    { rarity: ItemRarity.EPIC, chance: 0.2 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.08 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.02 },
+  ],
+  [EnemyType.CHAOS_SPAWN]: [
+    { rarity: ItemRarity.UNCOMMON, chance: 0.35 },
+    { rarity: ItemRarity.RARE, chance: 0.22 },
+    { rarity: ItemRarity.EPIC, chance: 0.1 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.03 },
+  ],
+  [EnemyType.ELDER_VOID_FIEND]: [
+    { rarity: ItemRarity.RARE, chance: 0.4 },
+    { rarity: ItemRarity.EPIC, chance: 0.22 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.08 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.025 },
+  ],
+
+  // -- Extreme bosses --
+  [EnemyType.NIGHTMARE_KING]: [
+    { rarity: ItemRarity.RARE, chance: 0.6 },
+    { rarity: ItemRarity.EPIC, chance: 0.4 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.2 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.08 },
+    { rarity: ItemRarity.DIVINE, chance: 0.02 },
+  ],
+  [EnemyType.PRIMORDIAL_ONE]: [
+    { rarity: ItemRarity.EPIC, chance: 0.6 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.35 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.15 },
+    { rarity: ItemRarity.DIVINE, chance: 0.05 },
+  ],
+
+  // -- Night bosses for new maps --
+  [EnemyType.NIGHT_MARSH_SWAMP_MOTHER]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.5 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.12 },
+  ],
+  [EnemyType.NIGHT_CAVERNS_CRYSTAL_KING]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.5 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.15 },
+  ],
+  [EnemyType.NIGHT_TUNDRA_FROST_EMPRESS]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.6 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.2 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.05 },
+  ],
+  [EnemyType.NIGHT_CATHEDRAL_ARCH_LICH]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.6 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.2 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.05 },
+  ],
+  [EnemyType.NIGHT_THORNWOOD_BLIGHT_LORD]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.6 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.2 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.05 },
+  ],
+  [EnemyType.NIGHT_FOUNDRY_IRON_TYRANT]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.7 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.25 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.08 },
+  ],
+  [EnemyType.NIGHT_CITADEL_BLOOD_EMPEROR]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.7 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.3 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.1 },
+  ],
+  [EnemyType.NIGHT_STORMSPIRE_THUNDER_GOD]: [
+    { rarity: ItemRarity.RARE, chance: 1.0 },
+    { rarity: ItemRarity.EPIC, chance: 0.7 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.3 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.1 },
+  ],
+  [EnemyType.NIGHT_SHADOW_DREAM_EATER]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.5 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.15 },
+    { rarity: ItemRarity.DIVINE, chance: 0.03 },
+  ],
+  [EnemyType.NIGHT_ABYSS_WORLD_ENDER]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.6 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.2 },
+    { rarity: ItemRarity.DIVINE, chance: 0.05 },
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -2774,6 +3606,76 @@ export const ENEMY_SPAWN_WEIGHTS: Record<DiabloMapId, { type: EnemyType; weight:
     { type: EnemyType.GIANT_HAWK, weight: 20 },
     { type: EnemyType.BISON_BEAST, weight: 15 },
     { type: EnemyType.CENTAUR_WARCHIEF, weight: 10 },
+  ],
+  [DiabloMapId.WHISPERING_MARSH]: [
+    { type: EnemyType.BOG_LURKER, weight: 30 },
+    { type: EnemyType.TOXIC_TOAD, weight: 25 },
+    { type: EnemyType.MARSH_HAG, weight: 20 },
+    { type: EnemyType.SWAMP_VINE, weight: 15 },
+    { type: EnemyType.HYDRA_MATRIARCH, weight: 10 },
+  ],
+  [DiabloMapId.CRYSTAL_CAVERNS]: [
+    { type: EnemyType.CRYSTAL_SPIDER, weight: 28 },
+    { type: EnemyType.CAVE_BAT_SWARM, weight: 25 },
+    { type: EnemyType.QUARTZ_ELEMENTAL, weight: 22 },
+    { type: EnemyType.GEM_GOLEM, weight: 15 },
+    { type: EnemyType.PRISMATIC_WYRM, weight: 10 },
+  ],
+  [DiabloMapId.FROZEN_TUNDRA]: [
+    { type: EnemyType.FROST_WOLF, weight: 28 },
+    { type: EnemyType.ICE_WRAITH, weight: 22 },
+    { type: EnemyType.FROZEN_REVENANT, weight: 20 },
+    { type: EnemyType.YETI, weight: 18 },
+    { type: EnemyType.GLACIAL_TITAN, weight: 12 },
+  ],
+  [DiabloMapId.HAUNTED_CATHEDRAL]: [
+    { type: EnemyType.PHANTOM_KNIGHT, weight: 25 },
+    { type: EnemyType.SHADOW_ACOLYTE, weight: 25 },
+    { type: EnemyType.GARGOYLE, weight: 20 },
+    { type: EnemyType.CURSED_PRIEST, weight: 18 },
+    { type: EnemyType.CATHEDRAL_DEMON, weight: 12 },
+  ],
+  [DiabloMapId.THORNWOOD_THICKET]: [
+    { type: EnemyType.THORN_CRAWLER, weight: 28 },
+    { type: EnemyType.BLIGHT_SPRITE, weight: 22 },
+    { type: EnemyType.FUNGAL_BRUTE, weight: 22 },
+    { type: EnemyType.ROTWOOD_LICH, weight: 16 },
+    { type: EnemyType.THORNMOTHER, weight: 12 },
+  ],
+  [DiabloMapId.CLOCKWORK_FOUNDRY]: [
+    { type: EnemyType.CLOCKWORK_SOLDIER, weight: 25 },
+    { type: EnemyType.GEAR_SPIDER, weight: 25 },
+    { type: EnemyType.STEAM_GOLEM, weight: 20 },
+    { type: EnemyType.FORGE_MASTER, weight: 18 },
+    { type: EnemyType.IRON_COLOSSUS, weight: 12 },
+  ],
+  [DiabloMapId.CRIMSON_CITADEL]: [
+    { type: EnemyType.BLOOD_KNIGHT, weight: 25 },
+    { type: EnemyType.BLOOD_FIEND, weight: 22 },
+    { type: EnemyType.CRIMSON_MAGE, weight: 20 },
+    { type: EnemyType.GARGOYLE_SENTINEL, weight: 20 },
+    { type: EnemyType.VAMPIRE_LORD, weight: 13 },
+  ],
+  [DiabloMapId.STORMSPIRE_PEAK]: [
+    { type: EnemyType.STORM_HARPY, weight: 25 },
+    { type: EnemyType.THUNDER_ELEMENTAL, weight: 22 },
+    { type: EnemyType.LIGHTNING_DRAKE, weight: 20 },
+    { type: EnemyType.WIND_SHAMAN, weight: 20 },
+    { type: EnemyType.TEMPEST_TITAN, weight: 13 },
+  ],
+  [DiabloMapId.SHADOW_REALM]: [
+    { type: EnemyType.NIGHTMARE_STALKER, weight: 25 },
+    { type: EnemyType.DREAD_PHANTOM, weight: 22 },
+    { type: EnemyType.SOUL_DEVOURER, weight: 22 },
+    { type: EnemyType.SHADOW_COLOSSUS, weight: 18 },
+    { type: EnemyType.NIGHTMARE_KING, weight: 13 },
+  ],
+  [DiabloMapId.PRIMORDIAL_ABYSS]: [
+    { type: EnemyType.CHAOS_SPAWN, weight: 25 },
+    { type: EnemyType.ABYSSAL_LEVIATHAN, weight: 22 },
+    { type: EnemyType.VOID_REAPER, weight: 22 },
+    { type: EnemyType.ELDER_VOID_FIEND, weight: 18 },
+    { type: EnemyType.PRIMORDIAL_ONE, weight: 13 },
   ],
   [DiabloMapId.CAMELOT]: [],
 };
@@ -2971,6 +3873,56 @@ export const BOSS_PHASE_CONFIGS: Record<DiabloMapId, BossPhaseConfig[]> = {
     { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.2, speedMultiplier: 1.2, abilities: [BossAbility.CHARGE, BossAbility.SUMMON_ADDS] },
     { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 1.5, speedMultiplier: 1.4, abilities: [BossAbility.CHARGE, BossAbility.SUMMON_ADDS, BossAbility.ENRAGE] },
   ],
+  [DiabloMapId.WHISPERING_MARSH]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.GROUND_SLAM] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.2, speedMultiplier: 1.2, abilities: [BossAbility.GROUND_SLAM, BossAbility.SUMMON_ADDS] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 1.5, speedMultiplier: 1.4, abilities: [BossAbility.GROUND_SLAM, BossAbility.SUMMON_ADDS, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.CRYSTAL_CAVERNS]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.CHARGE] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.2, speedMultiplier: 1.2, abilities: [BossAbility.CHARGE, BossAbility.SHIELD] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 1.5, speedMultiplier: 1.4, abilities: [BossAbility.CHARGE, BossAbility.SHIELD, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.FROZEN_TUNDRA]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.GROUND_SLAM] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.3, speedMultiplier: 1.2, abilities: [BossAbility.GROUND_SLAM, BossAbility.CHARGE] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 1.6, speedMultiplier: 1.4, abilities: [BossAbility.GROUND_SLAM, BossAbility.CHARGE, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.HAUNTED_CATHEDRAL]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.SUMMON_ADDS] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.4, speedMultiplier: 1.2, abilities: [BossAbility.SUMMON_ADDS, BossAbility.METEOR_RAIN] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 1.8, speedMultiplier: 1.4, abilities: [BossAbility.SUMMON_ADDS, BossAbility.METEOR_RAIN, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.THORNWOOD_THICKET]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.GROUND_SLAM] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.3, speedMultiplier: 1.2, abilities: [BossAbility.GROUND_SLAM, BossAbility.SUMMON_ADDS] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 1.6, speedMultiplier: 1.4, abilities: [BossAbility.GROUND_SLAM, BossAbility.SUMMON_ADDS, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.CLOCKWORK_FOUNDRY]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.CHARGE, BossAbility.GROUND_SLAM] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.5, speedMultiplier: 1.3, abilities: [BossAbility.CHARGE, BossAbility.GROUND_SLAM, BossAbility.SHIELD] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 2.0, speedMultiplier: 1.5, abilities: [BossAbility.CHARGE, BossAbility.GROUND_SLAM, BossAbility.SHIELD, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.CRIMSON_CITADEL]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.CHARGE, BossAbility.SUMMON_ADDS] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.5, speedMultiplier: 1.3, abilities: [BossAbility.CHARGE, BossAbility.SUMMON_ADDS, BossAbility.METEOR_RAIN] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 2.0, speedMultiplier: 1.5, abilities: [BossAbility.CHARGE, BossAbility.METEOR_RAIN, BossAbility.SUMMON_ADDS, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.STORMSPIRE_PEAK]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.METEOR_RAIN, BossAbility.CHARGE] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.5, speedMultiplier: 1.3, abilities: [BossAbility.METEOR_RAIN, BossAbility.CHARGE, BossAbility.GROUND_SLAM] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 2.0, speedMultiplier: 1.5, abilities: [BossAbility.METEOR_RAIN, BossAbility.CHARGE, BossAbility.GROUND_SLAM, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.SHADOW_REALM]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.CHARGE, BossAbility.SHIELD] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.6, speedMultiplier: 1.4, abilities: [BossAbility.CHARGE, BossAbility.SHIELD, BossAbility.METEOR_RAIN, BossAbility.SUMMON_ADDS] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 2.2, speedMultiplier: 1.6, abilities: [BossAbility.CHARGE, BossAbility.METEOR_RAIN, BossAbility.SUMMON_ADDS, BossAbility.GROUND_SLAM, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.PRIMORDIAL_ABYSS]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.METEOR_RAIN, BossAbility.CHARGE, BossAbility.GROUND_SLAM] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.8, speedMultiplier: 1.5, abilities: [BossAbility.METEOR_RAIN, BossAbility.CHARGE, BossAbility.GROUND_SLAM, BossAbility.SUMMON_ADDS, BossAbility.SHIELD] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 2.5, speedMultiplier: 1.8, abilities: [BossAbility.METEOR_RAIN, BossAbility.CHARGE, BossAbility.GROUND_SLAM, BossAbility.SUMMON_ADDS, BossAbility.SHIELD, BossAbility.ENRAGE] },
+  ],
   [DiabloMapId.CAMELOT]: [],
 };
 
@@ -3089,6 +4041,66 @@ export const ENEMY_DAMAGE_TYPES: Partial<Record<EnemyType, DamageType>> = {
   [EnemyType.NIGHT_DRAGON_SHADOW_WYRM]: DamageType.FIRE,
   [EnemyType.NIGHT_DESERT_SANDSTORM_DJINN]: DamageType.LIGHTNING,
   [EnemyType.NIGHT_GRASSLAND_STAMPEDE_KING]: DamageType.PHYSICAL,
+  // Marsh enemies
+  [EnemyType.MARSH_HAG]: DamageType.POISON,
+  [EnemyType.TOXIC_TOAD]: DamageType.POISON,
+  [EnemyType.HYDRA_MATRIARCH]: DamageType.POISON,
+  // Crystal Caverns enemies
+  [EnemyType.CRYSTAL_SPIDER]: DamageType.ARCANE,
+  [EnemyType.QUARTZ_ELEMENTAL]: DamageType.ARCANE,
+  [EnemyType.PRISMATIC_WYRM]: DamageType.ARCANE,
+  // Frozen Tundra enemies
+  [EnemyType.FROST_WOLF]: DamageType.ICE,
+  [EnemyType.ICE_WRAITH]: DamageType.ICE,
+  [EnemyType.YETI]: DamageType.ICE,
+  [EnemyType.FROZEN_REVENANT]: DamageType.ICE,
+  [EnemyType.GLACIAL_TITAN]: DamageType.ICE,
+  // Haunted Cathedral enemies
+  [EnemyType.PHANTOM_KNIGHT]: DamageType.SHADOW,
+  [EnemyType.CURSED_PRIEST]: DamageType.SHADOW,
+  [EnemyType.SHADOW_ACOLYTE]: DamageType.SHADOW,
+  [EnemyType.CATHEDRAL_DEMON]: DamageType.FIRE,
+  // Thornwood enemies
+  [EnemyType.BLIGHT_SPRITE]: DamageType.POISON,
+  [EnemyType.ROTWOOD_LICH]: DamageType.SHADOW,
+  [EnemyType.THORNMOTHER]: DamageType.POISON,
+  // Clockwork enemies
+  [EnemyType.FORGE_MASTER]: DamageType.FIRE,
+  [EnemyType.IRON_COLOSSUS]: DamageType.FIRE,
+  // Crimson Citadel enemies
+  [EnemyType.BLOOD_KNIGHT]: DamageType.SHADOW,
+  [EnemyType.CRIMSON_MAGE]: DamageType.FIRE,
+  [EnemyType.BLOOD_FIEND]: DamageType.SHADOW,
+  [EnemyType.VAMPIRE_LORD]: DamageType.SHADOW,
+  // Stormspire enemies
+  [EnemyType.STORM_HARPY]: DamageType.LIGHTNING,
+  [EnemyType.THUNDER_ELEMENTAL]: DamageType.LIGHTNING,
+  [EnemyType.LIGHTNING_DRAKE]: DamageType.LIGHTNING,
+  [EnemyType.WIND_SHAMAN]: DamageType.LIGHTNING,
+  [EnemyType.TEMPEST_TITAN]: DamageType.LIGHTNING,
+  // Shadow Realm enemies
+  [EnemyType.NIGHTMARE_STALKER]: DamageType.SHADOW,
+  [EnemyType.DREAD_PHANTOM]: DamageType.ARCANE,
+  [EnemyType.SOUL_DEVOURER]: DamageType.SHADOW,
+  [EnemyType.SHADOW_COLOSSUS]: DamageType.SHADOW,
+  [EnemyType.NIGHTMARE_KING]: DamageType.SHADOW,
+  // Primordial Abyss enemies
+  [EnemyType.ABYSSAL_LEVIATHAN]: DamageType.ARCANE,
+  [EnemyType.VOID_REAPER]: DamageType.ARCANE,
+  [EnemyType.CHAOS_SPAWN]: DamageType.FIRE,
+  [EnemyType.ELDER_VOID_FIEND]: DamageType.ARCANE,
+  [EnemyType.PRIMORDIAL_ONE]: DamageType.ARCANE,
+  // Night bosses for new maps
+  [EnemyType.NIGHT_MARSH_SWAMP_MOTHER]: DamageType.POISON,
+  [EnemyType.NIGHT_CAVERNS_CRYSTAL_KING]: DamageType.ARCANE,
+  [EnemyType.NIGHT_TUNDRA_FROST_EMPRESS]: DamageType.ICE,
+  [EnemyType.NIGHT_CATHEDRAL_ARCH_LICH]: DamageType.SHADOW,
+  [EnemyType.NIGHT_THORNWOOD_BLIGHT_LORD]: DamageType.POISON,
+  [EnemyType.NIGHT_FOUNDRY_IRON_TYRANT]: DamageType.FIRE,
+  [EnemyType.NIGHT_CITADEL_BLOOD_EMPEROR]: DamageType.SHADOW,
+  [EnemyType.NIGHT_STORMSPIRE_THUNDER_GOD]: DamageType.LIGHTNING,
+  [EnemyType.NIGHT_SHADOW_DREAM_EATER]: DamageType.SHADOW,
+  [EnemyType.NIGHT_ABYSS_WORLD_ENDER]: DamageType.ARCANE,
 };
 
 // ---------------------------------------------------------------------------
@@ -3201,7 +4213,7 @@ export const QUEST_DATABASE: Omit<DiabloQuest, 'progress' | 'isComplete' | 'isAc
   },
   {
     id: 'q_completionist', name: 'Completionist', description: 'Clear every combat map at least once.',
-    type: QuestType.CLEAR_MAP, target: {}, required: 8,
+    type: QuestType.CLEAR_MAP, target: {}, required: 18,
     rewards: { gold: 5000, xp: 10000, itemRarity: ItemRarity.LEGENDARY },
   },
   {
@@ -3229,6 +4241,16 @@ export const MAP_COMPLETION_REWARDS: Partial<Record<DiabloMapId, MapCompletionRe
   [DiabloMapId.DRAGONS_SANCTUM]: { gold: 2000, xp: 5000, guaranteedDropRarity: ItemRarity.LEGENDARY, bonusMessage: 'The dragons fall silent.' },
   [DiabloMapId.SUNSCORCH_DESERT]: { gold: 150, xp: 400, guaranteedDropRarity: ItemRarity.UNCOMMON, bonusMessage: 'The sands grow still.' },
   [DiabloMapId.EMERALD_GRASSLANDS]: { gold: 150, xp: 350, guaranteedDropRarity: ItemRarity.UNCOMMON, bonusMessage: 'Peace returns to the plains.' },
+  [DiabloMapId.WHISPERING_MARSH]: { gold: 175, xp: 420, guaranteedDropRarity: ItemRarity.UNCOMMON, bonusMessage: 'The swamp falls silent at last.' },
+  [DiabloMapId.CRYSTAL_CAVERNS]: { gold: 200, xp: 500, guaranteedDropRarity: ItemRarity.UNCOMMON, bonusMessage: 'The caverns glow with peaceful light.' },
+  [DiabloMapId.FROZEN_TUNDRA]: { gold: 400, xp: 1000, guaranteedDropRarity: ItemRarity.RARE, bonusMessage: 'The blizzard subsides at last.' },
+  [DiabloMapId.HAUNTED_CATHEDRAL]: { gold: 500, xp: 1200, guaranteedDropRarity: ItemRarity.RARE, bonusMessage: 'The cathedral finds peace once more.' },
+  [DiabloMapId.THORNWOOD_THICKET]: { gold: 450, xp: 1100, guaranteedDropRarity: ItemRarity.RARE, bonusMessage: 'The blight recedes from the wood.' },
+  [DiabloMapId.CLOCKWORK_FOUNDRY]: { gold: 1000, xp: 2500, guaranteedDropRarity: ItemRarity.EPIC, bonusMessage: 'The machinery grinds to a halt.' },
+  [DiabloMapId.CRIMSON_CITADEL]: { gold: 1200, xp: 3000, guaranteedDropRarity: ItemRarity.EPIC, bonusMessage: 'The crimson walls crumble to dust.' },
+  [DiabloMapId.STORMSPIRE_PEAK]: { gold: 1500, xp: 3500, guaranteedDropRarity: ItemRarity.EPIC, bonusMessage: 'The storms clear and sunlight breaks through.' },
+  [DiabloMapId.SHADOW_REALM]: { gold: 2500, xp: 6000, guaranteedDropRarity: ItemRarity.LEGENDARY, bonusMessage: 'The nightmares dissolve into nothing.' },
+  [DiabloMapId.PRIMORDIAL_ABYSS]: { gold: 4000, xp: 10000, guaranteedDropRarity: ItemRarity.LEGENDARY, bonusMessage: 'The abyss is sealed. Reality holds firm.' },
 };
 
 // ---------------------------------------------------------------------------
