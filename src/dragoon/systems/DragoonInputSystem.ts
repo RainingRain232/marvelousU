@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { DragoonState } from "../state/DragoonState";
+import { DragoonClassId } from "../state/DragoonState";
 
 let _keyDown: ((e: KeyboardEvent) => void) | null = null;
 let _keyUp: ((e: KeyboardEvent) => void) | null = null;
@@ -10,16 +11,53 @@ let _mouseMove: ((e: MouseEvent) => void) | null = null;
 let _mouseDown: ((e: MouseEvent) => void) | null = null;
 let _mouseUp: ((e: MouseEvent) => void) | null = null;
 let _pauseCallback: ((paused: boolean) => void) | null = null;
+let _classSelectCallback: ((classId: DragoonClassId) => void) | null = null;
+let _subclassSelectCallback: ((index: number) => void) | null = null;
+
+const CLASS_ORDER: DragoonClassId[] = [
+  DragoonClassId.ARCANE_MAGE,
+  DragoonClassId.STORM_RANGER,
+  DragoonClassId.BLOOD_KNIGHT,
+  DragoonClassId.SHADOW_ASSASSIN,
+];
 
 export const DragoonInputSystem = {
   setPauseCallback(cb: ((paused: boolean) => void) | null): void {
     _pauseCallback = cb;
   },
 
+  setClassSelectCallback(cb: ((classId: DragoonClassId) => void) | null): void {
+    _classSelectCallback = cb;
+  },
+
+  setSubclassSelectCallback(cb: ((index: number) => void) | null): void {
+    _subclassSelectCallback = cb;
+  },
+
   init(state: DragoonState): void {
     const inp = state.input;
 
     _keyDown = (e: KeyboardEvent) => {
+      // Class selection mode
+      if (state.classSelectActive) {
+        switch (e.code) {
+          case "Digit1": _classSelectCallback?.(CLASS_ORDER[0]); break;
+          case "Digit2": _classSelectCallback?.(CLASS_ORDER[1]); break;
+          case "Digit3": _classSelectCallback?.(CLASS_ORDER[2]); break;
+          case "Digit4": _classSelectCallback?.(CLASS_ORDER[3]); break;
+        }
+        return;
+      }
+
+      // Subclass selection mode
+      if (state.subclassChoiceActive) {
+        switch (e.code) {
+          case "Digit1": _subclassSelectCallback?.(0); break;
+          case "Digit2": _subclassSelectCallback?.(1); break;
+        }
+        return;
+      }
+
       switch (e.code) {
         case "KeyW": case "ArrowUp": inp.up = true; break;
         case "KeyS": case "ArrowDown": inp.down = true; break;
@@ -72,9 +110,11 @@ export const DragoonInputSystem = {
   },
 
   update(state: DragoonState, dt: number): void {
+    if (state.classSelectActive || state.subclassChoiceActive) return;
+
     const p = state.player;
     const inp = state.input;
-    const speed = 320; // pixels/sec
+    const speed = 320 * p.speedMultiplier;
 
     let dx = 0, dy = 0;
     if (inp.left) dx -= 1;
@@ -92,10 +132,14 @@ export const DragoonInputSystem = {
     p.position.x += dx * speed * dt;
     p.position.y += dy * speed * dt;
 
-    // Clamp to screen (with margin)
+    // Clamp to world bounds (with margin)
     const margin = 30;
-    p.position.x = Math.max(margin, Math.min(state.screenW - margin, p.position.x));
+    p.position.x = Math.max(margin, Math.min(state.worldWidth - margin, p.position.x));
     p.position.y = Math.max(margin, Math.min(state.screenH - margin, p.position.y));
+
+    // Update camera to follow player horizontally
+    const targetCamX = p.position.x - state.screenW * 0.5;
+    state.cameraX = Math.max(0, Math.min(state.worldWidth - state.screenW, targetCamX));
   },
 
   destroy(): void {
@@ -106,5 +150,7 @@ export const DragoonInputSystem = {
     if (_mouseUp) window.removeEventListener("mouseup", _mouseUp);
     _keyDown = _keyUp = _mouseMove = _mouseDown = _mouseUp = null;
     _pauseCallback = null;
+    _classSelectCallback = null;
+    _subclassSelectCallback = null;
   },
 };

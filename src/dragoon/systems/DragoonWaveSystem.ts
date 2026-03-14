@@ -46,16 +46,17 @@ export const DragoonWaveSystem = {
       state.waveEnemiesSpawned++;
     }
 
-    // Check wave end: all enemies spawned and all dead
-    const allDead = state.enemies.every(e => !e.alive);
+    // Check wave end: all enemies spawned and all dead (exclude allied)
+    const allDead = state.enemies.every(e => !e.alive || e.isAllied);
     if (state.waveEnemiesSpawned >= state.waveEnemiesTotal && allDead) {
       _endWave(state);
     }
 
     // Also end wave if timer expired (safety)
     if (state.waveTimer >= state.waveDuration + 10) {
-      // Kill remaining enemies
-      for (const e of state.enemies) e.alive = false;
+      for (const e of state.enemies) {
+        if (!e.isAllied) e.alive = false;
+      }
       _endWave(state);
     }
   },
@@ -71,18 +72,15 @@ function _startWave(state: DragoonState): void {
   state.waveDuration = DragoonBalance.WAVE_DURATION_BASE + state.wave * DragoonBalance.WAVE_DURATION_GROWTH;
   state.waveEnemiesTotal = DragoonBalance.ENEMY_COUNT_BASE + state.wave * DragoonBalance.ENEMY_COUNT_GROWTH;
 
-  // Remove dead enemies from previous wave
+  // Remove dead enemies from previous wave (keep allied)
   state.enemies = state.enemies.filter(e => e.alive);
 
   if (isBossWave) {
-    // Spawn boss
     const bossIdx = Math.floor((state.wave / state.bossWaveInterval) - 1) % BOSS_ORDER.length;
     const bossType = BOSS_ORDER[bossIdx];
     _spawnBoss(state, bossType);
-    // Set boss entrance announcement
     state.bossEntranceTimer = 3.0;
     state.bossEntranceName = _getBossDisplayName(bossType);
-    // Reduce normal enemy count during boss wave
     state.waveEnemiesTotal = Math.floor(state.waveEnemiesTotal * 0.5);
   }
 }
@@ -112,25 +110,22 @@ function _spawnEnemy(state: DragoonState): void {
   const sw = state.screenW;
   const sh = state.screenH;
 
-  // Position: spawn from right side or top for sky, right side for ground
+  const camRight = state.cameraX + sw;
   let x: number, y: number;
   let vx = 0, vy = 0;
 
   if (template.isGround) {
-    x = sw + 40;
-    y = sh - 60 - Math.random() * 30; // ground level
+    x = camRight + 40;
+    y = sh - 60 - Math.random() * 30;
     vx = -template.speed;
   } else {
-    // Sky enemies: mostly from right, sometimes from top
     if (Math.random() < 0.2) {
-      // From top
-      x = 100 + Math.random() * (sw - 200);
+      x = state.cameraX + 100 + Math.random() * (sw - 200);
       y = -40;
       vx = -template.speed * 0.3;
       vy = template.speed * 0.7;
     } else {
-      // From right
-      x = sw + 40;
+      x = camRight + 40;
       y = 60 + Math.random() * (sh * 0.65);
       vx = -template.speed;
       vy = (Math.random() - 0.5) * template.speed * 0.3;
@@ -160,6 +155,12 @@ function _spawnEnemy(state: DragoonState): void {
     fireRate: template.fireRate,
     color: template.color,
     glowColor: template.glowColor,
+    dotDamage: 0,
+    dotTimer: 0,
+    damageAmp: 1,
+    damageAmpTimer: 0,
+    isAllied: false,
+    alliedTimer: 0,
   };
 
   state.enemies.push(enemy);
@@ -176,7 +177,7 @@ function _spawnBoss(state: DragoonState, type: DragoonEnemyType): void {
   const boss: DragoonEnemy = {
     id: state.nextId++,
     type: template.type,
-    position: { x: sw + 100, y: sh * 0.35 },
+    position: { x: state.cameraX + sw + 100, y: sh * 0.35 },
     velocity: { x: -40, y: 0 },
     hp: Math.floor(template.hp * hpScale),
     maxHp: Math.floor(template.hp * hpScale),
@@ -196,6 +197,12 @@ function _spawnBoss(state: DragoonState, type: DragoonEnemyType): void {
     fireRate: template.fireRate,
     color: template.color,
     glowColor: template.glowColor,
+    dotDamage: 0,
+    dotTimer: 0,
+    damageAmp: 1,
+    damageAmpTimer: 0,
+    isAllied: false,
+    alliedTimer: 0,
   };
 
   state.enemies.push(boss);

@@ -2,7 +2,7 @@
 // Panzer Dragoon mode — balance config, enemy definitions, skill definitions
 // ---------------------------------------------------------------------------
 
-import { DragoonEnemyType, DragoonSkillId, EnemyPattern } from "../state/DragoonState";
+import { DragoonClassId, DragoonEnemyType, DragoonSkillId, DragoonSubclassId, EnemyPattern } from "../state/DragoonState";
 
 // ---------------------------------------------------------------------------
 // Balance
@@ -50,6 +50,8 @@ export const DragoonBalance = {
   ENEMY_DMG_SCALE: 0.08,        // +8% per wave
 
   PROJECTILE_CLEANUP_MARGIN: 100,
+
+  SUBCLASS_LEVEL: 20,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -206,70 +208,459 @@ export interface SkillConfig {
 }
 
 export const SKILL_CONFIGS: Record<DragoonSkillId, SkillConfig> = {
+  // =========================================================================
+  // ARCANE MAGE
+  // =========================================================================
   [DragoonSkillId.ARCANE_BOLT]: {
     id: DragoonSkillId.ARCANE_BOLT,
     name: "Arcane Bolt",
     description: "Rapid-fire magic bolts",
-    damage: 8,
-    manaCost: 0,
-    cooldown: 0.12,
-    duration: 0,
-    color: 0x88ccff,
-    key: "LMB",
+    damage: 8, manaCost: 0, cooldown: 0.12, duration: 0,
+    color: 0x88ccff, key: "LMB",
   },
   [DragoonSkillId.STARFALL]: {
     id: DragoonSkillId.STARFALL,
     name: "Starfall",
     description: "Homing star projectiles seek enemies",
-    damage: 18,
-    manaCost: 20,
-    cooldown: 4,
-    duration: 2,
-    color: 0xffdd44,
-    key: "1",
+    damage: 18, manaCost: 20, cooldown: 4, duration: 2,
+    color: 0xffdd44, key: "1",
   },
   [DragoonSkillId.THUNDERSTORM]: {
     id: DragoonSkillId.THUNDERSTORM,
     name: "Thunderstorm",
     description: "Lightning strikes around cursor",
-    damage: 35,
-    manaCost: 30,
-    cooldown: 6,
-    duration: 1.5,
-    color: 0x44aaff,
-    key: "2",
+    damage: 35, manaCost: 30, cooldown: 6, duration: 1.5,
+    color: 0x44aaff, key: "2",
   },
   [DragoonSkillId.FROST_NOVA]: {
     id: DragoonSkillId.FROST_NOVA,
     name: "Frost Nova",
     description: "Radial burst that slows and damages",
-    damage: 25,
-    manaCost: 25,
-    cooldown: 8,
-    duration: 0,
-    color: 0x88eeff,
-    key: "3",
+    damage: 25, manaCost: 25, cooldown: 8, duration: 0,
+    color: 0x88eeff, key: "3",
   },
   [DragoonSkillId.METEOR_SHOWER]: {
     id: DragoonSkillId.METEOR_SHOWER,
     name: "Meteor Shower",
     description: "Devastating rain of fire from above",
-    damage: 60,
-    manaCost: 50,
-    cooldown: 14,
-    duration: 3,
-    color: 0xff4400,
-    key: "4",
+    damage: 60, manaCost: 50, cooldown: 14, duration: 3,
+    color: 0xff4400, key: "4",
   },
   [DragoonSkillId.DIVINE_SHIELD]: {
     id: DragoonSkillId.DIVINE_SHIELD,
     name: "Divine Shield",
     description: "Holy barrier blocks all damage",
-    damage: 0,
-    manaCost: 35,
-    cooldown: 18,
-    duration: 2.5,
-    color: 0xffdd88,
-    key: "5",
+    damage: 0, manaCost: 35, cooldown: 18, duration: 2.5,
+    color: 0xffdd88, key: "5",
+  },
+  // Chronomancer
+  [DragoonSkillId.TIME_WARP]: {
+    id: DragoonSkillId.TIME_WARP,
+    name: "Time Warp",
+    description: "Slow all enemies, boost your speed",
+    damage: 0, manaCost: 45, cooldown: 16, duration: 4,
+    color: 0xcc88ff, key: "4",
+  },
+  [DragoonSkillId.TEMPORAL_LOOP]: {
+    id: DragoonSkillId.TEMPORAL_LOOP,
+    name: "Temporal Loop",
+    description: "Reverse all enemy projectiles back at them",
+    damage: 0, manaCost: 40, cooldown: 12, duration: 0,
+    color: 0xaa66ff, key: "5",
+  },
+  // Void Weaver
+  [DragoonSkillId.SINGULARITY]: {
+    id: DragoonSkillId.SINGULARITY,
+    name: "Singularity",
+    description: "Black hole pulls enemies in and crushes them",
+    damage: 40, manaCost: 50, cooldown: 14, duration: 3,
+    color: 0x6600aa, key: "4",
+  },
+  [DragoonSkillId.MIRROR_IMAGE]: {
+    id: DragoonSkillId.MIRROR_IMAGE,
+    name: "Mirror Image",
+    description: "Summon shadow clones that fire bolts",
+    damage: 6, manaCost: 35, cooldown: 16, duration: 5,
+    color: 0x8844cc, key: "5",
+  },
+
+  // =========================================================================
+  // STORM RANGER
+  // =========================================================================
+  [DragoonSkillId.WIND_ARROW]: {
+    id: DragoonSkillId.WIND_ARROW,
+    name: "Wind Arrow",
+    description: "Swift piercing wind bolts",
+    damage: 6, manaCost: 0, cooldown: 0.09, duration: 0,
+    color: 0x88ffcc, key: "LMB",
+  },
+  [DragoonSkillId.CHAIN_LIGHTNING]: {
+    id: DragoonSkillId.CHAIN_LIGHTNING,
+    name: "Chain Lightning",
+    description: "Lightning that bounces between 5 enemies",
+    damage: 22, manaCost: 20, cooldown: 4, duration: 0,
+    color: 0x44ddff, key: "1",
+  },
+  [DragoonSkillId.GALE_FORCE]: {
+    id: DragoonSkillId.GALE_FORCE,
+    name: "Gale Force",
+    description: "Blast of wind knocks enemies back",
+    damage: 15, manaCost: 20, cooldown: 6, duration: 0,
+    color: 0xaaffdd, key: "2",
+  },
+  [DragoonSkillId.HAWK_COMPANION]: {
+    id: DragoonSkillId.HAWK_COMPANION,
+    name: "Hawk Companion",
+    description: "Summon a hawk that auto-attacks enemies",
+    damage: 10, manaCost: 25, cooldown: 10, duration: 6,
+    color: 0xddaa44, key: "3",
+  },
+  [DragoonSkillId.TORNADO]: {
+    id: DragoonSkillId.TORNADO,
+    name: "Tornado",
+    description: "A swirling vortex that tears through enemies",
+    damage: 30, manaCost: 40, cooldown: 12, duration: 4,
+    color: 0x66ccaa, key: "4",
+  },
+  [DragoonSkillId.WIND_WALK]: {
+    id: DragoonSkillId.WIND_WALK,
+    name: "Wind Walk",
+    description: "Phase through projectiles with speed boost",
+    damage: 0, manaCost: 30, cooldown: 14, duration: 3,
+    color: 0xccffee, key: "5",
+  },
+  // Tempest Lord
+  [DragoonSkillId.HURRICANE]: {
+    id: DragoonSkillId.HURRICANE,
+    name: "Hurricane",
+    description: "Massive storm damages all visible enemies",
+    damage: 20, manaCost: 50, cooldown: 16, duration: 4,
+    color: 0x22aadd, key: "4",
+  },
+  [DragoonSkillId.THUNDER_ARMOR]: {
+    id: DragoonSkillId.THUNDER_ARMOR,
+    name: "Thunder Armor",
+    description: "Lightning aura zaps enemies, reduces damage taken",
+    damage: 15, manaCost: 40, cooldown: 18, duration: 6,
+    color: 0x44ccff, key: "5",
+  },
+  // Beastmaster
+  [DragoonSkillId.WOLF_PACK]: {
+    id: DragoonSkillId.WOLF_PACK,
+    name: "Wolf Pack",
+    description: "Summon 3 spectral wolves to hunt enemies",
+    damage: 12, manaCost: 45, cooldown: 16, duration: 8,
+    color: 0x88aa66, key: "4",
+  },
+  [DragoonSkillId.EAGLE_FURY]: {
+    id: DragoonSkillId.EAGLE_FURY,
+    name: "Eagle Fury",
+    description: "Your eagle dives across the screen dealing massive damage",
+    damage: 80, manaCost: 50, cooldown: 20, duration: 0,
+    color: 0xffcc44, key: "5",
+  },
+
+  // =========================================================================
+  // BLOOD KNIGHT
+  // =========================================================================
+  [DragoonSkillId.BLOOD_LANCE]: {
+    id: DragoonSkillId.BLOOD_LANCE,
+    name: "Blood Lance",
+    description: "Short-range high-damage lance of blood",
+    damage: 14, manaCost: 0, cooldown: 0.18, duration: 0,
+    color: 0xcc2222, key: "LMB",
+  },
+  [DragoonSkillId.CRIMSON_SLASH]: {
+    id: DragoonSkillId.CRIMSON_SLASH,
+    name: "Crimson Slash",
+    description: "Cone of blood rips enemies apart",
+    damage: 20, manaCost: 18, cooldown: 3, duration: 0,
+    color: 0xff4444, key: "1",
+  },
+  [DragoonSkillId.BLOOD_SHIELD]: {
+    id: DragoonSkillId.BLOOD_SHIELD,
+    name: "Blood Shield",
+    description: "Block next 3 hits and convert to healing",
+    damage: 0, manaCost: 25, cooldown: 10, duration: 8,
+    color: 0x880000, key: "2",
+  },
+  [DragoonSkillId.HEMORRHAGE]: {
+    id: DragoonSkillId.HEMORRHAGE,
+    name: "Hemorrhage",
+    description: "Mark area, enemies inside bleed over time",
+    damage: 8, manaCost: 22, cooldown: 6, duration: 4,
+    color: 0xaa0000, key: "3",
+  },
+  [DragoonSkillId.EXECUTION]: {
+    id: DragoonSkillId.EXECUTION,
+    name: "Execution",
+    description: "Massive damage to the weakest enemy",
+    damage: 120, manaCost: 45, cooldown: 14, duration: 0,
+    color: 0xff0000, key: "4",
+  },
+  [DragoonSkillId.WAR_CRY]: {
+    id: DragoonSkillId.WAR_CRY,
+    name: "War Cry",
+    description: "Boost all damage by 80% for 5s",
+    damage: 0, manaCost: 35, cooldown: 16, duration: 5,
+    color: 0xff8800, key: "5",
+  },
+  // Death Knight
+  [DragoonSkillId.RAISE_DEAD]: {
+    id: DragoonSkillId.RAISE_DEAD,
+    name: "Raise Dead",
+    description: "Resurrect fallen enemies to fight for you",
+    damage: 0, manaCost: 50, cooldown: 20, duration: 8,
+    color: 0x44aa44, key: "4",
+  },
+  [DragoonSkillId.SOUL_HARVEST]: {
+    id: DragoonSkillId.SOUL_HARVEST,
+    name: "Soul Harvest",
+    description: "Kills cause chain explosions for 6s",
+    damage: 35, manaCost: 40, cooldown: 18, duration: 6,
+    color: 0x22cc66, key: "5",
+  },
+  // Paladin
+  [DragoonSkillId.HOLY_NOVA]: {
+    id: DragoonSkillId.HOLY_NOVA,
+    name: "Holy Nova",
+    description: "Massive radial heal + heavy damage",
+    damage: 50, manaCost: 50, cooldown: 16, duration: 0,
+    color: 0xffdd44, key: "4",
+  },
+  [DragoonSkillId.CONSECRATION]: {
+    id: DragoonSkillId.CONSECRATION,
+    name: "Consecration",
+    description: "Holy zone: regen HP + burn enemies nearby",
+    damage: 12, manaCost: 40, cooldown: 18, duration: 5,
+    color: 0xffcc00, key: "5",
+  },
+
+  // =========================================================================
+  // SHADOW ASSASSIN
+  // =========================================================================
+  [DragoonSkillId.SHURIKEN]: {
+    id: DragoonSkillId.SHURIKEN,
+    name: "Shuriken",
+    description: "Rapid shurikens that pierce through enemies",
+    damage: 5, manaCost: 0, cooldown: 0.07, duration: 0,
+    color: 0xaaaaaa, key: "LMB",
+  },
+  [DragoonSkillId.FAN_OF_KNIVES]: {
+    id: DragoonSkillId.FAN_OF_KNIVES,
+    name: "Fan of Knives",
+    description: "Burst of 8 blades in all directions",
+    damage: 15, manaCost: 18, cooldown: 3.5, duration: 0,
+    color: 0xcccccc, key: "1",
+  },
+  [DragoonSkillId.POISON_CLOUD]: {
+    id: DragoonSkillId.POISON_CLOUD,
+    name: "Poison Cloud",
+    description: "Lingering toxic cloud at cursor",
+    damage: 6, manaCost: 22, cooldown: 5, duration: 4,
+    color: 0x44cc44, key: "2",
+  },
+  [DragoonSkillId.SHADOW_STEP]: {
+    id: DragoonSkillId.SHADOW_STEP,
+    name: "Shadow Step",
+    description: "Teleport to cursor with brief invincibility",
+    damage: 0, manaCost: 20, cooldown: 4, duration: 0.5,
+    color: 0x6644aa, key: "3",
+  },
+  [DragoonSkillId.MARK_FOR_DEATH]: {
+    id: DragoonSkillId.MARK_FOR_DEATH,
+    name: "Mark for Death",
+    description: "Target enemy takes 3x damage for 5s",
+    damage: 0, manaCost: 30, cooldown: 10, duration: 5,
+    color: 0xff2222, key: "4",
+  },
+  [DragoonSkillId.SMOKE_BOMB]: {
+    id: DragoonSkillId.SMOKE_BOMB,
+    name: "Smoke Bomb",
+    description: "Vanish: enemies can't target you for 3s",
+    damage: 0, manaCost: 30, cooldown: 14, duration: 3,
+    color: 0x666666, key: "5",
+  },
+  // Ninja
+  [DragoonSkillId.SHADOW_CLONE_ARMY]: {
+    id: DragoonSkillId.SHADOW_CLONE_ARMY,
+    name: "Shadow Clones",
+    description: "4 shadow clones fire shurikens for 6s",
+    damage: 5, manaCost: 45, cooldown: 16, duration: 6,
+    color: 0x8866cc, key: "4",
+  },
+  [DragoonSkillId.BLADE_STORM]: {
+    id: DragoonSkillId.BLADE_STORM,
+    name: "Blade Storm",
+    description: "Spinning ring of blades shreds nearby enemies",
+    damage: 10, manaCost: 40, cooldown: 14, duration: 4,
+    color: 0xdddddd, key: "5",
+  },
+  // Phantom
+  [DragoonSkillId.SOUL_SIPHON]: {
+    id: DragoonSkillId.SOUL_SIPHON,
+    name: "Soul Siphon",
+    description: "Channel: drain enemy HP and heal yourself",
+    damage: 18, manaCost: 35, cooldown: 12, duration: 3,
+    color: 0x44ff88, key: "4",
+  },
+  [DragoonSkillId.PHASE_SHIFT]: {
+    id: DragoonSkillId.PHASE_SHIFT,
+    name: "Phase Shift",
+    description: "Become intangible: immune + 2x damage for 4s",
+    damage: 0, manaCost: 45, cooldown: 20, duration: 4,
+    color: 0xaa88ff, key: "5",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Class definitions
+// ---------------------------------------------------------------------------
+
+export interface ClassDefinition {
+  id: DragoonClassId;
+  name: string;
+  description: string;
+  color: number;
+  basicAttack: DragoonSkillId;
+  skills: [DragoonSkillId, DragoonSkillId, DragoonSkillId, DragoonSkillId, DragoonSkillId]; // keys 1-5
+  subclasses: [DragoonSubclassId, DragoonSubclassId];
+  // Class stat modifiers
+  hpMod: number;    // multiplier
+  manaMod: number;
+  manaRegenMod: number;
+  speedMod: number;
+}
+
+export const CLASS_DEFINITIONS: Record<DragoonClassId, ClassDefinition> = {
+  [DragoonClassId.ARCANE_MAGE]: {
+    id: DragoonClassId.ARCANE_MAGE,
+    name: "Arcane Mage",
+    description: "Master of arcane magic. Versatile spellcaster with powerful AoE.",
+    color: 0x88ccff,
+    basicAttack: DragoonSkillId.ARCANE_BOLT,
+    skills: [DragoonSkillId.STARFALL, DragoonSkillId.THUNDERSTORM, DragoonSkillId.FROST_NOVA, DragoonSkillId.METEOR_SHOWER, DragoonSkillId.DIVINE_SHIELD],
+    subclasses: [DragoonSubclassId.CHRONOMANCER, DragoonSubclassId.VOID_WEAVER],
+    hpMod: 1, manaMod: 1.2, manaRegenMod: 1.1, speedMod: 1,
+  },
+  [DragoonClassId.STORM_RANGER]: {
+    id: DragoonClassId.STORM_RANGER,
+    name: "Storm Ranger",
+    description: "Swift wind warrior. Fast attacks, companions, and crowd control.",
+    color: 0x44ddaa,
+    basicAttack: DragoonSkillId.WIND_ARROW,
+    skills: [DragoonSkillId.CHAIN_LIGHTNING, DragoonSkillId.GALE_FORCE, DragoonSkillId.HAWK_COMPANION, DragoonSkillId.TORNADO, DragoonSkillId.WIND_WALK],
+    subclasses: [DragoonSubclassId.TEMPEST_LORD, DragoonSubclassId.BEASTMASTER],
+    hpMod: 0.9, manaMod: 1, manaRegenMod: 1.2, speedMod: 1.15,
+  },
+  [DragoonClassId.BLOOD_KNIGHT]: {
+    id: DragoonClassId.BLOOD_KNIGHT,
+    name: "Blood Knight",
+    description: "Brutal warrior of blood magic. High damage, self-healing, tanky.",
+    color: 0xcc2222,
+    basicAttack: DragoonSkillId.BLOOD_LANCE,
+    skills: [DragoonSkillId.CRIMSON_SLASH, DragoonSkillId.BLOOD_SHIELD, DragoonSkillId.HEMORRHAGE, DragoonSkillId.EXECUTION, DragoonSkillId.WAR_CRY],
+    subclasses: [DragoonSubclassId.DEATH_KNIGHT, DragoonSubclassId.PALADIN],
+    hpMod: 1.3, manaMod: 0.9, manaRegenMod: 0.9, speedMod: 0.95,
+  },
+  [DragoonClassId.SHADOW_ASSASSIN]: {
+    id: DragoonClassId.SHADOW_ASSASSIN,
+    name: "Shadow Assassin",
+    description: "Lightning-fast rogue. Extreme fire rate, evasion, and debuffs.",
+    color: 0xaa88cc,
+    basicAttack: DragoonSkillId.SHURIKEN,
+    skills: [DragoonSkillId.FAN_OF_KNIVES, DragoonSkillId.POISON_CLOUD, DragoonSkillId.SHADOW_STEP, DragoonSkillId.MARK_FOR_DEATH, DragoonSkillId.SMOKE_BOMB],
+    subclasses: [DragoonSubclassId.NINJA, DragoonSubclassId.PHANTOM],
+    hpMod: 0.8, manaMod: 1, manaRegenMod: 1.3, speedMod: 1.2,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Subclass definitions
+// ---------------------------------------------------------------------------
+
+export interface SubclassDefinition {
+  id: DragoonSubclassId;
+  classId: DragoonClassId;
+  name: string;
+  description: string;
+  color: number;
+  // Replaces skills at index 3 and 4 (keys 4 and 5)
+  replaceSkill4: DragoonSkillId;
+  replaceSkill5: DragoonSkillId;
+}
+
+export const SUBCLASS_DEFINITIONS: Record<DragoonSubclassId, SubclassDefinition> = {
+  [DragoonSubclassId.CHRONOMANCER]: {
+    id: DragoonSubclassId.CHRONOMANCER,
+    classId: DragoonClassId.ARCANE_MAGE,
+    name: "Chronomancer",
+    description: "Manipulate time itself. Slow enemies and reverse projectiles.",
+    color: 0xcc88ff,
+    replaceSkill4: DragoonSkillId.TIME_WARP,
+    replaceSkill5: DragoonSkillId.TEMPORAL_LOOP,
+  },
+  [DragoonSubclassId.VOID_WEAVER]: {
+    id: DragoonSubclassId.VOID_WEAVER,
+    classId: DragoonClassId.ARCANE_MAGE,
+    name: "Void Weaver",
+    description: "Command the void. Black holes and shadow duplicates.",
+    color: 0x6600aa,
+    replaceSkill4: DragoonSkillId.SINGULARITY,
+    replaceSkill5: DragoonSkillId.MIRROR_IMAGE,
+  },
+  [DragoonSubclassId.TEMPEST_LORD]: {
+    id: DragoonSubclassId.TEMPEST_LORD,
+    classId: DragoonClassId.STORM_RANGER,
+    name: "Tempest Lord",
+    description: "Become the storm. Screen-wide devastation and lightning armor.",
+    color: 0x22aadd,
+    replaceSkill4: DragoonSkillId.HURRICANE,
+    replaceSkill5: DragoonSkillId.THUNDER_ARMOR,
+  },
+  [DragoonSubclassId.BEASTMASTER]: {
+    id: DragoonSubclassId.BEASTMASTER,
+    classId: DragoonClassId.STORM_RANGER,
+    name: "Beastmaster",
+    description: "Command wolf packs and unleash your eagle's fury.",
+    color: 0x88aa66,
+    replaceSkill4: DragoonSkillId.WOLF_PACK,
+    replaceSkill5: DragoonSkillId.EAGLE_FURY,
+  },
+  [DragoonSubclassId.DEATH_KNIGHT]: {
+    id: DragoonSubclassId.DEATH_KNIGHT,
+    classId: DragoonClassId.BLOOD_KNIGHT,
+    name: "Death Knight",
+    description: "Raise the dead and harvest souls. Kills fuel chain explosions.",
+    color: 0x44aa44,
+    replaceSkill4: DragoonSkillId.RAISE_DEAD,
+    replaceSkill5: DragoonSkillId.SOUL_HARVEST,
+  },
+  [DragoonSubclassId.PALADIN]: {
+    id: DragoonSubclassId.PALADIN,
+    classId: DragoonClassId.BLOOD_KNIGHT,
+    name: "Paladin",
+    description: "Holy warrior. Heal yourself while smiting foes with divine power.",
+    color: 0xffdd44,
+    replaceSkill4: DragoonSkillId.HOLY_NOVA,
+    replaceSkill5: DragoonSkillId.CONSECRATION,
+  },
+  [DragoonSubclassId.NINJA]: {
+    id: DragoonSubclassId.NINJA,
+    classId: DragoonClassId.SHADOW_ASSASSIN,
+    name: "Ninja",
+    description: "Army of shadows. Clone yourself and unleash blade storms.",
+    color: 0x8866cc,
+    replaceSkill4: DragoonSkillId.SHADOW_CLONE_ARMY,
+    replaceSkill5: DragoonSkillId.BLADE_STORM,
+  },
+  [DragoonSubclassId.PHANTOM]: {
+    id: DragoonSubclassId.PHANTOM,
+    classId: DragoonClassId.SHADOW_ASSASSIN,
+    name: "Phantom",
+    description: "Between worlds. Drain souls and become untouchable.",
+    color: 0xaa88ff,
+    replaceSkill4: DragoonSkillId.SOUL_SIPHON,
+    replaceSkill5: DragoonSkillId.PHASE_SHIFT,
   },
 };

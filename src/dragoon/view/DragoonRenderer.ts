@@ -72,7 +72,10 @@ export class DragoonRenderer {
   private _arthurGfx = new Graphics();
   private _wandGlowGfx = new Graphics();
 
+  private _worldWidth: number = 0;
+
   init(sw: number, sh: number): void {
+    this._worldWidth = sw * 3;
     this.worldLayer.removeChildren();
 
     // Build layer hierarchy
@@ -91,23 +94,23 @@ export class DragoonRenderer {
     this.worldLayer.addChild(this._playerContainer);
     this._playerContainer.addChild(this._shieldGfx);
 
-    // Draw static sky gradient
-    this._drawSkyGradient(sw, sh);
+    // Draw static sky gradient (covers full world width)
+    this._drawSkyGradient(this._worldWidth, sh);
 
-    // Generate stars
-    this._generateStars(sw, sh);
+    // Generate stars (across full world width)
+    this._generateStars(this._worldWidth, sh);
 
-    // Draw sun/moon
-    this._drawSun(sw, sh);
+    // Draw sun/moon (centered in world)
+    this._drawSun(this._worldWidth, sh);
 
-    // Generate clouds
-    this._generateClouds(sw, sh);
+    // Generate clouds (across full world width)
+    this._generateClouds(this._worldWidth, sh);
 
-    // Generate ground features
-    this._generateGroundFeatures(sw);
+    // Generate ground features (across full world width)
+    this._generateGroundFeatures(this._worldWidth);
 
-    // Generate floating particles
-    this._generateFloatingParticles(sw, sh);
+    // Generate floating particles (across full world width)
+    this._generateFloatingParticles(this._worldWidth, sh);
 
     // Init player (eagle + Arthur)
     this._playerContainer.addChild(this._eagleGfx);
@@ -170,13 +173,14 @@ export class DragoonRenderer {
     }
   }
 
-  private _drawStars(time: number, sw: number, dt: number): void {
+  private _drawStars(time: number, _sw: number, dt: number): void {
     const g = this._starField;
     g.clear();
+    const ww = this._worldWidth;
     for (const star of this._stars) {
-      // Slow parallax drift for stars — wrap around screen
+      // Slow parallax drift for stars — wrap around world
       star.x -= 3 * dt;
-      if (star.x < -10) star.x += sw + 20;
+      if (star.x < -10) star.x += ww + 20;
 
       const alpha = 0.3 + 0.7 * Math.abs(Math.sin(time * star.twinkleSpeed + star.phase));
       const colors = [0xffffff, 0xaaccff, 0xffddaa, 0xddddff, 0xffc8e0, 0xc8e0ff];
@@ -228,12 +232,13 @@ export class DragoonRenderer {
     }
   }
 
-  private _drawClouds(sw: number, dt: number): void {
+  private _drawClouds(_sw: number, dt: number): void {
     this._cloudContainer.removeChildren();
     const g = new Graphics();
+    const ww = this._worldWidth;
     for (const c of this._clouds) {
       c.x -= c.speed * dt;
-      if (c.x + c.w < -50) c.x = sw + 50 + Math.random() * 200;
+      if (c.x + c.w < -50) c.x = ww + 50 + Math.random() * 200;
 
       const cx = c.x + c.w * 0.5;
       const cy = c.y;
@@ -336,7 +341,7 @@ export class DragoonRenderer {
   }
 
   private _drawGround(state: DragoonState, dt: number): void {
-    const sw = state.screenW;
+    const sw = this._worldWidth;
     const sh = state.screenH;
     const groundY = sh * 0.78;
     const groundH = sh - groundY;
@@ -352,7 +357,7 @@ export class DragoonRenderer {
     for (const p of this._floatingParticles) {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      if (p.x < -20) p.x = sw + 20;
+      if (p.x < -20) p.x = this._worldWidth + 20;
       if (p.type === "bird") {
         const wingT = Math.sin(state.gameTime * 8 + p.size * 3);
         this._hazeGfx.moveTo(p.x - p.size * 2, p.y + wingT * 1.5)
@@ -957,6 +962,25 @@ export class DragoonRenderer {
 
       _drawEnemyShape(gfx, enemy, state.gameTime);
 
+      // Allied glow
+      if (enemy.isAllied) {
+        gfx.circle(0, 0, enemy.size * 18).fill({ color: 0x44ff44, alpha: 0.08 + Math.sin(state.gameTime * 4) * 0.03 });
+      }
+
+      // Mark for Death indicator
+      if (enemy.damageAmpTimer > 0 && enemy.damageAmp > 1) {
+        const markPulse = Math.sin(state.gameTime * 8) * 0.1;
+        gfx.circle(0, 0, enemy.size * 20).stroke({ color: 0xff2222, width: 1.5, alpha: 0.5 + markPulse });
+        // Skull-like X marker
+        gfx.moveTo(-6, -6).lineTo(6, 6).stroke({ color: 0xff2222, width: 2, alpha: 0.6 });
+        gfx.moveTo(6, -6).lineTo(-6, 6).stroke({ color: 0xff2222, width: 2, alpha: 0.6 });
+      }
+
+      // DoT indicator
+      if (enemy.dotTimer > 0) {
+        gfx.circle(0, 0, enemy.size * 16).fill({ color: 0xaa0000, alpha: 0.06 + Math.sin(state.gameTime * 5) * 0.03 });
+      }
+
       // HP bar
       if (enemy.hp < enemy.maxHp) {
         const bw = enemy.size * 30;
@@ -1040,13 +1064,77 @@ export class DragoonRenderer {
   // ---------------------------------------------------------------------------
 
   render(state: DragoonState, dt: number): void {
+    this._worldWidth = state.worldWidth;
     this._drawStars(state.gameTime, state.screenW, dt);
     this._drawClouds(state.screenW, dt);
     this._drawGround(state, dt);
     this.drawPlayer(state, dt);
     this._drawPickups(state);
+    this._drawCompanions(state);
+    this._drawPoisonClouds(state);
     this.drawEnemies(state, dt);
     this.drawProjectiles(state, dt);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Companions (hawks, wolves, clones)
+  // ---------------------------------------------------------------------------
+
+  private _companionGfx = new Graphics();
+
+  private _drawCompanions(state: DragoonState): void {
+    if (!this._companionGfx.parent) {
+      this._enemyContainer.addChild(this._companionGfx);
+    }
+    const g = this._companionGfx;
+    g.clear();
+
+    for (const c of state.companions) {
+      const x = c.position.x;
+      const y = c.position.y;
+      const pulse = Math.sin(state.gameTime * 5 + c.id) * 0.15;
+
+      if (c.type === "hawk") {
+        // Small hawk shape
+        g.circle(x, y, 12).fill({ color: 0xddaa44, alpha: 0.15 + pulse * 0.05 });
+        g.ellipse(x, y, 10, 5).fill({ color: 0xccaa33 });
+        g.moveTo(x - 12, y + 2).lineTo(x - 6, y - 4).lineTo(x, y).fill({ color: 0xddaa44 });
+        g.moveTo(x, y).lineTo(x + 6, y - 4).lineTo(x + 12, y + 2).fill({ color: 0xddaa44 });
+      } else if (c.type === "wolf") {
+        // Wolf shape
+        g.circle(x, y, 14).fill({ color: 0x88aa66, alpha: 0.12 + pulse * 0.05 });
+        g.ellipse(x, y, 10, 7).fill({ color: 0x667744 });
+        g.circle(x + 6, y - 3, 3).fill({ color: 0x88aa66 });
+        g.circle(x + 9, y - 2, 1.5).fill({ color: 0xffff88 });
+      } else {
+        // Clone (ghostly player)
+        g.circle(x, y, 16).fill({ color: 0x8844cc, alpha: 0.12 + pulse * 0.05 });
+        g.ellipse(x, y, 8, 10).fill({ color: 0x6633aa, alpha: 0.7 });
+        g.circle(x, y - 4, 4).fill({ color: 0x8844cc, alpha: 0.7 });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Poison Clouds
+  // ---------------------------------------------------------------------------
+
+  private _poisonGfx = new Graphics();
+
+  private _drawPoisonClouds(state: DragoonState): void {
+    if (!this._poisonGfx.parent) {
+      this._enemyContainer.addChild(this._poisonGfx);
+    }
+    const g = this._poisonGfx;
+    g.clear();
+
+    for (const cloud of state.poisonClouds) {
+      const fadeAlpha = Math.min(1, cloud.timer / cloud.maxTimer);
+      const pulse = Math.sin(state.gameTime * 3 + cloud.id) * 0.05;
+      g.circle(cloud.position.x, cloud.position.y, cloud.radius).fill({ color: cloud.color, alpha: (0.12 + pulse) * fadeAlpha });
+      g.circle(cloud.position.x, cloud.position.y, cloud.radius * 0.7).fill({ color: cloud.color, alpha: (0.08 + pulse) * fadeAlpha });
+      g.circle(cloud.position.x, cloud.position.y, cloud.radius * 0.4).fill({ color: 0x88ff88, alpha: 0.06 * fadeAlpha });
+    }
   }
 
   // ---------------------------------------------------------------------------

@@ -7,9 +7,9 @@
 import { Ticker } from "pixi.js";
 import { viewManager } from "@view/ViewManager";
 import { audioManager } from "@audio/AudioManager";
-import { createDragoonState } from "./state/DragoonState";
+import { createDragoonState, DragoonClassId } from "./state/DragoonState";
 import type { DragoonState } from "./state/DragoonState";
-import { DragoonBalance } from "./config/DragoonConfig";
+import { DragoonBalance, CLASS_DEFINITIONS, SUBCLASS_DEFINITIONS, SKILL_CONFIGS } from "./config/DragoonConfig";
 import { DragoonInputSystem } from "./systems/DragoonInputSystem";
 import { DragoonWaveSystem } from "./systems/DragoonWaveSystem";
 import { DragoonCombatSystem } from "./systems/DragoonCombatSystem";
@@ -66,6 +66,16 @@ export class DragoonGame {
       }
     });
 
+    // Class selection callback
+    DragoonInputSystem.setClassSelectCallback((classId) => {
+      this._selectClass(classId);
+    });
+
+    // Subclass selection callback
+    DragoonInputSystem.setSubclassSelectCallback((index) => {
+      this._selectSubclass(index);
+    });
+
     // Combat callbacks → FX
     DragoonCombatSystem.setExplosionCallback((x, y, radius, color) => {
       this._fx.pendingExplosions.push({ x, y, radius, color });
@@ -80,15 +90,100 @@ export class DragoonGame {
     DragoonCombatSystem.setLightningCallback((x, y) => {
       this._fx.pendingLightning.push({ x, y });
     });
+    DragoonCombatSystem.setLevelUpCallback((level) => {
+      const sw2 = viewManager.screenWidth;
+      const sh2 = viewManager.screenHeight;
+      this._hud.showNotification(`Level ${level}!`, 0xffdd44, sw2, sh2);
+      this._fx.screenFlash(0xffdd44, 0.15);
+
+      // Check if subclass choice was triggered
+      if (this._state.subclassChoiceActive) {
+        this._hud.buildSubclassChoice(this._state, sw2, sh2);
+      }
+    });
 
     // Music
     audioManager.switchTrack("battle");
+
+    // Show class selection
+    this._hud.buildClassSelect(sw, sh);
 
     // Start game loop
     this._tickerCb = (ticker: Ticker) => {
       this._gameLoop(ticker.deltaMS / 1000);
     };
     viewManager.app.ticker.add(this._tickerCb);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Class Selection
+  // ---------------------------------------------------------------------------
+
+  private _selectClass(classId: DragoonClassId): void {
+    const state = this._state;
+    if (!state.classSelectActive) return;
+
+    const classDef = CLASS_DEFINITIONS[classId];
+    if (!classDef) return;
+
+    state.classId = classId;
+    state.classSelectActive = false;
+
+    // Apply class stats
+    state.player.maxHp = Math.floor(100 * classDef.hpMod);
+    state.player.hp = state.player.maxHp;
+    state.player.maxMana = Math.floor(100 * classDef.manaMod);
+    state.player.mana = state.player.maxMana;
+    state.player.manaRegen = Math.floor(8 * classDef.manaRegenMod);
+
+    // Set up skills: [basicAttack, skill1, skill2, skill3, skill4, skill5]
+    const basicCfg = SKILL_CONFIGS[classDef.basicAttack];
+    state.skills = [
+      { id: classDef.basicAttack, cooldown: 0, maxCooldown: basicCfg.cooldown, active: false, activeTimer: 0 },
+      ...classDef.skills.map(skillId => {
+        const cfg = SKILL_CONFIGS[skillId];
+        return { id: skillId, cooldown: 0, maxCooldown: cfg.cooldown, active: false, activeTimer: 0 };
+      }),
+    ];
+
+    this._hud.hideClassSelect();
+
+    const sw = viewManager.screenWidth;
+    const sh = viewManager.screenHeight;
+    this._hud.showNotification(`${classDef.name} selected!`, classDef.color, sw, sh);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Subclass Selection
+  // ---------------------------------------------------------------------------
+
+  private _selectSubclass(index: number): void {
+    const state = this._state;
+    if (!state.subclassChoiceActive || !state.subclassOptions) return;
+    if (index < 0 || index > 1) return;
+
+    const subclassId = state.subclassOptions[index];
+    const subDef = SUBCLASS_DEFINITIONS[subclassId];
+    if (!subDef) return;
+
+    state.subclassId = subclassId;
+    state.subclassChoiceActive = false;
+    state.subclassUnlocked = true;
+    state.paused = false;
+
+    // Replace skills at index 4 and 5 (array indices 4 and 5, which are skills[3] and skills[4] in 0-based)
+    const skill4Cfg = SKILL_CONFIGS[subDef.replaceSkill4];
+    const skill5Cfg = SKILL_CONFIGS[subDef.replaceSkill5];
+
+    state.skills[4] = { id: subDef.replaceSkill4, cooldown: 0, maxCooldown: skill4Cfg.cooldown, active: false, activeTimer: 0 };
+    state.skills[5] = { id: subDef.replaceSkill5, cooldown: 0, maxCooldown: skill5Cfg.cooldown, active: false, activeTimer: 0 };
+
+    this._hud.hideSubclassChoice();
+
+    const sw = viewManager.screenWidth;
+    const sh = viewManager.screenHeight;
+    this._hud.showNotification(`${subDef.name} unlocked!`, subDef.color, sw, sh);
+    this._fx.screenFlash(subDef.color, 0.3);
   }
 
   // ---------------------------------------------------------------------------
@@ -101,9 +196,10 @@ export class DragoonGame {
     const sh = viewManager.screenHeight;
     const state = this._state;
 
-    // Update screen dims (in case of resize)
+    // Update screen dims
     state.screenW = sw;
     state.screenH = sh;
+    state.worldWidth = sw * 3;
 
     // Game over / victory
     if (state.gameOver) {
@@ -113,13 +209,8 @@ export class DragoonGame {
       this._handleVictory(sw, sh);
     }
 
-    // Boss wave warning
-    if (!state.betweenWaves && state.bossActive) {
-      // Already showing boss
-    }
-
     // Fixed timestep simulation
-    if (!state.paused && !state.gameOver && !state.victory) {
+    if (!state.paused && !state.gameOver && !state.victory && !state.classSelectActive && !state.subclassChoiceActive) {
       this._simAccumulator += rawDt;
       while (this._simAccumulator >= DT) {
         this._simAccumulator -= DT;
@@ -150,16 +241,9 @@ export class DragoonGame {
     const sw = state.screenW;
     const sh = state.screenH;
 
-    // Render world
     this._renderer.render(state, dt);
-
-    // FX
     this._fx.update(state, dt);
-
-    // Apply camera shake
-    this._renderer.worldLayer.position.set(this._fx.shakeX, this._fx.shakeY);
-
-    // HUD
+    this._renderer.worldLayer.position.set(-state.cameraX + this._fx.shakeX, this._fx.shakeY);
     this._hud.update(state, sw, sh, dt);
   }
 
@@ -177,7 +261,6 @@ export class DragoonGame {
 
     this._hud.showNotification("GAME OVER", 0xff4444, sw, sh);
 
-    // Restart after delay
     setTimeout(() => {
       this._showRestartPrompt(sw, sh);
     }, 2000);
@@ -200,7 +283,6 @@ export class DragoonGame {
   }
 
   private _showRestartPrompt(sw: number, sh: number): void {
-    // Listen for any key to restart or Escape to exit
     const handler = (e: KeyboardEvent) => {
       window.removeEventListener("keydown", handler);
       if (e.code === "Escape") {
@@ -230,6 +312,7 @@ export class DragoonGame {
     DragoonCombatSystem.setHitCallback(null);
     DragoonCombatSystem.setPlayerHitCallback(null);
     DragoonCombatSystem.setLightningCallback(null);
+    DragoonCombatSystem.setLevelUpCallback(null);
     DragoonWaveSystem.reset();
 
     if (this._tickerCb) {

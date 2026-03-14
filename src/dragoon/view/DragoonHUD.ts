@@ -1,11 +1,11 @@
 // ---------------------------------------------------------------------------
-// Panzer Dragoon mode — HUD (health, mana, score, wave, skills, combo)
+// Panzer Dragoon mode — HUD (health, mana, score, wave, skills, combo, level)
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { DragoonState } from "../state/DragoonState";
-import { DragoonSkillId } from "../state/DragoonState";
-import { SKILL_CONFIGS } from "../config/DragoonConfig";
+import { DragoonClassId } from "../state/DragoonState";
+import { SKILL_CONFIGS, CLASS_DEFINITIONS, SUBCLASS_DEFINITIONS } from "../config/DragoonConfig";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -49,6 +49,31 @@ const STYLE_BETWEEN_WAVE = new TextStyle({
   fontWeight: "bold", dropShadow: { color: 0x000000, distance: 2, alpha: 0.8 },
 });
 
+const STYLE_LEVEL = new TextStyle({
+  fontFamily: "Georgia, serif", fontSize: 13, fill: 0xdddddd,
+  fontWeight: "bold", dropShadow: { color: 0x000000, distance: 1, alpha: 0.8 },
+});
+
+const STYLE_CLASS_TITLE = new TextStyle({
+  fontFamily: "Georgia, serif", fontSize: 32, fill: 0xffd700,
+  fontWeight: "bold", dropShadow: { color: 0x000000, distance: 3, alpha: 0.8 }, letterSpacing: 3,
+});
+
+const STYLE_CLASS_NAME = new TextStyle({
+  fontFamily: "Georgia, serif", fontSize: 20, fill: 0xffffff,
+  fontWeight: "bold", dropShadow: { color: 0x000000, distance: 2, alpha: 0.8 },
+});
+
+const STYLE_CLASS_DESC = new TextStyle({
+  fontFamily: "Georgia, serif", fontSize: 12, fill: 0xbbbbbb,
+  wordWrap: true, wordWrapWidth: 220,
+});
+
+const STYLE_CLASS_KEY = new TextStyle({
+  fontFamily: "Georgia, serif", fontSize: 14, fill: 0xffdd44,
+  fontWeight: "bold",
+});
+
 // ---------------------------------------------------------------------------
 // HUD
 // ---------------------------------------------------------------------------
@@ -68,6 +93,17 @@ export class DragoonHUD {
   private _bossHpBg = new Graphics();
   private _bossHpFill = new Graphics();
   private _bossNameText = new Text({ text: "", style: STYLE_WAVE });
+
+  // Level & XP
+  private _levelText = new Text({ text: "Lv 1", style: STYLE_LEVEL });
+  private _xpBarBg = new Graphics();
+  private _xpBarFill = new Graphics();
+
+  // Class select overlay
+  private _classSelectContainer = new Container();
+
+  // Subclass select overlay
+  private _subclassSelectContainer = new Container();
 
   // Notifications
   private _notifications: { text: Text; timer: number }[] = [];
@@ -89,37 +125,56 @@ export class DragoonHUD {
   // Between waves text
   private _betweenWaveText = new Text({ text: "", style: STYLE_BETWEEN_WAVE });
 
+  // Class name display
+  private _classNameText = new Text({ text: "", style: new TextStyle({
+    fontFamily: "Georgia, serif", fontSize: 11, fill: 0xaaaacc,
+    dropShadow: { color: 0x000000, distance: 1, alpha: 0.8 },
+  }) });
+
+  private _lastSkillIds: string = "";
+
   build(sw: number, sh: number): void {
     this.container.removeChildren();
 
-    // HP bar (top-left)
+    // HP bar
     this.container.addChild(this._hpBarBg);
     this.container.addChild(this._hpBarFill);
 
-    // Mana bar (below HP)
+    // Mana bar
     this.container.addChild(this._manaBarBg);
     this.container.addChild(this._manaBarFill);
 
-    // Score (top-right)
+    // XP bar
+    this.container.addChild(this._xpBarBg);
+    this.container.addChild(this._xpBarFill);
+
+    // Level text
+    this._levelText.position.set(205, 15);
+    this.container.addChild(this._levelText);
+
+    // Class name
+    this._classNameText.position.set(205, 31);
+    this.container.addChild(this._classNameText);
+
+    // Score
     this._scoreText.anchor.set(1, 0);
     this._scoreText.position.set(sw - 20, 15);
     this.container.addChild(this._scoreText);
 
-    // Wave (top-center)
+    // Wave
     this._waveText.anchor.set(0.5, 0);
     this._waveText.position.set(sw / 2, 10);
     this.container.addChild(this._waveText);
 
-    // Combo (below wave)
+    // Combo
     this._comboText.anchor.set(0.5, 0);
     this._comboText.position.set(sw / 2, 35);
     this.container.addChild(this._comboText);
 
-    // Skill bar (bottom-center)
+    // Skill bar
     this.container.addChild(this._skillBg);
-    this._buildSkillBar(sw, sh);
 
-    // Boss HP bar (top, full width, hidden by default)
+    // Boss HP bar
     this.container.addChild(this._bossHpBg);
     this.container.addChild(this._bossHpFill);
     this._bossNameText.anchor.set(0.5, 1);
@@ -131,7 +186,7 @@ export class DragoonHUD {
     this._bossWarningText.alpha = 0;
     this.container.addChild(this._bossWarningText);
 
-    // Boss entrance overlay
+    // Boss entrance
     this._bossEntranceText.anchor.set(0.5, 0.5);
     this._bossEntranceText.position.set(sw / 2, sh / 2 - 80);
     this._bossEntranceText.alpha = 0;
@@ -141,7 +196,7 @@ export class DragoonHUD {
     this._bossEntranceNameText.alpha = 0;
     this.container.addChild(this._bossEntranceNameText);
 
-    // Score multiplier indicator
+    // Score multiplier
     this._scoreMultText.anchor.set(1, 0);
     this._scoreMultText.position.set(sw - 20, 42);
     this._scoreMultText.alpha = 0;
@@ -151,16 +206,28 @@ export class DragoonHUD {
     this._betweenWaveText.anchor.set(0.5, 0.5);
     this._betweenWaveText.position.set(sw / 2, sh / 2);
     this.container.addChild(this._betweenWaveText);
+
+    // Class select overlay
+    this.container.addChild(this._classSelectContainer);
+    this.container.addChild(this._subclassSelectContainer);
+
+    this._lastSkillIds = "";
   }
 
-  private _buildSkillBar(sw: number, sh: number): void {
-    const skills = [
-      DragoonSkillId.STARFALL,
-      DragoonSkillId.THUNDERSTORM,
-      DragoonSkillId.FROST_NOVA,
-      DragoonSkillId.METEOR_SHOWER,
-      DragoonSkillId.DIVINE_SHIELD,
-    ];
+  private _buildSkillBar(state: DragoonState, sw: number, sh: number): void {
+    // Get active skill IDs (skip index 0 which is basic attack)
+    const skills = state.skills.slice(1).map(s => s.id);
+    const currentIds = skills.join(",");
+    if (currentIds === this._lastSkillIds) return;
+    this._lastSkillIds = currentIds;
+
+    // Remove old skill texts
+    for (const st of this._skillTexts) {
+      st.name.destroy();
+      st.key.destroy();
+      st.cooldown.destroy();
+    }
+    this._skillTexts = [];
 
     const slotW = 60;
     const slotH = 50;
@@ -169,7 +236,6 @@ export class DragoonHUD {
     const startX = (sw - totalW) / 2;
     const y = sh - slotH - 15;
 
-    this._skillTexts = [];
     for (let i = 0; i < skills.length; i++) {
       const cfg = SKILL_CONFIGS[skills[i]];
       const x = startX + i * (slotW + gap);
@@ -193,49 +259,237 @@ export class DragoonHUD {
   }
 
   // ---------------------------------------------------------------------------
+  // Class select screen
+  // ---------------------------------------------------------------------------
+
+  buildClassSelect(sw: number, sh: number): void {
+    this._classSelectContainer.removeChildren();
+
+    // Background overlay
+    const bg = new Graphics();
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.85 });
+    this._classSelectContainer.addChild(bg);
+
+    // Title
+    const title = new Text({ text: "Choose Your Class", style: STYLE_CLASS_TITLE });
+    title.anchor.set(0.5, 0);
+    title.position.set(sw / 2, 40);
+    this._classSelectContainer.addChild(title);
+
+    const classes = [
+      DragoonClassId.ARCANE_MAGE,
+      DragoonClassId.STORM_RANGER,
+      DragoonClassId.BLOOD_KNIGHT,
+      DragoonClassId.SHADOW_ASSASSIN,
+    ];
+
+    const cardW = 200;
+    const cardH = 280;
+    const gap = 20;
+    const totalW = classes.length * cardW + (classes.length - 1) * gap;
+    const startX = (sw - totalW) / 2;
+    const cardY = sh / 2 - cardH / 2;
+
+    for (let i = 0; i < classes.length; i++) {
+      const def = CLASS_DEFINITIONS[classes[i]];
+      const x = startX + i * (cardW + gap);
+
+      // Card background
+      const card = new Graphics();
+      card.roundRect(x, cardY, cardW, cardH, 8).fill({ color: 0x0a0a1a, alpha: 0.9 });
+      card.roundRect(x, cardY, cardW, cardH, 8).stroke({ color: def.color, width: 2 });
+      this._classSelectContainer.addChild(card);
+
+      // Class color orb
+      const orbG = new Graphics();
+      orbG.circle(x + cardW / 2, cardY + 35, 18).fill({ color: def.color, alpha: 0.3 });
+      orbG.circle(x + cardW / 2, cardY + 35, 12).fill({ color: def.color });
+      orbG.circle(x + cardW / 2, cardY + 35, 5).fill({ color: 0xffffff, alpha: 0.3 });
+      this._classSelectContainer.addChild(orbG);
+
+      // Key prompt
+      const keyText = new Text({ text: `[${i + 1}]`, style: STYLE_CLASS_KEY });
+      keyText.anchor.set(0.5, 0);
+      keyText.position.set(x + cardW / 2, cardY + 60);
+      this._classSelectContainer.addChild(keyText);
+
+      // Class name
+      const nameText = new Text({ text: def.name, style: STYLE_CLASS_NAME });
+      nameText.anchor.set(0.5, 0);
+      nameText.position.set(x + cardW / 2, cardY + 82);
+      this._classSelectContainer.addChild(nameText);
+
+      // Description
+      const descText = new Text({ text: def.description, style: STYLE_CLASS_DESC });
+      descText.anchor.set(0.5, 0);
+      descText.position.set(x + cardW / 2, cardY + 110);
+      this._classSelectContainer.addChild(descText);
+
+      // Skills list
+      const skillNames = def.skills.map(s => SKILL_CONFIGS[s].name).join("\n");
+      const skillText = new Text({ text: skillNames, style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 10, fill: 0x99aacc, lineHeight: 15,
+      }) });
+      skillText.anchor.set(0.5, 0);
+      skillText.position.set(x + cardW / 2, cardY + 165);
+      this._classSelectContainer.addChild(skillText);
+
+      // Stat mods
+      const stats = `HP:${Math.round(def.hpMod * 100)}% MP:${Math.round(def.manaMod * 100)}% SPD:${Math.round(def.speedMod * 100)}%`;
+      const statText = new Text({ text: stats, style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 9, fill: 0x888888,
+      }) });
+      statText.anchor.set(0.5, 0);
+      statText.position.set(x + cardW / 2, cardY + cardH - 25);
+      this._classSelectContainer.addChild(statText);
+    }
+
+    this._classSelectContainer.visible = true;
+  }
+
+  hideClassSelect(): void {
+    this._classSelectContainer.removeChildren();
+    this._classSelectContainer.visible = false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Subclass choice screen
+  // ---------------------------------------------------------------------------
+
+  buildSubclassChoice(state: DragoonState, sw: number, sh: number): void {
+    this._subclassSelectContainer.removeChildren();
+    if (!state.subclassOptions) return;
+
+    // Background
+    const bg = new Graphics();
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.85 });
+    this._subclassSelectContainer.addChild(bg);
+
+    // Title
+    const title = new Text({ text: "Level 20 - Choose Your Path", style: STYLE_CLASS_TITLE });
+    title.anchor.set(0.5, 0);
+    title.position.set(sw / 2, 50);
+    this._subclassSelectContainer.addChild(title);
+
+    const cardW = 280;
+    const cardH = 300;
+    const gap = 40;
+    const totalW = 2 * cardW + gap;
+    const startX = (sw - totalW) / 2;
+    const cardY = sh / 2 - cardH / 2;
+
+    for (let i = 0; i < 2; i++) {
+      const subId = state.subclassOptions[i];
+      const def = SUBCLASS_DEFINITIONS[subId];
+      const x = startX + i * (cardW + gap);
+
+      // Card
+      const card = new Graphics();
+      card.roundRect(x, cardY, cardW, cardH, 10).fill({ color: 0x0a0a1a, alpha: 0.9 });
+      card.roundRect(x, cardY, cardW, cardH, 10).stroke({ color: def.color, width: 2.5 });
+      this._subclassSelectContainer.addChild(card);
+
+      // Color orb
+      const orbG = new Graphics();
+      orbG.circle(x + cardW / 2, cardY + 40, 22).fill({ color: def.color, alpha: 0.3 });
+      orbG.circle(x + cardW / 2, cardY + 40, 15).fill({ color: def.color });
+      orbG.circle(x + cardW / 2, cardY + 40, 6).fill({ color: 0xffffff, alpha: 0.3 });
+      this._subclassSelectContainer.addChild(orbG);
+
+      // Key
+      const keyText = new Text({ text: `[${i + 1}]`, style: STYLE_CLASS_KEY });
+      keyText.anchor.set(0.5, 0);
+      keyText.position.set(x + cardW / 2, cardY + 68);
+      this._subclassSelectContainer.addChild(keyText);
+
+      // Name
+      const nameText = new Text({ text: def.name, style: { ...STYLE_CLASS_NAME, fill: def.color } as any });
+      nameText.anchor.set(0.5, 0);
+      nameText.position.set(x + cardW / 2, cardY + 92);
+      this._subclassSelectContainer.addChild(nameText);
+
+      // Description
+      const descText = new Text({ text: def.description, style: { ...STYLE_CLASS_DESC, wordWrapWidth: 250 } as any });
+      descText.anchor.set(0.5, 0);
+      descText.position.set(x + cardW / 2, cardY + 122);
+      this._subclassSelectContainer.addChild(descText);
+
+      // New skills
+      const skill4 = SKILL_CONFIGS[def.replaceSkill4];
+      const skill5 = SKILL_CONFIGS[def.replaceSkill5];
+
+      const newSkillTitle = new Text({ text: "New Skills:", style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 12, fill: 0xffdd44, fontWeight: "bold",
+      }) });
+      newSkillTitle.anchor.set(0.5, 0);
+      newSkillTitle.position.set(x + cardW / 2, cardY + 175);
+      this._subclassSelectContainer.addChild(newSkillTitle);
+
+      const skill4Text = new Text({ text: `[4] ${skill4.name}: ${skill4.description}`, style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 11, fill: 0xccddee, wordWrap: true, wordWrapWidth: 240,
+      }) });
+      skill4Text.anchor.set(0.5, 0);
+      skill4Text.position.set(x + cardW / 2, cardY + 200);
+      this._subclassSelectContainer.addChild(skill4Text);
+
+      const skill5Text = new Text({ text: `[5] ${skill5.name}: ${skill5.description}`, style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 11, fill: 0xccddee, wordWrap: true, wordWrapWidth: 240,
+      }) });
+      skill5Text.anchor.set(0.5, 0);
+      skill5Text.position.set(x + cardW / 2, cardY + 245);
+      this._subclassSelectContainer.addChild(skill5Text);
+    }
+
+    this._subclassSelectContainer.visible = true;
+  }
+
+  hideSubclassChoice(): void {
+    this._subclassSelectContainer.removeChildren();
+    this._subclassSelectContainer.visible = false;
+  }
+
+  // ---------------------------------------------------------------------------
   // Update
   // ---------------------------------------------------------------------------
 
   update(state: DragoonState, sw: number, sh: number, dt: number): void {
+    // Don't update game HUD during selection screens
+    if (state.classSelectActive || state.subclassChoiceActive) return;
+
     const p = state.player;
 
-    // HP bar — gradient fill with shine
+    // Rebuild skill bar if skills changed
+    this._buildSkillBar(state, sw, sh);
+
+    // HP bar
     const hpX = 20, hpY = 15, hpW = 180, hpH = 16;
     this._hpBarBg.clear();
-    // Dark backing with inner shadow
     this._hpBarBg.roundRect(hpX - 1, hpY - 1, hpW + 2, hpH + 2, 5).fill({ color: 0x110000 });
     this._hpBarBg.roundRect(hpX, hpY, hpW, hpH, 4).fill({ color: 0x220000 });
     this._hpBarBg.roundRect(hpX, hpY, hpW, hpH, 4).stroke({ color: 0x884444, width: 1.5 });
-    // Inner shadow at top
     this._hpBarBg.roundRect(hpX + 1, hpY + 1, hpW - 2, 3, 2).fill({ color: 0x000000, alpha: 0.2 });
     this._hpBarFill.clear();
     const hpPct = p.hp / p.maxHp;
     const hpColor = hpPct > 0.5 ? 0x44cc44 : hpPct > 0.25 ? 0xccaa22 : 0xcc2222;
     const hpColorBright = hpPct > 0.5 ? 0x66ee66 : hpPct > 0.25 ? 0xeedd44 : 0xee4444;
     const fillW = (hpW - 2) * hpPct;
-    // Main fill
     this._hpBarFill.roundRect(hpX + 1, hpY + 1, fillW, hpH - 2, 3).fill({ color: hpColor });
-    // Gradient effect — brighter top half
     this._hpBarFill.roundRect(hpX + 1, hpY + 1, fillW, (hpH - 2) * 0.45, 3).fill({ color: hpColorBright, alpha: 0.4 });
-    // Shine streak
     this._hpBarFill.roundRect(hpX + 2, hpY + 2, fillW - 2, 2, 1).fill({ color: 0xffffff, alpha: 0.15 });
-    // Animated shine glint
     const shineX = ((state.gameTime * 40) % (hpW + 30)) - 15;
     if (shineX > hpX && shineX < hpX + fillW) {
       this._hpBarFill.roundRect(shineX, hpY + 2, 12, hpH - 4, 2).fill({ color: 0xffffff, alpha: 0.08 });
     }
-    // HP glow when low — pulsating border
     if (hpPct < 0.25) {
       const pulseAlpha = 0.15 + Math.sin(state.gameTime * 6) * 0.08;
       this._hpBarFill.roundRect(hpX - 2, hpY - 2, hpW + 4, hpH + 4, 6).fill({ color: 0xff0000, alpha: pulseAlpha });
       this._hpBarFill.roundRect(hpX, hpY, hpW, hpH, 4).stroke({ color: 0xff4444, width: 1, alpha: pulseAlpha * 2 });
     }
-    // Label icon (heart shape approximation)
     this._hpBarBg.circle(hpX - 8, hpY + hpH / 2 - 1, 3).fill({ color: 0xff4444, alpha: 0.7 });
     this._hpBarBg.circle(hpX - 5, hpY + hpH / 2 - 1, 3).fill({ color: 0xff4444, alpha: 0.7 });
     this._hpBarBg.moveTo(hpX - 10, hpY + hpH / 2).lineTo(hpX - 6.5, hpY + hpH / 2 + 4).lineTo(hpX - 3, hpY + hpH / 2).fill({ color: 0xff4444, alpha: 0.7 });
 
-    // Mana bar — gradient fill with shine
+    // Mana bar
     const manaX = 20, manaY = hpY + hpH + 6, manaW = 180, manaH = 12;
     this._manaBarBg.clear();
     this._manaBarBg.roundRect(manaX - 1, manaY - 1, manaW + 2, manaH + 2, 4).fill({ color: 0x000011 });
@@ -246,34 +500,48 @@ export class DragoonHUD {
     const manaPct = p.mana / p.maxMana;
     const manaFillW = (manaW - 2) * manaPct;
     this._manaBarFill.roundRect(manaX + 1, manaY + 1, manaFillW, manaH - 2, 2).fill({ color: 0x4488ff });
-    // Mana gradient top
     this._manaBarFill.roundRect(manaX + 1, manaY + 1, manaFillW, (manaH - 2) * 0.4, 2).fill({ color: 0x66aaff, alpha: 0.4 });
-    // Mana shine
     this._manaBarFill.roundRect(manaX + 2, manaY + 2, manaFillW - 2, 1.5, 1).fill({ color: 0xffffff, alpha: 0.12 });
-    // Mana icon (diamond)
     this._manaBarBg.moveTo(manaX - 6.5, manaY + manaH / 2).lineTo(manaX - 3, manaY + 1).lineTo(manaX + 0.5, manaY + manaH / 2).lineTo(manaX - 3, manaY + manaH - 1).fill({ color: 0x4488ff, alpha: 0.7 });
+
+    // XP bar (below mana)
+    const xpX = 20, xpY = manaY + manaH + 5, xpW = 180, xpH = 6;
+    this._xpBarBg.clear();
+    this._xpBarBg.roundRect(xpX, xpY, xpW, xpH, 3).fill({ color: 0x111111 });
+    this._xpBarBg.roundRect(xpX, xpY, xpW, xpH, 3).stroke({ color: 0x444444, width: 0.5 });
+    this._xpBarFill.clear();
+    const xpPct = p.xpToNext > 0 ? p.xp / p.xpToNext : 1;
+    const xpFillW = (xpW - 1) * Math.min(1, xpPct);
+    this._xpBarFill.roundRect(xpX + 0.5, xpY + 0.5, xpFillW, xpH - 1, 2).fill({ color: 0xaaaa22 });
+
+    // Level text
+    this._levelText.text = `Lv ${p.level}`;
+
+    // Class name display
+    const classDef = CLASS_DEFINITIONS[state.classId];
+    let className = classDef?.name || "";
+    if (state.subclassId) {
+      const subDef = SUBCLASS_DEFINITIONS[state.subclassId];
+      className = subDef?.name || className;
+    }
+    this._classNameText.text = className;
 
     // Score
     this._scoreText.text = `${p.score.toLocaleString()}`;
 
     // Wave
     if (state.betweenWaves) {
-      if (state.wave === 0) {
-        this._waveText.text = "Get Ready!";
-      } else {
-        this._waveText.text = `Wave ${state.wave} Complete`;
-      }
+      this._waveText.text = state.wave === 0 ? "Get Ready!" : `Wave ${state.wave} Complete`;
     } else {
       this._waveText.text = `Wave ${state.wave} / ${state.totalWaves}`;
     }
 
-    // Combo — with animated scaling and color shift
+    // Combo
     if (p.comboCount > 2) {
       this._comboText.text = `${p.comboCount}x COMBO`;
       this._comboText.alpha = Math.min(1, p.comboTimer);
       const comboPulse = Math.sin(state.gameTime * 8) * 0.03;
       this._comboText.scale.set(1 + Math.min(0.4, p.comboCount * 0.025) + comboPulse);
-      // Color shift: orange -> yellow -> white as combo grows
       if (p.comboCount > 20) {
         this._comboText.style.fill = 0xffffff;
       } else if (p.comboCount > 10) {
@@ -281,7 +549,6 @@ export class DragoonHUD {
       } else {
         this._comboText.style.fill = 0xff8844;
       }
-      // Rotate slightly for dynamism
       this._comboText.rotation = Math.sin(state.gameTime * 5) * 0.03;
     } else {
       this._comboText.text = "";
@@ -289,76 +556,62 @@ export class DragoonHUD {
     }
 
     // Skill bar
-    const skills = [
-      DragoonSkillId.STARFALL,
-      DragoonSkillId.THUNDERSTORM,
-      DragoonSkillId.FROST_NOVA,
-      DragoonSkillId.METEOR_SHOWER,
-      DragoonSkillId.DIVINE_SHIELD,
-    ];
+    const skills = state.skills.slice(1).map(s => s.id);
     const slotW = 60, slotH = 50, gap = 8;
     const totalW = skills.length * slotW + (skills.length - 1) * gap;
     const startX = (sw - totalW) / 2;
     const barY = sh - slotH - 15;
 
     this._skillBg.clear();
-    // Background panel — more polished
     this._skillBg.roundRect(startX - 12, barY - 7, totalW + 24, slotH + 29, 8).fill({ color: 0x050510, alpha: 0.8 });
     this._skillBg.roundRect(startX - 12, barY - 7, totalW + 24, slotH + 29, 8).stroke({ color: 0x334466, width: 1.5 });
-    // Inner highlight line at top
     this._skillBg.roundRect(startX - 10, barY - 6, totalW + 20, 1, 4).fill({ color: 0x556688, alpha: 0.3 });
 
     for (let i = 0; i < skills.length; i++) {
-      const skillState = state.skills.find(s => s.id === skills[i])!;
+      const skillState = state.skills[i + 1];
+      if (!skillState) continue;
       const cfg = SKILL_CONFIGS[skills[i]];
+      if (!cfg) continue;
       const x = startX + i * (slotW + gap);
 
-      // Slot background — layered
       const onCooldown = skillState.cooldown > 0;
       const hasEnough = p.mana >= cfg.manaCost;
       const slotColor = onCooldown ? 0x12121f : (hasEnough ? 0x1a2a3a : 0x141418);
       const borderColor = skillState.active ? 0xffdd44 : (hasEnough && !onCooldown ? cfg.color : 0x3a3a4a);
-      // Outer shadow
       this._skillBg.roundRect(x - 1, barY - 1, slotW + 2, slotH + 2, 5).fill({ color: 0x000000, alpha: 0.3 });
-      // Slot fill
       this._skillBg.roundRect(x, barY, slotW, slotH, 4).fill({ color: slotColor });
-      // Inner bevel highlight
       this._skillBg.roundRect(x + 1, barY + 1, slotW - 2, 2, 2).fill({ color: 0xffffff, alpha: 0.04 });
-      // Border
       this._skillBg.roundRect(x, barY, slotW, slotH, 4).stroke({ color: borderColor, width: skillState.active ? 2.5 : 1 });
 
-      // Cooldown overlay — with sweep effect
-      const cd = this._skillTexts[i].cooldown;
-      cd.clear();
-      if (onCooldown) {
-        const cdPct = skillState.cooldown / skillState.maxCooldown;
-        cd.rect(x + 1, barY + slotH * (1 - cdPct), slotW - 2, slotH * cdPct).fill({ color: 0x000000, alpha: 0.55 });
-        // Cooldown edge line
-        cd.rect(x + 1, barY + slotH * (1 - cdPct), slotW - 2, 1.5).fill({ color: 0x8888aa, alpha: 0.3 });
+      const cd = this._skillTexts[i]?.cooldown;
+      if (cd) {
+        cd.clear();
+        if (onCooldown) {
+          const cdPct = skillState.cooldown / skillState.maxCooldown;
+          cd.rect(x + 1, barY + slotH * (1 - cdPct), slotW - 2, slotH * cdPct).fill({ color: 0x000000, alpha: 0.55 });
+          cd.rect(x + 1, barY + slotH * (1 - cdPct), slotW - 2, 1.5).fill({ color: 0x8888aa, alpha: 0.3 });
+        }
       }
 
-      // Color indicator — glowing orb instead of dot
       const orbAlpha = onCooldown ? 0.25 : 0.9;
       const orbPulse = hasEnough && !onCooldown ? Math.sin(state.gameTime * 3 + i) * 0.1 : 0;
       this._skillBg.circle(x + slotW / 2, barY + 12, 8).fill({ color: cfg.color, alpha: (orbAlpha + orbPulse) * 0.15 });
       this._skillBg.circle(x + slotW / 2, barY + 12, 5).fill({ color: cfg.color, alpha: orbAlpha + orbPulse });
       this._skillBg.circle(x + slotW / 2, barY + 12, 2.5).fill({ color: 0xffffff, alpha: (orbAlpha + orbPulse) * 0.3 });
 
-      // Active glow — pulsating border glow
       if (skillState.active) {
         const activeGlow = 0.12 + Math.sin(state.gameTime * 6) * 0.05;
         this._skillBg.roundRect(x - 3, barY - 3, slotW + 6, slotH + 6, 7).fill({ color: cfg.color, alpha: activeGlow });
         this._skillBg.roundRect(x - 1, barY - 1, slotW + 2, slotH + 2, 5).stroke({ color: cfg.color, width: 1, alpha: activeGlow * 2 });
       }
 
-      // Ready flash for available skills
       if (hasEnough && !onCooldown && !skillState.active) {
         const readyGlow = 0.03 + Math.sin(state.gameTime * 2 + i * 1.5) * 0.015;
         this._skillBg.roundRect(x, barY, slotW, slotH, 4).fill({ color: cfg.color, alpha: readyGlow });
       }
     }
 
-    // Boss HP bar — stylized
+    // Boss HP bar
     const boss = state.enemies.find(e => e.isBoss && e.alive);
     if (boss) {
       const bw = sw * 0.55;
@@ -366,16 +619,11 @@ export class DragoonHUD {
       const by = 52;
       const bh = 16;
       this._bossHpBg.clear();
-      // Decorative backing
       this._bossHpBg.roundRect(bx - 3, by - 3, bw + 6, bh + 6, 6).fill({ color: 0x110000, alpha: 0.8 });
-      // Main background
       this._bossHpBg.roundRect(bx, by, bw, bh, 4).fill({ color: 0x220000 });
-      // Inner shadow
       this._bossHpBg.roundRect(bx + 1, by + 1, bw - 2, 3, 2).fill({ color: 0x000000, alpha: 0.3 });
-      // Border — ornate double border
       this._bossHpBg.roundRect(bx, by, bw, bh, 4).stroke({ color: 0xaa2222, width: 1.5 });
       this._bossHpBg.roundRect(bx - 1, by - 1, bw + 2, bh + 2, 5).stroke({ color: 0x661111, width: 0.5, alpha: 0.5 });
-      // Corner ornaments (small diamonds)
       for (const cx of [bx - 2, bx + bw + 2]) {
         this._bossHpBg.moveTo(cx, by + bh / 2).lineTo(cx + 3, by + bh / 2 - 3).lineTo(cx + 6, by + bh / 2).lineTo(cx + 3, by + bh / 2 + 3).fill({ color: 0xcc3333, alpha: 0.5 });
       }
@@ -383,16 +631,11 @@ export class DragoonHUD {
       this._bossHpFill.clear();
       const bossHpPct = boss.hp / boss.maxHp;
       const bossFillW = (bw - 2) * bossHpPct;
-      // Main fill
       this._bossHpFill.roundRect(bx + 1, by + 1, bossFillW, bh - 2, 3).fill({ color: 0xcc1111 });
-      // Gradient — brighter top
       this._bossHpFill.roundRect(bx + 1, by + 1, bossFillW, (bh - 2) * 0.4, 3).fill({ color: 0xff4444, alpha: 0.4 });
-      // Shine streak
       this._bossHpFill.roundRect(bx + 2, by + 2, bossFillW - 2, 2, 1).fill({ color: 0xffffff, alpha: 0.12 });
-      // Animated damage pulse
       const bossGlow = 0.06 + Math.sin(state.gameTime * 4) * 0.03;
       this._bossHpFill.roundRect(bx - 1, by - 2, bw + 2, bh + 4, 5).fill({ color: 0xff0000, alpha: bossGlow });
-      // HP segment markers (every 25%)
       for (let seg = 1; seg < 4; seg++) {
         const segX = bx + bw * seg * 0.25;
         this._bossHpBg.rect(segX - 0.5, by + 1, 1, bh - 2).fill({ color: 0x000000, alpha: 0.3 });
@@ -432,7 +675,7 @@ export class DragoonHUD {
       }
       this._betweenWaveText.alpha = Math.min(1, state.betweenWaveTimer);
     } else if (state.betweenWaves && state.wave === 0) {
-      this._betweenWaveText.text = "Arthur & the White Eagle";
+      this._betweenWaveText.text = `${classDef?.name || "Arthur"} & the White Eagle`;
       this._betweenWaveText.alpha = 1;
     } else {
       this._betweenWaveText.alpha = 0;
@@ -451,7 +694,7 @@ export class DragoonHUD {
       this._bossEntranceNameText.alpha = 0;
     }
 
-    // Score multiplier indicator
+    // Score multiplier
     if (p.scoreMultTimer > 0) {
       const multPulse = Math.sin(state.gameTime * 5) * 0.05;
       this._scoreMultText.alpha = Math.min(1, p.scoreMultTimer);
@@ -491,6 +734,15 @@ export class DragoonHUD {
   cleanup(): void {
     for (const n of this._notifications) n.text.destroy();
     this._notifications.length = 0;
+    for (const st of this._skillTexts) {
+      st.name.destroy();
+      st.key.destroy();
+      st.cooldown.destroy();
+    }
+    this._skillTexts = [];
+    this._lastSkillIds = "";
+    this._classSelectContainer.removeChildren();
+    this._subclassSelectContainer.removeChildren();
     this.container.removeChildren();
   }
 }

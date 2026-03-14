@@ -5,16 +5,91 @@
 import type { Vec2 } from "@/types";
 
 // ---------------------------------------------------------------------------
+// Class & Subclass definitions
+// ---------------------------------------------------------------------------
+
+export enum DragoonClassId {
+  ARCANE_MAGE = "arcane_mage",
+  STORM_RANGER = "storm_ranger",
+  BLOOD_KNIGHT = "blood_knight",
+  SHADOW_ASSASSIN = "shadow_assassin",
+}
+
+export enum DragoonSubclassId {
+  // Arcane Mage subclasses
+  CHRONOMANCER = "chronomancer",
+  VOID_WEAVER = "void_weaver",
+  // Storm Ranger subclasses
+  TEMPEST_LORD = "tempest_lord",
+  BEASTMASTER = "beastmaster",
+  // Blood Knight subclasses
+  DEATH_KNIGHT = "death_knight",
+  PALADIN = "paladin",
+  // Shadow Assassin subclasses
+  NINJA = "ninja",
+  PHANTOM = "phantom",
+}
+
+// ---------------------------------------------------------------------------
 // Skill definitions
 // ---------------------------------------------------------------------------
 
 export enum DragoonSkillId {
-  ARCANE_BOLT = "arcane_bolt",       // Basic rapid-fire magic bolt
-  STARFALL = "starfall",             // Homing star projectiles
-  THUNDERSTORM = "thunderstorm",     // AoE lightning strike at cursor
-  FROST_NOVA = "frost_nova",         // Radial slow + damage burst
-  METEOR_SHOWER = "meteor_shower",   // Heavy damage rain from above
-  DIVINE_SHIELD = "divine_shield",   // Holy barrier blocks all damage
+  // Arcane Mage
+  ARCANE_BOLT = "arcane_bolt",
+  STARFALL = "starfall",
+  THUNDERSTORM = "thunderstorm",
+  FROST_NOVA = "frost_nova",
+  METEOR_SHOWER = "meteor_shower",
+  DIVINE_SHIELD = "divine_shield",
+  // Chronomancer
+  TIME_WARP = "time_warp",
+  TEMPORAL_LOOP = "temporal_loop",
+  // Void Weaver
+  SINGULARITY = "singularity",
+  MIRROR_IMAGE = "mirror_image",
+
+  // Storm Ranger
+  WIND_ARROW = "wind_arrow",
+  CHAIN_LIGHTNING = "chain_lightning",
+  GALE_FORCE = "gale_force",
+  HAWK_COMPANION = "hawk_companion",
+  TORNADO = "tornado",
+  WIND_WALK = "wind_walk",
+  // Tempest Lord
+  HURRICANE = "hurricane",
+  THUNDER_ARMOR = "thunder_armor",
+  // Beastmaster
+  WOLF_PACK = "wolf_pack",
+  EAGLE_FURY = "eagle_fury",
+
+  // Blood Knight
+  BLOOD_LANCE = "blood_lance",
+  CRIMSON_SLASH = "crimson_slash",
+  BLOOD_SHIELD = "blood_shield",
+  HEMORRHAGE = "hemorrhage",
+  EXECUTION = "execution",
+  WAR_CRY = "war_cry",
+  // Death Knight
+  RAISE_DEAD = "raise_dead",
+  SOUL_HARVEST = "soul_harvest",
+  // Paladin
+  HOLY_NOVA = "holy_nova",
+  CONSECRATION = "consecration",
+
+  // Shadow Assassin
+  SHURIKEN = "shuriken",
+  FAN_OF_KNIVES = "fan_of_knives",
+  POISON_CLOUD = "poison_cloud",
+  SHADOW_STEP = "shadow_step",
+  MARK_FOR_DEATH = "mark_for_death",
+  SMOKE_BOMB = "smoke_bomb",
+  // Ninja
+  SHADOW_CLONE_ARMY = "shadow_clone_army",
+  BLADE_STORM = "blade_storm",
+  // Phantom
+  SOUL_SIPHON = "soul_siphon",
+  PHASE_SHIFT = "phase_shift",
 }
 
 export interface DragoonSkillState {
@@ -44,6 +119,33 @@ export interface DragoonPlayer {
   shieldTimer: number;
   scoreMultiplier: number;
   scoreMultTimer: number;
+
+  // Leveling
+  level: number;
+  xp: number;
+  xpToNext: number;
+
+  // Class buffs (generic timers for active effects)
+  speedMultiplier: number;
+  speedMultTimer: number;
+  damageMultiplier: number;
+  damageMultTimer: number;
+  bloodShieldCharges: number;
+  soulHarvestTimer: number;
+  thunderArmorTimer: number;
+  consecrateTimer: number;
+  phaseShiftTimer: number;
+  bladeStormTimer: number;
+}
+
+export interface DragoonCompanion {
+  id: number;
+  position: Vec2;
+  velocity: Vec2;
+  lifetime: number;
+  attackTimer: number;
+  type: "hawk" | "wolf" | "clone";
+  damage: number;
 }
 
 export interface DragoonEnemy {
@@ -72,6 +174,14 @@ export interface DragoonEnemy {
   // Display
   color: number;
   glowColor: number;
+  // DoT / debuffs
+  dotDamage: number;
+  dotTimer: number;
+  damageAmp: number;     // incoming damage multiplier (Mark for Death)
+  damageAmpTimer: number;
+  // For raised dead
+  isAllied: boolean;
+  alliedTimer: number;
 }
 
 export enum DragoonEnemyType {
@@ -174,6 +284,21 @@ export interface DragoonParticle {
 }
 
 // ---------------------------------------------------------------------------
+// Poison cloud (lingering AoE)
+// ---------------------------------------------------------------------------
+
+export interface DragoonPoisonCloud {
+  id: number;
+  position: Vec2;
+  radius: number;
+  timer: number;
+  maxTimer: number;
+  damagePerTick: number;
+  tickAccumulator: number;
+  color: number;
+}
+
+// ---------------------------------------------------------------------------
 // Scrolling layers (parallax sky background)
 // ---------------------------------------------------------------------------
 
@@ -192,12 +317,22 @@ export interface DragoonState {
   gameOver: boolean;
   victory: boolean;
 
+  // Class system
+  classId: DragoonClassId;
+  subclassId: DragoonSubclassId | null;
+  classSelectActive: boolean;
+  subclassChoiceActive: boolean;
+  subclassOptions: [DragoonSubclassId, DragoonSubclassId] | null;
+  subclassUnlocked: boolean; // prevent re-triggering
+
   player: DragoonPlayer;
   enemies: DragoonEnemy[];
   projectiles: DragoonProjectile[];
   explosions: DragoonExplosion[];
   particles: DragoonParticle[];
   pickups: DragoonPickup[];
+  companions: DragoonCompanion[];
+  poisonClouds: DragoonPoisonCloud[];
 
   skills: DragoonSkillState[];
 
@@ -242,6 +377,21 @@ export interface DragoonState {
   // Screen dims (cached)
   screenW: number;
   screenH: number;
+
+  // World extents (wider than screen)
+  worldWidth: number;
+  cameraX: number;
+
+  // Dead enemies for Raise Dead
+  recentDeadEnemies: { type: DragoonEnemyType; position: Vec2; size: number; color: number; glowColor: number }[];
+}
+
+// ---------------------------------------------------------------------------
+// XP helpers
+// ---------------------------------------------------------------------------
+
+export function xpForLevel(level: number): number {
+  return level * 150;
 }
 
 // ---------------------------------------------------------------------------
@@ -255,8 +405,15 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     gameOver: false,
     victory: false,
 
+    classId: DragoonClassId.ARCANE_MAGE,
+    subclassId: null,
+    classSelectActive: true,
+    subclassChoiceActive: false,
+    subclassOptions: null,
+    subclassUnlocked: false,
+
     player: {
-      position: { x: screenW * 0.3, y: screenH * 0.5 },
+      position: { x: screenW * 3 * 0.5, y: screenH * 0.5 },
       hp: 100,
       maxHp: 100,
       mana: 100,
@@ -270,6 +427,19 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
       shieldTimer: 0,
       scoreMultiplier: 1,
       scoreMultTimer: 0,
+      level: 1,
+      xp: 0,
+      xpToNext: xpForLevel(2),
+      speedMultiplier: 1,
+      speedMultTimer: 0,
+      damageMultiplier: 1,
+      damageMultTimer: 0,
+      bloodShieldCharges: 0,
+      soulHarvestTimer: 0,
+      thunderArmorTimer: 0,
+      consecrateTimer: 0,
+      phaseShiftTimer: 0,
+      bladeStormTimer: 0,
     },
 
     enemies: [],
@@ -277,6 +447,8 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     explosions: [],
     particles: [],
     pickups: [],
+    companions: [],
+    poisonClouds: [],
 
     skills: [
       { id: DragoonSkillId.ARCANE_BOLT, cooldown: 0, maxCooldown: 0.12, active: false, activeTimer: 0 },
@@ -318,5 +490,10 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     nextId: 1,
     screenW,
     screenH,
+
+    worldWidth: screenW * 3,
+    cameraX: 0,
+
+    recentDeadEnemies: [],
   };
 }
