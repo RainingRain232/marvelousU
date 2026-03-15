@@ -617,8 +617,8 @@ export const MORDRED_POSES: Record<string, FighterPose[]> = {
     ),
   ],
 
-  // -- doom_slash: wide cross pattern slash (3 frames, reuses similar to cross_slash) --
-  doom_slash: [
+  // -- shadow_frenzy: rapid shadow blade strikes (3 frames) --
+  shadow_frenzy: [
     // windup: sword drawn high to one side
     pose(
       head(2, -182),

@@ -169,7 +169,7 @@ export const PELLINORE_DEF: DuelCharacterDef = {
       "axe_cleave", "Axe Cleave", AttackHeight.MID,
       10, 6, 16, 95, 19, 22, 16, 45,
       { x: 35, y: -110, width: 110, height: 50 },
-      { movesForward: 100 },
+      { movesForward: 230 },
     ),
     // W+E — Wild Crash: beastly overhead crashes with wild ferocity — wider than any other overhead
     beast_slam: special(
@@ -195,7 +195,7 @@ export const PELLINORE_DEF: DuelCharacterDef = {
       "stampede", "Stampede", AttackHeight.MID,
       9, 7, 20, 100, 20, 24, 16, 60,
       { x: 20, y: -105, width: 80, height: 65 },
-      { movesForward: 200, hasInvincibility: true, invincibleStartup: 4 },
+      { movesForward: 340, hasInvincibility: true, invincibleStartup: 4 },
     ),
     // E+A — Questing Blow: massive single-hit axe strike
     questing_blow: special(

@@ -5,6 +5,7 @@ import {
   EnemyType,
   ItemRarity,
   EnemyState,
+  EnemyBehavior,
   DiabloClass,
   SkillId,
   StatusEffect,
@@ -284,6 +285,68 @@ export class DiabloRenderer {
         break;
       case DiabloMapId.PRIMORDIAL_ABYSS:
         this._buildPrimordialAbyss(cfg.width, cfg.depth);
+        break;
+      // ── Wave 2 maps ──
+      case DiabloMapId.MOONLIT_GROVE:
+        this._buildMoonlitGrove(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.CORAL_DEPTHS:
+        this._buildCoralDepths(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.ANCIENT_LIBRARY:
+        this._buildAncientLibrary(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.JADE_TEMPLE:
+        this._buildJadeTemple(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.ASHEN_BATTLEFIELD:
+        this._buildAshenBattlefield(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.FUNGAL_DEPTHS:
+        this._buildFungalDepths(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.OBSIDIAN_FORTRESS:
+        this._buildObsidianFortress(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.CELESTIAL_RUINS:
+        this._buildCelestialRuins(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.INFERNAL_THRONE:
+        this._buildInfernalThrone(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.ASTRAL_VOID:
+        this._buildAstralVoid(cfg.width, cfg.depth);
+        break;
+      // ── Wave 3 maps ──
+      case DiabloMapId.SHATTERED_COLOSSEUM:
+        this._buildShatteredColosseum(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.PETRIFIED_GARDEN:
+        this._buildPetrifiedGarden(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.SUNKEN_CITADEL:
+        this._buildSunkenCitadel(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.WYRMSCAR_CANYON:
+        this._buildWyrmscarCanyon(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.PLAGUEROT_SEWERS:
+        this._buildPlaguerotSewers(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.ETHEREAL_SANCTUM:
+        this._buildEtherealSanctum(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.IRON_WASTES:
+        this._buildIronWastes(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.BLIGHTED_THRONE:
+        this._buildBlightedThrone(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.CHRONO_LABYRINTH:
+        this._buildChronoLabyrinth(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.ELDRITCH_NEXUS:
+        this._buildEldritchNexus(cfg.width, cfg.depth);
         break;
       case DiabloMapId.CAMELOT:
         this._buildCamelot(cfg.width, cfg.depth);
@@ -10603,6 +10666,229 @@ export class DiabloRenderer {
         }
         break;
       }
+
+      // ── DEFAULT ENEMY MESH — Generated from enemy def properties ──
+      default: {
+        const def = ENEMY_DEFS[type];
+        const isBoss = def.isBoss;
+        const enemyName = (type as string).toLowerCase();
+
+        // Determine color theme from enemy type name
+        let bodyColor = 0x885566;
+        let accentColor = 0xaa6688;
+        let eyeColor = 0xff4444;
+        let emissiveColor = 0x441111;
+
+        if (enemyName.indexOf('stone') >= 0 || enemyName.indexOf('granite') >= 0 || enemyName.indexOf('petrified') >= 0 || enemyName.indexOf('calcified') >= 0 || enemyName.indexOf('moss_basilisk') >= 0) {
+          bodyColor = 0x777766; accentColor = 0x999988; eyeColor = 0xffff44; emissiveColor = 0x444400;
+        } else if (enemyName.indexOf('spectral') >= 0 || enemyName.indexOf('ghost') >= 0 || enemyName.indexOf('phantom') >= 0 || enemyName.indexOf('spirit') >= 0 || enemyName.indexOf('ethereal') >= 0 || enemyName.indexOf('phase') >= 0 || enemyName.indexOf('ether') >= 0) {
+          bodyColor = 0x8888cc; accentColor = 0xaaaaee; eyeColor = 0x88ccff; emissiveColor = 0x224488;
+        } else if (enemyName.indexOf('drowned') >= 0 || enemyName.indexOf('depth') >= 0 || enemyName.indexOf('tidal') >= 0 || enemyName.indexOf('coral') >= 0 || enemyName.indexOf('abyssal') >= 0 || enemyName.indexOf('barnacle') >= 0 || enemyName.indexOf('kelp') >= 0 || enemyName.indexOf('pressure') >= 0) {
+          bodyColor = 0x225566; accentColor = 0x338877; eyeColor = 0x44ffaa; emissiveColor = 0x114433;
+        } else if (enemyName.indexOf('fire') >= 0 || enemyName.indexOf('scorch') >= 0 || enemyName.indexOf('drake') >= 0 || enemyName.indexOf('wyrm') >= 0 || enemyName.indexOf('magma') >= 0 || enemyName.indexOf('flame') >= 0 || enemyName.indexOf('ember') >= 0 || enemyName.indexOf('infernal') >= 0 || enemyName.indexOf('brimstone') >= 0) {
+          bodyColor = 0x883311; accentColor = 0xcc5522; eyeColor = 0xff6600; emissiveColor = 0x662200;
+        } else if (enemyName.indexOf('plague') >= 0 || enemyName.indexOf('sewer') >= 0 || enemyName.indexOf('bile') >= 0 || enemyName.indexOf('afflict') >= 0 || enemyName.indexOf('pestil') >= 0 || enemyName.indexOf('bloat') >= 0 || enemyName.indexOf('rot') >= 0 || enemyName.indexOf('toxic') >= 0 || enemyName.indexOf('fungal') >= 0 || enemyName.indexOf('spore') >= 0 || enemyName.indexOf('blight') >= 0 || enemyName.indexOf('cordyceps') >= 0) {
+          bodyColor = 0x445511; accentColor = 0x668822; eyeColor = 0xaaff22; emissiveColor = 0x334400;
+        } else if (enemyName.indexOf('rust') >= 0 || enemyName.indexOf('scrap') >= 0 || enemyName.indexOf('iron') >= 0 || enemyName.indexOf('siege') >= 0 || enemyName.indexOf('war_engine') >= 0 || enemyName.indexOf('junk') >= 0 || enemyName.indexOf('automaton') >= 0 || enemyName.indexOf('clockwork') >= 0 || enemyName.indexOf('piston') >= 0 || enemyName.indexOf('gear') >= 0 || enemyName.indexOf('brass') >= 0) {
+          bodyColor = 0x665544; accentColor = 0x887766; eyeColor = 0xffaa44; emissiveColor = 0x443322;
+        } else if (enemyName.indexOf('corrupt') >= 0 || enemyName.indexOf('dark') >= 0 || enemyName.indexOf('throne') >= 0 || enemyName.indexOf('herald') >= 0 || enemyName.indexOf('noble') >= 0 || enemyName.indexOf('royal') >= 0 || enemyName.indexOf('courtier') >= 0 || enemyName.indexOf('knight') >= 0 && enemyName.indexOf('plague') >= 0) {
+          bodyColor = 0x442244; accentColor = 0x663366; eyeColor = 0xcc44ff; emissiveColor = 0x331133;
+        } else if (enemyName.indexOf('temporal') >= 0 || enemyName.indexOf('chrono') >= 0 || enemyName.indexOf('paradox') >= 0 || enemyName.indexOf('time') >= 0 || enemyName.indexOf('timelost') >= 0 || enemyName.indexOf('entropy') >= 0) {
+          bodyColor = 0x334488; accentColor = 0x4466aa; eyeColor = 0x66ccff; emissiveColor = 0x223366;
+        } else if (enemyName.indexOf('eldritch') >= 0 || enemyName.indexOf('mind') >= 0 || enemyName.indexOf('nexus') >= 0 || enemyName.indexOf('dimensional') >= 0 || enemyName.indexOf('tentacle') >= 0 || enemyName.indexOf('gibbering') >= 0 || enemyName.indexOf('psychic') >= 0) {
+          bodyColor = 0x330033; accentColor = 0x660066; eyeColor = 0xff00ff; emissiveColor = 0x440044;
+        } else if (enemyName.indexOf('arena') >= 0 || enemyName.indexOf('gladiator') >= 0 || enemyName.indexOf('champion') >= 0 || enemyName.indexOf('colosseum') >= 0 || enemyName.indexOf('lion') >= 0 || enemyName.indexOf('pit_fighter') >= 0 || enemyName.indexOf('mirmillo') >= 0) {
+          bodyColor = 0x886644; accentColor = 0xaa8866; eyeColor = 0xff8844; emissiveColor = 0x553322;
+        } else if (enemyName.indexOf('canyon') >= 0 || enemyName.indexOf('raptor') >= 0 || enemyName.indexOf('cliff') >= 0 || enemyName.indexOf('nest') >= 0 || enemyName.indexOf('wyvern') >= 0) {
+          bodyColor = 0x664422; accentColor = 0x885533; eyeColor = 0xff6622; emissiveColor = 0x442211;
+        } else if (enemyName.indexOf('moon') >= 0 || enemyName.indexOf('lunar') >= 0 || enemyName.indexOf('fae') >= 0 || enemyName.indexOf('shadow_stag') >= 0 || enemyName.indexOf('nocturnal') >= 0 || enemyName.indexOf('thorn_fairy') >= 0) {
+          bodyColor = 0x445588; accentColor = 0x6677aa; eyeColor = 0xaaccff; emissiveColor = 0x223355;
+        } else if (enemyName.indexOf('reef') >= 0 || enemyName.indexOf('siren') >= 0 || enemyName.indexOf('angler') >= 0 || enemyName.indexOf('leviathan') >= 0 || enemyName.indexOf('tide') >= 0 || enemyName.indexOf('pearl') >= 0 || enemyName.indexOf('deep_sea') >= 0) {
+          bodyColor = 0x115544; accentColor = 0x227766; eyeColor = 0x44ffcc; emissiveColor = 0x113322;
+        } else if (enemyName.indexOf('tome') >= 0 || enemyName.indexOf('ink') >= 0 || enemyName.indexOf('scroll') >= 0 || enemyName.indexOf('curator') >= 0 || enemyName.indexOf('grimoire') >= 0 || enemyName.indexOf('quill') >= 0 || enemyName.indexOf('paper') >= 0 || enemyName.indexOf('rune') >= 0) {
+          bodyColor = 0x554433; accentColor = 0x776655; eyeColor = 0x44aaff; emissiveColor = 0x332211;
+        } else if (enemyName.indexOf('jade') >= 0 || enemyName.indexOf('temple') >= 0 || enemyName.indexOf('vine') >= 0 || enemyName.indexOf('jungle') >= 0 || enemyName.indexOf('idol') >= 0) {
+          bodyColor = 0x336633; accentColor = 0x448844; eyeColor = 0x44ff88; emissiveColor = 0x224422;
+        } else if (enemyName.indexOf('fallen') >= 0 || enemyName.indexOf('war_specter') >= 0 || enemyName.indexOf('siege_wraith') >= 0 || enemyName.indexOf('ashen') >= 0 || enemyName.indexOf('dread') >= 0 || enemyName.indexOf('carrion') >= 0 || enemyName.indexOf('war_drum') >= 0) {
+          bodyColor = 0x554444; accentColor = 0x776666; eyeColor = 0xff4444; emissiveColor = 0x332222;
+        } else if (enemyName.indexOf('obsidian') >= 0 || enemyName.indexOf('hellfire') >= 0 || enemyName.indexOf('inquisitor') >= 0 || enemyName.indexOf('doom') >= 0) {
+          bodyColor = 0x111111; accentColor = 0x333333; eyeColor = 0xff4400; emissiveColor = 0x220000;
+        } else if (enemyName.indexOf('star') >= 0 || enemyName.indexOf('astral') >= 0 || enemyName.indexOf('comet') >= 0 || enemyName.indexOf('void_monk') >= 0 || enemyName.indexOf('celestial') >= 0 || enemyName.indexOf('nova') >= 0 || enemyName.indexOf('constellation') >= 0 || enemyName.indexOf('gravity') >= 0) {
+          bodyColor = 0x222255; accentColor = 0x4444aa; eyeColor = 0xffffaa; emissiveColor = 0x222266;
+        } else if (enemyName.indexOf('pit_fiend') >= 0 || enemyName.indexOf('hellborn') >= 0 || enemyName.indexOf('soul_collector') >= 0 || enemyName.indexOf('demon') >= 0 || enemyName.indexOf('chain_devil') >= 0 || enemyName.indexOf('wrath') >= 0) {
+          bodyColor = 0x551111; accentColor = 0x882222; eyeColor = 0xff2200; emissiveColor = 0x440000;
+        } else if (enemyName.indexOf('reality') >= 0 || enemyName.indexOf('dimension') >= 0 || enemyName.indexOf('void_titan') >= 0 || enemyName.indexOf('antimatter') >= 0 || enemyName.indexOf('fracture') >= 0 || enemyName.indexOf('paradox_shade') >= 0) {
+          bodyColor = 0x110022; accentColor = 0x330044; eyeColor = 0xcc44ff; emissiveColor = 0x220033;
+        } else if (enemyName.indexOf('bog') >= 0 || enemyName.indexOf('marsh') >= 0 || enemyName.indexOf('swamp') >= 0 || enemyName.indexOf('toad') >= 0 || enemyName.indexOf('hydra') >= 0 || enemyName.indexOf('fen') >= 0 || enemyName.indexOf('mire') >= 0 || enemyName.indexOf('leech') >= 0) {
+          bodyColor = 0x334422; accentColor = 0x556633; eyeColor = 0xaaff44; emissiveColor = 0x223311;
+        } else if (enemyName.indexOf('crystal') >= 0 || enemyName.indexOf('gem') >= 0 || enemyName.indexOf('cave_bat') >= 0 || enemyName.indexOf('quartz') >= 0 || enemyName.indexOf('prismatic') >= 0 || enemyName.indexOf('shard') >= 0 || enemyName.indexOf('geode') >= 0) {
+          bodyColor = 0x556688; accentColor = 0x7788aa; eyeColor = 0x88ddff; emissiveColor = 0x334466;
+        } else if (enemyName.indexOf('frost') >= 0 || enemyName.indexOf('ice') >= 0 || enemyName.indexOf('yeti') >= 0 || enemyName.indexOf('frozen') >= 0 || enemyName.indexOf('glacial') >= 0 || enemyName.indexOf('permafrost') >= 0 || enemyName.indexOf('blizzard') >= 0 || enemyName.indexOf('troll') >= 0) {
+          bodyColor = 0x667788; accentColor = 0x88aacc; eyeColor = 0x88eeff; emissiveColor = 0x334455;
+        } else if (enemyName.indexOf('gargoyle') >= 0 || enemyName.indexOf('cursed_priest') >= 0 || enemyName.indexOf('shadow_acolyte') >= 0 || enemyName.indexOf('cathedral') >= 0 || enemyName.indexOf('bell') >= 0 || enemyName.indexOf('desecrated') >= 0 || enemyName.indexOf('stained_glass') >= 0) {
+          bodyColor = 0x444455; accentColor = 0x666677; eyeColor = 0xffaa44; emissiveColor = 0x222233;
+        } else if (enemyName.indexOf('thorn') >= 0 || enemyName.indexOf('blight_sprite') >= 0 || enemyName.indexOf('rotwood') >= 0 || enemyName.indexOf('briar') >= 0 || enemyName.indexOf('nettle') >= 0) {
+          bodyColor = 0x443322; accentColor = 0x665544; eyeColor = 0x88ff44; emissiveColor = 0x332211;
+        } else if (enemyName.indexOf('blood') >= 0 || enemyName.indexOf('crimson') >= 0 || enemyName.indexOf('scarlet') >= 0 || enemyName.indexOf('vampire') >= 0) {
+          bodyColor = 0x551122; accentColor = 0x882244; eyeColor = 0xff2244; emissiveColor = 0x440011;
+        } else if (enemyName.indexOf('storm') >= 0 || enemyName.indexOf('thunder') >= 0 || enemyName.indexOf('lightning') >= 0 || enemyName.indexOf('wind') >= 0 || enemyName.indexOf('tempest') >= 0 || enemyName.indexOf('gale') >= 0 || enemyName.indexOf('static') >= 0) {
+          bodyColor = 0x334466; accentColor = 0x5566aa; eyeColor = 0x44ccff; emissiveColor = 0x223344;
+        } else if (enemyName.indexOf('nightmare') >= 0 || enemyName.indexOf('dread') >= 0 || enemyName.indexOf('shadow') >= 0 || enemyName.indexOf('fear') >= 0 || enemyName.indexOf('umbral') >= 0 || enemyName.indexOf('void_echo') >= 0) {
+          bodyColor = 0x111122; accentColor = 0x222244; eyeColor = 0x8844ff; emissiveColor = 0x110022;
+        } else if (enemyName.indexOf('abyss') >= 0 || enemyName.indexOf('void') >= 0 || enemyName.indexOf('chaos') >= 0 || enemyName.indexOf('primordial') >= 0 || enemyName.indexOf('null') >= 0 || enemyName.indexOf('genesis') >= 0) {
+          bodyColor = 0x0a0a1a; accentColor = 0x222244; eyeColor = 0xff44ff; emissiveColor = 0x110022;
+        }
+
+        // Night boss color overrides
+        if (enemyName.indexOf('night_') === 0) {
+          emissiveColor = 0x440000;
+          eyeColor = 0xff0000;
+        }
+
+        const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.7 });
+        const accentMat = new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.6 });
+        const eyeMat = new THREE.MeshStandardMaterial({ color: eyeColor, emissive: eyeColor, emissiveIntensity: 1.5 });
+        const emissiveMat = new THREE.MeshStandardMaterial({ color: accentColor, emissive: emissiveColor, emissiveIntensity: 0.6, transparent: true, opacity: 0.4 });
+
+        if (isBoss) {
+          // Large imposing boss body
+          const torso = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 7), bodyMat);
+          torso.scale.set(1.0, 1.3, 0.7);
+          torso.position.y = 1.2;
+          torso.castShadow = true;
+          group.add(torso);
+          // Shoulder guards
+          for (const sx of [-0.45, 0.45]) {
+            const pad = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 5), accentMat);
+            pad.scale.set(1.2, 0.7, 1.0);
+            pad.position.set(sx, 1.6, 0);
+            pad.castShadow = true;
+            group.add(pad);
+            // Shoulder spikes
+            for (let sp = 0; sp < 3; sp++) {
+              const spike = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 4), accentMat);
+              spike.position.set(sx * (1.1 + sp * 0.08), 1.7 + sp * 0.03, (sp - 1) * 0.08);
+              spike.rotation.z = sx > 0 ? -0.6 : 0.6;
+              group.add(spike);
+            }
+          }
+          // Head
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), bodyMat);
+          head.position.set(0, 1.9, 0);
+          head.castShadow = true;
+          group.add(head);
+          // Crown/horns
+          for (const hx of [-0.15, 0.15]) {
+            const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 5), accentMat);
+            horn.position.set(hx, 2.15, 0);
+            horn.rotation.z = hx > 0 ? -0.3 : 0.3;
+            group.add(horn);
+          }
+          // Eyes
+          for (const ex of [-0.08, 0.08]) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), eyeMat);
+            eye.position.set(ex, 1.92, 0.18);
+            group.add(eye);
+          }
+          // Arms
+          for (const ax of [-0.5, 0.5]) {
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), bodyMat);
+            arm.position.set(ax, 1.1, 0);
+            arm.rotation.z = ax > 0 ? -0.2 : 0.2;
+            group.add(arm);
+            const fist = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4), accentMat);
+            fist.position.set(ax * 1.15, 0.8, 0);
+            group.add(fist);
+          }
+          // Legs
+          for (const lx of [-0.2, 0.2]) {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.6, 6), bodyMat);
+            leg.position.set(lx, 0.4, 0);
+            group.add(leg);
+            const foot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.18), accentMat);
+            foot.position.set(lx, 0.08, 0.03);
+            group.add(foot);
+          }
+          // Aura glow
+          const aura = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 6), emissiveMat);
+          aura.position.y = 1.2;
+          group.add(aura);
+          // Boss point light
+          const bLight = new THREE.PointLight(eyeColor, 1.0, 8);
+          bLight.position.set(0, 1.5, 0);
+          group.add(bLight);
+        } else {
+          // Standard humanoid body
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.45, 6), bodyMat);
+          body.position.y = 0.7;
+          body.castShadow = true;
+          group.add(body);
+          // Head
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 5), bodyMat);
+          head.position.y = 1.1;
+          head.castShadow = true;
+          group.add(head);
+          // Eyes
+          for (const ex of [-0.04, 0.04]) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 3), eyeMat);
+            eye.position.set(ex, 1.12, 0.1);
+            group.add(eye);
+          }
+          // Arms
+          for (const ax of [-0.2, 0.2]) {
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.35, 5), bodyMat);
+            arm.position.set(ax, 0.65, 0);
+            arm.rotation.z = ax > 0 ? -0.15 : 0.15;
+            group.add(arm);
+          }
+          // Legs
+          for (const lx of [-0.07, 0.07]) {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.35, 5), bodyMat);
+            leg.position.set(lx, 0.25, 0);
+            group.add(leg);
+            const foot = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.04, 0.1), accentMat);
+            foot.position.set(lx, 0.06, 0.02);
+            group.add(foot);
+          }
+          // Weapon indicator based on behavior
+          if (def.behavior === EnemyBehavior.RANGED || (def.attackRange && def.attackRange > 5)) {
+            // Staff/wand
+            const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.6, 4), accentMat);
+            staff.position.set(0.22, 0.7, 0);
+            group.add(staff);
+            const staffOrb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), eyeMat);
+            staffOrb.position.set(0.22, 1.02, 0);
+            group.add(staffOrb);
+          } else if (def.behavior === EnemyBehavior.SHIELDED) {
+            // Shield
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.15), accentMat);
+            shield.position.set(-0.22, 0.7, 0.05);
+            group.add(shield);
+            // Sword
+            const sword = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.35, 0.03), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.7 }));
+            sword.position.set(0.22, 0.75, 0);
+            group.add(sword);
+          } else if (def.behavior === EnemyBehavior.HEALER) {
+            // Glowing orb hands
+            for (const hx of [-0.22, 0.22]) {
+              const healOrb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), emissiveMat);
+              healOrb.position.set(hx, 0.5, 0);
+              group.add(healOrb);
+            }
+          } else {
+            // Melee weapon
+            const weapon = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.3, 0.03), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.6 }));
+            weapon.position.set(0.22, 0.7, 0);
+            group.add(weapon);
+          }
+          // Accent belt/waist
+          const belt = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.02, 4, 8), accentMat);
+          belt.rotation.x = Math.PI / 2;
+          belt.position.y = 0.52;
+          group.add(belt);
+        }
+        break;
+      }
     }
 
     group.scale.setScalar(scale);
@@ -16992,6 +17278,1400 @@ export class DiabloRenderer {
         (Math.random() - 0.5) * 0.5,
       );
       this._scene.add(voidChain);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  MOONLIT GROVE (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildMoonlitGrove(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x112244, 0.014);
+    this._applyTerrainColors(0x1a3322, 0x2a4433, 1.2);
+    this._dirLight.color.setHex(0x8899cc);
+    this._dirLight.intensity = 0.8;
+    this._ambientLight.color.setHex(0x223355);
+    this._ambientLight.intensity = 0.5;
+    this._hemiLight.color.setHex(0x6677aa);
+    this._hemiLight.groundColor.setHex(0x112211);
+    const hw = w / 2, hd = d / 2;
+    const barkMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x224466, roughness: 0.5, transparent: true, opacity: 0.7 });
+    const glowMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4466cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 });
+    const moonMat = new THREE.MeshStandardMaterial({ color: 0xccddff, emissive: 0x6688cc, emissiveIntensity: 0.5 });
+    // Silver-barked trees
+    for (let i = 0; i < 60; i++) {
+      const tree = new THREE.Group();
+      const h = 3 + Math.random() * 4;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, h, 6), new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.7, metalness: 0.2 }));
+      trunk.position.y = h / 2; trunk.castShadow = true; tree.add(trunk);
+      for (let c = 0; c < 3; c++) {
+        const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.2 + Math.random(), 7, 5), leafMat);
+        canopy.position.set((Math.random()-0.5)*0.8, h + (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.8);
+        tree.add(canopy);
+      }
+      const tx = (Math.random()-0.5)*w*0.85, tz = (Math.random()-0.5)*d*0.85;
+      tree.position.set(tx, getTerrainHeight(tx, tz, 1.2), tz);
+      this._scene.add(tree);
+    }
+    // Glowing mushrooms
+    for (let i = 0; i < 40; i++) {
+      const mush = new THREE.Group();
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.15, 4), new THREE.MeshStandardMaterial({ color: 0x887788 }));
+      stem.position.y = 0.075; mush.add(stem);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4), glowMat);
+      cap.scale.y = 0.5; cap.position.y = 0.17; mush.add(cap);
+      const mx = (Math.random()-0.5)*w*0.8, mz = (Math.random()-0.5)*d*0.8;
+      mush.position.set(mx, getTerrainHeight(mx, mz, 1.2), mz);
+      this._scene.add(mush);
+    }
+    // Moonlit stones
+    for (let i = 0; i < 20; i++) {
+      const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3+Math.random()*0.5, 0), moonMat);
+      const sx = (Math.random()-0.5)*w*0.7, sz = (Math.random()-0.5)*d*0.7;
+      stone.position.set(sx, getTerrainHeight(sx, sz, 1.2)+0.15, sz);
+      stone.rotation.set(Math.random(), Math.random(), Math.random());
+      this._scene.add(stone);
+    }
+    // Fireflies (point lights)
+    for (let i = 0; i < 8; i++) {
+      const fly = new THREE.PointLight(0x88ccff, 0.6, 10);
+      fly.position.set((Math.random()-0.5)*w*0.6, 1+Math.random()*3, (Math.random()-0.5)*d*0.6);
+      this._scene.add(fly);
+      this._torchLights.push(fly);
+    }
+    // Flower patches
+    for (let i = 0; i < 30; i++) {
+      const fl = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 3), new THREE.MeshStandardMaterial({ color: [0xcc88ff, 0x88aaff, 0xffffff][i%3], emissive: 0x4444aa, emissiveIntensity: 0.3 }));
+      const fx = (Math.random()-0.5)*w*0.8, fz = (Math.random()-0.5)*d*0.8;
+      fl.position.set(fx, getTerrainHeight(fx, fz, 1.2)+0.08, fz);
+      this._scene.add(fl);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  CORAL DEPTHS (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildCoralDepths(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x0a2233, 0.02);
+    this._applyTerrainColors(0x0a2a3a, 0x1a3a4a, 0.8);
+    this._dirLight.color.setHex(0x44aacc);
+    this._dirLight.intensity = 0.6;
+    this._ambientLight.color.setHex(0x113344);
+    this._ambientLight.intensity = 0.4;
+    this._hemiLight.color.setHex(0x337788);
+    this._hemiLight.groundColor.setHex(0x0a1a22);
+    const hw = w / 2;
+    const coralColors = [0xff4466, 0xff8844, 0xffcc44, 0xcc44ff, 0x44ccff];
+    // Coral formations
+    for (let i = 0; i < 50; i++) {
+      const coral = new THREE.Group();
+      const color = coralColors[i % coralColors.length];
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
+      for (let b = 0; b < 3 + Math.floor(Math.random()*3); b++) {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.08, 0.5+Math.random()*1.0, 5), mat);
+        branch.position.set((Math.random()-0.5)*0.4, 0.3+Math.random()*0.3, (Math.random()-0.5)*0.4);
+        branch.rotation.set((Math.random()-0.5)*0.5, 0, (Math.random()-0.5)*0.5);
+        coral.add(branch);
+      }
+      const cx = (Math.random()-0.5)*w*0.85, cz = (Math.random()-0.5)*d*0.85;
+      coral.position.set(cx, getTerrainHeight(cx, cz, 0.8), cz);
+      this._scene.add(coral);
+    }
+    // Kelp strands
+    for (let i = 0; i < 35; i++) {
+      const kelp = new THREE.Group();
+      const kh = 2+Math.random()*4;
+      for (let s = 0; s < 5; s++) {
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, kh/5, 4), new THREE.MeshStandardMaterial({ color: 0x226633, roughness: 0.5 }));
+        seg.position.y = s * kh/5; seg.rotation.z = Math.sin(s*0.8)*0.2;
+        kelp.add(seg);
+      }
+      const kx = (Math.random()-0.5)*w*0.8, kz = (Math.random()-0.5)*d*0.8;
+      kelp.position.set(kx, getTerrainHeight(kx, kz, 0.8), kz);
+      this._scene.add(kelp);
+    }
+    // Bioluminescent orbs
+    for (let i = 0; i < 10; i++) {
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 5), new THREE.MeshStandardMaterial({ color: 0x44ffcc, emissive: 0x22aa88, emissiveIntensity: 1.0, transparent: true, opacity: 0.5 }));
+      orb.position.set((Math.random()-0.5)*w*0.7, 1+Math.random()*3, (Math.random()-0.5)*d*0.7);
+      this._scene.add(orb);
+      const light = new THREE.PointLight(0x44ffcc, 0.5, 8);
+      light.position.copy(orb.position);
+      this._scene.add(light); this._torchLights.push(light);
+    }
+    // Sea floor rocks
+    for (let i = 0; i < 25; i++) {
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4+Math.random()*0.6, 0), new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 }));
+      const rx = (Math.random()-0.5)*w*0.8, rz = (Math.random()-0.5)*d*0.8;
+      rock.position.set(rx, getTerrainHeight(rx, rz, 0.8)+0.1, rz);
+      rock.rotation.set(Math.random(), Math.random(), Math.random());
+      this._scene.add(rock);
+    }
+    // Bubble particles
+    for (let i = 0; i < 20; i++) {
+      const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.04, 5, 4), new THREE.MeshStandardMaterial({ color: 0xaaddff, transparent: true, opacity: 0.3 }));
+      bubble.position.set((Math.random()-0.5)*w*0.7, Math.random()*5, (Math.random()-0.5)*d*0.7);
+      this._scene.add(bubble);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  ANCIENT LIBRARY (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildAncientLibrary(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x1a1511, 0.016);
+    this._applyTerrainColors(0x2a2218, 0x3a3228, 0.4);
+    this._dirLight.color.setHex(0xffddaa);
+    this._dirLight.intensity = 0.7;
+    this._ambientLight.color.setHex(0x332211);
+    this._ambientLight.intensity = 0.5;
+    this._hemiLight.color.setHex(0x886644);
+    this._hemiLight.groundColor.setHex(0x221100);
+    const hw = w / 2;
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.8 });
+    const bookColors = [0x882222, 0x224488, 0x228844, 0x884422, 0x442288, 0x886622];
+    // Bookshelves (tall)
+    for (let i = 0; i < 30; i++) {
+      const shelf = new THREE.Group();
+      const shelfH = 3 + Math.random() * 3;
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(2, shelfH, 0.4), woodMat);
+      frame.position.y = shelfH / 2; frame.castShadow = true; shelf.add(frame);
+      for (let r = 0; r < Math.floor(shelfH / 0.5); r++) {
+        for (let b = 0; b < 4; b++) {
+          const book = new THREE.Mesh(new THREE.BoxGeometry(0.12+Math.random()*0.1, 0.35, 0.25), new THREE.MeshStandardMaterial({ color: bookColors[Math.floor(Math.random()*bookColors.length)] }));
+          book.position.set(-0.6+b*0.35+(Math.random()-0.5)*0.1, r*0.5+0.3, 0);
+          shelf.add(book);
+        }
+      }
+      const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
+      shelf.position.set(sx, getTerrainHeight(sx, sz, 0.4), sz);
+      shelf.rotation.y = Math.random() * Math.PI;
+      this._scene.add(shelf);
+    }
+    // Reading desks with candles
+    for (let i = 0; i < 10; i++) {
+      const desk = new THREE.Group();
+      const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.8), woodMat);
+      top.position.y = 0.75; desk.add(top);
+      for (const lx of [-0.5, 0.5]) { for (const lz of [-0.3, 0.3]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.72, 4), woodMat);
+        leg.position.set(lx, 0.36, lz); desk.add(leg);
+      }}
+      // Candle
+      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 4), new THREE.MeshStandardMaterial({ color: 0xeeddaa }));
+      candle.position.set(0.3, 0.86, 0); desk.add(candle);
+      const flame = new THREE.PointLight(0xff8833, 0.5, 5);
+      flame.position.set(0.3, 0.96, 0); desk.add(flame); this._torchLights.push(flame);
+      const dx = (Math.random()-0.5)*w*0.6, dz = (Math.random()-0.5)*d*0.6;
+      desk.position.set(dx, getTerrainHeight(dx, dz, 0.4), dz);
+      this._scene.add(desk);
+    }
+    // Scattered scrolls
+    for (let i = 0; i < 25; i++) {
+      const scroll = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6), new THREE.MeshStandardMaterial({ color: 0xddcc99 }));
+      scroll.rotation.z = Math.PI / 2;
+      const scx = (Math.random()-0.5)*w*0.7, scz = (Math.random()-0.5)*d*0.7;
+      scroll.position.set(scx, getTerrainHeight(scx, scz, 0.4)+0.05, scz);
+      this._scene.add(scroll);
+    }
+    // Stone pillars
+    for (let i = 0; i < 12; i++) {
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 5, 8), new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.8 }));
+      const px = (Math.random()-0.5)*w*0.7, pz = (Math.random()-0.5)*d*0.7;
+      pillar.position.set(px, getTerrainHeight(px, pz, 0.4)+2.5, pz);
+      pillar.castShadow = true;
+      this._scene.add(pillar);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  JADE TEMPLE (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildJadeTemple(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x1a3322, 0.012);
+    this._applyTerrainColors(0x2a4422, 0x3a5533, 1.0);
+    this._dirLight.color.setHex(0xddffcc);
+    this._dirLight.intensity = 1.2;
+    this._ambientLight.color.setHex(0x224422);
+    this._ambientLight.intensity = 0.6;
+    this._hemiLight.color.setHex(0x66aa44);
+    this._hemiLight.groundColor.setHex(0x223311);
+    const hw = w / 2;
+    const jadeMat = new THREE.MeshStandardMaterial({ color: 0x44aa66, roughness: 0.3, metalness: 0.3 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.8 });
+    const vineMat = new THREE.MeshStandardMaterial({ color: 0x336622, roughness: 0.6 });
+    // Temple pillars
+    for (let i = 0; i < 20; i++) {
+      const pillar = new THREE.Group();
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 4, 8), stoneMat);
+      col.position.y = 2; col.castShadow = true; pillar.add(col);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.8), jadeMat);
+      cap.position.y = 4.1; pillar.add(cap);
+      // Vines wrapping
+      for (let v = 0; v < 3; v++) {
+        const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.5, 4), vineMat);
+        vine.position.set(Math.sin(v*2.1)*0.28, 1+v*1.0, Math.cos(v*2.1)*0.28);
+        vine.rotation.z = 0.3; pillar.add(vine);
+      }
+      const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
+      pillar.position.set(px, getTerrainHeight(px, pz, 1.0), pz);
+      this._scene.add(pillar);
+    }
+    // Jade statues
+    for (let i = 0; i < 8; i++) {
+      const statue = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.5, 6), jadeMat);
+      body.position.y = 0.75; statue.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 5), jadeMat);
+      head.position.y = 1.6; statue.add(head);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.8), stoneMat);
+      base.position.y = 0.1; statue.add(base);
+      const stx = (Math.random()-0.5)*w*0.6, stz = (Math.random()-0.5)*d*0.6;
+      statue.position.set(stx, getTerrainHeight(stx, stz, 1.0), stz);
+      this._scene.add(statue);
+    }
+    // Tropical trees
+    for (let i = 0; i < 35; i++) {
+      const tree = new THREE.Group();
+      const h = 4+Math.random()*3;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, h, 6), new THREE.MeshStandardMaterial({ color: 0x6a4a2a }));
+      trunk.position.y = h/2; tree.add(trunk);
+      for (let l = 0; l < 5; l++) {
+        const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.8+Math.random()*0.5, 0.3, 5), vineMat);
+        leaf.position.set((Math.random()-0.5)*0.5, h-0.2, (Math.random()-0.5)*0.5);
+        leaf.rotation.set(0.3+Math.random()*0.5, l*1.3, 0); tree.add(leaf);
+      }
+      const tx = (Math.random()-0.5)*w*0.85, tz = (Math.random()-0.5)*d*0.85;
+      tree.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz);
+      this._scene.add(tree);
+    }
+    // Stone lanterns
+    for (let i = 0; i < 8; i++) {
+      const lantern = new THREE.Group();
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.0, 4), stoneMat);
+      post.position.y = 0.5; lantern.add(post);
+      const top = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 4), stoneMat);
+      top.position.y = 1.15; lantern.add(top);
+      const light = new THREE.PointLight(0x44ff88, 0.5, 6);
+      light.position.y = 0.9; lantern.add(light); this._torchLights.push(light);
+      const lx = (Math.random()-0.5)*w*0.6, lz = (Math.random()-0.5)*d*0.6;
+      lantern.position.set(lx, getTerrainHeight(lx, lz, 1.0), lz);
+      this._scene.add(lantern);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  ASHEN BATTLEFIELD (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildAshenBattlefield(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x332222, 0.014);
+    this._applyTerrainColors(0x3a2a22, 0x4a3a33, 1.0);
+    this._dirLight.color.setHex(0xcc8866);
+    this._dirLight.intensity = 0.9;
+    this._ambientLight.color.setHex(0x332211);
+    this._ambientLight.intensity = 0.5;
+    this._hemiLight.color.setHex(0x886655);
+    this._hemiLight.groundColor.setHex(0x221111);
+    const hw = w / 2;
+    const ashMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.5, roughness: 0.5 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8 });
+    const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.7 });
+    // Broken weapons stuck in ground
+    for (let i = 0; i < 40; i++) {
+      const weapon = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.8+Math.random()*0.6, 0.15), metalMat);
+      const wx = (Math.random()-0.5)*w*0.85, wz = (Math.random()-0.5)*d*0.85;
+      weapon.position.set(wx, getTerrainHeight(wx, wz, 1.0)+0.3, wz);
+      weapon.rotation.z = (Math.random()-0.5)*0.5;
+      weapon.rotation.x = (Math.random()-0.5)*0.3;
+      this._scene.add(weapon);
+    }
+    // Ruined siege equipment
+    for (let i = 0; i < 6; i++) {
+      const siege = new THREE.Group();
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 3), woodMat);
+      beam.position.y = 0.5; beam.rotation.z = (Math.random()-0.5)*0.4; siege.add(beam);
+      const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.08, 6, 12), woodMat);
+      wheel.rotation.y = Math.PI/2; wheel.position.set(0, 0.5, -1.2); siege.add(wheel);
+      const sx = (Math.random()-0.5)*w*0.7, sz = (Math.random()-0.5)*d*0.7;
+      siege.position.set(sx, getTerrainHeight(sx, sz, 1.0), sz);
+      siege.rotation.y = Math.random()*Math.PI;
+      this._scene.add(siege);
+    }
+    // Craters
+    for (let i = 0; i < 15; i++) {
+      const crater = new THREE.Mesh(new THREE.SphereGeometry(1+Math.random()*2, 8, 6), ashMat);
+      crater.scale.y = 0.15;
+      const crx = (Math.random()-0.5)*w*0.8, crz = (Math.random()-0.5)*d*0.8;
+      crater.position.set(crx, getTerrainHeight(crx, crz, 1.0)-0.1, crz);
+      this._scene.add(crater);
+    }
+    // Bone piles
+    for (let i = 0; i < 20; i++) {
+      const bones = new THREE.Group();
+      for (let b = 0; b < 4; b++) {
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3, 4), boneMat);
+        bone.position.set((Math.random()-0.5)*0.3, 0.05, (Math.random()-0.5)*0.3);
+        bone.rotation.set(Math.random(), Math.random(), Math.random()); bones.add(bone);
+      }
+      const bx = (Math.random()-0.5)*w*0.8, bz = (Math.random()-0.5)*d*0.8;
+      bones.position.set(bx, getTerrainHeight(bx, bz, 1.0), bz);
+      this._scene.add(bones);
+    }
+    // Smoldering fires
+    for (let i = 0; i < 8; i++) {
+      const fire = new THREE.PointLight(0xff4400, 0.6, 8);
+      const fx = (Math.random()-0.5)*w*0.6, fz = (Math.random()-0.5)*d*0.6;
+      fire.position.set(fx, getTerrainHeight(fx, fz, 1.0)+0.5, fz);
+      this._scene.add(fire); this._torchLights.push(fire);
+      const embers = new THREE.Mesh(new THREE.SphereGeometry(0.2, 5, 4), new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.0, transparent: true, opacity: 0.5 }));
+      embers.position.copy(fire.position); embers.position.y -= 0.3;
+      this._scene.add(embers);
+    }
+    // Tattered banners
+    for (let i = 0; i < 10; i++) {
+      const banner = new THREE.Group();
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 3, 4), woodMat);
+      pole.position.y = 1.5; banner.add(pole);
+      const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), new THREE.MeshStandardMaterial({ color: [0x882222, 0x222288, 0x228822][i%3], side: THREE.DoubleSide, roughness: 0.8 }));
+      cloth.position.set(0.35, 2.5, 0); banner.add(cloth);
+      const bnx = (Math.random()-0.5)*w*0.7, bnz = (Math.random()-0.5)*d*0.7;
+      banner.position.set(bnx, getTerrainHeight(bnx, bnz, 1.0), bnz);
+      banner.rotation.y = Math.random()*Math.PI; banner.rotation.z = (Math.random()-0.5)*0.2;
+      this._scene.add(banner);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  FUNGAL DEPTHS (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildFungalDepths(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x112211, 0.02);
+    this._applyTerrainColors(0x1a2a11, 0x2a3a22, 0.6);
+    this._dirLight.color.setHex(0x88aa44);
+    this._dirLight.intensity = 0.5;
+    this._ambientLight.color.setHex(0x223311);
+    this._ambientLight.intensity = 0.4;
+    this._hemiLight.color.setHex(0x558833);
+    this._hemiLight.groundColor.setHex(0x111a00);
+    const hw = w / 2;
+    const sporeMat = new THREE.MeshStandardMaterial({ color: 0xaaff44, emissive: 0x44aa00, emissiveIntensity: 0.5, transparent: true, opacity: 0.6 });
+    // Giant mushrooms
+    for (let i = 0; i < 35; i++) {
+      const mush = new THREE.Group();
+      const h = 1+Math.random()*4;
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, h, 6), new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.7 }));
+      stem.position.y = h/2; stem.castShadow = true; mush.add(stem);
+      const capR = 0.5+Math.random()*1.5;
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(capR, 8, 6), new THREE.MeshStandardMaterial({ color: [0xcc4444, 0x44aacc, 0xaa44cc, 0xccaa44][i%4], roughness: 0.4 }));
+      cap.scale.y = 0.4; cap.position.y = h; mush.add(cap);
+      const mx = (Math.random()-0.5)*w*0.85, mz = (Math.random()-0.5)*d*0.85;
+      mush.position.set(mx, getTerrainHeight(mx, mz, 0.6), mz);
+      this._scene.add(mush);
+    }
+    // Glowing spore clouds
+    for (let i = 0; i < 15; i++) {
+      const spore = new THREE.Mesh(new THREE.SphereGeometry(0.3+Math.random()*0.5, 6, 5), sporeMat);
+      spore.position.set((Math.random()-0.5)*w*0.7, 0.5+Math.random()*3, (Math.random()-0.5)*d*0.7);
+      this._scene.add(spore);
+    }
+    // Bioluminescent pools
+    for (let i = 0; i < 6; i++) {
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(1+Math.random()*2, 12), new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x22aa44, emissiveIntensity: 0.8, transparent: true, opacity: 0.5 }));
+      pool.rotation.x = -Math.PI/2;
+      const px = (Math.random()-0.5)*w*0.6, pz = (Math.random()-0.5)*d*0.6;
+      pool.position.set(px, getTerrainHeight(px, pz, 0.6)+0.02, pz);
+      this._scene.add(pool);
+      const pLight = new THREE.PointLight(0x44ff88, 0.4, 6);
+      pLight.position.set(px, getTerrainHeight(px, pz, 0.6)+0.3, pz);
+      this._scene.add(pLight); this._torchLights.push(pLight);
+    }
+    // Mycelium web strands
+    for (let i = 0; i < 20; i++) {
+      const web = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 2+Math.random()*3, 3), new THREE.MeshStandardMaterial({ color: 0xccccaa, transparent: true, opacity: 0.3 }));
+      web.position.set((Math.random()-0.5)*w*0.7, 1+Math.random()*2, (Math.random()-0.5)*d*0.7);
+      web.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5);
+      this._scene.add(web);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  OBSIDIAN FORTRESS (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildObsidianFortress(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x0a0505, 0.018);
+    this._applyTerrainColors(0x111111, 0x222222, 0.5);
+    this._dirLight.color.setHex(0xff6633);
+    this._dirLight.intensity = 0.6;
+    this._ambientLight.color.setHex(0x110505);
+    this._ambientLight.intensity = 0.3;
+    this._hemiLight.color.setHex(0x442222);
+    this._hemiLight.groundColor.setHex(0x0a0000);
+    const hw = w / 2;
+    const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.2, metalness: 0.5 });
+    const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.5 });
+    // Obsidian walls/blocks
+    for (let i = 0; i < 30; i++) {
+      const block = new THREE.Mesh(new THREE.BoxGeometry(1+Math.random()*2, 2+Math.random()*4, 1+Math.random()*2), obsidianMat);
+      const bx = (Math.random()-0.5)*w*0.8, bz = (Math.random()-0.5)*d*0.8;
+      block.position.set(bx, getTerrainHeight(bx, bz, 0.5)+block.geometry.parameters.height/2, bz);
+      block.castShadow = true;
+      this._scene.add(block);
+    }
+    // Lava channels
+    for (let i = 0; i < 5; i++) {
+      const channel = new THREE.Mesh(new THREE.PlaneGeometry(1, w*0.3+Math.random()*10), lavaMat);
+      channel.rotation.x = -Math.PI/2;
+      const cx = (Math.random()-0.5)*w*0.5, cz = (Math.random()-0.5)*d*0.5;
+      channel.position.set(cx, getTerrainHeight(cx, cz, 0.5)+0.03, cz);
+      channel.rotation.z = Math.random()*Math.PI;
+      this._scene.add(channel);
+      const lLight = new THREE.PointLight(0xff4400, 0.8, 10);
+      lLight.position.set(cx, getTerrainHeight(cx, cz, 0.5)+0.5, cz);
+      this._scene.add(lLight); this._torchLights.push(lLight);
+    }
+    // Dark pillars
+    for (let i = 0; i < 15; i++) {
+      const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 5+Math.random()*3, 6), obsidianMat);
+      const px = (Math.random()-0.5)*w*0.7, pz = (Math.random()-0.5)*d*0.7;
+      pil.position.set(px, getTerrainHeight(px, pz, 0.5)+pil.geometry.parameters.height/2, pz);
+      pil.castShadow = true;
+      this._scene.add(pil);
+    }
+    // Fire braziers
+    for (let i = 0; i < 8; i++) {
+      const brazier = new THREE.Group();
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.15, 0.3, 6), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6 }));
+      bowl.position.y = 1.0; brazier.add(bowl);
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 1.0, 4), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6 }));
+      stand.position.y = 0.5; brazier.add(stand);
+      const fl = new THREE.PointLight(0xff4400, 1.0, 8);
+      fl.position.y = 1.3; brazier.add(fl); this._torchLights.push(fl);
+      const brx = (Math.random()-0.5)*w*0.6, brz = (Math.random()-0.5)*d*0.6;
+      brazier.position.set(brx, getTerrainHeight(brx, brz, 0.5), brz);
+      this._scene.add(brazier);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  CELESTIAL RUINS (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildCelestialRuins(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x0a0a22, 0.012);
+    this._applyTerrainColors(0x1a1a3a, 0x2a2a4a, 0.8);
+    this._dirLight.color.setHex(0xaabbff);
+    this._dirLight.intensity = 1.0;
+    this._ambientLight.color.setHex(0x222244);
+    this._ambientLight.intensity = 0.5;
+    this._hemiLight.color.setHex(0x6666aa);
+    this._hemiLight.groundColor.setHex(0x111133);
+    const hw = w / 2;
+    const starMat = new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffdd88, emissiveIntensity: 1.0 });
+    const ruinMat = new THREE.MeshStandardMaterial({ color: 0x8888aa, roughness: 0.6, metalness: 0.3 });
+    // Floating ruins
+    for (let i = 0; i < 20; i++) {
+      const ruin = new THREE.Mesh(new THREE.BoxGeometry(1+Math.random()*3, 0.5+Math.random()*1, 1+Math.random()*3), ruinMat);
+      ruin.position.set((Math.random()-0.5)*w*0.7, 2+Math.random()*6, (Math.random()-0.5)*d*0.7);
+      ruin.rotation.set((Math.random()-0.5)*0.3, Math.random(), (Math.random()-0.5)*0.3);
+      ruin.castShadow = true;
+      this._scene.add(ruin);
+    }
+    // Star wisps
+    for (let i = 0; i < 30; i++) {
+      const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.05+Math.random()*0.1, 5, 4), starMat);
+      wisp.position.set((Math.random()-0.5)*w*0.8, Math.random()*8, (Math.random()-0.5)*d*0.8);
+      this._scene.add(wisp);
+    }
+    // Broken columns
+    for (let i = 0; i < 15; i++) {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 2+Math.random()*3, 8), ruinMat);
+      const cx = (Math.random()-0.5)*w*0.8, cz = (Math.random()-0.5)*d*0.8;
+      col.position.set(cx, getTerrainHeight(cx, cz, 0.8)+col.geometry.parameters.height/2, cz);
+      col.rotation.z = (Math.random()-0.5)*0.3; col.castShadow = true;
+      this._scene.add(col);
+    }
+    // Constellation lights
+    for (let i = 0; i < 10; i++) {
+      const light = new THREE.PointLight([0xffffcc, 0x88aaff, 0xffaacc][i%3], 0.4, 8);
+      light.position.set((Math.random()-0.5)*w*0.6, 3+Math.random()*5, (Math.random()-0.5)*d*0.6);
+      this._scene.add(light); this._torchLights.push(light);
+    }
+    // Arcane circles on ground
+    for (let i = 0; i < 6; i++) {
+      const circle = new THREE.Mesh(new THREE.TorusGeometry(1.5+Math.random(), 0.03, 4, 24), new THREE.MeshStandardMaterial({ color: 0x8888ff, emissive: 0x4444ff, emissiveIntensity: 0.8 }));
+      circle.rotation.x = -Math.PI/2;
+      const ax = (Math.random()-0.5)*w*0.5, az = (Math.random()-0.5)*d*0.5;
+      circle.position.set(ax, getTerrainHeight(ax, az, 0.8)+0.05, az);
+      this._scene.add(circle);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  INFERNAL THRONE (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildInfernalThrone(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x1a0505, 0.018);
+    this._applyTerrainColors(0x1a0a0a, 0x2a1111, 0.6);
+    this._dirLight.color.setHex(0xff4422);
+    this._dirLight.intensity = 0.8;
+    this._ambientLight.color.setHex(0x220505);
+    this._ambientLight.intensity = 0.4;
+    this._hemiLight.color.setHex(0x662222);
+    this._hemiLight.groundColor.setHex(0x110000);
+    const hw = w / 2;
+    const demonMat = new THREE.MeshStandardMaterial({ color: 0x331111, roughness: 0.7 });
+    const fireMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 2.0 });
+    const boneMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.6 });
+    // Hellfire pillars
+    for (let i = 0; i < 18; i++) {
+      const pil = new THREE.Group();
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 5, 6), demonMat);
+      col.position.y = 2.5; col.castShadow = true; pil.add(col);
+      const fire = new THREE.PointLight(0xff2200, 0.8, 8);
+      fire.position.y = 5.2; pil.add(fire); this._torchLights.push(fire);
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 5), fireMat);
+      flame.position.y = 5.3; pil.add(flame);
+      const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
+      pil.position.set(px, getTerrainHeight(px, pz, 0.6), pz);
+      this._scene.add(pil);
+    }
+    // Lava pools
+    for (let i = 0; i < 8; i++) {
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(1+Math.random()*2, 10), fireMat);
+      pool.rotation.x = -Math.PI/2;
+      const px = (Math.random()-0.5)*w*0.6, pz = (Math.random()-0.5)*d*0.6;
+      pool.position.set(px, getTerrainHeight(px, pz, 0.6)+0.02, pz);
+      this._scene.add(pool);
+    }
+    // Bone piles
+    for (let i = 0; i < 20; i++) {
+      const pile = new THREE.Group();
+      for (let b = 0; b < 5; b++) {
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3+Math.random()*0.2, 4), boneMat);
+        bone.position.set((Math.random()-0.5)*0.4, 0.05, (Math.random()-0.5)*0.4);
+        bone.rotation.set(Math.random(), Math.random(), Math.random()); pile.add(bone);
+      }
+      const bx = (Math.random()-0.5)*w*0.8, bz = (Math.random()-0.5)*d*0.8;
+      pile.position.set(bx, getTerrainHeight(bx, bz, 0.6), bz);
+      this._scene.add(pile);
+    }
+    // Demon statues
+    for (let i = 0; i < 6; i++) {
+      const statue = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 6), demonMat);
+      body.position.y = 1; statue.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 5), demonMat);
+      head.position.y = 2.2; statue.add(head);
+      for (const hx of [-0.2, 0.2]) {
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.4, 4), demonMat);
+        horn.position.set(hx, 2.5, 0); horn.rotation.z = hx > 0 ? -0.3 : 0.3; statue.add(horn);
+      }
+      const sx = (Math.random()-0.5)*w*0.6, sz = (Math.random()-0.5)*d*0.6;
+      statue.position.set(sx, getTerrainHeight(sx, sz, 0.6), sz);
+      this._scene.add(statue);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  ASTRAL VOID (Wave 2)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildAstralVoid(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x050511, 0.042);
+    this._applyTerrainColors(0x0a0a1a, 0x111122, 0.5);
+    this._dirLight.color.setHex(0x8866cc);
+    this._dirLight.intensity = 0.5;
+    this._ambientLight.color.setHex(0x110022);
+    this._ambientLight.intensity = 0.3;
+    this._hemiLight.color.setHex(0x443366);
+    this._hemiLight.groundColor.setHex(0x050011);
+    const hw = w / 2;
+    const voidMat = new THREE.MeshStandardMaterial({ color: 0x220044, emissive: 0x110022, emissiveIntensity: 0.5 });
+    const starMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 2.0 });
+    // Floating platforms
+    for (let i = 0; i < 25; i++) {
+      const plat = new THREE.Mesh(new THREE.BoxGeometry(2+Math.random()*4, 0.3, 2+Math.random()*4), voidMat);
+      plat.position.set((Math.random()-0.5)*w*0.7, -0.5+Math.random()*4, (Math.random()-0.5)*d*0.7);
+      plat.rotation.set((Math.random()-0.5)*0.2, Math.random(), (Math.random()-0.5)*0.2);
+      this._scene.add(plat);
+    }
+    // Stars
+    for (let i = 0; i < 60; i++) {
+      const star = new THREE.Mesh(new THREE.SphereGeometry(0.02+Math.random()*0.04, 4, 3), starMat);
+      star.position.set((Math.random()-0.5)*w, Math.random()*10, (Math.random()-0.5)*d);
+      this._scene.add(star);
+    }
+    // Void rifts
+    for (let i = 0; i < 6; i++) {
+      const rift = new THREE.Mesh(new THREE.TorusGeometry(1+Math.random()*1.5, 0.05, 6, 16), new THREE.MeshStandardMaterial({ color: 0xcc44ff, emissive: 0x8822cc, emissiveIntensity: 1.5 }));
+      rift.position.set((Math.random()-0.5)*w*0.5, 2+Math.random()*4, (Math.random()-0.5)*d*0.5);
+      rift.rotation.set(Math.random(), Math.random(), Math.random());
+      this._scene.add(rift);
+      const rLight = new THREE.PointLight(0xcc44ff, 0.6, 8);
+      rLight.position.copy(rift.position);
+      this._scene.add(rLight); this._torchLights.push(rLight);
+    }
+    // Energy streams
+    for (let i = 0; i < 10; i++) {
+      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 5+Math.random()*8, 4), new THREE.MeshStandardMaterial({ color: 0x6644cc, emissive: 0x4422aa, emissiveIntensity: 0.8, transparent: true, opacity: 0.4 }));
+      stream.position.set((Math.random()-0.5)*w*0.6, 3, (Math.random()-0.5)*d*0.6);
+      stream.rotation.set(Math.random()*0.5, 0, Math.random()*0.5);
+      this._scene.add(stream);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  SHATTERED COLOSSEUM (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildShatteredColosseum(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x554e44, 0.01);
+    this._applyTerrainColors(0x3a3832, 0x4a4842, 1.0);
+    this._dirLight.color.setHex(0xddccaa);
+    this._dirLight.intensity = 1.0;
+    this._ambientLight.color.setHex(0x2a2822);
+    this._ambientLight.intensity = 0.5;
+    this._hemiLight.color.setHex(0x998877);
+    this._hemiLight.groundColor.setHex(0x332211);
+    const hw = w / 2;
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.8 });
+    const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.9 });
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 });
+    const sandMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.9 });
+    // Arena walls (arced pillars around the perimeter)
+    for (let i = 0; i < 36; i++) {
+      const angle = (i / 36) * Math.PI * 2;
+      const radius = Math.min(w, d) * 0.42;
+      const pillarH = 3 + Math.random() * 4;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, pillarH, 6), stoneMat);
+      const px = Math.sin(angle) * radius;
+      const pz = Math.cos(angle) * radius;
+      pillar.position.set(px, getTerrainHeight(px, pz, 1.0) + pillarH/2, pz);
+      pillar.castShadow = true;
+      this._scene.add(pillar);
+      // Some pillars broken
+      if (Math.random() > 0.5) {
+        const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3+Math.random()*0.3, 0), stoneMat);
+        rubble.position.set(px+(Math.random()-0.5)*1.5, getTerrainHeight(px, pz, 1.0)+0.15, pz+(Math.random()-0.5)*1.5);
+        this._scene.add(rubble);
+      }
+    }
+    // Arena floor - central sand area
+    const arenaFloor = new THREE.Mesh(new THREE.CircleGeometry(w*0.25, 24), sandMat);
+    arenaFloor.rotation.x = -Math.PI/2;
+    arenaFloor.position.y = 0.02;
+    this._scene.add(arenaFloor);
+    // Spectator stands (ruined tiers)
+    for (let tier = 0; tier < 3; tier++) {
+      const tierR = w*0.28 + tier*3;
+      const tierH = 0.4 + tier*0.6;
+      const stand = new THREE.Mesh(new THREE.TorusGeometry(tierR, 0.8, 4, 24), darkStoneMat);
+      stand.rotation.x = -Math.PI/2;
+      stand.position.y = tierH;
+      this._scene.add(stand);
+    }
+    // Scattered weapons
+    for (let i = 0; i < 25; i++) {
+      const weapon = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.6+Math.random()*0.4, 0.12), ironMat);
+      const wx = (Math.random()-0.5)*w*0.4, wz = (Math.random()-0.5)*d*0.4;
+      weapon.position.set(wx, getTerrainHeight(wx, wz, 1.0)+0.2, wz);
+      weapon.rotation.z = (Math.random()-0.5)*1.5;
+      this._scene.add(weapon);
+    }
+    // Ghostly light sources
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const light = new THREE.PointLight(0x8888cc, 0.5, 12);
+      light.position.set(Math.sin(angle)*w*0.3, 3, Math.cos(angle)*d*0.3);
+      this._scene.add(light); this._torchLights.push(light);
+    }
+    // Bloodstains
+    for (let i = 0; i < 15; i++) {
+      const stain = new THREE.Mesh(new THREE.CircleGeometry(0.3+Math.random()*0.5, 8), new THREE.MeshStandardMaterial({ color: 0x551111, roughness: 0.9 }));
+      stain.rotation.x = -Math.PI/2;
+      const sx = (Math.random()-0.5)*w*0.35, sz = (Math.random()-0.5)*d*0.35;
+      stain.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.01, sz);
+      this._scene.add(stain);
+    }
+    // Statues of champions
+    for (let i = 0; i < 6; i++) {
+      const statue = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 1.5, 6), stoneMat);
+      body.position.y = 0.75; statue.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 5), stoneMat);
+      head.position.y = 1.6; statue.add(head);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.8), darkStoneMat);
+      base.position.y = 0.15; statue.add(base);
+      const angle = (i / 6) * Math.PI * 2;
+      const sr = w * 0.32;
+      statue.position.set(Math.sin(angle)*sr, getTerrainHeight(Math.sin(angle)*sr, Math.cos(angle)*sr, 1.0), Math.cos(angle)*sr);
+      statue.rotation.y = -angle;
+      this._scene.add(statue);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  PETRIFIED GARDEN (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildPetrifiedGarden(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x555550, 0.016);
+    this._applyTerrainColors(0x3a3a38, 0x4a4a48, 1.0);
+    this._dirLight.color.setHex(0xccccbb);
+    this._dirLight.intensity = 1.0;
+    this._ambientLight.color.setHex(0x2a2a2a);
+    this._ambientLight.intensity = 0.5;
+    this._hemiLight.color.setHex(0x888888);
+    this._hemiLight.groundColor.setHex(0x333333);
+    const hw = w / 2;
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.7 });
+    const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.8 });
+    const mossMat = new THREE.MeshStandardMaterial({ color: 0x556644, roughness: 0.6 });
+    // Petrified trees
+    for (let i = 0; i < 40; i++) {
+      const tree = new THREE.Group();
+      const h = 2+Math.random()*3;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, h, 6), stoneMat);
+      trunk.position.y = h/2; trunk.castShadow = true; tree.add(trunk);
+      for (let b = 0; b < 3; b++) {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.08, 1+Math.random(), 4), stoneMat);
+        branch.position.set((Math.random()-0.5)*0.5, h*0.5+b*0.4, (Math.random()-0.5)*0.5);
+        branch.rotation.z = (Math.random()-0.5)*0.8; tree.add(branch);
+      }
+      const tx = (Math.random()-0.5)*w*0.85, tz = (Math.random()-0.5)*d*0.85;
+      tree.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz);
+      this._scene.add(tree);
+    }
+    // Stone statues (petrified people)
+    for (let i = 0; i < 20; i++) {
+      const statue = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6), stoneMat);
+      body.position.y = 0.55; statue.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), stoneMat);
+      head.position.y = 1.05; statue.add(head);
+      for (const ax of [-0.15, 0.15]) {
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 4), stoneMat);
+        arm.position.set(ax, 0.6, 0); arm.rotation.z = ax > 0 ? -0.5-Math.random()*0.5 : 0.5+Math.random()*0.5;
+        statue.add(arm);
+      }
+      const sx = (Math.random()-0.5)*w*0.75, sz = (Math.random()-0.5)*d*0.75;
+      statue.position.set(sx, getTerrainHeight(sx, sz, 1.0), sz);
+      statue.rotation.y = Math.random()*Math.PI*2;
+      this._scene.add(statue);
+    }
+    // Calcified rose bushes
+    for (let i = 0; i < 30; i++) {
+      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.3+Math.random()*0.3, 6, 5), darkStoneMat);
+      bush.scale.y = 0.7;
+      const bx = (Math.random()-0.5)*w*0.8, bz = (Math.random()-0.5)*d*0.8;
+      bush.position.set(bx, getTerrainHeight(bx, bz, 1.0)+0.15, bz);
+      this._scene.add(bush);
+    }
+    // Fossilized fountains
+    for (let i = 0; i < 5; i++) {
+      const fountain = new THREE.Group();
+      const basin = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.8, 0.4, 8), stoneMat);
+      basin.position.y = 0.2; fountain.add(basin);
+      const center = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.2, 6), stoneMat);
+      center.position.y = 0.8; fountain.add(center);
+      const fx = (Math.random()-0.5)*w*0.5, fz = (Math.random()-0.5)*d*0.5;
+      fountain.position.set(fx, getTerrainHeight(fx, fz, 1.0), fz);
+      this._scene.add(fountain);
+    }
+    // Moss patches
+    for (let i = 0; i < 25; i++) {
+      const moss = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random(), 8), mossMat);
+      moss.rotation.x = -Math.PI/2;
+      const mx = (Math.random()-0.5)*w*0.8, mz = (Math.random()-0.5)*d*0.8;
+      moss.position.set(mx, getTerrainHeight(mx, mz, 1.0)+0.02, mz);
+      this._scene.add(moss);
+    }
+    // Path stones
+    for (let i = 0; i < 40; i++) {
+      const pathStone = new THREE.Mesh(new THREE.BoxGeometry(0.5+Math.random()*0.3, 0.05, 0.5+Math.random()*0.3), darkStoneMat);
+      const px = (Math.random()-0.5)*w*0.6, pz = (Math.random()-0.5)*d*0.6;
+      pathStone.position.set(px, getTerrainHeight(px, pz, 1.0)+0.03, pz);
+      pathStone.rotation.y = Math.random()*Math.PI;
+      this._scene.add(pathStone);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  SUNKEN CITADEL (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildSunkenCitadel(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x1a3344, 0.024);
+    this._applyTerrainColors(0x153344, 0x1a4455, 0.6);
+    this._dirLight.color.setHex(0x44aacc);
+    this._dirLight.intensity = 0.5;
+    this._ambientLight.color.setHex(0x0a2233);
+    this._ambientLight.intensity = 0.4;
+    this._hemiLight.color.setHex(0x336677);
+    this._hemiLight.groundColor.setHex(0x0a1a22);
+    const hw = w / 2;
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x556666, roughness: 0.8 });
+    const barnacleMat = new THREE.MeshStandardMaterial({ color: 0x667766, roughness: 0.9 });
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x224466, roughness: 0.1, transparent: true, opacity: 0.5 });
+    const bioMat = new THREE.MeshStandardMaterial({ color: 0x44ffaa, emissive: 0x22aa66, emissiveIntensity: 1.0, transparent: true, opacity: 0.6 });
+    // Flooded fortress walls
+    for (let i = 0; i < 20; i++) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(1+Math.random()*3, 2+Math.random()*3, 0.5+Math.random()), stoneMat);
+      const wx = (Math.random()-0.5)*w*0.8, wz = (Math.random()-0.5)*d*0.8;
+      wall.position.set(wx, getTerrainHeight(wx, wz, 0.6)+wall.geometry.parameters.height/2, wz);
+      wall.rotation.y = Math.random()*Math.PI;
+      wall.castShadow = true;
+      this._scene.add(wall);
+      // Barnacles on walls
+      for (let b = 0; b < 3; b++) {
+        const barnacle = new THREE.Mesh(new THREE.SphereGeometry(0.06+Math.random()*0.06, 4, 3), barnacleMat);
+        barnacle.position.set(wx+(Math.random()-0.5)*0.5, getTerrainHeight(wx, wz, 0.6)+Math.random()*1.5, wz+(Math.random()-0.5)*0.5);
+        this._scene.add(barnacle);
+      }
+    }
+    // Water surface
+    const waterSurface = new THREE.Mesh(new THREE.PlaneGeometry(w*0.9, d*0.9), waterMat);
+    waterSurface.rotation.x = -Math.PI/2;
+    waterSurface.position.y = 0.15;
+    this._scene.add(waterSurface);
+    // Bioluminescent algae patches
+    for (let i = 0; i < 15; i++) {
+      const algae = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random(), 8), bioMat);
+      algae.rotation.x = -Math.PI/2;
+      const ax = (Math.random()-0.5)*w*0.7, az = (Math.random()-0.5)*d*0.7;
+      algae.position.set(ax, 0.16, az);
+      this._scene.add(algae);
+    }
+    // Bioluminescent lights
+    for (let i = 0; i < 10; i++) {
+      const light = new THREE.PointLight(0x44ffaa, 0.4, 8);
+      light.position.set((Math.random()-0.5)*w*0.6, 0.5+Math.random()*2, (Math.random()-0.5)*d*0.6);
+      this._scene.add(light); this._torchLights.push(light);
+    }
+    // Kelp curtains
+    for (let i = 0; i < 25; i++) {
+      const kelp = new THREE.Group();
+      const kh = 2+Math.random()*3;
+      for (let s = 0; s < 4; s++) {
+        const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, kh/4, 3), new THREE.MeshStandardMaterial({ color: 0x226633 }));
+        strand.position.y = s*kh/4; strand.rotation.z = Math.sin(s)*0.15;
+        kelp.add(strand);
+      }
+      const kx = (Math.random()-0.5)*w*0.8, kz = (Math.random()-0.5)*d*0.8;
+      kelp.position.set(kx, getTerrainHeight(kx, kz, 0.6), kz);
+      this._scene.add(kelp);
+    }
+    // Sunken columns
+    for (let i = 0; i < 12; i++) {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 3, 6), stoneMat);
+      const cx = (Math.random()-0.5)*w*0.7, cz = (Math.random()-0.5)*d*0.7;
+      col.position.set(cx, getTerrainHeight(cx, cz, 0.6)+1.5, cz);
+      col.rotation.z = (Math.random()-0.5)*0.3;
+      this._scene.add(col);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  WYRMSCAR CANYON (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildWyrmscarCanyon(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x554433, 0.014);
+    this._applyTerrainColors(0x443322, 0x554433, 1.4);
+    this._dirLight.color.setHex(0xffaa66);
+    this._dirLight.intensity = 1.2;
+    this._ambientLight.color.setHex(0x332211);
+    this._ambientLight.intensity = 0.5;
+    this._hemiLight.color.setHex(0xaa8855);
+    this._hemiLight.groundColor.setHex(0x221100);
+    const hw = w / 2;
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.9 });
+    const scorchedMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+    const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.5 });
+    // Canyon walls
+    for (let i = 0; i < 25; i++) {
+      const wallH = 4+Math.random()*6;
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(2+Math.random()*3, wallH, 1+Math.random()*2), rockMat);
+      const wx = (Math.random()-0.5)*w*0.85, wz = (Math.random()-0.5)*d*0.85;
+      wall.position.set(wx, getTerrainHeight(wx, wz, 1.4)+wallH/2, wz);
+      wall.castShadow = true;
+      this._scene.add(wall);
+    }
+    // Scorched ground patches
+    for (let i = 0; i < 20; i++) {
+      const scorch = new THREE.Mesh(new THREE.CircleGeometry(1+Math.random()*2, 8), scorchedMat);
+      scorch.rotation.x = -Math.PI/2;
+      const sx = (Math.random()-0.5)*w*0.7, sz = (Math.random()-0.5)*d*0.7;
+      scorch.position.set(sx, getTerrainHeight(sx, sz, 1.4)+0.02, sz);
+      this._scene.add(scorch);
+    }
+    // Dragon nests
+    for (let i = 0; i < 5; i++) {
+      const nest = new THREE.Group();
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.3, 5, 10), new THREE.MeshStandardMaterial({ color: 0x443322 }));
+      rim.rotation.x = -Math.PI/2; nest.add(rim);
+      // Eggs
+      for (let e = 0; e < 3; e++) {
+        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 5), new THREE.MeshStandardMaterial({ color: 0xcc6633, roughness: 0.4 }));
+        egg.scale.y = 1.3;
+        egg.position.set((Math.random()-0.5)*0.6, 0.15, (Math.random()-0.5)*0.6);
+        nest.add(egg);
+      }
+      const nx = (Math.random()-0.5)*w*0.5, nz = (Math.random()-0.5)*d*0.5;
+      nest.position.set(nx, getTerrainHeight(nx, nz, 1.4), nz);
+      this._scene.add(nest);
+    }
+    // Lava cracks
+    for (let i = 0; i < 8; i++) {
+      const crack = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 3+Math.random()*4), lavaMat);
+      crack.rotation.x = -Math.PI/2;
+      const cx = (Math.random()-0.5)*w*0.6, cz = (Math.random()-0.5)*d*0.6;
+      crack.position.set(cx, getTerrainHeight(cx, cz, 1.4)+0.03, cz);
+      crack.rotation.z = Math.random()*Math.PI;
+      this._scene.add(crack);
+      const cLight = new THREE.PointLight(0xff4400, 0.5, 6);
+      cLight.position.set(cx, getTerrainHeight(cx, cz, 1.4)+0.3, cz);
+      this._scene.add(cLight); this._torchLights.push(cLight);
+    }
+    // Bone piles (dragon prey)
+    for (let i = 0; i < 15; i++) {
+      const bones = new THREE.Group();
+      for (let b = 0; b < 5; b++) {
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.4+Math.random()*0.3, 4), new THREE.MeshStandardMaterial({ color: 0xccbbaa }));
+        bone.position.set((Math.random()-0.5)*0.5, 0.05, (Math.random()-0.5)*0.5);
+        bone.rotation.set(Math.random(), Math.random(), Math.random()); bones.add(bone);
+      }
+      const bx = (Math.random()-0.5)*w*0.7, bz = (Math.random()-0.5)*d*0.7;
+      bones.position.set(bx, getTerrainHeight(bx, bz, 1.4), bz);
+      this._scene.add(bones);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  PLAGUEROT SEWERS (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildPlaguerotSewers(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x334422, 0.03);
+    this._applyTerrainColors(0x2a3a22, 0x3a4a33, 0.4);
+    this._dirLight.color.setHex(0x88aa44);
+    this._dirLight.intensity = 0.4;
+    this._ambientLight.color.setHex(0x1a2a11);
+    this._ambientLight.intensity = 0.3;
+    this._hemiLight.color.setHex(0x556633);
+    this._hemiLight.groundColor.setHex(0x111a00);
+    const hw = w / 2;
+    const brickMat = new THREE.MeshStandardMaterial({ color: 0x554444, roughness: 0.9 });
+    const slimeMat = new THREE.MeshStandardMaterial({ color: 0x66aa22, emissive: 0x448800, emissiveIntensity: 0.5, roughness: 0.2 });
+    const sewageMat = new THREE.MeshStandardMaterial({ color: 0x445522, roughness: 0.1, transparent: true, opacity: 0.6 });
+    const pipeMat = new THREE.MeshStandardMaterial({ color: 0x555544, metalness: 0.4, roughness: 0.5 });
+    // Tunnel walls
+    for (let i = 0; i < 25; i++) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(1+Math.random()*2, 2+Math.random()*2, 0.5), brickMat);
+      const wx = (Math.random()-0.5)*w*0.85, wz = (Math.random()-0.5)*d*0.85;
+      wall.position.set(wx, getTerrainHeight(wx, wz, 0.4)+wall.geometry.parameters.height/2, wz);
+      wall.rotation.y = Math.random()*Math.PI; wall.castShadow = true;
+      this._scene.add(wall);
+    }
+    // Sewage channels
+    for (let i = 0; i < 6; i++) {
+      const channel = new THREE.Mesh(new THREE.PlaneGeometry(1.5, w*0.2+Math.random()*8), sewageMat);
+      channel.rotation.x = -Math.PI/2;
+      const cx = (Math.random()-0.5)*w*0.5, cz = (Math.random()-0.5)*d*0.5;
+      channel.position.set(cx, getTerrainHeight(cx, cz, 0.4)+0.02, cz);
+      channel.rotation.z = Math.random()*Math.PI;
+      this._scene.add(channel);
+    }
+    // Slime patches
+    for (let i = 0; i < 20; i++) {
+      const slime = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random(), 8), slimeMat);
+      slime.rotation.x = -Math.PI/2;
+      const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
+      slime.position.set(sx, getTerrainHeight(sx, sz, 0.4)+0.02, sz);
+      this._scene.add(slime);
+    }
+    // Pipes
+    for (let i = 0; i < 15; i++) {
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3+Math.random()*4, 6), pipeMat);
+      const px = (Math.random()-0.5)*w*0.7, pz = (Math.random()-0.5)*d*0.7;
+      pipe.position.set(px, getTerrainHeight(px, pz, 0.4)+1, pz);
+      pipe.rotation.set((Math.random()-0.5)*0.5, Math.random(), (Math.random()-0.5)*0.5);
+      this._scene.add(pipe);
+    }
+    // Toxic dripping lights
+    for (let i = 0; i < 8; i++) {
+      const light = new THREE.PointLight(0x88aa22, 0.4, 6);
+      light.position.set((Math.random()-0.5)*w*0.6, 1+Math.random()*2, (Math.random()-0.5)*d*0.6);
+      this._scene.add(light); this._torchLights.push(light);
+    }
+    // Rat bones and debris
+    for (let i = 0; i < 20; i++) {
+      const debris = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1+Math.random()*0.15, 0), brickMat);
+      const dx = (Math.random()-0.5)*w*0.8, dz = (Math.random()-0.5)*d*0.8;
+      debris.position.set(dx, getTerrainHeight(dx, dz, 0.4)+0.05, dz);
+      this._scene.add(debris);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  ETHEREAL SANCTUM (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildEtherealSanctum(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x333355, 0.02);
+    this._applyTerrainColors(0x2a2a44, 0x3a3a55, 0.6);
+    this._dirLight.color.setHex(0xaabbff);
+    this._dirLight.intensity = 0.7;
+    this._ambientLight.color.setHex(0x1a1a33);
+    this._ambientLight.intensity = 0.5;
+    this._hemiLight.color.setHex(0x6666aa);
+    this._hemiLight.groundColor.setHex(0x111133);
+    const hw = w / 2;
+    const etherealMat = new THREE.MeshStandardMaterial({ color: 0x8888cc, emissive: 0x4444aa, emissiveIntensity: 0.3, transparent: true, opacity: 0.7 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x7777aa, roughness: 0.6 });
+    // Phasing pillars (semi-transparent)
+    for (let i = 0; i < 20; i++) {
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3+Math.random()*3, 6), etherealMat);
+      const px = (Math.random()-0.5)*w*0.8, pz = (Math.random()-0.5)*d*0.8;
+      pillar.position.set(px, getTerrainHeight(px, pz, 0.6)+pillar.geometry.parameters.height/2, pz);
+      pillar.castShadow = true;
+      this._scene.add(pillar);
+    }
+    // Floating runes
+    for (let i = 0; i < 15; i++) {
+      const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.15+Math.random()*0.1, 0), new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4466ff, emissiveIntensity: 1.5 }));
+      rune.position.set((Math.random()-0.5)*w*0.7, 1+Math.random()*4, (Math.random()-0.5)*d*0.7);
+      this._scene.add(rune);
+    }
+    // Arcane circles
+    for (let i = 0; i < 8; i++) {
+      const circle = new THREE.Mesh(new THREE.TorusGeometry(1+Math.random()*1.5, 0.03, 4, 20), new THREE.MeshStandardMaterial({ color: 0x8888ff, emissive: 0x4444ff, emissiveIntensity: 1.0 }));
+      circle.rotation.x = -Math.PI/2;
+      const cx = (Math.random()-0.5)*w*0.5, cz = (Math.random()-0.5)*d*0.5;
+      circle.position.set(cx, getTerrainHeight(cx, cz, 0.6)+0.05, cz);
+      this._scene.add(circle);
+    }
+    // Phase lights
+    for (let i = 0; i < 10; i++) {
+      const light = new THREE.PointLight([0x8888ff, 0xaa88ff, 0x88aaff][i%3], 0.5, 8);
+      light.position.set((Math.random()-0.5)*w*0.6, 1+Math.random()*3, (Math.random()-0.5)*d*0.6);
+      this._scene.add(light); this._torchLights.push(light);
+    }
+    // Ethereal mist patches
+    for (let i = 0; i < 12; i++) {
+      const mist = new THREE.Mesh(new THREE.SphereGeometry(1+Math.random()*2, 6, 5), new THREE.MeshStandardMaterial({ color: 0x6666aa, transparent: true, opacity: 0.15 }));
+      mist.scale.y = 0.3;
+      mist.position.set((Math.random()-0.5)*w*0.7, 0.5, (Math.random()-0.5)*d*0.7);
+      this._scene.add(mist);
+    }
+    // Temple altar
+    const altar = new THREE.Group();
+    const altarBase = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 2), stoneMat);
+    altarBase.position.y = 0.25; altar.add(altarBase);
+    const altarOrb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), new THREE.MeshStandardMaterial({ color: 0xaaccff, emissive: 0x6688ff, emissiveIntensity: 2.0 }));
+    altarOrb.position.y = 0.8; altar.add(altarOrb);
+    const altarLight = new THREE.PointLight(0x8888ff, 1.0, 12);
+    altarLight.position.y = 1.0; altar.add(altarLight); this._torchLights.push(altarLight);
+    altar.position.set(0, getTerrainHeight(0, 0, 0.6), 0);
+    this._scene.add(altar);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  IRON WASTES (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildIronWastes(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x554444, 0.018);
+    this._applyTerrainColors(0x3a3333, 0x4a4444, 1.0);
+    this._dirLight.color.setHex(0xccaa88);
+    this._dirLight.intensity = 0.8;
+    this._ambientLight.color.setHex(0x2a2222);
+    this._ambientLight.intensity = 0.4;
+    this._hemiLight.color.setHex(0x886655);
+    this._hemiLight.groundColor.setHex(0x221111);
+    const hw = w / 2;
+    const rustMat = new THREE.MeshStandardMaterial({ color: 0x884422, roughness: 0.8, metalness: 0.3 });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.6, roughness: 0.4 });
+    const scrapMat = new THREE.MeshStandardMaterial({ color: 0x777766, metalness: 0.4, roughness: 0.6 });
+    // Rusting war machine hulks
+    for (let i = 0; i < 12; i++) {
+      const hulk = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(2+Math.random()*3, 1+Math.random()*2, 2+Math.random()*3), rustMat);
+      body.position.y = body.geometry.parameters.height/2; body.castShadow = true; hulk.add(body);
+      // Broken turret/arm
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2+Math.random()*2, 6), metalMat);
+      arm.position.set(0.5, body.geometry.parameters.height+0.5, 0);
+      arm.rotation.z = (Math.random()-0.5)*0.8; hulk.add(arm);
+      // Wheels/treads
+      for (const side of [-1, 1]) {
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.15, 6, 10), metalMat);
+        wheel.rotation.y = Math.PI/2; wheel.position.set(side*body.geometry.parameters.width*0.4, 0.5, 0);
+        hulk.add(wheel);
+      }
+      const hx = (Math.random()-0.5)*w*0.8, hz = (Math.random()-0.5)*d*0.8;
+      hulk.position.set(hx, getTerrainHeight(hx, hz, 1.0), hz);
+      hulk.rotation.y = Math.random()*Math.PI;
+      this._scene.add(hulk);
+    }
+    // Scrap piles
+    for (let i = 0; i < 30; i++) {
+      const pile = new THREE.Group();
+      for (let p = 0; p < 4+Math.floor(Math.random()*4); p++) {
+        const scrap = new THREE.Mesh(new THREE.BoxGeometry(0.2+Math.random()*0.4, 0.1+Math.random()*0.3, 0.2+Math.random()*0.4), scrapMat);
+        scrap.position.set((Math.random()-0.5)*0.8, Math.random()*0.3, (Math.random()-0.5)*0.8);
+        scrap.rotation.set(Math.random(), Math.random(), Math.random()); pile.add(scrap);
+      }
+      const px = (Math.random()-0.5)*w*0.85, pz = (Math.random()-0.5)*d*0.85;
+      pile.position.set(px, getTerrainHeight(px, pz, 1.0), pz);
+      this._scene.add(pile);
+    }
+    // Smokestacks (broken)
+    for (let i = 0; i < 8; i++) {
+      const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 4+Math.random()*4, 6), rustMat);
+      const sx = (Math.random()-0.5)*w*0.7, sz = (Math.random()-0.5)*d*0.7;
+      stack.position.set(sx, getTerrainHeight(sx, sz, 1.0)+stack.geometry.parameters.height/2, sz);
+      stack.rotation.z = (Math.random()-0.5)*0.2; stack.castShadow = true;
+      this._scene.add(stack);
+    }
+    // Sparking lights
+    for (let i = 0; i < 6; i++) {
+      const spark = new THREE.PointLight(0xffaa44, 0.5, 8);
+      spark.position.set((Math.random()-0.5)*w*0.6, 1+Math.random()*2, (Math.random()-0.5)*d*0.6);
+      this._scene.add(spark); this._torchLights.push(spark);
+    }
+    // Oil patches
+    for (let i = 0; i < 12; i++) {
+      const oil = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random()*1.5, 8), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.3 }));
+      oil.rotation.x = -Math.PI/2;
+      const ox = (Math.random()-0.5)*w*0.7, oz = (Math.random()-0.5)*d*0.7;
+      oil.position.set(ox, getTerrainHeight(ox, oz, 1.0)+0.02, oz);
+      this._scene.add(oil);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  BLIGHTED THRONE (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildBlightedThrone(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x332233, 0.028);
+    this._applyTerrainColors(0x2a1a2a, 0x3a2a3a, 0.5);
+    this._dirLight.color.setHex(0xaa88cc);
+    this._dirLight.intensity = 0.5;
+    this._ambientLight.color.setHex(0x1a0a1a);
+    this._ambientLight.intensity = 0.3;
+    this._hemiLight.color.setHex(0x664466);
+    this._hemiLight.groundColor.setHex(0x110011);
+    const hw = w / 2;
+    const corruptMat = new THREE.MeshStandardMaterial({ color: 0x442244, roughness: 0.7 });
+    const rotMat = new THREE.MeshStandardMaterial({ color: 0x334411, roughness: 0.8 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xaa8822, metalness: 0.5, roughness: 0.4 });
+    const throneMat = new THREE.MeshStandardMaterial({ color: 0x332233, roughness: 0.6, metalness: 0.3 });
+    // Central throne
+    const throne = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 1.5), throneMat);
+    seat.position.y = 0.75; throne.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.3), throneMat);
+    back.position.set(0, 2.5, -0.6); throne.add(back);
+    for (const ax of [-0.9, 0.9]) {
+      const armrest = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 1.2), throneMat);
+      armrest.position.set(ax, 1.4, -0.15); throne.add(armrest);
+    }
+    // Crown on top
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8), goldMat);
+    crown.position.set(0, 4.1, -0.6); throne.add(crown);
+    for (let s = 0; s < 5; s++) {
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 4), goldMat);
+      spike.position.set(Math.sin(s/5*Math.PI*2)*0.3, 4.35, -0.6+Math.cos(s/5*Math.PI*2)*0.3);
+      throne.add(spike);
+    }
+    throne.position.set(0, getTerrainHeight(0, 0, 0.5), 0);
+    this._scene.add(throne);
+    // Blight tendrils on walls
+    for (let i = 0; i < 30; i++) {
+      const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.08, 1+Math.random()*2, 4), rotMat);
+      const tx = (Math.random()-0.5)*w*0.8, tz = (Math.random()-0.5)*d*0.8;
+      tendril.position.set(tx, getTerrainHeight(tx, tz, 0.5)+0.5, tz);
+      tendril.rotation.set((Math.random()-0.5)*0.5, 0, (Math.random()-0.5)*0.5);
+      this._scene.add(tendril);
+    }
+    // Corrupted pillars
+    for (let i = 0; i < 16; i++) {
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4, 6), corruptMat);
+      const px = (Math.random()-0.5)*w*0.7, pz = (Math.random()-0.5)*d*0.7;
+      pillar.position.set(px, getTerrainHeight(px, pz, 0.5)+2, pz);
+      pillar.castShadow = true;
+      this._scene.add(pillar);
+    }
+    // Sickly lights
+    for (let i = 0; i < 8; i++) {
+      const light = new THREE.PointLight(0xaa44aa, 0.4, 8);
+      light.position.set((Math.random()-0.5)*w*0.5, 1+Math.random()*2, (Math.random()-0.5)*d*0.5);
+      this._scene.add(light); this._torchLights.push(light);
+    }
+    // Courtier chairs (fused to ground)
+    for (let i = 0; i < 10; i++) {
+      const chair = new THREE.Group();
+      const cseat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), throneMat);
+      cseat.position.y = 0.3; chair.add(cseat);
+      const cback = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.08), throneMat);
+      cback.position.set(0, 0.6, -0.21); chair.add(cback);
+      const cx = (Math.random()-0.5)*w*0.5, cz = (Math.random()-0.5)*d*0.5;
+      chair.position.set(cx, getTerrainHeight(cx, cz, 0.5), cz);
+      chair.rotation.y = Math.random()*Math.PI*2;
+      this._scene.add(chair);
+    }
+    // Rot puddles
+    for (let i = 0; i < 10; i++) {
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random(), 8), new THREE.MeshStandardMaterial({ color: 0x445511, roughness: 0.1, transparent: true, opacity: 0.5 }));
+      puddle.rotation.x = -Math.PI/2;
+      const rx = (Math.random()-0.5)*w*0.6, rz = (Math.random()-0.5)*d*0.6;
+      puddle.position.set(rx, getTerrainHeight(rx, rz, 0.5)+0.02, rz);
+      this._scene.add(puddle);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  CHRONO LABYRINTH (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildChronoLabyrinth(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x223355, 0.022);
+    this._applyTerrainColors(0x1a2a44, 0x2a3a55, 0.5);
+    this._dirLight.color.setHex(0x88aaff);
+    this._dirLight.intensity = 0.7;
+    this._ambientLight.color.setHex(0x112244);
+    this._ambientLight.intensity = 0.4;
+    this._hemiLight.color.setHex(0x556699);
+    this._hemiLight.groundColor.setHex(0x111133);
+    const hw = w / 2;
+    const clockMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.6, roughness: 0.3 });
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x4455aa, roughness: 0.6 });
+    const timeMat = new THREE.MeshStandardMaterial({ color: 0x66ccff, emissive: 0x4488ff, emissiveIntensity: 1.0, transparent: true, opacity: 0.5 });
+    // Maze walls
+    for (let i = 0; i < 35; i++) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2+Math.random()*2, 3+Math.random()*5), wallMat);
+      const wx = (Math.random()-0.5)*w*0.8, wz = (Math.random()-0.5)*d*0.8;
+      wall.position.set(wx, getTerrainHeight(wx, wz, 0.5)+wall.geometry.parameters.height/2, wz);
+      wall.rotation.y = Math.random()*Math.PI; wall.castShadow = true;
+      this._scene.add(wall);
+    }
+    // Clock faces on walls
+    for (let i = 0; i < 10; i++) {
+      const clock = new THREE.Group();
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.6, 12), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
+      clock.add(face);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 4, 16), clockMat);
+      clock.add(rim);
+      // Hands
+      const hour = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.02), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+      hour.position.y = 0.15; hour.rotation.z = Math.random()*Math.PI*2; clock.add(hour);
+      const minute = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.4, 0.02), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+      minute.position.y = 0.2; minute.rotation.z = Math.random()*Math.PI*2; clock.add(minute);
+      clock.position.set((Math.random()-0.5)*w*0.6, 1.5+Math.random()*2, (Math.random()-0.5)*d*0.6);
+      clock.rotation.y = Math.random()*Math.PI;
+      this._scene.add(clock);
+    }
+    // Temporal rifts
+    for (let i = 0; i < 8; i++) {
+      const rift = new THREE.Mesh(new THREE.TorusGeometry(0.8+Math.random()*0.5, 0.04, 4, 16), timeMat);
+      rift.position.set((Math.random()-0.5)*w*0.6, 1+Math.random()*3, (Math.random()-0.5)*d*0.6);
+      rift.rotation.set(Math.random(), Math.random(), Math.random());
+      this._scene.add(rift);
+      const tLight = new THREE.PointLight(0x4488ff, 0.5, 8);
+      tLight.position.copy(rift.position);
+      this._scene.add(tLight); this._torchLights.push(tLight);
+    }
+    // Floating gears
+    for (let i = 0; i < 15; i++) {
+      const gear = new THREE.Mesh(new THREE.TorusGeometry(0.3+Math.random()*0.5, 0.06, 4, [6,8,10,12][i%4]), clockMat);
+      gear.position.set((Math.random()-0.5)*w*0.7, 0.5+Math.random()*4, (Math.random()-0.5)*d*0.7);
+      gear.rotation.set(Math.random(), Math.random(), Math.random());
+      this._scene.add(gear);
+    }
+    // Hourglass decorations
+    for (let i = 0; i < 5; i++) {
+      const hg = new THREE.Group();
+      const topBulb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 5), new THREE.MeshStandardMaterial({ color: 0xddddcc, transparent: true, opacity: 0.5 }));
+      topBulb.scale.y = 1.3; topBulb.position.y = 0.6; hg.add(topBulb);
+      const botBulb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 5), new THREE.MeshStandardMaterial({ color: 0xddddcc, transparent: true, opacity: 0.5 }));
+      botBulb.scale.y = 1.3; botBulb.position.y = -0.2; hg.add(botBulb);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.15, 4), clockMat);
+      neck.position.y = 0.2; hg.add(neck);
+      const hx = (Math.random()-0.5)*w*0.5, hz = (Math.random()-0.5)*d*0.5;
+      hg.position.set(hx, getTerrainHeight(hx, hz, 0.5)+1.5, hz);
+      this._scene.add(hg);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  ELDRITCH NEXUS (Wave 3)
+  // ────────────────────────────────────────────────────────────────────────
+  private _buildEldritchNexus(w: number, d: number): void {
+    this._scene.fog = new THREE.FogExp2(0x150f15, 0.045);
+    this._applyTerrainColors(0x110a11, 0x1a111a, 0.5);
+    this._dirLight.color.setHex(0x884488);
+    this._dirLight.intensity = 0.4;
+    this._ambientLight.color.setHex(0x0a050a);
+    this._ambientLight.intensity = 0.2;
+    this._hemiLight.color.setHex(0x442244);
+    this._hemiLight.groundColor.setHex(0x050005);
+    const hw = w / 2;
+    const eldritchMat = new THREE.MeshStandardMaterial({ color: 0x440044, emissive: 0x220022, emissiveIntensity: 0.5 });
+    const tentacleMat = new THREE.MeshStandardMaterial({ color: 0x553355, roughness: 0.5 });
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xcc00cc, emissiveIntensity: 2.0 });
+    const madnessMat = new THREE.MeshStandardMaterial({ color: 0x884488, emissive: 0x662266, emissiveIntensity: 0.8, transparent: true, opacity: 0.4 });
+    // Giant tentacles
+    for (let i = 0; i < 20; i++) {
+      const tentacle = new THREE.Group();
+      const segments = 5+Math.floor(Math.random()*5);
+      let lastR = 0.15+Math.random()*0.1;
+      for (let s = 0; s < segments; s++) {
+        const r = lastR * (0.85+Math.random()*0.1);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(r, lastR, 0.6, 6), tentacleMat);
+        seg.position.y = s*0.55;
+        seg.rotation.z = Math.sin(s*0.8)*0.15;
+        seg.rotation.x = Math.cos(s*0.6)*0.15;
+        tentacle.add(seg); lastR = r;
+      }
+      const tx = (Math.random()-0.5)*w*0.8, tz = (Math.random()-0.5)*d*0.8;
+      tentacle.position.set(tx, getTerrainHeight(tx, tz, 0.5), tz);
+      tentacle.rotation.set((Math.random()-0.5)*0.3, Math.random()*Math.PI, (Math.random()-0.5)*0.3);
+      this._scene.add(tentacle);
+    }
+    // Eldritch eyes
+    for (let i = 0; i < 8; i++) {
+      const eye = new THREE.Group();
+      const eyeball = new THREE.Mesh(new THREE.SphereGeometry(0.4+Math.random()*0.3, 8, 6), new THREE.MeshStandardMaterial({ color: 0xaa0066, emissive: 0x660033, emissiveIntensity: 0.5 }));
+      eye.add(eyeball);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 5), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+      pupil.position.z = 0.3; eye.add(pupil);
+      const iris = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 4, 8), eyeMat);
+      iris.position.z = 0.28; eye.add(iris);
+      const eLight = new THREE.PointLight(0xff00ff, 0.6, 8);
+      eLight.position.z = 0.2; eye.add(eLight); this._torchLights.push(eLight);
+      eye.position.set((Math.random()-0.5)*w*0.6, 1+Math.random()*5, (Math.random()-0.5)*d*0.6);
+      eye.rotation.set((Math.random()-0.5)*0.5, Math.random()*Math.PI, 0);
+      this._scene.add(eye);
+    }
+    // Impossible geometry (rotated cubes)
+    for (let i = 0; i < 15; i++) {
+      const geom = new THREE.Mesh(new THREE.BoxGeometry(0.5+Math.random()*1.5, 0.5+Math.random()*1.5, 0.5+Math.random()*1.5), eldritchMat);
+      geom.position.set((Math.random()-0.5)*w*0.7, Math.random()*6, (Math.random()-0.5)*d*0.7);
+      geom.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+      this._scene.add(geom);
+    }
+    // Madness pools
+    for (let i = 0; i < 6; i++) {
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(1+Math.random()*2, 10), madnessMat);
+      pool.rotation.x = -Math.PI/2;
+      const px = (Math.random()-0.5)*w*0.5, pz = (Math.random()-0.5)*d*0.5;
+      pool.position.set(px, getTerrainHeight(px, pz, 0.5)+0.02, pz);
+      this._scene.add(pool);
+    }
+    // Void portals
+    for (let i = 0; i < 4; i++) {
+      const portal = new THREE.Mesh(new THREE.TorusGeometry(1+Math.random(), 0.06, 6, 16), eyeMat);
+      portal.position.set((Math.random()-0.5)*w*0.4, 2+Math.random()*3, (Math.random()-0.5)*d*0.4);
+      portal.rotation.set(Math.random(), Math.random(), Math.random());
+      this._scene.add(portal);
+    }
+    // Psychic energy streams
+    for (let i = 0; i < 10; i++) {
+      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4+Math.random()*6, 3), madnessMat);
+      stream.position.set((Math.random()-0.5)*w*0.6, 3, (Math.random()-0.5)*d*0.6);
+      stream.rotation.set(Math.random()*0.5, 0, Math.random()*0.5);
+      this._scene.add(stream);
     }
   }
 

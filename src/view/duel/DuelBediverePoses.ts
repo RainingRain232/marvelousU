@@ -739,8 +739,8 @@ export const BEDIVERE_POSES: Record<string, FighterPose[]> = {
     ),
   ],
 
-  // -- shield_cross: wide horizontal shield sweep (3 frames — reuse like cross_slash) --
-  shield_cross: [
+  // -- shield_barrage: rapid shield bash strikes (3 frames) --
+  shield_barrage: [
     // startup: wind shield arm back
     pose(
       head(-2, -183),

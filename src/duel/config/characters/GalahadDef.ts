@@ -169,7 +169,7 @@ export const GALAHAD_DEF: DuelCharacterDef = {
       "holy_thrust", "Holy Thrust", AttackHeight.MID,
       8, 5, 14, 82, 16, 20, 15, 40,
       { x: 35, y: -100, width: 115, height: 38 },
-      { movesForward: 110 },
+      { movesForward: 230 },
     ),
     // W+E — Divine Cleave: overhead blessed strike, must block standing
     divine_cleave: special(
@@ -195,7 +195,7 @@ export const GALAHAD_DEF: DuelCharacterDef = {
       "shield_rush", "Shield Rush", AttackHeight.MID,
       8, 6, 18, 88, 18, 22, 18, 60,
       { x: 20, y: -100, width: 72, height: 60 },
-      { movesForward: 150, hasInvincibility: true, invincibleStartup: 3 },
+      { movesForward: 280, hasInvincibility: true, invincibleStartup: 3 },
     ),
     // E+A — Grail Light: narrow column of holy light descends straight down — catches any jump
     grail_strike: special(
@@ -204,12 +204,12 @@ export const GALAHAD_DEF: DuelCharacterDef = {
       { x: 14, y: -258, width: 52, height: 262 },
       { isAntiAir: true, hasInvincibility: true, invincibleStartup: 6 },
     ),
-    // E+D — Radiant Barrier: wall of radiant energy covers close-to-long range vertically — forces opponents back
-    radiant_cross: special(
-      "radiant_cross", "Radiant Barrier", AttackHeight.MID,
-      10, 8, 20, 138, 28, 26, 16, 52,
-      { x: 0, y: -205, width: 208, height: 210 },
-      { movesForward: 35 },
+    // E+D — Holy Barrage: rapid blessed shield and sword strikes
+    holy_barrage: special(
+      "holy_barrage", "Holy Barrage", AttackHeight.MID,
+      5, 24, 14, 22, 4, 8, 6, 4,
+      { x: 10, y: -120, width: 75, height: 70 },
+      { multiHit: 7 },
     ),
     // W+S — Aegis Counter: counter stance with long invincibility
     aegis_counter: special(

@@ -168,7 +168,7 @@ export const ARTHUR_DEF: DuelCharacterDef = {
       "sword_thrust", "Sword Thrust", AttackHeight.MID,
       8, 5, 14, 80, 16, 20, 14, 38,
       { x: 40, y: -100, width: 148, height: 40 },
-      { movesForward: 158 },
+      { movesForward: 260 },
     ),
     // W+E — Overhead Cleave: slow overhead, must block standing
     overhead_cleave: special(
@@ -194,7 +194,7 @@ export const ARTHUR_DEF: DuelCharacterDef = {
       "shield_charge", "Shield Charge", AttackHeight.MID,
       8, 6, 18, 90, 18, 22, 14, 55,
       { x: 20, y: -100, width: 70, height: 60 },
-      { movesForward: 160, hasInvincibility: true, invincibleStartup: 3 },
+      { movesForward: 280, hasInvincibility: true, invincibleStartup: 3 },
     ),
     // E+A — Excalibur Beam: full-screen horizontal slash of golden light
     excalibur: special(
@@ -203,11 +203,12 @@ export const ARTHUR_DEF: DuelCharacterDef = {
       { x: 30, y: -95, width: 648, height: 44 },
       { hasInvincibility: true, invincibleStartup: 4 },
     ),
-    // E+D — Close Cross: tight two-hit cross right at sword range — combo ender
-    cross_slash: special(
-      "cross_slash", "Close Cross", AttackHeight.MID,
-      8, 8, 16, 148, 30, 28, 18, 58,
-      { x: 4, y: -148, width: 62, height: 88 },
+    // E+D — Hundred Slashes: rapid flurry of sword strikes
+    hundred_slashes: special(
+      "hundred_slashes", "Hundred Slashes", AttackHeight.MID,
+      6, 24, 14, 25, 5, 8, 6, 5,
+      { x: 10, y: -130, width: 75, height: 80 },
+      { multiHit: 8 },
     ),
     // W+S — Parry Counter: quick defensive stance with counter strike
     parry_counter: special(
@@ -587,7 +588,7 @@ export const LANCELOT_DEF: DuelCharacterDef = {
       "spear_lunge", "Spear Lunge", AttackHeight.MID,
       8, 5, 15, 85, 17, 20, 14, 40,
       { x: 40, y: -100, width: 130, height: 35 },
-      { movesForward: 120 },
+      { movesForward: 240 },
     ),
     // W+E — Overhead Impale: must block standing, long reach
     overhead_impale: special(
@@ -613,7 +614,7 @@ export const LANCELOT_DEF: DuelCharacterDef = {
       "lance_charge", "Lance Charge", AttackHeight.MID,
       8, 6, 18, 95, 19, 22, 14, 58,
       { x: 25, y: -100, width: 110, height: 55 },
-      { movesForward: 180, hasInvincibility: true, invincibleStartup: 3 },
+      { movesForward: 320, hasInvincibility: true, invincibleStartup: 3 },
     ),
     // E+A — Spear Throw: ranged projectile
     spear_throw: special(
@@ -622,12 +623,12 @@ export const LANCELOT_DEF: DuelCharacterDef = {
       { x: 55, y: -100, width: 35, height: 25 },
       { isProjectile: true, projectileSpeed: 11, projectileHeight: AttackHeight.MID },
     ),
-    // E+D — Constellation: soaring cross pattern reaching from ground to sky
-    cross_spear: special(
-      "cross_spear", "Constellation", AttackHeight.MID,
-      12, 8, 20, 132, 26, 26, 16, 50,
-      { x: 10, y: -205, width: 138, height: 208 },
-      { movesForward: 55 },
+    // E+D — Thousand Thrusts: rapid spear jabbing frenzy
+    thousand_thrusts: special(
+      "thousand_thrusts", "Thousand Thrusts", AttackHeight.MID,
+      5, 24, 12, 22, 4, 8, 6, 4,
+      { x: 35, y: -110, width: 100, height: 50 },
+      { multiHit: 8, movesForward: 80 },
     ),
     // W+S — Counter Stance: parry with spear shaft, riposte
     counter_stance: special(

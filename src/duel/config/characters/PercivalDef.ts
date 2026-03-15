@@ -169,7 +169,7 @@ export const PERCIVAL_DEF: DuelCharacterDef = {
       "quest_thrust", "Quest Thrust", AttackHeight.MID,
       8, 5, 14, 82, 16, 20, 14, 36,
       { x: 35, y: -100, width: 108, height: 38 },
-      { movesForward: 110 },
+      { movesForward: 230 },
     ),
     // W+E — Pilgrim Cleave: overhead crusader slam
     pilgrim_cleave: special(
@@ -195,7 +195,7 @@ export const PERCIVAL_DEF: DuelCharacterDef = {
       "zealous_charge", "Zealous Charge", AttackHeight.MID,
       8, 6, 18, 88, 18, 22, 14, 54,
       { x: 20, y: -100, width: 72, height: 58 },
-      { movesForward: 155, hasInvincibility: true, invincibleStartup: 3 },
+      { movesForward: 280, hasInvincibility: true, invincibleStartup: 3 },
     ),
     // E+A — Grail Revelation: holy light descends from heaven across the entire arena
     quest_strike: special(
@@ -204,11 +204,12 @@ export const PERCIVAL_DEF: DuelCharacterDef = {
       { x: 48, y: -235, width: 625, height: 238 },
       { hasInvincibility: true, invincibleStartup: 6 },
     ),
-    // E+D — Pilgrim's Cross: tight cross-cut right at point blank — ideal combo ender
-    cross_blade: special(
-      "cross_blade", "Pilgrim's Cross", AttackHeight.MID,
-      8, 8, 18, 138, 28, 26, 16, 52,
-      { x: 2, y: -142, width: 58, height: 85 },
+    // E+D — Pilgrim's Fury: rapid sword strikes in a holy frenzy
+    pilgrim_fury: special(
+      "pilgrim_fury", "Pilgrim's Fury", AttackHeight.MID,
+      5, 24, 14, 22, 4, 8, 6, 4,
+      { x: 10, y: -130, width: 72, height: 80 },
+      { multiHit: 8 },
     ),
     // W+S — Pilgrim Guard: counter stance with invincibility
     pilgrim_guard: special(

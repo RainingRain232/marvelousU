@@ -171,7 +171,7 @@ interface HitSpark {
 const ARTHUR_SPECIALS = new Set([
   "sword_thrust", "overhead_cleave", "low_sweep",
   "rising_slash", "shield_charge", "excalibur",
-  "cross_slash", "parry_counter",
+  "hundred_slashes", "parry_counter",
 ]);
 const MERLIN_SPECIALS = new Set([
   "arcane_bolt", "thunder_strike", "frost_wave",
@@ -186,29 +186,29 @@ const ELAINE_SPECIALS = new Set([
 const LANCELOT_SPECIALS = new Set([
   "spear_lunge", "overhead_impale", "lance_sweep",
   "rising_lance", "lance_charge", "spear_throw",
-  "cross_spear", "counter_stance",
+  "thousand_thrusts", "counter_stance",
 ]);
 const ALL_SPECIALS: Record<string, Set<string>> = {
   arthur: ARTHUR_SPECIALS,
   merlin: MERLIN_SPECIALS,
   elaine: ELAINE_SPECIALS,
   lancelot: LANCELOT_SPECIALS,
-  guinevere: new Set(["divine_thrust", "holy_cleave", "sanctified_sweep", "radiant_rise", "royal_charge", "blessed_blade", "cross_judgment", "royal_parry"]),
+  guinevere: new Set(["divine_thrust", "holy_cleave", "sanctified_sweep", "radiant_rise", "royal_charge", "blessed_blade", "divine_flurry", "royal_parry"]),
   morgan: new Set(["shadow_bolt", "hex_strike", "dark_wave", "shadow_step", "curse_storm", "fay_barrier", "soul_drain", "dark_counter"]),
   gawain: new Set(["sun_arrow", "blazing_rain", "low_kick", "solar_flip", "rapid_volley", "sun_trap", "radiant_shot", "dawn_strike"]),
-  mordred: new Set(["dark_thrust", "treachery_cleave", "shadow_sweep", "usurper_rise", "dark_charge", "betrayal_blade", "doom_slash", "dark_parry"]),
-  galahad: new Set(["holy_thrust", "divine_cleave", "purifying_sweep", "ascending_light", "shield_rush", "grail_strike", "radiant_cross", "aegis_counter"]),
-  percival: new Set(["quest_thrust", "pilgrim_cleave", "seeker_sweep", "grail_rise", "zealous_charge", "quest_strike", "cross_blade", "pilgrim_guard"]),
+  mordred: new Set(["dark_thrust", "treachery_cleave", "shadow_sweep", "usurper_rise", "dark_charge", "betrayal_blade", "shadow_frenzy", "dark_parry"]),
+  galahad: new Set(["holy_thrust", "divine_cleave", "purifying_sweep", "ascending_light", "shield_rush", "grail_strike", "holy_barrage", "aegis_counter"]),
+  percival: new Set(["quest_thrust", "pilgrim_cleave", "seeker_sweep", "grail_rise", "zealous_charge", "quest_strike", "pilgrim_fury", "pilgrim_guard"]),
   tristan: new Set(["lance_pierce", "sorrow_impale", "lance_trip", "mourning_rise", "grief_charge", "lance_toss", "cross_lance", "sorrow_counter"]),
   nimue: new Set(["water_bolt", "tidal_strike", "frost_wave", "mist_step", "lake_storm", "water_shield", "whirlpool", "ice_counter"]),
-  kay: new Set(["pike_thrust", "authority_slam", "pike_sweep", "pike_vault", "bull_rush", "pike_toss", "cross_pike", "stern_guard"]),
-  bedivere: new Set(["shield_thrust", "tower_slam", "low_bash", "rising_guard", "fortress_charge", "last_stand", "shield_cross", "iron_wall"]),
+  kay: new Set(["pike_thrust", "authority_slam", "pike_sweep", "pike_vault", "bull_rush", "pike_toss", "pike_storm", "stern_guard"]),
+  bedivere: new Set(["shield_thrust", "tower_slam", "low_bash", "rising_guard", "fortress_charge", "last_stand", "shield_barrage", "iron_wall"]),
   pellinore: new Set(["axe_cleave", "beast_slam", "ground_smash", "savage_rise", "stampede", "questing_blow", "wild_swing", "beast_guard"]),
   igraine: new Set(["holy_bolt", "divine_strike", "sacred_wave", "grace_step", "heaven_storm", "divine_barrier", "smite", "prayer_counter"]),
   ector: new Set(["crossbow_bolt", "bomb_lob", "caltrops", "retreat_shot", "rapid_bolts", "bear_trap", "heavy_bolt", "gadget_dodge"]),
-  bors: new Set(["axe_lunge", "overhead_axe", "low_chop", "rising_axe", "bull_charge", "steadfast_blow", "whirlwind_axe", "iron_resolve"]),
+  bors: new Set(["axe_lunge", "overhead_axe", "low_chop", "rising_axe", "bull_charge", "steadfast_blow", "berserker_chops", "iron_resolve"]),
   uther: new Set(["dragon_bolt", "fire_rain", "low_shot", "pendragon_retreat", "siege_volley", "dragon_trap", "dragon_bolt_heavy", "royal_dodge"]),
-  lot: new Set(["death_thrust", "orkney_cleave", "reaper_sweep", "death_rise", "dark_charge", "soul_reap", "doom_cross", "death_counter"]),
+  lot: new Set(["death_thrust", "orkney_cleave", "reaper_sweep", "death_rise", "dark_charge", "soul_reap", "death_flurry", "death_counter"]),
 };
 
 // Zeal (ultimate) moves — even flashier VFX

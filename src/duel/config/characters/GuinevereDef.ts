@@ -170,7 +170,7 @@ export const GUINEVERE_DEF: DuelCharacterDef = {
       "divine_thrust", "Divine Thrust", AttackHeight.MID,
       7, 5, 14, 75, 15, 19, 14, 36,
       { x: 35, y: -100, width: 108, height: 38 },
-      { movesForward: 95 },
+      { movesForward: 220 },
     ),
     // W+E -- Holy Cleave: overhead downward slash, must block standing
     holy_cleave: special(
@@ -196,7 +196,7 @@ export const GUINEVERE_DEF: DuelCharacterDef = {
       "royal_charge", "Royal Charge", AttackHeight.MID,
       7, 6, 17, 88, 18, 21, 14, 52,
       { x: 20, y: -100, width: 72, height: 58 },
-      { movesForward: 155, hasInvincibility: true, invincibleStartup: 3 },
+      { movesForward: 280, hasInvincibility: true, invincibleStartup: 3 },
     ),
     // E+A -- Radiant Explosion: holy light erupts in all directions from Guinevere — punishes close-range
     blessed_blade: special(
@@ -205,12 +205,12 @@ export const GUINEVERE_DEF: DuelCharacterDef = {
       { x: -38, y: -168, width: 168, height: 175 },
       { hasInvincibility: true, invincibleStartup: 5 },
     ),
-    // E+D -- Cross Judgment: wide cross-pattern slash
-    cross_judgment: special(
-      "cross_judgment", "Cross Judgment", AttackHeight.MID,
-      9, 8, 17, 135, 27, 25, 15, 52,
-      { x: 20, y: -138, width: 98, height: 78 },
-      { movesForward: 55 },
+    // E+D -- Divine Flurry: rapid blessed blade strikes
+    divine_flurry: special(
+      "divine_flurry", "Divine Flurry", AttackHeight.MID,
+      5, 24, 14, 22, 4, 8, 6, 4,
+      { x: 15, y: -125, width: 80, height: 75 },
+      { multiHit: 7 },
     ),
     // W+S -- Royal Parry: counter stance with riposte, invincible during counter window
     royal_parry: special(

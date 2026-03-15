@@ -479,6 +479,161 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       advanceDistance: 0.25,
     }),
   },
+
+  // ── ADDITIONAL UNIVERSAL ATTACKS (SET 2) ──────────────────────────────────
+
+  // 9. Back Fist (b+1) – retreating high punch, safe on block
+  {
+    input: cmd("b", ["lp"]),
+    move: move("b+1", "Back Fist", TekkenAttackHeight.HIGH, TekkenLimb.LEFT_PUNCH, {
+      startup: 14,
+      active: 3,
+      recovery: 10,
+      onHit: 5,
+      onBlock: -2,
+      onCounterHit: 8,
+      damage: 14,
+      chipDamage: 1,
+      knockback: 0.3,
+      hitbox: { x: 0.3, y: 1.5, z: 0, w: 0.55, h: 0.3, d: 0.4 },
+      advanceDistance: -0.1,
+    }),
+  },
+
+  // 10. Rising Uppercut (d/b+2) – crouching launcher, high risk high reward
+  {
+    input: cmd("d/b", ["rp"]),
+    move: move("d/b+2", "Rising Uppercut", TekkenAttackHeight.MID, TekkenLimb.RIGHT_PUNCH, {
+      startup: 18,
+      active: 4,
+      recovery: 26,
+      onHit: 0,
+      onBlock: -16,
+      onCounterHit: 0,
+      damage: 22,
+      chipDamage: 2,
+      isLauncher: true,
+      launchHeight: 0.26,
+      hasHighCrush: true,
+      knockback: 0.45,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.5, h: 0.4, d: 0.4 },
+      advanceDistance: 0.1,
+    }),
+  },
+
+  // 11. Spinning Heel (b+3) – retreating mid kick with wallsplat
+  {
+    input: cmd("b", ["lk"]),
+    move: move("b+3", "Spinning Heel", TekkenAttackHeight.MID, TekkenLimb.LEFT_KICK, {
+      startup: 17,
+      active: 4,
+      recovery: 15,
+      onHit: 6,
+      onBlock: -8,
+      onCounterHit: 10,
+      damage: 19,
+      chipDamage: 2,
+      knockback: 0.4,
+      wallSplat: true,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.7, h: 0.3, d: 0.4 },
+      advanceDistance: -0.05,
+    }),
+  },
+
+  // 12. Gut Punch (d/f+1+2) – slow mid double-fist strike, big damage
+  {
+    input: cmd("d/f", ["lp", "rp"]),
+    move: move("d/f+1+2", "Gut Punch", TekkenAttackHeight.MID, TekkenLimb.RIGHT_PUNCH, {
+      type: "command",
+      startup: 22,
+      active: 4,
+      recovery: 20,
+      onHit: 8,
+      onBlock: -12,
+      onCounterHit: 12,
+      damage: 28,
+      chipDamage: 4,
+      knockback: 0.5,
+      wallSplat: true,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.55, h: 0.35, d: 0.4 },
+      advanceDistance: 0.2,
+    }),
+  },
+
+  // 13. Slide Kick (d/f+3+4) – low sliding tackle, knockdown on hit
+  {
+    input: cmd("d/f", ["lk", "rk"]),
+    move: move("d/f+3+4", "Slide Kick", TekkenAttackHeight.LOW, TekkenLimb.LEFT_KICK, {
+      type: "command",
+      startup: 24,
+      active: 6,
+      recovery: 28,
+      onHit: 0,
+      onBlock: -20,
+      onCounterHit: 0,
+      damage: 20,
+      chipDamage: 2,
+      knockback: 0.55,
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.9, h: 0.3, d: 0.5 },
+      advanceDistance: 0.4,
+    }),
+  },
+
+  // 14. Palm Strike (f+1) – fast advancing mid palm, good pressure tool
+  {
+    input: cmd("f", ["lp"]),
+    move: move("f+1", "Palm Strike", TekkenAttackHeight.MID, TekkenLimb.LEFT_PUNCH, {
+      startup: 13,
+      active: 3,
+      recovery: 11,
+      onHit: 4,
+      onBlock: -3,
+      onCounterHit: 7,
+      damage: 14,
+      chipDamage: 1,
+      knockback: 0.2,
+      hitbox: { x: 0.3, y: 1.0, z: 0, w: 0.55, h: 0.3, d: 0.4 },
+      advanceDistance: 0.2,
+    }),
+  },
+
+  // 15. Axe Kick (u/f+3+4) – jumping overhead stomp, ground bounce on hit
+  {
+    input: cmd("u/f", ["lk", "rk"]),
+    move: move("u/f+3+4", "Axe Kick", TekkenAttackHeight.MID, TekkenLimb.RIGHT_KICK, {
+      startup: 24,
+      active: 5,
+      recovery: 26,
+      onHit: 0,
+      onBlock: -15,
+      onCounterHit: 0,
+      damage: 26,
+      chipDamage: 3,
+      isBound: true,
+      hasLowCrush: true,
+      knockback: 0.4,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.6, h: 0.4, d: 0.4 },
+      advanceDistance: 0.3,
+    }),
+  },
+
+  // 16. Backhand Slap (b+2) – high evasive counter poke, high crushes
+  {
+    input: cmd("b", ["rp"]),
+    move: move("b+2", "Backhand Slap", TekkenAttackHeight.HIGH, TekkenLimb.RIGHT_PUNCH, {
+      startup: 15,
+      active: 3,
+      recovery: 12,
+      onHit: 6,
+      onBlock: -4,
+      onCounterHit: 11,
+      damage: 16,
+      chipDamage: 2,
+      knockback: 0.35,
+      hitbox: { x: 0.3, y: 1.5, z: 0, w: 0.6, h: 0.3, d: 0.4 },
+      advanceDistance: -0.05,
+    }),
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════

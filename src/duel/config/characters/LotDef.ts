@@ -170,7 +170,7 @@ export const LOT_DEF: DuelCharacterDef = {
       "death_thrust", "Death Thrust", AttackHeight.MID,
       10, 6, 16, 90, 18, 22, 16, 45,
       { x: 40, y: -100, width: 120, height: 44 },
-      { movesForward: 115 },
+      { movesForward: 240 },
     ),
     // W+E — Orkney Cleave: devastating overhead cleave
     orkney_cleave: special(
@@ -196,7 +196,7 @@ export const LOT_DEF: DuelCharacterDef = {
       "dark_charge", "Dark Charge", AttackHeight.MID,
       9, 7, 20, 95, 19, 24, 16, 60,
       { x: 22, y: -105, width: 80, height: 65 },
-      { movesForward: 175, hasInvincibility: true, invincibleStartup: 4 },
+      { movesForward: 300, hasInvincibility: true, invincibleStartup: 4 },
     ),
     // E+A — Reaper's Toll: soul is reaped from ACROSS the arena — long-range energy grab
     soul_reap: special(
@@ -205,12 +205,12 @@ export const LOT_DEF: DuelCharacterDef = {
       { x: 135, y: -205, width: 82, height: 208 },
       { hasInvincibility: true, invincibleStartup: 7 },
     ),
-    // E+D — Doom Cross: wide X-pattern slash
-    doom_cross: special(
-      "doom_cross", "Doom Cross", AttackHeight.MID,
-      11, 8, 20, 145, 29, 28, 18, 60,
-      { x: 22, y: -145, width: 110, height: 88 },
-      { movesForward: 65 },
+    // E+D — Death Flurry: rapid cursed blade strikes
+    death_flurry: special(
+      "death_flurry", "Death Flurry", AttackHeight.MID,
+      6, 24, 14, 26, 5, 8, 6, 5,
+      { x: 12, y: -130, width: 85, height: 80 },
+      { multiHit: 7 },
     ),
     // W+S — Death Counter: counter stance, dark riposte
     death_counter: special(

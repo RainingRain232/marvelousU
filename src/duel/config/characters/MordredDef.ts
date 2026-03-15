@@ -169,7 +169,7 @@ export const MORDRED_DEF: DuelCharacterDef = {
       "dark_thrust", "Dark Thrust", AttackHeight.MID,
       9, 5, 15, 88, 18, 22, 15, 42,
       { x: 38, y: -100, width: 115, height: 42 },
-      { movesForward: 110 },
+      { movesForward: 240 },
     ),
     // W+E — Treachery Cleave: sweeping overhead that punishes backdash — wider than any other sword overhead
     treachery_cleave: special(
@@ -195,7 +195,7 @@ export const MORDRED_DEF: DuelCharacterDef = {
       "dark_charge", "Dark Charge", AttackHeight.MID,
       9, 6, 19, 95, 19, 24, 15, 58,
       { x: 22, y: -100, width: 75, height: 62 },
-      { movesForward: 170, hasInvincibility: true, invincibleStartup: 4 },
+      { movesForward: 300, hasInvincibility: true, invincibleStartup: 4 },
     ),
     // E+A — Coup de Grâce: point-blank dark explosion — highest single-hit damage in normals/specials
     betrayal_blade: special(
@@ -204,12 +204,12 @@ export const MORDRED_DEF: DuelCharacterDef = {
       { x: -12, y: -202, width: 96, height: 208 },
       { hasInvincibility: true, invincibleStartup: 7 },
     ),
-    // E+D — Doom Slash: wide cross pattern slash
-    doom_slash: special(
-      "doom_slash", "Doom Slash", AttackHeight.MID,
-      11, 8, 19, 145, 29, 27, 17, 58,
-      { x: 22, y: -138, width: 105, height: 82 },
-      { movesForward: 65 },
+    // E+D — Shadow Frenzy: rapid shadow blade strikes
+    shadow_frenzy: special(
+      "shadow_frenzy", "Shadow Frenzy", AttackHeight.MID,
+      6, 24, 14, 24, 5, 8, 6, 5,
+      { x: 12, y: -135, width: 80, height: 85 },
+      { multiHit: 8 },
     ),
     // W+S — Dark Parry: counter stance with dark riposte
     dark_parry: special(

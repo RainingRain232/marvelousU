@@ -59,6 +59,7 @@ export class TekkenGame {
   private _charSelectContainer: Container | null = null;
   private _selectedDifficulty = 1; // 0=easy, 1=medium, 2=hard
   private _selectedGameMode: TekkenGameMode = "vs_cpu";
+  private _selectedArenaIdx = 0; // index into TEKKEN_ARENAS, 0 = random
 
   // Rage Art cinematic state
   private _rageArtCinematic: {
@@ -581,7 +582,7 @@ export class TekkenGame {
 
       // Controls hint text
       const hint = new Text({
-        text: "\u2190\u2192 P1  \u2191\u2193 CPU  1/2/3 Difficulty  T Training  Enter Fight  Esc Exit",
+        text: "\u2190\u2192 P1  \u2191\u2193 CPU  S/D Stage  1/2/3 Difficulty  T Training  Enter Fight  Esc Exit",
         style: {
           fontFamily: "Georgia, serif",
           fontSize: 14,
@@ -627,6 +628,67 @@ export class TekkenGame {
       modeText.y = barY - 8;
       container.addChild(modeText);
 
+      // Stage/Map selector (centered above bottom bar)
+      const stageName = this._selectedArenaIdx === 0
+        ? "RANDOM"
+        : TEKKEN_ARENAS[(this._selectedArenaIdx - 1) % TEKKEN_ARENAS.length].name;
+      const stageColor = this._selectedArenaIdx === 0 ? 0xaaaaaa : 0xddcc88;
+
+      // Stage selector panel background
+      const stagePanelW = 320;
+      const stagePanelH = 28;
+      const stagePanelX = sw / 2 - stagePanelW / 2;
+      const stagePanelY = barY - 34;
+      g.roundRect(stagePanelX, stagePanelY, stagePanelW, stagePanelH, 5)
+        .fill({ color: 0x0c0c18, alpha: 0.85 });
+      g.roundRect(stagePanelX, stagePanelY, stagePanelW, stagePanelH, 5)
+        .stroke({ color: 0x6a5a20, width: 1.5 });
+
+      // Left arrow
+      const arrowLText = new Text({
+        text: "\u25C0",
+        style: { fontFamily: "Georgia, serif", fontSize: 16, fill: 0x888888 },
+      });
+      arrowLText.anchor.set(0.5);
+      arrowLText.x = stagePanelX + 18;
+      arrowLText.y = stagePanelY + stagePanelH / 2;
+      container.addChild(arrowLText);
+
+      // Right arrow
+      const arrowRText = new Text({
+        text: "\u25B6",
+        style: { fontFamily: "Georgia, serif", fontSize: 16, fill: 0x888888 },
+      });
+      arrowRText.anchor.set(0.5);
+      arrowRText.x = stagePanelX + stagePanelW - 18;
+      arrowRText.y = stagePanelY + stagePanelH / 2;
+      container.addChild(arrowRText);
+
+      // Stage label
+      const stageLabelText = new Text({
+        text: "Stage:",
+        style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0x888888 },
+      });
+      stageLabelText.anchor.set(1, 0.5);
+      stageLabelText.x = sw / 2 - 10;
+      stageLabelText.y = stagePanelY + stagePanelH / 2;
+      container.addChild(stageLabelText);
+
+      // Stage name
+      const stageNameText = new Text({
+        text: stageName,
+        style: {
+          fontFamily: "Georgia, serif",
+          fontSize: 15,
+          fill: stageColor,
+          fontWeight: "bold",
+        },
+      });
+      stageNameText.anchor.set(0, 0.5);
+      stageNameText.x = sw / 2 - 4;
+      stageNameText.y = stagePanelY + stagePanelH / 2;
+      container.addChild(stageNameText);
+
       // Add base graphics first, then text layers are already added
       container.addChildAt(g, 0);
       container.addChild(hint);
@@ -664,6 +726,16 @@ export class TekkenGame {
       } else if (e.key === "t" || e.key === "T") {
         this._selectedGameMode = this._selectedGameMode === "training" ? "vs_cpu" : "training";
         drawSelect();
+      } else if (e.key === "s" || e.key === "S") {
+        // Cycle stage backward (0 = random, 1..N = specific arenas)
+        const totalStages = TEKKEN_ARENAS.length + 1; // +1 for "Random"
+        this._selectedArenaIdx = (this._selectedArenaIdx - 1 + totalStages) % totalStages;
+        drawSelect();
+      } else if (e.key === "d" || e.key === "D") {
+        // Cycle stage forward
+        const totalStages = TEKKEN_ARENAS.length + 1;
+        this._selectedArenaIdx = (this._selectedArenaIdx + 1) % totalStages;
+        drawSelect();
       } else if (e.key === "Enter") {
         confirmed = true;
         this._selectedChars = [charIds[p1Idx], charIds[p2Idx]];
@@ -688,9 +760,14 @@ export class TekkenGame {
   // ---- Match Start ----
 
   private _startMatch(gameMode: TekkenGameMode): void {
-    // Randomly pick an arena
-    const arenaIds = ["castle_courtyard", "underground_pit", "throne_room"];
-    const arenaId = arenaIds[Math.floor(Math.random() * arenaIds.length)];
+    // Pick arena: index 0 = random, otherwise use selected
+    let arenaId: string;
+    if (this._selectedArenaIdx <= 0) {
+      const arenaIds = TEKKEN_ARENAS.map(a => a.id);
+      arenaId = arenaIds[Math.floor(Math.random() * arenaIds.length)];
+    } else {
+      arenaId = TEKKEN_ARENAS[(this._selectedArenaIdx - 1) % TEKKEN_ARENAS.length].id;
+    }
 
     this._state = createTekkenState(gameMode, arenaId, this._selectedChars[0], this._selectedChars[1]);
     this._state.difficulty = this._selectedDifficulty;

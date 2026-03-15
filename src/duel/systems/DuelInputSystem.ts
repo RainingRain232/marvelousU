@@ -40,7 +40,7 @@ const ARTHUR_SPECIALS: SpecialCombo[] = [
   { buttons: ["medKick", "heavyKick"], moveId: "rising_slash" },
   { buttons: ["lightPunch", "heavyKick"], moveId: "shield_charge" },
   { buttons: ["heavyPunch", "lightKick"], moveId: "excalibur" },
-  { buttons: ["heavyPunch", "heavyKick"], moveId: "cross_slash" },
+  { buttons: ["heavyPunch", "heavyKick"], moveId: "hundred_slashes" },
   { buttons: ["medPunch", "medKick"], moveId: "parry_counter" },
 ];
 
@@ -73,7 +73,7 @@ const LANCELOT_SPECIALS: SpecialCombo[] = [
   { buttons: ["medKick", "heavyKick"], moveId: "rising_lance" },
   { buttons: ["lightPunch", "heavyKick"], moveId: "lance_charge" },
   { buttons: ["heavyPunch", "lightKick"], moveId: "spear_throw" },
-  { buttons: ["heavyPunch", "heavyKick"], moveId: "cross_spear" },
+  { buttons: ["heavyPunch", "heavyKick"], moveId: "thousand_thrusts" },
   { buttons: ["medPunch", "medKick"], moveId: "counter_stance" },
 ];
 
@@ -101,22 +101,22 @@ const CHARACTER_SPECIALS: Record<string, SpecialCombo[]> = {
   merlin: MERLIN_SPECIALS,
   elaine: ELAINE_SPECIALS,
   lancelot: LANCELOT_SPECIALS,
-  guinevere: _buildSpecials(["divine_thrust", "holy_cleave", "sanctified_sweep", "radiant_rise", "royal_charge", "blessed_blade", "cross_judgment", "royal_parry"]),
+  guinevere: _buildSpecials(["divine_thrust", "holy_cleave", "sanctified_sweep", "radiant_rise", "royal_charge", "blessed_blade", "divine_flurry", "royal_parry"]),
   morgan: _buildSpecials(["shadow_bolt", "hex_strike", "dark_wave", "shadow_step", "curse_storm", "fay_barrier", "soul_drain", "dark_counter"]),
   gawain: _buildSpecials(["sun_arrow", "blazing_rain", "low_kick", "solar_flip", "rapid_volley", "sun_trap", "radiant_shot", "dawn_strike"]),
-  mordred: _buildSpecials(["dark_thrust", "treachery_cleave", "shadow_sweep", "usurper_rise", "dark_charge", "betrayal_blade", "doom_slash", "dark_parry"]),
-  galahad: _buildSpecials(["holy_thrust", "divine_cleave", "purifying_sweep", "ascending_light", "shield_rush", "grail_strike", "radiant_cross", "aegis_counter"]),
-  percival: _buildSpecials(["quest_thrust", "pilgrim_cleave", "seeker_sweep", "grail_rise", "zealous_charge", "quest_strike", "cross_blade", "pilgrim_guard"]),
+  mordred: _buildSpecials(["dark_thrust", "treachery_cleave", "shadow_sweep", "usurper_rise", "dark_charge", "betrayal_blade", "shadow_frenzy", "dark_parry"]),
+  galahad: _buildSpecials(["holy_thrust", "divine_cleave", "purifying_sweep", "ascending_light", "shield_rush", "grail_strike", "holy_barrage", "aegis_counter"]),
+  percival: _buildSpecials(["quest_thrust", "pilgrim_cleave", "seeker_sweep", "grail_rise", "zealous_charge", "quest_strike", "pilgrim_fury", "pilgrim_guard"]),
   tristan: _buildSpecials(["lance_pierce", "sorrow_impale", "lance_trip", "mourning_rise", "grief_charge", "lance_toss", "cross_lance", "sorrow_counter"]),
   nimue: _buildSpecials(["water_bolt", "tidal_strike", "frost_wave", "mist_step", "lake_storm", "water_shield", "whirlpool", "ice_counter"]),
-  kay: _buildSpecials(["pike_thrust", "authority_slam", "pike_sweep", "pike_vault", "bull_rush", "pike_toss", "cross_pike", "stern_guard"]),
-  bedivere: _buildSpecials(["shield_thrust", "tower_slam", "low_bash", "rising_guard", "fortress_charge", "last_stand", "shield_cross", "iron_wall"]),
+  kay: _buildSpecials(["pike_thrust", "authority_slam", "pike_sweep", "pike_vault", "bull_rush", "pike_toss", "pike_storm", "stern_guard"]),
+  bedivere: _buildSpecials(["shield_thrust", "tower_slam", "low_bash", "rising_guard", "fortress_charge", "last_stand", "shield_barrage", "iron_wall"]),
   pellinore: _buildSpecials(["axe_cleave", "beast_slam", "ground_smash", "savage_rise", "stampede", "questing_blow", "wild_swing", "beast_guard"]),
   igraine: _buildSpecials(["holy_bolt", "divine_strike", "sacred_wave", "grace_step", "heaven_storm", "divine_barrier", "smite", "prayer_counter"]),
   ector: _buildSpecials(["crossbow_bolt", "bomb_lob", "caltrops", "retreat_shot", "rapid_bolts", "bear_trap", "heavy_bolt", "gadget_dodge"]),
-  bors: _buildSpecials(["axe_lunge", "overhead_axe", "low_chop", "rising_axe", "bull_charge", "steadfast_blow", "whirlwind_axe", "iron_resolve"]),
+  bors: _buildSpecials(["axe_lunge", "overhead_axe", "low_chop", "rising_axe", "bull_charge", "steadfast_blow", "berserker_chops", "iron_resolve"]),
   uther: _buildSpecials(["dragon_bolt", "fire_rain", "low_shot", "pendragon_retreat", "siege_volley", "dragon_trap", "dragon_bolt_heavy", "royal_dodge"]),
-  lot: _buildSpecials(["death_thrust", "orkney_cleave", "reaper_sweep", "death_rise", "dark_charge", "soul_reap", "doom_cross", "death_counter"]),
+  lot: _buildSpecials(["death_thrust", "orkney_cleave", "reaper_sweep", "death_rise", "dark_charge", "soul_reap", "death_flurry", "death_counter"]),
 };
 
 // Zeal (ultimate) combos — 3 buttons pressed simultaneously

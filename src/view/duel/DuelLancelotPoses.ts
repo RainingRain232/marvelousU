@@ -786,8 +786,8 @@ export const LANCELOT_POSES: Record<string, FighterPose[]> = {
     ),
   ],
 
-  // -- cross_spear: lunging cross-body spear strike (3 frames) --
-  cross_spear: [
+  // -- thousand_thrusts: rapid spear jabbing frenzy (3 frames) --
+  thousand_thrusts: [
     pose(
       head(-2, -184),
       torso(-4, -130, 54, 42, 90, -0.1),

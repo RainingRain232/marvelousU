@@ -255,4 +255,44 @@ export const TEKKEN_ARENAS: TekkenArenaDef[] = [
       { id: "grave_fire_r", type: "fire_brazier", position: { x: 5, y: 0, z: 0 }, damage: 4, radius: 0.5 },
     ],
   },
+
+  // ── Sunken Temple ─────────────────────────────────────────────────────
+  {
+    id: "sunken_temple",
+    name: "Sunken Temple",
+    floorColor: 0x2a3a3a,
+    ambientColor: 0x224455,
+    fogColor: 0x081418,
+    fogDensity: 0.05,
+    skyColor: 0x061012,
+    keyLightColor: 0x88ddcc,
+    keyLightIntensity: 2.0,
+    fillLightColor: 0x447788,
+    torchColor: 0x44ddcc,
+    hazards: [
+      { id: "temple_acid_l", type: "acid_patch", position: { x: -4, y: 0, z: 0 }, damage: 3, radius: 0.7 },
+      { id: "temple_acid_r", type: "acid_patch", position: { x: 4, y: 0, z: 0 }, damage: 3, radius: 0.7 },
+      { id: "temple_pillar", type: "breakable_pillar", position: { x: 0, y: 0, z: -1.5 }, damage: 8, radius: 0.4 },
+    ],
+  },
+
+  // ── Colosseum Ruins ───────────────────────────────────────────────────
+  {
+    id: "colosseum_ruins",
+    name: "Colosseum Ruins",
+    floorColor: 0x6a5a42,
+    ambientColor: 0x554433,
+    fogColor: 0x1a1408,
+    fogDensity: 0.025,
+    skyColor: 0x3a5080,
+    keyLightColor: 0xfff0cc,
+    keyLightIntensity: 3.4,
+    fillLightColor: 0xbbaa77,
+    torchColor: 0xffbb44,
+    hazards: [
+      { id: "colo_pillar_l", type: "breakable_pillar", position: { x: -5, y: 0, z: 0 }, damage: 10, radius: 0.4 },
+      { id: "colo_pillar_r", type: "breakable_pillar", position: { x: 5, y: 0, z: 0 }, damage: 10, radius: 0.4 },
+      { id: "colo_fire", type: "fire_brazier", position: { x: 0, y: 0, z: -2 }, damage: 5, radius: 0.5 },
+    ],
+  },
 ];

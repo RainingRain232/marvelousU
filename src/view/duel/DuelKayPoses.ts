@@ -608,8 +608,8 @@ export const KAY_POSES: Record<string, FighterPose[]> = {
     ),
   ],
 
-  // -- cross_pike: wide lunging cross-body thrust (3 frames) --
-  cross_pike: [
+  // -- pike_storm: rapid pike thrusts (3 frames) --
+  pike_storm: [
     // wind up
     pose(
       head(-3, -184),

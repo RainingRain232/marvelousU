@@ -169,7 +169,7 @@ export const KAY_DEF: DuelCharacterDef = {
       "pike_thrust", "Pike Thrust", AttackHeight.MID,
       8, 5, 15, 90, 18, 22, 14, 42,
       { x: 40, y: -100, width: 135, height: 35 },
-      { movesForward: 130 },
+      { movesForward: 250 },
     ),
     // W+E — Authority Slam: overhead two-handed slam
     authority_slam: special(
@@ -195,7 +195,7 @@ export const KAY_DEF: DuelCharacterDef = {
       "bull_rush", "Bull Rush", AttackHeight.MID,
       8, 6, 18, 95, 19, 22, 14, 58,
       { x: 25, y: -100, width: 110, height: 60 },
-      { movesForward: 180, hasInvincibility: true, invincibleStartup: 3 },
+      { movesForward: 310, hasInvincibility: true, invincibleStartup: 3 },
     ),
     // E+A — Pike Toss: throw pike as projectile
     pike_toss: special(
@@ -204,12 +204,12 @@ export const KAY_DEF: DuelCharacterDef = {
       { x: 55, y: -100, width: 40, height: 28 },
       { isProjectile: true, projectileSpeed: 10, projectileHeight: AttackHeight.MID },
     ),
-    // E+D — Formation Break: phalanx formation explodes outward — wide area covering sides and front
-    cross_pike: special(
-      "cross_pike", "Formation Break", AttackHeight.MID,
-      10, 8, 20, 138, 28, 26, 16, 52,
-      { x: -32, y: -138, width: 208, height: 82 },
-      { movesForward: 45 },
+    // E+D — Pike Storm: rapid pike thrusts in quick succession
+    pike_storm: special(
+      "pike_storm", "Pike Storm", AttackHeight.MID,
+      5, 24, 12, 22, 4, 8, 6, 4,
+      { x: 30, y: -110, width: 110, height: 50 },
+      { multiHit: 8, movesForward: 60 },
     ),
     // W+S — Stern Guard: counter stance, pike shaft parry
     stern_guard: special(

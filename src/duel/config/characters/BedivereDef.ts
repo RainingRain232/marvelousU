@@ -170,7 +170,7 @@ export const BEDIVERE_DEF: DuelCharacterDef = {
       "shield_thrust", "Shield Thrust", AttackHeight.MID,
       10, 5, 16, 85, 17, 22, 16, 45,
       { x: 25, y: -100, width: 70, height: 55 },
-      { movesForward: 90 },
+      { movesForward: 220 },
     ),
     // W+E — Avalanche: shield crashes down like an avalanche — crushing width covers entire front arc
     tower_slam: special(
@@ -196,7 +196,7 @@ export const BEDIVERE_DEF: DuelCharacterDef = {
       "fortress_charge", "Fortress Charge", AttackHeight.MID,
       10, 6, 20, 100, 20, 24, 16, 75,
       { x: 15, y: -100, width: 65, height: 65 },
-      { movesForward: 180, hasInvincibility: true, invincibleStartup: 4 },
+      { movesForward: 310, hasInvincibility: true, invincibleStartup: 4 },
     ),
     // E+A — Immovable Object: Bedivere erupts with force in all directions — 360 burst
     last_stand: special(
@@ -205,12 +205,12 @@ export const BEDIVERE_DEF: DuelCharacterDef = {
       { x: -58, y: -205, width: 222, height: 228 },
       { hasInvincibility: true, invincibleStartup: 6 },
     ),
-    // E+D — Shield Cross: wide horizontal shield sweep
-    shield_cross: special(
-      "shield_cross", "Shield Cross", AttackHeight.MID,
-      12, 8, 20, 135, 27, 28, 18, 55,
-      { x: 15, y: -120, width: 90, height: 70 },
-      { movesForward: 50 },
+    // E+D — Shield Barrage: rapid shield bash strikes
+    shield_barrage: special(
+      "shield_barrage", "Shield Barrage", AttackHeight.MID,
+      6, 24, 14, 24, 5, 8, 6, 5,
+      { x: 10, y: -120, width: 70, height: 70 },
+      { multiHit: 7, movesForward: 60 },
     ),
     // W+S — Iron Curtain: raises shield to ceiling height — tall narrow wall catches any jump-in
     iron_wall: special(

@@ -167,7 +167,7 @@ export const BORS_DEF: DuelCharacterDef = {
       "axe_lunge", "Axe Lunge", AttackHeight.MID,
       9, 6, 16, 90, 18, 22, 15, 42,
       { x: 30, y: -110, width: 120, height: 50 },
-      { movesForward: 110 },
+      { movesForward: 240 },
     ),
     // W+E — Overhead Axe: overhead chop, must block standing
     overhead_axe: special(
@@ -193,7 +193,7 @@ export const BORS_DEF: DuelCharacterDef = {
       "bull_charge", "Bull Charge", AttackHeight.MID,
       9, 7, 20, 95, 19, 24, 16, 60,
       { x: 20, y: -105, width: 80, height: 65 },
-      { movesForward: 180, hasInvincibility: true, invincibleStartup: 4 },
+      { movesForward: 310, hasInvincibility: true, invincibleStartup: 4 },
     ),
     // E+A — Steadfast Blow: massive single hit, committal
     steadfast_blow: special(
@@ -202,11 +202,12 @@ export const BORS_DEF: DuelCharacterDef = {
       { x: 10, y: -140, width: 95, height: 100 },
       { hasInvincibility: true, invincibleStartup: 6 },
     ),
-    // E+D — Cyclone: spinning axe sweeps in a complete circle — hits everything around Bors
-    whirlwind_axe: special(
-      "whirlwind_axe", "Cyclone", AttackHeight.MID,
-      11, 10, 22, 118, 24, 26, 17, 50,
-      { x: -68, y: -188, width: 265, height: 208 },
+    // E+D — Berserker Chops: rapid axe strikes in a frenzy
+    berserker_chops: special(
+      "berserker_chops", "Berserker Chops", AttackHeight.MID,
+      6, 24, 14, 28, 6, 8, 6, 6,
+      { x: 10, y: -140, width: 90, height: 90 },
+      { multiHit: 6 },
     ),
     // W+S — Iron Resolve: counter stance, absorbs a hit and retaliates
     iron_resolve: special(

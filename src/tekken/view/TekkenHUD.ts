@@ -153,6 +153,11 @@ export class TekkenHUD {
   private _trainingAIStatus: Text | null = null;
   private _trainingHitboxLabel: Text | null = null;
 
+  // Rage art meter elements
+  private _rageMeterBgs: Graphics[] = [];
+  private _rageMeterFills: Graphics[] = [];
+  private _rageMeterLabels: Text[] = [];
+
   // Battle start dialogue state
   private _dialogueContainer: Container | null = null;
   private _dialogueP1Bubble: Container | null = null;
@@ -235,6 +240,44 @@ export class TekkenHUD {
         this._roundIndicators[i].push(gem);
         this._roundWinFlash[i].push(0);
       }
+    }
+
+    // Rage Art meter (below health bars)
+    const rageMeterW = barW * 0.35;
+    const rageMeterH = 8;
+    const rageMeterY = barY + barH + 28;
+    for (let i = 0; i < 2; i++) {
+      const rmX = i === 0
+        ? centerX - barGap / 2 - rageMeterW
+        : centerX + barGap / 2;
+
+      // Rage meter background
+      const rmBg = new Graphics();
+      rmBg.roundRect(rmX - 1, rageMeterY - 1, rageMeterW + 2, rageMeterH + 2, 3).fill({ color: 0x222222, alpha: 0.8 });
+      rmBg.roundRect(rmX, rageMeterY, rageMeterW, rageMeterH, 2).fill({ color: 0x1a0a0a });
+      this._container.addChild(rmBg);
+      this._rageMeterBgs.push(rmBg);
+
+      // Rage meter fill
+      const rmFill = new Graphics();
+      this._container.addChild(rmFill);
+      this._rageMeterFills.push(rmFill);
+
+      // Rage meter label
+      const rmLabel = new Text({
+        text: "RAGE ART",
+        style: { fontFamily: "Georgia, serif", fontSize: 9, fill: 0x666666, fontWeight: "bold", letterSpacing: 1 },
+      });
+      rmLabel.y = rageMeterY - 1;
+      if (i === 0) {
+        rmLabel.x = rmX + rageMeterW + 6;
+        rmLabel.anchor.set(0, 0);
+      } else {
+        rmLabel.x = rmX - 6;
+        rmLabel.anchor.set(1, 0);
+      }
+      this._container.addChild(rmLabel);
+      this._rageMeterLabels.push(rmLabel);
     }
 
     // Timer
@@ -416,6 +459,62 @@ export class TekkenHUD {
       // Name
       const charDef = TEKKEN_CHARACTERS.find(c => c.id === fighter.characterId);
       if (charDef) this._nameTexts[i].text = charDef.name;
+
+      // Rage Art meter update
+      if (this._rageMeterFills[i] && this._rageMeterLabels[i]) {
+        const rageMeterW = barW * 0.35;
+        const rageMeterH = 8;
+        const rageMeterY = barY + barH + 28;
+        const rmX = i === 0
+          ? centerX - barGap / 2 - rageMeterW
+          : centerX + barGap / 2;
+
+        const rmFill = this._rageMeterFills[i];
+        rmFill.clear();
+
+        // Rage meter fills as health drops toward rage threshold
+        // Full when hp <= threshold, empty when hp == maxHp
+        const rageThreshold = TB.RAGE_THRESHOLD; // 0.25
+        const hpRatio = fighter.hp / fighter.maxHp;
+        // Map from [1.0 .. threshold] => [0 .. 1]
+        const rageFill = Math.min(1, Math.max(0, (1 - hpRatio) / (1 - rageThreshold)));
+
+        if (fighter.rageActive && !fighter.rageArtUsed) {
+          // Rage art available: pulsing bright red/orange
+          const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+          // Glow effect
+          rmFill.roundRect(rmX - 2, rageMeterY - 2, rageMeterW + 4, rageMeterH + 4, 4)
+            .fill({ color: 0xff2200, alpha: pulse * 0.4 });
+          // Full meter in bright red/orange
+          rmFill.roundRect(rmX, rageMeterY, rageMeterW, rageMeterH, 2)
+            .fill({ color: 0xff4411 });
+          // Highlight shimmer
+          rmFill.roundRect(rmX + 1, rageMeterY + 1, rageMeterW - 2, rageMeterH * 0.4, 1)
+            .fill({ color: 0xffaa44, alpha: 0.5 + pulse * 0.3 });
+
+          this._rageMeterLabels[i].text = "RAGE ART READY!";
+          this._rageMeterLabels[i].style.fill = 0xff4422;
+        } else if (fighter.rageArtUsed) {
+          // Already used rage art
+          this._rageMeterLabels[i].text = "RAGE ART";
+          this._rageMeterLabels[i].style.fill = 0x333333;
+        } else {
+          // Building up toward rage
+          const fillW = rageMeterW * rageFill;
+          if (fillW > 0) {
+            const meterColor = rageFill > 0.8 ? 0xcc4400 : rageFill > 0.5 ? 0x995500 : 0x663300;
+            if (i === 0) {
+              rmFill.roundRect(rmX + rageMeterW - fillW, rageMeterY, fillW, rageMeterH, 2)
+                .fill({ color: meterColor });
+            } else {
+              rmFill.roundRect(rmX, rageMeterY, fillW, rageMeterH, 2)
+                .fill({ color: meterColor });
+            }
+          }
+          this._rageMeterLabels[i].text = "RAGE ART";
+          this._rageMeterLabels[i].style.fill = rageFill > 0.8 ? 0xcc6633 : 0x666666;
+        }
+      }
 
       // Round indicators with shine effects
       const wins = state.roundResults.filter(r => r === i).length;

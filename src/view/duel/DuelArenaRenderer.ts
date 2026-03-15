@@ -7415,9 +7415,17 @@ export class DuelArenaRenderer {
     hatColor: number,
     phaseOffset = 0,
   ): void {
+    // Scale spectators to human size (as big as the fighters ~190px tall)
+    // Original scales (0.38-0.55) produced ~20-30px tall figures.
+    // Multiply by 3.2 to make them fighter-sized (~160-180px tall).
+    const humanScale = scale * 3.2;
+    // Adjust Y position: legs extend below the hip by 18*sc, so shift
+    // the hip up so feet remain at roughly the same ground level
+    const legExtension = 18 * humanScale - 18 * scale;
+    const adjustedY = y - legExtension;
     this._spectators.push({
-      x, y, phase: phaseOffset + Math.random() * Math.PI * 2,
-      type, dir, scale, bodyColor, skinColor, accentColor, hatColor,
+      x, y: adjustedY, phase: phaseOffset + Math.random() * Math.PI * 2,
+      type, dir, scale: humanScale, bodyColor, skinColor, accentColor, hatColor,
       cheerTimer: 120 + Math.floor(Math.random() * 300),
       cheerDuration: 0,
       isCheer: false,

@@ -169,7 +169,7 @@ export const TRISTAN_DEF: DuelCharacterDef = {
       "lance_pierce", "Lance Pierce", AttackHeight.MID,
       7, 5, 14, 82, 16, 20, 14, 38,
       { x: 42, y: -100, width: 135, height: 34 },
-      { movesForward: 130 },
+      { movesForward: 250 },
     ),
     // W+E — Melancholy Rain: sorrow descends across the front area — wide overhead coverage
     sorrow_impale: special(
@@ -195,7 +195,7 @@ export const TRISTAN_DEF: DuelCharacterDef = {
       "grief_charge", "Grief Charge", AttackHeight.MID,
       7, 6, 17, 92, 18, 22, 14, 55,
       { x: 25, y: -100, width: 115, height: 52 },
-      { movesForward: 170, hasInvincibility: true, invincibleStartup: 3 },
+      { movesForward: 300, hasInvincibility: true, invincibleStartup: 3 },
     ),
     // E+A — Lance Toss: projectile spear throw
     lance_toss: special(

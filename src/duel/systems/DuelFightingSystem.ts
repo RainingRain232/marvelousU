@@ -306,6 +306,7 @@ function _startMove(
   fighter.currentMove = actualMoveId;
   fighter.moveFrame = 0;
   fighter.moveHasHit = false;
+  fighter.moveHitCount = 0;
   fighter.canCancelMove = false;
   fighter.stateTimer = move.startup + move.active + move.recovery;
   if (wasCanceling) {
@@ -453,7 +454,6 @@ function _updateGrab(
 function _checkHits(state: DuelState, attackerIdx: number): void {
   const attacker = state.fighters[attackerIdx];
   if (attacker.state !== DuelFighterState.ATTACK) return;
-  if (attacker.moveHasHit) return;
 
   const charDef = DUEL_CHARACTERS[attacker.characterId];
   const move =
@@ -470,6 +470,18 @@ function _checkHits(state: DuelState, attackerIdx: number): void {
     attacker.moveFrame >= move.startup + move.active
   ) return;
 
+  // Multi-hit moves (rapid attacks like lightning kicks): reset moveHasHit at intervals
+  if (move.multiHit && move.multiHit > 1) {
+    const activeFrame = attacker.moveFrame - move.startup;
+    const framesPerHit = Math.max(1, Math.floor(move.active / move.multiHit));
+    // Allow a new hit at each interval
+    if (activeFrame % framesPerHit === 0 && attacker.moveHitCount < move.multiHit) {
+      attacker.moveHasHit = false;
+    }
+  }
+
+  if (attacker.moveHasHit) return;
+
   const defenderIdx = attackerIdx === 0 ? 1 : 0;
   const defender = state.fighters[defenderIdx];
 
@@ -484,6 +496,7 @@ function _checkHits(state: DuelState, attackerIdx: number): void {
   // AABB collision
   if (_hitboxOverlaps(attacker, defender, move)) {
     attacker.moveHasHit = true;
+    attacker.moveHitCount++;
     _resolveHit(state, attacker, defender, move);
   }
 }

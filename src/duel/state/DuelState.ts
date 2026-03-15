@@ -39,6 +39,7 @@ export interface DuelMoveDef {
   invincibleStartup?: number; // frames of invincibility at start
   movesForward?: number; // pixels to move forward during move
   movesBack?: number; // pixels to move backward
+  multiHit?: number; // number of rapid hits during active frames (like Chun-Li's lightning kicks)
 }
 
 // ---- Character definition --------------------------------------------------
@@ -117,6 +118,7 @@ export interface DuelFighter {
   currentMove: string | null;
   moveFrame: number;
   moveHasHit: boolean; // prevent multi-hit on same move
+  moveHitCount: number; // tracks how many hits have landed for multiHit moves
   canCancelMove: boolean; // true when current move has hit and can be canceled
   comboChain: number; // number of moves chained via cancel in current combo (max 5)
   hitstunFrames: number;
@@ -213,6 +215,7 @@ export function createFighter(
     currentMove: null,
     moveFrame: 0,
     moveHasHit: false,
+    moveHitCount: 0,
     canCancelMove: false,
     comboChain: 0,
     hitstunFrames: 0,
