@@ -20,6 +20,14 @@ import {
   getSelectedPlayer,
 } from "./GrailBallState";
 
+// Helpers
+/** Create a mesh and set its position (Object.assign can't override read-only .position). */
+function meshAt(geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number): THREE.Mesh {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  return m;
+}
+
 // Constants
 const TAU = Math.PI * 2;
 const CROWD_ROWS = 4;
@@ -968,8 +976,7 @@ export class GrailBallRenderer {
     const leftThigh = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.45, 8), armorMat);
     leftThigh.position.set(-0.16, 1.15, 0); leftThigh.name = "leftThigh"; group.add(leftThigh);
     const rightThigh = leftThigh.clone(); rightThigh.position.x = 0.16; rightThigh.name = "rightThigh"; group.add(rightThigh);
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.15, 8),
-      new THREE.MeshPhysicalMaterial({ color: 0x442200, roughness: 0.75, metalness: 0.2 })), { position: new THREE.Vector3(0, 1.38, 0) }));
+    group.add(meshAt(new THREE.CylinderGeometry(0.22, 0.2, 0.15, 8), new THREE.MeshPhysicalMaterial({ color: 0x442200, roughness: 0.75, metalness: 0.2 }), 0, 1.38, 0));
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.6, 0.35), armorMat);
     torso.position.y = 1.7; torso.name = "torso"; group.add(torso);
     const tabF = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.55, 0.01), tabardMat);
@@ -985,17 +992,15 @@ export class GrailBallRenderer {
       const gaunt = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.3, 0.13), darkArmor);
       gaunt.position.set(xp * 1.05, 1.42, 0); gaunt.name = xp < 0 ? "leftHand" : "rightHand"; group.add(gaunt);
     }
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.15, 6), skinMat), { position: new THREE.Vector3(0, 2.07, 0) }));
+    group.add(meshAt(new THREE.CylinderGeometry(0.1, 0.12, 0.15, 6), skinMat, 0, 2.07, 0));
     const helm = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.4, 0.34), darkArmor);
     helm.position.y = 2.35; helm.name = "head"; group.add(helm);
-    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.29, 0.04, 0.01), new THREE.MeshBasicMaterial({ color: 0x111111 })), { position: new THREE.Vector3(0, 2.35, 0.18) }));
-    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.28),
-      new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.45, metalness: 0.2 })), { position: new THREE.Vector3(0, 2.6, 0) }));
+    group.add(meshAt(new THREE.BoxGeometry(0.29, 0.04, 0.01), new THREE.MeshBasicMaterial({ color: 0x111111 }), 0, 2.35, 0.18));
+    group.add(meshAt(new THREE.BoxGeometry(0.04, 0.22, 0.28), new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.45, metalness: 0.2 }), 0, 2.6, 0));
     const shield = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 0.35),
       new THREE.MeshPhysicalMaterial({ color: sec, metalness: 0.4, roughness: 0.45, clearcoat: 0.3 }));
     shield.position.set(-0.55, 1.6, 0); shield.name = "shield"; group.add(shield);
-    group.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6),
-      new THREE.MeshPhysicalMaterial({ color: pri, metalness: 0.6, roughness: 0.3 })), { position: new THREE.Vector3(-0.58, 1.6, 0) }));
+    group.add(meshAt(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshPhysicalMaterial({ color: pri, metalness: 0.6, roughness: 0.3 }), -0.58, 1.6, 0));
     const cape = new THREE.Mesh(
       new THREE.PlaneGeometry(0.5, 0.7, 6, 8),
       new THREE.MeshPhysicalMaterial({ color: pri, side: THREE.DoubleSide, roughness: 0.55 }),
@@ -1023,14 +1028,14 @@ export class GrailBallRenderer {
       const t = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.35, 6), leather);
       t.position.set(xp, 1.15, 0); t.name = nm; group.add(t);
     }
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.16, 0.1, 8), darkLeather), { position: new THREE.Vector3(0, 1.35, 0) }));
-    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.08), darkLeather), { position: new THREE.Vector3(0.18, 1.35, 0.05) }));
+    group.add(meshAt(new THREE.CylinderGeometry(0.17, 0.16, 0.1, 8), darkLeather, 0, 1.35, 0));
+    group.add(meshAt(new THREE.BoxGeometry(0.1, 0.1, 0.08), darkLeather, 0.18, 1.35, 0.05));
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.5, 0.28), leather);
     torso.position.y = 1.62; torso.name = "torso"; group.add(torso);
     const strap = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.01), darkLeather);
     strap.position.set(0.05, 1.65, 0.15); strap.rotation.z = 0.3; group.add(strap);
     for (const xp of [-0.28, 0.28]) {
-      group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.18), leather), { position: new THREE.Vector3(xp, 1.88, 0) }));
+      group.add(meshAt(new THREE.BoxGeometry(0.18, 0.06, 0.18), leather, xp, 1.88, 0));
     }
     for (const [xp, armNm, handNm] of [[-0.3, "leftUpperArm", "leftHand"], [0.3, "rightUpperArm", "rightHand"]] as const) {
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.55, 6), leather);
@@ -1038,7 +1043,7 @@ export class GrailBallRenderer {
       const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08), darkLeather);
       hand.position.set(xp, 1.22, 0); hand.name = handNm; group.add(hand);
     }
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.12, 6), skinMat), { position: new THREE.Vector3(0, 1.93, 0) }));
+    group.add(meshAt(new THREE.CylinderGeometry(0.07, 0.08, 0.12, 6), skinMat, 0, 1.93, 0));
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), skinMat);
     head.position.y = 2.15; head.name = "head"; group.add(head);
     const hood = new THREE.Mesh(
@@ -1048,11 +1053,11 @@ export class GrailBallRenderer {
     group.add(Object.assign(new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.3),
       new THREE.MeshPhysicalMaterial({ color: pri, side: THREE.DoubleSide, roughness: 0.6 })), { position: new THREE.Vector3(0, 2.0, -0.15), rotation: new THREE.Euler(0.3, 0, 0) }));
     for (const xOff of [-0.06, 0.06])
-      group.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.02, 4, 4), new THREE.MeshBasicMaterial({ color: 0x222222 })), { position: new THREE.Vector3(xOff, 2.17, 0.16) }));
+      group.add(meshAt(new THREE.SphereGeometry(0.02, 4, 4), new THREE.MeshBasicMaterial({ color: 0x222222 }), xOff, 2.17, 0.16));
     for (const side of [-1, 1]) {
       const blade = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.22, 0.02), metalMat);
       blade.position.set(side * 0.2, 1.2, -0.1); blade.rotation.z = side * 0.2; group.add(blade);
-      group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.08, 4), darkLeather), { position: new THREE.Vector3(side * 0.2, 1.32, -0.1) }));
+      group.add(meshAt(new THREE.CylinderGeometry(0.02, 0.02, 0.08, 4), darkLeather, side * 0.2, 1.32, -0.1));
     }
     const cloak = new THREE.Mesh(
       new THREE.PlaneGeometry(0.55, 0.9, 6, 8),
@@ -1075,11 +1080,10 @@ export class GrailBallRenderer {
     const rightFoot = leftFoot.clone(); rightFoot.position.x = 0.12; rightFoot.name = "rightFoot"; group.add(rightFoot);
     const robeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.35, 1.5, 8), robeMat);
     robeBody.position.y = 0.8; robeBody.name = "torso"; group.add(robeBody);
-    group.add(Object.assign(new THREE.Mesh(new THREE.PlaneGeometry(0.2, 1.2), innerRobe), { position: new THREE.Vector3(0, 0.9, 0.16) }));
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.17, 0.08, 8),
-      new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.5, metalness: 0.15 })), { position: new THREE.Vector3(0, 1.4, 0) }));
-    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.35, 0.25), robeMat), { position: new THREE.Vector3(0, 1.72, 0) }));
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.12, 8), robeMat), { position: new THREE.Vector3(0, 1.93, 0) }));
+    group.add(meshAt(new THREE.PlaneGeometry(0.2, 1.2), innerRobe, 0, 0.9, 0.16));
+    group.add(meshAt(new THREE.CylinderGeometry(0.18, 0.17, 0.08, 8), new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.5, metalness: 0.15 }), 0, 1.4, 0));
+    group.add(meshAt(new THREE.BoxGeometry(0.36, 0.35, 0.25), robeMat, 0, 1.72, 0));
+    group.add(meshAt(new THREE.CylinderGeometry(0.16, 0.2, 0.12, 8), robeMat, 0, 1.93, 0));
     for (const xSign of [-1, 1]) {
       const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.16, 0.6, 8), robeMat);
       sleeve.position.set(xSign * 0.32, 1.55, 0); sleeve.rotation.z = xSign * 0.3;
@@ -1096,8 +1100,8 @@ export class GrailBallRenderer {
     }
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), skinMat);
     head.position.y = 2.1; head.name = "head"; group.add(head);
-    group.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.75, 8), robeMat), { position: new THREE.Vector3(0, 2.55, 0) }));
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.04, 8), robeMat), { position: new THREE.Vector3(0, 2.22, 0) }));
+    group.add(meshAt(new THREE.ConeGeometry(0.22, 0.75, 8), robeMat, 0, 2.55, 0));
+    group.add(meshAt(new THREE.CylinderGeometry(0.28, 0.3, 0.04, 8), robeMat, 0, 2.22, 0));
     for (let i = 0; i < 3; i++) {
       const star = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4),
         new THREE.MeshBasicMaterial({ color: acc }));
@@ -1106,8 +1110,8 @@ export class GrailBallRenderer {
       group.add(star);
     }
     for (const xOff of [-0.06, 0.06])
-      group.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), new THREE.MeshBasicMaterial({ color: acc })), { position: new THREE.Vector3(xOff, 2.12, 0.15) }));
-    group.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.9 })), { position: new THREE.Vector3(0, 1.92, 0.12) }));
+      group.add(meshAt(new THREE.SphereGeometry(0.025, 6, 4), new THREE.MeshBasicMaterial({ color: acc }), xOff, 2.12, 0.15));
+    group.add(meshAt(new THREE.ConeGeometry(0.08, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.9 }), 0, 1.92, 0.12));
     const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 2.2, 8),
       new THREE.MeshPhysicalMaterial({ color: 0x553311, roughness: 0.75, metalness: 0.05 }));
     staff.position.set(0.5, 1.5, 0); staff.name = "staff"; group.add(staff);
@@ -1141,14 +1145,14 @@ export class GrailBallRenderer {
       const t = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * s, 0.14 * s, 0.45 * s, 8), heavyMetal);
       t.position.set(xp * s, 1.2 * s, 0); t.name = nm; group.add(t);
     }
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.28 * s, 0.25 * s, 0.18 * s, 8), darkMetal), { position: new THREE.Vector3(0, 1.45 * s, 0) }));
+    group.add(meshAt(new THREE.CylinderGeometry(0.28 * s, 0.25 * s, 0.18 * s, 8), darkMetal, 0, 1.45 * s, 0));
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7 * s, 0.65 * s, 0.4 * s), heavyMetal);
     torso.position.y = 1.8 * s; torso.name = "torso"; group.add(torso);
     for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
       group.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.02, 4, 4), darkMetal),
         { position: new THREE.Vector3((c - 1) * 0.15 * s, (1.55 + r * 0.15) * s, 0.21 * s) }));
     }
-    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.5 * s, 0.6 * s, 0.01), tabardMat), { position: new THREE.Vector3(0, 1.8 * s, 0.21 * s) }));
+    group.add(meshAt(new THREE.BoxGeometry(0.5 * s, 0.6 * s, 0.01), tabardMat, 0, 1.8 * s, 0.21 * s));
     for (const xSign of [-1, 1]) {
       const p = new THREE.Mesh(new THREE.SphereGeometry(0.22 * s, 10, 8), heavyMetal);
       p.scale.set(1.3, 0.7, 1.1); p.position.set(xSign * 0.48 * s, 2.1 * s, 0); group.add(p);
@@ -1161,13 +1165,13 @@ export class GrailBallRenderer {
       const gaunt = new THREE.Mesh(new THREE.BoxGeometry(0.14 * s, 0.3 * s, 0.14 * s), darkMetal);
       gaunt.position.set(xp * 1.04 * s, 1.4 * s, 0); gaunt.name = handNm; group.add(gaunt);
     }
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.14 * s, 0.16 * s, 0.12 * s, 8), heavyMetal), { position: new THREE.Vector3(0, 2.18 * s, 0) }));
+    group.add(meshAt(new THREE.CylinderGeometry(0.14 * s, 0.16 * s, 0.12 * s, 8), heavyMetal, 0, 2.18 * s, 0));
     const helm = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * s, 0.22 * s, 0.4 * s, 10), heavyMetal);
     helm.position.y = 2.45 * s; helm.name = "head"; group.add(helm);
-    group.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.2 * s, 0.2 * s, 0.04 * s, 10), darkMetal), { position: new THREE.Vector3(0, 2.65 * s, 0) }));
-    group.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.25 * s, 0.03, 0.01), new THREE.MeshBasicMaterial({ color: 0x111111 })), { position: new THREE.Vector3(0, 2.45 * s, 0.22 * s) }));
+    group.add(meshAt(new THREE.CylinderGeometry(0.2 * s, 0.2 * s, 0.04 * s, 10), darkMetal, 0, 2.65 * s, 0));
+    group.add(meshAt(new THREE.BoxGeometry(0.25 * s, 0.03, 0.01), new THREE.MeshBasicMaterial({ color: 0x111111 }), 0, 2.45 * s, 0.22 * s));
     for (let i = 0; i < 5; i++)
-      group.add(Object.assign(new THREE.Mesh(new THREE.CircleGeometry(0.01, 4), new THREE.MeshBasicMaterial({ color: 0x111111 })), { position: new THREE.Vector3((i - 2) * 0.04, 2.38 * s, 0.23 * s) }));
+      group.add(meshAt(new THREE.CircleGeometry(0.01, 4), new THREE.MeshBasicMaterial({ color: 0x111111 }), (i - 2) * 0.04, 2.38 * s, 0.23 * s));
     const towerShield = new THREE.Group();
     const shieldMat = new THREE.MeshPhysicalMaterial({ color: sec, metalness: 0.4, roughness: 0.4, clearcoat: 0.3 });
     towerShield.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2 * s, 0.7 * s), shieldMat));
@@ -1176,7 +1180,7 @@ export class GrailBallRenderer {
     crossV.position.x = 0.05; towerShield.add(crossV);
     const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.06, 0.5 * s), crossMat);
     crossH.position.set(0.05, 0.1, 0); towerShield.add(crossH);
-    towerShield.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), heavyMetal), { position: new THREE.Vector3(0.05, 0, 0) }));
+    towerShield.add(meshAt(new THREE.SphereGeometry(0.08, 8, 6), heavyMetal, 0.05, 0, 0));
     const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35 * s, 0.02, 4, 12), darkMetal);
     rim.position.x = 0.05; rim.rotation.y = Math.PI / 2; rim.scale.y = 1.7; towerShield.add(rim);
     towerShield.position.set(-0.7 * s, 1.6 * s, 0); towerShield.name = "shield"; group.add(towerShield);

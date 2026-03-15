@@ -118,11 +118,16 @@ export class GameRenderer {
     const breathX = Math.sin(_camBreathPhase * 1.1) * 0.8 + Math.sin(_camSwayPhase * 2.7) * 0.4;
     const breathY = Math.cos(_camBreathPhase * 0.9) * 0.6 + Math.cos(_camSwayPhase * 1.9) * 0.3;
 
-    // Camera follow (with arrow-key offset)
-    const targetCamX = player.x - sw / 2 + this.camOffsetX;
-    const targetCamY = player.y - sh / 2 + this.camOffsetY;
-    this.camX += (targetCamX - this.camX) * GameBalance.CAMERA_LERP;
-    this.camY += (targetCamY - this.camY) * GameBalance.CAMERA_LERP;
+    // Leash camera: only reposition when player nears viewport edge
+    const margin = 120;
+    const playerScreenX = player.x - this.camX;
+    const playerScreenY = player.y - this.camY;
+    if (playerScreenX < margin) this.camX = player.x - margin;
+    else if (playerScreenX > sw - margin) this.camX = player.x - sw + margin;
+    if (playerScreenY < margin) this.camY = player.y - margin;
+    else if (playerScreenY > sh - margin) this.camY = player.y - sh + margin;
+    this.camX += this.camOffsetX * 0.1;
+    this.camY += this.camOffsetY * 0.1;
 
     // Screen shake
     let shakeOx = 0, shakeOy = 0;

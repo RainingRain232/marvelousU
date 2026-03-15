@@ -138,12 +138,18 @@ function drawWings(g: Graphics, cx: number, wingTop: number, flapAngle = 0): voi
   const lx = cx - 9;
   const span = 10 + flapAngle * 3;
   g.moveTo(lx, wingTop + 3)
-    .lineTo(lx - span, wingTop - 2 - flapAngle * 2)
-    .lineTo(lx - span + 3, wingTop + 1)
-    .lineTo(lx - span * 0.6, wingTop + 5 - flapAngle)
-    .lineTo(lx - 2, wingTop + 6)
+    .quadraticCurveTo(lx - span * 0.4, wingTop - 4 - flapAngle * 2, lx - span, wingTop - 2 - flapAngle * 2)
+    .quadraticCurveTo(lx - span + 1, wingTop + 0.5, lx - span + 3, wingTop + 1)
+    .quadraticCurveTo(lx - span * 0.65, wingTop + 3 - flapAngle * 0.5, lx - span * 0.6, wingTop + 5 - flapAngle)
+    .quadraticCurveTo(lx - span * 0.25, wingTop + 7, lx - 2, wingTop + 6)
     .closePath()
     .fill({ color: COL_WING, alpha: 0.8 });
+  // Inner membrane highlight
+  g.moveTo(lx - 1, wingTop + 4)
+    .quadraticCurveTo(lx - span * 0.35, wingTop - 1 - flapAngle, lx - span + 5, wingTop)
+    .quadraticCurveTo(lx - span * 0.4, wingTop + 4, lx - 1, wingTop + 5)
+    .closePath()
+    .fill({ color: COL_WING_BONE, alpha: 0.2 });
   // Wing bone struts
   g.moveTo(lx, wingTop + 3).lineTo(lx - span, wingTop - 2 - flapAngle * 2)
     .stroke({ color: COL_WING_BONE, width: 0.7 });
@@ -152,12 +158,18 @@ function drawWings(g: Graphics, cx: number, wingTop: number, flapAngle = 0): voi
   // Right bat wing
   const rx = cx + 9;
   g.moveTo(rx, wingTop + 3)
-    .lineTo(rx + span, wingTop - 2 - flapAngle * 2)
-    .lineTo(rx + span - 3, wingTop + 1)
-    .lineTo(rx + span * 0.6, wingTop + 5 - flapAngle)
-    .lineTo(rx + 2, wingTop + 6)
+    .quadraticCurveTo(rx + span * 0.4, wingTop - 4 - flapAngle * 2, rx + span, wingTop - 2 - flapAngle * 2)
+    .quadraticCurveTo(rx + span - 1, wingTop + 0.5, rx + span - 3, wingTop + 1)
+    .quadraticCurveTo(rx + span * 0.65, wingTop + 3 - flapAngle * 0.5, rx + span * 0.6, wingTop + 5 - flapAngle)
+    .quadraticCurveTo(rx + span * 0.25, wingTop + 7, rx + 2, wingTop + 6)
     .closePath()
     .fill({ color: COL_WING, alpha: 0.8 });
+  // Inner membrane highlight
+  g.moveTo(rx + 1, wingTop + 4)
+    .quadraticCurveTo(rx + span * 0.35, wingTop - 1 - flapAngle, rx + span - 5, wingTop)
+    .quadraticCurveTo(rx + span * 0.4, wingTop + 4, rx + 1, wingTop + 5)
+    .closePath()
+    .fill({ color: COL_WING_BONE, alpha: 0.2 });
   g.moveTo(rx, wingTop + 3).lineTo(rx + span, wingTop - 2 - flapAngle * 2)
     .stroke({ color: COL_WING_BONE, width: 0.7 });
   g.moveTo(rx, wingTop + 3).lineTo(rx + span * 0.6, wingTop + 5 - flapAngle)

@@ -160,6 +160,8 @@ export class ArthurianRPGHUD {
 
   private minimapCanvas!: HTMLCanvasElement;
   private minimapCtx!: CanvasRenderingContext2D;
+  private minimapTerrainCache: HTMLCanvasElement | null = null;
+  private minimapTrail: { x: number; z: number }[] = [];
 
   private quickBarContainer!: HTMLElement;
   private quickSlotEls: HTMLElement[] = [];
@@ -337,26 +339,71 @@ export class ArthurianRPGHUD {
   // ---- Minimap (top right) -----------------------------------------------
 
   private buildMinimap(): void {
-    const wrapper = el("div", {
+    const outerWrapper = el("div", {
       position: "absolute",
-      top: "10px",
-      right: "10px",
-      width: "160px",
-      height: "160px",
+      top: "6px",
+      right: "6px",
+      width: "200px",
+      height: "200px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      pointerEvents: "none",
+    }, this.root);
+
+    // Cardinal direction labels
+    const labelStyle = {
+      position: "absolute" as const,
+      color: PARCHMENT,
+      fontSize: "11px",
+      fontFamily: FONT_MAIN,
+      fontWeight: "bold",
+      textShadow: "0 0 4px rgba(0,0,0,0.9)",
+      pointerEvents: "none" as const,
+    };
+    const nLabel = document.createElement("span");
+    Object.assign(nLabel.style, labelStyle, { top: "0px", left: "50%", transform: "translateX(-50%)" });
+    nLabel.textContent = "N";
+    nLabel.style.color = "#ffcc44";
+    outerWrapper.appendChild(nLabel);
+
+    const sLabel = document.createElement("span");
+    Object.assign(sLabel.style, labelStyle, { bottom: "0px", left: "50%", transform: "translateX(-50%)" });
+    sLabel.textContent = "S";
+    outerWrapper.appendChild(sLabel);
+
+    const eLabel = document.createElement("span");
+    Object.assign(eLabel.style, labelStyle, { top: "50%", right: "0px", transform: "translateY(-50%)" });
+    eLabel.textContent = "E";
+    outerWrapper.appendChild(eLabel);
+
+    const wLabel = document.createElement("span");
+    Object.assign(wLabel.style, labelStyle, { top: "50%", left: "0px", transform: "translateY(-50%)" });
+    wLabel.textContent = "W";
+    outerWrapper.appendChild(wLabel);
+
+    const wrapper = el("div", {
+      width: "180px",
+      height: "180px",
       borderRadius: "50%",
       border: `3px solid ${PARCHMENT_DARK}`,
       overflow: "hidden",
-      boxShadow: SHADOW,
+      boxShadow: SHADOW + ", inset 0 0 12px rgba(0,0,0,0.5)",
       background: "rgba(30,40,20,0.8)",
-    }, this.root);
+    }, outerWrapper);
 
     this.minimapCanvas = document.createElement("canvas");
-    this.minimapCanvas.width = 160;
-    this.minimapCanvas.height = 160;
+    this.minimapCanvas.width = 180;
+    this.minimapCanvas.height = 180;
     this.minimapCanvas.style.width = "100%";
     this.minimapCanvas.style.height = "100%";
     wrapper.appendChild(this.minimapCanvas);
     this.minimapCtx = this.minimapCanvas.getContext("2d")!;
+
+    // Pre-create terrain cache canvas
+    this.minimapTerrainCache = document.createElement("canvas");
+    this.minimapTerrainCache.width = 180;
+    this.minimapTerrainCache.height = 180;
   }
 
   // ---- Quick-use bar (bottom center, below bars) -------------------------
@@ -1108,64 +1155,207 @@ export class ArthurianRPGHUD {
     objectives: { x: number; z: number }[],
   ): void {
     const ctx = this.minimapCtx;
-    const size = 160;
+    const size = 180;
+    const half = size / 2;
     const scale = 2; // pixels per world unit
     ctx.clearRect(0, 0, size, size);
 
-    // Background
-    ctx.fillStyle = "rgba(30,50,25,0.8)";
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-    ctx.fill();
+    // -- Terrain background rendering (onto cache canvas, then draw rotated) --
+    const terrainHeightAt = (x: number, z: number): number => {
+      const s1 = Math.sin(x * 0.008) * Math.cos(z * 0.008) * 18;
+      const s2 = Math.sin(x * 0.025 + 1.3) * Math.cos(z * 0.02 - 0.7) * 6;
+      const s3 = Math.sin(x * 0.06) * Math.sin(z * 0.06) * 2;
+      return s1 + s2 + s3;
+    };
 
-    // Rotate so player faces up
+    if (this.minimapTerrainCache) {
+      const tCtx = this.minimapTerrainCache.getContext("2d")!;
+      const imgData = tCtx.createImageData(size, size);
+      const data = imgData.data;
+      const step = 4; // render every 4th pixel for performance
+
+      for (let py = 0; py < size; py += step) {
+        for (let px = 0; px < size; px += step) {
+          // Map pixel to world coords (rotated by player yaw)
+          const lx = (px - half) / scale;
+          const lz = (py - half) / scale;
+          const cosY = Math.cos(-playerYaw);
+          const sinY = Math.sin(-playerYaw);
+          const wx = playerX + lx * cosY - lz * sinY;
+          const wz = playerZ + lx * sinY + lz * cosY;
+          const h = terrainHeightAt(wx, wz);
+
+          let r: number, g: number, b: number;
+          if (h < 2) {
+            // water
+            r = 40; g = 80; b = 160;
+          } else if (h < 4) {
+            // sand / beach
+            r = 194; g = 178; b = 128;
+          } else if (h < 6) {
+            // grass
+            r = 60; g = 120; b = 40;
+          } else if (h < 14) {
+            // hills / stone transition
+            const t = (h - 6) / 8;
+            r = Math.floor(60 + t * 80);
+            g = Math.floor(120 - t * 50);
+            b = Math.floor(40 + t * 50);
+          } else {
+            // snow
+            const t = Math.min((h - 14) / 6, 1);
+            r = Math.floor(140 + t * 100);
+            g = Math.floor(135 + t * 100);
+            b = Math.floor(130 + t * 110);
+          }
+
+          // Fill the step x step block
+          for (let dy = 0; dy < step && py + dy < size; dy++) {
+            for (let dx = 0; dx < step && px + dx < size; dx++) {
+              const idx = ((py + dy) * size + (px + dx)) * 4;
+              data[idx] = r;
+              data[idx + 1] = g;
+              data[idx + 2] = b;
+              data[idx + 3] = 220;
+            }
+          }
+        }
+      }
+      tCtx.putImageData(imgData, 0, 0);
+
+      // Clip to circle and draw terrain
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(half, half, half, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(this.minimapTerrainCache, 0, 0);
+      ctx.restore();
+    }
+
+    // -- Circular mask overlay (darken edges) --
     ctx.save();
-    ctx.translate(size / 2, size / 2);
+    ctx.beginPath();
+    ctx.arc(half, half, half, 0, Math.PI * 2);
+    ctx.clip();
+    const edgeGrad = ctx.createRadialGradient(half, half, half * 0.6, half, half, half);
+    edgeGrad.addColorStop(0, "rgba(0,0,0,0)");
+    edgeGrad.addColorStop(1, "rgba(0,0,0,0.5)");
+    ctx.fillStyle = edgeGrad;
+    ctx.fillRect(0, 0, size, size);
+    ctx.restore();
+
+    // -- Trail dots (fading previous positions) --
+    this.minimapTrail.push({ x: playerX, z: playerZ });
+    if (this.minimapTrail.length > 20) this.minimapTrail.shift();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(half, half, half - 2, 0, Math.PI * 2);
+    ctx.clip();
+    for (let i = 0; i < this.minimapTrail.length - 1; i++) {
+      const t = this.minimapTrail[i];
+      const dx = (t.x - playerX) * scale;
+      const dz = (t.z - playerZ) * scale;
+      const cosY = Math.cos(-playerYaw);
+      const sinY = Math.sin(-playerYaw);
+      const sx = half + dx * cosY - (-dz) * sinY;
+      const sy = half + dx * sinY + (-dz) * cosY;
+      if ((sx - half) * (sx - half) + (sy - half) * (sy - half) > half * half) continue;
+      const alpha = (i / this.minimapTrail.length) * 0.5;
+      ctx.fillStyle = `rgba(200,200,255,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // -- Entities (rotated so player faces up) --
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(half, half, half - 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.translate(half, half);
     ctx.rotate(-playerYaw);
 
     // Enemies (red)
     ctx.fillStyle = "#ff3333";
+    ctx.shadowColor = "#ff0000";
+    ctx.shadowBlur = 4;
     for (const e of enemies) {
       const dx = (e.x - playerX) * scale;
       const dz = (e.z - playerZ) * scale;
-      if (dx * dx + dz * dz > (size / 2) * (size / 2)) continue;
+      if (dx * dx + dz * dz > half * half) continue;
       ctx.beginPath();
       ctx.arc(dx, -dz, 3, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.shadowBlur = 0;
 
     // NPCs (green)
-    ctx.fillStyle = "#33cc33";
+    ctx.fillStyle = "#33dd55";
+    ctx.shadowColor = "#00ff00";
+    ctx.shadowBlur = 3;
     for (const n of npcs) {
       const dx = (n.x - playerX) * scale;
       const dz = (n.z - playerZ) * scale;
-      if (dx * dx + dz * dz > (size / 2) * (size / 2)) continue;
+      if (dx * dx + dz * dz > half * half) continue;
       ctx.beginPath();
       ctx.arc(dx, -dz, 3, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.shadowBlur = 0;
 
-    // Objectives (gold)
+    // Objectives (gold diamond)
     ctx.fillStyle = GOLD;
+    ctx.shadowColor = "#ffaa00";
+    ctx.shadowBlur = 5;
     for (const o of objectives) {
       const dx = (o.x - playerX) * scale;
-      const dz = (o.z - playerZ) * scale;
-      if (dx * dx + dz * dz > (size / 2) * (size / 2)) continue;
-      ctx.beginPath();
-      ctx.arc(dx, -dz, 4, 0, Math.PI * 2);
-      ctx.fill();
+      const dz = -(o.z - playerZ) * scale;
+      if (dx * dx + dz * dz > half * half) continue;
+      ctx.save();
+      ctx.translate(dx, dz);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-3, -3, 6, 6);
+      ctx.restore();
     }
+    ctx.shadowBlur = 0;
 
     ctx.restore();
 
-    // Player arrow (always center, always pointing up)
-    ctx.fillStyle = "#ffffff";
+    // -- Compass ring with tick marks --
+    ctx.save();
+    ctx.strokeStyle = `${PARCHMENT_DARK}`;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(size / 2, size / 2 - 6);
-    ctx.lineTo(size / 2 - 4, size / 2 + 4);
-    ctx.lineTo(size / 2 + 4, size / 2 + 4);
+    ctx.arc(half, half, half - 1, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Tick marks every 30 degrees
+    for (let deg = 0; deg < 360; deg += 30) {
+      const rad = (deg * Math.PI) / 180 - playerYaw - Math.PI / 2;
+      const inner = deg % 90 === 0 ? half - 8 : half - 5;
+      const outer = half - 1;
+      ctx.beginPath();
+      ctx.moveTo(half + Math.cos(rad) * inner, half + Math.sin(rad) * inner);
+      ctx.lineTo(half + Math.cos(rad) * outer, half + Math.sin(rad) * outer);
+      ctx.lineWidth = deg % 90 === 0 ? 2 : 1;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // -- Player arrow (always center, always pointing up) --
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "#ffffff";
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.moveTo(half, half - 7);
+    ctx.lineTo(half - 5, half + 5);
+    ctx.lineTo(half, half + 2);
+    ctx.lineTo(half + 5, half + 5);
     ctx.closePath();
     ctx.fill();
+    ctx.shadowBlur = 0;
   }
 
   // =======================================================================

@@ -4618,6 +4618,98 @@ export class MageWarsGame {
     this._scene.add(stormMesh);
     this._royaleState.stormMesh = stormMesh;
 
+    // --- Royale Buildings & Ruins ---
+    const buildingCount = 8;
+    const ruinGeometries: THREE.BufferGeometry[] = [];
+    const ruinMaterials: THREE.Material[] = [];
+    for (let bi = 0; bi < buildingCount; bi++) {
+      const angle = (bi / buildingCount) * Math.PI * 2 + rng() * 0.4;
+      const radius = arenaRadius * (0.3 + rng() * 0.5);
+      const bx = Math.cos(angle) * radius;
+      const bz = Math.sin(angle) * radius;
+      const by = getTerrainHeight(bx, bz, mapDef);
+      const isRuin = rng() > 0.4;
+      const building = new THREE.Group();
+
+      if (isRuin) {
+        // Crumbling stone ruin
+        const wallH = 2 + rng() * 2;
+        const wallW = 3 + rng() * 2;
+        const wallD = 0.4;
+        // Back wall
+        const wallGeo = new THREE.BoxGeometry(wallW, wallH, wallD);
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x8a8070, roughness: 0.9, metalness: 0.05 });
+        const wall = new THREE.Mesh(wallGeo, wallMat);
+        wall.position.set(0, wallH / 2, -wallW / 2);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        building.add(wall);
+        ruinGeometries.push(wallGeo);
+        ruinMaterials.push(wallMat);
+        // Side wall (partial)
+        const sideH = wallH * (0.5 + rng() * 0.4);
+        const sideGeo = new THREE.BoxGeometry(wallD, sideH, wallW * 0.7);
+        const side = new THREE.Mesh(sideGeo, wallMat);
+        side.position.set(-wallW / 2, sideH / 2, -wallW * 0.15);
+        side.castShadow = true;
+        building.add(side);
+        ruinGeometries.push(sideGeo);
+        // Rubble pieces
+        for (let ri = 0; ri < 3; ri++) {
+          const rbGeo = new THREE.BoxGeometry(0.4 + rng() * 0.6, 0.3 + rng() * 0.4, 0.4 + rng() * 0.5);
+          const rb = new THREE.Mesh(rbGeo, wallMat);
+          rb.position.set((rng() - 0.5) * wallW, 0.2, (rng() - 0.5) * wallW * 0.5);
+          rb.rotation.set(rng() * 0.3, rng() * Math.PI, rng() * 0.3);
+          building.add(rb);
+          ruinGeometries.push(rbGeo);
+        }
+        // Floor
+        const floorGeo = new THREE.BoxGeometry(wallW + 0.5, 0.1, wallW * 0.7);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x6a6458, roughness: 0.95 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.position.set(0, 0.05, 0);
+        floor.receiveShadow = true;
+        building.add(floor);
+        ruinGeometries.push(floorGeo);
+        ruinMaterials.push(floorMat);
+      } else {
+        // Small intact stone building / tower
+        const bW = 2.5 + rng() * 1.5;
+        const bH = 3 + rng() * 2;
+        const bodyGeo = new THREE.BoxGeometry(bW, bH, bW);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x9a9080, roughness: 0.85, metalness: 0.05 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.set(0, bH / 2, 0);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        building.add(body);
+        ruinGeometries.push(bodyGeo);
+        ruinMaterials.push(bodyMat);
+        // Roof
+        const roofGeo = new THREE.ConeGeometry(bW * 0.8, 1.5, 4);
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.9 });
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.position.set(0, bH + 0.75, 0);
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        building.add(roof);
+        ruinGeometries.push(roofGeo);
+        ruinMaterials.push(roofMat);
+        // Door opening (dark rectangle)
+        const doorGeo = new THREE.PlaneGeometry(0.8, 1.6);
+        const doorMat = new THREE.MeshBasicMaterial({ color: 0x1a1510, side: THREE.DoubleSide });
+        const door = new THREE.Mesh(doorGeo, doorMat);
+        door.position.set(0, 0.8, bW / 2 + 0.01);
+        building.add(door);
+        ruinGeometries.push(doorGeo);
+        ruinMaterials.push(doorMat);
+      }
+
+      building.position.set(bx, by, bz);
+      building.rotation.y = rng() * Math.PI * 2;
+      this._scene.add(building);
+    }
+
     // Scatter spell scrolls on the ground
     for (let i = 0; i < MW.ROYALE_SCROLL_COUNT; i++) {
       const sx = (rng() - 0.5) * arenaRadius * 1.6;
@@ -4807,6 +4899,13 @@ export class MageWarsGame {
           p.reloadTimer[1] = 0;
           if (scroll.mesh) {
             this._scene.remove(scroll.mesh);
+            scroll.mesh.traverse((child: any) => {
+              if (child.geometry) child.geometry.dispose();
+              if (child.material) {
+                if (Array.isArray(child.material)) child.material.forEach((m: any) => m.dispose());
+                else child.material.dispose();
+              }
+            });
             scroll.mesh = null;
           }
           if (p.id === "player_0") {
@@ -4833,6 +4932,13 @@ export class MageWarsGame {
           }
           if (art.mesh) {
             this._scene.remove(art.mesh);
+            art.mesh.traverse((child: any) => {
+              if (child.geometry) child.geometry.dispose();
+              if (child.material) {
+                if (Array.isArray(child.material)) child.material.forEach((m: any) => m.dispose());
+                else child.material.dispose();
+              }
+            });
             art.mesh = null;
           }
           if (p.id === "player_0") {
@@ -4929,6 +5035,43 @@ export class MageWarsGame {
   private _showRoyaleEnd(): void {
     this._phase = MWPhase.ROUND_END;
     this._isRoyaleMode = false;
+
+    // Dispose storm mesh
+    if (this._royaleState?.stormMesh) {
+      this._scene.remove(this._royaleState.stormMesh);
+      this._royaleState.stormMesh.geometry.dispose();
+      (this._royaleState.stormMesh.material as THREE.Material).dispose();
+      this._royaleState.stormMesh = null;
+    }
+
+    // Dispose remaining unpicked scrolls
+    if (this._royaleState) {
+      for (const s of this._royaleState.scrolls) {
+        if (s.mesh) {
+          this._scene.remove(s.mesh);
+          s.mesh.traverse((child: any) => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+              if (Array.isArray(child.material)) child.material.forEach((m: any) => m.dispose());
+              else child.material.dispose();
+            }
+          });
+        }
+      }
+      for (const a of this._royaleState.artifacts) {
+        if (a.mesh) {
+          this._scene.remove(a.mesh);
+          a.mesh.traverse((child: any) => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+              if (Array.isArray(child.material)) child.material.forEach((m: any) => m.dispose());
+              else child.material.dispose();
+            }
+          });
+        }
+      }
+    }
+
     document.exitPointerLock();
     this._removeMenu();
     this._menuDiv = document.createElement("div");
@@ -5275,7 +5418,7 @@ export class MageWarsGame {
 
     // Damage vignette
     const vig = `<div id="mw-vignette" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0;` +
-      `background:radial-gradient(ellipse at center,transparent 50%,rgba(200,0,0,0.4) 100%);transition:opacity 0.3s"></div>`;
+      `background:radial-gradient(ellipse at center,rgba(255,0,0,0.05) 0%,rgba(200,0,0,0.15) 40%,rgba(180,0,0,0.5) 80%,rgba(150,0,0,0.7) 100%);transition:opacity 0.15s"></div>`;
 
     // Low HP warning vignette
     const lowHpVig = `<div id="mw-lowhp-vignette" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0;` +
@@ -5593,7 +5736,7 @@ export class MageWarsGame {
 
     // Damage vignette
     const vigEl = document.getElementById("mw-vignette") as HTMLElement;
-    if (vigEl) vigEl.style.opacity = `${clamp(this._damageVignetteTimer * 2, 0, 0.8)}`;
+    if (vigEl) vigEl.style.opacity = `${clamp(this._damageVignetteTimer * 3, 0, 1.0)}`;
 
     // Low HP warning
     const lowHpEl = document.getElementById("mw-lowhp-vignette") as HTMLElement;
@@ -7085,7 +7228,7 @@ export class MageWarsGame {
             }
           }
           if (target.id === "player_0") {
-            this._damageVignetteTimer = 0.3;
+            this._damageVignetteTimer = 0.5;
             // Hit direction
             this._lastDamageDir.x = proj.dx;
             this._lastDamageDir.z = proj.dz;
@@ -7176,7 +7319,7 @@ export class MageWarsGame {
           dmg -= absorbed;
         }
         target.hp -= dmg;
-        if (target.id === "player_0") this._damageVignetteTimer = 0.3;
+        if (target.id === "player_0") this._damageVignetteTimer = 0.5;
         if (proj.ownerId === "player_0") this._hitMarkerTimer = 0.15;
         if (target.hp <= 0) {
           const owner = this._players.find(p => p.id === proj.ownerId);
@@ -7647,7 +7790,7 @@ export class MageWarsGame {
           if (d < 8) {
             const dmg = 60 * (1 - d / 8) * (1 - target.armor / 100);
             target.hp -= dmg;
-            if (target.id === "player_0") this._damageVignetteTimer = 0.3;
+            if (target.id === "player_0") this._damageVignetteTimer = 0.5;
             if (target.hp <= 0) this._killPlayer(target, p.id, "Inferno Burst");
           }
         }
@@ -7716,7 +7859,7 @@ export class MageWarsGame {
             chainTargets.push(nearest);
             const dmg = 40 * (1 - nearest.armor / 100);
             nearest.hp -= dmg;
-            if (nearest.id === "player_0") this._damageVignetteTimer = 0.3;
+            if (nearest.id === "player_0") this._damageVignetteTimer = 0.5;
             if (p.id === "player_0") this._hitMarkerTimer = 0.15;
             if (nearest.hp <= 0) this._killPlayer(nearest, p.id, "Chain Lightning");
             current = nearest;
@@ -7795,7 +7938,7 @@ export class MageWarsGame {
           const dmg = 30 * (1 - nearest.armor / 100);
           nearest.hp -= dmg;
           p.hp = Math.min(p.maxHp, p.hp + 30);
-          if (nearest.id === "player_0") this._damageVignetteTimer = 0.3;
+          if (nearest.id === "player_0") this._damageVignetteTimer = 0.5;
           if (p.id === "player_0") this._hitMarkerTimer = 0.15;
           if (nearest.hp <= 0) this._killPlayer(nearest, p.id, "Soul Drain");
           // VFX: red beam line from target to caster
@@ -7981,24 +8124,67 @@ export class MageWarsGame {
       }
 
     } else {
-      if (!ai.wanderTarget || dist2(p.x, p.z, ai.wanderTarget.x, ai.wanderTarget.z) < 3) {
-        const spawnDist = mapDef.spawnDistance / 2;
-        const baseX = p.team === 0 ? -spawnDist : spawnDist;
-        ai.wanderTarget = {
-          x: baseX + (Math.random() - 0.5) * MW.AI_WANDER_RADIUS * 2,
-          z: (Math.random() - 0.5) * MW.AI_WANDER_RADIUS * 2,
-        };
+      // Smart wander: seek enemies, objectives, or strategic positions
+      let goalX = 0;
+      let goalZ = 0;
+      let hasGoal = false;
+
+      // In royale, move toward storm center to stay alive
+      if (this._isRoyaleMode && this._royaleState) {
+        goalX = this._royaleState.stormCenterX;
+        goalZ = this._royaleState.stormCenterZ;
+        hasGoal = true;
       }
 
-      const toX = ai.wanderTarget.x - p.x;
-      const toZ = ai.wanderTarget.z - p.z;
+      // Try to find any enemy within extended range
+      if (!hasGoal) {
+        let bestDist = MW.AI_FIRE_RANGE * 3;
+        for (const other of this._players) {
+          if (!other.alive || other.team === p.team) continue;
+          const d = dist2(p.x, p.z, other.x, other.z);
+          if (d < bestDist) {
+            bestDist = d;
+            goalX = other.x;
+            goalZ = other.z;
+            hasGoal = true;
+          }
+        }
+      }
+
+      // Friendly AI: stay near the human player
+      if (!hasGoal && p.team === 0 && p.isAI) {
+        const human = this._players.find(pl => !pl.isAI && pl.alive);
+        if (human) {
+          const d = dist2(p.x, p.z, human.x, human.z);
+          if (d > 15) {
+            goalX = human.x + (Math.random() - 0.5) * 10;
+            goalZ = human.z + (Math.random() - 0.5) * 10;
+            hasGoal = true;
+          }
+        }
+      }
+
+      // Default: move toward map center where action concentrates
+      if (!hasGoal) {
+        if (!ai.wanderTarget || dist2(p.x, p.z, ai.wanderTarget.x, ai.wanderTarget.z) < 3) {
+          ai.wanderTarget = {
+            x: (Math.random() - 0.5) * 40,
+            z: (Math.random() - 0.5) * 40,
+          };
+        }
+        goalX = ai.wanderTarget.x;
+        goalZ = ai.wanderTarget.z;
+      }
+
+      const toX = goalX - p.x;
+      const toZ = goalZ - p.z;
       const desiredYaw = Math.atan2(-toX, -toZ);
       p.yaw = lerp(p.yaw, desiredYaw, dt * 4);
 
       const sinY = Math.sin(p.yaw);
       const cosY = Math.cos(p.yaw);
-      p.vx = -sinY * p.speed * MW.MOVE_SPEED * 0.7;
-      p.vz = -cosY * p.speed * MW.MOVE_SPEED * 0.7;
+      p.vx = -sinY * p.speed * MW.MOVE_SPEED * 0.85;
+      p.vz = -cosY * p.speed * MW.MOVE_SPEED * 0.85;
     }
   }
 

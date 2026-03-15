@@ -17,10 +17,10 @@ import { ElementalType } from "./ArthurianRPGConfig";
 // ---------------------------------------------------------------------------
 
 const TERRAIN_SIZE = 512;
-const TERRAIN_SEGMENTS = 128;
+const TERRAIN_SEGMENTS = 192;
 const WATER_LEVEL = 1.5;
 const SKY_RADIUS = 800;
-const MAX_PARTICLES = 2000;
+const MAX_PARTICLES = 3000;
 const TORCH_FLICKER_SPEED = 8;
 
 // ---------------------------------------------------------------------------
@@ -639,7 +639,8 @@ function buildTerrain(): { mesh: THREE.Mesh; getHeight: (x: number, z: number) =
     const s1 = Math.sin(x * 0.008) * Math.cos(z * 0.008) * 18;
     const s2 = Math.sin(x * 0.025 + 1.3) * Math.cos(z * 0.02 - 0.7) * 6;
     const s3 = Math.sin(x * 0.06) * Math.sin(z * 0.06) * 2;
-    return s1 + s2 + s3;
+    const s4 = Math.sin(x * 0.15 + 0.5) * Math.cos(z * 0.12 - 0.3) * 0.8;
+    return s1 + s2 + s3 + s4;
   };
 
   for (let i = 0; i < pos.count; i++) {
@@ -697,12 +698,13 @@ function buildWater(): THREE.Mesh {
   const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, 64, 64);
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x2266aa,
+    color: 0x2277bb,
     transparent: true,
-    opacity: 0.6,
-    roughness: 0.1,
-    metalness: 0.4,
+    opacity: 0.65,
+    roughness: 0.05,
+    metalness: 0.5,
     side: THREE.DoubleSide,
+    envMapIntensity: 1.2,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.y = WATER_LEVEL;
@@ -1495,9 +1497,9 @@ export class ArthurianRPGRenderer {
     // Bloom for magical glow
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight),
-      0.4,  // strength
+      0.5,  // strength
       0.3,  // radius
-      0.85, // threshold
+      0.75, // threshold
     );
     this.composer.addPass(this.bloomPass);
 

@@ -150,15 +150,17 @@ function drawWing(g: Graphics, anchorX: number, anchorY: number, span: number, f
   // Primary feathers (outer)
   g.moveTo(anchorX, anchorY)
     .quadraticCurveTo(midX, midY, tipX, tipY)
-    .lineTo(tipX - side * 2, tipY + 3)
-    .lineTo(anchorX + side * span * 0.4, anchorY + 5)
+    .quadraticCurveTo(tipX - side * 1, tipY + 2, tipX - side * 2, tipY + 3)
+    .quadraticCurveTo(anchorX + side * span * 0.6, anchorY + 5.5, anchorX + side * span * 0.4, anchorY + 5)
+    .quadraticCurveTo(anchorX + side * span * 0.15, anchorY + 3, anchorX, anchorY)
     .closePath()
     .fill({ color: COL_WING });
 
-  // Dark wingtips
+  // Dark wingtips (curved)
   g.moveTo(tipX - side * 4, tipY - 1)
-    .lineTo(tipX, tipY)
-    .lineTo(tipX - side * 2, tipY + 3)
+    .quadraticCurveTo(tipX - side * 1, tipY - 0.5, tipX, tipY)
+    .quadraticCurveTo(tipX - side * 0.5, tipY + 2, tipX - side * 2, tipY + 3)
+    .quadraticCurveTo(tipX - side * 3.5, tipY + 1, tipX - side * 4, tipY - 1)
     .closePath()
     .fill({ color: COL_WING_TIP });
 
@@ -167,8 +169,8 @@ function drawWing(g: Graphics, anchorX: number, anchorY: number, span: number, f
     .stroke({ color: COL_WING_DK, width: 1 });
 
   // Feather details -- barbs
-  for (let i = 1; i <= 4; i++) {
-    const frac = i / 5;
+  for (let i = 1; i <= 6; i++) {
+    const frac = i / 7;
     const fx = lerp(anchorX, tipX, frac);
     const fy = lerp(anchorY, tipY, frac);
     g.moveTo(fx, fy).lineTo(fx - side * 1, fy + 3)

@@ -540,8 +540,8 @@ export class GameGame {
       return;
     }
     // Number keys to equip/use
-    for (let i = 0; i < 9; i++) {
-      if (_justPressed(`Digit${i + 1}`)) {
+    for (let i = 0; i < 10; i++) {
+      if (_justPressed(i < 9 ? `Digit${i + 1}` : "Digit0")) {
         const inv = this._state.player.inventory[i];
         if (inv) {
           if (inv.def.type === "consumable") {
@@ -573,8 +573,8 @@ export class GameGame {
 
     if (state.shopSellMode) {
       // Sell mode: number keys to sell inventory items
-      for (let i = 0; i < 9; i++) {
-        if (_justPressed(`Digit${i + 1}`)) {
+      for (let i = 0; i < 10; i++) {
+        if (_justPressed(i < 9 ? `Digit${i + 1}` : "Digit0")) {
           if (i < p.inventory.length) {
             const inv = p.inventory[i];
             // Calculate sell price (70% of a base value determined by rarity)
@@ -595,8 +595,8 @@ export class GameGame {
       }
     } else {
       // Buy mode: number keys to buy shop items
-      for (let i = 0; i < 9; i++) {
-        if (_justPressed(`Digit${i + 1}`)) {
+      for (let i = 0; i < 10; i++) {
+        if (_justPressed(i < 9 ? `Digit${i + 1}` : "Digit0")) {
           if (i < SHOP_ITEMS.length) {
             const shopItem = SHOP_ITEMS[i];
             if (p.gold >= shopItem.cost) {
