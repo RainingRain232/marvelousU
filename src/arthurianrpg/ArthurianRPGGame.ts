@@ -644,7 +644,7 @@ export class ArthurianRPGGame {
       if (dist > 40 || dist < 0.5) continue;
       const ang = Math.atan2(dx, dz) - this._yaw;
       const sx = W/2 + Math.sin(ang) * (W*0.3) / (dist*0.1+1);
-      const sy = horizon - 30 / (dist*0.15+1);
+      const sy = horizon + 30 / (dist*0.15+1);
       const sz = Math.max(8, 45 / (dist*0.2+1));
       // Shadow
       ctx.fillStyle = "rgba(0,0,0,0.15)";

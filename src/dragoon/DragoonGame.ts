@@ -50,6 +50,13 @@ export class DragoonGame {
     this._renderer.init(sw, sh);
     viewManager.addToLayer("units", this._renderer.worldLayer);
 
+    // Disable ViewManager camera — Dragoon has its own camera system
+    viewManager.camera.keyboardEnabled = false;
+    viewManager.camera.manualControlMode = true;
+    viewManager.camera.x = 0;
+    viewManager.camera.y = 0;
+    viewManager.camera.zoom = 1;
+
     // FX
     this._fx.init();
     viewManager.addToLayer("fx", this._fx.container);
@@ -332,6 +339,10 @@ export class DragoonGame {
   // ---------------------------------------------------------------------------
 
   private _cleanup(): void {
+    // Re-enable ViewManager camera for other modes
+    viewManager.camera.keyboardEnabled = true;
+    viewManager.camera.manualControlMode = false;
+
     DragoonInputSystem.destroy();
     DragoonCombatSystem.setExplosionCallback(null);
     DragoonCombatSystem.setHitCallback(null);

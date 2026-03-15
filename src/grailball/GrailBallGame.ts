@@ -593,20 +593,14 @@ export class GrailBallGame {
     if (_isDown("ArrowLeft") || _isDown("KeyA")) mx = -1;
     if (_isDown("ArrowRight") || _isDown("KeyD")) mx = 1;
 
-    const isSprinting = _isDown("ShiftLeft") || _isDown("ShiftRight");
-
     if (mx !== 0 || mz !== 0) {
       const len = Math.sqrt(mx * mx + mz * mz);
       mx /= len; mz /= len;
 
-      const spd = sel.speed * (isSprinting ? sel.sprintMultiplier : 1);
+      const spd = sel.speed;
       const speedMod = sel.activePowerUp === GBPowerUpType.SPEED_BOOST ? 1.4 : 1;
       sel.vel.x = mx * spd * speedMod;
       sel.vel.z = mz * spd * speedMod;
-
-      if (isSprinting && sel.stamina > 0) {
-        sel.stamina -= 10 * dt;
-      }
     }
 
     // Space: pass (tap) / shoot (hold for power)
@@ -634,12 +628,16 @@ export class GrailBallGame {
     }
 
     // Shift: tackle or ability (context sensitive)
-    if (_justPressed("ShiftLeft") || _justPressed("ShiftRight")) {
-      if (sel.hasOrb) {
-        // Use special ability
+    const shiftPressed = _justPressed("ShiftLeft") || _justPressed("ShiftRight");
+    const shiftHeld = _isDown("ShiftLeft") || _isDown("ShiftRight");
+    if (sel.hasOrb) {
+      // Use special ability on first press
+      if (shiftPressed) {
         this._doAbility(sel);
-      } else {
-        // Tackle
+      }
+    } else {
+      // Tackle while shift is held (cooldown prevents spam)
+      if (shiftHeld) {
         this._doTackle(sel);
       }
     }

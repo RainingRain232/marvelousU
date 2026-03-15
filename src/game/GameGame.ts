@@ -78,6 +78,13 @@ export class GameGame {
     this._renderer.init();
     viewManager.addToLayer("units", this._renderer.worldLayer);
 
+    // Disable ViewManager camera — this game has its own camera system
+    viewManager.camera.keyboardEnabled = false;
+    viewManager.camera.manualControlMode = true;
+    viewManager.camera.x = 0;
+    viewManager.camera.y = 0;
+    viewManager.camera.zoom = 1;
+
     // HUD
     this._hud.build();
     viewManager.addToLayer("ui", this._hud.container);
@@ -714,6 +721,10 @@ export class GameGame {
     // Clear all keys
     for (const k in _keys) _keys[k] = false;
     for (const k in _pressed) _pressed[k] = false;
+
+    // Re-enable ViewManager camera for other modes
+    viewManager.camera.keyboardEnabled = true;
+    viewManager.camera.manualControlMode = false;
 
     GameCombatSystem.reset();
 

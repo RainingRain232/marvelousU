@@ -151,7 +151,7 @@ export class GameRenderer {
     // Random lightning flashes in dark areas
     this._updateLightning(floor);
 
-    this._drawTiles(floor);
+    this._drawTiles(floor, sw, sh);
     this._drawDecorations(floor);
     this._drawPoisonTrails(state);
     this._drawLighting(floor, player, sw, sh);
@@ -170,9 +170,13 @@ export class GameRenderer {
   // -------------------------------------------------------------------------
   // TILES — textured floors, stone walls, detailed doors/stairs/traps/chests
   // -------------------------------------------------------------------------
-  private _drawTiles(floor: FloorState): void {
+  private _drawTiles(floor: FloorState, sw: number = 2000, sh: number = 1400): void {
     const g = this._tileGfx;
     g.clear();
+
+    // Fill entire visible area with dark background so no gaps show beyond dungeon
+    g.rect(this.camX - 50, this.camY - 50, sw + 100, sh + 100)
+      .fill({ color: 0x0a0a12 });
 
     const themeIdx = Math.min(floor.floorNum, FLOOR_THEMES.length - 1);
     const theme = FLOOR_THEMES[themeIdx];
