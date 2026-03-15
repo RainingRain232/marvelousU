@@ -18,6 +18,8 @@ export default defineConfig({
   server: {
     port: 8080,
     open: true,
+    hmr: false,
+    watch: null,
   },
   test: {
     globals: true,

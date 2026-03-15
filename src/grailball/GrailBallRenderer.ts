@@ -1050,8 +1050,9 @@ export class GrailBallRenderer {
       new THREE.SphereGeometry(0.24, 10, 8, 0, TAU, 0, Math.PI * 0.6), clothMat,
     );
     hood.position.y = 2.18; hood.rotation.x = -0.2; group.add(hood);
-    group.add(Object.assign(new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.3),
-      new THREE.MeshPhysicalMaterial({ color: pri, side: THREE.DoubleSide, roughness: 0.6 })), { position: new THREE.Vector3(0, 2.0, -0.15), rotation: new THREE.Euler(0.3, 0, 0) }));
+    { const _cape = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.3),
+      new THREE.MeshPhysicalMaterial({ color: pri, side: THREE.DoubleSide, roughness: 0.6 }));
+      _cape.position.set(0, 2.0, -0.15); _cape.rotation.set(0.3, 0, 0); group.add(_cape); }
     for (const xOff of [-0.06, 0.06])
       group.add(meshAt(new THREE.SphereGeometry(0.02, 4, 4), new THREE.MeshBasicMaterial({ color: 0x222222 }), xOff, 2.17, 0.16));
     for (const side of [-1, 1]) {
@@ -1123,7 +1124,7 @@ export class GrailBallRenderer {
       }),
     );
     crystal.position.set(0.5, 2.65, 0); crystal.name = "crystal"; group.add(crystal);
-    group.add(Object.assign(new THREE.PointLight(new THREE.Color(acc).getHex(), 0.5, 6, 1.5), { position: new THREE.Vector3(0.5, 2.65, 0) }));
+    { const _pl = new THREE.PointLight(new THREE.Color(acc).getHex(), 0.5, 6, 1.5); _pl.position.set(0.5, 2.65, 0); group.add(_pl); }
   }
 
   private _buildGatekeeperModel(group: THREE.Group, team: GBTeamDef, _playerId: number): void {
@@ -1149,8 +1150,7 @@ export class GrailBallRenderer {
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7 * s, 0.65 * s, 0.4 * s), heavyMetal);
     torso.position.y = 1.8 * s; torso.name = "torso"; group.add(torso);
     for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
-      group.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.02, 4, 4), darkMetal),
-        { position: new THREE.Vector3((c - 1) * 0.15 * s, (1.55 + r * 0.15) * s, 0.21 * s) }));
+      group.add(meshAt(new THREE.SphereGeometry(0.02, 4, 4), darkMetal, (c - 1) * 0.15 * s, (1.55 + r * 0.15) * s, 0.21 * s));
     }
     group.add(meshAt(new THREE.BoxGeometry(0.5 * s, 0.6 * s, 0.01), tabardMat, 0, 1.8 * s, 0.21 * s));
     for (const xSign of [-1, 1]) {
