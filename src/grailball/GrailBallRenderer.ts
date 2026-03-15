@@ -36,7 +36,9 @@ const DUST_POOL = 200;
 const MAGIC_POOL = 100;
 const GOAL_POOL = 300;
 const FIRE_POOL = 80;
-const MIST_POOL = 120;
+const MIST_POOL = 180;
+const AMBIENT_MAGIC_POOL = 60;
+const FIREWORK_POOL = 150;
 
 // Vignette + warm color grading shader
 const VignetteShader = {
@@ -114,6 +116,10 @@ export class GrailBallRenderer {
   private _fireData!: ParticleData[];
   private _mistParticles!: THREE.Points;
   private _mistData!: ParticleData[];
+  private _ambientMagicParticles!: THREE.Points;
+  private _ambientMagicData!: ParticleData[];
+  private _fireworkParticles!: THREE.Points;
+  private _fireworkData!: ParticleData[];
 
   // Crowd animation
   private _crowdBaseY: number[] = [];
@@ -252,40 +258,77 @@ export class GrailBallRenderer {
     });
     this._skyMesh = new THREE.Mesh(skyGeo, skyMat);
     this._scene.add(this._skyMesh);
-    const starCount = 300;
+    const starCount = 500;
     const starPositions = new Float32Array(starCount * 3);
+    const starSizes = new Float32Array(starCount);
+    const starPhases = new Float32Array(starCount);
     for (let i = 0; i < starCount; i++) {
       const theta = Math.random() * TAU;
-      const phi = Math.acos(0.2 + Math.random() * 0.8); // upper hemisphere
+      const phi = Math.acos(0.15 + Math.random() * 0.85);
       const r = 200;
       starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
       starPositions[i * 3 + 1] = r * Math.cos(phi);
       starPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+      starSizes[i] = 0.3 + Math.random() * 0.9;
+      starPhases[i] = Math.random() * TAU;
     }
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
-    this._starField = new THREE.Points(starGeo, new THREE.PointsMaterial({
-      color: 0xffffff, size: 0.6, transparent: true, opacity: 0.35,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    }));
+    starGeo.setAttribute("size", new THREE.BufferAttribute(starSizes, 1));
+    starGeo.setAttribute("phase", new THREE.BufferAttribute(starPhases, 1));
+    const starMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { time: { value: 0 }, baseColor: { value: new THREE.Color(0xffffff) } },
+      vertexShader: `
+        attribute float size;
+        attribute float phase;
+        uniform float time;
+        varying float vTwinkle;
+        void main() {
+          vTwinkle = 0.4 + 0.6 * (0.5 + 0.5 * sin(time * (1.5 + phase * 0.5) + phase));
+          vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (300.0 / -mvPos.z) * vTwinkle;
+          gl_Position = projectionMatrix * mvPos;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 baseColor;
+        varying float vTwinkle;
+        void main() {
+          float d = length(gl_PointCoord - vec2(0.5));
+          float alpha = smoothstep(0.5, 0.1, d) * vTwinkle * 0.7;
+          vec3 col = mix(baseColor, vec3(0.8, 0.85, 1.0), d * 0.5);
+          gl_FragColor = vec4(col, alpha);
+        }
+      `,
+    });
+    this._starField = new THREE.Points(starGeo, starMat);
     this._scene.add(this._starField);
-    const cloudGeo = new THREE.PlaneGeometry(50, 20);
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 20; i++) {
+      const cw = 40 + Math.random() * 50;
+      const ch = 15 + Math.random() * 15;
+      const cloudGeo = new THREE.PlaneGeometry(cw, ch, 4, 2);
+      const hue = 0.06 + Math.random() * 0.06;
+      const lightness = 0.82 + Math.random() * 0.16;
       const cloudMat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(0.08, 0.15, 0.85 + Math.random() * 0.15),
-        transparent: true, opacity: 0.25 + Math.random() * 0.2,
+        color: new THREE.Color().setHSL(hue, 0.15, lightness),
+        transparent: true, opacity: 0.18 + Math.random() * 0.22,
         side: THREE.DoubleSide, depthWrite: false,
       });
       const cloud = new THREE.Mesh(cloudGeo, cloudMat);
       cloud.position.set(
-        (Math.random() - 0.5) * 350,
-        55 + Math.random() * 35,
-        (Math.random() - 0.5) * 350,
+        (Math.random() - 0.5) * 380,
+        50 + Math.random() * 45,
+        (Math.random() - 0.5) * 380,
       );
       cloud.rotation.x = -Math.PI / 2;
       cloud.rotation.z = Math.random() * TAU;
-      const s = 0.5 + Math.random() * 1.8;
-      cloud.scale.set(s, s * 0.5, 1);
+      const s = 0.5 + Math.random() * 2.0;
+      cloud.scale.set(s, s * (0.3 + Math.random() * 0.4), 1);
+      (cloud as any)._driftSpeed = (0.2 + Math.random() * 0.5) * (Math.random() > 0.5 ? 1 : -1);
+      (cloud as any)._driftZ = (Math.random() - 0.5) * 0.15;
+      (cloud as any)._origX = cloud.position.x;
       this._cloudSprites.push(cloud);
       this._scene.add(cloud);
     }
@@ -339,23 +382,38 @@ export class GrailBallRenderer {
 
   // Field with grass stripes, glowing field lines, center circle
   private _buildField(): void {
-    const segsX = 80, segsZ = 50;
+    const segsX = 120, segsZ = 80;
     const grassGeo = new THREE.PlaneGeometry(GB_FIELD.LENGTH + 4, GB_FIELD.WIDTH + 4, segsX, segsZ);
     const colors = new Float32Array((segsX + 1) * (segsZ + 1) * 3);
     const posAttr = grassGeo.attributes.position;
     for (let i = 0; i < posAttr.count; i++) {
       const x = posAttr.getX(i);
-      const stripeIdx = Math.floor((x + GB_FIELD.HALF_LENGTH + 2) / (GB_FIELD.LENGTH / 10));
+      const y = posAttr.getY(i);
+      const stripeIdx = Math.floor((x + GB_FIELD.HALF_LENGTH + 2) / (GB_FIELD.LENGTH / 12));
       const dark = stripeIdx % 2 === 0;
-      const base = dark ? [0.22, 0.50, 0.20] : [0.26, 0.56, 0.24];
-      // Add some random variation
-      colors[i * 3] = base[0] + (Math.random() - 0.5) * 0.03;
-      colors[i * 3 + 1] = base[1] + (Math.random() - 0.5) * 0.04;
-      colors[i * 3 + 2] = base[2] + (Math.random() - 0.5) * 0.03;
+      // Richer green with subtle warm/cool variation across the field
+      const warmShift = Math.sin(x * 0.1 + y * 0.15) * 0.02;
+      const base = dark ? [0.20 + warmShift, 0.48, 0.18] : [0.24 + warmShift, 0.55, 0.22];
+      // More variation for natural look
+      colors[i * 3] = base[0] + (Math.random() - 0.5) * 0.04;
+      colors[i * 3 + 1] = base[1] + (Math.random() - 0.5) * 0.05;
+      colors[i * 3 + 2] = base[2] + (Math.random() - 0.5) * 0.04;
+      // Slightly darken edges of the field
+      const edgeFade = Math.max(0, 1 - Math.max(Math.abs(x) / (GB_FIELD.HALF_LENGTH + 2), Math.abs(y) / (GB_FIELD.HALF_WIDTH + 2)));
+      const edgeDarken = 0.85 + edgeFade * 0.15;
+      colors[i * 3] *= edgeDarken;
+      colors[i * 3 + 1] *= edgeDarken;
+      colors[i * 3 + 2] *= edgeDarken;
+    }
+    // Subtle vertex displacement for bumpy grass feel
+    for (let i = 0; i < posAttr.count; i++) {
+      const z = posAttr.getZ(i);
+      posAttr.setZ(i, z + (Math.random() - 0.5) * 0.03);
     }
     grassGeo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    grassGeo.computeVertexNormals();
     const grassMat = new THREE.MeshStandardMaterial({
-      vertexColors: true, roughness: 0.85, metalness: 0.0,
+      vertexColors: true, roughness: 0.82, metalness: 0.0,
     });
     const grass = new THREE.Mesh(grassGeo, grassMat);
     grass.rotation.x = -Math.PI / 2;
@@ -592,16 +650,19 @@ export class GrailBallRenderer {
     const count = CROWD_PER_SIDE;
     const bodyGeo = new THREE.CylinderGeometry(0.25, 0.3, 1.2, 6);
     const headGeo = new THREE.SphereGeometry(0.2, 6, 4);
-    const colors = [0xcc3333, 0x3333cc, 0x33cc33, 0xcccc33, 0xcc33cc, 0x885522, 0x558844, 0xaa6644];
+    const skinTones = [0xddbb99, 0xf1c27d, 0xd4a574, 0xc68642, 0x8d5524, 0xffdbac, 0xe0ac69];
+    const colors = [0xcc3333, 0x3333cc, 0x33cc33, 0xcccc33, 0xcc33cc, 0x885522, 0x558844, 0xaa6644, 0x336699, 0x994433, 0x669933, 0x993366];
     for (let i = 0; i < count; i++) {
       const px = -GB_FIELD.HALF_LENGTH + 8 + (i / count) * (GB_FIELD.LENGTH - 16);
+      const colorIdx = (row * count + i + Math.floor(Math.random() * 3)) % colors.length;
       const mat = new THREE.MeshStandardMaterial({
-        color: colors[(row * count + i) % colors.length], roughness: 0.8,
+        color: colors[colorIdx], roughness: 0.75,
       });
       const body = new THREE.Mesh(bodyGeo, mat);
-      body.position.set(px + (Math.random() - 0.5) * 0.5, y + 0.6, z + (Math.random() - 0.5) * 0.3);
+      body.position.set(px + (Math.random() - 0.5) * 0.6, y + 0.6, z + (Math.random() - 0.5) * 0.4);
       parent.add(body);
-      const head = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({ color: 0xddbb99, roughness: 0.7 }));
+      const skinColor = skinTones[Math.floor(Math.random() * skinTones.length)];
+      const head = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.65 }));
       head.position.set(body.position.x, y + 1.35, body.position.z);
       parent.add(head);
       this._crowdBaseY.push(y + 0.6);
@@ -861,6 +922,30 @@ export class GrailBallRenderer {
     for (let i = 0; i < MIST_POOL; i++)
       this._mistData.push({ alive: false, life: 0, maxLife: 0, pos: [0, 0, 0], vel: [0, 0, 0] });
     this._particleGroup.add(this._mistParticles);
+    // Ambient magic sparkles (floating in air around the field)
+    this._ambientMagicData = [];
+    const amGeo = new THREE.BufferGeometry();
+    amGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(AMBIENT_MAGIC_POOL * 3), 3));
+    this._ambientMagicParticles = new THREE.Points(amGeo, new THREE.PointsMaterial({
+      color: 0xddccff, size: 0.15, transparent: true, opacity: 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    for (let i = 0; i < AMBIENT_MAGIC_POOL; i++)
+      this._ambientMagicData.push({ alive: false, life: 0, maxLife: 0, pos: [0, 0, 0], vel: [0, 0, 0] });
+    this._particleGroup.add(this._ambientMagicParticles);
+    // Firework particles (for enhanced goal celebrations)
+    this._fireworkData = [];
+    const fwGeo = new THREE.BufferGeometry();
+    fwGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(FIREWORK_POOL * 3), 3));
+    const fwColors = new Float32Array(FIREWORK_POOL * 3);
+    fwGeo.setAttribute("color", new THREE.BufferAttribute(fwColors, 3));
+    this._fireworkParticles = new THREE.Points(fwGeo, new THREE.PointsMaterial({
+      size: 0.25, transparent: true, opacity: 0.9, vertexColors: true,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    for (let i = 0; i < FIREWORK_POOL; i++)
+      this._fireworkData.push({ alive: false, life: 0, maxLife: 0, pos: [0, 0, 0], vel: [0, 0, 0] });
+    this._particleGroup.add(this._fireworkParticles);
     for (let i = 0; i < 4; i++) {
       const ring = new THREE.Mesh(
         new THREE.RingGeometry(1.5, 2.0, 32),
@@ -1242,6 +1327,10 @@ export class GrailBallRenderer {
     this._updateMist(dt);
     this._updateFireParticles(dt);
     this._updateAbilityCircles(state);
+    this._updateAmbientMagic(dt);
+    this._updateFireworks(dt);
+    this._updateStarTwinkle();
+    this._updateCloudDrift(dt);
     this._composer.render();
   }
 
@@ -1472,6 +1561,10 @@ export class GrailBallRenderer {
       p.pos = [x, y + 2, z];
       p.vel = [(Math.random() - 0.5) * 20, 5 + Math.random() * 15, (Math.random() - 0.5) * 20];
     }
+    // Multi-burst fireworks
+    this.spawnFireworks(x, y, z);
+    setTimeout(() => this.spawnFireworks(x + 8, y, z - 5), 300);
+    setTimeout(() => this.spawnFireworks(x - 8, y, z + 5), 600);
   }
 
   private _updateParticles(dt: number): void {
@@ -1495,40 +1588,63 @@ export class GrailBallRenderer {
     (points.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
   }
 
-  // Fire particles on torch sconces
+  // Fire particles on torch sconces — more vivid with ember sparks
   private _updateFireParticles(_dt: number): void {
     for (const sconce of this._torchSconces) {
-      if (Math.random() < 0.3) {
+      // Spawn multiple particles per frame for denser flames
+      if (Math.random() < 0.5) {
         for (const p of this._fireData) {
           if (!p.alive) {
-            p.alive = true; p.life = 0; p.maxLife = 0.3 + Math.random() * 0.3;
-            p.pos = [sconce.x + (Math.random() - 0.5) * 0.15, sconce.y + 0.5, sconce.z + (Math.random() - 0.5) * 0.15];
-            p.vel = [(Math.random() - 0.5) * 0.5, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 0.5];
+            p.alive = true; p.life = 0; p.maxLife = 0.25 + Math.random() * 0.4;
+            p.pos = [sconce.x + (Math.random() - 0.5) * 0.2, sconce.y + 0.4, sconce.z + (Math.random() - 0.5) * 0.2];
+            p.vel = [
+              (Math.random() - 0.5) * 0.6 + Math.sin(this._time * 5 + sconce.x) * 0.3,
+              2 + Math.random() * 2.5,
+              (Math.random() - 0.5) * 0.6,
+            ];
+            break;
+          }
+        }
+      }
+      // Occasional ember spark that flies higher
+      if (Math.random() < 0.08) {
+        for (const p of this._fireData) {
+          if (!p.alive) {
+            p.alive = true; p.life = 0; p.maxLife = 0.6 + Math.random() * 0.8;
+            p.pos = [sconce.x, sconce.y + 0.8, sconce.z];
+            p.vel = [(Math.random() - 0.5) * 1.5, 3 + Math.random() * 3, (Math.random() - 0.5) * 1.5];
             break;
           }
         }
       }
     }
-    this._updateParticleSystem(this._fireParticles, this._fireData, 0.016, -1);
+    this._updateParticleSystem(this._fireParticles, this._fireData, 0.016, -1.5);
   }
 
-  // Ground mist
+  // Ground mist — thicker, more atmospheric
   private _updateMist(_dt: number): void {
-    if (Math.random() < 0.15) {
+    // Spawn more mist particles for denser ground fog
+    const spawnRate = 0.35;
+    if (Math.random() < spawnRate) {
       for (const p of this._mistData) {
         if (!p.alive) {
-          p.alive = true; p.life = 0; p.maxLife = 3 + Math.random() * 4;
+          p.alive = true; p.life = 0; p.maxLife = 4 + Math.random() * 6;
+          // Concentrate mist near field edges and corners
+          const edge = Math.random() > 0.4;
           p.pos = [
-            (Math.random() - 0.5) * GB_FIELD.LENGTH,
-            0.2 + Math.random() * 0.5,
+            edge ? (Math.random() > 0.5 ? 1 : -1) * (GB_FIELD.HALF_LENGTH * (0.6 + Math.random() * 0.5)) : (Math.random() - 0.5) * GB_FIELD.LENGTH,
+            0.1 + Math.random() * 0.6,
             (Math.random() - 0.5) * GB_FIELD.WIDTH,
           ];
-          p.vel = [(Math.random() - 0.5) * 0.3, 0.05, (Math.random() - 0.5) * 0.3];
+          p.vel = [(Math.random() - 0.5) * 0.4, 0.02 + Math.random() * 0.04, (Math.random() - 0.5) * 0.4];
           break;
         }
       }
     }
     this._updateParticleSystem(this._mistParticles, this._mistData, 0.016, 0);
+    // Slowly pulse mist opacity for a breathing effect
+    const mat = this._mistParticles.material as THREE.PointsMaterial;
+    mat.opacity = 0.10 + Math.sin(this._time * 0.4) * 0.03;
   }
 
   // Ability cast ground circles
@@ -1622,6 +1738,112 @@ export class GrailBallRenderer {
       this._selectionRing.scale.set(pulse, pulse, pulse);
     } else {
       this._selectionRing.visible = false;
+    }
+  }
+
+  // Ambient floating magic sparkles
+  private _updateAmbientMagic(dt: number): void {
+    if (Math.random() < 0.25) {
+      for (const p of this._ambientMagicData) {
+        if (!p.alive) {
+          p.alive = true; p.life = 0; p.maxLife = 3 + Math.random() * 5;
+          p.pos = [
+            (Math.random() - 0.5) * GB_FIELD.LENGTH * 0.8,
+            0.5 + Math.random() * 6,
+            (Math.random() - 0.5) * GB_FIELD.WIDTH * 0.8,
+          ];
+          p.vel = [
+            (Math.random() - 0.5) * 0.2,
+            0.1 + Math.random() * 0.3,
+            (Math.random() - 0.5) * 0.2,
+          ];
+          break;
+        }
+      }
+    }
+    // Sinusoidal drift for alive particles
+    const positions = (this._ambientMagicParticles.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
+    for (let i = 0; i < this._ambientMagicData.length; i++) {
+      const p = this._ambientMagicData[i];
+      if (!p.alive) { positions[i * 3 + 1] = -100; continue; }
+      p.life += dt;
+      if (p.life >= p.maxLife) { p.alive = false; continue; }
+      p.pos[0] += p.vel[0] * dt + Math.sin(this._time * 1.5 + i * 0.7) * 0.005;
+      p.pos[1] += p.vel[1] * dt + Math.sin(this._time * 0.8 + i) * 0.003;
+      p.pos[2] += p.vel[2] * dt + Math.cos(this._time * 1.2 + i * 0.5) * 0.005;
+      positions[i * 3] = p.pos[0]; positions[i * 3 + 1] = p.pos[1]; positions[i * 3 + 2] = p.pos[2];
+    }
+    (this._ambientMagicParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    const mat = this._ambientMagicParticles.material as THREE.PointsMaterial;
+    mat.opacity = 0.4 + Math.sin(this._time * 2) * 0.15;
+  }
+
+  // Fireworks for goal celebrations
+  private _updateFireworks(dt: number): void {
+    const positions = (this._fireworkParticles.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
+    const colors = (this._fireworkParticles.geometry.attributes.color as THREE.BufferAttribute).array as Float32Array;
+    for (let i = 0; i < this._fireworkData.length; i++) {
+      const p = this._fireworkData[i];
+      if (!p.alive) { positions[i * 3 + 1] = -100; continue; }
+      p.life += dt;
+      if (p.life >= p.maxLife) { p.alive = false; continue; }
+      p.vel[1] -= 12 * dt;
+      p.pos[0] += p.vel[0] * dt; p.pos[1] += p.vel[1] * dt; p.pos[2] += p.vel[2] * dt;
+      // Fade out
+      const fade = 1 - p.life / p.maxLife;
+      colors[i * 3] *= (0.98 + fade * 0.02);
+      colors[i * 3 + 1] *= (0.97 + fade * 0.03);
+      colors[i * 3 + 2] *= (0.98 + fade * 0.02);
+      positions[i * 3] = p.pos[0]; positions[i * 3 + 1] = p.pos[1]; positions[i * 3 + 2] = p.pos[2];
+    }
+    (this._fireworkParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    (this._fireworkParticles.geometry.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+  }
+
+  spawnFireworks(x: number, y: number, z: number): void {
+    const fwColors = (this._fireworkParticles.geometry.attributes.color as THREE.BufferAttribute).array as Float32Array;
+    // Pick 3 random vivid colors for this burst
+    const hues = [Math.random(), Math.random(), Math.random()];
+    let spawned = 0;
+    for (const p of this._fireworkData) {
+      if (spawned >= FIREWORK_POOL) break;
+      p.alive = true; p.life = 0; p.maxLife = 0.8 + Math.random() * 1.5;
+      p.pos = [x + (Math.random() - 0.5) * 2, y + 4 + Math.random() * 4, z + (Math.random() - 0.5) * 2];
+      const angle = Math.random() * TAU;
+      const elev = (Math.random() - 0.3) * Math.PI;
+      const speed = 4 + Math.random() * 12;
+      p.vel = [
+        Math.cos(angle) * Math.cos(elev) * speed,
+        Math.sin(elev) * speed + 4,
+        Math.sin(angle) * Math.cos(elev) * speed,
+      ];
+      const c = new THREE.Color().setHSL(hues[spawned % 3], 1, 0.6 + Math.random() * 0.3);
+      fwColors[spawned * 3] = c.r; fwColors[spawned * 3 + 1] = c.g; fwColors[spawned * 3 + 2] = c.b;
+      spawned++;
+    }
+  }
+
+  // Star twinkling
+  private _updateStarTwinkle(): void {
+    const mat = this._starField.material;
+    if (mat instanceof THREE.ShaderMaterial) {
+      mat.uniforms.time.value = this._time;
+    }
+  }
+
+  // Cloud drift animation
+  private _updateCloudDrift(dt: number): void {
+    for (const cloud of this._cloudSprites) {
+      const drift = (cloud as any)._driftSpeed ?? 0;
+      const driftZ = (cloud as any)._driftZ ?? 0;
+      cloud.position.x += drift * dt;
+      cloud.position.z += driftZ * dt;
+      // Wrap clouds that go too far
+      if (cloud.position.x > 200) cloud.position.x = -200;
+      if (cloud.position.x < -200) cloud.position.x = 200;
+      // Subtle opacity pulse
+      const mat = cloud.material as THREE.MeshBasicMaterial;
+      mat.opacity = mat.opacity * 0.999 + (0.2 + Math.sin(this._time * 0.5 + cloud.position.x * 0.01) * 0.05) * 0.001;
     }
   }
 

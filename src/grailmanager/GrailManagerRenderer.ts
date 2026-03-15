@@ -99,7 +99,7 @@ export class GrailManagerRenderer {
     this._gfx.clear();
   }
 
-  // ---Background — rich parchment with fiber texture, age spots, burned edges
+  // ---Background — rich parchment with fiber texture, age spots, burned edges, candle glow
   private _drawBackground(g: Graphics, sw: number, sh: number): void {
     g.fill({ color: DARK_BG }).rect(0, 0, sw, sh).fill();
     // Subtle parchment gradient bands with animated shift
@@ -109,33 +109,49 @@ export class GrailManagerRenderer {
       const c = lerpColor(0x1c1610, 0x28221a, wave);
       g.fill({ color: c, alpha: 0.25 }).rect(0, y, sw, 6).fill();
     }
+    // Warm candle light pools at top corners
+    g.fill({ color: 0xff8800, alpha: 0.03 }).circle(40, 30, 120).fill();
+    g.fill({ color: 0xff8800, alpha: 0.03 }).circle(sw - 40, 30, 120).fill();
+    // Paper fiber texture
     const fiberSeed = 42;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 60; i++) {
       const fx = seededRng(fiberSeed, i * 3) * sw;
       const fy = seededRng(fiberSeed, i * 3 + 1) * sh;
-      const fl = 20 + seededRng(fiberSeed, i * 3 + 2) * 40;
+      const fl = 15 + seededRng(fiberSeed, i * 3 + 2) * 50;
       const angle = seededRng(fiberSeed, i * 7) * Math.PI;
-      g.stroke({ color: PARCHMENT, alpha: 0.04, width: 0.5 })
+      g.stroke({ color: PARCHMENT, alpha: 0.035, width: 0.5 })
         .moveTo(fx, fy)
         .lineTo(fx + Math.cos(angle) * fl, fy + Math.sin(angle) * fl)
         .stroke();
     }
-    for (let i = 0; i < 12; i++) {
+    // Age spots and stains
+    for (let i = 0; i < 16; i++) {
       const ax = seededRng(77, i * 5) * sw;
       const ay = seededRng(77, i * 5 + 1) * sh;
-      const ar = 8 + seededRng(77, i * 5 + 2) * 25;
-      g.fill({ color: 0x3d2b1f, alpha: 0.06 + seededRng(77, i * 5 + 3) * 0.04 })
+      const ar = 8 + seededRng(77, i * 5 + 2) * 30;
+      g.fill({ color: 0x3d2b1f, alpha: 0.05 + seededRng(77, i * 5 + 3) * 0.04 })
         .circle(ax, ay, ar).fill();
     }
-    for (let i = 0; i < 6; i++) {
+    // Water stain ring
+    g.stroke({ color: 0x3d2b1f, alpha: 0.03, width: 2 }).circle(sw * 0.7, sh * 0.3, 40).stroke();
+    g.stroke({ color: 0x3d2b1f, alpha: 0.02, width: 1.5 }).circle(sw * 0.7, sh * 0.3, 42).stroke();
+    // Ink splatter dots
+    for (let i = 0; i < 8; i++) {
       const sx = seededRng(99, i * 4) * sw;
       const sy = seededRng(99, i * 4 + 1) * sh;
-      const sr = 2 + seededRng(99, i * 4 + 2) * 4;
-      g.fill({ color: 0x1a0f00, alpha: 0.05 }).circle(sx, sy, sr).fill();
+      const sr = 1.5 + seededRng(99, i * 4 + 2) * 4;
+      g.fill({ color: 0x1a0f00, alpha: 0.04 }).circle(sx, sy, sr).fill();
+      // Tiny satellite splatters
+      for (let j = 0; j < 3; j++) {
+        const ox = seededRng(99, i * 4 + j * 10 + 50) * 8 - 4;
+        const oy = seededRng(99, i * 4 + j * 10 + 51) * 8 - 4;
+        g.fill({ color: 0x1a0f00, alpha: 0.03 }).circle(sx + ox, sy + oy, sr * 0.3).fill();
+      }
     }
-    const edgeW = 30;
+    // Edge burn / vignette
+    const edgeW = 35;
     for (let i = 0; i < edgeW; i++) {
-      const a = 0.15 * (1 - i / edgeW);
+      const a = 0.18 * (1 - i / edgeW);
       g.fill({ color: 0x000000, alpha: a }).rect(0, i, sw, 1).fill();
       g.fill({ color: 0x000000, alpha: a }).rect(0, sh - i - 1, sw, 1).fill();
       g.fill({ color: 0x000000, alpha: a }).rect(i, 0, 1, sh).fill();
@@ -145,50 +161,119 @@ export class GrailManagerRenderer {
     this._drawCelticCorner(g, sw, 0, -1, 1);
     this._drawCelticCorner(g, 0, sh, 1, -1);
     this._drawCelticCorner(g, sw, sh, -1, -1);
+    // Candle flames on both sides
     this._drawCandleFlame(g, 40, 8);
     this._drawCandleFlame(g, sw - 40, 8);
+    // Additional side candles for larger screens
+    if (sw > 600) {
+      this._drawCandleFlame(g, 40, sh * 0.4);
+      this._drawCandleFlame(g, sw - 40, sh * 0.4);
+    }
   }
 
   private _drawCandleFlame(g: Graphics, x: number, y: number): void {
     const flicker = Math.sin(this._time * 8) * 2 + Math.sin(this._time * 13) * 1.5;
+    const flicker2 = Math.sin(this._time * 11 + x * 0.1) * 1.2;
     const size = 5 + Math.sin(this._time * 6) * 1.5;
-    g.fill({ color: 0xff8c00, alpha: 0.35 }).circle(x, y + flicker * 0.3, size + 3).fill();
-    g.fill({ color: 0xffcc00, alpha: 0.5 }).circle(x, y + flicker * 0.2, size).fill();
-    g.fill({ color: 0xffffaa, alpha: 0.7 }).circle(x, y, size * 0.5).fill();
+    // Ambient glow halo
+    g.fill({ color: 0xff6600, alpha: 0.06 }).circle(x, y + 5, size + 20).fill();
+    g.fill({ color: 0xff8c00, alpha: 0.12 }).circle(x, y + 3, size + 10).fill();
+    // Outer flame
+    g.fill({ color: 0xff6600, alpha: 0.3 }).circle(x + flicker2 * 0.3, y + flicker * 0.3, size + 4).fill();
+    // Mid flame
+    g.fill({ color: 0xff8c00, alpha: 0.45 }).circle(x + flicker2 * 0.2, y + flicker * 0.2, size + 1).fill();
+    // Core flame
+    g.fill({ color: 0xffcc00, alpha: 0.6 }).circle(x, y + flicker * 0.15, size).fill();
+    // Hot center
+    g.fill({ color: 0xffffaa, alpha: 0.8 }).circle(x, y, size * 0.4).fill();
+    // Candle body
+    g.fill({ color: 0xddc890, alpha: 0.6 }).rect(x - 2, y + size + 2, 4, 12).fill();
+    g.fill({ color: 0xeeddaa, alpha: 0.3 }).rect(x - 1, y + size + 2, 2, 12).fill();
+    // Ember sparks
+    for (let i = 0; i < 3; i++) {
+      const sparkX = x + Math.sin(this._time * 7 + i * 2.5) * 4;
+      const sparkY = y - 3 - Math.abs(Math.sin(this._time * 5 + i * 1.8)) * 8;
+      const sparkAlpha = 0.3 + Math.sin(this._time * 9 + i * 3) * 0.2;
+      g.fill({ color: 0xffaa44, alpha: sparkAlpha }).circle(sparkX, sparkY, 0.8).fill();
+    }
   }
 
   private _drawCelticCorner(g: Graphics, x: number, y: number, dx: number, dy: number): void {
-    const s = 50;
-    g.fill({ color: BURGUNDY, alpha: 0.15 });
+    const s = 60;
+    // Richer background shape
+    g.fill({ color: BURGUNDY, alpha: 0.12 });
     g.moveTo(x, y);
     g.lineTo(x + dx * s, y);
     g.lineTo(x + dx * s, y + dy * s * 0.7);
     g.lineTo(x + dx * s * 0.5, y + dy * s);
     g.lineTo(x, y + dy * s * 0.7);
     g.closePath().fill();
-    for (let i = 0; i < 4; i++) {
+    g.fill({ color: GOLD, alpha: 0.03 });
+    g.moveTo(x, y);
+    g.lineTo(x + dx * s * 0.8, y);
+    g.lineTo(x + dx * s * 0.8, y + dy * s * 0.55);
+    g.lineTo(x + dx * s * 0.4, y + dy * s * 0.8);
+    g.lineTo(x, y + dy * s * 0.55);
+    g.closePath().fill();
+    // Multi-layered interlacing curves
+    for (let i = 0; i < 5; i++) {
       const r = s - i * 10;
-      const alpha = 0.3 - i * 0.05;
+      const alpha = 0.35 - i * 0.05;
+      // Main arc
       g.stroke({ color: GOLD_DARK, width: 1.5, alpha });
       g.moveTo(x, y + dy * r);
       g.bezierCurveTo(x + dx * r * 0.4, y + dy * r * 0.8, x + dx * r * 0.8, y + dy * r * 0.4, x + dx * r, y);
       g.stroke();
-      g.stroke({ color: GOLD, width: 1, alpha: alpha * 0.6 });
+      // Inner parallel arc
+      g.stroke({ color: GOLD, width: 0.8, alpha: alpha * 0.5 });
+      g.moveTo(x + dx * 3, y + dy * (r - 2));
+      g.bezierCurveTo(x + dx * r * 0.42, y + dy * r * 0.76, x + dx * r * 0.76, y + dy * r * 0.42, x + dx * (r - 2), y + dy * 3);
+      g.stroke();
+      // Cross interlace
+      g.stroke({ color: GOLD, width: 1, alpha: alpha * 0.4 });
       g.moveTo(x + dx * 4, y + dy * r);
       g.bezierCurveTo(x + dx * r * 0.5, y + dy * r * 0.5, x + dx * r * 0.5, y + dy * r * 0.5, x + dx * r, y + dy * 4);
       g.stroke();
     }
-    g.fill({ color: GOLD, alpha: 0.4 }).circle(x + dx * 6, y + dy * 6, 3).fill();
+    // Decorative knot circles at intersections
+    g.fill({ color: GOLD, alpha: 0.45 }).circle(x + dx * 6, y + dy * 6, 3.5).fill();
+    g.fill({ color: BURGUNDY, alpha: 0.5 }).circle(x + dx * 6, y + dy * 6, 1.8).fill();
+    g.fill({ color: GOLD, alpha: 0.25 }).circle(x + dx * 20, y + dy * 20, 2).fill();
+    g.fill({ color: GOLD, alpha: 0.2 }).circle(x + dx * 35, y + dy * 10, 1.5).fill();
+    g.fill({ color: GOLD, alpha: 0.2 }).circle(x + dx * 10, y + dy * 35, 1.5).fill();
+    // Subtle vine tendril
+    g.stroke({ color: FOREST_GREEN, alpha: 0.2, width: 1 });
+    g.moveTo(x + dx * 8, y + dy * 30);
+    g.bezierCurveTo(x + dx * 15, y + dy * 25, x + dx * 20, y + dy * 30, x + dx * 25, y + dy * 20);
+    g.stroke();
+    g.fill({ color: FOREST_GREEN, alpha: 0.15 }).circle(x + dx * 25, y + dy * 20, 2.5).fill();
   }
 
-  // ---Gold filigree separator line
+  // ---Gold filigree separator line with scrollwork
   private _drawFiligree(g: Graphics, x: number, y: number, w: number): void {
     const cx = x + w / 2;
-    g.stroke({ color: GOLD_DARK, width: 1, alpha: 0.5 }).moveTo(x, y).lineTo(x + w, y).stroke();
-    g.fill({ color: GOLD, alpha: 0.4 });
-    g.moveTo(cx, y - 4); g.lineTo(cx + 4, y); g.lineTo(cx, y + 4); g.lineTo(cx - 4, y); g.closePath().fill();
-    g.fill({ color: GOLD_DARK, alpha: 0.35 }).circle(cx - 20, y, 2).fill();
-    g.fill({ color: GOLD_DARK, alpha: 0.35 }).circle(cx + 20, y, 2).fill();
+    // Main line with gradient fade at ends
+    g.stroke({ color: GOLD_DARK, width: 1, alpha: 0.5 }).moveTo(x + 10, y).lineTo(x + w - 10, y).stroke();
+    g.stroke({ color: GOLD_DARK, width: 0.5, alpha: 0.3 }).moveTo(x, y).lineTo(x + 10, y).stroke();
+    g.stroke({ color: GOLD_DARK, width: 0.5, alpha: 0.3 }).moveTo(x + w - 10, y).lineTo(x + w, y).stroke();
+    // Central diamond with inner detail
+    g.fill({ color: GOLD, alpha: 0.5 });
+    g.moveTo(cx, y - 5); g.lineTo(cx + 5, y); g.lineTo(cx, y + 5); g.lineTo(cx - 5, y); g.closePath().fill();
+    g.fill({ color: GOLD_DARK, alpha: 0.6 });
+    g.moveTo(cx, y - 2.5); g.lineTo(cx + 2.5, y); g.lineTo(cx, y + 2.5); g.lineTo(cx - 2.5, y); g.closePath().fill();
+    // Side ornaments
+    for (const offset of [-30, -50, 30, 50]) {
+      g.fill({ color: GOLD_DARK, alpha: 0.35 }).circle(cx + offset, y, 1.8).fill();
+    }
+    // Scrollwork curves
+    g.stroke({ color: GOLD_DARK, alpha: 0.25, width: 0.8 });
+    g.moveTo(cx - 8, y).bezierCurveTo(cx - 15, y - 5, cx - 22, y - 3, cx - 25, y).stroke();
+    g.stroke({ color: GOLD_DARK, alpha: 0.25, width: 0.8 });
+    g.moveTo(cx + 8, y).bezierCurveTo(cx + 15, y - 5, cx + 22, y - 3, cx + 25, y).stroke();
+    g.stroke({ color: GOLD_DARK, alpha: 0.2, width: 0.8 });
+    g.moveTo(cx - 8, y).bezierCurveTo(cx - 15, y + 5, cx - 22, y + 3, cx - 25, y).stroke();
+    g.stroke({ color: GOLD_DARK, alpha: 0.2, width: 0.8 });
+    g.moveTo(cx + 8, y).bezierCurveTo(cx + 15, y + 5, cx + 22, y + 3, cx + 25, y).stroke();
   }
 
   // ---Celtic knotwork border around a rect
@@ -263,34 +348,90 @@ export class GrailManagerRenderer {
     this.clickZones.push({ id: "save_game", x: sw - 65, y: 0, w: 60, h: hh });
   }
 
-  // ---Panel — ornate bordered panels with parchment fill
+  // ---Panel — ornate bordered panels with parchment fill and embossed depth
   private _drawPanel(g: Graphics, x: number, y: number, w: number, h: number, title?: string): void {
+    // Outer shadow for depth
+    g.fill({ color: 0x000000, alpha: 0.12 }).roundRect(x + 2, y + 2, w, h, 6).fill();
+    // Main panel
     g.fill({ color: DARK_WOOD, alpha: PANEL_ALPHA }).roundRect(x, y, w, h, 6).fill();
+    // Subtle parchment texture gradient
     g.fill({ color: PARCHMENT, alpha: 0.06 }).roundRect(x + 3, y + 3, w - 6, h - 6, 4).fill();
-    g.fill({ color: BURGUNDY, alpha: 0.04 }).roundRect(x + 3, y + 3, w - 6, 30, 4).fill();
+    g.fill({ color: PARCHMENT, alpha: 0.03 }).roundRect(x + 3, y + 3, w * 0.5, h - 6, 4).fill();
+    // Title bar glow
+    g.fill({ color: BURGUNDY, alpha: 0.05 }).roundRect(x + 3, y + 3, w - 6, 30, 4).fill();
+    // Inner bevel highlight (top-left light)
+    g.stroke({ color: PARCHMENT, alpha: 0.08, width: 1 }).moveTo(x + 4, y + h - 4).lineTo(x + 4, y + 4).lineTo(x + w - 4, y + 4).stroke();
+    // Inner bevel shadow (bottom-right)
+    g.stroke({ color: 0x000000, alpha: 0.1, width: 1 }).moveTo(x + 4, y + h - 4).lineTo(x + w - 4, y + h - 4).lineTo(x + w - 4, y + 4).stroke();
+    // Double border
     g.stroke({ color: GOLD_DARK, width: 1.5 }).roundRect(x, y, w, h, 6).stroke();
+    g.stroke({ color: GOLD_DARK, alpha: 0.3, width: 0.5 }).roundRect(x + 3, y + 3, w - 6, h - 6, 4).stroke();
     this._drawKnotBorder(g, x, y, w, h);
     if (title) {
       g.fill({ color: GOLD_DARK, alpha: 0.2 }).rect(x + 3, y + 3, w - 6, 26).fill();
+      g.fill({ color: GOLD, alpha: 0.04 }).rect(x + 3, y + 3, w - 6, 13).fill();
       this._drawIlluminatedTitle(g, x + 8, y + 4, title);
+      // Wax seal on right side of title bar
+      if (w > 200) this._drawWaxSeal(g, x + w - 22, y + 3);
     }
   }
 
-  // ---Illuminated initial letter for panel titles
+  // ---Wax seal decoration
+  private _drawWaxSeal(g: Graphics, x: number, y: number): void {
+    const r = 10;
+    // Wax body with irregular edge
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2;
+      const wobble = r + Math.sin(angle * 3 + 0.5) * 1.5 + Math.cos(angle * 5) * 0.8;
+      if (i === 0) g.moveTo(x + Math.cos(angle) * wobble, y + r + Math.sin(angle) * wobble);
+      else g.lineTo(x + Math.cos(angle) * wobble, y + r + Math.sin(angle) * wobble);
+    }
+    g.closePath();
+    g.fill({ color: RED_ACCENT, alpha: 0.7 }).fill();
+    // Seal highlight
+    g.fill({ color: 0xcc3333, alpha: 0.4 }).circle(x - 2, y + r - 2, r * 0.6).fill();
+    // Inner ring
+    g.stroke({ color: 0x550000, alpha: 0.5, width: 1 }).circle(x, y + r, r * 0.6).stroke();
+    // Cross emblem
+    g.stroke({ color: GOLD_DARK, alpha: 0.5, width: 1.5 })
+      .moveTo(x, y + r - 4).lineTo(x, y + r + 4).stroke();
+    g.stroke({ color: GOLD_DARK, alpha: 0.5, width: 1.5 })
+      .moveTo(x - 4, y + r).lineTo(x + 4, y + r).stroke();
+  }
+
+  // ---Illuminated initial letter for panel titles — richer vine and leaf decoration
   private _drawIlluminatedTitle(g: Graphics, x: number, y: number, title: string): void {
     if (title.length === 0) return;
     const initial = title[0];
     const rest = title.substring(1);
-    const initSize = 20;
-    g.fill({ color: BURGUNDY, alpha: 0.25 }).roundRect(x - 2, y - 2, initSize + 4, initSize + 4, 3).fill();
-    g.stroke({ color: GOLD, alpha: 0.4, width: 1 }).roundRect(x - 2, y - 2, initSize + 4, initSize + 4, 3).stroke();
-    g.stroke({ color: FOREST_GREEN, alpha: 0.3, width: 1 });
-    g.moveTo(x + initSize, y + 6);
-    g.bezierCurveTo(x + initSize + 8, y + 2, x + initSize + 12, y + 10, x + initSize + 6, y + 16);
+    const initSize = 22;
+    // Background panel for initial with gradient
+    g.fill({ color: BURGUNDY, alpha: 0.3 }).roundRect(x - 3, y - 3, initSize + 6, initSize + 6, 3).fill();
+    g.fill({ color: GOLD, alpha: 0.06 }).roundRect(x - 3, y - 3, initSize + 6, (initSize + 6) * 0.5, 3).fill();
+    g.stroke({ color: GOLD, alpha: 0.5, width: 1.2 }).roundRect(x - 3, y - 3, initSize + 6, initSize + 6, 3).stroke();
+    // Inner frame line
+    g.stroke({ color: GOLD, alpha: 0.2, width: 0.5 }).roundRect(x - 1, y - 1, initSize + 2, initSize + 2, 2).stroke();
+    // Decorative vine extending from initial
+    g.stroke({ color: FOREST_GREEN, alpha: 0.35, width: 1.2 });
+    g.moveTo(x + initSize + 2, y + 6);
+    g.bezierCurveTo(x + initSize + 10, y + 1, x + initSize + 16, y + 8, x + initSize + 10, y + 16);
     g.stroke();
-    g.fill({ color: FOREST_GREEN, alpha: 0.2 }).circle(x + initSize + 6, y + 16, 2).fill();
-    this._addText(initial, 16, GOLD, true, x + 2, y);
-    this._addText(rest, 13, GOLD, true, x + initSize + 6, y + 3);
+    // Second vine tendril
+    g.stroke({ color: FOREST_GREEN, alpha: 0.25, width: 0.8 });
+    g.moveTo(x + initSize + 10, y + 10);
+    g.bezierCurveTo(x + initSize + 18, y + 6, x + initSize + 22, y + 12, x + initSize + 18, y + 18);
+    g.stroke();
+    // Leaf decorations
+    g.fill({ color: FOREST_GREEN, alpha: 0.25 }).circle(x + initSize + 6, y + 16, 2.5).fill();
+    g.fill({ color: FOREST_GREEN, alpha: 0.2 }).circle(x + initSize + 14, y + 4, 2).fill();
+    g.fill({ color: FOREST_GREEN, alpha: 0.15 }).circle(x + initSize + 18, y + 18, 1.8).fill();
+    // Berry dots
+    g.fill({ color: RED_ACCENT, alpha: 0.3 }).circle(x + initSize + 8, y + 3, 1.2).fill();
+    g.fill({ color: RED_ACCENT, alpha: 0.25 }).circle(x + initSize + 16, y + 15, 1).fill();
+    // Drop shadow for initial letter
+    this._addText(initial, 17, 0x000000, true, x + 3, y + 1);
+    this._addText(initial, 17, GOLD, true, x + 2, y);
+    this._addText(rest, 13, GOLD, true, x + initSize + 8, y + 3);
   }
 
   // ---MAIN MENU
@@ -298,19 +439,52 @@ export class GrailManagerRenderer {
     const cx = sw / 2;
     const cy = sh / 2;
     const pulse = Math.sin(this._time * 2) * 0.15 + 0.85;
-    g.fill({ color: GOLD, alpha: pulse * 0.08 }).circle(cx, cy - 120, 220).fill();
-    g.fill({ color: BURGUNDY, alpha: 0.06 }).circle(cx, cy - 120, 180).fill();
-    this._addText("GRAIL BALL", 42, 0x000000, true, cx - 138, cy - 178);
+    // Radiant background glow
+    g.fill({ color: GOLD, alpha: pulse * 0.05 }).circle(cx, cy - 100, 280).fill();
+    g.fill({ color: BURGUNDY, alpha: 0.04 }).circle(cx, cy - 100, 220).fill();
+    g.fill({ color: GOLD, alpha: pulse * 0.08 }).circle(cx, cy - 120, 180).fill();
+    // Decorative circles
+    g.stroke({ color: GOLD_DARK, alpha: 0.08, width: 1 }).circle(cx, cy - 100, 200).stroke();
+    g.stroke({ color: GOLD_DARK, alpha: 0.06, width: 1 }).circle(cx, cy - 100, 240).stroke();
+    // Rotating decorative ring
+    const ringAngle = this._time * 0.3;
+    for (let i = 0; i < 8; i++) {
+      const angle = ringAngle + (i / 8) * Math.PI * 2;
+      const rx = cx + Math.cos(angle) * 160;
+      const ry = cy - 100 + Math.sin(angle) * 160;
+      g.fill({ color: GOLD, alpha: 0.08 }).circle(rx, ry, 4).fill();
+    }
+    // Title with double shadow
+    this._addText("GRAIL BALL", 42, 0x000000, true, cx - 136, cy - 176);
     this._addText("GRAIL BALL", 42, GOLD, true, cx - 140, cy - 180);
-    this._addText("MANAGER", 36, 0x000000, true, cx - 103, cy - 128);
+    this._addText("MANAGER", 36, 0x000000, true, cx - 101, cy - 126);
     this._addText("MANAGER", 36, GOLD_DARK, true, cx - 105, cy - 130);
+    // Enhanced glowing orb (the Grail)
     const orbPulse = Math.sin(this._time * 3) * 3;
-    g.fill({ color: GOLD, alpha: 0.15 }).circle(cx, cy - 60, 38 + orbPulse).fill();
-    g.fill({ color: GOLD, alpha: 0.25 }).circle(cx, cy - 60, 28 + orbPulse * 0.5).fill();
-    g.fill({ color: 0xffec8b, alpha: 0.5 }).circle(cx, cy - 60, 18).fill();
-    g.fill({ color: WHITE, alpha: 0.7 }).circle(cx - 6, cy - 66, 6).fill();
-    g.stroke({ color: GOLD, alpha: 0.3, width: 1 }).circle(cx, cy - 60, 32).stroke();
+    const orbPulse2 = Math.sin(this._time * 2.3) * 2;
+    // Outer ethereal glow
+    g.fill({ color: GOLD, alpha: 0.06 }).circle(cx, cy - 60, 55 + orbPulse).fill();
+    g.fill({ color: GOLD, alpha: 0.12 }).circle(cx, cy - 60, 42 + orbPulse).fill();
+    // Main orb layers
+    g.fill({ color: GOLD, alpha: 0.2 }).circle(cx, cy - 60, 34 + orbPulse * 0.5).fill();
+    g.fill({ color: 0xffdd55, alpha: 0.35 }).circle(cx, cy - 60, 24 + orbPulse2 * 0.3).fill();
+    g.fill({ color: 0xffec8b, alpha: 0.55 }).circle(cx, cy - 60, 16).fill();
+    g.fill({ color: WHITE, alpha: 0.75 }).circle(cx, cy - 60, 8).fill();
+    // Specular highlight
+    g.fill({ color: WHITE, alpha: 0.8 }).circle(cx - 7, cy - 67, 5).fill();
+    g.fill({ color: WHITE, alpha: 0.4 }).circle(cx + 4, cy - 55, 3).fill();
+    // Orbiting runes
+    for (let i = 0; i < 6; i++) {
+      const a = this._time * 1.5 + (i / 6) * Math.PI * 2;
+      const orx = cx + Math.cos(a) * (30 + orbPulse);
+      const ory = cy - 60 + Math.sin(a) * (30 + orbPulse);
+      g.fill({ color: GOLD, alpha: 0.25 + Math.sin(this._time * 4 + i) * 0.1 }).circle(orx, ory, 2).fill();
+    }
+    g.stroke({ color: GOLD, alpha: 0.2, width: 1 }).circle(cx, cy - 60, 30 + orbPulse * 0.5).stroke();
+    // Subtitle
     this._addText("A Medieval Fantasy Football Management Game", 14, PARCHMENT, false, cx - 195, cy - 20);
+    // Decorative filigree under subtitle
+    this._drawFiligree(g, cx - 120, cy - 8, 240);
 
     const menuItems = [
       { label: "New Game", id: "menu_new", y: cy + 30 },
@@ -319,15 +493,25 @@ export class GrailManagerRenderer {
       { label: "Exit", id: "menu_exit", y: cy + 150 },
     ];
     for (const item of menuItems) {
-      const bx = cx - 110;
-      const bw = 220;
-      const bh = 34;
+      const bx = cx - 120;
+      const bw = 240;
+      const bh = 36;
       const isHover = this._hoverZone === item.id;
-      g.fill({ color: isHover ? GOLD_DARK : DARK_WOOD, alpha: 0.85 }).roundRect(bx, item.y, bw, bh, 5).fill();
-      if (isHover) {
-        g.fill({ color: GOLD, alpha: 0.08 }).roundRect(bx, item.y, bw, bh * 0.5, 5).fill();
-      }
-      g.stroke({ color: isHover ? GOLD : GOLD_DARK, width: 1 }).roundRect(bx, item.y, bw, bh, 5).stroke();
+      // Button shadow
+      g.fill({ color: 0x000000, alpha: 0.12 }).roundRect(bx + 2, item.y + 2, bw, bh, 6).fill();
+      // Button body
+      g.fill({ color: isHover ? GOLD_DARK : DARK_WOOD, alpha: 0.9 }).roundRect(bx, item.y, bw, bh, 6).fill();
+      // Top highlight for embossed look
+      g.fill({ color: isHover ? GOLD : PARCHMENT, alpha: isHover ? 0.12 : 0.05 }).roundRect(bx, item.y, bw, bh * 0.45, 6).fill();
+      // Inner bevel
+      g.stroke({ color: PARCHMENT, alpha: 0.06, width: 0.5 }).moveTo(bx + 4, item.y + 2).lineTo(bx + bw - 4, item.y + 2).stroke();
+      // Border
+      g.stroke({ color: isHover ? GOLD : GOLD_DARK, width: 1.5 }).roundRect(bx, item.y, bw, bh, 6).stroke();
+      // Side ornaments
+      g.fill({ color: GOLD_DARK, alpha: 0.3 }).circle(bx + 12, item.y + bh / 2, 2).fill();
+      g.fill({ color: GOLD_DARK, alpha: 0.3 }).circle(bx + bw - 12, item.y + bh / 2, 2).fill();
+      // Text with shadow
+      this._addText(item.label, 16, 0x000000, true, bx + bw / 2 - item.label.length * 4.5 + 1, item.y + 9);
       this._addText(item.label, 16, isHover ? GOLD : PARCHMENT, true, bx + bw / 2 - item.label.length * 4.5, item.y + 8);
       this.clickZones.push({ id: item.id, x: bx, y: item.y, w: bw, h: bh });
     }
@@ -588,13 +772,29 @@ export class GrailManagerRenderer {
   }
 
   private _drawPitchPlayer(g: Graphics, x: number, y: number, player: PlayerDef, teamDef: TeamDef): void {
-    g.fill({ color: teamDef.color1, alpha: 0.2 }).circle(x, y, 18).fill();
+    // Shadow
+    g.fill({ color: 0x000000, alpha: 0.15 }).ellipse(x + 1, y + 2, 15, 10).fill();
+    // Outer glow
+    g.fill({ color: teamDef.color1, alpha: 0.12 }).circle(x, y, 20).fill();
+    // Main body
     g.fill({ color: teamDef.color1 }).circle(x, y, 14).fill();
+    // Highlight
+    g.fill({ color: WHITE, alpha: 0.12 }).circle(x - 3, y - 3, 8).fill();
+    // Border
     g.stroke({ color: teamDef.color2, width: 2 }).circle(x, y, 14).stroke();
+    g.stroke({ color: WHITE, alpha: 0.2, width: 0.5 }).circle(x, y, 12).stroke();
     const classIcons: Record<string, string> = { Gatekeeper: "GK", Knight: "KN", Rogue: "RG", Mage: "MG" };
+    // Class icon with shadow
+    this._addText(classIcons[player.class] || "?", 8, 0x000000, true, x - 6, y - 4);
     this._addText(classIcons[player.class] || "?", 8, WHITE, true, x - 7, y - 5);
     this._addText(player.lastName.substring(0, 8), 7, WHITE, false, x - 20, y + 16);
-    this._addText(`${getOverall(player)}`, 7, GOLD, true, x - 5, y + 26);
+    // Overall rating badge
+    const ovr = getOverall(player);
+    const ovrColor = ovr >= 75 ? GREEN_GOOD : ovr >= 55 ? 0xcccc00 : 0xff8800;
+    g.fill({ color: DARK_WOOD, alpha: 0.8 }).circle(x + 10, y - 10, 7).fill();
+    g.fill({ color: ovrColor, alpha: 0.15 }).circle(x + 10, y - 10, 6).fill();
+    g.stroke({ color: GOLD_DARK, alpha: 0.5, width: 0.5 }).circle(x + 10, y - 10, 7).stroke();
+    this._addText(`${ovr}`, 6, GOLD, true, x + 6, y - 14);
   }
 
   // ---MATCH DAY — with animated pitch, ball trail, heat map hints
@@ -636,31 +836,61 @@ export class GrailManagerRenderer {
     const pitchX = 10, pitchY = 80;
     this._drawPanel(g, pitchX, pitchY, pitchW, pitchH);
     const fpx = pitchX + 10, fpy = pitchY + 10, fpw = pitchW - 20, fph = pitchH - 20;
-    g.fill({ color: 0x1a5c1a, alpha: 0.7 }).rect(fpx, fpy, fpw, fph).fill();
-    g.stroke({ color: 0x2a8c2a, width: 1 }).moveTo(fpx + fpw / 2, fpy).lineTo(fpx + fpw / 2, fpy + fph).stroke();
-    g.stroke({ color: 0x2a8c2a, width: 1 }).circle(fpx + fpw / 2, fpy + fph / 2, 25).stroke();
-    g.stroke({ color: WHITE, width: 1.5 }).rect(fpx, fpy + fph / 2 - 20, 6, 40).stroke();
-    g.stroke({ color: WHITE, width: 1.5 }).rect(fpx + fpw - 6, fpy + fph / 2 - 20, 6, 40).stroke();
+    // Richer grass with stripes
+    g.fill({ color: 0x1a5c1a, alpha: 0.8 }).rect(fpx, fpy, fpw, fph).fill();
+    const stripeW = fpw / 8;
+    for (let i = 0; i < 8; i++) {
+      if (i % 2 === 0) g.fill({ color: 0x1f6b1f, alpha: 0.15 }).rect(fpx + i * stripeW, fpy, stripeW, fph).fill();
+    }
+    // Pitch markings
+    g.stroke({ color: 0x3a9c3a, width: 1.5 }).moveTo(fpx + fpw / 2, fpy).lineTo(fpx + fpw / 2, fpy + fph).stroke();
+    g.stroke({ color: 0x3a9c3a, width: 1.5 }).circle(fpx + fpw / 2, fpy + fph / 2, 25).stroke();
+    g.fill({ color: 0x3a9c3a, alpha: 0.4 }).circle(fpx + fpw / 2, fpy + fph / 2, 3).fill();
+    // Goals with depth
+    g.fill({ color: 0x114411, alpha: 0.4 }).rect(fpx - 2, fpy + fph / 2 - 22, 8, 44).fill();
+    g.stroke({ color: WHITE, width: 2 }).rect(fpx, fpy + fph / 2 - 20, 6, 40).stroke();
+    g.fill({ color: 0x114411, alpha: 0.4 }).rect(fpx + fpw - 6, fpy + fph / 2 - 22, 8, 44).fill();
+    g.stroke({ color: WHITE, width: 2 }).rect(fpx + fpw - 6, fpy + fph / 2 - 20, 6, 40).stroke();
+    // Penalty areas
+    g.stroke({ color: 0x3a9c3a, width: 0.8 }).rect(fpx, fpy + fph / 2 - 35, 20, 70).stroke();
+    g.stroke({ color: 0x3a9c3a, width: 0.8 }).rect(fpx + fpw - 20, fpy + fph / 2 - 35, 20, 70).stroke();
+    // Players with trail effect
     for (const [pid, pos] of Object.entries(match.playerPositions)) {
       const dx = fpx + pos.x * fpw;
       const dy = fpy + pos.y * fph;
       const isHomePlayer = match.homeLineup.includes(pid);
       const teamColor = isHomePlayer ? homeTeam.teamDef.color1 : awayTeam.teamDef.color1;
-      const r = pos.hasOrb ? 7 : 5;
-      g.fill({ color: teamColor, alpha: 0.08 }).circle(dx, dy, r + 8).fill();
+      const r = pos.hasOrb ? 8 : 5;
+      // Shadow
+      g.fill({ color: 0x000000, alpha: 0.12 }).ellipse(dx + 1, dy + 2, r + 1, r * 0.6).fill();
+      // Glow aura
+      g.fill({ color: teamColor, alpha: 0.1 }).circle(dx, dy, r + 10).fill();
+      g.fill({ color: teamColor, alpha: 0.06 }).circle(dx, dy, r + 6).fill();
+      // Body
       g.fill({ color: teamColor }).circle(dx, dy, r).fill();
-      g.stroke({ color: WHITE, width: 0.5 }).circle(dx, dy, r).stroke();
+      // Highlight
+      g.fill({ color: WHITE, alpha: 0.2 }).circle(dx - 1, dy - 1, r * 0.5).fill();
+      g.stroke({ color: WHITE, width: 0.8 }).circle(dx, dy, r).stroke();
       if (pos.hasOrb) {
-        g.fill({ color: GOLD, alpha: 0.8 }).circle(dx, dy, 3).fill();
-        g.stroke({ color: GOLD, alpha: 0.4, width: 1 }).circle(dx, dy, r + 3).stroke();
+        g.fill({ color: GOLD, alpha: 0.9 }).circle(dx, dy, 3).fill();
+        g.fill({ color: WHITE, alpha: 0.5 }).circle(dx - 1, dy - 1, 1.5).fill();
+        g.stroke({ color: GOLD, alpha: 0.5, width: 1.5 }).circle(dx, dy, r + 4).stroke();
       }
     }
+    // Orb with enhanced glow
     const orbDx = fpx + match.orbX * fpw;
     const orbDy = fpy + match.orbY * fph;
     const orbGlow = 0.3 + Math.sin(this._time * 4) * 0.15;
+    g.fill({ color: GOLD, alpha: orbGlow * 0.3 }).circle(orbDx, orbDy, 14).fill();
     g.fill({ color: GOLD, alpha: orbGlow * 0.5 }).circle(orbDx, orbDy, 8).fill();
-    g.fill({ color: GOLD, alpha: orbGlow }).circle(orbDx, orbDy, 4).fill();
-    g.fill({ color: WHITE, alpha: 0.8 }).circle(orbDx, orbDy, 2).fill();
+    g.fill({ color: GOLD, alpha: orbGlow * 0.8 }).circle(orbDx, orbDy, 4).fill();
+    g.fill({ color: WHITE, alpha: 0.9 }).circle(orbDx, orbDy, 2).fill();
+    // Sparkle ring around orb
+    for (let i = 0; i < 4; i++) {
+      const sa = this._time * 3 + (i / 4) * Math.PI * 2;
+      const sr = 6 + Math.sin(this._time * 5 + i) * 2;
+      g.fill({ color: GOLD, alpha: 0.4 }).circle(orbDx + Math.cos(sa) * sr, orbDy + Math.sin(sa) * sr, 1).fill();
+    }
     const statsY = pitchY + pitchH + 5;
     this._drawPanel(g, pitchX, statsY, pitchW, sh - statsY - 10);
     this._addText(`Possession: ${match.homePossession}% - ${100 - match.homePossession}%`, 10, PARCHMENT, false, pitchX + 10, statsY + 8);
@@ -1081,9 +1311,21 @@ export class GrailManagerRenderer {
   // ---Player Portrait — detailed procedural with shading, hair, headgear
   private _drawPlayerPortrait(g: Graphics, x: number, y: number, player: PlayerDef, teamDef: TeamDef): void {
     const w = 80, h = 100;
-    g.fill({ color: DARK_WOOD, alpha: 0.9 }).roundRect(x, y, w, h, 4).fill();
-    g.stroke({ color: GOLD_DARK, width: 2 }).roundRect(x, y, w, h, 4).stroke();
-    g.fill({ color: teamDef.color1, alpha: 0.3 }).roundRect(x + 3, y + 3, w - 6, h - 6, 3).fill();
+    // Frame shadow
+    g.fill({ color: 0x000000, alpha: 0.15 }).roundRect(x + 2, y + 2, w, h, 4).fill();
+    // Ornate frame
+    g.fill({ color: DARK_WOOD, alpha: 0.95 }).roundRect(x, y, w, h, 4).fill();
+    // Double border
+    g.stroke({ color: GOLD_DARK, width: 2.5 }).roundRect(x, y, w, h, 4).stroke();
+    g.stroke({ color: GOLD, alpha: 0.4, width: 1 }).roundRect(x + 2, y + 2, w - 4, h - 4, 3).stroke();
+    // Background gradient with team color
+    g.fill({ color: teamDef.color1, alpha: 0.25 }).roundRect(x + 3, y + 3, w - 6, h - 6, 3).fill();
+    g.fill({ color: teamDef.color1, alpha: 0.12 }).roundRect(x + 3, y + 3, w - 6, (h - 6) * 0.4, 3).fill();
+    // Corner ornaments on frame
+    g.fill({ color: GOLD, alpha: 0.3 }).circle(x + 4, y + 4, 2).fill();
+    g.fill({ color: GOLD, alpha: 0.3 }).circle(x + w - 4, y + 4, 2).fill();
+    g.fill({ color: GOLD, alpha: 0.3 }).circle(x + 4, y + h - 4, 2).fill();
+    g.fill({ color: GOLD, alpha: 0.3 }).circle(x + w - 4, y + h - 4, 2).fill();
 
     const cx = x + w / 2;
     const cy = y + h / 2 - 5;
@@ -1200,19 +1442,38 @@ export class GrailManagerRenderer {
     this._addText(`${ovr}`, 9, GOLD, true, x + w - 20, y + h - 19);
   }
 
-  // ---Mini Crest — heraldic shield
+  // ---Mini Crest — heraldic shield with divisions and charges
   private _drawMiniCrest(g: Graphics, x: number, y: number, color1: number, color2: number, accent: number): void {
+    // Shield shadow
+    g.fill({ color: 0x000000, alpha: 0.15 });
+    g.moveTo(x + 1, y + 1); g.lineTo(x + 21, y + 1); g.lineTo(x + 21, y + 17);
+    g.lineTo(x + 11, y + 25); g.lineTo(x + 1, y + 17); g.closePath().fill();
+    // Main shield body
     g.fill({ color: color1 });
     g.moveTo(x, y); g.lineTo(x + 20, y); g.lineTo(x + 20, y + 16);
     g.lineTo(x + 10, y + 24); g.lineTo(x, y + 16); g.closePath().fill();
-    g.fill({ color: color2, alpha: 0.6 });
+    // Heraldic division (per pale - split vertically)
+    g.fill({ color: color2, alpha: 0.5 });
+    g.moveTo(x + 10, y); g.lineTo(x + 20, y); g.lineTo(x + 20, y + 16);
+    g.lineTo(x + 10, y + 24); g.closePath().fill();
+    // Inner field
+    g.fill({ color: color2, alpha: 0.3 });
     g.moveTo(x + 4, y + 3); g.lineTo(x + 16, y + 3); g.lineTo(x + 16, y + 13);
     g.lineTo(x + 10, y + 18); g.lineTo(x + 4, y + 13); g.closePath().fill();
-    g.fill({ color: accent }).circle(x + 10, y + 10, 3).fill();
-    g.fill({ color: WHITE, alpha: 0.2 }).circle(x + 8, y + 8, 2).fill();
-    g.stroke({ color: GOLD_DARK, width: 1 });
+    // Horizontal fess (band)
+    g.fill({ color: accent, alpha: 0.3 }).rect(x + 2, y + 8, 16, 3).fill();
+    // Central charge (star/circle)
+    g.fill({ color: accent, alpha: 0.8 }).circle(x + 10, y + 10, 3.5).fill();
+    g.fill({ color: WHITE, alpha: 0.3 }).circle(x + 10, y + 10, 2).fill();
+    // Specular highlight
+    g.fill({ color: WHITE, alpha: 0.2 }).circle(x + 7, y + 6, 3).fill();
+    // Border with double line
+    g.stroke({ color: GOLD_DARK, width: 1.2 });
     g.moveTo(x, y); g.lineTo(x + 20, y); g.lineTo(x + 20, y + 16);
     g.lineTo(x + 10, y + 24); g.lineTo(x, y + 16); g.closePath().stroke();
+    g.stroke({ color: GOLD, alpha: 0.3, width: 0.5 });
+    g.moveTo(x + 1, y + 1); g.lineTo(x + 19, y + 1); g.lineTo(x + 19, y + 15.5);
+    g.lineTo(x + 10, y + 23); g.lineTo(x + 1, y + 15.5); g.closePath().stroke();
   }
 
   // ---MATCH RESULT
