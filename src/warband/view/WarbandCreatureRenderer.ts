@@ -10,11 +10,152 @@ import { CREATURE_DEFS, type CreatureType } from "../config/CreatureDefs";
 
 // ---- Helpers ---------------------------------------------------------------
 
-function mat(color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0.05, ...opts });
+/** Base material — upgraded to MeshPhysicalMaterial for richer rendering. */
+function mat(color: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({ color, roughness: 0.75, metalness: 0.05, ...opts });
 }
 
-function cyl(rTop: number, rBot: number, h: number, seg = 8): THREE.CylinderGeometry {
+/** Organic skin/flesh material — subtle subsurface-like sheen for fleshy look. */
+function organicMat(color: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  const c = new THREE.Color(color);
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.6,
+    metalness: 0.0,
+    sheen: 0.2,
+    sheenColor: c.clone().multiplyScalar(1.4),
+    sheenRoughness: 0.75,
+    clearcoat: 0.05,
+    clearcoatRoughness: 0.9,
+    ...opts,
+  });
+}
+
+/** Fur / hair material — visible sheen simulating fur fiber highlights. */
+function furryMat(color: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  const c = new THREE.Color(color);
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.82,
+    metalness: 0.0,
+    sheen: 0.65,
+    sheenColor: c.clone().multiplyScalar(1.6),
+    sheenRoughness: 0.35,
+    ...opts,
+  });
+}
+
+/** Scaly / reptilian material — clearcoat iridescence for wet scale look. */
+function scalyMat(color: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.35,
+    metalness: 0.12,
+    clearcoat: 0.5,
+    clearcoatRoughness: 0.25,
+    iridescence: 0.35,
+    iridescenceIOR: 1.35,
+    ...opts,
+  });
+}
+
+/** Chitinous / insect shell material — glossy, hard surface. */
+function chitinMat(color: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.25,
+    metalness: 0.15,
+    clearcoat: 0.7,
+    clearcoatRoughness: 0.15,
+    ...opts,
+  });
+}
+
+/** Bark / wood material — rough, organic with subtle sheen. */
+function barkMaterial(color: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.92,
+    metalness: 0.0,
+    sheen: 0.08,
+    sheenRoughness: 0.9,
+    sheenColor: new THREE.Color(0x443322),
+    ...opts,
+  });
+}
+
+/** Molten / lava material — intense emissive glow with slight roughness variation. */
+function lavaMat(color: number, emissiveColor: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.5,
+    metalness: 0.1,
+    emissive: emissiveColor,
+    emissiveIntensity: 1.8,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.6,
+    ...opts,
+  });
+}
+
+/** Bone / ivory material — subtle pearlescent sheen. */
+function boneMaterial(color: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.5,
+    metalness: 0.05,
+    sheen: 0.3,
+    sheenColor: new THREE.Color(0xfffff0),
+    sheenRoughness: 0.5,
+    ...opts,
+  });
+}
+
+/** Feather material — anisotropic-like sheen for plumage highlights. */
+function featherMat(color: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  const c = new THREE.Color(color);
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.55,
+    metalness: 0.05,
+    sheen: 0.7,
+    sheenColor: c.clone().multiplyScalar(1.8),
+    sheenRoughness: 0.3,
+    iridescence: 0.15,
+    iridescenceIOR: 1.2,
+    ...opts,
+  });
+}
+
+/** Ghostly / ethereal material — translucent glow. */
+function etherealMat(color: number, emissiveColor: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.3,
+    metalness: 0.0,
+    emissive: emissiveColor,
+    emissiveIntensity: 1.2,
+    transparent: true,
+    opacity: 0.7,
+    transmission: 0.3,
+    thickness: 0.5,
+    ...opts,
+  });
+}
+
+/** Stone / rock material — rough with slight specular. */
+function stoneMat(color: number, opts: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.88,
+    metalness: 0.04,
+    sheen: 0.05,
+    sheenRoughness: 0.9,
+    ...opts,
+  });
+}
+
+function cyl(rTop: number, rBot: number, h: number, seg = 12): THREE.CylinderGeometry {
   return new THREE.CylinderGeometry(rTop, rBot, h, seg);
 }
 
@@ -442,545 +583,1024 @@ export class CreatureMesh {
   // ---- Troll builder -------------------------------------------------------
 
   private _buildTroll(): void {
-    const skinMat = mat(0x5a6b3a); // mossy green-brown
-    const darkMat = mat(0x3a4a2a);
-    const boneMat = mat(0xc8b890);
-    const eyeMat = mat(0xcc2200, { emissive: 0x441100 });
-    const scarMat = mat(0x4a5a2a);
-    const veinMat = mat(0x4e5c34);
+    const skinMat = organicMat(0x5a6b3a);        // mossy green-brown organic skin
+    const darkMat = organicMat(0x3a4a2a);
+    const underbelly = organicMat(0x6b7a4a);      // lighter underbelly
+    const boneM = boneMaterial(0xc8b890);
+    const eyeMat = mat(0xcc2200, { emissive: 0x661100, emissiveIntensity: 2.0 });
+    const scarMat = organicMat(0x6a4a4a, { roughness: 0.5 }); // pinkish scar tissue
+    const veinMat = organicMat(0x4e5c34);
+    const nailMat = boneMaterial(0x888866);
+    const wartMat = organicMat(0x4a5530, { roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.4 });
 
     // Torso — hunched, barrel-shaped
-    const torsoGeo = new THREE.SphereGeometry(1, 20, 16);
+    const torsoGeo = new THREE.SphereGeometry(1, 28, 22);
     const torso = new THREE.Mesh(torsoGeo, skinMat);
     torso.scale.set(0.55, 0.7, 0.45);
     torso.position.y = 2.2;
+    torso.castShadow = true;
     this._body.add(torso);
 
-    // Belly — potbelly
-    const bellyGeo = new THREE.SphereGeometry(1, 18, 14);
-    const belly = new THREE.Mesh(bellyGeo, skinMat);
+    // Belly — potbelly with lighter underbelly
+    const bellyGeo = new THREE.SphereGeometry(1, 24, 18);
+    const belly = new THREE.Mesh(bellyGeo, underbelly);
     belly.scale.set(0.5, 0.5, 0.42);
     belly.position.set(0, 1.8, 0.15);
+    belly.castShadow = true;
     this._body.add(belly);
 
     // Belly fold detail — skin crease under the gut
-    const bellyFoldGeo = new THREE.SphereGeometry(1, 16, 12);
+    const bellyFoldGeo = new THREE.SphereGeometry(1, 20, 14);
     const bellyFold = new THREE.Mesh(bellyFoldGeo, darkMat);
     bellyFold.scale.set(0.48, 0.06, 0.4);
     bellyFold.position.set(0, 1.55, 0.18);
     this._body.add(bellyFold);
 
-    // Hunch / upper back
-    const hunchGeo = new THREE.SphereGeometry(1, 18, 14);
+    // Second belly fold — upper crease
+    const bellyFold2Geo = new THREE.SphereGeometry(1, 18, 12);
+    const bellyFold2 = new THREE.Mesh(bellyFold2Geo, darkMat);
+    bellyFold2.scale.set(0.42, 0.04, 0.36);
+    bellyFold2.position.set(0, 1.95, 0.22);
+    this._body.add(bellyFold2);
+
+    // Navel
+    const navelGeo = new THREE.SphereGeometry(0.03, 12, 10);
+    const navel = new THREE.Mesh(navelGeo, darkMat);
+    navel.position.set(0, 1.82, 0.38);
+    navel.scale.set(1, 1.3, 0.4);
+    this._body.add(navel);
+
+    // Hunch / upper back — more pronounced
+    const hunchGeo = new THREE.SphereGeometry(1, 24, 18);
     const hunch = new THREE.Mesh(hunchGeo, skinMat);
-    hunch.scale.set(0.48, 0.35, 0.4);
+    hunch.scale.set(0.48, 0.38, 0.42);
     hunch.position.set(0, 2.7, -0.15);
+    hunch.castShadow = true;
     this._body.add(hunch);
 
-    // Spine bumps along back
-    for (let i = 0; i < 4; i++) {
-      const spineGeo = new THREE.SphereGeometry(0.04 + i * 0.005, 10, 8);
+    // Spine bumps along back — more vertebrae detail
+    for (let i = 0; i < 7; i++) {
+      const sz = 0.035 + i * 0.004;
+      const spineGeo = new THREE.SphereGeometry(sz, 12, 10);
       const spine = new THREE.Mesh(spineGeo, darkMat);
-      spine.position.set(0, 2.8 - i * 0.25, -0.25);
+      spine.position.set(0, 2.95 - i * 0.2, -0.28 + i * 0.01);
+      spine.scale.set(0.8, 1, 1.2);
       this._body.add(spine);
     }
 
-    // Chest muscle definition
+    // Ribcage definition — visible rib outlines under skin
+    for (let i = 0; i < 4; i++) {
+      for (const side of [-1, 1]) {
+        const ribGeo = new THREE.SphereGeometry(1, 14, 8);
+        const rib = new THREE.Mesh(ribGeo, veinMat);
+        rib.scale.set(0.03, 0.04, 0.18);
+        rib.position.set(side * 0.28, 2.5 - i * 0.12, 0.15 - i * 0.03);
+        rib.rotation.z = side * (0.3 + i * 0.08);
+        this._body.add(rib);
+      }
+    }
+
+    // Chest muscle definition — larger pectorals
     for (const side of [-1, 1]) {
-      const pectGeo = new THREE.SphereGeometry(1, 16, 12);
+      const pectGeo = new THREE.SphereGeometry(1, 20, 16);
       const pect = new THREE.Mesh(pectGeo, veinMat);
-      pect.scale.set(0.18, 0.12, 0.1);
+      pect.scale.set(0.2, 0.14, 0.12);
       pect.position.set(side * 0.2, 2.35, 0.3);
+      pect.castShadow = true;
       this._body.add(pect);
+    }
+
+    // Oblique muscle masses on sides
+    for (const side of [-1, 1]) {
+      const oblGeo = new THREE.SphereGeometry(1, 16, 12);
+      const obl = new THREE.Mesh(oblGeo, skinMat);
+      obl.scale.set(0.08, 0.25, 0.15);
+      obl.position.set(side * 0.42, 2.1, 0.0);
+      this._body.add(obl);
+    }
+
+    // Stretch marks / skin folds on torso
+    for (let i = 0; i < 4; i++) {
+      const foldGeo = new THREE.SphereGeometry(1, 10, 6);
+      const fold = new THREE.Mesh(foldGeo, darkMat);
+      fold.scale.set(0.25, 0.015, 0.02);
+      fold.position.set(0, 2.0 + i * 0.15, 0.42 - i * 0.02);
+      this._body.add(fold);
     }
 
     // Head — small relative to body, jutting forward
     this._head.position.set(0, 2.8, 0.25);
     this._body.add(this._head);
 
-    const headGeo = new THREE.SphereGeometry(1, 18, 14);
+    const headGeo = new THREE.SphereGeometry(1, 24, 18);
     const headMesh = new THREE.Mesh(headGeo, skinMat);
     headMesh.scale.set(0.22, 0.25, 0.24);
+    headMesh.castShadow = true;
     this._head.add(headMesh);
 
-    // Brow ridge
-    const browGeo = new THREE.SphereGeometry(1, 16, 12);
+    // Brow ridge — heavier, more primal
+    const browGeo = new THREE.SphereGeometry(1, 20, 14);
     const brow = new THREE.Mesh(browGeo, darkMat);
-    brow.scale.set(0.24, 0.08, 0.12);
+    brow.scale.set(0.26, 0.09, 0.14);
     brow.position.set(0, 0.12, 0.14);
     this._head.add(brow);
 
-    // Eyes — small, red
+    // Individual brow bumps over each eye
     for (const side of [-1, 1]) {
-      const eyeGeo = new THREE.SphereGeometry(0.04, 12, 10);
+      const browBumpGeo = new THREE.SphereGeometry(0.04, 12, 10);
+      const browBump = new THREE.Mesh(browBumpGeo, darkMat);
+      browBump.position.set(side * 0.1, 0.14, 0.18);
+      browBump.scale.set(1.2, 0.6, 0.8);
+      this._head.add(browBump);
+    }
+
+    // Eyes — small, red, deeply set with glow
+    for (const side of [-1, 1]) {
+      // Deep eye socket
+      const socketGeo = new THREE.SphereGeometry(0.05, 14, 12);
+      const socket = new THREE.Mesh(socketGeo, darkMat);
+      socket.position.set(side * 0.1, 0.08, 0.17);
+      socket.scale.set(1, 0.7, 0.5);
+      this._head.add(socket);
+
+      const eyeGeo = new THREE.SphereGeometry(0.04, 16, 14);
       const eye = new THREE.Mesh(eyeGeo, eyeMat);
       eye.position.set(side * 0.1, 0.08, 0.2);
       this._head.add(eye);
+
+      // Tiny pupil slit
+      const pupilGeo = new THREE.SphereGeometry(0.015, 10, 8);
+      const pupil = new THREE.Mesh(pupilGeo, mat(0x110000));
+      pupil.position.set(side * 0.1, 0.08, 0.235);
+      pupil.scale.set(0.5, 1.2, 0.3);
+      this._head.add(pupil);
     }
 
-    // Nostrils — dark pits on face
+    // Nostrils — dark pits with surrounding nostril bulge
+    const noseBridgeGeo = new THREE.SphereGeometry(0.06, 14, 12);
+    const noseBridge = new THREE.Mesh(noseBridgeGeo, skinMat);
+    noseBridge.position.set(0, 0.02, 0.22);
+    noseBridge.scale.set(1.2, 0.7, 0.8);
+    this._head.add(noseBridge);
     for (const side of [-1, 1]) {
-      const nostrilGeo = new THREE.SphereGeometry(0.02, 10, 8);
+      const nostrilGeo = new THREE.SphereGeometry(0.02, 12, 10);
       const nostril = new THREE.Mesh(nostrilGeo, darkMat);
-      nostril.position.set(side * 0.04, 0.0, 0.23);
+      nostril.position.set(side * 0.04, -0.01, 0.25);
       this._head.add(nostril);
     }
 
-    // Jaw / underbite
-    const jawGeo = new THREE.SphereGeometry(1, 16, 12);
+    // Jaw / underbite — heavier mandible
+    const jawGeo = new THREE.SphereGeometry(1, 20, 16);
     const jaw = new THREE.Mesh(jawGeo, skinMat);
-    jaw.scale.set(0.2, 0.12, 0.16);
+    jaw.scale.set(0.22, 0.13, 0.18);
     jaw.position.set(0, -0.1, 0.12);
+    jaw.castShadow = true;
     this._head.add(jaw);
 
-    // Chin wart
-    const chinWartGeo = new THREE.SphereGeometry(0.025, 10, 8);
-    const chinWart = new THREE.Mesh(chinWartGeo, darkMat);
-    chinWart.position.set(0.03, -0.16, 0.15);
-    this._head.add(chinWart);
-
-    // Tusks
+    // Jaw muscles (masseter) on sides
     for (const side of [-1, 1]) {
-      const tuskGeo = new THREE.ConeGeometry(0.025, 0.1, 12);
-      const tusk = new THREE.Mesh(tuskGeo, boneMat);
-      tusk.position.set(side * 0.1, -0.08, 0.18);
-      tusk.rotation.x = -0.3;
-      this._head.add(tusk);
+      const massGeo = new THREE.SphereGeometry(0.04, 12, 10);
+      const mass = new THREE.Mesh(massGeo, skinMat);
+      mass.position.set(side * 0.18, -0.02, 0.05);
+      mass.scale.set(0.8, 1.2, 0.6);
+      this._head.add(mass);
     }
 
-    // Ears — ragged, pointed
+    // Chin wart with hair
+    const chinWartGeo = new THREE.SphereGeometry(0.025, 12, 10);
+    const chinWart = new THREE.Mesh(chinWartGeo, wartMat);
+    chinWart.position.set(0.03, -0.16, 0.15);
+    this._head.add(chinWart);
+    // Wart hair
+    const wartHairGeo = cyl(0.003, 0.001, 0.04, 4);
+    const wartHair = new THREE.Mesh(wartHairGeo, darkMat);
+    wartHair.position.set(0.03, -0.13, 0.15);
+    this._head.add(wartHair);
+
+    // Tusks — larger, yellowed with wear marks
     for (const side of [-1, 1]) {
-      const earGeo = new THREE.ConeGeometry(0.06, 0.15, 12);
+      const tuskGeo = new THREE.ConeGeometry(0.028, 0.13, 14);
+      const tusk = new THREE.Mesh(tuskGeo, boneM);
+      tusk.position.set(side * 0.1, -0.08, 0.18);
+      tusk.rotation.x = -0.3;
+      tusk.rotation.z = side * 0.15;
+      tusk.castShadow = true;
+      this._head.add(tusk);
+
+      // Tusk root gum tissue
+      const gumGeo = new THREE.SphereGeometry(0.02, 10, 8);
+      const gum = new THREE.Mesh(gumGeo, organicMat(0x7a4444));
+      gum.position.set(side * 0.1, -0.05, 0.16);
+      this._head.add(gum);
+    }
+
+    // Ears — ragged, pointed with inner ear detail
+    for (const side of [-1, 1]) {
+      const earGeo = new THREE.ConeGeometry(0.06, 0.15, 14);
       const ear = new THREE.Mesh(earGeo, skinMat);
       ear.position.set(side * 0.22, 0.05, 0.0);
       ear.rotation.z = side * 0.6;
+      ear.castShadow = true;
       this._head.add(ear);
+
+      // Inner ear — darker, concave
+      const innerEarGeo = new THREE.ConeGeometry(0.035, 0.1, 12);
+      const innerEar = new THREE.Mesh(innerEarGeo, organicMat(0x6a4a4a));
+      innerEar.position.set(side * 0.21, 0.05, 0.025);
+      innerEar.rotation.z = side * 0.6;
+      this._head.add(innerEar);
+
+      // Ear notch (torn edge)
+      const notchGeo = new THREE.SphereGeometry(0.015, 8, 6);
+      const notch = new THREE.Mesh(notchGeo, darkMat);
+      notch.position.set(side * 0.28, 0.1, -0.01);
+      this._head.add(notch);
     }
 
-    // ---- Arms — long, ape-like ----
+    // Scraggly jaw beard / chin hair tufts
+    for (let i = 0; i < 4; i++) {
+      const beardGeo = cyl(0.008, 0.003, 0.06 + Math.random() * 0.04, 4);
+      const beard = new THREE.Mesh(beardGeo, organicMat(0x3a4a2a));
+      beard.position.set(-0.04 + i * 0.025, -0.18, 0.14);
+      beard.rotation.x = 0.2;
+      beard.rotation.z = (i - 1.5) * 0.15;
+      this._head.add(beard);
+    }
+
+    // ---- Arms — long, ape-like with more muscle definition ----
     for (const side of [-1, 1]) {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       arm.position.set(side * 0.6, 2.5, 0.0);
       this._body.add(arm);
 
-      // Shoulder muscle
-      const shoulderGeo = new THREE.SphereGeometry(0.16, 16, 12);
+      // Shoulder muscle — larger trapezius
+      const shoulderGeo = new THREE.SphereGeometry(0.18, 20, 16);
       const shoulder = new THREE.Mesh(shoulderGeo, skinMat);
       shoulder.position.set(0, 0.05, 0);
+      shoulder.scale.set(1.1, 0.9, 1.0);
+      shoulder.castShadow = true;
       arm.add(shoulder);
 
+      // Deltoid definition
+      const deltGeo = new THREE.SphereGeometry(0.1, 14, 12);
+      const delt = new THREE.Mesh(deltGeo, veinMat);
+      delt.position.set(side * 0.04, -0.05, 0.05);
+      delt.scale.set(1, 0.8, 0.7);
+      arm.add(delt);
+
       // Upper arm
-      const upperGeo = cyl(0.14, 0.12, 0.7, 14);
+      const upperGeo = cyl(0.14, 0.12, 0.7, 18);
       const upper = new THREE.Mesh(upperGeo, skinMat);
       upper.position.y = -0.35;
+      upper.castShadow = true;
       arm.add(upper);
 
-      // Bicep bulge
-      const bicepGeo = new THREE.SphereGeometry(0.08, 12, 10);
+      // Bicep bulge — more pronounced
+      const bicepGeo = new THREE.SphereGeometry(0.09, 16, 14);
       const bicep = new THREE.Mesh(bicepGeo, veinMat);
-      bicep.scale.set(1.0, 0.7, 0.8);
-      bicep.position.set(0, -0.25, 0.06);
+      bicep.scale.set(1.0, 0.8, 0.9);
+      bicep.position.set(0, -0.25, 0.07);
       arm.add(bicep);
 
-      // Forearm — thicker
-      const foreGeo = cyl(0.12, 0.1, 0.65, 14);
+      // Tricep (back of upper arm)
+      const tricepGeo = new THREE.SphereGeometry(0.07, 14, 12);
+      const tricep = new THREE.Mesh(tricepGeo, veinMat);
+      tricep.scale.set(0.9, 0.8, 0.7);
+      tricep.position.set(0, -0.3, -0.06);
+      arm.add(tricep);
+
+      // Elbow joint callus
+      const elbowGeo = new THREE.SphereGeometry(0.05, 12, 10);
+      const elbow = new THREE.Mesh(elbowGeo, darkMat);
+      elbow.position.set(0, -0.55, -0.04);
+      elbow.scale.set(0.8, 0.6, 1);
+      arm.add(elbow);
+
+      // Forearm — thicker with better muscle definition
+      const foreGeo = cyl(0.13, 0.1, 0.65, 18);
       const fore = new THREE.Mesh(foreGeo, skinMat);
       fore.position.y = -0.9;
+      fore.castShadow = true;
       arm.add(fore);
 
-      // Tendon detail on forearm
-      const tendonGeo = new THREE.SphereGeometry(1, 12, 10);
-      const tendon = new THREE.Mesh(tendonGeo, veinMat);
-      tendon.scale.set(0.04, 0.2, 0.03);
-      tendon.position.set(side * 0.06, -0.85, 0.05);
-      arm.add(tendon);
+      // Forearm muscle belly (brachioradialis)
+      const foreMusGeo = new THREE.SphereGeometry(0.06, 14, 12);
+      const foreMus = new THREE.Mesh(foreMusGeo, veinMat);
+      foreMus.scale.set(0.8, 1.2, 0.7);
+      foreMus.position.set(side * 0.04, -0.75, 0.04);
+      arm.add(foreMus);
 
-      // Fist — large, clublike
-      const fistGeo = new THREE.SphereGeometry(0.14, 16, 12);
+      // Prominent veins on forearm
+      for (let v = 0; v < 2; v++) {
+        const veinGeo = cyl(0.008, 0.006, 0.3, 6);
+        const vein = new THREE.Mesh(veinGeo, veinMat);
+        vein.position.set(side * (0.04 + v * 0.03), -0.8 + v * 0.1, 0.06 - v * 0.03);
+        vein.rotation.z = (v - 0.5) * 0.2;
+        arm.add(vein);
+      }
+
+      // Fist — large, clublike with finger definition
+      const fistGeo = new THREE.SphereGeometry(0.14, 20, 16);
       const fist = new THREE.Mesh(fistGeo, darkMat);
       fist.position.y = -1.3;
+      fist.castShadow = true;
       arm.add(fist);
 
-      // Knuckle bumps
+      // Knuckle bumps with nails
       for (let k = -1; k <= 1; k++) {
-        const knuckleGeo = new THREE.SphereGeometry(0.03, 10, 8);
+        const knuckleGeo = new THREE.SphereGeometry(0.035, 12, 10);
         const knuckle = new THREE.Mesh(knuckleGeo, darkMat);
         knuckle.position.set(k * 0.05, -1.35, 0.1);
         arm.add(knuckle);
+
+        // Thick dirty nails
+        const nailGeo = new THREE.BoxGeometry(0.025, 0.015, 0.02);
+        const nail = new THREE.Mesh(nailGeo, nailMat);
+        nail.position.set(k * 0.05, -1.37, 0.125);
+        arm.add(nail);
       }
+
+      // Wrist bone protrusion
+      const wristGeo = new THREE.SphereGeometry(0.04, 10, 8);
+      const wrist = new THREE.Mesh(wristGeo, skinMat);
+      wrist.position.set(side * 0.06, -1.15, 0);
+      wrist.scale.set(0.6, 0.5, 0.8);
+      arm.add(wrist);
     }
 
-    // Club in right hand
-    const clubGeo = cyl(0.06, 0.1, 1.0, 12);
-    const club = new THREE.Mesh(clubGeo, mat(0x5c3317));
+    // Club in right hand — more detailed with wood grain
+    const clubWoodMat = mat(0x5c3317, { roughness: 0.9, sheen: 0.05, sheenRoughness: 0.9 });
+    const clubGeo = cyl(0.06, 0.11, 1.0, 14);
+    const club = new THREE.Mesh(clubGeo, clubWoodMat);
     club.position.y = -1.7;
+    club.castShadow = true;
     this._rightArm.add(club);
 
-    // Club knob
-    const knobGeo = new THREE.SphereGeometry(0.13, 16, 12);
-    const knob = new THREE.Mesh(knobGeo, mat(0x4a2810));
+    // Club knob — gnarly
+    const knobGeo = new THREE.SphereGeometry(0.14, 20, 16);
+    const knob = new THREE.Mesh(knobGeo, mat(0x4a2810, { roughness: 0.85 }));
     knob.position.y = -2.2;
+    knob.castShadow = true;
     this._rightArm.add(knob);
 
-    // ---- Legs — stumpy, thick ----
+    // Club studs (embedded rocks/nails)
+    for (let i = 0; i < 5; i++) {
+      const studGeo = new THREE.SphereGeometry(0.02, 8, 8);
+      const stud = new THREE.Mesh(studGeo, stoneMat(0x555555));
+      const ang = i * Math.PI * 2 / 5;
+      stud.position.set(Math.cos(ang) * 0.12, -2.15 + Math.sin(ang * 2) * 0.05, Math.sin(ang) * 0.12);
+      this._rightArm.add(stud);
+    }
+
+    // Club wood grain lines
+    for (let i = 0; i < 3; i++) {
+      const grainGeo = cyl(0.003, 0.003, 0.8, 4);
+      const grain = new THREE.Mesh(grainGeo, mat(0x3a1a08));
+      const a = (i / 3) * Math.PI * 2;
+      grain.position.set(Math.cos(a) * 0.08, -1.7, Math.sin(a) * 0.08);
+      this._rightArm.add(grain);
+    }
+
+    // ---- Legs — stumpy, thick with more detail ----
     for (const side of [-1, 1]) {
       const leg = side === -1 ? this._leftLeg : this._rightLeg;
       leg.position.set(side * 0.28, 1.3, 0.0);
       this._body.add(leg);
 
-      // Thigh
-      const thighGeo = cyl(0.18, 0.14, 0.65, 14);
+      // Thigh — beefier
+      const thighGeo = cyl(0.19, 0.14, 0.65, 18);
       const thigh = new THREE.Mesh(thighGeo, skinMat);
       thigh.position.y = -0.32;
+      thigh.castShadow = true;
       leg.add(thigh);
 
-      // Knee bump
-      const kneeGeo = new THREE.SphereGeometry(0.09, 12, 10);
-      const knee = new THREE.Mesh(kneeGeo, skinMat);
-      knee.position.set(0, -0.6, 0.06);
+      // Inner thigh muscle
+      const innerThighGeo = new THREE.SphereGeometry(0.08, 14, 12);
+      const innerThigh = new THREE.Mesh(innerThighGeo, veinMat);
+      innerThigh.scale.set(0.7, 1.2, 0.8);
+      innerThigh.position.set(-side * 0.06, -0.25, 0.02);
+      leg.add(innerThigh);
+
+      // Knee bump — rougher, callused
+      const kneeGeo = new THREE.SphereGeometry(0.1, 16, 14);
+      const knee = new THREE.Mesh(kneeGeo, darkMat);
+      knee.position.set(0, -0.6, 0.07);
+      knee.scale.set(1, 0.8, 0.9);
       leg.add(knee);
 
-      // Shin
-      const shinGeo = cyl(0.14, 0.1, 0.55, 14);
+      // Shin — with shin bone ridge
+      const shinGeo = cyl(0.14, 0.1, 0.55, 18);
       const shin = new THREE.Mesh(shinGeo, skinMat);
       shin.position.y = -0.8;
+      shin.castShadow = true;
       leg.add(shin);
 
-      // Calf muscle
-      const calfGeo = new THREE.SphereGeometry(0.07, 12, 10);
+      // Shin bone ridge (visible through skin)
+      const shinBoneGeo = new THREE.SphereGeometry(1, 10, 8);
+      const shinBone = new THREE.Mesh(shinBoneGeo, veinMat);
+      shinBone.scale.set(0.02, 0.2, 0.03);
+      shinBone.position.set(0, -0.8, 0.1);
+      leg.add(shinBone);
+
+      // Calf muscle — larger
+      const calfGeo = new THREE.SphereGeometry(0.08, 16, 14);
       const calf = new THREE.Mesh(calfGeo, veinMat);
-      calf.scale.set(0.8, 1.2, 0.8);
+      calf.scale.set(0.9, 1.3, 0.9);
       calf.position.set(0, -0.75, -0.06);
       leg.add(calf);
 
-      // Foot
-      const footGeo = new THREE.SphereGeometry(1, 16, 12);
+      // Ankle tendon
+      const achillesGeo = cyl(0.02, 0.015, 0.15, 6);
+      const achilles = new THREE.Mesh(achillesGeo, veinMat);
+      achilles.position.set(0, -1.0, -0.06);
+      leg.add(achilles);
+
+      // Foot — wider, with toe bumps
+      const footGeo = new THREE.SphereGeometry(1, 20, 16);
       const foot = new THREE.Mesh(footGeo, darkMat);
-      foot.scale.set(0.13, 0.08, 0.18);
+      foot.scale.set(0.14, 0.08, 0.2);
       foot.position.set(0, -1.12, 0.06);
+      foot.castShadow = true;
       leg.add(foot);
+
+      // Toe bumps with nails
+      for (let t = -1; t <= 1; t++) {
+        const toeGeo = new THREE.SphereGeometry(0.03, 10, 8);
+        const toe = new THREE.Mesh(toeGeo, darkMat);
+        toe.position.set(t * 0.05, -1.14, 0.18);
+        leg.add(toe);
+
+        const toeNailGeo = new THREE.BoxGeometry(0.02, 0.01, 0.015);
+        const toeNail = new THREE.Mesh(toeNailGeo, nailMat);
+        toeNail.position.set(t * 0.05, -1.14, 0.2);
+        leg.add(toeNail);
+      }
     }
 
-    // Warts / skin detail
-    for (let i = 0; i < 6; i++) {
-      const wartGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 10, 8);
-      const wart = new THREE.Mesh(wartGeo, darkMat);
+    // Warts / skin detail — more varied, some with hair
+    for (let i = 0; i < 10; i++) {
+      const sz = 0.03 + Math.random() * 0.04;
+      const wartGeo = new THREE.SphereGeometry(sz, 12, 10);
+      const wart = new THREE.Mesh(wartGeo, wartMat);
       const angle = Math.random() * Math.PI * 2;
+      const y = 1.5 + Math.random() * 1.5;
       wart.position.set(
-        Math.cos(angle) * (0.35 + Math.random() * 0.15),
-        1.8 + Math.random() * 1.0,
-        Math.sin(angle) * (0.3 + Math.random() * 0.1),
+        Math.cos(angle) * (0.32 + Math.random() * 0.18),
+        y,
+        Math.sin(angle) * (0.28 + Math.random() * 0.12),
       );
       this._body.add(wart);
+
+      // Some warts sprout coarse hair
+      if (i % 3 === 0) {
+        const hairGeo = cyl(0.003, 0.001, 0.04, 4);
+        const hair = new THREE.Mesh(hairGeo, darkMat);
+        hair.position.copy(wart.position);
+        hair.position.y += sz + 0.01;
+        hair.rotation.z = Math.random() * 0.5 - 0.25;
+        this._body.add(hair);
+      }
     }
 
-    // Scar lines on torso — color-shifted overlays for depth
-    for (let i = 0; i < 3; i++) {
-      const scarGeo = new THREE.SphereGeometry(1, 12, 10);
+    // Scar lines on torso — raised pinkish tissue
+    for (let i = 0; i < 4; i++) {
+      const scarGeo = new THREE.SphereGeometry(1, 14, 10);
       const scar = new THREE.Mesh(scarGeo, scarMat);
-      scar.scale.set(0.03, 0.15, 0.02);
-      const ang = -0.4 + i * 0.4;
-      scar.position.set(Math.sin(ang) * 0.4, 2.0 + i * 0.2, Math.cos(ang) * 0.35);
-      scar.rotation.z = 0.3 + i * 0.2;
+      scar.scale.set(0.035, 0.18, 0.025);
+      const ang = -0.5 + i * 0.35;
+      scar.position.set(Math.sin(ang) * 0.42, 1.9 + i * 0.22, Math.cos(ang) * 0.36);
+      scar.rotation.z = 0.2 + i * 0.25;
       this._body.add(scar);
     }
+
+    // Rope/leather strap across torso (bandolier)
+    const strapMat = mat(0x4a3018, { roughness: 0.9 });
+    const strapGeo = new THREE.TorusGeometry(0.45, 0.015, 6, 24);
+    const strap = new THREE.Mesh(strapGeo, strapMat);
+    strap.position.set(0, 2.3, 0);
+    strap.rotation.x = Math.PI / 2;
+    strap.rotation.z = 0.5;
+    this._body.add(strap);
   }
 
   // ---- Cyclops builder -----------------------------------------------------
 
   private _buildCyclops(): void {
-    const skinMat = mat(0x8b7355); // sandy/stone
-    const darkMat = mat(0x6b5335);
-    const boneMat = mat(0xd4c4a0);
-    const eyeMat = mat(0xffcc00, { emissive: 0x884400 });
-    const wrinkleMat = mat(0x7a6345);
-    const veinMat = mat(0x7b6040);
+    const skinMat = organicMat(0x8b7355);          // sandy/stone organic skin
+    const darkMat = organicMat(0x6b5335);
+    const boneM = boneMaterial(0xd4c4a0);
+    const eyeMat = mat(0xffcc00, { emissive: 0xcc8800, emissiveIntensity: 2.5 });
+    const wrinkleMat = organicMat(0x7a6345);
+    const veinMat = organicMat(0x7b6040);
+    const scarTissueMat = organicMat(0x8a6a5a, { roughness: 0.5 });
+    const callMat = organicMat(0x9a8060, { roughness: 0.5, clearcoat: 0.15 });
+    const nailMat = boneMaterial(0x999977);
 
     // Torso — massive, broad-shouldered
-    const torsoGeo = new THREE.SphereGeometry(1, 22, 18);
+    const torsoGeo = new THREE.SphereGeometry(1, 28, 22);
     const torso = new THREE.Mesh(torsoGeo, skinMat);
     torso.scale.set(0.75, 0.9, 0.6);
     torso.position.y = 3.0;
+    torso.castShadow = true;
     this._body.add(torso);
 
-    // Chest muscles
+    // Upper back hump / trapezius mass
+    const trapGeo = new THREE.SphereGeometry(1, 22, 18);
+    const trap = new THREE.Mesh(trapGeo, skinMat);
+    trap.scale.set(0.55, 0.35, 0.45);
+    trap.position.set(0, 3.65, -0.15);
+    trap.castShadow = true;
+    this._body.add(trap);
+
+    // Chest muscles — massive pecs
     for (const side of [-1, 1]) {
-      const pectGeo = new THREE.SphereGeometry(1, 18, 14);
+      const pectGeo = new THREE.SphereGeometry(1, 22, 18);
       const pect = new THREE.Mesh(pectGeo, skinMat);
-      pect.scale.set(0.3, 0.2, 0.2);
+      pect.scale.set(0.3, 0.22, 0.22);
       pect.position.set(side * 0.25, 3.2, 0.4);
+      pect.castShadow = true;
       this._body.add(pect);
+
+      // Nipple detail
+      const nipGeo = new THREE.SphereGeometry(0.02, 10, 8);
+      const nip = new THREE.Mesh(nipGeo, darkMat);
+      nip.position.set(side * 0.28, 3.1, 0.5);
+      this._body.add(nip);
     }
 
-    // Abdominal muscle ridges
-    for (let i = 0; i < 3; i++) {
+    // Abdominal muscle ridges — more defined
+    for (let i = 0; i < 4; i++) {
       for (const side of [-1, 1]) {
-        const abGeo = new THREE.SphereGeometry(1, 14, 10);
+        const abGeo = new THREE.SphereGeometry(1, 18, 14);
         const ab = new THREE.Mesh(abGeo, wrinkleMat);
-        ab.scale.set(0.12, 0.08, 0.06);
-        ab.position.set(side * 0.12, 2.7 - i * 0.2, 0.42);
+        ab.scale.set(0.13, 0.09, 0.07);
+        ab.position.set(side * 0.12, 2.75 - i * 0.18, 0.44);
         this._body.add(ab);
       }
+      // Linea alba (center line)
+      const lineGeo = new THREE.SphereGeometry(1, 8, 6);
+      const line = new THREE.Mesh(lineGeo, wrinkleMat);
+      line.scale.set(0.015, 0.06, 0.04);
+      line.position.set(0, 2.75 - i * 0.18, 0.46);
+      this._body.add(line);
     }
 
-    // Belly
-    const bellyGeo = new THREE.SphereGeometry(1, 18, 14);
+    // Belly — more pronounced
+    const bellyGeo = new THREE.SphereGeometry(1, 24, 18);
     const belly = new THREE.Mesh(bellyGeo, skinMat);
-    belly.scale.set(0.6, 0.55, 0.5);
+    belly.scale.set(0.62, 0.56, 0.52);
     belly.position.set(0, 2.4, 0.1);
+    belly.castShadow = true;
     this._body.add(belly);
+
+    // Oblique muscles on sides
+    for (const side of [-1, 1]) {
+      const oblGeo = new THREE.SphereGeometry(1, 16, 12);
+      const obl = new THREE.Mesh(oblGeo, wrinkleMat);
+      obl.scale.set(0.1, 0.3, 0.18);
+      obl.position.set(side * 0.58, 2.8, 0.0);
+      this._body.add(obl);
+    }
+
+    // Spine bumps along back
+    for (let i = 0; i < 6; i++) {
+      const spGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const sp = new THREE.Mesh(spGeo, darkMat);
+      sp.position.set(0, 3.6 - i * 0.22, -0.42 + i * 0.02);
+      this._body.add(sp);
+    }
 
     // Head — large, single-eyed
     this._head.position.set(0, 4.0, 0.15);
     this._body.add(this._head);
 
-    const headGeo = new THREE.SphereGeometry(1, 20, 16);
+    const headGeo = new THREE.SphereGeometry(1, 26, 20);
     const headMesh = new THREE.Mesh(headGeo, skinMat);
     headMesh.scale.set(0.35, 0.38, 0.33);
+    headMesh.castShadow = true;
     this._head.add(headMesh);
 
-    // Single great eye — centered
-    const eyeSocketGeo = new THREE.SphereGeometry(1, 18, 14);
+    // Single great eye — centered with more detail
+    const eyeSocketGeo = new THREE.SphereGeometry(1, 22, 18);
     const eyeSocket = new THREE.Mesh(eyeSocketGeo, darkMat);
-    eyeSocket.scale.set(0.15, 0.12, 0.08);
+    eyeSocket.scale.set(0.16, 0.13, 0.09);
     eyeSocket.position.set(0, 0.08, 0.28);
     this._head.add(eyeSocket);
 
-    const eyeGeo = new THREE.SphereGeometry(0.09, 18, 14);
-    const eye = new THREE.Mesh(eyeGeo, eyeMat);
-    eye.position.set(0, 0.08, 0.3);
-    this._head.add(eye);
+    // Eye sclera (white)
+    const scleraGeo = new THREE.SphereGeometry(0.1, 22, 18);
+    const sclera = new THREE.Mesh(scleraGeo, mat(0xeeeedd, { roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }));
+    sclera.position.set(0, 0.08, 0.29);
+    this._head.add(sclera);
 
-    // Pupil
-    const pupilGeo = new THREE.SphereGeometry(0.04, 14, 12);
-    const pupil = new THREE.Mesh(pupilGeo, mat(0x111111));
+    // Iris
+    const irisGeo = new THREE.SphereGeometry(0.065, 20, 16);
+    const iris = new THREE.Mesh(irisGeo, eyeMat);
+    iris.position.set(0, 0.08, 0.34);
+    this._head.add(iris);
+
+    // Pupil — vertical slit
+    const pupilGeo = new THREE.SphereGeometry(0.035, 16, 14);
+    const pupil = new THREE.Mesh(pupilGeo, mat(0x111100));
     pupil.position.set(0, 0.08, 0.38);
+    pupil.scale.set(0.4, 1.2, 0.3);
     this._head.add(pupil);
 
-    // Brow ridge — heavy
-    const browGeo = new THREE.SphereGeometry(1, 18, 12);
+    // Eye highlight (specular dot)
+    const highlightGeo = new THREE.SphereGeometry(0.015, 10, 10);
+    const highlight = new THREE.Mesh(highlightGeo, mat(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.5 }));
+    highlight.position.set(0.03, 0.1, 0.39);
+    this._head.add(highlight);
+
+    // Under-eye bags / wrinkle ring around eye
+    const eyeRingGeo = new THREE.TorusGeometry(0.11, 0.015, 8, 20);
+    const eyeRing = new THREE.Mesh(eyeRingGeo, wrinkleMat);
+    eyeRing.position.set(0, 0.08, 0.27);
+    this._head.add(eyeRing);
+
+    // Brow ridge — heavier, more primal
+    const browGeo = new THREE.SphereGeometry(1, 22, 16);
     const brow = new THREE.Mesh(browGeo, skinMat);
-    brow.scale.set(0.36, 0.1, 0.15);
-    brow.position.set(0, 0.2, 0.2);
+    brow.scale.set(0.38, 0.11, 0.16);
+    brow.position.set(0, 0.22, 0.2);
     this._head.add(brow);
 
-    // Brow wrinkle lines
-    for (let i = 0; i < 3; i++) {
-      const wrinkleGeo = new THREE.SphereGeometry(1, 12, 10);
+    // Brow wrinkle lines — deeper
+    for (let i = 0; i < 4; i++) {
+      const wrinkleGeo = new THREE.SphereGeometry(1, 14, 10);
       const wrinkle = new THREE.Mesh(wrinkleGeo, wrinkleMat);
-      wrinkle.scale.set(0.28 - i * 0.04, 0.015, 0.04);
-      wrinkle.position.set(0, 0.26 + i * 0.04, 0.22);
+      wrinkle.scale.set(0.3 - i * 0.04, 0.018, 0.05);
+      wrinkle.position.set(0, 0.27 + i * 0.04, 0.23);
       this._head.add(wrinkle);
     }
 
-    // Nose — broad
-    const noseGeo = new THREE.SphereGeometry(1, 16, 12);
+    // Nose — broad with nostrils
+    const noseGeo = new THREE.SphereGeometry(1, 20, 16);
     const nose = new THREE.Mesh(noseGeo, skinMat);
-    nose.scale.set(0.08, 0.1, 0.1);
+    nose.scale.set(0.09, 0.11, 0.11);
     nose.position.set(0, -0.05, 0.3);
     this._head.add(nose);
 
-    // Nostrils
+    // Nostrils — larger
     for (const side of [-1, 1]) {
-      const nostrilGeo = new THREE.SphereGeometry(0.02, 10, 8);
+      const nostrilGeo = new THREE.SphereGeometry(0.025, 12, 10);
       const nostril = new THREE.Mesh(nostrilGeo, darkMat);
-      nostril.position.set(side * 0.04, -0.08, 0.35);
+      nostril.position.set(side * 0.045, -0.09, 0.36);
       this._head.add(nostril);
     }
 
-    // Jaw — heavy, wide
-    const jawGeo = new THREE.SphereGeometry(1, 18, 14);
+    // Nasolabial folds (nose to mouth wrinkles)
+    for (const side of [-1, 1]) {
+      const nlGeo = new THREE.SphereGeometry(1, 10, 8);
+      const nl = new THREE.Mesh(nlGeo, wrinkleMat);
+      nl.scale.set(0.015, 0.1, 0.03);
+      nl.position.set(side * 0.06, -0.12, 0.3);
+      nl.rotation.z = side * 0.2;
+      this._head.add(nl);
+    }
+
+    // Jaw — heavy, wide with mandible definition
+    const jawGeo = new THREE.SphereGeometry(1, 22, 18);
     const jaw = new THREE.Mesh(jawGeo, skinMat);
-    jaw.scale.set(0.32, 0.18, 0.22);
+    jaw.scale.set(0.34, 0.19, 0.24);
     jaw.position.set(0, -0.2, 0.1);
+    jaw.castShadow = true;
     this._head.add(jaw);
 
-    // Teeth
+    // Jaw angle (masseter muscle)
+    for (const side of [-1, 1]) {
+      const massGeo = new THREE.SphereGeometry(0.06, 12, 10);
+      const mass = new THREE.Mesh(massGeo, skinMat);
+      mass.position.set(side * 0.28, -0.12, 0.05);
+      mass.scale.set(0.7, 1, 0.6);
+      this._head.add(mass);
+    }
+
+    // Chin cleft
+    const chinGeo = new THREE.SphereGeometry(0.04, 12, 10);
+    const chin = new THREE.Mesh(chinGeo, skinMat);
+    chin.position.set(0, -0.32, 0.18);
+    chin.scale.set(1.2, 0.8, 0.6);
+    this._head.add(chin);
+
+    // Teeth — larger, more varied
     for (let i = -2; i <= 2; i++) {
-      const toothGeo = new THREE.ConeGeometry(0.02, 0.06, 10);
-      const tooth = new THREE.Mesh(toothGeo, boneMat);
-      tooth.position.set(i * 0.06, -0.28, 0.18);
+      const sz = 0.02 + Math.abs(i) * 0.005;
+      const toothGeo = new THREE.ConeGeometry(sz, 0.07 + Math.abs(i) * 0.01, 12);
+      const tooth = new THREE.Mesh(toothGeo, boneM);
+      tooth.position.set(i * 0.06, -0.29, 0.18);
       tooth.rotation.x = Math.PI;
+      tooth.castShadow = true;
+      this._head.add(tooth);
+    }
+    // Upper teeth
+    for (let i = -2; i <= 2; i++) {
+      const toothGeo = new THREE.ConeGeometry(0.015, 0.04, 10);
+      const tooth = new THREE.Mesh(toothGeo, boneM);
+      tooth.position.set(i * 0.055, -0.22, 0.2);
       this._head.add(tooth);
     }
 
-    // Ears
+    // Ears — cauliflower, thick
     for (const side of [-1, 1]) {
-      const earGeo = new THREE.SphereGeometry(1, 16, 12);
+      const earGeo = new THREE.SphereGeometry(1, 18, 14);
       const ear = new THREE.Mesh(earGeo, skinMat);
-      ear.scale.set(0.06, 0.12, 0.1);
+      ear.scale.set(0.07, 0.13, 0.11);
       ear.position.set(side * 0.33, 0.05, 0.0);
       this._head.add(ear);
+
+      // Inner ear
+      const innerGeo = new THREE.SphereGeometry(0.04, 12, 10);
+      const inner = new THREE.Mesh(innerGeo, darkMat);
+      inner.position.set(side * 0.31, 0.05, 0.04);
+      this._head.add(inner);
     }
 
-    // ---- Arms — massive ----
+    // Sparse head hair / stubble
+    for (let i = 0; i < 5; i++) {
+      const strandGeo = cyl(0.008, 0.003, 0.08, 4);
+      const strand = new THREE.Mesh(strandGeo, darkMat);
+      strand.position.set(
+        (Math.random() - 0.5) * 0.2,
+        0.3 + Math.random() * 0.1,
+        -0.1 + Math.random() * 0.1,
+      );
+      strand.rotation.z = (Math.random() - 0.5) * 0.5;
+      this._head.add(strand);
+    }
+
+    // ---- Arms — massive with more anatomical detail ----
     for (const side of [-1, 1]) {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       arm.position.set(side * 0.8, 3.5, 0.0);
       this._body.add(arm);
 
-      // Shoulder
-      const shoulderGeo = new THREE.SphereGeometry(0.2, 16, 14);
+      // Shoulder — deltoid muscle group
+      const shoulderGeo = new THREE.SphereGeometry(0.22, 20, 18);
       const shoulder = new THREE.Mesh(shoulderGeo, skinMat);
+      shoulder.castShadow = true;
       arm.add(shoulder);
 
+      // Rear deltoid
+      const rearDeltGeo = new THREE.SphereGeometry(0.12, 14, 12);
+      const rearDelt = new THREE.Mesh(rearDeltGeo, veinMat);
+      rearDelt.position.set(0, -0.05, -0.08);
+      rearDelt.scale.set(1, 0.8, 0.7);
+      arm.add(rearDelt);
+
       // Upper arm
-      const upperGeo = cyl(0.18, 0.15, 0.9, 14);
+      const upperGeo = cyl(0.18, 0.15, 0.9, 20);
       const upper = new THREE.Mesh(upperGeo, skinMat);
       upper.position.y = -0.45;
+      upper.castShadow = true;
       arm.add(upper);
 
-      // Bicep muscle bulge
-      const bicepGeo = new THREE.SphereGeometry(0.1, 14, 12);
+      // Bicep muscle bulge — more defined
+      const bicepGeo = new THREE.SphereGeometry(0.11, 18, 16);
       const bicep = new THREE.Mesh(bicepGeo, veinMat);
-      bicep.scale.set(1.0, 0.7, 0.8);
+      bicep.scale.set(1.0, 0.8, 0.9);
       bicep.position.set(0, -0.35, 0.08);
       arm.add(bicep);
 
-      // Forearm
-      const foreGeo = cyl(0.15, 0.12, 0.85, 14);
-      const fore = new THREE.Mesh(foreGeo, skinMat);
-      fore.position.y = -1.2;
-      arm.add(fore);
+      // Tricep horseshoe
+      const tricepGeo = new THREE.SphereGeometry(0.08, 14, 12);
+      const tricep = new THREE.Mesh(tricepGeo, veinMat);
+      tricep.scale.set(0.9, 0.9, 0.7);
+      tricep.position.set(0, -0.4, -0.06);
+      arm.add(tricep);
 
-      // Forearm vein detail
-      const foreVeinGeo = new THREE.SphereGeometry(1, 12, 10);
-      const foreVein = new THREE.Mesh(foreVeinGeo, veinMat);
-      foreVein.scale.set(0.03, 0.25, 0.02);
-      foreVein.position.set(side * 0.07, -1.1, 0.06);
-      arm.add(foreVein);
-
-      // Elbow bump
-      const elbowGeo = new THREE.SphereGeometry(0.08, 12, 10);
-      const elbow = new THREE.Mesh(elbowGeo, skinMat);
+      // Elbow — callused
+      const elbowGeo = new THREE.SphereGeometry(0.09, 14, 12);
+      const elbow = new THREE.Mesh(elbowGeo, callMat);
       elbow.position.set(0, -0.85, -0.06);
       arm.add(elbow);
 
-      // Hand
-      const handGeo = new THREE.SphereGeometry(0.16, 16, 12);
+      // Forearm with muscle definition
+      const foreGeo = cyl(0.15, 0.12, 0.85, 20);
+      const fore = new THREE.Mesh(foreGeo, skinMat);
+      fore.position.y = -1.2;
+      fore.castShadow = true;
+      arm.add(fore);
+
+      // Forearm muscle belly
+      const foreMusGeo = new THREE.SphereGeometry(0.07, 14, 12);
+      const foreMus = new THREE.Mesh(foreMusGeo, veinMat);
+      foreMus.scale.set(0.9, 1.0, 0.7);
+      foreMus.position.set(0, -1.0, 0.06);
+      arm.add(foreMus);
+
+      // Prominent veins
+      for (let v = 0; v < 3; v++) {
+        const veinGeo = cyl(0.008, 0.005, 0.35, 6);
+        const vein = new THREE.Mesh(veinGeo, veinMat);
+        vein.position.set(side * (0.05 + v * 0.025), -1.0 + v * 0.12, 0.07 - v * 0.04);
+        vein.rotation.z = (v - 1) * 0.15;
+        arm.add(vein);
+      }
+
+      // Hand — massive with finger articulation
+      const handGeo = new THREE.SphereGeometry(0.16, 20, 16);
       const hand = new THREE.Mesh(handGeo, darkMat);
       hand.position.y = -1.7;
+      hand.castShadow = true;
       arm.add(hand);
 
-      // Knuckle ridges
-      for (let k = -1; k <= 1; k++) {
-        const knuckleGeo = new THREE.SphereGeometry(0.035, 10, 8);
+      // Individual finger knuckles
+      for (let k = -2; k <= 1; k++) {
+        const knuckleGeo = new THREE.SphereGeometry(0.035, 12, 10);
         const knuckle = new THREE.Mesh(knuckleGeo, darkMat);
-        knuckle.position.set(k * 0.06, -1.76, 0.1);
+        knuckle.position.set(k * 0.045 + 0.02, -1.76, 0.1);
         arm.add(knuckle);
+
+        // Fingernail
+        const nailGeo = new THREE.BoxGeometry(0.025, 0.012, 0.018);
+        const nail = new THREE.Mesh(nailGeo, nailMat);
+        nail.position.set(k * 0.045 + 0.02, -1.78, 0.13);
+        arm.add(nail);
       }
+
+      // Wrist bone protrusion
+      const wristGeo = new THREE.SphereGeometry(0.045, 10, 8);
+      const wrist = new THREE.Mesh(wristGeo, skinMat);
+      wrist.position.set(side * 0.08, -1.55, 0);
+      wrist.scale.set(0.6, 0.5, 0.8);
+      arm.add(wrist);
     }
 
-    // Boulder in right hand
-    const boulderGeo = new THREE.SphereGeometry(0.25, 18, 14);
-    const boulder = new THREE.Mesh(boulderGeo, mat(0x888888, { roughness: 0.9 }));
+    // Boulder in right hand — more realistic rock
+    const boulderMat = stoneMat(0x888888);
+    const boulderGeo = new THREE.SphereGeometry(0.26, 22, 18);
+    const boulder = new THREE.Mesh(boulderGeo, boulderMat);
     boulder.position.y = -1.95;
+    boulder.scale.set(1, 0.85, 0.9);
+    boulder.castShadow = true;
     this._rightArm.add(boulder);
 
-    // Boulder cracks / texture detail
-    for (let i = 0; i < 4; i++) {
+    // Boulder surface detail (facets, bumps)
+    for (let i = 0; i < 8; i++) {
+      const bumpGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 10, 8);
+      const bump = new THREE.Mesh(bumpGeo, stoneMat(0x777777));
+      const a = (i / 8) * Math.PI * 2;
+      bump.position.set(
+        Math.cos(a) * 0.18,
+        -1.95 + Math.sin(a * 1.5) * 0.12,
+        Math.sin(a) * 0.18,
+      );
+      this._rightArm.add(bump);
+    }
+
+    // Boulder cracks — deeper
+    for (let i = 0; i < 5; i++) {
       const crackGeo = new THREE.SphereGeometry(1, 10, 8);
-      const crack = new THREE.Mesh(crackGeo, mat(0x666666, { roughness: 1.0 }));
-      const a = (i / 4) * Math.PI * 2;
-      crack.scale.set(0.02, 0.08, 0.02);
-      crack.position.set(Math.cos(a) * 0.15, -1.95 + Math.sin(a) * 0.1, Math.sin(a) * 0.15);
+      const crack = new THREE.Mesh(crackGeo, stoneMat(0x555555));
+      const a = (i / 5) * Math.PI * 2;
+      crack.scale.set(0.015, 0.1, 0.015);
+      crack.position.set(Math.cos(a) * 0.17, -1.95 + Math.sin(a) * 0.12, Math.sin(a) * 0.17);
+      crack.rotation.z = a;
       this._rightArm.add(crack);
     }
 
-    // ---- Legs — tree-trunk thick ----
+    // ---- Legs — tree-trunk thick with full anatomy ----
     for (const side of [-1, 1]) {
       const leg = side === -1 ? this._leftLeg : this._rightLeg;
       leg.position.set(side * 0.35, 1.7, 0.0);
       this._body.add(leg);
 
-      // Thigh
-      const thighGeo = cyl(0.22, 0.18, 0.85, 14);
+      // Thigh — massive
+      const thighGeo = cyl(0.23, 0.18, 0.85, 20);
       const thigh = new THREE.Mesh(thighGeo, skinMat);
       thigh.position.y = -0.42;
+      thigh.castShadow = true;
       leg.add(thigh);
 
       // Quad muscle bulge
-      const quadGeo = new THREE.SphereGeometry(0.1, 14, 10);
+      const quadGeo = new THREE.SphereGeometry(0.11, 18, 14);
       const quad = new THREE.Mesh(quadGeo, veinMat);
-      quad.scale.set(1.0, 0.8, 0.7);
+      quad.scale.set(1.0, 0.8, 0.8);
       quad.position.set(0, -0.35, 0.1);
       leg.add(quad);
 
-      // Knee cap
-      const kneeGeo = new THREE.SphereGeometry(0.1, 12, 10);
-      const knee = new THREE.Mesh(kneeGeo, skinMat);
-      knee.position.set(0, -0.8, 0.08);
+      // Hamstring (back of thigh)
+      const hamGeo = new THREE.SphereGeometry(0.08, 14, 12);
+      const ham = new THREE.Mesh(hamGeo, veinMat);
+      ham.scale.set(0.9, 1.0, 0.7);
+      ham.position.set(0, -0.4, -0.08);
+      leg.add(ham);
+
+      // Knee cap — callused
+      const kneeGeo = new THREE.SphereGeometry(0.11, 16, 14);
+      const knee = new THREE.Mesh(kneeGeo, callMat);
+      knee.position.set(0, -0.8, 0.09);
       leg.add(knee);
 
       // Shin
-      const shinGeo = cyl(0.18, 0.13, 0.75, 14);
+      const shinGeo = cyl(0.18, 0.14, 0.75, 20);
       const shin = new THREE.Mesh(shinGeo, skinMat);
       shin.position.y = -1.1;
+      shin.castShadow = true;
       leg.add(shin);
 
-      // Calf muscle
-      const calfGeo = new THREE.SphereGeometry(0.09, 14, 10);
+      // Calf muscle — larger
+      const calfGeo = new THREE.SphereGeometry(0.1, 18, 14);
       const calfMuscle = new THREE.Mesh(calfGeo, veinMat);
-      calfMuscle.scale.set(0.8, 1.2, 0.8);
+      calfMuscle.scale.set(0.9, 1.3, 0.9);
       calfMuscle.position.set(0, -1.0, -0.08);
       leg.add(calfMuscle);
 
-      // Foot
-      const footGeo = new THREE.SphereGeometry(1, 18, 14);
+      // Ankle tendon
+      const achillesGeo = cyl(0.025, 0.02, 0.2, 8);
+      const achilles = new THREE.Mesh(achillesGeo, veinMat);
+      achilles.position.set(0, -1.35, -0.08);
+      leg.add(achilles);
+
+      // Foot — with toes and nails
+      const footGeo = new THREE.SphereGeometry(1, 22, 18);
       const foot = new THREE.Mesh(footGeo, darkMat);
-      foot.scale.set(0.16, 0.1, 0.24);
+      foot.scale.set(0.17, 0.1, 0.25);
       foot.position.set(0, -1.55, 0.08);
+      foot.castShadow = true;
       leg.add(foot);
 
-      // Toes
+      // Toes with nails
       for (let t = -1; t <= 1; t++) {
-        const toeGeo = new THREE.SphereGeometry(0.04, 10, 8);
+        const toeGeo = new THREE.SphereGeometry(0.045, 12, 10);
         const toe = new THREE.Mesh(toeGeo, darkMat);
-        toe.position.set(t * 0.06, -1.58, 0.22);
+        toe.position.set(t * 0.06, -1.58, 0.24);
         leg.add(toe);
+
+        const toeNailGeo = new THREE.BoxGeometry(0.025, 0.012, 0.018);
+        const toeNail = new THREE.Mesh(toeNailGeo, nailMat);
+        toeNail.position.set(t * 0.06, -1.58, 0.27);
+        leg.add(toeNail);
       }
     }
 
-    // Loincloth
-    const clothGeo = new THREE.PlaneGeometry(0.6, 0.5);
-    const clothMat = mat(0x6b4226);
-    const clothFront = new THREE.Mesh(clothGeo, clothMat);
-    clothFront.position.set(0, 1.85, 0.35);
+    // Loincloth — better material
+    const loinMat = mat(0x6b4226, { roughness: 0.9, sheen: 0.05, sheenRoughness: 0.9 });
+    const clothGeo = new THREE.PlaneGeometry(0.6, 0.5, 4, 4);
+    const clothFront = new THREE.Mesh(clothGeo, loinMat);
+    clothFront.position.set(0, 1.85, 0.36);
     this._body.add(clothFront);
-    const clothBack = new THREE.Mesh(clothGeo.clone(), clothMat);
-    clothBack.position.set(0, 1.85, -0.35);
+    const clothBack = new THREE.Mesh(clothGeo.clone(), loinMat);
+    clothBack.position.set(0, 1.85, -0.36);
     this._body.add(clothBack);
 
-    // Necklace of bones
-    for (let i = 0; i < 5; i++) {
-      const angle = -0.4 + i * 0.2;
-      const boneGeo = new THREE.ConeGeometry(0.025, 0.12, 10);
-      const bone = new THREE.Mesh(boneGeo, boneMat);
-      bone.position.set(Math.sin(angle) * 0.55, 3.6, Math.cos(angle) * 0.45);
-      bone.rotation.z = Math.sin(angle) * 0.3;
+    // Leather belt holding loincloth
+    const beltGeo = new THREE.TorusGeometry(0.5, 0.02, 6, 20);
+    const belt = new THREE.Mesh(beltGeo, mat(0x553318, { roughness: 0.85 }));
+    belt.position.y = 2.1;
+    belt.rotation.x = Math.PI / 2;
+    belt.scale.set(1, 0.9, 1);
+    this._body.add(belt);
+
+    // Necklace of bones — more detailed
+    const neckCordGeo = new THREE.TorusGeometry(0.5, 0.008, 6, 20);
+    const neckCord = new THREE.Mesh(neckCordGeo, mat(0x443322));
+    neckCord.position.set(0, 3.6, 0.05);
+    neckCord.rotation.x = Math.PI / 2;
+    neckCord.scale.set(1, 0.8, 1);
+    this._body.add(neckCord);
+    for (let i = 0; i < 6; i++) {
+      const angle = -0.5 + i * 0.2;
+      const boneGeo = new THREE.ConeGeometry(0.025, 0.12, 12);
+      const bone = new THREE.Mesh(boneGeo, boneM);
+      bone.position.set(Math.sin(angle) * 0.5, 3.55, Math.cos(angle) * 0.42);
+      bone.rotation.z = Math.sin(angle) * 0.4;
+      bone.castShadow = true;
       this._body.add(bone);
     }
 
-    // Skin wrinkle folds on sides
+    // Skin wrinkle folds on sides — deeper
     for (const side of [-1, 1]) {
-      for (let i = 0; i < 3; i++) {
-        const foldGeo = new THREE.SphereGeometry(1, 12, 10);
+      for (let i = 0; i < 4; i++) {
+        const foldGeo = new THREE.SphereGeometry(1, 14, 10);
         const fold = new THREE.Mesh(foldGeo, wrinkleMat);
-        fold.scale.set(0.04, 0.18, 0.02);
-        fold.position.set(side * 0.6, 2.6 + i * 0.25, 0.0);
+        fold.scale.set(0.045, 0.2, 0.025);
+        fold.position.set(side * 0.62, 2.55 + i * 0.22, 0.0);
         this._body.add(fold);
       }
+    }
+
+    // Battle scars across torso
+    for (let i = 0; i < 3; i++) {
+      const scarGeo = new THREE.SphereGeometry(1, 12, 8);
+      const scar = new THREE.Mesh(scarGeo, scarTissueMat);
+      scar.scale.set(0.03, 0.2 + i * 0.05, 0.02);
+      const a = -0.3 + i * 0.35;
+      scar.position.set(Math.sin(a) * 0.55, 2.8 + i * 0.15, Math.cos(a) * 0.4);
+      scar.rotation.z = 0.4 + i * 0.2;
+      this._body.add(scar);
     }
   }
 
   // ---- Spider builder ------------------------------------------------------
 
   private _buildSpider(): void {
-    const blackMat = mat(0x1a1a2e);
-    const purpleMat = mat(0x2d1b4e);
-    const darkLegMat = mat(0x222233);
-    const eyeMat = mat(0xcc1111, { emissive: 0x881111 });
-    const fangMat = mat(0x332211);
+    const blackMat = chitinMat(0x1a1a2e);
+    const purpleMat = chitinMat(0x2d1b4e);
+    const darkLegMat = chitinMat(0x222233);
+    const eyeMat = mat(0xcc1111, { emissive: 0x881111, emissiveIntensity: 2.0, clearcoat: 0.8, clearcoatRoughness: 0.1 });
+    const fangMat = boneMaterial(0x332211);
     const bristleMat = mat(0x111118);
     const glossMat = mat(0x252540);
     const textureMat = mat(0x1e1e30);
@@ -4485,14 +5105,14 @@ export class CreatureMesh {
   // ---- Red Dragon builder ---------------------------------------------------
 
   private _buildRedDragon(): void {
-    const scaleMat = mat(0x8b1a1a);           // deep crimson scales
-    const darkScaleMat = mat(0x5a0d0d);       // darker back scales
-    const bellyMat = mat(0xcc8833);           // gold-orange belly plates
-    const eyeMat = mat(0xff6600, { emissive: 0xff6600 });
-    const hornMat = mat(0x332211);
-    const clawMat = mat(0x222211);
-    const membraneMat = mat(0x661111, { transparent: true, opacity: 0.55, side: THREE.DoubleSide });
-    const nostrilGlow = mat(0xff4400, { emissive: 0xff2200 });
+    const scaleMat = scalyMat(0x8b1a1a, { iridescence: 0.4, iridescenceIOR: 1.4 });  // deep crimson iridescent scales
+    const darkScaleMat = scalyMat(0x5a0d0d);       // darker back scales
+    const bellyMat = scalyMat(0xcc8833, { clearcoat: 0.3, roughness: 0.4 }); // gold-orange belly plates
+    const eyeMat = mat(0xff6600, { emissive: 0xff6600, emissiveIntensity: 2.5, clearcoat: 1.0, clearcoatRoughness: 0.05 });
+    const hornMat = boneMaterial(0x332211);
+    const clawMat = boneMaterial(0x222211);
+    const membraneMat = mat(0x661111, { transparent: true, opacity: 0.55, side: THREE.DoubleSide, roughness: 0.3, clearcoat: 0.2 });
+    const nostrilGlow = lavaMat(0xff4400, 0xff2200);
     const veinMat = mat(0x440808, { transparent: true, opacity: 0.6, side: THREE.DoubleSide });
 
     // ---- Torso — muscular, reptilian, upright ----
@@ -4839,14 +5459,14 @@ export class CreatureMesh {
   // ---- Frost Dragon builder --------------------------------------------------
 
   private _buildFrostDragon(): void {
-    const scaleMat = mat(0x4a7a9a);               // icy blue scales
-    const darkScaleMat = mat(0x3a6080);            // darker blue-grey back scales
-    const bellyMat = mat(0xc8d8e8);               // silver-white belly plates
-    const eyeMat = mat(0x88ccff, { emissive: 0x4488cc });
-    const hornMat = mat(0xddeeff);                 // ice-white horns
-    const clawMat = mat(0xbbccdd);
-    const membraneMat = mat(0x3a6688, { transparent: true, opacity: 0.55, side: THREE.DoubleSide });
-    const nostrilGlow = mat(0x88ccff, { emissive: 0x4488cc });
+    const scaleMat = scalyMat(0x4a7a9a, { iridescence: 0.45, iridescenceIOR: 1.5 }); // icy blue iridescent scales
+    const darkScaleMat = scalyMat(0x3a6080);            // darker blue-grey back scales
+    const bellyMat = scalyMat(0xc8d8e8, { clearcoat: 0.6, clearcoatRoughness: 0.15 }); // silver-white belly plates
+    const eyeMat = mat(0x88ccff, { emissive: 0x4488cc, emissiveIntensity: 2.5, clearcoat: 1.0, clearcoatRoughness: 0.05 });
+    const hornMat = mat(0xddeeff, { transmission: 0.3, thickness: 0.2, roughness: 0.2 }); // translucent ice horns
+    const clawMat = boneMaterial(0xbbccdd);
+    const membraneMat = mat(0x3a6688, { transparent: true, opacity: 0.55, side: THREE.DoubleSide, roughness: 0.25, clearcoat: 0.3 });
+    const nostrilGlow = mat(0x88ccff, { emissive: 0x4488cc, emissiveIntensity: 2.0 });
     const icicleMat = mat(0xccddee, { transparent: true, opacity: 0.8 });
     const crystalMat = mat(0xaabbcc, { transparent: true, opacity: 0.75 });
     const veinMat = mat(0x2a4a60, { transparent: true, opacity: 0.5, side: THREE.DoubleSide });
@@ -5178,14 +5798,14 @@ export class CreatureMesh {
   // ---- Fire Dragon builder ---------------------------------------------------
 
   private _buildFireDragon(): void {
-    const scaleMat = mat(0x6b0f0f);               // deep volcanic red scales
-    const darkScaleMat = mat(0x440808);            // darker back scales
-    const bellyMat = mat(0xff8833);               // molten orange belly plates
-    const eyeMat = mat(0xff8800, { emissive: 0xff4400 });
-    const hornMat = mat(0x221111);                 // dark horns
-    const clawMat = mat(0x1a0a0a);
-    const membraneMat = mat(0x551111, { transparent: true, opacity: 0.55, side: THREE.DoubleSide });
-    const nostrilGlow = mat(0xff4400, { emissive: 0xff2200 });
+    const scaleMat = scalyMat(0x6b0f0f, { iridescence: 0.35, iridescenceIOR: 1.35 }); // deep volcanic red iridescent scales
+    const darkScaleMat = scalyMat(0x440808);            // darker back scales
+    const bellyMat = scalyMat(0xff8833, { clearcoat: 0.35 }); // molten orange belly plates
+    const eyeMat = mat(0xff8800, { emissive: 0xff4400, emissiveIntensity: 2.5, clearcoat: 1.0, clearcoatRoughness: 0.05 });
+    const hornMat = boneMaterial(0x221111);                 // dark horns
+    const clawMat = boneMaterial(0x1a0a0a);
+    const membraneMat = mat(0x551111, { transparent: true, opacity: 0.55, side: THREE.DoubleSide, roughness: 0.3, clearcoat: 0.2 });
+    const nostrilGlow = lavaMat(0xff4400, 0xff2200);
     const lavaCrackMat = mat(0xff6600, { emissive: 0xff4400, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
     const armorMat = mat(0x440808);
     const veinMat = mat(0x330505, { transparent: true, opacity: 0.6, side: THREE.DoubleSide });
@@ -5551,14 +6171,14 @@ export class CreatureMesh {
   // ---- Ice Dragon builder ----------------------------------------------------
 
   private _buildIceDragon(): void {
-    const scaleMat = mat(0x3a6688);               // glacial blue scales
-    const darkScaleMat = mat(0x2a4a60);            // darker glacial scales
-    const bellyMat = mat(0xddeeff);               // crystalline white belly plates
-    const eyeMat = mat(0x44ffff, { emissive: 0x22aaaa });
-    const hornMat = mat(0x88bbdd, { transparent: true, opacity: 0.85 });  // translucent blue horns
-    const clawMat = mat(0x99aabb);
-    const membraneMat = mat(0x4488aa, { transparent: true, opacity: 0.6, side: THREE.DoubleSide });
-    const nostrilGlow = mat(0x44ffff, { emissive: 0x22aaaa });
+    const scaleMat = scalyMat(0x3a6688, { iridescence: 0.5, iridescenceIOR: 1.5 }); // glacial blue iridescent scales
+    const darkScaleMat = scalyMat(0x2a4a60);            // darker glacial scales
+    const bellyMat = scalyMat(0xddeeff, { clearcoat: 0.7, clearcoatRoughness: 0.1 }); // crystalline white belly plates
+    const eyeMat = mat(0x44ffff, { emissive: 0x22aaaa, emissiveIntensity: 2.5, clearcoat: 1.0, clearcoatRoughness: 0.05 });
+    const hornMat = mat(0x88bbdd, { transparent: true, opacity: 0.85, transmission: 0.35, thickness: 0.3, roughness: 0.15 }); // crystalline horns
+    const clawMat = boneMaterial(0x99aabb);
+    const membraneMat = mat(0x4488aa, { transparent: true, opacity: 0.6, side: THREE.DoubleSide, roughness: 0.2, clearcoat: 0.4 });
+    const nostrilGlow = mat(0x44ffff, { emissive: 0x22aaaa, emissiveIntensity: 2.0 });
     const icicleMat = mat(0xccddee, { transparent: true, opacity: 0.8 });
     const crystalMat = mat(0x88bbdd, { transparent: true, opacity: 0.75 });
     const iceArmorMat = mat(0xaaccdd, { transparent: true, opacity: 0.7 });
@@ -10329,13 +10949,13 @@ export class CreatureMesh {
   // ---- Treant builder --------------------------------------------------------
 
   private _buildTreant(): void {
-    const barkMat = mat(0x4a3520);
-    const darkBarkMat = mat(0x2e2015);
-    const leafMat = mat(0x2d6e1e, { emissive: 0x0a2208 });
-    const eyeMat = mat(0x88cc44, { emissive: 0x446622 });
-    const rootMat = mat(0x3a2a18);
-    const lightLeafMat = mat(0x44882a, { emissive: 0x0c2a0a });
-    const mossMat = mat(0x3a6828);
+    const barkMat = barkMaterial(0x4a3520);
+    const darkBarkMat = barkMaterial(0x2e2015);
+    const leafMat = mat(0x2d6e1e, { emissive: 0x0a2208, sheen: 0.3, sheenColor: new THREE.Color(0x44aa22), sheenRoughness: 0.4 });
+    const eyeMat = mat(0x88cc44, { emissive: 0x446622, emissiveIntensity: 2.0, clearcoat: 0.5 });
+    const rootMat = barkMaterial(0x3a2a18);
+    const lightLeafMat = mat(0x44882a, { emissive: 0x0c2a0a, sheen: 0.35, sheenColor: new THREE.Color(0x66cc44), sheenRoughness: 0.35 });
+    const mossMat = mat(0x3a6828, { roughness: 0.95, sheen: 0.15, sheenRoughness: 0.8 });
 
     // Trunk body
     const trunkGeo = cyl(0.35, 0.55, 2.5, 14);
@@ -10612,10 +11232,10 @@ export class CreatureMesh {
   // ---- Mana Wraith builder ---------------------------------------------------
 
   private _buildManaWraith(): void {
-    const ghostMat = mat(0x6644aa, { transparent: true, opacity: 0.6, emissive: 0x332266 });
-    const coreMat = mat(0xaa88ff, { emissive: 0x6644cc });
-    const eyeMat = mat(0xeeddff, { emissive: 0xaa88ff });
-    const wispMat = mat(0x8866cc, { transparent: true, opacity: 0.35, emissive: 0x443366 });
+    const ghostMat = etherealMat(0x6644aa, 0x332266);
+    const coreMat = mat(0xaa88ff, { emissive: 0x6644cc, emissiveIntensity: 2.0 });
+    const eyeMat = mat(0xeeddff, { emissive: 0xaa88ff, emissiveIntensity: 2.5 });
+    const wispMat = etherealMat(0x8866cc, 0x443366);
 
     // Spectral body — tapered column
     const bodyGeo = cyl(0.15, 0.4, 2.0, 16);
@@ -10708,10 +11328,10 @@ export class CreatureMesh {
   // ---- Elemental Avatar builder ----------------------------------------------
 
   private _buildElementalAvatar(): void {
-    const fireMat = mat(0xff4400, { emissive: 0xcc2200 });
-    const coreMat = mat(0xffaa00, { emissive: 0xff6600 });
-    const darkMat = mat(0x661100, { emissive: 0x330800 });
-    const eyeMat = mat(0xffffaa, { emissive: 0xffff88 });
+    const fireMat = lavaMat(0xff4400, 0xcc2200);
+    const coreMat = lavaMat(0xffaa00, 0xff6600);
+    const darkMat = mat(0x661100, { emissive: 0x330800, emissiveIntensity: 1.5 });
+    const eyeMat = mat(0xffffaa, { emissive: 0xffff88, emissiveIntensity: 3.0 });
 
     // Massive fire core body
     const torsoGeo = new THREE.SphereGeometry(1, 20, 16);
@@ -10815,11 +11435,11 @@ export class CreatureMesh {
   // ---- Storm Conduit builder -------------------------------------------------
 
   private _buildStormConduit(): void {
-    const boltMat = mat(0x4488ff, { emissive: 0x2266dd });
-    const coreMat = mat(0xaaccff, { emissive: 0x88aaff });
-    const darkMat = mat(0x222244, { emissive: 0x111133 });
-    const sparkMat = mat(0xeeeeff, { emissive: 0xeeeeff });
-    const arcMat = mat(0x6699ff, { emissive: 0x4477dd, transparent: true, opacity: 0.6 });
+    const boltMat = mat(0x4488ff, { emissive: 0x2266dd, emissiveIntensity: 2.0 });
+    const coreMat = mat(0xaaccff, { emissive: 0x88aaff, emissiveIntensity: 2.5 });
+    const darkMat = mat(0x222244, { emissive: 0x111133, emissiveIntensity: 1.5 });
+    const sparkMat = mat(0xeeeeff, { emissive: 0xeeeeff, emissiveIntensity: 3.0 });
+    const arcMat = mat(0x6699ff, { emissive: 0x4477dd, emissiveIntensity: 2.0, transparent: true, opacity: 0.6 });
 
     // Crackling energy body
     const torsoGeo = cyl(0.25, 0.35, 2.2, 16);
@@ -10911,15 +11531,15 @@ export class CreatureMesh {
   // ---- War Golem builder -----------------------------------------------------
 
   private _buildWarGolem(): void {
-    const stoneMat = mat(0x6a6a5a, { metalness: 0.2 });
-    const darkStoneMat = mat(0x4a4a3a);
-    const runeMat = mat(0x44aaff, { emissive: 0x2266cc });
-    const eyeMat = mat(0x44ccff, { emissive: 0x2288aa });
-    const crackMat = mat(0x3a3a2a);
+    const stoneM = stoneMat(0x6a6a5a);
+    const darkStoneMat = stoneMat(0x4a4a3a);
+    const runeMat = mat(0x44aaff, { emissive: 0x2266cc, emissiveIntensity: 2.5 });
+    const eyeMat = mat(0x44ccff, { emissive: 0x2288aa, emissiveIntensity: 2.5 });
+    const crackMat = stoneMat(0x3a3a2a);
 
     // Massive rounded torso
     const torsoGeo = cyl(0.5, 0.45, 1.5, 16);
-    const torso = new THREE.Mesh(torsoGeo, stoneMat);
+    const torso = new THREE.Mesh(torsoGeo, stoneM);
     torso.position.y = 2.8;
     torso.scale.set(1.0, 1.0, 0.8);
     this._body.add(torso);
@@ -10949,7 +11569,7 @@ export class CreatureMesh {
     this._head.position.set(0, 3.8, 0);
     this._body.add(this._head);
     const headGeo = new THREE.SphereGeometry(0.22, 14, 12);
-    const headMesh = new THREE.Mesh(headGeo, stoneMat);
+    const headMesh = new THREE.Mesh(headGeo, stoneM);
     headMesh.scale.set(0.9, 0.8, 0.8);
     this._head.add(headMesh);
 
@@ -10967,7 +11587,7 @@ export class CreatureMesh {
       arm.position.set(side * 0.6, 3.2, 0);
       this._body.add(arm);
       const upperGeo = cyl(0.13, 0.11, 0.9, 12);
-      const upper = new THREE.Mesh(upperGeo, stoneMat);
+      const upper = new THREE.Mesh(upperGeo, stoneM);
       upper.position.y = -0.45;
       arm.add(upper);
       const foreGeo = cyl(0.12, 0.14, 0.8, 12);
@@ -10980,7 +11600,7 @@ export class CreatureMesh {
       j.position.y = -0.85;
       arm.add(j);
       const fistGeo = new THREE.SphereGeometry(0.2, 14, 12);
-      const fist = new THREE.Mesh(fistGeo, stoneMat);
+      const fist = new THREE.Mesh(fistGeo, stoneM);
       fist.position.y = -1.7;
       arm.add(fist);
     }
@@ -10991,7 +11611,7 @@ export class CreatureMesh {
       leg.position.set(side * 0.3, 1.8, 0);
       this._body.add(leg);
       const thighGeo = cyl(0.13, 0.11, 0.8, 12);
-      const thigh = new THREE.Mesh(thighGeo, stoneMat);
+      const thigh = new THREE.Mesh(thighGeo, stoneM);
       thigh.position.y = -0.4;
       leg.add(thigh);
       // Knee joint detail
@@ -11004,7 +11624,7 @@ export class CreatureMesh {
       shin.position.y = -1.05;
       leg.add(shin);
       const footGeo = new THREE.SphereGeometry(0.2, 12, 10);
-      const foot = new THREE.Mesh(footGeo, stoneMat);
+      const foot = new THREE.Mesh(footGeo, stoneM);
       foot.scale.set(0.8, 0.38, 1.0);
       foot.position.set(0, -1.48, 0.04);
       leg.add(foot);
@@ -11022,10 +11642,10 @@ export class CreatureMesh {
   // ---- Rune Core builder -----------------------------------------------------
 
   private _buildRuneCore(): void {
-    const shellMat = mat(0x5555aa, { transparent: true, opacity: 0.7, emissive: 0x222255 });
-    const coreMat = mat(0xaa88ff, { emissive: 0x8866dd });
-    const runeMat = mat(0xddbbff, { emissive: 0xaa88ff });
-    const ringMat = mat(0x6666aa, { transparent: true, opacity: 0.5 });
+    const shellMat = mat(0x5555aa, { transparent: true, opacity: 0.7, emissive: 0x222255, emissiveIntensity: 1.5, transmission: 0.2, thickness: 0.3, roughness: 0.15 });
+    const coreMat = mat(0xaa88ff, { emissive: 0x8866dd, emissiveIntensity: 2.5 });
+    const runeMat = mat(0xddbbff, { emissive: 0xaa88ff, emissiveIntensity: 2.0 });
+    const ringMat = mat(0x6666aa, { transparent: true, opacity: 0.5, roughness: 0.2 });
 
     // Central orb
     const orbGeo = new THREE.SphereGeometry(0.4, 20, 16);
@@ -11106,11 +11726,11 @@ export class CreatureMesh {
   // ---- Siege Automaton builder -----------------------------------------------
 
   private _buildSiegeAutomaton(): void {
-    const ironMat = mat(0x555566, { metalness: 0.7, roughness: 0.3 });
-    const darkIronMat = mat(0x333344, { metalness: 0.6 });
-    const brassMAT = mat(0xaa8833, { metalness: 0.5 });
-    const eyeMat = mat(0xff4400, { emissive: 0xcc2200 });
-    const pipeMat = mat(0x444444, { metalness: 0.5 });
+    const ironMat = mat(0x555566, { metalness: 0.8, roughness: 0.2, clearcoat: 0.25, clearcoatRoughness: 0.2 });
+    const darkIronMat = mat(0x333344, { metalness: 0.7, roughness: 0.25 });
+    const brassMAT = mat(0xaa8833, { metalness: 0.7, roughness: 0.2, clearcoat: 0.3, clearcoatRoughness: 0.15 });
+    const eyeMat = mat(0xff4400, { emissive: 0xcc2200, emissiveIntensity: 2.5 });
+    const pipeMat = mat(0x444444, { metalness: 0.6, roughness: 0.3 });
 
     // Massive iron torso
     const torsoGeo = cyl(0.6, 0.55, 1.8, 16);
@@ -11239,11 +11859,11 @@ export class CreatureMesh {
   // ---- Crystal Golem builder -------------------------------------------------
 
   private _buildCrystalGolem(): void {
-    const crystalMat = mat(0x88aadd, { transparent: true, opacity: 0.75, emissive: 0x334466 });
-    const darkCrystalMat = mat(0x5577aa, { transparent: true, opacity: 0.8, emissive: 0x223344 });
-    const amethystMat = mat(0x9966cc, { transparent: true, opacity: 0.7, emissive: 0x442266 });
-    const roseMat = mat(0xcc8899, { transparent: true, opacity: 0.65, emissive: 0x664444 });
-    const coreMat = mat(0xaaddff, { emissive: 0x6699cc });
+    const crystalMat = mat(0x88aadd, { transparent: true, opacity: 0.75, emissive: 0x334466, emissiveIntensity: 1.5, transmission: 0.3, thickness: 0.5, roughness: 0.1, iridescence: 0.5, iridescenceIOR: 1.6 });
+    const darkCrystalMat = mat(0x5577aa, { transparent: true, opacity: 0.8, emissive: 0x223344, emissiveIntensity: 1.2, roughness: 0.15, iridescence: 0.3 });
+    const amethystMat = mat(0x9966cc, { transparent: true, opacity: 0.7, emissive: 0x442266, emissiveIntensity: 1.5, transmission: 0.25, thickness: 0.3, roughness: 0.08, iridescence: 0.6, iridescenceIOR: 1.7 });
+    const roseMat = mat(0xcc8899, { transparent: true, opacity: 0.65, emissive: 0x664444, emissiveIntensity: 1.3, transmission: 0.2, roughness: 0.1, iridescence: 0.4 });
+    const coreMat = mat(0xaaddff, { emissive: 0x6699cc, emissiveIntensity: 2.5 });
     const sparkMat = mat(0xeeeeff, { emissive: 0xccddff });
     const veinMat = mat(0xbbddff, { emissive: 0x88aadd, transparent: true, opacity: 0.5 });
     const internalMat = mat(0x6699cc, { transparent: true, opacity: 0.4, emissive: 0x445577 });
@@ -11489,11 +12109,11 @@ export class CreatureMesh {
   // ---- Iron Colossus builder -------------------------------------------------
 
   private _buildIronColossus(): void {
-    const ironMat = mat(0x4a4a4a, { metalness: 0.8, roughness: 0.25 });
-    const darkIronMat = mat(0x2a2a2a, { metalness: 0.7, roughness: 0.3 });
-    const wornIronMat = mat(0x3a3a3a, { metalness: 0.75, roughness: 0.35 });
-    const rivetMat = mat(0x888888, { metalness: 0.6 });
-    const eyeMat = mat(0xff6600, { emissive: 0xcc4400 });
+    const ironMat = mat(0x4a4a4a, { metalness: 0.85, roughness: 0.15, clearcoat: 0.3, clearcoatRoughness: 0.2 });
+    const darkIronMat = mat(0x2a2a2a, { metalness: 0.8, roughness: 0.2, clearcoat: 0.2 });
+    const wornIronMat = mat(0x3a3a3a, { metalness: 0.78, roughness: 0.3 });
+    const rivetMat = mat(0x888888, { metalness: 0.7, roughness: 0.25, clearcoat: 0.3 });
+    const eyeMat = mat(0xff6600, { emissive: 0xcc4400, emissiveIntensity: 2.5 });
     const runeMat = mat(0xff8800, { emissive: 0xcc5500, transparent: true, opacity: 0.8 });
     const steamMat = mat(0xcccccc, { transparent: true, opacity: 0.3 });
     const copperMat = mat(0x8a5c2a, { metalness: 0.7, roughness: 0.3 });
@@ -11889,11 +12509,11 @@ export class CreatureMesh {
   // ---- Bone Colossus builder --------------------------------------------------
 
   private _buildBoneColossus(): void {
-    const boneMat = mat(0xd8c8a0);
-    const darkBoneMat = mat(0xa89870);
-    const wornBoneMat = mat(0xc4b490);
-    const eyeMat = mat(0x44ff44, { emissive: 0x22aa22 });
-    const jointMat = mat(0x887760);
+    const boneMat = boneMaterial(0xd8c8a0);
+    const darkBoneMat = boneMaterial(0xa89870);
+    const wornBoneMat = boneMaterial(0xc4b490);
+    const eyeMat = mat(0x44ff44, { emissive: 0x22aa22, emissiveIntensity: 2.5 });
+    const jointMat = boneMaterial(0x887760);
     const cavityMat = mat(0x1a1510);
     const tendrilMat = mat(0x44ff44, { emissive: 0x22aa22, transparent: true, opacity: 0.35 });
 
@@ -12346,11 +12966,11 @@ export class CreatureMesh {
   // ---- Wraith Lord builder ---------------------------------------------------
 
   private _buildWraithLord(): void {
-    const ghostMat = mat(0x334455, { transparent: true, opacity: 0.55, emissive: 0x112233 });
-    const darkMat = mat(0x1a2233, { transparent: true, opacity: 0.7, emissive: 0x0a1122 });
-    const eyeMat = mat(0x44ddff, { emissive: 0x22aacc });
-    const crownMat = mat(0x8888aa, { metalness: 0.6 });
-    const wispMat = mat(0x3355aa, { transparent: true, opacity: 0.3, emissive: 0x223377 });
+    const ghostMat = etherealMat(0x334455, 0x112233);
+    const darkMat = etherealMat(0x1a2233, 0x0a1122);
+    const eyeMat = mat(0x44ddff, { emissive: 0x22aacc, emissiveIntensity: 3.0 });
+    const crownMat = mat(0x8888aa, { metalness: 0.7, roughness: 0.2, clearcoat: 0.4 });
+    const wispMat = etherealMat(0x3355aa, 0x223377);
 
     // Spectral body
     const bodyGeo = cyl(0.2, 0.45, 2.0, 16);
@@ -12441,11 +13061,11 @@ export class CreatureMesh {
   // ---- Banshee builder -------------------------------------------------------
 
   private _buildBanshee(): void {
-    const ghostMat = mat(0x9999bb, { transparent: true, opacity: 0.5, emissive: 0x445566 });
-    const hairMat = mat(0xaaaacc, { transparent: true, opacity: 0.6 });
-    const eyeMat = mat(0xffffff, { emissive: 0xccccff });
+    const ghostMat = etherealMat(0x9999bb, 0x445566);
+    const hairMat = mat(0xaaaacc, { transparent: true, opacity: 0.6, sheen: 0.4, sheenColor: new THREE.Color(0xccccee), sheenRoughness: 0.3 });
+    const eyeMat = mat(0xffffff, { emissive: 0xccccff, emissiveIntensity: 3.0 });
     const mouthMat = mat(0x222244);
-    const wispMat = mat(0x8888aa, { transparent: true, opacity: 0.3, emissive: 0x445566 });
+    const wispMat = etherealMat(0x8888aa, 0x445566);
 
     // Ethereal body — flowing shape
     const bodyGeo = cyl(0.12, 0.35, 1.6, 16);
@@ -12534,12 +13154,12 @@ export class CreatureMesh {
   // ---- Pit Lord builder ------------------------------------------------------
 
   private _buildPitLord(): void {
-    const skinMat = mat(0x661122);
-    const darkMat = mat(0x3a0a11);
-    const hornMat = mat(0x222222);
-    const eyeMat = mat(0xff4400, { emissive: 0xcc2200 });
-    const wingMat = mat(0x440a0a, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-    const muscleMat = mat(0x771528);
+    const skinMat = organicMat(0x661122);
+    const darkMat = organicMat(0x3a0a11);
+    const hornMat = boneMaterial(0x222222);
+    const eyeMat = mat(0xff4400, { emissive: 0xcc2200, emissiveIntensity: 2.5, clearcoat: 0.9 });
+    const wingMat = mat(0x440a0a, { side: THREE.DoubleSide, transparent: true, opacity: 0.7, roughness: 0.3 });
+    const muscleMat = organicMat(0x771528);
 
     // Massive demon torso
     const torsoGeo = new THREE.SphereGeometry(1, 20, 16);
@@ -12660,10 +13280,10 @@ export class CreatureMesh {
   // ---- Doom Guard builder ----------------------------------------------------
 
   private _buildDoomGuard(): void {
-    const armorMat = mat(0x2a1a1a, { metalness: 0.5, roughness: 0.4 });
-    const skinMat = mat(0x551122);
-    const spikeMat = mat(0x333333, { metalness: 0.7 });
-    const eyeMat = mat(0xff2200, { emissive: 0xcc0000 });
+    const armorMat = mat(0x2a1a1a, { metalness: 0.7, roughness: 0.25, clearcoat: 0.3, clearcoatRoughness: 0.2 });
+    const skinMat = organicMat(0x551122);
+    const spikeMat = mat(0x333333, { metalness: 0.8, roughness: 0.2, clearcoat: 0.4 });
+    const eyeMat = mat(0xff2200, { emissive: 0xcc0000, emissiveIntensity: 2.5 });
 
     // Armored demon torso
     const torsoGeo = new THREE.SphereGeometry(1, 20, 16);
@@ -12786,11 +13406,11 @@ export class CreatureMesh {
   // ---- Succubus builder ------------------------------------------------------
 
   private _buildSuccubus(): void {
-    const skinMat = mat(0x8844aa);
-    const wingMat = mat(0x552266, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-    const hairMat = mat(0x220022);
-    const eyeMat = mat(0xff44ff, { emissive: 0xcc22cc });
-    const hornMat = mat(0x222222);
+    const skinMat = organicMat(0x8844aa, { sheen: 0.3, sheenColor: new THREE.Color(0xcc66dd), sheenRoughness: 0.4 });
+    const wingMat = mat(0x552266, { side: THREE.DoubleSide, transparent: true, opacity: 0.7, roughness: 0.3 });
+    const hairMat = mat(0x220022, { sheen: 0.5, sheenColor: new THREE.Color(0x440044), sheenRoughness: 0.3, roughness: 0.7 });
+    const eyeMat = mat(0xff44ff, { emissive: 0xcc22cc, emissiveIntensity: 2.5 });
+    const hornMat = boneMaterial(0x222222);
 
     // Slender body
     const torsoGeo = cyl(0.15, 0.2, 1.4, 16);
@@ -12996,11 +13616,11 @@ export class CreatureMesh {
   // ---- Seraphim builder ------------------------------------------------------
 
   private _buildSeraphim(): void {
-    const glowMat = mat(0xffffcc, { emissive: 0xccaa44 });
-    const robeMat = mat(0xeeeecc);
-    const wingMat = mat(0xffffee, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-    const eyeMat = mat(0xffffaa, { emissive: 0xffff66 });
-    const haloMat = mat(0xffdd44, { emissive: 0xccaa22 });
+    const glowMat = mat(0xffffcc, { emissive: 0xccaa44, emissiveIntensity: 1.8, sheen: 0.5, sheenColor: new THREE.Color(0xffffee), sheenRoughness: 0.3 });
+    const robeMat = mat(0xeeeecc, { sheen: 0.4, sheenColor: new THREE.Color(0xfffff0), sheenRoughness: 0.35, roughness: 0.6 });
+    const wingMat = mat(0xffffee, { side: THREE.DoubleSide, transparent: true, opacity: 0.7, iridescence: 0.4, iridescenceIOR: 1.3, sheen: 0.5 });
+    const eyeMat = mat(0xffffaa, { emissive: 0xffff66, emissiveIntensity: 3.0 });
+    const haloMat = mat(0xffdd44, { emissive: 0xccaa22, emissiveIntensity: 2.5 });
 
     // Robed body
     const bodyGeo = cyl(0.15, 0.35, 2.0, 16);
@@ -13088,11 +13708,11 @@ export class CreatureMesh {
   // ---- Archon builder --------------------------------------------------------
 
   private _buildArchon(): void {
-    const armorMat = mat(0xddddaa, { metalness: 0.6, roughness: 0.3 });
-    const skinMat = mat(0xeeddbb);
-    const wingMat = mat(0xeeeeee, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-    const eyeMat = mat(0xffffaa, { emissive: 0xffff66 });
-    const swordMat = mat(0xccccaa, { metalness: 0.8, roughness: 0.2 });
+    const armorMat = mat(0xddddaa, { metalness: 0.75, roughness: 0.2, clearcoat: 0.5, clearcoatRoughness: 0.15 });
+    const skinMat = organicMat(0xeeddbb);
+    const wingMat = mat(0xeeeeee, { side: THREE.DoubleSide, transparent: true, opacity: 0.7, iridescence: 0.35, iridescenceIOR: 1.3, sheen: 0.4 });
+    const eyeMat = mat(0xffffaa, { emissive: 0xffff66, emissiveIntensity: 2.5 });
+    const swordMat = mat(0xccccaa, { metalness: 0.9, roughness: 0.1, clearcoat: 0.6, clearcoatRoughness: 0.1 });
     const haloMat = mat(0xffdd44, { emissive: 0xccaa22 });
 
     // Armored torso
@@ -13201,182 +13821,347 @@ export class CreatureMesh {
   // ---- Alpha Wolf builder ----------------------------------------------------
 
   private _buildAlphaWolf(): void {
-    const furMat = mat(0x555555);
-    const darkFurMat = mat(0x333333);
-    const bellyMat = mat(0x888888);
-    const eyeMat = mat(0xffcc00, { emissive: 0xcc8800 });
-    const noseMat = mat(0x111111);
+    const furM = furryMat(0x555555);
+    const darkFurM = furryMat(0x333333);
+    const bellyFurM = furryMat(0x999999);
+    const eyeMat = mat(0xffcc00, { emissive: 0xcc8800, emissiveIntensity: 2.0, clearcoat: 0.9, clearcoatRoughness: 0.05 });
+    const noseMat = mat(0x111111, { roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.1 }); // wet nose
+    const clawMat = boneMaterial(0x222222);
+    const gumMat = organicMat(0x664444);
+    const toothMat = boneMaterial(0xddddcc);
 
-    // Elongated body — quadruped
-    const torsoGeo = new THREE.SphereGeometry(1, 18, 14);
-    const torso = new THREE.Mesh(torsoGeo, furMat);
+    // Elongated body — quadruped, more muscular
+    const torsoGeo = new THREE.SphereGeometry(1, 24, 18);
+    const torso = new THREE.Mesh(torsoGeo, furM);
     torso.scale.set(0.25, 0.22, 0.45);
     torso.position.y = 0.8;
+    torso.castShadow = true;
     this._body.add(torso);
 
-    // Belly
-    const bGeo = new THREE.SphereGeometry(1, 16, 12);
-    const belly = new THREE.Mesh(bGeo, bellyMat);
+    // Ribcage definition
+    const ribGeo = new THREE.SphereGeometry(1, 20, 16);
+    const rib = new THREE.Mesh(ribGeo, furM);
+    rib.scale.set(0.23, 0.2, 0.32);
+    rib.position.set(0, 0.82, 0.08);
+    this._body.add(rib);
+
+    // Belly — lighter underside
+    const bGeo = new THREE.SphereGeometry(1, 20, 16);
+    const belly = new THREE.Mesh(bGeo, bellyFurM);
     belly.scale.set(0.18, 0.15, 0.35);
     belly.position.set(0, 0.65, 0);
     this._body.add(belly);
 
-    // Fur tufts on back/shoulders
-    for (let i = 0; i < 4; i++) {
-      const tfGeo = new THREE.SphereGeometry(0.04, 8, 6);
-      const tuft = new THREE.Mesh(tfGeo, darkFurMat);
-      tuft.position.set((Math.random() - 0.5) * 0.15, 0.95 + i * 0.02, -0.1 + i * 0.08);
-      tuft.scale.set(1.5, 0.6, 1.5);
+    // Shoulder hump (muscular withers)
+    const withersGeo = new THREE.SphereGeometry(0.08, 14, 12);
+    const withers = new THREE.Mesh(withersGeo, darkFurM);
+    withers.position.set(0, 0.98, 0.12);
+    withers.scale.set(1.5, 0.8, 1.2);
+    this._body.add(withers);
+
+    // Fur tufts on back/shoulders — more layers
+    for (let i = 0; i < 8; i++) {
+      const tfGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 10, 8);
+      const tuft = new THREE.Mesh(tfGeo, i < 4 ? darkFurM : furM);
+      tuft.position.set(
+        (Math.random() - 0.5) * 0.18,
+        0.92 + i * 0.015,
+        -0.15 + i * 0.07,
+      );
+      tuft.scale.set(1.5, 0.5, 1.5);
       this._body.add(tuft);
     }
 
-    // Head
+    // Mane / ruff around neck and shoulders
+    for (let i = 0; i < 6; i++) {
+      const maneGeo = new THREE.SphereGeometry(0.04, 10, 8);
+      const mane = new THREE.Mesh(maneGeo, furryMat(0x666666));
+      const a = (i / 6) * Math.PI * 2;
+      mane.position.set(
+        Math.cos(a) * 0.12,
+        0.95,
+        0.28 + Math.sin(a) * 0.08,
+      );
+      mane.scale.set(1.2, 0.8, 1.4);
+      this._body.add(mane);
+    }
+
+    // Head — more defined
     this._head.position.set(0, 1.0, 0.4);
     this._body.add(this._head);
-    const headGeo = new THREE.SphereGeometry(1, 16, 12);
-    const headMesh = new THREE.Mesh(headGeo, furMat);
+    const headGeo = new THREE.SphereGeometry(1, 22, 18);
+    const headMesh = new THREE.Mesh(headGeo, furM);
     headMesh.scale.set(0.14, 0.12, 0.16);
+    headMesh.castShadow = true;
     this._head.add(headMesh);
 
-    // Snout
-    const snoutGeo = new THREE.SphereGeometry(1, 12, 10);
-    const snout = new THREE.Mesh(snoutGeo, darkFurMat);
-    snout.scale.set(0.08, 0.06, 0.12);
+    // Brow ridge
+    const browGeo = new THREE.SphereGeometry(0.06, 12, 10);
+    const brow = new THREE.Mesh(browGeo, darkFurM);
+    brow.position.set(0, 0.06, 0.08);
+    brow.scale.set(2.0, 0.5, 0.8);
+    this._head.add(brow);
+
+    // Snout — more defined with bridge
+    const snoutGeo = new THREE.SphereGeometry(1, 18, 14);
+    const snout = new THREE.Mesh(snoutGeo, darkFurM);
+    snout.scale.set(0.08, 0.06, 0.13);
     snout.position.set(0, -0.02, 0.14);
     this._head.add(snout);
 
-    // Nose
-    const nGeo = new THREE.SphereGeometry(0.025, 10, 10);
+    // Snout bridge
+    const bridgeGeo = new THREE.SphereGeometry(1, 12, 10);
+    const bridge = new THREE.Mesh(bridgeGeo, furM);
+    bridge.scale.set(0.05, 0.03, 0.1);
+    bridge.position.set(0, 0.02, 0.12);
+    this._head.add(bridge);
+
+    // Nose — wet, glossy
+    const nGeo = new THREE.SphereGeometry(0.025, 14, 12);
     const nose = new THREE.Mesh(nGeo, noseMat);
     nose.position.set(0, 0, 0.22);
     this._head.add(nose);
 
-    // Cheek fur tufts
+    // Nostrils
     for (const side of [-1, 1]) {
-      const cfGeo = new THREE.SphereGeometry(0.04, 8, 6);
-      const cheek = new THREE.Mesh(cfGeo, furMat);
+      const nstGeo = new THREE.SphereGeometry(0.008, 8, 8);
+      const nst = new THREE.Mesh(nstGeo, mat(0x050505));
+      nst.position.set(side * 0.012, -0.005, 0.24);
+      this._head.add(nst);
+    }
+
+    // Lips / mouth line
+    const lipGeo = new THREE.SphereGeometry(1, 10, 8);
+    const lip = new THREE.Mesh(lipGeo, gumMat);
+    lip.scale.set(0.06, 0.01, 0.1);
+    lip.position.set(0, -0.05, 0.15);
+    this._head.add(lip);
+
+    // Exposed teeth / fangs
+    for (const side of [-1, 1]) {
+      const fangGeo = new THREE.ConeGeometry(0.006, 0.025, 8);
+      const fang = new THREE.Mesh(fangGeo, toothMat);
+      fang.position.set(side * 0.035, -0.06, 0.18);
+      fang.rotation.x = Math.PI;
+      this._head.add(fang);
+    }
+
+    // Cheek fur tufts — more voluminous
+    for (const side of [-1, 1]) {
+      const cfGeo = new THREE.SphereGeometry(0.05, 12, 10);
+      const cheek = new THREE.Mesh(cfGeo, furM);
       cheek.position.set(side * 0.1, -0.02, 0.04);
-      cheek.scale.set(0.8, 1.2, 0.6);
+      cheek.scale.set(0.8, 1.3, 0.7);
       this._head.add(cheek);
+
+      // Extra cheek fur layer
+      const cf2Geo = new THREE.SphereGeometry(0.03, 10, 8);
+      const cheek2 = new THREE.Mesh(cf2Geo, furryMat(0x666666));
+      cheek2.position.set(side * 0.11, -0.04, 0.02);
+      cheek2.scale.set(0.9, 1.0, 0.6);
+      this._head.add(cheek2);
     }
 
-    // Ears — pointed
+    // Ears — pointed with inner detail
     for (const side of [-1, 1]) {
-      const earGeo = new THREE.ConeGeometry(0.04, 0.1, 10);
-      const ear = new THREE.Mesh(earGeo, furMat);
+      const earGeo = new THREE.ConeGeometry(0.04, 0.1, 12);
+      const ear = new THREE.Mesh(earGeo, furM);
       ear.position.set(side * 0.08, 0.12, -0.02);
+      ear.castShadow = true;
       this._head.add(ear);
+
+      // Inner ear (pinkish)
+      const innerGeo = new THREE.ConeGeometry(0.025, 0.07, 10);
+      const inner = new THREE.Mesh(innerGeo, organicMat(0x775555));
+      inner.position.set(side * 0.08, 0.11, 0.005);
+      this._head.add(inner);
     }
 
-    // Eyes
+    // Eyes — more detailed with glow
     for (const side of [-1, 1]) {
-      const eGeo = new THREE.SphereGeometry(0.02, 12, 12);
+      // Eye socket dark area
+      const socketGeo = new THREE.SphereGeometry(0.025, 12, 10);
+      const socket = new THREE.Mesh(socketGeo, darkFurM);
+      socket.position.set(side * 0.07, 0.04, 0.09);
+      socket.scale.set(1, 0.7, 0.5);
+      this._head.add(socket);
+
+      const eGeo = new THREE.SphereGeometry(0.018, 16, 14);
       const eye = new THREE.Mesh(eGeo, eyeMat);
       eye.position.set(side * 0.07, 0.04, 0.1);
       this._head.add(eye);
+
+      // Pupil
+      const pupGeo = new THREE.SphereGeometry(0.008, 10, 8);
+      const pup = new THREE.Mesh(pupGeo, mat(0x111100));
+      pup.position.set(side * 0.07, 0.04, 0.115);
+      pup.scale.set(0.6, 1.2, 0.3);
+      this._head.add(pup);
     }
 
-    // Front legs (arms)
+    // Front legs (arms) — more muscular
     for (const side of [-1, 1]) {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       arm.position.set(side * 0.15, 0.55, 0.25);
       this._body.add(arm);
-      const upperGeo = cyl(0.05, 0.04, 0.35, 12);
-      const upper = new THREE.Mesh(upperGeo, furMat);
+      const upperGeo = cyl(0.055, 0.04, 0.35, 14);
+      const upper = new THREE.Mesh(upperGeo, furM);
       upper.position.y = -0.18;
+      upper.castShadow = true;
       arm.add(upper);
-      const lowerGeo = cyl(0.04, 0.03, 0.3, 12);
-      const lower = new THREE.Mesh(lowerGeo, furMat);
+
+      // Forearm muscle
+      const foreMusGeo = new THREE.SphereGeometry(0.025, 10, 8);
+      const foreMus = new THREE.Mesh(foreMusGeo, furM);
+      foreMus.position.set(0, -0.22, 0.02);
+      foreMus.scale.set(1, 1.2, 0.8);
+      arm.add(foreMus);
+
+      const lowerGeo = cyl(0.04, 0.032, 0.3, 14);
+      const lower = new THREE.Mesh(lowerGeo, furM);
       lower.position.y = -0.45;
+      lower.castShadow = true;
       arm.add(lower);
-      const pawGeo = new THREE.SphereGeometry(0.04, 10, 10);
-      const paw = new THREE.Mesh(pawGeo, darkFurMat);
-      paw.scale.set(1, 0.5, 1.2);
+
+      // Paw with pad detail
+      const pawGeo = new THREE.SphereGeometry(0.042, 14, 12);
+      const paw = new THREE.Mesh(pawGeo, darkFurM);
+      paw.scale.set(1.1, 0.5, 1.3);
       paw.position.set(0, -0.6, 0.01);
+      paw.castShadow = true;
       arm.add(paw);
-      // Claws
+
+      // Paw pads
+      const padGeo = new THREE.SphereGeometry(0.015, 8, 8);
+      const pad = new THREE.Mesh(padGeo, organicMat(0x444444, { roughness: 0.4 }));
+      pad.position.set(0, -0.62, 0);
+      pad.scale.set(1.5, 0.3, 1.2);
+      arm.add(pad);
+
+      // Claws — sharper
       for (let t = -1; t <= 1; t++) {
-        const clGeo = new THREE.ConeGeometry(0.006, 0.03, 6);
-        const claw = new THREE.Mesh(clGeo, mat(0x222222));
-        claw.position.set(t * 0.015, -0.63, 0.025);
+        const clGeo = new THREE.ConeGeometry(0.007, 0.035, 8);
+        const claw = new THREE.Mesh(clGeo, clawMat);
+        claw.position.set(t * 0.016, -0.63, 0.028);
         claw.rotation.x = 0.3;
         arm.add(claw);
       }
     }
 
-    // Hind legs
+    // Hind legs — more powerful
     for (const side of [-1, 1]) {
       const leg = side === -1 ? this._leftLeg : this._rightLeg;
       leg.position.set(side * 0.15, 0.6, -0.25);
       this._body.add(leg);
-      const upperGeo = cyl(0.06, 0.05, 0.35, 12);
-      const upper = new THREE.Mesh(upperGeo, furMat);
+
+      // Upper thigh — thicker
+      const upperGeo = cyl(0.065, 0.05, 0.35, 14);
+      const upper = new THREE.Mesh(upperGeo, furM);
       upper.position.y = -0.18;
+      upper.castShadow = true;
       leg.add(upper);
-      const lowerGeo = cyl(0.04, 0.035, 0.3, 12);
-      const lower = new THREE.Mesh(lowerGeo, furMat);
+
+      // Thigh muscle
+      const thMusGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const thMus = new THREE.Mesh(thMusGeo, furM);
+      thMus.position.set(0, -0.15, -0.02);
+      thMus.scale.set(1, 1.2, 0.8);
+      leg.add(thMus);
+
+      const lowerGeo = cyl(0.042, 0.035, 0.3, 14);
+      const lower = new THREE.Mesh(lowerGeo, furM);
       lower.position.y = -0.45;
+      lower.castShadow = true;
       leg.add(lower);
-      const pawGeo = new THREE.SphereGeometry(0.045, 10, 10);
-      const paw = new THREE.Mesh(pawGeo, darkFurMat);
-      paw.scale.set(1, 0.5, 1.2);
+
+      const pawGeo = new THREE.SphereGeometry(0.048, 14, 12);
+      const paw = new THREE.Mesh(pawGeo, darkFurM);
+      paw.scale.set(1.1, 0.5, 1.3);
       paw.position.set(0, -0.6, 0.01);
+      paw.castShadow = true;
       leg.add(paw);
     }
 
-    // Bushy tail with fur layers
-    const tailGeo = cyl(0.06, 0.03, 0.4, 12);
-    const tail = new THREE.Mesh(tailGeo, darkFurMat);
-    tail.position.set(0, 0.85, -0.45);
-    tail.rotation.x = 0.8;
-    this._body.add(tail);
-    // Tail fur tuft
-    const ttGeo = new THREE.SphereGeometry(0.04, 8, 6);
-    const tt = new THREE.Mesh(ttGeo, furMat);
-    tt.position.set(0, 0.68, -0.6);
-    tt.scale.set(1, 0.7, 1.5);
-    this._body.add(tt);
+    // Bushy tail — multiple layers for volume
+    const tailBaseGeo = cyl(0.05, 0.06, 0.15, 12);
+    const tailBase = new THREE.Mesh(tailBaseGeo, darkFurM);
+    tailBase.position.set(0, 0.88, -0.4);
+    tailBase.rotation.x = 0.6;
+    this._body.add(tailBase);
+
+    const tailMidGeo = cyl(0.06, 0.04, 0.25, 12);
+    const tailMid = new THREE.Mesh(tailMidGeo, furryMat(0x4a4a4a));
+    tailMid.position.set(0, 0.78, -0.52);
+    tailMid.rotation.x = 0.9;
+    this._body.add(tailMid);
+
+    const tailTipGeo = new THREE.SphereGeometry(0.05, 12, 10);
+    const tailTip = new THREE.Mesh(tailTipGeo, furryMat(0x777777));
+    tailTip.position.set(0, 0.68, -0.62);
+    tailTip.scale.set(0.8, 0.6, 1.4);
+    this._body.add(tailTip);
+
+    // Extra tail fur tufts
+    for (let i = 0; i < 4; i++) {
+      const ttGeo = new THREE.SphereGeometry(0.025, 8, 6);
+      const tt = new THREE.Mesh(ttGeo, furryMat(i % 2 === 0 ? 0x555555 : 0x666666));
+      tt.position.set(
+        (Math.random() - 0.5) * 0.04,
+        0.72 + i * 0.04,
+        -0.55 - i * 0.02,
+      );
+      tt.scale.set(1.2, 0.5, 1.5);
+      this._body.add(tt);
+    }
   }
 
   // ---- Thunderhawk builder ---------------------------------------------------
 
   private _buildThunderhawk(): void {
-    const featherMat = mat(0x554422);
-    const darkMat = mat(0x332211);
-    const breastMat = mat(0xaa9966);
-    const beakMat = mat(0xccaa33);
-    const eyeMat = mat(0xffcc00, { emissive: 0xcc8800 });
-    const talonMat = mat(0x333333);
-    const wingMat = mat(0x443322, { side: THREE.DoubleSide });
+    const featherM = featherMat(0x554422);
+    const darkMat = featherMat(0x332211);
+    const breastMat = featherMat(0xaa9966, { iridescence: 0.25 });
+    const beakMat = boneMaterial(0xccaa33);
+    const eyeMat = mat(0xffcc00, { emissive: 0xcc8800, emissiveIntensity: 2.0, clearcoat: 0.9, clearcoatRoughness: 0.05 });
+    const talonMat = boneMaterial(0x333333);
+    const wingMat = featherMat(0x443322, { side: THREE.DoubleSide, iridescence: 0.2 });
 
     // Compact body
-    const torsoGeo = new THREE.SphereGeometry(1, 18, 14);
-    const torso = new THREE.Mesh(torsoGeo, featherMat);
+    const torsoGeo = new THREE.SphereGeometry(1, 22, 18);
+    const torso = new THREE.Mesh(torsoGeo, featherM);
     torso.scale.set(0.2, 0.22, 0.3);
     torso.position.y = 1.2;
+    torso.castShadow = true;
     this._body.add(torso);
 
     // Breast with feather layers
-    const bGeo = new THREE.SphereGeometry(1, 16, 12);
+    const bGeo = new THREE.SphereGeometry(1, 20, 16);
     const breast = new THREE.Mesh(bGeo, breastMat);
     breast.scale.set(0.15, 0.16, 0.22);
     breast.position.set(0, 1.1, 0.08);
     this._body.add(breast);
 
-    // Breast feather detail
-    for (let i = 0; i < 3; i++) {
-      const bfGeo = new THREE.SphereGeometry(0.04, 8, 6);
+    // Breast feather detail — more layers
+    for (let i = 0; i < 5; i++) {
+      const bfGeo = new THREE.SphereGeometry(0.035, 10, 8);
       const bf = new THREE.Mesh(bfGeo, breastMat);
-      bf.position.set((i - 1) * 0.04, 1.05 - i * 0.02, 0.18);
-      bf.scale.set(1, 0.5, 0.8);
+      bf.position.set((i - 2) * 0.03, 1.06 - i * 0.015, 0.19);
+      bf.scale.set(1, 0.4, 0.8);
       this._body.add(bf);
     }
+
+    // Back feather layer
+    const backGeo = new THREE.SphereGeometry(1, 18, 14);
+    const backFeather = new THREE.Mesh(backGeo, featherM);
+    backFeather.scale.set(0.17, 0.18, 0.24);
+    backFeather.position.set(0, 1.25, -0.04);
+    this._body.add(backFeather);
 
     // Head
     this._head.position.set(0, 1.5, 0.15);
     this._body.add(this._head);
-    const headGeo = new THREE.SphereGeometry(0.12, 16, 12);
-    const headMesh = new THREE.Mesh(headGeo, featherMat);
+    const headGeo = new THREE.SphereGeometry(0.12, 20, 16);
+    const headMesh = new THREE.Mesh(headGeo, featherM);
     this._head.add(headMesh);
 
     // Beak (sharper)
@@ -13470,113 +14255,211 @@ export class CreatureMesh {
   // ---- Dire Bear builder -----------------------------------------------------
 
   private _buildDireBear(): void {
-    const furMat = mat(0x4a3322);
-    const darkFurMat = mat(0x2a1a11);
-    const snoutMat = mat(0x5a4433);
-    const eyeMat = mat(0x332211);
-    const noseMat = mat(0x111111);
-    const clawMat = mat(0xccccbb);
+    const furMat = furryMat(0x4a3322);
+    const darkFurMat = furryMat(0x2a1a11);
+    const snoutMat = furryMat(0x5a4433);
+    const eyeMat = mat(0x332211, { clearcoat: 0.8, clearcoatRoughness: 0.1 });
+    const noseMat = mat(0x111111, { roughness: 0.25, clearcoat: 0.7, clearcoatRoughness: 0.1 }); // wet nose
+    const clawMat = boneMaterial(0xccccbb);
 
     // Massive body — quadruped/semi-upright
-    const torsoGeo = new THREE.SphereGeometry(1, 20, 16);
+    const torsoGeo = new THREE.SphereGeometry(1, 26, 20);
     const torso = new THREE.Mesh(torsoGeo, furMat);
     torso.scale.set(0.55, 0.6, 0.7);
     torso.position.y = 1.5;
+    torso.castShadow = true;
     this._body.add(torso);
 
-    // Hump (shoulder mass)
-    const humpGeo = new THREE.SphereGeometry(0.35, 16, 12);
+    // Lighter belly underside
+    const bellyGeo = new THREE.SphereGeometry(1, 22, 16);
+    const belly = new THREE.Mesh(bellyGeo, furryMat(0x5a4433));
+    belly.scale.set(0.45, 0.4, 0.55);
+    belly.position.set(0, 1.3, 0.05);
+    this._body.add(belly);
+
+    // Hump (shoulder mass) — more pronounced
+    const humpGeo = new THREE.SphereGeometry(0.38, 20, 16);
     const hump = new THREE.Mesh(humpGeo, darkFurMat);
     hump.position.set(0, 2.0, 0.1);
+    hump.castShadow = true;
     this._body.add(hump);
 
-    // Fur tufts on back
-    for (let i = 0; i < 5; i++) {
-      const tfGeo = new THREE.SphereGeometry(0.06, 8, 6);
-      const tuft = new THREE.Mesh(tfGeo, darkFurMat);
-      tuft.position.set((Math.random() - 0.5) * 0.3, 1.9 + Math.random() * 0.3, -0.2 + Math.random() * 0.3);
-      tuft.scale.set(1.3, 0.5, 1.3);
+    // Hindquarter mass
+    const hindGeo = new THREE.SphereGeometry(0.3, 18, 14);
+    const hind = new THREE.Mesh(hindGeo, furMat);
+    hind.position.set(0, 1.4, -0.35);
+    hind.castShadow = true;
+    this._body.add(hind);
+
+    // Fur tufts on back — denser layers
+    for (let i = 0; i < 10; i++) {
+      const tfGeo = new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 10, 8);
+      const tuft = new THREE.Mesh(tfGeo, i % 3 === 0 ? furryMat(0x3a2418) : darkFurMat);
+      tuft.position.set(
+        (Math.random() - 0.5) * 0.35,
+        1.7 + Math.random() * 0.5,
+        -0.25 + Math.random() * 0.4,
+      );
+      tuft.scale.set(1.4, 0.5, 1.4);
       this._body.add(tuft);
     }
 
-    // Head
+    // Head — broader, more detailed
     this._head.position.set(0, 2.1, 0.5);
     this._body.add(this._head);
-    const headGeo = new THREE.SphereGeometry(1, 16, 12);
+    const headGeo = new THREE.SphereGeometry(1, 22, 18);
     const headMesh = new THREE.Mesh(headGeo, furMat);
-    headMesh.scale.set(0.22, 0.2, 0.22);
+    headMesh.scale.set(0.23, 0.21, 0.23);
+    headMesh.castShadow = true;
     this._head.add(headMesh);
 
-    // Snout
-    const sGeo = new THREE.SphereGeometry(1, 12, 10);
+    // Snout — longer with more shape
+    const sGeo = new THREE.SphereGeometry(1, 18, 14);
     const snout = new THREE.Mesh(sGeo, snoutMat);
-    snout.scale.set(0.12, 0.1, 0.14);
+    snout.scale.set(0.13, 0.1, 0.15);
     snout.position.set(0, -0.04, 0.18);
     this._head.add(snout);
 
-    // Nose
-    const nGeo = new THREE.SphereGeometry(0.04, 10, 10);
+    // Snout bridge
+    const bridgeGeo = new THREE.SphereGeometry(1, 12, 10);
+    const bridge = new THREE.Mesh(bridgeGeo, furMat);
+    bridge.scale.set(0.08, 0.04, 0.1);
+    bridge.position.set(0, 0.02, 0.15);
+    this._head.add(bridge);
+
+    // Nose — wet, glossy
+    const nGeo = new THREE.SphereGeometry(0.045, 14, 12);
     const nose = new THREE.Mesh(nGeo, noseMat);
     nose.position.set(0, 0, 0.28);
     this._head.add(nose);
 
-    // Small ears
+    // Mouth / lip line
+    const lipGeo = new THREE.SphereGeometry(1, 10, 8);
+    const lip = new THREE.Mesh(lipGeo, organicMat(0x554433));
+    lip.scale.set(0.08, 0.012, 0.1);
+    lip.position.set(0, -0.07, 0.18);
+    this._head.add(lip);
+
+    // Teeth (slightly visible)
     for (const side of [-1, 1]) {
-      const earGeo = new THREE.SphereGeometry(0.05, 10, 10);
-      const ear = new THREE.Mesh(earGeo, furMat);
-      ear.position.set(side * 0.14, 0.14, -0.02);
-      this._head.add(ear);
+      const fangGeo = new THREE.ConeGeometry(0.008, 0.03, 8);
+      const fang = new THREE.Mesh(fangGeo, boneMaterial(0xddddcc));
+      fang.position.set(side * 0.05, -0.08, 0.22);
+      fang.rotation.x = Math.PI;
+      this._head.add(fang);
     }
 
-    // Brow ridge
-    const browGeo = new THREE.SphereGeometry(0.08, 10, 8);
+    // Small rounded ears
+    for (const side of [-1, 1]) {
+      const earGeo = new THREE.SphereGeometry(0.055, 14, 12);
+      const ear = new THREE.Mesh(earGeo, furMat);
+      ear.position.set(side * 0.15, 0.14, -0.02);
+      ear.castShadow = true;
+      this._head.add(ear);
+
+      // Inner ear
+      const innerGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const inner = new THREE.Mesh(innerGeo, organicMat(0x664444));
+      inner.position.set(side * 0.14, 0.14, 0.015);
+      this._head.add(inner);
+    }
+
+    // Brow ridge — heavier
+    const browGeo = new THREE.SphereGeometry(0.09, 14, 12);
     const brow = new THREE.Mesh(browGeo, darkFurMat);
     brow.position.set(0, 0.08, 0.1);
     brow.scale.set(2.0, 0.5, 0.8);
     this._head.add(brow);
 
-    // Eyes
+    // Eyes — small, dark, deeply set
     for (const side of [-1, 1]) {
-      const eGeo = new THREE.SphereGeometry(0.025, 6, 6);
+      const socketGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const socket = new THREE.Mesh(socketGeo, darkFurMat);
+      socket.position.set(side * 0.1, 0.06, 0.12);
+      socket.scale.set(1, 0.7, 0.5);
+      this._head.add(socket);
+
+      const eGeo = new THREE.SphereGeometry(0.02, 14, 12);
       const eye = new THREE.Mesh(eGeo, eyeMat);
       eye.position.set(side * 0.1, 0.06, 0.14);
       this._head.add(eye);
     }
 
-    // Front legs (arms) — massive
+    // Cheek fur tufts
+    for (const side of [-1, 1]) {
+      const cfGeo = new THREE.SphereGeometry(0.05, 10, 8);
+      const cheek = new THREE.Mesh(cfGeo, furryMat(0x5a3828));
+      cheek.position.set(side * 0.16, 0.0, 0.06);
+      cheek.scale.set(0.8, 1.2, 0.7);
+      this._head.add(cheek);
+    }
+
+    // Front legs (arms) — massive with more detail
     for (const side of [-1, 1]) {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       arm.position.set(side * 0.35, 1.0, 0.3);
       this._body.add(arm);
-      const upperGeo = cyl(0.12, 0.1, 0.5, 7);
+
+      // Upper arm with muscle
+      const upperGeo = cyl(0.13, 0.1, 0.5, 16);
       const upper = new THREE.Mesh(upperGeo, furMat);
       upper.position.y = -0.25;
+      upper.castShadow = true;
       arm.add(upper);
-      const lowerGeo = cyl(0.1, 0.08, 0.45, 7);
+
+      // Shoulder muscle
+      const shMusGeo = new THREE.SphereGeometry(0.06, 12, 10);
+      const shMus = new THREE.Mesh(shMusGeo, furMat);
+      shMus.position.set(0, -0.1, 0.04);
+      shMus.scale.set(1.2, 0.8, 1);
+      arm.add(shMus);
+
+      const lowerGeo = cyl(0.1, 0.085, 0.45, 16);
       const lower = new THREE.Mesh(lowerGeo, furMat);
       lower.position.y = -0.6;
+      lower.castShadow = true;
       arm.add(lower);
-      const pawGeo = new THREE.SphereGeometry(0.1, 6, 5);
+
+      // Massive paw with pad detail
+      const pawGeo = new THREE.SphereGeometry(0.11, 16, 14);
       const paw = new THREE.Mesh(pawGeo, darkFurMat);
-      paw.scale.set(1.2, 0.5, 1.3);
+      paw.scale.set(1.3, 0.5, 1.4);
       paw.position.set(0, -0.85, 0.02);
+      paw.castShadow = true;
       arm.add(paw);
-      // Claws
+
+      // Paw pad
+      const padGeo = new THREE.SphereGeometry(0.04, 10, 8);
+      const pad = new THREE.Mesh(padGeo, organicMat(0x333333, { roughness: 0.4 }));
+      pad.position.set(0, -0.88, 0.01);
+      pad.scale.set(1.5, 0.3, 1.3);
+      arm.add(pad);
+
+      // Claws — larger, curved
       for (let t = -1; t <= 1; t++) {
-        const clGeo = new THREE.ConeGeometry(0.012, 0.06, 4);
+        const clGeo = new THREE.ConeGeometry(0.014, 0.07, 10);
         const claw = new THREE.Mesh(clGeo, clawMat);
-        claw.position.set(t * 0.03, -0.9, 0.06);
+        claw.position.set(t * 0.035, -0.9, 0.07);
+        claw.rotation.x = 0.35;
+        claw.castShadow = true;
+        arm.add(claw);
+      }
+      // Extra outer claws
+      for (const t of [-2, 2]) {
+        const clGeo = new THREE.ConeGeometry(0.01, 0.05, 8);
+        const claw = new THREE.Mesh(clGeo, clawMat);
+        claw.position.set(t * 0.025, -0.88, 0.06);
         claw.rotation.x = 0.3;
         arm.add(claw);
       }
     }
 
-    // Hind legs
+    // Hind legs — more powerful
     for (const side of [-1, 1]) {
       const leg = side === -1 ? this._leftLeg : this._rightLeg;
       leg.position.set(side * 0.3, 1.0, -0.3);
       this._body.add(leg);
-      const upperGeo = cyl(0.11, 0.09, 0.45, 7);
+      const upperGeo = cyl(0.11, 0.09, 0.45, 16);
       const upper = new THREE.Mesh(upperGeo, furMat);
       upper.position.y = -0.22;
       leg.add(upper);
@@ -13595,11 +14478,11 @@ export class CreatureMesh {
   // ---- Magma Titan builder ----------------------------------------------------
 
   private _buildMagmaTitan(): void {
-    const rockMat = mat(0x3a2a1a);
-    const darkRockMat = mat(0x221510);
-    const obsidianMat = mat(0x1a1018, { metalness: 0.4, roughness: 0.15 });
-    const lavaMat = mat(0xff4400, { emissive: 0xcc2200 });
-    const lavaDeepMat = mat(0xff2200, { emissive: 0xdd1100 });
+    const rockMat = stoneMat(0x3a2a1a);
+    const darkRockMat = stoneMat(0x221510);
+    const obsidianMat = mat(0x1a1018, { metalness: 0.5, roughness: 0.1, clearcoat: 0.8, clearcoatRoughness: 0.05 }); // glassy obsidian
+    const lavaM = lavaMat(0xff4400, 0xcc2200);
+    const lavaDeepMat = lavaMat(0xff2200, 0xdd1100);
     const lavaGlowMat = mat(0xffaa00, { emissive: 0xff6600, transparent: true, opacity: 0.6 });
     const eyeMat = mat(0xffaa00, { emissive: 0xff6600 });
     const smokeMat = mat(0x444444, { transparent: true, opacity: 0.2 });
@@ -13637,7 +14520,7 @@ export class CreatureMesh {
     for (let i = 0; i < 10; i++) {
       const crLen = 0.2 + Math.random() * 0.25;
       const crackGeo = new THREE.BoxGeometry(0.035, crLen, 0.025);
-      const crack = new THREE.Mesh(crackGeo, lavaMat);
+      const crack = new THREE.Mesh(crackGeo, lavaM);
       const a = (i / 10) * Math.PI * 2;
       const r = 0.5 + Math.random() * 0.15;
       crack.position.set(Math.cos(a) * r, 2.9 + Math.random() * 1.4, Math.sin(a) * r * 0.8);
@@ -13670,7 +14553,7 @@ export class CreatureMesh {
       this._body.add(vr);
       // Interior glow
       const vgGeo = new THREE.SphereGeometry(0.04, 8, 8);
-      const vg = new THREE.Mesh(vgGeo, lavaMat);
+      const vg = new THREE.Mesh(vgGeo, lavaM);
       vg.position.set(side * 0.65, 4.42, -0.2);
       this._body.add(vg);
       // Smoke wisps
@@ -13719,11 +14602,11 @@ export class CreatureMesh {
     this._head.add(jaw);
     // Magma drool from jaw
     const droolGeo = cyl(0.025, 0.01, 0.15, 8);
-    const drool = new THREE.Mesh(droolGeo, lavaMat);
+    const drool = new THREE.Mesh(droolGeo, lavaM);
     drool.position.set(0.05, -0.3, 0.15);
     this._head.add(drool);
     const drool2Geo = cyl(0.02, 0.008, 0.12, 8);
-    const drool2 = new THREE.Mesh(drool2Geo, lavaMat);
+    const drool2 = new THREE.Mesh(drool2Geo, lavaM);
     drool2.position.set(-0.08, -0.28, 0.12);
     this._head.add(drool2);
     // Rock teeth (jagged)
@@ -13738,7 +14621,7 @@ export class CreatureMesh {
     // Head lava cracks (multiple)
     for (let c = 0; c < 3; c++) {
       const hcGeo = new THREE.BoxGeometry(0.02, 0.18, 0.012);
-      const hc = new THREE.Mesh(hcGeo, lavaMat);
+      const hc = new THREE.Mesh(hcGeo, lavaM);
       hc.position.set(-0.1 + c * 0.12, 0.05, 0.3);
       hc.rotation.z = (c - 1) * 0.3;
       this._head.add(hc);
@@ -13781,7 +14664,7 @@ export class CreatureMesh {
       arm.add(u1);
       // Lava band (exposed between rock segments)
       const lbGeo = new THREE.TorusGeometry(0.17, 0.03, 8, 12);
-      const lb = new THREE.Mesh(lbGeo, lavaMat);
+      const lb = new THREE.Mesh(lbGeo, lavaM);
       lb.position.y = -0.72;
       lb.rotation.x = Math.PI / 2;
       arm.add(lb);
@@ -13798,7 +14681,7 @@ export class CreatureMesh {
       // Lava veins running down forearm
       for (let v = 0; v < 3; v++) {
         const avGeo = new THREE.BoxGeometry(0.02, 0.25 + v * 0.05, 0.012);
-        const av = new THREE.Mesh(avGeo, lavaMat);
+        const av = new THREE.Mesh(avGeo, lavaM);
         const va = (v / 3) * Math.PI * 2;
         av.position.set(Math.cos(va) * 0.14, -1.4 - v * 0.1, Math.sin(va) * 0.14);
         av.rotation.y = va;
@@ -13814,7 +14697,7 @@ export class CreatureMesh {
       // Magma knuckle cracks
       for (let k = 0; k < 3; k++) {
         const kkGeo = new THREE.BoxGeometry(0.02, 0.08, 0.01);
-        const kk = new THREE.Mesh(kkGeo, lavaMat);
+        const kk = new THREE.Mesh(kkGeo, lavaM);
         kk.position.set((k - 1) * 0.08, -2.05, 0.22);
         arm.add(kk);
       }
@@ -13840,7 +14723,7 @@ export class CreatureMesh {
       leg.add(thigh);
       // Lava knee band
       const lkGeo = new THREE.TorusGeometry(0.19, 0.025, 8, 12);
-      const lk = new THREE.Mesh(lkGeo, lavaMat);
+      const lk = new THREE.Mesh(lkGeo, lavaM);
       lk.position.y = -0.6;
       lk.rotation.x = Math.PI / 2;
       leg.add(lk);
@@ -13852,14 +14735,14 @@ export class CreatureMesh {
       // Lava veins on shin
       for (let v = 0; v < 2; v++) {
         const svGeo = new THREE.BoxGeometry(0.02, 0.3, 0.012);
-        const sv = new THREE.Mesh(svGeo, lavaMat);
+        const sv = new THREE.Mesh(svGeo, lavaM);
         sv.position.set(v === 0 ? 0.12 : -0.1, -1.1, v === 0 ? 0.12 : -0.12);
         sv.rotation.z = (v - 0.5) * 0.2;
         leg.add(sv);
       }
       // Ankle — molten joint
       const ankGeo = new THREE.SphereGeometry(0.14, 12, 10);
-      const ank = new THREE.Mesh(ankGeo, lavaMat);
+      const ank = new THREE.Mesh(ankGeo, lavaM);
       ank.position.y = -1.6;
       leg.add(ank);
       // Foot (volcanic rock slab with glowing underside)
@@ -13871,7 +14754,7 @@ export class CreatureMesh {
       // Glowing lava cracks on foot
       for (let c = 0; c < 2; c++) {
         const fcGeo = new THREE.BoxGeometry(0.12, 0.01, 0.02);
-        const fc = new THREE.Mesh(fcGeo, lavaMat);
+        const fc = new THREE.Mesh(fcGeo, lavaM);
         fc.position.set((c - 0.5) * 0.1, -1.7, 0.08);
         leg.add(fc);
       }
@@ -14658,13 +15541,13 @@ export class CreatureMesh {
   // ---- Frost Wyrm builder ----------------------------------------------------
 
   private _buildFrostWyrm(): void {
-    const scaleMat = mat(0x88aacc);
-    const bellyMat = mat(0xaaccdd);
-    const iceMat = mat(0xccddff, { emissive: 0x4466aa, transparent: true, opacity: 0.8 });
-    const eyeMat = mat(0x88ddff, { emissive: 0x44aadd });
-    const fangMat = mat(0xeeeeff);
-    const darkScaleMat = mat(0x667799);
-    const frostMat = mat(0xddeeff, { emissive: 0x6688bb, transparent: true, opacity: 0.6 });
+    const scaleMat = scalyMat(0x88aacc, { iridescence: 0.5, iridescenceIOR: 1.5 });
+    const bellyMat = scalyMat(0xaaccdd, { clearcoat: 0.6, clearcoatRoughness: 0.15 });
+    const iceMat = mat(0xccddff, { emissive: 0x4466aa, emissiveIntensity: 1.5, transparent: true, opacity: 0.8, transmission: 0.2, thickness: 0.3, roughness: 0.15 });
+    const eyeMat = mat(0x88ddff, { emissive: 0x44aadd, emissiveIntensity: 2.5, clearcoat: 1.0, clearcoatRoughness: 0.05 });
+    const fangMat = boneMaterial(0xeeeeff);
+    const darkScaleMat = scalyMat(0x667799);
+    const frostMat = mat(0xddeeff, { emissive: 0x6688bb, emissiveIntensity: 1.5, transparent: true, opacity: 0.6, roughness: 0.2 });
 
     // Serpentine body — elongated
     const torsoGeo = new THREE.SphereGeometry(1, 20, 16);

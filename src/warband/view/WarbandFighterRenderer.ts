@@ -115,8 +115,8 @@ export class FighterMesh {
 
   private _colors: FighterColors;
   private _isCaster = false;
-  private _casterRobeMat: THREE.MeshStandardMaterial | null = null;
-  private _casterRobeAccentMat: THREE.MeshStandardMaterial | null = null;
+  private _casterRobeMat: THREE.MeshPhysicalMaterial | null = null;
+  private _casterRobeAccentMat: THREE.MeshPhysicalMaterial | null = null;
 
   constructor(fighter: WarbandFighter, index: number) {
     this.fighterId = fighter.id;
@@ -137,8 +137,24 @@ export class FighterMesh {
     }
     this.group.add(this._root);
 
-    const skinMat = new THREE.MeshStandardMaterial({ color: this._colors.skin, roughness: 0.7 });
-    const tunicMat = new THREE.MeshStandardMaterial({ color: this._colors.tunic, roughness: 0.8 });
+    const skinMat = new THREE.MeshPhysicalMaterial({
+      color: this._colors.skin,
+      roughness: 0.55,
+      metalness: 0.0,
+      sheen: 0.2,
+      sheenColor: new THREE.Color(this._colors.skin).multiplyScalar(1.4),
+      sheenRoughness: 0.7,
+      clearcoat: 0.05,
+      clearcoatRoughness: 0.9,
+    });
+    const tunicMat = new THREE.MeshPhysicalMaterial({
+      color: this._colors.tunic,
+      roughness: 0.7,
+      metalness: 0.0,
+      sheen: 0.35,
+      sheenColor: new THREE.Color(this._colors.tunic).multiplyScalar(1.5),
+      sheenRoughness: 0.4,
+    });
 
     // Build skeleton hierarchy
     this._hips = this._makeBoneGroup();
@@ -150,7 +166,7 @@ export class FighterMesh {
     const pelvisGeo = new THREE.CylinderGeometry(
       TORSO_WIDTH * 0.45, HIP_WIDTH + LIMB_THICKNESS * 1.4 + 0.01, PELVIS_HEIGHT, 8,
     );
-    const pantsMat2 = new THREE.MeshStandardMaterial({ color: this._colors.pants, roughness: 0.8 });
+    const pantsMat2 = new THREE.MeshPhysicalMaterial({ color: this._colors.pants, roughness: 0.75, sheen: 0.2, sheenColor: new THREE.Color(this._colors.pants).multiplyScalar(1.3), sheenRoughness: 0.5 });
     const pelvisMesh = new THREE.Mesh(pelvisGeo, pantsMat2);
     pelvisMesh.position.y = PELVIS_HEIGHT * 0.4;
     pelvisMesh.castShadow = true;
@@ -158,7 +174,7 @@ export class FighterMesh {
 
     // Waistband (top of pants)
     const waistbandColor = new THREE.Color(this._colors.pants).multiplyScalar(0.85).getHex();
-    const waistbandMat = new THREE.MeshStandardMaterial({ color: waistbandColor, roughness: 0.85 });
+    const waistbandMat = new THREE.MeshPhysicalMaterial({ color: waistbandColor, roughness: 0.85 });
     const waistbandGeo = new THREE.CylinderGeometry(
       TORSO_WIDTH * 0.46, TORSO_WIDTH * 0.45, 0.025, 8,
     );
@@ -198,7 +214,7 @@ export class FighterMesh {
     }
     if (!this._isCaster) {
     // ---- Torso: organic shape built from multiple sections ----
-    const seamMat = new THREE.MeshStandardMaterial({
+    const seamMat = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color(this._colors.tunic).multiplyScalar(0.75).getHex(),
       roughness: 0.9,
     });
@@ -262,7 +278,7 @@ export class FighterMesh {
 
     // Collarbone / clavicle area (visible through tunic neckline)
     const clavGeo = new THREE.CylinderGeometry(0.012, 0.01, TORSO_WIDTH * 0.45, 4);
-    const clavMat = new THREE.MeshStandardMaterial({ color: this._colors.skin, roughness: 0.7 });
+    const clavMat = new THREE.MeshPhysicalMaterial({ color: this._colors.skin, roughness: 0.7 });
     for (const side of [-1, 1]) {
       const clav = new THREE.Mesh(clavGeo, clavMat);
       clav.position.set(
@@ -282,7 +298,7 @@ export class FighterMesh {
     this._chest.add(centerSeam);
 
     // Tunic hem (bottom edge trim)
-    const hemMat = new THREE.MeshStandardMaterial({
+    const hemMat = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color(this._colors.tunic).multiplyScalar(0.85).getHex(),
       roughness: 0.85,
     });
@@ -345,7 +361,7 @@ export class FighterMesh {
     }
 
     // Belt at waist (follows cylinder shape)
-    const beltMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.8 });
+    const beltMat = new THREE.MeshPhysicalMaterial({ color: 0x5c3a1e, roughness: 0.75, sheen: 0.2, sheenRoughness: 0.5, sheenColor: new THREE.Color(0x443322) });
     const beltGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.48, 0.018, 4, 10);
     const belt = new THREE.Mesh(beltGeo, beltMat);
     belt.position.y = 0.03;
@@ -355,14 +371,14 @@ export class FighterMesh {
     this._chest.add(belt);
 
     // Belt buckle
-    const buckleMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.3, metalness: 0.7 });
+    const buckleMat = new THREE.MeshPhysicalMaterial({ color: 0xccaa44, roughness: 0.25, metalness: 0.75, clearcoat: 0.4 });
     const buckleGeo = new THREE.BoxGeometry(0.03, 0.025, 0.01);
     const buckle = new THREE.Mesh(buckleGeo, buckleMat);
     buckle.position.set(0, 0.03, TORSO_DEPTH * 0.44);
     this._chest.add(buckle);
 
     // Belt pouch (small bag on one side)
-    const pouchMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 });
+    const pouchMat = new THREE.MeshPhysicalMaterial({ color: 0x6b4226, roughness: 0.85 });
     const pouchGeo = new THREE.BoxGeometry(0.04, 0.045, 0.03);
     const pouch = new THREE.Mesh(pouchGeo, pouchMat);
     pouch.position.set(TORSO_WIDTH * 0.32, 0.01, TORSO_DEPTH * 0.38);
@@ -498,9 +514,12 @@ export class FighterMesh {
     this._headBone.add(occipital);
 
     // Hair — single sphere matching cranium shape, slightly larger
-    const hairMat = new THREE.MeshStandardMaterial({
+    const hairMat = new THREE.MeshPhysicalMaterial({
       color: this._colors.hair,
-      roughness: 0.9,
+      roughness: 0.75,
+      sheen: 0.55,
+      sheenColor: new THREE.Color(this._colors.hair).multiplyScalar(1.8),
+      sheenRoughness: 0.3,
     });
     const hairGeo = new THREE.SphereGeometry(HEAD_RADIUS * 1.06, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.58);
     const hairMesh = new THREE.Mesh(hairGeo, hairMat);
@@ -570,7 +589,7 @@ export class FighterMesh {
       const eyeZ = HEAD_RADIUS * 0.80;
 
       // Eye socket (dark recessed area behind the eyeball)
-      const socketMat = new THREE.MeshStandardMaterial({ color: 0x8b6b5a, roughness: 0.9 });
+      const socketMat = new THREE.MeshPhysicalMaterial({ color: 0x8b6b5a, roughness: 0.9 });
       const socketGeo = new THREE.SphereGeometry(0.022, 5, 4);
       const socket = new THREE.Mesh(socketGeo, socketMat);
       socket.position.set(eyeX, eyeY, eyeZ - 0.002);
@@ -578,22 +597,24 @@ export class FighterMesh {
       this._headBone.add(socket);
       this._faceMeshes.push(socket);
 
-      // Eyeball (white, with shading from MeshStandardMaterial)
-      const eyeWhiteMat = new THREE.MeshStandardMaterial({
-        color: 0xf5f0eb, roughness: 0.3, metalness: 0.0,
+      // Eyeball (white sclera with wet glossy surface)
+      const eyeWhiteMat = new THREE.MeshPhysicalMaterial({
+        color: 0xf5f0eb, roughness: 0.15, metalness: 0.0,
+        clearcoat: 0.9, clearcoatRoughness: 0.05,
       });
-      const eyeWhiteGeo = new THREE.SphereGeometry(0.016, 6, 5);
+      const eyeWhiteGeo = new THREE.SphereGeometry(0.016, 10, 8);
       const eyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
       eyeWhite.position.set(eyeX, eyeY, eyeZ + 0.004);
       eyeWhite.scale.set(1, 0.85, 0.7);
       this._headBone.add(eyeWhite);
       this._faceMeshes.push(eyeWhite);
 
-      // Iris (colored disc — slightly larger, sits on front of eyeball)
-      const irisMat = new THREE.MeshStandardMaterial({
-        color: 0x4477aa, roughness: 0.4, metalness: 0.1,
+      // Iris (colored disc with depth)
+      const irisMat = new THREE.MeshPhysicalMaterial({
+        color: 0x4477aa, roughness: 0.3, metalness: 0.05,
+        clearcoat: 0.8, clearcoatRoughness: 0.05,
       });
-      const irisGeo = new THREE.SphereGeometry(0.011, 5, 4);
+      const irisGeo = new THREE.SphereGeometry(0.011, 8, 6);
       const iris = new THREE.Mesh(irisGeo, irisMat);
       iris.position.set(eyeX, eyeY, eyeZ + 0.012);
       iris.scale.set(1, 1, 0.3);
@@ -601,20 +622,21 @@ export class FighterMesh {
       this._faceMeshes.push(iris);
 
       // Pupil (dark center dot)
-      const pupilMat = new THREE.MeshStandardMaterial({
-        color: 0x111111, roughness: 0.2, metalness: 0.0,
+      const pupilMat = new THREE.MeshPhysicalMaterial({
+        color: 0x111111, roughness: 0.1, metalness: 0.0,
+        clearcoat: 1.0, clearcoatRoughness: 0.02,
       });
-      const pupilGeo = new THREE.SphereGeometry(0.006, 4, 3);
+      const pupilGeo = new THREE.SphereGeometry(0.006, 6, 5);
       const pupil = new THREE.Mesh(pupilGeo, pupilMat);
       pupil.position.set(eyeX, eyeY, eyeZ + 0.015);
       pupil.scale.set(1, 1, 0.3);
       this._headBone.add(pupil);
       this._faceMeshes.push(pupil);
 
-      // Cornea highlight (tiny bright specular dot)
-      const corneaMat = new THREE.MeshStandardMaterial({
+      // Cornea highlight (wet specular catch light)
+      const corneaMat = new THREE.MeshPhysicalMaterial({
         color: 0xffffff, roughness: 0.0, metalness: 0.0,
-        emissive: 0x444444,
+        emissive: 0x666666, emissiveIntensity: 0.5,
       });
       const corneaGeo = new THREE.SphereGeometry(0.003, 3, 2);
       const cornea = new THREE.Mesh(corneaGeo, corneaMat);
@@ -640,7 +662,7 @@ export class FighterMesh {
     }
 
     // Eyebrows (thicker, more defined ridges)
-    const browMat = new THREE.MeshStandardMaterial({ color: this._colors.hair, roughness: 0.9 });
+    const browMat = new THREE.MeshPhysicalMaterial({ color: this._colors.hair, roughness: 0.9 });
     for (const side of [-1, 1]) {
       const browGeo = new THREE.BoxGeometry(0.035, 0.008, 0.014);
       const brow = new THREE.Mesh(browGeo, browMat);
@@ -676,7 +698,7 @@ export class FighterMesh {
 
     // Mouth (with proper upper and lower lips)
     // Upper lip
-    const lipMat = new THREE.MeshStandardMaterial({ color: 0xbb6666, roughness: 0.6 });
+    const lipMat = new THREE.MeshPhysicalMaterial({ color: 0xbb6666, roughness: 0.6 });
     const upperLipGeo = new THREE.SphereGeometry(0.022, 5, 3, 0, Math.PI * 2, 0, Math.PI * 0.5);
     const upperLip = new THREE.Mesh(upperLipGeo, lipMat);
     upperLip.position.set(0, HEAD_RADIUS * 0.67, HEAD_RADIUS * 0.89);
@@ -750,7 +772,7 @@ export class FighterMesh {
 
     // ---- Legs ----
     const pantsSeamColor = new THREE.Color(this._colors.pants).multiplyScalar(0.8).getHex();
-    const pantsSeamMat = new THREE.MeshStandardMaterial({ color: pantsSeamColor, roughness: 0.9 });
+    const pantsSeamMat = new THREE.MeshPhysicalMaterial({ color: pantsSeamColor, roughness: 0.9 });
 
     // Left leg
     this._leftThigh = this._makeBoneGroup();
@@ -842,7 +864,7 @@ export class FighterMesh {
   /** Add a smooth joint sphere at a bone connection point */
   private _addJoint(parent: THREE.Group, color: number): void {
     const geo = new THREE.SphereGeometry(JOINT_RADIUS, 6, 5);
-    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.75 });
+    const mat = new THREE.MeshPhysicalMaterial({ color, roughness: 0.75 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     parent.add(mesh);
@@ -851,7 +873,7 @@ export class FighterMesh {
   /** Sleeve cuff at the end of upper arm (where tunic sleeve ends) */
   private _addSleeveCuff(parent: THREE.Group, color: number): void {
     const cuffColor = new THREE.Color(color).multiplyScalar(0.85).getHex();
-    const cuffMat = new THREE.MeshStandardMaterial({ color: cuffColor, roughness: 0.85 });
+    const cuffMat = new THREE.MeshPhysicalMaterial({ color: cuffColor, roughness: 0.85 });
     const cuffGeo = new THREE.CylinderGeometry(LIMB_THICKNESS + 0.008, LIMB_THICKNESS + 0.004, 0.025, 6);
     const cuff = new THREE.Mesh(cuffGeo, cuffMat);
     cuff.position.y = -UPPER_ARM_LEN + 0.01;
@@ -868,7 +890,7 @@ export class FighterMesh {
 
   /** Subtle forearm muscle bulge */
   private _addForearmMuscle(parent: THREE.Group, color: number): void {
-    const muscleMat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
+    const muscleMat = new THREE.MeshPhysicalMaterial({ color, roughness: 0.7 });
     const muscleGeo = new THREE.SphereGeometry(LIMB_THICKNESS * 0.7, 4, 3);
     const muscle = new THREE.Mesh(muscleGeo, muscleMat);
     muscle.position.set(0, -FOREARM_LEN * 0.25, LIMB_THICKNESS * 0.4);
@@ -877,7 +899,7 @@ export class FighterMesh {
   }
 
   /** Pants detail: outer seam and knee patch */
-  private _addPantsDetail(parent: THREE.Group, seamMat: THREE.MeshStandardMaterial): void {
+  private _addPantsDetail(parent: THREE.Group, seamMat: THREE.MeshPhysicalMaterial): void {
     // Outer seam running down the thigh
     const seamGeo = new THREE.BoxGeometry(0.004, THIGH_LEN * 0.8, 0.003);
     const seam = new THREE.Mesh(seamGeo, seamMat);
@@ -899,7 +921,7 @@ export class FighterMesh {
 
   /** Calf muscle bulge on shin */
   private _addCalfMuscle(parent: THREE.Group, color: number): void {
-    const muscleMat = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+    const muscleMat = new THREE.MeshPhysicalMaterial({ color, roughness: 0.8 });
     const muscleGeo = new THREE.SphereGeometry(LIMB_THICKNESS * 0.65, 4, 3);
     const muscle = new THREE.Mesh(muscleGeo, muscleMat);
     muscle.position.set(0, -SHIN_LEN * 0.25, -LIMB_THICKNESS * 0.35);
@@ -908,10 +930,10 @@ export class FighterMesh {
   }
 
   /** Build caster model: long flowing robe covering the body */
-  private _buildCasterRobe(_skinMat: THREE.MeshStandardMaterial): void {
+  private _buildCasterRobe(_skinMat: THREE.MeshPhysicalMaterial): void {
     // Use a neutral dark color initially; updateArmorVisuals will set the proper school color
-    this._casterRobeMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.85, metalness: 0.05 });
-    this._casterRobeAccentMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.8, metalness: 0.1 });
+    this._casterRobeMat = new THREE.MeshPhysicalMaterial({ color: 0x444444, roughness: 0.8, metalness: 0.05, sheen: 0.4, sheenRoughness: 0.4, sheenColor: new THREE.Color(0x555555) });
+    this._casterRobeAccentMat = new THREE.MeshPhysicalMaterial({ color: 0x666666, roughness: 0.75, metalness: 0.1, sheen: 0.3, sheenRoughness: 0.35, sheenColor: new THREE.Color(0x777777) });
     const robeMat = this._casterRobeMat;
     const accentMat = this._casterRobeAccentMat;
 
@@ -947,7 +969,7 @@ export class FighterMesh {
 
     // Robe vertical seam line (center front)
     const seamGeo = new THREE.BoxGeometry(0.008, robeHeight * 0.8, 0.003);
-    const seamMat = new THREE.MeshStandardMaterial({
+    const seamMat = new THREE.MeshPhysicalMaterial({
       color: 0x333333, roughness: 0.9,
     });
     const seam = new THREE.Mesh(seamGeo, seamMat);
@@ -956,7 +978,7 @@ export class FighterMesh {
 
     // Belt / rope sash around waist
     const sashGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.48, 0.014, 4, 10);
-    const sashMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.85 });
+    const sashMat = new THREE.MeshPhysicalMaterial({ color: 0x8b6914, roughness: 0.85 });
     const sash = new THREE.Mesh(sashGeo, sashMat);
     sash.position.y = 0.03;
     sash.rotation.x = Math.PI / 2;
@@ -1012,7 +1034,7 @@ export class FighterMesh {
 
   /** Add a tapered limb segment (cylinder wider at top, narrower at bottom) */
   private _addLimb(parent: THREE.Group, length: number, color: number, thicker = false): void {
-    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+    const mat = new THREE.MeshPhysicalMaterial({ color, roughness: 0.8 });
     if (thicker) {
       // Thigh: wider at hip, tapering naturally to knee
       const topR = LIMB_THICKNESS * 1.4;
@@ -1035,7 +1057,7 @@ export class FighterMesh {
 
   private _addHand(parent: THREE.Group, color: number): void {
     const hs = HAND_SIZE * 0.75; // smaller hands
-    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
+    const mat = new THREE.MeshPhysicalMaterial({ color, roughness: 0.7 });
 
     // Palm (flat box, not a ball)
     const palmGeo = new THREE.BoxGeometry(hs * 1.4, hs * 0.5, hs * 1.6);
@@ -1065,8 +1087,8 @@ export class FighterMesh {
   private _addFoot(parent: THREE.Group, color: number): void {
     // Ankle joint
     this._addJoint(parent, color);
-    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.85 });
-    const soleMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.95 });
+    const mat = new THREE.MeshPhysicalMaterial({ color, roughness: 0.85 });
+    const soleMat = new THREE.MeshPhysicalMaterial({ color: 0x222222, roughness: 0.95 });
 
     // Main foot — tapers down toward the toes using a wedge shape
     // Back (heel area) is taller, front (toe area) slopes down
@@ -1148,19 +1170,25 @@ export class FighterMesh {
 
       const weaponGroup = new THREE.Group();
 
-      const handleMat = new THREE.MeshStandardMaterial({
+      const handleMat = new THREE.MeshPhysicalMaterial({
         color: wpn.accentColor ?? 0x654321,
         roughness: 0.7,
+        sheen: 0.15,
+        sheenRoughness: 0.6,
+        sheenColor: new THREE.Color(0x443322),
       });
-      const bladeMat = new THREE.MeshStandardMaterial({
+      const bladeMat = new THREE.MeshPhysicalMaterial({
         color: wpn.color,
-        roughness: 0.3,
-        metalness: 0.7,
+        roughness: 0.25,
+        metalness: 0.75,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.15,
       });
-      const guardMat = new THREE.MeshStandardMaterial({
+      const guardMat = new THREE.MeshPhysicalMaterial({
         color: 0xaaaa55,
-        roughness: 0.4,
-        metalness: 0.6,
+        roughness: 0.35,
+        metalness: 0.65,
+        clearcoat: 0.3,
       });
 
       // Handle with leather wrap texture
@@ -1170,7 +1198,7 @@ export class FighterMesh {
       weaponGroup.add(handle);
 
       // Handle wrap rings (leather grip detail)
-      const wrapMat = new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 });
+      const wrapMat = new THREE.MeshPhysicalMaterial({ color: 0x3a2010, roughness: 0.9 });
       const wrapCount = Math.floor(handleLen / 0.04);
       for (let i = 0; i < wrapCount; i++) {
         const wrapGeo = new THREE.TorusGeometry(0.021, 0.003, 3, 6);
@@ -1191,14 +1219,14 @@ export class FighterMesh {
       if (wpn.category === "staff") {
         // ---- Caster Staff: wooden shaft with diamond crystal on top ----
         // Wooden shaft (extends from handle upward)
-        const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85, metalness: 0.0 });
+        const woodMat = new THREE.MeshPhysicalMaterial({ color: 0x6b4226, roughness: 0.85, metalness: 0.0 });
         const shaftGeo = new THREE.CylinderGeometry(0.014, 0.02, bladeLen * 0.85, 6);
         const shaft = new THREE.Mesh(shaftGeo, woodMat);
         shaft.position.y = handleLen + bladeLen * 0.425;
         weaponGroup.add(shaft);
 
         // Wood grain rings along shaft
-        const grainMat = new THREE.MeshStandardMaterial({ color: 0x543018, roughness: 0.9 });
+        const grainMat = new THREE.MeshPhysicalMaterial({ color: 0x543018, roughness: 0.9 });
         for (let i = 0; i < 4; i++) {
           const ringGeo = new THREE.TorusGeometry(0.017, 0.003, 3, 6);
           const ring = new THREE.Mesh(ringGeo, grainMat);
@@ -1235,12 +1263,18 @@ export class FighterMesh {
 
         // Diamond crystal on top (octahedron shape, school-colored)
         const diamondColor = wpn.accentColor ?? 0xffffff;
-        const diamondMat = new THREE.MeshStandardMaterial({
+        const diamondMat = new THREE.MeshPhysicalMaterial({
           color: diamondColor,
-          roughness: 0.1,
-          metalness: 0.3,
+          roughness: 0.05,
+          metalness: 0.2,
           emissive: diamondColor,
-          emissiveIntensity: 0.3,
+          emissiveIntensity: 0.4,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.05,
+          iridescence: 0.6,
+          iridescenceIOR: 1.8,
+          transmission: 0.3,
+          thickness: 0.5,
         });
         const diamondGeo = new THREE.OctahedronGeometry(0.04, 0);
         const diamond = new THREE.Mesh(diamondGeo, diamondMat);
@@ -1250,7 +1284,7 @@ export class FighterMesh {
         weaponGroup.add(diamond);
 
         // Diamond glow (slightly larger transparent sphere)
-        const glowMat = new THREE.MeshStandardMaterial({
+        const glowMat = new THREE.MeshPhysicalMaterial({
           color: diamondColor,
           transparent: true,
           opacity: 0.15,
@@ -1385,10 +1419,12 @@ export class FighterMesh {
           weaponGroup.add(tip);
 
           // Fuller (groove running down the center of the blade)
-          const fullerMat = new THREE.MeshStandardMaterial({
+          const fullerMat = new THREE.MeshPhysicalMaterial({
             color: wpn.color,
-            roughness: 0.15,
-            metalness: 0.9,
+            roughness: 0.1,
+            metalness: 0.92,
+            clearcoat: 0.5,
+            clearcoatRoughness: 0.1,
           });
           const fullerGeo = new THREE.BoxGeometry(0.008, bladeLen * 0.7, 0.012);
           const fuller = new THREE.Mesh(fullerGeo, fullerMat);
@@ -1396,10 +1432,12 @@ export class FighterMesh {
           weaponGroup.add(fuller);
 
           // Blade edge highlights (thin strips along cutting edges)
-          const edgeMat = new THREE.MeshStandardMaterial({
+          const edgeMat = new THREE.MeshPhysicalMaterial({
             color: 0xeeeeee,
-            roughness: 0.1,
-            metalness: 0.9,
+            roughness: 0.08,
+            metalness: 0.92,
+            clearcoat: 0.6,
+            clearcoatRoughness: 0.05,
           });
           for (const side of [-1, 1]) {
             const edgeGeo = new THREE.BoxGeometry(0.002, bladeLen * 0.9, 0.008);
@@ -1419,7 +1457,7 @@ export class FighterMesh {
           // Throwing axe: compact, already handled by axe branch
         } else if (wpn.id.includes("kniv") || wpn.id.includes("knife")) {
           // Throwing knives: add extra blade detail
-          const knifeEdgeMat = new THREE.MeshStandardMaterial({
+          const knifeEdgeMat = new THREE.MeshPhysicalMaterial({
             color: 0xdddddd, roughness: 0.1, metalness: 0.9,
           });
           const knifeEdgeGeo = new THREE.BoxGeometry(0.002, bladeLen * 0.8, 0.008);
@@ -1488,8 +1526,8 @@ export class FighterMesh {
       this._bowR = bowR;
       const bowArc = Math.PI * 0.65;
 
-      const bowMat = new THREE.MeshStandardMaterial({ color: wpn.color, roughness: 0.7 });
-      const gripMat = new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 });
+      const bowMat = new THREE.MeshPhysicalMaterial({ color: wpn.color, roughness: 0.65, sheen: 0.15, sheenRoughness: 0.5, sheenColor: new THREE.Color(0x554433) });
+      const gripMat = new THREE.MeshPhysicalMaterial({ color: 0x3a2010, roughness: 0.85, sheen: 0.2, sheenRoughness: 0.5, sheenColor: new THREE.Color(0x332211) });
 
       // ---------------------------------------------------------------
       // Bow coordinate system (bowGroup local):
@@ -1563,7 +1601,7 @@ export class FighterMesh {
 
       // Arrow — along +X (forward), starting at the string rest position
       const arrowLen = isCrossbow ? 0.2 : 0.35;
-      const arrowMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.8 });
+      const arrowMat = new THREE.MeshPhysicalMaterial({ color: 0x8b6914, roughness: 0.8 });
       const arrowGeo = new THREE.CylinderGeometry(0.004, 0.004, arrowLen, 3);
       const arrow = new THREE.Mesh(arrowGeo, arrowMat);
       arrow.rotation.z = -Math.PI / 2; // cylinder Y → +X
@@ -1571,7 +1609,7 @@ export class FighterMesh {
       bowGroup.add(arrow);
 
       // Arrowhead
-      const aHeadMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.7 });
+      const aHeadMat = new THREE.MeshPhysicalMaterial({ color: 0x888888, roughness: 0.25, metalness: 0.75, clearcoat: 0.3 });
       const aHeadGeo = new THREE.ConeGeometry(0.009, 0.03, 4);
       const arrowHead = new THREE.Mesh(aHeadGeo, aHeadMat);
       arrowHead.rotation.z = -Math.PI / 2; // cone tip → +X
@@ -1579,7 +1617,7 @@ export class FighterMesh {
       bowGroup.add(arrowHead);
 
       // Fletching
-      const fletchMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 });
+      const fletchMat = new THREE.MeshPhysicalMaterial({ color: 0xdddddd, roughness: 0.9 });
       for (let f = 0; f < 3; f++) {
         const fAngle = (f / 3) * Math.PI * 2;
         const fletchGeo = new THREE.BoxGeometry(0.04, 0.015, 0.001);
@@ -1594,7 +1632,7 @@ export class FighterMesh {
       }
 
       // Arrow nock
-      const nockMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8 });
+      const nockMat = new THREE.MeshPhysicalMaterial({ color: 0x553311, roughness: 0.8 });
       const arrowNockGeo = new THREE.SphereGeometry(0.005, 3, 3);
       const arrowNock = new THREE.Mesh(arrowNockGeo, nockMat);
       arrowNock.position.set(stringX, 0, 0);
@@ -1602,7 +1640,7 @@ export class FighterMesh {
 
       // Crossbow stock
       if (isCrossbow) {
-        const stockMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.8 });
+        const stockMat = new THREE.MeshPhysicalMaterial({ color: 0x654321, roughness: 0.8 });
         const stockGeo = new THREE.BoxGeometry(0.25, 0.04, 0.03);
         const stock = new THREE.Mesh(stockGeo, stockMat);
         stock.position.set(-0.12, -0.02, 0);
@@ -1656,10 +1694,11 @@ export class FighterMesh {
       } else {
         shieldGeo = new THREE.CircleGeometry(shieldRadius, 16);
       }
-      const shieldMat = new THREE.MeshStandardMaterial({
+      const shieldMat = new THREE.MeshPhysicalMaterial({
         color: shield.color,
-        roughness: 0.6,
-        metalness: 0.3,
+        roughness: 0.5,
+        metalness: 0.35,
+        clearcoat: 0.2,
         side: THREE.DoubleSide,
       });
       this._shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
@@ -1669,7 +1708,7 @@ export class FighterMesh {
       this._leftForearm.add(this._shieldMesh);
 
       // Shield rim (metal edge)
-      const rimMat = new THREE.MeshStandardMaterial({
+      const rimMat = new THREE.MeshPhysicalMaterial({
         color: shield.accentColor ?? 0x888888,
         roughness: 0.35,
         metalness: 0.6,
@@ -1700,17 +1739,19 @@ export class FighterMesh {
 
       // Shield boss (center dome) — faces outward (+Z)
       const bossGeo = new THREE.SphereGeometry(shieldRadius * 0.22, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2);
-      const bossMat = new THREE.MeshStandardMaterial({
+      const bossMat = new THREE.MeshPhysicalMaterial({
         color: shield.accentColor ?? 0x999999,
-        roughness: 0.3,
-        metalness: 0.7,
+        roughness: 0.25,
+        metalness: 0.75,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.1,
       });
       const boss = new THREE.Mesh(bossGeo, bossMat);
       boss.position.z = 0.01;
       this._shieldMesh.add(boss);
 
       // Shield cross / reinforcing strips
-      const stripMat = new THREE.MeshStandardMaterial({
+      const stripMat = new THREE.MeshPhysicalMaterial({
         color: shield.accentColor ?? 0x888888,
         roughness: 0.4,
         metalness: 0.5,
@@ -1725,7 +1766,7 @@ export class FighterMesh {
       this._shieldMesh.add(vStrip);
 
       // Shield back handle
-      const handleMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.8 });
+      const handleMat = new THREE.MeshPhysicalMaterial({ color: 0x654321, roughness: 0.8 });
       const shieldHandleGeo = new THREE.BoxGeometry(0.02, shieldRadius * 0.6, 0.02);
       const shieldHandle = new THREE.Mesh(shieldHandleGeo, handleMat);
       shieldHandle.position.z = -0.012;
@@ -1765,8 +1806,8 @@ export class FighterMesh {
         for (const m of this._hairMeshes) m.visible = false;
 
         const hatColor = armor.head.color;
-        const hatMat = new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.8, metalness: 0.05 });
-        const hatDarkMat = new THREE.MeshStandardMaterial({
+        const hatMat = new THREE.MeshPhysicalMaterial({ color: hatColor, roughness: 0.75, metalness: 0.05, sheen: 0.3, sheenRoughness: 0.4, sheenColor: new THREE.Color(hatColor).multiplyScalar(1.3) });
+        const hatDarkMat = new THREE.MeshPhysicalMaterial({
           color: new THREE.Color(hatColor).multiplyScalar(0.7).getHex(),
           roughness: 0.85,
         });
@@ -1809,7 +1850,7 @@ export class FighterMesh {
 
         // Hat band (accent strip around base of cone)
         const bandGeo = new THREE.TorusGeometry(HEAD_RADIUS * 1.25, 0.015, 4, 12);
-        const bandMat = new THREE.MeshStandardMaterial({
+        const bandMat = new THREE.MeshPhysicalMaterial({
           color: armor.head.accentColor ?? new THREE.Color(hatColor).multiplyScalar(0.6).getHex(),
           roughness: 0.75,
         });
@@ -1821,7 +1862,7 @@ export class FighterMesh {
 
         // Small buckle on the hat band
         const buckleGeo = new THREE.BoxGeometry(0.025, 0.025, 0.01);
-        const buckleMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.3, metalness: 0.7 });
+        const buckleMat = new THREE.MeshPhysicalMaterial({ color: 0xccaa44, roughness: 0.3, metalness: 0.7 });
         const buckle = new THREE.Mesh(buckleGeo, buckleMat);
         buckle.position.set(0, HEAD_RADIUS * 1.5, HEAD_RADIUS * 1.3);
         hatGroup.add(buckle);
@@ -1830,7 +1871,7 @@ export class FighterMesh {
 
       // Simple foot covering for casters (sandals/simple boots)
       if (armor.boots) {
-        const bMat = new THREE.MeshStandardMaterial({ color: armor.boots.color, roughness: 0.7, metalness: 0.2 });
+        const bMat = new THREE.MeshPhysicalMaterial({ color: armor.boots.color, roughness: 0.7, metalness: 0.2 });
         for (const foot of [this._leftFoot, this._rightFoot]) {
           const bootGeo = new THREE.CylinderGeometry(0.05, 0.048, 0.04, 8);
           const bootMesh = new THREE.Mesh(bootGeo, bMat);
@@ -1855,18 +1896,20 @@ export class FighterMesh {
     // Head armor — conical/angular shapes matching historical helmet profiles
     if (armor.head) {
       const helmColor = new THREE.Color(armor.head.color);
-      const helmMat = new THREE.MeshStandardMaterial({
+      const helmMat = new THREE.MeshPhysicalMaterial({
         color: armor.head.color,
-        roughness: 0.4,
-        metalness: 0.6,
+        roughness: 0.3,
+        metalness: 0.7,
+        clearcoat: 0.3,
+        clearcoatRoughness: 0.2,
       });
-      const helmDarkMat = new THREE.MeshStandardMaterial({
+      const helmDarkMat = new THREE.MeshPhysicalMaterial({
         color: helmColor.clone().multiplyScalar(0.7).getHex(),
-        roughness: 0.5,
-        metalness: 0.55,
+        roughness: 0.4,
+        metalness: 0.65,
       });
       const darkMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-      const rivetMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
+      const rivetMat = new THREE.MeshPhysicalMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
 
       // helmR used for positioning reference
       const helmR = HEAD_RADIUS * 1.18;
@@ -2013,7 +2056,7 @@ export class FighterMesh {
         }
 
         // Chin strap detail
-        const strapMat = new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.8, metalness: 0.1 });
+        const strapMat = new THREE.MeshPhysicalMaterial({ color: 0x665533, roughness: 0.8, metalness: 0.1 });
         const strapGeo = new THREE.CylinderGeometry(0.003, 0.003, HEAD_RADIUS * 0.9, 4);
         const strap = new THREE.Mesh(strapGeo, strapMat);
         strap.position.set(0, HEAD_RADIUS * 0.3, HEAD_RADIUS * 0.6);
@@ -2021,7 +2064,7 @@ export class FighterMesh {
         addHelm(strap);
 
         // Aventail (chain mail curtain hanging from helm)
-        const aventailMat = new THREE.MeshStandardMaterial({
+        const aventailMat = new THREE.MeshPhysicalMaterial({
           color: 0x999999, roughness: 0.7, metalness: 0.4,
         });
         const aventailGeo = new THREE.CylinderGeometry(
@@ -2033,7 +2076,7 @@ export class FighterMesh {
         addHelm(aventail);
 
         // Aventail mail texture rings
-        const aventailRingMat = new THREE.MeshStandardMaterial({
+        const aventailRingMat = new THREE.MeshPhysicalMaterial({
           color: 0x888888, roughness: 0.75, metalness: 0.35,
         });
         for (let r = 0; r < 3; r++) {
@@ -2247,17 +2290,19 @@ export class FighterMesh {
       const isPlate = tDef >= 25;
       const isMail = tDef >= 12 && tDef < 25;
       const torsoColor = new THREE.Color(armor.torso.color);
-      const armorMat = new THREE.MeshStandardMaterial({
+      const armorMat = new THREE.MeshPhysicalMaterial({
         color: armor.torso.color,
-        roughness: isPlate ? 0.3 : isMail ? 0.55 : 0.5,
-        metalness: isPlate ? 0.65 : isMail ? 0.45 : 0.3,
+        roughness: isPlate ? 0.25 : isMail ? 0.5 : 0.5,
+        metalness: isPlate ? 0.7 : isMail ? 0.5 : 0.3,
+        clearcoat: isPlate ? 0.4 : isMail ? 0.2 : 0.1,
+        clearcoatRoughness: 0.15,
       });
-      const armorDarkMat = new THREE.MeshStandardMaterial({
+      const armorDarkMat = new THREE.MeshPhysicalMaterial({
         color: torsoColor.clone().multiplyScalar(0.72).getHex(),
         roughness: isPlate ? 0.35 : isMail ? 0.6 : 0.55,
         metalness: isPlate ? 0.6 : isMail ? 0.4 : 0.25,
       });
-      const rivetMat = new THREE.MeshStandardMaterial({
+      const rivetMat = new THREE.MeshPhysicalMaterial({
         color: 0xccccaa, roughness: 0.3, metalness: 0.8,
       });
 
@@ -2320,7 +2365,7 @@ export class FighterMesh {
 
       // Front seam / split line for lighter armors (padded, leather)
       if (tDef < 12) {
-        const splitMat = new THREE.MeshStandardMaterial({
+        const splitMat = new THREE.MeshPhysicalMaterial({
           color: torsoColor.clone().multiplyScalar(0.7).getHex(),
           roughness: 0.9,
         });
@@ -2360,7 +2405,7 @@ export class FighterMesh {
 
       // Chainmail texture for mail armor (horizontal ring pattern)
       if (isMail) {
-        const mailMat = new THREE.MeshStandardMaterial({
+        const mailMat = new THREE.MeshPhysicalMaterial({
           color: torsoColor.clone().multiplyScalar(0.85).getHex(),
           roughness: 0.6, metalness: 0.5,
         });
@@ -2396,7 +2441,7 @@ export class FighterMesh {
 
       // Chest plate details (for plate armor)
       if (isPlate) {
-        const ridgeMat = new THREE.MeshStandardMaterial({
+        const ridgeMat = new THREE.MeshPhysicalMaterial({
           color: armor.torso.accentColor ?? armor.torso.color,
           roughness: 0.25,
           metalness: 0.7,
@@ -2441,7 +2486,7 @@ export class FighterMesh {
         }
 
         // Side buckle/strap details
-        const strapMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.8, metalness: 0.1 });
+        const strapMat = new THREE.MeshPhysicalMaterial({ color: 0x554433, roughness: 0.8, metalness: 0.1 });
         for (const side of [-1, 1]) {
           for (let i = 0; i < 2; i++) {
             // Strap
@@ -2464,7 +2509,7 @@ export class FighterMesh {
       // Belt / waist cinch for all torso armor
       {
         const beltMat = tDef < 12
-          ? new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.8, metalness: 0.1 })
+          ? new THREE.MeshPhysicalMaterial({ color: 0x554422, roughness: 0.8, metalness: 0.1 })
           : armorDarkMat;
         const beltGeo = new THREE.TorusGeometry(TORSO_WIDTH * 0.46 + 0.024, 0.008, 4, 12);
         const belt = new THREE.Mesh(beltGeo, beltMat);
@@ -2476,7 +2521,7 @@ export class FighterMesh {
 
         // Belt buckle (front)
         const buckleGeo = new THREE.BoxGeometry(0.02, 0.022, 0.008);
-        const buckleMat = new THREE.MeshStandardMaterial({ color: 0xaa9955, roughness: 0.35, metalness: 0.7 });
+        const buckleMat = new THREE.MeshPhysicalMaterial({ color: 0xaa9955, roughness: 0.35, metalness: 0.7 });
         const buckle = new THREE.Mesh(buckleGeo, buckleMat);
         buckle.position.set(0, aWaistH * 0.85, TORSO_DEPTH * 0.45 + 0.03);
         this._chest.add(buckle);
@@ -2675,7 +2720,7 @@ export class FighterMesh {
 
       // Armor trim / edge detail (accent color strip along bottom)
       if (armor.torso.accentColor) {
-        const trimMat = new THREE.MeshStandardMaterial({
+        const trimMat = new THREE.MeshPhysicalMaterial({
           color: armor.torso.accentColor,
           roughness: 0.3,
           metalness: 0.6,
@@ -2713,17 +2758,19 @@ export class FighterMesh {
     if (armor.gauntlets) {
       const gColor = new THREE.Color(armor.gauntlets.color);
       const gDef = armor.gauntlets.defense;
-      const gMat = new THREE.MeshStandardMaterial({
+      const gMat = new THREE.MeshPhysicalMaterial({
         color: armor.gauntlets.color,
-        roughness: gDef >= 8 ? 0.35 : 0.5,
-        metalness: gDef >= 8 ? 0.55 : 0.4,
+        roughness: gDef >= 8 ? 0.3 : 0.45,
+        metalness: gDef >= 8 ? 0.6 : 0.45,
+        clearcoat: gDef >= 8 ? 0.35 : 0.15,
+        clearcoatRoughness: 0.15,
       });
-      const gDarkMat = new THREE.MeshStandardMaterial({
+      const gDarkMat = new THREE.MeshPhysicalMaterial({
         color: gColor.clone().multiplyScalar(0.72).getHex(),
         roughness: 0.45,
         metalness: 0.5,
       });
-      const gRivetMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
+      const gRivetMat = new THREE.MeshPhysicalMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
 
       for (const [forearm, hand] of [[this._leftForearm, this._leftHand], [this._rightForearm, this._rightHand]]) {
         // Forearm guard (vambrace)
@@ -2836,17 +2883,19 @@ export class FighterMesh {
     if (armor.legs) {
       const legColor = new THREE.Color(armor.legs.color);
       const legDef = armor.legs.defense;
-      const lMat = new THREE.MeshStandardMaterial({
+      const lMat = new THREE.MeshPhysicalMaterial({
         color: armor.legs.color,
-        roughness: legDef >= 12 ? 0.35 : 0.45,
-        metalness: legDef >= 12 ? 0.55 : 0.45,
+        roughness: legDef >= 12 ? 0.3 : 0.4,
+        metalness: legDef >= 12 ? 0.6 : 0.5,
+        clearcoat: legDef >= 12 ? 0.35 : 0.15,
+        clearcoatRoughness: 0.15,
       });
-      const lDarkMat = new THREE.MeshStandardMaterial({
+      const lDarkMat = new THREE.MeshPhysicalMaterial({
         color: legColor.clone().multiplyScalar(0.72).getHex(),
         roughness: 0.45,
         metalness: 0.5,
       });
-      const lRivetMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
+      const lRivetMat = new THREE.MeshPhysicalMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
 
       for (const thigh of [this._leftThigh, this._rightThigh]) {
         // Cuisse (thigh guard)
@@ -2878,7 +2927,7 @@ export class FighterMesh {
 
         // Side lacing for lighter leg armor (defense < 12)
         if (legDef < 12) {
-          const laceMat = new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.8, metalness: 0.1 });
+          const laceMat = new THREE.MeshPhysicalMaterial({ color: 0x554422, roughness: 0.8, metalness: 0.1 });
           for (let i = 0; i < 4; i++) {
             const laceGeo = new THREE.CylinderGeometry(0.002, 0.002, 0.02, 3);
             const lace = new THREE.Mesh(laceGeo, laceMat);
@@ -2973,17 +3022,19 @@ export class FighterMesh {
     if (armor.boots) {
       const bootColor = new THREE.Color(armor.boots.color);
       const bootDef = armor.boots.defense;
-      const bMat = new THREE.MeshStandardMaterial({
+      const bMat = new THREE.MeshPhysicalMaterial({
         color: armor.boots.color,
-        roughness: bootDef >= 8 ? 0.35 : 0.5,
-        metalness: bootDef >= 8 ? 0.5 : 0.35,
+        roughness: bootDef >= 8 ? 0.3 : 0.45,
+        metalness: bootDef >= 8 ? 0.55 : 0.4,
+        clearcoat: bootDef >= 8 ? 0.3 : 0.1,
+        clearcoatRoughness: 0.15,
       });
-      const bDarkMat = new THREE.MeshStandardMaterial({
+      const bDarkMat = new THREE.MeshPhysicalMaterial({
         color: bootColor.clone().multiplyScalar(0.72).getHex(),
         roughness: 0.45,
         metalness: 0.45,
       });
-      const bRivetMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
+      const bRivetMat = new THREE.MeshPhysicalMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.8 });
 
       for (const foot of [this._leftFoot, this._rightFoot]) {
         // Armored boot — slopes down toward toes matching foot shape
@@ -3040,7 +3091,7 @@ export class FighterMesh {
         this._armorMeshes.push(tongue);
 
         // Buckle straps across instep
-        const strapMat = new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.8, metalness: 0.1 });
+        const strapMat = new THREE.MeshPhysicalMaterial({ color: 0x554422, roughness: 0.8, metalness: 0.1 });
         for (let i = 0; i < 2; i++) {
           const bsGeo = new THREE.BoxGeometry(bw * 1.5, 0.005, 0.012);
           const bs = new THREE.Mesh(bsGeo, bootDef >= 8 ? bDarkMat : strapMat);
@@ -3070,7 +3121,7 @@ export class FighterMesh {
 
         // Sole plate (hardened sole)
         if (bootDef >= 8) {
-          const soleMat = new THREE.MeshStandardMaterial({
+          const soleMat = new THREE.MeshPhysicalMaterial({
             color: 0x333333, roughness: 0.6, metalness: 0.3,
           });
           const soleGeo = new THREE.CylinderGeometry(0.048, 0.05, FOOT_LEN + 0.04, 7);
