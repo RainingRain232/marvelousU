@@ -603,6 +603,203 @@ export class ThreeDragonHUD {
     ]);
   }
 
+  /** Draw a skill-specific icon onto a canvas context */
+  private _drawSkillIcon(ctx: CanvasRenderingContext2D, skillId: TDSkillId, color: string, size: number): void {
+    const cx = size / 2;
+    const cy = size / 2;
+    const r = size * 0.35;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    switch (skillId) {
+      case TDSkillId.ARCANE_BOLT: {
+        // Star / sparkle
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 - Math.PI / 2;
+          const a2 = a + Math.PI / 4;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(a2) * r * 0.5, cy + Math.sin(a2) * r * 0.5);
+          ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case TDSkillId.CELESTIAL_LANCE: {
+        // Spear / lance pointing up-right
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.6, cy + r * 0.6);
+        ctx.lineTo(cx + r * 0.6, cy - r * 0.6);
+        ctx.stroke();
+        // Spearhead
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.6, cy - r * 0.6);
+        ctx.lineTo(cx + r * 0.2, cy - r * 0.55);
+        ctx.lineTo(cx + r * 0.55, cy - r * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        // Small sparkles
+        ctx.beginPath(); ctx.arc(cx + r * 0.3, cy - r * 0.8, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.8, cy - r * 0.3, 1, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case TDSkillId.THUNDERSTORM:
+      case TDSkillId.LIGHTNING_BOLT:
+      case TDSkillId.CHAIN_LIGHTNING: {
+        // Lightning bolt
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.1, cy - r);
+        ctx.lineTo(cx - r * 0.3, cy - r * 0.1);
+        ctx.lineTo(cx + r * 0.1, cy - r * 0.1);
+        ctx.lineTo(cx - r * 0.2, cy + r);
+        ctx.lineTo(cx + r * 0.2, cy + r * 0.05);
+        ctx.lineTo(cx - r * 0.1, cy + r * 0.05);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
+      case TDSkillId.FROST_NOVA:
+      case TDSkillId.ICE_STORM: {
+        // Snowflake / crystal
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+          ctx.stroke();
+          // Small branches
+          const bx = cx + Math.cos(a) * r * 0.6;
+          const by = cy + Math.sin(a) * r * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(bx + Math.cos(a + 0.8) * r * 0.3, by + Math.sin(a + 0.8) * r * 0.3);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(bx + Math.cos(a - 0.8) * r * 0.3, by + Math.sin(a - 0.8) * r * 0.3);
+          ctx.stroke();
+        }
+        break;
+      }
+      case TDSkillId.METEOR_SHOWER:
+      case TDSkillId.FIRE_BREATH: {
+        // Flame
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.9);
+        ctx.bezierCurveTo(cx + r * 0.8, cy - r * 0.3, cx + r * 0.5, cy + r * 0.5, cx, cy + r);
+        ctx.bezierCurveTo(cx - r * 0.5, cy + r * 0.5, cx - r * 0.8, cy - r * 0.3, cx, cy - r * 0.9);
+        ctx.fill();
+        // Inner flame
+        ctx.fillStyle = "rgba(255,255,200,0.7)";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.3);
+        ctx.bezierCurveTo(cx + r * 0.3, cy, cx + r * 0.2, cy + r * 0.4, cx, cy + r * 0.6);
+        ctx.bezierCurveTo(cx - r * 0.2, cy + r * 0.4, cx - r * 0.3, cy, cx, cy - r * 0.3);
+        ctx.fill();
+        break;
+      }
+      case TDSkillId.DIVINE_SHIELD: {
+        // Shield shape
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.85);
+        ctx.lineTo(cx + r * 0.8, cy - r * 0.4);
+        ctx.lineTo(cx + r * 0.7, cy + r * 0.3);
+        ctx.lineTo(cx, cy + r * 0.9);
+        ctx.lineTo(cx - r * 0.7, cy + r * 0.3);
+        ctx.lineTo(cx - r * 0.8, cy - r * 0.4);
+        ctx.closePath();
+        ctx.stroke();
+        // Cross in center
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.35);
+        ctx.lineTo(cx, cy + r * 0.35);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.25, cy - r * 0.05);
+        ctx.lineTo(cx + r * 0.25, cy - r * 0.05);
+        ctx.stroke();
+        break;
+      }
+      case TDSkillId.HEALING_FLAME: {
+        // Heart / cross
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + r * 0.7);
+        ctx.bezierCurveTo(cx - r, cy, cx - r, cy - r * 0.6, cx, cy - r * 0.2);
+        ctx.bezierCurveTo(cx + r, cy - r * 0.6, cx + r, cy, cx, cy + r * 0.7);
+        ctx.fill();
+        break;
+      }
+      case TDSkillId.BOOST: {
+        // Speed arrows / chevrons
+        for (let i = 0; i < 3; i++) {
+          const ox = (i - 1) * r * 0.45;
+          ctx.beginPath();
+          ctx.moveTo(cx + ox - r * 0.15, cy + r * 0.3);
+          ctx.lineTo(cx + ox, cy - r * 0.3);
+          ctx.lineTo(cx + ox + r * 0.15, cy + r * 0.3);
+          ctx.stroke();
+        }
+        break;
+      }
+      case TDSkillId.DRAGON_ROAR: {
+        // Sound waves / roar
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.2, 0, Math.PI * 2); ctx.fill();
+        for (let i = 1; i <= 3; i++) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r * 0.2 + i * r * 0.25, -Math.PI * 0.4, Math.PI * 0.4);
+          ctx.stroke();
+        }
+        break;
+      }
+      case TDSkillId.WING_GUST: {
+        // Wing shape
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.bezierCurveTo(cx - r * 0.3, cy - r * 0.8, cx - r, cy - r * 0.5, cx - r, cy + r * 0.2);
+        ctx.bezierCurveTo(cx - r * 0.5, cy, cx - r * 0.2, cy + r * 0.3, cx, cy);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.bezierCurveTo(cx + r * 0.3, cy - r * 0.8, cx + r, cy - r * 0.5, cx + r, cy + r * 0.2);
+        ctx.bezierCurveTo(cx + r * 0.5, cy, cx + r * 0.2, cy + r * 0.3, cx, cy);
+        ctx.fill();
+        break;
+      }
+      case TDSkillId.SHADOW_DIVE: {
+        // Downward dagger / dive
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.9);
+        ctx.lineTo(cx + r * 0.2, cy + r * 0.2);
+        ctx.lineTo(cx, cy + r * 0.9);
+        ctx.lineTo(cx - r * 0.2, cy + r * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        // Cross guard
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.5, cy + r * 0.1);
+        ctx.lineTo(cx + r * 0.5, cy + r * 0.1);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        break;
+      }
+      default: {
+        // Generic magic circle
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+    }
+    ctx.restore();
+  }
+
   private _rebuildSkillSlots(equippedSkills: TDSkillId[]): void {
     // Clear old slots
     for (const slot of this._skillSlots) {
@@ -617,33 +814,93 @@ export class ThreeDragonHUD {
       const slot = document.createElement("div");
       const c = cfg.color;
       const colorHex = `#${c.toString(16).padStart(6, "0")}`;
+      const r = (c >> 16) & 0xff;
+      const g = (c >> 8) & 0xff;
+      const b = c & 0xff;
 
       slot.style.cssText = `
-        width: 60px; height: 54px; position: relative;
-        border-radius: 6px; border: 1px solid rgba(100,100,150,0.3);
-        background: linear-gradient(180deg, #1e1e32 0%, #12121e 100%);
+        width: 60px; height: 58px; position: relative;
+        border-radius: 6px;
+        border: 1px solid rgba(${r},${g},${b},0.35);
+        background: linear-gradient(180deg, #22223a 0%, #161628 50%, #0e0e1c 100%);
         text-align: center;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
         overflow: hidden;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.4),
+                    0 0 8px rgba(${r},${g},${b},0.1);
       `;
 
-      // Color icon glow
-      const icon = document.createElement("div");
-      icon.style.cssText = `
-        width: 14px; height: 14px; border-radius: 50%;
-        background: radial-gradient(circle at 35% 35%, ${colorHex}cc, ${colorHex}88, ${colorHex}44);
-        box-shadow: 0 0 6px ${colorHex}66, 0 0 12px ${colorHex}33;
-        margin-bottom: 2px;
-        transition: box-shadow 0.2s;
+      // Beveled border effect (inner highlight + shadow)
+      const bevel = document.createElement("div");
+      bevel.style.cssText = `
+        position: absolute; inset: 0; border-radius: 6px; pointer-events: none;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        border-left: 1px solid rgba(255,255,255,0.05);
+        border-bottom: 1px solid rgba(0,0,0,0.5);
+        border-right: 1px solid rgba(0,0,0,0.3);
       `;
-      slot.appendChild(icon);
+      slot.appendChild(bevel);
+
+      // Rune border pattern
+      const runeCanvas = document.createElement("canvas");
+      runeCanvas.width = 62;
+      runeCanvas.height = 60;
+      const rctx = runeCanvas.getContext("2d")!;
+      rctx.strokeStyle = `rgba(${r},${g},${b},0.15)`;
+      rctx.lineWidth = 0.5;
+      // Draw subtle rune-like corner marks
+      const cw = 62, ch = 60;
+      const markLen = 8;
+      // Top-left corner
+      rctx.beginPath(); rctx.moveTo(2, markLen); rctx.lineTo(2, 2); rctx.lineTo(markLen, 2); rctx.stroke();
+      // Top-right corner
+      rctx.beginPath(); rctx.moveTo(cw - markLen, 2); rctx.lineTo(cw - 2, 2); rctx.lineTo(cw - 2, markLen); rctx.stroke();
+      // Bottom-left corner
+      rctx.beginPath(); rctx.moveTo(2, ch - markLen); rctx.lineTo(2, ch - 2); rctx.lineTo(markLen, ch - 2); rctx.stroke();
+      // Bottom-right corner
+      rctx.beginPath(); rctx.moveTo(cw - markLen, ch - 2); rctx.lineTo(cw - 2, ch - 2); rctx.lineTo(cw - 2, ch - markLen); rctx.stroke();
+      // Small dot accents
+      rctx.fillStyle = `rgba(${r},${g},${b},0.2)`;
+      rctx.beginPath(); rctx.arc(cw / 2, 3, 1, 0, Math.PI * 2); rctx.fill();
+      rctx.beginPath(); rctx.arc(cw / 2, ch - 3, 1, 0, Math.PI * 2); rctx.fill();
+      const runeBorder = document.createElement("div");
+      runeBorder.style.cssText = `
+        position: absolute; inset: -1px; pointer-events: none;
+        background-image: url(${runeCanvas.toDataURL()});
+        background-size: cover;
+      `;
+      slot.appendChild(runeBorder);
+
+      // Canvas-drawn skill icon
+      const iconSize = 28;
+      const iconCanvas = document.createElement("canvas");
+      iconCanvas.width = iconSize;
+      iconCanvas.height = iconSize;
+      const ictx = iconCanvas.getContext("2d")!;
+      // Subtle glow behind icon
+      const igrd = ictx.createRadialGradient(iconSize / 2, iconSize / 2, 0, iconSize / 2, iconSize / 2, iconSize / 2);
+      igrd.addColorStop(0, `rgba(${r},${g},${b},0.25)`);
+      igrd.addColorStop(1, `rgba(${r},${g},${b},0.0)`);
+      ictx.fillStyle = igrd;
+      ictx.fillRect(0, 0, iconSize, iconSize);
+      this._drawSkillIcon(ictx, skillId, colorHex, iconSize);
+
+      const iconEl = document.createElement("img");
+      iconEl.src = iconCanvas.toDataURL();
+      iconEl.style.cssText = `
+        width: ${iconSize}px; height: ${iconSize}px;
+        filter: drop-shadow(0 0 4px ${colorHex}66);
+        margin-bottom: 1px;
+      `;
+      slot.appendChild(iconEl);
 
       // Key label
       const key = document.createElement("div");
       key.style.cssText = `
-        font-size: 13px; font-weight: bold; color: #eee;
-        text-shadow: 0 0 4px rgba(255,255,255,0.3);
+        font-size: 11px; font-weight: bold; color: #ddd;
+        text-shadow: 0 0 4px rgba(255,255,255,0.25);
+        line-height: 1;
       `;
       key.textContent = `${i + 1}`;
       slot.appendChild(key);
@@ -651,20 +908,23 @@ export class ThreeDragonHUD {
       // Name
       const name = document.createElement("div");
       name.style.cssText = `
-        font-size: 7px; color: #888; margin-top: 1px;
+        font-size: 6px; color: #777; margin-top: 0px;
         letter-spacing: 0.5px; text-transform: uppercase;
+        line-height: 1; max-width: 56px;
+        overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
       `;
       name.textContent = cfg.name;
       slot.appendChild(name);
 
-      // Cooldown overlay
+      // Cooldown overlay — radial sweep using conic-gradient
       const cdOverlay = document.createElement("div");
       cdOverlay.style.cssText = `
-        position: absolute; bottom: 0; left: 0; right: 0;
-        background: linear-gradient(180deg, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
-        border-radius: 0 0 6px 6px;
-        height: 0%;
-        transition: height 0.1s;
+        position: absolute; inset: 0;
+        background: conic-gradient(from 0deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 0%, transparent 0%);
+        border-radius: 6px;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 2;
       `;
       slot.appendChild(cdOverlay);
 
@@ -672,8 +932,8 @@ export class ThreeDragonHUD {
       const cdText = document.createElement("div");
       cdText.style.cssText = `
         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        font-size: 14px; font-weight: bold; color: rgba(255,255,255,0.8);
-        text-shadow: 0 0 4px rgba(0,0,0,0.8);
+        font-size: 14px; font-weight: bold; color: rgba(255,255,255,0.85);
+        text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1);
         opacity: 0;
         z-index: 3;
       `;
@@ -683,8 +943,8 @@ export class ThreeDragonHUD {
       const activeGlow = document.createElement("div");
       activeGlow.style.cssText = `
         position: absolute; inset: -2px; border-radius: 8px;
-        border: 2px solid #ffdd44;
-        box-shadow: 0 0 10px rgba(255,220,68,0.5), 0 0 20px rgba(255,220,68,0.2);
+        border: 2px solid ${colorHex}cc;
+        box-shadow: 0 0 10px ${colorHex}66, 0 0 20px ${colorHex}33, inset 0 0 8px ${colorHex}22;
         opacity: 0;
         transition: opacity 0.15s;
       `;
@@ -875,14 +1135,16 @@ export class ThreeDragonHUD {
       const onCooldown = skillState.cooldown > 0;
       const hasEnough = p.mana >= cfg.manaCost;
 
-      // Cooldown overlay
+      // Cooldown overlay — radial sweep
       if (onCooldown) {
-        const cdPct = (skillState.cooldown / skillState.maxCooldown) * 100;
-        slot.cdOverlay.style.height = `${cdPct}%`;
+        const cdFrac = skillState.cooldown / skillState.maxCooldown;
+        const deg = Math.round(cdFrac * 360);
+        slot.cdOverlay.style.background = `conic-gradient(from 0deg, rgba(0,0,0,0.65) 0deg, rgba(0,0,0,0.45) ${deg}deg, transparent ${deg}deg)`;
+        slot.cdOverlay.style.opacity = "1";
         slot.cdText.style.opacity = "1";
         slot.cdText.textContent = `${Math.ceil(skillState.cooldown)}`;
       } else {
-        slot.cdOverlay.style.height = "0%";
+        slot.cdOverlay.style.opacity = "0";
         slot.cdText.style.opacity = "0";
       }
 

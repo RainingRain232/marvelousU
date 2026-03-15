@@ -1760,16 +1760,21 @@ export class GrailBallRenderer {
     const phase = anim.runPhase;
     mesh.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
+      // Store original base positions on first visit
+      if ((child as any)._baseY === undefined) {
+        (child as any)._baseY = child.position.y;
+        (child as any)._baseX = child.position.x;
+      }
       const name = child.name;
       const legSwing = Math.sin(phase) * 0.4 * blend;
       const armSwing = Math.sin(phase + Math.PI) * 0.3 * blend;
       switch (name) {
         case "leftFoot": case "leftShin":
-          child.position.y += Math.abs(Math.sin(phase)) * 0.15 * blend;
-          child.position.x += Math.sin(phase) * 0.08 * blend; break;
+          child.position.y = (child as any)._baseY + Math.abs(Math.sin(phase)) * 0.15 * blend;
+          child.position.x = (child as any)._baseX + Math.sin(phase) * 0.08 * blend; break;
         case "rightFoot": case "rightShin":
-          child.position.y += Math.abs(Math.sin(phase + Math.PI)) * 0.15 * blend;
-          child.position.x += Math.sin(phase + Math.PI) * 0.08 * blend; break;
+          child.position.y = (child as any)._baseY + Math.abs(Math.sin(phase + Math.PI)) * 0.15 * blend;
+          child.position.x = (child as any)._baseX + Math.sin(phase + Math.PI) * 0.08 * blend; break;
         case "leftThigh": child.rotation.x = legSwing; break;
         case "rightThigh": child.rotation.x = -legSwing; break;
         case "leftUpperArm": case "leftHand": child.rotation.x = -armSwing; break;
@@ -1778,7 +1783,7 @@ export class GrailBallRenderer {
           child.scale.y = 1 + Math.sin(anim.breathPhase) * 0.008;
           child.rotation.x = blend * 0.1; break;
         case "head":
-          child.position.y += Math.sin(phase * 2) * 0.02 * blend; break;
+          child.position.y = (child as any)._baseY + Math.sin(phase * 2) * 0.02 * blend; break;
       }
       if (player.action === GBPlayerAction.CELEBRATING) {
         if (name === "leftUpperArm" || name === "rightUpperArm")

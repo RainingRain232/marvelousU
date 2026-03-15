@@ -55,6 +55,8 @@ export class ThreeDragonRenderer {
 
   // Enemy meshes
   private _enemyMeshes = new Map<number, THREE.Group>();
+  // Cached materials per enemy for fast hit-flash updates (avoids group.traverse each frame)
+  private _enemyMaterials = new Map<number, THREE.Material[]>();
 
   // Projectile meshes (groups for complex projectiles)
   private _projMeshes = new Map<number, THREE.Group>();
@@ -381,20 +383,20 @@ export class ThreeDragonRenderer {
         uniform float uTime;
         varying vec2 vUv;
         void main() {
-          // Create angled ray beams
+          // Create angled ray beams — 12 diffuse rays for a smooth, natural look
           float rays = 0.0;
           float x = vUv.x;
           float y = vUv.y;
-          // Multiple ray bands at different angles
-          for (float i = 0.0; i < 5.0; i++) {
-            float offset = i * 0.18 + 0.1;
-            float width = 0.015 + sin(uTime * 0.3 + i) * 0.005;
-            float ray = smoothstep(width, 0.0, abs(x - offset + sin(y * 2.0 + uTime * 0.2 + i) * 0.03));
-            ray *= smoothstep(0.0, 0.3, y) * smoothstep(1.0, 0.4, y);
-            rays += ray * (0.8 + sin(uTime * 0.5 + i * 1.5) * 0.2);
+          // Many overlapping rays with wide spacing and soft falloff
+          for (float i = 0.0; i < 12.0; i++) {
+            float offset = i * 0.075 + 0.05;
+            float width = 0.03 + sin(uTime * 0.25 + i * 0.8) * 0.01;
+            float ray = smoothstep(width, 0.0, abs(x - offset + sin(y * 1.5 + uTime * 0.15 + i * 0.7) * 0.04));
+            ray *= smoothstep(0.0, 0.35, y) * smoothstep(1.0, 0.35, y);
+            rays += ray * (0.5 + sin(uTime * 0.4 + i * 1.2) * 0.15);
           }
-          vec3 col = vec3(1.0, 0.9, 0.6) * rays * 0.12;
-          float a = rays * 0.08;
+          vec3 col = vec3(1.0, 0.9, 0.6) * rays * 0.06;
+          float a = rays * 0.04;
           gl_FragColor = vec4(col, a);
         }
       `,
@@ -2975,6 +2977,14 @@ export class ThreeDragonRenderer {
         group = this._createEnemyMesh(enemy);
         this._scene.add(group);
         this._enemyMeshes.set(enemy.id, group);
+        // Cache emissive materials for fast hit-flash updates
+        const mats: THREE.Material[] = [];
+        group.traverse(child => {
+          if ((child as THREE.Mesh).material && 'emissiveIntensity' in ((child as THREE.Mesh).material as any)) {
+            mats.push((child as THREE.Mesh).material as THREE.Material);
+          }
+        });
+        this._enemyMaterials.set(enemy.id, mats);
       }
 
       group.position.set(enemy.position.x, enemy.position.y, enemy.position.z);
@@ -3000,19 +3010,13 @@ export class ThreeDragonRenderer {
 
       group.scale.setScalar(1);
 
-      // Hit flash
-      if (enemy.hitTimer > 0) {
-        group.traverse(child => {
-          if ((child as THREE.Mesh).material && 'emissiveIntensity' in ((child as THREE.Mesh).material as any)) {
-            ((child as THREE.Mesh).material as any).emissiveIntensity = 1.0;
-          }
-        });
-      } else {
-        group.traverse(child => {
-          if ((child as THREE.Mesh).material && 'emissiveIntensity' in ((child as THREE.Mesh).material as any)) {
-            ((child as THREE.Mesh).material as any).emissiveIntensity = 0.15;
-          }
-        });
+      // Hit flash (uses cached materials to avoid costly group.traverse each frame)
+      const cachedMats = this._enemyMaterials.get(enemy.id);
+      if (cachedMats) {
+        const emissive = enemy.hitTimer > 0 ? 1.0 : 0.15;
+        for (let m = 0; m < cachedMats.length; m++) {
+          (cachedMats[m] as any).emissiveIntensity = emissive;
+        }
       }
 
       // Animate wing-bearing enemies
@@ -3117,6 +3121,7 @@ export class ThreeDragonRenderer {
           }
         });
         this._enemyMeshes.delete(id);
+        this._enemyMaterials.delete(id);
       }
     }
   }
@@ -3800,7 +3805,7 @@ export class ThreeDragonRenderer {
 
   addEnemyDeathEffect(x: number, y: number, z: number, size: number, color: number, glowColor: number, isBoss: boolean): void {
     // --- Debris burst: varied shapes flying outward with rotation ---
-    const debrisCount = isBoss ? 40 : 18 + Math.floor(Math.random() * 8);
+    const debrisCount = isBoss ? 25 : 18 + Math.floor(Math.random() * 8);
     const brightColor = new THREE.Color(glowColor).lerp(new THREE.Color(0xffffff), 0.4).getHex();
 
     for (let i = 0; i < debrisCount; i++) {
@@ -3900,7 +3905,7 @@ export class ThreeDragonRenderer {
     // --- Trail particle burst ---
     const col = new THREE.Color(glowColor);
     const brightCol = new THREE.Color(glowColor).lerp(new THREE.Color(0xffffff), 0.5);
-    const burstCount = isBoss ? 40 : 25;
+    const burstCount = isBoss ? 25 : 25;
     for (let i = 0; i < burstCount; i++) {
       const angle = Math.random() * Math.PI * 2;
       const angleV = Math.random() * Math.PI;
@@ -4466,6 +4471,7 @@ export class ThreeDragonRenderer {
       });
     }
     this._enemyMeshes.clear();
+    this._enemyMaterials.clear();
 
     // Remove projectile meshes
     for (const [, group] of this._projMeshes) {

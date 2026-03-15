@@ -5983,8 +5983,8 @@ export class DiabloGame {
           const dz = p.z - enemy.z;
           const cLen = Math.sqrt(dx * dx + dz * dz);
           if (cLen > 0) {
-            enemy.x += (dx / cLen) * 12;
-            enemy.z += (dz / cLen) * 12;
+            enemy.x += (dx / cLen) * 6;
+            enemy.z += (dz / cLen) * 6;
           }
           if (this._dist(enemy.x, enemy.z, p.x, p.z) < 3 && p.invulnTimer <= 0) {
             const dmg = Math.max(1, enemy.damage * 2 - p.armor * 0.3);

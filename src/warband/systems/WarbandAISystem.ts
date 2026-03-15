@@ -700,8 +700,8 @@ export class WarbandAISystem {
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       fighter.rotation += angleDiff * 0.15;
 
-      // Fleeing fighters move at 80% speed (slower from panic)
-      const speed = WB.WALK_SPEED * 0.8;
+      // Fleeing fighters move at 60% speed (slower from panic)
+      const speed = WB.WALK_SPEED * 0.6;
       fighter.velocity.x = Math.sin(fighter.rotation) * speed;
       fighter.velocity.z = Math.cos(fighter.rotation) * speed;
       fighter.walkCycle = (fighter.walkCycle + speed * 0.02) % 1;
@@ -753,9 +753,9 @@ export class WarbandAISystem {
       fighter.morale = Math.max(0, Math.min(100, fighter.morale + moraleDelta));
 
       // Fleeing state transitions
-      if (!fighter.fleeing && fighter.morale < 20) {
+      if (!fighter.fleeing && fighter.morale < 30) {
         fighter.fleeing = true;
-      } else if (fighter.fleeing && fighter.morale > 40) {
+      } else if (fighter.fleeing && fighter.morale > 50) {
         fighter.fleeing = false;
       }
     }

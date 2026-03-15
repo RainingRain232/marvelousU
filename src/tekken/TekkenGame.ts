@@ -126,6 +126,14 @@ export class TekkenGame {
     if (this._sceneManager) this._sceneManager.destroy();
     if (this._hud) this._hud.destroy();
     if (this._audio) this._audio.destroy();
+
+    // Restore Pixi canvas properties for other game modes
+    const pixiCanvas = viewManager.app.canvas as HTMLElement;
+    pixiCanvas.style.zIndex = "";
+    pixiCanvas.style.pointerEvents = "";
+    viewManager.app.renderer.background.color = 0x1a1a2e;
+    viewManager.app.renderer.background.alpha = 1;
+
     this._fighterRenderers = [];
     this._rageArtCinematic = null;
     this._state = null;
@@ -644,23 +652,23 @@ export class TekkenGame {
       g.roundRect(stagePanelX, stagePanelY, stagePanelW, stagePanelH, 5)
         .stroke({ color: 0x6a5a20, width: 1.5 });
 
-      // Left arrow
+      // Left arrow (S key)
       const arrowLText = new Text({
-        text: "\u25C0",
-        style: { fontFamily: "Georgia, serif", fontSize: 16, fill: 0x888888 },
+        text: "\u25C0 S",
+        style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0xbbbb88, fontWeight: "bold" },
       });
       arrowLText.anchor.set(0.5);
-      arrowLText.x = stagePanelX + 18;
+      arrowLText.x = stagePanelX + 24;
       arrowLText.y = stagePanelY + stagePanelH / 2;
       container.addChild(arrowLText);
 
-      // Right arrow
+      // Right arrow (D key)
       const arrowRText = new Text({
-        text: "\u25B6",
-        style: { fontFamily: "Georgia, serif", fontSize: 16, fill: 0x888888 },
+        text: "D \u25B6",
+        style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0xbbbb88, fontWeight: "bold" },
       });
       arrowRText.anchor.set(0.5);
-      arrowRText.x = stagePanelX + stagePanelW - 18;
+      arrowRText.x = stagePanelX + stagePanelW - 24;
       arrowRText.y = stagePanelY + stagePanelH / 2;
       container.addChild(arrowRText);
 
@@ -775,6 +783,17 @@ export class TekkenGame {
     // Init 3D scene
     this._sceneManager = new TekkenSceneManager();
     this._sceneManager.init();
+
+    // Ensure Pixi canvas (HUD) renders on top of the Three.js canvas (3D scene)
+    const pixiCanvas = viewManager.app.canvas as HTMLElement;
+    pixiCanvas.style.position = "absolute";
+    pixiCanvas.style.top = "0";
+    pixiCanvas.style.left = "0";
+    pixiCanvas.style.zIndex = "20";
+    pixiCanvas.style.pointerEvents = "none";
+    // Make Pixi background transparent so the 3D scene shows through
+    viewManager.app.renderer.background.color = 0x000000;
+    viewManager.app.renderer.background.alpha = 0;
 
     // Init arena
     this._arenaRenderer = new TekkenArenaRenderer(this._sceneManager);
@@ -1536,7 +1555,7 @@ export class TekkenGame {
 
   private _buildControlsScreen(overlay: HTMLDivElement): void {
     const panel = document.createElement("div");
-    panel.style.cssText = "background:rgba(26,26,46,0.95);border:2px solid #daa520;border-radius:8px;padding:20px 32px;min-width:400px;";
+    panel.style.cssText = "background:rgba(26,26,46,0.95);border:2px solid #daa520;border-radius:8px;padding:20px 32px;min-width:440px;max-height:85vh;overflow-y:auto;";
 
     const title = document.createElement("div");
     title.textContent = "CONTROLS";
@@ -1544,19 +1563,53 @@ export class TekkenGame {
     panel.appendChild(title);
 
     const sections: { header: string; rows: [string, string][] }[] = [
-      { header: "MOVEMENT", rows: [["Arrow Keys", "Move / Crouch / Jump"]] },
-      { header: "ATTACKS", rows: [
-        ["U", "Left Punch (LP)"],
-        ["I", "Right Punch (RP)"],
-        ["J", "Left Kick (LK)"],
-        ["K", "Right Kick (RK)"],
+      { header: "MOVEMENT", rows: [
+        ["Arrow Keys", "Move / Crouch / Jump"],
+        ["\u2190 / \u2192", "Walk Back / Forward"],
+        ["\u2193", "Crouch"],
+        ["\u2191", "Jump"],
+      ]},
+      { header: "BASIC ATTACKS", rows: [
+        ["U", "Jab — Left Punch (1)"],
+        ["I", "Straight — Right Punch (2)"],
+        ["J", "Front Kick — Left Kick (3)"],
+        ["K", "Roundhouse — Right Kick (4)"],
+        ["U + J", "Throw (1+3)"],
         ["O", "Rage Art (when rage active)"],
       ]},
-      { header: "COMMANDS", rows: [
-        ["\u2192 + U", "Forward Punch (f+1)"],
-        ["\u2193\u2198 + I", "Uppercut Launcher (d/f+2)"],
-        ["\u2191\u2197 + J", "Hop Kick (u/f+3)"],
-        ["\u2193\u2198 + K", "Mid Kick (d/f+4)"],
+      { header: "COMMAND MOVES — MID", rows: [
+        ["\u2192 + U", "Palm Strike (f+1)"],
+        ["\u2192 + I", "Elbow Strike (f+2)"],
+        ["\u2192 + J", "Advancing Mid Kick (f+3)"],
+        ["\u2192 + K", "Knee Strike (f+4) — wallsplat"],
+        ["\u2193 + U", "Mid Jab (d+1)"],
+        ["\u2193 + I", "Uppercut (d+2) — launcher"],
+        ["\u2193\u2198 + U", "Mid Poke (d/f+1)"],
+        ["\u2193\u2198 + I", "Mid Launcher (d/f+2) — launcher"],
+        ["\u2193\u2198 + J", "Knee (d/f+3)"],
+        ["\u2193\u2198 + K", "Screw Kick (d/f+4) — screw"],
+        ["\u2193\u2199 + I", "Rising Uppercut (d/b+2) — launcher"],
+        ["\u2190 + J", "Spinning Heel (b+3) — wallsplat"],
+        ["\u2190 + K", "Spinning Back Kick (b+4) — homing"],
+        ["\u2192 + U+I", "Power Crush (f+1+2) — armor"],
+        ["\u2193\u2198 + U+I", "Gut Punch (d/f+1+2) — wallsplat"],
+      ]},
+      { header: "COMMAND MOVES — LOW", rows: [
+        ["\u2193 + J", "Low Kick (d+3)"],
+        ["\u2193 + K", "Ankle Kick (d+4)"],
+        ["\u2193\u2199 + J", "Sweep (d/b+3) — knockdown"],
+        ["\u2193\u2199 + K", "Low Poke (d/b+4)"],
+        ["\u2193\u2199 + J+K", "Hellsweep (d/b+3+4) — launcher"],
+        ["\u2193\u2198 + J+K", "Slide Kick (d/f+3+4) — knockdown"],
+      ]},
+      { header: "AERIAL / JUMP ATTACKS", rows: [
+        ["\u2191\u2197 + I", "Jumping Elbow Drop (u/f+2) — low crush"],
+        ["\u2191\u2197 + J", "Hop Kick (u/f+3) — launcher, low crush"],
+        ["\u2191\u2197 + K", "Jumping Spin Kick (u/f+4) — launcher, homing"],
+      ]},
+      { header: "OTHER", rows: [
+        ["\u2190 + U", "Back Fist (b+1) — retreating"],
+        ["\u2192 + U+J", "Grab Slam (f+1+3) — throw, wallsplat"],
       ]},
       { header: "GENERAL", rows: [["Escape", "Pause / Resume"]] },
     ];
