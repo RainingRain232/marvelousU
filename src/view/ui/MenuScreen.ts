@@ -282,6 +282,24 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Quest for the Grail: Arthurian roguelike dungeon crawler",
     skipSetup: true,
   },
+  {
+    mode: GameMode.GRAIL_BALL,
+    label: "GRAIL BALL",
+    desc: "3D medieval fantasy sports — score with the holy orb",
+    skipSetup: true,
+  },
+  {
+    mode: GameMode.GRAIL_MANAGER,
+    label: "GRAIL MANAGER",
+    desc: "Medieval football manager — lead your team to glory",
+    skipSetup: true,
+  },
+  {
+    mode: GameMode.ARTHURIAN_RPG,
+    label: "ARTHURIAN RPG",
+    desc: "Skyrim-style 3D RPG — the Quest for the Holy Grail",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

@@ -151,6 +151,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "forge", x: 660, y: 340, w: 100, h: 80, label: "Blacksmith's Forge", mode: null, type: "forge" },
   { id: "observatory", x: 100, y: 280, w: 80, h: 80, label: "Observatory — 3Dragon", mode: GameMode.THREE_DRAGON, type: "tower" },
   { id: "guild_hall", x: 420, y: 340, w: 100, h: 80, label: "Manager's Guild", mode: GameMode.GRAIL_MANAGER, type: "library" },
+  { id: "grail_chapel", x: 300, y: 280, w: 100, h: 100, label: "Grail Chapel", mode: GameMode.ARTHURIAN_RPG, type: "church" },
   { id: "harbor", x: 1050, y: 700, w: 100, h: 80, label: "Harbor Master", mode: null, type: "harbor" },
   { id: "farm", x: 80, y: 600, w: 120, h: 90, label: "Farmstead", mode: null, type: "farm" },
   { id: "tourney", x: 100, y: 380, w: 150, h: 120, label: "Tournament Grounds", mode: GameMode.WARBAND, type: "training" },
@@ -845,6 +846,7 @@ export class CamelotHubScreen {
       [GameMode.THREE_DRAGON]: "3Dragon",
       [GameMode.GRAIL_BALL]: "Grail Ball",
       [GameMode.GRAIL_MANAGER]: "Grail Ball Manager",
+      [GameMode.ARTHURIAN_RPG]: "The Quest for the Holy Grail - 3D Arthurian RPG",
     };
     return labels[mode] || mode;
   }

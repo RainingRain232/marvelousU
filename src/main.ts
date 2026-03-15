@@ -132,6 +132,7 @@ import { MageWarsGame } from "./magewars/MageWarsGame";
 import { GameGame } from "./game/GameGame";
 import { GrailBallGame } from "./grailball/GrailBallGame";
 import { GrailManagerGame } from "./grailmanager/GrailManagerGame";
+import { ArthurianRPGGame } from "./arthurianrpg/ArthurianRPGGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -313,16 +314,17 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.BATTLEFIELD]: 3, [GameMode.ROGUELIKE]: 4, [GameMode.WORLD]: 5,
     [GameMode.WAVE]: 6, [GameMode.RPG]: 7, [GameMode.SURVIVOR]: 8,
     [GameMode.COLOSSEUM]: 9, [GameMode.DUEL]: 10, [GameMode.MEDIEVAL_GTA]: 11,
+    [GameMode.WARBAND]: 12,
     [GameMode.TEKKEN]: 13,
     [GameMode.DRAGOON]: 14,
     [GameMode.THREE_DRAGON]: 15,
     [GameMode.MEDIEVAL_GTA_3D]: 16,
     [GameMode.DIABLO]: 17,
     [GameMode.MAGE_WARS]: 18,
-    [GameMode.WARBAND_CAMPAIGN]: 19,
-    [GameMode.GAME]: 20,
-    [GameMode.GRAIL_BALL]: 21,
-    [GameMode.GRAIL_MANAGER]: 22,
+    [GameMode.GAME]: 19,
+    [GameMode.GRAIL_BALL]: 20,
+    [GameMode.GRAIL_MANAGER]: 21,
+    [GameMode.ARTHURIAN_RPG]: 22,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -442,6 +444,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.GRAIL_MANAGER) {
       menuScreen.hide();
       _bootGrailManagerGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.ARTHURIAN_RPG) {
+      menuScreen.hide();
+      _bootArthurianRPGGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2762,6 +2769,30 @@ async function _bootGrailManagerGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("gameExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Arthurian RPG mode boot
+// ---------------------------------------------------------------------------
+
+let _arthurianRPGGame: ArthurianRPGGame | null = null;
+
+async function _bootArthurianRPGGame(): Promise<void> {
+  if (_arthurianRPGGame) {
+    _arthurianRPGGame.destroy();
+    _arthurianRPGGame = null;
+  }
+  _arthurianRPGGame = new ArthurianRPGGame();
+  await _arthurianRPGGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("arthurianExit", _onExit);
+    if (_arthurianRPGGame) {
+      _arthurianRPGGame.destroy();
+      _arthurianRPGGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("arthurianExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

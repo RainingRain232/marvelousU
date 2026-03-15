@@ -674,6 +674,7 @@ export enum GameMode {
   GAME = "game",
   GRAIL_BALL = "grail_ball",
   GRAIL_MANAGER = "grail_manager",
+  ARTHURIAN_RPG = "arthurian_rpg",
 }
 
 // ---------------------------------------------------------------------------
@@ -856,6 +857,28 @@ export enum OverworldTileType {
   PATH = "path",
   SAND = "sand",
   SNOW = "snow",
+}
+
+export enum ArthurianPhase {
+  MAIN_MENU = "arthurian_main_menu",
+  CHARACTER_CREATE = "arthurian_character_create",
+  PLAYING = "arthurian_playing",
+  INVENTORY = "arthurian_inventory",
+  CHARACTER_SHEET = "arthurian_character_sheet",
+  MAP = "arthurian_map",
+  DIALOGUE = "arthurian_dialogue",
+  SHOP = "arthurian_shop",
+  DEAD = "arthurian_dead",
+  LOADING = "arthurian_loading",
+}
+
+export enum ArthurianClass {
+  KNIGHT = "knight",
+  RANGER = "ranger",
+  MAGE = "mage",
+  ROGUE = "rogue",
+  PALADIN = "paladin",
+  DRUID = "druid",
 }
 
 export enum MapType {
