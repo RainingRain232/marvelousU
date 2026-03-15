@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import {
-  GameBalance, TileType, ENEMY_DEFS,
+  GameBalance, TileType, ENEMY_DEFS, LOOT_TABLES, ITEM_DEFS,
 } from "../config/GameConfig";
 import type { ItemDef } from "../config/GameConfig";
 import {
@@ -118,6 +118,13 @@ export const GameCombatSystem = {
     }
 
     if (ability.damage > 0) {
+      // Bedivere's Last Stand: damage scales with missing HP (up to 3x at 10% HP)
+      let abilityDmg = ability.damage;
+      if (p.knightDef.id === "bedivere") {
+        const missingHpRatio = 1 - (p.hp / p.maxHp);
+        abilityDmg = Math.floor(ability.damage * (1 + missingHpRatio * 2));
+      }
+
       const targets = state.floor.enemies.filter((e) => {
         if (!e.alive) return false;
         const dx = e.x - p.x;
@@ -131,7 +138,7 @@ export const GameCombatSystem = {
         const dy = t.y - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (aoeRange > 0 || dist <= TS * 2) {
-          let dmg = Math.max(1, ability.damage - t.def.defense * 0.3);
+          let dmg = Math.max(1, abilityDmg - t.def.defense * 0.3);
           if (t.bossArmorReduction > 0) {
             dmg = Math.floor(dmg * (1 - t.bossArmorReduction));
           }
@@ -360,6 +367,7 @@ export const GameCombatSystem = {
   // -------------------------------------------------------------------------
   checkTraps(state: GrailGameState): void {
     const p = state.player;
+    if (state.dashTimer > 0) return; // i-frames during dash
     const col = Math.floor(p.x / TS);
     const row = Math.floor(p.y / TS);
     const floor = state.floor;
@@ -399,25 +407,260 @@ export const GameCombatSystem = {
     return !!state.floor.treasures.find((t) => t.col === col && t.row === row && !t.opened);
   },
 
-  // Shop / Shrine / Environmental stubs (features from other systems)
-  checkShop(_state: GrailGameState): boolean {
-    return false;
+  // -------------------------------------------------------------------------
+  // Shop detection — player standing on a SHOP tile
+  // -------------------------------------------------------------------------
+  checkShop(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+    const floor = state.floor;
+    if (col < 0 || col >= floor.width || row < 0 || row >= floor.height) return false;
+    return floor.tiles[row][col] === TileType.SHOP;
   },
 
-  checkShrine(_state: GrailGameState): boolean {
-    return false;
+  // -------------------------------------------------------------------------
+  // Shrine detection — player standing on a SHRINE tile
+  // -------------------------------------------------------------------------
+  checkShrine(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+    const floor = state.floor;
+    if (col < 0 || col >= floor.width || row < 0 || row >= floor.height) return false;
+    return floor.tiles[row][col] === TileType.SHRINE;
   },
 
-  activateShrine(_state: GrailGameState): string {
-    return "None";
+  // -------------------------------------------------------------------------
+  // Shrine activation — apply a random blessing and consume the shrine
+  // -------------------------------------------------------------------------
+  activateShrine(state: GrailGameState): string {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+
+    // Consume shrine tile so it can't be reused
+    state.floor.tiles[row][col] = TileType.FLOOR;
+
+    // Pool of possible blessings (weighted toward what the player needs)
+    const blessings: { desc: string; apply: () => void; weight: number }[] = [
+      {
+        desc: "Fortitude — +15 Max HP",
+        weight: 10,
+        apply() { p.maxHp += 15; p.hp = Math.min(p.hp + 15, p.maxHp); },
+      },
+      {
+        desc: "Restoration — Fully healed",
+        weight: p.hp < p.maxHp * 0.6 ? 20 : 5,
+        apply() { p.hp = p.maxHp; },
+      },
+      {
+        desc: "Might — +3 Attack",
+        weight: 10,
+        apply() { p.attack += 3; },
+      },
+      {
+        desc: "Iron Skin — +2 Defense",
+        weight: 10,
+        apply() { p.defense += 2; },
+      },
+      {
+        desc: "Swiftness — +1 Speed",
+        weight: 8,
+        apply() { p.speed += 1; },
+      },
+      {
+        desc: "Keen Edge — +5% Crit Chance",
+        weight: p.critChance < 0.3 ? 10 : 4,
+        apply() { p.critChance = Math.min(0.5, p.critChance + 0.05); },
+      },
+      {
+        desc: "Purification — All debuffs removed",
+        weight: p.statusEffects.length > 0 || p.confusionTimer > 0 || p.stunTimer > 0 ? 15 : 2,
+        apply() { p.statusEffects = []; p.confusionTimer = 0; p.stunTimer = 0; },
+      },
+      {
+        desc: "Warrior's Blessing — Temp +8 ATK for 30s",
+        weight: 8,
+        apply() { p.statusEffects.push({ id: "buff_atk", turnsRemaining: 30, value: 8 }); },
+      },
+      {
+        desc: "Divine Shield — Invulnerable for 8s",
+        weight: 6,
+        apply() { p.statusEffects.push({ id: "invulnerable", turnsRemaining: 8, value: 0 }); },
+      },
+      {
+        desc: "Gold Offering — +50 Gold",
+        weight: 7,
+        apply() { p.gold += 50; state.totalGold += 50; },
+      },
+      {
+        desc: "Cooldown Reset — Ability ready",
+        weight: p.abilityCooldown > 0 ? 12 : 2,
+        apply() { p.abilityCooldown = 0; p.abilityCooldownMs = 0; },
+      },
+    ];
+
+    // Weighted random selection
+    const totalW = blessings.reduce((s, b) => s + b.weight, 0);
+    let roll = Math.random() * totalW;
+    for (const b of blessings) {
+      roll -= b.weight;
+      if (roll <= 0) {
+        b.apply();
+        return b.desc;
+      }
+    }
+    // Fallback
+    blessings[0].apply();
+    return blessings[0].desc;
   },
 
-  checkEnvironmentalHazards(_state: GrailGameState, _dt: number): void {
-    // Environmental hazards handled by floor-specific logic
+  // -------------------------------------------------------------------------
+  // Environmental hazards — vine entanglement, lava burn, illusion confusion
+  // -------------------------------------------------------------------------
+  checkEnvironmentalHazards(state: GrailGameState, dt: number): void {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+    const floor = state.floor;
+    if (col < 0 || col >= floor.width || row < 0 || row >= floor.height) return;
+    const tile = floor.tiles[row][col];
+    const invuln = p.statusEffects.find(e => e.id === "invulnerable");
+
+    // Scabbard of Excalibur: halve environmental DOT
+    const noBleed = p.equippedRelic?.specialEffect === "no_bleed";
+    const dotMult = noBleed ? 0.5 : 1.0;
+
+    // Vine — slow movement and small DOT (thorns)
+    if (tile === TileType.VINE) {
+      // Slow is handled in GameGame movement via frozenSlow-like check
+      // Here we apply thorn damage (2 dps)
+      if (!invuln) {
+        p.hp -= 2 * dt * dotMult;
+        // Small chance to apply poison on vines (3% per tick)
+        if (Math.random() < 0.03 * dt * 60 && !p.statusEffects.find(e => e.id === "poison")) {
+          p.statusEffects.push({ id: "poison", turnsRemaining: 3, value: 3 });
+        }
+      }
+    }
+
+    // Lava — significant burn damage (12 dps)
+    if (tile === TileType.LAVA) {
+      if (!invuln) {
+        p.hp -= 12 * dt * dotMult;
+        _onPlayerHit?.(Math.ceil(12 * dt));
+        // Apply burn if not already burning
+        if (!p.statusEffects.find(e => e.id === "burn")) {
+          p.statusEffects.push({ id: "burn", turnsRemaining: 3, value: 6 });
+        }
+      }
+      // Leave a burning trail
+      if (!floor.burningTrails.find(t => t.col === col && t.row === row)) {
+        floor.burningTrails.push({ col, row, timer: 4 });
+      }
+    }
+
+    // Illusion — confusion and hallucination
+    if (tile === TileType.ILLUSION) {
+      if (p.confusionTimer <= 0) {
+        p.confusionTimer = 2 + Math.random() * 2;
+      }
+      // 10% chance per second to teleport player slightly (disorientation)
+      if (Math.random() < 0.1 * dt) {
+        const offsetX = (Math.random() - 0.5) * TS * 0.5;
+        const offsetY = (Math.random() - 0.5) * TS * 0.5;
+        const nc = Math.floor((p.x + offsetX) / TS);
+        const nr = Math.floor((p.y + offsetY) / TS);
+        if (nc >= 0 && nc < floor.width && nr >= 0 && nr < floor.height &&
+            floor.tiles[nr][nc] !== TileType.WALL) {
+          p.x += offsetX;
+          p.y += offsetY;
+        }
+      }
+    }
+
+    // Burning trails damage (from lava or boss mechanics)
+    for (let i = floor.burningTrails.length - 1; i >= 0; i--) {
+      const trail = floor.burningTrails[i];
+      trail.timer -= dt;
+      if (trail.timer <= 0) {
+        floor.burningTrails.splice(i, 1);
+        continue;
+      }
+      if (trail.col === col && trail.row === row && !invuln) {
+        p.hp -= 5 * dt * dotMult;
+      }
+    }
+
+    // Abyssal Halls darkness — increase darkness timer (reduces visibility)
+    const themeFloor = Math.min(state.currentFloor, 7);
+    if (themeFloor === 6) {
+      // Darkness grows over time (caps at 60 seconds for maximum darkness)
+      floor.darknessTimer = Math.min(60, floor.darknessTimer + dt);
+    }
+
+    // Enemy environmental effects — enemies on lava/ice take effects too
+    for (const enemy of floor.enemies) {
+      if (!enemy.alive) continue;
+      const ec = Math.floor(enemy.x / TS);
+      const er = Math.floor(enemy.y / TS);
+      if (ec < 0 || ec >= floor.width || er < 0 || er >= floor.height) continue;
+      const et = floor.tiles[er][ec];
+
+      // Enemies take lava damage too (but at reduced rate)
+      if (et === TileType.LAVA) {
+        enemy.hp -= 6 * dt;
+        if (enemy.hp <= 0) killEnemy(state, enemy);
+      }
+
+      // Enemies on ice slide and can't attack as fast
+      if (et === TileType.ICE) {
+        enemy.attackCooldown += dt * 200; // slower attacks on ice
+      }
+    }
   },
 
-  processReanimations(_state: GrailGameState, _dt: number): void {
-    // Reanimation queue processing for Crimson Crypts
+  // -------------------------------------------------------------------------
+  // Reanimation system — undead enemies come back after death in Crypts
+  // -------------------------------------------------------------------------
+  processReanimations(state: GrailGameState, dt: number): void {
+    const floor = state.floor;
+    const themeFloor = Math.min(state.currentFloor, 7);
+    if (themeFloor !== 2 && themeFloor !== 7) return; // Only Crimson Crypts (floor 2) and Final Keep
+
+    const queue = floor.reanimationQueue;
+    for (let i = queue.length - 1; i >= 0; i--) {
+      queue[i].timer -= dt;
+      if (queue[i].timer <= 0) {
+        const entry = queue[i];
+        queue.splice(i, 1);
+
+        // Reanimate with 40% HP
+        const def = entry.def;
+        const col = Math.floor(entry.x / TS);
+        const row = Math.floor(entry.y / TS);
+        if (col >= 0 && col < floor.width && row >= 0 && row < floor.height &&
+            floor.tiles[row][col] !== TileType.WALL) {
+          const e: EnemyInstance = {
+            id: state.enemyIdCounter++, def,
+            x: entry.x, y: entry.y,
+            hp: Math.floor(def.hp * 0.4), maxHp: Math.floor(def.hp * 0.4),
+            alive: true, aggroed: true,
+            attackCooldown: 1000, stunTurns: 0,
+            statusEffects: [], facing: Direction.DOWN,
+            pathTarget: null, bossPhase: 0,
+            aiAbilityCooldown: 3, aiSummonCooldown: 15,
+            aiRallyCooldown: 10, aiHealCooldown: 5,
+            bossPhaseTransitioned: [], bossArmorReduction: 0,
+            bossEnraged: false, bossShieldThrown: false,
+            bossChallengeTimer: 0, rallyDamageBuff: 0, rallyBuffTimer: 0,
+          };
+          floor.enemies.push(e);
+          _onSpawn?.(e);
+        }
+      }
+    }
   },
 
   reset(): void {
@@ -449,11 +692,55 @@ function killEnemy(state: GrailGameState, enemy: EnemyInstance): void {
   if (!enemy.alive) return;
   enemy.alive = false;
   state.totalKills++;
-  gainXP(state, enemy.def.xpReward);
-  state.player.gold += enemy.def.goldReward;
-  state.totalGold += enemy.def.goldReward;
+
+  // Kill streak tracking
+  state.killStreakCount++;
+  state.killStreakTimer = GameBalance.KILL_STREAK_WINDOW;
+  const streakLevel = Math.min(state.killStreakCount - 1, 10); // cap at 10x
+
+  // XP and gold with streak bonus
+  const streakXpMult = 1 + streakLevel * GameBalance.KILL_STREAK_XP_BONUS;
+  const streakGoldMult = 1 + streakLevel * GameBalance.KILL_STREAK_GOLD_BONUS;
+  gainXP(state, Math.floor(enemy.def.xpReward * streakXpMult));
+  const goldReward = Math.floor(enemy.def.goldReward * streakGoldMult);
+  state.player.gold += goldReward;
+  state.totalGold += goldReward;
+
   if (enemy.def.isBoss) state.killedBosses.push(enemy.def.id);
   _onDeath?.(enemy);
+
+  // Kill streak notification at milestones (visual feedback handled by HUD)
+
+  // Enemy item drop chance (scales with floor difficulty)
+  if (!enemy.def.isBoss) {
+    const floorNum = state.currentFloor;
+    const dropChance = enemy.def.xpReward >= 20 ? 0.12 : 0.06; // stronger enemies drop more
+    if (Math.random() < dropChance) {
+      const tier = floorNum <= 2 ? "easy" : floorNum <= 5 ? "medium" : "hard";
+      const table = LOOT_TABLES[tier];
+      if (table) {
+        const item = rollLootTable(table);
+        if (item) {
+          addToInventory(state.player, item);
+          _onLoot?.(item, enemy.x, enemy.y);
+        }
+      }
+    }
+  }
+
+  // Reanimation: undead enemies come back on Crimson Crypts floors
+  const themeFloor = Math.min(state.currentFloor, 7);
+  if ((themeFloor === 2 || themeFloor === 7) && enemy.def.category === "undead" && !enemy.def.isBoss) {
+    // 60% chance to reanimate, timer 6-10 seconds
+    if (Math.random() < 0.6) {
+      state.floor.reanimationQueue.push({
+        def: enemy.def,
+        x: enemy.x,
+        y: enemy.y,
+        timer: 6 + Math.random() * 4,
+      });
+    }
+  }
 }
 
 function gainXP(state: GrailGameState, amount: number): void {
@@ -484,6 +771,16 @@ function addToInventory(player: PlayerState, item: ItemDef): void {
   }
 }
 
+function rollLootTable(table: { itemId: string; weight: number }[]): ItemDef | null {
+  const totalW = table.reduce((s, e) => s + e.weight, 0);
+  let roll = Math.random() * totalW;
+  for (const entry of table) {
+    roll -= entry.weight;
+    if (roll <= 0) return ITEM_DEFS[entry.itemId] ?? null;
+  }
+  return null;
+}
+
 function recalcStats(player: PlayerState): void {
   const base = player.knightDef;
   const lvlAtk = (player.level - 1) * 2;
@@ -502,11 +799,21 @@ function recalcStats(player: PlayerState): void {
 function enemyDamagePlayer(state: GrailGameState, enemy: EnemyInstance, dmgMultiplier = 1): void {
   const p = state.player;
   if (p.statusEffects.find((e) => e.id === "invulnerable")) return;
+  // Dash i-frames: invulnerable while dashing
+  if (state.dashTimer > 0) return;
   const def = p.defense + (p.equippedArmor?.defenseBonus ?? 0) + (p.equippedRelic?.defenseBonus ?? 0);
   let baseDmg = enemy.def.attack;
   if (enemy.rallyDamageBuff > 0) baseDmg = Math.floor(baseDmg * (1 + enemy.rallyDamageBuff));
   if (enemy.bossEnraged) baseDmg = Math.floor(baseDmg * 2);
-  const dmg = Math.max(1, baseDmg * dmgMultiplier - def * 0.4);
+  let dmg = Math.max(1, baseDmg * dmgMultiplier - def * 0.4);
+  // Water Shield relic: 25% chance to block an attack entirely
+  if (p.equippedRelic?.specialEffect === "water_shield" && Math.random() < 0.25) {
+    return; // blocked by water shield
+  }
+  // Scabbard of Excalibur: no_bleed — halve damage from DOT-style attacks (poison/burn status sources)
+  if (p.equippedRelic?.specialEffect === "no_bleed") {
+    dmg = Math.floor(dmg * 0.85); // 15% flat damage reduction
+  }
   p.hp -= dmg;
   _onPlayerHit?.(dmg);
 }
@@ -521,31 +828,74 @@ function moveEnemy(state: GrailGameState, enemy: EnemyInstance, targetX: number,
   const dist = Math.sqrt(dx * dx + dy * dy);
   if (dist < 1) return;
   const speed = GameBalance.ENEMY_MOVE_SPEED * dt * speedMult;
-  const newX = enemy.x + (dx / dist) * speed;
-  const newY = enemy.y + (dy / dist) * speed;
+  const ndx = dx / dist, ndy = dy / dist;
+  const newX = enemy.x + ndx * speed;
+  const newY = enemy.y + ndy * speed;
   const col = Math.floor(newX / TS);
   const row = Math.floor(newY / TS);
+
+  // Direct path clear
   if (col >= 0 && col < floor.width && row >= 0 && row < floor.height && floor.tiles[row][col] !== TileType.WALL) {
     enemy.x = newX;
     enemy.y = newY;
+    return;
+  }
+
+  // Wall avoidance: try sliding along X and Y axes separately
+  const colX = Math.floor(newX / TS);
+  const rowCurr = Math.floor(enemy.y / TS);
+  if (colX >= 0 && colX < floor.width && rowCurr >= 0 && rowCurr < floor.height &&
+      floor.tiles[rowCurr][colX] !== TileType.WALL) {
+    enemy.x = newX;
+    return;
+  }
+  const colCurr = Math.floor(enemy.x / TS);
+  const rowY = Math.floor(newY / TS);
+  if (colCurr >= 0 && colCurr < floor.width && rowY >= 0 && rowY < floor.height &&
+      floor.tiles[rowY][colCurr] !== TileType.WALL) {
+    enemy.y = newY;
+    return;
+  }
+
+  // Wall hugging: try perpendicular directions to navigate around obstacles
+  const perpX1 = enemy.x + ndy * speed;
+  const perpY1 = enemy.y - ndx * speed;
+  const perpX2 = enemy.x - ndy * speed;
+  const perpY2 = enemy.y + ndx * speed;
+
+  const pc1 = Math.floor(perpX1 / TS), pr1 = Math.floor(perpY1 / TS);
+  const pc2 = Math.floor(perpX2 / TS), pr2 = Math.floor(perpY2 / TS);
+
+  // Prefer the perpendicular direction that moves closer to the target
+  const d1 = (perpX1 - targetX) ** 2 + (perpY1 - targetY) ** 2;
+  const d2 = (perpX2 - targetX) ** 2 + (perpY2 - targetY) ** 2;
+
+  if (d1 <= d2) {
+    if (pc1 >= 0 && pc1 < floor.width && pr1 >= 0 && pr1 < floor.height && floor.tiles[pr1][pc1] !== TileType.WALL) {
+      enemy.x = perpX1; enemy.y = perpY1; return;
+    }
+    if (pc2 >= 0 && pc2 < floor.width && pr2 >= 0 && pr2 < floor.height && floor.tiles[pr2][pc2] !== TileType.WALL) {
+      enemy.x = perpX2; enemy.y = perpY2; return;
+    }
+  } else {
+    if (pc2 >= 0 && pc2 < floor.width && pr2 >= 0 && pr2 < floor.height && floor.tiles[pr2][pc2] !== TileType.WALL) {
+      enemy.x = perpX2; enemy.y = perpY2; return;
+    }
+    if (pc1 >= 0 && pc1 < floor.width && pr1 >= 0 && pr1 < floor.height && floor.tiles[pr1][pc1] !== TileType.WALL) {
+      enemy.x = perpX1; enemy.y = perpY1; return;
+    }
   }
 }
 
 function moveEnemyAway(state: GrailGameState, enemy: EnemyInstance, awayFromX: number, awayFromY: number, dt: number, speedMult = 1): void {
-  const floor = state.floor;
+  // Reuse moveEnemy by computing a target point away from the threat
   const dx = enemy.x - awayFromX;
   const dy = enemy.y - awayFromY;
   const dist = Math.sqrt(dx * dx + dy * dy);
   if (dist < 1) return;
-  const speed = GameBalance.ENEMY_MOVE_SPEED * dt * speedMult;
-  const newX = enemy.x + (dx / dist) * speed;
-  const newY = enemy.y + (dy / dist) * speed;
-  const col = Math.floor(newX / TS);
-  const row = Math.floor(newY / TS);
-  if (col >= 0 && col < floor.width && row >= 0 && row < floor.height && floor.tiles[row][col] !== TileType.WALL) {
-    enemy.x = newX;
-    enemy.y = newY;
-  }
+  const targetX = enemy.x + (dx / dist) * TS * 3;
+  const targetY = enemy.y + (dy / dist) * TS * 3;
+  moveEnemy(state, enemy, targetX, targetY, dt, speedMult);
 }
 
 // ---------------------------------------------------------------------------
@@ -729,6 +1079,9 @@ function updateBossAI(state: GrailGameState, enemy: EnemyInstance, dt: number, d
     case "green_knight": updateGreenKnightAI(state, enemy, dt, dist); break;
     case "questing_beast": updateQuestingBeastAI(state, enemy, dt, dist); break;
     case "black_knight": updateBlackKnightAI(state, enemy, dt, dist); break;
+    case "oberon": updateOberonAI(state, enemy, dt, dist); break;
+    case "king_rience": updateKingRienceAI(state, enemy, dt, dist); break;
+    case "saxon_warlord": updateSaxonWarlordAI(state, enemy, dt, dist); break;
     default: updateGenericBossAI(state, enemy, dt, dist); break;
   }
 }
@@ -870,6 +1223,204 @@ function updateBlackKnightAI(state: GrailGameState, enemy: EnemyInstance, dt: nu
   }
 }
 
+// ---------------------------------------------------------------------------
+// Boss AI: Oberon, King of Faerie
+// Phase 1: Teleport + fae storm projectiles, summon fae minions
+// Phase 2: Glamour — confusion + illusion spawning
+// Phase 3: Time warp — massive speed + attack boost
+// ---------------------------------------------------------------------------
+function updateOberonAI(state: GrailGameState, enemy: EnemyInstance, dt: number, dist: number): void {
+  const p = state.player;
+  const hr = enemy.hp / enemy.maxHp;
+
+  // Phase 2: Glamour — confusion + summon more fae
+  if (hr <= 0.6 && !enemy.bossPhaseTransitioned[1]) {
+    enemy.bossPhaseTransitioned[1] = true; enemy.bossPhase = 1;
+    _onBossPhaseFlash?.(enemy.def.id, 2, 0x00ffaa);
+    p.confusionTimer = 4; // Heavy confusion
+    teleportToRandomSpot(state, enemy);
+    spawnMinion(state, "fae_pixie_minion", enemy.x, enemy.y);
+    spawnMinion(state, "fae_pixie_minion", enemy.x, enemy.y);
+    spawnMinion(state, "fae_pixie_minion", enemy.x, enemy.y);
+  }
+
+  // Phase 3: Time warp — enraged, very fast
+  if (hr <= 0.25 && !enemy.bossPhaseTransitioned[2]) {
+    enemy.bossPhaseTransitioned[2] = true; enemy.bossPhase = 2;
+    _onBossPhaseFlash?.(enemy.def.id, 3, 0xffff00);
+    enemy.bossEnraged = true;
+    // Teleport spam: stun player briefly
+    p.stunTimer = 1.5;
+    teleportToRandomSpot(state, enemy);
+  }
+
+  // Movement: stay at range, teleport when cornered
+  const speedMult = enemy.bossPhase >= 2 ? 2.5 : 1.5;
+  if (dist < 3 * TS) {
+    moveEnemyAway(state, enemy, p.x, p.y, dt, speedMult);
+    // Teleport away if too close and phase 1+
+    if (dist < 1.5 * TS && enemy.aiAbilityCooldown <= 0) {
+      teleportToRandomSpot(state, enemy);
+      enemy.aiAbilityCooldown = 2;
+    }
+  } else if (dist > 8 * TS) {
+    moveEnemy(state, enemy, p.x, p.y, dt, speedMult);
+  }
+
+  // Fae storm: rapid multi-directional projectiles
+  if (enemy.aiAbilityCooldown <= 0 && dist < 10 * TS) {
+    const numProjectiles = enemy.bossPhase >= 2 ? 6 : 3;
+    for (let i = 0; i < numProjectiles; i++) {
+      const angle = (i / numProjectiles) * Math.PI * 2 + Math.random() * 0.5;
+      const speed = 160 + Math.random() * 60;
+      state.floor.projectiles.push({
+        x: enemy.x, y: enemy.y,
+        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+        damage: Math.max(4, enemy.def.attack * 0.35),
+        color: 0x00ffaa, ownerId: enemy.id,
+        lifetime: 3, maxRange: 10 * TS, distTraveled: 0,
+      });
+    }
+    enemy.aiAbilityCooldown = enemy.bossPhase >= 2 ? 1.5 : 3;
+  }
+
+  // Periodic confusion in phase 2+
+  if (enemy.bossPhase >= 1 && enemy.aiHealCooldown <= 0) {
+    if (p.confusionTimer <= 0) p.confusionTimer = 1.5;
+    enemy.aiHealCooldown = 6 + Math.random() * 3;
+  }
+
+  // Summon fae minions periodically
+  if (enemy.aiSummonCooldown <= 0) {
+    spawnMinion(state, "fae_pixie_minion", enemy.x, enemy.y);
+    if (enemy.bossPhase >= 1) spawnMinion(state, "fae_pixie_minion", enemy.x, enemy.y);
+    enemy.aiSummonCooldown = enemy.bossPhase >= 2 ? 8 : 14;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boss AI: King Rience
+// Phase 1: War cry buffs nearby allies, shield wall defense
+// Phase 2: Execute — devastating single hits on low-HP player
+// ---------------------------------------------------------------------------
+function updateKingRienceAI(state: GrailGameState, enemy: EnemyInstance, dt: number, dist: number): void {
+  const p = state.player;
+  const hr = enemy.hp / enemy.maxHp;
+
+  // Phase 2: Execute mode
+  if (hr <= 0.4 && !enemy.bossPhaseTransitioned[1]) {
+    enemy.bossPhaseTransitioned[1] = true; enemy.bossPhase = 1;
+    _onBossPhaseFlash?.(enemy.def.id, 2, 0xff4400);
+    enemy.bossEnraged = true;
+    // War cry: buff all allies significantly
+    for (const ally of state.floor.enemies) {
+      if (ally.id !== enemy.id && ally.alive) {
+        ally.rallyDamageBuff = 0.4; ally.rallyBuffTimer = 15;
+      }
+    }
+    // Summon elite guards
+    spawnMinion(state, "knight_soldier", enemy.x, enemy.y);
+    spawnMinion(state, "knight_soldier", enemy.x, enemy.y);
+  }
+
+  // Shield wall: damage reduction until phase 2
+  if (!enemy.bossPhaseTransitioned[1]) {
+    enemy.bossArmorReduction = 0.3; // 30% damage reduction
+  }
+
+  // Melee combat
+  if (dist < TS * 1.5) {
+    enemy.attackCooldown -= dt * 1000;
+    if (enemy.attackCooldown <= 0) {
+      // Execute: bonus damage when player is below 30% HP
+      const execMult = (enemy.bossPhase >= 1 && p.hp < p.maxHp * 0.3) ? 2.5 : 1;
+      enemyDamagePlayer(state, enemy, execMult);
+      enemy.attackCooldown = enemy.bossPhase >= 1 ? 600 : 900;
+    }
+  } else {
+    moveEnemy(state, enemy, p.x, p.y, dt, enemy.bossPhase >= 1 ? 1.4 : 1.0);
+  }
+
+  // Rally cry: periodically buff allies
+  if (enemy.aiRallyCooldown <= 0) {
+    let buffed = 0;
+    for (const ally of state.floor.enemies) {
+      if (ally.id !== enemy.id && ally.alive && Math.sqrt((ally.x - enemy.x) ** 2 + (ally.y - enemy.y) ** 2) < 6 * TS) {
+        ally.rallyDamageBuff = 0.25; ally.rallyBuffTimer = 10; buffed++;
+      }
+    }
+    if (buffed > 0) enemy.aiRallyCooldown = 8 + Math.random() * 3;
+  }
+
+  // Summon soldiers
+  if (enemy.aiSummonCooldown <= 0) {
+    spawnMinion(state, "knight_soldier", enemy.x, enemy.y);
+    enemy.aiSummonCooldown = 15 + Math.random() * 5;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boss AI: Saxon Warlord
+// Phase 1: Berserker rage — faster attacks, summon saxon warriors
+// Phase 2: Shield wall + rally all allies + devastating charge
+// ---------------------------------------------------------------------------
+function updateSaxonWarlordAI(state: GrailGameState, enemy: EnemyInstance, dt: number, dist: number): void {
+  const p = state.player;
+  const hr = enemy.hp / enemy.maxHp;
+
+  // Phase 2: Berserker rage
+  if (hr <= 0.5 && !enemy.bossPhaseTransitioned[1]) {
+    enemy.bossPhaseTransitioned[1] = true; enemy.bossPhase = 1;
+    _onBossPhaseFlash?.(enemy.def.id, 2, 0xff6600);
+    enemy.bossEnraged = true;
+    // Summon a wave of warriors
+    for (let i = 0; i < 3; i++) {
+      spawnMinion(state, "bandit_minion", enemy.x, enemy.y);
+    }
+    // Rally all existing allies
+    for (const ally of state.floor.enemies) {
+      if (ally.id !== enemy.id && ally.alive) {
+        ally.rallyDamageBuff = 0.3; ally.rallyBuffTimer = 12;
+      }
+    }
+  }
+
+  // Melee: aggressive with shield bash stun
+  if (dist < TS * 1.5) {
+    enemy.attackCooldown -= dt * 1000;
+    if (enemy.attackCooldown <= 0) {
+      enemyDamagePlayer(state, enemy);
+      // Shield bash stun (20% chance, or guaranteed in phase 2 every 3rd hit)
+      if (enemy.aiAbilityCooldown <= 0) {
+        p.stunTimer = 0.8;
+        enemy.aiAbilityCooldown = enemy.bossPhase >= 1 ? 3 : 5;
+      }
+      enemy.attackCooldown = enemy.bossPhase >= 1 ? 500 : 800;
+    }
+  } else {
+    // Charge: move fast when far away
+    const chargeMult = dist > 4 * TS ? 2.0 : (enemy.bossPhase >= 1 ? 1.5 : 1.0);
+    moveEnemy(state, enemy, p.x, p.y, dt, chargeMult);
+  }
+
+  // Periodic rally
+  if (enemy.aiRallyCooldown <= 0) {
+    for (const ally of state.floor.enemies) {
+      if (ally.id !== enemy.id && ally.alive && Math.sqrt((ally.x - enemy.x) ** 2 + (ally.y - enemy.y) ** 2) < 6 * TS) {
+        ally.rallyDamageBuff = 0.2; ally.rallyBuffTimer = 8;
+      }
+    }
+    enemy.aiRallyCooldown = 10;
+  }
+
+  // Summon reinforcements
+  if (enemy.aiSummonCooldown <= 0) {
+    spawnMinion(state, "bandit_minion", enemy.x, enemy.y);
+    if (enemy.bossPhase >= 1) spawnMinion(state, "bandit_minion", enemy.x, enemy.y);
+    enemy.aiSummonCooldown = 12 + Math.random() * 4;
+  }
+}
+
 function updateGenericBossAI(state: GrailGameState, enemy: EnemyInstance, dt: number, dist: number): void {
   const p = state.player;
   if (dist < TS * 1.5) {
@@ -920,7 +1471,7 @@ function updateProjectiles(state: GrailGameState, dt: number): void {
 
     const pd = Math.sqrt((pr.x - p.x) ** 2 + (pr.y - p.y) ** 2);
     if (pd < TS * 0.5) {
-      if (!p.statusEffects.find(e => e.id === "invulnerable") && pr.damage > 0) {
+      if (!p.statusEffects.find(e => e.id === "invulnerable") && state.dashTimer <= 0 && pr.damage > 0) {
         const d = p.defense + (p.equippedArmor?.defenseBonus ?? 0) + (p.equippedRelic?.defenseBonus ?? 0);
         p.hp -= Math.max(1, pr.damage - d * 0.3);
         _onPlayerHit?.(Math.max(1, pr.damage - d * 0.3));

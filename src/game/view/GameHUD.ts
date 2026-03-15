@@ -11,7 +11,7 @@ import {
   ItemType, ItemRarity, SHOP_ITEMS,
 } from "../config/GameConfig";
 
-import { GamePhase } from "../state/GameState";
+import { GamePhase, loadRunStats } from "../state/GameState";
 import type {
   GrailGameState, PlayerState, FloorState,
 } from "../state/GameState";
@@ -133,6 +133,10 @@ export class GameHUD {
       this._drawVictory(state, sw, sh);
       return;
     }
+    if (state.phase === GamePhase.FLOOR_TRANSITION) {
+      this._drawFloorTransition(state, sw, sh);
+      return;
+    }
 
     // Playing HUD
     this._drawHPBar(state.player, sw);
@@ -145,6 +149,8 @@ export class GameHUD {
     this._drawMinimap(state.floor, state.player, sw, sh);
     this._drawInventoryBar(state.player, sw, sh);
     this._drawGold(state.player, sw);
+    this._drawDashIndicator(state, sw, sh);
+    this._drawKillStreak(state, sw, sh);
     this._drawNotifications(sw, sh, dt);
 
     if (state.phase === GamePhase.INVENTORY) {
@@ -1560,17 +1566,17 @@ export class GameHUD {
     g.rect(sw - 40, 0, 40, sh).fill({ color: 0x880000, alpha: vignetteAlpha * 0.3 });
 
     // Skull icon
-    this._drawSkullIcon(sw / 2, sh / 2 - 100, 40, 0x882222);
+    this._drawSkullIcon(sw / 2, sh / 2 - 130, 40, 0x882222);
 
     // Title
-    this._addText("FALLEN IN BATTLE", sw / 2, sh / 2 - 60, 32, 0xff2222, true);
-    this._drawOrnamentDivider(sw / 2 - 120, sh / 2 - 38, 240, 0x882222);
+    this._addText("FALLEN IN BATTLE", sw / 2, sh / 2 - 90, 32, 0xff2222, true);
+    this._drawOrnamentDivider(sw / 2 - 120, sh / 2 - 68, 240, 0x882222);
 
     // Stats scroll panel
     const panelW = 360;
-    const panelH = 140;
+    const panelH = 200;
     const px = (sw - panelW) / 2;
-    const py = sh / 2 - 24;
+    const py = sh / 2 - 54;
 
     this._drawParchmentBG(px, py, panelW, panelH);
     this._drawOrnateFrame(px, py, panelW, panelH, 0x882222, 1.5, 6);
@@ -1599,11 +1605,30 @@ export class GameHUD {
       sw / 2, py + 90, 11, 0x7a6a50, true,
     );
 
-    // Bosses slain
     if (state.killedBosses.length > 0) {
       this._addText(
         `Bosses Slain: ${state.killedBosses.length}`,
         sw / 2, py + 108, 11, 0x884433, true,
+      );
+    }
+
+    // Career stats section
+    this._drawOrnamentDivider(px + 30, py + 124, panelW - 60, 0x8a6a4a);
+    this._addText("Career", sw / 2, py + 134, 11, 0x6a5a40, true);
+    const career = loadRunStats();
+    this._addText(
+      `Runs: ${career.totalRuns}  |  Victories: ${career.totalVictories}  |  Best Floor: ${career.bestFloor}`,
+      sw / 2, py + 152, 10, 0x7a6a50, true,
+    );
+    this._addText(
+      `All-time Kills: ${career.totalKillsAllTime}  |  Bosses Found: ${career.bossesDefeated.length}`,
+      sw / 2, py + 168, 10, 0x7a6a50, true,
+    );
+    if (career.fastestVictoryMs < Infinity) {
+      const best = Math.floor(career.fastestVictoryMs / 1000);
+      this._addText(
+        `Fastest Win: ${Math.floor(best / 60)}m ${best % 60}s`,
+        sw / 2, py + 184, 10, 0x7a6a50, true,
       );
     }
 
@@ -1667,7 +1692,7 @@ export class GameHUD {
 
     // Achievement scroll
     const panelW = 380;
-    const panelH = 150;
+    const panelH = 210;
     const px = (sw - panelW) / 2;
     const py = sh / 2 - 22;
 
@@ -1704,11 +1729,26 @@ export class GameHUD {
       sw / 2, py + 110, 11, 0x7a6a50, true,
     );
 
-    // Relics found
     if (state.foundRelics.length > 0) {
       this._addText(
         `Relics Found: ${state.foundRelics.length}`,
         sw / 2, py + 128, 11, GOLD_DARK, true,
+      );
+    }
+
+    // Career stats section
+    this._drawOrnamentDivider(px + 30, py + 144, panelW - 60, GOLD_DARK);
+    this._addText("Career", sw / 2, py + 154, 11, GOLD_DARK, true);
+    const career = loadRunStats();
+    this._addText(
+      `Total Victories: ${career.totalVictories}  |  Best Level: ${career.highestLevel}  |  Genres: ${career.genresCompleted.length}/6`,
+      sw / 2, py + 172, 10, 0x7a6a50, true,
+    );
+    if (career.fastestVictoryMs < Infinity) {
+      const best = Math.floor(career.fastestVictoryMs / 1000);
+      this._addText(
+        `Fastest Win: ${Math.floor(best / 60)}m ${best % 60}s  |  All-time Kills: ${career.totalKillsAllTime}`,
+        sw / 2, py + 188, 10, 0x7a6a50, true,
       );
     }
 
@@ -1737,6 +1777,117 @@ export class GameHUD {
 
     this._addText("PAUSED", sw / 2, sh / 2 - 8, 26, 0x3a2a15, true);
     this._addText("Press P to resume  |  ESC to exit", sw / 2, sh / 2 + 22, 12, 0x7a6a50, true);
+  }
+
+  // =========================================================================
+  //  FLOOR TRANSITION SCREEN
+  // =========================================================================
+
+  private _drawFloorTransition(state: GrailGameState, sw: number, sh: number): void {
+    const g = this._gfx;
+    g.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.8 });
+
+    const panelW = 360;
+    const panelH = 200;
+    const px = (sw - panelW) / 2;
+    const py = (sh - panelH) / 2;
+
+    this._drawParchmentBG(px, py, panelW, panelH);
+    this._drawOrnateFrame(px, py, panelW, panelH, GOLD_COLOR, 2, 8);
+
+    const p = state.player;
+    const nextFloor = state.currentFloor + 1;
+    const themeName = nextFloor < 8
+      ? ["Castle Dungeons", "Enchanted Forest", "Crimson Crypts", "Frozen Depths", "Volcanic Tunnels", "Faerie Hollows", "Abyssal Halls", "The Final Keep"][Math.min(nextFloor, 7)]
+      : "The Depths";
+
+    this._addText(`Floor ${nextFloor + 1}`, sw / 2, py + 28, 24, 0x3a2a15, true);
+    this._addText(themeName, sw / 2, py + 55, 16, 0x7a6a50, true);
+
+    // Divider
+    g.moveTo(px + 30, py + 72).lineTo(px + panelW - 30, py + 72)
+      .stroke({ color: GOLD_DARK, width: 1, alpha: 0.5 });
+
+    // Run stats so far
+    const statX = px + 40;
+    const statValX = px + panelW - 40;
+    let sy = py + 88;
+    const statColor = 0x3a2a15;
+    const valColor = 0x5a4a30;
+
+    this._addText("Kills:", statX, sy, 13, statColor); this._addText(`${state.totalKills}`, statValX, sy, 13, valColor);
+    sy += 20;
+    this._addText("Gold:", statX, sy, 13, statColor); this._addText(`${p.gold}`, statValX, sy, 13, valColor);
+    sy += 20;
+    this._addText("Level:", statX, sy, 13, statColor); this._addText(`${p.level}`, statValX, sy, 13, valColor);
+    sy += 20;
+    const hpPct = Math.floor((p.hp / p.maxHp) * 100);
+    const hpColor = hpPct > 60 ? 0x44aa44 : hpPct > 30 ? 0xaaaa22 : 0xaa3322;
+    this._addText("HP:", statX, sy, 13, statColor); this._addText(`${Math.ceil(p.hp)} / ${p.maxHp} (${hpPct}%)`, statValX, sy, 13, hpColor);
+  }
+
+  // =========================================================================
+  //  DASH COOLDOWN INDICATOR
+  // =========================================================================
+
+  private _drawDashIndicator(state: GrailGameState, _sw: number, sh: number): void {
+    const g = this._gfx;
+    const dashReady = state.dashCooldown <= 0;
+    const x = 18;
+    const y = sh - 50;
+
+    // Small circular indicator
+    const radius = 12;
+    g.circle(x, y, radius + 1).fill({ color: 0x000000, alpha: 0.5 });
+
+    if (dashReady) {
+      const pulse = 0.5 + Math.sin(this._anim.time * 4) * 0.3;
+      g.circle(x, y, radius).fill({ color: 0x44ccff, alpha: pulse });
+      this._addText("DASH", x, y + 18, 8, 0x44ccff, true);
+    } else {
+      // Cooldown sweep
+      const cdPct = Math.max(0, state.dashCooldown / 0.8); // 0.8 = DASH_COOLDOWN
+      g.circle(x, y, radius).fill({ color: 0x222233, alpha: 0.8 });
+      // Sweep arc for remaining cooldown
+      if (cdPct > 0) {
+        g.moveTo(x, y);
+        g.arc(x, y, radius, -Math.PI / 2, -Math.PI / 2 + (1 - cdPct) * Math.PI * 2);
+        g.lineTo(x, y);
+        g.fill({ color: 0x44ccff, alpha: 0.4 });
+      }
+      this._addText("SHIFT", x, y + 18, 7, 0x556677, true);
+    }
+  }
+
+  // =========================================================================
+  //  KILL STREAK INDICATOR
+  // =========================================================================
+
+  private _drawKillStreak(state: GrailGameState, sw: number, _sh: number): void {
+    if (state.killStreakCount < 2) return;
+
+    const g = this._gfx;
+    const streak = state.killStreakCount;
+    const timeLeft = state.killStreakTimer;
+    const fadeAlpha = Math.min(1, timeLeft / 0.5); // fade out in last 0.5s
+
+    // Position below floor info
+    const x = sw - 110;
+    const y = 100;
+
+    // Glow intensity based on streak
+    const glowIntensity = Math.min(1, streak / 10);
+    const streakColor = streak >= 8 ? 0xff4444 : streak >= 5 ? 0xffaa22 : streak >= 3 ? 0xffdd44 : 0xffffff;
+
+    // Pulsing background
+    const pulse = 0.7 + Math.sin(this._anim.time * 6) * 0.3;
+    g.roundRect(x - 40, y - 12, 80, 28, 4)
+      .fill({ color: 0x000000, alpha: fadeAlpha * 0.6 });
+    g.roundRect(x - 40, y - 12, 80, 28, 4)
+      .stroke({ color: streakColor, width: 1, alpha: fadeAlpha * pulse * glowIntensity });
+
+    const label = streak >= 8 ? "RAMPAGE" : streak >= 5 ? "FRENZY" : "STREAK";
+    this._addText(`${label} x${streak}`, x, y + 2, 12, streakColor, true, fadeAlpha);
   }
 
   // =========================================================================

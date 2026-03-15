@@ -19,7 +19,7 @@ import {
 import {
   GamePhase, Direction,
   createGrailGameState, createPlayerState,
-  unlockKnight,
+  unlockKnight, updateRunStatsOnEnd,
 } from "./state/GameState";
 import type { GrailGameState } from "./state/GameState";
 
@@ -63,6 +63,7 @@ export class GameGame {
   private _hud = new GameHUD();
   private _camOffsetX = 0;
   private _camOffsetY = 0;
+  private _floorTransitionTimer = 0;
 
   // -------------------------------------------------------------------------
   // Boot
@@ -163,7 +164,7 @@ export class GameGame {
         break;
 
       case GamePhase.FLOOR_TRANSITION:
-        // Brief pause handled by timer
+        this._handleFloorTransition(dt);
         break;
     }
   }
@@ -290,76 +291,135 @@ export class GameGame {
     this._renderer.camOffsetX = this._camOffsetX;
     this._renderer.camOffsetY = this._camOffsetY;
 
-    // Movement (WASD) with ice slide and frozen slow
+    // Dash cooldown tick
+    if (state.dashCooldown > 0) state.dashCooldown -= dt;
+
+    // Kill streak timer tick
+    if (state.killStreakTimer > 0) {
+      state.killStreakTimer -= dt;
+      if (state.killStreakTimer <= 0) { state.killStreakCount = 0; state.killStreakTimer = 0; }
+    }
+
+    // Movement (WASD) with environmental effects
     const themeFloor = Math.min(state.currentFloor, 7);
-    const onIce = (() => {
-      const c = Math.floor(p.x / GameBalance.TILE_SIZE);
-      const r = Math.floor(p.y / GameBalance.TILE_SIZE);
-      return c >= 0 && c < floor.width && r >= 0 && r < floor.height &&
-        floor.tiles[r][c] === TileType.ICE;
-    })();
-    const frozenSlow = (themeFloor === 3 || themeFloor === 7) && onIce ? 0.5 : 1.0;
-    const speed = GameBalance.PLAYER_MOVE_SPEED * dt * frozenSlow;
-    let dx = 0, dy = 0;
+    const playerCol = Math.floor(p.x / GameBalance.TILE_SIZE);
+    const playerRow = Math.floor(p.y / GameBalance.TILE_SIZE);
+    const currentTile = (playerCol >= 0 && playerCol < floor.width && playerRow >= 0 && playerRow < floor.height)
+      ? floor.tiles[playerRow][playerCol] : TileType.WALL;
+    const onIce = currentTile === TileType.ICE;
+    const onVine = currentTile === TileType.VINE;
 
-    // Ice slide: continue in previous direction
-    if (state.iceSlideDir && onIce) {
-      dx = state.iceSlideDir.dx;
-      dy = state.iceSlideDir.dy;
-    }
-
-    // Confusion: reverse controls; Stun: no movement
-    const confused = p.confusionTimer > 0;
-    const stunned = p.stunTimer > 0;
-
-    if (!stunned) {
-      if (_isDown("KeyW")) { dy = confused ? 1 : -1; p.facing = confused ? Direction.DOWN : Direction.UP; state.iceSlideDir = null; }
-      if (_isDown("KeyS")) { dy = confused ? -1 : 1; p.facing = confused ? Direction.UP : Direction.DOWN; state.iceSlideDir = null; }
-      if (_isDown("KeyA")) { dx = confused ? 1 : -1; p.facing = confused ? Direction.RIGHT : Direction.LEFT; state.iceSlideDir = null; }
-      if (_isDown("KeyD")) { dx = confused ? -1 : 1; p.facing = confused ? Direction.LEFT : Direction.RIGHT; state.iceSlideDir = null; }
-    }
-
-    if (dx !== 0 || dy !== 0) {
-      // Normalize diagonal
-      const len = Math.sqrt(dx * dx + dy * dy);
-      dx /= len;
-      dy /= len;
-
-      const newX = p.x + dx * speed;
-      const newY = p.y + dy * speed;
-
-      // Wall collision
+    // Active dash movement (overrides normal movement, grants i-frames)
+    if (state.dashTimer > 0) {
+      state.dashTimer -= dt;
+      const dashSpeed = GameBalance.DASH_SPEED * dt;
+      const newX = p.x + state.dashDx * dashSpeed;
+      const newY = p.y + state.dashDy * dashSpeed;
       const col = Math.floor(newX / GameBalance.TILE_SIZE);
       const row = Math.floor(newY / GameBalance.TILE_SIZE);
-      if (col >= 0 && col < floor.width && row >= 0 && row < floor.height) {
-        const tile = floor.tiles[row][col];
-        if (tile !== TileType.WALL) {
-          p.x = newX;
-          p.y = newY;
-        } else {
-          // Try sliding along walls
-          const colX = Math.floor(newX / GameBalance.TILE_SIZE);
-          const rowCurr = Math.floor(p.y / GameBalance.TILE_SIZE);
-          if (colX >= 0 && colX < floor.width && rowCurr >= 0 && rowCurr < floor.height &&
-              floor.tiles[rowCurr][colX] !== TileType.WALL) {
-            p.x = newX;
-          }
-          const colCurr = Math.floor(p.x / GameBalance.TILE_SIZE);
-          const rowY = Math.floor(newY / GameBalance.TILE_SIZE);
-          if (colCurr >= 0 && colCurr < floor.width && rowY >= 0 && rowY < floor.height &&
-              floor.tiles[rowY][colCurr] !== TileType.WALL) {
-            p.y = newY;
-          }
-        }
+      if (col >= 0 && col < floor.width && row >= 0 && row < floor.height &&
+          floor.tiles[row][col] !== TileType.WALL) {
+        p.x = newX;
+        p.y = newY;
+      } else {
+        state.dashTimer = 0; // Hit a wall, end dash
       }
-
-      // Reveal fog
       const pc = Math.floor(p.x / GameBalance.TILE_SIZE);
       const pr = Math.floor(p.y / GameBalance.TILE_SIZE);
       revealAround(floor, pc, pr, 5);
       p.isMoving = true;
     } else {
-      p.isMoving = false;
+      // Environmental speed modifiers
+      let speedMult = 1.0;
+      if (onIce) speedMult = 0.5;      // Ice slows movement
+      if (onVine) speedMult = 0.6;     // Vines entangle and slow
+      // Abyssal Halls: slight speed reduction as darkness grows
+      if (themeFloor === 6 && floor.darknessTimer > 20) speedMult *= 0.85;
+      const speed = GameBalance.PLAYER_MOVE_SPEED * dt * speedMult;
+      let dx = 0, dy = 0;
+
+      // Ice slide: continue in previous direction
+      if (state.iceSlideDir && onIce) {
+        dx = state.iceSlideDir.dx;
+        dy = state.iceSlideDir.dy;
+      }
+
+      // Confusion: reverse controls; Stun: no movement
+      const confused = p.confusionTimer > 0;
+      const stunned = p.stunTimer > 0;
+
+      if (!stunned) {
+        if (_isDown("KeyW")) { dy = confused ? 1 : -1; p.facing = confused ? Direction.DOWN : Direction.UP; state.iceSlideDir = null; }
+        if (_isDown("KeyS")) { dy = confused ? -1 : 1; p.facing = confused ? Direction.UP : Direction.DOWN; state.iceSlideDir = null; }
+        if (_isDown("KeyA")) { dx = confused ? 1 : -1; p.facing = confused ? Direction.RIGHT : Direction.LEFT; state.iceSlideDir = null; }
+        if (_isDown("KeyD")) { dx = confused ? -1 : 1; p.facing = confused ? Direction.LEFT : Direction.RIGHT; state.iceSlideDir = null; }
+      }
+
+      // Dash (Shift) — dash in facing direction, grants brief invulnerability
+      if (_justPressed("ShiftLeft") || _justPressed("ShiftRight")) {
+        if (state.dashCooldown <= 0 && !stunned) {
+          let ddx = 0, ddy = 0;
+          // Use input direction if moving, otherwise use facing
+          if (dx !== 0 || dy !== 0) {
+            const len = Math.sqrt(dx * dx + dy * dy);
+            ddx = dx / len; ddy = dy / len;
+          } else {
+            switch (p.facing) {
+              case Direction.UP: ddy = -1; break;
+              case Direction.DOWN: ddy = 1; break;
+              case Direction.LEFT: ddx = -1; break;
+              case Direction.RIGHT: ddx = 1; break;
+            }
+          }
+          state.dashTimer = GameBalance.DASH_DURATION;
+          state.dashCooldown = GameBalance.DASH_COOLDOWN;
+          state.dashDx = ddx;
+          state.dashDy = ddy;
+        }
+      }
+
+      if (dx !== 0 || dy !== 0) {
+        // Normalize diagonal
+        const len = Math.sqrt(dx * dx + dy * dy);
+        dx /= len;
+        dy /= len;
+
+        const newX = p.x + dx * speed;
+        const newY = p.y + dy * speed;
+
+        // Wall collision
+        const col = Math.floor(newX / GameBalance.TILE_SIZE);
+        const row = Math.floor(newY / GameBalance.TILE_SIZE);
+        if (col >= 0 && col < floor.width && row >= 0 && row < floor.height) {
+          const tile = floor.tiles[row][col];
+          if (tile !== TileType.WALL) {
+            p.x = newX;
+            p.y = newY;
+          } else {
+            // Try sliding along walls
+            const colX = Math.floor(newX / GameBalance.TILE_SIZE);
+            const rowCurr = Math.floor(p.y / GameBalance.TILE_SIZE);
+            if (colX >= 0 && colX < floor.width && rowCurr >= 0 && rowCurr < floor.height &&
+                floor.tiles[rowCurr][colX] !== TileType.WALL) {
+              p.x = newX;
+            }
+            const colCurr = Math.floor(p.x / GameBalance.TILE_SIZE);
+            const rowY = Math.floor(newY / GameBalance.TILE_SIZE);
+            if (colCurr >= 0 && colCurr < floor.width && rowY >= 0 && rowY < floor.height &&
+                floor.tiles[rowY][colCurr] !== TileType.WALL) {
+              p.y = newY;
+            }
+          }
+        }
+
+        // Reveal fog
+        const pc = Math.floor(p.x / GameBalance.TILE_SIZE);
+        const pr = Math.floor(p.y / GameBalance.TILE_SIZE);
+        revealAround(floor, pc, pr, 5);
+        p.isMoving = true;
+      } else {
+        p.isMoving = false;
+      }
     }
 
     // Attack (space)
@@ -411,7 +471,8 @@ export class GameGame {
           state.phase = GamePhase.VICTORY;
           this._handleVictoryUnlocks();
         } else {
-          this._startFloor(state.currentFloor + 1);
+          state.phase = GamePhase.FLOOR_TRANSITION;
+          this._floorTransitionTimer = 2.0; // 2 second pause between floors
         }
       }
     }
@@ -461,6 +522,7 @@ export class GameGame {
     // Check death
     if (p.hp <= 0) {
       state.phase = GamePhase.GAME_OVER;
+      updateRunStatsOnEnd(state, false);
     }
 
     // ESC to exit
@@ -587,6 +649,16 @@ export class GameGame {
   }
 
   // -------------------------------------------------------------------------
+  // Floor transition (brief pause between floors with stats)
+  // -------------------------------------------------------------------------
+  private _handleFloorTransition(dt: number): void {
+    this._floorTransitionTimer -= dt;
+    if (this._floorTransitionTimer <= 0) {
+      this._startFloor(this._state.currentFloor + 1);
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // End screens (game over / victory)
   // -------------------------------------------------------------------------
   private _handleEndScreen(): void {
@@ -605,6 +677,8 @@ export class GameGame {
   // -------------------------------------------------------------------------
   private _handleVictoryUnlocks(): void {
     const state = this._state;
+    updateRunStatsOnEnd(state, true);
+
     // Unlock next knight based on which quest was completed
     const allKnights = KNIGHT_DEFS.map((k) => k.id);
     const locked = allKnights.filter((id) => !state.unlockedKnights.includes(id));

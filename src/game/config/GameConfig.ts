@@ -345,6 +345,11 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     id: "saxon_warrior", name: "Saxon Warrior", category: EnemyCategory.KNIGHT, aiType: "melee",
     color: 0x998866, hp: 50, attack: 14, defense: 10, speed: 2, xpReward: 18, goldReward: 8,
   },
+  knight_soldier: {
+    id: "knight_soldier", name: "Knight Soldier", category: EnemyCategory.KNIGHT, aiType: "melee",
+    color: 0x887766, hp: 45, attack: 13, defense: 11, speed: 2, xpReward: 16, goldReward: 7,
+    abilities: ["shield_bash"],
+  },
   // --- Elementals ---
   fire_elemental: {
     id: "fire_elemental", name: "Fire Elemental", category: EnemyCategory.ELEMENTAL, aiType: "mage",
@@ -653,6 +658,12 @@ export const GameBalance = {
   ENEMY_AGGRO_RANGE: 6,            // tiles
   ENEMY_MOVE_SPEED: 80,            // px/s
   TRAP_DAMAGE: 15,
+  DASH_SPEED: 600,               // px/s during dash
+  DASH_DURATION: 0.12,           // seconds
+  DASH_COOLDOWN: 0.8,            // seconds between dashes
+  KILL_STREAK_WINDOW: 2.5,       // seconds to chain kills
+  KILL_STREAK_XP_BONUS: 0.15,    // +15% XP per streak level
+  KILL_STREAK_GOLD_BONUS: 0.2,   // +20% gold per streak level
   RARITY_COLORS: {
     [ItemRarity.COMMON]: 0xaaaaaa,
     [ItemRarity.UNCOMMON]: 0x44ff44,

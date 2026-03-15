@@ -111,6 +111,7 @@ export class GameRenderer {
     this._drawLighting(floor, player, sw, sh);
     this._drawEntities(state);
     this._drawProjectiles(state);
+    this._drawDashTrail(state);
     this._drawFog(floor, sw, sh);
     this._drawFX(sw, sh);
     this._drawBossFlash(sw, sh);
@@ -739,7 +740,9 @@ export class GameRenderer {
     g.clear();
 
     // Darken the whole visible area first (ambient darkness overlay)
-    const darkAlpha = 0.35;
+    // Abyssal Halls: darkness grows over time, making everything gloomier
+    const abyssalDarknessBoost = floor.darknessTimer > 0 ? Math.min(0.3, floor.darknessTimer * 0.005) : 0;
+    const darkAlpha = 0.35 + abyssalDarknessBoost;
     const startCol = Math.max(0, Math.floor(this.camX / TS) - 2);
     const startRow = Math.max(0, Math.floor(this.camY / TS) - 2);
     const endCol = Math.min(floor.width, Math.ceil((this.camX + sw) / TS) + 2);
@@ -846,118 +849,214 @@ export class GameRenderer {
     const facing = player.facing;
     const fx = dirX(facing);
     const fy = dirY(facing);
+    const bodyColor = player.knightDef.color;
 
     // Animation phase
     const walkPhase = player.isMoving ? Math.sin(_globalTime * 10) : 0;
     const bobY = player.isMoving ? Math.abs(Math.sin(_globalTime * 10)) * 1.5 : 0;
+    const breathe = Math.sin(_globalTime * 2.5) * 0.5; // Idle breathing
 
-    // Shadow
-    g.ellipse(px, py + 10, 8, 3).fill({ color: 0x000000, alpha: 0.35 });
+    // Ground glow (knight color underfoot)
+    g.circle(px, py + 10, 10).fill({ color: bodyColor, alpha: 0.06 + 0.02 * Math.sin(_globalTime * 3) });
 
-    // Cape/cloak (behind body)
+    // Shadow (perspective-corrected)
+    g.ellipse(px, py + 11, 9, 3.5).fill({ color: 0x000000, alpha: 0.4 });
+    g.ellipse(px, py + 11, 6, 2).fill({ color: 0x000000, alpha: 0.15 });
+
+    // Cape/cloak (behind body, flowing with movement and wind)
     const capeWave = Math.sin(_globalTime * 3) * 1.5;
-    const capeColor = darken(player.knightDef.color, 0.3);
+    const capeWave2 = Math.sin(_globalTime * 4.3 + 1) * 1;
+    const capeColor = darken(bodyColor, 0.35);
+    const capeHighlight = darken(bodyColor, 0.2);
     if (facing === Direction.UP || facing === Direction.LEFT || facing === Direction.RIGHT) {
-      g.moveTo(px - 5, py - 2 - bobY)
-        .lineTo(px + 5, py - 2 - bobY)
-        .lineTo(px + 4 + capeWave, py + 8)
-        .lineTo(px - 4 + capeWave, py + 8)
+      // Outer cape
+      g.moveTo(px - 6, py - 3 - bobY)
+        .lineTo(px + 6, py - 3 - bobY)
+        .lineTo(px + 5 + capeWave, py + 10)
+        .lineTo(px + 2 + capeWave2, py + 12)
+        .lineTo(px - 2 + capeWave, py + 12)
+        .lineTo(px - 5 + capeWave2, py + 10)
         .closePath()
-        .fill({ color: capeColor, alpha: 0.7 });
+        .fill({ color: capeColor, alpha: 0.75 });
+      // Cape inner fold
+      g.moveTo(px - 2, py - 1 - bobY)
+        .lineTo(px + 2, py - 1 - bobY)
+        .lineTo(px + 1 + capeWave * 0.5, py + 9)
+        .lineTo(px - 1 + capeWave2 * 0.5, py + 9)
+        .closePath()
+        .fill({ color: capeHighlight, alpha: 0.25 });
+      // Cape clasp
+      g.circle(px, py - 3 - bobY, 1.5).fill({ color: 0xddaa33, alpha: 0.8 });
     }
 
-    // Legs
+    // Legs with armor detail
     const legSpread = walkPhase * 3;
-    const legColor = darken(player.knightDef.color, 0.2);
+    const legColor = darken(bodyColor, 0.2);
+    const bootColor = 0x3a2a18;
     // Left leg
     g.rect(px - 4, py + 3 - bobY + legSpread, 3, 7).fill({ color: legColor });
+    g.rect(px - 4, py + 3 - bobY + legSpread, 3, 1).fill({ color: lighten(legColor, 0.15), alpha: 0.4 }); // knee guard
     // Right leg
     g.rect(px + 1, py + 3 - bobY - legSpread, 3, 7).fill({ color: legColor });
-    // Boots
-    g.rect(px - 5, py + 9 - bobY + legSpread, 4, 2).fill({ color: 0x443322 });
-    g.rect(px + 1, py + 9 - bobY - legSpread, 4, 2).fill({ color: 0x443322 });
+    g.rect(px + 1, py + 3 - bobY - legSpread, 3, 1).fill({ color: lighten(legColor, 0.15), alpha: 0.4 });
+    // Boots with soles
+    g.rect(px - 5, py + 9 - bobY + legSpread, 5, 3).fill({ color: bootColor });
+    g.rect(px - 5, py + 11 - bobY + legSpread, 5, 1).fill({ color: 0x221100 }); // sole
+    g.rect(px, py + 9 - bobY - legSpread, 5, 3).fill({ color: bootColor });
+    g.rect(px, py + 11 - bobY - legSpread, 5, 1).fill({ color: 0x221100 }); // sole
 
-    // Body / torso
-    const bodyColor = player.knightDef.color;
-    g.rect(px - 5, py - 5 - bobY, 10, 10).fill({ color: bodyColor });
+    // Body / torso with depth
+    g.rect(px - 5, py - 5 - bobY - breathe, 10, 10).fill({ color: bodyColor });
+    // Torso center line (surcoat detail)
+    g.rect(px - 0.5, py - 4 - bobY - breathe, 1, 8).fill({ color: darken(bodyColor, 0.1), alpha: 0.3 });
+    // Belt
+    g.rect(px - 5, py + 3 - bobY - breathe, 10, 2).fill({ color: 0x553311 });
+    g.circle(px, py + 4 - bobY - breathe, 1.2).fill({ color: 0xccaa44 }); // buckle
 
-    // Armor overlay
+    // Armor overlay with more detail
     if (player.equippedArmor) {
       const armorId = player.equippedArmor.id;
+      const ac = player.equippedArmor.color;
       if (armorId.includes("plate") || armorId.includes("avalon")) {
-        // Plate armor: segmented chest
-        g.rect(px - 5, py - 5 - bobY, 10, 10).fill({ color: player.equippedArmor.color, alpha: 0.5 });
-        g.rect(px - 5, py - 1 - bobY, 10, 1).fill({ color: darken(player.equippedArmor.color, 0.2), alpha: 0.4 });
-        g.rect(px - 5, py + 2 - bobY, 10, 1).fill({ color: darken(player.equippedArmor.color, 0.2), alpha: 0.4 });
-        // Shoulder plates
-        g.rect(px - 7, py - 5 - bobY, 3, 4).fill({ color: player.equippedArmor.color, alpha: 0.6 });
-        g.rect(px + 4, py - 5 - bobY, 3, 4).fill({ color: player.equippedArmor.color, alpha: 0.6 });
+        // Plate armor: segmented chest with highlights
+        g.rect(px - 5, py - 5 - bobY - breathe, 10, 10).fill({ color: ac, alpha: 0.5 });
+        g.rect(px - 5, py - 1 - bobY - breathe, 10, 1).fill({ color: darken(ac, 0.2), alpha: 0.4 });
+        g.rect(px - 5, py + 2 - bobY - breathe, 10, 1).fill({ color: darken(ac, 0.2), alpha: 0.4 });
+        // Chest plate highlight
+        g.rect(px - 3, py - 4 - bobY - breathe, 2, 3).fill({ color: lighten(ac, 0.3), alpha: 0.2 });
+        // Shoulder plates with rivets
+        g.rect(px - 8, py - 6 - bobY - breathe, 4, 5).fill({ color: ac, alpha: 0.65 });
+        g.rect(px + 4, py - 6 - bobY - breathe, 4, 5).fill({ color: ac, alpha: 0.65 });
+        g.circle(px - 6, py - 4 - bobY - breathe, 0.7).fill({ color: 0xcccc88, alpha: 0.5 }); // rivet
+        g.circle(px + 6, py - 4 - bobY - breathe, 0.7).fill({ color: 0xcccc88, alpha: 0.5 }); // rivet
+        // Gorget (neck guard)
+        g.rect(px - 4, py - 6 - bobY - breathe, 8, 2).fill({ color: ac, alpha: 0.4 });
       } else if (armorId.includes("chain")) {
         // Chainmail: crosshatch pattern overlay
-        g.rect(px - 5, py - 5 - bobY, 10, 10).fill({ color: player.equippedArmor.color, alpha: 0.3 });
-        for (let i = 0; i < 4; i++) {
-          g.rect(px - 4, py - 4 + i * 3 - bobY, 8, 1).fill({ color: 0x999999, alpha: 0.2 });
+        g.rect(px - 5, py - 5 - bobY - breathe, 10, 10).fill({ color: ac, alpha: 0.3 });
+        for (let i = 0; i < 5; i++) {
+          g.rect(px - 4, py - 4 + i * 2.5 - bobY - breathe, 8, 0.8).fill({ color: 0x999999, alpha: 0.25 });
         }
+        // Chain coif hint
+        g.rect(px - 4, py - 6 - bobY - breathe, 8, 2).fill({ color: 0x888888, alpha: 0.2 });
       } else {
-        // Leather / robes
-        g.rect(px - 5, py - 5 - bobY, 10, 10).fill({ color: player.equippedArmor.color, alpha: 0.25 });
+        // Leather / robes with texture
+        g.rect(px - 5, py - 5 - bobY - breathe, 10, 10).fill({ color: ac, alpha: 0.25 });
+        // Lacing detail
+        for (let i = 0; i < 3; i++) {
+          g.circle(px, py - 3 + i * 3 - bobY - breathe, 0.5).fill({ color: darken(ac, 0.3), alpha: 0.3 });
+        }
       }
     }
 
-    // Arms
+    // Arms with elbow joints
     const armSwing = player.isMoving ? walkPhase * 2.5 : 0;
     const armColor = darken(bodyColor, 0.1);
-    // Left arm
-    g.rect(px - 7, py - 3 - bobY - armSwing, 3, 8).fill({ color: armColor });
+    // Left arm (upper + forearm)
+    g.rect(px - 8, py - 4 - bobY - armSwing - breathe, 3, 5).fill({ color: armColor });
+    g.rect(px - 8, py + 1 - bobY - armSwing - breathe, 3, 4).fill({ color: darken(armColor, 0.05) });
+    g.circle(px - 8, py + 5 - bobY - armSwing - breathe, 1.5).fill({ color: 0xddbb88 }); // hand
     // Right arm (weapon arm)
-    g.rect(px + 4, py - 3 - bobY + armSwing, 3, 8).fill({ color: armColor });
+    g.rect(px + 5, py - 4 - bobY + armSwing - breathe, 3, 5).fill({ color: armColor });
+    g.rect(px + 5, py + 1 - bobY + armSwing - breathe, 3, 4).fill({ color: darken(armColor, 0.05) });
+    g.circle(px + 8, py + 5 - bobY + armSwing - breathe, 1.5).fill({ color: 0xddbb88 }); // hand
 
-    // Head
-    const headColor = 0xddbb88; // Skin
-    g.circle(px, py - 8 - bobY, 5).fill({ color: headColor });
-    // Helmet
-    g.rect(px - 5, py - 13 - bobY, 10, 5).fill({ color: lighten(bodyColor, 0.1) });
-    g.rect(px - 6, py - 9 - bobY, 12, 2).fill({ color: lighten(bodyColor, 0.2) }); // Brim
-    // Visor slit / face
+    // Gauntlet detail on arms if plate
+    if (player.equippedArmor && (player.equippedArmor.id.includes("plate") || player.equippedArmor.id.includes("avalon"))) {
+      g.rect(px - 8, py + 1 - bobY - armSwing - breathe, 3, 3).fill({ color: player.equippedArmor.color, alpha: 0.4 });
+      g.rect(px + 5, py + 1 - bobY + armSwing - breathe, 3, 3).fill({ color: player.equippedArmor.color, alpha: 0.4 });
+    }
+
+    // Head with more detail
+    const headColor = 0xddbb88;
+    g.circle(px, py - 8 - bobY - breathe, 5).fill({ color: headColor });
+    // Neck
+    g.rect(px - 2, py - 5 - bobY - breathe, 4, 2).fill({ color: darken(headColor, 0.05) });
+
+    // Helmet (detailed)
+    const helmColor = lighten(bodyColor, 0.1);
+    const helmLight = lighten(bodyColor, 0.25);
+    g.rect(px - 5, py - 13 - bobY - breathe, 10, 6).fill({ color: helmColor });
+    g.rect(px - 6, py - 9 - bobY - breathe, 12, 2.5).fill({ color: helmLight }); // Brim
+    // Helmet dome highlight
+    g.rect(px - 2, py - 13 - bobY - breathe, 4, 2).fill({ color: helmLight, alpha: 0.3 });
+    // Helmet crest/plume
+    g.rect(px - 1, py - 15 - bobY - breathe, 2, 3).fill({ color: darken(bodyColor, 0.1) });
+    const plumeWave = Math.sin(_globalTime * 4) * 1;
+    g.moveTo(px, py - 15 - bobY - breathe)
+      .lineTo(px - 1 + plumeWave, py - 19 - bobY - breathe)
+      .lineTo(px + 2 + plumeWave, py - 18 - bobY - breathe)
+      .lineTo(px + 1, py - 15 - bobY - breathe)
+      .closePath()
+      .fill({ color: bodyColor, alpha: 0.7 });
+    // Visor/face
     if (facing === Direction.DOWN) {
-      g.rect(px - 3, py - 8 - bobY, 6, 1).fill({ color: 0x222222, alpha: 0.7 });
+      g.rect(px - 3, py - 8 - bobY - breathe, 6, 1.5).fill({ color: 0x111111, alpha: 0.75 });
+      // Eye glint
+      g.circle(px - 1.5, py - 7.5 - bobY - breathe, 0.5).fill({ color: 0xffffff, alpha: 0.3 });
+      g.circle(px + 1.5, py - 7.5 - bobY - breathe, 0.5).fill({ color: 0xffffff, alpha: 0.3 });
     } else if (facing === Direction.UP) {
-      // Helmet back
-      g.rect(px - 4, py - 12 - bobY, 8, 4).fill({ color: darken(bodyColor, 0.1) });
+      g.rect(px - 4, py - 12 - bobY - breathe, 8, 5).fill({ color: darken(bodyColor, 0.1) });
+    } else {
+      // Side profile visor
+      const side = facing === Direction.LEFT ? -1 : 1;
+      g.rect(px + side * 2, py - 8 - bobY - breathe, 3, 1.5).fill({ color: 0x111111, alpha: 0.6 });
     }
 
     // Weapon
     if (player.equippedWeapon) {
-      this._drawPlayerWeapon(g, px, py - bobY, facing, player);
+      this._drawPlayerWeapon(g, px, py - bobY - breathe, facing, player);
     } else {
-      // Default: small sword
       const wx = px + fx * 10 + (facing === Direction.UP || facing === Direction.DOWN ? 6 : 0);
-      const wy = py + fy * 10 - bobY - 2;
-      g.rect(wx - 1, wy - 5, 2, 10).fill({ color: 0xaaaaaa });
-      g.rect(wx - 3, wy, 6, 2).fill({ color: 0x886622 }); // Crossguard
+      const wy = py + fy * 10 - bobY - breathe - 2;
+      g.rect(wx - 1, wy - 6, 2, 12).fill({ color: 0xbbbbbb });
+      g.rect(wx - 1, wy - 6, 2, 1).fill({ color: 0xeeeedd, alpha: 0.5 }); // blade tip highlight
+      g.rect(wx - 3, wy + 1, 6, 2).fill({ color: 0x886622 });
+      g.rect(wx - 1, wy + 3, 2, 3).fill({ color: 0x553311 });
     }
 
-    // HP bar
-    const barW = 24;
+    // HP bar with gradient and border
+    const barW = 26;
     const barH = 3;
     const bx = px - barW / 2;
-    const by = py - 18 - bobY;
-    g.rect(bx - 1, by - 1, barW + 2, barH + 2).fill({ color: 0x000000, alpha: 0.5 });
-    g.rect(bx, by, barW, barH).fill({ color: 0x222222 });
+    const by = py - 22 - bobY - breathe;
+    g.rect(bx - 1, by - 1, barW + 2, barH + 2).fill({ color: 0x000000, alpha: 0.6 });
+    g.rect(bx, by, barW, barH).fill({ color: 0x220000 });
     const hpRatio = player.hp / player.maxHp;
     const hpColor = hpRatio > 0.5 ? 0x22ff22 : hpRatio > 0.25 ? 0xffaa22 : 0xff2222;
+    const hpHighlight = hpRatio > 0.5 ? 0x88ff88 : hpRatio > 0.25 ? 0xffdd66 : 0xff6644;
     g.rect(bx, by, barW * hpRatio, barH).fill({ color: hpColor });
+    g.rect(bx, by, barW * hpRatio, 1).fill({ color: hpHighlight, alpha: 0.3 }); // top highlight
+    // Low HP pulsing border
+    if (hpRatio <= 0.25 && hpRatio > 0) {
+      const pulse = Math.sin(_globalTime * 6) * 0.3 + 0.3;
+      g.rect(bx - 2, by - 2, barW + 4, barH + 4).stroke({ color: 0xff2222, width: 1, alpha: pulse });
+    }
 
-    // Invulnerability shield
+    // Invulnerability shield with hexagonal facets
     if (player.statusEffects.some((e) => e.id === "invulnerable")) {
       const shieldPulse = 0.4 + 0.3 * Math.sin(_globalTime * 5);
-      g.circle(px, py - bobY, 16).stroke({ color: 0xffd700, width: 2, alpha: shieldPulse });
-      g.circle(px, py - bobY, 14).stroke({ color: 0xffffaa, width: 1, alpha: shieldPulse * 0.5 });
+      g.circle(px, py - bobY - breathe, 17).stroke({ color: 0xffd700, width: 2, alpha: shieldPulse });
+      g.circle(px, py - bobY - breathe, 15).stroke({ color: 0xffffaa, width: 1, alpha: shieldPulse * 0.5 });
+      // Hexagonal facets
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2 + _globalTime * 0.5;
+        const hx = px + Math.cos(ang) * 14;
+        const hy = py - bobY - breathe + Math.sin(ang) * 14;
+        g.rect(hx - 1.5, hy - 1.5, 3, 3).fill({ color: 0xffd700, alpha: shieldPulse * 0.4 });
+      }
+    }
+
+    // Buff ATK indicator (red glow on arms)
+    if (player.statusEffects.some((e) => e.id === "buff_atk")) {
+      const buffPulse = 0.2 + 0.15 * Math.sin(_globalTime * 4);
+      g.circle(px + 6, py - bobY - breathe, 5).fill({ color: 0xff4400, alpha: buffPulse });
+      g.circle(px - 6, py - bobY - breathe, 5).fill({ color: 0xff4400, alpha: buffPulse });
     }
 
     // Status effect visuals on player
     for (const se of player.statusEffects) {
-      this._drawStatusEffectOnEntity(g, px, py - bobY, se.id);
+      this._drawStatusEffectOnEntity(g, px, py - bobY - breathe, se.id);
     }
   }
 
@@ -967,6 +1066,8 @@ export class GameRenderer {
     const wColor = weapon.color;
     const fx = dirX(facing);
     const fy = dirY(facing);
+    const isLegendary = weapon.rarity === "legendary";
+    const isRare = weapon.rarity === "rare" || isLegendary;
 
     // Attack animation (brief swing)
     const swingPhase = player.attackCooldown > 0
@@ -974,52 +1075,179 @@ export class GameRenderer {
       : 0;
 
     if (weaponId.includes("staff") || weaponId === "merlin_staff") {
-      // Staff — long vertical line with orb
-      const sx = px + (facing === Direction.LEFT ? -8 : 8);
+      // Staff — detailed wood shaft with carved runes, ornate head, glowing orb
+      const side = facing === Direction.LEFT ? -1 : 1;
+      const sx = px + side * 8;
       const sy = py - 6;
-      g.rect(sx - 1, sy - 8, 2, 18).fill({ color: 0x664422 });
-      // Orb on top
+      const staffSwing = swingPhase * side * 3;
+
+      // Staff shadow
+      g.ellipse(sx + staffSwing, py + 10, 3, 1.5).fill({ color: 0x000000, alpha: 0.2 });
+
+      // Shaft (tapered, lighter center grain)
+      g.rect(sx - 1.5 + staffSwing, sy - 8, 3, 20).fill({ color: 0x664422 });
+      g.rect(sx - 0.5 + staffSwing, sy - 7, 1, 18).fill({ color: 0x7a5533, alpha: 0.5 }); // wood grain highlight
+
+      // Carved rune marks on shaft
+      for (let i = 0; i < 3; i++) {
+        const ry = sy + 2 + i * 5;
+        const runeGlow = 0.2 + 0.15 * Math.sin(_globalTime * 3 + i * 2);
+        g.rect(sx - 1 + staffSwing, ry, 2, 1.5).fill({ color: wColor, alpha: runeGlow });
+      }
+
+      // Staff head — ornate prongs holding orb
+      const headY = sy - 9;
+      // Left prong
+      g.moveTo(sx - 1.5 + staffSwing, headY + 2).lineTo(sx - 3 + staffSwing, headY - 3).lineTo(sx - 1 + staffSwing, headY - 1).closePath().fill({ color: 0x886633 });
+      // Right prong
+      g.moveTo(sx + 1.5 + staffSwing, headY + 2).lineTo(sx + 3 + staffSwing, headY - 3).lineTo(sx + 1 + staffSwing, headY - 1).closePath().fill({ color: 0x886633 });
+
+      // Orb with layered glow
       const orbPulse = 0.5 + 0.5 * Math.sin(_globalTime * 4);
-      g.circle(sx, sy - 9, 3).fill({ color: wColor, alpha: 0.7 + orbPulse * 0.3 });
-      g.circle(sx, sy - 9, 5).fill({ color: wColor, alpha: 0.1 + orbPulse * 0.1 });
+      const orbY = headY - 2;
+      g.circle(sx + staffSwing, orbY, 7).fill({ color: wColor, alpha: 0.06 + orbPulse * 0.06 }); // Outer glow
+      g.circle(sx + staffSwing, orbY, 5).fill({ color: wColor, alpha: 0.12 + orbPulse * 0.1 }); // Mid glow
+      g.circle(sx + staffSwing, orbY, 3).fill({ color: wColor, alpha: 0.7 + orbPulse * 0.3 }); // Orb body
+      g.circle(sx + staffSwing, orbY, 1.8).fill({ color: lighten(wColor, 0.4), alpha: 0.8 }); // Inner bright
+      // Specular highlight
+      g.circle(sx - 1 + staffSwing, orbY - 1, 0.8).fill({ color: 0xffffff, alpha: 0.6 });
+
+      // Orbiting energy wisps
+      for (let i = 0; i < 3; i++) {
+        const wa = _globalTime * 3 + i * (Math.PI * 2 / 3);
+        const wx = sx + staffSwing + Math.cos(wa) * 5;
+        const wy = orbY + Math.sin(wa) * 3;
+        g.circle(wx, wy, 0.8).fill({ color: lighten(wColor, 0.3), alpha: 0.4 + 0.2 * Math.sin(wa * 2) });
+      }
+
+      // Legendary staff: trailing energy particles
+      if (isLegendary) {
+        for (let i = 0; i < 4; i++) {
+          const pa = _globalTime * 2 + i * 1.5;
+          const ppx = sx + staffSwing + Math.sin(pa) * 8;
+          const ppy = orbY + Math.cos(pa * 0.7) * 6 - i * 2;
+          g.circle(ppx, ppy, 1).fill({ color: wColor, alpha: 0.25 - i * 0.05 });
+        }
+      }
+
+      // Butt cap
+      g.rect(sx - 2 + staffSwing, sy + 11, 4, 2).fill({ color: 0x888866 });
+
     } else {
-      // Sword / blade — angled based on facing
+      // Sword / blade — detailed with fuller, edge highlights, pommel, guard detail
       const baseX = px + fx * 8 + (fy !== 0 ? 6 : 0);
       const baseY = py + fy * 8 - 2;
 
-      // Swing rotation effect
       const swingOffX = facing === Direction.LEFT ? -swingPhase * 6 : swingPhase * 6;
       const swingOffY = Math.abs(fy) > 0 ? swingPhase * 4 : 0;
+      const bx = baseX + swingOffX;
+      const by = baseY + swingOffY;
 
-      // Blade
+      const bladeLight = lighten(wColor, 0.3);
+      const bladeDark = darken(wColor, 0.15);
+      const guardColor = isRare ? 0xccaa33 : 0x886622;
+      const guardLight = lighten(guardColor, 0.2);
+      const handleColor = 0x553311;
+      const handleWrap = isRare ? 0x664422 : 0x442211;
+      const pommelColor = isRare ? 0xddbb44 : 0x777755;
+
       if (Math.abs(fy) > 0) {
-        // Vertical swing
-        g.rect(baseX - 1 + swingOffX, baseY - 8 + swingOffY, 2, 12).fill({ color: wColor });
+        // Vertical orientation (facing up/down)
+        // Blade body
+        g.moveTo(bx - 1.5, by + 2).lineTo(bx, by - 10).lineTo(bx + 1.5, by + 2).closePath().fill({ color: wColor });
+        // Blade edge highlights
+        g.moveTo(bx - 1, by + 1).lineTo(bx, by - 9).stroke({ color: bladeLight, width: 0.5, alpha: 0.5 });
+        // Fuller (groove down center)
+        g.moveTo(bx, by - 7).lineTo(bx, by + 0).stroke({ color: bladeDark, width: 0.7, alpha: 0.4 });
+        // Blade tip glint
+        g.circle(bx, by - 9.5, 0.7).fill({ color: 0xffffff, alpha: 0.5 });
+
         // Crossguard
-        g.rect(baseX - 3 + swingOffX, baseY + 2 + swingOffY, 6, 2).fill({ color: 0x886622 });
-        // Handle
-        g.rect(baseX - 1 + swingOffX, baseY + 4 + swingOffY, 2, 3).fill({ color: 0x553311 });
+        g.rect(bx - 4, by + 1.5, 8, 2.5).fill({ color: guardColor });
+        g.rect(bx - 4, by + 1.5, 8, 0.8).fill({ color: guardLight, alpha: 0.4 }); // top highlight
+        // Guard terminals (curled ends)
+        g.circle(bx - 4, by + 2.5, 1.2).fill({ color: guardColor });
+        g.circle(bx + 4, by + 2.5, 1.2).fill({ color: guardColor });
+
+        // Handle with leather wrap pattern
+        g.rect(bx - 1, by + 4, 2, 4).fill({ color: handleColor });
+        for (let i = 0; i < 3; i++) {
+          g.rect(bx - 1.2, by + 4.5 + i * 1.2, 2.4, 0.6).fill({ color: handleWrap, alpha: 0.5 });
+        }
+
+        // Pommel
+        g.circle(bx, by + 8.5, 1.5).fill({ color: pommelColor });
+        g.circle(bx - 0.3, by + 8.2, 0.5).fill({ color: lighten(pommelColor, 0.3), alpha: 0.5 }); // specular
+
+        // Rare gem in guard
+        if (isRare) {
+          g.circle(bx, by + 2.5, 1).fill({ color: wColor, alpha: 0.8 });
+          g.circle(bx, by + 2.5, 0.4).fill({ color: 0xffffff, alpha: 0.5 });
+        }
       } else {
-        // Horizontal swing
-        g.rect(baseX - 6 + swingOffX, baseY - 1 + swingOffY, 12, 2).fill({ color: wColor });
-        g.rect(baseX - 1 + swingOffX, baseY - 3 + swingOffY, 2, 6).fill({ color: 0x886622 });
-        g.rect(baseX - 1 + swingOffX, baseY + 2 + swingOffY, 2, 3).fill({ color: 0x553311 });
+        // Horizontal orientation (facing left/right)
+        const dir = facing === Direction.LEFT ? -1 : 1;
+        // Blade body (tapered)
+        g.moveTo(bx - dir * 2, by - 1.5).lineTo(bx + dir * 10, by).lineTo(bx - dir * 2, by + 1.5).closePath().fill({ color: wColor });
+        // Edge highlight
+        g.moveTo(bx - dir * 1, by - 1).lineTo(bx + dir * 9, by).stroke({ color: bladeLight, width: 0.5, alpha: 0.5 });
+        // Fuller
+        g.moveTo(bx + dir * 1, by).lineTo(bx + dir * 7, by).stroke({ color: bladeDark, width: 0.7, alpha: 0.4 });
+        // Tip glint
+        g.circle(bx + dir * 9.5, by, 0.7).fill({ color: 0xffffff, alpha: 0.5 });
+
+        // Crossguard
+        g.rect(bx - dir * 2.5, by - 4, 2.5, 8).fill({ color: guardColor });
+        // Guard terminals
+        g.circle(bx - dir * 1.5, by - 4, 1.2).fill({ color: guardColor });
+        g.circle(bx - dir * 1.5, by + 4, 1.2).fill({ color: guardColor });
+
+        // Handle
+        g.rect(bx - dir * 5, by - 1, 3, 2).fill({ color: handleColor });
+        for (let i = 0; i < 2; i++) {
+          g.rect(bx - dir * 4.5 + i * 1.2 * -dir, by - 1.2, 0.6, 2.4).fill({ color: handleWrap, alpha: 0.5 });
+        }
+
+        // Pommel
+        g.circle(bx - dir * 6, by, 1.5).fill({ color: pommelColor });
+
+        // Rare gem
+        if (isRare) {
+          g.circle(bx - dir * 1.5, by, 1).fill({ color: wColor, alpha: 0.8 });
+        }
       }
 
-      // Attack slash arc
+      // Attack slash arc (enhanced with speed lines)
       if (swingPhase > 0.1) {
         const arcAlpha = swingPhase * 0.5;
-        g.moveTo(baseX + fx * 6, baseY + fy * 6 - 6)
-          .lineTo(baseX + fx * 14, baseY + fy * 14)
-          .lineTo(baseX + fx * 6, baseY + fy * 6 + 6)
+        // Main slash arc
+        g.moveTo(bx + fx * 4, by + fy * 4 - 6)
+          .lineTo(bx + fx * 14, by + fy * 14)
+          .lineTo(bx + fx * 4, by + fy * 4 + 6)
           .closePath()
           .fill({ color: 0xffffff, alpha: arcAlpha });
+        // Speed lines
+        for (let i = 0; i < 3; i++) {
+          const angle = Math.atan2(fy, fx) + (i - 1) * 0.3;
+          const len = 8 + i * 4;
+          g.moveTo(bx + Math.cos(angle) * 6, by + Math.sin(angle) * 6)
+            .lineTo(bx + Math.cos(angle) * len, by + Math.sin(angle) * len)
+            .stroke({ color: 0xffffff, width: 1, alpha: arcAlpha * 0.4 });
+        }
       }
 
-      // Legendary weapon glow
-      if (weapon.rarity === "legendary") {
+      // Legendary weapon glow + trailing particles
+      if (isLegendary) {
         const glowPulse = 0.3 + 0.2 * Math.sin(_globalTime * 5);
-        g.circle(baseX + swingOffX, baseY - 2 + swingOffY, 6).fill({ color: wColor, alpha: glowPulse * 0.3 });
+        g.circle(bx, by - 4, 8).fill({ color: wColor, alpha: glowPulse * 0.2 });
+        g.circle(bx, by - 4, 5).fill({ color: wColor, alpha: glowPulse * 0.15 });
+        // Blade edge glow
+        if (Math.abs(fy) > 0) {
+          g.rect(bx - 2, by - 8, 4, 10).fill({ color: wColor, alpha: glowPulse * 0.1 });
+        } else {
+          const dir = facing === Direction.LEFT ? -1 : 1;
+          g.rect(bx, by - 2, dir * 10, 4).fill({ color: wColor, alpha: glowPulse * 0.1 });
+        }
       }
     }
   }
@@ -1142,237 +1370,729 @@ export class GameRenderer {
   // --- Bandit: humanoid with weapon ---
   private _drawBanditEnemy(g: Graphics, x: number, y: number, _s: number, color: number, isBoss: boolean): void {
     const sc = isBoss ? 1.4 : 1;
-    // Body
-    g.rect(x - 4 * sc, y - 4 * sc, 8 * sc, 8 * sc).fill({ color });
+    const breathe = Math.sin(_globalTime * 2.5 + x) * 0.4;
+    const walkPhase = Math.sin(_globalTime * 4 + y) * 1.5;
+    const skinColor = 0xcc9966;
+
+    // Legs with boots (animated walk)
+    const legSwing = walkPhase * sc;
+    g.rect(x - 3 * sc, y + 4 * sc - legSwing, 2.5 * sc, 5 * sc).fill({ color: darken(color, 0.15) });
+    g.rect(x + 0.5 * sc, y + 4 * sc + legSwing, 2.5 * sc, 5 * sc).fill({ color: darken(color, 0.15) });
+    // Boots
+    g.rect(x - 3.5 * sc, y + 8 * sc - legSwing, 3.5 * sc, 2 * sc).fill({ color: 0x443322 });
+    g.rect(x + 0 * sc, y + 8 * sc + legSwing, 3.5 * sc, 2 * sc).fill({ color: 0x443322 });
+
+    // Body (tunic)
+    g.rect(x - 4 * sc, y - 4 * sc - breathe, 8 * sc, 9 * sc).fill({ color });
+    // Belt
+    g.rect(x - 4 * sc, y + 2 * sc - breathe, 8 * sc, 1.5 * sc).fill({ color: 0x553311 });
+    g.circle(x, y + 2.8 * sc - breathe, 0.8).fill({ color: 0xccaa44 }); // buckle
+    // Tunic collar / neckline
+    g.moveTo(x - 2 * sc, y - 4 * sc - breathe).lineTo(x, y - 2 * sc - breathe).lineTo(x + 2 * sc, y - 4 * sc - breathe)
+      .closePath().fill({ color: darken(color, 0.1) });
+
+    // Arms (animated with weapon swipe)
+    const armSwing = walkPhase * 0.5;
+    g.rect(x - 6 * sc, y - 3 * sc - breathe - armSwing, 2.5 * sc, 7 * sc).fill({ color: darken(color, 0.08) });
+    g.rect(x + 3.5 * sc, y - 3 * sc - breathe + armSwing, 2.5 * sc, 7 * sc).fill({ color: darken(color, 0.08) });
+    // Hands
+    g.circle(x - 5 * sc, y + 4 * sc - breathe - armSwing, 1.3 * sc).fill({ color: skinColor });
+    g.circle(x + 5 * sc, y + 4 * sc - breathe + armSwing, 1.3 * sc).fill({ color: skinColor });
+
     // Head
-    g.circle(x, y - 6 * sc, 3.5 * sc).fill({ color: 0xcc9966 });
-    // Hood/bandana
-    g.rect(x - 3.5 * sc, y - 9.5 * sc, 7 * sc, 4 * sc).fill({ color: darken(color, 0.2) });
-    // Eyes
-    g.rect(x - 2 * sc, y - 7 * sc, 1.5 * sc, 1).fill({ color: 0x000000 });
-    g.rect(x + 0.5 * sc, y - 7 * sc, 1.5 * sc, 1).fill({ color: 0x000000 });
-    // Legs
-    g.rect(x - 3 * sc, y + 4 * sc, 2.5 * sc, 5 * sc).fill({ color: darken(color, 0.15) });
-    g.rect(x + 0.5 * sc, y + 4 * sc, 2.5 * sc, 5 * sc).fill({ color: darken(color, 0.15) });
-    // Weapon (dagger)
-    g.rect(x + 5 * sc, y - 2 * sc, 2, 8 * sc).fill({ color: 0xaaaaaa });
-    g.rect(x + 4 * sc, y + 1 * sc, 4, 2).fill({ color: 0x886622 });
+    g.circle(x, y - 6 * sc - breathe, 3.5 * sc).fill({ color: skinColor });
+    // Hood/bandana with folds
+    g.rect(x - 3.5 * sc, y - 9.5 * sc - breathe, 7 * sc, 4 * sc).fill({ color: darken(color, 0.2) });
+    g.moveTo(x - 3.5 * sc, y - 5.5 * sc - breathe).lineTo(x - 5 * sc, y - 4 * sc - breathe).lineTo(x - 3.5 * sc, y - 4 * sc - breathe)
+      .closePath().fill({ color: darken(color, 0.25) }); // hood flap
+    // Bandana knot at back
+    g.circle(x + 3.5 * sc, y - 7 * sc - breathe, 1 * sc).fill({ color: darken(color, 0.15) });
+
+    // Face: menacing eyes + scar
+    g.rect(x - 2 * sc, y - 7 * sc - breathe, 1.5 * sc, 1.2).fill({ color: 0x000000 });
+    g.rect(x + 0.5 * sc, y - 7 * sc - breathe, 1.5 * sc, 1.2).fill({ color: 0x000000 });
+    // Glint in eyes
+    g.circle(x - 1.3 * sc, y - 6.8 * sc - breathe, 0.3).fill({ color: 0xffffff, alpha: 0.4 });
+    g.circle(x + 1.3 * sc, y - 6.8 * sc - breathe, 0.3).fill({ color: 0xffffff, alpha: 0.4 });
+    // Scar (boss bandits)
+    if (isBoss) {
+      g.moveTo(x - 1 * sc, y - 8 * sc - breathe).lineTo(x + 1 * sc, y - 5.5 * sc - breathe)
+        .stroke({ color: 0x993333, width: 0.8, alpha: 0.6 });
+    }
+
+    // Weapon (dagger with proper blade)
+    const dagX = x + 5.5 * sc;
+    const dagY = y - 2 * sc - breathe + armSwing;
+    g.moveTo(dagX, dagY - 5 * sc).lineTo(dagX + 1, dagY + 3 * sc).lineTo(dagX - 1, dagY + 3 * sc).closePath().fill({ color: 0xbbbbbb });
+    g.moveTo(dagX, dagY - 4 * sc).lineTo(dagX, dagY + 2 * sc).stroke({ color: 0xdddddd, width: 0.4, alpha: 0.4 }); // fuller
+    g.rect(dagX - 2, dagY + 2.5 * sc, 4, 1.5).fill({ color: 0x886622 }); // guard
+    g.rect(dagX - 0.8, dagY + 4 * sc, 1.6, 2.5 * sc).fill({ color: 0x553311 }); // handle
+
+    // Boss: shoulder armor
+    if (isBoss) {
+      g.rect(x - 7 * sc, y - 4 * sc - breathe, 3 * sc, 3 * sc).fill({ color: 0x666666 });
+      g.rect(x + 4 * sc, y - 4 * sc - breathe, 3 * sc, 3 * sc).fill({ color: 0x666666 });
+      g.rect(x - 7 * sc, y - 4 * sc - breathe, 3 * sc, 0.8).fill({ color: 0x888888, alpha: 0.5 });
+      g.rect(x + 4 * sc, y - 4 * sc - breathe, 3 * sc, 0.8).fill({ color: 0x888888, alpha: 0.5 });
+    }
   }
 
   // --- Undead: skeletal/ghostly ---
   private _drawUndeadEnemy(g: Graphics, x: number, y: number, _s: number, color: number, isBoss: boolean): void {
     const sc = isBoss ? 1.4 : 1;
     const ghostAlpha = 0.7 + 0.15 * Math.sin(_globalTime * 3 + x);
+    const sway = Math.sin(_globalTime * 2 + x * 0.5) * 1.5;
+    const isGhost = color < 0x888888; // darker = more ghostly
 
-    // Ghostly body (wispy)
-    g.ellipse(x, y, 5 * sc, 7 * sc).fill({ color, alpha: ghostAlpha });
-    // Wispy bottom
-    for (let i = -2; i <= 2; i++) {
-      const wave = Math.sin(_globalTime * 4 + i + x) * 2;
-      g.ellipse(x + i * 3 * sc, y + 7 * sc + wave, 2 * sc, 3 * sc).fill({ color, alpha: ghostAlpha * 0.5 });
+    // Soul energy dripping down
+    for (let i = 0; i < 3; i++) {
+      const dripT = (_globalTime * 1.5 + i * 0.7) % 2;
+      const dripY = y + 8 * sc + dripT * 8;
+      const dripAlpha = Math.max(0, ghostAlpha * 0.3 * (1 - dripT / 2));
+      g.circle(x + (i - 1) * 3 * sc + sway, dripY, 1).fill({ color, alpha: dripAlpha });
     }
 
-    // Skull
-    g.circle(x, y - 6 * sc, 4 * sc).fill({ color: 0xddddbb, alpha: ghostAlpha });
-    // Eye sockets
-    g.circle(x - 1.5 * sc, y - 7 * sc, 1.5 * sc).fill({ color: 0x000000 });
-    g.circle(x + 1.5 * sc, y - 7 * sc, 1.5 * sc).fill({ color: 0x000000 });
-    // Eye glow
-    const eyeGlow = 0.5 + 0.3 * Math.sin(_globalTime * 5 + y);
-    g.circle(x - 1.5 * sc, y - 7 * sc, 0.8 * sc).fill({ color: 0x44ff44, alpha: eyeGlow });
-    g.circle(x + 1.5 * sc, y - 7 * sc, 0.8 * sc).fill({ color: 0x44ff44, alpha: eyeGlow });
-    // Jaw
-    g.rect(x - 2 * sc, y - 4 * sc, 4 * sc, 1.5 * sc).fill({ color: 0xbbbb99, alpha: ghostAlpha });
+    // Ghostly body (wispy, swaying)
+    g.ellipse(x + sway * 0.5, y, 5 * sc, 7 * sc).fill({ color, alpha: ghostAlpha });
+    // Tattered robes / wispy bottom
+    for (let i = -2; i <= 2; i++) {
+      const wave = Math.sin(_globalTime * 4 + i + x) * 2.5;
+      const tendrilAlpha = ghostAlpha * (0.35 + Math.abs(i) * 0.05);
+      g.ellipse(x + i * 3 * sc + sway, y + 7 * sc + wave, 2.2 * sc, 3.5 * sc).fill({ color, alpha: tendrilAlpha });
+      // Extra wisp tips
+      g.ellipse(x + i * 3 * sc + sway + wave * 0.5, y + 10 * sc + wave, 1 * sc, 2 * sc)
+        .fill({ color: lighten(color, 0.15), alpha: tendrilAlpha * 0.4 });
+    }
 
-    // Rib hints for skeletons
-    if (color > 0x888888) {
-      for (let i = 0; i < 3; i++) {
-        g.rect(x - 3 * sc, y - 2 * sc + i * 2.5 * sc, 6 * sc, 0.8).fill({ color: 0xccccaa, alpha: 0.5 });
+    if (!isGhost) {
+      // Skeleton: visible ribcage and spine
+      // Spine
+      g.rect(x - 0.5 + sway * 0.5, y - 4 * sc, 1, 8 * sc).fill({ color: 0xccccaa, alpha: ghostAlpha * 0.6 });
+      // Ribs (curved)
+      for (let i = 0; i < 4; i++) {
+        const ribY = y - 2.5 * sc + i * 2.2 * sc;
+        const ribW = 3 - Math.abs(i - 1.5) * 0.5;
+        g.moveTo(x + sway * 0.5, ribY).lineTo(x - ribW * sc + sway * 0.5, ribY + 1)
+          .stroke({ color: 0xccccaa, width: 0.8, alpha: ghostAlpha * 0.5 });
+        g.moveTo(x + sway * 0.5, ribY).lineTo(x + ribW * sc + sway * 0.5, ribY + 1)
+          .stroke({ color: 0xccccaa, width: 0.8, alpha: ghostAlpha * 0.5 });
       }
+      // Arm bones
+      g.moveTo(x - 4 * sc + sway * 0.5, y - 3 * sc).lineTo(x - 6 * sc + sway, y + 2 * sc)
+        .stroke({ color: 0xccccaa, width: 1, alpha: ghostAlpha * 0.5 });
+      g.moveTo(x + 4 * sc + sway * 0.5, y - 3 * sc).lineTo(x + 6 * sc + sway, y + 2 * sc)
+        .stroke({ color: 0xccccaa, width: 1, alpha: ghostAlpha * 0.5 });
+      // Bony hands
+      g.circle(x - 6 * sc + sway, y + 2.5 * sc, 1.2).fill({ color: 0xbbbb99, alpha: ghostAlpha * 0.5 });
+      g.circle(x + 6 * sc + sway, y + 2.5 * sc, 1.2).fill({ color: 0xbbbb99, alpha: ghostAlpha * 0.5 });
+    }
+
+    // Skull (detailed)
+    const skullX = x + sway * 0.3;
+    g.circle(skullX, y - 6 * sc, 4 * sc).fill({ color: 0xddddbb, alpha: ghostAlpha });
+    // Cranium highlight
+    g.circle(skullX - 0.5 * sc, y - 7.5 * sc, 2 * sc).fill({ color: 0xeeeedd, alpha: ghostAlpha * 0.2 });
+    // Brow ridge
+    g.rect(skullX - 3 * sc, y - 7.5 * sc, 6 * sc, 1 * sc).fill({ color: darken(0xddddbb, 0.1), alpha: ghostAlpha * 0.5 });
+    // Eye sockets (deeper)
+    g.circle(skullX - 1.5 * sc, y - 7 * sc, 1.6 * sc).fill({ color: 0x111111 });
+    g.circle(skullX + 1.5 * sc, y - 7 * sc, 1.6 * sc).fill({ color: 0x111111 });
+    // Eye glow (flickering)
+    const eyeGlow = 0.5 + 0.3 * Math.sin(_globalTime * 5 + y);
+    const eyeColor = isGhost ? 0x66aaff : 0x44ff44;
+    g.circle(skullX - 1.5 * sc, y - 7 * sc, 0.9 * sc).fill({ color: eyeColor, alpha: eyeGlow });
+    g.circle(skullX + 1.5 * sc, y - 7 * sc, 0.9 * sc).fill({ color: eyeColor, alpha: eyeGlow });
+    // Eye glow haze
+    g.circle(skullX - 1.5 * sc, y - 7 * sc, 2.5 * sc).fill({ color: eyeColor, alpha: eyeGlow * 0.1 });
+    g.circle(skullX + 1.5 * sc, y - 7 * sc, 2.5 * sc).fill({ color: eyeColor, alpha: eyeGlow * 0.1 });
+    // Nasal cavity
+    g.moveTo(skullX, y - 5.5 * sc).lineTo(skullX - 0.5 * sc, y - 4.5 * sc).lineTo(skullX + 0.5 * sc, y - 4.5 * sc)
+      .closePath().fill({ color: 0x222211, alpha: ghostAlpha * 0.5 });
+    // Jaw with teeth
+    g.rect(skullX - 2.5 * sc, y - 4 * sc, 5 * sc, 1.5 * sc).fill({ color: 0xbbbb99, alpha: ghostAlpha });
+    // Individual teeth
+    for (let i = 0; i < 4; i++) {
+      g.rect(skullX - 1.8 * sc + i * 1 * sc, y - 4 * sc, 0.6 * sc, 1).fill({ color: 0xeeeecc, alpha: ghostAlpha * 0.6 });
+    }
+
+    // Boss: tattered crown + glowing runes
+    if (isBoss) {
+      // Ghostly crown
+      g.moveTo(skullX - 4 * sc, y - 9 * sc).lineTo(skullX - 3 * sc, y - 12 * sc)
+        .lineTo(skullX - 1 * sc, y - 10 * sc).lineTo(skullX, y - 13 * sc)
+        .lineTo(skullX + 1 * sc, y - 10 * sc).lineTo(skullX + 3 * sc, y - 12 * sc)
+        .lineTo(skullX + 4 * sc, y - 9 * sc).closePath()
+        .fill({ color: 0x887744, alpha: ghostAlpha * 0.7 });
+      // Rune glow on body
+      const runeGlow = 0.3 + 0.2 * Math.sin(_globalTime * 3);
+      g.circle(x + sway * 0.5, y - 1 * sc, 2).fill({ color: eyeColor, alpha: runeGlow * 0.4 });
+      g.circle(x + sway * 0.5, y + 2 * sc, 1.5).fill({ color: eyeColor, alpha: runeGlow * 0.3 });
     }
   }
 
   // --- Beast: animal shapes ---
   private _drawBeastEnemy(g: Graphics, x: number, y: number, _s: number, color: number, id: string, isBoss: boolean): void {
     const sc = isBoss ? 1.5 : 1;
+    const breathe = Math.sin(_globalTime * 3 + x) * 0.5;
 
     if (id.includes("wolf")) {
-      // Wolf shape: elongated body, pointed head
-      g.ellipse(x, y, 7 * sc, 4 * sc).fill({ color });
-      // Head
-      g.ellipse(x + 6 * sc, y - 2 * sc, 4 * sc, 3 * sc).fill({ color: lighten(color, 0.05) });
-      // Snout
-      g.ellipse(x + 10 * sc, y - 1 * sc, 2 * sc, 1.5 * sc).fill({ color: darken(color, 0.1) });
-      // Eye
-      g.circle(x + 7 * sc, y - 3 * sc, 1).fill({ color: 0xffff00 });
-      // Ears
-      g.moveTo(x + 5 * sc, y - 5 * sc).lineTo(x + 4 * sc, y - 8 * sc).lineTo(x + 7 * sc, y - 5 * sc).closePath().fill({ color });
-      g.moveTo(x + 8 * sc, y - 5 * sc).lineTo(x + 7 * sc, y - 8 * sc).lineTo(x + 10 * sc, y - 5 * sc).closePath().fill({ color });
-      // Tail
-      const tailWave = Math.sin(_globalTime * 3) * 2;
-      g.moveTo(x - 7 * sc, y).lineTo(x - 11 * sc, y - 3 * sc + tailWave).lineTo(x - 7 * sc, y - 2 * sc).closePath().fill({ color: darken(color, 0.1) });
-      // Legs
-      g.rect(x - 4 * sc, y + 3 * sc, 2 * sc, 5 * sc).fill({ color: darken(color, 0.1) });
-      g.rect(x + 2 * sc, y + 3 * sc, 2 * sc, 5 * sc).fill({ color: darken(color, 0.1) });
-    } else if (id.includes("spider")) {
-      // Spider: round body with 8 legs
-      g.circle(x, y, 4 * sc).fill({ color });
-      g.circle(x, y - 4 * sc, 3 * sc).fill({ color: lighten(color, 0.1) });
-      // Eyes (multiple)
-      for (let i = -1; i <= 1; i++) {
-        g.circle(x + i * 1.5 * sc, y - 5 * sc, 0.8).fill({ color: 0xff0000 });
+      const runPhase = Math.sin(_globalTime * 6 + x) * 2;
+      // Body (muscular, slightly arched)
+      g.ellipse(x, y + breathe, 7 * sc, 4.5 * sc).fill({ color });
+      // Belly lighter shade
+      g.ellipse(x, y + 1.5 * sc + breathe, 5 * sc, 2 * sc).fill({ color: lighten(color, 0.08), alpha: 0.5 });
+      // Haunches (rear muscle definition)
+      g.ellipse(x - 4 * sc, y - 0.5 * sc + breathe, 4 * sc, 3.5 * sc).fill({ color: darken(color, 0.03) });
+
+      // Legs (animated gallop)
+      const frontLeg = runPhase;
+      const backLeg = -runPhase;
+      // Front legs
+      g.rect(x + 3 * sc, y + 3 * sc + frontLeg, 1.8 * sc, 5 * sc).fill({ color: darken(color, 0.1) });
+      g.rect(x + 5 * sc, y + 3 * sc - frontLeg * 0.5, 1.8 * sc, 5 * sc).fill({ color: darken(color, 0.08) });
+      // Back legs (thicker thigh)
+      g.rect(x - 5 * sc, y + 2 * sc + backLeg, 2 * sc, 5.5 * sc).fill({ color: darken(color, 0.1) });
+      g.rect(x - 3 * sc, y + 2 * sc - backLeg * 0.5, 2 * sc, 5.5 * sc).fill({ color: darken(color, 0.08) });
+      // Paws
+      g.ellipse(x + 3.5 * sc, y + 8 * sc + frontLeg, 1.5 * sc, 0.8 * sc).fill({ color: darken(color, 0.15) });
+      g.ellipse(x - 4.5 * sc, y + 7.5 * sc + backLeg, 1.5 * sc, 0.8 * sc).fill({ color: darken(color, 0.15) });
+
+      // Head (detailed muzzle)
+      g.ellipse(x + 6 * sc, y - 2 * sc + breathe, 4 * sc, 3.2 * sc).fill({ color: lighten(color, 0.05) });
+      // Muzzle
+      g.ellipse(x + 10 * sc, y - 1 * sc + breathe, 2.5 * sc, 1.8 * sc).fill({ color: darken(color, 0.1) });
+      // Nose
+      g.circle(x + 11.5 * sc, y - 1.5 * sc + breathe, 0.8).fill({ color: 0x222222 });
+      // Open mouth (snarling)
+      g.moveTo(x + 9 * sc, y + 0 * sc + breathe).lineTo(x + 11 * sc, y + 0.5 * sc + breathe)
+        .lineTo(x + 9 * sc, y + 1 * sc + breathe).closePath().fill({ color: 0x882222, alpha: 0.6 });
+      // Fangs
+      g.rect(x + 9.5 * sc, y - 0.3 * sc + breathe, 0.5, 1.2 * sc).fill({ color: 0xeeeeee, alpha: 0.7 });
+      g.rect(x + 10.5 * sc, y - 0.3 * sc + breathe, 0.5, 1 * sc).fill({ color: 0xeeeeee, alpha: 0.7 });
+      // Eye (glowing, predatory)
+      g.circle(x + 7 * sc, y - 3.2 * sc + breathe, 1.2).fill({ color: 0xffff00 });
+      g.circle(x + 7 * sc, y - 3.2 * sc + breathe, 0.5).fill({ color: 0x000000 }); // pupil slit
+      // Ears (perked)
+      g.moveTo(x + 5 * sc, y - 5 * sc + breathe).lineTo(x + 4 * sc, y - 8.5 * sc + breathe).lineTo(x + 7 * sc, y - 5 * sc + breathe).closePath().fill({ color });
+      g.moveTo(x + 8 * sc, y - 5 * sc + breathe).lineTo(x + 7 * sc, y - 8.5 * sc + breathe).lineTo(x + 10 * sc, y - 5 * sc + breathe).closePath().fill({ color });
+      // Inner ear
+      g.moveTo(x + 5.5 * sc, y - 5.5 * sc + breathe).lineTo(x + 4.8 * sc, y - 7.5 * sc + breathe).lineTo(x + 6.5 * sc, y - 5.5 * sc + breathe)
+        .closePath().fill({ color: 0xcc8877, alpha: 0.4 });
+      // Tail (bushy, animated)
+      const tailWave = Math.sin(_globalTime * 3) * 2.5;
+      g.moveTo(x - 7 * sc, y + breathe).lineTo(x - 12 * sc, y - 4 * sc + tailWave)
+        .lineTo(x - 10 * sc, y - 2 * sc + tailWave).lineTo(x - 7 * sc, y - 1 * sc + breathe).closePath()
+        .fill({ color: darken(color, 0.05) });
+      // Tail tip lighter
+      g.circle(x - 11.5 * sc, y - 3.5 * sc + tailWave, 1.5 * sc).fill({ color: lighten(color, 0.1), alpha: 0.5 });
+
+      // Fur texture lines on body
+      for (let i = 0; i < 4; i++) {
+        const fx = x - 3 * sc + i * 3 * sc;
+        const fy = y - 2 * sc + breathe;
+        g.moveTo(fx, fy).lineTo(fx + 1, fy + 2 * sc).stroke({ color: darken(color, 0.08), width: 0.5, alpha: 0.4 });
       }
-      // Legs
-      const legAnim = Math.sin(_globalTime * 6 + x) * 1.5;
+
+    } else if (id.includes("spider")) {
+      // Spider: detailed abdomen, cephalothorax, multiple eyes, articulated legs
+      const legAnim = Math.sin(_globalTime * 6 + x) * 2;
+
+      // Abdomen (larger rear)
+      g.ellipse(x - 1 * sc, y + 1 * sc, 4.5 * sc, 4 * sc).fill({ color });
+      // Abdomen pattern (markings)
+      g.ellipse(x - 1 * sc, y + 0.5 * sc, 2 * sc, 2 * sc).fill({ color: lighten(color, 0.15), alpha: 0.4 });
+      g.circle(x - 1 * sc, y + 2.5 * sc, 1 * sc).fill({ color: lighten(color, 0.1), alpha: 0.3 });
+      // Spinneret (rear)
+      g.ellipse(x - 4 * sc, y + 3 * sc, 1 * sc, 0.8 * sc).fill({ color: darken(color, 0.1) });
+
+      // Cephalothorax (front, slightly smaller)
+      g.ellipse(x + 2 * sc, y - 3 * sc, 3.2 * sc, 2.8 * sc).fill({ color: lighten(color, 0.08) });
+      // Chelicerae (fangs)
+      g.moveTo(x + 3 * sc, y - 1.5 * sc).lineTo(x + 2 * sc, y + 0.5 * sc).stroke({ color: 0x553322, width: 1.2 });
+      g.moveTo(x + 4 * sc, y - 1.5 * sc).lineTo(x + 5 * sc, y + 0.5 * sc).stroke({ color: 0x553322, width: 1.2 });
+      // Fang tips (venomous green)
+      g.circle(x + 2 * sc, y + 0.5 * sc, 0.5).fill({ color: 0x44ff44, alpha: 0.6 });
+      g.circle(x + 5 * sc, y + 0.5 * sc, 0.5).fill({ color: 0x44ff44, alpha: 0.6 });
+
+      // Eyes (8 eyes, multiple sizes)
+      const eyePositions = [
+        [-0.5, -4.5, 0.9], [1.5, -4.5, 0.9],  // principal eyes (large)
+        [-1.5, -4, 0.6], [2.5, -4, 0.6],        // secondary
+        [-2, -3.5, 0.4], [3, -3.5, 0.4],        // lateral
+        [0, -5, 0.5], [1, -5, 0.5],             // top pair
+      ];
+      for (const [ex, ey, er] of eyePositions) {
+        g.circle(x + ex * sc, y + ey * sc, er * sc).fill({ color: 0xff0000 });
+        g.circle(x + ex * sc - 0.15, y + ey * sc - 0.15, er * sc * 0.3).fill({ color: 0xff6666, alpha: 0.5 });
+      }
+
+      // Legs (8 articulated legs with joints)
       for (let side = -1; side <= 1; side += 2) {
         for (let leg = 0; leg < 4; leg++) {
+          const phase = (leg % 2 === 0 ? legAnim : -legAnim) * (1 + leg * 0.1);
+          const baseX = x + side * 2 * sc;
+          const baseY = y + (leg - 1.5) * 1.8 * sc;
+          // First segment (coxa/femur)
+          const midX = baseX + side * (5 + leg * 0.8) * sc;
+          const midY = baseY - 3 * sc + phase * 0.5;
+          // Second segment (tibia/tarsus)
+          const tipX = midX + side * 3 * sc;
+          const tipY = midY + 4 * sc + phase;
 
-          const lx = x + side * (5 + leg) * sc;
-          const ly = y + (leg - 1.5) * 2.5 * sc + (leg % 2 === 0 ? legAnim : -legAnim);
-          g.moveTo(x + side * 3 * sc, y + (leg - 1.5) * 2 * sc)
-            .lineTo(lx, ly - 2 * sc)
-            .lineTo(lx + side * 2 * sc, ly + 2 * sc)
-            .stroke({ color: darken(color, 0.1), width: 1.2 });
+          g.moveTo(baseX, baseY).lineTo(midX, midY).stroke({ color: darken(color, 0.05), width: 1.5 });
+          g.moveTo(midX, midY).lineTo(tipX, tipY).stroke({ color: darken(color, 0.1), width: 1.2 });
+          // Joint dots
+          g.circle(midX, midY, 0.8).fill({ color: darken(color, 0.15) });
         }
       }
+
+      // Boss: web silk trail
+      if (isBoss) {
+        for (let i = 0; i < 3; i++) {
+          const wa = _globalTime * 1.5 + i * 1.2;
+          const wx = x + Math.sin(wa) * 10 * sc;
+          const wy = y + 6 * sc + Math.cos(wa) * 4;
+          g.moveTo(x - 4 * sc, y + 3 * sc).lineTo(wx, wy).stroke({ color: 0xcccccc, width: 0.3, alpha: 0.2 });
+        }
+      }
+
     } else if (id.includes("wyvern")) {
-      // Wyvern: winged beast
-      g.ellipse(x, y, 6 * sc, 5 * sc).fill({ color });
-      // Head
-      g.ellipse(x + 5 * sc, y - 4 * sc, 3 * sc, 2.5 * sc).fill({ color: lighten(color, 0.1) });
-      g.circle(x + 7 * sc, y - 4.5 * sc, 1).fill({ color: 0xff6600 }); // Eye
-      // Wings
-      const wingFlap = Math.sin(_globalTime * 4) * 3;
-      g.moveTo(x - 3 * sc, y - 2 * sc)
-        .lineTo(x - 10 * sc, y - 8 * sc + wingFlap)
-        .lineTo(x - 6 * sc, y)
-        .closePath()
-        .fill({ color: lighten(color, 0.15), alpha: 0.8 });
-      g.moveTo(x + 3 * sc, y - 2 * sc)
-        .lineTo(x + 10 * sc, y - 8 * sc + wingFlap)
-        .lineTo(x + 6 * sc, y)
-        .closePath()
-        .fill({ color: lighten(color, 0.15), alpha: 0.8 });
-      // Tail
-      g.moveTo(x - 5 * sc, y + 3 * sc)
-        .lineTo(x - 10 * sc, y + 6 * sc + Math.sin(_globalTime * 2) * 2)
-        .stroke({ color: darken(color, 0.1), width: 2 });
+      const wingFlap = Math.sin(_globalTime * 4) * 4;
+      const hover = Math.sin(_globalTime * 2.5) * 1.5;
+
+      // Body (scaled, muscular)
+      g.ellipse(x, y + hover, 6 * sc, 5 * sc).fill({ color });
+      // Scale texture
+      for (let i = 0; i < 3; i++) {
+        const sy = y - 2 * sc + i * 2.5 * sc + hover;
+        g.ellipse(x, sy, 5 * sc, 0.8 * sc).stroke({ color: darken(color, 0.1), width: 0.4, alpha: 0.4 });
+      }
+      // Underbelly (lighter)
+      g.ellipse(x, y + 2 * sc + hover, 3 * sc, 3 * sc).fill({ color: lighten(color, 0.12), alpha: 0.4 });
+
+      // Neck
+      g.moveTo(x + 3 * sc, y - 3 * sc + hover).lineTo(x + 5 * sc, y - 5 * sc + hover)
+        .lineTo(x + 4 * sc, y - 2 * sc + hover).closePath().fill({ color: lighten(color, 0.05) });
+      // Head (more draconic)
+      g.ellipse(x + 6 * sc, y - 5 * sc + hover, 3.5 * sc, 2.5 * sc).fill({ color: lighten(color, 0.08) });
+      // Horns
+      g.moveTo(x + 5 * sc, y - 7 * sc + hover).lineTo(x + 4 * sc, y - 10 * sc + hover).lineTo(x + 6 * sc, y - 7 * sc + hover)
+        .closePath().fill({ color: darken(color, 0.2) });
+      g.moveTo(x + 7 * sc, y - 7 * sc + hover).lineTo(x + 8 * sc, y - 10 * sc + hover).lineTo(x + 8.5 * sc, y - 7 * sc + hover)
+        .closePath().fill({ color: darken(color, 0.2) });
+      // Eye (slitted, fiery)
+      g.circle(x + 7.5 * sc, y - 5.5 * sc + hover, 1.2).fill({ color: 0xff6600 });
+      g.rect(x + 7 * sc, y - 5.7 * sc + hover, 1.2, 0.4).fill({ color: 0x000000 }); // slit pupil
+      // Jaws (slightly open, fire glow)
+      g.moveTo(x + 8 * sc, y - 4 * sc + hover).lineTo(x + 10 * sc, y - 4 * sc + hover)
+        .lineTo(x + 9 * sc, y - 3 * sc + hover).closePath().fill({ color: darken(color, 0.1) });
+      // Fire breath hint
+      const fireGlow = 0.2 + 0.15 * Math.sin(_globalTime * 6);
+      g.circle(x + 9 * sc, y - 3.5 * sc + hover, 2).fill({ color: 0xff4400, alpha: fireGlow });
+
+      // Wings (detailed membrane with bone structure)
+      for (const side of [-1, 1]) {
+        const wingX = x + side * 3 * sc;
+        const wingTipX = x + side * 12 * sc;
+        const wingTipY = y - 9 * sc + wingFlap * side + hover;
+        const wingMidY = y - 5 * sc + wingFlap * side * 0.5 + hover;
+        // Wing membrane
+        g.moveTo(wingX, y - 2 * sc + hover)
+          .lineTo(wingTipX, wingTipY)
+          .lineTo(x + side * 8 * sc, wingMidY)
+          .lineTo(x + side * 6 * sc, y + hover)
+          .closePath()
+          .fill({ color: lighten(color, 0.12), alpha: 0.7 });
+        // Wing bone/finger
+        g.moveTo(wingX, y - 2 * sc + hover).lineTo(wingTipX, wingTipY)
+          .stroke({ color: darken(color, 0.1), width: 1 });
+        g.moveTo(wingX, y - 1 * sc + hover).lineTo(x + side * 8 * sc, wingMidY)
+          .stroke({ color: darken(color, 0.1), width: 0.8 });
+        // Claw at wing tip
+        g.circle(wingTipX, wingTipY, 1).fill({ color: 0x444444 });
+      }
+
+      // Tail (long, sinuous with barbed tip)
+      const tailWave1 = Math.sin(_globalTime * 2) * 3;
+      const tailWave2 = Math.sin(_globalTime * 2.5) * 2;
+      g.moveTo(x - 5 * sc, y + 3 * sc + hover)
+        .lineTo(x - 8 * sc, y + 5 * sc + tailWave1 + hover)
+        .lineTo(x - 11 * sc, y + 4 * sc + tailWave2 + hover)
+        .stroke({ color: darken(color, 0.08), width: 2.5 });
+      // Barbed tail tip
+      g.moveTo(x - 11 * sc, y + 4 * sc + tailWave2 + hover)
+        .lineTo(x - 13 * sc, y + 2 * sc + tailWave2 + hover)
+        .lineTo(x - 12 * sc, y + 5 * sc + tailWave2 + hover)
+        .closePath().fill({ color: darken(color, 0.15) });
+
+      // Clawed feet
+      g.rect(x - 2 * sc, y + 4 * sc + hover, 2 * sc, 3 * sc).fill({ color: darken(color, 0.1) });
+      g.rect(x + 1 * sc, y + 4 * sc + hover, 2 * sc, 3 * sc).fill({ color: darken(color, 0.1) });
+
     } else {
-      // Generic beast (troll, etc): large hunched body
-      g.ellipse(x, y, 6 * sc, 7 * sc).fill({ color });
-      g.circle(x, y - 6 * sc, 4 * sc).fill({ color: lighten(color, 0.08) });
-      // Eyes
-      g.circle(x - 2 * sc, y - 7 * sc, 1.2).fill({ color: 0xff4400 });
-      g.circle(x + 2 * sc, y - 7 * sc, 1.2).fill({ color: 0xff4400 });
-      // Arms
-      g.rect(x - 7 * sc, y - 2 * sc, 3 * sc, 8 * sc).fill({ color: darken(color, 0.1) });
-      g.rect(x + 4 * sc, y - 2 * sc, 3 * sc, 8 * sc).fill({ color: darken(color, 0.1) });
-      // Legs
-      g.rect(x - 4 * sc, y + 5 * sc, 3 * sc, 4 * sc).fill({ color: darken(color, 0.15) });
-      g.rect(x + 1 * sc, y + 5 * sc, 3 * sc, 4 * sc).fill({ color: darken(color, 0.15) });
+      // Generic beast (troll, etc): large hunched body with more detail
+      const walkBob = Math.sin(_globalTime * 3 + y) * 1;
+      // Legs (thick, stumpy)
+      g.rect(x - 4 * sc, y + 5 * sc + walkBob, 3.5 * sc, 5 * sc).fill({ color: darken(color, 0.15) });
+      g.rect(x + 0.5 * sc, y + 5 * sc - walkBob, 3.5 * sc, 5 * sc).fill({ color: darken(color, 0.15) });
+      // Feet
+      g.ellipse(x - 2.5 * sc, y + 10 * sc + walkBob, 2.5 * sc, 1 * sc).fill({ color: darken(color, 0.2) });
+      g.ellipse(x + 2 * sc, y + 10 * sc - walkBob, 2.5 * sc, 1 * sc).fill({ color: darken(color, 0.2) });
+
+      // Body (hunched, massive)
+      g.ellipse(x, y + breathe, 7 * sc, 8 * sc).fill({ color });
+      // Belly
+      g.ellipse(x, y + 2 * sc + breathe, 5 * sc, 4 * sc).fill({ color: lighten(color, 0.06), alpha: 0.4 });
+
+      // Arms (long, dangling, gorilla-like)
+      const armSwing = Math.sin(_globalTime * 3 + x) * 2;
+      g.rect(x - 8 * sc, y - 2 * sc + breathe - armSwing, 3.5 * sc, 10 * sc).fill({ color: darken(color, 0.08) });
+      g.rect(x + 4.5 * sc, y - 2 * sc + breathe + armSwing, 3.5 * sc, 10 * sc).fill({ color: darken(color, 0.08) });
+      // Fists (large)
+      g.circle(x - 7 * sc, y + 8 * sc + breathe - armSwing, 2.5 * sc).fill({ color: darken(color, 0.12) });
+      g.circle(x + 6 * sc, y + 8 * sc + breathe + armSwing, 2.5 * sc).fill({ color: darken(color, 0.12) });
+
+      // Head (small relative to body, brutish)
+      g.circle(x, y - 6 * sc + breathe, 4.5 * sc).fill({ color: lighten(color, 0.08) });
+      // Brow ridge
+      g.rect(x - 4 * sc, y - 8 * sc + breathe, 8 * sc, 2 * sc).fill({ color: darken(color, 0.05) });
+      // Eyes (beady, glowing)
+      g.circle(x - 2 * sc, y - 7 * sc + breathe, 1.3).fill({ color: 0xff4400 });
+      g.circle(x + 2 * sc, y - 7 * sc + breathe, 1.3).fill({ color: 0xff4400 });
+      g.circle(x - 2 * sc, y - 7 * sc + breathe, 0.5).fill({ color: 0x000000 }); // pupil
+      g.circle(x + 2 * sc, y - 7 * sc + breathe, 0.5).fill({ color: 0x000000 });
+      // Mouth / tusks
+      g.rect(x - 2 * sc, y - 4 * sc + breathe, 4 * sc, 1.5).fill({ color: 0x553322, alpha: 0.6 });
+      g.rect(x - 2.5 * sc, y - 5 * sc + breathe, 1, 2 * sc).fill({ color: 0xddddaa, alpha: 0.7 }); // left tusk
+      g.rect(x + 1.5 * sc, y - 5 * sc + breathe, 1, 2 * sc).fill({ color: 0xddddaa, alpha: 0.7 }); // right tusk
+
+      // Boss: war paint + scars
+      if (isBoss) {
+        g.rect(x - 3 * sc, y - 7.5 * sc + breathe, 6 * sc, 0.8).fill({ color: 0xff2222, alpha: 0.4 });
+        g.moveTo(x - 3 * sc, y - 2 * sc + breathe).lineTo(x + 2 * sc, y + 3 * sc + breathe)
+          .stroke({ color: 0x994444, width: 0.8, alpha: 0.4 });
+      }
     }
   }
 
   // --- Fae: ethereal with wings ---
   private _drawFaeEnemy(g: Graphics, x: number, y: number, _s: number, color: number, isBoss: boolean): void {
     const sc = isBoss ? 1.4 : 1;
-    const hover = Math.sin(_globalTime * 3 + x) * 2;
+    const hover = Math.sin(_globalTime * 3 + x) * 2.5;
+    const drift = Math.sin(_globalTime * 1.5 + y) * 1;
 
-    // Sparkle trail
-    for (let i = 0; i < 3; i++) {
-      const sx = x + Math.sin(_globalTime * 2 + i * 2) * 6;
-      const sy = y + 5 + i * 3 + hover;
-      const sparkAlpha = 0.3 - i * 0.08;
-      g.circle(sx, sy, 1.5 - i * 0.3).fill({ color: 0xffffff, alpha: sparkAlpha });
+    // Sparkle trail (longer, more varied)
+    for (let i = 0; i < 5; i++) {
+      const sx = x + Math.sin(_globalTime * 2 + i * 1.7) * 7 + drift;
+      const sy = y + 4 + i * 3 + hover;
+      const sparkAlpha = (0.35 - i * 0.06) * (0.5 + 0.5 * Math.sin(_globalTime * 6 + i * 2));
+      g.circle(sx, sy, 1.5 - i * 0.2).fill({ color: 0xffffff, alpha: sparkAlpha });
     }
 
-    // Wings
-    const wingFlutter = Math.sin(_globalTime * 8) * 3;
-    g.ellipse(x - 6 * sc, y - 2 * sc + hover + wingFlutter, 5 * sc, 8 * sc)
-      .fill({ color: lighten(color, 0.3), alpha: 0.3 });
-    g.ellipse(x + 6 * sc, y - 2 * sc + hover - wingFlutter, 5 * sc, 8 * sc)
-      .fill({ color: lighten(color, 0.3), alpha: 0.3 });
-    // Inner wings
-    g.ellipse(x - 4 * sc, y - 1 * sc + hover + wingFlutter * 0.5, 3 * sc, 5 * sc)
-      .fill({ color: lighten(color, 0.5), alpha: 0.25 });
-    g.ellipse(x + 4 * sc, y - 1 * sc + hover - wingFlutter * 0.5, 3 * sc, 5 * sc)
-      .fill({ color: lighten(color, 0.5), alpha: 0.25 });
+    // Outer glow aura (ambient magic)
+    const auraGlow = 0.06 + 0.04 * Math.sin(_globalTime * 4);
+    g.circle(x + drift, y + hover, 12 * sc).fill({ color, alpha: auraGlow });
+    g.circle(x + drift, y + hover, 8 * sc).fill({ color: lighten(color, 0.2), alpha: auraGlow * 0.8 });
 
-    // Body (slim, ethereal)
-    g.ellipse(x, y + hover, 3 * sc, 6 * sc).fill({ color, alpha: 0.8 });
-    // Head
-    g.circle(x, y - 6 * sc + hover, 3 * sc).fill({ color: lighten(color, 0.2), alpha: 0.85 });
-    // Eyes (glowing)
-    g.circle(x - 1 * sc, y - 6.5 * sc + hover, 0.8).fill({ color: 0xffffff, alpha: 0.9 });
-    g.circle(x + 1 * sc, y - 6.5 * sc + hover, 0.8).fill({ color: 0xffffff, alpha: 0.9 });
+    // Wings (detailed butterfly-like with vein patterns)
+    const wingFlutter = Math.sin(_globalTime * 8) * 3.5;
+    const wingColor = lighten(color, 0.3);
+    const wingInner = lighten(color, 0.5);
+    for (const side of [-1, 1]) {
+      const wf = wingFlutter * side;
+      // Upper wing
+      g.ellipse(x + side * 6 * sc + drift, y - 3 * sc + hover + wf, 5 * sc, 7 * sc)
+        .fill({ color: wingColor, alpha: 0.3 });
+      // Lower wing (smaller)
+      g.ellipse(x + side * 5 * sc + drift, y + 2 * sc + hover + wf * 0.7, 3.5 * sc, 5 * sc)
+        .fill({ color: wingColor, alpha: 0.25 });
+      // Inner pattern (veins)
+      g.ellipse(x + side * 5 * sc + drift, y - 3 * sc + hover + wf * 0.5, 3 * sc, 4.5 * sc)
+        .fill({ color: wingInner, alpha: 0.2 });
+      // Wing vein lines
+      g.moveTo(x + drift, y - 2 * sc + hover).lineTo(x + side * 8 * sc + drift, y - 6 * sc + hover + wf)
+        .stroke({ color: wingInner, width: 0.4, alpha: 0.3 });
+      g.moveTo(x + drift, y + hover).lineTo(x + side * 7 * sc + drift, y - 1 * sc + hover + wf)
+        .stroke({ color: wingInner, width: 0.4, alpha: 0.25 });
+      // Wing sparkle dots
+      const dotAlpha = 0.3 + 0.2 * Math.sin(_globalTime * 5 + side);
+      g.circle(x + side * 6 * sc + drift, y - 4 * sc + hover + wf, 1).fill({ color: 0xffffff, alpha: dotAlpha });
+      g.circle(x + side * 4 * sc + drift, y + 1 * sc + hover + wf * 0.7, 0.8).fill({ color: 0xffffff, alpha: dotAlpha * 0.7 });
+    }
 
-    // Glow aura
-    g.circle(x, y + hover, 8 * sc).fill({ color, alpha: 0.06 + 0.03 * Math.sin(_globalTime * 4) });
+    // Body (slim, ethereal robes)
+    g.ellipse(x + drift, y + hover, 3 * sc, 6 * sc).fill({ color, alpha: 0.8 });
+    // Flowing robe bottom
+    for (let i = -1; i <= 1; i++) {
+      const robeWave = Math.sin(_globalTime * 3 + i * 2) * 1.5;
+      g.ellipse(x + i * 2 * sc + drift, y + 6 * sc + hover + robeWave, 2 * sc, 2.5 * sc)
+        .fill({ color, alpha: 0.4 });
+    }
+    // Chest sigil / ornament
+    g.circle(x + drift, y - 1 * sc + hover, 1.2 * sc).fill({ color: lighten(color, 0.4), alpha: 0.4 });
+
+    // Arms (graceful, thin)
+    const armGrace = Math.sin(_globalTime * 2 + x) * 2;
+    g.moveTo(x - 2 * sc + drift, y - 2 * sc + hover).lineTo(x - 5 * sc + drift, y + 2 * sc + hover + armGrace)
+      .stroke({ color, width: 1.5, alpha: 0.7 });
+    g.moveTo(x + 2 * sc + drift, y - 2 * sc + hover).lineTo(x + 5 * sc + drift, y + 2 * sc + hover - armGrace)
+      .stroke({ color, width: 1.5, alpha: 0.7 });
+    // Hands (glowing)
+    g.circle(x - 5 * sc + drift, y + 2 * sc + hover + armGrace, 1).fill({ color: lighten(color, 0.3), alpha: 0.6 });
+    g.circle(x + 5 * sc + drift, y + 2 * sc + hover - armGrace, 1).fill({ color: lighten(color, 0.3), alpha: 0.6 });
+
+    // Head (luminous, slightly pointed features)
+    g.circle(x + drift, y - 6 * sc + hover, 3.2 * sc).fill({ color: lighten(color, 0.2), alpha: 0.85 });
+    // Pointed ears
+    g.moveTo(x - 3 * sc + drift, y - 6 * sc + hover).lineTo(x - 5 * sc + drift, y - 8 * sc + hover)
+      .lineTo(x - 2 * sc + drift, y - 7 * sc + hover).closePath().fill({ color: lighten(color, 0.15), alpha: 0.7 });
+    g.moveTo(x + 3 * sc + drift, y - 6 * sc + hover).lineTo(x + 5 * sc + drift, y - 8 * sc + hover)
+      .lineTo(x + 2 * sc + drift, y - 7 * sc + hover).closePath().fill({ color: lighten(color, 0.15), alpha: 0.7 });
+    // Eyes (large, glowing, almond-shaped)
+    g.ellipse(x - 1.2 * sc + drift, y - 6.5 * sc + hover, 1.2, 0.7).fill({ color: 0xffffff, alpha: 0.9 });
+    g.ellipse(x + 1.2 * sc + drift, y - 6.5 * sc + hover, 1.2, 0.7).fill({ color: 0xffffff, alpha: 0.9 });
+    // Eye glow haze
+    g.circle(x - 1.2 * sc + drift, y - 6.5 * sc + hover, 2).fill({ color: 0xffffff, alpha: 0.08 });
+    g.circle(x + 1.2 * sc + drift, y - 6.5 * sc + hover, 2).fill({ color: 0xffffff, alpha: 0.08 });
+    // Hair / crown of flowers/thorns (boss)
+    if (isBoss) {
+      for (let i = 0; i < 5; i++) {
+        const crownAngle = (i / 5) * Math.PI - Math.PI * 0.1;
+        const cx = x + drift + Math.cos(crownAngle) * 4 * sc;
+        const cy = y - 7 * sc + hover + Math.sin(crownAngle) * 2 * sc;
+        g.circle(cx, cy, 1.2).fill({ color: lighten(color, 0.4), alpha: 0.6 });
+        g.circle(cx, cy, 0.5).fill({ color: 0xffffff, alpha: 0.4 });
+      }
+    }
+
+    // Orbiting magic motes
+    for (let i = 0; i < 3; i++) {
+      const moteAngle = _globalTime * 2 + i * (Math.PI * 2 / 3);
+      const mx = x + drift + Math.cos(moteAngle) * 10 * sc;
+      const my = y + hover + Math.sin(moteAngle) * 6 * sc;
+      g.circle(mx, my, 1).fill({ color: lighten(color, 0.4), alpha: 0.3 + 0.15 * Math.sin(moteAngle * 2) });
+    }
   }
 
   // --- Knight: armored humanoid with shield ---
   private _drawKnightEnemy(g: Graphics, x: number, y: number, _s: number, color: number, isBoss: boolean): void {
     const sc = isBoss ? 1.4 : 1;
-    // Legs
-    g.rect(x - 3 * sc, y + 4 * sc, 2.5 * sc, 6 * sc).fill({ color: darken(color, 0.2) });
-    g.rect(x + 0.5 * sc, y + 4 * sc, 2.5 * sc, 6 * sc).fill({ color: darken(color, 0.2) });
-    // Body (armored)
-    g.rect(x - 5 * sc, y - 5 * sc, 10 * sc, 10 * sc).fill({ color });
-    // Armor segments
-    g.rect(x - 5 * sc, y - 1 * sc, 10 * sc, 1).fill({ color: darken(color, 0.15) });
-    g.rect(x - 5 * sc, y + 2 * sc, 10 * sc, 1).fill({ color: darken(color, 0.15) });
-    // Shoulder plates
-    g.rect(x - 7 * sc, y - 5 * sc, 3 * sc, 5 * sc).fill({ color: lighten(color, 0.1) });
-    g.rect(x + 4 * sc, y - 5 * sc, 3 * sc, 5 * sc).fill({ color: lighten(color, 0.1) });
-    // Head (helmet)
-    g.circle(x, y - 7 * sc, 4 * sc).fill({ color: lighten(color, 0.15) });
-    g.rect(x - 4 * sc, y - 5 * sc, 8 * sc, 2 * sc).fill({ color: lighten(color, 0.2) }); // Brim
-    g.rect(x - 2 * sc, y - 7 * sc, 4 * sc, 1).fill({ color: 0x111111 }); // Visor
-    // Shield (left side)
-    g.rect(x - 8 * sc, y - 3 * sc, 4 * sc, 8 * sc).fill({ color: lighten(color, 0.2) });
-    g.rect(x - 7 * sc, y - 2 * sc, 2 * sc, 6 * sc).fill({ color: lighten(color, 0.3), alpha: 0.5 }); // Shield highlight
-    // Cross on shield
-    g.rect(x - 7 * sc, y + 0.5 * sc, 2 * sc, 0.8).fill({ color: 0xcc0000, alpha: 0.6 });
-    g.rect(x - 6.3 * sc, y - 1 * sc, 0.8, 3.5 * sc).fill({ color: 0xcc0000, alpha: 0.6 });
-    // Sword (right side)
-    g.rect(x + 6 * sc, y - 8 * sc, 2, 14 * sc).fill({ color: 0xcccccc });
-    g.rect(x + 4 * sc, y - 1 * sc, 6, 2).fill({ color: 0xaa8833 });
+    const breathe = Math.sin(_globalTime * 2.2 + x) * 0.4;
+    const walkPhase = Math.sin(_globalTime * 3.5 + y) * 1;
+    const armorLight = lighten(color, 0.15);
+    const armorDark = darken(color, 0.2);
+
+    // Legs with greaves (animated walk)
+    g.rect(x - 3 * sc, y + 4 * sc - walkPhase, 2.8 * sc, 6 * sc).fill({ color: armorDark });
+    g.rect(x + 0.2 * sc, y + 4 * sc + walkPhase, 2.8 * sc, 6 * sc).fill({ color: armorDark });
+    // Knee guards
+    g.rect(x - 3.5 * sc, y + 4 * sc - walkPhase, 3.5 * sc, 2 * sc).fill({ color: armorLight, alpha: 0.4 });
+    g.rect(x - 0.3 * sc, y + 4 * sc + walkPhase, 3.5 * sc, 2 * sc).fill({ color: armorLight, alpha: 0.4 });
+    // Sabatons (armored boots)
+    g.rect(x - 4 * sc, y + 9 * sc - walkPhase, 4 * sc, 2 * sc).fill({ color: armorDark });
+    g.rect(x - 0.5 * sc, y + 9 * sc + walkPhase, 4 * sc, 2 * sc).fill({ color: armorDark });
+
+    // Body (cuirass with detail)
+    g.rect(x - 5 * sc, y - 5 * sc - breathe, 10 * sc, 10 * sc).fill({ color });
+    // Chest plate highlight
+    g.rect(x - 3 * sc, y - 4 * sc - breathe, 6 * sc, 4 * sc).fill({ color: armorLight, alpha: 0.15 });
+    // Armor segment lines
+    g.rect(x - 5 * sc, y - 1 * sc - breathe, 10 * sc, 0.8).fill({ color: armorDark });
+    g.rect(x - 5 * sc, y + 2 * sc - breathe, 10 * sc, 0.8).fill({ color: armorDark });
+    // Center line (surcoat)
+    g.rect(x - 0.4, y - 4 * sc - breathe, 0.8, 8 * sc).fill({ color: armorDark, alpha: 0.3 });
+    // Belt with buckle
+    g.rect(x - 5 * sc, y + 3.5 * sc - breathe, 10 * sc, 1.5 * sc).fill({ color: 0x553311 });
+    g.circle(x, y + 4.2 * sc - breathe, 0.8).fill({ color: 0xccaa44 });
+    // Rivets along chest
+    for (let i = 0; i < 3; i++) {
+      g.circle(x - 4 * sc, y - 3 * sc + i * 2.5 * sc - breathe, 0.4).fill({ color: armorLight, alpha: 0.5 });
+      g.circle(x + 4 * sc, y - 3 * sc + i * 2.5 * sc - breathe, 0.4).fill({ color: armorLight, alpha: 0.5 });
+    }
+
+    // Shoulder plates (pauldrons with layered plates)
+    for (const side of [-1, 1]) {
+      const sx = x + side * 5.5 * sc;
+      g.rect(sx - 1.5 * sc, y - 5 * sc - breathe, 3.5 * sc, 5 * sc).fill({ color: armorLight });
+      // Plate layers
+      g.rect(sx - 1.5 * sc, y - 3 * sc - breathe, 3.5 * sc, 0.5).fill({ color: armorDark, alpha: 0.4 });
+      g.rect(sx - 1.5 * sc, y - 1 * sc - breathe, 3.5 * sc, 0.5).fill({ color: armorDark, alpha: 0.4 });
+      // Top highlight
+      g.rect(sx - 1 * sc, y - 5 * sc - breathe, 2.5 * sc, 0.8).fill({ color: lighten(color, 0.25), alpha: 0.3 });
+    }
+
+    // Head (great helm with detail)
+    g.circle(x, y - 7 * sc - breathe, 4.2 * sc).fill({ color: armorLight });
+    // Helm dome highlight
+    g.circle(x - 0.5 * sc, y - 8.5 * sc - breathe, 2 * sc).fill({ color: lighten(color, 0.25), alpha: 0.2 });
+    // Brim
+    g.rect(x - 4.5 * sc, y - 5 * sc - breathe, 9 * sc, 2.2 * sc).fill({ color: lighten(color, 0.2) });
+    // Visor slit (T-shaped)
+    g.rect(x - 2.5 * sc, y - 7 * sc - breathe, 5 * sc, 1).fill({ color: 0x111111 });
+    g.rect(x - 0.3, y - 7.5 * sc - breathe, 0.6, 2.5 * sc).fill({ color: 0x111111, alpha: 0.6 });
+    // Eye glints behind visor
+    g.circle(x - 1 * sc, y - 7 * sc - breathe, 0.4).fill({ color: 0xaaaaff, alpha: 0.3 });
+    g.circle(x + 1 * sc, y - 7 * sc - breathe, 0.4).fill({ color: 0xaaaaff, alpha: 0.3 });
+    // Plume/crest
+    if (isBoss) {
+      const plumeWave = Math.sin(_globalTime * 4) * 1;
+      g.moveTo(x, y - 11 * sc - breathe).lineTo(x - 1 + plumeWave, y - 15 * sc - breathe)
+        .lineTo(x + 2 + plumeWave, y - 14 * sc - breathe).lineTo(x + 1, y - 11 * sc - breathe)
+        .closePath().fill({ color: darken(color, 0.1), alpha: 0.7 });
+    }
+
+    // Shield (left side, kite shield shape)
+    const shieldX = x - 7 * sc;
+    const shieldColor = lighten(color, 0.2);
+    g.moveTo(shieldX, y - 4 * sc - breathe).lineTo(shieldX + 4 * sc, y - 4 * sc - breathe)
+      .lineTo(shieldX + 4 * sc, y + 2 * sc - breathe).lineTo(shieldX + 2 * sc, y + 5 * sc - breathe)
+      .lineTo(shieldX, y + 2 * sc - breathe).closePath().fill({ color: shieldColor });
+    // Shield highlight
+    g.rect(shieldX + 0.5 * sc, y - 3 * sc - breathe, 1.5 * sc, 6 * sc).fill({ color: lighten(shieldColor, 0.15), alpha: 0.3 });
+    // Shield emblem (cross)
+    const embX = shieldX + 2 * sc;
+    g.rect(embX - 1, y - 1 * sc - breathe, 2, 4 * sc).fill({ color: 0xcc0000, alpha: 0.6 });
+    g.rect(embX - 2 * sc, y + 0.5 * sc - breathe, 4 * sc, 1).fill({ color: 0xcc0000, alpha: 0.6 });
+    // Shield boss (center metal disc)
+    g.circle(embX, y + 0.5 * sc - breathe, 1 * sc).fill({ color: 0x888888, alpha: 0.4 });
+
+    // Sword (right side, detailed)
+    const swordX = x + 6.5 * sc;
+    // Blade
+    g.moveTo(swordX, y - 10 * sc - breathe).lineTo(swordX + 1, y + 0 - breathe).lineTo(swordX - 1, y + 0 - breathe)
+      .closePath().fill({ color: 0xcccccc });
+    // Edge highlight
+    g.moveTo(swordX - 0.3, y - 9 * sc - breathe).lineTo(swordX - 0.3, y - 1 * sc - breathe)
+      .stroke({ color: 0xeeeeee, width: 0.3, alpha: 0.4 });
+    // Crossguard
+    g.rect(swordX - 3, y - 1 * sc - breathe, 6, 2).fill({ color: 0xaa8833 });
+    // Handle
+    g.rect(swordX - 0.8, y + 1 * sc - breathe, 1.6, 3 * sc).fill({ color: 0x553311 });
+    // Pommel
+    g.circle(swordX, y + 4.5 * sc - breathe, 1).fill({ color: 0xaa8833 });
   }
 
   // --- Demon: horned, larger, fire aura ---
   private _drawDemonEnemy(g: Graphics, x: number, y: number, _s: number, color: number, isBoss: boolean): void {
     const sc = isBoss ? 1.5 : 1.1;
     const fireFlicker = Math.sin(_globalTime * 6 + x) * 1.5;
+    const breathe = Math.sin(_globalTime * 2 + x) * 0.6;
+    const armSwing = Math.sin(_globalTime * 2.5 + y) * 2;
 
-    // Fire aura
-    for (let i = 0; i < 5; i++) {
-      const fa = _globalTime * 3 + i * 1.3;
-      const fx = x + Math.sin(fa) * 8 * sc;
-      const fy = y + Math.cos(fa * 0.7) * 6 * sc;
-      g.circle(fx, fy, 3 + Math.sin(fa * 2)).fill({ color: 0xff4400, alpha: 0.08 });
+    // Fire aura (more intense, layered)
+    for (let i = 0; i < 8; i++) {
+      const fa = _globalTime * 3 + i * 0.9;
+      const fx = x + Math.sin(fa) * 9 * sc;
+      const fy = y + Math.cos(fa * 0.7) * 7 * sc;
+      const fireSize = 2.5 + Math.sin(fa * 2) * 1.5;
+      const fireColor = i % 3 === 0 ? 0xff2200 : i % 3 === 1 ? 0xff6600 : 0xff4400;
+      g.circle(fx, fy, fireSize).fill({ color: fireColor, alpha: 0.06 + 0.03 * Math.sin(fa) });
+    }
+    // Ground fire (below feet)
+    for (let i = 0; i < 3; i++) {
+      const gfx = x + (i - 1) * 4 * sc;
+      const gfFlicker = Math.sin(_globalTime * 8 + i * 2) * 2;
+      g.moveTo(gfx - 2, y + 11 * sc).lineTo(gfx, y + 7 * sc + gfFlicker).lineTo(gfx + 2, y + 11 * sc)
+        .closePath().fill({ color: 0xff4400, alpha: 0.15 });
     }
 
-    // Body (large, muscular)
-    g.ellipse(x, y, 6 * sc, 8 * sc).fill({ color });
-    // Legs
-    g.rect(x - 4 * sc, y + 6 * sc, 3 * sc, 5 * sc).fill({ color: darken(color, 0.2) });
-    g.rect(x + 1 * sc, y + 6 * sc, 3 * sc, 5 * sc).fill({ color: darken(color, 0.2) });
-    // Arms (thick)
-    g.rect(x - 8 * sc, y - 3 * sc, 3 * sc, 10 * sc).fill({ color: darken(color, 0.1) });
-    g.rect(x + 5 * sc, y - 3 * sc, 3 * sc, 10 * sc).fill({ color: darken(color, 0.1) });
-    // Claws
-    g.moveTo(x - 8 * sc, y + 6 * sc).lineTo(x - 10 * sc, y + 8 * sc).stroke({ color: 0xccccaa, width: 1 });
-    g.moveTo(x + 7 * sc, y + 6 * sc).lineTo(x + 9 * sc, y + 8 * sc).stroke({ color: 0xccccaa, width: 1 });
-    // Head
-    g.circle(x, y - 8 * sc, 4 * sc).fill({ color: lighten(color, 0.1) });
-    // Horns
-    g.moveTo(x - 3 * sc, y - 11 * sc).lineTo(x - 6 * sc, y - 16 * sc + fireFlicker).lineTo(x - 1 * sc, y - 11 * sc).closePath().fill({ color: 0x442222 });
-    g.moveTo(x + 1 * sc, y - 11 * sc).lineTo(x + 6 * sc, y - 16 * sc + fireFlicker).lineTo(x + 3 * sc, y - 11 * sc).closePath().fill({ color: 0x442222 });
-    // Eyes (fiery)
-    g.circle(x - 1.5 * sc, y - 9 * sc, 1.2).fill({ color: 0xff2200 });
-    g.circle(x + 1.5 * sc, y - 9 * sc, 1.2).fill({ color: 0xff2200 });
-    // Mouth
-    g.rect(x - 2 * sc, y - 6 * sc, 4 * sc, 1).fill({ color: 0xff4400, alpha: 0.6 });
+    // Legs (digitigrade, hooved)
+    const walkPhase = Math.sin(_globalTime * 3 + x) * 1.5;
+    g.rect(x - 4 * sc, y + 5 * sc - walkPhase, 3 * sc, 4 * sc).fill({ color: darken(color, 0.15) });
+    g.rect(x + 1 * sc, y + 5 * sc + walkPhase, 3 * sc, 4 * sc).fill({ color: darken(color, 0.15) });
+    // Reversed knee joint
+    g.rect(x - 3.5 * sc, y + 8 * sc - walkPhase, 2 * sc, 3 * sc).fill({ color: darken(color, 0.2) });
+    g.rect(x + 1.5 * sc, y + 8 * sc + walkPhase, 2 * sc, 3 * sc).fill({ color: darken(color, 0.2) });
+    // Hooves
+    g.rect(x - 4 * sc, y + 10.5 * sc - walkPhase, 3 * sc, 1.5 * sc).fill({ color: 0x222222 });
+    g.rect(x + 1 * sc, y + 10.5 * sc + walkPhase, 3 * sc, 1.5 * sc).fill({ color: 0x222222 });
+
+    // Body (large, muscular, V-taper)
+    g.ellipse(x, y + breathe, 6 * sc, 8 * sc).fill({ color });
+    // Chest muscles
+    g.ellipse(x - 2 * sc, y - 2 * sc + breathe, 3 * sc, 3.5 * sc).fill({ color: lighten(color, 0.05), alpha: 0.3 });
+    g.ellipse(x + 2 * sc, y - 2 * sc + breathe, 3 * sc, 3.5 * sc).fill({ color: lighten(color, 0.05), alpha: 0.3 });
+    // Abdominal lines
+    for (let i = 0; i < 3; i++) {
+      g.rect(x - 2 * sc, y + i * 2 * sc + breathe, 4 * sc, 0.5).fill({ color: darken(color, 0.1), alpha: 0.3 });
+    }
+    // Glowing rune/sigil on chest
+    const runeGlow = 0.3 + 0.2 * Math.sin(_globalTime * 3);
+    g.circle(x, y - 1 * sc + breathe, 2 * sc).stroke({ color: 0xff4400, width: 0.8, alpha: runeGlow });
+
+    // Arms (thick, muscular with claws)
+    g.rect(x - 8 * sc, y - 3 * sc + breathe - armSwing, 3.5 * sc, 10 * sc).fill({ color: darken(color, 0.08) });
+    g.rect(x + 4.5 * sc, y - 3 * sc + breathe + armSwing, 3.5 * sc, 10 * sc).fill({ color: darken(color, 0.08) });
+    // Forearm spikes
+    g.moveTo(x - 7 * sc, y + 2 * sc + breathe - armSwing).lineTo(x - 9 * sc, y + 0 * sc + breathe - armSwing)
+      .lineTo(x - 7 * sc, y + 3 * sc + breathe - armSwing).closePath().fill({ color: 0x442222 });
+    g.moveTo(x + 6 * sc, y + 2 * sc + breathe + armSwing).lineTo(x + 8 * sc, y + 0 * sc + breathe + armSwing)
+      .lineTo(x + 6 * sc, y + 3 * sc + breathe + armSwing).closePath().fill({ color: 0x442222 });
+    // Claws (3 per hand)
+    for (let i = -1; i <= 1; i++) {
+      g.moveTo(x - 7 * sc, y + 7 * sc + breathe - armSwing)
+        .lineTo(x - 9 * sc + i * 1.5, y + 9 * sc + breathe - armSwing)
+        .stroke({ color: 0xccccaa, width: 0.8 });
+      g.moveTo(x + 6 * sc, y + 7 * sc + breathe + armSwing)
+        .lineTo(x + 8 * sc + i * 1.5, y + 9 * sc + breathe + armSwing)
+        .stroke({ color: 0xccccaa, width: 0.8 });
+    }
+
+    // Head (angular, menacing)
+    g.circle(x, y - 8 * sc + breathe, 4.2 * sc).fill({ color: lighten(color, 0.1) });
+    // Brow ridge (heavy)
+    g.rect(x - 4 * sc, y - 10 * sc + breathe, 8 * sc, 2 * sc).fill({ color: darken(color, 0.05) });
+    // Horns (curved, detailed with ridges)
+    for (const side of [-1, 1]) {
+      const hornBaseX = x + side * 3 * sc;
+      const hornTipX = x + side * 7 * sc;
+      const hornTipY = y - 17 * sc + fireFlicker + breathe;
+      g.moveTo(hornBaseX, y - 11 * sc + breathe)
+        .lineTo(hornTipX, hornTipY)
+        .lineTo(hornBaseX + side * 1 * sc, y - 11 * sc + breathe)
+        .closePath().fill({ color: 0x442222 });
+      // Horn ridges
+      for (let i = 0; i < 3; i++) {
+        const t = 0.2 + i * 0.25;
+        const rx = hornBaseX + (hornTipX - hornBaseX) * t;
+        const ry = y - 11 * sc + breathe + (hornTipY - y + 11 * sc - breathe) * t;
+        g.circle(rx, ry, 0.6 - i * 0.1).fill({ color: 0x553333, alpha: 0.5 });
+      }
+    }
+
+    // Eyes (slitted, fiery glow)
+    for (const side of [-1, 1]) {
+      const eyeX = x + side * 1.5 * sc;
+      const eyeY = y - 9 * sc + breathe;
+      g.ellipse(eyeX, eyeY, 1.5, 1).fill({ color: 0xff2200 });
+      g.rect(eyeX - 0.3, eyeY - 0.8, 0.6, 1.6).fill({ color: 0x000000, alpha: 0.5 }); // slit pupil
+      // Eye glow
+      g.circle(eyeX, eyeY, 3).fill({ color: 0xff2200, alpha: 0.08 });
+    }
+
+    // Mouth (snarling, with fangs)
+    g.rect(x - 2.5 * sc, y - 6 * sc + breathe, 5 * sc, 1.5).fill({ color: 0x331111, alpha: 0.7 });
+    // Fangs
+    g.rect(x - 2 * sc, y - 6 * sc + breathe, 0.6, 1.5 * sc).fill({ color: 0xeeeecc, alpha: 0.7 });
+    g.rect(x + 1.5 * sc, y - 6 * sc + breathe, 0.6, 1.5 * sc).fill({ color: 0xeeeecc, alpha: 0.7 });
+    // Fire breath hint (for bosses)
+    if (isBoss) {
+      const fbGlow = 0.15 + 0.1 * Math.sin(_globalTime * 5);
+      g.circle(x, y - 5 * sc + breathe, 3).fill({ color: 0xff4400, alpha: fbGlow });
+    }
+
+    // Tail (sinuous, barbed)
+    const tailWave1 = Math.sin(_globalTime * 2.5) * 3;
+    const tailWave2 = Math.sin(_globalTime * 3) * 2;
+    g.moveTo(x, y + 6 * sc + breathe)
+      .lineTo(x - 6 * sc, y + 10 * sc + tailWave1)
+      .lineTo(x - 10 * sc, y + 8 * sc + tailWave2)
+      .stroke({ color: darken(color, 0.1), width: 2 });
+    // Tail barb
+    g.moveTo(x - 10 * sc, y + 8 * sc + tailWave2)
+      .lineTo(x - 12 * sc, y + 6 * sc + tailWave2)
+      .lineTo(x - 11 * sc, y + 9 * sc + tailWave2)
+      .closePath().fill({ color: 0x442222 });
   }
 
   // --- Elemental: made of their element ---
@@ -1380,69 +2100,154 @@ export class GameRenderer {
     const sc = isBoss ? 1.5 : 1;
 
     if (id.includes("fire")) {
-      // Fire elemental: flickering flame shape
       const flicker = Math.sin(_globalTime * 8 + x) * 2;
       const flicker2 = Math.cos(_globalTime * 6 + y) * 1.5;
+      const flicker3 = Math.sin(_globalTime * 10 + x * 0.5) * 1;
 
-      // Outer flame
-      g.moveTo(x - 6 * sc, y + 6 * sc)
-        .lineTo(x - 3 * sc + flicker, y - 8 * sc)
-        .lineTo(x + flicker2, y - 12 * sc)
-        .lineTo(x + 3 * sc - flicker, y - 8 * sc)
-        .lineTo(x + 6 * sc, y + 6 * sc)
+      // Heat distortion ground ring
+      const heatPulse = 0.1 + 0.05 * Math.sin(_globalTime * 4);
+      g.circle(x, y + 6 * sc, 8 * sc).fill({ color: 0xff4400, alpha: heatPulse });
+
+      // Outer flame (layered for depth)
+      g.moveTo(x - 7 * sc, y + 7 * sc)
+        .lineTo(x - 4 * sc + flicker, y - 6 * sc)
+        .lineTo(x - 1 * sc + flicker3, y - 10 * sc)
+        .lineTo(x + flicker2, y - 14 * sc)
+        .lineTo(x + 2 * sc - flicker3, y - 10 * sc)
+        .lineTo(x + 4 * sc - flicker, y - 6 * sc)
+        .lineTo(x + 7 * sc, y + 7 * sc)
         .closePath()
-        .fill({ color: 0xff4400, alpha: 0.7 });
+        .fill({ color: 0xff2200, alpha: 0.5 });
+      // Mid flame
+      g.moveTo(x - 5 * sc, y + 5 * sc)
+        .lineTo(x - 3 * sc + flicker * 0.7, y - 7 * sc)
+        .lineTo(x + flicker2 * 0.5, y - 12 * sc)
+        .lineTo(x + 3 * sc - flicker * 0.7, y - 7 * sc)
+        .lineTo(x + 5 * sc, y + 5 * sc)
+        .closePath()
+        .fill({ color: 0xff4400, alpha: 0.65 });
       // Inner flame
       g.moveTo(x - 3 * sc, y + 4 * sc)
-        .lineTo(x - 1 * sc + flicker * 0.5, y - 5 * sc)
-        .lineTo(x + flicker2 * 0.3, y - 9 * sc)
-        .lineTo(x + 1 * sc - flicker * 0.5, y - 5 * sc)
+        .lineTo(x - 1 * sc + flicker * 0.4, y - 5 * sc)
+        .lineTo(x + flicker2 * 0.2, y - 9 * sc)
+        .lineTo(x + 1 * sc - flicker * 0.4, y - 5 * sc)
         .lineTo(x + 3 * sc, y + 4 * sc)
         .closePath()
         .fill({ color: 0xff8800, alpha: 0.8 });
-      // Core
-      g.ellipse(x, y, 3 * sc, 4 * sc).fill({ color: 0xffcc44, alpha: 0.9 });
-      // Eyes
-      g.circle(x - 1.5 * sc, y - 1 * sc, 1).fill({ color: 0xffffff });
-      g.circle(x + 1.5 * sc, y - 1 * sc, 1).fill({ color: 0xffffff });
-      // Embers
-      for (let i = 0; i < 3; i++) {
-        const ea = _globalTime * 4 + i * 2;
-        const epx = x + Math.sin(ea) * 5 * sc;
-        const epy = y - 8 * sc + Math.cos(ea * 1.3) * 3 - i * 2;
-        g.circle(epx, epy, 1).fill({ color: 0xffaa22, alpha: 0.5 - i * 0.1 });
+      // Side flame wisps
+      for (const side of [-1, 1]) {
+        const wispPhase = Math.sin(_globalTime * 7 + side * 3) * 2;
+        g.moveTo(x + side * 4 * sc, y + 2 * sc)
+          .lineTo(x + side * 8 * sc + wispPhase, y - 4 * sc)
+          .lineTo(x + side * 5 * sc, y + 1 * sc)
+          .closePath().fill({ color: 0xff6600, alpha: 0.35 });
       }
-    } else {
-      // Ice elemental: crystalline
-      const shimmer = 0.7 + 0.2 * Math.sin(_globalTime * 3 + x);
 
-      // Crystal body (hexagonal-ish)
-      g.moveTo(x, y - 10 * sc)
-        .lineTo(x + 5 * sc, y - 5 * sc)
-        .lineTo(x + 5 * sc, y + 3 * sc)
-        .lineTo(x, y + 7 * sc)
-        .lineTo(x - 5 * sc, y + 3 * sc)
-        .lineTo(x - 5 * sc, y - 5 * sc)
+      // Core (bright, pulsing)
+      const coreGlow = 0.85 + 0.15 * Math.sin(_globalTime * 5);
+      g.ellipse(x, y, 3 * sc, 4 * sc).fill({ color: 0xffdd44, alpha: coreGlow });
+      g.ellipse(x, y - 1 * sc, 2 * sc, 2.5 * sc).fill({ color: 0xffffaa, alpha: coreGlow * 0.6 });
+      // Core specular
+      g.circle(x - 0.5 * sc, y - 1.5 * sc, 1 * sc).fill({ color: 0xffffff, alpha: 0.3 });
+
+      // Eyes (white-hot)
+      g.ellipse(x - 1.5 * sc, y - 1 * sc, 1.2, 0.8).fill({ color: 0xffffff });
+      g.ellipse(x + 1.5 * sc, y - 1 * sc, 1.2, 0.8).fill({ color: 0xffffff });
+
+      // Embers (more, varied)
+      for (let i = 0; i < 6; i++) {
+        const ea = _globalTime * (3 + i * 0.5) + i * 1.3;
+        const epx = x + Math.sin(ea) * 6 * sc;
+        const epy = y - 6 * sc + Math.cos(ea * 1.3) * 5 - i * 2;
+        const emberSize = 0.8 + Math.sin(ea * 2) * 0.5;
+        g.circle(epx, epy, emberSize).fill({ color: i % 2 === 0 ? 0xffaa22 : 0xff6600, alpha: 0.5 - i * 0.06 });
+      }
+
+      // Smoke wisps above
+      for (let i = 0; i < 2; i++) {
+        const smokeT = (_globalTime * 0.8 + i * 0.5) % 2;
+        const smokeY = y - 14 * sc - smokeT * 10;
+        const smokeAlpha = Math.max(0, 0.15 * (1 - smokeT / 2));
+        g.circle(x + Math.sin(_globalTime + i) * 3, smokeY, 2 + smokeT).fill({ color: 0x444444, alpha: smokeAlpha });
+      }
+
+    } else {
+      // Ice elemental: crystalline golem
+      const shimmer = 0.75 + 0.2 * Math.sin(_globalTime * 3 + x);
+      const breathe = Math.sin(_globalTime * 2 + x) * 0.5;
+
+      // Frost ground effect
+      g.circle(x, y + 7 * sc, 8 * sc).fill({ color: 0xaaddff, alpha: 0.06 + 0.03 * Math.sin(_globalTime * 2) });
+
+      // Crystal body (multi-faceted)
+      // Main crystal column
+      g.moveTo(x, y - 12 * sc + breathe)
+        .lineTo(x + 5 * sc, y - 6 * sc + breathe)
+        .lineTo(x + 5 * sc, y + 3 * sc + breathe)
+        .lineTo(x + 2 * sc, y + 7 * sc + breathe)
+        .lineTo(x - 2 * sc, y + 7 * sc + breathe)
+        .lineTo(x - 5 * sc, y + 3 * sc + breathe)
+        .lineTo(x - 5 * sc, y - 6 * sc + breathe)
         .closePath()
         .fill({ color, alpha: shimmer });
 
-      // Crystal facets
-      g.moveTo(x, y - 10 * sc).lineTo(x, y + 7 * sc).stroke({ color: lighten(color, 0.3), width: 0.5, alpha: 0.4 });
-      g.moveTo(x - 5 * sc, y - 5 * sc).lineTo(x + 5 * sc, y + 3 * sc).stroke({ color: lighten(color, 0.3), width: 0.5, alpha: 0.3 });
+      // Right facet (lighter for 3D effect)
+      g.moveTo(x, y - 12 * sc + breathe)
+        .lineTo(x + 5 * sc, y - 6 * sc + breathe)
+        .lineTo(x + 5 * sc, y + 3 * sc + breathe)
+        .lineTo(x + 2 * sc, y + 7 * sc + breathe)
+        .lineTo(x, y + 5 * sc + breathe)
+        .lineTo(x, y - 12 * sc + breathe)
+        .closePath()
+        .fill({ color: lighten(color, 0.15), alpha: shimmer * 0.3 });
 
-      // Inner glow
-      g.ellipse(x, y - 2 * sc, 3 * sc, 4 * sc).fill({ color: 0xcceeFF, alpha: 0.3 });
+      // Crystal facet lines
+      g.moveTo(x, y - 12 * sc + breathe).lineTo(x, y + 5 * sc + breathe)
+        .stroke({ color: lighten(color, 0.3), width: 0.6, alpha: 0.5 });
+      g.moveTo(x - 5 * sc, y - 6 * sc + breathe).lineTo(x + 2 * sc, y + 7 * sc + breathe)
+        .stroke({ color: lighten(color, 0.3), width: 0.4, alpha: 0.3 });
+      g.moveTo(x + 5 * sc, y - 6 * sc + breathe).lineTo(x - 2 * sc, y + 7 * sc + breathe)
+        .stroke({ color: lighten(color, 0.3), width: 0.4, alpha: 0.3 });
 
-      // Eyes
-      g.circle(x - 1.5 * sc, y - 3 * sc, 1).fill({ color: 0xffffff });
-      g.circle(x + 1.5 * sc, y - 3 * sc, 1).fill({ color: 0xffffff });
+      // Shoulder crystal protrusions
+      for (const side of [-1, 1]) {
+        g.moveTo(x + side * 4 * sc, y - 4 * sc + breathe)
+          .lineTo(x + side * 8 * sc, y - 7 * sc + breathe)
+          .lineTo(x + side * 5 * sc, y - 2 * sc + breathe)
+          .closePath().fill({ color: lighten(color, 0.1), alpha: shimmer * 0.8 });
+      }
 
-      // Ice crystals floating around
+      // Inner glow core (pulsing)
+      const coreGlow = 0.3 + 0.15 * Math.sin(_globalTime * 3);
+      g.ellipse(x, y - 2 * sc + breathe, 3 * sc, 4 * sc).fill({ color: 0xcceeFF, alpha: coreGlow });
+      g.circle(x, y - 3 * sc + breathe, 1.5 * sc).fill({ color: 0xeeffff, alpha: coreGlow * 0.5 });
+
+      // Eyes (piercing cold blue)
+      g.ellipse(x - 1.5 * sc, y - 4 * sc + breathe, 1.2, 0.8).fill({ color: 0xffffff });
+      g.ellipse(x + 1.5 * sc, y - 4 * sc + breathe, 1.2, 0.8).fill({ color: 0xffffff });
+      // Eye glow
+      g.circle(x - 1.5 * sc, y - 4 * sc + breathe, 2.5).fill({ color: 0x88ccff, alpha: 0.1 });
+      g.circle(x + 1.5 * sc, y - 4 * sc + breathe, 2.5).fill({ color: 0x88ccff, alpha: 0.1 });
+
+      // Floating ice crystal shards (orbiting)
+      for (let i = 0; i < 4; i++) {
+        const ia = _globalTime * 2 + i * (Math.PI / 2);
+        const ix = x + Math.cos(ia) * 8 * sc;
+        const iy = y + Math.sin(ia) * 5 * sc + breathe;
+        // Rotated shard (diamond shape)
+        const sr = 1.5 + Math.sin(ia * 3) * 0.5;
+        g.moveTo(ix, iy - sr * 1.5).lineTo(ix + sr, iy).lineTo(ix, iy + sr * 1.5).lineTo(ix - sr, iy)
+          .closePath().fill({ color: 0xaaddff, alpha: 0.5 });
+        // Shard glint
+        g.circle(ix - 0.2, iy - sr * 0.5, 0.3).fill({ color: 0xffffff, alpha: 0.4 });
+      }
+
+      // Frost particles falling
       for (let i = 0; i < 3; i++) {
-        const ia = _globalTime * 2 + i * 2.1;
-        const ix = x + Math.cos(ia) * 7 * sc;
-        const iy = y + Math.sin(ia) * 5 * sc;
-        g.rect(ix - 1, iy - 2, 2, 4).fill({ color: 0xaaddff, alpha: 0.4 });
+        const frostT = (_globalTime * 1.2 + i * 0.8) % 2;
+        const frostY = y - 8 * sc + frostT * 15;
+        const frostX = x + Math.sin(_globalTime * 2 + i * 2) * 6 * sc;
+        g.circle(frostX, frostY, 0.8).fill({ color: 0xccddff, alpha: 0.3 * (1 - frostT / 2) });
       }
     }
   }
@@ -1452,34 +2257,113 @@ export class GameRenderer {
     const sc = 1.5;
 
     if (id.includes("mordred") || id.includes("black_knight")) {
-      // Dark armored knight — use knight drawing at large scale
       this._drawKnightEnemy(g, x, y, s, color, true);
-      // Extra dark aura
+      // Dark corruption aura (tendrils of shadow)
       const pulse = 0.3 + 0.15 * Math.sin(_globalTime * 2);
-      g.circle(x, y, 22).fill({ color: 0x220000, alpha: pulse * 0.1 });
+      g.circle(x, y, 24).fill({ color: 0x110011, alpha: pulse * 0.08 });
+      g.circle(x, y, 18).fill({ color: 0x220022, alpha: pulse * 0.06 });
+      // Shadow tendrils
+      for (let i = 0; i < 4; i++) {
+        const ta = _globalTime * 1.5 + i * (Math.PI / 2);
+        const tx = x + Math.cos(ta) * 20;
+        const ty = y + Math.sin(ta) * 15;
+        g.moveTo(x, y + 4).lineTo(tx, ty).stroke({ color: 0x220022, width: 1.5, alpha: pulse * 0.15 });
+      }
+      // Red eye slits (through helmet visor)
+      const eyeGlow = 0.4 + 0.3 * Math.sin(_globalTime * 4);
+      g.circle(x - 1, y - 10, 1).fill({ color: 0xff0000, alpha: eyeGlow });
+      g.circle(x + 1, y - 10, 1).fill({ color: 0xff0000, alpha: eyeGlow });
     } else if (id.includes("morgan") || id.includes("oberon")) {
-      // Sorcerer/fae boss
       this._drawFaeEnemy(g, x, y, s, color, true);
-      // Magic circle at feet
+      // Arcane magic circle at feet (rotating rune ring)
       const magicPulse = 0.3 + 0.2 * Math.sin(_globalTime * 2);
-      g.circle(x, y + 4, 16).stroke({ color, width: 1.5, alpha: magicPulse });
-      g.circle(x, y + 4, 12).stroke({ color: lighten(color, 0.3), width: 1, alpha: magicPulse * 0.7 });
+      g.circle(x, y + 4, 18).stroke({ color, width: 1.5, alpha: magicPulse });
+      g.circle(x, y + 4, 14).stroke({ color: lighten(color, 0.3), width: 1, alpha: magicPulse * 0.7 });
+      // Rotating rune marks on circle
+      for (let i = 0; i < 6; i++) {
+        const ra = _globalTime * 0.8 + i * (Math.PI / 3);
+        const rx = x + Math.cos(ra) * 16;
+        const ry = y + 4 + Math.sin(ra) * 16;
+        g.rect(rx - 1, ry - 1, 2, 2).fill({ color: lighten(color, 0.4), alpha: magicPulse * 0.5 });
+      }
+      // Floating spell orbs
+      for (let i = 0; i < 3; i++) {
+        const oa = _globalTime * 1.5 + i * (Math.PI * 2 / 3);
+        const ox = x + Math.cos(oa) * 22;
+        const oy = y + Math.sin(oa) * 12;
+        g.circle(ox, oy, 2.5).fill({ color: lighten(color, 0.3), alpha: 0.4 + 0.2 * Math.sin(oa * 2) });
+        g.circle(ox, oy, 4).fill({ color, alpha: 0.08 });
+      }
     } else if (id.includes("beast") || id.includes("questing")) {
-      // Chimeric beast — draw large beast
       this._drawBeastEnemy(g, x, y, s, color, id, true);
+      // Poison drip trail effect for questing beast
+      if (id.includes("questing")) {
+        for (let i = 0; i < 4; i++) {
+          const dripT = (_globalTime * 1.5 + i * 0.6) % 2;
+          const dripY = y + 10 + dripT * 8;
+          g.circle(x + (i - 1.5) * 5, dripY, 1.5 - dripT * 0.5)
+            .fill({ color: 0x44ff44, alpha: 0.3 * (1 - dripT / 2) });
+        }
+      }
     } else if (id.includes("green_knight")) {
       this._drawKnightEnemy(g, x, y, s, color, true);
-      // Green aura of regeneration
+      // Green regeneration aura with leafy particles
       const pulse = 0.3 + 0.2 * Math.sin(_globalTime * 2.5);
-      g.circle(x, y, 20).fill({ color: 0x00ff00, alpha: pulse * 0.06 });
+      g.circle(x, y, 22).fill({ color: 0x00ff00, alpha: pulse * 0.05 });
+      g.circle(x, y, 16).fill({ color: 0x22ff44, alpha: pulse * 0.04 });
+      // Floating leaf particles
+      for (let i = 0; i < 4; i++) {
+        const la = _globalTime * 1.2 + i * 1.5;
+        const lx = x + Math.sin(la) * 18;
+        const ly = y + Math.cos(la * 0.8) * 12;
+        g.ellipse(lx, ly, 1.5, 0.8).fill({ color: 0x44aa22, alpha: 0.3 + 0.15 * Math.sin(la * 2) });
+      }
+      // Healing sparkles rising
+      for (let i = 0; i < 2; i++) {
+        const healT = (_globalTime + i * 0.7) % 2;
+        const hy = y - healT * 15;
+        g.circle(x + Math.sin(_globalTime * 3 + i) * 6, hy, 1)
+          .fill({ color: 0x88ff88, alpha: 0.3 * (1 - healT / 2) });
+      }
     } else if (id.includes("rience") || id.includes("saxon")) {
       this._drawKnightEnemy(g, x, y, s, color, true);
+      // War banner / battle standard effect
+      if (id.includes("rience")) {
+        // Summoner king: orbiting minion silhouettes
+        for (let i = 0; i < 3; i++) {
+          const ma = _globalTime * 1 + i * (Math.PI * 2 / 3);
+          const mx = x + Math.cos(ma) * 25;
+          const my = y + Math.sin(ma) * 15;
+          const mAlpha = 0.15 + 0.08 * Math.sin(ma * 2);
+          g.circle(mx, my, 4).fill({ color, alpha: mAlpha });
+          g.circle(mx, my - 4, 2.5).fill({ color: lighten(color, 0.1), alpha: mAlpha });
+        }
+      } else {
+        // Saxon: berserker rage sparks
+        const ragePulse = 0.2 + 0.1 * Math.sin(_globalTime * 5);
+        for (let i = 0; i < 5; i++) {
+          const sa = _globalTime * 4 + i * 1.2;
+          const sx = x + Math.sin(sa) * 15;
+          const sy = y + Math.cos(sa * 0.8) * 10;
+          g.circle(sx, sy, 1).fill({ color: 0xff4400, alpha: ragePulse });
+        }
+      }
     } else {
-      // Fallback large enemy
-      g.ellipse(x, y, 8 * sc, 10 * sc).fill({ color });
-      g.circle(x, y - 10 * sc, 5 * sc).fill({ color: lighten(color, 0.15) });
-      g.circle(x - 2 * sc, y - 11 * sc, 1.5).fill({ color: 0xff0000 });
-      g.circle(x + 2 * sc, y - 11 * sc, 1.5).fill({ color: 0xff0000 });
+      // Fallback large enemy (more detailed)
+      const breathe = Math.sin(_globalTime * 2) * 0.5;
+      g.ellipse(x, y + breathe, 8 * sc, 10 * sc).fill({ color });
+      // Body highlight
+      g.ellipse(x - 1, y - 2 + breathe, 5 * sc, 6 * sc).fill({ color: lighten(color, 0.08), alpha: 0.3 });
+      // Head
+      g.circle(x, y - 10 * sc + breathe, 5 * sc).fill({ color: lighten(color, 0.15) });
+      // Menacing eyes
+      g.ellipse(x - 2 * sc, y - 11 * sc + breathe, 1.8, 1.2).fill({ color: 0xff0000 });
+      g.ellipse(x + 2 * sc, y - 11 * sc + breathe, 1.8, 1.2).fill({ color: 0xff0000 });
+      g.circle(x - 2 * sc, y - 11 * sc + breathe, 0.6).fill({ color: 0x000000 });
+      g.circle(x + 2 * sc, y - 11 * sc + breathe, 0.6).fill({ color: 0x000000 });
+      // Ominous aura
+      const auraP = 0.3 + 0.15 * Math.sin(_globalTime * 2);
+      g.circle(x, y, 16 * sc).fill({ color, alpha: auraP * 0.05 });
     }
   }
 
@@ -1705,43 +2589,150 @@ export class GameRenderer {
       const alpha = Math.max(0, 1 - progress);
 
       if (d.category === "undead") {
-        // Crumble to dust
-        for (let p = 0; p < 8; p++) {
-          const angle = (p / 8) * Math.PI * 2 + p;
-          const dist = progress * 20;
+        // Crumble to dust + soul escaping upward
+        for (let p = 0; p < 12; p++) {
+          const angle = (p / 12) * Math.PI * 2 + p * 0.3;
+          const dist = progress * 22;
           const px = d.x + Math.cos(angle) * dist;
-          const py = d.y + Math.sin(angle) * dist + progress * 10;
-          g.rect(px - 1, py - 1, 2, 2).fill({ color: 0xccccaa, alpha: alpha * 0.6 });
+          const py = d.y + Math.sin(angle) * dist + progress * 12;
+          const boneSize = 1 + tileHash(p, 0, 33) * 1.5;
+          g.rect(px - boneSize / 2, py - boneSize / 2, boneSize, boneSize)
+            .fill({ color: p % 3 === 0 ? 0xddddbb : 0xccccaa, alpha: alpha * 0.6 });
+        }
+        // Soul wisp rising
+        const soulY = d.y - progress * 30;
+        const soulX = d.x + Math.sin(progress * 6) * 5;
+        g.circle(soulX, soulY, 4 * (1 - progress)).fill({ color: 0x66ff88, alpha: alpha * 0.4 });
+        g.circle(soulX, soulY, 2 * (1 - progress)).fill({ color: 0xaaffcc, alpha: alpha * 0.3 });
+        // Ghostly trail below soul
+        for (let t = 0; t < 3; t++) {
+          const ty = soulY + t * 5;
+          g.circle(soulX + Math.sin(progress * 4 + t) * 2, ty, 2 * (1 - progress) - t * 0.3)
+            .fill({ color: 0x66ff88, alpha: alpha * 0.15 * (1 - t * 0.3) });
         }
       } else if (d.category === "fae") {
-        // Dissolve to sparkles
-        for (let p = 0; p < 10; p++) {
-          const angle = (p / 10) * Math.PI * 2;
-          const dist = progress * 25;
-          const px = d.x + Math.cos(angle + _globalTime) * dist;
-          const py = d.y + Math.sin(angle + _globalTime) * dist - progress * 15;
-          const sparkle = 0.3 + 0.3 * Math.sin(_globalTime * 8 + p);
-          g.circle(px, py, 1.5).fill({ color: 0xffffff, alpha: (alpha * sparkle) });
+        // Dissolve to sparkles + magic burst ring
+        // Expanding magic ring
+        const ringRadius = progress * 30;
+        g.circle(d.x, d.y, ringRadius).stroke({ color: 0xaaffcc, width: 1.5, alpha: alpha * 0.4 });
+        // Sparkle cloud (rising, spreading)
+        for (let p = 0; p < 14; p++) {
+          const angle = (p / 14) * Math.PI * 2;
+          const dist = progress * 28 * (0.5 + tileHash(p, 0, 77) * 0.5);
+          const px = d.x + Math.cos(angle + _globalTime * 1.5) * dist;
+          const py = d.y + Math.sin(angle + _globalTime * 1.5) * dist - progress * 18;
+          const sparkle = 0.4 + 0.4 * Math.sin(_globalTime * 8 + p * 1.3);
+          const sparkColor = p % 3 === 0 ? 0xffddff : p % 3 === 1 ? 0xddffdd : 0xffffff;
+          g.circle(px, py, 1.8 - progress).fill({ color: sparkColor, alpha: alpha * sparkle });
+        }
+        // Central implosion flash
+        if (progress < 0.3) {
+          const flashAlpha = (0.3 - progress) / 0.3;
+          g.circle(d.x, d.y, 8 * (1 - progress * 3)).fill({ color: 0xffffff, alpha: flashAlpha * 0.5 });
         }
       } else if (d.category === "beast") {
-        // Blood splatter
-        for (let p = 0; p < 6; p++) {
-          const angle = (p / 6) * Math.PI * 2 + p * 0.5;
-          const dist = progress * 15 * (0.5 + tileHash(p, 0, 99) * 0.5);
+        // Blood splatter + bone fragments
+        for (let p = 0; p < 10; p++) {
+          const angle = (p / 10) * Math.PI * 2 + p * 0.4;
+          const speed = 0.5 + tileHash(p, 0, 99) * 0.5;
+          const dist = progress * 18 * speed;
           const px = d.x + Math.cos(angle) * dist;
-          const py = d.y + Math.sin(angle) * dist;
-          g.circle(px, py, 2 + tileHash(p, 1, 99) * 2).fill({ color: 0x880000, alpha: alpha * 0.6 });
+          const py = d.y + Math.sin(angle) * dist + progress * progress * 15; // gravity
+          const size = 1.5 + tileHash(p, 1, 99) * 2;
+          const bloodColor = p % 2 === 0 ? 0x880000 : 0xaa1111;
+          g.circle(px, py, size).fill({ color: bloodColor, alpha: alpha * 0.6 });
         }
+        // Ground blood pool (expanding)
+        g.ellipse(d.x, d.y + 6, progress * 12, progress * 4).fill({ color: 0x550000, alpha: alpha * 0.35 });
+        // Fur tufts
+        for (let p = 0; p < 4; p++) {
+          const angle = (p / 4) * Math.PI * 2 + 0.5;
+          const dist = progress * 12;
+          const fx = d.x + Math.cos(angle) * dist;
+          const fy = d.y + Math.sin(angle) * dist - progress * 5 + progress * progress * 15;
+          g.rect(fx - 1, fy - 1.5, 2, 3).fill({ color: 0x886644, alpha: alpha * 0.4 });
+        }
+      } else if (d.category === "demon") {
+        // Hellfire explosion + dark smoke
+        const burstRadius = progress * 30;
+        // Fire burst
+        g.circle(d.x, d.y, burstRadius).fill({ color: 0xff4400, alpha: alpha * 0.15 });
+        g.circle(d.x, d.y, burstRadius * 0.6).fill({ color: 0xff8800, alpha: alpha * 0.2 });
+        // Flame tongues
+        for (let p = 0; p < 8; p++) {
+          const angle = (p / 8) * Math.PI * 2 + progress * 2;
+          const dist = burstRadius * (0.5 + 0.5 * Math.sin(angle * 3));
+          const fx = d.x + Math.cos(angle) * dist;
+          const fy = d.y + Math.sin(angle) * dist;
+          const flameColor = p % 2 === 0 ? 0xff6600 : 0xff2200;
+          g.circle(fx, fy, 2.5 * (1 - progress)).fill({ color: flameColor, alpha: alpha * 0.5 });
+        }
+        // Dark smoke rising
+        for (let p = 0; p < 4; p++) {
+          const smokeT = progress + p * 0.15;
+          if (smokeT < 1) {
+            const sx = d.x + Math.sin(smokeT * 5 + p) * 8;
+            const sy = d.y - smokeT * 25;
+            g.circle(sx, sy, 3 + smokeT * 3).fill({ color: 0x222222, alpha: (1 - smokeT) * 0.2 });
+          }
+        }
+      } else if (d.category === "knight") {
+        // Armor shattering — metal fragments flying
+        for (let p = 0; p < 10; p++) {
+          const angle = (p / 10) * Math.PI * 2 + p * 0.7;
+          const speed = 0.4 + tileHash(p, 0, 55) * 0.6;
+          const dist = progress * 22 * speed;
+          const px = d.x + Math.cos(angle) * dist;
+          const py = d.y + Math.sin(angle) * dist + progress * progress * 10;
+          const fragSize = 1.5 + tileHash(p, 1, 55) * 2;
+          const metalColor = p % 3 === 0 ? 0x999999 : p % 3 === 1 ? 0x777777 : 0xaaaaaa;
+          g.rect(px - fragSize / 2, py - fragSize / 2, fragSize, fragSize * 0.6)
+            .fill({ color: metalColor, alpha: alpha * 0.7 });
+        }
+        // Metal sparks
+        for (let p = 0; p < 5; p++) {
+          const sa = progress * 8 + p * 1.5;
+          const sx = d.x + Math.sin(sa) * progress * 15;
+          const sy = d.y + Math.cos(sa * 0.7) * progress * 10 - progress * 8;
+          g.circle(sx, sy, 0.8).fill({ color: 0xffffaa, alpha: alpha * 0.6 });
+        }
+        // Impact flash
+        if (progress < 0.2) {
+          g.circle(d.x, d.y, 10 * (1 - progress * 5)).fill({ color: 0xffffff, alpha: (0.2 - progress) * 3 });
+        }
+      } else if (d.category === "elemental") {
+        // Elemental dissipation — energy scattering
+        const dissRadius = progress * 28;
+        // Energy ring
+        g.circle(d.x, d.y, dissRadius).stroke({ color: 0x88aaff, width: 2, alpha: alpha * 0.5 });
+        g.circle(d.x, d.y, dissRadius * 0.5).stroke({ color: 0xaaccff, width: 1, alpha: alpha * 0.3 });
+        // Crystal shards / energy fragments
+        for (let p = 0; p < 8; p++) {
+          const angle = (p / 8) * Math.PI * 2;
+          const dist = dissRadius * (0.3 + 0.7 * tileHash(p, 0, 44));
+          const px = d.x + Math.cos(angle + progress) * dist;
+          const py = d.y + Math.sin(angle + progress) * dist;
+          g.moveTo(px, py - 2).lineTo(px + 1.5, py).lineTo(px, py + 2).lineTo(px - 1.5, py)
+            .closePath().fill({ color: 0xaaddff, alpha: alpha * 0.5 });
+        }
+        // Central energy burst
+        g.circle(d.x, d.y, 5 * (1 - progress)).fill({ color: 0xffffff, alpha: alpha * 0.4 });
       } else {
-        // Default: expanding ring
-        const radius = progress * 25;
+        // Default: expanding ring + shrapnel particles
+        const radius = progress * 28;
         g.circle(d.x, d.y, radius).stroke({ color: 0xff4444, width: 2, alpha });
-        // Inner particles
-        for (let p = 0; p < 6; p++) {
-          const angle = (p / 6) * Math.PI * 2;
-          const px = d.x + Math.cos(angle) * radius * 0.7;
-          const py = d.y + Math.sin(angle) * radius * 0.7;
-          g.circle(px, py, 1.5).fill({ color: 0xff8844, alpha: alpha * 0.5 });
+        g.circle(d.x, d.y, radius * 0.7).stroke({ color: 0xff6644, width: 1, alpha: alpha * 0.5 });
+        // Scattered particles with gravity
+        for (let p = 0; p < 8; p++) {
+          const angle = (p / 8) * Math.PI * 2 + p * 0.3;
+          const dist = radius * 0.8 * (0.5 + tileHash(p, 0, 22) * 0.5);
+          const px = d.x + Math.cos(angle) * dist;
+          const py = d.y + Math.sin(angle) * dist + progress * progress * 8;
+          g.circle(px, py, 1.5 * (1 - progress * 0.5)).fill({ color: 0xff8844, alpha: alpha * 0.5 });
+        }
+        // Central flash
+        if (progress < 0.15) {
+          g.circle(d.x, d.y, 8 * (1 - progress * 6)).fill({ color: 0xffffff, alpha: (0.15 - progress) * 5 });
         }
       }
 
@@ -1869,6 +2860,24 @@ export class GameRenderer {
   // -------------------------------------------------------------------------
   // ABILITY VFX — per-knight visual effects
   // -------------------------------------------------------------------------
+  private _drawDashTrail(state: GrailGameState): void {
+    if (state.dashTimer <= 0) return;
+    const g = this._fxGfx;
+    const p = state.player;
+    const trailLen = 4;
+    const alpha = state.dashTimer / 0.12; // fade with dash duration
+
+    for (let i = 1; i <= trailLen; i++) {
+      const t = i / trailLen;
+      const tx = p.x - state.dashDx * i * 8;
+      const ty = p.y - state.dashDy * i * 8;
+      const a = alpha * (1 - t) * 0.5;
+      g.circle(tx, ty, 6 - t * 2).fill({ color: 0x44ccff, alpha: a });
+    }
+    // Dash flash on player
+    g.circle(p.x, p.y, 10).fill({ color: 0x88eeff, alpha: alpha * 0.3 });
+  }
+
   private _drawAbilityVFX(state: GrailGameState): void {
     const vfx = state.activeAbilityVfx;
     if (!vfx) return;
@@ -2134,6 +3143,40 @@ export class GameRenderer {
       const bubble2 = Math.cos(_globalTime * 3 + trail.row * 5) * 0.5 + 0.5;
       g.circle(px + 8 + bubble1 * 16, py + 10 + bubble2 * 12, 2).fill({ color: 0x44ff44, alpha: fadeAlpha * 0.8 });
       g.circle(px + 20 - bubble2 * 10, py + 6 + bubble1 * 18, 1.5).fill({ color: 0x66ff66, alpha: fadeAlpha * 0.6 });
+    }
+
+    // Burning trails — orange/red fire effect
+    for (const trail of state.floor.burningTrails) {
+      const px = trail.col * TS;
+      const py = trail.row * TS;
+      const fadeAlpha = Math.min(1, trail.timer / 2) * 0.4;
+      // Fire base
+      g.rect(px + 2, py + 2, TS - 4, TS - 4).fill({ color: 0xff4400, alpha: fadeAlpha * 0.5 });
+      // Flickering flames
+      const flicker1 = Math.sin(_globalTime * 8 + trail.col * 5) * 0.5 + 0.5;
+      const flicker2 = Math.cos(_globalTime * 6 + trail.row * 7) * 0.5 + 0.5;
+      g.circle(px + 6 + flicker1 * 20, py + 4 + flicker2 * 14, 3).fill({ color: 0xff8800, alpha: fadeAlpha * 0.7 });
+      g.circle(px + 16 - flicker2 * 12, py + 8 + flicker1 * 16, 2.5).fill({ color: 0xffcc00, alpha: fadeAlpha * 0.5 });
+      g.circle(px + 12, py + TS / 2 - flicker1 * 8, 2).fill({ color: 0xff2200, alpha: fadeAlpha * 0.6 });
+    }
+
+    // Reanimation spots — glowing green circles where undead will rise
+    for (const entry of state.floor.reanimationQueue) {
+      const rx = entry.x;
+      const ry = entry.y;
+      const progress = 1 - Math.max(0, entry.timer / 10); // 0..1 as timer counts down
+      const pulseAlpha = 0.1 + progress * 0.3 + Math.sin(_globalTime * 4) * 0.05;
+      const radius = 8 + progress * 10;
+      // Ominous green glow
+      g.circle(rx, ry, radius).fill({ color: 0x00ff44, alpha: pulseAlpha * 0.3 });
+      g.circle(rx, ry, radius * 0.6).fill({ color: 0x44ff88, alpha: pulseAlpha * 0.5 });
+      // Rising bone particles
+      if (progress > 0.5) {
+        const boneY = ry - (progress - 0.5) * 20;
+        g.circle(rx - 4, boneY, 1.5).fill({ color: 0xccccaa, alpha: pulseAlpha });
+        g.circle(rx + 4, boneY - 3, 1.5).fill({ color: 0xccccaa, alpha: pulseAlpha * 0.8 });
+        g.circle(rx, boneY - 6, 1).fill({ color: 0xddddbb, alpha: pulseAlpha * 0.6 });
+      }
     }
   }
 

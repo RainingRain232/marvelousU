@@ -199,6 +199,14 @@ export interface GrailGameState {
   activeAbilityVfx: { knightId: string; timer: number; x: number; y: number } | null;
   // Ice slide
   iceSlideDir: { dx: number; dy: number } | null;
+  // Dash
+  dashTimer: number;           // seconds remaining in dash (0 = not dashing)
+  dashCooldown: number;        // seconds until dash available again
+  dashDx: number;              // dash direction x
+  dashDy: number;              // dash direction y
+  // Kill streak
+  killStreakCount: number;     // consecutive kills within time window
+  killStreakTimer: number;     // seconds remaining before streak resets
 }
 
 // ---------------------------------------------------------------------------
@@ -227,6 +235,12 @@ export function createGrailGameState(): GrailGameState {
     shopSellMode: false,
     activeAbilityVfx: null,
     iceSlideDir: null,
+    dashTimer: 0,
+    dashCooldown: 0,
+    dashDx: 0,
+    dashDy: 0,
+    killStreakCount: 0,
+    killStreakTimer: 0,
   };
 }
 
@@ -285,7 +299,82 @@ function createEmptyFloor(): FloorState {
 // ---------------------------------------------------------------------------
 
 const META_KEY = "grailquest_unlocks";
+const STATS_KEY = "grailquest_stats";
 const DEFAULT_UNLOCKED = ["arthur", "lancelot", "gawain", "percival"];
+
+export interface RunStats {
+  totalRuns: number;
+  totalVictories: number;
+  totalDeaths: number;
+  totalKillsAllTime: number;
+  totalGoldAllTime: number;
+  bestFloor: number;
+  bossesDefeated: string[];       // unique boss ids
+  fastestVictoryMs: number;       // ms for fastest winning run
+  highestLevel: number;
+  knightsUsed: Record<string, number>;   // knight id → times used
+  relicsFound: string[];          // unique relic ids found
+  genresCompleted: string[];      // unique genre ids completed
+}
+
+export function loadRunStats(): RunStats {
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return {
+    totalRuns: 0, totalVictories: 0, totalDeaths: 0,
+    totalKillsAllTime: 0, totalGoldAllTime: 0,
+    bestFloor: 0, bossesDefeated: [],
+    fastestVictoryMs: Infinity, highestLevel: 1,
+    knightsUsed: {}, relicsFound: [], genresCompleted: [],
+  };
+}
+
+export function saveRunStats(stats: RunStats): void {
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+  } catch { /* ignore */ }
+}
+
+export function updateRunStatsOnEnd(state: GrailGameState, victory: boolean): void {
+  const stats = loadRunStats();
+  stats.totalRuns++;
+  if (victory) stats.totalVictories++;
+  else stats.totalDeaths++;
+
+  stats.totalKillsAllTime += state.totalKills;
+  stats.totalGoldAllTime += state.totalGold;
+  stats.bestFloor = Math.max(stats.bestFloor, state.currentFloor + 1);
+  stats.highestLevel = Math.max(stats.highestLevel, state.player.level);
+
+  // Track knight usage
+  const knightId = state.player.knightDef.id;
+  stats.knightsUsed[knightId] = (stats.knightsUsed[knightId] || 0) + 1;
+
+  // Track unique bosses defeated
+  for (const bossId of state.killedBosses) {
+    if (!stats.bossesDefeated.includes(bossId)) stats.bossesDefeated.push(bossId);
+  }
+
+  // Track relics found
+  for (const relicId of state.foundRelics) {
+    if (!stats.relicsFound.includes(relicId)) stats.relicsFound.push(relicId);
+  }
+
+  // Track genre completion
+  if (victory && state.genre && !stats.genresCompleted.includes(state.genre.id)) {
+    stats.genresCompleted.push(state.genre.id);
+  }
+
+  // Fastest victory
+  if (victory) {
+    const elapsed = Date.now() - state.startTime;
+    if (elapsed < stats.fastestVictoryMs) stats.fastestVictoryMs = elapsed;
+  }
+
+  saveRunStats(stats);
+}
 
 export function loadUnlockedKnights(): string[] {
   try {
