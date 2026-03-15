@@ -1202,10 +1202,6 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
       skills = [
         SkillId.CLEAVE,
         SkillId.SHIELD_BASH,
-        SkillId.WHIRLWIND,
-        SkillId.BATTLE_CRY,
-        SkillId.GROUND_SLAM,
-        SkillId.BLADE_FURY,
       ];
       break;
 
@@ -1224,10 +1220,6 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
       skills = [
         SkillId.FIREBALL,
         SkillId.ICE_NOVA,
-        SkillId.LIGHTNING_BOLT,
-        SkillId.METEOR,
-        SkillId.ARCANE_SHIELD,
-        SkillId.CHAIN_LIGHTNING,
       ];
       break;
 
@@ -1245,11 +1237,7 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
       critDamage = 1.7;
       skills = [
         SkillId.MULTI_SHOT,
-        SkillId.RAIN_OF_ARROWS,
         SkillId.POISON_ARROW,
-        SkillId.EVASIVE_ROLL,
-        SkillId.EXPLOSIVE_TRAP,
-        SkillId.PIERCING_SHOT,
       ];
       break;
   }

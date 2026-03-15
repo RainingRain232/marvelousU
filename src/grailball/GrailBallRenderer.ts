@@ -1045,47 +1045,143 @@ export class GrailBallRenderer {
     const sec = new THREE.Color(team.secondaryColor);
     const armorMat = this._makeArmorMat(0x999999);
     const darkArmor = this._makeArmorMat(0x777777);
+    const wornArmor = this._makeArmorMat(0x6a6a6a); // battle-worn darker patches
+    const chainmailMat = new THREE.MeshPhysicalMaterial({ color: 0xaaaaaa, metalness: 0.85, roughness: 0.45, wireframe: true });
     const tabardMat = new THREE.MeshPhysicalMaterial({ color: pri, roughness: 0.55, metalness: 0.05 });
     const skinMat = new THREE.MeshPhysicalMaterial({ color: 0xddbb99, roughness: 0.65 });
     const bootMat = new THREE.MeshPhysicalMaterial({ color: 0x553322, roughness: 0.75, metalness: 0.15 });
+    const beltMat = new THREE.MeshPhysicalMaterial({ color: 0x442200, roughness: 0.75, metalness: 0.2 });
+    const rivetMat = new THREE.MeshPhysicalMaterial({ color: 0xbbbbbb, metalness: 0.95, roughness: 0.2 });
+    const soleMat = new THREE.MeshPhysicalMaterial({ color: 0x332211, roughness: 0.9, metalness: 0.05 });
+    // Boots with soles
     const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.45), bootMat);
     leftBoot.position.set(-0.18, 0.2, 0.05); leftBoot.name = "leftFoot"; group.add(leftBoot);
     const rightBoot = leftBoot.clone(); rightBoot.position.x = 0.18; rightBoot.name = "rightFoot"; group.add(rightBoot);
+    // Boot soles
+    group.add(meshAt(new THREE.BoxGeometry(0.32, 0.04, 0.47), soleMat, -0.18, 0.0, 0.05));
+    group.add(meshAt(new THREE.BoxGeometry(0.32, 0.04, 0.47), soleMat, 0.18, 0.0, 0.05));
+    // Greaves (shin armor)
     const leftGreave = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.5, 8), armorMat);
     leftGreave.position.set(-0.18, 0.65, 0); leftGreave.name = "leftShin"; group.add(leftGreave);
     const rightGreave = leftGreave.clone(); rightGreave.position.x = 0.18; rightGreave.name = "rightShin"; group.add(rightGreave);
+    // Knee guards with rivets
     for (const xp of [-0.18, 0.18]) {
       const knee = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), darkArmor);
       knee.position.set(xp, 0.9, 0.08); group.add(knee);
+      // Knee guard plate
+      const kneeGuard = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.12), wornArmor);
+      kneeGuard.position.set(xp, 0.9, 0.14); group.add(kneeGuard);
+      // Knee rivet
+      group.add(meshAt(new THREE.SphereGeometry(0.015, 4, 4), rivetMat, xp, 0.9, 0.2));
     }
+    // Chainmail visible at knee joints
+    for (const xp of [-0.18, 0.18]) {
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.12, 6), chainmailMat);
+      chain.position.set(xp, 0.85, 0); group.add(chain);
+    }
+    // Thighs
     const leftThigh = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.45, 8), armorMat);
     leftThigh.position.set(-0.16, 1.15, 0); leftThigh.name = "leftThigh"; group.add(leftThigh);
     const rightThigh = leftThigh.clone(); rightThigh.position.x = 0.16; rightThigh.name = "rightThigh"; group.add(rightThigh);
-    group.add(meshAt(new THREE.CylinderGeometry(0.22, 0.2, 0.15, 8), new THREE.MeshPhysicalMaterial({ color: 0x442200, roughness: 0.75, metalness: 0.2 }), 0, 1.38, 0));
+    // Belt with buckle
+    group.add(meshAt(new THREE.CylinderGeometry(0.22, 0.2, 0.15, 8), beltMat, 0, 1.38, 0));
+    // Belt buckle
+    group.add(meshAt(new THREE.BoxGeometry(0.1, 0.1, 0.04), rivetMat, 0, 1.38, 0.12));
+    group.add(meshAt(new THREE.TorusGeometry(0.04, 0.01, 4, 6), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.8, roughness: 0.25 }), 0, 1.38, 0.14));
+    // Torso with muscle definition
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.6, 0.35), armorMat);
     torso.position.y = 1.7; torso.name = "torso"; group.add(torso);
+    // Chest plate ridge (muscle groups)
+    group.add(meshAt(new THREE.BoxGeometry(0.04, 0.4, 0.02), wornArmor, 0, 1.72, 0.19));
+    group.add(meshAt(new THREE.BoxGeometry(0.18, 0.04, 0.02), wornArmor, -0.1, 1.62, 0.19));
+    group.add(meshAt(new THREE.BoxGeometry(0.18, 0.04, 0.02), wornArmor, 0.1, 1.62, 0.19));
+    // Scar / battle-worn marking on chest
+    group.add(meshAt(new THREE.BoxGeometry(0.2, 0.02, 0.01), new THREE.MeshPhysicalMaterial({ color: 0x555555, metalness: 0.7, roughness: 0.5 }), 0.05, 1.75, 0.19));
+    // Tabard front/back
     const tabF = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.55, 0.01), tabardMat);
     tabF.position.set(0, 1.7, 0.19); group.add(tabF);
     const tabB = tabF.clone(); tabB.position.z = -0.19; group.add(tabB);
+    // Shoulder plates with rivets
     for (const xp of [-0.38, 0.38]) {
       const p = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 6), darkArmor);
       p.scale.set(1.3, 0.8, 1); p.position.set(xp, 1.95, 0); group.add(p);
+      // Rivets on shoulder plates
+      for (let ri = 0; ri < 3; ri++) {
+        const angle = (ri / 3) * Math.PI - Math.PI * 0.3;
+        group.add(meshAt(new THREE.SphereGeometry(0.018, 4, 4), rivetMat,
+          xp + Math.cos(angle) * 0.12, 1.95 + Math.sin(angle) * 0.06, 0.08));
+      }
+      // Shoulder battle-worn patch
+      group.add(meshAt(new THREE.SphereGeometry(0.04, 4, 4), wornArmor, xp, 1.98, 0.06));
     }
+    // Upper arms and forearms
     for (const xp of [-0.4, 0.4]) {
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.35, 8), armorMat);
       arm.position.set(xp, 1.72, 0); arm.name = xp < 0 ? "leftUpperArm" : "rightUpperArm"; group.add(arm);
+      // Chainmail at elbow joint
+      group.add(meshAt(new THREE.CylinderGeometry(0.065, 0.065, 0.08, 5), chainmailMat, xp, 1.55, 0));
+      // Forearm (separate from gauntlet)
+      const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.2, 6), armorMat);
+      forearm.position.set(xp * 1.02, 1.5, 0); group.add(forearm);
+      // Gauntlet with finger details
       const gaunt = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.3, 0.13), darkArmor);
       gaunt.position.set(xp * 1.05, 1.42, 0); gaunt.name = xp < 0 ? "leftHand" : "rightHand"; group.add(gaunt);
+      // Finger ridges
+      for (let f = 0; f < 3; f++) {
+        group.add(meshAt(new THREE.BoxGeometry(0.03, 0.06, 0.14), wornArmor,
+          xp * 1.05 + (f - 1) * 0.035, 1.3, 0));
+      }
     }
+    // Neck
     group.add(meshAt(new THREE.CylinderGeometry(0.1, 0.12, 0.15, 6), skinMat, 0, 2.07, 0));
+    // Chainmail gorget at neck
+    group.add(meshAt(new THREE.CylinderGeometry(0.13, 0.14, 0.06, 6), chainmailMat, 0, 2.02, 0));
+    // Helm
     const helm = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.4, 0.34), darkArmor);
     helm.position.y = 2.35; helm.name = "head"; group.add(helm);
+    // Visor slit
     group.add(meshAt(new THREE.BoxGeometry(0.29, 0.04, 0.01), new THREE.MeshBasicMaterial({ color: 0x111111 }), 0, 2.35, 0.18));
+    // Mouth slit (narrow)
+    group.add(meshAt(new THREE.BoxGeometry(0.12, 0.02, 0.01), new THREE.MeshBasicMaterial({ color: 0x0a0a0a }), 0, 2.25, 0.18));
+    // Visor breaths (small holes)
+    for (let i = 0; i < 5; i++) {
+      group.add(meshAt(new THREE.CircleGeometry(0.008, 4), new THREE.MeshBasicMaterial({ color: 0x0a0a0a }), (i - 2) * 0.03, 2.22, 0.18));
+    }
+    // Helmet plume (red/team color feather)
+    const plumeMat = new THREE.MeshPhysicalMaterial({ color: pri, roughness: 0.7, metalness: 0.05 });
+    // Plume base crest
     group.add(meshAt(new THREE.BoxGeometry(0.04, 0.22, 0.28), new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.45, metalness: 0.2 }), 0, 2.6, 0));
+    // Plume feathers — multiple overlapping curved shapes
+    for (let i = 0; i < 5; i++) {
+      const feather = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.08 + i * 0.03, 0.06), plumeMat);
+      feather.position.set(0, 2.58 + i * 0.04, -0.06 + i * 0.04);
+      feather.rotation.x = -0.3 - i * 0.08;
+      group.add(feather);
+    }
+    // Plume tip
+    group.add(meshAt(new THREE.ConeGeometry(0.03, 0.12, 4), plumeMat, 0, 2.8, 0.15));
+    // Sword with crossguard and pommel
+    // Blade
+    const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.55, 0.02), armorMat);
+    swordBlade.position.set(0.55, 1.5, 0.15); group.add(swordBlade);
+    // Crossguard
+    group.add(meshAt(new THREE.BoxGeometry(0.18, 0.04, 0.04), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.3 }), 0.55, 1.26, 0.15));
+    // Grip
+    group.add(meshAt(new THREE.CylinderGeometry(0.025, 0.025, 0.15, 6), new THREE.MeshPhysicalMaterial({ color: 0x442200, roughness: 0.8 }), 0.55, 1.16, 0.15));
+    // Pommel
+    group.add(meshAt(new THREE.SphereGeometry(0.04, 6, 4), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.3 }), 0.55, 1.07, 0.15));
+    // Shield
     const shield = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 0.35),
       new THREE.MeshPhysicalMaterial({ color: sec, metalness: 0.4, roughness: 0.45, clearcoat: 0.3 }));
     shield.position.set(-0.55, 1.6, 0); shield.name = "shield"; group.add(shield);
     group.add(meshAt(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshPhysicalMaterial({ color: pri, metalness: 0.6, roughness: 0.3 }), -0.58, 1.6, 0));
+    // Shield rivets along edge
+    for (let i = 0; i < 6; i++) {
+      const ry = 1.38 + i * 0.08;
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat, -0.58, ry, 0.15));
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat, -0.58, ry, -0.15));
+    }
+    // Cape
     const cape = new THREE.Mesh(
       new THREE.PlaneGeometry(0.5, 0.7, 6, 8),
       new THREE.MeshPhysicalMaterial({ color: pri, side: THREE.DoubleSide, roughness: 0.55 }),
@@ -1099,52 +1195,127 @@ export class GrailBallRenderer {
     const sec = new THREE.Color(team.secondaryColor);
     const leather = new THREE.MeshPhysicalMaterial({ color: 0x6b4226, roughness: 0.7, metalness: 0.1 });
     const darkLeather = new THREE.MeshPhysicalMaterial({ color: 0x3d2b1f, roughness: 0.75, metalness: 0.1 });
+    const wornLeather = new THREE.MeshPhysicalMaterial({ color: 0x4a3320, roughness: 0.8, metalness: 0.05 });
     const clothMat = new THREE.MeshPhysicalMaterial({ color: pri, roughness: 0.6 });
     const skinMat = new THREE.MeshPhysicalMaterial({ color: 0xddbb99, roughness: 0.65 });
     const metalMat = this._makeArmorMat(0x999999);
+    const buckleMat = new THREE.MeshPhysicalMaterial({ color: 0xbbaa55, metalness: 0.7, roughness: 0.3 });
+    const wrappingMat = new THREE.MeshPhysicalMaterial({ color: 0x887766, roughness: 0.85, metalness: 0.0 });
+    const soleMat = new THREE.MeshPhysicalMaterial({ color: 0x2a1a0a, roughness: 0.9 });
+    // Boots with soles
     const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.35, 0.4), darkLeather);
     leftBoot.position.set(-0.14, 0.18, 0.03); leftBoot.name = "leftFoot"; group.add(leftBoot);
     const rightBoot = leftBoot.clone(); rightBoot.position.x = 0.14; rightBoot.name = "rightFoot"; group.add(rightBoot);
+    // Boot soles
+    group.add(meshAt(new THREE.BoxGeometry(0.24, 0.03, 0.42), soleMat, -0.14, 0.01, 0.03));
+    group.add(meshAt(new THREE.BoxGeometry(0.24, 0.03, 0.42), soleMat, 0.14, 0.01, 0.03));
+    // Boot buckles
+    for (const xp of [-0.14, 0.14]) {
+      group.add(meshAt(new THREE.TorusGeometry(0.025, 0.006, 4, 6), buckleMat, xp, 0.28, 0.22));
+      group.add(meshAt(new THREE.BoxGeometry(0.06, 0.02, 0.01), darkLeather, xp, 0.28, 0.23));
+    }
+    // Shins
     for (const [xp, nm] of [[-0.14, "leftShin"], [0.14, "rightShin"]] as const) {
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.9, 6), leather);
       leg.position.set(xp, 0.8, 0); leg.name = nm; group.add(leg);
     }
+    // Thighs
     for (const [xp, nm] of [[-0.13, "leftThigh"], [0.13, "rightThigh"]] as const) {
       const t = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.35, 6), leather);
       t.position.set(xp, 1.15, 0); t.name = nm; group.add(t);
     }
+    // Belt with pouches
     group.add(meshAt(new THREE.CylinderGeometry(0.17, 0.16, 0.1, 8), darkLeather, 0, 1.35, 0));
+    // Belt buckle
+    group.add(meshAt(new THREE.TorusGeometry(0.03, 0.008, 4, 6), buckleMat, 0, 1.35, 0.17));
+    // Belt pouches (small boxes)
+    group.add(meshAt(new THREE.BoxGeometry(0.08, 0.08, 0.06), wornLeather, 0.15, 1.35, 0.1));
+    group.add(meshAt(new THREE.BoxGeometry(0.06, 0.06, 0.05), wornLeather, -0.15, 1.35, 0.08));
+    group.add(meshAt(new THREE.BoxGeometry(0.07, 0.07, 0.05), darkLeather, 0.18, 1.35, -0.06));
+    // Pouch flaps
+    group.add(meshAt(new THREE.BoxGeometry(0.09, 0.015, 0.065), darkLeather, 0.15, 1.39, 0.1));
+    group.add(meshAt(new THREE.BoxGeometry(0.07, 0.015, 0.055), darkLeather, -0.15, 1.38, 0.08));
+    // Side knife pouch
     group.add(meshAt(new THREE.BoxGeometry(0.1, 0.1, 0.08), darkLeather, 0.18, 1.35, 0.05));
+    // Torso
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.5, 0.28), leather);
     torso.position.y = 1.62; torso.name = "torso"; group.add(torso);
+    // Chest strap
     const strap = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.01), darkLeather);
     strap.position.set(0.05, 1.65, 0.15); strap.rotation.z = 0.3; group.add(strap);
+    // Cross strap
+    const strap2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.01), darkLeather);
+    strap2.position.set(-0.05, 1.65, 0.15); strap2.rotation.z = -0.3; group.add(strap2);
+    // Strap buckle at intersection
+    group.add(meshAt(new THREE.SphereGeometry(0.025, 4, 4), buckleMat, 0, 1.65, 0.16));
+    // Battle-worn scar on torso
+    group.add(meshAt(new THREE.BoxGeometry(0.15, 0.015, 0.01), new THREE.MeshPhysicalMaterial({ color: 0x4a3320, roughness: 0.9 }), -0.05, 1.7, 0.15));
+    // Shoulders
     for (const xp of [-0.28, 0.28]) {
       group.add(meshAt(new THREE.BoxGeometry(0.18, 0.06, 0.18), leather, xp, 1.88, 0));
     }
+    // Arms with forearm wrappings
     for (const [xp, armNm, handNm] of [[-0.3, "leftUpperArm", "leftHand"], [0.3, "rightUpperArm", "rightHand"]] as const) {
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.55, 6), leather);
       arm.position.set(xp, 1.55, 0); arm.name = armNm; group.add(arm);
+      // Forearm wrappings (multiple thin bands)
+      for (let w = 0; w < 4; w++) {
+        const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.01, 4, 8), wrappingMat);
+        wrap.position.set(xp, 1.35 + w * 0.06, 0);
+        wrap.rotation.x = Math.PI / 2;
+        group.add(wrap);
+      }
       const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08), darkLeather);
       hand.position.set(xp, 1.22, 0); hand.name = handNm; group.add(hand);
     }
+    // Neck
     group.add(meshAt(new THREE.CylinderGeometry(0.07, 0.08, 0.12, 6), skinMat, 0, 1.93, 0));
+    // Head
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), skinMat);
     head.position.y = 2.15; head.name = "head"; group.add(head);
+    // Hood with more folded-cloth geometry
     const hood = new THREE.Mesh(
       new THREE.SphereGeometry(0.24, 10, 8, 0, TAU, 0, Math.PI * 0.6), clothMat,
     );
     hood.position.y = 2.18; hood.rotation.x = -0.2; group.add(hood);
+    // Hood fold layers — overlapping cloth strips
+    for (let i = 0; i < 3; i++) {
+      const fold = new THREE.Mesh(
+        new THREE.SphereGeometry(0.25 + i * 0.01, 8, 4, 0, TAU, Math.PI * 0.15, Math.PI * 0.08),
+        new THREE.MeshPhysicalMaterial({ color: pri.clone().multiplyScalar(0.85 + i * 0.05), roughness: 0.65, side: THREE.DoubleSide }),
+      );
+      fold.position.set(0, 2.16 - i * 0.03, -0.02 + i * 0.01);
+      fold.rotation.x = -0.25 - i * 0.08;
+      group.add(fold);
+    }
+    // Hood drape at back
     { const _cape = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.3),
       new THREE.MeshPhysicalMaterial({ color: pri, side: THREE.DoubleSide, roughness: 0.6 }));
       _cape.position.set(0, 2.0, -0.15); _cape.rotation.set(0.3, 0, 0); group.add(_cape); }
+    // Eyes
     for (const xOff of [-0.06, 0.06])
       group.add(meshAt(new THREE.SphereGeometry(0.02, 4, 4), new THREE.MeshBasicMaterial({ color: 0x222222 }), xOff, 2.17, 0.16));
+    // Dual daggers with more detail
     for (const side of [-1, 1]) {
+      // Blade
       const blade = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.22, 0.02), metalMat);
       blade.position.set(side * 0.2, 1.2, -0.1); blade.rotation.z = side * 0.2; group.add(blade);
-      group.add(meshAt(new THREE.CylinderGeometry(0.02, 0.02, 0.08, 4), darkLeather, side * 0.2, 1.32, -0.1));
+      // Blade edge highlight
+      group.add(meshAt(new THREE.BoxGeometry(0.005, 0.2, 0.02), new THREE.MeshPhysicalMaterial({ color: 0xcccccc, metalness: 0.95, roughness: 0.15 }),
+        side * 0.2 + side * 0.015, 1.2, -0.1));
+      // Crossguard
+      group.add(meshAt(new THREE.BoxGeometry(0.08, 0.025, 0.03), buckleMat, side * 0.2, 1.32, -0.1));
+      // Wrapped handle
+      group.add(meshAt(new THREE.CylinderGeometry(0.02, 0.02, 0.08, 4), darkLeather, side * 0.2, 1.36, -0.1));
+      // Handle wrapping strips
+      for (let w = 0; w < 3; w++) {
+        group.add(meshAt(new THREE.TorusGeometry(0.022, 0.004, 3, 4), wrappingMat,
+          side * 0.2, 1.34 + w * 0.025, -0.1));
+      }
+      // Pommel
+      group.add(meshAt(new THREE.SphereGeometry(0.02, 4, 4), buckleMat, side * 0.2, 1.41, -0.1));
     }
+    // Cloak
     const cloak = new THREE.Mesh(
       new THREE.PlaneGeometry(0.55, 0.9, 6, 8),
       new THREE.MeshPhysicalMaterial({ color: sec, side: THREE.DoubleSide, roughness: 0.6 }),
@@ -1161,33 +1332,66 @@ export class GrailBallRenderer {
     const innerRobe = new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.6 });
     const skinMat = new THREE.MeshPhysicalMaterial({ color: 0xddbb99, roughness: 0.65 });
     const glowMat = this._makeMagicMat(acc);
+    const robeEdgeMat = new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.5, metalness: 0.15 });
+    // Feet
     const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.35), new THREE.MeshPhysicalMaterial({ color: 0x664433, roughness: 0.8 }));
     leftFoot.position.set(-0.12, 0.05, 0.03); leftFoot.name = "leftFoot"; group.add(leftFoot);
     const rightFoot = leftFoot.clone(); rightFoot.position.x = 0.12; rightFoot.name = "rightFoot"; group.add(rightFoot);
+    // Robe body
     const robeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.35, 1.5, 8), robeMat);
     robeBody.position.y = 0.8; robeBody.name = "torso"; group.add(robeBody);
+    // Rune markings on robe (emissive patches)
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * TAU;
+      const runeGlow = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.06, 0.06),
+        new THREE.MeshBasicMaterial({ color: acc, transparent: true, opacity: 0.4, side: THREE.DoubleSide }),
+      );
+      const rx = Math.cos(angle) * 0.26;
+      const rz = Math.sin(angle) * 0.26;
+      runeGlow.position.set(rx, 0.5 + i * 0.2, rz);
+      runeGlow.lookAt(rx * 2, 0.5 + i * 0.2, rz * 2);
+      group.add(runeGlow);
+    }
+    // Robe inner seam
     group.add(meshAt(new THREE.PlaneGeometry(0.2, 1.2), innerRobe, 0, 0.9, 0.16));
-    group.add(meshAt(new THREE.CylinderGeometry(0.18, 0.17, 0.08, 8), new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.5, metalness: 0.15 }), 0, 1.4, 0));
+    // Robe trim at bottom (golden edge)
+    group.add(meshAt(new THREE.TorusGeometry(0.34, 0.015, 4, 12), robeEdgeMat, 0, 0.07, 0));
+    // Belt/sash
+    group.add(meshAt(new THREE.CylinderGeometry(0.18, 0.17, 0.08, 8), robeEdgeMat, 0, 1.4, 0));
+    // Belt clasp with gem
+    group.add(meshAt(new THREE.BoxGeometry(0.06, 0.06, 0.03), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.3 }), 0, 1.4, 0.18));
+    group.add(meshAt(new THREE.SphereGeometry(0.02, 6, 4), new THREE.MeshPhysicalMaterial({ color: acc, emissive: acc, emissiveIntensity: 0.5 }), 0, 1.4, 0.2));
+    // Upper torso
     group.add(meshAt(new THREE.BoxGeometry(0.36, 0.35, 0.25), robeMat, 0, 1.72, 0));
+    // Collar
     group.add(meshAt(new THREE.CylinderGeometry(0.16, 0.2, 0.12, 8), robeMat, 0, 1.93, 0));
+    // Sleeves with hands and magic glow
     for (const xSign of [-1, 1]) {
       const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.16, 0.6, 8), robeMat);
       sleeve.position.set(xSign * 0.32, 1.55, 0); sleeve.rotation.z = xSign * 0.3;
       sleeve.name = xSign === -1 ? "leftUpperArm" : "rightUpperArm"; group.add(sleeve);
+      // Sleeve trim
+      group.add(meshAt(new THREE.TorusGeometry(0.155, 0.01, 4, 8), robeEdgeMat, xSign * 0.32, 1.28, 0));
       const hand = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), skinMat);
       hand.position.set(xSign * 0.42, 1.3, 0);
       hand.name = xSign === -1 ? "leftHand" : "rightHand"; group.add(hand);
-      // Magic glow (emissive)
       const handGlow = new THREE.Mesh(
         new THREE.SphereGeometry(0.14, 8, 6), glowMat,
       );
       handGlow.position.set(xSign * 0.42, 1.3, 0);
       handGlow.name = xSign === -1 ? "leftGlow" : "rightGlow"; group.add(handGlow);
     }
+    // Head
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), skinMat);
     head.position.y = 2.1; head.name = "head"; group.add(head);
+    // Pointed hat
     group.add(meshAt(new THREE.ConeGeometry(0.22, 0.75, 8), robeMat, 0, 2.55, 0));
+    // Hat brim
     group.add(meshAt(new THREE.CylinderGeometry(0.28, 0.3, 0.04, 8), robeMat, 0, 2.22, 0));
+    // Hat band trim
+    group.add(meshAt(new THREE.TorusGeometry(0.22, 0.015, 4, 10), robeEdgeMat, 0, 2.22, 0));
+    // Stars on hat
     for (let i = 0; i < 3; i++) {
       const star = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4),
         new THREE.MeshBasicMaterial({ color: acc }));
@@ -1195,20 +1399,69 @@ export class GrailBallRenderer {
       star.position.set(Math.cos(a) * 0.15, 2.4 + i * 0.12, Math.sin(a) * 0.15);
       group.add(star);
     }
-    for (const xOff of [-0.06, 0.06])
+    // Glowing eye slit on hood/face
+    const eyeSlitMat = new THREE.MeshBasicMaterial({ color: acc, transparent: true, opacity: 0.9 });
+    group.add(meshAt(new THREE.BoxGeometry(0.2, 0.025, 0.01), eyeSlitMat, 0, 2.12, 0.17));
+    // Eye glow points
+    for (const xOff of [-0.06, 0.06]) {
       group.add(meshAt(new THREE.SphereGeometry(0.025, 6, 4), new THREE.MeshBasicMaterial({ color: acc }), xOff, 2.12, 0.15));
+      // Eye glow halo
+      group.add(meshAt(new THREE.SphereGeometry(0.04, 6, 4),
+        new THREE.MeshBasicMaterial({ color: acc, transparent: true, opacity: 0.25 }), xOff, 2.12, 0.14));
+    }
+    // Beard detail
     group.add(meshAt(new THREE.ConeGeometry(0.08, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.9 }), 0, 1.92, 0.12));
+    // Floating magical runes orbiting the character (small glowing planes)
+    for (let i = 0; i < 5; i++) {
+      const runeOrbit = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.08, 0.08),
+        new THREE.MeshBasicMaterial({ color: acc, transparent: true, opacity: 0.5, side: THREE.DoubleSide }),
+      );
+      const oa = (i / 5) * TAU;
+      runeOrbit.position.set(Math.cos(oa) * 0.7, 1.2 + i * 0.15, Math.sin(oa) * 0.7);
+      runeOrbit.name = `rune_${i}`;
+      group.add(runeOrbit);
+    }
+    // Staff
     const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 2.2, 8),
       new THREE.MeshPhysicalMaterial({ color: 0x553311, roughness: 0.75, metalness: 0.05 }));
     staff.position.set(0.5, 1.5, 0); staff.name = "staff"; group.add(staff);
-    const crystal = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.12, 0),
-      new THREE.MeshPhysicalMaterial({
-        color: acc, emissive: acc, emissiveIntensity: 0.8,
-        metalness: 0.3, roughness: 0.2, transparent: true, opacity: 0.9,
-      }),
-    );
+    // Staff wrapped section
+    for (let w = 0; w < 3; w++) {
+      group.add(meshAt(new THREE.TorusGeometry(0.042, 0.008, 4, 6),
+        new THREE.MeshPhysicalMaterial({ color: 0x887744, roughness: 0.7 }), 0.5, 1.0 + w * 0.15, 0));
+    }
+    // Crystal cluster at staff top (multiple small crystals around core)
+    const crystalMat = new THREE.MeshPhysicalMaterial({
+      color: acc, emissive: acc, emissiveIntensity: 0.8,
+      metalness: 0.3, roughness: 0.2, transparent: true, opacity: 0.9,
+    });
+    // Core crystal
+    const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), crystalMat);
     crystal.position.set(0.5, 2.65, 0); crystal.name = "crystal"; group.add(crystal);
+    // Surrounding smaller crystals
+    for (let i = 0; i < 4; i++) {
+      const subCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 0),
+        new THREE.MeshPhysicalMaterial({
+          color: acc, emissive: acc, emissiveIntensity: 0.6,
+          metalness: 0.2, roughness: 0.25, transparent: true, opacity: 0.8,
+        }));
+      const ca = (i / 4) * TAU;
+      subCrystal.position.set(0.5 + Math.cos(ca) * 0.1, 2.62 + (i % 2) * 0.06, Math.sin(ca) * 0.1);
+      subCrystal.rotation.set(ca, ca * 0.5, 0);
+      group.add(subCrystal);
+    }
+    // Crystal cage / prongs holding crystals
+    for (let i = 0; i < 3; i++) {
+      const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.2, 4),
+        new THREE.MeshPhysicalMaterial({ color: 0x887744, metalness: 0.3, roughness: 0.5 }));
+      const pa = (i / 3) * TAU;
+      prong.position.set(0.5 + Math.cos(pa) * 0.05, 2.58, Math.sin(pa) * 0.05);
+      prong.rotation.z = Math.cos(pa) * 0.3;
+      prong.rotation.x = Math.sin(pa) * 0.3;
+      group.add(prong);
+    }
+    // Crystal light
     { const _pl = new THREE.PointLight(new THREE.Color(acc).getHex(), 0.5, 6, 1.5); _pl.position.set(0.5, 2.65, 0); group.add(_pl); }
   }
 
@@ -1217,57 +1470,156 @@ export class GrailBallRenderer {
     const sec = new THREE.Color(team.secondaryColor);
     const heavyMetal = this._makeArmorMat(0x777777);
     const darkMetal = this._makeArmorMat(0x555555);
+    const wornMetal = this._makeArmorMat(0x5a5a5a); // battle-worn patches
     const tabardMat = new THREE.MeshPhysicalMaterial({ color: pri, roughness: 0.55, metalness: 0.05 });
     const bootMat = new THREE.MeshPhysicalMaterial({ color: 0x444433, roughness: 0.75, metalness: 0.2 });
+    const rivetMat = new THREE.MeshPhysicalMaterial({ color: 0xbbbbbb, metalness: 0.95, roughness: 0.2 });
+    const chainmailMat = new THREE.MeshPhysicalMaterial({ color: 0xaaaaaa, metalness: 0.85, roughness: 0.45, wireframe: true });
+    const beltMat = new THREE.MeshPhysicalMaterial({ color: 0x3a2a1a, roughness: 0.75, metalness: 0.15 });
+    const soleMat = new THREE.MeshPhysicalMaterial({ color: 0x2a2a1a, roughness: 0.9 });
     const s = 1.15;
-    const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(0.35 * s, 0.45 * s, 0.5 * s), bootMat);
+    // Reinforced boots (wider)
+    const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(0.38 * s, 0.45 * s, 0.52 * s), bootMat);
     leftBoot.position.set(-0.22 * s, 0.22 * s, 0.05); leftBoot.name = "leftFoot"; group.add(leftBoot);
     const rightBoot = leftBoot.clone(); rightBoot.position.x = 0.22 * s; rightBoot.name = "rightFoot"; group.add(rightBoot);
-    for (const [xp, nm] of [[-0.2, "leftShin"], [0.2, "rightShin"]] as const) {
-      const g = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * s, 0.16 * s, 0.55 * s, 8), heavyMetal);
-      g.position.set(xp * s, 0.72 * s, 0); g.name = nm; group.add(g);
+    // Boot soles (thick reinforced)
+    group.add(meshAt(new THREE.BoxGeometry(0.4 * s, 0.05 * s, 0.54 * s), soleMat, -0.22 * s, 0.0, 0.05));
+    group.add(meshAt(new THREE.BoxGeometry(0.4 * s, 0.05 * s, 0.54 * s), soleMat, 0.22 * s, 0.0, 0.05));
+    // Boot reinforcement plates
+    for (const xp of [-0.22, 0.22]) {
+      group.add(meshAt(new THREE.BoxGeometry(0.12 * s, 0.2 * s, 0.02), heavyMetal, xp * s, 0.3 * s, 0.27 * s));
+      // Boot rivets
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat, xp * s, 0.35 * s, 0.28 * s));
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat, xp * s, 0.22 * s, 0.28 * s));
     }
+    // Greaves
+    for (const [xp, nm] of [[-0.2, "leftShin"], [0.2, "rightShin"]] as const) {
+      const gr = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * s, 0.16 * s, 0.55 * s, 8), heavyMetal);
+      gr.position.set(xp * s, 0.72 * s, 0); gr.name = nm; group.add(gr);
+    }
+    // Knee guards
+    for (const xp of [-0.2, 0.2]) {
+      const kneeGuard = new THREE.Mesh(new THREE.SphereGeometry(0.1 * s, 6, 4), darkMetal);
+      kneeGuard.position.set(xp * s, 0.98 * s, 0.08 * s); group.add(kneeGuard);
+      group.add(meshAt(new THREE.SphereGeometry(0.015, 4, 4), rivetMat, xp * s, 0.98 * s, 0.16 * s));
+    }
+    // Chainmail at knee joints
+    for (const xp of [-0.2, 0.2]) {
+      group.add(meshAt(new THREE.CylinderGeometry(0.1 * s, 0.1 * s, 0.1 * s, 6), chainmailMat, xp * s, 0.95 * s, 0));
+    }
+    // Thighs
     for (const [xp, nm] of [[-0.18, "leftThigh"], [0.18, "rightThigh"]] as const) {
       const t = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * s, 0.14 * s, 0.45 * s, 8), heavyMetal);
       t.position.set(xp * s, 1.2 * s, 0); t.name = nm; group.add(t);
     }
-    group.add(meshAt(new THREE.CylinderGeometry(0.28 * s, 0.25 * s, 0.18 * s, 8), darkMetal, 0, 1.45 * s, 0));
+    // Belt with buckle
+    group.add(meshAt(new THREE.CylinderGeometry(0.28 * s, 0.25 * s, 0.18 * s, 8), beltMat, 0, 1.45 * s, 0));
+    // Belt buckle
+    group.add(meshAt(new THREE.BoxGeometry(0.12 * s, 0.1 * s, 0.04), new THREE.MeshPhysicalMaterial({ color: 0xccaa44, metalness: 0.8, roughness: 0.25 }), 0, 1.45 * s, 0.15 * s));
+    // Torso with muscle definition
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7 * s, 0.65 * s, 0.4 * s), heavyMetal);
     torso.position.y = 1.8 * s; torso.name = "torso"; group.add(torso);
+    // Chest plate muscle ridges
+    group.add(meshAt(new THREE.BoxGeometry(0.04, 0.45 * s, 0.02), wornMetal, 0, 1.8 * s, 0.21 * s));
+    group.add(meshAt(new THREE.BoxGeometry(0.2 * s, 0.04, 0.02), wornMetal, -0.1 * s, 1.68 * s, 0.21 * s));
+    group.add(meshAt(new THREE.BoxGeometry(0.2 * s, 0.04, 0.02), wornMetal, 0.1 * s, 1.68 * s, 0.21 * s));
+    // Battle scars (dark patches)
+    group.add(meshAt(new THREE.BoxGeometry(0.25 * s, 0.02, 0.01), new THREE.MeshPhysicalMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.6 }), 0.08 * s, 1.85 * s, 0.21 * s));
+    group.add(meshAt(new THREE.BoxGeometry(0.02, 0.15 * s, 0.01), new THREE.MeshPhysicalMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.6 }), -0.12 * s, 1.75 * s, 0.21 * s));
+    // Rivets on torso
     for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
       group.add(meshAt(new THREE.SphereGeometry(0.02, 4, 4), darkMetal, (c - 1) * 0.15 * s, (1.55 + r * 0.15) * s, 0.21 * s));
     }
+    // Tabard
     group.add(meshAt(new THREE.BoxGeometry(0.5 * s, 0.6 * s, 0.01), tabardMat, 0, 1.8 * s, 0.21 * s));
+    // Shoulder plates with MORE spikes
     for (const xSign of [-1, 1]) {
       const p = new THREE.Mesh(new THREE.SphereGeometry(0.22 * s, 10, 8), heavyMetal);
       p.scale.set(1.3, 0.7, 1.1); p.position.set(xSign * 0.48 * s, 2.1 * s, 0); group.add(p);
+      // Main shoulder spike
       const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.22, 4), darkMetal);
       spike.position.set(xSign * 0.55 * s, 2.25 * s, 0); group.add(spike);
+      // Additional spikes
+      const spike2 = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.16, 4), darkMetal);
+      spike2.position.set(xSign * 0.52 * s, 2.22 * s, 0.08 * s);
+      spike2.rotation.x = 0.3; group.add(spike2);
+      const spike3 = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.14, 4), darkMetal);
+      spike3.position.set(xSign * 0.52 * s, 2.22 * s, -0.08 * s);
+      spike3.rotation.x = -0.3; group.add(spike3);
+      // Shoulder rivets
+      for (let ri = 0; ri < 3; ri++) {
+        const angle = (ri / 3) * Math.PI - Math.PI * 0.3;
+        group.add(meshAt(new THREE.SphereGeometry(0.015, 4, 4), rivetMat,
+          xSign * 0.48 * s + Math.cos(angle) * 0.1 * s, 2.1 * s + Math.sin(angle) * 0.04 * s, 0.1 * s));
+      }
     }
+    // Arms with chainmail at elbows
     for (const [xp, armNm, handNm] of [[-0.5, "leftUpperArm", "leftHand"], [0.5, "rightUpperArm", "rightHand"]] as const) {
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * s, 0.12 * s, 0.5 * s, 8), heavyMetal);
       arm.position.set(xp * s, 1.75 * s, 0); arm.name = armNm; group.add(arm);
+      // Chainmail at elbow
+      group.add(meshAt(new THREE.CylinderGeometry(0.08 * s, 0.08 * s, 0.1 * s, 5), chainmailMat, xp * s, 1.52 * s, 0));
+      // Forearm plate
+      group.add(meshAt(new THREE.CylinderGeometry(0.09 * s, 0.1 * s, 0.2 * s, 6), heavyMetal, xp * 1.01 * s, 1.48 * s, 0));
       const gaunt = new THREE.Mesh(new THREE.BoxGeometry(0.14 * s, 0.3 * s, 0.14 * s), darkMetal);
       gaunt.position.set(xp * 1.04 * s, 1.4 * s, 0); gaunt.name = handNm; group.add(gaunt);
+      // Gauntlet finger ridges
+      for (let f = 0; f < 3; f++) {
+        group.add(meshAt(new THREE.BoxGeometry(0.035 * s, 0.06 * s, 0.15 * s), wornMetal,
+          xp * 1.04 * s + (f - 1) * 0.035 * s, 1.28 * s, 0));
+      }
     }
+    // Neck with gorget
     group.add(meshAt(new THREE.CylinderGeometry(0.14 * s, 0.16 * s, 0.12 * s, 8), heavyMetal, 0, 2.18 * s, 0));
+    group.add(meshAt(new THREE.CylinderGeometry(0.17 * s, 0.18 * s, 0.05 * s, 8), darkMetal, 0, 2.14 * s, 0));
+    // Helm
     const helm = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * s, 0.22 * s, 0.4 * s, 10), heavyMetal);
     helm.position.y = 2.45 * s; helm.name = "head"; group.add(helm);
+    // Helm crown plate
     group.add(meshAt(new THREE.CylinderGeometry(0.2 * s, 0.2 * s, 0.04 * s, 10), darkMetal, 0, 2.65 * s, 0));
+    // Helm top spike
+    group.add(meshAt(new THREE.ConeGeometry(0.03, 0.15, 4), darkMetal, 0, 2.72 * s, 0));
+    // Face guard with visor slits
     group.add(meshAt(new THREE.BoxGeometry(0.25 * s, 0.03, 0.01), new THREE.MeshBasicMaterial({ color: 0x111111 }), 0, 2.45 * s, 0.22 * s));
+    // Vertical face guard bars
+    for (let i = 0; i < 3; i++) {
+      group.add(meshAt(new THREE.BoxGeometry(0.015, 0.18 * s, 0.01), darkMetal, (i - 1) * 0.06, 2.4 * s, 0.23 * s));
+    }
+    // Breathing holes below visor
     for (let i = 0; i < 5; i++)
       group.add(meshAt(new THREE.CircleGeometry(0.01, 4), new THREE.MeshBasicMaterial({ color: 0x111111 }), (i - 2) * 0.04, 2.38 * s, 0.23 * s));
+    // Battle-worn helm dent
+    group.add(meshAt(new THREE.SphereGeometry(0.05 * s, 4, 4), wornMetal, 0.1 * s, 2.5 * s, 0.15 * s));
+    // Tower Shield (larger, more detailed)
     const towerShield = new THREE.Group();
     const shieldMat = new THREE.MeshPhysicalMaterial({ color: sec, metalness: 0.4, roughness: 0.4, clearcoat: 0.3 });
     towerShield.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2 * s, 0.7 * s), shieldMat));
+    // Shield boss (central emblem — larger cylinder)
+    const bossMat = new THREE.MeshPhysicalMaterial({ color: pri, metalness: 0.6, roughness: 0.3 });
+    const shieldBoss = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.06, 8), bossMat);
+    shieldBoss.position.set(0.06, 0, 0); shieldBoss.rotation.z = Math.PI / 2; towerShield.add(shieldBoss);
+    // Boss center spike
+    towerShield.add(meshAt(new THREE.ConeGeometry(0.04, 0.1, 6), heavyMetal, 0.1, 0, 0));
+    // Cross emblem
     const crossMat = new THREE.MeshPhysicalMaterial({ color: pri, metalness: 0.5, roughness: 0.35 });
     const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.8 * s, 0.06), crossMat);
     crossV.position.x = 0.05; towerShield.add(crossV);
     const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.06, 0.5 * s), crossMat);
     crossH.position.set(0.05, 0.1, 0); towerShield.add(crossH);
+    // Shield boss sphere
     towerShield.add(meshAt(new THREE.SphereGeometry(0.08, 8, 6), heavyMetal, 0.05, 0, 0));
+    // Rim with rivets
     const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35 * s, 0.02, 4, 12), darkMetal);
     rim.position.x = 0.05; rim.rotation.y = Math.PI / 2; rim.scale.y = 1.7; towerShield.add(rim);
+    // Shield edge rivets
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      const ry = Math.sin(a) * 0.35 * s * 1.7;
+      const rz = Math.cos(a) * 0.35 * s;
+      towerShield.add(meshAt(new THREE.SphereGeometry(0.015, 4, 4), rivetMat, 0.05, ry, rz));
+    }
+    // Shield battle damage (dark scratch)
+    towerShield.add(meshAt(new THREE.BoxGeometry(0.01, 0.3 * s, 0.015), wornMetal, 0.06, 0.15, 0.12));
     towerShield.position.set(-0.7 * s, 1.6 * s, 0); towerShield.name = "shield"; group.add(towerShield);
   }
 
@@ -1338,8 +1690,11 @@ export class GrailBallRenderer {
   private _updateCamera(state: GBMatchState, _dt: number): void {
     const orbPos = state.orb.pos;
     const sel = getSelectedPlayer(state);
-    const targetX = orbPos.x * 0.6 + (sel ? sel.pos.x * 0.4 : 0);
-    const targetZ = orbPos.z * 0.6 + (sel ? sel.pos.z * 0.4 : 0);
+    // Weight camera more toward selected player for smooth following
+    const playerWeight = sel ? 0.65 : 0;
+    const orbWeight = 1 - playerWeight;
+    const targetX = orbPos.x * orbWeight + (sel ? sel.pos.x * playerWeight : 0);
+    const targetZ = orbPos.z * orbWeight + (sel ? sel.pos.z * playerWeight : 0);
     this._camTarget.set(targetX, 0, targetZ);
     const smooth = GB_CAMERA.FOLLOW_SMOOTHING;
     let height = GB_CAMERA.DEFAULT_HEIGHT;

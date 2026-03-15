@@ -26,6 +26,7 @@ export enum GMScreen {
   CUP = "cup",
   CALENDAR = "calendar",
   RULES = "rules",
+  CONTROLS = "controls",
   MAIN_MENU = "main_menu",
   NEW_GAME_SETUP = "new_game_setup",
   PLAYER_DETAIL = "player_detail",

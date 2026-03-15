@@ -596,7 +596,7 @@ export class GrailBallHUD {
 
   private _pauseDiv: HTMLDivElement | null = null;
 
-  showPause(onResume: () => void, onRules: () => void, onExit: () => void): void {
+  showPause(onResume: () => void, onRules: () => void, onExit: () => void, onControls?: () => void): void {
     if (this._pauseDiv) return;
 
     this._pauseDiv = document.createElement("div");
@@ -609,6 +609,7 @@ export class GrailBallHUD {
     this._pauseDiv.innerHTML = `
       <h1 style="font-size:48px;margin-bottom:40px;text-shadow:2px 2px 4px #000;">PAUSED</h1>
       <div id="gb-pause-resume" style="font-size:24px;cursor:pointer;margin:12px 0;padding:8px 32px;border:2px solid #daa520;border-radius:8px;transition:all 0.2s;">Resume</div>
+      <div id="gb-pause-controls" style="font-size:24px;cursor:pointer;margin:12px 0;padding:8px 32px;border:2px solid #daa520;border-radius:8px;transition:all 0.2s;">Controls</div>
       <div id="gb-pause-rules" style="font-size:24px;cursor:pointer;margin:12px 0;padding:8px 32px;border:2px solid #daa520;border-radius:8px;transition:all 0.2s;">Rules</div>
       <div id="gb-pause-exit" style="font-size:24px;cursor:pointer;margin:12px 0;padding:8px 32px;border:2px solid #daa520;border-radius:8px;transition:all 0.2s;">Exit to Menu</div>
     `;
@@ -619,12 +620,14 @@ export class GrailBallHUD {
     };
 
     const resume = this._pauseDiv.querySelector("#gb-pause-resume") as HTMLElement;
+    const controls = this._pauseDiv.querySelector("#gb-pause-controls") as HTMLElement;
     const rules = this._pauseDiv.querySelector("#gb-pause-rules") as HTMLElement;
     const exit = this._pauseDiv.querySelector("#gb-pause-exit") as HTMLElement;
 
-    addHover(resume); addHover(rules); addHover(exit);
+    addHover(resume); addHover(controls); addHover(rules); addHover(exit);
 
     resume.onclick = () => { this.hidePause(); onResume(); };
+    controls.onclick = () => { this.hidePause(); if (onControls) onControls(); };
     rules.onclick = () => { this.hidePause(); onRules(); };
     exit.onclick = () => { this.hidePause(); onExit(); };
 
@@ -683,12 +686,68 @@ export class GrailBallHUD {
   }
 
   // ---------------------------------------------------------------------------
+  // Controls overlay (DOM-based)
+  // ---------------------------------------------------------------------------
+
+  private _controlsDiv: HTMLDivElement | null = null;
+
+  showControls(onClose: () => void): void {
+    if (this._controlsDiv) return;
+
+    this._controlsDiv = document.createElement("div");
+    this._controlsDiv.style.cssText = `
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:rgba(0,0,0,0.9);z-index:110;
+      display:flex;flex-direction:column;align-items:center;
+      font-family:Georgia,serif;color:#ddd;overflow-y:auto;
+    `;
+
+    const content = document.createElement("div");
+    content.style.cssText = `
+      max-width:700px;padding:40px;margin:20px;
+      background:rgba(30,20,10,0.95);border:2px solid #daa520;border-radius:12px;
+    `;
+    const controlsText = `CONTROLS
+
+Arrow Keys / WASD  —  Move player
+Space (tap)        —  Pass orb to teammate
+Space (hold)       —  Charge shot, release to shoot
+Shift              —  Tackle (no orb) / Use Ability (with orb)
+Tab                —  Switch selected player
+E                  —  Lob pass
+Q                  —  Call for pass
+Escape             —  Pause`;
+
+    content.innerHTML = `
+      <pre style="white-space:pre-wrap;font-family:Georgia,serif;font-size:15px;line-height:1.6;color:#ddd;">${controlsText}</pre>
+      <div id="gb-controls-close" style="text-align:center;margin-top:20px;font-size:20px;color:#ffd700;cursor:pointer;border:2px solid #daa520;padding:8px 24px;border-radius:8px;">
+        Close [Esc]
+      </div>
+    `;
+
+    this._controlsDiv.appendChild(content);
+
+    const closeBtn = content.querySelector("#gb-controls-close") as HTMLElement;
+    closeBtn.onclick = () => { this.hideControls(); onClose(); };
+
+    document.body.appendChild(this._controlsDiv);
+  }
+
+  hideControls(): void {
+    if (this._controlsDiv) {
+      this._controlsDiv.remove();
+      this._controlsDiv = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Cleanup
   // ---------------------------------------------------------------------------
   destroy(): void {
     this.root.removeChildren();
     this.hidePause();
     this.hideRules();
+    this.hideControls();
   }
 }
 

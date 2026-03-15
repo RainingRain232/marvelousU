@@ -123,6 +123,9 @@ export class GrailBallGame {
         <div id="gb-start-btn" style="font-size:28px;cursor:pointer;padding:14px 48px;border:3px solid #daa520;border-radius:12px;color:#ffd700;transition:all 0.2s;background:rgba(218,165,32,0.1);">
           START MATCH
         </div>
+        <div id="gb-controls-btn" style="font-size:20px;cursor:pointer;padding:14px 32px;border:2px solid #666;border-radius:12px;color:#aaa;transition:all 0.2s;">
+          CONTROLS
+        </div>
         <div id="gb-rules-btn" style="font-size:20px;cursor:pointer;padding:14px 32px;border:2px solid #666;border-radius:12px;color:#aaa;transition:all 0.2s;">
           RULES
         </div>
@@ -169,6 +172,11 @@ export class GrailBallGame {
     startBtn.addEventListener("click", () => { this._startMatch(); });
     startBtn.addEventListener("mouseenter", () => { startBtn.style.background = "rgba(218,165,32,0.3)"; });
     startBtn.addEventListener("mouseleave", () => { startBtn.style.background = "rgba(218,165,32,0.1)"; });
+
+    const controlsBtn = this._teamSelectDiv.querySelector("#gb-controls-btn") as HTMLElement;
+    controlsBtn.addEventListener("click", () => {
+      this._hud.showControls(() => {});
+    });
 
     const rulesBtn = this._teamSelectDiv.querySelector("#gb-rules-btn") as HTMLElement;
     rulesBtn.addEventListener("click", () => {
@@ -559,6 +567,11 @@ export class GrailBallGame {
               this._tickerCb = null;
             }
             this._showTeamSelect();
+          },
+          () => {
+            this._paused = false;
+            this._showingRules = true;
+            this._hud.showControls(() => { this._showingRules = false; });
           },
         );
       } else {
@@ -1056,6 +1069,55 @@ export class GrailBallGame {
         }
 
         break;
+      }
+    }
+
+    // Carried-through-gate check: if a player carries the orb into the goal zone
+    if (orb.carrier != null) {
+      const carrier = getPlayer(s, orb.carrier);
+      if (carrier) {
+        for (let side = 0; side < 2; side++) {
+          const defTeam = side; // team that defends this gate
+          if (carrier.teamIndex === defTeam) continue; // can't score in own goal by carrying
+          const gateX = side === 0 ? -GB_FIELD.HALF_LENGTH : GB_FIELD.HALF_LENGTH;
+          const pastGate = side === 0
+            ? carrier.pos.x < gateX + 0.5
+            : carrier.pos.x > gateX - 0.5;
+          if (pastGate &&
+              Math.abs(carrier.pos.z) < GB_FIELD.GATE_WIDTH / 2 + 1 &&
+              carrier.pos.y < GB_FIELD.GATE_HEIGHT) {
+            const scoringTeam = carrier.teamIndex;
+            s.scores[scoringTeam]++;
+            s.lastGoalTeam = scoringTeam;
+            s.lastGoalScorer = carrier.id;
+            pushEvent(s, "goal",
+              `GOAL! ${carrier.name} runs it in for ${s.teamDefs[scoringTeam].name}! (${s.scores[0]}-${s.scores[1]})`,
+              scoringTeam, carrier.id);
+            s.phase = GBMatchPhase.GOAL_SCORED;
+            s.phaseTimer = GB_MATCH.GOAL_CELEBRATION;
+            for (const p of s.players) {
+              if (p.teamIndex === scoringTeam) {
+                p.action = GBPlayerAction.CELEBRATING;
+                p.actionTimer = GB_MATCH.GOAL_CELEBRATION;
+              }
+              p.hasOrb = false;
+            }
+            orb.carrier = null;
+            orb.vel = v3();
+            orb.inFlight = false;
+            s.slowMoFactor = 0.3;
+            s.slowMoTimer = 1.5;
+            s.cameraShake = GB_CAMERA.MAX_SHAKE;
+            const goalGateX = side === 0 ? -GB_FIELD.HALF_LENGTH - 0.5 : GB_FIELD.HALF_LENGTH + 0.5;
+            this._renderer.spawnGoalExplosion(goalGateX, 2, 0);
+            if (s.overtime) {
+              s.phase = GBMatchPhase.POST_GAME;
+              s.phaseTimer = 8;
+              pushEvent(s, "match_end", `${s.teamDefs[scoringTeam].name} wins in sudden death!`);
+            }
+            break;
+          }
+        }
       }
     }
   }

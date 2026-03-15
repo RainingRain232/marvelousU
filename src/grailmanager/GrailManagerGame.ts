@@ -133,6 +133,7 @@ export class GrailManagerGame {
       case GMScreen.CUP:
       case GMScreen.CALENDAR:
       case GMScreen.RULES:
+      case GMScreen.CONTROLS:
       case GMScreen.PLAYER_DETAIL:
       case GMScreen.SAVE_LOAD:
         this._handleNavigation();
@@ -170,6 +171,10 @@ export class GrailManagerGame {
     }
     if (_justPressed("KeyR")) {
       this._state.screen = GMScreen.RULES;
+      this._state.scrollOffset = 0;
+    }
+    if (_justPressed("KeyC")) {
+      this._state.screen = GMScreen.CONTROLS;
       this._state.scrollOffset = 0;
     }
     if (_justPressed("Escape")) {
@@ -217,7 +222,7 @@ export class GrailManagerGame {
       if (state.screen === GMScreen.PLAYER_DETAIL) {
         state.screen = GMScreen.SQUAD;
         state.selectedPlayerId = null;
-      } else if (state.screen === GMScreen.RULES && !state.gameStarted) {
+      } else if ((state.screen === GMScreen.RULES || state.screen === GMScreen.CONTROLS) && !state.gameStarted) {
         state.screen = GMScreen.MAIN_MENU;
       } else if (state.screen === GMScreen.SAVE_LOAD) {
         state.screen = GMScreen.DASHBOARD;
@@ -368,6 +373,11 @@ export class GrailManagerGame {
     }
     if (clickedId === "menu_load") {
       this._tryLoadGame(0);
+      return;
+    }
+    if (clickedId === "menu_controls") {
+      state.screen = GMScreen.CONTROLS;
+      state.scrollOffset = 0;
       return;
     }
     if (clickedId === "menu_rules") {

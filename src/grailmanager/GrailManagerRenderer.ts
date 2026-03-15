@@ -76,6 +76,7 @@ export class GrailManagerRenderer {
       case GMScreen.CUP:           this._drawHeader(g, state, sw, sh); this._drawCup(g, state, sw, sh); break;
       case GMScreen.CALENDAR:      this._drawHeader(g, state, sw, sh); this._drawCalendar(g, state, sw, sh); break;
       case GMScreen.RULES:         this._drawHeader(g, state, sw, sh); this._drawRules(g, state, sw, sh); break;
+      case GMScreen.CONTROLS:      this._drawHeader(g, state, sw, sh); this._drawControls(g, state, sw, sh); break;
       case GMScreen.PLAYER_DETAIL: this._drawHeader(g, state, sw, sh); this._drawPlayerDetail(g, state, sw, sh); break;
       case GMScreen.MATCH_RESULT:  this._drawHeader(g, state, sw, sh); this._drawMatchResult(g, state, sw, sh); break;
       case GMScreen.SEASON_END:    this._drawSeasonEnd(g, state, sw, sh); break;
@@ -86,8 +87,10 @@ export class GrailManagerRenderer {
     for (const zone of this.clickZones) {
       if (mouseX >= zone.x && mouseX <= zone.x + zone.w && mouseY >= zone.y && mouseY <= zone.y + zone.h) {
         this._hoverZone = zone.id;
-        g.fill({ color: GOLD, alpha: 0.08 }).rect(zone.x, zone.y, zone.w, zone.h).fill();
-        g.stroke({ color: GOLD, alpha: 0.25, width: 1 }).rect(zone.x, zone.y, zone.w, zone.h).stroke();
+        // Soft glow behind hover zone
+        g.fill({ color: GOLD, alpha: 0.04 }).roundRect(zone.x - 2, zone.y - 2, zone.w + 4, zone.h + 4, 4).fill();
+        g.fill({ color: GOLD, alpha: 0.08 }).roundRect(zone.x, zone.y, zone.w, zone.h, 2).fill();
+        g.stroke({ color: GOLD, alpha: 0.25, width: 1 }).roundRect(zone.x, zone.y, zone.w, zone.h, 2).stroke();
         break;
       }
     }
@@ -300,18 +303,27 @@ export class GrailManagerRenderer {
     }
   }
 
-  // ---Header / Navigation — leather book tabs with gold highlight
+  // ---Header / Navigation — leather book tabs with gold highlight, shadow depth, and dividers
   private _drawHeader(g: Graphics, state: GrailManagerState, sw: number, _sh: number): void {
     const hh = 52;
+    // Layered header background with gradient warmth
     g.fill({ color: DARK_WOOD, alpha: 0.95 }).rect(0, 0, sw, hh).fill();
     g.fill({ color: BURGUNDY, alpha: 0.08 }).rect(0, 0, sw, hh).fill();
+    g.fill({ color: 0xff8800, alpha: 0.02 }).rect(0, 0, sw, hh * 0.4).fill();
+    // Bottom shadow line
+    g.fill({ color: 0x000000, alpha: 0.15 }).rect(0, hh - 2, sw, 2).fill();
     this._drawFiligree(g, 0, hh, sw);
 
     const team = state.teams[state.playerTeamId];
     if (team) {
-      this._addText(`${team.teamDef.name}`, 14, 0x000000, true, 11, 7); // shadow
+      // Team name with double shadow for prominence
+      this._addText(`${team.teamDef.name}`, 14, 0x000000, true, 12, 8);
+      this._addText(`${team.teamDef.name}`, 14, 0x000000, true, 11, 7);
       this._addText(`${team.teamDef.name}`, 14, GOLD, true, 10, 6);
+      // Gold amount with subtle glow effect
       this._addText(`${state.gold}g`, 12, 0xffd700, false, 10, 28);
+      // Divider between info and tabs
+      g.stroke({ color: GOLD_DARK, alpha: 0.2, width: 0.5 }).moveTo(190, 6).lineTo(190, hh - 6).stroke();
       this._addText(`Week ${state.currentWeek} | Season ${state.season}`, 12, PARCHMENT, false, 200, 28);
     }
 
@@ -335,12 +347,22 @@ export class GrailManagerRenderer {
       const active = state.screen === tabs[i].screen;
       const isHover = this._hoverZone === `tab_${tabs[i].screen}`;
       if (active) {
+        // Active tab with glow and layered highlight
+        g.fill({ color: GOLD, alpha: 0.06 }).roundRect(tx - 2, 2, tabWidth, hh - 2, 5).fill();
         g.fill({ color: GOLD_DARK, alpha: 0.35 }).roundRect(tx, 4, tabWidth - 4, hh - 6, 4).fill();
+        g.fill({ color: GOLD, alpha: 0.06 }).roundRect(tx, 4, tabWidth - 4, (hh - 6) * 0.4, 4).fill();
         g.stroke({ color: GOLD, width: 1, alpha: 0.5 }).roundRect(tx, 4, tabWidth - 4, hh - 6, 4).stroke();
+        // Active indicator line at bottom
+        g.fill({ color: GOLD, alpha: 0.6 }).rect(tx + 4, hh - 3, tabWidth - 12, 2).fill();
       } else if (isHover) {
-        g.fill({ color: GOLD_DARK, alpha: 0.15 }).roundRect(tx, 4, tabWidth - 4, hh - 6, 4).fill();
+        g.fill({ color: GOLD_DARK, alpha: 0.18 }).roundRect(tx, 4, tabWidth - 4, hh - 6, 4).fill();
+        g.stroke({ color: GOLD_DARK, alpha: 0.2, width: 0.5 }).roundRect(tx, 4, tabWidth - 4, hh - 6, 4).stroke();
       }
-      const color = active ? GOLD : PARCHMENT_DARK;
+      // Tab divider
+      if (i > 0) {
+        g.stroke({ color: GOLD_DARK, alpha: 0.1, width: 0.5 }).moveTo(tx, 10).lineTo(tx, hh - 10).stroke();
+      }
+      const color = active ? GOLD : isHover ? PARCHMENT : PARCHMENT_DARK;
       this._addText(tabs[i].label, 11, color, active, tx + 4, 16);
       this.clickZones.push({ id: `tab_${tabs[i].screen}`, x: tx, y: 0, w: tabWidth, h: hh });
     }
@@ -348,32 +370,63 @@ export class GrailManagerRenderer {
     this.clickZones.push({ id: "save_game", x: sw - 65, y: 0, w: 60, h: hh });
   }
 
-  // ---Panel — ornate bordered panels with parchment fill and embossed depth
+  // ---Panel — ornate bordered panels with parchment fill, embossed depth, and corner flourishes
   private _drawPanel(g: Graphics, x: number, y: number, w: number, h: number, title?: string): void {
-    // Outer shadow for depth
-    g.fill({ color: 0x000000, alpha: 0.12 }).roundRect(x + 2, y + 2, w, h, 6).fill();
+    // Deep outer shadow for layered depth
+    g.fill({ color: 0x000000, alpha: 0.18 }).roundRect(x + 3, y + 3, w, h, 6).fill();
+    g.fill({ color: 0x000000, alpha: 0.08 }).roundRect(x + 1, y + 1, w, h, 6).fill();
     // Main panel
     g.fill({ color: DARK_WOOD, alpha: PANEL_ALPHA }).roundRect(x, y, w, h, 6).fill();
-    // Subtle parchment texture gradient
+    // Richer parchment texture gradient — layered bands
     g.fill({ color: PARCHMENT, alpha: 0.06 }).roundRect(x + 3, y + 3, w - 6, h - 6, 4).fill();
     g.fill({ color: PARCHMENT, alpha: 0.03 }).roundRect(x + 3, y + 3, w * 0.5, h - 6, 4).fill();
-    // Title bar glow
-    g.fill({ color: BURGUNDY, alpha: 0.05 }).roundRect(x + 3, y + 3, w - 6, 30, 4).fill();
+    // Horizontal gradient warmth at top
+    g.fill({ color: 0xff8800, alpha: 0.02 }).roundRect(x + 3, y + 3, w - 6, h * 0.3, 4).fill();
+    // Title bar glow (richer gradient)
+    g.fill({ color: BURGUNDY, alpha: 0.07 }).roundRect(x + 3, y + 3, w - 6, 30, 4).fill();
+    g.fill({ color: GOLD, alpha: 0.03 }).roundRect(x + 3, y + 3, w - 6, 15, 4).fill();
     // Inner bevel highlight (top-left light)
-    g.stroke({ color: PARCHMENT, alpha: 0.08, width: 1 }).moveTo(x + 4, y + h - 4).lineTo(x + 4, y + 4).lineTo(x + w - 4, y + 4).stroke();
+    g.stroke({ color: PARCHMENT, alpha: 0.1, width: 1 }).moveTo(x + 4, y + h - 4).lineTo(x + 4, y + 4).lineTo(x + w - 4, y + 4).stroke();
     // Inner bevel shadow (bottom-right)
-    g.stroke({ color: 0x000000, alpha: 0.1, width: 1 }).moveTo(x + 4, y + h - 4).lineTo(x + w - 4, y + h - 4).lineTo(x + w - 4, y + 4).stroke();
-    // Double border
+    g.stroke({ color: 0x000000, alpha: 0.12, width: 1 }).moveTo(x + 4, y + h - 4).lineTo(x + w - 4, y + h - 4).lineTo(x + w - 4, y + 4).stroke();
+    // Triple border — outer ornate, middle gold, inner subtle
+    g.stroke({ color: 0x000000, alpha: 0.2, width: 2 }).roundRect(x - 1, y - 1, w + 2, h + 2, 7).stroke();
     g.stroke({ color: GOLD_DARK, width: 1.5 }).roundRect(x, y, w, h, 6).stroke();
     g.stroke({ color: GOLD_DARK, alpha: 0.3, width: 0.5 }).roundRect(x + 3, y + 3, w - 6, h - 6, 4).stroke();
+    g.stroke({ color: GOLD, alpha: 0.08, width: 0.5 }).roundRect(x + 5, y + 5, w - 10, h - 10, 3).stroke();
+    // Corner flourishes
+    this._drawCornerFlourish(g, x, y, 1, 1);
+    this._drawCornerFlourish(g, x + w, y, -1, 1);
+    this._drawCornerFlourish(g, x, y + h, 1, -1);
+    this._drawCornerFlourish(g, x + w, y + h, -1, -1);
     this._drawKnotBorder(g, x, y, w, h);
     if (title) {
-      g.fill({ color: GOLD_DARK, alpha: 0.2 }).rect(x + 3, y + 3, w - 6, 26).fill();
-      g.fill({ color: GOLD, alpha: 0.04 }).rect(x + 3, y + 3, w - 6, 13).fill();
+      g.fill({ color: GOLD_DARK, alpha: 0.22 }).rect(x + 3, y + 3, w - 6, 26).fill();
+      g.fill({ color: GOLD, alpha: 0.05 }).rect(x + 3, y + 3, w - 6, 13).fill();
+      // Decorative divider below title bar
+      g.stroke({ color: GOLD_DARK, alpha: 0.3, width: 0.8 }).moveTo(x + 8, y + 29).lineTo(x + w - 8, y + 29).stroke();
+      g.stroke({ color: GOLD, alpha: 0.08, width: 0.5 }).moveTo(x + 8, y + 30).lineTo(x + w - 8, y + 30).stroke();
       this._drawIlluminatedTitle(g, x + 8, y + 4, title);
       // Wax seal on right side of title bar
       if (w > 200) this._drawWaxSeal(g, x + w - 22, y + 3);
     }
+  }
+
+  // Small corner flourish for panels
+  private _drawCornerFlourish(g: Graphics, x: number, y: number, dx: number, dy: number): void {
+    const len = 12;
+    // Small curl
+    g.stroke({ color: GOLD_DARK, alpha: 0.4, width: 1.2 });
+    g.moveTo(x, y + dy * len);
+    g.bezierCurveTo(x + dx * 3, y + dy * len * 0.6, x + dx * len * 0.6, y + dy * 3, x + dx * len, y);
+    g.stroke();
+    // Inner curl
+    g.stroke({ color: GOLD, alpha: 0.15, width: 0.6 });
+    g.moveTo(x + dx * 1, y + dy * (len - 2));
+    g.bezierCurveTo(x + dx * 4, y + dy * len * 0.55, x + dx * len * 0.55, y + dy * 4, x + dx * (len - 2), y + dy * 1);
+    g.stroke();
+    // Dot at corner
+    g.fill({ color: GOLD, alpha: 0.35 }).circle(x + dx * 2, y + dy * 2, 1.5).fill();
   }
 
   // ---Wax seal decoration
@@ -405,12 +458,18 @@ export class GrailManagerRenderer {
     const initial = title[0];
     const rest = title.substring(1);
     const initSize = 22;
-    // Background panel for initial with gradient
-    g.fill({ color: BURGUNDY, alpha: 0.3 }).roundRect(x - 3, y - 3, initSize + 6, initSize + 6, 3).fill();
-    g.fill({ color: GOLD, alpha: 0.06 }).roundRect(x - 3, y - 3, initSize + 6, (initSize + 6) * 0.5, 3).fill();
-    g.stroke({ color: GOLD, alpha: 0.5, width: 1.2 }).roundRect(x - 3, y - 3, initSize + 6, initSize + 6, 3).stroke();
-    // Inner frame line
+    // Background panel for initial with layered gradient
+    g.fill({ color: BURGUNDY, alpha: 0.35 }).roundRect(x - 3, y - 3, initSize + 6, initSize + 6, 3).fill();
+    g.fill({ color: GOLD, alpha: 0.08 }).roundRect(x - 3, y - 3, initSize + 6, (initSize + 6) * 0.5, 3).fill();
+    g.fill({ color: 0xff6600, alpha: 0.04 }).roundRect(x - 3, y - 3, initSize + 6, initSize + 6, 3).fill();
+    // Double frame
+    g.stroke({ color: GOLD, alpha: 0.55, width: 1.2 }).roundRect(x - 3, y - 3, initSize + 6, initSize + 6, 3).stroke();
     g.stroke({ color: GOLD, alpha: 0.2, width: 0.5 }).roundRect(x - 1, y - 1, initSize + 2, initSize + 2, 2).stroke();
+    // Subtle corner dots on initial frame
+    g.fill({ color: GOLD, alpha: 0.4 }).circle(x - 3, y - 3, 1.2).fill();
+    g.fill({ color: GOLD, alpha: 0.4 }).circle(x + initSize + 3, y - 3, 1.2).fill();
+    g.fill({ color: GOLD, alpha: 0.4 }).circle(x - 3, y + initSize + 3, 1.2).fill();
+    g.fill({ color: GOLD, alpha: 0.4 }).circle(x + initSize + 3, y + initSize + 3, 1.2).fill();
     // Decorative vine extending from initial
     g.stroke({ color: FOREST_GREEN, alpha: 0.35, width: 1.2 });
     g.moveTo(x + initSize + 2, y + 6);
@@ -421,16 +480,26 @@ export class GrailManagerRenderer {
     g.moveTo(x + initSize + 10, y + 10);
     g.bezierCurveTo(x + initSize + 18, y + 6, x + initSize + 22, y + 12, x + initSize + 18, y + 18);
     g.stroke();
-    // Leaf decorations
+    // Third vine — longer, more elegant
+    g.stroke({ color: FOREST_GREEN, alpha: 0.15, width: 0.6 });
+    g.moveTo(x + initSize + 18, y + 14);
+    g.bezierCurveTo(x + initSize + 26, y + 10, x + initSize + 32, y + 16, x + initSize + 28, y + 22);
+    g.stroke();
+    // Leaf decorations (more)
     g.fill({ color: FOREST_GREEN, alpha: 0.25 }).circle(x + initSize + 6, y + 16, 2.5).fill();
     g.fill({ color: FOREST_GREEN, alpha: 0.2 }).circle(x + initSize + 14, y + 4, 2).fill();
     g.fill({ color: FOREST_GREEN, alpha: 0.15 }).circle(x + initSize + 18, y + 18, 1.8).fill();
+    g.fill({ color: FOREST_GREEN, alpha: 0.12 }).circle(x + initSize + 26, y + 22, 2).fill();
     // Berry dots
     g.fill({ color: RED_ACCENT, alpha: 0.3 }).circle(x + initSize + 8, y + 3, 1.2).fill();
     g.fill({ color: RED_ACCENT, alpha: 0.25 }).circle(x + initSize + 16, y + 15, 1).fill();
-    // Drop shadow for initial letter
+    g.fill({ color: RED_ACCENT, alpha: 0.2 }).circle(x + initSize + 24, y + 10, 1).fill();
+    // Drop shadow for initial letter (double shadow for depth)
+    this._addText(initial, 17, 0x000000, true, x + 4, y + 2);
     this._addText(initial, 17, 0x000000, true, x + 3, y + 1);
     this._addText(initial, 17, GOLD, true, x + 2, y);
+    // Rest of title with letter spacing effect via shadow
+    this._addText(rest, 13, 0x000000, true, x + initSize + 9, y + 4);
     this._addText(rest, 13, GOLD, true, x + initSize + 8, y + 3);
   }
 
@@ -489,28 +558,43 @@ export class GrailManagerRenderer {
     const menuItems = [
       { label: "New Game", id: "menu_new", y: cy + 30 },
       { label: "Load Game", id: "menu_load", y: cy + 70 },
-      { label: "Rules & Info", id: "menu_rules", y: cy + 110 },
-      { label: "Exit", id: "menu_exit", y: cy + 150 },
+      { label: "Controls", id: "menu_controls", y: cy + 110 },
+      { label: "Rules & Info", id: "menu_rules", y: cy + 150 },
+      { label: "Exit", id: "menu_exit", y: cy + 190 },
     ];
     for (const item of menuItems) {
       const bx = cx - 120;
       const bw = 240;
       const bh = 36;
       const isHover = this._hoverZone === item.id;
-      // Button shadow
-      g.fill({ color: 0x000000, alpha: 0.12 }).roundRect(bx + 2, item.y + 2, bw, bh, 6).fill();
-      // Button body
-      g.fill({ color: isHover ? GOLD_DARK : DARK_WOOD, alpha: 0.9 }).roundRect(bx, item.y, bw, bh, 6).fill();
-      // Top highlight for embossed look
-      g.fill({ color: isHover ? GOLD : PARCHMENT, alpha: isHover ? 0.12 : 0.05 }).roundRect(bx, item.y, bw, bh * 0.45, 6).fill();
+      // Hover glow aura
+      if (isHover) {
+        g.fill({ color: GOLD, alpha: 0.06 }).roundRect(bx - 6, item.y - 4, bw + 12, bh + 8, 10).fill();
+        g.fill({ color: GOLD, alpha: 0.03 }).roundRect(bx - 10, item.y - 6, bw + 20, bh + 12, 14).fill();
+      }
+      // Button shadow (deeper when hovered)
+      g.fill({ color: 0x000000, alpha: isHover ? 0.18 : 0.12 }).roundRect(bx + 2, item.y + 2, bw, bh, 6).fill();
+      // Button body with richer gradient
+      g.fill({ color: isHover ? GOLD_DARK : DARK_WOOD, alpha: 0.92 }).roundRect(bx, item.y, bw, bh, 6).fill();
+      // Top highlight for embossed look (stronger on hover)
+      g.fill({ color: isHover ? GOLD : PARCHMENT, alpha: isHover ? 0.15 : 0.05 }).roundRect(bx, item.y, bw, bh * 0.45, 6).fill();
+      // Bottom subtle warmth
+      g.fill({ color: 0xff6600, alpha: isHover ? 0.04 : 0.01 }).roundRect(bx, item.y + bh * 0.5, bw, bh * 0.5, 6).fill();
       // Inner bevel
-      g.stroke({ color: PARCHMENT, alpha: 0.06, width: 0.5 }).moveTo(bx + 4, item.y + 2).lineTo(bx + bw - 4, item.y + 2).stroke();
-      // Border
+      g.stroke({ color: PARCHMENT, alpha: isHover ? 0.12 : 0.06, width: 0.5 }).moveTo(bx + 4, item.y + 2).lineTo(bx + bw - 4, item.y + 2).stroke();
+      // Double border
       g.stroke({ color: isHover ? GOLD : GOLD_DARK, width: 1.5 }).roundRect(bx, item.y, bw, bh, 6).stroke();
-      // Side ornaments
-      g.fill({ color: GOLD_DARK, alpha: 0.3 }).circle(bx + 12, item.y + bh / 2, 2).fill();
-      g.fill({ color: GOLD_DARK, alpha: 0.3 }).circle(bx + bw - 12, item.y + bh / 2, 2).fill();
-      // Text with shadow
+      if (isHover) {
+        g.stroke({ color: GOLD, alpha: 0.2, width: 0.5 }).roundRect(bx + 2, item.y + 2, bw - 4, bh - 4, 4).stroke();
+      }
+      // Side ornaments (pulse on hover)
+      const ornAlpha = isHover ? 0.5 + Math.sin(this._time * 4) * 0.15 : 0.3;
+      g.fill({ color: GOLD_DARK, alpha: ornAlpha }).circle(bx + 12, item.y + bh / 2, isHover ? 2.5 : 2).fill();
+      g.fill({ color: GOLD_DARK, alpha: ornAlpha }).circle(bx + bw - 12, item.y + bh / 2, isHover ? 2.5 : 2).fill();
+      // Decorative dash lines beside ornaments
+      g.stroke({ color: GOLD_DARK, alpha: 0.15, width: 0.5 }).moveTo(bx + 18, item.y + bh / 2).lineTo(bx + 30, item.y + bh / 2).stroke();
+      g.stroke({ color: GOLD_DARK, alpha: 0.15, width: 0.5 }).moveTo(bx + bw - 30, item.y + bh / 2).lineTo(bx + bw - 18, item.y + bh / 2).stroke();
+      // Text with double shadow for depth
       this._addText(item.label, 16, 0x000000, true, bx + bw / 2 - item.label.length * 4.5 + 1, item.y + 9);
       this._addText(item.label, 16, isHover ? GOLD : PARCHMENT, true, bx + bw / 2 - item.label.length * 4.5, item.y + 8);
       this.clickZones.push({ id: item.id, x: bx, y: item.y, w: bw, h: bh });
@@ -518,7 +602,7 @@ export class GrailManagerRenderer {
     if (hasSave(0)) {
       this._addText("(Save data found)", 11, GREEN_GOOD, false, cx - 55, cy + 105);
     }
-    this._addText("Press N for New Game, L for Load, R for Rules, Esc to Exit", 11, PARCHMENT_DARK, false, cx - 205, sh - 40);
+    this._addText("Press N for New Game, L for Load, C for Controls, R for Rules, Esc to Exit", 11, PARCHMENT_DARK, false, cx - 255, sh - 40);
   }
 
   // ---NEW GAME SETUP
@@ -1203,6 +1287,44 @@ export class GrailManagerRenderer {
     if (lines.length > maxLines) {
       this._addText(`Scroll: Up/Down (${startIdx + 1}-${Math.min(startIdx + maxLines, lines.length)} of ${lines.length})`, 10, PARCHMENT_DARK, false, 25, sh - 25);
     }
+  }
+
+  // ---CONTROLS
+  private _drawControls(_g: Graphics, _state: GrailManagerState, sw: number, sh: number): void {
+    const top = 62;
+    this._drawPanel(_g, 10, top, sw - 20, sh - top - 10, "Controls");
+
+    const controls = [
+      "KEYBOARD CONTROLS:",
+      "",
+      "  1-9, 0    —  Navigate screens (Dashboard, Squad, Tactics, etc.)",
+      "  S         —  Open Save/Load screen",
+      "  C         —  Open Controls screen",
+      "  R         —  Open Rules screen",
+      "  Escape    —  Go back / Return to menu",
+      "  Enter     —  Confirm / Advance",
+      "",
+      "  Up/Down   —  Scroll lists / Navigate items",
+      "  Left/Right—  Cycle options (formation, instructions)",
+      "",
+      "MATCH DAY:",
+      "",
+      "  Space     —  Pause/Resume match simulation",
+      "  Up/Down   —  Adjust simulation speed",
+      "",
+      "MOUSE:",
+      "",
+      "  Click     —  Select buttons, players, and menu items",
+      "  Hover     —  Preview information and highlights",
+    ];
+
+    for (let i = 0; i < controls.length; i++) {
+      const line = controls[i];
+      const isHeader = line.endsWith(":");
+      this._addText(line, isHeader ? 12 : 10, isHeader ? GOLD : PARCHMENT, isHeader, 25, top + 35 + i * 18, FONT_MONO);
+    }
+
+    this._addText("Press Esc to go back", 10, PARCHMENT_DARK, false, 25, sh - 25);
   }
 
   // ---PLAYER DETAIL — detailed portrait, radar chart with glow, embossed bars

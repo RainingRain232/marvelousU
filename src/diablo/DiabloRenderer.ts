@@ -11339,26 +11339,66 @@ export class DiabloRenderer {
     // Invulnerability glow
     if (state.player.invulnTimer > 0) {
       if (!this._invulnMesh) {
-        const iGeo = new THREE.SphereGeometry(1.5, 16, 12);
-        const iMat = new THREE.MeshStandardMaterial({
-          color: 0xffd700,
-          emissive: 0xffa500,
-          emissiveIntensity: 1.5,
-          transparent: true,
-          opacity: 0.3,
-          side: THREE.DoubleSide,
+        // Multi-layered divine shield effect
+        const shieldGroup = new THREE.Group();
+        // Inner golden aura
+        const innerGeo = new THREE.SphereGeometry(1.2, 24, 18);
+        const innerMat = new THREE.MeshStandardMaterial({
+          color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 2.5,
+          transparent: true, opacity: 0.15, side: THREE.DoubleSide,
         });
-        this._invulnMesh = new THREE.Mesh(iGeo, iMat);
-        this._scene.add(this._invulnMesh);
+        const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+        innerMesh.name = 'invuln_inner';
+        shieldGroup.add(innerMesh);
+        // Outer holy shield with wireframe
+        const outerGeo = new THREE.IcosahedronGeometry(1.8, 1);
+        const outerMat = new THREE.MeshStandardMaterial({
+          color: 0xffeedd, emissive: 0xffcc44, emissiveIntensity: 1.8,
+          wireframe: true, transparent: true, opacity: 0.4,
+        });
+        const outerMesh = new THREE.Mesh(outerGeo, outerMat);
+        outerMesh.name = 'invuln_outer';
+        shieldGroup.add(outerMesh);
+        // Holy light column
+        const pillarGeo = new THREE.CylinderGeometry(0.3, 0.8, 6, 8, 1, true);
+        const pillarMat = new THREE.MeshStandardMaterial({
+          color: 0xfff8e0, emissive: 0xffdd66, emissiveIntensity: 2.0,
+          transparent: true, opacity: 0.12, side: THREE.DoubleSide,
+        });
+        const pillarMesh = new THREE.Mesh(pillarGeo, pillarMat);
+        pillarMesh.position.y = 3;
+        pillarMesh.name = 'invuln_pillar';
+        shieldGroup.add(pillarMesh);
+        // Golden point light
+        const invulnLight = new THREE.PointLight(0xffd700, 3, 8);
+        invulnLight.name = 'invuln_light';
+        shieldGroup.add(invulnLight);
+        this._invulnMesh = shieldGroup as unknown as THREE.Mesh;
+        this._scene.add(shieldGroup);
       }
-      this._invulnMesh.position.set(state.player.x, state.player.y + 1, state.player.z);
-      const iPulse = 0.3 + Math.sin(this._time * 8) * 0.1;
-      if (this._invulnMesh.material instanceof THREE.MeshStandardMaterial) {
-        this._invulnMesh.material.opacity = iPulse;
-      }
-      this._invulnMesh.visible = true;
+      const invGroup = this._invulnMesh as unknown as THREE.Group;
+      invGroup.position.set(state.player.x, state.player.y + 1, state.player.z);
+      const fadeOut = Math.min(1, state.player.invulnTimer / 1.0); // fade during last second
+      invGroup.traverse((child: THREE.Object3D) => {
+        if (child.name === 'invuln_inner') {
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = (0.15 + Math.sin(this._time * 6) * 0.08) * fadeOut;
+          mat.emissiveIntensity = 2.5 + Math.sin(this._time * 10) * 0.8;
+        } else if (child.name === 'invuln_outer') {
+          child.rotation.x += 0.008;
+          child.rotation.y += 0.012;
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = (0.3 + Math.sin(this._time * 8) * 0.15) * fadeOut;
+        } else if (child.name === 'invuln_pillar') {
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = (0.1 + Math.sin(this._time * 4) * 0.05) * fadeOut;
+        } else if (child.name === 'invuln_light') {
+          (child as THREE.PointLight).intensity = (3 + Math.sin(this._time * 8) * 1.5) * fadeOut;
+        }
+      });
+      invGroup.visible = true;
     } else if (this._invulnMesh) {
-      this._invulnMesh.visible = false;
+      (this._invulnMesh as unknown as THREE.Group).visible = false;
     }
 
     // Walk animation — swing legs and off-hand arm based on movement
@@ -12069,6 +12109,45 @@ export class DiabloRenderer {
               const chainLight = new THREE.PointLight(0x88aaff, 4, r * 14);
               group.add(chainLight);
               group.userData.skillType = 'CHAIN_LIGHTNING';
+              // Initial chain lightning beam (visible for first 0.3s)
+              const beamSegs = 8;
+              const beamPts: THREE.Vector3[] = [];
+              for (let s = 0; s <= beamSegs; s++) {
+                const t = s / beamSegs;
+                beamPts.push(new THREE.Vector3(
+                  -t * r * 6 + (s > 0 && s < beamSegs ? (Math.random() - 0.5) * r * 1.5 : 0),
+                  (Math.random() - 0.5) * r * 0.8,
+                  (Math.random() - 0.5) * r * 0.8,
+                ));
+              }
+              const beamCurve = new THREE.CatmullRomCurve3(beamPts);
+              const beamGeo = new THREE.TubeGeometry(beamCurve, 16, r * 0.12, 4, false);
+              const beamMat = new THREE.MeshStandardMaterial({
+                color: 0xeeffff, emissive: 0xaaddff, emissiveIntensity: 6.0,
+                transparent: true, opacity: 0.9,
+              });
+              const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+              beamMesh.name = 'chain_beam';
+              group.add(beamMesh);
+              // Secondary thinner beam
+              const beam2Pts: THREE.Vector3[] = [];
+              for (let s = 0; s <= beamSegs; s++) {
+                const t = s / beamSegs;
+                beam2Pts.push(new THREE.Vector3(
+                  -t * r * 6 + (s > 0 && s < beamSegs ? (Math.random() - 0.5) * r * 2.0 : 0),
+                  (Math.random() - 0.5) * r * 1.0,
+                  (Math.random() - 0.5) * r * 1.0,
+                ));
+              }
+              const beam2Curve = new THREE.CatmullRomCurve3(beam2Pts);
+              const beam2Geo = new THREE.TubeGeometry(beam2Curve, 16, r * 0.06, 4, false);
+              const beam2Mat = new THREE.MeshStandardMaterial({
+                color: 0xccddff, emissive: 0x8899ff, emissiveIntensity: 4.0,
+                transparent: true, opacity: 0.7,
+              });
+              const beam2Mesh = new THREE.Mesh(beam2Geo, beam2Mat);
+              beam2Mesh.name = 'chain_beam';
+              group.add(beam2Mesh);
               break;
             }
             case SkillId.POISON_ARROW: {
@@ -12422,6 +12501,19 @@ export class DiabloRenderer {
           }
         });
         mesh.rotation.y += 0.02;
+        // Fade out initial beam
+        mesh.traverse((child: THREE.Object3D) => {
+          if (child.name === 'chain_beam') {
+            if (proj.lifetime < 0.3) {
+              child.visible = true;
+              if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+                ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.9 * (1 - proj.lifetime / 0.3);
+              }
+            } else {
+              child.visible = false;
+            }
+          }
+        });
       } else if (st === 'POISON_ARROW') {
         // Dripping animation — blobs drift down, orient along velocity
         if (proj.vx !== 0 || proj.vz !== 0) {
@@ -12755,43 +12847,117 @@ export class DiabloRenderer {
       sprite.position.set(ft.x, ft.y, ft.z);
 
       const t = ft.timer;
-      const isCrit = ft.text.startsWith('CRIT');
+      const isCrit = ft.text.startsWith('CRIT') || (ft.text.startsWith('-') && ft.text.length > 3);
+      const isHeal = ft.color === '#44ff44' || ft.color === '#44ffaa';
 
-      // Scale: pop in then shrink; crits start bigger
-      const baseScale = isCrit ? 3.5 : 2.0;
-      const popScale = t < 0.15 ? 1.0 + (1.0 - t / 0.15) * 0.6 : 1.0;
-      const shrink = t > 1.0 ? Math.max(0.3, 1.0 - (t - 1.0) * 1.2) : 1.0;
+      // Scale: dramatic pop in with elastic bounce, then shrink
+      const baseScale = isCrit ? 4.0 : isHeal ? 2.4 : 2.2;
+      let popScale = 1.0;
+      if (t < 0.08) {
+        popScale = 1.0 + (1.0 - t / 0.08) * 1.2; // big pop
+      } else if (t < 0.2) {
+        popScale = 1.0 + Math.sin((t - 0.08) / 0.12 * Math.PI) * 0.15; // slight bounce
+      }
+      const shrink = t > 0.8 ? Math.max(0.2, 1.0 - (t - 0.8) * 1.5) : 1.0;
       const s = baseScale * popScale * shrink;
-      sprite.scale.set(s, s * 0.25, 1);
+      // Slight wobble for crits
+      const wobble = isCrit ? Math.sin(t * 25) * 0.03 * Math.max(0, 1 - t * 2) : 0;
+      sprite.scale.set(s + wobble, (s * 0.3125) + wobble * 0.5, 1);
 
-      // Fade based on timer
+      // Fade with style
       if (sprite.material instanceof THREE.SpriteMaterial) {
-        sprite.material.opacity = Math.max(0, 1.0 - t * 0.5);
+        const fadeStart = isCrit ? 0.6 : 0.5;
+        sprite.material.opacity = t < fadeStart ? 1.0 : Math.max(0, 1.0 - (t - fadeStart) * 2.0);
       }
     }
   }
 
   private _createTextSprite(text: string, color: string): THREE.Sprite {
-    const isCrit = text.startsWith('CRIT');
+    const isCrit = text.startsWith('CRIT') || text.startsWith('-') && text.length > 3;
+    const isHeal = color === '#44ff44' || color === '#44ffaa';
+    const isGold = color === '#ffd700';
+    const isSkill = color === '#44ffff' || color === '#ff8844' || color === '#aa44ff';
     const canvas = document.createElement('canvas');
     canvas.width = isCrit ? 512 : 256;
-    canvas.height = isCrit ? 128 : 64;
+    canvas.height = isCrit ? 160 : 80;
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.font = isCrit ? 'bold 56px Arial' : 'bold 32px Arial';
-    ctx.fillStyle = color;
+
+    // Medieval-style font
+    const fontSize = isCrit ? 60 : 30;
+    ctx.font = `bold ${fontSize}px 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Georgia, serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = isCrit ? 5 : 3;
-    // Glow for crits
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    // Multi-layer glow for crits
     if (isCrit) {
       ctx.shadowColor = color;
+      ctx.shadowBlur = 25;
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 7;
+      ctx.strokeText(text, cx, cy);
+      ctx.fillStyle = color;
+      ctx.fillText(text, cx, cy);
+      // Second pass for extra glow
+      ctx.shadowBlur = 15;
+      ctx.fillText(text, cx, cy);
+      ctx.shadowBlur = 0;
+      // Inner highlight
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.3;
+      ctx.fillText(text, cx, cy - 1);
+      ctx.globalAlpha = 1.0;
+    } else if (isHeal) {
+      ctx.shadowColor = '#22ff66';
       ctx.shadowBlur = 12;
+      ctx.strokeStyle = '#003300';
+      ctx.lineWidth = 4;
+      ctx.strokeText(text, cx, cy);
+      ctx.fillStyle = color;
+      ctx.fillText(text, cx, cy);
+      ctx.shadowBlur = 0;
+    } else if (isGold) {
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = '#332200';
+      ctx.lineWidth = 4;
+      ctx.strokeText(text, cx, cy);
+      const grad = ctx.createLinearGradient(cx - 40, cy - 15, cx + 40, cy + 15);
+      grad.addColorStop(0, '#fff7aa');
+      grad.addColorStop(0.5, '#ffd700');
+      grad.addColorStop(1, '#cc9900');
+      ctx.fillStyle = grad;
+      ctx.fillText(text, cx, cy);
+      ctx.shadowBlur = 0;
+    } else if (isSkill) {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 5;
+      ctx.strokeText(text, cx, cy);
+      ctx.fillStyle = color;
+      ctx.fillText(text, cx, cy);
+      ctx.shadowBlur = 8;
+      ctx.fillText(text, cx, cy);
+      ctx.shadowBlur = 0;
+    } else {
+      // Regular damage numbers — bold with fire-like gradient
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 4;
+      ctx.strokeText(text, cx, cy);
+      const grad = ctx.createLinearGradient(cx, cy - fontSize/2, cx, cy + fontSize/2);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, color);
+      grad.addColorStop(1, color);
+      ctx.fillStyle = grad;
+      ctx.fillText(text, cx, cy);
+      ctx.shadowBlur = 0;
     }
-    ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-    if (isCrit) { ctx.shadowBlur = 0; }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
@@ -12802,7 +12968,7 @@ export class DiabloRenderer {
       depthTest: false,
     });
     const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(2, 0.5, 1);
+    sprite.scale.set(2, 0.625, 1);
     return sprite;
   }
 

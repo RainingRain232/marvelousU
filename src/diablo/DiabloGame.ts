@@ -383,7 +383,7 @@ export class DiabloGame {
     this._hud = document.createElement("div");
     this._hud.style.cssText =
       "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;" +
-      "font-family:'Segoe UI',sans-serif;display:none;";
+      "font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;display:none;";
     document.body.appendChild(this._hud);
 
     // Menu overlay
@@ -2353,19 +2353,24 @@ export class DiabloGame {
     // Health orb - bottom left
     const hpOrb = document.createElement("div");
     hpOrb.style.cssText = `
-      position:absolute;bottom:30px;left:30px;width:80px;height:80px;border-radius:50%;
-      background:rgba(30,5,5,0.85);border:3px solid #8b0000;overflow:hidden;
+      position:absolute;bottom:30px;left:30px;width:90px;height:90px;border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, rgba(60,10,10,0.9), rgba(20,2,2,0.95));
+      border:3px solid #8b0000;overflow:hidden;
       display:flex;align-items:center;justify-content:center;
+      box-shadow:0 0 15px rgba(180,20,20,0.4), inset 0 0 20px rgba(0,0,0,0.5),
+        0 0 3px rgba(200,168,78,0.3);
     `;
     this._hpBar = document.createElement("div");
     this._hpBar.style.cssText = `
-      position:absolute;bottom:0;left:0;width:100%;height:100%;background:rgba(180,20,20,0.8);
+      position:absolute;bottom:0;left:0;width:100%;height:100%;
+      background:radial-gradient(circle at 40% 40%, rgba(220,40,40,0.9), rgba(140,10,10,0.85));
       border-radius:50%;transition:height 0.3s;
     `;
     this._hpText = document.createElement("div");
     this._hpText.style.cssText = `
-      position:relative;z-index:1;color:#fff;font-size:12px;font-weight:bold;text-align:center;
-      text-shadow:0 1px 3px rgba(0,0,0,0.8);
+      position:relative;z-index:1;color:#ffcccc;font-size:13px;font-weight:bold;text-align:center;
+      text-shadow:0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(200,20,20,0.3);
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
     `;
     hpOrb.appendChild(this._hpBar);
     hpOrb.appendChild(this._hpText);
@@ -2374,19 +2379,24 @@ export class DiabloGame {
     // Mana orb - bottom right
     const mpOrb = document.createElement("div");
     mpOrb.style.cssText = `
-      position:absolute;bottom:30px;right:30px;width:80px;height:80px;border-radius:50%;
-      background:rgba(5,5,30,0.85);border:3px solid #000088;overflow:hidden;
+      position:absolute;bottom:30px;right:30px;width:90px;height:90px;border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, rgba(10,10,60,0.9), rgba(2,2,20,0.95));
+      border:3px solid #000088;overflow:hidden;
       display:flex;align-items:center;justify-content:center;
+      box-shadow:0 0 15px rgba(30,30,200,0.4), inset 0 0 20px rgba(0,0,0,0.5),
+        0 0 3px rgba(200,168,78,0.3);
     `;
     this._mpBar = document.createElement("div");
     this._mpBar.style.cssText = `
-      position:absolute;bottom:0;left:0;width:100%;height:100%;background:rgba(30,30,200,0.8);
+      position:absolute;bottom:0;left:0;width:100%;height:100%;
+      background:radial-gradient(circle at 40% 40%, rgba(60,60,240,0.9), rgba(20,20,140,0.85));
       border-radius:50%;transition:height 0.3s;
     `;
     this._mpText = document.createElement("div");
     this._mpText.style.cssText = `
-      position:relative;z-index:1;color:#fff;font-size:12px;font-weight:bold;text-align:center;
-      text-shadow:0 1px 3px rgba(0,0,0,0.8);
+      position:relative;z-index:1;color:#ccccff;font-size:13px;font-weight:bold;text-align:center;
+      text-shadow:0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(30,30,200,0.3);
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
     `;
     mpOrb.appendChild(this._mpBar);
     mpOrb.appendChild(this._mpText);
@@ -2402,9 +2412,10 @@ export class DiabloGame {
     for (let i = 0; i < 6; i++) {
       const slot = document.createElement("div");
       slot.style.cssText = `
-        width:60px;height:60px;background:rgba(15,10,5,0.9);border:2px solid #5a4a2a;
-        border-radius:8px;display:flex;flex-direction:column;align-items:center;
-        justify-content:center;position:relative;overflow:hidden;
+        width:64px;height:64px;background:linear-gradient(180deg, rgba(30,25,15,0.95), rgba(15,10,5,0.95));
+        border:2px solid #7a6a3a;border-radius:6px;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;position:relative;overflow:hidden;
+        box-shadow:inset 0 1px 0 rgba(200,168,78,0.15), 0 2px 6px rgba(0,0,0,0.5);
       `;
 
       const cdOverlay = document.createElement("div");
@@ -2444,11 +2455,13 @@ export class DiabloGame {
     // XP bar - very bottom
     const xpContainer = document.createElement("div");
     xpContainer.style.cssText = `
-      position:absolute;bottom:0;left:0;width:100%;height:6px;background:rgba(20,15,5,0.8);
+      position:absolute;bottom:0;left:0;width:100%;height:8px;
+      background:rgba(20,15,5,0.9);border-top:1px solid rgba(200,168,78,0.3);
     `;
     this._xpBar = document.createElement("div");
     this._xpBar.style.cssText = `
-      height:100%;width:0%;background:linear-gradient(90deg,#8b7500,#ffd700);transition:width 0.3s;
+      height:100%;width:0%;background:linear-gradient(90deg,#6b5500,#ffd700,#fff4aa);
+      transition:width 0.3s;box-shadow:0 0 8px rgba(255,215,0,0.4);
     `;
     xpContainer.appendChild(this._xpBar);
     this._hud.appendChild(xpContainer);
@@ -2459,11 +2472,11 @@ export class DiabloGame {
       position:absolute;top:16px;right:20px;text-align:right;
     `;
     this._goldText = document.createElement("div");
-    this._goldText.style.cssText = "font-size:16px;color:#ffd700;margin-bottom:4px;";
+    this._goldText.style.cssText = "font-size:16px;color:#ffd700;margin-bottom:4px;font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;text-shadow:0 0 6px rgba(255,215,0,0.3);";
     this._levelText = document.createElement("div");
-    this._levelText.style.cssText = "font-size:14px;color:#c8a84e;margin-bottom:4px;";
+    this._levelText.style.cssText = "font-size:14px;color:#c8a84e;margin-bottom:4px;font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;text-shadow:0 0 4px rgba(200,168,78,0.2);";
     this._killText = document.createElement("div");
-    this._killText.style.cssText = "font-size:13px;color:#aaa;";
+    this._killText.style.cssText = "font-size:13px;color:#aaa;font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;";
     topRight.appendChild(this._goldText);
     topRight.appendChild(this._levelText);
     topRight.appendChild(this._killText);
@@ -2476,6 +2489,7 @@ export class DiabloGame {
     this._minimapCanvas.style.cssText = `
       position:absolute;top:16px;left:16px;width:200px;height:200px;
       border:2px solid #c8a84e;border-radius:4px;background:rgba(0,0,0,0.6);
+      box-shadow:0 0 10px rgba(0,0,0,0.5), inset 0 0 5px rgba(200,168,78,0.1);
     `;
     this._minimapCtx = this._minimapCanvas.getContext("2d")!;
     this._hud.appendChild(this._minimapCanvas);
@@ -2510,9 +2524,10 @@ export class DiabloGame {
     for (let i = 0; i < 4; i++) {
       const slot = document.createElement("div");
       slot.style.cssText = `
-        width:44px;height:44px;background:rgba(15,10,5,0.9);border:2px solid #3a5a2a;
-        border-radius:6px;display:flex;flex-direction:column;align-items:center;
-        justify-content:center;position:relative;overflow:hidden;
+        width:46px;height:46px;background:linear-gradient(180deg, rgba(20,25,15,0.95), rgba(10,15,5,0.95));
+        border:2px solid #4a6a3a;border-radius:6px;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;position:relative;overflow:hidden;
+        box-shadow:inset 0 1px 0 rgba(100,180,78,0.15), 0 2px 4px rgba(0,0,0,0.4);
       `;
       const keyLabel = document.createElement("div");
       keyLabel.style.cssText = `
@@ -2533,8 +2548,11 @@ export class DiabloGame {
     this._questTracker = document.createElement("div");
     this._questTracker.style.cssText = `
       position:absolute;top:16px;right:20px;margin-top:80px;width:220px;
-      background:rgba(10,8,4,0.75);border:1px solid #5a4a2a;border-radius:6px;
+      background:linear-gradient(180deg, rgba(15,12,6,0.85), rgba(10,8,4,0.85));
+      border:1px solid #5a4a2a;border-radius:6px;
       padding:8px 10px;font-size:12px;color:#ccc;display:none;
+      box-shadow:0 0 10px rgba(0,0,0,0.3), inset 0 0 8px rgba(200,168,78,0.05);
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
     `;
     this._hud.appendChild(this._questTracker);
 
@@ -2937,7 +2955,23 @@ export class DiabloGame {
       this._renderer.shakeCamera(0.2, 0.3);
       this._recalculatePlayerStats();
 
-      // Check for new skill unlocks (every 3 levels)
+      // Unlock base class skills progressively at levels 2-5
+      const BASE_SKILL_UNLOCK: Record<string, SkillId[]> = {
+        [DiabloClass.WARRIOR]: [SkillId.CLEAVE, SkillId.SHIELD_BASH, SkillId.WHIRLWIND, SkillId.BATTLE_CRY, SkillId.GROUND_SLAM, SkillId.BLADE_FURY],
+        [DiabloClass.MAGE]: [SkillId.FIREBALL, SkillId.ICE_NOVA, SkillId.LIGHTNING_BOLT, SkillId.METEOR, SkillId.ARCANE_SHIELD, SkillId.CHAIN_LIGHTNING],
+        [DiabloClass.RANGER]: [SkillId.MULTI_SHOT, SkillId.POISON_ARROW, SkillId.EVASIVE_ROLL, SkillId.EXPLOSIVE_TRAP, SkillId.RAIN_OF_ARROWS, SkillId.PIERCING_SHOT],
+      };
+      const baseSkills = BASE_SKILL_UNLOCK[p.class] || [];
+      // Skills unlock at: lv1=2 skills, lv2=3, lv3=4, lv4=5, lv5=6
+      const unlockedCount = Math.min(baseSkills.length, 2 + (p.level - 1));
+      for (let i = 0; i < unlockedCount; i++) {
+        if (!p.skills.includes(baseSkills[i])) {
+          p.skills.push(baseSkills[i]);
+          const def = SKILL_DEFS[baseSkills[i]];
+          this._addFloatingText(p.x, p.y + 4, p.z, `NEW SKILL: ${def.name}!`, "#44ffff");
+        }
+      }
+      // Also check for bonus skill unlocks (every 3 levels)
       const unlockList = UNLOCKABLE_SKILLS[p.class];
       for (const entry of unlockList) {
         if (p.level >= entry.level && !p.unlockedSkills.includes(entry.skillId)) {
@@ -5939,6 +5973,8 @@ export class DiabloGame {
             ownerId: enemy.id, tickInterval: 0.5, lastTickTimer: 0,
           };
           this._state.aoeEffects.push(aoe);
+          this._renderer.spawnParticles(ParticleType.DUST, enemy.x, enemy.y + 0.5, enemy.z, 20, this._state.particles);
+          this._renderer.shakeCamera(0.3, 0.4);
           this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "GROUND SLAM!", "#ff8844");
           break;
         }
@@ -5956,6 +5992,7 @@ export class DiabloGame {
             this._addFloatingText(p.x, p.y + 2, p.z, `-${Math.round(dmg)}`, "#ff4444");
             if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); }
           }
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
           this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "CHARGE!", "#ffaa00");
           break;
         }
@@ -5977,6 +6014,7 @@ export class DiabloGame {
             };
             this._state.enemies.push(addEnemy);
           }
+          this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
           this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "SUMMON!", "#aa44ff");
           break;
         }
@@ -5985,12 +6023,15 @@ export class DiabloGame {
             enemy.bossEnraged = true;
             enemy.damage *= 1.5;
             enemy.speed *= 1.3;
+            this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 25, this._state.particles);
+            this._renderer.shakeCamera(0.2, 0.5);
             this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "ENRAGED!", "#ff0000");
           }
           break;
         }
         case BossAbility.SHIELD: {
           enemy.bossShieldTimer = 4.0;
+          this._renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
           this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "SHIELD!", "#4488ff");
           break;
         }
@@ -6008,6 +6049,8 @@ export class DiabloGame {
             };
             this._state.aoeEffects.push(aoe);
           }
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 2, enemy.z, 30, this._state.particles);
+          this._renderer.shakeCamera(0.4, 0.6);
           this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "METEOR RAIN!", "#ff4400");
           break;
         }
