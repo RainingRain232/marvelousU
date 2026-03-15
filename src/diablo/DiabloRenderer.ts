@@ -11540,6 +11540,85 @@ export class DiabloRenderer {
         mesh.rotation.y = enemy.angle;
       }
 
+      // Reset mesh transforms before applying animations
+      mesh.rotation.x = 0;
+      mesh.rotation.z = 0;
+      mesh.scale.setScalar(enemy.scale || 1);
+
+      // -- CHASE animation: forward lean like running --
+      if (enemy.state === EnemyState.CHASE) {
+        // Lean forward while chasing
+        mesh.rotation.x = 0.15;
+        // Subtle running bob
+        const runBob = Math.sin(this._time * 10 + enemy.id.charCodeAt(0)) * 0.06;
+        mesh.position.y += runBob;
+      }
+
+      // -- ATTACK animations --
+      if (enemy.state === EnemyState.ATTACK) {
+        const at = enemy.attackTimer;
+        const baseScale = enemy.scale || 1;
+
+        if (at > 0 && at <= 0.5) {
+          // === WIND-UP PHASE (attackTimer 0.5 -> 0) ===
+          const windUpProgress = 1.0 - at / 0.5; // 0 -> 1 as timer counts down
+
+          // Lunge forward toward the player
+          const lungeAmount = Math.sin(windUpProgress * Math.PI * 0.5) * 0.4;
+          mesh.position.x += Math.sin(enemy.angle) * lungeAmount;
+          mesh.position.z += Math.cos(enemy.angle) * lungeAmount;
+
+          // Tilt forward (leaning into the attack)
+          mesh.rotation.x = windUpProgress * 0.3;
+
+          // Weapon swing: tilt to one side as weapon is raised
+          mesh.rotation.z = windUpProgress * 0.35;
+
+          // Slight rise before the slam
+          if (enemy.isBoss) {
+            // Boss: rise up dramatically before slamming down
+            mesh.position.y += windUpProgress * 0.6;
+            mesh.scale.setScalar(baseScale * (1.0 + windUpProgress * 0.08));
+          }
+
+          // Brief scale pulse right at the moment of strike (near 0)
+          if (at < 0.08) {
+            mesh.scale.setScalar(baseScale * 1.12);
+            mesh.position.y += 0.1;
+            // Weapon swing snaps to the other side on strike
+            mesh.rotation.z = -0.4;
+            mesh.rotation.x = 0.4;
+
+            if (enemy.isBoss) {
+              // Boss slam: crash down
+              mesh.position.y = enemy.y - 0.15;
+              mesh.scale.setScalar(baseScale * 1.18);
+              mesh.rotation.x = 0.5;
+            }
+          }
+        } else if (at > 0.5) {
+          // === COOLDOWN / RECOVERY PHASE (attackTimer 1.5 -> 0.5) ===
+          const cooldownProgress = (at - 0.5) / 1.0; // 1 -> 0 as timer counts down
+
+          // Recovery sway: gentle rocking oscillation
+          const swaySpeed = 4.0;
+          const swayAmount = 0.12 * cooldownProgress;
+          mesh.rotation.z = Math.sin(this._time * swaySpeed + enemy.id.charCodeAt(0)) * swayAmount;
+
+          // Subtle backward lean recovering from the strike
+          mesh.rotation.x = -0.1 * cooldownProgress;
+
+          // Recovery bob
+          mesh.position.y += Math.abs(Math.sin(this._time * 3)) * 0.04 * cooldownProgress;
+
+          if (enemy.isBoss) {
+            // Boss recovery: scale pulse settling down
+            const bossRecoverPulse = 1.0 + Math.sin(this._time * 6) * 0.04 * cooldownProgress;
+            mesh.scale.setScalar(baseScale * bossRecoverPulse);
+          }
+        }
+      }
+
       // Dying fade
       if (enemy.state === EnemyState.DYING) {
         const fade = Math.max(0, 1.0 - enemy.deathTimer * 2);
@@ -17459,8 +17538,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.5;
     this._hemiLight.color.setHex(0x6677aa);
     this._hemiLight.groundColor.setHex(0x112211);
-    const hw = w / 2, hd = d / 2;
-    const barkMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
+    // hw, hd, barkMat removed (unused)
     const leafMat = new THREE.MeshStandardMaterial({ color: 0x224466, roughness: 0.5, transparent: true, opacity: 0.7 });
     const glowMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4466cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 });
     const moonMat = new THREE.MeshStandardMaterial({ color: 0xccddff, emissive: 0x6688cc, emissiveIntensity: 0.5 });
@@ -17526,7 +17604,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.4;
     this._hemiLight.color.setHex(0x337788);
     this._hemiLight.groundColor.setHex(0x0a1a22);
-    const hw = w / 2;
+
     const coralColors = [0xff4466, 0xff8844, 0xffcc44, 0xcc44ff, 0x44ccff];
     // Coral formations
     for (let i = 0; i < 50; i++) {
@@ -17593,7 +17671,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.5;
     this._hemiLight.color.setHex(0x886644);
     this._hemiLight.groundColor.setHex(0x221100);
-    const hw = w / 2;
+
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.8 });
     const bookColors = [0x882222, 0x224488, 0x228844, 0x884422, 0x442288, 0x886622];
     // Bookshelves (tall)
@@ -17662,7 +17740,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.6;
     this._hemiLight.color.setHex(0x66aa44);
     this._hemiLight.groundColor.setHex(0x223311);
-    const hw = w / 2;
+
     const jadeMat = new THREE.MeshStandardMaterial({ color: 0x44aa66, roughness: 0.3, metalness: 0.3 });
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.8 });
     const vineMat = new THREE.MeshStandardMaterial({ color: 0x336622, roughness: 0.6 });
@@ -17738,7 +17816,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.5;
     this._hemiLight.color.setHex(0x886655);
     this._hemiLight.groundColor.setHex(0x221111);
-    const hw = w / 2;
+
     const ashMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
     const metalMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.5, roughness: 0.5 });
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8 });
@@ -17820,7 +17898,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.4;
     this._hemiLight.color.setHex(0x558833);
     this._hemiLight.groundColor.setHex(0x111a00);
-    const hw = w / 2;
+
     const sporeMat = new THREE.MeshStandardMaterial({ color: 0xaaff44, emissive: 0x44aa00, emissiveIntensity: 0.5, transparent: true, opacity: 0.6 });
     // Giant mushrooms
     for (let i = 0; i < 35; i++) {
@@ -17873,7 +17951,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.3;
     this._hemiLight.color.setHex(0x442222);
     this._hemiLight.groundColor.setHex(0x0a0000);
-    const hw = w / 2;
+
     const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.2, metalness: 0.5 });
     const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.5 });
     // Obsidian walls/blocks
@@ -17931,7 +18009,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.5;
     this._hemiLight.color.setHex(0x6666aa);
     this._hemiLight.groundColor.setHex(0x111133);
-    const hw = w / 2;
+
     const starMat = new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffdd88, emissiveIntensity: 1.0 });
     const ruinMat = new THREE.MeshStandardMaterial({ color: 0x8888aa, roughness: 0.6, metalness: 0.3 });
     // Floating ruins
@@ -17984,7 +18062,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.4;
     this._hemiLight.color.setHex(0x662222);
     this._hemiLight.groundColor.setHex(0x110000);
-    const hw = w / 2;
+
     const demonMat = new THREE.MeshStandardMaterial({ color: 0x331111, roughness: 0.7 });
     const fireMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 2.0 });
     const boneMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.6 });
@@ -18050,7 +18128,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.3;
     this._hemiLight.color.setHex(0x443366);
     this._hemiLight.groundColor.setHex(0x050011);
-    const hw = w / 2;
+
     const voidMat = new THREE.MeshStandardMaterial({ color: 0x220044, emissive: 0x110022, emissiveIntensity: 0.5 });
     const starMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 2.0 });
     // Floating platforms
@@ -18097,7 +18175,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.5;
     this._hemiLight.color.setHex(0x998877);
     this._hemiLight.groundColor.setHex(0x332211);
-    const hw = w / 2;
+
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.8 });
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.9 });
     const ironMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 });
@@ -18186,7 +18264,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.5;
     this._hemiLight.color.setHex(0x888888);
     this._hemiLight.groundColor.setHex(0x333333);
-    const hw = w / 2;
+
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.7 });
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.8 });
     const mossMat = new THREE.MeshStandardMaterial({ color: 0x556644, roughness: 0.6 });
@@ -18271,7 +18349,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.4;
     this._hemiLight.color.setHex(0x336677);
     this._hemiLight.groundColor.setHex(0x0a1a22);
-    const hw = w / 2;
+
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x556666, roughness: 0.8 });
     const barnacleMat = new THREE.MeshStandardMaterial({ color: 0x667766, roughness: 0.9 });
     const waterMat = new THREE.MeshStandardMaterial({ color: 0x224466, roughness: 0.1, transparent: true, opacity: 0.5 });
@@ -18345,7 +18423,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.5;
     this._hemiLight.color.setHex(0xaa8855);
     this._hemiLight.groundColor.setHex(0x221100);
-    const hw = w / 2;
+
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.9 });
     const scorchedMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
     const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.5 });
@@ -18420,7 +18498,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.3;
     this._hemiLight.color.setHex(0x556633);
     this._hemiLight.groundColor.setHex(0x111a00);
-    const hw = w / 2;
+
     const brickMat = new THREE.MeshStandardMaterial({ color: 0x554444, roughness: 0.9 });
     const slimeMat = new THREE.MeshStandardMaterial({ color: 0x66aa22, emissive: 0x448800, emissiveIntensity: 0.5, roughness: 0.2 });
     const sewageMat = new THREE.MeshStandardMaterial({ color: 0x445522, roughness: 0.1, transparent: true, opacity: 0.6 });
@@ -18485,7 +18563,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.5;
     this._hemiLight.color.setHex(0x6666aa);
     this._hemiLight.groundColor.setHex(0x111133);
-    const hw = w / 2;
+
     const etherealMat = new THREE.MeshStandardMaterial({ color: 0x8888cc, emissive: 0x4444aa, emissiveIntensity: 0.3, transparent: true, opacity: 0.7 });
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x7777aa, roughness: 0.6 });
     // Phasing pillars (semi-transparent)
@@ -18547,7 +18625,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.4;
     this._hemiLight.color.setHex(0x886655);
     this._hemiLight.groundColor.setHex(0x221111);
-    const hw = w / 2;
+
     const rustMat = new THREE.MeshStandardMaterial({ color: 0x884422, roughness: 0.8, metalness: 0.3 });
     const metalMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.6, roughness: 0.4 });
     const scrapMat = new THREE.MeshStandardMaterial({ color: 0x777766, metalness: 0.4, roughness: 0.6 });
@@ -18619,7 +18697,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.3;
     this._hemiLight.color.setHex(0x664466);
     this._hemiLight.groundColor.setHex(0x110011);
-    const hw = w / 2;
+
     const corruptMat = new THREE.MeshStandardMaterial({ color: 0x442244, roughness: 0.7 });
     const rotMat = new THREE.MeshStandardMaterial({ color: 0x334411, roughness: 0.8 });
     const goldMat = new THREE.MeshStandardMaterial({ color: 0xaa8822, metalness: 0.5, roughness: 0.4 });
@@ -18700,7 +18778,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.4;
     this._hemiLight.color.setHex(0x556699);
     this._hemiLight.groundColor.setHex(0x111133);
-    const hw = w / 2;
+
     const clockMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.6, roughness: 0.3 });
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x4455aa, roughness: 0.6 });
     const timeMat = new THREE.MeshStandardMaterial({ color: 0x66ccff, emissive: 0x4488ff, emissiveIntensity: 1.0, transparent: true, opacity: 0.5 });
@@ -18772,7 +18850,7 @@ export class DiabloRenderer {
     this._ambientLight.intensity = 0.2;
     this._hemiLight.color.setHex(0x442244);
     this._hemiLight.groundColor.setHex(0x050005);
-    const hw = w / 2;
+
     const eldritchMat = new THREE.MeshStandardMaterial({ color: 0x440044, emissive: 0x220022, emissiveIntensity: 0.5 });
     const tentacleMat = new THREE.MeshStandardMaterial({ color: 0x553355, roughness: 0.5 });
     const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xcc00cc, emissiveIntensity: 2.0 });

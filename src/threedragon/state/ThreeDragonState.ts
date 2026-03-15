@@ -59,7 +59,7 @@ export interface TDStatusEffects {
 // Environmental hazards
 // ---------------------------------------------------------------------------
 
-export type TDHazardType = "lava_geyser" | "blizzard_wind" | "crystal_shard" | "lightning_strike" | "water_spout" | "leaf_tornado";
+export type TDHazardType = "lava_geyser" | "blizzard_wind" | "crystal_shard" | "lightning_strike" | "water_spout" | "leaf_tornado" | "pressure_wave" | "petal_storm";
 
 export interface TDHazard {
   id: number;

@@ -1549,7 +1549,7 @@ export class WarbandSceneManager {
       facing: "z" | "x",
       depthDir: number, // +1 or -1: which direction bricks protrude
     ) => {
-      const wallWidth = facing === "z" ? (endX - startX) : (endX - startX); // endX/startX are the span coords
+      // wallWidth removed (unused): facing === "z" ? (endX - startX) : (endX - startX)
       const rows = Math.floor((endY - startY) / brickH);
 
       for (let row = 0; row < rows; row++) {

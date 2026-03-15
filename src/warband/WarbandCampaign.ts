@@ -1476,7 +1476,7 @@ export class WarbandCampaign {
     const factionColor = factionDef ? `#${factionDef.accentColor.toString(16).padStart(6, "0")}` : "#daa520";
     const citiesOwned = s.cities.filter((c) => c.factionId === s.playerFaction).length;
     const totalCities = s.cities.length;
-    const topBarTerrain = _getTerrainAt(s.playerParty.x, s.playerParty.y, s.terrain);
+    _getTerrainAt(s.playerParty.x, s.playerParty.y, s.terrain);
     let dailyUpkeep = 0;
     for (const slot of s.playerParty.army) {
       dailyUpkeep += this._getUnitUpkeep(slot.unitId) * slot.count;
@@ -2879,7 +2879,7 @@ export class WarbandCampaign {
 
     // ---- Villages --------------------------------
     for (const village of s.villages) {
-      const vColor = _factionHex(village.factionId);
+      _factionHex(village.factionId);
       const [vr, vg, vb] = _factionRGB(village.factionId);
       const isOwnVillage = village.factionId === s.playerFaction;
 

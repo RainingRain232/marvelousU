@@ -4328,6 +4328,8 @@ export class ThreeDragonRenderer {
           lightning_strike: 0xffff44,
           water_spout: 0x44aaff,
           leaf_tornado: 0xcc8833,
+          pressure_wave: 0x00ddbb,
+          petal_storm: 0xffaacc,
         };
         const color = colors[h.type] ?? 0xffffff;
         const mat = new THREE.MeshBasicMaterial({
@@ -4360,11 +4362,19 @@ export class ThreeDragonRenderer {
           );
           shard.rotation.x = Math.PI; // point down
           group.add(shard);
-        } else if (h.type === "leaf_tornado" || h.type === "blizzard_wind") {
+        } else if (h.type === "leaf_tornado" || h.type === "blizzard_wind" || h.type === "petal_storm") {
           // Swirling particles — use sphere as proxy
           const sphere = new THREE.Mesh(this._sphereGeo, mat);
           sphere.scale.set(h.radius, h.radius * 2, h.radius);
           group.add(sphere);
+        } else if (h.type === "pressure_wave") {
+          // Expanding ring on the ground
+          const ring = new THREE.Mesh(
+            new THREE.RingGeometry(h.radius * 0.6, h.radius, 24),
+            mat,
+          );
+          ring.rotation.x = -Math.PI / 2;
+          group.add(ring);
         }
 
         this._scene.add(group);
@@ -4394,8 +4404,12 @@ export class ThreeDragonRenderer {
         });
         group.scale.setScalar(1);
         // Rotate tornado/wind effects
-        if (h.type === "leaf_tornado") {
+        if (h.type === "leaf_tornado" || h.type === "petal_storm") {
           group.rotation.y += dt * 5;
+        } else if (h.type === "pressure_wave") {
+          // Pulsing expand/contract effect
+          const pulseScale = 1 + Math.sin(time * 6) * 0.15;
+          group.scale.setScalar(pulseScale);
         }
       } else {
         // Fading

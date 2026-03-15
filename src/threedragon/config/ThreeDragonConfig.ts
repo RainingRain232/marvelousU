@@ -768,6 +768,130 @@ export const TD_MAPS: TDMapConfig[] = [
     mountainHeightMax: 40,
     mountainSpreadX: 90,
   },
+
+  // -------------------------------------------------------------------------
+  // 9. Abyssal Depths — deep ocean trench with bioluminescent atmosphere
+  // -------------------------------------------------------------------------
+  {
+    id: "abyssal_depths",
+    name: "Abyssal Depths",
+    description: "A crushing deep-ocean trench where bioluminescent life casts eerie glows through the perpetual darkness. Pressure waves ripple through the abyss.",
+    preview: "Descend into the lightless deep where ancient creatures glow.",
+
+    skyTopColor: 0x000508,
+    skyMidColor: 0x001122,
+    skyHorizonColor: 0x002233,
+    skySunColor: 0x004455,
+    sunPosition: [0.2, 0.05, -1],
+    moonPosition: [-0.5, 0.3, 1],
+
+    fogColor: 0x001a2a,
+    fogDensity: 0.04,
+
+    ambientColor: 0x00cccc,
+    ambientIntensity: 0.25,
+    sunLightColor: 0x33eecc,
+    sunLightIntensity: 0.3,
+    hemiSkyColor: 0x003344,
+    hemiGroundColor: 0x001a22,
+    rimLightColor: 0x00ffaa,
+
+    groundColor: 0x0a1e2e,
+    groundHueVariation: 0.06,
+
+    waterColor: 0x001520,
+    waterHighlight: 0x00ffcc,
+    waterAlpha: 0.85,
+    waterY: -1,
+
+    mountainBaseHue: 0.52,
+    mountainSatRange: [0.25, 0.45],
+    mountainLightRange: [0.08, 0.2],
+    snowColor: 0x224455,
+    snowThreshold: 0.85,
+
+    grassColors: [0x0a2233, 0x0d2d44, 0x082838, 0x113344, 0x00334d],
+    treeCanopyColors: [0x004455, 0x005566, 0x003344, 0x006666, 0x007777, 0x005555],
+    trunkColor: 0x112233,
+    flowerColors: [0x00ffdd, 0x33ffaa, 0xff00ff, 0x00ffff, 0x66ff99, 0xcc44ff],
+    rockColor: 0x1a2a3a,
+
+    cloudLightColors: [0x0a3344, 0x0d4455, 0x083838, 0x114455],
+    cloudDarkColors: [0x001118, 0x000a12, 0x00080e, 0x001520],
+    cloudMidColors: [0x052530, 0x063040, 0x042028, 0x073545],
+    cloudHighlightColor: 0x00ddbb,
+    cloudCount: 30,
+    hazards: [
+      { type: "pressure_wave", interval: 4, damage: 10, radius: 5, warningDuration: 1.0, activeDuration: 1.0 },
+    ],
+
+    mountainCount: 40,
+    mountainHeightMin: 12,
+    mountainHeightMax: 45,
+    mountainSpreadX: 85,
+  },
+
+  // -------------------------------------------------------------------------
+  // 10. Sakura Highlands — Japanese cherry blossom mountain realm
+  // -------------------------------------------------------------------------
+  {
+    id: "sakura_highlands",
+    name: "Sakura Highlands",
+    description: "A serene mountain realm where cherry blossoms drift on warm twilight breezes. Petal storms sweep through the valleys with deceptive grace.",
+    preview: "Walk among the blossoms on misty sacred peaks.",
+
+    skyTopColor: 0x2a1533,
+    skyMidColor: 0x6b3a6e,
+    skyHorizonColor: 0xdd8899,
+    skySunColor: 0xffbb88,
+    sunPosition: [-0.6, 0.15, -0.8],
+    moonPosition: [0.5, 0.6, 0.8],
+
+    fogColor: 0xddaacc,
+    fogDensity: 0.012,
+
+    ambientColor: 0xffaacc,
+    ambientIntensity: 0.5,
+    sunLightColor: 0xffddaa,
+    sunLightIntensity: 0.7,
+    hemiSkyColor: 0xcc88aa,
+    hemiGroundColor: 0x556644,
+    rimLightColor: 0xffccdd,
+
+    groundColor: 0x3a6633,
+    groundHueVariation: 0.12,
+
+    waterColor: 0x6677aa,
+    waterHighlight: 0xccaadd,
+    waterAlpha: 0.5,
+    waterY: -4,
+
+    mountainBaseHue: 0.08,
+    mountainSatRange: [0.2, 0.4],
+    mountainLightRange: [0.3, 0.55],
+    snowColor: 0xffeeff,
+    snowThreshold: 0.6,
+
+    grassColors: [0x447733, 0x558844, 0x669944, 0x3a6b2a, 0x5a8a3a],
+    treeCanopyColors: [0xff88aa, 0xffaacc, 0xff6699, 0xee77aa, 0x88bb66, 0xaacc77],
+    trunkColor: 0x6b4433,
+    flowerColors: [0xffaacc, 0xffeeff, 0xcc88dd, 0xffdd66, 0xff99bb, 0xeeccff],
+    rockColor: 0x887766,
+
+    cloudLightColors: [0xffccdd, 0xffddee, 0xeebbcc, 0xffbbcc],
+    cloudDarkColors: [0x775566, 0x886677, 0x664455, 0x775566],
+    cloudMidColors: [0xcc99aa, 0xddaabb, 0xbb8899, 0xddbbcc],
+    cloudHighlightColor: 0xffeedd,
+    cloudCount: 45,
+    hazards: [
+      { type: "petal_storm", interval: 5, damage: 6, radius: 4, warningDuration: 0.5, activeDuration: 3 },
+    ],
+
+    mountainCount: 50,
+    mountainHeightMin: 12,
+    mountainHeightMax: 50,
+    mountainSpreadX: 95,
+  },
 ];
 
 export const TD_MAP_BY_ID: Record<string, TDMapConfig> = {};

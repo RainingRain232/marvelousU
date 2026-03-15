@@ -362,6 +362,8 @@ export class DiabloGame {
   private _fullmapCtx!: CanvasRenderingContext2D;
   private _fullmapVisible: boolean = false;
   private _weatherText!: HTMLDivElement;
+  private _mapNameLabel!: HTMLDivElement;
+  private _xpLevelText!: HTMLDivElement;
 
   // Quest tracker (a270b216)
   private _questTracker!: HTMLDivElement;
@@ -2350,72 +2352,236 @@ export class DiabloGame {
   private _buildHUD(): void {
     this._hud.innerHTML = "";
 
-    // Health orb - bottom left
+    // Health orb - bottom left (ornate)
+    const hpOrbWrap = document.createElement("div");
+    hpOrbWrap.style.cssText = `
+      position:absolute;bottom:22px;left:22px;width:140px;height:140px;
+      display:flex;align-items:center;justify-content:center;
+      filter:drop-shadow(0 0 12px rgba(180,20,20,0.35));
+    `;
+    // Outer decorative ring
+    const hpRingOuter = document.createElement("div");
+    hpRingOuter.style.cssText = `
+      position:absolute;width:136px;height:136px;border-radius:50%;
+      border:3px solid transparent;
+      background:conic-gradient(from 0deg, #8b6914, #c8a84e, #e8d07a, #c8a84e, #8b6914, #6b4f0e, #8b6914) border-box;
+      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;
+      pointer-events:none;
+    `;
+    // Inner decorative ring
+    const hpRingInner = document.createElement("div");
+    hpRingInner.style.cssText = `
+      position:absolute;width:126px;height:126px;border-radius:50%;
+      border:2px solid rgba(60,5,5,0.8);
+      box-shadow:0 0 6px rgba(0,0,0,0.6);
+      pointer-events:none;
+    `;
     const hpOrb = document.createElement("div");
     hpOrb.style.cssText = `
-      position:absolute;bottom:30px;left:30px;width:90px;height:90px;border-radius:50%;
-      background:radial-gradient(circle at 35% 35%, rgba(60,10,10,0.9), rgba(20,2,2,0.95));
-      border:3px solid #8b0000;overflow:hidden;
+      width:120px;height:120px;border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, rgba(60,10,10,0.9), rgba(20,2,2,0.97));
+      overflow:hidden;position:relative;
       display:flex;align-items:center;justify-content:center;
-      box-shadow:0 0 15px rgba(180,20,20,0.4), inset 0 0 20px rgba(0,0,0,0.5),
-        0 0 3px rgba(200,168,78,0.3);
+      box-shadow:0 0 20px rgba(180,20,20,0.5), inset 0 0 30px rgba(0,0,0,0.6),
+        inset 0 0 60px rgba(120,10,10,0.2);
     `;
     this._hpBar = document.createElement("div");
     this._hpBar.style.cssText = `
       position:absolute;bottom:0;left:0;width:100%;height:100%;
       background:radial-gradient(circle at 40% 40%, rgba(220,40,40,0.9), rgba(140,10,10,0.85));
       border-radius:50%;transition:height 0.3s;
+      box-shadow:inset 0 -5px 15px rgba(255,60,60,0.3);
+    `;
+    // Inner glow overlay
+    const hpGlow = document.createElement("div");
+    hpGlow.style.cssText = `
+      position:absolute;top:10%;left:15%;width:40%;height:30%;
+      background:radial-gradient(ellipse, rgba(255,180,180,0.25), transparent);
+      border-radius:50%;pointer-events:none;z-index:2;
     `;
     this._hpText = document.createElement("div");
     this._hpText.style.cssText = `
-      position:relative;z-index:1;color:#ffcccc;font-size:13px;font-weight:bold;text-align:center;
-      text-shadow:0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(200,20,20,0.3);
+      position:relative;z-index:3;color:#ffcccc;font-size:14px;font-weight:bold;text-align:center;
+      text-shadow:0 1px 4px rgba(0,0,0,0.95), 0 0 10px rgba(200,20,20,0.4);
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
     `;
+    // Skull decoration on top
+    const hpSkull = document.createElement("div");
+    hpSkull.style.cssText = `
+      position:absolute;top:-8px;left:50%;transform:translateX(-50%);z-index:4;
+      font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+      color:#c8a84e;pointer-events:none;
+    `;
+    hpSkull.textContent = "\u2020";
+    // Corner flourishes (4 positions)
+    const hpFlourishes = [
+      { top: "2px", left: "2px", rot: "0deg" },
+      { top: "2px", right: "2px", rot: "90deg" },
+      { bottom: "2px", left: "2px", rot: "270deg" },
+      { bottom: "2px", right: "2px", rot: "180deg" },
+    ];
+    for (const pos of hpFlourishes) {
+      const fl = document.createElement("div");
+      let posStr = `position:absolute;width:14px;height:14px;pointer-events:none;z-index:5;`;
+      if (pos.top) posStr += `top:${pos.top};`;
+      if (pos.bottom) posStr += `bottom:${pos.bottom};`;
+      if (pos.left) posStr += `left:${pos.left};`;
+      if (pos.right) posStr += `right:${pos.right};`;
+      posStr += `transform:rotate(${pos.rot});font-size:10px;color:#c8a84e;text-shadow:0 0 4px rgba(200,168,78,0.4);`;
+      fl.style.cssText = posStr;
+      fl.textContent = "\u269C";
+      hpOrbWrap.appendChild(fl);
+    }
     hpOrb.appendChild(this._hpBar);
+    hpOrb.appendChild(hpGlow);
     hpOrb.appendChild(this._hpText);
-    this._hud.appendChild(hpOrb);
+    hpOrbWrap.appendChild(hpRingOuter);
+    hpOrbWrap.appendChild(hpRingInner);
+    hpOrbWrap.appendChild(hpOrb);
+    hpOrbWrap.appendChild(hpSkull);
+    this._hud.appendChild(hpOrbWrap);
 
-    // Mana orb - bottom right
+    // Mana orb - bottom right (ornate)
+    const mpOrbWrap = document.createElement("div");
+    mpOrbWrap.style.cssText = `
+      position:absolute;bottom:22px;right:22px;width:140px;height:140px;
+      display:flex;align-items:center;justify-content:center;
+      filter:drop-shadow(0 0 12px rgba(30,30,200,0.35));
+    `;
+    // Outer decorative ring (silver/blue)
+    const mpRingOuter = document.createElement("div");
+    mpRingOuter.style.cssText = `
+      position:absolute;width:136px;height:136px;border-radius:50%;
+      border:3px solid transparent;
+      background:conic-gradient(from 0deg, #4a5a8b, #7a8ac8, #a0b0e8, #7a8ac8, #4a5a8b, #3a4a6b, #4a5a8b) border-box;
+      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;
+      pointer-events:none;
+    `;
+    // Inner ring
+    const mpRingInner = document.createElement("div");
+    mpRingInner.style.cssText = `
+      position:absolute;width:126px;height:126px;border-radius:50%;
+      border:2px solid rgba(5,5,60,0.8);
+      box-shadow:0 0 6px rgba(0,0,0,0.6);
+      pointer-events:none;
+    `;
     const mpOrb = document.createElement("div");
     mpOrb.style.cssText = `
-      position:absolute;bottom:30px;right:30px;width:90px;height:90px;border-radius:50%;
-      background:radial-gradient(circle at 35% 35%, rgba(10,10,60,0.9), rgba(2,2,20,0.95));
-      border:3px solid #000088;overflow:hidden;
+      width:120px;height:120px;border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, rgba(10,10,60,0.9), rgba(2,2,20,0.97));
+      overflow:hidden;position:relative;
       display:flex;align-items:center;justify-content:center;
-      box-shadow:0 0 15px rgba(30,30,200,0.4), inset 0 0 20px rgba(0,0,0,0.5),
-        0 0 3px rgba(200,168,78,0.3);
+      box-shadow:0 0 20px rgba(30,30,200,0.5), inset 0 0 30px rgba(0,0,0,0.6),
+        inset 0 0 60px rgba(10,10,120,0.2);
     `;
     this._mpBar = document.createElement("div");
     this._mpBar.style.cssText = `
       position:absolute;bottom:0;left:0;width:100%;height:100%;
       background:radial-gradient(circle at 40% 40%, rgba(60,60,240,0.9), rgba(20,20,140,0.85));
       border-radius:50%;transition:height 0.3s;
+      box-shadow:inset 0 -5px 15px rgba(60,60,255,0.3);
+    `;
+    // Inner glow
+    const mpGlow = document.createElement("div");
+    mpGlow.style.cssText = `
+      position:absolute;top:10%;left:15%;width:40%;height:30%;
+      background:radial-gradient(ellipse, rgba(180,180,255,0.25), transparent);
+      border-radius:50%;pointer-events:none;z-index:2;
     `;
     this._mpText = document.createElement("div");
     this._mpText.style.cssText = `
-      position:relative;z-index:1;color:#ccccff;font-size:13px;font-weight:bold;text-align:center;
-      text-shadow:0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(30,30,200,0.3);
+      position:relative;z-index:3;color:#ccccff;font-size:14px;font-weight:bold;text-align:center;
+      text-shadow:0 1px 4px rgba(0,0,0,0.95), 0 0 10px rgba(30,30,200,0.4);
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
     `;
-    mpOrb.appendChild(this._mpBar);
-    mpOrb.appendChild(this._mpText);
-    this._hud.appendChild(mpOrb);
-
-    // Skill bar - bottom center
-    const skillBar = document.createElement("div");
-    skillBar.style.cssText = `
-      position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:6px;
+    // Arcane rune decoration on top
+    const mpRune = document.createElement("div");
+    mpRune.style.cssText = `
+      position:absolute;top:-8px;left:50%;transform:translateX(-50%);z-index:4;
+      font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+      color:#7a8ac8;pointer-events:none;
     `;
+    mpRune.textContent = "\u2726";
+    // Corner rune flourishes
+    const mpFlourishes = [
+      { top: "2px", left: "2px", rot: "0deg" },
+      { top: "2px", right: "2px", rot: "90deg" },
+      { bottom: "2px", left: "2px", rot: "270deg" },
+      { bottom: "2px", right: "2px", rot: "180deg" },
+    ];
+    for (const pos of mpFlourishes) {
+      const fl = document.createElement("div");
+      let posStr = `position:absolute;width:14px;height:14px;pointer-events:none;z-index:5;`;
+      if (pos.top) posStr += `top:${pos.top};`;
+      if (pos.bottom) posStr += `bottom:${pos.bottom};`;
+      if (pos.left) posStr += `left:${pos.left};`;
+      if (pos.right) posStr += `right:${pos.right};`;
+      posStr += `transform:rotate(${pos.rot});font-size:10px;color:#7a8ac8;text-shadow:0 0 4px rgba(100,120,200,0.4);`;
+      fl.style.cssText = posStr;
+      fl.textContent = "\u2727";
+      mpOrbWrap.appendChild(fl);
+    }
+    mpOrb.appendChild(this._mpBar);
+    mpOrb.appendChild(mpGlow);
+    mpOrb.appendChild(this._mpText);
+    mpOrbWrap.appendChild(mpRingOuter);
+    mpOrbWrap.appendChild(mpRingInner);
+    mpOrbWrap.appendChild(mpOrb);
+    mpOrbWrap.appendChild(mpRune);
+    this._hud.appendChild(mpOrbWrap);
+
+    // Skill bar - bottom center (ornate stone bar)
+    const skillBarBg = document.createElement("div");
+    skillBarBg.style.cssText = `
+      position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+      padding:8px 14px;display:flex;gap:6px;
+      background:linear-gradient(180deg, rgba(45,38,25,0.95), rgba(25,20,10,0.97), rgba(35,28,18,0.95));
+      border:2px solid #8b7a4a;border-radius:8px;
+      box-shadow:0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,168,78,0.2),
+        inset 0 -1px 0 rgba(0,0,0,0.4), 0 0 1px rgba(200,168,78,0.3);
+    `;
+    // Left end-cap ornament
+    const skillCapL = document.createElement("div");
+    skillCapL.style.cssText = `
+      position:absolute;left:-10px;top:50%;transform:translateY(-50%);
+      font-size:20px;color:#c8a84e;filter:drop-shadow(0 0 4px rgba(200,168,78,0.4));
+      pointer-events:none;
+    `;
+    skillCapL.textContent = "\u2740";
+    skillBarBg.appendChild(skillCapL);
+    // Right end-cap ornament
+    const skillCapR = document.createElement("div");
+    skillCapR.style.cssText = `
+      position:absolute;right:-10px;top:50%;transform:translateY(-50%);
+      font-size:20px;color:#c8a84e;filter:drop-shadow(0 0 4px rgba(200,168,78,0.4));
+      pointer-events:none;
+    `;
+    skillCapR.textContent = "\u2740";
+    skillBarBg.appendChild(skillCapR);
+
     this._skillSlots = [];
     this._skillCooldownOverlays = [];
     for (let i = 0; i < 6; i++) {
+      const slotWrap = document.createElement("div");
+      slotWrap.style.cssText = `
+        position:relative;width:72px;height:72px;
+      `;
       const slot = document.createElement("div");
       slot.style.cssText = `
-        width:64px;height:64px;background:linear-gradient(180deg, rgba(30,25,15,0.95), rgba(15,10,5,0.95));
-        border:2px solid #7a6a3a;border-radius:6px;display:flex;flex-direction:column;
+        width:72px;height:72px;background:linear-gradient(180deg, rgba(30,25,15,0.95), rgba(12,8,3,0.97));
+        border:2px solid #9a8a4a;border-radius:6px;display:flex;flex-direction:column;
         align-items:center;justify-content:center;position:relative;overflow:hidden;
-        box-shadow:inset 0 1px 0 rgba(200,168,78,0.15), 0 2px 6px rgba(0,0,0,0.5);
+        box-shadow:inset 0 1px 0 rgba(200,168,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
+          0 2px 8px rgba(0,0,0,0.5), inset 0 0 20px rgba(200,168,78,0.03);
+      `;
+      // Ornate frame corners on each slot
+      const cornerDeco = document.createElement("div");
+      cornerDeco.style.cssText = `
+        position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;
+        border-radius:6px;
+        box-shadow:inset 2px 2px 0 rgba(200,168,78,0.15), inset -2px -2px 0 rgba(200,168,78,0.1);
       `;
 
       const cdOverlay = document.createElement("div");
@@ -2427,72 +2593,197 @@ export class DiabloGame {
       const cdText = document.createElement("div");
       cdText.style.cssText = `
         position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-        font-size:16px;font-weight:bold;color:#fff;z-index:3;
+        font-size:18px;font-weight:bold;color:#fff;z-index:3;
         text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none;display:none;
       `;
       cdText.className = "skill-cd-text";
 
       const keyLabel = document.createElement("div");
       keyLabel.style.cssText = `
-        position:absolute;bottom:2px;right:4px;font-size:10px;color:#888;z-index:2;
+        position:absolute;bottom:2px;right:4px;font-size:10px;color:#9a8a5a;z-index:2;
+        font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
       `;
       keyLabel.textContent = String(i + 1);
 
       const iconEl = document.createElement("div");
-      iconEl.style.cssText = "font-size:24px;z-index:1;";
+      iconEl.style.cssText = "font-size:26px;z-index:1;";
       iconEl.className = "skill-icon";
 
       slot.appendChild(cdOverlay);
       slot.appendChild(iconEl);
       slot.appendChild(cdText);
       slot.appendChild(keyLabel);
-      skillBar.appendChild(slot);
+      slot.appendChild(cornerDeco);
+      slotWrap.appendChild(slot);
+      skillBarBg.appendChild(slotWrap);
       this._skillSlots.push(slot);
       this._skillCooldownOverlays.push(cdOverlay);
     }
-    this._hud.appendChild(skillBar);
+    this._hud.appendChild(skillBarBg);
 
-    // XP bar - very bottom
+    // XP bar - very bottom (ornate)
     const xpContainer = document.createElement("div");
     xpContainer.style.cssText = `
-      position:absolute;bottom:0;left:0;width:100%;height:8px;
-      background:rgba(20,15,5,0.9);border-top:1px solid rgba(200,168,78,0.3);
+      position:absolute;bottom:0;left:0;width:100%;height:12px;
+      background:linear-gradient(180deg, rgba(30,22,8,0.95), rgba(15,10,3,0.95));
+      border-top:2px solid rgba(200,168,78,0.4);
+      box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);
     `;
+    // Left end-cap
+    const xpCapL = document.createElement("div");
+    xpCapL.style.cssText = `
+      position:absolute;left:4px;top:50%;transform:translateY(-50%);z-index:3;
+      font-size:10px;color:#c8a84e;pointer-events:none;
+    `;
+    xpCapL.textContent = "\u25C0";
+    xpContainer.appendChild(xpCapL);
+    // Right end-cap
+    const xpCapR = document.createElement("div");
+    xpCapR.style.cssText = `
+      position:absolute;right:4px;top:50%;transform:translateY(-50%);z-index:3;
+      font-size:10px;color:#c8a84e;pointer-events:none;
+    `;
+    xpCapR.textContent = "\u25B6";
+    xpContainer.appendChild(xpCapR);
     this._xpBar = document.createElement("div");
     this._xpBar.style.cssText = `
-      height:100%;width:0%;background:linear-gradient(90deg,#6b5500,#ffd700,#fff4aa);
-      transition:width 0.3s;box-shadow:0 0 8px rgba(255,215,0,0.4);
+      height:100%;width:0%;
+      background:linear-gradient(90deg,#6b5500,#ffd700,#fff4aa,#ffd700);
+      transition:width 0.3s;
+      box-shadow:0 0 10px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
     `;
     xpContainer.appendChild(this._xpBar);
+    // Level indicator text embedded in bar
+    this._xpLevelText = document.createElement("div");
+    this._xpLevelText.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;
+      font-size:9px;color:#e8d07a;font-weight:bold;pointer-events:none;
+      text-shadow:0 0 4px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.8);
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      letter-spacing:1px;
+    `;
+    xpContainer.appendChild(this._xpLevelText);
     this._hud.appendChild(xpContainer);
 
-    // Top right info
+    // Top right info (parchment panel)
     const topRight = document.createElement("div");
     topRight.style.cssText = `
       position:absolute;top:16px;right:20px;text-align:right;
+      background:linear-gradient(180deg, rgba(35,28,15,0.9), rgba(20,15,8,0.92), rgba(30,24,12,0.9));
+      border:2px solid #7a6a3a;border-radius:8px;
+      padding:10px 14px;min-width:160px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
+        inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2);
     `;
+    // Top ornament for the panel
+    const panelOrnament = document.createElement("div");
+    panelOrnament.style.cssText = `
+      position:absolute;top:-8px;left:50%;transform:translateX(-50%);
+      font-size:14px;color:#c8a84e;filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
+      pointer-events:none;
+    `;
+    panelOrnament.textContent = "\u2736";
+    topRight.appendChild(panelOrnament);
     this._goldText = document.createElement("div");
-    this._goldText.style.cssText = "font-size:16px;color:#ffd700;margin-bottom:4px;font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;text-shadow:0 0 6px rgba(255,215,0,0.3);";
+    this._goldText.style.cssText = `
+      font-size:20px;color:#ffd700;margin-bottom:6px;
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      text-shadow:0 0 8px rgba(255,215,0,0.4), 0 1px 3px rgba(0,0,0,0.8);
+      letter-spacing:0.5px;
+    `;
     this._levelText = document.createElement("div");
-    this._levelText.style.cssText = "font-size:14px;color:#c8a84e;margin-bottom:4px;font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;text-shadow:0 0 4px rgba(200,168,78,0.2);";
+    this._levelText.style.cssText = `
+      font-size:18px;color:#c8a84e;margin-bottom:5px;
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      text-shadow:0 0 6px rgba(200,168,78,0.3), 0 1px 2px rgba(0,0,0,0.7);
+    `;
     this._killText = document.createElement("div");
-    this._killText.style.cssText = "font-size:13px;color:#aaa;font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;";
+    this._killText.style.cssText = `
+      font-size:15px;color:#bbb;
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      text-shadow:0 1px 2px rgba(0,0,0,0.6);
+    `;
     topRight.appendChild(this._goldText);
     topRight.appendChild(this._levelText);
     topRight.appendChild(this._killText);
     this._hud.appendChild(topRight);
 
-    // Minimap canvas — top-left corner
+    // Minimap canvas — top-left corner (ornate frame)
+    const minimapWrap = document.createElement("div");
+    minimapWrap.style.cssText = `
+      position:absolute;top:12px;left:12px;width:216px;height:216px;
+      display:flex;align-items:center;justify-content:center;
+    `;
+    // Ornate outer frame
+    const mmFrame = document.createElement("div");
+    mmFrame.style.cssText = `
+      position:absolute;width:216px;height:216px;border-radius:6px;
+      border:3px solid transparent;pointer-events:none;
+      background:linear-gradient(135deg, #8b6914, #c8a84e, #e8d07a, #c8a84e, #8b6914) border-box;
+      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;
+      box-shadow:0 0 8px rgba(200,168,78,0.3);
+    `;
+    minimapWrap.appendChild(mmFrame);
+    // Inner thick border
+    const mmInner = document.createElement("div");
+    mmInner.style.cssText = `
+      position:absolute;width:208px;height:208px;border-radius:4px;
+      border:2px solid rgba(40,30,10,0.9);pointer-events:none;
+      box-shadow:inset 0 0 6px rgba(0,0,0,0.5);
+    `;
+    minimapWrap.appendChild(mmInner);
+    // Corner decorations
+    const mmCorners = [
+      { top: "-4px", left: "-4px" },
+      { top: "-4px", right: "-4px" },
+      { bottom: "-4px", left: "-4px" },
+      { bottom: "-4px", right: "-4px" },
+    ];
+    for (const pos of mmCorners) {
+      const c = document.createElement("div");
+      let cStyle = `position:absolute;font-size:12px;color:#c8a84e;z-index:3;pointer-events:none;
+        filter:drop-shadow(0 0 3px rgba(200,168,78,0.4));`;
+      if (pos.top) cStyle += `top:${pos.top};`;
+      if (pos.bottom) cStyle += `bottom:${pos.bottom};`;
+      if (pos.left) cStyle += `left:${pos.left};`;
+      if (pos.right) cStyle += `right:${pos.right};`;
+      c.style.cssText = cStyle;
+      c.textContent = "\u2726";
+      minimapWrap.appendChild(c);
+    }
+    // Compass rose indicator (N at top center)
+    const compass = document.createElement("div");
+    compass.style.cssText = `
+      position:absolute;top:-2px;left:50%;transform:translateX(-50%);z-index:4;
+      font-size:11px;color:#e8d07a;font-weight:bold;pointer-events:none;
+      text-shadow:0 0 4px rgba(0,0,0,0.9), 0 0 8px rgba(200,168,78,0.3);
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    `;
+    compass.textContent = "N";
+    minimapWrap.appendChild(compass);
     this._minimapCanvas = document.createElement("canvas");
     this._minimapCanvas.width = 200;
     this._minimapCanvas.height = 200;
     this._minimapCanvas.style.cssText = `
-      position:absolute;top:16px;left:16px;width:200px;height:200px;
-      border:2px solid #c8a84e;border-radius:4px;background:rgba(0,0,0,0.6);
-      box-shadow:0 0 10px rgba(0,0,0,0.5), inset 0 0 5px rgba(200,168,78,0.1);
+      width:200px;height:200px;border-radius:3px;background:rgba(0,0,0,0.6);
+      box-shadow:inset 0 0 10px rgba(0,0,0,0.4);
     `;
     this._minimapCtx = this._minimapCanvas.getContext("2d")!;
-    this._hud.appendChild(this._minimapCanvas);
+    minimapWrap.appendChild(this._minimapCanvas);
+    this._hud.appendChild(minimapWrap);
+
+    // Dedicated map name label below minimap
+    this._mapNameLabel = document.createElement("div");
+    this._mapNameLabel.style.cssText = `
+      position:absolute;top:234px;left:12px;width:216px;text-align:center;
+      font-size:13px;color:#e8d07a;font-weight:bold;
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      text-shadow:0 0 6px rgba(200,168,78,0.3), 0 1px 3px rgba(0,0,0,0.8);
+      background:linear-gradient(90deg, transparent, rgba(25,20,10,0.7), transparent);
+      padding:3px 0;letter-spacing:1px;pointer-events:none;
+    `;
+    this._hud.appendChild(this._mapNameLabel);
 
     // Fullscreen map overlay (aece2d8c)
     this._fullmapCanvas = document.createElement("canvas");
@@ -2506,54 +2797,91 @@ export class DiabloGame {
     this._fullmapCtx = this._fullmapCanvas.getContext("2d")!;
     this._hud.appendChild(this._fullmapCanvas);
 
-    // Weather text (aece2d8c)
+    // Weather text (aece2d8c) - ornate
     this._weatherText = document.createElement("div");
     this._weatherText.style.cssText = `
-      position:absolute;top:222px;left:16px;width:200px;text-align:center;
-      font-size:11px;color:#aaa;font-family:'Georgia',serif;
+      position:absolute;top:258px;left:12px;width:216px;text-align:center;
+      font-size:12px;color:#b8a878;
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      text-shadow:0 1px 3px rgba(0,0,0,0.7);
+      background:linear-gradient(90deg, transparent, rgba(20,16,8,0.6), transparent);
+      padding:2px 0;letter-spacing:0.5px;
     `;
     this._hud.appendChild(this._weatherText);
 
-    // Potion bar (ad1a2850)
-    const potionBar = document.createElement("div");
-    potionBar.style.cssText = `
-      position:absolute;bottom:28px;left:50%;transform:translateX(205px);display:flex;gap:4px;
+    // Potion bar (ad1a2850) - ornate
+    const potionBarBg = document.createElement("div");
+    potionBarBg.style.cssText = `
+      position:absolute;bottom:22px;left:50%;transform:translateX(250px);display:flex;gap:5px;
+      background:linear-gradient(180deg, rgba(20,30,15,0.9), rgba(10,18,8,0.92));
+      border:2px solid #5a7a3a;border-radius:8px;padding:6px 10px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(100,180,78,0.12),
+        0 0 1px rgba(100,180,78,0.2);
     `;
     this._potionHudSlots = [];
     const potionLabels = ["F1", "F2", "F3", "F4"];
     for (let i = 0; i < 4; i++) {
       const slot = document.createElement("div");
       slot.style.cssText = `
-        width:46px;height:46px;background:linear-gradient(180deg, rgba(20,25,15,0.95), rgba(10,15,5,0.95));
-        border:2px solid #4a6a3a;border-radius:6px;display:flex;flex-direction:column;
+        width:54px;height:54px;background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
+        border:2px solid #6a8a4a;border-radius:6px;display:flex;flex-direction:column;
         align-items:center;justify-content:center;position:relative;overflow:hidden;
-        box-shadow:inset 0 1px 0 rgba(100,180,78,0.15), 0 2px 4px rgba(0,0,0,0.4);
+        box-shadow:inset 0 1px 0 rgba(100,180,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
+          0 2px 6px rgba(0,0,0,0.4), inset 0 0 15px rgba(80,160,60,0.03);
+      `;
+      // Frame corners
+      const potCorner = document.createElement("div");
+      potCorner.style.cssText = `
+        position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:3;
+        border-radius:6px;
+        box-shadow:inset 2px 2px 0 rgba(100,180,78,0.1), inset -2px -2px 0 rgba(100,180,78,0.08);
       `;
       const keyLabel = document.createElement("div");
       keyLabel.style.cssText = `
-        position:absolute;bottom:1px;right:3px;font-size:8px;color:#888;z-index:2;
+        position:absolute;bottom:2px;right:3px;font-size:9px;color:#7a9a5a;z-index:2;
+        font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
       `;
       keyLabel.textContent = potionLabels[i];
       const iconEl = document.createElement("div");
-      iconEl.style.cssText = "font-size:18px;z-index:1;";
+      iconEl.style.cssText = "font-size:22px;z-index:1;";
       iconEl.className = "potion-icon";
       slot.appendChild(iconEl);
       slot.appendChild(keyLabel);
-      potionBar.appendChild(slot);
+      slot.appendChild(potCorner);
+      potionBarBg.appendChild(slot);
       this._potionHudSlots.push(slot);
     }
-    this._hud.appendChild(potionBar);
+    this._hud.appendChild(potionBarBg);
 
-    // Quest tracker (a270b216)
+    // Quest tracker (a270b216) - ornate scroll style
     this._questTracker = document.createElement("div");
     this._questTracker.style.cssText = `
-      position:absolute;top:16px;right:20px;margin-top:80px;width:220px;
-      background:linear-gradient(180deg, rgba(15,12,6,0.85), rgba(10,8,4,0.85));
-      border:1px solid #5a4a2a;border-radius:6px;
-      padding:8px 10px;font-size:12px;color:#ccc;display:none;
-      box-shadow:0 0 10px rgba(0,0,0,0.3), inset 0 0 8px rgba(200,168,78,0.05);
+      position:absolute;top:16px;right:20px;margin-top:100px;width:240px;
+      background:linear-gradient(180deg, rgba(30,24,12,0.9), rgba(15,12,6,0.92), rgba(25,20,10,0.9));
+      border:2px solid #6a5a2a;border-radius:8px;
+      padding:12px 14px;font-size:13px;color:#ccc;display:none;
+      box-shadow:0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
+        inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2);
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
     `;
+    // Scroll top decoration
+    const questScrollTop = document.createElement("div");
+    questScrollTop.style.cssText = `
+      position:absolute;top:-7px;left:50%;transform:translateX(-50%);
+      font-size:12px;color:#c8a84e;pointer-events:none;letter-spacing:4px;
+      filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
+    `;
+    questScrollTop.textContent = "\u2E31 \u2736 \u2E31";
+    this._questTracker.appendChild(questScrollTop);
+    // Scroll bottom decoration
+    const questScrollBot = document.createElement("div");
+    questScrollBot.style.cssText = `
+      position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);
+      font-size:12px;color:#c8a84e;pointer-events:none;letter-spacing:4px;
+      filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
+    `;
+    questScrollBot.textContent = "\u2E31 \u2736 \u2E31";
+    this._questTracker.appendChild(questScrollBot);
     this._hud.appendChild(this._questTracker);
 
     // Vendor interaction hint
@@ -2676,12 +3004,15 @@ export class DiabloGame {
     // XP bar
     const xpPct = p.xpToNext > 0 ? (p.xp / p.xpToNext) * 100 : 0;
     this._xpBar.style.width = Math.min(100, xpPct) + "%";
+    if (this._xpLevelText) {
+      this._xpLevelText.textContent = `Level ${p.level}  \u2014  ${Math.floor(xpPct)}%`;
+    }
 
     // Top right
-    this._goldText.textContent = `\uD83E\uDE99 ${p.gold}`;
-    this._levelText.textContent = `Lv. ${p.level}`;
-    this._killText.textContent = `Kills: ${this._state.killCount}` +
-      (this._state.deathCount > 0 ? `  \u2620 Deaths: ${this._state.deathCount}` : "");
+    this._goldText.innerHTML = `<span style="filter:drop-shadow(0 0 3px rgba(255,215,0,0.4))">\uD83E\uDE99</span> ${p.gold.toLocaleString()}`;
+    this._levelText.innerHTML = `\u2694 Level ${p.level}`;
+    this._killText.innerHTML = `\u2620 ${this._state.killCount} Kills` +
+      (this._state.deathCount > 0 ? `  &nbsp;\u2620 ${this._state.deathCount} Deaths` : "");
 
     // Potion slots (ad1a2850)
     for (let i = 0; i < 4; i++) {
@@ -2689,7 +3020,7 @@ export class DiabloGame {
       const iconEl = this._potionHudSlots[i].querySelector(".potion-icon") as HTMLDivElement;
       if (iconEl) iconEl.textContent = pot ? pot.icon : "";
       const onCd = p.potionCooldown > 0;
-      this._potionHudSlots[i].style.borderColor = onCd ? "#5a2a2a" : "#3a5a2a";
+      this._potionHudSlots[i].style.borderColor = onCd ? "#5a2a2a" : "#6a8a4a";
       this._potionHudSlots[i].style.opacity = onCd ? "0.5" : "1";
     }
 
@@ -2699,12 +3030,28 @@ export class DiabloGame {
       this._updateFullmap();
     }
 
-    // Weather text (aece2d8c)
+    // Map name label
+    if (this._mapNameLabel) {
+      const mapNameMap: Record<string, string> = {
+        [DiabloMapId.FOREST]: "Darkwood Forest",
+        [DiabloMapId.ELVEN_VILLAGE]: "Aelindor",
+        [DiabloMapId.NECROPOLIS_DUNGEON]: "Necropolis Depths",
+        [DiabloMapId.VOLCANIC_WASTES]: "Volcanic Wastes",
+        [DiabloMapId.ABYSSAL_RIFT]: "Abyssal Rift",
+        [DiabloMapId.DRAGONS_SANCTUM]: "Dragon's Sanctum",
+        [DiabloMapId.SUNSCORCH_DESERT]: "Sunscorch Desert",
+        [DiabloMapId.EMERALD_GRASSLANDS]: "Emerald Grasslands",
+        [DiabloMapId.CAMELOT]: "Camelot",
+      };
+      this._mapNameLabel.textContent = mapNameMap[this._state.currentMap] || this._state.currentMap;
+    }
+
+    // Weather text (aece2d8c) - with icons
     const weatherLabels: Record<Weather, string> = {
       [Weather.NORMAL]: "",
-      [Weather.FOGGY]: "Foggy",
-      [Weather.CLEAR]: "Clear Skies",
-      [Weather.STORMY]: "Stormy",
+      [Weather.FOGGY]: "\uD83C\uDF2B\uFE0F Foggy",
+      [Weather.CLEAR]: "\u2600\uFE0F Clear Skies",
+      [Weather.STORMY]: "\u26C8\uFE0F Stormy",
     };
     this._weatherText.textContent = weatherLabels[this._state.weather] || "";
 
