@@ -10746,147 +10746,402 @@ export class DiabloRenderer {
           eyeColor = 0xff0000;
         }
 
-        const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.7 });
-        const accentMat = new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.6 });
-        const eyeMat = new THREE.MeshStandardMaterial({ color: eyeColor, emissive: eyeColor, emissiveIntensity: 1.5 });
-        const emissiveMat = new THREE.MeshStandardMaterial({ color: accentColor, emissive: emissiveColor, emissiveIntensity: 0.6, transparent: true, opacity: 0.4 });
+        // --- Upgraded PBR materials for realistic look ---
+        const bodyMat = new THREE.MeshPhysicalMaterial({
+          color: bodyColor, roughness: 0.65, metalness: 0.05,
+          sheen: 0.3, sheenRoughness: 0.6, sheenColor: new THREE.Color(accentColor),
+          clearcoat: 0.1, clearcoatRoughness: 0.8,
+        });
+        const accentMat = new THREE.MeshPhysicalMaterial({
+          color: accentColor, roughness: 0.5, metalness: 0.25,
+          clearcoat: 0.3, clearcoatRoughness: 0.4,
+          sheen: 0.2, sheenRoughness: 0.5, sheenColor: new THREE.Color(eyeColor),
+        });
+        const armorMat = new THREE.MeshPhysicalMaterial({
+          color: accentColor, roughness: 0.3, metalness: 0.7,
+          clearcoat: 0.5, clearcoatRoughness: 0.2,
+          reflectivity: 0.8,
+        });
+        const eyeMat = new THREE.MeshPhysicalMaterial({
+          color: eyeColor, emissive: eyeColor, emissiveIntensity: 2.0,
+          roughness: 0.05, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.0,
+        });
+        const emissiveMat = new THREE.MeshPhysicalMaterial({
+          color: accentColor, emissive: emissiveColor, emissiveIntensity: 0.8,
+          transparent: true, opacity: 0.35, roughness: 0.3,
+          transmission: 0.4, thickness: 0.5,
+        });
+        const skinMat = new THREE.MeshPhysicalMaterial({
+          color: bodyColor, roughness: 0.7, metalness: 0.0,
+          sheen: 0.5, sheenRoughness: 0.4, sheenColor: new THREE.Color(bodyColor).offsetHSL(0, 0, 0.2),
+          clearcoat: 0.05, clearcoatRoughness: 0.9,
+        });
 
         if (isBoss) {
-          // Large imposing boss body
-          const torso = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 7), bodyMat);
-          torso.scale.set(1.0, 1.3, 0.7);
+          // --- Large imposing boss with detailed anatomy ---
+          // Muscular torso with layered geometry
+          const torso = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), bodyMat);
+          torso.scale.set(1.0, 1.3, 0.75);
           torso.position.y = 1.2;
           torso.castShadow = true;
           group.add(torso);
-          // Shoulder guards
+
+          // Ribcage/chest definition plates
+          for (let r = 0; r < 4; r++) {
+            const ribGeo = new THREE.TorusGeometry(0.35 - r * 0.03, 0.018, 4, 12, Math.PI);
+            const rib = new THREE.Mesh(ribGeo, skinMat);
+            rib.position.set(0, 1.35 - r * 0.08, 0.02);
+            rib.rotation.y = Math.PI;
+            group.add(rib);
+          }
+
+          // Abdomen
+          const abdomen = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.25, 10), bodyMat);
+          abdomen.position.y = 0.88;
+          abdomen.castShadow = true;
+          group.add(abdomen);
+
+          // Shoulder guards with layered plates
           for (const sx of [-0.45, 0.45]) {
-            const pad = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 5), accentMat);
-            pad.scale.set(1.2, 0.7, 1.0);
+            const pad = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), armorMat);
+            pad.scale.set(1.3, 0.7, 1.1);
             pad.position.set(sx, 1.6, 0);
             pad.castShadow = true;
             group.add(pad);
-            // Shoulder spikes
+            // Layered pauldron plates
+            for (let pl = 0; pl < 3; pl++) {
+              const plate = new THREE.Mesh(new THREE.BoxGeometry(0.12 - pl * 0.02, 0.02, 0.14 - pl * 0.02), armorMat);
+              plate.position.set(sx * (1.0 + pl * 0.04), 1.65 - pl * 0.04, 0);
+              plate.rotation.z = sx > 0 ? -0.4 : 0.4;
+              group.add(plate);
+            }
+            // Shoulder spikes with tapered tips
             for (let sp = 0; sp < 3; sp++) {
-              const spike = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 4), accentMat);
-              spike.position.set(sx * (1.1 + sp * 0.08), 1.7 + sp * 0.03, (sp - 1) * 0.08);
+              const spike = new THREE.Mesh(new THREE.ConeGeometry(0.035 - sp * 0.005, 0.2 - sp * 0.03, 6), accentMat);
+              spike.position.set(sx * (1.1 + sp * 0.08), 1.72 + sp * 0.04, (sp - 1) * 0.08);
               spike.rotation.z = sx > 0 ? -0.6 : 0.6;
+              spike.castShadow = true;
               group.add(spike);
             }
           }
-          // Head
-          const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), bodyMat);
-          head.position.set(0, 1.9, 0);
+
+          // Neck muscles
+          const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.2, 8), bodyMat);
+          neck.position.set(0, 1.75, 0);
+          group.add(neck);
+
+          // Head with jaw
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), bodyMat);
+          head.position.set(0, 1.95, 0);
           head.castShadow = true;
           group.add(head);
-          // Crown/horns
+          // Jaw
+          const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.16), skinMat);
+          jaw.position.set(0, 1.82, 0.08);
+          group.add(jaw);
+          // Brow ridge
+          const brow = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.04, 0.08), bodyMat);
+          brow.position.set(0, 2.02, 0.14);
+          group.add(brow);
+
+          // Crown/horns with ridges
           for (const hx of [-0.15, 0.15]) {
-            const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 5), accentMat);
-            horn.position.set(hx, 2.15, 0);
+            const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 8), accentMat);
+            horn.position.set(hx, 2.2, 0);
             horn.rotation.z = hx > 0 ? -0.3 : 0.3;
+            horn.castShadow = true;
             group.add(horn);
+            // Horn ridges
+            for (let hr = 0; hr < 4; hr++) {
+              const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.04 - hr * 0.006, 0.006, 4, 8), accentMat);
+              ridge.position.set(hx + (hx > 0 ? -1 : 1) * hr * 0.015, 2.08 + hr * 0.06, 0);
+              ridge.rotation.x = Math.PI / 2;
+              group.add(ridge);
+            }
           }
-          // Eyes
+
+          // Eyes with inner glow
           for (const ex of [-0.08, 0.08]) {
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), eyeMat);
-            eye.position.set(ex, 1.92, 0.18);
+            const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 0.9 }));
+            eyeSocket.position.set(ex, 1.97, 0.16);
+            group.add(eyeSocket);
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), eyeMat);
+            eye.position.set(ex, 1.97, 0.19);
             group.add(eye);
+            // Pupil slit
+            const pupil = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.04, 0.005), new THREE.MeshPhysicalMaterial({ color: 0x000000 }));
+            pupil.position.set(ex, 1.97, 0.23);
+            group.add(pupil);
           }
-          // Arms
+
+          // Muscular arms with forearm wraps
           for (const ax of [-0.5, 0.5]) {
-            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), bodyMat);
-            arm.position.set(ax, 1.1, 0);
-            arm.rotation.z = ax > 0 ? -0.2 : 0.2;
-            group.add(arm);
-            const fist = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4), accentMat);
-            fist.position.set(ax * 1.15, 0.8, 0);
+            // Upper arm
+            const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.35, 8), bodyMat);
+            upperArm.position.set(ax, 1.35, 0);
+            upperArm.rotation.z = ax > 0 ? -0.2 : 0.2;
+            upperArm.castShadow = true;
+            group.add(upperArm);
+            // Elbow joint
+            const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), skinMat);
+            elbow.position.set(ax * 1.05, 1.15, 0);
+            group.add(elbow);
+            // Forearm
+            const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.3, 8), bodyMat);
+            forearm.position.set(ax * 1.1, 0.95, 0);
+            forearm.rotation.z = ax > 0 ? -0.1 : 0.1;
+            group.add(forearm);
+            // Forearm wraps
+            for (let w = 0; w < 3; w++) {
+              const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.008, 4, 8), accentMat);
+              wrap.position.set(ax * 1.1, 0.85 + w * 0.06, 0);
+              wrap.rotation.x = Math.PI / 2;
+              group.add(wrap);
+            }
+            // Fists with knuckle detail
+            const fist = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), skinMat);
+            fist.position.set(ax * 1.15, 0.78, 0);
             group.add(fist);
+            for (let k = 0; k < 4; k++) {
+              const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.02, 4, 3), skinMat);
+              knuckle.position.set(ax * 1.15 + (k - 1.5) * 0.025, 0.78, 0.07);
+              group.add(knuckle);
+            }
           }
-          // Legs
+
+          // Legs with knee guards
           for (const lx of [-0.2, 0.2]) {
-            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.6, 6), bodyMat);
-            leg.position.set(lx, 0.4, 0);
-            group.add(leg);
-            const foot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.18), accentMat);
-            foot.position.set(lx, 0.08, 0.03);
-            group.add(foot);
+            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.35, 8), bodyMat);
+            thigh.position.set(lx, 0.58, 0);
+            thigh.castShadow = true;
+            group.add(thigh);
+            // Knee guard
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), armorMat);
+            knee.position.set(lx, 0.42, 0.06);
+            knee.scale.set(0.8, 1, 0.6);
+            group.add(knee);
+            // Shin
+            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.3, 8), bodyMat);
+            shin.position.set(lx, 0.25, 0);
+            group.add(shin);
+            // Armored boot
+            const boot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.22), armorMat);
+            boot.position.set(lx, 0.08, 0.03);
+            boot.castShadow = true;
+            group.add(boot);
+            // Boot toe guard
+            const toeGuard = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4, 0, Math.PI), armorMat);
+            toeGuard.position.set(lx, 0.08, 0.14);
+            toeGuard.rotation.x = -Math.PI / 2;
+            group.add(toeGuard);
           }
-          // Aura glow
-          const aura = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 6), emissiveMat);
+
+          // Belt with skull buckle
+          const belt = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.025, 6, 16), armorMat);
+          belt.rotation.x = Math.PI / 2;
+          belt.position.y = 0.88;
+          group.add(belt);
+          const buckle = new THREE.Mesh(new THREE.OctahedronGeometry(0.05), eyeMat);
+          buckle.position.set(0, 0.88, 0.32);
+          group.add(buckle);
+
+          // Back spines
+          for (let s = 0; s < 5; s++) {
+            const spine = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12 + s * 0.02, 5), accentMat);
+            spine.position.set(0, 1.0 + s * 0.15, -0.28);
+            spine.rotation.x = 0.4;
+            group.add(spine);
+          }
+
+          // Aura glow (layered for depth)
+          const aura = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), emissiveMat);
           aura.position.y = 1.2;
           group.add(aura);
+          const innerAura = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 6), new THREE.MeshPhysicalMaterial({
+            color: eyeColor, emissive: eyeColor, emissiveIntensity: 0.3,
+            transparent: true, opacity: 0.15, transmission: 0.6,
+          }));
+          innerAura.position.y = 1.2;
+          group.add(innerAura);
+
           // Boss point light
-          const bLight = new THREE.PointLight(eyeColor, 1.0, 8);
+          const bLight = new THREE.PointLight(eyeColor, 1.5, 10);
           bLight.position.set(0, 1.5, 0);
           group.add(bLight);
         } else {
-          // Standard humanoid body
-          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.45, 6), bodyMat);
-          body.position.y = 0.7;
+          // --- Standard enemy with improved anatomy ---
+          // Torso with subtle chest shape
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.48, 8), bodyMat);
+          body.position.y = 0.72;
           body.castShadow = true;
           group.add(body);
-          // Head
-          const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 5), bodyMat);
-          head.position.y = 1.1;
+          // Chest plate / armor layer
+          const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.2, 0.04), accentMat);
+          chestPlate.position.set(0, 0.82, 0.08);
+          group.add(chestPlate);
+
+          // Neck
+          const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.08, 6), skinMat);
+          neck.position.y = 0.98;
+          group.add(neck);
+
+          // Head with features
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skinMat);
+          head.position.y = 1.12;
           head.castShadow = true;
           group.add(head);
-          // Eyes
+          // Brow ridge
+          const browRidge = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.025, 0.04), bodyMat);
+          browRidge.position.set(0, 1.17, 0.09);
+          group.add(browRidge);
+
+          // Eyes with sockets
           for (const ex of [-0.04, 0.04]) {
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 3), eyeMat);
-            eye.position.set(ex, 1.12, 0.1);
+            const socket = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.9 }));
+            socket.position.set(ex, 1.14, 0.09);
+            group.add(socket);
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 5), eyeMat);
+            eye.position.set(ex, 1.14, 0.11);
             group.add(eye);
           }
-          // Arms
+
+          // Nose hint
+          const nose = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 4), skinMat);
+          nose.position.set(0, 1.1, 0.13);
+          nose.rotation.x = -0.3;
+          group.add(nose);
+
+          // Arms with elbows
           for (const ax of [-0.2, 0.2]) {
-            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.35, 5), bodyMat);
-            arm.position.set(ax, 0.65, 0);
-            arm.rotation.z = ax > 0 ? -0.15 : 0.15;
-            group.add(arm);
+            const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.2, 6), bodyMat);
+            upperArm.position.set(ax, 0.82, 0);
+            upperArm.rotation.z = ax > 0 ? -0.15 : 0.15;
+            upperArm.castShadow = true;
+            group.add(upperArm);
+            const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 5, 4), skinMat);
+            elbow.position.set(ax * 1.1, 0.7, 0);
+            group.add(elbow);
+            const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.18, 6), skinMat);
+            forearm.position.set(ax * 1.1, 0.58, 0);
+            group.add(forearm);
+            // Hand
+            const hand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 5, 4), skinMat);
+            hand.position.set(ax * 1.1, 0.48, 0);
+            group.add(hand);
           }
-          // Legs
+
+          // Legs with knees and boots
           for (const lx of [-0.07, 0.07]) {
-            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.35, 5), bodyMat);
-            leg.position.set(lx, 0.25, 0);
-            group.add(leg);
-            const foot = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.04, 0.1), accentMat);
-            foot.position.set(lx, 0.06, 0.02);
-            group.add(foot);
+            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.2, 6), bodyMat);
+            thigh.position.set(lx, 0.38, 0);
+            thigh.castShadow = true;
+            group.add(thigh);
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), accentMat);
+            knee.position.set(lx, 0.28, 0.02);
+            group.add(knee);
+            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.18, 6), bodyMat);
+            shin.position.set(lx, 0.16, 0);
+            group.add(shin);
+            const boot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), accentMat);
+            boot.position.set(lx, 0.06, 0.02);
+            boot.castShadow = true;
+            group.add(boot);
           }
+
           // Weapon indicator based on behavior
           if (def.behavior === EnemyBehavior.RANGED || (def.attackRange && def.attackRange > 5)) {
-            // Staff/wand
-            const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.6, 4), accentMat);
-            staff.position.set(0.22, 0.7, 0);
+            // Detailed staff/wand
+            const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.65, 6), new THREE.MeshPhysicalMaterial({
+              color: 0x553322, roughness: 0.85, metalness: 0.0,
+            }));
+            staff.position.set(0.22, 0.72, 0);
             group.add(staff);
-            const staffOrb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), eyeMat);
-            staffOrb.position.set(0.22, 1.02, 0);
+            const staffOrb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), eyeMat);
+            staffOrb.position.set(0.22, 1.06, 0);
             group.add(staffOrb);
-          } else if (def.behavior === EnemyBehavior.SHIELDED) {
-            // Shield
-            const shield = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.15), accentMat);
-            shield.position.set(-0.22, 0.7, 0.05);
-            group.add(shield);
-            // Sword
-            const sword = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.35, 0.03), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.7 }));
-            sword.position.set(0.22, 0.75, 0);
-            group.add(sword);
-          } else if (def.behavior === EnemyBehavior.HEALER) {
-            // Glowing orb hands
-            for (const hx of [-0.22, 0.22]) {
-              const healOrb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), emissiveMat);
-              healOrb.position.set(hx, 0.5, 0);
-              group.add(healOrb);
+            // Orb glow
+            const orbGlow = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 5), new THREE.MeshPhysicalMaterial({
+              color: eyeColor, emissive: eyeColor, emissiveIntensity: 0.4,
+              transparent: true, opacity: 0.2, transmission: 0.5,
+            }));
+            orbGlow.position.set(0.22, 1.06, 0);
+            group.add(orbGlow);
+            // Staff wrappings
+            for (let sw = 0; sw < 2; sw++) {
+              const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.004, 4, 8), accentMat);
+              wrap.position.set(0.22, 0.5 + sw * 0.15, 0);
+              wrap.rotation.x = Math.PI / 2;
+              group.add(wrap);
             }
+          } else if (def.behavior === EnemyBehavior.SHIELDED) {
+            // Detailed shield with boss/emblem
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.17), armorMat);
+            shield.position.set(-0.24, 0.72, 0.05);
+            group.add(shield);
+            const emblem = new THREE.Mesh(new THREE.CircleGeometry(0.04, 6), eyeMat);
+            emblem.position.set(-0.265, 0.72, 0.14);
+            group.add(emblem);
+            const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.008, 4, 12), armorMat);
+            shieldRim.position.set(-0.265, 0.72, 0.14);
+            group.add(shieldRim);
+            // Sword with guard and pommel
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.32, 0.025), new THREE.MeshPhysicalMaterial({ color: 0xbbbbcc, metalness: 0.8, roughness: 0.15, clearcoat: 0.6 }));
+            blade.position.set(0.24, 0.78, 0);
+            group.add(blade);
+            const guard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.03), armorMat);
+            guard.position.set(0.24, 0.6, 0);
+            group.add(guard);
+            const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.02, 5, 4), accentMat);
+            pommel.position.set(0.24, 0.56, 0);
+            group.add(pommel);
+          } else if (def.behavior === EnemyBehavior.HEALER) {
+            // Glowing orb hands with energy tendrils
+            for (const hx of [-0.22, 0.22]) {
+              const healOrb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), emissiveMat);
+              healOrb.position.set(hx, 0.48, 0);
+              group.add(healOrb);
+              const healGlow = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), new THREE.MeshPhysicalMaterial({
+                color: emissiveColor, emissive: emissiveColor, emissiveIntensity: 0.5,
+                transparent: true, opacity: 0.15, transmission: 0.6,
+              }));
+              healGlow.position.set(hx, 0.48, 0);
+              group.add(healGlow);
+            }
+            // Healer circlet
+            const circlet = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.01, 4, 12), eyeMat);
+            circlet.position.y = 1.22;
+            circlet.rotation.x = Math.PI / 2;
+            group.add(circlet);
           } else {
-            // Melee weapon
-            const weapon = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.3, 0.03), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.6 }));
-            weapon.position.set(0.22, 0.7, 0);
-            group.add(weapon);
+            // Detailed melee weapon
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.28, 0.025), new THREE.MeshPhysicalMaterial({
+              color: 0xbbbbcc, metalness: 0.8, roughness: 0.15, clearcoat: 0.5,
+            }));
+            blade.position.set(0.24, 0.72, 0);
+            group.add(blade);
+            const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.08, 6), new THREE.MeshPhysicalMaterial({
+              color: 0x553322, roughness: 0.8,
+            }));
+            hilt.position.set(0.24, 0.55, 0);
+            group.add(hilt);
+            const guard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 0.025), accentMat);
+            guard.position.set(0.24, 0.57, 0);
+            group.add(guard);
           }
-          // Accent belt/waist
-          const belt = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.02, 4, 8), accentMat);
+
+          // Accent belt/waist with buckle
+          const belt = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 6, 12), accentMat);
           belt.rotation.x = Math.PI / 2;
           belt.position.y = 0.52;
           group.add(belt);
+          const beltBuckle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.015), armorMat);
+          beltBuckle.position.set(0, 0.52, 0.15);
+          group.add(beltBuckle);
+
+          // Subtle enemy point light for visibility
+          const ePt = new THREE.PointLight(eyeColor, 0.3, 4);
+          ePt.position.set(0, 1.0, 0);
+          group.add(ePt);
         }
         break;
       }
