@@ -60,6 +60,8 @@ export class GameGame {
 
   private _renderer = new GameRenderer();
   private _hud = new GameHUD();
+  private _camOffsetX = 0;
+  private _camOffsetY = 0;
 
   // -------------------------------------------------------------------------
   // Boot
@@ -84,10 +86,10 @@ export class GameGame {
 
     // Combat callbacks
     GameCombatSystem.setHitCallback((x, y, dmg, isCrit) => {
-      this._renderer.pendingHits.push({ x, y, dmg, isCrit, t: 0.6 });
+      this._renderer.pendingHits.push({ x, y, dmg, isCrit, t: 0.8, drift: (Math.random() - 0.5) * 2 });
     });
     GameCombatSystem.setDeathCallback((enemy) => {
-      this._renderer.pendingDeaths.push({ x: enemy.x, y: enemy.y, t: 0.5 });
+      this._renderer.pendingDeaths.push({ x: enemy.x, y: enemy.y, t: 0.6, category: enemy.def.category });
     });
     GameCombatSystem.setPlayerHitCallback((_dmg) => {
       this._renderer.shake(8, 0.2);
@@ -259,13 +261,29 @@ export class GameGame {
       return;
     }
 
-    // Movement
+    // Camera pan (Arrow keys)
+    const camSpeed = 300 * dt;
+    if (_isDown("ArrowUp"))    this._camOffsetY -= camSpeed;
+    if (_isDown("ArrowDown"))  this._camOffsetY += camSpeed;
+    if (_isDown("ArrowLeft"))  this._camOffsetX -= camSpeed;
+    if (_isDown("ArrowRight")) this._camOffsetX += camSpeed;
+    // Clamp camera offset to reasonable range
+    const maxCamOff = 200;
+    this._camOffsetX = Math.max(-maxCamOff, Math.min(maxCamOff, this._camOffsetX));
+    this._camOffsetY = Math.max(-maxCamOff, Math.min(maxCamOff, this._camOffsetY));
+    // Ease camera offset back toward center when arrow keys released
+    if (!_isDown("ArrowLeft") && !_isDown("ArrowRight")) this._camOffsetX *= 0.9;
+    if (!_isDown("ArrowUp") && !_isDown("ArrowDown")) this._camOffsetY *= 0.9;
+    this._renderer.camOffsetX = this._camOffsetX;
+    this._renderer.camOffsetY = this._camOffsetY;
+
+    // Movement (WASD)
     const speed = GameBalance.PLAYER_MOVE_SPEED * dt;
     let dx = 0, dy = 0;
-    if (_isDown("KeyW") || _isDown("ArrowUp"))    { dy = -1; p.facing = Direction.UP; }
-    if (_isDown("KeyS") || _isDown("ArrowDown"))   { dy = 1; p.facing = Direction.DOWN; }
-    if (_isDown("KeyA") || _isDown("ArrowLeft"))   { dx = -1; p.facing = Direction.LEFT; }
-    if (_isDown("KeyD") || _isDown("ArrowRight"))  { dx = 1; p.facing = Direction.RIGHT; }
+    if (_isDown("KeyW")) { dy = -1; p.facing = Direction.UP; }
+    if (_isDown("KeyS")) { dy = 1; p.facing = Direction.DOWN; }
+    if (_isDown("KeyA")) { dx = -1; p.facing = Direction.LEFT; }
+    if (_isDown("KeyD")) { dx = 1; p.facing = Direction.RIGHT; }
 
     if (dx !== 0 || dy !== 0) {
       // Normalize diagonal
