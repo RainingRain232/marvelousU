@@ -4,8 +4,496 @@
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { DragoonState } from "../state/DragoonState";
-import { DragoonClassId } from "../state/DragoonState";
+import { DragoonClassId, DragoonSkillId } from "../state/DragoonState";
 import { SKILL_CONFIGS, CLASS_DEFINITIONS, SUBCLASS_DEFINITIONS } from "../config/DragoonConfig";
+
+// ---------------------------------------------------------------------------
+// Skill icon drawing — draws a recognisable visual per attack type
+// ---------------------------------------------------------------------------
+
+function _drawSkillIcon(g: Graphics, cx: number, cy: number, skillId: DragoonSkillId, color: number, alpha: number): void {
+  const a = alpha;
+  switch (skillId) {
+    // ── Arcane Mage ──
+    case DragoonSkillId.ARCANE_BOLT: {
+      // Glowing magic bolt / diamond
+      g.moveTo(cx, cy - 7).lineTo(cx + 4, cy).lineTo(cx, cy + 7).lineTo(cx - 4, cy).closePath().fill({ color, alpha: a });
+      g.circle(cx, cy, 3).fill({ color: 0xffffff, alpha: a * 0.4 });
+      // Trailing sparkle lines
+      g.moveTo(cx - 7, cy).lineTo(cx - 4, cy).stroke({ color, width: 1.5, alpha: a * 0.6 });
+      break;
+    }
+    case DragoonSkillId.STARFALL: {
+      // 4-point star
+      const r = 7, ri = 3;
+      for (let i = 0; i < 4; i++) {
+        const ang = (i / 4) * Math.PI * 2 - Math.PI / 2;
+        const angM = ang + Math.PI / 4;
+        if (i === 0) g.moveTo(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+        else g.lineTo(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+        g.lineTo(cx + Math.cos(angM) * ri, cy + Math.sin(angM) * ri);
+      }
+      g.closePath().fill({ color, alpha: a });
+      g.circle(cx, cy, 2).fill({ color: 0xffffff, alpha: a * 0.5 });
+      break;
+    }
+    case DragoonSkillId.THUNDERSTORM: {
+      // Lightning bolt
+      g.moveTo(cx - 2, cy - 8).lineTo(cx + 3, cy - 2).lineTo(cx, cy - 2)
+        .lineTo(cx + 4, cy + 8).lineTo(cx - 1, cy + 1).lineTo(cx + 2, cy + 1)
+        .closePath().fill({ color, alpha: a });
+      break;
+    }
+    case DragoonSkillId.FROST_NOVA: {
+      // Snowflake / ice crystal – 6 spokes
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2;
+        g.moveTo(cx, cy).lineTo(cx + Math.cos(ang) * 8, cy + Math.sin(ang) * 8)
+          .stroke({ color, width: 1.5, alpha: a });
+        // small branch
+        const bx = cx + Math.cos(ang) * 5, by = cy + Math.sin(ang) * 5;
+        const perp = ang + Math.PI / 2;
+        g.moveTo(bx - Math.cos(perp) * 2, by - Math.sin(perp) * 2)
+          .lineTo(bx + Math.cos(perp) * 2, by + Math.sin(perp) * 2)
+          .stroke({ color, width: 1, alpha: a * 0.7 });
+      }
+      g.circle(cx, cy, 2).fill({ color: 0xffffff, alpha: a * 0.4 });
+      break;
+    }
+    case DragoonSkillId.METEOR_SHOWER: {
+      // Flaming meteor falling
+      g.circle(cx + 1, cy + 2, 4).fill({ color, alpha: a });
+      g.circle(cx + 1, cy + 2, 2.5).fill({ color: 0xffcc00, alpha: a * 0.6 });
+      // Flame trail
+      g.moveTo(cx - 2, cy - 1).lineTo(cx - 5, cy - 7).lineTo(cx, cy - 3)
+        .lineTo(cx - 1, cy - 8).lineTo(cx + 3, cy - 2).fill({ color: 0xff8800, alpha: a * 0.7 });
+      break;
+    }
+    case DragoonSkillId.DIVINE_SHIELD: {
+      // Shield shape
+      g.moveTo(cx, cy - 7).lineTo(cx + 6, cy - 4).lineTo(cx + 6, cy + 1)
+        .lineTo(cx, cy + 8).lineTo(cx - 6, cy + 1).lineTo(cx - 6, cy - 4)
+        .closePath().fill({ color, alpha: a * 0.6 });
+      g.moveTo(cx, cy - 7).lineTo(cx + 6, cy - 4).lineTo(cx + 6, cy + 1)
+        .lineTo(cx, cy + 8).lineTo(cx - 6, cy + 1).lineTo(cx - 6, cy - 4)
+        .closePath().stroke({ color: 0xffffff, width: 1.5, alpha: a * 0.5 });
+      // Cross
+      g.moveTo(cx, cy - 4).lineTo(cx, cy + 4).stroke({ color: 0xffffff, width: 1.5, alpha: a * 0.4 });
+      g.moveTo(cx - 3, cy - 1).lineTo(cx + 3, cy - 1).stroke({ color: 0xffffff, width: 1.5, alpha: a * 0.4 });
+      break;
+    }
+    // Chronomancer
+    case DragoonSkillId.TIME_WARP: {
+      // Clock / hourglass
+      g.circle(cx, cy, 7).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx, cy - 5).lineTo(cx, cy).lineTo(cx + 3, cy + 2).stroke({ color, width: 1.5, alpha: a * 0.8 });
+      // Swirl arrows
+      g.arc(cx, cy, 5, -0.5, 1.2).stroke({ color: 0xffffff, width: 1, alpha: a * 0.4 });
+      break;
+    }
+    case DragoonSkillId.TEMPORAL_LOOP: {
+      // Circular arrows
+      g.arc(cx, cy, 6, 0, Math.PI * 1.5).stroke({ color, width: 2, alpha: a });
+      g.moveTo(cx + 6, cy).lineTo(cx + 4, cy - 3).lineTo(cx + 8, cy - 1).closePath().fill({ color, alpha: a });
+      break;
+    }
+    // Void Weaver
+    case DragoonSkillId.SINGULARITY: {
+      // Black hole with accretion ring
+      g.circle(cx, cy, 4).fill({ color: 0x220044, alpha: a });
+      g.circle(cx, cy, 7).stroke({ color, width: 2, alpha: a * 0.7 });
+      g.circle(cx, cy, 5.5).stroke({ color: 0xaa44ff, width: 1, alpha: a * 0.4 });
+      break;
+    }
+    case DragoonSkillId.MIRROR_IMAGE: {
+      // Two overlapping figures
+      g.roundRect(cx - 5, cy - 5, 6, 10, 1).fill({ color, alpha: a * 0.5 });
+      g.roundRect(cx - 1, cy - 5, 6, 10, 1).fill({ color, alpha: a * 0.8 });
+      g.circle(cx - 2, cy - 7, 2.5).fill({ color, alpha: a * 0.5 });
+      g.circle(cx + 2, cy - 7, 2.5).fill({ color, alpha: a * 0.8 });
+      break;
+    }
+
+    // ── Storm Ranger ──
+    case DragoonSkillId.WIND_ARROW: {
+      // Arrow with wind trail
+      g.moveTo(cx + 7, cy).lineTo(cx + 2, cy - 3).lineTo(cx + 3, cy).lineTo(cx + 2, cy + 3).closePath().fill({ color, alpha: a });
+      g.moveTo(cx + 3, cy).lineTo(cx - 6, cy).stroke({ color, width: 2, alpha: a * 0.7 });
+      // Wind lines
+      g.moveTo(cx - 7, cy - 3).lineTo(cx - 3, cy - 3).stroke({ color, width: 1, alpha: a * 0.3 });
+      g.moveTo(cx - 6, cy + 3).lineTo(cx - 2, cy + 3).stroke({ color, width: 1, alpha: a * 0.3 });
+      break;
+    }
+    case DragoonSkillId.CHAIN_LIGHTNING: {
+      // Zigzag lightning bolt with branches
+      g.moveTo(cx - 6, cy - 6).lineTo(cx - 2, cy - 2).lineTo(cx + 1, cy - 5)
+        .lineTo(cx + 4, cy + 1).lineTo(cx + 1, cy - 1).lineTo(cx + 6, cy + 6)
+        .stroke({ color, width: 2, alpha: a });
+      // Branch
+      g.moveTo(cx + 1, cy - 1).lineTo(cx + 5, cy - 3).stroke({ color, width: 1, alpha: a * 0.5 });
+      break;
+    }
+    case DragoonSkillId.GALE_FORCE: {
+      // Wind burst – three curved lines
+      for (let i = -1; i <= 1; i++) {
+        const oy = i * 4;
+        g.moveTo(cx - 6, cy + oy).quadraticCurveTo(cx, cy + oy - 2, cx + 6, cy + oy)
+          .stroke({ color, width: 1.5, alpha: a * (1 - Math.abs(i) * 0.2) });
+      }
+      break;
+    }
+    case DragoonSkillId.HAWK_COMPANION: {
+      // Hawk silhouette
+      g.moveTo(cx, cy - 1).lineTo(cx - 7, cy - 5).quadraticCurveTo(cx - 4, cy - 1, cx, cy)
+        .fill({ color, alpha: a });
+      g.moveTo(cx, cy - 1).lineTo(cx + 7, cy - 5).quadraticCurveTo(cx + 4, cy - 1, cx, cy)
+        .fill({ color, alpha: a });
+      // Tail
+      g.moveTo(cx - 1, cy).lineTo(cx, cy + 5).lineTo(cx + 1, cy).fill({ color, alpha: a * 0.8 });
+      break;
+    }
+    case DragoonSkillId.TORNADO: {
+      // Spiral tornado shape
+      g.moveTo(cx - 5, cy + 6).quadraticCurveTo(cx - 6, cy, cx - 3, cy - 3)
+        .quadraticCurveTo(cx, cy - 6, cx + 3, cy - 4)
+        .stroke({ color, width: 2, alpha: a });
+      g.moveTo(cx - 3, cy + 4).quadraticCurveTo(cx - 4, cy + 1, cx - 1, cy - 1)
+        .quadraticCurveTo(cx + 1, cy - 3, cx + 2, cy - 2)
+        .stroke({ color, width: 1.5, alpha: a * 0.7 });
+      // Base
+      g.moveTo(cx - 6, cy + 6).lineTo(cx + 5, cy + 6).stroke({ color, width: 2, alpha: a * 0.5 });
+      break;
+    }
+    case DragoonSkillId.WIND_WALK: {
+      // Footprint with wind wisps
+      g.ellipse(cx, cy + 2, 3, 5).fill({ color, alpha: a * 0.5 });
+      g.moveTo(cx - 5, cy - 4).quadraticCurveTo(cx - 2, cy - 6, cx + 3, cy - 5).stroke({ color, width: 1, alpha: a * 0.5 });
+      g.moveTo(cx - 4, cy - 1).quadraticCurveTo(cx - 1, cy - 3, cx + 4, cy - 2).stroke({ color, width: 1, alpha: a * 0.4 });
+      break;
+    }
+    // Tempest Lord
+    case DragoonSkillId.HURRICANE: {
+      // Large swirl
+      g.arc(cx, cy, 6, 0, Math.PI * 1.6).stroke({ color, width: 2, alpha: a });
+      g.arc(cx, cy, 3, Math.PI, Math.PI * 2.6).stroke({ color, width: 1.5, alpha: a * 0.6 });
+      g.circle(cx, cy, 1.5).fill({ color, alpha: a });
+      break;
+    }
+    case DragoonSkillId.THUNDER_ARMOR: {
+      // Body with lightning aura
+      g.roundRect(cx - 3, cy - 5, 6, 10, 2).fill({ color, alpha: a * 0.5 });
+      g.circle(cx, cy - 7, 3).fill({ color, alpha: a * 0.5 });
+      // Lightning bolts around
+      for (let i = 0; i < 4; i++) {
+        const ang = (i / 4) * Math.PI * 2;
+        const ex = cx + Math.cos(ang) * 8, ey = cy + Math.sin(ang) * 8;
+        g.moveTo(cx + Math.cos(ang) * 5, cy + Math.sin(ang) * 5).lineTo(ex, ey)
+          .stroke({ color: 0xffffff, width: 1, alpha: a * 0.5 });
+      }
+      break;
+    }
+    // Beastmaster
+    case DragoonSkillId.WOLF_PACK: {
+      // Three wolf heads in a triangle
+      for (const [ox, oy] of [[-4, 2], [4, 2], [0, -4]] as [number, number][]) {
+        g.moveTo(cx + ox, cy + oy + 3).lineTo(cx + ox - 2, cy + oy - 2).lineTo(cx + ox, cy + oy - 4)
+          .lineTo(cx + ox + 2, cy + oy - 2).closePath().fill({ color, alpha: a * 0.7 });
+      }
+      break;
+    }
+    case DragoonSkillId.EAGLE_FURY: {
+      // Eagle diving
+      g.moveTo(cx, cy + 6).lineTo(cx - 8, cy - 3).quadraticCurveTo(cx - 3, cy - 1, cx, cy - 6)
+        .quadraticCurveTo(cx + 3, cy - 1, cx + 8, cy - 3).closePath().fill({ color, alpha: a });
+      g.moveTo(cx - 1, cy - 3).lineTo(cx, cy - 5).lineTo(cx + 1, cy - 3).fill({ color: 0xffffff, alpha: a * 0.3 });
+      break;
+    }
+
+    // ── Blood Knight ──
+    case DragoonSkillId.BLOOD_LANCE: {
+      // Lance / spear
+      g.moveTo(cx + 7, cy - 6).lineTo(cx + 4, cy - 3).lineTo(cx - 6, cy + 6)
+        .stroke({ color, width: 2.5, alpha: a });
+      // Spear tip
+      g.moveTo(cx + 7, cy - 6).lineTo(cx + 5, cy - 4).lineTo(cx + 6, cy - 3)
+        .closePath().fill({ color, alpha: a });
+      break;
+    }
+    case DragoonSkillId.CRIMSON_SLASH: {
+      // Three slash marks
+      for (let i = -1; i <= 1; i++) {
+        g.moveTo(cx - 5 + i * 2, cy - 6).lineTo(cx + 3 + i * 2, cy + 6)
+          .stroke({ color, width: 1.5, alpha: a * (1 - Math.abs(i) * 0.2) });
+      }
+      break;
+    }
+    case DragoonSkillId.BLOOD_SHIELD: {
+      // Shield with drop
+      g.moveTo(cx, cy - 7).lineTo(cx + 6, cy - 3).lineTo(cx + 5, cy + 2)
+        .lineTo(cx, cy + 7).lineTo(cx - 5, cy + 2).lineTo(cx - 6, cy - 3)
+        .closePath().stroke({ color, width: 1.5, alpha: a });
+      // Blood drop
+      g.moveTo(cx, cy - 2).quadraticCurveTo(cx + 3, cy + 2, cx, cy + 4)
+        .quadraticCurveTo(cx - 3, cy + 2, cx, cy - 2).fill({ color, alpha: a * 0.7 });
+      break;
+    }
+    case DragoonSkillId.HEMORRHAGE: {
+      // Blood droplets
+      for (const [ox, oy] of [[-3, -3], [3, -1], [0, 4], [-4, 2]] as [number, number][]) {
+        g.moveTo(cx + ox, cy + oy - 3).quadraticCurveTo(cx + ox + 2, cy + oy, cx + ox, cy + oy + 2)
+          .quadraticCurveTo(cx + ox - 2, cy + oy, cx + ox, cy + oy - 3).fill({ color, alpha: a * 0.8 });
+      }
+      break;
+    }
+    case DragoonSkillId.EXECUTION: {
+      // Axe / skull
+      g.moveTo(cx, cy + 7).lineTo(cx, cy - 4).stroke({ color, width: 2, alpha: a });
+      // Axe blade
+      g.moveTo(cx, cy - 4).quadraticCurveTo(cx - 7, cy - 6, cx - 5, cy)
+        .lineTo(cx, cy - 2).fill({ color, alpha: a });
+      g.moveTo(cx, cy - 4).quadraticCurveTo(cx + 7, cy - 6, cx + 5, cy)
+        .lineTo(cx, cy - 2).fill({ color, alpha: a * 0.8 });
+      break;
+    }
+    case DragoonSkillId.WAR_CRY: {
+      // Sound waves radiating
+      g.circle(cx - 3, cy, 3).fill({ color, alpha: a * 0.5 });
+      for (let i = 1; i <= 3; i++) {
+        g.arc(cx - 1, cy, i * 3, -0.8, 0.8).stroke({ color, width: 1.5, alpha: a * (1 - i * 0.2) });
+      }
+      break;
+    }
+    // Death Knight
+    case DragoonSkillId.RAISE_DEAD: {
+      // Hand reaching up from ground
+      g.rect(cx - 6, cy + 4, 12, 2).fill({ color: 0x554433, alpha: a * 0.5 });
+      g.moveTo(cx, cy + 4).lineTo(cx, cy - 2).stroke({ color, width: 2, alpha: a });
+      // Fingers
+      g.moveTo(cx - 2, cy - 2).lineTo(cx - 3, cy - 5).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx, cy - 2).lineTo(cx, cy - 6).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx + 2, cy - 2).lineTo(cx + 3, cy - 5).stroke({ color, width: 1.5, alpha: a });
+      break;
+    }
+    case DragoonSkillId.SOUL_HARVEST: {
+      // Skull with explosion lines
+      g.circle(cx, cy - 1, 4).fill({ color, alpha: a * 0.6 });
+      g.circle(cx - 1.5, cy - 2, 1).fill({ color: 0x000000, alpha: a });
+      g.circle(cx + 1.5, cy - 2, 1).fill({ color: 0x000000, alpha: a });
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2;
+        g.moveTo(cx + Math.cos(ang) * 5, cy + Math.sin(ang) * 5)
+          .lineTo(cx + Math.cos(ang) * 8, cy + Math.sin(ang) * 8)
+          .stroke({ color, width: 1, alpha: a * 0.5 });
+      }
+      break;
+    }
+    // Paladin
+    case DragoonSkillId.HOLY_NOVA: {
+      // Radiant cross with burst
+      g.moveTo(cx, cy - 7).lineTo(cx, cy + 7).stroke({ color, width: 2, alpha: a });
+      g.moveTo(cx - 7, cy).lineTo(cx + 7, cy).stroke({ color, width: 2, alpha: a });
+      g.circle(cx, cy, 4).fill({ color, alpha: a * 0.25 });
+      g.circle(cx, cy, 7).stroke({ color: 0xffffff, width: 1, alpha: a * 0.3 });
+      break;
+    }
+    case DragoonSkillId.CONSECRATION: {
+      // Holy ground ring with cross
+      g.circle(cx, cy + 2, 6).stroke({ color, width: 1.5, alpha: a * 0.7 });
+      g.circle(cx, cy + 2, 6).fill({ color, alpha: a * 0.15 });
+      g.moveTo(cx, cy - 2).lineTo(cx, cy + 5).stroke({ color: 0xffffff, width: 1, alpha: a * 0.5 });
+      g.moveTo(cx - 3, cy + 1).lineTo(cx + 3, cy + 1).stroke({ color: 0xffffff, width: 1, alpha: a * 0.5 });
+      break;
+    }
+
+    // ── Shadow Assassin ──
+    case DragoonSkillId.SHURIKEN: {
+      // 4-pointed throwing star
+      for (let i = 0; i < 4; i++) {
+        const ang = (i / 4) * Math.PI * 2 + Math.PI / 4;
+        const angN = ang + Math.PI / 4;
+        g.moveTo(cx, cy)
+          .lineTo(cx + Math.cos(ang) * 7, cy + Math.sin(ang) * 7)
+          .lineTo(cx + Math.cos(angN) * 2, cy + Math.sin(angN) * 2)
+          .closePath().fill({ color, alpha: a * 0.8 });
+      }
+      g.circle(cx, cy, 1.5).fill({ color: 0x444444, alpha: a });
+      break;
+    }
+    case DragoonSkillId.FAN_OF_KNIVES: {
+      // Fan of blades radiating outward
+      for (let i = 0; i < 5; i++) {
+        const ang = -Math.PI / 2 + (i - 2) * 0.35;
+        g.moveTo(cx, cy + 3).lineTo(cx + Math.cos(ang) * 8, cy + 3 + Math.sin(ang) * 8)
+          .stroke({ color, width: 1.5, alpha: a * (1 - Math.abs(i - 2) * 0.15) });
+      }
+      break;
+    }
+    case DragoonSkillId.POISON_CLOUD: {
+      // Toxic cloud with skull
+      g.circle(cx - 2, cy, 4).fill({ color, alpha: a * 0.3 });
+      g.circle(cx + 2, cy - 1, 3.5).fill({ color, alpha: a * 0.35 });
+      g.circle(cx, cy + 2, 3).fill({ color, alpha: a * 0.3 });
+      // Skull mark
+      g.circle(cx, cy - 1, 2).fill({ color: 0xffffff, alpha: a * 0.4 });
+      g.circle(cx - 0.7, cy - 1.5, 0.6).fill({ color: 0x000000, alpha: a * 0.5 });
+      g.circle(cx + 0.7, cy - 1.5, 0.6).fill({ color: 0x000000, alpha: a * 0.5 });
+      break;
+    }
+    case DragoonSkillId.SHADOW_STEP: {
+      // Teleport / dash lines with silhouette
+      g.roundRect(cx + 2, cy - 5, 4, 10, 1).fill({ color, alpha: a * 0.7 });
+      g.circle(cx + 4, cy - 7, 2).fill({ color, alpha: a * 0.7 });
+      // Ghost trail
+      g.roundRect(cx - 4, cy - 4, 3, 8, 1).fill({ color, alpha: a * 0.2 });
+      g.moveTo(cx - 6, cy - 3).lineTo(cx - 1, cy - 3).stroke({ color, width: 1, alpha: a * 0.3 });
+      g.moveTo(cx - 5, cy + 1).lineTo(cx, cy + 1).stroke({ color, width: 1, alpha: a * 0.3 });
+      break;
+    }
+    case DragoonSkillId.MARK_FOR_DEATH: {
+      // Crosshair / target
+      g.circle(cx, cy, 6).stroke({ color, width: 1.5, alpha: a });
+      g.circle(cx, cy, 3).stroke({ color, width: 1, alpha: a * 0.6 });
+      g.moveTo(cx, cy - 8).lineTo(cx, cy - 4).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx, cy + 4).lineTo(cx, cy + 8).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx - 8, cy).lineTo(cx - 4, cy).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx + 4, cy).lineTo(cx + 8, cy).stroke({ color, width: 1.5, alpha: a });
+      break;
+    }
+    case DragoonSkillId.SMOKE_BOMB: {
+      // Smoke puffs
+      g.circle(cx - 2, cy + 1, 4).fill({ color, alpha: a * 0.3 });
+      g.circle(cx + 3, cy, 3.5).fill({ color, alpha: a * 0.35 });
+      g.circle(cx, cy - 2, 3).fill({ color, alpha: a * 0.4 });
+      g.circle(cx + 1, cy + 3, 2.5).fill({ color, alpha: a * 0.25 });
+      break;
+    }
+    // Ninja
+    case DragoonSkillId.SHADOW_CLONE_ARMY: {
+      // Multiple shadow figures
+      for (const [ox, a2] of [[-4, 0.3], [0, 0.6], [4, 0.9]] as [number, number][]) {
+        g.roundRect(cx + ox - 2, cy - 3, 4, 8, 1).fill({ color, alpha: a * a2 });
+        g.circle(cx + ox, cy - 5, 2).fill({ color, alpha: a * a2 });
+      }
+      break;
+    }
+    case DragoonSkillId.BLADE_STORM: {
+      // Spinning ring of blades
+      g.circle(cx, cy, 6).stroke({ color, width: 1, alpha: a * 0.3 });
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2;
+        const bx = cx + Math.cos(ang) * 6, by = cy + Math.sin(ang) * 6;
+        g.moveTo(bx, by).lineTo(bx + Math.cos(ang) * 2, by + Math.sin(ang) * 2)
+          .stroke({ color, width: 2, alpha: a * 0.8 });
+      }
+      break;
+    }
+    // Phantom
+    case DragoonSkillId.SOUL_SIPHON: {
+      // Drain beam between two points
+      g.circle(cx - 4, cy, 3).fill({ color, alpha: a * 0.4 });
+      g.circle(cx + 4, cy, 3).fill({ color: 0xff4444, alpha: a * 0.4 });
+      g.moveTo(cx - 2, cy).quadraticCurveTo(cx, cy - 2, cx + 2, cy).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx - 2, cy).quadraticCurveTo(cx, cy + 2, cx + 2, cy).stroke({ color, width: 1.5, alpha: a * 0.6 });
+      break;
+    }
+    case DragoonSkillId.PHASE_SHIFT: {
+      // Ghostly figure with phase lines
+      g.roundRect(cx - 3, cy - 4, 6, 9, 2).fill({ color, alpha: a * 0.3 });
+      g.circle(cx, cy - 6, 2.5).fill({ color, alpha: a * 0.3 });
+      g.roundRect(cx - 3, cy - 4, 6, 9, 2).stroke({ color, width: 1.5, alpha: a * 0.7 });
+      // Phase lines
+      for (let i = -2; i <= 2; i++) {
+        g.moveTo(cx - 6, cy + i * 3).lineTo(cx + 6, cy + i * 3).stroke({ color, width: 0.5, alpha: a * 0.2 });
+      }
+      break;
+    }
+
+    // ── Unlockable Universal Skills ──
+    case DragoonSkillId.FIREBALL_BARRAGE: {
+      // Multiple fireballs in spread
+      for (const [ox, oy] of [[-4, -2], [0, -4], [4, -2], [-2, 2], [2, 2]] as [number, number][]) {
+        g.circle(cx + ox, cy + oy, 2).fill({ color, alpha: a * 0.7 });
+        g.circle(cx + ox, cy + oy, 1).fill({ color: 0xffcc00, alpha: a * 0.4 });
+      }
+      break;
+    }
+    case DragoonSkillId.ARCANE_SHIELD: {
+      // Arcane bubble shield
+      g.circle(cx, cy, 7).stroke({ color, width: 2, alpha: a * 0.6 });
+      g.circle(cx, cy, 7).fill({ color, alpha: a * 0.1 });
+      // Rune marks
+      g.moveTo(cx - 3, cy - 3).lineTo(cx + 3, cy + 3).stroke({ color: 0xffffff, width: 1, alpha: a * 0.3 });
+      g.moveTo(cx + 3, cy - 3).lineTo(cx - 3, cy + 3).stroke({ color: 0xffffff, width: 1, alpha: a * 0.3 });
+      break;
+    }
+    case DragoonSkillId.SPEED_SURGE: {
+      // Speed lines / arrow
+      g.moveTo(cx + 6, cy).lineTo(cx, cy - 4).lineTo(cx + 2, cy).lineTo(cx, cy + 4).closePath().fill({ color, alpha: a });
+      g.moveTo(cx - 6, cy - 2).lineTo(cx - 1, cy - 2).stroke({ color, width: 1, alpha: a * 0.4 });
+      g.moveTo(cx - 7, cy).lineTo(cx - 2, cy).stroke({ color, width: 1.5, alpha: a * 0.5 });
+      g.moveTo(cx - 6, cy + 2).lineTo(cx - 1, cy + 2).stroke({ color, width: 1, alpha: a * 0.4 });
+      break;
+    }
+    case DragoonSkillId.CHAIN_NOVA: {
+      // Lightning chain between nodes
+      g.circle(cx - 4, cy - 3, 2).fill({ color, alpha: a * 0.6 });
+      g.circle(cx + 4, cy - 3, 2).fill({ color, alpha: a * 0.6 });
+      g.circle(cx, cy + 4, 2).fill({ color, alpha: a * 0.6 });
+      g.moveTo(cx - 4, cy - 3).lineTo(cx + 4, cy - 3).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx + 4, cy - 3).lineTo(cx, cy + 4).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx, cy + 4).lineTo(cx - 4, cy - 3).stroke({ color, width: 1.5, alpha: a });
+      break;
+    }
+    case DragoonSkillId.HEALING_LIGHT: {
+      // Plus/cross with glow
+      g.moveTo(cx - 5, cy).lineTo(cx + 5, cy).stroke({ color, width: 3, alpha: a });
+      g.moveTo(cx, cy - 5).lineTo(cx, cy + 5).stroke({ color, width: 3, alpha: a });
+      g.circle(cx, cy, 4).fill({ color, alpha: a * 0.15 });
+      break;
+    }
+    case DragoonSkillId.AOE_BOMB: {
+      // Bomb with explosion
+      g.circle(cx, cy + 1, 5).fill({ color, alpha: a * 0.6 });
+      // Fuse
+      g.moveTo(cx + 2, cy - 4).quadraticCurveTo(cx + 5, cy - 6, cx + 3, cy - 7).stroke({ color: 0xffcc00, width: 1.5, alpha: a });
+      // Explosion rays
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2;
+        g.moveTo(cx + Math.cos(ang) * 6, cy + 1 + Math.sin(ang) * 6)
+          .lineTo(cx + Math.cos(ang) * 8, cy + 1 + Math.sin(ang) * 8)
+          .stroke({ color: 0xffaa00, width: 1, alpha: a * 0.5 });
+      }
+      break;
+    }
+    case DragoonSkillId.HOMING_MISSILES: {
+      // Multiple missiles with curved trails
+      for (const [ox, oy, r] of [[-3, -4, 0.3], [3, -3, -0.2], [0, 1, 0.1]] as [number, number, number][]) {
+        g.moveTo(cx + ox, cy + oy).lineTo(cx + ox + 2, cy + oy - 1).lineTo(cx + ox, cy + oy + 2)
+          .closePath().fill({ color, alpha: a * 0.8 });
+      }
+      // Trail curves
+      g.moveTo(cx - 3, cy + 5).quadraticCurveTo(cx - 5, cy, cx - 3, cy - 4).stroke({ color, width: 1, alpha: a * 0.3 });
+      g.moveTo(cx + 3, cy + 4).quadraticCurveTo(cx + 5, cy, cx + 3, cy - 3).stroke({ color, width: 1, alpha: a * 0.3 });
+      break;
+    }
+    case DragoonSkillId.TIME_SLOW: {
+      // Clock with slow motion marks
+      g.circle(cx, cy, 7).stroke({ color, width: 1.5, alpha: a * 0.7 });
+      g.moveTo(cx, cy).lineTo(cx - 3, cy - 4).stroke({ color, width: 1.5, alpha: a });
+      g.moveTo(cx, cy).lineTo(cx + 4, cy - 1).stroke({ color, width: 1.5, alpha: a });
+      // Slow marks
+      g.moveTo(cx - 8, cy + 3).lineTo(cx - 5, cy + 3).stroke({ color: 0xffffff, width: 1, alpha: a * 0.3 });
+      g.moveTo(cx - 9, cy + 5).lineTo(cx - 5, cy + 5).stroke({ color: 0xffffff, width: 1, alpha: a * 0.3 });
+      break;
+    }
+    default: {
+      // Fallback: simple colored orb
+      g.circle(cx, cy, 5).fill({ color, alpha: a });
+      g.circle(cx, cy, 2.5).fill({ color: 0xffffff, alpha: a * 0.3 });
+      break;
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -618,9 +1106,7 @@ export class DragoonHUD {
 
       const orbAlpha = onCooldown ? 0.25 : 0.9;
       const orbPulse = hasEnough && !onCooldown ? Math.sin(state.gameTime * 3 + i) * 0.1 : 0;
-      this._skillBg.circle(x + slotW / 2, barY + 12, 8).fill({ color: cfg.color, alpha: (orbAlpha + orbPulse) * 0.15 });
-      this._skillBg.circle(x + slotW / 2, barY + 12, 5).fill({ color: cfg.color, alpha: orbAlpha + orbPulse });
-      this._skillBg.circle(x + slotW / 2, barY + 12, 2.5).fill({ color: 0xffffff, alpha: (orbAlpha + orbPulse) * 0.3 });
+      _drawSkillIcon(this._skillBg, x + slotW / 2, barY + 14, skills[i], cfg.color, orbAlpha + orbPulse);
 
       if (skillState.active) {
         const activeGlow = 0.12 + Math.sin(state.gameTime * 6) * 0.05;
@@ -661,11 +1147,9 @@ export class DragoonHUD {
         this._unlockSkillCooldown.rect(ulX + 1, ulY + slotH * (1 - cdPct), slotW - 2, slotH * cdPct).fill({ color: 0x000000, alpha: 0.55 });
       }
 
-      // Color orb
+      // Skill icon
       const orbAlpha = onCooldown ? 0.25 : 0.9;
-      this._unlockSkillBg.circle(ulX + slotW / 2, ulY + 12, 8).fill({ color: ulCfg.color, alpha: orbAlpha * 0.15 });
-      this._unlockSkillBg.circle(ulX + slotW / 2, ulY + 12, 5).fill({ color: ulCfg.color, alpha: orbAlpha });
-      this._unlockSkillBg.circle(ulX + slotW / 2, ulY + 12, 2.5).fill({ color: 0xffffff, alpha: orbAlpha * 0.3 });
+      _drawSkillIcon(this._unlockSkillBg, ulX + slotW / 2, ulY + 14, state.equippedUnlockSkill!, ulCfg.color, orbAlpha);
 
       // Key and name text
       this._unlockSkillKey.position.set(ulX + slotW / 2, ulY + slotH / 2);

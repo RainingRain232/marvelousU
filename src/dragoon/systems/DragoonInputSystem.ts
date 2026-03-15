@@ -65,10 +65,16 @@ export const DragoonInputSystem = {
       }
 
       switch (e.code) {
-        case "KeyW": case "ArrowUp": inp.up = true; break;
-        case "KeyS": case "ArrowDown": inp.down = true; break;
-        case "KeyA": case "ArrowLeft": inp.left = true; break;
-        case "KeyD": case "ArrowRight": inp.right = true; break;
+        // Arrow keys = player movement
+        case "ArrowUp": inp.up = true; break;
+        case "ArrowDown": inp.down = true; break;
+        case "ArrowLeft": inp.left = true; break;
+        case "ArrowRight": inp.right = true; break;
+        // WASD = camera control
+        case "KeyW": inp.camUp = true; break;
+        case "KeyS": inp.camDown = true; break;
+        case "KeyA": inp.camLeft = true; break;
+        case "KeyD": inp.camRight = true; break;
         case "Digit1": inp.skill1 = true; break;
         case "Digit2": inp.skill2 = true; break;
         case "Digit3": inp.skill3 = true; break;
@@ -97,10 +103,16 @@ export const DragoonInputSystem = {
 
     _keyUp = (e: KeyboardEvent) => {
       switch (e.code) {
-        case "KeyW": case "ArrowUp": inp.up = false; break;
-        case "KeyS": case "ArrowDown": inp.down = false; break;
-        case "KeyA": case "ArrowLeft": inp.left = false; break;
-        case "KeyD": case "ArrowRight": inp.right = false; break;
+        // Arrow keys = player movement
+        case "ArrowUp": inp.up = false; break;
+        case "ArrowDown": inp.down = false; break;
+        case "ArrowLeft": inp.left = false; break;
+        case "ArrowRight": inp.right = false; break;
+        // WASD = camera control
+        case "KeyW": inp.camUp = false; break;
+        case "KeyS": inp.camDown = false; break;
+        case "KeyA": inp.camLeft = false; break;
+        case "KeyD": inp.camRight = false; break;
         case "Digit1": inp.skill1 = false; break;
         case "Digit2": inp.skill2 = false; break;
         case "Digit3": inp.skill3 = false; break;
@@ -183,6 +195,7 @@ export const DragoonInputSystem = {
     const inp = state.input;
     const speed = 320 * p.speedMultiplier;
 
+    // Arrow keys → player movement
     let dx = 0, dy = 0;
     if (inp.left) dx -= 1;
     if (inp.right) dx += 1;
@@ -204,17 +217,27 @@ export const DragoonInputSystem = {
     p.position.x = Math.max(margin, Math.min(state.worldWidth - margin, p.position.x));
     p.position.y = Math.max(margin, Math.min(state.screenH - margin, p.position.y));
 
-    // Update camera to follow player horizontally
-    // Camera speed is capped to the player's movement speed so it never outpaces the bird
-    const targetCamX = p.position.x - state.screenW * 0.5;
-    const clampedTarget = Math.max(0, Math.min(state.worldWidth - state.screenW, targetCamX));
-    const camDiff = clampedTarget - state.cameraX;
-    const maxCamSpeed = speed; // camera cannot move faster than the player/bird
-    const maxCamStep = maxCamSpeed * dt;
-    if (Math.abs(camDiff) <= maxCamStep) {
-      state.cameraX = clampedTarget;
+    // WASD → independent camera control
+    const camSpeed = 400;
+    let camDx = 0;
+    if (inp.camLeft) camDx -= 1;
+    if (inp.camRight) camDx += 1;
+
+    if (camDx !== 0) {
+      // Manual camera panning with WASD
+      state.cameraX += camDx * camSpeed * dt;
+      state.cameraX = Math.max(0, Math.min(state.worldWidth - state.screenW, state.cameraX));
     } else {
-      state.cameraX += Math.sign(camDiff) * maxCamStep;
+      // When no WASD camera input, smoothly follow player
+      const targetCamX = p.position.x - state.screenW * 0.5;
+      const clampedTarget = Math.max(0, Math.min(state.worldWidth - state.screenW, targetCamX));
+      const camDiff = clampedTarget - state.cameraX;
+      const maxCamStep = speed * dt;
+      if (Math.abs(camDiff) <= maxCamStep) {
+        state.cameraX = clampedTarget;
+      } else {
+        state.cameraX += Math.sign(camDiff) * maxCamStep;
+      }
     }
   },
 

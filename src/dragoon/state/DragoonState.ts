@@ -365,12 +365,16 @@ export interface DragoonState {
   groundOffset: number;
   skyLayers: SkyLayer[];
 
-  // Input
+  // Input (arrows = player movement, WASD = camera)
   input: {
     left: boolean;
     right: boolean;
     up: boolean;
     down: boolean;
+    camLeft: boolean;
+    camRight: boolean;
+    camUp: boolean;
+    camDown: boolean;
     fire: boolean;
     skill1: boolean;
     skill2: boolean;
@@ -501,6 +505,7 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
 
     input: {
       left: false, right: false, up: false, down: false,
+      camLeft: false, camRight: false, camUp: false, camDown: false,
       fire: false,
       skill1: false, skill2: false, skill3: false, skill4: false, skill5: false, skill6: false,
       mouseX: screenW * 0.5, mouseY: screenH * 0.5,
