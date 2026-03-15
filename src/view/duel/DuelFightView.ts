@@ -378,6 +378,9 @@ export class DuelFightView {
     // Spawn slash trails for active melee attacks
     this._updateSlashTrails(state);
 
+    // Spawn ambient and movement particles
+    this._spawnAmbientParticles(state);
+
     this._drawFighter(this._p1Gfx, state.fighters[0], state, 0);
     this._drawFighter(this._p2Gfx, state.fighters[1], state, 1);
     this._drawShadows(state);
@@ -574,6 +577,143 @@ export class DuelFightView {
         if (tip.alpha > 0.1) {
           this._slashTrailGfx.circle(tip.x, tip.y, 8 * t);
           this._slashTrailGfx.fill({ color: trail.color, alpha: tip.alpha * 0.3 * t });
+        }
+      }
+    }
+  }
+
+  // ---- Ambient and movement particle effects --------------------------------
+
+  /** Spawn dust kicks, footstep particles, dash trails, and landing impacts. */
+  private _spawnAmbientParticles(state: DuelState): void {
+    for (const f of state.fighters) {
+      const x = f.position.x;
+      const y = f.position.y;
+      const dir = f.facingRight ? 1 : -1;
+
+      // Footstep dust while walking
+      if ((f.state === DuelFighterState.WALK_FORWARD || f.state === DuelFighterState.WALK_BACK) &&
+          f.stateTimer % 8 === 0 && f.grounded) {
+        const dustCount = 3;
+        for (let i = 0; i < dustCount; i++) {
+          this._specialParticles.push({
+            x: x + (Math.random() - 0.5) * 20,
+            y: y - 2 + Math.random() * 4,
+            vx: (Math.random() - 0.5) * 1.5,
+            vy: -0.5 - Math.random() * 1.5,
+            life: 10 + Math.random() * 8,
+            maxLife: 18,
+            size: 2 + Math.random() * 2,
+            color: 0x998877,
+            type: "spark",
+          });
+        }
+      }
+
+      // Dash burst particles
+      if ((f.state === DuelFighterState.DASH_FORWARD || f.state === DuelFighterState.DASH_BACK) &&
+          f.stateTimer <= 3 && f.grounded) {
+        const dashDir = f.state === DuelFighterState.DASH_FORWARD ? dir : -dir;
+        for (let i = 0; i < 8; i++) {
+          this._specialParticles.push({
+            x: x - dashDir * (5 + Math.random() * 15),
+            y: y - Math.random() * 8,
+            vx: -dashDir * (2 + Math.random() * 4),
+            vy: -1 - Math.random() * 2.5,
+            life: 8 + Math.random() * 8,
+            maxLife: 16,
+            size: 2.5 + Math.random() * 2.5,
+            color: 0xaa9977,
+            type: "spark",
+          });
+        }
+      }
+
+      // Landing impact dust (when transitioning from air to ground)
+      if (f.state === DuelFighterState.IDLE && f.stateTimer === 1 && f.grounded) {
+        // Small landing dust puff
+        for (let i = 0; i < 5; i++) {
+          const angle = Math.PI + (Math.random() - 0.5) * Math.PI * 0.8;
+          this._specialParticles.push({
+            x: x + (Math.random() - 0.5) * 16,
+            y: y - 1,
+            vx: Math.cos(angle) * (1.5 + Math.random() * 2),
+            vy: Math.sin(angle) * (1 + Math.random()) - 1,
+            life: 8 + Math.random() * 6,
+            maxLife: 14,
+            size: 2 + Math.random() * 2,
+            color: 0x887766,
+            type: "spark",
+          });
+        }
+      }
+
+      // Attack impact ground crack / dust burst (for heavy attacks hitting the ground)
+      if (f.state === DuelFighterState.ATTACK && f.currentMove && f.grounded) {
+        const charDef = DUEL_CHARACTERS[f.characterId];
+        const move = charDef.normals[f.currentMove] ?? charDef.specials[f.currentMove] ?? charDef.zeals[f.currentMove];
+        if (move && !move.isProjectile && f.moveFrame === move.startup + Math.floor(move.active / 2)) {
+          // Ground impact dust for heavy/low attacks
+          const isLow = f.currentMove.includes("low") || f.currentMove.includes("sweep") || f.currentMove.includes("ground");
+          const isHeavy = f.currentMove.includes("heavy") || f.currentMove.includes("overhead") || f.currentMove.includes("slam");
+          if (isLow || isHeavy) {
+            const impactX = x + dir * (move.hitbox?.x ?? 30);
+            const dustAmt = isHeavy ? 10 : 6;
+            for (let i = 0; i < dustAmt; i++) {
+              const angle = -Math.PI * 0.5 + (Math.random() - 0.5) * Math.PI * 1.2;
+              const speed = 1.5 + Math.random() * 3;
+              this._specialParticles.push({
+                x: impactX + (Math.random() - 0.5) * 20,
+                y: y - 2 + Math.random() * 4,
+                vx: Math.cos(angle) * speed,
+                vy: -Math.abs(Math.sin(angle) * speed) - 0.5,
+                life: 10 + Math.random() * 8,
+                maxLife: 18,
+                size: 2 + Math.random() * 3,
+                color: isHeavy ? 0xbbaa88 : 0x998877,
+                type: "spark",
+              });
+            }
+          }
+        }
+      }
+
+      // Block impact sparks (metallic sparks when blocking)
+      if ((f.state === DuelFighterState.BLOCK_STAND || f.state === DuelFighterState.BLOCK_CROUCH) &&
+          f.stateTimer === 1) {
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.random() - 0.5) * Math.PI * 0.8 + (dir > 0 ? Math.PI : 0);
+          const speed = 2 + Math.random() * 4;
+          this._specialParticles.push({
+            x: x + dir * 25 + (Math.random() - 0.5) * 10,
+            y: y - 80 + (Math.random() - 0.5) * 40,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1,
+            life: 8 + Math.random() * 6,
+            maxLife: 14,
+            size: 1.5 + Math.random() * 2,
+            color: Math.random() > 0.5 ? 0xffdd88 : 0xccccdd,
+            type: "spark",
+          });
+        }
+      }
+
+      // Knockdown body slam ground dust
+      if (f.state === DuelFighterState.KNOCKDOWN && f.stateTimer === 1) {
+        for (let i = 0; i < 12; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1 + Math.random() * 3;
+          this._specialParticles.push({
+            x: x + (Math.random() - 0.5) * 30,
+            y: y - 5 + Math.random() * 10,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1.5,
+            life: 12 + Math.random() * 8,
+            maxLife: 20,
+            size: 2 + Math.random() * 3,
+            color: 0x887766,
+            type: "spark",
+          });
         }
       }
     }
@@ -1278,6 +1418,23 @@ export class DuelFightView {
       fighter.state === DuelFighterState.BLOCK_CROUCH;
     const breathePhase = isIdleState ? fighter.stateTimer * 0.08 : 0;
 
+    // Ambient rim light / edge highlight on fighter body (subtle colored outline glow)
+    if (!isHitFlash && fighter.state !== DuelFighterState.KNOCKDOWN && fighter.state !== DuelFighterState.DEFEAT) {
+      const rimColor = palette.accent ?? palette.body;
+      const rimPulse = 0.08 + Math.sin(fighter.stateTimer * 0.06) * 0.03;
+      g.circle(0, -90, 58);
+      g.stroke({ color: rimColor, width: 2, alpha: rimPulse });
+    }
+
+    // Victory golden glow aura
+    if (fighter.state === DuelFighterState.VICTORY) {
+      const vPulse = 0.15 + Math.sin(fighter.stateTimer * 0.12) * 0.08;
+      g.circle(0, -90, 70 + Math.sin(fighter.stateTimer * 0.08) * 8);
+      g.fill({ color: 0xffee88, alpha: vPulse * 0.3 });
+      g.circle(0, -90, 45 + Math.sin(fighter.stateTimer * 0.1) * 5);
+      g.fill({ color: 0xffffff, alpha: vPulse * 0.15 });
+    }
+
     const opts: DrawFighterOptions = {
       pose: currentPose,
       palette,
@@ -1295,26 +1452,84 @@ export class DuelFightView {
 
     // Draw weapon trail / energy effect on top of fighter during specials/zeals
     if ((isSpecial || isZeal) && currentPose.frontArm) {
-      const colors = SPECIAL_COLORS[charId] ?? SPECIAL_COLORS.arthur;
+      const colors = isZeal
+        ? (ZEAL_COLORS[charId] ?? ZEAL_COLORS.arthur)
+        : (SPECIAL_COLORS[charId] ?? SPECIAL_COLORS.arthur);
       const handX = currentPose.frontArm.handX;
       const handY = currentPose.frontArm.handY;
+      const elbowX = currentPose.frontArm.elbowX;
+      const elbowY = currentPose.frontArm.elbowY;
       const pulse = 0.5 + Math.sin(fighter.moveFrame * 0.6) * 0.3;
 
-      // Glowing energy at weapon/hand point
+      // Outer diffuse glow at weapon/hand point
+      g.circle(handX, handY, 18 + Math.sin(fighter.moveFrame * 0.35) * 5);
+      g.fill({ color: colors.primary, alpha: pulse * 0.15 });
+      // Inner energy glow
       g.circle(handX, handY, 12 + Math.sin(fighter.moveFrame * 0.4) * 4);
       g.fill({ color: colors.glow, alpha: pulse * 0.4 });
+      // Bright core
       g.circle(handX, handY, 6);
       g.fill({ color: 0xffffff, alpha: pulse * 0.6 });
 
-      // Small energy sparks around the hand
-      const sparkTime = fighter.moveFrame * 0.15;
-      for (let i = 0; i < 4; i++) {
-        const a = sparkTime + (i / 4) * Math.PI * 2;
-        const r = 14 + Math.sin(sparkTime * 2 + i) * 4;
+      // Energy trail from elbow to hand (weapon charging along the arm)
+      g.moveTo(elbowX, elbowY);
+      g.lineTo(handX, handY);
+      g.stroke({ color: colors.primary, width: 3, alpha: pulse * 0.2, cap: "round" });
+      g.moveTo(elbowX, elbowY);
+      g.lineTo(handX, handY);
+      g.stroke({ color: colors.glow, width: 1.5, alpha: pulse * 0.15, cap: "round" });
+
+      // Orbiting energy sparks around the hand (more, with varied orbits)
+      const sparkTime = fighter.moveFrame * 0.18;
+      const sparkCount = isZeal ? 8 : 5;
+      for (let i = 0; i < sparkCount; i++) {
+        const a = sparkTime + (i / sparkCount) * Math.PI * 2;
+        const r = 14 + Math.sin(sparkTime * 2.5 + i * 1.3) * 5;
         const sx = handX + Math.cos(a) * r;
         const sy = handY + Math.sin(a) * r;
-        g.circle(sx, sy, 2);
-        g.fill({ color: colors.primary, alpha: 0.6 + Math.sin(a) * 0.3 });
+        const sparkSize = 1.5 + Math.sin(a * 2) * 0.8;
+        g.circle(sx, sy, sparkSize + 1);
+        g.fill({ color: colors.primary, alpha: (0.4 + Math.sin(a) * 0.2) * pulse });
+        g.circle(sx, sy, sparkSize);
+        g.fill({ color: 0xffffff, alpha: (0.3 + Math.sin(a) * 0.15) * pulse });
+      }
+
+      // Energy crackle lines radiating from hand (electric/magic feel)
+      if (isZeal || Math.random() > 0.6) {
+        for (let c = 0; c < 3; c++) {
+          const cAngle = Math.random() * Math.PI * 2;
+          const cLen = 8 + Math.random() * 12;
+          const midAngle = cAngle + (Math.random() - 0.5) * 0.8;
+          const mx = handX + Math.cos(cAngle) * cLen * 0.5 + (Math.random() - 0.5) * 3;
+          const my = handY + Math.sin(cAngle) * cLen * 0.5 + (Math.random() - 0.5) * 3;
+          g.moveTo(handX + Math.cos(cAngle) * 4, handY + Math.sin(cAngle) * 4);
+          g.lineTo(mx, my);
+          g.lineTo(handX + Math.cos(midAngle) * cLen, handY + Math.sin(midAngle) * cLen);
+          g.stroke({ color: colors.glow, width: 1, alpha: pulse * 0.35, cap: "round" });
+        }
+      }
+    }
+
+    // Normal attack swing motion blur (subtle arc behind weapon during active frames)
+    if (fighter.state === DuelFighterState.ATTACK && !isSpecial && !isZeal && currentPose.frontArm) {
+      const charDef = DUEL_CHARACTERS[charId];
+      const move = fighter.currentMove ? (charDef.normals[fighter.currentMove] ?? null) : null;
+      if (move && !move.isProjectile && fighter.moveFrame >= move.startup && fighter.moveFrame < move.startup + move.active) {
+        const handX = currentPose.frontArm.handX;
+        const handY = currentPose.frontArm.handY;
+        const elbowX = currentPose.frontArm.elbowX;
+        const elbowY = currentPose.frontArm.elbowY;
+        // Motion blur arc
+        const swingAngle = Math.atan2(handY - elbowY, handX - elbowX);
+        const arcLen = 20;
+        for (let a = 0; a < 3; a++) {
+          const offsetAngle = swingAngle + (a - 1) * 0.3;
+          const ax = handX + Math.cos(offsetAngle) * arcLen * (1 - a * 0.2);
+          const ay = handY + Math.sin(offsetAngle) * arcLen * (1 - a * 0.2);
+          g.moveTo(handX, handY);
+          g.lineTo(ax, ay);
+          g.stroke({ color: 0xccccdd, width: 2 - a * 0.5, alpha: 0.15 - a * 0.04, cap: "round" });
+        }
       }
     }
   }
@@ -1436,30 +1651,72 @@ export class DuelFightView {
       const y = proj.position.y;
       const w = proj.hitbox.width;
       const h = proj.hitbox.height;
+      const trailDir = proj.velocity.x > 0 ? -1 : 1;
+      const speed = Math.sqrt(proj.velocity.x * proj.velocity.x + proj.velocity.y * proj.velocity.y);
 
-      // Outer glow
+      // Outer diffuse glow (large, atmospheric)
+      this._projGfx.circle(x, y, w * 1.6);
+      this._projGfx.fill({ color, alpha: 0.08 });
+
+      // Mid glow ring
       this._projGfx.circle(x, y, w * 1.2);
       this._projGfx.fill({ color, alpha: 0.15 });
 
-      // Mid glow
+      // Inner glow
       this._projGfx.circle(x, y, w * 0.8);
       this._projGfx.fill({ color, alpha: 0.3 });
 
-      // Core
+      // Elongated trail (longer, with multiple segments for motion blur)
+      const trailLen = Math.min(speed * 0.4, w * 2.5);
+      // Outer trail
+      this._projGfx.moveTo(x, y - h / 2.5);
+      this._projGfx.quadraticCurveTo(x + trailDir * trailLen * 0.5, y, x + trailDir * trailLen, y);
+      this._projGfx.quadraticCurveTo(x + trailDir * trailLen * 0.5, y, x, y + h / 2.5);
+      this._projGfx.fill({ color, alpha: 0.18 });
+
+      // Inner trail (brighter)
+      this._projGfx.moveTo(x, y - h / 4);
+      this._projGfx.quadraticCurveTo(x + trailDir * trailLen * 0.4, y, x + trailDir * trailLen * 0.7, y);
+      this._projGfx.quadraticCurveTo(x + trailDir * trailLen * 0.4, y, x, y + h / 4);
+      this._projGfx.fill({ color, alpha: 0.25 });
+
+      // Core shape (elliptical with slight rotation effect)
       this._projGfx.ellipse(x, y, w / 2, h / 2);
       this._projGfx.fill({ color, alpha: 0.9 });
-      this._projGfx.stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 });
+      // Core outline
+      this._projGfx.ellipse(x, y, w / 2 + 1, h / 2 + 1);
+      this._projGfx.stroke({ color: 0xffffff, width: 1.5, alpha: 0.5 });
 
-      // Inner bright
-      this._projGfx.circle(x, y, w * 0.2);
-      this._projGfx.fill({ color: 0xffffff, alpha: 0.8 });
+      // Bright specular core
+      this._projGfx.circle(x - trailDir * w * 0.1, y - h * 0.1, w * 0.22);
+      this._projGfx.fill({ color: 0xffffff, alpha: 0.85 });
 
-      // Trail
-      const trailDir = proj.velocity.x > 0 ? -1 : 1;
-      this._projGfx.moveTo(x, y - h / 3);
-      this._projGfx.lineTo(x + trailDir * w * 1.5, y);
-      this._projGfx.lineTo(x, y + h / 3);
-      this._projGfx.fill({ color, alpha: 0.25 });
+      // Secondary specular highlight
+      this._projGfx.circle(x + trailDir * w * 0.05, y + h * 0.05, w * 0.12);
+      this._projGfx.fill({ color: 0xffffff, alpha: 0.4 });
+
+      // Particle trail sparks (tiny dots along the trail path)
+      for (let i = 0; i < 4; i++) {
+        const t = (i + 1) / 5;
+        const sparkX = x + trailDir * trailLen * t + (Math.random() - 0.5) * 4;
+        const sparkY = y + (Math.random() - 0.5) * h * 0.6;
+        const sparkSize = 1 + Math.random() * 1.5;
+        this._projGfx.circle(sparkX, sparkY, sparkSize);
+        this._projGfx.fill({ color, alpha: 0.4 * (1 - t) });
+      }
+
+      // Front-facing energy crackle (small random lines at leading edge)
+      const leadX = x - trailDir * w * 0.3;
+      for (let i = 0; i < 3; i++) {
+        const angle = (Math.random() - 0.5) * Math.PI * 0.8;
+        const crackLen = 3 + Math.random() * 4;
+        this._projGfx.moveTo(leadX, y + (Math.random() - 0.5) * h * 0.5);
+        this._projGfx.lineTo(
+          leadX - trailDir * Math.cos(angle) * crackLen,
+          y + Math.sin(angle) * crackLen,
+        );
+        this._projGfx.stroke({ color: 0xffffff, width: 0.8, alpha: 0.3, cap: "round" });
+      }
     }
   }
 
@@ -1478,16 +1735,18 @@ export class DuelFightView {
       const t = spark.timer / SPARK_DURATION;
       const size = 14 + (1 - t) * 24;
 
-      // Outer energy glow (large, soft)
+      // Outer energy glow (larger, softer)
+      this._sparkGfx.circle(spark.x, spark.y, size * 1.5 * t);
+      this._sparkGfx.fill({ color: 0xff4400, alpha: t * 0.08 });
       this._sparkGfx.circle(spark.x, spark.y, size * 1.2 * t);
       this._sparkGfx.fill({ color: 0xff6600, alpha: t * 0.15 });
 
-      // Starburst rays (more rays, varied thickness)
-      const rayCount = 12;
+      // Starburst rays (more rays, varied thickness, with secondary color)
+      const rayCount = 16;
       for (let j = 0; j < rayCount; j++) {
         const angle = (j / rayCount) * Math.PI * 2 + (1 - t) * 2.5;
-        const innerR = size * 0.2 * (1 - t);
-        const outerR = size * (1 - t * 0.25) * (0.8 + Math.sin(j * 1.7) * 0.2);
+        const innerR = size * 0.15 * (1 - t);
+        const outerR = size * (1 - t * 0.2) * (0.7 + Math.sin(j * 1.7) * 0.3);
         this._sparkGfx.moveTo(
           spark.x + Math.cos(angle) * innerR,
           spark.y + Math.sin(angle) * innerR,
@@ -1496,31 +1755,53 @@ export class DuelFightView {
           spark.x + Math.cos(angle) * outerR,
           spark.y + Math.sin(angle) * outerR,
         );
-        const rayWidth = j % 3 === 0 ? 4 : 2.5;
-        const rayColor = j % 2 === 0 ? 0xffff88 : 0xffcc44;
-        this._sparkGfx.stroke({ color: rayColor, width: rayWidth, alpha: t });
+        const rayWidth = j % 4 === 0 ? 4.5 : j % 2 === 0 ? 3 : 2;
+        const rayColor = j % 3 === 0 ? 0xffffff : j % 2 === 0 ? 0xffff88 : 0xffcc44;
+        this._sparkGfx.stroke({ color: rayColor, width: rayWidth * t, alpha: t * 0.9, cap: "round" });
       }
 
       // Orange mid glow
-      this._sparkGfx.circle(spark.x, spark.y, size * 0.5 * t);
+      this._sparkGfx.circle(spark.x, spark.y, size * 0.55 * t);
       this._sparkGfx.fill({ color: 0xff8800, alpha: t * 0.5 });
 
-      // Bright yellow ring
-      this._sparkGfx.circle(spark.x, spark.y, size * 0.35 * t);
-      this._sparkGfx.stroke({ color: 0xffee66, width: 2 * t, alpha: t * 0.6 });
+      // Bright yellow ring (double ring for extra punch)
+      this._sparkGfx.circle(spark.x, spark.y, size * 0.4 * t);
+      this._sparkGfx.stroke({ color: 0xffee66, width: 2.5 * t, alpha: t * 0.6 });
+      this._sparkGfx.circle(spark.x, spark.y, size * 0.25 * t);
+      this._sparkGfx.stroke({ color: 0xffffaa, width: 1.5 * t, alpha: t * 0.4 });
 
-      // White center flash
-      this._sparkGfx.circle(spark.x, spark.y, 6 * t);
+      // White center flash (larger, more impactful)
+      this._sparkGfx.circle(spark.x, spark.y, 8 * t);
       this._sparkGfx.fill({ color: 0xffffff, alpha: t * 0.95 });
+      this._sparkGfx.circle(spark.x, spark.y, 4 * t);
+      this._sparkGfx.fill({ color: 0xffffff, alpha: t });
 
-      // Small debris particles flying out (drawn as tiny circles)
-      for (let d = 0; d < 4; d++) {
-        const dAngle = (d / 4) * Math.PI * 2 + t * 5 + spark.x * 0.01;
-        const dDist = size * (1 - t) * 0.8;
+      // Small debris particles flying out (more, with varied sizes and trails)
+      for (let d = 0; d < 6; d++) {
+        const dAngle = (d / 6) * Math.PI * 2 + t * 5 + spark.x * 0.01;
+        const dDist = size * (1 - t) * (0.7 + d * 0.1);
         const dx = spark.x + Math.cos(dAngle) * dDist;
         const dy = spark.y + Math.sin(dAngle) * dDist;
-        this._sparkGfx.circle(dx, dy, 1.5 * t);
-        this._sparkGfx.fill({ color: 0xffdd44, alpha: t * 0.7 });
+        const debrisSize = (1 + d * 0.3) * t;
+        // Debris trail
+        const trailDx = spark.x + Math.cos(dAngle) * dDist * 0.7;
+        const trailDy = spark.y + Math.sin(dAngle) * dDist * 0.7;
+        this._sparkGfx.moveTo(trailDx, trailDy);
+        this._sparkGfx.lineTo(dx, dy);
+        this._sparkGfx.stroke({ color: 0xffcc44, width: debrisSize * 0.8, alpha: t * 0.5, cap: "round" });
+        // Debris particle
+        this._sparkGfx.circle(dx, dy, debrisSize);
+        this._sparkGfx.fill({ color: d % 2 === 0 ? 0xffdd44 : 0xffaa22, alpha: t * 0.8 });
+      }
+
+      // Additional hot ember particles (tiny, scattered further)
+      for (let e = 0; e < 3; e++) {
+        const eAngle = (e / 3) * Math.PI * 2 + t * 3 + 1.5;
+        const eDist = size * (1 - t) * 1.2;
+        const ex = spark.x + Math.cos(eAngle) * eDist;
+        const ey = spark.y + Math.sin(eAngle) * eDist - (1 - t) * 5;
+        this._sparkGfx.circle(ex, ey, 1 * t);
+        this._sparkGfx.fill({ color: 0xff6622, alpha: t * 0.6 });
       }
     }
   }

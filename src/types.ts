@@ -870,6 +870,7 @@ export enum ArthurianPhase {
   SHOP = "arthurian_shop",
   DEAD = "arthurian_dead",
   LOADING = "arthurian_loading",
+  HELP = "arthurian_help",
 }
 
 export enum ArthurianClass {

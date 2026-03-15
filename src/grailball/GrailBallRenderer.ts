@@ -465,52 +465,199 @@ export class GrailBallRenderer {
       paLine.position.set(px, 0.025, 0);
       this._fieldGroup.add(paLine);
     }
-    const wallMat = new THREE.MeshPhysicalMaterial({
+    const wallBaseMat = new THREE.MeshPhysicalMaterial({
       color: 0x7a7a6a, roughness: 0.85, metalness: 0.08,
     });
     const wallH = GB_FIELD.BOUNDARY_HEIGHT;
     const wallThick = 0.9;
+    const mortarMat = new THREE.MeshPhysicalMaterial({ color: 0x9a9a88, roughness: 0.95, metalness: 0.0 });
+    const ironFixtureMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3a3a, metalness: 0.8, roughness: 0.35 });
+    const stoneDarkMat = new THREE.MeshPhysicalMaterial({ color: 0x5a5a4e, roughness: 0.9, metalness: 0.05 });
+    const stoneLightMat = new THREE.MeshPhysicalMaterial({ color: 0x8a8a7a, roughness: 0.82, metalness: 0.06 });
+
     for (const zSign of [-1, 1]) {
+      const wallZ = zSign * (GB_FIELD.HALF_WIDTH + wallThick / 2 + 1);
+
+      // Main wall body
       const wall = new THREE.Mesh(
         new THREE.BoxGeometry(GB_FIELD.LENGTH + 10, wallH, wallThick),
-        wallMat,
+        wallBaseMat,
       );
-      wall.position.set(0, wallH / 2, zSign * (GB_FIELD.HALF_WIDTH + wallThick / 2 + 1));
+      wall.position.set(0, wallH / 2, wallZ);
       wall.castShadow = true;
       wall.receiveShadow = true;
       this._fieldGroup.add(wall);
-      // Battlements (crenellations on top)
+
+      // Stone block texture overlay - individual blocks on the face of the wall
+      const blockW = 2.2;
+      const blockH = 0.45;
+      const wallLen = GB_FIELD.LENGTH + 10;
+      const rows = Math.floor(wallH / blockH);
+      const cols = Math.floor(wallLen / blockW);
+      for (let row = 0; row < rows; row++) {
+        const rowOffset = (row % 2) * (blockW * 0.5); // stagger rows
+        for (let col = 0; col < cols + 1; col++) {
+          const bx = -wallLen / 2 + col * blockW + rowOffset + (Math.random() - 0.5) * 0.1;
+          const by = row * blockH + blockH / 2 + (Math.random() - 0.5) * 0.02;
+          if (bx < -wallLen / 2 - 1 || bx > wallLen / 2 + 1) continue;
+          // Mortar line (horizontal)
+          const mortar = new THREE.Mesh(
+            new THREE.PlaneGeometry(blockW + 0.05, 0.04),
+            mortarMat,
+          );
+          mortar.position.set(bx, by + blockH / 2, wallZ + zSign * (wallThick / 2 + 0.01));
+          mortar.lookAt(bx, by + blockH / 2, wallZ + zSign * (wallThick / 2 + 1));
+          this._fieldGroup.add(mortar);
+          // Vertical mortar joint
+          if (col < cols) {
+            const vMortar = new THREE.Mesh(
+              new THREE.PlaneGeometry(0.04, blockH + 0.02),
+              mortarMat,
+            );
+            vMortar.position.set(bx + blockW / 2, by, wallZ + zSign * (wallThick / 2 + 0.01));
+            vMortar.lookAt(bx + blockW / 2, by, wallZ + zSign * (wallThick / 2 + 1));
+            this._fieldGroup.add(vMortar);
+          }
+          // Occasional stone variation (darker/lighter blocks)
+          if (Math.random() < 0.15) {
+            const varBlock = new THREE.Mesh(
+              new THREE.BoxGeometry(blockW * 0.9, blockH * 0.85, 0.06),
+              Math.random() > 0.5 ? stoneDarkMat : stoneLightMat,
+            );
+            varBlock.position.set(bx, by, wallZ + zSign * (wallThick / 2 + 0.02));
+            this._fieldGroup.add(varBlock);
+          }
+        }
+      }
+
+      // Moss patches at wall base
+      for (let i = 0; i < 12; i++) {
+        const mx = -wallLen / 2 + Math.random() * wallLen;
+        const mossW = 0.8 + Math.random() * 1.5;
+        const mossH = 0.2 + Math.random() * 0.4;
+        const moss = new THREE.Mesh(
+          new THREE.PlaneGeometry(mossW, mossH),
+          new THREE.MeshPhysicalMaterial({
+            color: new THREE.Color().setHSL(0.28 + Math.random() * 0.06, 0.4, 0.25 + Math.random() * 0.1),
+            roughness: 0.95, metalness: 0.0, transparent: true, opacity: 0.7,
+          }),
+        );
+        moss.position.set(mx, mossH / 2, wallZ + zSign * (wallThick / 2 + 0.02));
+        moss.lookAt(mx, mossH / 2, wallZ + zSign * (wallThick / 2 + 1));
+        this._fieldGroup.add(moss);
+      }
+
+      // Iron ring fixtures on wall
+      for (let i = 0; i < 6; i++) {
+        const rx = -wallLen / 2 + 8 + i * (wallLen - 16) / 5;
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 6, 8), ironFixtureMat);
+        ring.position.set(rx, wallH * 0.6, wallZ + zSign * (wallThick / 2 + 0.02));
+        ring.lookAt(rx, wallH * 0.6, wallZ + zSign * (wallThick / 2 + 1));
+        this._fieldGroup.add(ring);
+        // Iron plate behind ring
+        const plate = new THREE.Mesh(new THREE.CircleGeometry(0.12, 6), ironFixtureMat);
+        plate.position.set(rx, wallH * 0.6, wallZ + zSign * (wallThick / 2 + 0.015));
+        plate.lookAt(rx, wallH * 0.6, wallZ + zSign * (wallThick / 2 + 1));
+        this._fieldGroup.add(plate);
+      }
+
+      // Wall cap / top ledge (protruding stone lip)
+      const wallCap = new THREE.Mesh(
+        new THREE.BoxGeometry(wallLen, 0.1, wallThick + 0.3),
+        stoneDarkMat,
+      );
+      wallCap.position.set(0, wallH, wallZ);
+      wallCap.castShadow = true;
+      this._fieldGroup.add(wallCap);
+
+      // Battlements (crenellations on top) - enhanced with varied stone
       for (let i = 0; i < 24; i++) {
         const bw = 1.8 + Math.random() * 0.4;
+        const bh = 0.5 + Math.random() * 0.2;
+        const blockColor = new THREE.Color().setHSL(
+          0.08 + Math.random() * 0.04,
+          0.06 + Math.random() * 0.04,
+          0.38 + Math.random() * 0.14,
+        );
         const block = new THREE.Mesh(
-          new THREE.BoxGeometry(bw, 0.6, wallThick + 0.15),
+          new THREE.BoxGeometry(bw, bh, wallThick + 0.15),
           new THREE.MeshPhysicalMaterial({
-            color: new THREE.Color().setHSL(0.1, 0.05, 0.42 + Math.random() * 0.12),
-            roughness: 0.9, metalness: 0.05,
+            color: blockColor,
+            roughness: 0.88 + Math.random() * 0.08,
+            metalness: 0.05,
           }),
         );
         block.position.set(
           -GB_FIELD.HALF_LENGTH - 3 + i * (GB_FIELD.LENGTH + 10) / 24,
-          wallH + 0.3,
-          zSign * (GB_FIELD.HALF_WIDTH + wallThick / 2 + 1),
+          wallH + bh / 2 + 0.05,
+          wallZ,
         );
         block.castShadow = true;
         this._fieldGroup.add(block);
+
+        // Small cap stone on top of each merlon
+        const capStone = new THREE.Mesh(
+          new THREE.BoxGeometry(bw + 0.1, 0.06, wallThick + 0.25),
+          stoneDarkMat,
+        );
+        capStone.position.set(block.position.x, wallH + bh + 0.08, wallZ);
+        this._fieldGroup.add(capStone);
+      }
+
+      // Decorative carved stone emblems at regular intervals
+      for (let i = 0; i < 4; i++) {
+        const ex = -wallLen / 2 + 15 + i * (wallLen - 30) / 3;
+        // Shield-shaped emblem
+        const emblem = new THREE.Mesh(
+          new THREE.CircleGeometry(0.35, 6),
+          new THREE.MeshPhysicalMaterial({ color: 0x6a6a5a, roughness: 0.7, metalness: 0.15 }),
+        );
+        emblem.position.set(ex, wallH * 0.75, wallZ + zSign * (wallThick / 2 + 0.02));
+        emblem.lookAt(ex, wallH * 0.75, wallZ + zSign * (wallThick / 2 + 1));
+        this._fieldGroup.add(emblem);
+        // Inner cross on emblem
+        const crossV = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.06, 0.4),
+          new THREE.MeshPhysicalMaterial({ color: 0x8a8a78, roughness: 0.65, metalness: 0.1 }),
+        );
+        crossV.position.set(ex, wallH * 0.75, wallZ + zSign * (wallThick / 2 + 0.025));
+        crossV.lookAt(ex, wallH * 0.75, wallZ + zSign * (wallThick / 2 + 1));
+        this._fieldGroup.add(crossV);
+        const crossH = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.4, 0.06),
+          new THREE.MeshPhysicalMaterial({ color: 0x8a8a78, roughness: 0.65, metalness: 0.1 }),
+        );
+        crossH.position.set(ex, wallH * 0.75, wallZ + zSign * (wallThick / 2 + 0.025));
+        crossH.lookAt(ex, wallH * 0.75, wallZ + zSign * (wallThick / 2 + 1));
+        this._fieldGroup.add(crossH);
       }
     }
+
+    // End walls (behind gates) - with same stone detail treatment
     for (const xSign of [-1, 1]) {
       for (const zOff of [-1, 1]) {
+        const secLen = (GB_FIELD.WIDTH - GB_FIELD.GATE_WIDTH) / 2;
         const sec = new THREE.Mesh(
-          new THREE.BoxGeometry(wallThick, wallH, (GB_FIELD.WIDTH - GB_FIELD.GATE_WIDTH) / 2),
-          wallMat,
+          new THREE.BoxGeometry(wallThick, wallH, secLen),
+          wallBaseMat,
         );
-        sec.position.set(
-          xSign * (GB_FIELD.HALF_LENGTH + wallThick / 2 + 1),
-          wallH / 2,
-          zOff * (GB_FIELD.GATE_WIDTH / 2 + (GB_FIELD.WIDTH - GB_FIELD.GATE_WIDTH) / 4),
-        );
+        const secX = xSign * (GB_FIELD.HALF_LENGTH + wallThick / 2 + 1);
+        const secZ = zOff * (GB_FIELD.GATE_WIDTH / 2 + secLen / 2);
+        sec.position.set(secX, wallH / 2, secZ);
         sec.castShadow = true;
         this._fieldGroup.add(sec);
+
+        // Stone block lines on end walls
+        const endRows = Math.floor(wallH / 0.45);
+        for (let row = 0; row < endRows; row++) {
+          const mortar = new THREE.Mesh(
+            new THREE.PlaneGeometry(secLen, 0.03),
+            mortarMat,
+          );
+          mortar.position.set(secX + xSign * (wallThick / 2 + 0.01), row * 0.45 + 0.45, secZ);
+          mortar.lookAt(secX + xSign * (wallThick / 2 + 1), row * 0.45 + 0.45, secZ);
+          this._fieldGroup.add(mortar);
+        }
       }
     }
   }
@@ -559,29 +706,131 @@ export class GrailBallRenderer {
     const group = new THREE.Group();
     const r = GB_FIELD.TOWER_RADIUS;
     const h = GB_FIELD.TOWER_HEIGHT;
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.1, h, 12), mainMat);
+    const ironMat = new THREE.MeshPhysicalMaterial({ color: 0x3a3a3a, metalness: 0.8, roughness: 0.35 });
+    const mortarMat = new THREE.MeshPhysicalMaterial({ color: 0x9a9a88, roughness: 0.95 });
+    const warmStoneMat = new THREE.MeshPhysicalMaterial({ color: 0x8a7a6a, roughness: 0.82, metalness: 0.05 });
+
+    // Tower base (slightly wider for stability look)
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.2, r * 1.35, 0.6, 12), darkMat);
+    base.position.set(x, 0.3, z);
+    base.castShadow = true;
+    group.add(base);
+
+    // Main tower body
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.1, h, 16), mainMat);
     body.position.set(x, h / 2, z);
     body.castShadow = true;
     group.add(body);
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * TAU;
-      const cren = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.2, 0.6), darkMat);
-      cren.position.set(x + Math.cos(angle) * (r + 0.1), h + 0.6, z + Math.sin(angle) * (r + 0.1));
-      group.add(cren);
+
+    // Horizontal stone band rings at intervals
+    for (let band = 1; band <= 3; band++) {
+      const bandY = band * h / 4;
+      const bandRing = new THREE.Mesh(
+        new THREE.TorusGeometry(r * (1.1 - band * 0.02) + 0.05, 0.06, 6, 16),
+        warmStoneMat,
+      );
+      bandRing.position.set(x, bandY, z);
+      bandRing.rotation.x = Math.PI / 2;
+      group.add(bandRing);
     }
+
+    // Stone block texture lines on tower surface
+    for (let row = 0; row < Math.floor(h / 0.6); row++) {
+      const rowY = row * 0.6 + 0.3;
+      const rowR = r * 1.1 - (rowY / h) * (r * 0.1);
+      const mortar = new THREE.Mesh(
+        new THREE.TorusGeometry(rowR + 0.01, 0.015, 4, 16),
+        mortarMat,
+      );
+      mortar.position.set(x, rowY, z);
+      mortar.rotation.x = Math.PI / 2;
+      group.add(mortar);
+    }
+
+    // Moss patches at base
+    for (let i = 0; i < 5; i++) {
+      const a = Math.random() * TAU;
+      const moss = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.5 + Math.random() * 0.6, 0.3 + Math.random() * 0.4),
+        new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color().setHSL(0.28 + Math.random() * 0.06, 0.45, 0.2 + Math.random() * 0.1),
+          roughness: 0.95, transparent: true, opacity: 0.65,
+        }),
+      );
+      moss.position.set(
+        x + Math.cos(a) * (r * 1.12),
+        0.3 + Math.random() * 0.6,
+        z + Math.sin(a) * (r * 1.12),
+      );
+      moss.lookAt(x, moss.position.y, z);
+      group.add(moss);
+    }
+
+    // Crenellations (battlements) - more detailed
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * TAU;
+      const crenH = 1.0 + Math.random() * 0.3;
+      const cren = new THREE.Mesh(new THREE.BoxGeometry(0.5, crenH, 0.5), darkMat);
+      cren.position.set(x + Math.cos(angle) * (r + 0.15), h + crenH / 2, z + Math.sin(angle) * (r + 0.15));
+      cren.rotation.y = -angle;
+      group.add(cren);
+      // Cap stone on each merlon
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.6), warmStoneMat);
+      cap.position.set(cren.position.x, h + crenH + 0.04, cren.position.z);
+      cap.rotation.y = -angle;
+      group.add(cap);
+    }
+
+    // Walkway ring at top (inner platform)
+    const walkway = new THREE.Mesh(
+      new THREE.RingGeometry(r * 0.5, r + 0.1, 16, 1),
+      warmStoneMat,
+    );
+    walkway.position.set(x, h + 0.05, z);
+    walkway.rotation.x = -Math.PI / 2;
+    group.add(walkway);
+
+    // Conical roof with wooden shingle texture
+    const roofMat = new THREE.MeshPhysicalMaterial({ color: 0x8b2020, roughness: 0.6 });
     const roof = new THREE.Mesh(
       new THREE.ConeGeometry(r + 0.3, 3, 12),
-      new THREE.MeshPhysicalMaterial({ color: 0x8b2020, roughness: 0.6 }),
+      roofMat,
     );
     roof.position.set(x, h + 2.7, z);
     roof.castShadow = true;
     group.add(roof);
+
+    // Roof edge trim
+    const roofEdge = new THREE.Mesh(
+      new THREE.TorusGeometry(r + 0.3, 0.06, 4, 12),
+      new THREE.MeshPhysicalMaterial({ color: 0x6b1515, roughness: 0.7 }),
+    );
+    roofEdge.position.set(x, h + 1.2, z);
+    roofEdge.rotation.x = Math.PI / 2;
+    group.add(roofEdge);
+
+    // Roof finial (spike at top)
+    const finial = new THREE.Mesh(
+      new THREE.ConeGeometry(0.06, 0.4, 4),
+      ironMat,
+    );
+    finial.position.set(x, h + 4.4, z);
+    group.add(finial);
+
+    // Flag pole (taller, with bracket)
     const flagPole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.05, 0.05, 3, 4),
-      new THREE.MeshStandardMaterial({ color: 0x333333 }),
+      new THREE.CylinderGeometry(0.04, 0.05, 3, 6),
+      new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6 }),
     );
     flagPole.position.set(x, h + 5, z);
     group.add(flagPole);
+
+    // Pole bracket
+    const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 0.08), ironMat);
+    bracket.position.set(x, h + 3.6, z);
+    group.add(bracket);
+
+    // Flag
     const flag = new THREE.Mesh(
       new THREE.PlaneGeometry(2.2, 1.4, 10, 5),
       new THREE.MeshPhysicalMaterial({ color: 0xdaa520, side: THREE.DoubleSide, roughness: 0.55 }),
@@ -589,16 +838,86 @@ export class GrailBallRenderer {
     flag.position.set(x + 1.1, h + 5.8, z);
     this._flagMeshes.push(flag);
     group.add(flag);
-    for (let j = 0; j < 3; j++) {
-      const angle = (j / 3) * TAU + 0.5;
+
+    // Arrow slits (more detailed - beveled frames)
+    for (let j = 0; j < 4; j++) {
+      const angle = (j / 4) * TAU + 0.5;
+      const slitX = x + Math.cos(angle) * (r + 0.01);
+      const slitZ = z + Math.sin(angle) * (r + 0.01);
+      // Slit opening (dark)
       const slit = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.12, 0.7),
-        new THREE.MeshBasicMaterial({ color: 0x443311 }),
+        new THREE.PlaneGeometry(0.1, 0.6),
+        new THREE.MeshBasicMaterial({ color: 0x1a1100 }),
       );
-      slit.position.set(x + Math.cos(angle) * (r + 0.01), h * 0.6, z + Math.sin(angle) * (r + 0.01));
+      slit.position.set(slitX, h * 0.6, slitZ);
       slit.lookAt(x, h * 0.6, z);
       group.add(slit);
+      // Stone frame around slit
+      const frameT = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 0.06, 0.06),
+        warmStoneMat,
+      );
+      frameT.position.set(slitX, h * 0.6 + 0.33, slitZ);
+      frameT.lookAt(x, h * 0.6 + 0.33, z);
+      group.add(frameT);
+      const frameB = frameT.clone();
+      frameB.position.y = h * 0.6 - 0.33;
+      group.add(frameB);
     }
+
+    // Lower window with arch
+    for (let j = 0; j < 2; j++) {
+      const angle = (j / 2) * TAU + 1.2;
+      const winX = x + Math.cos(angle) * (r + 0.01);
+      const winZ = z + Math.sin(angle) * (r + 0.01);
+      // Window opening
+      const win = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.35, 0.5),
+        new THREE.MeshBasicMaterial({ color: 0x221100, transparent: true, opacity: 0.8 }),
+      );
+      win.position.set(winX, h * 0.35, winZ);
+      win.lookAt(x, h * 0.35, z);
+      group.add(win);
+      // Window glow (warm interior light)
+      const winGlow = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.3, 0.45),
+        new THREE.MeshBasicMaterial({ color: 0xff9944, transparent: true, opacity: 0.15 }),
+      );
+      winGlow.position.set(winX, h * 0.35, winZ);
+      winGlow.lookAt(x, h * 0.35, z);
+      group.add(winGlow);
+      // Arch above window
+      const arch = new THREE.Mesh(
+        new THREE.TorusGeometry(0.18, 0.04, 4, 8, Math.PI),
+        warmStoneMat,
+      );
+      arch.position.set(winX, h * 0.35 + 0.25, winZ);
+      arch.lookAt(x, h * 0.35 + 0.25, z);
+      group.add(arch);
+    }
+
+    // Iron bands around tower (decorative)
+    for (const bandY of [h * 0.2, h * 0.8]) {
+      const band = new THREE.Mesh(
+        new THREE.TorusGeometry(r * (1.1 - (bandY / h) * 0.1) + 0.02, 0.03, 4, 16),
+        ironMat,
+      );
+      band.position.set(x, bandY, z);
+      band.rotation.x = Math.PI / 2;
+      group.add(band);
+      // Rivets on iron bands
+      for (let ri = 0; ri < 6; ri++) {
+        const ra = (ri / 6) * TAU;
+        const rr = r * (1.1 - (bandY / h) * 0.1) + 0.04;
+        const rivet = new THREE.Mesh(
+          new THREE.SphereGeometry(0.025, 4, 4),
+          new THREE.MeshPhysicalMaterial({ color: 0x555555, metalness: 0.9, roughness: 0.2 }),
+        );
+        rivet.position.set(x + Math.cos(ra) * rr, bandY, z + Math.sin(ra) * rr);
+        group.add(rivet);
+      }
+    }
+
     return group;
   }
 
@@ -648,24 +967,236 @@ export class GrailBallRenderer {
 
   private _buildCrowdRow(parent: THREE.Group, row: number, y: number, z: number, _zSign: number): void {
     const count = CROWD_PER_SIDE;
-    const bodyGeo = new THREE.CylinderGeometry(0.25, 0.3, 1.2, 6);
-    const headGeo = new THREE.SphereGeometry(0.2, 6, 4);
-    const skinTones = [0xddbb99, 0xf1c27d, 0xd4a574, 0xc68642, 0x8d5524, 0xffdbac, 0xe0ac69];
-    const colors = [0xcc3333, 0x3333cc, 0x33cc33, 0xcccc33, 0xcc33cc, 0x885522, 0x558844, 0xaa6644, 0x336699, 0x994433, 0x669933, 0x993366];
+    const skinTones = [0xddbb99, 0xf1c27d, 0xd4a574, 0xc68642, 0x8d5524, 0xffdbac, 0xe0ac69, 0xf5d6b8, 0xc4956a];
+    const clothColors = [
+      0xcc3333, 0x3333cc, 0x33cc33, 0xcccc33, 0xcc33cc, 0x885522, 0x558844, 0xaa6644,
+      0x336699, 0x994433, 0x669933, 0x993366, 0x6b3a2a, 0x2a5a3a, 0x8a7a3a, 0x5a3a6a,
+      0xaa2222, 0x225588, 0x884422, 0x446622, 0x664444, 0x445566,
+    ];
+    const hatColors = [0x553322, 0x665533, 0x443311, 0x884422, 0x332211, 0x776644, 0xaa7744, 0x222222];
+    const hatTypes = ["none", "none", "none", "hood", "hood", "cap", "pointy", "wide"];
+
     for (let i = 0; i < count; i++) {
       const px = -GB_FIELD.HALF_LENGTH + 8 + (i / count) * (GB_FIELD.LENGTH - 16);
-      const colorIdx = (row * count + i + Math.floor(Math.random() * 3)) % colors.length;
-      const mat = new THREE.MeshStandardMaterial({
-        color: colors[colorIdx], roughness: 0.75,
-      });
-      const body = new THREE.Mesh(bodyGeo, mat);
-      body.position.set(px + (Math.random() - 0.5) * 0.6, y + 0.6, z + (Math.random() - 0.5) * 0.4);
-      parent.add(body);
+      const posX = px + (Math.random() - 0.5) * 0.6;
+      const posZ = z + (Math.random() - 0.5) * 0.4;
       const skinColor = skinTones[Math.floor(Math.random() * skinTones.length)];
-      const head = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.65 }));
-      head.position.set(body.position.x, y + 1.35, body.position.z);
+      const colorIdx = (row * count + i + Math.floor(Math.random() * 5)) % clothColors.length;
+      const clothColor = clothColors[colorIdx];
+      const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.65 });
+      const clothMat = new THREE.MeshStandardMaterial({ color: clothColor, roughness: 0.75 });
+      const personScale = 0.85 + Math.random() * 0.3; // height variation
+
+      // Legs (seated, so short)
+      const legMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(clothColor).multiplyScalar(0.7), roughness: 0.8,
+      });
+      const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35 * personScale, 0.12), legMat);
+      leftLeg.position.set(posX - 0.08, y + 0.18 * personScale, posZ);
+      parent.add(leftLeg);
+      const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35 * personScale, 0.12), legMat);
+      rightLeg.position.set(posX + 0.08, y + 0.18 * personScale, posZ);
+      parent.add(rightLeg);
+
+      // Torso (upper body, slightly tapered)
+      const torso = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.15 * personScale, 0.18 * personScale, 0.55 * personScale, 7),
+        clothMat,
+      );
+      torso.position.set(posX, y + 0.63 * personScale, posZ);
+      parent.add(torso);
+
+      // Shoulders
+      const shoulderMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(clothColor).multiplyScalar(0.9), roughness: 0.7,
+      });
+      const leftShoulder = new THREE.Mesh(
+        new THREE.SphereGeometry(0.08 * personScale, 5, 4),
+        shoulderMat,
+      );
+      leftShoulder.position.set(posX - 0.17 * personScale, y + 0.85 * personScale, posZ);
+      parent.add(leftShoulder);
+      const rightShoulder = leftShoulder.clone();
+      rightShoulder.position.x = posX + 0.17 * personScale;
+      parent.add(rightShoulder);
+
+      // Arms (varied poses)
+      const armPose = Math.random();
+      for (const side of [-1, 1]) {
+        const armLen = 0.4 * personScale;
+        const arm = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04 * personScale, 0.05 * personScale, armLen, 5),
+          clothMat,
+        );
+        arm.position.set(
+          posX + side * 0.2 * personScale,
+          y + 0.65 * personScale,
+          posZ,
+        );
+        // Arm pose variety: cheering, resting, etc.
+        if (armPose < 0.2) {
+          // Arms raised (cheering)
+          arm.rotation.z = side * (-0.8 - Math.random() * 0.5);
+          arm.position.y = y + 0.85 * personScale;
+        } else if (armPose < 0.4) {
+          // One arm up
+          if (side === 1) {
+            arm.rotation.z = -0.9;
+            arm.position.y = y + 0.8 * personScale;
+          }
+        } else {
+          // Arms at sides/lap
+          arm.rotation.z = side * 0.15;
+        }
+        parent.add(arm);
+
+        // Hand
+        const hand = new THREE.Mesh(
+          new THREE.SphereGeometry(0.035 * personScale, 4, 4),
+          skinMat,
+        );
+        const handY = armPose < 0.2
+          ? y + 1.05 * personScale
+          : armPose < 0.4 && side === 1
+            ? y + 1.0 * personScale
+            : y + 0.45 * personScale;
+        hand.position.set(
+          posX + side * (armPose < 0.3 ? 0.25 : 0.22) * personScale,
+          handY,
+          posZ,
+        );
+        parent.add(hand);
+      }
+
+      // Neck
+      const neck = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05 * personScale, 0.06 * personScale, 0.08, 5),
+        skinMat,
+      );
+      neck.position.set(posX, y + 0.94 * personScale, posZ);
+      parent.add(neck);
+
+      // Head (slightly oval)
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13 * personScale, 8, 6),
+        skinMat,
+      );
+      head.scale.set(1, 1.1, 0.95); // slightly oval
+      head.position.set(posX, y + 1.1 * personScale, posZ);
       parent.add(head);
-      this._crowdBaseY.push(y + 0.6);
+
+      // Eyes (small dark dots)
+      for (const ex of [-0.04, 0.04]) {
+        const eye = new THREE.Mesh(
+          new THREE.SphereGeometry(0.012 * personScale, 3, 3),
+          new THREE.MeshBasicMaterial({ color: 0x222222 }),
+        );
+        eye.position.set(posX + ex * personScale, y + 1.12 * personScale, posZ + 0.11 * personScale);
+        parent.add(eye);
+      }
+
+      // Nose
+      const nose = new THREE.Mesh(
+        new THREE.ConeGeometry(0.02 * personScale, 0.04 * personScale, 4),
+        skinMat,
+      );
+      nose.position.set(posX, y + 1.08 * personScale, posZ + 0.12 * personScale);
+      nose.rotation.x = Math.PI / 2;
+      parent.add(nose);
+
+      // Hair or hat
+      const hatType = hatTypes[Math.floor(Math.random() * hatTypes.length)];
+      const hairColor = [0x332211, 0x221100, 0x443322, 0x554433, 0x111111, 0x665544, 0x887766, 0xaa8855][Math.floor(Math.random() * 8)];
+      const headTop = y + 1.22 * personScale;
+
+      if (hatType === "hood") {
+        const hood = new THREE.Mesh(
+          new THREE.SphereGeometry(0.16 * personScale, 6, 5, 0, TAU, 0, Math.PI * 0.6),
+          new THREE.MeshStandardMaterial({
+            color: hatColors[Math.floor(Math.random() * hatColors.length)],
+            roughness: 0.8,
+          }),
+        );
+        hood.position.set(posX, y + 1.12 * personScale, posZ);
+        hood.rotation.x = -0.2;
+        parent.add(hood);
+      } else if (hatType === "cap") {
+        const cap = new THREE.Mesh(
+          new THREE.SphereGeometry(0.14 * personScale, 6, 4, 0, TAU, 0, Math.PI * 0.5),
+          new THREE.MeshStandardMaterial({
+            color: hatColors[Math.floor(Math.random() * hatColors.length)],
+            roughness: 0.75,
+          }),
+        );
+        cap.position.set(posX, y + 1.12 * personScale, posZ);
+        parent.add(cap);
+      } else if (hatType === "pointy") {
+        const pointy = new THREE.Mesh(
+          new THREE.ConeGeometry(0.12 * personScale, 0.3 * personScale, 5),
+          new THREE.MeshStandardMaterial({
+            color: hatColors[Math.floor(Math.random() * hatColors.length)],
+            roughness: 0.7,
+          }),
+        );
+        pointy.position.set(posX, headTop + 0.1 * personScale, posZ);
+        parent.add(pointy);
+      } else if (hatType === "wide") {
+        // Wide brim hat
+        const brim = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.22 * personScale, 0.24 * personScale, 0.03, 8),
+          new THREE.MeshStandardMaterial({
+            color: hatColors[Math.floor(Math.random() * hatColors.length)],
+            roughness: 0.75,
+          }),
+        );
+        brim.position.set(posX, headTop - 0.02, posZ);
+        parent.add(brim);
+        const top = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.1 * personScale, 0.12 * personScale, 0.12, 6),
+          brim.material,
+        );
+        top.position.set(posX, headTop + 0.04, posZ);
+        parent.add(top);
+      } else {
+        // No hat - show hair
+        const hair = new THREE.Mesh(
+          new THREE.SphereGeometry(0.135 * personScale, 6, 4, 0, TAU, 0, Math.PI * 0.55),
+          new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.9 }),
+        );
+        hair.position.set(posX, y + 1.12 * personScale, posZ);
+        parent.add(hair);
+      }
+
+      // Some spectators hold items (banners, mugs, etc.)
+      const itemRoll = Math.random();
+      if (itemRoll < 0.08) {
+        // Small banner/pennant
+        const pole = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.015, 0.015, 0.8, 3),
+          new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 }),
+        );
+        pole.position.set(posX + 0.2, y + 1.1 * personScale, posZ);
+        parent.add(pole);
+        const pennant = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.25, 0.18),
+          new THREE.MeshStandardMaterial({
+            color: clothColors[Math.floor(Math.random() * clothColors.length)],
+            side: THREE.DoubleSide, roughness: 0.6,
+          }),
+        );
+        pennant.position.set(posX + 0.33, y + 1.4 * personScale, posZ);
+        parent.add(pennant);
+      } else if (itemRoll < 0.12) {
+        // Mug/tankard
+        const mug = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.03, 0.035, 0.06, 6),
+          new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.6, metalness: 0.3 }),
+        );
+        mug.position.set(posX + 0.15, y + 0.6 * personScale, posZ);
+        parent.add(mug);
+      }
+
+      this._crowdBaseY.push(y + 0.63 * personScale);
     }
   }
 
@@ -1136,30 +1667,63 @@ export class GrailBallRenderer {
     group.add(meshAt(new THREE.CylinderGeometry(0.1, 0.12, 0.15, 6), skinMat, 0, 2.07, 0));
     // Chainmail gorget at neck
     group.add(meshAt(new THREE.CylinderGeometry(0.13, 0.14, 0.06, 6), chainmailMat, 0, 2.02, 0));
-    // Helm
-    const helm = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.4, 0.34), darkArmor);
+    // Helm (great helm style -- more rounded and realistic)
+    const helm = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.18, 0.35, 10), darkArmor);
     helm.position.y = 2.35; helm.name = "head"; group.add(helm);
-    // Visor slit
-    group.add(meshAt(new THREE.BoxGeometry(0.29, 0.04, 0.01), new THREE.MeshBasicMaterial({ color: 0x111111 }), 0, 2.35, 0.18));
-    // Mouth slit (narrow)
-    group.add(meshAt(new THREE.BoxGeometry(0.12, 0.02, 0.01), new THREE.MeshBasicMaterial({ color: 0x0a0a0a }), 0, 2.25, 0.18));
-    // Visor breaths (small holes)
-    for (let i = 0; i < 5; i++) {
-      group.add(meshAt(new THREE.CircleGeometry(0.008, 4), new THREE.MeshBasicMaterial({ color: 0x0a0a0a }), (i - 2) * 0.03, 2.22, 0.18));
+    // Helm dome (rounded top)
+    const helmDome = new THREE.Mesh(
+      new THREE.SphereGeometry(0.17, 10, 6, 0, TAU, 0, Math.PI * 0.5),
+      darkArmor,
+    );
+    helmDome.position.y = 2.52;
+    group.add(helmDome);
+    // Face plate (slightly protruding for depth)
+    const facePlate = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.28, 0.04), armorMat);
+    facePlate.position.set(0, 2.32, 0.16);
+    group.add(facePlate);
+    // Visor slit (eye slot)
+    group.add(meshAt(new THREE.BoxGeometry(0.25, 0.035, 0.01), new THREE.MeshBasicMaterial({ color: 0x0a0a0a }), 0, 2.36, 0.19));
+    // Faint eye glow behind visor
+    for (const xOff of [-0.06, 0.06]) {
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 3),
+        new THREE.MeshBasicMaterial({ color: 0x334455, transparent: true, opacity: 0.4 }), xOff, 2.36, 0.185));
     }
+    // Nose guard (vertical ridge)
+    group.add(meshAt(new THREE.BoxGeometry(0.03, 0.2, 0.05), wornArmor, 0, 2.34, 0.18));
+    // Mouth breathing holes (cross pattern)
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 4; col++) {
+        group.add(meshAt(new THREE.CircleGeometry(0.006, 4), new THREE.MeshBasicMaterial({ color: 0x0a0a0a }),
+          (col - 1.5) * 0.025, 2.22 + row * 0.02, 0.19));
+      }
+    }
+    // Helm cheek guards
+    for (const xOff of [-0.14, 0.14]) {
+      const cheekGuard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.15, 0.1), darkArmor);
+      cheekGuard.position.set(xOff, 2.28, 0.1);
+      group.add(cheekGuard);
+    }
+    // Helm rivets around face plate
+    for (let i = 0; i < 6; i++) {
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat,
+        -0.12 + i * 0.05, 2.45, 0.185));
+    }
+    // Helm edge trim
+    group.add(meshAt(new THREE.TorusGeometry(0.175, 0.012, 4, 10), wornArmor, 0, 2.18, 0));
     // Helmet plume (red/team color feather)
     const plumeMat = new THREE.MeshPhysicalMaterial({ color: pri, roughness: 0.7, metalness: 0.05 });
-    // Plume base crest
-    group.add(meshAt(new THREE.BoxGeometry(0.04, 0.22, 0.28), new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.45, metalness: 0.2 }), 0, 2.6, 0));
-    // Plume feathers — multiple overlapping curved shapes
-    for (let i = 0; i < 5; i++) {
-      const feather = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.08 + i * 0.03, 0.06), plumeMat);
-      feather.position.set(0, 2.58 + i * 0.04, -0.06 + i * 0.04);
-      feather.rotation.x = -0.3 - i * 0.08;
+    // Plume base crest (taller, more prominent)
+    group.add(meshAt(new THREE.BoxGeometry(0.04, 0.25, 0.3), new THREE.MeshPhysicalMaterial({ color: sec, roughness: 0.45, metalness: 0.2 }), 0, 2.62, 0));
+    // Plume feathers -- multiple overlapping shapes for volume
+    for (let i = 0; i < 7; i++) {
+      const featherW = 0.025 + Math.sin(i * 0.5) * 0.01;
+      const feather = new THREE.Mesh(new THREE.BoxGeometry(featherW, 0.06 + i * 0.025, 0.05), plumeMat);
+      feather.position.set(0, 2.6 + i * 0.035, -0.08 + i * 0.035);
+      feather.rotation.x = -0.25 - i * 0.07;
       group.add(feather);
     }
     // Plume tip
-    group.add(meshAt(new THREE.ConeGeometry(0.03, 0.12, 4), plumeMat, 0, 2.8, 0.15));
+    group.add(meshAt(new THREE.ConeGeometry(0.025, 0.1, 4), plumeMat, 0, 2.82, 0.15));
     // Sword with crossguard and pommel
     // Blade
     const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.55, 0.02), armorMat);
@@ -1270,15 +1834,78 @@ export class GrailBallRenderer {
     }
     // Neck
     group.add(meshAt(new THREE.CylinderGeometry(0.07, 0.08, 0.12, 6), skinMat, 0, 1.93, 0));
-    // Head
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), skinMat);
-    head.position.y = 2.15; head.name = "head"; group.add(head);
+    // Head (slightly oval for realism)
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), skinMat);
+    head.position.y = 2.15; head.name = "head";
+    head.scale.set(1, 1.05, 0.95); // slightly oval
+    group.add(head);
+    // Jaw/chin definition
+    const jaw = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 8, 6, 0, TAU, Math.PI * 0.4, Math.PI * 0.4),
+      skinMat,
+    );
+    jaw.position.set(0, 2.05, 0.04);
+    group.add(jaw);
+    // Cheekbones
+    for (const xOff of [-0.1, 0.1]) {
+      const cheek = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04, 6, 4),
+        new THREE.MeshPhysicalMaterial({ color: 0xd9aa88, roughness: 0.7 }),
+      );
+      cheek.position.set(xOff, 2.12, 0.13);
+      cheek.scale.set(1.2, 0.8, 0.6);
+      group.add(cheek);
+    }
+    // Brow ridge
+    const browRidge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.025, 0.04),
+      new THREE.MeshPhysicalMaterial({ color: 0xccaa88, roughness: 0.7 }),
+    );
+    browRidge.position.set(0, 2.2, 0.14);
+    group.add(browRidge);
+    // Nose (more detailed)
+    const noseBase = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.07, 0.05),
+      skinMat,
+    );
+    noseBase.position.set(0, 2.12, 0.17);
+    group.add(noseBase);
+    const noseTip = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025, 6, 4),
+      skinMat,
+    );
+    noseTip.position.set(0, 2.1, 0.19);
+    group.add(noseTip);
+    // Nostrils
+    for (const xOff of [-0.015, 0.015]) {
+      group.add(meshAt(new THREE.SphereGeometry(0.008, 4, 3), new THREE.MeshBasicMaterial({ color: 0x996655 }), xOff, 2.09, 0.19));
+    }
+    // Mouth
+    const mouth = new THREE.Mesh(
+      new THREE.BoxGeometry(0.07, 0.012, 0.01),
+      new THREE.MeshPhysicalMaterial({ color: 0xbb7766, roughness: 0.5 }),
+    );
+    mouth.position.set(0, 2.06, 0.16);
+    group.add(mouth);
+    // Upper lip
+    group.add(meshAt(new THREE.BoxGeometry(0.06, 0.008, 0.01),
+      new THREE.MeshPhysicalMaterial({ color: 0xcc8877, roughness: 0.55 }), 0, 2.065, 0.165));
+    // Ears
+    for (const xOff of [-0.17, 0.17]) {
+      const ear = new THREE.Mesh(
+        new THREE.SphereGeometry(0.03, 5, 4),
+        skinMat,
+      );
+      ear.position.set(xOff, 2.14, 0.02);
+      ear.scale.set(0.5, 1, 0.7);
+      group.add(ear);
+    }
     // Hood with more folded-cloth geometry
     const hood = new THREE.Mesh(
       new THREE.SphereGeometry(0.24, 10, 8, 0, TAU, 0, Math.PI * 0.6), clothMat,
     );
     hood.position.y = 2.18; hood.rotation.x = -0.2; group.add(hood);
-    // Hood fold layers — overlapping cloth strips
+    // Hood fold layers -- overlapping cloth strips
     for (let i = 0; i < 3; i++) {
       const fold = new THREE.Mesh(
         new THREE.SphereGeometry(0.25 + i * 0.01, 8, 4, 0, TAU, Math.PI * 0.15, Math.PI * 0.08),
@@ -1292,9 +1919,27 @@ export class GrailBallRenderer {
     { const _cape = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.3),
       new THREE.MeshPhysicalMaterial({ color: pri, side: THREE.DoubleSide, roughness: 0.6 }));
       _cape.position.set(0, 2.0, -0.15); _cape.rotation.set(0.3, 0, 0); group.add(_cape); }
-    // Eyes
-    for (const xOff of [-0.06, 0.06])
-      group.add(meshAt(new THREE.SphereGeometry(0.02, 4, 4), new THREE.MeshBasicMaterial({ color: 0x222222 }), xOff, 2.17, 0.16));
+    // Eyes (more detailed with whites and irises)
+    for (const xOff of [-0.06, 0.06]) {
+      // Eye white
+      group.add(meshAt(new THREE.SphereGeometry(0.022, 6, 4), new THREE.MeshBasicMaterial({ color: 0xeeeedd }), xOff, 2.16, 0.155));
+      // Iris
+      group.add(meshAt(new THREE.SphereGeometry(0.013, 5, 4), new THREE.MeshBasicMaterial({ color: 0x446633 }), xOff, 2.16, 0.165));
+      // Pupil
+      group.add(meshAt(new THREE.SphereGeometry(0.007, 4, 3), new THREE.MeshBasicMaterial({ color: 0x111111 }), xOff, 2.16, 0.17));
+      // Eyelid shadow
+      group.add(meshAt(new THREE.BoxGeometry(0.035, 0.006, 0.01), new THREE.MeshPhysicalMaterial({ color: 0xbb9977, roughness: 0.7 }), xOff, 2.175, 0.16));
+    }
+    // Eyebrows
+    for (const xOff of [-0.06, 0.06]) {
+      const brow = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.008, 0.015),
+        new THREE.MeshPhysicalMaterial({ color: 0x553322, roughness: 0.9 }),
+      );
+      brow.position.set(xOff, 2.19, 0.155);
+      brow.rotation.z = xOff < 0 ? 0.1 : -0.1;
+      group.add(brow);
+    }
     // Dual daggers with more detail
     for (const side of [-1, 1]) {
       // Blade
@@ -1382,9 +2027,44 @@ export class GrailBallRenderer {
       handGlow.position.set(xSign * 0.42, 1.3, 0);
       handGlow.name = xSign === -1 ? "leftGlow" : "rightGlow"; group.add(handGlow);
     }
-    // Head
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), skinMat);
-    head.position.y = 2.1; head.name = "head"; group.add(head);
+    // Head (slightly oval for realism)
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), skinMat);
+    head.position.y = 2.1; head.name = "head";
+    head.scale.set(1, 1.05, 0.92);
+    group.add(head);
+    // Brow ridge (wisdom lines)
+    group.add(meshAt(new THREE.BoxGeometry(0.2, 0.02, 0.03),
+      new THREE.MeshPhysicalMaterial({ color: 0xccaa88, roughness: 0.7 }), 0, 2.18, 0.14));
+    // Nose
+    const mageNose = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.06, 0.04), skinMat);
+    mageNose.position.set(0, 2.08, 0.16);
+    group.add(mageNose);
+    group.add(meshAt(new THREE.SphereGeometry(0.022, 5, 4), skinMat, 0, 2.06, 0.18));
+    // Cheeks (aged, slightly sunken)
+    for (const xOff of [-0.08, 0.08]) {
+      const cheek = new THREE.Mesh(
+        new THREE.SphereGeometry(0.035, 5, 4),
+        new THREE.MeshPhysicalMaterial({ color: 0xd4aa88, roughness: 0.7 }),
+      );
+      cheek.position.set(xOff, 2.07, 0.12);
+      cheek.scale.set(1, 0.7, 0.5);
+      group.add(cheek);
+    }
+    // Mouth
+    group.add(meshAt(new THREE.BoxGeometry(0.05, 0.01, 0.01),
+      new THREE.MeshPhysicalMaterial({ color: 0xaa7766, roughness: 0.5 }), 0, 2.02, 0.15));
+    // Ears
+    for (const xOff of [-0.16, 0.16]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 3), skinMat);
+      ear.position.set(xOff, 2.1, 0.01);
+      ear.scale.set(0.5, 1, 0.6);
+      group.add(ear);
+    }
+    // Wrinkles / age lines on forehead
+    for (let i = 0; i < 2; i++) {
+      group.add(meshAt(new THREE.BoxGeometry(0.12, 0.004, 0.005),
+        new THREE.MeshPhysicalMaterial({ color: 0xbb9977, roughness: 0.8 }), 0, 2.16 + i * 0.025, 0.155));
+    }
     // Pointed hat
     group.add(meshAt(new THREE.ConeGeometry(0.22, 0.75, 8), robeMat, 0, 2.55, 0));
     // Hat brim
@@ -1399,18 +2079,36 @@ export class GrailBallRenderer {
       star.position.set(Math.cos(a) * 0.15, 2.4 + i * 0.12, Math.sin(a) * 0.15);
       group.add(star);
     }
-    // Glowing eye slit on hood/face
-    const eyeSlitMat = new THREE.MeshBasicMaterial({ color: acc, transparent: true, opacity: 0.9 });
-    group.add(meshAt(new THREE.BoxGeometry(0.2, 0.025, 0.01), eyeSlitMat, 0, 2.12, 0.17));
-    // Eye glow points
+    // Glowing eyes (mystical)
     for (const xOff of [-0.06, 0.06]) {
+      // Eye socket shadow
+      group.add(meshAt(new THREE.SphereGeometry(0.03, 5, 4),
+        new THREE.MeshPhysicalMaterial({ color: 0x887766, roughness: 0.8 }), xOff, 2.12, 0.13));
+      // Glowing eye
       group.add(meshAt(new THREE.SphereGeometry(0.025, 6, 4), new THREE.MeshBasicMaterial({ color: acc }), xOff, 2.12, 0.15));
       // Eye glow halo
       group.add(meshAt(new THREE.SphereGeometry(0.04, 6, 4),
         new THREE.MeshBasicMaterial({ color: acc, transparent: true, opacity: 0.25 }), xOff, 2.12, 0.14));
+      // Eyebrow
+      group.add(meshAt(new THREE.BoxGeometry(0.035, 0.007, 0.012),
+        new THREE.MeshPhysicalMaterial({ color: 0x888888, roughness: 0.9 }), xOff, 2.15, 0.145));
     }
-    // Beard detail
-    group.add(meshAt(new THREE.ConeGeometry(0.08, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.9 }), 0, 1.92, 0.12));
+    // Glowing eye slit (subtle arc connecting the eyes)
+    const eyeSlitMat = new THREE.MeshBasicMaterial({ color: acc, transparent: true, opacity: 0.3 });
+    group.add(meshAt(new THREE.BoxGeometry(0.18, 0.01, 0.005), eyeSlitMat, 0, 2.12, 0.155));
+    // Beard detail (fuller, more layered)
+    const beardColor = 0x999999;
+    // Main beard cone
+    group.add(meshAt(new THREE.ConeGeometry(0.08, 0.3, 6),
+      new THREE.MeshStandardMaterial({ color: beardColor, roughness: 0.9 }), 0, 1.9, 0.1));
+    // Beard mustache
+    for (const xOff of [-0.03, 0.03]) {
+      group.add(meshAt(new THREE.CylinderGeometry(0.015, 0.01, 0.12, 4),
+        new THREE.MeshStandardMaterial({ color: beardColor, roughness: 0.85 }), xOff, 2.0, 0.14));
+    }
+    // Beard tuft at chin
+    group.add(meshAt(new THREE.SphereGeometry(0.04, 5, 4),
+      new THREE.MeshStandardMaterial({ color: beardColor, roughness: 0.9 }), 0, 1.97, 0.13));
     // Floating magical runes orbiting the character (small glowing planes)
     for (let i = 0; i < 5; i++) {
       const runeOrbit = new THREE.Mesh(

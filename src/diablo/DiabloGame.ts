@@ -339,6 +339,14 @@ export class DiabloGame {
   private _fpsCrosshair!: HTMLDivElement;
   private _viewModeLabel!: HTMLDivElement;
 
+  // HP/Mana change tracking for visual effects
+  private _prevHp: number = -1;
+  private _prevMana: number = -1;
+  private _hpFlashTimer: number = 0;
+  private _manaFlashTimer: number = 0;
+  private _hpOrbWrap!: HTMLDivElement;
+  private _mpOrbWrap!: HTMLDivElement;
+
   // Minimap
   private _minimapCanvas!: HTMLCanvasElement;
   private _minimapCtx!: CanvasRenderingContext2D;
@@ -1555,6 +1563,11 @@ export class DiabloGame {
         ${loadBtnHtml}
         <button id="diablo-charselect-btn" style="${btnBase}">CHARACTER SELECT</button>
         <button id="diablo-exit-btn" style="${exitBtn}">EXIT</button>
+        <div style="margin-top:24px;color:#888;font-size:12px;letter-spacing:1px;
+          font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+          text-shadow:0 1px 3px rgba(0,0,0,0.6);">
+          Press <span style="color:#c8a84e;">V</span> to toggle First Person view
+        </div>
       </div>`;
 
     // Hover effects for standard buttons
@@ -2353,7 +2366,8 @@ export class DiabloGame {
     this._hud.innerHTML = "";
 
     // Health orb - bottom left (ornate)
-    const hpOrbWrap = document.createElement("div");
+    this._hpOrbWrap = document.createElement("div");
+    const hpOrbWrap = this._hpOrbWrap;
     hpOrbWrap.style.cssText = `
       position:absolute;bottom:22px;left:22px;width:140px;height:140px;
       display:flex;align-items:center;justify-content:center;
@@ -2443,7 +2457,8 @@ export class DiabloGame {
     this._hud.appendChild(hpOrbWrap);
 
     // Mana orb - bottom right (ornate)
-    const mpOrbWrap = document.createElement("div");
+    this._mpOrbWrap = document.createElement("div");
+    const mpOrbWrap = this._mpOrbWrap;
     mpOrbWrap.style.cssText = `
       position:absolute;bottom:22px;right:22px;width:140px;height:140px;
       display:flex;align-items:center;justify-content:center;
@@ -2946,13 +2961,13 @@ export class DiabloGame {
       `<div style="position:absolute;width:2px;height:14px;background:rgba(255,255,255,0.6);left:0;bottom:5px;transform:translateY(100%)"></div>`;
     this._hud.appendChild(this._fpsCrosshair);
 
-    // View mode indicator (top center)
+    // View mode indicator — hidden from main HUD (shown in pause menu instead)
     this._viewModeLabel = document.createElement("div");
     this._viewModeLabel.style.cssText = `
       position:absolute;top:10px;left:50%;transform:translateX(-50%);
-      font-size:11px;color:#888;letter-spacing:1px;pointer-events:none;
+      font-size:11px;color:#888;letter-spacing:1px;pointer-events:none;display:none;
     `;
-    this._viewModeLabel.textContent = "[V] Toggle First Person";
+    this._viewModeLabel.textContent = "";
     this._hud.appendChild(this._viewModeLabel);
   }
 
@@ -2964,17 +2979,50 @@ export class DiabloGame {
 
     // FPS crosshair + view mode label
     if (this._fpsCrosshair) this._fpsCrosshair.style.display = this._firstPerson ? "block" : "none";
-    if (this._viewModeLabel) this._viewModeLabel.textContent = this._firstPerson ? "[V] Third Person" : "[V] First Person";
+    // View mode label removed from HUD — hint is in the pause menu instead
 
     // Health orb
     const hpPct = Math.max(0, p.hp / p.maxHp);
     this._hpBar.style.height = (hpPct * 100) + "%";
     this._hpText.textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
 
+    // Detect HP change and trigger flash (threshold high enough to ignore minor regen ticks)
+    const hpDelta = p.hp - this._prevHp;
+    if (this._prevHp >= 0 && Math.abs(hpDelta) > 2) {
+      this._hpFlashTimer = hpDelta < 0 ? 0.5 : 0.4;
+    }
+    this._prevHp = p.hp;
+    if (this._hpFlashTimer > 0) {
+      this._hpFlashTimer -= 0.016; // roughly per-frame at 60fps
+      const fi = Math.min(1, this._hpFlashTimer * 3);
+      const isLoss = fi > 0;
+      if (isLoss) {
+        const pulse = 0.6 + Math.sin(Date.now() * 0.02) * 0.4;
+        this._hpOrbWrap.style.filter = `drop-shadow(0 0 ${12 + fi * 16}px rgba(255,40,40,${0.5 * fi * pulse})) drop-shadow(0 0 ${6 + fi * 8}px rgba(255,100,100,${0.3 * fi}))`;
+      }
+    } else {
+      this._hpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(180,20,20,0.35))';
+    }
+
     // Mana orb
     const mpPct = Math.max(0, p.mana / p.maxMana);
     this._mpBar.style.height = (mpPct * 100) + "%";
     this._mpText.textContent = `${Math.ceil(p.mana)}/${p.maxMana}`;
+
+    // Detect Mana change and trigger flash (only on significant changes like skill use)
+    const manaDelta = p.mana - this._prevMana;
+    if (this._prevMana >= 0 && Math.abs(manaDelta) > 5) {
+      this._manaFlashTimer = manaDelta < 0 ? 0.4 : 0.35;
+    }
+    this._prevMana = p.mana;
+    if (this._manaFlashTimer > 0) {
+      this._manaFlashTimer -= 0.016;
+      const mi = Math.min(1, this._manaFlashTimer * 3);
+      const pulse = 0.6 + Math.sin(Date.now() * 0.02) * 0.4;
+      this._mpOrbWrap.style.filter = `drop-shadow(0 0 ${12 + mi * 16}px rgba(60,60,255,${0.5 * mi * pulse})) drop-shadow(0 0 ${6 + mi * 8}px rgba(120,120,255,${0.3 * mi}))`;
+    } else {
+      this._mpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(30,30,200,0.35))';
+    }
 
     // Skill bar
     for (let i = 0; i < 6; i++) {
@@ -2998,6 +3046,23 @@ export class DiabloGame {
       } else {
         this._skillCooldownOverlays[i].style.height = "0%";
         if (cdTextEl) cdTextEl.style.display = "none";
+      }
+
+      // Ability glow effect when skill is actively being used
+      const isActive = p.activeSkillId === skillId && p.activeSkillAnimTimer > 0;
+      if (isActive) {
+        const glowIntensity = Math.min(1, p.activeSkillAnimTimer * 4);
+        const pulseGlow = 0.7 + Math.sin(Date.now() * 0.012) * 0.3;
+        const gI = glowIntensity * pulseGlow;
+        this._skillSlots[i].style.boxShadow =
+          `inset 0 0 20px rgba(255,215,100,${0.4 * gI}), ` +
+          `0 0 12px rgba(255,200,60,${0.5 * gI}), ` +
+          `0 0 24px rgba(255,180,40,${0.3 * gI})`;
+        this._skillSlots[i].style.borderColor = `rgba(255,215,100,${0.7 * gI + 0.3})`;
+      } else {
+        this._skillSlots[i].style.boxShadow =
+          'inset 0 1px 0 rgba(200,168,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.5), inset 0 0 20px rgba(200,168,78,0.03)';
+        this._skillSlots[i].style.borderColor = '#9a8a4a';
       }
     }
 
@@ -3043,7 +3108,7 @@ export class DiabloGame {
         [DiabloMapId.EMERALD_GRASSLANDS]: "Emerald Grasslands",
         [DiabloMapId.CAMELOT]: "Camelot",
       };
-      this._mapNameLabel.textContent = mapNameMap[this._state.currentMap] || this._state.currentMap;
+      this._mapNameLabel.textContent = mapNameMap[this._state.currentMap] || this._state.currentMap.replace(/_/g, ' ');
     }
 
     // Weather text (aece2d8c) - with icons
@@ -6154,23 +6219,7 @@ export class DiabloGame {
     ctx.stroke();
     ctx.restore();
 
-    // Map name
-    const mapNames: Record<string, string> = {
-      [DiabloMapId.FOREST]: "Darkwood Forest",
-      [DiabloMapId.ELVEN_VILLAGE]: "Aelindor",
-      [DiabloMapId.NECROPOLIS_DUNGEON]: "Necropolis Depths",
-      [DiabloMapId.VOLCANIC_WASTES]: "Volcanic Wastes",
-      [DiabloMapId.ABYSSAL_RIFT]: "Abyssal Rift",
-      [DiabloMapId.DRAGONS_SANCTUM]: "Dragon's Sanctum",
-      [DiabloMapId.SUNSCORCH_DESERT]: "Sunscorch Desert",
-      [DiabloMapId.EMERALD_GRASSLANDS]: "Emerald Grasslands",
-      [DiabloMapId.CAMELOT]: "Camelot",
-    };
-    ctx.fillStyle = "rgba(200,168,78,0.7)";
-    ctx.font = `${Math.max(8, W / 22)}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.fillText(mapNames[mapId] || mapId, W / 2, H - 4);
-    ctx.textAlign = "start";
+    // Map name removed from minimap canvas — shown only below the minimap
   }
 
   private _updateMinimap(): void {

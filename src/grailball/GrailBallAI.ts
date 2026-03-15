@@ -111,7 +111,7 @@ function shouldShoot(state: GBMatchState, player: GBPlayer): boolean {
   const oppGate = opponentGate(player.teamIndex);
   const dist = v3Dist(player.pos, oppGate);
   if (dist > 35) return false;
-  if (dist < 10) return true; // close enough, take the shot
+  if (dist < 15) return true; // close enough, take the shot immediately
 
   // Check if gatekeeper is out of position
   const oppTeam = player.teamIndex === 0 ? 1 : 0;
@@ -121,8 +121,8 @@ function shouldShoot(state: GBMatchState, player: GBPlayer): boolean {
     if (gkDistToGate > 6) return true; // gatekeeper out of position
   }
 
-  // Random chance based on distance
-  return Math.random() < (1 - dist / 35) * 0.3;
+  // Random chance based on distance (higher chance than before)
+  return Math.random() < (1 - dist / 35) * 0.4;
 }
 
 // ---------------------------------------------------------------------------
@@ -296,12 +296,38 @@ function decideWithOrb(state: GBMatchState, player: GBPlayer, d: AIDecision): AI
   const oppGate = opponentGate(player.teamIndex);
   const distToGoal = v3Dist(player.pos, oppGate);
 
+  // Very close to goal: prioritize scoring above all else
+  if (distToGoal < 6) {
+    // Aim directly at gate center and run straight in for a carry-in goal
+    const gateCenter = v3(oppGate.x, 0, 0);
+    d.moveDir = v3Normalize(v3Sub(gateCenter, player.pos));
+    // Don't sprint -- conserve stamina for the shot
+    d.sprint = false;
+
+    // Always try to shoot when this close
+    if (player.stamina >= 10) {
+      d.shoot = true;
+      // Mage: use arcane blast for super shot
+      if (player.cls === GBPlayerClass.MAGE && player.abilityCooldown <= 0 && player.stamina > 30) {
+        d.useAbility = true;
+      }
+    }
+    // Even if we can't shoot (low stamina), keep running at the gate -- the carry-in will score
+    return d;
+  }
+
   // Move toward opponent gate
   const moveTarget = v3(oppGate.x, 0, player.pos.z * 0.7); // slight drift toward center
   d.moveDir = v3Normalize(v3Sub(moveTarget, player.pos));
-  d.sprint = player.stamina > 30;
 
-  // Avoid nearby opponents - dodge
+  // When getting close to goal, stop sprinting to conserve stamina for the shot
+  if (distToGoal < 15) {
+    d.sprint = player.stamina > 50; // only sprint if plenty of stamina
+  } else {
+    d.sprint = player.stamina > 30;
+  }
+
+  // Avoid nearby opponents - dodge (but not when very close to goal, handled above)
   const oppTeam = player.teamIndex === 0 ? 1 : 0;
   const opponents = getTeamPlayers(state, oppTeam);
   for (const opp of opponents) {

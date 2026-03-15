@@ -214,6 +214,11 @@ export class SurvivorGame {
     SurvivorLandmarkSystem.setNotifyCallback((name, color) => {
       this._hud.showNotification(name, color, sw, sh);
     });
+    SurvivorLandmarkSystem.setDialogueCallback((dialogue, worldX, worldY) => {
+      const px = worldX * 64; // TS
+      const py = worldY * 64;
+      this._renderer.showSpeechBubble(dialogue, px, py, 4.5);
+    });
 
     // Minimap
     this._minimap.init(mapDef.width, mapDef.height, sw, sh);

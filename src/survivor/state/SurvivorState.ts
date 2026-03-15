@@ -183,6 +183,7 @@ export interface SurvivorState {
   tempLandmarkCooldown: number; // seconds until next temp landmark spawns
   nextTempLandmarkId: number;
   activeLandmarkBuffs: Set<string>;
+  visitedLandmarks: Set<string>; // tracks landmark IDs visited for first-time dialogue
 
   // Hazards & events
   hazards: SurvivorHazard[];
@@ -374,6 +375,7 @@ export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapT
     tempLandmarkCooldown: 60, // first temp landmark after 1 minute
     nextTempLandmarkId: 1,
     activeLandmarkBuffs: new Set(),
+    visitedLandmarks: new Set(),
     hazards: [],
     activeEvent: null,
     eventCooldown: 180, // first event after 3 minutes

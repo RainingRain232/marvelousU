@@ -17,6 +17,7 @@ import {
   Weather,
   DiabloTownfolk,
   TownfolkRole,
+  DamageType,
 } from './DiabloTypes';
 import { ENEMY_DEFS, MAP_CONFIGS, VENDOR_DEFS } from './DiabloConfig';
 import { RARITY_COLORS } from './DiabloTypes';
@@ -11887,22 +11888,166 @@ export class DiabloRenderer {
         const group = new THREE.Group();
 
         if (!proj.isPlayerOwned) {
-          // Enemy projectile: red core with spikes
-          const core = new THREE.Mesh(
-            new THREE.SphereGeometry(r * 0.6, 8, 6),
-            new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xcc0000, emissiveIntensity: 1.5 })
-          );
-          group.add(core);
-          for (let i = 0; i < 3; i++) {
-            const spike = new THREE.Mesh(
-              new THREE.ConeGeometry(r * 0.15, r * 0.4, 4),
-              new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0x880000, emissiveIntensity: 1.2 })
+          // Enemy projectile: varied visuals based on damage type and randomization
+          const enemySeed = parseInt(proj.id.replace(/\D/g, '').slice(-4) || '0') % 6;
+          const dt = proj.damageType;
+
+          if (dt === DamageType.FIRE || enemySeed === 0) {
+            // Fire variant: blazing orb with flame wisps
+            const fireCore = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 0.5, 10, 8),
+              new THREE.MeshStandardMaterial({ color: 0xff6622, emissive: 0xff4400, emissiveIntensity: 2.5 })
             );
-            const angle = (i / 3) * Math.PI * 2;
-            spike.position.set(Math.cos(angle) * r * 0.5, 0, Math.sin(angle) * r * 0.5);
-            spike.rotation.z = -Math.cos(angle) * Math.PI * 0.4;
-            spike.rotation.x = Math.sin(angle) * Math.PI * 0.4;
-            group.add(spike);
+            group.add(fireCore);
+            const fireOuter = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 0.9, 8, 6),
+              new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xcc1100, emissiveIntensity: 0.8, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
+            );
+            group.add(fireOuter);
+            for (let i = 0; i < 5; i++) {
+              const wisp = new THREE.Mesh(
+                new THREE.ConeGeometry(r * 0.12, r * 0.5, 4),
+                new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xffaa22 : 0xff4400, emissive: i % 2 === 0 ? 0xff8800 : 0xcc2200, emissiveIntensity: 2.0, transparent: true, opacity: 0.7 })
+              );
+              const a = (i / 5) * Math.PI * 2;
+              wisp.position.set(Math.cos(a) * r * 0.4, 0, Math.sin(a) * r * 0.4);
+              wisp.lookAt(wisp.position.x * 3, wisp.position.y * 3 + 1, wisp.position.z * 3);
+              wisp.name = 'enemy_flame';
+              group.add(wisp);
+            }
+            const fLight = new THREE.PointLight(0xff4400, 1.5, r * 8);
+            group.add(fLight);
+            group.userData.skillType = 'ENEMY_FIRE';
+          } else if (dt === DamageType.ICE || enemySeed === 1) {
+            // Ice variant: frozen shard cluster
+            const iceCrystal = new THREE.Mesh(
+              new THREE.OctahedronGeometry(r * 0.5, 0),
+              new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x6699ff, emissiveIntensity: 2.0, metalness: 0.3, roughness: 0.1 })
+            );
+            iceCrystal.scale.set(1, 1.4, 1);
+            group.add(iceCrystal);
+            const iceAura = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 1.0, 8, 6),
+              new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x4488cc, emissiveIntensity: 0.4, transparent: true, opacity: 0.15, side: THREE.DoubleSide })
+            );
+            group.add(iceAura);
+            for (let i = 0; i < 4; i++) {
+              const shard = new THREE.Mesh(
+                new THREE.OctahedronGeometry(r * 0.15, 0),
+                new THREE.MeshStandardMaterial({ color: 0xddeeff, emissive: 0x88aaff, emissiveIntensity: 1.5, transparent: true, opacity: 0.8 })
+              );
+              const sa = (i / 4) * Math.PI * 2;
+              shard.position.set(Math.cos(sa) * r * 0.6, (Math.random() - 0.5) * r * 0.4, Math.sin(sa) * r * 0.6);
+              shard.rotation.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
+              shard.name = 'enemy_ice_shard';
+              group.add(shard);
+            }
+            group.add(new THREE.PointLight(0x6699ff, 1.2, r * 8));
+            group.userData.skillType = 'ENEMY_ICE';
+          } else if (dt === DamageType.LIGHTNING || enemySeed === 2) {
+            // Lightning variant: crackling electric orb
+            const lCore = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 0.35, 8, 6),
+              new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xeeeeff, emissiveIntensity: 4.0 })
+            );
+            group.add(lCore);
+            const lShell = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 0.8, 8, 6),
+              new THREE.MeshStandardMaterial({ color: 0x8888ff, emissive: 0x6666ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
+            );
+            group.add(lShell);
+            for (let i = 0; i < 4; i++) {
+              const spark = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 0.06, 4, 3),
+                new THREE.MeshStandardMaterial({ color: 0xaaaaff, emissive: 0x8888ff, emissiveIntensity: 5.0 })
+              );
+              const sa = (i / 4) * Math.PI * 2;
+              spark.position.set(Math.cos(sa) * r * 0.7, (Math.random() - 0.5) * r * 0.5, Math.sin(sa) * r * 0.7);
+              spark.name = 'enemy_spark';
+              group.add(spark);
+            }
+            group.add(new THREE.PointLight(0x8888ff, 1.5, r * 8));
+            group.userData.skillType = 'ENEMY_LIGHTNING';
+          } else if (dt === DamageType.POISON || enemySeed === 3) {
+            // Poison variant: toxic glob with dripping trails
+            const pCore = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 0.55, 8, 6),
+              new THREE.MeshStandardMaterial({ color: 0x44cc22, emissive: 0x22aa00, emissiveIntensity: 2.0 })
+            );
+            group.add(pCore);
+            const pOuter = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 0.85, 8, 6),
+              new THREE.MeshStandardMaterial({ color: 0x33aa11, emissive: 0x118800, emissiveIntensity: 0.5, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
+            );
+            group.add(pOuter);
+            for (let i = 0; i < 3; i++) {
+              const blob = new THREE.Mesh(
+                new THREE.SphereGeometry(r * (0.12 + Math.random() * 0.08), 5, 4),
+                new THREE.MeshStandardMaterial({ color: 0x88ff44, emissive: 0x66cc22, emissiveIntensity: 1.5, transparent: true, opacity: 0.6 })
+              );
+              blob.position.set((Math.random() - 0.5) * r * 0.6, -r * 0.3 - Math.random() * r * 0.3, (Math.random() - 0.5) * r * 0.6);
+              blob.name = 'enemy_poison_drip';
+              group.add(blob);
+            }
+            group.add(new THREE.PointLight(0x44cc22, 1.0, r * 6));
+            group.userData.skillType = 'ENEMY_POISON';
+          } else if (dt === DamageType.SHADOW || dt === DamageType.ARCANE || enemySeed === 4) {
+            // Shadow/arcane variant: dark swirling vortex
+            const sCore = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 0.4, 8, 6),
+              new THREE.MeshStandardMaterial({ color: 0x6622cc, emissive: 0x4411aa, emissiveIntensity: 2.5 })
+            );
+            group.add(sCore);
+            const sVortex = new THREE.Mesh(
+              new THREE.TorusGeometry(r * 0.6, r * 0.08, 6, 12),
+              new THREE.MeshStandardMaterial({ color: 0x8844dd, emissive: 0x6622bb, emissiveIntensity: 1.8, transparent: true, opacity: 0.6 })
+            );
+            sVortex.name = 'enemy_vortex_ring';
+            group.add(sVortex);
+            const sOuter = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 1.0, 8, 6),
+              new THREE.MeshStandardMaterial({ color: 0x220044, emissive: 0x110022, emissiveIntensity: 0.3, transparent: true, opacity: 0.15, side: THREE.DoubleSide })
+            );
+            group.add(sOuter);
+            for (let i = 0; i < 4; i++) {
+              const mote = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 0.05, 4, 3),
+                new THREE.MeshStandardMaterial({ color: 0xbb66ff, emissive: 0x9944dd, emissiveIntensity: 3.0 })
+              );
+              const ma = (i / 4) * Math.PI * 2;
+              mote.position.set(Math.cos(ma) * r * 0.7, 0, Math.sin(ma) * r * 0.7);
+              mote.name = 'enemy_shadow_mote';
+              group.add(mote);
+            }
+            group.add(new THREE.PointLight(0x6622cc, 1.2, r * 7));
+            group.userData.skillType = 'ENEMY_SHADOW';
+          } else {
+            // Default red variant: classic red core with spikes and pulsing aura
+            const core = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 0.5, 10, 8),
+              new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xcc0000, emissiveIntensity: 2.0 })
+            );
+            group.add(core);
+            const redAura = new THREE.Mesh(
+              new THREE.SphereGeometry(r * 0.9, 8, 6),
+              new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xaa0000, emissiveIntensity: 0.5, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
+            );
+            redAura.name = 'enemy_red_aura';
+            group.add(redAura);
+            for (let i = 0; i < 4; i++) {
+              const spike = new THREE.Mesh(
+                new THREE.ConeGeometry(r * 0.12, r * 0.4, 4),
+                new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0x880000, emissiveIntensity: 1.5 })
+              );
+              const angle = (i / 4) * Math.PI * 2;
+              spike.position.set(Math.cos(angle) * r * 0.45, 0, Math.sin(angle) * r * 0.45);
+              spike.rotation.z = -Math.cos(angle) * Math.PI * 0.4;
+              spike.rotation.x = Math.sin(angle) * Math.PI * 0.4;
+              spike.name = 'enemy_spike';
+              group.add(spike);
+            }
+            group.add(new THREE.PointLight(0xff2222, 1.0, r * 6));
+            group.userData.skillType = 'ENEMY_RED';
           }
         } else if (proj.skillId) {
           switch (proj.skillId) {
@@ -12658,6 +12803,74 @@ export class DiabloRenderer {
           if (child.name === 'default_ring') {
             child.rotation.x += 0.04;
             child.rotation.z += 0.06;
+          }
+        });
+      } else if (st === 'ENEMY_FIRE') {
+        mesh.rotation.y += 0.06;
+        mesh.traverse((child: THREE.Object3D) => {
+          if (child.name === 'enemy_flame') {
+            const s = 0.7 + Math.sin(t * 14 + child.position.x * 8) * 0.4;
+            child.scale.setScalar(s);
+            child.rotation.x += (Math.random() - 0.5) * 0.1;
+          }
+        });
+      } else if (st === 'ENEMY_ICE') {
+        mesh.rotation.y += 0.025;
+        mesh.traverse((child: THREE.Object3D) => {
+          if (child.name === 'enemy_ice_shard') {
+            child.rotation.y += 0.015;
+            child.rotation.x += 0.01;
+          }
+        });
+      } else if (st === 'ENEMY_LIGHTNING') {
+        mesh.traverse((child: THREE.Object3D) => {
+          if (child.name === 'enemy_spark') {
+            child.position.x += (Math.random() - 0.5) * 0.05;
+            child.position.y += (Math.random() - 0.5) * 0.05;
+            child.position.z += (Math.random() - 0.5) * 0.05;
+            child.visible = Math.random() > 0.25;
+          }
+        });
+        const ef = 0.6 + Math.random() * 0.4;
+        mesh.traverse((child: THREE.Object3D) => {
+          if ((child as THREE.Mesh).isMesh && (child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            const m = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+            if (m.emissiveIntensity > 3) m.emissiveIntensity *= ef;
+          }
+        });
+      } else if (st === 'ENEMY_POISON') {
+        mesh.rotation.y += 0.03;
+        mesh.traverse((child: THREE.Object3D) => {
+          if (child.name === 'enemy_poison_drip') {
+            child.position.y -= 0.006;
+            if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0.1, ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity - 0.002);
+            }
+          }
+        });
+      } else if (st === 'ENEMY_SHADOW') {
+        mesh.rotation.y += 0.04;
+        mesh.traverse((child: THREE.Object3D) => {
+          if (child.name === 'enemy_vortex_ring') {
+            child.rotation.x += 0.06;
+            child.rotation.z += 0.04;
+          } else if (child.name === 'enemy_shadow_mote') {
+            const ma = t * 4 + child.position.z * 6;
+            const md = 0.1;
+            child.position.x = Math.cos(ma) * md * 7;
+            child.position.z = Math.sin(ma) * md * 7;
+            child.position.y = Math.sin(ma * 1.5) * md * 3;
+          }
+        });
+      } else if (st === 'ENEMY_RED') {
+        mesh.rotation.y += 0.05;
+        mesh.traverse((child: THREE.Object3D) => {
+          if (child.name === 'enemy_red_aura') {
+            if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.15 + Math.sin(t * 8) * 0.08;
+            }
+          } else if (child.name === 'enemy_spike') {
+            child.rotation.y += 0.03;
           }
         });
       } else {

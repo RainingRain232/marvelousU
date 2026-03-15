@@ -17,10 +17,10 @@ import { ElementalType } from "./ArthurianRPGConfig";
 // ---------------------------------------------------------------------------
 
 const TERRAIN_SIZE = 512;
-const TERRAIN_SEGMENTS = 192;
+const TERRAIN_SEGMENTS = 256;
 const WATER_LEVEL = 1.5;
-const SKY_RADIUS = 800;
-const MAX_PARTICLES = 3000;
+const SKY_RADIUS = 1000;
+const MAX_PARTICLES = 5000;
 const TORCH_FLICKER_SPEED = 8;
 
 // ---------------------------------------------------------------------------
@@ -30,8 +30,8 @@ const TORCH_FLICKER_SPEED = 8;
 const ColorGradingShader = {
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },
-    warmth: { value: 0.12 },
-    vignetteStrength: { value: 0.4 },
+    warmth: { value: 0.15 },
+    vignetteStrength: { value: 0.5 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -47,14 +47,19 @@ const ColorGradingShader = {
     varying vec2 vUv;
     void main() {
       vec4 col = texture2D(tDiffuse, vUv);
-      // warm medieval tones
+      // warm medieval tones with subtle contrast boost
       col.r += warmth * 0.6;
       col.g += warmth * 0.3;
       col.b -= warmth * 0.15;
-      // vignette
+      // Slight contrast enhancement
+      col.rgb = (col.rgb - 0.5) * 1.08 + 0.5;
+      // Subtle desaturation for cinematic feel
+      float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+      col.rgb = mix(vec3(lum), col.rgb, 0.92);
+      // vignette (smoother, more cinematic)
       vec2 c = vUv - 0.5;
       float dist = length(c);
-      col.rgb *= 1.0 - vignetteStrength * smoothstep(0.3, 0.85, dist);
+      col.rgb *= 1.0 - vignetteStrength * smoothstep(0.25, 0.9, dist);
       gl_FragColor = col;
     }
   `,
@@ -634,13 +639,16 @@ function buildTerrain(): { mesh: THREE.Mesh; getHeight: (x: number, z: number) =
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
 
-  // height function using layered simplex-ish noise
+  // height function using layered simplex-ish noise (enhanced detail)
   const heightAt = (x: number, z: number): number => {
     const s1 = Math.sin(x * 0.008) * Math.cos(z * 0.008) * 18;
     const s2 = Math.sin(x * 0.025 + 1.3) * Math.cos(z * 0.02 - 0.7) * 6;
     const s3 = Math.sin(x * 0.06) * Math.sin(z * 0.06) * 2;
     const s4 = Math.sin(x * 0.15 + 0.5) * Math.cos(z * 0.12 - 0.3) * 0.8;
-    return s1 + s2 + s3 + s4;
+    // Extra micro-detail for texture
+    const s5 = Math.sin(x * 0.3 + 2.1) * Math.cos(z * 0.28 - 1.1) * 0.3;
+    const s6 = Math.sin(x * 0.5 + 0.8) * Math.sin(z * 0.45 + 0.4) * 0.12;
+    return s1 + s2 + s3 + s4 + s5 + s6;
   };
 
   for (let i = 0; i < pos.count; i++) {
@@ -649,23 +657,32 @@ function buildTerrain(): { mesh: THREE.Mesh; getHeight: (x: number, z: number) =
     const h = heightAt(x, z);
     pos.setY(i, h);
 
-    // multi-texture coloring by height
+    // Multi-texture coloring by height with noise variation for realism
     let r: number, g: number, b: number;
+    const noiseVar = Math.sin(x * 0.4 + z * 0.3) * 0.04 + Math.sin(x * 0.8 - z * 0.6) * 0.02;
     if (h < WATER_LEVEL + 0.5) {
-      // sand near water
-      r = 0.76; g = 0.7; b = 0.5;
+      // sand near water - warm beach tones
+      r = 0.78 + noiseVar; g = 0.72 + noiseVar * 0.8; b = 0.52 + noiseVar * 0.5;
+    } else if (h < 3.5) {
+      // transition sand to grass
+      const t = (h - WATER_LEVEL - 0.5) / 1.5;
+      r = lerp(0.76, 0.28, t) + noiseVar; g = lerp(0.7, 0.52, t) + noiseVar; b = lerp(0.5, 0.12, t) + noiseVar * 0.5;
     } else if (h < 6) {
-      // grass
-      const t = (h - WATER_LEVEL) / 5;
-      r = lerp(0.3, 0.2, t); g = lerp(0.55, 0.45, t); b = lerp(0.15, 0.1, t);
+      // lush grass with variety
+      const t = (h - 3.5) / 2.5;
+      r = lerp(0.28, 0.2, t) + noiseVar * 0.5; g = lerp(0.52, 0.42, t) + noiseVar; b = lerp(0.12, 0.08, t) + noiseVar * 0.3;
+    } else if (h < 9) {
+      // forest floor / dirt
+      const t = (h - 6) / 3;
+      r = lerp(0.2, 0.35, t) + noiseVar; g = lerp(0.42, 0.32, t) + noiseVar * 0.5; b = lerp(0.08, 0.15, t) + noiseVar * 0.3;
     } else if (h < 14) {
-      // dirt / stone transition
-      const t = (h - 6) / 8;
-      r = lerp(0.2, 0.45, t); g = lerp(0.45, 0.42, t); b = lerp(0.1, 0.38, t);
+      // rock / stone transition
+      const t = (h - 9) / 5;
+      r = lerp(0.35, 0.48, t) + noiseVar; g = lerp(0.32, 0.46, t) + noiseVar; b = lerp(0.15, 0.42, t) + noiseVar;
     } else {
-      // snow caps
+      // snow caps with bluish tint
       const t = Math.min((h - 14) / 6, 1);
-      r = lerp(0.45, 0.92, t); g = lerp(0.42, 0.92, t); b = lerp(0.38, 0.95, t);
+      r = lerp(0.48, 0.94, t) + noiseVar * 0.3; g = lerp(0.46, 0.94, t) + noiseVar * 0.3; b = lerp(0.42, 0.97, t) + noiseVar * 0.2;
     }
     colors[i * 3] = r;
     colors[i * 3 + 1] = g;
@@ -695,16 +712,18 @@ function buildTerrain(): { mesh: THREE.Mesh; getHeight: (x: number, z: number) =
 // ---------------------------------------------------------------------------
 
 function buildWater(): THREE.Mesh {
-  const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, 64, 64);
+  const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, 96, 96);
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x2277bb,
+    color: 0x1a6699,
     transparent: true,
-    opacity: 0.65,
-    roughness: 0.05,
-    metalness: 0.5,
+    opacity: 0.72,
+    roughness: 0.02,
+    metalness: 0.6,
     side: THREE.DoubleSide,
-    envMapIntensity: 1.2,
+    envMapIntensity: 1.5,
+    emissive: 0x061828,
+    emissiveIntensity: 0.15,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.y = WATER_LEVEL;
@@ -734,33 +753,59 @@ function buildTree(seed: number): THREE.Group {
   const height = 2.5 + r * 3;
   const trunkR = 0.08 + r * 0.06;
 
+  // Trunk with bark-like color variation
+  const trunkColor = 0x553311 + ((seed * 37) & 0x111100);
   const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(trunkR * 0.6, trunkR, height, 6),
-    new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 }),
+    new THREE.CylinderGeometry(trunkR * 0.6, trunkR, height, 8),
+    new THREE.MeshStandardMaterial({ color: trunkColor, roughness: 0.95, metalness: 0.02 }),
   );
   trunk.position.y = height / 2;
   trunk.castShadow = true;
   g.add(trunk);
 
+  // Branch stubs
+  const branchMat = new THREE.MeshStandardMaterial({ color: trunkColor, roughness: 0.9 });
+  for (let b = 0; b < 3; b++) {
+    const bAngle = seededRandom(seed * 7 + b * 31) * Math.PI * 2;
+    const bH = height * (0.4 + seededRandom(seed * 11 + b * 17) * 0.4);
+    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.4, 4), branchMat);
+    branch.position.set(Math.cos(bAngle) * trunkR * 0.8, bH, Math.sin(bAngle) * trunkR * 0.8);
+    branch.rotation.z = (Math.cos(bAngle) > 0 ? 1 : -1) * 1.0;
+    branch.rotation.y = bAngle;
+    branch.castShadow = true;
+    g.add(branch);
+  }
+
   const crownColor = 0x226622 + ((seed * 1234) & 0x003300);
+  const crownMat = new THREE.MeshStandardMaterial({ color: crownColor, roughness: 0.85, metalness: 0.02 });
   if (r > 0.5) {
-    // sphere crown
-    const crown = new THREE.Mesh(
-      new THREE.SphereGeometry(0.8 + r * 0.8, 8, 8),
-      new THREE.MeshStandardMaterial({ color: crownColor, roughness: 0.8 }),
-    );
-    crown.position.y = height + 0.3;
-    crown.castShadow = true;
-    g.add(crown);
+    // Multi-sphere crown for more natural look
+    for (let c = 0; c < 3; c++) {
+      const cSize = (0.6 + r * 0.7) * (c === 0 ? 1 : 0.7);
+      const crown = new THREE.Mesh(
+        new THREE.SphereGeometry(cSize, 8, 8), crownMat,
+      );
+      const cAngle = c * Math.PI * 0.67;
+      crown.position.set(
+        Math.cos(cAngle) * cSize * 0.3,
+        height + 0.3 + c * 0.15,
+        Math.sin(cAngle) * cSize * 0.3,
+      );
+      crown.castShadow = true;
+      g.add(crown);
+    }
   } else {
-    // conifer cone
-    const cone = new THREE.Mesh(
-      new THREE.ConeGeometry(0.7 + r * 0.5, 2.5 + r, 8),
-      new THREE.MeshStandardMaterial({ color: crownColor, roughness: 0.8 }),
-    );
-    cone.position.y = height + 0.5;
-    cone.castShadow = true;
-    g.add(cone);
+    // Conifer with multiple layers
+    for (let layer = 0; layer < 3; layer++) {
+      const layerSize = (0.7 + r * 0.5) * (1 - layer * 0.2);
+      const layerH = 1.0 + r * 0.5 - layer * 0.3;
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(layerSize, layerH, 8), crownMat,
+      );
+      cone.position.y = height + 0.3 + layer * 0.6;
+      cone.castShadow = true;
+      g.add(cone);
+    }
   }
   return g;
 }
@@ -982,15 +1027,31 @@ function buildSkyDome(): { dome: THREE.Mesh; stars: THREE.Points; update: (time:
 
 function buildClouds(): THREE.Group {
   const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, roughness: 1 });
-  for (let i = 0; i < 20; i++) {
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, roughness: 1, metalness: 0 });
+  const matDark = new THREE.MeshStandardMaterial({ color: 0xddddee, transparent: true, opacity: 0.3, roughness: 1, metalness: 0 });
+  for (let i = 0; i < 30; i++) {
     const cloud = new THREE.Group();
-    for (let j = 0; j < 3 + Math.floor(Math.random() * 4); j++) {
-      const p = new THREE.Mesh(new THREE.SphereGeometry(8 + Math.random() * 12, 6, 6), mat);
-      p.position.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 10);
-      p.scale.y = 0.4; cloud.add(p);
+    const puffCount = 4 + Math.floor(Math.random() * 5);
+    const isThick = Math.random() > 0.6;
+    for (let j = 0; j < puffCount; j++) {
+      const pSize = 6 + Math.random() * (isThick ? 18 : 12);
+      const p = new THREE.Mesh(
+        new THREE.SphereGeometry(pSize, 8, 6),
+        isThick ? matDark : mat,
+      );
+      p.position.set(
+        (Math.random() - 0.5) * 25,
+        (Math.random() - 0.5) * (isThick ? 6 : 3),
+        (Math.random() - 0.5) * 12,
+      );
+      p.scale.y = 0.3 + Math.random() * 0.15;
+      cloud.add(p);
     }
-    cloud.position.set((Math.random() - 0.5) * TERRAIN_SIZE * 0.7, 80 + Math.random() * 30, (Math.random() - 0.5) * TERRAIN_SIZE * 0.7);
+    cloud.position.set(
+      (Math.random() - 0.5) * TERRAIN_SIZE * 0.8,
+      70 + Math.random() * 40,
+      (Math.random() - 0.5) * TERRAIN_SIZE * 0.8,
+    );
     g.add(cloud);
   }
   return g;
@@ -1387,14 +1448,15 @@ export class ArthurianRPGRenderer {
     this.sunLight = new THREE.DirectionalLight(0xffe8c0, 1.5);
     this.sunLight.position.set(50, 80, 30);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.set(2048, 2048);
-    this.sunLight.shadow.camera.near = 1;
-    this.sunLight.shadow.camera.far = 200;
-    this.sunLight.shadow.camera.left = -60;
-    this.sunLight.shadow.camera.right = 60;
-    this.sunLight.shadow.camera.top = 60;
-    this.sunLight.shadow.camera.bottom = -60;
-    this.sunLight.shadow.bias = -0.001;
+    this.sunLight.shadow.mapSize.set(4096, 4096);
+    this.sunLight.shadow.camera.near = 0.5;
+    this.sunLight.shadow.camera.far = 250;
+    this.sunLight.shadow.camera.left = -80;
+    this.sunLight.shadow.camera.right = 80;
+    this.sunLight.shadow.camera.top = 80;
+    this.sunLight.shadow.camera.bottom = -80;
+    this.sunLight.shadow.bias = -0.0005;
+    this.sunLight.shadow.normalBias = 0.02;
     this.scene.add(this.sunLight);
 
     // Moon
@@ -1453,24 +1515,24 @@ export class ArthurianRPGRenderer {
     cave.position.set(-50, this.terrain.getHeight(-50, -20), -20); cave.rotation.y = Math.PI * 0.3;
     this.scene.add(cave);
 
-    // Trees
-    for (let i = 0; i < 200; i++) {
+    // Trees (denser for richer world)
+    for (let i = 0; i < 350; i++) {
       const x = (seededRandom(i * 3) - 0.5) * TERRAIN_SIZE * 0.8;
       const z = (seededRandom(i * 3 + 1) - 0.5) * TERRAIN_SIZE * 0.8;
       const h = this.terrain.getHeight(x, z);
       if (h < WATER_LEVEL + 1 || h > 15 || Math.sqrt(x * x + z * z) < 15) continue;
       const t = buildTree(i * 17); t.position.set(x, h, z); this.scene.add(t);
     }
-    // Bushes
-    for (let i = 0; i < 100; i++) {
+    // Bushes (more vegetation)
+    for (let i = 0; i < 180; i++) {
       const x = (seededRandom(i * 5 + 900) - 0.5) * TERRAIN_SIZE * 0.6;
       const z = (seededRandom(i * 5 + 901) - 0.5) * TERRAIN_SIZE * 0.6;
       const h = this.terrain.getHeight(x, z);
       if (h < WATER_LEVEL + 0.5 || h > 12) continue;
       const b = buildBush(); b.position.set(x, h, z); this.scene.add(b);
     }
-    // Grass patches
-    for (let i = 0; i < 150; i++) {
+    // Grass patches (denser ground cover)
+    for (let i = 0; i < 250; i++) {
       const x = (seededRandom(i * 7 + 2000) - 0.5) * TERRAIN_SIZE * 0.5;
       const z = (seededRandom(i * 7 + 2001) - 0.5) * TERRAIN_SIZE * 0.5;
       const h = this.terrain.getHeight(x, z);
@@ -1497,9 +1559,9 @@ export class ArthurianRPGRenderer {
     // Bloom for magical glow
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight),
-      0.5,  // strength
-      0.3,  // radius
-      0.75, // threshold
+      0.65,  // strength (increased for magical glow)
+      0.4,   // radius (wider bloom spread)
+      0.7,   // threshold (catch more bright areas)
     );
     this.composer.addPass(this.bloomPass);
 
