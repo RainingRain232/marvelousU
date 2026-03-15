@@ -1448,20 +1448,30 @@ export class WarbandCampaign {
     // Top bar (day, gold, army size, speed, faction info)
     this._topBar = document.createElement("div");
     this._topBar.style.cssText = `
-      position:absolute;top:0;left:0;right:0;height:42px;
-      background:rgba(10,8,5,0.92);border-bottom:1px solid #443322;
-      display:flex;align-items:center;padding:0 16px;gap:20px;
+      position:absolute;top:0;left:0;right:0;height:48px;
+      background:linear-gradient(180deg, rgba(28,22,14,0.96) 0%, rgba(14,11,7,0.97) 60%, rgba(10,8,5,0.98) 100%);
+      border-bottom:2px solid #5a4020;
+      box-shadow:0 2px 8px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(218,165,32,0.15), inset 0 1px 0 rgba(255,220,140,0.06);
+      display:flex;align-items:center;padding:0 18px;gap:16px;
       font-size:13px;z-index:2;
+      font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;
+      background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
     `;
     this._container.appendChild(this._topBar);
 
     // Log panel (bottom)
     this._logPanel = document.createElement("div");
     this._logPanel.style.cssText = `
-      position:absolute;bottom:0;left:0;width:350px;max-height:180px;
-      background:rgba(10,8,5,0.88);border-top:1px solid #443322;border-right:1px solid #443322;
-      padding:8px 12px;font-size:11px;overflow-y:auto;z-index:2;
+      position:absolute;bottom:0;left:0;width:360px;max-height:200px;
+      background:linear-gradient(135deg, rgba(14,11,7,0.94) 0%, rgba(10,8,5,0.96) 100%);
+      border-top:2px solid #5a4020;border-right:2px solid #5a4020;
+      border-top-right-radius:6px;
+      box-shadow:2px -2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(218,165,32,0.12), inset -1px 0 0 rgba(218,165,32,0.08);
+      padding:10px 14px;font-size:11px;overflow-y:auto;z-index:2;
       color:#aa9977;
+      font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;
+      scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);
+      background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
     `;
     this._container.appendChild(this._logPanel);
 
@@ -1483,32 +1493,86 @@ export class WarbandCampaign {
     }
 
     this._topBar.innerHTML = `
-      <span style="color:${factionColor};font-weight:bold;letter-spacing:1px">${factionDef?.name ?? s.playerFaction}</span>
-      <span style="color:#daa520">Day ${s.day}</span>
-      <span style="color:#ffcc44">Gold: ${s.gold} <span style="color:#cc8844;font-size:11px">(-${dailyUpkeep}/day)</span></span>
-      <span style="color:#88aacc">Army: ${s.playerParty.armyTotal}/${MAX_PARTY_SIZE + this._getPerkCount("commander") * 5}</span>
+      <span style="
+        color:${factionColor};font-weight:bold;letter-spacing:2px;font-size:15px;
+        text-shadow:0 0 8px ${factionColor}44, 0 1px 2px rgba(0,0,0,0.8);
+        padding:4px 14px;
+        border:1px solid ${factionColor}55;border-radius:3px;
+        background:linear-gradient(180deg, ${factionColor}18 0%, ${factionColor}08 100%);
+        text-transform:uppercase;
+      ">${factionDef?.name ?? s.playerFaction}</span>
+
+      <span style="color:#555;font-size:16px;margin:0 -4px">\u2758</span>
+
+      <span style="color:#c8a84e;text-shadow:0 0 4px rgba(218,165,32,0.3);">
+        <span style="color:#8a7030;font-size:10px">\u2600</span> Day <strong>${s.day}</strong>
+      </span>
+
+      <span style="color:#555;font-size:16px;margin:0 -4px">\u2758</span>
+
+      <span style="color:#ffcc44;text-shadow:0 0 4px rgba(255,204,68,0.2);">
+        <span style="font-size:12px">\u2B23</span> <strong>${s.gold}</strong>
+        <span style="color:#996633;font-size:10px">(-${dailyUpkeep}/day)</span>
+      </span>
+
+      <span style="color:#555;font-size:16px;margin:0 -4px">\u2758</span>
+
+      <span style="color:#88aacc;text-shadow:0 0 4px rgba(136,170,204,0.2);">
+        <span style="font-size:11px">\u2694</span> ${s.playerParty.armyTotal}/${MAX_PARTY_SIZE + this._getPerkCount("commander") * 5}
+      </span>
+
+      <span style="color:#555;font-size:16px;margin:0 -4px">\u2758</span>
+
       ${this._renderHeroLevelBar()}
-      <span style="color:#88aa66">Cities: ${citiesOwned}/${totalCities}</span>
+
+      <span style="color:#555;font-size:16px;margin:0 -4px">\u2758</span>
+
+      <span style="color:#88aa66;text-shadow:0 0 4px rgba(136,170,102,0.2);">
+        <span style="font-size:11px">\u26EB</span> ${citiesOwned}/${totalCities}
+      </span>
+
       ${this._renderFactionRelationIndicators()}
-      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-        <span style="color:#777;font-size:11px">Speed:</span>
+
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;
+        padding-left:12px;border-left:1px solid rgba(90,64,32,0.5);">
+        <span style="color:#665533;font-size:10px;letter-spacing:1px;text-transform:uppercase">Speed</span>
         ${[1, 2, 4].map((sp) => `
           <button class="camp-speed-btn" data-speed="${sp}" style="
-            padding:2px 8px;font-size:11px;border:1px solid ${s.speed === sp ? "#daa520" : "#444"};
-            border-radius:3px;background:${s.speed === sp ? "rgba(218,165,32,0.25)" : "rgba(20,15,10,0.6)"};
-            color:${s.speed === sp ? "#fff" : "#666"};cursor:pointer;font-family:inherit;
+            padding:3px 10px;font-size:11px;font-weight:bold;
+            border:1px solid ${s.speed === sp ? "#daa520" : "#3a3020"};
+            border-radius:3px;
+            background:${s.speed === sp
+              ? "linear-gradient(180deg, rgba(218,165,32,0.35) 0%, rgba(160,120,20,0.2) 100%)"
+              : "linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%)"};
+            color:${s.speed === sp ? "#ffe088" : "#665544"};
+            cursor:pointer;font-family:inherit;
+            box-shadow:${s.speed === sp ? "0 0 6px rgba(218,165,32,0.25), inset 0 1px 0 rgba(255,220,140,0.15)" : "inset 0 1px 0 rgba(255,255,255,0.03)"};
+            text-shadow:${s.speed === sp ? "0 0 4px rgba(218,165,32,0.4)" : "none"};
+            transition:all 0.15s ease;
           ">${sp}x</button>
         `).join("")}
         <button id="camp-pause-btn" style="
-          padding:2px 8px;font-size:11px;border:1px solid ${s.paused ? "#cc4444" : "#444"};
-          border-radius:3px;background:${s.paused ? "rgba(204,68,68,0.25)" : "rgba(20,15,10,0.6)"};
-          color:${s.paused ? "#ff6666" : "#666"};cursor:pointer;font-family:inherit;
-        ">${s.paused ? "PAUSED" : "Pause"}</button>
+          padding:3px 10px;font-size:11px;font-weight:bold;
+          border:1px solid ${s.paused ? "#cc4444" : "#3a3020"};
+          border-radius:3px;
+          background:${s.paused
+            ? "linear-gradient(180deg, rgba(204,68,68,0.35) 0%, rgba(150,40,40,0.2) 100%)"
+            : "linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%)"};
+          color:${s.paused ? "#ff8888" : "#665544"};
+          cursor:pointer;font-family:inherit;
+          box-shadow:${s.paused ? "0 0 6px rgba(204,68,68,0.25), inset 0 1px 0 rgba(255,120,120,0.15)" : "inset 0 1px 0 rgba(255,255,255,0.03)"};
+          text-shadow:${s.paused ? "0 0 4px rgba(204,68,68,0.4)" : "none"};
+          transition:all 0.15s ease;
+        ">${s.paused ? "\u275A\u275A PAUSED" : "\u275A\u275A Pause"}</button>
         <button id="camp-exit-btn" style="
-          padding:2px 8px;font-size:11px;border:1px solid #555;
-          border-radius:3px;background:rgba(20,15,10,0.6);
-          color:#888;cursor:pointer;font-family:inherit;margin-left:8px;
-        ">Exit</button>
+          padding:3px 10px;font-size:11px;
+          border:1px solid #3a3020;
+          border-radius:3px;
+          background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);
+          color:#776655;cursor:pointer;font-family:inherit;margin-left:6px;
+          box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);
+          transition:all 0.15s ease;
+        ">\u2716 Exit</button>
       </div>
     `;
 
@@ -1532,8 +1596,25 @@ export class WarbandCampaign {
     if (!this._logPanel || !this._state) return;
     const last10 = this._state.log.slice(-10);
     this._logPanel.innerHTML = `
-      <div style="color:#daa520;font-size:12px;margin-bottom:4px;letter-spacing:1px">EVENT LOG</div>
-      ${last10.map((l) => `<div style="margin-bottom:2px">${l}</div>`).join("")}
+      <div style="
+        color:#daa520;font-size:13px;margin-bottom:6px;letter-spacing:2px;
+        text-transform:uppercase;font-weight:bold;
+        text-shadow:0 0 6px rgba(218,165,32,0.3);
+        padding-bottom:6px;
+        border-bottom:1px solid rgba(90,64,32,0.5);
+        display:flex;align-items:center;gap:6px;
+      ">
+        <span style="color:#5a4020">\u2726</span>
+        Event Log
+        <span style="color:#5a4020">\u2726</span>
+        <span style="flex:1;height:1px;background:linear-gradient(90deg, rgba(90,64,32,0.4) 0%, transparent 100%)"></span>
+      </div>
+      ${last10.map((l) => `<div style="margin-bottom:3px;padding-left:8px;border-left:2px solid rgba(90,64,32,0.25);line-height:1.4">${l}</div>`).join("")}
+      <div style="
+        position:sticky;bottom:0;height:12px;margin:-10px -14px 0;
+        background:linear-gradient(0deg, rgba(10,8,5,0.95) 0%, transparent 100%);
+        pointer-events:none;
+      "></div>
     `;
   }
 
@@ -3936,6 +4017,15 @@ export class WarbandCampaign {
       this._battleFX!.spawnHealAoe(heal.x, heal.z, heal.radius);
     }
 
+    // Kill feed
+    for (const kill of this._battleCombatSystem!.kills) {
+      const killer = state.fighters.find((f) => f.id === kill.killerId);
+      const victim = state.fighters.find((f) => f.id === kill.victimId);
+      if (killer && victim) {
+        this._battleHUD!.addKill(killer.name, victim.name);
+      }
+    }
+
     // Physics
     this._battlePhysicsSystem!.update(state);
 
@@ -4039,18 +4129,31 @@ export class WarbandCampaign {
   ): void {
     if (document.pointerLockElement) document.exitPointerLock();
 
+    // Stop the battle game loop so it doesn't interfere with UI
+    if (this._battleRafId) {
+      cancelAnimationFrame(this._battleRafId);
+      this._battleRafId = 0;
+    }
+
     // Disable pointer events on the battle canvas so the results overlay buttons work
     if (this._battleSceneManager) {
       this._battleSceneManager.setCanvasPointerEvents(false);
     }
-    // Also disable the battle input system's pointer lock
+    // Also disable the battle input system's pointer lock and destroy it
     if (this._battleInputSystem) {
       this._battleInputSystem.pointerLockEnabled = false;
+      this._battleInputSystem.destroy();
+    }
+    // Hide the battle HUD so it doesn't sit on top of the results
+    if (this._battleHUD) {
+      this._battleHUD.destroy();
+      this._battleHUD = null;
     }
 
     this._battleResultsContainer = document.createElement("div");
     this._battleResultsContainer.style.cssText = `
-      position:absolute;top:0;left:0;width:100%;height:100%;z-index:30;
+      position:absolute;top:0;left:0;width:100%;height:100%;z-index:100;
+      pointer-events:auto;
       background:rgba(10,8,5,0.92);display:flex;flex-direction:column;
       align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:#e0d5c0;
     `;
@@ -4067,20 +4170,25 @@ export class WarbandCampaign {
         <div>Survivors: ${survivorCount} / Losses: ${playerLost}</div>
         ${won ? `<div style="color:#ffcc44;margin-top:6px">Loot: +${loot} gold</div>` : ""}
       </div>
-      <button id="camp-battle-continue" style="
-        padding:12px 30px;font-size:16px;font-weight:bold;
-        border:2px solid #daa520;border-radius:6px;
-        background:rgba(218,165,32,0.15);color:#daa520;
-        cursor:pointer;font-family:inherit;margin-top:10px;
-      ">Return to Campaign Map</button>
     `;
+
+    const btn = document.createElement("button");
+    btn.id = "camp-battle-continue";
+    btn.textContent = "Return to Campaign Map";
+    btn.style.cssText = `
+      padding:12px 30px;font-size:16px;font-weight:bold;
+      border:2px solid #daa520;border-radius:6px;
+      background:rgba(218,165,32,0.15);color:#daa520;
+      cursor:pointer;font-family:inherit;margin-top:10px;
+      pointer-events:auto;
+    `;
+    btn.addEventListener("click", () => {
+      this._processBattleOutcome(won, playerSurvivors, loot);
+    });
+    this._battleResultsContainer.appendChild(btn);
 
     const container = document.getElementById("pixi-container");
     if (container) container.appendChild(this._battleResultsContainer);
-
-    document.getElementById("camp-battle-continue")?.addEventListener("click", () => {
-      this._processBattleOutcome(won, playerSurvivors, loot);
-    });
   }
 
   private _processBattleOutcome(

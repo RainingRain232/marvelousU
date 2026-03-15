@@ -86,7 +86,7 @@ export class ThreeDragonHUD {
       }
       @keyframes td-skill-ready-pulse {
         0%, 100% { box-shadow: 0 0 4px rgba(255,255,255,0.1) inset; }
-        50% { box-shadow: 0 0 10px rgba(255,255,255,0.2) inset; }
+        50% { box-shadow: 0 0 12px rgba(255,255,255,0.25) inset; }
       }
       @keyframes td-boss-appear {
         0% { opacity: 0; transform: scaleX(0); }
@@ -101,6 +101,22 @@ export class ThreeDragonHUD {
         0%, 100% { box-shadow: 0 0 8px rgba(80,200,255,0.3); }
         50% { box-shadow: 0 0 16px rgba(80,200,255,0.6); }
       }
+      @keyframes td-bar-shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      @keyframes td-label-glow {
+        0%, 100% { text-shadow: 0 0 4px currentColor, 1px 1px 2px #000; }
+        50% { text-shadow: 0 0 8px currentColor, 0 0 12px currentColor, 1px 1px 2px #000; }
+      }
+      @keyframes td-wave-pulse {
+        0%, 100% { border-color: rgba(100,150,255,0.2); box-shadow: 0 0 8px rgba(80,120,200,0.1); }
+        50% { border-color: rgba(130,180,255,0.35); box-shadow: 0 0 15px rgba(80,120,200,0.2); }
+      }
+      @keyframes td-score-glow {
+        0%, 100% { text-shadow: 0 0 12px rgba(255,215,0,0.5), 0 0 24px rgba(255,180,0,0.2), 2px 2px 4px rgba(0,0,0,0.9); }
+        50% { text-shadow: 0 0 18px rgba(255,215,0,0.7), 0 0 36px rgba(255,180,0,0.4), 0 0 48px rgba(255,150,0,0.15), 2px 2px 4px rgba(0,0,0,0.9); }
+      }
     `;
     document.head.appendChild(this._styleEl);
 
@@ -112,7 +128,7 @@ export class ThreeDragonHUD {
     `;
 
     // HP Bar
-    const hpContainer = this._createFancyBar(20, 15, 220, 20, "hp");
+    const hpContainer = this._createFancyBar(20, 15, 230, 22, "hp");
     this._hpBar = hpContainer;
     this._hpFill = hpContainer.querySelector(".td-fill") as HTMLDivElement;
     this._hpText = hpContainer.querySelector(".td-bar-text") as HTMLDivElement;
@@ -121,15 +137,16 @@ export class ThreeDragonHUD {
     // HP label
     const hpLabel = document.createElement("div");
     hpLabel.style.cssText = `
-      position:absolute; left:22px; top:12px; font-size:9px; color:#ff9999;
-      text-shadow: 0 0 4px rgba(255,100,100,0.5), 1px 1px 2px #000;
-      letter-spacing: 2px; text-transform: uppercase; font-weight: bold;
+      position:absolute; left:22px; top:11px; font-size:9px; color:#ff9999;
+      text-shadow: 0 0 6px rgba(255,100,100,0.6), 0 0 12px rgba(255,60,60,0.2), 1px 1px 2px #000;
+      letter-spacing: 3px; text-transform: uppercase; font-weight: bold;
+      animation: td-label-glow 3s ease-in-out infinite;
     `;
     hpLabel.textContent = "HEALTH";
     this._root.appendChild(hpLabel);
 
     // Mana Bar
-    const manaContainer = this._createFancyBar(20, 40, 220, 16, "mana");
+    const manaContainer = this._createFancyBar(20, 42, 230, 18, "mana");
     this._manaBar = manaContainer;
     this._manaFill = manaContainer.querySelector(".td-fill") as HTMLDivElement;
     this._manaText = manaContainer.querySelector(".td-bar-text") as HTMLDivElement;
@@ -138,9 +155,10 @@ export class ThreeDragonHUD {
     // Mana label
     const manaLabel = document.createElement("div");
     manaLabel.style.cssText = `
-      position:absolute; left:22px; top:38px; font-size:8px; color:#88aaff;
-      text-shadow: 0 0 4px rgba(100,150,255,0.5), 1px 1px 2px #000;
-      letter-spacing: 2px; text-transform: uppercase; font-weight: bold;
+      position:absolute; left:22px; top:40px; font-size:8px; color:#88aaff;
+      text-shadow: 0 0 6px rgba(100,150,255,0.6), 0 0 12px rgba(60,100,255,0.2), 1px 1px 2px #000;
+      letter-spacing: 3px; text-transform: uppercase; font-weight: bold;
+      animation: td-label-glow 3.5s ease-in-out infinite;
     `;
     manaLabel.textContent = "MANA";
     this._root.appendChild(manaLabel);
@@ -148,25 +166,27 @@ export class ThreeDragonHUD {
     // Boost bar
     this._boostBar = document.createElement("div");
     this._boostBar.style.cssText = `
-      position: absolute; left: 20px; top: 62px; width: 120px; height: 10px;
-      background: linear-gradient(180deg, #0a0a1a 0%, #141428 100%);
-      border: 1px solid rgba(100,200,255,0.3); border-radius: 4px;
+      position: absolute; left: 20px; top: 66px; width: 130px; height: 12px;
+      background: linear-gradient(180deg, #080818 0%, #0e0e24 50%, #141430 100%);
+      border: 1px solid rgba(100,200,255,0.35); border-radius: 5px;
       overflow: hidden;
-      box-shadow: 0 0 6px rgba(50,150,255,0.15), 0 1px 3px rgba(0,0,0,0.3);
+      box-shadow: 0 0 8px rgba(50,150,255,0.2), 0 1px 4px rgba(0,0,0,0.4),
+                  inset 0 1px 2px rgba(0,0,0,0.5);
     `;
     this._boostFill = document.createElement("div");
     this._boostFill.style.cssText = `
-      width: 100%; height: 100%; border-radius: 3px;
-      background: linear-gradient(180deg, #44ccff 0%, #2288dd 40%, #1166aa 100%);
+      width: 100%; height: 100%; border-radius: 4px;
+      background: linear-gradient(180deg, #55ddff 0%, #33aaee 30%, #2288dd 60%, #1166aa 100%);
       transition: width 0.1s ease-out;
+      position: relative;
     `;
     this._boostBar.appendChild(this._boostFill);
     this._root.appendChild(this._boostBar);
 
     this._boostLabel = document.createElement("div");
     this._boostLabel.style.cssText = `
-      position: absolute; left: 22px; top: 59px; font-size: 8px; color: #66bbff;
-      text-shadow: 0 0 4px rgba(100,180,255,0.5), 1px 1px 2px #000;
+      position: absolute; left: 22px; top: 63px; font-size: 8px; color: #66bbff;
+      text-shadow: 0 0 6px rgba(100,180,255,0.6), 0 0 10px rgba(60,140,255,0.2), 1px 1px 2px #000;
       letter-spacing: 2px; text-transform: uppercase; font-weight: bold;
     `;
     this._boostLabel.textContent = "BOOST [SHIFT]";
@@ -184,32 +204,34 @@ export class ThreeDragonHUD {
     // XP Bar
     this._xpBar = document.createElement("div");
     this._xpBar.style.cssText = `
-      position: absolute; left: 20px; top: 78px; width: 120px; height: 8px;
-      background: linear-gradient(180deg, #0a0a1a 0%, #141428 100%);
-      border: 1px solid rgba(100,255,100,0.25); border-radius: 3px;
+      position: absolute; left: 20px; top: 84px; width: 130px; height: 10px;
+      background: linear-gradient(180deg, #080818 0%, #0e0e20 50%, #141428 100%);
+      border: 1px solid rgba(100,255,100,0.3); border-radius: 4px;
       overflow: hidden;
-      box-shadow: 0 0 4px rgba(50,200,50,0.1), 0 1px 3px rgba(0,0,0,0.3);
+      box-shadow: 0 0 6px rgba(50,200,50,0.15), 0 1px 3px rgba(0,0,0,0.4),
+                  inset 0 1px 2px rgba(0,0,0,0.5);
     `;
     this._xpFill = document.createElement("div");
     this._xpFill.style.cssText = `
-      width: 0%; height: 100%; border-radius: 2px;
-      background: linear-gradient(180deg, #44ff88 0%, #22aa55 40%, #118833 100%);
+      width: 0%; height: 100%; border-radius: 3px;
+      background: linear-gradient(180deg, #55ffaa 0%, #33cc66 30%, #22aa55 60%, #118833 100%);
       transition: width 0.2s ease-out;
+      position: relative;
     `;
     this._xpBar.appendChild(this._xpFill);
     this._root.appendChild(this._xpBar);
 
     this._xpText = document.createElement("div");
     this._xpText.style.cssText = `
-      position: absolute; left: 145px; top: 76px; font-size: 8px; color: #55aa77;
-      text-shadow: 1px 1px 2px #000; letter-spacing: 1px;
+      position: absolute; left: 155px; top: 82px; font-size: 8px; color: #55aa77;
+      text-shadow: 0 0 4px rgba(80,180,100,0.3), 1px 1px 2px #000; letter-spacing: 1px;
     `;
     this._root.appendChild(this._xpText);
 
     this._levelEl = document.createElement("div");
     this._levelEl.style.cssText = `
-      position: absolute; left: 22px; top: 75px; font-size: 8px; color: #66cc88;
-      text-shadow: 0 0 4px rgba(100,200,100,0.5), 1px 1px 2px #000;
+      position: absolute; left: 22px; top: 81px; font-size: 8px; color: #66cc88;
+      text-shadow: 0 0 6px rgba(100,200,100,0.6), 0 0 10px rgba(60,180,80,0.2), 1px 1px 2px #000;
       letter-spacing: 2px; text-transform: uppercase; font-weight: bold;
     `;
     this._levelEl.textContent = "LVL 1";
@@ -218,38 +240,45 @@ export class ThreeDragonHUD {
     // Map name (will be set on first update)
     this._mapNameEl = document.createElement("div");
     this._mapNameEl.style.cssText = `
-      position: absolute; left: 22px; top: 92px; font-size: 10px;
-      color: #667788; letter-spacing: 1px; text-transform: uppercase;
-      text-shadow: 1px 1px 2px #000;
+      position: absolute; left: 22px; top: 100px; font-size: 10px;
+      color: #778899; letter-spacing: 1.5px; text-transform: uppercase;
+      text-shadow: 0 0 4px rgba(100,130,160,0.3), 1px 1px 2px #000;
     `;
     this._root.appendChild(this._mapNameEl);
 
     // Score
     this._scoreEl = document.createElement("div");
     this._scoreEl.style.cssText = `
-      position: absolute; top: 12px; right: 20px; font-size: 28px;
+      position: absolute; top: 12px; right: 20px; font-size: 30px;
       color: #ffd700; font-weight: bold;
       text-shadow: 0 0 12px rgba(255,215,0,0.6), 0 0 24px rgba(255,180,0,0.3), 2px 2px 4px rgba(0,0,0,0.9);
       letter-spacing: 3px;
       transition: transform 0.15s ease-out;
+      animation: td-score-glow 4s ease-in-out infinite;
+      background: linear-gradient(180deg, #ffe066 0%, #ffd700 40%, #daa520 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 8px rgba(255,215,0,0.4)) drop-shadow(2px 2px 3px rgba(0,0,0,0.8));
     `;
     this._root.appendChild(this._scoreEl);
 
     // Score label
     const scoreLabel = document.createElement("div");
     scoreLabel.style.cssText = `
-      position: absolute; top: 42px; right: 22px; font-size: 9px;
-      color: #ccaa66; letter-spacing: 3px; text-transform: uppercase;
-      text-shadow: 1px 1px 2px #000;
+      position: absolute; top: 44px; right: 22px; font-size: 9px;
+      color: #ccaa66; letter-spacing: 4px; text-transform: uppercase;
+      text-shadow: 0 0 6px rgba(200,170,100,0.4), 1px 1px 2px #000;
+      font-weight: bold;
     `;
     scoreLabel.textContent = "SCORE";
     this._root.appendChild(scoreLabel);
 
     this._highScoreEl = document.createElement("div");
     this._highScoreEl.style.cssText = `
-      position: absolute; top: 54px; right: 22px; font-size: 10px;
-      color: #888866; letter-spacing: 1px;
-      text-shadow: 1px 1px 2px #000;
+      position: absolute; top: 56px; right: 22px; font-size: 10px;
+      color: #998866; letter-spacing: 1px;
+      text-shadow: 0 0 4px rgba(150,130,100,0.3), 1px 1px 2px #000;
     `;
     this._root.appendChild(this._highScoreEl);
 
@@ -258,11 +287,13 @@ export class ThreeDragonHUD {
     this._waveEl.style.cssText = `
       position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
       font-size: 16px; color: #ccddff; font-weight: bold;
-      text-shadow: 0 0 8px rgba(100,150,255,0.4), 1px 1px 3px rgba(0,0,0,0.8);
-      letter-spacing: 2px; text-transform: uppercase;
-      background: linear-gradient(180deg, rgba(20,30,60,0.6) 0%, rgba(10,15,30,0.3) 100%);
-      padding: 4px 16px; border-radius: 12px;
-      border: 1px solid rgba(100,150,255,0.15);
+      text-shadow: 0 0 8px rgba(100,150,255,0.5), 0 0 16px rgba(80,120,220,0.2), 1px 1px 3px rgba(0,0,0,0.8);
+      letter-spacing: 3px; text-transform: uppercase;
+      background: linear-gradient(180deg, rgba(20,30,60,0.7) 0%, rgba(15,20,45,0.6) 50%, rgba(10,15,30,0.4) 100%);
+      padding: 5px 20px; border-radius: 14px;
+      border: 1px solid rgba(100,150,255,0.2);
+      animation: td-wave-pulse 4s ease-in-out infinite;
+      backdrop-filter: blur(3px);
     `;
     this._root.appendChild(this._waveEl);
 
@@ -281,12 +312,14 @@ export class ThreeDragonHUD {
     this._skillBar = document.createElement("div");
     this._skillBar.style.cssText = `
       position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
-      display: flex; gap: 6px;
-      background: linear-gradient(180deg, rgba(15,15,35,0.85) 0%, rgba(8,8,20,0.9) 100%);
+      display: flex; gap: 7px;
+      background: linear-gradient(180deg, rgba(18,18,42,0.88) 0%, rgba(12,12,30,0.92) 50%, rgba(8,8,22,0.95) 100%);
       border: 1px solid rgba(80,120,180,0.3);
-      border-radius: 10px; padding: 8px 14px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 15px rgba(50,80,150,0.15) inset;
-      backdrop-filter: blur(4px);
+      border-top: 1px solid rgba(120,160,220,0.2);
+      border-radius: 12px; padding: 10px 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.6), 0 0 20px rgba(50,80,150,0.15) inset,
+                  0 -1px 0 rgba(255,255,255,0.04) inset, 0 1px 0 rgba(0,0,0,0.3);
+      backdrop-filter: blur(6px);
     `;
     this._buildSkillBar();
     this._root.appendChild(this._skillBar);
@@ -535,23 +568,34 @@ export class ThreeDragonHUD {
 
   private _createFancyBar(x: number, y: number, w: number, h: number, type: "hp" | "mana"): HTMLDivElement {
     const container = document.createElement("div");
-    const borderCol = type === "hp" ? "rgba(200,80,80,0.5)" : "rgba(80,100,200,0.5)";
+    const borderCol = type === "hp" ? "rgba(200,80,80,0.55)" : "rgba(80,100,200,0.55)";
     const bgGrad = type === "hp"
-      ? "linear-gradient(180deg, #1a0505 0%, #220808 100%)"
-      : "linear-gradient(180deg, #050510 0%, #080820 100%)";
-    const shadowCol = type === "hp" ? "rgba(255,50,50,0.15)" : "rgba(50,100,255,0.15)";
+      ? "linear-gradient(180deg, #1a0505 0%, #200808 50%, #2a0a0a 100%)"
+      : "linear-gradient(180deg, #050510 0%, #080820 50%, #0a0a28 100%)";
+    const shadowCol = type === "hp" ? "rgba(255,50,50,0.2)" : "rgba(50,100,255,0.2)";
+    const innerShadow = type === "hp" ? "rgba(200,30,30,0.15)" : "rgba(30,60,200,0.15)";
 
     container.style.cssText = `
       position: absolute; left: ${x}px; top: ${y}px; width: ${w}px; height: ${h}px;
-      background: ${bgGrad}; border: 1px solid ${borderCol}; border-radius: 6px;
+      background: ${bgGrad}; border: 1px solid ${borderCol}; border-radius: 7px;
       overflow: hidden;
-      box-shadow: 0 0 8px ${shadowCol}, 0 2px 4px rgba(0,0,0,0.3);
+      box-shadow: 0 0 10px ${shadowCol}, 0 2px 6px rgba(0,0,0,0.4),
+                  inset 0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 0 ${innerShadow};
     `;
+
+    // Metallic border sheen (top edge)
+    const borderSheen = document.createElement("div");
+    borderSheen.style.cssText = `
+      position: absolute; top: 0; left: 5%; width: 90%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+      pointer-events: none; z-index: 3;
+    `;
+    container.appendChild(borderSheen);
 
     const fill = document.createElement("div");
     fill.className = "td-fill";
     fill.style.cssText = `
-      width: 100%; height: 100%; border-radius: 5px;
+      width: 100%; height: 100%; border-radius: 6px;
       transition: width 0.15s ease-out, background 0.3s;
       position: relative;
     `;
@@ -562,20 +606,30 @@ export class ThreeDragonHUD {
     shine.className = "td-shine";
     shine.style.cssText = `
       position: absolute; top: 0; left: 0; width: 25%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      animation: td-shine-sweep 3s ease-in-out infinite;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+      animation: td-shine-sweep 2.5s ease-in-out infinite;
     `;
     fill.appendChild(shine);
 
-    // Top highlight for 3D look
+    // Top highlight for 3D/glass look
     const highlight = document.createElement("div");
     highlight.style.cssText = `
-      position: absolute; top: 0; left: 0; right: 0; height: 40%;
-      background: linear-gradient(180deg, rgba(255,255,255,0.15), transparent);
-      border-radius: 5px 5px 0 0;
+      position: absolute; top: 0; left: 0; right: 0; height: 45%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05), transparent);
+      border-radius: 6px 6px 0 0;
       pointer-events: none;
     `;
     fill.appendChild(highlight);
+
+    // Bottom dark edge for depth
+    const bottomEdge = document.createElement("div");
+    bottomEdge.style.cssText = `
+      position: absolute; bottom: 0; left: 0; right: 0; height: 30%;
+      background: linear-gradient(180deg, transparent, rgba(0,0,0,0.15));
+      border-radius: 0 0 6px 6px;
+      pointer-events: none;
+    `;
+    fill.appendChild(bottomEdge);
 
     // Text overlay for value
     const text = document.createElement("div");
@@ -583,9 +637,9 @@ export class ThreeDragonHUD {
     text.style.cssText = `
       position: absolute; top: 0; left: 0; right: 0; bottom: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: ${h < 18 ? 8 : 10}px; font-weight: bold; color: rgba(255,255,255,0.8);
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-      z-index: 2;
+      font-size: ${h < 18 ? 9 : 11}px; font-weight: bold; color: rgba(255,255,255,0.9);
+      text-shadow: 0 0 4px rgba(0,0,0,0.6), 1px 1px 2px rgba(0,0,0,0.9);
+      z-index: 2; letter-spacing: 0.5px;
     `;
     container.appendChild(text);
 
@@ -607,7 +661,7 @@ export class ThreeDragonHUD {
   private _drawSkillIcon(ctx: CanvasRenderingContext2D, skillId: TDSkillId, color: string, size: number): void {
     const cx = size / 2;
     const cy = size / 2;
-    const r = size * 0.35;
+    const r = size * 0.38;
     ctx.save();
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
@@ -615,185 +669,694 @@ export class ThreeDragonHUD {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
+    // Helper to parse hex color to rgba
+    const hexToRgba = (hex: string, alpha: number) => {
+      const hr = parseInt(hex.slice(1, 3), 16);
+      const hg = parseInt(hex.slice(3, 5), 16);
+      const hb = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${hr},${hg},${hb},${alpha})`;
+    };
+
     switch (skillId) {
       case TDSkillId.ARCANE_BOLT: {
-        // Star / sparkle
-        for (let i = 0; i < 4; i++) {
-          const a = (i / 4) * Math.PI * 2 - Math.PI / 2;
-          const a2 = a + Math.PI / 4;
+        // Swirling arcane projectile with energy rings
+        // Outer energy glow
+        const arcGlow = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 1.0);
+        arcGlow.addColorStop(0, hexToRgba(color, 0.9));
+        arcGlow.addColorStop(0.4, hexToRgba(color, 0.4));
+        arcGlow.addColorStop(1, hexToRgba(color, 0.0));
+        ctx.fillStyle = arcGlow;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 1.0, 0, Math.PI * 2); ctx.fill();
+        // Swirling energy arcs
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = hexToRgba(color, 0.7);
+        for (let i = 0; i < 3; i++) {
+          const offset = (i / 3) * Math.PI * 2;
           ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.lineTo(cx + Math.cos(a2) * r * 0.5, cy + Math.sin(a2) * r * 0.5);
+          ctx.arc(cx, cy, r * 0.6, offset, offset + Math.PI * 0.8);
           ctx.stroke();
         }
-        ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
+        // Central bright core with 4-point star
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.18, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = hexToRgba(color, 0.95);
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 - Math.PI / 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(a - 0.12) * r * 0.15, cy + Math.sin(a - 0.12) * r * 0.15);
+          ctx.lineTo(cx + Math.cos(a) * r * 0.85, cy + Math.sin(a) * r * 0.85);
+          ctx.lineTo(cx + Math.cos(a + 0.12) * r * 0.15, cy + Math.sin(a + 0.12) * r * 0.15);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Smaller diagonal rays
+        ctx.fillStyle = hexToRgba(color, 0.6);
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 - Math.PI / 4;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(a - 0.08) * r * 0.1, cy + Math.sin(a - 0.08) * r * 0.1);
+          ctx.lineTo(cx + Math.cos(a) * r * 0.5, cy + Math.sin(a) * r * 0.5);
+          ctx.lineTo(cx + Math.cos(a + 0.08) * r * 0.1, cy + Math.sin(a + 0.08) * r * 0.1);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Tiny sparkle dots
+        ctx.fillStyle = "#ffffff";
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          const dist = r * (0.55 + (i % 2) * 0.25);
+          ctx.beginPath(); ctx.arc(cx + Math.cos(a) * dist, cy + Math.sin(a) * dist, 0.8, 0, Math.PI * 2); ctx.fill();
+        }
         break;
       }
       case TDSkillId.CELESTIAL_LANCE: {
-        // Spear / lance pointing up-right
+        // Radiant golden lance with holy light rays
+        // Background holy glow
+        const lanceGlow = ctx.createRadialGradient(cx + r * 0.2, cy - r * 0.2, 0, cx, cy, r * 1.1);
+        lanceGlow.addColorStop(0, "rgba(255,240,180,0.35)");
+        lanceGlow.addColorStop(0.5, "rgba(255,215,100,0.1)");
+        lanceGlow.addColorStop(1, "rgba(255,200,50,0.0)");
+        ctx.fillStyle = lanceGlow;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 1.1, 0, Math.PI * 2); ctx.fill();
+        // Light rays emanating from tip
+        ctx.strokeStyle = "rgba(255,240,180,0.3)";
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 6; i++) {
+          const a = -Math.PI / 4 + (i - 2.5) * 0.25;
+          ctx.beginPath();
+          ctx.moveTo(cx + r * 0.45, cy - r * 0.45);
+          ctx.lineTo(cx + r * 0.45 + Math.cos(a) * r * 0.6, cy - r * 0.45 + Math.sin(a) * r * 0.6);
+          ctx.stroke();
+        }
+        // Lance shaft with gradient
+        const shaftGrad = ctx.createLinearGradient(cx - r * 0.7, cy + r * 0.7, cx + r * 0.5, cy - r * 0.5);
+        shaftGrad.addColorStop(0, "rgba(139,115,85,0.9)");
+        shaftGrad.addColorStop(0.5, "rgba(180,160,120,0.95)");
+        shaftGrad.addColorStop(1, "rgba(200,180,140,1)");
+        ctx.strokeStyle = shaftGrad;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(cx - r * 0.6, cy + r * 0.6);
-        ctx.lineTo(cx + r * 0.6, cy - r * 0.6);
+        ctx.moveTo(cx - r * 0.7, cy + r * 0.7);
+        ctx.lineTo(cx + r * 0.35, cy - r * 0.35);
         ctx.stroke();
-        // Spearhead
+        // Lance head (golden triangle)
+        const headGrad = ctx.createLinearGradient(cx + r * 0.2, cy - r * 0.2, cx + r * 0.7, cy - r * 0.7);
+        headGrad.addColorStop(0, "#daa520");
+        headGrad.addColorStop(0.5, "#ffd700");
+        headGrad.addColorStop(1, "#fff8dc");
+        ctx.fillStyle = headGrad;
         ctx.beginPath();
-        ctx.moveTo(cx + r * 0.6, cy - r * 0.6);
-        ctx.lineTo(cx + r * 0.2, cy - r * 0.55);
-        ctx.lineTo(cx + r * 0.55, cy - r * 0.2);
+        ctx.moveTo(cx + r * 0.8, cy - r * 0.8);
+        ctx.lineTo(cx + r * 0.05, cy - r * 0.55);
+        ctx.lineTo(cx + r * 0.15, cy - r * 0.35);
+        ctx.lineTo(cx + r * 0.35, cy - r * 0.15);
+        ctx.lineTo(cx + r * 0.55, cy - r * 0.05);
         ctx.closePath();
         ctx.fill();
-        // Small sparkles
-        ctx.beginPath(); ctx.arc(cx + r * 0.3, cy - r * 0.8, 1.5, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(cx + r * 0.8, cy - r * 0.3, 1, 0, Math.PI * 2); ctx.fill();
+        // Bright tip
+        ctx.fillStyle = "#fffbe6";
+        ctx.beginPath(); ctx.arc(cx + r * 0.65, cy - r * 0.65, r * 0.08, 0, Math.PI * 2); ctx.fill();
+        // Cross-guard ornament
+        ctx.strokeStyle = "#daa520";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.05, cy - r * 0.25);
+        ctx.lineTo(cx + r * 0.25, cy - r * 0.05);
+        ctx.stroke();
+        // Sparkle dots
+        ctx.fillStyle = "rgba(255,255,220,0.8)";
+        ctx.beginPath(); ctx.arc(cx + r * 0.5, cy - r * 0.9, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.9, cy - r * 0.5, 1.0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.3, cy - r * 0.7, 0.8, 0, Math.PI * 2); ctx.fill();
         break;
       }
-      case TDSkillId.THUNDERSTORM:
-      case TDSkillId.LIGHTNING_BOLT:
-      case TDSkillId.CHAIN_LIGHTNING: {
-        // Lightning bolt
+      case TDSkillId.THUNDERSTORM: {
+        // Dramatic storm cloud with multiple lightning bolts
+        // Dark cloud body
+        ctx.fillStyle = "rgba(60,65,90,0.9)";
         ctx.beginPath();
-        ctx.moveTo(cx + r * 0.1, cy - r);
-        ctx.lineTo(cx - r * 0.3, cy - r * 0.1);
-        ctx.lineTo(cx + r * 0.1, cy - r * 0.1);
-        ctx.lineTo(cx - r * 0.2, cy + r);
-        ctx.lineTo(cx + r * 0.2, cy + r * 0.05);
-        ctx.lineTo(cx - r * 0.1, cy + r * 0.05);
+        ctx.arc(cx - r * 0.3, cy - r * 0.35, r * 0.35, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + r * 0.2, cy - r * 0.3, r * 0.4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx, cy - r * 0.5, r * 0.3, 0, Math.PI * 2); ctx.fill();
+        // Cloud highlight
+        ctx.fillStyle = "rgba(100,110,150,0.5)";
+        ctx.beginPath();
+        ctx.arc(cx - r * 0.1, cy - r * 0.55, r * 0.2, 0, Math.PI * 2); ctx.fill();
+        // Main lightning bolt (bright)
+        const boltGrad = ctx.createLinearGradient(cx, cy - r * 0.15, cx, cy + r * 0.95);
+        boltGrad.addColorStop(0, "#ffffff");
+        boltGrad.addColorStop(0.3, color);
+        boltGrad.addColorStop(1, hexToRgba(color, 0.6));
+        ctx.fillStyle = boltGrad;
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.1, cy - r * 0.15);
+        ctx.lineTo(cx - r * 0.2, cy + r * 0.2);
+        ctx.lineTo(cx + r * 0.05, cy + r * 0.15);
+        ctx.lineTo(cx - r * 0.15, cy + r * 0.85);
+        ctx.lineTo(cx + r * 0.05, cy + r * 0.4);
+        ctx.lineTo(cx + r * 0.25, cy + r * 0.45);
+        ctx.lineTo(cx + r * 0.2, cy - r * 0.15);
         ctx.closePath();
         ctx.fill();
+        // Secondary smaller bolt (left)
+        ctx.fillStyle = hexToRgba(color, 0.5);
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.35, cy - r * 0.1);
+        ctx.lineTo(cx - r * 0.5, cy + r * 0.25);
+        ctx.lineTo(cx - r * 0.35, cy + r * 0.2);
+        ctx.lineTo(cx - r * 0.45, cy + r * 0.6);
+        ctx.lineTo(cx - r * 0.3, cy + r * 0.3);
+        ctx.lineTo(cx - r * 0.2, cy + r * 0.35);
+        ctx.lineTo(cx - r * 0.25, cy - r * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        // Small branch (right)
+        ctx.strokeStyle = hexToRgba(color, 0.4);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.2, cy + r * 0.3);
+        ctx.lineTo(cx + r * 0.45, cy + r * 0.5);
+        ctx.stroke();
+        // Electric glow at cloud base
+        ctx.fillStyle = hexToRgba(color, 0.2);
+        ctx.beginPath(); ctx.arc(cx, cy - r * 0.1, r * 0.3, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case TDSkillId.LIGHTNING_BOLT:
+      case TDSkillId.CHAIN_LIGHTNING: {
+        // Electric branching lightning with glow
+        // Background electric glow
+        const elecGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.0);
+        elecGlow.addColorStop(0, hexToRgba(color, 0.25));
+        elecGlow.addColorStop(1, hexToRgba(color, 0.0));
+        ctx.fillStyle = elecGlow;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 1.0, 0, Math.PI * 2); ctx.fill();
+        // Main bolt with white-hot core
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.15, cy - r * 0.95);
+        ctx.lineTo(cx - r * 0.15, cy - r * 0.3);
+        ctx.lineTo(cx + r * 0.15, cy - r * 0.15);
+        ctx.lineTo(cx - r * 0.1, cy + r * 0.35);
+        ctx.lineTo(cx + r * 0.1, cy + r * 0.3);
+        ctx.lineTo(cx - r * 0.05, cy + r * 0.95);
+        ctx.stroke();
+        // White core
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = "rgba(255,255,255,0.8)";
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.15, cy - r * 0.95);
+        ctx.lineTo(cx - r * 0.15, cy - r * 0.3);
+        ctx.lineTo(cx + r * 0.15, cy - r * 0.15);
+        ctx.lineTo(cx - r * 0.1, cy + r * 0.35);
+        ctx.lineTo(cx + r * 0.1, cy + r * 0.3);
+        ctx.lineTo(cx - r * 0.05, cy + r * 0.95);
+        ctx.stroke();
+        // Branch 1 (right)
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = hexToRgba(color, 0.7);
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.15, cy - r * 0.15);
+        ctx.lineTo(cx + r * 0.45, cy - r * 0.05);
+        ctx.lineTo(cx + r * 0.55, cy + r * 0.2);
+        ctx.stroke();
+        // Branch 2 (left)
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.1, cy + r * 0.35);
+        ctx.lineTo(cx - r * 0.4, cy + r * 0.45);
+        ctx.lineTo(cx - r * 0.55, cy + r * 0.65);
+        ctx.stroke();
+        // Branch 3 (right lower)
+        ctx.strokeStyle = hexToRgba(color, 0.4);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.1, cy + r * 0.3);
+        ctx.lineTo(cx + r * 0.35, cy + r * 0.55);
+        ctx.stroke();
+        // Spark dots
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(cx + r * 0.55, cy + r * 0.2, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - r * 0.55, cy + r * 0.65, 1.0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.15, cy - r * 0.95, 1.5, 0, Math.PI * 2); ctx.fill();
         break;
       }
       case TDSkillId.FROST_NOVA:
       case TDSkillId.ICE_STORM: {
-        // Snowflake / crystal
+        // Intricate crystal ice burst pattern
+        // Background frost glow
+        const frostGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.1);
+        frostGlow.addColorStop(0, "rgba(180,220,255,0.3)");
+        frostGlow.addColorStop(0.5, "rgba(100,180,255,0.1)");
+        frostGlow.addColorStop(1, "rgba(80,160,255,0.0)");
+        ctx.fillStyle = frostGlow;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 1.1, 0, Math.PI * 2); ctx.fill();
+        // Main crystal arms (6-fold symmetry)
         for (let i = 0; i < 6; i++) {
           const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+          // Main arm with gradient thickness
+          const armGrad = ctx.createLinearGradient(cx, cy, cx + Math.cos(a) * r * 0.95, cy + Math.sin(a) * r * 0.95);
+          armGrad.addColorStop(0, "rgba(200,230,255,0.95)");
+          armGrad.addColorStop(1, hexToRgba(color, 0.6));
+          ctx.strokeStyle = armGrad;
+          ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(cx, cy);
-          ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+          ctx.lineTo(cx + Math.cos(a) * r * 0.95, cy + Math.sin(a) * r * 0.95);
           ctx.stroke();
-          // Small branches
-          const bx = cx + Math.cos(a) * r * 0.6;
-          const by = cy + Math.sin(a) * r * 0.6;
+          // Primary branches at 60%
+          const bx1 = cx + Math.cos(a) * r * 0.55;
+          const by1 = cy + Math.sin(a) * r * 0.55;
+          ctx.strokeStyle = hexToRgba(color, 0.7);
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(bx1, by1);
+          ctx.lineTo(bx1 + Math.cos(a + 1.0) * r * 0.3, by1 + Math.sin(a + 1.0) * r * 0.3);
+          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(bx1, by1);
+          ctx.lineTo(bx1 + Math.cos(a - 1.0) * r * 0.3, by1 + Math.sin(a - 1.0) * r * 0.3);
+          ctx.stroke();
+          // Secondary branches at 35%
+          const bx2 = cx + Math.cos(a) * r * 0.35;
+          const by2 = cy + Math.sin(a) * r * 0.35;
+          ctx.strokeStyle = hexToRgba(color, 0.45);
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(bx2, by2);
+          ctx.lineTo(bx2 + Math.cos(a + 0.9) * r * 0.18, by2 + Math.sin(a + 0.9) * r * 0.18);
+          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(bx2, by2);
+          ctx.lineTo(bx2 + Math.cos(a - 0.9) * r * 0.18, by2 + Math.sin(a - 0.9) * r * 0.18);
+          ctx.stroke();
+          // Tip diamonds
+          const tx = cx + Math.cos(a) * r * 0.9;
+          const ty = cy + Math.sin(a) * r * 0.9;
+          ctx.fillStyle = "rgba(220,240,255,0.8)";
           ctx.beginPath();
-          ctx.moveTo(bx, by);
-          ctx.lineTo(bx + Math.cos(a + 0.8) * r * 0.3, by + Math.sin(a + 0.8) * r * 0.3);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(bx, by);
-          ctx.lineTo(bx + Math.cos(a - 0.8) * r * 0.3, by + Math.sin(a - 0.8) * r * 0.3);
-          ctx.stroke();
+          ctx.moveTo(tx + Math.cos(a) * r * 0.1, ty + Math.sin(a) * r * 0.1);
+          ctx.lineTo(tx + Math.cos(a + Math.PI / 2) * r * 0.04, ty + Math.sin(a + Math.PI / 2) * r * 0.04);
+          ctx.lineTo(tx - Math.cos(a) * r * 0.04, ty - Math.sin(a) * r * 0.04);
+          ctx.lineTo(tx - Math.cos(a + Math.PI / 2) * r * 0.04, ty - Math.sin(a + Math.PI / 2) * r * 0.04);
+          ctx.closePath();
+          ctx.fill();
         }
+        // Center crystal
+        ctx.fillStyle = "rgba(220,240,255,0.9)";
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+          const px = cx + Math.cos(a) * r * 0.12;
+          const py = cy + Math.sin(a) * r * 0.12;
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        // Bright center dot
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.05, 0, Math.PI * 2); ctx.fill();
         break;
       }
       case TDSkillId.METEOR_SHOWER:
       case TDSkillId.FIRE_BREATH: {
-        // Flame
+        // Dramatic fireball/meteor with glowing trail
+        // Fire trail (behind)
+        const trailGrad = ctx.createLinearGradient(cx - r * 0.4, cy - r * 0.7, cx + r * 0.3, cy + r * 0.5);
+        trailGrad.addColorStop(0, "rgba(255,100,20,0.0)");
+        trailGrad.addColorStop(0.3, "rgba(255,120,30,0.3)");
+        trailGrad.addColorStop(0.7, "rgba(255,80,10,0.5)");
+        trailGrad.addColorStop(1, "rgba(200,40,0,0.1)");
+        ctx.fillStyle = trailGrad;
         ctx.beginPath();
-        ctx.moveTo(cx, cy - r * 0.9);
-        ctx.bezierCurveTo(cx + r * 0.8, cy - r * 0.3, cx + r * 0.5, cy + r * 0.5, cx, cy + r);
-        ctx.bezierCurveTo(cx - r * 0.5, cy + r * 0.5, cx - r * 0.8, cy - r * 0.3, cx, cy - r * 0.9);
+        ctx.moveTo(cx + r * 0.1, cy + r * 0.1);
+        ctx.bezierCurveTo(cx - r * 0.5, cy - r * 0.2, cx - r * 0.7, cy - r * 0.8, cx - r * 0.3, cy - r * 1.0);
+        ctx.bezierCurveTo(cx + r * 0.1, cy - r * 0.9, cx + r * 0.4, cy - r * 0.5, cx + r * 0.1, cy + r * 0.1);
         ctx.fill();
-        // Inner flame
-        ctx.fillStyle = "rgba(255,255,200,0.7)";
+        // Outer fire layer
+        const fireGrad = ctx.createRadialGradient(cx + r * 0.05, cy + r * 0.15, r * 0.1, cx, cy + r * 0.1, r * 0.7);
+        fireGrad.addColorStop(0, "#ffffcc");
+        fireGrad.addColorStop(0.3, "#ffcc33");
+        fireGrad.addColorStop(0.6, "#ff6600");
+        fireGrad.addColorStop(1, "rgba(200,30,0,0.3)");
+        ctx.fillStyle = fireGrad;
         ctx.beginPath();
         ctx.moveTo(cx, cy - r * 0.3);
-        ctx.bezierCurveTo(cx + r * 0.3, cy, cx + r * 0.2, cy + r * 0.4, cx, cy + r * 0.6);
-        ctx.bezierCurveTo(cx - r * 0.2, cy + r * 0.4, cx - r * 0.3, cy, cx, cy - r * 0.3);
+        ctx.bezierCurveTo(cx + r * 0.7, cy - r * 0.1, cx + r * 0.65, cy + r * 0.7, cx, cy + r * 0.9);
+        ctx.bezierCurveTo(cx - r * 0.65, cy + r * 0.7, cx - r * 0.7, cy - r * 0.1, cx, cy - r * 0.3);
         ctx.fill();
+        // Meteor rock core
+        const rockGrad = ctx.createRadialGradient(cx - r * 0.05, cy + r * 0.2, 0, cx, cy + r * 0.15, r * 0.35);
+        rockGrad.addColorStop(0, "#aa6633");
+        rockGrad.addColorStop(0.5, "#884422");
+        rockGrad.addColorStop(1, "#663311");
+        ctx.fillStyle = rockGrad;
+        ctx.beginPath(); ctx.arc(cx, cy + r * 0.15, r * 0.3, 0, Math.PI * 2); ctx.fill();
+        // Hot cracks on rock
+        ctx.strokeStyle = "#ffaa44";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.15, cy + r * 0.05);
+        ctx.lineTo(cx, cy + r * 0.2);
+        ctx.lineTo(cx + r * 0.1, cy + r * 0.1);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.05, cy + r * 0.25);
+        ctx.lineTo(cx - r * 0.05, cy + r * 0.35);
+        ctx.stroke();
+        // Ember particles
+        ctx.fillStyle = "#ffdd66";
+        ctx.beginPath(); ctx.arc(cx - r * 0.5, cy - r * 0.5, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.35, cy - r * 0.4, 0.9, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - r * 0.25, cy - r * 0.7, 0.7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ff8833";
+        ctx.beginPath(); ctx.arc(cx + r * 0.5, cy - r * 0.15, 1.0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - r * 0.6, cy - r * 0.3, 0.8, 0, Math.PI * 2); ctx.fill();
         break;
       }
       case TDSkillId.DIVINE_SHIELD: {
-        // Shield shape
+        // Ornate golden shield with divine glow
+        // Background holy light
+        const shieldGlow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 1.1);
+        shieldGlow.addColorStop(0, "rgba(255,230,150,0.3)");
+        shieldGlow.addColorStop(0.5, "rgba(255,215,100,0.1)");
+        shieldGlow.addColorStop(1, "rgba(255,200,50,0.0)");
+        ctx.fillStyle = shieldGlow;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 1.1, 0, Math.PI * 2); ctx.fill();
+        // Shield body gradient
+        const sGrad = ctx.createLinearGradient(cx - r * 0.6, cy - r * 0.5, cx + r * 0.6, cy + r * 0.5);
+        sGrad.addColorStop(0, "#daa520");
+        sGrad.addColorStop(0.3, "#ffd700");
+        sGrad.addColorStop(0.5, "#ffec8b");
+        sGrad.addColorStop(0.7, "#ffd700");
+        sGrad.addColorStop(1, "#b8860b");
+        ctx.fillStyle = sGrad;
         ctx.beginPath();
-        ctx.moveTo(cx, cy - r * 0.85);
-        ctx.lineTo(cx + r * 0.8, cy - r * 0.4);
-        ctx.lineTo(cx + r * 0.7, cy + r * 0.3);
-        ctx.lineTo(cx, cy + r * 0.9);
-        ctx.lineTo(cx - r * 0.7, cy + r * 0.3);
-        ctx.lineTo(cx - r * 0.8, cy - r * 0.4);
+        ctx.moveTo(cx, cy - r * 0.9);
+        ctx.lineTo(cx + r * 0.85, cy - r * 0.35);
+        ctx.quadraticCurveTo(cx + r * 0.8, cy + r * 0.3, cx, cy + r * 0.95);
+        ctx.quadraticCurveTo(cx - r * 0.8, cy + r * 0.3, cx - r * 0.85, cy - r * 0.35);
+        ctx.closePath();
+        ctx.fill();
+        // Shield border
+        ctx.strokeStyle = "#b8860b";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Inner shield detail border
+        ctx.strokeStyle = "rgba(255,248,220,0.5)";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.65);
+        ctx.lineTo(cx + r * 0.6, cy - r * 0.2);
+        ctx.quadraticCurveTo(cx + r * 0.55, cy + r * 0.2, cx, cy + r * 0.7);
+        ctx.quadraticCurveTo(cx - r * 0.55, cy + r * 0.2, cx - r * 0.6, cy - r * 0.2);
         ctx.closePath();
         ctx.stroke();
-        // Cross in center
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - r * 0.35);
-        ctx.lineTo(cx, cy + r * 0.35);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(cx - r * 0.25, cy - r * 0.05);
-        ctx.lineTo(cx + r * 0.25, cy - r * 0.05);
-        ctx.stroke();
+        // Ornate cross in center
+        ctx.fillStyle = "rgba(255,255,240,0.85)";
+        // Vertical
+        ctx.fillRect(cx - r * 0.06, cy - r * 0.4, r * 0.12, r * 0.7);
+        // Horizontal
+        ctx.fillRect(cx - r * 0.28, cy - r * 0.12, r * 0.56, r * 0.12);
+        // Cross end caps (flared)
+        ctx.beginPath(); ctx.arc(cx, cy - r * 0.4, r * 0.08, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy + r * 0.3, r * 0.08, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - r * 0.28, cy - r * 0.06, r * 0.06, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.28, cy - r * 0.06, r * 0.06, 0, Math.PI * 2); ctx.fill();
+        // Top gem
+        ctx.fillStyle = "#4488ff";
+        ctx.beginPath(); ctx.arc(cx, cy - r * 0.55, r * 0.07, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.beginPath(); ctx.arc(cx - r * 0.02, cy - r * 0.57, r * 0.03, 0, Math.PI * 2); ctx.fill();
         break;
       }
       case TDSkillId.HEALING_FLAME: {
-        // Heart / cross
+        // Phoenix-like healing flame with green/gold sparkles
+        // Background healing glow
+        const healGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.0);
+        healGlow.addColorStop(0, "rgba(100,255,150,0.25)");
+        healGlow.addColorStop(0.5, "rgba(50,200,100,0.1)");
+        healGlow.addColorStop(1, "rgba(30,150,60,0.0)");
+        ctx.fillStyle = healGlow;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 1.0, 0, Math.PI * 2); ctx.fill();
+        // Outer green flame
+        const healFlame = ctx.createRadialGradient(cx, cy + r * 0.1, r * 0.1, cx, cy, r * 0.8);
+        healFlame.addColorStop(0, "#ffffcc");
+        healFlame.addColorStop(0.3, "#88ff88");
+        healFlame.addColorStop(0.6, "#44cc66");
+        healFlame.addColorStop(1, "rgba(30,150,60,0.2)");
+        ctx.fillStyle = healFlame;
         ctx.beginPath();
-        ctx.moveTo(cx, cy + r * 0.7);
-        ctx.bezierCurveTo(cx - r, cy, cx - r, cy - r * 0.6, cx, cy - r * 0.2);
-        ctx.bezierCurveTo(cx + r, cy - r * 0.6, cx + r, cy, cx, cy + r * 0.7);
+        ctx.moveTo(cx, cy - r * 0.95);
+        ctx.bezierCurveTo(cx + r * 0.9, cy - r * 0.4, cx + r * 0.55, cy + r * 0.5, cx, cy + r * 0.7);
+        ctx.bezierCurveTo(cx - r * 0.55, cy + r * 0.5, cx - r * 0.9, cy - r * 0.4, cx, cy - r * 0.95);
         ctx.fill();
+        // Inner bright core
+        ctx.fillStyle = "rgba(220,255,220,0.8)";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.4);
+        ctx.bezierCurveTo(cx + r * 0.35, cy - r * 0.1, cx + r * 0.25, cy + r * 0.35, cx, cy + r * 0.45);
+        ctx.bezierCurveTo(cx - r * 0.25, cy + r * 0.35, cx - r * 0.35, cy - r * 0.1, cx, cy - r * 0.4);
+        ctx.fill();
+        // Phoenix wing hints
+        ctx.strokeStyle = "rgba(100,220,130,0.6)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.15, cy - r * 0.2);
+        ctx.bezierCurveTo(cx - r * 0.8, cy - r * 0.6, cx - r * 0.9, cy + r * 0.1, cx - r * 0.5, cy + r * 0.3);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.15, cy - r * 0.2);
+        ctx.bezierCurveTo(cx + r * 0.8, cy - r * 0.6, cx + r * 0.9, cy + r * 0.1, cx + r * 0.5, cy + r * 0.3);
+        ctx.stroke();
+        // Gold/green sparkle dots
+        ctx.fillStyle = "#ffd700";
+        ctx.beginPath(); ctx.arc(cx - r * 0.5, cy - r * 0.5, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.5, cy - r * 0.4, 1.0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.3, cy - r * 0.7, 0.8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#88ffaa";
+        ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.7, 0.9, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.6, cy - r * 0.2, 0.7, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - r * 0.6, cy - r * 0.1, 0.8, 0, Math.PI * 2); ctx.fill();
         break;
       }
       case TDSkillId.BOOST: {
-        // Speed arrows / chevrons
-        for (let i = 0; i < 3; i++) {
-          const ox = (i - 1) * r * 0.45;
+        // Dynamic speed arrows with motion blur effect
+        // Motion blur streaks in background
+        ctx.strokeStyle = hexToRgba(color, 0.15);
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 5; i++) {
+          const y = cy - r * 0.6 + i * r * 0.3;
           ctx.beginPath();
-          ctx.moveTo(cx + ox - r * 0.15, cy + r * 0.3);
-          ctx.lineTo(cx + ox, cy - r * 0.3);
-          ctx.lineTo(cx + ox + r * 0.15, cy + r * 0.3);
+          ctx.moveTo(cx - r * 0.9, y);
+          ctx.lineTo(cx + r * 0.5, y);
           ctx.stroke();
         }
+        // Three chevron arrows with gradient
+        for (let i = 0; i < 3; i++) {
+          const ox = (i - 1) * r * 0.5;
+          const alpha = 0.4 + i * 0.3;
+          const lw = 1.5 + i * 0.5;
+          // Arrow glow
+          ctx.strokeStyle = hexToRgba(color, alpha * 0.3);
+          ctx.lineWidth = lw + 3;
+          ctx.beginPath();
+          ctx.moveTo(cx + ox - r * 0.2, cy + r * 0.45);
+          ctx.lineTo(cx + ox, cy - r * 0.45);
+          ctx.lineTo(cx + ox + r * 0.2, cy + r * 0.45);
+          ctx.stroke();
+          // Arrow body
+          ctx.strokeStyle = hexToRgba(color, alpha);
+          ctx.lineWidth = lw;
+          ctx.beginPath();
+          ctx.moveTo(cx + ox - r * 0.2, cy + r * 0.45);
+          ctx.lineTo(cx + ox, cy - r * 0.45);
+          ctx.lineTo(cx + ox + r * 0.2, cy + r * 0.45);
+          ctx.stroke();
+          // Bright tip
+          if (i === 2) {
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath(); ctx.arc(cx + ox, cy - r * 0.45, 1.5, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        // Speed particles
+        ctx.fillStyle = hexToRgba(color, 0.5);
+        ctx.beginPath(); ctx.arc(cx - r * 0.7, cy - r * 0.2, 1.0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - r * 0.6, cy + r * 0.3, 0.8, 0, Math.PI * 2); ctx.fill();
         break;
       }
       case TDSkillId.DRAGON_ROAR: {
-        // Sound waves / roar
-        ctx.beginPath(); ctx.arc(cx, cy, r * 0.2, 0, Math.PI * 2); ctx.fill();
-        for (let i = 1; i <= 3; i++) {
-          ctx.beginPath();
-          ctx.arc(cx, cy, r * 0.2 + i * r * 0.25, -Math.PI * 0.4, Math.PI * 0.4);
-          ctx.stroke();
-        }
-        break;
-      }
-      case TDSkillId.WING_GUST: {
-        // Wing shape
+        // Dragon head silhouette with shockwave
+        // Shockwave rings
+        ctx.strokeStyle = hexToRgba(color, 0.15);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx + r * 0.3, cy, r * 0.8, -Math.PI * 0.5, Math.PI * 0.5); ctx.stroke();
+        ctx.strokeStyle = hexToRgba(color, 0.25);
+        ctx.beginPath(); ctx.arc(cx + r * 0.2, cy, r * 0.6, -Math.PI * 0.45, Math.PI * 0.45); ctx.stroke();
+        ctx.strokeStyle = hexToRgba(color, 0.35);
+        ctx.beginPath(); ctx.arc(cx + r * 0.1, cy, r * 0.4, -Math.PI * 0.4, Math.PI * 0.4); ctx.stroke();
+        // Dragon head silhouette (facing right)
+        ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.bezierCurveTo(cx - r * 0.3, cy - r * 0.8, cx - r, cy - r * 0.5, cx - r, cy + r * 0.2);
-        ctx.bezierCurveTo(cx - r * 0.5, cy, cx - r * 0.2, cy + r * 0.3, cx, cy);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.bezierCurveTo(cx + r * 0.3, cy - r * 0.8, cx + r, cy - r * 0.5, cx + r, cy + r * 0.2);
-        ctx.bezierCurveTo(cx + r * 0.5, cy, cx + r * 0.2, cy + r * 0.3, cx, cy);
-        ctx.fill();
-        break;
-      }
-      case TDSkillId.SHADOW_DIVE: {
-        // Downward dagger / dive
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - r * 0.9);
-        ctx.lineTo(cx + r * 0.2, cy + r * 0.2);
-        ctx.lineTo(cx, cy + r * 0.9);
-        ctx.lineTo(cx - r * 0.2, cy + r * 0.2);
+        // Snout
+        ctx.moveTo(cx + r * 0.1, cy - r * 0.05);
+        ctx.lineTo(cx + r * 0.1, cy + r * 0.15);
+        // Lower jaw
+        ctx.lineTo(cx - r * 0.15, cy + r * 0.25);
+        ctx.lineTo(cx - r * 0.3, cy + r * 0.15);
+        // Neck
+        ctx.lineTo(cx - r * 0.5, cy + r * 0.5);
+        ctx.lineTo(cx - r * 0.6, cy + r * 0.3);
+        // Back of head
+        ctx.lineTo(cx - r * 0.55, cy - r * 0.15);
+        // Top of head
+        ctx.lineTo(cx - r * 0.4, cy - r * 0.4);
+        // Horn
+        ctx.lineTo(cx - r * 0.25, cy - r * 0.7);
+        ctx.lineTo(cx - r * 0.15, cy - r * 0.35);
+        // Crest
+        ctx.lineTo(cx, cy - r * 0.25);
+        ctx.lineTo(cx + r * 0.05, cy - r * 0.15);
         ctx.closePath();
         ctx.fill();
-        // Cross guard
+        // Eye
+        ctx.fillStyle = "#ff4444";
+        ctx.beginPath(); ctx.arc(cx - r * 0.25, cy - r * 0.1, r * 0.06, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(cx - r * 0.24, cy - r * 0.11, r * 0.025, 0, Math.PI * 2); ctx.fill();
+        // Jaw detail line
+        ctx.strokeStyle = hexToRgba(color, 0.4);
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.moveTo(cx - r * 0.5, cy + r * 0.1);
-        ctx.lineTo(cx + r * 0.5, cy + r * 0.1);
-        ctx.lineWidth = 2;
+        ctx.moveTo(cx + r * 0.08, cy + r * 0.05);
+        ctx.lineTo(cx - r * 0.2, cy + r * 0.1);
         ctx.stroke();
         break;
       }
+      case TDSkillId.WING_GUST: {
+        // Swooping feathered wing with air currents
+        // Air current lines
+        ctx.strokeStyle = hexToRgba(color, 0.2);
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 4; i++) {
+          const y = cy + r * 0.2 + i * r * 0.15;
+          ctx.beginPath();
+          ctx.moveTo(cx - r * 0.8, y);
+          ctx.quadraticCurveTo(cx, y - r * 0.1, cx + r * 0.8, y + r * 0.05);
+          ctx.stroke();
+        }
+        // Left wing
+        const wingGrad1 = ctx.createLinearGradient(cx - r, cy - r * 0.5, cx, cy);
+        wingGrad1.addColorStop(0, hexToRgba(color, 0.5));
+        wingGrad1.addColorStop(1, hexToRgba(color, 0.9));
+        ctx.fillStyle = wingGrad1;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + r * 0.1);
+        ctx.bezierCurveTo(cx - r * 0.2, cy - r * 0.6, cx - r * 0.8, cy - r * 0.9, cx - r * 0.95, cy - r * 0.3);
+        ctx.bezierCurveTo(cx - r * 0.85, cy - r * 0.1, cx - r * 0.5, cy + r * 0.2, cx, cy + r * 0.1);
+        ctx.fill();
+        // Right wing
+        const wingGrad2 = ctx.createLinearGradient(cx, cy, cx + r, cy - r * 0.5);
+        wingGrad2.addColorStop(0, hexToRgba(color, 0.9));
+        wingGrad2.addColorStop(1, hexToRgba(color, 0.5));
+        ctx.fillStyle = wingGrad2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + r * 0.1);
+        ctx.bezierCurveTo(cx + r * 0.2, cy - r * 0.6, cx + r * 0.8, cy - r * 0.9, cx + r * 0.95, cy - r * 0.3);
+        ctx.bezierCurveTo(cx + r * 0.85, cy - r * 0.1, cx + r * 0.5, cy + r * 0.2, cx, cy + r * 0.1);
+        ctx.fill();
+        // Feather detail lines
+        ctx.strokeStyle = "rgba(255,255,255,0.25)";
+        ctx.lineWidth = 0.7;
+        for (let i = 0; i < 4; i++) {
+          const t = 0.2 + i * 0.18;
+          // Left feathers
+          const lx = cx - r * t * 1.1;
+          const ly = cy - r * t * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(cx - r * 0.05, cy);
+          ctx.quadraticCurveTo(lx + r * 0.1, ly + r * 0.1, lx, ly);
+          ctx.stroke();
+          // Right feathers
+          ctx.beginPath();
+          ctx.moveTo(cx + r * 0.05, cy);
+          ctx.quadraticCurveTo(cx + r * t * 1.1 - r * 0.1, ly + r * 0.1, cx + r * t * 1.1, ly);
+          ctx.stroke();
+        }
+        // Central body dot
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.beginPath(); ctx.arc(cx, cy + r * 0.05, r * 0.06, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case TDSkillId.SHADOW_DIVE: {
+        // Dark shadow portal / vortex
+        // Outer vortex glow
+        const vortexGlow = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 1.0);
+        vortexGlow.addColorStop(0, "rgba(80,40,120,0.6)");
+        vortexGlow.addColorStop(0.5, "rgba(40,20,80,0.3)");
+        vortexGlow.addColorStop(1, "rgba(20,10,40,0.0)");
+        ctx.fillStyle = vortexGlow;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 1.0, 0, Math.PI * 2); ctx.fill();
+        // Concentric elliptical rings (vortex)
+        for (let i = 4; i >= 0; i--) {
+          const rScale = 0.2 + i * 0.17;
+          const alpha = 0.15 + (4 - i) * 0.12;
+          ctx.strokeStyle = `rgba(160,100,220,${alpha})`;
+          ctx.lineWidth = 1.2;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.scale(1, 0.55);
+          ctx.beginPath();
+          ctx.arc(0, 0, r * rScale, 0, Math.PI * 2);
+          ctx.restore();
+          ctx.stroke();
+        }
+        // Dark center
+        const darkCore = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.25);
+        darkCore.addColorStop(0, "rgba(0,0,0,0.9)");
+        darkCore.addColorStop(1, "rgba(30,15,50,0.5)");
+        ctx.fillStyle = darkCore;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(1, 0.55);
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
+        ctx.restore();
+        ctx.fill();
+        // Downward arrow/figure diving in
+        ctx.fillStyle = "rgba(180,130,255,0.7)";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.7);
+        ctx.lineTo(cx + r * 0.12, cy - r * 0.3);
+        ctx.lineTo(cx + r * 0.06, cy - r * 0.3);
+        ctx.lineTo(cx + r * 0.06, cy - r * 0.1);
+        ctx.lineTo(cx - r * 0.06, cy - r * 0.1);
+        ctx.lineTo(cx - r * 0.06, cy - r * 0.3);
+        ctx.lineTo(cx - r * 0.12, cy - r * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        // Purple sparkles
+        ctx.fillStyle = "rgba(200,150,255,0.6)";
+        ctx.beginPath(); ctx.arc(cx - r * 0.4, cy - r * 0.3, 1.0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + r * 0.45, cy - r * 0.15, 0.8, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - r * 0.2, cy + r * 0.25, 0.9, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
       default: {
-        // Generic magic circle
-        ctx.beginPath(); ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2); ctx.fill();
+        // Generic magic circle with runes
+        ctx.strokeStyle = hexToRgba(color, 0.6);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.75, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.45, 0, Math.PI * 2); ctx.stroke();
+        // Rune marks
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(a) * r * 0.45, cy + Math.sin(a) * r * 0.45);
+          ctx.lineTo(cx + Math.cos(a) * r * 0.75, cy + Math.sin(a) * r * 0.75);
+          ctx.stroke();
+        }
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.15, 0, Math.PI * 2); ctx.fill();
         break;
       }
     }
@@ -819,39 +1382,39 @@ export class ThreeDragonHUD {
       const b = c & 0xff;
 
       slot.style.cssText = `
-        width: 60px; height: 58px; position: relative;
-        border-radius: 6px;
-        border: 1px solid rgba(${r},${g},${b},0.35);
-        background: linear-gradient(180deg, #22223a 0%, #161628 50%, #0e0e1c 100%);
+        width: 72px; height: 68px; position: relative;
+        border-radius: 8px;
+        border: 1px solid rgba(${r},${g},${b},0.4);
+        background: linear-gradient(180deg, #25254a 0%, #1a1a36 30%, #121224 60%, #0e0e1c 100%);
         text-align: center;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
         overflow: hidden;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.4),
-                    0 0 8px rgba(${r},${g},${b},0.1);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.5),
+                    0 0 10px rgba(${r},${g},${b},0.12), 0 2px 6px rgba(0,0,0,0.4);
       `;
 
       // Beveled border effect (inner highlight + shadow)
       const bevel = document.createElement("div");
       bevel.style.cssText = `
-        position: absolute; inset: 0; border-radius: 6px; pointer-events: none;
-        border-top: 1px solid rgba(255,255,255,0.08);
-        border-left: 1px solid rgba(255,255,255,0.05);
-        border-bottom: 1px solid rgba(0,0,0,0.5);
-        border-right: 1px solid rgba(0,0,0,0.3);
+        position: absolute; inset: 0; border-radius: 8px; pointer-events: none;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        border-left: 1px solid rgba(255,255,255,0.06);
+        border-bottom: 1px solid rgba(0,0,0,0.6);
+        border-right: 1px solid rgba(0,0,0,0.4);
       `;
       slot.appendChild(bevel);
 
       // Rune border pattern
       const runeCanvas = document.createElement("canvas");
-      runeCanvas.width = 62;
-      runeCanvas.height = 60;
+      runeCanvas.width = 74;
+      runeCanvas.height = 70;
       const rctx = runeCanvas.getContext("2d")!;
-      rctx.strokeStyle = `rgba(${r},${g},${b},0.15)`;
-      rctx.lineWidth = 0.5;
+      rctx.strokeStyle = `rgba(${r},${g},${b},0.18)`;
+      rctx.lineWidth = 0.6;
       // Draw subtle rune-like corner marks
-      const cw = 62, ch = 60;
-      const markLen = 8;
+      const cw = 74, ch = 70;
+      const markLen = 10;
       // Top-left corner
       rctx.beginPath(); rctx.moveTo(2, markLen); rctx.lineTo(2, 2); rctx.lineTo(markLen, 2); rctx.stroke();
       // Top-right corner
@@ -873,7 +1436,7 @@ export class ThreeDragonHUD {
       slot.appendChild(runeBorder);
 
       // Canvas-drawn skill icon
-      const iconSize = 28;
+      const iconSize = 36;
       const iconCanvas = document.createElement("canvas");
       iconCanvas.width = iconSize;
       iconCanvas.height = iconSize;
@@ -908,9 +1471,9 @@ export class ThreeDragonHUD {
       // Name
       const name = document.createElement("div");
       name.style.cssText = `
-        font-size: 6px; color: #777; margin-top: 0px;
+        font-size: 7px; color: #888; margin-top: 1px;
         letter-spacing: 0.5px; text-transform: uppercase;
-        line-height: 1; max-width: 56px;
+        line-height: 1; max-width: 66px;
         overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
       `;
       name.textContent = cfg.name;
@@ -921,7 +1484,7 @@ export class ThreeDragonHUD {
       cdOverlay.style.cssText = `
         position: absolute; inset: 0;
         background: conic-gradient(from 0deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 0%, transparent 0%);
-        border-radius: 6px;
+        border-radius: 8px;
         opacity: 0;
         pointer-events: none;
         z-index: 2;
@@ -942,9 +1505,9 @@ export class ThreeDragonHUD {
       // Active glow
       const activeGlow = document.createElement("div");
       activeGlow.style.cssText = `
-        position: absolute; inset: -2px; border-radius: 8px;
+        position: absolute; inset: -2px; border-radius: 10px;
         border: 2px solid ${colorHex}cc;
-        box-shadow: 0 0 10px ${colorHex}66, 0 0 20px ${colorHex}33, inset 0 0 8px ${colorHex}22;
+        box-shadow: 0 0 12px ${colorHex}66, 0 0 24px ${colorHex}33, inset 0 0 10px ${colorHex}22;
         opacity: 0;
         transition: opacity 0.15s;
       `;

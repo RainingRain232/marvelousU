@@ -70,11 +70,15 @@ export class ViewManager {
 
     await this.app.init({
       background: "#1a1a2e",
+      backgroundAlpha: 0, // Create WebGL context with alpha support (for Tekken 3D overlay)
       resizeTo: window,
       antialias: false, // pixel-art style; disable for performance
       autoDensity: true,
       resolution: window.devicePixelRatio ?? 1,
     });
+
+    // Default to opaque — game modes that need transparency will set alpha=0
+    this.app.renderer.background.alpha = 1;
 
     mountPoint.appendChild(this.app.canvas);
 
