@@ -36,8 +36,10 @@ export class CamelotCityRenderer {
   private wallLayer = new Container();
   private decorLayer = new Container();
   private outsideFeatureLayer = new Container();
+  private envPropsLayer = new Container();
   private dayNightOverlay = new Graphics();
   private windowLightsLayer = new Graphics();
+  private chimneySmoke = new Graphics();
   private particleGfx = new Graphics();
 
   init(): void {
@@ -49,18 +51,22 @@ export class CamelotCityRenderer {
     this.wallLayer.removeChildren();
     this.decorLayer.removeChildren();
     this.outsideFeatureLayer.removeChildren();
+    this.envPropsLayer.removeChildren();
 
     this.drawGround();
     this.drawRoads();
     this.drawOutsideFeatures();
+    this.drawEnvironmentProps();
     this.drawWalls();
 
     this.container.addChild(this.groundLayer);
     this.container.addChild(this.roadLayer);
     this.container.addChild(this.outsideFeatureLayer);
+    this.container.addChild(this.envPropsLayer);
     this.container.addChild(this.buildingLayer);
     this.container.addChild(this.wallLayer);
     this.container.addChild(this.decorLayer);
+    this.container.addChild(this.chimneySmoke);
     this.container.addChild(this.windowLightsLayer);
     this.container.addChild(this.dayNightOverlay);
     this.container.addChild(this.particleGfx);
@@ -70,38 +76,54 @@ export class CamelotCityRenderer {
   private drawGround(): void {
     const g = new Graphics();
 
-    // Base grass
-    g.rect(0, 0, WW, WH).fill({ color: 0x4a8c3f });
+    // Base grass with richer color
+    g.rect(0, 0, WW, WH).fill({ color: 0x3E7A33 });
 
-    // Subtle grass variation patches
+    // Large grass variation patches for natural look
     const rng = mulberry32(42);
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 400; i++) {
       const px = rng() * WW;
       const py = rng() * WH;
-      // skip if inside city
       if (px > CX + WT && px < CX + CW - WT && py > CY + WT && py < CY + CH - WT) continue;
-      const sw = 30 + rng() * 60;
-      const sh = 20 + rng() * 50;
-      const shade = rng() > 0.5 ? 0x3d7a34 : 0x57a048;
-      g.rect(px - sw / 2, py - sh / 2, sw, sh).fill({ color: shade, alpha: 0.4 });
+      const sw = 30 + rng() * 80;
+      const sh = 20 + rng() * 60;
+      const shades = [0x3d7a34, 0x57a048, 0x4a8c3f, 0x347030, 0x5a9a4a];
+      const shade = shades[Math.floor(rng() * shades.length)];
+      g.rect(px - sw / 2, py - sh / 2, sw, sh).fill({ color: shade, alpha: 0.35 });
     }
 
-    // Grass tufts (darker green dots outside city)
-    for (let i = 0; i < 500; i++) {
+    // Grass tufts outside city (clusters of small strokes)
+    for (let i = 0; i < 600; i++) {
       const px = rng() * WW;
       const py = rng() * WH;
       if (px > CX && px < CX + CW && py > CY && py < CY + CH) continue;
-      g.circle(px, py, 2 + rng() * 3).fill({ color: 0x2d6b24, alpha: 0.5 });
+      const tufts = [0x2d6b24, 0x3a7a30, 0x468a3c];
+      g.circle(px, py, 2 + rng() * 3).fill({ color: tufts[Math.floor(rng() * 3)], alpha: 0.5 });
+      // Tiny grass blade
+      if (rng() > 0.5) {
+        g.moveTo(px, py).lineTo(px + (rng() - 0.5) * 4, py - 3 - rng() * 3).stroke({ color: 0x4a8c3f, width: 0.7, alpha: 0.4 });
+      }
     }
 
-    // Inside city: cobblestone
+    // Dirt patches near roads (outside city)
+    const dirtPatches = [
+      { x: 1950, y: 300, w: 80, h: 120 },
+      { x: 1950, y: 2700, w: 80, h: 120 },
+      { x: 500, y: 1400, w: 120, h: 80 },
+      { x: 3500, y: 1400, w: 120, h: 80 },
+    ];
+    for (const dp of dirtPatches) {
+      g.ellipse(dp.x, dp.y, dp.w / 2, dp.h / 2).fill({ color: 0x8B7355, alpha: 0.4 });
+    }
+
+    // Inside city: cobblestone base
     const cityInnerX = CX + WT;
     const cityInnerY = CY + WT;
     const cityInnerW = CW - WT * 2;
     const cityInnerH = CH - WT * 2;
-    g.rect(cityInnerX, cityInnerY, cityInnerW, cityInnerH).fill({ color: 0x8a8a80 });
+    g.rect(cityInnerX, cityInnerY, cityInnerW, cityInnerH).fill({ color: 0x7a7a72 });
 
-    // Cobblestone pattern
+    // Cobblestone pattern — varied stone sizes for realism
     const stoneSize = 8;
     const gap = 1;
     for (let row = 0; row < Math.ceil(cityInnerH / (stoneSize + gap)); row++) {
@@ -110,21 +132,50 @@ export class CamelotCityRenderer {
         const sx = cityInnerX + col * (stoneSize + gap) + offsetX;
         const sy = cityInnerY + row * (stoneSize + gap);
         if (sx >= cityInnerX + cityInnerW || sy >= cityInnerY + cityInnerH) continue;
-        const shade = 0x808078 + Math.floor(rng() * 0x181818);
-        const clampedShade = Math.min(shade, 0x999990);
-        g.rect(sx, sy, stoneSize, stoneSize).fill({ color: clampedShade });
+        const r = rng();
+        const shade = r < 0.3 ? 0x757568 : r < 0.6 ? 0x858578 : r < 0.85 ? 0x909085 : 0x6a6a60;
+        const sizeVar = stoneSize - Math.floor(rng() * 2);
+        g.roundRect(sx, sy, sizeVar, sizeVar, 1).fill({ color: shade });
       }
     }
 
-    // Market square: lighter stone
+    // Mortar/grout lines between stones (subtle dark grid)
+    for (let my = cityInnerY; my < cityInnerY + cityInnerH; my += stoneSize + gap) {
+      g.moveTo(cityInnerX, my).lineTo(cityInnerX + cityInnerW, my).stroke({ color: 0x555550, width: 0.5, alpha: 0.15 });
+    }
+
+    // Market square: warm sandstone tiles
     const mktX = 1500, mktY = 1200, mktW = 600, mktH = 500;
     g.rect(mktX, mktY, mktW, mktH).fill({ color: 0xBBA898, alpha: 0.7 });
-    // Finer market stones
+    // Decorative border around market
+    g.rect(mktX, mktY, mktW, 3).fill({ color: 0x887766 });
+    g.rect(mktX, mktY + mktH - 3, mktW, 3).fill({ color: 0x887766 });
+    g.rect(mktX, mktY, 3, mktH).fill({ color: 0x887766 });
+    g.rect(mktX + mktW - 3, mktY, 3, mktH).fill({ color: 0x887766 });
+    // Finer market tiles with variation
     for (let row = 0; row < Math.ceil(mktH / 10); row++) {
       for (let col = 0; col < Math.ceil(mktW / 10); col++) {
-        const shade = 0xAA9888 + Math.floor(rng() * 0x111111);
-        g.rect(mktX + col * 10 + 1, mktY + row * 10 + 1, 8, 8).fill({ color: Math.min(shade, 0xCCBBAA) });
+        const r = rng();
+        const shade = r < 0.4 ? 0xAA9888 : r < 0.7 ? 0xBBA898 : 0x998878;
+        g.roundRect(mktX + col * 10 + 1, mktY + row * 10 + 1, 8, 8, 0.5).fill({ color: shade });
       }
+    }
+
+    // Worn paths in the city (darker stone where people walk most)
+    // Path from north gate to market
+    g.rect(1940, CY + WT, 20, 1200 - CY - WT).fill({ color: 0x706860, alpha: 0.3 });
+    // Path from market to tavern
+    g.rect(2100, 1380, 100, 20).fill({ color: 0x706860, alpha: 0.3 });
+    // Path from castle to market
+    g.rect(1088, 1050, 20, 200).fill({ color: 0x706860, alpha: 0.3 });
+
+    // Puddles (small reflective spots on ground)
+    const puddleSpots = [
+      { x: 1600, y: 1100 }, { x: 2300, y: 1600 }, { x: 1100, y: 1300 },
+      { x: 1900, y: 2000 }, { x: 2500, y: 1100 },
+    ];
+    for (const ps of puddleSpots) {
+      g.ellipse(ps.x, ps.y, 8 + rng() * 6, 4 + rng() * 3).fill({ color: 0x6688AA, alpha: 0.15 });
     }
 
     this.groundLayer.addChild(g);
@@ -133,29 +184,62 @@ export class CamelotCityRenderer {
   // ===================== ROADS =====================
   private drawRoads(): void {
     const g = new Graphics();
+    const rng = mulberry32(777);
     const roadColor = 0x9a9080;
-    const roadW = 36;
+    const roadW = 40;
 
-    // Main north-south road through center
+    // Main north-south road through center (inside city)
     g.rect(1950 - roadW / 2, CY, roadW, CH).fill({ color: roadColor });
+    // Road edge stones
+    g.rect(1950 - roadW / 2, CY, 3, CH).fill({ color: 0x7A7068, alpha: 0.6 });
+    g.rect(1950 + roadW / 2 - 3, CY, 3, CH).fill({ color: 0x7A7068, alpha: 0.6 });
+
     // Main east-west road
     g.rect(CX, 1400 - roadW / 2, CW, roadW).fill({ color: roadColor });
+    g.rect(CX, 1400 - roadW / 2, CW, 3).fill({ color: 0x7A7068, alpha: 0.6 });
+    g.rect(CX, 1400 + roadW / 2 - 3, CW, 3).fill({ color: 0x7A7068, alpha: 0.6 });
 
-    // Roads to gates from outside
+    // Outside dirt roads with ruts
+    const drawDirtRoad = (rx: number, ry: number, rw: number, rh: number) => {
+      g.rect(rx, ry, rw, rh).fill({ color: 0x8B7355, alpha: 0.8 });
+      // Wheel ruts (darker lines)
+      if (rw > rh) {
+        // Horizontal road
+        g.rect(rx, ry + rh * 0.3, rw, 2).fill({ color: 0x6B5335, alpha: 0.3 });
+        g.rect(rx, ry + rh * 0.7, rw, 2).fill({ color: 0x6B5335, alpha: 0.3 });
+      } else {
+        // Vertical road
+        g.rect(rx + rw * 0.3, ry, 2, rh).fill({ color: 0x6B5335, alpha: 0.3 });
+        g.rect(rx + rw * 0.7, ry, 2, rh).fill({ color: 0x6B5335, alpha: 0.3 });
+      }
+      // Scattered pebbles
+      for (let i = 0; i < Math.max(rw, rh) / 15; i++) {
+        const px = rx + rng() * rw;
+        const py = ry + rng() * rh;
+        g.circle(px, py, 1 + rng() * 1.5).fill({ color: 0x9A8A70, alpha: 0.4 });
+      }
+    };
+
     // North gate road
-    g.rect(1950 - roadW / 2, 0, roadW, CY).fill({ color: 0x8B7355, alpha: 0.8 });
+    drawDirtRoad(1950 - roadW / 2, 0, roadW, CY);
     // South gate road
-    g.rect(1950 - roadW / 2, CY + CH, roadW, WH - CY - CH).fill({ color: 0x8B7355, alpha: 0.8 });
+    drawDirtRoad(1950 - roadW / 2, CY + CH, roadW, WH - CY - CH);
     // East gate road
-    g.rect(CX + CW, 1400 - roadW / 2, WW - CX - CW, roadW).fill({ color: 0x8B7355, alpha: 0.8 });
+    drawDirtRoad(CX + CW, 1400 - roadW / 2, WW - CX - CW, roadW);
     // West gate road
-    g.rect(0, 1400 - roadW / 2, CX, roadW).fill({ color: 0x8B7355, alpha: 0.8 });
+    drawDirtRoad(0, 1400 - roadW / 2, CX, roadW);
 
     // Side streets connecting buildings inside city
     // Castle to market
-    g.rect(1100 - 12, CY + WT, 24, 1200 - CY - WT).fill({ color: roadColor, alpha: 0.5 });
+    g.rect(1100 - 14, CY + WT, 28, 1200 - CY - WT).fill({ color: roadColor, alpha: 0.5 });
     // Church area
-    g.rect(2050, CY + WT + 350, 24, 300).fill({ color: roadColor, alpha: 0.5 });
+    g.rect(2050, CY + WT + 350, 28, 300).fill({ color: roadColor, alpha: 0.5 });
+    // Tavern street
+    g.rect(2100, 1300, 100, 24).fill({ color: roadColor, alpha: 0.45 });
+    // Blacksmith alley
+    g.rect(CX + WT, 1300, 1100 - CX - WT, 24).fill({ color: roadColor, alpha: 0.4 });
+    // South residential street
+    g.rect(1400, 1700, 700, 20).fill({ color: roadColor, alpha: 0.35 });
 
     this.roadLayer.addChild(g);
   }
@@ -255,6 +339,132 @@ export class CamelotCityRenderer {
     }
 
     this.outsideFeatureLayer.addChild(g);
+  }
+
+  // ===================== ENVIRONMENT PROPS =====================
+  private drawEnvironmentProps(): void {
+    const g = new Graphics();
+    const rng = mulberry32(456);
+
+    // ---- Street lamps / torches along roads inside city ----
+    const torchPositions = [
+      { x: 1925, y: 700 }, { x: 1975, y: 700 },
+      { x: 1925, y: 1000 }, { x: 1975, y: 1000 },
+      { x: 1925, y: 1200 }, { x: 1975, y: 1200 },
+      { x: 1925, y: 1600 }, { x: 1975, y: 1600 },
+      { x: 1925, y: 1900 }, { x: 1975, y: 1900 },
+      { x: 1925, y: 2200 }, { x: 1975, y: 2200 },
+      { x: 1100, y: 1380 }, { x: 1400, y: 1380 },
+      { x: 1700, y: 1380 }, { x: 2200, y: 1380 },
+      { x: 2500, y: 1380 }, { x: 2800, y: 1380 },
+    ];
+    for (const tp of torchPositions) {
+      // Pole
+      g.rect(tp.x - 1, tp.y - 8, 2, 10).fill({ color: 0x5C3A1E });
+      // Iron bracket
+      g.rect(tp.x - 3, tp.y - 9, 6, 2).fill({ color: 0x555555 });
+      // Torch flame area (rendered at night via chimneySmoke)
+    }
+
+    // ---- Benches along roads ----
+    const benchPositions = [
+      { x: 1920, y: 800 }, { x: 1920, y: 1100 },
+      { x: 1500, y: 1190 }, { x: 1700, y: 1190 },
+      { x: 2050, y: 1600 }, { x: 1400, y: 1600 },
+    ];
+    for (const bp of benchPositions) {
+      // Seat
+      g.rect(bp.x - 10, bp.y, 20, 5).fill({ color: 0x6B4226 });
+      // Legs
+      g.rect(bp.x - 9, bp.y + 5, 2, 4).fill({ color: 0x5C3A1E });
+      g.rect(bp.x + 7, bp.y + 5, 2, 4).fill({ color: 0x5C3A1E });
+    }
+
+    // ---- Barrels and crates scattered near buildings ----
+    const barrelPositions = [
+      { x: 1350, y: 1090 }, { x: 1360, y: 1100 },
+      { x: 2690, y: 1190 }, { x: 2700, y: 1200 },
+      { x: 1540, y: 1710 }, { x: 1810, y: 1760 },
+      { x: 1000, y: 1490 },
+      { x: 2640, y: 1810 }, { x: 2650, y: 1820 }, { x: 2660, y: 1810 },
+    ];
+    for (const bp of barrelPositions) {
+      // Barrel
+      g.ellipse(bp.x, bp.y, 5, 6).fill({ color: 0x6B4226 });
+      g.ellipse(bp.x, bp.y, 5, 6).stroke({ color: 0x4A2810, width: 0.8 });
+      // Metal bands
+      g.ellipse(bp.x, bp.y - 2, 5, 1).stroke({ color: 0x666666, width: 0.5 });
+      g.ellipse(bp.x, bp.y + 2, 5, 1).stroke({ color: 0x666666, width: 0.5 });
+      // Lid
+      g.ellipse(bp.x, bp.y - 5, 4, 1.5).fill({ color: 0x5C3A1E });
+    }
+
+    // Crates near buildings
+    const cratePositions = [
+      { x: 1320, y: 1100 }, { x: 2720, y: 1200 },
+      { x: 1820, y: 1770 }, { x: 2400, y: 1510 },
+      { x: 1050, y: 1510 }, { x: 2590, y: 1830 },
+    ];
+    for (const cp of cratePositions) {
+      g.rect(cp.x - 5, cp.y - 5, 10, 10).fill({ color: 0x8B6914 });
+      g.rect(cp.x - 5, cp.y - 5, 10, 10).stroke({ color: 0x6B4226, width: 0.8 });
+      g.moveTo(cp.x - 5, cp.y).lineTo(cp.x + 5, cp.y).stroke({ color: 0x6B4226, width: 0.5 });
+      g.moveTo(cp.x, cp.y - 5).lineTo(cp.x, cp.y + 5).stroke({ color: 0x6B4226, width: 0.5 });
+    }
+
+    // ---- Flower boxes near some houses ----
+    const flowerBoxes = [
+      { x: 1380, y: 1005 }, { x: 1160, y: 1095 },
+      { x: 1580, y: 1705 }, { x: 1830, y: 1755 },
+      { x: 2080, y: 1705 }, { x: 2380, y: 1705 },
+    ];
+    for (const fb of flowerBoxes) {
+      // Box
+      g.rect(fb.x - 8, fb.y, 16, 5).fill({ color: 0x6B4226 });
+      // Flowers
+      const flowerColors = [0xFF6B6B, 0xFFD93D, 0xC084FC, 0xFF88AA, 0x6EE7B7];
+      for (let fi = 0; fi < 4; fi++) {
+        const fx = fb.x - 6 + fi * 4;
+        g.circle(fx, fb.y - 2, 2).fill({ color: flowerColors[Math.floor(rng() * flowerColors.length)] });
+        g.moveTo(fx, fb.y).lineTo(fx, fb.y - 1).stroke({ color: 0x33AA33, width: 0.5 });
+      }
+    }
+
+    // ---- Signposts at intersections ----
+    const signPosts = [
+      { x: 1960, y: 1410, text: "Market" },
+      { x: 1130, y: 1050, text: "Castle" },
+      { x: 2100, y: 600, text: "Church" },
+    ];
+    for (const sp of signPosts) {
+      // Post
+      g.rect(sp.x - 1, sp.y - 10, 2, 14).fill({ color: 0x5C3A1E });
+      // Sign board
+      g.roundRect(sp.x + 1, sp.y - 10, 24, 8, 1).fill({ color: 0x6B4226 });
+      g.roundRect(sp.x + 1, sp.y - 10, 24, 8, 1).stroke({ color: 0x4A2810, width: 0.5 });
+      const signLabel = new Text({
+        text: sp.text,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 5, fill: 0xEEDDCC }),
+      });
+      signLabel.anchor.set(0, 0.5);
+      signLabel.position.set(sp.x + 3, sp.y - 6);
+      this.envPropsLayer.addChild(signLabel);
+    }
+
+    // ---- Well near market ----
+    const wellX = 1480, wellY = 1430;
+    g.circle(wellX, wellY, 14).fill({ color: 0x777770 });
+    g.circle(wellX, wellY, 14).stroke({ color: 0x555550, width: 2 });
+    g.circle(wellX, wellY, 10).fill({ color: 0x223344 });
+    // Wooden frame
+    g.rect(wellX - 16, wellY - 2, 32, 4).fill({ color: 0x6B4226 });
+    g.rect(wellX - 1, wellY - 14, 2, 12).fill({ color: 0x6B4226 });
+    // Bucket
+    g.rect(wellX + 2, wellY - 8, 4, 4).fill({ color: 0x5C3A1E });
+    // Rope
+    g.moveTo(wellX + 1, wellY - 14).lineTo(wellX + 4, wellY - 8).stroke({ color: 0xBBA855, width: 0.8 });
+
+    this.envPropsLayer.addChild(g);
   }
 
   // ===================== WALLS & TOWERS =====================
@@ -883,81 +1093,183 @@ export class CamelotCityRenderer {
   // ---- House Large ----
   private drawHouseLarge(g: Graphics, b: GTABuilding): void {
     const { x, y, w, h } = b;
-    g.rect(x + 3, y + 3, w, h).fill({ color: 0x222222, alpha: 0.2 });
+    // Shadow
+    g.rect(x + 4, y + 4, w, h).fill({ color: 0x222222, alpha: 0.25 });
+    // Stone base
+    g.rect(x, y + h - 6, w, 6).fill({ color: 0x706050 });
+    // Main walls - plastered stone
     g.rect(x, y, w, h).fill({ color: 0x9A8A70 });
     g.rect(x, y, w, h).stroke({ color: 0x706050, width: 2 });
-    // Peaked roof
-    g.poly([x - 4, y, x + w / 2, y - 20, x + w + 4, y]).fill({ color: 0x6B4226 });
-    // Windows (2 upstairs, 2 downstairs)
+    // Timber frame overlay
+    g.rect(x, y, w, 3).fill({ color: 0x5C3A1E });
+    g.rect(x, y + h / 2, w, 3).fill({ color: 0x5C3A1E });
+    g.rect(x, y, 3, h).fill({ color: 0x5C3A1E });
+    g.rect(x + w - 3, y, 3, h).fill({ color: 0x5C3A1E });
+    g.rect(x + w / 2 - 1, y, 2, h).fill({ color: 0x5C3A1E });
+    // Peaked roof with slate tiles
+    g.poly([x - 6, y, x + w / 2, y - 22, x + w + 6, y]).fill({ color: 0x5A4A3A });
+    g.poly([x - 6, y, x + w / 2, y - 22, x + w + 6, y]).stroke({ color: 0x4A3A2A, width: 1 });
+    // Roof tile lines
+    for (let ry = y - 18; ry < y; ry += 5) {
+      const ratio = (y - ry) / 22;
+      const halfW = (w / 2 + 6) * (1 - ratio);
+      g.moveTo(x + w / 2 - halfW, ry).lineTo(x + w / 2 + halfW, ry).stroke({ color: 0x4A3A2A, width: 0.5, alpha: 0.4 });
+    }
+    // Chimney
+    g.rect(x + w - 20, y - 18, 10, 18).fill({ color: 0x665544 });
+    g.rect(x + w - 21, y - 20, 12, 3).fill({ color: 0x554433 });
+    // Windows with shutters (2 upstairs, 2 downstairs)
     for (let wi = 0; wi < 2; wi++) {
       const wx = x + 12 + wi * (w - 34);
-      g.rect(wx, y + 10, 10, 12).fill({ color: 0x333333 });
-      g.rect(wx, y + 10, 10, 12).stroke({ color: 0x554433, width: 1 });
-      g.rect(wx, y + h * 0.5, 10, 12).fill({ color: 0x333333 });
-      g.rect(wx, y + h * 0.5, 10, 12).stroke({ color: 0x554433, width: 1 });
+      // Window frame
+      g.rect(wx - 1, y + 9, 12, 14).fill({ color: 0x5C3A1E });
+      // Glass
+      g.rect(wx, y + 10, 10, 12).fill({ color: 0x334455, alpha: 0.7 });
+      // Window cross
+      g.moveTo(wx + 5, y + 10).lineTo(wx + 5, y + 22).stroke({ color: 0x5C3A1E, width: 1 });
+      g.moveTo(wx, y + 16).lineTo(wx + 10, y + 16).stroke({ color: 0x5C3A1E, width: 1 });
+      // Shutters
+      g.rect(wx - 4, y + 10, 4, 12).fill({ color: 0x4A6644 });
+      g.rect(wx + 10, y + 10, 4, 12).fill({ color: 0x4A6644 });
+      // Lower windows
+      g.rect(wx - 1, y + h * 0.5 - 1, 12, 14).fill({ color: 0x5C3A1E });
+      g.rect(wx, y + h * 0.5, 10, 12).fill({ color: 0x334455, alpha: 0.7 });
+      g.moveTo(wx + 5, y + h * 0.5).lineTo(wx + 5, y + h * 0.5 + 12).stroke({ color: 0x5C3A1E, width: 1 });
+      g.moveTo(wx, y + h * 0.5 + 6).lineTo(wx + 10, y + h * 0.5 + 6).stroke({ color: 0x5C3A1E, width: 1 });
     }
-    // Door
-    g.rect(x + w / 2 - 8, y + h - 18, 16, 18).fill({ color: 0x5C3A1E });
-    g.circle(x + w / 2 + 4, y + h - 9, 1.5).fill({ color: 0x888888 });
+    // Door with frame and arch
+    const doorX = x + w / 2 - 9;
+    g.roundRect(doorX - 2, y + h - 22, 22, 22, 2).fill({ color: 0x5C3A1E });
+    g.rect(doorX, y + h - 20, 18, 20).fill({ color: 0x4A2810 });
+    // Door planks
+    g.moveTo(doorX + 6, y + h - 20).lineTo(doorX + 6, y + h).stroke({ color: 0x3A1800, width: 0.5 });
+    g.moveTo(doorX + 12, y + h - 20).lineTo(doorX + 12, y + h).stroke({ color: 0x3A1800, width: 0.5 });
+    // Door handle
+    g.circle(doorX + 14, y + h - 10, 1.8).fill({ color: 0x888888 });
+    // Step
+    g.rect(doorX - 2, y + h, 22, 3).fill({ color: 0x808070 });
   }
 
   // ---- House Medium ----
   private drawHouseMedium(g: Graphics, b: GTABuilding): void {
     const { x, y, w, h } = b;
     g.rect(x + 3, y + 3, w, h).fill({ color: 0x222222, alpha: 0.2 });
-    // Timber-framed
+    // Timber-framed with plaster infill
     g.rect(x, y, w, h).fill({ color: 0xDDCCAA });
-    // Beams
+    // Timber frame beams
     g.rect(x, y, w, 3).fill({ color: 0x5C3A1E });
     g.rect(x, y + h - 3, w, 3).fill({ color: 0x5C3A1E });
     g.rect(x, y, 3, h).fill({ color: 0x5C3A1E });
     g.rect(x + w - 3, y, 3, h).fill({ color: 0x5C3A1E });
-    g.moveTo(x, y).lineTo(x + w, y + h).stroke({ color: 0x5C3A1E, width: 2 });
-    // Peaked roof
-    g.poly([x - 3, y, x + w / 2, y - 14, x + w + 3, y]).fill({ color: 0x7A5030 });
-    // Window
-    g.rect(x + w / 2 - 5, y + 10, 10, 10).fill({ color: 0x444444 });
-    g.rect(x + w / 2 - 5, y + 10, 10, 10).stroke({ color: 0x5C3A1E, width: 1 });
-    // Door
-    g.rect(x + w / 2 - 6, y + h - 16, 12, 16).fill({ color: 0x5C3A1E });
+    g.rect(x + w / 2 - 1, y, 2, h).fill({ color: 0x5C3A1E });
+    // Diagonal cross-bracing
+    g.moveTo(x + 3, y + 3).lineTo(x + w / 2 - 1, y + h - 3).stroke({ color: 0x5C3A1E, width: 1.5 });
+    g.moveTo(x + w / 2 + 1, y + 3).lineTo(x + w - 3, y + h - 3).stroke({ color: 0x5C3A1E, width: 1.5 });
+    // Peaked roof with thatch texture
+    g.poly([x - 4, y, x + w / 2, y - 16, x + w + 4, y]).fill({ color: 0x7A5030 });
+    g.poly([x - 4, y, x + w / 2, y - 16, x + w + 4, y]).stroke({ color: 0x6A4020, width: 0.5 });
+    // Thatch lines
+    for (let rx = x; rx < x + w / 2; rx += 3) {
+      const ratio = (rx - x) / (w / 2);
+      const ry = y - 16 * ratio;
+      g.moveTo(rx, y).lineTo(rx + 1, ry + 2).stroke({ color: 0x8A6040, width: 0.7, alpha: 0.3 });
+    }
+    // Chimney
+    g.rect(x + w - 15, y - 12, 8, 12).fill({ color: 0x665544 });
+    // Window with shutters
+    g.rect(x + w / 2 - 6, y + 8, 12, 12).fill({ color: 0x5C3A1E });
+    g.rect(x + w / 2 - 5, y + 9, 10, 10).fill({ color: 0x334455, alpha: 0.6 });
+    g.moveTo(x + w / 2, y + 9).lineTo(x + w / 2, y + 19).stroke({ color: 0x5C3A1E, width: 0.8 });
+    g.moveTo(x + w / 2 - 5, y + 14).lineTo(x + w / 2 + 5, y + 14).stroke({ color: 0x5C3A1E, width: 0.8 });
+    // Shutters
+    g.rect(x + w / 2 - 9, y + 9, 4, 10).fill({ color: 0x5A7050 });
+    g.rect(x + w / 2 + 5, y + 9, 4, 10).fill({ color: 0x5A7050 });
+    // Door with frame
+    g.rect(x + w / 2 - 7, y + h - 18, 14, 18).fill({ color: 0x5C3A1E });
+    g.rect(x + w / 2 - 7, y + h - 18, 14, 18).stroke({ color: 0x4A2810, width: 0.8 });
+    // Door handle
+    g.circle(x + w / 2 + 3, y + h - 9, 1.2).fill({ color: 0x888888 });
+    // Step
+    g.rect(x + w / 2 - 7, y + h, 14, 2).fill({ color: 0x808070 });
   }
 
   // ---- House Small ----
   private drawHouseSmall(g: Graphics, b: GTABuilding): void {
     const { x, y, w, h } = b;
     g.rect(x + 2, y + 2, w, h).fill({ color: 0x222222, alpha: 0.15 });
+    // Wattle-and-daub walls
     g.rect(x, y, w, h).fill({ color: 0xAA9970 });
     g.rect(x, y, w, h).stroke({ color: 0x706050, width: 1 });
+    // Timber frame
+    g.rect(x, y, w, 2).fill({ color: 0x5C3A1E });
+    g.rect(x, y, 2, h).fill({ color: 0x5C3A1E });
+    g.rect(x + w - 2, y, 2, h).fill({ color: 0x5C3A1E });
     // Thatched roof (golden-brown with texture)
-    g.poly([x - 4, y, x + w / 2, y - 12, x + w + 4, y]).fill({ color: 0xBBA855 });
-    // Roof texture lines
-    for (let rx = x - 2; rx < x + w / 2; rx += 4) {
-      const ry = y - 12 * (1 - (rx - x) / (w / 2));
-      g.moveTo(rx, y).lineTo(rx + 2, ry + 2).stroke({ color: 0x998844, width: 1, alpha: 0.5 });
+    g.poly([x - 5, y, x + w / 2, y - 14, x + w + 5, y]).fill({ color: 0xBBA855 });
+    g.poly([x - 5, y, x + w / 2, y - 14, x + w + 5, y]).stroke({ color: 0xAA9845, width: 0.5 });
+    // Roof thatch lines
+    for (let rx = x - 2; rx < x + w / 2; rx += 3) {
+      const ry = y - 14 * (1 - (rx - x) / (w / 2));
+      g.moveTo(rx, y).lineTo(rx + 1.5, ry + 2).stroke({ color: 0x998844, width: 0.8, alpha: 0.4 });
     }
-    // Tiny window
-    g.rect(x + w / 2 - 4, y + 8, 8, 8).fill({ color: 0x444444 });
-    // Door
-    g.rect(x + w / 2 - 5, y + h - 14, 10, 14).fill({ color: 0x5C3A1E });
+    for (let rx = x + w / 2; rx < x + w + 3; rx += 3) {
+      const ry = y - 14 * ((rx - x - w / 2) / (w / 2));
+      g.moveTo(rx, y).lineTo(rx - 1.5, y - 14 + ry + 2).stroke({ color: 0x998844, width: 0.8, alpha: 0.4 });
+    }
+    // Tiny window with frame
+    g.rect(x + w / 2 - 5, y + 7, 10, 9).fill({ color: 0x5C3A1E });
+    g.rect(x + w / 2 - 4, y + 8, 8, 7).fill({ color: 0x334455, alpha: 0.5 });
+    // Window cross
+    g.moveTo(x + w / 2, y + 8).lineTo(x + w / 2, y + 15).stroke({ color: 0x5C3A1E, width: 0.7 });
+    // Door with rounded top
+    g.rect(x + w / 2 - 5, y + h - 15, 10, 15).fill({ color: 0x5C3A1E });
+    g.rect(x + w / 2 - 5, y + h - 15, 10, 15).stroke({ color: 0x4A2810, width: 0.5 });
+    // Handle
+    g.circle(x + w / 2 + 2, y + h - 8, 1).fill({ color: 0x777777 });
   }
 
   // ---- Fountain ----
   private drawFountain(g: Graphics, b: GTABuilding): void {
     const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
-    // Outer basin
-    g.circle(cx, cy, 24).fill({ color: 0x888880 });
-    g.circle(cx, cy, 24).stroke({ color: 0x666660, width: 2 });
-    // Water
-    g.circle(cx, cy, 20).fill({ color: 0x4488BB, alpha: 0.6 });
-    // Inner pedestal
-    g.circle(cx, cy, 8).fill({ color: 0x999990 });
-    // Water spray lines
-    g.moveTo(cx, cy - 8).lineTo(cx - 3, cy - 18).stroke({ color: 0x88BBDD, width: 1, alpha: 0.5 });
-    g.moveTo(cx, cy - 8).lineTo(cx + 3, cy - 18).stroke({ color: 0x88BBDD, width: 1, alpha: 0.5 });
-    g.moveTo(cx, cy - 8).lineTo(cx, cy - 20).stroke({ color: 0x88BBDD, width: 1, alpha: 0.6 });
-    // Light sparkles
-    g.circle(cx - 6, cy - 4, 1.5).fill({ color: 0xAADDFF, alpha: 0.5 });
-    g.circle(cx + 8, cy + 2, 1.5).fill({ color: 0xAADDFF, alpha: 0.5 });
+    // Ground shadow
+    g.ellipse(cx + 2, cy + 2, 27, 27).fill({ color: 0x000000, alpha: 0.15 });
+    // Outer basin - stone rim
+    g.circle(cx, cy, 26).fill({ color: 0x888880 });
+    g.circle(cx, cy, 26).stroke({ color: 0x666660, width: 3 });
+    // Stone rim detail
+    g.circle(cx, cy, 24).stroke({ color: 0x777770, width: 1, alpha: 0.5 });
+    // Water with reflective shimmer
+    g.circle(cx, cy, 22).fill({ color: 0x4488BB, alpha: 0.55 });
+    g.circle(cx, cy, 22).stroke({ color: 0x3377AA, width: 0.5 });
+    // Water ripple rings
+    g.circle(cx, cy, 16).stroke({ color: 0x66AACC, width: 0.5, alpha: 0.3 });
+    g.circle(cx, cy, 11).stroke({ color: 0x66AACC, width: 0.5, alpha: 0.2 });
+    // Inner pedestal - tiered
+    g.circle(cx, cy, 9).fill({ color: 0x999990 });
+    g.circle(cx, cy, 9).stroke({ color: 0x777770, width: 1 });
+    g.circle(cx, cy, 6).fill({ color: 0xAAAAA0 });
+    // Statue/spout on top
+    g.rect(cx - 2, cy - 12, 4, 8).fill({ color: 0x888880 });
+    g.circle(cx, cy - 13, 3).fill({ color: 0x999990 });
+    // Water spray lines (multiple directions)
+    g.moveTo(cx, cy - 10).lineTo(cx - 5, cy - 20).stroke({ color: 0x88BBDD, width: 1, alpha: 0.4 });
+    g.moveTo(cx, cy - 10).lineTo(cx + 5, cy - 20).stroke({ color: 0x88BBDD, width: 1, alpha: 0.4 });
+    g.moveTo(cx, cy - 10).lineTo(cx, cy - 22).stroke({ color: 0x88BBDD, width: 1.2, alpha: 0.5 });
+    g.moveTo(cx, cy - 10).lineTo(cx - 8, cy - 16).stroke({ color: 0x88BBDD, width: 0.8, alpha: 0.3 });
+    g.moveTo(cx, cy - 10).lineTo(cx + 8, cy - 16).stroke({ color: 0x88BBDD, width: 0.8, alpha: 0.3 });
+    // Falling water droplets
+    g.circle(cx - 6, cy - 14, 1).fill({ color: 0xAADDFF, alpha: 0.4 });
+    g.circle(cx + 4, cy - 16, 1).fill({ color: 0xAADDFF, alpha: 0.4 });
+    g.circle(cx - 2, cy - 18, 0.8).fill({ color: 0xAADDFF, alpha: 0.3 });
+    // Light sparkles on water
+    g.circle(cx - 8, cy - 4, 1.5).fill({ color: 0xCCEEFF, alpha: 0.5 });
+    g.circle(cx + 10, cy + 2, 1.5).fill({ color: 0xCCEEFF, alpha: 0.5 });
+    g.circle(cx + 3, cy + 8, 1).fill({ color: 0xCCEEFF, alpha: 0.4 });
+    g.circle(cx - 12, cy + 5, 1).fill({ color: 0xCCEEFF, alpha: 0.35 });
+    // Decorative stones around base
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+      g.circle(cx + Math.cos(a) * 25, cy + Math.sin(a) * 25, 2).fill({ color: 0x777770, alpha: 0.5 });
+    }
   }
 
   // ---- Well ----
@@ -1041,11 +1353,89 @@ export class CamelotCityRenderer {
       this.drawBuildings(state.buildings);
     }
 
+    // Chimney smoke animation
+    this.updateChimneySmoke(state);
+
     // Day/Night overlay
     this.updateDayNight(state);
 
     // Particles
     this.updateParticles(state.particles);
+  }
+
+  private updateChimneySmoke(state: MedievalGTAState): void {
+    const g = this.chimneySmoke;
+    g.clear();
+
+    const tick = state.tick;
+
+    // Chimney positions (building chimneys)
+    const chimneys = [
+      // Tavern chimney
+      { x: 2570, y: 1180 },
+      // Blacksmith chimney (with extra fire glow)
+      { x: 1178, y: 1180, fireGlow: true },
+      // Large houses
+      { x: 1490, y: 982 },
+      { x: 2640, y: 882 },
+      // Medium houses
+      { x: 1655, y: 1688 },
+      { x: 1905, y: 1738 },
+      { x: 2155, y: 1688 },
+      // Small houses
+      { x: 1345, y: 1486 },
+      { x: 1195, y: 1086 },
+    ];
+
+    for (const ch of chimneys) {
+      // Animated smoke puffs rising
+      for (let i = 0; i < 4; i++) {
+        const phase = (tick * 0.03 + i * 1.5 + ch.x * 0.01) % 6;
+        const smokeX = ch.x + Math.sin(tick * 0.02 + i * 2 + ch.y * 0.01) * 4;
+        const smokeY = ch.y - 20 - phase * 8;
+        const smokeSize = 2 + phase * 1.2;
+        const smokeAlpha = Math.max(0, 0.25 - phase * 0.04);
+        g.circle(smokeX, smokeY, smokeSize).fill({ color: 0x888888, alpha: smokeAlpha });
+      }
+
+      // Fire glow for blacksmith
+      if (ch.fireGlow) {
+        const flickerAlpha = 0.25 + Math.sin(tick * 0.15) * 0.1;
+        g.circle(ch.x, ch.y - 2, 8).fill({ color: 0xFF4400, alpha: flickerAlpha });
+        g.circle(ch.x, ch.y - 4, 5).fill({ color: 0xFF6600, alpha: flickerAlpha * 1.2 });
+      }
+    }
+
+    // Torch flames at night
+    const dt = state.dayTime;
+    let darkness: number;
+    if (dt <= 0.25) { darkness = 0.5 * (1 - dt / 0.25); }
+    else if (dt <= 0.5) { darkness = 0.5 * ((dt - 0.25) / 0.25); }
+    else if (dt <= 0.75) { darkness = 0.5 + 0.15 * ((dt - 0.5) / 0.25); }
+    else { darkness = 0.65 * (1 - (dt - 0.75) / 0.25); }
+
+    if (darkness > 0.1) {
+      const torchPositions = [
+        { x: 1925, y: 700 }, { x: 1975, y: 700 },
+        { x: 1925, y: 1000 }, { x: 1975, y: 1000 },
+        { x: 1925, y: 1200 }, { x: 1975, y: 1200 },
+        { x: 1925, y: 1600 }, { x: 1975, y: 1600 },
+        { x: 1925, y: 1900 }, { x: 1975, y: 1900 },
+        { x: 1925, y: 2200 }, { x: 1975, y: 2200 },
+        { x: 1100, y: 1380 }, { x: 1400, y: 1380 },
+        { x: 1700, y: 1380 }, { x: 2200, y: 1380 },
+        { x: 2500, y: 1380 }, { x: 2800, y: 1380 },
+      ];
+      const torchAlpha = Math.min(1, (darkness - 0.1) * 3);
+      for (const tp of torchPositions) {
+        const flicker = Math.sin(tick * 0.2 + tp.x * 0.1) * 0.15;
+        // Warm glow
+        g.circle(tp.x, tp.y - 10, 12).fill({ color: 0xFF8800, alpha: (0.15 + flicker) * torchAlpha });
+        g.circle(tp.x, tp.y - 10, 6).fill({ color: 0xFFAA22, alpha: (0.3 + flicker) * torchAlpha });
+        // Flame
+        g.circle(tp.x, tp.y - 10, 3).fill({ color: 0xFFDD44, alpha: (0.5 + flicker) * torchAlpha });
+      }
+    }
   }
 
   private updateDayNight(state: MedievalGTAState): void {
@@ -1056,12 +1446,21 @@ export class CamelotCityRenderer {
     const dt = state.dayTime;
     // Calculate darkness: 0 at noon (0.25), max at midnight (0.75)
     let darkness: number;
+    let tintColor = 0x000033; // default blue night
     if (dt <= 0.25) {
-      // dawn -> noon: fading darkness
+      // dawn -> noon: fading darkness with warm tint
       darkness = 0.5 * (1 - dt / 0.25);
+      // Dawn golden tint
+      if (dt < 0.1) {
+        tintColor = 0x332200; // warm golden dawn
+      }
     } else if (dt <= 0.5) {
       // noon -> dusk: increasing darkness
       darkness = 0.5 * ((dt - 0.25) / 0.25);
+      // Dusk warm tint
+      if (dt > 0.4) {
+        tintColor = 0x331100; // warm dusk
+      }
     } else if (dt <= 0.75) {
       // dusk -> midnight: deepening
       darkness = 0.5 + 0.15 * ((dt - 0.5) / 0.25);
@@ -1071,7 +1470,27 @@ export class CamelotCityRenderer {
     }
 
     if (darkness > 0.02) {
-      g.rect(0, 0, WW, WH).fill({ color: 0x000033, alpha: darkness });
+      g.rect(0, 0, WW, WH).fill({ color: tintColor, alpha: darkness });
+    }
+
+    // Subtle shadow layer from buildings during daytime (ambient occlusion)
+    if (darkness < 0.2) {
+      // Building shadow offset based on time of day (sun position)
+      const sunAngle = dt * Math.PI * 2;
+      const shadowOffX = Math.cos(sunAngle) * 8;
+      const shadowOffY = Math.abs(Math.sin(sunAngle)) * 5 + 3;
+      const shadowAlpha = 0.08 * (1 - darkness * 5);
+      // Draw simple shadow rects for major buildings
+      const majorBuildings = [
+        { x: 850, y: 550, w: 450, h: 500 },   // Castle
+        { x: 1400, y: 550, w: 500, h: 350 },   // Barracks
+        { x: 2050, y: 550, w: 350, h: 350 },   // Church
+        { x: 2200, y: 1200, w: 400, h: 300 },  // Tavern
+        { x: 850, y: 1200, w: 350, h: 300 },   // Blacksmith
+      ];
+      for (const mb of majorBuildings) {
+        g.rect(mb.x + shadowOffX, mb.y + shadowOffY, mb.w, mb.h).fill({ color: 0x000000, alpha: shadowAlpha });
+      }
     }
 
     // Window lights at night
@@ -1079,20 +1498,40 @@ export class CamelotCityRenderer {
     wl.clear();
     if (darkness > 0.15) {
       const lightAlpha = Math.min(1, (darkness - 0.15) * 3);
+      const flicker = Math.sin(state.tick * 0.1) * 0.05;
       // Place warm yellow dots on known building positions
       const windowSpots = [
-        // Tavern windows
-        { x: 2220, y: 1225 }, { x: 2260, y: 1225 }, { x: 2310, y: 1225 },
+        // Tavern windows (prominent warm glow)
+        { x: 2220, y: 1275, r: 5, glow: 12 },
+        { x: 2260, y: 1275, r: 5, glow: 12 },
+        { x: 2310, y: 1275, r: 5, glow: 12 },
+        { x: 2400, y: 1340, r: 6, glow: 14 }, // Tavern door glow
         // Castle windows
-        { x: 1060, y: 780 }, { x: 1100, y: 780 },
-        // Houses scattered
-        { x: 1700, y: 800 }, { x: 1800, y: 900 }, { x: 2400, y: 900 },
-        { x: 1300, y: 1700 }, { x: 1500, y: 1800 }, { x: 2100, y: 1900 },
-        { x: 2700, y: 1600 }, { x: 1200, y: 1100 },
+        { x: 1060, y: 780, r: 4, glow: 8 },
+        { x: 1100, y: 780, r: 4, glow: 8 },
+        { x: 1075, y: 760, r: 3, glow: 6 },
+        // Blacksmith forge glow
+        { x: 865, y: 1260, r: 5, glow: 15 },
+        // Church stained glass (colored)
+        { x: 2180, y: 650, r: 3, glow: 6 },
+        { x: 2210, y: 650, r: 3, glow: 6 },
+        // Houses
+        { x: 1380, y: 1015, r: 3, glow: 6 },
+        { x: 1430, y: 1015, r: 3, glow: 6 },
+        { x: 2530, y: 915, r: 3, glow: 6 },
+        { x: 1580, y: 1720, r: 3, glow: 6 },
+        { x: 1830, y: 1770, r: 3, glow: 6 },
+        { x: 2080, y: 1720, r: 3, glow: 6 },
+        { x: 2380, y: 1720, r: 3, glow: 6 },
+        { x: 1330, y: 1515, r: 2, glow: 5 },
+        { x: 1180, y: 1115, r: 2, glow: 5 },
+        { x: 2730, y: 1215, r: 2, glow: 5 },
       ];
       for (const ws of windowSpots) {
-        wl.circle(ws.x, ws.y, 4).fill({ color: 0xFFDD44, alpha: lightAlpha * 0.7 });
-        wl.circle(ws.x, ws.y, 8).fill({ color: 0xFFAA22, alpha: lightAlpha * 0.2 });
+        const r = ws.r ?? 4;
+        const gr = ws.glow ?? 8;
+        wl.circle(ws.x, ws.y, r).fill({ color: 0xFFDD44, alpha: (lightAlpha * 0.7 + flicker) });
+        wl.circle(ws.x, ws.y, gr).fill({ color: 0xFFAA22, alpha: (lightAlpha * 0.15 + flicker * 0.5) });
       }
     }
   }

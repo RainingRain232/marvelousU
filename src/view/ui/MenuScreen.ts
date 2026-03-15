@@ -276,6 +276,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "FPS: arcane warfare with wands, mounts & dragons",
     skipSetup: true,
   },
+  {
+    mode: GameMode.GAME,
+    label: "GAME",
+    desc: "Quest for the Grail: Arthurian roguelike dungeon crawler",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

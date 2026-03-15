@@ -60,10 +60,8 @@ export class DragoonGame {
 
     // Input
     DragoonInputSystem.init(this._state);
-    DragoonInputSystem.setPauseCallback((paused) => {
-      if (paused && !this._state.gameOver && !this._state.victory) {
-        this._hud.showNotification("PAUSED", 0xcccccc, sw, sh);
-      }
+    DragoonInputSystem.setPauseCallback((_paused) => {
+      // Pause notification is handled by the escape menu overlay now
     });
 
     // Class selection callback
@@ -74,6 +72,25 @@ export class DragoonGame {
     // Subclass selection callback
     DragoonInputSystem.setSubclassSelectCallback((index) => {
       this._selectSubclass(index);
+    });
+
+    // Escape menu callback
+    DragoonInputSystem.setEscapeMenuCallback((show) => {
+      this._state.escapeMenuOpen = show;
+      if (show && !this._state.gameOver && !this._state.victory) {
+        this._hud.showEscapeMenu(sw, sh, () => {
+          // Resume
+          this._state.paused = false;
+          this._state.escapeMenuOpen = false;
+          this._hud.hideEscapeMenu();
+        }, () => {
+          // Main menu
+          this._cleanup();
+          window.dispatchEvent(new Event("dragoonExit"));
+        });
+      } else {
+        this._hud.hideEscapeMenu();
+      }
     });
 
     // Combat callbacks → FX
@@ -89,6 +106,14 @@ export class DragoonGame {
     });
     DragoonCombatSystem.setLightningCallback((x, y) => {
       this._fx.pendingLightning.push({ x, y });
+    });
+    DragoonCombatSystem.setSkillUnlockCallback((skillId) => {
+      const sw2 = viewManager.screenWidth;
+      const sh2 = viewManager.screenHeight;
+      const cfg = SKILL_CONFIGS[skillId];
+      this._hud.showNotification(`Skill Unlocked: ${cfg.name}!`, cfg.color, sw2, sh2);
+      this._hud.showNotification(`Press [6] to use — [Tab] to switch`, 0xaaaaaa, sw2, sh2);
+      this._fx.screenFlash(cfg.color, 0.2);
     });
     DragoonCombatSystem.setLevelUpCallback((level) => {
       const sw2 = viewManager.screenWidth;
@@ -313,6 +338,7 @@ export class DragoonGame {
     DragoonCombatSystem.setPlayerHitCallback(null);
     DragoonCombatSystem.setLightningCallback(null);
     DragoonCombatSystem.setLevelUpCallback(null);
+    DragoonCombatSystem.setSkillUnlockCallback(null);
     DragoonWaveSystem.reset();
 
     if (this._tickerCb) {

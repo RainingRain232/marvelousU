@@ -4,7 +4,7 @@
 
 import type { ThreeDragonState, TDProjectile, TDEnemy, TDExplosion, TDPowerUp, Vec3 } from "../state/ThreeDragonState";
 import { TDSkillId, TDEnemyPattern } from "../state/ThreeDragonState";
-import { TDBalance, TD_SKILL_CONFIGS } from "../config/ThreeDragonConfig";
+import { TDBalance, TD_SKILL_CONFIGS, TD_SKILL_UNLOCK_ORDER } from "../config/ThreeDragonConfig";
 
 // Callbacks for FX
 let _onExplosion: ((x: number, y: number, z: number, radius: number, color: number) => void) | null = null;
@@ -15,6 +15,8 @@ let _onEnemyDeath: ((x: number, y: number, z: number, size: number, color: numbe
 let _onBossKill: ((x: number, y: number, z: number, size: number, color: number, glowColor: number) => void) | null = null;
 let _onPowerUpCollect: ((x: number, y: number, z: number, type: "health" | "mana") => void) | null = null;
 let _onDamageNumber: ((x: number, y: number, z: number, damage: number, isCrit: boolean, isElite: boolean) => void) | null = null;
+let _onSkillUnlock: ((skillId: TDSkillId, skillName: string) => void) | null = null;
+let _onLevelUp: ((level: number) => void) | null = null;
 
 export const ThreeDragonCombatSystem = {
   setExplosionCallback(cb: typeof _onExplosion): void { _onExplosion = cb; },
@@ -25,6 +27,8 @@ export const ThreeDragonCombatSystem = {
   setBossKillCallback(cb: typeof _onBossKill): void { _onBossKill = cb; },
   setPowerUpCollectCallback(cb: typeof _onPowerUpCollect): void { _onPowerUpCollect = cb; },
   setDamageNumberCallback(cb: typeof _onDamageNumber): void { _onDamageNumber = cb; },
+  setSkillUnlockCallback(cb: typeof _onSkillUnlock): void { _onSkillUnlock = cb; },
+  setLevelUpCallback(cb: typeof _onLevelUp): void { _onLevelUp = cb; },
 
   update(state: ThreeDragonState, dt: number): void {
     _updateSkillCooldowns(state, dt);
@@ -80,34 +84,107 @@ function _handleSkillActivation(state: ThreeDragonState, dt: number): void {
     _fireArcaneBolt(state);
   }
 
-  // Celestial Lance (key 1)
-  if (inp.skill1) {
-    inp.skill1 = false;
-    const skill = state.skills.find(s => s.id === TDSkillId.CELESTIAL_LANCE)!;
-    const cfg = TD_SKILL_CONFIGS[TDSkillId.CELESTIAL_LANCE];
-    if (skill.cooldown <= 0 && p.mana >= cfg.manaCost) {
-      skill.cooldown = skill.maxCooldown;
-      p.mana -= cfg.manaCost;
-      _fireCelestialLance(state);
+  // Equipped skills mapped to keys 1-5
+  const skillInputs = [inp.skill1, inp.skill2, inp.skill3, inp.skill4, inp.skill5];
+  const skillInputClear = [
+    () => { inp.skill1 = false; },
+    () => { inp.skill2 = false; },
+    () => { inp.skill3 = false; },
+    () => { inp.skill4 = false; },
+    () => { inp.skill5 = false; },
+  ];
+
+  for (let slot = 0; slot < 5; slot++) {
+    const equippedId = state.equippedSkills[slot];
+    if (!equippedId) continue;
+
+    if (skillInputs[slot]) {
+      skillInputClear[slot]();
+      const skill = state.skills.find(s => s.id === equippedId);
+      if (!skill) continue;
+      const cfg = TD_SKILL_CONFIGS[equippedId];
+      if (!cfg) continue;
+      if (skill.cooldown <= 0 && p.mana >= cfg.manaCost) {
+        skill.cooldown = skill.maxCooldown;
+        p.mana -= cfg.manaCost;
+        _activateSkill(state, equippedId, skill, cfg);
+      }
     }
   }
 
-  // Thunderstorm (key 2)
-  if (inp.skill2) {
-    inp.skill2 = false;
-    const skill = state.skills.find(s => s.id === TDSkillId.THUNDERSTORM)!;
-    const cfg = TD_SKILL_CONFIGS[TDSkillId.THUNDERSTORM];
-    if (skill.cooldown <= 0 && p.mana >= cfg.manaCost) {
-      skill.cooldown = skill.maxCooldown;
+  // Channeling skills — tick their effects over duration
+  _tickChannelingSkills(state, dt);
+
+  // Shadow Dive tick
+  if (p.shadowDiveActive) {
+    p.shadowDiveTimer -= dt;
+    if (p.shadowDiveTimer <= 0) {
+      _endShadowDive(state);
+    }
+  }
+}
+
+function _activateSkill(state: ThreeDragonState, id: TDSkillId, skill: import("../state/ThreeDragonState").TDSkillState, cfg: import("../config/ThreeDragonConfig").TDSkillConfig): void {
+  const p = state.player;
+  switch (id) {
+    case TDSkillId.CELESTIAL_LANCE:
+      _fireCelestialLance(state);
+      break;
+    case TDSkillId.THUNDERSTORM:
       skill.active = true;
       skill.activeTimer = cfg.duration;
-      p.mana -= cfg.manaCost;
-    }
+      break;
+    case TDSkillId.FROST_NOVA:
+      _frostNova(state);
+      break;
+    case TDSkillId.METEOR_SHOWER:
+      skill.active = true;
+      skill.activeTimer = cfg.duration;
+      break;
+    case TDSkillId.DIVINE_SHIELD:
+      skill.active = true;
+      skill.activeTimer = cfg.duration;
+      p.shieldActive = true;
+      p.shieldTimer = cfg.duration;
+      break;
+    case TDSkillId.FIRE_BREATH:
+      skill.active = true;
+      skill.activeTimer = cfg.duration;
+      break;
+    case TDSkillId.ICE_STORM:
+      skill.active = true;
+      skill.activeTimer = cfg.duration;
+      break;
+    case TDSkillId.LIGHTNING_BOLT:
+      _lightningBolt(state);
+      break;
+    case TDSkillId.DRAGON_ROAR:
+      _dragonRoar(state);
+      skill.active = true;
+      skill.activeTimer = cfg.duration;
+      break;
+    case TDSkillId.WING_GUST:
+      _wingGust(state);
+      break;
+    case TDSkillId.HEALING_FLAME:
+      skill.active = true;
+      skill.activeTimer = cfg.duration;
+      break;
+    case TDSkillId.SHADOW_DIVE:
+      _startShadowDive(state, cfg);
+      skill.active = true;
+      skill.activeTimer = cfg.duration;
+      break;
+    case TDSkillId.CHAIN_LIGHTNING:
+      _chainLightning(state);
+      break;
   }
+}
 
+function _tickChannelingSkills(state: ThreeDragonState, dt: number): void {
   // Thunderstorm channeling
-  const thunderSkill = state.skills.find(s => s.id === TDSkillId.THUNDERSTORM)!;
-  if (thunderSkill.active && thunderSkill.activeTimer > 0) {
+  const thunderSkill = state.skills.find(s => s.id === TDSkillId.THUNDERSTORM);
+  if (thunderSkill && thunderSkill.active && thunderSkill.activeTimer > 0) {
     const interval = 0.25;
     const tPrev = thunderSkill.activeTimer + dt;
     const strikes = Math.floor(tPrev / interval) - Math.floor(thunderSkill.activeTimer / interval);
@@ -116,34 +193,9 @@ function _handleSkillActivation(state: ThreeDragonState, dt: number): void {
     }
   }
 
-  // Frost Nova (key 3)
-  if (inp.skill3) {
-    inp.skill3 = false;
-    const skill = state.skills.find(s => s.id === TDSkillId.FROST_NOVA)!;
-    const cfg = TD_SKILL_CONFIGS[TDSkillId.FROST_NOVA];
-    if (skill.cooldown <= 0 && p.mana >= cfg.manaCost) {
-      skill.cooldown = skill.maxCooldown;
-      p.mana -= cfg.manaCost;
-      _frostNova(state);
-    }
-  }
-
-  // Meteor Shower (key 4)
-  if (inp.skill4) {
-    inp.skill4 = false;
-    const skill = state.skills.find(s => s.id === TDSkillId.METEOR_SHOWER)!;
-    const cfg = TD_SKILL_CONFIGS[TDSkillId.METEOR_SHOWER];
-    if (skill.cooldown <= 0 && p.mana >= cfg.manaCost) {
-      skill.cooldown = skill.maxCooldown;
-      skill.active = true;
-      skill.activeTimer = cfg.duration;
-      p.mana -= cfg.manaCost;
-    }
-  }
-
   // Meteor channeling
-  const meteorSkill = state.skills.find(s => s.id === TDSkillId.METEOR_SHOWER)!;
-  if (meteorSkill.active && meteorSkill.activeTimer > 0) {
+  const meteorSkill = state.skills.find(s => s.id === TDSkillId.METEOR_SHOWER);
+  if (meteorSkill && meteorSkill.active && meteorSkill.activeTimer > 0) {
     const interval = 0.3;
     const tPrev = meteorSkill.activeTimer + dt;
     const strikes = Math.floor(tPrev / interval) - Math.floor(meteorSkill.activeTimer / interval);
@@ -152,18 +204,39 @@ function _handleSkillActivation(state: ThreeDragonState, dt: number): void {
     }
   }
 
-  // Divine Shield (key 5)
-  if (inp.skill5) {
-    inp.skill5 = false;
-    const skill = state.skills.find(s => s.id === TDSkillId.DIVINE_SHIELD)!;
-    const cfg = TD_SKILL_CONFIGS[TDSkillId.DIVINE_SHIELD];
-    if (skill.cooldown <= 0 && p.mana >= cfg.manaCost) {
-      skill.cooldown = skill.maxCooldown;
-      skill.active = true;
-      skill.activeTimer = cfg.duration;
-      p.mana -= cfg.manaCost;
-      p.shieldActive = true;
-      p.shieldTimer = cfg.duration;
+  // Fire Breath channeling
+  const fireBreathSkill = state.skills.find(s => s.id === TDSkillId.FIRE_BREATH);
+  if (fireBreathSkill && fireBreathSkill.active && fireBreathSkill.activeTimer > 0) {
+    const interval = 0.15;
+    const tPrev = fireBreathSkill.activeTimer + dt;
+    const ticks = Math.floor(tPrev / interval) - Math.floor(fireBreathSkill.activeTimer / interval);
+    for (let i = 0; i < ticks; i++) {
+      _fireBreathTick(state);
+    }
+  }
+
+  // Ice Storm channeling
+  const iceStormSkill = state.skills.find(s => s.id === TDSkillId.ICE_STORM);
+  if (iceStormSkill && iceStormSkill.active && iceStormSkill.activeTimer > 0) {
+    const interval = 0.2;
+    const tPrev = iceStormSkill.activeTimer + dt;
+    const ticks = Math.floor(tPrev / interval) - Math.floor(iceStormSkill.activeTimer / interval);
+    for (let i = 0; i < ticks; i++) {
+      _iceStormTick(state);
+    }
+  }
+
+  // Healing Flame channeling
+  const healFlameSkill = state.skills.find(s => s.id === TDSkillId.HEALING_FLAME);
+  if (healFlameSkill && healFlameSkill.active && healFlameSkill.activeTimer > 0) {
+    const interval = 0.5;
+    const tPrev = healFlameSkill.activeTimer + dt;
+    const ticks = Math.floor(tPrev / interval) - Math.floor(healFlameSkill.activeTimer / interval);
+    for (let i = 0; i < ticks; i++) {
+      const p = state.player;
+      const healAmt = 5;
+      p.hp = Math.min(p.maxHp, p.hp + healAmt);
+      _onExplosion?.(p.position.x, p.position.y, p.position.z, 3, 0x44ff88);
     }
   }
 }
@@ -291,6 +364,213 @@ function _meteorStrike(state: ThreeDragonState): void {
   state.explosions.push(explosion);
 
   _onExplosion?.(x, y, z, explosion.maxRadius, cfg.color);
+}
+
+// ---------------------------------------------------------------------------
+// New unlockable skill implementations
+// ---------------------------------------------------------------------------
+
+function _fireBreathTick(state: ThreeDragonState): void {
+  const p = state.player;
+  const cfg = TD_SKILL_CONFIGS[TDSkillId.FIRE_BREATH];
+  const coneRange = 20;
+  const coneAngle = 0.6; // radians half-angle
+
+  for (const e of state.enemies) {
+    if (!e.alive) continue;
+    const dx = e.position.x - p.position.x;
+    const dz = e.position.z - p.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist > coneRange || dist < 1) continue;
+    // Cone check: enemy must be ahead (negative z) and within angle
+    const angle = Math.abs(Math.atan2(dx, -dz));
+    if (angle < coneAngle) {
+      _damageEnemy(state, e, cfg.damage * 0.4);
+    }
+  }
+  // Visual
+  const fireX = p.position.x + (Math.random() - 0.5) * 6;
+  const fireY = p.position.y + (Math.random() - 0.5) * 3;
+  const fireZ = p.position.z - 8 - Math.random() * 12;
+  _onExplosion?.(fireX, fireY, fireZ, 3, cfg.color);
+}
+
+function _iceStormTick(state: ThreeDragonState): void {
+  const p = state.player;
+  const cfg = TD_SKILL_CONFIGS[TDSkillId.ICE_STORM];
+  const radius = 15;
+
+  const cx = p.position.x + (Math.random() - 0.5) * 20;
+  const cy = p.position.y + (Math.random() - 0.5) * 6;
+  const cz = p.position.z - 15 - Math.random() * 25;
+
+  for (const e of state.enemies) {
+    if (!e.alive) continue;
+    if (_dist3(e.position, { x: cx, y: cy, z: cz }) < radius) {
+      _damageEnemy(state, e, cfg.damage * 0.3);
+      e.slowFactor = 0.3;
+      e.slowTimer = Math.max(e.slowTimer, 1.5);
+    }
+  }
+  _onExplosion?.(cx, cy, cz, 4, cfg.color);
+}
+
+function _lightningBolt(state: ThreeDragonState): void {
+  const p = state.player;
+  const cfg = TD_SKILL_CONFIGS[TDSkillId.LIGHTNING_BOLT];
+
+  // Find nearest enemy
+  let nearest: TDEnemy | null = null;
+  let nearestDist = Infinity;
+  for (const e of state.enemies) {
+    if (!e.alive) continue;
+    const d = _dist3(e.position, p.position);
+    if (d < nearestDist && d < 50) {
+      nearest = e;
+      nearestDist = d;
+    }
+  }
+  if (nearest) {
+    _damageEnemy(state, nearest, cfg.damage);
+    _onLightningStrike?.(nearest.position.x, nearest.position.y, nearest.position.z);
+    _onExplosion?.(nearest.position.x, nearest.position.y, nearest.position.z, 4, cfg.color);
+  } else {
+    // No target — fire forward
+    _onLightningStrike?.(p.position.x, p.position.y, p.position.z - 30);
+    _onExplosion?.(p.position.x, p.position.y, p.position.z - 30, 4, cfg.color);
+  }
+}
+
+function _dragonRoar(state: ThreeDragonState): void {
+  const p = state.player;
+  const cfg = TD_SKILL_CONFIGS[TDSkillId.DRAGON_ROAR];
+  const radius = 22;
+
+  for (const e of state.enemies) {
+    if (!e.alive) continue;
+    if (_dist3(e.position, p.position) < radius) {
+      _damageEnemy(state, e, cfg.damage);
+      // Stun = full slow for duration
+      e.slowFactor = 0;
+      e.slowTimer = Math.max(e.slowTimer, cfg.duration);
+    }
+  }
+  _onExplosion?.(p.position.x, p.position.y, p.position.z, radius, cfg.color);
+}
+
+function _wingGust(state: ThreeDragonState): void {
+  const p = state.player;
+  const cfg = TD_SKILL_CONFIGS[TDSkillId.WING_GUST];
+  const radius = 18;
+
+  for (const e of state.enemies) {
+    if (!e.alive) continue;
+    const d = _dist3(e.position, p.position);
+    if (d < radius && d > 0.5) {
+      _damageEnemy(state, e, cfg.damage);
+      // Push enemies away
+      const dx = e.position.x - p.position.x;
+      const dy = e.position.y - p.position.y;
+      const dz = e.position.z - p.position.z;
+      const pushForce = 20 / Math.max(1, d * 0.5);
+      e.position.x += (dx / d) * pushForce;
+      e.position.y += (dy / d) * pushForce;
+      e.position.z += (dz / d) * pushForce;
+    }
+  }
+  _onExplosion?.(p.position.x, p.position.y, p.position.z, radius, cfg.color);
+}
+
+function _startShadowDive(state: ThreeDragonState, cfg: import("../config/ThreeDragonConfig").TDSkillConfig): void {
+  const p = state.player;
+  p.shadowDiveActive = true;
+  p.shadowDiveTimer = cfg.duration;
+  p.invincTimer = cfg.duration + 0.2; // invincible during shadow dive
+  _onExplosion?.(p.position.x, p.position.y, p.position.z, 5, cfg.color);
+}
+
+function _endShadowDive(state: ThreeDragonState): void {
+  const p = state.player;
+  p.shadowDiveActive = false;
+  const cfg = TD_SKILL_CONFIGS[TDSkillId.SHADOW_DIVE];
+  // AoE damage on exit
+  const radius = 12;
+  for (const e of state.enemies) {
+    if (!e.alive) continue;
+    if (_dist3(e.position, p.position) < radius) {
+      _damageEnemy(state, e, cfg.damage);
+    }
+  }
+  _onExplosion?.(p.position.x, p.position.y, p.position.z, radius, cfg.color);
+}
+
+function _chainLightning(state: ThreeDragonState): void {
+  const p = state.player;
+  const cfg = TD_SKILL_CONFIGS[TDSkillId.CHAIN_LIGHTNING];
+  const maxChains = 6;
+  const chainRange = 15;
+
+  const hit = new Set<number>();
+  let current: Vec3 = { ...p.position };
+
+  for (let chain = 0; chain < maxChains; chain++) {
+    let nearest: TDEnemy | null = null;
+    let nearestDist = Infinity;
+    for (const e of state.enemies) {
+      if (!e.alive || hit.has(e.id)) continue;
+      const d = _dist3(e.position, current);
+      if (d < nearestDist && d < chainRange) {
+        nearest = e;
+        nearestDist = d;
+      }
+    }
+    if (!nearest) break;
+    hit.add(nearest.id);
+    _damageEnemy(state, nearest, cfg.damage);
+    _onLightningStrike?.(nearest.position.x, nearest.position.y, nearest.position.z);
+    current = { ...nearest.position };
+  }
+
+  if (hit.size > 0) {
+    _onExplosion?.(p.position.x, p.position.y, p.position.z, 5, cfg.color);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// XP & Level system
+// ---------------------------------------------------------------------------
+
+function _grantXP(state: ThreeDragonState, amount: number): void {
+  const p = state.player;
+  p.xp += amount;
+
+  while (p.xp >= p.xpToNextLevel) {
+    p.xp -= p.xpToNextLevel;
+    p.level++;
+    p.xpToNextLevel = TDBalance.XP_LEVEL_BASE + (p.level - 1) * TDBalance.XP_LEVEL_GROWTH;
+
+    _onLevelUp?.(p.level);
+
+    // Check for skill unlocks at this level
+    for (const unlock of TD_SKILL_UNLOCK_ORDER) {
+      if (unlock.level === p.level && !state.unlockedSkills.includes(unlock.skillId)) {
+        state.unlockedSkills.push(unlock.skillId);
+        state.pendingUnlocks.push(unlock.skillId);
+        // Add the skill to the skills array so it can be tracked
+        const cfg = TD_SKILL_CONFIGS[unlock.skillId];
+        if (cfg) {
+          state.skills.push({
+            id: unlock.skillId,
+            cooldown: 0,
+            maxCooldown: cfg.cooldown,
+            active: false,
+            activeTimer: 0,
+          });
+        }
+        _onSkillUnlock?.(unlock.skillId, cfg?.name ?? "Unknown Skill");
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -735,6 +1015,10 @@ function _damageEnemy(state: ThreeDragonState, enemy: TDEnemy, damage: number): 
 
     // Enemy death callback
     _onEnemyDeath?.(enemy.position.x, enemy.position.y, enemy.position.z, enemy.size, enemy.color, enemy.glowColor, enemy.isBoss);
+
+    // Grant XP
+    const xpAmount = enemy.isBoss ? TDBalance.XP_PER_KILL_BOSS : TDBalance.XP_PER_KILL_BASE + Math.floor(enemy.scoreValue * 0.05);
+    _grantXP(state, xpAmount);
 
     // Boss kill: callback + slow-mo
     if (enemy.isBoss) {

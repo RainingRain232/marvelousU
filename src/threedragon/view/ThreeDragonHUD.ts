@@ -4,7 +4,7 @@
 
 import type { ThreeDragonState } from "../state/ThreeDragonState";
 import { TDSkillId } from "../state/ThreeDragonState";
-import { TD_SKILL_CONFIGS } from "../config/ThreeDragonConfig";
+import { TD_SKILL_CONFIGS, TD_SKILL_UNLOCK_ORDER } from "../config/ThreeDragonConfig";
 
 // ---------------------------------------------------------------------------
 // ThreeDragonHUD
@@ -45,6 +45,14 @@ export class ThreeDragonHUD {
   private _boostFill!: HTMLDivElement;
   private _boostLabel!: HTMLDivElement;
   private _boostFlash!: HTMLDivElement;
+  private _xpBar!: HTMLDivElement;
+  private _xpFill!: HTMLDivElement;
+  private _xpText!: HTMLDivElement;
+  private _levelEl!: HTMLDivElement;
+  private _skillEquipOverlay!: HTMLDivElement;
+  private _skillEquipVisible = false;
+  private _lastEquippedSkills: TDSkillId[] = [];
+  private _onEquipSkill: ((slot: number, skillId: TDSkillId) => void) | null = null;
 
   build(_sw: number, _sh: number): void {
     // Inject keyframe animations
@@ -162,10 +170,44 @@ export class ThreeDragonHUD {
     `;
     this._root.appendChild(this._boostFlash);
 
+    // XP Bar
+    this._xpBar = document.createElement("div");
+    this._xpBar.style.cssText = `
+      position: absolute; left: 20px; top: 78px; width: 120px; height: 8px;
+      background: linear-gradient(180deg, #0a0a1a 0%, #141428 100%);
+      border: 1px solid rgba(100,255,100,0.25); border-radius: 3px;
+      overflow: hidden;
+      box-shadow: 0 0 4px rgba(50,200,50,0.1), 0 1px 3px rgba(0,0,0,0.3);
+    `;
+    this._xpFill = document.createElement("div");
+    this._xpFill.style.cssText = `
+      width: 0%; height: 100%; border-radius: 2px;
+      background: linear-gradient(180deg, #44ff88 0%, #22aa55 40%, #118833 100%);
+      transition: width 0.2s ease-out;
+    `;
+    this._xpBar.appendChild(this._xpFill);
+    this._root.appendChild(this._xpBar);
+
+    this._xpText = document.createElement("div");
+    this._xpText.style.cssText = `
+      position: absolute; left: 145px; top: 76px; font-size: 8px; color: #55aa77;
+      text-shadow: 1px 1px 2px #000; letter-spacing: 1px;
+    `;
+    this._root.appendChild(this._xpText);
+
+    this._levelEl = document.createElement("div");
+    this._levelEl.style.cssText = `
+      position: absolute; left: 22px; top: 75px; font-size: 8px; color: #66cc88;
+      text-shadow: 0 0 4px rgba(100,200,100,0.5), 1px 1px 2px #000;
+      letter-spacing: 2px; text-transform: uppercase; font-weight: bold;
+    `;
+    this._levelEl.textContent = "LVL 1";
+    this._root.appendChild(this._levelEl);
+
     // Map name (will be set on first update)
     this._mapNameEl = document.createElement("div");
     this._mapNameEl.style.cssText = `
-      position: absolute; left: 22px; top: 78px; font-size: 10px;
+      position: absolute; left: 22px; top: 92px; font-size: 10px;
       color: #667788; letter-spacing: 1px; text-transform: uppercase;
       text-shadow: 1px 1px 2px #000;
     `;
@@ -299,27 +341,89 @@ export class ThreeDragonHUD {
     `;
     this._root.appendChild(this._centerText);
 
-    // Pause menu overlay
+    // Pause menu overlay — full controls display + navigation
     this._pauseOverlay = document.createElement("div");
     this._pauseOverlay.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7); display: none;
+      background: rgba(0,0,0,0.75); display: none;
       justify-content: center; align-items: center; flex-direction: column;
-      z-index: 50; pointer-events: auto; backdrop-filter: blur(4px);
-      font-family: 'Cinzel', Georgia, serif;
+      z-index: 50; pointer-events: auto; backdrop-filter: blur(6px);
+      font-family: 'Cinzel', Georgia, serif; overflow-y: auto;
+    `;
+
+    // Inner container for centering
+    const pauseInner = document.createElement("div");
+    pauseInner.style.cssText = `
+      display: flex; flex-direction: column; align-items: center;
+      max-width: 500px; width: 90%; padding: 30px 0;
     `;
 
     const pauseTitle = document.createElement("div");
     pauseTitle.style.cssText = `
       font-size: 36px; color: #ccddff; font-weight: bold; letter-spacing: 4px;
       text-shadow: 0 0 15px rgba(100,150,255,0.5), 2px 2px 4px rgba(0,0,0,0.8);
-      margin-bottom: 30px; text-transform: uppercase;
+      margin-bottom: 24px; text-transform: uppercase;
     `;
     pauseTitle.textContent = "Paused";
-    this._pauseOverlay.appendChild(pauseTitle);
+    pauseInner.appendChild(pauseTitle);
 
+    // Controls section
+    const controlsBox = document.createElement("div");
+    controlsBox.style.cssText = `
+      width: 100%; background: linear-gradient(180deg, rgba(15,18,35,0.9) 0%, rgba(8,10,22,0.95) 100%);
+      border: 1px solid rgba(80,120,180,0.25); border-radius: 10px;
+      padding: 18px 24px; margin-bottom: 24px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    `;
+    const controlsTitle = document.createElement("div");
+    controlsTitle.style.cssText = `
+      font-size: 14px; color: #88aacc; font-weight: bold; letter-spacing: 2px;
+      text-transform: uppercase; margin-bottom: 14px; text-align: center;
+      text-shadow: 0 0 6px rgba(100,150,200,0.3);
+    `;
+    controlsTitle.textContent = "Controls";
+    controlsBox.appendChild(controlsTitle);
+
+    const controlsList: [string, string][] = [
+      ["W / Arrow Up", "Move Up"],
+      ["S / Arrow Down", "Move Down"],
+      ["A / Arrow Left", "Move Left"],
+      ["D / Arrow Right", "Move Right"],
+      ["Left Mouse Button", "Fire Arcane Bolt"],
+      ["1 - 5", "Activate Skill (slot 1-5)"],
+      ["Shift / Space", "Boost (speed burst)"],
+      ["Tab", "Skill Equip Menu"],
+      ["Escape", "Pause / Resume"],
+    ];
+
+    for (const [key, action] of controlsList) {
+      const row = document.createElement("div");
+      row.style.cssText = `
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 4px 0; border-bottom: 1px solid rgba(60,80,120,0.15);
+      `;
+      const keyEl = document.createElement("span");
+      keyEl.style.cssText = `
+        font-size: 12px; color: #ffd700; font-weight: bold;
+        background: rgba(255,215,0,0.08); padding: 2px 8px; border-radius: 4px;
+        border: 1px solid rgba(255,215,0,0.2); letter-spacing: 1px;
+        font-family: 'Consolas', 'Monaco', monospace;
+      `;
+      keyEl.textContent = key;
+      const actionEl = document.createElement("span");
+      actionEl.style.cssText = `
+        font-size: 11px; color: #99aabb; letter-spacing: 1px;
+      `;
+      actionEl.textContent = action;
+      row.appendChild(keyEl);
+      row.appendChild(actionEl);
+      controlsBox.appendChild(row);
+    }
+    pauseInner.appendChild(controlsBox);
+
+    // Buttons
     const btnStyle = `
-      width: 200px; padding: 12px 0; margin: 6px; border-radius: 8px;
+      width: 220px; padding: 12px 0; margin: 6px; border-radius: 8px;
       border: 1px solid rgba(100,150,255,0.3); cursor: pointer;
       background: linear-gradient(180deg, rgba(20,25,50,0.9) 0%, rgba(10,12,25,0.95) 100%);
       color: #aabbdd; font-size: 16px; font-weight: bold; letter-spacing: 2px;
@@ -345,23 +449,44 @@ export class ThreeDragonHUD {
     resumeBtn.textContent = "Resume";
     btnHover(resumeBtn);
     resumeBtn.addEventListener("click", () => this._onPauseResume?.());
-    this._pauseOverlay.appendChild(resumeBtn);
+    pauseInner.appendChild(resumeBtn);
 
     const restartBtn = document.createElement("div");
     restartBtn.style.cssText = btnStyle;
     restartBtn.textContent = "Restart";
     btnHover(restartBtn);
     restartBtn.addEventListener("click", () => this._onPauseRestart?.());
-    this._pauseOverlay.appendChild(restartBtn);
+    pauseInner.appendChild(restartBtn);
 
     const quitBtn = document.createElement("div");
     quitBtn.style.cssText = btnStyle;
-    quitBtn.textContent = "Quit";
+    quitBtn.textContent = "Main Menu";
     btnHover(quitBtn);
     quitBtn.addEventListener("click", () => this._onPauseQuit?.());
-    this._pauseOverlay.appendChild(quitBtn);
+    pauseInner.appendChild(quitBtn);
 
+    // ESC hint
+    const escHint = document.createElement("div");
+    escHint.style.cssText = `
+      margin-top: 16px; font-size: 10px; color: #556677;
+      letter-spacing: 1px; text-transform: uppercase;
+    `;
+    escHint.textContent = "Press ESC to resume";
+    pauseInner.appendChild(escHint);
+
+    this._pauseOverlay.appendChild(pauseInner);
     this._root.appendChild(this._pauseOverlay);
+
+    // Skill equip overlay (Tab menu)
+    this._skillEquipOverlay = document.createElement("div");
+    this._skillEquipOverlay.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.75); display: none;
+      justify-content: center; align-items: center; flex-direction: column;
+      z-index: 45; pointer-events: auto; backdrop-filter: blur(4px);
+      font-family: 'Cinzel', Georgia, serif;
+    `;
+    this._root.appendChild(this._skillEquipOverlay);
 
     document.body.appendChild(this._root);
   }
@@ -426,17 +551,27 @@ export class ThreeDragonHUD {
   }
 
   private _buildSkillBar(): void {
-    const skills = [
+    // Will be rebuilt dynamically when equipped skills change
+    this._rebuildSkillSlots([
       TDSkillId.CELESTIAL_LANCE,
       TDSkillId.THUNDERSTORM,
       TDSkillId.FROST_NOVA,
       TDSkillId.METEOR_SHOWER,
       TDSkillId.DIVINE_SHIELD,
-    ];
+    ]);
+  }
 
+  private _rebuildSkillSlots(equippedSkills: TDSkillId[]): void {
+    // Clear old slots
+    for (const slot of this._skillSlots) {
+      if (slot.el.parentNode) slot.el.parentNode.removeChild(slot.el);
+    }
     this._skillSlots = [];
-    for (const skillId of skills) {
+
+    for (let i = 0; i < equippedSkills.length; i++) {
+      const skillId = equippedSkills[i];
       const cfg = TD_SKILL_CONFIGS[skillId];
+      if (!cfg) continue;
       const slot = document.createElement("div");
       const c = cfg.color;
       const colorHex = `#${c.toString(16).padStart(6, "0")}`;
@@ -451,7 +586,7 @@ export class ThreeDragonHUD {
         overflow: hidden;
       `;
 
-      // Color icon glow (replaces plain dot)
+      // Color icon glow
       const icon = document.createElement("div");
       icon.style.cssText = `
         width: 14px; height: 14px; border-radius: 50%;
@@ -468,7 +603,7 @@ export class ThreeDragonHUD {
         font-size: 13px; font-weight: bold; color: #eee;
         text-shadow: 0 0 4px rgba(255,255,255,0.3);
       `;
-      key.textContent = cfg.key;
+      key.textContent = `${i + 1}`;
       slot.appendChild(key);
 
       // Name
@@ -480,7 +615,7 @@ export class ThreeDragonHUD {
       name.textContent = cfg.name;
       slot.appendChild(name);
 
-      // Cooldown overlay — sweeps from bottom
+      // Cooldown overlay
       const cdOverlay = document.createElement("div");
       cdOverlay.style.cssText = `
         position: absolute; bottom: 0; left: 0; right: 0;
@@ -502,7 +637,7 @@ export class ThreeDragonHUD {
       `;
       slot.appendChild(cdText);
 
-      // Active glow — fancier with gradient border
+      // Active glow
       const activeGlow = document.createElement("div");
       activeGlow.style.cssText = `
         position: absolute; inset: -2px; border-radius: 8px;
@@ -516,6 +651,8 @@ export class ThreeDragonHUD {
       this._skillBar.appendChild(slot);
       this._skillSlots.push({ el: slot, cdOverlay, active: activeGlow, cdText });
     }
+
+    this._lastEquippedSkills = [...equippedSkills];
   }
 
   // ---------------------------------------------------------------------------
@@ -669,18 +806,28 @@ export class ThreeDragonHUD {
       this._lastComboCount = 0;
     }
 
-    // Skills
-    const skillIds = [
-      TDSkillId.CELESTIAL_LANCE,
-      TDSkillId.THUNDERSTORM,
-      TDSkillId.FROST_NOVA,
-      TDSkillId.METEOR_SHOWER,
-      TDSkillId.DIVINE_SHIELD,
-    ];
+    // XP / Level
+    const xpPct = (p.xpToNextLevel > 0) ? (p.xp / p.xpToNextLevel) * 100 : 0;
+    this._xpFill.style.width = `${xpPct}%`;
+    this._levelEl.textContent = `LVL ${p.level}`;
+    this._xpText.textContent = `${p.xp}/${p.xpToNextLevel} XP`;
+
+    // Rebuild skill bar if equipped skills changed
+    const equippedChanged = state.equippedSkills.length !== this._lastEquippedSkills.length ||
+      state.equippedSkills.some((s, i) => s !== this._lastEquippedSkills[i]);
+    if (equippedChanged) {
+      this._rebuildSkillSlots(state.equippedSkills);
+    }
+
+    // Skills — use equipped skills
+    const skillIds = state.equippedSkills;
     for (let i = 0; i < skillIds.length; i++) {
-      const skillState = state.skills.find(s => s.id === skillIds[i])!;
+      const skillState = state.skills.find(s => s.id === skillIds[i]);
+      if (!skillState) continue;
       const cfg = TD_SKILL_CONFIGS[skillIds[i]];
+      if (!cfg) continue;
       const slot = this._skillSlots[i];
+      if (!slot) continue;
       const colorHex = `#${cfg.color.toString(16).padStart(6, "0")}`;
 
       const onCooldown = skillState.cooldown > 0;
@@ -767,7 +914,7 @@ export class ThreeDragonHUD {
       }
       this._centerText.style.opacity = `${Math.min(1, state.betweenWaveTimer)}`;
     } else if (state.betweenWaves && state.wave === 0) {
-      this._centerText.textContent = "Arthur & the White Eagle\nWASD to move, LMB to shoot, 1-5 for skills, SHIFT to boost";
+      this._centerText.textContent = "Arthur & the White Eagle\nWASD to move, LMB to shoot, 1-5 for skills, SHIFT to boost\nTAB to swap skills, ESC to pause";
       this._centerText.style.color = "#ccddff";
       this._centerText.style.opacity = "1";
     } else {
@@ -894,6 +1041,238 @@ export class ThreeDragonHUD {
       isCrit,
       isElite,
     });
+  }
+
+  setEquipSkillCallback(cb: (slot: number, skillId: TDSkillId) => void): void {
+    this._onEquipSkill = cb;
+  }
+
+  get isSkillEquipVisible(): boolean {
+    return this._skillEquipVisible;
+  }
+
+  showSkillEquipMenu(state: ThreeDragonState): void {
+    this._skillEquipVisible = true;
+    this._skillEquipOverlay.style.display = "flex";
+    // Rebuild content
+    this._skillEquipOverlay.innerHTML = "";
+
+    const container = document.createElement("div");
+    container.style.cssText = `
+      display: flex; flex-direction: column; align-items: center;
+      max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;
+    `;
+
+    const title = document.createElement("div");
+    title.style.cssText = `
+      font-size: 28px; color: #ccddff; font-weight: bold; letter-spacing: 3px;
+      text-shadow: 0 0 12px rgba(100,150,255,0.5), 2px 2px 4px rgba(0,0,0,0.8);
+      margin-bottom: 8px; text-transform: uppercase;
+    `;
+    title.textContent = "Equip Skills";
+    container.appendChild(title);
+
+    const hint = document.createElement("div");
+    hint.style.cssText = `
+      font-size: 11px; color: #667788; letter-spacing: 1px; margin-bottom: 20px;
+    `;
+    hint.textContent = "Click a skill to assign it to a slot. Press TAB to close.";
+    container.appendChild(hint);
+
+    // Current slots
+    const slotsLabel = document.createElement("div");
+    slotsLabel.style.cssText = `
+      font-size: 12px; color: #88aacc; letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 10px; font-weight: bold;
+    `;
+    slotsLabel.textContent = "Active Skill Slots (1-5)";
+    container.appendChild(slotsLabel);
+
+    const slotsRow = document.createElement("div");
+    slotsRow.style.cssText = `display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;`;
+
+    for (let i = 0; i < 5; i++) {
+      const equippedId = state.equippedSkills[i];
+      const cfg = equippedId ? TD_SKILL_CONFIGS[equippedId] : null;
+      const slotEl = document.createElement("div");
+      const colorHex = cfg ? `#${cfg.color.toString(16).padStart(6, "0")}` : "#444";
+      slotEl.style.cssText = `
+        width: 90px; height: 60px; border-radius: 8px;
+        border: 2px solid ${cfg ? colorHex + "88" : "rgba(80,80,100,0.3)"};
+        background: linear-gradient(180deg, #1a1a30 0%, #101020 100%);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        cursor: pointer; transition: all 0.2s; position: relative;
+      `;
+      const keyLabel = document.createElement("div");
+      keyLabel.style.cssText = `font-size: 14px; font-weight: bold; color: #ffd700; margin-bottom: 2px;`;
+      keyLabel.textContent = `${i + 1}`;
+      slotEl.appendChild(keyLabel);
+      const nameLabel = document.createElement("div");
+      nameLabel.style.cssText = `font-size: 8px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;`;
+      nameLabel.textContent = cfg ? cfg.name : "Empty";
+      slotEl.appendChild(nameLabel);
+      slotsRow.appendChild(slotEl);
+    }
+    container.appendChild(slotsRow);
+
+    // Available skills
+    const availLabel = document.createElement("div");
+    availLabel.style.cssText = `
+      font-size: 12px; color: #88aacc; letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 10px; font-weight: bold;
+    `;
+    availLabel.textContent = "Unlocked Skills (click to equip)";
+    container.appendChild(availLabel);
+
+    const skillGrid = document.createElement("div");
+    skillGrid.style.cssText = `
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px;
+    `;
+
+    for (const skillId of state.unlockedSkills) {
+      const cfg = TD_SKILL_CONFIGS[skillId];
+      if (!cfg) continue;
+      const colorHex = `#${cfg.color.toString(16).padStart(6, "0")}`;
+      const isEquipped = state.equippedSkills.includes(skillId);
+
+      const card = document.createElement("div");
+      card.style.cssText = `
+        width: 110px; padding: 10px; border-radius: 8px;
+        border: 1px solid ${isEquipped ? colorHex + "aa" : "rgba(80,80,100,0.3)"};
+        background: ${isEquipped
+          ? `linear-gradient(180deg, ${colorHex}15 0%, ${colorHex}08 100%)`
+          : "linear-gradient(180deg, #141420 0%, #0c0c18 100%)"};
+        cursor: pointer; transition: all 0.2s; text-align: center;
+        pointer-events: auto;
+        ${isEquipped ? `box-shadow: 0 0 8px ${colorHex}33;` : ""}
+      `;
+      card.addEventListener("mouseenter", () => {
+        card.style.borderColor = colorHex;
+        card.style.boxShadow = `0 0 12px ${colorHex}44`;
+        card.style.transform = "scale(1.05)";
+      });
+      card.addEventListener("mouseleave", () => {
+        card.style.borderColor = isEquipped ? colorHex + "aa" : "rgba(80,80,100,0.3)";
+        card.style.boxShadow = isEquipped ? `0 0 8px ${colorHex}33` : "none";
+        card.style.transform = "scale(1)";
+      });
+
+      const icon = document.createElement("div");
+      icon.style.cssText = `
+        width: 16px; height: 16px; border-radius: 50%; margin: 0 auto 6px;
+        background: radial-gradient(circle at 35% 35%, ${colorHex}cc, ${colorHex}66);
+        box-shadow: 0 0 8px ${colorHex}44;
+      `;
+      card.appendChild(icon);
+
+      const nameEl = document.createElement("div");
+      nameEl.style.cssText = `font-size: 10px; font-weight: bold; color: ${colorHex}; margin-bottom: 4px; letter-spacing: 0.5px;`;
+      nameEl.textContent = cfg.name;
+      card.appendChild(nameEl);
+
+      const descEl = document.createElement("div");
+      descEl.style.cssText = `font-size: 8px; color: #778899; line-height: 1.3; margin-bottom: 4px;`;
+      descEl.textContent = cfg.description;
+      card.appendChild(descEl);
+
+      const statsEl = document.createElement("div");
+      statsEl.style.cssText = `font-size: 7px; color: #556677; letter-spacing: 0.5px;`;
+      const parts: string[] = [];
+      if (cfg.damage > 0) parts.push(`DMG: ${cfg.damage}`);
+      if (cfg.manaCost > 0) parts.push(`MANA: ${cfg.manaCost}`);
+      parts.push(`CD: ${cfg.cooldown}s`);
+      statsEl.textContent = parts.join(" | ");
+      card.appendChild(statsEl);
+
+      if (isEquipped) {
+        const eqBadge = document.createElement("div");
+        eqBadge.style.cssText = `
+          font-size: 7px; color: #ffd700; margin-top: 4px;
+          letter-spacing: 1px; text-transform: uppercase; font-weight: bold;
+        `;
+        eqBadge.textContent = `SLOT ${state.equippedSkills.indexOf(skillId) + 1}`;
+        card.appendChild(eqBadge);
+      }
+
+      // Click to equip: find first available slot or cycle
+      card.addEventListener("click", () => {
+        if (isEquipped) {
+          // Already equipped - unequip is not allowed for now, just notify
+          return;
+        }
+        // Find first slot that doesn't have a unique skill or replace last slot
+        // Simple: put in next open slot, or if all 5 filled, replace slot 5
+        let targetSlot = state.equippedSkills.length;
+        if (targetSlot >= 5) targetSlot = 4; // replace last
+        this._onEquipSkill?.(targetSlot, skillId);
+        // Refresh the menu
+        this.showSkillEquipMenu(state);
+      });
+
+      skillGrid.appendChild(card);
+    }
+
+    // Show locked skills
+    for (const unlock of TD_SKILL_UNLOCK_ORDER) {
+      if (state.unlockedSkills.includes(unlock.skillId)) continue;
+      const cfg = TD_SKILL_CONFIGS[unlock.skillId];
+      if (!cfg) continue;
+
+      const card = document.createElement("div");
+      card.style.cssText = `
+        width: 110px; padding: 10px; border-radius: 8px;
+        border: 1px solid rgba(60,60,80,0.2);
+        background: linear-gradient(180deg, #0c0c14 0%, #08080e 100%);
+        text-align: center; opacity: 0.5;
+      `;
+
+      const lockIcon = document.createElement("div");
+      lockIcon.style.cssText = `font-size: 14px; margin-bottom: 4px; color: #556;`;
+      lockIcon.textContent = "\uD83D\uDD12";
+      card.appendChild(lockIcon);
+
+      const nameEl = document.createElement("div");
+      nameEl.style.cssText = `font-size: 10px; color: #556; margin-bottom: 4px;`;
+      nameEl.textContent = cfg.name;
+      card.appendChild(nameEl);
+
+      const lockText = document.createElement("div");
+      lockText.style.cssText = `font-size: 8px; color: #445;`;
+      lockText.textContent = `Unlocks at Level ${unlock.level}`;
+      card.appendChild(lockText);
+
+      skillGrid.appendChild(card);
+    }
+
+    container.appendChild(skillGrid);
+
+    // Close button
+    const closeBtn = document.createElement("div");
+    closeBtn.style.cssText = `
+      padding: 10px 30px; border-radius: 8px; cursor: pointer;
+      border: 1px solid rgba(100,150,255,0.3);
+      background: linear-gradient(180deg, rgba(20,25,50,0.9) 0%, rgba(10,12,25,0.95) 100%);
+      color: #aabbdd; font-size: 14px; font-weight: bold; letter-spacing: 2px;
+      text-transform: uppercase; transition: all 0.2s; pointer-events: auto;
+    `;
+    closeBtn.textContent = "Close (TAB)";
+    closeBtn.addEventListener("mouseenter", () => {
+      closeBtn.style.borderColor = "rgba(255,215,0,0.5)";
+      closeBtn.style.color = "#ffd700";
+    });
+    closeBtn.addEventListener("mouseleave", () => {
+      closeBtn.style.borderColor = "rgba(100,150,255,0.3)";
+      closeBtn.style.color = "#aabbdd";
+    });
+    closeBtn.addEventListener("click", () => this.hideSkillEquipMenu());
+    container.appendChild(closeBtn);
+
+    this._skillEquipOverlay.appendChild(container);
+  }
+
+  hideSkillEquipMenu(): void {
+    this._skillEquipVisible = false;
+    this._skillEquipOverlay.style.display = "none";
   }
 
   setPauseCallbacks(onResume: () => void, onRestart: () => void, onQuit: () => void): void {

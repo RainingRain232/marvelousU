@@ -4,7 +4,7 @@
 
 import type { DragoonState, DragoonProjectile, DragoonEnemy, DragoonExplosion, DragoonPickup, DragoonCompanion } from "../state/DragoonState";
 import { DragoonSkillId, EnemyPattern, DragoonPickupType, xpForLevel } from "../state/DragoonState";
-import { DragoonBalance, SKILL_CONFIGS, CLASS_DEFINITIONS } from "../config/DragoonConfig";
+import { DragoonBalance, SKILL_CONFIGS, CLASS_DEFINITIONS, UNLOCKABLE_SKILLS } from "../config/DragoonConfig";
 
 // Callbacks for FX
 let _onExplosion: ((x: number, y: number, radius: number, color: number) => void) | null = null;
@@ -12,6 +12,7 @@ let _onHit: ((x: number, y: number, damage: number, isCrit: boolean) => void) | 
 let _onPlayerHit: (() => void) | null = null;
 let _onLightningStrike: ((x: number, y: number) => void) | null = null;
 let _onLevelUp: ((level: number) => void) | null = null;
+let _onSkillUnlock: ((skillId: DragoonSkillId) => void) | null = null;
 
 export const DragoonCombatSystem = {
   setExplosionCallback(cb: typeof _onExplosion): void { _onExplosion = cb; },
@@ -19,6 +20,7 @@ export const DragoonCombatSystem = {
   setPlayerHitCallback(cb: typeof _onPlayerHit): void { _onPlayerHit = cb; },
   setLightningCallback(cb: typeof _onLightningStrike): void { _onLightningStrike = cb; },
   setLevelUpCallback(cb: typeof _onLevelUp): void { _onLevelUp = cb; },
+  setSkillUnlockCallback(cb: typeof _onSkillUnlock): void { _onSkillUnlock = cb; },
 
   update(state: DragoonState, dt: number): void {
     if (state.classSelectActive || state.subclassChoiceActive) return;
@@ -54,6 +56,12 @@ function _updateSkillCooldowns(state: DragoonState, dt: number): void {
     if (skill.cooldown > 0) skill.cooldown -= dt;
     if (skill.activeTimer > 0) skill.activeTimer -= dt;
     if (skill.activeTimer <= 0) skill.active = false;
+  }
+  // Unlockable skill cooldown
+  if (state.unlockSkillState) {
+    if (state.unlockSkillState.cooldown > 0) state.unlockSkillState.cooldown -= dt;
+    if (state.unlockSkillState.activeTimer > 0) state.unlockSkillState.activeTimer -= dt;
+    if (state.unlockSkillState.activeTimer <= 0) state.unlockSkillState.active = false;
   }
 }
 
@@ -100,6 +108,14 @@ function _handleSkillActivation(state: DragoonState, dt: number): void {
     const skillState = state.skills[i + 1]; // +1 because index 0 is basic
     if (!skillState) continue;
     _activateSkillByIndex(state, skillState.id);
+  }
+
+  // Skill 6 — equipped unlockable skill
+  if (inp.skill6) {
+    inp.skill6 = false;
+    if (state.equippedUnlockSkill && state.unlockSkillState) {
+      _activateUnlockableSkill(state);
+    }
   }
 
   // Update channeled skills
@@ -258,6 +274,147 @@ function _activateSkillByIndex(state: DragoonState, skillId: DragoonSkillId): vo
         state.player.damageMultTimer = SKILL_CONFIGS[DragoonSkillId.PHASE_SHIFT].duration;
       }
       break;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Unlockable skill activation
+// ---------------------------------------------------------------------------
+
+function _activateUnlockableSkill(state: DragoonState): void {
+  const skillState = state.unlockSkillState;
+  if (!skillState || !state.equippedUnlockSkill) return;
+  const cfg = SKILL_CONFIGS[state.equippedUnlockSkill];
+  if (!cfg) return;
+  if (skillState.cooldown > 0 || state.player.mana < cfg.manaCost) return;
+
+  skillState.cooldown = skillState.maxCooldown;
+  if (cfg.duration > 0) {
+    skillState.active = true;
+    skillState.activeTimer = cfg.duration;
+  }
+  state.player.mana -= cfg.manaCost;
+
+  const p = state.player;
+  const dmg = cfg.damage * p.damageMultiplier;
+
+  switch (state.equippedUnlockSkill) {
+    case DragoonSkillId.FIREBALL_BARRAGE: {
+      // Launch 5 fireballs in a spread
+      for (let i = -2; i <= 2; i++) {
+        const angle = i * 0.18;
+        const speed = 450;
+        const proj: DragoonProjectile = {
+          id: state.nextId++,
+          position: { x: p.position.x + 20, y: p.position.y },
+          velocity: { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+          damage: dmg,
+          radius: 12,
+          lifetime: 3,
+          isPlayerOwned: true,
+          skillId: DragoonSkillId.FIREBALL_BARRAGE,
+          color: cfg.color,
+          trailColor: 0xff4400,
+          pierce: 0,
+          hitEnemies: new Set(),
+          homing: false,
+          homingTarget: null,
+          size: 5,
+          glowIntensity: 0.8,
+        };
+        state.projectiles.push(proj);
+      }
+      _onExplosion?.(p.position.x + 30, p.position.y, 30, cfg.color);
+      break;
+    }
+    case DragoonSkillId.ARCANE_SHIELD: {
+      p.shieldActive = true;
+      p.shieldTimer = cfg.duration;
+      p.invincTimer = Math.max(p.invincTimer, cfg.duration);
+      break;
+    }
+    case DragoonSkillId.SPEED_SURGE: {
+      p.speedMultiplier = 2.0;
+      p.speedMultTimer = cfg.duration;
+      _onExplosion?.(p.position.x, p.position.y, 50, cfg.color);
+      break;
+    }
+    case DragoonSkillId.CHAIN_NOVA: {
+      // Lightning chains between up to 8 enemies near the player
+      const range = 300;
+      const nearby = state.enemies.filter(e =>
+        e.alive && !e.isAllied &&
+        Math.hypot(e.position.x - p.position.x, e.position.y - p.position.y) < range
+      ).slice(0, 8);
+      for (const e of nearby) {
+        _damageEnemy(state, e, dmg);
+        _onLightningStrike?.(e.position.x, e.position.y);
+      }
+      _onExplosion?.(p.position.x, p.position.y, 60, cfg.color);
+      break;
+    }
+    case DragoonSkillId.HEALING_LIGHT: {
+      p.hp = Math.min(p.maxHp, p.hp + 40);
+      _onExplosion?.(p.position.x, p.position.y, 50, cfg.color);
+      break;
+    }
+    case DragoonSkillId.AOE_BOMB: {
+      // Massive explosion at cursor position
+      const mx = state.input.mouseX + state.cameraX;
+      const my = state.input.mouseY;
+      const radius = 150;
+      const explosion: DragoonExplosion = {
+        id: state.nextId++,
+        position: { x: mx, y: my },
+        radius: 0,
+        maxRadius: radius,
+        timer: 0,
+        maxTimer: 0.8,
+        color: cfg.color,
+        damage: dmg,
+        hitEnemies: new Set(),
+      };
+      state.explosions.push(explosion);
+      _onExplosion?.(mx, my, radius, cfg.color);
+      break;
+    }
+    case DragoonSkillId.HOMING_MISSILES: {
+      // Launch 6 homing projectiles
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const proj: DragoonProjectile = {
+          id: state.nextId++,
+          position: { x: p.position.x, y: p.position.y },
+          velocity: { x: Math.cos(angle) * 200, y: Math.sin(angle) * 200 },
+          damage: dmg,
+          radius: 10,
+          lifetime: 4,
+          isPlayerOwned: true,
+          skillId: DragoonSkillId.HOMING_MISSILES,
+          color: cfg.color,
+          trailColor: 0xffaa00,
+          pierce: 0,
+          hitEnemies: new Set(),
+          homing: true,
+          homingTarget: null,
+          size: 4,
+          glowIntensity: 0.7,
+        };
+        state.projectiles.push(proj);
+      }
+      break;
+    }
+    case DragoonSkillId.TIME_SLOW: {
+      // Slow all enemies
+      for (const e of state.enemies) {
+        if (e.alive && !e.isAllied) {
+          e.slowFactor = 0.5;
+          e.slowTimer = cfg.duration;
+        }
+      }
+      _onExplosion?.(p.position.x, p.position.y, 200, cfg.color);
+      break;
+    }
   }
 }
 
@@ -1708,6 +1865,20 @@ function _grantXP(state: DragoonState, amount: number): void {
     // Check for subclass unlock
     if (p.level === DragoonBalance.SUBCLASS_LEVEL && !state.subclassUnlocked) {
       _triggerSubclassChoice(state);
+    }
+
+    // Check for unlockable skill unlocks
+    for (const entry of UNLOCKABLE_SKILLS) {
+      if (p.level === entry.level && !state.unlockedSkills.includes(entry.skillId)) {
+        state.unlockedSkills.push(entry.skillId);
+        // Auto-equip if no unlockable skill is equipped yet
+        if (!state.equippedUnlockSkill) {
+          state.equippedUnlockSkill = entry.skillId;
+          const cfg = SKILL_CONFIGS[entry.skillId];
+          state.unlockSkillState = { id: entry.skillId, cooldown: 0, maxCooldown: cfg.cooldown, active: false, activeTimer: 0 };
+        }
+        _onSkillUnlock?.(entry.skillId);
+      }
     }
   }
 }

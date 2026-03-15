@@ -312,6 +312,7 @@ export class DuelFightView {
   private _sparkGfx = new Graphics();
   private _shadowGfx = new Graphics();
   private _specialFxGfx = new Graphics();
+  private _slashTrailGfx = new Graphics();
 
   private _sparks: HitSpark[] = [];
   private _specialParticles: SpecialVFXParticle[] = [];
@@ -319,10 +320,29 @@ export class DuelFightView {
   // Track previous move to detect special start
   private _prevMoves: [string | null, string | null] = [null, null];
 
+  // Track previous HP for hit-flash detection
+  private _prevFighterHp: [number, number] = [0, 0];
+
+  // Hit flash timers per fighter (white flash on defender)
+  private _hitFlashTimers: [number, number] = [0, 0];
+
+  // Screen shake intensity (decays over time for heavy hits)
+  private _screenShakeIntensity = 0;
+  private _screenShakeDuration = 0;
+
+  // Slash trail positions for sword/weapon attacks
+  private _slashTrails: Array<{
+    points: Array<{ x: number; y: number; alpha: number }>;
+    color: number;
+    life: number;
+    maxLife: number;
+  }> = [];
+
   constructor() {
     this.container.addChild(this._arenaLayer);
     this.container.addChild(this._shadowGfx);
     this.container.addChild(this._specialFxGfx);
+    this.container.addChild(this._slashTrailGfx);
     this.container.addChild(this._fighterLayer);
     this.container.addChild(this._fxLayer);
 
@@ -340,6 +360,11 @@ export class DuelFightView {
     this._sparks = [];
     this._specialParticles = [];
     this._prevMoves = [null, null];
+    this._prevFighterHp = [0, 0];
+    this._hitFlashTimers = [0, 0];
+    this._screenShakeIntensity = 0;
+    this._screenShakeDuration = 0;
+    this._slashTrails = [];
   }
 
   /** Call each display frame to render current state. */
@@ -347,15 +372,34 @@ export class DuelFightView {
     // Check for new specials and spawn VFX
     this._checkSpecialStarts(state);
 
-    this._drawFighter(this._p1Gfx, state.fighters[0], state);
-    this._drawFighter(this._p2Gfx, state.fighters[1], state);
+    // Detect hits for enhanced flash/shake effects
+    this._detectHitEffects(state);
+
+    // Spawn slash trails for active melee attacks
+    this._updateSlashTrails(state);
+
+    this._drawFighter(this._p1Gfx, state.fighters[0], state, 0);
+    this._drawFighter(this._p2Gfx, state.fighters[1], state, 1);
     this._drawShadows(state);
     this._drawProjectiles(state);
     this._drawSparks();
     this._drawSpecialVFX(state);
+    this._drawSlashTrails();
 
-    // Screen shake on hit freeze
-    if (state.slowdownFrames > 0) {
+    // Decay hit flash timers
+    for (let i = 0; i < 2; i++) {
+      if (this._hitFlashTimers[i] > 0) this._hitFlashTimers[i]--;
+    }
+
+    // Enhanced screen shake: combines hit freeze shake with heavy hit shake
+    if (this._screenShakeDuration > 0) {
+      this._screenShakeDuration--;
+      const decay = this._screenShakeDuration / 12;
+      const shakeX = (Math.random() - 0.5) * this._screenShakeIntensity * decay;
+      const shakeY = (Math.random() - 0.5) * this._screenShakeIntensity * decay * 0.7;
+      this.container.position.set(shakeX, shakeY);
+    } else if (state.slowdownFrames > 0) {
+      // Standard hit freeze shake
       const shake = (Math.random() - 0.5) * 6;
       this.container.position.set(shake, (Math.random() - 0.5) * 4);
     } else {
@@ -366,6 +410,173 @@ export class DuelFightView {
   /** Spawn a hit spark effect at the given position. */
   addSpark(x: number, y: number): void {
     this._sparks.push({ x, y, timer: SPARK_DURATION });
+  }
+
+  /** Called externally when a hit is detected with damage info. */
+  addHitEffect(defenderIdx: 0 | 1, damage: number, maxHp: number, attackerX: number, defenderX: number, defenderY: number, isHeavy: boolean): void {
+    // Hit flash on defender
+    this._hitFlashTimers[defenderIdx] = isHeavy ? 10 : 6;
+
+    // Screen shake intensity based on damage
+    const dmgRatio = damage / maxHp;
+    if (dmgRatio > 0.08) {
+      this._screenShakeIntensity = isHeavy ? 14 : 8;
+      this._screenShakeDuration = isHeavy ? 12 : 6;
+    }
+
+    // Impact sparks burst (more particles than the basic spark)
+    const hitX = (attackerX + defenderX) / 2;
+    const hitY = defenderY - 60;
+    const dir = attackerX < defenderX ? 1 : -1;
+    const sparkCount = isHeavy ? 18 : 10;
+    for (let i = 0; i < sparkCount; i++) {
+      const angle = (Math.random() - 0.5) * Math.PI * 1.2 + (dir > 0 ? 0 : Math.PI);
+      const speed = 3 + Math.random() * (isHeavy ? 8 : 5);
+      this._specialParticles.push({
+        x: hitX + (Math.random() - 0.5) * 12,
+        y: hitY + (Math.random() - 0.5) * 20,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 2,
+        life: 10 + Math.random() * 8,
+        maxLife: 18,
+        size: 2 + Math.random() * (isHeavy ? 4 : 2.5),
+        color: isHeavy ? (Math.random() > 0.3 ? 0xffdd44 : 0xffffff) : (Math.random() > 0.5 ? 0xffaa44 : 0xffffff),
+        type: "spark",
+      });
+    }
+
+    // Impact flash at contact point
+    if (isHeavy) {
+      this._specialParticles.push({
+        x: hitX,
+        y: hitY,
+        vx: 0, vy: 0,
+        life: 8,
+        maxLife: 8,
+        size: 60,
+        color: 0xffffff,
+        type: "flash",
+      });
+    }
+  }
+
+  /** Detect hit events and trigger enhanced visual effects. */
+  private _detectHitEffects(state: DuelState): void {
+    for (let i = 0; i < 2; i++) {
+      const f = state.fighters[i];
+      const prevHp = this._prevFighterHp[i];
+
+      if (prevHp > 0 && f.hp < prevHp) {
+        const damage = prevHp - f.hp;
+        const isHeavy = damage > f.maxHp * 0.08;
+        const attackerIdx = i === 0 ? 1 : 0;
+        const attacker = state.fighters[attackerIdx];
+
+        this.addHitEffect(
+          i as 0 | 1,
+          damage,
+          f.maxHp,
+          attacker.position.x,
+          f.position.x,
+          f.position.y,
+          isHeavy,
+        );
+      }
+
+      this._prevFighterHp[i] = f.hp;
+    }
+  }
+
+  /** Spawn and update weapon slash trails during melee attacks. */
+  private _updateSlashTrails(state: DuelState): void {
+    for (const f of state.fighters) {
+      if (f.state !== DuelFighterState.ATTACK || !f.currentMove) continue;
+
+      const charDef = DUEL_CHARACTERS[f.characterId];
+      const move = charDef.normals[f.currentMove] ?? charDef.specials[f.currentMove] ?? charDef.zeals[f.currentMove];
+      if (!move || move.isProjectile) continue;
+
+      // Only during active frames
+      if (f.moveFrame < move.startup || f.moveFrame >= move.startup + move.active) continue;
+
+      // Get the fighter type for trail color
+      const fType = charDef.fighterType;
+      const colors = SPECIAL_COLORS[f.characterId] ?? SPECIAL_COLORS.arthur;
+      const isSpecial = ALL_SPECIALS[f.characterId]?.has(f.currentMove);
+      const isZeal = ZEAL_MOVES[f.characterId]?.has(f.currentMove);
+      const trailColor = isZeal ? 0xffffff : isSpecial ? colors.primary : (fType === "sword" || fType === "axe" ? 0xccccdd : fType === "spear" ? 0xbbaa88 : 0xaabbcc);
+
+      const dir = f.facingRight ? 1 : -1;
+      const hbX = f.position.x + dir * move.hitbox.x;
+      const hbY = f.position.y + move.hitbox.y;
+
+      // Find existing trail for this move or create one
+      let trail = this._slashTrails.find(t => t.life > 0 && t.color === trailColor && t.points.length < 12);
+      if (!trail) {
+        trail = {
+          points: [],
+          color: trailColor,
+          life: move.active + 8,
+          maxLife: move.active + 8,
+        };
+        this._slashTrails.push(trail);
+      }
+
+      // Add point to trail
+      trail.points.push({
+        x: hbX + (Math.random() - 0.5) * 6,
+        y: hbY - move.hitbox.height / 2 + (Math.random() - 0.5) * 6,
+        alpha: 1.0,
+      });
+    }
+
+    // Decay trails
+    for (let i = this._slashTrails.length - 1; i >= 0; i--) {
+      this._slashTrails[i].life--;
+      // Fade points
+      for (const p of this._slashTrails[i].points) {
+        p.alpha *= 0.88;
+      }
+      if (this._slashTrails[i].life <= 0) {
+        this._slashTrails.splice(i, 1);
+      }
+    }
+  }
+
+  /** Draw weapon slash trails. */
+  private _drawSlashTrails(): void {
+    this._slashTrailGfx.clear();
+    for (const trail of this._slashTrails) {
+      if (trail.points.length < 2) continue;
+      const t = trail.life / trail.maxLife;
+
+      for (let j = 1; j < trail.points.length; j++) {
+        const p0 = trail.points[j - 1];
+        const p1 = trail.points[j];
+        const segAlpha = Math.min(p0.alpha, p1.alpha) * t;
+        if (segAlpha < 0.02) continue;
+
+        // Bright slash line
+        const width = 4 + (1 - j / trail.points.length) * 6;
+        this._slashTrailGfx.moveTo(p0.x, p0.y);
+        this._slashTrailGfx.lineTo(p1.x, p1.y);
+        this._slashTrailGfx.stroke({ color: trail.color, width: width * t, alpha: segAlpha * 0.7, cap: "round" });
+
+        // Bright core
+        this._slashTrailGfx.moveTo(p0.x, p0.y);
+        this._slashTrailGfx.lineTo(p1.x, p1.y);
+        this._slashTrailGfx.stroke({ color: 0xffffff, width: width * t * 0.3, alpha: segAlpha * 0.5, cap: "round" });
+      }
+
+      // Glow around trail tip
+      if (trail.points.length > 0) {
+        const tip = trail.points[trail.points.length - 1];
+        if (tip.alpha > 0.1) {
+          this._slashTrailGfx.circle(tip.x, tip.y, 8 * t);
+          this._slashTrailGfx.fill({ color: trail.color, alpha: tip.alpha * 0.3 * t });
+        }
+      }
+    }
   }
 
   // ---- Special VFX detection -----------------------------------------------
@@ -966,6 +1177,7 @@ export class DuelFightView {
     g: Graphics,
     fighter: DuelFighter,
     _state: DuelState,
+    fighterIdx: number = 0,
   ): void {
     g.clear();
 
@@ -993,15 +1205,39 @@ export class DuelFightView {
     g.position.set(fighter.position.x, fighter.position.y);
     g.scale.x = fighter.facingRight ? 1 : -1;
 
-    // Flash effect on hit
-    const isHitFlash = fighter.state === DuelFighterState.HIT_STUN &&
-      fighter.hitstunFrames % 4 < 2;
+    // Flash effect on hit (combines hitstun flicker with hit-flash from damage detection)
+    const hitFlashTimer = this._hitFlashTimers[fighterIdx] ?? 0;
+    const isHitFlash = (fighter.state === DuelFighterState.HIT_STUN &&
+      fighter.hitstunFrames % 4 < 2) || (hitFlashTimer > 0 && hitFlashTimer % 3 < 2);
 
     // Invincibility flicker
     if (fighter.invincibleFrames > 0 && fighter.invincibleFrames % 4 < 2) {
       g.alpha = 0.4;
     } else {
       g.alpha = 1;
+    }
+
+    // Hit flash: draw a white/red overlay behind the fighter when just hit
+    if (hitFlashTimer > 0) {
+      const flashAlpha = (hitFlashTimer / 10) * 0.3;
+      g.circle(0, -90, 55);
+      g.fill({ color: 0xff4444, alpha: flashAlpha * 0.4 });
+      g.circle(0, -90, 35);
+      g.fill({ color: 0xffffff, alpha: flashAlpha * 0.3 });
+    }
+
+    // Knockback visual: speed lines behind a fighter getting knocked back
+    if ((fighter.state === DuelFighterState.HIT_STUN || fighter.state === DuelFighterState.KNOCKDOWN) &&
+        fighter.hitstunFrames > 6) {
+      const dir = fighter.facingRight ? 1 : -1;
+      const kbAlpha = Math.min(fighter.hitstunFrames / 20, 0.5);
+      for (let li = 0; li < 5; li++) {
+        const lx = -dir * (20 + li * 12) + (Math.random() - 0.5) * 4;
+        const ly = -60 - 30 + li * 15 + (Math.random() - 0.5) * 8;
+        g.moveTo(lx, ly);
+        g.lineTo(lx - dir * (25 + Math.random() * 15), ly);
+        g.stroke({ color: 0xffffff, width: 1.5, alpha: kbAlpha * (1 - li * 0.15), cap: "round" });
+      }
     }
 
     // Special/Zeal move glow: add a body aura
@@ -1032,12 +1268,23 @@ export class DuelFightView {
     }
 
     const backExtras = BACK_EXTRAS[charId];
+
+    // Breathing phase: use stateTimer for a slow breathing cycle during idle states
+    const isIdleState = fighter.state === DuelFighterState.IDLE ||
+      fighter.state === DuelFighterState.WALK_FORWARD ||
+      fighter.state === DuelFighterState.WALK_BACK ||
+      fighter.state === DuelFighterState.CROUCH_IDLE ||
+      fighter.state === DuelFighterState.BLOCK_STAND ||
+      fighter.state === DuelFighterState.BLOCK_CROUCH;
+    const breathePhase = isIdleState ? fighter.stateTimer * 0.08 : 0;
+
     const opts: DrawFighterOptions = {
       pose: currentPose,
       palette,
       isFlashing: isHitFlash,
       flashColor: 0xffffff,
       isHurt: fighter.state === DuelFighterState.HIT_STUN || fighter.state === DuelFighterState.KNOCKDOWN,
+      breathePhase,
       helmeted: charId === "arthur" || charId === "lancelot" || charId === "mordred" || charId === "percival" || charId === "kay" || charId === "bedivere" || charId === "lot" || charId === "pellinore",
       helmColor: charId === "lancelot" ? 0x7788aa : charId === "mordred" ? 0x222233 : charId === "percival" ? 0x6688aa : charId === "lot" ? 0x333344 : charId === "bedivere" ? 0x777788 : charId === "pellinore" ? 0x886644 : charId === "kay" ? 0x776655 : 0x888899,
       drawBackExtras: backExtras,
@@ -1229,14 +1476,18 @@ export class DuelFightView {
       }
 
       const t = spark.timer / SPARK_DURATION;
-      const size = 12 + (1 - t) * 20;
+      const size = 14 + (1 - t) * 24;
 
-      // Starburst rays
-      const rayCount = 8;
+      // Outer energy glow (large, soft)
+      this._sparkGfx.circle(spark.x, spark.y, size * 1.2 * t);
+      this._sparkGfx.fill({ color: 0xff6600, alpha: t * 0.15 });
+
+      // Starburst rays (more rays, varied thickness)
+      const rayCount = 12;
       for (let j = 0; j < rayCount; j++) {
-        const angle = (j / rayCount) * Math.PI * 2 + (1 - t) * 2;
-        const innerR = size * 0.3 * (1 - t);
-        const outerR = size * (1 - t * 0.3);
+        const angle = (j / rayCount) * Math.PI * 2 + (1 - t) * 2.5;
+        const innerR = size * 0.2 * (1 - t);
+        const outerR = size * (1 - t * 0.25) * (0.8 + Math.sin(j * 1.7) * 0.2);
         this._sparkGfx.moveTo(
           spark.x + Math.cos(angle) * innerR,
           spark.y + Math.sin(angle) * innerR,
@@ -1245,16 +1496,32 @@ export class DuelFightView {
           spark.x + Math.cos(angle) * outerR,
           spark.y + Math.sin(angle) * outerR,
         );
-        this._sparkGfx.stroke({ color: 0xffff88, width: 3, alpha: t });
+        const rayWidth = j % 3 === 0 ? 4 : 2.5;
+        const rayColor = j % 2 === 0 ? 0xffff88 : 0xffcc44;
+        this._sparkGfx.stroke({ color: rayColor, width: rayWidth, alpha: t });
       }
 
-      // Orange outer glow
-      this._sparkGfx.circle(spark.x, spark.y, size * 0.6 * t);
-      this._sparkGfx.fill({ color: 0xff8800, alpha: t * 0.4 });
+      // Orange mid glow
+      this._sparkGfx.circle(spark.x, spark.y, size * 0.5 * t);
+      this._sparkGfx.fill({ color: 0xff8800, alpha: t * 0.5 });
+
+      // Bright yellow ring
+      this._sparkGfx.circle(spark.x, spark.y, size * 0.35 * t);
+      this._sparkGfx.stroke({ color: 0xffee66, width: 2 * t, alpha: t * 0.6 });
 
       // White center flash
-      this._sparkGfx.circle(spark.x, spark.y, 5 * t);
-      this._sparkGfx.fill({ color: 0xffffff, alpha: t * 0.9 });
+      this._sparkGfx.circle(spark.x, spark.y, 6 * t);
+      this._sparkGfx.fill({ color: 0xffffff, alpha: t * 0.95 });
+
+      // Small debris particles flying out (drawn as tiny circles)
+      for (let d = 0; d < 4; d++) {
+        const dAngle = (d / 4) * Math.PI * 2 + t * 5 + spark.x * 0.01;
+        const dDist = size * (1 - t) * 0.8;
+        const dx = spark.x + Math.cos(dAngle) * dDist;
+        const dy = spark.y + Math.sin(dAngle) * dDist;
+        this._sparkGfx.circle(dx, dy, 1.5 * t);
+        this._sparkGfx.fill({ color: 0xffdd44, alpha: t * 0.7 });
+      }
     }
   }
 

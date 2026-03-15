@@ -316,6 +316,8 @@ export interface DrawFighterOptions {
   helmColor?: number;
   /** When true, draw a pain/hurt expression on the face. */
   isHurt?: boolean;
+  /** Breathing animation phase (0..2PI cycle), used for idle breathing sway. */
+  breathePhase?: number;
   /** Draw behind body (capes, cloaks, etc.). Called before back arm. */
   drawBackExtras?: (g: Graphics, p: FighterPose, pal: FighterPalette, isFlashing: boolean, flashColor: number) => void;
   /** Custom draw function for character-specific details (weapon, accessories). */
@@ -375,16 +377,21 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
     drawFoot(g, p.backLeg.footX, p.backLeg.footY, 22, 11, backShoe, outline);
   }
 
-  // Torso — curved trapezoidal shape with detail
+  // Torso — curved trapezoidal shape with detail and breathing
   if (p.torso) {
     const t = p.torso;
-    const tl = -t.topWidth / 2 + t.x;
-    const tr = t.topWidth / 2 + t.x;
+    // Breathing: subtle expansion of torso width and vertical sway
+    const breathe = opts.breathePhase !== undefined ? opts.breathePhase : 0;
+    const breatheExpand = Math.sin(breathe) * 1.2; // width expansion
+    const breatheRise = Math.sin(breathe) * 0.8;   // slight rise
+
+    const tl = -t.topWidth / 2 + t.x - breatheExpand * 0.5;
+    const tr = t.topWidth / 2 + t.x + breatheExpand * 0.5;
     const bl = -t.bottomWidth / 2 + t.x;
     const br = t.bottomWidth / 2 + t.x;
-    const top = -t.height / 2 + t.y;
+    const top = -t.height / 2 + t.y - breatheRise;
     const bot = t.height / 2 + t.y;
-    const midY = t.y;
+    const midY = t.y - breatheRise * 0.5;
 
     // Outline (slightly curved sides via quadratic)
     g.moveTo(tl - 2, top - 2);
@@ -434,11 +441,48 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       // Belt highlight
       g.rect(bl + 2, bot - 8, t.bottomWidth - 4, 3);
       g.fill({ color: lighten(beltColor, 0.15), alpha: 0.3 });
+      // Belt buckle
+      const buckleX = t.x;
+      g.roundRect(buckleX - 3, bot - 8, 6, 8, 1);
+      g.fill({ color: lighten(beltColor, 0.3) });
+      g.roundRect(buckleX - 2, bot - 7, 4, 6, 1);
+      g.fill({ color: darken(beltColor, 0.1) });
     }
 
-    // Shoulder joints (round circles at arm attachment points)
+    // Armor plate / clothing detail: subtle horizontal lines suggesting layers
+    if (pal.accent && !flashing) {
+      const accentColor = pal.accent;
+      // Collar accent
+      g.moveTo(tl + 6, top + 2);
+      g.quadraticCurveTo(t.x, top - 2, tr - 6, top + 2);
+      g.stroke({ color: accentColor, width: 1.5, cap: "round", alpha: 0.35 });
+      // Mid-chest armor line
+      g.moveTo(tl + 3, midY - 4);
+      g.lineTo(tr - 3, midY - 4);
+      g.stroke({ color: darken(bodyColor, 0.08), width: 0.8, alpha: 0.25 });
+    }
+
+    // Rivet/button details (tiny dots along the chest)
+    if (!flashing) {
+      const rivetY1 = top + 12;
+      const rivetY2 = midY;
+      g.circle(t.x + 6, rivetY1, 1.2);
+      g.fill({ color: lighten(bodyColor, 0.25), alpha: 0.3 });
+      g.circle(t.x + 6, rivetY2, 1.2);
+      g.fill({ color: lighten(bodyColor, 0.25), alpha: 0.3 });
+    }
+
+    // Shoulder joints (round circles at arm attachment points) — with armor pad
     if (p.frontArm) {
+      // Shoulder pad (larger, more detailed)
+      if (!flashing) {
+        g.circle(p.frontArm.shoulderX, p.frontArm.shoulderY, 10);
+        g.fill({ color: darken(bodyColor, 0.05), alpha: 0.3 });
+      }
       drawJoint(g, p.frontArm.shoulderX, p.frontArm.shoulderY, 7, bodyColor, outline);
+      // Shoulder rivet
+      g.circle(p.frontArm.shoulderX, p.frontArm.shoulderY, 2);
+      g.fill({ color: lighten(bodyColor, 0.2), alpha: 0.4 });
     }
   }
 
@@ -457,10 +501,22 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
   if (p.frontArm) {
     drawLimb(g, p.frontArm.shoulderX, p.frontArm.shoulderY,
       p.frontArm.elbowX, p.frontArm.elbowY, 16, bodyColor, outline);
-    // Elbow joint
+    // Elbow joint with armor pad
     drawJoint(g, p.frontArm.elbowX, p.frontArm.elbowY, 6, bodyColor, outline);
+    // Elbow plate/guard detail
+    if (!flashing) {
+      g.circle(p.frontArm.elbowX, p.frontArm.elbowY, 4);
+      g.fill({ color: lighten(bodyColor, 0.1), alpha: 0.25 });
+    }
     drawLimb(g, p.frontArm.elbowX, p.frontArm.elbowY,
       p.frontArm.handX, p.frontArm.handY, 13, skinColor, outline);
+    // Forearm bracer/gauntlet detail
+    if (!flashing && pal.gloves) {
+      const faMidX = (p.frontArm.elbowX + p.frontArm.handX) / 2;
+      const faMidY = (p.frontArm.elbowY + p.frontArm.handY) / 2;
+      g.circle(faMidX, faMidY, 5);
+      g.fill({ color: lighten(pal.gloves, 0.08), alpha: 0.2 });
+    }
     drawFist(g, p.frontArm.handX, p.frontArm.handY, 8, handColor, outline, !!p.frontArm.open);
   }
 

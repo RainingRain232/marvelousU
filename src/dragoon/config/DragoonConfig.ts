@@ -514,7 +514,82 @@ export const SKILL_CONFIGS: Record<DragoonSkillId, SkillConfig> = {
     damage: 0, manaCost: 45, cooldown: 20, duration: 4,
     color: 0xaa88ff, key: "5",
   },
+
+  // =========================================================================
+  // UNLOCKABLE UNIVERSAL SKILLS (earned through leveling)
+  // =========================================================================
+  [DragoonSkillId.FIREBALL_BARRAGE]: {
+    id: DragoonSkillId.FIREBALL_BARRAGE,
+    name: "Fireball Barrage",
+    description: "Launches a volley of 5 fireballs in a spread pattern",
+    damage: 28, manaCost: 30, cooldown: 8, duration: 0,
+    color: 0xff6600, key: "6",
+  },
+  [DragoonSkillId.ARCANE_SHIELD]: {
+    id: DragoonSkillId.ARCANE_SHIELD,
+    name: "Arcane Shield",
+    description: "Absorbs all damage for 3 seconds",
+    damage: 0, manaCost: 25, cooldown: 15, duration: 3,
+    color: 0x66aaff, key: "6",
+  },
+  [DragoonSkillId.SPEED_SURGE]: {
+    id: DragoonSkillId.SPEED_SURGE,
+    name: "Speed Surge",
+    description: "Double movement speed for 4 seconds",
+    damage: 0, manaCost: 20, cooldown: 12, duration: 4,
+    color: 0x44ffaa, key: "6",
+  },
+  [DragoonSkillId.CHAIN_NOVA]: {
+    id: DragoonSkillId.CHAIN_NOVA,
+    name: "Chain Nova",
+    description: "Lightning chains between up to 8 nearby enemies",
+    damage: 20, manaCost: 28, cooldown: 7, duration: 0,
+    color: 0x44ddff, key: "6",
+  },
+  [DragoonSkillId.HEALING_LIGHT]: {
+    id: DragoonSkillId.HEALING_LIGHT,
+    name: "Healing Light",
+    description: "Restore 40 HP instantly",
+    damage: 0, manaCost: 35, cooldown: 18, duration: 0,
+    color: 0x44ff44, key: "6",
+  },
+  [DragoonSkillId.AOE_BOMB]: {
+    id: DragoonSkillId.AOE_BOMB,
+    name: "Arcane Bomb",
+    description: "Massive explosion dealing heavy damage in a huge area",
+    damage: 55, manaCost: 45, cooldown: 14, duration: 0,
+    color: 0xff44cc, key: "6",
+  },
+  [DragoonSkillId.HOMING_MISSILES]: {
+    id: DragoonSkillId.HOMING_MISSILES,
+    name: "Homing Missiles",
+    description: "Launch 6 homing projectiles that seek enemies",
+    damage: 15, manaCost: 32, cooldown: 10, duration: 0,
+    color: 0xffaa22, key: "6",
+  },
+  [DragoonSkillId.TIME_SLOW]: {
+    id: DragoonSkillId.TIME_SLOW,
+    name: "Time Slow",
+    description: "All enemies move at half speed for 5 seconds",
+    damage: 0, manaCost: 30, cooldown: 16, duration: 5,
+    color: 0xcc88ff, key: "6",
+  },
 };
+
+// ---------------------------------------------------------------------------
+// Unlockable skill definitions — which levels unlock which skills
+// ---------------------------------------------------------------------------
+
+export const UNLOCKABLE_SKILLS: { level: number; skillId: DragoonSkillId }[] = [
+  { level: 3,  skillId: DragoonSkillId.SPEED_SURGE },
+  { level: 5,  skillId: DragoonSkillId.HEALING_LIGHT },
+  { level: 8,  skillId: DragoonSkillId.FIREBALL_BARRAGE },
+  { level: 10, skillId: DragoonSkillId.ARCANE_SHIELD },
+  { level: 13, skillId: DragoonSkillId.CHAIN_NOVA },
+  { level: 15, skillId: DragoonSkillId.HOMING_MISSILES },
+  { level: 18, skillId: DragoonSkillId.AOE_BOMB },
+  { level: 22, skillId: DragoonSkillId.TIME_SLOW },
+];
 
 // ---------------------------------------------------------------------------
 // Class definitions

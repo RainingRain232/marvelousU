@@ -269,8 +269,253 @@ function _generateTerrain(): TerrainRegion[] {
   return regions;
 }
 
+// ---------------------------------------------------------------------------
+// Rivers - winding waterways across the map
+// ---------------------------------------------------------------------------
+
+interface RiverPoint { x: number; y: number; width: number }
+interface River { points: RiverPoint[] }
+
+function _generateRivers(terrain: TerrainRegion[]): River[] {
+  const rivers: River[] = [];
+  const count = 2 + Math.floor(Math.random() * 3);
+  for (let r = 0; r < count; r++) {
+    const pts: RiverPoint[] = [];
+    // Start from a mountain region or map edge
+    const mtns = terrain.filter(t => t.type === "mountains");
+    let sx: number, sy: number;
+    if (mtns.length > 0 && Math.random() < 0.6) {
+      const m = mtns[Math.floor(Math.random() * mtns.length)];
+      sx = m.x + (Math.random() - 0.5) * m.r;
+      sy = m.y + (Math.random() - 0.5) * m.r;
+    } else {
+      // Start from a map edge
+      const edge = Math.floor(Math.random() * 4);
+      sx = edge === 0 ? 10 : edge === 1 ? MAP_W - 10 : 40 + Math.random() * (MAP_W - 80);
+      sy = edge === 2 ? 10 : edge === 3 ? MAP_H - 10 : 40 + Math.random() * (MAP_H - 80);
+    }
+    let cx = sx, cy = sy;
+    const angle = Math.random() * Math.PI * 2;
+    const baseW = 2 + Math.random() * 3;
+    const segCount = 30 + Math.floor(Math.random() * 20);
+    let da = angle;
+    for (let i = 0; i <= segCount; i++) {
+      const t = i / segCount;
+      const w = baseW * (0.4 + t * 0.8) + Math.sin(i * 0.5) * 0.8;
+      pts.push({ x: cx, y: cy, width: w });
+      da += (Math.random() - 0.5) * 0.6;
+      const step = 20 + Math.random() * 15;
+      cx += Math.cos(da) * step;
+      cy += Math.sin(da) * step;
+      if (cx < 5 || cx > MAP_W - 5 || cy < 5 || cy > MAP_H - 5) break;
+    }
+    if (pts.length > 4) rivers.push({ points: pts });
+  }
+  return rivers;
+}
+
+function _drawRiver(ctx: CanvasRenderingContext2D, river: River): void {
+  if (river.points.length < 2) return;
+  const pts = river.points;
+
+  // River body - darker water
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (let pass = 0; pass < 3; pass++) {
+    const widthMult = pass === 0 ? 1.4 : pass === 1 ? 1.0 : 0.6;
+    ctx.strokeStyle = pass === 0 ? "rgba(25,50,70,0.5)"
+      : pass === 1 ? "rgba(30,60,90,0.6)"
+      : "rgba(50,85,120,0.4)";
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const p0 = pts[i - 1];
+      const p1 = pts[i];
+      const mx = (p0.x + p1.x) / 2;
+      const my = (p0.y + p1.y) / 2;
+      ctx.lineWidth = p0.width * widthMult;
+      ctx.quadraticCurveTo(p0.x, p0.y, mx, my);
+    }
+    ctx.stroke();
+  }
+
+  // Specular highlights
+  ctx.strokeStyle = "rgba(140,190,220,0.18)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 2; i < pts.length - 1; i += 3) {
+    const p = pts[i];
+    ctx.moveTo(p.x - p.width * 0.3, p.y - 0.5);
+    ctx.lineTo(p.x + p.width * 0.3, p.y - 0.5);
+  }
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Coastline - ocean edges for the map
+// ---------------------------------------------------------------------------
+
+function _drawCoastline(ctx: CanvasRenderingContext2D): void {
+  // Draw ocean/sea along 1-2 edges of the map for a peninsula feel
+  const edge = Math.floor(_hash(42, 73) * 4); // deterministic edge choice
+  ctx.save();
+
+  // Ocean gradient
+  const drawOceanEdge = (x1: number, y1: number, x2: number, y2: number, depth: number, inward: boolean) => {
+    // Irregular coastline using noise
+    ctx.fillStyle = "rgba(20,45,75,0.7)";
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    const steps = 60;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const bx = x1 + (x2 - x1) * t;
+      const by = y1 + (y2 - y1) * t;
+      const n = _noise(bx * 3, by * 3, 80) * depth * 0.5 + depth * 0.3;
+      const dx = inward ? (x1 === x2 ? (x1 < MAP_W / 2 ? n : -n) : 0) : 0;
+      const dy = inward ? (y1 === y2 ? (y1 < MAP_H / 2 ? n : -n) : 0) : 0;
+      ctx.lineTo(bx + dx, by + dy);
+    }
+    // Close along the edge
+    ctx.lineTo(x2, y2);
+    if (x1 === x2) {
+      // Vertical edge - close along the actual edge
+      ctx.lineTo(x2, y2);
+      ctx.lineTo(x1, y1);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Foam line along the coast
+    ctx.strokeStyle = "rgba(180,210,230,0.25)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const bx = x1 + (x2 - x1) * t;
+      const by = y1 + (y2 - y1) * t;
+      const n = _noise(bx * 3, by * 3, 80) * depth * 0.5 + depth * 0.3;
+      const dx = x1 === x2 ? (x1 < MAP_W / 2 ? n : -n) : 0;
+      const dy = y1 === y2 ? (y1 < MAP_H / 2 ? n : -n) : 0;
+      if (i === 0) ctx.moveTo(bx + dx, by + dy);
+      else ctx.lineTo(bx + dx, by + dy);
+    }
+    ctx.stroke();
+
+    // Sandy beach strip
+    ctx.strokeStyle = "rgba(180,165,120,0.2)";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const bx = x1 + (x2 - x1) * t;
+      const by = y1 + (y2 - y1) * t;
+      const n = _noise(bx * 3, by * 3, 80) * depth * 0.5 + depth * 0.3;
+      const nudge = 4;
+      const dx = x1 === x2 ? (x1 < MAP_W / 2 ? n + nudge : -n - nudge) : 0;
+      const dy = y1 === y2 ? (y1 < MAP_H / 2 ? n + nudge : -n - nudge) : 0;
+      if (i === 0) ctx.moveTo(bx + dx, by + dy);
+      else ctx.lineTo(bx + dx, by + dy);
+    }
+    ctx.stroke();
+  };
+
+  const depth = 50;
+  // Always draw one ocean edge
+  if (edge === 0 || edge === 2) {
+    drawOceanEdge(0, 0, 0, MAP_H, depth, true); // left edge
+  }
+  if (edge === 1 || edge === 3) {
+    drawOceanEdge(0, MAP_H, MAP_W, MAP_H, depth, true); // bottom edge
+  }
+
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Road drawing between cities - proper worn paths
+// ---------------------------------------------------------------------------
+
+function _drawRoads(ctx: CanvasRenderingContext2D, cities: CampaignCity[]): void {
+  ctx.save();
+  // Connect each city to its nearest 2-3 cities regardless of faction
+  const connections = new Set<string>();
+  for (const city of cities) {
+    const sorted = [...cities]
+      .filter(c => c.id !== city.id)
+      .sort((a, b) => Math.hypot(a.x - city.x, a.y - city.y) - Math.hypot(b.x - city.x, b.y - city.y));
+    const connectCount = Math.min(2 + Math.floor(Math.random() * 2), sorted.length);
+    for (let i = 0; i < connectCount; i++) {
+      const other = sorted[i];
+      const key = [city.id, other.id].sort().join("-");
+      if (connections.has(key)) continue;
+      const dist = Math.hypot(city.x - other.x, city.y - other.y);
+      if (dist > 500) continue;
+      connections.add(key);
+
+      // Draw a winding road
+      const segs = 12;
+      const points: { x: number; y: number }[] = [];
+      for (let s = 0; s <= segs; s++) {
+        const t = s / segs;
+        const bx = city.x + (other.x - city.x) * t;
+        const by = city.y + (other.y - city.y) * t;
+        // Perturb mid-points for a winding look
+        const perp = Math.sin(t * Math.PI) * 20;
+        const nx = bx + _noise(bx + 200, by + 200, 50) * perp - perp * 0.5;
+        const ny = by + _noise(bx + 400, by + 400, 50) * perp - perp * 0.5;
+        points.push({ x: nx, y: ny });
+      }
+
+      // Road shadow
+      ctx.strokeStyle = "rgba(40,30,15,0.15)";
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(points[0].x + 1, points[0].y + 1);
+      for (let p = 1; p < points.length; p++) {
+        ctx.lineTo(points[p].x + 1, points[p].y + 1);
+      }
+      ctx.stroke();
+
+      // Main road path
+      ctx.strokeStyle = "rgba(120,100,65,0.28)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let p = 1; p < points.length; p++) {
+        const prev = points[p - 1];
+        const cur = points[p];
+        const mx = (prev.x + cur.x) / 2;
+        const my = (prev.y + cur.y) / 2;
+        ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+      }
+      ctx.stroke();
+
+      // Center line (worn path)
+      ctx.strokeStyle = "rgba(150,130,85,0.15)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let p = 1; p < points.length; p++) {
+        const prev = points[p - 1];
+        const cur = points[p];
+        const mx = (prev.x + cur.x) / 2;
+        const my = (prev.y + cur.y) / 2;
+        ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
 // Pre-render the static ground texture to an offscreen canvas
-function _bakeGroundTexture(terrain: TerrainRegion[]): HTMLCanvasElement {
+function _bakeGroundTexture(terrain: TerrainRegion[], cities?: CampaignCity[]): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = MAP_W;
   c.height = MAP_H;
@@ -384,6 +629,35 @@ function _bakeGroundTexture(terrain: TerrainRegion[]): HTMLCanvasElement {
     g.fill();
     g.restore();
   }
+
+  // Rivers
+  const rivers = _generateRivers(terrain);
+  for (const river of rivers) {
+    _drawRiver(g, river);
+  }
+
+  // Coastline / ocean edges
+  _drawCoastline(g);
+
+  // Roads between cities
+  if (cities && cities.length > 0) {
+    _drawRoads(g, cities);
+  }
+
+  // Scattered grass detail on plains
+  g.save();
+  for (let i = 0; i < 400; i++) {
+    const gx = Math.random() * MAP_W;
+    const gy = Math.random() * MAP_H;
+    const inTerrain = terrain.some(t => Math.hypot(gx - t.x, gy - t.y) < t.r * 0.8);
+    if (inTerrain) continue;
+    g.fillStyle = `rgba(${35 + Math.random() * 20},${55 + Math.random() * 25},${20 + Math.random() * 10},0.25)`;
+    const gs = 1 + Math.random() * 2;
+    g.beginPath();
+    g.ellipse(gx, gy, gs, gs * 0.3, Math.random() * Math.PI, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.restore();
 
   // Subtle vignette at map edges
   const edgeGrad = g.createRadialGradient(MAP_W / 2, MAP_H / 2, Math.min(MAP_W, MAP_H) * 0.35, MAP_W / 2, MAP_H / 2, Math.max(MAP_W, MAP_H) * 0.6);
@@ -880,7 +1154,7 @@ export class WarbandCampaign {
     const specialLocations = _generateSpecialLocations();
 
     // Bake static ground texture (only done once)
-    this._groundTexture = _bakeGroundTexture(terrain);
+    this._groundTexture = _bakeGroundTexture(terrain, cities);
 
     // Player starts near their faction's first city
     const homeCities = cities.filter((c) => c.factionId === playerFaction);
@@ -1969,8 +2243,8 @@ export class WarbandCampaign {
       ctx.fill();
     }
 
-    // ---- Roads between allied cities ----------
-    ctx.lineWidth = 1.8;
+    // ---- Supply lines between allied cities -----
+    ctx.lineWidth = 1.2;
     for (let i = 0; i < s.cities.length; i++) {
       for (let j = i + 1; j < s.cities.length; j++) {
         const ci = s.cities[i], cj = s.cities[j];
@@ -1978,17 +2252,34 @@ export class WarbandCampaign {
         const dist = Math.hypot(ci.x - cj.x, ci.y - cj.y);
         if (dist > 400) continue;
         const [rr, rg, rb] = _factionRGB(ci.factionId);
-        ctx.strokeStyle = `rgba(${rr},${rg},${rb},0.18)`;
-        ctx.setLineDash([5, 5]);
+        // Animated dashed supply line
+        const dashOffset = t * 15;
+        ctx.strokeStyle = `rgba(${rr},${rg},${rb},0.22)`;
+        ctx.setLineDash([6, 4]);
+        ctx.lineDashOffset = -dashOffset;
         ctx.beginPath();
-        // Slight curve for visual interest
         const mx = (ci.x + cj.x) / 2 + (ci.y - cj.y) * 0.08;
         const my = (ci.y + cj.y) / 2 + (cj.x - ci.x) * 0.08;
         ctx.moveTo(ci.x, ci.y);
         ctx.quadraticCurveTo(mx, my, cj.x, cj.y);
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
       }
+    }
+
+    // ---- Village connections to parent cities ----
+    for (const village of s.villages) {
+      const parentCity = s.cities.find(c => c.id === village.linkedCityId);
+      if (!parentCity) continue;
+      ctx.strokeStyle = "rgba(80,70,50,0.1)";
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath();
+      ctx.moveTo(village.x, village.y);
+      ctx.lineTo(parentCity.x, parentCity.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     // ---- Cities --------------------------------
@@ -1996,60 +2287,135 @@ export class WarbandCampaign {
       const color = _factionHex(city.factionId);
       const [cr, cg, cb] = _factionRGB(city.factionId);
       const isOwn = city.factionId === s.playerFaction;
+      // City size tier based on garrison - affects visual complexity
+      const sizeTier = city.garrisonTotal <= 8 ? 0 : city.garrisonTotal <= 20 ? 1 : 2; // small, medium, large
+      const sc = 1.0 + sizeTier * 0.2; // visual scale
 
       // Animated pulsing ring for player cities
       if (isOwn) {
         const pulse = 0.3 + Math.sin(t * 2.5) * 0.15;
         ctx.strokeStyle = `rgba(${cr},${cg},${cb},${pulse})`;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(city.x, city.y, 28 + Math.sin(t * 2) * 2, 0, Math.PI * 2);
+        ctx.arc(city.x, city.y, 32 * sc + Math.sin(t * 2) * 2, 0, Math.PI * 2);
         ctx.stroke();
       }
 
       // Shadow
-      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
       ctx.beginPath();
-      ctx.ellipse(city.x + 2, city.y + 14, 16, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(city.x + 3, city.y + 18 * sc, 20 * sc, 6 * sc, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Castle keep (main body)
-      ctx.fillStyle = color;
+      const wallColor = `rgba(${Math.min(255, cr + 40)},${Math.min(255, cg + 30)},${Math.min(255, cb + 20)},0.85)`;
+      const stoneColor = `rgba(${Math.min(255, cr * 0.5 + 80)},${Math.min(255, cg * 0.5 + 75)},${Math.min(255, cb * 0.5 + 65)},0.9)`;
       ctx.strokeStyle = isOwn ? `rgba(${cr},${cg},${cb},0.9)` : "rgba(100,90,70,0.7)";
       ctx.lineWidth = isOwn ? 2.5 : 1.5;
 
-      // Walls
-      ctx.fillStyle = `rgba(${Math.min(255, cr + 40)},${Math.min(255, cg + 30)},${Math.min(255, cb + 20)},0.85)`;
+      // Outer wall (for medium+ cities)
+      if (sizeTier >= 1) {
+        const wallR = 18 * sc;
+        ctx.fillStyle = stoneColor;
+        ctx.beginPath();
+        // Draw an octagonal wall
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 - Math.PI / 8;
+          const wx = city.x + Math.cos(a) * wallR;
+          const wy = city.y + Math.sin(a) * wallR * 0.7;
+          if (i === 0) ctx.moveTo(wx, wy);
+          else ctx.lineTo(wx, wy);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Wall battlements
+        ctx.fillStyle = `rgba(${Math.min(255, cr * 0.4 + 60)},${Math.min(255, cg * 0.4 + 55)},${Math.min(255, cb * 0.4 + 45)},0.8)`;
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 - Math.PI / 8;
+          const wx = city.x + Math.cos(a) * (wallR + 1);
+          const wy = city.y + Math.sin(a) * (wallR + 1) * 0.7;
+          ctx.fillRect(wx - 1.5, wy - 1.5, 3, 3);
+        }
+
+        // Buildings inside walls (small houses)
+        const houseColor = `rgba(${Math.min(255, cr * 0.6 + 50)},${Math.min(255, cg * 0.6 + 45)},${Math.min(255, cb * 0.6 + 35)},0.7)`;
+        const roofColor = `rgba(${Math.min(255, cr * 0.3 + 90)},${Math.min(255, cg * 0.3 + 60)},${Math.min(255, cb * 0.3 + 40)},0.8)`;
+        const houseCount = sizeTier >= 2 ? 8 : 4;
+        for (let i = 0; i < houseCount; i++) {
+          const ha = (i / houseCount) * Math.PI * 2 + 0.3;
+          const hd = wallR * (0.35 + (i % 3) * 0.15);
+          const hx = city.x + Math.cos(ha) * hd;
+          const hy = city.y + Math.sin(ha) * hd * 0.7;
+          // House body
+          ctx.fillStyle = houseColor;
+          ctx.fillRect(hx - 2.5, hy - 1.5, 5, 4);
+          // Roof
+          ctx.fillStyle = roofColor;
+          ctx.beginPath();
+          ctx.moveTo(hx - 3.5, hy - 1.5);
+          ctx.lineTo(hx, hy - 4.5);
+          ctx.lineTo(hx + 3.5, hy - 1.5);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      // Corner towers (for large cities, 4 towers on outer wall)
+      if (sizeTier >= 2) {
+        const towerR = 18 * sc;
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2;
+          const tx = city.x + Math.cos(a) * towerR;
+          const ty = city.y + Math.sin(a) * towerR * 0.7;
+          ctx.fillStyle = stoneColor;
+          ctx.beginPath();
+          ctx.arc(tx, ty, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          // Tower cap
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(tx - 3, ty - 3);
+          ctx.lineTo(tx, ty - 7);
+          ctx.lineTo(tx + 3, ty - 3);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      // Inner castle walls
+      ctx.fillStyle = wallColor;
       ctx.beginPath();
-      ctx.rect(city.x - 11, city.y - 8, 22, 16);
+      ctx.rect(city.x - 11 * sc, city.y - 8 * sc, 22 * sc, 16 * sc);
       ctx.fill();
       ctx.stroke();
 
       // Left tower
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.rect(city.x - 14, city.y - 14, 7, 22);
+      ctx.rect(city.x - 14 * sc, city.y - 14 * sc, 7 * sc, 22 * sc);
       ctx.fill();
       ctx.stroke();
       // Left tower cap
       ctx.beginPath();
-      ctx.moveTo(city.x - 14, city.y - 14);
-      ctx.lineTo(city.x - 10.5, city.y - 19);
-      ctx.lineTo(city.x - 7, city.y - 14);
+      ctx.moveTo(city.x - 14 * sc, city.y - 14 * sc);
+      ctx.lineTo(city.x - 10.5 * sc, city.y - 20 * sc);
+      ctx.lineTo(city.x - 7 * sc, city.y - 14 * sc);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
       // Right tower
       ctx.beginPath();
-      ctx.rect(city.x + 7, city.y - 14, 7, 22);
+      ctx.rect(city.x + 7 * sc, city.y - 14 * sc, 7 * sc, 22 * sc);
       ctx.fill();
       ctx.stroke();
       // Right tower cap
       ctx.beginPath();
-      ctx.moveTo(city.x + 7, city.y - 14);
-      ctx.lineTo(city.x + 10.5, city.y - 19);
-      ctx.lineTo(city.x + 14, city.y - 14);
+      ctx.moveTo(city.x + 7 * sc, city.y - 14 * sc);
+      ctx.lineTo(city.x + 10.5 * sc, city.y - 20 * sc);
+      ctx.lineTo(city.x + 14 * sc, city.y - 14 * sc);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
@@ -2057,64 +2423,115 @@ export class WarbandCampaign {
       // Keep tower (center, tallest)
       ctx.fillStyle = `rgba(${cr},${cg},${cb},0.95)`;
       ctx.beginPath();
-      ctx.rect(city.x - 5, city.y - 16, 10, 22);
+      ctx.rect(city.x - 5 * sc, city.y - 16 * sc, 10 * sc, 22 * sc);
       ctx.fill();
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(city.x - 5, city.y - 16);
-      ctx.lineTo(city.x, city.y - 22);
-      ctx.lineTo(city.x + 5, city.y - 16);
+      ctx.moveTo(city.x - 5 * sc, city.y - 16 * sc);
+      ctx.lineTo(city.x, city.y - 24 * sc);
+      ctx.lineTo(city.x + 5 * sc, city.y - 16 * sc);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Battlements (small rectangles on walls)
+      // Battlements (small rectangles on inner walls)
       ctx.fillStyle = color;
-      for (let bx = -10; bx <= 8; bx += 4) {
-        ctx.fillRect(city.x + bx, city.y - 10, 2, 2);
+      for (let bx = -10; bx <= 8; bx += 3) {
+        ctx.fillRect(city.x + bx * sc, city.y - 10 * sc, 2, 2);
       }
 
-      // Gate
-      ctx.fillStyle = "rgba(20,15,10,0.7)";
-      ctx.beginPath();
-      ctx.arc(city.x, city.y + 8, 3.5, Math.PI, 0);
-      ctx.rect(city.x - 3.5, city.y + 5, 7, 3);
-      ctx.fill();
+      // Keep windows (small lit squares)
+      ctx.fillStyle = "rgba(255,220,120,0.4)";
+      ctx.fillRect(city.x - 2.5 * sc, city.y - 10 * sc, 2, 2.5);
+      ctx.fillRect(city.x + 0.5 * sc, city.y - 10 * sc, 2, 2.5);
+      ctx.fillRect(city.x - 1 * sc, city.y - 5 * sc, 2, 2.5);
 
-      // Banner (faction flag)
-      ctx.fillStyle = color;
-      ctx.fillRect(city.x + 1, city.y - 22, 1.2, -8);
+      // Gate with portcullis detail
+      ctx.fillStyle = "rgba(20,15,10,0.8)";
       ctx.beginPath();
-      ctx.moveTo(city.x + 2.2, city.y - 30);
-      ctx.lineTo(city.x + 9, city.y - 27 + Math.sin(t * 3 + city.x) * 0.8);
-      ctx.lineTo(city.x + 2.2, city.y - 24);
+      ctx.arc(city.x, city.y + 8 * sc, 4 * sc, Math.PI, 0);
+      ctx.rect(city.x - 4 * sc, city.y + 5 * sc, 8 * sc, 3 * sc);
+      ctx.fill();
+      // Portcullis bars
+      ctx.strokeStyle = "rgba(80,70,50,0.5)";
+      ctx.lineWidth = 0.6;
+      for (let gx = -3; gx <= 3; gx += 2) {
+        ctx.beginPath();
+        ctx.moveTo(city.x + gx * sc, city.y + 4 * sc);
+        ctx.lineTo(city.x + gx * sc, city.y + 8 * sc);
+        ctx.stroke();
+      }
+
+      // Banner pole and flag (animated)
+      ctx.fillStyle = "rgba(60,50,30,0.9)";
+      ctx.fillRect(city.x + 1 * sc, city.y - 24 * sc, 1.2, -10 * sc);
+      ctx.fillStyle = color;
+      const flagWave = Math.sin(t * 3 + city.x) * 1.2;
+      ctx.beginPath();
+      ctx.moveTo(city.x + 2.2 * sc, city.y - 34 * sc);
+      ctx.lineTo(city.x + 10 * sc, city.y - 31 * sc + flagWave);
+      ctx.lineTo(city.x + 10 * sc, city.y - 28 * sc + flagWave * 0.5);
+      ctx.lineTo(city.x + 2.2 * sc, city.y - 26 * sc);
+      ctx.closePath();
+      ctx.fill();
+      // Faction symbol on flag (small stripe)
+      ctx.fillStyle = `rgba(255,255,255,0.3)`;
+      ctx.beginPath();
+      ctx.moveTo(city.x + 4 * sc, city.y - 32 * sc + flagWave * 0.3);
+      ctx.lineTo(city.x + 8 * sc, city.y - 30.5 * sc + flagWave * 0.7);
+      ctx.lineTo(city.x + 8 * sc, city.y - 29 * sc + flagWave * 0.5);
+      ctx.lineTo(city.x + 4 * sc, city.y - 30.5 * sc + flagWave * 0.2);
       ctx.closePath();
       ctx.fill();
 
+      // Second banner for large cities
+      if (sizeTier >= 2) {
+        ctx.fillStyle = "rgba(60,50,30,0.9)";
+        ctx.fillRect(city.x - 14 * sc, city.y - 20 * sc, 1, -6);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(city.x - 13 * sc, city.y - 26 * sc);
+        ctx.lineTo(city.x - 7 * sc, city.y - 24 * sc + Math.sin(t * 2.5 + city.y) * 0.8);
+        ctx.lineTo(city.x - 13 * sc, city.y - 22 * sc);
+        ctx.closePath();
+        ctx.fill();
+      }
+
       // City name with background
+      ctx.font = "bold 11px 'Segoe UI', sans-serif";
       const nameWidth = ctx.measureText(city.name).width || city.name.length * 7;
-      ctx.fillStyle = "rgba(10,8,5,0.6)";
+      ctx.fillStyle = "rgba(10,8,5,0.7)";
       const nmW = Math.max(nameWidth + 10, 50);
       ctx.beginPath();
-      ctx.roundRect(city.x - nmW / 2, city.y + 17, nmW, 16, 3);
+      ctx.roundRect(city.x - nmW / 2, city.y + 17 * sc, nmW, 16, 3);
       ctx.fill();
 
       ctx.fillStyle = isOwn ? "#ddeebb" : "#d0c8b0";
-      ctx.font = "bold 11px 'Segoe UI', sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(city.name, city.x, city.y + 29);
+      ctx.fillText(city.name, city.x, city.y + 29 * sc);
 
-      // Garrison badge
-      ctx.fillStyle = "rgba(10,8,5,0.7)";
+      // Garrison badge with icon
+      ctx.fillStyle = "rgba(10,8,5,0.75)";
       ctx.beginPath();
-      ctx.roundRect(city.x - 12, city.y + 34, 24, 12, 2);
+      ctx.roundRect(city.x - 14, city.y + 34 * sc, 28, 12, 2);
       ctx.fill();
       ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.5)`;
       ctx.lineWidth = 0.8;
       ctx.stroke();
+      // Shield icon before number
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},0.6)`;
+      ctx.beginPath();
+      ctx.moveTo(city.x - 8, city.y + 37 * sc);
+      ctx.lineTo(city.x - 5, city.y + 36 * sc);
+      ctx.lineTo(city.x - 2, city.y + 37 * sc);
+      ctx.lineTo(city.x - 3, city.y + 40 * sc);
+      ctx.lineTo(city.x - 5, city.y + 42 * sc);
+      ctx.lineTo(city.x - 7, city.y + 40 * sc);
+      ctx.closePath();
+      ctx.fill();
       ctx.fillStyle = city.garrisonTotal > 0 ? "#bbaa88" : "#664444";
-      ctx.font = "9px sans-serif";
-      ctx.fillText(`${city.garrisonTotal}`, city.x, city.y + 43);
+      ctx.font = "bold 9px sans-serif";
+      ctx.fillText(`${city.garrisonTotal}`, city.x + 3, city.y + 43 * sc);
     }
 
     // ---- Villages --------------------------------
@@ -2257,74 +2674,159 @@ export class WarbandCampaign {
       const color = _factionHex(party.factionId);
       const [cr, cg, cb] = _factionRGB(party.factionId);
       const isAllied = party.factionId === s.playerFaction;
+      // Threat level based on army size
+      const threatLevel = party.armyTotal <= 6 ? 0 : party.armyTotal <= 14 ? 1 : 2; // scout, warband, army
+      const psc = 1.0 + threatLevel * 0.15; // visual scale
 
-      // Movement trail (fading dots)
+      // Movement trail (fading dots with faction color)
       const angle = Math.atan2(party.targetY - party.y, party.targetX - party.x);
       const moveDist = Math.hypot(party.targetX - party.x, party.targetY - party.y);
       if (moveDist > 5) {
-        for (let i = 1; i <= 3; i++) {
+        for (let i = 1; i <= 4; i++) {
           const trailX = party.x - Math.cos(angle) * i * 5;
           const trailY = party.y - Math.sin(angle) * i * 5;
-          ctx.fillStyle = `rgba(${cr},${cg},${cb},${0.15 - i * 0.04})`;
+          ctx.fillStyle = `rgba(${cr},${cg},${cb},${0.18 - i * 0.04})`;
           ctx.beginPath();
-          ctx.arc(trailX, trailY, PARTY_RADIUS * (0.6 - i * 0.12), 0, Math.PI * 2);
+          ctx.arc(trailX, trailY, PARTY_RADIUS * psc * (0.6 - i * 0.1), 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
+      // Threat glow for large enemy armies
+      if (!isAllied && threatLevel >= 2) {
+        const pulse = 0.12 + Math.sin(t * 2 + party.x) * 0.06;
+        ctx.fillStyle = `rgba(200,50,30,${pulse})`;
+        ctx.beginPath();
+        ctx.arc(party.x, party.y, PARTY_RADIUS * psc * 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       // Shadow
-      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
       ctx.beginPath();
-      ctx.ellipse(party.x + 1, party.y + PARTY_RADIUS + 1, PARTY_RADIUS * 0.8, 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(party.x + 1, party.y + PARTY_RADIUS * psc + 2, PARTY_RADIUS * psc, 3.5, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Party body (shield shape)
+      // Party body (shield shape, larger for bigger armies)
+      const pr = PARTY_RADIUS * psc;
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.moveTo(party.x, party.y - PARTY_RADIUS);
-      ctx.lineTo(party.x + PARTY_RADIUS, party.y - PARTY_RADIUS * 0.3);
-      ctx.lineTo(party.x + PARTY_RADIUS * 0.7, party.y + PARTY_RADIUS * 0.7);
-      ctx.lineTo(party.x, party.y + PARTY_RADIUS);
-      ctx.lineTo(party.x - PARTY_RADIUS * 0.7, party.y + PARTY_RADIUS * 0.7);
-      ctx.lineTo(party.x - PARTY_RADIUS, party.y - PARTY_RADIUS * 0.3);
+      ctx.moveTo(party.x, party.y - pr);
+      ctx.lineTo(party.x + pr, party.y - pr * 0.3);
+      ctx.lineTo(party.x + pr * 0.7, party.y + pr * 0.7);
+      ctx.lineTo(party.x, party.y + pr);
+      ctx.lineTo(party.x - pr * 0.7, party.y + pr * 0.7);
+      ctx.lineTo(party.x - pr, party.y - pr * 0.3);
       ctx.closePath();
       ctx.fill();
+      // Darker inner shield detail
+      ctx.fillStyle = `rgba(0,0,0,0.15)`;
+      ctx.beginPath();
+      ctx.moveTo(party.x, party.y - pr * 0.6);
+      ctx.lineTo(party.x + pr * 0.6, party.y - pr * 0.1);
+      ctx.lineTo(party.x + pr * 0.4, party.y + pr * 0.45);
+      ctx.lineTo(party.x, party.y + pr * 0.65);
+      ctx.lineTo(party.x - pr * 0.4, party.y + pr * 0.45);
+      ctx.lineTo(party.x - pr * 0.6, party.y - pr * 0.1);
+      ctx.closePath();
+      ctx.fill();
+
       const partyRelStatus = isAllied ? "friendly" : this._getRelationStatus(party.factionId, s.playerFaction);
-      ctx.strokeStyle = partyRelStatus === "friendly" ? `rgba(100,255,100,0.6)` : partyRelStatus === "neutral" ? `rgba(220,200,60,0.5)` : `rgba(255,80,60,0.5)`;
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = partyRelStatus === "friendly" ? `rgba(100,255,100,0.7)` : partyRelStatus === "neutral" ? `rgba(220,200,60,0.6)` : `rgba(255,80,60,0.6)`;
+      ctx.lineWidth = 1.8;
       ctx.stroke();
 
-      // Party emblem (cross for allied, swords for enemy)
-      ctx.strokeStyle = `rgba(255,255,255,0.5)`;
+      // Faction emblem on shield - different per faction
+      const factionHash = party.factionId.charCodeAt(0) % 5;
+      ctx.strokeStyle = `rgba(255,255,255,0.55)`;
+      ctx.fillStyle = `rgba(255,255,255,0.35)`;
       ctx.lineWidth = 1.2;
       if (isAllied) {
+        // Cross for allied
         ctx.beginPath();
-        ctx.moveTo(party.x, party.y - 3);
-        ctx.lineTo(party.x, party.y + 3);
-        ctx.moveTo(party.x - 3, party.y);
-        ctx.lineTo(party.x + 3, party.y);
+        ctx.moveTo(party.x, party.y - 3.5);
+        ctx.lineTo(party.x, party.y + 3.5);
+        ctx.moveTo(party.x - 3.5, party.y);
+        ctx.lineTo(party.x + 3.5, party.y);
         ctx.stroke();
+      } else if (factionHash === 0) {
+        // Crossed swords
+        ctx.beginPath();
+        ctx.moveTo(party.x - 3, party.y - 3);
+        ctx.lineTo(party.x + 3, party.y + 3);
+        ctx.moveTo(party.x + 3, party.y - 3);
+        ctx.lineTo(party.x - 3, party.y + 3);
+        ctx.stroke();
+      } else if (factionHash === 1) {
+        // Arrow pointing up (ranged)
+        ctx.beginPath();
+        ctx.moveTo(party.x, party.y - 4);
+        ctx.lineTo(party.x - 2.5, party.y + 1);
+        ctx.moveTo(party.x, party.y - 4);
+        ctx.lineTo(party.x + 2.5, party.y + 1);
+        ctx.moveTo(party.x, party.y - 4);
+        ctx.lineTo(party.x, party.y + 4);
+        ctx.stroke();
+      } else if (factionHash === 2) {
+        // Shield
+        ctx.beginPath();
+        ctx.arc(party.x, party.y - 0.5, 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(party.x, party.y - 3.5);
+        ctx.lineTo(party.x, party.y + 2.5);
+        ctx.stroke();
+      } else if (factionHash === 3) {
+        // Skull (intimidating)
+        ctx.beginPath();
+        ctx.arc(party.x, party.y - 1, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},0.8)`;
+        ctx.fillRect(party.x - 1.2, party.y - 2, 0.8, 1);
+        ctx.fillRect(party.x + 0.4, party.y - 2, 0.8, 1);
+        ctx.fillRect(party.x - 1, party.y + 0.5, 2, 0.8);
       } else {
+        // Star
         ctx.beginPath();
-        ctx.moveTo(party.x - 2.5, party.y - 2.5);
-        ctx.lineTo(party.x + 2.5, party.y + 2.5);
-        ctx.moveTo(party.x + 2.5, party.y - 2.5);
-        ctx.lineTo(party.x - 2.5, party.y + 2.5);
-        ctx.stroke();
+        for (let i = 0; i < 5; i++) {
+          const sa = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+          const sr = 3;
+          if (i === 0) ctx.moveTo(party.x + Math.cos(sa) * sr, party.y + Math.sin(sa) * sr);
+          else ctx.lineTo(party.x + Math.cos(sa) * sr, party.y + Math.sin(sa) * sr);
+          const inner = sa + (2 * Math.PI) / 10;
+          ctx.lineTo(party.x + Math.cos(inner) * 1.3, party.y + Math.sin(inner) * 1.3);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Banner pole with faction flag
+      if (threatLevel >= 1 || !isAllied) {
+        const flagX = party.x + pr * 0.6;
+        const flagY = party.y - pr;
+        ctx.fillStyle = "rgba(60,50,30,0.8)";
+        ctx.fillRect(flagX - 0.4, flagY, 0.8, -10);
+        ctx.fillStyle = color;
+        const fw = Math.sin(t * 3.5 + party.x + party.y) * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(flagX + 0.4, flagY - 10);
+        ctx.lineTo(flagX + 6, flagY - 8 + fw);
+        ctx.lineTo(flagX + 0.4, flagY - 6);
+        ctx.closePath();
+        ctx.fill();
       }
 
       // Direction arrow
       if (moveDist > 5) {
-        const arrowLen = PARTY_RADIUS + 6;
+        const arrowLen = pr + 6;
         const ax = party.x + Math.cos(angle) * arrowLen;
         const ay = party.y + Math.sin(angle) * arrowLen;
         ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.6)`;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(party.x + Math.cos(angle) * PARTY_RADIUS, party.y + Math.sin(angle) * PARTY_RADIUS);
+        ctx.moveTo(party.x + Math.cos(angle) * pr, party.y + Math.sin(angle) * pr);
         ctx.lineTo(ax, ay);
         ctx.stroke();
-        // Arrow head
         const ha = 0.5;
         ctx.beginPath();
         ctx.moveTo(ax, ay);
@@ -2334,23 +2836,47 @@ export class WarbandCampaign {
         ctx.stroke();
       }
 
-      // Army size badge
-      ctx.fillStyle = "rgba(10,8,5,0.75)";
+      // Army size badge with composition hint
+      const badgeW = threatLevel >= 1 ? 28 : 16;
+      ctx.fillStyle = "rgba(10,8,5,0.8)";
       ctx.beginPath();
-      ctx.roundRect(party.x - 8, party.y - PARTY_RADIUS - 13, 16, 10, 2);
+      ctx.roundRect(party.x - badgeW / 2, party.y - pr - 15, badgeW, 12, 2);
       ctx.fill();
-      ctx.fillStyle = "#ccbb99";
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.3)`;
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+      ctx.fillStyle = isAllied ? "#aaddaa" : threatLevel >= 2 ? "#ff9977" : "#ccbb99";
       ctx.font = "bold 8px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`${party.armyTotal}`, party.x, party.y - PARTY_RADIUS - 5);
+      ctx.fillText(`${party.armyTotal}`, party.x, party.y - pr - 6);
 
-      // Terrain indicator
-      const aiTerrain = _getTerrainAt(party.x, party.y, s.terrain);
-      if (aiTerrain) {
-        ctx.fillStyle = "rgba(10,8,5,0.6)";
-        ctx.font = "7px sans-serif";
+      // Unit composition dots (shows variety of unit types)
+      if (threatLevel >= 1) {
+        const dotCount = Math.min(party.army.length, 4);
+        const dotStartX = party.x - (dotCount - 1) * 2.5;
+        for (let d = 0; d < dotCount; d++) {
+          const u = party.army[d];
+          const uDef = CAMPAIGN_UNITS.find(cu => cu.id === u.unitId);
+          let dotColor = "#888";
+          if (uDef) {
+            if (uDef.building === "stables") dotColor = "#cc8844";
+            else if (uDef.building === "archery") dotColor = "#44aa44";
+            else if (uDef.building === "mages" || uDef.building === "temple") dotColor = "#8866cc";
+            else dotColor = "#aaaaaa";
+          }
+          ctx.fillStyle = dotColor;
+          ctx.beginPath();
+          ctx.arc(dotStartX + d * 5, party.y + pr + 5, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Party name for larger armies
+      if (threatLevel >= 1) {
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},0.5)`;
+        ctx.font = "7px 'Segoe UI', sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(aiTerrain.name, party.x, party.y + PARTY_RADIUS + 10);
+        ctx.fillText(party.name, party.x, party.y + pr + 14);
       }
     }
 

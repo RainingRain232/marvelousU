@@ -4,6 +4,7 @@
 
 import type { DragoonState } from "../state/DragoonState";
 import { DragoonClassId } from "../state/DragoonState";
+import { SKILL_CONFIGS } from "../config/DragoonConfig";
 
 let _keyDown: ((e: KeyboardEvent) => void) | null = null;
 let _keyUp: ((e: KeyboardEvent) => void) | null = null;
@@ -13,6 +14,7 @@ let _mouseUp: ((e: MouseEvent) => void) | null = null;
 let _pauseCallback: ((paused: boolean) => void) | null = null;
 let _classSelectCallback: ((classId: DragoonClassId) => void) | null = null;
 let _subclassSelectCallback: ((index: number) => void) | null = null;
+let _escapeMenuCallback: ((show: boolean) => void) | null = null;
 
 const CLASS_ORDER: DragoonClassId[] = [
   DragoonClassId.ARCANE_MAGE,
@@ -32,6 +34,10 @@ export const DragoonInputSystem = {
 
   setSubclassSelectCallback(cb: ((index: number) => void) | null): void {
     _subclassSelectCallback = cb;
+  },
+
+  setEscapeMenuCallback(cb: ((show: boolean) => void) | null): void {
+    _escapeMenuCallback = cb;
   },
 
   init(state: DragoonState): void {
@@ -68,9 +74,23 @@ export const DragoonInputSystem = {
         case "Digit3": inp.skill3 = true; break;
         case "Digit4": inp.skill4 = true; break;
         case "Digit5": inp.skill5 = true; break;
+        case "Digit6": inp.skill6 = true; break;
+        case "Tab":
+          e.preventDefault();
+          // Cycle through unlocked skills
+          if (state.unlockedSkills.length > 1 && state.equippedUnlockSkill) {
+            const curIdx = state.unlockedSkills.indexOf(state.equippedUnlockSkill);
+            const nextIdx = (curIdx + 1) % state.unlockedSkills.length;
+            const nextSkill = state.unlockedSkills[nextIdx];
+            state.equippedUnlockSkill = nextSkill;
+            const cfg = SKILL_CONFIGS[nextSkill];
+            state.unlockSkillState = { id: nextSkill, cooldown: 0, maxCooldown: cfg.cooldown, active: false, activeTimer: 0 };
+          }
+          break;
         case "Escape":
           state.paused = !state.paused;
           _pauseCallback?.(state.paused);
+          _escapeMenuCallback?.(state.paused);
           break;
       }
     };
@@ -86,6 +106,7 @@ export const DragoonInputSystem = {
         case "Digit3": inp.skill3 = false; break;
         case "Digit4": inp.skill4 = false; break;
         case "Digit5": inp.skill5 = false; break;
+        case "Digit6": inp.skill6 = false; break;
       }
     };
 
@@ -184,8 +205,17 @@ export const DragoonInputSystem = {
     p.position.y = Math.max(margin, Math.min(state.screenH - margin, p.position.y));
 
     // Update camera to follow player horizontally
+    // Camera speed is capped to the player's movement speed so it never outpaces the bird
     const targetCamX = p.position.x - state.screenW * 0.5;
-    state.cameraX = Math.max(0, Math.min(state.worldWidth - state.screenW, targetCamX));
+    const clampedTarget = Math.max(0, Math.min(state.worldWidth - state.screenW, targetCamX));
+    const camDiff = clampedTarget - state.cameraX;
+    const maxCamSpeed = speed; // camera cannot move faster than the player/bird
+    const maxCamStep = maxCamSpeed * dt;
+    if (Math.abs(camDiff) <= maxCamStep) {
+      state.cameraX = clampedTarget;
+    } else {
+      state.cameraX += Math.sign(camDiff) * maxCamStep;
+    }
   },
 
   destroy(): void {
@@ -198,5 +228,6 @@ export const DragoonInputSystem = {
     _pauseCallback = null;
     _classSelectCallback = null;
     _subclassSelectCallback = null;
+    _escapeMenuCallback = null;
   },
 };

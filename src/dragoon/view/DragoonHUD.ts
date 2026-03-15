@@ -105,6 +105,18 @@ export class DragoonHUD {
   // Subclass select overlay
   private _subclassSelectContainer = new Container();
 
+  // Escape menu overlay
+  private _escapeMenuContainer = new Container();
+  private _escapeMenuResumeCb: (() => void) | null = null;
+  private _escapeMenuMainMenuCb: (() => void) | null = null;
+  private _escapeMenuClickHandler: ((e: MouseEvent) => void) | null = null;
+
+  // Unlock skill slot
+  private _unlockSkillBg = new Graphics();
+  private _unlockSkillName = new Text({ text: "", style: STYLE_SKILL_NAME });
+  private _unlockSkillKey = new Text({ text: "6", style: STYLE_SKILL_KEY });
+  private _unlockSkillCooldown = new Graphics();
+
   // Notifications
   private _notifications: { text: Text; timer: number }[] = [];
 
@@ -207,9 +219,20 @@ export class DragoonHUD {
     this._betweenWaveText.position.set(sw / 2, sh / 2);
     this.container.addChild(this._betweenWaveText);
 
+    // Unlock skill slot elements
+    this.container.addChild(this._unlockSkillBg);
+    this.container.addChild(this._unlockSkillCooldown);
+    this._unlockSkillName.anchor.set(0.5, 0);
+    this.container.addChild(this._unlockSkillName);
+    this._unlockSkillKey.anchor.set(0.5, 0.5);
+    this.container.addChild(this._unlockSkillKey);
+
     // Class select overlay
     this.container.addChild(this._classSelectContainer);
     this.container.addChild(this._subclassSelectContainer);
+
+    // Escape menu overlay
+    this.container.addChild(this._escapeMenuContainer);
 
     this._lastSkillIds = "";
   }
@@ -611,6 +634,57 @@ export class DragoonHUD {
       }
     }
 
+    // Unlockable skill slot (slot 6) — rendered to the right of the skill bar
+    this._unlockSkillBg.clear();
+    this._unlockSkillCooldown.clear();
+    if (state.equippedUnlockSkill && state.unlockSkillState) {
+      const ulCfg = SKILL_CONFIGS[state.equippedUnlockSkill];
+      const ulState = state.unlockSkillState;
+      const ulX = startX + totalW + gap + 16;
+      const ulY = barY;
+
+      // Separator line
+      this._skillBg.rect(startX + totalW + 10, barY + 2, 2, slotH - 4).fill({ color: 0x556688, alpha: 0.5 });
+
+      const onCooldown = ulState.cooldown > 0;
+      const hasEnough = p.mana >= ulCfg.manaCost;
+      const slotColor = onCooldown ? 0x12121f : (hasEnough ? 0x1a2a3a : 0x141418);
+      const borderColor = ulState.active ? 0xffdd44 : (hasEnough && !onCooldown ? ulCfg.color : 0x3a3a4a);
+
+      this._unlockSkillBg.roundRect(ulX - 1, ulY - 1, slotW + 2, slotH + 2, 5).fill({ color: 0x000000, alpha: 0.3 });
+      this._unlockSkillBg.roundRect(ulX, ulY, slotW, slotH, 4).fill({ color: slotColor });
+      this._unlockSkillBg.roundRect(ulX, ulY, slotW, slotH, 4).stroke({ color: borderColor, width: ulState.active ? 2.5 : 1 });
+
+      // Cooldown overlay
+      if (onCooldown) {
+        const cdPct = ulState.cooldown / ulState.maxCooldown;
+        this._unlockSkillCooldown.rect(ulX + 1, ulY + slotH * (1 - cdPct), slotW - 2, slotH * cdPct).fill({ color: 0x000000, alpha: 0.55 });
+      }
+
+      // Color orb
+      const orbAlpha = onCooldown ? 0.25 : 0.9;
+      this._unlockSkillBg.circle(ulX + slotW / 2, ulY + 12, 8).fill({ color: ulCfg.color, alpha: orbAlpha * 0.15 });
+      this._unlockSkillBg.circle(ulX + slotW / 2, ulY + 12, 5).fill({ color: ulCfg.color, alpha: orbAlpha });
+      this._unlockSkillBg.circle(ulX + slotW / 2, ulY + 12, 2.5).fill({ color: 0xffffff, alpha: orbAlpha * 0.3 });
+
+      // Key and name text
+      this._unlockSkillKey.position.set(ulX + slotW / 2, ulY + slotH / 2);
+      this._unlockSkillKey.alpha = 1;
+      this._unlockSkillName.text = ulCfg.name;
+      this._unlockSkillName.position.set(ulX + slotW / 2, ulY + slotH + 2);
+      this._unlockSkillName.alpha = 1;
+
+      // Tab hint
+      const tabHint = state.unlockedSkills.length > 1 ? "[Tab]" : "";
+      if (tabHint) {
+        this._unlockSkillBg.roundRect(ulX + slotW - 18, ulY - 8, 22, 12, 3).fill({ color: 0x222233, alpha: 0.9 });
+        this._unlockSkillBg.roundRect(ulX + slotW - 18, ulY - 8, 22, 12, 3).stroke({ color: 0x556688, width: 0.5 });
+      }
+    } else {
+      this._unlockSkillKey.alpha = 0;
+      this._unlockSkillName.alpha = 0;
+    }
+
     // Boss HP bar
     const boss = state.enemies.find(e => e.isBoss && e.alive);
     if (boss) {
@@ -731,6 +805,125 @@ export class DragoonHUD {
     this._notifications.push({ text, timer: 2 });
   }
 
+  // ---------------------------------------------------------------------------
+  // Escape menu
+  // ---------------------------------------------------------------------------
+
+  showEscapeMenu(sw: number, sh: number, onResume: () => void, onMainMenu: () => void): void {
+    this._escapeMenuContainer.removeChildren();
+    this._escapeMenuResumeCb = onResume;
+    this._escapeMenuMainMenuCb = onMainMenu;
+
+    // Dark overlay
+    const bg = new Graphics();
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.85 });
+    this._escapeMenuContainer.addChild(bg);
+
+    // Title
+    const title = new Text({ text: "PAUSED", style: STYLE_CLASS_TITLE });
+    title.anchor.set(0.5, 0);
+    title.position.set(sw / 2, 60);
+    this._escapeMenuContainer.addChild(title);
+
+    // Controls section
+    const controlsTitle = new Text({ text: "Controls", style: new TextStyle({
+      fontFamily: "Georgia, serif", fontSize: 22, fill: 0xffdd44,
+      fontWeight: "bold", dropShadow: { color: 0x000000, distance: 2, alpha: 0.8 },
+    }) });
+    controlsTitle.anchor.set(0.5, 0);
+    controlsTitle.position.set(sw / 2, 120);
+    this._escapeMenuContainer.addChild(controlsTitle);
+
+    const controls = [
+      "W / Arrow Up  —  Move Up",
+      "S / Arrow Down  —  Move Down",
+      "A / Arrow Left  —  Move Left",
+      "D / Arrow Right  —  Move Right",
+      "Left Click  —  Basic Attack",
+      "1-5  —  Class Skills",
+      "6  —  Unlockable Skill",
+      "Tab  —  Switch Unlockable Skill",
+      "Escape  —  Pause / Resume",
+    ];
+
+    const controlStyle = new TextStyle({
+      fontFamily: "Georgia, serif", fontSize: 14, fill: 0xbbccdd,
+      lineHeight: 24,
+    });
+
+    const controlText = new Text({ text: controls.join("\n"), style: controlStyle });
+    controlText.anchor.set(0.5, 0);
+    controlText.position.set(sw / 2, 155);
+    this._escapeMenuContainer.addChild(controlText);
+
+    // Resume button
+    const btnW = 220;
+    const btnH = 50;
+    const btnGap = 20;
+    const resumeY = sh / 2 + 80;
+
+    const resumeBg = new Graphics();
+    resumeBg.roundRect(sw / 2 - btnW / 2, resumeY, btnW, btnH, 8).fill({ color: 0x1a3a2a, alpha: 0.9 });
+    resumeBg.roundRect(sw / 2 - btnW / 2, resumeY, btnW, btnH, 8).stroke({ color: 0x44cc66, width: 2 });
+    this._escapeMenuContainer.addChild(resumeBg);
+
+    const resumeText = new Text({ text: "Resume Game", style: new TextStyle({
+      fontFamily: "Georgia, serif", fontSize: 18, fill: 0x44cc66,
+      fontWeight: "bold", dropShadow: { color: 0x000000, distance: 1, alpha: 0.8 },
+    }) });
+    resumeText.anchor.set(0.5, 0.5);
+    resumeText.position.set(sw / 2, resumeY + btnH / 2);
+    this._escapeMenuContainer.addChild(resumeText);
+
+    // Main menu button
+    const menuY = resumeY + btnH + btnGap;
+    const menuBg = new Graphics();
+    menuBg.roundRect(sw / 2 - btnW / 2, menuY, btnW, btnH, 8).fill({ color: 0x3a1a1a, alpha: 0.9 });
+    menuBg.roundRect(sw / 2 - btnW / 2, menuY, btnW, btnH, 8).stroke({ color: 0xcc4444, width: 2 });
+    this._escapeMenuContainer.addChild(menuBg);
+
+    const menuText = new Text({ text: "Main Menu", style: new TextStyle({
+      fontFamily: "Georgia, serif", fontSize: 18, fill: 0xcc4444,
+      fontWeight: "bold", dropShadow: { color: 0x000000, distance: 1, alpha: 0.8 },
+    }) });
+    menuText.anchor.set(0.5, 0.5);
+    menuText.position.set(sw / 2, menuY + btnH / 2);
+    this._escapeMenuContainer.addChild(menuText);
+
+    this._escapeMenuContainer.visible = true;
+
+    // Click handler for buttons
+    if (this._escapeMenuClickHandler) {
+      window.removeEventListener("mousedown", this._escapeMenuClickHandler);
+    }
+    this._escapeMenuClickHandler = (e: MouseEvent) => {
+      const mx = e.clientX;
+      const my = e.clientY;
+      // Resume button hit test
+      if (mx >= sw / 2 - btnW / 2 && mx <= sw / 2 + btnW / 2 && my >= resumeY && my <= resumeY + btnH) {
+        e.stopPropagation();
+        this._escapeMenuResumeCb?.();
+      }
+      // Main menu button hit test
+      if (mx >= sw / 2 - btnW / 2 && mx <= sw / 2 + btnW / 2 && my >= menuY && my <= menuY + btnH) {
+        e.stopPropagation();
+        this._escapeMenuMainMenuCb?.();
+      }
+    };
+    window.addEventListener("mousedown", this._escapeMenuClickHandler, true);
+  }
+
+  hideEscapeMenu(): void {
+    this._escapeMenuContainer.removeChildren();
+    this._escapeMenuContainer.visible = false;
+    if (this._escapeMenuClickHandler) {
+      window.removeEventListener("mousedown", this._escapeMenuClickHandler, true);
+      this._escapeMenuClickHandler = null;
+    }
+    this._escapeMenuResumeCb = null;
+    this._escapeMenuMainMenuCb = null;
+  }
+
   cleanup(): void {
     for (const n of this._notifications) n.text.destroy();
     this._notifications.length = 0;
@@ -743,6 +936,8 @@ export class DragoonHUD {
     this._lastSkillIds = "";
     this._classSelectContainer.removeChildren();
     this._subclassSelectContainer.removeChildren();
+    this.hideEscapeMenu();
+    this._escapeMenuContainer.removeChildren();
     this.container.removeChildren();
   }
 }

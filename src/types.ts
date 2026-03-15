@@ -671,6 +671,7 @@ export enum GameMode {
   DIABLO = "diablo",
   MAGE_WARS = "mage_wars",
   WARBAND_CAMPAIGN = "warband_campaign",
+  GAME = "game",
 }
 
 // ---------------------------------------------------------------------------

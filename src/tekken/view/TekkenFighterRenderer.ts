@@ -1895,13 +1895,25 @@ export class TekkenFighterRenderer {
                      phase === "active" ? 1 :
                      phase === "recovery" ? Math.max(1 - f / 12, 0) : 0;
 
-    // Detect if this is a punch or kick move, high/mid/low
-    const isKick = moveDef.includes("kick") || moveDef.includes("3") || moveDef.includes("4") || moveDef.includes("lk") || moveDef.includes("rk");
-    const isLow = moveDef.includes("d+3") || moveDef.includes("d+4") || moveDef.includes("d/b") || moveDef.includes("ankle") || moveDef.includes("sweep") || moveDef.includes("low");
-    const isLauncher = moveDef.includes("uppercut") || moveDef.includes("hopkick") || moveDef.includes("d+2") || moveDef.includes("d/f+2") || moveDef.includes("u/f");
+    // Detect if this is a punch or kick move, high/mid/low, or special type
+    const isKick = moveDef.includes("kick") || moveDef.includes("3") || moveDef.includes("4") || moveDef.includes("lk") || moveDef.includes("rk") || moveDef.includes("knee") || moveDef.includes("spin");
+    const isLow = moveDef.includes("d+3") || moveDef.includes("d+4") || moveDef.includes("d/b") || moveDef.includes("ankle") || moveDef.includes("sweep") || moveDef.includes("low") || moveDef.includes("hellsweep");
+    const isLauncher = moveDef.includes("uppercut") || moveDef.includes("hopkick") || moveDef.includes("d+2") || moveDef.includes("d/f+2") || moveDef.includes("u/f") || moveDef.includes("jumping");
     const isRight = moveDef.includes("rp") || moveDef.includes("rk") || moveDef.includes("2") || moveDef.includes("4") || moveDef.includes("straight") || moveDef.includes("roundhouse");
+    const isElbow = moveDef.includes("elbow");
+    const isKnee = moveDef.includes("knee");
+    const isSpinning = moveDef.includes("spin") || moveDef.includes("homing") || moveDef.includes("b+4");
+    const isGrab = moveDef.includes("throw") || moveDef.includes("grab") || moveDef.includes("1+3") || moveDef.includes("f+1+3");
 
-    if (isKick) {
+    if (isGrab) {
+      this._animateGrabAttack(progress, isRight);
+    } else if (isElbow) {
+      this._animateElbowAttack(progress, isRight);
+    } else if (isKnee) {
+      this._animateKickAttack(progress, false, false, isRight);
+    } else if (isSpinning) {
+      this._animateSpinningAttack(progress, isLow, isRight);
+    } else if (isKick) {
       this._animateKickAttack(progress, isLow, isLauncher, isRight);
     } else {
       this._animatePunchAttack(progress, isLow, isLauncher, isRight);
@@ -2020,6 +2032,103 @@ export class TekkenFighterRenderer {
       this._lerpBone(this._rightThigh, -0.2, 0, -0.15, 0.15);
       this._lerpBone(this._rightShin, 0.4, 0, 0, 0.15);
     }
+  }
+
+  private _animateElbowAttack(progress: number, isRight: boolean): void {
+    const p = progress;
+
+    // Elbow drives forward from close range - torso twists hard
+    this._lerpBone(this._spineLower, 0.05, isRight ? -0.4 * p : 0.4 * p, 0, 0.3);
+    this._lerpBone(this._spineUpper, 0.02, isRight ? -0.3 * p : 0.3 * p, 0, 0.3);
+    this._lerpBone(this._chest, 0.08, 0, 0, 0.3);
+
+    if (isRight) {
+      // Right elbow: upper arm swings forward, forearm tucked tight
+      this._lerpBone(this._rightClavicle, 0, 0, -0.2 * p, 0.3);
+      this._lerpBone(this._rightUpperArm, -1.2 * p, -0.3 * p, -0.5 * p, 0.3);
+      this._lerpBone(this._rightForearm, -2.2 * p, 0, 0, 0.3); // tight fold = elbow forward
+      this._lerpBone(this._rightHand, -0.4, 0, 0, 0.3);
+      this._lerpBone(this._rightFingers, -0.8, 0, 0, 0.3);
+      // Left guard
+      this._lerpBone(this._leftUpperArm, -0.4, 0, 0.7, 0.15);
+      this._lerpBone(this._leftForearm, -1.4, 0, 0, 0.15);
+    } else {
+      this._lerpBone(this._leftClavicle, 0, 0, 0.2 * p, 0.3);
+      this._lerpBone(this._leftUpperArm, -1.2 * p, 0.3 * p, 0.5 * p, 0.3);
+      this._lerpBone(this._leftForearm, -2.2 * p, 0, 0, 0.3);
+      this._lerpBone(this._leftHand, -0.4, 0, 0, 0.3);
+      this._lerpBone(this._leftFingers, -0.8, 0, 0, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.4, 0, -0.7, 0.15);
+      this._lerpBone(this._rightForearm, -1.4, 0, 0, 0.15);
+    }
+
+    // Legs: step forward with elbow
+    this._lerpBone(this._leftThigh, -0.25 - 0.1 * p, 0, 0.12, 0.2);
+    this._lerpBone(this._leftShin, 0.4, 0, 0, 0.2);
+    this._lerpBone(this._rightThigh, -0.15, 0, -0.12, 0.2);
+    this._lerpBone(this._rightShin, 0.3, 0, 0, 0.2);
+  }
+
+  private _animateSpinningAttack(progress: number, isLow: boolean, _isRight: boolean): void {
+    const p = progress;
+
+    // Full body spin: hips and spine rotate through
+    const spinAngle = p * Math.PI * 1.2;
+    this._lerpBone(this._hips, isLow ? 0.15 : 0, spinAngle * 0.3, 0, 0.25);
+    this._lerpBone(this._spineLower, isLow ? 0.1 : -0.05, spinAngle * 0.5, 0, 0.25);
+    this._lerpBone(this._spineUpper, -0.05 * p, spinAngle * 0.4, 0, 0.25);
+    this._lerpBone(this._chest, -0.1 * p, spinAngle * 0.3, 0, 0.25);
+    this._lerpBone(this._head, 0, -spinAngle * 0.2, 0, 0.2); // head counter-rotates
+
+    // Arms fling outward during spin
+    this._lerpBone(this._leftUpperArm, -0.3, 0.4 * p, 1.2 * p, 0.25);
+    this._lerpBone(this._leftForearm, -0.8, 0, 0, 0.25);
+    this._lerpBone(this._rightUpperArm, -0.3, -0.4 * p, -1.2 * p, 0.25);
+    this._lerpBone(this._rightForearm, -0.8, 0, 0, 0.25);
+
+    if (isLow) {
+      // Low spinning sweep: deep crouch, leg extends
+      this._lerpBone(this._leftThigh, -0.8, 0, 0.3 * p, 0.3);
+      this._lerpBone(this._leftShin, 1.2, 0, 0, 0.3);
+      this._lerpBone(this._rightThigh, 0.4 * p, 0, -0.4 * p, 0.3);
+      this._lerpBone(this._rightShin, 0.1, 0, 0, 0.3);
+    } else {
+      // Standing spinning kick
+      this._lerpBone(this._leftThigh, -0.2, 0, 0.15, 0.2);
+      this._lerpBone(this._leftShin, 0.35, 0, 0, 0.2);
+      this._lerpBone(this._rightThigh, -0.8 * p, 0, -0.3 * p, 0.3);
+      this._lerpBone(this._rightShin, 0.3 * (1 - p), 0, 0, 0.3);
+      this._lerpBone(this._rightAnkle, 0.2 * p, 0, 0, 0.3);
+    }
+  }
+
+  private _animateGrabAttack(progress: number, _isRight: boolean): void {
+    const p = progress;
+
+    // Grab: both arms extend forward to seize opponent
+    this._lerpBone(this._spineLower, 0.1 * p, 0, 0, 0.3);
+    this._lerpBone(this._spineUpper, 0.08 * p, 0, 0, 0.3);
+    this._lerpBone(this._chest, 0.12 * p, 0, 0, 0.3);
+    this._lerpBone(this._head, -0.05, 0, 0, 0.2);
+
+    // Both arms reach forward
+    this._lerpBone(this._leftClavicle, 0, 0, 0.15 * p, 0.3);
+    this._lerpBone(this._leftUpperArm, -0.9 * p, 0.2 * p, 0.3 * p, 0.3);
+    this._lerpBone(this._leftForearm, -0.6 * (1 - p), 0, 0, 0.3);
+    this._lerpBone(this._leftHand, -0.1 * p, 0, 0, 0.3);
+    this._lerpBone(this._leftFingers, -0.3 * p, 0, 0, 0.3); // open hand reaching
+
+    this._lerpBone(this._rightClavicle, 0, 0, -0.15 * p, 0.3);
+    this._lerpBone(this._rightUpperArm, -0.9 * p, -0.2 * p, -0.3 * p, 0.3);
+    this._lerpBone(this._rightForearm, -0.6 * (1 - p), 0, 0, 0.3);
+    this._lerpBone(this._rightHand, -0.1 * p, 0, 0, 0.3);
+    this._lerpBone(this._rightFingers, -0.3 * p, 0, 0, 0.3);
+
+    // Step forward aggressively
+    this._lerpBone(this._leftThigh, -0.3 * p, 0, 0.12, 0.2);
+    this._lerpBone(this._leftShin, 0.5 * p, 0, 0, 0.2);
+    this._lerpBone(this._rightThigh, -0.15, 0, -0.12, 0.15);
+    this._lerpBone(this._rightShin, 0.25, 0, 0, 0.15);
   }
 
   private _animateHitStunHigh(): void {

@@ -6,6 +6,7 @@ import * as THREE from "three";
 import {
   WandDef, WAND_DEFS, MageClassDef, MAGE_CLASSES,
   VehicleDef, VEHICLE_DEFS, MapDef, MAP_DEFS, MW,
+  MAP_VEHICLE_DEFS,
 } from "./MageWarsConfig";
 
 // ---- State interfaces -----------------------------------------------------
@@ -131,7 +132,40 @@ interface FloatingText {
 }
 
 enum MWPhase {
-  MAIN_MENU = 0, CHAR_SELECT = 1, LOADOUT = 2, PLAYING = 3, PAUSED = 4, SCOREBOARD = 5, ROUND_END = 6, WARMUP = 7
+  MAIN_MENU = 0, CHAR_SELECT = 1, LOADOUT = 2, PLAYING = 3, PAUSED = 4, SCOREBOARD = 5, ROUND_END = 6, WARMUP = 7, ROYALE_PLAYING = 8
+}
+
+// ---- Mage Royale interfaces ------------------------------------------------
+
+interface RoyaleScroll {
+  id: string;
+  x: number; y: number; z: number;
+  wandId: string;
+  picked: boolean;
+  mesh: THREE.Group | null;
+}
+
+interface RoyaleArtifact {
+  id: string;
+  x: number; y: number; z: number;
+  type: "hp_boost" | "mana_boost" | "speed_boost" | "damage_boost" | "shield";
+  picked: boolean;
+  mesh: THREE.Group | null;
+}
+
+interface RoyaleState {
+  stormRadius: number;
+  stormCenterX: number;
+  stormCenterZ: number;
+  stormDelay: number;
+  stormMesh: THREE.Mesh | null;
+  scrolls: RoyaleScroll[];
+  artifacts: RoyaleArtifact[];
+  playersAlive: number;
+  placement: number;  // player's final placement
+  stormShrinking: boolean;
+  stormTargetX: number;
+  stormTargetZ: number;
 }
 
 // ---- Visual-only interfaces -----------------------------------------------
@@ -180,7 +214,7 @@ function getClassDef(id: string): MageClassDef {
   return MAGE_CLASSES.find(c => c.id === id) || MAGE_CLASSES[0];
 }
 function getVehicleDef(id: string): VehicleDef {
-  return VEHICLE_DEFS.find(v => v.id === id) || VEHICLE_DEFS[0];
+  return VEHICLE_DEFS.find(v => v.id === id) || MAP_VEHICLE_DEFS.find(v => v.id === id) || VEHICLE_DEFS[0];
 }
 function getMapDef(id: string): MapDef {
   return MAP_DEFS.find(m => m.id === id) || MAP_DEFS[0];
@@ -344,6 +378,10 @@ export class MageWarsGame {
   private _warmupTimer = 0;
   private _warmupCountdownDiv: HTMLDivElement | null = null;
 
+  // ---- Mage Royale -----
+  private _royaleState: RoyaleState | null = null;
+  private _isRoyaleMode = false;
+
   // ---- Loop ---------------
   private _rafId = 0;
   private _lastTime = 0;
@@ -429,7 +467,7 @@ export class MageWarsGame {
 
     this._escHandler = (e: KeyboardEvent) => {
       if (e.code !== "Escape") return;
-      if (this._phase === MWPhase.PLAYING || this._phase === MWPhase.WARMUP) {
+      if (this._phase === MWPhase.PLAYING || this._phase === MWPhase.WARMUP || this._phase === MWPhase.ROYALE_PLAYING) {
         this._phase = MWPhase.PAUSED;
         document.exitPointerLock();
         this._showPauseMenu();
@@ -1287,6 +1325,771 @@ export class MageWarsGame {
         this._propGroup.add(mist);
       }
     }
+
+    // ---- NEW MAP DECORATIONS ----
+
+    // Ancient Ruins: broken columns, crumbling walls, fallen statues, stone archways
+    if (mapDef.id === "ancient_ruins") {
+      // Broken columns
+      for (let i = 0; i < 25; i++) {
+        const cx = (rng() - 0.5) * 2 * half;
+        const cz = (rng() - 0.5) * 2 * half;
+        const ch = getTerrainHeight(cx, cz, mapDef);
+        const colH = 0.5 + rng() * 2.5;
+        const colGeo = new THREE.CylinderGeometry(0.25 + rng() * 0.1, 0.3 + rng() * 0.1, colH, 8);
+        const colMat = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.9 });
+        const col = new THREE.Mesh(colGeo, colMat);
+        col.position.set(cx, ch + colH * 0.5, cz);
+        col.rotation.z = (rng() - 0.5) * 0.3;
+        col.castShadow = true;
+        this._propGroup.add(col);
+        // Column cap
+        if (rng() > 0.4) {
+          const capGeo = new THREE.BoxGeometry(0.5, 0.1, 0.5);
+          const cap = new THREE.Mesh(capGeo, colMat);
+          cap.position.set(cx, ch + colH + 0.05, cz);
+          this._propGroup.add(cap);
+        }
+      }
+      // Crumbling walls
+      for (let i = 0; i < 15; i++) {
+        const wx = (rng() - 0.5) * 2 * half;
+        const wz = (rng() - 0.5) * 2 * half;
+        const wh = getTerrainHeight(wx, wz, mapDef);
+        const wallH = 1 + rng() * 2;
+        const wallW = 2 + rng() * 3;
+        const wallGeo = new THREE.BoxGeometry(wallW, wallH, 0.3);
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.95 });
+        const wall = new THREE.Mesh(wallGeo, wallMat);
+        wall.position.set(wx, wh + wallH * 0.5, wz);
+        wall.rotation.y = rng() * Math.PI;
+        wall.castShadow = true;
+        this._propGroup.add(wall);
+      }
+      // Fallen statues
+      for (let i = 0; i < 6; i++) {
+        const sx = (rng() - 0.5) * 2 * half;
+        const sz = (rng() - 0.5) * 2 * half;
+        const sh = getTerrainHeight(sx, sz, mapDef);
+        const statGroup = new THREE.Group();
+        // Body
+        const bodyGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.2, 6);
+        const statMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.8 });
+        const body = new THREE.Mesh(bodyGeo, statMat);
+        body.position.y = 0.3;
+        statGroup.add(body);
+        // Head (detached, nearby)
+        const headGeo2 = new THREE.SphereGeometry(0.2, 6, 6);
+        const headM = new THREE.Mesh(headGeo2, statMat);
+        headM.position.set(0.5, 0.15, 0.3);
+        statGroup.add(headM);
+        statGroup.position.set(sx, sh, sz);
+        statGroup.rotation.z = Math.PI / 2 * 0.7;
+        statGroup.rotation.y = rng() * Math.PI;
+        this._propGroup.add(statGroup);
+      }
+      // Overgrown vines on ruins
+      for (let i = 0; i < 20; i++) {
+        const vx = (rng() - 0.5) * 2 * half;
+        const vz = (rng() - 0.5) * 2 * half;
+        const vh = getTerrainHeight(vx, vz, mapDef);
+        const vineGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.8 + rng() * 1.5, 4);
+        const vineMat = new THREE.MeshStandardMaterial({ color: 0x336622, roughness: 0.9 });
+        const vine = new THREE.Mesh(vineGeo, vineMat);
+        vine.position.set(vx, vh + 0.5, vz);
+        vine.rotation.z = (rng() - 0.5) * 1.2;
+        this._propGroup.add(vine);
+      }
+    }
+
+    // Whispering Woods: hollow stumps, mushroom rings, fallen logs
+    if (mapDef.id === "dense_forest") {
+      // Massive ancient trees (extra large)
+      for (let i = 0; i < 8; i++) {
+        const tx = (rng() - 0.5) * 2 * half;
+        const tz = (rng() - 0.5) * 2 * half;
+        const th = getTerrainHeight(tx, tz, mapDef);
+        const treeG = new THREE.Group();
+        const trunkGeo2 = new THREE.CylinderGeometry(0.4, 0.6, 5, 10);
+        const trunkMat2 = new THREE.MeshStandardMaterial({ color: 0x3a2510, roughness: 0.95 });
+        const trunk2 = new THREE.Mesh(trunkGeo2, trunkMat2);
+        trunk2.position.y = 2.5;
+        trunk2.castShadow = true;
+        treeG.add(trunk2);
+        // Giant canopy
+        const canopyGeo = new THREE.SphereGeometry(3, 8, 6);
+        const canopyMat = new THREE.MeshStandardMaterial({ color: mapDef.treeColor, roughness: 0.8 });
+        const canopy = new THREE.Mesh(canopyGeo, canopyMat);
+        canopy.position.y = 6;
+        canopy.scale.set(1, 0.6, 1);
+        canopy.castShadow = true;
+        treeG.add(canopy);
+        treeG.position.set(tx, th, tz);
+        this._propGroup.add(treeG);
+      }
+      // Mushroom rings
+      for (let i = 0; i < 8; i++) {
+        const mx = (rng() - 0.5) * 2 * half;
+        const mz = (rng() - 0.5) * 2 * half;
+        const radius = 0.5 + rng() * 1;
+        const count = 6 + Math.floor(rng() * 5);
+        for (let mi = 0; mi < count; mi++) {
+          const a = (mi / count) * Math.PI * 2;
+          const mmx = mx + Math.cos(a) * radius;
+          const mmz = mz + Math.sin(a) * radius;
+          const mmh = getTerrainHeight(mmx, mmz, mapDef);
+          const stalkGeo = new THREE.CylinderGeometry(0.02, 0.03, 0.12, 4);
+          const stalkMat = new THREE.MeshStandardMaterial({ color: 0xddccaa });
+          const stalk = new THREE.Mesh(stalkGeo, stalkMat);
+          stalk.position.set(mmx, mmh + 0.06, mmz);
+          this._propGroup.add(stalk);
+          const capGeo2 = new THREE.SphereGeometry(0.05, 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.5);
+          const capMat = new THREE.MeshStandardMaterial({ color: rng() > 0.5 ? 0xcc3322 : 0xff9922 });
+          const cap2 = new THREE.Mesh(capGeo2, capMat);
+          cap2.position.set(mmx, mmh + 0.12, mmz);
+          this._propGroup.add(cap2);
+        }
+      }
+    }
+
+    // Inferno Caldera: obsidian spires, lava geysers, volcanic vents
+    if (mapDef.id === "volcanic_caldera") {
+      // Obsidian spires
+      for (let i = 0; i < 20; i++) {
+        const sx = (rng() - 0.5) * 2 * half;
+        const sz = (rng() - 0.5) * 2 * half;
+        const sh = getTerrainHeight(sx, sz, mapDef);
+        const spireH = 2 + rng() * 5;
+        const spireGeo = new THREE.ConeGeometry(0.3 + rng() * 0.3, spireH, 5);
+        const spireMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.3, metalness: 0.5 });
+        const spire = new THREE.Mesh(spireGeo, spireMat);
+        spire.position.set(sx, sh + spireH * 0.5, sz);
+        spire.rotation.z = (rng() - 0.5) * 0.2;
+        spire.castShadow = true;
+        this._propGroup.add(spire);
+      }
+      // Lava geysers (glowing orange pools)
+      for (let i = 0; i < 8; i++) {
+        const gx = (rng() - 0.5) * 2 * half;
+        const gz = (rng() - 0.5) * 2 * half;
+        const gh = getTerrainHeight(gx, gz, mapDef);
+        const poolGeo = new THREE.CylinderGeometry(0.5 + rng() * 0.5, 0.6 + rng() * 0.5, 0.1, 8);
+        const poolMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.7 });
+        const pool = new THREE.Mesh(poolGeo, poolMat);
+        pool.position.set(gx, gh + 0.05, gz);
+        this._propGroup.add(pool);
+        // Glow light
+        const glight = new THREE.PointLight(0xff4400, 0.5, 8);
+        glight.position.set(gx, gh + 0.5, gz);
+        this._propGroup.add(glight);
+      }
+      // Charred skeletons
+      for (let i = 0; i < 10; i++) {
+        const skx = (rng() - 0.5) * 2 * half;
+        const skz = (rng() - 0.5) * 2 * half;
+        const skh = getTerrainHeight(skx, skz, mapDef);
+        const skMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.9 });
+        const ribGeo = new THREE.TorusGeometry(0.1, 0.02, 4, 6, Math.PI);
+        for (let r = 0; r < 3; r++) {
+          const rib = new THREE.Mesh(ribGeo, skMat);
+          rib.position.set(skx, skh + 0.1 + r * 0.06, skz);
+          rib.rotation.y = rng() * Math.PI;
+          this._propGroup.add(rib);
+        }
+      }
+    }
+
+    // Frostpeak Citadel: ice pillars, snow drifts, frozen waterfalls, ruined towers
+    if (mapDef.id === "frozen_fortress") {
+      // Ice pillars
+      for (let i = 0; i < 15; i++) {
+        const ix = (rng() - 0.5) * 2 * half;
+        const iz = (rng() - 0.5) * 2 * half;
+        const ih = getTerrainHeight(ix, iz, mapDef);
+        const pillarH = 1.5 + rng() * 3;
+        const pillarGeo = new THREE.CylinderGeometry(0.15 + rng() * 0.1, 0.2 + rng() * 0.15, pillarH, 6);
+        const pillarMat = new THREE.MeshStandardMaterial({ color: 0x88ccee, roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.7 });
+        const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+        pillar.position.set(ix, ih + pillarH * 0.5, iz);
+        pillar.castShadow = true;
+        this._propGroup.add(pillar);
+      }
+      // Ruined towers
+      for (let i = 0; i < 4; i++) {
+        const tx = (rng() - 0.5) * 2 * half;
+        const tz = (rng() - 0.5) * 2 * half;
+        const th = getTerrainHeight(tx, tz, mapDef);
+        const towerH = 3 + rng() * 3;
+        const towerGeo = new THREE.CylinderGeometry(0.8, 1.0, towerH, 8);
+        const towerMat = new THREE.MeshStandardMaterial({ color: 0x667788, roughness: 0.9 });
+        const tower = new THREE.Mesh(towerGeo, towerMat);
+        tower.position.set(tx, th + towerH * 0.5, tz);
+        tower.castShadow = true;
+        this._propGroup.add(tower);
+        // Broken top
+        const topGeo = new THREE.CylinderGeometry(0.9, 0.8, 0.2, 8, 1, true);
+        const top = new THREE.Mesh(topGeo, towerMat);
+        top.position.set(tx, th + towerH + 0.1, tz);
+        this._propGroup.add(top);
+      }
+      // Snow drifts
+      for (let i = 0; i < 25; i++) {
+        const dx2 = (rng() - 0.5) * 2 * half;
+        const dz2 = (rng() - 0.5) * 2 * half;
+        const dh = getTerrainHeight(dx2, dz2, mapDef);
+        const driftGeo = new THREE.SphereGeometry(0.5 + rng() * 1, 6, 4);
+        const driftMat = new THREE.MeshStandardMaterial({ color: 0xe8f0ff, roughness: 0.95 });
+        const drift = new THREE.Mesh(driftGeo, driftMat);
+        drift.position.set(dx2, dh + 0.1, dz2);
+        drift.scale.set(1 + rng(), 0.3, 1 + rng());
+        this._propGroup.add(drift);
+      }
+    }
+
+    // Mirage Oasis: sand dunes, cacti, desert tents, oasis pools
+    if (mapDef.id === "desert_oasis") {
+      // Sand dunes
+      for (let i = 0; i < 20; i++) {
+        const dx3 = (rng() - 0.5) * 2 * half;
+        const dz3 = (rng() - 0.5) * 2 * half;
+        const dh = getTerrainHeight(dx3, dz3, mapDef);
+        const duneGeo = new THREE.SphereGeometry(3 + rng() * 4, 8, 6);
+        const duneMat = new THREE.MeshStandardMaterial({ color: 0xd8b868, roughness: 0.95 });
+        const dune = new THREE.Mesh(duneGeo, duneMat);
+        dune.position.set(dx3, dh - 1, dz3);
+        dune.scale.set(1.5, 0.3, 1);
+        this._propGroup.add(dune);
+      }
+      // Cacti
+      for (let i = 0; i < 15; i++) {
+        const cx = (rng() - 0.5) * 2 * half;
+        const cz = (rng() - 0.5) * 2 * half;
+        const ch = getTerrainHeight(cx, cz, mapDef);
+        const cactG = new THREE.Group();
+        const stemGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.8 + rng() * 0.5, 6);
+        const cactMat = new THREE.MeshStandardMaterial({ color: 0x447733, roughness: 0.8 });
+        const stem = new THREE.Mesh(stemGeo, cactMat);
+        stem.position.y = 0.4;
+        cactG.add(stem);
+        // Arms
+        if (rng() > 0.4) {
+          const armGeo2 = new THREE.CylinderGeometry(0.05, 0.06, 0.3, 5);
+          const arm = new THREE.Mesh(armGeo2, cactMat);
+          arm.position.set(0.12, 0.5, 0);
+          arm.rotation.z = -Math.PI / 3;
+          cactG.add(arm);
+        }
+        cactG.position.set(cx, ch, cz);
+        this._propGroup.add(cactG);
+      }
+      // Desert tents
+      for (let i = 0; i < 6; i++) {
+        const tx = (rng() - 0.5) * 2 * half;
+        const tz = (rng() - 0.5) * 2 * half;
+        const th = getTerrainHeight(tx, tz, mapDef);
+        const tentGeo = new THREE.ConeGeometry(1.2, 1.8, 6);
+        const tentMat = new THREE.MeshStandardMaterial({ color: 0xcc9944, roughness: 0.85, side: THREE.DoubleSide });
+        const tent = new THREE.Mesh(tentGeo, tentMat);
+        tent.position.set(tx, th + 0.9, tz);
+        tent.castShadow = true;
+        this._propGroup.add(tent);
+      }
+      // Central oasis pool
+      const oasisGeo = new THREE.CylinderGeometry(5, 5.5, 0.2, 16);
+      const oasisMat = new THREE.MeshStandardMaterial({ color: 0x2288aa, roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.6 });
+      const oasis = new THREE.Mesh(oasisGeo, oasisMat);
+      const oh = getTerrainHeight(0, 0, mapDef);
+      oasis.position.set(0, oh - 0.1, 0);
+      this._propGroup.add(oasis);
+      // Palm trees around oasis
+      for (let i = 0; i < 8; i++) {
+        const pa = (i / 8) * Math.PI * 2;
+        const px = Math.cos(pa) * 6;
+        const pz = Math.sin(pa) * 6;
+        const ph = getTerrainHeight(px, pz, mapDef);
+        const palmG = new THREE.Group();
+        const trunkG = new THREE.CylinderGeometry(0.08, 0.12, 3, 6);
+        const trunkM = new THREE.MeshStandardMaterial({ color: 0x6a5530, roughness: 0.9 });
+        const trunk = new THREE.Mesh(trunkG, trunkM);
+        trunk.position.y = 1.5;
+        trunk.rotation.z = (rng() - 0.5) * 0.15;
+        palmG.add(trunk);
+        // Fronds
+        for (let fi = 0; fi < 6; fi++) {
+          const fa = (fi / 6) * Math.PI * 2;
+          const frondGeo = new THREE.BoxGeometry(0.3, 0.02, 1.5);
+          const frondMat = new THREE.MeshStandardMaterial({ color: 0x448833, roughness: 0.8 });
+          const frond = new THREE.Mesh(frondGeo, frondMat);
+          frond.position.set(Math.cos(fa) * 0.3, 3.2, Math.sin(fa) * 0.3);
+          frond.rotation.x = Math.sin(fa) * 0.8;
+          frond.rotation.z = Math.cos(fa) * 0.8;
+          palmG.add(frond);
+        }
+        palmG.position.set(px, ph, pz);
+        this._propGroup.add(palmG);
+      }
+    }
+
+    // Haunted Graveyard: gravestones, crypts, dead trees, iron fences, ghost lanterns
+    if (mapDef.id === "haunted_graveyard") {
+      // Gravestones
+      for (let i = 0; i < 40; i++) {
+        const gx = (rng() - 0.5) * 2 * half;
+        const gz = (rng() - 0.5) * 2 * half;
+        const gh = getTerrainHeight(gx, gz, mapDef);
+        const gsH = 0.3 + rng() * 0.5;
+        const gsGeo = new THREE.BoxGeometry(0.3 + rng() * 0.2, gsH, 0.08);
+        const gsMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 });
+        const gs = new THREE.Mesh(gsGeo, gsMat);
+        gs.position.set(gx, gh + gsH * 0.5, gz);
+        gs.rotation.z = (rng() - 0.5) * 0.15;
+        gs.rotation.y = rng() * Math.PI;
+        gs.castShadow = true;
+        this._propGroup.add(gs);
+      }
+      // Crypts
+      for (let i = 0; i < 6; i++) {
+        const cx2 = (rng() - 0.5) * 2 * half;
+        const cz2 = (rng() - 0.5) * 2 * half;
+        const ch2 = getTerrainHeight(cx2, cz2, mapDef);
+        const cryptG = new THREE.Group();
+        const baseGeo = new THREE.BoxGeometry(2, 1.5, 2);
+        const cryptMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
+        const base = new THREE.Mesh(baseGeo, cryptMat);
+        base.position.y = 0.75;
+        base.castShadow = true;
+        cryptG.add(base);
+        // Roof
+        const roofGeo = new THREE.ConeGeometry(1.5, 0.8, 4);
+        const roof = new THREE.Mesh(roofGeo, cryptMat);
+        roof.position.y = 1.9;
+        roof.rotation.y = Math.PI / 4;
+        cryptG.add(roof);
+        // Door
+        const doorGeo = new THREE.BoxGeometry(0.5, 1, 0.05);
+        const doorMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const door = new THREE.Mesh(doorGeo, doorMat);
+        door.position.set(0, 0.5, -1.01);
+        cryptG.add(door);
+        cryptG.position.set(cx2, ch2, cz2);
+        cryptG.rotation.y = rng() * Math.PI;
+        this._propGroup.add(cryptG);
+      }
+      // Ghost lanterns (floating green lights)
+      for (let i = 0; i < 8; i++) {
+        const lx = (rng() - 0.5) * 2 * half;
+        const lz = (rng() - 0.5) * 2 * half;
+        const lh = getTerrainHeight(lx, lz, mapDef);
+        const lanternGeo = new THREE.SphereGeometry(0.08, 6, 6);
+        const lanternMat = new THREE.MeshBasicMaterial({ color: 0x44ff88, transparent: true, opacity: 0.6 });
+        const lantern = new THREE.Mesh(lanternGeo, lanternMat);
+        lantern.position.set(lx, lh + 1.5 + rng() * 1, lz);
+        this._propGroup.add(lantern);
+        const llight = new THREE.PointLight(0x44ff88, 0.3, 6);
+        llight.position.set(lx, lh + 1.5, lz);
+        this._propGroup.add(llight);
+      }
+    }
+
+    // Skyshatter Isles: floating rocks, sky bridges, wind crystals
+    if (mapDef.id === "floating_islands") {
+      // Floating rocks in the sky
+      for (let i = 0; i < 30; i++) {
+        const fx = (rng() - 0.5) * mapDef.size * 2;
+        const fz = (rng() - 0.5) * mapDef.size * 2;
+        const fy = 10 + rng() * 30;
+        const fSize = 1 + rng() * 3;
+        const fGeo = new THREE.DodecahedronGeometry(fSize, 1);
+        const fMat = new THREE.MeshStandardMaterial({ color: 0x667766, roughness: 0.9 });
+        const fRock = new THREE.Mesh(fGeo, fMat);
+        fRock.position.set(fx, fy, fz);
+        fRock.scale.set(1, 0.5, 1);
+        fRock.castShadow = true;
+        this._propGroup.add(fRock);
+        // Small vegetation on top
+        if (rng() > 0.5) {
+          const grassGeo = new THREE.ConeGeometry(fSize * 0.3, fSize * 0.4, 6);
+          const grassM = new THREE.MeshStandardMaterial({ color: mapDef.treeColor, roughness: 0.8 });
+          const grass = new THREE.Mesh(grassGeo, grassM);
+          grass.position.set(fx, fy + fSize * 0.4, fz);
+          this._propGroup.add(grass);
+        }
+      }
+      // Wind crystals (glowing blue)
+      for (let i = 0; i < 10; i++) {
+        const wcx = (rng() - 0.5) * 2 * half;
+        const wcz = (rng() - 0.5) * 2 * half;
+        const wch = getTerrainHeight(wcx, wcz, mapDef);
+        const wcGeo = new THREE.OctahedronGeometry(0.3 + rng() * 0.2);
+        const wcMat = new THREE.MeshBasicMaterial({ color: 0x88ddff, transparent: true, opacity: 0.6 });
+        const wc = new THREE.Mesh(wcGeo, wcMat);
+        wc.position.set(wcx, wch + 0.5 + rng() * 1, wcz);
+        this._propGroup.add(wc);
+        const wcLight = new THREE.PointLight(0x88ddff, 0.3, 5);
+        wcLight.position.set(wcx, wch + 1, wcz);
+        this._propGroup.add(wcLight);
+      }
+    }
+
+    // Deepstone Caverns: stalactites, stalagmites, glowing mushrooms, crystal clusters
+    if (mapDef.id === "underground_caverns") {
+      // Stalactites (hanging from ceiling/high up)
+      for (let i = 0; i < 30; i++) {
+        const sx2 = (rng() - 0.5) * 2 * half;
+        const sz2 = (rng() - 0.5) * 2 * half;
+        const sLen = 0.5 + rng() * 2;
+        const sGeo = new THREE.ConeGeometry(0.1 + rng() * 0.1, sLen, 5);
+        const sMat = new THREE.MeshStandardMaterial({ color: 0x554455, roughness: 0.85 });
+        const stalactite = new THREE.Mesh(sGeo, sMat);
+        stalactite.position.set(sx2, 15 + rng() * 5, sz2);
+        stalactite.rotation.x = Math.PI;
+        this._propGroup.add(stalactite);
+      }
+      // Stalagmites (ground)
+      for (let i = 0; i < 25; i++) {
+        const smx = (rng() - 0.5) * 2 * half;
+        const smz = (rng() - 0.5) * 2 * half;
+        const smh = getTerrainHeight(smx, smz, mapDef);
+        const smLen = 0.5 + rng() * 1.5;
+        const smGeo = new THREE.ConeGeometry(0.12 + rng() * 0.1, smLen, 5);
+        const smMat = new THREE.MeshStandardMaterial({ color: 0x554455, roughness: 0.85 });
+        const stalagmite = new THREE.Mesh(smGeo, smMat);
+        stalagmite.position.set(smx, smh + smLen * 0.5, smz);
+        stalagmite.castShadow = true;
+        this._propGroup.add(stalagmite);
+      }
+      // Glowing mushrooms
+      for (let i = 0; i < 35; i++) {
+        const gmx = (rng() - 0.5) * 2 * half;
+        const gmz = (rng() - 0.5) * 2 * half;
+        const gmh = getTerrainHeight(gmx, gmz, mapDef);
+        const mushG = new THREE.Group();
+        const mushStalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.2, 5), new THREE.MeshStandardMaterial({ color: 0xddccaa }));
+        mushStalk.position.y = 0.1;
+        mushG.add(mushStalk);
+        const mushCap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.5),
+          new THREE.MeshBasicMaterial({ color: 0x44cc88, transparent: true, opacity: 0.8 }));
+        mushCap.position.y = 0.2;
+        mushG.add(mushCap);
+        mushG.position.set(gmx, gmh, gmz);
+        mushG.scale.setScalar(0.5 + rng() * 1.5);
+        this._propGroup.add(mushG);
+        // Dim glow
+        if (rng() > 0.6) {
+          const glow = new THREE.PointLight(0x44cc88, 0.15, 3);
+          glow.position.set(gmx, gmh + 0.3, gmz);
+          this._propGroup.add(glow);
+        }
+      }
+      // Crystal clusters
+      for (let i = 0; i < 15; i++) {
+        const ccx = (rng() - 0.5) * 2 * half;
+        const ccz = (rng() - 0.5) * 2 * half;
+        const cch = getTerrainHeight(ccx, ccz, mapDef);
+        const clusterG = new THREE.Group();
+        const numCrystals = 3 + Math.floor(rng() * 4);
+        for (let ci = 0; ci < numCrystals; ci++) {
+          const cH = 0.3 + rng() * 0.8;
+          const cGeo = new THREE.CylinderGeometry(0.03, 0.08, cH, 6);
+          const cMat = new THREE.MeshBasicMaterial({ color: 0xaa44ff, transparent: true, opacity: 0.5 });
+          const crystal = new THREE.Mesh(cGeo, cMat);
+          crystal.position.set((rng() - 0.5) * 0.3, cH * 0.5, (rng() - 0.5) * 0.3);
+          crystal.rotation.z = (rng() - 0.5) * 0.4;
+          clusterG.add(crystal);
+        }
+        clusterG.position.set(ccx, cch, ccz);
+        this._propGroup.add(clusterG);
+        const ccLight = new THREE.PointLight(0xaa44ff, 0.2, 4);
+        ccLight.position.set(ccx, cch + 0.5, ccz);
+        this._propGroup.add(ccLight);
+      }
+    }
+
+    // Stormbreaker Coast: lighthouse, shipwrecks, cliff faces, driftwood
+    if (mapDef.id === "coastal_cliffs") {
+      // Lighthouse
+      for (let i = 0; i < 2; i++) {
+        const lx = (rng() - 0.5) * half;
+        const lz = (rng() - 0.5) * half;
+        const lh = getTerrainHeight(lx, lz, mapDef);
+        const lhGroup = new THREE.Group();
+        const towerGeo2 = new THREE.CylinderGeometry(0.5, 0.7, 6, 8);
+        const towerMat2 = new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.8 });
+        const tower2 = new THREE.Mesh(towerGeo2, towerMat2);
+        tower2.position.y = 3;
+        tower2.castShadow = true;
+        lhGroup.add(tower2);
+        // Red stripe
+        const stripeGeo = new THREE.CylinderGeometry(0.52, 0.65, 1, 8);
+        const stripeMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.8 });
+        const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+        stripe.position.y = 3;
+        lhGroup.add(stripe);
+        // Light dome
+        const domeGeo = new THREE.SphereGeometry(0.4, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        const domeMat = new THREE.MeshBasicMaterial({ color: 0xffffcc, transparent: true, opacity: 0.6 });
+        const dome = new THREE.Mesh(domeGeo, domeMat);
+        dome.position.y = 6.2;
+        lhGroup.add(dome);
+        const lhLight = new THREE.PointLight(0xffffcc, 0.8, 20);
+        lhLight.position.y = 6.5;
+        lhGroup.add(lhLight);
+        lhGroup.position.set(lx, lh, lz);
+        this._propGroup.add(lhGroup);
+      }
+      // Shipwrecks
+      for (let i = 0; i < 3; i++) {
+        const swx = (rng() - 0.5) * 2 * half;
+        const swz = (rng() - 0.5) * 2 * half;
+        const swh = getTerrainHeight(swx, swz, mapDef);
+        const hullGeo = new THREE.BoxGeometry(2 + rng() * 2, 1, 4 + rng() * 3);
+        const hullMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.95 });
+        const hull = new THREE.Mesh(hullGeo, hullMat);
+        hull.position.set(swx, swh + 0.3, swz);
+        hull.rotation.z = (rng() - 0.5) * 0.4;
+        hull.rotation.y = rng() * Math.PI;
+        hull.castShadow = true;
+        this._propGroup.add(hull);
+        // Broken mast
+        const mastGeo = new THREE.CylinderGeometry(0.06, 0.08, 2 + rng() * 2, 4);
+        const mast = new THREE.Mesh(mastGeo, hullMat);
+        mast.position.set(swx, swh + 1, swz);
+        mast.rotation.z = (rng() - 0.5) * 0.8;
+        this._propGroup.add(mast);
+      }
+      // Driftwood
+      for (let i = 0; i < 15; i++) {
+        const dwx = (rng() - 0.5) * 2 * half;
+        const dwz = (rng() - 0.5) * 2 * half;
+        const dwh = getTerrainHeight(dwx, dwz, mapDef);
+        const dwGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.8 + rng() * 1.5, 4);
+        const dwMat = new THREE.MeshStandardMaterial({ color: 0x6a5533, roughness: 0.95 });
+        const dw = new THREE.Mesh(dwGeo, dwMat);
+        dw.position.set(dwx, dwh + 0.1, dwz);
+        dw.rotation.z = Math.PI / 2;
+        dw.rotation.y = rng() * Math.PI;
+        this._propGroup.add(dw);
+      }
+    }
+
+    // Arcane Gardens: giant flowers, singing fountains, hedge mazes, marble statues, fairy rings
+    if (mapDef.id === "enchanted_garden") {
+      // Giant flowers
+      const flowerColors2 = [0xff44aa, 0xff66cc, 0xaa44ff, 0xff4444, 0xffaa44, 0x44aaff];
+      for (let i = 0; i < 20; i++) {
+        const fx = (rng() - 0.5) * 2 * half;
+        const fz = (rng() - 0.5) * 2 * half;
+        const fh = getTerrainHeight(fx, fz, mapDef);
+        const flowerG = new THREE.Group();
+        // Stem
+        const stemGeo2 = new THREE.CylinderGeometry(0.04, 0.06, 1.5 + rng() * 1, 5);
+        const stemMat2 = new THREE.MeshStandardMaterial({ color: 0x33aa22, roughness: 0.8 });
+        const stem2 = new THREE.Mesh(stemGeo2, stemMat2);
+        stem2.position.y = 0.75;
+        flowerG.add(stem2);
+        // Petals
+        const petalColor = flowerColors2[Math.floor(rng() * flowerColors2.length)];
+        for (let pi = 0; pi < 6; pi++) {
+          const pa2 = (pi / 6) * Math.PI * 2;
+          const petalGeo2 = new THREE.SphereGeometry(0.15 + rng() * 0.1, 6, 4);
+          const petalMat2 = new THREE.MeshStandardMaterial({ color: petalColor, roughness: 0.6 });
+          const petal2 = new THREE.Mesh(petalGeo2, petalMat2);
+          petal2.position.set(Math.cos(pa2) * 0.2, 1.6, Math.sin(pa2) * 0.2);
+          petal2.scale.set(1, 0.5, 1.2);
+          flowerG.add(petal2);
+        }
+        // Center
+        const centerGeo = new THREE.SphereGeometry(0.08, 6, 6);
+        const centerMat = new THREE.MeshStandardMaterial({ color: 0xffee44, roughness: 0.5 });
+        const center = new THREE.Mesh(centerGeo, centerMat);
+        center.position.y = 1.6;
+        flowerG.add(center);
+        flowerG.position.set(fx, fh, fz);
+        this._propGroup.add(flowerG);
+      }
+      // Singing fountains
+      for (let i = 0; i < 4; i++) {
+        const fnx = (rng() - 0.5) * half;
+        const fnz = (rng() - 0.5) * half;
+        const fnh = getTerrainHeight(fnx, fnz, mapDef);
+        const fnG = new THREE.Group();
+        const basinGeo = new THREE.CylinderGeometry(1, 1.2, 0.5, 12);
+        const basinMat = new THREE.MeshStandardMaterial({ color: 0x6688cc, roughness: 0.3, metalness: 0.4 });
+        const basin = new THREE.Mesh(basinGeo, basinMat);
+        basin.position.y = 0.25;
+        fnG.add(basin);
+        // Water surface
+        const waterGeo2 = new THREE.CylinderGeometry(0.9, 0.9, 0.05, 12);
+        const waterMat2 = new THREE.MeshStandardMaterial({ color: 0x4488cc, roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.5 });
+        const water2 = new THREE.Mesh(waterGeo2, waterMat2);
+        water2.position.y = 0.48;
+        fnG.add(water2);
+        // Center spout
+        const spoutGeo = new THREE.CylinderGeometry(0.05, 0.08, 1, 6);
+        const spoutMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4 });
+        const spout = new THREE.Mesh(spoutGeo, spoutMat);
+        spout.position.y = 0.75;
+        fnG.add(spout);
+        fnG.position.set(fnx, fnh, fnz);
+        this._propGroup.add(fnG);
+      }
+      // Marble statues
+      for (let i = 0; i < 6; i++) {
+        const msx = (rng() - 0.5) * 2 * half;
+        const msz = (rng() - 0.5) * 2 * half;
+        const msh = getTerrainHeight(msx, msz, mapDef);
+        const statG2 = new THREE.Group();
+        const pedGeo = new THREE.BoxGeometry(0.6, 0.4, 0.6);
+        const statMat2 = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.4 });
+        const ped = new THREE.Mesh(pedGeo, statMat2);
+        ped.position.y = 0.2;
+        statG2.add(ped);
+        const bodyGeo2 = new THREE.CylinderGeometry(0.15, 0.2, 1, 6);
+        const body2 = new THREE.Mesh(bodyGeo2, statMat2);
+        body2.position.y = 0.9;
+        statG2.add(body2);
+        const headGeo3 = new THREE.SphereGeometry(0.12, 6, 6);
+        const head3 = new THREE.Mesh(headGeo3, statMat2);
+        head3.position.y = 1.5;
+        statG2.add(head3);
+        statG2.position.set(msx, msh, msz);
+        this._propGroup.add(statG2);
+      }
+      // Fairy rings (glowing ground circles)
+      for (let i = 0; i < 5; i++) {
+        const frx = (rng() - 0.5) * 2 * half;
+        const frz = (rng() - 0.5) * 2 * half;
+        const frh = getTerrainHeight(frx, frz, mapDef);
+        const frGeo = new THREE.TorusGeometry(1 + rng() * 0.5, 0.03, 4, 24);
+        const frMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 0.3 });
+        const fr = new THREE.Mesh(frGeo, frMat);
+        fr.position.set(frx, frh + 0.02, frz);
+        fr.rotation.x = Math.PI / 2;
+        this._propGroup.add(fr);
+      }
+    }
+
+    // ---- ENVIRONMENTAL ANIMALS (for all maps with envAnimals) ----
+    if (mapDef.envAnimals) {
+      for (const animalDef of mapDef.envAnimals) {
+        for (let i = 0; i < animalDef.count; i++) {
+          const ax = (rng() - 0.5) * 2 * half;
+          const az = (rng() - 0.5) * 2 * half;
+          const ah = getTerrainHeight(ax, az, mapDef);
+          const animalG = new THREE.Group();
+
+          if (animalDef.type === "bird") {
+            // Simple bird: body + two wing triangles
+            const bBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+            animalG.add(bBody);
+            for (const ws of [-1, 1]) {
+              const wingGeo = new THREE.BufferGeometry();
+              const wVerts = new Float32Array([0, 0, 0, ws * 0.08, 0.02, -0.02, ws * 0.06, 0, 0.03]);
+              wingGeo.setAttribute("position", new THREE.BufferAttribute(wVerts, 3));
+              wingGeo.computeVertexNormals();
+              const wing = new THREE.Mesh(wingGeo, new THREE.MeshStandardMaterial({ color: 0x555555, side: THREE.DoubleSide }));
+              wing.name = ws < 0 ? "birdLeftWing" : "birdRightWing";
+              animalG.add(wing);
+            }
+            animalG.position.set(ax, ah + 5 + rng() * 15, az);
+          } else if (animalDef.type === "deer") {
+            const dBody = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4), new THREE.MeshStandardMaterial({ color: 0x8a6633 }));
+            dBody.scale.set(1, 0.8, 1.5);
+            animalG.add(dBody);
+            const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4), new THREE.MeshStandardMaterial({ color: 0x8a6633 }));
+            dHead.position.set(0, 0.06, -0.18);
+            animalG.add(dHead);
+            for (const lx of [-0.06, 0.06, -0.06, 0.06]) {
+              const legGeo2 = new THREE.CylinderGeometry(0.015, 0.02, 0.15, 4);
+              const legM = new THREE.Mesh(legGeo2, new THREE.MeshStandardMaterial({ color: 0x7a5522 }));
+              legM.position.set(lx, -0.12, lx > 0 ? -0.08 : 0.06);
+              animalG.add(legM);
+            }
+            animalG.position.set(ax, ah + 0.15, az);
+          } else if (animalDef.type === "wolf") {
+            const wBody = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), new THREE.MeshStandardMaterial({ color: 0x555566 }));
+            wBody.scale.set(1, 0.8, 1.5);
+            animalG.add(wBody);
+            const wHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4), new THREE.MeshStandardMaterial({ color: 0x555566 }));
+            wHead.position.set(0, 0.04, -0.16);
+            animalG.add(wHead);
+            // Ears
+            for (const ex of [-0.03, 0.03]) {
+              const earGeo2 = new THREE.ConeGeometry(0.015, 0.04, 3);
+              const earM = new THREE.Mesh(earGeo2, new THREE.MeshStandardMaterial({ color: 0x555566 }));
+              earM.position.set(ex, 0.1, -0.14);
+              animalG.add(earM);
+            }
+            animalG.position.set(ax, ah + 0.12, az);
+          } else if (animalDef.type === "butterfly") {
+            const bfBody = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.03, 3), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+            bfBody.rotation.x = Math.PI / 2;
+            animalG.add(bfBody);
+            const bfColors = [0xff44aa, 0x44aaff, 0xffaa44, 0xaa44ff, 0x44ffaa];
+            const bfCol = bfColors[Math.floor(rng() * bfColors.length)];
+            for (const ws of [-1, 1]) {
+              const wingGeo2 = new THREE.CircleGeometry(0.02, 5);
+              const wingM = new THREE.Mesh(wingGeo2, new THREE.MeshBasicMaterial({ color: bfCol, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+              wingM.position.set(ws * 0.015, 0, 0);
+              wingM.rotation.y = ws * 0.5;
+              wingM.name = ws < 0 ? "bfLeftWing" : "bfRightWing";
+              animalG.add(wingM);
+            }
+            animalG.position.set(ax, ah + 0.5 + rng() * 2, az);
+          } else if (animalDef.type === "bat") {
+            const batBody = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 4), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+            animalG.add(batBody);
+            for (const ws of [-1, 1]) {
+              const bwGeo = new THREE.BufferGeometry();
+              const bwVerts = new Float32Array([0, 0, 0, ws * 0.06, 0.01, -0.01, ws * 0.04, -0.01, 0.02]);
+              bwGeo.setAttribute("position", new THREE.BufferAttribute(bwVerts, 3));
+              bwGeo.computeVertexNormals();
+              const bw = new THREE.Mesh(bwGeo, new THREE.MeshStandardMaterial({ color: 0x1a1a1a, side: THREE.DoubleSide }));
+              bw.name = ws < 0 ? "batLeftWing" : "batRightWing";
+              animalG.add(bw);
+            }
+            animalG.position.set(ax, ah + 3 + rng() * 8, az);
+          } else if (animalDef.type === "crab") {
+            const crabBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), new THREE.MeshStandardMaterial({ color: 0xcc5533 }));
+            crabBody.scale.set(1.3, 0.5, 1);
+            animalG.add(crabBody);
+            // Claws
+            for (const cs of [-1, 1]) {
+              const clawGeo = new THREE.SphereGeometry(0.02, 4, 4);
+              const claw = new THREE.Mesh(clawGeo, new THREE.MeshStandardMaterial({ color: 0xcc5533 }));
+              claw.position.set(cs * 0.06, 0, -0.03);
+              animalG.add(claw);
+            }
+            animalG.position.set(ax, ah + 0.03, az);
+          } else if (animalDef.type === "firefly") {
+            const ffGeo = new THREE.SphereGeometry(0.015, 4, 4);
+            const ffMat = new THREE.MeshBasicMaterial({ color: 0xffee44, transparent: true, opacity: 0.6 });
+            const ff = new THREE.Mesh(ffGeo, ffMat);
+            animalG.add(ff);
+            animalG.position.set(ax, ah + 0.5 + rng() * 3, az);
+          } else if (animalDef.type === "fish") {
+            const fishBody = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), new THREE.MeshStandardMaterial({ color: 0x4488aa }));
+            fishBody.scale.set(0.7, 0.6, 1.5);
+            animalG.add(fishBody);
+            const tailGeo = new THREE.BufferGeometry();
+            const tVerts = new Float32Array([0, 0, 0.04, 0, 0.025, 0.08, 0, -0.025, 0.08]);
+            tailGeo.setAttribute("position", new THREE.BufferAttribute(tVerts, 3));
+            tailGeo.computeVertexNormals();
+            const tail = new THREE.Mesh(tailGeo, new THREE.MeshStandardMaterial({ color: 0x4488aa, side: THREE.DoubleSide }));
+            animalG.add(tail);
+            animalG.position.set(ax, ah - 0.5, az);
+          }
+
+          animalG.name = `animal_${animalDef.type}_${i}`;
+          animalG.userData.animalType = animalDef.type;
+          animalG.userData.baseX = ax;
+          animalG.userData.baseY = animalG.position.y;
+          animalG.userData.baseZ = az;
+          animalG.userData.phase = rng() * Math.PI * 2;
+          this._propGroup.add(animalG);
+        }
+      }
+    }
   }
 
   private _spawnAmbientParticles(mapDef: MapDef): void {
@@ -1320,179 +2123,486 @@ export class MageWarsGame {
   private _buildMageMesh(player: MWPlayer): THREE.Group {
     const cls = getClassDef(player.classId);
     const group = new THREE.Group();
+    const teamColor = player.team === 0 ? 0x4488ff : 0xff4444;
+    const skinColor = 0xdebb99;
+    const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+    const robeMat = new THREE.MeshStandardMaterial({ color: cls.robeColor, roughness: 0.7 });
+    const robeDarkMat = new THREE.MeshStandardMaterial({ color: darkenColor(cls.robeColor, 0.7), roughness: 0.8 });
+    const robeLightMat = new THREE.MeshStandardMaterial({ color: brightenColor(cls.robeColor, 1.2), roughness: 0.65 });
+    const accentMat = new THREE.MeshStandardMaterial({ color: cls.accentColor, roughness: 0.4, metalness: 0.5 });
 
-    // Torso (cylinder)
-    const torsoGeo = new THREE.CylinderGeometry(0.3, 0.35, 1.0, 8);
-    const torsoMat = new THREE.MeshStandardMaterial({ color: cls.robeColor, roughness: 0.7 });
-    const torso = new THREE.Mesh(torsoGeo, torsoMat);
-    torso.position.y = 0.9;
+    // --- LEGS (under the robe) ---
+    const legGeo = new THREE.CylinderGeometry(0.07, 0.08, 0.45, 6);
+    for (const lx of [-0.12, 0.12]) {
+      const leg = new THREE.Mesh(legGeo, robeDarkMat);
+      leg.position.set(lx, 0.22, 0);
+      leg.name = lx < 0 ? "leftLeg" : "rightLeg";
+      group.add(leg);
+    }
+
+    // Boots with detail
+    const bootGeo = new THREE.CylinderGeometry(0.09, 0.11, 0.2, 6);
+    const bootMat = new THREE.MeshStandardMaterial({ color: darkenColor(cls.robeColor, 0.35), roughness: 0.8, metalness: 0.1 });
+    const bootTopGeo = new THREE.TorusGeometry(0.1, 0.015, 4, 8);
+    const bootTopMat = new THREE.MeshStandardMaterial({ color: darkenColor(cls.robeColor, 0.5), roughness: 0.7 });
+    for (const bx of [-0.12, 0.12]) {
+      const boot = new THREE.Mesh(bootGeo, bootMat);
+      boot.position.set(bx, 0.08, 0);
+      group.add(boot);
+      // Boot cuff
+      const cuff = new THREE.Mesh(bootTopGeo, bootTopMat);
+      cuff.position.set(bx, 0.18, 0);
+      cuff.rotation.x = Math.PI / 2;
+      group.add(cuff);
+      // Boot sole
+      const soleGeo = new THREE.BoxGeometry(0.12, 0.03, 0.16);
+      const sole = new THREE.Mesh(soleGeo, new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 }));
+      sole.position.set(bx, -0.01, 0);
+      group.add(sole);
+    }
+
+    // --- ROBE SKIRT (layered for depth) ---
+    const skirtGeo = new THREE.CylinderGeometry(0.32, 0.48, 0.55, 10);
+    const skirt = new THREE.Mesh(skirtGeo, robeMat);
+    skirt.position.y = 0.37;
+    group.add(skirt);
+    // Inner skirt layer for shading depth
+    const innerSkirtGeo = new THREE.CylinderGeometry(0.28, 0.42, 0.5, 8);
+    const innerSkirt = new THREE.Mesh(innerSkirtGeo, robeDarkMat);
+    innerSkirt.position.y = 0.38;
+    group.add(innerSkirt);
+    // Skirt hem trim
+    const hemGeo = new THREE.TorusGeometry(0.47, 0.02, 4, 16);
+    const hemMat = new THREE.MeshStandardMaterial({ color: cls.accentColor, roughness: 0.5, metalness: 0.3 });
+    const hem = new THREE.Mesh(hemGeo, hemMat);
+    hem.position.y = 0.11;
+    hem.rotation.x = Math.PI / 2;
+    group.add(hem);
+
+    // --- TORSO (shaped chest with shading panels) ---
+    const torsoGeo = new THREE.CylinderGeometry(0.28, 0.33, 0.7, 10);
+    const torso = new THREE.Mesh(torsoGeo, robeMat);
+    torso.position.y = 0.95;
     torso.castShadow = true;
     group.add(torso);
+    // Chest detail panel (lighter center strip)
+    const chestPanelGeo = new THREE.BoxGeometry(0.16, 0.5, 0.01);
+    const chestPanel = new THREE.Mesh(chestPanelGeo, robeLightMat);
+    chestPanel.position.set(0, 0.95, -0.28);
+    group.add(chestPanel);
+    // Side robe seams
+    for (const sx of [-0.28, 0.28]) {
+      const seamGeo = new THREE.BoxGeometry(0.01, 0.6, 0.04);
+      const seam = new THREE.Mesh(seamGeo, robeDarkMat);
+      seam.position.set(sx, 0.95, 0);
+      group.add(seam);
+    }
+    // Collar
+    const collarGeo = new THREE.TorusGeometry(0.25, 0.035, 6, 12, Math.PI * 1.5);
+    const collar = new THREE.Mesh(collarGeo, accentMat);
+    collar.position.set(0, 1.32, -0.05);
+    collar.rotation.x = Math.PI / 2;
+    collar.rotation.z = Math.PI * 0.75;
+    group.add(collar);
 
-    // Cloak/cape - flat box behind torso
-    const cloakGeo = new THREE.BoxGeometry(0.5, 0.9, 0.06);
-    const cloakMat = new THREE.MeshStandardMaterial({ color: darkenColor(cls.robeColor, 0.7), roughness: 0.8 });
-    const cloak = new THREE.Mesh(cloakGeo, cloakMat);
-    cloak.position.set(0, 0.75, 0.22);
+    // --- CLOAK/CAPE (animated via name) ---
+    const cloakGeo = new THREE.BoxGeometry(0.52, 1.0, 0.04);
+    const cloak = new THREE.Mesh(cloakGeo, robeDarkMat);
+    cloak.position.set(0, 0.7, 0.26);
+    cloak.name = "cloak";
     group.add(cloak);
+    // Cape bottom fringe
+    const fringeGeo = new THREE.BoxGeometry(0.5, 0.06, 0.03);
+    const fringe = new THREE.Mesh(fringeGeo, accentMat);
+    fringe.position.set(0, 0.22, 0.26);
+    fringe.name = "cloakFringe";
+    group.add(fringe);
 
-    // Robe skirt
-    const skirtGeo = new THREE.CylinderGeometry(0.35, 0.5, 0.5, 8);
-    const skirtMat = new THREE.MeshStandardMaterial({ color: cls.robeColor, roughness: 0.7 });
-    const skirt = new THREE.Mesh(skirtGeo, skirtMat);
-    skirt.position.y = 0.35;
-    group.add(skirt);
-
-    // Boots
-    const bootGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.18, 6);
-    const bootMat = new THREE.MeshStandardMaterial({ color: darkenColor(cls.robeColor, 0.4), roughness: 0.8 });
-    const leftBoot = new THREE.Mesh(bootGeo, bootMat);
-    leftBoot.position.set(-0.15, 0.09, 0);
-    group.add(leftBoot);
-    const rightBoot = new THREE.Mesh(bootGeo, bootMat);
-    rightBoot.position.set(0.15, 0.09, 0);
-    group.add(rightBoot);
-
-    // Neck
-    const neckGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.2, 6);
-    const neckMat = new THREE.MeshStandardMaterial({ color: 0xdebb99, roughness: 0.6 });
-    const neck = new THREE.Mesh(neckGeo, neckMat);
-    neck.position.y = 1.45;
-    group.add(neck);
-
-    // Head (sphere)
-    const headGeo = new THREE.SphereGeometry(0.2, 8, 8);
-    const headMat = new THREE.MeshStandardMaterial({ color: 0xdebb99, roughness: 0.6 });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = 1.6;
-    head.castShadow = true;
-    group.add(head);
-
-    // Eyes
-    const eyeWhiteGeo = new THREE.SphereGeometry(0.04, 6, 6);
-    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const eyePupilGeo = new THREE.SphereGeometry(0.02, 4, 4);
-    const eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
-    for (const ex of [-0.08, 0.08]) {
-      const eyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-      eyeWhite.position.set(ex, 1.63, -0.17);
-      group.add(eyeWhite);
-      const eyePupil = new THREE.Mesh(eyePupilGeo, eyePupilMat);
-      eyePupil.position.set(ex, 1.63, -0.2);
-      group.add(eyePupil);
-    }
-
-    // Eyebrows (thin boxes)
-    const browGeo = new THREE.BoxGeometry(0.07, 0.01, 0.02);
-    const browMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.8 });
-    for (const bx of [-0.08, 0.08]) {
-      const brow = new THREE.Mesh(browGeo, browMat);
-      brow.position.set(bx, 1.68, -0.17);
-      brow.rotation.z = bx < 0 ? 0.1 : -0.1;
-      group.add(brow);
-    }
-
-    // Hat
-    this._addHat(group, cls);
-
-    // Shoulder pads
-    const padGeo = new THREE.SphereGeometry(0.1, 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.5);
-    const padMat = new THREE.MeshStandardMaterial({ color: cls.accentColor, roughness: 0.4, metalness: 0.5 });
-    const leftPad = new THREE.Mesh(padGeo, padMat);
-    leftPad.position.set(-0.4, 1.35, 0);
-    leftPad.rotation.z = 0.5;
-    group.add(leftPad);
-    const rightPad = new THREE.Mesh(padGeo, padMat);
-    rightPad.position.set(0.4, 1.35, 0);
-    rightPad.rotation.z = -0.5;
-    group.add(rightPad);
-
-    // Arms
-    const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.6, 6);
-    const armMat = new THREE.MeshStandardMaterial({ color: cls.robeColor, roughness: 0.7 });
-
-    const leftArm = new THREE.Mesh(armGeo, armMat);
-    leftArm.position.set(-0.4, 1.1, 0);
-    leftArm.rotation.z = 0.3;
-    group.add(leftArm);
-
-    const rightArm = new THREE.Mesh(armGeo, armMat);
-    rightArm.position.set(0.4, 1.1, -0.15);
-    rightArm.rotation.z = -0.3;
-    rightArm.rotation.x = -0.5;
-    group.add(rightArm);
-
-    // Hands
-    const handGeo = new THREE.SphereGeometry(0.05, 6, 6);
-    const handMat = new THREE.MeshStandardMaterial({ color: 0xdebb99, roughness: 0.6 });
-    const leftHand = new THREE.Mesh(handGeo, handMat);
-    leftHand.position.set(-0.48, 0.82, 0);
-    group.add(leftHand);
-    const rightHand = new THREE.Mesh(handGeo, handMat);
-    rightHand.position.set(0.48, 0.82, -0.3);
-    group.add(rightHand);
-
-    // Wand in right hand - more detailed
-    const wandGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.7, 6);
-    const wandMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.5 });
-    const wand = new THREE.Mesh(wandGeo, wandMat);
-    wand.position.set(0.45, 0.9, -0.45);
-    wand.rotation.x = -1.0;
-    group.add(wand);
-
-    // Wand grip rings
-    const gripGeo = new THREE.TorusGeometry(0.035, 0.008, 4, 8);
-    const gripMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.3 });
-    for (let gi = 0; gi < 3; gi++) {
-      const grip = new THREE.Mesh(gripGeo, gripMat);
-      grip.position.set(0.45, 0.95 + gi * 0.08, -0.42 - gi * 0.06);
-      group.add(grip);
-    }
-
-    // Wand guard/cross piece
-    const guardGeo = new THREE.BoxGeometry(0.12, 0.02, 0.02);
-    const guardMat = new THREE.MeshStandardMaterial({ color: cls.accentColor, roughness: 0.3, metalness: 0.6 });
-    const guard = new THREE.Mesh(guardGeo, guardMat);
-    guard.position.set(0.45, 0.85, -0.52);
-    group.add(guard);
-
-    // Wand tip glow - larger orb
-    const activeWand = this._getPlayerActiveWand(player);
-    const tipGeo = new THREE.SphereGeometry(0.08, 8, 8);
-    const tipMat = new THREE.MeshBasicMaterial({ color: activeWand.projectileColor });
-    const tip = new THREE.Mesh(tipGeo, tipMat);
-    tip.position.set(0.45, 0.6, -0.75);
-    group.add(tip);
-
-    // Rune belt with glowing gems
-    const beltGeo = new THREE.TorusGeometry(0.33, 0.04, 6, 12);
-    const teamColor = player.team === 0 ? 0x4488ff : 0xff4444;
-    const beltMat = new THREE.MeshStandardMaterial({ color: teamColor, roughness: 0.4, metalness: 0.5 });
-    const belt = new THREE.Mesh(beltGeo, beltMat);
-    belt.position.y = 0.65;
-    belt.rotation.x = Math.PI / 2;
-    group.add(belt);
-
+    // --- BELT with runic gems ---
+    const beltGeo = new THREE.TorusGeometry(0.31, 0.035, 6, 14);
+    const beltMesh = new THREE.Mesh(beltGeo, new THREE.MeshStandardMaterial({ color: teamColor, roughness: 0.4, metalness: 0.5 }));
+    beltMesh.position.y = 0.65;
+    beltMesh.rotation.x = Math.PI / 2;
+    group.add(beltMesh);
+    // Belt buckle
+    const buckleGeo = new THREE.BoxGeometry(0.08, 0.06, 0.03);
+    const buckle = new THREE.Mesh(buckleGeo, new THREE.MeshStandardMaterial({ color: cls.accentColor, roughness: 0.2, metalness: 0.8 }));
+    buckle.position.set(0, 0.65, -0.32);
+    group.add(buckle);
     // Belt gems
-    const gemGeo = new THREE.SphereGeometry(0.025, 4, 4);
+    const gemGeo = new THREE.OctahedronGeometry(0.022);
     const gemMat = new THREE.MeshBasicMaterial({ color: cls.accentColor });
     for (let gi = 0; gi < 6; gi++) {
       const angle = (gi / 6) * Math.PI * 2;
       const gem = new THREE.Mesh(gemGeo, gemMat);
-      gem.position.set(Math.cos(angle) * 0.34, 0.65, Math.sin(angle) * 0.34);
+      gem.position.set(Math.cos(angle) * 0.32, 0.65, Math.sin(angle) * 0.32);
       group.add(gem);
     }
 
-    // Team glow ring at feet
-    const glowRingGeo = new THREE.TorusGeometry(0.5, 0.03, 4, 16);
+    // --- NECK ---
+    const neckGeo = new THREE.CylinderGeometry(0.09, 0.12, 0.15, 6);
+    const neck = new THREE.Mesh(neckGeo, skinMat);
+    neck.position.y = 1.4;
+    group.add(neck);
+
+    // --- HEAD (slightly oblong) ---
+    const headGeo = new THREE.SphereGeometry(0.2, 10, 10);
+    const head = new THREE.Mesh(headGeo, skinMat);
+    head.position.y = 1.6;
+    head.scale.set(1, 1.05, 0.95);
+    head.castShadow = true;
+    group.add(head);
+
+    // Cheeks (subtle, warm toned)
+    const cheekGeo = new THREE.SphereGeometry(0.05, 6, 4);
+    const cheekMat = new THREE.MeshStandardMaterial({ color: 0xe8b090, roughness: 0.7 });
+    for (const cx of [-0.12, 0.12]) {
+      const cheek = new THREE.Mesh(cheekGeo, cheekMat);
+      cheek.position.set(cx, 1.57, -0.14);
+      group.add(cheek);
+    }
+
+    // Nose
+    const noseGeo = new THREE.ConeGeometry(0.025, 0.06, 4);
+    const nose = new THREE.Mesh(noseGeo, skinMat);
+    nose.position.set(0, 1.59, -0.2);
+    nose.rotation.x = -Math.PI / 2;
+    group.add(nose);
+
+    // --- EYES (detailed: white, iris, pupil, highlight) ---
+    const eyeWhiteGeo = new THREE.SphereGeometry(0.04, 8, 8);
+    const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.3 });
+    const eyeIrisGeo = new THREE.SphereGeometry(0.025, 6, 6);
+    // Class-specific eye color
+    const eyeColors: Record<string, number> = {
+      battlemage: 0x3366aa, pyromancer: 0xcc4400, cryomancer: 0x44aadd,
+      stormcaller: 0xccaa22, shadowmancer: 0x8833aa, druid: 0x33aa44,
+      warlock: 0xcc2244, archmage: 0x8844ff,
+    };
+    const irisColor = eyeColors[player.classId] || 0x446688;
+    const eyeIrisMat = new THREE.MeshStandardMaterial({ color: irisColor, roughness: 0.3 });
+    const eyePupilGeo = new THREE.SphereGeometry(0.012, 4, 4);
+    const eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const eyeHighGeo = new THREE.SphereGeometry(0.006, 4, 4);
+    const eyeHighMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    for (const ex of [-0.075, 0.075]) {
+      const eyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+      eyeWhite.position.set(ex, 1.63, -0.17);
+      group.add(eyeWhite);
+      const iris = new THREE.Mesh(eyeIrisGeo, eyeIrisMat);
+      iris.position.set(ex, 1.63, -0.2);
+      group.add(iris);
+      const pupil = new THREE.Mesh(eyePupilGeo, eyePupilMat);
+      pupil.position.set(ex, 1.63, -0.215);
+      group.add(pupil);
+      const highlight = new THREE.Mesh(eyeHighGeo, eyeHighMat);
+      highlight.position.set(ex + 0.01, 1.64, -0.22);
+      group.add(highlight);
+    }
+
+    // Eyebrows (expressive, class-themed)
+    const browGeo = new THREE.BoxGeometry(0.065, 0.012, 0.018);
+    const browMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.8 });
+    for (const bx of [-0.08, 0.08]) {
+      const brow = new THREE.Mesh(browGeo, browMat);
+      brow.position.set(bx, 1.68, -0.17);
+      brow.rotation.z = bx < 0 ? 0.12 : -0.12;
+      group.add(brow);
+    }
+
+    // Mouth (small, subtle)
+    const mouthGeo = new THREE.BoxGeometry(0.06, 0.008, 0.01);
+    const mouthMat = new THREE.MeshStandardMaterial({ color: 0xaa6655, roughness: 0.7 });
+    const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+    mouth.position.set(0, 1.54, -0.19);
+    group.add(mouth);
+
+    // Chin
+    const chinGeo = new THREE.SphereGeometry(0.04, 6, 4);
+    const chin = new THREE.Mesh(chinGeo, skinMat);
+    chin.position.set(0, 1.51, -0.16);
+    group.add(chin);
+
+    // Ears
+    const earGeo = new THREE.SphereGeometry(0.04, 6, 4);
+    for (const ex of [-0.2, 0.2]) {
+      const ear = new THREE.Mesh(earGeo, skinMat);
+      ear.position.set(ex, 1.6, -0.02);
+      ear.scale.set(0.4, 1, 0.7);
+      group.add(ear);
+    }
+
+    // --- HAT ---
+    this._addHat(group, cls);
+
+    // --- SHOULDER ARMOR (class-specific styling) ---
+    const padGeo = new THREE.SphereGeometry(0.12, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    for (const side of [-1, 1]) {
+      const pad = new THREE.Mesh(padGeo, accentMat);
+      pad.position.set(side * 0.38, 1.35, 0);
+      pad.rotation.z = side * 0.4;
+      pad.name = side < 0 ? "leftShoulder" : "rightShoulder";
+      group.add(pad);
+      // Shoulder spike/gem per class
+      if (cls.id === "battlemage" || cls.id === "warlock") {
+        const spikeGeo = new THREE.ConeGeometry(0.03, 0.1, 4);
+        const spike = new THREE.Mesh(spikeGeo, accentMat);
+        spike.position.set(side * 0.44, 1.42, 0);
+        group.add(spike);
+      } else {
+        const sGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.025), new THREE.MeshBasicMaterial({ color: cls.accentColor }));
+        sGem.position.set(side * 0.42, 1.38, -0.05);
+        group.add(sGem);
+      }
+    }
+
+    // --- ARMS (with forearm detail, animated via name) ---
+    const upperArmGeo = new THREE.CylinderGeometry(0.06, 0.065, 0.35, 6);
+    const foreArmGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.3, 6);
+    const elbowGeo = new THREE.SphereGeometry(0.055, 6, 4);
+
+    // Left arm
+    const leftUpperArm = new THREE.Mesh(upperArmGeo, robeMat);
+    leftUpperArm.position.set(-0.4, 1.15, 0);
+    leftUpperArm.rotation.z = 0.25;
+    leftUpperArm.name = "leftUpperArm";
+    group.add(leftUpperArm);
+    const leftElbow = new THREE.Mesh(elbowGeo, robeMat);
+    leftElbow.position.set(-0.47, 0.98, 0);
+    group.add(leftElbow);
+    const leftForeArm = new THREE.Mesh(foreArmGeo, robeMat);
+    leftForeArm.position.set(-0.48, 0.85, -0.08);
+    leftForeArm.rotation.x = -0.3;
+    leftForeArm.name = "leftForeArm";
+    group.add(leftForeArm);
+    // Forearm bracer
+    const bracerGeo = new THREE.CylinderGeometry(0.065, 0.07, 0.1, 6);
+    const leftBracer = new THREE.Mesh(bracerGeo, accentMat);
+    leftBracer.position.set(-0.48, 0.83, -0.1);
+    group.add(leftBracer);
+
+    // Right arm (holding wand, angled forward)
+    const rightUpperArm = new THREE.Mesh(upperArmGeo, robeMat);
+    rightUpperArm.position.set(0.4, 1.15, -0.05);
+    rightUpperArm.rotation.z = -0.25;
+    rightUpperArm.rotation.x = -0.3;
+    rightUpperArm.name = "rightUpperArm";
+    group.add(rightUpperArm);
+    const rightElbow = new THREE.Mesh(elbowGeo, robeMat);
+    rightElbow.position.set(0.47, 0.98, -0.15);
+    group.add(rightElbow);
+    const rightForeArm = new THREE.Mesh(foreArmGeo, robeMat);
+    rightForeArm.position.set(0.48, 0.85, -0.28);
+    rightForeArm.rotation.x = -0.6;
+    rightForeArm.name = "rightForeArm";
+    group.add(rightForeArm);
+    const rightBracer = new THREE.Mesh(bracerGeo, accentMat);
+    rightBracer.position.set(0.48, 0.83, -0.3);
+    group.add(rightBracer);
+
+    // --- HANDS (with fingers) ---
+    const handGeo = new THREE.SphereGeometry(0.045, 6, 6);
+    const leftHand = new THREE.Mesh(handGeo, skinMat);
+    leftHand.position.set(-0.48, 0.72, -0.15);
+    group.add(leftHand);
+    const rightHand = new THREE.Mesh(handGeo, skinMat);
+    rightHand.position.set(0.48, 0.72, -0.42);
+    group.add(rightHand);
+    // Finger detail (small cylinders grouped on hands)
+    const fingerGeo = new THREE.CylinderGeometry(0.01, 0.008, 0.05, 4);
+    for (let fi = 0; fi < 4; fi++) {
+      const angle = ((fi - 1.5) / 4) * 0.3;
+      const lf = new THREE.Mesh(fingerGeo, skinMat);
+      lf.position.set(-0.48 + Math.sin(angle) * 0.03, 0.695, -0.15 + Math.cos(angle) * 0.03 - fi * 0.01);
+      group.add(lf);
+      const rf = new THREE.Mesh(fingerGeo, skinMat);
+      rf.position.set(0.48 + Math.sin(angle) * 0.03, 0.695, -0.42 + Math.cos(angle) * 0.03 - fi * 0.01);
+      group.add(rf);
+    }
+
+    // --- WAND (detailed, class-themed) ---
+    const wandGroup = new THREE.Group();
+    wandGroup.name = "wandGroup";
+    // Wand shaft
+    const wandShaftGeo = new THREE.CylinderGeometry(0.02, 0.028, 0.65, 6);
+    const wandShaftMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.5 });
+    const wandShaft = new THREE.Mesh(wandShaftGeo, wandShaftMat);
+    wandShaft.position.y = 0;
+    wandGroup.add(wandShaft);
+    // Grip rings
+    const wGripGeo = new THREE.TorusGeometry(0.032, 0.006, 4, 8);
+    const wGripMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.3 });
+    for (let gi = 0; gi < 3; gi++) {
+      const grip = new THREE.Mesh(wGripGeo, wGripMat);
+      grip.position.y = -0.15 + gi * 0.08;
+      wandGroup.add(grip);
+    }
+    // Guard
+    const wGuardGeo = new THREE.BoxGeometry(0.1, 0.015, 0.015);
+    const wGuard = new THREE.Mesh(wGuardGeo, accentMat);
+    wGuard.position.y = 0.08;
+    wandGroup.add(wGuard);
+    // Wand tip orb (class colored, pulsing via name)
+    const activeWand = this._getPlayerActiveWand(player);
+    const tipGeo = new THREE.SphereGeometry(0.07, 8, 8);
+    const tipMat = new THREE.MeshBasicMaterial({ color: activeWand.projectileColor, transparent: true, opacity: 0.9 });
+    const tip = new THREE.Mesh(tipGeo, tipMat);
+    tip.position.y = 0.35;
+    tip.name = "wandTip";
+    wandGroup.add(tip);
+    // Outer glow ring around tip
+    const tipRingGeo = new THREE.TorusGeometry(0.09, 0.008, 4, 12);
+    const tipRingMat = new THREE.MeshBasicMaterial({ color: activeWand.projectileColor, transparent: true, opacity: 0.3 });
+    const tipRing = new THREE.Mesh(tipRingGeo, tipRingMat);
+    tipRing.position.y = 0.35;
+    tipRing.name = "wandTipRing";
+    wandGroup.add(tipRing);
+    // Prongs around tip
+    const prongGeo = new THREE.ConeGeometry(0.008, 0.06, 4);
+    const prongMat = new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.2, metalness: 0.7 });
+    for (let pi = 0; pi < 3; pi++) {
+      const pAngle = (pi / 3) * Math.PI * 2;
+      const prong = new THREE.Mesh(prongGeo, prongMat);
+      prong.position.set(Math.cos(pAngle) * 0.04, 0.3, Math.sin(pAngle) * 0.04);
+      prong.rotation.z = Math.cos(pAngle) * 0.35;
+      prong.rotation.x = Math.sin(pAngle) * 0.35;
+      wandGroup.add(prong);
+    }
+    wandGroup.position.set(0.46, 0.58, -0.55);
+    wandGroup.rotation.x = -0.8;
+    group.add(wandGroup);
+
+    // --- CLASS-SPECIFIC VISUAL ELEMENTS ---
+    this._addClassSpecificVisuals(group, cls, player);
+
+    // --- TEAM GLOW RING at feet ---
+    const glowRingGeo = new THREE.TorusGeometry(0.5, 0.025, 4, 20);
     const glowRingMat = new THREE.MeshBasicMaterial({ color: teamColor, transparent: true, opacity: 0.5 });
     const glowRing = new THREE.Mesh(glowRingGeo, glowRingMat);
     glowRing.rotation.x = Math.PI / 2;
     glowRing.position.y = 0.02;
+    glowRing.name = "teamRing";
     group.add(glowRing);
 
+    // --- BREATHING/IDLE ANIMATION reference point ---
+    group.userData.idleTime = Math.random() * Math.PI * 2; // randomize start phase
     group.castShadow = true;
     return group;
+  }
+
+  private _addClassSpecificVisuals(group: THREE.Group, cls: MageClassDef, player: MWPlayer): void {
+    // Battlemage: shield on back, sword hilt accent
+    if (cls.id === "battlemage") {
+      // Shield on back
+      const shieldGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.03, 8);
+      const shieldMat = new THREE.MeshStandardMaterial({ color: cls.accentColor, roughness: 0.3, metalness: 0.7 });
+      const shield = new THREE.Mesh(shieldGeo, shieldMat);
+      shield.position.set(0.15, 1.05, 0.3);
+      shield.rotation.x = Math.PI / 2;
+      shield.rotation.z = 0.2;
+      group.add(shield);
+      // Shield emblem (team colored cross)
+      const emblemGeo = new THREE.BoxGeometry(0.14, 0.03, 0.008);
+      const emblemMat = new THREE.MeshBasicMaterial({ color: player.team === 0 ? 0x4488ff : 0xff4444 });
+      const emH = new THREE.Mesh(emblemGeo, emblemMat);
+      emH.position.set(0.15, 1.05, 0.285);
+      emH.rotation.z = 0.2;
+      group.add(emH);
+      const emV = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.14, 0.008), emblemMat);
+      emV.position.set(0.15, 1.05, 0.285);
+      emV.rotation.z = 0.2;
+      group.add(emV);
+    }
+    // Pyromancer: flame particles orbiting, fiery glow
+    if (cls.id === "pyromancer") {
+      // Orbiting embers (small spheres that will be animated)
+      for (let i = 0; i < 4; i++) {
+        const emberGeo = new THREE.SphereGeometry(0.02, 4, 4);
+        const emberMat = new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff6600 : 0xff2200, transparent: true, opacity: 0.8 });
+        const ember = new THREE.Mesh(emberGeo, emberMat);
+        ember.name = `pyroEmber_${i}`;
+        ember.position.set(0, 1.0, 0);
+        group.add(ember);
+      }
+    }
+    // Cryomancer: frost crystals floating, icy shimmer
+    if (cls.id === "cryomancer") {
+      for (let i = 0; i < 3; i++) {
+        const crystalGeo = new THREE.OctahedronGeometry(0.025);
+        const crystalMat = new THREE.MeshBasicMaterial({ color: 0x88ddff, transparent: true, opacity: 0.6 });
+        const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+        crystal.name = `cryoCrystal_${i}`;
+        crystal.position.set(0, 1.2, 0);
+        group.add(crystal);
+      }
+    }
+    // Stormcaller: lightning sparks jumping
+    if (cls.id === "stormcaller") {
+      for (let i = 0; i < 3; i++) {
+        const sparkGeo = new THREE.SphereGeometry(0.015, 4, 4);
+        const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffff44, transparent: true, opacity: 0.7 });
+        const spark = new THREE.Mesh(sparkGeo, sparkMat);
+        spark.name = `stormSpark_${i}`;
+        spark.position.set(0, 1.0, 0);
+        group.add(spark);
+      }
+    }
+    // Shadowmancer: dark mist swirling at feet
+    if (cls.id === "shadowmancer") {
+      for (let i = 0; i < 5; i++) {
+        const mistGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 4, 4);
+        const mistMat = new THREE.MeshBasicMaterial({ color: 0x220044, transparent: true, opacity: 0.3 });
+        const mist = new THREE.Mesh(mistGeo, mistMat);
+        mist.name = `shadowMist_${i}`;
+        mist.position.set((Math.random() - 0.5) * 0.6, 0.1 + Math.random() * 0.2, (Math.random() - 0.5) * 0.6);
+        group.add(mist);
+      }
+    }
+    // Druid: vine wrappings on arms, leaf particles
+    if (cls.id === "druid") {
+      // Vines on left arm
+      const vineGeo = new THREE.TorusGeometry(0.08, 0.01, 4, 8, Math.PI * 1.5);
+      const vineMat = new THREE.MeshStandardMaterial({ color: 0x338822, roughness: 0.8 });
+      for (let vi = 0; vi < 3; vi++) {
+        const vine = new THREE.Mesh(vineGeo, vineMat);
+        vine.position.set(-0.48, 0.85 + vi * 0.1, -0.05);
+        vine.rotation.y = vi * 0.5;
+        group.add(vine);
+      }
+      // Floating leaves
+      for (let i = 0; i < 3; i++) {
+        const leafGeo = new THREE.BoxGeometry(0.03, 0.015, 0.02);
+        const leafMat = new THREE.MeshBasicMaterial({ color: 0x44aa22, transparent: true, opacity: 0.7 });
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        leaf.name = `druidLeaf_${i}`;
+        leaf.position.set(0, 1.5, 0);
+        group.add(leaf);
+      }
+    }
+    // Warlock: dark aura, soul orbs
+    if (cls.id === "warlock") {
+      for (let i = 0; i < 3; i++) {
+        const orbGeo = new THREE.SphereGeometry(0.02, 4, 4);
+        const orbMat = new THREE.MeshBasicMaterial({ color: 0xcc2244, transparent: true, opacity: 0.6 });
+        const orb = new THREE.Mesh(orbGeo, orbMat);
+        orb.name = `warlockOrb_${i}`;
+        orb.position.set(0, 1.0, 0);
+        group.add(orb);
+      }
+    }
+    // Archmage: staff glow rings, arcane symbols
+    if (cls.id === "archmage") {
+      // Arcane orbiting rune rings
+      for (let i = 0; i < 2; i++) {
+        const ringGeo = new THREE.TorusGeometry(0.3 + i * 0.15, 0.008, 4, 16);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xddaaff, transparent: true, opacity: 0.2 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.name = `archmageRing_${i}`;
+        ring.position.y = 1.0;
+        ring.rotation.x = Math.PI / 2;
+        group.add(ring);
+      }
+    }
   }
 
   private _addHat(group: THREE.Group, cls: MageClassDef): void {
@@ -2618,6 +3728,179 @@ export class MageWarsGame {
       }
     }
 
+    // ---- Map-specific vehicle meshes ----
+    if (def.id === "magic_carpet") {
+      // Flat ornate carpet
+      const carpetGeo = new THREE.BoxGeometry(def.scaleX, 0.06, def.scaleZ);
+      const carpetMat = new THREE.MeshStandardMaterial({ color: def.bodyColor, roughness: 0.8 });
+      const carpet = new THREE.Mesh(carpetGeo, carpetMat);
+      carpet.castShadow = true;
+      group.add(carpet);
+      // Ornate border trim
+      const trimMat = new THREE.MeshStandardMaterial({ color: def.accentColor, roughness: 0.5, metalness: 0.4 });
+      for (const [tx, tz, sx, sz] of [
+        [0, -def.scaleZ / 2, def.scaleX, 0.12],
+        [0, def.scaleZ / 2, def.scaleX, 0.12],
+        [-def.scaleX / 2, 0, 0.12, def.scaleZ],
+        [def.scaleX / 2, 0, 0.12, def.scaleZ],
+      ] as [number, number, number, number][]) {
+        const trim = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.08, sz), trimMat);
+        trim.position.set(tx, 0.04, tz);
+        group.add(trim);
+      }
+      // Central medallion pattern
+      const medallion = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.02, 8), trimMat);
+      medallion.position.y = 0.04;
+      group.add(medallion);
+      const innerMedal = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 6),
+        new THREE.MeshBasicMaterial({ color: 0xffdd88, transparent: true, opacity: 0.6 }));
+      innerMedal.position.y = 0.05;
+      group.add(innerMedal);
+      // Corner tassels
+      for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const tassel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.4, 4), trimMat);
+        tassel.position.set(cx * def.scaleX * 0.48, -0.2, cz * def.scaleZ * 0.48);
+        group.add(tassel);
+      }
+      // Floating sparkle particles
+      const sparkleMat = new THREE.MeshBasicMaterial({ color: 0xffcc44, transparent: true, opacity: 0.5 });
+      for (let si = 0; si < 6; si++) {
+        const sparkle = new THREE.Mesh(new THREE.OctahedronGeometry(0.06), sparkleMat);
+        sparkle.position.set((Math.random() - 0.5) * def.scaleX * 0.8, -0.1 - Math.random() * 0.3, (Math.random() - 0.5) * def.scaleZ * 0.8);
+        sparkle.name = `carpetSparkle_${si}`;
+        group.add(sparkle);
+      }
+      // Cushions for riders
+      const cushionMat = new THREE.MeshStandardMaterial({ color: 0x662244, roughness: 0.9 });
+      for (let ci = 0; ci < def.seats; ci++) {
+        const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.5), cushionMat);
+        cushion.position.set(0, 0.1, -def.scaleZ * 0.15 + ci * 1.2);
+        group.add(cushion);
+      }
+    } else if (def.id === "ghost_ship") {
+      // Ghostly hull
+      const hullMat = new THREE.MeshStandardMaterial({ color: def.bodyColor, roughness: 0.6, transparent: true, opacity: 0.8 });
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(def.scaleX * 0.7, def.scaleY * 0.5, def.scaleZ), hullMat);
+      hull.position.y = -def.scaleY * 0.15;
+      hull.castShadow = true;
+      group.add(hull);
+      // Keel
+      const keelGeo = new THREE.BoxGeometry(0.15, def.scaleY * 0.3, def.scaleZ * 0.9);
+      const keel = new THREE.Mesh(keelGeo, new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.7, transparent: true, opacity: 0.7 }));
+      keel.position.y = -def.scaleY * 0.4;
+      group.add(keel);
+      // Deck planks
+      const deckMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.8, transparent: true, opacity: 0.85 });
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(def.scaleX * 0.65, 0.08, def.scaleZ * 0.9), deckMat);
+      deck.position.y = def.scaleY * 0.1;
+      group.add(deck);
+      // Railings
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.5, transparent: true, opacity: 0.75 });
+      for (const side of [-1, 1]) {
+        for (let ri = 0; ri < 5; ri++) {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, def.scaleY * 0.4, 4), railMat);
+          post.position.set(side * def.scaleX * 0.32, def.scaleY * 0.3, -def.scaleZ * 0.35 + ri * def.scaleZ * 0.18);
+          group.add(post);
+        }
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, def.scaleZ * 0.8), railMat);
+        rail.position.set(side * def.scaleX * 0.32, def.scaleY * 0.5, 0);
+        group.add(rail);
+      }
+      // Main mast
+      const mastMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.6, transparent: true, opacity: 0.8 });
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, def.scaleY * 1.5, 6), mastMat);
+      mast.position.y = def.scaleY * 0.85;
+      group.add(mast);
+      // Ghostly sails
+      const sailMat = new THREE.MeshBasicMaterial({ color: def.accentColor, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+      const sailGeo = new THREE.PlaneGeometry(def.scaleX * 0.6, def.scaleY * 0.8);
+      const sail = new THREE.Mesh(sailGeo, sailMat);
+      sail.position.set(0, def.scaleY * 1.0, 0);
+      sail.name = "ghostSail";
+      group.add(sail);
+      // Bow figurehead - skull
+      const skullMat = new THREE.MeshStandardMaterial({ color: 0xccddcc, roughness: 0.5, transparent: true, opacity: 0.9 });
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 6), skullMat);
+      skull.position.set(0, def.scaleY * 0.05, -def.scaleZ * 0.55);
+      skull.scale.set(1, 0.85, 1.2);
+      group.add(skull);
+      // Skull eye glow
+      for (const ex of [-0.08, 0.08]) {
+        const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 4), new THREE.MeshBasicMaterial({ color: def.accentColor }));
+        eyeGlow.position.set(ex, def.scaleY * 0.08, -def.scaleZ * 0.6);
+        group.add(eyeGlow);
+      }
+      // Ghost flame aura
+      const auraMat = new THREE.MeshBasicMaterial({ color: def.accentColor, transparent: true, opacity: 0.15 });
+      const aura = new THREE.Mesh(new THREE.SphereGeometry(def.scaleZ * 0.55, 8, 8), auraMat);
+      aura.position.y = def.scaleY * 0.2;
+      aura.name = "ghostAura";
+      group.add(aura);
+      // Cannon ports
+      for (const side of [-1, 1]) {
+        for (let ci = 0; ci < 3; ci++) {
+          const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.4, 5), darkMat);
+          cannon.position.set(side * def.scaleX * 0.36, def.scaleY * 0.05, -def.scaleZ * 0.2 + ci * def.scaleZ * 0.2);
+          cannon.rotation.z = side * Math.PI / 2;
+          group.add(cannon);
+        }
+      }
+    } else if (def.id === "sky_gondola") {
+      // Gondola basket
+      const basketMat = new THREE.MeshStandardMaterial({ color: def.bodyColor, roughness: 0.7 });
+      const basket = new THREE.Mesh(new THREE.BoxGeometry(def.scaleX * 0.6, def.scaleY * 0.35, def.scaleZ * 0.7), basketMat);
+      basket.position.y = -def.scaleY * 0.1;
+      basket.castShadow = true;
+      group.add(basket);
+      // Wicker weave texture lines
+      const weaveMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.8), roughness: 0.8 });
+      for (let wi = 0; wi < 4; wi++) {
+        const weave = new THREE.Mesh(new THREE.BoxGeometry(def.scaleX * 0.62, 0.02, 0.03), weaveMat);
+        weave.position.set(0, -def.scaleY * 0.22 + wi * 0.08, -def.scaleZ * 0.35);
+        group.add(weave);
+        const weaveB = new THREE.Mesh(new THREE.BoxGeometry(def.scaleX * 0.62, 0.02, 0.03), weaveMat);
+        weaveB.position.set(0, -def.scaleY * 0.22 + wi * 0.08, def.scaleZ * 0.35);
+        group.add(weaveB);
+      }
+      // Crystal power source (hovering above)
+      const crystalMat = new THREE.MeshBasicMaterial({ color: def.accentColor, transparent: true, opacity: 0.7 });
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.35), crystalMat);
+      crystal.position.y = def.scaleY * 0.8;
+      crystal.name = "gondolaCrystal";
+      group.add(crystal);
+      // Crystal glow ring
+      const glowRing = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.04, 8, 16), new THREE.MeshBasicMaterial({ color: def.accentColor, transparent: true, opacity: 0.4 }));
+      glowRing.position.y = def.scaleY * 0.8;
+      glowRing.rotation.x = Math.PI / 2;
+      glowRing.name = "gondolaGlowRing";
+      group.add(glowRing);
+      // Support ropes from crystal to basket
+      const ropeMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.9 });
+      for (const [rx, rz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, def.scaleY * 0.7, 3), ropeMat);
+        rope.position.set(rx * def.scaleX * 0.2, def.scaleY * 0.4, rz * def.scaleZ * 0.25);
+        rope.rotation.z = rx * 0.15;
+        rope.rotation.x = rz * 0.1;
+        group.add(rope);
+      }
+      // Ornate front lantern
+      const lanternMat = new THREE.MeshStandardMaterial({ color: 0xddaa44, roughness: 0.4, metalness: 0.5 });
+      const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffdd88 }));
+      const lanternFrame = new THREE.Mesh(new THREE.OctahedronGeometry(0.15), lanternMat);
+      lanternFrame.position.set(0, def.scaleY * 0.05, -def.scaleZ * 0.4);
+      lantern.position.set(0, def.scaleY * 0.05, -def.scaleZ * 0.4);
+      group.add(lanternFrame);
+      group.add(lantern);
+      // Small turret
+      const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.2, 6), accentMat);
+      turret.position.set(0, def.scaleY * 0.1, -def.scaleZ * 0.28);
+      group.add(turret);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35, 4), darkMat);
+      barrel.position.set(0, def.scaleY * 0.12, -def.scaleZ * 0.48);
+      barrel.rotation.x = Math.PI / 2;
+      group.add(barrel);
+    }
+
     // Team color indicator ring
     const ringGeo = new THREE.TorusGeometry(Math.max(def.scaleX, def.scaleZ) * 0.5, 0.08, 6, 16);
     const teamColor = veh.team === 0 ? 0x4488ff : veh.team === 1 ? 0xff4444 : 0xaaaaaa;
@@ -2735,7 +4018,7 @@ export class MageWarsGame {
       if (e.code === "Digit3") this._wantSlot = 2;
       if (e.code === "Tab") {
         e.preventDefault();
-        if (this._phase === MWPhase.PLAYING) {
+        if (this._phase === MWPhase.PLAYING || this._phase === MWPhase.ROYALE_PLAYING) {
           this._phase = MWPhase.SCOREBOARD;
           this._showScoreboard();
         }
@@ -2744,7 +4027,7 @@ export class MageWarsGame {
     this._keyUpHandler = (e: KeyboardEvent) => {
       this._keys[e.code] = false;
       if (e.code === "Tab" && this._phase === MWPhase.SCOREBOARD) {
-        this._phase = MWPhase.PLAYING;
+        this._phase = this._isRoyaleMode ? MWPhase.ROYALE_PLAYING : MWPhase.PLAYING;
         this._hideScoreboard();
       }
     };
@@ -2752,7 +4035,7 @@ export class MageWarsGame {
     window.addEventListener("keyup", this._keyUpHandler);
 
     this._mouseDownHandler = (e: MouseEvent) => {
-      if (this._phase === MWPhase.PLAYING && !this._pointerLocked) {
+      if ((this._phase === MWPhase.PLAYING || this._phase === MWPhase.ROYALE_PLAYING) && !this._pointerLocked) {
         this._canvas.requestPointerLock();
         return;
       }
@@ -2838,6 +4121,11 @@ export class MageWarsGame {
           <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Choose class, loadout & map</span>
         </button>
 
+        <button id="mw-royale" style="${this._menuBtnStyle("#1a1a30", "#ff4488")}">
+          Mage Royale
+          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Last mage standing - 12 player FFA</span>
+        </button>
+
         <div style="width:120px;height:1px;background:linear-gradient(90deg,transparent,#44443a,transparent);margin:12px 0"></div>
 
         <button id="mw-back" style="${this._menuBtnStyle("#2a2a2a", "#555")}">
@@ -2863,6 +4151,10 @@ export class MageWarsGame {
     document.getElementById("mw-custom")?.addEventListener("click", () => {
       this._removeMenu();
       this._showCharSelect();
+    });
+    document.getElementById("mw-royale")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._showRoyaleClassSelect();
     });
     document.getElementById("mw-back")?.addEventListener("click", () => { this._exit(); });
   }
@@ -3148,6 +4440,563 @@ export class MageWarsGame {
   }
 
 
+  // ===========================================================================
+  // MAGE ROYALE MODE
+  // ===========================================================================
+
+  private _showRoyaleClassSelect(): void {
+    this._removeMenu();
+    this._menuDiv = document.createElement("div");
+    this._menuDiv.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;z-index:30;` +
+      `background:rgba(5,3,20,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;` +
+      `font-family:'Segoe UI',sans-serif;color:#e0d5c0;overflow-y:auto;`;
+
+    let classCards = "";
+    for (const cls of MAGE_CLASSES) {
+      const selected = cls.id === this._selectedClassId;
+      classCards += `<div class="mw-royale-cls" data-clsid="${cls.id}" style="padding:12px 16px;border:2px solid ${selected ? "#ff4488" : "#44334a"};border-radius:8px;cursor:pointer;background:${selected ? "rgba(255,68,136,0.15)" : "rgba(30,20,40,0.5)"};min-width:120px;text-align:center;transition:all 0.15s">
+        <div style="font-size:28px">${cls.icon}</div>
+        <div style="font-size:13px;font-weight:bold;color:${selected ? "#ff4488" : "#ccc"}">${cls.name}</div>
+        <div style="font-size:10px;color:#888;margin-top:2px">HP:${cls.hp} SPD:${cls.speed.toFixed(1)}</div>
+      </div>`;
+    }
+
+    let mapOptions = "";
+    for (const m of MAP_DEFS) {
+      mapOptions += `<option value="${m.id}" ${m.id === this._mapId ? "selected" : ""}>${m.name}</option>`;
+    }
+
+    this._menuDiv.innerHTML = `
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;max-height:90vh;overflow-y:auto;padding:20px">
+        <h1 style="font-size:38px;color:#ff4488;text-shadow:0 0 30px rgba(255,68,136,0.5);margin:0 0 4px 0;letter-spacing:3px">MAGE ROYALE</h1>
+        <div style="width:180px;height:2px;background:linear-gradient(90deg,transparent,#ff4488,transparent);margin-bottom:4px"></div>
+        <p style="color:#aa7799;margin:0 0 15px 0;font-size:13px;letter-spacing:1px">LAST MAGE STANDING - ${MW.ROYALE_PLAYERS} PLAYERS</p>
+
+        <div style="margin-bottom:15px">
+          <label style="font-size:12px;color:#888;margin-right:8px">Arena:</label>
+          <select id="mw-royale-map" style="background:#1a1a2a;color:#e0d5c0;border:1px solid #555;padding:4px 8px;border-radius:4px;font-size:12px">
+            ${mapOptions}
+          </select>
+        </div>
+
+        <div style="font-size:12px;color:#888;margin-bottom:8px">Choose your class:</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:650px;margin-bottom:18px">
+          ${classCards}
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <button id="mw-royale-back" style="${this._menuBtnStyle("#2a2a2a", "#555")}">Back</button>
+          <button id="mw-royale-start" style="${this._menuBtnStyle("#2a0020", "#ff4488")}">Enter the Arena</button>
+        </div>
+      </div>
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._menuDiv);
+
+    this._menuDiv.querySelectorAll(".mw-royale-cls").forEach(card => {
+      card.addEventListener("click", () => {
+        this._selectedClassId = (card as HTMLElement).dataset.clsid!;
+        this._removeMenu();
+        this._showRoyaleClassSelect();
+      });
+    });
+    document.getElementById("mw-royale-map")?.addEventListener("change", (e) => {
+      this._mapId = (e.target as HTMLSelectElement).value;
+    });
+    document.getElementById("mw-royale-back")?.addEventListener("click", () => { this._removeMenu(); this._showMainMenu(); });
+    document.getElementById("mw-royale-start")?.addEventListener("click", () => { this._removeMenu(); this._startMageRoyale(); });
+  }
+
+  private _startMageRoyale(): void {
+    this._isRoyaleMode = true;
+    const mapDef = getMapDef(this._mapId);
+
+    // Reset state
+    this._players = [];
+    this._vehicles = [];
+    this._projectiles = [];
+    this._killFeed = [];
+    this._capturePoints = [];
+    this._floatingTexts = [];
+    this._teamScores = [0, 0];
+    this._matchTimer = 600; // 10 min max
+    this._hitMarkerTimer = 0;
+    this._damageVignetteTimer = 0;
+    this._fireTimer = 0;
+    this._headshotTimer = 0;
+    this._gameTime = 0;
+    this._eliminatedTimer = 0;
+    this._reloadFlashTimer = 0;
+    this._abilityReadyTimer = 0;
+    this._lastAbilityCooldown = 0;
+    this._centerNotification = null;
+    this._lastDamageDir = { x: 0, z: 0, timer: 0 };
+    _projIdCounter = 0;
+    _vehIdCounter = 0;
+
+    // Build scene
+    this._buildScene(mapDef);
+
+    const rng = seededRandom(Date.now() % 10000);
+    const arenaRadius = mapDef.size * 0.4;
+
+    // Create players scattered around the arena (all team 0 for FFA display, but FFA logic)
+    const cls = getClassDef(this._selectedClassId);
+    const humanAngle = rng() * Math.PI * 2;
+    const humanDist = arenaRadius * 0.5 + rng() * arenaRadius * 0.3;
+    const human = createPlayer(
+      "player_0", 0, this._selectedClassId, false,
+      Math.cos(humanAngle) * humanDist, Math.sin(humanAngle) * humanDist, mapDef,
+    );
+    human.primaryWandId = cls.defaultPrimary;
+    human.secondaryWandId = cls.defaultSecondary;
+    human.heavyWandId = "meteor_launcher";
+    human.ammo = [
+      getWandDef(cls.defaultPrimary).magPerReload,
+      getWandDef(cls.defaultSecondary).magPerReload,
+      getWandDef("meteor_launcher").magPerReload,
+    ];
+    this._players.push(human);
+
+    // AI opponents (all unique classes scattered around)
+    for (let i = 0; i < MW.ROYALE_PLAYERS - 1; i++) {
+      const aiCls = MAGE_CLASSES[i % MAGE_CLASSES.length];
+      const angle = (i / (MW.ROYALE_PLAYERS - 1)) * Math.PI * 2 + rng() * 0.5;
+      const dist = arenaRadius * 0.4 + rng() * arenaRadius * 0.4;
+      // All on team 0 but we use FFA targeting
+      const ai = createPlayer(
+        `ai_${AI_NAMES[i % AI_NAMES.length]}`, (i % 2) as 0 | 1, aiCls.id, true,
+        Math.cos(angle) * dist, Math.sin(angle) * dist, mapDef,
+      );
+      this._players.push(ai);
+    }
+
+    // Create meshes for all players
+    for (const p of this._players) {
+      p.mesh = this._buildMageMesh(p);
+      p.mesh.position.set(p.x, p.y, p.z);
+      this._scene.add(p.mesh);
+
+      if (p.id !== "player_0") {
+        p.nameTag = this._buildNameTag(p.id.replace("ai_", ""), p.team);
+        p.nameTag.position.set(p.x, p.y + MW.PLAYER_HEIGHT + 0.5, p.z);
+        this._scene.add(p.nameTag);
+      }
+
+      const teamCol = p.team === 0 ? 0x4488ff : 0xff4444;
+      const pl = new THREE.PointLight(teamCol, 0.3, 5);
+      pl.position.set(p.x, p.y + 1, p.z);
+      this._scene.add(pl);
+      this._playerLights.set(p.id, pl);
+    }
+
+    // Initialize royale state
+    const stormRadius = arenaRadius * 1.3;
+    this._royaleState = {
+      stormRadius,
+      stormCenterX: 0,
+      stormCenterZ: 0,
+      stormDelay: MW.ROYALE_STORM_INITIAL_DELAY,
+      stormMesh: null,
+      scrolls: [],
+      artifacts: [],
+      playersAlive: this._players.length,
+      placement: 0,
+      stormShrinking: false,
+      stormTargetX: (rng() - 0.5) * arenaRadius * 0.3,
+      stormTargetZ: (rng() - 0.5) * arenaRadius * 0.3,
+    };
+
+    // Create storm wall visual (inverted cylinder)
+    const stormGeo = new THREE.CylinderGeometry(stormRadius, stormRadius, 40, 64, 1, true);
+    const stormMat = new THREE.MeshBasicMaterial({
+      color: 0x9922ff, transparent: true, opacity: 0.12, side: THREE.BackSide,
+    });
+    const stormMesh = new THREE.Mesh(stormGeo, stormMat);
+    stormMesh.position.set(0, 15, 0);
+    this._scene.add(stormMesh);
+    this._royaleState.stormMesh = stormMesh;
+
+    // Scatter spell scrolls on the ground
+    for (let i = 0; i < MW.ROYALE_SCROLL_COUNT; i++) {
+      const sx = (rng() - 0.5) * arenaRadius * 1.6;
+      const sz = (rng() - 0.5) * arenaRadius * 1.6;
+      const sy = getTerrainHeight(sx, sz, mapDef) + 0.5;
+      const wandPool = WAND_DEFS.filter(w => w.category !== "heavy");
+      const wandId = wandPool[Math.floor(rng() * wandPool.length)].id;
+      const scroll: RoyaleScroll = { id: `scroll_${i}`, x: sx, y: sy, z: sz, wandId, picked: false, mesh: null };
+      scroll.mesh = this._buildScrollMesh(scroll);
+      scroll.mesh.position.set(sx, sy, sz);
+      this._scene.add(scroll.mesh);
+      this._royaleState.scrolls.push(scroll);
+    }
+
+    // Scatter artifacts
+    const artifactTypes: RoyaleArtifact["type"][] = ["hp_boost", "mana_boost", "speed_boost", "damage_boost", "shield"];
+    for (let i = 0; i < MW.ROYALE_ARTIFACT_COUNT; i++) {
+      const ax = (rng() - 0.5) * arenaRadius * 1.4;
+      const az = (rng() - 0.5) * arenaRadius * 1.4;
+      const ay = getTerrainHeight(ax, az, mapDef) + 0.6;
+      const aType = artifactTypes[Math.floor(rng() * artifactTypes.length)];
+      const artifact: RoyaleArtifact = { id: `artifact_${i}`, x: ax, y: ay, z: az, type: aType, picked: false, mesh: null };
+      artifact.mesh = this._buildArtifactMesh(artifact);
+      artifact.mesh.position.set(ax, ay, az);
+      this._scene.add(artifact.mesh);
+      this._royaleState.artifacts.push(artifact);
+    }
+
+    // Spawn map vehicles if any
+    if (this._optVehiclesEnabled && mapDef.mapVehicles) {
+      for (const mv of mapDef.mapVehicles) {
+        const mvDef = MAP_VEHICLE_DEFS.find(d => d.id === mv.defId);
+        if (!mvDef) continue;
+        for (let i = 0; i < mv.count; i++) {
+          const vx = (rng() - 0.5) * mapDef.size * 0.6;
+          const vz = (rng() - 0.5) * mapDef.size * 0.6;
+          const veh = createVehicle(mv.defId, -1, vx, vz, mapDef);
+          veh.mesh = this._buildVehicleMesh(veh);
+          veh.mesh.position.set(veh.x, veh.y, veh.z);
+          this._scene.add(veh.mesh);
+          this._vehicles.push(veh);
+        }
+      }
+    }
+
+    // HUD
+    this._createHUD();
+
+    // Start with warmup
+    this._phase = MWPhase.WARMUP;
+    this._warmupTimer = MW.WARMUP_TIME;
+    this._lastTime = performance.now();
+    this._simAccum = 0;
+    if (this._rafId) cancelAnimationFrame(this._rafId);
+    this._gameLoop(performance.now());
+    this._showWarmupCountdown();
+  }
+
+  private _buildScrollMesh(scroll: RoyaleScroll): THREE.Group {
+    const group = new THREE.Group();
+    // Glowing scroll tube
+    const tubeMat = new THREE.MeshStandardMaterial({ color: 0xddcc88, roughness: 0.4, metalness: 0.3 });
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 8), tubeMat);
+    tube.rotation.z = Math.PI / 2;
+    group.add(tube);
+    // End caps
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xaa8844, roughness: 0.3, metalness: 0.5 });
+    for (const cx of [-0.28, 0.28]) {
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.06, 8), capMat);
+      cap.position.x = cx;
+      cap.rotation.z = Math.PI / 2;
+      group.add(cap);
+    }
+    // Glow aura
+    const wandDef = getWandDef(scroll.wandId);
+    const glowMat = new THREE.MeshBasicMaterial({ color: wandDef.projectileColor, transparent: true, opacity: 0.3 });
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), glowMat);
+    glow.name = "scrollGlow";
+    group.add(glow);
+    // Floating sparkle
+    const sparkle = new THREE.Mesh(new THREE.OctahedronGeometry(0.08), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    sparkle.position.y = 0.45;
+    sparkle.name = "scrollSparkle";
+    group.add(sparkle);
+    group.userData.scrollId = scroll.id;
+    return group;
+  }
+
+  private _buildArtifactMesh(artifact: RoyaleArtifact): THREE.Group {
+    const group = new THREE.Group();
+    const colorMap: Record<string, number> = {
+      hp_boost: 0xff4444, mana_boost: 0x4488ff, speed_boost: 0x44ff44,
+      damage_boost: 0xff8800, shield: 0xffdd44,
+    };
+    const color = colorMap[artifact.type] || 0xffffff;
+    // Floating gem
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.25), new THREE.MeshStandardMaterial({ color, roughness: 0.2, metalness: 0.6 }));
+    gem.name = "artifactGem";
+    group.add(gem);
+    // Outer glow
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.2 }));
+    glow.name = "artifactGlow";
+    group.add(glow);
+    // Rotating ring
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.03, 6, 16), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5 }));
+    ring.name = "artifactRing";
+    group.add(ring);
+    // Label icon (small sprite-like indicator)
+    const iconMap: Record<string, string> = {
+      hp_boost: "+HP", mana_boost: "+MP", speed_boost: "+SPD",
+      damage_boost: "+DMG", shield: "SHD",
+    };
+    group.userData.artifactId = artifact.id;
+    group.userData.artifactLabel = iconMap[artifact.type] || "?";
+    return group;
+  }
+
+  private _royaleSimTick(dt: number): void {
+    const rs = this._royaleState;
+    if (!rs) return;
+    const mapDef = getMapDef(this._mapId);
+
+    // Count alive players
+    rs.playersAlive = this._players.filter(p => p.alive).length;
+
+    // Storm delay countdown
+    if (rs.stormDelay > 0) {
+      rs.stormDelay -= dt;
+      if (rs.stormDelay <= 0) {
+        rs.stormShrinking = true;
+        this._centerNotification = { text: "THE STORM IS CLOSING IN!", color: "#ff4488", timer: 3, size: 28 };
+      }
+    }
+
+    // Shrink storm
+    if (rs.stormShrinking && rs.stormRadius > MW.ROYALE_STORM_MIN_RADIUS) {
+      rs.stormRadius -= MW.ROYALE_STORM_SHRINK_RATE * dt;
+      if (rs.stormRadius < MW.ROYALE_STORM_MIN_RADIUS) rs.stormRadius = MW.ROYALE_STORM_MIN_RADIUS;
+
+      // Slowly drift storm center toward target
+      rs.stormCenterX = lerp(rs.stormCenterX, rs.stormTargetX, dt * 0.02);
+      rs.stormCenterZ = lerp(rs.stormCenterZ, rs.stormTargetZ, dt * 0.02);
+
+      // Update storm mesh scale
+      if (rs.stormMesh) {
+        const initRadius = mapDef.size * 0.4 * 1.3;
+        const scaleFactor = rs.stormRadius / initRadius;
+        rs.stormMesh.scale.set(scaleFactor, 1, scaleFactor);
+        rs.stormMesh.position.set(rs.stormCenterX, 15, rs.stormCenterZ);
+      }
+    }
+
+    // Storm damage to players outside the circle
+    for (const p of this._players) {
+      if (!p.alive) continue;
+      const distToCenter = dist2(p.x, p.z, rs.stormCenterX, rs.stormCenterZ);
+      if (distToCenter > rs.stormRadius) {
+        p.hp -= MW.ROYALE_STORM_DAMAGE * dt;
+        if (p.id === "player_0") this._damageVignetteTimer = Math.max(this._damageVignetteTimer, 0.2);
+        if (p.hp <= 0) {
+          p.hp = 0;
+          p.alive = false;
+          p.deaths++;
+          rs.playersAlive = this._players.filter(pp => pp.alive).length;
+          this._killFeed.push({
+            killer: "Storm", victim: p.id,
+            weapon: "Storm", time: this._gameTime,
+          });
+          if (p.id === "player_0") {
+            rs.placement = rs.playersAlive + 1;
+          }
+        }
+      }
+    }
+
+    // Pickup: scrolls
+    for (const scroll of rs.scrolls) {
+      if (scroll.picked) continue;
+      for (const p of this._players) {
+        if (!p.alive) continue;
+        if (dist3(p.x, p.y, p.z, scroll.x, scroll.y, scroll.z) < 2.0) {
+          scroll.picked = true;
+          // Replace secondary wand with scroll wand
+          p.secondaryWandId = scroll.wandId;
+          p.ammo[1] = getWandDef(scroll.wandId).magPerReload;
+          p.reloading[1] = false;
+          p.reloadTimer[1] = 0;
+          if (scroll.mesh) {
+            this._scene.remove(scroll.mesh);
+            scroll.mesh = null;
+          }
+          if (p.id === "player_0") {
+            this._centerNotification = { text: `Picked up: ${getWandDef(scroll.wandId).name}`, color: "#ddcc88", timer: 2, size: 20 };
+          }
+          break;
+        }
+      }
+    }
+
+    // Pickup: artifacts
+    for (const art of rs.artifacts) {
+      if (art.picked) continue;
+      for (const p of this._players) {
+        if (!p.alive) continue;
+        if (dist3(p.x, p.y, p.z, art.x, art.y, art.z) < 2.0) {
+          art.picked = true;
+          switch (art.type) {
+            case "hp_boost": p.maxHp += 30; p.hp = Math.min(p.hp + 50, p.maxHp); break;
+            case "mana_boost": p.maxMana += 25; p.mana = Math.min(p.mana + 40, p.maxMana); break;
+            case "speed_boost": p.speed *= 1.15; break;
+            case "damage_boost": p.armor += 5; break; // damage reduction
+            case "shield": p.shieldHp += 50; break;
+          }
+          if (art.mesh) {
+            this._scene.remove(art.mesh);
+            art.mesh = null;
+          }
+          if (p.id === "player_0") {
+            const labels: Record<string, string> = {
+              hp_boost: "+HP Boost!", mana_boost: "+Mana Boost!", speed_boost: "+Speed Boost!",
+              damage_boost: "+Armor Boost!", shield: "+Shield!",
+            };
+            const colors: Record<string, string> = {
+              hp_boost: "#ff4444", mana_boost: "#4488ff", speed_boost: "#44ff44",
+              damage_boost: "#ff8800", shield: "#ffdd44",
+            };
+            this._centerNotification = { text: labels[art.type] || "Artifact!", color: colors[art.type] || "#fff", timer: 2, size: 22 };
+          }
+          break;
+        }
+      }
+    }
+
+    // Animate scroll/artifact meshes
+    const t = this._gameTime;
+    for (const scroll of rs.scrolls) {
+      if (scroll.picked || !scroll.mesh) continue;
+      scroll.mesh.position.y = scroll.y + Math.sin(t * 2 + scroll.x) * 0.15;
+      scroll.mesh.rotation.y = t * 1.5;
+      scroll.mesh.traverse(c => {
+        if (c.name === "scrollSparkle") c.rotation.y = t * 4;
+        if (c.name === "scrollGlow") {
+          (c as THREE.Mesh).scale.setScalar(1 + Math.sin(t * 3) * 0.15);
+        }
+      });
+    }
+    for (const art of rs.artifacts) {
+      if (art.picked || !art.mesh) continue;
+      art.mesh.position.y = art.y + Math.sin(t * 2.5 + art.z) * 0.2;
+      art.mesh.traverse(c => {
+        if (c.name === "artifactGem") c.rotation.y = t * 2;
+        if (c.name === "artifactRing") {
+          c.rotation.x = t * 1.5;
+          c.rotation.z = t * 0.8;
+        }
+        if (c.name === "artifactGlow") {
+          (c as THREE.Mesh).scale.setScalar(1 + Math.sin(t * 3.5) * 0.2);
+        }
+      });
+    }
+
+    // Check royale win condition (FFA: last alive wins)
+    const humanAlive = this._players.find(p => p.id === "player_0")?.alive;
+    if (rs.playersAlive <= 1 || !humanAlive) {
+      if (humanAlive && rs.playersAlive <= 1) {
+        rs.placement = 1;
+      } else if (!humanAlive && rs.placement === 0) {
+        rs.placement = rs.playersAlive + 1;
+      }
+      if (this._rafId) cancelAnimationFrame(this._rafId);
+      this._rafId = 0;
+      this._showRoyaleEnd();
+    }
+
+    // Override team targeting for AI: in royale, target anyone regardless of team
+    for (const p of this._players) {
+      if (!p.isAI || !p.alive) continue;
+      // Storm awareness: if outside storm, move toward center
+      if (rs.stormShrinking) {
+        const dCenter = dist2(p.x, p.z, rs.stormCenterX, rs.stormCenterZ);
+        if (dCenter > rs.stormRadius * 0.85) {
+          // Override wander target to storm center
+          p.aiState.wanderTarget = { x: rs.stormCenterX + (Math.random() - 0.5) * rs.stormRadius * 0.3, z: rs.stormCenterZ + (Math.random() - 0.5) * rs.stormRadius * 0.3 };
+          p.aiState.targetId = null; // focus on survival
+        }
+      }
+
+      // Seek nearby scrolls/artifacts
+      if (!p.aiState.targetId && Math.random() < 0.01) {
+        let nearestPickup: { x: number; z: number } | null = null;
+        let nearestDist = 30;
+        for (const scroll of rs.scrolls) {
+          if (scroll.picked) continue;
+          const d = dist2(p.x, p.z, scroll.x, scroll.z);
+          if (d < nearestDist) { nearestDist = d; nearestPickup = { x: scroll.x, z: scroll.z }; }
+        }
+        for (const art of rs.artifacts) {
+          if (art.picked) continue;
+          const d = dist2(p.x, p.z, art.x, art.z);
+          if (d < nearestDist) { nearestDist = d; nearestPickup = { x: art.x, z: art.z }; }
+        }
+        if (nearestPickup) {
+          p.aiState.wanderTarget = nearestPickup;
+        }
+      }
+    }
+  }
+
+  private _showRoyaleEnd(): void {
+    this._phase = MWPhase.ROUND_END;
+    this._isRoyaleMode = false;
+    document.exitPointerLock();
+    this._removeMenu();
+    this._menuDiv = document.createElement("div");
+    this._menuDiv.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;z-index:35;` +
+      `background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;` +
+      `font-family:'Segoe UI',sans-serif;color:#e0d5c0;`;
+
+    const rs = this._royaleState!;
+    const placement = rs.placement;
+    const isWinner = placement === 1;
+    const placementColor = isWinner ? "#ffd700" : placement <= 3 ? "#c0c0c0" : "#cc6644";
+    const placementLabel = isWinner ? "VICTORY ROYALE!" : `#${placement} of ${MW.ROYALE_PLAYERS}`;
+
+    const allPlayers = [...this._players].sort((a, b) => {
+      if (a.alive !== b.alive) return a.alive ? -1 : 1;
+      return b.kills - a.kills;
+    });
+    let rows = "";
+    let rank = 1;
+    for (const p of allPlayers) {
+      const cls = getClassDef(p.classId);
+      const nameCol = p.id === "player_0" ? "#ffdd44" : "#ccc";
+      const aliveCol = p.alive ? "#44ff44" : "#ff4444";
+      rows += `<tr>
+        <td style="padding:3px 10px;color:#888;font-size:12px">#${rank++}</td>
+        <td style="padding:3px 10px;color:${nameCol}">${cls.icon} ${p.id === "player_0" ? "You" : p.id.replace("ai_", "")}</td>
+        <td style="padding:3px 10px;text-align:center">${p.kills}</td>
+        <td style="padding:3px 10px;text-align:center">${p.deaths}</td>
+        <td style="padding:3px 10px;color:${aliveCol};text-align:center;font-size:11px">${p.alive ? "Alive" : "Eliminated"}</td>
+      </tr>`;
+    }
+
+    this._menuDiv.innerHTML = `
+      <h1 style="color:${placementColor};font-size:48px;margin-bottom:8px;text-shadow:0 0 30px ${placementColor}66">${placementLabel}</h1>
+      <div style="font-size:16px;color:#aa7799;margin-bottom:20px">Mage Royale - ${MAP_DEFS.find(m => m.id === this._mapId)?.name || this._mapId}</div>
+
+      <table style="background:rgba(20,10,30,0.6);border:1px solid #444;border-radius:8px;border-collapse:collapse;margin-bottom:20px;max-height:300px;overflow-y:auto;display:block">
+        <tr style="color:#888;font-size:11px;border-bottom:1px solid #333">
+          <th style="padding:5px 10px">Rank</th><th style="padding:5px 10px;text-align:left">Player</th>
+          <th style="padding:5px 10px">Kills</th><th style="padding:5px 10px">Deaths</th><th style="padding:5px 10px">Status</th>
+        </tr>
+        ${rows}
+      </table>
+
+      <div style="display:flex;gap:12px">
+        <button id="mw-royale-again" style="${this._menuBtnStyle("#2a0020", "#ff4488")}">Play Again</button>
+        <button id="mw-royale-menu" style="${this._menuBtnStyle("#2a2a2a", "#555")}">Back to Menu</button>
+      </div>
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._menuDiv);
+
+    document.getElementById("mw-royale-again")?.addEventListener("click", () => {
+      this._removeMenu(); this._removeHUD();
+      this._royaleState = null;
+      this._startMageRoyale();
+    });
+    document.getElementById("mw-royale-menu")?.addEventListener("click", () => {
+      this._removeMenu(); this._removeHUD();
+      this._players = []; this._vehicles = []; this._projectiles = [];
+      this._royaleState = null;
+      if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = 0; }
+      this._showMainMenu();
+    });
+  }
+
+
   // ---- Pause Menu ----
   private _showPauseMenu(): void {
     this._removeMenu();
@@ -3187,7 +5036,7 @@ export class MageWarsGame {
     if (this._warmupTimer > 0) {
       this._phase = MWPhase.WARMUP;
     } else {
-      this._phase = MWPhase.PLAYING;
+      this._phase = this._isRoyaleMode ? MWPhase.ROYALE_PLAYING : MWPhase.PLAYING;
     }
     if (this._pointerLocked === false) {
       this._canvas.requestPointerLock();
@@ -3696,8 +5545,20 @@ export class MageWarsGame {
     // Scores
     const s0 = document.getElementById("mw-score-0") as HTMLElement;
     const s1 = document.getElementById("mw-score-1") as HTMLElement;
-    if (s0) s0.textContent = `${this._teamScores[0]}`;
-    if (s1) s1.textContent = `${this._teamScores[1]}`;
+    if (this._isRoyaleMode && this._royaleState) {
+      const rs = this._royaleState;
+      if (s0) s0.textContent = `Alive: ${rs.playersAlive}/${MW.ROYALE_PLAYERS}`;
+      if (s1) {
+        if (rs.stormDelay > 0) {
+          s1.textContent = `Storm in: ${Math.ceil(rs.stormDelay)}s`;
+        } else {
+          s1.textContent = `Storm: ${Math.ceil(rs.stormRadius)}m`;
+        }
+      }
+    } else {
+      if (s0) s0.textContent = `${this._teamScores[0]}`;
+      if (s1) s1.textContent = `${this._teamScores[1]}`;
+    }
 
     // Timer
     const timer = document.getElementById("mw-timer") as HTMLElement;
@@ -3778,7 +5639,12 @@ export class MageWarsGame {
     if (respawnEl && respawnTimerEl) {
       if (!p.alive) {
         respawnEl.style.display = "flex";
-        respawnTimerEl.textContent = `Respawning in ${p.respawnTimer.toFixed(1)}s`;
+        if (this._isRoyaleMode) {
+          const rs = this._royaleState;
+          respawnTimerEl.textContent = `Eliminated! Placement: #${rs?.placement || "?"}`;
+        } else {
+          respawnTimerEl.textContent = `Respawning in ${p.respawnTimer.toFixed(1)}s`;
+        }
       } else {
         respawnEl.style.display = "none";
       }
@@ -4022,6 +5888,49 @@ export class MageWarsGame {
       ctx.fillStyle = v.team === 0 ? "#2244aa" : v.team === 1 ? "#aa2222" : "#888888";
       ctx.fillRect(mx - 3, mz - 3, 6, 6);
     }
+
+    // Royale storm circle
+    if (this._isRoyaleMode && this._royaleState) {
+      const rs = this._royaleState;
+      const cx = (rs.stormCenterX + mapDef.size) * scale;
+      const cz = (rs.stormCenterZ + mapDef.size) * scale;
+      const r = rs.stormRadius * scale;
+      ctx.strokeStyle = "#cc44ff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cz, r, 0, Math.PI * 2);
+      ctx.stroke();
+      // Fill outside storm with translucent purple
+      ctx.fillStyle = "rgba(100,20,160,0.25)";
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc(cx, cz, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Draw scrolls as tiny gold dots
+      for (const scroll of rs.scrolls) {
+        if (scroll.picked) continue;
+        const sx = (scroll.x + mapDef.size) * scale;
+        const sz = (scroll.z + mapDef.size) * scale;
+        ctx.fillStyle = "#ddcc44";
+        ctx.fillRect(sx - 1, sz - 1, 2, 2);
+      }
+      // Draw artifacts as tiny colored diamonds
+      for (const art of rs.artifacts) {
+        if (art.picked) continue;
+        const ax = (art.x + mapDef.size) * scale;
+        const az = (art.z + mapDef.size) * scale;
+        ctx.fillStyle = "#ff8800";
+        ctx.save();
+        ctx.translate(ax, az);
+        ctx.rotate(Math.PI / 4);
+        ctx.fillRect(-2, -2, 4, 4);
+        ctx.restore();
+      }
+    }
   }
 
 
@@ -4030,6 +5939,8 @@ export class MageWarsGame {
   // =====================================================================
 
   private _startMatch(): void {
+    this._isRoyaleMode = false;
+    this._royaleState = null;
     const mapDef = getMapDef(this._mapId);
     const teamSize = this._customTeamSize;
 
@@ -4220,6 +6131,23 @@ export class MageWarsGame {
           this._vehicles.push(veh);
         }
       }
+
+      // Spawn map-specific vehicles
+      if (mapDef.mapVehicles) {
+        for (const mv of mapDef.mapVehicles) {
+          const mvDef = MAP_VEHICLE_DEFS.find(d => d.id === mv.defId);
+          if (!mvDef) continue;
+          for (let i = 0; i < mv.count; i++) {
+            const vx = (rng() - 0.5) * mapDef.size * 0.7;
+            const vz = (rng() - 0.5) * mapDef.size * 0.7;
+            const veh = createVehicle(mv.defId, -1, vx, vz, mapDef);
+            veh.mesh = this._buildVehicleMesh(veh);
+            veh.mesh.position.set(veh.x, veh.y, veh.z);
+            this._scene.add(veh.mesh);
+            this._vehicles.push(veh);
+          }
+        }
+      }
     }
 
     // HUD
@@ -4296,7 +6224,7 @@ export class MageWarsGame {
         }
       }
       if (this._warmupTimer <= -0.5) {
-        this._phase = MWPhase.PLAYING;
+        this._phase = this._isRoyaleMode ? MWPhase.ROYALE_PLAYING : MWPhase.PLAYING;
         if (this._warmupCountdownDiv?.parentNode) {
           this._warmupCountdownDiv.parentNode.removeChild(this._warmupCountdownDiv);
           this._warmupCountdownDiv = null;
@@ -4315,10 +6243,11 @@ export class MageWarsGame {
       this._mouseDY = 0;
     }
 
-    if (this._phase === MWPhase.PLAYING) {
+    if (this._phase === MWPhase.PLAYING || this._phase === MWPhase.ROYALE_PLAYING) {
       this._simAccum += dt;
       while (this._simAccum >= MW.SIM_RATE) {
         this._simTick(MW.SIM_RATE);
+        if (this._phase === MWPhase.ROYALE_PLAYING) this._royaleSimTick(MW.SIM_RATE);
         this._simAccum -= MW.SIM_RATE;
       }
     }
@@ -4474,8 +6403,10 @@ export class MageWarsGame {
     // Move players
     for (const p of this._players) {
       if (!p.alive) {
-        p.respawnTimer -= dt;
-        if (p.respawnTimer <= 0) this._respawnPlayer(p, mapDef);
+        if (!this._isRoyaleMode) {
+          p.respawnTimer -= dt;
+          if (p.respawnTimer <= 0) this._respawnPlayer(p, mapDef);
+        }
         continue;
       }
       if (p.vehicleId) continue;
@@ -4530,11 +6461,13 @@ export class MageWarsGame {
       if (p.abilityCooldown > 0) p.abilityCooldown -= dt;
     }
 
-    // Check win condition
-    if (this._matchTimer <= 0 || this._teamScores[0] >= this._customScoreLimit || this._teamScores[1] >= this._customScoreLimit) {
-      if (this._rafId) cancelAnimationFrame(this._rafId);
-      this._rafId = 0;
-      this._showRoundEnd();
+    // Check win condition (skip in Royale - handled by _royaleSimTick)
+    if (!this._isRoyaleMode) {
+      if (this._matchTimer <= 0 || this._teamScores[0] >= this._customScoreLimit || this._teamScores[1] >= this._customScoreLimit) {
+        if (this._rafId) cancelAnimationFrame(this._rafId);
+        this._rafId = 0;
+        this._showRoundEnd();
+      }
     }
   }
 
@@ -5084,7 +7017,7 @@ export class MageWarsGame {
       let hit = false;
       for (const target of this._players) {
         if (!target.alive || target.id === proj.ownerId) continue;
-        if (!this._optFriendlyFire && target.team === proj.team) continue;
+        if (!this._isRoyaleMode && !this._optFriendlyFire && target.team === proj.team) continue;
         if (target.vehicleId) continue;
         if (target.invisible) continue;
 
@@ -5231,7 +7164,7 @@ export class MageWarsGame {
   private _applySplashDamage(proj: MWProjectile, _mapDef: MapDef): void {
     for (const target of this._players) {
       if (!target.alive) continue;
-      if (!this._optFriendlyFire && target.team === proj.team) continue;
+      if (!this._isRoyaleMode && !this._optFriendlyFire && target.team === proj.team) continue;
       const d = dist3(proj.x, proj.y, proj.z, target.x, target.y + MW.PLAYER_HEIGHT * 0.5, target.z);
       if (d < proj.splashRadius) {
         const falloff = 1 - (d / proj.splashRadius);
@@ -5341,6 +7274,12 @@ export class MageWarsGame {
     this._killFeed.push({
       killer: killerId, victim: target.id, weapon: weaponName, time: Date.now() / 1000,
     });
+
+    // Royale placement tracking
+    if (this._isRoyaleMode && this._royaleState && target.id === "player_0") {
+      const alive = this._players.filter(pp => pp.alive).length;
+      this._royaleState.placement = alive + 1;
+    }
 
     if (target.vehicleId) {
       const veh = this._vehicles.find(v => v.id === target.vehicleId);
@@ -5702,7 +7641,8 @@ export class MageWarsGame {
       }
       case "pyromancer": {
         for (const target of this._players) {
-          if (!target.alive || target.team === p.team) continue;
+          if (!target.alive || target.id === p.id) continue;
+          if (!this._isRoyaleMode && target.team === p.team) continue;
           const d = dist3(p.x, p.y, p.z, target.x, target.y, target.z);
           if (d < 8) {
             const dmg = 60 * (1 - d / 8) * (1 - target.armor / 100);
@@ -5728,7 +7668,8 @@ export class MageWarsGame {
       }
       case "cryomancer": {
         for (const target of this._players) {
-          if (!target.alive || target.team === p.team) continue;
+          if (!target.alive || target.id === p.id) continue;
+          if (!this._isRoyaleMode && target.team === p.team) continue;
           const d = dist3(p.x, p.y, p.z, target.x, target.y, target.z);
           if (d < 10) {
             target.frozen = true;
@@ -6108,7 +8049,9 @@ export class MageWarsGame {
     let bestScore = -Infinity;
 
     for (const t of this._players) {
-      if (!t.alive || t.team === p.team || t.invisible) continue;
+      if (!t.alive || t.id === p.id || t.invisible) continue;
+      // In non-royale mode, skip same-team targets
+      if (!this._isRoyaleMode && t.team === p.team) continue;
       const d = dist3(p.x, p.y, p.z, t.x, t.y, t.z);
       if (d > MW.AI_FIRE_RANGE * 2) continue;
       const toX = t.x - p.x;
@@ -6236,6 +8179,8 @@ export class MageWarsGame {
             if (m.opacity !== undefined) { m.transparent = false; m.opacity = 1; }
           }
         });
+        // --- Idle Animations ---
+        this._animatePlayerMesh(p, dt);
       }
       if (p.nameTag) {
         p.nameTag.position.set(p.x, p.y + MW.PLAYER_HEIGHT + 0.5, p.z);
@@ -6299,6 +8244,9 @@ export class MageWarsGame {
 
     // Update ambient particles
     this._updateAmbientParticles(dt);
+
+    // Animate environmental animals
+    this._animateEnvironmentAnimals(dt);
 
     // Capture point beam pulsing
     for (const cp of this._capturePoints) {
@@ -6418,6 +8366,143 @@ export class MageWarsGame {
     );
   }
 
+  private _animatePlayerMesh(p: MWPlayer, _dt: number): void {
+    if (!p.mesh) return;
+    const t = this._gameTime;
+    const idlePhase = p.mesh.userData.idleTime || 0;
+    const phase = t * 1.5 + idlePhase;
+    const cls = getClassDef(p.classId);
+
+    // Breathing: subtle torso scale oscillation
+    const breathe = Math.sin(phase) * 0.015;
+    p.mesh.traverse(c => {
+      // Cloak sway
+      if (c.name === "cloak" || c.name === "cloakFringe") {
+        c.rotation.x = Math.sin(phase * 0.7) * 0.04;
+        c.rotation.z = Math.sin(phase * 0.5 + 1) * 0.02;
+      }
+      // Leg sway (very subtle idle)
+      if (c.name === "leftLeg") {
+        c.rotation.x = Math.sin(phase * 0.8) * 0.03;
+      }
+      if (c.name === "rightLeg") {
+        c.rotation.x = -Math.sin(phase * 0.8) * 0.03;
+      }
+      // Arm sway
+      if (c.name === "leftUpperArm") {
+        c.rotation.x = Math.sin(phase * 0.6 + 0.5) * 0.04;
+      }
+      if (c.name === "leftForeArm") {
+        c.rotation.x = -0.3 + Math.sin(phase * 0.7) * 0.03;
+      }
+      if (c.name === "rightUpperArm") {
+        c.rotation.x = -0.3 + Math.sin(phase * 0.6 + 1.5) * 0.03;
+      }
+      // Wand sway
+      if (c.name === "wandGroup") {
+        c.rotation.z = Math.sin(phase * 0.8 + 2) * 0.03;
+        c.rotation.y = Math.sin(phase * 0.5) * 0.02;
+      }
+      // Wand tip pulse
+      if (c.name === "wandTip") {
+        const pulse = 0.7 + Math.sin(phase * 2) * 0.3;
+        c.scale.setScalar(pulse);
+      }
+      if (c.name === "wandTipRing") {
+        c.rotation.z = t * 2;
+      }
+      // Team ring pulse
+      if (c.name === "teamRing") {
+        const ringPulse = 0.4 + Math.sin(phase * 1.5) * 0.15;
+        ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = ringPulse;
+      }
+      // Shoulder bob
+      if (c.name === "leftShoulder") {
+        c.position.y = 1.35 + breathe;
+      }
+      if (c.name === "rightShoulder") {
+        c.position.y = 1.35 + breathe;
+      }
+    });
+
+    // Class-specific idle animations
+    if (cls.id === "pyromancer") {
+      p.mesh.traverse(c => {
+        if (c.name.startsWith("pyroEmber_")) {
+          const i = parseInt(c.name.split("_")[1]);
+          const angle = t * 2.5 + i * (Math.PI * 2 / 4);
+          const radius = 0.4 + Math.sin(t * 1.5 + i) * 0.1;
+          c.position.set(Math.cos(angle) * radius, 1.0 + Math.sin(t * 3 + i * 2) * 0.2, Math.sin(angle) * radius);
+        }
+      });
+    }
+    if (cls.id === "cryomancer") {
+      p.mesh.traverse(c => {
+        if (c.name.startsWith("cryoCrystal_")) {
+          const i = parseInt(c.name.split("_")[1]);
+          const angle = t * 1.5 + i * (Math.PI * 2 / 3);
+          c.position.set(Math.cos(angle) * 0.35, 1.3 + Math.sin(t * 2 + i) * 0.15, Math.sin(angle) * 0.35);
+          c.rotation.x = t * 2;
+          c.rotation.y = t * 1.5;
+        }
+      });
+    }
+    if (cls.id === "stormcaller") {
+      p.mesh.traverse(c => {
+        if (c.name.startsWith("stormSpark_")) {
+          const i = parseInt(c.name.split("_")[1]);
+          // Sparks jump to random positions periodically
+          const jumpPhase = Math.floor(t * 4 + i * 1.3);
+          const sparkRng = seededRandom(jumpPhase * 7 + i * 13);
+          c.position.set((sparkRng() - 0.5) * 0.8, 0.5 + sparkRng() * 1.0, (sparkRng() - 0.5) * 0.8);
+          const vis = Math.sin(t * 8 + i * 4) > 0.3;
+          c.visible = vis;
+        }
+      });
+    }
+    if (cls.id === "shadowmancer") {
+      p.mesh.traverse(c => {
+        if (c.name.startsWith("shadowMist_")) {
+          const i = parseInt(c.name.split("_")[1]);
+          const angle = t * 0.5 + i * (Math.PI * 2 / 5);
+          c.position.set(Math.cos(angle) * 0.35, 0.1 + Math.sin(t + i) * 0.08, Math.sin(angle) * 0.35);
+          ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.2 + Math.sin(t * 2 + i) * 0.1;
+        }
+      });
+    }
+    if (cls.id === "druid") {
+      p.mesh.traverse(c => {
+        if (c.name.startsWith("druidLeaf_")) {
+          const i = parseInt(c.name.split("_")[1]);
+          const angle = t * 1.2 + i * (Math.PI * 2 / 3);
+          c.position.set(Math.cos(angle) * 0.5, 1.5 + Math.sin(t * 2 + i * 2) * 0.3, Math.sin(angle) * 0.5);
+          c.rotation.y = t * 3;
+          c.rotation.x = Math.sin(t * 2 + i) * 0.5;
+        }
+      });
+    }
+    if (cls.id === "warlock") {
+      p.mesh.traverse(c => {
+        if (c.name.startsWith("warlockOrb_")) {
+          const i = parseInt(c.name.split("_")[1]);
+          const angle = t * 1.8 + i * (Math.PI * 2 / 3);
+          const radius = 0.4;
+          c.position.set(Math.cos(angle) * radius, 0.9 + Math.sin(t * 2.5 + i) * 0.2, Math.sin(angle) * radius);
+        }
+      });
+    }
+    if (cls.id === "archmage") {
+      p.mesh.traverse(c => {
+        if (c.name.startsWith("archmageRing_")) {
+          const i = parseInt(c.name.split("_")[1]);
+          c.rotation.z = t * (1.5 + i * 0.5);
+          c.rotation.x = Math.PI / 2 + Math.sin(t * 0.5 + i) * 0.2;
+          c.position.y = 1.0 + Math.sin(t * 0.8 + i * 2) * 0.1;
+        }
+      });
+    }
+  }
+
   private _updateParticles(dt: number): void {
     for (let i = this._particles.length - 1; i >= 0; i--) {
       const p = this._particles[i];
@@ -6481,6 +8566,78 @@ export class MageWarsGame {
         this._tempVFX.splice(i, 1);
       }
     }
+  }
+
+  private _animateEnvironmentAnimals(_dt: number): void {
+    if (!this._propGroup) return;
+    const t = this._gameTime;
+    this._propGroup.traverse(c => {
+      if (!c.name.startsWith("animal_")) return;
+      const ud = c.userData;
+      const type = ud.animalType;
+      const phase = ud.phase || 0;
+      const bx = ud.baseX || 0;
+      const by = ud.baseY || 0;
+      const bz = ud.baseZ || 0;
+
+      if (type === "bird") {
+        // Circular flight pattern
+        const radius = 8 + Math.sin(phase) * 3;
+        c.position.x = bx + Math.cos(t * 0.3 + phase) * radius;
+        c.position.y = by + Math.sin(t * 0.5 + phase) * 2;
+        c.position.z = bz + Math.sin(t * 0.3 + phase) * radius;
+        c.rotation.y = t * 0.3 + phase + Math.PI / 2;
+        // Wing flap
+        c.traverse(ch => {
+          if (ch.name === "birdLeftWing") ch.rotation.z = Math.sin(t * 8 + phase) * 0.5;
+          if (ch.name === "birdRightWing") ch.rotation.z = -Math.sin(t * 8 + phase) * 0.5;
+        });
+      } else if (type === "deer") {
+        // Slow wandering
+        c.position.x = bx + Math.sin(t * 0.1 + phase) * 3;
+        c.position.z = bz + Math.cos(t * 0.08 + phase) * 3;
+        c.rotation.y = Math.atan2(Math.cos(t * 0.1 + phase), -Math.sin(t * 0.08 + phase));
+      } else if (type === "wolf") {
+        // Patrol pattern
+        c.position.x = bx + Math.sin(t * 0.15 + phase) * 5;
+        c.position.z = bz + Math.cos(t * 0.12 + phase) * 5;
+        c.rotation.y = Math.atan2(Math.cos(t * 0.15 + phase), -Math.sin(t * 0.12 + phase));
+      } else if (type === "butterfly") {
+        // Erratic fluttering
+        c.position.x = bx + Math.sin(t * 0.6 + phase) * 2 + Math.sin(t * 1.5 + phase * 2) * 0.5;
+        c.position.y = by + Math.sin(t * 0.8 + phase) * 0.5;
+        c.position.z = bz + Math.cos(t * 0.5 + phase) * 2 + Math.cos(t * 1.3 + phase * 3) * 0.5;
+        c.traverse(ch => {
+          if (ch.name === "bfLeftWing") ch.rotation.y = -0.5 + Math.sin(t * 12 + phase) * 0.8;
+          if (ch.name === "bfRightWing") ch.rotation.y = 0.5 - Math.sin(t * 12 + phase) * 0.8;
+        });
+      } else if (type === "bat") {
+        // Swooping flight
+        const batRadius = 5 + Math.sin(phase * 3) * 2;
+        c.position.x = bx + Math.cos(t * 0.5 + phase) * batRadius;
+        c.position.y = by + Math.sin(t * 0.8 + phase) * 2;
+        c.position.z = bz + Math.sin(t * 0.5 + phase) * batRadius;
+        c.rotation.y = t * 0.5 + phase + Math.PI / 2;
+        c.traverse(ch => {
+          if (ch.name === "batLeftWing") ch.rotation.z = Math.sin(t * 10 + phase) * 0.6;
+          if (ch.name === "batRightWing") ch.rotation.z = -Math.sin(t * 10 + phase) * 0.6;
+        });
+      } else if (type === "crab") {
+        // Sideways scuttle
+        c.position.x = bx + Math.sin(t * 0.3 + phase) * 1.5;
+        c.position.z = bz + Math.cos(t * 0.2 + phase) * 1.5;
+      } else if (type === "firefly") {
+        // Gentle drifting with glow pulsing
+        c.position.x = bx + Math.sin(t * 0.4 + phase) * 2;
+        c.position.y = by + Math.sin(t * 0.6 + phase * 2) * 0.5;
+        c.position.z = bz + Math.cos(t * 0.3 + phase) * 2;
+      } else if (type === "fish") {
+        // Swimming in circles
+        c.position.x = bx + Math.cos(t * 0.4 + phase) * 2;
+        c.position.z = bz + Math.sin(t * 0.4 + phase) * 2;
+        c.rotation.y = t * 0.4 + phase + Math.PI / 2;
+      }
+    });
   }
 
   private _updateAmbientParticles(dt: number): void {

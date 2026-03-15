@@ -11,10 +11,15 @@ let _mouseMove: ((e: MouseEvent) => void) | null = null;
 let _mouseDown: ((e: MouseEvent) => void) | null = null;
 let _mouseUp: ((e: MouseEvent) => void) | null = null;
 let _pauseCallback: ((paused: boolean) => void) | null = null;
+let _tabCallback: (() => void) | null = null;
 
 export const ThreeDragonInputSystem = {
   setPauseCallback(cb: ((paused: boolean) => void) | null): void {
     _pauseCallback = cb;
+  },
+
+  setTabCallback(cb: (() => void) | null): void {
+    _tabCallback = cb;
   },
 
   init(state: ThreeDragonState): void {
@@ -32,6 +37,10 @@ export const ThreeDragonInputSystem = {
         case "Digit4": inp.skill4 = true; break;
         case "Digit5": inp.skill5 = true; break;
         case "ShiftLeft": case "ShiftRight": case "Space": inp.boost = true; break;
+        case "Tab":
+          e.preventDefault();
+          _tabCallback?.();
+          break;
         case "Escape":
           state.paused = !state.paused;
           _pauseCallback?.(state.paused);
@@ -140,5 +149,6 @@ export const ThreeDragonInputSystem = {
     if (_mouseUp) window.removeEventListener("mouseup", _mouseUp);
     _keyDown = _keyUp = _mouseMove = _mouseDown = _mouseUp = null;
     _pauseCallback = null;
+    _tabCallback = null;
   },
 };

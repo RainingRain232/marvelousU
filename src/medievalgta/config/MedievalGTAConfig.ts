@@ -66,7 +66,7 @@ export const GTAConfig = {
 
   // Camera
   CAMERA_LERP: 0.08,
-  CAMERA_ZOOM: 1.5,
+  CAMERA_ZOOM: 2.2,
 
   // Day/Night
   DAY_CYCLE_SPEED: 0.003,

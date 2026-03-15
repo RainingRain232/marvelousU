@@ -8,7 +8,7 @@
 import { audioManager } from "@audio/AudioManager";
 import { createThreeDragonState } from "./state/ThreeDragonState";
 import type { ThreeDragonState } from "./state/ThreeDragonState";
-import { TDBalance, TD_MAPS, TD_MAP_BY_ID } from "./config/ThreeDragonConfig";
+import { TDBalance, TD_MAPS, TD_MAP_BY_ID, TD_SKILL_CONFIGS } from "./config/ThreeDragonConfig";
 import { ThreeDragonInputSystem } from "./systems/ThreeDragonInputSystem";
 import { ThreeDragonWaveSystem } from "./systems/ThreeDragonWaveSystem";
 import { ThreeDragonCombatSystem } from "./systems/ThreeDragonCombatSystem";
@@ -71,10 +71,57 @@ export class ThreeDragonGame {
     // Input
     ThreeDragonInputSystem.init(this._state);
     ThreeDragonInputSystem.setPauseCallback((paused) => {
+      // If skill equip menu is open, close it instead of toggling pause
+      if (this._hud.isSkillEquipVisible) {
+        this._hud.hideSkillEquipMenu();
+        this._state.paused = false;
+        return;
+      }
       if (paused && !this._state.gameOver && !this._state.victory) {
         this._hud.showPauseMenu();
       } else {
         this._hud.hidePauseMenu();
+      }
+    });
+
+    // Tab: skill equip menu
+    ThreeDragonInputSystem.setTabCallback(() => {
+      if (this._state.gameOver || this._state.victory) return;
+      if (this._hud.isSkillEquipVisible) {
+        this._hud.hideSkillEquipMenu();
+        this._state.paused = false;
+      } else {
+        this._state.paused = true;
+        this._hud.hidePauseMenu();
+        this._hud.showSkillEquipMenu(this._state);
+      }
+    });
+
+    // Skill equip callback
+    this._hud.setEquipSkillCallback((slot, skillId) => {
+      if (slot >= 0 && slot < 5) {
+        // If skill already equipped in another slot, swap
+        const existingSlot = this._state.equippedSkills.indexOf(skillId);
+        if (existingSlot !== -1) {
+          const temp = this._state.equippedSkills[slot];
+          this._state.equippedSkills[slot] = skillId;
+          this._state.equippedSkills[existingSlot] = temp;
+        } else {
+          this._state.equippedSkills[slot] = skillId;
+        }
+        // Ensure skill state exists
+        if (!this._state.skills.find(s => s.id === skillId)) {
+          const cfg = TD_SKILL_CONFIGS[skillId];
+          if (cfg) {
+            this._state.skills.push({
+              id: skillId,
+              cooldown: 0,
+              maxCooldown: cfg.cooldown,
+              active: false,
+              activeTimer: 0,
+            });
+          }
+        }
       }
     });
 
@@ -160,6 +207,19 @@ export class ThreeDragonGame {
       if (screen.visible) {
         this._hud.showDamageNumber(screen.x, screen.y, damage, isCrit, isElite);
       }
+    });
+
+    // Skill unlock callback
+    ThreeDragonCombatSystem.setSkillUnlockCallback((_skillId, skillName) => {
+      this._hud.showNotification(`New Skill Unlocked: ${skillName}!`, "#ff44ff");
+      this._renderer.addScreenFlash(0xff44ff, 0.3);
+      this._shake(0.5, 0.2);
+    });
+
+    // Level up callback
+    ThreeDragonCombatSystem.setLevelUpCallback((level) => {
+      this._hud.showNotification(`Level ${level}!`, "#44ff88");
+      this._renderer.addScreenFlash(0x44ff88, 0.2);
     });
 
     // Music
@@ -649,6 +709,8 @@ export class ThreeDragonGame {
     ThreeDragonCombatSystem.setBossKillCallback(null);
     ThreeDragonCombatSystem.setPowerUpCollectCallback(null);
     ThreeDragonCombatSystem.setDamageNumberCallback(null);
+    ThreeDragonCombatSystem.setSkillUnlockCallback(null);
+    ThreeDragonCombatSystem.setLevelUpCallback(null);
     ThreeDragonWaveSystem.reset();
 
     if (this._rafId !== null) {

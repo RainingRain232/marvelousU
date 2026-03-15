@@ -62,7 +62,28 @@ export const TDBalance = {
   WORLD_X_MAX: 40,
   WORLD_Y_MIN: 2,
   WORLD_Y_MAX: 22,
+
+  // XP & Levels
+  XP_PER_KILL_BASE: 10,
+  XP_PER_KILL_BOSS: 200,
+  XP_LEVEL_BASE: 100,
+  XP_LEVEL_GROWTH: 50,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Skill unlock order — unlocked at specific levels
+// ---------------------------------------------------------------------------
+
+export const TD_SKILL_UNLOCK_ORDER: { level: number; skillId: TDSkillId }[] = [
+  { level: 2, skillId: TDSkillId.FIRE_BREATH },
+  { level: 3, skillId: TDSkillId.LIGHTNING_BOLT },
+  { level: 4, skillId: TDSkillId.WING_GUST },
+  { level: 5, skillId: TDSkillId.ICE_STORM },
+  { level: 6, skillId: TDSkillId.DRAGON_ROAR },
+  { level: 7, skillId: TDSkillId.HEALING_FLAME },
+  { level: 8, skillId: TDSkillId.SHADOW_DIVE },
+  { level: 9, skillId: TDSkillId.CHAIN_LIGHTNING },
+];
 
 // ---------------------------------------------------------------------------
 // Enemy templates
@@ -803,5 +824,94 @@ export const TD_SKILL_CONFIGS: Record<TDSkillId, TDSkillConfig> = {
     duration: 1.5,
     color: 0x44ccff,
     key: "Shift",
+  },
+  // Unlockable skills
+  [TDSkillId.FIRE_BREATH]: {
+    id: TDSkillId.FIRE_BREATH,
+    name: "Fire Breath",
+    description: "Cone of searing dragonfire ahead",
+    damage: 22,
+    manaCost: 20,
+    cooldown: 5,
+    duration: 1.5,
+    color: 0xff6600,
+    key: "1",
+  },
+  [TDSkillId.ICE_STORM]: {
+    id: TDSkillId.ICE_STORM,
+    name: "Ice Storm",
+    description: "Hail of ice shards that slow enemies",
+    damage: 18,
+    manaCost: 28,
+    cooldown: 8,
+    duration: 2.5,
+    color: 0x88ddff,
+    key: "2",
+  },
+  [TDSkillId.LIGHTNING_BOLT]: {
+    id: TDSkillId.LIGHTNING_BOLT,
+    name: "Lightning Bolt",
+    description: "Instant high-damage bolt to nearest enemy",
+    damage: 55,
+    manaCost: 22,
+    cooldown: 4,
+    duration: 0,
+    color: 0xffff44,
+    key: "3",
+  },
+  [TDSkillId.DRAGON_ROAR]: {
+    id: TDSkillId.DRAGON_ROAR,
+    name: "Dragon Roar",
+    description: "Stuns all nearby enemies for 2 seconds",
+    damage: 15,
+    manaCost: 30,
+    cooldown: 12,
+    duration: 2,
+    color: 0xff8844,
+    key: "4",
+  },
+  [TDSkillId.WING_GUST]: {
+    id: TDSkillId.WING_GUST,
+    name: "Wing Gust",
+    description: "Powerful wind blast that pushes enemies away",
+    damage: 12,
+    manaCost: 18,
+    cooldown: 6,
+    duration: 0,
+    color: 0xaaddcc,
+    key: "5",
+  },
+  [TDSkillId.HEALING_FLAME]: {
+    id: TDSkillId.HEALING_FLAME,
+    name: "Healing Flame",
+    description: "Sacred flame that restores health over time",
+    damage: 0,
+    manaCost: 35,
+    cooldown: 15,
+    duration: 4,
+    color: 0x44ff88,
+    key: "1",
+  },
+  [TDSkillId.SHADOW_DIVE]: {
+    id: TDSkillId.SHADOW_DIVE,
+    name: "Shadow Dive",
+    description: "Phase into shadows, becoming invulnerable and dealing damage on exit",
+    damage: 40,
+    manaCost: 25,
+    cooldown: 10,
+    duration: 1.5,
+    color: 0x6600aa,
+    key: "2",
+  },
+  [TDSkillId.CHAIN_LIGHTNING]: {
+    id: TDSkillId.CHAIN_LIGHTNING,
+    name: "Chain Lightning",
+    description: "Lightning arcs between up to 6 enemies",
+    damage: 30,
+    manaCost: 32,
+    cooldown: 7,
+    duration: 0,
+    color: 0x44ddff,
+    key: "3",
   },
 };

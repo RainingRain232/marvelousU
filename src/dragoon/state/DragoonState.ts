@@ -90,6 +90,16 @@ export enum DragoonSkillId {
   // Phantom
   SOUL_SIPHON = "soul_siphon",
   PHASE_SHIFT = "phase_shift",
+
+  // Unlockable universal skills (earned through leveling)
+  FIREBALL_BARRAGE = "fireball_barrage",
+  ARCANE_SHIELD = "arcane_shield",
+  SPEED_SURGE = "speed_surge",
+  CHAIN_NOVA = "chain_nova",
+  HEALING_LIGHT = "healing_light",
+  AOE_BOMB = "aoe_bomb",
+  HOMING_MISSILES = "homing_missiles",
+  TIME_SLOW = "time_slow",
 }
 
 export interface DragoonSkillState {
@@ -367,6 +377,7 @@ export interface DragoonState {
     skill3: boolean;
     skill4: boolean;
     skill5: boolean;
+    skill6: boolean;
     mouseX: number;
     mouseY: number;
   };
@@ -384,6 +395,14 @@ export interface DragoonState {
 
   // Dead enemies for Raise Dead
   recentDeadEnemies: { type: DragoonEnemyType; position: Vec2; size: number; color: number; glowColor: number }[];
+
+  // Unlockable skill system
+  unlockedSkills: DragoonSkillId[];        // all unlocked universal skills
+  equippedUnlockSkill: DragoonSkillId | null; // currently equipped unlockable skill (key 6)
+  unlockSkillState: DragoonSkillState | null; // runtime state for equipped unlock skill
+
+  // Escape menu
+  escapeMenuOpen: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -483,7 +502,7 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     input: {
       left: false, right: false, up: false, down: false,
       fire: false,
-      skill1: false, skill2: false, skill3: false, skill4: false, skill5: false,
+      skill1: false, skill2: false, skill3: false, skill4: false, skill5: false, skill6: false,
       mouseX: screenW * 0.5, mouseY: screenH * 0.5,
     },
 
@@ -495,5 +514,11 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     cameraX: 0,
 
     recentDeadEnemies: [],
+
+    unlockedSkills: [],
+    equippedUnlockSkill: null,
+    unlockSkillState: null,
+
+    escapeMenuOpen: false,
   };
 }

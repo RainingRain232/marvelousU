@@ -449,7 +449,7 @@ export class DuelGame {
 
     this._state.frameCount++;
 
-    // Hit spark effects + audio
+    // Hit spark effects + audio + enhanced visuals
     for (let i = 0; i < 2; i++) {
       const f = this._state.fighters[i];
       if (f.hp < this._prevHp[i]) {
@@ -457,11 +457,25 @@ export class DuelGame {
 
         // Determine hit severity for audio
         const damage = this._prevHp[i] - f.hp;
-        if (damage > f.maxHp * 0.15) {
+        const isHeavy = damage > f.maxHp * 0.15;
+        if (isHeavy) {
           duelAudio.playHit("heavy");
         } else {
           duelAudio.playHit("light");
         }
+
+        // Enhanced hit effects (impact sparks, screen shake, defender flash)
+        const attackerIdx = i === 0 ? 1 : 0;
+        const attacker = this._state.fighters[attackerIdx];
+        this._fightView.addHitEffect(
+          i as 0 | 1,
+          damage,
+          f.maxHp,
+          attacker.position.x,
+          f.position.x,
+          f.position.y,
+          isHeavy,
+        );
       }
 
       // Block audio

@@ -42,6 +42,36 @@ export class TekkenArenaRenderer {
       case "throne_room":
         this._buildThroneRoom();
         break;
+      case "volcanic_forge":
+        this._buildVolcanicForge();
+        break;
+      case "forest_clearing":
+        this._buildForestClearing();
+        break;
+      case "frozen_lake":
+        this._buildFrozenLake();
+        break;
+      case "ancient_dojo":
+        this._buildAncientDojo();
+        break;
+      case "ruined_cathedral":
+        this._buildRuinedCathedral();
+        break;
+      case "desert_marketplace":
+        this._buildDesertMarketplace();
+        break;
+      case "harbor_docks":
+        this._buildHarborDocks();
+        break;
+      case "dark_dungeon":
+        this._buildDarkDungeon();
+        break;
+      case "mountain_peak":
+        this._buildMountainPeak();
+        break;
+      case "haunted_graveyard":
+        this._buildHauntedGraveyard();
+        break;
       default:
         this._buildCastleCourtyard();
         break;
@@ -2476,6 +2506,859 @@ export class TekkenArenaRenderer {
     this._scene.addLightCone(0, 5.5, -1.5, 5.0, 1.0, 0xffeebb);
     this._scene.addLightCone(-3, 5.5, -3, 4.5, 0.8, 0xffeebb);
     this._scene.addLightCone(3, 5.5, -3, 4.5, 0.8, 0xffeebb);
+  }
+
+  /* ================================================================== */
+  /*  NEW ARENAS (10 additional stages)                                   */
+  /* ================================================================== */
+
+  // ── VOLCANIC FORGE ─────────────────────────────────────────────────────
+
+  private _buildVolcanicForge(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x1a0800, 0.05);
+    this._scene.scene.background = new THREE.Color(0x1a0800);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Cracked lava stone floor
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#2a1a10";
+    ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 200; i++) {
+      const x = Math.random() * 512, y = Math.random() * 512;
+      ctx.fillStyle = `rgba(${60+Math.random()*40},${20+Math.random()*20},${5+Math.random()*10},0.6)`;
+      ctx.fillRect(x, y, 3+Math.random()*8, 2+Math.random()*5);
+    }
+    // Lava cracks
+    for (let i = 0; i < 30; i++) {
+      ctx.strokeStyle = `rgba(${200+Math.random()*55},${50+Math.random()*80},0,${0.3+Math.random()*0.5})`;
+      ctx.lineWidth = 1 + Math.random() * 2;
+      ctx.beginPath();
+      const sx = Math.random() * 512, sy = Math.random() * 512;
+      ctx.moveTo(sx, sy);
+      for (let s = 0; s < 4; s++) ctx.lineTo(sx + (Math.random()-0.5)*60, sy + (Math.random()-0.5)*60);
+      ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0.15 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Lava pools on edges (emissive)
+    const lavaMat = new THREE.MeshStandardMaterial({
+      color: 0xff4400, emissive: 0xff3300, emissiveIntensity: 2.0,
+      transparent: true, opacity: 0.8,
+    });
+    for (const side of [-1, 1]) {
+      const lavaPool = new THREE.Mesh(new THREE.CircleGeometry(1.5, 16), lavaMat);
+      lavaPool.rotation.x = -Math.PI / 2;
+      lavaPool.position.set(side * (floorW / 2 + 1), -0.05, -1);
+      this._props.add(lavaPool);
+    }
+
+    // Anvils and forge equipment
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.8 });
+    for (const z of [-3, -5]) {
+      const anvil = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.3), ironMat);
+      anvil.position.set(-2 + Math.random() * 4, 0.2, z);
+      anvil.castShadow = true;
+      this._props.add(anvil);
+    }
+
+    // Rock walls with lava glow
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9, metalness: 0.1 });
+    for (const side of [-1, 1]) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4, floorD + 2), rockMat);
+      wall.position.set(side * (floorW / 2 + 1), 2, 0);
+      wall.castShadow = true;
+      this._props.add(wall);
+    }
+
+    // Fire braziers
+    this._addFirePit(-4, 0, 0);
+    this._addFirePit(4, 0, 0);
+
+    // Spectators (forge workers)
+    for (let i = 0; i < 8; i++) {
+      const sx = -3 + i * 0.8;
+      this._addSpectatorFigure(sx, 0.1, -4, [0x553322, 0x443322, 0x664433], [0xd4a574, 0xc49464]);
+    }
+
+    // Embers particle effect
+    this._buildPitEmbers();
+    this._buildWallBarriers();
+  }
+
+  // ── FOREST CLEARING ────────────────────────────────────────────────────
+
+  private _buildForestClearing(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x0a1408, 0.035);
+    this._scene.scene.background = new THREE.Color(0x1a2a18);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Grass/dirt floor
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#3a4a2a";
+    ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 400; i++) {
+      const x = Math.random() * 512, y = Math.random() * 512;
+      const g = 40 + Math.random() * 40;
+      ctx.fillStyle = `rgba(${g*0.6},${g},${g*0.3},0.5)`;
+      ctx.fillRect(x, y, 1+Math.random()*3, 3+Math.random()*8);
+    }
+    // Dirt patches
+    for (let i = 0; i < 20; i++) {
+      ctx.fillStyle = `rgba(${80+Math.random()*30},${60+Math.random()*20},${40+Math.random()*15},0.4)`;
+      ctx.beginPath();
+      ctx.ellipse(Math.random()*512, Math.random()*512, 10+Math.random()*20, 5+Math.random()*10, Math.random()*Math.PI, 0, Math.PI*2);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(3, 3);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.0 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Trees (trunks + canopy)
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.85 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x336622, roughness: 0.8 });
+    const treePositions = [
+      [-6, -3], [-7, -5], [6, -3], [7, -5],
+      [-5, -6], [5, -6], [-8, -1], [8, -1],
+      [-6, 2], [6, 2],
+    ];
+    for (const [tx, tz] of treePositions) {
+      const h = 3 + Math.random() * 2;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, h, 8), trunkMat);
+      trunk.position.set(tx, h / 2, tz);
+      trunk.castShadow = true;
+      this._props.add(trunk);
+      const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.2 + Math.random() * 0.5, 8, 6), leafMat);
+      canopy.position.set(tx, h + 0.5, tz);
+      canopy.castShadow = true;
+      this._props.add(canopy);
+    }
+
+    // Mushrooms and rocks as small details
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.85 });
+    for (let i = 0; i < 8; i++) {
+      const rock = new THREE.Mesh(
+        new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 6, 4),
+        rockMat,
+      );
+      rock.position.set(
+        (Math.random() - 0.5) * floorW * 0.8,
+        0.1,
+        -3 - Math.random() * 4,
+      );
+      rock.scale.set(1 + Math.random() * 0.5, 0.5 + Math.random() * 0.3, 1 + Math.random() * 0.5);
+      this._props.add(rock);
+    }
+
+    // Spectators (villagers)
+    for (let i = 0; i < 10; i++) {
+      const sx = -4 + i * 0.8;
+      this._addSpectatorFigure(sx, 0.1, -5, [0x556633, 0x665544, 0x887766], [0xd4a574, 0xe0b888]);
+    }
+
+    this._buildWallBarriers();
+  }
+
+  // ── FROZEN LAKE ────────────────────────────────────────────────────────
+
+  private _buildFrozenLake(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x0a1020, 0.03);
+    this._scene.scene.background = new THREE.Color(0x0a1020);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Ice floor (semi-transparent, reflective)
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#8899aa";
+    ctx.fillRect(0, 0, 512, 512);
+    // Ice cracks
+    for (let i = 0; i < 40; i++) {
+      ctx.strokeStyle = `rgba(${180+Math.random()*75},${200+Math.random()*55},${220+Math.random()*35},${0.3+Math.random()*0.4})`;
+      ctx.lineWidth = 0.5 + Math.random();
+      ctx.beginPath();
+      const sx = Math.random() * 512, sy = Math.random() * 512;
+      ctx.moveTo(sx, sy);
+      for (let s = 0; s < 5; s++) ctx.lineTo(sx + (Math.random()-0.5)*80, sy + (Math.random()-0.5)*80);
+      ctx.stroke();
+    }
+    // Frost patches
+    for (let i = 0; i < 50; i++) {
+      ctx.fillStyle = `rgba(200,220,240,${0.1+Math.random()*0.15})`;
+      ctx.beginPath();
+      ctx.ellipse(Math.random()*512, Math.random()*512, 5+Math.random()*15, 3+Math.random()*8, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.15, metalness: 0.3 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Snow banks around edges
+    const snowMat = new THREE.MeshStandardMaterial({ color: 0xddddee, roughness: 0.9 });
+    for (const side of [-1, 1]) {
+      const bank = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 0.6, floorD + 2),
+        snowMat,
+      );
+      bank.position.set(side * (floorW / 2 + 1), 0.3, 0);
+      this._props.add(bank);
+    }
+
+    // Icicle pillars
+    const iceMat = new THREE.MeshStandardMaterial({
+      color: 0xaaccee, roughness: 0.1, metalness: 0.2,
+      transparent: true, opacity: 0.7,
+    });
+    for (const pos of [[-5, -4], [5, -4], [-3, -6], [3, -6]] as [number, number][]) {
+      const icicle = new THREE.Mesh(new THREE.ConeGeometry(0.2, 2.5, 6), iceMat);
+      icicle.position.set(pos[0], 1.25, pos[1]);
+      icicle.castShadow = true;
+      this._props.add(icicle);
+    }
+
+    // Spectators in winter gear
+    for (let i = 0; i < 8; i++) {
+      this._addSpectatorFigure(-3 + i * 0.8, 0.1, -5, [0x445566, 0x556677, 0x667788], [0xd4a574, 0xe0b888]);
+    }
+
+    this._buildWallBarriers();
+  }
+
+  // ── ANCIENT DOJO ───────────────────────────────────────────────────────
+
+  private _buildAncientDojo(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x0a0808, 0.025);
+    this._scene.scene.background = new THREE.Color(0x0a0808);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Polished wooden floor
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#5a4530";
+    ctx.fillRect(0, 0, 512, 512);
+    // Wood grain
+    for (let i = 0; i < 150; i++) {
+      const y = Math.random() * 512;
+      ctx.strokeStyle = `rgba(${70+Math.random()*30},${50+Math.random()*25},${30+Math.random()*15},0.3)`;
+      ctx.lineWidth = 0.5 + Math.random();
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(512, y + (Math.random()-0.5)*20);
+      ctx.stroke();
+    }
+    // Plank separators
+    for (let x = 0; x < 512; x += 64) {
+      ctx.strokeStyle = "#3a2a1a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 512);
+      ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.1 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Wooden pillars
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.7 });
+    for (const side of [-1, 1]) {
+      for (const zp of [-2, 2]) {
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4, 8), pillarMat);
+        pillar.position.set(side * (floorW / 2 + 0.3), 2, zp);
+        pillar.castShadow = true;
+        this._props.add(pillar);
+      }
+    }
+
+    // Paper sliding walls (shoji screens)
+    const screenMat = new THREE.MeshStandardMaterial({
+      color: 0xeeddcc, roughness: 0.9, transparent: true, opacity: 0.85,
+      side: THREE.DoubleSide,
+    });
+    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(floorW + 1, 4), screenMat);
+    backWall.position.set(0, 2, -floorD / 2 - 0.5);
+    this._props.add(backWall);
+
+    // Grid lines on shoji
+    const gridMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.8 });
+    for (let x = -5; x <= 5; x += 1) {
+      const vLine = new THREE.Mesh(new THREE.BoxGeometry(0.02, 4, 0.01), gridMat);
+      vLine.position.set(x, 2, -floorD / 2 - 0.49);
+      this._props.add(vLine);
+    }
+    for (let y = 0.5; y < 4; y += 0.8) {
+      const hLine = new THREE.Mesh(new THREE.BoxGeometry(floorW + 1, 0.02, 0.01), gridMat);
+      hLine.position.set(0, y, -floorD / 2 - 0.49);
+      this._props.add(hLine);
+    }
+
+    // Weapon rack
+    const rackMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.7 });
+    const rack = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 0.15), rackMat);
+    rack.position.set(-4, 1.5, -floorD / 2 + 0.5);
+    this._props.add(rack);
+
+    // Lanterns
+    for (const side of [-1, 1]) {
+      this._addWallTorch(side * (floorW / 2 + 0.2), 2.5, -2);
+      this._addWallTorch(side * (floorW / 2 + 0.2), 2.5, 2);
+    }
+
+    // Spectators (martial artists)
+    for (let i = 0; i < 6; i++) {
+      this._addSpectatorFigure(-2 + i * 0.7, 0.1, -4.5, [0xdd8822, 0xcc7711, 0xeeddcc], [0xf0d0b0, 0xd4a574]);
+    }
+
+    this._buildWallBarriers();
+  }
+
+  // ── RUINED CATHEDRAL ───────────────────────────────────────────────────
+
+  private _buildRuinedCathedral(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x0a0810, 0.04);
+    this._scene.scene.background = new THREE.Color(0x0a0810);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Cracked marble floor
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#4a4048";
+    ctx.fillRect(0, 0, 512, 512);
+    // Marble veins
+    for (let i = 0; i < 60; i++) {
+      ctx.strokeStyle = `rgba(${80+Math.random()*40},${70+Math.random()*30},${90+Math.random()*40},0.3)`;
+      ctx.lineWidth = 0.5 + Math.random();
+      ctx.beginPath();
+      const sx = Math.random() * 512, sy = Math.random() * 512;
+      ctx.moveTo(sx, sy);
+      for (let s = 0; s < 3; s++) ctx.lineTo(sx + (Math.random()-0.5)*100, sy + (Math.random()-0.5)*100);
+      ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, metalness: 0.15 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Broken stone columns
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x6a6068, roughness: 0.8, metalness: 0.1 });
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const h = 2 + Math.random() * 2; // varying heights (broken)
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, h, 10), stoneMat);
+        col.position.set(side * (floorW / 2 + 0.5), h / 2, -2 + i * 2.5);
+        col.castShadow = true;
+        this._props.add(col);
+      }
+    }
+
+    // Stained glass remnants (colorful planes on back wall)
+    const glassColors = [0x4466cc, 0xcc4444, 0x44aa44, 0xcc8844, 0x8844cc];
+    for (let i = 0; i < 3; i++) {
+      const glassMat = new THREE.MeshStandardMaterial({
+        color: glassColors[i], emissive: glassColors[i], emissiveIntensity: 0.3,
+        transparent: true, opacity: 0.5, side: THREE.DoubleSide,
+      });
+      const glass = new THREE.Mesh(new THREE.CircleGeometry(0.6, 8), glassMat);
+      glass.position.set(-2 + i * 2, 3.5, -floorD / 2 - 0.3);
+      this._props.add(glass);
+    }
+
+    // Altar (back center)
+    const altarMat = new THREE.MeshStandardMaterial({ color: 0x5a5060, roughness: 0.7, metalness: 0.2 });
+    const altar = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 0.8), altarMat);
+    altar.position.set(0, 0.4, -floorD / 2 + 1);
+    altar.castShadow = true;
+    this._props.add(altar);
+
+    // Candles on altar
+    for (const cx of [-0.4, 0, 0.4]) {
+      this._addFirePit(cx, 0.8, -floorD / 2 + 1);
+    }
+
+    // Spectators
+    for (let i = 0; i < 8; i++) {
+      this._addSpectatorFigure(-3 + i * 0.8, 0.1, -5, [0x443355, 0x554466, 0x332244], [0xd4a574, 0xe0b888]);
+    }
+
+    this._buildWallBarriers();
+  }
+
+  // ── DESERT MARKETPLACE ─────────────────────────────────────────────────
+
+  private _buildDesertMarketplace(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x1a1408, 0.03);
+    this._scene.scene.background = new THREE.Color(0x2a2010);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Sandy stone floor
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#8a7a5a";
+    ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 300; i++) {
+      const b = 120 + Math.random() * 40;
+      ctx.fillStyle = `rgba(${b},${b*0.85},${b*0.6},0.4)`;
+      ctx.fillRect(Math.random()*512, Math.random()*512, 2+Math.random()*6, 1+Math.random()*4);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(3, 3);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0.05 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Market stalls
+    const clothColors = [0xcc4444, 0x4466cc, 0xccaa22, 0x44aa44, 0xcc6622];
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.8 });
+    for (let i = 0; i < 5; i++) {
+      const z = -3 - i * 1.5;
+      const x = (i % 2 === 0 ? -1 : 1) * (3 + Math.random());
+      // Stall frame
+      const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 4), woodMat);
+      post1.position.set(x - 0.5, 1.25, z); this._props.add(post1);
+      const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 4), woodMat);
+      post2.position.set(x + 0.5, 1.25, z); this._props.add(post2);
+      // Cloth canopy
+      const canopyMat = new THREE.MeshStandardMaterial({
+        color: clothColors[i % clothColors.length], roughness: 0.8, side: THREE.DoubleSide,
+      });
+      const canopy = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), canopyMat);
+      canopy.position.set(x, 2.5, z);
+      canopy.rotation.x = -0.2;
+      this._props.add(canopy);
+    }
+
+    // Clay pots
+    const clayMat = new THREE.MeshStandardMaterial({ color: 0xaa7744, roughness: 0.75 });
+    for (let i = 0; i < 6; i++) {
+      const pot = new THREE.Mesh(new THREE.SphereGeometry(0.12 + Math.random() * 0.08, 6, 5), clayMat);
+      pot.position.set(-4 + Math.random() * 8, 0.1, -3 - Math.random() * 3);
+      pot.scale.y = 1.2;
+      this._props.add(pot);
+    }
+
+    this._addFirePit(5, 0, 0);
+
+    // Spectators (merchants, buyers)
+    for (let i = 0; i < 12; i++) {
+      this._addSpectatorFigure(-5 + i * 0.85, 0.1, -4.5, [0x886644, 0xaa8855, 0xcc9966, 0xeeddcc], [0xd4a574, 0xc49464, 0xa07050]);
+    }
+
+    this._buildWallBarriers();
+  }
+
+  // ── HARBOR DOCKS ───────────────────────────────────────────────────────
+
+  private _buildHarborDocks(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x0a0e14, 0.04);
+    this._scene.scene.background = new THREE.Color(0x0a1018);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Wooden dock planks
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#4a3a28";
+    ctx.fillRect(0, 0, 512, 512);
+    // Planks
+    for (let y = 0; y < 512; y += 32) {
+      const shade = 60 + Math.random() * 20;
+      ctx.fillStyle = `rgb(${shade+10},${shade-5},${shade-15})`;
+      ctx.fillRect(0, y, 512, 30);
+      ctx.strokeStyle = "#2a1a10";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke();
+      // Nail marks
+      for (let nx = 30; nx < 512; nx += 60) {
+        ctx.fillStyle = "#3a3a3a";
+        ctx.beginPath();
+        ctx.arc(nx, y + 15, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, metalness: 0.05 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Water below (visible at edges)
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x224466, emissive: 0x112233, emissiveIntensity: 0.3,
+      roughness: 0.2, metalness: 0.3,
+    });
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(floorW + 10, floorD + 10), waterMat);
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = -0.3;
+    this._props.add(water);
+
+    // Dock posts and rope
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x5a4020, roughness: 0.8 });
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 4; i++) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5, 6), postMat);
+        post.position.set(side * (floorW / 2 + 0.3), 0.75, -3 + i * 2);
+        post.castShadow = true;
+        this._props.add(post);
+      }
+    }
+
+    // Crates and barrels
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0x7a5a2a, roughness: 0.8 });
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x6a4a1a, roughness: 0.75 });
+    for (let i = 0; i < 4; i++) {
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), crateMat);
+      crate.position.set(-4 + Math.random() * 2, 0.25, -4 - Math.random() * 2);
+      crate.rotation.y = Math.random();
+      crate.castShadow = true;
+      this._props.add(crate);
+    }
+    for (let i = 0; i < 3; i++) {
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6, 8), barrelMat);
+      barrel.position.set(3 + Math.random(), 0.3, -3 - Math.random() * 2);
+      barrel.castShadow = true;
+      this._props.add(barrel);
+    }
+
+    // Ship mast in background
+    const mastMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.75 });
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 8, 6), mastMat);
+    mast.position.set(6, 4, -6);
+    mast.castShadow = true;
+    this._props.add(mast);
+
+    // Lanterns
+    this._addWallTorch(-5, 2, -2);
+    this._addWallTorch(5, 2, -2);
+
+    // Spectators (sailors, dockworkers)
+    for (let i = 0; i < 10; i++) {
+      this._addSpectatorFigure(-4 + i * 0.85, 0.1, -4.5, [0x334455, 0x445566, 0x556677, 0x887766], [0xd4a574, 0xc49464]);
+    }
+
+    this._buildWallBarriers();
+  }
+
+  // ── DARK DUNGEON ───────────────────────────────────────────────────────
+
+  private _buildDarkDungeon(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x050505, 0.07);
+    this._scene.scene.background = new THREE.Color(0x050505);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Dank stone floor
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 200; i++) {
+      const b = 20 + Math.random() * 20;
+      ctx.fillStyle = `rgba(${b},${b},${b},0.5)`;
+      ctx.fillRect(Math.random()*512, Math.random()*512, 3+Math.random()*8, 2+Math.random()*6);
+    }
+    // Moss/mold patches
+    for (let i = 0; i < 15; i++) {
+      ctx.fillStyle = `rgba(30,${50+Math.random()*30},20,0.3)`;
+      ctx.beginPath();
+      ctx.ellipse(Math.random()*512, Math.random()*512, 8+Math.random()*15, 4+Math.random()*8, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.05 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Low stone ceiling
+    const ceilMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(floorW + 2, floorD + 2), ceilMat);
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.y = 3.5;
+    this._props.add(ceil);
+
+    // Stone walls
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.85, metalness: 0.05 });
+    for (const side of [-1, 1]) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.5, floorD + 2), wallMat);
+      wall.position.set(side * (floorW / 2 + 0.5), 1.75, 0);
+      this._props.add(wall);
+    }
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(floorW + 2, 3.5, 0.5), wallMat);
+    backWall.position.set(0, 1.75, -floorD / 2 - 0.5);
+    this._props.add(backWall);
+
+    // Chains hanging from ceiling
+    const chainMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4, metalness: 0.7 });
+    for (let i = 0; i < 6; i++) {
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1 + Math.random(), 4), chainMat);
+      chain.position.set(-3 + Math.random() * 6, 3 - Math.random() * 0.5, -2 - Math.random() * 3);
+      this._props.add(chain);
+    }
+
+    // Skull props
+    const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 });
+    for (let i = 0; i < 3; i++) {
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), boneMat);
+      skull.position.set(-2 + Math.random() * 4, 0.08, -4 - Math.random() * 2);
+      skull.scale.set(1, 0.8, 1);
+      this._props.add(skull);
+    }
+
+    // Torches (sparse lighting)
+    this._addWallTorch(-4, 2, -1);
+    this._addWallTorch(4, 2, -1);
+    this._addFirePit(0, 0, -2);
+
+    this._buildWallBarriers();
+  }
+
+  // ── MOUNTAIN PEAK ──────────────────────────────────────────────────────
+
+  private _buildMountainPeak(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x889aaa, 0.05);
+    this._scene.scene.background = new THREE.Color(0x4466aa);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Rocky mountain platform
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#5a5a5a";
+    ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 300; i++) {
+      const b = 70 + Math.random() * 40;
+      ctx.fillStyle = `rgba(${b},${b},${b},0.5)`;
+      ctx.fillRect(Math.random()*512, Math.random()*512, 3+Math.random()*10, 2+Math.random()*6);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 2);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, metalness: 0.1 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Rock formations around edges
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x6a6a6a, roughness: 0.85 });
+    for (let i = 0; i < 8; i++) {
+      const rock = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 6, 4),
+        rockMat,
+      );
+      const angle = (i / 8) * Math.PI * 2;
+      rock.position.set(
+        Math.cos(angle) * (floorW / 2 + 1),
+        0.2,
+        Math.sin(angle) * (floorD / 2 + 0.5) - 1,
+      );
+      rock.scale.set(1 + Math.random() * 0.5, 0.4 + Math.random() * 0.3, 1 + Math.random() * 0.5);
+      this._props.add(rock);
+    }
+
+    // Distant mountain peaks (background)
+    const mtMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.9 });
+    for (let i = 0; i < 5; i++) {
+      const peak = new THREE.Mesh(new THREE.ConeGeometry(2 + Math.random() * 2, 6 + Math.random() * 4, 6), mtMat);
+      peak.position.set(-8 + i * 4, -2, -12 - Math.random() * 5);
+      this._props.add(peak);
+    }
+
+    // Snow cap on distant peaks
+    const snowMat = new THREE.MeshStandardMaterial({ color: 0xeeeeff, roughness: 0.7 });
+    for (let i = 0; i < 5; i++) {
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.8 + Math.random() * 0.5, 1.5, 6), snowMat);
+      cap.position.set(-8 + i * 4, 3 + Math.random() * 2, -12 - Math.random() * 5);
+      this._props.add(cap);
+    }
+
+    // Wind-blown clouds (flat planes)
+    const cloudMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.15,
+      side: THREE.DoubleSide, depthWrite: false,
+    });
+    for (let i = 0; i < 6; i++) {
+      const cloud = new THREE.Mesh(new THREE.PlaneGeometry(4 + Math.random() * 3, 0.5 + Math.random() * 0.5), cloudMat);
+      cloud.position.set(-6 + Math.random() * 12, 4 + Math.random() * 3, -8 - Math.random() * 5);
+      cloud.rotation.x = -0.3;
+      this._props.add(cloud);
+    }
+
+    this._buildWallBarriers();
+  }
+
+  // ── HAUNTED GRAVEYARD ──────────────────────────────────────────────────
+
+  private _buildHauntedGraveyard(): void {
+    this._scene.scene.fog = new THREE.FogExp2(0x0a0e0a, 0.06);
+    this._scene.scene.background = new THREE.Color(0x0a0e0a);
+
+    const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
+    const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
+
+    // Muddy graveyard floor
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#2a2a28";
+    ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 250; i++) {
+      const b = 30 + Math.random() * 25;
+      ctx.fillStyle = `rgba(${b+5},${b},${b-5},0.5)`;
+      ctx.fillRect(Math.random()*512, Math.random()*512, 2+Math.random()*5, 1+Math.random()*4);
+    }
+    // Grass tufts
+    for (let i = 0; i < 100; i++) {
+      ctx.fillStyle = `rgba(${30+Math.random()*20},${50+Math.random()*30},${20+Math.random()*15},0.3)`;
+      ctx.fillRect(Math.random()*512, Math.random()*512, 1+Math.random()*2, 3+Math.random()*6);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(3, 3);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(floorW, floorD),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.0 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this._floorGroup.add(floor);
+
+    // Gravestones
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x5a5a55, roughness: 0.85 });
+    const gravePositions = [
+      [-5, -3], [-4, -5], [-2, -4], [0, -5.5], [2, -4], [4, -5], [5, -3],
+      [-3, -6.5], [1, -6.5], [3, -6.5],
+    ];
+    for (const [gx, gz] of gravePositions) {
+      const h = 0.5 + Math.random() * 0.5;
+      const grave = new THREE.Mesh(new THREE.BoxGeometry(0.4, h, 0.08), stoneMat);
+      grave.position.set(gx + (Math.random()-0.5)*0.3, h / 2, gz);
+      grave.rotation.z = (Math.random() - 0.5) * 0.15; // slightly tilted
+      grave.castShadow = true;
+      this._props.add(grave);
+      // Rounded top
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 4, 0, Math.PI*2, 0, Math.PI*0.5), stoneMat);
+      top.position.set(gx + (Math.random()-0.5)*0.3, h, gz);
+      top.scale.set(1, 0.6, 0.4);
+      this._props.add(top);
+    }
+
+    // Dead trees
+    const deadTreeMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
+    for (const [tx, tz] of [[-6, -4], [6, -4], [-7, -6], [7, -6]] as [number, number][]) {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 3, 6), deadTreeMat);
+      trunk.position.set(tx, 1.5, tz);
+      trunk.castShadow = true;
+      this._props.add(trunk);
+      // Bare branches
+      for (let b = 0; b < 3; b++) {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 1 + Math.random(), 4), deadTreeMat);
+        branch.position.set(tx, 2.5 + b * 0.3, tz);
+        branch.rotation.z = (Math.random() - 0.5) * 1.5;
+        branch.rotation.x = (Math.random() - 0.5) * 0.5;
+        this._props.add(branch);
+      }
+    }
+
+    // Ghostly mist (ground-level transparent planes)
+    const mistMat = new THREE.MeshBasicMaterial({
+      color: 0x44ff88, transparent: true, opacity: 0.04,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    for (let i = 0; i < 8; i++) {
+      const mist = new THREE.Mesh(new THREE.PlaneGeometry(3 + Math.random() * 2, 0.5), mistMat);
+      mist.position.set(-4 + Math.random() * 8, 0.2 + Math.random() * 0.3, -2 - Math.random() * 5);
+      mist.rotation.x = -Math.PI / 2 + (Math.random()-0.5)*0.3;
+      this._props.add(mist);
+    }
+
+    // Eerie green fire
+    this._addFirePit(-5, 0, 0);
+    this._addFirePit(5, 0, 0);
+
+    // Spectators (shadowy figures)
+    for (let i = 0; i < 6; i++) {
+      this._addSpectatorFigure(-2 + i * 0.7, 0.1, -7, [0x222222, 0x1a1a1a, 0x333333], [0x998877, 0x887766]);
+    }
+
+    this._buildWallBarriers();
   }
 
   /* ================================================================== */

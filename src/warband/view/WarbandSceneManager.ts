@@ -346,6 +346,11 @@ export class WarbandSceneManager {
     this._addGroundLeaves(rng);
     this._addFenceRow(rng);
     this._addBirds(rng);
+    this._addStoneCircle(rng);
+    this._addWildflowerPatches(rng);
+    this._addTerrainRocks(rng);
+    this._addDustMotes(rng);
+    this._addGrassPatches(rng);
   }
 
   // ---- Rocks: varied shapes, partially embedded, moss and lichen ----------
@@ -471,18 +476,33 @@ export class WarbandSceneManager {
     }
   }
 
-  // ---- Trees: detailed bark, layered multi-cluster canopy ----------------
+  // ---- Trees: MageWars-style multi-layered cones with bark rings ----------
 
   private _addTrees(rng: () => number): void {
     const halfW = WB.ARENA_WIDTH / 2;
 
-    // Leaf color palettes — mix of bright summer and deeper forest greens
-    const leafPalettes = [
-      [0x2c5c1e, 0x3a7228, 0x4a8c34],  // deep forest
-      [0x3a6e28, 0x4e8c38, 0x5ea040],  // mid-green
-      [0x2e6030, 0x3e7840, 0x4e8c50],  // cool green
-      [0x5a7820, 0x6a9030, 0x7aaa3c],  // yellow-green (young leaves)
+    // Shared geometries for performance (MageWars style)
+    const trunkGeo = new THREE.CylinderGeometry(0.15, 0.3, 2.5, 8);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 });
+    const trunkDarkMat = new THREE.MeshStandardMaterial({ color: 0x3a2510, roughness: 0.95 });
+    const barkRingGeo = new THREE.TorusGeometry(0.22, 0.03, 4, 8);
+    const rootGeo = new THREE.CylinderGeometry(0.04, 0.08, 0.8, 5);
+
+    // Foliage color palettes
+    const leafColors = [
+      [0x2c5c1e, 0x3a7228],  // deep forest
+      [0x3a6e28, 0x4e8c38],  // mid-green
+      [0x2e6030, 0x3e7840],  // cool green
+      [0x5a7820, 0x6a9030],  // yellow-green
     ];
+
+    // Helper: brighten a color
+    const brighten = (c: number, factor: number): number => {
+      const r = Math.min(255, ((c >> 16) & 0xff) * factor);
+      const g = Math.min(255, ((c >> 8) & 0xff) * factor);
+      const b = Math.min(255, (c & 0xff) * factor);
+      return (Math.floor(r) << 16) | (Math.floor(g) << 8) | Math.floor(b);
+    };
 
     for (let i = 0; i < 38; i++) {
       const angle = (i / 38) * Math.PI * 2 + (rng() - 0.5) * 0.35;
@@ -491,171 +511,63 @@ export class WarbandSceneManager {
       const z = Math.sin(angle) * radius;
       const h = getTerrainHeight(x, z);
 
-      const treeGroup = new THREE.Group();
-      const treeHeight = 3.5 + rng() * 3.5;
-      const trunkR = 0.14 + rng() * 0.18;
+      const tree = new THREE.Group();
 
-      // --- Trunk ---
-      // Bark: dark brown base, lighter secondary highlight
-      const barkBase = 0x3a2510 + Math.floor(rng() * 0x100800);
-      const trunkMat = new THREE.MeshStandardMaterial({
-        color: barkBase,
-        roughness: 0.98,
-        metalness: 0.0,
-      });
+      // --- Trunk (MageWars style) ---
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+      trunk.position.y = 1.25;
+      trunk.castShadow = true;
+      tree.add(trunk);
 
-      // Main trunk — 3-section taper for more natural silhouette
-      const t1Geo = new THREE.CylinderGeometry(trunkR * 0.75, trunkR * 1.1, treeHeight * 0.4, 7);
-      const t1 = new THREE.Mesh(t1Geo, trunkMat);
-      t1.position.y = treeHeight * 0.2;
-      t1.rotation.y = rng() * Math.PI * 2;
-      t1.castShadow = true;
-      t1.receiveShadow = true;
-      treeGroup.add(t1);
-
-      const t2Geo = new THREE.CylinderGeometry(trunkR * 0.55, trunkR * 0.75, treeHeight * 0.35, 7);
-      const t2 = new THREE.Mesh(t2Geo, trunkMat);
-      t2.position.y = treeHeight * 0.575;
-      t2.rotation.y = rng() * Math.PI * 2;
-      t2.castShadow = true;
-      treeGroup.add(t2);
-
-      const t3Geo = new THREE.CylinderGeometry(trunkR * 0.3, trunkR * 0.55, treeHeight * 0.3, 6);
-      const t3 = new THREE.Mesh(t3Geo, trunkMat);
-      t3.position.y = treeHeight * 0.85;
-      t3.castShadow = true;
-      treeGroup.add(t3);
-
-      // Bark ridges — 4-6 thin vertical fins along trunk
-      const ridgeCount = 4 + Math.floor(rng() * 3);
-      for (let r = 0; r < ridgeCount; r++) {
-        const ra = (r / ridgeCount) * Math.PI * 2;
-        const ridgeGeo = new THREE.BoxGeometry(0.025, treeHeight * 0.6, 0.04);
-        const ridge = new THREE.Mesh(ridgeGeo, trunkMat);
-        ridge.position.set(
-          Math.cos(ra) * (trunkR * 0.9),
-          treeHeight * 0.35,
-          Math.sin(ra) * (trunkR * 0.9),
-        );
-        ridge.rotation.y = ra;
-        treeGroup.add(ridge);
+      // Bark rings (MageWars signature detail)
+      for (let br = 0; br < 3; br++) {
+        const ring = new THREE.Mesh(barkRingGeo, trunkDarkMat);
+        ring.position.y = 0.5 + br * 0.7;
+        ring.rotation.x = Math.PI / 2;
+        tree.add(ring);
       }
 
-      // Exposed roots — flaring buttresses at base
-      const rootCount = 4 + Math.floor(rng() * 3);
-      for (let r = 0; r < rootCount; r++) {
-        const ra = (r / rootCount) * Math.PI * 2 + rng() * 0.4;
-        const rootLen = 0.5 + rng() * 0.6;
-        const rootGeo = new THREE.CylinderGeometry(0.025, trunkR * 0.38, rootLen, 4);
-        const root = new THREE.Mesh(rootGeo, trunkMat);
-        root.position.set(
-          Math.cos(ra) * rootLen * 0.45,
-          0.04,
-          Math.sin(ra) * rootLen * 0.45,
-        );
-        root.rotation.z = Math.cos(ra) * 1.15;
-        root.rotation.x = Math.sin(ra) * 1.15;
-        root.castShadow = true;
-        treeGroup.add(root);
+      // Exposed roots (MageWars style)
+      for (let r = 0; r < 3; r++) {
+        const rootAngle = (r / 3) * Math.PI * 2 + rng() * 0.8;
+        const root = new THREE.Mesh(rootGeo, trunkDarkMat);
+        root.position.set(Math.cos(rootAngle) * 0.25, 0.15, Math.sin(rootAngle) * 0.25);
+        root.rotation.z = Math.PI / 3 * (rng() > 0.5 ? 1 : -1);
+        root.rotation.y = rootAngle;
+        tree.add(root);
       }
 
-      // --- Canopy ---
-      const palette = leafPalettes[Math.floor(rng() * leafPalettes.length)];
-      const canopyBaseY = treeHeight * 0.62;
-      const mainR = 1.2 + rng() * 1.0;
+      // --- Multi-layered cone foliage (MageWars style) ---
+      const pal = leafColors[Math.floor(rng() * leafColors.length)];
+      const leafColor = rng() > 0.5 ? pal[0] : pal[1];
+      const leafMat = new THREE.MeshStandardMaterial({ color: leafColor, roughness: 0.8 });
+      const leafLightMat = new THREE.MeshStandardMaterial({ color: brighten(leafColor, 1.2), roughness: 0.75 });
 
-      // Helper to make a deformed icosahedron leaf cluster
-      const makeLeafCluster = (radius: number, color: number) => {
-        const mat = new THREE.MeshStandardMaterial({
-          color,
-          roughness: 0.88,
-          metalness: 0.0,
-        });
-        const geo = new THREE.IcosahedronGeometry(radius, 1);
-        const p = geo.attributes.position;
-        for (let v = 0; v < p.count; v++) {
-          const n = 0.82 + rng() * 0.36;
-          p.setXYZ(v, p.getX(v) * n, p.getY(v) * n * 0.78, p.getZ(v) * n);
-        }
-        geo.computeVertexNormals();
-        return new THREE.Mesh(geo, mat);
-      };
+      // Lower wider cone
+      const leafGeo1 = new THREE.ConeGeometry(1.8, 2.0, 8);
+      const leaves1 = new THREE.Mesh(leafGeo1, leafMat);
+      leaves1.position.y = 3.2;
+      leaves1.castShadow = true;
+      tree.add(leaves1);
 
-      // Bottom layer — widest, darkest (shadowed inside)
-      const base = makeLeafCluster(mainR * 0.9, palette[0]);
-      base.position.y = canopyBaseY;
-      base.castShadow = true;
-      treeGroup.add(base);
+      // Middle cone
+      const leafGeo2 = new THREE.ConeGeometry(1.4, 2.2, 8);
+      const leaves2 = new THREE.Mesh(leafGeo2, leafLightMat);
+      leaves2.position.y = 4.3;
+      leaves2.castShadow = true;
+      tree.add(leaves2);
 
-      // Mid layer — slightly smaller, medium green
-      const mid = makeLeafCluster(mainR * 0.82, palette[1]);
-      mid.position.y = canopyBaseY + mainR * 0.55;
-      mid.castShadow = true;
-      treeGroup.add(mid);
+      // Top cone
+      const leafGeo3 = new THREE.ConeGeometry(0.8, 1.5, 6);
+      const leaves3 = new THREE.Mesh(leafGeo3, leafMat);
+      leaves3.position.y = 5.3;
+      leaves3.castShadow = true;
+      tree.add(leaves3);
 
-      // Top layer — smallest, brightest (sunlit top)
-      const top = makeLeafCluster(mainR * 0.6, palette[2]);
-      top.position.y = canopyBaseY + mainR * 1.05;
-      top.castShadow = true;
-      treeGroup.add(top);
-
-      // Side clusters — irregular shape around main
-      const clusterCount = 2 + Math.floor(rng() * 4);
-      for (let c = 0; c < clusterCount; c++) {
-        const ca = rng() * Math.PI * 2;
-        const cdist = mainR * (0.45 + rng() * 0.45);
-        const cr = mainR * (0.38 + rng() * 0.35);
-        const colIdx = Math.floor(rng() * palette.length);
-        const cluster = makeLeafCluster(cr, palette[colIdx]);
-        cluster.position.set(
-          Math.cos(ca) * cdist,
-          canopyBaseY + mainR * (0.2 + rng() * 0.7),
-          Math.sin(ca) * cdist,
-        );
-        cluster.castShadow = true;
-        treeGroup.add(cluster);
-      }
-
-      // Branches reaching out below canopy
-      const branchCount = 3 + Math.floor(rng() * 3);
-      for (let br = 0; br < branchCount; br++) {
-        const ba = rng() * Math.PI * 2;
-        const bLen = 0.6 + rng() * 1.0;
-        const bThick = trunkR * (0.15 + rng() * 0.2);
-        const bGeo = new THREE.CylinderGeometry(bThick * 0.4, bThick, bLen, 5);
-        const branch = new THREE.Mesh(bGeo, trunkMat);
-        const bY = canopyBaseY * (0.55 + rng() * 0.4);
-        branch.position.set(
-          Math.cos(ba) * bLen * 0.35,
-          bY,
-          Math.sin(ba) * bLen * 0.35,
-        );
-        branch.rotation.z = Math.cos(ba) * 0.75;
-        branch.rotation.x = Math.sin(ba) * 0.75;
-        branch.castShadow = true;
-        treeGroup.add(branch);
-
-        // Sub-branch tip
-        if (rng() < 0.5) {
-          const sbLen = bLen * 0.5;
-          const sbGeo = new THREE.CylinderGeometry(bThick * 0.15, bThick * 0.35, sbLen, 4);
-          const sb = new THREE.Mesh(sbGeo, trunkMat);
-          sb.position.set(
-            Math.cos(ba + 0.6) * sbLen * 0.4 + Math.cos(ba) * bLen * 0.35,
-            bY + sbLen * 0.2,
-            Math.sin(ba + 0.6) * sbLen * 0.4 + Math.sin(ba) * bLen * 0.35,
-          );
-          sb.rotation.z = Math.cos(ba + 0.6) * 0.9;
-          sb.rotation.x = Math.sin(ba + 0.6) * 0.9;
-          treeGroup.add(sb);
-        }
-      }
-
-      treeGroup.position.set(x, h, z);
-      treeGroup.rotation.x = (rng() - 0.5) * 0.04;
-      treeGroup.rotation.z = (rng() - 0.5) * 0.04;
-      treeGroup.rotation.y = rng() * Math.PI * 2;
-      this.scene.add(treeGroup);
+      tree.position.set(x, h, z);
+      tree.scale.setScalar(0.7 + rng() * 0.6);
+      tree.rotation.y = rng() * Math.PI * 2;
+      this.scene.add(tree);
     }
   }
 
@@ -1279,6 +1191,202 @@ export class WarbandSceneManager {
       birdGroup.rotation.y = angle + Math.PI / 2;
       birdGroup.scale.setScalar(3 + rng() * 4);
       this.scene.add(birdGroup);
+    }
+  }
+
+  // ---- Stone circle: ancient monument adding atmosphere ------------------
+
+  private _addStoneCircle(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+    const halfD = WB.ARENA_DEPTH / 2;
+
+    // Place one stone circle offset from center
+    const cx = (rng() - 0.5) * halfW * 0.8;
+    const cz = (rng() - 0.5) * halfD * 0.8;
+    const circleR = 2.5 + rng() * 1.5;
+    const stoneCount = 5 + Math.floor(rng() * 4);
+
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8a8a7a, roughness: 0.96, metalness: 0.02 });
+    const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x6a6a5a, roughness: 0.98 });
+    const mossMat = new THREE.MeshStandardMaterial({ color: 0x4a6a2a, roughness: 1.0 });
+
+    for (let i = 0; i < stoneCount; i++) {
+      const a = (i / stoneCount) * Math.PI * 2;
+      const sx = cx + Math.cos(a) * circleR;
+      const sz = cz + Math.sin(a) * circleR;
+      const sh = getTerrainHeight(sx, sz);
+
+      const height = 0.8 + rng() * 1.2;
+      const width = 0.2 + rng() * 0.3;
+
+      // Standing stone (slightly tapered box with vertex noise)
+      const geo = new THREE.BoxGeometry(width, height, width * 0.6);
+      const pos = geo.attributes.position;
+      for (let v = 0; v < pos.count; v++) {
+        const n = 0.88 + rng() * 0.24;
+        pos.setX(v, pos.getX(v) * n);
+        pos.setZ(v, pos.getZ(v) * n);
+      }
+      geo.computeVertexNormals();
+
+      const mat = rng() < 0.3 ? darkStoneMat : stoneMat;
+      const stone = new THREE.Mesh(geo, mat);
+      stone.position.set(sx, sh + height * 0.45, sz);
+      stone.rotation.y = a + rng() * 0.5;
+      // Some lean slightly
+      stone.rotation.z = (rng() - 0.5) * 0.15;
+      stone.rotation.x = (rng() - 0.5) * 0.1;
+      stone.castShadow = true;
+      stone.receiveShadow = true;
+      this.scene.add(stone);
+
+      // Moss at base
+      if (rng() < 0.5) {
+        const mGeo = new THREE.SphereGeometry(width * 0.6, 4, 3, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        const moss = new THREE.Mesh(mGeo, mossMat);
+        moss.position.set(sx, sh + 0.02, sz);
+        moss.scale.set(1.2, 0.2, 1.2);
+        this.scene.add(moss);
+      }
+    }
+
+    // Fallen stone (toppled)
+    if (rng() < 0.6) {
+      const fa = rng() * Math.PI * 2;
+      const fx = cx + Math.cos(fa) * circleR * 0.6;
+      const fz = cz + Math.sin(fa) * circleR * 0.6;
+      const fh = getTerrainHeight(fx, fz);
+      const fallenGeo = new THREE.BoxGeometry(0.8, 0.25, 0.35);
+      const fallen = new THREE.Mesh(fallenGeo, darkStoneMat);
+      fallen.position.set(fx, fh + 0.12, fz);
+      fallen.rotation.y = rng() * Math.PI;
+      fallen.castShadow = true;
+      this.scene.add(fallen);
+    }
+  }
+
+  // ---- Wildflower patches: clusters of colorful ground flowers -----------
+
+  private _addWildflowerPatches(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+    const halfD = WB.ARENA_DEPTH / 2;
+
+    const flowerColors = [0xffee66, 0xff8855, 0xdd66aa, 0x8888dd, 0xffaacc, 0xeedd44];
+
+    for (let p = 0; p < 12; p++) {
+      const cx = (rng() - 0.5) * halfW * 1.6;
+      const cz = (rng() - 0.5) * halfD * 1.6;
+      const patchR = 0.8 + rng() * 1.2;
+      const count = 8 + Math.floor(rng() * 12);
+      const color = flowerColors[Math.floor(rng() * flowerColors.length)];
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.75 });
+
+      for (let f = 0; f < count; f++) {
+        const a = rng() * Math.PI * 2;
+        const d = rng() * patchR;
+        const fx = cx + Math.cos(a) * d;
+        const fz = cz + Math.sin(a) * d;
+        const fh = getTerrainHeight(fx, fz);
+
+        const geo = new THREE.SphereGeometry(0.02 + rng() * 0.015, 4, 3);
+        const flower = new THREE.Mesh(geo, mat);
+        flower.position.set(fx, fh + 0.03 + rng() * 0.06, fz);
+        flower.scale.set(1, 0.5, 1);
+        this.scene.add(flower);
+      }
+    }
+  }
+
+  // ---- Terrain rocks: scattered small stones adding texture to ground ----
+
+  private _addTerrainRocks(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+    const halfD = WB.ARENA_DEPTH / 2;
+
+    const pebbleMats = [
+      new THREE.MeshStandardMaterial({ color: 0x999990, roughness: 0.95 }),
+      new THREE.MeshStandardMaterial({ color: 0x888878, roughness: 0.97 }),
+      new THREE.MeshStandardMaterial({ color: 0x777768, roughness: 0.96 }),
+    ];
+
+    for (let i = 0; i < 60; i++) {
+      const x = (rng() - 0.5) * halfW * 1.8;
+      const z = (rng() - 0.5) * halfD * 1.8;
+      const h = getTerrainHeight(x, z);
+      const mat = pebbleMats[Math.floor(rng() * pebbleMats.length)];
+      const r = 0.02 + rng() * 0.05;
+
+      const geo = new THREE.SphereGeometry(r, 4, 3);
+      const pebble = new THREE.Mesh(geo, mat);
+      pebble.position.set(x, h + r * 0.3, z);
+      pebble.scale.set(1 + rng() * 0.5, 0.4 + rng() * 0.3, 1 + rng() * 0.5);
+      pebble.rotation.y = rng() * Math.PI;
+      this.scene.add(pebble);
+    }
+  }
+
+  // ---- Dust motes: floating particles catching the light ----------------
+
+  private _addDustMotes(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+    const halfD = WB.ARENA_DEPTH / 2;
+
+    const moteMat = new THREE.MeshBasicMaterial({
+      color: 0xffffee,
+      transparent: true,
+      opacity: 0.15,
+    });
+
+    for (let i = 0; i < 40; i++) {
+      const x = (rng() - 0.5) * halfW * 1.5;
+      const y = 1.0 + rng() * 4.0;
+      const z = (rng() - 0.5) * halfD * 1.5;
+      const r = 0.01 + rng() * 0.02;
+
+      const geo = new THREE.SphereGeometry(r, 3, 2);
+      const mote = new THREE.Mesh(geo, moteMat);
+      mote.position.set(x, y, z);
+      this.scene.add(mote);
+    }
+  }
+
+  // ---- Grass patches: larger irregular grass clusters on the ground ------
+
+  private _addGrassPatches(rng: () => number): void {
+    const halfW = WB.ARENA_WIDTH / 2;
+    const halfD = WB.ARENA_DEPTH / 2;
+
+    const grassMats = [
+      new THREE.MeshStandardMaterial({ color: 0x3a6830, roughness: 1.0, side: THREE.DoubleSide }),
+      new THREE.MeshStandardMaterial({ color: 0x4a7a38, roughness: 1.0, side: THREE.DoubleSide }),
+      new THREE.MeshStandardMaterial({ color: 0x2e5820, roughness: 1.0, side: THREE.DoubleSide }),
+    ];
+
+    for (let i = 0; i < 50; i++) {
+      const cx = (rng() - 0.5) * halfW * 1.7;
+      const cz = (rng() - 0.5) * halfD * 1.7;
+      const ch = getTerrainHeight(cx, cz);
+      const mat = grassMats[Math.floor(rng() * grassMats.length)];
+
+      // A small cluster of grass blades using thin triangles
+      const bladeCount = 4 + Math.floor(rng() * 5);
+      for (let b = 0; b < bladeCount; b++) {
+        const bx = cx + (rng() - 0.5) * 0.3;
+        const bz = cz + (rng() - 0.5) * 0.3;
+        const bh = 0.15 + rng() * 0.3;
+        const bw = 0.02 + rng() * 0.02;
+
+        const geo = new THREE.BufferGeometry();
+        const verts = new Float32Array([
+          bx - bw, ch + 0.01, bz,
+          bx + bw, ch + 0.01, bz,
+          bx + (rng() - 0.5) * 0.03, ch + bh, bz + (rng() - 0.5) * 0.03,
+        ]);
+        geo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+        geo.computeVertexNormals();
+        const blade = new THREE.Mesh(geo, mat);
+        this.scene.add(blade);
+      }
     }
   }
 

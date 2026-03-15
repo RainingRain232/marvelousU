@@ -79,6 +79,22 @@ interface Critter {
   state: number;     // generic state counter
 }
 
+interface Spectator {
+  x: number;
+  y: number;
+  phase: number;        // animation phase offset
+  type: "guard" | "merchant" | "peasant" | "noble" | "soldier" | "monk" | "bard" | "witch" | "druid" | "fisherman" | "knight" | "villager";
+  dir: number;          // 1 = right, -1 = left
+  scale: number;        // size scale (0.5-1.0 for depth)
+  bodyColor: number;
+  skinColor: number;
+  accentColor: number;
+  hatColor: number;
+  cheerTimer: number;   // frames until next cheer
+  cheerDuration: number; // how long current cheer lasts
+  isCheer: boolean;     // currently cheering
+}
+
 // ---------------------------------------------------------------------------
 // Main renderer
 // ---------------------------------------------------------------------------
@@ -101,6 +117,7 @@ export class DuelArenaRenderer {
   private _stars: Star[] = [];
   private _ripples: Ripple[] = [];
   private _critters: Critter[] = [];
+  private _spectators: Spectator[] = [];
 
   build(arenaId: string, sw: number, sh: number): void {
     this.container.removeChildren();
@@ -113,6 +130,7 @@ export class DuelArenaRenderer {
     this._stars = [];
     this._ripples = [];
     this._critters = [];
+    this._spectators = [];
     this._sw = sw;
     this._floorY = Math.round(sh * 0.82);
     this._arenaId = arenaId;
@@ -138,8 +156,160 @@ export class DuelArenaRenderer {
       default: this._buildGeneric(this._arena, sw, sh); break;
     }
 
+    // Add themed spectators for all arenas
+    if (arenaId !== "camelot") {
+      this._buildArenaSpectators(arenaId, sw, sh);
+    }
+
     this.container.addChild(this._staticGfx);
     this.container.addChild(this._animGfx);
+  }
+
+  /** Populate themed spectator crowds based on arena. */
+  private _buildArenaSpectators(arenaId: string, sw: number, _sh: number): void {
+    const fy = this._floorY;
+
+    // Spectator positions: far edges of the stage to not interfere with fighters
+    // Fighters occupy roughly sw * 0.3 to sw * 0.7
+
+    switch (arenaId) {
+      case "avalon": {
+        // Mystic/druid/monk theme along the misty shore
+        this._addSpectator(sw * 0.04, fy - 42, "druid", 1, 0.5, 0x445533, 0xccbb99, 0x557744, 0x554433, 0);
+        this._addSpectator(sw * 0.10, fy - 38, "monk", -1, 0.45, 0x554433, 0xddcc99, 0x443322, 0x665544, 1.5);
+        this._addSpectator(sw * 0.90, fy - 40, "druid", -1, 0.48, 0x556644, 0xccbb99, 0x668855, 0x443322, 2.0);
+        this._addSpectator(sw * 0.96, fy - 38, "monk", 1, 0.42, 0x665544, 0xddcc99, 0x554433, 0x776655, 3.5);
+        this._addSpectator(sw * 0.07, fy - 34, "peasant", 1, 0.4, 0x667755, 0xccbb99, 0x556644, 0x556644, 4.0);
+        this._addSpectator(sw * 0.93, fy - 34, "villager", -1, 0.4, 0x776655, 0xccaa88, 0x665544, 0x776655, 5.0);
+        break;
+      }
+      case "excalibur": {
+        // Sacred grove - monks, druids watching the stone
+        this._addSpectator(sw * 0.03, fy - 46, "monk", 1, 0.5, 0x443322, 0xccbb99, 0x332211, 0x554433, 0);
+        this._addSpectator(sw * 0.10, fy - 42, "druid", 1, 0.45, 0x334422, 0xccaa88, 0x445533, 0x443322, 1.2);
+        this._addSpectator(sw * 0.90, fy - 44, "monk", -1, 0.48, 0x554433, 0xddbb99, 0x443322, 0x665544, 2.5);
+        this._addSpectator(sw * 0.96, fy - 40, "peasant", -1, 0.42, 0x665544, 0xccbb99, 0x554433, 0x776655, 3.8);
+        this._addSpectator(sw * 0.14, fy - 36, "villager", 1, 0.38, 0x776655, 0xccaa88, 0x665544, 0x665544, 4.5);
+        this._addSpectator(sw * 0.86, fy - 36, "villager", -1, 0.38, 0x887766, 0xddcc99, 0x776655, 0x776655, 5.2);
+        break;
+      }
+      case "broceliande": {
+        // Deep forest - druids, witches, fairy-folk
+        this._addSpectator(sw * 0.04, fy - 44, "witch", 1, 0.48, 0x332244, 0xccbb99, 0x44dd66, 0x221133, 0);
+        this._addSpectator(sw * 0.11, fy - 38, "druid", 1, 0.42, 0x334422, 0xbbaa88, 0x446633, 0x443322, 1.5);
+        this._addSpectator(sw * 0.89, fy - 40, "druid", -1, 0.45, 0x445533, 0xccbb99, 0x557744, 0x554433, 2.5);
+        this._addSpectator(sw * 0.96, fy - 42, "witch", -1, 0.46, 0x442255, 0xccaa88, 0x66ee88, 0x331144, 3.5);
+        this._addSpectator(sw * 0.08, fy - 34, "peasant", 1, 0.38, 0x556644, 0xbbaa88, 0x445533, 0x556644, 4.5);
+        break;
+      }
+      case "tintagel": {
+        // Seaside cliffs - soldiers, fishermen, villagers
+        this._addSpectator(sw * 0.04, fy - 44, "soldier", 1, 0.5, 0x556666, 0xccaa88, 0xeebb55, 0x667777, 0);
+        this._addSpectator(sw * 0.10, fy - 38, "fisherman", 1, 0.42, 0x556655, 0xddbb99, 0x445544, 0x887766, 1.5);
+        this._addSpectator(sw * 0.90, fy - 40, "villager", -1, 0.44, 0x776655, 0xccbb99, 0x665544, 0x665544, 2.5);
+        this._addSpectator(sw * 0.96, fy - 42, "soldier", -1, 0.48, 0x556666, 0xccaa88, 0xeebb55, 0x667777, 3.5);
+        this._addSpectator(sw * 0.08, fy - 34, "fisherman", -1, 0.38, 0x667755, 0xccaa88, 0x556644, 0x776655, 4.5);
+        this._addSpectator(sw * 0.92, fy - 34, "peasant", 1, 0.38, 0x887766, 0xddcc99, 0x776655, 0x887766, 5.0);
+        break;
+      }
+      case "round_table": {
+        // Indoor grand hall - knights, nobles, bard
+        this._addSpectator(sw * 0.04, fy - 50, "knight", 1, 0.52, 0x555566, 0xddcc99, 0xddaa33, 0x666677, 0);
+        this._addSpectator(sw * 0.10, fy - 48, "noble", 1, 0.48, 0x442266, 0xeeccaa, 0xddaa33, 0xddaa33, 1.0);
+        this._addSpectator(sw * 0.16, fy - 44, "knight", 1, 0.44, 0x556677, 0xddcc99, 0xcc2222, 0x667788, 2.0);
+        this._addSpectator(sw * 0.84, fy - 44, "knight", -1, 0.44, 0x556677, 0xddcc99, 0x2244aa, 0x667788, 3.0);
+        this._addSpectator(sw * 0.90, fy - 48, "noble", -1, 0.48, 0x224488, 0xeeccaa, 0xddaa33, 0xddaa33, 4.0);
+        this._addSpectator(sw * 0.96, fy - 50, "knight", -1, 0.52, 0x555566, 0xddcc99, 0xddaa33, 0x666677, 5.0);
+        this._addSpectator(sw * 0.14, fy - 36, "bard", 1, 0.4, 0x774422, 0xddcc99, 0xcc4444, 0x663311, 2.5);
+        this._addSpectator(sw * 0.86, fy - 36, "noble", -1, 0.4, 0x552244, 0xeeccaa, 0x882244, 0xddaa33, 3.5);
+        break;
+      }
+      case "mordred_throne": {
+        // Dark throne room - soldiers (dark), witches
+        this._addSpectator(sw * 0.04, fy - 46, "soldier", 1, 0.5, 0x332233, 0xbbaa88, 0xcc44ff, 0x443344, 0);
+        this._addSpectator(sw * 0.12, fy - 40, "witch", 1, 0.44, 0x221122, 0xccaa88, 0xcc44ff, 0x110011, 1.5);
+        this._addSpectator(sw * 0.88, fy - 42, "witch", -1, 0.46, 0x332233, 0xbbaa88, 0xaa33dd, 0x220022, 2.5);
+        this._addSpectator(sw * 0.96, fy - 46, "soldier", -1, 0.5, 0x332233, 0xbbaa88, 0xcc44ff, 0x443344, 3.5);
+        this._addSpectator(sw * 0.08, fy - 34, "peasant", 1, 0.38, 0x332233, 0xaa9977, 0x443344, 0x332233, 4.5);
+        this._addSpectator(sw * 0.92, fy - 34, "peasant", -1, 0.38, 0x443344, 0xaa9977, 0x332233, 0x443344, 5.5);
+        break;
+      }
+      case "glastonbury": {
+        // Abbey - monks, nobles, pilgrims
+        this._addSpectator(sw * 0.04, fy - 46, "monk", 1, 0.5, 0x554433, 0xddcc99, 0x443322, 0x665544, 0);
+        this._addSpectator(sw * 0.10, fy - 42, "monk", 1, 0.45, 0x665544, 0xddcc99, 0x554433, 0x776655, 1.2);
+        this._addSpectator(sw * 0.16, fy - 38, "noble", 1, 0.42, 0x553366, 0xeeccaa, 0xeedd88, 0xddaa33, 2.0);
+        this._addSpectator(sw * 0.84, fy - 38, "peasant", -1, 0.42, 0x887766, 0xccbb99, 0x776655, 0x887766, 3.0);
+        this._addSpectator(sw * 0.90, fy - 42, "monk", -1, 0.45, 0x554433, 0xddcc99, 0x443322, 0x665544, 4.0);
+        this._addSpectator(sw * 0.96, fy - 46, "monk", -1, 0.5, 0x665544, 0xddcc99, 0x554433, 0x776655, 5.0);
+        break;
+      }
+      case "orkney": {
+        // Wild wastes - soldiers, peasants, vikings
+        this._addSpectator(sw * 0.04, fy - 44, "soldier", 1, 0.5, 0x556655, 0xccaa88, 0xbbaa88, 0x667766, 0);
+        this._addSpectator(sw * 0.11, fy - 38, "peasant", 1, 0.42, 0x776655, 0xccaa88, 0x665544, 0x776655, 1.5);
+        this._addSpectator(sw * 0.89, fy - 38, "villager", -1, 0.42, 0x887766, 0xccbb99, 0x776655, 0x887766, 2.5);
+        this._addSpectator(sw * 0.96, fy - 44, "soldier", -1, 0.5, 0x556655, 0xccaa88, 0xbbaa88, 0x667766, 3.5);
+        this._addSpectator(sw * 0.07, fy - 32, "peasant", 1, 0.36, 0x665544, 0xbbaa88, 0x554433, 0x665544, 4.5);
+        break;
+      }
+      case "lake": {
+        // Lake sanctuary - druids, fishermen, monks
+        this._addSpectator(sw * 0.04, fy - 44, "druid", 1, 0.48, 0x446655, 0xccbb99, 0x66ddff, 0x335544, 0);
+        this._addSpectator(sw * 0.10, fy - 38, "fisherman", 1, 0.42, 0x556655, 0xddbb99, 0x445544, 0x887766, 1.5);
+        this._addSpectator(sw * 0.90, fy - 40, "monk", -1, 0.45, 0x445555, 0xddcc99, 0x334444, 0x556666, 2.5);
+        this._addSpectator(sw * 0.96, fy - 42, "druid", -1, 0.48, 0x557766, 0xccbb99, 0x66ddff, 0x446655, 3.5);
+        break;
+      }
+      case "dragon_peak": {
+        // Volcanic peak - soldiers, brave knights
+        this._addSpectator(sw * 0.04, fy - 46, "soldier", 1, 0.5, 0x554433, 0xccaa88, 0xff6622, 0x665544, 0);
+        this._addSpectator(sw * 0.11, fy - 40, "knight", 1, 0.45, 0x554444, 0xccaa88, 0xff6622, 0x665555, 1.5);
+        this._addSpectator(sw * 0.89, fy - 40, "soldier", -1, 0.45, 0x554433, 0xccaa88, 0xff6622, 0x665544, 2.5);
+        this._addSpectator(sw * 0.96, fy - 46, "knight", -1, 0.5, 0x554444, 0xccaa88, 0xff6622, 0x665555, 3.5);
+        break;
+      }
+      case "grail_chapel": {
+        // Holy chapel - monks, nobles, knights of the grail
+        this._addSpectator(sw * 0.04, fy - 48, "monk", 1, 0.5, 0x887766, 0xddcc99, 0xffee99, 0x776655, 0);
+        this._addSpectator(sw * 0.10, fy - 44, "knight", 1, 0.46, 0x666688, 0xddcc99, 0xffee99, 0x777799, 1.2);
+        this._addSpectator(sw * 0.16, fy - 38, "noble", 1, 0.42, 0x554477, 0xeeccaa, 0xffee99, 0xddaa33, 2.0);
+        this._addSpectator(sw * 0.84, fy - 38, "monk", -1, 0.42, 0x776655, 0xddcc99, 0xffee99, 0x665544, 3.0);
+        this._addSpectator(sw * 0.90, fy - 44, "noble", -1, 0.46, 0x443366, 0xeeccaa, 0xffee99, 0xddaa33, 4.0);
+        this._addSpectator(sw * 0.96, fy - 48, "monk", -1, 0.5, 0x887766, 0xddcc99, 0xffee99, 0x776655, 5.0);
+        break;
+      }
+      case "cornwall": {
+        // Coast - fishermen, villagers, sailors
+        this._addSpectator(sw * 0.04, fy - 42, "fisherman", 1, 0.48, 0x556655, 0xddbb99, 0xffffff, 0x887766, 0);
+        this._addSpectator(sw * 0.10, fy - 36, "villager", 1, 0.42, 0x776655, 0xccbb99, 0xffffff, 0x665544, 1.5);
+        this._addSpectator(sw * 0.90, fy - 38, "villager", -1, 0.44, 0x887766, 0xddcc99, 0xffffff, 0x776655, 2.5);
+        this._addSpectator(sw * 0.96, fy - 42, "fisherman", -1, 0.48, 0x667755, 0xddbb99, 0xffffff, 0x998877, 3.5);
+        this._addSpectator(sw * 0.14, fy - 32, "peasant", 1, 0.38, 0x887766, 0xccaa88, 0xddccbb, 0x776655, 4.5);
+        break;
+      }
+      case "shadow_keep": {
+        // Dark fortress - dark soldiers, witches
+        this._addSpectator(sw * 0.04, fy - 46, "soldier", 1, 0.5, 0x222230, 0xaa9977, 0x8844cc, 0x333340, 0);
+        this._addSpectator(sw * 0.12, fy - 40, "witch", 1, 0.44, 0x111120, 0xaa9977, 0x8844cc, 0x0a0a18, 1.5);
+        this._addSpectator(sw * 0.88, fy - 42, "witch", -1, 0.46, 0x1a1a28, 0xaa9977, 0x7733bb, 0x111120, 2.5);
+        this._addSpectator(sw * 0.96, fy - 46, "soldier", -1, 0.5, 0x222230, 0xaa9977, 0x8844cc, 0x333340, 3.5);
+        break;
+      }
+      case "camlann": {
+        // Battlefield - soldiers, knights on both sides
+        this._addSpectator(sw * 0.03, fy - 48, "soldier", 1, 0.5, 0x554840, 0xccaa88, 0xcc3333, 0x665850, 0);
+        this._addSpectator(sw * 0.08, fy - 44, "knight", 1, 0.46, 0x555555, 0xccaa88, 0xcc3333, 0x666666, 1.0);
+        this._addSpectator(sw * 0.14, fy - 38, "soldier", 1, 0.42, 0x554840, 0xbbaa88, 0xcc3333, 0x665850, 2.0);
+        this._addSpectator(sw * 0.86, fy - 38, "soldier", -1, 0.42, 0x554840, 0xbbaa88, 0xcc3333, 0x665850, 3.0);
+        this._addSpectator(sw * 0.92, fy - 44, "knight", -1, 0.46, 0x555555, 0xccaa88, 0xcc3333, 0x666666, 4.0);
+        this._addSpectator(sw * 0.97, fy - 48, "soldier", -1, 0.5, 0x554840, 0xccaa88, 0xcc3333, 0x665850, 5.0);
+        // Wounded soldiers in back
+        this._addSpectator(sw * 0.06, fy - 32, "peasant", 1, 0.36, 0x554840, 0xbbaa88, 0x883333, 0x554840, 4.5);
+        this._addSpectator(sw * 0.94, fy - 32, "peasant", -1, 0.36, 0x554840, 0xbbaa88, 0x883333, 0x554840, 5.5);
+        break;
+      }
+    }
   }
 
   update(time: number): void {
@@ -479,6 +649,37 @@ export class DuelArenaRenderer {
       g.fill({ color: 0xddddcc, alpha: 0.25 });
     }
 
+    // --- Market stalls on far sides ---
+    this._drawMarketStall(g, sw * 0.02, floorY - 40, 50, 40, 0x7a5c3a, 0xcc5533);
+    this._drawMarketStall(g, sw * 0.88, floorY - 38, 48, 38, 0x7a5c3a, 0x3366aa);
+
+    // --- Spectators: guards, merchants, peasants, nobles ---
+    // Guards standing watch (far sides of courtyard)
+    this._addSpectator(sw * 0.04, floorY - 50, "guard", 1, 0.55, 0x666677, 0xddbb99, 0xcc2222, 0x777788, 0);
+    this._addSpectator(sw * 0.96, floorY - 50, "guard", -1, 0.55, 0x666677, 0xddbb99, 0xcc2222, 0x777788, 1.5);
+    this._addSpectator(sw * 0.12, floorY - 48, "guard", 1, 0.5, 0x666677, 0xccaa88, 0xcc2222, 0x777788, 3.0);
+    this._addSpectator(sw * 0.88, floorY - 48, "guard", -1, 0.5, 0x666677, 0xccaa88, 0xcc2222, 0x777788, 4.5);
+
+    // Merchants at stalls
+    this._addSpectator(sw * 0.06, floorY - 42, "merchant", 1, 0.5, 0x885522, 0xddbb99, 0xddaa33, 0x993322, 0.5);
+    this._addSpectator(sw * 0.92, floorY - 40, "merchant", -1, 0.5, 0x335588, 0xddbb99, 0xddaa33, 0x224477, 2.0);
+
+    // Peasants/shoppers near stalls
+    this._addSpectator(sw * 0.08, floorY - 38, "peasant", 1, 0.45, 0x887755, 0xccaa88, 0x887766, 0x776644, 1.0);
+    this._addSpectator(sw * 0.10, floorY - 36, "peasant", -1, 0.4, 0x776644, 0xddbb99, 0x776655, 0x665533, 2.5);
+    this._addSpectator(sw * 0.90, floorY - 36, "peasant", 1, 0.4, 0x997755, 0xccbb99, 0x886655, 0x775544, 3.5);
+
+    // Nobles observing
+    this._addSpectator(sw * 0.16, floorY - 44, "noble", 1, 0.5, 0x442266, 0xeeccaa, 0xcc2222, 0xddaa33, 0.8);
+    this._addSpectator(sw * 0.84, floorY - 44, "noble", -1, 0.5, 0x224488, 0xeeccaa, 0x2244aa, 0xddaa33, 2.3);
+
+    // Soldiers in the back row
+    this._addSpectator(sw * 0.22, floorY - 55, "soldier", 1, 0.45, 0x556666, 0xccaa88, 0xcc2222, 0x667777, 1.3);
+    this._addSpectator(sw * 0.78, floorY - 55, "soldier", -1, 0.45, 0x556666, 0xccaa88, 0xcc2222, 0x667777, 3.8);
+
+    // Bard entertaining the crowd
+    this._addSpectator(sw * 0.14, floorY - 36, "bard", 1, 0.42, 0x774422, 0xddcc99, 0xcc4444, 0x663311, 4.0);
+
     // --- Unique critter: castle cat patrolling the wall base ---
     this._critters.push({
       x: sw * 0.2, y: floorY - 3, baseX: sw * 0.4, baseY: floorY - 3,
@@ -527,11 +728,14 @@ export class DuelArenaRenderer {
       g.fill({ color: b.trimColor, alpha: 0.9 });
     }
 
-    // Animated flames
+    // Animated flames with ember particles
     for (const f of this._flames) {
       const flicker = Math.sin(time * 8 + f.phase) * 2;
       const flicker2 = Math.cos(time * 12 + f.phase * 1.7) * 1.5;
       const flicker3 = Math.sin(time * 5 + f.phase * 0.5) * 1;
+      // Large ambient glow around torch
+      g.circle(f.x, f.y - 4, f.baseRadius + 12 + flicker3 * 2);
+      g.fill({ color: 0xff6600, alpha: 0.04 + Math.sin(time * 3 + f.phase) * 0.015 });
       // Outer glow
       g.circle(f.x + flicker2 * 0.3, f.y - 2, f.baseRadius + 4 + flicker3);
       g.fill({ color: 0xff6600, alpha: 0.15 });
@@ -547,11 +751,41 @@ export class DuelArenaRenderer {
       // Bright core
       g.circle(f.x, f.y + 1, 2);
       g.fill({ color: 0xffffcc, alpha: 0.9 });
+      // Rising ember/spark particles from each torch
+      for (let ei = 0; ei < 3; ei++) {
+        const emberPhase = time * 1.5 + f.phase + ei * 2.1;
+        const emberY = f.y - 10 - ((emberPhase * 12) % 40);
+        const emberX = f.x + Math.sin(emberPhase * 2.3) * 6;
+        const emberAlpha = Math.max(0, 0.5 - ((emberPhase * 12) % 40) / 40);
+        g.circle(emberX, emberY, 1.0);
+        g.fill({ color: 0xffaa33, alpha: emberAlpha * 0.7 });
+      }
     }
 
     // --- Slow-drifting clouds in the sky ---
     const sw = this._sw;
     const floorY = this._floorY;
+
+    // --- Floating dust motes in the air (lit by torch light) ---
+    for (let di = 0; di < 8; di++) {
+      const dustPhase = time * 0.15 + di * 1.7;
+      const dustX = (sw * 0.05 + di * sw * 0.12 + Math.sin(dustPhase * 0.8) * 15) % sw;
+      const dustY = floorY * 0.3 + Math.sin(dustPhase * 0.5 + di) * floorY * 0.25;
+      const dustAlpha = 0.08 + Math.sin(dustPhase * 1.5) * 0.04;
+      g.circle(dustX, dustY, 1.2);
+      g.fill({ color: 0xffddaa, alpha: dustAlpha });
+    }
+
+    // --- Ground-level dust wisps (near fighters' feet area) ---
+    for (let dw = 0; dw < 4; dw++) {
+      const wispPhase = time * 0.3 + dw * 2.0;
+      const wispX = (sw * 0.2 + dw * sw * 0.2 + Math.sin(wispPhase) * 30) % sw;
+      const wispY = floorY + 2 + Math.sin(wispPhase * 0.7) * 3;
+      const wispAlpha = 0.04 + Math.sin(wispPhase * 1.2) * 0.02;
+      g.ellipse(wispX, wispY, 20 + Math.sin(wispPhase * 0.5) * 5, 4);
+      g.fill({ color: 0xccccbb, alpha: wispAlpha });
+    }
+
     for (let ci = 0; ci < 3; ci++) {
       const cloudSpeed = 0.008 + ci * 0.003;
       const cloudX = ((time * cloudSpeed * sw + ci * sw * 0.4) % (sw + 160)) - 80;
@@ -575,6 +809,7 @@ export class DuelArenaRenderer {
       g.fill({ color: li % 2 === 0 ? 0x885522 : 0x996633, alpha: leafAlpha });
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -987,6 +1222,7 @@ export class DuelArenaRenderer {
       g.fill({ color: bColor, alpha: bAlpha });
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -1535,6 +1771,7 @@ export class DuelArenaRenderer {
       g.fill({ color: 0xddeeaa, alpha: sAlpha * 0.15 });
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -2033,6 +2270,7 @@ export class DuelArenaRenderer {
       }
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -2480,6 +2718,7 @@ export class DuelArenaRenderer {
       g.fill({ color: 0x220033, alpha: orbAlpha });
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -2849,6 +3088,7 @@ export class DuelArenaRenderer {
       g.fill({ color: 0xeedd77, alpha: lrAlpha });
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -3190,6 +3430,7 @@ export class DuelArenaRenderer {
       g.stroke({ color: 0xaaaacc, width: 4, alpha: 0.08 });
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -3585,6 +3826,7 @@ export class DuelArenaRenderer {
       }
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -3995,6 +4237,7 @@ export class DuelArenaRenderer {
       }
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -4486,6 +4729,7 @@ export class DuelArenaRenderer {
       }
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -4923,6 +5167,7 @@ export class DuelArenaRenderer {
       g.stroke({ color: 0xff3344, width: 1.5, alpha: 0.4 });
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -5350,6 +5595,7 @@ export class DuelArenaRenderer {
       g.fill({ color: 0x000000, alpha: Math.max(0, tsAlpha) });
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -5781,6 +6027,7 @@ export class DuelArenaRenderer {
       }
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -6162,6 +6409,7 @@ export class DuelArenaRenderer {
       }
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -6615,6 +6863,7 @@ export class DuelArenaRenderer {
       g.stroke({ color: 0xccddee, width: 0.8, alpha: wpAlpha });
     }
 
+    this._drawSpectators(g, time);
     this._drawCritters(g, time);
   }
 
@@ -7148,6 +7397,396 @@ export class DuelArenaRenderer {
       g.stroke({ color: 0x333333, width: 1 });
       g.moveTo(x + 2, y).lineTo(x + 2, y + 5);
       g.stroke({ color: 0x333333, width: 1 });
+    }
+  }
+
+  // =========================================================================
+  // SPECTATOR SYSTEM — animated background NPCs
+  // =========================================================================
+
+  private _addSpectator(
+    x: number, y: number,
+    type: Spectator["type"],
+    dir: number,
+    scale: number,
+    bodyColor: number,
+    skinColor: number,
+    accentColor: number,
+    hatColor: number,
+    phaseOffset = 0,
+  ): void {
+    this._spectators.push({
+      x, y, phase: phaseOffset + Math.random() * Math.PI * 2,
+      type, dir, scale, bodyColor, skinColor, accentColor, hatColor,
+      cheerTimer: 120 + Math.floor(Math.random() * 300),
+      cheerDuration: 0,
+      isCheer: false,
+    });
+  }
+
+  private _drawSpectators(g: Graphics, time: number): void {
+    for (const s of this._spectators) {
+      // Cheer logic: countdown, then cheer for a bit
+      if (!s.isCheer) {
+        s.cheerTimer--;
+        if (s.cheerTimer <= 0) {
+          s.isCheer = true;
+          s.cheerDuration = 30 + Math.floor(Math.random() * 40);
+        }
+      } else {
+        s.cheerDuration--;
+        if (s.cheerDuration <= 0) {
+          s.isCheer = false;
+          s.cheerTimer = 180 + Math.floor(Math.random() * 400);
+        }
+      }
+
+      switch (s.type) {
+        case "guard": this._drawGuardSpectator(g, s, time); break;
+        case "merchant": this._drawMerchantSpectator(g, s, time); break;
+        case "peasant": this._drawPeasantSpectator(g, s, time); break;
+        case "noble": this._drawNobleSpectator(g, s, time); break;
+        case "soldier": this._drawSoldierSpectator(g, s, time); break;
+        case "monk": this._drawMonkSpectator(g, s, time); break;
+        case "bard": this._drawBardSpectator(g, s, time); break;
+        case "witch": this._drawWitchSpectator(g, s, time); break;
+        case "druid": this._drawDruidSpectator(g, s, time); break;
+        case "fisherman": this._drawFishermanSpectator(g, s, time); break;
+        case "knight": this._drawKnightSpectator(g, s, time); break;
+        case "villager": this._drawVillagerSpectator(g, s, time); break;
+      }
+    }
+  }
+
+  /** Shared spectator body drawing — returns headY for further detail */
+  private _drawSpectatorBody(
+    g: Graphics, s: Spectator, time: number,
+  ): { hx: number; hy: number; bodyTop: number } {
+    const sc = s.scale;
+    const x = s.x;
+    const y = s.y;
+    const idle = Math.sin(time * 1.2 + s.phase) * 1.5 * sc; // breathing sway
+    const cheerBob = s.isCheer ? Math.sin(time * 8 + s.phase) * 3 * sc : 0;
+
+    // Legs (simple)
+    const legSpread = 5 * sc;
+    const legH = 18 * sc;
+    g.moveTo(x - legSpread, y).lineTo(x - legSpread - 1, y + legH);
+    g.stroke({ color: s.bodyColor, width: 3 * sc, cap: "round" });
+    g.moveTo(x + legSpread, y).lineTo(x + legSpread + 1, y + legH);
+    g.stroke({ color: s.bodyColor, width: 3 * sc, cap: "round" });
+
+    // Shoes
+    g.ellipse(x - legSpread - 1, y + legH, 4 * sc, 2 * sc);
+    g.fill({ color: 0x443322 });
+    g.ellipse(x + legSpread + 1, y + legH, 4 * sc, 2 * sc);
+    g.fill({ color: 0x443322 });
+
+    // Body (torso)
+    const bodyH = 22 * sc;
+    const bodyTop = y - bodyH + idle + cheerBob;
+    g.roundRect(x - 8 * sc, bodyTop, 16 * sc, bodyH, 3 * sc);
+    g.fill({ color: s.bodyColor });
+
+    // Arms
+    const armLen = 14 * sc;
+    const armAngle = s.isCheer
+      ? -Math.PI / 2 + Math.sin(time * 6 + s.phase) * 0.4
+      : -0.3 + Math.sin(time * 0.8 + s.phase) * 0.1;
+    // Left arm
+    const laX = x - 8 * sc;
+    const laEX = laX + Math.cos(armAngle - 0.3) * armLen;
+    const laEY = bodyTop + 5 * sc + Math.sin(armAngle - 0.3) * armLen;
+    g.moveTo(laX, bodyTop + 5 * sc).lineTo(laEX, laEY);
+    g.stroke({ color: s.bodyColor, width: 3 * sc, cap: "round" });
+    g.circle(laEX, laEY, 2.5 * sc);
+    g.fill({ color: s.skinColor });
+
+    // Right arm
+    const raX = x + 8 * sc;
+    const raAngle = s.isCheer
+      ? -Math.PI / 2 - Math.sin(time * 6 + s.phase + 1) * 0.4
+      : -0.3 - Math.sin(time * 0.8 + s.phase + 1) * 0.1;
+    const raEX = raX + Math.cos(raAngle + 0.3) * armLen;
+    const raEY = bodyTop + 5 * sc + Math.sin(raAngle + 0.3) * armLen;
+    g.moveTo(raX, bodyTop + 5 * sc).lineTo(raEX, raEY);
+    g.stroke({ color: s.bodyColor, width: 3 * sc, cap: "round" });
+    g.circle(raEX, raEY, 2.5 * sc);
+    g.fill({ color: s.skinColor });
+
+    // Head
+    const headR = 7 * sc;
+    const hx = x;
+    const hy = bodyTop - headR + idle + cheerBob;
+    // Neck
+    g.moveTo(x, bodyTop).lineTo(hx, hy + headR * 0.8);
+    g.stroke({ color: s.skinColor, width: 4 * sc, cap: "round" });
+    // Head circle
+    g.circle(hx, hy, headR + 1);
+    g.fill({ color: 0x111111 });
+    g.circle(hx, hy, headR);
+    g.fill({ color: s.skinColor });
+
+    // Face: simple eyes + mouth
+    const faceDir = s.dir;
+    g.circle(hx + 2 * sc * faceDir, hy - 1 * sc, 1 * sc);
+    g.fill({ color: 0x222222 });
+    g.circle(hx + 5 * sc * faceDir, hy - 1 * sc, 1 * sc);
+    g.fill({ color: 0x222222 });
+
+    // Mouth
+    if (s.isCheer) {
+      g.ellipse(hx + 3.5 * sc * faceDir, hy + 3 * sc, 2 * sc, 1.5 * sc);
+      g.fill({ color: 0x331111 });
+    } else {
+      g.moveTo(hx + 2 * sc * faceDir, hy + 3 * sc);
+      g.lineTo(hx + 5 * sc * faceDir, hy + 3 * sc);
+      g.stroke({ color: 0x553333, width: 0.8 * sc });
+    }
+
+    return { hx, hy, bodyTop };
+  }
+
+  // Guard: stands upright with spear, helmet
+  private _drawGuardSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy, bodyTop } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Helmet
+    g.circle(hx, hy, 8 * sc);
+    g.fill({ color: s.hatColor });
+    g.roundRect(hx - 6 * sc, hy - 2 * sc, 12 * sc, 5 * sc, 2 * sc);
+    g.fill({ color: 0x111118 }); // visor slit
+    // Spear
+    const spearX = s.x + 12 * sc * s.dir;
+    g.moveTo(spearX, bodyTop + 15 * sc).lineTo(spearX, bodyTop - 35 * sc);
+    g.stroke({ color: 0x8b7355, width: 2 * sc });
+    // Spear tip
+    g.moveTo(spearX, bodyTop - 35 * sc);
+    g.lineTo(spearX - 3 * sc, bodyTop - 30 * sc);
+    g.lineTo(spearX + 3 * sc, bodyTop - 30 * sc);
+    g.closePath();
+    g.fill({ color: 0xaaaaaa });
+  }
+
+  // Merchant: colorful clothes, holding goods
+  private _drawMerchantSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Merchant hat (wide brim)
+    g.ellipse(hx, hy - 6 * sc, 10 * sc, 3 * sc);
+    g.fill({ color: s.hatColor });
+    g.roundRect(hx - 5 * sc, hy - 12 * sc, 10 * sc, 7 * sc, 2 * sc);
+    g.fill({ color: s.hatColor });
+    // Satchel/bag on side
+    g.roundRect(s.x + 8 * sc * s.dir, s.y - 12 * sc, 8 * sc, 10 * sc, 2 * sc);
+    g.fill({ color: 0x7a5c3a });
+    g.roundRect(s.x + 9 * sc * s.dir, s.y - 11 * sc, 6 * sc, 4 * sc, 1 * sc);
+    g.fill({ color: 0x8b6b45 });
+  }
+
+  // Peasant: simple clothes, headscarf
+  private _drawPeasantSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Headscarf/hood
+    g.circle(hx, hy - 1 * sc, 8 * sc);
+    g.fill({ color: s.hatColor, alpha: 0.8 });
+    // Apron detail
+    g.roundRect(s.x - 6 * sc, s.y - 10 * sc, 12 * sc, 14 * sc, 1 * sc);
+    g.fill({ color: s.accentColor, alpha: 0.5 });
+  }
+
+  // Noble: rich clothing, crown/circlet
+  private _drawNobleSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy, bodyTop } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Circlet/crown
+    g.roundRect(hx - 5 * sc, hy - 9 * sc, 10 * sc, 4 * sc, 1 * sc);
+    g.fill({ color: 0xddaa33 });
+    // Crown points
+    for (let i = -2; i <= 2; i++) {
+      g.moveTo(hx + i * 2.5 * sc, hy - 9 * sc);
+      g.lineTo(hx + i * 2.5 * sc, hy - 12 * sc);
+      g.stroke({ color: 0xddaa33, width: 1.5 * sc });
+    }
+    // Cape/cloak behind
+    g.moveTo(s.x - 8 * sc, bodyTop + 2 * sc);
+    g.lineTo(s.x - 12 * sc, s.y + 10 * sc);
+    g.lineTo(s.x + 12 * sc, s.y + 10 * sc);
+    g.lineTo(s.x + 8 * sc, bodyTop + 2 * sc);
+    g.closePath();
+    g.fill({ color: s.accentColor, alpha: 0.6 });
+  }
+
+  // Soldier: armor, shield
+  private _drawSoldierSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Helmet with nose guard
+    g.circle(hx, hy, 8 * sc);
+    g.fill({ color: s.hatColor });
+    g.moveTo(hx + 3.5 * sc * s.dir, hy - 2 * sc);
+    g.lineTo(hx + 3.5 * sc * s.dir, hy + 5 * sc);
+    g.stroke({ color: s.hatColor, width: 2 * sc });
+    // Shield
+    const shX = s.x - 10 * sc * s.dir;
+    g.roundRect(shX - 5 * sc, s.y - 16 * sc, 10 * sc, 14 * sc, 2 * sc);
+    g.fill({ color: s.accentColor });
+    g.roundRect(shX - 4 * sc, s.y - 15 * sc, 8 * sc, 12 * sc, 2 * sc);
+    g.stroke({ color: 0xddaa33, width: 1 * sc });
+  }
+
+  // Monk: hooded robe
+  private _drawMonkSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy, bodyTop } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Hood
+    g.circle(hx, hy, 9 * sc);
+    g.fill({ color: s.hatColor });
+    // Hood shadow
+    g.ellipse(hx + 2 * sc * s.dir, hy, 6 * sc, 7 * sc);
+    g.fill({ color: 0x000000, alpha: 0.3 });
+    // Robe drape extends below
+    g.moveTo(s.x - 10 * sc, bodyTop);
+    g.lineTo(s.x - 12 * sc, s.y + 16 * sc);
+    g.lineTo(s.x + 12 * sc, s.y + 16 * sc);
+    g.lineTo(s.x + 10 * sc, bodyTop);
+    g.closePath();
+    g.fill({ color: s.bodyColor, alpha: 0.5 });
+    // Belt rope
+    g.moveTo(s.x - 8 * sc, s.y - 4 * sc);
+    g.lineTo(s.x + 4 * sc, s.y - 4 * sc);
+    g.lineTo(s.x + 4 * sc, s.y + 6 * sc);
+    g.stroke({ color: 0xaa9966, width: 1.5 * sc });
+  }
+
+  // Bard: hat with feather, lute outline
+  private _drawBardSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Feathered cap
+    g.circle(hx, hy - 3 * sc, 8 * sc);
+    g.fill({ color: s.hatColor });
+    // Feather
+    g.moveTo(hx + 6 * sc, hy - 10 * sc);
+    g.quadraticCurveTo(hx + 14 * sc, hy - 18 * sc, hx + 10 * sc, hy - 24 * sc);
+    g.stroke({ color: 0xcc4444, width: 1.5 * sc });
+    // Lute shape in front of body
+    g.ellipse(s.x + 4 * sc * s.dir, s.y - 6 * sc, 6 * sc, 8 * sc);
+    g.fill({ color: 0x8b6b30, alpha: 0.7 });
+    g.moveTo(s.x + 4 * sc * s.dir, s.y - 14 * sc);
+    g.lineTo(s.x + 4 * sc * s.dir, s.y - 24 * sc);
+    g.stroke({ color: 0x6b5025, width: 1.5 * sc });
+  }
+
+  // Witch: pointed hat, dark robes
+  private _drawWitchSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Pointed hat
+    g.ellipse(hx, hy - 5 * sc, 10 * sc, 3 * sc);
+    g.fill({ color: s.hatColor });
+    g.moveTo(hx - 8 * sc, hy - 5 * sc);
+    g.lineTo(hx, hy - 28 * sc);
+    g.lineTo(hx + 8 * sc, hy - 5 * sc);
+    g.closePath();
+    g.fill({ color: s.hatColor });
+    // Hat buckle
+    g.roundRect(hx - 3 * sc, hy - 8 * sc, 6 * sc, 3 * sc, 1 * sc);
+    g.fill({ color: 0xddaa33 });
+    // Glowing staff
+    const staffGlow = Math.sin(time * 3 + s.phase) * 0.15;
+    g.circle(s.x + 14 * sc * s.dir, hy - 10 * sc, 3 * sc);
+    g.fill({ color: 0x88ff88, alpha: 0.4 + staffGlow });
+  }
+
+  // Druid: antler headdress, nature robes
+  private _drawDruidSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Antler headdress
+    g.circle(hx, hy - 2 * sc, 8 * sc);
+    g.fill({ color: s.hatColor });
+    // Antlers
+    g.moveTo(hx - 4 * sc, hy - 9 * sc);
+    g.lineTo(hx - 8 * sc, hy - 22 * sc);
+    g.lineTo(hx - 12 * sc, hy - 20 * sc);
+    g.stroke({ color: 0x886644, width: 1.5 * sc });
+    g.moveTo(hx + 4 * sc, hy - 9 * sc);
+    g.lineTo(hx + 8 * sc, hy - 22 * sc);
+    g.lineTo(hx + 12 * sc, hy - 20 * sc);
+    g.stroke({ color: 0x886644, width: 1.5 * sc });
+  }
+
+  // Fisherman: wide hat, holds rod
+  private _drawFishermanSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Wide brimmed hat
+    g.ellipse(hx, hy - 5 * sc, 12 * sc, 3 * sc);
+    g.fill({ color: s.hatColor });
+    g.roundRect(hx - 6 * sc, hy - 12 * sc, 12 * sc, 8 * sc, 3 * sc);
+    g.fill({ color: s.hatColor });
+  }
+
+  // Knight: full armor, standing at attention
+  private _drawKnightSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Full helm
+    g.circle(hx, hy, 8 * sc);
+    g.fill({ color: s.hatColor });
+    g.roundRect(hx - 5 * sc, hy - 2 * sc, 10 * sc, 4 * sc, 1 * sc);
+    g.fill({ color: 0x111118 }); // visor
+    // Plume on top
+    g.moveTo(hx, hy - 8 * sc);
+    g.quadraticCurveTo(hx + 8 * sc, hy - 14 * sc, hx + 4 * sc, hy - 20 * sc);
+    g.stroke({ color: s.accentColor, width: 3 * sc });
+  }
+
+  // Villager: simple attire, animated idle
+  private _drawVillagerSpectator(g: Graphics, s: Spectator, time: number): void {
+    const { hx, hy } = this._drawSpectatorBody(g, s, time);
+    const sc = s.scale;
+    // Simple cap
+    g.circle(hx, hy - 3 * sc, 8 * sc);
+    g.fill({ color: s.hatColor });
+    g.roundRect(hx - 8 * sc, hy - 4 * sc, 16 * sc, 4 * sc, 2 * sc);
+    g.fill({ color: s.hatColor });
+  }
+
+  // =========================================================================
+  // STALL DRAWING — market stall for merchant scenes
+  // =========================================================================
+
+  private _drawMarketStall(g: Graphics, x: number, y: number, w: number, h: number, color: number, roofColor: number): void {
+    // Counter/table
+    g.rect(x, y, w, h * 0.4);
+    g.fill({ color });
+    g.rect(x, y, w, 3);
+    g.fill({ color: 0x6b5535 });
+    // Legs
+    g.rect(x + 2, y + h * 0.4, 3, h * 0.6);
+    g.fill({ color: 0x5a4a30 });
+    g.rect(x + w - 5, y + h * 0.4, 3, h * 0.6);
+    g.fill({ color: 0x5a4a30 });
+    // Roof canopy
+    g.moveTo(x - 4, y - 2);
+    g.lineTo(x + w + 4, y - 2);
+    g.lineTo(x + w + 2, y - h * 0.5);
+    g.lineTo(x - 2, y - h * 0.5);
+    g.closePath();
+    g.fill({ color: roofColor });
+    // Striped canopy detail
+    for (let sx = x; sx < x + w; sx += 8) {
+      g.rect(sx, y - h * 0.5, 4, h * 0.5 - 2);
+      g.fill({ color: 0xffffff, alpha: 0.05 });
+    }
+    // Goods on counter (small colored circles)
+    for (let gx = x + 5; gx < x + w - 5; gx += 9) {
+      const gc = [0xcc4444, 0xddaa33, 0x44aa44, 0xdd7733][Math.floor(gx * 0.3) % 4];
+      g.circle(gx, y + 4, 3);
+      g.fill({ color: gc, alpha: 0.7 });
     }
   }
 

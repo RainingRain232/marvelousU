@@ -15,6 +15,15 @@ export enum TDSkillId {
   METEOR_SHOWER = "td_meteor_shower",
   DIVINE_SHIELD = "td_divine_shield",
   BOOST = "td_boost",
+  // Unlockable skills
+  FIRE_BREATH = "td_fire_breath",
+  ICE_STORM = "td_ice_storm",
+  LIGHTNING_BOLT = "td_lightning_bolt",
+  DRAGON_ROAR = "td_dragon_roar",
+  WING_GUST = "td_wing_gust",
+  HEALING_FLAME = "td_healing_flame",
+  SHADOW_DIVE = "td_shadow_dive",
+  CHAIN_LIGHTNING = "td_chain_lightning",
 }
 
 export interface TDSkillState {
@@ -60,6 +69,13 @@ export interface TDPlayer {
   // Visual
   eagleBankAngle: number;
   eagleFlapPhase: number;
+  // XP / Level system for unlockable skills
+  xp: number;
+  level: number;
+  xpToNextLevel: number;
+  // Shadow Dive state
+  shadowDiveActive: boolean;
+  shadowDiveTimer: number;
 }
 
 export interface TDEnemy {
@@ -218,6 +234,11 @@ export interface ThreeDragonState {
   // Map
   mapId: string;
 
+  // Unlockable skills
+  unlockedSkills: TDSkillId[];
+  equippedSkills: TDSkillId[];  // 5 active skill slots (keys 1-5)
+  pendingUnlocks: TDSkillId[];  // queue of skills to show unlock notification for
+
   // Day/night cycle
   dayPhase: number;
 
@@ -273,6 +294,11 @@ export function createThreeDragonState(screenW: number, screenH: number, mapId =
       boostActive: false,
       eagleBankAngle: 0,
       eagleFlapPhase: 0,
+      xp: 0,
+      level: 1,
+      xpToNextLevel: 100,
+      shadowDiveActive: false,
+      shadowDiveTimer: 0,
     },
 
     enemies: [],
@@ -306,6 +332,23 @@ export function createThreeDragonState(screenW: number, screenH: number, mapId =
     slowMoFactor: 1,
 
     mapId,
+
+    // Start with base 5 skills unlocked; new ones unlock via leveling
+    unlockedSkills: [
+      TDSkillId.CELESTIAL_LANCE,
+      TDSkillId.THUNDERSTORM,
+      TDSkillId.FROST_NOVA,
+      TDSkillId.METEOR_SHOWER,
+      TDSkillId.DIVINE_SHIELD,
+    ],
+    equippedSkills: [
+      TDSkillId.CELESTIAL_LANCE,
+      TDSkillId.THUNDERSTORM,
+      TDSkillId.FROST_NOVA,
+      TDSkillId.METEOR_SHOWER,
+      TDSkillId.DIVINE_SHIELD,
+    ],
+    pendingUnlocks: [],
 
     scrollSpeed: 20,
     worldZ: 0,

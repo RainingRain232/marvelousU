@@ -321,6 +321,164 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.5, h: 0.3, d: 0.4 },
     }),
   },
+
+  // ── ADDITIONAL UNIVERSAL ATTACKS ────────────────────────────────────────
+
+  // 1. Mid Kick (f+3) – advancing mid kick, good poke range
+  {
+    input: cmd("f", ["lk"]),
+    move: move("f+3", "Advancing Mid Kick", TekkenAttackHeight.MID, TekkenLimb.LEFT_KICK, {
+      startup: 15,
+      active: 4,
+      recovery: 14,
+      onHit: 5,
+      onBlock: -5,
+      onCounterHit: 8,
+      damage: 19,
+      chipDamage: 2,
+      knockback: 0.35,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.7, h: 0.3, d: 0.4 },
+      advanceDistance: 0.25,
+    }),
+  },
+
+  // 2. Spinning Back Kick (b+4) – high-crush spinning attack
+  {
+    input: cmd("b", ["rk"]),
+    move: move("b+4", "Spinning Back Kick", TekkenAttackHeight.MID, TekkenLimb.RIGHT_KICK, {
+      startup: 17,
+      active: 4,
+      recovery: 16,
+      onHit: 6,
+      onBlock: -7,
+      onCounterHit: 10,
+      damage: 21,
+      chipDamage: 2,
+      isHoming: true,
+      knockback: 0.4,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.7, h: 0.3, d: 0.5 },
+      advanceDistance: 0.1,
+    }),
+  },
+
+  // 3. Elbow Strike (f+2) – fast mid elbow, safe poke
+  {
+    input: cmd("f", ["rp"]),
+    move: move("f+2", "Elbow Strike", TekkenAttackHeight.MID, TekkenLimb.RIGHT_PUNCH, {
+      startup: 13,
+      active: 3,
+      recovery: 11,
+      onHit: 4,
+      onBlock: -3,
+      onCounterHit: 7,
+      damage: 16,
+      chipDamage: 2,
+      knockback: 0.25,
+      hitbox: { x: 0.3, y: 1.1, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      advanceDistance: 0.15,
+    }),
+  },
+
+  // 4. Jumping Elbow (u/f+2) – airborne elbow drop, low-crushes
+  {
+    input: cmd("u/f", ["rp"]),
+    move: move("u/f+2", "Jumping Elbow Drop", TekkenAttackHeight.MID, TekkenLimb.RIGHT_PUNCH, {
+      startup: 20,
+      active: 5,
+      recovery: 22,
+      onHit: 7,
+      onBlock: -12,
+      onCounterHit: 11,
+      damage: 24,
+      chipDamage: 3,
+      hasLowCrush: true,
+      knockback: 0.45,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.6, h: 0.4, d: 0.4 },
+      advanceDistance: 0.3,
+    }),
+  },
+
+  // 5. Knee Strike (f+4) – advancing knee, good wallsplat potential
+  {
+    input: cmd("f", ["rk"]),
+    move: move("f+4", "Knee Strike", TekkenAttackHeight.MID, TekkenLimb.RIGHT_KICK, {
+      startup: 16,
+      active: 3,
+      recovery: 14,
+      onHit: 5,
+      onBlock: -6,
+      onCounterHit: 9,
+      damage: 20,
+      chipDamage: 2,
+      knockback: 0.35,
+      wallSplat: true,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.55, h: 0.35, d: 0.4 },
+      advanceDistance: 0.2,
+    }),
+  },
+
+  // 6. Hellsweep (d/b+3,4) – sweeping low kick that launches on counter hit
+  {
+    input: cmd("d/b", ["lk", "rk"]),
+    move: move("d/b+3+4", "Hellsweep", TekkenAttackHeight.LOW, TekkenLimb.LEFT_KICK, {
+      type: "command",
+      startup: 22,
+      active: 5,
+      recovery: 26,
+      onHit: 0,
+      onBlock: -18,
+      onCounterHit: 0,
+      damage: 22,
+      chipDamage: 2,
+      isLauncher: true,
+      launchHeight: 0.18,
+      knockback: 0.4,
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.85, h: 0.3, d: 0.5 },
+      advanceDistance: 0.15,
+    }),
+  },
+
+  // 7. Grab Slam (f+1+3) – forward throw with knockdown
+  {
+    input: cmd("f", ["lp", "lk"]),
+    move: move("f+1+3", "Grab Slam", TekkenAttackHeight.HIGH, TekkenLimb.LEFT_PUNCH, {
+      type: "throw",
+      startup: 14,
+      active: 3,
+      recovery: 32,
+      onHit: 0,
+      onBlock: 0,
+      onCounterHit: 0,
+      damage: 38,
+      chipDamage: 0,
+      knockback: 0.55,
+      wallSplat: true,
+      hitbox: { x: 0.3, y: 1.5, z: 0, w: 0.5, h: 0.3, d: 0.4 },
+      advanceDistance: 0.15,
+    }),
+  },
+
+  // 8. Jumping Spinning Kick (u/f+4) – airborne spinning roundhouse
+  {
+    input: cmd("u/f", ["rk"]),
+    move: move("u/f+4", "Jumping Spin Kick", TekkenAttackHeight.MID, TekkenLimb.RIGHT_KICK, {
+      startup: 19,
+      active: 5,
+      recovery: 24,
+      onHit: 0,
+      onBlock: -14,
+      onCounterHit: 0,
+      damage: 23,
+      chipDamage: 3,
+      isLauncher: true,
+      launchHeight: 0.22,
+      hasLowCrush: true,
+      isHoming: true,
+      knockback: 0.5,
+      hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.75, h: 0.35, d: 0.5 },
+      advanceDistance: 0.25,
+    }),
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
